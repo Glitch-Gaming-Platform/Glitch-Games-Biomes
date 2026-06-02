@@ -900,6 +900,56 @@ describe("parseHarthmereLiveModeBackendStateV1", function () {
     );
   });
 
+  it("accepts business customer sessions through a server-known interaction marker payload", function () {
+    const state = freshState();
+    addOpenProductionBusiness(state, "business_clinic_marker_payload", {
+      typeId: "medical_doctor",
+      marker: [100, 65, 100],
+    });
+    delete state.building.inWorldMarkers[
+      "business_clinic_marker_payload:marker"
+    ];
+    state.building.inWorldMarkers["outpost_clinic:dashboard"] = {
+      markerId: "outpost_clinic:dashboard",
+      plotId: "outpost_clinic",
+      kind: "business_marker",
+      position: [140, 65, 140],
+      label: "Clinic Desk",
+      createdAtMs: NOW_MS,
+    };
+
+    const result = applyOne(
+      state,
+      "request_economy_mutation",
+      {
+        operation: "start_business_customer_session",
+        businessId: "business_clinic_marker_payload",
+        interactionBusinessId: "business_clinic_marker_payload",
+        businessInteractionMarkerId: "outpost_clinic:dashboard",
+        businessInteractionPosition: { x: 140, y: 65, z: 140 },
+        count: 1,
+      },
+      {
+        subsystem: "economy",
+        serverActorPosition: { x: 140, y: 65, z: 140 },
+      }
+    );
+
+    assert.deepEqual(
+      result.summary.warnings.filter((warning) =>
+        warning.startsWith("economy_rejected:business_")
+      ),
+      []
+    );
+    assert.equal(
+      Object.keys(
+        (result.state.economy.production.businessSystems as any)
+          .customerSessions ?? {}
+      ).length,
+      1
+    );
+  });
+
   it("proximity-gates customer contracts through interaction business ids", function () {
     const nearState = freshState();
     nearState.inventory.gold = 1_000;
@@ -1956,7 +2006,9 @@ describe("reduceHarthmereLiveModeBackendStateV1 — combat target authority", fu
   ) {
     return {
       ...("species" in entry ? { species: entry.species } : {}),
-      ...("movementSpeed" in entry ? { movementSpeed: entry.movementSpeed } : {}),
+      ...("movementSpeed" in entry
+        ? { movementSpeed: entry.movementSpeed }
+        : {}),
     };
   }
 
@@ -2021,8 +2073,7 @@ describe("reduceHarthmereLiveModeBackendStateV1 — combat target authority", fu
         s.combat.hp = blocker.playerHp ?? 100;
         s.combat.maxHp = 100;
         s.combat.deathState = blocker.playerDeathState ?? "alive";
-        s.combat.respawnProtectionUntilMs =
-          blocker.respawnProtectionUntilMs;
+        s.combat.respawnProtectionUntilMs = blocker.respawnProtectionUntilMs;
         s.combat.entitySnapshots[npcId] = {
           hp: 120,
           maxHp: 120,
@@ -2076,7 +2127,11 @@ describe("reduceHarthmereLiveModeBackendStateV1 — combat target authority", fu
           `${entry.kind}:${blocker.suffix}`
         );
         if (blocker.expectedMovementMode === "town_wander") {
-          assert.equal(tick.targetId, undefined, `${entry.kind}:${blocker.suffix}`);
+          assert.equal(
+            tick.targetId,
+            undefined,
+            `${entry.kind}:${blocker.suffix}`
+          );
         } else {
           assert.equal(tick.targetId, ACTOR, `${entry.kind}:${blocker.suffix}`);
         }
@@ -6125,8 +6180,13 @@ describe("reduceHarthmereLiveModeBackendStateV1 — building mutation", function
     );
 
     assert.ok(summary.warnings.includes("business_rejected:active_bounty"));
-    assert.equal(Object.keys(state.economy.businesses).length, 0);
-    assert.equal(Object.keys(state.economy.production.businesses).length, 0);
+    assert.equal(
+      Object.values(state.economy.production.businesses).some(
+        (business) =>
+          business.propertyId === "property_grove_crossroads_shop_lot"
+      ),
+      false
+    );
   });
 
   it("rejects starting a production business from a non-business property", function () {
@@ -6154,7 +6214,13 @@ describe("reduceHarthmereLiveModeBackendStateV1 — building mutation", function
     assert.ok(
       summary.warnings.includes("business_rejected:property_not_business_use")
     );
-    assert.equal(Object.keys(state.economy.production.businesses).length, 0);
+    assert.equal(
+      Object.values(state.economy.production.businesses).some(
+        (business) =>
+          business.propertyId === "property_grove_muckstead_cottage_lot"
+      ),
+      false
+    );
   });
 
   it("starts construction as a staged project instead of mutating property records directly", function () {

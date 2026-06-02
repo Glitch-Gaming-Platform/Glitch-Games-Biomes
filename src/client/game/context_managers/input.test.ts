@@ -27,10 +27,15 @@ class FakeEventTarget {
   }
 }
 
-function fakeKeyboardEvent(code: string, target?: unknown) {
+function fakeKeyboardEvent(
+  code: string,
+  target?: unknown,
+  options: { repeat?: boolean } = {}
+) {
   return {
     code,
     target,
+    repeat: options.repeat ?? false,
     ctrlKey: false,
     altKey: false,
     shiftKey: false,
@@ -150,11 +155,27 @@ describe("Input", () => {
     });
 
     documentTarget.emit("keydown", fakeKeyboardEvent("KeyW"));
-    documentTarget.emit("keydown", fakeKeyboardEvent("KeyW"));
+    documentTarget.emit(
+      "keydown",
+      fakeKeyboardEvent("KeyW", undefined, { repeat: true })
+    );
     assert.equal(actions, 1);
 
     documentTarget.emit("keyup", fakeKeyboardEvent("KeyW"));
     documentTarget.emit("keydown", fakeKeyboardEvent("KeyW"));
+    assert.equal(actions, 2);
+  });
+
+  it("recovers action keys when a keyup was missed before a fresh keydown", () => {
+    const { documentTarget, input } = fakeInputSetup();
+    let actions = 0;
+    input.emitter.on("jump", () => {
+      actions += 1;
+    });
+
+    documentTarget.emit("keydown", fakeKeyboardEvent("KeyW"));
+    documentTarget.emit("keydown", fakeKeyboardEvent("KeyW"));
+
     assert.equal(actions, 2);
   });
 

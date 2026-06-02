@@ -110,6 +110,12 @@ export async function readHarthmereLiveModePlayerStatusStateForActorV1(input: {
     primary: {
       get: (key: string) => Promise<string | null>;
       set?: (key: string, value: string) => Promise<unknown>;
+      watch?: (...keys: string[]) => Promise<unknown>;
+      unwatch?: () => Promise<unknown>;
+      multi?: () => {
+        set: (key: string, value: string) => unknown;
+        exec: () => Promise<unknown[] | null>;
+      };
     };
   };
   actorId: string;
@@ -161,8 +167,75 @@ export async function readHarthmereLiveModePlayerStatusStateForActorV1(input: {
     }) &&
     input.redis.primary.set
   ) {
-    state.updatedAtMs = input.nowMs;
-    await input.redis.primary.set(stateKey, JSON.stringify(state));
+    const supportsWatch =
+      typeof input.redis.primary.watch === "function" &&
+      typeof input.redis.primary.multi === "function";
+    if (supportsWatch) {
+      await input.redis.primary.watch?.(stateKey);
+      try {
+        const latestRawState = await input.redis.primary.get(stateKey);
+        const latestState = parseHarthmereLiveModeBackendStateV1(
+          latestRawState,
+          input.actorId,
+          input.nowMs
+        );
+        const latestPreviousUpdatedAtMs = Number(latestState.updatedAtMs);
+        const latestPreviousStamina = Number(
+          latestState.combat.resources.stamina ?? 0
+        );
+        const latestPreviousDeadFromStaminaAtMs = Number.isFinite(
+          Number(latestState.combat.deadFromStaminaAtMs)
+        )
+          ? Number(latestState.combat.deadFromStaminaAtMs)
+          : undefined;
+        const latestStaminaTick = tickHarthmereLiveModeStaminaForGameplayV1(
+          latestState,
+          {
+            nowMs: input.nowMs,
+            gameplayActive: input.gameplayActive === true,
+          }
+        );
+        const latestNextStamina = Number(
+          latestState.combat.resources.stamina ?? 0
+        );
+        const latestNextDeadFromStaminaAtMs = Number.isFinite(
+          Number(latestState.combat.deadFromStaminaAtMs)
+        )
+          ? Number(latestState.combat.deadFromStaminaAtMs)
+          : undefined;
+        if (
+          shouldPersistHarthmerePlayerStatusStaminaTickV1({
+            changed: latestStaminaTick.changed,
+            deathTriggered: latestStaminaTick.deathTriggered,
+            previousDeadFromStaminaAtMs: latestPreviousDeadFromStaminaAtMs,
+            nextDeadFromStaminaAtMs: latestNextDeadFromStaminaAtMs,
+            previousStamina: latestPreviousStamina,
+            nextStamina: latestNextStamina,
+            previousUpdatedAtMs: latestPreviousUpdatedAtMs,
+            nowMs: input.nowMs,
+            throttleMs:
+              input.staminaWriteThrottleMs ??
+              playerStatusStaminaWriteThrottleMsV1(),
+            meaningfulDelta:
+              input.staminaMeaningfulDelta ??
+              playerStatusStaminaMeaningfulDeltaV1(),
+          })
+        ) {
+          latestState.updatedAtMs = input.nowMs;
+          const tx = input.redis.primary.multi?.();
+          tx?.set(stateKey, JSON.stringify(latestState));
+          await tx?.exec();
+        } else {
+          await input.redis.primary.unwatch?.();
+        }
+      } catch (error) {
+        await input.redis.primary.unwatch?.();
+        throw error;
+      }
+    } else {
+      state.updatedAtMs = input.nowMs;
+      await input.redis.primary.set(stateKey, JSON.stringify(state));
+    }
   }
   return createHarthmereLiveModePlayerStatusClientSnapshotV1(state);
 }

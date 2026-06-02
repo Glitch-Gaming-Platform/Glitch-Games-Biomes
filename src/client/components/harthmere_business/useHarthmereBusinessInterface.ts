@@ -26,9 +26,12 @@ export function useHarthmereBusinessInterfaceAdapterV1(
   const [state, setState] = React.useState<HarthmereBusinessEconomySnapshotV1 | undefined>();
   const [hydrated, setHydrated] = React.useState(false);
   const [error, setError] = React.useState<Error | undefined>();
+  const refreshInFlight = React.useRef(false);
 
   const refresh = React.useCallback(async () => {
     if (!enabled || !nearbyBusinessId) return;
+    if (refreshInFlight.current) return;
+    refreshInFlight.current = true;
     try {
       const next = await fetchHarthmereBusinessEconomyStateV1();
       setState(next);
@@ -37,6 +40,8 @@ export function useHarthmereBusinessInterfaceAdapterV1(
     } catch (err) {
       setError(err instanceof Error ? err : new Error(String(err)));
       setHydrated(false);
+    } finally {
+      refreshInFlight.current = false;
     }
   }, [enabled, nearbyBusinessId]);
 

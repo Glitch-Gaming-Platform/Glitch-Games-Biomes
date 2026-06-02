@@ -4,6 +4,7 @@ import { HarthmereBusinessInteractionPrompt } from "./HarthmereBusinessInteracti
 import {
   createHarthmereBusinessInterfaceAdapterV1,
   fetchHarthmereBusinessEconomyStateV1,
+  harthmereBusinessWorldContextPayloadV1,
   nearestHarthmereBusinessDashboardWorldContextV1,
   submitHarthmereBusinessEconomyMutationV1,
   type HarthmereBusinessEconomySnapshotV1,
@@ -15,6 +16,7 @@ export interface HarthmereBusinessLiveContainerProps {
   open?: boolean;
   onOpen?: () => void;
   onClose?: () => void;
+  showPrompt?: boolean;
   playerPosition?: HarthmereBusinessWorldPointV1;
   worldContext?: HarthmereBusinessWorldContextV1;
   initialState?: HarthmereBusinessEconomySnapshotV1;
@@ -35,6 +37,7 @@ export function HarthmereBusinessLiveContainer({
   open = false,
   onOpen,
   onClose,
+  showPrompt = true,
   playerPosition,
   worldContext,
   initialState,
@@ -64,12 +67,17 @@ export function HarthmereBusinessLiveContainer({
     if (!initialState) void refresh();
   }, [initialState, refresh]);
 
-  const context = React.useMemo(
-    () =>
+  const context = React.useMemo(() => {
+    const next =
       worldContext ??
-      nearestHarthmereBusinessDashboardWorldContextV1(state, playerPosition, 6),
-    [playerPosition, state, worldContext]
-  );
+      nearestHarthmereBusinessDashboardWorldContextV1(state, playerPosition, 9);
+    return next.nearbyBusinessId
+      ? {
+          ...next,
+          interactionKeyLabel: next.interactionKeyLabel ?? "F",
+        }
+      : next;
+  }, [playerPosition, state, worldContext]);
 
   const adapter = React.useMemo(
     () =>
@@ -79,9 +87,12 @@ export function HarthmereBusinessLiveContainer({
         setState,
         refresh,
         submit: (operation, payload) =>
-          submitHarthmereBusinessEconomyMutationV1(operation, payload),
+          submitHarthmereBusinessEconomyMutationV1(operation, {
+            ...harthmereBusinessWorldContextPayloadV1(context),
+            ...payload,
+          }),
       }),
-    [loading, refresh, state]
+    [context, loading, refresh, state]
   );
 
   const prompt = React.useMemo(
@@ -127,11 +138,13 @@ export function HarthmereBusinessLiveContainer({
 
   return (
     <>
-      <HarthmereBusinessInteractionPrompt
-        adapter={adapter}
-        context={context}
-        onInteract={() => onOpen?.()}
-      />
+      {showPrompt ? (
+        <HarthmereBusinessInteractionPrompt
+          adapter={adapter}
+          context={context}
+          onInteract={() => onOpen?.()}
+        />
+      ) : null}
       {open ? (
         <HarthmereBusinessInterfacePanel
           adapter={adapter}

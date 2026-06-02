@@ -12,6 +12,7 @@ import { scriptInit } from "@/server/shared/script_init";
 import { RedisWorld } from "@/server/shared/world/redis";
 import { buildHarthmereGroveRaceMinigameSeedProposedChangesV1 } from "@/server/harthmere/grove_race_minigame_ecs_seed_v1";
 import { buildHarthmereLiveEntityProductionSeedProposedChangesV1 } from "@/server/harthmere/live_entity_ecs_seed_v1";
+import { buildHarthmereSnapshotGroveNpcSeedProposedChangesV1 } from "@/server/harthmere/snapshot_grove_npc_ecs_seed_v1";
 import { ProposedChange } from "@/shared/ecs/change";
 import { secondsSinceEpoch } from "@/shared/ecs/config";
 import type { BiomesId } from "@/shared/ids";
@@ -53,10 +54,11 @@ export async function bootstrapRedis(backupFile?: string) {
 
   const existingIds = new Set(
     changes
-      .map((change) =>
-        (change.kind === "create" || change.kind === "update"
-          ? change.entity.id
-          : change.id) as BiomesId
+      .map(
+        (change) =>
+          (change.kind === "create" || change.kind === "update"
+            ? change.entity.id
+            : change.id) as BiomesId
       )
       .filter((id) => id !== undefined)
   );
@@ -70,9 +72,18 @@ export async function bootstrapRedis(backupFile?: string) {
       nowSeconds: secondsSinceEpoch(),
       existingIds,
     });
-  changes.push(...liveEntitySeedChanges, ...groveRaceSeedChanges);
+  const snapshotGroveNpcSeedChanges =
+    buildHarthmereSnapshotGroveNpcSeedProposedChangesV1({
+      nowSeconds: secondsSinceEpoch(),
+      existingIds,
+    });
+  changes.push(
+    ...liveEntitySeedChanges,
+    ...groveRaceSeedChanges,
+    ...snapshotGroveNpcSeedChanges
+  );
   console.log(
-    `Added ${liveEntitySeedChanges.length} Harthmere live entity seed changes and ${groveRaceSeedChanges.length} Grove race minigame seed changes.`
+    `Added ${liveEntitySeedChanges.length} Harthmere live entity seed changes, ${groveRaceSeedChanges.length} Grove race minigame seed changes, and ${snapshotGroveNpcSeedChanges.length} Grove NPC seed changes.`
   );
 
   console.log(`Loaded ${changes.length} changes, placing into redis.`);

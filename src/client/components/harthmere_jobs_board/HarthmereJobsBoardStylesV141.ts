@@ -279,6 +279,10 @@ export const HARTHMERE_JOBS_BOARD_CSS_V141 = `
   cursor: pointer;
   transition: background 120ms ease, transform 80ms ease;
   min-height: 2.5rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
 }
 .harthmere-jobs-card button:hover:not(:disabled),
 .harthmere-jobs-card button:focus-visible:not(:disabled) {
@@ -290,6 +294,22 @@ export const HARTHMERE_JOBS_BOARD_CSS_V141 = `
 .harthmere-jobs-card button:disabled {
   opacity: 0.45;
   cursor: not-allowed;
+}
+.harthmere-jobs-card button[data-pending="true"] {
+  opacity: 0.95;
+  cursor: progress;
+}
+.harthmere-jobs-board__spinner {
+  width: 0.95rem;
+  height: 0.95rem;
+  border: 2px solid rgba(232, 244, 255, 0.28);
+  border-top-color: var(--biomes-fg, #e8f4ff);
+  border-radius: 999px;
+  animation: harthmere-jobs-board-spin-v141 780ms linear infinite;
+  flex: 0 0 auto;
+}
+@keyframes harthmere-jobs-board-spin-v141 {
+  to { transform: rotate(360deg); }
 }
 
 .harthmere-jobs-board__form {

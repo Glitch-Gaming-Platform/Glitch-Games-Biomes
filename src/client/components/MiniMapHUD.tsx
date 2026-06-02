@@ -1,4 +1,5 @@
 import { useClientContext } from "@/client/components/contexts/ClientContextReactContext";
+import { defaultHarthmereLiveFetchV1 } from "@/client/components/harthmere_live_fetch";
 import { MiniMap, MiniMapContext } from "@/client/components/map/MiniMap";
 import { worldToMinimapClippedCanvasCoordinates } from "@/client/components/map/helpers";
 import { BIOMES_UI_ACTIVE_MINIMAP_PIN_STYLE_ID_V146, BIOMES_UI_ACTIVE_MINIMAP_PIN_ROOT_CLASS_V146, BIOMES_UI_ACTIVE_MINIMAP_PIN_Z_INDEX_V146, biomesUIActiveMiniMapPinClassNameV146, biomesUIActiveMiniMapPinCssV146, biomesUIActiveMiniMapPinHasFinitePositionV146, biomesUIActiveMiniMapPinLabelV146 } from "@/client/components/map/markers/biomes_ui_active_minimap_pin_v146";
@@ -251,22 +252,13 @@ const HarthmereBusinessMiniMapMarkersV1: React.FunctionComponent<{}> = () => {
 };
 
 async function fetchHarthmereBuildingStateForMiniMapV1(): Promise<HarthmerePropertyMapBuildingStateV1 | undefined> {
-  const requestId = `minimap_building_read_${Date.now()}_${Math.random().toString(36).slice(2)}`;
-  const response = await fetch("/api/harthmere/live_mode", {
-    method: "POST",
-    credentials: "same-origin",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      requestId,
-      idempotencyKey: requestId,
-      actionKind: "request_property_building_mutation",
-      subsystem: "building",
-      actorEntityVersion: 1,
-      zoneId: "the_grove",
-      payload: { buildingAction: "read_state" },
-      clientClaims: {},
-    }),
-  });
+  const response = await defaultHarthmereLiveFetchV1(
+    "/api/harthmere/live_mode_building_state",
+    {
+      method: "GET",
+      credentials: "same-origin",
+    }
+  );
   if (!response.ok) return undefined;
   const body = await response.json();
   return body?.buildingState;

@@ -49,8 +49,14 @@ start_next() {
 CHAT_DISTRIBUTOR_PID=""
 if [ "${GLITCH_ENABLE_CHAT_DISTRIBUTOR:-1}" = "1" ]; then
   echo "Starting embedded Glitch chat distributor for live world speech."
-  GLITCH_CHAT_API_MODE="${GLITCH_CHAT_API_MODE:-redis}" \
-    node -r ts-node/register -r tsconfig-paths/register src/server/chat/main.ts &
+  if [ -f dist/chat.js ]; then
+    GLITCH_CHAT_API_MODE="${GLITCH_CHAT_API_MODE:-redis}" \
+      node dist/chat.js &
+  else
+    echo "WARN: dist/chat.js missing; falling back to ts-node chat distributor." >&2
+    GLITCH_CHAT_API_MODE="${GLITCH_CHAT_API_MODE:-redis}" \
+      node -r ts-node/register -r tsconfig-paths/register src/server/chat/main.ts &
+  fi
   CHAT_DISTRIBUTOR_PID="$!"
 else
   echo "Embedded Glitch chat distributor disabled by GLITCH_ENABLE_CHAT_DISTRIBUTOR=${GLITCH_ENABLE_CHAT_DISTRIBUTOR:-}"

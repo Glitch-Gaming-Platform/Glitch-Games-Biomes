@@ -7,6 +7,21 @@ import {
 import { HostPort } from "@/server/shared/ports";
 import { serializeError } from "serialize-error";
 
+const SYNC_SERVER_DUMP_FETCH_TIMEOUT_MS = 5_000;
+
+async function fetchSyncServerDumpWithTimeout(url: string) {
+  const controller = new AbortController();
+  const timeout = setTimeout(
+    () => controller.abort(),
+    SYNC_SERVER_DUMP_FETCH_TIMEOUT_MS
+  );
+  try {
+    return await fetch(url, { signal: controller.signal });
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 export async function findAllSyncServerEndpoints(): Promise<Endpoint[]> {
   if (isRunningOnKubernetes()) {
     const k8 = connectToK8();
@@ -33,7 +48,7 @@ export async function dumpAllSyncServers() {
   return Promise.all(
     syncServers.map(async (syncServer) => {
       try {
-        const res = await fetch(
+        const res = await fetchSyncServerDumpWithTimeout(
           `http://${syncServer.ip}:${HostPort.forMetrics().port}/dump`
         );
         return {

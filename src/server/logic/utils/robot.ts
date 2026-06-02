@@ -152,10 +152,10 @@ export class UserRobot implements Robot {
   ) {
     ok(this.delta.robotComponent());
     this.inventory = _inventory.inventory as ContainerInventoryEditor;
-    ok(this.delta.robotComponent()?.internal_battery_charge);
-    ok(this.delta.robotComponent()?.internal_battery_capacity);
-    ok(this.delta.robotComponent()?.trigger_at);
-    ok(this.delta.robotComponent()?.last_update);
+    ok(this.delta.robotComponent()?.internal_battery_charge !== undefined);
+    ok(this.delta.robotComponent()?.internal_battery_capacity !== undefined);
+    ok(this.delta.robotComponent()?.trigger_at !== undefined);
+    ok(this.delta.robotComponent()?.last_update !== undefined);
 
     const timeSinceLastUpdate =
       secondsSinceEpoch() - this.delta.robotComponent()!.last_update!;

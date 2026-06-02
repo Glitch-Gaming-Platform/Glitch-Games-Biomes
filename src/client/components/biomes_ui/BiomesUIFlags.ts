@@ -5,7 +5,9 @@ function truthy(value: string | undefined | null): boolean {
 }
 
 function falsy(value: string | undefined | null): boolean {
-  return ["0", "false", "no", "off"].includes(String(value ?? "").toLowerCase());
+  return ["0", "false", "no", "off"].includes(
+    String(value ?? "").toLowerCase()
+  );
 }
 
 export function readBiomesUIReplaceLegacyFlag(): boolean {
@@ -32,7 +34,7 @@ export function setBiomesUIReplaceLegacyFlag(enabled: boolean): void {
 }
 
 export function useBiomesUIReplaceLegacyFlag(): boolean {
-  const [enabled, setEnabled] = React.useState(false);
+  const [enabled, setEnabled] = React.useState(readBiomesUIReplaceLegacyFlag);
 
   React.useEffect(() => {
     const update = () => setEnabled(readBiomesUIReplaceLegacyFlag());

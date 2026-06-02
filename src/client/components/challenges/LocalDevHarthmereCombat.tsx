@@ -3293,6 +3293,24 @@ export function tickHarthmereRealtimeCombatAI(source = "combat_ai") {
       "realtime_ai"
     );
     const profile = harthmereNpcBrainProfile(npc);
+    // harthmere-npc-chase-until-out-of-sight-v197
+    // While the entity can still see the player, keep its aggro alive so it
+    // pursues and attacks continuously instead of giving up when a fixed aggro
+    // timer expires. Aggro is intentionally NOT refreshed when sight is lost
+    // (reachCheck.canSee === false): the lost-sight branch below caps aggro to
+    // HARTHMERE_NPC_LOST_SIGHT_SEARCH_MS_V196 so the entity searches briefly and
+    // then disengages once the player is truly out of sight.
+    if (reachCheck.canSee) {
+      const refreshedAggroUntil = Math.max(
+        brain.aggroUntil,
+        now + profile.aggroDurationMs
+      );
+      if (refreshedAggroUntil !== brain.aggroUntil) {
+        brain = { ...brain, aggroUntil: refreshedAggroUntil };
+        state = harthmereSetNpcBrain(state, offset, brain);
+        mutated = true;
+      }
+    }
     const cooldownReady =
       now >=
       Math.max(
@@ -3960,10 +3978,15 @@ function harthmereNpcCanReachPlayerNow(
   };
 }
 function harthmereShouldNpcContinueRealtimeCombat(npc: HarthmereCombatStats) {
-  // Guards and hostile creatures keep fighting once provoked. Merchants,
-  // civilians, and defensive wildlife may counter once when struck, but they do
-  // not become infinite auto-attack turrets in the local-dev prototype.
-  return npc.behavior === "guard" || npc.behavior === "hostile";
+  // harthmere-npc-chase-until-out-of-sight-v197
+  // Any entity that can fight back keeps pursuing once provoked. Previously only
+  // guards/hostiles kept fighting, so animals, townsfolk, and many muck/hex
+  // creatures only countered once when struck and then stood still. The desired
+  // behavior is uniform: once you hit something, it chases and keeps attacking
+  // until you are actually out of its sight (handled by the lost-sight branch in
+  // tickHarthmereRealtimeCombatAI). Training dummies / quest anchors / passive
+  // props are still excluded via canNpcRetaliate.
+  return canNpcRetaliate(npc);
 }
 
 // harthmere-game-ai-state-machine-v1
@@ -3978,7 +4001,10 @@ function harthmereNpcBrainProfile(npc: HarthmereCombatStats) {
     npc.behavior === "defensive" || npc.behavior === "merchant";
   const isSmallAnimal = npc.species === "animal" && npc.maxHp <= 160;
   return {
-    keepFighting: isGuard || isHostile,
+    // harthmere-npc-chase-until-out-of-sight-v197: every engaged entity chases
+    // at full line-of-sight range (chaseReach = sightRange). Previously only
+    // guards/hostiles did, so other entities gave up after a few meters.
+    keepFighting: true,
     aggroDurationMs: isGuard
       ? 35_000
       : isHostile

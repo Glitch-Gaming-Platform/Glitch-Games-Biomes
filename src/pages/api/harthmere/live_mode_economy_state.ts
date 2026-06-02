@@ -9,6 +9,7 @@ import {
   parseHarthmereLiveModeSharedWorldStateV1,
 } from "@/shared/harthmere/live_mode_backend_v1";
 import { z } from "zod";
+import { readHarthmerePlayerAndSharedStateStringsV1 } from "./live_mode_state_read_helpers";
 
 const zJsonRecord = z.record(z.unknown());
 
@@ -27,14 +28,21 @@ function liveModeEconomyStateRedisV1() {
 }
 
 export async function readHarthmereLiveModeEconomyStateForActorV1(input: {
-  redis: { primary: { get: (key: string) => Promise<string | null> } };
+  redis: {
+    primary: {
+      get: (key: string) => Promise<string | null>;
+      mget?: (...keys: string[]) => Promise<Array<string | null>>;
+    };
+  };
   actorId: string;
   nowMs: number;
 }) {
-  const [rawState, rawSharedState] = await Promise.all([
-    input.redis.primary.get(harthmereLiveModePlayerStateKeyV1(input.actorId)),
-    input.redis.primary.get(harthmereLiveModeSharedWorldStateKeyV1()),
-  ]);
+  const { rawState, rawSharedState } =
+    await readHarthmerePlayerAndSharedStateStringsV1(
+      input.redis.primary,
+      harthmereLiveModePlayerStateKeyV1(input.actorId),
+      harthmereLiveModeSharedWorldStateKeyV1()
+    );
   const state = parseHarthmereLiveModeBackendStateV1(
     rawState,
     input.actorId,

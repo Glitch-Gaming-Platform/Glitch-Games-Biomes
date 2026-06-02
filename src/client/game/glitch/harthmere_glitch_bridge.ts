@@ -14,6 +14,7 @@ import {
 
 import { BIOMES_GAME_NAME } from "@/shared/biomes/display_names";
 const DEFAULT_HARTHMERE_TITLE_ID = "42de534c-600f-4228-af9e-b69faef94cce";
+const HARTHMERE_GLITCH_BRIDGE_FETCH_TIMEOUT_MS_V1 = 15_000;
 const HARTHMERE_STORAGE_PREFIX = "biomes.localDev.harthmere.";
 export const HARTHMERE_GLITCH_SAVE_SCHEMA_VERSION_V153 =
   "harthmere-glitch-save-all-state-v153" as const;
@@ -61,6 +62,7 @@ export const HARTHMERE_GLITCH_REQUIRED_SAVE_KEY_PREFIXES_V153 = [
   "biomes.localDev.harthmere.playerFace.v2.user.",
   "biomes.localDev.harthmere.playerBody.v2.user.",
   "biomes.localDev.harthmere.playerClothing.v1.user.",
+  "biomes.localDev.harthmere.playerBody.v1.user.",
   "biomes.localDev.harthmere.foodStaminaState.v1.user.",
   "biomes.localDev.liveEntityRobotEnergy.v1.user.",
   "biomes.localDev.liveEntityHelperQuests.v1.user.",
@@ -454,15 +456,32 @@ async function requestGlitch<T = any>(
   body: Record<string, any>,
   options: { keepalive?: boolean } = {}
 ): Promise<T> {
-  const response = await fetch("/api/glitch/harthmere", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Accept: "application/json",
-    },
-    body: JSON.stringify({ op, ...body }),
-    keepalive: options.keepalive === true,
-  });
+  const controller =
+    typeof AbortController !== "undefined" && options.keepalive !== true
+      ? new AbortController()
+      : undefined;
+  const timeout =
+    controller && typeof window !== "undefined"
+      ? window.setTimeout(
+          () => controller.abort(),
+          HARTHMERE_GLITCH_BRIDGE_FETCH_TIMEOUT_MS_V1
+        )
+      : undefined;
+  let response: Response;
+  try {
+    response = await fetch("/api/glitch/harthmere", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify({ op, ...body }),
+      keepalive: options.keepalive === true,
+      signal: controller?.signal,
+    });
+  } finally {
+    if (timeout !== undefined) window.clearTimeout(timeout);
+  }
   const json = await response.json().catch(() => ({}));
   if (!response.ok) {
     const message =
@@ -652,14 +671,31 @@ function currentCloudSaveRestoreScopeV153() {
   return readHarthmereGlitchIdentity()?.gameUserId;
 }
 
+function currentCloudSaveCustomizationScopeV153() {
+  const scope = currentCloudSaveRestoreScopeV153();
+  if (!scope) return undefined;
+  if (scope.startsWith("biomes:")) {
+    const numeric = scope.slice("biomes:".length).trim();
+    if (numeric) return numeric;
+  }
+  return scope;
+}
+
 function migrateCloudSaveStorageKeyToCurrentScopeV153(key: string) {
   const scope = currentCloudSaveRestoreScopeV153();
   if (!scope) return undefined;
   for (const prefix of HARTHMERE_GLITCH_REQUIRED_SAVE_KEY_PREFIXES_V153) {
     if (!prefix.endsWith(".user.") || !key.startsWith(prefix)) continue;
+    const nextScope =
+      prefix === "biomes.localDev.harthmere.playerFace.v2.user." ||
+      prefix === "biomes.localDev.harthmere.playerBody.v2.user." ||
+      prefix === "biomes.localDev.harthmere.playerClothing.v1.user." ||
+      prefix === "biomes.localDev.harthmere.playerBody.v1.user."
+        ? currentCloudSaveCustomizationScopeV153() ?? scope
+        : scope;
     const previousScope = key.slice(prefix.length);
-    if (!previousScope || previousScope === scope) return undefined;
-    return `${prefix}${scope}`;
+    if (!previousScope || previousScope === nextScope) return undefined;
+    return `${prefix}${nextScope}`;
   }
   return undefined;
 }
@@ -1103,6 +1139,10 @@ class HarthmereGlitchBridgeController {
   private readonly behaviorThrottle = new Map<string, number>();
   private behaviorInstalled = false;
   private readonly behaviorCleanup: Array<() => void> = [];
+  private progressionInFlight = false;
+  private sessionHeartbeatInFlight = false;
+  private installHeartbeatInFlight = false;
+  private behaviorFlushInFlight = false;
   // Single-flight guard for saveNow so concurrent calls (autosave interval,
   // visibilitychange, builder queue) coalesce instead of racing each other
   // with stale base_version values and triggering 409 Conflict storms.
@@ -1503,27 +1543,33 @@ class HarthmereGlitchBridgeController {
     ) {
       return;
     }
-    await requestGlitch<any>(
-      "heartbeatInstall",
-      {
-        title_id: this.config.titleId,
-        install_id: this.config.installId,
-        session_id: this.config.sessionId ?? this.identity?.serverSessionId,
-        analytics_session_id: this.config.sessionId,
-        fingerprint_id: this.config.fingerprintId,
-        device_id: this.config.installId,
-        platform: "web",
-        game_version: "harthmere-glitch-v143",
-        reason,
-      },
-      {
-        keepalive: reason === "hidden" || reason === "pagehide",
-      }
-    );
-    writeStatus({
-      lastInstallHeartbeatAt: new Date().toISOString(),
-      playtimeSeconds: this.currentPlaytimeSeconds(),
-    });
+    if (this.installHeartbeatInFlight) return;
+    this.installHeartbeatInFlight = true;
+    try {
+      await requestGlitch<any>(
+        "heartbeatInstall",
+        {
+          title_id: this.config.titleId,
+          install_id: this.config.installId,
+          session_id: this.config.sessionId ?? this.identity?.serverSessionId,
+          analytics_session_id: this.config.sessionId,
+          fingerprint_id: this.config.fingerprintId,
+          device_id: this.config.installId,
+          platform: "web",
+          game_version: "harthmere-glitch-v143",
+          reason,
+        },
+        {
+          keepalive: reason === "hidden" || reason === "pagehide",
+        }
+      );
+      writeStatus({
+        lastInstallHeartbeatAt: new Date().toISOString(),
+        playtimeSeconds: this.currentPlaytimeSeconds(),
+      });
+    } finally {
+      this.installHeartbeatInFlight = false;
+    }
   }
 
   async heartbeatSession(reason = "manual") {
@@ -1534,34 +1580,40 @@ class HarthmereGlitchBridgeController {
       !this.identity?.serverSessionId
     )
       return;
-    const response = await requestGlitch<any>(
-      "heartbeatSession",
-      {
-        title_id: this.config.titleId,
-        install_id: this.config.installId,
-        server_session_id: this.identity.serverSessionId,
-        reason,
-      },
-      {
-        keepalive: reason === "hidden" || reason === "pagehide",
-      }
-    );
-    if (response?.revoked) {
-      if (response.reason === "session_not_found") {
-        await this.reclaimMissingSession(reason);
+    if (this.sessionHeartbeatInFlight) return;
+    this.sessionHeartbeatInFlight = true;
+    try {
+      const response = await requestGlitch<any>(
+        "heartbeatSession",
+        {
+          title_id: this.config.titleId,
+          install_id: this.config.installId,
+          server_session_id: this.identity.serverSessionId,
+          reason,
+        },
+        {
+          keepalive: reason === "hidden" || reason === "pagehide",
+        }
+      );
+      if (response?.revoked) {
+        if (response.reason === "session_not_found") {
+          await this.reclaimMissingSession(reason);
+          return;
+        }
+        this.disconnectForNewSession(response.reason ?? "session_revoked");
         return;
       }
-      this.disconnectForNewSession(response.reason ?? "session_revoked");
-      return;
+      if (response?.server_session_id && this.identity) {
+        this.identity.serverSessionId = firstString(response.server_session_id);
+        writeHarthmereGlitchIdentity(this.identity);
+      }
+      writeStatus({
+        lastHeartbeatAt: new Date().toISOString(),
+        playtimeSeconds: this.currentPlaytimeSeconds(),
+      });
+    } finally {
+      this.sessionHeartbeatInFlight = false;
     }
-    if (response?.server_session_id && this.identity) {
-      this.identity.serverSessionId = firstString(response.server_session_id);
-      writeHarthmereGlitchIdentity(this.identity);
-    }
-    writeStatus({
-      lastHeartbeatAt: new Date().toISOString(),
-      playtimeSeconds: this.currentPlaytimeSeconds(),
-    });
   }
 
   private async reclaimMissingSession(reason = "heartbeat") {
@@ -1761,6 +1813,8 @@ class HarthmereGlitchBridgeController {
       Math.floor((now - this.lastProgressionFlushAt) / 1000)
     );
     if (reason !== "manual" && deltaSeconds <= 0) return;
+    if (this.progressionInFlight) return;
+    this.progressionInFlight = true;
     this.lastProgressionFlushAt = now;
 
     const snapshot = createSnapshot(this.config, this.currentPlaytimeSeconds());
@@ -1785,6 +1839,8 @@ class HarthmereGlitchBridgeController {
       // deployed game. That should not reject startup or freeze the client
       // after the player enters their name. Record it and keep gameplay alive.
       this.recordError(error);
+    } finally {
+      this.progressionInFlight = false;
     }
   }
 
@@ -1977,6 +2033,7 @@ class HarthmereGlitchBridgeController {
   async flushBehaviorEvents(reason = "manual") {
     if (!this.behaviorQueue.length) return;
     if (!this.shouldSendBehaviorEvents()) return;
+    if (this.behaviorFlushInFlight) return;
     // Circuit-breaker: if we've been getting 401s, hold off until the backoff
     // window elapses instead of firing on every interval + click + visibility
     // change. The events stay in the queue and will flush once auth recovers.
@@ -1994,6 +2051,7 @@ class HarthmereGlitchBridgeController {
       0,
       HARTHMERE_GLITCH_BEHAVIOR_MAX_BATCH_V138
     );
+    this.behaviorFlushInFlight = true;
     try {
       // Keep behavioral telemetry behind the server proxy so the Title Token
       // stays server-side. The public Glitch SDK path can run without the
@@ -2030,6 +2088,8 @@ class HarthmereGlitchBridgeController {
         }
       }
       this.recordError(error);
+    } finally {
+      this.behaviorFlushInFlight = false;
     }
   }
 

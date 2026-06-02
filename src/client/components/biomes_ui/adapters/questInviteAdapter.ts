@@ -1,4 +1,5 @@
 import type { MapTrackableQuest } from "../tabs/MapQuestsTab";
+import { fetchHarthmereLiveWithTimeoutV1 } from "@/client/components/harthmere_live_fetch";
 
 export const HARTHMERE_QUEST_INVITES_UPDATED_EVENT_V1 =
   "harthmere:quest-invites-updated-v1";
@@ -215,10 +216,14 @@ export function normalizeHarthmereQuestStateV1(
 export async function fetchHarthmereQuestStateV1(
   fetchImpl: typeof fetch = fetch
 ) {
-  const response = await fetchImpl("/api/harthmere/live_mode_quest_state", {
-    method: "GET",
-    credentials: "same-origin",
-  });
+  const response = await fetchHarthmereLiveWithTimeoutV1(
+    fetchImpl,
+    "/api/harthmere/live_mode_quest_state",
+    {
+      method: "GET",
+      credentials: "same-origin",
+    }
+  );
   if (!response.ok) return undefined;
   const body = await response.json();
   return normalizeHarthmereQuestStateV1(body?.questState);
@@ -232,25 +237,29 @@ export async function submitHarthmereQuestInviteMutationV1(
   const requestId = `biomes_ui_${operation}_${Date.now()}_${Math.random()
     .toString(36)
     .slice(2)}`;
-  const response = await fetchImpl("/api/harthmere/live_mode", {
-    method: "POST",
-    credentials: "same-origin",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      requestId,
-      idempotencyKey: requestId,
-      actionKind: "request_quest_state_update",
-      subsystem: "quest",
-      actorEntityVersion: 1,
-      zoneId: "harthmere",
-      targetId:
-        typeof payload.inviteeActorId === "string"
-          ? payload.inviteeActorId
-          : undefined,
-      payload,
-      clientClaims: {},
-    }),
-  });
+  const response = await fetchHarthmereLiveWithTimeoutV1(
+    fetchImpl,
+    "/api/harthmere/live_mode",
+    {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        requestId,
+        idempotencyKey: requestId,
+        actionKind: "request_quest_state_update",
+        subsystem: "quest",
+        actorEntityVersion: 1,
+        zoneId: "harthmere",
+        targetId:
+          typeof payload.inviteeActorId === "string"
+            ? payload.inviteeActorId
+            : undefined,
+        payload,
+        clientClaims: {},
+      }),
+    }
+  );
   const body = await response.json();
   if (!response.ok || body?.ok === false) {
     throw new Error(

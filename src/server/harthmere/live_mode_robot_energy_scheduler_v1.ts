@@ -25,7 +25,22 @@ export interface HarthmereLiveModeRobotEnergyRedisV1 {
   primary: {
     get: (key: string) => Promise<string | null>;
     set: (key: string, value: string) => Promise<unknown>;
+    watch?: (...keys: string[]) => Promise<unknown>;
+    unwatch?: () => Promise<unknown>;
+    multi?: () => {
+      set: (key: string, value: string) => unknown;
+      exec: () => Promise<unknown[] | null>;
+    };
   };
+}
+
+function supportsHarthmereRobotRedisWatchV1(
+  redis: HarthmereLiveModeRobotEnergyRedisV1
+) {
+  return (
+    typeof redis.primary.watch === "function" &&
+    typeof redis.primary.multi === "function"
+  );
 }
 
 function changedRobotIdsV1(
@@ -66,12 +81,16 @@ export async function readOrSeedHarthmereLiveModeRobotProtectionSharedStateV1(in
   actorId?: string;
 }) {
   const sharedWorldStateKey = harthmereLiveModeSharedWorldStateKeyV1();
+  if (supportsHarthmereRobotRedisWatchV1(input.redis)) {
+    await input.redis.primary.watch?.(sharedWorldStateKey);
+  }
   const rawSharedState = await input.redis.primary.get(sharedWorldStateKey);
   const parsedShared = parseHarthmereLiveModeSharedWorldStateV1(
     rawSharedState,
     input.nowMs
   );
   if (parsedShared) {
+    await input.redis.primary.unwatch?.();
     return {
       sharedWorldStateKey,
       seededSharedState: false,
@@ -88,10 +107,31 @@ export async function readOrSeedHarthmereLiveModeRobotProtectionSharedStateV1(in
     backend,
     input.nowMs
   );
-  await input.redis.primary.set(
-    sharedWorldStateKey,
-    JSON.stringify(sharedWorldState)
-  );
+  if (supportsHarthmereRobotRedisWatchV1(input.redis)) {
+    const tx = input.redis.primary.multi?.();
+    tx?.set(sharedWorldStateKey, JSON.stringify(sharedWorldState));
+    const txResult = await tx?.exec();
+    if (txResult === null) {
+      const latestRawSharedState = await input.redis.primary.get(sharedWorldStateKey);
+      const latestSharedWorldState = parseHarthmereLiveModeSharedWorldStateV1(
+        latestRawSharedState,
+        input.nowMs
+      );
+      if (latestSharedWorldState) {
+        return {
+          sharedWorldStateKey,
+          seededSharedState: false,
+          sharedWorldState: latestSharedWorldState,
+          robotProtection: latestSharedWorldState.robotProtection,
+        };
+      }
+    }
+  } else {
+    await input.redis.primary.set(
+      sharedWorldStateKey,
+      JSON.stringify(sharedWorldState)
+    );
+  }
   return {
     sharedWorldStateKey,
     seededSharedState: true,
@@ -109,6 +149,9 @@ export async function runHarthmereLiveModeRobotEnergySchedulerTickV1(input: {
   const actorId =
     input.actorId ?? HARTHMERE_LIVE_MODE_ROBOT_ENERGY_SCHEDULER_ACTOR_ID_V1;
   const sharedWorldStateKey = harthmereLiveModeSharedWorldStateKeyV1();
+  if (supportsHarthmereRobotRedisWatchV1(input.redis)) {
+    await input.redis.primary.watch?.(sharedWorldStateKey);
+  }
   const rawSharedState = await input.redis.primary.get(sharedWorldStateKey);
   const parsedShared = parseHarthmereLiveModeSharedWorldStateV1(
     rawSharedState,
@@ -147,6 +190,45 @@ export async function runHarthmereLiveModeRobotEnergySchedulerTickV1(input: {
     reduced.state,
     input.nowMs
   );
+  if (supportsHarthmereRobotRedisWatchV1(input.redis)) {
+    const tx = input.redis.primary.multi?.();
+    tx?.set(sharedWorldStateKey, JSON.stringify(sharedWorldState));
+    const txResult = await tx?.exec();
+    if (txResult !== null) {
+      return {
+        version: HARTHMERE_LIVE_MODE_ROBOT_ENERGY_SCHEDULER_VERSION_V1,
+        sharedWorldStateKey,
+        seededSharedState: !parsedShared,
+        summary: reduced.summary,
+        sharedWorldState,
+        robotProtection: sharedWorldState.robotProtection,
+        changedRobotIds: changedRobotIdsV1(
+          beforeRobotProtection,
+          sharedWorldState.robotProtection
+        ),
+        changedAreaIds: changedAreaIdsV1(
+          beforeRobotProtection,
+          sharedWorldState.robotProtection
+        ),
+      };
+    }
+    return {
+      version: HARTHMERE_LIVE_MODE_ROBOT_ENERGY_SCHEDULER_VERSION_V1,
+      sharedWorldStateKey,
+      seededSharedState: !parsedShared,
+      summary: {
+        ...reduced.summary,
+        warnings: [
+          ...reduced.summary.warnings,
+          "robot_energy_scheduler_conflicted:retry_next_tick",
+        ],
+      },
+      sharedWorldState: parsedShared ?? sharedWorldState,
+      robotProtection: (parsedShared ?? sharedWorldState).robotProtection,
+      changedRobotIds: [],
+      changedAreaIds: [],
+    };
+  }
   await input.redis.primary.set(
     sharedWorldStateKey,
     JSON.stringify(sharedWorldState)

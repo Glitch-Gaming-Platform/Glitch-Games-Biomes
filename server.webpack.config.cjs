@@ -40,6 +40,10 @@ function createEntryPoints() {
         : config;
     entryPoints[name] = sourcePath(entrypointPath);
   }
+  entryPoints["bootstrap-redis"] = path.resolve(
+    __dirname,
+    "scripts/node/bootstrap_redis.ts"
+  );
   return entryPoints;
 }
 

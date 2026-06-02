@@ -10,7 +10,9 @@ import {
   type HarthmereProductionEconomyStateV1,
 } from "../mmo_economy_authority_v1";
 import {
+  HARTHMERE_BUSINESS_MINIGAME_DEFINITIONS_V1,
   createHarthmereBusinessMiniGameDecisionForOfferV1,
+  resolveHarthmereBusinessMiniGameDecisionV1,
   validateHarthmereBusinessOutpostLiveWorldNavigationV1,
   type HarthmereBusinessCustomerSessionV1,
 } from "../business_customer_simulator_v1";
@@ -65,7 +67,30 @@ function sessions(state: HarthmereProductionEconomyStateV1) {
   return Object.values((state.businessSystems as any).customerSessions ?? {}) as HarthmereBusinessCustomerSessionV1[];
 }
 
-describe("mmo economy business customer sessions", () => {
+function productionMiniGameTypeIds() {
+  return Object.keys(HARTHMERE_BUSINESS_MINIGAME_DEFINITIONS_V1) as HarthmereEconomyBusinessTypeIdV1[];
+}
+
+function stockAllRequiredServiceItems(
+  state: HarthmereProductionEconomyStateV1,
+  businessId: string,
+  typeId: HarthmereEconomyBusinessTypeIdV1,
+  multiplier = 20,
+) {
+  const inventory = state.businesses[businessId].inventory;
+  for (const offer of HARTHMERE_BUSINESS_MINIGAME_DEFINITIONS_V1[typeId].offers) {
+    for (const [itemId, count] of Object.entries(offer.requiredItems)) {
+      inventory[itemId] = {
+        itemId,
+        count: (inventory[itemId]?.count ?? 0) + count * multiplier,
+      };
+    }
+  }
+}
+
+describe("mmo economy business customer sessions", function () {
+  this.timeout(300_000);
+
   it("starts an owner-run customer shift with queued customer-only NPC tickets", () => {
     const setup = createOpenBusiness();
     const result = mutate(setup.state, "start_business_customer_session", { businessId: setup.businessId, count: 4 });
@@ -80,6 +105,118 @@ describe("mmo economy business customer sessions", () => {
 
     const duplicate = mutate(result.economy, "start_business_customer_session", { businessId: setup.businessId });
     assert.ok(duplicate.warnings.includes("economy_rejected:business_customer_session_already_active"));
+  });
+
+  it("starts and successfully serves every ask template for every production business mini-game", () => {
+    for (const typeId of productionMiniGameTypeIds()) {
+      const definition = HARTHMERE_BUSINESS_MINIGAME_DEFINITIONS_V1[typeId];
+      const setup = createOpenBusiness(typeId);
+      stockAllRequiredServiceItems(setup.state, setup.businessId, typeId);
+
+      let result = mutate(setup.state, "start_business_customer_session", {
+        businessId: setup.businessId,
+        count: definition.askTemplates.length,
+      });
+      assert.deepEqual(result.warnings, [], `${typeId}: start shift`);
+
+      const started = sessions(result.economy)[0];
+      assert.equal(started.typeId, typeId, `${typeId}: session type`);
+      assert.equal(started.queue.length, definition.askTemplates.length, `${typeId}: all ask templates queued`);
+
+      while (true) {
+        const active = sessions(result.economy)[0];
+        if (active.status !== "active") break;
+        const ticket = active.queue.find((entry) => entry.ticketId === active.currentTicketId);
+        assert.ok(ticket, `${typeId}: current ticket exists`);
+        const offer = definition.offers.find((entry) => entry.offerId === ticket.requestedOfferId);
+        assert.ok(offer, `${typeId}: requested offer ${ticket.requestedOfferId} exists`);
+        result = mutate(result.economy, "serve_business_customer", {
+          businessId: setup.businessId,
+          sessionId: active.sessionId,
+          ticketId: ticket.ticketId,
+          offerId: offer.offerId,
+          minigameAction: createHarthmereBusinessMiniGameDecisionForOfferV1(
+            typeId,
+            offer.offerId,
+          ),
+        });
+        assert.deepEqual(result.warnings, [], `${typeId}: serve ${ticket.askId} via ${offer.offerId}`);
+      }
+
+      const finished = sessions(result.economy)[0];
+      assert.equal(finished.status, "completed", `${typeId}: completed shift`);
+      assert.equal(finished.servedTicketIds.length, definition.askTemplates.length, `${typeId}: served every ask`);
+      assert.equal(finished.failedTicketIds.length, 0, `${typeId}: no failed asks`);
+      assert.equal((result.economy.businessSystems as any).customerStats[setup.businessId].totalServed, definition.askTemplates.length, `${typeId}: stats recorded every service`);
+      assert.equal(result.economy.businesses[setup.businessId].flags.customer_service_shift_completed, true, `${typeId}: completion flag set`);
+    }
+  });
+
+  it("validates every generated mini-game decision for every production offer", () => {
+    for (const typeId of productionMiniGameTypeIds()) {
+      const definition = HARTHMERE_BUSINESS_MINIGAME_DEFINITIONS_V1[typeId];
+      for (const offer of definition.offers) {
+        const decision = createHarthmereBusinessMiniGameDecisionForOfferV1(
+          typeId,
+          offer.offerId,
+        );
+        const result = resolveHarthmereBusinessMiniGameDecisionV1({
+          typeId,
+          offerId: offer.offerId,
+          decision,
+        });
+        assert.equal(result.ok, true, `${typeId}: generated decision passes ${offer.offerId}: ${result.warnings.join(", ")}`);
+        assert.deepEqual(result.failedRules, [], `${typeId}: no failed rules for ${offer.offerId}`);
+      }
+    }
+  });
+
+  it("rejects every missing required service item without advancing the active customer", () => {
+    for (const typeId of productionMiniGameTypeIds()) {
+      const definition = HARTHMERE_BUSINESS_MINIGAME_DEFINITIONS_V1[typeId];
+      for (const offer of definition.offers) {
+        for (const missingItemId of Object.keys(offer.requiredItems)) {
+          const setup = createOpenBusiness(typeId);
+          let result = mutate(setup.state, "start_business_customer_session", {
+            businessId: setup.businessId,
+            count: 1,
+          });
+          assert.deepEqual(result.warnings, [], `${typeId}: start missing-stock case`);
+          const active = sessions(result.economy)[0];
+          active.queue[0].requestedOfferId = offer.offerId;
+          active.queue[0].askId = `forced_${offer.offerId}`;
+          active.queue[0].askLine = `Need ${offer.label}`;
+
+          const inventory = result.economy.businesses[setup.businessId].inventory;
+          for (const [itemId, count] of Object.entries(offer.requiredItems)) {
+            if (itemId !== missingItemId) {
+              inventory[itemId] = { itemId, count };
+            }
+          }
+
+          result = mutate(result.economy, "serve_business_customer", {
+            businessId: setup.businessId,
+            sessionId: active.sessionId,
+            ticketId: active.currentTicketId,
+            offerId: offer.offerId,
+            minigameAction: createHarthmereBusinessMiniGameDecisionForOfferV1(
+              typeId,
+              offer.offerId,
+            ),
+          });
+          assert.ok(
+            result.warnings.includes(`economy_rejected:business_item_required:${missingItemId}`),
+            `${typeId}: missing ${missingItemId} rejects ${offer.offerId}`,
+          );
+          const unchanged = sessions(result.economy)[0];
+          assert.equal(unchanged.status, "active", `${typeId}: shift remains active after missing ${missingItemId}`);
+          assert.equal(unchanged.currentTicketId, active.currentTicketId, `${typeId}: active customer unchanged after missing ${missingItemId}`);
+          assert.equal(unchanged.queue[0].status, "waiting", `${typeId}: ticket still waiting after missing ${missingItemId}`);
+          assert.equal(unchanged.servedTicketIds.length, 0, `${typeId}: missing ${missingItemId} does not serve`);
+          assert.equal(unchanged.failedTicketIds.length, 0, `${typeId}: missing ${missingItemId} does not fail`);
+        }
+      }
+    }
   });
 
   it("serves a matching customer ask, consumes stock, rewards the business, and records stats", () => {
@@ -582,7 +719,7 @@ describe("mmo economy business customer sessions", () => {
     assert.ok(duplicate.warnings.includes("economy_rejected:business_branch_already_closed"));
   });
 
-  it("requires an open managed business for customer shifts", () => {
+  it("requires an open business for customer shifts and allows non-owner job shifts once open", () => {
     let state = defaultHarthmereProductionEconomyStateV1();
     let result = mutate(state, "register_business", { businessType: "general_trader", name: "Closed Counter" });
     state = result.economy;
@@ -597,6 +734,25 @@ describe("mmo economy business customer sessions", () => {
       operation: "start_business_customer_session",
       businessId,
     }, ctx());
-    assert.ok(otherActor.warnings.some((warning) => warning.startsWith("economy_rejected:business_permission_required")));
+    assert.ok(otherActor.warnings.includes("economy_rejected:business_not_open"));
+
+    result = mutate(state, "issue_license", { businessId, licenseLevel: 1 });
+    assert.deepEqual(result.warnings, []);
+    result = mutate(result.economy, "open_business", {
+      businessId,
+      propertyId: `property_${businessId}`,
+      townId: "harthmere_grove",
+    });
+    assert.deepEqual(result.warnings, []);
+
+    const openOtherActor = reduceHarthmereEconomyMutationV1(result.economy, {
+      requestId: "other_actor_open_customer_shift",
+      actorId: "not_owner",
+      nowMs: NOW_MS,
+      operation: "start_business_customer_session",
+      businessId,
+    }, ctx());
+    assert.deepEqual(openOtherActor.warnings, []);
+    assert.equal(sessions(openOtherActor.economy)[0].actorId, "not_owner");
   });
 });

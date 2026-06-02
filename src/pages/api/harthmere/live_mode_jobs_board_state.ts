@@ -15,6 +15,7 @@ import {
   reduceHarthmereJobsBoardMutationV1,
 } from "@/shared/harthmere/mmo_jobs_board_authority_v1";
 import { z } from "zod";
+import { readHarthmerePlayerAndSharedStateStringsV1 } from "./live_mode_state_read_helpers";
 
 const zJsonRecord = z.record(z.unknown());
 
@@ -60,18 +61,22 @@ export async function readHarthmereLiveModeJobsBoardStateForActorV1(input: {
   redis: {
     primary: {
       get: (key: string) => Promise<string | null>;
+      mget?: (...keys: string[]) => Promise<Array<string | null>>;
       set?: (key: string, value: string) => Promise<unknown>;
     };
   };
   actorId: string;
   nowMs: number;
+  persistReadSideEffects?: boolean;
 }) {
   const stateKey = harthmereLiveModePlayerStateKeyV1(input.actorId);
   const sharedStateKey = harthmereLiveModeSharedWorldStateKeyV1();
-  const [rawState, rawSharedState] = await Promise.all([
-    input.redis.primary.get(stateKey),
-    input.redis.primary.get(sharedStateKey),
-  ]);
+  const { rawState, rawSharedState } =
+    await readHarthmerePlayerAndSharedStateStringsV1(
+      input.redis.primary,
+      stateKey,
+      sharedStateKey
+    );
   const state = parseHarthmereLiveModeBackendStateV1(rawState, input.actorId, input.nowMs);
   mergeHarthmereLiveModeSharedWorldStateIntoBackendV1(
     state,
@@ -107,7 +112,7 @@ export async function readHarthmereLiveModeJobsBoardStateForActorV1(input: {
     changed ||= result.touchedModels.includes("jobs_board_auto_seeded")
       || result.sharedStateKeys.length > 0;
   }
-  if (changed && input.redis.primary.set) {
+  if (changed && input.persistReadSideEffects && input.redis.primary.set) {
     await input.redis.primary.set(
       sharedStateKey,
       JSON.stringify(createHarthmereLiveModeSharedWorldStateV1(state, input.nowMs))

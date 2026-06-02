@@ -189,7 +189,11 @@ import {
   tickLiveEntityRobotEnergyV1,
   type LiveEntityRobotEnergyStateV1,
 } from "./live_entity_robot_energy_protection_v1";
-import { evaluateMuckMonsterAggressionV1 } from "./muck_monster_aggression_ai_v1";
+import {
+  evaluateMuckMonsterAggressionV1,
+  muckMonsterAreaForPositionV1,
+} from "./muck_monster_aggression_ai_v1";
+import { HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_SEEDS_V1 } from "./live_entity_production_seed_v1";
 
 import {
   buildingSystemBlueprintByIdV1,
@@ -288,10 +292,12 @@ function harthmereBusinessOutpostStarterInventoryV1(
     }
   }
   return Object.fromEntries(
-    [...counts.entries()].slice(0, 8).map(([itemId, count]) => [
-      itemId,
-      { itemId, count: Math.max(1, Math.floor(count)) },
-    ])
+    [...counts.entries()]
+      .slice(0, 8)
+      .map(([itemId, count]) => [
+        itemId,
+        { itemId, count: Math.max(1, Math.floor(count)) },
+      ])
   );
 }
 
@@ -404,6 +410,67 @@ export type HarthmereLiveEntityCombatProtectionV1 =
   | "friendly_noncombatant"
   | "label_or_place"
   | "immobile_object";
+
+export const HARTHMERE_SERVER_MUCK_COMBAT_ENTITY_SEED_VERSION_V1 =
+  "harthmere-server-muck-combat-entity-seed-v1" as const;
+
+type HarthmereLiveCombatEntitySnapshotV1 =
+  HarthmereLiveModeBackendStateV1["combat"]["entitySnapshots"][string];
+
+function positionObjectFromVec3V1(position: readonly number[]) {
+  return {
+    x: Number(position[0]),
+    y: Number(position[1]),
+    z: Number(position[2]),
+  };
+}
+
+export function createHarthmereServerMuckCombatEntitySnapshotsV1(
+  nowMs: number
+): HarthmereLiveModeBackendStateV1["combat"]["entitySnapshots"] {
+  return Object.fromEntries(
+    HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_SEEDS_V1.flatMap((seed) => {
+      const territory = muckMonsterAreaForPositionV1(seed.position, 1.5);
+      if (!territory) {
+        return [];
+      }
+      const hp = Math.max(1, Math.trunc(seed.combatHp ?? 110));
+      const entityKind = seed.combatKind ?? "mux";
+      const position = positionObjectFromVec3V1(seed.position);
+      return [
+        [
+          `server-muck-combat:${seed.seedId}:${seed.idOffset}`,
+          {
+            hp,
+            maxHp: hp,
+            position,
+            homePosition: position,
+            isHostile: true,
+            isAlive: true,
+            isAttackable: true,
+            level: Math.max(1, Math.trunc(seed.combatLevel ?? 2)),
+            entityKind,
+            movementSpeed: entityKind === "hex" ? 3.4 : 3.1,
+            bodyRadius: entityKind === "hex" ? 0.75 : 0.9,
+            patrolRadius: 8,
+            aggroRange: entityKind === "hex" ? 12 : 10.5,
+            leashRange: 34,
+            requiresLineOfSight: false,
+            aiEnabled: true,
+            retaliatesWhenAttacked: true,
+            animationState: "idle",
+            animationStartedAtMs: nowMs,
+            animationMoving: false,
+            facingYaw: Number(seed.orientation[1] ?? 0),
+            resources: entityKind === "hex" ? { mana: 60 } : undefined,
+            maxResources: entityKind === "hex" ? { mana: 60 } : undefined,
+            attackRange: entityKind === "hex" ? 6.5 : 2.4,
+          } satisfies HarthmereLiveCombatEntitySnapshotV1,
+        ],
+      ];
+    })
+  );
+}
 
 export type HarthmereBankingVaultKindV1 = "personal" | "account" | "materials";
 export type HarthmereBankingLoanStatusV1 = "active" | "paid" | "defaulted";
@@ -3739,6 +3806,18 @@ function economyBusinessInteractionPositionsV1(
   businessId: string
 ) {
   const positions: Array<{ x: number; y: number; z: number }> = [];
+  const requestedMarkerId = payloadString(
+    envelope,
+    "businessInteractionMarkerId"
+  );
+  const requestedMarker = requestedMarkerId
+    ? state.building.inWorldMarkers[requestedMarkerId]
+    : undefined;
+  const requestedMarkerPosition = requestedMarker
+    ? buildingMarkerPositionV1(requestedMarker)
+    : undefined;
+  if (requestedMarkerPosition) positions.push(requestedMarkerPosition);
+
   const marker = state.building.inWorldMarkers[`${businessId}:marker`];
   const markerPosition = marker ? buildingMarkerPositionV1(marker) : undefined;
   if (markerPosition) positions.push(markerPosition);
@@ -3762,6 +3841,17 @@ function economyBusinessInteractionPositionsV1(
     : undefined;
   const outpostPosition = outpostBusinessInteractionPositionV1(outpostBuilding);
   if (outpostPosition) positions.push(outpostPosition);
+
+  const clientBusinessPosition =
+    payloadRecord(envelope, "businessInteractionPosition") ??
+    payloadRecord(envelope, "businessInteractionWorldPosition");
+  if (clientBusinessPosition) {
+    positions.push({
+      x: Number(clientBusinessPosition.x),
+      y: Number(clientBusinessPosition.y),
+      z: Number(clientBusinessPosition.z),
+    });
+  }
 
   return positions.filter(
     (position) =>
@@ -4439,7 +4529,7 @@ export function defaultHarthmereLiveModeBackendStateV1(
       respawnProtectionUntilMs: undefined,
       threat: {},
       lootClaims: {},
-      entitySnapshots: {},
+      entitySnapshots: createHarthmereServerMuckCombatEntitySnapshotsV1(nowMs),
       npcAiTicks: {},
       liveEntityNavigation: {},
       bossTicks: {},
@@ -8382,6 +8472,37 @@ export function reduceHarthmereLiveModeBackendStateV1(
             ? boardId
             : undefined
           : undefined;
+      const requestedJobId = payloadString(envelope, "jobId");
+      if (
+        operation === "accept_job" &&
+        requestedJobId &&
+        !next.jobsBoard.postings[requestedJobId]
+      ) {
+        const seedResult = reduceHarthmereJobsBoardMutationV1(
+          next.jobsBoard,
+          {
+            requestId: `${envelope.requestId}:accept_seed:${boardId}`,
+            actorId: envelope.actorId,
+            nowMs,
+            operation: "economy_auto_seed_jobs",
+            boardId,
+          } as any,
+          {
+            actorGold: next.inventory.gold,
+            actorInventoryItems: next.inventory.items,
+            actorCollectibles: next.collections.discovered,
+            actorGuildId: next.guild.memberGuildId,
+            actorPosition,
+            nearbyBoardId,
+            economy: next.economy.production,
+          }
+        );
+        next.jobsBoard = seedResult.jobsBoard;
+        if (seedResult.economy) next.economy.production = seedResult.economy;
+        for (const warning of seedResult.warnings) warnings.push(warning);
+        for (const model of seedResult.touchedModels) touchedModels.add(model);
+        for (const key of seedResult.sharedStateKeys) sharedStateKeys.add(key);
+      }
       const result = reduceHarthmereJobsBoardMutationV1(
         next.jobsBoard,
         {

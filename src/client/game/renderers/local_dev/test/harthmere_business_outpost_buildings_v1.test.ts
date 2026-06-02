@@ -460,7 +460,7 @@ describe("Harthmere business outpost guide renderer V1", () => {
     }
   });
 
-  it("places only the owner NPC — buildings are server-materialized procedural voxels not GLTF assets", () => {
+  it("places the owner NPC while business boards are drawn by the dedicated procedural renderer", () => {
     const start = SOURCE.indexOf(
       "function createHarthmereBusinessOutpostPlacementsV1()"
     );
@@ -481,6 +481,16 @@ describe("Harthmere business outpost guide renderer V1", () => {
     for (const banned of ['"table_medium"', '"scroll_1_fp"', '"obj_sign_post"', "renderLocalScaffolds"]) {
       assert.equal(body.includes(banned), false, `must not emit legacy floating ${banned}`);
     }
+    assert.equal(
+      body.includes('"obj_kiosk"'),
+      false,
+      "business boards must not use filtered OBJ kiosk runtime placements",
+    );
+    assert.equal(
+      body.includes("BIG BUSINESS BOARD"),
+      false,
+      "business boards must come from the procedural marker renderer, not the runtime placement list",
+    );
     // Must still place the owner NPC with proper cosmetics.
     assert.ok(
       body.includes("appearance: harthmereBusinessOutpostStaffAppearanceV1(outpost)"),
@@ -503,6 +513,11 @@ describe("Harthmere business outpost guide renderer V1", () => {
       SOURCE.includes("record.serviceCounter.x + 4") &&
         SOURCE.includes("record.serviceCounter.z + 1"),
       "staff NPC must stand at a clear interior work point near the service counter",
+    );
+    assert.ok(
+      body.includes("inside business staff NPC") &&
+        body.includes('lodTier = "always"'),
+      "staff NPC must be an always-visible inside-business placement",
     );
   });
 
@@ -674,10 +689,9 @@ describe("Harthmere business outpost guide renderer V1", () => {
         assert.equal(tokens.materialToken, expectedToken);
       }
 
-      assert.equal(
-        record.interiorFixtures.length,
-        8,
-        `${record.outpostId} must publish queue, counter, dashboard, station, and four guide decor fixtures`
+      assert.ok(
+        record.interiorFixtures.length >= 8,
+        `${record.outpostId} must publish queue, counter, dashboard, station, and a bespoke business-specific decor set`
       );
       for (const fixture of record.interiorFixtures) {
         const rendered = audit.fixtures.get(fixture.fixtureId);

@@ -4381,8 +4381,8 @@ function harthmereBusinessOutpostStaffWorkPointV1(outpost: HarthmereBusinessOutp
 // The voxel plans live in HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS_V1 and
 // are applied to the game world by the server via the live_mode_backend
 // "rebuild_business_outposts" / auto-revision path.
-// This function only places the owner NPC at the entrance — the building shell
-// itself is pure voxels, not GLTF assets.
+// The building shell and business-board access object are pure procedural
+// renderers, not GLTF/OBJ placements. This function only places the owner NPC.
 function createHarthmereBusinessOutpostPlacementsV1(): RuntimePlacement[] {
   const placements: RuntimePlacement[] = [];
   for (const outpost of HARTHMERE_BUSINESS_OUTPOSTS_V1) {
@@ -4395,13 +4395,14 @@ function createHarthmereBusinessOutpostPlacementsV1(): RuntimePlacement[] {
         workPoint.z,
         outpost.position.rot + Math.PI,
         0.92,
-        `${outpost.displayName} ${outpost.job.title} trainer`,
+        `${outpost.displayName} inside business staff NPC ${outpost.job.title} trainer`,
         outpost.district,
         { radius: 0.65, speed: 0.07, phase: outpost.outpostId.length * 0.17 },
         undefined,
         { y: workPoint.y ?? groundY + 1, appearance: harthmereBusinessOutpostStaffAppearanceV1(outpost) },
       ),
     );
+    placements[placements.length - 1].lodTier = "always";
   }
   return placements;
 }

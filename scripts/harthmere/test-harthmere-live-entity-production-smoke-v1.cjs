@@ -21,6 +21,7 @@ function check(condition, message, detail) {
 }
 
 const {
+  createHarthmereServerMuckCombatEntitySnapshotsV1,
   createHarthmereLiveModeSharedWorldStateV1,
   defaultHarthmereLiveModeBackendStateV1,
   harthmereLiveModeSharedWorldStateKeyV1,
@@ -32,6 +33,7 @@ const {
 } = require("../../src/shared/harthmere/live_entity_robot_energy_protection_v1");
 const {
   HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_SEEDS_V1,
+  HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_PRODUCTION_COUNT_V1,
   HARTHMERE_LIVE_ENTITY_PRODUCTION_SEEDS_V1,
   HARTHMERE_LIVE_ENTITY_ROBOT_SENTINEL_SEEDS_V1,
   validateHarthmereLiveEntityProductionSeedsV1,
@@ -39,6 +41,10 @@ const {
 const {
   buildHarthmereLiveEntityProductionSeedProposedChangesV1,
 } = require("../../src/server/harthmere/live_entity_ecs_seed_v1");
+const {
+  buildHarthmereSnapshotGroveNpcSeedProposedChangesV1,
+  harthmereSnapshotGroveNpcSeedIdsV1,
+} = require("../../src/server/harthmere/snapshot_grove_npc_ecs_seed_v1");
 const {
   buildHarthmereGroveRaceMinigameSeedProposedChangesV1,
 } = require("../../src/server/harthmere/grove_race_minigame_ecs_seed_v1");
@@ -52,6 +58,13 @@ const {
   HARTHMERE_GROVE_RACE_START_POSITION_V1,
   validateHarthmereGroveRaceMinigameSeedsV1,
 } = require("../../src/shared/harthmere/grove_race_minigame_seed_v1");
+const {
+  SNAPSHOT_GROVE_NPCS_V75,
+  snapshotGroveNpcEntityIdV75,
+} = require("../../src/shared/harthmere/snapshot_grove_content_v75");
+const {
+  muckMonsterAreaForPositionV1,
+} = require("../../src/shared/harthmere/muck_monster_aggression_ai_v1");
 
 class FakeRedisPrimary {
   constructor() {
@@ -70,6 +83,7 @@ class FakeRedisPrimary {
 
 async function main() {
   console.log("== Harthmere live entity production smoke v1 ==");
+  const nowMs = 1_700_700_000_000;
 
   check(
     validateHarthmereLiveEntityProductionSeedsV1().length === 0,
@@ -82,8 +96,44 @@ async function main() {
   );
   check(
     HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_SEEDS_V1.length ===
-      LIVE_ENTITY_ROBOT_PROTECTION_AREAS_V1.length,
-    "every robot protection area has an ambient Muck monster seed"
+      HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_PRODUCTION_COUNT_V1,
+    "production has exactly 100 ambient Muck/Hex hostile seeds"
+  );
+  check(
+    HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_SEEDS_V1.some(
+      (seed) => seed.combatKind === "hex"
+    ),
+    "production hostile seed manifest includes Hexes"
+  );
+  const areaIdsWithHostiles = new Set(
+    HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_SEEDS_V1.map((seed) => seed.areaId)
+  );
+  for (const area of LIVE_ENTITY_ROBOT_PROTECTION_AREAS_V1) {
+    check(
+      areaIdsWithHostiles.has(area.areaId),
+      `robot protection area ${area.areaId} has a server hostile seed`
+    );
+  }
+  const serverCombat = createHarthmereServerMuckCombatEntitySnapshotsV1(nowMs);
+  const serverCombatEntries = Object.entries(serverCombat);
+  check(
+    serverCombatEntries.length ===
+      HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_SEEDS_V1.length,
+    "live-mode server combat snapshot seeds every production Muck/Hex hostile"
+  );
+  check(
+    serverCombatEntries.some(([, snapshot]) => snapshot.entityKind === "mux") &&
+      serverCombatEntries.some(([, snapshot]) => snapshot.entityKind === "hex"),
+    "live-mode server combat snapshot includes both Muckers and Hexes"
+  );
+  check(
+    serverCombatEntries.every(([, snapshot]) =>
+      muckMonsterAreaForPositionV1(
+        [snapshot.position.x, snapshot.position.y, snapshot.position.z],
+        1.5
+      )
+    ),
+    "live-mode server combat Muckers/Hexes are only in authored Muck areas"
   );
 
   const proposed = buildHarthmereLiveEntityProductionSeedProposedChangesV1({
@@ -111,6 +161,33 @@ async function main() {
         )
     ),
     "seeded entity player-facing text has no internal casing or developer copy"
+  );
+
+  const groveNpcProposed = buildHarthmereSnapshotGroveNpcSeedProposedChangesV1({
+    nowSeconds: 1234,
+    existingIds: new Set(),
+  });
+  const seededGroveNpcs = SNAPSHOT_GROVE_NPCS_V75.filter(
+    (npc) => npc.seedServerNpc
+  );
+  check(
+    groveNpcProposed.length === seededGroveNpcs.length,
+    "production bootstrap builds every seeded Grove NPC"
+  );
+  const billy = SNAPSHOT_GROVE_NPCS_V75.find((npc) => npc.id === "billy");
+  const billyId = billy && snapshotGroveNpcEntityIdV75(billy);
+  check(
+    Boolean(
+      billyId &&
+        harthmereSnapshotGroveNpcSeedIdsV1().includes(billyId) &&
+        groveNpcProposed.some(
+          (change) =>
+            change.kind !== "delete" &&
+            change.entity.id === billyId &&
+            change.entity.label?.text === "Billy"
+        )
+    ),
+    "production bootstrap includes Billy Rhodes Grove NPC seed"
   );
 
   check(
@@ -151,7 +228,6 @@ async function main() {
   );
 
   const redis = { primary: new FakeRedisPrimary() };
-  const nowMs = 1_700_700_000_000;
   const area = LIVE_ENTITY_ROBOT_PROTECTION_AREAS_V1[1];
   const robotId = liveEntityRobotDefaultRobotIdForAreaV1(area.areaId);
   const sharedSource = defaultHarthmereLiveModeBackendStateV1(
@@ -243,6 +319,9 @@ async function main() {
     ecsSeeder.includes("RobotComponent.create") &&
       bootstrap.includes(
         "buildHarthmereLiveEntityProductionSeedProposedChangesV1"
+      ) &&
+      bootstrap.includes(
+        "buildHarthmereSnapshotGroveNpcSeedProposedChangesV1"
       ) &&
       bootstrap.includes(
         "buildHarthmereGroveRaceMinigameSeedProposedChangesV1"

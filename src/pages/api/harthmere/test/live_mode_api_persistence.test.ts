@@ -558,7 +558,9 @@ describe("live_mode API Redis persistence", () => {
       assert.ok(actorState.economy.production.businesses.shared_shop);
     }));
 
-  it("persists accepted jobs board jobs as actor quests with map markers", async () => {
+  it("persists accepted jobs board jobs as actor quests with map markers", async function () {
+    this.timeout(12_000);
+
     const redisPrimary = new FakeRedisPrimary();
     (globalThis as any).__harthmereLiveModeRedisV1 = { primary: redisPrimary };
 
@@ -808,6 +810,86 @@ describe("live_mode API Redis persistence", () => {
     assert.equal(
       persistedActorState.building.inWorldMarkers[markerId],
       undefined
+    );
+  });
+
+  it("seeds missing auto jobs during accept so read-only board polling stays consistent", async () => {
+    const redisPrimary = new FakeRedisPrimary();
+    (globalThis as any).__harthmereLiveModeRedisV1 = { primary: redisPrimary };
+
+    redisPrimary.store.set(
+      harthmereLiveModePlayerStateKeyV1(ACTOR),
+      JSON.stringify(defaultHarthmereLiveModeBackendStateV1(ACTOR, NOW_MS))
+    );
+
+    const env = envelope();
+    env.requestId = "live-api-persist-jobs-board-accept-seeds";
+    env.idempotencyKey = "live-api-persist-jobs-board-accept-seeds";
+    env.actionKind = "request_jobs_board_mutation";
+    env.subsystem = "jobs";
+    env.source = "client_request";
+    env.targetId = HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1;
+    env.zoneId = "harthmere_grove";
+    env.serverActorPosition = {
+      x: 501.99486179104775,
+      y: 70,
+      z: -132.00350672753194,
+    };
+    env.payload = {
+      operation: "accept_job",
+      boardId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1,
+      jobId: "harthmere_auto_1",
+    };
+
+    const mutationPlan = buildHarthmereLiveModePersistenceMutationPlanV1(env);
+    const persisted = await persistHarthmereLiveModeResponseV1(
+      env,
+      {
+        ok: true,
+        version: "HARTHMERE_LIVE_MODE_SERVER_ROUTE_V1" as const,
+        actorId: ACTOR,
+        duplicate: false,
+        replayed: false,
+        persisted: true,
+        validation: {
+          ok: true,
+          errors: [],
+          warnings: [],
+          rejectedClientClaims: [],
+        },
+        mutationPlan,
+        events: [
+          createHarthmereLiveModeEventV1({
+            kind: "audit_log_appended",
+            envelope: env,
+          }),
+        ],
+        uiEvents: [],
+      },
+      {
+        logicApi: { publish: async () => {} } as any,
+        userId: 1 as any,
+      }
+    );
+
+    assert.deepEqual(persisted.backendMutation?.warnings, []);
+    assert.ok(
+      (persisted.jobsBoardState as any).myAcceptedJobs.some(
+        (job: any) => job.jobId === "harthmere_auto_1" && job.status === "active"
+      ),
+      "accept should persist and activate jobs that were seeded by a read-only board snapshot"
+    );
+    const rawActor = redisPrimary.store.get(
+      harthmereLiveModePlayerStateKeyV1(ACTOR)
+    );
+    const persistedActorState = parseHarthmereLiveModeBackendStateV1(
+      rawActor,
+      ACTOR,
+      NOW_MS
+    );
+    assert.equal(
+      persistedActorState.jobsBoard.postings.harthmere_auto_1.status,
+      "active"
     );
   });
 

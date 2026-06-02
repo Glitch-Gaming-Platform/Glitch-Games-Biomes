@@ -74,6 +74,41 @@ describe("live_mode_economy_state API route integration", () => {
     assert.equal(snapshot.businesses.api_shop?.businessId, "api_shop");
   });
 
+  it("uses one Redis MGET for actor and shared economy state when available", async () => {
+    const backend = defaultHarthmereLiveModeBackendStateV1(ACTOR, NOW_MS);
+    const mgetCalls: string[][] = [];
+    const getCalls: string[] = [];
+    const redis = {
+      primary: {
+        get: async (key: string) => {
+          getCalls.push(key);
+          return null;
+        },
+        mget: async (...keys: string[]) => {
+          mgetCalls.push(keys);
+          return keys.map((key) =>
+            key === harthmereLiveModePlayerStateKeyV1(ACTOR)
+              ? JSON.stringify(backend)
+              : null
+          );
+        },
+      },
+    };
+
+    const snapshot = await readHarthmereLiveModeEconomyStateForActorV1({
+      redis,
+      actorId: ACTOR,
+      nowMs: NOW_MS,
+    });
+
+    assert.deepEqual(mgetCalls, [[
+      harthmereLiveModePlayerStateKeyV1(ACTOR),
+      harthmereLiveModeSharedWorldStateKeyV1(),
+    ]]);
+    assert.deepEqual(getCalls, []);
+    assert.equal(snapshot.actorId, ACTOR);
+  });
+
   it("reports legacy outpost validation issues without throwing", async () => {
     const sharedBackend = defaultHarthmereLiveModeBackendStateV1(
       "shared_economy",

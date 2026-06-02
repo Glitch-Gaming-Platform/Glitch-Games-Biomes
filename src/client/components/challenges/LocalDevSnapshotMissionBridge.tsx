@@ -1,6 +1,7 @@
 import { getOwnedItems } from "@/client/components/inventory/helpers";
 import type { TalkDialogStepAction } from "@/client/components/challenges/TalkDialogModalStep";
 import { awardHarthmereQuestXp } from "@/client/components/challenges/LocalDevHarthmereLevelingSystem";
+import { addToast } from "@/client/components/toast/helpers";
 import { useClientContext } from "@/client/components/contexts/ClientContextReactContext";
 import type { GardenHoseEvent } from "@/client/events/api";
 import {
@@ -41,6 +42,10 @@ const SNAPSHOT_MISSION_EVENTS_KEY_V73 =
 
 const SNAPSHOT_MISSION_REWARDS_KEY_V73 =
   "biomes.localDev.snapshotMissionRewards.v73";
+const SNAPSHOT_ROAD_AHEAD_EQUIPPED_GEAR_KEY_V73 =
+  "biomes.localDev.snapshotRoadAheadEquippedGear.v73";
+const SNAPSHOT_ROAD_AHEAD_EQUIPPED_GEAR_EVENT_V73 =
+  "biomes:local-dev-snapshot-road-ahead-equipped-gear-v73";
 
 const SNAPSHOT_MISSION_TITLE_V73 = "Road Ahead";
 const SNAPSHOT_MISSION_ID_V73 = "snapshot_road_ahead_full_chain";
@@ -148,9 +153,11 @@ export const SNAPSHOT_MISSIONS_V71: SnapshotMissionDefinitionV71[] = [
       },
       {
         id: "road_ahead_meet_up_with_billy",
-        challengeStepId: NUX_PAIRED_STEPS.ROAD_AHEAD_MEET_UP_WITH_BILLY as BiomesId,
+        challengeStepId:
+          NUX_PAIRED_STEPS.ROAD_AHEAD_MEET_UP_WITH_BILLY as BiomesId,
         title: "Find the Old Grove Road Post",
-        objective: "Follow Jackie's marker to the Old Grove Road Post just outside The Grove.",
+        objective:
+          "Follow Jackie's marker to the Old Grove Road Post just outside The Grove.",
         mapHint:
           "Open the map or follow the beam toward the visible road post outside The Grove. The marker completes when you reach the post.",
         completion: "You reached the first road marker.",
@@ -164,9 +171,11 @@ export const SNAPSHOT_MISSIONS_V71: SnapshotMissionDefinitionV71[] = [
       },
       {
         id: "road_ahead_collect_muckwad",
-        challengeStepId: NUX_PAIRED_STEPS.ROAD_AHEAD_COLLECT_MUCKWAD as BiomesId,
+        challengeStepId:
+          NUX_PAIRED_STEPS.ROAD_AHEAD_COLLECT_MUCKWAD as BiomesId,
         title: "Break Muckwad",
-        objective: "Break a muckwad or another soft non-flora block near the road.",
+        objective:
+          "Break a muckwad or another soft non-flora block near the road.",
         mapHint:
           "Use your break action on terrain, not flowers or decorative plants.",
         completion: "You broke through the muck blocking the path.",
@@ -241,7 +250,8 @@ export const SNAPSHOT_MISSIONS_V71: SnapshotMissionDefinitionV71[] = [
         id: "busted_wooden_axe",
         challengeStepId: NUX_PAIRED_STEPS.BUSTED_WOODEN_AXE as BiomesId,
         title: "Gather Repair Wood",
-        objective: "Break one more soft block or loose timber for repair material.",
+        objective:
+          "Break one more soft block or loose timber for repair material.",
         mapHint:
           "Gather one more piece of breakable terrain for field repairs.",
         completion: "You gathered enough rough material for a field repair.",
@@ -289,13 +299,29 @@ const SNAPSHOT_MISSION_TARGET_OFFSETS_V73: Record<
   Vec3
 > = {
   grove: [GENESIS_CROSSROADS_LOCATION[0], 54, GENESIS_CROSSROADS_LOCATION[1]],
-  road_marker: snapshotGroveLandmarkByIdV75("old_grove_road_post")?.position ?? [500, 54, -140],
-  muckwad_patch: snapshotGroveLandmarkByIdV75("muckwad_patch")?.position ?? [512, 54, -152],
-  building_spot: snapshotGroveLandmarkByIdV75("building_practice_spot")?.position ?? [528, 54, -152],
-  wardrobe: snapshotGroveLandmarkByIdV75("lovely_locks_mirror")?.position ?? [GENESIS_CROSSROADS_LOCATION[0], 54, GENESIS_CROSSROADS_LOCATION[1]],
-  jump_run: snapshotGroveLandmarkByIdV75("road_jump_stretch")?.position ?? [548, 54, -170],
-  selfie_overlook: snapshotGroveLandmarkByIdV75("selfie_overlook")?.position ?? [560, 54, -182],
-  crafting_stop: snapshotGroveLandmarkByIdV75("service_tower_platform")?.position ?? [GENESIS_CROSSROADS_LOCATION[0] + 8, 54, GENESIS_CROSSROADS_LOCATION[1] - 4],
+  road_marker: snapshotGroveLandmarkByIdV75("old_grove_road_post")
+    ?.position ?? [500, 54, -140],
+  muckwad_patch: snapshotGroveLandmarkByIdV75("muckwad_patch")?.position ?? [
+    512, 54, -152,
+  ],
+  building_spot: snapshotGroveLandmarkByIdV75("building_practice_spot")
+    ?.position ?? [528, 54, -152],
+  wardrobe: snapshotGroveLandmarkByIdV75("lovely_locks_mirror")?.position ?? [
+    GENESIS_CROSSROADS_LOCATION[0],
+    54,
+    GENESIS_CROSSROADS_LOCATION[1],
+  ],
+  jump_run: snapshotGroveLandmarkByIdV75("road_jump_stretch")?.position ?? [
+    548, 54, -170,
+  ],
+  selfie_overlook: snapshotGroveLandmarkByIdV75("selfie_overlook")
+    ?.position ?? [560, 54, -182],
+  crafting_stop: snapshotGroveLandmarkByIdV75("service_tower_platform")
+    ?.position ?? [
+    GENESIS_CROSSROADS_LOCATION[0] + 8,
+    54,
+    GENESIS_CROSSROADS_LOCATION[1] - 4,
+  ],
 };
 
 function isBrowserV71() {
@@ -304,7 +330,9 @@ function isBrowserV71() {
   );
 }
 
-function cloneStateV73(state: SnapshotMissionStateV71): SnapshotMissionStateV71 {
+function cloneStateV73(
+  state: SnapshotMissionStateV71
+): SnapshotMissionStateV71 {
   return {
     accepted: state.accepted,
     active: { ...state.active },
@@ -322,7 +350,7 @@ function firstSnapshotMissionV71() {
 }
 
 function normalizeSnapshotMissionStateV73(
-  parsed: Partial<SnapshotMissionStateV71> | undefined,
+  parsed: Partial<SnapshotMissionStateV71> | undefined
 ): SnapshotMissionStateV71 {
   if (!parsed) {
     return cloneStateV73(EMPTY_SNAPSHOT_MISSION_STATE_V73);
@@ -334,12 +362,14 @@ function normalizeSnapshotMissionStateV73(
       firstSnapshotMissionV71().steps.length - 1,
       Number.isFinite(parsed.currentStepIndex)
         ? Number(parsed.currentStepIndex)
-        : legacyActiveStep ?? 0,
-    ),
+        : legacyActiveStep ?? 0
+    )
   );
   const completed = Array.isArray(parsed.completed) ? parsed.completed : [];
   return {
-    accepted: Boolean(parsed.accepted || parsed.active?.[SNAPSHOT_MISSION_ID_V73] !== undefined),
+    accepted: Boolean(
+      parsed.accepted || parsed.active?.[SNAPSHOT_MISSION_ID_V73] !== undefined
+    ),
     active: parsed.active ?? {},
     currentStepIndex,
     completedStepIds: Array.isArray(parsed.completedStepIds)
@@ -359,7 +389,7 @@ export function readSnapshotMissionStateV71(): SnapshotMissionStateV71 {
   try {
     const raw = window.localStorage.getItem(SNAPSHOT_MISSION_STATE_KEY_V71);
     return normalizeSnapshotMissionStateV73(
-      raw ? (JSON.parse(raw) as Partial<SnapshotMissionStateV71>) : undefined,
+      raw ? (JSON.parse(raw) as Partial<SnapshotMissionStateV71>) : undefined
     );
   } catch {
     return cloneStateV73(EMPTY_SNAPSHOT_MISSION_STATE_V73);
@@ -370,10 +400,13 @@ export function writeSnapshotMissionStateV71(state: SnapshotMissionStateV71) {
   if (!isBrowserV71()) {
     return;
   }
-  const next = normalizeSnapshotMissionStateV73({ ...state, updatedAt: Date.now() });
+  const next = normalizeSnapshotMissionStateV73({
+    ...state,
+    updatedAt: Date.now(),
+  });
   window.localStorage.setItem(
     SNAPSHOT_MISSION_STATE_KEY_V71,
-    JSON.stringify(next),
+    JSON.stringify(next)
   );
   window.dispatchEvent(new Event(SNAPSHOT_MISSION_STATE_EVENT_V71));
 }
@@ -393,7 +426,7 @@ function readSnapshotMissionEventsV73(): SnapshotMissionEventV73[] {
 function recordSnapshotMissionEventV73(
   kind: SnapshotMissionEventV73["kind"],
   title: string,
-  detail: string,
+  detail: string
 ) {
   if (!isBrowserV71()) {
     return;
@@ -402,7 +435,10 @@ function recordSnapshotMissionEventV73(
     { at: Date.now(), kind, title, detail },
     ...readSnapshotMissionEventsV73(),
   ].slice(0, 16);
-  window.localStorage.setItem(SNAPSHOT_MISSION_EVENTS_KEY_V73, JSON.stringify(next));
+  window.localStorage.setItem(
+    SNAPSHOT_MISSION_EVENTS_KEY_V73,
+    JSON.stringify(next)
+  );
   window.dispatchEvent(new Event(SNAPSHOT_MISSION_STATE_EVENT_V71));
 }
 
@@ -428,9 +464,45 @@ function recordSnapshotMissionRewardV73(reward: string) {
   })();
   window.localStorage.setItem(
     SNAPSHOT_MISSION_REWARDS_KEY_V73,
-    JSON.stringify([...new Set([reward, ...existing])].slice(0, 20)),
+    JSON.stringify([...new Set([reward, ...existing])].slice(0, 20))
   );
   recordSnapshotMissionEventV73("reward", SNAPSHOT_MISSION_TITLE_V73, reward);
+}
+
+function readSnapshotRoadAheadEquippedGearSlotsV73() {
+  if (!isBrowserV71()) return [];
+  try {
+    const raw = window.localStorage.getItem(
+      SNAPSHOT_ROAD_AHEAD_EQUIPPED_GEAR_KEY_V73
+    );
+    const parsed = raw ? JSON.parse(raw) : undefined;
+    return Array.isArray(parsed)
+      ? parsed.filter((slot): slot is string => typeof slot === "string")
+      : [];
+  } catch {
+    return [];
+  }
+}
+
+export function recordSnapshotRoadAheadEquippedGearSlotForBiomesUIV73(
+  slot: string | undefined
+) {
+  if (!isBrowserV71() || !slot) return;
+  const normalized =
+    slot === "top" || slot === "torso"
+      ? "chest"
+      : slot === "bottoms"
+      ? "legs"
+      : slot;
+  if (normalized !== "chest" && normalized !== "legs") return;
+  const next = [
+    ...new Set([...readSnapshotRoadAheadEquippedGearSlotsV73(), normalized]),
+  ];
+  window.localStorage.setItem(
+    SNAPSHOT_ROAD_AHEAD_EQUIPPED_GEAR_KEY_V73,
+    JSON.stringify(next)
+  );
+  window.dispatchEvent(new Event(SNAPSHOT_ROAD_AHEAD_EQUIPPED_GEAR_EVENT_V73));
 }
 
 function isMissionCompletedV73(state: SnapshotMissionStateV71) {
@@ -452,13 +524,76 @@ function getMissionStepV71(state: SnapshotMissionStateV71) {
   };
 }
 
+export function snapshotRoadAheadMissionStepsForBiomesUIV73(
+  state: SnapshotMissionStateV71 = readSnapshotMissionStateV71()
+) {
+  const { mission, activeStepIndex, completed } = getMissionStepV71(state);
+  if (!state.accepted && !completed) {
+    return [];
+  }
+  return mission.steps.slice(1).map((step, index) => {
+    const stepIndex = index + 1;
+    return {
+      id: `${mission.id}:${step.id}`,
+      title:
+        completed || state.completedStepIds.includes(step.id)
+          ? `Completed step ${stepIndex}`
+          : stepIndex === activeStepIndex
+          ? `Current step ${stepIndex}`
+          : `Upcoming step ${stepIndex}`,
+      objective: step.objective,
+      done: completed || state.completedStepIds.includes(step.id),
+    };
+  });
+}
+
+export function snapshotRoadAheadTrackableQuestsForBiomesUIV73(
+  state: SnapshotMissionStateV71 = readSnapshotMissionStateV71()
+) {
+  const { mission, step, completed } = getMissionStepV71(state);
+  return [
+    {
+      questId: mission.id,
+      title: mission.title,
+      area: mission.district,
+      status: completed
+        ? ("completed" as const)
+        : state.accepted
+        ? ("active" as const)
+        : ("available" as const),
+      firstMarkerId: step.target,
+      reward: mission.reward,
+    },
+  ];
+}
+
+export function firstActiveSnapshotRoadAheadQuestTitleForBiomesUIV73(
+  state: SnapshotMissionStateV71 = readSnapshotMissionStateV71()
+) {
+  return state.accepted && !isMissionCompletedV73(state)
+    ? firstSnapshotMissionV71().title
+    : undefined;
+}
+
+function addSnapshotRoadAheadObjectiveToastV73(
+  resources: ReturnType<typeof useClientContext>["resources"],
+  id: string,
+  objective: string
+) {
+  addToast(resources, {
+    kind: "new",
+    id: `${SNAPSHOT_MISSION_ID_V73}:${id}:new`,
+    message: objective,
+  });
+}
+
 const SNAPSHOT_GROVE_NEXT_LESSONS_COPY_V93 =
   "Road Ahead is only the travel-basics chain. Next, talk to Luis at the Crossroads repair cart for building, repairs, and land claims. Then talk to Nia at the Grove Guild Charter Board for guild ranks, banks, permissions, and shared projects.";
 
 function roadAheadStepCopyV93(
   mission: SnapshotMissionDefinitionV71,
   step: SnapshotMissionStepV71,
-  stepIndex: number,
+  stepIndex: number
 ) {
   const totalPlayableSteps = Math.max(1, mission.steps.length - 1);
   const clearStepIndex = Math.max(1, stepIndex);
@@ -470,20 +605,20 @@ function roadAheadStepCopyV93(
       step.trigger === "dialog"
         ? "This step completes from Jackie dialog."
         : step.trigger === "location"
-          ? "This step completes when you physically reach the marked spot."
-          : step.trigger === "destroy"
-            ? "This step completes when you break a valid non-flora block near the route."
-            : step.trigger === "place_voxel"
-              ? "This step completes when you place a real block in the marked practice area."
-              : step.trigger === "wearing"
-                ? "This step completes when both top and bottoms are equipped."
-                : step.trigger === "running_jump"
-                  ? "This step completes on a sprinting jump at the road stretch."
-                  : step.trigger === "photo"
-                    ? "This step completes from the camera/photo-post flow."
-                    : step.trigger === "craft_muck_buster"
-                      ? "Craft or obtain a Muck Buster. The lesson completes when the tool is actually in your inventory."
-                      : "Complete the marked in-world action to advance.",
+        ? "This step completes when you physically reach the marked spot."
+        : step.trigger === "destroy"
+        ? "This step completes when you break a valid non-flora block near the route."
+        : step.trigger === "place_voxel"
+        ? "This step completes when you place a real block in the marked practice area."
+        : step.trigger === "wearing"
+        ? "This step completes when both top and bottoms are equipped."
+        : step.trigger === "running_jump"
+        ? "This step completes on a sprinting jump at the road stretch."
+        : step.trigger === "photo"
+        ? "This step completes from the camera/photo-post flow."
+        : step.trigger === "craft_muck_buster"
+        ? "Craft or obtain a Muck Buster. The lesson completes when the tool is actually in your inventory."
+        : "Complete the marked in-world action to advance.",
   };
 }
 
@@ -499,7 +634,7 @@ function useJackiePositionV71(): Vec3 {
 
 function snapshotTargetPositionV71(
   target: SnapshotMissionTargetKindV73,
-  jackiePosition: ReadonlyVec3,
+  jackiePosition: ReadonlyVec3
 ): Vec3 {
   if (target === "jackie") {
     return [...jackiePosition] as Vec3;
@@ -528,7 +663,10 @@ function compassDirectionV71(dx: number, dz: number) {
   return `${northSouth}-${eastWest}`;
 }
 
-function challengeTriggerProgressV73(step: SnapshotMissionStepV71, complete: boolean) {
+function challengeTriggerProgressV73(
+  step: SnapshotMissionStepV71,
+  complete: boolean
+) {
   return {
     id: step.challengeStepId ?? (0 as BiomesId),
     name: step.title,
@@ -541,7 +679,7 @@ function challengeTriggerProgressV73(step: SnapshotMissionStepV71, complete: boo
 
 function publishStepBeginV73(
   gardenHose: { publish: (event: GardenHoseEvent) => void },
-  step: SnapshotMissionStepV71,
+  step: SnapshotMissionStepV71
 ) {
   if (!step.challengeStepId) {
     return;
@@ -555,7 +693,7 @@ function publishStepBeginV73(
 
 function publishStepCompleteV73(
   gardenHose: { publish: (event: GardenHoseEvent) => void },
-  step: SnapshotMissionStepV71,
+  step: SnapshotMissionStepV71
 ) {
   if (!step.challengeStepId) {
     return;
@@ -573,7 +711,7 @@ export function pinSnapshotMissionTargetV71(
     removeNavigationAid?: (id: number) => void;
   },
   targetPos: ReadonlyVec3,
-  id = SNAPSHOT_MISSION_NAV_AID_ID_V71,
+  id = SNAPSHOT_MISSION_NAV_AID_ID_V71
 ) {
   mapManager.removeNavigationAid?.(id);
   return mapManager.addNavigationAid(
@@ -585,12 +723,13 @@ export function pinSnapshotMissionTargetV71(
         position: [...targetPos],
       },
     },
-    id,
+    id
   );
 }
 
 function acceptSnapshotRoadAheadMissionV73(
   gardenHose: { publish: (event: GardenHoseEvent) => void },
+  resources?: ReturnType<typeof useClientContext>["resources"]
 ) {
   const mission = firstSnapshotMissionV71();
   const firstRoadStepIndex = 1;
@@ -609,24 +748,35 @@ function acceptSnapshotRoadAheadMissionV73(
   recordSnapshotMissionEventV73(
     "accepted",
     mission.title,
-    "Jackie marked the road out of The Grove.",
+    "Jackie marked the road out of The Grove."
   );
   recordSnapshotMissionRewardV73(mission.steps[0].reward);
   if (firstRoadStep) {
     publishStepBeginV73(gardenHose, firstRoadStep);
+    if (resources) {
+      addSnapshotRoadAheadObjectiveToastV73(
+        resources,
+        firstRoadStep.id,
+        firstRoadStep.objective
+      );
+    }
   }
 }
 
 function advanceSnapshotRoadAheadV73(
   gardenHose: { publish: (event: GardenHoseEvent) => void },
   reason: string,
+  resources?: ReturnType<typeof useClientContext>["resources"]
 ) {
   const mission = firstSnapshotMissionV71();
   const state = readSnapshotMissionStateV71();
   if (!state.accepted || isMissionCompletedV73(state)) {
     return;
   }
-  const stepIndex = Math.max(1, Math.min(state.currentStepIndex, mission.steps.length - 1));
+  const stepIndex = Math.max(
+    1,
+    Math.min(state.currentStepIndex, mission.steps.length - 1)
+  );
   const step = mission.steps[stepIndex];
   if (!step || state.completedStepIds.includes(step.id)) {
     return;
@@ -638,10 +788,14 @@ function advanceSnapshotRoadAheadV73(
   recordSnapshotMissionEventV73(
     completedMission ? "completed" : "progress",
     step.title,
-    `${step.completion} (${reason})`,
+    `${step.completion} (${reason})`
   );
   recordSnapshotMissionRewardV73(step.reward);
-  awardHarthmereQuestXp(SNAPSHOT_MISSION_XP_ID_V73, mission.title, completedMission);
+  awardHarthmereQuestXp(
+    SNAPSHOT_MISSION_XP_ID_V73,
+    mission.title,
+    completedMission
+  );
 
   if (completedMission) {
     const active = { ...state.active };
@@ -670,141 +824,195 @@ function advanceSnapshotRoadAheadV73(
   });
   if (nextStep) {
     publishStepBeginV73(gardenHose, nextStep);
+    if (resources) {
+      addSnapshotRoadAheadObjectiveToastV73(
+        resources,
+        nextStep.id,
+        nextStep.objective
+      );
+    }
   }
 }
 
 function shouldEventCompleteStepV73(
   step: SnapshotMissionStepV71,
-  event: GardenHoseEvent,
+  event: GardenHoseEvent
 ) {
   switch (step.trigger) {
     case "dialog":
       return event.kind === "talk_npc" && event.npcId === JACKIE_ID;
     case "destroy":
-      return event.kind === "destroy" && event.terrainId && !isFloraId(event.terrainId);
+      return (
+        event.kind === "destroy" &&
+        event.terrainId &&
+        !isFloraId(event.terrainId)
+      );
     case "place_voxel":
       return event.kind === "place_voxel";
     case "running_jump":
       return event.kind === "jump" && event.running;
     case "photo":
-      return event.kind === "photo_post_attempt" || event.kind === "photo_post" || event.kind === "show_post_capture";
+      return (
+        event.kind === "photo_post_attempt" ||
+        event.kind === "photo_post" ||
+        event.kind === "show_post_capture"
+      );
     default:
       return false;
   }
 }
 
-function hasRequiredClothingV73(
-  wearing: { items: { get(id: BiomesId): unknown } },
-) {
-  return Boolean(wearing.items.get(BikkieIds.top) && wearing.items.get(BikkieIds.bottoms));
+function hasRequiredClothingV73(wearing: {
+  items: { get(id: BiomesId): unknown };
+}) {
+  const bridgeSlots = new Set(readSnapshotRoadAheadEquippedGearSlotsV73());
+  return Boolean(
+    (wearing.items.get(BikkieIds.top) || bridgeSlots.has("chest")) &&
+      (wearing.items.get(BikkieIds.bottoms) || bridgeSlots.has("legs"))
+  );
 }
 
-export const SnapshotMissionRuntimeControllerV71: React.FunctionComponent<{}> = () => {
-  const { gardenHose, mapManager, reactResources, resources, userId } = useClientContext();
-  const localPlayer = reactResources.use("/scene/local_player");
-  const inventory = reactResources.use("/ecs/c/inventory", userId);
-  const wearing = reactResources.use("/ecs/c/wearing", userId) ?? Wearing.create();
-  const selection = reactResources.use("/hotbar/selection");
-  const jackiePosition = useJackiePositionV71();
-  const [state, setState] = useState<SnapshotMissionStateV71>(() => readSnapshotMissionStateV71());
+export const SnapshotMissionRuntimeControllerV71: React.FunctionComponent<{}> =
+  () => {
+    const { gardenHose, mapManager, reactResources, resources, userId } =
+      useClientContext();
+    const localPlayer = reactResources.use("/scene/local_player");
+    const inventory = reactResources.use("/ecs/c/inventory", userId);
+    const wearing =
+      reactResources.use("/ecs/c/wearing", userId) ?? Wearing.create();
+    const selection = reactResources.use("/hotbar/selection");
+    const jackiePosition = useJackiePositionV71();
+    const [state, setState] = useState<SnapshotMissionStateV71>(() =>
+      readSnapshotMissionStateV71()
+    );
 
-  useEffect(() => {
-    const refresh = () => setState(readSnapshotMissionStateV71());
-    window.addEventListener("storage", refresh);
-    window.addEventListener(SNAPSHOT_MISSION_STATE_EVENT_V71, refresh);
-    return () => {
-      window.removeEventListener("storage", refresh);
-      window.removeEventListener(SNAPSHOT_MISSION_STATE_EVENT_V71, refresh);
-    };
-  }, []);
+    useEffect(() => {
+      const refresh = () => setState(readSnapshotMissionStateV71());
+      window.addEventListener("storage", refresh);
+      window.addEventListener(SNAPSHOT_MISSION_STATE_EVENT_V71, refresh);
+      window.addEventListener(
+        SNAPSHOT_ROAD_AHEAD_EQUIPPED_GEAR_EVENT_V73,
+        refresh
+      );
+      return () => {
+        window.removeEventListener("storage", refresh);
+        window.removeEventListener(SNAPSHOT_MISSION_STATE_EVENT_V71, refresh);
+        window.removeEventListener(
+          SNAPSHOT_ROAD_AHEAD_EQUIPPED_GEAR_EVENT_V73,
+          refresh
+        );
+      };
+    }, []);
 
-  useEffect(() => {
-    const handler = (event: GardenHoseEvent) => {
-      const current = readSnapshotMissionStateV71();
-      const { step, completed } = getMissionStepV71(current);
-      if (!current.accepted || completed) {
+    useEffect(() => {
+      const handler = (event: GardenHoseEvent) => {
+        const current = readSnapshotMissionStateV71();
+        const { step, completed } = getMissionStepV71(current);
+        if (!current.accepted || completed) {
+          return;
+        }
+        if (shouldEventCompleteStepV73(step, event)) {
+          advanceSnapshotRoadAheadV73(gardenHose, event.kind, resources);
+        }
+      };
+      gardenHose.on("anyEvent", handler);
+      return () => gardenHose.off("anyEvent", handler);
+    }, [gardenHose]);
+
+    useEffect(() => {
+      const { step, completed } = getMissionStepV71(state);
+      if (!state.accepted || completed || step.trigger !== "location") {
         return;
       }
-      if (shouldEventCompleteStepV73(step, event)) {
-        advanceSnapshotRoadAheadV73(gardenHose, event.kind);
-      }
-    };
-    gardenHose.on("anyEvent", handler);
-    return () => gardenHose.off("anyEvent", handler);
-  }, [gardenHose]);
-
-  useEffect(() => {
-    const { step, completed } = getMissionStepV71(state);
-    if (!state.accepted || completed || step.trigger !== "location") {
-      return;
-    }
-    const playerPos = localPlayer.player.position as Vec3;
-    const targetPos = snapshotTargetPositionV71(step.target, jackiePosition);
-    const distance = Math.hypot(targetPos[0] - playerPos[0], targetPos[2] - playerPos[2]);
-    if (distance <= (step.arrivalRadius ?? 8)) {
-      advanceSnapshotRoadAheadV73(gardenHose, "arrived at marker");
-    }
-  }, [gardenHose, jackiePosition, localPlayer.player.position, state]);
-
-  useEffect(() => {
-    const { step, completed } = getMissionStepV71(state);
-    if (!state.accepted || completed || step.trigger !== "wearing") {
-      return;
-    }
-    if (hasRequiredClothingV73(wearing)) {
-      advanceSnapshotRoadAheadV73(gardenHose, "gear equipped");
-    }
-  }, [gardenHose, state, wearing]);
-
-  useEffect(() => {
-    const { step, completed } = getMissionStepV71(state);
-    if (!state.accepted || completed || step.trigger !== "craft_muck_buster") {
-      return;
-    }
-    const ownedItems = getOwnedItems(resources, userId);
-    const hasMuckBuster =
-      matchingItemRefs(ownedItems, (entry) => Boolean(entry?.item.unmuck)).length > 0;
-    if (hasMuckBuster) {
-      advanceSnapshotRoadAheadV73(gardenHose, "muck buster acquired");
-    }
-  }, [gardenHose, inventory, resources, state, userId]);
-
-  useEffect(() => {
-    const { mission, step, completed } = getMissionStepV71(state);
-    if (!state.accepted || completed) {
-      if (completed) {
-        mapManager.removeNavigationAid?.(SNAPSHOT_MISSION_NAV_AID_ID_V71);
-      }
-      return;
-    }
-    const targetPos = snapshotTargetPositionV71(step.target, jackiePosition);
-    pinSnapshotMissionTargetV71(mapManager, targetPos);
-    writeSnapshotMissionStateV71({
-      ...state,
-      pinned: [...new Set([...state.pinned, mission.id])],
-    });
-  }, [jackiePosition, mapManager, state.accepted, state.currentStepIndex]);
-
-  useEffect(() => {
-    const { step, completed } = getMissionStepV71(state);
-    if (!state.accepted || completed || step.trigger !== "place_voxel") {
-      return;
-    }
-    const selected = selection as any;
-    if (selected?.item?.isBlock) {
-      recordSnapshotMissionEventV73(
-        "progress",
-        step.title,
-        `Block selected: ${selected.item.displayName ?? "selected block"}. Place it on the ground to continue.`,
+      const playerPos = localPlayer.player.position as Vec3;
+      const targetPos = snapshotTargetPositionV71(step.target, jackiePosition);
+      const distance = Math.hypot(
+        targetPos[0] - playerPos[0],
+        targetPos[2] - playerPos[2]
       );
-    }
-  }, [selection, state]);
+      if (distance <= (step.arrivalRadius ?? 8)) {
+        advanceSnapshotRoadAheadV73(gardenHose, "arrived at marker", resources);
+      }
+    }, [
+      gardenHose,
+      jackiePosition,
+      localPlayer.player.position,
+      resources,
+      state,
+    ]);
 
-  return null;
-};
+    useEffect(() => {
+      const { step, completed } = getMissionStepV71(state);
+      if (!state.accepted || completed || step.trigger !== "wearing") {
+        return;
+      }
+      if (hasRequiredClothingV73(wearing)) {
+        advanceSnapshotRoadAheadV73(gardenHose, "gear equipped", resources);
+      }
+    }, [gardenHose, resources, state, wearing]);
+
+    useEffect(() => {
+      const { step, completed } = getMissionStepV71(state);
+      if (
+        !state.accepted ||
+        completed ||
+        step.trigger !== "craft_muck_buster"
+      ) {
+        return;
+      }
+      const ownedItems = getOwnedItems(resources, userId);
+      const hasMuckBuster =
+        matchingItemRefs(ownedItems, (entry) => Boolean(entry?.item.unmuck))
+          .length > 0;
+      if (hasMuckBuster) {
+        advanceSnapshotRoadAheadV73(
+          gardenHose,
+          "muck buster acquired",
+          resources
+        );
+      }
+    }, [gardenHose, inventory, resources, state, userId]);
+
+    useEffect(() => {
+      const { mission, step, completed } = getMissionStepV71(state);
+      if (!state.accepted || completed) {
+        if (completed) {
+          mapManager.removeNavigationAid?.(SNAPSHOT_MISSION_NAV_AID_ID_V71);
+        }
+        return;
+      }
+      const targetPos = snapshotTargetPositionV71(step.target, jackiePosition);
+      pinSnapshotMissionTargetV71(mapManager, targetPos);
+      writeSnapshotMissionStateV71({
+        ...state,
+        pinned: [...new Set([...state.pinned, mission.id])],
+      });
+    }, [jackiePosition, mapManager, state.accepted, state.currentStepIndex]);
+
+    useEffect(() => {
+      const { step, completed } = getMissionStepV71(state);
+      if (!state.accepted || completed || step.trigger !== "place_voxel") {
+        return;
+      }
+      const selected = selection as any;
+      if (selected?.item?.isBlock) {
+        recordSnapshotMissionEventV73(
+          "progress",
+          step.title,
+          `Block selected: ${
+            selected.item.displayName ?? "selected block"
+          }. Place it on the ground to continue.`
+        );
+      }
+    }, [selection, state]);
+
+    return null;
+  };
 
 function useSnapshotMissionStateV71() {
-  const [state, setState] = useState<SnapshotMissionStateV71>(() => readSnapshotMissionStateV71());
+  const [state, setState] = useState<SnapshotMissionStateV71>(() =>
+    readSnapshotMissionStateV71()
+  );
   useEffect(() => {
     const refresh = () => setState(readSnapshotMissionStateV71());
     const interval = window.setInterval(refresh, 500);
@@ -821,7 +1029,7 @@ function useSnapshotMissionStateV71() {
 
 export function useSnapshotMissionDialogV71(
   talkingToNPCId: BiomesId,
-  defaultDialog: string,
+  defaultDialog: string
 ):
   | {
       id: string;
@@ -829,9 +1037,11 @@ export function useSnapshotMissionDialogV71(
       actions: TalkDialogStepAction[];
     }
   | undefined {
-  const { gardenHose, mapManager } = useClientContext();
+  const { gardenHose, mapManager, resources } = useClientContext();
   const jackiePosition = useJackiePositionV71();
-  const [state, setState] = useState<SnapshotMissionStateV71>(() => readSnapshotMissionStateV71());
+  const [state, setState] = useState<SnapshotMissionStateV71>(() =>
+    readSnapshotMissionStateV71()
+  );
 
   useEffect(() => {
     const refresh = () => setState(readSnapshotMissionStateV71());
@@ -871,12 +1081,12 @@ export function useSnapshotMissionDialogV71(
             type: "primary",
             tooltip: "Starts Road Ahead.",
             onPerformed: () => {
-              acceptSnapshotRoadAheadMissionV73(gardenHose);
+              acceptSnapshotRoadAheadMissionV73(gardenHose, resources);
               const nextStep = mission.steps[1];
               if (nextStep) {
                 pinSnapshotMissionTargetV71(
                   mapManager,
-                  snapshotTargetPositionV71(nextStep.target, jackiePosition),
+                  snapshotTargetPositionV71(nextStep.target, jackiePosition)
                 );
               }
             },
@@ -888,7 +1098,10 @@ export function useSnapshotMissionDialogV71(
               const nextStep = mission.steps[1];
               pinSnapshotMissionTargetV71(
                 mapManager,
-                snapshotTargetPositionV71(nextStep?.target ?? "road_marker", jackiePosition),
+                snapshotTargetPositionV71(
+                  nextStep?.target ?? "road_marker",
+                  jackiePosition
+                )
               );
             },
           },
@@ -919,7 +1132,9 @@ export function useSnapshotMissionDialogV71(
             name: "Mark Nia's guild lesson",
             type: "normal",
             onPerformed: () => {
-              const marker = snapshotGroveLandmarkByIdV75("npc_guild_clerk_nia");
+              const marker = snapshotGroveLandmarkByIdV75(
+                "npc_guild_clerk_nia"
+              );
               if (marker) {
                 pinSnapshotMissionTargetV71(mapManager, marker.position);
               }
@@ -944,17 +1159,26 @@ export function useSnapshotMissionDialogV71(
       },
     ];
 
-
     return {
       id: `${SNAPSHOT_MISSION_BRIDGE_VERSION_V71}-${mission.id}-${step.id}-${stepIndex}`,
       dialogText:
-        `<text>${step.jackieLine ?? "The next stop is marked on your map."}</text>` +
+        `<text>${
+          step.jackieLine ?? "The next stop is marked on your map."
+        }</text>` +
         (currentStepIsReturn
           ? `<text>You made it back. Talk with me here, and I will sign off before you continue with Luis and Nia.</text>`
           : `<text>I marked ${step.targetLabel}. Go there and do the road practice for real; the tracker will change when it sees the work done.</text>`),
       actions,
     };
-  }, [defaultDialog, gardenHose, jackiePosition, mapManager, state, talkingToNPCId]);
+  }, [
+    defaultDialog,
+    gardenHose,
+    jackiePosition,
+    mapManager,
+    resources,
+    state,
+    talkingToNPCId,
+  ]);
 }
 
 export const SnapshotMissionMapHUDV71: React.FunctionComponent<{}> = () => {
@@ -972,43 +1196,41 @@ export const SnapshotMissionMapHUDV71: React.FunctionComponent<{}> = () => {
   const status = completed
     ? "Completed"
     : !state.accepted
-      ? "Available"
-      : `Step ${stepIndex}/${mission.steps.length - 1}`;
+    ? "Available"
+    : `Step ${stepIndex}/${mission.steps.length - 1}`;
 
   return (
-    <div className="rounded-xl border border-emerald-200/20 bg-emerald-950/35 p-2 text-white shadow-lg">
+    <div className="rounded-xl border-emerald-200/20 bg-emerald-950/35 border p-2 text-white shadow-lg">
       <div className="flex items-start justify-between gap-2">
         <div>
-          <div className="text-sm font-bold uppercase tracking-wide text-emerald-100">
+          <div className="text-emerald-100 text-sm font-bold uppercase tracking-wide">
             Road Ahead
           </div>
-          <div className="text-xs text-white/70">
-            The Grove · {status}
-          </div>
+          <div className="text-xs text-white/70">The Grove · {status}</div>
         </div>
         {state.accepted && !completed && (
-          <div className="rounded bg-emerald-300/20 px-1.5 py-0.5 text-xs font-semibold text-emerald-100">
+          <div className="rounded bg-emerald-300/20 px-1.5 py-0.5 text-emerald-100 text-xs font-semibold">
             {distance}m {direction}
           </div>
         )}
       </div>
-      <div className="mt-1 text-xs leading-snug text-white/85">
-        <span className="font-semibold text-emerald-100">
+      <div className="text-white/85 mt-1 text-xs leading-snug">
+        <span className="text-emerald-100 font-semibold">
           {completed ? "Done:" : !state.accepted ? "Begin:" : `${step.title}:`}
         </span>{" "}
         {completed
           ? "Road Ahead is complete. Next: Luis teaches build/repair/land, then Nia teaches guilds."
           : !state.accepted
-            ? "Talk to Jackie in The Grove."
-            : step.objective}
+          ? "Talk to Jackie in The Grove."
+          : step.objective}
       </div>
       {state.accepted && !completed && (
-        <div className="mt-1 text-[11px] leading-snug text-white/65">
+        <div className="text-white/65 mt-1 text-[11px] leading-snug">
           {step.mapHint}
         </div>
       )}
       <button
-        className="mt-2 rounded bg-emerald-300/20 px-2 py-1 text-[11px] font-semibold text-emerald-100 hover:bg-emerald-300/30"
+        className="rounded bg-emerald-300/20 text-emerald-100 hover:bg-emerald-300/30 mt-2 px-2 py-1 text-[11px] font-semibold"
         onClick={() => pinSnapshotMissionTargetV71(mapManager, targetPos)}
       >
         Mark objective
@@ -1017,59 +1239,68 @@ export const SnapshotMissionMapHUDV71: React.FunctionComponent<{}> = () => {
   );
 };
 
-export const SnapshotMissionJournalPanelV71: React.FunctionComponent<{}> = () => {
-  const state = useSnapshotMissionStateV71();
-  const { mission, step, stepIndex, completed } = getMissionStepV71(state);
-  const events = readSnapshotMissionEventsV73();
-  const status = completed
-    ? "Completed"
-    : !state.accepted
+export const SnapshotMissionJournalPanelV71: React.FunctionComponent<{}> =
+  () => {
+    const state = useSnapshotMissionStateV71();
+    const { mission, step, stepIndex, completed } = getMissionStepV71(state);
+    const events = readSnapshotMissionEventsV73();
+    const status = completed
+      ? "Completed"
+      : !state.accepted
       ? "Available"
       : `In Progress · ${stepIndex}/${mission.steps.length - 1}`;
 
-  return (
-    <div className="rounded border border-emerald-200/20 bg-emerald-950/30 p-2">
-      <div className="flex items-start justify-between gap-2">
-        <div>
-          <div className="text-sm font-semibold text-white">{mission.title}</div>
-          <div className="text-[10px] uppercase tracking-wide text-emerald-100/80">
-            Road Lesson · {mission.district}
+    return (
+      <div className="rounded border-emerald-200/20 bg-emerald-950/30 border p-2">
+        <div className="flex items-start justify-between gap-2">
+          <div>
+            <div className="text-sm font-semibold text-white">
+              {mission.title}
+            </div>
+            <div className="text-emerald-100/80 text-[10px] uppercase tracking-wide">
+              Road Lesson · {mission.district}
+            </div>
           </div>
+          <div className="text-emerald-100 text-xs font-semibold">{status}</div>
         </div>
-        <div className="text-xs font-semibold text-emerald-100">{status}</div>
+        <div className="text-white/85 mt-1 text-xs leading-snug">
+          {completed
+            ? SNAPSHOT_GROVE_NEXT_LESSONS_COPY_V93
+            : state.accepted
+            ? step.objective
+            : mission.summary}
+        </div>
+        {state.accepted && !completed && (
+          <>
+            <div className="mt-1 text-[11px] leading-snug text-white/60">
+              <span className="font-semibold text-white/75">Target:</span>{" "}
+              {step.targetLabel}
+            </div>
+            <div className="mt-1 text-[11px] leading-snug text-white/60">
+              <span className="font-semibold text-white/75">
+                How it advances:
+              </span>{" "}
+              {roadAheadStepCopyV93(mission, step, stepIndex).howItCompletes}
+            </div>
+            <div className="mt-1 text-[11px] leading-snug text-white/60">
+              <span className="font-semibold text-white/75">Reward:</span>{" "}
+              {step.reward}
+            </div>
+          </>
+        )}
+        {!!state.rewards.length && (
+          <div className="rounded p-1.5 text-white/65 mt-2 bg-black/20 text-[11px] leading-snug">
+            <div className="text-emerald-100 font-semibold">Earned</div>
+            {state.rewards.slice(-3).map((reward) => (
+              <div key={reward}>• {reward}</div>
+            ))}
+          </div>
+        )}
+        {!!events.length && (
+          <div className="mt-2 text-[10px] leading-snug text-white/50">
+            Latest: {events[0].detail}
+          </div>
+        )}
       </div>
-      <div className="mt-1 text-xs leading-snug text-white/85">
-        {completed ? SNAPSHOT_GROVE_NEXT_LESSONS_COPY_V93 : state.accepted ? step.objective : mission.summary}
-      </div>
-      {state.accepted && !completed && (
-        <>
-          <div className="mt-1 text-[11px] leading-snug text-white/60">
-            <span className="font-semibold text-white/75">Target:</span>{" "}
-            {step.targetLabel}
-          </div>
-          <div className="mt-1 text-[11px] leading-snug text-white/60">
-            <span className="font-semibold text-white/75">How it advances:</span>{" "}
-            {roadAheadStepCopyV93(mission, step, stepIndex).howItCompletes}
-          </div>
-          <div className="mt-1 text-[11px] leading-snug text-white/60">
-            <span className="font-semibold text-white/75">Reward:</span>{" "}
-            {step.reward}
-          </div>
-        </>
-      )}
-      {!!state.rewards.length && (
-        <div className="mt-2 rounded bg-black/20 p-1.5 text-[11px] leading-snug text-white/65">
-          <div className="font-semibold text-emerald-100">Earned</div>
-          {state.rewards.slice(-3).map((reward) => (
-            <div key={reward}>• {reward}</div>
-          ))}
-        </div>
-      )}
-      {!!events.length && (
-        <div className="mt-2 text-[10px] leading-snug text-white/50">
-          Latest: {events[0].detail}
-        </div>
-      )}
-    </div>
-  );
-};
+    );
+  };

@@ -31,6 +31,7 @@ import {
   type HarthmereItemDefinitionV1,
 } from "@/shared/harthmere/mmo_inventory_authority_v1";
 import { ensureHarthmereProductionCraftingCatalogueV1 } from "@/shared/harthmere/mmo_crafting_catalogue_v1";
+import { fetchHarthmereLiveWithTimeoutV1 } from "@/client/components/harthmere_live_fetch";
 
 export interface HarthmereHomeConsoleClientSnapshotV1 {
   actorId: string;
@@ -556,10 +557,14 @@ export function nearestHarthmereHomeConsoleWorldContextV1(
 export async function fetchHarthmereHomeConsoleBuildingStateV1(
   fetchImpl: typeof fetch = fetch
 ) {
-  const response = await fetchImpl("/api/harthmere/live_mode_building_state", {
-    method: "GET",
-    credentials: "same-origin",
-  });
+  const response = await fetchHarthmereLiveWithTimeoutV1(
+    fetchImpl,
+    "/api/harthmere/live_mode_building_state",
+    {
+      method: "GET",
+      credentials: "same-origin",
+    }
+  );
   if (!response.ok) return undefined;
   const body = await response.json();
   return body?.buildingState
@@ -640,21 +645,25 @@ export async function submitHarthmereHomeDecorationMutationV1(
   const requestId =
     options.requestId ??
     `home_console_${Date.now()}_${Math.random().toString(36).slice(2)}`;
-  const response = await fetchImpl("/api/harthmere/live_mode", {
-    method: "POST",
-    credentials: "same-origin",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({
-      requestId,
-      idempotencyKey: requestId,
-      actionKind: "request_home_decoration",
-      subsystem: "home_decoration",
-      actorEntityVersion: options.actorEntityVersion ?? 1,
-      zoneId: options.zoneId ?? "the_grove",
-      payload,
-      clientClaims: {},
-    }),
-  });
+  const response = await fetchHarthmereLiveWithTimeoutV1(
+    fetchImpl,
+    "/api/harthmere/live_mode",
+    {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        requestId,
+        idempotencyKey: requestId,
+        actionKind: "request_home_decoration",
+        subsystem: "home_decoration",
+        actorEntityVersion: options.actorEntityVersion ?? 1,
+        zoneId: options.zoneId ?? "the_grove",
+        payload,
+        clientClaims: {},
+      }),
+    }
+  );
   if (!response.ok) {
     throw new Error("The home console is unavailable right now.");
   }

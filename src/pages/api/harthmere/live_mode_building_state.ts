@@ -9,6 +9,7 @@ import {
   parseHarthmereLiveModeSharedWorldStateV1,
 } from "@/shared/harthmere/live_mode_backend_v1";
 import { z } from "zod";
+import { readHarthmerePlayerAndSharedStateStringsV1 } from "./live_mode_state_read_helpers";
 
 const zJsonRecord = z.record(z.unknown());
 
@@ -62,10 +63,12 @@ export default biomesApiHandler(
     const actorId = buildingReadActorIdV1({ auth, unsafeRequest });
     const redis = await liveModeBuildingStateRedisV1();
     const nowMs = Date.now();
-    const [rawState, rawSharedState] = await Promise.all([
-      redis.primary.get(harthmereLiveModePlayerStateKeyV1(actorId)),
-      redis.primary.get(harthmereLiveModeSharedWorldStateKeyV1()),
-    ]);
+    const { rawState, rawSharedState } =
+      await readHarthmerePlayerAndSharedStateStringsV1(
+        redis.primary,
+        harthmereLiveModePlayerStateKeyV1(actorId),
+        harthmereLiveModeSharedWorldStateKeyV1()
+      );
     const state = parseHarthmereLiveModeBackendStateV1(
       rawState,
       actorId,

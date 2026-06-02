@@ -64,7 +64,7 @@ export const BiomesUIOpenPrompt: React.FunctionComponent<{
   const replaceLegacy = useBiomesUIReplaceLegacyFlag();
   const nonGameplayScreenVisible = useBiomesUINonGameplayScreenVisibleV137();
 
-  if (!replaceLegacy || isOpen || nonGameplayScreenVisible) {
+  if (!replaceLegacy || nonGameplayScreenVisible) {
     return null;
   }
 
@@ -73,6 +73,7 @@ export const BiomesUIOpenPrompt: React.FunctionComponent<{
       <div
         className="biomes-ui-open-prompt"
         data-ui-id={UI_IDS.HUD_PROMPT_OPEN_MENU}
+        data-biomes-ui-open={isOpen ? "true" : "false"}
         aria-label={`Press ${BIOMES_UI_OPEN_MENU_SHORTCUT} to open menu`}
       >
         <div className="biomes-ui-open-prompt__key">

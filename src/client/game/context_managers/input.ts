@@ -318,7 +318,7 @@ export class Input<ActionsAndMotions extends string> {
       if (isTextInputTarget(e.target)) {
         return;
       }
-      if (!downKeys.has(e.code)) {
+      if (!downKeys.has(e.code) || !e.repeat) {
         downKeys.add(e.code);
         const trigger = `/keyboard/${e.code}`;
         const mods = encode(e.ctrlKey, e.altKey, e.shiftKey);

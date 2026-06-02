@@ -7281,19 +7281,186 @@ function harthmereBusinessOutpostBuildingStyleKitV1(
   };
 }
 
+// Named interior placement slots. The original six wall slots are retained for
+// backward compatibility; the remaining slots form a denser, collision-free grid
+// (two side-wall columns, two back columns, and two front-aisle columns) so each
+// business can stage a richer, hand-authored interior while keeping the central
+// door -> queue -> counter -> exit corridor and the four customer path nodes
+// completely clear of physical decor.
+type HarthmereBusinessDecorFixtureSlotV1 =
+  | "left"
+  | "right"
+  | "backLeft"
+  | "backRight"
+  | "frontLeft"
+  | "frontRight"
+  | "leftFront"
+  | "rightFront"
+  | "leftMid"
+  | "rightMid"
+  | "leftBack"
+  | "rightBack"
+  | "centerBack"
+  | "innerFrontLeft"
+  | "innerFrontRight"
+  | "innerBackLeft"
+  | "innerBackRight";
+
 type HarthmereBusinessDecorFixtureSeedV1 = {
   label: string;
   role: HarthmereBusinessOutpostInteriorFixtureRoleV1;
-  side:
-    | "left"
-    | "right"
-    | "backLeft"
-    | "backRight"
-    | "frontLeft"
-    | "frontRight";
+  side: HarthmereBusinessDecorFixtureSlotV1;
   size: readonly [number, number, number];
   colorHint: HarthmereBusinessOutpostInteriorFixtureV1["colorHint"];
 };
+
+// Hand-authored "character" props per business type. These dress each interior so
+// it reads as the real trade (a forge has an anvil and ember light, a clinic has a
+// treatment cot and medicine cabinet, an inn has a key wall and guest lounge) on top
+// of the four functional mini-game surfaces below. Tuple: [label, role, size, colorHint].
+// Slots are assigned automatically from a collision-free pool, so authors only choose
+// the props and their footprint, never raw coordinates.
+type HarthmereBusinessThematicFixtureV1 = readonly [
+  label: string,
+  role: HarthmereBusinessOutpostInteriorFixtureRoleV1,
+  size: readonly [number, number, number],
+  colorHint: HarthmereBusinessOutpostInteriorFixtureV1["colorHint"]
+];
+
+const HARTHMERE_BUSINESS_THEMATIC_INTERIOR_FIXTURES_V1: Readonly<
+  Record<HarthmereEconomyBusinessTypeIdV1, readonly HarthmereBusinessThematicFixtureV1[]>
+> = {
+  exotic_matter_refinery: [
+    ["Coolant tank bank", "stock_storage", [1.2, 2.0, 1.2], "stock"],
+    ["Hazard containment cage", "business_decor", [1.4, 1.8, 1.4], "safety"],
+    ["Spent filter crate stack", "stock_storage", [1.4, 1.2, 1.4], "stock"],
+    ["Hazard warning lantern", "business_decor", [0.6, 1.5, 0.6], "safety"],
+  ],
+  biome_maintenance_repair: [
+    ["Anchor calibration rig", "workstation", [1.4, 1.6, 1.2], "accent"],
+    ["Spare parts wall rack", "stock_storage", [1.3, 1.95, 0.6], "stock"],
+    ["Tool pegboard cabinet", "business_decor", [1.6, 1.7, 0.5], "trim"],
+    ["Repair waiting bench", "seating", [2.2, 0.9, 1.0], "wood"],
+  ],
+  biome_design_studio: [
+    ["Material swatch wall", "business_decor", [1.2, 1.8, 0.5], "accent"],
+    ["Sample plant stand", "business_decor", [0.9, 1.3, 0.9], "accent"],
+    ["Client lounge bench", "seating", [2.2, 0.9, 1.0], "wood"],
+    ["Showroom display plinth", "workstation", [1.0, 1.1, 1.0], "primary"],
+  ],
+  security_defense_contractor: [
+    ["Weapon wall rack", "stock_storage", [1.0, 1.95, 0.6], "trim"],
+    ["Armor display stand", "business_decor", [1.0, 1.8, 1.0], "primary"],
+    ["Patrol briefing bench", "seating", [2.2, 0.9, 1.0], "wood"],
+    ["Signal flare lantern", "business_decor", [0.6, 1.5, 0.6], "safety"],
+  ],
+  portal_transit_company: [
+    ["Portal arch frame", "business_decor", [1.6, 2.2, 0.6], "accent"],
+    ["Fuel reserve canister rack", "stock_storage", [1.3, 1.9, 1.0], "stock"],
+    ["Passenger waiting bench", "seating", [2.4, 0.9, 1.0], "wood"],
+    ["Arcane guidance lantern", "business_decor", [0.6, 1.6, 0.6], "safety"],
+  ],
+  biome_farming_rare_foods: [
+    ["Cold larder shelf", "stock_storage", [1.3, 1.9, 2.0], "stock"],
+    ["Harvest crate stack", "stock_storage", [1.4, 1.2, 1.4], "stock"],
+    ["Seedling planter bed", "business_decor", [1.6, 0.6, 1.0], "accent"],
+    ["Herb drying rack", "business_decor", [1.2, 1.7, 0.5], "wood"],
+  ],
+  weapons_tools: [
+    ["Forge anvil block", "workstation", [1.0, 1.0, 1.0], "trim"],
+    ["Quench bucket bench", "seating", [1.6, 0.9, 1.0], "stock"],
+    ["Finished blade wall rack", "stock_storage", [1.0, 1.95, 0.5], "trim"],
+    ["Forge hearth ember light", "business_decor", [1.0, 1.4, 1.0], "safety"],
+  ],
+  magic_goods: [
+    ["Charm display shelf", "stock_storage", [1.3, 1.9, 1.0], "accent"],
+    ["Potion brewing cauldron", "workstation", [1.0, 1.2, 1.0], "primary"],
+    ["Ward circle plinth", "business_decor", [1.2, 0.4, 1.2], "accent"],
+    ["Rune lantern", "business_decor", [0.6, 1.5, 0.6], "safety"],
+    ["Arcane reading bench", "seating", [1.8, 0.9, 1.0], "wood"],
+  ],
+  exploration_guide: [
+    ["Route wall map", "business_decor", [1.2, 1.6, 0.4], "accent"],
+    ["Trailhead supply crate", "stock_storage", [1.4, 1.2, 1.4], "stock"],
+    ["Expedition planning bench", "seating", [2.2, 0.9, 1.0], "wood"],
+    ["Lantern and gear rack", "business_decor", [1.2, 1.7, 0.5], "trim"],
+  ],
+  custom_home_property_development: [
+    ["Architect drafting easel", "workstation", [1.8, 1.0, 1.1], "wood"],
+    ["Model home display", "business_decor", [1.2, 0.9, 1.2], "primary"],
+    ["Deed and permit cabinet", "stock_storage", [1.3, 1.8, 0.6], "trim"],
+    ["Client signing bench", "seating", [2.2, 0.9, 1.0], "wood"],
+  ],
+  general_trader: [
+    ["Dry goods shelf", "stock_storage", [1.3, 1.95, 1.0], "stock"],
+    ["Seed and tool barrel", "business_decor", [1.0, 1.1, 1.0], "wood"],
+    ["Ready order crate stack", "stock_storage", [1.4, 1.2, 1.4], "stock"],
+    ["Price chalk board", "business_decor", [1.2, 1.5, 0.3], "accent"],
+  ],
+  hunter_wild_meat: [
+    ["Walk-in cold larder", "stock_storage", [1.3, 1.9, 2.0], "stock"],
+    ["Hanging cuts rack", "business_decor", [1.2, 1.9, 0.8], "trim"],
+    ["Hide tanning bench", "seating", [1.8, 0.9, 1.0], "wood"],
+    ["Ice crate bin", "business_decor", [1.0, 1.0, 1.0], "stock"],
+  ],
+  medical_doctor: [
+    ["Recovery cot bed", "seating", [2.0, 0.7, 1.0], "trim"],
+    ["Apothecary cabinet", "stock_storage", [1.2, 1.9, 0.6], "accent"],
+    ["Clinic waiting bench", "seating", [2.2, 0.9, 1.0], "wood"],
+    ["Sanitation lantern", "business_decor", [0.6, 1.4, 0.6], "safety"],
+  ],
+  teleport_owner: [
+    ["Return pad plinth", "business_decor", [1.6, 0.4, 1.6], "accent"],
+    ["Access token rack", "stock_storage", [1.2, 1.8, 0.5], "trim"],
+    ["Access waiting bench", "seating", [2.2, 0.9, 1.0], "wood"],
+    ["Link stability lantern", "business_decor", [0.6, 1.6, 0.6], "safety"],
+  ],
+  waste_sanitation_cleanup: [
+    ["Sorting bin row", "stock_storage", [1.8, 1.2, 1.0], "stock"],
+    ["Decon spray station", "workstation", [1.2, 1.6, 1.0], "accent"],
+    ["Recycling crate stack", "stock_storage", [1.4, 1.2, 1.4], "stock"],
+    ["Hazard warning lantern", "business_decor", [0.6, 1.4, 0.6], "safety"],
+  ],
+  repair_maintenance_person: [
+    ["Tool pegboard wall", "business_decor", [1.2, 1.7, 0.4], "trim"],
+    ["Spare parts shelf", "stock_storage", [1.3, 1.95, 1.0], "stock"],
+    ["Workbench vise", "workstation", [1.6, 1.0, 1.0], "wood"],
+    ["Repair intake bench", "seating", [2.0, 0.9, 1.0], "wood"],
+  ],
+  food_service_restaurant: [
+    ["Cooking hearth", "workstation", [1.4, 1.4, 1.2], "safety"],
+    ["Ingredient pantry", "stock_storage", [1.3, 1.9, 1.6], "stock"],
+    ["Dining bench pair", "seating", [2.4, 0.9, 1.0], "wood"],
+    ["Steam prep table", "service_table", [1.8, 0.95, 1.0], "wood"],
+    ["Spice shelf", "business_decor", [1.0, 1.2, 0.5], "accent"],
+  ],
+  courier: [
+    ["Parcel weigh scale", "service_table", [1.4, 0.9, 1.0], "trim"],
+    ["Parcel sorting shelf", "stock_storage", [1.3, 1.95, 1.0], "stock"],
+    ["Route hazard map", "business_decor", [1.2, 1.5, 0.4], "accent"],
+    ["Dispatch waiting bench", "seating", [2.0, 0.9, 1.0], "wood"],
+  ],
+  hospitality_inn_hotel_shelter: [
+    ["Lobby notice board", "business_decor", [1.2, 1.7, 0.4], "accent"],
+    ["Guest lounge bench", "seating", [2.4, 0.9, 1.0], "wood"],
+    ["Linen chest", "stock_storage", [1.4, 1.0, 1.0], "stock"],
+    ["Welcome sideboard", "service_table", [1.8, 0.95, 1.0], "wood"],
+    ["Hearth lantern", "business_decor", [0.8, 1.4, 0.8], "safety"],
+  ],
+};
+
+// Slots the four functional mini-game surfaces always occupy, plus the ordered pool
+// the thematic props draw from. Both lists are disjoint and every slot is spaced so
+// no two fixtures overlap and none cross the customer path nodes.
+const HARTHMERE_BUSINESS_FUNCTIONAL_FIXTURE_SLOTS_V1 = {
+  primaryBoard: "innerBackLeft",
+  serviceSurface: "rightMid",
+  stockSurface: "rightBack",
+  warningSurface: "innerFrontRight",
+} as const;
+
+const HARTHMERE_BUSINESS_THEMATIC_FIXTURE_SLOT_POOL_V1: readonly HarthmereBusinessDecorFixtureSlotV1[] =
+  ["leftMid", "leftBack", "leftFront", "rightFront", "centerBack", "innerFrontLeft"];
 
 function harthmereBusinessDecorFixtureSeedsV1(
   typeId: HarthmereEconomyBusinessTypeIdV1
@@ -7306,35 +7473,53 @@ function harthmereBusinessDecorFixtureSeedsV1(
     colorHint: HarthmereBusinessOutpostInteriorFixtureV1["colorHint"]
   ) => ({ label, role, side, size, colorHint });
   // Every business type has a mini-game spec; the spec's interiorFixtureLabels drive
-  // fixture labels so each business gets its correct named surfaces (e.g. "Buff service
-  // line" for the restaurant, "Severity triage board" for the clinic).
+  // the four functional surface labels so each business keeps its correct named
+  // surfaces (e.g. "Buff service line" for the restaurant, "Severity triage board"
+  // for the clinic) wired to the mini-game.
   const mechanicSpec = getHarthmereBusinessMiniGameSpecV1(typeId);
   const [primaryBoard, serviceSurface, stockSurface, warningSurface] =
     mechanicSpec.interiorFixtureLabels;
-  return [
+  const seeds: HarthmereBusinessDecorFixtureSeedV1[] = [
     fixture(
       primaryBoard,
       "workstation",
-      "backLeft",
-      [2.8, 1.15, 1.25],
+      HARTHMERE_BUSINESS_FUNCTIONAL_FIXTURE_SLOTS_V1.primaryBoard,
+      [1.8, 1.15, 0.9],
       "accent"
     ),
     fixture(
       serviceSurface,
       "service_table",
-      "backRight",
-      [2.4, 0.95, 1.15],
+      HARTHMERE_BUSINESS_FUNCTIONAL_FIXTURE_SLOTS_V1.serviceSurface,
+      [1.3, 0.95, 1.6],
       "wood"
     ),
-    fixture(stockSurface, "stock_storage", "right", [1.3, 1.95, 2.4], "stock"),
+    fixture(
+      stockSurface,
+      "stock_storage",
+      HARTHMERE_BUSINESS_FUNCTIONAL_FIXTURE_SLOTS_V1.stockSurface,
+      [1.3, 1.95, 1.6],
+      "stock"
+    ),
     fixture(
       warningSurface,
       "business_decor",
-      "frontLeft",
-      [1.5, 1.2, 1.2],
+      HARTHMERE_BUSINESS_FUNCTIONAL_FIXTURE_SLOTS_V1.warningSurface,
+      [1.3, 1.2, 1.0],
       "safety"
     ),
   ];
+  // Layer the hand-authored character props on top, each pinned to its own slot from
+  // the spaced pool so the interior reads as the real trade while staying passable.
+  const thematic = HARTHMERE_BUSINESS_THEMATIC_INTERIOR_FIXTURES_V1[typeId] ?? [];
+  thematic.forEach(([label, role, size, colorHint], index) => {
+    const slot =
+      HARTHMERE_BUSINESS_THEMATIC_FIXTURE_SLOT_POOL_V1[
+        index % HARTHMERE_BUSINESS_THEMATIC_FIXTURE_SLOT_POOL_V1.length
+      ];
+    seeds.push(fixture(label, role, slot, size, colorHint));
+  });
+  return seeds;
 }
 
 function harthmereBusinessInteriorFixturePositionV1(
@@ -7346,27 +7531,58 @@ function harthmereBusinessInteriorFixturePositionV1(
     serviceCounter: { x: number; y: number; z: number };
   }
 ) {
+  const y = input.origin.y + 1;
+  const doorX = input.origin.x + Math.floor(input.width / 2);
   const leftX = input.origin.x + 3;
   const rightX = input.origin.x + input.width - 4;
   const frontZ = input.origin.z + 5;
+  const midZ = input.origin.z + Math.floor(input.depth / 2);
   const sideZ = Math.max(input.origin.z + 6, input.serviceCounter.z - 3);
   const backZ = Math.min(
     input.origin.z + input.depth - 4,
     input.serviceCounter.z + 3
   );
+  // Inner columns sit four voxels either side of the centered door so back/front
+  // props flank the queue and counter without ever covering the path nodes.
+  const innerLeftX = Math.max(leftX + 1, doorX - 4);
+  const innerRightX = Math.min(rightX - 1, doorX + 4);
   switch (side) {
+    // Legacy six-slot wall map (kept for compatibility).
     case "left":
-      return { x: leftX, y: input.origin.y + 1, z: sideZ };
+      return { x: leftX, y, z: sideZ };
     case "right":
-      return { x: rightX, y: input.origin.y + 1, z: sideZ };
+      return { x: rightX, y, z: sideZ };
     case "backLeft":
-      return { x: leftX + 1, y: input.origin.y + 1, z: backZ };
+      return { x: leftX + 1, y, z: backZ };
     case "backRight":
-      return { x: rightX - 1, y: input.origin.y + 1, z: backZ };
+      return { x: rightX - 1, y, z: backZ };
     case "frontLeft":
-      return { x: leftX + 1, y: input.origin.y + 1, z: frontZ };
+      return { x: leftX + 1, y, z: frontZ };
     case "frontRight":
-      return { x: rightX - 1, y: input.origin.y + 1, z: frontZ };
+      return { x: rightX - 1, y, z: frontZ };
+    // Dense, collision-free grid for bespoke interiors.
+    case "leftFront":
+      return { x: leftX, y, z: frontZ };
+    case "rightFront":
+      return { x: rightX, y, z: frontZ };
+    case "leftMid":
+      return { x: leftX, y, z: midZ };
+    case "rightMid":
+      return { x: rightX, y, z: midZ };
+    case "leftBack":
+      return { x: leftX, y, z: backZ };
+    case "rightBack":
+      return { x: rightX, y, z: backZ };
+    case "centerBack":
+      return { x: doorX, y, z: backZ };
+    case "innerFrontLeft":
+      return { x: innerLeftX, y, z: frontZ };
+    case "innerFrontRight":
+      return { x: innerRightX, y, z: frontZ };
+    case "innerBackLeft":
+      return { x: innerLeftX, y, z: backZ };
+    case "innerBackRight":
+      return { x: innerRightX, y, z: backZ };
   }
 }
 

@@ -27,6 +27,7 @@ import {
   type BuildingSystemStageV1,
 } from "@/shared/harthmere/building_system_v1";
 import * as React from "react";
+import { defaultHarthmereLiveFetchV1 } from "@/client/components/harthmere_live_fetch";
 import { Highlightable } from "../highlight/HighlightOverlay";
 import { RovingGrid } from "../nav/RovingGrid";
 import { biomesPlayerList, biomesPlayerSentence, biomesPlayerTitle } from "../playerFacingText";
@@ -318,10 +319,25 @@ async function submitBuildingActionThroughLiveModeRoute(
   if (typeof fetch !== "function") {
     return { ok: false, errors: ["fetch_unavailable"] };
   }
+  if (action === "read_state") {
+    const response = await defaultHarthmereLiveFetchV1(
+      "/api/harthmere/live_mode_building_state",
+      {
+        method: "GET",
+        credentials: "same-origin",
+      }
+    );
+    const body = await response.json();
+    return {
+      ok: response.ok && body?.ok !== false,
+      buildingState: body?.buildingState,
+      errors: response.ok ? [] : [`building_state_http_${response.status}`],
+    } as BuildingActionResponse;
+  }
   const requestId = `biomes_ui_building_${action}_${Date.now()}_${Math.random()
     .toString(36)
     .slice(2)}`;
-  const response = await fetch("/api/harthmere/live_mode", {
+  const response = await defaultHarthmereLiveFetchV1("/api/harthmere/live_mode", {
     method: "POST",
     credentials: "same-origin",
     headers: { "Content-Type": "application/json" },

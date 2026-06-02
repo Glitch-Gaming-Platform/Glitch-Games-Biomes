@@ -34,6 +34,20 @@ export const zMediaImageResponse = z.object({
 export type MediaImageResponse = z.infer<typeof zMediaImageResponse>;
 
 const ALLOWED_IMAGE_EXTENSIONS = ["png", "jpg", "jpeg"];
+const MEDIA_IMAGE_FETCH_TIMEOUT_MS = 10_000;
+
+async function fetchMediaImageWithTimeout(url: string) {
+  const controller = new AbortController();
+  const timeout = setTimeout(
+    () => controller.abort(),
+    MEDIA_IMAGE_FETCH_TIMEOUT_MS
+  );
+  try {
+    return await fetch(url, { signal: controller.signal });
+  } finally {
+    clearTimeout(timeout);
+  }
+}
 
 async function mediaImageRequestToUrl(
   context: WebServerContextSubset<"twitchBot">,
@@ -81,7 +95,7 @@ export default biomesApiHandler(
     }
 
     const url = await mediaImageRequestToUrl(context, request);
-    const response = await fetch(url);
+    const response = await fetchMediaImageWithTimeout(url);
     ok(response.ok, `Error getting image: ${url}`);
 
     const contentType = response.headers.get("content-type");

@@ -150,7 +150,7 @@ export class RedisWorldSubscription {
         yield this.flush();
       }
       cursor = nextCursor;
-      if (lastLogMessage.elapsed > 1000) {
+      if (lastLogMessage.elapsed > 10000) {
         log.info(`Loaded ${totalProcessed} entities from Redis`);
         lastLogMessage.reset();
       }

@@ -79,7 +79,42 @@ describe("live_mode_jobs_board_state API route integration", () => {
     );
   });
 
-  it("auto-seeds local/default jobs and persists them when Redis has no actor state", async () => {
+  it("uses one Redis MGET for actor and shared jobs-board state when available", async () => {
+    const backend = defaultHarthmereLiveModeBackendStateV1(ACTOR, NOW_MS);
+    const mgetCalls: string[][] = [];
+    const getCalls: string[] = [];
+    const redis = {
+      primary: {
+        get: async (key: string) => {
+          getCalls.push(key);
+          return null;
+        },
+        mget: async (...keys: string[]) => {
+          mgetCalls.push(keys);
+          return keys.map((key) =>
+            key === harthmereLiveModePlayerStateKeyV1(ACTOR)
+              ? JSON.stringify(backend)
+              : null
+          );
+        },
+      },
+    };
+
+    const snapshot = await readHarthmereLiveModeJobsBoardStateForActorV1({
+      redis,
+      actorId: ACTOR,
+      nowMs: NOW_MS,
+    });
+
+    assert.deepEqual(mgetCalls, [[
+      harthmereLiveModePlayerStateKeyV1(ACTOR),
+      harthmereLiveModeSharedWorldStateKeyV1(),
+    ]]);
+    assert.deepEqual(getCalls, []);
+    assert.equal(snapshot.actorId, ACTOR);
+  });
+
+  it("auto-seeds local/default jobs on read without writing by default", async () => {
     const writes: Array<{ key: string; value: string }> = [];
     const redis = {
       primary: {
@@ -107,7 +142,27 @@ describe("live_mode_jobs_board_state API route integration", () => {
       "fresh local players should see Harthmere town jobs too",
     );
     assert.ok(snapshot.openJobs.every((job) => job.source === "economy_auto_seed"));
-    assert.equal(writes.length, 1, "auto-seeded jobs should be persisted to shared world state so accept/complete can use them");
+    assert.equal(writes.length, 0, "plain reads should not contend with live mutations");
+  });
+
+  it("can explicitly persist auto-seeded read side effects for compatibility", async () => {
+    const writes: Array<{ key: string; value: string }> = [];
+    const redis = {
+      primary: {
+        get: async () => null,
+        set: async (key: string, value: string) => {
+          writes.push({ key, value });
+        },
+      },
+    };
+    await readHarthmereLiveModeJobsBoardStateForActorV1({
+      redis,
+      actorId: ACTOR,
+      nowMs: NOW_MS,
+      persistReadSideEffects: true,
+    });
+
+    assert.equal(writes.length, 1, "explicit compatibility mode still persists seeded jobs");
     assert.equal(writes[0]?.key, harthmereLiveModeSharedWorldStateKeyV1());
   });
 
@@ -168,6 +223,7 @@ describe("live_mode_jobs_board_state API route integration", () => {
       redis,
       actorId: ACTOR,
       nowMs: NOW_MS,
+      persistReadSideEffects: true,
     });
 
     assert.ok(

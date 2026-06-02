@@ -393,7 +393,12 @@ ensure_snapshot_redis_populated() {
 
   log "Populating Redis with installed snapshot data hash=$installed_hash previous=${bootstrapped_hash:-missing} key=$hash_key GLITCH_PROD_SNAPSHOT_REDIS_BOOTSTRAP_V2"
   redis_cli_runtime flushall
-  SKIP_PROD_LOAD=true node -r ts-node/register "$APP_ROOT/scripts/node/bootstrap_redis.ts" "$APP_ROOT/snapshot_backup.json"
+  if [ -f "$APP_ROOT/dist/bootstrap-redis.js" ]; then
+    SKIP_PROD_LOAD=true node "$APP_ROOT/dist/bootstrap-redis.js" "$APP_ROOT/snapshot_backup.json"
+  else
+    log "WARN dist/bootstrap-redis.js missing; falling back to ts-node Redis bootstrap." >&2
+    SKIP_PROD_LOAD=true node -r ts-node/register "$APP_ROOT/scripts/node/bootstrap_redis.ts" "$APP_ROOT/snapshot_backup.json"
+  fi
   redis_cli_runtime set "$hash_key" "$installed_hash"
   redis_cli_runtime set biomes_data_snapshot_hash "$installed_hash"
   redis_cli_runtime del "$lock_key" >/dev/null || true

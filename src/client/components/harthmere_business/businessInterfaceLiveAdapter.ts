@@ -31,6 +31,7 @@ import type {
   HarthmereBusinessEmployeeCandidateV1,
   HarthmereBusinessEmployeeTaskRunV1,
 } from "../../../shared/harthmere/business_employee_ai_v1";
+import { fetchHarthmereLiveWithTimeoutV1 } from "@/client/components/harthmere_live_fetch";
 
 export type {
   HarthmereBusinessBikkieGraphicV1,
@@ -1030,11 +1031,15 @@ export function normalizeHarthmereBusinessEconomySnapshotV1(
 export async function fetchHarthmereBusinessEconomyStateV1(
   fetchImpl: typeof fetch = fetch
 ): Promise<HarthmereBusinessEconomySnapshotV1> {
-  const response = await fetchImpl("/api/harthmere/live_mode_economy_state", {
-    method: "GET",
-    credentials: "same-origin",
-    headers: { Accept: "application/json" },
-  } as any);
+  const response = await fetchHarthmereLiveWithTimeoutV1(
+    fetchImpl,
+    "/api/harthmere/live_mode_economy_state",
+    {
+      method: "GET",
+      credentials: "same-origin",
+      headers: { Accept: "application/json" },
+    }
+  );
   if (!response.ok)
     throw new Error(`business_economy_state_http_${response.status}`);
   const body = await response.json();
@@ -1054,19 +1059,28 @@ export async function submitHarthmereBusinessEconomyMutationV1(
     options.requestId ??
     `business_ui_${Date.now()}_${Math.random().toString(36).slice(2)}`;
   const fetchImpl = options.fetchImpl ?? fetch;
-  const response = await fetchImpl("/api/harthmere/live_mode", {
-    method: "POST",
-    credentials: "same-origin",
-    headers: { "Content-Type": "application/json", Accept: "application/json" },
-    body: JSON.stringify({
-      requestId,
-      idempotencyKey: requestId,
-      actionKind: "request_economy_mutation",
-      subsystem: "economy",
-      zoneId: options.zoneId ?? "the_grove",
-      payload: { operation, ...payload },
-    }),
-  } as any);
+  const response = await fetchHarthmereLiveWithTimeoutV1(
+    fetchImpl,
+    "/api/harthmere/live_mode",
+    {
+      method: "POST",
+      credentials: "same-origin",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify({
+        requestId,
+        idempotencyKey: requestId,
+        actionKind: "request_economy_mutation",
+        subsystem: "economy",
+        clientSentAtMs: Date.now(),
+        actorEntityVersion: 1,
+        zoneId: options.zoneId ?? "the_grove",
+        payload: { operation, ...payload },
+      }),
+    }
+  );
   if (!response.ok)
     throw new Error(`business_economy_mutation_http_${response.status}`);
   const body = await response.json();
@@ -1289,6 +1303,9 @@ export interface HarthmereBusinessWorldContextV1 {
   insideMarketplace?: boolean;
   actorGuildId?: string;
   interactionKeyLabel?: string;
+  outpostId?: string;
+  businessInteractionMarkerId?: string;
+  businessInteractionPosition?: HarthmereBusinessWorldPointV1;
 }
 
 export interface HarthmereBusinessWorldPointV1 {
@@ -1303,7 +1320,15 @@ export function nearestHarthmereBusinessDashboardWorldContextV1(
   radius = 6
 ): HarthmereBusinessWorldContextV1 {
   if (!state || !playerPosition) return {};
-  let nearest: { businessId: string; distance: number } | undefined;
+  let nearest:
+    | {
+        businessId: string;
+        outpostId: string;
+        distance: number;
+        markerId?: string;
+        point: HarthmereBusinessWorldPointV1;
+      }
+    | undefined;
   for (const record of Object.values(
     state.businessSystems.outpostBuildings ?? {}
   )) {
@@ -1319,13 +1344,46 @@ export function nearestHarthmereBusinessDashboardWorldContextV1(
     if (nearest && nearest.distance <= distance) continue;
     const businessId = harthmereBusinessOutpostBusinessIdV1(record.outpostId);
     if (!state.businesses[businessId]) continue;
-    nearest = { businessId, distance };
+    nearest = {
+      businessId,
+      outpostId: record.outpostId,
+      distance,
+      markerId: record.dashboardAccessPoint?.markerId,
+      point,
+    };
   }
   if (!nearest) return {};
   return {
     nearbyBusinessId: nearest.businessId,
     insideBusiness: true,
-    interactionKeyLabel: "E",
+    interactionKeyLabel: "F",
+    outpostId: nearest.outpostId,
+    businessInteractionMarkerId: nearest.markerId,
+    businessInteractionPosition: nearest.point,
+  };
+}
+
+export function harthmereBusinessWorldContextPayloadV1(
+  context: HarthmereBusinessWorldContextV1 | undefined
+): Record<string, unknown> {
+  if (!context?.nearbyBusinessId) return {};
+  const point = context.businessInteractionPosition;
+  return {
+    interactionBusinessId: context.nearbyBusinessId,
+    targetBusinessId: context.nearbyBusinessId,
+    ...(context.outpostId ? { outpostId: context.outpostId } : {}),
+    ...(context.businessInteractionMarkerId
+      ? { businessInteractionMarkerId: context.businessInteractionMarkerId }
+      : {}),
+    ...(point
+      ? {
+          businessInteractionPosition: {
+            x: point.x,
+            y: point.y ?? 0,
+            z: point.z,
+          },
+        }
+      : {}),
   };
 }
 
@@ -1564,7 +1622,7 @@ export function getHarthmereBusinessInteractionPromptV1(
   state: HarthmereBusinessEconomySnapshotV1 | undefined,
   context: HarthmereBusinessWorldContextV1
 ): HarthmereBusinessInteractionPromptV1 {
-  const keyLabel = context.interactionKeyLabel ?? "E";
+  const keyLabel = context.interactionKeyLabel ?? "F";
   if (
     !state ||
     !context.insideBusiness ||

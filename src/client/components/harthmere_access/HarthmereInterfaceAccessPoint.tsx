@@ -105,7 +105,7 @@ export const HarthmereInterfaceAccessPoint: React.FunctionComponent<
       style={{
         position: "fixed",
         left: "50%",
-        bottom: "max(18px, env(safe-area-inset-bottom))",
+        bottom: "max(138px, calc(env(safe-area-inset-bottom) + 138px))",
         transform: "translateX(-50%)",
         zIndex: 1205,
         display: "grid",

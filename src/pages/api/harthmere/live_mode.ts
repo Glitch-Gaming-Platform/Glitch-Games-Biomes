@@ -6,6 +6,7 @@ import type { WorldApi } from "@/server/shared/world/api";
 import { ensurePlayerExists } from "@/server/logic/utils/players";
 import { connectToRedis } from "@/server/shared/redis/connection";
 import { biomesApiHandler } from "@/server/web/util/api_middleware";
+import { log } from "@/shared/logging";
 import {
   harthmereLiveModeLedgerStreamKeyV1,
   harthmereLiveModePlayerStateKeyV1,
@@ -48,6 +49,7 @@ import type { BiomesId } from "@/shared/ids";
 import type { Vec3 } from "@/shared/math/types";
 import { loadBlockWrapper, saveBlockWrapper } from "@/shared/wasm/biomes";
 import { z } from "zod";
+import { readHarthmerePlayerAndSharedStateStringsV1 } from "./live_mode_state_read_helpers";
 
 const HARTHMERE_LIVE_MODE_SERVER_ROUTE_V1 =
   "HARTHMERE_LIVE_MODE_SERVER_ROUTE_V1" as const;
@@ -164,7 +166,7 @@ const zLiveModeRequest = z.object({
   actionKind: z.enum(HARTHMERE_LIVE_MODE_ACTION_KINDS_V1),
   subsystem: z.enum(HARTHMERE_LIVE_MODE_SUBSYSTEMS_V1),
   clientSentAtMs: z.number().optional(),
-  actorEntityVersion: z.number(),
+  actorEntityVersion: z.number().default(1),
   targetEntityVersion: z.number().optional(),
   zoneId: z.string().min(1),
   encounterId: z.string().optional(),
@@ -846,6 +848,36 @@ async function deliver_createHarthmereLiveModeUiEventV1_from_server_outbox(
   await tx.exec();
 }
 
+async function flushHarthmereLiveModePostCommitOutboxV1(
+  response: LiveModeResponse
+) {
+  const startedAt = Date.now();
+  try {
+    await publish_createHarthmereLiveModeEventV1_to_server_event_stream(
+      response
+    );
+    await deliver_createHarthmereLiveModeUiEventV1_from_server_outbox(response);
+    const ms = Date.now() - startedAt;
+    if (process.env.NODE_ENV === "production" && ms >= 500) {
+      log.warn("HARTHMERE_LIVE_MODE_POST_COMMIT_OUTBOX_SLOW_V1", {
+        requestId: response.events[0]?.requestId,
+        actorId: response.actorId,
+        eventCount: response.events.length,
+        uiEventCount: response.uiEvents.length,
+        ms,
+      });
+    }
+  } catch (error) {
+    log.warn("HARTHMERE_LIVE_MODE_POST_COMMIT_OUTBOX_FAILED_V1", {
+      requestId: response.events[0]?.requestId,
+      actorId: response.actorId,
+      eventCount: response.events.length,
+      uiEventCount: response.uiEvents.length,
+      error,
+    });
+  }
+}
+
 function isHarthmereServerOutpostMaterializationPlanV1(
   plan: BuildingSystemAnyMaterializationPlanV1
 ) {
@@ -1215,6 +1247,8 @@ export async function persistHarthmereLiveModeResponseV1(
     userId?: BiomesId;
   }
 ): Promise<LiveModeResponse> {
+  const persistStartedAt = Date.now();
+  let lastAttemptTimings: Record<string, number> | undefined;
   const key = liveModeIdempotencyKeyV1(
     response.actorId,
     response.mutationPlan?.idempotencyKey ?? "invalid"
@@ -1230,7 +1264,14 @@ export async function persistHarthmereLiveModeResponseV1(
   }
 
   for (let attempt = 0; attempt < 5; attempt += 1) {
+    const attemptTimings: Record<string, number> = {};
+    const mark = (stage: string, startedAt: number) => {
+      attemptTimings[stage] = Date.now() - startedAt;
+    };
+    lastAttemptTimings = attemptTimings;
+    let stageStartedAt = Date.now();
     const previous = await redis.primary.get(key);
+    mark("idempotency_get_ms", stageStartedAt);
     if (previous) {
       return {
         ...(JSON.parse(previous) as LiveModeResponse),
@@ -1242,10 +1283,14 @@ export async function persistHarthmereLiveModeResponseV1(
     const watchKeys = [key, playerStateKey, sharedWorldStateKey];
     const now = Date.now();
     if (supportsWatch) {
+      stageStartedAt = Date.now();
       await (redis.primary as any).watch(...watchKeys);
+      mark("watch_ms", stageStartedAt);
     }
 
+    stageStartedAt = Date.now();
     const watchedPrevious = await redis.primary.get(key);
+    mark("watched_idempotency_get_ms", stageStartedAt);
     if (watchedPrevious) {
       await redisUnwatchIfSupportedV1(redis.primary);
       return {
@@ -1255,8 +1300,15 @@ export async function persistHarthmereLiveModeResponseV1(
       };
     }
 
-    let rawState = await redis.primary.get(playerStateKey);
-    let rawSharedState = await redis.primary.get(sharedWorldStateKey);
+    stageStartedAt = Date.now();
+    let { rawState, rawSharedState } =
+      await readHarthmerePlayerAndSharedStateStringsV1(
+        redis.primary,
+        playerStateKey,
+        sharedWorldStateKey
+      );
+    mark("state_get_ms", stageStartedAt);
+    stageStartedAt = Date.now();
     let currentState = parseHarthmereLiveModeBackendStateV1(
       rawState,
       response.actorId,
@@ -1267,11 +1319,14 @@ export async function persistHarthmereLiveModeResponseV1(
       parseHarthmereLiveModeSharedWorldStateV1(rawSharedState, now),
       now
     );
+    mark("state_parse_merge_ms", stageStartedAt);
+    stageStartedAt = Date.now();
     let reduced = reduceHarthmereLiveModeBackendStateV1(
       currentState,
       envelope,
       now
     );
+    mark("reduce_ms", stageStartedAt);
     let settlement = buildAuctionSellerSettlementV1({
       envelope,
       beforeState: currentState,
@@ -1298,8 +1353,15 @@ export async function persistHarthmereLiveModeResponseV1(
           replayed: true,
         };
       }
-      rawState = await redis.primary.get(playerStateKey);
-      rawSharedState = await redis.primary.get(sharedWorldStateKey);
+      stageStartedAt = Date.now();
+      ({ rawState, rawSharedState } =
+        await readHarthmerePlayerAndSharedStateStringsV1(
+          redis.primary,
+          playerStateKey,
+          sharedWorldStateKey
+        ));
+      mark("seller_state_get_ms", stageStartedAt);
+      stageStartedAt = Date.now();
       currentState = parseHarthmereLiveModeBackendStateV1(
         rawState,
         response.actorId,
@@ -1310,11 +1372,14 @@ export async function persistHarthmereLiveModeResponseV1(
         parseHarthmereLiveModeSharedWorldStateV1(rawSharedState, now),
         now
       );
+      mark("seller_state_parse_merge_ms", stageStartedAt);
+      stageStartedAt = Date.now();
       reduced = reduceHarthmereLiveModeBackendStateV1(
         currentState,
         envelope,
         now
       );
+      mark("seller_reduce_ms", stageStartedAt);
       settlement = buildAuctionSellerSettlementV1({
         envelope,
         beforeState: currentState,
@@ -1329,6 +1394,7 @@ export async function persistHarthmereLiveModeResponseV1(
       | ReturnType<typeof parseHarthmereLiveModeBackendStateV1>
       | undefined;
     if (settlement && sellerStateKey) {
+      stageStartedAt = Date.now();
       const rawSellerState = await redis.primary.get(sellerStateKey);
       sellerState = parseHarthmereLiveModeBackendStateV1(
         rawSellerState,
@@ -1344,6 +1410,7 @@ export async function persistHarthmereLiveModeResponseV1(
       reduced.summary.warnings.push(
         "auction_seller_account_settled_atomically"
       );
+      mark("seller_settlement_ms", stageStartedAt);
     }
 
     const requestedCraftingStationId =
@@ -1376,6 +1443,7 @@ export async function persistHarthmereLiveModeResponseV1(
         ),
     };
 
+    stageStartedAt = Date.now();
     if (includedSnapshotSet.has("buildingState")) {
       persistedResponse.buildingState =
         createHarthmereLiveModeBuildingClientSnapshotV1(reduced.state);
@@ -1431,7 +1499,9 @@ export async function persistHarthmereLiveModeResponseV1(
       persistedResponse.questState =
         createHarthmereLiveModeQuestClientSnapshotV1(reduced.state);
     }
+    mark("snapshots_ms", stageStartedAt);
 
+    stageStartedAt = Date.now();
     const tx = redis.primary.multi();
     tx.set(playerStateKey, JSON.stringify(reduced.state));
     tx.set(
@@ -1467,6 +1537,7 @@ export async function persistHarthmereLiveModeResponseV1(
       "NX"
     );
     const txResult = await tx.exec();
+    mark("tx_exec_ms", stageStartedAt);
     if (supportsWatch && txResult === null) {
       continue;
     }
@@ -1474,6 +1545,7 @@ export async function persistHarthmereLiveModeResponseV1(
     // Materialize server-approved building plans after the state/idempotency
     // commit succeeds. This keeps ECS side effects downstream of durable state.
     if (reduced.summary.buildingMaterializationPlans?.length) {
+      stageStartedAt = Date.now();
       const materializerUserId =
         deps.userId ?? HARTHMERE_WORLD_MATERIALIZER_USER_ID_V1;
       try {
@@ -1542,17 +1614,36 @@ export async function persistHarthmereLiveModeResponseV1(
         "EX",
         24 * 60 * 60
       );
+      mark("materialization_ms", stageStartedAt);
     }
 
-    await publish_createHarthmereLiveModeEventV1_to_server_event_stream(
-      persistedResponse
-    );
-    await deliver_createHarthmereLiveModeUiEventV1_from_server_outbox(
-      persistedResponse
-    );
+    const persistMs = Date.now() - persistStartedAt;
+    if (process.env.NODE_ENV === "production" && persistMs >= 1000) {
+      log.warn("HARTHMERE_LIVE_MODE_PERSIST_SLOW_V1", {
+        requestId: envelope.requestId,
+        actorId: response.actorId,
+        actionKind: envelope.actionKind,
+        subsystem: envelope.subsystem,
+        attempt,
+        persistMs,
+        timings: attemptTimings,
+        includedSnapshots,
+        eventCount: persistedResponse.events.length,
+        uiEventCount: persistedResponse.uiEvents.length,
+      });
+    }
+    void flushHarthmereLiveModePostCommitOutboxV1(persistedResponse);
     return persistedResponse;
   }
 
+  log.warn("HARTHMERE_LIVE_MODE_PERSIST_CONFLICTED_V1", {
+    requestId: envelope.requestId,
+    actorId: response.actorId,
+    actionKind: envelope.actionKind,
+    subsystem: envelope.subsystem,
+    persistMs: Date.now() - persistStartedAt,
+    timings: lastAttemptTimings,
+  });
   throw new Error(
     "Harthmere live-mode Redis transaction conflicted too many times"
   );

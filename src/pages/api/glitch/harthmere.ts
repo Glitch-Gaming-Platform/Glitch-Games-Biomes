@@ -92,6 +92,7 @@ const globalForHarthmere = globalThis as typeof globalThis & {
   __harthmereGlitchSessionStoreV70?: HarthmereSessionStore;
   __harthmereGlitchSessionRedisV1?: ReturnType<typeof connectToRedis>;
   __harthmereGlitchAsyncOutboxDrainV1?: boolean;
+  __harthmereGlitchTelemetryAuthBackoffUntilV1?: number;
 };
 
 const sessionStore: HarthmereSessionStore =
@@ -455,6 +456,18 @@ function kickGlitchAsyncOutboxDrainV1() {
 async function enqueueGlitchApiCallV1(
   call: Omit<QueuedGlitchApiCallV1, "enqueuedAtMs">
 ) {
+  const telemetryBackoffMs = isBehaviorTelemetryCallV1(call)
+    ? behaviorTelemetryAuthBackoffRemainingMsV1()
+    : 0;
+  if (telemetryBackoffMs > 0) {
+    return {
+      ok: true,
+      queued: false,
+      skipped: true,
+      reason: "behavior_telemetry_auth_backoff",
+      retry_after_ms: telemetryBackoffMs,
+    };
+  }
   const queued: QueuedGlitchApiCallV1 = {
     ...call,
     enqueuedAtMs: Date.now(),
@@ -490,6 +503,10 @@ async function enqueueGlitchApiCallV1(
       method: queued.method,
       body: queued.body,
       timeoutMs: queued.timeoutMs,
+    }).then((response) => {
+      if (isBehaviorTelemetryCallV1(queued)) {
+        noteBehaviorTelemetryAuthFailureV1(response.status);
+      }
     });
   });
   return { ok: true, queued: false, background: true };
@@ -518,12 +535,21 @@ async function drainGlitchAsyncOutboxV1() {
       log.warn("GLITCH_HARTHMERE_ASYNC_OUTBOX_BAD_ITEM", { error });
       continue;
     }
-    await callGlitchApi(queued.path, {
+    if (
+      isBehaviorTelemetryCallV1(queued) &&
+      behaviorTelemetryAuthBackoffRemainingMsV1() > 0
+    ) {
+      continue;
+    }
+    const response = await callGlitchApi(queued.path, {
       label: queued.label,
       method: queued.method,
       body: queued.body,
       timeoutMs: queued.timeoutMs,
     });
+    if (isBehaviorTelemetryCallV1(queued)) {
+      noteBehaviorTelemetryAuthFailureV1(response.status);
+    }
   }
 }
 
@@ -1121,6 +1147,23 @@ export function shouldAcceptBehaviorTelemetryFailureV139(
   // browser just causes client requeues/retries and more load. Keep 401/403 as
   // failures so the existing auth circuit-breaker can still engage.
   return status === 408 || status === 429 || (status ?? 0) >= 500;
+}
+
+function isBehaviorTelemetryCallV1(call: Pick<QueuedGlitchApiCallV1, "label">) {
+  return call.label === "recordEvent" || call.label === "recordEventsBulk";
+}
+
+function behaviorTelemetryAuthBackoffRemainingMsV1() {
+  const until =
+    globalForHarthmere.__harthmereGlitchTelemetryAuthBackoffUntilV1 ?? 0;
+  return Math.max(0, until - Date.now());
+}
+
+function noteBehaviorTelemetryAuthFailureV1(status: number | undefined) {
+  if (status !== 401 && status !== 403) return;
+  globalForHarthmere.__harthmereGlitchTelemetryAuthBackoffUntilV1 =
+    Date.now() +
+    envNumber("GLITCH_BEHAVIOR_TELEMETRY_AUTH_BACKOFF_MS", 5 * 60 * 1000);
 }
 
 async function recordBehaviorEventsIndividuallyV138(

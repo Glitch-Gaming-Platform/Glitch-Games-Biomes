@@ -1,4 +1,10 @@
 import { readLiveEntityHelperQuestStateV1 } from "@/client/components/challenges/LocalDevLiveEntityHelperQuestState";
+import {
+  firstActiveSnapshotRoadAheadQuestTitleForBiomesUIV73,
+  readSnapshotMissionStateV71,
+  snapshotRoadAheadMissionStepsForBiomesUIV73,
+  snapshotRoadAheadTrackableQuestsForBiomesUIV73,
+} from "@/client/components/challenges/LocalDevSnapshotMissionBridge";
 import { BUILDING_SYSTEM_GROVE_STEWARD_NPC_V1 } from "@/shared/harthmere/building_system_v1";
 import {
   activeBiomesUIMapPinFromMarkerForTest,
@@ -386,6 +392,9 @@ export function buildBiomesUIMapAdapter(
       return String(
         activeQuest?.title ??
           firstActiveJobsBoardQuestTitleForBiomesUIV1(jobsBoardState) ??
+          firstActiveSnapshotRoadAheadQuestTitleForBiomesUIV73(
+            readSnapshotMissionStateV71()
+          ) ??
           firstActiveLiveEntityHelperQuestTitleForBiomesUIV1(
             liveEntityHelperState
           ) ??
@@ -409,8 +418,13 @@ export function buildBiomesUIMapAdapter(
       if (!activeQuest) {
         const jobsBoardSteps =
           activeJobsBoardMissionStepsForBiomesUIV1(jobsBoardState);
+        const roadAheadSteps = snapshotRoadAheadMissionStepsForBiomesUIV73(
+          readSnapshotMissionStateV71()
+        );
         return jobsBoardSteps.length
           ? jobsBoardSteps
+          : roadAheadSteps.length
+          ? roadAheadSteps
           : [
               ...activeLiveEntityHelperMissionStepsForBiomesUIV1(
                 readLiveEntityHelperQuestStateV1()
@@ -467,6 +481,9 @@ export function buildBiomesUIMapAdapter(
         }));
       return [
         ...jobsBoardTrackableQuestsForBiomesUIV1(jobsBoardState),
+        ...snapshotRoadAheadTrackableQuestsForBiomesUIV73(
+          readSnapshotMissionStateV71()
+        ),
         ...liveEntityHelperTrackableQuestsForBiomesUIV1(
           readLiveEntityHelperQuestStateV1()
         ),

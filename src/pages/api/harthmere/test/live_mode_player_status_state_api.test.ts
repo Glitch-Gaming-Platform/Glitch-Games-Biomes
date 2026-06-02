@@ -106,6 +106,55 @@ describe("live_mode_player_status_state API route integration", () => {
     assert.equal(snapshot.combat.deathState, "alive");
   });
 
+  it("persists stamina ticks with WATCH so polling does not overwrite newer actor state", async () => {
+    const staleBackend = defaultHarthmereLiveModeBackendStateV1(ACTOR, NOW_MS);
+    staleBackend.inventory.gold = 1;
+    staleBackend.combat.resources.stamina = 108;
+    staleBackend.combat.maxResources.stamina = 108;
+    staleBackend.combat.lastStaminaTickMs = NOW_MS - 60 * 60 * 1000;
+
+    const latestBackend = defaultHarthmereLiveModeBackendStateV1(ACTOR, NOW_MS);
+    latestBackend.inventory.gold = 99;
+    latestBackend.combat.resources.stamina = 108;
+    latestBackend.combat.maxResources.stamina = 108;
+    latestBackend.combat.lastStaminaTickMs = NOW_MS - 60 * 60 * 1000;
+
+    const stateKey = harthmereLiveModePlayerStateKeyV1(ACTOR);
+    const watched: string[][] = [];
+    const reads = [JSON.stringify(staleBackend), JSON.stringify(latestBackend)];
+    let stored = "";
+    const redis = {
+      primary: {
+        get: async () => reads.shift() ?? stored,
+        set: async (_key: string, value: string) => {
+          stored = value;
+        },
+        watch: async (...keys: string[]) => {
+          watched.push(keys);
+        },
+        unwatch: async () => {},
+        multi: () => ({
+          set: (_key: string, value: string) => {
+            stored = value;
+          },
+          exec: async () => [],
+        }),
+      },
+    };
+
+    await readHarthmereLiveModePlayerStatusStateForActorV1({
+      redis,
+      actorId: ACTOR,
+      nowMs: NOW_MS,
+      gameplayActive: true,
+    });
+
+    const persisted = JSON.parse(stored);
+    assert.deepEqual(watched, [[stateKey]]);
+    assert.equal(persisted.inventory.gold, 99);
+    assert.equal(persisted.combat.resources.stamina, 81);
+  });
+
   it("uses a four-hour stamina clock for custom max stamina pools", async () => {
     const backend = defaultHarthmereLiveModeBackendStateV1(ACTOR, NOW_MS);
     backend.combat.resources.stamina = 200;

@@ -28,6 +28,8 @@ import { HarthmereJobsBoardPanel } from "./HarthmereJobsBoardPanel";
 // via the test in __tests__/jobsBoardBoardSelector.test.ts.
 export const HARTHMERE_JOBS_BOARD_HARTHMERE_BOARD_ID_CLIENT_V141 = "harthmere_town_market_jobs_board" as const;
 
+const completedDailyTasksForSessionV141 = new Set<string>();
+
 // HARTHMERE_JOBS_BOARD_PROXIMITY_GATE_V141:
 // The container takes a `worldContext` describing where the player is so it
 // can refuse to render the jobs list when the player isn't physically at a
@@ -48,7 +50,7 @@ export function HarthmereJobsBoardLiveContainerV141({
   const { state, loading, error, refresh } = useHarthmereJobsBoard();
   const [snapshot, setSnapshot] = React.useState<HarthmereJobsBoardSnapshotV1 | undefined>();
   const [mutationError, setMutationError] = React.useState<string | undefined>();
-  const completedDailyTasks = React.useRef(new Set<string>());
+  const [pendingActionId, setPendingActionId] = React.useState<string | undefined>();
 
   // The fetcher publishes to `state`; mirror it into local `snapshot` so the
   // mutation path can also replace it without round-tripping the fetcher.
@@ -63,10 +65,10 @@ export function HarthmereJobsBoardLiveContainerV141({
     const physicalBoardId = worldContext ? nearestPhysicalHarthmereJobsBoardIdV141(snapshot, worldContext) : snapshot.defaultBoardId;
     if (!physicalBoardId) return;
     const taskId = "jobs_board";
-    if (completedDailyTasks.current.has(taskId)) return;
-    completedDailyTasks.current.add(taskId);
+    if (completedDailyTasksForSessionV141.has(taskId)) return;
+    completedDailyTasksForSessionV141.add(taskId);
     void adapter.completeDailyTask(taskId).catch(() => {
-      completedDailyTasks.current.delete(taskId);
+      completedDailyTasksForSessionV141.delete(taskId);
     });
   }, [adapter, snapshot, worldContext]);
 
@@ -84,32 +86,42 @@ export function HarthmereJobsBoardLiveContainerV141({
     HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1;
 
   const run = React.useCallback(
-    async (op: () => Promise<HarthmereJobsBoardSnapshotV1>) => {
+    async (actionId: string, op: () => Promise<HarthmereJobsBoardSnapshotV1>) => {
+      if (pendingActionId) return;
       setMutationError(undefined);
+      setPendingActionId(actionId);
       try {
         const next = await op();
         setSnapshot(next);
       } catch (err) {
         setMutationError(err instanceof Error ? err.message : String(err));
+      } finally {
+        setPendingActionId(undefined);
       }
     },
-    [],
+    [pendingActionId],
   );
 
   const onAcceptJob = React.useCallback(
-    (jobId: string) => run(() => adapter.acceptJob(jobId, activeBoardId)),
+    (jobId: string) =>
+      run(`accept:${jobId}`, () => adapter.acceptJob(jobId, activeBoardId)),
     [adapter, activeBoardId, run],
   );
   const onCompleteJob = React.useCallback(
-    (jobId: string) => run(() => adapter.completeJob(jobId, activeBoardId)),
+    (jobId: string) =>
+      run(`complete:${jobId}`, () => adapter.completeJob(jobId, activeBoardId)),
     [adapter, activeBoardId, run],
   );
   const onCancelJob = React.useCallback(
-    (jobId: string) => run(() => adapter.cancelJob(jobId, activeBoardId)),
+    (jobId: string) =>
+      run(`cancel:${jobId}`, () => adapter.cancelJob(jobId, activeBoardId)),
     [adapter, activeBoardId, run],
   );
   const onPostJob = React.useCallback(
-    (payload: Record<string, unknown>) => run(() => adapter.postJob({ ...payload, boardId: activeBoardId })),
+    (payload: Record<string, unknown>) =>
+      run("post:create", () =>
+        adapter.postJob({ ...payload, boardId: activeBoardId })
+      ),
     [adapter, activeBoardId, run],
   );
 
@@ -147,6 +159,8 @@ export function HarthmereJobsBoardLiveContainerV141({
     ? mutationError
     : error
       ? error
+      : pendingActionId
+        ? "Sending request to live backend..."
       : loading
         ? "Refreshing from live backend…"
         : `Live · ${snapshot.openJobs.length} open · ${snapshot.myAcceptedJobs.length} accepted by you`;
@@ -221,6 +235,7 @@ export function HarthmereJobsBoardLiveContainerV141({
         onCancelJob={onCancelJob}
         onPostJob={onPostJob}
         onClose={onClose}
+        pendingActionId={pendingActionId}
       />
       {/* Status overlay sits inside the same modal stack; the panel exposes a
           dedicated status row via the .harthmere-jobs-board__status styles. */}

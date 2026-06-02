@@ -867,6 +867,13 @@ button.biomes-ui-card:disabled {
   margin-top: 9px;
 }
 
+.biomes-ui-vitals-panel__footer {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 6px;
+  margin-top: 8px;
+}
+
 .biomes-ui-vitals-chip {
   min-width: 0;
   display: flex;
@@ -927,6 +934,11 @@ button.biomes-ui-card:disabled {
 .biomes-ui-vitals-chip[data-tone="notoriety"] .biomes-ui-vitals-chip__fill {
   background: linear-gradient(90deg, #ffb86b, #ff5fc8);
   box-shadow: 0 0 8px rgba(255, 184, 107, 0.35);
+}
+
+.biomes-ui-vitals-chip[data-tone="level"] {
+  border-color: rgba(255, 213, 107, 0.22);
+  background: rgba(24, 20, 34, 0.74);
 }
 
 

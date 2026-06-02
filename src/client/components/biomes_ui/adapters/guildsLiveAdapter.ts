@@ -8,6 +8,7 @@ import type {
   HarthmereGuildRecruitmentStatusV1,
   HarthmereGuildTypeV1,
 } from "../../../../shared/harthmere/mmo_guild_authority_v1";
+import { fetchHarthmereLiveWithTimeoutV1 } from "@/client/components/harthmere_live_fetch";
 
 export interface BiomesUIGuildDirectoryEntryV1 {
   guildId: string;
@@ -156,10 +157,14 @@ export function normalizeBiomesUIGuildSnapshotV1(input: unknown): BiomesUIGuildC
 }
 
 export async function fetchBiomesUIGuildStateV1(fetchImpl: typeof fetch = fetch): Promise<BiomesUIGuildClientSnapshotV1 | undefined> {
-  const response = await fetchImpl("/api/harthmere/live_mode_guild_state", {
-    method: "GET",
-    credentials: "same-origin",
-  });
+  const response = await fetchHarthmereLiveWithTimeoutV1(
+    fetchImpl,
+    "/api/harthmere/live_mode_guild_state",
+    {
+      method: "GET",
+      credentials: "same-origin",
+    }
+  );
   if (!response.ok) return undefined;
   const body = await response.json();
   return normalizeBiomesUIGuildSnapshotV1(body?.guildState);
@@ -194,24 +199,28 @@ export async function submitBiomesUIGuildMutationV1(
   }
   const fetchImpl = options.fetchImpl ?? fetch;
   const requestId = buildGuildRequestIdV1(operation, options);
-  const response = await fetchImpl("/api/harthmere/live_mode", {
-    method: "POST",
-    credentials: "same-origin",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      requestId,
-      idempotencyKey: requestId,
-      actionKind: "request_guild_mutation",
-      subsystem: "guild",
-      actorEntityVersion: options.actorEntityVersion ?? 1,
-      zoneId: options.zoneId ?? "the_grove",
-      payload: {
-        operation,
-        ...payload,
-      },
-      clientClaims: {},
-    }),
-  });
+  const response = await fetchHarthmereLiveWithTimeoutV1(
+    fetchImpl,
+    "/api/harthmere/live_mode",
+    {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        requestId,
+        idempotencyKey: requestId,
+        actionKind: "request_guild_mutation",
+        subsystem: "guild",
+        actorEntityVersion: options.actorEntityVersion ?? 1,
+        zoneId: options.zoneId ?? "the_grove",
+        payload: {
+          operation,
+          ...payload,
+        },
+        clientClaims: {},
+      }),
+    }
+  );
   const body = (await response.json()) as BiomesUIGuildLiveModeResponseV1;
   if (!response.ok || body?.ok === false) {
     throw new Error(responseErrorMessageV1(operation, body));

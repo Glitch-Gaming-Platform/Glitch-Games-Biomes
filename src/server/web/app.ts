@@ -186,6 +186,7 @@ export function logHttpRequest(
 
 
 const GLITCH_LOCAL_BUCKET_ASSET_PROXY_V146 = "GLITCH_LOCAL_BUCKET_ASSET_PROXY_V146";
+const GLITCH_BUCKET_ASSET_REMOTE_FETCH_TIMEOUT_MS_V146 = 10_000;
 const GLITCH_BUCKET_ASSET_PROXY_ALLOWED_BUCKETS = new Set([
   "biomes-static",
   "biomes-bikkie",
@@ -199,6 +200,22 @@ function shouldProxyLocalBucketAssetsV146() {
     process.env.GLITCH_DISABLE_GCP === "1" ||
     !!process.env.GLITCH_TITLE_ID
   );
+}
+
+async function fetchGlitchBucketAssetWithTimeoutV146(
+  url: string,
+  init: RequestInit
+) {
+  const controller = new AbortController();
+  const timeout = setTimeout(
+    () => controller.abort(),
+    GLITCH_BUCKET_ASSET_REMOTE_FETCH_TIMEOUT_MS_V146
+  );
+  try {
+    return await fetch(url, { ...init, signal: controller.signal });
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 function contentTypeForBucketAssetV146(pathname: string) {
@@ -495,7 +512,7 @@ async function tryServeGlitchLocalBucketAssetV146(
 
   const remoteUrl = `${remoteBase}/${encodedBucketObjectPathV146(objectPath)}`;
   try {
-    const upstream = await fetch(remoteUrl, {
+    const upstream = await fetchGlitchBucketAssetWithTimeoutV146(remoteUrl, {
       method: req.method === "HEAD" ? "HEAD" : "GET",
     });
     if (!upstream.ok) {

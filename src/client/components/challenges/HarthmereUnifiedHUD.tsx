@@ -93,6 +93,7 @@ import {
 } from "@/client/components/challenges/LocalDevHarthmereQuests";
 import { HarthmereHomeConsoleLiveContainer } from "@/client/components/harthmere_home";
 import { HarthmereBusinessLiveContainer } from "@/client/components/harthmere_business";
+import { nearestHarthmereBusinessBoardPhysicalPromptV1 } from "@/client/game/renderers/local_dev/harthmere_business_board_marker_v1";
 import { HarthmereJobsBoardLiveContainerV141 } from "@/client/components/harthmere_jobs_board";
 import {
   HARTHMERE_JOBS_BOARD_PHYSICAL_BOARDS_V141,
@@ -2025,25 +2026,217 @@ function HarthmereBusinessWorldInterfaceV1({
   const { reactResources } = useClientContext();
   const localPlayer = reactResources.use("/scene/local_player") as any;
   const camera = reactResources.use("/scene/camera") as any;
+  const [selectedBusinessId, setSelectedBusinessId] = React.useState<
+    string | undefined
+  >();
   const playerPosition = harthmereJobsBoardPlayerPositionV146(
     localPlayer,
     camera
   );
+  const businessWorldContext = React.useMemo(
+    () =>
+      selectedBusinessId
+        ? {
+            nearbyBusinessId: selectedBusinessId,
+            insideBusiness: true,
+            interactionKeyLabel: "F",
+          }
+        : undefined,
+    [selectedBusinessId]
+  );
+  const openFromPrompt = React.useCallback(
+    (prompt: NonNullable<ReturnType<typeof nearestHarthmereBusinessBoardPhysicalPromptV1>>) => {
+      setSelectedBusinessId(prompt.businessId);
+      onOpen();
+    },
+    [onOpen]
+  );
+  const closeAndClearSelection = React.useCallback(() => {
+    setSelectedBusinessId(undefined);
+    onClose();
+  }, [onClose]);
   return (
-    <HarthmereBusinessLiveContainer
-      open={open}
-      onOpen={onOpen}
-      onClose={onClose}
-      playerPosition={
-        playerPosition
-          ? {
-              x: playerPosition.x,
-              y: playerPosition.y ?? 0,
-              z: playerPosition.z,
-            }
-          : undefined
+    <>
+      <HarthmereBusinessBoardWorldPromptV1 onOpen={openFromPrompt} />
+      <HarthmereBusinessLiveContainer
+        open={open}
+        onOpen={onOpen}
+        onClose={closeAndClearSelection}
+        showPrompt={false}
+        worldContext={businessWorldContext}
+        playerPosition={
+          playerPosition
+            ? {
+                x: playerPosition.x,
+                y: playerPosition.y ?? 0,
+                z: playerPosition.z,
+              }
+            : undefined
+        }
+      />
+    </>
+  );
+}
+
+function HarthmereBusinessBoardWorldPromptV1({
+  onOpen,
+}: {
+  onOpen: (
+    prompt: NonNullable<
+      ReturnType<typeof nearestHarthmereBusinessBoardPhysicalPromptV1>
+    >
+  ) => void;
+}) {
+  const { reactResources } = useClientContext();
+  const localPlayer = reactResources.use("/scene/local_player") as any;
+  const camera = reactResources.use("/scene/camera") as any;
+  const playerPosition = harthmereJobsBoardPlayerPositionV146(
+    localPlayer,
+    camera
+  );
+  const cameraPosition = harthmereJobsBoardCameraPositionV146(camera);
+  const prompt = nearestHarthmereBusinessBoardPhysicalPromptV1(playerPosition);
+  const projectedPrompt = prompt
+    ? harthmereJobsBoardPromptScreenProjectionV146(prompt.position, camera)
+    : undefined;
+
+  const openBusinessBoardFromPrompt = React.useCallback(() => {
+    if (!prompt) return;
+    onOpen(prompt);
+  }, [onOpen, prompt]);
+
+  useEffect(() => {
+    if (!prompt || typeof window === "undefined") return;
+    const handler = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      const tagName = target?.tagName?.toLowerCase();
+      if (
+        event.repeat ||
+        event.metaKey ||
+        event.ctrlKey ||
+        event.altKey ||
+        tagName === "input" ||
+        tagName === "textarea" ||
+        tagName === "select" ||
+        target?.isContentEditable
+      ) {
+        return;
       }
-    />
+      if (event.code === "KeyF" || event.code === "KeyE") {
+        event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation();
+        openBusinessBoardFromPrompt();
+      }
+    };
+    window.addEventListener("keydown", handler, true);
+    return () => window.removeEventListener("keydown", handler, true);
+  }, [openBusinessBoardFromPrompt, prompt]);
+
+  useEffect(() => {
+    if (!prompt || typeof window === "undefined") return;
+    const handler = (event: MouseEvent) => {
+      if (
+        event.defaultPrevented ||
+        event.button !== 0 ||
+        harthmereJobsBoardEventFromEditableV146(event)
+      ) {
+        return;
+      }
+      const target = event.target as Element | null;
+      const isGameCanvas =
+        target?.tagName?.toLowerCase() === "canvas" ||
+        Boolean(target?.closest?.("canvas"));
+      if (!isGameCanvas) return;
+      event.preventDefault();
+      event.stopPropagation();
+      event.stopImmediatePropagation();
+      openBusinessBoardFromPrompt();
+    };
+    window.addEventListener("click", handler, true);
+    return () => window.removeEventListener("click", handler, true);
+  }, [openBusinessBoardFromPrompt, prompt]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const debug = {
+      version: "harthmere-business-board-click-v1",
+      playerPosition,
+      cameraPosition,
+      prompt,
+      open: () => prompt && onOpen(prompt),
+    };
+    (window as any).__harthmereBusinessBoardPromptDebugV1 = debug;
+    return () => {
+      if ((window as any).__harthmereBusinessBoardPromptDebugV1 === debug) {
+        delete (window as any).__harthmereBusinessBoardPromptDebugV1;
+      }
+    };
+  }, [cameraPosition, onOpen, playerPosition, prompt]);
+
+  if (!prompt) return null;
+  const openFromPromptClick = (event: React.MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    event.nativeEvent.stopImmediatePropagation?.();
+    openBusinessBoardFromPrompt();
+  };
+  return (
+    <>
+      {projectedPrompt && (
+        <div
+          className="pointer-events-none fixed z-40 -translate-x-1/2 -translate-y-full px-3"
+          style={{
+            left: projectedPrompt.left,
+            top: projectedPrompt.top,
+          }}
+          data-harthmere-business-board-world-prompt="projected"
+        >
+          <button
+            type="button"
+            className="min-h-14 min-w-40 rounded-xl border-emerald-200/45 bg-black/86 hover:border-emerald-100 hover:bg-black/92 focus:ring-emerald-100 pointer-events-auto border px-3 py-2 text-left text-white shadow-[0_10px_28px_rgba(0,0,0,0.55)] outline-none backdrop-blur transition focus:ring-2"
+            onClick={openFromPromptClick}
+            aria-label={`Open ${prompt.displayName}`}
+          >
+            <span className="text-emerald-100 block text-[10px] font-black uppercase tracking-[0.12em]">
+              Click or press F
+            </span>
+            <span className="block text-sm font-black leading-tight">
+              Open {prompt.displayName}
+            </span>
+            <span className="block text-[11px] leading-tight text-white/70">
+              {Math.max(0, Math.round(prompt.distance))}m away
+            </span>
+          </button>
+        </div>
+      )}
+      <div
+        className="pointer-events-none fixed inset-x-0 bottom-[8.65rem] z-40 flex justify-center px-3"
+        data-harthmere-business-board-world-prompt="bottom"
+      >
+        <button
+          type="button"
+          className="rounded-xl border-emerald-200/35 bg-black/82 pointer-events-auto flex items-center gap-3 border px-4 py-3 text-white shadow-[0_10px_28px_rgba(0,0,0,0.55)] backdrop-blur"
+          onClick={openFromPromptClick}
+          aria-label={`Open ${prompt.displayName}`}
+        >
+          <span className="min-w-8 bg-white/12 grid h-8 place-items-center rounded-md border border-white/20 text-sm font-black">
+            F
+          </span>
+          <span className="text-left">
+            <span className="mb-0.5 rounded border-emerald-200/35 bg-emerald-200/12 px-1.5 py-0.5 text-emerald-100 inline-flex border text-[10px] font-black uppercase tracking-[0.16em]">
+              Business Board
+            </span>
+            <span className="block text-sm font-black">
+              Open business services
+            </span>
+            <span className="text-white/65 block text-[11px]">
+              Start shifts, buy goods, and request services.
+            </span>
+          </span>
+        </button>
+      </div>
+    </>
   );
 }
 
@@ -2377,6 +2570,12 @@ export const HarthmereUnifiedHUD: React.FunctionComponent<{
       jobsBoardReturnPointerLockRef
     );
   }, [pointerLockManager]);
+  const openBusinessInterface = React.useCallback(() => {
+    setBusinessInterfaceOpen(true);
+  }, []);
+  const closeBusinessInterface = React.useCallback(() => {
+    setBusinessInterfaceOpen(false);
+  }, []);
   useEffect(() => {
     return () => {
       closeHarthmereJobsBoardPointerLockV145(
@@ -2501,8 +2700,8 @@ export const HarthmereUnifiedHUD: React.FunctionComponent<{
         />
         <HarthmereBusinessWorldInterfaceV1
           open={businessInterfaceOpen}
-          onOpen={() => setBusinessInterfaceOpen(true)}
-          onClose={() => setBusinessInterfaceOpen(false)}
+          onOpen={openBusinessInterface}
+          onClose={closeBusinessInterface}
         />
         {jobsBoardOpen && (
           <HarthmereJobsBoardLiveContainerWithPlayerProximityV141
@@ -2539,8 +2738,8 @@ export const HarthmereUnifiedHUD: React.FunctionComponent<{
       />
       <HarthmereBusinessWorldInterfaceV1
         open={businessInterfaceOpen}
-        onOpen={() => setBusinessInterfaceOpen(true)}
-        onClose={() => setBusinessInterfaceOpen(false)}
+        onOpen={openBusinessInterface}
+        onClose={closeBusinessInterface}
       />
       {systemsTab && (
         <div className="fixed right-2 top-[6.5rem] z-[45] max-sm:inset-x-2 max-sm:top-16 md:right-4 md:top-4">

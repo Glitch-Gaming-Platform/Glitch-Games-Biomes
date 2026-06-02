@@ -77,14 +77,16 @@ export function HarthmereJobsBoardPanel({
   onCancelJob,
   onPostJob,
   onClose,
+  pendingActionId,
 }: {
   snapshot: HarthmereJobsBoardSnapshotV1;
   boardId?: string;
-  onAcceptJob?: (jobId: string) => void;
-  onCompleteJob?: (jobId: string) => void;
-  onCancelJob?: (jobId: string) => void;
-  onPostJob?: (payload: Record<string, unknown>) => void;
+  onAcceptJob?: (jobId: string) => void | Promise<void>;
+  onCompleteJob?: (jobId: string) => void | Promise<void>;
+  onCancelJob?: (jobId: string) => void | Promise<void>;
+  onPostJob?: (payload: Record<string, unknown>) => void | Promise<void>;
   onClose?: () => void;
+  pendingActionId?: string;
 }) {
   const [tab, setTab] = React.useState<TabId>("available");
   const panelRef = React.useRef<HTMLElement | null>(null);
@@ -370,8 +372,8 @@ export function HarthmereJobsBoardPanel({
 
   const submitJobPosting = React.useCallback((event?: React.FormEvent) => {
     event?.preventDefault();
-    if (!selectedTemplate || !postFormValid) return;
-    onPostJob?.(buildHarthmereJobsBoardPostPayloadV1({
+    if (!selectedTemplate || !postFormValid || pendingActionId) return;
+    void onPostJob?.(buildHarthmereJobsBoardPostPayloadV1({
       boardId,
       templateId: selectedTemplate.templateId,
       issuerKind: issuerMode,
@@ -399,6 +401,7 @@ export function HarthmereJobsBoardPanel({
     rewardCollectibleIds,
     rewardGold,
     rewardItems,
+    pendingActionId,
     selectedBusiness?.businessId,
     selectedTemplate,
   ]);
@@ -483,20 +486,30 @@ export function HarthmereJobsBoardPanel({
             {available.length === 0 && <p className="empty">No open jobs on this board.</p>}
             {available.map((job) => (
               <article className="harthmere-jobs-card" key={job.jobId}>
+                {(() => {
+                  const pending = pendingActionId === `accept:${job.jobId}`;
+                  return (
+                    <>
                 <strong>{job.title}</strong>
                 <span>{job.kindLabel} · {job.rewardGold} gold</span>
                 <small>{job.requiresFieldWork ? "Creates map/quest todo" : "Turn in at board"}</small>
                 {job.warning && <em>{job.warning}</em>}
                 <button
                   type="button"
+                  disabled={Boolean(pendingActionId)}
                   aria-label={`Accept ${job.title}`}
                   data-harthmere-jobs-board-action="true"
                   data-job-action-id={job.jobId}
-                  onClick={() => onAcceptJob?.(job.jobId)}
+                  aria-busy={pending}
+                  data-pending={pending ? "true" : undefined}
+                  onClick={() => void onAcceptJob?.(job.jobId)}
                   onKeyDown={handleActionKeyDown}
                 >
-                  Accept
+                  {pending ? <><span className="harthmere-jobs-board__spinner" aria-hidden="true" />Accepting...</> : "Accept"}
                 </button>
+                    </>
+                  );
+                })()}
               </article>
             ))}
           </div>
@@ -506,20 +519,29 @@ export function HarthmereJobsBoardPanel({
             {accepted.length === 0 && <p className="empty">You have no accepted jobs.</p>}
             {accepted.map((job) => (
               <article className="harthmere-jobs-card" key={job.jobId}>
+                {(() => {
+                  const pending = pendingActionId === `complete:${job.jobId}`;
+                  return (
+                    <>
                 <strong>{job.title}</strong>
                 <span>{job.status} · {job.rewardGold} gold</span>
                 <small>{job.todo?.todoText ?? "Return to the board when complete."}</small>
                 <button
                   type="button"
-                  disabled={!job.canComplete}
+                  disabled={!job.canComplete || Boolean(pendingActionId)}
                   aria-label={`Turn in ${job.title}`}
                   data-harthmere-jobs-board-action="true"
                   data-job-action-id={job.jobId}
-                  onClick={() => onCompleteJob?.(job.jobId)}
+                  aria-busy={pending}
+                  data-pending={pending ? "true" : undefined}
+                  onClick={() => void onCompleteJob?.(job.jobId)}
                   onKeyDown={handleActionKeyDown}
                 >
-                  Turn In
+                  {pending ? <><span className="harthmere-jobs-board__spinner" aria-hidden="true" />Turning In...</> : "Turn In"}
                 </button>
+                    </>
+                  );
+                })()}
               </article>
             ))}
           </div>
@@ -529,20 +551,29 @@ export function HarthmereJobsBoardPanel({
             {posted.length === 0 && <p className="empty">You have not posted jobs.</p>}
             {posted.map((job) => (
               <article className="harthmere-jobs-card" key={job.jobId}>
+                {(() => {
+                  const pending = pendingActionId === `cancel:${job.jobId}`;
+                  return (
+                    <>
                 <strong>{job.title}</strong>
                 <span>{job.status} · escrow {job.escrowGold}</span>
                 <small>{job.acceptedByActorId ? `Accepted by ${job.acceptedByActorId}` : "Waiting for a seeker"}</small>
                 <button
                   type="button"
-                  disabled={!job.canCancel}
+                  disabled={!job.canCancel || Boolean(pendingActionId)}
                   aria-label={`Cancel ${job.title}`}
                   data-harthmere-jobs-board-action="true"
                   data-job-action-id={job.jobId}
-                  onClick={() => onCancelJob?.(job.jobId)}
+                  aria-busy={pending}
+                  data-pending={pending ? "true" : undefined}
+                  onClick={() => void onCancelJob?.(job.jobId)}
                   onKeyDown={handleActionKeyDown}
                 >
-                  Cancel
+                  {pending ? <><span className="harthmere-jobs-board__spinner" aria-hidden="true" />Cancelling...</> : "Cancel"}
                 </button>
+                    </>
+                  );
+                })()}
               </article>
             ))}
           </div>
@@ -729,13 +760,15 @@ export function HarthmereJobsBoardPanel({
               <div className="harthmere-jobs-board__form-actions">
                 <button
                   type="submit"
-                  disabled={!postFormValid}
+                  disabled={!postFormValid || Boolean(pendingActionId)}
                   aria-label="Create job posting"
                   data-harthmere-jobs-board-action="true"
                   data-job-action-id="create-posting"
+                  aria-busy={pendingActionId === "post:create"}
+                  data-pending={pendingActionId === "post:create" ? "true" : undefined}
                   onKeyDown={handleActionKeyDown}
                 >
-                  Create Job Posting
+                  {pendingActionId === "post:create" ? <><span className="harthmere-jobs-board__spinner" aria-hidden="true" />Creating...</> : "Create Job Posting"}
                 </button>
               </div>
             </section>

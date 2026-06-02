@@ -25,6 +25,21 @@ import { jsonPost } from "@/shared/util/fetch_helpers";
 import { TimeWindow } from "@/shared/util/throttling";
 import { ok } from "assert";
 
+const REQUEST_THROTTLER_FETCH_TIMEOUT_MS = 5_000;
+
+async function fetchThrottledUrlWithTimeout(url: string) {
+  const controller = new AbortController();
+  const timeout = setTimeout(
+    () => controller.abort(),
+    REQUEST_THROTTLER_FETCH_TIMEOUT_MS
+  );
+  try {
+    await fetch(url, { signal: controller.signal });
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 export class RequestThrottler<Args extends unknown[]> {
   private readonly throttle: TimeWindow<string>;
 
@@ -38,7 +53,7 @@ export class RequestThrottler<Args extends unknown[]> {
   async fetch(...args: Args) {
     const url = this.urlFn(...args);
     if (!this.throttle.throttleOrUse(url)) {
-      await fetch(url);
+      await fetchThrottledUrlWithTimeout(url);
     }
   }
 }

@@ -2,6 +2,7 @@ import {
   HARTHMERE_BUSINESS_OUTPOSTS_V1,
   harthmereBusinessOutpostJobsBoardPositionV1,
 } from "../../../shared/harthmere/business_customer_simulator_v1";
+import { fetchHarthmereLiveWithTimeoutV1 } from "@/client/components/harthmere_live_fetch";
 
 export const HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1 =
   "harthmere_grove_market_jobs_board" as const;
@@ -533,10 +534,14 @@ function harthmereJobsBoardMutationHeadersV151(search?: string) {
 export async function fetchHarthmereJobsBoardStateV1(
   fetchImpl: typeof fetch = fetch
 ) {
-  const response = await fetchImpl(harthmereJobsBoardStateUrlV146(), {
-    method: "GET",
-    credentials: "same-origin",
-  });
+  const response = await fetchHarthmereLiveWithTimeoutV1(
+    fetchImpl,
+    harthmereJobsBoardStateUrlV146(),
+    {
+      method: "GET",
+      credentials: "same-origin",
+    }
+  );
   if (!response.ok)
     throw new Error(`Jobs board state request failed: ${response.status}`);
   const json = await response.json();
@@ -579,7 +584,8 @@ export async function submitHarthmereJobsBoardMutationV1(
       operation,
     },
   };
-  const response = await fetchImpl(
+  const response = await fetchHarthmereLiveWithTimeoutV1(
+    fetchImpl,
     harthmereJobsBoardMutationUrlV151(options.locationSearch),
     {
       method: "POST",
@@ -623,24 +629,28 @@ export async function submitHarthmereDailyTaskCompletedV1(
     `jobs_board_daily_${activityId}_${Date.now()}_${Math.random()
       .toString(36)
       .slice(2)}`;
-  const response = await fetchImpl("/api/harthmere/live_mode", {
-    method: "POST",
-    credentials: "same-origin",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      requestId,
-      idempotencyKey: requestId,
-      actionKind: "request_care_loop_action",
-      subsystem: "care",
-      actorEntityVersion: 1,
-      zoneId: "the_grove",
-      payload: {
-        operation: "daily_task_completed",
-        targetId: activityId,
-      },
-      clientClaims: {},
-    }),
-  });
+  const response = await fetchHarthmereLiveWithTimeoutV1(
+    fetchImpl,
+    "/api/harthmere/live_mode",
+    {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        requestId,
+        idempotencyKey: requestId,
+        actionKind: "request_care_loop_action",
+        subsystem: "care",
+        actorEntityVersion: 1,
+        zoneId: "the_grove",
+        payload: {
+          operation: "daily_task_completed",
+          targetId: activityId,
+        },
+        clientClaims: {},
+      }),
+    }
+  );
   const json = await response.json();
   if (!response.ok || json?.ok === false) {
     throw new Error(

@@ -14,6 +14,7 @@ import {
   runHarthmereLiveModeRobotEnergySchedulerTickV1,
 } from "../live_mode_robot_energy_scheduler_v1";
 import {
+  createHarthmereServerMuckCombatEntitySnapshotsV1,
   createHarthmereLiveModeSharedWorldStateV1,
   defaultHarthmereLiveModeBackendStateV1,
   harthmereLiveModeSharedWorldStateKeyV1,
@@ -25,6 +26,7 @@ import {
 } from "@/shared/harthmere/live_entity_robot_energy_protection_v1";
 import {
   HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_SEEDS_V1,
+  HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_PRODUCTION_COUNT_V1,
   HARTHMERE_LIVE_ENTITY_PRODUCTION_SEEDS_V1,
   HARTHMERE_LIVE_ENTITY_ROBOT_SENTINEL_SEEDS_V1,
   validateHarthmereLiveEntityProductionSeedsV1,
@@ -45,6 +47,7 @@ const NOW_MS = 1_700_600_000_000;
 class FakeRedisPrimary {
   readonly store = new Map<string, string>();
   readonly writes: Array<{ key: string; value: string }> = [];
+  readonly watched: string[][] = [];
 
   async get(key: string) {
     return this.store.get(key) ?? null;
@@ -54,6 +57,29 @@ class FakeRedisPrimary {
     this.writes.push({ key, value });
     this.store.set(key, value);
     return "OK";
+  }
+
+  async watch(...keys: string[]) {
+    this.watched.push(keys);
+  }
+
+  async unwatch() {}
+
+  multi() {
+    const ops: Array<() => void> = [];
+    return {
+      set: (key: string, value: string) => {
+        ops.push(() => {
+          this.writes.push({ key, value });
+          this.store.set(key, value);
+        });
+        return this;
+      },
+      exec: async () => {
+        for (const op of ops) op();
+        return [];
+      },
+    };
   }
 }
 
@@ -66,7 +92,13 @@ describe("Harthmere live entity production seeds", () => {
     );
     assert.equal(
       HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_SEEDS_V1.length,
-      LIVE_ENTITY_ROBOT_PROTECTION_AREAS_V1.length
+      HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_PRODUCTION_COUNT_V1
+    );
+    assert.ok(
+      HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_SEEDS_V1.some(
+        (seed) => seed.combatKind === "hex"
+      ),
+      "production hostile seed manifest should include Hexes"
     );
     assert.equal(
       new Set(harthmereLiveEntityProductionSeedIdsV1()).size,
@@ -78,6 +110,48 @@ describe("Harthmere live entity production seeds", () => {
         `${seed.displayName} should be inside an authored Muck territory`
       );
     }
+    for (const area of LIVE_ENTITY_ROBOT_PROTECTION_AREAS_V1) {
+      assert.ok(
+        HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_SEEDS_V1.some(
+          (seed) => seed.areaId === area.areaId
+        ),
+        `${area.areaId} should have at least one server hostile seed`
+      );
+    }
+  });
+
+  it("seeds server combat snapshots for only Muck territory Muckers and Hexes", () => {
+    const snapshots = createHarthmereServerMuckCombatEntitySnapshotsV1(NOW_MS);
+    const entries = Object.entries(snapshots);
+    assert.equal(entries.length, HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_SEEDS_V1.length);
+    assert.ok(entries.some(([, snapshot]) => snapshot.entityKind === "mux"));
+    assert.ok(entries.some(([, snapshot]) => snapshot.entityKind === "hex"));
+    for (const [entityId, snapshot] of entries) {
+      assert.ok(entityId.startsWith("server-muck-combat:"));
+      assert.ok(snapshot.isHostile);
+      assert.ok(snapshot.isAttackable);
+      assert.ok(snapshot.aiEnabled);
+      assert.ok(
+        snapshot.entityKind === "mux" || snapshot.entityKind === "hex",
+        `${entityId} should be a Mucker or Hex combat entity`
+      );
+      assert.ok(
+        muckMonsterAreaForPositionV1(
+          [snapshot.position.x, snapshot.position.y, snapshot.position.z],
+          1.5
+        ),
+        `${entityId} should be inside an authored Muck territory`
+      );
+    }
+
+    const defaultState = defaultHarthmereLiveModeBackendStateV1(
+      "server-muck-combat-test",
+      NOW_MS
+    );
+    assert.equal(
+      Object.keys(defaultState.combat.entitySnapshots).length,
+      HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_SEEDS_V1.length
+    );
   });
 
   it("builds ECS robot components and Muck entities for snapshot bootstrap", () => {
@@ -205,6 +279,9 @@ describe("Harthmere robot energy scheduler", () => {
 
     assert.equal(result.seededSharedState, true);
     assert.equal(result.sharedWorldStateKey, harthmereLiveModeSharedWorldStateKeyV1());
+    assert.deepEqual(redis.primary.watched, [
+      [harthmereLiveModeSharedWorldStateKeyV1()],
+    ]);
     assert.equal(redis.primary.writes.length, 1);
     for (const area of LIVE_ENTITY_ROBOT_PROTECTION_AREAS_V1) {
       assert.equal(result.robotProtection.areas[area.areaId].safeFromMuck, true);
@@ -238,6 +315,9 @@ describe("Harthmere robot energy scheduler", () => {
     });
 
     assert.equal(result.seededSharedState, false);
+    assert.deepEqual(redis.primary.watched, [
+      [harthmereLiveModeSharedWorldStateKeyV1()],
+    ]);
     assert.ok(result.changedRobotIds.includes(robotId));
     assert.ok(result.changedAreaIds.includes(area.areaId));
     assert.equal(result.robotProtection.robots[robotId].energy, 0);

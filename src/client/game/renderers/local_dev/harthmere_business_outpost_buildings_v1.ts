@@ -627,9 +627,19 @@ function fixtureSourceAssetKeyV1(
   if (/book|blueprint|sample|shelf|rack|larder|pantry|storage|stock/.test(label)) {
     return "shelf_large";
   }
-  if (/board|panel|display|meter|gauge|indicator|banner|cabinet|wall/.test(label)) return "cabinet";
-  if (/crate|cart|chest|linen|bin/.test(label)) return "crate_wooden_fp";
-  if (/candle|lantern|rune|ward|magic|steam|warning|anomaly|light/.test(label))
+  if (
+    /board|panel|display|meter|gauge|indicator|banner|cabinet|wall|arch|portal|gate|frame|cage|map/.test(
+      label
+    )
+  )
+    return "cabinet";
+  if (/crate|cart|chest|linen|bin|tank|canister|barrel|drum|vat/.test(label))
+    return "crate_wooden_fp";
+  if (
+    /candle|lantern|rune|ward|magic|steam|warning|anomaly|light|hearth|cauldron|forge|kiln|furnace|ember/.test(
+      label
+    )
+  )
     return "candle_triple";
   if (/bench/.test(label)) return "bench_fp";
   if (/table|counter|scale|station|plinth|stand|desk/.test(label)) {

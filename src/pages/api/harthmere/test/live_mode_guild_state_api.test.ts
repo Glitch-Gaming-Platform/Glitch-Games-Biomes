@@ -99,6 +99,42 @@ describe("live_mode_guild_state API route integration", () => {
     assert.equal(snapshot.permissions.manage_ranks, true);
   });
 
+  it("uses one Redis MGET for actor and shared guild state when available", async () => {
+    const backend = defaultHarthmereLiveModeBackendStateV1(ACTOR, NOW_MS);
+    backend.guild.guildId = "guild_api_mget";
+    const mgetCalls: string[][] = [];
+    const getCalls: string[] = [];
+    const redis = {
+      primary: {
+        get: async (key: string) => {
+          getCalls.push(key);
+          return null;
+        },
+        mget: async (...keys: string[]) => {
+          mgetCalls.push(keys);
+          return keys.map((key) =>
+            key === harthmereLiveModePlayerStateKeyV1(ACTOR)
+              ? JSON.stringify(backend)
+              : null
+          );
+        },
+      },
+    };
+
+    const snapshot = await readHarthmereLiveModeGuildStateForActorV1({
+      redis,
+      actorId: ACTOR,
+      nowMs: NOW_MS,
+    });
+
+    assert.deepEqual(mgetCalls, [[
+      harthmereLiveModePlayerStateKeyV1(ACTOR),
+      harthmereLiveModeSharedWorldStateKeyV1(),
+    ]]);
+    assert.deepEqual(getCalls, []);
+    assert.equal(snapshot.actorId, ACTOR);
+  });
+
   it("returns default guild state when Redis has no actor state", async () => {
     const redis = { primary: { get: async () => null } };
     const snapshot = await readHarthmereLiveModeGuildStateForActorV1({

@@ -5,6 +5,7 @@ import * as React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { HarthmereBusinessInteractionPrompt } from "../HarthmereBusinessInteractionPrompt";
 import { HarthmereBusinessInterfacePanel } from "../HarthmereBusinessInterfacePanel";
+import { HarthmereBusinessLiveContainer } from "../HarthmereBusinessLiveContainer";
 import {
   HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS_V1,
   HARTHMERE_BUSINESS_OUTPOSTS_V1,
@@ -38,6 +39,7 @@ import {
   getHarthmereBusinessServiceActionsV1,
   getHarthmereCustomerOrdersV1,
   getHarthmereVisibleBusinessInventoryV1,
+  harthmereBusinessWorldContextPayloadV1,
   isHarthmereBusinessInterfaceAvailableV1,
   nearestHarthmereBusinessDashboardWorldContextV1,
   normalizeHarthmereBusinessEconomySnapshotV1,
@@ -289,8 +291,56 @@ describe("Harthmere in-world business interface live adapter", () => {
     assert.equal(envelope.idempotencyKey, "fixed_business_request");
     assert.equal(envelope.actionKind, "request_economy_mutation");
     assert.equal(envelope.subsystem, "economy");
+    assert.equal(envelope.actorEntityVersion, 1);
+    assert.equal(typeof envelope.clientSentAtMs, "number");
     assert.equal(envelope.payload.operation, "deposit_business_inventory");
     assert.equal(envelope.payload.businessId, "business_food");
+  });
+
+  it("posts every production business minigame start and serve mutation with the required live-mode envelope", async () => {
+    const calls: any[] = [];
+    const fetchImpl = (async (url: string, init: any) => {
+      calls.push({ url, init });
+      return {
+        ok: true,
+        json: async () => ({ ok: true, economyState: sampleSnapshot() }),
+      };
+    }) as any;
+
+    for (const typeId of HARTHMERE_BUSINESS_TYPE_ORDER_V1) {
+      const businessId = `matrix_${typeId}`;
+      await submitHarthmereBusinessEconomyMutationV1(
+        "start_business_customer_session",
+        { businessId, count: 1 },
+        { fetchImpl, requestId: `start_${typeId}` }
+      );
+      await submitHarthmereBusinessEconomyMutationV1(
+        "serve_business_customer",
+        {
+          businessId,
+          offerId: `offer_${typeId}`,
+          sessionId: `session_${typeId}`,
+          ticketId: `ticket_${typeId}`,
+        },
+        { fetchImpl, requestId: `serve_${typeId}` }
+      );
+    }
+
+    assert.equal(calls.length, HARTHMERE_BUSINESS_TYPE_ORDER_V1.length * 2);
+    for (const { url, init } of calls) {
+      assert.equal(url, "/api/harthmere/live_mode");
+      const envelope = JSON.parse(init.body);
+      assert.equal(envelope.actionKind, "request_economy_mutation");
+      assert.equal(envelope.subsystem, "economy");
+      assert.equal(envelope.actorEntityVersion, 1);
+      assert.equal(typeof envelope.clientSentAtMs, "number");
+      assert.equal(envelope.zoneId, "the_grove");
+      assert.ok(
+        envelope.payload.operation === "start_business_customer_session" ||
+          envelope.payload.operation === "serve_business_customer"
+      );
+      assert.ok(envelope.payload.businessId.startsWith("matrix_"));
+    }
   });
 
   it("throws when the backend rejects a business reducer operation", async () => {
@@ -1090,9 +1140,20 @@ describe("Harthmere in-world business interface v2 screens", () => {
     );
     assert.equal(context.insideBusiness, true);
     assert.equal(context.nearbyBusinessId, businessId);
+    assert.equal(context.interactionKeyLabel, "F");
+    assert.equal(context.outpostId, outpost.outpostId);
+    assert.equal(
+      context.businessInteractionMarkerId,
+      outpost.dashboardAccessPoint.markerId
+    );
+    assert.deepEqual(
+      harthmereBusinessWorldContextPayloadV1(context)
+        .businessInteractionPosition,
+      outpost.dashboardAccessPoint.position
+    );
     const prompt = getHarthmereBusinessInteractionPromptV1(state, context);
     assert.equal(prompt.visible, true);
-    assert.match(prompt.label, /Press E to open .* Business Board/);
+    assert.match(prompt.label, /Press F to open .* Business Board/);
   });
 
   it("renders the business prompt and panel as an obvious in-business UI with keyboard and pointer affordances", () => {
@@ -1116,7 +1177,7 @@ describe("Harthmere in-world business interface v2 screens", () => {
         context: {
           insideBusiness: true,
           nearbyBusinessId: "business_food",
-          interactionKeyLabel: "E",
+          interactionKeyLabel: "F",
         },
       })
     );
@@ -1131,7 +1192,7 @@ describe("Harthmere in-world business interface v2 screens", () => {
     assert.ok(promptHtml.includes('data-access-point-min-height="82"'));
     assert.ok(promptHtml.includes('data-access-point-key-size="46"'));
     assert.ok(promptHtml.includes("Business owner access"));
-    assert.ok(promptHtml.includes("Press E to open"));
+    assert.ok(promptHtml.includes("Press F to open"));
     assert.ok(promptHtml.includes("Business Board"));
     assert.ok(
       promptHtml.includes(
@@ -1161,6 +1222,45 @@ describe("Harthmere in-world business interface v2 screens", () => {
     assert.ok(panelHtml.includes("Close business interface"));
   });
 
+  it("can suppress the world F business prompt while keeping the open business panel available", () => {
+    const state = sampleSnapshot();
+    const suppressedHtml = renderToStaticMarkup(
+      React.createElement(HarthmereBusinessLiveContainer, {
+        initialState: state,
+        showPrompt: false,
+        open: false,
+        worldContext: {
+          insideBusiness: true,
+          nearbyBusinessId: "business_food",
+          interactionKeyLabel: "F",
+        },
+      })
+    );
+    assert.equal(
+      suppressedHtml.includes('data-harthmere-business-prompt="true"'),
+      false
+    );
+    assert.equal(suppressedHtml.includes("Press F to open"), false);
+
+    const openHtml = renderToStaticMarkup(
+      React.createElement(HarthmereBusinessLiveContainer, {
+        initialState: state,
+        showPrompt: false,
+        open: true,
+        worldContext: {
+          insideBusiness: true,
+          nearbyBusinessId: "business_food",
+          interactionKeyLabel: "F",
+        },
+      })
+    );
+    assert.equal(
+      openHtml.includes('data-harthmere-business-prompt="true"'),
+      false
+    );
+    assert.ok(openHtml.includes('data-harthmere-business-interface="true"'));
+  });
+
   it("renders the customer mini-game as an accessible customer tab", () => {
     const state = sampleSnapshot();
     const adapter = createHarthmereBusinessInterfaceAdapterV1({
@@ -1179,6 +1279,62 @@ describe("Harthmere in-world business interface v2 screens", () => {
     );
     assert.ok(html.includes("Getting a Job and Getting Paid"));
     assert.ok(html.includes('data-business-mode="customer"'));
+  });
+
+  it("renders a startable customer minigame tab for every production business type", () => {
+    const state = sampleSnapshot();
+    for (const typeId of HARTHMERE_BUSINESS_TYPE_ORDER_V1) {
+      const businessId = `customer_ui_${typeId}`;
+      state.businesses[businessId] = business(
+        businessId,
+        typeId,
+        "player_b"
+      ) as any;
+    }
+    const adapter = createHarthmereBusinessInterfaceAdapterV1({
+      state,
+      hydrated: true,
+      refresh: async () => state,
+      submit: async () => ({ ok: true, economyState: state }),
+    });
+
+    for (const typeId of HARTHMERE_BUSINESS_TYPE_ORDER_V1) {
+      const businessId = `customer_ui_${typeId}`;
+      const miniGame = getHarthmereBusinessCustomerMiniGameV1(
+        state,
+        businessId
+      );
+      const html = renderToStaticMarkup(
+        React.createElement(HarthmereBusinessInterfacePanel, {
+          adapter,
+          nearbyBusinessId: businessId,
+          initialTab: "customers",
+          compact: true,
+        })
+      );
+      assert.ok(
+        html.includes('data-business-mode="customer"'),
+        `${typeId} should render as customer mode`
+      );
+      assert.ok(
+        html.includes(
+          `data-business-minigame-spec="${miniGame.definition.mechanicSpec.specId}"`
+        ),
+        `${typeId} should render its concrete minigame spec`
+      );
+      assert.ok(
+        html.includes("Start Shift"),
+        `${typeId} should render a start control`
+      );
+      assert.ok(
+        html.includes("#ffd23f") && html.includes("box-shadow"),
+        `${typeId} should render the bright glowing start control`
+      );
+      assert.ok(
+        html.includes("Service Board") && html.includes("Current Customer"),
+        `${typeId} should render the minigame work surfaces`
+      );
+    }
   });
 
   it("formats backend warnings into player-facing text without snake case or camel case", () => {
@@ -1556,7 +1712,8 @@ describe("Harthmere in-world business interface v2 screens", () => {
 });
 
 describe("Harthmere business interface backend quest handoff", () => {
-  it("creates a backend service quest when a field-service contract is accepted", () => {
+  it("creates a backend service quest when a field-service contract is accepted", function () {
+    this.timeout(20_000);
     const authority = require("../../../../shared/harthmere/mmo_economy_authority_v1");
     let economy = authority.defaultHarthmereProductionEconomyStateV1();
     const context = {

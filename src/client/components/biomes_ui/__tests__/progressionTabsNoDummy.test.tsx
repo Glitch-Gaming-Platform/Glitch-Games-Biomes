@@ -1,42 +1,114 @@
 import assert from "assert";
 import * as React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { AbilitiesTab, activateBiomesAbilityForTest, chunkBiomesAbilityRowsForTest } from "../tabs/AbilitiesTab";
+import {
+  AbilitiesTab,
+  activateBiomesAbilityForTest,
+  chunkBiomesAbilityRowsForTest,
+} from "../tabs/AbilitiesTab";
 import { BiomesUI } from "../BiomesUI";
 import { TAB_DESCRIPTORS, TAB_ORDER } from "../BiomesUITypes";
 import { abilityVisibleInBiomesLibraryForTest } from "../adapters/abilityLibraryVisibility";
-import { dailyTodoProgressForTest, dailyTodoTasksFromCareSnapshotForTest } from "../adapters/dailyTodoAdapter";
+import {
+  dailyTodoProgressForTest,
+  dailyTodoTasksFromCareSnapshotForTest,
+} from "../adapters/dailyTodoAdapter";
 import { mergeInventoryAndHotbarForBiomesBackpackForTest } from "../adapters/inventoryAdapterHelpers";
 import { readableMapMarkerLabelForTest } from "../adapters/mapMarkerLabels";
-import { ClassesTab, activateBiomesClassCardForTest, activateBiomesSpecializationForTest } from "../tabs/ClassesTab";
-import { CollectionsTab, activateBiomesCollectionEntryForTest } from "../tabs/CollectionsTab";
+import {
+  ClassesTab,
+  activateBiomesClassCardForTest,
+  activateBiomesSpecializationForTest,
+} from "../tabs/ClassesTab";
+import {
+  CollectionsTab,
+  activateBiomesCollectionEntryForTest,
+} from "../tabs/CollectionsTab";
 import { BankingTab } from "../tabs/BankingTab";
 import { InventoryTab } from "../tabs/InventoryTab";
 import { DailyTodoTab } from "../tabs/DailyTodoTab";
 import { LandTab } from "../tabs/LandTab";
 import { LootTab } from "../tabs/LootTab";
 import { biomesPlayerSentence, biomesPlayerTitle } from "../playerFacingText";
-import { MapQuestsTab, activeBiomesUIMapPinFromMarkerForTest, centeredPanForMapMarkerForTest, filterMapMarkersForTest, filterMapMissionStepsForTest, filterMapTrackableQuestsForTest, geographyTerrainFeaturesForMapMarkersForTest, mapMarkerVisualStateForTest, mapPanelTabForMarkerForTest, nextMapZoomForWheelForTest, shouldRenderMapMarkerLabelForTest } from "../tabs/MapQuestsTab";
+import {
+  MapQuestsTab,
+  activeBiomesUIMapPinFromMarkerForTest,
+  centeredPanForMapMarkerForTest,
+  filterMapMarkersForTest,
+  filterMapMissionStepsForTest,
+  filterMapTrackableQuestsForTest,
+  geographyTerrainFeaturesForMapMarkersForTest,
+  mapMarkerVisualStateForTest,
+  mapPanelTabForMarkerForTest,
+  nextMapZoomForWheelForTest,
+  shouldRenderMapMarkerLabelForTest,
+} from "../tabs/MapQuestsTab";
 import { SkillsTab } from "../tabs/SkillsTab";
 import { DEFAULT_TAB_SHORTCUTS } from "../shortcuts/BiomesShortcuts";
 import { UI_IDS } from "../uniqueIds";
-import { displayBiomesVitalsBarValueForTest, formatBiomesGoldForVitalsForTest } from "../BiomesUIVitalsPanel";
-import { biomesInventoryItemIconV1, humanizeBiomesInventoryItemIdV1 } from "../adapters/inventoryItemPresentation";
-import { buildFarmingFoodInterfaceModelForTest, farmingFoodQuickActionForKeyV1 } from "../adapters/farmingFoodInterfaceAdapter";
-import { biomesUIPlayerStatusEndpointV146, biomesUIVitalsCombatResourceDisplayForTest, biomesUIVitalsDisplayFromLiveStatusForTest, formatBiomesResourceLabelForVitalsForTest } from "../adapters/playerStatusAdapter";
-import { biomesUIActiveMapPinNavigationAidKindForTest, biomesUIActiveMapPinNavigationAidSpecForTest } from "../adapters/mapPinnedDestination";
-import { buildingSystemBlueprintByIdV1, buildingSystemPlotByIdV1, createBuildingSystemDoorLockV1, createBuildingSystemHomeConsoleMarkerV1, createBuildingSystemPropertyRecordV1, createBuildingSystemStorageContainerV1 } from "@/shared/harthmere/building_system_v1";
+import {
+  displayBiomesVitalsBarValueForTest,
+  formatBiomesGoldForVitalsForTest,
+  formatBiomesLevelForVitalsForTest,
+} from "../BiomesUIVitalsPanel";
+import {
+  biomesInventoryItemIconV1,
+  humanizeBiomesInventoryItemIdV1,
+} from "../adapters/inventoryItemPresentation";
+import {
+  buildFarmingFoodInterfaceModelForTest,
+  farmingFoodQuickActionForKeyV1,
+} from "../adapters/farmingFoodInterfaceAdapter";
+import {
+  biomesUIPlayerStatusEndpointV146,
+  biomesUIVitalsCombatResourceDisplayForTest,
+  biomesUIVitalsDisplayFromLiveStatusForTest,
+  formatBiomesResourceLabelForVitalsForTest,
+} from "../adapters/playerStatusAdapter";
+import {
+  biomesUIActiveMapPinNavigationAidKindForTest,
+  biomesUIActiveMapPinNavigationAidSpecForTest,
+} from "../adapters/mapPinnedDestination";
+import {
+  buildingSystemBlueprintByIdV1,
+  buildingSystemPlotByIdV1,
+  createBuildingSystemDoorLockV1,
+  createBuildingSystemHomeConsoleMarkerV1,
+  createBuildingSystemPropertyRecordV1,
+  createBuildingSystemStorageContainerV1,
+} from "@/shared/harthmere/building_system_v1";
 
-const FORBIDDEN_PLAYER_COPY = ["backend", "server accepted", "server rejected", "server-authoritative", "read_state", "building_state", "payload", "ECS", "entity", "ledger", "server-authorized", "No backend"];
+const FORBIDDEN_PLAYER_COPY = [
+  "backend",
+  "server accepted",
+  "server rejected",
+  "server-authoritative",
+  "read_state",
+  "building_state",
+  "payload",
+  "ECS",
+  "entity",
+  "ledger",
+  "server-authorized",
+  "No backend",
+];
 
 function assertNoDeveloperCopy(html: string) {
   for (const forbidden of FORBIDDEN_PLAYER_COPY) {
-    assert.equal(html.toLowerCase().includes(forbidden.toLowerCase()), false, `Developer copy leaked into BiomesUI: ${forbidden}`);
+    assert.equal(
+      html.toLowerCase().includes(forbidden.toLowerCase()),
+      false,
+      `Developer copy leaked into BiomesUI: ${forbidden}`
+    );
   }
 }
 
 function tagForDataAction(html: string, action: string): string {
-  return html.match(new RegExp(`<button[^>]*data-[^=]+-action="${action}"[^>]*>`))?.[0] ?? "";
+  return (
+    html.match(
+      new RegExp(`<button[^>]*data-[^=]+-action="${action}"[^>]*>`)
+    )?.[0] ?? ""
+  );
 }
 
 describe("Biomes UI progression tabs", () => {
@@ -48,7 +120,9 @@ describe("Biomes UI progression tabs", () => {
       false
     );
     assert.equal(
-      DEFAULT_TAB_SHORTCUTS.some((shortcut) => ["W", "A", "S", "D"].includes(shortcut.label)),
+      DEFAULT_TAB_SHORTCUTS.some((shortcut) =>
+        ["W", "A", "S", "D"].includes(shortcut.label)
+      ),
       false
     );
   });
@@ -91,21 +165,35 @@ describe("Biomes UI progression tabs", () => {
   });
 
   it("keeps daily task rewards locked until the task is done", () => {
-    const task = dailyTodoTasksFromCareSnapshotForTest(undefined).find((entry) => entry.activityId === "jobs_board");
+    const task = dailyTodoTasksFromCareSnapshotForTest(undefined).find(
+      (entry) => entry.activityId === "jobs_board"
+    );
     assert.equal(task?.completed, false);
     assert.equal(task?.claimable, false);
     assert.equal(task?.actionLabel, "Do this first");
   });
 
   it("uses player-facing item names and icons for food and seeds", () => {
-    assert.equal(humanizeBiomesInventoryItemIdV1("seed_carrot", "seed_carrot"), "Carrot Seed");
-    assert.ok(biomesInventoryItemIconV1("seed_carrot").includes("/buckets/biomes-static/asset_data/icons/items/seed_carrot"));
-    assert.equal(humanizeBiomesInventoryItemIdV1("road_ration", "road_ration"), "Road Ration");
+    assert.equal(
+      humanizeBiomesInventoryItemIdV1("seed_carrot", "seed_carrot"),
+      "Carrot Seed"
+    );
+    assert.ok(
+      biomesInventoryItemIconV1("seed_carrot").includes(
+        "/buckets/biomes-static/asset_data/icons/items/seed_carrot"
+      )
+    );
+    assert.equal(
+      humanizeBiomesInventoryItemIdV1("road_ration", "road_ration"),
+      "Road Ration"
+    );
   });
 
   it("shows gold as a player-facing HUD stat", () => {
     assert.equal(formatBiomesGoldForVitalsForTest(17.8), "17 gold");
     assert.equal(formatBiomesGoldForVitalsForTest(-5), "0 gold");
+    assert.equal(formatBiomesLevelForVitalsForTest(2.9), "Level 2");
+    assert.equal(formatBiomesLevelForVitalsForTest(undefined), "Level 1");
   });
 
   it("does not display a positive stamina bar value as zero", () => {
@@ -277,13 +365,27 @@ describe("Biomes UI progression tabs", () => {
   });
 
   it("passes the embedded Glitch install id to player status reads", () => {
-    assert.equal(biomesUIPlayerStatusEndpointV146("?install_id=5689c070-ac47-4333-9a12-76c10749cd78"), "/api/harthmere/live_mode_player_status_state?install_id=5689c070-ac47-4333-9a12-76c10749cd78");
-    assert.equal(biomesUIPlayerStatusEndpointV146("?installId=install with spaces"), "/api/harthmere/live_mode_player_status_state?install_id=install%20with%20spaces");
+    assert.equal(
+      biomesUIPlayerStatusEndpointV146(
+        "?install_id=5689c070-ac47-4333-9a12-76c10749cd78"
+      ),
+      "/api/harthmere/live_mode_player_status_state?install_id=5689c070-ac47-4333-9a12-76c10749cd78"
+    );
+    assert.equal(
+      biomesUIPlayerStatusEndpointV146("?installId=install with spaces"),
+      "/api/harthmere/live_mode_player_status_state?install_id=install%20with%20spaces"
+    );
   });
 
   it("formats non-mana class resources for the HUD", () => {
-    assert.equal(formatBiomesResourceLabelForVitalsForTest("conviction"), "Conviction");
-    assert.equal(formatBiomesResourceLabelForVitalsForTest("shadow_power", "souls"), "Souls");
+    assert.equal(
+      formatBiomesResourceLabelForVitalsForTest("conviction"),
+      "Conviction"
+    );
+    assert.equal(
+      formatBiomesResourceLabelForVitalsForTest("shadow_power", "souls"),
+      "Souls"
+    );
   });
 
   it("renders ClassesTab from adapter data instead of fallback classes", () => {
@@ -369,7 +471,11 @@ describe("Biomes UI progression tabs", () => {
   });
 
   it("lays the ability library into readable keyboard rows", () => {
-    assert.deepEqual(chunkBiomesAbilityRowsForTest([1, 2, 3, 4, 5, 6, 7], 3), [[1, 2, 3], [4, 5, 6], [7]]);
+    assert.deepEqual(chunkBiomesAbilityRowsForTest([1, 2, 3, 4, 5, 6, 7], 3), [
+      [1, 2, 3],
+      [4, 5, 6],
+      [7],
+    ]);
     assert.deepEqual(chunkBiomesAbilityRowsForTest([1, 2], 0), [[1], [2]]);
   });
 
@@ -436,7 +542,10 @@ describe("Biomes UI progression tabs", () => {
       item: { id: 102, name: "Glow Berries", action: "food" },
       count: 3n,
     };
-    const merged = mergeInventoryAndHotbarForBiomesBackpackForTest([stone], [berries]);
+    const merged = mergeInventoryAndHotbarForBiomesBackpackForTest(
+      [stone],
+      [berries]
+    );
     assert.equal(merged.length, 2);
     assert.equal(
       merged.some((slot) => slot.item.name === "Glow Berries"),
@@ -447,7 +556,10 @@ describe("Biomes UI progression tabs", () => {
   it("keeps the larger count when backpack and hotbar mirror the same item", () => {
     const backpack = [{ item: { id: 103, name: "Copper Sprig" }, count: 1n }];
     const hotbar = [{ item: { id: 103, name: "Copper Sprig" }, count: 5n }];
-    const merged = mergeInventoryAndHotbarForBiomesBackpackForTest(backpack, hotbar);
+    const merged = mergeInventoryAndHotbarForBiomesBackpackForTest(
+      backpack,
+      hotbar
+    );
     assert.equal(merged.length, 1);
     assert.equal(merged[0].count, 5n);
   });
@@ -525,7 +637,9 @@ describe("Biomes UI progression tabs", () => {
       />
     );
 
-    assert.ok(html.includes(`data-ui-id="${UI_IDS.INVENTORY_ITEM("road_ration")}"`));
+    assert.ok(
+      html.includes(`data-ui-id="${UI_IDS.INVENTORY_ITEM("road_ration")}"`)
+    );
     assert.ok(html.includes('aria-label="Road Ration x2"'));
     assert.ok(tagForDataAction(html, "use").length > 0);
     assertNoDeveloperCopy(html);
@@ -536,7 +650,9 @@ describe("Biomes UI progression tabs", () => {
       <InventoryTab
         adapter={{
           getEquipment: () => [],
-          getCurrencies: () => [{ id: "gold", name: "Gold", amount: 0, icon: "◉" }],
+          getCurrencies: () => [
+            { id: "gold", name: "Gold", amount: 0, icon: "◉" },
+          ],
           getBackpack: () => ({
             items: [],
             maxSlots: 8,
@@ -662,12 +778,21 @@ describe("Biomes UI progression tabs", () => {
       updatedAtMs: 1_000,
     });
 
-    assert.equal(farmingFoodQuickActionForKeyV1(model, "KeyF")?.id, "harvest_plot");
+    assert.equal(
+      farmingFoodQuickActionForKeyV1(model, "KeyF")?.id,
+      "harvest_plot"
+    );
     assert.deepEqual(farmingFoodQuickActionForKeyV1(model, "KeyF")?.payload, {
       plotId: "farm_plot_001",
     });
-    assert.equal(farmingFoodQuickActionForKeyV1(model, "KeyR")?.id, "eat_best_food");
-    assert.equal(farmingFoodQuickActionForKeyV1(model, "KeyT")?.id, "cook_raw_meat");
+    assert.equal(
+      farmingFoodQuickActionForKeyV1(model, "KeyR")?.id,
+      "eat_best_food"
+    );
+    assert.equal(
+      farmingFoodQuickActionForKeyV1(model, "KeyT")?.id,
+      "cook_raw_meat"
+    );
   });
 
   it("requires the right cooking station before exposing richer recipes", () => {
@@ -678,7 +803,9 @@ describe("Biomes UI progression tabs", () => {
       },
       availableCookingStations: ["campfire"],
     });
-    const workerMeal = fieldOnly.actions.find((action) => action.id === "cook_worker_meal");
+    const workerMeal = fieldOnly.actions.find(
+      (action) => action.id === "cook_worker_meal"
+    );
     assert.equal(workerMeal?.disabled, true);
     assert.equal(workerMeal?.blockedReason, "Needs cookpot.");
     assert.equal(farmingFoodQuickActionForKeyV1(fieldOnly, "KeyT"), undefined);
@@ -805,7 +932,20 @@ describe("Biomes UI progression tabs", () => {
   });
 
   it("keeps common BiomesUI empty states player-facing", () => {
-    const html = [renderToStaticMarkup(<LandTab />), renderToStaticMarkup(<LootTab adapter={{ isHydrated: () => true, getRecent: () => [] }} />), renderToStaticMarkup(<BankingTab adapter={{ isHydrated: () => false }} />), renderToStaticMarkup(<CollectionsTab adapter={{ isHydrated: () => false, getCategories: () => [] }} />)].join("\n");
+    const html = [
+      renderToStaticMarkup(<LandTab />),
+      renderToStaticMarkup(
+        <LootTab adapter={{ isHydrated: () => true, getRecent: () => [] }} />
+      ),
+      renderToStaticMarkup(
+        <BankingTab adapter={{ isHydrated: () => false }} />
+      ),
+      renderToStaticMarkup(
+        <CollectionsTab
+          adapter={{ isHydrated: () => false, getCategories: () => [] }}
+        />
+      ),
+    ].join("\n");
 
     assert.ok(html.includes("Land Office"));
     assert.ok(html.includes("No new loot yet"));
@@ -817,7 +957,9 @@ describe("Biomes UI progression tabs", () => {
   it("shows completed building access points as player-facing UI", () => {
     const nowMs = 1_800_000_000_000;
     const plot = buildingSystemPlotByIdV1("grove_muckstead_cottage_lot")!;
-    const blueprint = buildingSystemBlueprintByIdV1("grove_voxel_cottage_tier_1")!;
+    const blueprint = buildingSystemBlueprintByIdV1(
+      "grove_voxel_cottage_tier_1"
+    )!;
     const property = createBuildingSystemPropertyRecordV1({
       propertyId: "property_grove_muckstead_cottage_lot",
       ownerId: "player",
@@ -908,7 +1050,10 @@ describe("Biomes UI progression tabs", () => {
   it("formats raw ids and backend messages before showing them to players", () => {
     assert.equal(biomesPlayerTitle("the_grove"), "The Grove");
     assert.equal(biomesPlayerTitle("general_trader"), "General Trader");
-    assert.equal(biomesPlayerSentence("Server accepted read_state: building_state"), "Done checking your land: land records");
+    assert.equal(
+      biomesPlayerSentence("Server accepted read_state: building_state"),
+      "Done checking your land: land records"
+    );
   });
 
   it("renders MapQuestsTab as a contained tabbed map centered around live data", () => {
@@ -1088,12 +1233,25 @@ describe("Biomes UI progression tabs", () => {
   });
 
   it("classifies map markers into the expected UX tabs", () => {
-    assert.deepEqual(mapPanelTabForMarkerForTest({ kind: "vendor" }), ["people"]);
-    assert.deepEqual(mapPanelTabForMarkerForTest({ kind: "bank" }), ["buildings"]);
-    assert.deepEqual(mapPanelTabForMarkerForTest({ kind: "business" }), ["buildings"]);
-    assert.deepEqual(mapPanelTabForMarkerForTest({ kind: "property" }), ["properties"]);
-    assert.deepEqual(mapPanelTabForMarkerForTest({ kind: "route" }), ["geography"]);
-    assert.deepEqual(mapPanelTabForMarkerForTest({ kind: "objective", active: true }), ["quests"]);
+    assert.deepEqual(mapPanelTabForMarkerForTest({ kind: "vendor" }), [
+      "people",
+    ]);
+    assert.deepEqual(mapPanelTabForMarkerForTest({ kind: "bank" }), [
+      "buildings",
+    ]);
+    assert.deepEqual(mapPanelTabForMarkerForTest({ kind: "business" }), [
+      "buildings",
+    ]);
+    assert.deepEqual(mapPanelTabForMarkerForTest({ kind: "property" }), [
+      "properties",
+    ]);
+    assert.deepEqual(mapPanelTabForMarkerForTest({ kind: "route" }), [
+      "geography",
+    ]);
+    assert.deepEqual(
+      mapPanelTabForMarkerForTest({ kind: "objective", active: true }),
+      ["quests"]
+    );
   });
 
   it("computes player-centered map pan for reset and selected markers", () => {
@@ -1141,8 +1299,14 @@ describe("Biomes UI progression tabs", () => {
       }),
       "Gus the Baker"
     );
-    assert.equal(readableMapMarkerLabelForTest({ id: "grove_jobs_board" }), "Jobs Board");
-    assert.equal(shouldRenderMapMarkerLabelForTest({ label: "Gus the Baker" }), true);
+    assert.equal(
+      readableMapMarkerLabelForTest({ id: "grove_jobs_board" }),
+      "Jobs Board"
+    );
+    assert.equal(
+      shouldRenderMapMarkerLabelForTest({ label: "Gus the Baker" }),
+      true
+    );
     assert.equal(shouldRenderMapMarkerLabelForTest({ label: "   " }), false);
   });
 
@@ -1169,7 +1333,9 @@ describe("Biomes UI progression tabs", () => {
       features.map((feature) => feature.kind),
       ["muck", "water", "resource"]
     );
-    assert.ok(features.every((feature) => feature.width > 0 && feature.height > 0));
+    assert.ok(
+      features.every((feature) => feature.width > 0 && feature.height > 0)
+    );
   });
 
   it("computes wheel zoom bounds for the contained map viewport", () => {
@@ -1217,18 +1383,45 @@ describe("Biomes UI progression tabs", () => {
       }),
       undefined
     );
-    assert.equal(biomesUIActiveMapPinNavigationAidSpecForTest(undefined), undefined);
+    assert.equal(
+      biomesUIActiveMapPinNavigationAidSpecForTest(undefined),
+      undefined
+    );
   });
 
   it("maps active BiomesUI destinations onto differently colored navigation marker families", () => {
-    assert.equal(biomesUIActiveMapPinNavigationAidKindForTest("objective"), "puzzle");
-    assert.equal(biomesUIActiveMapPinNavigationAidKindForTest("quest"), "puzzle");
-    assert.equal(biomesUIActiveMapPinNavigationAidKindForTest("resource"), "farming");
-    assert.equal(biomesUIActiveMapPinNavigationAidKindForTest("safe_zone"), "farming");
-    assert.equal(biomesUIActiveMapPinNavigationAidKindForTest("danger"), "hunting");
-    assert.equal(biomesUIActiveMapPinNavigationAidKindForTest("route"), "fishing");
-    assert.equal(biomesUIActiveMapPinNavigationAidKindForTest("business"), "camera");
-    assert.equal(biomesUIActiveMapPinNavigationAidKindForTest("property"), "camera");
+    assert.equal(
+      biomesUIActiveMapPinNavigationAidKindForTest("objective"),
+      "puzzle"
+    );
+    assert.equal(
+      biomesUIActiveMapPinNavigationAidKindForTest("quest"),
+      "puzzle"
+    );
+    assert.equal(
+      biomesUIActiveMapPinNavigationAidKindForTest("resource"),
+      "farming"
+    );
+    assert.equal(
+      biomesUIActiveMapPinNavigationAidKindForTest("safe_zone"),
+      "farming"
+    );
+    assert.equal(
+      biomesUIActiveMapPinNavigationAidKindForTest("danger"),
+      "hunting"
+    );
+    assert.equal(
+      biomesUIActiveMapPinNavigationAidKindForTest("route"),
+      "fishing"
+    );
+    assert.equal(
+      biomesUIActiveMapPinNavigationAidKindForTest("business"),
+      "camera"
+    );
+    assert.equal(
+      biomesUIActiveMapPinNavigationAidKindForTest("property"),
+      "camera"
+    );
 
     const spec = biomesUIActiveMapPinNavigationAidSpecForTest({
       markerId: "grove_jobs_board",
@@ -1262,6 +1455,9 @@ describe("Biomes UI progression tabs", () => {
     assert.ok(html.includes("Esc"));
     assert.ok(html.includes("Close"));
     assert.ok(html.includes("Close Biomes UI"));
+    assert.ok(html.includes(`data-ui-id="${UI_IDS.HUD_PROMPT_OPEN_MENU}"`));
+    assert.ok(html.includes('data-biomes-ui-open="true"'));
+    assert.ok(html.includes("Open Menu"));
   });
 
   it("renders CollectionsTab from canonical collection categories", () => {
@@ -1426,7 +1622,16 @@ describe("Biomes UI progression tabs", () => {
         resource: "Stamina",
         description: "Heavy strike.",
       },
-      equipped: [{ id: "basic_strike" } as any, null, null, null, null, null, null, null],
+      equipped: [
+        { id: "basic_strike" } as any,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+      ],
       adapter: {
         assign: (slot, id) => assigned.push([slot, id]),
       },
@@ -1459,7 +1664,10 @@ describe("Biomes UI progression tabs", () => {
 
   it("routes collection activation from click or keyboard through discover", () => {
     const discovered: string[] = [];
-    activateBiomesCollectionEntryForTest({ discover: (id) => discovered.push(id) }, "npc:jackie");
+    activateBiomesCollectionEntryForTest(
+      { discover: (id) => discovered.push(id) },
+      "npc:jackie"
+    );
     assert.deepEqual(discovered, ["npc:jackie"]);
   });
 });

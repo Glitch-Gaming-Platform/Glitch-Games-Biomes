@@ -22,14 +22,67 @@ if (typeof globalAny.window === "undefined") {
 globalAny.window.addEventListener ??= () => {};
 globalAny.window.removeEventListener ??= () => {};
 globalAny.window.dispatchEvent ??= () => true;
+const localStorageValues = new Map<string, string>();
+globalAny.window.localStorage ??= {
+  getItem: (key: string) => localStorageValues.get(key) ?? null,
+  setItem: (key: string, value: string) => {
+    localStorageValues.set(key, String(value));
+  },
+  removeItem: (key: string) => {
+    localStorageValues.delete(key);
+  },
+  clear: () => localStorageValues.clear(),
+};
 
 const FIXTURE_LANDMARKS = [
-  { id: "the_grove", label: "The Grove", position: [496, 70, -126], kind: "safe_zone", area: "the_grove", visibleOnWorldMap: true },
-  { id: "npc_jackie", label: "Jackie", position: [496, 70, -126], kind: "npc", area: "the_grove", visibleOnWorldMap: true },
-  { id: "harthmere_market_posting_board", label: "Grove Jobs Board Monitor", position: [501.99486179104775, 71, -132.00350672753194], kind: "interactable", area: "the_grove", visibleOnWorldMap: true },
-  { id: "grove_banker_merl", label: "Merl Voss, Grove Banker", position: [490, 70, -132], kind: "npc", area: "the_grove", visibleOnWorldMap: true },
-  { id: "muckwad_patch", label: "Muckwad Patch", position: [512, 70, -152], kind: "resource", area: "muck_edges", visibleOnWorldMap: true },
-  { id: "hidden_marker", label: "Hidden", position: [400, 70, -100], kind: "danger", area: "the_grove", visibleOnWorldMap: false },
+  {
+    id: "the_grove",
+    label: "The Grove",
+    position: [496, 70, -126],
+    kind: "safe_zone",
+    area: "the_grove",
+    visibleOnWorldMap: true,
+  },
+  {
+    id: "npc_jackie",
+    label: "Jackie",
+    position: [496, 70, -126],
+    kind: "npc",
+    area: "the_grove",
+    visibleOnWorldMap: true,
+  },
+  {
+    id: "harthmere_market_posting_board",
+    label: "Grove Jobs Board Monitor",
+    position: [501.99486179104775, 71, -132.00350672753194],
+    kind: "interactable",
+    area: "the_grove",
+    visibleOnWorldMap: true,
+  },
+  {
+    id: "grove_banker_merl",
+    label: "Merl Voss, Grove Banker",
+    position: [490, 70, -132],
+    kind: "npc",
+    area: "the_grove",
+    visibleOnWorldMap: true,
+  },
+  {
+    id: "muckwad_patch",
+    label: "Muckwad Patch",
+    position: [512, 70, -152],
+    kind: "resource",
+    area: "muck_edges",
+    visibleOnWorldMap: true,
+  },
+  {
+    id: "hidden_marker",
+    label: "Hidden",
+    position: [400, 70, -100],
+    kind: "danger",
+    area: "the_grove",
+    visibleOnWorldMap: false,
+  },
 ];
 const FIXTURE_QUESTS = [
   {
@@ -50,7 +103,13 @@ const FIXTURE_QUESTS = [
   },
 ];
 
-function installFixture(state: any = { activeQuestId: "fountain_buttons_first", activeObjectiveIndex: 1, completedQuestIds: [] }) {
+function installFixture(
+  state: any = {
+    activeQuestId: "fountain_buttons_first",
+    activeObjectiveIndex: 1,
+    completedQuestIds: [],
+  }
+) {
   globalAny.window.__snapshotGroveV75 = {
     version: "test",
     quests: FIXTURE_QUESTS,
@@ -61,6 +120,7 @@ function installFixture(state: any = { activeQuestId: "fountain_buttons_first", 
 
 function clearFixture() {
   globalAny.window.__snapshotGroveV75 = undefined;
+  globalAny.window.localStorage.clear();
 }
 
 // Import the module under test after the window shim is installed. Many of
@@ -88,20 +148,33 @@ function buildAdapter(playerWorldPos?: [number, number, number]) {
   const state = api?.readState?.();
   const quests = Array.isArray(api?.quests) ? api.quests : [];
   const allLandmarks = appendHarthmereBusinessOutpostMapLandmarksV1(
-    Array.isArray(api?.landmarks) ? api.landmarks : [],
+    Array.isArray(api?.landmarks) ? api.landmarks : []
   );
-  const landmarks = allLandmarks.filter((lm) => lm && lm.visibleOnWorldMap !== false);
+  const landmarks = allLandmarks.filter(
+    (lm) => lm && lm.visibleOnWorldMap !== false
+  );
 
-  let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
+  let minX = Infinity,
+    maxX = -Infinity,
+    minZ = Infinity,
+    maxZ = -Infinity;
   for (const lm of landmarks) {
     if (!Array.isArray(lm.position)) continue;
-    const x = lm.position[0]; const z = lm.position[2];
-    if (x < minX) minX = x; if (x > maxX) maxX = x;
-    if (z < minZ) minZ = z; if (z > maxZ) maxZ = z;
+    const x = lm.position[0];
+    const z = lm.position[2];
+    if (x < minX) minX = x;
+    if (x > maxX) maxX = x;
+    if (z < minZ) minZ = z;
+    if (z > maxZ) maxZ = z;
   }
   const padX = (maxX - minX) * 0.08 || 12;
   const padZ = (maxZ - minZ) * 0.08 || 12;
-  const bounds = { minX: minX - padX, maxX: maxX + padX, minZ: minZ - padZ, maxZ: maxZ + padZ };
+  const bounds = {
+    minX: minX - padX,
+    maxX: maxX + padX,
+    minZ: minZ - padZ,
+    maxZ: maxZ + padZ,
+  };
 
   const norm = (wx: number, wz: number) => ({
     x: (wx - bounds.minX) / (bounds.maxX - bounds.minX),
@@ -111,7 +184,10 @@ function buildAdapter(playerWorldPos?: [number, number, number]) {
   const activeQuest = quests.find((q: any) => q.id === state?.activeQuestId);
   const activeMarkerIds: string[] = activeQuest?.markerIds ?? [];
   const activeObjectiveIndex = Number(state?.activeObjectiveIndex ?? 0);
-  const activeObjectiveMarker = activeMarkerIds[Math.max(0, Math.min(activeMarkerIds.length - 1, activeObjectiveIndex))];
+  const activeObjectiveMarker =
+    activeMarkerIds[
+      Math.max(0, Math.min(activeMarkerIds.length - 1, activeObjectiveIndex))
+    ];
 
   const getMarkers = (): MapMarker[] => {
     const out: MapMarker[] = [];
@@ -123,8 +199,21 @@ function buildAdapter(playerWorldPos?: [number, number, number]) {
       out.push({
         id: lm.id,
         label: lm.label,
-        x, y,
-        kind: isObjective ? "objective" : /board|kiosk/.test(lm.id) ? "quest" : /banker|merl/.test(lm.id) ? "bank" : /muckwad/.test(lm.id) ? "resource" : /business/.test(lm.id) ? "business" : /jackie/.test(lm.id) ? "vendor" : "safe_zone",
+        x,
+        y,
+        kind: isObjective
+          ? "objective"
+          : /board|kiosk/.test(lm.id)
+          ? "quest"
+          : /banker|merl/.test(lm.id)
+          ? "bank"
+          : /muckwad/.test(lm.id)
+          ? "resource"
+          : /business/.test(lm.id)
+          ? "business"
+          : /jackie/.test(lm.id)
+          ? "vendor"
+          : "safe_zone",
         active: isActive,
         worldPosition: [lm.position[0], lm.position[1], lm.position[2]],
         description: lm.description,
@@ -136,7 +225,14 @@ function buildAdapter(playerWorldPos?: [number, number, number]) {
   const getPlayerMarker = (): MapMarker | undefined => {
     if (!playerWorldPos) return undefined;
     const { x, y } = norm(playerWorldPos[0], playerWorldPos[2]);
-    return { id: "local_player", label: "You", x, y, kind: "player", worldPosition: playerWorldPos };
+    return {
+      id: "local_player",
+      label: "You",
+      x,
+      y,
+      kind: "player",
+      worldPosition: playerWorldPos,
+    };
   };
 
   const getTrackableQuests = (): MapTrackableQuest[] =>
@@ -144,12 +240,21 @@ function buildAdapter(playerWorldPos?: [number, number, number]) {
       questId: q.id,
       title: q.title,
       area: q.area,
-      status: state?.completedQuestIds?.includes(q.id) ? "completed" : q.id === state?.activeQuestId ? "active" : "available",
+      status: state?.completedQuestIds?.includes(q.id)
+        ? "completed"
+        : q.id === state?.activeQuestId
+        ? "active"
+        : "available",
       firstMarkerId: Array.isArray(q.markerIds) ? q.markerIds[0] : undefined,
       reward: q.reward,
     }));
 
-  return { getMarkers, getPlayerMarker, getMapBounds: () => bounds, getTrackableQuests };
+  return {
+    getMarkers,
+    getPlayerMarker,
+    getMapBounds: () => bounds,
+    getTrackableQuests,
+  };
 }
 
 describe("biomes_ui map adapter (V141)", () => {
@@ -159,10 +264,22 @@ describe("biomes_ui map adapter (V141)", () => {
   it("computes map bounds from visible landmarks with padding", () => {
     const adapter = buildAdapter();
     const bounds = adapter.getMapBounds()!;
-    assert.ok(bounds.minX < 490, `bounds.minX should be left of landmarks (got ${bounds.minX})`);
-    assert.ok(bounds.maxX > 512, `bounds.maxX should be right of landmarks (got ${bounds.maxX})`);
-    assert.ok(bounds.minZ < -152, `bounds.minZ should be below landmarks (got ${bounds.minZ})`);
-    assert.ok(bounds.maxZ > -120, `bounds.maxZ should be above landmarks (got ${bounds.maxZ})`);
+    assert.ok(
+      bounds.minX < 490,
+      `bounds.minX should be left of landmarks (got ${bounds.minX})`
+    );
+    assert.ok(
+      bounds.maxX > 512,
+      `bounds.maxX should be right of landmarks (got ${bounds.maxX})`
+    );
+    assert.ok(
+      bounds.minZ < -152,
+      `bounds.minZ should be below landmarks (got ${bounds.minZ})`
+    );
+    assert.ok(
+      bounds.maxZ > -120,
+      `bounds.maxZ should be above landmarks (got ${bounds.maxZ})`
+    );
   });
 
   it("returns a player marker only when a player position is supplied", () => {
@@ -180,7 +297,9 @@ describe("biomes_ui map adapter (V141)", () => {
   it("flags the active quest's current objective marker as `objective` and previous-step markers as active", () => {
     const adapter = buildAdapter();
     const markers = adapter.getMarkers();
-    const board = markers.find((m) => m.id === "harthmere_market_posting_board");
+    const board = markers.find(
+      (m) => m.id === "harthmere_market_posting_board"
+    );
     assert.ok(board);
     // Current objective for active quest is the second markerId (index 1).
     assert.equal(board!.kind, "objective");
@@ -210,29 +329,53 @@ describe("biomes_ui map adapter (V141)", () => {
     ];
     const adapter = buildAdapter();
     const markers = adapter.getMarkers();
-    assert.equal(markers.find((m) => m.id === "hidden_marker"), undefined);
-    assert.equal(markers.find((m) => m.id === "hidden_far_marker"), undefined);
+    assert.equal(
+      markers.find((m) => m.id === "hidden_marker"),
+      undefined
+    );
+    assert.equal(
+      markers.find((m) => m.id === "hidden_far_marker"),
+      undefined
+    );
     const bounds = adapter.getMapBounds();
-    assert.deepEqual(bounds, baseBounds, "hidden landmarks must not expand visible map bounds");
+    assert.deepEqual(
+      bounds,
+      baseBounds,
+      "hidden landmarks must not expand visible map bounds"
+    );
   });
 
   it("injects every Harthmere business outpost into the BiomesUI map marker feed", () => {
     const landmarks = harthmereBusinessOutpostMapLandmarksV1();
     assert.equal(landmarks.length, HARTHMERE_BUSINESS_OUTPOSTS_V1.length);
     assert.ok(landmarks.length >= 18);
-    assert.equal(new Set(landmarks.map((marker) => marker.id)).size, landmarks.length);
+    assert.equal(
+      new Set(landmarks.map((marker) => marker.id)).size,
+      landmarks.length
+    );
 
     const adapter = buildAdapter();
     const markers = adapter.getMarkers();
     for (const landmark of landmarks) {
       const marker = markers.find((entry) => entry.id === landmark.id);
-      assert.ok(marker, `${landmark.label} should be visible on the BiomesUI map`);
+      assert.ok(
+        marker,
+        `${landmark.label} should be visible on the BiomesUI map`
+      );
       assert.equal(marker?.kind, "business");
       assert.equal(marker?.label, landmark.label);
-      assert.ok(marker?.worldPosition?.every((value) => Number.isFinite(value)));
+      assert.ok(
+        marker?.worldPosition?.every((value) => Number.isFinite(value))
+      );
       assert.ok(marker?.description?.includes("Go inside"));
-      assert.ok(landmark.primaryBikkieId, `${landmark.label} needs a primary Bikkie id`);
-      assert.ok(landmark.primaryBikkieVisual?.primaryHex, `${landmark.label} needs a primary Bikkie visual`);
+      assert.ok(
+        landmark.primaryBikkieId,
+        `${landmark.label} needs a primary Bikkie id`
+      );
+      assert.ok(
+        landmark.primaryBikkieVisual?.primaryHex,
+        `${landmark.label} needs a primary Bikkie visual`
+      );
       assert.equal(/[A-Z0-9]+_[A-Z0-9]+/i.test(marker?.label ?? ""), false);
     }
   });
@@ -266,7 +409,9 @@ describe("biomes_ui map adapter (V141)", () => {
     );
     const marker = adapter
       .getMarkers()
-      .find((entry: any) => entry.id === "property:grove_muckstead_cottage_lot");
+      .find(
+        (entry: any) => entry.id === "property:grove_muckstead_cottage_lot"
+      );
     assert.ok(marker, "owned muck deed should appear on the BiomesUI map");
     assert.equal(marker.kind, "property");
     assert.deepEqual(marker.worldPosition, [512, 72, -150]);
@@ -309,12 +454,44 @@ describe("biomes_ui map adapter (V141)", () => {
 
     const markers = adapter.getMarkers();
     const board = markers.find(
-      (marker) => marker.id === "harthmere_market_posting_board",
+      (marker) => marker.id === "harthmere_market_posting_board"
     );
     assert.equal(board?.kind, "objective");
     assert.equal(board?.active, true);
     const jackie = markers.find((marker) => marker.id === "jackie");
     assert.equal(jackie?.active, true);
+  });
+
+  it("projects the Road Ahead bridge mission into the real BiomesUI quest list", () => {
+    installFixture({
+      acceptedQuestIds: [],
+      activeObjectiveIndex: 0,
+      completedQuestIds: [],
+    });
+    globalAny.window.localStorage.setItem(
+      "biomes.localDev.snapshotMissionState.v73",
+      JSON.stringify({
+        accepted: true,
+        active: { snapshot_road_ahead_full_chain: 1 },
+        currentStepIndex: 1,
+        completedStepIds: ["meet_jackie_in_grove"],
+        completed: [],
+        pinned: ["snapshot_road_ahead_full_chain"],
+        rewards: [],
+      })
+    );
+
+    const adapter = buildBiomesUIMapAdapterForTest(1);
+    const quest = adapter
+      .getTrackableQuests()
+      .find((entry) => entry.questId === "snapshot_road_ahead_full_chain");
+    assert.equal(quest?.title, "Road Ahead");
+    assert.equal(quest?.status, "active");
+    assert.equal(adapter.getMissionTitle(), "Road Ahead");
+    assert.equal(
+      adapter.getMissionSteps()[0]?.objective,
+      "Follow Jackie's marker to the Old Grove Road Post just outside The Grove."
+    );
   });
 
   it("marks Snapshot Grove quests active from live-mode quest state", () => {

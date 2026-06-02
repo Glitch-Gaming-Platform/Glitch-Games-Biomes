@@ -13,7 +13,8 @@ import { useBiomesUILiveAdapters } from "./adapters/useBiomesUILiveAdapters";
 import { TutorialDirector } from "./tutorial/TutorialDirector";
 import { BiomesUITutorialCueBar } from "./tutorial/BiomesUITutorialCueBar";
 import { BiomesUIVitalsPanel } from "./BiomesUIVitalsPanel";
-import { HarthmereJobsBoardWorldInteractionV146 } from "@/client/components/harthmere_jobs_board";
+import { HarthmereJobsBoardWorldInteractionV146 } from "@/client/components/harthmere_jobs_board/HarthmereJobsBoardWorldInteractionV146";
+import { HarthmereBusinessWorldInteractionV1 } from "@/client/components/harthmere_business/HarthmereBusinessWorldInteractionV1";
 import type { TabKey } from "./BiomesUITypes";
 
 function truthy(value: string | undefined | null): boolean {
@@ -21,7 +22,9 @@ function truthy(value: string | undefined | null): boolean {
 }
 
 function falsy(value: string | undefined | null): boolean {
-  return ["0", "false", "no", "off"].includes(String(value ?? "").toLowerCase());
+  return ["0", "false", "no", "off"].includes(
+    String(value ?? "").toLowerCase()
+  );
 }
 
 function isEnabled(): boolean {
@@ -42,13 +45,18 @@ function isEnabled(): boolean {
   }
 
   // Default: on outside production, off in production.
-  if (typeof process !== "undefined" && process.env?.NODE_ENV !== "production") {
+  if (
+    typeof process !== "undefined" &&
+    process.env?.NODE_ENV !== "production"
+  ) {
     return true;
   }
   return false;
 }
 
-export const BiomesUIMount: React.FunctionComponent<{ forceEnabled?: boolean }> = ({ forceEnabled = false }) => {
+export const BiomesUIMount: React.FunctionComponent<{
+  forceEnabled?: boolean;
+}> = ({ forceEnabled = false }) => {
   const replaceLegacy = useBiomesUIReplaceLegacyFlag();
   const replacementMode = forceEnabled || replaceLegacy;
   const [enabled, setEnabled] = useState<boolean>(() => false);
@@ -74,7 +82,9 @@ export const BiomesUIMount: React.FunctionComponent<{ forceEnabled?: boolean }> 
             window.localStorage.setItem("biomes_ui_enabled", next ? "1" : "0");
           } catch {}
           // eslint-disable-next-line no-console
-          console.log(`[BiomesUI] ${next ? "enabled" : "disabled"} via Shift+Alt+B`);
+          console.log(
+            `[BiomesUI] ${next ? "enabled" : "disabled"} via Shift+Alt+B`
+          );
           return next;
         });
       }
@@ -95,6 +105,9 @@ export const BiomesUIMount: React.FunctionComponent<{ forceEnabled?: boolean }> 
         adapters={live.adapters}
       />
       <HarthmereJobsBoardWorldInteractionV146 />
+      <HarthmereBusinessWorldInteractionV1
+        suppressPrompt={activeTab !== null}
+      />
       <BiomesUITutorialCueBar />
       <TutorialDirector step={live.tutorialStep} />
     </>

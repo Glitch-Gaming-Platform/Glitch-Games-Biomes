@@ -1,6 +1,7 @@
 import {
   useHarthmereCombatState,
 } from "@/client/components/challenges/LocalDevHarthmereCombat";
+import { defaultHarthmereLiveFetchV1 } from "@/client/components/harthmere_live_fetch";
 import {
   useHarthmereMultiplayerCombatState,
 } from "@/client/components/challenges/LocalDevHarthmereMultiplayerCombatSystem";
@@ -148,6 +149,11 @@ export function formatBiomesGoldForVitalsForTest(value: unknown): string {
   return `${gold} gold`;
 }
 
+export function formatBiomesLevelForVitalsForTest(value: unknown): string {
+  const level = Math.max(1, Math.floor(Number(value) || 1));
+  return `Level ${level}`;
+}
+
 function useLiveModeGoldBalance(): number {
   const [gold, setGold] = React.useState(0);
   React.useEffect(() => {
@@ -155,10 +161,13 @@ function useLiveModeGoldBalance(): number {
     let cancelled = false;
     const readGold = async () => {
       try {
-        const response = await fetch("/api/harthmere/live_mode_inventory_loot_state", {
-          method: "GET",
-          credentials: "same-origin",
-        });
+        const response = await defaultHarthmereLiveFetchV1(
+          "/api/harthmere/live_mode_inventory_loot_state",
+          {
+            method: "GET",
+            credentials: "same-origin",
+          }
+        );
         if (!response.ok) return;
         const body = await response.json();
         const nextGold = Number(body?.inventoryLootState?.actor?.gold ?? 0);
@@ -231,6 +240,7 @@ export const BiomesUIVitalsPanel: React.FunctionComponent<{}> = () => {
     display.xpCurrent !== undefined && display.xpNext !== undefined
       ? `${display.xpCurrent}/${display.xpNext} xp`
       : undefined;
+  const playerLevel = display.level ?? 1;
 
   return (
     <aside
@@ -302,19 +312,31 @@ export const BiomesUIVitalsPanel: React.FunctionComponent<{}> = () => {
           uiId={UI_IDS.HUD_VITALS_NOTORIETY}
         />
       </div>
-      <div
-        ref={goldHighlight.ref}
-        className={`biomes-ui-vitals-chip ${highlightClassName(goldHighlight.blinking, goldHighlight.style)}`.trim()}
-        data-tone="notoriety"
-        data-ui-id={UI_IDS.HUD_VITALS_GOLD}
-        data-ui-blinking={goldHighlight.blinking ? "true" : undefined}
-        aria-label={`Gold ${display.gold ?? gold}`}
-        style={{ marginTop: 8 }}
-      >
-        <span className="biomes-ui-vitals-chip__label">Gold</span>
-        <span className="biomes-ui-vitals-chip__value">
-          {formatBiomesGoldForVitalsForTest(display.gold ?? gold)}
-        </span>
+      <div className="biomes-ui-vitals-panel__footer">
+        <div
+          ref={goldHighlight.ref}
+          className={`biomes-ui-vitals-chip ${highlightClassName(goldHighlight.blinking, goldHighlight.style)}`.trim()}
+          data-tone="notoriety"
+          data-ui-id={UI_IDS.HUD_VITALS_GOLD}
+          data-ui-blinking={goldHighlight.blinking ? "true" : undefined}
+          aria-label={`Gold ${display.gold ?? gold}`}
+        >
+          <span className="biomes-ui-vitals-chip__label">Gold</span>
+          <span className="biomes-ui-vitals-chip__value">
+            {formatBiomesGoldForVitalsForTest(display.gold ?? gold)}
+          </span>
+        </div>
+        <div
+          className="biomes-ui-vitals-chip"
+          data-tone="level"
+          aria-label={formatBiomesLevelForVitalsForTest(playerLevel)}
+          title={levelProgress}
+        >
+          <span className="biomes-ui-vitals-chip__label">Level</span>
+          <span className="biomes-ui-vitals-chip__value">
+            {formatBiomesLevelForVitalsForTest(playerLevel)}
+          </span>
+        </div>
       </div>
     </aside>
   );

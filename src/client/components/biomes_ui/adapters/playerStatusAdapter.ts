@@ -1,4 +1,5 @@
 import * as React from "react";
+import { fetchHarthmereLiveWithTimeoutV1 } from "@/client/components/harthmere_live_fetch";
 
 export const BIOMES_UI_PLAYER_STATUS_UPDATED_EVENT =
   "biomes:live-mode-player-status-updated";
@@ -220,10 +221,15 @@ function biomesUIPlayerStatusGameplayActiveV1() {
   return Boolean(document.pointerLockElement);
 }
 
+function biomesUIPlayerStatusRefreshDelayMsV1() {
+  return biomesUIPlayerStatusGameplayActiveV1() ? 5_000 : 15_000;
+}
+
 export async function fetchBiomesUIPlayerStatusV1(
   fetchImpl: typeof fetch = fetch
 ): Promise<BiomesUIPlayerStatusSnapshotV1 | undefined> {
-  const response = await fetchImpl(
+  const response = await fetchHarthmereLiveWithTimeoutV1(
+    fetchImpl,
     biomesUIPlayerStatusEndpointV146(undefined, {
       gameplayActive: biomesUIPlayerStatusGameplayActiveV1(),
     }),
@@ -244,12 +250,23 @@ export function useBiomesUIPlayerStatusStateV1() {
   React.useEffect(() => {
     if (typeof window === "undefined") return;
     let cancelled = false;
+    let refreshInFlight = false;
+    let timer: number | undefined;
+    const schedule = () => {
+      if (cancelled) return;
+      timer = window.setTimeout(refresh, biomesUIPlayerStatusRefreshDelayMsV1());
+    };
     const refresh = async () => {
+      if (refreshInFlight) return;
+      refreshInFlight = true;
       try {
         const next = await fetchBiomesUIPlayerStatusV1();
         if (!cancelled) setStatus(next);
       } catch {
         if (!cancelled) setStatus(undefined);
+      } finally {
+        refreshInFlight = false;
+        schedule();
       }
     };
     const onStatus = (event: Event) => {
@@ -261,11 +278,10 @@ export function useBiomesUIPlayerStatusStateV1() {
       }
     };
     void refresh();
-    const interval = window.setInterval(refresh, 5_000);
     window.addEventListener(BIOMES_UI_PLAYER_STATUS_UPDATED_EVENT, onStatus);
     return () => {
       cancelled = true;
-      window.clearInterval(interval);
+      if (timer !== undefined) window.clearTimeout(timer);
       window.removeEventListener(BIOMES_UI_PLAYER_STATUS_UPDATED_EVENT, onStatus);
     };
   }, []);
