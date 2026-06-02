@@ -459,7 +459,7 @@ export function harthmereLiveModeMutationSnapshotKeysV1(input: {
     case "request_revive":
     case "request_respawn":
     case "request_npc_ai_tick":
-    case "request_boss_encounter_tick":
+    case "request_boss_tick":
       snapshots.add("combatState");
       snapshots.add("playerStatusState");
       break;
@@ -1370,9 +1370,10 @@ export async function persistHarthmereLiveModeResponseV1(
         ? "full"
         : "changed",
       includedSnapshots,
-      invalidatedSnapshots: HARTHMERE_LIVE_MODE_MUTATION_SNAPSHOT_KEYS_V1.filter(
-        (key) => !includedSnapshotSet.has(key)
-      ),
+      invalidatedSnapshots:
+        HARTHMERE_LIVE_MODE_MUTATION_SNAPSHOT_KEYS_V1.filter(
+          (key) => !includedSnapshotSet.has(key)
+        ),
     };
 
     if (includedSnapshotSet.has("buildingState")) {
@@ -1458,7 +1459,9 @@ export async function persistHarthmereLiveModeResponseV1(
     );
     tx.set(
       key,
-      JSON.stringify(slimHarthmereLiveModeIdempotencyResponseV1(persistedResponse)),
+      JSON.stringify(
+        slimHarthmereLiveModeIdempotencyResponseV1(persistedResponse)
+      ),
       "EX",
       24 * 60 * 60,
       "NX"
@@ -1473,59 +1476,69 @@ export async function persistHarthmereLiveModeResponseV1(
     if (reduced.summary.buildingMaterializationPlans?.length) {
       const materializerUserId =
         deps.userId ?? HARTHMERE_WORLD_MATERIALIZER_USER_ID_V1;
-      if (deps.userId === undefined) {
-        if (deps.worldApi) {
-          await ensureHarthmereWorldMaterializerPlayerExistsV1(deps.worldApi);
+      try {
+        if (deps.userId === undefined) {
+          if (deps.worldApi) {
+            await ensureHarthmereWorldMaterializerPlayerExistsV1(deps.worldApi);
+            persistedResponse.backendMutation?.warnings.push(
+              "building_materializer_player_ensured"
+            );
+          } else {
+            persistedResponse.backendMutation?.warnings.push(
+              "building_materializer_player_not_ensured:no_world_api"
+            );
+          }
+        }
+        const materializationCounts =
+          deps.worldApi && deps.askApi
+            ? await materializeBuildingSystemMaterializationPlansToTerrainV1({
+                askApi: deps.askApi,
+                logicApi: deps.logicApi,
+                userId: materializerUserId,
+                worldApi: deps.worldApi,
+                plans: reduced.summary.buildingMaterializationPlans,
+              })
+            : await publishBuildingSystemMaterializationPlansToEcsV1({
+                askApi: deps.askApi,
+                logicApi: deps.logicApi,
+                userId: materializerUserId,
+                plans: reduced.summary.buildingMaterializationPlans,
+              });
+        persistedResponse.backendMutation?.warnings.push(
+          `building_materialized:edit_events:${materializationCounts.editEventCount}:place_group_events:${materializationCounts.placeGroupEventCount}:publish_batches:${materializationCounts.publishBatchCount}`
+        );
+        if (materializationCounts.directTerrainEditCount > 0) {
           persistedResponse.backendMutation?.warnings.push(
-            "building_materializer_player_ensured"
-          );
-        } else {
-          persistedResponse.backendMutation?.warnings.push(
-            "building_materializer_player_not_ensured:no_world_api"
+            `building_materialized_direct_terrain:terrain_edits:${materializationCounts.directTerrainEditCount}:terrain_shards:${materializationCounts.directTerrainShardCount}`
           );
         }
-      }
-      const materializationCounts =
-        deps.worldApi && deps.askApi
-          ? await materializeBuildingSystemMaterializationPlansToTerrainV1({
-              askApi: deps.askApi,
-              logicApi: deps.logicApi,
-              userId: materializerUserId,
-              worldApi: deps.worldApi,
-              plans: reduced.summary.buildingMaterializationPlans,
-            })
-          : await publishBuildingSystemMaterializationPlansToEcsV1({
-              askApi: deps.askApi,
-              logicApi: deps.logicApi,
-              userId: materializerUserId,
-              plans: reduced.summary.buildingMaterializationPlans,
-            });
-      persistedResponse.backendMutation?.warnings.push(
-        `building_materialized:edit_events:${materializationCounts.editEventCount}:place_group_events:${materializationCounts.placeGroupEventCount}:publish_batches:${materializationCounts.publishBatchCount}`
-      );
-      if (materializationCounts.directTerrainEditCount > 0) {
+        if (materializationCounts.shiftedOutpostEditEventCount > 0) {
+          persistedResponse.backendMutation?.warnings.push(
+            `building_materialized_harthmere_outpost_world_shifted:edit_events:${materializationCounts.shiftedOutpostEditEventCount}`
+          );
+        }
+        if (materializationCounts.usedLegacyShardIds) {
+          persistedResponse.backendMutation?.warnings.push(
+            "building_materialized_without_terrain_entity_resolution"
+          );
+        }
+        if (deps.userId === undefined) {
+          persistedResponse.backendMutation?.warnings.push(
+            "building_materialized_with_world_materializer_user"
+          );
+        }
+      } catch (error) {
         persistedResponse.backendMutation?.warnings.push(
-          `building_materialized_direct_terrain:terrain_edits:${materializationCounts.directTerrainEditCount}:terrain_shards:${materializationCounts.directTerrainShardCount}`
-        );
-      }
-      if (materializationCounts.shiftedOutpostEditEventCount > 0) {
-        persistedResponse.backendMutation?.warnings.push(
-          `building_materialized_harthmere_outpost_world_shifted:edit_events:${materializationCounts.shiftedOutpostEditEventCount}`
-        );
-      }
-      if (materializationCounts.usedLegacyShardIds) {
-        persistedResponse.backendMutation?.warnings.push(
-          "building_materialized_without_terrain_entity_resolution"
-        );
-      }
-      if (deps.userId === undefined) {
-        persistedResponse.backendMutation?.warnings.push(
-          "building_materialized_with_world_materializer_user"
+          `building_materialization_deferred:${String(
+            error instanceof Error ? error.message : error
+          ).slice(0, 240)}`
         );
       }
       await redis.primary.set(
         key,
-        JSON.stringify(slimHarthmereLiveModeIdempotencyResponseV1(persistedResponse)),
+        JSON.stringify(
+          slimHarthmereLiveModeIdempotencyResponseV1(persistedResponse)
+        ),
         "EX",
         24 * 60 * 60
       );

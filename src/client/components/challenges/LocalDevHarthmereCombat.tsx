@@ -3685,7 +3685,6 @@ export function useHarthmereRealtimeCombatAI() {
 // harthmere-facing-runtime-v3
 export function useHarthmereForwardArcRuntime() {
   const { reactResources } = useClientContext();
-  const localPlayer = reactResources.use("/scene/local_player");
   const harthmereLastSafePlayerPositionRef = useRef<
     [number, number, number] | undefined
   >(undefined);
@@ -3701,7 +3700,7 @@ export function useHarthmereForwardArcRuntime() {
     diagWin.__harthmereForwardArcRuntimeMountedAt = Date.now();
     debugHarthmereCombat("combat.forward_runtime.hook.mounted", {
       version: HARTHMERE_RETALIATION_DIAGNOSTICS_V183,
-      sampleMs: 50,
+      sampleMs: 125,
     });
 
     const writeSnapshot = () => {
@@ -3722,9 +3721,9 @@ export function useHarthmereForwardArcRuntime() {
     };
 
     writeSnapshot();
-    const interval = window.setInterval(writeSnapshot, 50);
+    const interval = window.setInterval(writeSnapshot, 125);
     return () => window.clearInterval(interval);
-  }, [reactResources, localPlayer]);
+  }, [reactResources]);
 }
 
 export function useHarthmereAmbientThreats() {

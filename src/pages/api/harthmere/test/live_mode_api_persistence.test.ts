@@ -317,7 +317,7 @@ describe("live_mode API Redis persistence", () => {
         "jobsBoardState",
         "playerStatusState",
         "questState",
-      ],
+      ]
     );
     assert.ok(
       harthmereLiveModeMutationSnapshotKeysV1({
@@ -325,211 +325,236 @@ describe("live_mode API Redis persistence", () => {
         subsystem: "building",
         touchedModels: ["building_state", "property"],
       }).includes("buildingState"),
-      "building mutations must still return buildingState",
+      "building mutations must still return buildingState"
+    );
+    assert.deepEqual(
+      harthmereLiveModeMutationSnapshotKeysV1({
+        actionKind: "request_boss_tick",
+        subsystem: "boss_encounter",
+        touchedModels: ["boss_encounter_state"],
+      }).sort(),
+      ["combatState", "playerStatusState"],
+      "boss ticks should hydrate the combat/status snapshots instead of falling back to status only"
     );
   });
 
   it("uses WATCH/MULTI and records idempotency only with the state mutation", async () =>
     withFullLiveModeMutationSnapshotsForTestV1(async () => {
-    const redisPrimary = new FakeRedisPrimary();
-    (globalThis as any).__harthmereLiveModeRedisV1 = { primary: redisPrimary };
+      const redisPrimary = new FakeRedisPrimary();
+      (globalThis as any).__harthmereLiveModeRedisV1 = {
+        primary: redisPrimary,
+      };
 
-    const env = envelope();
-    const mutationPlan = buildHarthmereLiveModePersistenceMutationPlanV1(env);
-    const response = {
-      ok: true,
-      version: "HARTHMERE_LIVE_MODE_SERVER_ROUTE_V1" as const,
-      actorId: ACTOR,
-      duplicate: false,
-      replayed: false,
-      persisted: true,
-      validation: {
+      const env = envelope();
+      const mutationPlan = buildHarthmereLiveModePersistenceMutationPlanV1(env);
+      const response = {
         ok: true,
-        errors: [],
-        warnings: [],
-        rejectedClientClaims: [],
-      },
-      mutationPlan,
-      events: [
-        createHarthmereLiveModeEventV1({
-          kind: "xp_reward_resolved",
-          envelope: env,
-        }),
-      ],
-      uiEvents: [
-        createHarthmereLiveModeUiEventV1({
-          kind: "level_up_toast",
-          envelope: env,
-        }),
-      ],
-    };
+        version: "HARTHMERE_LIVE_MODE_SERVER_ROUTE_V1" as const,
+        actorId: ACTOR,
+        duplicate: false,
+        replayed: false,
+        persisted: true,
+        validation: {
+          ok: true,
+          errors: [],
+          warnings: [],
+          rejectedClientClaims: [],
+        },
+        mutationPlan,
+        events: [
+          createHarthmereLiveModeEventV1({
+            kind: "xp_reward_resolved",
+            envelope: env,
+          }),
+        ],
+        uiEvents: [
+          createHarthmereLiveModeUiEventV1({
+            kind: "level_up_toast",
+            envelope: env,
+          }),
+        ],
+      };
 
-    const persisted = await persistHarthmereLiveModeResponseV1(env, response, {
-      logicApi: { publish: async () => {} } as any,
-      userId: 1 as any,
-    });
+      const persisted = await persistHarthmereLiveModeResponseV1(
+        env,
+        response,
+        {
+          logicApi: { publish: async () => {} } as any,
+          userId: 1 as any,
+        }
+      );
 
-    const playerKey = harthmereLiveModePlayerStateKeyV1(ACTOR);
-    const sharedWorldKey = harthmereLiveModeSharedWorldStateKeyV1();
-    assert.deepEqual(redisPrimary.watched[0], [
-      "harthmere:live_mode:v1:idempotency:player_live_api_persist_001:live-api-persist-idem-1",
-      playerKey,
-      sharedWorldKey,
-    ]);
-    const firstSet = redisPrimary.txOps.find((op) => op[0] === "set");
-    assert.equal(firstSet?.[1], playerKey);
-    assert.ok(
-      redisPrimary.txOps.some(
-        (op) => op[0] === "set" && op[1] === sharedWorldKey
-      )
-    );
-    assert.equal(
-      redisPrimary.txOps.some((op) => op[0] === "direct_set"),
-      false
-    );
-    const idempotencyKey =
-      "harthmere:live_mode:v1:idempotency:player_live_api_persist_001:live-api-persist-idem-1";
-    const storedIdempotency = JSON.parse(
-      redisPrimary.store.get(idempotencyKey) ?? "{}"
-    );
-    assert.deepEqual(storedIdempotency.includedSnapshots, []);
-    assert.equal(storedIdempotency.buildingState, undefined);
-    assert.equal(storedIdempotency.economyState, undefined);
-    assert.equal(storedIdempotency.farmingFoodState, undefined);
-    assert.equal(storedIdempotency.playerStatusState, undefined);
-    assert.equal(persisted.backendMutation?.warnings.length, 0);
-    assert.equal((persisted.playerStatusState as any)?.combat?.hp, 100);
-    assert.equal((persisted.playerStatusState as any)?.level, 1);
-    assert.equal(
-      (persisted.farmingFoodState as any)?.stamina,
-      (persisted.farmingFoodState as any)?.maxStamina
-    );
-    assert.ok((persisted.farmingFoodState as any)?.maxStamina >= 100);
-    assert.equal(
-      typeof (persisted.farmingFoodState as any)?.inventory,
-      "object"
-    );
-    assert.equal(
-      (persisted.farmingFoodState as any)?.foodDefinitions?.road_ration
-        ?.staminaRestore,
-      24
-    );
-    assert.equal(
-      (persisted.farmingFoodState as any)?.cookingRecipes?.grilled_meat?.outputs
-        ?.grilled_meat,
-      1
-    );
-    assert.ok(
-      (persisted.farmingFoodState as any)?.availableCookingStations?.includes(
-        "campfire"
-      )
-    );
+      const playerKey = harthmereLiveModePlayerStateKeyV1(ACTOR);
+      const sharedWorldKey = harthmereLiveModeSharedWorldStateKeyV1();
+      assert.deepEqual(redisPrimary.watched[0], [
+        "harthmere:live_mode:v1:idempotency:player_live_api_persist_001:live-api-persist-idem-1",
+        playerKey,
+        sharedWorldKey,
+      ]);
+      const firstSet = redisPrimary.txOps.find((op) => op[0] === "set");
+      assert.equal(firstSet?.[1], playerKey);
+      assert.ok(
+        redisPrimary.txOps.some(
+          (op) => op[0] === "set" && op[1] === sharedWorldKey
+        )
+      );
+      assert.equal(
+        redisPrimary.txOps.some((op) => op[0] === "direct_set"),
+        false
+      );
+      const idempotencyKey =
+        "harthmere:live_mode:v1:idempotency:player_live_api_persist_001:live-api-persist-idem-1";
+      const storedIdempotency = JSON.parse(
+        redisPrimary.store.get(idempotencyKey) ?? "{}"
+      );
+      assert.deepEqual(storedIdempotency.includedSnapshots, []);
+      assert.equal(storedIdempotency.buildingState, undefined);
+      assert.equal(storedIdempotency.economyState, undefined);
+      assert.equal(storedIdempotency.farmingFoodState, undefined);
+      assert.equal(storedIdempotency.playerStatusState, undefined);
+      assert.equal(persisted.backendMutation?.warnings.length, 0);
+      assert.equal((persisted.playerStatusState as any)?.combat?.hp, 100);
+      assert.equal((persisted.playerStatusState as any)?.level, 1);
+      assert.equal(
+        (persisted.farmingFoodState as any)?.stamina,
+        (persisted.farmingFoodState as any)?.maxStamina
+      );
+      assert.ok((persisted.farmingFoodState as any)?.maxStamina >= 100);
+      assert.equal(
+        typeof (persisted.farmingFoodState as any)?.inventory,
+        "object"
+      );
+      assert.equal(
+        (persisted.farmingFoodState as any)?.foodDefinitions?.road_ration
+          ?.staminaRestore,
+        24
+      );
+      assert.equal(
+        (persisted.farmingFoodState as any)?.cookingRecipes?.grilled_meat
+          ?.outputs?.grilled_meat,
+        1
+      );
+      assert.ok(
+        (persisted.farmingFoodState as any)?.availableCookingStations?.includes(
+          "campfire"
+        )
+      );
 
-    const rawState = redisPrimary.store.get(playerKey);
-    const state = parseHarthmereLiveModeBackendStateV1(rawState, ACTOR, NOW_MS);
-    assert.equal(state.classMagic.skills.combat?.xp, 100);
+      const rawState = redisPrimary.store.get(playerKey);
+      const state = parseHarthmereLiveModeBackendStateV1(
+        rawState,
+        ACTOR,
+        NOW_MS
+      );
+      assert.equal(state.classMagic.skills.combat?.xp, 100);
 
-    const replay = await persistHarthmereLiveModeResponseV1(env, response, {
-      logicApi: { publish: async () => {} } as any,
-      userId: 1 as any,
-    });
-    assert.equal(replay.duplicate, true);
-    assert.equal(replay.replayed, true);
-    assert.deepEqual(replay.includedSnapshots, []);
-    assert.equal(replay.playerStatusState, undefined);
+      const replay = await persistHarthmereLiveModeResponseV1(env, response, {
+        logicApi: { publish: async () => {} } as any,
+        userId: 1 as any,
+      });
+      assert.equal(replay.duplicate, true);
+      assert.equal(replay.replayed, true);
+      assert.deepEqual(replay.includedSnapshots, []);
+      assert.equal(replay.playerStatusState, undefined);
     }));
 
   it("hydrates public economy from shared world state before reducing actor mutations", async () =>
     withFullLiveModeMutationSnapshotsForTestV1(async () => {
-    const redisPrimary = new FakeRedisPrimary();
-    (globalThis as any).__harthmereLiveModeRedisV1 = { primary: redisPrimary };
+      const redisPrimary = new FakeRedisPrimary();
+      (globalThis as any).__harthmereLiveModeRedisV1 = {
+        primary: redisPrimary,
+      };
 
-    const sharedSource = defaultHarthmereLiveModeBackendStateV1(
-      "shared_actor",
-      NOW_MS
-    );
-    sharedSource.economy.production.businesses.shared_shop = {
-      businessId: "shared_shop",
-      ownerKind: "player",
-      ownerId: "merchant",
-      typeId: "general_trader",
-      name: "Shared Shop",
-      status: "open",
-      licenseClass: "basic_trade",
-      licenseLevel: 1,
-      propertyId: "property_shared_shop",
-      townId: "harthmere_grove",
-      regionId: "harthmere_grove_region",
-      inventory: {},
-      storageMaxSlots: 12,
-      employees: [],
-      activeContracts: [],
-      completedContracts: 0,
-      reputation: 0,
-      customerSatisfaction: 70,
-      sanitationRating: 70,
-      safetyRating: 70,
-      serviceRadius: 2,
-      priceModifiers: {},
-      balanceGold: 500,
-      debtGold: 0,
-      upkeepGoldPerDay: 1,
-      rentGoldPerDay: 0,
-      wageGoldPerDay: 0,
-      salesTaxRate: 0.06,
-      lastTickAtMs: NOW_MS,
-      createdAtMs: NOW_MS,
-      updatedAtMs: NOW_MS,
-      flags: {},
-    } as any;
-    redisPrimary.store.set(
-      harthmereLiveModeSharedWorldStateKeyV1(),
-      JSON.stringify(
-        createHarthmereLiveModeSharedWorldStateV1(sharedSource, NOW_MS)
-      )
-    );
+      const sharedSource = defaultHarthmereLiveModeBackendStateV1(
+        "shared_actor",
+        NOW_MS
+      );
+      sharedSource.economy.production.businesses.shared_shop = {
+        businessId: "shared_shop",
+        ownerKind: "player",
+        ownerId: "merchant",
+        typeId: "general_trader",
+        name: "Shared Shop",
+        status: "open",
+        licenseClass: "basic_trade",
+        licenseLevel: 1,
+        propertyId: "property_shared_shop",
+        townId: "harthmere_grove",
+        regionId: "harthmere_grove_region",
+        inventory: {},
+        storageMaxSlots: 12,
+        employees: [],
+        activeContracts: [],
+        completedContracts: 0,
+        reputation: 0,
+        customerSatisfaction: 70,
+        sanitationRating: 70,
+        safetyRating: 70,
+        serviceRadius: 2,
+        priceModifiers: {},
+        balanceGold: 500,
+        debtGold: 0,
+        upkeepGoldPerDay: 1,
+        rentGoldPerDay: 0,
+        wageGoldPerDay: 0,
+        salesTaxRate: 0.06,
+        lastTickAtMs: NOW_MS,
+        createdAtMs: NOW_MS,
+        updatedAtMs: NOW_MS,
+        flags: {},
+      } as any;
+      redisPrimary.store.set(
+        harthmereLiveModeSharedWorldStateKeyV1(),
+        JSON.stringify(
+          createHarthmereLiveModeSharedWorldStateV1(sharedSource, NOW_MS)
+        )
+      );
 
-    const env = envelope();
-    env.requestId = "live-api-persist-req-shared";
-    env.idempotencyKey = "live-api-persist-idem-shared";
-    const mutationPlan = buildHarthmereLiveModePersistenceMutationPlanV1(env);
-    const response = {
-      ok: true,
-      version: "HARTHMERE_LIVE_MODE_SERVER_ROUTE_V1" as const,
-      actorId: ACTOR,
-      duplicate: false,
-      replayed: false,
-      persisted: true,
-      validation: {
+      const env = envelope();
+      env.requestId = "live-api-persist-req-shared";
+      env.idempotencyKey = "live-api-persist-idem-shared";
+      const mutationPlan = buildHarthmereLiveModePersistenceMutationPlanV1(env);
+      const response = {
         ok: true,
-        errors: [],
-        warnings: [],
-        rejectedClientClaims: [],
-      },
-      mutationPlan,
-      events: [
-        createHarthmereLiveModeEventV1({
-          kind: "xp_reward_resolved",
-          envelope: env,
-        }),
-      ],
-      uiEvents: [],
-    };
+        version: "HARTHMERE_LIVE_MODE_SERVER_ROUTE_V1" as const,
+        actorId: ACTOR,
+        duplicate: false,
+        replayed: false,
+        persisted: true,
+        validation: {
+          ok: true,
+          errors: [],
+          warnings: [],
+          rejectedClientClaims: [],
+        },
+        mutationPlan,
+        events: [
+          createHarthmereLiveModeEventV1({
+            kind: "xp_reward_resolved",
+            envelope: env,
+          }),
+        ],
+        uiEvents: [],
+      };
 
-    const persisted = await persistHarthmereLiveModeResponseV1(env, response, {
-      logicApi: { publish: async () => {} } as any,
-      userId: 1 as any,
-    });
+      const persisted = await persistHarthmereLiveModeResponseV1(
+        env,
+        response,
+        {
+          logicApi: { publish: async () => {} } as any,
+          userId: 1 as any,
+        }
+      );
 
-    assert.ok((persisted.economyState as any).businesses.shared_shop);
-    const rawActor = redisPrimary.store.get(
-      harthmereLiveModePlayerStateKeyV1(ACTOR)
-    );
-    const actorState = parseHarthmereLiveModeBackendStateV1(
-      rawActor,
-      ACTOR,
-      NOW_MS
-    );
+      assert.ok((persisted.economyState as any).businesses.shared_shop);
+      const rawActor = redisPrimary.store.get(
+        harthmereLiveModePlayerStateKeyV1(ACTOR)
+      );
+      const actorState = parseHarthmereLiveModeBackendStateV1(
+        rawActor,
+        ACTOR,
+        NOW_MS
+      );
       assert.ok(actorState.economy.production.businesses.shared_shop);
     }));
 
@@ -897,6 +922,82 @@ describe("live_mode API Redis persistence", () => {
     assert.ok(shared);
     assert.ok(
       shared.building.materializationPlans
+        .outpost_restaurant_redpot_backend_materialization
+    );
+  });
+
+  it("returns committed live-mode responses when post-commit materialization fails", async () => {
+    const redisPrimary = new FakeRedisPrimary();
+    (globalThis as any).__harthmereLiveModeRedisV1 = { primary: redisPrimary };
+
+    const startingState = defaultHarthmereLiveModeBackendStateV1(ACTOR, NOW_MS);
+    addOpenProductionBusiness(startingState, "business_branch_deferred");
+    redisPrimary.store.set(
+      harthmereLiveModePlayerStateKeyV1(ACTOR),
+      JSON.stringify(startingState)
+    );
+
+    const env = envelope();
+    env.requestId = "live-api-persist-branch-materialization-deferred";
+    env.idempotencyKey = "live-api-persist-branch-materialization-deferred";
+    env.actionKind = "request_economy_mutation";
+    env.subsystem = "economy";
+    env.source = "client_request";
+    env.serverActorPosition = { x: 100, y: 65, z: 100 };
+    env.payload = {
+      operation: "open_business_branch",
+      businessId: "business_branch_deferred",
+      outpostId: "outpost_restaurant_redpot",
+    };
+    const mutationPlan = buildHarthmereLiveModePersistenceMutationPlanV1(env);
+    const response = {
+      ok: true,
+      version: "HARTHMERE_LIVE_MODE_SERVER_ROUTE_V1" as const,
+      actorId: ACTOR,
+      duplicate: false,
+      replayed: false,
+      persisted: true,
+      validation: {
+        ok: true,
+        errors: [],
+        warnings: [],
+        rejectedClientClaims: [],
+      },
+      mutationPlan,
+      events: [
+        createHarthmereLiveModeEventV1({
+          kind: "audit_log_appended",
+          envelope: env,
+        }),
+      ],
+      uiEvents: [],
+    };
+
+    const persisted = await persistHarthmereLiveModeResponseV1(env, response, {
+      logicApi: {
+        publish: async () => {
+          throw new Error("simulated ECS publish outage");
+        },
+      } as any,
+      userId: 1 as any,
+    });
+
+    assert.equal(persisted.ok, true);
+    assert.equal(persisted.persisted, true);
+    assert.ok(
+      persisted.backendMutation?.warnings.some((warning) =>
+        warning.includes(
+          "building_materialization_deferred:simulated ECS publish outage"
+        )
+      )
+    );
+    const actorState = parseHarthmereLiveModeBackendStateV1(
+      redisPrimary.store.get(harthmereLiveModePlayerStateKeyV1(ACTOR)),
+      ACTOR,
+      NOW_MS
+    );
+    assert.ok(
+      actorState.building.materializationPlans
         .outpost_restaurant_redpot_backend_materialization
     );
   });

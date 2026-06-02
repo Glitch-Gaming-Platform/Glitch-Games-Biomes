@@ -10,6 +10,7 @@ cd "$ROOT"
 PUSH_PRODUCTION=0
 SKIP_BUILD=0
 KEEP_LOCAL_SMOKE=0
+REDIS_HEALTH_CHECK_ONLY=0
 RUN_LOCAL_SMOKE="${RUN_LOCAL_SMOKE:-0}"
 TAG="${TAG:-prod-$(date -u +%Y%m%d%H%M%S)}"
 
@@ -23,6 +24,8 @@ Options:
   --skip-build   Reuse existing .next/dist and Docker image tag.
   --local-smoke  Run the memory-heavy local container HTTP smoke before push.
   --keep-local   Leave local smoke containers running for manual inspection.
+  --redis-health-check-only
+                 Only check/repair production Redis AOF/write health, then exit.
   -h, --help     Show this help.
 
 The local production-image HTTP smoke is opt-in because the full container can
@@ -54,6 +57,10 @@ while [ "$#" -gt 0 ]; do
       KEEP_LOCAL_SMOKE=1
       shift
       ;;
+    --redis-health-check-only)
+      REDIS_HEALTH_CHECK_ONLY=1
+      shift
+      ;;
     -h|--help)
       usage
       exit 0
@@ -78,7 +85,9 @@ AZURE_MIN_REPLICAS="${AZURE_MIN_REPLICAS:-1}"
 AZURE_MAX_REPLICAS="${AZURE_MAX_REPLICAS:-10}"
 PROD_REDIS_HOST="${PROD_REDIS_HOST:-10.0.0.12}"
 PROD_REDIS_PUBLIC_HOST="${PROD_REDIS_PUBLIC_HOST:-20.127.78.175}"
+PROD_REDIS_HEALTH_HOST="${PROD_REDIS_HEALTH_HOST:-$PROD_REDIS_PUBLIC_HOST}"
 PROD_REDIS_PORT="${PROD_REDIS_PORT:-6379}"
+PROD_REDIS_AOF_AUTOFIX="${PROD_REDIS_AOF_AUTOFIX:-1}"
 LOCAL_NETWORK="${LOCAL_NETWORK:-biomes-prod-smoke-net}"
 LOCAL_REDIS_CONTAINER="${LOCAL_REDIS_CONTAINER:-biomes-prod-smoke-redis}"
 LOCAL_REDIS_IMAGE="${LOCAL_REDIS_IMAGE:-redis:6.0.16-alpine}"
@@ -96,6 +105,100 @@ require_cmd() {
     echo "ERROR required command not found: $1" >&2
     exit 1
   fi
+}
+
+prod_redis_cli_v186() {
+  redis-cli -h "$PROD_REDIS_HEALTH_HOST" -p "$PROD_REDIS_PORT" "$@"
+}
+
+prod_redis_config_get_v186() {
+  local key="$1"
+  prod_redis_cli_v186 --raw CONFIG GET "$key" 2>/dev/null | tail -n 1 | tr -d '\r'
+}
+
+prod_redis_info_value_v186() {
+  local section="$1"
+  local key="$2"
+  prod_redis_cli_v186 --raw INFO "$section" 2>/dev/null \
+    | awk -F: -v key="$key" '$1 == key { gsub(/\r/, "", $2); print $2; exit }'
+}
+
+production_redis_write_probe_v186() {
+  local probe_key="codex:deploy-redis-write-probe:${TAG}:$$:${RANDOM}:$(date -u +%s)"
+  prod_redis_cli_v186 --raw SET "$probe_key" ok EX 60 NX 2>&1 || true
+}
+
+repair_production_redis_aof_v186() {
+  log "Repairing production Redis persistence guardrails on ${PROD_REDIS_HEALTH_HOST}:${PROD_REDIS_PORT}."
+  prod_redis_cli_v186 CONFIG SET appendonly no >/dev/null
+  prod_redis_cli_v186 CONFIG SET stop-writes-on-bgsave-error no >/dev/null
+  prod_redis_cli_v186 CONFIG SET dbfilename dump.rdb >/dev/null
+  prod_redis_cli_v186 CONFIG SET save "" >/dev/null
+  prod_redis_cli_v186 CONFIG REWRITE >/dev/null || true
+}
+
+check_production_redis_aof_health_v186() {
+  local phase="$1"
+  require_cmd redis-cli
+
+  log "Checking production Redis AOF/write health before $phase."
+  local ping appendonly aof_enabled aof_last_write_status rdb_last_bgsave_status dbfilename write_probe
+  ping="$(prod_redis_cli_v186 --raw PING 2>&1 || true)"
+  if [ "$ping" != "PONG" ]; then
+    echo "ERROR production Redis health check cannot PING ${PROD_REDIS_HEALTH_HOST}:${PROD_REDIS_PORT}: $ping" >&2
+    exit 1
+  fi
+
+  appendonly="$(prod_redis_config_get_v186 appendonly)"
+  dbfilename="$(prod_redis_config_get_v186 dbfilename)"
+  aof_enabled="$(prod_redis_info_value_v186 persistence aof_enabled)"
+  aof_last_write_status="$(prod_redis_info_value_v186 persistence aof_last_write_status)"
+  rdb_last_bgsave_status="$(prod_redis_info_value_v186 persistence rdb_last_bgsave_status)"
+  write_probe="$(production_redis_write_probe_v186)"
+
+  local needs_repair=0
+  if printf '%s\n' "$write_probe" | grep -qi 'MISCONF\|AOF file\|No space left on device'; then
+    needs_repair=1
+  fi
+  if [ "$aof_enabled" = "1" ] && [ "$aof_last_write_status" = "err" ]; then
+    needs_repair=1
+  fi
+  if [ "$appendonly" = "yes" ] && [ "$aof_last_write_status" = "err" ]; then
+    needs_repair=1
+  fi
+  if [ "$appendonly" != "no" ] || [ "$aof_enabled" != "0" ]; then
+    needs_repair=1
+  fi
+  if [ "$dbfilename" != "dump.rdb" ]; then
+    needs_repair=1
+  fi
+
+  if [ "$needs_repair" = "1" ]; then
+    echo "WARN production Redis persistence/write health needs repair:" >&2
+    echo "  appendonly=${appendonly:-unknown} aof_enabled=${aof_enabled:-unknown} aof_last_write_status=${aof_last_write_status:-unknown}" >&2
+    echo "  rdb_last_bgsave_status=${rdb_last_bgsave_status:-unknown} dbfilename=${dbfilename:-unknown}" >&2
+    echo "  write_probe=$write_probe" >&2
+    if [ "$PROD_REDIS_AOF_AUTOFIX" != "1" ]; then
+      echo "ERROR refusing to continue with unhealthy production Redis because PROD_REDIS_AOF_AUTOFIX=$PROD_REDIS_AOF_AUTOFIX." >&2
+      echo "Set PROD_REDIS_AOF_AUTOFIX=1 to apply the deploy-time Redis AOF repair." >&2
+      exit 1
+    fi
+    repair_production_redis_aof_v186
+    appendonly="$(prod_redis_config_get_v186 appendonly)"
+    dbfilename="$(prod_redis_config_get_v186 dbfilename)"
+    aof_enabled="$(prod_redis_info_value_v186 persistence aof_enabled)"
+    aof_last_write_status="$(prod_redis_info_value_v186 persistence aof_last_write_status)"
+    write_probe="$(production_redis_write_probe_v186)"
+  fi
+
+  if [ "$appendonly" != "no" ] || [ "$aof_enabled" != "0" ] || [ "$dbfilename" != "dump.rdb" ] || [ "$write_probe" != "OK" ]; then
+    echo "ERROR production Redis AOF/write health check failed after repair attempt:" >&2
+    echo "  appendonly=${appendonly:-unknown} aof_enabled=${aof_enabled:-unknown} aof_last_write_status=${aof_last_write_status:-unknown}" >&2
+    echo "  dbfilename=${dbfilename:-unknown} write_probe=$write_probe" >&2
+    exit 1
+  fi
+
+  log "Production Redis write health OK: appendonly=$appendonly aof_enabled=$aof_enabled dbfilename=$dbfilename."
 }
 
 wait_for_azure_revision_ready_v151() {
@@ -527,10 +630,12 @@ push_and_deploy() {
 
   require_cmd az
   require_cmd curl
+  check_production_redis_aof_health_v186 "production image push"
   log "Pushing built image $IMAGE."
   az acr login --name "${ACR_NAME:-GlitchGames}"
   docker push "$IMAGE"
 
+  check_production_redis_aof_health_v186 "Azure Container App update"
   log "Updating Azure Container App $AZURE_CONTAINER_APP to $IMAGE."
   az containerapp update \
     --resource-group "$AZURE_RESOURCE_GROUP" \
@@ -585,6 +690,11 @@ push_and_deploy() {
 
   log "Production update verified: $IMAGE revision=$latest_revision"
 }
+
+if [ "$REDIS_HEALTH_CHECK_ONLY" = "1" ]; then
+  check_production_redis_aof_health_v186 "manual Redis health check"
+  exit 0
+fi
 
 require_cmd node
 require_cmd docker

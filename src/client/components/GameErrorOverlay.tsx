@@ -3,7 +3,9 @@ import { tryExitPointerLock } from "@/client/components/contexts/PointerLockCont
 import { DialogButton } from "@/client/components/system/DialogButton";
 import { reportClientError } from "@/client/util/request_helpers";
 import { log } from "@/shared/logging";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
+
+const INSTALL_DISCONNECT_SUPPRESSION_LOG_INTERVAL_MS = 30_000;
 
 function isHarthmereInstallLaunch() {
   if (typeof window === "undefined") {
@@ -19,6 +21,7 @@ export const GameErrorOverlay: React.FunctionComponent<{}> = ({}) => {
   const socketStatus = reactResources.use("/server/socket");
 
   const [shouldDisplay, setShouldDisplay] = useState(false);
+  const lastSuppressionLogAtRef = useRef(0);
 
   useEffect(() => {
     if (shouldDisplay) {
@@ -35,12 +38,23 @@ export const GameErrorOverlay: React.FunctionComponent<{}> = ({}) => {
   const healthy = socketStatus.status === "ready";
   const suppressInstallDisconnectOverlay = isHarthmereInstallLaunch();
   useEffect(() => {
-    if (healthy || currentModal === "staleSession" || suppressInstallDisconnectOverlay) {
+    if (
+      healthy ||
+      currentModal === "staleSession" ||
+      suppressInstallDisconnectOverlay
+    ) {
       if (suppressInstallDisconnectOverlay && !healthy) {
-        log.warn("HARTHMERE_SUPPRESS_INSTALL_DISCONNECT_OVERLAY_V141", {
-          socketStatus: socketStatus.status,
-          currentModal,
-        });
+        const now = Date.now();
+        if (
+          now - lastSuppressionLogAtRef.current >=
+          INSTALL_DISCONNECT_SUPPRESSION_LOG_INTERVAL_MS
+        ) {
+          lastSuppressionLogAtRef.current = now;
+          log.warn("HARTHMERE_SUPPRESS_INSTALL_DISCONNECT_OVERLAY_V141", {
+            socketStatus: socketStatus.status,
+            currentModal,
+          });
+        }
       }
       setShouldDisplay(false);
       return;
@@ -54,7 +68,12 @@ export const GameErrorOverlay: React.FunctionComponent<{}> = ({}) => {
       setShouldDisplay(true);
     }, 1500);
     return () => clearTimeout(handle);
-  }, [healthy, currentModal, socketStatus.status, suppressInstallDisconnectOverlay]);
+  }, [
+    healthy,
+    currentModal,
+    socketStatus.status,
+    suppressInstallDisconnectOverlay,
+  ]);
 
   if (!shouldDisplay) {
     return <></>;

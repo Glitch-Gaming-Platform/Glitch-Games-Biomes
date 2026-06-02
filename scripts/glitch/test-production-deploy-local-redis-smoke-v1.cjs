@@ -29,6 +29,7 @@ ok(script.includes("GLITCH_ALLOW_SNAPSHOT_REDIS_FLUSH=1"), "local smoke allows f
 ok(script.includes("GLITCH_IDLE_SESSION_MS"), "local smoke sets the short idle-session window expected by the auth smoke test");
 ok(script.includes("RUN_LOCAL_SMOKE=\"${RUN_LOCAL_SMOKE:-0}\""), "local production-image HTTP smoke is disabled by default");
 ok(script.includes("--local-smoke"), "script exposes an explicit opt-in flag for memory-heavy local HTTP smoke");
+ok(script.includes("--redis-health-check-only"), "script exposes a production Redis AOF health-check-only mode");
 ok(script.includes("Skipping local production-image HTTP smoke"), "default deploy path does not wait for the local HTTP server");
 ok(script.includes("node scripts/glitch/test-glitch-container.cjs"), "script runs the Glitch container smoke test locally");
 ok(script.includes("node scripts/glitch/assert-glitch-build-artifacts-current.cjs ."), "script rejects stale build artifacts before Docker packaging");
@@ -55,7 +56,23 @@ ok(script.includes("GLITCH_POPULATE_SNAPSHOT_REDIS=0"), "production app startup 
 ok(script.includes("GLITCH_ALLOW_SNAPSHOT_REDIS_FLUSH=0"), "production app startup cannot flush shared Redis");
 ok(script.includes("REDIS_HOST=\"$PROD_REDIS_HOST\""), "production update uses the shared Redis host");
 ok(script.includes("10.0.0.12"), "production Redis default is the private shared-world Redis VM");
+ok(script.includes("PROD_REDIS_HEALTH_HOST=\"${PROD_REDIS_HEALTH_HOST:-$PROD_REDIS_PUBLIC_HOST}\""), "deploy checks production Redis through the public health host by default");
+ok(script.includes("PROD_REDIS_AOF_AUTOFIX=\"${PROD_REDIS_AOF_AUTOFIX:-1}\""), "deploy enables Redis AOF auto-repair by default");
+ok(script.includes("check_production_redis_aof_health_v186 \"production image push\""), "deploy checks Redis AOF/write health before the expensive image push");
+ok(script.includes("check_production_redis_aof_health_v186 \"Azure Container App update\""), "deploy re-checks Redis AOF/write health before creating the Azure revision");
+ok(script.includes("check_production_redis_aof_health_v186 \"manual Redis health check\""), "Redis health-check-only mode uses the same AOF repair logic");
+ok(script.includes("CONFIG SET appendonly no"), "deploy repair disables broken production Redis AOF");
+ok(script.includes("CONFIG SET stop-writes-on-bgsave-error no"), "deploy repair unblocks writes after persistence failure");
+ok(script.includes("CONFIG SET dbfilename dump.rdb"), "deploy repair restores the safe Redis RDB filename");
+ok(script.includes("CONFIG SET save \"\""), "deploy repair disables RDB snapshots for the shared Redis runtime");
+ok(script.includes("CONFIG REWRITE"), "deploy persists the Redis persistence guardrail config");
+ok(script.includes("MISCONF\\|AOF file\\|No space left on device"), "deploy detects the Redis AOF disk-full MISCONF signature");
+ok(script.includes("production_redis_write_probe_v186"), "deploy proves Redis writes before continuing");
 ok(script.includes("BIOMES_PLAYER_START_POSITION=484.24980838010384,53,-207.51197432867897"), "production update keeps the requested Grove start coordinate");
+ok(script.includes("HARTHMERE_SKIP_BUSINESS_OUTPOST_MATERIALIZATION"), "deploy can explicitly skip business outpost reconciliation only by request");
+ok(script.includes("Reconciling Harthmere business outpost terrain against production Redis."), "production deploy automatically reconciles business outpost terrain");
+ok(script.includes("node scripts/harthmere/materialize-business-outposts-redis-v1.cjs"), "production deploy runs the idempotent business outpost materializer");
+ok(script.includes("HARTHMERE_BUSINESS_OUTPOST_MATERIALIZATION_REDIS_HOST:-$PROD_REDIS_PUBLIC_HOST"), "business outpost reconciliation defaults to the production Redis public host");
 
 if (failed) {
   process.exit(1);
