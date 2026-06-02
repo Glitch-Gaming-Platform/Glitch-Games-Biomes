@@ -104,7 +104,8 @@ export async function readHarthmereLiveModeJobsBoardStateForActorV1(input: {
     if (result.economy) {
       state.economy.production = result.economy;
     }
-    changed ||= result.touchedModels.includes("jobs_board_auto_seeded");
+    changed ||= result.touchedModels.includes("jobs_board_auto_seeded")
+      || result.sharedStateKeys.length > 0;
   }
   if (changed && input.redis.primary.set) {
     await input.redis.primary.set(

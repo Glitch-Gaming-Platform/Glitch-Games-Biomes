@@ -34,6 +34,7 @@ export const CursorInspectionComponent: React.FunctionComponent<
     title?: string | JSX.Element;
     subtitle?: string | JSX.Element;
     shortcuts?: InspectShortcuts;
+    suppressTalkShortcut?: boolean;
     fade?: boolean;
   }>
 > = ({
@@ -44,6 +45,7 @@ export const CursorInspectionComponent: React.FunctionComponent<
   title,
   subtitle,
   shortcuts,
+  suppressTalkShortcut,
   fade,
   children,
 }) => {
@@ -68,7 +70,7 @@ export const CursorInspectionComponent: React.FunctionComponent<
 
   const trueShortcuts = useMemo(() => {
     const ret = [...(shortcuts ?? [])];
-    if (canTalk && overlay?.entityId) {
+    if (!suppressTalkShortcut && canTalk && overlay?.entityId) {
       ret.unshift({
         title: inspectText,
         onKeyDown: () => {
@@ -107,6 +109,7 @@ export const CursorInspectionComponent: React.FunctionComponent<
     overlay?.entityId,
     itemBuyer,
     shortcuts,
+    suppressTalkShortcut,
     reactResources,
   ]);
 

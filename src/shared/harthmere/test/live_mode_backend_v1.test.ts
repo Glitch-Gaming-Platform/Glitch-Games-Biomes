@@ -36,6 +36,7 @@ import {
 import {
   HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS_V1,
   HARTHMERE_BUSINESS_OUTPOST_REBUILD_REVISION_V1,
+  harthmereBusinessOutpostBusinessIdV1,
 } from "../business_customer_simulator_v1";
 import {
   registerHarthmereAbilityV1,
@@ -545,6 +546,11 @@ describe("defaultHarthmereLiveModeBackendStateV1", function () {
         `${record.outpostId} safe zone missing from live state`
       );
       assert.equal(s.building.safeZones[record.plot.plotId].safeFromMuck, true);
+      assert.equal(
+        s.building.inWorldMarkers[`${record.outpostId}:safe-zone`]?.kind,
+        "safe_zone",
+        `${record.outpostId} protected-area marker missing`
+      );
       assert.ok(
         s.building.inWorldMarkers[`${record.outpostId}:customer-dashboard`],
         `${record.outpostId} customer dashboard marker missing`
@@ -635,6 +641,38 @@ describe("defaultHarthmereLiveModeBackendStateV1", function () {
       merged.building.inWorldMarkers[
         `${canonical.outpostId}:customer-dashboard`
       ]
+    );
+  });
+
+  it("seeds canonical outpost businesses without duplicating saved records", function () {
+    const canonical =
+      HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS_V1.outpost_restaurant_redpot;
+    const businessId = harthmereBusinessOutpostBusinessIdV1(
+      canonical.outpostId
+    );
+    const state = freshState();
+    const business = state.economy.production.businesses[businessId];
+    assert.ok(business);
+    assert.equal(business.status, "open");
+    assert.equal(business.ownerKind, "npc");
+    assert.equal(business.propertyId, canonical.plot.plotId);
+    assert.equal(business.flags[`outpost:${canonical.outpostId}`], true);
+    assert.ok(Object.keys(business.inventory).length > 0);
+
+    const parsed = parseHarthmereLiveModeBackendStateV1(
+      JSON.stringify(state),
+      ACTOR,
+      NOW_MS
+    );
+    assert.deepEqual(
+      Object.keys(parsed.economy.production.businesses).filter(
+        (id) => id === businessId
+      ),
+      [businessId]
+    );
+    assert.equal(
+      parsed.economy.production.businesses[businessId].createdAtMs,
+      business.createdAtMs
     );
   });
 });

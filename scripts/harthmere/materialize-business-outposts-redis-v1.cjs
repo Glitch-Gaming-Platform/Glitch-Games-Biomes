@@ -30,6 +30,15 @@ const REDIS_PORT = Number.parseInt(
   10
 );
 const APPLY = process.env.APPLY === "1";
+const SCAN_COUNT = Number.parseInt(process.env.SCAN_COUNT || "2500", 10);
+const OUTPOST_ID_FILTER = (
+  process.env.OUTPOST_ID ||
+  process.env.OUTPOST_IDS ||
+  ""
+)
+  .split(",")
+  .map((value) => value.trim())
+  .filter(Boolean);
 
 async function scanTerrainEntitiesByShard(targetShards) {
   const redis = new Redis({
@@ -48,10 +57,21 @@ async function scanTerrainEntitiesByShard(targetShards) {
       "MATCH",
       "b:*",
       "COUNT",
-      10000
+      SCAN_COUNT
     );
     cursor = next;
     scanned += keys.length;
+    if (scanned > 0 && scanned % (SCAN_COUNT * 20) < keys.length) {
+      console.error(
+        JSON.stringify({
+          phase: "scanTerrainEntitiesByShard",
+          scanned,
+          candidateTerrain,
+          resolvedShardCount: found.size,
+          targetShardCount: targetShards.size,
+        })
+      );
+    }
     if (!keys.length) continue;
     const values = await redis.mgetBuffer(keys);
     for (let i = 0; i < values.length; i += 1) {
@@ -90,7 +110,12 @@ async function main() {
   const voxeloo = await loadVoxeloo();
   const plans =
     createHarthmereBusinessOutpostRebuildMaterializationPlansV1().filter(
-      (plan) => plan.requestId.endsWith("_materialization")
+      (plan) =>
+        plan.requestId.endsWith("_materialization") &&
+        (OUTPOST_ID_FILTER.length === 0 ||
+          OUTPOST_ID_FILTER.some((outpostId) =>
+            plan.requestId.startsWith(`${outpostId}_`)
+          ))
     );
   const editsByShard = new Map();
   for (const plan of plans) {
@@ -111,6 +136,7 @@ async function main() {
   const summary = {
     apply: APPLY,
     redis: { host: REDIS_HOST, port: REDIS_PORT },
+    outpostFilter: OUTPOST_ID_FILTER,
     plannedEditCount: [...editsByShard.values()].reduce(
       (count, edits) => count + edits.length,
       0

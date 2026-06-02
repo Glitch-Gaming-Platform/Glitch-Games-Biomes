@@ -619,7 +619,7 @@ button.biomes-ui-card:disabled {
 
 .biomes-ui-open-prompt {
   position: fixed;
-  left: 18px;
+  right: 18px;
   top: 50%;
   transform: translateY(-50%);
   z-index: 10020;
@@ -687,7 +687,7 @@ button.biomes-ui-card:disabled {
 
 @media (max-width: 768px) {
   .biomes-ui-open-prompt {
-    left: 10px;
+    right: 10px;
     top: auto;
     bottom: 98px;
     transform: none;

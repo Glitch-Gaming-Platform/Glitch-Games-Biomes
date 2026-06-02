@@ -76,7 +76,7 @@ async function main() {
   await page.keyboard.press("ArrowLeft");
   await page.keyboard.press("ArrowRight");
   await page.keyboard.press("Enter");
-  await page.keyboard.press("KeyQ");
+  await page.keyboard.press("KeyU");
 
   await page.keyboard.press("KeyM");
   await page.waitForSelector('[role="dialog"]', { timeout: 5000 });

@@ -255,11 +255,249 @@ const zLiveModeResponse = z.object({
   combatState: zJsonRecord.optional(),
   playerStatusState: zJsonRecord.optional(),
   questState: zJsonRecord.optional(),
+  snapshotMode: z.enum(["full", "changed"]).optional(),
+  includedSnapshots: z.string().array().optional(),
+  invalidatedSnapshots: z.string().array().optional(),
   events: zLiveModeEventResponse.array(),
   uiEvents: zLiveModeUiEventResponse.array(),
 });
 
 type LiveModeResponse = z.infer<typeof zLiveModeResponse>;
+
+const HARTHMERE_LIVE_MODE_MUTATION_SNAPSHOT_KEYS_V1 = [
+  "buildingState",
+  "bankingState",
+  "guildState",
+  "economyState",
+  "jobsBoardState",
+  "dailyState",
+  "farmingFoodState",
+  "craftingState",
+  "inventoryLootState",
+  "combatState",
+  "playerStatusState",
+  "questState",
+] as const;
+
+type HarthmereLiveModeMutationSnapshotKeyV1 =
+  (typeof HARTHMERE_LIVE_MODE_MUTATION_SNAPSHOT_KEYS_V1)[number];
+
+const HARTHMERE_LIVE_MODE_RESPONSE_SNAPSHOT_FIELDS_V1 = [
+  "buildingState",
+  "bankingState",
+  "guildState",
+  "economyState",
+  "jobsBoardState",
+  "dailyState",
+  "farmingFoodState",
+  "craftingState",
+  "inventoryLootState",
+  "combatState",
+  "playerStatusState",
+  "questState",
+] as const satisfies readonly HarthmereLiveModeMutationSnapshotKeyV1[];
+
+export function useFullHarthmereLiveModeMutationSnapshotsV1(
+  env: NodeJS.ProcessEnv = process.env
+) {
+  return env.HARTHMERE_LIVE_MODE_FULL_MUTATION_SNAPSHOTS === "1";
+}
+
+function addLiveModeSnapshotForTouchedModelV1(
+  snapshots: Set<HarthmereLiveModeMutationSnapshotKeyV1>,
+  model: string
+) {
+  const lower = model.toLowerCase();
+  if (
+    lower.includes("building") ||
+    lower.includes("property") ||
+    lower.includes("plot") ||
+    lower.includes("marker") ||
+    lower.includes("structure") ||
+    lower.includes("terrain") ||
+    lower.includes("home_decoration") ||
+    lower.includes("physical_")
+  ) {
+    snapshots.add("buildingState");
+  }
+  if (
+    lower.includes("bank") ||
+    lower.includes("vault") ||
+    lower.includes("loan") ||
+    lower.includes("mail")
+  ) {
+    snapshots.add("bankingState");
+  }
+  if (lower.includes("guild")) {
+    snapshots.add("guildState");
+  }
+  if (
+    lower.includes("economy") ||
+    lower.includes("business") ||
+    lower.includes("auction") ||
+    lower.includes("vendor")
+  ) {
+    snapshots.add("economyState");
+  }
+  if (lower.includes("jobs_board") || lower.includes("todo")) {
+    snapshots.add("jobsBoardState");
+  }
+  if (lower.includes("care")) {
+    snapshots.add("dailyState");
+  }
+  if (
+    lower.includes("farming") ||
+    lower.includes("food") ||
+    lower.includes("stamina") ||
+    lower.includes("cooking")
+  ) {
+    snapshots.add("farmingFoodState");
+  }
+  if (lower.includes("crafting")) {
+    snapshots.add("craftingState");
+  }
+  if (
+    lower.includes("inventory") ||
+    lower.includes("material") ||
+    lower.includes("wallet") ||
+    lower.includes("loot") ||
+    lower.includes("collectible") ||
+    lower.includes("item_") ||
+    lower.includes("tool_") ||
+    lower.includes("loadout") ||
+    lower.includes("equipment")
+  ) {
+    snapshots.add("inventoryLootState");
+  }
+  if (
+    lower.includes("combat") ||
+    lower.includes("death") ||
+    lower.includes("revive") ||
+    lower.includes("respawn") ||
+    lower.includes("threat") ||
+    lower.includes("cooldown") ||
+    lower.includes("npc_ai") ||
+    lower.includes("boss")
+  ) {
+    snapshots.add("combatState");
+    snapshots.add("playerStatusState");
+  }
+  if (
+    lower.includes("player_status") ||
+    lower.includes("skill") ||
+    lower.includes("xp") ||
+    lower.includes("level") ||
+    lower.includes("class") ||
+    lower.includes("magic") ||
+    lower.includes("law") ||
+    lower.includes("reputation")
+  ) {
+    snapshots.add("playerStatusState");
+  }
+  if (lower.includes("quest")) {
+    snapshots.add("questState");
+  }
+}
+
+export function harthmereLiveModeMutationSnapshotKeysV1(input: {
+  actionKind: string;
+  subsystem: string;
+  touchedModels: readonly string[];
+}) {
+  if (useFullHarthmereLiveModeMutationSnapshotsV1()) {
+    return [...HARTHMERE_LIVE_MODE_MUTATION_SNAPSHOT_KEYS_V1];
+  }
+
+  const snapshots = new Set<HarthmereLiveModeMutationSnapshotKeyV1>();
+  switch (input.actionKind) {
+    case "request_jobs_board_mutation":
+      snapshots.add("jobsBoardState");
+      snapshots.add("questState");
+      snapshots.add("inventoryLootState");
+      snapshots.add("playerStatusState");
+      break;
+    case "request_care_loop_action":
+      snapshots.add("dailyState");
+      snapshots.add("inventoryLootState");
+      snapshots.add("playerStatusState");
+      break;
+    case "request_bank_transaction":
+    case "request_mail_transaction":
+      snapshots.add("bankingState");
+      snapshots.add("inventoryLootState");
+      snapshots.add("playerStatusState");
+      break;
+    case "request_guild_mutation":
+      snapshots.add("guildState");
+      snapshots.add("playerStatusState");
+      break;
+    case "request_economy_mutation":
+    case "request_vendor_transaction":
+    case "request_auction_post":
+    case "request_auction_settle":
+      snapshots.add("economyState");
+      snapshots.add("inventoryLootState");
+      snapshots.add("playerStatusState");
+      break;
+    case "request_property_building_mutation":
+      snapshots.add("buildingState");
+      snapshots.add("inventoryLootState");
+      snapshots.add("playerStatusState");
+      break;
+    case "request_crafting":
+      snapshots.add("craftingState");
+      snapshots.add("inventoryLootState");
+      snapshots.add("playerStatusState");
+      break;
+    case "request_farming_action":
+      snapshots.add("farmingFoodState");
+      snapshots.add("inventoryLootState");
+      snapshots.add("playerStatusState");
+      break;
+    case "request_attack":
+    case "request_death_transition":
+    case "request_revive":
+    case "request_respawn":
+    case "request_npc_ai_tick":
+    case "request_boss_encounter_tick":
+      snapshots.add("combatState");
+      snapshots.add("playerStatusState");
+      break;
+    case "request_quest_state_update":
+      snapshots.add("questState");
+      break;
+    case "request_magic_progress":
+    case "request_law_reputation_mutation":
+      snapshots.add("playerStatusState");
+      break;
+    case "request_inventory_mutation":
+    case "request_loot_claim":
+      snapshots.add("inventoryLootState");
+      snapshots.add("playerStatusState");
+      break;
+  }
+
+  for (const model of input.touchedModels) {
+    addLiveModeSnapshotForTouchedModelV1(snapshots, model);
+  }
+
+  if (snapshots.size === 0) {
+    const subsystem = input.subsystem.toLowerCase();
+    if (subsystem === "jobs") snapshots.add("jobsBoardState");
+    else if (subsystem === "care") snapshots.add("dailyState");
+    else if (subsystem === "building" || subsystem === "property")
+      snapshots.add("buildingState");
+    else if (subsystem === "guild") snapshots.add("guildState");
+    else if (subsystem === "economy") snapshots.add("economyState");
+    else if (subsystem === "crafting") snapshots.add("craftingState");
+    else if (subsystem === "farming") snapshots.add("farmingFoodState");
+    else if (subsystem === "combat") snapshots.add("combatState");
+    else if (subsystem === "quest") snapshots.add("questState");
+    else snapshots.add("playerStatusState");
+  }
+
+  return [...snapshots];
+}
 
 const globalForHarthmereLiveMode = globalThis as typeof globalThis & {
   __harthmereLiveModeRedisV1?: ReturnType<typeof connectToRedis>;
@@ -272,6 +510,21 @@ function liveModeRedisV1() {
 
 function liveModeIdempotencyKeyV1(actorId: string, idempotencyKey: string) {
   return `harthmere:live_mode:v1:idempotency:${actorId}:${idempotencyKey}`;
+}
+
+function slimHarthmereLiveModeIdempotencyResponseV1(
+  response: LiveModeResponse
+): LiveModeResponse {
+  const slim: LiveModeResponse = {
+    ...response,
+    snapshotMode: "changed",
+    includedSnapshots: [],
+    invalidatedSnapshots: [...HARTHMERE_LIVE_MODE_MUTATION_SNAPSHOT_KEYS_V1],
+  };
+  for (const field of HARTHMERE_LIVE_MODE_RESPONSE_SNAPSHOT_FIELDS_V1) {
+    delete slim[field];
+  }
+  return slim;
 }
 
 function liveModeEventStreamKeyV1() {
@@ -1104,47 +1357,79 @@ export async function persistHarthmereLiveModeResponseV1(
         ? envelope.payload.stationType
         : undefined;
 
+    const includedSnapshots = harthmereLiveModeMutationSnapshotKeysV1({
+      actionKind: reduced.summary.actionKind,
+      subsystem: reduced.summary.subsystem,
+      touchedModels: reduced.summary.touchedModels,
+    });
+    const includedSnapshotSet = new Set(includedSnapshots);
     const persistedResponse: LiveModeResponse = {
       ...response,
       backendMutation: reduced.summary,
-      buildingState: createHarthmereLiveModeBuildingClientSnapshotV1(
-        reduced.state
+      snapshotMode: useFullHarthmereLiveModeMutationSnapshotsV1()
+        ? "full"
+        : "changed",
+      includedSnapshots,
+      invalidatedSnapshots: HARTHMERE_LIVE_MODE_MUTATION_SNAPSHOT_KEYS_V1.filter(
+        (key) => !includedSnapshotSet.has(key)
       ),
-      bankingState: createHarthmereLiveModeBankingClientSnapshotV1(
-        reduced.state
-      ),
-      guildState: createHarthmereLiveModeGuildClientSnapshotFromBackendV1(
-        reduced.state
-      ),
-      economyState: createHarthmereProductionEconomyClientSnapshotFromBackendV1(
-        reduced.state
-      ),
-      jobsBoardState: createHarthmereJobsBoardClientSnapshotFromBackendV1(
-        reduced.state
-      ),
-      dailyState: createHarthmereCareLoopClientSnapshotFromBackendV1(
-        reduced.state,
-        now
-      ),
-      farmingFoodState: createHarthmereLiveModeFarmingFoodClientSnapshotV1(
-        reduced.state
-      ),
-      craftingState: createHarthmereCraftingStationClientSnapshotFromBackendV1(
-        reduced.state,
-        requestedCraftingStationId,
-        requestedCraftingStationType,
-        now
-      ),
-      inventoryLootState:
-        createHarthmereInventoryLootClientSnapshotFromBackendV1(reduced.state),
-      combatState: createHarthmereLiveEntityCombatClientSnapshotV1(
-        reduced.state
-      ),
-      playerStatusState: createHarthmereLiveModePlayerStatusClientSnapshotV1(
-        reduced.state
-      ),
-      questState: createHarthmereLiveModeQuestClientSnapshotV1(reduced.state),
     };
+
+    if (includedSnapshotSet.has("buildingState")) {
+      persistedResponse.buildingState =
+        createHarthmereLiveModeBuildingClientSnapshotV1(reduced.state);
+    }
+    if (includedSnapshotSet.has("bankingState")) {
+      persistedResponse.bankingState =
+        createHarthmereLiveModeBankingClientSnapshotV1(reduced.state);
+    }
+    if (includedSnapshotSet.has("guildState")) {
+      persistedResponse.guildState =
+        createHarthmereLiveModeGuildClientSnapshotFromBackendV1(reduced.state);
+    }
+    if (includedSnapshotSet.has("economyState")) {
+      persistedResponse.economyState =
+        createHarthmereProductionEconomyClientSnapshotFromBackendV1(
+          reduced.state
+        );
+    }
+    if (includedSnapshotSet.has("jobsBoardState")) {
+      persistedResponse.jobsBoardState =
+        createHarthmereJobsBoardClientSnapshotFromBackendV1(reduced.state);
+    }
+    if (includedSnapshotSet.has("dailyState")) {
+      persistedResponse.dailyState =
+        createHarthmereCareLoopClientSnapshotFromBackendV1(reduced.state, now);
+    }
+    if (includedSnapshotSet.has("farmingFoodState")) {
+      persistedResponse.farmingFoodState =
+        createHarthmereLiveModeFarmingFoodClientSnapshotV1(reduced.state);
+    }
+    if (includedSnapshotSet.has("craftingState")) {
+      persistedResponse.craftingState =
+        createHarthmereCraftingStationClientSnapshotFromBackendV1(
+          reduced.state,
+          requestedCraftingStationId,
+          requestedCraftingStationType,
+          now
+        );
+    }
+    if (includedSnapshotSet.has("inventoryLootState")) {
+      persistedResponse.inventoryLootState =
+        createHarthmereInventoryLootClientSnapshotFromBackendV1(reduced.state);
+    }
+    if (includedSnapshotSet.has("combatState")) {
+      persistedResponse.combatState =
+        createHarthmereLiveEntityCombatClientSnapshotV1(reduced.state);
+    }
+    if (includedSnapshotSet.has("playerStatusState")) {
+      persistedResponse.playerStatusState =
+        createHarthmereLiveModePlayerStatusClientSnapshotV1(reduced.state);
+    }
+    if (includedSnapshotSet.has("questState")) {
+      persistedResponse.questState =
+        createHarthmereLiveModeQuestClientSnapshotV1(reduced.state);
+    }
 
     const tx = redis.primary.multi();
     tx.set(playerStateKey, JSON.stringify(reduced.state));
@@ -1171,7 +1456,13 @@ export async function persistHarthmereLiveModeResponseV1(
       "mutation",
       JSON.stringify(reduced.summary)
     );
-    tx.set(key, JSON.stringify(persistedResponse), "EX", 24 * 60 * 60, "NX");
+    tx.set(
+      key,
+      JSON.stringify(slimHarthmereLiveModeIdempotencyResponseV1(persistedResponse)),
+      "EX",
+      24 * 60 * 60,
+      "NX"
+    );
     const txResult = await tx.exec();
     if (supportsWatch && txResult === null) {
       continue;
@@ -1234,7 +1525,7 @@ export async function persistHarthmereLiveModeResponseV1(
       }
       await redis.primary.set(
         key,
-        JSON.stringify(persistedResponse),
+        JSON.stringify(slimHarthmereLiveModeIdempotencyResponseV1(persistedResponse)),
         "EX",
         24 * 60 * 60
       );

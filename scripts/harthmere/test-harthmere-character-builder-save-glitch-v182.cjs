@@ -34,7 +34,14 @@ check('Create Hero flushes a final Glitch save request', wake.includes('flushHar
 
 check('Glitch bridge snapshots all Harthmere localStorage keys', bridge.includes('collectHarthmereStorage') && bridge.includes('key.startsWith(HARTHMERE_STORAGE_PREFIX)'));
 check('Glitch bridge storeSave sends snapshot localStorage', bridge.includes('storeSave') && bridge.includes('snapshot,') && bridge.includes('localStorage'));
-check('Glitch bridge restore applies Harthmere localStorage keys', bridge.includes('applySnapshot') && bridge.includes('window.localStorage.setItem(key, value)'));
+check(
+  'Glitch bridge restore applies allowed Harthmere localStorage keys',
+  bridge.includes('function applySnapshot') &&
+    bridge.includes('isHarthmereCloudSaveStorageKeyV153(key)') &&
+    bridge.includes('window.localStorage.setItem(') &&
+    bridge.includes('key === ACTIVE_USER_SCOPE_KEY') &&
+    bridge.includes('migrateCloudSaveStorageKeyToCurrentScopeV153(key)')
+);
 check('Glitch save path can skip safely when install id is missing', wake.includes('missing-active-glitch-save-bridge') && wake.includes('status: "skipped"'));
 check('Glitch save path can skip safely when bridge is invalid or disconnected', wake.includes('status?.mode === "invalid"') && wake.includes('status?.mode === "disconnected"'));
 

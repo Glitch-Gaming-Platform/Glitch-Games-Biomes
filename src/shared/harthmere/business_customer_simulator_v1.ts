@@ -353,7 +353,13 @@ export interface HarthmereBusinessOutpostV1 {
     width: number;
     depth: number;
     floors: number;
-    banner: "banner_red" | "banner_green" | "banner_blue" | "banner_brown" | "banner_yellow" | "banner_white";
+    banner:
+      | "banner_red"
+      | "banner_green"
+      | "banner_blue"
+      | "banner_brown"
+      | "banner_yellow"
+      | "banner_white";
   };
   job: {
     title: string;
@@ -408,7 +414,13 @@ export interface HarthmereBusinessOutpostProceduralBuildingRecordV1 {
   queueNode: { x: number; y: number; z: number };
   serviceCounter: { x: number; y: number; z: number };
   exitNode: { x: number; y: number; z: number };
-  customerSpace: { minX: number; maxX: number; minZ: number; maxZ: number; areaMeters: number };
+  customerSpace: {
+    minX: number;
+    maxX: number;
+    minZ: number;
+    maxZ: number;
+    areaMeters: number;
+  };
   clearances: {
     frontDoorMeters: number;
     shopCustomerSpaceMeters: number;
@@ -449,20 +461,22 @@ export interface HarthmereBusinessOutpostProceduralBuildingRecordV1 {
   };
 }
 
-export const HARTHMERE_GROVE_BUSINESS_BUILDING_REFERENCE_COORDINATES_V1 = Object.freeze([
-  [496.73746109712346, 68, -157.29343010411407],
-  [479.2253752880332, 70, -89.56226450768318],
-  [503.82932917461426, 62, -156.25475408417043],
-  [503.7158145697912, 68, -160.38984841016236],
-  [477.326232766884, 70, -73.7606338529657],
-  [787.2777938314737, 68, -132.00332253573188],
-  [788.7149584695969, 73, -151.69533338390963],
-  [784.423917773294, 72, -143.1199023746175],
-] as const);
+export const HARTHMERE_GROVE_BUSINESS_BUILDING_REFERENCE_COORDINATES_V1 =
+  Object.freeze([
+    [496.73746109712346, 68, -157.29343010411407],
+    [479.2253752880332, 70, -89.56226450768318],
+    [503.82932917461426, 62, -156.25475408417043],
+    [503.7158145697912, 68, -160.38984841016236],
+    [477.326232766884, 70, -73.7606338529657],
+    [787.2777938314737, 68, -132.00332253573188],
+    [788.7149584695969, 73, -151.69533338390963],
+    [784.423917773294, 72, -143.1199023746175],
+  ] as const);
 
 export const HARTHMERE_GROVE_BUSINESS_BUILDING_SOURCE_SCAN_V1 = Object.freeze({
   version: "harthmere-grove-business-coordinate-source-scan-v1",
-  scannedCoordinates: HARTHMERE_GROVE_BUSINESS_BUILDING_REFERENCE_COORDINATES_V1,
+  scannedCoordinates:
+    HARTHMERE_GROVE_BUSINESS_BUILDING_REFERENCE_COORDINATES_V1,
   authoredPlacementFindings: [
     {
       coordinateIndex: 0,
@@ -527,7 +541,9 @@ export const HARTHMERE_GROVE_BUSINESS_BUILDING_SOURCE_SCAN_V1 = Object.freeze({
       coordinate: HARTHMERE_GROVE_BUSINESS_BUILDING_REFERENCE_COORDINATES_V1[3],
       sourceKind: "authored_placement_cluster",
       sourceFile: "src/client/game/renderers/local_dev/harthmere_assets.ts",
-      nearbySourceLines: [8175, 8407, 8759, 8760, 9058, 9059, 9131, 9132, 9135, 9136],
+      nearbySourceLines: [
+        8175, 8407, 8759, 8760, 9058, 9059, 9131, 9132, 9135, 9136,
+      ],
       reusableFeatures: [
         "business-specific shelves against walls",
         "long service table clear of doorway",
@@ -547,7 +563,8 @@ export const HARTHMERE_GROVE_BUSINESS_BUILDING_SOURCE_SCAN_V1 = Object.freeze({
       coordinateIndex: 4,
       coordinate: HARTHMERE_GROVE_BUSINESS_BUILDING_REFERENCE_COORDINATES_V1[4],
       sourceKind: "live_world_snapshot_reference",
-      sourceFile: "/Users/devindixon/Downloads/buiness-biomes.azurecontainerapp",
+      sourceFile:
+        "/Users/devindixon/Downloads/buiness-biomes.azurecontainerapp",
       nearbySourceLines: [3405, 3406],
       reusableFeatures: [
         "production Grove building reference with player-reported position",
@@ -559,7 +576,8 @@ export const HARTHMERE_GROVE_BUSINESS_BUILDING_SOURCE_SCAN_V1 = Object.freeze({
       coordinateIndex: 5,
       coordinate: HARTHMERE_GROVE_BUSINESS_BUILDING_REFERENCE_COORDINATES_V1[5],
       sourceKind: "live_world_snapshot_reference",
-      sourceFile: "/Users/devindixon/Downloads/buiness-biomes.azurecontainerapp",
+      sourceFile:
+        "/Users/devindixon/Downloads/buiness-biomes.azurecontainerapp",
       nearbySourceLines: [633, 634],
       reusableFeatures: [
         "production Grove building reference with player-reported position",
@@ -571,7 +589,8 @@ export const HARTHMERE_GROVE_BUSINESS_BUILDING_SOURCE_SCAN_V1 = Object.freeze({
       coordinateIndex: 6,
       coordinate: HARTHMERE_GROVE_BUSINESS_BUILDING_REFERENCE_COORDINATES_V1[6],
       sourceKind: "live_world_snapshot_reference",
-      sourceFile: "/Users/devindixon/Downloads/buiness-biomes.azurecontainerapp",
+      sourceFile:
+        "/Users/devindixon/Downloads/buiness-biomes.azurecontainerapp",
       nearbySourceLines: [594, 595],
       reusableFeatures: [
         "production Grove building reference with player-reported position",
@@ -583,7 +602,8 @@ export const HARTHMERE_GROVE_BUSINESS_BUILDING_SOURCE_SCAN_V1 = Object.freeze({
       coordinateIndex: 7,
       coordinate: HARTHMERE_GROVE_BUSINESS_BUILDING_REFERENCE_COORDINATES_V1[7],
       sourceKind: "live_world_snapshot_reference",
-      sourceFile: "/Users/devindixon/Downloads/buiness-biomes.azurecontainerapp",
+      sourceFile:
+        "/Users/devindixon/Downloads/buiness-biomes.azurecontainerapp",
       nearbySourceLines: [552, 553],
       reusableFeatures: [
         "production Grove building reference with player-reported position",
@@ -629,30 +649,31 @@ export const HARTHMERE_GROVE_BUSINESS_BUILDING_SOURCE_SCAN_V1 = Object.freeze({
   unresolvedAuthoredPlacementCoordinates: [4, 5, 6, 7],
 } as const);
 
-export const HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_COORDINATES_V1 = Object.freeze([
-  [483.4015418223092, 53, -186.36893760014152],
-  [452.923968994932, 73, -165.0180416850341],
-  [440.1475960722798, 71, -125.32567490491664],
-  [444.63686657425586, 70, -112.24404681818449],
-  [511.9942409918332, 70, -60.865588345981315],
-  [531.9124930157947, 70, -65.70511642009689],
-  [496.73746109712346, 68, -157.29343010411407],
-  [479.2253752880332, 70, -89.56226450768318],
-  [503.82932917461426, 62, -156.25475408417043],
-  [503.7158145697912, 68, -160.38984841016236],
-  [477.326232766884, 70, -73.7606338529657],
-  [787.2777938314737, 68, -132.00332253573188],
-  [788.7149584695969, 73, -151.69533338390963],
-  [784.423917773294, 72, -143.1199023746175],
-] as const);
+export const HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_COORDINATES_V1 =
+  Object.freeze([
+    [483.4015418223092, 53, -186.36893760014152],
+    [452.923968994932, 73, -165.0180416850341],
+    [440.1475960722798, 71, -125.32567490491664],
+    [444.63686657425586, 70, -112.24404681818449],
+    [511.9942409918332, 70, -60.865588345981315],
+    [531.9124930157947, 70, -65.70511642009689],
+    [496.73746109712346, 68, -157.29343010411407],
+    [479.2253752880332, 70, -89.56226450768318],
+    [503.82932917461426, 62, -156.25475408417043],
+    [503.7158145697912, 68, -160.38984841016236],
+    [477.326232766884, 70, -73.7606338529657],
+    [787.2777938314737, 68, -132.00332253573188],
+    [788.7149584695969, 73, -151.69533338390963],
+    [784.423917773294, 72, -143.1199023746175],
+  ] as const);
 
 export const HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_V1 = Object.freeze({
   version: "harthmere-grove-business-design-furniture-scan-v2",
-  sourceScreenshots:
-    ".codex/screenshots/harthmere-reference-building-scan",
+  sourceScreenshots: ".codex/screenshots/harthmere-reference-building-scan",
   interiorSourceScreenshots:
     ".codex/screenshots/harthmere-reference-building-interiors-slow",
-  scannedCoordinates: HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_COORDINATES_V1,
+  scannedCoordinates:
+    HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_COORDINATES_V1,
   placementPolicy: "design_and_furniture_reference_only_do_not_build_here",
   materializesBuildings: false,
   interiorCapturePolicy:
@@ -660,7 +681,8 @@ export const HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_V1 = Object.freeze({
   findings: [
     {
       coordinateIndex: 0,
-      coordinate: HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_COORDINATES_V1[0],
+      coordinate:
+        HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_COORDINATES_V1[0],
       observedFeatures: [
         "stone courtyard reads as a public business threshold",
         "wall greenery and hanging vines soften hard masonry",
@@ -669,7 +691,8 @@ export const HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_V1 = Object.freeze({
     },
     {
       coordinateIndex: 1,
-      coordinate: HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_COORDINATES_V1[1],
+      coordinate:
+        HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_COORDINATES_V1[1],
       observedFeatures: [
         "compact yellow storefront with framed glass window",
         "tiny counter/display props are supported on the facade",
@@ -678,7 +701,8 @@ export const HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_V1 = Object.freeze({
     },
     {
       coordinateIndex: 2,
-      coordinate: HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_COORDINATES_V1[2],
+      coordinate:
+        HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_COORDINATES_V1[2],
       observedFeatures: [
         "low stone boundary wall shapes the path without closing it",
         "dense flower beds and trees make the exterior lush",
@@ -687,7 +711,8 @@ export const HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_V1 = Object.freeze({
     },
     {
       coordinateIndex: 3,
-      coordinate: HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_COORDINATES_V1[3],
+      coordinate:
+        HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_COORDINATES_V1[3],
       observedFeatures: [
         "striped purple awning marks a shop front from a distance",
         "planters and flowers frame the entry without blocking it",
@@ -696,7 +721,8 @@ export const HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_V1 = Object.freeze({
     },
     {
       coordinateIndex: 4,
-      coordinate: HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_COORDINATES_V1[4],
+      coordinate:
+        HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_COORDINATES_V1[4],
       observedFeatures: [
         "raised grassy terrace and retaining edges make slope sites usable",
         "small sign and field rows work as exterior business identity",
@@ -705,7 +731,8 @@ export const HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_V1 = Object.freeze({
     },
     {
       coordinateIndex: 5,
-      coordinate: HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_COORDINATES_V1[5],
+      coordinate:
+        HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_COORDINATES_V1[5],
       observedFeatures: [
         "wooden counter and barrel grouping creates a market-stall service face",
         "crate and log textures communicate stock and storage",
@@ -714,7 +741,8 @@ export const HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_V1 = Object.freeze({
     },
     {
       coordinateIndex: 6,
-      coordinate: HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_COORDINATES_V1[6],
+      coordinate:
+        HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_COORDINATES_V1[6],
       observedFeatures: [
         "low white service table sits in a garden clearing",
         "glass greenhouse language pairs with stone and trees",
@@ -723,7 +751,8 @@ export const HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_V1 = Object.freeze({
     },
     {
       coordinateIndex: 7,
-      coordinate: HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_COORDINATES_V1[7],
+      coordinate:
+        HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_COORDINATES_V1[7],
       observedFeatures: [
         "striped awning differentiates the storefront from nearby homes",
         "tree canopy and garden beds make the shop exterior green",
@@ -732,7 +761,8 @@ export const HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_V1 = Object.freeze({
     },
     {
       coordinateIndex: 8,
-      coordinate: HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_COORDINATES_V1[8],
+      coordinate:
+        HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_COORDINATES_V1[8],
       observedFeatures: [
         "white tent-like counter structure reads as a lightweight stall",
         "supported sign and slim posts establish a clear service point",
@@ -741,7 +771,8 @@ export const HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_V1 = Object.freeze({
     },
     {
       coordinateIndex: 9,
-      coordinate: HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_COORDINATES_V1[9],
+      coordinate:
+        HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_COORDINATES_V1[9],
       observedFeatures: [
         "tree-obscured view confirms this coordinate is reference-only",
         "nearby Grove greenery should inform exterior density, not placement",
@@ -750,7 +781,8 @@ export const HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_V1 = Object.freeze({
     },
     {
       coordinateIndex: 10,
-      coordinate: HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_COORDINATES_V1[10],
+      coordinate:
+        HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_COORDINATES_V1[10],
       observedFeatures: [
         "purple awning repeats as a Grove shop marker",
         "stone wall, trees, and path tiles create layered frontage",
@@ -759,7 +791,8 @@ export const HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_V1 = Object.freeze({
     },
     {
       coordinateIndex: 11,
-      coordinate: HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_COORDINATES_V1[11],
+      coordinate:
+        HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_COORDINATES_V1[11],
       observedFeatures: [
         "pale stone roof and wood wall contrast gives a civic shop feel",
         "large tree and tiled entry make the exterior feel established",
@@ -768,7 +801,8 @@ export const HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_V1 = Object.freeze({
     },
     {
       coordinateIndex: 12,
-      coordinate: HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_COORDINATES_V1[12],
+      coordinate:
+        HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_COORDINATES_V1[12],
       observedFeatures: [
         "pink flowering tree and fence frame a destination-like yard",
         "distant shop facade stays identifiable through greenery",
@@ -777,7 +811,8 @@ export const HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_V1 = Object.freeze({
     },
     {
       coordinateIndex: 13,
-      coordinate: HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_COORDINATES_V1[13],
+      coordinate:
+        HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_COORDINATES_V1[13],
       observedFeatures: [
         "heavy canopy requires alternate sightlines for signs and doors",
         "flower beds and fenced greenspace provide lushness cues",
@@ -798,7 +833,8 @@ export const HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_V1 = Object.freeze({
   interiorFindings: [
     {
       coordinateIndex: 0,
-      coordinate: HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_COORDINATES_V1[0],
+      coordinate:
+        HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_COORDINATES_V1[0],
       observedInteriorFeatures: [
         "open civic threshold rather than a closed shop room",
         "stone floor is kept mostly clear for movement",
@@ -807,7 +843,8 @@ export const HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_V1 = Object.freeze({
     },
     {
       coordinateIndex: 1,
-      coordinate: HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_COORDINATES_V1[1],
+      coordinate:
+        HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_COORDINATES_V1[1],
       observedInteriorFeatures: [
         "compact room with supported bed/bench zone",
         "colored counter run with small bottle stock on top",
@@ -816,7 +853,8 @@ export const HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_V1 = Object.freeze({
     },
     {
       coordinateIndex: 2,
-      coordinate: HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_COORDINATES_V1[2],
+      coordinate:
+        HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_COORDINATES_V1[2],
       observedInteriorFeatures: [
         "stone interior with windows and purple counter/table accent",
         "wall bench and bed-like service furniture stay off the path",
@@ -825,7 +863,8 @@ export const HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_V1 = Object.freeze({
     },
     {
       coordinateIndex: 3,
-      coordinate: HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_COORDINATES_V1[3],
+      coordinate:
+        HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_COORDINATES_V1[3],
       observedInteriorFeatures: [
         "warm wood interior with simple table and bed furniture",
         "small lamp on a side table gives a clear supported light cue",
@@ -834,7 +873,8 @@ export const HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_V1 = Object.freeze({
     },
     {
       coordinateIndex: 4,
-      coordinate: HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_COORDINATES_V1[4],
+      coordinate:
+        HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_COORDINATES_V1[4],
       observedInteriorFeatures: [
         "wood-and-glass interior with seating and table work zone",
         "green bed or bench furniture sits against a wall",
@@ -843,7 +883,8 @@ export const HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_V1 = Object.freeze({
     },
     {
       coordinateIndex: 5,
-      coordinate: HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_COORDINATES_V1[5],
+      coordinate:
+        HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_COORDINATES_V1[5],
       observedInteriorFeatures: [
         "blue shop room with purple shelf, books, bottles, and cobweb detail",
         "white counter and wall tool/key sign create a strong service face",
@@ -852,7 +893,8 @@ export const HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_V1 = Object.freeze({
     },
     {
       coordinateIndex: 6,
-      coordinate: HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_COORDINATES_V1[6],
+      coordinate:
+        HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_COORDINATES_V1[6],
       observedInteriorFeatures: [
         "glass-and-white wall corridor reads greenhouse or clinic-like",
         "simple bed/bench furniture is tucked behind glass panels",
@@ -861,7 +903,8 @@ export const HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_V1 = Object.freeze({
     },
     {
       coordinateIndex: 7,
-      coordinate: HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_COORDINATES_V1[7],
+      coordinate:
+        HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_COORDINATES_V1[7],
       observedInteriorFeatures: [
         "coordinate is mostly outside but shows shop threshold context",
         "blackboard/sign access point and exterior posts face the path",
@@ -870,7 +913,8 @@ export const HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_V1 = Object.freeze({
     },
     {
       coordinateIndex: 8,
-      coordinate: HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_COORDINATES_V1[8],
+      coordinate:
+        HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_COORDINATES_V1[8],
       observedInteriorFeatures: [
         "stone-and-glass interior with stairs and raised work/display ledge",
         "small expressive object on a supported pedestal reads as focal stock",
@@ -879,7 +923,8 @@ export const HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_V1 = Object.freeze({
     },
     {
       coordinateIndex: 9,
-      coordinate: HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_COORDINATES_V1[9],
+      coordinate:
+        HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_COORDINATES_V1[9],
       observedInteriorFeatures: [
         "clean gray room with desk, chair, couch, planter, and floor lamp",
         "black wall cabinet and small colored bottles read as stocked display",
@@ -888,7 +933,8 @@ export const HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_V1 = Object.freeze({
     },
     {
       coordinateIndex: 10,
-      coordinate: HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_COORDINATES_V1[10],
+      coordinate:
+        HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_COORDINATES_V1[10],
       observedInteriorFeatures: [
         "long room with counter/desk, shelf wall, and large windows",
         "small gifts or stock sit on the wooden desk surface",
@@ -897,7 +943,8 @@ export const HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_V1 = Object.freeze({
     },
     {
       coordinateIndex: 11,
-      coordinate: HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_COORDINATES_V1[11],
+      coordinate:
+        HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_COORDINATES_V1[11],
       observedInteriorFeatures: [
         "mostly exterior garden/entry view at this exact coordinate",
         "planters, signs, and entry furniture reinforce public-facing frontage",
@@ -906,7 +953,8 @@ export const HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_V1 = Object.freeze({
     },
     {
       coordinateIndex: 12,
-      coordinate: HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_COORDINATES_V1[12],
+      coordinate:
+        HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_COORDINATES_V1[12],
       observedInteriorFeatures: [
         "glass balcony or veranda with benches and low railings",
         "wood floor and glass panels make a clean overlook/service terrace",
@@ -915,7 +963,8 @@ export const HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_V1 = Object.freeze({
     },
     {
       coordinateIndex: 13,
-      coordinate: HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_COORDINATES_V1[13],
+      coordinate:
+        HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_COORDINATES_V1[13],
       observedInteriorFeatures: [
         "hallway and doorway views show simple wood interior circulation",
         "nearby garden beds and table-like exterior furniture cue lodging/farm stock",
@@ -925,18 +974,20 @@ export const HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_V1 = Object.freeze({
   ],
 } as const);
 
-export const HARTHMERE_GROVE_BUSINESS_PEOPLE_REFERENCE_COORDINATES_V1 = Object.freeze([
-  [483.4, 53, -186.4],
-  [452.9, 73, -165.0],
-  [440.1, 71, -125.3],
-  [444.6, 70, -112.2],
-  [511.9, 70, -60.9],
-  [531.9, 70, -65.7],
-] as const);
+export const HARTHMERE_GROVE_BUSINESS_PEOPLE_REFERENCE_COORDINATES_V1 =
+  Object.freeze([
+    [483.4, 53, -186.4],
+    [452.9, 73, -165.0],
+    [440.1, 71, -125.3],
+    [444.6, 70, -112.2],
+    [511.9, 70, -60.9],
+    [531.9, 70, -65.7],
+  ] as const);
 
 export const HARTHMERE_GROVE_BUSINESS_PEOPLE_SOURCE_SCAN_V1 = Object.freeze({
   version: "harthmere-grove-business-people-coordinate-source-scan-v1",
-  sourceReport: "/Users/devindixon/Desktop/grove_business_outpost_construction_report copy 2.md",
+  sourceReport:
+    "/Users/devindixon/Desktop/grove_business_outpost_construction_report copy 2.md",
   scannedCoordinates: HARTHMERE_GROVE_BUSINESS_PEOPLE_REFERENCE_COORDINATES_V1,
   coordinatesAreOutposts: false,
   materializesBuildings: false,
@@ -1056,7 +1107,15 @@ export interface HarthmereBusinessOutpostBuildingStyleKitV1 {
   doorStyle: "wood_glass_panel";
   windowStyle: "large_framed_shop_glass";
   awningMaterial: HarthmereBusinessOutpostShellMaterialV1;
-  signIcon: "star" | "leaf" | "cross" | "hammer" | "spark" | "shield" | "parcel" | "key";
+  signIcon:
+    | "star"
+    | "leaf"
+    | "cross"
+    | "hammer"
+    | "spark"
+    | "shield"
+    | "parcel"
+    | "key";
   exteriorDressing:
     | "garden_planters"
     | "workshop_crates"
@@ -1093,7 +1152,15 @@ export interface HarthmereBusinessOutpostInteriorFixtureV1 {
   label: string;
   position: { x: number; y: number; z: number };
   size: readonly [number, number, number];
-  colorHint: "accent" | "floor" | "primary" | "safety" | "stock" | "trim" | "wall" | "wood";
+  colorHint:
+    | "accent"
+    | "floor"
+    | "primary"
+    | "safety"
+    | "stock"
+    | "trim"
+    | "wall"
+    | "wood";
   blocksNavigation: boolean;
   businessSpecific: boolean;
   bikkieGraphicId?: string;
@@ -1207,7 +1274,8 @@ const HARTHMERE_BUSINESS_BIKKIE_GRAPHIC_BASES_V1 = {
     bikkieName: "Workbench",
     label: "Workbench",
     kind: "crafting_station",
-    description: "One-block oak crafting station for repairs, handcrafting, and counter prep.",
+    description:
+      "One-block oak crafting station for repairs, handcrafting, and counter prep.",
     colors: ["oak brown", "iron gray"],
     galoisPath: "placeables/crafting_stations/log_workbench",
     boxSize: [1, 1, 3],
@@ -1222,7 +1290,8 @@ const HARTHMERE_BUSINESS_BIKKIE_GRAPHIC_BASES_V1 = {
     bikkieName: "Thermoblaster",
     label: "Thermoblaster",
     kind: "crafting_station",
-    description: "Three-by-three stone industrial crafting station for heat, forging, and hazardous processing.",
+    description:
+      "Three-by-three stone industrial crafting station for heat, forging, and hazardous processing.",
     colors: ["stone gray", "coal black", "ember orange"],
     galoisPath: "placeables/crafting_stations/stone_thermoblaster",
     boxSize: [3, 3, 3],
@@ -1237,7 +1306,8 @@ const HARTHMERE_BUSINESS_BIKKIE_GRAPHIC_BASES_V1 = {
     bikkieName: "Thermolite",
     label: "Thermolite",
     kind: "crafting_station",
-    description: "One-by-two-by-three stone utility station for clean heat, sterilizing, and energy checks.",
+    description:
+      "One-by-two-by-three stone utility station for clean heat, sterilizing, and energy checks.",
     colors: ["stone gray", "warm white", "amber"],
     galoisPath: "placeables/crafting_stations/stone_thermolite",
     boxSize: [1, 2, 3],
@@ -1252,7 +1322,8 @@ const HARTHMERE_BUSINESS_BIKKIE_GRAPHIC_BASES_V1 = {
     bikkieName: "Kitchen",
     label: "Kitchen",
     kind: "crafting_station",
-    description: "Tall oak cooking station for plated meals, soups, and lodging food service.",
+    description:
+      "Tall oak cooking station for plated meals, soups, and lodging food service.",
     colors: ["oak brown", "cream ceramic", "warm copper"],
     galoisPath: "placeables/crafting_stations/oak_kitchen",
     boxSize: [1, 1, 4],
@@ -1268,7 +1339,8 @@ const HARTHMERE_BUSINESS_BIKKIE_GRAPHIC_BASES_V1 = {
     bikkieName: "Angler's Table",
     label: "Angler's Table",
     kind: "crafting_station",
-    description: "Two-by-two-by-three prep table for fish, meat, and cold-larder service.",
+    description:
+      "Two-by-two-by-three prep table for fish, meat, and cold-larder service.",
     colors: ["weathered wood", "blue-gray metal", "clean white"],
     boxSize: [2, 2, 3],
     craftingStationType: "general",
@@ -1282,7 +1354,8 @@ const HARTHMERE_BUSINESS_BIKKIE_GRAPHIC_BASES_V1 = {
     bikkieName: "Composter",
     label: "Composter",
     kind: "crafting_station",
-    description: "One-by-two-by-three composting station for farm scraps, waste processing, and fertilizer loops.",
+    description:
+      "One-by-two-by-three composting station for farm scraps, waste processing, and fertilizer loops.",
     colors: ["dark wood", "leaf green", "soil brown"],
     boxSize: [1, 2, 3],
     craftingStationType: "composting",
@@ -1296,7 +1369,8 @@ const HARTHMERE_BUSINESS_BIKKIE_GRAPHIC_BASES_V1 = {
     bikkieName: "Seed Mill",
     label: "Seed Mill",
     kind: "crafting_station",
-    description: "One-by-three-by-one seed-processing station for crop lots and rare-food preparation.",
+    description:
+      "One-by-three-by-one seed-processing station for crop lots and rare-food preparation.",
     colors: ["oak brown", "brass", "seed tan"],
     boxSize: [1, 3, 1],
     craftingStationType: "general",
@@ -1311,7 +1385,8 @@ const HARTHMERE_BUSINESS_BIKKIE_GRAPHIC_BASES_V1 = {
     bikkieName: "Tailoring Booth",
     label: "Tailoring Booth",
     kind: "crafting_station",
-    description: "Four-by-one-by-three oak booth for cloth, interiors, uniforms, and style consulting.",
+    description:
+      "Four-by-one-by-three oak booth for cloth, interiors, uniforms, and style consulting.",
     colors: ["oak brown", "linen cream", "soft blue"],
     galoisPath: "placeables/crafting_stations/oak_tailoring_booth",
     boxSize: [4, 1, 3],
@@ -1326,7 +1401,8 @@ const HARTHMERE_BUSINESS_BIKKIE_GRAPHIC_BASES_V1 = {
     bikkieName: "Dye-O-Matic",
     label: "Dye-O-Matic",
     kind: "crafting_station",
-    description: "Three-by-three dyeing station for palettes, signage, uniforms, and cosmetic work.",
+    description:
+      "Three-by-three dyeing station for palettes, signage, uniforms, and cosmetic work.",
     colors: ["magenta", "cyan", "sun yellow", "black"],
     boxSize: [3, 3, 3],
     craftingStationType: "dying",
@@ -1340,7 +1416,8 @@ const HARTHMERE_BUSINESS_BIKKIE_GRAPHIC_BASES_V1 = {
     bikkieName: "Wardrobe",
     label: "Wardrobe",
     kind: "crafting_station",
-    description: "One-block dressing station for hospitality rooms and style service.",
+    description:
+      "One-block dressing station for hospitality rooms and style service.",
     colors: ["log brown", "cloth cream"],
     galoisPath: "placeables/crafting_stations/log_workbench",
     boxSize: [1, 1, 3],
@@ -1355,7 +1432,8 @@ const HARTHMERE_BUSINESS_BIKKIE_GRAPHIC_BASES_V1 = {
     bikkieName: "Arcade Machine",
     label: "Arcade Machine",
     kind: "arcade",
-    description: "One-by-two-by-one placeable arcade cabinet for hospitality and shop entertainment corners.",
+    description:
+      "One-by-two-by-one placeable arcade cabinet for hospitality and shop entertainment corners.",
     colors: ["black", "electric blue", "red"],
     galoisPath: "placeables/arcade_machine",
     boxSize: [1, 2, 1],
@@ -1369,7 +1447,8 @@ const HARTHMERE_BUSINESS_BIKKIE_GRAPHIC_BASES_V1 = {
     bikkieName: "Bucket",
     label: "Bucket",
     kind: "tool",
-    description: "Silver bucket tool for water, cleanup, quenching, and field utility.",
+    description:
+      "Silver bucket tool for water, cleanup, quenching, and field utility.",
     colors: ["silver", "cool gray"],
     galoisPath: "items/silver_bucket",
     isTool: true,
@@ -1382,7 +1461,8 @@ const HARTHMERE_BUSINESS_BIKKIE_GRAPHIC_BASES_V1 = {
     bikkieName: "B-01 Camera",
     label: "B-01 Camera",
     kind: "tool",
-    description: "Camera tool used for surveys, style references, scouting records, and service proof.",
+    description:
+      "Camera tool used for surveys, style references, scouting records, and service proof.",
     colors: ["black", "glass blue", "silver"],
     galoisPath: "items/camera",
     isTool: true,
@@ -1395,7 +1475,8 @@ const HARTHMERE_BUSINESS_BIKKIE_GRAPHIC_BASES_V1 = {
     bikkieName: "Remote Control",
     label: "Remote Control",
     kind: "utility",
-    description: "Handheld control device for portal, courier, and automation dispatch counters.",
+    description:
+      "Handheld control device for portal, courier, and automation dispatch counters.",
     colors: ["charcoal", "screen blue", "button red"],
     galoisPath: "items/remote_control",
     isTool: true,
@@ -1407,7 +1488,8 @@ const HARTHMERE_BUSINESS_BIKKIE_GRAPHIC_BASES_V1 = {
     bikkieName: "Homestone",
     label: "Homestone",
     kind: "utility",
-    description: "Portable return-home travel tool for teleport service, travel desks, and guest safety.",
+    description:
+      "Portable return-home travel tool for teleport service, travel desks, and guest safety.",
     colors: ["stone gray", "home-blue glow"],
     galoisPath: "items/homestone",
     isTool: true,
@@ -1420,7 +1502,8 @@ const HARTHMERE_BUSINESS_BIKKIE_GRAPHIC_BASES_V1 = {
     bikkieName: "Power Cell",
     label: "Power Cell",
     kind: "utility",
-    description: "Compact energy item for refineries, transit systems, and powered service counters.",
+    description:
+      "Compact energy item for refineries, transit systems, and powered service counters.",
     colors: ["electric blue", "white", "dark casing"],
     galoisPath: "wearables/robot/power_cell",
     action: "place",
@@ -1431,7 +1514,8 @@ const HARTHMERE_BUSINESS_BIKKIE_GRAPHIC_BASES_V1 = {
     bikkieName: "Ye Olde Muck Buster",
     label: "Ye Olde Muck Buster",
     kind: "tool",
-    description: "Muck-cleaning tool for sanitation, hazard control, and contaminated work orders.",
+    description:
+      "Muck-cleaning tool for sanitation, hazard control, and contaminated work orders.",
     colors: ["aged brass", "green glow", "brown grip"],
     isTool: true,
     action: "demuckerWand",
@@ -1443,7 +1527,8 @@ const HARTHMERE_BUSINESS_BIKKIE_GRAPHIC_BASES_V1 = {
     bikkieName: "Builder's Wand",
     label: "Builder's Wand",
     kind: "tool",
-    description: "Builder's wand for property placement, structure planning, and contract previews.",
+    description:
+      "Builder's wand for property placement, structure planning, and contract previews.",
     colors: ["wood brown", "violet glow"],
     galoisPath: "items/wand",
     isTool: true,
@@ -1456,7 +1541,8 @@ const HARTHMERE_BUSINESS_BIKKIE_GRAPHIC_BASES_V1 = {
     bikkieName: "Pickaxe",
     label: "Pickaxe",
     kind: "tool",
-    description: "Stone pickaxe tool for repair, mining, and rugged maintenance counters.",
+    description:
+      "Stone pickaxe tool for repair, mining, and rugged maintenance counters.",
     colors: ["stone gray", "wood brown"],
     galoisPath: "items/pickaxe_stone",
     isTool: true,
@@ -1469,7 +1555,8 @@ const HARTHMERE_BUSINESS_BIKKIE_GRAPHIC_BASES_V1 = {
     bikkieName: "Simple Axe",
     label: "Simple Axe",
     kind: "tool",
-    description: "Simple axe for timber, hunting prep, and practical repair service.",
+    description:
+      "Simple axe for timber, hunting prep, and practical repair service.",
     colors: ["stone gray", "wood brown"],
     galoisPath: "items/axe_stone",
     isTool: true,
@@ -1482,7 +1569,8 @@ const HARTHMERE_BUSINESS_BIKKIE_GRAPHIC_BASES_V1 = {
     bikkieName: "Fencer",
     label: "Fencer",
     kind: "tool",
-    description: "Stone shaping tool for fence profiles, security perimeters, and property boundaries.",
+    description:
+      "Stone shaping tool for fence profiles, security perimeters, and property boundaries.",
     colors: ["stone gray", "iron gray"],
     galoisPath: "items/fencer_stone",
     isTool: true,
@@ -1496,7 +1584,8 @@ const HARTHMERE_BUSINESS_BIKKIE_GRAPHIC_BASES_V1 = {
     bikkieName: "Slabber",
     label: "Slabber",
     kind: "tool",
-    description: "Stone shaping tool for slab profiles, counters, shelves, and building finishes.",
+    description:
+      "Stone shaping tool for slab profiles, counters, shelves, and building finishes.",
     colors: ["stone gray", "iron gray"],
     galoisPath: "items/slabber_stone",
     isTool: true,
@@ -1510,7 +1599,8 @@ const HARTHMERE_BUSINESS_BIKKIE_GRAPHIC_BASES_V1 = {
     bikkieName: "Stepper",
     label: "Stepper",
     kind: "tool",
-    description: "Stone shaping tool for steps, accessible entries, and outpost circulation.",
+    description:
+      "Stone shaping tool for steps, accessible entries, and outpost circulation.",
     colors: ["stone gray", "iron gray"],
     galoisPath: "items/stepper_stone",
     isTool: true,
@@ -1524,7 +1614,8 @@ const HARTHMERE_BUSINESS_BIKKIE_GRAPHIC_BASES_V1 = {
     bikkieName: "Tabler",
     label: "Tabler",
     kind: "tool",
-    description: "Stone table-shaping tool for counters, display tables, and showroom furniture.",
+    description:
+      "Stone table-shaping tool for counters, display tables, and showroom furniture.",
     colors: ["stone gray", "iron gray"],
     galoisPath: "items/stepper_stone",
     isTool: true,
@@ -1538,7 +1629,8 @@ const HARTHMERE_BUSINESS_BIKKIE_GRAPHIC_BASES_V1 = {
     bikkieName: "Paper",
     label: "Paper",
     kind: "document",
-    description: "Recipe paper graphic for forms, permits, plans, route slips, and counter paperwork.",
+    description:
+      "Recipe paper graphic for forms, permits, plans, route slips, and counter paperwork.",
     colors: ["paper cream", "ink black"],
     galoisPath: "items/recipe_paper",
     craftingCategory: "Materials",
@@ -1548,7 +1640,8 @@ const HARTHMERE_BUSINESS_BIKKIE_GRAPHIC_BASES_V1 = {
     bikkieName: "Parcel",
     label: "Parcel",
     kind: "mail",
-    description: "Parcel graphic for courier work, trader shelves, deliveries, and proof-of-service handoffs.",
+    description:
+      "Parcel graphic for courier work, trader shelves, deliveries, and proof-of-service handoffs.",
     colors: ["chestnut brown", "twine tan"],
     galoisPath: "placeables/containers/treasure_chest",
     action: "reveal",
@@ -1559,7 +1652,8 @@ const HARTHMERE_BUSINESS_BIKKIE_GRAPHIC_BASES_V1 = {
     bikkieName: "Mailbox",
     label: "Mailbox",
     kind: "mail",
-    description: "One-by-two-by-one mailbox placeable for courier offices and customer pickup points.",
+    description:
+      "One-by-two-by-one mailbox placeable for courier offices and customer pickup points.",
     colors: ["red", "mailbox gray", "post brown"],
     galoisPath: "placeables/mailbox/mailbox",
     boxSize: [1, 2, 1],
@@ -1572,7 +1666,8 @@ const HARTHMERE_BUSINESS_BIKKIE_GRAPHIC_BASES_V1 = {
     bikkieName: "Campfire",
     label: "Campfire",
     kind: "comfort",
-    description: "One-block campfire placeable for cooking ambience, inns, guides, and field camps.",
+    description:
+      "One-block campfire placeable for cooking ambience, inns, guides, and field camps.",
     colors: ["charcoal", "ember orange", "warm yellow"],
     galoisPath: "placeables/camping/campfire",
     boxSize: [1, 1, 1],
@@ -1585,7 +1680,8 @@ const HARTHMERE_BUSINESS_BIKKIE_GRAPHIC_BASES_V1 = {
     bikkieName: "Fruit",
     label: "Fresh Produce",
     kind: "crop",
-    description: "Fresh produce graphic for farm stands, restaurant ingredients, and trader shelves.",
+    description:
+      "Fresh produce graphic for farm stands, restaurant ingredients, and trader shelves.",
     colors: ["carrot orange", "leaf green"],
     galoisPath: "items/carrot",
     craftingCategory: "Item",
@@ -1595,7 +1691,8 @@ const HARTHMERE_BUSINESS_BIKKIE_GRAPHIC_BASES_V1 = {
     bikkieName: "Wheat Seed",
     label: "Wheat Seed",
     kind: "seed",
-    description: "Plantable seed graphic for crop businesses and rare-food counters.",
+    description:
+      "Plantable seed graphic for crop businesses and rare-food counters.",
     colors: ["seed tan", "wheat gold"],
     galoisPath: "items/seed_wheat",
     action: "plant",
@@ -1606,7 +1703,8 @@ const HARTHMERE_BUSINESS_BIKKIE_GRAPHIC_BASES_V1 = {
     bikkieName: "Carrot Seed",
     label: "Carrot Seed",
     kind: "seed",
-    description: "Plantable carrot seed graphic for farm stock and customer seed packets.",
+    description:
+      "Plantable carrot seed graphic for farm stock and customer seed packets.",
     colors: ["seed tan", "carrot orange"],
     galoisPath: "items/seed_carrot",
     action: "plant",
@@ -1618,7 +1716,8 @@ const HARTHMERE_BUSINESS_BIKKIE_GRAPHIC_BASES_V1 = {
     bikkieName: "Fertilizer",
     label: "Fertilizer",
     kind: "crop",
-    description: "Fertilizer graphic for farming, composting, and sanitation recovery loops.",
+    description:
+      "Fertilizer graphic for farming, composting, and sanitation recovery loops.",
     colors: ["leaf green", "soil brown"],
     galoisPath: "items/fertilizer",
     action: "fertilize",
@@ -1629,7 +1728,8 @@ const HARTHMERE_BUSINESS_BIKKIE_GRAPHIC_BASES_V1 = {
     bikkieName: "Fish",
     label: "Fish",
     kind: "fish",
-    description: "Fish graphic for larders, angler tables, restaurant prep, and guide catches.",
+    description:
+      "Fish graphic for larders, angler tables, restaurant prep, and guide catches.",
     colors: ["water blue", "silver", "scale teal"],
     galoisPath: "npcs/fish",
     craftingCategory: "Item",
@@ -1639,7 +1739,8 @@ const HARTHMERE_BUSINESS_BIKKIE_GRAPHIC_BASES_V1 = {
     bikkieName: "Sashimi",
     label: "Sashimi",
     kind: "food",
-    description: "Prepared food graphic for premium restaurant and fish-prep service.",
+    description:
+      "Prepared food graphic for premium restaurant and fish-prep service.",
     colors: ["salmon pink", "rice white", "seaweed green"],
     galoisPath: "items/sashimi",
     action: "eat",
@@ -1651,7 +1752,8 @@ const HARTHMERE_BUSINESS_BIKKIE_GRAPHIC_BASES_V1 = {
     bikkieName: "Raw Mucker Meat",
     label: "Raw Mucker Meat",
     kind: "food",
-    description: "Raw meat graphic for hunter larders, restaurant supply, and wild-meat orders.",
+    description:
+      "Raw meat graphic for hunter larders, restaurant supply, and wild-meat orders.",
     colors: ["red meat", "bone cream", "dark hide"],
     galoisPath: "items/mucker_meat_1",
     action: "eat",
@@ -1663,7 +1765,8 @@ const HARTHMERE_BUSINESS_BIKKIE_GRAPHIC_BASES_V1 = {
     bikkieName: "Black Coffee",
     label: "Black Coffee",
     kind: "food",
-    description: "Drink graphic for inns, restaurants, trader shelves, and morning-rush service.",
+    description:
+      "Drink graphic for inns, restaurants, trader shelves, and morning-rush service.",
     colors: ["coffee black", "mug cream"],
     galoisPath: "items/coffee",
     action: "drink",
@@ -1676,7 +1779,7 @@ function bikkieBusinessGraphicV1(
   businessType: HarthmereEconomyBusinessTypeIdV1,
   key: keyof typeof HARTHMERE_BUSINESS_BIKKIE_GRAPHIC_BASES_V1,
   role: HarthmereBusinessBikkieGraphicRoleV1,
-  businessUse: string,
+  businessUse: string
 ): HarthmereBusinessBikkieGraphicV1 {
   const base = HARTHMERE_BUSINESS_BIKKIE_GRAPHIC_BASES_V1[
     key
@@ -1705,145 +1808,452 @@ function bikkieBusinessGraphicV1(
 
 function businessGraphicsV1(
   businessType: HarthmereEconomyBusinessTypeIdV1,
-  entries: Array<[keyof typeof HARTHMERE_BUSINESS_BIKKIE_GRAPHIC_BASES_V1, HarthmereBusinessBikkieGraphicRoleV1, string]>,
+  entries: Array<
+    [
+      keyof typeof HARTHMERE_BUSINESS_BIKKIE_GRAPHIC_BASES_V1,
+      HarthmereBusinessBikkieGraphicRoleV1,
+      string
+    ]
+  >
 ) {
-  return Object.freeze(entries.map(([key, role, businessUse]) => bikkieBusinessGraphicV1(businessType, key, role, businessUse)));
+  return Object.freeze(
+    entries.map(([key, role, businessUse]) =>
+      bikkieBusinessGraphicV1(businessType, key, role, businessUse)
+    )
+  );
 }
 
-export const HARTHMERE_BUSINESS_BIKKIE_GRAPHICS_V1: Readonly<Record<HarthmereEconomyBusinessTypeIdV1, readonly HarthmereBusinessBikkieGraphicV1[]>> = Object.freeze({
+export const HARTHMERE_BUSINESS_BIKKIE_GRAPHICS_V1: Readonly<
+  Record<
+    HarthmereEconomyBusinessTypeIdV1,
+    readonly HarthmereBusinessBikkieGraphicV1[]
+  >
+> = Object.freeze({
   exotic_matter_refinery: businessGraphicsV1("exotic_matter_refinery", [
-    ["thermoblaster", "primary_station", "Industrial heat station for stabilization, filters, and sealed fuel orders."],
-    ["thermolite", "counter_prop", "Clean heat station for audit demonstrations and safe-handling checks."],
-    ["powerCell", "stock_item", "Energy stock graphic for certified fuel and powered containment service."],
-    ["bucket", "service_tool", "Quench and spill-control tool for hazardous counter work."],
+    [
+      "thermoblaster",
+      "primary_station",
+      "Industrial heat station for stabilization, filters, and sealed fuel orders.",
+    ],
+    [
+      "thermolite",
+      "counter_prop",
+      "Clean heat station for audit demonstrations and safe-handling checks.",
+    ],
+    [
+      "powerCell",
+      "stock_item",
+      "Energy stock graphic for certified fuel and powered containment service.",
+    ],
+    [
+      "bucket",
+      "service_tool",
+      "Quench and spill-control tool for hazardous counter work.",
+    ],
   ]),
   biome_maintenance_repair: businessGraphicsV1("biome_maintenance_repair", [
-    ["workbench", "primary_station", "Repair desk for anchor parts, inspection kits, and subscription maintenance."],
-    ["pickaxe", "service_tool", "Rugged tool graphic for field repair and structural checks."],
-    ["wand", "service_tool", "Builder-facing diagnostic tool for property anchor tuning."],
+    [
+      "workbench",
+      "primary_station",
+      "Repair desk for anchor parts, inspection kits, and subscription maintenance.",
+    ],
+    [
+      "pickaxe",
+      "service_tool",
+      "Rugged tool graphic for field repair and structural checks.",
+    ],
+    [
+      "wand",
+      "service_tool",
+      "Builder-facing diagnostic tool for property anchor tuning.",
+    ],
     ["bucket", "ambient_prop", "Leak and cleanup prop for maintenance calls."],
   ]),
   biome_design_studio: businessGraphicsV1("biome_design_studio", [
-    ["dyeOMatic", "primary_station", "Color station for palettes, sign samples, and event design work."],
-    ["tailoringBooth", "counter_prop", "Showroom booth for cloth samples, uniforms, and identity packages."],
-    ["camera", "service_tool", "Reference capture tool for before/after design consultation."],
-    ["recipePaper", "counter_prop", "Mood boards, plans, and habitat mockups on paper."],
-    ["tabler", "service_tool", "Display-table shaping tool for showroom counters."],
+    [
+      "dyeOMatic",
+      "primary_station",
+      "Color station for palettes, sign samples, and event design work.",
+    ],
+    [
+      "tailoringBooth",
+      "counter_prop",
+      "Showroom booth for cloth samples, uniforms, and identity packages.",
+    ],
+    [
+      "camera",
+      "service_tool",
+      "Reference capture tool for before/after design consultation.",
+    ],
+    [
+      "recipePaper",
+      "counter_prop",
+      "Mood boards, plans, and habitat mockups on paper.",
+    ],
+    [
+      "tabler",
+      "service_tool",
+      "Display-table shaping tool for showroom counters.",
+    ],
   ]),
-  security_defense_contractor: businessGraphicsV1("security_defense_contractor", [
-    ["fencer", "primary_station", "Fence-profile tool for perimeter contracts and yard defense planning."],
-    ["muckBuster", "service_tool", "Hazard-clearing tool for threat triage and contaminated route security."],
-    ["camera", "service_tool", "Proof and surveillance graphic for threat boards."],
-    ["recipePaper", "counter_prop", "Guard contracts, route plans, and threat slips."],
-  ]),
+  security_defense_contractor: businessGraphicsV1(
+    "security_defense_contractor",
+    [
+      [
+        "fencer",
+        "primary_station",
+        "Fence-profile tool for perimeter contracts and yard defense planning.",
+      ],
+      [
+        "muckBuster",
+        "service_tool",
+        "Hazard-clearing tool for threat triage and contaminated route security.",
+      ],
+      [
+        "camera",
+        "service_tool",
+        "Proof and surveillance graphic for threat boards.",
+      ],
+      [
+        "recipePaper",
+        "counter_prop",
+        "Guard contracts, route plans, and threat slips.",
+      ],
+    ]
+  ),
   portal_transit_company: businessGraphicsV1("portal_transit_company", [
-    ["remoteControl", "primary_station", "Route terminal graphic for jumps, cargo windows, and gate controls."],
+    [
+      "remoteControl",
+      "primary_station",
+      "Route terminal graphic for jumps, cargo windows, and gate controls.",
+    ],
     ["powerCell", "stock_item", "Energy stock for active portal lanes."],
-    ["homestone", "counter_prop", "Travel-safety token for passenger confidence and emergency return pitch."],
+    [
+      "homestone",
+      "counter_prop",
+      "Travel-safety token for passenger confidence and emergency return pitch.",
+    ],
     ["recipePaper", "counter_prop", "Tickets, route papers, and cargo tags."],
   ]),
   biome_farming_rare_foods: businessGraphicsV1("biome_farming_rare_foods", [
-    ["seedMill", "primary_station", "Seed and crop-prep station for rare-food lots."],
-    ["composter", "counter_prop", "Composting loop for fertilizer, spoilage recovery, and farm scraps."],
-    ["vegetable", "stock_item", "Fresh produce display for crop bundle service."],
-    ["wheatSeed", "stock_item", "Seed packet stock for crop orders and farm expansion."],
-    ["fertilizer", "service_tool", "Fertilizer graphic for growth and freshness work."],
+    [
+      "seedMill",
+      "primary_station",
+      "Seed and crop-prep station for rare-food lots.",
+    ],
+    [
+      "composter",
+      "counter_prop",
+      "Composting loop for fertilizer, spoilage recovery, and farm scraps.",
+    ],
+    [
+      "vegetable",
+      "stock_item",
+      "Fresh produce display for crop bundle service.",
+    ],
+    [
+      "wheatSeed",
+      "stock_item",
+      "Seed packet stock for crop orders and farm expansion.",
+    ],
+    [
+      "fertilizer",
+      "service_tool",
+      "Fertilizer graphic for growth and freshness work.",
+    ],
   ]),
   weapons_tools: businessGraphicsV1("weapons_tools", [
-    ["workbench", "primary_station", "Repair bench for tools, gear checks, and customer handoffs."],
-    ["thermoblaster", "counter_prop", "Forge heat station for upgrades and metalwork."],
-    ["pickaxe", "service_tool", "Tool stock and repair reference for work-gear customers."],
-    ["axe", "service_tool", "Axe stock and repair reference for timber and hunter customers."],
-    ["slabber", "service_tool", "Shaping tool for shop counters and durable parts."],
+    [
+      "workbench",
+      "primary_station",
+      "Repair bench for tools, gear checks, and customer handoffs.",
+    ],
+    [
+      "thermoblaster",
+      "counter_prop",
+      "Forge heat station for upgrades and metalwork.",
+    ],
+    [
+      "pickaxe",
+      "service_tool",
+      "Tool stock and repair reference for work-gear customers.",
+    ],
+    [
+      "axe",
+      "service_tool",
+      "Axe stock and repair reference for timber and hunter customers.",
+    ],
+    [
+      "slabber",
+      "service_tool",
+      "Shaping tool for shop counters and durable parts.",
+    ],
   ]),
   magic_goods: businessGraphicsV1("magic_goods", [
-    ["thermolite", "primary_station", "Clean glow station for charms, wards, and unstable component checks."],
-    ["homestone", "counter_prop", "Travel magic anchor for return charms and safety stock."],
+    [
+      "thermolite",
+      "primary_station",
+      "Clean glow station for charms, wards, and unstable component checks.",
+    ],
+    [
+      "homestone",
+      "counter_prop",
+      "Travel magic anchor for return charms and safety stock.",
+    ],
     ["powerCell", "stock_item", "Powered component for modern magical goods."],
-    ["wand", "service_tool", "Visible wand graphic for charm and ward service."],
+    [
+      "wand",
+      "service_tool",
+      "Visible wand graphic for charm and ward service.",
+    ],
   ]),
   exploration_guide: businessGraphicsV1("exploration_guide", [
-    ["camera", "primary_station", "Survey and route-proof tool for expedition bookings."],
+    [
+      "camera",
+      "primary_station",
+      "Survey and route-proof tool for expedition bookings.",
+    ],
     ["recipePaper", "counter_prop", "Maps, route notes, and hazard plans."],
     ["campfire", "ambient_prop", "Field-camp comfort graphic for guide shops."],
-    ["fish", "stock_item", "Catch and trail-food graphic for guide credibility."],
+    [
+      "fish",
+      "stock_item",
+      "Catch and trail-food graphic for guide credibility.",
+    ],
   ]),
-  custom_home_property_development: businessGraphicsV1("custom_home_property_development", [
-    ["workbench", "primary_station", "Blueprint desk for staged builds, permits, and material pricing."],
-    ["wand", "service_tool", "Builder's wand for previewing placements and customer property work."],
-    ["recipePaper", "counter_prop", "Plans, deeds, and permit packets."],
-    ["fencer", "service_tool", "Boundary and fence-profile tool for lot work."],
-    ["tabler", "service_tool", "Counter and table-shaping tool for interiors."],
-  ]),
+  custom_home_property_development: businessGraphicsV1(
+    "custom_home_property_development",
+    [
+      [
+        "workbench",
+        "primary_station",
+        "Blueprint desk for staged builds, permits, and material pricing.",
+      ],
+      [
+        "wand",
+        "service_tool",
+        "Builder's wand for previewing placements and customer property work.",
+      ],
+      ["recipePaper", "counter_prop", "Plans, deeds, and permit packets."],
+      [
+        "fencer",
+        "service_tool",
+        "Boundary and fence-profile tool for lot work.",
+      ],
+      [
+        "tabler",
+        "service_tool",
+        "Counter and table-shaping tool for interiors.",
+      ],
+    ]
+  ),
   general_trader: businessGraphicsV1("general_trader", [
-    ["parcel", "primary_station", "Trade parcel graphic for stocked goods and brokerage service."],
-    ["workbench", "counter_prop", "General prep station for small repairs and packaged orders."],
+    [
+      "parcel",
+      "primary_station",
+      "Trade parcel graphic for stocked goods and brokerage service.",
+    ],
+    [
+      "workbench",
+      "counter_prop",
+      "General prep station for small repairs and packaged orders.",
+    ],
     ["vegetable", "stock_item", "Produce display for everyday grocery stock."],
-    ["coffee", "stock_item", "Drink stock for morning trade and traveler shelves."],
-    ["arcadeMachine", "ambient_prop", "Shop-floor draw for general-store visits where an entertainment corner fits."],
+    [
+      "coffee",
+      "stock_item",
+      "Drink stock for morning trade and traveler shelves.",
+    ],
+    [
+      "arcadeMachine",
+      "ambient_prop",
+      "Shop-floor draw for general-store visits where an entertainment corner fits.",
+    ],
   ]),
   hunter_wild_meat: businessGraphicsV1("hunter_wild_meat", [
-    ["anglersTable", "primary_station", "Cold prep table for meat, fish, hide bundles, and larder handoffs."],
+    [
+      "anglersTable",
+      "primary_station",
+      "Cold prep table for meat, fish, hide bundles, and larder handoffs.",
+    ],
     ["muckerMeat", "stock_item", "Wild meat stock graphic for larder orders."],
-    ["fish", "stock_item", "Fish stock graphic for mixed game and catch display."],
+    [
+      "fish",
+      "stock_item",
+      "Fish stock graphic for mixed game and catch display.",
+    ],
     ["axe", "service_tool", "Field tool for rugged prep and trail work."],
-    ["recipePaper", "counter_prop", "Tracking notes and wildlife-control advice."],
+    [
+      "recipePaper",
+      "counter_prop",
+      "Tracking notes and wildlife-control advice.",
+    ],
   ]),
   medical_doctor: businessGraphicsV1("medical_doctor", [
-    ["thermolite", "primary_station", "Sterile heat and diagnostic glow station for treatment counters."],
+    [
+      "thermolite",
+      "primary_station",
+      "Sterile heat and diagnostic glow station for treatment counters.",
+    ],
     ["bucket", "service_tool", "Clean-water and wash tool for triage service."],
-    ["recipePaper", "counter_prop", "Triage cards, treatment notes, and checkup forms."],
-    ["muckBuster", "service_tool", "Contamination-safe tool for sanitation-linked urgent cases."],
+    [
+      "recipePaper",
+      "counter_prop",
+      "Triage cards, treatment notes, and checkup forms.",
+    ],
+    [
+      "muckBuster",
+      "service_tool",
+      "Contamination-safe tool for sanitation-linked urgent cases.",
+    ],
   ]),
   teleport_owner: businessGraphicsV1("teleport_owner", [
-    ["homestone", "primary_station", "Teleport identity object for access keys and emergency returns."],
-    ["remoteControl", "counter_prop", "Pad terminal control for stability checks."],
+    [
+      "homestone",
+      "primary_station",
+      "Teleport identity object for access keys and emergency returns.",
+    ],
+    [
+      "remoteControl",
+      "counter_prop",
+      "Pad terminal control for stability checks.",
+    ],
     ["powerCell", "stock_item", "Fuel and energy graphic for pad uptime."],
-    ["thermolite", "ambient_prop", "Clean glow station for calibration and pad safety."],
+    [
+      "thermolite",
+      "ambient_prop",
+      "Clean glow station for calibration and pad safety.",
+    ],
   ]),
   waste_sanitation_cleanup: businessGraphicsV1("waste_sanitation_cleanup", [
-    ["composter", "primary_station", "Waste-processing station for compostable trash and farm recovery loops."],
-    ["muckBuster", "service_tool", "Main cleanup tool for decontamination and muck removal."],
-    ["bucket", "service_tool", "Water and containment utility for pickup and wash routes."],
-    ["thermoblaster", "counter_prop", "Hazard treatment station for severe cleanup contracts."],
-    ["recipePaper", "counter_prop", "Clean certificates and inspection papers."],
+    [
+      "composter",
+      "primary_station",
+      "Waste-processing station for compostable trash and farm recovery loops.",
+    ],
+    [
+      "muckBuster",
+      "service_tool",
+      "Main cleanup tool for decontamination and muck removal.",
+    ],
+    [
+      "bucket",
+      "service_tool",
+      "Water and containment utility for pickup and wash routes.",
+    ],
+    [
+      "thermoblaster",
+      "counter_prop",
+      "Hazard treatment station for severe cleanup contracts.",
+    ],
+    [
+      "recipePaper",
+      "counter_prop",
+      "Clean certificates and inspection papers.",
+    ],
   ]),
   repair_maintenance_person: businessGraphicsV1("repair_maintenance_person", [
-    ["workbench", "primary_station", "Fix-it bench for furniture, fixtures, and urgent repair parts."],
-    ["pickaxe", "service_tool", "Rugged repair tool for stone and structural service."],
+    [
+      "workbench",
+      "primary_station",
+      "Fix-it bench for furniture, fixtures, and urgent repair parts.",
+    ],
+    [
+      "pickaxe",
+      "service_tool",
+      "Rugged repair tool for stone and structural service.",
+    ],
     ["axe", "service_tool", "Wood and fixture repair tool for everyday jobs."],
-    ["slabber", "service_tool", "Shaping tool for shelves, counters, and patched boards."],
+    [
+      "slabber",
+      "service_tool",
+      "Shaping tool for shelves, counters, and patched boards.",
+    ],
     ["bucket", "ambient_prop", "Leak response prop for urgent service calls."],
   ]),
   food_service_restaurant: businessGraphicsV1("food_service_restaurant", [
-    ["kitchen", "primary_station", "Cooking station for plated meals, soups, and catering orders."],
-    ["anglersTable", "counter_prop", "Prep table for fish, meat, and cold ration assembly."],
+    [
+      "kitchen",
+      "primary_station",
+      "Cooking station for plated meals, soups, and catering orders.",
+    ],
+    [
+      "anglersTable",
+      "counter_prop",
+      "Prep table for fish, meat, and cold ration assembly.",
+    ],
     ["sashimi", "stock_item", "Prepared food display for premium dishes."],
     ["vegetable", "stock_item", "Produce ingredient graphic for fresh meals."],
-    ["campfire", "ambient_prop", "Warm cooking ambience for smaller food counters."],
+    [
+      "campfire",
+      "ambient_prop",
+      "Warm cooking ambience for smaller food counters.",
+    ],
   ]),
   courier: businessGraphicsV1("courier", [
-    ["parcel", "primary_station", "Parcel graphic for weighing, tagging, and proof slips."],
-    ["mailbox", "counter_prop", "Pickup and drop-off marker for customer deliveries."],
-    ["remoteControl", "service_tool", "Dispatch control for route batching and timed runs."],
-    ["recipePaper", "counter_prop", "Route maps, proof slips, and delivery forms."],
+    [
+      "parcel",
+      "primary_station",
+      "Parcel graphic for weighing, tagging, and proof slips.",
+    ],
+    [
+      "mailbox",
+      "counter_prop",
+      "Pickup and drop-off marker for customer deliveries.",
+    ],
+    [
+      "remoteControl",
+      "service_tool",
+      "Dispatch control for route batching and timed runs.",
+    ],
+    [
+      "recipePaper",
+      "counter_prop",
+      "Route maps, proof slips, and delivery forms.",
+    ],
   ]),
-  hospitality_inn_hotel_shelter: businessGraphicsV1("hospitality_inn_hotel_shelter", [
-    ["kitchen", "primary_station", "Food-service station for room meals and shelter service."],
-    ["wardrobe", "counter_prop", "Room and linen storage graphic for lodging quality."],
-    ["campfire", "ambient_prop", "Warm common-room comfort object."],
-    ["coffee", "stock_item", "Guest drink stock for morning checkout and traveler service."],
-    ["arcadeMachine", "ambient_prop", "Lobby entertainment object for inns with guest lounges."],
-  ]),
+  hospitality_inn_hotel_shelter: businessGraphicsV1(
+    "hospitality_inn_hotel_shelter",
+    [
+      [
+        "kitchen",
+        "primary_station",
+        "Food-service station for room meals and shelter service.",
+      ],
+      [
+        "wardrobe",
+        "counter_prop",
+        "Room and linen storage graphic for lodging quality.",
+      ],
+      ["campfire", "ambient_prop", "Warm common-room comfort object."],
+      [
+        "coffee",
+        "stock_item",
+        "Guest drink stock for morning checkout and traveler service.",
+      ],
+      [
+        "arcadeMachine",
+        "ambient_prop",
+        "Lobby entertainment object for inns with guest lounges.",
+      ],
+    ]
+  ),
 });
 
-export function getHarthmereBusinessBikkieGraphicsV1(typeId: HarthmereEconomyBusinessTypeIdV1): readonly HarthmereBusinessBikkieGraphicV1[] {
+export function getHarthmereBusinessBikkieGraphicsV1(
+  typeId: HarthmereEconomyBusinessTypeIdV1
+): readonly HarthmereBusinessBikkieGraphicV1[] {
   return HARTHMERE_BUSINESS_BIKKIE_GRAPHICS_V1[typeId] ?? [];
 }
 
-export function getHarthmereBusinessPrimaryBikkieGraphicV1(typeId: HarthmereEconomyBusinessTypeIdV1) {
+export function getHarthmereBusinessPrimaryBikkieGraphicV1(
+  typeId: HarthmereEconomyBusinessTypeIdV1
+) {
   const graphics = getHarthmereBusinessBikkieGraphicsV1(typeId);
-  return graphics.find((graphic) => graphic.role === "primary_station") ?? graphics[0];
+  return (
+    graphics.find((graphic) => graphic.role === "primary_station") ??
+    graphics[0]
+  );
 }
 
 export function validateHarthmereBusinessBikkieGraphicsV1(): HarthmereBusinessBikkieGraphicsValidationV1 {
@@ -1857,11 +2267,18 @@ export function validateHarthmereBusinessBikkieGraphicsV1(): HarthmereBusinessBi
   for (const typeId of BUSINESS_TYPES_IN_ORDER) {
     const graphics = getHarthmereBusinessBikkieGraphicsV1(typeId);
     if (!graphics.length) missingBusinessTypes.push(typeId);
-    if (!graphics.some((graphic) => graphic.role === "primary_station")) missingPrimaryGraphics.push(typeId);
+    if (!graphics.some((graphic) => graphic.role === "primary_station"))
+      missingPrimaryGraphics.push(typeId);
     for (const graphic of graphics) {
-      if (seen.has(graphic.graphicId)) duplicateGraphicIds.push(graphic.graphicId);
+      if (seen.has(graphic.graphicId))
+        duplicateGraphicIds.push(graphic.graphicId);
       seen.add(graphic.graphicId);
-      if (!graphic.label || !graphic.description || !graphic.businessUse || !graphic.colors.length) {
+      if (
+        !graphic.label ||
+        !graphic.description ||
+        !graphic.businessUse ||
+        !graphic.colors.length
+      ) {
         graphicsMissingMetadata.push(graphic.graphicId);
       }
       if (graphic.kind === "crafting_station" && !graphic.boxSize) {
@@ -1873,7 +2290,8 @@ export function validateHarthmereBusinessBikkieGraphicsV1(): HarthmereBusinessBi
     }
   }
   return {
-    ok: missingBusinessTypes.length === 0 &&
+    ok:
+      missingBusinessTypes.length === 0 &&
       missingPrimaryGraphics.length === 0 &&
       graphicsMissingMetadata.length === 0 &&
       duplicateGraphicIds.length === 0 &&
@@ -1888,82 +2306,1346 @@ export function validateHarthmereBusinessBikkieGraphicsV1(): HarthmereBusinessBi
   };
 }
 
-const CUSTOMER_ROWS: Array<[
-  string,
-  string,
-  HarthmereEconomyBusinessTypeIdV1[],
-  number,
-  1 | 2 | 3 | 4 | 5,
-  string,
-  HarthmereBusinessCustomerAppearanceV1,
-]> = [
-  ["customer_adria_vale", "Adria Vale", ["medical_doctor", "magic_goods"], 72, 3, "precise", { hairStyle: "asymmetric coil bob", hairColor: "smoked copper", bodyBuild: "compact sprinter", heightBand: "short-plus", shoulderShape: "narrow square", posture: "upright alert", gait: "quick half-steps", eyeColor: "jade fleck", eyeShape: "wide almond", browShape: "single high arch", noseShape: "button point", noseBridge: "soft low bridge", skinTone: "warm umber rose", outfit: "moss clinic wrap", accessory: "brass pulse ring", voice: "low clipped alto" }],
-  ["customer_borin_kest", "Borin Kest", ["weapons_tools", "repair_maintenance_person"], 64, 2, "skeptical", { hairStyle: "shaved crown braid", hairColor: "iron black", bodyBuild: "barrel strong", heightBand: "tall", shoulderShape: "broad shelf", posture: "forward lean", gait: "heavy heel roll", eyeColor: "storm gray", eyeShape: "deep set", browShape: "flat thick", noseShape: "broken ridge", noseBridge: "crooked high bridge", skinTone: "cool tawny", outfit: "charcoal work apron", accessory: "cracked thumb guard", voice: "gravel bass" }],
-  ["customer_celia_morn", "Celia Morn", ["food_service_restaurant", "hospitality_inn_hotel_shelter"], 84, 4, "warm", { hairStyle: "halo curls", hairColor: "honey ash", bodyBuild: "soft pear", heightBand: "mid", shoulderShape: "rounded narrow", posture: "gentle sway", gait: "measured glide", eyeColor: "violet brown", eyeShape: "sleepy oval", browShape: "soft crescent", noseShape: "small scoop", noseBridge: "delicate bridge", skinTone: "deep bronze gold", outfit: "cream travel shawl", accessory: "enameled spoon pin", voice: "singing mezzo" }],
-  ["customer_dain_orrick", "Dain Orrick", ["courier", "general_trader"], 58, 2, "impatient", { hairStyle: "windcut spikes", hairColor: "sun bleached brown", bodyBuild: "lean courier", heightBand: "mid-tall", shoulderShape: "sloped wiry", posture: "ready crouch", gait: "fast toe push", eyeColor: "pale hazel", eyeShape: "sharp narrow", browShape: "angled slash", noseShape: "long hawk", noseBridge: "straight high bridge", skinTone: "olive tan", outfit: "blue parcel vest", accessory: "tin route whistle", voice: "bright tenor" }],
-  ["customer_elira_senn", "Elira Senn", ["biome_design_studio", "custom_home_property_development"], 76, 4, "curious", { hairStyle: "looped side bun", hairColor: "black cherry", bodyBuild: "willow slim", heightBand: "tall-slim", shoulderShape: "fine tapered", posture: "tilted assessing", gait: "long quiet stride", eyeColor: "sea glass", eyeShape: "cat tilt", browShape: "thin lifted", noseShape: "straight fine", noseBridge: "long smooth bridge", skinTone: "amber beige", outfit: "ink drafting coat", accessory: "silver measuring chain", voice: "clear contralto" }],
-  ["customer_fenn_barley", "Fenn Barley", ["biome_farming_rare_foods", "general_trader"], 70, 2, "cheerful", { hairStyle: "short leaf twists", hairColor: "chestnut greenwash", bodyBuild: "stocky farmhand", heightBand: "short", shoulderShape: "round solid", posture: "hands-on-hips", gait: "bouncy step", eyeColor: "fern green", eyeShape: "round bright", browShape: "bushy comma", noseShape: "wide bulb", noseBridge: "flat broad bridge", skinTone: "red clay brown", outfit: "patchwork seed smock", accessory: "woven seed bracelet", voice: "sunny baritone" }],
-  ["customer_garrin_vox", "Garrin Vox", ["security_defense_contractor", "weapons_tools"], 62, 3, "guarded", { hairStyle: "tight military crop", hairColor: "salt pepper", bodyBuild: "triangular guard", heightBand: "very tall", shoulderShape: "armor wide", posture: "locked stance", gait: "patrol pace", eyeColor: "steel blue", eyeShape: "hooded narrow", browShape: "hard shelf", noseShape: "flat boxer", noseBridge: "scarred bridge", skinTone: "cool dark brown", outfit: "oiled leather jerkin", accessory: "red permit cord", voice: "command baritone" }],
-  ["customer_hessa_quin", "Hessa Quin", ["magic_goods", "teleport_owner"], 68, 5, "mysterious", { hairStyle: "waist rope locs", hairColor: "moon white", bodyBuild: "lithe dancer", heightBand: "mid-short", shoulderShape: "thin angular", posture: "floating still", gait: "silent crossing", eyeColor: "silver lilac", eyeShape: "long crescent", browShape: "split notch", noseShape: "narrow blade", noseBridge: "raised knife bridge", skinTone: "cool ebony", outfit: "violet ward robe", accessory: "glass charm veil", voice: "soft whisper" }],
-  ["customer_idra_pell", "Idra Pell", ["portal_transit_company", "courier"], 56, 3, "anxious", { hairStyle: "frizzed cloud puff", hairColor: "rust red", bodyBuild: "small angular", heightBand: "petite", shoulderShape: "pinched narrow", posture: "shoulders high", gait: "stutter step", eyeColor: "amber ring", eyeShape: "large worried", browShape: "knit double peak", noseShape: "upturned spark", noseBridge: "short lifted bridge", skinTone: "light freckled tan", outfit: "yellow ticket cloak", accessory: "paper luggage tags", voice: "quick soprano" }],
-  ["customer_jorek_linn", "Jorek Linn", ["waste_sanitation_cleanup", "medical_doctor"], 60, 2, "blunt", { hairStyle: "low knot tail", hairColor: "mud brown", bodyBuild: "rectangular laborer", heightBand: "mid-wide", shoulderShape: "flat plank", posture: "tired stoop", gait: "dragged boot", eyeColor: "dull teal", eyeShape: "heavy lidded", browShape: "low ridge", noseShape: "wide wedge", noseBridge: "broad broken bridge", skinTone: "weathered sand", outfit: "stained utility coat", accessory: "corked sample tube", voice: "dry bass" }],
-  ["customer_kiva_roan", "Kiva Roan", ["exploration_guide", "hunter_wild_meat"], 66, 3, "bold", { hairStyle: "feathered undercut", hairColor: "black blue sheen", bodyBuild: "rangy climber", heightBand: "tall-rangy", shoulderShape: "corded narrow", posture: "chin forward", gait: "spring climb", eyeColor: "gold ocher", eyeShape: "fox narrow", browShape: "split high", noseShape: "sharp point", noseBridge: "thin ridge", skinTone: "copper brown", outfit: "green trail harness", accessory: "bone map toggle", voice: "laughing alto" }],
-  ["customer_luca_merrit", "Luca Merrit", ["hospitality_inn_hotel_shelter", "food_service_restaurant"], 88, 4, "polite", { hairStyle: "side parted waves", hairColor: "soft black", bodyBuild: "rounded scholar", heightBand: "mid-soft", shoulderShape: "soft square", posture: "formal bow", gait: "small careful", eyeColor: "dark honey", eyeShape: "gentle almond", browShape: "tidy arc", noseShape: "roman soft", noseBridge: "smooth medium bridge", skinTone: "golden brown", outfit: "wine guest jacket", accessory: "pearl room key", voice: "warm tenor" }],
-  ["customer_mirae_dusk", "Mirae Dusk", ["biome_maintenance_repair", "exotic_matter_refinery"], 54, 5, "demanding", { hairStyle: "slick prism bob", hairColor: "violet black", bodyBuild: "tall blade", heightBand: "towering", shoulderShape: "razor straight", posture: "perfect vertical", gait: "crisp metronome", eyeColor: "ice violet", eyeShape: "thin oval", browShape: "needle arch", noseShape: "aquiline", noseBridge: "polished high bridge", skinTone: "deep neutral brown", outfit: "white inspector coat", accessory: "obsidian seal badge", voice: "cool alto" }],
-  ["customer_nalo_brix", "Nalo Brix", ["repair_maintenance_person", "custom_home_property_development"], 74, 2, "practical", { hairStyle: "square brush top", hairColor: "dust blond", bodyBuild: "short dense", heightBand: "short-dense", shoulderShape: "blocky compact", posture: "elbows out", gait: "steady stomp", eyeColor: "brown green", eyeShape: "small round", browShape: "thick straight", noseShape: "stub square", noseBridge: "low square bridge", skinTone: "pale olive", outfit: "tan nail pouch", accessory: "wooden pencil earclip", voice: "matter-of-fact bass" }],
-  ["customer_ona_fleck", "Ona Fleck", ["general_trader", "biome_farming_rare_foods"], 80, 1, "bargaining", { hairStyle: "tiny twin buns", hairColor: "silver brown", bodyBuild: "birdlike light", heightBand: "small", shoulderShape: "fine round", posture: "leaning listen", gait: "skipping shuffle", eyeColor: "black pearl", eyeShape: "round quick", browShape: "short dash", noseShape: "pinched bead", noseBridge: "tiny bridge", skinTone: "warm ivory", outfit: "striped market coat", accessory: "copper coin sash", voice: "raspy mezzo" }],
-  ["customer_pavo_ren", "Pavo Ren", ["portal_transit_company", "teleport_owner"], 50, 5, "urgent", { hairStyle: "gelled crest", hairColor: "platinum yellow", bodyBuild: "athletic narrow", heightBand: "mid-athletic", shoulderShape: "cut diamond", posture: "weight forward", gait: "long rush", eyeColor: "electric blue", eyeShape: "bright slit", browShape: "twin hooks", noseShape: "long spear", noseBridge: "straight narrow bridge", skinTone: "light golden", outfit: "red travel suit", accessory: "stacked transit passes", voice: "rapid tenor" }],
-  ["customer_quilla_fern", "Quilla Fern", ["biome_design_studio", "magic_goods"], 86, 3, "delighted", { hairStyle: "braided crown", hairColor: "moss brown", bodyBuild: "curved compact", heightBand: "mid-curvy", shoulderShape: "soft sloping", posture: "open hands", gait: "gentle bounce", eyeColor: "mint gray", eyeShape: "soft round", browShape: "leaf curve", noseShape: "rounded petal", noseBridge: "soft narrow bridge", skinTone: "deep warm beige", outfit: "paint flecked poncho", accessory: "pressed flower brooch", voice: "bright alto" }],
-  ["customer_ryx_mallow", "Ryx Mallow", ["security_defense_contractor", "exploration_guide"], 48, 3, "reckless", { hairStyle: "messy wolf cut", hairColor: "ash brown", bodyBuild: "bony quick", heightBand: "mid-bony", shoulderShape: "jagged narrow", posture: "restless twist", gait: "zigzag stride", eyeColor: "rust amber", eyeShape: "uneven squint", browShape: "wild jag", noseShape: "crooked hook", noseBridge: "bent mid bridge", skinTone: "sunburnt peach", outfit: "torn scout cape", accessory: "dented compass", voice: "cracked tenor" }],
-  ["customer_sable_ior", "Sable Ior", ["exotic_matter_refinery", "waste_sanitation_cleanup"], 52, 4, "cautious", { hairStyle: "shielded veil locks", hairColor: "charcoal purple", bodyBuild: "protective padded", heightBand: "mid-padded", shoulderShape: "rounded armored", posture: "guarded hunch", gait: "careful plant", eyeColor: "green gold", eyeShape: "covered narrow", browShape: "masked flat", noseShape: "soft wedge", noseBridge: "covered bridge", skinTone: "cool umber", outfit: "sealed gray smock", accessory: "filter mask", voice: "muffled alto" }],
-  ["customer_tavin_coil", "Tavin Coil", ["weapons_tools", "hunter_wild_meat"], 69, 2, "confident", { hairStyle: "long tied topknot", hairColor: "dark auburn", bodyBuild: "corded hunter", heightBand: "tall-lean", shoulderShape: "sinew slope", posture: "relaxed ready", gait: "quiet heel", eyeColor: "pine green", eyeShape: "watchful almond", browShape: "low angled", noseShape: "broad straight", noseBridge: "weathered bridge", skinTone: "brown copper", outfit: "hide patched vest", accessory: "antler clasp", voice: "easy baritone" }],
-  ["customer_uma_slate", "Uma Slate", ["custom_home_property_development", "repair_maintenance_person"], 82, 5, "exacting", { hairStyle: "severe center braid", hairColor: "blue gray", bodyBuild: "statuesque", heightBand: "tall-still", shoulderShape: "marble square", posture: "survey stance", gait: "slow decisive", eyeColor: "black blue", eyeShape: "calm hooded", browShape: "straight fine", noseShape: "long roman", noseBridge: "high flat bridge", skinTone: "dark cool tan", outfit: "architect linen suit", accessory: "ivory plan tube", voice: "measured contralto" }],
-  ["customer_vireo_tan", "Vireo Tan", ["biome_farming_rare_foods", "food_service_restaurant"], 78, 3, "hungry", { hairStyle: "curly side shave", hairColor: "kelp green", bodyBuild: "round strong", heightBand: "short-round", shoulderShape: "curved broad", posture: "belly laugh", gait: "rolling stride", eyeColor: "warm brown", eyeShape: "crescent smile", browShape: "happy arc", noseShape: "round broad", noseBridge: "short broad bridge", skinTone: "medium olive gold", outfit: "orange tasting vest", accessory: "wooden fork charm", voice: "booming alto" }],
-  ["customer_wen_auster", "Wen Auster", ["courier", "medical_doctor"], 59, 1, "worried", { hairStyle: "flat cap fringe", hairColor: "matte black", bodyBuild: "thin wiry", heightBand: "short-wiry", shoulderShape: "tight raised", posture: "folded arms", gait: "nervous patter", eyeColor: "brown black", eyeShape: "small oval", browShape: "pinched peak", noseShape: "narrow knob", noseBridge: "fine uneven bridge", skinTone: "pale tan", outfit: "patched runner coat", accessory: "medicine pouch", voice: "thin tenor" }],
-  ["customer_xara_lune", "Xara Lune", ["magic_goods", "biome_design_studio"], 90, 5, "glamorous", { hairStyle: "crystal waterfall", hairColor: "opal silver", bodyBuild: "tall elegant", heightBand: "very tall slim", shoulderShape: "long sloped", posture: "stage poise", gait: "slow float", eyeColor: "rose quartz", eyeShape: "dramatic almond", browShape: "painted sweep", noseShape: "fine aquiline", noseBridge: "glitter high bridge", skinTone: "rich mahogany", outfit: "black star cloak", accessory: "floating bead chain", voice: "velvet soprano" }],
-  ["customer_yori_pike", "Yori Pike", ["hunter_wild_meat", "food_service_restaurant"], 61, 2, "plainspoken", { hairStyle: "rough bowl crop", hairColor: "straw gold", bodyBuild: "broad compact", heightBand: "mid-stocky", shoulderShape: "thick round", posture: "one hip lean", gait: "muddy shuffle", eyeColor: "mud hazel", eyeShape: "flat oval", browShape: "rough bar", noseShape: "wide snub", noseBridge: "low snub bridge", skinTone: "pink tan", outfit: "brown butcher wrap", accessory: "bone tally cord", voice: "nasal baritone" }],
-  ["customer_zella_root", "Zella Root", ["waste_sanitation_cleanup", "biome_farming_rare_foods"], 73, 1, "patient", { hairStyle: "wrapped seed scarf", hairColor: "hidden sable", bodyBuild: "elder small", heightBand: "elder short", shoulderShape: "narrow bent", posture: "soft stoop", gait: "careful cane tap", eyeColor: "cloud gray", eyeShape: "wrinkled kind", browShape: "white wisps", noseShape: "round elder", noseBridge: "soft sunken bridge", skinTone: "deep chestnut", outfit: "green compost shawl", accessory: "carved cane", voice: "gentle rasp" }],
-  ["customer_alen_mire", "Alen Mire", ["general_trader", "courier"], 57, 2, "shifty", { hairStyle: "greased side curls", hairColor: "dark copper", bodyBuild: "thin foxlike", heightBand: "mid-thin", shoulderShape: "sharp narrow", posture: "sideways lean", gait: "sidestep saunter", eyeColor: "yellow hazel", eyeShape: "side glance", browShape: "one raised", noseShape: "pointed sly", noseBridge: "thin crooked bridge", skinTone: "light brown olive", outfit: "purple bargain coat", accessory: "hidden pocket chain", voice: "silky tenor" }],
-  ["customer_brynn_salt", "Brynn Salt", ["hospitality_inn_hotel_shelter", "courier"], 81, 3, "road-worn", { hairStyle: "salt stiff braid", hairColor: "sand white", bodyBuild: "square traveler", heightBand: "mid-square", shoulderShape: "pack broad", posture: "pack brace", gait: "long tired march", eyeColor: "sea blue gray", eyeShape: "creased narrow", browShape: "sun faded", noseShape: "windburnt long", noseBridge: "sun cracked bridge", skinTone: "wind reddened tan", outfit: "blue travel duster", accessory: "shell luggage tag", voice: "hoarse alto" }],
-  ["customer_corso_helm", "Corso Helm", ["security_defense_contractor", "portal_transit_company"], 53, 4, "official", { hairStyle: "helmet flattened crop", hairColor: "brown silver", bodyBuild: "thick necked", heightBand: "tall-thick", shoulderShape: "plate wide", posture: "hands clasped", gait: "inspection march", eyeColor: "slate green", eyeShape: "hard oval", browShape: "square block", noseShape: "square long", noseBridge: "heavy bridge", skinTone: "dark olive", outfit: "blue authority tabard", accessory: "bronze clearance seal", voice: "formal bass" }],
-  ["customer_dovea_rill", "Dovea Rill", ["biome_design_studio", "hospitality_inn_hotel_shelter"], 92, 5, "luxury", { hairStyle: "pearled finger waves", hairColor: "black pearl", bodyBuild: "soft tall", heightBand: "tall-soft", shoulderShape: "silk sloped", posture: "relaxed regal", gait: "slow heel glide", eyeColor: "deep plum", eyeShape: "languid almond", browShape: "perfect crescent", noseShape: "small aristocrat", noseBridge: "fine high bridge", skinTone: "warm deep brown", outfit: "white guest mantle", accessory: "jade scent vial", voice: "low musical" }],
-  ["customer_ekko_jar", "Ekko Jar", ["repair_maintenance_person", "weapons_tools"], 63, 1, "fidgety", { hairStyle: "uneven mop", hairColor: "dirty blond", bodyBuild: "small square", heightBand: "short-square", shoulderShape: "tight block", posture: "tool clutch", gait: "quick hop", eyeColor: "blue hazel", eyeShape: "blink round", browShape: "patchy dash", noseShape: "tiny bent", noseBridge: "bumped little bridge", skinTone: "fair freckle", outfit: "patched gray jumper", accessory: "loose screw necklace", voice: "squeaky tenor" }],
-  ["customer_fara_nox", "Fara Nox", ["magic_goods", "medical_doctor"], 67, 4, "clinical", { hairStyle: "black ribbon queue", hairColor: "ink black", bodyBuild: "long narrow", heightBand: "mid-long", shoulderShape: "knife narrow", posture: "hands folded", gait: "silent measured", eyeColor: "green black", eyeShape: "half moon", browShape: "razor fine", noseShape: "thin long", noseBridge: "needle bridge", skinTone: "cool brown", outfit: "green remedy dress", accessory: "silver vial bandolier", voice: "quiet contralto" }],
-  ["customer_gillo_reed", "Gillo Reed", ["biome_farming_rare_foods", "waste_sanitation_cleanup"], 75, 2, "earthy", { hairStyle: "mud tied pigtail", hairColor: "red brown", bodyBuild: "wide farm strong", heightBand: "wide-short", shoulderShape: "rounded heavy", posture: "relaxed slouch", gait: "field plod", eyeColor: "moss amber", eyeShape: "soft squint", browShape: "thick mossy", noseShape: "wide flat", noseBridge: "flat sun bridge", skinTone: "deep russet", outfit: "green waterproof bib", accessory: "seed tin", voice: "slow bass" }],
-  ["customer_hollis_vein", "Hollis Vein", ["exotic_matter_refinery", "portal_transit_company"], 51, 5, "technical", { hairStyle: "silver temple sweep", hairColor: "graphite silver", bodyBuild: "thin engineer", heightBand: "mid-engineer", shoulderShape: "slight angular", posture: "head tilted", gait: "calculated steps", eyeColor: "blue white", eyeShape: "magnified round", browShape: "fine straight", noseShape: "long narrow", noseBridge: "spectacled bridge", skinTone: "light umber", outfit: "black hazard suit", accessory: "lens array monocle", voice: "precise tenor" }],
-  ["customer_iona_prax", "Iona Prax", ["custom_home_property_development", "general_trader"], 79, 3, "organized", { hairStyle: "stacked box braids", hairColor: "warm black", bodyBuild: "strong hourglass", heightBand: "mid-curved", shoulderShape: "balanced square", posture: "clipboard ready", gait: "purposeful stride", eyeColor: "copper green", eyeShape: "focused almond", browShape: "straight tidy", noseShape: "medium round", noseBridge: "smooth broad bridge", skinTone: "deep gold brown", outfit: "navy planning vest", accessory: "map clasp", voice: "steady mezzo" }],
-  ["customer_jessa_mint", "Jessa Mint", ["food_service_restaurant", "biome_farming_rare_foods"], 87, 2, "playful", { hairStyle: "mint ribbon ponytail", hairColor: "brown mint streak", bodyBuild: "small buoyant", heightBand: "petite-bouncy", shoulderShape: "soft tiny", posture: "rocking toes", gait: "swing step", eyeColor: "light green", eyeShape: "spark round", browShape: "curly comma", noseShape: "tiny round", noseBridge: "button bridge", skinTone: "light warm tan", outfit: "pink tasting frock", accessory: "candy bead bracelet", voice: "bright soprano" }],
-  ["customer_kelm_void", "Kelm Void", ["teleport_owner", "magic_goods"], 46, 5, "strange", { hairStyle: "floating static fray", hairColor: "blue black", bodyBuild: "tall gaunt", heightBand: "gaunt tall", shoulderShape: "thin high", posture: "off-center still", gait: "uneven drift", eyeColor: "void violet", eyeShape: "unblinking round", browShape: "absent pale", noseShape: "long hollow", noseBridge: "shadowed bridge", skinTone: "ashen brown", outfit: "dark return cloak", accessory: "glowing wrist token", voice: "echoing whisper" }],
-  ["customer_lara_steel", "Lara Steel", ["weapons_tools", "security_defense_contractor"], 65, 4, "direct", { hairStyle: "braided mohawk", hairColor: "steel gray", bodyBuild: "muscular tall", heightBand: "tall-muscular", shoulderShape: "warrior broad", posture: "square stance", gait: "drill step", eyeColor: "dark blue", eyeShape: "level stare", browShape: "stern wedge", noseShape: "strong straight", noseBridge: "solid bridge", skinTone: "medium cool brown", outfit: "red forge leathers", accessory: "iron rank cuff", voice: "firm alto" }],
-  ["customer_mikko_ash", "Mikko Ash", ["waste_sanitation_cleanup", "repair_maintenance_person"], 71, 1, "tired", { hairStyle: "ash dust buzz", hairColor: "powder gray", bodyBuild: "thin bent", heightBand: "mid-bent", shoulderShape: "drooped slim", posture: "weary curve", gait: "slow slide", eyeColor: "brown gray", eyeShape: "tired pouch", browShape: "faint line", noseShape: "soft long", noseBridge: "low tired bridge", skinTone: "smoky beige", outfit: "gray mop coat", accessory: "rag bundle", voice: "soft bass" }],
-  ["customer_nessa_gate", "Nessa Gate", ["portal_transit_company", "hospitality_inn_hotel_shelter"], 55, 3, "lost", { hairStyle: "loose travel braid", hairColor: "red gold", bodyBuild: "tall narrow", heightBand: "tall-narrow", shoulderShape: "pack sloped", posture: "map hunched", gait: "stop-start walk", eyeColor: "blue hazel", eyeShape: "wide searching", browShape: "worried sweep", noseShape: "long soft", noseBridge: "straight soft bridge", skinTone: "fair golden", outfit: "green station cloak", accessory: "folded wrong map", voice: "soft mezzo" }],
-  ["customer_orrin_hearth", "Orrin Hearth", ["food_service_restaurant", "general_trader"], 83, 2, "neighborly", { hairStyle: "warm wool curls", hairColor: "brown gold", bodyBuild: "large gentle", heightBand: "large-mid", shoulderShape: "cushion broad", posture: "open chest", gait: "slow friendly", eyeColor: "walnut", eyeShape: "kind oval", browShape: "soft thick", noseShape: "large round", noseBridge: "broad kind bridge", skinTone: "dark warm umber", outfit: "brown supper coat", accessory: "wooden cup token", voice: "warm bass" }],
-  ["customer_pella_snow", "Pella Snow", ["medical_doctor", "hospitality_inn_hotel_shelter"], 89, 4, "fragile", { hairStyle: "white pixie crop", hairColor: "snow white", bodyBuild: "small delicate", heightBand: "tiny", shoulderShape: "thin sloped", posture: "wrapped inward", gait: "careful glide", eyeColor: "pale blue", eyeShape: "watery oval", browShape: "white thread", noseShape: "small narrow", noseBridge: "fine pale bridge", skinTone: "light cool beige", outfit: "blue recovery shawl", accessory: "linen wrist wrap", voice: "breathy soprano" }],
-  ["customer_quorin_bale", "Quorin Bale", ["hunter_wild_meat", "security_defense_contractor"], 60, 3, "watchful", { hairStyle: "thick side plait", hairColor: "oak brown", bodyBuild: "heavy hunter", heightBand: "tall-heavy", shoulderShape: "cloak broad", posture: "still ready", gait: "soft boot roll", eyeColor: "dark green", eyeShape: "deep watch", browShape: "heavy overhang", noseShape: "broad hook", noseBridge: "strong hooked bridge", skinTone: "medium red brown", outfit: "forest hide cloak", accessory: "trap ring", voice: "low rasp" }],
-  ["customer_rinna_bell", "Rinna Bell", ["biome_design_studio", "food_service_restaurant"], 91, 3, "festival", { hairStyle: "ribbon spiral curls", hairColor: "golden pink", bodyBuild: "petite dancer", heightBand: "small-dancer", shoulderShape: "tiny square", posture: "arms lively", gait: "dance step", eyeColor: "bright amber", eyeShape: "spark almond", browShape: "arched lively", noseShape: "short pixie", noseBridge: "tiny lifted bridge", skinTone: "warm light brown", outfit: "red festival jacket", accessory: "little bell anklet", voice: "ringing alto" }],
-  ["customer_soren_drift", "Soren Drift", ["exploration_guide", "portal_transit_company"], 49, 4, "distant", { hairStyle: "wind long fringe", hairColor: "pale brown", bodyBuild: "long weathered", heightBand: "very tall lean", shoulderShape: "narrow far", posture: "far gaze", gait: "trail stride", eyeColor: "fog blue", eyeShape: "far narrow", browShape: "wind worn", noseShape: "long weathered", noseBridge: "sun high bridge", skinTone: "weathered olive", outfit: "gray route cloak", accessory: "old route token", voice: "low tenor" }],
-  ["customer_talia_grease", "Talia Grease", ["repair_maintenance_person", "courier"], 70, 2, "resourceful", { hairStyle: "oiled knot bun", hairColor: "black brown", bodyBuild: "compact mechanic", heightBand: "short-mechanic", shoulderShape: "strong narrow", posture: "knees bent", gait: "quick crouch walk", eyeColor: "dark amber", eyeShape: "sharp round", browShape: "grease smudge", noseShape: "smudged round", noseBridge: "short smudged bridge", skinTone: "medium brown", outfit: "blue repair coverall", accessory: "magnet glove", voice: "quick alto" }],
-  ["customer_ulric_pale", "Ulric Pale", ["magic_goods", "waste_sanitation_cleanup"], 44, 4, "haunted", { hairStyle: "thin swept wisps", hairColor: "pale ash", bodyBuild: "hollow tall", heightBand: "hollow-mid", shoulderShape: "sunken thin", posture: "shivering straight", gait: "hesitant drift", eyeColor: "faded green", eyeShape: "hollow round", browShape: "faint worried", noseShape: "sharp hollow", noseBridge: "sunken bridge", skinTone: "pale gray tan", outfit: "patched ward blanket", accessory: "black salt pouch", voice: "thin bass" }],
-  ["customer_vanya_reef", "Vanya Reef", ["courier", "hunter_wild_meat"], 77, 3, "sea-bright", { hairStyle: "wet rope braid", hairColor: "deep teal", bodyBuild: "swimmer strong", heightBand: "mid-swimmer", shoulderShape: "broad tapered", posture: "loose balanced", gait: "rolling dock step", eyeColor: "reef green", eyeShape: "smiling narrow", browShape: "wave curve", noseShape: "broad curved", noseBridge: "smooth wide bridge", skinTone: "deep olive brown", outfit: "teal dock vest", accessory: "shell knife charm", voice: "clear alto" }],
-  ["customer_willa_crane", "Willa Crane", ["custom_home_property_development", "biome_maintenance_repair"], 85, 4, "landlord", { hairStyle: "gray high twist", hairColor: "charcoal white", bodyBuild: "thin tall elder", heightBand: "elder tall", shoulderShape: "bony square", posture: "ledger upright", gait: "cane precise", eyeColor: "sharp brown", eyeShape: "keen hooded", browShape: "white stern", noseShape: "long crane", noseBridge: "long arched bridge", skinTone: "cool medium brown", outfit: "black rent coat", accessory: "iron key belt", voice: "cutting contralto" }],
-  ["customer_ximo_lark", "Ximo Lark", ["general_trader", "exploration_guide"], 82, 1, "chatty", { hairStyle: "fluffed lark crest", hairColor: "brown copper streak", bodyBuild: "tiny nimble", heightBand: "tiny-nimble", shoulderShape: "narrow quick", posture: "bouncing talk", gait: "darting skip", eyeColor: "bright black", eyeShape: "bead round", browShape: "tiny flick", noseShape: "little point", noseBridge: "tiny sharp bridge", skinTone: "gold tan", outfit: "patch pocket coat", accessory: "many little buttons", voice: "fast soprano" }],
+const CUSTOMER_ROWS: Array<
+  [
+    string,
+    string,
+    HarthmereEconomyBusinessTypeIdV1[],
+    number,
+    1 | 2 | 3 | 4 | 5,
+    string,
+    HarthmereBusinessCustomerAppearanceV1
+  ]
+> = [
+  [
+    "customer_adria_vale",
+    "Adria Vale",
+    ["medical_doctor", "magic_goods"],
+    72,
+    3,
+    "precise",
+    {
+      hairStyle: "asymmetric coil bob",
+      hairColor: "smoked copper",
+      bodyBuild: "compact sprinter",
+      heightBand: "short-plus",
+      shoulderShape: "narrow square",
+      posture: "upright alert",
+      gait: "quick half-steps",
+      eyeColor: "jade fleck",
+      eyeShape: "wide almond",
+      browShape: "single high arch",
+      noseShape: "button point",
+      noseBridge: "soft low bridge",
+      skinTone: "warm umber rose",
+      outfit: "moss clinic wrap",
+      accessory: "brass pulse ring",
+      voice: "low clipped alto",
+    },
+  ],
+  [
+    "customer_borin_kest",
+    "Borin Kest",
+    ["weapons_tools", "repair_maintenance_person"],
+    64,
+    2,
+    "skeptical",
+    {
+      hairStyle: "shaved crown braid",
+      hairColor: "iron black",
+      bodyBuild: "barrel strong",
+      heightBand: "tall",
+      shoulderShape: "broad shelf",
+      posture: "forward lean",
+      gait: "heavy heel roll",
+      eyeColor: "storm gray",
+      eyeShape: "deep set",
+      browShape: "flat thick",
+      noseShape: "broken ridge",
+      noseBridge: "crooked high bridge",
+      skinTone: "cool tawny",
+      outfit: "charcoal work apron",
+      accessory: "cracked thumb guard",
+      voice: "gravel bass",
+    },
+  ],
+  [
+    "customer_celia_morn",
+    "Celia Morn",
+    ["food_service_restaurant", "hospitality_inn_hotel_shelter"],
+    84,
+    4,
+    "warm",
+    {
+      hairStyle: "halo curls",
+      hairColor: "honey ash",
+      bodyBuild: "soft pear",
+      heightBand: "mid",
+      shoulderShape: "rounded narrow",
+      posture: "gentle sway",
+      gait: "measured glide",
+      eyeColor: "violet brown",
+      eyeShape: "sleepy oval",
+      browShape: "soft crescent",
+      noseShape: "small scoop",
+      noseBridge: "delicate bridge",
+      skinTone: "deep bronze gold",
+      outfit: "cream travel shawl",
+      accessory: "enameled spoon pin",
+      voice: "singing mezzo",
+    },
+  ],
+  [
+    "customer_dain_orrick",
+    "Dain Orrick",
+    ["courier", "general_trader"],
+    58,
+    2,
+    "impatient",
+    {
+      hairStyle: "windcut spikes",
+      hairColor: "sun bleached brown",
+      bodyBuild: "lean courier",
+      heightBand: "mid-tall",
+      shoulderShape: "sloped wiry",
+      posture: "ready crouch",
+      gait: "fast toe push",
+      eyeColor: "pale hazel",
+      eyeShape: "sharp narrow",
+      browShape: "angled slash",
+      noseShape: "long hawk",
+      noseBridge: "straight high bridge",
+      skinTone: "olive tan",
+      outfit: "blue parcel vest",
+      accessory: "tin route whistle",
+      voice: "bright tenor",
+    },
+  ],
+  [
+    "customer_elira_senn",
+    "Elira Senn",
+    ["biome_design_studio", "custom_home_property_development"],
+    76,
+    4,
+    "curious",
+    {
+      hairStyle: "looped side bun",
+      hairColor: "black cherry",
+      bodyBuild: "willow slim",
+      heightBand: "tall-slim",
+      shoulderShape: "fine tapered",
+      posture: "tilted assessing",
+      gait: "long quiet stride",
+      eyeColor: "sea glass",
+      eyeShape: "cat tilt",
+      browShape: "thin lifted",
+      noseShape: "straight fine",
+      noseBridge: "long smooth bridge",
+      skinTone: "amber beige",
+      outfit: "ink drafting coat",
+      accessory: "silver measuring chain",
+      voice: "clear contralto",
+    },
+  ],
+  [
+    "customer_fenn_barley",
+    "Fenn Barley",
+    ["biome_farming_rare_foods", "general_trader"],
+    70,
+    2,
+    "cheerful",
+    {
+      hairStyle: "short leaf twists",
+      hairColor: "chestnut greenwash",
+      bodyBuild: "stocky farmhand",
+      heightBand: "short",
+      shoulderShape: "round solid",
+      posture: "hands-on-hips",
+      gait: "bouncy step",
+      eyeColor: "fern green",
+      eyeShape: "round bright",
+      browShape: "bushy comma",
+      noseShape: "wide bulb",
+      noseBridge: "flat broad bridge",
+      skinTone: "red clay brown",
+      outfit: "patchwork seed smock",
+      accessory: "woven seed bracelet",
+      voice: "sunny baritone",
+    },
+  ],
+  [
+    "customer_garrin_vox",
+    "Garrin Vox",
+    ["security_defense_contractor", "weapons_tools"],
+    62,
+    3,
+    "guarded",
+    {
+      hairStyle: "tight military crop",
+      hairColor: "salt pepper",
+      bodyBuild: "triangular guard",
+      heightBand: "very tall",
+      shoulderShape: "armor wide",
+      posture: "locked stance",
+      gait: "patrol pace",
+      eyeColor: "steel blue",
+      eyeShape: "hooded narrow",
+      browShape: "hard shelf",
+      noseShape: "flat boxer",
+      noseBridge: "scarred bridge",
+      skinTone: "cool dark brown",
+      outfit: "oiled leather jerkin",
+      accessory: "red permit cord",
+      voice: "command baritone",
+    },
+  ],
+  [
+    "customer_hessa_quin",
+    "Hessa Quin",
+    ["magic_goods", "teleport_owner"],
+    68,
+    5,
+    "mysterious",
+    {
+      hairStyle: "waist rope locs",
+      hairColor: "moon white",
+      bodyBuild: "lithe dancer",
+      heightBand: "mid-short",
+      shoulderShape: "thin angular",
+      posture: "floating still",
+      gait: "silent crossing",
+      eyeColor: "silver lilac",
+      eyeShape: "long crescent",
+      browShape: "split notch",
+      noseShape: "narrow blade",
+      noseBridge: "raised knife bridge",
+      skinTone: "cool ebony",
+      outfit: "violet ward robe",
+      accessory: "glass charm veil",
+      voice: "soft whisper",
+    },
+  ],
+  [
+    "customer_idra_pell",
+    "Idra Pell",
+    ["portal_transit_company", "courier"],
+    56,
+    3,
+    "anxious",
+    {
+      hairStyle: "frizzed cloud puff",
+      hairColor: "rust red",
+      bodyBuild: "small angular",
+      heightBand: "petite",
+      shoulderShape: "pinched narrow",
+      posture: "shoulders high",
+      gait: "stutter step",
+      eyeColor: "amber ring",
+      eyeShape: "large worried",
+      browShape: "knit double peak",
+      noseShape: "upturned spark",
+      noseBridge: "short lifted bridge",
+      skinTone: "light freckled tan",
+      outfit: "yellow ticket cloak",
+      accessory: "paper luggage tags",
+      voice: "quick soprano",
+    },
+  ],
+  [
+    "customer_jorek_linn",
+    "Jorek Linn",
+    ["waste_sanitation_cleanup", "medical_doctor"],
+    60,
+    2,
+    "blunt",
+    {
+      hairStyle: "low knot tail",
+      hairColor: "mud brown",
+      bodyBuild: "rectangular laborer",
+      heightBand: "mid-wide",
+      shoulderShape: "flat plank",
+      posture: "tired stoop",
+      gait: "dragged boot",
+      eyeColor: "dull teal",
+      eyeShape: "heavy lidded",
+      browShape: "low ridge",
+      noseShape: "wide wedge",
+      noseBridge: "broad broken bridge",
+      skinTone: "weathered sand",
+      outfit: "stained utility coat",
+      accessory: "corked sample tube",
+      voice: "dry bass",
+    },
+  ],
+  [
+    "customer_kiva_roan",
+    "Kiva Roan",
+    ["exploration_guide", "hunter_wild_meat"],
+    66,
+    3,
+    "bold",
+    {
+      hairStyle: "feathered undercut",
+      hairColor: "black blue sheen",
+      bodyBuild: "rangy climber",
+      heightBand: "tall-rangy",
+      shoulderShape: "corded narrow",
+      posture: "chin forward",
+      gait: "spring climb",
+      eyeColor: "gold ocher",
+      eyeShape: "fox narrow",
+      browShape: "split high",
+      noseShape: "sharp point",
+      noseBridge: "thin ridge",
+      skinTone: "copper brown",
+      outfit: "green trail harness",
+      accessory: "bone map toggle",
+      voice: "laughing alto",
+    },
+  ],
+  [
+    "customer_luca_merrit",
+    "Luca Merrit",
+    ["hospitality_inn_hotel_shelter", "food_service_restaurant"],
+    88,
+    4,
+    "polite",
+    {
+      hairStyle: "side parted waves",
+      hairColor: "soft black",
+      bodyBuild: "rounded scholar",
+      heightBand: "mid-soft",
+      shoulderShape: "soft square",
+      posture: "formal bow",
+      gait: "small careful",
+      eyeColor: "dark honey",
+      eyeShape: "gentle almond",
+      browShape: "tidy arc",
+      noseShape: "roman soft",
+      noseBridge: "smooth medium bridge",
+      skinTone: "golden brown",
+      outfit: "wine guest jacket",
+      accessory: "pearl room key",
+      voice: "warm tenor",
+    },
+  ],
+  [
+    "customer_mirae_dusk",
+    "Mirae Dusk",
+    ["biome_maintenance_repair", "exotic_matter_refinery"],
+    54,
+    5,
+    "demanding",
+    {
+      hairStyle: "slick prism bob",
+      hairColor: "violet black",
+      bodyBuild: "tall blade",
+      heightBand: "towering",
+      shoulderShape: "razor straight",
+      posture: "perfect vertical",
+      gait: "crisp metronome",
+      eyeColor: "ice violet",
+      eyeShape: "thin oval",
+      browShape: "needle arch",
+      noseShape: "aquiline",
+      noseBridge: "polished high bridge",
+      skinTone: "deep neutral brown",
+      outfit: "white inspector coat",
+      accessory: "obsidian seal badge",
+      voice: "cool alto",
+    },
+  ],
+  [
+    "customer_nalo_brix",
+    "Nalo Brix",
+    ["repair_maintenance_person", "custom_home_property_development"],
+    74,
+    2,
+    "practical",
+    {
+      hairStyle: "square brush top",
+      hairColor: "dust blond",
+      bodyBuild: "short dense",
+      heightBand: "short-dense",
+      shoulderShape: "blocky compact",
+      posture: "elbows out",
+      gait: "steady stomp",
+      eyeColor: "brown green",
+      eyeShape: "small round",
+      browShape: "thick straight",
+      noseShape: "stub square",
+      noseBridge: "low square bridge",
+      skinTone: "pale olive",
+      outfit: "tan nail pouch",
+      accessory: "wooden pencil earclip",
+      voice: "matter-of-fact bass",
+    },
+  ],
+  [
+    "customer_ona_fleck",
+    "Ona Fleck",
+    ["general_trader", "biome_farming_rare_foods"],
+    80,
+    1,
+    "bargaining",
+    {
+      hairStyle: "tiny twin buns",
+      hairColor: "silver brown",
+      bodyBuild: "birdlike light",
+      heightBand: "small",
+      shoulderShape: "fine round",
+      posture: "leaning listen",
+      gait: "skipping shuffle",
+      eyeColor: "black pearl",
+      eyeShape: "round quick",
+      browShape: "short dash",
+      noseShape: "pinched bead",
+      noseBridge: "tiny bridge",
+      skinTone: "warm ivory",
+      outfit: "striped market coat",
+      accessory: "copper coin sash",
+      voice: "raspy mezzo",
+    },
+  ],
+  [
+    "customer_pavo_ren",
+    "Pavo Ren",
+    ["portal_transit_company", "teleport_owner"],
+    50,
+    5,
+    "urgent",
+    {
+      hairStyle: "gelled crest",
+      hairColor: "platinum yellow",
+      bodyBuild: "athletic narrow",
+      heightBand: "mid-athletic",
+      shoulderShape: "cut diamond",
+      posture: "weight forward",
+      gait: "long rush",
+      eyeColor: "electric blue",
+      eyeShape: "bright slit",
+      browShape: "twin hooks",
+      noseShape: "long spear",
+      noseBridge: "straight narrow bridge",
+      skinTone: "light golden",
+      outfit: "red travel suit",
+      accessory: "stacked transit passes",
+      voice: "rapid tenor",
+    },
+  ],
+  [
+    "customer_quilla_fern",
+    "Quilla Fern",
+    ["biome_design_studio", "magic_goods"],
+    86,
+    3,
+    "delighted",
+    {
+      hairStyle: "braided crown",
+      hairColor: "moss brown",
+      bodyBuild: "curved compact",
+      heightBand: "mid-curvy",
+      shoulderShape: "soft sloping",
+      posture: "open hands",
+      gait: "gentle bounce",
+      eyeColor: "mint gray",
+      eyeShape: "soft round",
+      browShape: "leaf curve",
+      noseShape: "rounded petal",
+      noseBridge: "soft narrow bridge",
+      skinTone: "deep warm beige",
+      outfit: "paint flecked poncho",
+      accessory: "pressed flower brooch",
+      voice: "bright alto",
+    },
+  ],
+  [
+    "customer_ryx_mallow",
+    "Ryx Mallow",
+    ["security_defense_contractor", "exploration_guide"],
+    48,
+    3,
+    "reckless",
+    {
+      hairStyle: "messy wolf cut",
+      hairColor: "ash brown",
+      bodyBuild: "bony quick",
+      heightBand: "mid-bony",
+      shoulderShape: "jagged narrow",
+      posture: "restless twist",
+      gait: "zigzag stride",
+      eyeColor: "rust amber",
+      eyeShape: "uneven squint",
+      browShape: "wild jag",
+      noseShape: "crooked hook",
+      noseBridge: "bent mid bridge",
+      skinTone: "sunburnt peach",
+      outfit: "torn scout cape",
+      accessory: "dented compass",
+      voice: "cracked tenor",
+    },
+  ],
+  [
+    "customer_sable_ior",
+    "Sable Ior",
+    ["exotic_matter_refinery", "waste_sanitation_cleanup"],
+    52,
+    4,
+    "cautious",
+    {
+      hairStyle: "shielded veil locks",
+      hairColor: "charcoal purple",
+      bodyBuild: "protective padded",
+      heightBand: "mid-padded",
+      shoulderShape: "rounded armored",
+      posture: "guarded hunch",
+      gait: "careful plant",
+      eyeColor: "green gold",
+      eyeShape: "covered narrow",
+      browShape: "masked flat",
+      noseShape: "soft wedge",
+      noseBridge: "covered bridge",
+      skinTone: "cool umber",
+      outfit: "sealed gray smock",
+      accessory: "filter mask",
+      voice: "muffled alto",
+    },
+  ],
+  [
+    "customer_tavin_coil",
+    "Tavin Coil",
+    ["weapons_tools", "hunter_wild_meat"],
+    69,
+    2,
+    "confident",
+    {
+      hairStyle: "long tied topknot",
+      hairColor: "dark auburn",
+      bodyBuild: "corded hunter",
+      heightBand: "tall-lean",
+      shoulderShape: "sinew slope",
+      posture: "relaxed ready",
+      gait: "quiet heel",
+      eyeColor: "pine green",
+      eyeShape: "watchful almond",
+      browShape: "low angled",
+      noseShape: "broad straight",
+      noseBridge: "weathered bridge",
+      skinTone: "brown copper",
+      outfit: "hide patched vest",
+      accessory: "antler clasp",
+      voice: "easy baritone",
+    },
+  ],
+  [
+    "customer_uma_slate",
+    "Uma Slate",
+    ["custom_home_property_development", "repair_maintenance_person"],
+    82,
+    5,
+    "exacting",
+    {
+      hairStyle: "severe center braid",
+      hairColor: "blue gray",
+      bodyBuild: "statuesque",
+      heightBand: "tall-still",
+      shoulderShape: "marble square",
+      posture: "survey stance",
+      gait: "slow decisive",
+      eyeColor: "black blue",
+      eyeShape: "calm hooded",
+      browShape: "straight fine",
+      noseShape: "long roman",
+      noseBridge: "high flat bridge",
+      skinTone: "dark cool tan",
+      outfit: "architect linen suit",
+      accessory: "ivory plan tube",
+      voice: "measured contralto",
+    },
+  ],
+  [
+    "customer_vireo_tan",
+    "Vireo Tan",
+    ["biome_farming_rare_foods", "food_service_restaurant"],
+    78,
+    3,
+    "hungry",
+    {
+      hairStyle: "curly side shave",
+      hairColor: "kelp green",
+      bodyBuild: "round strong",
+      heightBand: "short-round",
+      shoulderShape: "curved broad",
+      posture: "belly laugh",
+      gait: "rolling stride",
+      eyeColor: "warm brown",
+      eyeShape: "crescent smile",
+      browShape: "happy arc",
+      noseShape: "round broad",
+      noseBridge: "short broad bridge",
+      skinTone: "medium olive gold",
+      outfit: "orange tasting vest",
+      accessory: "wooden fork charm",
+      voice: "booming alto",
+    },
+  ],
+  [
+    "customer_wen_auster",
+    "Wen Auster",
+    ["courier", "medical_doctor"],
+    59,
+    1,
+    "worried",
+    {
+      hairStyle: "flat cap fringe",
+      hairColor: "matte black",
+      bodyBuild: "thin wiry",
+      heightBand: "short-wiry",
+      shoulderShape: "tight raised",
+      posture: "folded arms",
+      gait: "nervous patter",
+      eyeColor: "brown black",
+      eyeShape: "small oval",
+      browShape: "pinched peak",
+      noseShape: "narrow knob",
+      noseBridge: "fine uneven bridge",
+      skinTone: "pale tan",
+      outfit: "patched runner coat",
+      accessory: "medicine pouch",
+      voice: "thin tenor",
+    },
+  ],
+  [
+    "customer_xara_lune",
+    "Xara Lune",
+    ["magic_goods", "biome_design_studio"],
+    90,
+    5,
+    "glamorous",
+    {
+      hairStyle: "crystal waterfall",
+      hairColor: "opal silver",
+      bodyBuild: "tall elegant",
+      heightBand: "very tall slim",
+      shoulderShape: "long sloped",
+      posture: "stage poise",
+      gait: "slow float",
+      eyeColor: "rose quartz",
+      eyeShape: "dramatic almond",
+      browShape: "painted sweep",
+      noseShape: "fine aquiline",
+      noseBridge: "glitter high bridge",
+      skinTone: "rich mahogany",
+      outfit: "black star cloak",
+      accessory: "floating bead chain",
+      voice: "velvet soprano",
+    },
+  ],
+  [
+    "customer_yori_pike",
+    "Yori Pike",
+    ["hunter_wild_meat", "food_service_restaurant"],
+    61,
+    2,
+    "plainspoken",
+    {
+      hairStyle: "rough bowl crop",
+      hairColor: "straw gold",
+      bodyBuild: "broad compact",
+      heightBand: "mid-stocky",
+      shoulderShape: "thick round",
+      posture: "one hip lean",
+      gait: "muddy shuffle",
+      eyeColor: "mud hazel",
+      eyeShape: "flat oval",
+      browShape: "rough bar",
+      noseShape: "wide snub",
+      noseBridge: "low snub bridge",
+      skinTone: "pink tan",
+      outfit: "brown butcher wrap",
+      accessory: "bone tally cord",
+      voice: "nasal baritone",
+    },
+  ],
+  [
+    "customer_zella_root",
+    "Zella Root",
+    ["waste_sanitation_cleanup", "biome_farming_rare_foods"],
+    73,
+    1,
+    "patient",
+    {
+      hairStyle: "wrapped seed scarf",
+      hairColor: "hidden sable",
+      bodyBuild: "elder small",
+      heightBand: "elder short",
+      shoulderShape: "narrow bent",
+      posture: "soft stoop",
+      gait: "careful cane tap",
+      eyeColor: "cloud gray",
+      eyeShape: "wrinkled kind",
+      browShape: "white wisps",
+      noseShape: "round elder",
+      noseBridge: "soft sunken bridge",
+      skinTone: "deep chestnut",
+      outfit: "green compost shawl",
+      accessory: "carved cane",
+      voice: "gentle rasp",
+    },
+  ],
+  [
+    "customer_alen_mire",
+    "Alen Mire",
+    ["general_trader", "courier"],
+    57,
+    2,
+    "shifty",
+    {
+      hairStyle: "greased side curls",
+      hairColor: "dark copper",
+      bodyBuild: "thin foxlike",
+      heightBand: "mid-thin",
+      shoulderShape: "sharp narrow",
+      posture: "sideways lean",
+      gait: "sidestep saunter",
+      eyeColor: "yellow hazel",
+      eyeShape: "side glance",
+      browShape: "one raised",
+      noseShape: "pointed sly",
+      noseBridge: "thin crooked bridge",
+      skinTone: "light brown olive",
+      outfit: "purple bargain coat",
+      accessory: "hidden pocket chain",
+      voice: "silky tenor",
+    },
+  ],
+  [
+    "customer_brynn_salt",
+    "Brynn Salt",
+    ["hospitality_inn_hotel_shelter", "courier"],
+    81,
+    3,
+    "road-worn",
+    {
+      hairStyle: "salt stiff braid",
+      hairColor: "sand white",
+      bodyBuild: "square traveler",
+      heightBand: "mid-square",
+      shoulderShape: "pack broad",
+      posture: "pack brace",
+      gait: "long tired march",
+      eyeColor: "sea blue gray",
+      eyeShape: "creased narrow",
+      browShape: "sun faded",
+      noseShape: "windburnt long",
+      noseBridge: "sun cracked bridge",
+      skinTone: "wind reddened tan",
+      outfit: "blue travel duster",
+      accessory: "shell luggage tag",
+      voice: "hoarse alto",
+    },
+  ],
+  [
+    "customer_corso_helm",
+    "Corso Helm",
+    ["security_defense_contractor", "portal_transit_company"],
+    53,
+    4,
+    "official",
+    {
+      hairStyle: "helmet flattened crop",
+      hairColor: "brown silver",
+      bodyBuild: "thick necked",
+      heightBand: "tall-thick",
+      shoulderShape: "plate wide",
+      posture: "hands clasped",
+      gait: "inspection march",
+      eyeColor: "slate green",
+      eyeShape: "hard oval",
+      browShape: "square block",
+      noseShape: "square long",
+      noseBridge: "heavy bridge",
+      skinTone: "dark olive",
+      outfit: "blue authority tabard",
+      accessory: "bronze clearance seal",
+      voice: "formal bass",
+    },
+  ],
+  [
+    "customer_dovea_rill",
+    "Dovea Rill",
+    ["biome_design_studio", "hospitality_inn_hotel_shelter"],
+    92,
+    5,
+    "luxury",
+    {
+      hairStyle: "pearled finger waves",
+      hairColor: "black pearl",
+      bodyBuild: "soft tall",
+      heightBand: "tall-soft",
+      shoulderShape: "silk sloped",
+      posture: "relaxed regal",
+      gait: "slow heel glide",
+      eyeColor: "deep plum",
+      eyeShape: "languid almond",
+      browShape: "perfect crescent",
+      noseShape: "small aristocrat",
+      noseBridge: "fine high bridge",
+      skinTone: "warm deep brown",
+      outfit: "white guest mantle",
+      accessory: "jade scent vial",
+      voice: "low musical",
+    },
+  ],
+  [
+    "customer_ekko_jar",
+    "Ekko Jar",
+    ["repair_maintenance_person", "weapons_tools"],
+    63,
+    1,
+    "fidgety",
+    {
+      hairStyle: "uneven mop",
+      hairColor: "dirty blond",
+      bodyBuild: "small square",
+      heightBand: "short-square",
+      shoulderShape: "tight block",
+      posture: "tool clutch",
+      gait: "quick hop",
+      eyeColor: "blue hazel",
+      eyeShape: "blink round",
+      browShape: "patchy dash",
+      noseShape: "tiny bent",
+      noseBridge: "bumped little bridge",
+      skinTone: "fair freckle",
+      outfit: "patched gray jumper",
+      accessory: "loose screw necklace",
+      voice: "squeaky tenor",
+    },
+  ],
+  [
+    "customer_fara_nox",
+    "Fara Nox",
+    ["magic_goods", "medical_doctor"],
+    67,
+    4,
+    "clinical",
+    {
+      hairStyle: "black ribbon queue",
+      hairColor: "ink black",
+      bodyBuild: "long narrow",
+      heightBand: "mid-long",
+      shoulderShape: "knife narrow",
+      posture: "hands folded",
+      gait: "silent measured",
+      eyeColor: "green black",
+      eyeShape: "half moon",
+      browShape: "razor fine",
+      noseShape: "thin long",
+      noseBridge: "needle bridge",
+      skinTone: "cool brown",
+      outfit: "green remedy dress",
+      accessory: "silver vial bandolier",
+      voice: "quiet contralto",
+    },
+  ],
+  [
+    "customer_gillo_reed",
+    "Gillo Reed",
+    ["biome_farming_rare_foods", "waste_sanitation_cleanup"],
+    75,
+    2,
+    "earthy",
+    {
+      hairStyle: "mud tied pigtail",
+      hairColor: "red brown",
+      bodyBuild: "wide farm strong",
+      heightBand: "wide-short",
+      shoulderShape: "rounded heavy",
+      posture: "relaxed slouch",
+      gait: "field plod",
+      eyeColor: "moss amber",
+      eyeShape: "soft squint",
+      browShape: "thick mossy",
+      noseShape: "wide flat",
+      noseBridge: "flat sun bridge",
+      skinTone: "deep russet",
+      outfit: "green waterproof bib",
+      accessory: "seed tin",
+      voice: "slow bass",
+    },
+  ],
+  [
+    "customer_hollis_vein",
+    "Hollis Vein",
+    ["exotic_matter_refinery", "portal_transit_company"],
+    51,
+    5,
+    "technical",
+    {
+      hairStyle: "silver temple sweep",
+      hairColor: "graphite silver",
+      bodyBuild: "thin engineer",
+      heightBand: "mid-engineer",
+      shoulderShape: "slight angular",
+      posture: "head tilted",
+      gait: "calculated steps",
+      eyeColor: "blue white",
+      eyeShape: "magnified round",
+      browShape: "fine straight",
+      noseShape: "long narrow",
+      noseBridge: "spectacled bridge",
+      skinTone: "light umber",
+      outfit: "black hazard suit",
+      accessory: "lens array monocle",
+      voice: "precise tenor",
+    },
+  ],
+  [
+    "customer_iona_prax",
+    "Iona Prax",
+    ["custom_home_property_development", "general_trader"],
+    79,
+    3,
+    "organized",
+    {
+      hairStyle: "stacked box braids",
+      hairColor: "warm black",
+      bodyBuild: "strong hourglass",
+      heightBand: "mid-curved",
+      shoulderShape: "balanced square",
+      posture: "clipboard ready",
+      gait: "purposeful stride",
+      eyeColor: "copper green",
+      eyeShape: "focused almond",
+      browShape: "straight tidy",
+      noseShape: "medium round",
+      noseBridge: "smooth broad bridge",
+      skinTone: "deep gold brown",
+      outfit: "navy planning vest",
+      accessory: "map clasp",
+      voice: "steady mezzo",
+    },
+  ],
+  [
+    "customer_jessa_mint",
+    "Jessa Mint",
+    ["food_service_restaurant", "biome_farming_rare_foods"],
+    87,
+    2,
+    "playful",
+    {
+      hairStyle: "mint ribbon ponytail",
+      hairColor: "brown mint streak",
+      bodyBuild: "small buoyant",
+      heightBand: "petite-bouncy",
+      shoulderShape: "soft tiny",
+      posture: "rocking toes",
+      gait: "swing step",
+      eyeColor: "light green",
+      eyeShape: "spark round",
+      browShape: "curly comma",
+      noseShape: "tiny round",
+      noseBridge: "button bridge",
+      skinTone: "light warm tan",
+      outfit: "pink tasting frock",
+      accessory: "candy bead bracelet",
+      voice: "bright soprano",
+    },
+  ],
+  [
+    "customer_kelm_void",
+    "Kelm Void",
+    ["teleport_owner", "magic_goods"],
+    46,
+    5,
+    "strange",
+    {
+      hairStyle: "floating static fray",
+      hairColor: "blue black",
+      bodyBuild: "tall gaunt",
+      heightBand: "gaunt tall",
+      shoulderShape: "thin high",
+      posture: "off-center still",
+      gait: "uneven drift",
+      eyeColor: "void violet",
+      eyeShape: "unblinking round",
+      browShape: "absent pale",
+      noseShape: "long hollow",
+      noseBridge: "shadowed bridge",
+      skinTone: "ashen brown",
+      outfit: "dark return cloak",
+      accessory: "glowing wrist token",
+      voice: "echoing whisper",
+    },
+  ],
+  [
+    "customer_lara_steel",
+    "Lara Steel",
+    ["weapons_tools", "security_defense_contractor"],
+    65,
+    4,
+    "direct",
+    {
+      hairStyle: "braided mohawk",
+      hairColor: "steel gray",
+      bodyBuild: "muscular tall",
+      heightBand: "tall-muscular",
+      shoulderShape: "warrior broad",
+      posture: "square stance",
+      gait: "drill step",
+      eyeColor: "dark blue",
+      eyeShape: "level stare",
+      browShape: "stern wedge",
+      noseShape: "strong straight",
+      noseBridge: "solid bridge",
+      skinTone: "medium cool brown",
+      outfit: "red forge leathers",
+      accessory: "iron rank cuff",
+      voice: "firm alto",
+    },
+  ],
+  [
+    "customer_mikko_ash",
+    "Mikko Ash",
+    ["waste_sanitation_cleanup", "repair_maintenance_person"],
+    71,
+    1,
+    "tired",
+    {
+      hairStyle: "ash dust buzz",
+      hairColor: "powder gray",
+      bodyBuild: "thin bent",
+      heightBand: "mid-bent",
+      shoulderShape: "drooped slim",
+      posture: "weary curve",
+      gait: "slow slide",
+      eyeColor: "brown gray",
+      eyeShape: "tired pouch",
+      browShape: "faint line",
+      noseShape: "soft long",
+      noseBridge: "low tired bridge",
+      skinTone: "smoky beige",
+      outfit: "gray mop coat",
+      accessory: "rag bundle",
+      voice: "soft bass",
+    },
+  ],
+  [
+    "customer_nessa_gate",
+    "Nessa Gate",
+    ["portal_transit_company", "hospitality_inn_hotel_shelter"],
+    55,
+    3,
+    "lost",
+    {
+      hairStyle: "loose travel braid",
+      hairColor: "red gold",
+      bodyBuild: "tall narrow",
+      heightBand: "tall-narrow",
+      shoulderShape: "pack sloped",
+      posture: "map hunched",
+      gait: "stop-start walk",
+      eyeColor: "blue hazel",
+      eyeShape: "wide searching",
+      browShape: "worried sweep",
+      noseShape: "long soft",
+      noseBridge: "straight soft bridge",
+      skinTone: "fair golden",
+      outfit: "green station cloak",
+      accessory: "folded wrong map",
+      voice: "soft mezzo",
+    },
+  ],
+  [
+    "customer_orrin_hearth",
+    "Orrin Hearth",
+    ["food_service_restaurant", "general_trader"],
+    83,
+    2,
+    "neighborly",
+    {
+      hairStyle: "warm wool curls",
+      hairColor: "brown gold",
+      bodyBuild: "large gentle",
+      heightBand: "large-mid",
+      shoulderShape: "cushion broad",
+      posture: "open chest",
+      gait: "slow friendly",
+      eyeColor: "walnut",
+      eyeShape: "kind oval",
+      browShape: "soft thick",
+      noseShape: "large round",
+      noseBridge: "broad kind bridge",
+      skinTone: "dark warm umber",
+      outfit: "brown supper coat",
+      accessory: "wooden cup token",
+      voice: "warm bass",
+    },
+  ],
+  [
+    "customer_pella_snow",
+    "Pella Snow",
+    ["medical_doctor", "hospitality_inn_hotel_shelter"],
+    89,
+    4,
+    "fragile",
+    {
+      hairStyle: "white pixie crop",
+      hairColor: "snow white",
+      bodyBuild: "small delicate",
+      heightBand: "tiny",
+      shoulderShape: "thin sloped",
+      posture: "wrapped inward",
+      gait: "careful glide",
+      eyeColor: "pale blue",
+      eyeShape: "watery oval",
+      browShape: "white thread",
+      noseShape: "small narrow",
+      noseBridge: "fine pale bridge",
+      skinTone: "light cool beige",
+      outfit: "blue recovery shawl",
+      accessory: "linen wrist wrap",
+      voice: "breathy soprano",
+    },
+  ],
+  [
+    "customer_quorin_bale",
+    "Quorin Bale",
+    ["hunter_wild_meat", "security_defense_contractor"],
+    60,
+    3,
+    "watchful",
+    {
+      hairStyle: "thick side plait",
+      hairColor: "oak brown",
+      bodyBuild: "heavy hunter",
+      heightBand: "tall-heavy",
+      shoulderShape: "cloak broad",
+      posture: "still ready",
+      gait: "soft boot roll",
+      eyeColor: "dark green",
+      eyeShape: "deep watch",
+      browShape: "heavy overhang",
+      noseShape: "broad hook",
+      noseBridge: "strong hooked bridge",
+      skinTone: "medium red brown",
+      outfit: "forest hide cloak",
+      accessory: "trap ring",
+      voice: "low rasp",
+    },
+  ],
+  [
+    "customer_rinna_bell",
+    "Rinna Bell",
+    ["biome_design_studio", "food_service_restaurant"],
+    91,
+    3,
+    "festival",
+    {
+      hairStyle: "ribbon spiral curls",
+      hairColor: "golden pink",
+      bodyBuild: "petite dancer",
+      heightBand: "small-dancer",
+      shoulderShape: "tiny square",
+      posture: "arms lively",
+      gait: "dance step",
+      eyeColor: "bright amber",
+      eyeShape: "spark almond",
+      browShape: "arched lively",
+      noseShape: "short pixie",
+      noseBridge: "tiny lifted bridge",
+      skinTone: "warm light brown",
+      outfit: "red festival jacket",
+      accessory: "little bell anklet",
+      voice: "ringing alto",
+    },
+  ],
+  [
+    "customer_soren_drift",
+    "Soren Drift",
+    ["exploration_guide", "portal_transit_company"],
+    49,
+    4,
+    "distant",
+    {
+      hairStyle: "wind long fringe",
+      hairColor: "pale brown",
+      bodyBuild: "long weathered",
+      heightBand: "very tall lean",
+      shoulderShape: "narrow far",
+      posture: "far gaze",
+      gait: "trail stride",
+      eyeColor: "fog blue",
+      eyeShape: "far narrow",
+      browShape: "wind worn",
+      noseShape: "long weathered",
+      noseBridge: "sun high bridge",
+      skinTone: "weathered olive",
+      outfit: "gray route cloak",
+      accessory: "old route token",
+      voice: "low tenor",
+    },
+  ],
+  [
+    "customer_talia_grease",
+    "Talia Grease",
+    ["repair_maintenance_person", "courier"],
+    70,
+    2,
+    "resourceful",
+    {
+      hairStyle: "oiled knot bun",
+      hairColor: "black brown",
+      bodyBuild: "compact mechanic",
+      heightBand: "short-mechanic",
+      shoulderShape: "strong narrow",
+      posture: "knees bent",
+      gait: "quick crouch walk",
+      eyeColor: "dark amber",
+      eyeShape: "sharp round",
+      browShape: "grease smudge",
+      noseShape: "smudged round",
+      noseBridge: "short smudged bridge",
+      skinTone: "medium brown",
+      outfit: "blue repair coverall",
+      accessory: "magnet glove",
+      voice: "quick alto",
+    },
+  ],
+  [
+    "customer_ulric_pale",
+    "Ulric Pale",
+    ["magic_goods", "waste_sanitation_cleanup"],
+    44,
+    4,
+    "haunted",
+    {
+      hairStyle: "thin swept wisps",
+      hairColor: "pale ash",
+      bodyBuild: "hollow tall",
+      heightBand: "hollow-mid",
+      shoulderShape: "sunken thin",
+      posture: "shivering straight",
+      gait: "hesitant drift",
+      eyeColor: "faded green",
+      eyeShape: "hollow round",
+      browShape: "faint worried",
+      noseShape: "sharp hollow",
+      noseBridge: "sunken bridge",
+      skinTone: "pale gray tan",
+      outfit: "patched ward blanket",
+      accessory: "black salt pouch",
+      voice: "thin bass",
+    },
+  ],
+  [
+    "customer_vanya_reef",
+    "Vanya Reef",
+    ["courier", "hunter_wild_meat"],
+    77,
+    3,
+    "sea-bright",
+    {
+      hairStyle: "wet rope braid",
+      hairColor: "deep teal",
+      bodyBuild: "swimmer strong",
+      heightBand: "mid-swimmer",
+      shoulderShape: "broad tapered",
+      posture: "loose balanced",
+      gait: "rolling dock step",
+      eyeColor: "reef green",
+      eyeShape: "smiling narrow",
+      browShape: "wave curve",
+      noseShape: "broad curved",
+      noseBridge: "smooth wide bridge",
+      skinTone: "deep olive brown",
+      outfit: "teal dock vest",
+      accessory: "shell knife charm",
+      voice: "clear alto",
+    },
+  ],
+  [
+    "customer_willa_crane",
+    "Willa Crane",
+    ["custom_home_property_development", "biome_maintenance_repair"],
+    85,
+    4,
+    "landlord",
+    {
+      hairStyle: "gray high twist",
+      hairColor: "charcoal white",
+      bodyBuild: "thin tall elder",
+      heightBand: "elder tall",
+      shoulderShape: "bony square",
+      posture: "ledger upright",
+      gait: "cane precise",
+      eyeColor: "sharp brown",
+      eyeShape: "keen hooded",
+      browShape: "white stern",
+      noseShape: "long crane",
+      noseBridge: "long arched bridge",
+      skinTone: "cool medium brown",
+      outfit: "black rent coat",
+      accessory: "iron key belt",
+      voice: "cutting contralto",
+    },
+  ],
+  [
+    "customer_ximo_lark",
+    "Ximo Lark",
+    ["general_trader", "exploration_guide"],
+    82,
+    1,
+    "chatty",
+    {
+      hairStyle: "fluffed lark crest",
+      hairColor: "brown copper streak",
+      bodyBuild: "tiny nimble",
+      heightBand: "tiny-nimble",
+      shoulderShape: "narrow quick",
+      posture: "bouncing talk",
+      gait: "darting skip",
+      eyeColor: "bright black",
+      eyeShape: "bead round",
+      browShape: "tiny flick",
+      noseShape: "little point",
+      noseBridge: "tiny sharp bridge",
+      skinTone: "gold tan",
+      outfit: "patch pocket coat",
+      accessory: "many little buttons",
+      voice: "fast soprano",
+    },
+  ],
 ];
 
 export const HARTHMERE_BUSINESS_CUSTOMER_NPCS_V1: readonly HarthmereBusinessCustomerNpcV1[] =
-  CUSTOMER_ROWS.map(([npcId, displayName, businessPreferences, patience, budgetTier, temperament, appearance]) => ({
-    npcId,
-    displayName,
-    customerOnly: true,
-    mapPlacement: "none",
-    spawnPolicy: "business_owner_session_only",
-    businessPreferences,
-    patience,
-    budgetTier,
-    temperament,
-    appearance,
-  }));
+  CUSTOMER_ROWS.map(
+    ([
+      npcId,
+      displayName,
+      businessPreferences,
+      patience,
+      budgetTier,
+      temperament,
+      appearance,
+    ]) => ({
+      npcId,
+      displayName,
+      customerOnly: true,
+      mapPlacement: "none",
+      spawnPolicy: "business_owner_session_only",
+      businessPreferences,
+      patience,
+      budgetTier,
+      temperament,
+      appearance,
+    })
+  );
 
-function nav(typeId: HarthmereEconomyBusinessTypeIdV1): HarthmereBusinessCustomerNavigationV1 {
+function nav(
+  typeId: HarthmereEconomyBusinessTypeIdV1
+): HarthmereBusinessCustomerNavigationV1 {
   return {
     entryNodeId: `${typeId}:customer_entry`,
     queueNodeId: `${typeId}:customer_queue`,
@@ -1971,7 +3653,14 @@ function nav(typeId: HarthmereEconomyBusinessTypeIdV1): HarthmereBusinessCustome
     serviceNodeId: `${typeId}:service_spot`,
     exitNodeId: `${typeId}:customer_exit`,
     movementPolicy: "walk_queue_counter_exit",
-    serviceFlow: ["enter", "join queue", "approach counter", "wait for service", "react", "exit"],
+    serviceFlow: [
+      "enter",
+      "join queue",
+      "approach counter",
+      "wait for service",
+      "react",
+      "exit",
+    ],
     passableClearance: {
       aisleWidthBlocks: 2,
       counterClearanceBlocks: 2,
@@ -1989,14 +3678,47 @@ function nav(typeId: HarthmereEconomyBusinessTypeIdV1): HarthmereBusinessCustome
 
 function progression(scaleNoun: string): HarthmereBusinessProgressionTierV1[] {
   return [
-    { tier: 1, name: "Counter", criteria: "Serve 5 customers.", reward: "+1 queue slot.", unlock: `Basic ${scaleNoun} orders.` },
-    { tier: 2, name: "Back Room", criteria: "Serve 20 customers with a 3-streak.", reward: "+5 satisfaction floor.", unlock: `Staff-assisted ${scaleNoun}.` },
-    { tier: 3, name: "Branch", criteria: "Serve 50 customers and finish 10 contracts.", reward: "+1 service radius.", unlock: `Remote ${scaleNoun} tickets.` },
-    { tier: 4, name: "Empire", criteria: "Serve 120 customers across locations.", reward: "+10 reputation cap pressure.", unlock: `Regional ${scaleNoun} franchise.` },
+    {
+      tier: 1,
+      name: "Counter",
+      criteria: "Serve 5 customers.",
+      reward: "+1 queue slot.",
+      unlock: `Basic ${scaleNoun} orders.`,
+    },
+    {
+      tier: 2,
+      name: "Back Room",
+      criteria: "Serve 20 customers with a 3-streak.",
+      reward: "+5 satisfaction floor.",
+      unlock: `Staff-assisted ${scaleNoun}.`,
+    },
+    {
+      tier: 3,
+      name: "Branch",
+      criteria: "Serve 50 customers and finish 10 contracts.",
+      reward: "+1 service radius.",
+      unlock: `Remote ${scaleNoun} tickets.`,
+    },
+    {
+      tier: 4,
+      name: "Empire",
+      criteria: "Serve 120 customers across locations.",
+      reward: "+10 reputation cap pressure.",
+      unlock: `Regional ${scaleNoun} franchise.`,
+    },
   ];
 }
 
-function definition(input: Omit<HarthmereBusinessMiniGameDefinitionV1, "navigation" | "progression" | "bikkieGraphics" | "implementationGapsClosed" | "mechanicSpec"> & { scaleNoun: string }): HarthmereBusinessMiniGameDefinitionV1 {
+function definition(
+  input: Omit<
+    HarthmereBusinessMiniGameDefinitionV1,
+    | "navigation"
+    | "progression"
+    | "bikkieGraphics"
+    | "implementationGapsClosed"
+    | "mechanicSpec"
+  > & { scaleNoun: string }
+): HarthmereBusinessMiniGameDefinitionV1 {
   return {
     ...input,
     mechanicSpec: getHarthmereBusinessMiniGameSpecV1(input.typeId),
@@ -2021,66 +3743,317 @@ export const HARTHMERE_BUSINESS_MINIGAME_DEFINITIONS_V1: Record<
     typeId: "exotic_matter_refinery",
     interfaceTitle: "Refinery Intake Counter",
     counterLabel: "Containment desk",
-    customerGoal: "Customers want safe fuel, stabilized matter, or proof that a batch will not leak.",
-    ownerFunLoop: "Scan the request, pick the safe service, spend the right stock, and keep the containment streak alive.",
+    customerGoal:
+      "Customers want safe fuel, stabilized matter, or proof that a batch will not leak.",
+    ownerFunLoop:
+      "Scan the request, pick the safe service, spend the right stock, and keep the containment streak alive.",
     scaleNoun: "refinery",
-    challengeGrowth: ["More hazardous customers arrive together.", "Fuel orders ask for certified stock.", "Low safety reduces patience.", "Later branches need couriers and sanitation partners."],
-    dailyReturnTriggers: ["Portal operators post fuel rushes.", "A cooled batch finishes overnight.", "Inspectors visit after risky shifts."],
-    scalePath: ["Manual stabilizer", "Certified fuel desk", "Courier-fed refinery", "Regional energy trust"],
-    empireReinforcement: ["Fuel contracts feed portal and teleport businesses.", "High safety reputation unlocks infrastructure customers.", "Branch refineries lower regional energy shortages."],
+    challengeGrowth: [
+      "More hazardous customers arrive together.",
+      "Fuel orders ask for certified stock.",
+      "Low safety reduces patience.",
+      "Later branches need couriers and sanitation partners.",
+    ],
+    dailyReturnTriggers: [
+      "Portal operators post fuel rushes.",
+      "A cooled batch finishes overnight.",
+      "Inspectors visit after risky shifts.",
+    ],
+    scalePath: [
+      "Manual stabilizer",
+      "Certified fuel desk",
+      "Courier-fed refinery",
+      "Regional energy trust",
+    ],
+    empireReinforcement: [
+      "Fuel contracts feed portal and teleport businesses.",
+      "High safety reputation unlocks infrastructure customers.",
+      "Branch refineries lower regional energy shortages.",
+    ],
     offers: [
-      { offerId: "certified_fuel_sale", label: "Hand over certified fuel", description: "Sell a sealed unit of fuel with a safety tag.", serviceNeed: "energy", requiredItems: { certified_portal_fuel: 1 }, rewardGold: 150, satisfactionDelta: 4, interactionVerb: "stamp", animationCue: "procedural_counter_stamp_and_hand_over" },
-      { offerId: "matter_stabilization", label: "Stabilize a sample", description: "Use stabilized matter to neutralize a customer's raw sample.", serviceNeed: "timeline_stability", requiredItems: { stabilized_exotic_matter: 1, containment_filter: 1 }, producedItems: { spent_filter: 1 }, rewardGold: 125, satisfactionDelta: 3, interactionVerb: "seal", animationCue: "procedural_filter_lock_and_glow_check" },
-      { offerId: "containment_audit", label: "Run containment audit", description: "Inspect a shipment and issue a safe handling report.", serviceNeed: "travel", requiredItems: { containment_filter: 1 }, rewardGold: 95, satisfactionDelta: 2, interactionVerb: "scan", animationCue: "procedural_scanner_sweep_counter" },
+      {
+        offerId: "certified_fuel_sale",
+        label: "Hand over certified fuel",
+        description: "Sell a sealed unit of fuel with a safety tag.",
+        serviceNeed: "energy",
+        requiredItems: { certified_portal_fuel: 1 },
+        rewardGold: 150,
+        satisfactionDelta: 4,
+        interactionVerb: "stamp",
+        animationCue: "procedural_counter_stamp_and_hand_over",
+      },
+      {
+        offerId: "matter_stabilization",
+        label: "Stabilize a sample",
+        description:
+          "Use stabilized matter to neutralize a customer's raw sample.",
+        serviceNeed: "timeline_stability",
+        requiredItems: { stabilized_exotic_matter: 1, containment_filter: 1 },
+        producedItems: { spent_filter: 1 },
+        rewardGold: 125,
+        satisfactionDelta: 3,
+        interactionVerb: "seal",
+        animationCue: "procedural_filter_lock_and_glow_check",
+      },
+      {
+        offerId: "containment_audit",
+        label: "Run containment audit",
+        description: "Inspect a shipment and issue a safe handling report.",
+        serviceNeed: "travel",
+        requiredItems: { containment_filter: 1 },
+        rewardGold: 95,
+        satisfactionDelta: 2,
+        interactionVerb: "scan",
+        animationCue: "procedural_scanner_sweep_counter",
+      },
     ],
     askTemplates: [
-      { askId: "portal_fuel_needed", line: "My gate crew needs one certified fuel cell before the route locks.", desiredOfferId: "certified_fuel_sale", patience: 48, difficulty: 3, rewardGold: 160, reputationDelta: 2, needDelta: 4, funAction: "Match the fuel seal before patience drops.", navGoal: "counterNodeId" },
-      { askId: "unstable_sample", line: "This sample is humming through the case. Can you stabilize it now?", desiredOfferId: "matter_stabilization", patience: 38, difficulty: 4, rewardGold: 135, reputationDelta: 2, needDelta: 5, funAction: "Choose stabilization instead of a simple audit.", navGoal: "serviceNodeId" },
-      { askId: "safety_papers", line: "I need proof this cargo can ride with passengers.", desiredOfferId: "containment_audit", patience: 60, difficulty: 2, rewardGold: 100, reputationDelta: 1, needDelta: 3, funAction: "Scan, stamp, and send the customer out clean.", navGoal: "counterNodeId" },
+      {
+        askId: "portal_fuel_needed",
+        line: "My gate crew needs one certified fuel cell before the route locks.",
+        desiredOfferId: "certified_fuel_sale",
+        patience: 48,
+        difficulty: 3,
+        rewardGold: 160,
+        reputationDelta: 2,
+        needDelta: 4,
+        funAction: "Match the fuel seal before patience drops.",
+        navGoal: "counterNodeId",
+      },
+      {
+        askId: "unstable_sample",
+        line: "This sample is humming through the case. Can you stabilize it now?",
+        desiredOfferId: "matter_stabilization",
+        patience: 38,
+        difficulty: 4,
+        rewardGold: 135,
+        reputationDelta: 2,
+        needDelta: 5,
+        funAction: "Choose stabilization instead of a simple audit.",
+        navGoal: "serviceNodeId",
+      },
+      {
+        askId: "safety_papers",
+        line: "I need proof this cargo can ride with passengers.",
+        desiredOfferId: "containment_audit",
+        patience: 60,
+        difficulty: 2,
+        rewardGold: 100,
+        reputationDelta: 1,
+        needDelta: 3,
+        funAction: "Scan, stamp, and send the customer out clean.",
+        navGoal: "counterNodeId",
+      },
     ],
   }),
   biome_maintenance_repair: definition({
     typeId: "biome_maintenance_repair",
     interfaceTitle: "Biome Service Dispatch",
     counterLabel: "Anchor repair desk",
-    customerGoal: "Customers bring failing climates, drifting anchors, and property stability complaints.",
-    ownerFunLoop: "Diagnose the failure, choose inspection, tuning, or leak repair, and keep properties from decaying.",
+    customerGoal:
+      "Customers bring failing climates, drifting anchors, and property stability complaints.",
+    ownerFunLoop:
+      "Diagnose the failure, choose inspection, tuning, or leak repair, and keep properties from decaying.",
     scaleNoun: "maintenance",
-    challengeGrowth: ["More customers arrive with deadline pressure.", "Advanced asks need stabilized matter.", "Ignored failures lower town property condition.", "Branches specialize by climate type."],
-    dailyReturnTriggers: ["Weather failure alerts.", "Subscription inspections renew.", "A property owner reports overnight drift."],
-    scalePath: ["Inspection desk", "Repair van", "Climate tuning crew", "Regional maintenance network"],
-    empireReinforcement: ["Maintenance protects property developers and inns.", "Strong uptime feeds town trust.", "Branches create subscription income."],
+    challengeGrowth: [
+      "More customers arrive with deadline pressure.",
+      "Advanced asks need stabilized matter.",
+      "Ignored failures lower town property condition.",
+      "Branches specialize by climate type.",
+    ],
+    dailyReturnTriggers: [
+      "Weather failure alerts.",
+      "Subscription inspections renew.",
+      "A property owner reports overnight drift.",
+    ],
+    scalePath: [
+      "Inspection desk",
+      "Repair van",
+      "Climate tuning crew",
+      "Regional maintenance network",
+    ],
+    empireReinforcement: [
+      "Maintenance protects property developers and inns.",
+      "Strong uptime feeds town trust.",
+      "Branches create subscription income.",
+    ],
     offers: [
-      { offerId: "anchor_inspection", label: "Inspect anchor", description: "Run a quick stability inspection and issue next steps.", serviceNeed: "maintenance", requiredItems: { repair_kit: 1 }, rewardGold: 80, satisfactionDelta: 2, interactionVerb: "inspect", animationCue: "procedural_clipboard_scan_anchor" },
-      { offerId: "climate_tune", label: "Tune climate", description: "Stabilize weather and comfort levels using safe matter.", serviceNeed: "property_condition", requiredItems: { stabilized_exotic_matter: 1, repair_kit: 1 }, rewardGold: 125, satisfactionDelta: 3, interactionVerb: "tune", animationCue: "procedural_dial_turn_weather_ring" },
-      { offerId: "timeline_leak_patch", label: "Patch timeline leak", description: "Seal a small leak before it becomes civic trouble.", serviceNeed: "timeline_stability", requiredItems: { anchor_part: 1, repair_kit: 1 }, rewardGold: 145, satisfactionDelta: 4, interactionVerb: "patch", animationCue: "procedural_wrench_patch_spark" },
+      {
+        offerId: "anchor_inspection",
+        label: "Inspect anchor",
+        description: "Run a quick stability inspection and issue next steps.",
+        serviceNeed: "maintenance",
+        requiredItems: { repair_kit: 1 },
+        rewardGold: 80,
+        satisfactionDelta: 2,
+        interactionVerb: "inspect",
+        animationCue: "procedural_clipboard_scan_anchor",
+      },
+      {
+        offerId: "climate_tune",
+        label: "Tune climate",
+        description: "Stabilize weather and comfort levels using safe matter.",
+        serviceNeed: "property_condition",
+        requiredItems: { stabilized_exotic_matter: 1, repair_kit: 1 },
+        rewardGold: 125,
+        satisfactionDelta: 3,
+        interactionVerb: "tune",
+        animationCue: "procedural_dial_turn_weather_ring",
+      },
+      {
+        offerId: "timeline_leak_patch",
+        label: "Patch timeline leak",
+        description: "Seal a small leak before it becomes civic trouble.",
+        serviceNeed: "timeline_stability",
+        requiredItems: { anchor_part: 1, repair_kit: 1 },
+        rewardGold: 145,
+        satisfactionDelta: 4,
+        interactionVerb: "patch",
+        animationCue: "procedural_wrench_patch_spark",
+      },
     ],
     askTemplates: [
-      { askId: "odd_weather_room", line: "My reading room is raining indoors again.", desiredOfferId: "climate_tune", patience: 52, difficulty: 3, rewardGold: 130, reputationDelta: 2, needDelta: 4, funAction: "Tune climate instead of only inspecting.", navGoal: "serviceNodeId" },
-      { askId: "monthly_inspection", line: "I need the anchor inspection stamped before rent day.", desiredOfferId: "anchor_inspection", patience: 70, difficulty: 1, rewardGold: 85, reputationDelta: 1, needDelta: 2, funAction: "Fast paperwork service.", navGoal: "counterNodeId" },
-      { askId: "leak_in_wall", line: "The wall showed tomorrow for three seconds. Please patch it.", desiredOfferId: "timeline_leak_patch", patience: 42, difficulty: 4, rewardGold: 150, reputationDelta: 2, needDelta: 5, funAction: "Spot the highest risk repair.", navGoal: "serviceNodeId" },
+      {
+        askId: "odd_weather_room",
+        line: "My reading room is raining indoors again.",
+        desiredOfferId: "climate_tune",
+        patience: 52,
+        difficulty: 3,
+        rewardGold: 130,
+        reputationDelta: 2,
+        needDelta: 4,
+        funAction: "Tune climate instead of only inspecting.",
+        navGoal: "serviceNodeId",
+      },
+      {
+        askId: "monthly_inspection",
+        line: "I need the anchor inspection stamped before rent day.",
+        desiredOfferId: "anchor_inspection",
+        patience: 70,
+        difficulty: 1,
+        rewardGold: 85,
+        reputationDelta: 1,
+        needDelta: 2,
+        funAction: "Fast paperwork service.",
+        navGoal: "counterNodeId",
+      },
+      {
+        askId: "leak_in_wall",
+        line: "The wall showed tomorrow for three seconds. Please patch it.",
+        desiredOfferId: "timeline_leak_patch",
+        patience: 42,
+        difficulty: 4,
+        rewardGold: 150,
+        reputationDelta: 2,
+        needDelta: 5,
+        funAction: "Spot the highest risk repair.",
+        navGoal: "serviceNodeId",
+      },
     ],
   }),
   biome_design_studio: definition({
     typeId: "biome_design_studio",
     interfaceTitle: "Design Consultation Table",
     counterLabel: "Mood board counter",
-    customerGoal: "Customers want beauty, identity, themed interiors, and event-ready spaces.",
-    ownerFunLoop: "Read the taste cue, match a design package, and build reputation through pleasing choices.",
+    customerGoal:
+      "Customers want beauty, identity, themed interiors, and event-ready spaces.",
+    ownerFunLoop:
+      "Read the taste cue, match a design package, and build reputation through pleasing choices.",
     scaleNoun: "design",
-    challengeGrowth: ["Customers ask for conflicting styles.", "Luxury clients punish wrong packages.", "Seasonal trends rotate daily.", "Branches need stock from traders and farmers."],
-    dailyReturnTriggers: ["Festival color trend.", "VIP redesign slot.", "New decor materials arrive."],
-    scalePath: ["Mood board", "Installation crew", "Studio showroom", "Regional design house"],
-    empireReinforcement: ["Design raises property and hospitality value.", "High identity reputation draws luxury buyers.", "Branches create repeat seasonal work."],
+    challengeGrowth: [
+      "Customers ask for conflicting styles.",
+      "Luxury clients punish wrong packages.",
+      "Seasonal trends rotate daily.",
+      "Branches need stock from traders and farmers.",
+    ],
+    dailyReturnTriggers: [
+      "Festival color trend.",
+      "VIP redesign slot.",
+      "New decor materials arrive.",
+    ],
+    scalePath: [
+      "Mood board",
+      "Installation crew",
+      "Studio showroom",
+      "Regional design house",
+    ],
+    empireReinforcement: [
+      "Design raises property and hospitality value.",
+      "High identity reputation draws luxury buyers.",
+      "Branches create repeat seasonal work.",
+    ],
     offers: [
-      { offerId: "habitat_mockup", label: "Show habitat mockup", description: "Present a biome-safe room concept.", serviceNeed: "identity", requiredItems: { design_pack: 1 }, rewardGold: 90, satisfactionDelta: 3, interactionVerb: "present", animationCue: "procedural_blueprint_unroll_point" },
-      { offerId: "terrain_palette", label: "Build terrain palette", description: "Assemble color, stone, and plant samples.", serviceNeed: "tourism", requiredItems: { decor: 1, tree_resin: 1 }, rewardGold: 105, satisfactionDelta: 3, interactionVerb: "arrange", animationCue: "procedural_sample_tiles_arrange" },
-      { offerId: "lighting_scene", label: "Set lighting scene", description: "Create a light plan for shop or inn ambience.", serviceNeed: "housing", requiredItems: { lighting_kit: 1 }, rewardGold: 115, satisfactionDelta: 4, interactionVerb: "focus", animationCue: "procedural_lantern_focus_sweep" },
+      {
+        offerId: "habitat_mockup",
+        label: "Show habitat mockup",
+        description: "Present a biome-safe room concept.",
+        serviceNeed: "identity",
+        requiredItems: { design_pack: 1 },
+        rewardGold: 90,
+        satisfactionDelta: 3,
+        interactionVerb: "present",
+        animationCue: "procedural_blueprint_unroll_point",
+      },
+      {
+        offerId: "terrain_palette",
+        label: "Build terrain palette",
+        description: "Assemble color, stone, and plant samples.",
+        serviceNeed: "tourism",
+        requiredItems: { decor: 1, tree_resin: 1 },
+        rewardGold: 105,
+        satisfactionDelta: 3,
+        interactionVerb: "arrange",
+        animationCue: "procedural_sample_tiles_arrange",
+      },
+      {
+        offerId: "lighting_scene",
+        label: "Set lighting scene",
+        description: "Create a light plan for shop or inn ambience.",
+        serviceNeed: "housing",
+        requiredItems: { lighting_kit: 1 },
+        rewardGold: 115,
+        satisfactionDelta: 4,
+        interactionVerb: "focus",
+        animationCue: "procedural_lantern_focus_sweep",
+      },
     ],
     askTemplates: [
-      { askId: "make_inn_memorable", line: "My inn needs a room guests remember tomorrow.", desiredOfferId: "lighting_scene", patience: 64, difficulty: 2, rewardGold: 120, reputationDelta: 2, needDelta: 4, funAction: "Spot that ambience beats terrain.", navGoal: "counterNodeId" },
-      { askId: "festival_palette", line: "I need a festival palette that does not clash with the crops.", desiredOfferId: "terrain_palette", patience: 58, difficulty: 3, rewardGold: 110, reputationDelta: 2, needDelta: 3, funAction: "Match color samples under pressure.", navGoal: "serviceNodeId" },
-      { askId: "property_mockup", line: "Can you show my family what the new biome room will feel like?", desiredOfferId: "habitat_mockup", patience: 72, difficulty: 1, rewardGold: 95, reputationDelta: 1, needDelta: 3, funAction: "Present the simple pitch cleanly.", navGoal: "counterNodeId" },
+      {
+        askId: "make_inn_memorable",
+        line: "My inn needs a room guests remember tomorrow.",
+        desiredOfferId: "lighting_scene",
+        patience: 64,
+        difficulty: 2,
+        rewardGold: 120,
+        reputationDelta: 2,
+        needDelta: 4,
+        funAction: "Spot that ambience beats terrain.",
+        navGoal: "counterNodeId",
+      },
+      {
+        askId: "festival_palette",
+        line: "I need a festival palette that does not clash with the crops.",
+        desiredOfferId: "terrain_palette",
+        patience: 58,
+        difficulty: 3,
+        rewardGold: 110,
+        reputationDelta: 2,
+        needDelta: 3,
+        funAction: "Match color samples under pressure.",
+        navGoal: "serviceNodeId",
+      },
+      {
+        askId: "property_mockup",
+        line: "Can you show my family what the new biome room will feel like?",
+        desiredOfferId: "habitat_mockup",
+        patience: 72,
+        difficulty: 1,
+        rewardGold: 95,
+        reputationDelta: 1,
+        needDelta: 3,
+        funAction: "Present the simple pitch cleanly.",
+        navGoal: "counterNodeId",
+      },
     ],
   }),
   security_defense_contractor: definition({
@@ -2088,109 +4061,523 @@ export const HARTHMERE_BUSINESS_MINIGAME_DEFINITIONS_V1: Record<
     interfaceTitle: "Security Contract Desk",
     counterLabel: "Threat board",
     customerGoal: "Customers need guards, escort plans, and fast risk calls.",
-    ownerFunLoop: "Classify the threat, sell the right protection, and keep fear from becoming reputation damage.",
+    ownerFunLoop:
+      "Classify the threat, sell the right protection, and keep fear from becoming reputation damage.",
     scaleNoun: "security",
-    challengeGrowth: ["Threat difficulty rises with reputation.", "Customers can arrive injured or panicked.", "Wrong service loses safety trust.", "Multiple branches need squads and gear stock."],
-    dailyReturnTriggers: ["New bounty wave.", "VIP escort deadline.", "Threat migration report."],
-    scalePath: ["Desk guard", "Patrol squad", "Escort office", "Regional defense company"],
-    empireReinforcement: ["Security protects couriers, portals, farms, and inns.", "High safety opens larger contracts.", "Branches reduce regional route risk."],
+    challengeGrowth: [
+      "Threat difficulty rises with reputation.",
+      "Customers can arrive injured or panicked.",
+      "Wrong service loses safety trust.",
+      "Multiple branches need squads and gear stock.",
+    ],
+    dailyReturnTriggers: [
+      "New bounty wave.",
+      "VIP escort deadline.",
+      "Threat migration report.",
+    ],
+    scalePath: [
+      "Desk guard",
+      "Patrol squad",
+      "Escort office",
+      "Regional defense company",
+    ],
+    empireReinforcement: [
+      "Security protects couriers, portals, farms, and inns.",
+      "High safety opens larger contracts.",
+      "Branches reduce regional route risk.",
+    ],
     offers: [
-      { offerId: "hire_static_guard", label: "Assign guard", description: "Book a guard for a property or business floor.", serviceNeed: "safety", requiredItems: { guard_contract: 1 }, rewardGold: 110, satisfactionDelta: 3, interactionVerb: "assign", animationCue: "procedural_badge_assign_salute" },
-      { offerId: "escort_route_plan", label: "Plan escort route", description: "Build a safe path and emergency fallback.", serviceNeed: "travel", requiredItems: { route_map: 1, ration_pack: 1 }, rewardGold: 135, satisfactionDelta: 3, interactionVerb: "plot", animationCue: "procedural_map_route_trace" },
-      { offerId: "threat_triage", label: "Triage threat", description: "Classify a threat and dispatch the right squad.", serviceNeed: "tourism", requiredItems: { signal_flare: 1 }, rewardGold: 150, satisfactionDelta: 4, interactionVerb: "dispatch", animationCue: "procedural_alarm_flag_dispatch" },
+      {
+        offerId: "hire_static_guard",
+        label: "Assign guard",
+        description: "Book a guard for a property or business floor.",
+        serviceNeed: "safety",
+        requiredItems: { guard_contract: 1 },
+        rewardGold: 110,
+        satisfactionDelta: 3,
+        interactionVerb: "assign",
+        animationCue: "procedural_badge_assign_salute",
+      },
+      {
+        offerId: "escort_route_plan",
+        label: "Plan escort route",
+        description: "Build a safe path and emergency fallback.",
+        serviceNeed: "travel",
+        requiredItems: { route_map: 1, ration_pack: 1 },
+        rewardGold: 135,
+        satisfactionDelta: 3,
+        interactionVerb: "plot",
+        animationCue: "procedural_map_route_trace",
+      },
+      {
+        offerId: "threat_triage",
+        label: "Triage threat",
+        description: "Classify a threat and dispatch the right squad.",
+        serviceNeed: "tourism",
+        requiredItems: { signal_flare: 1 },
+        rewardGold: 150,
+        satisfactionDelta: 4,
+        interactionVerb: "dispatch",
+        animationCue: "procedural_alarm_flag_dispatch",
+      },
     ],
     askTemplates: [
-      { askId: "guard_my_shop", line: "I need someone at my shop door before the night rush.", desiredOfferId: "hire_static_guard", patience: 62, difficulty: 2, rewardGold: 115, reputationDelta: 2, needDelta: 4, funAction: "Assign guard coverage fast.", navGoal: "counterNodeId" },
-      { askId: "escort_to_gate", line: "Can your crew get my cargo through the north road?", desiredOfferId: "escort_route_plan", patience: 50, difficulty: 3, rewardGold: 140, reputationDelta: 2, needDelta: 4, funAction: "Trace the safest route.", navGoal: "serviceNodeId" },
-      { askId: "what_is_outside", line: "Something is circling the yard. Tell me what to do.", desiredOfferId: "threat_triage", patience: 36, difficulty: 4, rewardGold: 160, reputationDelta: 3, needDelta: 5, funAction: "Triage panic before patience breaks.", navGoal: "serviceNodeId" },
+      {
+        askId: "guard_my_shop",
+        line: "I need someone at my shop door before the night rush.",
+        desiredOfferId: "hire_static_guard",
+        patience: 62,
+        difficulty: 2,
+        rewardGold: 115,
+        reputationDelta: 2,
+        needDelta: 4,
+        funAction: "Assign guard coverage fast.",
+        navGoal: "counterNodeId",
+      },
+      {
+        askId: "escort_to_gate",
+        line: "Can your crew get my cargo through the north road?",
+        desiredOfferId: "escort_route_plan",
+        patience: 50,
+        difficulty: 3,
+        rewardGold: 140,
+        reputationDelta: 2,
+        needDelta: 4,
+        funAction: "Trace the safest route.",
+        navGoal: "serviceNodeId",
+      },
+      {
+        askId: "what_is_outside",
+        line: "Something is circling the yard. Tell me what to do.",
+        desiredOfferId: "threat_triage",
+        patience: 36,
+        difficulty: 4,
+        rewardGold: 160,
+        reputationDelta: 3,
+        needDelta: 5,
+        funAction: "Triage panic before patience breaks.",
+        navGoal: "serviceNodeId",
+      },
     ],
   }),
   portal_transit_company: definition({
     typeId: "portal_transit_company",
     interfaceTitle: "Portal Transit Gate",
     counterLabel: "Route fare terminal",
-    customerGoal: "Customers buy passenger jumps, cargo slots, and route safety checks.",
-    ownerFunLoop: "Balance speed, fuel, safety, and queue pressure while keeping the route stable.",
+    customerGoal:
+      "Customers buy passenger jumps, cargo slots, and route safety checks.",
+    ownerFunLoop:
+      "Balance speed, fuel, safety, and queue pressure while keeping the route stable.",
     scaleNoun: "portal route",
-    challengeGrowth: ["Passenger and cargo queues conflict.", "Fuel stock limits rush periods.", "Low stability slows service.", "Branches create route network dependencies."],
-    dailyReturnTriggers: ["Morning commuter rush.", "Cargo window expires.", "Fuel price spike."],
-    scalePath: ["Single gate", "Cargo lane", "Two-town route", "Regional portal grid"],
-    empireReinforcement: ["Portal routes multiply demand for fuel, security, and couriers.", "Reliable gates become civic infrastructure.", "Branches create empire-wide travel income."],
+    challengeGrowth: [
+      "Passenger and cargo queues conflict.",
+      "Fuel stock limits rush periods.",
+      "Low stability slows service.",
+      "Branches create route network dependencies.",
+    ],
+    dailyReturnTriggers: [
+      "Morning commuter rush.",
+      "Cargo window expires.",
+      "Fuel price spike.",
+    ],
+    scalePath: [
+      "Single gate",
+      "Cargo lane",
+      "Two-town route",
+      "Regional portal grid",
+    ],
+    empireReinforcement: [
+      "Portal routes multiply demand for fuel, security, and couriers.",
+      "Reliable gates become civic infrastructure.",
+      "Branches create empire-wide travel income.",
+    ],
     offers: [
-      { offerId: "passenger_jump", label: "Run passenger jump", description: "Move a passenger through a safe active endpoint.", serviceNeed: "travel", requiredItems: { certified_portal_fuel: 1 }, rewardGold: 95, satisfactionDelta: 3, interactionVerb: "route", animationCue: "procedural_gate_lever_customer_wave" },
-      { offerId: "cargo_slot", label: "Book cargo slot", description: "Reserve a heavier transit window for goods.", serviceNeed: "logistics", requiredItems: { portal_fuel: 1, lockbox: 1 }, rewardGold: 135, satisfactionDelta: 3, interactionVerb: "weigh", animationCue: "procedural_scale_tag_cargo" },
-      { offerId: "route_safety_check", label: "Run safety check", description: "Check a route before a nervous customer travels.", serviceNeed: "energy", requiredItems: { destination_crystal: 1 }, rewardGold: 110, satisfactionDelta: 4, interactionVerb: "calibrate", animationCue: "procedural_crystal_align_gate" },
+      {
+        offerId: "passenger_jump",
+        label: "Run passenger jump",
+        description: "Move a passenger through a safe active endpoint.",
+        serviceNeed: "travel",
+        requiredItems: { certified_portal_fuel: 1 },
+        rewardGold: 95,
+        satisfactionDelta: 3,
+        interactionVerb: "route",
+        animationCue: "procedural_gate_lever_customer_wave",
+      },
+      {
+        offerId: "cargo_slot",
+        label: "Book cargo slot",
+        description: "Reserve a heavier transit window for goods.",
+        serviceNeed: "logistics",
+        requiredItems: { portal_fuel: 1, lockbox: 1 },
+        rewardGold: 135,
+        satisfactionDelta: 3,
+        interactionVerb: "weigh",
+        animationCue: "procedural_scale_tag_cargo",
+      },
+      {
+        offerId: "route_safety_check",
+        label: "Run safety check",
+        description: "Check a route before a nervous customer travels.",
+        serviceNeed: "energy",
+        requiredItems: { destination_crystal: 1 },
+        rewardGold: 110,
+        satisfactionDelta: 4,
+        interactionVerb: "calibrate",
+        animationCue: "procedural_crystal_align_gate",
+      },
     ],
     askTemplates: [
-      { askId: "late_passenger", line: "I need to cross before my pass expires.", desiredOfferId: "passenger_jump", patience: 34, difficulty: 3, rewardGold: 100, reputationDelta: 2, needDelta: 4, funAction: "Prioritize passenger speed.", navGoal: "serviceNodeId" },
-      { askId: "fragile_cargo", line: "This crate cannot bounce through a cheap lane.", desiredOfferId: "cargo_slot", patience: 54, difficulty: 3, rewardGold: 145, reputationDelta: 2, needDelta: 4, funAction: "Pick cargo handling, not passenger routing.", navGoal: "counterNodeId" },
-      { askId: "nervous_about_gate", line: "Does that gate look green enough to you?", desiredOfferId: "route_safety_check", patience: 66, difficulty: 2, rewardGold: 115, reputationDelta: 1, needDelta: 3, funAction: "Calibrate to reassure.", navGoal: "serviceNodeId" },
+      {
+        askId: "late_passenger",
+        line: "I need to cross before my pass expires.",
+        desiredOfferId: "passenger_jump",
+        patience: 34,
+        difficulty: 3,
+        rewardGold: 100,
+        reputationDelta: 2,
+        needDelta: 4,
+        funAction: "Prioritize passenger speed.",
+        navGoal: "serviceNodeId",
+      },
+      {
+        askId: "fragile_cargo",
+        line: "This crate cannot bounce through a cheap lane.",
+        desiredOfferId: "cargo_slot",
+        patience: 54,
+        difficulty: 3,
+        rewardGold: 145,
+        reputationDelta: 2,
+        needDelta: 4,
+        funAction: "Pick cargo handling, not passenger routing.",
+        navGoal: "counterNodeId",
+      },
+      {
+        askId: "nervous_about_gate",
+        line: "Does that gate look green enough to you?",
+        desiredOfferId: "route_safety_check",
+        patience: 66,
+        difficulty: 2,
+        rewardGold: 115,
+        reputationDelta: 1,
+        needDelta: 3,
+        funAction: "Calibrate to reassure.",
+        navGoal: "serviceNodeId",
+      },
     ],
   }),
   biome_farming_rare_foods: definition({
     typeId: "biome_farming_rare_foods",
     interfaceTitle: "Rare Food Farm Stand",
     counterLabel: "Harvest scale",
-    customerGoal: "Customers ask for fresh produce, medicinal herbs, or rare food lots.",
-    ownerFunLoop: "Match freshness and ingredient type while protecting limited harvest stock.",
+    customerGoal:
+      "Customers ask for fresh produce, medicinal herbs, or rare food lots.",
+    ownerFunLoop:
+      "Match freshness and ingredient type while protecting limited harvest stock.",
     scaleNoun: "farm",
-    challengeGrowth: ["Freshness matters more at higher tiers.", "Doctors and restaurants compete for the same crop.", "Spoilage creates daily urgency.", "Branches specialize by biome climate."],
-    dailyReturnTriggers: ["Overnight crop growth.", "Market demand spike.", "Spoilage warning."],
-    scalePath: ["Farm stand", "Cold shelf", "Contract greenhouse", "Regional rare-food co-op"],
-    empireReinforcement: ["Farms feed restaurants, doctors, traders, and inns.", "Reliable harvests stabilize food demand.", "Branches buffer crop failures."],
+    challengeGrowth: [
+      "Freshness matters more at higher tiers.",
+      "Doctors and restaurants compete for the same crop.",
+      "Spoilage creates daily urgency.",
+      "Branches specialize by biome climate.",
+    ],
+    dailyReturnTriggers: [
+      "Overnight crop growth.",
+      "Market demand spike.",
+      "Spoilage warning.",
+    ],
+    scalePath: [
+      "Farm stand",
+      "Cold shelf",
+      "Contract greenhouse",
+      "Regional rare-food co-op",
+    ],
+    empireReinforcement: [
+      "Farms feed restaurants, doctors, traders, and inns.",
+      "Reliable harvests stabilize food demand.",
+      "Branches buffer crop failures.",
+    ],
     offers: [
-      { offerId: "fresh_crop_bundle", label: "Sell crop bundle", description: "Hand over a fresh cooking crop bundle.", serviceNeed: "food", requiredItems: { crop_bundle: 1 }, rewardGold: 45, satisfactionDelta: 2, interactionVerb: "weigh", animationCue: "procedural_crate_weigh_and_wrap" },
-      { offerId: "medicinal_herbs", label: "Pack medicinal herbs", description: "Bundle herbs for clinics or potion makers.", serviceNeed: "health", requiredItems: { herb_bundle: 1 }, rewardGold: 70, satisfactionDelta: 3, interactionVerb: "bundle", animationCue: "procedural_herb_tie_and_label" },
-      { offerId: "rare_tasting_box", label: "Prepare tasting box", description: "Assemble rare foods for luxury or festival customers.", serviceNeed: "tourism", requiredItems: { rare_food: 1, clean_water: 1 }, rewardGold: 95, satisfactionDelta: 4, interactionVerb: "arrange", animationCue: "procedural_sample_box_present" },
+      {
+        offerId: "fresh_crop_bundle",
+        label: "Sell crop bundle",
+        description: "Hand over a fresh cooking crop bundle.",
+        serviceNeed: "food",
+        requiredItems: { crop_bundle: 1 },
+        rewardGold: 45,
+        satisfactionDelta: 2,
+        interactionVerb: "weigh",
+        animationCue: "procedural_crate_weigh_and_wrap",
+      },
+      {
+        offerId: "medicinal_herbs",
+        label: "Pack medicinal herbs",
+        description: "Bundle herbs for clinics or potion makers.",
+        serviceNeed: "health",
+        requiredItems: { herb_bundle: 1 },
+        rewardGold: 70,
+        satisfactionDelta: 3,
+        interactionVerb: "bundle",
+        animationCue: "procedural_herb_tie_and_label",
+      },
+      {
+        offerId: "rare_tasting_box",
+        label: "Prepare tasting box",
+        description: "Assemble rare foods for luxury or festival customers.",
+        serviceNeed: "tourism",
+        requiredItems: { rare_food: 1, clean_water: 1 },
+        rewardGold: 95,
+        satisfactionDelta: 4,
+        interactionVerb: "arrange",
+        animationCue: "procedural_sample_box_present",
+      },
     ],
     askTemplates: [
-      { askId: "restaurant_crop_order", line: "My cook needs crops that still smell like the field.", desiredOfferId: "fresh_crop_bundle", patience: 64, difficulty: 1, rewardGold: 50, reputationDelta: 1, needDelta: 3, funAction: "Choose basic fresh food fast.", navGoal: "counterNodeId" },
-      { askId: "clinic_herbs", line: "The clinic is short on clean herbs.", desiredOfferId: "medicinal_herbs", patience: 48, difficulty: 2, rewardGold: 75, reputationDelta: 2, needDelta: 4, funAction: "Save herbs for health demand.", navGoal: "counterNodeId" },
-      { askId: "festival_tasting", line: "I want the box people talk about after the festival.", desiredOfferId: "rare_tasting_box", patience: 70, difficulty: 3, rewardGold: 100, reputationDelta: 2, needDelta: 4, funAction: "Use rare stock for reputation.", navGoal: "serviceNodeId" },
+      {
+        askId: "restaurant_crop_order",
+        line: "My cook needs crops that still smell like the field.",
+        desiredOfferId: "fresh_crop_bundle",
+        patience: 64,
+        difficulty: 1,
+        rewardGold: 50,
+        reputationDelta: 1,
+        needDelta: 3,
+        funAction: "Choose basic fresh food fast.",
+        navGoal: "counterNodeId",
+      },
+      {
+        askId: "clinic_herbs",
+        line: "The clinic is short on clean herbs.",
+        desiredOfferId: "medicinal_herbs",
+        patience: 48,
+        difficulty: 2,
+        rewardGold: 75,
+        reputationDelta: 2,
+        needDelta: 4,
+        funAction: "Save herbs for health demand.",
+        navGoal: "counterNodeId",
+      },
+      {
+        askId: "festival_tasting",
+        line: "I want the box people talk about after the festival.",
+        desiredOfferId: "rare_tasting_box",
+        patience: 70,
+        difficulty: 3,
+        rewardGold: 100,
+        reputationDelta: 2,
+        needDelta: 4,
+        funAction: "Use rare stock for reputation.",
+        navGoal: "serviceNodeId",
+      },
     ],
   }),
   weapons_tools: definition({
     typeId: "weapons_tools",
     interfaceTitle: "Forge Service Counter",
     counterLabel: "Repair bench",
-    customerGoal: "Customers need repairs, upgrades, and work tools that will not fail.",
-    ownerFunLoop: "Read the equipment need, spend parts, and time the handoff for a satisfying repair.",
+    customerGoal:
+      "Customers need repairs, upgrades, and work tools that will not fail.",
+    ownerFunLoop:
+      "Read the equipment need, spend parts, and time the handoff for a satisfying repair.",
     scaleNoun: "forge",
-    challengeGrowth: ["Higher-tier gear needs more parts.", "Security contracts create rush orders.", "Wrong service damages satisfaction.", "Branches specialize by tool or weapon line."],
-    dailyReturnTriggers: ["Broken gear pile.", "Guard bulk order.", "Ore delivery return."],
-    scalePath: ["Repair bench", "Upgrade forge", "Bulk order line", "Regional armory"],
-    empireReinforcement: ["Forges support hunters, guards, builders, and repair shops.", "Durable tools lower business failures.", "Branches become supply anchors."],
+    challengeGrowth: [
+      "Higher-tier gear needs more parts.",
+      "Security contracts create rush orders.",
+      "Wrong service damages satisfaction.",
+      "Branches specialize by tool or weapon line.",
+    ],
+    dailyReturnTriggers: [
+      "Broken gear pile.",
+      "Guard bulk order.",
+      "Ore delivery return.",
+    ],
+    scalePath: [
+      "Repair bench",
+      "Upgrade forge",
+      "Bulk order line",
+      "Regional armory",
+    ],
+    empireReinforcement: [
+      "Forges support hunters, guards, builders, and repair shops.",
+      "Durable tools lower business failures.",
+      "Branches become supply anchors.",
+    ],
     offers: [
-      { offerId: "tool_repair", label: "Repair tool", description: "Fix a work tool with parts and a calibrated strike.", serviceNeed: "maintenance", requiredItems: { repair_tool: 1, metal_part: 1 }, rewardGold: 75, satisfactionDelta: 3, interactionVerb: "hammer", animationCue: "procedural_hammer_sparks_counter" },
-      { offerId: "weapon_tune", label: "Tune weapon", description: "Sharpen, balance, and safety-check a weapon.", serviceNeed: "safety", requiredItems: { iron_ingot: 1, whetstone: 1 }, rewardGold: 105, satisfactionDelta: 3, interactionVerb: "sharpen", animationCue: "procedural_whetstone_blade_pass" },
-      { offerId: "scanner_calibration", label: "Calibrate scanner", description: "Tune a field scanner for builders or explorers.", serviceNeed: "property_condition", requiredItems: { crystal_lens: 1, repair_tool: 1 }, rewardGold: 120, satisfactionDelta: 4, interactionVerb: "calibrate", animationCue: "procedural_lens_twist_flash" },
+      {
+        offerId: "tool_repair",
+        label: "Repair tool",
+        description: "Fix a work tool with parts and a calibrated strike.",
+        serviceNeed: "maintenance",
+        requiredItems: { repair_tool: 1, metal_part: 1 },
+        rewardGold: 75,
+        satisfactionDelta: 3,
+        interactionVerb: "hammer",
+        animationCue: "procedural_hammer_sparks_counter",
+      },
+      {
+        offerId: "weapon_tune",
+        label: "Tune weapon",
+        description: "Sharpen, balance, and safety-check a weapon.",
+        serviceNeed: "safety",
+        requiredItems: { iron_ingot: 1, whetstone: 1 },
+        rewardGold: 105,
+        satisfactionDelta: 3,
+        interactionVerb: "sharpen",
+        animationCue: "procedural_whetstone_blade_pass",
+      },
+      {
+        offerId: "scanner_calibration",
+        label: "Calibrate scanner",
+        description: "Tune a field scanner for builders or explorers.",
+        serviceNeed: "property_condition",
+        requiredItems: { crystal_lens: 1, repair_tool: 1 },
+        rewardGold: 120,
+        satisfactionDelta: 4,
+        interactionVerb: "calibrate",
+        animationCue: "procedural_lens_twist_flash",
+      },
     ],
     askTemplates: [
-      { askId: "broken_pick", line: "My pick is dead and the vein will not wait.", desiredOfferId: "tool_repair", patience: 50, difficulty: 2, rewardGold: 80, reputationDelta: 1, needDelta: 3, funAction: "Repair the tool before the rush leaves.", navGoal: "serviceNodeId" },
-      { askId: "guard_blade", line: "This blade pulls left. I need it true.", desiredOfferId: "weapon_tune", patience: 58, difficulty: 3, rewardGold: 110, reputationDelta: 2, needDelta: 4, funAction: "Pick weapon tuning over generic repair.", navGoal: "serviceNodeId" },
-      { askId: "scanner_for_plot", line: "My scanner says the wall is inside-out.", desiredOfferId: "scanner_calibration", patience: 66, difficulty: 4, rewardGold: 125, reputationDelta: 2, needDelta: 4, funAction: "Use the precision calibration.", navGoal: "counterNodeId" },
+      {
+        askId: "broken_pick",
+        line: "My pick is dead and the vein will not wait.",
+        desiredOfferId: "tool_repair",
+        patience: 50,
+        difficulty: 2,
+        rewardGold: 80,
+        reputationDelta: 1,
+        needDelta: 3,
+        funAction: "Repair the tool before the rush leaves.",
+        navGoal: "serviceNodeId",
+      },
+      {
+        askId: "guard_blade",
+        line: "This blade pulls left. I need it true.",
+        desiredOfferId: "weapon_tune",
+        patience: 58,
+        difficulty: 3,
+        rewardGold: 110,
+        reputationDelta: 2,
+        needDelta: 4,
+        funAction: "Pick weapon tuning over generic repair.",
+        navGoal: "serviceNodeId",
+      },
+      {
+        askId: "scanner_for_plot",
+        line: "My scanner says the wall is inside-out.",
+        desiredOfferId: "scanner_calibration",
+        patience: 66,
+        difficulty: 4,
+        rewardGold: 125,
+        reputationDelta: 2,
+        needDelta: 4,
+        funAction: "Use the precision calibration.",
+        navGoal: "counterNodeId",
+      },
     ],
   }),
   magic_goods: definition({
     typeId: "magic_goods",
     interfaceTitle: "Magic Goods Counter",
     counterLabel: "Ward tray",
-    customerGoal: "Customers buy charms, potions, and wards with stability risks.",
-    ownerFunLoop: "Match the customer's fear to a charm, potion, or ward while unstable goods expire.",
+    customerGoal:
+      "Customers buy charms, potions, and wards with stability risks.",
+    ownerFunLoop:
+      "Match the customer's fear to a charm, potion, or ward while unstable goods expire.",
     scaleNoun: "magic goods",
-    challengeGrowth: ["Unstable stock expires faster.", "Customers ask for rare component matches.", "High-risk wards require license trust.", "Branches share component supply."],
-    dailyReturnTriggers: ["Unstable stock expires today.", "Disaster demand spike.", "Rare component visitor."],
-    scalePath: ["Charm tray", "Potion shelf", "Ward installation desk", "Regional arcane supplier"],
-    empireReinforcement: ["Magic goods support doctors, explorers, security, and refineries.", "High trust unlocks hazardous customers.", "Branches create rare component pull."],
+    challengeGrowth: [
+      "Unstable stock expires faster.",
+      "Customers ask for rare component matches.",
+      "High-risk wards require license trust.",
+      "Branches share component supply.",
+    ],
+    dailyReturnTriggers: [
+      "Unstable stock expires today.",
+      "Disaster demand spike.",
+      "Rare component visitor.",
+    ],
+    scalePath: [
+      "Charm tray",
+      "Potion shelf",
+      "Ward installation desk",
+      "Regional arcane supplier",
+    ],
+    empireReinforcement: [
+      "Magic goods support doctors, explorers, security, and refineries.",
+      "High trust unlocks hazardous customers.",
+      "Branches create rare component pull.",
+    ],
     offers: [
-      { offerId: "sell_charm", label: "Sell charm", description: "Match a small charm to a customer's worry.", serviceNeed: "safety", requiredItems: { charm: 1 }, rewardGold: 80, satisfactionDelta: 3, interactionVerb: "attune", animationCue: "procedural_charm_attune_handoff" },
-      { offerId: "mix_potion", label: "Mix potion", description: "Prepare a stable potion from shelf stock.", serviceNeed: "health", requiredItems: { potion: 1, clean_water: 1 }, rewardGold: 95, satisfactionDelta: 3, interactionVerb: "mix", animationCue: "procedural_bottle_swirl_cork" },
-      { offerId: "write_ward", label: "Write ward", description: "Issue a protective ward for a room or route.", serviceNeed: "timeline_stability", requiredItems: { ward: 1, relic_fragment: 1 }, rewardGold: 145, satisfactionDelta: 4, interactionVerb: "scribe", animationCue: "procedural_rune_scribe_glow" },
+      {
+        offerId: "sell_charm",
+        label: "Sell charm",
+        description: "Match a small charm to a customer's worry.",
+        serviceNeed: "safety",
+        requiredItems: { charm: 1 },
+        rewardGold: 80,
+        satisfactionDelta: 3,
+        interactionVerb: "attune",
+        animationCue: "procedural_charm_attune_handoff",
+      },
+      {
+        offerId: "mix_potion",
+        label: "Mix potion",
+        description: "Prepare a stable potion from shelf stock.",
+        serviceNeed: "health",
+        requiredItems: { potion: 1, clean_water: 1 },
+        rewardGold: 95,
+        satisfactionDelta: 3,
+        interactionVerb: "mix",
+        animationCue: "procedural_bottle_swirl_cork",
+      },
+      {
+        offerId: "write_ward",
+        label: "Write ward",
+        description: "Issue a protective ward for a room or route.",
+        serviceNeed: "timeline_stability",
+        requiredItems: { ward: 1, relic_fragment: 1 },
+        rewardGold: 145,
+        satisfactionDelta: 4,
+        interactionVerb: "scribe",
+        animationCue: "procedural_rune_scribe_glow",
+      },
     ],
     askTemplates: [
-      { askId: "bad_luck_charm", line: "I need something small that keeps trouble off my cart.", desiredOfferId: "sell_charm", patience: 70, difficulty: 1, rewardGold: 85, reputationDelta: 1, needDelta: 3, funAction: "Pick charm for simple fear.", navGoal: "counterNodeId" },
-      { askId: "quick_potion", line: "Do you have a potion that will not curdle by sundown?", desiredOfferId: "mix_potion", patience: 52, difficulty: 2, rewardGold: 100, reputationDelta: 2, needDelta: 4, funAction: "Serve stable potion stock.", navGoal: "serviceNodeId" },
-      { askId: "room_ward", line: "My rental room keeps whispering through the wall.", desiredOfferId: "write_ward", patience: 44, difficulty: 4, rewardGold: 155, reputationDelta: 2, needDelta: 5, funAction: "Use a ward, not a charm.", navGoal: "serviceNodeId" },
+      {
+        askId: "bad_luck_charm",
+        line: "I need something small that keeps trouble off my cart.",
+        desiredOfferId: "sell_charm",
+        patience: 70,
+        difficulty: 1,
+        rewardGold: 85,
+        reputationDelta: 1,
+        needDelta: 3,
+        funAction: "Pick charm for simple fear.",
+        navGoal: "counterNodeId",
+      },
+      {
+        askId: "quick_potion",
+        line: "Do you have a potion that will not curdle by sundown?",
+        desiredOfferId: "mix_potion",
+        patience: 52,
+        difficulty: 2,
+        rewardGold: 100,
+        reputationDelta: 2,
+        needDelta: 4,
+        funAction: "Serve stable potion stock.",
+        navGoal: "serviceNodeId",
+      },
+      {
+        askId: "room_ward",
+        line: "My rental room keeps whispering through the wall.",
+        desiredOfferId: "write_ward",
+        patience: 44,
+        difficulty: 4,
+        rewardGold: 155,
+        reputationDelta: 2,
+        needDelta: 5,
+        funAction: "Use a ward, not a charm.",
+        navGoal: "serviceNodeId",
+      },
     ],
   }),
   exploration_guide: definition({
@@ -2198,65 +4585,313 @@ export const HARTHMERE_BUSINESS_MINIGAME_DEFINITIONS_V1: Record<
     interfaceTitle: "Guide Booking Table",
     counterLabel: "Route map table",
     customerGoal: "Customers need routes, expeditions, and risk advice.",
-    ownerFunLoop: "Match destination, safety, and supply needs before the customer loses nerve.",
+    ownerFunLoop:
+      "Match destination, safety, and supply needs before the customer loses nerve.",
     scaleNoun: "guide route",
-    challengeGrowth: ["Maps go stale.", "Clients demand rarer routes.", "Safety reputation affects patience.", "Branches need local route knowledge."],
-    dailyReturnTriggers: ["Map freshness decay.", "Rare ruin booking.", "Weather window opens."],
-    scalePath: ["Route advice", "Guided trip", "Expedition crew", "Regional guide guild"],
-    empireReinforcement: ["Guides create demand for couriers, guards, magic goods, and inns.", "Safe route reputation opens premium tours.", "Branches spread knowledge coverage."],
+    challengeGrowth: [
+      "Maps go stale.",
+      "Clients demand rarer routes.",
+      "Safety reputation affects patience.",
+      "Branches need local route knowledge.",
+    ],
+    dailyReturnTriggers: [
+      "Map freshness decay.",
+      "Rare ruin booking.",
+      "Weather window opens.",
+    ],
+    scalePath: [
+      "Route advice",
+      "Guided trip",
+      "Expedition crew",
+      "Regional guide guild",
+    ],
+    empireReinforcement: [
+      "Guides create demand for couriers, guards, magic goods, and inns.",
+      "Safe route reputation opens premium tours.",
+      "Branches spread knowledge coverage.",
+    ],
     offers: [
-      { offerId: "route_briefing", label: "Give route briefing", description: "Explain a safe path and mark danger points.", serviceNeed: "knowledge", requiredItems: { route_map: 1 }, rewardGold: 65, satisfactionDelta: 2, interactionVerb: "brief", animationCue: "procedural_map_point_sequence" },
-      { offerId: "guided_expedition", label: "Book expedition", description: "Schedule a guided run with field supplies.", serviceNeed: "travel", requiredItems: { field_kit: 1, ration_pack: 1 }, rewardGold: 130, satisfactionDelta: 4, interactionVerb: "book", animationCue: "procedural_ticket_stamp_map_fold" },
-      { offerId: "danger_read", label: "Read danger signs", description: "Assess a customer's destination risk.", serviceNeed: "safety", requiredItems: { scanner: 1 }, rewardGold: 95, satisfactionDelta: 3, interactionVerb: "assess", animationCue: "procedural_scope_scan_horizon" },
+      {
+        offerId: "route_briefing",
+        label: "Give route briefing",
+        description: "Explain a safe path and mark danger points.",
+        serviceNeed: "knowledge",
+        requiredItems: { route_map: 1 },
+        rewardGold: 65,
+        satisfactionDelta: 2,
+        interactionVerb: "brief",
+        animationCue: "procedural_map_point_sequence",
+      },
+      {
+        offerId: "guided_expedition",
+        label: "Book expedition",
+        description: "Schedule a guided run with field supplies.",
+        serviceNeed: "travel",
+        requiredItems: { field_kit: 1, ration_pack: 1 },
+        rewardGold: 130,
+        satisfactionDelta: 4,
+        interactionVerb: "book",
+        animationCue: "procedural_ticket_stamp_map_fold",
+      },
+      {
+        offerId: "danger_read",
+        label: "Read danger signs",
+        description: "Assess a customer's destination risk.",
+        serviceNeed: "safety",
+        requiredItems: { scanner: 1 },
+        rewardGold: 95,
+        satisfactionDelta: 3,
+        interactionVerb: "assess",
+        animationCue: "procedural_scope_scan_horizon",
+      },
     ],
     askTemplates: [
-      { askId: "which_path", line: "Which road gets me there with my boots still mine?", desiredOfferId: "route_briefing", patience: 78, difficulty: 1, rewardGold: 70, reputationDelta: 1, needDelta: 3, funAction: "Give fast route advice.", navGoal: "counterNodeId" },
-      { askId: "book_ruin_trip", line: "I want to see the old marker, but I want to come back too.", desiredOfferId: "guided_expedition", patience: 55, difficulty: 3, rewardGold: 140, reputationDelta: 2, needDelta: 4, funAction: "Convert interest into a booked trip.", navGoal: "serviceNodeId" },
-      { askId: "is_it_safe", line: "This destination keeps disappearing from my notes.", desiredOfferId: "danger_read", patience: 45, difficulty: 4, rewardGold: 105, reputationDelta: 2, needDelta: 4, funAction: "Read danger signs before booking.", navGoal: "counterNodeId" },
+      {
+        askId: "which_path",
+        line: "Which road gets me there with my boots still mine?",
+        desiredOfferId: "route_briefing",
+        patience: 78,
+        difficulty: 1,
+        rewardGold: 70,
+        reputationDelta: 1,
+        needDelta: 3,
+        funAction: "Give fast route advice.",
+        navGoal: "counterNodeId",
+      },
+      {
+        askId: "book_ruin_trip",
+        line: "I want to see the old marker, but I want to come back too.",
+        desiredOfferId: "guided_expedition",
+        patience: 55,
+        difficulty: 3,
+        rewardGold: 140,
+        reputationDelta: 2,
+        needDelta: 4,
+        funAction: "Convert interest into a booked trip.",
+        navGoal: "serviceNodeId",
+      },
+      {
+        askId: "is_it_safe",
+        line: "This destination keeps disappearing from my notes.",
+        desiredOfferId: "danger_read",
+        patience: 45,
+        difficulty: 4,
+        rewardGold: 105,
+        reputationDelta: 2,
+        needDelta: 4,
+        funAction: "Read danger signs before booking.",
+        navGoal: "counterNodeId",
+      },
     ],
   }),
   custom_home_property_development: definition({
     typeId: "custom_home_property_development",
     interfaceTitle: "Property Development Office",
     counterLabel: "Blueprint desk",
-    customerGoal: "Customers ask for builds, estimates, and staged improvements.",
-    ownerFunLoop: "Pick estimate, permit, or build package while tracking material pressure.",
+    customerGoal:
+      "Customers ask for builds, estimates, and staged improvements.",
+    ownerFunLoop:
+      "Pick estimate, permit, or build package while tracking material pressure.",
     scaleNoun: "property",
-    challengeGrowth: ["Bigger builds consume more materials.", "Customers care about permits and deadlines.", "Bad estimates damage trust.", "Branches need managers and warehouses."],
-    dailyReturnTriggers: ["Build stage completes.", "Permit window opens.", "Tenant request arrives."],
-    scalePath: ["Estimate desk", "Build crew", "Subdivision office", "Regional property empire"],
-    empireReinforcement: ["Developers create locations for every other business.", "Good builds increase town housing.", "Branches turn land into empire expansion."],
+    challengeGrowth: [
+      "Bigger builds consume more materials.",
+      "Customers care about permits and deadlines.",
+      "Bad estimates damage trust.",
+      "Branches need managers and warehouses.",
+    ],
+    dailyReturnTriggers: [
+      "Build stage completes.",
+      "Permit window opens.",
+      "Tenant request arrives.",
+    ],
+    scalePath: [
+      "Estimate desk",
+      "Build crew",
+      "Subdivision office",
+      "Regional property empire",
+    ],
+    empireReinforcement: [
+      "Developers create locations for every other business.",
+      "Good builds increase town housing.",
+      "Branches turn land into empire expansion.",
+    ],
     offers: [
-      { offerId: "cost_estimate", label: "Prepare estimate", description: "Give a priced scope for a small property job.", serviceNeed: "housing", requiredItems: { blueprint: 1 }, rewardGold: 75, satisfactionDelta: 2, interactionVerb: "estimate", animationCue: "procedural_blueprint_measure_mark" },
-      { offerId: "permit_packet", label: "File permit packet", description: "Bundle permits and plans for a build.", serviceNeed: "property_condition", requiredItems: { permit_form: 1, blueprint: 1 }, rewardGold: 105, satisfactionDelta: 3, interactionVerb: "file", animationCue: "procedural_paper_stack_stamp" },
-      { offerId: "starter_build_package", label: "Sell build package", description: "Commit materials for a starter property stage.", serviceNeed: "maintenance", requiredItems: { wood_plank: 2, stone_block: 2 }, rewardGold: 170, satisfactionDelta: 4, interactionVerb: "commit", animationCue: "procedural_crate_tag_blueprint" },
+      {
+        offerId: "cost_estimate",
+        label: "Prepare estimate",
+        description: "Give a priced scope for a small property job.",
+        serviceNeed: "housing",
+        requiredItems: { blueprint: 1 },
+        rewardGold: 75,
+        satisfactionDelta: 2,
+        interactionVerb: "estimate",
+        animationCue: "procedural_blueprint_measure_mark",
+      },
+      {
+        offerId: "permit_packet",
+        label: "File permit packet",
+        description: "Bundle permits and plans for a build.",
+        serviceNeed: "property_condition",
+        requiredItems: { permit_form: 1, blueprint: 1 },
+        rewardGold: 105,
+        satisfactionDelta: 3,
+        interactionVerb: "file",
+        animationCue: "procedural_paper_stack_stamp",
+      },
+      {
+        offerId: "starter_build_package",
+        label: "Sell build package",
+        description: "Commit materials for a starter property stage.",
+        serviceNeed: "maintenance",
+        requiredItems: { wood_plank: 2, stone_block: 2 },
+        rewardGold: 170,
+        satisfactionDelta: 4,
+        interactionVerb: "commit",
+        animationCue: "procedural_crate_tag_blueprint",
+      },
     ],
     askTemplates: [
-      { askId: "what_will_it_cost", line: "Tell me what a real door and roof will cost.", desiredOfferId: "cost_estimate", patience: 82, difficulty: 1, rewardGold: 80, reputationDelta: 1, needDelta: 3, funAction: "Start with the estimate.", navGoal: "counterNodeId" },
-      { askId: "permit_before_rain", line: "I need the permit packet before the rain inspector comes.", desiredOfferId: "permit_packet", patience: 54, difficulty: 2, rewardGold: 110, reputationDelta: 2, needDelta: 4, funAction: "File the correct paperwork.", navGoal: "counterNodeId" },
-      { askId: "build_starter_shell", line: "Can your crew start the shell this week?", desiredOfferId: "starter_build_package", patience: 48, difficulty: 4, rewardGold: 180, reputationDelta: 3, needDelta: 5, funAction: "Spend materials for a real build package.", navGoal: "serviceNodeId" },
+      {
+        askId: "what_will_it_cost",
+        line: "Tell me what a real door and roof will cost.",
+        desiredOfferId: "cost_estimate",
+        patience: 82,
+        difficulty: 1,
+        rewardGold: 80,
+        reputationDelta: 1,
+        needDelta: 3,
+        funAction: "Start with the estimate.",
+        navGoal: "counterNodeId",
+      },
+      {
+        askId: "permit_before_rain",
+        line: "I need the permit packet before the rain inspector comes.",
+        desiredOfferId: "permit_packet",
+        patience: 54,
+        difficulty: 2,
+        rewardGold: 110,
+        reputationDelta: 2,
+        needDelta: 4,
+        funAction: "File the correct paperwork.",
+        navGoal: "counterNodeId",
+      },
+      {
+        askId: "build_starter_shell",
+        line: "Can your crew start the shell this week?",
+        desiredOfferId: "starter_build_package",
+        patience: 48,
+        difficulty: 4,
+        rewardGold: 180,
+        reputationDelta: 3,
+        needDelta: 5,
+        funAction: "Spend materials for a real build package.",
+        navGoal: "serviceNodeId",
+      },
     ],
   }),
   general_trader: definition({
     typeId: "general_trader",
     interfaceTitle: "General Trading Counter",
     counterLabel: "Stock ledger",
-    customerGoal: "Customers want basic goods, brokerage, and regional price help.",
-    ownerFunLoop: "Read demand, pick stock or brokerage, and keep shelves from going empty.",
+    customerGoal:
+      "Customers want basic goods, brokerage, and regional price help.",
+    ownerFunLoop:
+      "Read demand, pick stock or brokerage, and keep shelves from going empty.",
     scaleNoun: "trade",
-    challengeGrowth: ["More customers ask for scarce items.", "Market prices shift daily.", "Wrong upsells reduce trust.", "Branches create arbitrage routes."],
-    dailyReturnTriggers: ["Wholesale restock.", "Demand spike.", "Regional price spread."],
-    scalePath: ["Counter shop", "Backroom stock", "Warehouse link", "Regional trading house"],
-    empireReinforcement: ["Traders supply every small business.", "Market trust turns into bulk contracts.", "Branches move goods where demand is highest."],
+    challengeGrowth: [
+      "More customers ask for scarce items.",
+      "Market prices shift daily.",
+      "Wrong upsells reduce trust.",
+      "Branches create arbitrage routes.",
+    ],
+    dailyReturnTriggers: [
+      "Wholesale restock.",
+      "Demand spike.",
+      "Regional price spread.",
+    ],
+    scalePath: [
+      "Counter shop",
+      "Backroom stock",
+      "Warehouse link",
+      "Regional trading house",
+    ],
+    empireReinforcement: [
+      "Traders supply every small business.",
+      "Market trust turns into bulk contracts.",
+      "Branches move goods where demand is highest.",
+    ],
     offers: [
-      { offerId: "sell_road_rations", label: "Sell road rations", description: "Provide basic food for work or travel.", serviceNeed: "food", requiredItems: { road_ration: 1 }, rewardGold: 35, satisfactionDelta: 2, interactionVerb: "bag", animationCue: "procedural_shelf_pick_bag" },
-      { offerId: "sell_repair_supplies", label: "Sell repair supplies", description: "Bundle small parts for a customer job.", serviceNeed: "maintenance", requiredItems: { repair_part: 1 }, rewardGold: 50, satisfactionDelta: 2, interactionVerb: "bundle", animationCue: "procedural_parts_tray_wrap" },
-      { offerId: "broker_special_order", label: "Broker special order", description: "Take a paid request for hard-to-find goods.", serviceNeed: "logistics", requiredItems: { trade_goods: 1, ledger_page: 1 }, rewardGold: 95, satisfactionDelta: 4, interactionVerb: "broker", animationCue: "procedural_ledger_note_handshake" },
+      {
+        offerId: "sell_road_rations",
+        label: "Sell road rations",
+        description: "Provide basic food for work or travel.",
+        serviceNeed: "food",
+        requiredItems: { road_ration: 1 },
+        rewardGold: 35,
+        satisfactionDelta: 2,
+        interactionVerb: "bag",
+        animationCue: "procedural_shelf_pick_bag",
+      },
+      {
+        offerId: "sell_repair_supplies",
+        label: "Sell repair supplies",
+        description: "Bundle small parts for a customer job.",
+        serviceNeed: "maintenance",
+        requiredItems: { repair_part: 1 },
+        rewardGold: 50,
+        satisfactionDelta: 2,
+        interactionVerb: "bundle",
+        animationCue: "procedural_parts_tray_wrap",
+      },
+      {
+        offerId: "broker_special_order",
+        label: "Broker special order",
+        description: "Take a paid request for hard-to-find goods.",
+        serviceNeed: "logistics",
+        requiredItems: { trade_goods: 1, ledger_page: 1 },
+        rewardGold: 95,
+        satisfactionDelta: 4,
+        interactionVerb: "broker",
+        animationCue: "procedural_ledger_note_handshake",
+      },
     ],
     askTemplates: [
-      { askId: "need_rations", line: "I need food that survives a rough road.", desiredOfferId: "sell_road_rations", patience: 76, difficulty: 1, rewardGold: 40, reputationDelta: 1, needDelta: 3, funAction: "Grab the right shelf item.", navGoal: "counterNodeId" },
-      { askId: "small_parts", line: "Do you have the parts before my hinge gives up?", desiredOfferId: "sell_repair_supplies", patience: 62, difficulty: 2, rewardGold: 55, reputationDelta: 1, needDelta: 3, funAction: "Bundle supplies quickly.", navGoal: "counterNodeId" },
-      { askId: "rare_order", line: "Can you find something the stalls do not carry?", desiredOfferId: "broker_special_order", patience: 58, difficulty: 3, rewardGold: 100, reputationDelta: 2, needDelta: 4, funAction: "Choose brokerage for a special request.", navGoal: "serviceNodeId" },
+      {
+        askId: "need_rations",
+        line: "I need food that survives a rough road.",
+        desiredOfferId: "sell_road_rations",
+        patience: 76,
+        difficulty: 1,
+        rewardGold: 40,
+        reputationDelta: 1,
+        needDelta: 3,
+        funAction: "Grab the right shelf item.",
+        navGoal: "counterNodeId",
+      },
+      {
+        askId: "small_parts",
+        line: "Do you have the parts before my hinge gives up?",
+        desiredOfferId: "sell_repair_supplies",
+        patience: 62,
+        difficulty: 2,
+        rewardGold: 55,
+        reputationDelta: 1,
+        needDelta: 3,
+        funAction: "Bundle supplies quickly.",
+        navGoal: "counterNodeId",
+      },
+      {
+        askId: "rare_order",
+        line: "Can you find something the stalls do not carry?",
+        desiredOfferId: "broker_special_order",
+        patience: 58,
+        difficulty: 3,
+        rewardGold: 100,
+        reputationDelta: 2,
+        needDelta: 4,
+        funAction: "Choose brokerage for a special request.",
+        navGoal: "serviceNodeId",
+      },
     ],
   }),
   hunter_wild_meat: definition({
@@ -2264,175 +4899,838 @@ export const HARTHMERE_BUSINESS_MINIGAME_DEFINITIONS_V1: Record<
     interfaceTitle: "Hunter Larder Counter",
     counterLabel: "Cold larder",
     customerGoal: "Customers buy meat, hides, and wildlife-control advice.",
-    ownerFunLoop: "Balance freshness, protected-species rules, and restaurant demand.",
+    ownerFunLoop:
+      "Balance freshness, protected-species rules, and restaurant demand.",
     scaleNoun: "hunting",
-    challengeGrowth: ["Fresh meat spoils.", "Protected jobs need permits.", "Restaurants ask for larger cuts.", "Branches need sustainable populations."],
-    dailyReturnTriggers: ["Wildlife migration.", "Meat spoilage warning.", "Restaurant rush."],
-    scalePath: ["Larder counter", "Cold storage", "Licensed hunting crew", "Regional provision network"],
-    empireReinforcement: ["Hunters feed restaurants and traders.", "Wildlife control improves safety.", "Branches secure local protein supply."],
+    challengeGrowth: [
+      "Fresh meat spoils.",
+      "Protected jobs need permits.",
+      "Restaurants ask for larger cuts.",
+      "Branches need sustainable populations.",
+    ],
+    dailyReturnTriggers: [
+      "Wildlife migration.",
+      "Meat spoilage warning.",
+      "Restaurant rush.",
+    ],
+    scalePath: [
+      "Larder counter",
+      "Cold storage",
+      "Licensed hunting crew",
+      "Regional provision network",
+    ],
+    empireReinforcement: [
+      "Hunters feed restaurants and traders.",
+      "Wildlife control improves safety.",
+      "Branches secure local protein supply.",
+    ],
     offers: [
-      { offerId: "sell_wild_meat", label: "Sell wild meat", description: "Hand over fresh meat for cooking.", serviceNeed: "food", requiredItems: { wild_meat: 1 }, rewardGold: 55, satisfactionDelta: 2, interactionVerb: "wrap", animationCue: "procedural_cold_wrap_handoff" },
-      { offerId: "prepare_hide_bundle", label: "Prepare hide bundle", description: "Bundle hides for crafting or repairs.", serviceNeed: "maintenance", requiredItems: { hide: 1 }, rewardGold: 65, satisfactionDelta: 2, interactionVerb: "bind", animationCue: "procedural_hide_roll_bind" },
-      { offerId: "wildlife_control_advice", label: "Give control advice", description: "Advise a customer on a nuisance population.", serviceNeed: "safety", requiredItems: { route_map: 1 }, rewardGold: 85, satisfactionDelta: 3, interactionVerb: "advise", animationCue: "procedural_track_mark_map" },
+      {
+        offerId: "sell_wild_meat",
+        label: "Sell wild meat",
+        description: "Hand over fresh meat for cooking.",
+        serviceNeed: "food",
+        requiredItems: { wild_meat: 1 },
+        rewardGold: 55,
+        satisfactionDelta: 2,
+        interactionVerb: "wrap",
+        animationCue: "procedural_cold_wrap_handoff",
+      },
+      {
+        offerId: "prepare_hide_bundle",
+        label: "Prepare hide bundle",
+        description: "Bundle hides for crafting or repairs.",
+        serviceNeed: "maintenance",
+        requiredItems: { hide: 1 },
+        rewardGold: 65,
+        satisfactionDelta: 2,
+        interactionVerb: "bind",
+        animationCue: "procedural_hide_roll_bind",
+      },
+      {
+        offerId: "wildlife_control_advice",
+        label: "Give control advice",
+        description: "Advise a customer on a nuisance population.",
+        serviceNeed: "safety",
+        requiredItems: { route_map: 1 },
+        rewardGold: 85,
+        satisfactionDelta: 3,
+        interactionVerb: "advise",
+        animationCue: "procedural_track_mark_map",
+      },
     ],
     askTemplates: [
-      { askId: "fresh_meat", line: "The stew wants something wild and fresh.", desiredOfferId: "sell_wild_meat", patience: 60, difficulty: 1, rewardGold: 60, reputationDelta: 1, needDelta: 3, funAction: "Serve fresh meat before it spoils.", navGoal: "counterNodeId" },
-      { askId: "need_hides", line: "My repair job needs tough hide, not cloth.", desiredOfferId: "prepare_hide_bundle", patience: 68, difficulty: 2, rewardGold: 70, reputationDelta: 1, needDelta: 3, funAction: "Pick hide supply over food.", navGoal: "counterNodeId" },
-      { askId: "yard_tracks", line: "Something keeps rooting up my yard. What is it?", desiredOfferId: "wildlife_control_advice", patience: 48, difficulty: 3, rewardGold: 90, reputationDelta: 2, needDelta: 4, funAction: "Use tracking knowledge.", navGoal: "serviceNodeId" },
+      {
+        askId: "fresh_meat",
+        line: "The stew wants something wild and fresh.",
+        desiredOfferId: "sell_wild_meat",
+        patience: 60,
+        difficulty: 1,
+        rewardGold: 60,
+        reputationDelta: 1,
+        needDelta: 3,
+        funAction: "Serve fresh meat before it spoils.",
+        navGoal: "counterNodeId",
+      },
+      {
+        askId: "need_hides",
+        line: "My repair job needs tough hide, not cloth.",
+        desiredOfferId: "prepare_hide_bundle",
+        patience: 68,
+        difficulty: 2,
+        rewardGold: 70,
+        reputationDelta: 1,
+        needDelta: 3,
+        funAction: "Pick hide supply over food.",
+        navGoal: "counterNodeId",
+      },
+      {
+        askId: "yard_tracks",
+        line: "Something keeps rooting up my yard. What is it?",
+        desiredOfferId: "wildlife_control_advice",
+        patience: 48,
+        difficulty: 3,
+        rewardGold: 90,
+        reputationDelta: 2,
+        needDelta: 4,
+        funAction: "Use tracking knowledge.",
+        navGoal: "serviceNodeId",
+      },
     ],
   }),
   medical_doctor: definition({
     typeId: "medical_doctor",
     interfaceTitle: "Clinic Triage Desk",
     counterLabel: "Treatment cot",
-    customerGoal: "Customers need triage, medicine, and treatment with trust consequences.",
-    ownerFunLoop: "Read symptoms, choose care level, spend medicine, and protect the clinic's trust streak.",
+    customerGoal:
+      "Customers need triage, medicine, and treatment with trust consequences.",
+    ownerFunLoop:
+      "Read symptoms, choose care level, spend medicine, and protect the clinic's trust streak.",
     scaleNoun: "clinic",
-    challengeGrowth: ["Higher severity lowers patience.", "Outbreak days create waves.", "Wrong care costs reputation.", "Branches need supply couriers and specialists."],
-    dailyReturnTriggers: ["Morning triage queue.", "Medicine stock alert.", "Outbreak-risk visitor."],
-    scalePath: ["Triage cot", "Treatment room", "Specialist clinic", "Regional health network"],
-    empireReinforcement: ["Clinics create demand for herbs, couriers, sanitation, and magic goods.", "High trust unlocks severe cases.", "Branches improve town health coverage."],
+    challengeGrowth: [
+      "Higher severity lowers patience.",
+      "Outbreak days create waves.",
+      "Wrong care costs reputation.",
+      "Branches need supply couriers and specialists.",
+    ],
+    dailyReturnTriggers: [
+      "Morning triage queue.",
+      "Medicine stock alert.",
+      "Outbreak-risk visitor.",
+    ],
+    scalePath: [
+      "Triage cot",
+      "Treatment room",
+      "Specialist clinic",
+      "Regional health network",
+    ],
+    empireReinforcement: [
+      "Clinics create demand for herbs, couriers, sanitation, and magic goods.",
+      "High trust unlocks severe cases.",
+      "Branches improve town health coverage.",
+    ],
     offers: [
-      { offerId: "basic_checkup", label: "Run checkup", description: "Diagnose a low-risk complaint.", serviceNeed: "health", requiredItems: { bandage: 1 }, rewardGold: 60, satisfactionDelta: 2, interactionVerb: "examine", animationCue: "procedural_pulse_check_clipboard" },
-      { offerId: "field_medkit_sale", label: "Issue medkit", description: "Prepare and sell field medical supplies.", serviceNeed: "health", requiredItems: { field_medkit: 1 }, rewardGold: 85, satisfactionDelta: 3, interactionVerb: "issue", animationCue: "procedural_medkit_open_close" },
-      { offerId: "urgent_treatment", label: "Treat urgent case", description: "Use medicine and supplies on a serious patient.", serviceNeed: "sanitation", requiredItems: { medicine: 1, field_medkit: 1 }, rewardGold: 135, satisfactionDelta: 4, interactionVerb: "treat", animationCue: "procedural_treatment_cot_work" },
+      {
+        offerId: "basic_checkup",
+        label: "Run checkup",
+        description: "Diagnose a low-risk complaint.",
+        serviceNeed: "health",
+        requiredItems: { bandage: 1 },
+        rewardGold: 60,
+        satisfactionDelta: 2,
+        interactionVerb: "examine",
+        animationCue: "procedural_pulse_check_clipboard",
+      },
+      {
+        offerId: "field_medkit_sale",
+        label: "Issue medkit",
+        description: "Prepare and sell field medical supplies.",
+        serviceNeed: "health",
+        requiredItems: { field_medkit: 1 },
+        rewardGold: 85,
+        satisfactionDelta: 3,
+        interactionVerb: "issue",
+        animationCue: "procedural_medkit_open_close",
+      },
+      {
+        offerId: "urgent_treatment",
+        label: "Treat urgent case",
+        description: "Use medicine and supplies on a serious patient.",
+        serviceNeed: "sanitation",
+        requiredItems: { medicine: 1, field_medkit: 1 },
+        rewardGold: 135,
+        satisfactionDelta: 4,
+        interactionVerb: "treat",
+        animationCue: "procedural_treatment_cot_work",
+      },
     ],
     askTemplates: [
-      { askId: "small_cut", line: "It is probably nothing, but it keeps glowing.", desiredOfferId: "basic_checkup", patience: 72, difficulty: 1, rewardGold: 65, reputationDelta: 1, needDelta: 3, funAction: "Triage low severity quickly.", navGoal: "serviceNodeId" },
-      { askId: "field_kit", line: "I need a kit before I go back outside.", desiredOfferId: "field_medkit_sale", patience: 58, difficulty: 2, rewardGold: 90, reputationDelta: 1, needDelta: 3, funAction: "Issue supplies, do not over-treat.", navGoal: "counterNodeId" },
-      { askId: "urgent_symptom", line: "My arm forgot which year it belongs to.", desiredOfferId: "urgent_treatment", patience: 34, difficulty: 4, rewardGold: 145, reputationDelta: 3, needDelta: 5, funAction: "Treat the high-risk case first.", navGoal: "serviceNodeId" },
+      {
+        askId: "small_cut",
+        line: "It is probably nothing, but it keeps glowing.",
+        desiredOfferId: "basic_checkup",
+        patience: 72,
+        difficulty: 1,
+        rewardGold: 65,
+        reputationDelta: 1,
+        needDelta: 3,
+        funAction: "Triage low severity quickly.",
+        navGoal: "serviceNodeId",
+      },
+      {
+        askId: "field_kit",
+        line: "I need a kit before I go back outside.",
+        desiredOfferId: "field_medkit_sale",
+        patience: 58,
+        difficulty: 2,
+        rewardGold: 90,
+        reputationDelta: 1,
+        needDelta: 3,
+        funAction: "Issue supplies, do not over-treat.",
+        navGoal: "counterNodeId",
+      },
+      {
+        askId: "urgent_symptom",
+        line: "My arm forgot which year it belongs to.",
+        desiredOfferId: "urgent_treatment",
+        patience: 34,
+        difficulty: 4,
+        rewardGold: 145,
+        reputationDelta: 3,
+        needDelta: 5,
+        funAction: "Treat the high-risk case first.",
+        navGoal: "serviceNodeId",
+      },
     ],
   }),
   teleport_owner: definition({
     typeId: "teleport_owner",
     interfaceTitle: "Teleport Access Desk",
     counterLabel: "Pad terminal",
-    customerGoal: "Customers need access keys, emergency returns, and pad stability checks.",
-    ownerFunLoop: "Match destination, fuel, and access rights while preventing unstable jumps.",
+    customerGoal:
+      "Customers need access keys, emergency returns, and pad stability checks.",
+    ownerFunLoop:
+      "Match destination, fuel, and access rights while preventing unstable jumps.",
     scaleNoun: "teleport pad",
-    challengeGrowth: ["Access keys expire.", "Fuel limits rush traffic.", "Destination mistakes hurt trust.", "Branches form private fast-travel networks."],
-    dailyReturnTriggers: ["Access renewal queue.", "Emergency return request.", "Pad stability decay."],
-    scalePath: ["Private pad", "Public key desk", "Emergency return service", "Regional teleport network"],
-    empireReinforcement: ["Teleport pads feed courier, medical, and travel demand.", "Reliable pads attract premium customers.", "Branches make empire logistics fast."],
+    challengeGrowth: [
+      "Access keys expire.",
+      "Fuel limits rush traffic.",
+      "Destination mistakes hurt trust.",
+      "Branches form private fast-travel networks.",
+    ],
+    dailyReturnTriggers: [
+      "Access renewal queue.",
+      "Emergency return request.",
+      "Pad stability decay.",
+    ],
+    scalePath: [
+      "Private pad",
+      "Public key desk",
+      "Emergency return service",
+      "Regional teleport network",
+    ],
+    empireReinforcement: [
+      "Teleport pads feed courier, medical, and travel demand.",
+      "Reliable pads attract premium customers.",
+      "Branches make empire logistics fast.",
+    ],
     offers: [
-      { offerId: "issue_access_token", label: "Issue access token", description: "Grant a customer temporary pad access.", serviceNeed: "travel", requiredItems: { teleport_token: 1 }, rewardGold: 85, satisfactionDelta: 3, interactionVerb: "key", animationCue: "procedural_token_press_palm" },
-      { offerId: "emergency_return", label: "Prepare emergency return", description: "Sell a safer return jump with extra fuel checks.", serviceNeed: "health", requiredItems: { emergency_return: 1, teleport_fuel: 1 }, rewardGold: 130, satisfactionDelta: 4, interactionVerb: "anchor", animationCue: "procedural_return_anchor_calibrate" },
-      { offerId: "pad_stability_check", label: "Check pad stability", description: "Calibrate destination and stability before travel.", serviceNeed: "logistics", requiredItems: { destination_crystal: 1 }, rewardGold: 100, satisfactionDelta: 3, interactionVerb: "stabilize", animationCue: "procedural_pad_ring_spin_check" },
+      {
+        offerId: "issue_access_token",
+        label: "Issue access token",
+        description: "Grant a customer temporary pad access.",
+        serviceNeed: "travel",
+        requiredItems: { teleport_token: 1 },
+        rewardGold: 85,
+        satisfactionDelta: 3,
+        interactionVerb: "key",
+        animationCue: "procedural_token_press_palm",
+      },
+      {
+        offerId: "emergency_return",
+        label: "Prepare emergency return",
+        description: "Sell a safer return jump with extra fuel checks.",
+        serviceNeed: "health",
+        requiredItems: { emergency_return: 1, teleport_fuel: 1 },
+        rewardGold: 130,
+        satisfactionDelta: 4,
+        interactionVerb: "anchor",
+        animationCue: "procedural_return_anchor_calibrate",
+      },
+      {
+        offerId: "pad_stability_check",
+        label: "Check pad stability",
+        description: "Calibrate destination and stability before travel.",
+        serviceNeed: "logistics",
+        requiredItems: { destination_crystal: 1 },
+        rewardGold: 100,
+        satisfactionDelta: 3,
+        interactionVerb: "stabilize",
+        animationCue: "procedural_pad_ring_spin_check",
+      },
     ],
     askTemplates: [
-      { askId: "need_key", line: "Can I get a key that works until tomorrow?", desiredOfferId: "issue_access_token", patience: 64, difficulty: 1, rewardGold: 90, reputationDelta: 1, needDelta: 3, funAction: "Issue access quickly.", navGoal: "counterNodeId" },
-      { askId: "panic_return", line: "If the road goes bad, I need to come home instantly.", desiredOfferId: "emergency_return", patience: 42, difficulty: 3, rewardGold: 140, reputationDelta: 2, needDelta: 4, funAction: "Prepare emergency return, not a basic key.", navGoal: "serviceNodeId" },
-      { askId: "pad_feels_wrong", line: "The pad is humming on the wrong side of my teeth.", desiredOfferId: "pad_stability_check", patience: 52, difficulty: 3, rewardGold: 105, reputationDelta: 2, needDelta: 4, funAction: "Calibrate before travel.", navGoal: "serviceNodeId" },
+      {
+        askId: "need_key",
+        line: "Can I get a key that works until tomorrow?",
+        desiredOfferId: "issue_access_token",
+        patience: 64,
+        difficulty: 1,
+        rewardGold: 90,
+        reputationDelta: 1,
+        needDelta: 3,
+        funAction: "Issue access quickly.",
+        navGoal: "counterNodeId",
+      },
+      {
+        askId: "panic_return",
+        line: "If the road goes bad, I need to come home instantly.",
+        desiredOfferId: "emergency_return",
+        patience: 42,
+        difficulty: 3,
+        rewardGold: 140,
+        reputationDelta: 2,
+        needDelta: 4,
+        funAction: "Prepare emergency return, not a basic key.",
+        navGoal: "serviceNodeId",
+      },
+      {
+        askId: "pad_feels_wrong",
+        line: "The pad is humming on the wrong side of my teeth.",
+        desiredOfferId: "pad_stability_check",
+        patience: 52,
+        difficulty: 3,
+        rewardGold: 105,
+        reputationDelta: 2,
+        needDelta: 4,
+        funAction: "Calibrate before travel.",
+        navGoal: "serviceNodeId",
+      },
     ],
   }),
   waste_sanitation_cleanup: definition({
     typeId: "waste_sanitation_cleanup",
     interfaceTitle: "Sanitation Dispatch Counter",
     counterLabel: "Cleanup board",
-    customerGoal: "Customers request pickup, decontamination, and clean certificates.",
-    ownerFunLoop: "Classify waste, spend cleaning stock, and prevent health penalties.",
+    customerGoal:
+      "Customers request pickup, decontamination, and clean certificates.",
+    ownerFunLoop:
+      "Classify waste, spend cleaning stock, and prevent health penalties.",
     scaleNoun: "cleanup",
-    challengeGrowth: ["Contamination severity rises.", "Restaurants and clinics demand fast pickup.", "Wrong handling hurts sanitation.", "Branches need routes and processing."],
-    dailyReturnTriggers: ["Waste accumulation tick.", "Inspection deadline.", "Outbreak warning."],
-    scalePath: ["Pickup counter", "Hazard crew", "Processing yard", "Regional sanitation authority"],
-    empireReinforcement: ["Sanitation keeps restaurants, clinics, refineries, and inns open.", "Clean records increase town trust.", "Branches prevent regional outbreaks."],
+    challengeGrowth: [
+      "Contamination severity rises.",
+      "Restaurants and clinics demand fast pickup.",
+      "Wrong handling hurts sanitation.",
+      "Branches need routes and processing.",
+    ],
+    dailyReturnTriggers: [
+      "Waste accumulation tick.",
+      "Inspection deadline.",
+      "Outbreak warning.",
+    ],
+    scalePath: [
+      "Pickup counter",
+      "Hazard crew",
+      "Processing yard",
+      "Regional sanitation authority",
+    ],
+    empireReinforcement: [
+      "Sanitation keeps restaurants, clinics, refineries, and inns open.",
+      "Clean records increase town trust.",
+      "Branches prevent regional outbreaks.",
+    ],
     offers: [
-      { offerId: "trash_pickup", label: "Schedule pickup", description: "Take a standard trash pickup order.", serviceNeed: "sanitation", requiredItems: { containment_barrel: 1 }, rewardGold: 55, satisfactionDelta: 2, interactionVerb: "schedule", animationCue: "procedural_cleanup_ticket_clip" },
-      { offerId: "decontam_kit", label: "Apply decontam kit", description: "Neutralize a small contamination sample.", serviceNeed: "health", requiredItems: { cleaning_reagent: 1, containment_barrel: 1 }, rewardGold: 95, satisfactionDelta: 3, interactionVerb: "neutralize", animationCue: "procedural_spray_seal_barrel" },
-      { offerId: "clean_certificate", label: "Issue clean certificate", description: "Verify a business is safe for inspection.", serviceNeed: "timeline_stability", requiredItems: { clean_certificate: 1 }, rewardGold: 110, satisfactionDelta: 4, interactionVerb: "certify", animationCue: "procedural_stamp_clean_certificate" },
+      {
+        offerId: "trash_pickup",
+        label: "Schedule pickup",
+        description: "Take a standard trash pickup order.",
+        serviceNeed: "sanitation",
+        requiredItems: { containment_barrel: 1 },
+        rewardGold: 55,
+        satisfactionDelta: 2,
+        interactionVerb: "schedule",
+        animationCue: "procedural_cleanup_ticket_clip",
+      },
+      {
+        offerId: "decontam_kit",
+        label: "Apply decontam kit",
+        description: "Neutralize a small contamination sample.",
+        serviceNeed: "health",
+        requiredItems: { cleaning_reagent: 1, containment_barrel: 1 },
+        rewardGold: 95,
+        satisfactionDelta: 3,
+        interactionVerb: "neutralize",
+        animationCue: "procedural_spray_seal_barrel",
+      },
+      {
+        offerId: "clean_certificate",
+        label: "Issue clean certificate",
+        description: "Verify a business is safe for inspection.",
+        serviceNeed: "timeline_stability",
+        requiredItems: { clean_certificate: 1 },
+        rewardGold: 110,
+        satisfactionDelta: 4,
+        interactionVerb: "certify",
+        animationCue: "procedural_stamp_clean_certificate",
+      },
     ],
     askTemplates: [
-      { askId: "barrel_pickup", line: "I need this barrel gone before customers smell it.", desiredOfferId: "trash_pickup", patience: 58, difficulty: 1, rewardGold: 60, reputationDelta: 1, needDelta: 3, funAction: "Schedule the simple pickup.", navGoal: "counterNodeId" },
-      { askId: "sample_hisses", line: "The sample hisses when I apologize to it.", desiredOfferId: "decontam_kit", patience: 40, difficulty: 4, rewardGold: 100, reputationDelta: 2, needDelta: 5, funAction: "Use decontam for hazardous waste.", navGoal: "serviceNodeId" },
-      { askId: "inspection_today", line: "The inspector comes today. I need clean papers.", desiredOfferId: "clean_certificate", patience: 50, difficulty: 3, rewardGold: 115, reputationDelta: 2, needDelta: 4, funAction: "Certify after checking stock.", navGoal: "counterNodeId" },
+      {
+        askId: "barrel_pickup",
+        line: "I need this barrel gone before customers smell it.",
+        desiredOfferId: "trash_pickup",
+        patience: 58,
+        difficulty: 1,
+        rewardGold: 60,
+        reputationDelta: 1,
+        needDelta: 3,
+        funAction: "Schedule the simple pickup.",
+        navGoal: "counterNodeId",
+      },
+      {
+        askId: "sample_hisses",
+        line: "The sample hisses when I apologize to it.",
+        desiredOfferId: "decontam_kit",
+        patience: 40,
+        difficulty: 4,
+        rewardGold: 100,
+        reputationDelta: 2,
+        needDelta: 5,
+        funAction: "Use decontam for hazardous waste.",
+        navGoal: "serviceNodeId",
+      },
+      {
+        askId: "inspection_today",
+        line: "The inspector comes today. I need clean papers.",
+        desiredOfferId: "clean_certificate",
+        patience: 50,
+        difficulty: 3,
+        rewardGold: 115,
+        reputationDelta: 2,
+        needDelta: 4,
+        funAction: "Certify after checking stock.",
+        navGoal: "counterNodeId",
+      },
     ],
   }),
   repair_maintenance_person: definition({
     typeId: "repair_maintenance_person",
     interfaceTitle: "Handyman Service Counter",
     counterLabel: "Fix-it bench",
-    customerGoal: "Customers bring broken fixtures, furniture, and tiny emergencies.",
-    ownerFunLoop: "Identify the object, choose parts, and finish fast enough to earn trust.",
+    customerGoal:
+      "Customers bring broken fixtures, furniture, and tiny emergencies.",
+    ownerFunLoop:
+      "Identify the object, choose parts, and finish fast enough to earn trust.",
     scaleNoun: "repair",
-    challengeGrowth: ["More objects arrive at once.", "Urgent repairs have lower patience.", "Higher tiers need specialty parts.", "Branches need scheduled crews."],
-    dailyReturnTriggers: ["Object decay reports.", "Inn repair board.", "Rush repair visitor."],
-    scalePath: ["Tool belt", "Repair bench", "Facilities crew", "Regional maintenance brand"],
-    empireReinforcement: ["Repair keeps every business functional.", "Fast fixes improve property condition.", "Branches create subscription contracts."],
+    challengeGrowth: [
+      "More objects arrive at once.",
+      "Urgent repairs have lower patience.",
+      "Higher tiers need specialty parts.",
+      "Branches need scheduled crews.",
+    ],
+    dailyReturnTriggers: [
+      "Object decay reports.",
+      "Inn repair board.",
+      "Rush repair visitor.",
+    ],
+    scalePath: [
+      "Tool belt",
+      "Repair bench",
+      "Facilities crew",
+      "Regional maintenance brand",
+    ],
+    empireReinforcement: [
+      "Repair keeps every business functional.",
+      "Fast fixes improve property condition.",
+      "Branches create subscription contracts.",
+    ],
     offers: [
-      { offerId: "fixture_fix", label: "Fix fixture", description: "Repair a door, hinge, shelf, or small machine.", serviceNeed: "maintenance", requiredItems: { nails: 1, repair_tool: 1 }, rewardGold: 50, satisfactionDelta: 2, interactionVerb: "tighten", animationCue: "procedural_wrench_tighten_fixture" },
-      { offerId: "furniture_patch", label: "Patch furniture", description: "Use wood and fasteners on a worn object.", serviceNeed: "housing", requiredItems: { wood_plank: 1, nails: 1 }, rewardGold: 65, satisfactionDelta: 3, interactionVerb: "patch", animationCue: "procedural_hammer_patch_board" },
-      { offerId: "urgent_service_call", label: "Book urgent call", description: "Dispatch the owner or worker to an emergency fix.", serviceNeed: "property_condition", requiredItems: { repair_part: 1, metal_part: 1 }, rewardGold: 95, satisfactionDelta: 4, interactionVerb: "dispatch", animationCue: "procedural_toolbag_snap_dispatch" },
+      {
+        offerId: "fixture_fix",
+        label: "Fix fixture",
+        description: "Repair a door, hinge, shelf, or small machine.",
+        serviceNeed: "maintenance",
+        requiredItems: { nails: 1, repair_tool: 1 },
+        rewardGold: 50,
+        satisfactionDelta: 2,
+        interactionVerb: "tighten",
+        animationCue: "procedural_wrench_tighten_fixture",
+      },
+      {
+        offerId: "furniture_patch",
+        label: "Patch furniture",
+        description: "Use wood and fasteners on a worn object.",
+        serviceNeed: "housing",
+        requiredItems: { wood_plank: 1, nails: 1 },
+        rewardGold: 65,
+        satisfactionDelta: 3,
+        interactionVerb: "patch",
+        animationCue: "procedural_hammer_patch_board",
+      },
+      {
+        offerId: "urgent_service_call",
+        label: "Book urgent call",
+        description: "Dispatch the owner or worker to an emergency fix.",
+        serviceNeed: "property_condition",
+        requiredItems: { repair_part: 1, metal_part: 1 },
+        rewardGold: 95,
+        satisfactionDelta: 4,
+        interactionVerb: "dispatch",
+        animationCue: "procedural_toolbag_snap_dispatch",
+      },
     ],
     askTemplates: [
-      { askId: "door_screams", line: "My door screams louder than my guests.", desiredOfferId: "fixture_fix", patience: 68, difficulty: 1, rewardGold: 55, reputationDelta: 1, needDelta: 3, funAction: "Fix the simple fixture.", navGoal: "serviceNodeId" },
-      { askId: "chair_split", line: "This chair split right before dinner.", desiredOfferId: "furniture_patch", patience: 52, difficulty: 2, rewardGold: 70, reputationDelta: 1, needDelta: 3, funAction: "Patch furniture with wood.", navGoal: "serviceNodeId" },
-      { askId: "pipe_burst", line: "Water is coming through the ceiling right now.", desiredOfferId: "urgent_service_call", patience: 30, difficulty: 4, rewardGold: 100, reputationDelta: 2, needDelta: 5, funAction: "Dispatch urgent service under pressure.", navGoal: "counterNodeId" },
+      {
+        askId: "door_screams",
+        line: "My door screams louder than my guests.",
+        desiredOfferId: "fixture_fix",
+        patience: 68,
+        difficulty: 1,
+        rewardGold: 55,
+        reputationDelta: 1,
+        needDelta: 3,
+        funAction: "Fix the simple fixture.",
+        navGoal: "serviceNodeId",
+      },
+      {
+        askId: "chair_split",
+        line: "This chair split right before dinner.",
+        desiredOfferId: "furniture_patch",
+        patience: 52,
+        difficulty: 2,
+        rewardGold: 70,
+        reputationDelta: 1,
+        needDelta: 3,
+        funAction: "Patch furniture with wood.",
+        navGoal: "serviceNodeId",
+      },
+      {
+        askId: "pipe_burst",
+        line: "Water is coming through the ceiling right now.",
+        desiredOfferId: "urgent_service_call",
+        patience: 30,
+        difficulty: 4,
+        rewardGold: 100,
+        reputationDelta: 2,
+        needDelta: 5,
+        funAction: "Dispatch urgent service under pressure.",
+        navGoal: "counterNodeId",
+      },
     ],
   }),
   food_service_restaurant: definition({
     typeId: "food_service_restaurant",
     interfaceTitle: "Restaurant Service Line",
     counterLabel: "Pass window",
-    customerGoal: "Customers want meals, rations, and healing food with freshness expectations.",
-    ownerFunLoop: "Read the appetite, pick the dish, spend stock, and keep the rush streak going.",
+    customerGoal:
+      "Customers want meals, rations, and healing food with freshness expectations.",
+    ownerFunLoop:
+      "Read the appetite, pick the dish, spend stock, and keep the rush streak going.",
     scaleNoun: "restaurant",
-    challengeGrowth: ["Meal rushes increase queue size.", "Ingredient shortages force tradeoffs.", "Sanitation affects patience.", "Branches need supply contracts."],
-    dailyReturnTriggers: ["Lunch rush.", "Fresh ingredient delivery.", "Festival catering spike."],
-    scalePath: ["Food cart", "Dining counter", "Catering kitchen", "Regional restaurant group"],
-    empireReinforcement: ["Restaurants consume farm, hunter, trader, and sanitation services.", "Food buffs drive daily returns.", "Branches stabilize town food happiness."],
+    challengeGrowth: [
+      "Meal rushes increase queue size.",
+      "Ingredient shortages force tradeoffs.",
+      "Sanitation affects patience.",
+      "Branches need supply contracts.",
+    ],
+    dailyReturnTriggers: [
+      "Lunch rush.",
+      "Fresh ingredient delivery.",
+      "Festival catering spike.",
+    ],
+    scalePath: [
+      "Food cart",
+      "Dining counter",
+      "Catering kitchen",
+      "Regional restaurant group",
+    ],
+    empireReinforcement: [
+      "Restaurants consume farm, hunter, trader, and sanitation services.",
+      "Food buffs drive daily returns.",
+      "Branches stabilize town food happiness.",
+    ],
     offers: [
-      { offerId: "serve_worker_meal", label: "Serve worker meal", description: "Plate a reliable hot meal.", serviceNeed: "food", requiredItems: { worker_meal: 1 }, rewardGold: 35, satisfactionDelta: 2, interactionVerb: "plate", animationCue: "procedural_plate_slide_counter" },
-      { offerId: "pack_road_ration", label: "Pack road ration", description: "Wrap travel food for a customer on the move.", serviceNeed: "tourism", requiredItems: { road_ration: 1 }, rewardGold: 45, satisfactionDelta: 2, interactionVerb: "wrap", animationCue: "procedural_ration_wrap_tie" },
-      { offerId: "serve_healing_soup", label: "Serve healing soup", description: "Serve a restorative dish using rarer stock.", serviceNeed: "health", requiredItems: { healing_soup: 1 }, rewardGold: 75, satisfactionDelta: 4, interactionVerb: "ladle", animationCue: "procedural_soup_ladle_steam" },
+      {
+        offerId: "serve_worker_meal",
+        label: "Serve worker meal",
+        description: "Plate a reliable hot meal.",
+        serviceNeed: "food",
+        requiredItems: { worker_meal: 1 },
+        rewardGold: 35,
+        satisfactionDelta: 2,
+        interactionVerb: "plate",
+        animationCue: "procedural_plate_slide_counter",
+      },
+      {
+        offerId: "pack_road_ration",
+        label: "Pack road ration",
+        description: "Wrap travel food for a customer on the move.",
+        serviceNeed: "tourism",
+        requiredItems: { road_ration: 1 },
+        rewardGold: 45,
+        satisfactionDelta: 2,
+        interactionVerb: "wrap",
+        animationCue: "procedural_ration_wrap_tie",
+      },
+      {
+        offerId: "serve_healing_soup",
+        label: "Serve healing soup",
+        description: "Serve a restorative dish using rarer stock.",
+        serviceNeed: "health",
+        requiredItems: { healing_soup: 1 },
+        rewardGold: 75,
+        satisfactionDelta: 4,
+        interactionVerb: "ladle",
+        animationCue: "procedural_soup_ladle_steam",
+      },
     ],
     askTemplates: [
-      { askId: "hot_meal", line: "I need something hot before my shift starts.", desiredOfferId: "serve_worker_meal", patience: 46, difficulty: 1, rewardGold: 40, reputationDelta: 1, needDelta: 3, funAction: "Plate fast and keep the rush moving.", navGoal: "counterNodeId" },
-      { askId: "travel_food", line: "Pack me food that survives the road.", desiredOfferId: "pack_road_ration", patience: 56, difficulty: 2, rewardGold: 50, reputationDelta: 1, needDelta: 3, funAction: "Choose ration over fresh meal.", navGoal: "counterNodeId" },
-      { askId: "feel_awful", line: "Do you have the soup that makes bones stop arguing?", desiredOfferId: "serve_healing_soup", patience: 42, difficulty: 3, rewardGold: 80, reputationDelta: 2, needDelta: 4, funAction: "Use premium healing stock.", navGoal: "serviceNodeId" },
+      {
+        askId: "hot_meal",
+        line: "I need something hot before my shift starts.",
+        desiredOfferId: "serve_worker_meal",
+        patience: 46,
+        difficulty: 1,
+        rewardGold: 40,
+        reputationDelta: 1,
+        needDelta: 3,
+        funAction: "Plate fast and keep the rush moving.",
+        navGoal: "counterNodeId",
+      },
+      {
+        askId: "travel_food",
+        line: "Pack me food that survives the road.",
+        desiredOfferId: "pack_road_ration",
+        patience: 56,
+        difficulty: 2,
+        rewardGold: 50,
+        reputationDelta: 1,
+        needDelta: 3,
+        funAction: "Choose ration over fresh meal.",
+        navGoal: "counterNodeId",
+      },
+      {
+        askId: "feel_awful",
+        line: "Do you have the soup that makes bones stop arguing?",
+        desiredOfferId: "serve_healing_soup",
+        patience: 42,
+        difficulty: 3,
+        rewardGold: 80,
+        reputationDelta: 2,
+        needDelta: 4,
+        funAction: "Use premium healing stock.",
+        navGoal: "serviceNodeId",
+      },
     ],
   }),
   courier: definition({
     typeId: "courier",
     interfaceTitle: "Courier Dispatch Desk",
     counterLabel: "Parcel scale",
-    customerGoal: "Customers need packages, medicine, and locked items delivered on time.",
-    ownerFunLoop: "Read deadline and fragility, choose the right delivery product, and protect trust.",
+    customerGoal:
+      "Customers need packages, medicine, and locked items delivered on time.",
+    ownerFunLoop:
+      "Read deadline and fragility, choose the right delivery product, and protect trust.",
     scaleNoun: "courier route",
-    challengeGrowth: ["Deadlines shrink.", "Fragile cargo punishes errors.", "More locations mean route batching.", "Branches need dispatch managers."],
-    dailyReturnTriggers: ["Morning delivery board.", "Timed medicine run.", "Courier returns with proof slips."],
-    scalePath: ["Runner satchel", "Dispatch desk", "Route office", "Regional courier empire"],
-    empireReinforcement: ["Couriers connect every business supply chain.", "Reliable delivery raises cross-business throughput.", "Branches let the empire operate across towns."],
+    challengeGrowth: [
+      "Deadlines shrink.",
+      "Fragile cargo punishes errors.",
+      "More locations mean route batching.",
+      "Branches need dispatch managers.",
+    ],
+    dailyReturnTriggers: [
+      "Morning delivery board.",
+      "Timed medicine run.",
+      "Courier returns with proof slips.",
+    ],
+    scalePath: [
+      "Runner satchel",
+      "Dispatch desk",
+      "Route office",
+      "Regional courier empire",
+    ],
+    empireReinforcement: [
+      "Couriers connect every business supply chain.",
+      "Reliable delivery raises cross-business throughput.",
+      "Branches let the empire operate across towns.",
+    ],
     offers: [
-      { offerId: "standard_parcel", label: "Accept parcel", description: "Take a standard package with a proof slip.", serviceNeed: "logistics", requiredItems: { parcel: 1 }, rewardGold: 45, satisfactionDelta: 2, interactionVerb: "weigh", animationCue: "procedural_parcel_weigh_tag" },
-      { offerId: "locked_delivery", label: "Accept locked delivery", description: "Seal a valuable lockbox delivery.", serviceNeed: "travel", requiredItems: { lockbox: 1 }, rewardGold: 75, satisfactionDelta: 3, interactionVerb: "seal", animationCue: "procedural_lockbox_seal_check" },
-      { offerId: "medicine_run", label: "Book medicine run", description: "Prioritize a medical or food delivery.", serviceNeed: "health", requiredItems: { sealed_package: 1, route_map: 1 }, rewardGold: 95, satisfactionDelta: 4, interactionVerb: "dispatch", animationCue: "procedural_route_stamp_runner_wave" },
+      {
+        offerId: "standard_parcel",
+        label: "Accept parcel",
+        description: "Take a standard package with a proof slip.",
+        serviceNeed: "logistics",
+        requiredItems: { parcel: 1 },
+        rewardGold: 45,
+        satisfactionDelta: 2,
+        interactionVerb: "weigh",
+        animationCue: "procedural_parcel_weigh_tag",
+      },
+      {
+        offerId: "locked_delivery",
+        label: "Accept locked delivery",
+        description: "Seal a valuable lockbox delivery.",
+        serviceNeed: "travel",
+        requiredItems: { lockbox: 1 },
+        rewardGold: 75,
+        satisfactionDelta: 3,
+        interactionVerb: "seal",
+        animationCue: "procedural_lockbox_seal_check",
+      },
+      {
+        offerId: "medicine_run",
+        label: "Book medicine run",
+        description: "Prioritize a medical or food delivery.",
+        serviceNeed: "health",
+        requiredItems: { sealed_package: 1, route_map: 1 },
+        rewardGold: 95,
+        satisfactionDelta: 4,
+        interactionVerb: "dispatch",
+        animationCue: "procedural_route_stamp_runner_wave",
+      },
     ],
     askTemplates: [
-      { askId: "simple_package", line: "Can you get this parcel across town by evening?", desiredOfferId: "standard_parcel", patience: 66, difficulty: 1, rewardGold: 50, reputationDelta: 1, needDelta: 3, funAction: "Weigh and tag the parcel.", navGoal: "counterNodeId" },
-      { askId: "valuable_lockbox", line: "This box needs a route that keeps hands off it.", desiredOfferId: "locked_delivery", patience: 54, difficulty: 3, rewardGold: 80, reputationDelta: 2, needDelta: 4, funAction: "Choose locked service.", navGoal: "counterNodeId" },
-      { askId: "medicine_deadline", line: "The clinic needs this before the fever climbs.", desiredOfferId: "medicine_run", patience: 32, difficulty: 4, rewardGold: 100, reputationDelta: 3, needDelta: 5, funAction: "Prioritize medicine under a short timer.", navGoal: "serviceNodeId" },
+      {
+        askId: "simple_package",
+        line: "Can you get this parcel across town by evening?",
+        desiredOfferId: "standard_parcel",
+        patience: 66,
+        difficulty: 1,
+        rewardGold: 50,
+        reputationDelta: 1,
+        needDelta: 3,
+        funAction: "Weigh and tag the parcel.",
+        navGoal: "counterNodeId",
+      },
+      {
+        askId: "valuable_lockbox",
+        line: "This box needs a route that keeps hands off it.",
+        desiredOfferId: "locked_delivery",
+        patience: 54,
+        difficulty: 3,
+        rewardGold: 80,
+        reputationDelta: 2,
+        needDelta: 4,
+        funAction: "Choose locked service.",
+        navGoal: "counterNodeId",
+      },
+      {
+        askId: "medicine_deadline",
+        line: "The clinic needs this before the fever climbs.",
+        desiredOfferId: "medicine_run",
+        patience: 32,
+        difficulty: 4,
+        rewardGold: 100,
+        reputationDelta: 3,
+        needDelta: 5,
+        funAction: "Prioritize medicine under a short timer.",
+        navGoal: "serviceNodeId",
+      },
     ],
   }),
   hospitality_inn_hotel_shelter: definition({
     typeId: "hospitality_inn_hotel_shelter",
     interfaceTitle: "Inn Front Desk",
     counterLabel: "Room ledger",
-    customerGoal: "Customers want rooms, shelter beds, safe stays, and simple food.",
-    ownerFunLoop: "Match room type, food, and safety need while keeping occupancy and cleanliness healthy.",
+    customerGoal:
+      "Customers want rooms, shelter beds, safe stays, and simple food.",
+    ownerFunLoop:
+      "Match room type, food, and safety need while keeping occupancy and cleanliness healthy.",
     scaleNoun: "lodging",
-    challengeGrowth: ["Occupancy increases cleaning pressure.", "VIP guests demand better rooms.", "Shelter waves trade profit for civic trust.", "Branches need staff and food supply."],
-    dailyReturnTriggers: ["Guest checkout report.", "Room cleaning alert.", "Rare VIP traveler."],
-    scalePath: ["Common room", "Room ledger", "Full inn", "Regional hospitality chain"],
-    empireReinforcement: ["Inns consume food, sanitation, repair, and security services.", "Good stays improve tourism.", "Branches become player travel hubs."],
+    challengeGrowth: [
+      "Occupancy increases cleaning pressure.",
+      "VIP guests demand better rooms.",
+      "Shelter waves trade profit for civic trust.",
+      "Branches need staff and food supply.",
+    ],
+    dailyReturnTriggers: [
+      "Guest checkout report.",
+      "Room cleaning alert.",
+      "Rare VIP traveler.",
+    ],
+    scalePath: [
+      "Common room",
+      "Room ledger",
+      "Full inn",
+      "Regional hospitality chain",
+    ],
+    empireReinforcement: [
+      "Inns consume food, sanitation, repair, and security services.",
+      "Good stays improve tourism.",
+      "Branches become player travel hubs.",
+    ],
     offers: [
-      { offerId: "book_basic_room", label: "Book basic room", description: "Assign a clean room for one stay.", serviceNeed: "housing", requiredItems: { linen: 1 }, rewardGold: 65, satisfactionDelta: 3, interactionVerb: "key", animationCue: "procedural_room_key_handoff" },
-      { offerId: "offer_shelter_bed", label: "Offer shelter bed", description: "Provide a safe emergency bed.", serviceNeed: "safety", requiredItems: { clean_water: 1 }, rewardGold: 45, satisfactionDelta: 4, interactionVerb: "guide", animationCue: "procedural_point_to_bed_ledger" },
-      { offerId: "guest_meal_bundle", label: "Bundle room meal", description: "Pair lodging with a meal for tired travelers.", serviceNeed: "food", requiredItems: { linen: 1, worker_meal: 1 }, rewardGold: 95, satisfactionDelta: 4, interactionVerb: "host", animationCue: "procedural_key_and_plate_combo" },
+      {
+        offerId: "book_basic_room",
+        label: "Book basic room",
+        description: "Assign a clean room for one stay.",
+        serviceNeed: "housing",
+        requiredItems: { linen: 1 },
+        rewardGold: 65,
+        satisfactionDelta: 3,
+        interactionVerb: "key",
+        animationCue: "procedural_room_key_handoff",
+      },
+      {
+        offerId: "offer_shelter_bed",
+        label: "Offer shelter bed",
+        description: "Provide a safe emergency bed.",
+        serviceNeed: "safety",
+        requiredItems: { clean_water: 1 },
+        rewardGold: 45,
+        satisfactionDelta: 4,
+        interactionVerb: "guide",
+        animationCue: "procedural_point_to_bed_ledger",
+      },
+      {
+        offerId: "guest_meal_bundle",
+        label: "Bundle room meal",
+        description: "Pair lodging with a meal for tired travelers.",
+        serviceNeed: "food",
+        requiredItems: { linen: 1, worker_meal: 1 },
+        rewardGold: 95,
+        satisfactionDelta: 4,
+        interactionVerb: "host",
+        animationCue: "procedural_key_and_plate_combo",
+      },
     ],
     askTemplates: [
-      { askId: "need_room", line: "One clean room and no surprises, please.", desiredOfferId: "book_basic_room", patience: 72, difficulty: 1, rewardGold: 70, reputationDelta: 1, needDelta: 3, funAction: "Assign a room from the ledger.", navGoal: "counterNodeId" },
-      { askId: "need_safe_bed", line: "I just need somewhere safe until morning.", desiredOfferId: "offer_shelter_bed", patience: 50, difficulty: 2, rewardGold: 50, reputationDelta: 2, needDelta: 4, funAction: "Choose shelter over room profit.", navGoal: "serviceNodeId" },
-      { askId: "room_and_meal", line: "If I sleep before eating, I may become furniture.", desiredOfferId: "guest_meal_bundle", patience: 44, difficulty: 3, rewardGold: 100, reputationDelta: 2, needDelta: 5, funAction: "Bundle lodging and food.", navGoal: "counterNodeId" },
+      {
+        askId: "need_room",
+        line: "One clean room and no surprises, please.",
+        desiredOfferId: "book_basic_room",
+        patience: 72,
+        difficulty: 1,
+        rewardGold: 70,
+        reputationDelta: 1,
+        needDelta: 3,
+        funAction: "Assign a room from the ledger.",
+        navGoal: "counterNodeId",
+      },
+      {
+        askId: "need_safe_bed",
+        line: "I just need somewhere safe until morning.",
+        desiredOfferId: "offer_shelter_bed",
+        patience: 50,
+        difficulty: 2,
+        rewardGold: 50,
+        reputationDelta: 2,
+        needDelta: 4,
+        funAction: "Choose shelter over room profit.",
+        navGoal: "serviceNodeId",
+      },
+      {
+        askId: "room_and_meal",
+        line: "If I sleep before eating, I may become furniture.",
+        desiredOfferId: "guest_meal_bundle",
+        patience: 44,
+        difficulty: 3,
+        rewardGold: 100,
+        reputationDelta: 2,
+        needDelta: 5,
+        funAction: "Bundle lodging and food.",
+        navGoal: "counterNodeId",
+      },
     ],
   }),
 };
@@ -2505,40 +5803,62 @@ function serviceItemDisplayNameV1(itemId: string) {
 }
 
 function serviceItemRoleV1(itemId: string): HarthmereBusinessServiceItemRoleV1 {
-  if (/certificate|form|ledger|blueprint|map|token|contract/.test(itemId)) return "paperwork";
+  if (/certificate|form|ledger|blueprint|map|token|contract/.test(itemId))
+    return "paperwork";
   if (/barrel|lockbox|package|parcel|kit|box/.test(itemId)) return "container";
   if (/tool|scanner|whetstone|lens|nails|part/.test(itemId)) return "tool";
-  if (/meal|ration|soup|water|medicine|bandage|potion|food|meat|crop|herb/.test(itemId)) return "consumable";
+  if (
+    /meal|ration|soup|water|medicine|bandage|potion|food|meat|crop|herb/.test(
+      itemId
+    )
+  )
+    return "consumable";
   if (/spent|waste/.test(itemId)) return "waste";
-  if (/fuel|charm|ward|decor|design|package|goods|flare|linen|hide/.test(itemId)) return "finished_good";
+  if (
+    /fuel|charm|ward|decor|design|package|goods|flare|linen|hide/.test(itemId)
+  )
+    return "finished_good";
   return "component";
 }
 
 export const HARTHMERE_BUSINESS_SERVICE_ITEM_CATALOG_V1: Readonly<
   Record<string, HarthmereBusinessServiceItemDefinitionV1>
-> = Object.freeze(Object.fromEntries(
-  HARTHMERE_BUSINESS_SERVICE_ITEM_IDS_V1.map((itemId) => [itemId, {
-    itemId,
-    displayName: serviceItemDisplayNameV1(itemId),
-    role: serviceItemRoleV1(itemId),
-    productionUse: "customer_service_minigame",
-  } satisfies HarthmereBusinessServiceItemDefinitionV1]),
-));
+> = Object.freeze(
+  Object.fromEntries(
+    HARTHMERE_BUSINESS_SERVICE_ITEM_IDS_V1.map((itemId) => [
+      itemId,
+      {
+        itemId,
+        displayName: serviceItemDisplayNameV1(itemId),
+        role: serviceItemRoleV1(itemId),
+        productionUse: "customer_service_minigame",
+      } satisfies HarthmereBusinessServiceItemDefinitionV1,
+    ])
+  )
+);
 
-export function getHarthmereBusinessServiceItemDefinitionV1(itemId: string | undefined) {
-  return itemId ? HARTHMERE_BUSINESS_SERVICE_ITEM_CATALOG_V1[itemId] : undefined;
+export function getHarthmereBusinessServiceItemDefinitionV1(
+  itemId: string | undefined
+) {
+  return itemId
+    ? HARTHMERE_BUSINESS_SERVICE_ITEM_CATALOG_V1[itemId]
+    : undefined;
 }
 
 export function validateHarthmereBusinessServiceItemReferencesV1(): HarthmereBusinessServiceItemReferenceValidationV1 {
   const missingRequiredItems = new Set<string>();
   const missingProducedItems = new Set<string>();
-  for (const definition of Object.values(HARTHMERE_BUSINESS_MINIGAME_DEFINITIONS_V1)) {
+  for (const definition of Object.values(
+    HARTHMERE_BUSINESS_MINIGAME_DEFINITIONS_V1
+  )) {
     for (const offer of definition.offers) {
       for (const itemId of Object.keys(offer.requiredItems)) {
-        if (!HARTHMERE_BUSINESS_SERVICE_ITEM_CATALOG_V1[itemId]) missingRequiredItems.add(itemId);
+        if (!HARTHMERE_BUSINESS_SERVICE_ITEM_CATALOG_V1[itemId])
+          missingRequiredItems.add(itemId);
       }
       for (const itemId of Object.keys(offer.producedItems ?? {})) {
-        if (!HARTHMERE_BUSINESS_SERVICE_ITEM_CATALOG_V1[itemId]) missingProducedItems.add(itemId);
+        if (!HARTHMERE_BUSINESS_SERVICE_ITEM_CATALOG_V1[itemId])
+          missingProducedItems.add(itemId);
       }
     }
   }
@@ -2549,114 +5869,240 @@ export function validateHarthmereBusinessServiceItemReferencesV1(): HarthmereBus
   };
 }
 
-function businessServiceAnimationFamilyV1(cueId: string): HarthmereBusinessServiceAnimationFamilyV1 {
-  if (/gate|pad|token|key|jump|access|return/.test(cueId)) return "access_control";
+function businessServiceAnimationFamilyV1(
+  cueId: string
+): HarthmereBusinessServiceAnimationFamilyV1 {
+  if (/gate|pad|token|key|jump|access|return/.test(cueId))
+    return "access_control";
   if (/spray|clean|decontam|barrel|cleanup/.test(cueId)) return "cleanup";
-  if (/scan|calibrate|tune|stabilize|inspect|pulse|scope|crystal|lens/.test(cueId)) return "diagnostic";
+  if (
+    /scan|calibrate|tune|stabilize|inspect|pulse|scope|crystal|lens/.test(cueId)
+  )
+    return "diagnostic";
   if (/dispatch|alarm|guard|salute|runner|flag/.test(cueId)) return "dispatch";
-  if (/map|route|blueprint|measure|brief|estimate|sample|palette/.test(cueId)) return "planning";
-  if (/stamp|paper|ledger|ticket|certificate|clipboard|permit/.test(cueId)) return "paperwork";
-  if (/hammer|wrench|patch|tighten|sharpen|tool|blade|fixture/.test(cueId)) return "tool_work";
+  if (/map|route|blueprint|measure|brief|estimate|sample|palette/.test(cueId))
+    return "planning";
+  if (/stamp|paper|ledger|ticket|certificate|clipboard|permit/.test(cueId))
+    return "paperwork";
+  if (/hammer|wrench|patch|tighten|sharpen|tool|blade|fixture/.test(cueId))
+    return "tool_work";
   return "counter_handoff";
 }
 
-function businessServiceAnimationChannelsV1(family: HarthmereBusinessServiceAnimationFamilyV1) {
+function businessServiceAnimationChannelsV1(
+  family: HarthmereBusinessServiceAnimationFamilyV1
+) {
   switch (family) {
-    case "access_control": return ["head", "right_arm", "left_arm", "prop_ring"];
-    case "cleanup": return ["body", "right_arm", "prop_spray", "prop_container"];
-    case "diagnostic": return ["head", "right_arm", "prop_scanner"];
-    case "dispatch": return ["body", "right_arm", "left_arm", "prop_signal"];
-    case "planning": return ["head", "right_arm", "left_arm", "prop_surface"];
-    case "paperwork": return ["head", "right_arm", "prop_document"];
-    case "tool_work": return ["body", "right_arm", "left_arm", "prop_tool"];
-    case "counter_handoff": return ["head", "right_arm", "left_arm", "prop_item"];
+    case "access_control":
+      return ["head", "right_arm", "left_arm", "prop_ring"];
+    case "cleanup":
+      return ["body", "right_arm", "prop_spray", "prop_container"];
+    case "diagnostic":
+      return ["head", "right_arm", "prop_scanner"];
+    case "dispatch":
+      return ["body", "right_arm", "left_arm", "prop_signal"];
+    case "planning":
+      return ["head", "right_arm", "left_arm", "prop_surface"];
+    case "paperwork":
+      return ["head", "right_arm", "prop_document"];
+    case "tool_work":
+      return ["body", "right_arm", "left_arm", "prop_tool"];
+    case "counter_handoff":
+      return ["head", "right_arm", "left_arm", "prop_item"];
   }
 }
 
-function businessServiceAnimationDurationV1(family: HarthmereBusinessServiceAnimationFamilyV1) {
+function businessServiceAnimationDurationV1(
+  family: HarthmereBusinessServiceAnimationFamilyV1
+) {
   switch (family) {
-    case "access_control": return 1100;
-    case "cleanup": return 1250;
-    case "diagnostic": return 1000;
-    case "dispatch": return 900;
-    case "planning": return 1050;
-    case "paperwork": return 800;
-    case "tool_work": return 1150;
-    case "counter_handoff": return 750;
+    case "access_control":
+      return 1100;
+    case "cleanup":
+      return 1250;
+    case "diagnostic":
+      return 1000;
+    case "dispatch":
+      return 900;
+    case "planning":
+      return 1050;
+    case "paperwork":
+      return 800;
+    case "tool_work":
+      return 1150;
+    case "counter_handoff":
+      return 750;
   }
 }
 
-export const HARTHMERE_BUSINESS_SERVICE_ANIMATION_CUE_SPECS_V1: Readonly<Record<string, HarthmereBusinessServiceAnimationCueSpecV1>> =
-  Object.freeze(Object.fromEntries(
-    Object.values(HARTHMERE_BUSINESS_MINIGAME_DEFINITIONS_V1).flatMap((definition) => definition.offers.map((offer) => {
-      const family = businessServiceAnimationFamilyV1(offer.animationCue);
-      return [offer.animationCue, {
-        cueId: offer.animationCue,
-        family,
-        durationMs: businessServiceAnimationDurationV1(family),
-        ownerChannels: businessServiceAnimationChannelsV1(family),
-        propMotion: offer.animationCue.replace(/^procedural_/, "").replace(/_/g, " "),
-        customerReaction: offer.satisfactionDelta >= 4 ? "delighted_accept" : offer.satisfactionDelta >= 3 ? "relieved_accept" : "quick_accept",
-        safety: {
-          procedural: true,
-          voxelSafe: true,
-          noRootMotion: true,
-          noSkeletonRequirement: true,
-          rotationOnlyPose: true,
-        },
-      } satisfies HarthmereBusinessServiceAnimationCueSpecV1];
-    })),
-  ));
+export const HARTHMERE_BUSINESS_SERVICE_ANIMATION_CUE_SPECS_V1: Readonly<
+  Record<string, HarthmereBusinessServiceAnimationCueSpecV1>
+> = Object.freeze(
+  Object.fromEntries(
+    Object.values(HARTHMERE_BUSINESS_MINIGAME_DEFINITIONS_V1).flatMap(
+      (definition) =>
+        definition.offers.map((offer) => {
+          const family = businessServiceAnimationFamilyV1(offer.animationCue);
+          return [
+            offer.animationCue,
+            {
+              cueId: offer.animationCue,
+              family,
+              durationMs: businessServiceAnimationDurationV1(family),
+              ownerChannels: businessServiceAnimationChannelsV1(family),
+              propMotion: offer.animationCue
+                .replace(/^procedural_/, "")
+                .replace(/_/g, " "),
+              customerReaction:
+                offer.satisfactionDelta >= 4
+                  ? "delighted_accept"
+                  : offer.satisfactionDelta >= 3
+                  ? "relieved_accept"
+                  : "quick_accept",
+              safety: {
+                procedural: true,
+                voxelSafe: true,
+                noRootMotion: true,
+                noSkeletonRequirement: true,
+                rotationOnlyPose: true,
+              },
+            } satisfies HarthmereBusinessServiceAnimationCueSpecV1,
+          ];
+        })
+    )
+  )
+);
 
 export function getHarthmereBusinessServiceAnimationCueSpecV1(cueId: string) {
   return HARTHMERE_BUSINESS_SERVICE_ANIMATION_CUE_SPECS_V1[cueId];
 }
 
-export function getHarthmereBusinessMiniGameDefinitionV1(typeId: HarthmereEconomyBusinessTypeIdV1) {
+export function getHarthmereBusinessMiniGameDefinitionV1(
+  typeId: HarthmereEconomyBusinessTypeIdV1
+) {
   return HARTHMERE_BUSINESS_MINIGAME_DEFINITIONS_V1[typeId];
 }
 
 function serviceOfferGraphicScoreV1(
   graphic: HarthmereBusinessBikkieGraphicV1,
-  offer: HarthmereBusinessServiceOfferV1,
+  offer: HarthmereBusinessServiceOfferV1
 ) {
-  const text = `${offer.offerId} ${offer.label} ${offer.description} ${offer.interactionVerb} ${offer.animationCue} ${Object.keys(offer.requiredItems).join(" ")}`.toLowerCase();
+  const text = `${offer.offerId} ${offer.label} ${offer.description} ${
+    offer.interactionVerb
+  } ${offer.animationCue} ${Object.keys(offer.requiredItems).join(
+    " "
+  )}`.toLowerCase();
   let score = graphic.role === "primary_station" ? 2 : 0;
   if (graphic.role === "service_tool") score += 1;
-  for (const token of [graphic.label, graphic.bikkieName, graphic.action, graphic.shape, graphic.craftingStationType].filter(Boolean)) {
-    const normalized = String(token).toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
+  for (const token of [
+    graphic.label,
+    graphic.bikkieName,
+    graphic.action,
+    graphic.shape,
+    graphic.craftingStationType,
+  ].filter(Boolean)) {
+    const normalized = String(token)
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "_")
+      .replace(/^_+|_+$/g, "");
     if (normalized && text.includes(normalized)) score += 10;
   }
-  if (/stamp|paper|ledger|permit|ticket|certificate|contract|map|route|blueprint|plan/.test(text) && graphic.kind === "document") score += 7;
-  if (/hammer|wrench|repair|tool|sharpen|blade|fixture|patch|tighten|build|shape/.test(text) && (graphic.kind === "tool" || graphic.bikkieName === "Workbench")) score += 6;
-  if (/soup|meal|ration|plate|ladle|food|crop|herb|tasting|meat|fish|wrap/.test(text) && ["food", "crop", "fish"].includes(graphic.kind)) score += 6;
-  if (/soup|meal|plate|ladle|ration|kitchen/.test(text) && graphic.bikkieName === "Kitchen") score += 8;
-  if (/meat|fish|hide|larder|wrap/.test(text) && graphic.bikkieName === "Angler's Table") score += 7;
-  if (/clean|decontam|muck|waste|barrel|sanitize/.test(text) && (graphic.bikkieName.includes("Muck Buster") || graphic.bikkieName === "Composter" || graphic.bikkieName === "Bucket")) score += 7;
-  if (/gate|pad|token|return|teleport|portal|access|jump|fuel|crystal/.test(text) && ["utility", "crafting_station"].includes(graphic.kind)) score += 5;
-  if (/camera|scan|survey|proof|photo/.test(text) && graphic.bikkieName.includes("Camera")) score += 8;
-  if (/seed|crop|herb|farm|fertil/.test(text) && ["seed", "crop"].includes(graphic.kind)) score += 7;
-  if (/parcel|package|delivery|courier|mail/.test(text) && graphic.kind === "mail") score += 8;
+  if (
+    /stamp|paper|ledger|permit|ticket|certificate|contract|map|route|blueprint|plan/.test(
+      text
+    ) &&
+    graphic.kind === "document"
+  )
+    score += 7;
+  if (
+    /hammer|wrench|repair|tool|sharpen|blade|fixture|patch|tighten|build|shape/.test(
+      text
+    ) &&
+    (graphic.kind === "tool" || graphic.bikkieName === "Workbench")
+  )
+    score += 6;
+  if (
+    /soup|meal|ration|plate|ladle|food|crop|herb|tasting|meat|fish|wrap/.test(
+      text
+    ) &&
+    ["food", "crop", "fish"].includes(graphic.kind)
+  )
+    score += 6;
+  if (
+    /soup|meal|plate|ladle|ration|kitchen/.test(text) &&
+    graphic.bikkieName === "Kitchen"
+  )
+    score += 8;
+  if (
+    /meat|fish|hide|larder|wrap/.test(text) &&
+    graphic.bikkieName === "Angler's Table"
+  )
+    score += 7;
+  if (
+    /clean|decontam|muck|waste|barrel|sanitize/.test(text) &&
+    (graphic.bikkieName.includes("Muck Buster") ||
+      graphic.bikkieName === "Composter" ||
+      graphic.bikkieName === "Bucket")
+  )
+    score += 7;
+  if (
+    /gate|pad|token|return|teleport|portal|access|jump|fuel|crystal/.test(
+      text
+    ) &&
+    ["utility", "crafting_station"].includes(graphic.kind)
+  )
+    score += 5;
+  if (
+    /camera|scan|survey|proof|photo/.test(text) &&
+    graphic.bikkieName.includes("Camera")
+  )
+    score += 8;
+  if (
+    /seed|crop|herb|farm|fertil/.test(text) &&
+    ["seed", "crop"].includes(graphic.kind)
+  )
+    score += 7;
+  if (
+    /parcel|package|delivery|courier|mail/.test(text) &&
+    graphic.kind === "mail"
+  )
+    score += 8;
   return score;
 }
 
 export function getHarthmereBusinessBikkieGraphicForServiceOfferV1(
   typeId: HarthmereEconomyBusinessTypeIdV1,
-  offer: HarthmereBusinessServiceOfferV1,
+  offer: HarthmereBusinessServiceOfferV1
 ) {
   const graphics = getHarthmereBusinessBikkieGraphicsV1(typeId);
-  return [...graphics].sort((a, b) => serviceOfferGraphicScoreV1(b, offer) - serviceOfferGraphicScoreV1(a, offer))[0];
+  return [...graphics].sort(
+    (a, b) =>
+      serviceOfferGraphicScoreV1(b, offer) -
+      serviceOfferGraphicScoreV1(a, offer)
+  )[0];
 }
 
-export function getHarthmereBusinessBikkieGraphicForServiceCueV1(cueId: string) {
-  for (const definition of Object.values(HARTHMERE_BUSINESS_MINIGAME_DEFINITIONS_V1)) {
-    const offer = definition.offers.find((candidate) => candidate.animationCue === cueId);
-    if (offer) return getHarthmereBusinessBikkieGraphicForServiceOfferV1(definition.typeId, offer);
+export function getHarthmereBusinessBikkieGraphicForServiceCueV1(
+  cueId: string
+) {
+  for (const definition of Object.values(
+    HARTHMERE_BUSINESS_MINIGAME_DEFINITIONS_V1
+  )) {
+    const offer = definition.offers.find(
+      (candidate) => candidate.animationCue === cueId
+    );
+    if (offer)
+      return getHarthmereBusinessBikkieGraphicForServiceOfferV1(
+        definition.typeId,
+        offer
+      );
   }
   return undefined;
 }
 
-export function defaultHarthmereBusinessCustomerStatsV1(businessId: string): HarthmereBusinessCustomerStatsV1 {
+export function defaultHarthmereBusinessCustomerStatsV1(
+  businessId: string
+): HarthmereBusinessCustomerStatsV1 {
   return {
     businessId,
     totalServed: 0,
@@ -2676,18 +6122,37 @@ export function defaultHarthmereBusinessCustomerStatsV1(businessId: string): Har
   };
 }
 
-export function normalizeHarthmereBusinessCustomerStatsV1(raw: unknown, businessId: string): HarthmereBusinessCustomerStatsV1 {
-  const value = raw && typeof raw === "object" ? raw as Partial<HarthmereBusinessCustomerStatsV1> : {};
+export function normalizeHarthmereBusinessCustomerStatsV1(
+  raw: unknown,
+  businessId: string
+): HarthmereBusinessCustomerStatsV1 {
+  const value =
+    raw && typeof raw === "object"
+      ? (raw as Partial<HarthmereBusinessCustomerStatsV1>)
+      : {};
   const uniqueStrings = (rawValue: unknown, max = 50) =>
-    Array.from(new Set(Array.isArray(rawValue) ? rawValue.filter((entry): entry is string => typeof entry === "string" && entry.trim().length > 0) : [])).slice(-max);
-  const friendship = value.friendshipPointsByNpcId && typeof value.friendshipPointsByNpcId === "object"
-    ? Object.fromEntries(
-      Object.entries(value.friendshipPointsByNpcId).map(([npcId, points]) => [
-        npcId,
-        Math.max(0, Math.trunc(Number(points) || 0)),
-      ]),
-    )
-    : {};
+    Array.from(
+      new Set(
+        Array.isArray(rawValue)
+          ? rawValue.filter(
+              (entry): entry is string =>
+                typeof entry === "string" && entry.trim().length > 0
+            )
+          : []
+      )
+    ).slice(-max);
+  const friendship =
+    value.friendshipPointsByNpcId &&
+    typeof value.friendshipPointsByNpcId === "object"
+      ? Object.fromEntries(
+          Object.entries(value.friendshipPointsByNpcId).map(
+            ([npcId, points]) => [
+              npcId,
+              Math.max(0, Math.trunc(Number(points) || 0)),
+            ]
+          )
+        )
+      : {};
   return {
     ...defaultHarthmereBusinessCustomerStatsV1(businessId),
     ...value,
@@ -2696,9 +6161,15 @@ export function normalizeHarthmereBusinessCustomerStatsV1(raw: unknown, business
     totalFailed: Math.max(0, Math.trunc(Number(value.totalFailed ?? 0) || 0)),
     lifetimeGold: Math.max(0, Math.trunc(Number(value.lifetimeGold ?? 0) || 0)),
     bestStreak: Math.max(0, Math.trunc(Number(value.bestStreak ?? 0) || 0)),
-    currentTier: Math.max(1, Math.min(4, Math.trunc(Number(value.currentTier ?? 1) || 1))),
+    currentTier: Math.max(
+      1,
+      Math.min(4, Math.trunc(Number(value.currentTier ?? 1) || 1))
+    ),
     serviceXp: Math.max(0, Math.trunc(Number(value.serviceXp ?? 0) || 0)),
-    likeability: Math.max(0, Math.min(100, Math.trunc(Number(value.likeability ?? 0) || 0))),
+    likeability: Math.max(
+      0,
+      Math.min(100, Math.trunc(Number(value.likeability ?? 0) || 0))
+    ),
     friendshipPointsByNpcId: friendship,
     favoriteCustomerNpcIds: uniqueStrings(value.favoriteCustomerNpcIds, 25),
     repeatCustomerMemories: uniqueStrings(value.repeatCustomerMemories, 40),
@@ -2706,8 +6177,14 @@ export function normalizeHarthmereBusinessCustomerStatsV1(raw: unknown, business
     collectiblesEarned: uniqueStrings(value.collectiblesEarned, 60),
     decorationUnlocks: uniqueStrings(value.decorationUnlocks, 60),
     badges: uniqueStrings(value.badges, 40),
-    lastSessionAtMs: typeof value.lastSessionAtMs === "number" ? value.lastSessionAtMs : undefined,
-    lastDailyServedDay: typeof value.lastDailyServedDay === "number" ? value.lastDailyServedDay : undefined,
+    lastSessionAtMs:
+      typeof value.lastSessionAtMs === "number"
+        ? value.lastSessionAtMs
+        : undefined,
+    lastDailyServedDay:
+      typeof value.lastDailyServedDay === "number"
+        ? value.lastDailyServedDay
+        : undefined,
   };
 }
 
@@ -2716,27 +6193,52 @@ export function createHarthmereBusinessCozyServiceRewardV1(input: {
   typeId: HarthmereEconomyBusinessTypeIdV1;
   npcId: string;
   npcDisplayName: string;
-  offer: Pick<HarthmereBusinessServiceOfferV1, "offerId" | "label" | "satisfactionDelta">;
-  ticket: Pick<HarthmereBusinessCustomerTicketV1, "difficulty" | "reputationDelta">;
+  offer: Pick<
+    HarthmereBusinessServiceOfferV1,
+    "offerId" | "label" | "satisfactionDelta"
+  >;
+  ticket: Pick<
+    HarthmereBusinessCustomerTicketV1,
+    "difficulty" | "reputationDelta"
+  >;
   streak: number;
   dailyBonusGold: number;
   stats: HarthmereBusinessCustomerStatsV1;
 }): HarthmereBusinessCozyServiceRewardV1 {
   const typeToken = input.typeId.replace(/[^a-z0-9]+/g, "_");
-  const serviceXp = 8 + input.ticket.difficulty * 4 + Math.max(0, input.streak - 1) * 2 + (input.dailyBonusGold > 0 ? 5 : 0);
-  const likeabilityDelta = Math.max(1, input.offer.satisfactionDelta + Math.max(0, input.ticket.reputationDelta));
-  const previousFriendship = input.stats.friendshipPointsByNpcId[input.npcId] ?? 0;
-  const friendshipPoints = 2 + input.offer.satisfactionDelta + Math.max(0, input.streak);
+  const serviceXp =
+    8 +
+    input.ticket.difficulty * 4 +
+    Math.max(0, input.streak - 1) * 2 +
+    (input.dailyBonusGold > 0 ? 5 : 0);
+  const likeabilityDelta = Math.max(
+    1,
+    input.offer.satisfactionDelta + Math.max(0, input.ticket.reputationDelta)
+  );
+  const previousFriendship =
+    input.stats.friendshipPointsByNpcId[input.npcId] ?? 0;
+  const friendshipPoints =
+    2 + input.offer.satisfactionDelta + Math.max(0, input.streak);
   const newFriendship = previousFriendship + friendshipPoints;
-  const collectibleId = input.streak > 0 && input.streak % 5 === 0
-    ? `${typeToken}_customer_stamp_${Math.min(5, Math.floor(input.streak / 5))}`
-    : undefined;
-  const decorationUnlockId = input.stats.totalServed + 1 >= 20 && !input.stats.decorationUnlocks.includes(`${typeToken}_thank_you_counter_charm`)
-    ? `${typeToken}_thank_you_counter_charm`
-    : undefined;
-  const badgeId = input.stats.totalServed + 1 >= 50 && !input.stats.badges.includes(`${typeToken}_beloved_counter`)
-    ? `${typeToken}_beloved_counter`
-    : undefined;
+  const collectibleId =
+    input.streak > 0 && input.streak % 5 === 0
+      ? `${typeToken}_customer_stamp_${Math.min(
+          5,
+          Math.floor(input.streak / 5)
+        )}`
+      : undefined;
+  const decorationUnlockId =
+    input.stats.totalServed + 1 >= 20 &&
+    !input.stats.decorationUnlocks.includes(
+      `${typeToken}_thank_you_counter_charm`
+    )
+      ? `${typeToken}_thank_you_counter_charm`
+      : undefined;
+  const badgeId =
+    input.stats.totalServed + 1 >= 50 &&
+    !input.stats.badges.includes(`${typeToken}_beloved_counter`)
+      ? `${typeToken}_beloved_counter`
+      : undefined;
   return {
     serviceXp,
     likeabilityDelta,
@@ -2744,8 +6246,15 @@ export function createHarthmereBusinessCozyServiceRewardV1(input: {
     collectibleId,
     decorationUnlockId,
     badgeId,
-    thankYouNote: `${input.npcDisplayName} appreciated ${input.offer.label.toLowerCase()} at your counter.`,
-    memory: `${input.npcDisplayName} remembers ${input.offer.label.toLowerCase()} as a helpful ${typeToken.replace(/_/g, " ")} visit.`,
+    thankYouNote: `${
+      input.npcDisplayName
+    } appreciated ${input.offer.label.toLowerCase()} at your counter.`,
+    memory: `${
+      input.npcDisplayName
+    } remembers ${input.offer.label.toLowerCase()} as a helpful ${typeToken.replace(
+      /_/g,
+      " "
+    )} visit.`,
     favoriteCustomerUnlocked: newFriendship >= 12,
   };
 }
@@ -2753,12 +6262,19 @@ export function createHarthmereBusinessCozyServiceRewardV1(input: {
 export function applyHarthmereBusinessCozyServiceRewardV1(
   stats: HarthmereBusinessCustomerStatsV1,
   npcId: string,
-  reward: HarthmereBusinessCozyServiceRewardV1,
+  reward: HarthmereBusinessCozyServiceRewardV1
 ) {
   stats.serviceXp += reward.serviceXp;
-  stats.likeability = Math.max(0, Math.min(100, stats.likeability + reward.likeabilityDelta));
-  stats.friendshipPointsByNpcId[npcId] = (stats.friendshipPointsByNpcId[npcId] ?? 0) + reward.friendshipPoints;
-  if (reward.favoriteCustomerUnlocked && !stats.favoriteCustomerNpcIds.includes(npcId)) {
+  stats.likeability = Math.max(
+    0,
+    Math.min(100, stats.likeability + reward.likeabilityDelta)
+  );
+  stats.friendshipPointsByNpcId[npcId] =
+    (stats.friendshipPointsByNpcId[npcId] ?? 0) + reward.friendshipPoints;
+  if (
+    reward.favoriteCustomerUnlocked &&
+    !stats.favoriteCustomerNpcIds.includes(npcId)
+  ) {
     stats.favoriteCustomerNpcIds.push(npcId);
   }
   for (const [target, value] of [
@@ -2773,7 +6289,9 @@ export function applyHarthmereBusinessCozyServiceRewardV1(
   }
 }
 
-export function harthmereBusinessCustomerTierForStatsV1(stats: HarthmereBusinessCustomerStatsV1) {
+export function harthmereBusinessCustomerTierForStatsV1(
+  stats: HarthmereBusinessCustomerStatsV1
+) {
   if (stats.totalServed >= 120 && stats.bestStreak >= 8) return 4;
   if (stats.totalServed >= 50 && stats.bestStreak >= 5) return 3;
   if (stats.totalServed >= 20 && stats.bestStreak >= 3) return 2;
@@ -2790,38 +6308,59 @@ export function createHarthmereBusinessCustomerQueueV1(input: {
   stats?: HarthmereBusinessCustomerStatsV1;
 }): { queue: HarthmereBusinessCustomerTicketV1[]; nextTicketNumber: number } {
   const definition = HARTHMERE_BUSINESS_MINIGAME_DEFINITIONS_V1[input.typeId];
-  const businessIndex = Math.max(0, BUSINESS_TYPES_IN_ORDER.indexOf(input.typeId));
-  const tier = input.stats ? harthmereBusinessCustomerTierForStatsV1(input.stats) : 1;
+  const businessIndex = Math.max(
+    0,
+    BUSINESS_TYPES_IN_ORDER.indexOf(input.typeId)
+  );
+  const tier = input.stats
+    ? harthmereBusinessCustomerTierForStatsV1(input.stats)
+    : 1;
   let nextTicketNumber = input.nextTicketNumber;
-  const queue = Array.from({ length: Math.max(1, Math.min(12, Math.trunc(input.count))) }, (_, index) => {
-    const preferred = HARTHMERE_BUSINESS_CUSTOMER_NPCS_V1.filter((npc) => npc.businessPreferences.includes(input.typeId));
-    const pool = preferred.length ? preferred : HARTHMERE_BUSINESS_CUSTOMER_NPCS_V1;
-    const npc = pool[(businessIndex + index * 7 + tier) % pool.length];
-    const ask = definition.askTemplates[(index + tier - 1) % definition.askTemplates.length];
-    return {
-      ticketId: `customer_ticket_${nextTicketNumber++}`,
-      npcId: npc.npcId,
-      askId: ask.askId,
-      requestedOfferId: ask.desiredOfferId,
-      askLine: ask.line,
-      status: "waiting" as const,
-      arrivedAtMs: input.nowMs + index * 5000,
-      patience: Math.max(20, ask.patience - (tier - 1) * 5),
-      patienceRemaining: Math.max(20, ask.patience - (tier - 1) * 5),
-      difficulty: ask.difficulty + Math.max(0, tier - 1),
-      rewardGold: ask.rewardGold,
-      reputationDelta: ask.reputationDelta,
-      needDelta: ask.needDelta,
-      navGoal: ask.navGoal,
-    };
-  });
+  const queue = Array.from(
+    { length: Math.max(1, Math.min(12, Math.trunc(input.count))) },
+    (_, index) => {
+      const preferred = HARTHMERE_BUSINESS_CUSTOMER_NPCS_V1.filter((npc) =>
+        npc.businessPreferences.includes(input.typeId)
+      );
+      const pool = preferred.length
+        ? preferred
+        : HARTHMERE_BUSINESS_CUSTOMER_NPCS_V1;
+      const npc = pool[(businessIndex + index * 7 + tier) % pool.length];
+      const ask =
+        definition.askTemplates[
+          (index + tier - 1) % definition.askTemplates.length
+        ];
+      return {
+        ticketId: `customer_ticket_${nextTicketNumber++}`,
+        npcId: npc.npcId,
+        askId: ask.askId,
+        requestedOfferId: ask.desiredOfferId,
+        askLine: ask.line,
+        status: "waiting" as const,
+        arrivedAtMs: input.nowMs + index * 5000,
+        patience: Math.max(20, ask.patience - (tier - 1) * 5),
+        patienceRemaining: Math.max(20, ask.patience - (tier - 1) * 5),
+        difficulty: ask.difficulty + Math.max(0, tier - 1),
+        rewardGold: ask.rewardGold,
+        reputationDelta: ask.reputationDelta,
+        needDelta: ask.needDelta,
+        navGoal: ask.navGoal,
+      };
+    }
+  );
   return { queue, nextTicketNumber };
 }
 
-export function activeHarthmereBusinessCustomerTicketV1(session: HarthmereBusinessCustomerSessionV1 | undefined) {
+export function activeHarthmereBusinessCustomerTicketV1(
+  session: HarthmereBusinessCustomerSessionV1 | undefined
+) {
   if (!session || session.status !== "active") return undefined;
   if (session.currentTicketId) {
-    const current = session.queue.find((ticket) => ticket.ticketId === session.currentTicketId && ticket.status === "waiting");
+    const current = session.queue.find(
+      (ticket) =>
+        ticket.ticketId === session.currentTicketId &&
+        ticket.status === "waiting"
+    );
     if (current) return current;
   }
   return session.queue.find((ticket) => ticket.status === "waiting");
@@ -2831,52 +6370,482 @@ export function findHarthmereBusinessCustomerNpcV1(npcId: string | undefined) {
   return HARTHMERE_BUSINESS_CUSTOMER_NPCS_V1.find((npc) => npc.npcId === npcId);
 }
 
-export const HARTHMERE_BUSINESS_OUTPOST_TERRAIN_GROUND_Y_BY_ID_V1 = Object.freeze({
-  outpost_refinery_ashline: 66,
-  outpost_biome_repair_north: 62,
-  outpost_design_glassyard: 45,
-  outpost_security_redoubt: 46,
-  outpost_portal_eastgate: 65,
-  outpost_rare_foods_southplot: 49,
-  outpost_tools_cinderlane: 42,
-  outpost_magic_moonstall: 26,
-  outpost_exploration_westtrail: 51,
-  outpost_property_keylot: 53,
-  outpost_trader_brightcart: 52,
-  outpost_hunter_ridgecooler: 36,
-  outpost_clinic_greenlamp: 64,
-  outpost_teleport_returnstone: 40,
-  outpost_sanitation_clearbarrel: 44,
-  outpost_repair_hingehall: 45,
-  outpost_restaurant_redpot: 43,
-  outpost_courier_stampspur: 46,
-  outpost_hospitality_lanternrest: 47,
-} as const);
+export const HARTHMERE_BUSINESS_OUTPOST_TERRAIN_GROUND_Y_BY_ID_V1 =
+  Object.freeze({
+    outpost_refinery_ashline: 66,
+    outpost_biome_repair_north: 62,
+    outpost_design_glassyard: 45,
+    outpost_security_redoubt: 46,
+    outpost_portal_eastgate: 65,
+    outpost_rare_foods_southplot: 49,
+    outpost_tools_cinderlane: 42,
+    outpost_magic_moonstall: 26,
+    outpost_exploration_westtrail: 51,
+    outpost_property_keylot: 53,
+    outpost_trader_brightcart: 52,
+    outpost_hunter_ridgecooler: 36,
+    outpost_clinic_greenlamp: 64,
+    outpost_teleport_returnstone: 40,
+    outpost_sanitation_clearbarrel: 44,
+    outpost_repair_hingehall: 45,
+    outpost_restaurant_redpot: 43,
+    outpost_courier_stampspur: 46,
+    outpost_hospitality_lanternrest: 47,
+  } as const);
 
-export const HARTHMERE_BUSINESS_OUTPOSTS_V1: readonly HarthmereBusinessOutpostV1[] = [
-  { outpostId: "outpost_refinery_ashline", businessType: "exotic_matter_refinery", displayName: "Ashline Containment Works", ownerNpcId: "npc_outpost_ashline_foreman", townId: "harthmere_town", regionId: "harthmere_region", district: "Production Business Trail", position: { x: 673.9607002774867, y: 66, z: -44.2340338348435, rot: 0 }, building: { profile: "dock_warehouse", width: 22, depth: 16, floors: 1, banner: "banner_blue" }, job: { title: "Refinery Intake Hand", starterTask: "Sort sealed raw matter into cold bins.", rewardGold: 95, teaches: "Containment stock, safety ratings, and fuel customers." } },
-  { outpostId: "outpost_biome_repair_north", businessType: "biome_maintenance_repair", displayName: "North Anchor Repair Shed", ownerNpcId: "npc_outpost_anchorwright", townId: "harthmere_town", regionId: "harthmere_region", district: "Production Business Trail", position: { x: 766.3165027736272, y: 62, z: 38.15010652462001, rot: 0 }, building: { profile: "workshop", width: 18, depth: 14, floors: 1, banner: "banner_green" }, job: { title: "Anchor Apprentice", starterTask: "Carry repair kits and log climate readings.", rewardGold: 70, teaches: "Biome decay, maintenance subscriptions, and repair queues." } },
-  { outpostId: "outpost_design_glassyard", businessType: "biome_design_studio", displayName: "Glassyard Biome Studio", ownerNpcId: "npc_outpost_glassyard_designer", townId: "harthmere_town", regionId: "harthmere_region", district: "Production Business Trail", position: { x: 1183.0170734645067, y: 45, z: 138.49653880112697, rot: 0 }, building: { profile: "workshop", width: 16, depth: 14, floors: 1, banner: "banner_yellow" }, job: { title: "Design Runner", starterTask: "Set sample boards for walk-in clients.", rewardGold: 60, teaches: "Taste matching, beauty demand, and showroom scaling." } },
-  { outpostId: "outpost_security_redoubt", businessType: "security_defense_contractor", displayName: "Redoubt Contract Yard", ownerNpcId: "npc_outpost_redoubt_captain", townId: "harthmere_town", regionId: "harthmere_region", district: "Production Business Trail", position: { x: 1451.8214258969656, y: 46, z: 76.83012025065366, rot: 0 }, building: { profile: "barracks", width: 20, depth: 14, floors: 2, banner: "banner_red" }, job: { title: "Patrol Clerk", starterTask: "Post threat slips and issue signal flares.", rewardGold: 85, teaches: "Threat triage, guard contracts, and safety reputation." } },
-  { outpostId: "outpost_portal_eastgate", businessType: "portal_transit_company", displayName: "Eastgate Portal Office", ownerNpcId: "npc_outpost_eastgate_operator", townId: "harthmere_town", regionId: "harthmere_region", district: "Production Business Trail", position: { x: 1578.3584113411857, y: 65, z: -136.1081433897003, rot: 0 }, building: { profile: "player_services", width: 24, depth: 18, floors: 2, banner: "banner_blue" }, job: { title: "Gate Queue Attendant", starterTask: "Check passenger tickets against fuel seals.", rewardGold: 105, teaches: "Passenger/cargo lanes, fuel bottlenecks, and route uptime." } },
-  { outpostId: "outpost_rare_foods_southplot", businessType: "biome_farming_rare_foods", displayName: "Southplot Rare Foods", ownerNpcId: "npc_outpost_southplot_grower", townId: "harthmere_town", regionId: "harthmere_region", district: "Production Business Trail", position: { x: 1723.0393328285693, y: 49, z: -587.6317928761343, rot: 0 }, building: { profile: "provision", width: 18, depth: 14, floors: 1, banner: "banner_green" }, job: { title: "Harvest Counter Hand", starterTask: "Weigh crop bundles and mark freshness tags.", rewardGold: 50, teaches: "Freshness, spoilage, and restaurant/clinic demand." } },
-  { outpostId: "outpost_tools_cinderlane", businessType: "weapons_tools", displayName: "Cinderlane Tool Forge", ownerNpcId: "npc_outpost_cinderlane_smith", townId: "harthmere_town", regionId: "harthmere_region", district: "Production Business Trail", position: { x: 1630.2156864624603, y: 42, z: -779.5120794973495, rot: 0 }, building: { profile: "smithy", width: 20, depth: 16, floors: 2, banner: "banner_red" }, job: { title: "Forge Helper", starterTask: "Sort repair tools and quench buckets.", rewardGold: 75, teaches: "Repairs, upgrades, and gear quality." } },
-  { outpostId: "outpost_magic_moonstall", businessType: "magic_goods", displayName: "Moonstall Ward Shop", ownerNpcId: "npc_outpost_moonstall_warder", townId: "harthmere_town", regionId: "harthmere_region", district: "Production Business Trail", position: { x: 1726.6306120121526, y: 26, z: -906.2236258204618, rot: 0 }, building: { profile: "magic_shop", width: 18, depth: 16, floors: 1, banner: "banner_blue" }, job: { title: "Charm Shelf Assistant", starterTask: "Rotate unstable charms before they expire.", rewardGold: 90, teaches: "Unstable stock, wards, and rare components." } },
-  { outpostId: "outpost_exploration_westtrail", businessType: "exploration_guide", displayName: "Westtrail Guide Table", ownerNpcId: "npc_outpost_westtrail_guide", townId: "harthmere_town", regionId: "harthmere_region", district: "Production Business Trail", position: { x: 1541.436211800648, y: 51, z: -695.2005299046266, rot: 0 }, building: { profile: "stable_office", width: 16, depth: 12, floors: 1, banner: "banner_brown" }, job: { title: "Map Table Runner", starterTask: "Mark route hazards for guide customers.", rewardGold: 65, teaches: "Map freshness, safety, and expedition booking." } },
-  { outpostId: "outpost_property_keylot", businessType: "custom_home_property_development", displayName: "Keylot Property Office", ownerNpcId: "npc_outpost_keylot_builder", townId: "harthmere_town", regionId: "harthmere_region", district: "Production Business Trail", position: { x: 1229.236784706693, y: 53, z: -789.3263381042989, rot: 0 }, building: { profile: "workshop", width: 20, depth: 15, floors: 1, banner: "banner_brown" }, job: { title: "Blueprint Clerk", starterTask: "Price wood, stone, and permit packets.", rewardGold: 80, teaches: "Staged builds, permits, and property scaling." } },
-  { outpostId: "outpost_trader_brightcart", businessType: "general_trader", displayName: "Brightcart General House", ownerNpcId: "npc_outpost_brightcart_trader", townId: "harthmere_town", regionId: "harthmere_region", district: "Production Business Trail", position: { x: 985.6255482322824, y: 52, z: -934.0141827281337, rot: 0 }, building: { profile: "provision", width: 18, depth: 14, floors: 1, banner: "banner_yellow" }, job: { title: "Stock Clerk", starterTask: "Restock rations and repair parts.", rewardGold: 45, teaches: "Shelf turns, price spreads, and brokerage." } },
-  { outpostId: "outpost_hunter_ridgecooler", businessType: "hunter_wild_meat", displayName: "Ridgecooler Larder", ownerNpcId: "npc_outpost_ridgecooler_hunter", townId: "harthmere_town", regionId: "harthmere_region", district: "Production Business Trail", position: { x: 776.1540415580398, y: 36, z: -666.9863482524036, rot: 0 }, building: { profile: "dock_warehouse", width: 17, depth: 13, floors: 1, banner: "banner_brown" }, job: { title: "Larder Hand", starterTask: "Wrap meat and count hide bundles.", rewardGold: 55, teaches: "Freshness, population pressure, and restaurant supply." } },
-  { outpostId: "outpost_clinic_greenlamp", businessType: "medical_doctor", displayName: "Greenlamp Walk-In Clinic", ownerNpcId: "npc_outpost_greenlamp_doctor", townId: "harthmere_town", regionId: "harthmere_region", district: "Production Business Trail", position: { x: 656.2165898145233, y: 64, z: -182.1346179092896, rot: 0 }, building: { profile: "apothecary", width: 18, depth: 15, floors: 1, banner: "banner_green" }, job: { title: "Clinic Aide", starterTask: "Prepare bandages and queue triage cards.", rewardGold: 70, teaches: "Triage, medicine stock, and trust." } },
-  { outpostId: "outpost_teleport_returnstone", businessType: "teleport_owner", displayName: "Returnstone Pad Office", ownerNpcId: "npc_outpost_returnstone_keeper", townId: "harthmere_town", regionId: "harthmere_region", district: "Production Business Trail", position: { x: 41.873235725931465, y: 40, z: -30.097021931250612, rot: 0 }, building: { profile: "stable_office", width: 16, depth: 13, floors: 1, banner: "banner_blue" }, job: { title: "Pad Key Clerk", starterTask: "Issue access tokens and check fuel tags.", rewardGold: 95, teaches: "Access keys, pad stability, and private travel." } },
-  { outpostId: "outpost_sanitation_clearbarrel", businessType: "waste_sanitation_cleanup", displayName: "Clearbarrel Cleanup Yard", ownerNpcId: "npc_outpost_clearbarrel_boss", townId: "harthmere_town", regionId: "harthmere_region", district: "Production Business Trail", position: { x: 434.6602350827924, y: 44, z: -346.6819172551751, rot: 0 }, building: { profile: "wash_house", width: 18, depth: 14, floors: 1, banner: "banner_white" }, job: { title: "Cleanup Loader", starterTask: "Seal barrels and sort cleaning reagent.", rewardGold: 60, teaches: "Sanitation, decontamination, and inspection trust." } },
-  { outpostId: "outpost_repair_hingehall", businessType: "repair_maintenance_person", displayName: "Hingehall Repair Shop", ownerNpcId: "npc_outpost_hingehall_fixer", townId: "harthmere_town", regionId: "harthmere_region", district: "Production Business Trail", position: { x: 428.8887539912923, y: 45, z: -316.7794260638374, rot: 0 }, building: { profile: "workshop", width: 16, depth: 13, floors: 1, banner: "banner_brown" }, job: { title: "Fix-It Apprentice", starterTask: "Prep nails and label broken fixtures.", rewardGold: 45, teaches: "Urgency, parts, and repair subscriptions." } },
-  { outpostId: "outpost_restaurant_redpot", businessType: "food_service_restaurant", displayName: "Redpot Service Kitchen", ownerNpcId: "npc_outpost_redpot_cook", townId: "harthmere_town", regionId: "harthmere_region", district: "Production Business Trail", position: { x: 425.11624353121545, y: 43, z: -382.02543201953387, rot: 0 }, building: { profile: "bakery", width: 18, depth: 14, floors: 1, banner: "banner_red" }, job: { title: "Line Server", starterTask: "Plate meals and wrap rations during rush.", rewardGold: 50, teaches: "Rush serving, menu stock, and sanitation pressure." } },
-  { outpostId: "outpost_courier_stampspur", businessType: "courier", displayName: "Stampspur Courier Office", ownerNpcId: "npc_outpost_stampspur_dispatcher", townId: "harthmere_town", regionId: "harthmere_region", district: "Production Business Trail", position: { x: 750.9801218122271, y: 46, z: -550.5216277478082, rot: 0 }, building: { profile: "stable_office", width: 16, depth: 13, floors: 1, banner: "banner_green" }, job: { title: "Dispatch Runner", starterTask: "Weigh parcels and copy proof slips.", rewardGold: 45, teaches: "Deadlines, condition, and route batching." } },
-  { outpostId: "outpost_hospitality_lanternrest", businessType: "hospitality_inn_hotel_shelter", displayName: "Lanternrest Road Inn", ownerNpcId: "npc_outpost_lanternrest_host", townId: "harthmere_town", regionId: "harthmere_region", district: "Production Business Trail", position: { x: 605.6295568653649, y: 47, z: -483.82449044213433, rot: 0 }, building: { profile: "inn", width: 24, depth: 18, floors: 2, banner: "banner_yellow" }, job: { title: "Front Desk Helper", starterTask: "Assign room keys and count clean linen.", rewardGold: 65, teaches: "Occupancy, cleaning, food, and shelter trust." } },
-];
+export const HARTHMERE_BUSINESS_OUTPOSTS_V1: readonly HarthmereBusinessOutpostV1[] =
+  [
+    {
+      outpostId: "outpost_refinery_ashline",
+      businessType: "exotic_matter_refinery",
+      displayName: "Ashline Containment Works",
+      ownerNpcId: "npc_outpost_ashline_foreman",
+      townId: "harthmere_town",
+      regionId: "harthmere_region",
+      district: "Production Business Trail",
+      position: { x: 673.9607002774867, y: 66, z: -44.2340338348435, rot: 0 },
+      building: {
+        profile: "dock_warehouse",
+        width: 22,
+        depth: 16,
+        floors: 1,
+        banner: "banner_blue",
+      },
+      job: {
+        title: "Refinery Intake Hand",
+        starterTask: "Sort sealed raw matter into cold bins.",
+        rewardGold: 95,
+        teaches: "Containment stock, safety ratings, and fuel customers.",
+      },
+    },
+    {
+      outpostId: "outpost_biome_repair_north",
+      businessType: "biome_maintenance_repair",
+      displayName: "North Anchor Repair Shed",
+      ownerNpcId: "npc_outpost_anchorwright",
+      townId: "harthmere_town",
+      regionId: "harthmere_region",
+      district: "Production Business Trail",
+      position: { x: 766.3165027736272, y: 62, z: 38.15010652462001, rot: 0 },
+      building: {
+        profile: "workshop",
+        width: 18,
+        depth: 14,
+        floors: 1,
+        banner: "banner_green",
+      },
+      job: {
+        title: "Anchor Apprentice",
+        starterTask: "Carry repair kits and log climate readings.",
+        rewardGold: 70,
+        teaches: "Biome decay, maintenance subscriptions, and repair queues.",
+      },
+    },
+    {
+      outpostId: "outpost_design_glassyard",
+      businessType: "biome_design_studio",
+      displayName: "Glassyard Biome Studio",
+      ownerNpcId: "npc_outpost_glassyard_designer",
+      townId: "harthmere_town",
+      regionId: "harthmere_region",
+      district: "Production Business Trail",
+      position: { x: 1183.0170734645067, y: 45, z: 138.49653880112697, rot: 0 },
+      building: {
+        profile: "workshop",
+        width: 16,
+        depth: 14,
+        floors: 1,
+        banner: "banner_yellow",
+      },
+      job: {
+        title: "Design Runner",
+        starterTask: "Set sample boards for walk-in clients.",
+        rewardGold: 60,
+        teaches: "Taste matching, beauty demand, and showroom scaling.",
+      },
+    },
+    {
+      outpostId: "outpost_security_redoubt",
+      businessType: "security_defense_contractor",
+      displayName: "Redoubt Contract Yard",
+      ownerNpcId: "npc_outpost_redoubt_captain",
+      townId: "harthmere_town",
+      regionId: "harthmere_region",
+      district: "Production Business Trail",
+      position: { x: 1451.8214258969656, y: 46, z: 76.83012025065366, rot: 0 },
+      building: {
+        profile: "barracks",
+        width: 20,
+        depth: 14,
+        floors: 2,
+        banner: "banner_red",
+      },
+      job: {
+        title: "Patrol Clerk",
+        starterTask: "Post threat slips and issue signal flares.",
+        rewardGold: 85,
+        teaches: "Threat triage, guard contracts, and safety reputation.",
+      },
+    },
+    {
+      outpostId: "outpost_portal_eastgate",
+      businessType: "portal_transit_company",
+      displayName: "Eastgate Portal Office",
+      ownerNpcId: "npc_outpost_eastgate_operator",
+      townId: "harthmere_town",
+      regionId: "harthmere_region",
+      district: "Production Business Trail",
+      position: { x: 1578.3584113411857, y: 65, z: -136.1081433897003, rot: 0 },
+      building: {
+        profile: "player_services",
+        width: 24,
+        depth: 18,
+        floors: 2,
+        banner: "banner_blue",
+      },
+      job: {
+        title: "Gate Queue Attendant",
+        starterTask: "Check passenger tickets against fuel seals.",
+        rewardGold: 105,
+        teaches: "Passenger/cargo lanes, fuel bottlenecks, and route uptime.",
+      },
+    },
+    {
+      outpostId: "outpost_rare_foods_southplot",
+      businessType: "biome_farming_rare_foods",
+      displayName: "Southplot Rare Foods",
+      ownerNpcId: "npc_outpost_southplot_grower",
+      townId: "harthmere_town",
+      regionId: "harthmere_region",
+      district: "Production Business Trail",
+      position: { x: 1723.0393328285693, y: 49, z: -587.6317928761343, rot: 0 },
+      building: {
+        profile: "provision",
+        width: 18,
+        depth: 14,
+        floors: 1,
+        banner: "banner_green",
+      },
+      job: {
+        title: "Harvest Counter Hand",
+        starterTask: "Weigh crop bundles and mark freshness tags.",
+        rewardGold: 50,
+        teaches: "Freshness, spoilage, and restaurant/clinic demand.",
+      },
+    },
+    {
+      outpostId: "outpost_tools_cinderlane",
+      businessType: "weapons_tools",
+      displayName: "Cinderlane Tool Forge",
+      ownerNpcId: "npc_outpost_cinderlane_smith",
+      townId: "harthmere_town",
+      regionId: "harthmere_region",
+      district: "Production Business Trail",
+      position: { x: 1630.2156864624603, y: 42, z: -779.5120794973495, rot: 0 },
+      building: {
+        profile: "smithy",
+        width: 20,
+        depth: 16,
+        floors: 2,
+        banner: "banner_red",
+      },
+      job: {
+        title: "Forge Helper",
+        starterTask: "Sort repair tools and quench buckets.",
+        rewardGold: 75,
+        teaches: "Repairs, upgrades, and gear quality.",
+      },
+    },
+    {
+      outpostId: "outpost_magic_moonstall",
+      businessType: "magic_goods",
+      displayName: "Moonstall Ward Shop",
+      ownerNpcId: "npc_outpost_moonstall_warder",
+      townId: "harthmere_town",
+      regionId: "harthmere_region",
+      district: "Production Business Trail",
+      position: { x: 1726.6306120121526, y: 26, z: -906.2236258204618, rot: 0 },
+      building: {
+        profile: "magic_shop",
+        width: 18,
+        depth: 16,
+        floors: 1,
+        banner: "banner_blue",
+      },
+      job: {
+        title: "Charm Shelf Assistant",
+        starterTask: "Rotate unstable charms before they expire.",
+        rewardGold: 90,
+        teaches: "Unstable stock, wards, and rare components.",
+      },
+    },
+    {
+      outpostId: "outpost_exploration_westtrail",
+      businessType: "exploration_guide",
+      displayName: "Westtrail Guide Table",
+      ownerNpcId: "npc_outpost_westtrail_guide",
+      townId: "harthmere_town",
+      regionId: "harthmere_region",
+      district: "Production Business Trail",
+      position: { x: 1541.436211800648, y: 51, z: -695.2005299046266, rot: 0 },
+      building: {
+        profile: "stable_office",
+        width: 16,
+        depth: 12,
+        floors: 1,
+        banner: "banner_brown",
+      },
+      job: {
+        title: "Map Table Runner",
+        starterTask: "Mark route hazards for guide customers.",
+        rewardGold: 65,
+        teaches: "Map freshness, safety, and expedition booking.",
+      },
+    },
+    {
+      outpostId: "outpost_property_keylot",
+      businessType: "custom_home_property_development",
+      displayName: "Keylot Property Office",
+      ownerNpcId: "npc_outpost_keylot_builder",
+      townId: "harthmere_town",
+      regionId: "harthmere_region",
+      district: "Production Business Trail",
+      position: { x: 1229.236784706693, y: 53, z: -789.3263381042989, rot: 0 },
+      building: {
+        profile: "workshop",
+        width: 20,
+        depth: 15,
+        floors: 1,
+        banner: "banner_brown",
+      },
+      job: {
+        title: "Blueprint Clerk",
+        starterTask: "Price wood, stone, and permit packets.",
+        rewardGold: 80,
+        teaches: "Staged builds, permits, and property scaling.",
+      },
+    },
+    {
+      outpostId: "outpost_trader_brightcart",
+      businessType: "general_trader",
+      displayName: "Brightcart General House",
+      ownerNpcId: "npc_outpost_brightcart_trader",
+      townId: "harthmere_town",
+      regionId: "harthmere_region",
+      district: "Production Business Trail",
+      position: { x: 985.6255482322824, y: 52, z: -934.0141827281337, rot: 0 },
+      building: {
+        profile: "provision",
+        width: 18,
+        depth: 14,
+        floors: 1,
+        banner: "banner_yellow",
+      },
+      job: {
+        title: "Stock Clerk",
+        starterTask: "Restock rations and repair parts.",
+        rewardGold: 45,
+        teaches: "Shelf turns, price spreads, and brokerage.",
+      },
+    },
+    {
+      outpostId: "outpost_hunter_ridgecooler",
+      businessType: "hunter_wild_meat",
+      displayName: "Ridgecooler Larder",
+      ownerNpcId: "npc_outpost_ridgecooler_hunter",
+      townId: "harthmere_town",
+      regionId: "harthmere_region",
+      district: "Production Business Trail",
+      position: { x: 776.1540415580398, y: 36, z: -666.9863482524036, rot: 0 },
+      building: {
+        profile: "dock_warehouse",
+        width: 17,
+        depth: 13,
+        floors: 1,
+        banner: "banner_brown",
+      },
+      job: {
+        title: "Larder Hand",
+        starterTask: "Wrap meat and count hide bundles.",
+        rewardGold: 55,
+        teaches: "Freshness, population pressure, and restaurant supply.",
+      },
+    },
+    {
+      outpostId: "outpost_clinic_greenlamp",
+      businessType: "medical_doctor",
+      displayName: "Greenlamp Walk-In Clinic",
+      ownerNpcId: "npc_outpost_greenlamp_doctor",
+      townId: "harthmere_town",
+      regionId: "harthmere_region",
+      district: "Production Business Trail",
+      position: { x: 656.2165898145233, y: 64, z: -182.1346179092896, rot: 0 },
+      building: {
+        profile: "apothecary",
+        width: 18,
+        depth: 15,
+        floors: 1,
+        banner: "banner_green",
+      },
+      job: {
+        title: "Clinic Aide",
+        starterTask: "Prepare bandages and queue triage cards.",
+        rewardGold: 70,
+        teaches: "Triage, medicine stock, and trust.",
+      },
+    },
+    {
+      outpostId: "outpost_teleport_returnstone",
+      businessType: "teleport_owner",
+      displayName: "Returnstone Pad Office",
+      ownerNpcId: "npc_outpost_returnstone_keeper",
+      townId: "harthmere_town",
+      regionId: "harthmere_region",
+      district: "Production Business Trail",
+      position: {
+        x: 41.873235725931465,
+        y: 40,
+        z: -30.097021931250612,
+        rot: 0,
+      },
+      building: {
+        profile: "stable_office",
+        width: 16,
+        depth: 13,
+        floors: 1,
+        banner: "banner_blue",
+      },
+      job: {
+        title: "Pad Key Clerk",
+        starterTask: "Issue access tokens and check fuel tags.",
+        rewardGold: 95,
+        teaches: "Access keys, pad stability, and private travel.",
+      },
+    },
+    {
+      outpostId: "outpost_sanitation_clearbarrel",
+      businessType: "waste_sanitation_cleanup",
+      displayName: "Clearbarrel Cleanup Yard",
+      ownerNpcId: "npc_outpost_clearbarrel_boss",
+      townId: "harthmere_town",
+      regionId: "harthmere_region",
+      district: "Production Business Trail",
+      position: { x: 434.6602350827924, y: 44, z: -346.6819172551751, rot: 0 },
+      building: {
+        profile: "wash_house",
+        width: 18,
+        depth: 14,
+        floors: 1,
+        banner: "banner_white",
+      },
+      job: {
+        title: "Cleanup Loader",
+        starterTask: "Seal barrels and sort cleaning reagent.",
+        rewardGold: 60,
+        teaches: "Sanitation, decontamination, and inspection trust.",
+      },
+    },
+    {
+      outpostId: "outpost_repair_hingehall",
+      businessType: "repair_maintenance_person",
+      displayName: "Hingehall Repair Shop",
+      ownerNpcId: "npc_outpost_hingehall_fixer",
+      townId: "harthmere_town",
+      regionId: "harthmere_region",
+      district: "Production Business Trail",
+      position: { x: 428.8887539912923, y: 45, z: -316.7794260638374, rot: 0 },
+      building: {
+        profile: "workshop",
+        width: 16,
+        depth: 13,
+        floors: 1,
+        banner: "banner_brown",
+      },
+      job: {
+        title: "Fix-It Apprentice",
+        starterTask: "Prep nails and label broken fixtures.",
+        rewardGold: 45,
+        teaches: "Urgency, parts, and repair subscriptions.",
+      },
+    },
+    {
+      outpostId: "outpost_restaurant_redpot",
+      businessType: "food_service_restaurant",
+      displayName: "Redpot Service Kitchen",
+      ownerNpcId: "npc_outpost_redpot_cook",
+      townId: "harthmere_town",
+      regionId: "harthmere_region",
+      district: "Production Business Trail",
+      position: {
+        x: 425.11624353121545,
+        y: 43,
+        z: -382.02543201953387,
+        rot: 0,
+      },
+      building: {
+        profile: "bakery",
+        width: 18,
+        depth: 14,
+        floors: 1,
+        banner: "banner_red",
+      },
+      job: {
+        title: "Line Server",
+        starterTask: "Plate meals and wrap rations during rush.",
+        rewardGold: 50,
+        teaches: "Rush serving, menu stock, and sanitation pressure.",
+      },
+    },
+    {
+      outpostId: "outpost_courier_stampspur",
+      businessType: "courier",
+      displayName: "Stampspur Courier Office",
+      ownerNpcId: "npc_outpost_stampspur_dispatcher",
+      townId: "harthmere_town",
+      regionId: "harthmere_region",
+      district: "Production Business Trail",
+      position: { x: 750.9801218122271, y: 46, z: -550.5216277478082, rot: 0 },
+      building: {
+        profile: "stable_office",
+        width: 16,
+        depth: 13,
+        floors: 1,
+        banner: "banner_green",
+      },
+      job: {
+        title: "Dispatch Runner",
+        starterTask: "Weigh parcels and copy proof slips.",
+        rewardGold: 45,
+        teaches: "Deadlines, condition, and route batching.",
+      },
+    },
+    {
+      outpostId: "outpost_hospitality_lanternrest",
+      businessType: "hospitality_inn_hotel_shelter",
+      displayName: "Lanternrest Road Inn",
+      ownerNpcId: "npc_outpost_lanternrest_host",
+      townId: "harthmere_town",
+      regionId: "harthmere_region",
+      district: "Production Business Trail",
+      position: { x: 605.6295568653649, y: 47, z: -483.82449044213433, rot: 0 },
+      building: {
+        profile: "inn",
+        width: 24,
+        depth: 18,
+        floors: 2,
+        banner: "banner_yellow",
+      },
+      job: {
+        title: "Front Desk Helper",
+        starterTask: "Assign room keys and count clean linen.",
+        rewardGold: 65,
+        teaches: "Occupancy, cleaning, food, and shelter trust.",
+      },
+    },
+  ];
 
 export function harthmereBusinessOutpostGroundYV1(
-  outpost: HarthmereBusinessOutpostV1,
+  outpost: HarthmereBusinessOutpostV1
 ) {
   return (
     HARTHMERE_BUSINESS_OUTPOST_TERRAIN_GROUND_Y_BY_ID_V1[
@@ -2885,18 +6854,19 @@ export function harthmereBusinessOutpostGroundYV1(
   );
 }
 
-function harthmereBusinessOutpostMinigameFootprintV1(outpost: HarthmereBusinessOutpostV1) {
-  const largeProfiles = new Set<HarthmereBusinessOutpostV1["building"]["profile"]>([
-    "barracks",
-    "dock_warehouse",
-    "inn",
-    "player_services",
-    "smithy",
-  ]);
-  const largeBusiness =
-    /refinery|portal|security|weapons|hospitality/.test(outpost.businessType);
-  const minWidth = largeProfiles.has(outpost.building.profile) || largeBusiness ? 28 : 24;
-  const minDepth = largeProfiles.has(outpost.building.profile) || largeBusiness ? 22 : 20;
+function harthmereBusinessOutpostMinigameFootprintV1(
+  outpost: HarthmereBusinessOutpostV1
+) {
+  const largeProfiles = new Set<
+    HarthmereBusinessOutpostV1["building"]["profile"]
+  >(["barracks", "dock_warehouse", "inn", "player_services", "smithy"]);
+  const largeBusiness = /refinery|portal|security|weapons|hospitality/.test(
+    outpost.businessType
+  );
+  const minWidth =
+    largeProfiles.has(outpost.building.profile) || largeBusiness ? 28 : 24;
+  const minDepth =
+    largeProfiles.has(outpost.building.profile) || largeBusiness ? 22 : 20;
   const even = (value: number) => value + Math.abs(value % 2);
   return {
     width: even(Math.max(outpost.building.width, minWidth)),
@@ -2906,7 +6876,7 @@ function harthmereBusinessOutpostMinigameFootprintV1(outpost: HarthmereBusinessO
 }
 
 function harthmereBusinessOutpostTerrainSamplesV1(
-  outpost: HarthmereBusinessOutpostV1,
+  outpost: HarthmereBusinessOutpostV1
 ): readonly HarthmereBusinessOutpostTerrainSampleV1[] {
   const footprint = harthmereBusinessOutpostMinigameFootprintV1(outpost);
   const x0 = Math.round(outpost.position.x - footprint.width / 2);
@@ -2918,20 +6888,31 @@ function harthmereBusinessOutpostTerrainSamplesV1(
   const padY = harthmereBusinessOutpostGroundYV1(outpost);
   const eastDrop = outpost.position.x >= 620 ? 1 : 0;
   const southDrop = outpost.position.z > -140 ? 1 : 0;
-  const ridgeDrop = outpost.position.z < -300 || outpost.position.x < 360 ? 1 : 0;
+  const ridgeDrop =
+    outpost.position.z < -300 || outpost.position.x < 360 ? 1 : 0;
   const clampSampleY = (drop: number) => Math.max(padY - 2, padY - drop);
   return [
     { label: "center", x: centerX, y: padY, z: centerZ },
     { label: "front_door", x: centerX, y: padY, z: z0 - 1 },
     { label: "north_west", x: x0, y: clampSampleY(ridgeDrop), z: z0 },
     { label: "north_east", x: x1, y: clampSampleY(eastDrop), z: z0 },
-    { label: "south_west", x: x0, y: clampSampleY(southDrop + ridgeDrop), z: z1 },
-    { label: "south_east", x: x1, y: clampSampleY(southDrop + eastDrop), z: z1 },
+    {
+      label: "south_west",
+      x: x0,
+      y: clampSampleY(southDrop + ridgeDrop),
+      z: z1,
+    },
+    {
+      label: "south_east",
+      x: x1,
+      y: clampSampleY(southDrop + eastDrop),
+      z: z1,
+    },
   ];
 }
 
 export function harthmereBusinessOutpostTerrainGroundingV1(
-  outpost: HarthmereBusinessOutpostV1,
+  outpost: HarthmereBusinessOutpostV1
 ): HarthmereBusinessOutpostTerrainGroundingV1 {
   const samples = harthmereBusinessOutpostTerrainSamplesV1(outpost);
   const sampleYs = samples.map((sample) => sample.y);
@@ -2951,7 +6932,9 @@ export function harthmereBusinessOutpostTerrainGroundingV1(
   };
 }
 
-export function harthmereBusinessOutpostJobsBoardPositionV1(outpost: HarthmereBusinessOutpostV1) {
+export function harthmereBusinessOutpostJobsBoardPositionV1(
+  outpost: HarthmereBusinessOutpostV1
+) {
   const c = Math.cos(outpost.position.rot);
   const s = Math.sin(outpost.position.rot);
   const footprint = harthmereBusinessOutpostMinigameFootprintV1(outpost);
@@ -2963,8 +6946,12 @@ export function harthmereBusinessOutpostJobsBoardPositionV1(outpost: HarthmereBu
   };
 }
 
-export function getHarthmereBusinessOutpostForTypeV1(typeId: HarthmereEconomyBusinessTypeIdV1) {
-  return HARTHMERE_BUSINESS_OUTPOSTS_V1.find((outpost) => outpost.businessType === typeId);
+export function getHarthmereBusinessOutpostForTypeV1(
+  typeId: HarthmereEconomyBusinessTypeIdV1
+) {
+  return HARTHMERE_BUSINESS_OUTPOSTS_V1.find(
+    (outpost) => outpost.businessType === typeId
+  );
 }
 
 export function harthmereBusinessOutpostMapMarkerIdV1(outpostId: string) {
@@ -2972,15 +6959,21 @@ export function harthmereBusinessOutpostMapMarkerIdV1(outpostId: string) {
 }
 
 function harthmereOutpostStructureTypeForProfileV1(
-  profile: HarthmereBusinessOutpostV1["building"]["profile"],
+  profile: HarthmereBusinessOutpostV1["building"]["profile"]
 ): BuildingSystemBlueprintDefinitionV1["structureTypeId"] {
-  if (profile === "dock_warehouse" || profile === "inn" || profile === "barracks" || profile === "player_services") return "warehouse";
+  if (
+    profile === "dock_warehouse" ||
+    profile === "inn" ||
+    profile === "barracks" ||
+    profile === "player_services"
+  )
+    return "warehouse";
   if (profile === "bakery" || profile === "provision") return "shop";
   return "workshop";
 }
 
 function harthmereOutpostPlotTypeForStructureV1(
-  structureTypeId: BuildingSystemBlueprintDefinitionV1["structureTypeId"],
+  structureTypeId: BuildingSystemBlueprintDefinitionV1["structureTypeId"]
 ): BuildingSystemPlotDefinitionV1["plotType"] {
   return structureTypeId === "workshop" ? "crafting" : "commercial";
 }
@@ -3000,8 +6993,12 @@ function harthmereOutpostOriginV1(outpost: HarthmereBusinessOutpostV1) {
   };
 }
 
-function harthmereOutpostBlueprintForV1(outpost: HarthmereBusinessOutpostV1): BuildingSystemBlueprintDefinitionV1 {
-  const structureTypeId = harthmereOutpostStructureTypeForProfileV1(outpost.building.profile);
+function harthmereOutpostBlueprintForV1(
+  outpost: HarthmereBusinessOutpostV1
+): BuildingSystemBlueprintDefinitionV1 {
+  const structureTypeId = harthmereOutpostStructureTypeForProfileV1(
+    outpost.building.profile
+  );
   const footprint = harthmereBusinessOutpostMinigameFootprintV1(outpost);
   return {
     blueprintId: `${outpost.outpostId}_backend_voxel_blueprint`,
@@ -3012,7 +7009,10 @@ function harthmereOutpostBlueprintForV1(outpost: HarthmereBusinessOutpostV1): Bu
     use: "business",
     structureTypeId,
     goldCost: 0,
-    storageSlots: Math.max(24, outpost.building.width * outpost.building.floors),
+    storageSlots: Math.max(
+      24,
+      outpost.building.width * outpost.building.floors
+    ),
     service: `${outpost.displayName} customer service counter and job-training outpost.`,
     footprint: {
       width: footprint.width,
@@ -3028,7 +7028,7 @@ function harthmereOutpostBlueprintForV1(outpost: HarthmereBusinessOutpostV1): Bu
 
 function harthmereOutpostPlotForV1(
   outpost: HarthmereBusinessOutpostV1,
-  blueprint: BuildingSystemBlueprintDefinitionV1,
+  blueprint: BuildingSystemBlueprintDefinitionV1
 ): BuildingSystemPlotDefinitionV1 {
   const origin = harthmereOutpostOriginV1(outpost);
   const margin = 8;
@@ -3062,7 +7062,7 @@ function harthmereOutpostPlotForV1(
 }
 
 function harthmereBusinessOutpostBuildingStyleKitV1(
-  outpost: HarthmereBusinessOutpostV1,
+  outpost: HarthmereBusinessOutpostV1
 ): HarthmereBusinessOutpostBuildingStyleKitV1 {
   const baseNotes = [
     "Backend procedural voxel shell with a grounded stone foundation, readable door, large shop glass, and a visible interior dashboard access point.",
@@ -3081,9 +7081,12 @@ function harthmereBusinessOutpostBuildingStyleKitV1(
       "landscaped Grove entry",
     ],
     sourceAssetVocabulary: [
-      ...HARTHMERE_GROVE_BUSINESS_BUILDING_SOURCE_SCAN_V1.reusableAssetVocabulary.shell,
-      ...HARTHMERE_GROVE_BUSINESS_BUILDING_SOURCE_SCAN_V1.reusableAssetVocabulary.interior,
-      ...HARTHMERE_GROVE_BUSINESS_BUILDING_SOURCE_SCAN_V1.reusableAssetVocabulary.exterior,
+      ...HARTHMERE_GROVE_BUSINESS_BUILDING_SOURCE_SCAN_V1
+        .reusableAssetVocabulary.shell,
+      ...HARTHMERE_GROVE_BUSINESS_BUILDING_SOURCE_SCAN_V1
+        .reusableAssetVocabulary.interior,
+      ...HARTHMERE_GROVE_BUSINESS_BUILDING_SOURCE_SCAN_V1
+        .reusableAssetVocabulary.exterior,
     ],
   } as const;
   if (/medical_doctor/.test(outpost.businessType)) {
@@ -3101,7 +7104,10 @@ function harthmereBusinessOutpostBuildingStyleKitV1(
       signIcon: "cross",
       exteriorDressing: "clean_clinic_lanterns",
       interiorDressing: "clinic_service",
-      styleNotes: [...baseNotes, "Clinic palette uses clean stone, pale trim, and simple lit entry markers."],
+      styleNotes: [
+        ...baseNotes,
+        "Clinic palette uses clean stone, pale trim, and simple lit entry markers.",
+      ],
     };
   }
   if (/refinery|exotic/.test(outpost.businessType)) {
@@ -3119,25 +7125,43 @@ function harthmereBusinessOutpostBuildingStyleKitV1(
       signIcon: "spark",
       exteriorDressing: "arcane_lanterns",
       interiorDressing: "arcane_service",
-      styleNotes: [...baseNotes, "Containment refinery palette keeps the Grove workshop shell but uses visible arcane safety accents instead of generic hammer signage."],
+      styleNotes: [
+        ...baseNotes,
+        "Containment refinery palette keeps the Grove workshop shell but uses visible arcane safety accents instead of generic hammer signage.",
+      ],
     };
   }
-  if (/repair|maintenance|sanitation|waste|weapons|security/.test(outpost.businessType)) {
+  if (
+    /repair|maintenance|sanitation|waste|weapons|security/.test(
+      outpost.businessType
+    )
+  ) {
     return {
       referenceLanguage: "grove_workshop_warehouse",
       ...sourceStyle,
-      exteriorWall: /security|weapons/.test(outpost.businessType) ? "clean_stone_tile" : "dark_workshop_stone",
+      exteriorWall: /security|weapons/.test(outpost.businessType)
+        ? "clean_stone_tile"
+        : "dark_workshop_stone",
       foundation: "stone_foundation",
-      roof: /security|weapons/.test(outpost.businessType) ? "red_clay_roof" : "green_roof_sod",
+      roof: /security|weapons/.test(outpost.businessType)
+        ? "red_clay_roof"
+        : "green_roof_sod",
       trim: "warm_wood_plank",
       floor: "clean_stone_tile",
       doorStyle: "wood_glass_panel",
       windowStyle: "large_framed_shop_glass",
-      awningMaterial: /security|weapons/.test(outpost.businessType) ? "red_canvas" : "white_canvas",
+      awningMaterial: /security|weapons/.test(outpost.businessType)
+        ? "red_canvas"
+        : "white_canvas",
       signIcon: /security/.test(outpost.businessType) ? "shield" : "hammer",
       exteriorDressing: "workshop_crates",
-      interiorDressing: /weapons/.test(outpost.businessType) ? "forge_service" : "dispatch_service",
-      styleNotes: [...baseNotes, "Workshop palette uses stone, practical wood trim, visible crates, and open work areas."],
+      interiorDressing: /weapons/.test(outpost.businessType)
+        ? "forge_service"
+        : "dispatch_service",
+      styleNotes: [
+        ...baseNotes,
+        "Workshop palette uses stone, practical wood trim, visible crates, and open work areas.",
+      ],
     };
   }
   if (/portal|teleport|magic|exotic/.test(outpost.businessType)) {
@@ -3155,7 +7179,10 @@ function harthmereBusinessOutpostBuildingStyleKitV1(
       signIcon: "spark",
       exteriorDressing: "arcane_lanterns",
       interiorDressing: "arcane_service",
-      styleNotes: [...baseNotes, "Arcane palette follows the Grove stone storefront examples with purple service accents."],
+      styleNotes: [
+        ...baseNotes,
+        "Arcane palette follows the Grove stone storefront examples with purple service accents.",
+      ],
     };
   }
   if (/exploration/.test(outpost.businessType)) {
@@ -3173,7 +7200,10 @@ function harthmereBusinessOutpostBuildingStyleKitV1(
       signIcon: "star",
       exteriorDressing: "workshop_crates",
       interiorDressing: "dispatch_service",
-      styleNotes: [...baseNotes, "Guide-table shops use the Grove wood storefront language with route crates, maps, and expedition booking surfaces."],
+      styleNotes: [
+        ...baseNotes,
+        "Guide-table shops use the Grove wood storefront language with route crates, maps, and expedition booking surfaces.",
+      ],
     };
   }
   if (/courier/.test(outpost.businessType)) {
@@ -3191,7 +7221,10 @@ function harthmereBusinessOutpostBuildingStyleKitV1(
       signIcon: "parcel",
       exteriorDressing: "workshop_crates",
       interiorDressing: "dispatch_service",
-      styleNotes: [...baseNotes, "Courier offices use wood, glass, parcel crates, and clear customer counters."],
+      styleNotes: [
+        ...baseNotes,
+        "Courier offices use wood, glass, parcel crates, and clear customer counters.",
+      ],
     };
   }
   if (/hospitality|property|design/.test(outpost.businessType)) {
@@ -3208,45 +7241,69 @@ function harthmereBusinessOutpostBuildingStyleKitV1(
       awningMaterial: "white_canvas",
       signIcon: /hospitality/.test(outpost.businessType) ? "key" : "star",
       exteriorDressing: "garden_planters",
-      interiorDressing: /hospitality/.test(outpost.businessType) ? "lodging_service" : "counter_service",
-      styleNotes: [...baseNotes, "Hospitality and studio shops lean on the Grove wood shop example with warm walls and stone steps."],
+      interiorDressing: /hospitality/.test(outpost.businessType)
+        ? "lodging_service"
+        : "counter_service",
+      styleNotes: [
+        ...baseNotes,
+        "Hospitality and studio shops lean on the Grove wood shop example with warm walls and stone steps.",
+      ],
     };
   }
   return {
     referenceLanguage: "grove_wood_shop",
     ...sourceStyle,
-    exteriorWall: /food_service|farming|trader|hunter/.test(outpost.businessType) ? "warm_wood_plank" : "clean_stone_tile",
+    exteriorWall: /food_service|farming|trader|hunter/.test(
+      outpost.businessType
+    )
+      ? "warm_wood_plank"
+      : "clean_stone_tile",
     foundation: "stone_foundation",
-    roof: /food_service/.test(outpost.businessType) ? "red_clay_roof" : "green_roof_sod",
+    roof: /food_service/.test(outpost.businessType)
+      ? "red_clay_roof"
+      : "green_roof_sod",
     trim: "carved_limestone",
     floor: "wood_floor",
     doorStyle: "wood_glass_panel",
     windowStyle: "large_framed_shop_glass",
-    awningMaterial: /food_service/.test(outpost.businessType) ? "red_canvas" : "white_canvas",
+    awningMaterial: /food_service/.test(outpost.businessType)
+      ? "red_canvas"
+      : "white_canvas",
     signIcon: /farming|hunter/.test(outpost.businessType) ? "leaf" : "star",
-    exteriorDressing: /farming|trader|hunter/.test(outpost.businessType) ? "market_baskets" : "garden_planters",
+    exteriorDressing: /farming|trader|hunter/.test(outpost.businessType)
+      ? "market_baskets"
+      : "garden_planters",
     interiorDressing: "counter_service",
-    styleNotes: [...baseNotes, "Shop palette matches the Grove warm wood, glass front, stone base, and landscaped entry examples."],
+    styleNotes: [
+      ...baseNotes,
+      "Shop palette matches the Grove warm wood, glass front, stone base, and landscaped entry examples.",
+    ],
   };
 }
 
 type HarthmereBusinessDecorFixtureSeedV1 = {
   label: string;
   role: HarthmereBusinessOutpostInteriorFixtureRoleV1;
-  side: "left" | "right" | "backLeft" | "backRight" | "frontLeft" | "frontRight";
+  side:
+    | "left"
+    | "right"
+    | "backLeft"
+    | "backRight"
+    | "frontLeft"
+    | "frontRight";
   size: readonly [number, number, number];
   colorHint: HarthmereBusinessOutpostInteriorFixtureV1["colorHint"];
 };
 
 function harthmereBusinessDecorFixtureSeedsV1(
-  typeId: HarthmereEconomyBusinessTypeIdV1,
+  typeId: HarthmereEconomyBusinessTypeIdV1
 ): readonly HarthmereBusinessDecorFixtureSeedV1[] {
   const fixture = (
     label: string,
     role: HarthmereBusinessOutpostInteriorFixtureRoleV1,
     side: HarthmereBusinessDecorFixtureSeedV1["side"],
     size: readonly [number, number, number],
-    colorHint: HarthmereBusinessOutpostInteriorFixtureV1["colorHint"],
+    colorHint: HarthmereBusinessOutpostInteriorFixtureV1["colorHint"]
   ) => ({ label, role, side, size, colorHint });
   // Every business type has a mini-game spec; the spec's interiorFixtureLabels drive
   // fixture labels so each business gets its correct named surfaces (e.g. "Buff service
@@ -3255,10 +7312,28 @@ function harthmereBusinessDecorFixtureSeedsV1(
   const [primaryBoard, serviceSurface, stockSurface, warningSurface] =
     mechanicSpec.interiorFixtureLabels;
   return [
-    fixture(primaryBoard, "workstation", "backLeft", [2.8, 1.15, 1.25], "accent"),
-    fixture(serviceSurface, "service_table", "backRight", [2.4, 0.95, 1.15], "wood"),
+    fixture(
+      primaryBoard,
+      "workstation",
+      "backLeft",
+      [2.8, 1.15, 1.25],
+      "accent"
+    ),
+    fixture(
+      serviceSurface,
+      "service_table",
+      "backRight",
+      [2.4, 0.95, 1.15],
+      "wood"
+    ),
     fixture(stockSurface, "stock_storage", "right", [1.3, 1.95, 2.4], "stock"),
-    fixture(warningSurface, "business_decor", "frontLeft", [1.5, 1.2, 1.2], "safety"),
+    fixture(
+      warningSurface,
+      "business_decor",
+      "frontLeft",
+      [1.5, 1.2, 1.2],
+      "safety"
+    ),
   ];
 }
 
@@ -3269,20 +7344,29 @@ function harthmereBusinessInteriorFixturePositionV1(
     width: number;
     depth: number;
     serviceCounter: { x: number; y: number; z: number };
-  },
+  }
 ) {
   const leftX = input.origin.x + 3;
   const rightX = input.origin.x + input.width - 4;
   const frontZ = input.origin.z + 5;
   const sideZ = Math.max(input.origin.z + 6, input.serviceCounter.z - 3);
-  const backZ = Math.min(input.origin.z + input.depth - 4, input.serviceCounter.z + 3);
+  const backZ = Math.min(
+    input.origin.z + input.depth - 4,
+    input.serviceCounter.z + 3
+  );
   switch (side) {
-    case "left": return { x: leftX, y: input.origin.y + 1, z: sideZ };
-    case "right": return { x: rightX, y: input.origin.y + 1, z: sideZ };
-    case "backLeft": return { x: leftX + 1, y: input.origin.y + 1, z: backZ };
-    case "backRight": return { x: rightX - 1, y: input.origin.y + 1, z: backZ };
-    case "frontLeft": return { x: leftX + 1, y: input.origin.y + 1, z: frontZ };
-    case "frontRight": return { x: rightX - 1, y: input.origin.y + 1, z: frontZ };
+    case "left":
+      return { x: leftX, y: input.origin.y + 1, z: sideZ };
+    case "right":
+      return { x: rightX, y: input.origin.y + 1, z: sideZ };
+    case "backLeft":
+      return { x: leftX + 1, y: input.origin.y + 1, z: backZ };
+    case "backRight":
+      return { x: rightX - 1, y: input.origin.y + 1, z: backZ };
+    case "frontLeft":
+      return { x: leftX + 1, y: input.origin.y + 1, z: frontZ };
+    case "frontRight":
+      return { x: rightX - 1, y: input.origin.y + 1, z: frontZ };
   }
 }
 
@@ -3304,7 +7388,7 @@ function createHarthmereBusinessInteriorFixturesV1(input: {
     colorHint: HarthmereBusinessOutpostInteriorFixtureV1["colorHint"],
     blocksNavigation: boolean,
     businessSpecific: boolean,
-    bikkieGraphicId?: string,
+    bikkieGraphicId?: string
   ): HarthmereBusinessOutpostInteriorFixtureV1 => ({
     fixtureId: `${input.outpost.outpostId}:${suffix}`,
     role,
@@ -3325,7 +7409,7 @@ function createHarthmereBusinessInteriorFixturesV1(input: {
       [4.4, 0.08, 2.0],
       "accent",
       false,
-      false,
+      false
     ),
     fixture(
       "service-counter",
@@ -3335,7 +7419,7 @@ function createHarthmereBusinessInteriorFixturesV1(input: {
       [6.4, 0.95, 1.0],
       "wood",
       false,
-      false,
+      false
     ),
     fixture(
       "dashboard-access",
@@ -3345,42 +7429,54 @@ function createHarthmereBusinessInteriorFixturesV1(input: {
       [1.4, 1.75, 0.6],
       "safety",
       false,
-      false,
+      false
     ),
   ];
   if (input.primaryBikkieGraphic) {
-    fixtures.push(fixture(
-      "primary-station",
-      "primary_station",
-      input.primaryBikkieGraphic.label,
-      {
-        x: input.origin.x + input.blueprint.footprint.width - 5,
-        y: input.origin.y + 1,
-        z: Math.min(input.origin.z + input.blueprint.footprint.depth - 4, input.serviceCounter.z + 2),
-      },
-      [1.6, 1.25, 1.6],
-      "primary",
-      true,
-      true,
-      input.primaryBikkieGraphic.graphicId,
-    ));
+    fixtures.push(
+      fixture(
+        "primary-station",
+        "primary_station",
+        input.primaryBikkieGraphic.label,
+        {
+          x: input.origin.x + input.blueprint.footprint.width - 5,
+          y: input.origin.y + 1,
+          z: Math.min(
+            input.origin.z + input.blueprint.footprint.depth - 4,
+            input.serviceCounter.z + 2
+          ),
+        },
+        [1.6, 1.25, 1.6],
+        "primary",
+        true,
+        true,
+        input.primaryBikkieGraphic.graphicId
+      )
+    );
   }
-  for (const seed of harthmereBusinessDecorFixtureSeedsV1(input.outpost.businessType)) {
-    fixtures.push(fixture(
-      seed.label.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, ""),
-      seed.role,
-      seed.label,
-      harthmereBusinessInteriorFixturePositionV1(seed.side, {
-        origin: input.origin,
-        width: input.blueprint.footprint.width,
-        depth: input.blueprint.footprint.depth,
-        serviceCounter: input.serviceCounter,
-      }),
-      seed.size,
-      seed.colorHint,
-      true,
-      true,
-    ));
+  for (const seed of harthmereBusinessDecorFixtureSeedsV1(
+    input.outpost.businessType
+  )) {
+    fixtures.push(
+      fixture(
+        seed.label
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, "-")
+          .replace(/^-+|-+$/g, ""),
+        seed.role,
+        seed.label,
+        harthmereBusinessInteriorFixturePositionV1(seed.side, {
+          origin: input.origin,
+          width: input.blueprint.footprint.width,
+          depth: input.blueprint.footprint.depth,
+          serviceCounter: input.serviceCounter,
+        }),
+        seed.size,
+        seed.colorHint,
+        true,
+        true
+      )
+    );
   }
   return fixtures;
 }
@@ -3391,7 +7487,7 @@ function addHarthmereOutpostRetainingFoundationSupportsV1(input: {
   origin: { x: number; y: number; z: number };
 }) {
   const foundationValue = input.materializationPlan.edits.find(
-    (edit) => edit.label === "foundation",
+    (edit) => edit.label === "foundation"
   )?.value;
   if (!foundationValue) return;
   const { xMin, xMax, zMin, zMax } = input.plot.bounds;
@@ -3433,7 +7529,7 @@ const HARTHMERE_BUSINESS_OUTPOST_SUBGRADE_DEPTH_V1 = 3;
 
 export function harthmereBusinessOutpostSafeSiteBoundsV1(
   plotBounds: { xMin: number; xMax: number; zMin: number; zMax: number },
-  ring = HARTHMERE_BUSINESS_OUTPOST_GARDEN_RING_V1,
+  ring = HARTHMERE_BUSINESS_OUTPOST_GARDEN_RING_V1
 ) {
   return {
     xMin: plotBounds.xMin - ring,
@@ -3448,10 +7544,26 @@ export function harthmereBusinessOutpostSafeSiteBoundsV1(
 // to the nearest of these so the safe site stays clear and the muck stays in a
 // real muck area nearby.
 const HARTHMERE_BUSINESS_OUTPOST_MUCK_RELOCATION_ANCHORS_V1 = Object.freeze([
-  { id: "watchtower_muck_clearing", label: "Watchtower Muck Clearing", center: { x: 332, y: 54, z: -390 } },
-  { id: "old_wood_mucker_copse", label: "Old Wood Mucker Copse", center: { x: 640, y: 54, z: -455 } },
-  { id: "gravewood_pale_muck", label: "Gravewood Pale Muck", center: { x: 640, y: 54, z: 120 } },
-  { id: "road_muckwad_patch", label: "Road Muckwad Patch", center: { x: 512, y: 54, z: -152 } },
+  {
+    id: "watchtower_muck_clearing",
+    label: "Watchtower Muck Clearing",
+    center: { x: 332, y: 54, z: -390 },
+  },
+  {
+    id: "old_wood_mucker_copse",
+    label: "Old Wood Mucker Copse",
+    center: { x: 640, y: 54, z: -455 },
+  },
+  {
+    id: "gravewood_pale_muck",
+    label: "Gravewood Pale Muck",
+    center: { x: 640, y: 54, z: 120 },
+  },
+  {
+    id: "road_muckwad_patch",
+    label: "Road Muckwad Patch",
+    center: { x: 512, y: 54, z: -152 },
+  },
 ] as const);
 
 export function harthmereBusinessOutpostMuckRelocationTargetV1(point: {
@@ -3462,7 +7574,10 @@ export function harthmereBusinessOutpostMuckRelocationTargetV1(point: {
     HARTHMERE_BUSINESS_OUTPOST_MUCK_RELOCATION_ANCHORS_V1[0];
   let bestDistance = Number.POSITIVE_INFINITY;
   for (const anchor of HARTHMERE_BUSINESS_OUTPOST_MUCK_RELOCATION_ANCHORS_V1) {
-    const distance = Math.hypot(anchor.center.x - point.x, anchor.center.z - point.z);
+    const distance = Math.hypot(
+      anchor.center.x - point.x,
+      anchor.center.z - point.z
+    );
     if (distance < bestDistance) {
       bestDistance = distance;
       best = anchor;
@@ -3488,19 +7603,27 @@ function addHarthmereOutpostSiteGradingAndGardenV1(input: {
   const bx1 = input.origin.x + input.blueprint.footprint.width - 1;
   const bz0 = input.origin.z;
   const bz1 = input.origin.z + input.blueprint.footprint.depth - 1;
-  const doorX = input.origin.x + Math.floor(input.blueprint.footprint.width / 2);
+  const doorX =
+    input.origin.x + Math.floor(input.blueprint.footprint.width / 2);
   const used = new Set(
-    input.materializationPlan.edits.map((edit) => harthmereOutpostEditKeyV1(edit.position)),
+    input.materializationPlan.edits.map((edit) =>
+      harthmereOutpostEditKeyV1(edit.position)
+    )
   );
   const tryPlace = (
     position: readonly [number, number, number],
     value: BiomesId,
-    label: BuildingSystemVoxelEditSpecV1["label"],
+    label: BuildingSystemVoxelEditSpecV1["label"]
   ) => {
     const key = harthmereOutpostEditKeyV1(position);
     if (used.has(key)) return;
     used.add(key);
-    pushHarthmereOutpostVoxelEditV1(input.materializationPlan, position, value, label);
+    pushHarthmereOutpostVoxelEditV1(
+      input.materializationPlan,
+      position,
+      value,
+      label
+    );
   };
 
   const insideBuildingFootprint = (x: number, z: number) =>
@@ -3513,15 +7636,19 @@ function addHarthmereOutpostSiteGradingAndGardenV1(input: {
     input.styleKit.exteriorDressing === "market_baskets"
       ? blocks.hay
       : input.styleKit.exteriorDressing === "garden_planters"
-        ? blocks.moss
-        : blocks.moss;
+      ? blocks.moss
+      : blocks.moss;
 
   for (let x = site.xMin; x <= site.xMax; x += 1) {
     for (let z = site.zMin; z <= site.zMax; z += 1) {
       if (insideBuildingFootprint(x, z)) continue;
       if (insideEntryWalk(x, z)) continue;
       // Fill any drop below the pad so the yard is flat with no sharp steps.
-      for (let depth = 1; depth <= HARTHMERE_BUSINESS_OUTPOST_SUBGRADE_DEPTH_V1; depth += 1) {
+      for (
+        let depth = 1;
+        depth <= HARTHMERE_BUSINESS_OUTPOST_SUBGRADE_DEPTH_V1;
+        depth += 1
+      ) {
         tryPlace([x, groundY - depth, z], blocks.dirt, "foundation");
       }
       // Fertile green top surface across the whole safe site.
@@ -3531,12 +7658,11 @@ function addHarthmereOutpostSiteGradingAndGardenV1(input: {
         z < input.plot.bounds.zMin ||
         z >= input.plot.bounds.zMax;
       // Alternating grass/garden-bed pattern in the ring for a tended-garden look.
-      const isGardenBed =
-        inGardenRing && ((x + z) % 3 === 0);
+      const isGardenBed = inGardenRing && (x + z) % 3 === 0;
       tryPlace(
         [x, groundY, z],
         isGardenBed ? gardenAccent : blocks.grass,
-        "safe_ground",
+        "safe_ground"
       );
     }
   }
@@ -3562,7 +7688,9 @@ function addHarthmereOutpostSiteGradingAndGardenV1(input: {
   }
 }
 
-function harthmereOutpostEditKeyV1(position: readonly [number, number, number]) {
+function harthmereOutpostEditKeyV1(
+  position: readonly [number, number, number]
+) {
   return position.join(":");
 }
 
@@ -3570,7 +7698,7 @@ function pushHarthmereOutpostVoxelEditV1(
   materializationPlan: BuildingSystemMaterializationPlanV1,
   position: readonly [number, number, number],
   value: BuildingSystemVoxelEditSpecV1["value"],
-  label: BuildingSystemVoxelEditSpecV1["label"],
+  label: BuildingSystemVoxelEditSpecV1["label"]
 ) {
   materializationPlan.edits.push({
     kind: "editEvent",
@@ -3595,7 +7723,7 @@ type HarthmereBusinessOutpostVoxelPaletteV1 = {
 };
 
 function harthmereOutpostTerrainForShellMaterialV1(
-  material: HarthmereBusinessOutpostShellMaterialV1,
+  material: HarthmereBusinessOutpostShellMaterialV1
 ): BiomesId {
   const blocks = HARTHMERE_OUTPOST_TERRAIN_BLOCKS_V1;
   switch (material) {
@@ -3622,7 +7750,7 @@ function harthmereOutpostTerrainForShellMaterialV1(
 }
 
 function harthmereOutpostVoxelPaletteForStyleKitV1(
-  styleKit: HarthmereBusinessOutpostBuildingStyleKitV1,
+  styleKit: HarthmereBusinessOutpostBuildingStyleKitV1
 ): HarthmereBusinessOutpostVoxelPaletteV1 {
   const blocks = HARTHMERE_OUTPOST_TERRAIN_BLOCKS_V1;
   return {
@@ -3630,9 +7758,10 @@ function harthmereOutpostVoxelPaletteForStyleKitV1(
     floor: harthmereOutpostTerrainForShellMaterialV1(styleKit.floor),
     wall: harthmereOutpostTerrainForShellMaterialV1(styleKit.exteriorWall),
     roof: harthmereOutpostTerrainForShellMaterialV1(styleKit.roof),
-    trim: styleKit.trim === "warm_wood_plank"
-      ? blocks.oakLog
-      : harthmereOutpostTerrainForShellMaterialV1(styleKit.trim),
+    trim:
+      styleKit.trim === "warm_wood_plank"
+        ? blocks.oakLog
+        : harthmereOutpostTerrainForShellMaterialV1(styleKit.trim),
     awning: harthmereOutpostTerrainForShellMaterialV1(styleKit.awningMaterial),
     stair: blocks.stonePolished,
     sign: blocks.oakLumber,
@@ -3641,16 +7770,16 @@ function harthmereOutpostVoxelPaletteForStyleKitV1(
       styleKit.exteriorDressing === "clean_clinic_lanterns"
         ? blocks.simpleGlass
         : styleKit.exteriorDressing === "market_baskets"
-          ? blocks.hay
-          : styleKit.exteriorDressing === "garden_planters"
-            ? blocks.moss
-            : blocks.woodCrate,
+        ? blocks.hay
+        : styleKit.exteriorDressing === "garden_planters"
+        ? blocks.moss
+        : blocks.woodCrate,
   };
 }
 
 function applyHarthmereOutpostVoxelPaletteV1(
   materializationPlan: BuildingSystemMaterializationPlanV1,
-  styleKit: HarthmereBusinessOutpostBuildingStyleKitV1,
+  styleKit: HarthmereBusinessOutpostBuildingStyleKitV1
 ) {
   const palette = harthmereOutpostVoxelPaletteForStyleKitV1(styleKit);
   for (const edit of materializationPlan.edits) {
@@ -3666,29 +7795,48 @@ function applyHarthmereOutpostVoxelPaletteV1(
 
 function harthmereOutpostFixtureVoxelValueV1(
   fixture: HarthmereBusinessOutpostInteriorFixtureV1,
-  primaryBikkieGraphic: HarthmereBusinessBikkieGraphicV1 | undefined,
+  primaryBikkieGraphic: HarthmereBusinessBikkieGraphicV1 | undefined
 ): BiomesId {
   const token = `${fixture.role} ${fixture.label}`.toLowerCase();
   if (fixture.role === "primary_station" && primaryBikkieGraphic) {
     return /forge|repair|tool|workbench|anvil/.test(token)
       ? HARTHMERE_OUTPOST_TERRAIN_BLOCKS_V1.stonePolished
       : /kitchen|cooking|hearth|meal|pot/.test(token)
-        ? HARTHMERE_OUTPOST_TERRAIN_BLOCKS_V1.stoneBrick
-        : /crystal|stability|rune|arcane|ward|glow|portal|teleport/.test(token)
-          ? HARTHMERE_OUTPOST_TERRAIN_BLOCKS_V1.simpleGlass
-          : HARTHMERE_OUTPOST_TERRAIN_BLOCKS_V1.oakLumber;
+      ? HARTHMERE_OUTPOST_TERRAIN_BLOCKS_V1.stoneBrick
+      : /crystal|stability|rune|arcane|ward|glow|portal|teleport/.test(token)
+      ? HARTHMERE_OUTPOST_TERRAIN_BLOCKS_V1.simpleGlass
+      : HARTHMERE_OUTPOST_TERRAIN_BLOCKS_V1.oakLumber;
   }
-  if (/kitchen|cooking|hearth|meal|pot/.test(token)) return HARTHMERE_OUTPOST_TERRAIN_BLOCKS_V1.stoneBrick;
-  if (/crystal|stability|rune|arcane|ward|glow|portal|teleport/.test(token)) return HARTHMERE_OUTPOST_TERRAIN_BLOCKS_V1.simpleGlass;
-  if (/route|map|hazard|guide|permit|blueprint|paper|drafting|ledger|contract|certificate|ticket|key/.test(token)) return HARTHMERE_OUTPOST_TERRAIN_BLOCKS_V1.oakLumber;
-  if (/forge|anvil|tool|bench|repair|fix|vise|workstation/.test(token)) return HARTHMERE_OUTPOST_TERRAIN_BLOCKS_V1.stonePolished;
-  if (/parcel|dispatch|package|orders|courier/.test(token)) return HARTHMERE_OUTPOST_TERRAIN_BLOCKS_V1.woodCrate;
-  if (/basin|barrel|wash|quench|cleanup|sanitation/.test(token)) return HARTHMERE_OUTPOST_TERRAIN_BLOCKS_V1.clay;
-  if (/fresh|harvest|crop|ingredient|food|larder|meat/.test(token)) return HARTHMERE_OUTPOST_TERRAIN_BLOCKS_V1.hay;
-  if (/shelf|cabinet|rack|storage|stock|pantry|larder|crate|chest|linen/.test(token)) return HARTHMERE_OUTPOST_TERRAIN_BLOCKS_V1.woodCrate;
-  if (/trail|camp|field/.test(token)) return HARTHMERE_OUTPOST_TERRAIN_BLOCKS_V1.stonePolished;
-  if (/bench|seat|stool|cot/.test(token)) return HARTHMERE_OUTPOST_TERRAIN_BLOCKS_V1.oakLumber;
-  if (/table|counter|desk|scale|sideboard/.test(token)) return HARTHMERE_OUTPOST_TERRAIN_BLOCKS_V1.oakLumber;
+  if (/kitchen|cooking|hearth|meal|pot/.test(token))
+    return HARTHMERE_OUTPOST_TERRAIN_BLOCKS_V1.stoneBrick;
+  if (/crystal|stability|rune|arcane|ward|glow|portal|teleport/.test(token))
+    return HARTHMERE_OUTPOST_TERRAIN_BLOCKS_V1.simpleGlass;
+  if (
+    /route|map|hazard|guide|permit|blueprint|paper|drafting|ledger|contract|certificate|ticket|key/.test(
+      token
+    )
+  )
+    return HARTHMERE_OUTPOST_TERRAIN_BLOCKS_V1.oakLumber;
+  if (/forge|anvil|tool|bench|repair|fix|vise|workstation/.test(token))
+    return HARTHMERE_OUTPOST_TERRAIN_BLOCKS_V1.stonePolished;
+  if (/parcel|dispatch|package|orders|courier/.test(token))
+    return HARTHMERE_OUTPOST_TERRAIN_BLOCKS_V1.woodCrate;
+  if (/basin|barrel|wash|quench|cleanup|sanitation/.test(token))
+    return HARTHMERE_OUTPOST_TERRAIN_BLOCKS_V1.clay;
+  if (/fresh|harvest|crop|ingredient|food|larder|meat/.test(token))
+    return HARTHMERE_OUTPOST_TERRAIN_BLOCKS_V1.hay;
+  if (
+    /shelf|cabinet|rack|storage|stock|pantry|larder|crate|chest|linen/.test(
+      token
+    )
+  )
+    return HARTHMERE_OUTPOST_TERRAIN_BLOCKS_V1.woodCrate;
+  if (/trail|camp|field/.test(token))
+    return HARTHMERE_OUTPOST_TERRAIN_BLOCKS_V1.stonePolished;
+  if (/bench|seat|stool|cot/.test(token))
+    return HARTHMERE_OUTPOST_TERRAIN_BLOCKS_V1.oakLumber;
+  if (/table|counter|desk|scale|sideboard/.test(token))
+    return HARTHMERE_OUTPOST_TERRAIN_BLOCKS_V1.oakLumber;
   return HARTHMERE_OUTPOST_TERRAIN_BLOCKS_V1.woodCrate;
 }
 
@@ -3706,22 +7854,117 @@ function pushHarthmereOutpostFixtureVoxelsV1(input: {
   const y = Math.round(input.fixture.position.y);
   const value = harthmereOutpostFixtureVoxelValueV1(
     input.fixture,
-    input.primaryBikkieGraphic,
+    input.primaryBikkieGraphic
   );
   const label: BuildingSystemVoxelEditSpecV1["label"] =
-    input.fixture.role === "stock_storage" ? "storage_container" :
-      input.fixture.role === "dashboard_access" || input.fixture.role === "primary_station" ? "business_marker" :
-        "interior";
+    input.fixture.role === "stock_storage"
+      ? "storage_container"
+      : input.fixture.role === "dashboard_access" ||
+        input.fixture.role === "primary_station"
+      ? "business_marker"
+      : "interior";
+
+  const blocks = HARTHMERE_OUTPOST_TERRAIN_BLOCKS_V1;
+  const pushIfFree = (
+    position: readonly [number, number, number],
+    blockValue: BiomesId,
+    editLabel: BuildingSystemVoxelEditSpecV1["label"] = label
+  ) => {
+    const key = harthmereOutpostEditKeyV1(position);
+    if (input.reservedPathKeys.has(key) || input.usedFixtureKeys.has(key))
+      return;
+    input.usedFixtureKeys.add(key);
+    pushHarthmereOutpostVoxelEditV1(
+      input.materializationPlan,
+      position,
+      blockValue,
+      editLabel
+    );
+  };
+  const x1 = x0 + width - 1;
+  const z1 = z0 + depth - 1;
+  const token = `${input.fixture.role} ${input.fixture.label}`.toLowerCase();
+
+  if (input.fixture.role === "customer_queue_space") return;
+
+  if (input.fixture.role === "dashboard_access") {
+    pushIfFree([x0, y, z0], blocks.oakLumber, "business_marker");
+    pushIfFree([x0, y + 1, z0], blocks.simpleGlass, "business_marker");
+    pushIfFree([x0, y + 2, z0], blocks.hay, "business_marker");
+    pushIfFree([x0 - 1, y, z0], blocks.woodCrate, "storage_container");
+    pushIfFree([x0 + 1, y, z0], blocks.woodCrate, "storage_container");
+    return;
+  }
+
+  if (input.fixture.role === "stock_storage") {
+    for (let z = z0; z <= z1; z += 1) {
+      const stockValue =
+        z % 3 === 0
+          ? blocks.hay
+          : z % 3 === 1
+          ? blocks.simpleGlass
+          : blocks.woodCrate;
+      pushIfFree([x0, y, z], blocks.oakLumber, "storage_container");
+      pushIfFree([x0, y + 1, z], stockValue, "storage_container");
+    }
+    pushIfFree([x0, y + 2, z0], blocks.oakLog, "interior");
+    pushIfFree([x0, y + 2, z1], blocks.oakLog, "interior");
+    return;
+  }
+
+  if (
+    input.fixture.role === "primary_station" ||
+    input.fixture.role === "workstation" ||
+    input.fixture.role === "service_counter" ||
+    input.fixture.role === "service_table"
+  ) {
+    for (let x = x0; x <= x1; x += 1) {
+      for (let z = z0; z <= z1; z += 1) {
+        const isCorner = (x === x0 || x === x1) && (z === z0 || z === z1);
+        const isEdge = x === x0 || x === x1 || z === z0 || z === z1;
+        if (isCorner) pushIfFree([x, y, z], blocks.oakLog, label);
+        if (isEdge) pushIfFree([x, y + 1, z], value, label);
+      }
+    }
+    if (/kitchen|cook|meal|buff|service/.test(token)) {
+      pushIfFree([Math.round((x0 + x1) / 2), y + 2, z0], blocks.hay, label);
+      pushIfFree([Math.round((x0 + x1) / 2), y + 2, z1], blocks.clay, label);
+    } else if (/map|paper|ledger|contract|route|ticket|permit/.test(token)) {
+      pushIfFree(
+        [Math.round((x0 + x1) / 2), y + 2, Math.round((z0 + z1) / 2)],
+        blocks.simpleGlass,
+        label
+      );
+    }
+    return;
+  }
+
+  if (input.fixture.role === "business_decor") {
+    pushIfFree([x0, y, z0], blocks.oakLog, "interior");
+    pushIfFree([x0, y + 1, z0], value, "interior");
+    pushIfFree([x0, y + 2, z0], blocks.simpleGlass, "interior");
+    return;
+  }
 
   for (let x = x0; x < x0 + width; x += 1) {
     for (let z = z0; z < z0 + depth; z += 1) {
-      const position = [x, y, z] as const;
-      const key = harthmereOutpostEditKeyV1(position);
-      if (input.reservedPathKeys.has(key) || input.usedFixtureKeys.has(key)) continue;
-      input.usedFixtureKeys.add(key);
-      pushHarthmereOutpostVoxelEditV1(input.materializationPlan, position, value, label);
+      pushIfFree([x, y, z], value, label);
     }
   }
+}
+
+function harthmereOutpostInteriorAccentValueV1(
+  businessType: HarthmereEconomyBusinessTypeIdV1
+): BiomesId {
+  const blocks = HARTHMERE_OUTPOST_TERRAIN_BLOCKS_V1;
+  if (/restaurant|farming|hunter|rare_food|food/.test(businessType))
+    return blocks.hay;
+  if (/medical|sanitation|waste/.test(businessType)) return blocks.clay;
+  if (/portal|teleport|magic|exotic|design/.test(businessType))
+    return blocks.simpleGlass;
+  if (/weapons|repair|maintenance|security|refinery/.test(businessType))
+    return blocks.stonePolished;
+  return blocks.woodCrate;
 }
 
 function addHarthmereOutpostGuideVoxelsV1(input: {
@@ -3748,25 +7991,344 @@ function addHarthmereOutpostGuideVoxelsV1(input: {
   const wallY = y0 + 2;
   const trimY = y0 + 3;
   const roofY = y0 + Math.max(3, blueprint.footprint.height - 1);
-  const reservedPathKeys = new Set([
-    input.entrance,
-    input.queueNode,
-    input.serviceCounter,
-    input.exitNode,
-  ].map((node) => harthmereOutpostEditKeyV1([node.x, node.y, node.z])));
+  const reservedPathKeys = new Set(
+    [input.entrance, input.queueNode, input.serviceCounter, input.exitNode].map(
+      (node) => harthmereOutpostEditKeyV1([node.x, node.y, node.z])
+    )
+  );
   const usedFixtureKeys = new Set<string>();
   const blocks = HARTHMERE_OUTPOST_TERRAIN_BLOCKS_V1;
-  const palette = harthmereOutpostVoxelPaletteForStyleKitV1(input.buildingStyleKit);
+  const palette = harthmereOutpostVoxelPaletteForStyleKitV1(
+    input.buildingStyleKit
+  );
   const tryPush = (
     position: readonly [number, number, number],
     value: BiomesId,
     label: BuildingSystemVoxelEditSpecV1["label"],
-    reserve = true,
+    reserve = true
   ) => {
     const key = harthmereOutpostEditKeyV1(position);
     if (reserve && reservedPathKeys.has(key)) return false;
-    pushHarthmereOutpostVoxelEditV1(materializationPlan, position, value, label);
+    pushHarthmereOutpostVoxelEditV1(
+      materializationPlan,
+      position,
+      value,
+      label
+    );
     return true;
+  };
+  const polishedKeys = new Set<string>();
+  const tryPolish = (
+    position: readonly [number, number, number],
+    value: BiomesId,
+    label: BuildingSystemVoxelEditSpecV1["label"] = "interior",
+    reserve = true
+  ) => {
+    const key = harthmereOutpostEditKeyV1(position);
+    if (polishedKeys.has(key)) return false;
+    if (!tryPush(position, value, label, reserve)) return false;
+    polishedKeys.add(key);
+    return true;
+  };
+  const tryBox = (
+    from: readonly [number, number, number],
+    to: readonly [number, number, number],
+    value: BiomesId,
+    label: BuildingSystemVoxelEditSpecV1["label"] = "interior",
+    reserve = true
+  ) => {
+    for (
+      let x = Math.min(from[0], to[0]);
+      x <= Math.max(from[0], to[0]);
+      x += 1
+    ) {
+      for (
+        let y = Math.min(from[1], to[1]);
+        y <= Math.max(from[1], to[1]);
+        y += 1
+      ) {
+        for (
+          let z = Math.min(from[2], to[2]);
+          z <= Math.max(from[2], to[2]);
+          z += 1
+        ) {
+          tryPolish([x, y, z], value, label, reserve);
+        }
+      }
+    }
+  };
+  const tableWithSeats = (cx: number, cz: number, accentValue: BiomesId) => {
+    tryPolish([cx - 1, y0 + 1, cz - 1], blocks.oakLog, "frame");
+    tryPolish([cx + 1, y0 + 1, cz - 1], blocks.oakLog, "frame");
+    tryPolish([cx - 1, y0 + 1, cz + 1], blocks.oakLog, "frame");
+    tryPolish([cx + 1, y0 + 1, cz + 1], blocks.oakLog, "frame");
+    tryPolish([cx - 1, y0 + 2, cz], blocks.oakLumber, "interior");
+    tryPolish([cx, y0 + 2, cz], blocks.oakLumber, "interior");
+    tryPolish([cx + 1, y0 + 2, cz], blocks.oakLumber, "interior");
+    tryPolish([cx, y0 + 3, cz], accentValue, "business_marker");
+    for (const [dx, dz] of [
+      [-2, 0],
+      [2, 0],
+      [0, -2],
+      [0, 2],
+    ] as Array<[number, number]>) {
+      tryPolish([cx + dx, y0 + 1, cz + dz], accentValue, "interior");
+    }
+  };
+  const serviceBench = (
+    fromX: number,
+    toX: number,
+    z: number,
+    value = blocks.oakLumber
+  ) => {
+    for (let x = fromX; x <= toX; x += 1) {
+      tryPolish([x, y0 + 1, z], value, "interior");
+    }
+    for (const x of [fromX, toX]) {
+      tryPolish([x, y0 + 2, z], blocks.oakLog, "frame");
+    }
+  };
+  const sideTable = (x: number, z: number, topValue = blocks.oakLumber) => {
+    tryPolish([x, y0 + 1, z], blocks.oakLog, "frame");
+    tryPolish([x, y0 + 2, z], topValue, "interior");
+    tryPolish([x, y0 + 3, z], blocks.simpleGlass, "business_marker");
+  };
+  const lampPost = (x: number, z: number) => {
+    tryPolish([x, y0 + 1, z], blocks.oakLog, "frame");
+    tryPolish([x, y0 + 2, z], blocks.oakLog, "frame");
+    tryPolish([x, y0 + 3, z], blocks.simpleGlass, "business_marker");
+  };
+  const wallSign = (x: number, z: number, value = blocks.simpleGlass) => {
+    tryPolish([x, y0 + 2, z], value, "business_marker", false);
+    tryPolish([x, y0 + 3, z], blocks.oakLumber, "frame", false);
+  };
+  const tableWithSeatsLegacy = (
+    cx: number,
+    cz: number,
+    accentValue: BiomesId
+  ) => {
+    tryPolish([cx - 1, y0 + 1, cz], blocks.oakLumber, "interior");
+    tryPolish([cx, y0 + 1, cz], blocks.oakLumber, "interior");
+    tryPolish([cx + 1, y0 + 1, cz], blocks.oakLumber, "interior");
+    for (const [dx, dz] of [
+      [-2, 0],
+      [2, 0],
+      [0, -1],
+      [0, 1],
+    ] as Array<[number, number]>) {
+      tryPolish([cx + dx, y0 + 1, cz + dz], accentValue, "interior");
+    }
+  };
+  const shelfWall = (
+    x: number,
+    z: number,
+    length: number,
+    alongX: boolean,
+    stockValue: BiomesId
+  ) => {
+    for (let index = 0; index < length; index += 1) {
+      const sx = alongX ? x + index : x;
+      const sz = alongX ? z : z + index;
+      tryPolish([sx, y0 + 1, sz], blocks.oakLumber, "interior");
+      if (index % 2 === 0) {
+        tryPolish([sx, y0 + 2, sz], stockValue, "storage_container");
+      }
+    }
+  };
+  const figure = (
+    x: number,
+    z: number,
+    bodyValue: BiomesId,
+    headValue: BiomesId,
+    markerValue: BiomesId
+  ) => {
+    tryPolish([x, y0 + 1, z], bodyValue, "npc_marker", false);
+    tryPolish([x, y0 + 2, z], headValue, "npc_marker", false);
+    tryPolish([x - 1, y0 + 2, z], bodyValue, "npc_marker", false);
+    tryPolish([x + 1, y0 + 2, z], bodyValue, "npc_marker", false);
+    tryPolish([x, y0 + 3, z], markerValue, "business_marker", false);
+  };
+  const addDashboardKiosk = () => {
+    const { x, y, z } = input.dashboardAccessPoint.position;
+    tryPolish([x - 1, y, z], blocks.stonePolished, "business_marker", false);
+    tryPolish([x, y, z], blocks.stonePolished, "business_marker", false);
+    tryPolish([x + 1, y, z], blocks.stonePolished, "business_marker", false);
+    tryPolish([x - 1, y + 1, z], blocks.oakLog, "frame", false);
+    tryPolish([x + 1, y + 1, z], blocks.oakLog, "frame", false);
+    tryPolish([x - 1, y + 2, z], blocks.oakLog, "frame", false);
+    tryPolish([x + 1, y + 2, z], blocks.oakLog, "frame", false);
+    tryPolish([x, y + 1, z], blocks.simpleGlass, "business_marker", false);
+    tryPolish(
+      [x, y + 2, z],
+      harthmereOutpostInteriorAccentValueV1(input.outpost.businessType),
+      "business_marker",
+      false
+    );
+    tryPolish([x, y + 3, z], blocks.simpleGlass, "business_marker", false);
+    tryPolish([x - 2, y + 1, z], blocks.oakLumber, "interior", false);
+    tryPolish([x + 2, y + 1, z], blocks.oakLumber, "interior", false);
+  };
+  const addBackCounter = (
+    z: number,
+    leftX = x0 + 5,
+    rightX = x1 - 5,
+    counterValue = blocks.oakLumber
+  ) => {
+    for (let x = leftX; x <= rightX; x += 1) {
+      tryPolish([x, y0 + 1, z], blocks.oakLog, "frame");
+      tryPolish([x, y0 + 2, z], counterValue, "business_marker");
+      if (x % 3 === 0) {
+        tryPolish([x, y0 + 3, z], blocks.simpleGlass, "business_marker");
+      }
+    }
+  };
+  const addRestaurantInteriorPolish = () => {
+    const counterZ = Math.min(z1 - 4, input.serviceCounter.z + 1);
+    addBackCounter(counterZ, x0 + 4, x1 - 4, blocks.oakLumber);
+    serviceBench(x0 + 4, x0 + 8, counterZ + 2, blocks.stoneBrick);
+    sideTable(x0 + 6, counterZ + 4, blocks.stoneBrick);
+    serviceBench(x1 - 8, x1 - 5, counterZ + 2, blocks.hay);
+    sideTable(x1 - 6, counterZ + 4, blocks.hay);
+    shelfWall(
+      x0 + 3,
+      z1 - 2,
+      Math.max(5, Math.min(9, x1 - x0 - 6)),
+      true,
+      blocks.hay
+    );
+    shelfWall(
+      x1 - 2,
+      z0 + 5,
+      Math.max(5, Math.min(9, z1 - z0 - 8)),
+      false,
+      blocks.hay
+    );
+    serviceBench(x0 + 3, x0 + 7, z0 + 4, blocks.hay);
+    serviceBench(x1 - 7, x1 - 3, z0 + 4, blocks.clay);
+    tableWithSeats(x0 + 7, z0 + 7, blocks.hay);
+    tableWithSeats(x1 - 7, z0 + 7, blocks.hay);
+    tableWithSeats(x0 + 7, z0 + 12, blocks.clay);
+    tableWithSeats(x1 - 7, z0 + 12, blocks.clay);
+    lampPost(x0 + 3, z0 + 6);
+    lampPost(x1 - 3, z0 + 6);
+    wallSign(
+      input.dashboardAccessPoint.position.x,
+      input.dashboardAccessPoint.position.z + 1
+    );
+    figure(
+      Math.min(x1 - 6, input.serviceCounter.x + 2),
+      counterZ - 1,
+      blocks.oakLumber,
+      blocks.clay,
+      blocks.simpleGlass
+    );
+    figure(
+      Math.max(x0 + 5, input.queueNode.x - 2),
+      Math.max(z0 + 6, input.queueNode.z + 2),
+      blocks.hay,
+      blocks.clay,
+      blocks.simpleGlass
+    );
+  };
+  const addBusinessInteriorPolish = () => {
+    const accentValue = harthmereOutpostInteriorAccentValueV1(
+      input.outpost.businessType
+    );
+    const staffX = Math.min(x1 - 3, input.serviceCounter.x + 4);
+    const staffZ = Math.min(z1 - 3, input.serviceCounter.z + 1);
+    const customerX = Math.max(x0 + 3, input.queueNode.x - 1);
+    const customerZ = Math.max(z0 + 4, input.queueNode.z + 1);
+    addDashboardKiosk();
+    figure(staffX, staffZ, blocks.oakLumber, blocks.clay, blocks.simpleGlass);
+    figure(customerX, customerZ, blocks.hay, blocks.clay, accentValue);
+    shelfWall(
+      x0 + 2,
+      z1 - 3,
+      Math.max(4, Math.min(8, x1 - x0 - 4)),
+      true,
+      accentValue
+    );
+    shelfWall(
+      x1 - 3,
+      z0 + 4,
+      Math.max(4, Math.min(7, z1 - z0 - 6)),
+      false,
+      accentValue
+    );
+
+    if (/restaurant|food_service/.test(input.outpost.businessType)) {
+      addRestaurantInteriorPolish();
+      return;
+    }
+    if (/medical/.test(input.outpost.businessType)) {
+      tryBox(
+        [x0 + 4, y0 + 1, z0 + 6],
+        [x0 + 7, y0 + 1, z0 + 7],
+        blocks.oakLumber,
+        "interior"
+      );
+      tryPolish([x0 + 5, y0 + 2, z0 + 6], blocks.clay, "business_marker");
+      tryPolish(
+        [x0 + 6, y0 + 2, z0 + 6],
+        blocks.simpleGlass,
+        "business_marker"
+      );
+      tableWithSeats(x1 - 5, z0 + 6, blocks.clay);
+      return;
+    }
+    if (/portal|teleport|magic|exotic/.test(input.outpost.businessType)) {
+      tryBox(
+        [x1 - 7, y0 + 1, z1 - 6],
+        [x1 - 5, y0 + 1, z1 - 4],
+        blocks.simpleGlass,
+        "business_marker"
+      );
+      tryPolish(
+        [x1 - 6, y0 + 2, z1 - 5],
+        blocks.simpleGlass,
+        "business_marker"
+      );
+      tryPolish([x1 - 6, y0 + 3, z1 - 5], blocks.moss, "business_marker");
+      tableWithSeatsLegacy(x0 + 5, z0 + 6, blocks.simpleGlass);
+      return;
+    }
+    if (
+      /weapons|repair|maintenance|refinery|security/.test(
+        input.outpost.businessType
+      )
+    ) {
+      tryBox(
+        [x0 + 4, y0 + 1, z1 - 5],
+        [x0 + 8, y0 + 1, z1 - 4],
+        blocks.stonePolished,
+        "business_marker"
+      );
+      tryPolish([x0 + 5, y0 + 2, z1 - 4], blocks.oakLog, "frame");
+      tryPolish(
+        [x0 + 7, y0 + 2, z1 - 4],
+        blocks.woodCrate,
+        "storage_container"
+      );
+      tableWithSeatsLegacy(x1 - 5, z0 + 6, blocks.stonePolished);
+      return;
+    }
+    if (
+      /courier|trader|farming|hunter|hospitality|property|design/.test(
+        input.outpost.businessType
+      )
+    ) {
+      tableWithSeatsLegacy(x0 + 5, z0 + 6, accentValue);
+      tableWithSeatsLegacy(x1 - 5, z0 + 7, blocks.oakLumber);
+      tryBox(
+        [x0 + 3, y0 + 1, z1 - 6],
+        [x0 + 6, y0 + 2, z1 - 5],
+        accentValue,
+        "storage_container"
+      );
+      return;
+    }
+    tableWithSeatsLegacy(x0 + 5, z0 + 6, accentValue);
+    tableWithSeatsLegacy(x1 - 5, z0 + 7, accentValue);
   };
 
   // Grove-reference front door language: open 1x2 doorway, supported jambs,
@@ -3776,45 +8338,129 @@ function addHarthmereOutpostGuideVoxelsV1(input: {
       materializationPlan,
       [x, y0, z0 - 1],
       palette.stair,
-      "stair",
+      "stair"
     );
   }
   for (let y = y0 + 1; y <= trimY; y += 1) {
-    pushHarthmereOutpostVoxelEditV1(materializationPlan, [doorX - 1, y, z0], blocks.oakLog, "frame");
-    pushHarthmereOutpostVoxelEditV1(materializationPlan, [doorX + 1, y, z0], blocks.oakLog, "frame");
+    pushHarthmereOutpostVoxelEditV1(
+      materializationPlan,
+      [doorX - 1, y, z0],
+      blocks.oakLog,
+      "frame"
+    );
+    pushHarthmereOutpostVoxelEditV1(
+      materializationPlan,
+      [doorX + 1, y, z0],
+      blocks.oakLog,
+      "frame"
+    );
   }
   for (const x of [doorX - 1, doorX, doorX + 1]) {
-    pushHarthmereOutpostVoxelEditV1(materializationPlan, [x, trimY, z0], palette.trim, "frame");
+    pushHarthmereOutpostVoxelEditV1(
+      materializationPlan,
+      [x, trimY, z0],
+      palette.trim,
+      "frame"
+    );
   }
-  pushHarthmereOutpostVoxelEditV1(materializationPlan, [doorX, trimY + 1, z0], blocks.oakLumber, "frame");
-  pushHarthmereOutpostVoxelEditV1(materializationPlan, [doorX + 2, y0 + 1, z0 - 1], palette.sign, "door_lock");
-  pushHarthmereOutpostVoxelEditV1(materializationPlan, [doorX - 4, y0 + 1, z0 - 1], blocks.oakLog, "frame");
-  pushHarthmereOutpostVoxelEditV1(materializationPlan, [doorX - 4, y0 + 2, z0 - 1], palette.sign, "business_marker");
+  pushHarthmereOutpostVoxelEditV1(
+    materializationPlan,
+    [doorX, trimY + 1, z0],
+    blocks.oakLumber,
+    "frame"
+  );
+  pushHarthmereOutpostVoxelEditV1(
+    materializationPlan,
+    [doorX + 2, y0 + 1, z0 - 1],
+    palette.sign,
+    "door_lock"
+  );
+  pushHarthmereOutpostVoxelEditV1(
+    materializationPlan,
+    [doorX - 4, y0 + 1, z0 - 1],
+    blocks.oakLog,
+    "frame"
+  );
+  pushHarthmereOutpostVoxelEditV1(
+    materializationPlan,
+    [doorX - 4, y0 + 2, z0 - 1],
+    palette.sign,
+    "business_marker"
+  );
 
   // Vertical trim, corner posts, and a voxel roof overhang prevent the shop
   // from reading as a flat slab when the world materialization is viewed alone.
-  for (const [x, z] of [[x0, z0], [x1, z0], [x0, z1], [x1, z1]] as Array<[number, number]>) {
+  for (const [x, z] of [
+    [x0, z0],
+    [x1, z0],
+    [x0, z1],
+    [x1, z1],
+  ] as Array<[number, number]>) {
     for (let y = y0 + 1; y < roofY; y += 1) {
-      pushHarthmereOutpostVoxelEditV1(materializationPlan, [x, y, z], blocks.oakLog, "frame");
+      pushHarthmereOutpostVoxelEditV1(
+        materializationPlan,
+        [x, y, z],
+        blocks.oakLog,
+        "frame"
+      );
     }
   }
   for (let x = x0 - 1; x <= x1 + 1; x += 1) {
-    pushHarthmereOutpostVoxelEditV1(materializationPlan, [x, roofY + 1, z0 - 1], palette.roof, "roof");
-    pushHarthmereOutpostVoxelEditV1(materializationPlan, [x, roofY + 1, z1 + 1], palette.roof, "roof");
+    pushHarthmereOutpostVoxelEditV1(
+      materializationPlan,
+      [x, roofY + 1, z0 - 1],
+      palette.roof,
+      "roof"
+    );
+    pushHarthmereOutpostVoxelEditV1(
+      materializationPlan,
+      [x, roofY + 1, z1 + 1],
+      palette.roof,
+      "roof"
+    );
   }
   for (let z = z0; z <= z1; z += 1) {
-    pushHarthmereOutpostVoxelEditV1(materializationPlan, [x0 - 1, roofY + 1, z], palette.roof, "roof");
-    pushHarthmereOutpostVoxelEditV1(materializationPlan, [x1 + 1, roofY + 1, z], palette.roof, "roof");
+    pushHarthmereOutpostVoxelEditV1(
+      materializationPlan,
+      [x0 - 1, roofY + 1, z],
+      palette.roof,
+      "roof"
+    );
+    pushHarthmereOutpostVoxelEditV1(
+      materializationPlan,
+      [x1 + 1, roofY + 1, z],
+      palette.roof,
+      "roof"
+    );
   }
   for (let x = x0 + 3; x <= x1 - 3; x += 2) {
-    pushHarthmereOutpostVoxelEditV1(materializationPlan, [x, roofY + 2, z0 + Math.floor((z1 - z0) / 2)], palette.roof, "roof");
+    pushHarthmereOutpostVoxelEditV1(
+      materializationPlan,
+      [x, roofY + 2, z0 + Math.floor((z1 - z0) / 2)],
+      palette.roof,
+      "roof"
+    );
   }
 
   // Supported awning above the customer-facing storefront.
-  for (let x = Math.max(x0 + 2, doorX - 7); x <= Math.min(x1 - 2, doorX + 7); x += 1) {
-    pushHarthmereOutpostVoxelEditV1(materializationPlan, [x, trimY + 1, z0 - 1], palette.awning, "frame");
+  for (
+    let x = Math.max(x0 + 2, doorX - 7);
+    x <= Math.min(x1 - 2, doorX + 7);
+    x += 1
+  ) {
+    pushHarthmereOutpostVoxelEditV1(
+      materializationPlan,
+      [x, trimY + 1, z0 - 1],
+      palette.awning,
+      "frame"
+    );
     if (x % 2 === 0) {
-      pushHarthmereOutpostVoxelEditV1(materializationPlan, [x, trimY + 1, z0 - 2], palette.awning, "frame");
+      pushHarthmereOutpostVoxelEditV1(
+        materializationPlan,
+        [x, trimY + 1, z0 - 2],
+        palette.awning,
+        "frame"
+      );
     }
   }
 
@@ -3825,7 +8471,7 @@ function addHarthmereOutpostGuideVoxelsV1(input: {
         materializationPlan,
         [Math.max(x0 + 1, Math.min(x1 - 1, windowCenterX + dx)), wallY, z0],
         blocks.simpleGlass,
-        "frame",
+        "frame"
       );
     }
     for (const dx of [-2, 2]) {
@@ -3833,7 +8479,7 @@ function addHarthmereOutpostGuideVoxelsV1(input: {
         materializationPlan,
         [Math.max(x0 + 1, Math.min(x1 - 1, windowCenterX + dx)), wallY, z0],
         palette.trim,
-        "frame",
+        "frame"
       );
     }
     for (const dx of [-1, 0, 1]) {
@@ -3841,16 +8487,36 @@ function addHarthmereOutpostGuideVoxelsV1(input: {
         materializationPlan,
         [Math.max(x0 + 1, Math.min(x1 - 1, windowCenterX + dx)), wallY + 1, z0],
         palette.trim,
-        "frame",
+        "frame"
       );
     }
   }
   for (const side of [x0, x1]) {
     for (const z of [z0 + 5, Math.max(z0 + 7, z1 - 6)]) {
-      pushHarthmereOutpostVoxelEditV1(materializationPlan, [side, wallY, z], blocks.simpleGlass, "frame");
-      pushHarthmereOutpostVoxelEditV1(materializationPlan, [side, wallY, z + 1], blocks.simpleGlass, "frame");
-      pushHarthmereOutpostVoxelEditV1(materializationPlan, [side, wallY, z - 1], palette.trim, "frame");
-      pushHarthmereOutpostVoxelEditV1(materializationPlan, [side, wallY, z + 2], palette.trim, "frame");
+      pushHarthmereOutpostVoxelEditV1(
+        materializationPlan,
+        [side, wallY, z],
+        blocks.simpleGlass,
+        "frame"
+      );
+      pushHarthmereOutpostVoxelEditV1(
+        materializationPlan,
+        [side, wallY, z + 1],
+        blocks.simpleGlass,
+        "frame"
+      );
+      pushHarthmereOutpostVoxelEditV1(
+        materializationPlan,
+        [side, wallY, z - 1],
+        palette.trim,
+        "frame"
+      );
+      pushHarthmereOutpostVoxelEditV1(
+        materializationPlan,
+        [side, wallY, z + 2],
+        palette.trim,
+        "frame"
+      );
     }
   }
 
@@ -3860,11 +8526,20 @@ function addHarthmereOutpostGuideVoxelsV1(input: {
   for (const dx of [-3, -2, -1, 0, 1, 2, 3]) {
     const position = [doorX + dx, y0 + 1, counterZ] as const;
     if (!reservedPathKeys.has(harthmereOutpostEditKeyV1(position))) {
-      pushHarthmereOutpostVoxelEditV1(materializationPlan, position, blocks.oakLumber, "interior");
+      pushHarthmereOutpostVoxelEditV1(
+        materializationPlan,
+        position,
+        blocks.oakLumber,
+        "interior"
+      );
     }
   }
   for (const dx of [-3, -1, 1, 3]) {
-    tryPush([doorX + dx, y0 + 2, counterZ], blocks.woodCrate, "storage_container");
+    tryPush(
+      [doorX + dx, y0 + 2, counterZ],
+      blocks.woodCrate,
+      "storage_container"
+    );
   }
   for (const [x, z] of [
     [x0 + 2, z0 + 2],
@@ -3898,6 +8573,7 @@ function addHarthmereOutpostGuideVoxelsV1(input: {
       usedFixtureKeys,
     });
   }
+  addBusinessInteriorPolish();
 
   // The customer dashboard is an in-room access object, not a hidden marker.
   pushHarthmereOutpostVoxelEditV1(
@@ -3908,19 +8584,23 @@ function addHarthmereOutpostGuideVoxelsV1(input: {
       input.dashboardAccessPoint.position.z,
     ],
     blocks.simpleGlass,
-    "business_marker",
+    "business_marker"
   );
 
   // Business-appropriate consumable/sample stock, placed along side counters.
-  const sampleValue = /food_service|farming|hunter/.test(input.outpost.businessType)
+  const sampleValue = /food_service|farming|hunter/.test(
+    input.outpost.businessType
+  )
     ? blocks.hay
     : /medical|sanitation/.test(input.outpost.businessType)
-      ? blocks.clay
-      : /courier/.test(input.outpost.businessType)
-        ? blocks.woodCrate
-        : /design|property|security|portal|teleport|magic|exotic/.test(input.outpost.businessType)
-          ? blocks.simpleGlass
-          : blocks.stonePolished;
+    ? blocks.clay
+    : /courier/.test(input.outpost.businessType)
+    ? blocks.woodCrate
+    : /design|property|security|portal|teleport|magic|exotic/.test(
+        input.outpost.businessType
+      )
+    ? blocks.simpleGlass
+    : blocks.stonePolished;
   for (const [x, z] of [
     [x0 + 4, z0 + 5],
     [x1 - 4, z0 + 5],
@@ -3929,7 +8609,12 @@ function addHarthmereOutpostGuideVoxelsV1(input: {
   ] as Array<[number, number]>) {
     const position = [x, y0 + 1, z] as const;
     if (!reservedPathKeys.has(harthmereOutpostEditKeyV1(position))) {
-      pushHarthmereOutpostVoxelEditV1(materializationPlan, position, sampleValue, "interior");
+      pushHarthmereOutpostVoxelEditV1(
+        materializationPlan,
+        position,
+        sampleValue,
+        "interior"
+      );
     }
   }
 
@@ -3937,19 +8622,44 @@ function addHarthmereOutpostGuideVoxelsV1(input: {
   // so old invisible/fake client structures are not needed for polish.
   for (let z = z0 - 4; z <= z0 - 2; z += 1) {
     for (const x of [doorX - 1, doorX, doorX + 1]) {
-      pushHarthmereOutpostVoxelEditV1(materializationPlan, [x, y0, z], palette.stair, "safe_ground");
+      pushHarthmereOutpostVoxelEditV1(
+        materializationPlan,
+        [x, y0, z],
+        palette.stair,
+        "safe_ground"
+      );
     }
   }
   for (const x of [doorX - 6, doorX + 6]) {
-    pushHarthmereOutpostVoxelEditV1(materializationPlan, [x, y0 + 1, z0 - 2], blocks.woodCrate, "interior");
-    pushHarthmereOutpostVoxelEditV1(materializationPlan, [x + Math.sign(x - doorX), y0 + 1, z0 - 2], palette.exteriorAccent, "interior");
+    pushHarthmereOutpostVoxelEditV1(
+      materializationPlan,
+      [x, y0 + 1, z0 - 2],
+      blocks.woodCrate,
+      "interior"
+    );
+    pushHarthmereOutpostVoxelEditV1(
+      materializationPlan,
+      [x + Math.sign(x - doorX), y0 + 1, z0 - 2],
+      palette.exteriorAccent,
+      "interior"
+    );
   }
   for (const [x, z] of [
     [doorX - 9, z0 - 3],
     [doorX + 9, z0 - 3],
   ] as Array<[number, number]>) {
-    pushHarthmereOutpostVoxelEditV1(materializationPlan, [x, y0 + 1, z], blocks.oakLog, "frame");
-    pushHarthmereOutpostVoxelEditV1(materializationPlan, [x, y0 + 2, z], palette.exteriorAccent, "interior");
+    pushHarthmereOutpostVoxelEditV1(
+      materializationPlan,
+      [x, y0 + 1, z],
+      blocks.oakLog,
+      "frame"
+    );
+    pushHarthmereOutpostVoxelEditV1(
+      materializationPlan,
+      [x, y0 + 2, z],
+      palette.exteriorAccent,
+      "interior"
+    );
   }
 
   // Multi-floor businesses need an actual internal stair and upper deck, not
@@ -3963,25 +8673,39 @@ function addHarthmereOutpostGuideVoxelsV1(input: {
         materializationPlan,
         [stairX, y0 + 1 + step, stairBaseZ - step],
         palette.stair,
-        "stair",
+        "stair"
       );
     }
     for (let x = x0 + 1; x < x1; x += 1) {
       for (let z = z0 + 1; z < z1; z += 1) {
-        const isStairWell = x >= stairX - 1 && x <= stairX + 1 && z >= stairBaseZ - 5 && z <= stairBaseZ + 1;
+        const isStairWell =
+          x >= stairX - 1 &&
+          x <= stairX + 1 &&
+          z >= stairBaseZ - 5 &&
+          z <= stairBaseZ + 1;
         if (isStairWell) continue;
         pushHarthmereOutpostVoxelEditV1(
           materializationPlan,
           [x, upperFloorY, z],
           palette.floor,
-          "upgrade_addition",
+          "upgrade_addition"
         );
       }
     }
     for (let x = x0 + 2; x <= x1 - 2; x += 4) {
-      pushHarthmereOutpostVoxelEditV1(materializationPlan, [x, upperFloorY + 1, z0 + 1], palette.trim, "upgrade_addition");
+      pushHarthmereOutpostVoxelEditV1(
+        materializationPlan,
+        [x, upperFloorY + 1, z0 + 1],
+        palette.trim,
+        "upgrade_addition"
+      );
     }
-    pushHarthmereOutpostVoxelEditV1(materializationPlan, [stairX + 2, upperFloorY + 1, stairBaseZ], blocks.oakLumber, "business_marker");
+    pushHarthmereOutpostVoxelEditV1(
+      materializationPlan,
+      [stairX + 2, upperFloorY + 1, stairBaseZ],
+      blocks.oakLumber,
+      "business_marker"
+    );
   }
 }
 
@@ -3995,7 +8719,9 @@ function addHarthmereOutpostBusinessSignatureV1(input: {
 }) {
   const { materializationPlan, origin, blueprint, outpost, doorX } = input;
   const blocks = HARTHMERE_OUTPOST_TERRAIN_BLOCKS_V1;
-  const palette = harthmereOutpostVoxelPaletteForStyleKitV1(input.buildingStyleKit);
+  const palette = harthmereOutpostVoxelPaletteForStyleKitV1(
+    input.buildingStyleKit
+  );
   const x0 = origin.x;
   const x1 = origin.x + blueprint.footprint.width - 1;
   const z0 = origin.z;
@@ -4005,17 +8731,24 @@ function addHarthmereOutpostBusinessSignatureV1(input: {
   const roofY = wallTop;
   const centerZ = z0 + Math.floor((z1 - z0) / 2);
   const used = new Set(
-    materializationPlan.edits.map((edit) => harthmereOutpostEditKeyV1(edit.position)),
+    materializationPlan.edits.map((edit) =>
+      harthmereOutpostEditKeyV1(edit.position)
+    )
   );
   const place = (
     position: readonly [number, number, number],
     value: BiomesId,
-    label: BuildingSystemVoxelEditSpecV1["label"] = "frame",
+    label: BuildingSystemVoxelEditSpecV1["label"] = "frame"
   ) => {
     const key = harthmereOutpostEditKeyV1(position);
     if (used.has(key)) return false;
     used.add(key);
-    pushHarthmereOutpostVoxelEditV1(materializationPlan, position, value, label);
+    pushHarthmereOutpostVoxelEditV1(
+      materializationPlan,
+      position,
+      value,
+      label
+    );
     return true;
   };
   const column = (
@@ -4024,7 +8757,7 @@ function addHarthmereOutpostBusinessSignatureV1(input: {
     fromY: number,
     height: number,
     value: BiomesId,
-    label: BuildingSystemVoxelEditSpecV1["label"] = "frame",
+    label: BuildingSystemVoxelEditSpecV1["label"] = "frame"
   ) => {
     for (let dy = 0; dy < height; dy += 1) {
       place([x, fromY + dy, z], value, label);
@@ -4034,7 +8767,7 @@ function addHarthmereOutpostBusinessSignatureV1(input: {
     min: readonly [number, number, number],
     max: readonly [number, number, number],
     value: BiomesId,
-    label: BuildingSystemVoxelEditSpecV1["label"] = "frame",
+    label: BuildingSystemVoxelEditSpecV1["label"] = "frame"
   ) => {
     for (let x = min[0]; x <= max[0]; x += 1) {
       for (let y = min[1]; y <= max[1]; y += 1) {
@@ -4053,7 +8786,10 @@ function addHarthmereOutpostBusinessSignatureV1(input: {
       }
     }
   };
-  const frontIcon = (value: BiomesId, pattern: readonly (readonly [number, number])[]) => {
+  const frontIcon = (
+    value: BiomesId,
+    pattern: readonly (readonly [number, number])[]
+  ) => {
     for (const [dx, dy] of pattern) {
       place([doorX + dx, y0 + 4 + dy, z0 - 1], value, "business_marker");
     }
@@ -4062,7 +8798,7 @@ function addHarthmereOutpostBusinessSignatureV1(input: {
     offsets: readonly number[],
     height: number,
     value: BiomesId,
-    capValue = value,
+    capValue = value
   ) => {
     for (const dx of offsets) {
       column(doorX + dx, z0 - 4, y0 + 1, height, value, "frame");
@@ -4088,66 +8824,187 @@ function addHarthmereOutpostBusinessSignatureV1(input: {
     }
   };
   const crossIcon = [
-    [0, 0], [0, 1], [0, 2], [-1, 1], [1, 1],
+    [0, 0],
+    [0, 1],
+    [0, 2],
+    [-1, 1],
+    [1, 1],
   ] as const;
   const sparkIcon = [
-    [0, 0], [0, 1], [0, 2], [-1, 1], [1, 1], [-2, 1], [2, 1],
+    [0, 0],
+    [0, 1],
+    [0, 2],
+    [-1, 1],
+    [1, 1],
+    [-2, 1],
+    [2, 1],
   ] as const;
   const shieldIcon = [
-    [-1, 2], [0, 2], [1, 2], [-2, 1], [2, 1], [-1, 0], [0, 0], [1, 0], [0, -1],
+    [-1, 2],
+    [0, 2],
+    [1, 2],
+    [-2, 1],
+    [2, 1],
+    [-1, 0],
+    [0, 0],
+    [1, 0],
+    [0, -1],
   ] as const;
   const keyIcon = [
-    [-1, 1], [0, 1], [-1, 0], [0, 0], [1, 0], [2, 0], [2, -1],
+    [-1, 1],
+    [0, 1],
+    [-1, 0],
+    [0, 0],
+    [1, 0],
+    [2, 0],
+    [2, -1],
   ] as const;
 
   switch (outpost.businessType) {
     case "exotic_matter_refinery":
       roofRidge(blocks.simpleGlass);
-      box([x0 + 3, roofY + 1, z1 - 4], [x0 + 4, roofY + 5, z1 - 3], blocks.cobblestonePolished, "frame");
-      column(x0 + 5, z1 - 3, roofY + 1, 4, blocks.simpleGlass, "business_marker");
-      column(x0 + 7, z1 - 3, roofY + 1, 3, blocks.simpleGlass, "business_marker");
-      box([x1 - 5, roofY + 1, z0 + 3], [x1 - 4, roofY + 7, z0 + 4], blocks.cobblestonePolished, "frame");
-      column(x1 - 6, z0 + 4, roofY + 1, 5, blocks.simpleGlass, "business_marker");
+      box(
+        [x0 + 3, roofY + 1, z1 - 4],
+        [x0 + 4, roofY + 5, z1 - 3],
+        blocks.cobblestonePolished,
+        "frame"
+      );
+      column(
+        x0 + 5,
+        z1 - 3,
+        roofY + 1,
+        4,
+        blocks.simpleGlass,
+        "business_marker"
+      );
+      column(
+        x0 + 7,
+        z1 - 3,
+        roofY + 1,
+        3,
+        blocks.simpleGlass,
+        "business_marker"
+      );
+      box(
+        [x1 - 5, roofY + 1, z0 + 3],
+        [x1 - 4, roofY + 7, z0 + 4],
+        blocks.cobblestonePolished,
+        "frame"
+      );
+      column(
+        x1 - 6,
+        z0 + 4,
+        roofY + 1,
+        5,
+        blocks.simpleGlass,
+        "business_marker"
+      );
       porchRail(blocks.simpleGlass, -7, 7);
       frontIcon(blocks.simpleGlass, sparkIcon);
       break;
     case "biome_maintenance_repair":
     case "repair_maintenance_person":
-      box([x1 - 5, y0 + 1, z0 - 3], [x1 - 2, y0 + 1, z0 - 2], blocks.stonePolished, "interior");
+      box(
+        [x1 - 5, y0 + 1, z0 - 3],
+        [x1 - 2, y0 + 1, z0 - 2],
+        blocks.stonePolished,
+        "interior"
+      );
       column(x1 - 4, z0 - 3, y0 + 2, 2, blocks.oakLog, "frame");
       column(x1 - 2, z0 - 3, y0 + 2, 2, blocks.oakLog, "frame");
-      box([x0 + 2, roofY + 1, z0 + 3], [x0 + 7, roofY + 2, z0 + 5], blocks.oakLumber, "roof");
+      box(
+        [x0 + 2, roofY + 1, z0 + 3],
+        [x0 + 7, roofY + 2, z0 + 5],
+        blocks.oakLumber,
+        "roof"
+      );
       frontPosts([-5, 5], 3, blocks.oakLog, blocks.stonePolished);
       porchRail(blocks.oakLumber, -6, 6);
-      frontIcon(blocks.stonePolished, [[-2, 1], [-1, 0], [0, 0], [1, 0], [2, -1]]);
+      frontIcon(blocks.stonePolished, [
+        [-2, 1],
+        [-1, 0],
+        [0, 0],
+        [1, 0],
+        [2, -1],
+      ]);
       break;
     case "biome_design_studio":
       for (let x = x0 + 3; x <= x1 - 3; x += 3) {
         column(x, z0 - 2, y0 + 1, 3, blocks.simpleGlass, "business_marker");
       }
-      box([x0 + 2, y0 + 1, z1 - 3], [x0 + 6, y0 + 2, z1 - 2], blocks.oakLumber, "interior");
-      box([x0 + 2, roofY + 1, z0 + 2], [x1 - 2, roofY + 2, z0 + 3], blocks.simpleGlass, "business_marker");
+      box(
+        [x0 + 2, y0 + 1, z1 - 3],
+        [x0 + 6, y0 + 2, z1 - 2],
+        blocks.oakLumber,
+        "interior"
+      );
+      box(
+        [x0 + 2, roofY + 1, z0 + 2],
+        [x1 - 2, roofY + 2, z0 + 3],
+        blocks.simpleGlass,
+        "business_marker"
+      );
       sidePlanterLine(blocks.hay);
       frontIcon(blocks.hay, sparkIcon);
       break;
     case "security_defense_contractor":
-      for (let x = x0 + 1; x <= x1 - 1; x += 2) place([x, roofY + 1, z0], blocks.stoneBrick, "roof");
-      for (let x = x0 + 1; x <= x1 - 1; x += 2) place([x, roofY + 1, z1], blocks.stoneBrick, "roof");
-      box([x0 + 1, y0 + 1, z0 - 4], [x0 + 2, y0 + 4, z0 - 3], blocks.stoneBrick, "frame");
-      box([x1 - 2, y0 + 1, z0 - 4], [x1 - 1, y0 + 4, z0 - 3], blocks.stoneBrick, "frame");
-      box([x0 + 1, roofY + 1, z0 - 1], [x0 + 3, roofY + 4, z0 + 1], blocks.stoneBrick, "frame");
-      box([x1 - 3, roofY + 1, z0 - 1], [x1 - 1, roofY + 4, z0 + 1], blocks.stoneBrick, "frame");
+      for (let x = x0 + 1; x <= x1 - 1; x += 2)
+        place([x, roofY + 1, z0], blocks.stoneBrick, "roof");
+      for (let x = x0 + 1; x <= x1 - 1; x += 2)
+        place([x, roofY + 1, z1], blocks.stoneBrick, "roof");
+      box(
+        [x0 + 1, y0 + 1, z0 - 4],
+        [x0 + 2, y0 + 4, z0 - 3],
+        blocks.stoneBrick,
+        "frame"
+      );
+      box(
+        [x1 - 2, y0 + 1, z0 - 4],
+        [x1 - 1, y0 + 4, z0 - 3],
+        blocks.stoneBrick,
+        "frame"
+      );
+      box(
+        [x0 + 1, roofY + 1, z0 - 1],
+        [x0 + 3, roofY + 4, z0 + 1],
+        blocks.stoneBrick,
+        "frame"
+      );
+      box(
+        [x1 - 3, roofY + 1, z0 - 1],
+        [x1 - 1, roofY + 4, z0 + 1],
+        blocks.stoneBrick,
+        "frame"
+      );
       roofFlagLine(blocks.clay, 3);
       frontIcon(blocks.clay, shieldIcon);
       break;
     case "portal_transit_company":
     case "teleport_owner":
-      for (const dx of [-3, -2, 2, 3]) column(doorX + dx, z0 - 5, y0 + 1, 5, blocks.simpleGlass, "business_marker");
-      for (let dx = -3; dx <= 3; dx += 1) place([doorX + dx, y0 + 6, z0 - 5], blocks.simpleGlass, "business_marker");
+      for (const dx of [-3, -2, 2, 3])
+        column(
+          doorX + dx,
+          z0 - 5,
+          y0 + 1,
+          5,
+          blocks.simpleGlass,
+          "business_marker"
+        );
+      for (let dx = -3; dx <= 3; dx += 1)
+        place(
+          [doorX + dx, y0 + 6, z0 - 5],
+          blocks.simpleGlass,
+          "business_marker"
+        );
       place([doorX - 4, y0 + 3, z0 - 5], blocks.stonePolished, "frame");
       place([doorX + 4, y0 + 3, z0 - 5], blocks.stonePolished, "frame");
       roofRidge(blocks.simpleGlass);
-      box([doorX - 5, y0 + 1, z0 - 6], [doorX + 5, y0 + 1, z0 - 6], blocks.stonePolished, "safe_ground");
+      box(
+        [doorX - 5, y0 + 1, z0 - 6],
+        [doorX + 5, y0 + 1, z0 - 6],
+        blocks.stonePolished,
+        "safe_ground"
+      );
       frontPosts([-6, 6], 5, blocks.stonePolished, blocks.simpleGlass);
       frontIcon(blocks.simpleGlass, sparkIcon);
       break;
@@ -4158,96 +9015,319 @@ function addHarthmereOutpostBusinessSignatureV1(input: {
       }
       roofRidge(blocks.moss);
       sidePlanterLine(blocks.moss, z0 - 6);
-      box([x0 + 2, roofY + 1, z1 - 3], [x1 - 2, roofY + 1, z1 - 2], blocks.hay, "roof");
-      frontIcon(blocks.moss, [[0, 0], [-1, 1], [0, 1], [1, 1], [0, 2]]);
+      box(
+        [x0 + 2, roofY + 1, z1 - 3],
+        [x1 - 2, roofY + 1, z1 - 2],
+        blocks.hay,
+        "roof"
+      );
+      frontIcon(blocks.moss, [
+        [0, 0],
+        [-1, 1],
+        [0, 1],
+        [1, 1],
+        [0, 2],
+      ]);
       break;
     case "weapons_tools":
-      box([x1 - 5, roofY + 1, z1 - 5], [x1 - 4, roofY + 6, z1 - 4], blocks.cobblestonePolished, "frame");
-      box([x0 + 4, y0 + 1, z0 - 4], [x0 + 6, y0 + 1, z0 - 3], blocks.stonePolished, "interior");
+      box(
+        [x1 - 5, roofY + 1, z1 - 5],
+        [x1 - 4, roofY + 6, z1 - 4],
+        blocks.cobblestonePolished,
+        "frame"
+      );
+      box(
+        [x0 + 4, y0 + 1, z0 - 4],
+        [x0 + 6, y0 + 1, z0 - 3],
+        blocks.stonePolished,
+        "interior"
+      );
       place([x0 + 5, y0 + 2, z0 - 4], blocks.clay, "interior");
       column(x0 + 3, z0 - 4, y0 + 1, 5, blocks.oakLog, "frame");
       column(x1 - 3, z0 - 4, y0 + 1, 5, blocks.oakLog, "frame");
-      box([x0 + 2, y0 + 5, z0 - 4], [x1 - 2, y0 + 5, z0 - 4], blocks.stonePolished, "business_marker");
-      frontIcon(blocks.stonePolished, [[-2, 0], [-1, 0], [0, 0], [1, 0], [2, 0], [0, 1], [0, 2]]);
+      box(
+        [x0 + 2, y0 + 5, z0 - 4],
+        [x1 - 2, y0 + 5, z0 - 4],
+        blocks.stonePolished,
+        "business_marker"
+      );
+      frontIcon(blocks.stonePolished, [
+        [-2, 0],
+        [-1, 0],
+        [0, 0],
+        [1, 0],
+        [2, 0],
+        [0, 1],
+        [0, 2],
+      ]);
       break;
     case "magic_goods":
-      for (const [x, z] of [[x0 + 4, z0 - 4], [x1 - 4, z0 - 4], [x0 + 4, z1 + 2], [x1 - 4, z1 + 2]] as Array<[number, number]>) {
+      for (const [x, z] of [
+        [x0 + 4, z0 - 4],
+        [x1 - 4, z0 - 4],
+        [x0 + 4, z1 + 2],
+        [x1 - 4, z1 + 2],
+      ] as Array<[number, number]>) {
         column(x, z, y0 + 1, 3, blocks.simpleGlass, "business_marker");
         place([x, y0 + 4, z], blocks.moss, "business_marker");
       }
       roofRidge(blocks.simpleGlass);
-      box([doorX - 3, roofY + 1, centerZ - 3], [doorX + 3, roofY + 1, centerZ + 3], blocks.simpleGlass, "business_marker");
-      column(doorX, centerZ, roofY + 2, 5, blocks.simpleGlass, "business_marker");
+      box(
+        [doorX - 3, roofY + 1, centerZ - 3],
+        [doorX + 3, roofY + 1, centerZ + 3],
+        blocks.simpleGlass,
+        "business_marker"
+      );
+      column(
+        doorX,
+        centerZ,
+        roofY + 2,
+        5,
+        blocks.simpleGlass,
+        "business_marker"
+      );
       frontIcon(blocks.simpleGlass, sparkIcon);
       break;
     case "exploration_guide":
-      box([doorX - 6, y0 + 1, z0 - 5], [doorX + 6, y0 + 1, z0 - 4], blocks.oakLumber, "interior");
-      for (let dx = -6; dx <= 6; dx += 3) column(doorX + dx, z0 - 5, y0 + 2, 2, blocks.oakLog, "frame");
-      box([doorX - 8, y0 + 1, z0 - 7], [doorX + 8, y0 + 1, z0 - 7], blocks.stonePolished, "safe_ground");
+      box(
+        [doorX - 6, y0 + 1, z0 - 5],
+        [doorX + 6, y0 + 1, z0 - 4],
+        blocks.oakLumber,
+        "interior"
+      );
+      for (let dx = -6; dx <= 6; dx += 3)
+        column(doorX + dx, z0 - 5, y0 + 2, 2, blocks.oakLog, "frame");
+      box(
+        [doorX - 8, y0 + 1, z0 - 7],
+        [doorX + 8, y0 + 1, z0 - 7],
+        blocks.stonePolished,
+        "safe_ground"
+      );
       roofFlagLine(blocks.oakLumber, 5);
-      frontIcon(blocks.oakLumber, [[0, 2], [-1, 1], [1, 1], [-2, 0], [2, 0]]);
+      frontIcon(blocks.oakLumber, [
+        [0, 2],
+        [-1, 1],
+        [1, 1],
+        [-2, 0],
+        [2, 0],
+      ]);
       break;
     case "custom_home_property_development":
-      box([x0 + 2, y0 + 1, z0 - 5], [x0 + 5, y0 + 2, z0 - 3], blocks.oakLumber, "interior");
-      box([x1 - 6, y0 + 1, z0 - 5], [x1 - 3, y0 + 2, z0 - 3], blocks.stonePolished, "interior");
-      box([x0 + 3, roofY + 1, z1 - 3], [x0 + 9, roofY + 2, z1 - 2], blocks.oakLumber, "upgrade_addition");
+      box(
+        [x0 + 2, y0 + 1, z0 - 5],
+        [x0 + 5, y0 + 2, z0 - 3],
+        blocks.oakLumber,
+        "interior"
+      );
+      box(
+        [x1 - 6, y0 + 1, z0 - 5],
+        [x1 - 3, y0 + 2, z0 - 3],
+        blocks.stonePolished,
+        "interior"
+      );
+      box(
+        [x0 + 3, roofY + 1, z1 - 3],
+        [x0 + 9, roofY + 2, z1 - 2],
+        blocks.oakLumber,
+        "upgrade_addition"
+      );
       frontPosts([-7, 7], 3, blocks.oakLog, blocks.oakLumber);
       frontIcon(blocks.oakLumber, keyIcon);
       break;
     case "general_trader":
-      for (const dx of [-7, -4, 4, 7]) box([doorX + dx, y0 + 1, z0 - 5], [doorX + dx + 1, y0 + 2, z0 - 4], blocks.woodCrate, "storage_container");
-      box([doorX - 9, y0 + 1, z0 - 6], [doorX - 6, y0 + 2, z0 - 5], blocks.hay, "storage_container");
-      box([doorX + 6, y0 + 1, z0 - 6], [doorX + 9, y0 + 2, z0 - 5], blocks.woodCrate, "storage_container");
+      for (const dx of [-7, -4, 4, 7])
+        box(
+          [doorX + dx, y0 + 1, z0 - 5],
+          [doorX + dx + 1, y0 + 2, z0 - 4],
+          blocks.woodCrate,
+          "storage_container"
+        );
+      box(
+        [doorX - 9, y0 + 1, z0 - 6],
+        [doorX - 6, y0 + 2, z0 - 5],
+        blocks.hay,
+        "storage_container"
+      );
+      box(
+        [doorX + 6, y0 + 1, z0 - 6],
+        [doorX + 9, y0 + 2, z0 - 5],
+        blocks.woodCrate,
+        "storage_container"
+      );
       porchRail(blocks.oakLumber, -9, 9);
-      frontIcon(blocks.hay, [[-2, 0], [-1, 1], [0, 2], [1, 1], [2, 0]]);
+      frontIcon(blocks.hay, [
+        [-2, 0],
+        [-1, 1],
+        [0, 2],
+        [1, 1],
+        [2, 0],
+      ]);
       break;
     case "hunter_wild_meat":
-      box([x1 - 5, roofY + 1, z1 - 4], [x1 - 4, roofY + 4, z1 - 3], blocks.cobblestonePolished, "frame");
-      for (let x = x0 + 4; x <= x0 + 8; x += 2) column(x, z0 - 4, y0 + 1, 3, blocks.oakLog, "frame");
-      box([x0 + 2, y0 + 1, z0 - 6], [x0 + 8, y0 + 1, z0 - 5], blocks.hay, "storage_container");
+      box(
+        [x1 - 5, roofY + 1, z1 - 4],
+        [x1 - 4, roofY + 4, z1 - 3],
+        blocks.cobblestonePolished,
+        "frame"
+      );
+      for (let x = x0 + 4; x <= x0 + 8; x += 2)
+        column(x, z0 - 4, y0 + 1, 3, blocks.oakLog, "frame");
+      box(
+        [x0 + 2, y0 + 1, z0 - 6],
+        [x0 + 8, y0 + 1, z0 - 5],
+        blocks.hay,
+        "storage_container"
+      );
       column(x1 - 3, z0 - 4, y0 + 1, 4, blocks.oakLog, "frame");
       roofFlagLine(blocks.hay, 6);
-      frontIcon(blocks.hay, [[0, 0], [-1, 1], [1, 1], [-2, 2], [2, 2]]);
+      frontIcon(blocks.hay, [
+        [0, 0],
+        [-1, 1],
+        [1, 1],
+        [-2, 2],
+        [2, 2],
+      ]);
       break;
     case "medical_doctor":
       frontIcon(blocks.simpleGlass, crossIcon);
       for (const dx of [-6, 6]) {
-        column(doorX + dx, z0 - 4, y0 + 1, 3, blocks.simpleGlass, "business_marker");
+        column(
+          doorX + dx,
+          z0 - 4,
+          y0 + 1,
+          3,
+          blocks.simpleGlass,
+          "business_marker"
+        );
         place([doorX + dx, y0 + 4, z0 - 4], blocks.moss, "business_marker");
       }
-      box([doorX - 5, roofY + 1, z0 + 2], [doorX + 5, roofY + 1, z0 + 3], blocks.simpleGlass, "business_marker");
+      box(
+        [doorX - 5, roofY + 1, z0 + 2],
+        [doorX + 5, roofY + 1, z0 + 3],
+        blocks.simpleGlass,
+        "business_marker"
+      );
       sidePlanterLine(blocks.moss);
       break;
     case "waste_sanitation_cleanup":
-      for (const dx of [-6, -4, 4, 6]) column(doorX + dx, z0 - 5, y0 + 1, 2, blocks.clay, "interior");
-      box([x1 - 4, y0 + 1, z0 - 4], [x1 - 2, y0 + 1, z0 - 2], blocks.stonePolished, "interior");
-      box([doorX - 8, y0 + 1, z0 - 6], [doorX - 6, y0 + 2, z0 - 5], blocks.clay, "storage_container");
-      box([doorX + 6, y0 + 1, z0 - 6], [doorX + 8, y0 + 2, z0 - 5], blocks.clay, "storage_container");
+      for (const dx of [-6, -4, 4, 6])
+        column(doorX + dx, z0 - 5, y0 + 1, 2, blocks.clay, "interior");
+      box(
+        [x1 - 4, y0 + 1, z0 - 4],
+        [x1 - 2, y0 + 1, z0 - 2],
+        blocks.stonePolished,
+        "interior"
+      );
+      box(
+        [doorX - 8, y0 + 1, z0 - 6],
+        [doorX - 6, y0 + 2, z0 - 5],
+        blocks.clay,
+        "storage_container"
+      );
+      box(
+        [doorX + 6, y0 + 1, z0 - 6],
+        [doorX + 8, y0 + 2, z0 - 5],
+        blocks.clay,
+        "storage_container"
+      );
       column(x1 - 3, z1 - 3, roofY + 1, 4, blocks.cobblestonePolished, "frame");
-      frontIcon(blocks.clay, [[-2, 0], [-1, 1], [0, 2], [1, 1], [2, 0]]);
+      frontIcon(blocks.clay, [
+        [-2, 0],
+        [-1, 1],
+        [0, 2],
+        [1, 1],
+        [2, 0],
+      ]);
       break;
     case "food_service_restaurant":
-      box([x1 - 5, roofY + 1, z1 - 4], [x1 - 4, roofY + 4, z1 - 3], blocks.clay, "frame");
-      box([x0 + 3, y0 + 1, z0 - 5], [x0 + 5, y0 + 1, z0 - 4], blocks.oakLumber, "interior");
-      box([x1 - 5, y0 + 1, z0 - 5], [x1 - 3, y0 + 1, z0 - 4], blocks.oakLumber, "interior");
-      box([doorX - 6, y0 + 1, z0 - 6], [doorX - 3, y0 + 1, z0 - 5], blocks.hay, "storage_container");
-      box([doorX + 3, y0 + 1, z0 - 6], [doorX + 6, y0 + 1, z0 - 5], blocks.hay, "storage_container");
+      box(
+        [x1 - 5, roofY + 1, z1 - 4],
+        [x1 - 4, roofY + 4, z1 - 3],
+        blocks.clay,
+        "frame"
+      );
+      box(
+        [x0 + 3, y0 + 1, z0 - 5],
+        [x0 + 5, y0 + 1, z0 - 4],
+        blocks.oakLumber,
+        "interior"
+      );
+      box(
+        [x1 - 5, y0 + 1, z0 - 5],
+        [x1 - 3, y0 + 1, z0 - 4],
+        blocks.oakLumber,
+        "interior"
+      );
+      box(
+        [doorX - 6, y0 + 1, z0 - 6],
+        [doorX - 3, y0 + 1, z0 - 5],
+        blocks.hay,
+        "storage_container"
+      );
+      box(
+        [doorX + 3, y0 + 1, z0 - 6],
+        [doorX + 6, y0 + 1, z0 - 5],
+        blocks.hay,
+        "storage_container"
+      );
       roofFlagLine(blocks.clay, 5);
-      frontIcon(blocks.clay, [[-1, 0], [0, 0], [1, 0], [-1, 1], [0, 1], [1, 1], [0, 2]]);
+      frontIcon(blocks.clay, [
+        [-1, 0],
+        [0, 0],
+        [1, 0],
+        [-1, 1],
+        [0, 1],
+        [1, 1],
+        [0, 2],
+      ]);
       break;
     case "courier":
-      box([doorX - 8, y0 + 1, z0 - 5], [doorX - 5, y0 + 2, z0 - 4], blocks.woodCrate, "storage_container");
-      box([doorX + 5, y0 + 1, z0 - 5], [doorX + 8, y0 + 2, z0 - 4], blocks.woodCrate, "storage_container");
+      box(
+        [doorX - 8, y0 + 1, z0 - 5],
+        [doorX - 5, y0 + 2, z0 - 4],
+        blocks.woodCrate,
+        "storage_container"
+      );
+      box(
+        [doorX + 5, y0 + 1, z0 - 5],
+        [doorX + 8, y0 + 2, z0 - 4],
+        blocks.woodCrate,
+        "storage_container"
+      );
       column(doorX, z0 - 6, y0 + 1, 4, blocks.oakLog, "frame");
       place([doorX + 1, y0 + 4, z0 - 6], blocks.hay, "business_marker");
-      box([doorX - 9, y0 + 1, z0 - 7], [doorX + 9, y0 + 1, z0 - 7], blocks.stonePolished, "safe_ground");
+      box(
+        [doorX - 9, y0 + 1, z0 - 7],
+        [doorX + 9, y0 + 1, z0 - 7],
+        blocks.stonePolished,
+        "safe_ground"
+      );
       frontPosts([-5, 5], 3, blocks.oakLog, blocks.woodCrate);
-      frontIcon(blocks.oakLumber, [[-2, 1], [-1, 1], [0, 1], [1, 1], [2, 1], [-2, 0], [2, 0]]);
+      frontIcon(blocks.oakLumber, [
+        [-2, 1],
+        [-1, 1],
+        [0, 1],
+        [1, 1],
+        [2, 1],
+        [-2, 0],
+        [2, 0],
+      ]);
       break;
     case "hospitality_inn_hotel_shelter":
-      box([x0 + 2, y0 + 5, z0 - 2], [x1 - 2, y0 + 5, z0 - 1], blocks.oakLumber, "upgrade_addition");
-      for (let x = x0 + 2; x <= x1 - 2; x += 3) column(x, z0 - 2, y0 + 6, 2, blocks.oakLog, "upgrade_addition");
-      box([doorX - 10, y0 + 1, z0 - 5], [doorX + 10, y0 + 1, z0 - 4], blocks.oakLumber, "upgrade_addition");
+      box(
+        [x0 + 2, y0 + 5, z0 - 2],
+        [x1 - 2, y0 + 5, z0 - 1],
+        blocks.oakLumber,
+        "upgrade_addition"
+      );
+      for (let x = x0 + 2; x <= x1 - 2; x += 3)
+        column(x, z0 - 2, y0 + 6, 2, blocks.oakLog, "upgrade_addition");
+      box(
+        [doorX - 10, y0 + 1, z0 - 5],
+        [doorX + 10, y0 + 1, z0 - 4],
+        blocks.oakLumber,
+        "upgrade_addition"
+      );
       frontPosts([-8, 8], 5, blocks.oakLog, blocks.hay);
       sidePlanterLine(blocks.moss);
       frontIcon(blocks.oakLumber, keyIcon);
@@ -4266,7 +9346,7 @@ function addHarthmereOutpostBusinessSignatureV1(input: {
 
 export function createHarthmereBusinessOutpostProceduralBuildingV1(
   outpost: HarthmereBusinessOutpostV1,
-  activatedAtMs = 0,
+  activatedAtMs = 0
 ): HarthmereBusinessOutpostProceduralBuildingRecordV1 {
   ensureBuildingSystemStructureDefinitionsV1();
   const blueprint = harthmereOutpostBlueprintForV1(outpost);
@@ -4276,8 +9356,16 @@ export function createHarthmereBusinessOutpostProceduralBuildingV1(
   const doorX = origin.x + Math.floor(blueprint.footprint.width / 2);
   const entrance = { x: doorX, y: origin.y + 1, z: origin.z - 1 };
   const queueNode = { x: doorX, y: origin.y + 1, z: origin.z + 3 };
-  const serviceCounter = { x: doorX, y: origin.y + 1, z: origin.z + Math.max(8, blueprint.footprint.depth - 6) };
-  const exitNode = { x: Math.min(origin.x + blueprint.footprint.width - 3, doorX + 2), y: origin.y + 1, z: origin.z + 1 };
+  const serviceCounter = {
+    x: doorX,
+    y: origin.y + 1,
+    z: origin.z + Math.max(8, blueprint.footprint.depth - 6),
+  };
+  const exitNode = {
+    x: Math.min(origin.x + blueprint.footprint.width - 3, doorX + 2),
+    y: origin.y + 1,
+    z: origin.z + 1,
+  };
   const buildingStyleKit = harthmereBusinessOutpostBuildingStyleKitV1(outpost);
   const materializationPlan = createBuildingSystemMaterializationPlanV1({
     requestId: `${outpost.outpostId}_backend_materialization`,
@@ -4296,11 +9384,15 @@ export function createHarthmereBusinessOutpostProceduralBuildingV1(
     origin,
   });
   const jobsBoardPosition = { x: entrance.x + 3, y: origin.y, z: origin.z - 3 };
-  const bikkieGraphics = getHarthmereBusinessBikkieGraphicsV1(outpost.businessType);
-  const primaryBikkieGraphic = getHarthmereBusinessPrimaryBikkieGraphicV1(outpost.businessType);
+  const bikkieGraphics = getHarthmereBusinessBikkieGraphicsV1(
+    outpost.businessType
+  );
+  const primaryBikkieGraphic = getHarthmereBusinessPrimaryBikkieGraphicV1(
+    outpost.businessType
+  );
   const dashboardAccessPoint = {
     markerId: `${outpost.outpostId}:customer-dashboard`,
-    label: `${outpost.displayName} customer service dashboard`,
+    label: `${outpost.displayName} Business Board`,
     position: {
       x: Math.max(origin.x + 3, doorX - 4),
       y: origin.y + 1,
@@ -4355,11 +9447,36 @@ export function createHarthmereBusinessOutpostProceduralBuildingV1(
   // Register the protected safe zone across the full graded site (plot + garden
   // ring) so muck monsters and Hexes stay non-aggressive and relocate away.
   if (materializationPlan.safeZone) {
-    materializationPlan.safeZone.bounds = harthmereBusinessOutpostSafeSiteBoundsV1(
-      plot.bounds,
-    );
+    materializationPlan.safeZone.bounds =
+      harthmereBusinessOutpostSafeSiteBoundsV1(plot.bounds);
   }
+  const safeZoneBounds =
+    materializationPlan.safeZone?.bounds ??
+    harthmereBusinessOutpostSafeSiteBoundsV1(plot.bounds);
+  const safeZoneCenter: [number, number, number] = [
+    Math.round((safeZoneBounds.xMin + safeZoneBounds.xMax) / 2),
+    origin.y,
+    Math.round((safeZoneBounds.zMin + safeZoneBounds.zMax) / 2),
+  ];
+  const staffNpcMarkerPosition: [number, number, number] = [
+    Math.min(origin.x + blueprint.footprint.width - 3, serviceCounter.x + 4),
+    origin.y + 1,
+    Math.min(origin.z + blueprint.footprint.depth - 3, serviceCounter.z + 1),
+  ];
+  const customerNpcMarkerPosition: [number, number, number] = [
+    Math.max(origin.x + 3, queueNode.x - 1),
+    origin.y + 1,
+    Math.max(origin.z + 4, queueNode.z + 1),
+  ];
   materializationPlan.inWorldMarkers = [
+    {
+      markerId: `${outpost.outpostId}:safe-zone`,
+      plotId: plot.plotId,
+      kind: "safe_zone",
+      position: safeZoneCenter,
+      label: `${outpost.displayName} protected business area`,
+      createdAtMs: activatedAtMs,
+    },
     {
       markerId: `${outpost.outpostId}:business-counter`,
       plotId: plot.plotId,
@@ -4381,6 +9498,34 @@ export function createHarthmereBusinessOutpostProceduralBuildingV1(
       createdAtMs: activatedAtMs,
     },
     {
+      markerId: `${outpost.outpostId}:dashboard-access-post`,
+      plotId: plot.plotId,
+      kind: "business_marker",
+      position: [
+        dashboardAccessPoint.position.x,
+        dashboardAccessPoint.position.y + 1,
+        dashboardAccessPoint.position.z,
+      ],
+      label: `${outpost.displayName} Business Board access post`,
+      createdAtMs: activatedAtMs,
+    },
+    {
+      markerId: `${outpost.outpostId}:staff-npc`,
+      plotId: plot.plotId,
+      kind: "npc_board",
+      position: staffNpcMarkerPosition,
+      label: `${outpost.displayName} staff NPC`,
+      createdAtMs: activatedAtMs,
+    },
+    {
+      markerId: `${outpost.outpostId}:customer-npc`,
+      plotId: plot.plotId,
+      kind: "business_marker",
+      position: customerNpcMarkerPosition,
+      label: `${outpost.displayName} customer NPC`,
+      createdAtMs: activatedAtMs,
+    },
+    {
       markerId: `${outpost.outpostId}:jobs-board`,
       plotId: plot.plotId,
       kind: "npc_board",
@@ -4388,16 +9533,25 @@ export function createHarthmereBusinessOutpostProceduralBuildingV1(
       label: `${outpost.displayName} jobs board`,
       createdAtMs: activatedAtMs,
     },
-    ...(primaryBikkieGraphic ? [{
-      markerId: `${outpost.outpostId}:bikkie:${primaryBikkieGraphic.bikkieId}`,
-      plotId: plot.plotId,
-      kind: "business_marker" as const,
-      position: [serviceCounter.x + 1, serviceCounter.y, serviceCounter.z] as [number, number, number],
-      label: `${outpost.displayName} ${primaryBikkieGraphic.label}`,
-      createdAtMs: activatedAtMs,
-    }] : []),
+    ...(primaryBikkieGraphic
+      ? [
+          {
+            markerId: `${outpost.outpostId}:bikkie:${primaryBikkieGraphic.bikkieId}`,
+            plotId: plot.plotId,
+            kind: "business_marker" as const,
+            position: [
+              serviceCounter.x + 1,
+              serviceCounter.y,
+              serviceCounter.z,
+            ] as [number, number, number],
+            label: `${outpost.displayName} ${primaryBikkieGraphic.label}`,
+            createdAtMs: activatedAtMs,
+          },
+        ]
+      : []),
   ];
-  const countLabel = (label: string) => materializationPlan.edits.filter((edit) => edit.label === label).length;
+  const countLabel = (label: string) =>
+    materializationPlan.edits.filter((edit) => edit.label === label).length;
   const customerSpace = {
     minX: origin.x + 2,
     maxX: origin.x + blueprint.footprint.width - 2,
@@ -4423,14 +9577,17 @@ export function createHarthmereBusinessOutpostProceduralBuildingV1(
     exitNode,
     customerSpace: {
       ...customerSpace,
-      areaMeters: Math.max(0, customerSpace.maxX - customerSpace.minX) * Math.max(0, customerSpace.maxZ - customerSpace.minZ),
+      areaMeters:
+        Math.max(0, customerSpace.maxX - customerSpace.minX) *
+        Math.max(0, customerSpace.maxZ - customerSpace.minZ),
     },
     clearances: {
       frontDoorMeters: 2,
       shopCustomerSpaceMeters: 4,
       publicEntranceMeters: 3,
     },
-    visualReferenceCoordinates: HARTHMERE_GROVE_BUSINESS_BUILDING_REFERENCE_COORDINATES_V1,
+    visualReferenceCoordinates:
+      HARTHMERE_GROVE_BUSINESS_BUILDING_REFERENCE_COORDINATES_V1,
     buildingStyleKit,
     dashboardAccessPoint,
     jobsBoardPosition,
@@ -4444,13 +9601,19 @@ export function createHarthmereBusinessOutpostProceduralBuildingV1(
       hasReadableWindows: true,
       hasCustomerDashboardAccess: true,
       hasBusinessSpecificDecor: true,
-      customerQueueCapacity: Math.max(4, Math.floor(blueprint.footprint.width / 3)),
-      staffWorkstations: interiorFixtures.filter((fixture) =>
-        fixture.role === "primary_station" ||
-        fixture.role === "service_table" ||
-        fixture.role === "workstation",
+      customerQueueCapacity: Math.max(
+        4,
+        Math.floor(blueprint.footprint.width / 3)
+      ),
+      staffWorkstations: interiorFixtures.filter(
+        (fixture) =>
+          fixture.role === "primary_station" ||
+          fixture.role === "service_table" ||
+          fixture.role === "workstation"
       ).length,
-      decorationFixtureCount: interiorFixtures.filter((fixture) => fixture.businessSpecific).length,
+      decorationFixtureCount: interiorFixtures.filter(
+        (fixture) => fixture.businessSpecific
+      ).length,
     },
     structuralAudit: {
       materializesSolidVoxelBuilding: true,
@@ -4465,7 +9628,7 @@ export function createHarthmereBusinessOutpostProceduralBuildingV1(
 
 function isPointInsideOutpostFootprintV1(
   record: HarthmereBusinessOutpostProceduralBuildingRecordV1,
-  point: { x: number; z: number } | undefined,
+  point: { x: number; z: number } | undefined
 ) {
   const origin = (record as any).origin;
   const footprint = (record as any).blueprint?.footprint;
@@ -4479,21 +9642,21 @@ function isPointInsideOutpostFootprintV1(
 }
 
 function materializationEditsForOutpostValidationV1(
-  record: HarthmereBusinessOutpostProceduralBuildingRecordV1,
+  record: HarthmereBusinessOutpostProceduralBuildingRecordV1
 ) {
   const edits = (record as any).materializationPlan?.edits;
   return Array.isArray(edits) ? edits : [];
 }
 
 function interiorFixturesForOutpostValidationV1(
-  record: HarthmereBusinessOutpostProceduralBuildingRecordV1,
+  record: HarthmereBusinessOutpostProceduralBuildingRecordV1
 ) {
   const fixtures = (record as any).interiorFixtures;
   return Array.isArray(fixtures) ? fixtures : [];
 }
 
 function styleNotesForOutpostValidationV1(
-  record: HarthmereBusinessOutpostProceduralBuildingRecordV1,
+  record: HarthmereBusinessOutpostProceduralBuildingRecordV1
 ) {
   const styleNotes = (record as any).buildingStyleKit?.styleNotes;
   return Array.isArray(styleNotes) ? styleNotes : [];
@@ -4501,7 +9664,7 @@ function styleNotesForOutpostValidationV1(
 
 function hasBlockingWallAtNodeV1(
   record: HarthmereBusinessOutpostProceduralBuildingRecordV1,
-  point: { x: number; y: number; z: number },
+  point: { x: number; y: number; z: number }
 ) {
   return materializationEditsForOutpostValidationV1(record).some(
     (edit) =>
@@ -4509,13 +9672,13 @@ function hasBlockingWallAtNodeV1(
       edit.label === "wall" &&
       edit.position[0] === Math.round(point.x) &&
       edit.position[1] === Math.round(point.y) &&
-      edit.position[2] === Math.round(point.z),
+      edit.position[2] === Math.round(point.z)
   );
 }
 
 function fixtureOccupiesNodeV1(
   fixture: HarthmereBusinessOutpostInteriorFixtureV1,
-  point: { x: number; y: number; z: number },
+  point: { x: number; y: number; z: number }
 ) {
   if (!fixture.blocksNavigation) return false;
   const cx = fixture.position.x + 0.5;
@@ -4532,7 +9695,7 @@ function fixtureOccupiesNodeV1(
 }
 
 export function validateHarthmereBusinessOutpostPassabilityV1(
-  record: HarthmereBusinessOutpostProceduralBuildingRecordV1,
+  record: HarthmereBusinessOutpostProceduralBuildingRecordV1
 ): HarthmereBusinessOutpostPassabilityAuditV1 {
   const errors: string[] = [];
   const warnings: string[] = [];
@@ -4545,38 +9708,69 @@ export function validateHarthmereBusinessOutpostPassabilityV1(
   const interiorAudit = (record as any).interiorAudit ?? {};
   const interiorFixtures = interiorFixturesForOutpostValidationV1(record);
   const styleNotes = styleNotesForOutpostValidationV1(record);
-  if (Number(footprint.width ?? 0) < 24) errors.push("outpost_minigame_width_below_24m");
-  if (Number(footprint.depth ?? 0) < 20) errors.push("outpost_minigame_depth_below_20m");
+  if (Number(footprint.width ?? 0) < 24)
+    errors.push("outpost_minigame_width_below_24m");
+  if (Number(footprint.depth ?? 0) < 20)
+    errors.push("outpost_minigame_depth_below_20m");
   if (!record.serverOwned) errors.push("outpost_building_not_server_owned");
-  if (record.sourceOfTruth !== "backend_procedural_voxel_building") errors.push("outpost_building_not_backend_voxel_source");
-  if (record.generationMode !== "building_system_materialization_plan") errors.push("outpost_building_not_materialization_plan_generated");
-  if (!materializationPlan.materializesSolidVoxelBuilding) errors.push("outpost_building_not_solid_voxel_materialized");
-  if (!Array.isArray(materializationPlan.edits)) errors.push("outpost_materialization_plan_missing_edits");
-  if (!buildingStyleKit) errors.push("outpost_missing_grove_reference_style_kit");
-  if (buildingStyleKit?.doorStyle !== "wood_glass_panel") errors.push("outpost_door_not_grove_wood_glass_panel");
-  if (buildingStyleKit?.windowStyle !== "large_framed_shop_glass") errors.push("outpost_windows_not_large_framed_shop_glass");
-  if (buildingStyleKit && !Array.isArray(buildingStyleKit.styleNotes)) errors.push("outpost_style_kit_missing_style_notes");
-  if (!styleNotes.some((note) => /Grove|grove/.test(note))) errors.push("outpost_style_kit_missing_grove_reference_notes");
-  if (Number(structuralAudit.foundationEdits ?? 0) <= 0) errors.push("outpost_building_missing_foundation_voxels");
-  if (Number(structuralAudit.floorEdits ?? 0) <= 0) errors.push("outpost_building_missing_floor_voxels");
-  if (Number(structuralAudit.wallEdits ?? 0) <= 0) errors.push("outpost_building_missing_wall_voxels");
-  if (Number(structuralAudit.roofEdits ?? 0) <= 0) errors.push("outpost_building_missing_roof_voxels");
-  if (Number(structuralAudit.stairEdits ?? 0) <= 0) errors.push("outpost_building_missing_entrance_step");
-  if (Number(clearances.frontDoorMeters ?? 0) < 2) errors.push("outpost_front_door_clearance_below_2m");
-  if (Number(clearances.shopCustomerSpaceMeters ?? 0) < 4) errors.push("outpost_customer_space_clearance_below_4m");
-  if (Number(clearances.publicEntranceMeters ?? 0) < 3) errors.push("outpost_public_entrance_clearance_below_3m");
-  if (Number(customerSpace.areaMeters ?? 0) < 16) errors.push("outpost_customer_space_too_small");
-  if (!record.dashboardAccessPoint?.visibleFromEntrance) errors.push("outpost_dashboard_access_not_visible_from_entrance");
-  if (!record.dashboardAccessPoint?.keyboardlessTraversal) errors.push("outpost_dashboard_access_missing_keyboardless_traversal");
-  if (!Array.isArray((record as any).interiorFixtures)) errors.push("outpost_missing_interior_fixtures");
-  if (!interiorFixtures.some((fixture) => fixture.role === "dashboard_access")) errors.push("outpost_missing_dashboard_access_fixture");
-  if (!interiorFixtures.some((fixture) => fixture.role === "service_counter")) errors.push("outpost_missing_service_counter_fixture");
-  if (!interiorFixtures.some((fixture) => fixture.role === "primary_station")) errors.push("outpost_missing_primary_bikkie_station_fixture");
-  if (interiorFixtures.filter((fixture) => fixture.businessSpecific).length < 4) errors.push("outpost_missing_business_specific_decor");
-  if (Number(interiorAudit.customerQueueCapacity ?? 0) < 4) errors.push("outpost_customer_queue_capacity_too_small");
-  if (Number(interiorAudit.staffWorkstations ?? 0) < 2) errors.push("outpost_staff_workstations_too_few");
-  if (!record.jobsBoardPosition) errors.push("outpost_missing_jobs_board_position");
-  if (isPointInsideOutpostFootprintV1(record, record.jobsBoardPosition)) errors.push("outpost_jobs_board_blocks_customer_floor");
+  if (record.sourceOfTruth !== "backend_procedural_voxel_building")
+    errors.push("outpost_building_not_backend_voxel_source");
+  if (record.generationMode !== "building_system_materialization_plan")
+    errors.push("outpost_building_not_materialization_plan_generated");
+  if (!materializationPlan.materializesSolidVoxelBuilding)
+    errors.push("outpost_building_not_solid_voxel_materialized");
+  if (!Array.isArray(materializationPlan.edits))
+    errors.push("outpost_materialization_plan_missing_edits");
+  if (!buildingStyleKit)
+    errors.push("outpost_missing_grove_reference_style_kit");
+  if (buildingStyleKit?.doorStyle !== "wood_glass_panel")
+    errors.push("outpost_door_not_grove_wood_glass_panel");
+  if (buildingStyleKit?.windowStyle !== "large_framed_shop_glass")
+    errors.push("outpost_windows_not_large_framed_shop_glass");
+  if (buildingStyleKit && !Array.isArray(buildingStyleKit.styleNotes))
+    errors.push("outpost_style_kit_missing_style_notes");
+  if (!styleNotes.some((note) => /Grove|grove/.test(note)))
+    errors.push("outpost_style_kit_missing_grove_reference_notes");
+  if (Number(structuralAudit.foundationEdits ?? 0) <= 0)
+    errors.push("outpost_building_missing_foundation_voxels");
+  if (Number(structuralAudit.floorEdits ?? 0) <= 0)
+    errors.push("outpost_building_missing_floor_voxels");
+  if (Number(structuralAudit.wallEdits ?? 0) <= 0)
+    errors.push("outpost_building_missing_wall_voxels");
+  if (Number(structuralAudit.roofEdits ?? 0) <= 0)
+    errors.push("outpost_building_missing_roof_voxels");
+  if (Number(structuralAudit.stairEdits ?? 0) <= 0)
+    errors.push("outpost_building_missing_entrance_step");
+  if (Number(clearances.frontDoorMeters ?? 0) < 2)
+    errors.push("outpost_front_door_clearance_below_2m");
+  if (Number(clearances.shopCustomerSpaceMeters ?? 0) < 4)
+    errors.push("outpost_customer_space_clearance_below_4m");
+  if (Number(clearances.publicEntranceMeters ?? 0) < 3)
+    errors.push("outpost_public_entrance_clearance_below_3m");
+  if (Number(customerSpace.areaMeters ?? 0) < 16)
+    errors.push("outpost_customer_space_too_small");
+  if (!record.dashboardAccessPoint?.visibleFromEntrance)
+    errors.push("outpost_dashboard_access_not_visible_from_entrance");
+  if (!record.dashboardAccessPoint?.keyboardlessTraversal)
+    errors.push("outpost_dashboard_access_missing_keyboardless_traversal");
+  if (!Array.isArray((record as any).interiorFixtures))
+    errors.push("outpost_missing_interior_fixtures");
+  if (!interiorFixtures.some((fixture) => fixture.role === "dashboard_access"))
+    errors.push("outpost_missing_dashboard_access_fixture");
+  if (!interiorFixtures.some((fixture) => fixture.role === "service_counter"))
+    errors.push("outpost_missing_service_counter_fixture");
+  if (!interiorFixtures.some((fixture) => fixture.role === "primary_station"))
+    errors.push("outpost_missing_primary_bikkie_station_fixture");
+  if (interiorFixtures.filter((fixture) => fixture.businessSpecific).length < 4)
+    errors.push("outpost_missing_business_specific_decor");
+  if (Number(interiorAudit.customerQueueCapacity ?? 0) < 4)
+    errors.push("outpost_customer_queue_capacity_too_small");
+  if (Number(interiorAudit.staffWorkstations ?? 0) < 2)
+    errors.push("outpost_staff_workstations_too_few");
+  if (!record.jobsBoardPosition)
+    errors.push("outpost_missing_jobs_board_position");
+  if (isPointInsideOutpostFootprintV1(record, record.jobsBoardPosition))
+    errors.push("outpost_jobs_board_blocks_customer_floor");
   for (const [label, node] of Object.entries({
     entrance: record.entrance,
     queue: record.queueNode,
@@ -4587,13 +9781,18 @@ export function validateHarthmereBusinessOutpostPassabilityV1(
       errors.push(`outpost_customer_path_node_missing:${label}`);
       continue;
     }
-    if (hasBlockingWallAtNodeV1(record, node)) errors.push(`outpost_customer_path_node_blocked:${label}`);
-    if (interiorFixtures.some((fixture) => fixtureOccupiesNodeV1(fixture, node))) {
+    if (hasBlockingWallAtNodeV1(record, node))
+      errors.push(`outpost_customer_path_node_blocked:${label}`);
+    if (
+      interiorFixtures.some((fixture) => fixtureOccupiesNodeV1(fixture, node))
+    ) {
       errors.push(`outpost_customer_path_fixture_blocked:${label}`);
     }
   }
-  if (!isPointInsideOutpostFootprintV1(record, record.queueNode)) warnings.push("outpost_queue_node_not_inside_floor");
-  if (!isPointInsideOutpostFootprintV1(record, record.serviceCounter)) warnings.push("outpost_service_counter_not_inside_floor");
+  if (!isPointInsideOutpostFootprintV1(record, record.queueNode))
+    warnings.push("outpost_queue_node_not_inside_floor");
+  if (!isPointInsideOutpostFootprintV1(record, record.serviceCounter))
+    warnings.push("outpost_service_counter_not_inside_floor");
   return {
     ok: errors.length === 0,
     buildingId: record.buildingId,
@@ -4614,7 +9813,9 @@ function liveWorldPointKeyV1(point: { x: number; y: number; z: number }) {
 
 function liveWorldNodeForV1(
   record: HarthmereBusinessOutpostProceduralBuildingRecordV1,
-  node: HarthmereBusinessLiveWorldNavigationActorV1["start"] | HarthmereBusinessLiveWorldNavigationActorV1["goal"],
+  node:
+    | HarthmereBusinessLiveWorldNavigationActorV1["start"]
+    | HarthmereBusinessLiveWorldNavigationActorV1["goal"]
 ) {
   const employeeDoor = {
     x: record.origin.x + record.blueprint.footprint.width - 2,
@@ -4624,16 +9825,30 @@ function liveWorldNodeForV1(
   const stock = {
     x: record.origin.x + record.blueprint.footprint.width - 3,
     y: record.origin.y + 1,
-    z: Math.min(record.origin.z + record.blueprint.footprint.depth - 4, record.serviceCounter.z + 2),
+    z: Math.min(
+      record.origin.z + record.blueprint.footprint.depth - 4,
+      record.serviceCounter.z + 2
+    ),
   };
   switch (node) {
-    case "entrance": return record.entrance;
-    case "queue": return record.queueNode;
-    case "counter": return record.serviceCounter;
-    case "service": return { x: record.serviceCounter.x, y: record.serviceCounter.y, z: Math.max(record.queueNode.z, record.serviceCounter.z - 1) };
-    case "employeeDoor": return employeeDoor;
-    case "stock": return stock;
-    case "exit": return record.exitNode;
+    case "entrance":
+      return record.entrance;
+    case "queue":
+      return record.queueNode;
+    case "counter":
+      return record.serviceCounter;
+    case "service":
+      return {
+        x: record.serviceCounter.x,
+        y: record.serviceCounter.y,
+        z: Math.max(record.queueNode.z, record.serviceCounter.z - 1),
+      };
+    case "employeeDoor":
+      return employeeDoor;
+    case "stock":
+      return stock;
+    case "exit":
+      return record.exitNode;
   }
 }
 
@@ -4646,15 +9861,25 @@ function liveWorldNeighborsV1(point: { x: number; y: number; z: number }) {
   ];
 }
 
-function liveWorldWallKeysV1(record: HarthmereBusinessOutpostProceduralBuildingRecordV1) {
+function liveWorldWallKeysV1(
+  record: HarthmereBusinessOutpostProceduralBuildingRecordV1
+) {
   return new Set(
     materializationEditsForOutpostValidationV1(record)
       .filter((edit) => edit.label === "wall" && Array.isArray(edit.position))
-      .map((edit) => liveWorldPointKeyV1({ x: edit.position[0], y: edit.position[1], z: edit.position[2] })),
+      .map((edit) =>
+        liveWorldPointKeyV1({
+          x: edit.position[0],
+          y: edit.position[1],
+          z: edit.position[2],
+        })
+      )
   );
 }
 
-function liveWorldInteriorFixtureBlockerKeysV1(record: HarthmereBusinessOutpostProceduralBuildingRecordV1) {
+function liveWorldInteriorFixtureBlockerKeysV1(
+  record: HarthmereBusinessOutpostProceduralBuildingRecordV1
+) {
   const keys = new Set<string>();
   for (const fixture of interiorFixturesForOutpostValidationV1(record)) {
     if (!fixture.blocksNavigation) continue;
@@ -4675,7 +9900,7 @@ function liveWorldInteriorFixtureBlockerKeysV1(record: HarthmereBusinessOutpostP
 
 function liveWorldBlockerKeysV1(
   blockers: HarthmereBusinessLiveWorldDynamicBlockerV1[],
-  includeTemporary: boolean,
+  includeTemporary: boolean
 ) {
   const keys = new Map<string, HarthmereBusinessLiveWorldDynamicBlockerV1[]>();
   for (const blocker of blockers) {
@@ -4698,7 +9923,7 @@ function liveWorldBlockerKeysV1(
 
 function liveWorldWithinNavBoundsV1(
   record: HarthmereBusinessOutpostProceduralBuildingRecordV1,
-  point: { x: number; y: number; z: number },
+  point: { x: number; y: number; z: number }
 ) {
   return (
     point.y === record.origin.y + 1 &&
@@ -4714,7 +9939,7 @@ function findLiveWorldPathV1(
   start: { x: number; y: number; z: number },
   goal: { x: number; y: number; z: number },
   wallKeys: Set<string>,
-  blockerKeys: Map<string, HarthmereBusinessLiveWorldDynamicBlockerV1[]>,
+  blockerKeys: Map<string, HarthmereBusinessLiveWorldDynamicBlockerV1[]>
 ) {
   const startKey = liveWorldPointKeyV1(start);
   const goalKey = liveWorldPointKeyV1(goal);
@@ -4740,7 +9965,12 @@ function findLiveWorldPathV1(
     }
     for (const next of liveWorldNeighborsV1(current)) {
       const key = liveWorldPointKeyV1(next);
-      if (cameFrom.has(key) || !liveWorldWithinNavBoundsV1(record, next) || blocked(next)) continue;
+      if (
+        cameFrom.has(key) ||
+        !liveWorldWithinNavBoundsV1(record, next) ||
+        blocked(next)
+      )
+        continue;
       cameFrom.set(key, currentKey);
       queue.push(next);
     }
@@ -4753,7 +9983,7 @@ export function validateHarthmereBusinessOutpostLiveWorldNavigationV1(
   input: {
     actors?: HarthmereBusinessLiveWorldNavigationActorV1[];
     dynamicBlockers?: HarthmereBusinessLiveWorldDynamicBlockerV1[];
-  } = {},
+  } = {}
 ): HarthmereBusinessLiveWorldNavigationAuditV1 {
   const warnings: string[] = [];
   const unreachableRoutes: string[] = [];
@@ -4761,44 +9991,88 @@ export function validateHarthmereBusinessOutpostLiveWorldNavigationV1(
   const recoveredBlockers = new Set<string>();
   const routeLengths: Record<string, number> = {};
   const wallKeys = liveWorldWallKeysV1(record);
-  for (const key of liveWorldInteriorFixtureBlockerKeysV1(record)) wallKeys.add(key);
+  for (const key of liveWorldInteriorFixtureBlockerKeysV1(record))
+    wallKeys.add(key);
   const dynamicBlockers = input.dynamicBlockers ?? [
     {
       blockerId: `${record.outpostId}:loose_queue_crate`,
       kind: "dynamic_prop",
-      position: { x: record.queueNode.x + 1, y: record.queueNode.y, z: record.queueNode.z },
+      position: {
+        x: record.queueNode.x + 1,
+        y: record.queueNode.y,
+        z: record.queueNode.z,
+      },
       radiusMeters: 0.75,
       temporary: true,
     },
     {
       blockerId: `${record.outpostId}:pet_waiting_near_door`,
       kind: "pet",
-      position: { x: record.entrance.x - 1, y: record.entrance.y, z: record.entrance.z },
+      position: {
+        x: record.entrance.x - 1,
+        y: record.entrance.y,
+        z: record.entrance.z,
+      },
       radiusMeters: 0.5,
       temporary: true,
     },
   ];
   const actors = input.actors ?? [
-    { actorId: "customer_route_probe", kind: "customer", start: "entrance", goal: "service", radiusMeters: 0.45 },
-    { actorId: "employee_route_probe", kind: "employee", start: "employeeDoor", goal: "counter", radiusMeters: 0.45 },
-    { actorId: "customer_exit_probe", kind: "customer", start: "service", goal: "exit", radiusMeters: 0.45 },
+    {
+      actorId: "customer_route_probe",
+      kind: "customer",
+      start: "entrance",
+      goal: "service",
+      radiusMeters: 0.45,
+    },
+    {
+      actorId: "employee_route_probe",
+      kind: "employee",
+      start: "employeeDoor",
+      goal: "counter",
+      radiusMeters: 0.45,
+    },
+    {
+      actorId: "customer_exit_probe",
+      kind: "customer",
+      start: "service",
+      goal: "exit",
+      radiusMeters: 0.45,
+    },
   ];
   const allBlockerKeys = liveWorldBlockerKeysV1(dynamicBlockers, true);
   const permanentBlockerKeys = liveWorldBlockerKeysV1(dynamicBlockers, false);
-  const actorPaths: Record<string, Array<{ x: number; y: number; z: number }>> = {};
+  const actorPaths: Record<
+    string,
+    Array<{ x: number; y: number; z: number }>
+  > = {};
 
   for (const actor of actors) {
     const start = liveWorldNodeForV1(record, actor.start);
     const goal = liveWorldNodeForV1(record, actor.goal);
     const routeId = `${actor.actorId}:${actor.start}->${actor.goal}`;
-    let path = findLiveWorldPathV1(record, start, goal, wallKeys, allBlockerKeys);
+    let path = findLiveWorldPathV1(
+      record,
+      start,
+      goal,
+      wallKeys,
+      allBlockerKeys
+    );
     if (!path) {
-      path = findLiveWorldPathV1(record, start, goal, wallKeys, permanentBlockerKeys);
+      path = findLiveWorldPathV1(
+        record,
+        start,
+        goal,
+        wallKeys,
+        permanentBlockerKeys
+      );
       if (path) {
         for (const blocker of dynamicBlockers) {
           if (blocker.temporary) recoveredBlockers.add(blocker.blockerId);
         }
-        warnings.push(`live_world_navigation_recovered_temporary_blocker:${routeId}`);
+        warnings.push(
+          `live_world_navigation_recovered_temporary_blocker:${routeId}`
+        );
       }
     }
     if (!path) {
@@ -4849,17 +10123,23 @@ export function validateHarthmereBusinessOutpostLiveWorldNavigationV1(
   };
 }
 
+export function harthmereBusinessOutpostBusinessIdV1(outpostId: string) {
+  return `business_${outpostId}`;
+}
+
 export const HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS_V1: Readonly<
   Record<string, HarthmereBusinessOutpostProceduralBuildingRecordV1>
-> = Object.freeze(Object.fromEntries(
-  HARTHMERE_BUSINESS_OUTPOSTS_V1.map((outpost) => [
-    outpost.outpostId,
-    createHarthmereBusinessOutpostProceduralBuildingV1(outpost),
-  ]),
-));
+> = Object.freeze(
+  Object.fromEntries(
+    HARTHMERE_BUSINESS_OUTPOSTS_V1.map((outpost) => [
+      outpost.outpostId,
+      createHarthmereBusinessOutpostProceduralBuildingV1(outpost),
+    ])
+  )
+);
 
 export const HARTHMERE_BUSINESS_OUTPOST_REBUILD_REVISION_V1 =
-  "harthmere-business-outpost-rebuild-solid-voxel-production-coordinates-v13" as const;
+  "harthmere-business-outpost-rebuild-solid-voxel-production-coordinates-v18" as const;
 
 export interface HarthmereBusinessOutpostSafeSiteV1 {
   outpostId: string;
@@ -4882,22 +10162,73 @@ export interface HarthmereBusinessOutpostSafeSiteV1 {
 // of. The production-captured business sites may be far beyond these starter
 // corridors, so this list is a collision keepout rather than an access rule.
 const HARTHMERE_BUSINESS_OUTPOST_ROAD_KEEPOUTS_V1 = Object.freeze([
-  { id: "north_road", a: { x: 486, z: -304 }, b: { x: 486, z: -920 }, halfWidth: 8 },
-  { id: "south_road", a: { x: 486, z: -100 }, b: { x: 486, z: 548 }, halfWidth: 8 },
-  { id: "west_road", a: { x: 384, z: -209 }, b: { x: -224, z: -209 }, halfWidth: 8 },
-  { id: "east_road", a: { x: 604, z: -205 }, b: { x: 1252, z: -205 }, halfWidth: 8 },
-  { id: "northwest_hunter_track", a: { x: 420, z: -304 }, b: { x: -52, z: -776 }, halfWidth: 7 },
-  { id: "northeast_reed_track", a: { x: 604, z: -260 }, b: { x: 1076, z: -732 }, halfWidth: 7 },
-  { id: "southeast_grave_track", a: { x: 568, z: -100 }, b: { x: 1040, z: 372 }, halfWidth: 7 },
-  { id: "thornbridge_crossing", a: { x: 324, z: -498 }, b: { x: 352, z: -498 }, halfWidth: 6 },
-  { id: "broken_toll_road", a: { x: 454, z: -422 }, b: { x: 531, z: -492 }, halfWidth: 6 },
-  { id: "briarfen_plank_path", a: { x: 620, z: -226 }, b: { x: 662, z: -280 }, halfWidth: 6 },
+  {
+    id: "north_road",
+    a: { x: 486, z: -304 },
+    b: { x: 486, z: -920 },
+    halfWidth: 8,
+  },
+  {
+    id: "south_road",
+    a: { x: 486, z: -100 },
+    b: { x: 486, z: 548 },
+    halfWidth: 8,
+  },
+  {
+    id: "west_road",
+    a: { x: 384, z: -209 },
+    b: { x: -224, z: -209 },
+    halfWidth: 8,
+  },
+  {
+    id: "east_road",
+    a: { x: 604, z: -205 },
+    b: { x: 1252, z: -205 },
+    halfWidth: 8,
+  },
+  {
+    id: "northwest_hunter_track",
+    a: { x: 420, z: -304 },
+    b: { x: -52, z: -776 },
+    halfWidth: 7,
+  },
+  {
+    id: "northeast_reed_track",
+    a: { x: 604, z: -260 },
+    b: { x: 1076, z: -732 },
+    halfWidth: 7,
+  },
+  {
+    id: "southeast_grave_track",
+    a: { x: 568, z: -100 },
+    b: { x: 1040, z: 372 },
+    halfWidth: 7,
+  },
+  {
+    id: "thornbridge_crossing",
+    a: { x: 324, z: -498 },
+    b: { x: 352, z: -498 },
+    halfWidth: 6,
+  },
+  {
+    id: "broken_toll_road",
+    a: { x: 454, z: -422 },
+    b: { x: 531, z: -492 },
+    halfWidth: 6,
+  },
+  {
+    id: "briarfen_plank_path",
+    a: { x: 620, z: -226 },
+    b: { x: 662, z: -280 },
+    halfWidth: 6,
+  },
 ] as const);
 
 export const HARTHMERE_BUSINESS_OUTPOST_SAFE_SITES_V1: readonly HarthmereBusinessOutpostSafeSiteV1[] =
   Object.freeze(
     HARTHMERE_BUSINESS_OUTPOSTS_V1.map((outpost) => {
-      const record = HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS_V1[outpost.outpostId];
+      const record =
+        HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS_V1[outpost.outpostId];
       const center = { x: outpost.position.x, z: outpost.position.z };
       return {
         outpostId: outpost.outpostId,
@@ -4912,16 +10243,18 @@ export const HARTHMERE_BUSINESS_OUTPOST_SAFE_SITES_V1: readonly HarthmereBusines
           zMax: record.origin.z + record.blueprint.footprint.depth,
         },
         plotBounds: record.plot.bounds,
-        safeBounds: harthmereBusinessOutpostSafeSiteBoundsV1(record.plot.bounds),
+        safeBounds: harthmereBusinessOutpostSafeSiteBoundsV1(
+          record.plot.bounds
+        ),
         muckRelocation: harthmereBusinessOutpostMuckRelocationTargetV1(center),
       };
-    }),
+    })
   );
 
 function harthmereBusinessRectContainsV1(
   bounds: { xMin: number; xMax: number; zMin: number; zMax: number },
   point: { x: number; z: number },
-  pad = 0,
+  pad = 0
 ) {
   return (
     point.x >= bounds.xMin - pad &&
@@ -4934,7 +10267,7 @@ function harthmereBusinessRectContainsV1(
 function harthmereBusinessRectsOverlapV1(
   a: { xMin: number; xMax: number; zMin: number; zMax: number },
   b: { xMin: number; xMax: number; zMin: number; zMax: number },
-  pad = 0,
+  pad = 0
 ) {
   return (
     a.xMin - pad < b.xMax &&
@@ -4947,7 +10280,7 @@ function harthmereBusinessRectsOverlapV1(
 function harthmereBusinessPointToSegmentDistanceV1(
   point: { x: number; z: number },
   a: { x: number; z: number },
-  b: { x: number; z: number },
+  b: { x: number; z: number }
 ) {
   const dx = b.x - a.x;
   const dz = b.z - a.z;
@@ -4955,23 +10288,27 @@ function harthmereBusinessPointToSegmentDistanceV1(
   if (lengthSq <= 0) return Math.hypot(point.x - a.x, point.z - a.z);
   const t = Math.max(
     0,
-    Math.min(1, ((point.x - a.x) * dx + (point.z - a.z) * dz) / lengthSq),
+    Math.min(1, ((point.x - a.x) * dx + (point.z - a.z) * dz) / lengthSq)
   );
   return Math.hypot(point.x - (a.x + t * dx), point.z - (a.z + t * dz));
 }
 
 function harthmereBusinessPointToRectDistanceV1(
   point: { x: number; z: number },
-  rect: { xMin: number; xMax: number; zMin: number; zMax: number },
+  rect: { xMin: number; xMax: number; zMin: number; zMax: number }
 ) {
   const dx =
-    point.x < rect.xMin ? rect.xMin - point.x :
-      point.x > rect.xMax ? point.x - rect.xMax :
-        0;
+    point.x < rect.xMin
+      ? rect.xMin - point.x
+      : point.x > rect.xMax
+      ? point.x - rect.xMax
+      : 0;
   const dz =
-    point.z < rect.zMin ? rect.zMin - point.z :
-      point.z > rect.zMax ? point.z - rect.zMax :
-        0;
+    point.z < rect.zMin
+      ? rect.zMin - point.z
+      : point.z > rect.zMax
+      ? point.z - rect.zMax
+      : 0;
   return Math.hypot(dx, dz);
 }
 
@@ -4979,23 +10316,23 @@ function harthmereBusinessSegmentsIntersectV1(
   a1: { x: number; z: number },
   a2: { x: number; z: number },
   b1: { x: number; z: number },
-  b2: { x: number; z: number },
+  b2: { x: number; z: number }
 ) {
   const orient = (
     p: { x: number; z: number },
     q: { x: number; z: number },
-    r: { x: number; z: number },
+    r: { x: number; z: number }
   ) => (q.z - p.z) * (r.x - q.x) - (q.x - p.x) * (r.z - q.z);
   const o1 = orient(a1, a2, b1);
   const o2 = orient(a1, a2, b2);
   const o3 = orient(b1, b2, a1);
   const o4 = orient(b1, b2, a2);
-  return (o1 > 0) !== (o2 > 0) && (o3 > 0) !== (o4 > 0);
+  return o1 > 0 !== o2 > 0 && o3 > 0 !== o4 > 0;
 }
 
 function harthmereBusinessSegmentToRectDistanceV1(
   road: { a: { x: number; z: number }; b: { x: number; z: number } },
-  rect: { xMin: number; xMax: number; zMin: number; zMax: number },
+  rect: { xMin: number; xMax: number; zMin: number; zMax: number }
 ) {
   if (
     harthmereBusinessRectContainsV1(rect, road.a) ||
@@ -5015,33 +10352,37 @@ function harthmereBusinessSegmentToRectDistanceV1(
     [corners[2], corners[3]],
     [corners[3], corners[0]],
   ] as const;
-  if (edges.some(([a, b]) => harthmereBusinessSegmentsIntersectV1(road.a, road.b, a, b))) {
+  if (
+    edges.some(([a, b]) =>
+      harthmereBusinessSegmentsIntersectV1(road.a, road.b, a, b)
+    )
+  ) {
     return 0;
   }
   return Math.min(
     harthmereBusinessPointToRectDistanceV1(road.a, rect),
     harthmereBusinessPointToRectDistanceV1(road.b, rect),
     ...corners.map((corner) =>
-      harthmereBusinessPointToSegmentDistanceV1(corner, road.a, road.b),
-    ),
+      harthmereBusinessPointToSegmentDistanceV1(corner, road.a, road.b)
+    )
   );
 }
 
 export function harthmereBusinessOutpostSafeSiteForPointV1(
   point: { x: number; z: number } | undefined,
-  pad = 0,
+  pad = 0
 ) {
   if (!point || !Number.isFinite(point.x) || !Number.isFinite(point.z)) {
     return undefined;
   }
   return HARTHMERE_BUSINESS_OUTPOST_SAFE_SITES_V1.find((site) =>
-    harthmereBusinessRectContainsV1(site.safeBounds, point, pad),
+    harthmereBusinessRectContainsV1(site.safeBounds, point, pad)
   );
 }
 
 export function isPointInsideHarthmereBusinessSafeSiteV1(
   point: { x: number; z: number } | undefined,
-  pad = 0,
+  pad = 0
 ) {
   return Boolean(harthmereBusinessOutpostSafeSiteForPointV1(point, pad));
 }
@@ -5055,9 +10396,15 @@ export function validateHarthmereBusinessOutpostSafeSitingV1() {
 
   for (let i = 0; i < sites.length; i += 1) {
     for (let j = i + 1; j < sites.length; j += 1) {
-      if (harthmereBusinessRectsOverlapV1(sites[i].footprint, sites[j].footprint, 2)) {
+      if (
+        harthmereBusinessRectsOverlapV1(
+          sites[i].footprint,
+          sites[j].footprint,
+          2
+        )
+      ) {
         errors.push(
-          `outpost_footprints_overlap:${sites[i].outpostId}:${sites[j].outpostId}`,
+          `outpost_footprints_overlap:${sites[i].outpostId}:${sites[j].outpostId}`
         );
       }
     }
@@ -5066,10 +10413,14 @@ export function validateHarthmereBusinessOutpostSafeSitingV1() {
   for (const site of sites) {
     for (const coord of HARTHMERE_GROVE_BUSINESS_BUILDING_REFERENCE_COORDINATES_V1) {
       if (
-        harthmereBusinessRectContainsV1(site.footprint, { x: coord[0], z: coord[2] }, 6)
+        harthmereBusinessRectContainsV1(
+          site.footprint,
+          { x: coord[0], z: coord[2] },
+          6
+        )
       ) {
         errors.push(
-          `outpost_on_reference_building:${site.outpostId}:${coord.join(",")}`,
+          `outpost_on_reference_building:${site.outpostId}:${coord.join(",")}`
         );
       }
     }
@@ -5084,7 +10435,9 @@ export function validateHarthmereBusinessOutpostSafeSitingV1() {
           z: anchor.center.z,
         })
       ) {
-        errors.push(`muck_anchor_inside_safe_site:${site.outpostId}:${anchor.id}`);
+        errors.push(
+          `muck_anchor_inside_safe_site:${site.outpostId}:${anchor.id}`
+        );
       }
     }
   }
@@ -5107,11 +10460,15 @@ export function validateHarthmereBusinessOutpostProductionReadinessV1() {
   const gaps: string[] = [];
   const records = HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS_V1;
   if (HARTHMERE_BUSINESS_OUTPOSTS_V1.length !== 19) {
-    gaps.push(`expected_19_outposts_found_${HARTHMERE_BUSINESS_OUTPOSTS_V1.length}`);
+    gaps.push(
+      `expected_19_outposts_found_${HARTHMERE_BUSINESS_OUTPOSTS_V1.length}`
+    );
   }
   if (Object.keys(records).length !== HARTHMERE_BUSINESS_OUTPOSTS_V1.length) {
     gaps.push(
-      `procedural_record_count_mismatch:${Object.keys(records).length}_of_${HARTHMERE_BUSINESS_OUTPOSTS_V1.length}`,
+      `procedural_record_count_mismatch:${Object.keys(records).length}_of_${
+        HARTHMERE_BUSINESS_OUTPOSTS_V1.length
+      }`
     );
   }
 
@@ -5168,7 +10525,7 @@ export function validateHarthmereBusinessOutpostProductionReadinessV1() {
     if (
       !record.materializationPlan.edits.some(
         (edit) =>
-          edit.label === "safe_ground" && edit.position[1] === expectedGroundY,
+          edit.label === "safe_ground" && edit.position[1] === expectedGroundY
       )
     ) {
       gaps.push(`${outpost.outpostId}:missing_safe_ground_at_pad_y`);
@@ -5177,20 +10534,24 @@ export function validateHarthmereBusinessOutpostProductionReadinessV1() {
       !record.materializationPlan.edits.some(
         (edit) =>
           edit.label === "foundation" &&
-          edit.position[1] <= record.terrainGrounding.foundationBottomY,
+          edit.position[1] <= record.terrainGrounding.foundationBottomY
       )
     ) {
-      gaps.push(`${outpost.outpostId}:foundation_does_not_reach_sampled_terrain`);
+      gaps.push(
+        `${outpost.outpostId}:foundation_does_not_reach_sampled_terrain`
+      );
     }
     if (!record.materializationPlan.safeZone?.safeFromMuck) {
       gaps.push(`${outpost.outpostId}:missing_business_safe_zone`);
     }
     if (
-      record.materializationPlan.edits.some((edit) =>
-        !isTerrainID(Number(edit.value)),
+      record.materializationPlan.edits.some(
+        (edit) => !isTerrainID(Number(edit.value))
       )
     ) {
-      gaps.push(`${outpost.outpostId}:materialization_edit_uses_non_terrain_id`);
+      gaps.push(
+        `${outpost.outpostId}:materialization_edit_uses_non_terrain_id`
+      );
     }
     if (!HARTHMERE_BUSINESS_MINIGAME_DEFINITIONS_V1[outpost.businessType]) {
       gaps.push(`${outpost.outpostId}:missing_business_minigame_definition`);
@@ -5211,7 +10572,7 @@ export function validateHarthmereBusinessOutpostProductionReadinessV1() {
     }
     if (
       record.materializationPlan.edits.some((edit) =>
-        String(edit.label).includes("shell"),
+        String(edit.label).includes("shell")
       )
     ) {
       gaps.push(`${outpost.outpostId}:legacy_shell_edit_present`);
@@ -5241,14 +10602,15 @@ export function validateHarthmereBusinessOutpostProductionReadinessV1() {
         (edit.position[0] < record.plot.bounds.xMin ||
           edit.position[0] >= record.plot.bounds.xMax ||
           edit.position[2] < record.plot.bounds.zMin ||
-          edit.position[2] >= record.plot.bounds.zMax),
+          edit.position[2] >= record.plot.bounds.zMax)
     );
     if (!hasGardenGrass) {
       gaps.push(`${outpost.outpostId}:missing_graded_garden_yard`);
     }
     // Sub-grade fill present so drops/holes at the building edge are filled flat.
     const hasSubGradeFill = record.materializationPlan.edits.some(
-      (edit) => edit.label === "foundation" && edit.position[1] === record.origin.y - 1,
+      (edit) =>
+        edit.label === "foundation" && edit.position[1] === record.origin.y - 1
     );
     if (!hasSubGradeFill) {
       gaps.push(`${outpost.outpostId}:missing_subgrade_blend_fill`);
@@ -5414,7 +10776,7 @@ function addHarthmereOutpostFullSiteCleanupPositionsV1(input: {
 
 function createHarthmereBusinessOutpostCleanupPlanV1(
   outpost: HarthmereBusinessOutpostV1,
-  record: HarthmereBusinessOutpostProceduralBuildingRecordV1,
+  record: HarthmereBusinessOutpostProceduralBuildingRecordV1
 ): BuildingSystemMaterializationPlanV1 {
   const cleanupKeys = new Set<string>();
   for (const edit of record.materializationPlan.edits) {
@@ -5447,7 +10809,9 @@ function createHarthmereBusinessOutpostCleanupPlanV1(
     ...record.materializationPlan,
     requestId: `${outpost.outpostId}_backend_cleanup_before_rebuild_v2`,
     edits: [...cleanupKeys].sort().map((key) => {
-      const [x, y, z] = key.split(":").map((value) => Number.parseInt(value, 10));
+      const [x, y, z] = key
+        .split(":")
+        .map((value) => Number.parseInt(value, 10));
       return {
         kind: "editEvent" as const,
         position: [x, y, z] as [number, number, number],
@@ -5462,7 +10826,8 @@ function createHarthmereBusinessOutpostCleanupPlanV1(
 
 export function createHarthmereBusinessOutpostRebuildMaterializationPlansV1() {
   return HARTHMERE_BUSINESS_OUTPOSTS_V1.flatMap((outpost) => {
-    const record = HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS_V1[outpost.outpostId];
+    const record =
+      HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS_V1[outpost.outpostId];
     return [
       createHarthmereBusinessOutpostCleanupPlanV1(outpost, record),
       record.materializationPlan,
@@ -5473,8 +10838,10 @@ export function createHarthmereBusinessOutpostRebuildMaterializationPlansV1() {
 export const HARTHMERE_BUSINESS_OUTPOST_MAP_MARKERS_V1: readonly HarthmereBusinessOutpostMapMarkerV1[] =
   Object.freeze(
     HARTHMERE_BUSINESS_OUTPOSTS_V1.map((outpost) => {
-      const building = HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS_V1[outpost.outpostId];
-      const definition = HARTHMERE_BUSINESS_MINIGAME_DEFINITIONS_V1[outpost.businessType];
+      const building =
+        HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS_V1[outpost.outpostId];
+      const definition =
+        HARTHMERE_BUSINESS_MINIGAME_DEFINITIONS_V1[outpost.businessType];
       const entrance = building?.entrance ?? outpost.position;
       const primaryBikkieGraphic =
         building?.primaryBikkieGraphic ??
@@ -5487,7 +10854,11 @@ export const HARTHMERE_BUSINESS_OUTPOST_MAP_MARKERS_V1: readonly HarthmereBusine
         description: `Harthmere business in ${outpost.district}. Go inside for ${definition.interfaceTitle} service and ${outpost.job.title} shifts.`,
         area: "Harthmere" as const,
         district: outpost.district,
-        position: [entrance.x, entrance.y, entrance.z] as [number, number, number],
+        position: [entrance.x, entrance.y, entrance.z] as [
+          number,
+          number,
+          number
+        ],
         kind: "business_outpost" as const,
         visibleOnWorldMap: true as const,
         visibleOnHudMap: true as const,
@@ -5496,30 +10867,39 @@ export const HARTHMERE_BUSINESS_OUTPOST_MAP_MARKERS_V1: readonly HarthmereBusine
         primaryBikkieGraphic,
         primaryBikkieVisual: primaryBikkieGraphic?.visual,
       };
-    }),
+    })
   );
 
-function harthmereBusinessCoordinateKeyV1(coord: readonly [number, number, number]) {
+function harthmereBusinessCoordinateKeyV1(
+  coord: readonly [number, number, number]
+) {
   return coord.map((value) => value.toFixed(3)).join(":");
 }
 
 function harthmereBusinessCoordinateXzDistanceV1(
   coord: readonly [number, number, number],
-  point: { x: number; z: number },
+  point: { x: number; z: number }
 ) {
   return Math.hypot(coord[0] - point.x, coord[2] - point.z);
 }
 
-export function validateHarthmereGroveBusinessCoordinateReferenceRolesV1():
-  HarthmereGroveBusinessCoordinateReferenceAuditV1 {
+export function validateHarthmereGroveBusinessCoordinateReferenceRolesV1(): HarthmereGroveBusinessCoordinateReferenceAuditV1 {
   const errors: string[] = [];
-  const buildingCoords = HARTHMERE_GROVE_BUSINESS_BUILDING_REFERENCE_COORDINATES_V1;
+  const buildingCoords =
+    HARTHMERE_GROVE_BUSINESS_BUILDING_REFERENCE_COORDINATES_V1;
   const peopleCoords = HARTHMERE_GROVE_BUSINESS_PEOPLE_REFERENCE_COORDINATES_V1;
-  const designFurnitureCoords = HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_COORDINATES_V1;
-  if (buildingCoords.length !== 8) errors.push("building_reference_coordinate_count_changed");
-  if (peopleCoords.length !== 6) errors.push("people_reference_coordinate_count_changed");
-  if (designFurnitureCoords.length !== 14) errors.push("design_furniture_reference_coordinate_count_changed");
-  if (HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_V1.materializesBuildings !== false) {
+  const designFurnitureCoords =
+    HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_COORDINATES_V1;
+  if (buildingCoords.length !== 8)
+    errors.push("building_reference_coordinate_count_changed");
+  if (peopleCoords.length !== 6)
+    errors.push("people_reference_coordinate_count_changed");
+  if (designFurnitureCoords.length !== 14)
+    errors.push("design_furniture_reference_coordinate_count_changed");
+  if (
+    HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_V1.materializesBuildings !==
+    false
+  ) {
     errors.push("design_furniture_scan_would_materialize_buildings");
   }
   if (
@@ -5528,68 +10908,123 @@ export function validateHarthmereGroveBusinessCoordinateReferenceRolesV1():
   ) {
     errors.push("design_furniture_scan_missing_do_not_build_policy");
   }
-  if (HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_V1.findings.length !== designFurnitureCoords.length) {
+  if (
+    HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_V1.findings.length !==
+    designFurnitureCoords.length
+  ) {
     errors.push("design_furniture_scan_findings_do_not_cover_every_coordinate");
   }
-  if (HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_V1.interiorFindings.length !== designFurnitureCoords.length) {
-    errors.push("design_furniture_interior_scan_findings_do_not_cover_every_coordinate");
+  if (
+    HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_V1.interiorFindings
+      .length !== designFurnitureCoords.length
+  ) {
+    errors.push(
+      "design_furniture_interior_scan_findings_do_not_cover_every_coordinate"
+    );
   }
   for (const finding of HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_V1.findings) {
     if (
       harthmereBusinessCoordinateKeyV1(finding.coordinate) !==
-      harthmereBusinessCoordinateKeyV1(designFurnitureCoords[finding.coordinateIndex])
+      harthmereBusinessCoordinateKeyV1(
+        designFurnitureCoords[finding.coordinateIndex]
+      )
     ) {
-      errors.push(`design_furniture_scan_coordinate_mismatch:${finding.coordinateIndex}`);
+      errors.push(
+        `design_furniture_scan_coordinate_mismatch:${finding.coordinateIndex}`
+      );
     }
   }
   for (const finding of HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_V1.interiorFindings) {
     if (
       harthmereBusinessCoordinateKeyV1(finding.coordinate) !==
-      harthmereBusinessCoordinateKeyV1(designFurnitureCoords[finding.coordinateIndex])
+      harthmereBusinessCoordinateKeyV1(
+        designFurnitureCoords[finding.coordinateIndex]
+      )
     ) {
-      errors.push(`design_furniture_interior_scan_coordinate_mismatch:${finding.coordinateIndex}`);
+      errors.push(
+        `design_furniture_interior_scan_coordinate_mismatch:${finding.coordinateIndex}`
+      );
     }
   }
-  const buildingKeys = new Set(buildingCoords.map(harthmereBusinessCoordinateKeyV1));
+  const buildingKeys = new Set(
+    buildingCoords.map(harthmereBusinessCoordinateKeyV1)
+  );
   for (const coord of peopleCoords) {
     if (buildingKeys.has(harthmereBusinessCoordinateKeyV1(coord))) {
-      errors.push(`people_coordinate_overlaps_building_reference:${coord.join(",")}`);
+      errors.push(
+        `people_coordinate_overlaps_building_reference:${coord.join(",")}`
+      );
     }
   }
-  if (HARTHMERE_GROVE_BUSINESS_PEOPLE_SOURCE_SCAN_V1.coordinatesAreOutposts !== false) {
+  if (
+    HARTHMERE_GROVE_BUSINESS_PEOPLE_SOURCE_SCAN_V1.coordinatesAreOutposts !==
+    false
+  ) {
     errors.push("people_reference_marked_as_outposts");
   }
-  if (HARTHMERE_GROVE_BUSINESS_PEOPLE_SOURCE_SCAN_V1.materializesBuildings !== false) {
+  if (
+    HARTHMERE_GROVE_BUSINESS_PEOPLE_SOURCE_SCAN_V1.materializesBuildings !==
+    false
+  ) {
     errors.push("people_reference_would_materialize_buildings");
   }
-  if (HARTHMERE_GROVE_BUSINESS_PEOPLE_SOURCE_SCAN_V1.placementPolicy !== "people_reference_only_do_not_build_here") {
+  if (
+    HARTHMERE_GROVE_BUSINESS_PEOPLE_SOURCE_SCAN_V1.placementPolicy !==
+    "people_reference_only_do_not_build_here"
+  ) {
     errors.push("people_reference_missing_do_not_build_policy");
   }
-  if (HARTHMERE_GROVE_BUSINESS_PEOPLE_SOURCE_SCAN_V1.findings.length !== peopleCoords.length) {
+  if (
+    HARTHMERE_GROVE_BUSINESS_PEOPLE_SOURCE_SCAN_V1.findings.length !==
+    peopleCoords.length
+  ) {
     errors.push("people_reference_findings_do_not_cover_every_coordinate");
   }
   for (const finding of HARTHMERE_GROVE_BUSINESS_PEOPLE_SOURCE_SCAN_V1.findings) {
-    if (!finding.semanticUse.some((use) => /not a business outpost site/.test(use))) {
-      errors.push(`people_reference_missing_not_outpost_semantic:${finding.coordinateIndex}`);
+    if (
+      !finding.semanticUse.some((use) =>
+        /not a business outpost site/.test(use)
+      )
+    ) {
+      errors.push(
+        `people_reference_missing_not_outpost_semantic:${finding.coordinateIndex}`
+      );
     }
-    if (harthmereBusinessCoordinateKeyV1(finding.coordinate) !== harthmereBusinessCoordinateKeyV1(peopleCoords[finding.coordinateIndex])) {
-      errors.push(`people_reference_finding_coordinate_mismatch:${finding.coordinateIndex}`);
+    if (
+      harthmereBusinessCoordinateKeyV1(finding.coordinate) !==
+      harthmereBusinessCoordinateKeyV1(peopleCoords[finding.coordinateIndex])
+    ) {
+      errors.push(
+        `people_reference_finding_coordinate_mismatch:${finding.coordinateIndex}`
+      );
     }
   }
   for (const coord of peopleCoords) {
     for (const outpost of HARTHMERE_BUSINESS_OUTPOSTS_V1) {
-      if (harthmereBusinessCoordinateXzDistanceV1(coord, outpost.position) < 3) {
-        errors.push(`people_reference_too_close_to_outpost_center:${outpost.outpostId}:${coord.join(",")}`);
+      if (
+        harthmereBusinessCoordinateXzDistanceV1(coord, outpost.position) < 3
+      ) {
+        errors.push(
+          `people_reference_too_close_to_outpost_center:${
+            outpost.outpostId
+          }:${coord.join(",")}`
+        );
       }
     }
-    for (const record of Object.values(HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS_V1)) {
+    for (const record of Object.values(
+      HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS_V1
+    )) {
       const insideFootprint =
         coord[0] >= record.origin.x &&
         coord[0] < record.origin.x + record.blueprint.footprint.width &&
         coord[2] >= record.origin.z &&
         coord[2] < record.origin.z + record.blueprint.footprint.depth;
       if (insideFootprint) {
-        errors.push(`people_reference_inside_outpost_footprint:${record.outpostId}:${coord.join(",")}`);
+        errors.push(
+          `people_reference_inside_outpost_footprint:${
+            record.outpostId
+          }:${coord.join(",")}`
+        );
       }
     }
   }

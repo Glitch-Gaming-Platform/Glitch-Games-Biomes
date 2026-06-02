@@ -68,12 +68,14 @@ import {
   defaultHarthmereProductionEconomyStateV1,
   normalizeHarthmereProductionEconomyStateV1,
   reduceHarthmereEconomyMutationV1,
+  type HarthmereEconomyBusinessRecordV1,
   type HarthmereEconomyBusinessTypeIdV1,
+  type HarthmereEconomyInventoryRecordV1,
   type HarthmereProductionEconomyStateV1,
 } from "./mmo_economy_authority_v1";
 import {
   HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1,
-  createHarthmereJobsBoardClientSnapshotV1,
+  createHarthmereJobsBoardClientSnapshotAtTimeV1,
   defaultHarthmereJobsBoardStateV1,
   normalizeHarthmereJobsBoardStateV1,
   reduceHarthmereJobsBoardMutationV1,
@@ -242,8 +244,11 @@ import {
 } from "./building_system_v1";
 import {
   createHarthmereBusinessOutpostRebuildMaterializationPlansV1,
+  getHarthmereBusinessMiniGameDefinitionV1,
   HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS_V1,
   HARTHMERE_BUSINESS_OUTPOST_REBUILD_REVISION_V1,
+  HARTHMERE_BUSINESS_OUTPOSTS_V1,
+  harthmereBusinessOutpostBusinessIdV1,
   isPointInsideHarthmereBusinessSafeSiteV1,
 } from "./business_customer_simulator_v1";
 
@@ -268,6 +273,105 @@ export const HARTHMERE_CARRY_WEIGHT_LIMIT_V1 = 25;
 export const HARTHMERE_LOAN_LATE_INTEREST_MULTIPLIER_V1 = 2;
 export const HARTHMERE_LOAN_DEFAULT_PENALTY_RATE_V1 = 0.2;
 export const HARTHMERE_BANK_CREDIT_HOLD_FLAG_V1 = "bank_credit_hold";
+
+function harthmereBusinessOutpostStarterInventoryV1(
+  typeId: HarthmereEconomyBusinessTypeIdV1
+): HarthmereEconomyInventoryRecordV1 {
+  const definition = getHarthmereBusinessMiniGameDefinitionV1(typeId);
+  const counts = new Map<string, number>();
+  for (const offer of definition.offers.slice(0, 4)) {
+    for (const [itemId, count] of Object.entries(offer.requiredItems)) {
+      counts.set(itemId, Math.max(counts.get(itemId) ?? 0, Number(count) * 6));
+    }
+    for (const [itemId, count] of Object.entries(offer.producedItems ?? {})) {
+      counts.set(itemId, Math.max(counts.get(itemId) ?? 0, Number(count) * 4));
+    }
+  }
+  return Object.fromEntries(
+    [...counts.entries()].slice(0, 8).map(([itemId, count]) => [
+      itemId,
+      { itemId, count: Math.max(1, Math.floor(count)) },
+    ])
+  );
+}
+
+export function ensureHarthmereBusinessOutpostEconomyRecordsV1(
+  economy: HarthmereProductionEconomyStateV1,
+  nowMs: number
+) {
+  for (const record of Object.values(
+    HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS_V1
+  )) {
+    const outpost = HARTHMERE_BUSINESS_OUTPOSTS_V1.find(
+      (entry) => entry.outpostId === record.outpostId
+    );
+    const ownerId = outpost?.ownerNpcId ?? `${record.outpostId}:npc_owner`;
+    const townId = outpost?.townId ?? HARTHMERE_ECONOMY_DEFAULT_TOWN_ID_V1;
+    const regionId =
+      outpost?.regionId ?? HARTHMERE_ECONOMY_DEFAULT_REGION_ID_V1;
+    const businessId = harthmereBusinessOutpostBusinessIdV1(record.outpostId);
+    const existing = economy.businesses[businessId];
+    if (existing) {
+      existing.status = existing.status === "draft" ? "open" : existing.status;
+      existing.propertyId ??= record.plot.plotId;
+      existing.townId ??= townId;
+      existing.regionId ||= regionId;
+      existing.flags = {
+        ...(existing.flags ?? {}),
+        canonical_outpost_business: true,
+        [`outpost:${record.outpostId}`]: true,
+      };
+      if (!Object.keys(existing.inventory ?? {}).length) {
+        existing.inventory = harthmereBusinessOutpostStarterInventoryV1(
+          existing.typeId
+        );
+      }
+      continue;
+    }
+    const businessType =
+      HARTHMERE_ECONOMY_BUSINESS_TYPES_V1[record.businessType];
+    economy.businesses[businessId] = {
+      businessId,
+      ownerKind: "npc",
+      ownerId,
+      typeId: record.businessType,
+      name: record.displayName,
+      status: "open",
+      licenseClass: businessType.requiredLicense,
+      licenseLevel: Math.max(1, businessType.minimumLicenseLevel),
+      propertyId: record.plot.plotId,
+      townId,
+      regionId,
+      inventory: harthmereBusinessOutpostStarterInventoryV1(
+        record.businessType
+      ),
+      storageMaxSlots: Math.max(24, businessType.baseStorageSlots),
+      employees: [],
+      activeContracts: [],
+      completedContracts: 0,
+      reputation: 65,
+      customerSatisfaction: 76,
+      sanitationRating: 82,
+      safetyRating: 84,
+      serviceRadius: 36,
+      priceModifiers: {},
+      balanceGold: 500,
+      debtGold: 0,
+      upkeepGoldPerDay: businessType.baseUpkeepGoldPerDay,
+      rentGoldPerDay: 0,
+      wageGoldPerDay: 0,
+      salesTaxRate: HARTHMERE_ECONOMY_BASE_SALES_TAX_RATE_V1,
+      lastTickAtMs: nowMs,
+      createdAtMs: nowMs,
+      updatedAtMs: nowMs,
+      flags: {
+        canonical_outpost_business: true,
+        [`outpost:${record.outpostId}`]: true,
+      },
+    } satisfies HarthmereEconomyBusinessRecordV1;
+  }
+  return economy;
+}
 
 export type HarthmereLiveEntityKindV1 =
   | "npc"
@@ -4342,6 +4446,10 @@ export function defaultHarthmereLiveModeBackendStateV1(
       partyRaidCredits: {},
     },
   };
+  ensureHarthmereBusinessOutpostEconomyRecordsV1(
+    state.economy.production,
+    nowMs
+  );
   syncLiveEntityRobotProtectionToBuildingV1(state, nowMs);
   return state;
 }
@@ -4609,6 +4717,10 @@ export function parseHarthmereLiveModeBackendStateV1(
         nowMs
       ),
     };
+    ensureHarthmereBusinessOutpostEconomyRecordsV1(
+      state.economy.production,
+      nowMs
+    );
     syncLiveEntityRobotProtectionToBuildingV1(state, nowMs);
     repairLiveModeZeroHpDeathStateV1(state, {
       nowMs,
@@ -4757,6 +4869,10 @@ export function mergeHarthmereLiveModeSharedWorldStateIntoBackendV1(
   if (!shared) return state;
   state.economy.production = normalizeHarthmereProductionEconomyStateV1(
     shared.economyProduction
+  );
+  ensureHarthmereBusinessOutpostEconomyRecordsV1(
+    state.economy.production,
+    nowMs
   );
   state.jobsBoard = normalizeHarthmereJobsBoardStateV1(shared.jobsBoard, nowMs);
   state.questInvites = normalizeHarthmereQuestInviteStateV1(
@@ -5144,6 +5260,10 @@ export function tickHarthmereLiveModeStaminaForGameplayV1(
 export function createHarthmereProductionEconomyClientSnapshotFromBackendV1(
   state: HarthmereLiveModeBackendStateV1
 ) {
+  ensureHarthmereBusinessOutpostEconomyRecordsV1(
+    state.economy.production,
+    state.updatedAtMs || Date.now()
+  );
   return createHarthmereProductionEconomyClientSnapshotV1(
     state.economy.production,
     state.actorId
@@ -5153,9 +5273,10 @@ export function createHarthmereProductionEconomyClientSnapshotFromBackendV1(
 export function createHarthmereJobsBoardClientSnapshotFromBackendV1(
   state: HarthmereLiveModeBackendStateV1
 ) {
-  const snapshot = createHarthmereJobsBoardClientSnapshotV1(
+  const snapshot = createHarthmereJobsBoardClientSnapshotAtTimeV1(
     state.jobsBoard,
-    state.actorId
+    state.actorId,
+    state.updatedAtMs || Date.now()
   );
   const myBusinesses = Object.values(state.economy.production.businesses)
     .filter(

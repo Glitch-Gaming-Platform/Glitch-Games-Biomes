@@ -286,7 +286,7 @@ export const HelpPage: React.FunctionComponent<{}> = ({}) => {
           <td>Equip</td>
         </tr>
         <tr>
-          <td>[Q]</td>
+          <td>[U]</td>
           <td>Quests</td>
         </tr>
         <tr>

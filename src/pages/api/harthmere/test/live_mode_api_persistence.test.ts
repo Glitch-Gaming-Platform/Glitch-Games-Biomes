@@ -2,6 +2,7 @@ import assert from "assert";
 import {
   HARTHMERE_BUILDING_MATERIALIZATION_ECS_PUBLISH_CHUNK_SIZE_V1,
   buildingSystemMaterializationWorldPositionForTestV1,
+  harthmereLiveModeMutationSnapshotKeysV1,
   jobsBoardPositionFromLiveModeBodyV151,
   liveModeActorIdentityFromRequestV151,
   materializeBuildingSystemMaterializationPlansToTerrainV1,
@@ -34,6 +35,22 @@ import { loadBlockWrapper } from "@/shared/wasm/biomes";
 
 const ACTOR = "player_live_api_persist_001";
 const NOW_MS = 1_700_400_000_000;
+
+async function withFullLiveModeMutationSnapshotsForTestV1(
+  fn: () => Promise<void>
+) {
+  const previous = process.env.HARTHMERE_LIVE_MODE_FULL_MUTATION_SNAPSHOTS;
+  process.env.HARTHMERE_LIVE_MODE_FULL_MUTATION_SNAPSHOTS = "1";
+  try {
+    await fn();
+  } finally {
+    if (previous === undefined) {
+      delete process.env.HARTHMERE_LIVE_MODE_FULL_MUTATION_SNAPSHOTS;
+    } else {
+      process.env.HARTHMERE_LIVE_MODE_FULL_MUTATION_SNAPSHOTS = previous;
+    }
+  }
+}
 
 function fakeTerrainEntityForPosition(
   id: number,
@@ -288,7 +305,32 @@ describe("live_mode API Redis persistence", () => {
     assert.equal(missing, undefined);
   });
 
-  it("uses WATCH/MULTI and records idempotency only with the state mutation", async () => {
+  it("keeps jobs-board mutation snapshots slim without cutting building snapshots from building actions", () => {
+    assert.deepEqual(
+      harthmereLiveModeMutationSnapshotKeysV1({
+        actionKind: "request_jobs_board_mutation",
+        subsystem: "jobs",
+        touchedModels: ["jobs_board_posting", "jobs_board_quest_todo"],
+      }).sort(),
+      [
+        "inventoryLootState",
+        "jobsBoardState",
+        "playerStatusState",
+        "questState",
+      ],
+    );
+    assert.ok(
+      harthmereLiveModeMutationSnapshotKeysV1({
+        actionKind: "request_property_building_mutation",
+        subsystem: "building",
+        touchedModels: ["building_state", "property"],
+      }).includes("buildingState"),
+      "building mutations must still return buildingState",
+    );
+  });
+
+  it("uses WATCH/MULTI and records idempotency only with the state mutation", async () =>
+    withFullLiveModeMutationSnapshotsForTestV1(async () => {
     const redisPrimary = new FakeRedisPrimary();
     (globalThis as any).__harthmereLiveModeRedisV1 = { primary: redisPrimary };
 
@@ -345,6 +387,16 @@ describe("live_mode API Redis persistence", () => {
       redisPrimary.txOps.some((op) => op[0] === "direct_set"),
       false
     );
+    const idempotencyKey =
+      "harthmere:live_mode:v1:idempotency:player_live_api_persist_001:live-api-persist-idem-1";
+    const storedIdempotency = JSON.parse(
+      redisPrimary.store.get(idempotencyKey) ?? "{}"
+    );
+    assert.deepEqual(storedIdempotency.includedSnapshots, []);
+    assert.equal(storedIdempotency.buildingState, undefined);
+    assert.equal(storedIdempotency.economyState, undefined);
+    assert.equal(storedIdempotency.farmingFoodState, undefined);
+    assert.equal(storedIdempotency.playerStatusState, undefined);
     assert.equal(persisted.backendMutation?.warnings.length, 0);
     assert.equal((persisted.playerStatusState as any)?.combat?.hp, 100);
     assert.equal((persisted.playerStatusState as any)?.level, 1);
@@ -383,9 +435,12 @@ describe("live_mode API Redis persistence", () => {
     });
     assert.equal(replay.duplicate, true);
     assert.equal(replay.replayed, true);
-  });
+    assert.deepEqual(replay.includedSnapshots, []);
+    assert.equal(replay.playerStatusState, undefined);
+    }));
 
-  it("hydrates public economy from shared world state before reducing actor mutations", async () => {
+  it("hydrates public economy from shared world state before reducing actor mutations", async () =>
+    withFullLiveModeMutationSnapshotsForTestV1(async () => {
     const redisPrimary = new FakeRedisPrimary();
     (globalThis as any).__harthmereLiveModeRedisV1 = { primary: redisPrimary };
 
@@ -475,8 +530,8 @@ describe("live_mode API Redis persistence", () => {
       ACTOR,
       NOW_MS
     );
-    assert.ok(actorState.economy.production.businesses.shared_shop);
-  });
+      assert.ok(actorState.economy.production.businesses.shared_shop);
+    }));
 
   it("persists accepted jobs board jobs as actor quests with map markers", async () => {
     const redisPrimary = new FakeRedisPrimary();
@@ -589,6 +644,19 @@ describe("live_mode API Redis persistence", () => {
     const persisted = await persistEnvelope(env);
 
     assert.deepEqual(persisted.backendMutation?.warnings, []);
+    assert.equal(persisted.snapshotMode, "changed");
+    assert.deepEqual(persisted.includedSnapshots?.sort(), [
+      "inventoryLootState",
+      "jobsBoardState",
+      "playerStatusState",
+      "questState",
+    ]);
+    assert.equal(persisted.economyState, undefined);
+    assert.equal(
+      persisted.buildingState,
+      undefined,
+      "jobs-board accepts should not return the unrelated building snapshot"
+    );
     const jobsBoardState = persisted.jobsBoardState as any;
     assert.ok(
       jobsBoardState.myAcceptedJobs.some(
@@ -600,18 +668,23 @@ describe("live_mode API Redis persistence", () => {
       (entry: any) => entry.jobId === "job_accept_chain"
     );
     assert.ok(todo, "accepted job should be returned as a quest-board todo");
-    assert.equal(todo.mapMarkerId, "muckwad_patch");
-
     const markerId = `jobs_board_marker:${todo.todoId}`;
-    const buildingState = persisted.buildingState as any;
-    assert.ok(
-      buildingState.inWorldMarkers[markerId],
-      "accepted job should be returned with a map marker"
-    );
+
     assert.equal(
-      buildingState.inWorldMarkers[markerId].plotId,
-      "muckwad_patch"
+      todo.mapMarkerId,
+      "muckwad_patch",
+      "accepted job marker data should ride on the jobs-board todo"
     );
+
+    const acceptReplay = await persistEnvelope(env);
+    assert.equal(acceptReplay.duplicate, true);
+    assert.equal(acceptReplay.replayed, true);
+    assert.deepEqual(acceptReplay.includedSnapshots, []);
+    assert.equal(acceptReplay.jobsBoardState, undefined);
+    assert.equal(acceptReplay.questState, undefined);
+    assert.equal(acceptReplay.inventoryLootState, undefined);
+    assert.equal(acceptReplay.playerStatusState, undefined);
+    assert.equal(acceptReplay.buildingState, undefined);
 
     let rawActor = redisPrimary.store.get(
       harthmereLiveModePlayerStateKeyV1(ACTOR)

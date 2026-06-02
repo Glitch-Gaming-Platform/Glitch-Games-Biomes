@@ -78,6 +78,9 @@ includes(npcs, 'getHarthmereVoxelNpcRenderMotionAnimationVelocityV194', 'Voxel N
 const velocityBridgeIndex = npcs.indexOf('harthmereRenderMotionAnimationVelocityV194');
 const velocityUseIndex = npcs.indexOf('motionOverrides?.velocity ??\n      harthmereRenderMotionAnimationVelocityV194', velocityBridgeIndex);
 assert(velocityUseIndex > velocityBridgeIndex, 'NPC animation velocity uses render-motion bridge before rigid-body fallback');
+includes(npcs, 'SNAPSHOT_GROVE_GENERATED_VOXEL_NPC_VERSION_V195', 'No-asset Grove NPCs use a versioned generated voxel renderer');
+includes(npcs, 'shouldUseSnapshotGroveGeneratedVoxelNpcV195(id, label)', 'No-asset Grove NPC renderer gate runs before player-like mesh generation');
+includes(npcs, '/^billy\\b/.test(normalizedLabel)', 'Billy Rhodes-style live labels map back to Billy voxel visuals');
 
 // 6. Death screen must appear for combat/zero-HP deaths, not only fall deaths.
 includes(deathSystem, 'HARTHMERE_DEATH_RESPAWN_ALWAYS_ON_OVERLAY_V132', 'Always-on death/respawn overlay is versioned');

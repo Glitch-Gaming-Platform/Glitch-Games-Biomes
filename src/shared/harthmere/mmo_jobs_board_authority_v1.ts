@@ -792,6 +792,11 @@ function acceptJobPosting(result: MutableJobsResult, request: HarthmereJobsBoard
   if (job.status !== "open") return reject(result, "jobs_board_rejected:job_not_open");
   if (job.deadlineAtMs <= request.nowMs) {
     job.status = "expired";
+    job.logs.push(`expired_on_accept:${request.nowMs}`);
+    result.next.issuerOpenJobIds[issuerKey(job.issuerKind, job.issuerId)] =
+      openJobIdsForIssuer(result.next, job.issuerKind, job.issuerId);
+    result.shared.add(sharedJobKey(job.jobId));
+    result.shared.add(sharedBoardKey(board.boardId));
     return reject(result, "jobs_board_rejected:job_expired");
   }
   if (job.issuerKind === "player" && job.issuerId === request.actorId) return reject(result, "jobs_board_rejected:cannot_accept_own_job");
@@ -1427,6 +1432,41 @@ function countOpenAutoPostings(state: HarthmereJobsBoardStateV1, boardId: string
   return count;
 }
 
+function expireStaleAutoPostingsForBoardV1(
+  result: MutableJobsResult,
+  request: HarthmereJobsBoardMutationRequestV1,
+  boardId: string,
+) {
+  let expired = 0;
+  for (const job of Object.values(result.next.postings)) {
+    if (job.boardId !== boardId) continue;
+    if (!job.autoPosted) continue;
+    if (job.status !== "open" && job.status !== "active") continue;
+    if (job.deadlineAtMs > request.nowMs) continue;
+    const wasOpen = job.status === "open";
+    job.status = "expired";
+    job.logs.push(`expired_auto_read:${request.nowMs}`);
+    if (wasOpen) {
+      refundEscrow(result, job, request);
+    }
+    for (const todo of Object.values(result.next.todos)) {
+      if (todo.jobId === job.jobId) todo.status = "expired";
+    }
+    result.next.issuerOpenJobIds[issuerKey(job.issuerKind, job.issuerId)] =
+      openJobIdsForIssuer(result.next, job.issuerKind, job.issuerId);
+    if (job.acceptedByActorId) {
+      result.next.actorAcceptedJobIds[job.acceptedByActorId] =
+        activeJobIdsForActor(result.next, job.acceptedByActorId);
+    }
+    result.shared.add(sharedJobKey(job.jobId));
+    expired += 1;
+  }
+  if (expired > 0) {
+    result.touched.add("jobs_board_auto_expired");
+    result.shared.add(sharedBoardKey(boardId));
+  }
+}
+
 function hasOpenBusinessTemplateJob(
   state: HarthmereJobsBoardStateV1,
   boardId: string,
@@ -1642,6 +1682,7 @@ function economyAutoSeedJobs(
     reject(result, "jobs_board_rejected:unknown_board");
     return;
   }
+  expireStaleAutoPostingsForBoardV1(result, request, boardId);
   const outpost = businessOutpostForJobsBoardIdV1(boardId);
   if (outpost) {
     economyAutoSeedBusinessOutpostStarterJob(result, request, board, outpost);
@@ -1853,6 +1894,14 @@ export function reduceHarthmereJobsBoardMutationV1(
 }
 
 export function createHarthmereJobsBoardClientSnapshotV1(state: HarthmereJobsBoardStateV1, actorId: string) {
+  return createHarthmereJobsBoardClientSnapshotAtTimeV1(state, actorId, Date.now());
+}
+
+export function createHarthmereJobsBoardClientSnapshotAtTimeV1(
+  state: HarthmereJobsBoardStateV1,
+  actorId: string,
+  nowMs: number,
+) {
   const postings = Object.values(state.postings);
   const myPostedJobs = postings.filter((job) => job.issuerKind === "player" && job.issuerId === actorId);
   const myAcceptedJobs = postings.filter((job) => job.acceptedByActorId === actorId);
@@ -1862,7 +1911,9 @@ export function createHarthmereJobsBoardClientSnapshotV1(state: HarthmereJobsBoa
     actorId,
     boards: state.boards,
     defaultBoardId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1,
-    openJobs: postings.filter((job) => job.status === "open"),
+    openJobs: postings.filter(
+      (job) => job.status === "open" && job.deadlineAtMs > nowMs
+    ),
     activeJobs: postings.filter((job) => job.status === "active"),
     myPostedJobs,
     myAcceptedJobs,

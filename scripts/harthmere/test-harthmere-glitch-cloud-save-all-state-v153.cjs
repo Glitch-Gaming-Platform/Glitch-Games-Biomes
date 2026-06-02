@@ -509,7 +509,26 @@ check(
 check(
   "restore writes only allowed Harthmere mission save keys",
   applySnapshot.includes("isHarthmereCloudSaveStorageKeyV153(key)") &&
-    applySnapshot.includes("window.localStorage.setItem(key, value)")
+    applySnapshot.includes("window.localStorage.setItem(") &&
+    applySnapshot.includes("key,")
+);
+check(
+  "restore preserves current Biomes user scope instead of old install scope",
+  includesAll(bridge, [
+    "function currentCloudSaveRestoreScopeV153",
+    "key === ACTIVE_USER_SCOPE_KEY",
+    "currentCloudSaveRestoreScopeV153() ?? value",
+  ])
+);
+check(
+  "restore migrates old user-scoped outfit/state keys to current Biomes scope",
+  includesAll(bridge, [
+    "function migrateCloudSaveStorageKeyToCurrentScopeV153",
+    'prefix.endsWith(".user.")',
+    "return `${prefix}${scope}`",
+    "const migratedKey = migrateCloudSaveStorageKeyToCurrentScopeV153(key)",
+    "window.localStorage.setItem(migratedKey, value)",
+  ])
 );
 check(
   "restore dispatches the v153 all-system refresh events",
@@ -702,6 +721,37 @@ check(
     'if (op === "storeSave")',
     'if (op === "submitProgression")'
   ).includes(".json(response.json ?? response)")
+);
+const autoLoginRoute = sectionBetween(
+  proxy,
+  'if (op === "autoLogin")',
+  'if (op === "claimSession")'
+);
+const claimSessionRoute = sectionBetween(
+  proxy,
+  'if (op === "claimSession")',
+  'if (op === "heartbeatSession")'
+);
+check(
+  "server autoLogin returns Biomes user id as durable cloud game_user_id",
+  includesAll(autoLoginRoute, [
+    "createBiomesAuthForGlitchIdentity",
+    "const biomesGameUserId = `biomes:${user.id}`",
+    "game_user_id: biomesGameUserId",
+    "biomes_user_id: user.id",
+  ])
+);
+check(
+  "server claimSession promotes install identity to Biomes-scoped cloud identity",
+  includesAll(claimSessionRoute, [
+    "createBiomesAuthForGlitchIdentity",
+    "const cloudIdentity: HarthmereValidatedIdentity",
+    "gameUserId: `biomes:${user.id}`",
+    "claimServerSession",
+    "cloudIdentity",
+    "game_user_id: cloudIdentity.gameUserId",
+    "biomes_user_id: user.id",
+  ])
 );
 for (const [field] of requiredCloudSaveRequestFields) {
   check(
@@ -1051,6 +1101,25 @@ check(
     'startsWith("install:")',
     "GUEST_NOT_ALLOWED",
   ])
+);
+check(
+  "bridge promotes biomes_user_id to durable cloud identity before install fallback",
+  includesAll(bridge, [
+    "const biomesUserId = firstString(response?.biomes_user_id)",
+    "biomesUserId ? `biomes:${biomesUserId}` : undefined",
+    "firstString(response?.game_user_id)",
+  ])
+);
+check(
+  "install bootstrap promotes biomes_user_id before install fallback",
+  includesAll(
+    read("src/client/game/glitch/harthmere_glitch_install_bootstrap.tsx"),
+    [
+      "const biomesUserId = firstString(json?.biomes_user_id)",
+      "biomes:${biomesUserId}",
+      "responseGameUserId",
+    ]
+  )
 );
 check(
   "bridge forces cloud restore when validated user scope changes",

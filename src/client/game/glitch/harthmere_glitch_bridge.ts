@@ -648,6 +648,22 @@ function dispatchHarthmereCloudRestoreEventsV153() {
   }
 }
 
+function currentCloudSaveRestoreScopeV153() {
+  return readHarthmereGlitchIdentity()?.gameUserId;
+}
+
+function migrateCloudSaveStorageKeyToCurrentScopeV153(key: string) {
+  const scope = currentCloudSaveRestoreScopeV153();
+  if (!scope) return undefined;
+  for (const prefix of HARTHMERE_GLITCH_REQUIRED_SAVE_KEY_PREFIXES_V153) {
+    if (!prefix.endsWith(".user.") || !key.startsWith(prefix)) continue;
+    const previousScope = key.slice(prefix.length);
+    if (!previousScope || previousScope === scope) return undefined;
+    return `${prefix}${scope}`;
+  }
+  return undefined;
+}
+
 function applySnapshot(snapshot: unknown) {
   if (!isBrowser()) return false;
   const parsed = snapshot as Partial<HarthmereGlitchSnapshot> | undefined;
@@ -660,7 +676,16 @@ function applySnapshot(snapshot: unknown) {
   }
   for (const [key, value] of Object.entries(parsed.localStorage)) {
     if (isHarthmereCloudSaveStorageKeyV153(key) && typeof value === "string") {
-      window.localStorage.setItem(key, value);
+      window.localStorage.setItem(
+        key,
+        key === ACTIVE_USER_SCOPE_KEY
+          ? currentCloudSaveRestoreScopeV153() ?? value
+          : value
+      );
+      const migratedKey = migrateCloudSaveStorageKeyToCurrentScopeV153(key);
+      if (migratedKey) {
+        window.localStorage.setItem(migratedKey, value);
+      }
     }
   }
   dispatchHarthmereCloudRestoreEventsV153();
@@ -722,7 +747,7 @@ function firstString(...values: unknown[]) {
   return undefined;
 }
 
-function identityFromResponse(
+export function identityFromResponse(
   config: HarthmereGlitchRuntimeConfig,
   response: any
 ): HarthmereGlitchIdentity {
@@ -742,7 +767,9 @@ function identityFromResponse(
     (glitchUserId
       ? `glitch-${glitchUserId}`
       : `install-${config.installId?.slice(0, 8) ?? "local"}`);
+  const biomesUserId = firstString(response?.biomes_user_id);
   const gameUserId =
+    (biomesUserId ? `biomes:${biomesUserId}` : undefined) ??
     firstString(response?.game_user_id) ??
     (glitchUserId ? `glitch:${glitchUserId}` : `install:${config.installId}`);
 

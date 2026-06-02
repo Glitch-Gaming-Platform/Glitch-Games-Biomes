@@ -78,6 +78,7 @@ export type GlobalKeyCode = Extract<
   | "KeyB"
   | "KeyR"
   | "KeyV"
+  | "KeyU"
   | "KeyQ"
   | "KeyI"
   | "KeyM"

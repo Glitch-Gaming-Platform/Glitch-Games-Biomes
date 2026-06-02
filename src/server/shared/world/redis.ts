@@ -14,6 +14,7 @@ import { deserializeRedisEntityState } from "@/server/shared/world/lua/serde";
 import { RedisLeaderboard } from "@/server/shared/world/redis_leaderboard";
 import { RedisWorldSubscription } from "@/server/shared/world/redis_subscription";
 import { ECS_STREAM, biomesIdToRedisKey } from "@/server/shared/world/types";
+import "@/server/shared/config";
 import { BackgroundTaskController } from "@/shared/abort";
 import type { ApplyStatus, ChangeToApply } from "@/shared/api/transaction";
 import type { BiomesId } from "@/shared/ids";

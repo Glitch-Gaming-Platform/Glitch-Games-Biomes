@@ -29,6 +29,7 @@ export const SignOverlayComponent: React.FunctionComponent<{
                 type: "sign",
                 placeableId: overlay.entityId,
               },
+              allowClickToDismiss: false,
             });
             break;
         }
@@ -36,5 +37,11 @@ export const SignOverlayComponent: React.FunctionComponent<{
     },
   ];
 
-  return <CursorInspectionComponent overlay={overlay} shortcuts={shortcuts} />;
+  return (
+    <CursorInspectionComponent
+      overlay={overlay}
+      shortcuts={shortcuts}
+      suppressTalkShortcut
+    />
+  );
 };

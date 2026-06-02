@@ -1329,8 +1329,10 @@ export default async function handler(
 
       const { user, session, profile } =
         await createBiomesAuthForGlitchIdentity(req, res, identity);
+      const biomesGameUserId = `biomes:${user.id}`;
       return res.status(200).json({
         ...validationJson(identity),
+        game_user_id: biomesGameUserId,
         biomes_user_id: user.id,
         biomes_session_id: session.id,
         biomes_username: user.username ?? profile.username,
@@ -1354,20 +1356,30 @@ export default async function handler(
           .status(403)
           .json({ ok: false, valid: false, error: "INVALID_INSTALL" });
       }
+      const { user } = await createBiomesAuthForGlitchIdentity(
+        req,
+        res,
+        identity
+      );
+      const cloudIdentity: HarthmereValidatedIdentity = {
+        ...identity,
+        gameUserId: `biomes:${user.id}`,
+      };
       const { session, disconnected } = await claimServerSession(
-        identity,
+        cloudIdentity,
         body
       );
       return res.status(200).json({
         ok: true,
         valid: true,
-        title_id: identity.titleId,
-        install_id: identity.installId,
-        game_user_id: identity.gameUserId,
-        glitch_user_id: identity.glitchUserId,
-        user_id: identity.glitchUserId,
-        user_name: identity.userName,
-        username: identity.userName,
+        title_id: cloudIdentity.titleId,
+        install_id: cloudIdentity.installId,
+        game_user_id: cloudIdentity.gameUserId,
+        glitch_user_id: cloudIdentity.glitchUserId,
+        user_id: cloudIdentity.glitchUserId,
+        biomes_user_id: user.id,
+        user_name: cloudIdentity.userName,
+        username: cloudIdentity.userName,
         server_session_id: session.serverSessionId,
         idle_session_ms: idleSessionMs(),
         disconnected_session_ids: disconnected.map((s) => s.serverSessionId),

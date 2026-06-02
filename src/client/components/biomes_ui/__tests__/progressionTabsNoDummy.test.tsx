@@ -1,100 +1,37 @@
 import assert from "assert";
 import * as React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import {
-  AbilitiesTab,
-  activateBiomesAbilityForTest,
-  chunkBiomesAbilityRowsForTest,
-} from "../tabs/AbilitiesTab";
+import { AbilitiesTab, activateBiomesAbilityForTest, chunkBiomesAbilityRowsForTest } from "../tabs/AbilitiesTab";
 import { BiomesUI } from "../BiomesUI";
 import { TAB_DESCRIPTORS, TAB_ORDER } from "../BiomesUITypes";
 import { abilityVisibleInBiomesLibraryForTest } from "../adapters/abilityLibraryVisibility";
-import {
-  dailyTodoProgressForTest,
-  dailyTodoTasksFromCareSnapshotForTest,
-} from "../adapters/dailyTodoAdapter";
+import { dailyTodoProgressForTest, dailyTodoTasksFromCareSnapshotForTest } from "../adapters/dailyTodoAdapter";
 import { mergeInventoryAndHotbarForBiomesBackpackForTest } from "../adapters/inventoryAdapterHelpers";
 import { readableMapMarkerLabelForTest } from "../adapters/mapMarkerLabels";
-import {
-  ClassesTab,
-  activateBiomesClassCardForTest,
-  activateBiomesSpecializationForTest,
-} from "../tabs/ClassesTab";
-import {
-  CollectionsTab,
-  activateBiomesCollectionEntryForTest,
-} from "../tabs/CollectionsTab";
+import { ClassesTab, activateBiomesClassCardForTest, activateBiomesSpecializationForTest } from "../tabs/ClassesTab";
+import { CollectionsTab, activateBiomesCollectionEntryForTest } from "../tabs/CollectionsTab";
 import { BankingTab } from "../tabs/BankingTab";
 import { InventoryTab } from "../tabs/InventoryTab";
 import { DailyTodoTab } from "../tabs/DailyTodoTab";
 import { LandTab } from "../tabs/LandTab";
 import { LootTab } from "../tabs/LootTab";
 import { biomesPlayerSentence, biomesPlayerTitle } from "../playerFacingText";
-import {
-  MapQuestsTab,
-  activeBiomesUIMapPinFromMarkerForTest,
-  centeredPanForMapMarkerForTest,
-  filterMapMarkersForTest,
-  filterMapMissionStepsForTest,
-  filterMapTrackableQuestsForTest,
-  geographyTerrainFeaturesForMapMarkersForTest,
-  mapMarkerVisualStateForTest,
-  mapPanelTabForMarkerForTest,
-  nextMapZoomForWheelForTest,
-  shouldRenderMapMarkerLabelForTest,
-} from "../tabs/MapQuestsTab";
+import { MapQuestsTab, activeBiomesUIMapPinFromMarkerForTest, centeredPanForMapMarkerForTest, filterMapMarkersForTest, filterMapMissionStepsForTest, filterMapTrackableQuestsForTest, geographyTerrainFeaturesForMapMarkersForTest, mapMarkerVisualStateForTest, mapPanelTabForMarkerForTest, nextMapZoomForWheelForTest, shouldRenderMapMarkerLabelForTest } from "../tabs/MapQuestsTab";
 import { SkillsTab } from "../tabs/SkillsTab";
 import { DEFAULT_TAB_SHORTCUTS } from "../shortcuts/BiomesShortcuts";
 import { UI_IDS } from "../uniqueIds";
-import {
-  displayBiomesVitalsBarValueForTest,
-  formatBiomesGoldForVitalsForTest,
-} from "../BiomesUIVitalsPanel";
-import {
-  biomesInventoryItemIconV1,
-  humanizeBiomesInventoryItemIdV1,
-} from "../adapters/inventoryItemPresentation";
-import {
-  buildFarmingFoodInterfaceModelForTest,
-  farmingFoodQuickActionForKeyV1,
-} from "../adapters/farmingFoodInterfaceAdapter";
-import {
-  biomesUIPlayerStatusEndpointV146,
-  biomesUIVitalsCombatResourceDisplayForTest,
-  biomesUIVitalsDisplayFromLiveStatusForTest,
-  formatBiomesResourceLabelForVitalsForTest,
-} from "../adapters/playerStatusAdapter";
-import {
-  buildingSystemBlueprintByIdV1,
-  buildingSystemPlotByIdV1,
-  createBuildingSystemDoorLockV1,
-  createBuildingSystemHomeConsoleMarkerV1,
-  createBuildingSystemPropertyRecordV1,
-  createBuildingSystemStorageContainerV1,
-} from "@/shared/harthmere/building_system_v1";
+import { displayBiomesVitalsBarValueForTest, formatBiomesGoldForVitalsForTest } from "../BiomesUIVitalsPanel";
+import { biomesInventoryItemIconV1, humanizeBiomesInventoryItemIdV1 } from "../adapters/inventoryItemPresentation";
+import { buildFarmingFoodInterfaceModelForTest, farmingFoodQuickActionForKeyV1 } from "../adapters/farmingFoodInterfaceAdapter";
+import { biomesUIPlayerStatusEndpointV146, biomesUIVitalsCombatResourceDisplayForTest, biomesUIVitalsDisplayFromLiveStatusForTest, formatBiomesResourceLabelForVitalsForTest } from "../adapters/playerStatusAdapter";
+import { biomesUIActiveMapPinNavigationAidKindForTest, biomesUIActiveMapPinNavigationAidSpecForTest } from "../adapters/mapPinnedDestination";
+import { buildingSystemBlueprintByIdV1, buildingSystemPlotByIdV1, createBuildingSystemDoorLockV1, createBuildingSystemHomeConsoleMarkerV1, createBuildingSystemPropertyRecordV1, createBuildingSystemStorageContainerV1 } from "@/shared/harthmere/building_system_v1";
 
-const FORBIDDEN_PLAYER_COPY = [
-  "backend",
-  "server accepted",
-  "server rejected",
-  "server-authoritative",
-  "read_state",
-  "building_state",
-  "payload",
-  "ECS",
-  "entity",
-  "ledger",
-  "server-authorized",
-  "No backend",
-];
+const FORBIDDEN_PLAYER_COPY = ["backend", "server accepted", "server rejected", "server-authoritative", "read_state", "building_state", "payload", "ECS", "entity", "ledger", "server-authorized", "No backend"];
 
 function assertNoDeveloperCopy(html: string) {
   for (const forbidden of FORBIDDEN_PLAYER_COPY) {
-    assert.equal(
-      html.toLowerCase().includes(forbidden.toLowerCase()),
-      false,
-      `Developer copy leaked into BiomesUI: ${forbidden}`
-    );
+    assert.equal(html.toLowerCase().includes(forbidden.toLowerCase()), false, `Developer copy leaked into BiomesUI: ${forbidden}`);
   }
 }
 
@@ -106,8 +43,14 @@ describe("Biomes UI progression tabs", () => {
   it("opens with the daily checklist first", () => {
     assert.equal(TAB_ORDER[0], "daily");
     assert.equal(TAB_DESCRIPTORS.daily.shortcut, "R");
-    assert.equal(DEFAULT_TAB_SHORTCUTS.some((shortcut) => shortcut.tab === "daily"), false);
-    assert.equal(DEFAULT_TAB_SHORTCUTS.some((shortcut) => ["W", "A", "S", "D"].includes(shortcut.label)), false);
+    assert.equal(
+      DEFAULT_TAB_SHORTCUTS.some((shortcut) => shortcut.tab === "daily"),
+      false
+    );
+    assert.equal(
+      DEFAULT_TAB_SHORTCUTS.some((shortcut) => ["W", "A", "S", "D"].includes(shortcut.label)),
+      false
+    );
   });
 
   it("renders DailyTodoTab from live care-loop progress", () => {
@@ -156,11 +99,7 @@ describe("Biomes UI progression tabs", () => {
 
   it("uses player-facing item names and icons for food and seeds", () => {
     assert.equal(humanizeBiomesInventoryItemIdV1("seed_carrot", "seed_carrot"), "Carrot Seed");
-    assert.ok(
-      biomesInventoryItemIconV1("seed_carrot").includes(
-        "/buckets/biomes-static/asset_data/icons/items/seed_carrot"
-      )
-    );
+    assert.ok(biomesInventoryItemIconV1("seed_carrot").includes("/buckets/biomes-static/asset_data/icons/items/seed_carrot"));
     assert.equal(humanizeBiomesInventoryItemIdV1("road_ration", "road_ration"), "Road Ration");
   });
 
@@ -338,14 +277,8 @@ describe("Biomes UI progression tabs", () => {
   });
 
   it("passes the embedded Glitch install id to player status reads", () => {
-    assert.equal(
-      biomesUIPlayerStatusEndpointV146("?install_id=5689c070-ac47-4333-9a12-76c10749cd78"),
-      "/api/harthmere/live_mode_player_status_state?install_id=5689c070-ac47-4333-9a12-76c10749cd78"
-    );
-    assert.equal(
-      biomesUIPlayerStatusEndpointV146("?installId=install with spaces"),
-      "/api/harthmere/live_mode_player_status_state?install_id=install%20with%20spaces"
-    );
+    assert.equal(biomesUIPlayerStatusEndpointV146("?install_id=5689c070-ac47-4333-9a12-76c10749cd78"), "/api/harthmere/live_mode_player_status_state?install_id=5689c070-ac47-4333-9a12-76c10749cd78");
+    assert.equal(biomesUIPlayerStatusEndpointV146("?installId=install with spaces"), "/api/harthmere/live_mode_player_status_state?install_id=install%20with%20spaces");
   });
 
   it("formats non-mana class resources for the HUD", () => {
@@ -359,14 +292,16 @@ describe("Biomes UI progression tabs", () => {
         adapter={{
           isHydrated: () => true,
           getCurrent: () => "merchant_guardian",
-          getClasses: () => [{
-            id: "merchant_guardian",
-            name: "Merchant Guardian",
-            tagline: "Protects owned businesses, staff, and supply routes.",
-            resource: "Resolve",
-            roles: ["tank", "support"],
-            specializations: ["caravan_guard", "shop_watch"],
-          }],
+          getClasses: () => [
+            {
+              id: "merchant_guardian",
+              name: "Merchant Guardian",
+              tagline: "Protects owned businesses, staff, and supply routes.",
+              resource: "Resolve",
+              roles: ["tank", "support"],
+              specializations: ["caravan_guard", "shop_watch"],
+            },
+          ],
           getSpecialization: () => "caravan_guard",
           hasClassChoice: () => true,
           classChoiceLocked: () => true,
@@ -387,14 +322,16 @@ describe("Biomes UI progression tabs", () => {
         adapter={{
           isHydrated: () => true,
           getCurrent: () => null,
-          getClasses: () => [{
-            id: "grove_warden",
-            name: "Grove Warden",
-            tagline: "Keeps paths, neighbors, and harvest routes steady.",
-            resource: "Stamina",
-            roles: ["tank", "support"],
-            specializations: ["path_guard"],
-          }],
+          getClasses: () => [
+            {
+              id: "grove_warden",
+              name: "Grove Warden",
+              tagline: "Keeps paths, neighbors, and harvest routes steady.",
+              resource: "Stamina",
+              roles: ["tank", "support"],
+              specializations: ["path_guard"],
+            },
+          ],
           hasClassChoice: () => false,
           classChoiceLocked: () => false,
         }}
@@ -410,17 +347,19 @@ describe("Biomes UI progression tabs", () => {
         adapter={{
           isHydrated: () => true,
           getEquipped: () => Array(8).fill(null),
-          getLibrary: () => [{
-            id: "business_courier_route_coordination",
-            name: "Courier: Route Coordination",
-            icon: "B9",
-            known: false,
-            unlocked: true,
-            cooldown: 180,
-            cost: 9,
-            resource: "Focus",
-            description: "Coordinate medicine and package delivery routes.",
-          }],
+          getLibrary: () => [
+            {
+              id: "business_courier_route_coordination",
+              name: "Courier: Route Coordination",
+              icon: "B9",
+              known: false,
+              unlocked: true,
+              cooldown: 180,
+              cost: 9,
+              resource: "Focus",
+              description: "Coordinate medicine and package delivery routes.",
+            },
+          ],
         }}
       />
     );
@@ -430,11 +369,7 @@ describe("Biomes UI progression tabs", () => {
   });
 
   it("lays the ability library into readable keyboard rows", () => {
-    assert.deepEqual(chunkBiomesAbilityRowsForTest([1, 2, 3, 4, 5, 6, 7], 3), [
-      [1, 2, 3],
-      [4, 5, 6],
-      [7],
-    ]);
+    assert.deepEqual(chunkBiomesAbilityRowsForTest([1, 2, 3, 4, 5, 6, 7], 3), [[1, 2, 3], [4, 5, 6], [7]]);
     assert.deepEqual(chunkBiomesAbilityRowsForTest([1, 2], 0), [[1], [2]]);
   });
 
@@ -474,15 +409,17 @@ describe("Biomes UI progression tabs", () => {
       <SkillsTab
         adapter={{
           isHydrated: () => true,
-          getSkills: () => [{
-            id: "business_operations",
-            name: "Business Operations",
-            category: "Business",
-            level: 3,
-            xp: 75,
-            nextLevel: 400,
-            title: "Novice",
-          }],
+          getSkills: () => [
+            {
+              id: "business_operations",
+              name: "Business Operations",
+              category: "Business",
+              level: 3,
+              xp: 75,
+              nextLevel: 400,
+              title: "Novice",
+            },
+          ],
         }}
       />
     );
@@ -491,11 +428,20 @@ describe("Biomes UI progression tabs", () => {
   });
 
   it("merges hotbar-only pickups into the inventory backpack display", () => {
-    const stone = { item: { id: 101, name: "Muck Crystal", action: "block" }, count: 1n };
-    const berries = { item: { id: 102, name: "Glow Berries", action: "food" }, count: 3n };
+    const stone = {
+      item: { id: 101, name: "Muck Crystal", action: "block" },
+      count: 1n,
+    };
+    const berries = {
+      item: { id: 102, name: "Glow Berries", action: "food" },
+      count: 3n,
+    };
     const merged = mergeInventoryAndHotbarForBiomesBackpackForTest([stone], [berries]);
     assert.equal(merged.length, 2);
-    assert.equal(merged.some((slot) => slot.item.name === "Glow Berries"), true);
+    assert.equal(
+      merged.some((slot) => slot.item.name === "Glow Berries"),
+      true
+    );
   });
 
   it("keeps the larger count when backpack and hotbar mirror the same item", () => {
@@ -513,15 +459,17 @@ describe("Biomes UI progression tabs", () => {
           getEquipment: () => [],
           getCurrencies: () => [],
           getBackpack: () => ({
-            items: [{
-              id: "muck_crystal",
-              label: "Muck Crystal",
-              icon: "◼",
-              count: 1,
-              category: "materials",
-              ref: { kind: "item", idx: 0 },
-              source: "backpack",
-            }],
+            items: [
+              {
+                id: "muck_crystal",
+                label: "Muck Crystal",
+                icon: "◼",
+                count: 1,
+                category: "materials",
+                ref: { kind: "item", idx: 0 },
+                source: "backpack",
+              },
+            ],
             maxSlots: 8,
             usedSlots: 1,
             capacityLabel: "ECS inventory",
@@ -545,7 +493,7 @@ describe("Biomes UI progression tabs", () => {
       />
     );
     assert.ok(html.includes("Hotbar 2: Muck Crystal"));
-    assert.ok(html.includes("data-hotbar-sync-slot=\"2\""));
+    assert.ok(html.includes('data-hotbar-sync-slot="2"'));
     assertNoDeveloperCopy(html);
   });
 
@@ -556,16 +504,18 @@ describe("Biomes UI progression tabs", () => {
           getEquipment: () => [],
           getCurrencies: () => [],
           getBackpack: () => ({
-            items: [{
-              id: "road_ration",
-              label: "Road Ration",
-              icon: "□",
-              count: 2,
-              category: "consumables",
-              ref: { kind: "item", idx: 0 },
-              source: "backpack",
-              canUse: true,
-            }],
+            items: [
+              {
+                id: "road_ration",
+                label: "Road Ration",
+                icon: "□",
+                count: 2,
+                category: "consumables",
+                ref: { kind: "item", idx: 0 },
+                source: "backpack",
+                canUse: true,
+              },
+            ],
             maxSlots: 8,
             usedSlots: 1,
             capacityLabel: "Backpack",
@@ -576,7 +526,7 @@ describe("Biomes UI progression tabs", () => {
     );
 
     assert.ok(html.includes(`data-ui-id="${UI_IDS.INVENTORY_ITEM("road_ration")}"`));
-    assert.ok(html.includes("aria-label=\"Road Ration x2\""));
+    assert.ok(html.includes('aria-label="Road Ration x2"'));
     assert.ok(tagForDataAction(html, "use").length > 0);
     assertNoDeveloperCopy(html);
   });
@@ -593,25 +543,29 @@ describe("Biomes UI progression tabs", () => {
             usedSlots: 0,
             capacityLabel: "Backpack",
             materialStorage: {
-              items: [{
-                id: "iron_ore",
-                label: "Iron Ore",
-                icon: "◼",
-                count: 12,
-                category: "materials",
-                storageLocation: "material_storage",
-              }],
+              items: [
+                {
+                  id: "iron_ore",
+                  label: "Iron Ore",
+                  icon: "◼",
+                  count: 12,
+                  category: "materials",
+                  storageLocation: "material_storage",
+                },
+              ],
               maxSlots: 24,
               usedSlots: 1,
             },
-            overflow: [{
-              id: "health_potion_overflow",
-              label: "Health Potion",
-              icon: "◼",
-              count: 1,
-              category: "consumables",
-              storageLocation: "overflow",
-            }],
+            overflow: [
+              {
+                id: "health_potion_overflow",
+                label: "Health Potion",
+                icon: "◼",
+                count: 1,
+                category: "consumables",
+                storageLocation: "overflow",
+              },
+            ],
           }),
           getHotbar: () => ({ items: [], selectedIndex: -1 }),
         }}
@@ -642,12 +596,14 @@ describe("Biomes UI progression tabs", () => {
         { plotId: "farm_plot_001", ready: true },
         { plotId: "farm_plot_002", ready: false },
       ],
-      livestock: [{
-        livestockId: "cow_001",
-        species: "cow",
-        productItemId: "fresh_milk",
-        productReady: true,
-      }],
+      livestock: [
+        {
+          livestockId: "cow_001",
+          species: "cow",
+          productItemId: "fresh_milk",
+          productReady: true,
+        },
+      ],
       wildlife: [{ animalId: "deer_001", species: "deer", harvestable: true }],
       foodSpawns: [{ spawnId: "berries_001", itemId: "wild_berries" }],
       seedSpawns: [{ spawnId: "seed_001", seedItemId: "seed_carrot" }],
@@ -659,7 +615,12 @@ describe("Biomes UI progression tabs", () => {
         adapter={{
           getEquipment: () => [],
           getCurrencies: () => [],
-          getBackpack: () => ({ items: [], maxSlots: 8, usedSlots: 0, capacityLabel: "Backpack" }),
+          getBackpack: () => ({
+            items: [],
+            maxSlots: 8,
+            usedSlots: 0,
+            capacityLabel: "Backpack",
+          }),
           getHotbar: () => ({ items: [], selectedIndex: -1 }),
           getFarmingFood: () => model,
         }}
@@ -687,12 +648,14 @@ describe("Biomes UI progression tabs", () => {
       },
       availableCookingStations: ["campfire"],
       plots: [{ plotId: "farm_plot_001", ready: true }],
-      livestock: [{
-        livestockId: "cow_001",
-        species: "cow",
-        productItemId: "fresh_milk",
-        productReady: true,
-      }],
+      livestock: [
+        {
+          livestockId: "cow_001",
+          species: "cow",
+          productItemId: "fresh_milk",
+          productReady: true,
+        },
+      ],
       wildlife: [{ animalId: "deer_001", species: "deer", harvestable: true }],
       foodSpawns: [{ spawnId: "berries_001", itemId: "wild_berries" }],
       seedSpawns: [{ spawnId: "seed_001", seedItemId: "seed_carrot" }],
@@ -738,10 +701,13 @@ describe("Biomes UI progression tabs", () => {
   });
 
   it("does not fire world farming food shortcuts before hydration or for disabled work", () => {
-    const unhydrated = buildFarmingFoodInterfaceModelForTest({
-      inventory: { road_ration: 1 },
-      plots: [{ plotId: "farm_plot_001", ready: true }],
-    }, false);
+    const unhydrated = buildFarmingFoodInterfaceModelForTest(
+      {
+        inventory: { road_ration: 1 },
+        plots: [{ plotId: "farm_plot_001", ready: true }],
+      },
+      false
+    );
     assert.equal(farmingFoodQuickActionForKeyV1(unhydrated, "KeyF"), undefined);
 
     const empty = buildFarmingFoodInterfaceModelForTest({
@@ -764,7 +730,12 @@ describe("Biomes UI progression tabs", () => {
         adapter={{
           getEquipment: () => [],
           getCurrencies: () => [],
-          getBackpack: () => ({ items: [], maxSlots: 8, usedSlots: 0, capacityLabel: "Backpack" }),
+          getBackpack: () => ({
+            items: [],
+            maxSlots: 8,
+            usedSlots: 0,
+            capacityLabel: "Backpack",
+          }),
           getHotbar: () => ({ items: [], selectedIndex: -1 }),
           getSelectedItem: () => ({
             id: "quest_charm",
@@ -795,27 +766,31 @@ describe("Biomes UI progression tabs", () => {
       <LootTab
         adapter={{
           isHydrated: () => true,
-          getAvailable: () => [{
-            id: "drop_iron_ore",
-            dropId: "drop_1",
-            itemName: "Iron Ore",
-            quantity: 4,
-            source: "Muckwad",
-            quality: "common",
-            at: "now",
-            status: "available",
-            route: "Unclaimed",
-          }],
-          getRecent: () => [{
-            id: "ledger_iron_ore",
-            itemName: "Iron Ore",
-            quantity: 4,
-            source: "Muckwad",
-            quality: "common",
-            at: "recent",
-            status: "material_storage",
-            route: "Material Storage",
-          }],
+          getAvailable: () => [
+            {
+              id: "drop_iron_ore",
+              dropId: "drop_1",
+              itemName: "Iron Ore",
+              quantity: 4,
+              source: "Muckwad",
+              quality: "common",
+              at: "now",
+              status: "available",
+              route: "Unclaimed",
+            },
+          ],
+          getRecent: () => [
+            {
+              id: "ledger_iron_ore",
+              itemName: "Iron Ore",
+              quantity: 4,
+              source: "Muckwad",
+              quality: "common",
+              at: "recent",
+              status: "material_storage",
+              route: "Material Storage",
+            },
+          ],
           claim: () => {},
         }}
       />
@@ -825,17 +800,12 @@ describe("Biomes UI progression tabs", () => {
     assert.ok(html.includes("Recent Loot"));
     assert.ok(html.includes("Unclaimed"));
     assert.ok(html.includes("Material Storage"));
-    assert.ok(html.includes("data-loot-action=\"claim\""));
+    assert.ok(html.includes('data-loot-action="claim"'));
     assertNoDeveloperCopy(html);
   });
 
   it("keeps common BiomesUI empty states player-facing", () => {
-    const html = [
-      renderToStaticMarkup(<LandTab />),
-      renderToStaticMarkup(<LootTab adapter={{ isHydrated: () => true, getRecent: () => [] }} />),
-      renderToStaticMarkup(<BankingTab adapter={{ isHydrated: () => false }} />),
-      renderToStaticMarkup(<CollectionsTab adapter={{ isHydrated: () => false, getCategories: () => [] }} />),
-    ].join("\n");
+    const html = [renderToStaticMarkup(<LandTab />), renderToStaticMarkup(<LootTab adapter={{ isHydrated: () => true, getRecent: () => [] }} />), renderToStaticMarkup(<BankingTab adapter={{ isHydrated: () => false }} />), renderToStaticMarkup(<CollectionsTab adapter={{ isHydrated: () => false, getCategories: () => [] }} />)].join("\n");
 
     assert.ok(html.includes("Land Office"));
     assert.ok(html.includes("No new loot yet"));
@@ -847,9 +817,7 @@ describe("Biomes UI progression tabs", () => {
   it("shows completed building access points as player-facing UI", () => {
     const nowMs = 1_800_000_000_000;
     const plot = buildingSystemPlotByIdV1("grove_muckstead_cottage_lot")!;
-    const blueprint = buildingSystemBlueprintByIdV1(
-      "grove_voxel_cottage_tier_1"
-    )!;
+    const blueprint = buildingSystemBlueprintByIdV1("grove_voxel_cottage_tier_1")!;
     const property = createBuildingSystemPropertyRecordV1({
       propertyId: "property_grove_muckstead_cottage_lot",
       ownerId: "player",
@@ -949,7 +917,12 @@ describe("Biomes UI progression tabs", () => {
         adapter={{
           getMissionTitle: () => "Road Work",
           getMissionSteps: () => [
-            { id: "step_1", title: "Current step 1", objective: "Find the board.", done: false },
+            {
+              id: "step_1",
+              title: "Current step 1",
+              objective: "Find the board.",
+              done: false,
+            },
           ],
           getPlayerMarker: () => ({
             id: "local_player",
@@ -978,13 +951,15 @@ describe("Biomes UI progression tabs", () => {
               worldPosition: [516, 70, -120],
             },
           ],
-          getTrackableQuests: () => [{
-            questId: "road_work",
-            title: "Road Work",
-            area: "The Grove",
-            status: "active",
-            firstMarkerId: "quest_board",
-          }],
+          getTrackableQuests: () => [
+            {
+              questId: "road_work",
+              title: "Road Work",
+              area: "The Grove",
+              status: "active",
+              firstMarkerId: "quest_board",
+            },
+          ],
         }}
       />
     );
@@ -996,7 +971,7 @@ describe("Biomes UI progression tabs", () => {
     assert.ok(html.includes("Grove Jobs Board"));
     assert.ok(html.includes("Center Player"));
     assert.ok(html.includes("Filter Quests"));
-    assert.ok(html.includes("aria-label=\"Filter Quests list\""));
+    assert.ok(html.includes('aria-label="Filter Quests list"'));
   });
 
   it("filters the active MapQuestsTab list by the selected tab data", () => {
@@ -1024,8 +999,18 @@ describe("Biomes UI progression tabs", () => {
     assert.deepEqual(
       filterMapMissionStepsForTest(
         [
-          { id: "step_1", title: "Completed step 1", objective: "Talk to Jackie", done: true },
-          { id: "step_2", title: "Current step 2", objective: "Find the board", done: false },
+          {
+            id: "step_1",
+            title: "Completed step 1",
+            objective: "Talk to Jackie",
+            done: true,
+          },
+          {
+            id: "step_2",
+            title: "Current step 2",
+            objective: "Find the board",
+            done: false,
+          },
         ],
         "current board"
       ).map((step) => step.id),
@@ -1049,8 +1034,18 @@ describe("Biomes UI progression tabs", () => {
         adapter={{
           getMissionTitle: () => "Buttons Before the Road",
           getMissionSteps: () => [
-            { id: "fountain_buttons_first:0", title: "Completed step 1", objective: "Talk to Jackie", done: true },
-            { id: "fountain_buttons_first:1", title: "Current step 2", objective: "Find the Jobs Board", done: false },
+            {
+              id: "fountain_buttons_first:0",
+              title: "Completed step 1",
+              objective: "Talk to Jackie",
+              done: true,
+            },
+            {
+              id: "fountain_buttons_first:1",
+              title: "Current step 2",
+              objective: "Find the Jobs Board",
+              done: false,
+            },
           ],
           getMarkers: () => [
             {
@@ -1072,13 +1067,15 @@ describe("Biomes UI progression tabs", () => {
               worldPosition: [502, 71, -132],
             },
           ],
-          getTrackableQuests: () => [{
-            questId: "fountain_buttons_first",
-            title: "Buttons Before the Road",
-            area: "The Grove",
-            status: "active",
-            firstMarkerId: "harthmere_market_posting_board",
-          }],
+          getTrackableQuests: () => [
+            {
+              questId: "fountain_buttons_first",
+              title: "Buttons Before the Road",
+              area: "The Grove",
+              status: "active",
+              firstMarkerId: "harthmere_market_posting_board",
+            },
+          ],
         }}
       />
     );
@@ -1111,7 +1108,10 @@ describe("Biomes UI progression tabs", () => {
     const zoomedPan = centeredPanForMapMarkerForTest({ x: 0.93, y: 0.51 }, 2);
     assert.equal(((0.93 - 0.5) * 2 + 0.5 + zoomedPan.x).toFixed(5), "0.50000");
     assert.equal(((0.51 - 0.5) * 2 + 0.5 + zoomedPan.y).toFixed(5), "0.50000");
-    assert.deepEqual(centeredPanForMapMarkerForTest({ x: 2, y: -1 }), { x: -0.5, y: 0.5 });
+    assert.deepEqual(centeredPanForMapMarkerForTest({ x: 2, y: -1 }), {
+      x: -0.5,
+      y: 0.5,
+    });
   });
 
   it("draws the active destination marker above the local player on the map", () => {
@@ -1148,12 +1148,27 @@ describe("Biomes UI progression tabs", () => {
 
   it("derives geography terrain swatches from live map markers", () => {
     const features = geographyTerrainFeaturesForMapMarkersForTest([
-      { id: "muck_patch", label: "Muckwad Patch", kind: "danger", x: 0.4, y: 0.5 },
-      { id: "bridge", label: "Harthmere Bridge Center", kind: "route", x: 0.7, y: 0.3 },
+      {
+        id: "muck_patch",
+        label: "Muckwad Patch",
+        kind: "danger",
+        x: 0.4,
+        y: 0.5,
+      },
+      {
+        id: "bridge",
+        label: "Harthmere Bridge Center",
+        kind: "route",
+        x: 0.7,
+        y: 0.3,
+      },
       { id: "berries", label: "Berry Patch", kind: "resource", x: 0.2, y: 0.7 },
     ]);
 
-    assert.deepEqual(features.map((feature) => feature.kind), ["muck", "water", "resource"]);
+    assert.deepEqual(
+      features.map((feature) => feature.kind),
+      ["muck", "water", "resource"]
+    );
     assert.ok(features.every((feature) => feature.width > 0 && feature.height > 0));
   });
 
@@ -1202,6 +1217,34 @@ describe("Biomes UI progression tabs", () => {
       }),
       undefined
     );
+    assert.equal(biomesUIActiveMapPinNavigationAidSpecForTest(undefined), undefined);
+  });
+
+  it("maps active BiomesUI destinations onto differently colored navigation marker families", () => {
+    assert.equal(biomesUIActiveMapPinNavigationAidKindForTest("objective"), "puzzle");
+    assert.equal(biomesUIActiveMapPinNavigationAidKindForTest("quest"), "puzzle");
+    assert.equal(biomesUIActiveMapPinNavigationAidKindForTest("resource"), "farming");
+    assert.equal(biomesUIActiveMapPinNavigationAidKindForTest("safe_zone"), "farming");
+    assert.equal(biomesUIActiveMapPinNavigationAidKindForTest("danger"), "hunting");
+    assert.equal(biomesUIActiveMapPinNavigationAidKindForTest("route"), "fishing");
+    assert.equal(biomesUIActiveMapPinNavigationAidKindForTest("business"), "camera");
+    assert.equal(biomesUIActiveMapPinNavigationAidKindForTest("property"), "camera");
+
+    const spec = biomesUIActiveMapPinNavigationAidSpecForTest({
+      markerId: "grove_jobs_board",
+      label: "Grove Jobs Board",
+      kind: "quest",
+      worldPosition: [518, 70, -122],
+      setAtMs: 1234,
+    });
+    assert.deepEqual(spec, {
+      target: {
+        kind: "position",
+        position: [518, 70, -122],
+      },
+      kind: "puzzle",
+      autoremoveWhenNear: false,
+    });
   });
 
   it("shows the Escape close affordance while the Biomes UI overlay is open", () => {
@@ -1226,11 +1269,20 @@ describe("Biomes UI progression tabs", () => {
       <CollectionsTab
         adapter={{
           isHydrated: () => true,
-          getCategories: () => [{
-            id: "grove_people",
-            name: "Grove People",
-            entries: [{ id: "npc:jackie", name: "Jackie", icon: "NP", discovered: true }],
-          }],
+          getCategories: () => [
+            {
+              id: "grove_people",
+              name: "Grove People",
+              entries: [
+                {
+                  id: "npc:jackie",
+                  name: "Jackie",
+                  icon: "NP",
+                  discovered: true,
+                },
+              ],
+            },
+          ],
         }}
       />
     );
@@ -1272,27 +1324,29 @@ describe("Biomes UI progression tabs", () => {
       <CollectionsTab
         adapter={{
           isHydrated: () => true,
-          getCategories: () => [{
-            id: "grove_people",
-            name: "Grove People",
-            entries: [
-              {
-                id: "npc:jackie",
-                name: "Jackie",
-                icon: "NP",
-                discovered: true,
-                source: "Grove Jobs Board",
-                discoveredAtMs: Date.UTC(2026, 0, 2),
-              },
-              {
-                id: "npc:hidden",
-                name: "Hidden",
-                icon: "HD",
-                discovered: false,
-                claimable: false,
-              },
-            ],
-          }],
+          getCategories: () => [
+            {
+              id: "grove_people",
+              name: "Grove People",
+              entries: [
+                {
+                  id: "npc:jackie",
+                  name: "Jackie",
+                  icon: "NP",
+                  discovered: true,
+                  source: "Grove Jobs Board",
+                  discoveredAtMs: Date.UTC(2026, 0, 2),
+                },
+                {
+                  id: "npc:hidden",
+                  name: "Hidden",
+                  icon: "HD",
+                  discovered: false,
+                  claimable: false,
+                },
+              ],
+            },
+          ],
         }}
       />
     );
@@ -1311,19 +1365,25 @@ describe("Biomes UI progression tabs", () => {
 
   it("does not route locked class changes without a respec", () => {
     const chosen: string[] = [];
-    activateBiomesClassCardForTest({
-      getCurrent: () => "warrior",
-      classChoiceLocked: () => true,
-      choose: (id) => chosen.push(id),
-    }, "mage");
+    activateBiomesClassCardForTest(
+      {
+        getCurrent: () => "warrior",
+        classChoiceLocked: () => true,
+        choose: (id) => chosen.push(id),
+      },
+      "mage"
+    );
     assert.deepEqual(chosen, []);
   });
 
   it("routes specialization activation through the class adapter", () => {
     const selected: string[] = [];
-    activateBiomesSpecializationForTest({
-      chooseSpecialization: (id) => selected.push(id),
-    }, "protection");
+    activateBiomesSpecializationForTest(
+      {
+        chooseSpecialization: (id) => selected.push(id),
+      },
+      "protection"
+    );
     assert.deepEqual(selected, ["protection"]);
   });
 

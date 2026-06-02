@@ -34,15 +34,15 @@ export interface HarthmereBusinessInterfacePanelProps {
 }
 
 type OwnerTab = "dashboard" | "customers" | "orders" | "shopfront" | "finance" | "staff" | "empire" | "licenses" | "operations" | "town" | "market" | "guild";
-type CustomerTab = "overview" | "services" | "shopfront" | "status" | "market";
+type CustomerTab = "overview" | "customers" | "services" | "shopfront" | "status" | "market";
 type PanelTab = OwnerTab | CustomerTab;
 export type HarthmereBusinessInterfacePanelTabV1 = PanelTab;
 
 const OWNER_TABS: OwnerTab[] = ["dashboard", "customers", "orders", "shopfront", "finance", "staff", "empire", "licenses", "operations", "town", "market", "guild"];
-const CUSTOMER_TABS: CustomerTab[] = ["overview", "services", "shopfront", "status", "market"];
+const CUSTOMER_TABS: CustomerTab[] = ["overview", "customers", "shopfront", "services", "status", "market"];
 const TAB_LABELS: Record<PanelTab, string> = {
   dashboard: "Dashboard",
-  customers: "Customers",
+  customers: "Getting a Job and Getting Paid",
   orders: "Orders",
   shopfront: "Shopfront",
   finance: "Finance",

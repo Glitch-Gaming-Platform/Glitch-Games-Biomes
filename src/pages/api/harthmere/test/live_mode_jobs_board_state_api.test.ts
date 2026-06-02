@@ -111,6 +111,83 @@ describe("live_mode_jobs_board_state API route integration", () => {
     assert.equal(writes[0]?.key, harthmereLiveModeSharedWorldStateKeyV1());
   });
 
+  it("expires stale shared auto jobs on read before returning clickable open jobs", async () => {
+    const sharedBackend = defaultHarthmereLiveModeBackendStateV1(
+      "shared_board",
+      NOW_MS,
+    );
+    sharedBackend.jobsBoard.postings.expired_shared_auto = {
+      jobId: "expired_shared_auto",
+      boardId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1,
+      issuerKind: "town",
+      issuerId: "harthmere_grove",
+      title: "Expired shared public job",
+      description: "This stale job must not remain clickable.",
+      kind: "delivery",
+      requirements: [{ itemId: "road_ration", count: 1 }],
+      rewardGold: 25,
+      escrowGold: 25,
+      reputationDelta: 1,
+      status: "open",
+      townId: "harthmere_grove",
+      regionId: "harthmere_grove_region",
+      createdAtMs: NOW_MS - 86_400_000,
+      deadlineAtMs: NOW_MS - 1,
+      failurePenaltyGold: 2,
+      requiresFieldWork: true,
+      abuseFlags: [],
+      logs: [],
+      autoPosted: true,
+      source: "economy_auto_seed",
+    };
+    sharedBackend.jobsBoard.issuerOpenJobIds["town:harthmere_grove"] = [
+      "expired_shared_auto",
+    ];
+    const actorBackend = defaultHarthmereLiveModeBackendStateV1(ACTOR, NOW_MS);
+    const writes: Array<{ key: string; value: string }> = [];
+    const redis = {
+      primary: {
+        get: async (key: string) => {
+          if (key === harthmereLiveModePlayerStateKeyV1(ACTOR)) {
+            return JSON.stringify(actorBackend);
+          }
+          if (key === harthmereLiveModeSharedWorldStateKeyV1()) {
+            return JSON.stringify(
+              createHarthmereLiveModeSharedWorldStateV1(sharedBackend, NOW_MS),
+            );
+          }
+          return null;
+        },
+        set: async (key: string, value: string) => {
+          writes.push({ key, value });
+        },
+      },
+    };
+
+    const snapshot = await readHarthmereLiveModeJobsBoardStateForActorV1({
+      redis,
+      actorId: ACTOR,
+      nowMs: NOW_MS,
+    });
+
+    assert.ok(
+      !snapshot.openJobs.some((job) => job.jobId === "expired_shared_auto"),
+      "expired shared jobs should not be returned as open/clickable",
+    );
+    assert.ok(
+      snapshot.openJobs.some(
+        (job) => job.boardId === HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1,
+      ),
+      "the read path should replace expired auto jobs with current board work",
+    );
+    assert.equal(writes.length, 1, "expired shared jobs should be persisted");
+    const persisted = JSON.parse(writes[0].value);
+    assert.equal(
+      persisted.jobsBoard.postings.expired_shared_auto.status,
+      "expired",
+    );
+  });
+
   it("prefers shared public board state over an empty actor-local board", async () => {
     const sharedBackend = defaultHarthmereLiveModeBackendStateV1("shared_board", NOW_MS);
     sharedBackend.jobsBoard.postings.shared_job_1 = {

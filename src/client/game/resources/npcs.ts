@@ -3667,6 +3667,8 @@ function makeSnapshotNpcCosmeticsFallbackGltfV1(
 
 const SNAPSHOT_GROVE_NPC_ASSET_KEY_VERSION_V104 =
   "snapshot-grove-npc-asset-key-v104";
+const SNAPSHOT_GROVE_GENERATED_VOXEL_NPC_VERSION_V195 =
+  "snapshot-grove-generated-voxel-npc-v195";
 
 const SNAPSHOT_GROVE_NPC_ASSET_KEYS_V104: Partial<Record<string, string>> = {
   jackie: "npcs/jackie",
@@ -3690,6 +3692,76 @@ function snapshotGroveNpcAssetKeyForEntityV104(
     (npc) => npc.displayName.toLowerCase() === normalizedLabel,
   )?.id;
   return SNAPSHOT_GROVE_NPC_ASSET_KEYS_V104[explicitId ?? labelMatchedId ?? ""];
+}
+
+function snapshotGroveGeneratedVoxelNpcIdForEntityV195(
+  id: BiomesId,
+  label?: string,
+): string | undefined {
+  const explicitId = snapshotGroveNpcIdFromEntityIdV75(id);
+  if (explicitId) {
+    return explicitId;
+  }
+  const normalizedLabel = (label ?? "").trim().toLowerCase();
+  if (!normalizedLabel) {
+    return undefined;
+  }
+  const exactLabelId = SNAPSHOT_GROVE_NPCS_V75.find(
+    (npc) => npc.displayName.toLowerCase() === normalizedLabel,
+  )?.id;
+  if (exactLabelId) {
+    return exactLabelId;
+  }
+  // Live data can carry a fuller label than the snapshot seed, e.g. Billy
+  // Rhodes. Keep the named no-asset Grove locals on the visible voxel path.
+  if (/^billy\b/.test(normalizedLabel)) {
+    return "billy";
+  }
+  if (/^sil\b/.test(normalizedLabel)) {
+    return "sil";
+  }
+  if (/^doc\b|field medic|muck researcher/.test(normalizedLabel)) {
+    return "doc";
+  }
+  if (/rosalyn/.test(normalizedLabel)) {
+    return "rosalyn";
+  }
+  if (/nia.*guild clerk|guild clerk.*nia/.test(normalizedLabel)) {
+    return "guild_clerk_nia";
+  }
+  if (/merl/.test(normalizedLabel)) {
+    return "grove_banker_merl";
+  }
+  if (/mira|land steward/.test(normalizedLabel)) {
+    return "mira_grove_land_steward";
+  }
+  if (/gus.*baker|^gus\b/.test(normalizedLabel)) {
+    return "gus_the_baker";
+  }
+  if (/fern.*grower|^fern\b/.test(normalizedLabel)) {
+    return "fern_the_grower";
+  }
+  if (/kit.*courier|^kit\b/.test(normalizedLabel)) {
+    return "kit_the_courier";
+  }
+  if (/mel.*handyman|^mel\b/.test(normalizedLabel)) {
+    return "mel_the_handyman";
+  }
+  if (/rin.*forager|^rin\b/.test(normalizedLabel)) {
+    return "rin_the_forager";
+  }
+  if (/carlo.*cook|^carlo\b/.test(normalizedLabel)) {
+    return "carlo_the_cook";
+  }
+  return undefined;
+}
+
+function shouldUseSnapshotGroveGeneratedVoxelNpcV195(
+  id: BiomesId,
+  label?: string,
+): boolean {
+  const groveNpcId = snapshotGroveGeneratedVoxelNpcIdForEntityV195(id, label);
+  return !!groveNpcId && !SNAPSHOT_GROVE_NPC_ASSET_KEYS_V104[groveNpcId];
 }
 
 async function makeSnapshotGroveNpcAssetMeshV104(
@@ -3734,6 +3806,17 @@ async function makeNpcMesh(deps: ClientResourceDeps, id: BiomesId) {
   const npcMetadata = deps.get("/ecs/c/npc_metadata", id);
   ok(npcMetadata);
   const npcType = idToNpcType(npcMetadata.type_id);
+  const label = deps.get("/ecs/c/label", id)?.text;
+
+  if (shouldUseSnapshotGroveGeneratedVoxelNpcV195(id, label)) {
+    const mesh = makeLocalDevVoxelNpcGltf(deps, id);
+    setFrustumCulling(mesh, false);
+    mesh.scene.userData.snapshotGroveGeneratedVoxelNpcVersion =
+      SNAPSHOT_GROVE_GENERATED_VOXEL_NPC_VERSION_V195;
+    mesh.scene.userData.snapshotGroveGeneratedVoxelNpcReason =
+      "seeded-grove-npc-without-authored-asset";
+    return mesh;
+  }
 
   if (npcType.isPlayerLikeAppearance) {
     // HARTHMERE_NPC_RENDER_PARITY_V164:

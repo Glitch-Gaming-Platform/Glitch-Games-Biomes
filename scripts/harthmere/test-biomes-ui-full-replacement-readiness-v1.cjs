@@ -54,6 +54,9 @@ const uniqueIds = read("src/client/components/biomes_ui/uniqueIds.ts");
 const tutorial = read("src/client/components/biomes_ui/tutorial/tutorialMissionMap.ts");
 const questHud = read("src/client/components/QuestAndMinimapHUD.tsx");
 const unified = read("src/client/components/challenges/HarthmereUnifiedHUD.tsx");
+const signOverlay = read("src/client/components/overlays/inspected/placeables/SignOverlayComponent.tsx");
+const cursorInspection = read("src/client/components/overlays/inspected/CursorInspectionOverlayComponent.tsx");
+const signScreen = read("src/client/components/challenges/SignScreen.tsx");
 
 function constantIdMap() {
   const map = new Map();
@@ -151,10 +154,16 @@ contains(liveAdapters, "BIOMES_UI_OPEN_MENU_KEY_CODE", "replacement mode uses th
 contains(liveAdapters, "[BIOMES_UI_OPEN_MENU_KEY_CODE]: BIOMES_UI_OPEN_MENU_TAB", "configured menu key opens the replacement menu tab");
 notContains(liveAdapters, 'KeyE: "daily"', "E no longer opens replacement menu tab");
 notContains(liveAdapters, 'KeyE: "inventory"', "E no longer opens replacement inventory tab");
-contains(liveAdapters, 'KeyQ: "map"', "Q key preserves legacy map shortcut through replacement UI");
+contains(liveAdapters, 'KeyU: "map"', "U key opens map/quests through replacement UI");
+notContains(liveAdapters, 'KeyQ: "map"', "Q no longer opens map/quests through replacement UI");
 contains(liveAdapters, 'KeyO: "loot"', "O key is owned by replacement UI shortcut map");
 contains(liveAdapters, "pointerLockManager.unlock", "opening replacement tab releases pointer lock");
 contains(liveAdapters, "pointerLockManager.focusAndLock", "closing replacement tab can restore pointer lock");
+contains(cursorInspection, "suppressTalkShortcut", "inspection overlay can suppress generic talk shortcuts for readable placeables");
+contains(signOverlay, "suppressTalkShortcut", "readable sign overlay opens through Read instead of generic Talk");
+contains(signOverlay, "allowClickToDismiss: false", "readable sheet modal cannot backdrop-click loop into the world target");
+contains(signScreen, 'customText="Click to close"', "readable sheet screen makes click-to-close explicit");
+contains(signScreen, 'event.code === "Escape" || event.code === "Space"', "readable sheet screen supports keyboard close");
 
 contains(unified, "if (hideLegacyVisuals) {\n        // Replacement mode keeps all Harthmere runtime hooks/controllers alive", "legacy Harthmere key handler yields to BiomesUI when visuals are hidden");
 contains(unified, "{runtimeControllers}", "replacement branch keeps runtime controllers mounted");

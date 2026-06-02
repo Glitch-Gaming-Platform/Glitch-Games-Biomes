@@ -23,6 +23,7 @@ const SERVERS = [
   "sync",
   "task",
   "trigger",
+  "notify",
   "web",
 ];
 

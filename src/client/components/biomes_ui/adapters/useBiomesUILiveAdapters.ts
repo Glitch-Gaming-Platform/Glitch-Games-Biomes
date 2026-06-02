@@ -127,7 +127,7 @@ const BIOMES_UI_KEY_TO_TAB: Record<string, TabKey> = {
   KeyG: "guilds",
   KeyP: "banking",
   KeyM: "map",
-  KeyQ: "map",
+  KeyU: "map",
   KeyC: "collections",
   KeyV: "inbox",
   Comma: "options",

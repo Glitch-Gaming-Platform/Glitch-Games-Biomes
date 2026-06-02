@@ -92,6 +92,7 @@ import {
   HarthmereQuestNavAidControllerV141,
 } from "@/client/components/challenges/LocalDevHarthmereQuests";
 import { HarthmereHomeConsoleLiveContainer } from "@/client/components/harthmere_home";
+import { HarthmereBusinessLiveContainer } from "@/client/components/harthmere_business";
 import { HarthmereJobsBoardLiveContainerV141 } from "@/client/components/harthmere_jobs_board";
 import {
   HARTHMERE_JOBS_BOARD_PHYSICAL_BOARDS_V141,
@@ -2012,6 +2013,40 @@ function HarthmereHomeConsoleWorldInterfaceV1({
   );
 }
 
+function HarthmereBusinessWorldInterfaceV1({
+  open,
+  onOpen,
+  onClose,
+}: {
+  open: boolean;
+  onOpen: () => void;
+  onClose: () => void;
+}) {
+  const { reactResources } = useClientContext();
+  const localPlayer = reactResources.use("/scene/local_player") as any;
+  const camera = reactResources.use("/scene/camera") as any;
+  const playerPosition = harthmereJobsBoardPlayerPositionV146(
+    localPlayer,
+    camera
+  );
+  return (
+    <HarthmereBusinessLiveContainer
+      open={open}
+      onOpen={onOpen}
+      onClose={onClose}
+      playerPosition={
+        playerPosition
+          ? {
+              x: playerPosition.x,
+              y: playerPosition.y ?? 0,
+              z: playerPosition.z,
+            }
+          : undefined
+      }
+    />
+  );
+}
+
 function HarthmereJobsBoardWorldPromptV141({ onOpen }: { onOpen: () => void }) {
   const { reactResources } = useClientContext();
   const localPlayer = reactResources.use("/scene/local_player") as any;
@@ -2319,6 +2354,7 @@ export const HarthmereUnifiedHUD: React.FunctionComponent<{
   // of `panel` avoids touching the reducer contract / tests.
   const [jobsBoardOpen, setJobsBoardOpen] = useState(false);
   const [homeConsoleOpen, setHomeConsoleOpen] = useState(false);
+  const [businessInterfaceOpen, setBusinessInterfaceOpen] = useState(false);
   const openJobsBoard = React.useCallback(() => {
     openHarthmereJobsBoardPointerLockV145(
       pointerLockManager,
@@ -2463,6 +2499,11 @@ export const HarthmereUnifiedHUD: React.FunctionComponent<{
           onOpen={() => setHomeConsoleOpen(true)}
           onClose={() => setHomeConsoleOpen(false)}
         />
+        <HarthmereBusinessWorldInterfaceV1
+          open={businessInterfaceOpen}
+          onOpen={() => setBusinessInterfaceOpen(true)}
+          onClose={() => setBusinessInterfaceOpen(false)}
+        />
         {jobsBoardOpen && (
           <HarthmereJobsBoardLiveContainerWithPlayerProximityV141
             onClose={closeJobsBoard}
@@ -2495,6 +2536,11 @@ export const HarthmereUnifiedHUD: React.FunctionComponent<{
         open={homeConsoleOpen}
         onOpen={() => setHomeConsoleOpen(true)}
         onClose={() => setHomeConsoleOpen(false)}
+      />
+      <HarthmereBusinessWorldInterfaceV1
+        open={businessInterfaceOpen}
+        onOpen={() => setBusinessInterfaceOpen(true)}
+        onClose={() => setBusinessInterfaceOpen(false)}
       />
       {systemsTab && (
         <div className="fixed right-2 top-[6.5rem] z-[45] max-sm:inset-x-2 max-sm:top-16 md:right-4 md:top-4">

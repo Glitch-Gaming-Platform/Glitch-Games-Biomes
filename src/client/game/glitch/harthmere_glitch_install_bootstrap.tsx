@@ -24,7 +24,9 @@ const AUTO_AUTH_MAX_RELOAD_ATTEMPTS = 2;
 const AUTH_CHECK_RETRY_DELAYS_MS = [100, 250, 500, 1000];
 
 function firstString(value: unknown): string | undefined {
-  return typeof value === "string" && value.trim() ? value.trim() : undefined;
+  if (typeof value === "string" && value.trim()) return value.trim();
+  if (typeof value === "number" && Number.isFinite(value)) return String(value);
+  return undefined;
 }
 
 function isLocalGeneratedInstallId(installId: string) {
@@ -33,7 +35,10 @@ function isLocalGeneratedInstallId(installId: string) {
 
 function isGuestLikeString(value: unknown) {
   if (typeof value !== "string") return false;
-  const normalized = value.trim().toLowerCase().replace(/[^a-z0-9]+/g, "_");
+  const normalized = value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_");
   return (
     normalized === "guest" ||
     normalized === "guest_user" ||
@@ -56,7 +61,6 @@ function isGuestLikeIdentity(json: any) {
     isGuestLikeString(json?.user_id)
   );
 }
-
 
 export function findInstallId(): string | undefined {
   if (typeof window === "undefined") {
@@ -150,13 +154,18 @@ export function normalizeIdentity(json: any, installId: string) {
       ? undefined
       : rawGlitchUserId;
 
+  const biomesUserId = firstString(json?.biomes_user_id);
   const responseGameUserId = firstString(json?.game_user_id);
   const gameUserId =
-    !guestIdentity && responseGameUserId && !isGuestLikeString(responseGameUserId)
+    !guestIdentity && biomesUserId
+      ? `biomes:${biomesUserId}`
+      : !guestIdentity &&
+        responseGameUserId &&
+        !isGuestLikeString(responseGameUserId)
       ? responseGameUserId
       : glitchUserId
-        ? `glitch:${glitchUserId}`
-        : `install:${installId}`;
+      ? `glitch:${glitchUserId}`
+      : `install:${installId}`;
 
   const userName =
     firstString(json?.user_name) ??

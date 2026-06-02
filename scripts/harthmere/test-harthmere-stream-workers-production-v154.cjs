@@ -156,6 +156,11 @@ function runStaticChecks() {
     "Glitch stack starts the notifications firehose worker",
   );
   ok(
+    read("server.webpack.config.cjs").includes('"notify"') &&
+      read("server.webpack.config.ts").includes('"notify"'),
+    "server bundle config builds dist/notify.js for the notifications worker",
+  );
+  ok(
     runner.includes("wait_redis_stream_group 0 firehose trigger-server trigger-firehose"),
     "Glitch stack waits for trigger-server firehose consumer group",
   );
@@ -175,6 +180,11 @@ function runStaticChecks() {
     ok(
       deploy.includes("test-harthmere-stream-workers-production-v154.cjs"),
       "production deploy guardrails include stream worker startup test",
+    );
+    ok(
+      deploy.includes("GLITCH_ENABLE_STREAM_WORKERS=1") &&
+        deploy.includes("GLITCH_ENABLE_SINK_WORKER=0"),
+      "production deploy forces gameplay stream workers on while keeping sink opt-in",
     );
   }
 }

@@ -1461,8 +1461,8 @@ function expireImpatientCustomerTickets(
 }
 
 function startBusinessCustomerSession(state: BusinessSystemsEconomyState, request: HarthmereEconomyMutationRequestV1, context: BusinessSystemsContext, warnings: string[], touched: Set<string>, shared: Set<string>) {
-  const b = requireBusiness(state, request, context, warnings, touched, "contract_manager");
-  if (!b) return;
+  const b = business(state, request.businessId);
+  if (!b) return reject(warnings, touched, "economy_rejected:business_not_found");
   if (!requireOpenBusinessStatus(b, warnings, touched)) return;
   const definition = getHarthmereBusinessMiniGameDefinitionV1(b.typeId);
   if (!definition) return reject(warnings, touched, `economy_rejected:business_customer_minigame_missing:${b.typeId}`);
@@ -1524,8 +1524,8 @@ function startBusinessCustomerSession(state: BusinessSystemsEconomyState, reques
 }
 
 function serveBusinessCustomer(state: BusinessSystemsEconomyState, request: HarthmereEconomyMutationRequestV1, context: BusinessSystemsContext, warnings: string[], touched: Set<string>, shared: Set<string>) {
-  const b = requireBusiness(state, request, context, warnings, touched, "contract_manager");
-  if (!b) return;
+  const b = business(state, request.businessId);
+  if (!b) return reject(warnings, touched, "economy_rejected:business_not_found");
   if (!requireOpenBusinessStatus(b, warnings, touched)) return;
   const systems = state.businessSystems!;
   const sessionId = str(request.sessionId, "");

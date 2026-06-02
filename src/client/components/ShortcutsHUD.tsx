@@ -77,7 +77,7 @@ export const ShortcutsHUD: React.FunctionComponent<{}> = ({}) => {
               case "KeyC":
                 toggleCollectionsModal();
                 break;
-              case "KeyQ":
+              case "KeyU":
                 toggleMapModal();
                 break;
               case "KeyM":

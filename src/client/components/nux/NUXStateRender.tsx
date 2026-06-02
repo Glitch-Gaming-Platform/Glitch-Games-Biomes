@@ -274,9 +274,9 @@ const IntroQuestsNUX: React.FunctionComponent<{
       return (
         <NUXItem nuxId={nuxId}>
           <NUXLeft>
-            <ShortcutText shortcut="Q" keyCode="KeyQ" />
+            <ShortcutText shortcut="U" keyCode="KeyU" />
           </NUXLeft>
-          Press <NuxHotkey>Q</NuxHotkey> to view Quests on a map
+          Press <NuxHotkey>U</NuxHotkey> to view Quests on a map
         </NUXItem>
       );
   }

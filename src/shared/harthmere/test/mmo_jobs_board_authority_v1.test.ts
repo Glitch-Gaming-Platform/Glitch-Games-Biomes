@@ -140,6 +140,44 @@ describe("mmo_jobs_board_authority_v1 — posting, accepting, quest todos, and c
     expiredState.postings[jobId].deadlineAtMs = NOW - 1;
     assert.ok(mutate(expiredState, "complete_job_quest", { jobId }, { actorInventoryItems: { repair_part: 2 } }, "seeker").warnings.includes("jobs_board_rejected:job_expired"));
   });
+
+  it("marks expired open jobs as shared-state changes when accept rejects them", () => {
+    const posted = mutate(
+      defaultHarthmereJobsBoardStateV1(NOW),
+      "create_job_posting",
+      postPayload(),
+      {},
+      "poster",
+    );
+    const jobId = Object.keys(posted.jobsBoard.postings)[0];
+    posted.jobsBoard.postings[jobId].deadlineAtMs = NOW - 1;
+
+    const rejected = reduceHarthmereJobsBoardMutationV1(
+      posted.jobsBoard,
+      {
+        requestId: "accept_expired_shared_state",
+        actorId: "seeker",
+        nowMs: NOW + 1_000,
+        operation: "accept_job",
+        boardId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1,
+        jobId,
+      } as any,
+      context(),
+    );
+
+    assert.ok(
+      rejected.warnings.includes("jobs_board_rejected:job_expired"),
+    );
+    assert.equal(rejected.jobsBoard.postings[jobId].status, "expired");
+    assert.ok(
+      rejected.sharedStateKeys.includes(
+        `harthmere:jobs_board:${HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1}`,
+      ),
+    );
+    assert.ok(
+      rejected.sharedStateKeys.includes(`harthmere:jobs_board:job:${jobId}`),
+    );
+  });
 });
 
 describe("mmo_jobs_board_authority_v1 — issuers and abuse protections", () => {
