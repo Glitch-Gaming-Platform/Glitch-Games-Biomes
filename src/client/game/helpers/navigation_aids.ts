@@ -35,7 +35,10 @@ export const PRECISE_NAVIGATION_AID_NDC_BOX: AABB = [
 ];
 
 export type NavigationAidKind =
-  | ("robot_transmission" | "unaccepted_quest" | "quest" | "placed")
+  // "map_pin" is a user-set destination (the active map pin). It is explicitly
+  // NOT a quest kind, so its on-screen / on-circle directional indicator renders
+  // regardless of whether the player is currently tracking a quest.
+  | ("robot_transmission" | "unaccepted_quest" | "quest" | "placed" | "map_pin")
   | QuestCategory;
 
 export function isQuestNavigationAidKind(kind: NavigationAidKind): boolean {

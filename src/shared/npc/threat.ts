@@ -45,6 +45,45 @@ export function topThreat(table: ThreatTable): BiomesId | undefined {
   return bestKey ? (Number(bestKey) as BiomesId) : undefined;
 }
 
+export interface ThreatTargetCandidate {
+  id: BiomesId;
+  distanceSq: number;
+  threat: number;
+}
+
+// Given the set of currently-valid aggro candidates (already filtered for
+// alive / in-range / not-in-safe-zone by the caller), pick the one with the
+// highest accumulated threat — i.e. whoever has dealt the most damage or
+// taunted. Falls back to the nearest candidate when none of them carry threat,
+// preserving the legacy "attack the closest body" behavior. Ties in threat are
+// broken by proximity.
+export function pickThreatPreferredTarget(
+  candidates: ReadonlyArray<ThreatTargetCandidate>
+): BiomesId | undefined {
+  let nearest: BiomesId | undefined;
+  let nearestDistSq = Number.POSITIVE_INFINITY;
+  let bestThreatId: BiomesId | undefined;
+  let bestThreat = 0;
+  let bestThreatDistSq = Number.POSITIVE_INFINITY;
+  for (const candidate of candidates) {
+    if (candidate.distanceSq < nearestDistSq) {
+      nearestDistSq = candidate.distanceSq;
+      nearest = candidate.id;
+    }
+    if (
+      candidate.threat > bestThreat ||
+      (candidate.threat === bestThreat &&
+        candidate.threat > 0 &&
+        candidate.distanceSq < bestThreatDistSq)
+    ) {
+      bestThreat = candidate.threat;
+      bestThreatId = candidate.id;
+      bestThreatDistSq = candidate.distanceSq;
+    }
+  }
+  return bestThreatId ?? nearest;
+}
+
 export function decayThreat(
   table: ThreatTable,
   now: number,

@@ -101,6 +101,11 @@ import {
   harthmereMuckCreatureAssetKeyForLabelV1,
 } from "@/shared/harthmere/muck_creature_assets_v1";
 import {
+  harthmereNpcSceneNeedsVisibleFallbackV1,
+  harthmereNpcVisibleGeometryStatsForSceneV1,
+  HARTHMERE_NPC_VISIBLE_GEOMETRY_GUARD_VERSION_V196,
+} from "@/shared/harthmere/npc_visible_geometry_guard_v1";
+import {
   createHarthmereNpcNavigationStateV1,
   resolveHarthmereNpcNavigationStepV1,
   type HarthmereNpcNavigationModeV1,
@@ -1871,33 +1876,43 @@ function makeSnapshotPlayerLikeNpcVisibleFallbackGltfV68(
 }
 
 export function harthmereNpcGltfVisibleGeometryStatsForTest(gltf: GLTF) {
-  let visibleMeshes = 0;
-  let renderableVertices = 0;
-  gltfToThree(gltf).traverse((object) => {
-    const mesh = object as THREE.Mesh;
-    if (!(mesh as any).isMesh || mesh.visible === false) {
-      return;
-    }
-    const position = mesh.geometry?.getAttribute?.("position");
-    if (!position?.count) {
-      return;
-    }
-    const materials = Array.isArray(mesh.material)
-      ? mesh.material
-      : [mesh.material];
-    const hasVisibleMaterial = materials.some((material) => {
-      if (!material) {
-        return true;
-      }
-      return material.visible !== false && (material.opacity ?? 1) > 0.03;
-    });
-    if (!hasVisibleMaterial) {
-      return;
-    }
-    visibleMeshes += 1;
-    renderableVertices += position.count;
+  // Delegates to the node-safe shared guard so the resolver and its unit tests
+  // share one definition of "has renderable geometry".
+  return harthmereNpcVisibleGeometryStatsForSceneV1(gltfToThree(gltf));
+}
+
+// HARTHMERE_NPC_VISIBLE_GEOMETRY_GUARD_V196
+// Guarantees a candidate NPC gltf actually has drawable geometry. Authored
+// creature assets and generated galois/player meshes can occasionally load with
+// no renderable geometry (stripped scene, fully transparent mannequin), which
+// leaves the NPC as a floating nameplate with an invisible body. Whenever that
+// happens we swap in the deterministic visible voxel body instead.
+function ensureVisibleNpcGltfV196(
+  deps: ClientResourceDeps,
+  id: BiomesId,
+  npcType: NpcType,
+  candidate: GLTF | undefined,
+  reason: string
+): GLTF {
+  if (candidate && !harthmereNpcSceneNeedsVisibleFallbackV1(gltfToThree(candidate))) {
+    return candidate;
+  }
+  log.warn("HARTHMERE_NPC_VISIBLE_GEOMETRY_GUARD_V196 using visible voxel NPC", {
+    entityId: id,
+    npcTypeId: npcType.id,
+    npcTypeName: npcType.name,
+    reason,
+    stats: candidate
+      ? harthmereNpcVisibleGeometryStatsForSceneV1(gltfToThree(candidate))
+      : undefined,
+    version: HARTHMERE_NPC_VISIBLE_GEOMETRY_GUARD_VERSION_V196,
   });
-  return { visibleMeshes, renderableVertices };
+  const fallback = makeLocalDevVoxelNpcGltf(deps, id);
+  setFrustumCulling(fallback, false);
+  fallback.scene.userData.harthmereNpcVisibleGeometryGuardFallback = reason;
+  fallback.scene.userData.harthmereNpcVisibleGeometryGuardVersion =
+    HARTHMERE_NPC_VISIBLE_GEOMETRY_GUARD_VERSION_V196;
+  return fallback;
 }
 
 function localDevVoxelMaterial(color: number) {
@@ -3835,7 +3850,13 @@ async function makeNpcMesh(deps: ClientResourceDeps, id: BiomesId) {
     id
   );
   if (muckCreatureAssetMesh) {
-    return muckCreatureAssetMesh;
+    return ensureVisibleNpcGltfV196(
+      deps,
+      id,
+      npcType,
+      muckCreatureAssetMesh,
+      "muck-creature-asset-empty"
+    );
   }
 
   if (npcType.isPlayerLikeAppearance) {
@@ -3904,13 +3925,26 @@ async function makeNpcMesh(deps: ClientResourceDeps, id: BiomesId) {
   ) {
     const snapshotGroveAssetMesh = await makeSnapshotGroveNpcAssetMeshV104(deps, id);
     if (snapshotGroveAssetMesh) {
-      return snapshotGroveAssetMesh;
+      return ensureVisibleNpcGltfV196(
+        deps,
+        id,
+        npcType,
+        snapshotGroveAssetMesh,
+        "snapshot-grove-asset-empty"
+      );
     }
     return makeLocalDevVoxelNpcGltf(deps, id);
   }
 
   try {
-    return await deps.get("/scene/npc_type_mesh", npcMetadata.type_id);
+    const typeMesh = await deps.get("/scene/npc_type_mesh", npcMetadata.type_id);
+    return ensureVisibleNpcGltfV196(
+      deps,
+      id,
+      npcType,
+      typeMesh,
+      "npc-type-mesh-empty"
+    );
   } catch (error) {
     // HARTHMERE_NPC_GALOIS_VISIBLE_FALLBACK_V164:
     // A missing/failed creature GLTF should never leave only a floating nameplate.

@@ -102,6 +102,69 @@ function effectiveChaseAttackParamsV1(
   return ATTACKED_NPC_RETALIATION_CHASE_ATTACK_PARAMS_V1;
 }
 
+// The single locomotion behavior an NPC runs this tick. Exactly one is chosen
+// per tick by strict priority; see `selectNpcLocomotion`.
+export type NpcLocomotionChoice =
+  | "swim"
+  | "fly"
+  | "flee"
+  | "returnHome"
+  | "chaseAttack"
+  | "schedule"
+  | "meander"
+  | "socialize"
+  | "hostileIdleWander"
+  | "idle";
+
+export interface NpcLocomotionInputs {
+  swim: boolean;
+  fly: boolean;
+  hasFleeOutput: boolean;
+  isQuestGiver: boolean;
+  hasActiveSchedule: boolean;
+  hasChaseAttack: boolean;
+  hasAttackTarget: boolean;
+  canMeander: boolean;
+  canSocialize: boolean;
+}
+
+// Pure behavior-priority selector. Extracted from `npcTickLogic` so the
+// ordering is unit-testable in isolation — in particular that an authored
+// schedule outranks the quest-giver "stay home" fallback (HARTHMERE town NPCs)
+// while live combat still outranks the schedule.
+export function selectNpcLocomotion(
+  inputs: NpcLocomotionInputs
+): NpcLocomotionChoice {
+  if (inputs.swim) {
+    return "swim";
+  }
+  if (inputs.fly) {
+    return "fly";
+  }
+  if (inputs.hasFleeOutput) {
+    return "flee";
+  }
+  if (inputs.isQuestGiver && !inputs.hasActiveSchedule) {
+    return "returnHome";
+  }
+  if (inputs.hasChaseAttack && inputs.hasAttackTarget) {
+    return "chaseAttack";
+  }
+  if (inputs.hasActiveSchedule) {
+    return "schedule";
+  }
+  if (inputs.canMeander) {
+    return "meander";
+  }
+  if (inputs.canSocialize) {
+    return "socialize";
+  }
+  if (inputs.hasChaseAttack) {
+    return "hostileIdleWander";
+  }
+  return "idle";
+}
+
 // The tick context that drives most of the NPCs based on their data-driven
 // behavioral definitions.
 export function npcTickLogic(
@@ -148,49 +211,68 @@ export function npcTickLogic(
 
   const fleeOutput = !chaseAttack ? fleeFromThreatTick(env, npc) : undefined;
 
-  if (behavior.swim) {
-    force = addForce(force, swimTick(env, npc).force);
-  } else if (behavior.fly) {
-    force = addForce(force, flyTick(env, npc).force);
-  } else if (fleeOutput) {
-    forwardSpeed = fleeOutput.forwardSpeed;
-  } else if (npc.questGiver) {
-    // We want to make sure that quest givers always stay in the position
-    // they were spawned in.
-    forwardSpeed = returnHomeTick(npc).forwardSpeed;
-  } else if (
-    chaseAttack &&
-    npc.state.chaseAttack?.attackTarget
-  ) {
-    ({ forwardSpeed } = chaseAttackTargetTick(
-      env,
-      npc,
-      chaseAttack
-    ));
-  } else if ((npc.state as any).schedule && (npc.state as any).schedule?.entries?.length) {
-    // HARTHMERE_SCHEDULE_FOLLOW_LOGIC_V2_INSTALL_MARKER
-    const sched = scheduleFollowTick(env, npc);
-    forwardSpeed = sched.forwardSpeed;
-  } else if (behavior.meander) {
-    const meanderOutput = meanderTick(env, npc, homePoint);
-    forwardSpeed = meanderOutput.forwardSpeed;
-  } else if (behavior.socialize) {
-    forwardSpeed = socializeTick(
-      env,
-      npc,
-      homePoint,
-      behavior.socialize
-    ).forwardSpeed;
-  } else if (chaseAttack) {
-    // HARTHMERE_NPC_HOSTILE_IDLE_WANDER_V1:
-    // Hostile NPCs that only declare chaseAttack (no meander, no socialize,
-    // no schedule) used to stand perfectly still until aggroed. This made
-    // Mucklings and Hexers feel like training dummies and broke the "muckers
-    // are walking around" promise in the snapshot rules. Give every combatant
-    // an implicit wander loop around its spawn so the world feels alive even
-    // before the player engages.
-    const meanderOutput = meanderTick(env, npc, homePoint);
-    forwardSpeed = meanderOutput.forwardSpeed;
+  // HARTHMERE_SCHEDULE_FOLLOW_LOGIC_V2_INSTALL_MARKER: an NPC with authored
+  // schedule entries should follow its route. This must take precedence over
+  // the quest-giver "stay home" fallback, otherwise scheduled quest-givers
+  // (most Harthmere town NPCs) stand still at spawn forever.
+  const hasActiveSchedule = Boolean((npc.state as any).schedule?.entries?.length);
+
+  const locomotion = selectNpcLocomotion({
+    swim: Boolean(behavior.swim),
+    fly: Boolean(behavior.fly),
+    hasFleeOutput: Boolean(fleeOutput),
+    isQuestGiver: Boolean(npc.questGiver),
+    hasActiveSchedule,
+    hasChaseAttack: Boolean(chaseAttack),
+    hasAttackTarget: Boolean(npc.state.chaseAttack?.attackTarget),
+    canMeander: Boolean(behavior.meander),
+    canSocialize: Boolean(behavior.socialize),
+  });
+
+  switch (locomotion) {
+    case "swim":
+      force = addForce(force, swimTick(env, npc).force);
+      break;
+    case "fly":
+      force = addForce(force, flyTick(env, npc).force);
+      break;
+    case "flee":
+      forwardSpeed = fleeOutput!.forwardSpeed;
+      break;
+    case "returnHome":
+      // Quest givers stay where they were spawned (unless they have an authored
+      // schedule to follow, which takes precedence).
+      forwardSpeed = returnHomeTick(npc).forwardSpeed;
+      break;
+    case "chaseAttack":
+      ({ forwardSpeed } = chaseAttackTargetTick(env, npc, chaseAttack!));
+      break;
+    case "schedule":
+      forwardSpeed = scheduleFollowTick(env, npc).forwardSpeed;
+      break;
+    case "meander":
+      forwardSpeed = meanderTick(env, npc, homePoint).forwardSpeed;
+      break;
+    case "socialize":
+      forwardSpeed = socializeTick(
+        env,
+        npc,
+        homePoint,
+        behavior.socialize!
+      ).forwardSpeed;
+      break;
+    case "hostileIdleWander":
+      // HARTHMERE_NPC_HOSTILE_IDLE_WANDER_V1:
+      // Hostile NPCs that only declare chaseAttack (no meander, no socialize,
+      // no schedule) used to stand perfectly still until aggroed. This made
+      // Mucklings and Hexers feel like training dummies and broke the "muckers
+      // are walking around" promise in the snapshot rules. Give every combatant
+      // an implicit wander loop around its spawn so the world feels alive even
+      // before the player engages.
+      forwardSpeed = meanderTick(env, npc, homePoint).forwardSpeed;
+      break;
+    case "idle":
+      break;
   }
   // Compute the NPC's AABB which is needed for physics and drowning logic.
   const aabb = anchorAndSizeToAABB(npc.position, npc.size);
@@ -321,7 +403,7 @@ function applyNpcPhysics({
           dtSecs,
           { aabb, velocity: npc.velocity },
           collisionIndex,
-          [force],
+          forces,
           movementType === "swimming"
             ? NPC_SWIMMING_ENVIRONMENT_PARAMS
             : NPC_FLYING_ENVIRONMENT_PARAMS

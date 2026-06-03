@@ -56,6 +56,11 @@ import {
   buildHarthmereGroveRaceMinigameSeedChangesV1,
   harthmereGroveRaceMinigameSeedIdsV1,
 } from "@/server/harthmere/grove_race_minigame_ecs_seed_v1";
+import {
+  buildHarthmereBusinessOwnerNpcSeedChangesV1,
+  harthmereBusinessOwnerNpcSeedEntityIdsV1,
+} from "@/server/harthmere/business_owner_npc_ecs_seed_v1";
+import { HARTHMERE_BUSINESS_OWNER_NPC_SEED_VERSION_V1 } from "@/shared/harthmere/business_owner_npc_seed_v1";
 import { HARTHMERE_LIVE_ENTITY_PRODUCTION_SEED_VERSION_V1 } from "@/shared/harthmere/live_entity_production_seed_v1";
 import { HARTHMERE_GROVE_RACE_MINIGAME_SEED_VERSION_V1 } from "@/shared/harthmere/grove_race_minigame_seed_v1";
 import type { WorldApi } from "@/server/shared/world/api";
@@ -157,7 +162,7 @@ const HARTHMERE_LOCAL_DEV_TERRAIN_BOUNDS_VERSION_V4 = "harthmere-local-dev-terra
 const HARTHMERE_LOCAL_DEV_SEED_CONTENT_PASS_V1 =
   "harthmere-town-design-rebuild-v26-brightcart-left-road-clearance";
 const HARTHMERE_LOCAL_DEV_SEED_FINGERPRINT_VERSION_V1 =
-  "harthmere-local-dev-seed-fingerprint-v1";
+  "harthmere-local-dev-seed-fingerprint-v2-business-owners";
 
 const LOCAL_DEV_TERRAIN_ID_BASE = 8_810_000_000_000_000 as BiomesId;
 const LOCAL_DEV_NPC_ID_BASE = 8_810_000_000_010_000 as BiomesId;
@@ -5737,6 +5742,10 @@ function localDevGroveRaceMinigameSeedIdsV1() {
   return harthmereGroveRaceMinigameSeedIdsV1();
 }
 
+function localDevBusinessOwnerNpcIdsV1() {
+  return harthmereBusinessOwnerNpcSeedEntityIdsV1();
+}
+
 function isLocalDevQuestGiverNpcId(id: BiomesId) {
   const offset = Number(id) - Number(LOCAL_DEV_NPC_ID_BASE);
   return new Set([
@@ -5934,9 +5943,11 @@ function makeLocalDevSeedFingerprintV1(input: {
   snapshotCombatNpcIds: BiomesId[];
   liveEntityProductionSeedIds: BiomesId[];
   groveRaceMinigameSeedIds: BiomesId[];
+  businessOwnerNpcIds: BiomesId[];
 }) {
   return JSON.stringify({
     version: HARTHMERE_LOCAL_DEV_SEED_FINGERPRINT_VERSION_V1,
+    businessOwnerNpcSeedVersion: HARTHMERE_BUSINESS_OWNER_NPC_SEED_VERSION_V1,
     contentPass: HARTHMERE_LOCAL_DEV_SEED_CONTENT_PASS_V1,
     terrainBoundsVersion: HARTHMERE_LOCAL_DEV_TERRAIN_BOUNDS_VERSION_V4,
     npcPositionOverrideVersion: HARTHMERE_NPC_POSITION_OVERRIDE_VERSION_V93,
@@ -5963,6 +5974,7 @@ function makeLocalDevSeedFingerprintV1(input: {
       snapshotCombatNpcs: input.snapshotCombatNpcIds.length,
       liveEntityProductionSeeds: input.liveEntityProductionSeedIds.length,
       groveRaceMinigameSeeds: input.groveRaceMinigameSeedIds.length,
+      businessOwnerNpcs: input.businessOwnerNpcIds.length,
       fastHarvestableBlocks: HARTHMERE_FAST_HARVESTABLE_BLOCK_BY_COORD.size,
       harvestableTreeCenters: HARTHMERE_HARVESTABLE_TREE_CENTERS.length,
       harvestableOreClusters: HARTHMERE_HARVESTABLE_ORE_CENTERS.length,
@@ -6130,12 +6142,18 @@ function makeLocalDevMiniWorldChanges(
     nowSeconds: secondsSinceEpoch(),
     existingIds,
   });
+  const businessOwnerNpcChanges = buildHarthmereBusinessOwnerNpcSeedChangesV1({
+    tick,
+    nowSeconds: secondsSinceEpoch(),
+    existingIds,
+  });
   changes.push(
     ...npcChanges,
     ...groveNpcChanges,
     ...combatNpcChanges,
     ...liveEntitySeedChanges,
     ...groveRaceSeedChanges,
+    ...businessOwnerNpcChanges,
     makeLocalDevSeedMarkerChange(tick, existingIds, seedFingerprint),
   );
 
@@ -6146,6 +6164,7 @@ function makeLocalDevMiniWorldChanges(
     snapshotCombatNpcs: combatNpcChanges.length,
     liveEntityProductionSeeds: liveEntitySeedChanges.length,
     groveRaceMinigameSeeds: groveRaceSeedChanges.length,
+    businessOwnerNpcs: businessOwnerNpcChanges.length,
     runtimeOffsetX: harthmereExtraTownOffsetXV1(),
     runtimeOffsetZ: harthmereExtraTownOffsetZV1(),
     firstSnapshotGroveNpc: groveNpcChanges[0]?.kind === "create" || groveNpcChanges[0]?.kind === "update"
@@ -6197,6 +6216,7 @@ async function seedLocalDevTerrainIfMissing(
   const snapshotCombatNpcIds = localDevSnapshotCombatNpcIdsV74();
   const liveEntityProductionSeedIds = localDevLiveEntityProductionSeedIdsV1();
   const groveRaceMinigameSeedIds = localDevGroveRaceMinigameSeedIdsV1();
+  const businessOwnerNpcIds = localDevBusinessOwnerNpcIdsV1();
   const legacyTerrainIds = localDevLegacyTerrainShardIdsV3();
   const activeTerrainIds = new Set(terrainIds);
   const expectedSeedIds = [
@@ -6206,6 +6226,7 @@ async function seedLocalDevTerrainIfMissing(
     ...snapshotCombatNpcIds,
     ...liveEntityProductionSeedIds,
     ...groveRaceMinigameSeedIds,
+    ...businessOwnerNpcIds,
   ];
   const seedFingerprint = makeLocalDevSeedFingerprintV1({
     terrainIds,
@@ -6214,6 +6235,7 @@ async function seedLocalDevTerrainIfMissing(
     snapshotCombatNpcIds,
     liveEntityProductionSeedIds,
     groveRaceMinigameSeedIds,
+    businessOwnerNpcIds,
   });
   const existingIds = await existingLocalDevIds(
     [

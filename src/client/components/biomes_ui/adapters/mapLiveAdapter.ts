@@ -9,6 +9,7 @@ import { BUILDING_SYSTEM_GROVE_STEWARD_NPC_V1 } from "@/shared/harthmere/buildin
 import {
   activeBiomesUIMapPinFromMarkerForTest,
   readActiveBiomesUIMapPinV142,
+  shouldClearStaleActiveMapPinV1,
   writeActiveBiomesUIMapPinV142,
 } from "./mapPinnedDestination";
 import { appendHarthmereBusinessOutpostMapLandmarksV1 } from "./harthmereBusinessMapMarkersV1";
@@ -36,6 +37,7 @@ import { readableMapMarkerLabelForTest } from "./mapMarkerLabels";
 import {
   HARTHMERE_PROPERTY_MARKER_SOURCE_V1,
   harthmerePropertyMapLandmarksFromBuildingStateV1,
+  harthmerePurchasablePlotMapLandmarksFromBuildingStateV1,
   type HarthmerePropertyMapBuildingStateV1,
 } from "./propertyMapMarkersV1";
 
@@ -251,6 +253,9 @@ export function buildBiomesUIMapAdapter(
       ),
       ...sharedQuestAcceptedLandmarksForBiomesUIV1(liveQuestState),
       ...harthmerePropertyMapLandmarksFromBuildingStateV1(buildingState),
+      // Show unowned plots as "for sale" pins so players can find/preview a plot
+      // (location, district, price) before buying.
+      ...harthmerePurchasablePlotMapLandmarksFromBuildingStateV1(buildingState),
     ]);
   };
   return {
@@ -491,7 +496,24 @@ export function buildBiomesUIMapAdapter(
         ...authoredQuests,
       ];
     },
-    getActiveMapPin: () => readActiveBiomesUIMapPinV142(),
+    getActiveMapPin: () => {
+      const pin = readActiveBiomesUIMapPinV142();
+      if (!pin) {
+        return undefined;
+      }
+      // Drop a pin whose destination no longer exists as a landmark (quest/job
+      // completed or abandoned) so the directional marker never points "to
+      // nowhere". Reconcile against the full (pre-visibility-filter) landmark
+      // set so a merely-hidden objective marker is not treated as stale.
+      const visibleMarkerIds = MapLandmarks().map((landmark: any) =>
+        String(landmark?.id ?? "")
+      );
+      if (shouldClearStaleActiveMapPinV1({ pin, visibleMarkerIds })) {
+        writeActiveBiomesUIMapPinV142(undefined);
+        return undefined;
+      }
+      return pin;
+    },
     setActiveMapPin: (marker: any) => {
       const pin = activeBiomesUIMapPinFromMarkerForTest(marker);
       if (pin) writeActiveBiomesUIMapPinV142(pin);

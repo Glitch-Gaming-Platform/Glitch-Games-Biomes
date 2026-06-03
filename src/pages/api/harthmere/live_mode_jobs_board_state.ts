@@ -16,6 +16,7 @@ import {
 } from "@/shared/harthmere/mmo_jobs_board_authority_v1";
 import { z } from "zod";
 import { readHarthmerePlayerAndSharedStateStringsV1 } from "@/server/harthmere/live_mode_state_read_helpers";
+import { resolveHarthmereLiveModeActorIdV1 } from "@/server/harthmere/live_mode_actor_resolution_v1";
 
 const zJsonRecord = z.record(z.unknown());
 
@@ -31,30 +32,6 @@ const globalForHarthmereLiveModeJobsBoardState = globalThis as typeof globalThis
 function liveModeJobsBoardStateRedisV1() {
   return (globalForHarthmereLiveModeJobsBoardState.__harthmereLiveModeJobsBoardStateRedisV1 ??=
     connectToRedis("firehose"));
-}
-
-function firstJobsBoardReadStringV146(value: unknown) {
-  const candidate = Array.isArray(value) ? value[0] : value;
-  return typeof candidate === "string" && candidate.trim()
-    ? candidate.trim()
-    : undefined;
-}
-
-function jobsBoardReadActorIdV146(input: {
-  auth?: { userId?: unknown };
-  unsafeRequest: {
-    query?: Record<string, unknown>;
-    headers?: Record<string, unknown>;
-  };
-}) {
-  if (input.auth?.userId !== undefined) {
-    return String(input.auth.userId);
-  }
-  const installId =
-    firstJobsBoardReadStringV146(input.unsafeRequest.query?.install_id) ??
-    firstJobsBoardReadStringV146(input.unsafeRequest.query?.installId) ??
-    firstJobsBoardReadStringV146(input.unsafeRequest.headers?.["x-glitch-install-id"]);
-  return installId ? `install:${installId}` : "anonymous:jobs-board-reader";
 }
 
 export async function readHarthmereLiveModeJobsBoardStateForActorV1(input: {
@@ -128,8 +105,12 @@ export default biomesApiHandler(
     response: zHarthmereLiveModeJobsBoardStateResponse,
   },
   async ({ auth, unsafeRequest }) => {
-    const actorId = jobsBoardReadActorIdV146({ auth, unsafeRequest });
     const redis = await liveModeJobsBoardStateRedisV1();
+    const actorId = await resolveHarthmereLiveModeActorIdV1(
+      redis,
+      { auth, unsafeRequest },
+      "anonymous:jobs-board-reader"
+    );
     const nowMs = Date.now();
     return {
       ok: true,

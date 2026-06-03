@@ -69,6 +69,14 @@ export function harthmereContainerLootForLabelV1(
       { itemId: "cloth_scrap", quantity: 4 },
     ];
   }
+  // Mail/bank intent (e.g. "Kit's Mailbag Stand") must win over the tool branch,
+  // whose "kit" keyword would otherwise match the courier's name.
+  if (/mail|bank|courier|postage|parcel|deposit/.test(text)) {
+    return [
+      { itemId: "old_coin", quantity: 3 },
+      { itemId: "iron_key_blank", quantity: 1 },
+    ];
+  }
   if (/toolbag|tool|repair|kit/.test(text)) {
     return [
       { itemId: "woodcutters_axe", quantity: 1 },
@@ -86,6 +94,12 @@ export function harthmereContainerLootForLabelV1(
     return [
       { itemId: "iron_key_blank", quantity: 1 },
       { itemId: "scrap_metal", quantity: 2 },
+    ];
+  }
+  if (/first.?aid|bandage|medicine|medical|infirmary|salve|healer/.test(text)) {
+    return [
+      { itemId: "minor_healing_salve", quantity: 2 },
+      { itemId: "cloth_scrap", quantity: 2 },
     ];
   }
   if (/food|ration|satchel|bag|basket/.test(text)) {

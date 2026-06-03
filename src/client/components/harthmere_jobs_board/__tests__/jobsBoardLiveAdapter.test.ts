@@ -452,8 +452,16 @@ describe("Harthmere universal jobs board live adapter", () => {
     const mine = getHarthmereMyJobsPanelV1(snapshot);
     assert.equal(mine[0].todo!.questBoardTodo, true);
     assert.equal(mine[0].canComplete, true);
+    // HARTHMERE_JOBS_BOARD_COMPLETION_WIRING_V1: an ACTIVE todo on an active job
+    // is now turn-in-able (the two-step completion verifies + pays); the button
+    // is no longer gated to only already-"completed" todos (which never happened
+    // because the client never sent complete_job_quest).
     snapshot.myTodos[0].status = "active";
+    assert.equal(getHarthmereMyJobsPanelV1(snapshot)[0].canComplete, true);
+    // A failed/expired todo cannot be turned in.
+    snapshot.myTodos[0].status = "failed";
     assert.equal(getHarthmereMyJobsPanelV1(snapshot)[0].canComplete, false);
+    // No live todo at all -> cannot complete.
     snapshot.myTodos = [];
     assert.equal(getHarthmereMyJobsPanelV1(snapshot)[0].canComplete, false);
     const posted = getHarthmerePostedJobsPanelV1(snapshot);

@@ -112,6 +112,9 @@ export const OverlayComponent: React.FunctionComponent<{
     case "plant":
       return <PlantInspectionOverlayComponent overlay={overlay} />;
 
+    case "harthmere_object":
+      return <CursorInspectionComponent overlay={overlay} />;
+
     case "player":
       return <PlayerInspectionOverlayComponent overlay={overlay} />;
 

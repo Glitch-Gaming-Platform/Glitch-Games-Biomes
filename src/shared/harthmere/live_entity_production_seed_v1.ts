@@ -13,6 +13,7 @@ import {
 } from "./live_entity_helper_quests_v1";
 import { muckMonsterAreaForPositionV1 } from "./muck_monster_aggression_ai_v1";
 import { SNAPSHOT_GROVE_LOCAL_DEV_NPC_BASE_V75 } from "./snapshot_grove_content_v75";
+import { snapshotCombatGroundedPositionV135 } from "./snapshot_runtime_rules_v74";
 
 export const HARTHMERE_LIVE_ENTITY_PRODUCTION_SEED_VERSION_V1 =
   "harthmere-live-entity-production-seed-v1" as const;
@@ -248,6 +249,20 @@ export const HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_SEEDS_V1 =
     ...combat,
   } satisfies HarthmereLiveEntityProductionSeedV1;
 });
+
+// HARTHMERE_MUCK_MONSTER_CONTAINMENT_V1: the canonical set of muck monsters to
+// actually spawn. Each seed position is grounded to the authored muck floor and
+// then gated so ONLY monsters that resolve to a real muck territory are kept.
+// All 100 authored seeds already validate in-territory (see
+// `validateHarthmereLiveEntityProductionSeedsV1`), so this drops nothing today;
+// it is a defense-in-depth guarantee that a Hex/Mucker can never be seeded
+// outside the muck if the layout data is ever edited.
+export function harthmereGroundedMuckMonsterSeedsInTerritoryV1(): HarthmereLiveEntityProductionSeedV1[] {
+  return HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_SEEDS_V1.map((seed) => ({
+    ...seed,
+    position: snapshotCombatGroundedPositionV135(seed.position),
+  })).filter((seed) => Boolean(muckMonsterAreaForPositionV1(seed.position, 1.5)));
+}
 
 export const HARTHMERE_LIVE_ENTITY_PRODUCTION_SEEDS_V1 = [
   ...HARTHMERE_LIVE_ENTITY_ROBOT_SENTINEL_SEEDS_V1,

@@ -4,6 +4,7 @@ import type { AuthManager } from "@/client/game/context_managers/auth_manager";
 import type { MapManager } from "@/client/game/context_managers/map_manager";
 import type { ClientTable } from "@/client/game/game";
 import { plantExperimentalAt } from "@/client/game/helpers/farming";
+import { BIOMES_UI_ACTIVE_MAP_PIN_NAV_AID_ID_V147 } from "@/client/components/biomes_ui/adapters/mapPinnedDestination";
 import {
   accurateNavigationAidPosition,
   navigationAidShowsPrecisionOverlay,
@@ -61,6 +62,16 @@ import { getNpcBehavior, idToNpcType, isNpcTypeId } from "@/shared/npc/bikkie";
 import { displayUsername } from "@/shared/util/helpers";
 import type { VoxelooModule } from "@/shared/wasm/types";
 import { SNAPSHOT_LIVE_NPC_GROUNDING_VERSION_V78, snapshotGroundLiveNpcPositionV78 } from "@/shared/harthmere/snapshot_live_debug_v78";
+import {
+  SNAPSHOT_GROVE_LANDMARKS_V75,
+  type SnapshotGroveLandmarkV75,
+} from "@/shared/harthmere/snapshot_grove_content_v75";
+import { GROVE_ECONOMY_STARTER_LANDMARKS_V1 } from "@/shared/harthmere/grove_economy_starter_v1";
+import {
+  isHarthmereInspectableWorldObjectV1,
+  selectNearestHarthmereWorldObjectInspectableV1,
+  type HarthmereWorldObjectCandidateV1,
+} from "@/shared/harthmere/harthmere_world_object_inspectable_v1";
 import { ok } from "assert";
 import { isEqual } from "lodash";
 import { Vector3 } from "three";
@@ -194,6 +205,48 @@ export function harthmereNpcTalkCandidateScoreForTest(input: {
   // Prefer closer NPCs, but keep a gentle bias toward what the player is
   // already looking at so crowded Grove conversations don't jump around.
   return horizontalDistance - viewDot * 0.9;
+}
+
+// HARTHMERE_WORLD_OBJECT_INSPECT_CANDIDATES_V1
+// The interactable Grove props (crates, boards, posts, doors, ...) render as
+// procedural beacons rather than ECS entities, so the cursor raycast never
+// produces an inspectable overlay for them. We resolve them by proximity from
+// the same static landmark tables the renderer draws, filtered to the labels
+// the object-interaction semantics recognize as non-living props.
+let harthmereWorldObjectCandidateCacheV1:
+  | HarthmereWorldObjectCandidateV1[]
+  | undefined;
+
+function harthmereWorldObjectInspectCandidatesV1(): HarthmereWorldObjectCandidateV1[] {
+  if (harthmereWorldObjectCandidateCacheV1) {
+    return harthmereWorldObjectCandidateCacheV1;
+  }
+  const seen = new Set<string>();
+  const candidates: HarthmereWorldObjectCandidateV1[] = [];
+  const landmarks: SnapshotGroveLandmarkV75[] = [
+    ...SNAPSHOT_GROVE_LANDMARKS_V75,
+    ...GROVE_ECONOMY_STARTER_LANDMARKS_V1,
+  ];
+  for (const landmark of landmarks) {
+    if (landmark.kind === "npc" || seen.has(landmark.id)) {
+      continue;
+    }
+    if (!isHarthmereInspectableWorldObjectV1({ label: landmark.label })) {
+      continue;
+    }
+    seen.add(landmark.id);
+    candidates.push({
+      id: landmark.id,
+      label: landmark.label,
+      position: [
+        landmark.position[0],
+        landmark.position[1],
+        landmark.position[2],
+      ],
+    });
+  }
+  harthmereWorldObjectCandidateCacheV1 = candidates;
+  return candidates;
 }
 
 const HARTHMERE_ECS_NPC_COMBAT_REGISTRY_V188 =
@@ -511,7 +564,8 @@ export class OverlayScript implements Script {
 
   applyNavigationAidOverlays(
     overlayMap: OverlayMap,
-    projectionMap: ProjectionMap
+    projectionMap: ProjectionMap,
+    onlyAidId?: number
   ) {
     if (
       this.resources
@@ -523,6 +577,11 @@ export class OverlayScript implements Script {
     const camera = this.resources.get("/scene/camera");
     const localPlayer = this.resources.get("/scene/local_player");
     for (const e of this.mapManager.localNavigationAids.values()) {
+      // When restricted to a single aid (e.g. the user's active map pin shown
+      // on-screen even while the big-nav-aids tweak is off), skip the rest.
+      if (onlyAidId !== undefined && e.id !== onlyAidId) {
+        continue;
+      }
       const overlayPosition = accurateNavigationAidPosition(
         this.userId,
         this.resources,
@@ -838,7 +897,7 @@ export class OverlayScript implements Script {
           ? becomeTheNPC
           : undefined;
       const npcPos = motionOverrides?.position ?? npc.smoothedPosition();
-      const npcSize = entity.size.v;
+      const npcSize = entity.size?.v ?? getOverlayEntitySizeCompatV68(entity);
       const npcName = entity.label?.text ?? npcType.displayName;
       const attackable = Boolean(
         getNpcBehavior(npcType).damageable?.attackable &&
@@ -1125,12 +1184,21 @@ export class OverlayScript implements Script {
           placerId: entity.placed_by.id,
         };
       }
-      return this.getNearbyNpcTalkInspectableOverlayV140();
+      return (
+        this.getNearbyNpcTalkInspectableOverlayV140() ??
+        this.getNearbyHarthmereObjectInspectableOverlayV1()
+      );
     }
 
     const nearbyNpcTalkOverlay = this.getNearbyNpcTalkInspectableOverlayV140();
     if (nearbyNpcTalkOverlay) {
       return nearbyNpcTalkOverlay;
+    }
+
+    const nearbyHarthmereObjectOverlay =
+      this.getNearbyHarthmereObjectInspectableOverlayV1();
+    if (nearbyHarthmereObjectOverlay) {
+      return nearbyHarthmereObjectOverlay;
     }
 
     if (hitExistingTerrain(hit)) {
@@ -1164,6 +1232,44 @@ export class OverlayScript implements Script {
         }
       }
     }
+  }
+
+  // HARTHMERE_WORLD_OBJECT_INSPECT_OVERLAY_V1
+  // Produces the "F" inspect/interact prompt for the Grove's procedural world
+  // props (crates, boards, posts, doors, ...). These are not ECS entities, so
+  // we select the nearest faced prop from the static landmark tables and carry
+  // its label/description inline. CursorInspectionComponent then resolves the
+  // same authored interaction (open container, read, craft, repair, ...) it
+  // already uses for placeables and NPCs.
+  private getNearbyHarthmereObjectInspectableOverlayV1():
+    | InspectableOverlay
+    | undefined {
+    const localPlayer = this.resources.get("/scene/local_player");
+    const selected = selectNearestHarthmereWorldObjectInspectableV1({
+      playerPosition: [
+        localPlayer.player.position[0],
+        localPlayer.player.position[1],
+        localPlayer.player.position[2],
+      ],
+      facingView: viewDir([0, localPlayer.player.orientation[1]]) as [
+        number,
+        number,
+        number
+      ],
+      candidates: harthmereWorldObjectInspectCandidatesV1(),
+    });
+    if (!selected) {
+      return undefined;
+    }
+    return {
+      kind: "harthmere_object",
+      key: `inspect:harthmere_object:${selected.id}`,
+      entityId: INVALID_BIOMES_ID,
+      objectId: selected.id,
+      label: selected.label,
+      entityDescription: selected.entityDescription,
+      pos: [selected.position[0], selected.position[1], selected.position[2]],
+    };
   }
 
   private getNearbyNpcTalkInspectableOverlayV140(): InspectableOverlay | undefined {
@@ -1389,6 +1495,15 @@ export class OverlayScript implements Script {
     if (selection?.kind !== "camera") {
       if (tweaks.bigNavigationAids) {
         this.applyNavigationAidOverlays(overlayMap, projectionMap);
+      } else {
+        // Even with big navigation aids off, always show the on-screen
+        // directional indicator for the destination the user explicitly pinned,
+        // so "set marker active -> see the way there" works on-screen.
+        this.applyNavigationAidOverlays(
+          overlayMap,
+          projectionMap,
+          BIOMES_UI_ACTIVE_MAP_PIN_NAV_AID_ID_V147
+        );
       }
       // Show tutorial overlay over inspectable overlays
       this.applyBlueprintOverlay(overlayMap);

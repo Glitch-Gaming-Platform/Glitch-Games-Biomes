@@ -1,5 +1,6 @@
 import type { MapTrackableQuest } from "../tabs/MapQuestsTab";
 import { fetchHarthmereLiveWithTimeoutV1 } from "@/client/components/harthmere_live_fetch";
+import { harthmereJobsBoardQuestMarkerPositionForIdV1 } from "@/shared/harthmere/jobs_board_quest_marker_positions_v1";
 
 export const HARTHMERE_QUEST_INVITES_UPDATED_EVENT_V1 =
   "harthmere:quest-invites-updated-v1";
@@ -308,10 +309,33 @@ export function createHarthmereQuestInviteAdapterV1(input: {
   };
 }
 
+// Resolve the world position for a shared quest's map landmark. Prefer the
+// server-supplied markerWorldPosition; otherwise fall back to looking up the
+// quest's firstMarkerId in the known jobs-board quest marker table, so an
+// accepted shared quest still gets an on-map landmark instead of vanishing.
+export function resolveSharedQuestMarkerPositionV1(quest: {
+  markerWorldPosition?: [number, number, number];
+  firstMarkerId?: string;
+}): [number, number, number] | undefined {
+  if (quest.markerWorldPosition) {
+    return quest.markerWorldPosition;
+  }
+  const resolved = harthmereJobsBoardQuestMarkerPositionForIdV1(
+    quest.firstMarkerId
+  );
+  return resolved
+    ? ([
+        resolved.position[0],
+        resolved.position[1],
+        resolved.position[2],
+      ] as [number, number, number])
+    : undefined;
+}
+
 export function sharedQuestAcceptedLandmarksForBiomesUIV1(raw: unknown) {
   const state = normalizeHarthmereQuestStateV1(raw);
   return state.sharedQuests.flatMap((quest) => {
-    const markerPosition = quest.markerWorldPosition;
+    const markerPosition = resolveSharedQuestMarkerPositionV1(quest);
     if (!markerPosition) return [];
     return [
       {

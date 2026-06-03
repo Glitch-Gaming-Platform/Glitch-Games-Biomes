@@ -1644,7 +1644,7 @@ export function getHarthmereBusinessInteractionPromptV1(
     helper:
       mode === "owner"
         ? "Manage clients, orders, money, staff, licenses, and todos"
-        : "Play Getting a Job and Getting Paid, buy goods, and request services",
+        : "Work a shift, buy goods, or request a service",
   };
 }
 

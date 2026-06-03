@@ -50,6 +50,7 @@ import type { Vec3 } from "@/shared/math/types";
 import { loadBlockWrapper, saveBlockWrapper } from "@/shared/wasm/biomes";
 import { z } from "zod";
 import { readHarthmerePlayerAndSharedStateStringsV1 } from "@/server/harthmere/live_mode_state_read_helpers";
+import { resolveHarthmereLiveModeActorIdV1 } from "@/server/harthmere/live_mode_actor_resolution_v1";
 
 const HARTHMERE_LIVE_MODE_SERVER_ROUTE_V1 =
   "HARTHMERE_LIVE_MODE_SERVER_ROUTE_V1" as const;
@@ -1665,7 +1666,6 @@ export default biomesApiHandler(
       auth,
       unsafeRequest,
     });
-    const actorId = actorIdentity.actorId;
     if (
       actorIdentity.userId === undefined &&
       actorIdentity.installId === undefined
@@ -1673,7 +1673,7 @@ export default biomesApiHandler(
       return {
         ok: false,
         version: HARTHMERE_LIVE_MODE_SERVER_ROUTE_V1,
-        actorId,
+        actorId: actorIdentity.actorId,
         duplicate: false,
         replayed: false,
         persisted: false,
@@ -1687,6 +1687,14 @@ export default biomesApiHandler(
         uiEvents: [],
       };
     }
+    // Heal the install/user split on writes too: converge an install-only write
+    // onto the linked user key and record the install->user link on the first
+    // authed write, so actions never strand progress under a second key.
+    const actorId = await resolveHarthmereLiveModeActorIdV1(
+      await liveModeRedisV1(),
+      { auth, unsafeRequest },
+      actorIdentity.actorId
+    );
     const serverActorPosition =
       actorIdentity.userId !== undefined
         ? await readServerActorPositionForLiveModeV145(

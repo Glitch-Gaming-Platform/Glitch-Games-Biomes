@@ -154,7 +154,7 @@ export class NpcTicker {
     ++this.tickCount;
 
     this.updateManagedNpcs();
-    const updates = this.generateUpdates();
+    const updates = await this.generateUpdates();
 
     this.lastTickDuration = getNowMs() - this.lastTickTime;
     return updates;

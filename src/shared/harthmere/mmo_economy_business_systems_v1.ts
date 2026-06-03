@@ -722,10 +722,16 @@ function transferBusinessToPersonalBank(state: BusinessSystemsEconomyState, requ
   if (!account) return reject(warnings, touched, "economy_rejected:business_bank_account_required");
   const amount = int(request.amountGold, 0);
   if (amount <= 0) return reject(warnings, touched, "economy_rejected:invalid_bank_transfer_amount");
-  if (account.balanceGold < amount || b.balanceGold < amount) return reject(warnings, touched, "economy_rejected:business_bank_funds_insufficient");
+  // Withdraw against the business's actual operating funds (`b.balanceGold`),
+  // which is where ALL revenue accrues (customer sales, service rewards, the
+  // town tick) and expenses are charged. The `account.balanceGold` sub-ledger is
+  // only ever credited by personal->business DEPOSITS, so gating withdrawal on
+  // it trapped every gold a business actually earned. The account is kept as a
+  // clamped mirror for display/audit continuity.
+  if (b.balanceGold < amount) return reject(warnings, touched, "economy_rejected:business_bank_funds_insufficient");
   const before = account.balanceGold;
-  account.balanceGold -= amount;
   b.balanceGold -= amount;
+  account.balanceGold = Math.max(0, account.balanceGold - amount);
   goldDelta.value += amount;
   audit(systems, account, request, "business_to_personal_bank", { businessId: b.businessId, amountGold: -amount, before, after: account.balanceGold });
   touched.add("economy_business_bank_account");
@@ -1523,7 +1529,7 @@ function startBusinessCustomerSession(state: BusinessSystemsEconomyState, reques
   for (const session of expired) shared.add(systemsSharedKey("customer_session", session.sessionId));
 }
 
-function serveBusinessCustomer(state: BusinessSystemsEconomyState, request: HarthmereEconomyMutationRequestV1, context: BusinessSystemsContext, warnings: string[], touched: Set<string>, shared: Set<string>) {
+function serveBusinessCustomer(state: BusinessSystemsEconomyState, request: HarthmereEconomyMutationRequestV1, context: BusinessSystemsContext, goldDelta: { value: number }, itemDeltas: Record<string, number>, warnings: string[], touched: Set<string>, shared: Set<string>) {
   const b = business(state, request.businessId);
   if (!b) return reject(warnings, touched, "economy_rejected:business_not_found");
   if (!requireOpenBusinessStatus(b, warnings, touched)) return;
@@ -1634,6 +1640,11 @@ function serveBusinessCustomer(state: BusinessSystemsEconomyState, request: Hart
   const dailyBonus = stats.lastDailyServedDay === today ? 0 : session.dailyBonusGold;
   const rewardGold = Math.max(ticket.rewardGold, offer.rewardGold) + dailyBonus;
   adjustBusinessFunds(b, rewardGold);
+  // HARTHMERE_BUSINESS_PLAYER_PAYOUT_V1
+  // "Getting a Job and Getting Paid": the working player is personally paid for
+  // the shift, so the reward shows up in their HUD wallet (inventoryGoldDelta)
+  // and inventory (collectibles), not only on the business books.
+  goldDelta.value += rewardGold;
   addNeed(state, b, offer.serviceNeed, ticket.needDelta, request.nowMs);
   ticket.status = "served";
   session.servedTicketIds.push(ticket.ticketId);
@@ -1658,6 +1669,8 @@ function serveBusinessCustomer(state: BusinessSystemsEconomyState, request: Hart
     stats,
   });
   applyHarthmereBusinessCozyServiceRewardV1(stats, ticket.npcId, cozyReward);
+  // Hand collectible drops to the player inventory so earned items appear in the HUD.
+  if (cozyReward.collectibleId) recordDelta(itemDeltas, cozyReward.collectibleId, 1);
   b.customerSatisfaction = clamp(b.customerSatisfaction + offer.satisfactionDelta, 0, 100, b.customerSatisfaction);
   b.reputation += ticket.reputationDelta;
   b.flags.customer_service_daily_bonus_claimed = dailyBonus > 0 || b.flags.customer_service_daily_bonus_claimed === true;
@@ -2799,7 +2812,7 @@ export function reduceHarthmereEconomyBusinessSpecificMutationV1(
     case "clean_hospitality_rooms": cleanHospitalityRooms(next, request, typedContext, warnings, touched, shared); break;
     case "create_shelter_contract": createShelterContract(next, request, typedContext, warnings, touched, shared); break;
     case "start_business_customer_session": startBusinessCustomerSession(next, request, typedContext, warnings, touched, shared); break;
-    case "serve_business_customer": serveBusinessCustomer(next, request, typedContext, warnings, touched, shared); break;
+    case "serve_business_customer": serveBusinessCustomer(next, request, typedContext, goldDelta, itemDeltas, warnings, touched, shared); break;
     case "open_business_branch": openBusinessBranch(next, request, typedContext, warnings, touched, shared); break;
     case "assign_business_automation": assignBusinessAutomation(next, request, typedContext, warnings, touched, shared); break;
     case "assign_business_branch_manager": assignBusinessBranchManager(next, request, typedContext, warnings, touched, shared); break;

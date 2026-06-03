@@ -10,6 +10,7 @@ import {
 } from "@/shared/harthmere/live_mode_backend_v1";
 import { z } from "zod";
 import { readHarthmerePlayerAndSharedStateStringsV1 } from "@/server/harthmere/live_mode_state_read_helpers";
+import { resolveHarthmereLiveModeActorIdV1 } from "@/server/harthmere/live_mode_actor_resolution_v1";
 
 const zJsonRecord = z.record(z.unknown());
 
@@ -27,32 +28,6 @@ function liveModeBuildingStateRedisV1() {
     connectToRedis("firehose"));
 }
 
-function firstBuildingReadStringV1(value: unknown) {
-  const candidate = Array.isArray(value) ? value[0] : value;
-  return typeof candidate === "string" && candidate.trim()
-    ? candidate.trim()
-    : undefined;
-}
-
-function buildingReadActorIdV1(input: {
-  auth?: { userId?: unknown };
-  unsafeRequest: {
-    query?: Record<string, unknown>;
-    headers?: Record<string, unknown>;
-  };
-}) {
-  if (input.auth?.userId !== undefined) {
-    return String(input.auth.userId);
-  }
-  const installId =
-    firstBuildingReadStringV1(input.unsafeRequest.query?.install_id) ??
-    firstBuildingReadStringV1(input.unsafeRequest.query?.installId) ??
-    firstBuildingReadStringV1(
-      input.unsafeRequest.headers?.["x-glitch-install-id"]
-    );
-  return installId ? `install:${installId}` : "anonymous:building-reader";
-}
-
 export default biomesApiHandler(
   {
     auth: "optional",
@@ -60,8 +35,12 @@ export default biomesApiHandler(
     response: zHarthmereLiveModeBuildingStateResponse,
   },
   async ({ auth, unsafeRequest }) => {
-    const actorId = buildingReadActorIdV1({ auth, unsafeRequest });
     const redis = await liveModeBuildingStateRedisV1();
+    const actorId = await resolveHarthmereLiveModeActorIdV1(
+      redis,
+      { auth, unsafeRequest },
+      "anonymous:building-reader"
+    );
     const nowMs = Date.now();
     const { rawState, rawSharedState } =
       await readHarthmerePlayerAndSharedStateStringsV1(

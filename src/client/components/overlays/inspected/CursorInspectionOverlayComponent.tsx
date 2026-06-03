@@ -74,25 +74,43 @@ export const CursorInspectionComponent: React.FunctionComponent<
   const item = relevantBiscuitForEntityId(resources, overlay?.entityId);
   const inspectText =
     item && item.customInspectText ? item.customInspectText : "Talk";
+  // HARTHMERE_WORLD_OBJECT_INSPECT_OVERLAY_V1: procedural world props are not ECS
+  // entities, so they carry their label/description inline on the overlay rather
+  // than via `/ecs/c/label`. Prefer the inline values when present.
+  const harthmereObjectLabel =
+    overlay?.kind === "harthmere_object" ? overlay.label : label?.text;
+  const harthmereObjectDescription =
+    overlay?.kind === "harthmere_object"
+      ? overlay.entityDescription
+      : entityDescription?.text;
+  const harthmereObjectInteractionEntityId =
+    overlay?.kind === "harthmere_object" ? INVALID_BIOMES_ID : overlay?.entityId;
   const isHarthmereObjectContainer =
     overlay?.kind !== "placeable" &&
     isHarthmereContainerObjectLabelV1({
-      label: label?.text,
-      entityDescription: entityDescription?.text,
+      label: harthmereObjectLabel,
+      entityDescription: harthmereObjectDescription,
     });
   const isHarthmereWorldObject =
     overlay?.kind !== "placeable" &&
     isHarthmereNonLivingObjectLabelV1({
-      label: label?.text,
-      entityDescription: entityDescription?.text,
+      label: harthmereObjectLabel,
+      entityDescription: harthmereObjectDescription,
     });
   const harthmereObjectInteraction =
     overlay?.kind !== "placeable"
       ? harthmereObjectInteractionForLabelV1({
-          label: label?.text,
-          entityDescription: entityDescription?.text,
+          label: harthmereObjectLabel,
+          entityDescription: harthmereObjectDescription,
         })
       : undefined;
+  // Procedural world props use INVALID_BIOMES_ID (0, falsy), so a plain
+  // `overlay?.entityId` truthiness gate would hide their prompt. Treat the
+  // harthmere_object overlay as an actionable target explicitly.
+  const harthmereObjectActionable = Boolean(
+    overlay &&
+      (overlay.kind === "harthmere_object" || overlay.entityId)
+  );
 
   const trueShortcuts = useMemo(() => {
     const ret = [...(shortcuts ?? [])];
@@ -116,13 +134,13 @@ export const CursorInspectionComponent: React.FunctionComponent<
       });
     }
 
-    if (isHarthmereObjectContainer && overlay?.entityId) {
+    if (isHarthmereObjectContainer && harthmereObjectActionable) {
       ret.unshift({
         title: harthmereObjectInteraction?.title ?? "Open Container",
         onKeyDown: () => {
           openHarthmereObjectContainerV1({
-            entityId: overlay.entityId,
-            label: label?.text,
+            entityId: harthmereObjectInteractionEntityId ?? INVALID_BIOMES_ID,
+            label: harthmereObjectLabel,
             resources,
           });
         },
@@ -132,14 +150,14 @@ export const CursorInspectionComponent: React.FunctionComponent<
     if (
       isHarthmereWorldObject &&
       !isHarthmereObjectContainer &&
-      overlay?.entityId
+      harthmereObjectActionable
     ) {
       ret.unshift({
         title: harthmereObjectInteraction?.title ?? "Inspect",
         onKeyDown: () => {
           performHarthmereObjectInteractionV1({
-            entityId: overlay.entityId,
-            label: label?.text,
+            entityId: harthmereObjectInteractionEntityId ?? INVALID_BIOMES_ID,
+            label: harthmereObjectLabel,
             interaction: harthmereObjectInteraction ?? {
               kind: "inspect",
               title: "Inspect",
@@ -171,6 +189,9 @@ export const CursorInspectionComponent: React.FunctionComponent<
   }, [
     canTalk,
     harthmereObjectInteraction,
+    harthmereObjectActionable,
+    harthmereObjectInteractionEntityId,
+    harthmereObjectLabel,
     inspectText,
     isHarthmereObjectContainer,
     isHarthmereWorldObject,

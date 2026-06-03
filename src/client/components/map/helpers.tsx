@@ -126,6 +126,11 @@ export function getNavigationAidAsset(
     case "robot_transmission":
       src = robotTransmissionMark.src;
       break;
+    case "map_pin":
+      // A user-set destination pin. Reuse the accepted-quest marker so it reads
+      // clearly as "go here" without implying a specific quest category.
+      src = mainQuestMarkAccepted.src;
+      break;
     case "unaccepted_quest":
     case "quest":
       if (quest) {

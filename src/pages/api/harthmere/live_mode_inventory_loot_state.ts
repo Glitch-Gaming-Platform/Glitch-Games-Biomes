@@ -1,6 +1,7 @@
 import { connectToRedis } from "@/server/shared/redis/connection";
 import { biomesApiHandler } from "@/server/web/util/api_middleware";
 import { readHarthmereRedisStringsV1 } from "@/server/harthmere/live_mode_state_read_helpers";
+import { resolveHarthmereLiveModeActorIdV1 } from "@/server/harthmere/live_mode_actor_resolution_v1";
 import {
   createHarthmereInventoryLootClientSnapshotFromBackendV1,
   harthmereLiveModePlayerStateKeyV1,
@@ -53,13 +54,20 @@ export async function readHarthmereLiveModeInventoryLootStateForActorV1(input: {
 
 export default biomesApiHandler(
   {
-    auth: "required",
+    // Optional + install fallback to match its siblings (player_status, quest,
+    // building). Previously auth:"required", which 401'd during the pre-cookie
+    // window while siblings served install-keyed state -> inconsistent loads.
+    auth: "optional",
     method: "GET",
     response: zHarthmereLiveModeInventoryLootStateResponse,
   },
-  async ({ auth: { userId } }) => {
-    const actorId = String(userId);
+  async ({ auth, unsafeRequest }) => {
     const redis = await liveModeInventoryLootStateRedisV1();
+    const actorId = await resolveHarthmereLiveModeActorIdV1(
+      redis,
+      { auth, unsafeRequest },
+      "anonymous:inventory-loot-reader"
+    );
     return {
       ok: true,
       inventoryLootState:

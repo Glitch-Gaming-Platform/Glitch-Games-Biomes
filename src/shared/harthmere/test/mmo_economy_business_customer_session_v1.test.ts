@@ -253,6 +253,55 @@ describe("mmo economy business customer sessions", function () {
     assert.equal(business.flags.customer_service_shift_completed, true);
   });
 
+  it("pays the working player personally (HUD wallet) when a customer is served", () => {
+    const setup = createOpenBusiness();
+    setup.state.businesses[setup.businessId].inventory.worker_meal = { itemId: "worker_meal", count: 2 };
+    let result = mutate(setup.state, "start_business_customer_session", { businessId: setup.businessId, count: 1 });
+    // Starting a shift must not pay the player anything yet.
+    assert.equal(result.inventoryGoldDelta, 0);
+    const session = sessions(result.economy)[0];
+    result = mutate(result.economy, "serve_business_customer", {
+      businessId: setup.businessId,
+      sessionId: session.sessionId,
+      ticketId: session.currentTicketId,
+      offerId: "serve_worker_meal",
+      minigameAction: createHarthmereBusinessMiniGameDecisionForOfferV1(
+        "food_service_restaurant",
+        "serve_worker_meal",
+      ),
+    });
+    assert.deepEqual(result.warnings, []);
+    // The player is paid into their personal wallet so it shows up in the HUD.
+    assert.ok(
+      result.inventoryGoldDelta > 0,
+      `expected a positive player payout, got ${result.inventoryGoldDelta}`,
+    );
+    // The shift earnings tally and the player payout should agree.
+    const served = sessions(result.economy)[0];
+    assert.equal(result.inventoryGoldDelta, served.earnedGold);
+  });
+
+  it("does not pay the player when the mini-game decision is wrong", () => {
+    const setup = createOpenBusiness();
+    setup.state.businesses[setup.businessId].inventory.worker_meal = { itemId: "worker_meal", count: 2 };
+    let result = mutate(setup.state, "start_business_customer_session", { businessId: setup.businessId, count: 1 });
+    const session = sessions(result.economy)[0];
+    result = mutate(result.economy, "serve_business_customer", {
+      businessId: setup.businessId,
+      sessionId: session.sessionId,
+      ticketId: session.currentTicketId,
+      offerId: "serve_worker_meal",
+      minigameAction: {
+        ...createHarthmereBusinessMiniGameDecisionForOfferV1(
+          "food_service_restaurant",
+          "serve_worker_meal",
+        ),
+        mealType: "road_ration",
+      },
+    });
+    assert.equal(result.inventoryGoldDelta, 0);
+  });
+
   it("rejects missing stock without losing the waiting customer", () => {
     const setup = createOpenBusiness();
     let result = mutate(setup.state, "start_business_customer_session", { businessId: setup.businessId, count: 1 });

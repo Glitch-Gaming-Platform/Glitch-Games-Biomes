@@ -10,6 +10,7 @@ import {
 } from "@/shared/harthmere/live_mode_backend_v1";
 import { z } from "zod";
 import { readHarthmerePlayerAndSharedStateStringsV1 } from "@/server/harthmere/live_mode_state_read_helpers";
+import { resolveHarthmereLiveModeActorIdV1 } from "@/server/harthmere/live_mode_actor_resolution_v1";
 
 const zJsonRecord = z.record(z.unknown());
 
@@ -25,32 +26,6 @@ const globalForHarthmereLiveModeQuestState = globalThis as typeof globalThis & {
 function liveModeQuestStateRedisV1() {
   return (globalForHarthmereLiveModeQuestState.__harthmereLiveModeQuestStateRedisV1 ??=
     connectToRedis("firehose"));
-}
-
-function firstQuestStateReadStringV1(value: unknown) {
-  const candidate = Array.isArray(value) ? value[0] : value;
-  return typeof candidate === "string" && candidate.trim()
-    ? candidate.trim()
-    : undefined;
-}
-
-function questStateReadActorIdV1(input: {
-  auth?: { userId?: unknown };
-  unsafeRequest: {
-    query?: Record<string, unknown>;
-    headers?: Record<string, unknown>;
-  };
-}) {
-  if (input.auth?.userId !== undefined) {
-    return String(input.auth.userId);
-  }
-  const installId =
-    firstQuestStateReadStringV1(input.unsafeRequest.query?.install_id) ??
-    firstQuestStateReadStringV1(input.unsafeRequest.query?.installId) ??
-    firstQuestStateReadStringV1(
-      input.unsafeRequest.headers?.["x-glitch-install-id"]
-    );
-  return installId ? `install:${installId}` : "anonymous:quest-state-reader";
 }
 
 export async function readHarthmereLiveModeQuestStateForActorV1(input: {
@@ -92,8 +67,12 @@ export default biomesApiHandler(
     response: zHarthmereLiveModeQuestStateResponse,
   },
   async ({ auth, unsafeRequest }) => {
-    const actorId = questStateReadActorIdV1({ auth, unsafeRequest });
     const redis = await liveModeQuestStateRedisV1();
+    const actorId = await resolveHarthmereLiveModeActorIdV1(
+      redis,
+      { auth, unsafeRequest },
+      "anonymous:quest-state-reader"
+    );
     const nowMs = Date.now();
     return {
       ok: true,

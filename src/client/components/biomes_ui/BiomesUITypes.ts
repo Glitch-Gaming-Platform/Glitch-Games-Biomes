@@ -83,10 +83,10 @@ export const TAB_DESCRIPTORS: Record<TabKey, TabDescriptor> = {
   },
   land: {
     key: "land",
-    label: "Building System",
+    label: "Home & Business",
     code: "BLD",
     shortcut: "L",
-    subtitle: "Plots, blueprints, building, and home care",
+    subtitle: "Buy land, build a home or shop, and run your business",
   },
   loot: {
     key: "loot",

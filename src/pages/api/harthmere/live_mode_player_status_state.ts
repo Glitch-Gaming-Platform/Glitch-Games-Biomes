@@ -1,6 +1,7 @@
 import { connectToRedis } from "@/server/shared/redis/connection";
 import { biomesApiHandler } from "@/server/web/util/api_middleware";
 import { readHarthmereRedisStringsV1 } from "@/server/harthmere/live_mode_state_read_helpers";
+import { resolveHarthmereLiveModeActorIdV1 } from "@/server/harthmere/live_mode_actor_resolution_v1";
 import {
   createHarthmereLiveModePlayerStatusClientSnapshotV1,
   harthmereLiveModePlayerStateKeyV1,
@@ -35,25 +36,6 @@ function firstPlayerStatusReadStringV146(value: unknown) {
   return typeof candidate === "string" && candidate.trim()
     ? candidate.trim()
     : undefined;
-}
-
-function playerStatusReadActorIdV146(input: {
-  auth?: { userId?: unknown };
-  unsafeRequest: {
-    query?: Record<string, unknown>;
-    headers?: Record<string, unknown>;
-  };
-}) {
-  if (input.auth?.userId !== undefined) {
-    return String(input.auth.userId);
-  }
-  const installId =
-    firstPlayerStatusReadStringV146(input.unsafeRequest.query?.install_id) ??
-    firstPlayerStatusReadStringV146(input.unsafeRequest.query?.installId) ??
-    firstPlayerStatusReadStringV146(
-      input.unsafeRequest.headers?.["x-glitch-install-id"]
-    );
-  return installId ? `install:${installId}` : "anonymous:player-status-reader";
 }
 
 function playerStatusStaminaWriteThrottleMsV1() {
@@ -266,8 +248,12 @@ export default biomesApiHandler(
     response: zHarthmereLiveModePlayerStatusStateResponse,
   },
   async ({ auth, unsafeRequest }) => {
-    const actorId = playerStatusReadActorIdV146({ auth, unsafeRequest });
     const redis = await liveModePlayerStatusStateRedisV1();
+    const actorId = await resolveHarthmereLiveModeActorIdV1(
+      redis,
+      { auth, unsafeRequest },
+      "anonymous:player-status-reader"
+    );
     return {
       ok: true,
       playerStatusState: await readHarthmereLiveModePlayerStatusStateForActorV1(

@@ -100,7 +100,7 @@ const CUSTOMER_TABS: CustomerTab[] = [
 ];
 const TAB_LABELS: Record<PanelTab, string> = {
   dashboard: "Dashboard",
-  customers: "Getting a Job and Getting Paid",
+  customers: "Customer Counter",
   orders: "Orders",
   shopfront: "Shopfront",
   finance: "Finance",
@@ -696,7 +696,7 @@ const BikkieGraphicsStrip: React.FunctionComponent<{
           })}
         </div>
       ) : (
-        <p style={mutedTextStyle}>No Bikkie graphics are assigned.</p>
+        <p style={mutedTextStyle}>No service fixtures set up yet.</p>
       )}
     </section>
   );
@@ -968,7 +968,7 @@ const CustomerMiniGamePane: React.FunctionComponent<{
         <div style={heroGlowStyle} aria-hidden="true" />
         <div style={heroTopRowStyle}>
           <div style={{ minWidth: 0 }}>
-            <span style={heroEyebrowStyle}>Getting a Job and Getting Paid</span>
+            <span style={heroEyebrowStyle}>Customer Counter</span>
             <strong style={miniGameTitleStyle}>{mechanic.gameTitle}</strong>
           </div>
           <span style={session ? miniGameBadgeLiveStyle : miniGameBadgeStyle}>
@@ -1109,7 +1109,7 @@ const CustomerMiniGamePane: React.FunctionComponent<{
             ) : null}
           </div>
           {ticket ? (
-            <>
+            <div key={ticket.ticketId} style={customerSwapStyle}>
               <div style={customerStageStyle}>
                 <span
                   style={customerAvatarStateStyle(patienceRatio)}
@@ -1193,7 +1193,7 @@ const CustomerMiniGamePane: React.FunctionComponent<{
                   </button>
                 )}
               />
-            </>
+            </div>
           ) : (
             <div style={emptyStateStyle}>
               <span style={emptyStateGlyphStyle} aria-hidden="true">
@@ -2992,6 +2992,10 @@ const boardRowTitleStyle: React.CSSProperties = {
 const customerCardStyle: React.CSSProperties = {
   ...cardStyle,
   gridColumn: "span 1",
+};
+const customerSwapStyle: React.CSSProperties = {
+  display: "block",
+  animation: "harthmere-business-rise-v1 260ms ease-out",
 };
 const cardHeaderRowStyle: React.CSSProperties = {
   display: "flex",

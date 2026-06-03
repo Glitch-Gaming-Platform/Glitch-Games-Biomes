@@ -223,6 +223,8 @@ import {
   runBuildingSystemBusinessRevenueCycleV1,
   buildingSystemBusinessTypeByIdV1,
   createBuildingSystemMaterializationPlanV1,
+  buildingSystemPlotBoundsByIdV1,
+  isPositionInsideBuildingSystemPlotBoundsV1,
   createBuildingSystemPlacementContextV1,
   createBuildingSystemPropertyRecordV1,
   createBuildingSystemMuckClaimMaterializationPlanV1,
@@ -3243,8 +3245,35 @@ function liveModePositionObjectToTupleV1(
     : undefined;
 }
 
+// True when the position falls inside a player-owned property that has been
+// activated as a muck safe zone (terraformed / built). The safeZones map only
+// stores a string area label, so geometry is resolved from the plot catalog by
+// plot id. This is what finally makes "owning + securing a property protects
+// it from muck" real -- previously building.safeZones was written but never read.
+function isPositionInsideOwnedSafeZoneV1(
+  safeZones:
+    | HarthmereLiveModeBackendStateV1["building"]["safeZones"]
+    | undefined,
+  position: { x: number; z: number } | undefined
+): boolean {
+  if (!safeZones || !position) return false;
+  for (const [plotId, zone] of Object.entries(safeZones)) {
+    if (!zone?.safeFromMuck) continue;
+    if (
+      isPositionInsideBuildingSystemPlotBoundsV1(
+        buildingSystemPlotBoundsByIdV1(plotId),
+        position
+      )
+    ) {
+      return true;
+    }
+  }
+  return false;
+}
+
 function isHarthmereLiveModeTownSafePositionV1(
-  position: { x: number; y: number; z: number } | undefined
+  position: { x: number; y: number; z: number } | undefined,
+  safeZones?: HarthmereLiveModeBackendStateV1["building"]["safeZones"]
 ) {
   if (!position) return false;
   const x = Number(position.x);
@@ -3257,7 +3286,14 @@ function isHarthmereLiveModeTownSafePositionV1(
   // muck monsters and Hexes stay non-aggressive there and are relocated to a
   // nearby muck area, so businesses outside the town core box are still safe.
   const inBusinessSafeSite = isPointInsideHarthmereBusinessSafeSiteV1({ x, z });
-  return inGroveAndTownCore || inGroveRespawnPoint || inBusinessSafeSite;
+  // Additive: a player-owned, secured property is also a safe zone. OR-ing this
+  // in can only ADD safety, never remove an existing safe area.
+  return (
+    inGroveAndTownCore ||
+    inGroveRespawnPoint ||
+    inBusinessSafeSite ||
+    isPositionInsideOwnedSafeZoneV1(safeZones, { x, z })
+  );
 }
 
 function authoritativeCrimeItemValueGoldV1(
@@ -5668,7 +5704,8 @@ export function reduceHarthmereLiveModeBackendStateV1(
     const isSafe =
       safeZones.some((z) => envelope.zoneId.includes(z)) ||
       isHarthmereLiveModeTownSafePositionV1(
-        actorWorldPositionFromAuthorityV1(envelope)
+        actorWorldPositionFromAuthorityV1(envelope),
+        next.building.safeZones
       );
     return {
       zoneId: envelope.zoneId,
@@ -5834,7 +5871,10 @@ export function reduceHarthmereLiveModeBackendStateV1(
     }
     if (
       buildZoneSnapshot().isSafeZone ||
-      isHarthmereLiveModeTownSafePositionV1(input.playerPosition)
+      isHarthmereLiveModeTownSafePositionV1(
+        input.playerPosition,
+        next.building.safeZones
+      )
     ) {
       return "safe_zone";
     }
@@ -5907,7 +5947,12 @@ export function reduceHarthmereLiveModeBackendStateV1(
         playerDeathState: next.combat.deathState ?? "alive",
       };
     }
-    if (isHarthmereLiveModeTownSafePositionV1(playerPosition)) {
+    if (
+      isHarthmereLiveModeTownSafePositionV1(
+        playerPosition,
+        next.building.safeZones
+      )
+    ) {
       return {
         attackBlockedReason: "safe_zone",
         playerHpBefore: next.combat.hp,
@@ -9363,6 +9408,12 @@ export function reduceHarthmereLiveModeBackendStateV1(
             }
           }
         } else if (completed) {
+          // NOTE: generic (non jobs-board / non live-entity-helper) quest
+          // completion is currently client-asserted with no server-side
+          // objective verification, and one-shot completion (without a prior
+          // "active" record) is a supported flow. Proper anti-cheat here needs
+          // the v46 quest objectives wired into this reducer so the server can
+          // re-derive completion -- tracked as a feature-scale follow-up.
           next.quests.completed[questId] = nowMs;
           delete next.quests.active[questId];
         } else {
@@ -12273,7 +12324,10 @@ export function reduceHarthmereLiveModeBackendStateV1(
         const safeZone =
           isLiveEntityRobotProtectedPositionV1(next, npcPosition) ||
           isLiveEntityRobotProtectedPositionV1(next, actorPosition) ||
-          isHarthmereLiveModeTownSafePositionV1(actorWorldPosition);
+          isHarthmereLiveModeTownSafePositionV1(
+            actorWorldPosition,
+            next.building.safeZones
+          );
         const aggression = evaluateMuckMonsterAggressionV1({
           monsterId: npcId,
           monsterName:

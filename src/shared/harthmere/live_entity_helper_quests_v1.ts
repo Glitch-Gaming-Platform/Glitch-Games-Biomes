@@ -339,12 +339,14 @@ export const LIVE_ENTITY_HELPER_QUEST_DEFINITIONS_V1: Record<
     buttonName: "Help with Exotic Matter",
     offerText:
       "Their Biome stabilizer is flickering. They need raw Exotic Matter before the pocket edge collapses.",
-    activeText: "Bring 2 Raw Exotic Matter. Old Well residue can produce it.",
+    activeText:
+      "Bring 2 Raw Exotic Matter. The Old Well residue yields it — but only to an Arcane Extractor, and only once you've trained the extraction skill. Get the tool first, then work the residue.",
     readyText:
       "You have enough Raw Exotic Matter to stabilize their emergency cell.",
     completionText:
       "You hand over the raw Exotic Matter. They seal it in a containment sleeve and the Biome edge steadies.",
-    taskHint: "Turn in 2 Raw Exotic Matter.",
+    taskHint:
+      "Get an Arcane Extractor and extraction skill, then draw 2 Raw Exotic Matter from the Old Well residue.",
     requirements: {
       items: [
         {

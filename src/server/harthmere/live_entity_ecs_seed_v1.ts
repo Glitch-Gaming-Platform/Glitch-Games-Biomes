@@ -8,9 +8,9 @@ import {
 import type { BiomesId } from "@/shared/ids";
 import { LOCAL_DEV_HUMAN_NPC_TYPE_ID, isNpcTypeId } from "@/shared/npc/bikkie";
 import {
-  HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_SEEDS_V1,
   HARTHMERE_LIVE_ENTITY_PRODUCTION_SEED_IDS_V1,
   HARTHMERE_LIVE_ENTITY_ROBOT_SENTINEL_SEEDS_V1,
+  harthmereGroundedMuckMonsterSeedsInTerritoryV1,
   type HarthmereLiveEntityProductionSeedV1,
 } from "@/shared/harthmere/live_entity_production_seed_v1";
 
@@ -76,7 +76,7 @@ export function buildHarthmereLiveEntityProductionSeedChangesV1(input: {
     });
   }
 
-  for (const seed of HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_SEEDS_V1) {
+  for (const seed of harthmereGroundedMuckMonsterSeedsInTerritoryV1()) {
     const entity = {
       ...npcEntity(
         {

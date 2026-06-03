@@ -1233,6 +1233,47 @@ describe("mmo_economy_authority_v1 — business banks, permissions, and balance 
     assert.ok((result.economy as any).businessSystems.bankAccounts[accountId].audit.length >= 3);
   });
 
+  it("lets the owner withdraw EARNED revenue (not just prior deposits) to personal gold", () => {
+    // Regression for the trapped-revenue P0: revenue from sales accrues to
+    // business.balanceGold but the bank account stays at 0, so withdrawal used
+    // to reject with business_bank_funds_insufficient even though the business
+    // was flush.
+    const setup = createBusiness(defaultHarthmereProductionEconomyStateV1(), "food_service_restaurant", "Grove Hearth");
+    let state = licenseAndOpen(setup.state, setup.businessId, 1);
+    state.businesses[setup.businessId].inventory.worker_meal = { itemId: "worker_meal", count: 5 };
+    state.regions.harthmere_grove_region.itemDemand.worker_meal = 100;
+    state.regions.harthmere_grove_region.itemSupply.worker_meal = 10;
+    state = mutate(state, "create_business_bank_account", { businessId: setup.businessId }).economy;
+    const accountId = Object.keys((state as any).businessSystems.bankAccounts)[0];
+
+    // Earn revenue from a real customer sale (credits balanceGold, NOT the bank account).
+    const price = economyPriceForItemV1({
+      state,
+      regionId: "harthmere_grove_region",
+      townId: "harthmere_grove",
+      itemId: "worker_meal",
+      business: state.businesses[setup.businessId],
+    });
+    state = mutate(state, "record_customer_sale", {
+      actorId: "customer_1",
+      businessId: setup.businessId,
+      itemId: "worker_meal",
+      count: 2,
+      serviceNeed: "food",
+    }, ctx({ actorGold: price * 2 })).economy;
+
+    const earned = state.businesses[setup.businessId].balanceGold;
+    assert.ok(earned > 0, "business should have earned revenue");
+    assert.strictEqual((state as any).businessSystems.bankAccounts[accountId].balanceGold, 0, "bank account holds no deposits");
+
+    // The owner can now withdraw earned revenue straight to personal gold.
+    const withdraw = Math.min(earned, 50);
+    const result = mutate(state, "transfer_business_to_personal_bank", { businessId: setup.businessId, amountGold: withdraw }, ctx({ actorGold: 0 }));
+    assert.deepStrictEqual(result.warnings, []);
+    assert.strictEqual(result.inventoryGoldDelta, withdraw);
+    assert.strictEqual(result.economy.businesses[setup.businessId].balanceGold, earned - withdraw);
+  });
+
   it("supports guild and town business operation permissions without giving every actor full ownership", () => {
     let state = defaultHarthmereProductionEconomyStateV1();
     let result = mutate(state, "register_business", {

@@ -23,6 +23,29 @@ export interface HarthmereBusinessLiveContainerProps {
   initialState?: HarthmereBusinessEconomySnapshotV1;
 }
 
+// HARTHMERE_BUSINESS_NO_REMOUNT_ON_ACTION_V1
+// Pure model of how a single refresh() should drive the blocking `loading`
+// flag. Only the very first hydration shows the loading board; every
+// post-mutation refresh (after each serve / owner action) must be silent so the
+// adapter stays hydrated, the interaction prompt stays visible, and the open
+// panel is never torn down and rebuilt between clicks.
+export interface HarthmereBusinessRefreshLoadingPlanV1 {
+  showLoadingAtStart: boolean;
+  clearLoadingWhenSettled: boolean;
+  hasLoadedAfter: boolean;
+}
+
+export function planHarthmereBusinessRefreshLoadingV1(
+  hasLoadedBefore: boolean
+): HarthmereBusinessRefreshLoadingPlanV1 {
+  const isInitialLoad = !hasLoadedBefore;
+  return {
+    showLoadingAtStart: isInitialLoad,
+    clearLoadingWhenSettled: isInitialLoad,
+    hasLoadedAfter: true,
+  };
+}
+
 function isTypingInBusinessInputV1(target: EventTarget | null) {
   const element = target as HTMLElement | null;
   const tagName = element?.tagName?.toLowerCase();
@@ -49,19 +72,29 @@ export function HarthmereBusinessLiveContainer({
   const [loading, setLoading] = React.useState(!initialState);
   const [error, setError] = React.useState<string | undefined>();
   const anyUiOpen = usePointerLockUnlockWhileOpenActiveV1();
+  // HARTHMERE_BUSINESS_NO_REMOUNT_ON_ACTION_V1
+  // Only the very first hydration should flip the blocking `loading` flag.
+  // Post-mutation refreshes (fired after every serve / owner action) must be
+  // silent: toggling `loading` un-hydrates the adapter, which transiently hides
+  // the interaction prompt and makes the close-effect tear the open panel down
+  // and rebuild it between every click. A silent background refresh keeps the
+  // panel mounted and lets the in-panel transitions animate instead.
+  const hasLoadedRef = React.useRef<boolean>(Boolean(initialState));
 
   const refresh = React.useCallback(async () => {
-    setLoading(true);
+    const plan = planHarthmereBusinessRefreshLoadingV1(hasLoadedRef.current);
+    if (plan.showLoadingAtStart) setLoading(true);
     setError(undefined);
     try {
       const next = await fetchHarthmereBusinessEconomyStateV1();
+      hasLoadedRef.current = plan.hasLoadedAfter;
       setState(next);
       return next;
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
       return undefined;
     } finally {
-      setLoading(false);
+      if (plan.clearLoadingWhenSettled) setLoading(false);
     }
   }, []);
 

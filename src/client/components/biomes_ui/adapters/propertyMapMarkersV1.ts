@@ -99,6 +99,57 @@ export function harthmerePropertyMapLandmarksFromBuildingStateV1(
   });
 }
 
+// Discovery: surface plots the player does NOT yet own as "for sale" map
+// landmarks so a newcomer can actually FIND and preview a plot (its location,
+// district, and price) before buying. The owned-property function above stays
+// owned-only; this is additive and consumed by the world-map adapter.
+export interface HarthmerePurchasablePlotMapLandmarkV1 {
+  id: string;
+  plotId: string;
+  label: string;
+  kind: "property";
+  availability: "for_sale";
+  position: [number, number, number];
+  area: string;
+  visibleOnWorldMap: true;
+  source: typeof HARTHMERE_PROPERTY_MARKER_SOURCE_V1;
+  priceGold: number;
+  description: string;
+}
+
+export function harthmerePurchasablePlotMapLandmarksFromBuildingStateV1(
+  buildingState: HarthmerePropertyMapBuildingStateV1 | undefined
+): HarthmerePurchasablePlotMapLandmarkV1[] {
+  const ownedPlotIds = buildingState?.ownedPlotIds;
+  const owned = new Set<string>(
+    Array.isArray(ownedPlotIds)
+      ? ownedPlotIds.filter(
+          (plotId): plotId is string => typeof plotId === "string"
+        )
+      : []
+  );
+  for (const property of Object.values(
+    buildingState?.completedProperties ?? {}
+  )) {
+    if (typeof property?.plotId === "string") owned.add(property.plotId);
+  }
+  return BUILDING_SYSTEM_PLOTS_V1.filter(
+    (plot) => !owned.has(plot.plotId)
+  ).map((plot) => ({
+    id: `plot_for_sale:${plot.plotId}`,
+    plotId: plot.plotId,
+    label: `For sale: ${plot.displayName}`,
+    kind: "property" as const,
+    availability: "for_sale" as const,
+    position: mapMarkerPositionForPlot(buildingState ?? {}, plot),
+    area: plot.district,
+    visibleOnWorldMap: true as const,
+    source: HARTHMERE_PROPERTY_MARKER_SOURCE_V1,
+    priceGold: plot.claimPriceGold,
+    description: `${plot.district}. Available to claim for ${plot.claimPriceGold} gold. Talk to Mira the Grove Steward (Land tab) to buy and build here.`,
+  }));
+}
+
 export function harthmerePropertyMiniMapPinsForBuildingStateForTest(
   buildingState: HarthmerePropertyMapBuildingStateV1 | undefined
 ) {

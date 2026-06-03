@@ -31,28 +31,15 @@ function finiteWorldPosition(position: BiomesUIMapPinSourceMarkerV142["worldPosi
   return Number.isFinite(x) && Number.isFinite(y) && Number.isFinite(z) ? [x, y, z] : undefined;
 }
 
-export function biomesUIActiveMapPinNavigationAidKindForTest(markerKind: string): NavigationAidKind {
-  switch (String(markerKind ?? "").toLowerCase()) {
-    case "resource":
-    case "safe_zone":
-      return "farming";
-    case "danger":
-      return "hunting";
-    case "route":
-    case "rift":
-      return "fishing";
-    case "vendor":
-    case "store":
-    case "business":
-    case "bank":
-    case "property":
-    case "town":
-      return "camera";
-    case "objective":
-    case "quest":
-    default:
-      return "puzzle";
-  }
+export function biomesUIActiveMapPinNavigationAidKindForTest(
+  _markerKind: string
+): NavigationAidKind {
+  // A user-set active map pin is always a non-quest "map_pin" navigation aid so
+  // its directional indicator (on-circle arrow + on-screen precision overlay)
+  // renders even when the player is NOT tracking a quest. Previously every kind
+  // mapped to a QuestCategory, which suppressed the arrow unless a quest was
+  // being tracked -- the core "set destination -> see the way there" feature.
+  return "map_pin";
 }
 
 export function biomesUIActiveMapPinNavigationAidSpecForTest(pin: BiomesUIActiveMapPinV142 | undefined): NavigationAidSpec | undefined {
@@ -85,6 +72,26 @@ export function activeBiomesUIMapPinFromMarkerForTest(marker: BiomesUIMapPinSour
     description: typeof marker.description === "string" && marker.description.trim() ? marker.description.trim() : undefined,
     setAtMs: nowMs,
   };
+}
+
+// HARTHMERE active-pin staleness
+// The active map pin persists in localStorage with no quest linkage, so a pin
+// set for a quest/job that is later completed or abandoned would keep showing a
+// directional marker "to nowhere". This decides when to drop a stale pin:
+// only when the destination is gone from a POPULATED landmark set. An empty set
+// means the map data has not hydrated yet, so we never clear in that case
+// (which would wrongly nuke a still-valid pin during loading).
+export function shouldClearStaleActiveMapPinV1(input: {
+  pin: { markerId: string } | undefined;
+  visibleMarkerIds: readonly string[];
+}): boolean {
+  if (!input.pin) {
+    return false;
+  }
+  if (input.visibleMarkerIds.length === 0) {
+    return false;
+  }
+  return !input.visibleMarkerIds.includes(input.pin.markerId);
 }
 
 function parseActiveBiomesUIMapPin(value: string | null): BiomesUIActiveMapPinV142 | undefined {

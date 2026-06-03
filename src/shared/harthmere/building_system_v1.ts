@@ -881,6 +881,36 @@ export const BUILDING_SYSTEM_PLOTS_V1: BuildingSystemPlotDefinitionV1[] = [
   },
 ];
 
+const BUILDING_SYSTEM_PLOTS_BY_ID_V1 = new Map(
+  BUILDING_SYSTEM_PLOTS_V1.map((plot) => [plot.plotId, plot] as const)
+);
+
+// Look up an authored plot's world-space bounds by plot id. Used to turn the
+// per-plot safe-zone records (which only store a string area label, not
+// geometry) into an actual containment test for muck safety.
+export function buildingSystemPlotBoundsByIdV1(
+  plotId: string
+): BuildingSystemPlotDefinitionV1["bounds"] | undefined {
+  return BUILDING_SYSTEM_PLOTS_BY_ID_V1.get(plotId)?.bounds;
+}
+
+export function isPositionInsideBuildingSystemPlotBoundsV1(
+  bounds: BuildingSystemPlotDefinitionV1["bounds"] | undefined,
+  position: { x: number; z: number } | undefined
+): boolean {
+  if (!bounds || !position) {
+    return false;
+  }
+  const x = Number(position.x);
+  const z = Number(position.z);
+  if (!Number.isFinite(x) || !Number.isFinite(z)) {
+    return false;
+  }
+  return (
+    x >= bounds.xMin && x <= bounds.xMax && z >= bounds.zMin && z <= bounds.zMax
+  );
+}
+
 export const BUILDING_SYSTEM_BIKKIE_BLUEPRINTS_V1: BuildingSystemBlueprintDefinitionV1[] = [
   {
     blueprintId: "bikkie_traditional_shelter_frame",

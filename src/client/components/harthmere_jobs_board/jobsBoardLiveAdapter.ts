@@ -449,18 +449,26 @@ export function getHarthmereAvailableJobsPanelV1(
 export function getHarthmereMyJobsPanelV1(
   snapshot: HarthmereJobsBoardSnapshotV1
 ) {
-  return snapshot.myAcceptedJobs.map((job) => ({
-    jobId: job.jobId,
-    title: job.title,
-    status: job.status,
-    rewardGold: job.rewardGold,
-    todo: snapshot.myTodos.find((todo) => todo.jobId === job.jobId),
-    mapMarkerId: job.mapMarkerId,
-    canComplete:
-      job.status === "active" &&
-      snapshot.myTodos.find((todo) => todo.jobId === job.jobId)?.status ===
-        "completed",
-  }));
+  return snapshot.myAcceptedJobs.map((job) => {
+    const todo = snapshot.myTodos.find((entry) => entry.jobId === job.jobId);
+    return {
+      jobId: job.jobId,
+      title: job.title,
+      status: job.status,
+      rewardGold: job.rewardGold,
+      todo,
+      todoStatus: todo?.status,
+      questTodoId: todo?.todoId,
+      mapMarkerId: job.mapMarkerId,
+      // Enable the turn-in/complete action while the job is active and the
+      // player still has a live (or already-verified) todo. The server is
+      // authoritative: if requirements aren't met, complete_job_quest is
+      // rejected and the payout step never runs, so this cannot pay early.
+      canComplete:
+        job.status === "active" &&
+        (todo?.status === "active" || todo?.status === "completed"),
+    };
+  });
 }
 
 export function getHarthmerePostedJobsPanelV1(
@@ -665,6 +673,21 @@ export function buildHarthmereJobsBoardPostPayloadV1(input: {
   };
 }
 
+// HARTHMERE_JOBS_BOARD_COMPLETION_WIRING_V1
+// Completing a job is TWO server steps: `complete_job_quest` validates the work
+// (the server consumes required items / checks the target) and marks the todo
+// completed, then `complete_job` pays out the escrow. The client previously only
+// ever sent `complete_job`, which the reducer rejects until the todo is
+// `completed` -- so no job could ever be completed or paid. This plans the
+// ordered steps to send based on the current todo status.
+export function planHarthmereJobsBoardCompletionStepsV1(
+  todoStatus: string | undefined
+): Array<"complete_job_quest" | "complete_job"> {
+  return todoStatus === "completed"
+    ? ["complete_job"]
+    : ["complete_job_quest", "complete_job"];
+}
+
 export function createHarthmereJobsBoardAdapterV1(
   fetchImpl: typeof fetch = fetch
 ) {
@@ -697,6 +720,61 @@ export function createHarthmereJobsBoardAdapterV1(
         { jobId, boardId },
         { fetchImpl, requestId, boardId }
       ),
+    // Mark the quest todo complete (server validates items/target, consumes
+    // required items). Use before completeJob when the todo is not yet done.
+    completeJobQuest: (
+      jobId: string,
+      boardId: string = HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1,
+      evidence: {
+        questTodoId?: string;
+        completedTargetId?: string;
+        completionItemDeltas?: Record<string, number>;
+      } = {},
+      requestId?: string
+    ) =>
+      submitHarthmereJobsBoardMutationV1(
+        "complete_job_quest",
+        { jobId, boardId, ...evidence },
+        { fetchImpl, requestId, boardId }
+      ),
+    // Full completion: verify the work (consuming items / checking the target)
+    // then claim the payout. Skips the verification step if the todo is already
+    // completed. Throws (without paying) if verification is rejected.
+    completeJobFully: async (
+      jobId: string,
+      boardId: string = HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1,
+      options: {
+        todoStatus?: string;
+        questTodoId?: string;
+        completedTargetId?: string;
+        completionItemDeltas?: Record<string, number>;
+      } = {}
+    ) => {
+      const steps = planHarthmereJobsBoardCompletionStepsV1(options.todoStatus);
+      let snapshot: HarthmereJobsBoardSnapshotV1 | undefined;
+      for (const step of steps) {
+        const payload: Record<string, unknown> = { jobId, boardId };
+        if (step === "complete_job_quest") {
+          if (options.questTodoId) payload.questTodoId = options.questTodoId;
+          if (options.completedTargetId) {
+            payload.completedTargetId = options.completedTargetId;
+          }
+          if (options.completionItemDeltas) {
+            payload.completionItemDeltas = options.completionItemDeltas;
+          }
+        }
+        snapshot = await submitHarthmereJobsBoardMutationV1(step, payload, {
+          fetchImpl,
+          boardId,
+        });
+      }
+      if (!snapshot) {
+        // planHarthmereJobsBoardCompletionStepsV1 always returns >=1 step, so
+        // this is unreachable; it narrows the type and guards future changes.
+        throw new Error("jobs_board_no_completion_step");
+      }
+      return snapshot;
+    },
     cancelJob: (
       jobId: string,
       boardId: string = HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1,

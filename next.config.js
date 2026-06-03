@@ -122,6 +122,16 @@ module.exports = withBundleAnalyzer(
         // an issue in nextjs when building for prod.
         config.output.webassemblyModuleFilename = "chunks/[modulehash].wasm";
         config.plugins.push(new WasmChunksFixPlugin());
+        // GLITCH_NEXT_PAGES_MANIFEST_REPAIR_V1:
+        // With next-pwa + asyncWebAssembly, the production server compile can
+        // emit every page file to .next/server/pages but write an incomplete
+        // .next/server/pages-manifest.json. Next's own "Collecting page data"
+        // step then throws `PageNotFoundError: Cannot find module for page`
+        // (e.g. /admin/blocks) and the build aborts BEFORE the post-build
+        // repair script (scripts/glitch/repair-next-pages-manifest-v1.cjs) can
+        // run. Rebuilding the manifest from the emitted page files in afterEmit
+        // guarantees it is complete before page-data collection runs.
+        config.plugins.push(new NextPagesManifestRepairPlugin(__dirname));
       }
 
       config.optimization.moduleIds = "named";
@@ -228,5 +238,86 @@ class WasmChunksFixPlugin {
           })
       );
     });
+  }
+}
+
+// GLITCH_NEXT_PAGES_MANIFEST_REPAIR_V1:
+// Rebuilds .next/server/pages-manifest.json from the page files that were
+// actually emitted, so Next's internal "Collecting page data" step never trips
+// over a manifest that next-pwa/webpack left incomplete. The route -> file
+// mapping mirrors scripts/glitch/repair-next-pages-manifest-v1.cjs exactly.
+class NextPagesManifestRepairPlugin {
+  constructor(root) {
+    this.root = root;
+  }
+
+  apply(compiler) {
+    const fsSync = require("fs");
+    const path = require("path");
+    const serverDir = path.join(this.root, ".next", "server");
+    const pagesDir = path.join(serverDir, "pages");
+    const manifestPath = path.join(serverDir, "pages-manifest.json");
+
+    const walk = (dir, out = []) => {
+      for (const entry of fsSync.readdirSync(dir, { withFileTypes: true })) {
+        const abs = path.join(dir, entry.name);
+        if (entry.isDirectory()) {
+          walk(abs, out);
+        } else if (entry.isFile() && entry.name.endsWith(".js")) {
+          out.push(abs);
+        }
+      }
+      return out;
+    };
+
+    const routeForPageFile = (abs) => {
+      const rel = path
+        .relative(pagesDir, abs)
+        .split(path.sep)
+        .join("/")
+        .replace(/[.]js$/, "");
+      if (rel === "index") return "/";
+      if (rel.endsWith("/index")) return `/${rel.slice(0, -"/index".length)}`;
+      return `/${rel}`;
+    };
+
+    const manifestValueForPageFile = (abs) =>
+      path.relative(serverDir, abs).split(path.sep).join("/");
+
+    const rebuild = () => {
+      try {
+        if (!fsSync.existsSync(pagesDir)) return;
+        const entries = walk(pagesDir)
+          .map((abs) => [routeForPageFile(abs), manifestValueForPageFile(abs)])
+          .sort(([a], [b]) => a.localeCompare(b));
+        const repaired = Object.fromEntries(entries);
+        if (Object.keys(repaired).length === 0) return;
+        let existing = {};
+        try {
+          existing = JSON.parse(fsSync.readFileSync(manifestPath, "utf8"));
+        } catch {
+          existing = {};
+        }
+        const before = Object.keys(existing).length;
+        if (before >= Object.keys(repaired).length) return;
+        fsSync.writeFileSync(
+          manifestPath,
+          `${JSON.stringify(repaired, null, 2)}\n`
+        );
+        console.log(
+          `[pages-manifest-repair] ${before} -> ${
+            Object.keys(repaired).length
+          } routes`
+        );
+      } catch (error) {
+        console.warn(
+          `[pages-manifest-repair] skipped: ${
+            error && error.message ? error.message : error
+          }`
+        );
+      }
+    };
+
+    compiler.hooks.afterEmit.tap("NextPagesManifestRepairPlugin", rebuild);
   }
 }

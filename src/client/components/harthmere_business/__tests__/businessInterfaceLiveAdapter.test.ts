@@ -632,7 +632,7 @@ describe("Harthmere in-world business interface live adapter", () => {
       })
     );
     assert.ok(html.includes("Current Customer"));
-    assert.ok(html.includes("Getting a Job and Getting Paid"));
+    assert.ok(html.includes("Customer Counter"));
     assert.ok(html.includes("Buff Economy Service Line"));
     assert.ok(html.includes("Service line panel"));
     assert.ok(html.includes("Jessa Mint"));
@@ -1155,7 +1155,7 @@ describe("Harthmere in-world business interface v2 screens", () => {
     });
     assert.equal(customerPrompt.mode, "customer");
     assert.match(customerPrompt.label, /Press F to open .* Business Board/);
-    assert.match(customerPrompt.helper, /Getting a Job and Getting Paid/);
+    assert.match(customerPrompt.helper, /Work a shift/);
   });
 
   it("resolves canonical outpost dashboard coordinates to the matching business prompt", () => {
@@ -1451,7 +1451,7 @@ describe("Harthmere in-world business interface v2 screens", () => {
         compact: true,
       })
     );
-    assert.ok(html.includes("Getting a Job and Getting Paid"));
+    assert.ok(html.includes("Customer Counter"));
     assert.ok(html.includes('data-business-mode="customer"'));
   });
 

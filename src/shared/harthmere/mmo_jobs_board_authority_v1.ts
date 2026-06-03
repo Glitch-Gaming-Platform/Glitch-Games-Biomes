@@ -1042,6 +1042,22 @@ function templateBoardScopeMatches(template: AutoSeedTemplate, boardId: string):
   return false;
 }
 
+// HARTHMERE_JOBS_BOARD_AUTO_SEED_OBTAINABLE_REQUIREMENTS_V1
+// An auto-seeded job must only require items a player can actually obtain. A
+// template whose requirement references an item outside the known executable
+// set (e.g. a placeholder id like `apple_basket`/`courier_pouch` that exists
+// nowhere as loot/vendor/craft output) would produce a posting that can NEVER
+// satisfy `actorHasCompletionRequirements`, so we exclude it from auto-seeding.
+// Target-only requirements (no itemId) are always allowed.
+export function harthmereAutoSeedTemplateRequirementsObtainableV1(
+  requirements: ReadonlyArray<{ itemId?: string }>
+): boolean {
+  return requirements.every(
+    (req) =>
+      !req.itemId || isKnownHarthmereJobsBoardExecutableItemIdV146(req.itemId)
+  );
+}
+
 function hasOpenExoticMatterMiningJobV1(
   state: HarthmereJobsBoardStateV1,
   boardId: string
@@ -1722,7 +1738,9 @@ function economyAutoSeedJobs(
   }
   const rng = autoSeedRngV141((request.nowMs ^ boardSeed) >>> 0);
   const templates = HARTHMERE_JOBS_BOARD_AUTO_SEED_TEMPLATES_V141.filter((tpl) =>
-    board.acceptedKinds.includes(tpl.kind) && templateBoardScopeMatches(tpl, boardId),
+    board.acceptedKinds.includes(tpl.kind) &&
+    templateBoardScopeMatches(tpl, boardId) &&
+    harthmereAutoSeedTemplateRequirementsObtainableV1(tpl.requirements),
   );
   if (templates.length === 0) {
     result.touched.add("jobs_board_auto_seed_no_templates");

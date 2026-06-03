@@ -19,13 +19,64 @@ import {
   stuckWhilePathfinding,
   updatePathfindingPosition,
   zPathfindingComponent,
+  type Path,
 } from "@/shared/npc/behavior/pathfinding";
 import { getNpcRunSpeed } from "@/shared/npc/bikkie";
 import type { Environment } from "@/shared/npc/environment";
 import type { BehaviorChaseAttackParams } from "@/shared/npc/npc_types";
 import type { SimulatedNpc } from "@/shared/npc/simulated";
+import {
+  decayThreat,
+  pickThreatPreferredTarget,
+  type ThreatTable,
+  type ThreatTargetCandidate,
+} from "@/shared/npc/threat";
 import { ok } from "assert";
 import { z } from "zod";
+
+// If the chase target drifts more than this far (meters) from the destination
+// of the cached A* path, the path is stale and must be rebuilt instead of
+// walking the NPC to where the target used to be.
+const CHASE_PATH_TARGET_DRIFT_METERS = 3.0;
+const CHASE_PATH_TARGET_DRIFT_SQ =
+  CHASE_PATH_TARGET_DRIFT_METERS * CHASE_PATH_TARGET_DRIFT_METERS;
+
+// The strike of a swing lands `attackStrikeMomentSecs / attackAnimationMultiplier`
+// seconds in. If that delay is >= the attack interval, every new swing restarts
+// before the strike window opens, so `npc.attack()` is never called and the NPC
+// flails without ever dealing damage. Clamp the delay to sit strictly inside the
+// interval so a hit always lands, regardless of biscuit configuration.
+export function effectiveAttackStrikeDelaySecs(params: {
+  attackStrikeMomentSecs: number;
+  attackAnimationMultiplier: number;
+  attackIntervalSecs: number;
+}): number {
+  const animationMultiplier =
+    params.attackAnimationMultiplier > 0 ? params.attackAnimationMultiplier : 1;
+  const rawDelay = Math.max(0, params.attackStrikeMomentSecs) / animationMultiplier;
+  if (!(params.attackIntervalSecs > 0)) {
+    return rawDelay;
+  }
+  // Keep the strike strictly before the interval boundary (95% of it) so the
+  // damage branch is always reachable.
+  return Math.min(rawDelay, params.attackIntervalSecs * 0.95);
+}
+
+// True when the cached path's destination no longer matches where the target is
+// now (squared-distance comparison against `maxDriftSq`). An empty path is
+// always considered stale.
+export function chasePathTargetIsStale(
+  path: Path,
+  targetPosition: ReadonlyVec3,
+  maxDriftSq: number
+): boolean {
+  const { nodes } = path;
+  if (nodes.length === 0) {
+    return true;
+  }
+  const destination = nodes[nodes.length - 1].position;
+  return distSq(destination, targetPosition) > maxDriftSq;
+}
 
 export const zChaseAttackComponent = z.object({
   chaseAttack: z
@@ -111,6 +162,7 @@ export function chaseAttackTargetTick(
     a === undefined || b === undefined ? undefined : a - b;
 
   const now = secondsSinceEpoch();
+  const strikeDelaySecs = effectiveAttackStrikeDelaySecs(params);
   const timeSinceLastAttack = maybeDiff(now, npc.state.chaseAttack.attackTime);
   if (
     timeSinceLastAttack === undefined ||
@@ -141,15 +193,10 @@ export function chaseAttackTargetTick(
       Emote.create({
         emote_type: "attack1",
         emote_start_time: attackTime,
-        emote_expiry_time:
-          attackTime +
-          params.attackStrikeMomentSecs / params.attackAnimationMultiplier,
+        emote_expiry_time: attackTime + strikeDelaySecs,
       })
     );
-  } else if (
-    timeSinceLastAttack >
-    params.attackStrikeMomentSecs / params.attackAnimationMultiplier
-  ) {
+  } else if (timeSinceLastAttack > strikeDelaySecs) {
     // We're in the middle of an attack, check if we cross over the moment
     // when we should trigger damage.
     if (
@@ -176,7 +223,17 @@ function nextChasePathTarget(
   const state = npc.mutableState().chaseAttack!;
   if (state.pathfinding) {
     updatePathfindingPosition(state.pathfinding, npc.position);
-    if (stuckWhilePathfinding(state.pathfinding)) {
+    if (
+      stuckWhilePathfinding(state.pathfinding) ||
+      chasePathTargetIsStale(
+        state.pathfinding.path,
+        targetPosition,
+        CHASE_PATH_TARGET_DRIFT_SQ
+      )
+    ) {
+      // Either we've made no progress for a while, or the target has moved far
+      // enough that the cached route no longer leads to it. Drop the path so a
+      // fresh one is computed toward the target's current position below.
       state.pathfinding = undefined;
     }
   }
@@ -355,6 +412,59 @@ function lastValidAttackerId(
   });
 }
 
+function decayNpcThreat(npc: SimulatedNpc) {
+  const table = npc.state.threat?.table;
+  if (!table || Object.keys(table).length === 0) {
+    return;
+  }
+  const mutableThreat = npc.mutableState().threat!;
+  mutableThreat.lastDecayAt = decayThreat(
+    mutableThreat.table,
+    secondsSinceEpoch(),
+    mutableThreat.lastDecayAt
+  );
+}
+
+// Scans valid players in aggro range (alive, not at peace, not in a safe zone)
+// and picks the highest-threat one, falling back to the nearest. Shares the same
+// per-player filters as `getNearestPlayer` so threat-aware acquisition can never
+// target a player that proximity acquisition would have rejected.
+function chooseProximityTarget(
+  env: Environment,
+  npc: SimulatedNpc,
+  aggroDistance: number,
+  threatTable: ThreatTable | undefined
+): BiomesId | undefined {
+  const candidates: ThreatTargetCandidate[] = [];
+  for (const playerId of env.ecsMetaIndex.player_selector.scanSphere({
+    center: npc.position,
+    radius: aggroDistance,
+  })) {
+    const player = env.resources.get("/ecs/entity", playerId);
+    if (!Entity.has(player, "health", "position")) {
+      continue;
+    }
+    if (player.health.hp <= 0) {
+      continue;
+    }
+    const buffs = getPlayerBuffs(env.voxeloo, env.resources, player.id);
+    if (getPlayerModifiersFromBuffs(buffs)?.peace.enabled) {
+      continue;
+    }
+    if (
+      isSafeZone(env.voxeloo, player.position.v, env.ecsMetaIndex, env.resources)
+    ) {
+      continue;
+    }
+    candidates.push({
+      id: player.id,
+      distanceSq: distSq(player.position.v, npc.position),
+      threat: threatTable?.[String(player.id)] ?? 0,
+    });
+  }
+  return pickThreatPreferredTarget(candidates);
+}
+
 export function updateAttackTarget(
   env: Environment,
   npc: SimulatedNpc,
@@ -364,6 +474,10 @@ export function updateAttackTarget(
     npc.mutableState().chaseAttack = {};
     ok(npc.state.chaseAttack);
   }
+
+  // Decay accumulated threat so aggro fades over time and the table stays
+  // bounded instead of growing with every distinct attacker forever.
+  decayNpcThreat(npc);
 
   const deAggroDistanceSq = params.disengageDistance ** 2;
 
@@ -404,15 +518,13 @@ export function updateAttackTarget(
       // wandering into aggro range.
       targetId = recentAttackerId;
     } else {
-      // Check if any players are in the NPC's aggro distance.
-      targetId = getNearestPlayer(
+      // Acquire the highest-threat valid player in aggro range (whoever has
+      // dealt the most damage / taunted), falling back to the nearest one.
+      targetId = chooseProximityTarget(
         env,
-        npc.position,
+        npc,
         params.aggroTrigger.distance,
-        (player: ReadonlyEntity) => {
-          const buffs = getPlayerBuffs(env.voxeloo, env.resources, player.id);
-          return !getPlayerModifiersFromBuffs(buffs)?.peace.enabled;
-        }
+        npc.state.threat?.table
       );
     }
   }

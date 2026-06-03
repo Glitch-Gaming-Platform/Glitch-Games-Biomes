@@ -108,9 +108,19 @@ export function HarthmereJobsBoardLiveContainerV141({
     [adapter, activeBoardId, run],
   );
   const onCompleteJob = React.useCallback(
-    (jobId: string) =>
-      run(`complete:${jobId}`, () => adapter.completeJob(jobId, activeBoardId)),
-    [adapter, activeBoardId, run],
+    (jobId: string) => {
+      // Two-step completion: verify the work (consume items / check target)
+      // then claim the payout. The current todo status decides whether the
+      // verification step is still needed.
+      const todo = snapshot?.myTodos.find((entry) => entry.jobId === jobId);
+      return run(`complete:${jobId}`, () =>
+        adapter.completeJobFully(jobId, activeBoardId, {
+          todoStatus: todo?.status,
+          questTodoId: todo?.todoId,
+        })
+      );
+    },
+    [adapter, activeBoardId, run, snapshot],
   );
   const onCancelJob = React.useCallback(
     (jobId: string) =>

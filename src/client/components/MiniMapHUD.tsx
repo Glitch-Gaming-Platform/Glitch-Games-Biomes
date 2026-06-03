@@ -12,6 +12,20 @@ import { SNAPSHOT_GROVE_QUESTS_V75, snapshotGroveLandmarkByIdV75 } from "@/share
 import { HARTHMERE_BUSINESS_MINIMAP_PIN_Z_INDEX_V1, harthmereBusinessMiniMapPinsForPlayerForTest, type HarthmereBusinessMiniMapPinV1 } from "@/client/components/map/markers/harthmere_business_minimap_pins_v1";
 import { HARTHMERE_PROPERTY_BUILDING_STATE_EVENT_V1, harthmerePropertyMiniMapPinsForBuildingStateForTest, type HarthmerePropertyMapBuildingStateV1 } from "@/client/components/biomes_ui/adapters/propertyMapMarkersV1";
 import { harthmereBusinessOutpostRuntimeOffsetForTestV1 } from "@/client/game/renderers/local_dev/harthmere_business_outpost_buildings_v1";
+import {
+  harthmereObjectiveMiniMapPinsFromLandmarksV1,
+  type HarthmereObjectiveMiniMapPinV1,
+} from "@/client/components/map/markers/harthmere_objective_minimap_pins_v1";
+import { jobsBoardAcceptedJobLandmarksForBiomesUIV1 } from "@/client/components/biomes_ui/adapters/jobsBoardQuestMapAdapter";
+import { liveEntityHelperAcceptedQuestLandmarksForBiomesUIV1 } from "@/client/components/biomes_ui/adapters/liveEntityHelperQuestMapAdapter";
+import {
+  fetchHarthmereJobsBoardStateV1,
+  HARTHMERE_JOBS_BOARD_STATE_UPDATED_EVENT_V1,
+} from "@/client/components/harthmere_jobs_board/jobsBoardLiveAdapter";
+import {
+  LIVE_ENTITY_HELPER_QUEST_EVENT_V1,
+  readLiveEntityHelperQuestStateV1,
+} from "@/client/components/challenges/LocalDevLiveEntityHelperQuestState";
 import { WorldMetadataId } from "@/shared/ecs/ids";
 import { yaw } from "@/shared/math/linear";
 import type { Vec3 } from "@/shared/math/types";
@@ -448,6 +462,125 @@ const BiomesUIActiveMapPinNavigationAidV147: React.FunctionComponent<{}> = () =>
   return null;
 };
 
+// Minimap parity with the BiomesUI world map: accepted jobs-board jobs and
+// live-entity-helper quests now also pin on the minimap, so a player gets
+// passive guidance toward them without opening the full map.
+function useHarthmereObjectiveMiniMapPinsV1(): HarthmereObjectiveMiniMapPinV1[] {
+  const [jobsRaw, setJobsRaw] = useState<unknown>(undefined);
+  const [helperState, setHelperState] = useState<unknown>(undefined);
+  useEffect(() => {
+    let cancelled = false;
+    const refreshJobsFromServer = async () => {
+      try {
+        const snapshot = await fetchHarthmereJobsBoardStateV1();
+        if (!cancelled) setJobsRaw(snapshot);
+      } catch {
+        // Leave the previous snapshot in place on a transient failure.
+      }
+    };
+    const onJobs = (event: Event) => {
+      const detail = (event as CustomEvent).detail;
+      if (detail) {
+        setJobsRaw(detail);
+      } else {
+        void refreshJobsFromServer();
+      }
+    };
+    const onHelper = () => setHelperState(readLiveEntityHelperQuestStateV1());
+    void refreshJobsFromServer();
+    onHelper();
+    window.addEventListener(HARTHMERE_JOBS_BOARD_STATE_UPDATED_EVENT_V1, onJobs);
+    window.addEventListener(LIVE_ENTITY_HELPER_QUEST_EVENT_V1, onHelper);
+    window.addEventListener("storage", onHelper);
+    return () => {
+      cancelled = true;
+      window.removeEventListener(
+        HARTHMERE_JOBS_BOARD_STATE_UPDATED_EVENT_V1,
+        onJobs
+      );
+      window.removeEventListener(LIVE_ENTITY_HELPER_QUEST_EVENT_V1, onHelper);
+      window.removeEventListener("storage", onHelper);
+    };
+  }, []);
+  return useMemo(
+    () =>
+      harthmereObjectiveMiniMapPinsFromLandmarksV1([
+        ...jobsBoardAcceptedJobLandmarksForBiomesUIV1(jobsRaw),
+        ...liveEntityHelperAcceptedQuestLandmarksForBiomesUIV1(helperState),
+      ]),
+    [jobsRaw, helperState]
+  );
+}
+
+const HarthmereObjectiveMiniMapPinMarkerV1: React.FunctionComponent<{
+  pin: HarthmereObjectiveMiniMapPinV1;
+}> = ({ pin }) => {
+  const { map, zoomRef } = useContext(MiniMapContext);
+  const { reactResources } = useClientContext();
+  const ref = useRef<HTMLDivElement>(null);
+  const [clipped, setClipped] = useState(false);
+
+  useAnimation(() => {
+    if (!map || !ref.current) {
+      return;
+    }
+    const player = reactResources.get("/scene/local_player");
+    const camera = reactResources.get("/scene/camera");
+    const orientation = -yaw(camera.view());
+    const maxDist = map.clientWidth / 2;
+    const [x, y, isClipped] = worldToMinimapClippedCanvasCoordinates(
+      maxDist,
+      pin.position,
+      player,
+      zoomRef.current,
+      map.offsetWidth ?? 0,
+      map.offsetHeight ?? 0
+    );
+    ref.current.style.transform = `translate(-50%, -50%) translate(${x}px, ${y}px) rotate(${orientation}rad)`;
+    setClipped(isClipped);
+  });
+
+  if (!map) {
+    return null;
+  }
+
+  return (
+    <div
+      ref={ref}
+      className="pointer-events-none absolute left-0 top-0 flex items-center justify-center"
+      data-harthmere-objective-minimap-pin-v1={pin.markerId}
+      data-harthmere-objective-minimap-pin-clipped-v1={clipped ? "true" : "false"}
+      title={pin.label}
+      aria-label={pin.label}
+      style={{ zIndex: 8, willChange: "transform" }}
+    >
+      <div
+        className="h-3.5 w-3.5 border-white/85 bg-yellow-300 text-slate-950 flex items-center justify-center rounded-full border text-[8px] font-black shadow-[0_0_8px_rgba(253,224,71,0.85)]"
+        style={{
+          opacity: clipped ? 0.82 : 1,
+          transform: clipped ? "scale(0.86)" : undefined,
+        }}
+      >
+        !
+      </div>
+    </div>
+  );
+};
+
+const HarthmereObjectiveMiniMapMarkersV1: React.FunctionComponent<{}> = () => {
+  const pins = useHarthmereObjectiveMiniMapPinsV1();
+  if (!pins.length) {
+    return null;
+  }
+  return (
+    <>
+      {pins.map((pin) => (
+        <HarthmereObjectiveMiniMapPinMarkerV1 key={pin.key} pin={pin} />
+      ))}
+    </>
+  );
+};
+
 export const MiniMapHUD: React.FunctionComponent<{}> = ({}) => {
   return (
     <div className={`relative flex ${MINI_MAP_WIDTH} flex-col items-center gap-0.6 text-white text-shadow-bordered`}>
@@ -456,6 +589,7 @@ export const MiniMapHUD: React.FunctionComponent<{}> = ({}) => {
         <SnapshotGroveMiniMapQuestMarkersV111 />
         <HarthmereBusinessMiniMapMarkersV1 />
         <HarthmerePropertyMiniMapMarkersV1 />
+        <HarthmereObjectiveMiniMapMarkersV1 />
         <BiomesUIActiveMiniMapPinV142 />
       </MiniMap>
       <OnlinePlayers />

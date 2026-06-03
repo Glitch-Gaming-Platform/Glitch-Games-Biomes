@@ -201,6 +201,12 @@ class SocializingNpc {
       center: this.stayNearPoint,
       radius: this.params.searchRadius,
     })) {
+      // Don't let an NPC pick itself as a friend — the meeting-distance check
+      // would instantly succeed (distance 0) and the NPC would stand idle
+      // "talking to itself" for a full meeting duration.
+      if (npcId === this.npc.id) {
+        continue;
+      }
       const npc = this.env.resources.get("/ecs/entity", npcId);
       if (!npc?.position || (npc.health?.hp ?? 1) <= 0) {
         continue;

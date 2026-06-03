@@ -5,6 +5,7 @@ import { normalizeAngle } from "@/shared/math/angles";
 import { add, dist, lengthSq, normalizev, pitchAndYaw, sub, yaw } from "@/shared/math/linear";
 import type { ReadonlyVec3, Vec3 } from "@/shared/math/types";
 import { zVec3f } from "@/shared/math/types";
+import { harthmereClampMeanderDestinationToMuckAreaV1 } from "@/shared/harthmere/harthmere_muck_monster_containment_v1";
 import { isSafeZone } from "@/shared/npc/behavior/common";
 import {
   AStarPathfinder,
@@ -97,11 +98,17 @@ export function meanderTick(
     shouldReturnHome
   ) {
     state.nextRotateSecs = newRotateTime();
-    state.destination = chooseMeanderDestination(
-      npc.position,
+    // HARTHMERE_MUCK_MONSTER_CONTAINMENT_V1: keep muck monsters from wandering
+    // out of their muck area. This is a no-op for NPCs whose home is not inside
+    // a muck zone (i.e. every town/villager NPC).
+    state.destination = harthmereClampMeanderDestinationToMuckAreaV1(
       stayNearPoint,
-      params.stayDistanceFromSpawn,
-      shouldReturnHome
+      chooseMeanderDestination(
+        npc.position,
+        stayNearPoint,
+        params.stayDistanceFromSpawn,
+        shouldReturnHome
+      )
     );
     state.pathfinding = findPathToMeanderDestination(
       env,

@@ -54,8 +54,17 @@ export class ChallengeClaimRewardsTrigger extends BaseStatelessTrigger {
     const event = this.findEvent(context);
     ok(event);
 
-    const rewardToGiveIndex =
+    const requestedRewardIndex =
       event.chosenRewardIndex === undefined ? 0 : event.chosenRewardIndex;
+    // Guard against an out-of-range chosenRewardIndex silently granting nothing:
+    // fall back to the default (first) reward bag rather than skipping the grant
+    // entirely, so a malformed/forged index can't deny the player their reward.
+    const rewardToGiveIndex =
+      this.rewardsList &&
+      requestedRewardIndex >= 0 &&
+      requestedRewardIndex < this.rewardsList.length
+        ? requestedRewardIndex
+        : 0;
 
     if (this.rewardsList?.[rewardToGiveIndex]) {
       giveRewardsFromTriggerContext({
@@ -63,6 +72,7 @@ export class ChallengeClaimRewardsTrigger extends BaseStatelessTrigger {
         bag: this.rewardsList[rewardToGiveIndex],
       });
     }
+
   }
 
   protected override maybeTakeItems(context: TriggerContext): boolean {
