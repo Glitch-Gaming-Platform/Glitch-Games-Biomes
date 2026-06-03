@@ -243,6 +243,12 @@ export function cuesForAuthoredTutorialStep(
 
   if (
     trigger === "open_tab" ||
+    trigger === "choice" ||
+    trigger === "item_grant" ||
+    trigger === "interact" ||
+    trigger === "near_location" ||
+    trigger === "place_voxel" ||
+    trigger === "destroy" ||
     textMatches(text, /\b(open|read|pin|confirm|find)\b.*\b(map|marker|journal|objective|panel|hud|menu|inventory|bag|backpack|hotbar|guild|party|group|combat|duel|mail|inbox|storage|bank|vault|recipe|craft|chat|channel|whisper|settings|options)\b/)
   ) {
     if (textMatches(text, /\b(map|marker|pin|compass|journal|quest log|objective)\b/)) {
@@ -253,6 +259,20 @@ export function cuesForAuthoredTutorialStep(
     }
     if (textMatches(text, /\b(guild|party|group|ready|charter|role)\b/)) {
       addMenuTabCue(cues, UI_IDS.TAB_GUILDS, "Open guilds");
+      addCue(cues, {
+        uniqueId: UI_IDS.GUILD_ROSTER,
+        style: "pulse",
+        caption: "Guild roster",
+        durationMs: 0,
+      });
+    }
+    if (textMatches(text, /\b(rank|leader|officer|builder|treasurer|scout|member)\b/)) {
+      addCue(cues, {
+        uniqueId: UI_IDS.GUILD_RANK("leader"),
+        style: "ring",
+        caption: "Practice ranks",
+        durationMs: 0,
+      });
     }
     if (textMatches(text, /\b(combat|duel|sparring|pvp|ability|weapon)\b/)) {
       addMenuTabCue(cues, UI_IDS.TAB_ABILITIES, "Open abilities");
@@ -262,6 +282,34 @@ export function cuesForAuthoredTutorialStep(
     }
     if (textMatches(text, /\b(storage|bank|vault|deposit|withdraw|recovery|lost.?and.?found|lost|found)\b/)) {
       addMenuTabCue(cues, UI_IDS.TAB_BANKING, "Open bank");
+      if (textMatches(text, /\b(deposit|bank|crate)\b/)) {
+        addCue(cues, {
+          uniqueId: UI_IDS.BANKING_DEPOSIT,
+          style: "pulse",
+          caption: "Deposit",
+          durationMs: 0,
+        });
+      }
+      if (textMatches(text, /\b(withdraw)\b/)) {
+        addCue(cues, {
+          uniqueId: UI_IDS.BANKING_WITHDRAW,
+          style: "pulse",
+          caption: "Withdraw",
+          durationMs: 0,
+        });
+      }
+    }
+    if (textMatches(text, /\b(project|shared project|bridge plank|shared kit|guild hall|guild bank)\b/)) {
+      addMenuTabCue(cues, UI_IDS.TAB_GUILDS, "Open guilds");
+      addCue(cues, {
+        uniqueId: UI_IDS.GUILD_BUILDING_GUIDE,
+        style: "pulse",
+        caption: "Guild project",
+        durationMs: 0,
+      });
+    }
+    if (textMatches(text, /\b(claim|lot|land|building|build|foundation|safe-zone|wild|wilderness|stall|hall)\b/)) {
+      addMenuTabCue(cues, UI_IDS.TAB_LAND, "Open land");
     }
     if (textMatches(text, /\b(recipe|craft|workbench|torch|muck buster)\b/)) {
       addCue(cues, {
@@ -342,6 +390,40 @@ export function cuesForAuthoredTutorialStep(
       uniqueId: UI_IDS.HOTBAR_SLOT(1),
       style: "pulse",
       caption: "Hotbar slot",
+      durationMs: 0,
+    });
+  }
+
+  if (
+    trigger === "place_voxel" ||
+    textMatches(text, /\b(place|block|foundation|road block)\b/)
+  ) {
+    addCue(cues, {
+      uniqueId: UI_IDS.HOTBAR_SLOT(2),
+      style: "pulse",
+      caption: "Equip block",
+      durationMs: 0,
+    });
+  }
+
+  if (
+    trigger === "destroy" ||
+    textMatches(text, /\b(break|gather|rubble|muck|material)\b/)
+  ) {
+    addCue(cues, {
+      uniqueId: UI_IDS.HOTBAR_SLOT(1),
+      style: "pulse",
+      caption: "Use tool",
+      durationMs: 0,
+    });
+  }
+
+  if (textMatches(text, /\b(repair|fence|cart|kit)\b/)) {
+    addMenuTabCue(cues, UI_IDS.TAB_INVENTORY, "Open inventory");
+    addCue(cues, {
+      uniqueId: UI_IDS.HOTBAR_SLOT(1),
+      style: "pulse",
+      caption: "Repair tool",
       durationMs: 0,
     });
   }

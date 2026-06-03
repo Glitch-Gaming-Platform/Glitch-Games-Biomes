@@ -7,6 +7,10 @@ import {
   type HarthmereItemInstance,
 } from "@/client/components/challenges/LocalDevHarthmereInventorySystem";
 import {
+  HARTHMERE_DAILY_TASK_COMPLETED_EVENT_V1,
+  completeHarthmereDailyTaskSoonV1,
+} from "@/client/components/challenges/harthmereDailyTasks";
+import {
   SNAPSHOT_MISSION_STATE_EVENT_V71,
   firstActiveSnapshotRoadAheadQuestTitleForBiomesUIV73,
   readSnapshotMissionStateV71,
@@ -1181,6 +1185,12 @@ async function submitFarmingFoodLiveModeAction(
         : `farming_food_failed:${operation}`
     );
   }
+  if (operation === "eat_food") {
+    completeHarthmereDailyTaskSoonV1("eat_meal");
+  }
+  if (["gather_seed", "plant", "water", "harvest"].includes(operation)) {
+    completeHarthmereDailyTaskSoonV1("garden_care");
+  }
   return body;
 }
 
@@ -1866,6 +1876,52 @@ export function useBiomesUILiveAdapters({
       setDailyHydrated(true);
     }
   }, []);
+
+  React.useEffect(() => {
+    if (typeof window === "undefined") return;
+    const handler = (event: Event) => {
+      const body = (event as CustomEvent<{ body?: any }>).detail?.body;
+      if (body?.dailyState) {
+        setDailyState(body.dailyState);
+        setDailyHydrated(true);
+      } else {
+        void refreshDailyState();
+      }
+      if (body?.inventoryLootState) {
+        setInventoryLootState(body.inventoryLootState);
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(
+            new CustomEvent("biomes:live-mode-wallet-updated", {
+              detail: { gold: body.inventoryLootState?.actor?.gold },
+            })
+          );
+        }
+      }
+      dispatchLiveModePlayerStatusFromBodyV1(body);
+    };
+    window.addEventListener(HARTHMERE_DAILY_TASK_COMPLETED_EVENT_V1, handler);
+    return () =>
+      window.removeEventListener(
+        HARTHMERE_DAILY_TASK_COMPLETED_EVENT_V1,
+        handler
+      );
+  }, [refreshDailyState]);
+
+  React.useEffect(() => {
+    const handler = (event: any) => {
+      if (event?.kind === "destroy") {
+        completeHarthmereDailyTaskSoonV1("forage_walk");
+      }
+      if (event?.kind === "place_voxel") {
+        completeHarthmereDailyTaskSoonV1("home_care");
+      }
+      if (event?.kind === "challenge_step_complete") {
+        completeHarthmereDailyTaskSoonV1("main_quest");
+      }
+    };
+    gardenHose.on("anyEvent", handler);
+    return () => gardenHose.off("anyEvent", handler);
+  }, [gardenHose]);
 
   React.useEffect(() => {
     if (typeof window === "undefined") return;

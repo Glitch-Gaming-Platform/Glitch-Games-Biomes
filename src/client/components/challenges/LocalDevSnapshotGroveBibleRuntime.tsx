@@ -2,6 +2,10 @@ import type { TalkDialogStepAction } from "@/client/components/challenges/TalkDi
 import { useClientContext } from "@/client/components/contexts/ClientContextReactContext";
 import { grantHarthmereItem } from "@/client/components/challenges/LocalDevHarthmereInventorySystem";
 import { grantHarthmereTutorialInventoryItem } from "@/client/components/challenges/LocalDevHarthmereInventorySystem";
+import {
+  HARTHMERE_WORLD_OBJECT_INTERACTION_EVENT_V1,
+  type HarthmereWorldObjectInteractionEventDetailV1,
+} from "@/client/components/challenges/harthmereObjectInteractions";
 import { addToast } from "@/client/components/toast/helpers";
 import type { GardenHoseEvent } from "@/client/events/api";
 import { JACKIE_ID } from "@/client/util/nux/state_machines";
@@ -715,6 +719,140 @@ function expectedOpenTabForObjectiveV106(objective: string | undefined) {
   return undefined;
 }
 
+function snapshotGroveMarkerIdForWorldObjectV1(
+  detail: HarthmereWorldObjectInteractionEventDetailV1
+) {
+  const label = normalizeSnapshotGroveLiveLabelV103(
+    typeof detail.label === "string" ? detail.label : undefined
+  );
+  if (!label) {
+    return undefined;
+  }
+  return SNAPSHOT_GROVE_LANDMARKS_V75.find((marker) => {
+    const markerLabel = normalizeSnapshotGroveLiveLabelV103(marker.label);
+    const markerId = normalizeSnapshotGroveLiveLabelV103(marker.id);
+    return label === markerLabel || label === markerId;
+  })?.id;
+}
+
+function snapshotGroveWorldObjectActionMatchesMarkerV1(
+  detail: HarthmereWorldObjectInteractionEventDetailV1,
+  marker: ReturnType<typeof currentMarkerForQuestV75> | undefined
+) {
+  if (!marker) {
+    return false;
+  }
+  const eventMarkerId = snapshotGroveMarkerIdForWorldObjectV1(detail);
+  if (eventMarkerId) {
+    return eventMarkerId === marker.id;
+  }
+  const label = normalizeSnapshotGroveLiveLabelV103(
+    typeof detail.label === "string" ? detail.label : undefined
+  );
+  return Boolean(
+    label && label === normalizeSnapshotGroveLiveLabelV103(marker.label)
+  );
+}
+
+function snapshotGroveEventFromWorldObjectInteractionV1(
+  detail: HarthmereWorldObjectInteractionEventDetailV1,
+  quest: SnapshotGroveQuestV75,
+  objectiveIndex: number
+): GardenHoseEvent | undefined {
+  const trigger = currentTriggerForQuestV92(quest, objectiveIndex);
+  const marker = currentMarkerForQuestV75(quest, objectiveIndex);
+  if (
+    !trigger ||
+    !snapshotGroveWorldObjectActionMatchesMarkerV1(detail, marker)
+  ) {
+    return undefined;
+  }
+
+  const objective =
+    quest.objectives[
+      Math.max(0, Math.min(quest.objectives.length - 1, objectiveIndex))
+    ];
+  const kind = detail.kind;
+  const base = {
+    questId: quest.id,
+    objectiveIndex,
+    trigger,
+    markerId: marker?.id,
+    objectLabel: detail.label ?? undefined,
+    objectInteractionKind: kind,
+  };
+  const isWorldUse = [
+    "read",
+    "repair",
+    "use",
+    "inspect",
+    "practice",
+    "open_door",
+    "open_gate",
+    "craft",
+    "cook",
+    "check_outfit",
+    "take_photo",
+  ].includes(kind);
+
+  switch (trigger) {
+    case "near_location":
+      if (isWorldUse || kind === "open_container" || kind === "gather") {
+        return { ...base, kind: "arrival_distance_check" } as any;
+      }
+      return undefined;
+    case "destroy":
+      if (kind === "gather" || kind === "inspect" || kind === "practice") {
+        return { ...base, kind: "destroy" } as any;
+      }
+      return undefined;
+    case "interact":
+      if (isWorldUse || kind === "open_container") {
+        return { ...base, kind: "inspect_frame" } as any;
+      }
+      return undefined;
+    case "open_tab":
+      if (kind === "read" || kind === "inspect" || kind === "use") {
+        return {
+          ...base,
+          kind: "open_tab",
+          tab: expectedOpenTabForObjectiveV106(objective),
+        } as any;
+      }
+      return undefined;
+    case "choice":
+      if (isWorldUse || kind === "open_container") {
+        return {
+          ...base,
+          kind: "snapshot_grove_practice_action",
+        } as any;
+      }
+      return undefined;
+    case "item_grant":
+      if (kind === "open_container" || kind === "gather") {
+        return { ...base, kind: "inventory_change" } as any;
+      }
+      return undefined;
+    case "collect":
+      if (kind === "open_container" || kind === "gather") {
+        return { ...base, kind: "inventory_change" } as any;
+      }
+      return undefined;
+    case "craft":
+      if (kind === "craft") {
+        return { ...base, kind: "craft" } as any;
+      }
+      return undefined;
+    case "open_jobs_board":
+      if (kind === "open_jobs_board") {
+        return { ...base, kind: "open_jobs_board" } as any;
+      }
+      return undefined;
+    default:
+      return undefined;
+  }
+}
+
 type SnapshotGrovePracticeItemV110 = {
   itemId: string;
   quantity: number;
@@ -1028,9 +1166,7 @@ function doesEventMatchSnapshotGroveTriggerV92(
       );
     }
     case "near_location":
-      // Location steps are completed by the controller's distance check, not
-      // by a client-confirm button.
-      return false;
+      return kind === "arrival_distance_check";
     case "destroy":
       return kind === "destroy";
     case "place_voxel":
@@ -1078,6 +1214,8 @@ function doesEventMatchSnapshotGroveTriggerV92(
       );
     case "craft":
       return kind === "craft";
+    case "open_jobs_board":
+      return kind === "open_jobs_board";
     case "item_grant":
       return (
         kind === "inventory_change" ||
@@ -1349,6 +1487,18 @@ export function doesSnapshotGroveEventAdvanceQuestForTestV132(
   return doesEventAdvanceQuestV75(event, quest, objectiveIndex);
 }
 
+export function snapshotGroveQuestEventFromWorldObjectInteractionForTestV1(
+  detail: HarthmereWorldObjectInteractionEventDetailV1,
+  quest: SnapshotGroveQuestV75,
+  objectiveIndex: number
+) {
+  return snapshotGroveEventFromWorldObjectInteractionV1(
+    detail,
+    quest,
+    objectiveIndex
+  );
+}
+
 function useSnapshotGroveQuestStateV75() {
   const [state, setState] = useState<SnapshotGroveQuestStateV75>(() =>
     readSnapshotGroveQuestStateV75()
@@ -1607,6 +1757,50 @@ export const SnapshotGroveBibleRuntimeControllerV75: React.FunctionComponent<{}>
       gardenHose.on("anyEvent", handler);
       return () => gardenHose.off("anyEvent", handler);
     }, [gardenHose, mapManager, resources]);
+
+    useEffect(() => {
+      if (typeof window === "undefined") {
+        return;
+      }
+      const handler = (browserEvent: Event) => {
+        const current = readSnapshotGroveQuestStateV75();
+        const quest = questByIdV75(current.activeQuestId);
+        if (!quest || current.completedQuestIds.includes(quest.id)) {
+          return;
+        }
+        const detail = (browserEvent as CustomEvent<
+          HarthmereWorldObjectInteractionEventDetailV1
+        >).detail;
+        if (!detail) {
+          return;
+        }
+        const event = snapshotGroveEventFromWorldObjectInteractionV1(
+          detail,
+          quest,
+          current.activeObjectiveIndex
+        );
+        if (
+          event &&
+          doesEventAdvanceQuestV75(event, quest, current.activeObjectiveIndex)
+        ) {
+          advanceSnapshotGroveQuestV75(
+            quest,
+            mapManager,
+            `${detail.kind}:${detail.label ?? "world_object"}`,
+            resources
+          );
+        }
+      };
+      window.addEventListener(
+        HARTHMERE_WORLD_OBJECT_INTERACTION_EVENT_V1,
+        handler
+      );
+      return () =>
+        window.removeEventListener(
+          HARTHMERE_WORLD_OBJECT_INTERACTION_EVENT_V1,
+          handler
+        );
+    }, [mapManager, resources]);
 
     useEffect(() => {
       if (typeof window === "undefined") {

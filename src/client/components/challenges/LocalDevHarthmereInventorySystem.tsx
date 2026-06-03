@@ -21,6 +21,7 @@ import {
   normalizeHarthmereWallet,
   nonNegativeInt,
 } from "@/client/components/challenges/LocalDevHarthmereEconomyHardening";
+import { completeHarthmereDailyTaskSoonV1 } from "@/client/components/challenges/harthmereDailyTasks";
 import {
   healHarthmerePlayer,
   reviveHarthmerePlayer,
@@ -2977,6 +2978,9 @@ function useBackpackItem(instanceId: string) {
         },
       })
     );
+  }
+  if (def.category === "food") {
+    completeHarthmereDailyTaskSoonV1("eat_meal");
   }
 }
 

@@ -1,3 +1,9 @@
+import {
+  HARTHMERE_CARE_DAILY_ACTIVITIES_V1,
+  HARTHMERE_DAILY_TASK_MIN_GOLD_V1,
+  harthmereDailyTaskXpRewardV1,
+} from "@/shared/harthmere/mmo_care_loops_v1";
+
 export interface DailyTodoRewardV1 {
   gold?: number;
   xp?: number;
@@ -66,7 +72,8 @@ export const DAILY_TODO_RULES_V1: DailyTodoRuleV1[] = [
   {
     activityId: "talk_neighbor",
     title: "Talk with a neighbor",
-    description: "Check in on someone nearby and learn what the day feels like.",
+    description:
+      "Check in on someone nearby and learn what the day feels like.",
     category: "community",
     reward: { gold: 2, xp: 8, townCare: "Friendship" },
   },
@@ -75,19 +82,26 @@ export const DAILY_TODO_RULES_V1: DailyTodoRuleV1[] = [
     title: "Take a foraging walk",
     description: "Look for berries, seeds, or useful scraps near the paths.",
     category: "harvest",
-    reward: { xp: 8, items: [{ id: "wild_berries", name: "Wild Berries", count: 1 }] },
+    reward: {
+      xp: 8,
+      items: [{ id: "wild_berries", name: "Wild Berries", count: 1 }],
+    },
   },
   {
     activityId: "garden_care",
     title: "Tend a garden spot",
     description: "Water, plant, or gather from a small patch.",
     category: "harvest",
-    reward: { xp: 8, items: [{ id: "seed_carrot", name: "Carrot Seed", count: 1 }] },
+    reward: {
+      xp: 8,
+      items: [{ id: "seed_carrot", name: "Carrot Seed", count: 1 }],
+    },
   },
   {
     activityId: "home_care",
     title: "Improve a place",
-    description: "Repair, decorate, or help a town project feel more cared for.",
+    description:
+      "Repair, decorate, or help a town project feel more cared for.",
     category: "home",
     reward: { gold: 2, xp: 6, townCare: "Better shelter" },
   },
@@ -97,10 +111,31 @@ export interface DailyTodoCareSnapshotV1 {
   streak?: number;
   claimedToday?: Record<string, unknown>;
   completedToday?: Record<string, unknown>;
+  skills?: Record<string, { xp?: number; level?: number }>;
+}
+
+function dailyTodoRewardForRuleV1(
+  rule: DailyTodoRuleV1,
+  snapshot: DailyTodoCareSnapshotV1 | undefined
+): DailyTodoRewardV1 {
+  const backendReward = HARTHMERE_CARE_DAILY_ACTIVITIES_V1[rule.activityId];
+  const actorLevel = Number(snapshot?.skills?.care?.level ?? 1);
+  return {
+    ...rule.reward,
+    gold: Math.max(
+      HARTHMERE_DAILY_TASK_MIN_GOLD_V1,
+      backendReward?.gold ?? rule.reward.gold ?? 0
+    ),
+    xp:
+      backendReward?.xp ??
+      harthmereDailyTaskXpRewardV1({
+        actorLevel: Number.isFinite(actorLevel) ? actorLevel : 1,
+      }),
+  };
 }
 
 export function dailyTodoTasksFromCareSnapshotForTest(
-  snapshot: DailyTodoCareSnapshotV1 | undefined,
+  snapshot: DailyTodoCareSnapshotV1 | undefined
 ): DailyTodoItemV1[] {
   const claimed = snapshot?.claimedToday ?? {};
   const completed = snapshot?.completedToday ?? {};
@@ -110,15 +145,21 @@ export function dailyTodoTasksFromCareSnapshotForTest(
     title: rule.title,
     description: rule.description,
     category: rule.category,
-    reward: rule.reward,
-    completed: rule.activityId === "check_in" || Boolean(completed[rule.activityId]) || Boolean(claimed[rule.activityId]),
+    reward: dailyTodoRewardForRuleV1(rule, snapshot),
+    completed:
+      rule.activityId === "check_in" ||
+      Boolean(completed[rule.activityId]) ||
+      Boolean(claimed[rule.activityId]),
     claimed: Boolean(claimed[rule.activityId]),
-    claimable: rule.activityId === "check_in" || Boolean(completed[rule.activityId]) || Boolean(claimed[rule.activityId]),
+    claimable:
+      rule.activityId === "check_in" ||
+      Boolean(completed[rule.activityId]) ||
+      Boolean(claimed[rule.activityId]),
     actionLabel: Boolean(claimed[rule.activityId])
       ? "Done today"
-      : (rule.activityId === "check_in" || Boolean(completed[rule.activityId]))
-        ? "Claim reward"
-        : "Do this first",
+      : rule.activityId === "check_in" || Boolean(completed[rule.activityId])
+      ? "Claim reward"
+      : "Do this first",
   }));
 }
 

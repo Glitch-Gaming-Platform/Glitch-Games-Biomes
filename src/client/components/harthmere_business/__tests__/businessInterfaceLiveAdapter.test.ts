@@ -1522,6 +1522,213 @@ describe("Harthmere in-world business interface v2 screens", () => {
     }
   });
 
+  it("renders the overhauled arena, onboarding, queue, and reference surfaces for every business type", () => {
+    const state = sampleSnapshot();
+    for (const typeId of HARTHMERE_BUSINESS_TYPE_ORDER_V1) {
+      const businessId = `arena_ui_${typeId}`;
+      state.businesses[businessId] = business(
+        businessId,
+        typeId,
+        "player_b"
+      ) as any;
+    }
+    const adapter = createHarthmereBusinessInterfaceAdapterV1({
+      state,
+      hydrated: true,
+      refresh: async () => state,
+      submit: async () => ({ ok: true, economyState: state }),
+    });
+    for (const typeId of HARTHMERE_BUSINESS_TYPE_ORDER_V1) {
+      const businessId = `arena_ui_${typeId}`;
+      const miniGame = getHarthmereBusinessCustomerMiniGameV1(
+        state,
+        businessId
+      );
+      const spec = miniGame.definition.mechanicSpec;
+      const html = renderToStaticMarkup(
+        React.createElement(HarthmereBusinessInterfacePanel, {
+          adapter,
+          nearbyBusinessId: businessId,
+          initialTab: "customers",
+          compact: true,
+        })
+      );
+      assert.ok(
+        html.includes('data-business-minigame-arena="true"'),
+        `${typeId} should render the overhauled arena root`
+      );
+      assert.ok(
+        html.includes('data-business-minigame-howto="true"'),
+        `${typeId} should render the how-to-play onboarding`
+      );
+      for (const surface of [
+        "Service Board",
+        "Current Customer",
+        "Queue",
+        "Who shows up",
+        "How to play",
+        "Goals",
+        "Watch out for",
+      ]) {
+        assert.ok(
+          html.includes(surface),
+          `${typeId} should render the "${surface}" surface`
+        );
+      }
+      // Idle arena (no live session) must keep the visible text free of
+      // snake_case / camelCase identifiers introduced by the overhaul.
+      const visibleText = visibleTextFromStaticMarkupV1(html);
+      // Onboarding copy is sourced from the spec, not invented per business.
+      // (Check against unescaped visible text so apostrophes/ampersands match.)
+      assert.ok(
+        visibleText.includes(spec.coreMechanic.slice(0, 24)),
+        `${typeId} should surface its core-mechanic onboarding text`
+      );
+      assert.ok(
+        spec.winConditions.every((win) => visibleText.includes(win)),
+        `${typeId} should list all win conditions as goals`
+      );
+      assert.equal(
+        /[a-z]+_[a-z]+/.test(visibleText),
+        false,
+        `${typeId} overhauled arena leaks snake case: ${visibleText}`
+      );
+      assert.equal(
+        /[a-z][A-Z][a-z]/.test(visibleText),
+        false,
+        `${typeId} overhauled arena leaks camel case: ${visibleText}`
+      );
+    }
+  });
+
+  it("renders the live-shift arena with patience meter, offer rewards, and stat chips", () => {
+    const state = sampleSnapshot();
+    state.businessSystems.customerSessions = {
+      customer_shift_live: {
+        sessionId: "customer_shift_live",
+        businessId: "business_food",
+        typeId: "food_service_restaurant",
+        actorId: "player_a",
+        status: "active",
+        startedAtMs: Date.now(),
+        expiresAtMs: Date.now() + 120_000,
+        currentTicketId: "live_ticket_1",
+        queue: [
+          {
+            ticketId: "live_ticket_1",
+            npcId: "customer_jessa_mint",
+            askId: "hot_meal",
+            requestedOfferId: "serve_worker_meal",
+            askLine: "I need something hot before my shift starts.",
+            status: "waiting",
+            arrivedAtMs: Date.now(),
+            patience: 46,
+            patienceRemaining: 46,
+            difficulty: 2,
+            rewardGold: 40,
+            reputationDelta: 1,
+            needDelta: 3,
+            navGoal: "counterNodeId",
+          },
+        ],
+        servedTicketIds: [],
+        failedTicketIds: [],
+        streak: 3,
+        satisfaction: 64,
+        earnedGold: 120,
+        progressPoints: 0,
+        dailyBonusGold: 15,
+        notes: ["Jessa Mint walked from queue to counter."],
+      },
+    };
+    const adapter = createHarthmereBusinessInterfaceAdapterV1({
+      state,
+      hydrated: true,
+      refresh: async () => state,
+      submit: async () => ({ ok: true, economyState: state }),
+    });
+    const html = renderToStaticMarkup(
+      React.createElement(HarthmereBusinessInterfacePanel, {
+        adapter,
+        nearbyBusinessId: "business_food",
+        initialTab: "customers",
+        compact: true,
+      })
+    );
+    // Live stat chips and progress.
+    assert.ok(html.includes("Shift Live"));
+    assert.ok(html.includes("Streak"));
+    assert.ok(html.includes("Satisfaction"));
+    // Patience meter + difficulty surface for the current customer.
+    assert.ok(html.includes("Patience 46/46"));
+    assert.ok(html.includes("s left"));
+    // Offer cards expose reward + satisfaction footers.
+    assert.ok(html.includes("gold ·"));
+    assert.ok(html.includes("satisfaction"));
+    assert.ok(html.includes("Jessa Mint"));
+    assert.ok(html.includes("Serve worker meal"));
+  });
+
+  it("renders an end-of-shift summary when an active session has no waiting customer", () => {
+    const state = sampleSnapshot();
+    state.businessSystems.customerSessions = {
+      customer_shift_done: {
+        sessionId: "customer_shift_done",
+        businessId: "business_food",
+        typeId: "food_service_restaurant",
+        actorId: "player_a",
+        status: "active",
+        startedAtMs: Date.now(),
+        expiresAtMs: Date.now() + 120_000,
+        currentTicketId: undefined,
+        queue: [
+          {
+            ticketId: "done_ticket_1",
+            npcId: "customer_jessa_mint",
+            askId: "hot_meal",
+            requestedOfferId: "serve_worker_meal",
+            askLine: "I need something hot before my shift starts.",
+            status: "served",
+            arrivedAtMs: Date.now(),
+            patience: 46,
+            patienceRemaining: 0,
+            difficulty: 1,
+            rewardGold: 40,
+            reputationDelta: 1,
+            needDelta: 3,
+            navGoal: "counterNodeId",
+          },
+        ],
+        servedTicketIds: ["done_ticket_1"],
+        failedTicketIds: [],
+        streak: 1,
+        satisfaction: 70,
+        earnedGold: 40,
+        progressPoints: 0,
+        dailyBonusGold: 15,
+        notes: [],
+      },
+    };
+    const adapter = createHarthmereBusinessInterfaceAdapterV1({
+      state,
+      hydrated: true,
+      refresh: async () => state,
+      submit: async () => ({ ok: true, economyState: state }),
+    });
+    const html = renderToStaticMarkup(
+      React.createElement(HarthmereBusinessInterfacePanel, {
+        adapter,
+        nearbyBusinessId: "business_food",
+        initialTab: "customers",
+        compact: true,
+      })
+    );
+    assert.ok(html.includes('data-business-minigame-summary="true"'));
+    assert.ok(html.includes("Shift complete"));
+    assert.ok(html.includes("Start New Shift"));
+    assert.ok(html.includes("earned 40 gold"));
+  });
+
   it("does not crash when the customer minigame panel hydrates and starts a shift in the browser", async function () {
     this.timeout(60_000);
 

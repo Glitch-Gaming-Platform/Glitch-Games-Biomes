@@ -1,5 +1,6 @@
 import { getOwnedItems } from "@/client/components/inventory/helpers";
 import type { TalkDialogStepAction } from "@/client/components/challenges/TalkDialogModalStep";
+import { completeHarthmereDailyTaskSoonV1 } from "@/client/components/challenges/harthmereDailyTasks";
 import { awardHarthmereQuestXp } from "@/client/components/challenges/LocalDevHarthmereLevelingSystem";
 import { addToast } from "@/client/components/toast/helpers";
 import { useClientContext } from "@/client/components/contexts/ClientContextReactContext";
@@ -785,6 +786,7 @@ function advanceSnapshotRoadAheadV73(
   const completedStepIds = [...new Set([...state.completedStepIds, step.id])];
   const completedMission = stepIndex >= mission.steps.length - 1;
   publishStepCompleteV73(gardenHose, step);
+  completeHarthmereDailyTaskSoonV1("main_quest");
   recordSnapshotMissionEventV73(
     completedMission ? "completed" : "progress",
     step.title,

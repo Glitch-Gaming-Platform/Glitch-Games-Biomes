@@ -12136,6 +12136,7 @@ export function reduceHarthmereLiveModeBackendStateV1(
         count: payloadNumber(envelope, "count"),
         season: payloadString(envelope, "season") as any,
         inventory: next.inventory.items,
+        actorLevel: next.classMagic.skills.character_level?.level ?? 1,
       });
       next.careLoops = careResult.care;
       warnings.push(...careResult.warnings);

@@ -274,6 +274,26 @@ ok(
   "deploy can explicitly skip business outpost reconciliation only by request"
 );
 ok(
+  script.includes("HARTHMERE_SKIP_WORLD_SYNC_RECONCILIATION"),
+  "deploy can explicitly skip broad world sync reconciliation only by request"
+);
+ok(
+  script.includes("reconcile_production_world_sync_v188"),
+  "production deploy has a named broad world sync reconciliation phase"
+);
+ok(
+  script.includes(
+    'check_production_redis_aof_health_v186 "post-deploy world sync"'
+  ),
+  "post-deploy world sync re-checks Redis write health"
+);
+ok(
+  script.includes(
+    'check_production_redis_snapshot_hash_v187 "post-deploy world sync"'
+  ),
+  "post-deploy world sync re-checks packaged snapshot hash"
+);
+ok(
   script.includes(
     "Reconciling Harthmere business outpost terrain against production Redis."
   ),
@@ -290,6 +310,30 @@ ok(
     "HARTHMERE_BUSINESS_OUTPOST_MATERIALIZATION_REDIS_HOST:-$PROD_REDIS_PUBLIC_HOST"
   ),
   "business outpost reconciliation defaults to the production Redis public host"
+);
+ok(
+  script.includes("reconcile-production-world-sync-v1.cjs"),
+  "production deploy runs the broad Harthmere world sync reconciler"
+);
+ok(
+  script.includes("HARTHMERE_WORLD_SYNC_REDIS_HOST:-$PROD_REDIS_PUBLIC_HOST"),
+  "broad world sync reconciliation defaults to the production Redis public host"
+);
+ok(
+  script.includes("validate_production_world_sync_http_v188"),
+  "production deploy validates live Harthmere world APIs after Redis reconciliation"
+);
+ok(
+  script.includes("/api/harthmere/live_mode_jobs_board_state"),
+  "post-deploy world sync validates jobs board shared-state API"
+);
+ok(
+  script.includes("/api/harthmere/live_mode_player_status_state"),
+  "post-deploy world sync validates player status API"
+);
+ok(
+  script.includes("/api/glitch/runtime_environment"),
+  "post-deploy world sync validates runtime environment API"
 );
 
 if (failed) {

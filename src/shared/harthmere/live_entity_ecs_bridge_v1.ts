@@ -3,6 +3,7 @@ import type {
   HarthmereLiveEntityKindV1,
   HarthmereLiveModeBackendStateV1,
 } from "./live_mode_backend_v1";
+import { isHarthmereNonLivingObjectLabelV1 } from "./object_interaction_semantics_v1";
 
 export const HARTHMERE_LIVE_ENTITY_ECS_BRIDGE_VERSION_V1 =
   "harthmere-live-entity-ecs-bridge-v1";
@@ -13,10 +14,14 @@ type LiveEntitySnapshotV1 =
   };
 
 function recordV1(value: unknown): Record<string, unknown> {
-  return value && typeof value === "object" ? (value as Record<string, unknown>) : {};
+  return value && typeof value === "object"
+    ? (value as Record<string, unknown>)
+    : {};
 }
 
-function vector3V1(value: unknown): { x: number; y: number; z: number } | undefined {
+function vector3V1(
+  value: unknown
+): { x: number; y: number; z: number } | undefined {
   if (Array.isArray(value)) {
     const [x, y, z] = value.map(Number);
     return [x, y, z].every(Number.isFinite) ? { x, y, z } : undefined;
@@ -57,17 +62,25 @@ function inferLiveEntityKindFromEcsRecordV1(
   record: Record<string, unknown>
 ): HarthmereLiveEntityKindV1 {
   const text = textForRecordV1(entityId, record);
+  if (isHarthmereNonLivingObjectLabelV1({ label: text })) return "object";
   if (record.robot_component) return "robot";
   if (record.player_status) return "human";
   if (/mux|muck|muckling|mucker/.test(text)) return "mux";
   if (/hex|hexer/.test(text)) return "hex";
   if (/undead|zombie|corpse|drowned|grave|dead/.test(text)) return "undead";
-  if (/\b(animal|livestock|wolf|bear|boar|deer|snake|rat|fox|horse|cow|goat|sheep|pig|chicken)\b/.test(text)) {
+  if (
+    /\b(animal|livestock|wolf|bear|boar|deer|snake|rat|fox|horse|cow|goat|sheep|pig|chicken)\b/.test(
+      text
+    )
+  ) {
     return "animal";
   }
   if (/construct|golem|training dummy/.test(text)) return "construct";
   if (/monster|creature|wyrm|boss/.test(text)) return "monster";
-  if (/place|label|board|marker|sign|kiosk|landmark/.test(text) || record.placeable_component) {
+  if (
+    /place|label|board|marker|sign|kiosk|landmark/.test(text) ||
+    record.placeable_component
+  ) {
     return "object";
   }
   if (
@@ -88,20 +101,35 @@ function combatProtectionForEcsRecordV1(
   if (record.protectedSpecies === true || record.protected_species === true) {
     return "protected_species";
   }
-  if (/child|guide|merchant|banker|clerk|registrar|supplier|teller|healer|civilian|town crier|quest giver/.test(text)) {
+  if (
+    /child|guide|merchant|banker|clerk|registrar|supplier|teller|healer|civilian|town crier|quest giver/.test(
+      text
+    )
+  ) {
     return "friendly_noncombatant";
   }
-  if (kind === "object" && /place|label|board|marker|sign|kiosk|landmark/.test(text)) {
+  if (
+    kind === "object" &&
+    /place|label|board|marker|sign|kiosk|landmark/.test(text)
+  ) {
     return "label_or_place";
   }
-  if (kind === "object" && !numberV1(record.movementSpeed ?? record.movement_speed)) {
+  if (isHarthmereNonLivingObjectLabelV1({ label: text })) {
+    return "immobile_object";
+  }
+  if (
+    kind === "object" &&
+    !numberV1(record.movementSpeed ?? record.movement_speed)
+  ) {
     return "immobile_object";
   }
   return undefined;
 }
 
 function isHostileByEcsTextV1(text: string) {
-  return /\b(hostile|bandit|muck|muckling|mucker|muckwad|hex|hexer|monster|boss|zombie|undead|wolf|boar|bear|snake|rat)\b/.test(text);
+  return /\b(hostile|bandit|muck|muckling|mucker|muckwad|hex|hexer|monster|boss|zombie|undead|wolf|boar|bear|snake|rat)\b/.test(
+    text
+  );
 }
 
 function defaultHpForKindV1(kind: HarthmereLiveEntityKindV1) {
@@ -119,7 +147,9 @@ export function createHarthmereLiveEntityCombatSnapshotFromEcsRecordV1(
   const record = recordV1(ecsRecord);
   const position =
     vector3V1(record.position) ??
-    vector3V1(record.npc_metadata && recordV1(record.npc_metadata).spawn_position);
+    vector3V1(
+      record.npc_metadata && recordV1(record.npc_metadata).spawn_position
+    );
   if (!position) {
     return undefined;
   }
@@ -137,9 +167,18 @@ export function createHarthmereLiveEntityCombatSnapshotFromEcsRecordV1(
       ? record.owner_id
       : undefined;
   const health = recordV1(record.health);
-  const maxHp =
-    Math.max(1, Math.trunc(numberV1(health.maxHp) ?? numberV1(health.max_hp) ?? defaultHpForKindV1(kind)));
-  const hp = Math.max(0, Math.min(maxHp, Math.trunc(numberV1(health.hp) ?? maxHp)));
+  const maxHp = Math.max(
+    1,
+    Math.trunc(
+      numberV1(health.maxHp) ??
+        numberV1(health.max_hp) ??
+        defaultHpForKindV1(kind)
+    )
+  );
+  const hp = Math.max(
+    0,
+    Math.min(maxHp, Math.trunc(numberV1(health.hp) ?? maxHp))
+  );
   const explicitAttackable =
     typeof record.isAttackable === "boolean"
       ? record.isAttackable
@@ -160,7 +199,8 @@ export function createHarthmereLiveEntityCombatSnapshotFromEcsRecordV1(
     hp,
     maxHp,
     position,
-    homePosition: vector3V1(record.homePosition ?? record.home_position) ?? position,
+    homePosition:
+      vector3V1(record.homePosition ?? record.home_position) ?? position,
     isHostile:
       typeof record.isHostile === "boolean"
         ? record.isHostile

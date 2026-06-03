@@ -17,6 +17,7 @@ import { useWithUnseenEmptyTransition } from "@/client/util/hooks";
 
 import { TalkToNPCMultiQuestSelector } from "@/client/components/challenges/TalkToNPCMultiQuestSelector";
 import { JACKIE_ID } from "@/client/util/nux/state_machines";
+import { completeHarthmereDailyTaskSoonV1 } from "@/client/components/challenges/harthmereDailyTasks";
 import { AdminDeleteEvent, AdminIceEvent } from "@/shared/ecs/gen/events";
 import { reportFunnelStage } from "@/shared/funnel";
 import type { BiomesId } from "@/shared/ids";
@@ -109,6 +110,7 @@ export const TalkToNPCScreen: React.FunctionComponent<{
         kind: "talk_npc",
         npcId: talkingToNPCId,
       });
+      completeHarthmereDailyTaskSoonV1("talk_neighbor");
     }
   }, []);
 

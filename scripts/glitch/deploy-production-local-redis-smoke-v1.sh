@@ -489,6 +489,108 @@ validate_production_bucket_assets_v151() {
   log "Production bucket asset validation passed for revision $revision."
 }
 
+validate_world_sync_http_url_v188() {
+  local base="$1"
+  local path="$2"
+  local label="$3"
+  local expected_pattern="${4:-}"
+  local url="${base%/}${path}"
+  local tmp_body status body_size
+  tmp_body="$(mktemp)"
+
+  status="$(curl -L -sS \
+    -o "$tmp_body" \
+    -H 'Accept: application/json,text/plain,*/*' \
+    -w '%{http_code}' \
+    "$url" || true)"
+  body_size="$(wc -c < "$tmp_body" | tr -d ' ')"
+
+  if [ "$status" != "200" ]; then
+    echo "ERROR post-deploy world sync HTTP check failed for $label: HTTP $status $url" >&2
+    echo "Body preview:" >&2
+    head -c 600 "$tmp_body" >&2 || true
+    echo >&2
+    rm -f "$tmp_body"
+    exit 1
+  fi
+
+  if [ "$body_size" -lt 2 ]; then
+    echo "ERROR post-deploy world sync HTTP check returned an empty response for $label: $url" >&2
+    rm -f "$tmp_body"
+    exit 1
+  fi
+
+  if [ -n "$expected_pattern" ] && ! grep -Eq "$expected_pattern" "$tmp_body"; then
+    echo "ERROR post-deploy world sync HTTP check returned unexpected body for $label: $url" >&2
+    echo "Expected pattern: $expected_pattern" >&2
+    echo "Body preview:" >&2
+    head -c 1000 "$tmp_body" >&2 || true
+    echo >&2
+    rm -f "$tmp_body"
+    exit 1
+  fi
+
+  echo "OK live world endpoint $label status=$status bytes=$body_size"
+  rm -f "$tmp_body"
+}
+
+validate_production_world_sync_http_v188() {
+  local revision="$1"
+  local revision_fqdn revision_origin install_id
+  revision_fqdn="$(az containerapp show \
+    --resource-group "$AZURE_RESOURCE_GROUP" \
+    --name "$AZURE_CONTAINER_APP" \
+    --query properties.latestRevisionFqdn \
+    -o tsv)"
+  revision_origin="https://${revision_fqdn}"
+  install_id="deploy-world-sync-${TAG}-${revision}"
+
+  log "Validating live Harthmere world APIs on production FQDN and concrete revision FQDN."
+  for base in "$revision_origin" "$PROD_ORIGIN"; do
+    validate_world_sync_http_url_v188 "$base" "/ready" "ready"
+    validate_world_sync_http_url_v188 "$base" "/api/glitch/runtime_environment" "runtime environment" '"ok"[[:space:]]*:[[:space:]]*true'
+    validate_world_sync_http_url_v188 "$base" "/api/harthmere/live_mode_jobs_board_state?install_id=${install_id}" "jobs board shared state" '"ok"[[:space:]]*:[[:space:]]*true'
+    validate_world_sync_http_url_v188 "$base" "/api/harthmere/live_mode_player_status_state?install_id=${install_id}&gameplay_active=0" "player status state" '"ok"[[:space:]]*:[[:space:]]*true'
+  done
+
+  log "Live Harthmere world API validation passed for revision $revision."
+}
+
+reconcile_production_world_sync_v188() {
+  local revision="$1"
+
+  if [ "${HARTHMERE_SKIP_WORLD_SYNC_RECONCILIATION:-0}" = "1" ]; then
+    log "Skipping Harthmere production world sync reconciliation by request."
+    return
+  fi
+
+  check_production_redis_aof_health_v186 "post-deploy world sync"
+  check_production_redis_snapshot_hash_v187 "post-deploy world sync"
+
+  if [ "${HARTHMERE_SKIP_BUSINESS_OUTPOST_MATERIALIZATION:-0}" != "1" ]; then
+    log "Reconciling Harthmere business outpost terrain against production Redis."
+    APPLY=1 \
+      IS_SERVER=1 \
+      REDIS_HOST="${HARTHMERE_BUSINESS_OUTPOST_MATERIALIZATION_REDIS_HOST:-$PROD_REDIS_PUBLIC_HOST}" \
+      REDIS_PORT="${HARTHMERE_BUSINESS_OUTPOST_MATERIALIZATION_REDIS_PORT:-$PROD_REDIS_PORT}" \
+      node scripts/harthmere/materialize-business-outposts-redis-v1.cjs
+  else
+    log "Skipping Harthmere business outpost terrain reconciliation by request."
+  fi
+
+  log "Reconciling Harthmere production world sync against production Redis."
+  APPLY=1 \
+    IS_SERVER=1 \
+    REDIS_HOST="${HARTHMERE_WORLD_SYNC_REDIS_HOST:-$PROD_REDIS_PUBLIC_HOST}" \
+    GLITCH_REDIS_HOST="${HARTHMERE_WORLD_SYNC_REDIS_HOST:-$PROD_REDIS_PUBLIC_HOST}" \
+    LOCAL_REDIS_HOST="${HARTHMERE_WORLD_SYNC_REDIS_HOST:-$PROD_REDIS_PUBLIC_HOST}" \
+    REDIS_PORT="${HARTHMERE_WORLD_SYNC_REDIS_PORT:-$PROD_REDIS_PORT}" \
+    GLITCH_REDIS_PORT="${HARTHMERE_WORLD_SYNC_REDIS_PORT:-$PROD_REDIS_PORT}" \
+    node scripts/harthmere/reconcile-production-world-sync-v1.cjs
+
+  validate_production_world_sync_http_v188 "$revision"
+}
+
 cleanup() {
   if [ "$KEEP_LOCAL_SMOKE" = "1" ]; then
     log "Keeping local smoke containers: $LOCAL_APP_CONTAINER, $LOCAL_REDIS_CONTAINER"
@@ -781,17 +883,7 @@ push_and_deploy() {
 
   promote_azure_revision_when_ready_v151 "$latest_revision"
   validate_production_bucket_assets_v151 "$latest_revision"
-
-  if [ "${HARTHMERE_SKIP_BUSINESS_OUTPOST_MATERIALIZATION:-0}" != "1" ]; then
-    log "Reconciling Harthmere business outpost terrain against production Redis."
-    APPLY=1 \
-      IS_SERVER=1 \
-      REDIS_HOST="${HARTHMERE_BUSINESS_OUTPOST_MATERIALIZATION_REDIS_HOST:-$PROD_REDIS_PUBLIC_HOST}" \
-      REDIS_PORT="${HARTHMERE_BUSINESS_OUTPOST_MATERIALIZATION_REDIS_PORT:-$PROD_REDIS_PORT}" \
-      node scripts/harthmere/materialize-business-outposts-redis-v1.cjs
-  else
-    log "Skipping Harthmere business outpost terrain reconciliation by request."
-  fi
+  reconcile_production_world_sync_v188 "$latest_revision"
 
   log "Production update verified: $IMAGE revision=$latest_revision"
 }

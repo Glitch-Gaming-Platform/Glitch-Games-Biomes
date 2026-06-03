@@ -131,6 +131,87 @@ describe("BiomesUI tutorial mission map", () => {
     assert.equal(cues.some((c) => c.uniqueId === UI_IDS.INVENTORY_ACTION("use")), false);
   });
 
+  it("Luis's build/claim lesson flashes land, marker, hotbar, and inventory cues", () => {
+    const claim = cuesForAuthoredTutorialStep({
+      questId: "build_repair_claim_lesson",
+      objective: "Inspect the Grove Practice Claim Stakes beside the safe road.",
+      objectiveIndex: 1,
+      trigger: "near_location",
+      markerId: "grove_claim_stakes",
+    });
+    assert.ok(claim.some((c) => c.uniqueId === UI_IDS.MAP_MARKER("grove_claim_stakes")));
+    assert.ok(claim.some((c) => c.uniqueId === UI_IDS.TAB_LAND));
+
+    const gather = cuesForAuthoredTutorialStep({
+      questId: "build_repair_claim_lesson",
+      objective: "Gather or break loose repair material near the practice lot.",
+      objectiveIndex: 2,
+      trigger: "destroy",
+      markerId: "muckwad_patch",
+    });
+    assert.ok(gather.some((c) => c.uniqueId === UI_IDS.HOTBAR_SLOT(1)));
+
+    const place = cuesForAuthoredTutorialStep({
+      questId: "build_repair_claim_lesson",
+      objective: "Place one block inside the marked practice claim so the foundation is visible.",
+      objectiveIndex: 3,
+      trigger: "place_voxel",
+      markerId: "building_practice_spot",
+    });
+    assert.ok(place.some((c) => c.uniqueId === UI_IDS.HOTBAR_SLOT(2)));
+
+    const ledger = cuesForAuthoredTutorialStep({
+      questId: "build_repair_claim_lesson",
+      objective: "Read the Practice Land Ledger to compare personal lots, rented stalls, guild halls, and wild claims.",
+      objectiveIndex: 5,
+      trigger: "open_tab",
+      markerId: "grove_land_ledger",
+    });
+    assert.ok(ledger.some((c) => c.uniqueId === UI_IDS.TAB_LAND));
+  });
+
+  it("Nia's guild lesson flashes guild, rank, bank, and project controls", () => {
+    const charter = cuesForAuthoredTutorialStep({
+      questId: "guilds_are_promises",
+      objective: "Read the sample charter and pick a guild focus: crafting, gathering, PvE, PvP, trade, social, or building.",
+      objectiveIndex: 1,
+      trigger: "choice",
+      markerId: "guild_charter_board",
+    });
+    assert.ok(charter.some((c) => c.uniqueId === UI_IDS.MAP_MARKER("guild_charter_board")));
+    assert.ok(charter.some((c) => c.uniqueId === UI_IDS.TAB_GUILDS));
+    assert.ok(charter.some((c) => c.uniqueId === UI_IDS.GUILD_ROSTER));
+
+    const ranks = cuesForAuthoredTutorialStep({
+      questId: "guilds_are_promises",
+      objective: "Assign practice ranks for leader, officer, builder, treasurer, scout, and member.",
+      objectiveIndex: 2,
+      trigger: "choice",
+      markerId: "guild_charter_board",
+    });
+    assert.ok(ranks.some((c) => c.uniqueId === UI_IDS.GUILD_RANK("leader")));
+
+    const bank = cuesForAuthoredTutorialStep({
+      questId: "guilds_are_promises",
+      objective: "Deposit a harmless practice item into the guild bank crate and review who may withdraw it.",
+      objectiveIndex: 3,
+      trigger: "item_grant",
+      markerId: "guild_bank_crate",
+    });
+    assert.ok(bank.some((c) => c.uniqueId === UI_IDS.TAB_BANKING));
+    assert.ok(bank.some((c) => c.uniqueId === UI_IDS.BANKING_DEPOSIT));
+
+    const project = cuesForAuthoredTutorialStep({
+      questId: "guilds_are_promises",
+      objective: "Start a tiny guild project at the project table: repair a sign, fund a bridge plank, or stock a shared kit.",
+      objectiveIndex: 4,
+      trigger: "interact",
+      markerId: "guild_project_table",
+    });
+    assert.ok(project.some((c) => c.uniqueId === UI_IDS.TAB_GUILDS));
+    assert.ok(project.some((c) => c.uniqueId === UI_IDS.GUILD_BUILDING_GUIDE));
+  });
+
   it("authored hotbar item-use steps flash the practice item, hotbar, and use action", () => {
     const cues = cuesForAuthoredTutorialStep({
       questId: "fountain_hotbar_and_dropping",

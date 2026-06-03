@@ -37,6 +37,11 @@ describe("live entity ECS bridge v1", () => {
         placeable_component: { item_id: 99 },
         label: { text: "Town Sign" },
       },
+      "b:1006": {
+        position: { v: [16, 60, 21] },
+        health: { hp: 50, maxHp: 50 },
+        label: { text: "Billy's Toolbag" },
+      },
     });
 
     assert.equal(snapshots["b:1001"].entityKind, "human");
@@ -57,6 +62,11 @@ describe("live entity ECS bridge v1", () => {
     assert.equal(snapshots["b:1005"].entityKind, "object");
     assert.equal(snapshots["b:1005"].combatProtection, "label_or_place");
     assert.equal(snapshots["b:1005"].aiEnabled, false);
+
+    assert.equal(snapshots["b:1006"].entityKind, "object");
+    assert.equal(snapshots["b:1006"].combatProtection, "immobile_object");
+    assert.equal(snapshots["b:1006"].isAttackable, false);
+    assert.equal(snapshots["b:1006"].aiEnabled, false);
   });
 
   it("keeps protected species and friendly humans as noncombatants while livestock and owned pets stay attackable", () => {

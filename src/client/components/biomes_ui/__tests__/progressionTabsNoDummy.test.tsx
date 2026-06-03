@@ -13,6 +13,7 @@ import {
   dailyTodoProgressForTest,
   dailyTodoTasksFromCareSnapshotForTest,
 } from "../adapters/dailyTodoAdapter";
+import { harthmereDailyTaskXpRewardV1 } from "@/shared/harthmere/mmo_care_loops_v1";
 import { mergeInventoryAndHotbarForBiomesBackpackForTest } from "../adapters/inventoryAdapterHelpers";
 import { readableMapMarkerLabelForTest } from "../adapters/mapMarkerLabels";
 import {
@@ -198,6 +199,10 @@ describe("Biomes UI progression tabs", () => {
     assert.ok(html.includes("Today"));
     assert.ok(html.includes("Check in for the day"));
     assert.ok(html.includes("Read the jobs board"));
+    assert.ok(html.includes("200 gold"));
+    assert.ok(
+      html.includes(`${harthmereDailyTaskXpRewardV1({ actorLevel: 1 })} XP`)
+    );
     assert.ok(html.includes("Done today"));
     assert.ok(html.includes("Claim reward"));
     assertNoDeveloperCopy(html);

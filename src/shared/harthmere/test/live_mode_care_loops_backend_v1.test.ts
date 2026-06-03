@@ -4,14 +4,18 @@ import {
   parseHarthmereLiveModeBackendStateV1,
   reduceHarthmereLiveModeBackendStateV1,
 } from "../live_mode_backend_v1";
-import type {
-  HarthmereLiveModeAuthorityEnvelopeV1,
-} from "../live_mode_readiness_v1";
+import {
+  HARTHMERE_DAILY_TASK_MIN_GOLD_V1,
+  harthmereDailyTaskXpRewardV1,
+} from "../mmo_care_loops_v1";
+import type { HarthmereLiveModeAuthorityEnvelopeV1 } from "../live_mode_readiness_v1";
 
 const ACTOR = "player_live_care_001";
 const NOW = 1_700_600_000_000;
 
-function env(payload: Record<string, unknown>): HarthmereLiveModeAuthorityEnvelopeV1 {
+function env(
+  payload: Record<string, unknown>
+): HarthmereLiveModeAuthorityEnvelopeV1 {
   return {
     requestId: `care_live_${Math.random()}`,
     idempotencyKey: `care_live_idem_${Math.random()}`,
@@ -34,20 +38,22 @@ describe("live_mode_backend_v1 — care loop integration", () => {
     const blocked = reduceHarthmereLiveModeBackendStateV1(
       state,
       env({ operation: "daily_check_in", targetId: "garden" }),
-      NOW,
+      NOW
     );
-    assert.ok(blocked.summary.warnings.includes("care_rejected:daily_task_not_done"));
+    assert.ok(
+      blocked.summary.warnings.includes("care_rejected:daily_task_not_done")
+    );
     assert.equal(blocked.state.inventory.items.seed_carrot, undefined);
 
     const completed = reduceHarthmereLiveModeBackendStateV1(
       blocked.state,
       env({ operation: "daily_task_completed", targetId: "garden" }),
-      NOW,
+      NOW
     );
     const result = reduceHarthmereLiveModeBackendStateV1(
       completed.state,
       env({ operation: "daily_check_in", targetId: "garden" }),
-      NOW,
+      NOW
     );
 
     assert.equal(result.state.careLoops.daily.streak, 1);
@@ -62,12 +68,21 @@ describe("live_mode_backend_v1 — care loop integration", () => {
     const result = reduceHarthmereLiveModeBackendStateV1(
       state,
       env({ operation: "daily_check_in", targetId: "check_in" }),
-      NOW,
+      NOW
     );
 
-    assert.equal(result.state.inventory.gold, state.inventory.gold + 5);
-    assert.ok(result.state.classMagic.skills.care.xp >= 10);
-    assert.ok(result.state.careLoops.townNeeds.happiness > state.careLoops.townNeeds.happiness);
+    assert.equal(
+      result.state.inventory.gold,
+      state.inventory.gold + HARTHMERE_DAILY_TASK_MIN_GOLD_V1
+    );
+    assert.ok(
+      result.state.classMagic.skills.care.xp >=
+        harthmereDailyTaskXpRewardV1({ actorLevel: 1 })
+    );
+    assert.ok(
+      result.state.careLoops.townNeeds.happiness >
+        state.careLoops.townNeeds.happiness
+    );
     assert.ok(result.summary.touchedModels.includes("care_daily:check_in"));
   });
 
@@ -79,7 +94,7 @@ describe("live_mode_backend_v1 — care loop integration", () => {
     let result = reduceHarthmereLiveModeBackendStateV1(
       state,
       env({ operation: "restore_project", targetId: "grove_food_satchel" }),
-      NOW,
+      NOW
     );
     assert.equal(result.state.inventory.items.loaf_bread, undefined);
     assert.equal(result.state.inventory.items.road_ration, undefined);
@@ -88,16 +103,20 @@ describe("live_mode_backend_v1 — care loop integration", () => {
     result = reduceHarthmereLiveModeBackendStateV1(
       result.state,
       env({ operation: "restore_project", targetId: "grove_food_satchel" }),
-      NOW,
+      NOW
     );
-    assert.ok(result.summary.warnings.includes("care_rejected:missing_project_materials"));
+    assert.ok(
+      result.summary.warnings.includes(
+        "care_rejected:missing_project_materials"
+      )
+    );
   });
 
   it("normalizes care loop state when loading older Redis records", () => {
     const parsed = parseHarthmereLiveModeBackendStateV1(
       JSON.stringify({ actorId: ACTOR, inventory: { gold: 10 } }),
       ACTOR,
-      NOW,
+      NOW
     );
 
     assert.equal(parsed.careLoops.actorId, ACTOR);

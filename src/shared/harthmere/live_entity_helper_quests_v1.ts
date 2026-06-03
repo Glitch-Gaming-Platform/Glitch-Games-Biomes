@@ -1,3 +1,5 @@
+import { isHarthmereNonLivingObjectLabelV1 } from "@/shared/harthmere/object_interaction_semantics_v1";
+
 export const LIVE_ENTITY_HELPER_QUESTS_VERSION_V1 =
   "live-entity-helper-quests-v1" as const;
 
@@ -659,6 +661,9 @@ export function isLiveEntityHelperQuestEligibleEntityV1(
     return false;
   }
   if (context.isMountOnly) {
+    return false;
+  }
+  if (isHarthmereNonLivingObjectLabelV1({ label: context.label })) {
     return false;
   }
   const isRobotLabel = LIVE_ENTITY_HELPER_ROBOT_LABEL_REGEX_V148.test(

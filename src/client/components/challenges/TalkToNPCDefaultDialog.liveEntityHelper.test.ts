@@ -10,9 +10,21 @@ import {
   submitHarthmereDialogueLiveModeChoiceV1,
 } from "@/client/components/challenges/dialogueLiveModeReputation";
 import { isHarthmereNonLivingDialogueObjectLabelV1 } from "@/client/components/challenges/dialogueObjectSemantics";
+import { harthmereContainerLootForLabelV1 } from "@/client/components/challenges/harthmereObjectContainers";
+import { harthmereReadableObjectTextForLabelV1 } from "@/client/components/challenges/harthmereObjectInteractions";
 import { contextForLiveEntityHelperQuestV1 } from "@/client/components/challenges/LocalDevLiveEntityHelperQuests";
 import { BIOMES_UI_PLAYER_STATUS_UPDATED_EVENT } from "@/client/components/biomes_ui/adapters/playerStatusAdapter";
 import { getLiveEntityHelperQuestForEntityV1 } from "@/shared/harthmere/live_entity_helper_quests_v1";
+import { GROVE_ECONOMY_STARTER_LANDMARKS_V1 } from "@/shared/harthmere/grove_economy_starter_v1";
+import {
+  SNAPSHOT_GROVE_LANDMARKS_V75,
+  SNAPSHOT_GROVE_NPCS_V75,
+} from "@/shared/harthmere/snapshot_grove_content_v75";
+import {
+  harthmereObjectInteractionForLabelV1,
+  isHarthmereContainerObjectLabelV1,
+  isHarthmereNonLivingObjectLabelV1,
+} from "@/shared/harthmere/object_interaction_semantics_v1";
 import type { BiomesId } from "@/shared/ids";
 
 describe("live-entity helper dialog context", () => {
@@ -31,26 +43,59 @@ describe("live-entity helper dialog context", () => {
   });
 
   it("keeps containers and road objects out of NPC dialogue", () => {
-    assert.equal(
-      isHarthmereNonLivingDialogueObjectLabelV1({
+    const objectLabels = [
+      {
         label: "Clothing Crate",
         entityDescription: "Quest container with starter clothes.",
-      }),
-      true
-    );
-    assert.equal(
-      isHarthmereNonLivingDialogueObjectLabelV1({
+      },
+      {
+        label: "Billy's Toolbag",
+        entityDescription: "A searched bag with road tools.",
+      },
+      {
+        label: "Chest The Grove Underwater Main",
+        entityDescription: "An underwater chest with supplies.",
+      },
+      {
         label: "Old Grove Road Post",
         entityDescription: "A marked route object.",
-      }),
-      true
-    );
+      },
+    ];
+
+    for (const objectLabel of objectLabels) {
+      assert.equal(
+        isHarthmereNonLivingDialogueObjectLabelV1(objectLabel),
+        true
+      );
+      assert.equal(
+        getLiveEntityHelperQuestForEntityV1(
+          contextForLiveEntityHelperQuestV1({
+            entityId: 9001 as BiomesId,
+            label: objectLabel.label,
+            position: [100, 54, 100],
+            defaultDialog: "Legacy object dialogue must not create a quest.",
+          })
+        ),
+        undefined
+      );
+    }
+
     assert.equal(
       isHarthmereNonLivingDialogueObjectLabelV1({
         label: "Billy Rhodes",
         entityDescription: "Runner, errand scout, and missing road-hand.",
       }),
       false
+    );
+    assert.ok(
+      getLiveEntityHelperQuestForEntityV1(
+        contextForLiveEntityHelperQuestV1({
+          entityId: 9002 as BiomesId,
+          label: "Billy Rhodes",
+          position: [100, 54, 100],
+          defaultDialog: "I'm Billy. I run parcels and messages.",
+        })
+      )
     );
     assert.equal(
       isHarthmereNonLivingDialogueObjectLabelV1({
@@ -59,6 +104,180 @@ describe("live-entity helper dialog context", () => {
       }),
       false
     );
+  });
+
+  it("keeps Harthmere containers loot-routable through real inventory item ids", () => {
+    assert.deepEqual(harthmereContainerLootForLabelV1("Billy's Toolbag"), [
+      { itemId: "woodcutters_axe", quantity: 1 },
+      { itemId: "rough_stone", quantity: 3 },
+      { itemId: "scrap_metal", quantity: 2 },
+    ]);
+    assert.deepEqual(
+      harthmereContainerLootForLabelV1("Chest The Grove Underwater Main"),
+      [
+        { itemId: "clean_water", quantity: 3 },
+        { itemId: "river_trout", quantity: 2 },
+      ]
+    );
+    assert.deepEqual(harthmereContainerLootForLabelV1("Clothing Crate"), [
+      { itemId: "baker_apron", quantity: 1 },
+      { itemId: "cloth_scrap", quantity: 4 },
+    ]);
+  });
+
+  it("classifies every authored Grove world-object landmark as non-living", () => {
+    const livingLabels = new Set(
+      SNAPSHOT_GROVE_NPCS_V75.map((npc) => npc.displayName)
+    );
+    const nonObjectLabels = new Set([
+      "The Grove",
+      "Road to Harthmere",
+      "Harthmere Bridge Center",
+    ]);
+    const worldObjectLabels = SNAPSHOT_GROVE_LANDMARKS_V75.filter(
+      (landmark) =>
+        landmark.kind !== "npc" &&
+        landmark.kind !== "danger" &&
+        !livingLabels.has(landmark.label) &&
+        !nonObjectLabels.has(landmark.label)
+    ).map((landmark) => landmark.label);
+
+    assert.ok(worldObjectLabels.length > 30);
+    for (const label of worldObjectLabels) {
+      assert.equal(
+        isHarthmereNonLivingObjectLabelV1({ label }),
+        true,
+        `${label} should be a non-living world object`
+      );
+      assert.equal(
+        getLiveEntityHelperQuestForEntityV1(
+          contextForLiveEntityHelperQuestV1({
+            entityId: 9100 as BiomesId,
+            label,
+            position: [100, 54, 100],
+            defaultDialog: "Object labels must not create helper quests.",
+          })
+        ),
+        undefined,
+        `${label} should not create a helper quest`
+      );
+    }
+  });
+
+  it("classifies authored storage-like landmarks as containers", () => {
+    for (const label of [
+      "Road Kit Crate",
+      "Mail and Bank Satchel",
+      "Practice Guild Bank Crate",
+      "Old Supply Box",
+      "Fountain Food Satchel",
+      "First-Aid Bin",
+      "Rin's Forage Basket",
+      "Kit's Mailbag Stand",
+    ]) {
+      assert.equal(
+        isHarthmereContainerObjectLabelV1({ label }),
+        true,
+        `${label} should open through the container path`
+      );
+    }
+  });
+
+  it("maps every authored Grove world object to its intended F-key action", () => {
+    const livingLabels = new Set(
+      SNAPSHOT_GROVE_NPCS_V75.map((npc) => npc.displayName)
+    );
+    const nonObjectLabels = new Set([
+      "The Grove",
+      "Road to Harthmere",
+      "Harthmere Bridge Center",
+    ]);
+    const labels = [
+      ...SNAPSHOT_GROVE_LANDMARKS_V75,
+      ...GROVE_ECONOMY_STARTER_LANDMARKS_V1,
+    ]
+      .filter(
+        (landmark) =>
+          landmark.kind !== "npc" &&
+          landmark.kind !== "danger" &&
+          !livingLabels.has(landmark.label) &&
+          !nonObjectLabels.has(landmark.label)
+      )
+      .map((landmark) => landmark.label);
+    const uniqueLabels = [...new Set(labels)].sort();
+    const expected: Record<string, [string, string]> = {
+      "Berry Patch": ["gather", "Gather"],
+      "Billy's Drop Post": ["read", "Read"],
+      "Broken Safe-Zone Fence": ["repair", "Repair"],
+      "Building Practice Spot": ["practice", "Practice"],
+      "Carlo's Cookpot": ["cook", "Cook"],
+      "Charter Trade Desk": ["use", "Use Desk"],
+      "Chat Practice Board": ["read", "Read"],
+      "Compass Practice Ring": ["practice", "Practice"],
+      "Consent Sparring Ring": ["practice", "Practice"],
+      "Crossroads Service Tower": ["inspect", "Inspect"],
+      "Doc's Field Table": ["use", "Use Table"],
+      "Fern's Sprout Beds": ["tend", "Tend"],
+      "First-Aid Bin": ["open_container", "Open Container"],
+      "Fountain Dim Corner": ["inspect", "Inspect"],
+      "Fountain Food Satchel": ["open_container", "Open Container"],
+      "Fountain Lesson Board": ["read", "Read"],
+      "Fountain Repair Post": ["repair", "Repair"],
+      "Fountain Workbench": ["craft", "Craft"],
+      "Garden Edge Berries": ["gather", "Gather"],
+      "Grove Guild Charter Board": ["read", "Read"],
+      "Grove Practice Claim Stakes": ["practice", "Practice"],
+      "Guild Project Table": ["use", "Use Table"],
+      "Gus's Oven": ["cook", "Cook"],
+      "Harthmere Chapel Stone": ["inspect", "Inspect"],
+      "Harthmere Market Office": ["inspect", "Inspect"],
+      "Harthmere Town Jobs Board": ["open_jobs_board", "Open Jobs Board"],
+      "Jobs Board": ["open_jobs_board", "Open Jobs Board"],
+      "Kit's Mailbag Stand": ["open_container", "Open Container"],
+      "Lost-and-Found Stone": ["recover", "Recover Items"],
+      "Lovely Locks Mirror": ["check_outfit", "Check Outfit"],
+      "Luis's Repair Cart": ["repair", "Repair"],
+      "Mail and Bank Satchel": ["open_container", "Open Container"],
+      "Marked Practice Materials": ["gather", "Gather"],
+      "Mel's Workbench": ["craft", "Craft"],
+      "Mosslawn Song Stones": ["inspect", "Inspect"],
+      "Muckwad Patch": ["gather", "Gather"],
+      "Old Grove Road Post": ["read", "Read"],
+      "Old Supply Box": ["open_container", "Open Container"],
+      "Painted Route Flags": ["practice", "Practice"],
+      "Party Rope Marker": ["practice", "Practice"],
+      "Practice Drop Stones": ["practice", "Practice"],
+      "Practice Guild Bank Crate": ["open_container", "Open Container"],
+      "Practice Land Ledger": ["read", "Read"],
+      "Practice Scratch Post": ["repair", "Repair"],
+      "Ready Check Fireflies": ["practice", "Practice"],
+      "Rin's Forage Basket": ["open_container", "Open Container"],
+      "Road Jump Stretch": ["practice", "Practice"],
+      "Road Kit Crate": ["open_container", "Open Container"],
+      "Safe-Zone Boundary Stones": ["inspect", "Inspect"],
+      "Selfie Overlook": ["take_photo", "Take Photo"],
+      "Shutter Cove Photo Marker": ["take_photo", "Take Photo"],
+      "Softwood Practice Dummy": ["practice", "Practice"],
+      "Taye's Paint Pot": ["use", "Use Pot"],
+      "Warning Moss Patch": ["gather", "Gather"],
+    };
+
+    assert.deepEqual(uniqueLabels, Object.keys(expected).sort());
+    for (const [label, [kind, title]] of Object.entries(expected)) {
+      const action = harthmereObjectInteractionForLabelV1({ label });
+      assert.equal(action?.kind, kind, `${label} action kind`);
+      assert.equal(action?.title, title, `${label} action title`);
+    }
+    assert.equal(
+      harthmereObjectInteractionForLabelV1({ label: "Town Door" })?.title,
+      "Open Door"
+    );
+    assert.equal(
+      harthmereObjectInteractionForLabelV1({ label: "North Gate" })?.title,
+      "Open Gate"
+    );
+    assert.ok(harthmereReadableObjectTextForLabelV1("Old Grove Road Post"));
+    assert.ok(harthmereReadableObjectTextForLabelV1("Fountain Lesson Board"));
   });
 });
 

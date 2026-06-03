@@ -1,7 +1,9 @@
 import assert from "assert";
 import {
+  HARTHMERE_DAILY_TASK_MIN_GOLD_V1,
   applyHarthmereCareLoopInventoryDeltasV1,
   defaultHarthmereCareLoopStateV1,
+  harthmereDailyTaskXpRewardV1,
   reduceHarthmereCareLoopV1,
   type HarthmereCareLoopKindV1,
   type HarthmereCareLoopStateV1,
@@ -14,7 +16,7 @@ const TOMORROW = NOW + 24 * 60 * 60 * 1000;
 function mutate(
   state: HarthmereCareLoopStateV1,
   operation: HarthmereCareLoopKindV1,
-  payload: Record<string, unknown> = {},
+  payload: Record<string, unknown> = {}
 ) {
   return reduceHarthmereCareLoopV1(state, {
     requestId: `care_${operation}_${Math.random()}`,
@@ -40,8 +42,12 @@ describe("mmo_care_loops_v1", () => {
     assert.equal(result.care.daily.streak, 1);
     assert.equal(result.itemDeltas.seed_carrot, 1);
 
-    const duplicate = mutate(result.care, "daily_check_in", { targetId: "garden" });
-    assert.ok(duplicate.warnings.includes("care_rejected:daily_already_claimed"));
+    const duplicate = mutate(result.care, "daily_check_in", {
+      targetId: "garden",
+    });
+    assert.ok(
+      duplicate.warnings.includes("care_rejected:daily_already_claimed")
+    );
 
     result = reduceHarthmereCareLoopV1(result.care, {
       requestId: "care_tomorrow",
@@ -63,8 +69,11 @@ describe("mmo_care_loops_v1", () => {
   it("supports daily check-in rewards and separate cozy tasks on the same day", () => {
     let state = defaultHarthmereCareLoopStateV1(ACTOR, NOW);
     let result = mutate(state, "daily_check_in", { targetId: "check_in" });
-    assert.equal(result.goldDelta, 5);
-    assert.equal(result.xpDelta, 10);
+    assert.equal(result.goldDelta, HARTHMERE_DAILY_TASK_MIN_GOLD_V1);
+    assert.equal(
+      result.xpDelta,
+      harthmereDailyTaskXpRewardV1({ actorLevel: 1 })
+    );
     assert.ok(result.care.townNeeds.happiness > state.townNeeds.happiness);
 
     state = result.care;
@@ -73,12 +82,47 @@ describe("mmo_care_loops_v1", () => {
 
     result = mutate(state, "daily_task_completed", { targetId: "jobs_board" });
     result = mutate(result.care, "daily_check_in", { targetId: "jobs_board" });
-    assert.equal(result.goldDelta, 3);
-    assert.equal(result.xpDelta, 6);
+    assert.equal(result.goldDelta, HARTHMERE_DAILY_TASK_MIN_GOLD_V1);
+    assert.equal(
+      result.xpDelta,
+      harthmereDailyTaskXpRewardV1({ actorLevel: 1 })
+    );
     assert.ok(result.care.townNeeds.safety > state.townNeeds.safety);
 
-    const duplicate = mutate(result.care, "daily_check_in", { targetId: "check_in" });
-    assert.ok(duplicate.warnings.includes("care_rejected:daily_already_claimed"));
+    const duplicate = mutate(result.care, "daily_check_in", {
+      targetId: "check_in",
+    });
+    assert.ok(
+      duplicate.warnings.includes("care_rejected:daily_already_claimed")
+    );
+  });
+
+  it("scales visible daily task XP so all tasks total half a level", () => {
+    let state = defaultHarthmereCareLoopStateV1(ACTOR, NOW);
+    const tasks = [
+      "check_in",
+      "jobs_board",
+      "eat_meal",
+      "main_quest",
+      "talk_neighbor",
+      "forage_walk",
+      "garden_care",
+      "home_care",
+    ];
+    let totalXp = 0;
+    for (const targetId of tasks) {
+      if (targetId !== "check_in") {
+        state = mutate(state, "daily_task_completed", { targetId }).care;
+      }
+      const claimed = mutate(state, "daily_check_in", { targetId });
+      totalXp += claimed.xpDelta;
+      state = claimed.care;
+    }
+    assert.equal(
+      totalXp,
+      harthmereDailyTaskXpRewardV1({ actorLevel: 1 }) * tasks.length
+    );
+    assert.ok(totalXp >= 500);
   });
 
   it("supports NPC talk and gifting with daily caps, preferences, and dialogue unlocks", () => {
@@ -86,8 +130,12 @@ describe("mmo_care_loops_v1", () => {
     let result = mutate(state, "npc_talk", { targetId: "gus_the_baker" });
     assert.equal(result.care.npcs.gus_the_baker.relationship, 3);
 
-    const duplicateTalk = mutate(result.care, "npc_talk", { targetId: "gus_the_baker" });
-    assert.ok(duplicateTalk.warnings.includes("care_rejected:npc_already_talked_today"));
+    const duplicateTalk = mutate(result.care, "npc_talk", {
+      targetId: "gus_the_baker",
+    });
+    assert.ok(
+      duplicateTalk.warnings.includes("care_rejected:npc_already_talked_today")
+    );
 
     result = mutate(result.care, "npc_gift", {
       targetId: "gus_the_baker",
@@ -96,14 +144,18 @@ describe("mmo_care_loops_v1", () => {
     });
     assert.equal(result.itemDeltas.field_wheat, -1);
     assert.equal(result.care.npcs.gus_the_baker.relationship, 13);
-    assert.ok(result.care.npcs.gus_the_baker.unlockedDialogue.includes("trust_1"));
+    assert.ok(
+      result.care.npcs.gus_the_baker.unlockedDialogue.includes("trust_1")
+    );
 
     const duplicateGift = mutate(result.care, "npc_gift", {
       targetId: "gus_the_baker",
       itemId: "field_wheat",
       inventory: { field_wheat: 1 },
     });
-    assert.ok(duplicateGift.warnings.includes("care_rejected:npc_already_gifted_today"));
+    assert.ok(
+      duplicateGift.warnings.includes("care_rejected:npc_already_gifted_today")
+    );
   });
 
   it("rejects invalid NPC gift inputs without consuming inventory", () => {
@@ -111,7 +163,11 @@ describe("mmo_care_loops_v1", () => {
     let result = mutate(state, "npc_gift", { targetId: "jackie" });
     assert.ok(result.warnings.includes("care_rejected:missing_gift_item"));
 
-    result = mutate(state, "npc_gift", { targetId: "jackie", itemId: "road_ration", inventory: {} });
+    result = mutate(state, "npc_gift", {
+      targetId: "jackie",
+      itemId: "road_ration",
+      inventory: {},
+    });
     assert.ok(result.warnings.includes("care_rejected:missing_gift_inventory"));
     assert.deepEqual(result.itemDeltas, {});
   });
@@ -138,16 +194,26 @@ describe("mmo_care_loops_v1", () => {
       targetId: "grove_food_satchel",
       inventory: { loaf_bread: 2, road_ration: 1 },
     });
-    assert.ok(completeAgain.warnings.includes("care_rejected:project_complete"));
+    assert.ok(
+      completeAgain.warnings.includes("care_rejected:project_complete")
+    );
   });
 
   it("rejects restoration with missing materials or unknown projects", () => {
     const state = defaultHarthmereCareLoopStateV1(ACTOR, NOW);
-    let result = mutate(state, "restore_project", { targetId: "missing", inventory: {} });
+    let result = mutate(state, "restore_project", {
+      targetId: "missing",
+      inventory: {},
+    });
     assert.ok(result.warnings.includes("care_rejected:unknown_project"));
 
-    result = mutate(state, "restore_project", { targetId: "grove_food_satchel", inventory: { loaf_bread: 1 } });
-    assert.ok(result.warnings.includes("care_rejected:missing_project_materials"));
+    result = mutate(state, "restore_project", {
+      targetId: "grove_food_satchel",
+      inventory: { loaf_bread: 1 },
+    });
+    assert.ok(
+      result.warnings.includes("care_rejected:missing_project_materials")
+    );
   });
 
   it("supports harvest-production-profit through food sales and skill growth", () => {
@@ -225,7 +291,10 @@ describe("mmo_care_loops_v1", () => {
     assert.equal(result.goldDelta, 4);
 
     state = result.care;
-    result = mutate(state, "skill_mastery", { targetId: "farming", count: 220 });
+    result = mutate(state, "skill_mastery", {
+      targetId: "farming",
+      count: 220,
+    });
     assert.equal(result.care.skills.farming.level, 3);
     assert.ok(result.unlocked.includes("skill:farming:level_3"));
   });
@@ -255,7 +324,7 @@ describe("mmo_care_loops_v1", () => {
   it("applies care loop inventory deltas without negative item counts", () => {
     const next = applyHarthmereCareLoopInventoryDeltasV1(
       { loaf_bread: 1, seed_carrot: 2 },
-      { loaf_bread: -5, wild_berries: 1 },
+      { loaf_bread: -5, wild_berries: 1 }
     );
     assert.equal(next.loaf_bread, undefined);
     assert.equal(next.seed_carrot, 2);

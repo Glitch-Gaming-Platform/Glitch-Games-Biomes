@@ -169,6 +169,9 @@ function installHarthmereBusinessPendingStylesV1() {
     "@keyframes harthmere-business-pending-spin-v1 { to { transform: rotate(360deg); } }",
     "@keyframes harthmere-business-meter-v1 { 0% { transform: translateX(-100%); } 100% { transform: translateX(280%); } }",
     "@keyframes harthmere-business-pulse-v1 { 0%, 100% { opacity: .58; transform: scale(.96); } 50% { opacity: 1; transform: scale(1.04); } }",
+    "@keyframes harthmere-business-toast-v1 { 0% { opacity: 0; transform: translateY(8px) scale(.98); } 100% { opacity: 1; transform: none; } }",
+    "@keyframes harthmere-business-urgent-v1 { 0%, 100% { opacity: 1; } 50% { opacity: .45; } }",
+    "@keyframes harthmere-business-rise-v1 { 0% { opacity: 0; transform: translateY(6px); } 100% { opacity: 1; transform: none; } }",
   ].join("\n");
   document.head.appendChild(style);
 }
@@ -864,190 +867,426 @@ const CustomerMiniGamePane: React.FunctionComponent<{
   const session = panel.activeSession;
   const ticket = panel.currentTicket;
   const [nowMs, setNowMs] = React.useState(() => Date.now());
-  const [actionError, setActionError] = React.useState<string | undefined>();
+  const [feedback, setFeedback] = React.useState<
+    MiniGameFeedbackV1 | undefined
+  >();
+  const feedbackSeq = React.useRef(0);
   React.useEffect(() => {
     if (!ticket) return;
     const timer = window.setInterval(() => setNowMs(Date.now()), 1000);
     return () => window.clearInterval(timer);
   }, [ticket?.ticketId]);
+  React.useEffect(() => {
+    if (!feedback) return;
+    const timer = window.setTimeout(() => setFeedback(undefined), 3400);
+    return () => window.clearTimeout(timer);
+  }, [feedback?.id]);
   const served = session?.servedTicketIds.length ?? 0;
   const failed = session?.failedTicketIds.length ?? 0;
   const displayedPatience = ticketPatienceRemaining(ticket, nowMs);
+  const patienceRatio =
+    ticket && ticket.patience > 0
+      ? Math.max(0, Math.min(1, displayedPatience / ticket.patience))
+      : 1;
   const mechanic = panel.definition.mechanicSpec;
   const queueTotal = Math.max(1, session?.queue.length ?? 1);
-  const progressPercent = Math.min(
-    100,
-    Math.round((served / queueTotal) * 100)
-  );
+  const progressPercent = session
+    ? Math.min(100, Math.round((served / queueTotal) * 100))
+    : 0;
+  const shiftComplete = Boolean(session && !ticket);
   const offerRows = React.useMemo(() => chunk(panel.offers, 2), [panel.offers]);
-  const uiElements = React.useMemo(
-    () => panel.definition.mechanicSpec.uiElements,
-    [panel.definition.mechanicSpec.uiElements]
-  );
-  const winConditions = React.useMemo(
-    () => panel.definition.mechanicSpec.winConditions,
-    [panel.definition.mechanicSpec.winConditions]
-  );
+  const uiElements = mechanic.uiElements;
+  const winConditions = mechanic.winConditions;
   const edgeCases = React.useMemo(
-    () => panel.definition.mechanicSpec.edgeCases.slice(0, 3),
-    [panel.definition.mechanicSpec.edgeCases]
+    () => mechanic.edgeCases.slice(0, 3),
+    [mechanic.edgeCases]
   );
-  const runCustomerAction = React.useCallback(
-    (action: () => Promise<unknown>) => {
-      setActionError(undefined);
-      void action().catch((error) => {
-        const message =
-          error instanceof Error ? error.message : String(error ?? "");
-        if (
-          message.includes("business_customer_session_expired") ||
-          message.includes("business_customer_session_not_active")
-        ) {
-          setActionError("That customer timed out. Start a new shift.");
-          return;
-        }
-        setActionError("The service board could not update. Try again.");
-      });
+  const customerTypes = React.useMemo(
+    () => mechanic.customerTypes.slice(0, 3),
+    [mechanic.customerTypes]
+  );
+  const difficultyTier = mechanic.difficultyScaling[0];
+  const customerName =
+    panel.currentNpc?.displayName ??
+    (ticket ? displayLabel(ticket.npcId) : "");
+  const npcNameById = React.useMemo(() => {
+    const map = new Map<string, string>();
+    for (const npc of panel.customerPool) map.set(npc.npcId, npc.displayName);
+    return map;
+  }, [panel.customerPool]);
+  const upcoming = React.useMemo(() => {
+    if (!session) return [];
+    const servedSet = new Set(session.servedTicketIds);
+    const failedSet = new Set(session.failedTicketIds);
+    return session.queue
+      .filter(
+        (entry) =>
+          entry.ticketId !== ticket?.ticketId &&
+          !servedSet.has(entry.ticketId) &&
+          !failedSet.has(entry.ticketId)
+      )
+      .slice(0, 4);
+  }, [session, ticket?.ticketId]);
+  const pushFeedback = React.useCallback(
+    (kind: MiniGameFeedbackV1["kind"], message: string) => {
+      feedbackSeq.current += 1;
+      setFeedback({ id: feedbackSeq.current, kind, message });
     },
     []
   );
+  const runCustomerAction = React.useCallback(
+    (action: () => Promise<unknown>, successMessage?: string) => {
+      void action()
+        .then(() => {
+          if (successMessage) pushFeedback("success", successMessage);
+        })
+        .catch((error) => {
+          const message =
+            error instanceof Error ? error.message : String(error ?? "");
+          if (
+            message.includes("business_customer_session_expired") ||
+            message.includes("business_customer_session_not_active")
+          ) {
+            pushFeedback("error", "That customer timed out. Start a new shift.");
+            return;
+          }
+          pushFeedback("error", "The service board could not update. Try again.");
+        });
+    },
+    [pushFeedback]
+  );
+  const startShift = React.useCallback(
+    () => runCustomerAction(() => adapter.startCustomerSession(businessId)),
+    [adapter, businessId, runCustomerAction]
+  );
   return (
-    <div style={responsiveGridStyle}>
-      <MetricCard
-        label="Served"
-        value={`${panel.stats.totalServed}`}
-        hint={`Best streak ${panel.stats.bestStreak} · Tier ${panel.stats.currentTier}`}
-      />
-      <MetricCard
-        label="Shift"
-        value={session ? `${served}/${session.queue.length}` : "Idle"}
-        hint={
-          session
-            ? `${session.earnedGold} gold · ${failed} missed`
-            : panel.dailyReturnTriggers[0]
-        }
-      />
-      <section style={miniGameArenaStyle}>
-        <div style={miniGameHeaderStyle}>
-          <div>
-            <h3 style={sectionTitleStyle}>Getting a Job and Getting Paid</h3>
+    <div style={arenaRootStyle} data-business-minigame-arena="true">
+      <section
+        style={arenaHeroStyle}
+        data-business-minigame-spec={mechanic.specId}
+      >
+        <div style={heroGlowStyle} aria-hidden="true" />
+        <div style={heroTopRowStyle}>
+          <div style={{ minWidth: 0 }}>
+            <span style={heroEyebrowStyle}>Getting a Job and Getting Paid</span>
             <strong style={miniGameTitleStyle}>{mechanic.gameTitle}</strong>
           </div>
-          <span style={miniGameBadgeStyle}>
+          <span style={session ? miniGameBadgeLiveStyle : miniGameBadgeStyle}>
             {session ? "Shift Live" : "Ready"}
           </span>
         </div>
-        <p style={mutedTextStyle}>{mechanic.objective}</p>
+        <p style={heroObjectiveStyle}>{mechanic.objective}</p>
+        <div style={statChipRowStyle}>
+          {session ? (
+            <>
+              <StatChip
+                label="Served"
+                value={`${served}/${session.queue.length}`}
+              />
+              <StatChip label="Gold" value={`${session.earnedGold}`} tone="gold" />
+              <StatChip label="Streak" value={`${session.streak}`} />
+              <StatChip label="Satisfaction" value={`${session.satisfaction}`} />
+              <StatChip
+                label="Missed"
+                value={`${failed}`}
+                tone={failed ? "warn" : undefined}
+              />
+            </>
+          ) : (
+            <>
+              <StatChip
+                label="Lifetime served"
+                value={`${panel.stats.totalServed}`}
+              />
+              <StatChip
+                label="Best streak"
+                value={`${panel.stats.bestStreak}`}
+              />
+              <StatChip label="Tier" value={`${panel.stats.currentTier}`} />
+            </>
+          )}
+        </div>
         <div style={progressTrackStyle} aria-hidden="true">
-          <div style={{ ...progressFillStyle, width: `${progressPercent}%` }} />
-          {session ? <div style={progressSweepStyle} /> : null}
+          <div
+            style={{ ...progressFillStyle, width: `${progressPercent}%` }}
+          />
+          {session && !shiftComplete ? <div style={progressSweepStyle} /> : null}
         </div>
-        <div style={{ ...formRowStyle, marginTop: 12 }}>
-          <button
-            className="biomes-ui-tab"
-            type="button"
-            disabled={Boolean(session)}
-            onClick={() =>
-              runCustomerAction(() => adapter.startCustomerSession(businessId))
-            }
-            style={session ? disabledButtonStyle : startShiftButtonStyle}
-          >
-            Start Shift
-          </button>
-        </div>
-        {actionError ? (
-          <p style={{ ...mutedTextStyle, marginTop: 8 }}>{actionError}</p>
+        {shiftComplete ? (
+          <div style={summaryCardStyle} data-business-minigame-summary="true">
+            <strong style={summaryTitleStyle}>Shift complete</strong>
+            <p style={summaryLineStyle}>
+              You served {served} of {session?.queue.length} customers and earned{" "}
+              {session?.earnedGold ?? 0} gold.{" "}
+              {failed
+                ? `${failed} customer${failed === 1 ? "" : "s"} timed out.`
+                : "Clean sheet — nobody left unhappy!"}
+            </p>
+            <div style={summaryStatRowStyle}>
+              <StatChip
+                label="Best streak"
+                value={`${session?.streak ?? 0}`}
+              />
+              <StatChip
+                label="Satisfaction"
+                value={`${session?.satisfaction ?? 0}`}
+              />
+            </div>
+            <button
+              className="biomes-ui-tab"
+              type="button"
+              onClick={startShift}
+              style={startShiftButtonStyle}
+            >
+              Start New Shift
+            </button>
+          </div>
+        ) : !session ? (
+          <div style={heroStartRowStyle}>
+            <button
+              className="biomes-ui-tab"
+              type="button"
+              onClick={startShift}
+              style={startShiftButtonStyle}
+            >
+              Start Shift
+            </button>
+            <span style={heroStartHintStyle}>
+              Bring customer-only neighbours to the counter and match each
+              request before their patience runs out.
+            </span>
+          </div>
         ) : null}
-        {session?.notes.slice(-3).map((note) => (
-          <p key={note} style={{ ...mutedTextStyle, marginTop: 6 }}>
+        {session?.notes.slice(-2).map((note) => (
+          <p key={note} style={heroNoteStyle}>
             {note}
           </p>
         ))}
+        {feedback ? (
+          <div
+            key={feedback.id}
+            role="status"
+            style={
+              feedback.kind === "success" ? toastSuccessStyle : toastErrorStyle
+            }
+            data-business-minigame-feedback={feedback.kind}
+          >
+            <span style={toastDotStyle} aria-hidden="true" />
+            {feedback.message}
+          </div>
+        ) : null}
       </section>
-      <section style={cardStyle} data-business-minigame-spec={mechanic.specId}>
-        <h3 style={sectionTitleStyle}>Service Board</h3>
-        <div style={{ display: "grid", gap: 8 }}>
-          {uiElements.map((element) => (
-            <div
-              key={element.elementId}
-              style={rowCardStyle}
-              data-business-minigame-ui-element={element.elementId}
-            >
-              <strong>{element.label}</strong>
-              <p style={mutedTextStyle}>{element.description}</p>
+
+      <div style={arenaWorkGridStyle}>
+        <section style={boardCardStyle}>
+          <h3 style={sectionTitleStyle}>Service Board</h3>
+          <div style={{ display: "grid", gap: 8 }}>
+            {uiElements.map((element, index) => (
+              <div
+                key={element.elementId}
+                style={boardRowStyle}
+                data-business-minigame-ui-element={element.elementId}
+              >
+                <span style={boardIndexStyle} aria-hidden="true">
+                  {index + 1}
+                </span>
+                <div style={{ minWidth: 0 }}>
+                  <strong style={boardRowTitleStyle}>{element.label}</strong>
+                  <p style={mutedTextStyle}>{element.description}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section style={customerCardStyle}>
+          <div style={cardHeaderRowStyle}>
+            <h3 style={sectionTitleStyle}>Current Customer</h3>
+            {ticket ? (
+              <span style={patienceBadgeStyle(patienceRatio)}>
+                {displayedPatience}s left
+              </span>
+            ) : null}
+          </div>
+          {ticket ? (
+            <>
+              <div style={customerStageStyle}>
+                <span
+                  style={customerAvatarStateStyle(patienceRatio)}
+                  aria-hidden="true"
+                />
+                <div style={{ minWidth: 0 }}>
+                  <strong>{customerName}</strong>
+                  <p style={{ ...mutedTextStyle, marginTop: 4 }}>
+                    {ticket.askLine}
+                  </p>
+                </div>
+              </div>
+              <div style={patienceTrackStyle} aria-hidden="true">
+                <div
+                  style={{
+                    ...patienceFillStyle,
+                    width: `${Math.round(patienceRatio * 100)}%`,
+                    background: patienceColorV1(patienceRatio),
+                  }}
+                />
+              </div>
+              <div style={patienceMetaRowStyle}>
+                <span style={mutedTextStyle}>
+                  Patience {displayedPatience}/{ticket.patience}
+                </span>
+                <span style={difficultyPipRowStyle} aria-hidden="true">
+                  {Array.from({ length: 5 }).map((_unused, index) => (
+                    <span
+                      key={index}
+                      style={
+                        index < Math.min(5, ticket.difficulty)
+                          ? difficultyPipOnStyle
+                          : difficultyPipOffStyle
+                      }
+                    />
+                  ))}
+                </span>
+              </div>
+              <RovingGrid
+                ariaLabel="Customer service offers"
+                items={offerRows}
+                onActivate={(_row, _col, offer) =>
+                  runCustomerAction(
+                    () =>
+                      adapter.serveCustomer(
+                        businessId,
+                        offer.offerId,
+                        session?.sessionId,
+                        ticket.ticketId,
+                        createHarthmereBusinessMiniGameDecisionForOfferV1(
+                          panel.typeId as any,
+                          offer.offerId
+                        )
+                      ),
+                    `Served ${customerName || "customer"} · +${offer.rewardGold} gold`
+                  )
+                }
+                renderCell={(offer, _coords, cell) => (
+                  <button
+                    ref={cell.ref}
+                    tabIndex={cell.tabIndex}
+                    onFocus={cell.onFocus}
+                    onKeyDown={cell.onKeyDown}
+                    onClick={cell.onClick}
+                    className="biomes-ui-tab"
+                    style={serviceButtonStyle}
+                    aria-label={offer.label}
+                  >
+                    <span style={offerHeadRowStyle}>
+                      <strong style={offerLabelStyle}>{offer.label}</strong>
+                      <span style={offerVerbBadgeStyle}>
+                        {displayLabel(offer.interactionVerb)}
+                      </span>
+                    </span>
+                    <span style={mutedTextStyle}>{offer.description}</span>
+                    <span style={offerFooterStyle}>
+                      +{offer.rewardGold} gold ·{" "}
+                      {offer.satisfactionDelta >= 0 ? "+" : ""}
+                      {offer.satisfactionDelta} satisfaction
+                    </span>
+                  </button>
+                )}
+              />
+            </>
+          ) : (
+            <div style={emptyStateStyle}>
+              <span style={emptyStateGlyphStyle} aria-hidden="true">
+                {shiftComplete ? "✓" : "☷"}
+              </span>
+              <p style={mutedTextStyle}>
+                {shiftComplete
+                  ? "This shift is complete. Start a new shift to keep building your streak."
+                  : "Start a shift to bring customer-only NPCs to the counter."}
+              </p>
+            </div>
+          )}
+        </section>
+
+        <section style={cardStyle}>
+          <h3 style={sectionTitleStyle}>Queue</h3>
+          {session ? (
+            upcoming.length ? (
+              <div style={{ display: "grid", gap: 8 }}>
+                {upcoming.map((entry, index) => (
+                  <div key={entry.ticketId} style={queueChipStyle}>
+                    <span style={queueOrderStyle} aria-hidden="true">
+                      {index + 1}
+                    </span>
+                    <div style={{ minWidth: 0 }}>
+                      <strong style={queueNameStyle}>
+                        {npcNameById.get(entry.npcId) ??
+                          displayLabel(entry.npcId)}
+                      </strong>
+                      <p style={mutedTextStyle}>
+                        Difficulty {entry.difficulty} · {entry.rewardGold} gold
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p style={mutedTextStyle}>
+                {ticket
+                  ? "Last customer is at the counter."
+                  : "Queue cleared for this shift."}
+              </p>
+            )
+          ) : (
+            <p style={mutedTextStyle}>
+              Start a shift to line up neighbours at the counter.
+            </p>
+          )}
+          <h3 style={{ ...sectionTitleStyle, marginTop: 14 }}>Who shows up</h3>
+          {customerTypes.map((type) => (
+            <div key={type.customerTypeId} style={referenceRowStyle}>
+              <strong style={referenceTitleStyle}>{type.label}</strong>
+              <p style={mutedTextStyle}>{type.requirements}</p>
             </div>
           ))}
-        </div>
-      </section>
-      <section style={cardStyle}>
-        <h3 style={sectionTitleStyle}>Current Customer</h3>
-        {ticket ? (
-          <>
-            <div style={customerStageStyle}>
-              <span style={customerAvatarStyle} aria-hidden="true" />
-              <div>
-                <strong>
-                  {panel.currentNpc?.displayName ?? displayLabel(ticket.npcId)}
-                </strong>
-                <p style={{ ...mutedTextStyle, marginTop: 4 }}>
-                  {ticket.askLine}
-                </p>
-              </div>
-            </div>
-            <p style={{ ...mutedTextStyle, marginTop: 6 }}>
-              Patience {displayedPatience}/{ticket.patience} · Difficulty{" "}
-              {ticket.difficulty}
+          {difficultyTier ? (
+            <p style={{ ...mutedTextStyle, marginTop: 8 }}>
+              <strong style={referenceTitleStyle}>
+                {displayLabel(difficultyTier.tier)} tier:
+              </strong>{" "}
+              {difficultyTier.rule}
             </p>
-            <RovingGrid
-              ariaLabel="Customer service offers"
-              items={offerRows}
-              onActivate={(_row, _col, offer) =>
-                runCustomerAction(() =>
-                  adapter.serveCustomer(
-                    businessId,
-                    offer.offerId,
-                    session?.sessionId,
-                    ticket.ticketId,
-                    createHarthmereBusinessMiniGameDecisionForOfferV1(
-                      panel.typeId as any,
-                      offer.offerId
-                    )
-                  )
-                )
-              }
-              renderCell={(offer, _coords, cell) => (
-                <button
-                  ref={cell.ref}
-                  tabIndex={cell.tabIndex}
-                  onFocus={cell.onFocus}
-                  onKeyDown={cell.onKeyDown}
-                  onClick={cell.onClick}
-                  className="biomes-ui-tab"
-                  style={serviceButtonStyle}
-                  aria-label={offer.label}
-                >
-                  <strong>{offer.label}</strong>
-                  <span style={mutedTextStyle}>{offer.description}</span>
-                </button>
-              )}
-            />
-          </>
-        ) : (
-          <p style={mutedTextStyle}>
-            {session
-              ? "This shift is complete."
-              : "Start a shift to bring customer-only NPCs to the counter."}
-          </p>
-        )}
-      </section>
-      <section style={cardStyle}>
-        <h3 style={sectionTitleStyle}>Rules</h3>
+          ) : null}
+        </section>
+      </div>
+
+      <section style={howToCardStyle} data-business-minigame-howto="true">
+        <h3 style={sectionTitleStyle}>How to play</h3>
+        <div style={{ display: "grid", gap: 10 }}>
+          <div style={howToStepStyle}>
+            <span style={howToStepIndexStyle} aria-hidden="true">
+              1
+            </span>
+            <p style={howToTextStyle}>{mechanic.coreMechanic}</p>
+          </div>
+          <div style={howToStepStyle}>
+            <span style={howToStepIndexStyle} aria-hidden="true">
+              2
+            </span>
+            <p style={howToTextStyle}>{mechanic.uniqueTwist}</p>
+          </div>
+        </div>
+        <h3 style={{ ...sectionTitleStyle, marginTop: 14 }}>Goals</h3>
         {winConditions.map((step) => (
-          <p key={step} style={mutedTextStyle}>
+          <p key={step} style={goalLineStyle}>
+            <span style={goalMarkerStyle} aria-hidden="true" />
             {step}
           </p>
         ))}
+        <h3 style={{ ...sectionTitleStyle, marginTop: 14 }}>Watch out for</h3>
         {edgeCases.map((step) => (
-          <p key={step} style={{ ...mutedTextStyle, marginTop: 6 }}>
+          <p key={step} style={warnLineStyle}>
+            <span style={warnMarkerStyle} aria-hidden="true" />
             {step}
           </p>
         ))}
@@ -1055,6 +1294,39 @@ const CustomerMiniGamePane: React.FunctionComponent<{
     </div>
   );
 };
+
+type MiniGameFeedbackV1 = {
+  id: number;
+  kind: "success" | "error";
+  message: string;
+};
+
+const StatChip: React.FunctionComponent<{
+  label: string;
+  value: string;
+  tone?: "gold" | "warn";
+}> = ({ label, value, tone }) => (
+  <div style={statChipStyle}>
+    <span style={statChipLabelStyle}>{label}</span>
+    <strong
+      style={
+        tone === "gold"
+          ? statChipValueGoldStyle
+          : tone === "warn"
+          ? statChipValueWarnStyle
+          : statChipValueStyle
+      }
+    >
+      {value}
+    </strong>
+  </div>
+);
+
+function patienceColorV1(ratio: number): string {
+  if (ratio > 0.5) return "linear-gradient(90deg, #56c7ff, #92ffd7)";
+  if (ratio > 0.25) return "linear-gradient(90deg, #ffd23f, #ff9f2f)";
+  return "linear-gradient(90deg, #ff6b6b, #ff9f2f)";
+}
 
 const CustomerOverviewPane: React.FunctionComponent<{
   adapter: HarthmereBusinessInterfaceAdapterV1;
@@ -1083,10 +1355,28 @@ const CustomerOverviewPane: React.FunctionComponent<{
         hint="public inventory stacks"
       />
       <BikkieGraphicsStrip graphics={miniGame.bikkieGraphics} />
-      <section style={cardStyle}>
-        <h3 style={sectionTitleStyle}>How to use this business</h3>
-        <p style={mutedTextStyle}>{miniGame.definition.customerGoal}</p>
-        <p style={{ ...mutedTextStyle, marginTop: 8 }}>
+      <section style={howToCardStyle}>
+        <h3 style={sectionTitleStyle}>{miniGame.definition.mechanicSpec.gameTitle}</h3>
+        <p style={{ ...mutedTextStyle, marginBottom: 12 }}>
+          {miniGame.definition.customerGoal}
+        </p>
+        <div style={howToStepStyle}>
+          <span style={howToStepIndexStyle} aria-hidden="true">
+            1
+          </span>
+          <p style={howToTextStyle}>
+            {miniGame.definition.mechanicSpec.coreMechanic}
+          </p>
+        </div>
+        <div style={{ ...howToStepStyle, marginTop: 10 }}>
+          <span style={howToStepIndexStyle} aria-hidden="true">
+            2
+          </span>
+          <p style={howToTextStyle}>
+            {miniGame.definition.mechanicSpec.uniqueTwist}
+          </p>
+        </div>
+        <p style={{ ...mutedTextStyle, marginTop: 12 }}>
           {miniGame.dailyReturnTriggers[0]}
         </p>
       </section>
@@ -2478,11 +2768,454 @@ const customerAvatarStyle: React.CSSProperties = {
   boxShadow: "0 0 16px rgba(255, 210, 63, 0.46)",
   animation: "harthmere-business-pulse-v1 1.25s ease-in-out infinite",
 };
+// --- Overhauled customer mini-game arena styles -----------------------------
+const arenaRootStyle: React.CSSProperties = {
+  display: "grid",
+  gap: 14,
+  alignItems: "start",
+};
+const arenaHeroStyle: React.CSSProperties = {
+  position: "relative",
+  overflow: "hidden",
+  padding: 16,
+  borderRadius: 8,
+  border: "1px solid rgba(154, 199, 230, 0.42)",
+  background:
+    "linear-gradient(135deg, rgba(70, 104, 139, 0.32), rgba(17, 23, 34, 0.94))",
+  boxShadow: "0 12px 30px rgba(0, 0, 0, 0.32)",
+};
+const heroGlowStyle: React.CSSProperties = {
+  position: "absolute",
+  top: -60,
+  right: -40,
+  width: 220,
+  height: 220,
+  pointerEvents: "none",
+  background:
+    "radial-gradient(circle, rgba(86, 199, 255, 0.28), transparent 68%)",
+};
+const heroTopRowStyle: React.CSSProperties = {
+  position: "relative",
+  display: "flex",
+  justifyContent: "space-between",
+  gap: 12,
+  alignItems: "flex-start",
+};
+const heroEyebrowStyle: React.CSSProperties = {
+  display: "block",
+  marginBottom: 4,
+  fontSize: 10,
+  letterSpacing: "0.18em",
+  textTransform: "uppercase",
+  color: "var(--biomes-fg-muted)",
+};
+const heroObjectiveStyle: React.CSSProperties = {
+  position: "relative",
+  margin: "10px 0 0",
+  fontSize: 13,
+  lineHeight: 1.5,
+  color: "var(--biomes-fg)",
+  maxWidth: 720,
+};
+const miniGameBadgeLiveStyle: React.CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  minHeight: 24,
+  padding: "0 10px",
+  borderRadius: 999,
+  color: "#06111f",
+  background: "linear-gradient(180deg, #fff477, #ffd23f)",
+  fontSize: 10,
+  fontWeight: 900,
+  textTransform: "uppercase",
+  letterSpacing: "0.08em",
+  whiteSpace: "nowrap",
+  boxShadow: "0 0 14px rgba(255, 210, 63, 0.55)",
+};
+const statChipRowStyle: React.CSSProperties = {
+  position: "relative",
+  display: "flex",
+  flexWrap: "wrap",
+  gap: 8,
+  marginTop: 14,
+};
+const statChipStyle: React.CSSProperties = {
+  display: "grid",
+  gap: 2,
+  minWidth: 78,
+  padding: "7px 11px",
+  borderRadius: 6,
+  border: "1px solid rgba(154, 199, 230, 0.26)",
+  background: "rgba(7, 13, 26, 0.55)",
+};
+const statChipLabelStyle: React.CSSProperties = {
+  fontSize: 9,
+  letterSpacing: "0.14em",
+  textTransform: "uppercase",
+  color: "var(--biomes-fg-muted)",
+};
+const statChipValueStyle: React.CSSProperties = {
+  fontSize: 18,
+  lineHeight: 1,
+  color: "var(--biomes-fg)",
+};
+const statChipValueGoldStyle: React.CSSProperties = {
+  ...statChipValueStyle,
+  color: "#ffd23f",
+};
+const statChipValueWarnStyle: React.CSSProperties = {
+  ...statChipValueStyle,
+  color: "#ff8f6b",
+};
+const heroStartRowStyle: React.CSSProperties = {
+  position: "relative",
+  display: "flex",
+  gap: 12,
+  alignItems: "center",
+  flexWrap: "wrap",
+  marginTop: 14,
+};
+const heroStartHintStyle: React.CSSProperties = {
+  flex: "1 1 220px",
+  minWidth: 0,
+  fontSize: 12,
+  lineHeight: 1.45,
+  color: "var(--biomes-fg-muted)",
+};
+const heroNoteStyle: React.CSSProperties = {
+  position: "relative",
+  margin: "8px 0 0",
+  paddingLeft: 12,
+  borderLeft: "2px solid rgba(146, 255, 215, 0.5)",
+  fontSize: 12,
+  color: "var(--biomes-fg)",
+  animation: "harthmere-business-rise-v1 240ms ease-out",
+};
+const summaryCardStyle: React.CSSProperties = {
+  position: "relative",
+  display: "grid",
+  gap: 10,
+  marginTop: 14,
+  padding: 14,
+  borderRadius: 8,
+  border: "1px solid rgba(146, 255, 215, 0.5)",
+  background:
+    "linear-gradient(135deg, rgba(24, 61, 58, 0.92), rgba(9, 23, 35, 0.96))",
+  boxShadow: "0 0 22px rgba(55, 219, 164, 0.24)",
+  animation: "harthmere-business-rise-v1 280ms ease-out",
+};
+const summaryTitleStyle: React.CSSProperties = {
+  fontSize: 18,
+  color: "#92ffd7",
+};
+const summaryLineStyle: React.CSSProperties = {
+  margin: 0,
+  fontSize: 13,
+  lineHeight: 1.5,
+  color: "var(--biomes-fg)",
+};
+const summaryStatRowStyle: React.CSSProperties = {
+  display: "flex",
+  flexWrap: "wrap",
+  gap: 8,
+};
+const toastBaseStyle: React.CSSProperties = {
+  position: "relative",
+  display: "flex",
+  alignItems: "center",
+  gap: 8,
+  marginTop: 12,
+  padding: "9px 12px",
+  borderRadius: 8,
+  fontSize: 12,
+  fontWeight: 700,
+  animation: "harthmere-business-toast-v1 240ms ease-out",
+};
+const toastSuccessStyle: React.CSSProperties = {
+  ...toastBaseStyle,
+  color: "#06211a",
+  border: "1px solid rgba(146, 255, 215, 0.7)",
+  background: "linear-gradient(180deg, rgba(146, 255, 215, 0.96), rgba(55, 219, 164, 0.92))",
+  boxShadow: "0 0 18px rgba(55, 219, 164, 0.4)",
+};
+const toastErrorStyle: React.CSSProperties = {
+  ...toastBaseStyle,
+  color: "#2a0d0d",
+  border: "1px solid rgba(255, 143, 107, 0.7)",
+  background: "linear-gradient(180deg, rgba(255, 178, 150, 0.96), rgba(255, 107, 107, 0.9))",
+  boxShadow: "0 0 18px rgba(255, 107, 107, 0.36)",
+};
+const toastDotStyle: React.CSSProperties = {
+  width: 8,
+  height: 8,
+  borderRadius: 999,
+  background: "currentColor",
+  opacity: 0.7,
+  flex: "0 0 auto",
+};
+const arenaWorkGridStyle: React.CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))",
+  gap: 12,
+  alignItems: "start",
+};
+const boardCardStyle: React.CSSProperties = {
+  ...cardStyle,
+};
+const boardRowStyle: React.CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "26px minmax(0, 1fr)",
+  gap: 10,
+  alignItems: "start",
+  padding: "8px 0",
+  borderTop: "1px solid rgba(154, 199, 230, 0.16)",
+};
+const boardIndexStyle: React.CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  width: 22,
+  height: 22,
+  borderRadius: 999,
+  background: "rgba(86, 199, 255, 0.18)",
+  border: "1px solid rgba(86, 199, 255, 0.4)",
+  color: "#9ee0ff",
+  fontSize: 11,
+  fontWeight: 800,
+};
+const boardRowTitleStyle: React.CSSProperties = {
+  display: "block",
+  fontSize: 12,
+  marginBottom: 2,
+  color: "var(--biomes-fg)",
+};
+const customerCardStyle: React.CSSProperties = {
+  ...cardStyle,
+  gridColumn: "span 1",
+};
+const cardHeaderRowStyle: React.CSSProperties = {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  gap: 8,
+};
+function patienceBadgeStyle(ratio: number): React.CSSProperties {
+  const urgent = ratio <= 0.25;
+  return {
+    display: "inline-flex",
+    alignItems: "center",
+    minHeight: 22,
+    padding: "0 9px",
+    borderRadius: 999,
+    fontSize: 10,
+    fontWeight: 800,
+    letterSpacing: "0.04em",
+    color: urgent ? "#2a0d0d" : "#06111f",
+    background: urgent
+      ? "linear-gradient(180deg, #ff9f2f, #ff6b6b)"
+      : "linear-gradient(180deg, #92ffd7, #56c7ff)",
+    animation: urgent
+      ? "harthmere-business-urgent-v1 0.8s ease-in-out infinite"
+      : undefined,
+  };
+}
+function customerAvatarStateStyle(ratio: number): React.CSSProperties {
+  const urgent = ratio <= 0.25;
+  return {
+    width: 34,
+    height: 34,
+    borderRadius: 999,
+    background:
+      "radial-gradient(circle at 35% 30%, #fff477 0 16%, #ff9f2f 17% 38%, #56c7ff 39% 62%, #152342 63%)",
+    boxShadow: urgent
+      ? "0 0 18px rgba(255, 107, 107, 0.6)"
+      : "0 0 16px rgba(86, 199, 255, 0.46)",
+    animation: urgent
+      ? "harthmere-business-urgent-v1 0.8s ease-in-out infinite"
+      : "harthmere-business-pulse-v1 1.6s ease-in-out infinite",
+  };
+}
+const patienceTrackStyle: React.CSSProperties = {
+  position: "relative",
+  height: 8,
+  marginTop: 10,
+  overflow: "hidden",
+  borderRadius: 999,
+  background: "rgba(7, 13, 26, 0.72)",
+  border: "1px solid rgba(154, 199, 230, 0.2)",
+};
+const patienceFillStyle: React.CSSProperties = {
+  height: "100%",
+  minWidth: 4,
+  borderRadius: 999,
+  transition: "width 0.5s linear",
+};
+const patienceMetaRowStyle: React.CSSProperties = {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  gap: 8,
+  marginTop: 6,
+  marginBottom: 4,
+};
+const difficultyPipRowStyle: React.CSSProperties = {
+  display: "inline-flex",
+  gap: 4,
+  alignItems: "center",
+};
+const difficultyPipOnStyle: React.CSSProperties = {
+  width: 8,
+  height: 8,
+  borderRadius: 999,
+  background: "#ffd23f",
+  boxShadow: "0 0 6px rgba(255, 210, 63, 0.6)",
+};
+const difficultyPipOffStyle: React.CSSProperties = {
+  width: 8,
+  height: 8,
+  borderRadius: 999,
+  background: "rgba(154, 199, 230, 0.22)",
+};
+const offerHeadRowStyle: React.CSSProperties = {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  gap: 8,
+  width: "100%",
+};
+const offerLabelStyle: React.CSSProperties = {
+  fontSize: 13,
+  color: "var(--biomes-fg)",
+};
+const offerVerbBadgeStyle: React.CSSProperties = {
+  flex: "0 0 auto",
+  padding: "2px 8px",
+  borderRadius: 999,
+  fontSize: 9,
+  fontWeight: 800,
+  letterSpacing: "0.08em",
+  textTransform: "uppercase",
+  color: "#9ee0ff",
+  background: "rgba(86, 199, 255, 0.16)",
+  border: "1px solid rgba(86, 199, 255, 0.4)",
+};
+const offerFooterStyle: React.CSSProperties = {
+  marginTop: "auto",
+  fontSize: 11,
+  fontWeight: 700,
+  color: "#92ffd7",
+};
+const emptyStateStyle: React.CSSProperties = {
+  display: "grid",
+  justifyItems: "center",
+  gap: 10,
+  padding: "22px 12px",
+  textAlign: "center",
+};
+const emptyStateGlyphStyle: React.CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  width: 38,
+  height: 38,
+  borderRadius: 999,
+  border: "1px dashed rgba(154, 199, 230, 0.4)",
+  color: "var(--biomes-fg-muted)",
+  fontSize: 18,
+};
+const queueChipStyle: React.CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "24px minmax(0, 1fr)",
+  gap: 10,
+  alignItems: "center",
+  padding: "8px 10px",
+  borderRadius: 6,
+  border: "1px solid rgba(154, 199, 230, 0.2)",
+  background: "rgba(5, 12, 26, 0.42)",
+};
+const queueOrderStyle: React.CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  width: 22,
+  height: 22,
+  borderRadius: 999,
+  background: "rgba(154, 199, 230, 0.14)",
+  color: "var(--biomes-fg-muted)",
+  fontSize: 11,
+  fontWeight: 800,
+};
+const queueNameStyle: React.CSSProperties = {
+  display: "block",
+  fontSize: 12,
+  color: "var(--biomes-fg)",
+};
+const referenceRowStyle: React.CSSProperties = {
+  padding: "7px 0",
+  borderTop: "1px solid rgba(154, 199, 230, 0.14)",
+};
+const referenceTitleStyle: React.CSSProperties = {
+  fontSize: 12,
+  color: "var(--biomes-fg)",
+};
+const howToCardStyle: React.CSSProperties = {
+  ...cardStyle,
+  padding: 14,
+};
+const howToStepStyle: React.CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "26px minmax(0, 1fr)",
+  gap: 10,
+  alignItems: "start",
+};
+const howToStepIndexStyle: React.CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  width: 24,
+  height: 24,
+  borderRadius: 999,
+  background: "linear-gradient(180deg, #56c7ff, #37dba4)",
+  color: "#06111f",
+  fontSize: 12,
+  fontWeight: 900,
+};
+const howToTextStyle: React.CSSProperties = {
+  margin: 0,
+  fontSize: 12.5,
+  lineHeight: 1.5,
+  color: "var(--biomes-fg)",
+};
+const goalLineStyle: React.CSSProperties = {
+  display: "flex",
+  gap: 8,
+  alignItems: "flex-start",
+  margin: "6px 0 0",
+  fontSize: 12,
+  lineHeight: 1.45,
+  color: "var(--biomes-fg-muted)",
+};
+const goalMarkerStyle: React.CSSProperties = {
+  flex: "0 0 auto",
+  marginTop: 5,
+  width: 7,
+  height: 7,
+  borderRadius: 999,
+  background: "#92ffd7",
+};
+const warnLineStyle: React.CSSProperties = {
+  ...goalLineStyle,
+};
+const warnMarkerStyle: React.CSSProperties = {
+  ...goalMarkerStyle,
+  background: "#ff9f2f",
+};
 const businessPendingOverlayStyle: React.CSSProperties = {
   position: "sticky",
   bottom: 8,
   zIndex: 2,
   display: "inline-flex",
+  alignItems: "center",
   alignItems: "center",
   gap: 8,
   marginTop: 12,
