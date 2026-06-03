@@ -270,6 +270,14 @@ describe("HarthmereJobsBoardPanel keyboard support", () => {
       plugins: [{
         name: "stub-local-dev-quests",
         setup(pluginBuild) {
+          pluginBuild.onResolve({ filter: /business_customer_simulator_v1$/ }, () => ({
+            path: "stub-business-customer-simulator",
+            namespace: "jobs-board-test",
+          }));
+          pluginBuild.onResolve({ filter: /harthmere_live_fetch$/ }, () => ({
+            path: "stub-harthmere-live-fetch",
+            namespace: "jobs-board-test",
+          }));
           pluginBuild.onResolve({ filter: /^@\// }, (args) => ({
             path: resolveRepoAliasForEsbuildV1(args.path),
           }));
@@ -278,7 +286,8 @@ describe("HarthmereJobsBoardPanel keyboard support", () => {
             namespace: "jobs-board-test",
           }));
           pluginBuild.onLoad({ filter: /.*/, namespace: "jobs-board-test" }, () => ({
-            contents: "export function completeHarthmereJobsBoardReadQuestV140() { return { changed: false, reason: 'test' }; }",
+            contents:
+              "export const HARTHMERE_BUSINESS_OUTPOSTS_V1 = []; export function harthmereBusinessOutpostJobsBoardPositionV1() { return { x: 0, y: 0, z: 0 }; } export async function fetchHarthmereLiveWithTimeoutV1() { return undefined; } export function completeHarthmereJobsBoardReadQuestV140() { return { changed: false, reason: 'test' }; }",
             loader: "js",
           }));
         },
@@ -476,6 +485,14 @@ describe("HarthmereJobsBoardPanel keyboard support", () => {
       plugins: [{
         name: "stub-live-jobs-board-container-deps",
         setup(pluginBuild) {
+          pluginBuild.onResolve({ filter: /business_customer_simulator_v1$/ }, () => ({
+            path: "stub-business-customer-simulator",
+            namespace: "jobs-board-container-test",
+          }));
+          pluginBuild.onResolve({ filter: /harthmere_live_fetch$/ }, () => ({
+            path: "stub-harthmere-live-fetch",
+            namespace: "jobs-board-container-test",
+          }));
           pluginBuild.onResolve({ filter: /^@\// }, (args) => ({
             path: resolveRepoAliasForEsbuildV1(args.path),
           }));
@@ -510,6 +527,14 @@ describe("HarthmereJobsBoardPanel keyboard support", () => {
           }));
           pluginBuild.onLoad({ filter: /^stub-local-dev-quests$/, namespace: "jobs-board-container-test" }, () => ({
             contents: "export function completeHarthmereJobsBoardReadQuestV140() { return { changed: false, reason: 'test' }; }",
+            loader: "js",
+          }));
+          pluginBuild.onLoad({ filter: /^stub-business-customer-simulator$/, namespace: "jobs-board-container-test" }, () => ({
+            contents: "export const HARTHMERE_BUSINESS_OUTPOSTS_V1 = []; export function harthmereBusinessOutpostJobsBoardPositionV1() { return { x: 0, y: 0, z: 0 }; }",
+            loader: "js",
+          }));
+          pluginBuild.onLoad({ filter: /^stub-harthmere-live-fetch$/, namespace: "jobs-board-container-test" }, () => ({
+            contents: "export async function fetchHarthmereLiveWithTimeoutV1() { return undefined; }",
             loader: "js",
           }));
         },

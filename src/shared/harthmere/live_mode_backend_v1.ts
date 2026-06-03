@@ -1895,6 +1895,67 @@ function ensureProductionBusinessForPropertyBusinessV1(input: {
   return true;
 }
 
+function playerOwnedBusinessOwnerNpcMarkerV1(input: {
+  business: BuildingSystemBusinessRecordV1;
+  property: BuildingSystemPropertyRecordV1;
+  nowMs: number;
+}): BuildingSystemInWorldMarkerV1 | undefined {
+  if (input.property.use !== "business") {
+    return undefined;
+  }
+  const plot = buildingSystemPlotByIdV1(input.property.plotId);
+  const blueprint = buildingSystemBlueprintByIdV1(input.property.blueprintId);
+  if (!plot || !blueprint) {
+    return undefined;
+  }
+  const origin = buildingSystemDefaultOriginV1(plot, blueprint);
+  return {
+    markerId: `${input.business.businessId}:owner-npc`,
+    plotId: input.property.plotId,
+    kind: "npc_board",
+    position: [
+      Math.min(
+        plot.bounds.xMax - 1,
+        origin.x + Math.max(2, Math.floor(blueprint.footprint.width * 0.65))
+      ),
+      origin.y + 1,
+      Math.min(
+        plot.bounds.zMax - 1,
+        origin.z + Math.max(3, Math.floor(blueprint.footprint.depth * 0.6))
+      ),
+    ],
+    label: `${input.property.propertyId
+      .replace(/^property_/, "")
+      .replaceAll("_", " ")} owner`,
+    createdAtMs: input.nowMs,
+  };
+}
+
+function ensurePlayerOwnedBusinessOwnerNpcMarkersV1(
+  state: HarthmereLiveModeBackendStateV1,
+  nowMs: number
+) {
+  for (const business of Object.values(state.economy.businesses)) {
+    const property = state.property.owned[business.propertyId];
+    if (!property || property.ownerId !== business.ownerId) {
+      continue;
+    }
+    const marker = playerOwnedBusinessOwnerNpcMarkerV1({
+      business,
+      property,
+      nowMs,
+    });
+    if (!marker) {
+      continue;
+    }
+    state.building.inWorldMarkers[marker.markerId] = {
+      ...marker,
+      createdAtMs:
+        state.building.inWorldMarkers[marker.markerId]?.createdAtMs ?? nowMs,
+    };
+  }
+}
+
 function itemCategoryFromDefinitionV1(
   def: HarthmereItemDefinitionV1 | undefined,
   itemId: string
@@ -4540,6 +4601,7 @@ export function defaultHarthmereLiveModeBackendStateV1(
     state.economy.production,
     nowMs
   );
+  ensurePlayerOwnedBusinessOwnerNpcMarkersV1(state, nowMs);
   syncLiveEntityRobotProtectionToBuildingV1(state, nowMs);
   return state;
 }
@@ -4811,6 +4873,7 @@ export function parseHarthmereLiveModeBackendStateV1(
       state.economy.production,
       nowMs
     );
+    ensurePlayerOwnedBusinessOwnerNpcMarkersV1(state, nowMs);
     syncLiveEntityRobotProtectionToBuildingV1(state, nowMs);
     repairLiveModeZeroHpDeathStateV1(state, {
       nowMs,
@@ -5065,6 +5128,7 @@ export function mergeHarthmereLiveModeSharedWorldStateIntoBackendV1(
       ? sharedGuild.guilds[derivedMemberGuildId]?.members[state.actorId]?.rankId
       : sharedGuild.role,
   };
+  ensurePlayerOwnedBusinessOwnerNpcMarkersV1(state, nowMs);
   return state;
 }
 
@@ -11085,6 +11149,7 @@ export function reduceHarthmereLiveModeBackendStateV1(
           label: businessDefinition.displayName,
           createdAtMs: nowMs,
         };
+        ensurePlayerOwnedBusinessOwnerNpcMarkersV1(next, nowMs);
         next.economy.ledger.push({
           id: envelope.requestId,
           kind: `business_started_${businessType}`,

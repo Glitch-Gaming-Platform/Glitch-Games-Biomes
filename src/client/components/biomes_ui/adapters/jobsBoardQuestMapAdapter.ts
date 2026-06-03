@@ -192,3 +192,7 @@ export function firstActiveJobsBoardQuestTitleForBiomesUIV1(raw: unknown) {
   const snapshot = normalizeJobsBoardSnapshotForBiomesUIV1(raw);
   return snapshot?.myTodos.find((todo) => todo.status === "active")?.title;
 }
+
+export function firstActiveJobsBoardLandmarkForBiomesUIV1(raw: unknown) {
+  return jobsBoardAcceptedJobLandmarksForBiomesUIV1(raw)[0];
+}

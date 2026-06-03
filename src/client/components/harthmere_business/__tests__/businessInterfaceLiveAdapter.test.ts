@@ -1,11 +1,22 @@
 /// <reference types="mocha" />
 /// <reference types="node" />
 import assert from "assert";
+import { build } from "esbuild";
+import { existsSync } from "fs";
+import { mkdtemp, readFile, rm, writeFile } from "fs/promises";
+import { tmpdir } from "os";
+import path from "path";
 import * as React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+import { chromium } from "playwright";
 import { HarthmereBusinessInteractionPrompt } from "../HarthmereBusinessInteractionPrompt";
 import { HarthmereBusinessInterfacePanel } from "../HarthmereBusinessInterfacePanel";
 import { HarthmereBusinessLiveContainer } from "../HarthmereBusinessLiveContainer";
+import { harthmereBusinessDynamicWorldBoardsV1 } from "../HarthmereBusinessWorldInteractionV1";
+import {
+  beginPointerLockUnlockWhileOpenV1,
+  endPointerLockUnlockWhileOpenV1,
+} from "@/client/components/contexts/pointerLockModalPolicy";
 import {
   HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS_V1,
   HARTHMERE_BUSINESS_OUTPOSTS_V1,
@@ -47,6 +58,38 @@ import {
   type HarthmereBusinessEconomySnapshotV1,
   type HarthmereBusinessTypeIdV1,
 } from "../businessInterfaceLiveAdapter";
+
+function resolveRepoAliasForEsbuildV1(importPath: string) {
+  const basePath = path.join(process.cwd(), "src", importPath.slice(2));
+  for (const candidate of [
+    basePath,
+    `${basePath}.ts`,
+    `${basePath}.tsx`,
+    `${basePath}.js`,
+    `${basePath}.json`,
+    path.join(basePath, "index.ts"),
+    path.join(basePath, "index.tsx"),
+    path.join(basePath, "index.js"),
+  ]) {
+    if (existsSync(candidate)) {
+      return candidate;
+    }
+  }
+  return basePath;
+}
+
+function visibleTextFromStaticMarkupV1(html: string) {
+  return html
+    .replace(/<script[\s\S]*?<\/script>/gi, " ")
+    .replace(/<style[\s\S]*?<\/style>/gi, " ")
+    .replace(/<[^>]*>/g, " ")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&#x27;/g, "'")
+    .replace(/&quot;/g, '"')
+    .replace(/\s+/g, " ")
+    .trim();
+}
 
 function businessType(typeId: HarthmereBusinessTypeIdV1) {
   return {
@@ -1156,6 +1199,112 @@ describe("Harthmere in-world business interface v2 screens", () => {
     assert.match(prompt.label, /Press F to open .* Business Board/);
   });
 
+  it("keeps business prompts and branch panels working with slim client outpost payloads", () => {
+    const state = sampleSnapshot();
+    const outpost = JSON.parse(
+      JSON.stringify(
+        HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS_V1
+          .outpost_restaurant_redpot
+      )
+    );
+    const outpostMetadata = HARTHMERE_BUSINESS_OUTPOSTS_V1.find(
+      (entry) => entry.outpostId === outpost.outpostId
+    )!;
+    const businessId = harthmereBusinessOutpostBusinessIdV1(outpost.outpostId);
+    const originalEditCount = outpost.materializationPlan.edits.length;
+    outpost.materializationPlan = {
+      ...outpost.materializationPlan,
+      edits: [],
+      editCount: originalEditCount,
+    };
+    state.businesses[businessId] = {
+      ...business(businessId, outpost.businessType, outpostMetadata.ownerNpcId),
+      ownerKind: "npc",
+      ownerId: outpostMetadata.ownerNpcId,
+      name: outpost.displayName,
+    };
+    state.businessSystems.customerStats[businessId] = {
+      businessId,
+      totalServed: 60,
+      totalFailed: 0,
+      lifetimeGold: 2_000,
+      bestStreak: 8,
+      currentTier: 4,
+      serviceXp: 0,
+      likeability: 0,
+      friendshipPointsByNpcId: {},
+      favoriteCustomerNpcIds: [],
+      repeatCustomerMemories: [],
+      thankYouNotes: [],
+      collectiblesEarned: [],
+      decorationUnlocks: [],
+      badges: [],
+    };
+    state.businesses[businessId].balanceGold = 5_000;
+    state.businessSystems.outpostBuildings = {
+      [outpost.outpostId]: outpost,
+    };
+
+    const context = nearestHarthmereBusinessDashboardWorldContextV1(
+      state,
+      outpost.dashboardAccessPoint.position,
+      6
+    );
+    assert.equal(context.insideBusiness, true);
+    assert.equal(context.nearbyBusinessId, businessId);
+
+    const panel = getHarthmereBusinessEmpirePanelV1(state, businessId);
+    assert.equal(panel.outpostBuildings.length, 1);
+    assert.equal(
+      (panel.outpostBuildings[0] as any).materializationPlan.editCount,
+      originalEditCount
+    );
+    assert.equal(panel.openBranchEligible, true);
+  });
+
+  it("resolves player-owned business owner markers into dynamic in-world access boards", () => {
+    const boards = harthmereBusinessDynamicWorldBoardsV1({
+      "business_player_shop:owner-npc": {
+        markerId: "business_player_shop:owner-npc",
+        plotId: "grove_crossroads_shop_lot",
+        kind: "npc_board",
+        position: [12, 54, -18],
+        label: "Crossroads Shop owner",
+        createdAtMs: 1,
+      },
+      "business_player_shop:marker": {
+        markerId: "business_player_shop:marker",
+        plotId: "grove_crossroads_shop_lot",
+        kind: "business_marker",
+        position: [10, 54, -20],
+        label: "Crossroads Shop",
+        createdAtMs: 1,
+      },
+      unrelated_npc_board: {
+        markerId: "unrelated_npc_board",
+        plotId: "grove_crossroads_shop_lot",
+        kind: "npc_board",
+        position: [12, 54, -18],
+        label: "Town notice",
+        createdAtMs: 1,
+      },
+      "business_player_shop:deed": {
+        markerId: "business_player_shop:deed",
+        plotId: "grove_crossroads_shop_lot",
+        kind: "deed_sign",
+        position: [12, 54, -18],
+        label: "Deed",
+        createdAtMs: 1,
+      },
+    });
+    assert.deepEqual(
+      boards.map((board) => board.markerId).sort(),
+      ["business_player_shop:marker", "business_player_shop:owner-npc"]
+    );
+    assert.deepEqual(boards[0].position, { x: 12, y: 54, z: -18 });
+    assert.equal(boards[0].businessId, "business_player_shop");
+  });
+
   it("renders the business prompt and panel as an obvious in-business UI with keyboard and pointer affordances", () => {
     const state = sampleSnapshot();
     const adapter = createHarthmereBusinessInterfaceAdapterV1({
@@ -1261,6 +1410,32 @@ describe("Harthmere in-world business interface v2 screens", () => {
     assert.ok(openHtml.includes('data-harthmere-business-interface="true"'));
   });
 
+  it("hides the world F business prompt while another UI owns input", () => {
+    const state = sampleSnapshot();
+    beginPointerLockUnlockWhileOpenV1();
+    try {
+      const html = renderToStaticMarkup(
+        React.createElement(HarthmereBusinessLiveContainer, {
+          initialState: state,
+          showPrompt: true,
+          open: false,
+          worldContext: {
+            insideBusiness: true,
+            nearbyBusinessId: "business_food",
+            interactionKeyLabel: "F",
+          },
+        })
+      );
+      assert.equal(
+        html.includes('data-harthmere-business-prompt="true"'),
+        false
+      );
+      assert.equal(html.includes("Press F to open"), false);
+    } finally {
+      endPointerLockUnlockWhileOpenV1();
+    }
+  });
+
   it("renders the customer mini-game as an accessible customer tab", () => {
     const state = sampleSnapshot();
     const adapter = createHarthmereBusinessInterfaceAdapterV1({
@@ -1281,7 +1456,7 @@ describe("Harthmere in-world business interface v2 screens", () => {
     assert.ok(html.includes('data-business-mode="customer"'));
   });
 
-  it("renders a startable customer minigame tab for every production business type", () => {
+  it("SSR-renders a startable customer minigame tab for every production business type", () => {
     const state = sampleSnapshot();
     for (const typeId of HARTHMERE_BUSINESS_TYPE_ORDER_V1) {
       const businessId = `customer_ui_${typeId}`;
@@ -1334,6 +1509,264 @@ describe("Harthmere in-world business interface v2 screens", () => {
         html.includes("Service Board") && html.includes("Current Customer"),
         `${typeId} should render the minigame work surfaces`
       );
+      const visibleText = visibleTextFromStaticMarkupV1(html);
+      assert.equal(
+        /[a-z]+_[a-z]+/.test(visibleText),
+        false,
+        `${typeId} should not expose snake case in SSR-visible minigame text: ${visibleText}`
+      );
+      assert.equal(
+        /[a-z][A-Z][a-z]/.test(visibleText),
+        false,
+        `${typeId} should not expose camel case in SSR-visible minigame text: ${visibleText}`
+      );
+    }
+  });
+
+  it("does not crash when the customer minigame panel hydrates and starts a shift in the browser", async function () {
+    this.timeout(60_000);
+
+    const tempDir = await mkdtemp(
+      path.join(tmpdir(), "biomes-business-minigame-")
+    );
+    const entryPath = path.join(tempDir, "entry.tsx");
+    const bundlePath = path.join(tempDir, "bundle.js");
+    const tsconfigPath = path.join(tempDir, "tsconfig.json");
+    const panelPath = path
+      .join(
+        process.cwd(),
+        "src/client/components/harthmere_business/HarthmereBusinessInterfacePanel.tsx"
+      )
+      .replace(/\\/g, "/");
+    const initialState = sampleSnapshot();
+    const initialAdapter = createHarthmereBusinessInterfaceAdapterV1({
+      state: initialState,
+      hydrated: true,
+      refresh: async () => initialState,
+      submit: async () => ({ ok: true, economyState: initialState }),
+    });
+    const businessJson = JSON.stringify(
+      initialAdapter.getBusiness("business_clinic")
+    );
+    const businessTypeJson = JSON.stringify(
+      initialAdapter.getBusinessType("business_clinic")
+    );
+    const miniGameJson = JSON.stringify(
+      initialAdapter.getCustomerMiniGame("business_clinic")
+    );
+
+    await writeFile(
+      entryPath,
+      `
+        import * as React from "react";
+        import { createRoot } from "react-dom/client";
+        import { HarthmereBusinessInterfacePanel } from "${panelPath}";
+
+        const business = ${businessJson};
+        const businessType = ${businessTypeJson};
+        const miniGame = ${miniGameJson};
+        window.__businessOperations = [];
+
+        function Harness() {
+          const [ready, setReady] = React.useState(false);
+          React.useEffect(() => {
+            const timer = window.setTimeout(() => setReady(true), 20);
+            return () => window.clearTimeout(timer);
+          }, []);
+          const adapter = React.useMemo(() => {
+            return {
+              isHydrated: () => ready,
+              isAvailable: (businessId) => ready && businessId === "business_clinic",
+              getBusiness: (businessId) => businessId === "business_clinic" ? business : undefined,
+              getBusinessType: (businessId) => businessId === "business_clinic" ? businessType : undefined,
+              getMode: () => "customer",
+              getCustomerMiniGame: () => miniGame,
+              getBikkieGraphics: () => [],
+              startCustomerSession: async (businessId) => {
+                window.__businessOperations.push({
+                  operation: "start_business_customer_session",
+                  payload: { businessId },
+                });
+                await new Promise((resolve) => window.setTimeout(resolve, 5));
+              },
+            };
+          }, [ready]);
+          return (
+            <HarthmereBusinessInterfacePanel
+              adapter={adapter}
+              nearbyBusinessId="business_clinic"
+              initialTab="customers"
+              compact={true}
+            />
+          );
+        }
+
+        createRoot(document.getElementById("root")).render(<Harness />);
+      `
+    );
+    await writeFile(
+      tsconfigPath,
+      JSON.stringify({
+        compilerOptions: {
+          jsx: "react",
+        },
+      })
+    );
+
+    await build({
+      entryPoints: [entryPath],
+      outfile: bundlePath,
+      bundle: true,
+      absWorkingDir: process.cwd(),
+      nodePaths: [path.join(process.cwd(), "node_modules")],
+      platform: "browser",
+      format: "iife",
+      jsx: "transform",
+      jsxFactory: "React.createElement",
+      jsxFragment: "React.Fragment",
+      loader: { ".tsx": "tsx", ".ts": "ts" },
+      tsconfig: tsconfigPath,
+      plugins: [
+        {
+          name: "business-panel-browser-stubs",
+          setup(pluginBuild) {
+            pluginBuild.onResolve(
+              { filter: /business_customer_simulator_v1$/ },
+              () => ({
+                path: "business-customer-simulator",
+                namespace: "business-panel-test",
+              })
+            );
+            pluginBuild.onResolve({ filter: /^@\// }, (args) => ({
+              path: resolveRepoAliasForEsbuildV1(args.path),
+            }));
+            pluginBuild.onResolve(
+              { filter: /PointerLockContext$/ },
+              () => ({
+                path: "pointer-lock-context",
+                namespace: "business-panel-test",
+              })
+            );
+            pluginBuild.onResolve(
+              { filter: /pointerLockModalPolicy$/ },
+              () => ({
+                path: "pointer-lock-policy",
+                namespace: "business-panel-test",
+              })
+            );
+            pluginBuild.onResolve(
+              { filter: /harthmereBikkieVisualRenderingV1$/ },
+              () => ({
+                path: "bikkie-visual-rendering",
+                namespace: "business-panel-test",
+              })
+            );
+            pluginBuild.onResolve(
+              { filter: /businessInterfaceLiveAdapter$/ },
+              () => ({
+                path: "business-interface-adapter",
+                namespace: "business-panel-test",
+              })
+            );
+            pluginBuild.onLoad(
+              { filter: /pointer-lock-context/, namespace: "business-panel-test" },
+              () => ({
+                contents:
+                  "export function usePointerLockManager() { return {}; }",
+                loader: "js",
+              })
+            );
+            pluginBuild.onLoad(
+              { filter: /pointer-lock-policy/, namespace: "business-panel-test" },
+              () => ({
+                contents: [
+                  "export function openPointerLockUnlockWhileOpenV1() {}",
+                  "export function closePointerLockUnlockWhileOpenV1() {}",
+                ].join("\n"),
+                loader: "js",
+              })
+            );
+            pluginBuild.onLoad(
+              { filter: /bikkie-visual-rendering/, namespace: "business-panel-test" },
+              () => ({
+                contents: [
+                  "export const harthmereBikkieVisualGlyphStyleV1 = {};",
+                  "export const harthmereBikkieVisualImageStyleV1 = {};",
+                  "export function harthmereBikkieVisualImageUrlV1() { return undefined; }",
+                  "export function harthmereBikkieVisualTileStyleV1() { return {}; }",
+                ].join("\n"),
+                loader: "js",
+              })
+            );
+            pluginBuild.onLoad(
+              {
+                filter: /business-customer-simulator/,
+                namespace: "business-panel-test",
+              },
+              () => ({
+                contents:
+                  "export function createHarthmereBusinessMiniGameDecisionForOfferV1(offer) { return { actionId: offer?.actionId ?? 'test_action' }; }",
+                loader: "js",
+              })
+            );
+            pluginBuild.onLoad(
+              { filter: /business-interface-adapter/, namespace: "business-panel-test" },
+              () => ({
+                contents:
+                  "export function formatHarthmereBusinessPlayerWarningV1(value) { return String(value ?? '').replace(/[_:-]+/g, ' '); }",
+                loader: "js",
+              })
+            );
+          },
+        },
+      ],
+    });
+
+    const browser = await chromium.launch({ headless: true });
+    try {
+      const page = await browser.newPage({
+        viewport: { width: 1280, height: 820 },
+      });
+      const browserErrors: string[] = [];
+      page.on("pageerror", (error) =>
+        browserErrors.push(error.stack ?? error.message)
+      );
+      page.on("console", (message) => {
+        if (message.type() === "error") browserErrors.push(message.text());
+      });
+      await page.setContent(`
+        <html>
+          <head>
+            <style>
+              body { margin: 0; background: #07101d; color: #e5eefb; font-family: sans-serif; }
+              #root { width: 1260px; min-height: 800px; padding: 12px; }
+            </style>
+          </head>
+          <body><div id="root"></div></body>
+        </html>
+      `);
+      await page.addScriptTag({ content: await readFile(bundlePath, "utf8") });
+      await page.getByRole("button", { name: "Start Shift" }).waitFor({
+        timeout: 15_000,
+      });
+      assert.deepEqual(browserErrors, []);
+      await page.getByRole("button", { name: "Start Shift" }).click();
+      await page.waitForFunction(
+        () => (window as any).__businessOperations?.length === 1
+      );
+      assert.deepEqual(browserErrors, []);
+      assert.deepEqual(
+        await page.evaluate(() => (window as any).__businessOperations),
+        [
+          {
+            operation: "start_business_customer_session",
+            payload: { businessId: "business_clinic" },
+          },
+        ]
+      );
+    } finally {
+      await browser.close();
+      await rm(tempDir, { recursive: true, force: true });
     }
   });
 

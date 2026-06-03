@@ -646,7 +646,7 @@ export async function submitHarthmereHomeDecorationMutationV1(
     options.requestId ??
     `home_console_${Date.now()}_${Math.random().toString(36).slice(2)}`;
   const response = await fetchHarthmereLiveWithTimeoutV1(
-    fetchImpl,
+    fetchImpl as typeof fetch,
     "/api/harthmere/live_mode",
     {
       method: "POST",

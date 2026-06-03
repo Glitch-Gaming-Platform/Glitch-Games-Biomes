@@ -1,5 +1,11 @@
 import * as React from "react";
 import { useEffect, useRef } from "react";
+import {
+  closePointerLockUnlockWhileOpenV1,
+  openPointerLockUnlockWhileOpenV1,
+  type PointerLockUnlockWhileOpenReturnRefV1,
+} from "@/client/components/contexts/pointerLockModalPolicy";
+import { usePointerLockManager } from "@/client/components/contexts/PointerLockContext";
 import { emitHarthmereGlitchBehaviorEventV138 } from "@/client/game/glitch/harthmere_glitch_behavior_events";
 import { installBiomesUITheme } from "./theme/biomesUITheme";
 import { BiomesNav } from "./nav/BiomesNav";
@@ -81,6 +87,9 @@ export const BiomesUI: React.FunctionComponent<BiomesUIProps> = ({
   adapters,
   paneMode = "overlay",
 }) => {
+  const pointerLockManager = usePointerLockManager();
+  const shouldReturnPointerLock =
+    useRef<PointerLockUnlockWhileOpenReturnRefV1>({ current: false });
   const shortcuts = shortcutOverrides ?? DEFAULT_TAB_SHORTCUTS;
 
   useEffect(() => {
@@ -101,6 +110,26 @@ export const BiomesUI: React.FunctionComponent<BiomesUIProps> = ({
       { tab: activeTab ?? previous ?? "none", previous_tab: previous ?? "none" }
     );
   }, [activeTab]);
+
+  useEffect(() => {
+    if (activeTab === null || paneMode !== "overlay") {
+      closePointerLockUnlockWhileOpenV1(
+        pointerLockManager,
+        shouldReturnPointerLock.current
+      );
+      return;
+    }
+    openPointerLockUnlockWhileOpenV1(
+      pointerLockManager,
+      shouldReturnPointerLock.current
+    );
+    return () => {
+      closePointerLockUnlockWhileOpenV1(
+        pointerLockManager,
+        shouldReturnPointerLock.current
+      );
+    };
+  }, [activeTab, paneMode, pointerLockManager]);
 
   useEffect(() => {
     const cleanup = installTabShortcuts(

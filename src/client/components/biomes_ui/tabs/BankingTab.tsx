@@ -50,12 +50,13 @@ type Selection =
   | { source: "inventory"; item: DepositCandidate }
   | { source: VaultKind; item: VaultItem };
 
-function bankingIconLooksLikeImageUrlV136(icon: string | undefined) {
-  return !!icon && /^(https?:\/\/|data:image\/|blob:|\/buckets\/|buckets\/|\/assets\/|assets\/)/.test(icon);
+function isBankingImageIcon(icon: string | undefined) {
+  if (!icon) return false;
+  return /^(?:https?:\/\/|data:image\/|blob:|\/)/i.test(icon);
 }
 
-function renderBankingIconV136(icon: string | undefined, size = 20) {
-  if (bankingIconLooksLikeImageUrlV136(icon)) {
+function renderBankingIcon(icon: string | undefined, size = 20) {
+  if (isBankingImageIcon(icon)) {
     const src = icon?.startsWith("buckets/") || icon?.startsWith("assets/")
       ? `/${icon}`
       : icon;
@@ -63,10 +64,15 @@ function renderBankingIconV136(icon: string | undefined, size = 20) {
       src,
       alt: "",
       "aria-hidden": true,
+      "data-banking-icon-kind": "image",
       style: { width: size, height: size, objectFit: "contain", display: "inline-block" },
     });
   }
-  return React.createElement("span", { "aria-hidden": true, style: { fontSize: size } }, icon || "◼");
+  return React.createElement("span", {
+    "aria-hidden": true,
+    "data-banking-icon-kind": "glyph",
+    style: { fontSize: size },
+  }, icon || "◼");
 }
 
 export const BankingTab: React.FunctionComponent<{ adapter?: BankingAdapter }> = ({ adapter }) => {
@@ -123,7 +129,7 @@ export const BankingTab: React.FunctionComponent<{ adapter?: BankingAdapter }> =
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             {currencies.map((c) => (
               <div key={c.id} style={pillStyle}>
-                <span style={{ marginRight: 6 }}>{renderBankingIconV136(c.icon, 16)}</span>
+                <span style={{ marginRight: 6 }}>{renderBankingIcon(c.icon, 16)}</span>
                 <strong>{c.amount.toLocaleString()}</strong>
                 <span style={{ marginLeft: 6, color: "var(--biomes-fg-muted)" }}>{c.name}</span>
               </div>
@@ -161,7 +167,7 @@ export const BankingTab: React.FunctionComponent<{ adapter?: BankingAdapter }> =
             <div style={{ display: "grid", gap: 6 }}>
               {depositCandidates.slice(0, 12).map((item) => (
                 <button key={item.id} type="button" className="biomes-ui-tab" style={rowButtonStyle} aria-pressed={selection?.source === "inventory" && selection.item.id === item.id} onClick={() => setSelection({ source: "inventory", item })}>
-                  <span>{renderBankingIconV136(item.icon, 18)}</span>
+                  <span>{renderBankingIcon(item.icon, 18)}</span>
                   <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.name}</span>
                   <strong>{item.quantity}</strong>
                 </button>
@@ -189,7 +195,8 @@ export const BankingTab: React.FunctionComponent<{ adapter?: BankingAdapter }> =
                     style: { width: 48, height: 48 },
                   },
                     item ? React.createElement(React.Fragment, null,
-                      renderBankingIconV136(item.icon, 20),
+                      renderBankingIcon(item.icon, 24),
+                      React.createElement("span", { style: visuallyHiddenStyle }, item.name),
                       item.quantity > 1 ? React.createElement("span", { className: "biomes-ui-inventory__count" }, item.quantity) : null,
                     ) : null
                   )
@@ -250,3 +257,4 @@ const rowButtonStyle: React.CSSProperties = { display: "grid", gridTemplateColum
 const cardStyle: React.CSSProperties = { padding: 10, background: "var(--biomes-bg-glass)", border: "1px solid var(--biomes-edge-cyan-soft)", borderRadius: 4 };
 const labelStyle: React.CSSProperties = { display: "grid", gap: 4, marginBottom: 8, fontSize: 11, color: "var(--biomes-fg-muted)", textTransform: "uppercase", letterSpacing: "0.12em" };
 const inputStyle: React.CSSProperties = { minWidth: 0, padding: "6px 8px", color: "var(--biomes-fg)", background: "var(--biomes-bg-deep)", border: "1px solid var(--biomes-edge-cyan-soft)", borderRadius: 4 };
+const visuallyHiddenStyle: React.CSSProperties = { position: "absolute", width: 1, height: 1, padding: 0, margin: -1, overflow: "hidden", clip: "rect(0 0 0 0)", whiteSpace: "nowrap", border: 0 };

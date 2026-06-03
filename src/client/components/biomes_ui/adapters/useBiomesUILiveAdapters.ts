@@ -70,6 +70,7 @@ import {
 import { appendHarthmereBusinessOutpostMapLandmarksV1 } from "./harthmereBusinessMapMarkersV1";
 import {
   activeJobsBoardMissionStepsForBiomesUIV1,
+  firstActiveJobsBoardLandmarkForBiomesUIV1,
   firstActiveJobsBoardQuestTitleForBiomesUIV1,
   jobsBoardAcceptedJobLandmarksForBiomesUIV1,
   jobsBoardTrackableQuestsForBiomesUIV1,
@@ -159,7 +160,7 @@ const BIOMES_UI_TAB_TO_GARDEN_HOSE_TABS: Partial<Record<TabKey, string[]>> = {
 };
 
 const HARTHMERE_BIOMES_UI_LOCAL_ITEM_REF_PREFIX_V132 = "harthmere:";
-const HARTHMERE_QUEST_INVITE_POLL_INTERVAL_MS_V1 = 5000;
+const HARTHMERE_QUEST_INVITE_POLL_INTERVAL_MS_V1 = 30_000;
 
 function isTypingInInput(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;
@@ -1890,6 +1891,29 @@ export function useBiomesUILiveAdapters({
     if (typeof window === "undefined") return;
     void refreshJobsBoardState();
   }, [refreshJobsBoardState]);
+
+  React.useEffect(() => {
+    if (typeof window === "undefined") return;
+    const landmark = firstActiveJobsBoardLandmarkForBiomesUIV1(jobsBoardState);
+    if (!landmark) return;
+    const existing = readActiveBiomesUIMapPinV142();
+    if (
+      existing?.markerId === landmark.id &&
+      Array.isArray(existing.worldPosition)
+    ) {
+      return;
+    }
+    const pin = activeBiomesUIMapPinFromMarkerForTest({
+      id: landmark.id,
+      label: landmark.label,
+      kind: landmark.kind,
+      worldPosition: landmark.position,
+      description: landmark.description,
+    });
+    if (pin) {
+      writeActiveBiomesUIMapPinV142(pin);
+    }
+  }, [jobsBoardState]);
 
   const refreshQuestState = React.useCallback(async () => {
     if (questStateRefreshInFlightRef.current) return;

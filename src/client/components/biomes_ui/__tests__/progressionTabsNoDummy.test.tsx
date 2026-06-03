@@ -1455,9 +1455,11 @@ describe("Biomes UI progression tabs", () => {
     assert.ok(html.includes("Esc"));
     assert.ok(html.includes("Close"));
     assert.ok(html.includes("Close Biomes UI"));
-    assert.ok(html.includes(`data-ui-id="${UI_IDS.HUD_PROMPT_OPEN_MENU}"`));
-    assert.ok(html.includes('data-biomes-ui-open="true"'));
-    assert.ok(html.includes("Open Menu"));
+    assert.equal(
+      html.includes(`data-ui-id="${UI_IDS.HUD_PROMPT_OPEN_MENU}"`),
+      false
+    );
+    assert.equal(html.includes("Open Menu"), false);
   });
 
   it("renders CollectionsTab from canonical collection categories", () => {

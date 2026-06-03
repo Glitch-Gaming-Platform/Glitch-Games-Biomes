@@ -68,7 +68,7 @@ export function isMuckMonsterNameV1(name: string | undefined) {
   if (/robot|sentinel|shield|beacon|board|voucher|ration|matter/.test(text)) {
     return false;
   }
-  return /muck[-\s]scarred|muckling|mucker|muck\b|helix|hex|hexer|pale\s+muck/.test(
+  return /muck[-\s]scarred|muckling|mucker|muckwad|muck\b|helix|hex|hexer|pale\s+muck/.test(
     text
   );
 }

@@ -2368,8 +2368,41 @@ export function createHarthmereProductionEconomyClientSnapshotV1(
     tradeRoutes: state.tradeRoutes,
     failures: state.failures,
     marketOrders: state.marketOrders,
-    businessSystems: normalizeHarthmereEconomyBusinessSystemsStateV1((state as any).businessSystems),
+    businessSystems: createHarthmereProductionEconomyBusinessSystemsClientSnapshotV1(
+      (state as any).businessSystems,
+    ),
     balanceWarnings: validateHarthmereEconomyBalanceV1(state),
     ledger: state.ledger.slice(-100),
+  };
+}
+
+export function createHarthmereProductionEconomyBusinessSystemsClientSnapshotV1(
+  raw: unknown,
+) {
+  const systems = normalizeHarthmereEconomyBusinessSystemsStateV1(raw);
+  const outpostBuildings = Object.fromEntries(
+    Object.entries(systems.outpostBuildings).map(([outpostId, building]) => {
+      const materializationPlan = (building as any).materializationPlan;
+      const edits = Array.isArray(materializationPlan?.edits)
+        ? materializationPlan.edits
+        : [];
+      return [
+        outpostId,
+        {
+          ...building,
+          materializationPlan: materializationPlan
+            ? {
+                ...materializationPlan,
+                edits: [],
+                editCount: edits.length,
+              }
+            : materializationPlan,
+        },
+      ];
+    }),
+  );
+  return {
+    ...systems,
+    outpostBuildings,
   };
 }

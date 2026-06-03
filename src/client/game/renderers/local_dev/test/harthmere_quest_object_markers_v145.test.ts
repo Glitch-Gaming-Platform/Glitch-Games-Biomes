@@ -25,6 +25,11 @@ import {
   liveEntityHelperQuestTargetMarkerForKindV1,
   liveEntityHelperQuestTargetMarkerIdForKindV1,
 } from "@/shared/harthmere/live_entity_helper_quests_v1";
+import {
+  HARTHMERE_JOBS_BOARD_ALPHA_MUCKER_BOUNTY_MARKER_ID_V1,
+  HARTHMERE_JOBS_BOARD_ELITE_MUCKER_BOUNTY_MARKER_ID_V1,
+  HARTHMERE_JOBS_BOARD_HEX_WRAITH_BOUNTY_MARKER_ID_V1,
+} from "@/shared/harthmere/jobs_board_muck_bounty_targets_v1";
 import { harthmereJobsBoardQuestMarkerPositionsV1 } from "@/shared/harthmere/jobs_board_quest_marker_positions_v1";
 import {
   SNAPSHOT_GROVE_LANDMARKS_V75,
@@ -105,10 +110,11 @@ describe("Harthmere quest object procedural markers V145", () => {
   it("renders Jobs Board target markers, including monster-hunt destinations, from the shared resolver", () => {
     for (const id of [
       "muckwad_patch",
-      "mosslawn_song_stones",
+      HARTHMERE_JOBS_BOARD_ELITE_MUCKER_BOUNTY_MARKER_ID_V1,
+      HARTHMERE_JOBS_BOARD_HEX_WRAITH_BOUNTY_MARKER_ID_V1,
+      HARTHMERE_JOBS_BOARD_ALPHA_MUCKER_BOUNTY_MARKER_ID_V1,
       "harthmere_market_office",
       "harthmere_chapel_stone",
-      "harthmere_bridge_center",
       "refinery_intake_marker",
       "exotic_antihydrogen_east_underways_03",
       "exotic_antihelium_old_well_02",

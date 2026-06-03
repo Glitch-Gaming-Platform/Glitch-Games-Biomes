@@ -1,5 +1,5 @@
 import type { BiomesId } from "@/shared/ids";
-import type { Vec2, Vec3 } from "@/shared/math/types";
+import type { ReadonlyVec3, Vec2, Vec3 } from "@/shared/math/types";
 import {
   LIVE_ENTITY_ROBOT_DEFAULT_MAX_ENERGY_V1,
   LIVE_ENTITY_ROBOT_PROTECTION_AREAS_V1,
@@ -110,7 +110,7 @@ interface HarthmereMuckMonsterSeedLayoutV1 {
   areaId: string;
   areaLabel: string;
   count: number;
-  center: Vec3;
+  center: ReadonlyVec3;
   radius: number;
   firstOffset: number;
   muckerName: string;

@@ -26,6 +26,14 @@ import {
   type HarthmereBusinessOutpostV1,
 } from "./business_customer_simulator_v1";
 import { HARTHMERE_EXOTIC_MATTER_COMPONENTS_V1 } from "./exotic_matter_caves_v1";
+import {
+  HARTHMERE_JOBS_BOARD_ALPHA_MUCKER_BOUNTY_MARKER_ID_V1,
+  HARTHMERE_JOBS_BOARD_ALPHA_MUCKER_BOUNTY_TARGET_ID_V1,
+  HARTHMERE_JOBS_BOARD_ELITE_MUCKER_BOUNTY_MARKER_ID_V1,
+  HARTHMERE_JOBS_BOARD_ELITE_MUCKER_BOUNTY_TARGET_ID_V1,
+  HARTHMERE_JOBS_BOARD_HEX_WRAITH_BOUNTY_MARKER_ID_V1,
+  HARTHMERE_JOBS_BOARD_HEX_WRAITH_BOUNTY_TARGET_ID_V1,
+} from "./jobs_board_muck_bounty_targets_v1";
 
 export const HARTHMERE_JOBS_BOARD_AUTHORITY_VERSION_V1 = "harthmere-jobs-board-authority-v1" as const;
 export const HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1 = "harthmere_grove_market_jobs_board" as const;
@@ -1139,10 +1147,11 @@ export const HARTHMERE_JOBS_BOARD_AUTO_SEED_TEMPLATES_V141: AutoSeedTemplate[] =
     kind: "hunt",
     title: "Bounty: Elite Mucker at the Muck Edge",
     description: "An elite Mucker has dug in past the safe-zone boundary. Strong, slow, hits like a piledriver — bring a party. Reward only paid on confirmed kill.",
-    requirements: [{ targetId: "mucker_elite", targetName: "Elite Mucker", mapMarkerId: "muckwad_patch" }],
+    requirements: [{ targetId: HARTHMERE_JOBS_BOARD_ELITE_MUCKER_BOUNTY_TARGET_ID_V1, targetName: "Elite Mucker", mapMarkerId: HARTHMERE_JOBS_BOARD_ELITE_MUCKER_BOUNTY_MARKER_ID_V1 }],
     rewardGold: { min: HARTHMERE_JOBS_BOARD_MONSTER_HUNT_REWARD_FLOOR_V141, max: 2400 },
     requiresFieldWork: true,
-    mapMarkerId: "muckwad_patch",
+    mapMarkerId: HARTHMERE_JOBS_BOARD_ELITE_MUCKER_BOUNTY_MARKER_ID_V1,
+    targetId: HARTHMERE_JOBS_BOARD_ELITE_MUCKER_BOUNTY_TARGET_ID_V1,
     monsterId: "mucker",
     monsterTier: "elite",
     monsterPowerLevel: 18,
@@ -1158,10 +1167,11 @@ export const HARTHMERE_JOBS_BOARD_AUTO_SEED_TEMPLATES_V141: AutoSeedTemplate[] =
     kind: "hunt",
     title: "Bounty: Hex Wraith Sighting in Mosslawn",
     description: "A Hex wraith has surfaced under the Mosslawn songline near Harthmere's borderlands. Heavily resists single attackers and drops a Hex Sigil. Take a party of four.",
-    requirements: [{ targetId: "hex_wraith", targetName: "Hex Wraith", mapMarkerId: "mosslawn_song_stones" }],
+    requirements: [{ targetId: HARTHMERE_JOBS_BOARD_HEX_WRAITH_BOUNTY_TARGET_ID_V1, targetName: "Hex Wraith", mapMarkerId: HARTHMERE_JOBS_BOARD_HEX_WRAITH_BOUNTY_MARKER_ID_V1 }],
     rewardGold: { min: 2600, max: HARTHMERE_JOBS_BOARD_MONSTER_HUNT_REWARD_CEILING_V141 },
     requiresFieldWork: true,
-    mapMarkerId: "mosslawn_song_stones",
+    mapMarkerId: HARTHMERE_JOBS_BOARD_HEX_WRAITH_BOUNTY_MARKER_ID_V1,
+    targetId: HARTHMERE_JOBS_BOARD_HEX_WRAITH_BOUNTY_TARGET_ID_V1,
     monsterId: "hex",
     monsterTier: "boss",
     monsterPowerLevel: 24,
@@ -1392,10 +1402,11 @@ export const HARTHMERE_JOBS_BOARD_AUTO_SEED_TEMPLATES_V141: AutoSeedTemplate[] =
     kind: "hunt",
     title: "Bounty: Alpha Mucker Past the Bridge",
     description: "An alpha Mucker is digging up the road past the bridge. Even a small party will struggle — bring four and stay clear of its slam radius.",
-    requirements: [{ targetId: "mucker_alpha", targetName: "Alpha Mucker", mapMarkerId: "harthmere_bridge_center" }],
+    requirements: [{ targetId: HARTHMERE_JOBS_BOARD_ALPHA_MUCKER_BOUNTY_TARGET_ID_V1, targetName: "Alpha Mucker", mapMarkerId: HARTHMERE_JOBS_BOARD_ALPHA_MUCKER_BOUNTY_MARKER_ID_V1 }],
     rewardGold: { min: 1800, max: 3600 },
     requiresFieldWork: true,
-    mapMarkerId: "harthmere_bridge_center",
+    mapMarkerId: HARTHMERE_JOBS_BOARD_ALPHA_MUCKER_BOUNTY_MARKER_ID_V1,
+    targetId: HARTHMERE_JOBS_BOARD_ALPHA_MUCKER_BOUNTY_TARGET_ID_V1,
     monsterId: "mucker",
     monsterTier: "boss",
     monsterPowerLevel: 22,

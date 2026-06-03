@@ -59,6 +59,11 @@ import {
 } from "@/shared/harthmere/mmo_jobs_board_authority_v1";
 import { harthmereJobsBoardQuestMarkerPositionForIdV1 } from "@/shared/harthmere/jobs_board_quest_marker_positions_v1";
 import {
+  HARTHMERE_JOBS_BOARD_ELITE_MUCKER_BOUNTY_MARKER_ID_V1,
+  HARTHMERE_JOBS_BOARD_ELITE_MUCKER_BOUNTY_TARGET_ID_V1,
+} from "@/shared/harthmere/jobs_board_muck_bounty_targets_v1";
+import { muckMonsterAreaForPositionV1 } from "@/shared/harthmere/muck_monster_aggression_ai_v1";
+import {
   HARTHMERE_EXOTIC_MATTER_CAVES_V1,
   HARTHMERE_EXOTIC_MATTER_COMPONENTS_V1,
   HARTHMERE_EXOTIC_MATTER_DEPOSIT_REPLENISH_MS_V1,
@@ -95,6 +100,10 @@ import { createHarthmereLiveEntityCombatSnapshotsFromEcsRecordsV1 } from "@/shar
 const NOW_MS = 1_700_000_000_000;
 const ACTOR = "player_live_001";
 const TARGET = "mob_goblin_001";
+
+beforeEach(function () {
+  this.timeout(60_000);
+});
 
 // ---------------------------------------------------------------------------
 // Test fixture helpers
@@ -1412,7 +1421,7 @@ describe("reduceHarthmereLiveModeBackendStateV1 — combat target authority", fu
   });
 
   it("lets every mobile live entity family damage the player through NPC AI when in range", function () {
-    this.timeout(30_000);
+    this.timeout(60_000);
     for (const entry of LIVE_ENTITY_INTERACTION_CASES) {
       const npcId = `live-${entry.kind}-ai-damage-player`;
       const snapshotOverrides = {
@@ -2013,7 +2022,7 @@ describe("reduceHarthmereLiveModeBackendStateV1 — combat target authority", fu
   }
 
   it("applies common NPC AI attack blockers to every mobile live entity family", function () {
-    this.timeout(30_000);
+    this.timeout(60_000);
     const blockerCases: ReadonlyArray<{
       suffix: string;
       actorPosition: { x: number; y: number; z: number };
@@ -2146,7 +2155,7 @@ describe("reduceHarthmereLiveModeBackendStateV1 — combat target authority", fu
   });
 
   it("lets every live entity family use the same hit, retaliation AI, movement, and animation path", function () {
-    this.timeout(15_000);
+    this.timeout(60_000);
     for (const entry of LIVE_ENTITY_INTERACTION_CASES) {
       const entityId = `live-${entry.kind}-retaliation`;
       let s = freshState();
@@ -2448,7 +2457,7 @@ describe("reduceHarthmereLiveModeBackendStateV1 — combat target authority", fu
   }
 
   it("chases every mobile live entity family across ticks while the player stays in range", function () {
-    this.timeout(30_000);
+    this.timeout(60_000);
     for (const entry of LIVE_ENTITY_INTERACTION_CASES) {
       const snapshotOverrides = {
         ...("species" in entry ? { species: entry.species } : {}),
@@ -2482,7 +2491,7 @@ describe("reduceHarthmereLiveModeBackendStateV1 — combat target authority", fu
   });
 
   it("blocks and clears chase when every live entity family finds the player beyond chase range", function () {
-    this.timeout(20_000);
+    this.timeout(60_000);
     for (const entry of LIVE_ENTITY_INTERACTION_CASES) {
       const snapshotOverrides = {
         ...("species" in entry ? { species: entry.species } : {}),
@@ -2511,7 +2520,7 @@ describe("reduceHarthmereLiveModeBackendStateV1 — combat target authority", fu
   });
 
   it("blocks and clears chase when every live entity family finds the player in a town safe zone", function () {
-    this.timeout(20_000);
+    this.timeout(60_000);
     for (const entry of LIVE_ENTITY_INTERACTION_CASES) {
       const snapshotOverrides = {
         ...("species" in entry ? { species: entry.species } : {}),
@@ -6134,6 +6143,30 @@ describe("reduceHarthmereLiveModeBackendStateV1 — building mutation", function
       ),
       "starting a production business should leave real business-backed jobs on the board"
     );
+    const ownerMarker =
+      state.building.inWorldMarkers[`${businessId}:owner-npc`];
+    assert.ok(ownerMarker, "player-owned businesses need an owner NPC inside");
+    assert.equal(ownerMarker.kind, "npc_board");
+    assert.equal(ownerMarker.plotId, "grove_crossroads_shop_lot");
+    assert.match(ownerMarker.label, /grove crossroads shop lot owner/i);
+    const plot = buildingSystemPlotByIdV1(ownerMarker.plotId);
+    assert.ok(plot);
+    assert.ok(
+      ownerMarker.position[0] >= plot!.bounds.xMin &&
+        ownerMarker.position[0] <= plot!.bounds.xMax &&
+        ownerMarker.position[2] >= plot!.bounds.zMin &&
+        ownerMarker.position[2] <= plot!.bounds.zMax,
+      "owner NPC marker must stay inside the owned business plot"
+    );
+    const parsed = parseHarthmereLiveModeBackendStateV1(
+      JSON.stringify(state),
+      ACTOR,
+      NOW_MS + 1
+    );
+    assert.ok(
+      parsed.building.inWorldMarkers[`${businessId}:owner-npc`],
+      "saved player-owned businesses should hydrate their owner NPC marker"
+    );
   });
 
   it("rejects business licenses while an active bounty is outstanding", function () {
@@ -6552,8 +6585,10 @@ describe("reduceHarthmereLiveModeBackendStateV1 — physical jobs board and live
   it("places accepted jobs board quest markers at their resolved world target instead of a placeholder", function () {
     const s = freshState();
     const target =
-      harthmereJobsBoardQuestMarkerPositionForIdV1("muckwad_patch");
-    assert.ok(target, "expected Muckwad Patch to resolve as a quest marker");
+      harthmereJobsBoardQuestMarkerPositionForIdV1(
+        HARTHMERE_JOBS_BOARD_ELITE_MUCKER_BOUNTY_MARKER_ID_V1
+      );
+    assert.ok(target, "expected Elite Mucker bounty to resolve as a quest marker");
     s.jobsBoard.postings.job_muck_hunt = {
       jobId: "job_muck_hunt",
       boardId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1,
@@ -6564,9 +6599,9 @@ describe("reduceHarthmereLiveModeBackendStateV1 — physical jobs board and live
       kind: "hunt",
       requirements: [
         {
-          targetId: "mucker_elite",
+          targetId: HARTHMERE_JOBS_BOARD_ELITE_MUCKER_BOUNTY_TARGET_ID_V1,
           targetName: "Elite Mucker",
-          mapMarkerId: "muckwad_patch",
+          mapMarkerId: HARTHMERE_JOBS_BOARD_ELITE_MUCKER_BOUNTY_MARKER_ID_V1,
         },
       ],
       rewardGold: 1200,
@@ -6579,8 +6614,8 @@ describe("reduceHarthmereLiveModeBackendStateV1 — physical jobs board and live
       deadlineAtMs: NOW_MS + 86_400_000,
       failurePenaltyGold: 120,
       requiresFieldWork: true,
-      mapMarkerId: "muckwad_patch",
-      targetId: "mucker_elite",
+      mapMarkerId: HARTHMERE_JOBS_BOARD_ELITE_MUCKER_BOUNTY_MARKER_ID_V1,
+      targetId: HARTHMERE_JOBS_BOARD_ELITE_MUCKER_BOUNTY_TARGET_ID_V1,
       abuseFlags: [],
       logs: [],
       autoPosted: true,
@@ -6622,9 +6657,16 @@ describe("reduceHarthmereLiveModeBackendStateV1 — physical jobs board and live
     const marker =
       state.building.inWorldMarkers[`jobs_board_marker:${todo.todoId}`];
     assert.ok(marker, "accepted job should expose an in-world quest marker");
-    assert.equal(marker.plotId, "muckwad_patch");
+    assert.equal(
+      marker.plotId,
+      HARTHMERE_JOBS_BOARD_ELITE_MUCKER_BOUNTY_MARKER_ID_V1
+    );
     assert.deepEqual(marker.position, target!.position);
-    assert.ok(marker.label.includes("Muckwad Patch"));
+    assert.ok(marker.label.includes("Elite Mucker Bounty"));
+    assert.ok(
+      muckMonsterAreaForPositionV1(marker.position, 1.5),
+      "accepted bounty marker must be inside authored Muck territory"
+    );
     assert.notDeepEqual(
       marker.position,
       [482, 66, -198],

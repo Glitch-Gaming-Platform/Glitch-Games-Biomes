@@ -5,6 +5,8 @@ import { TalkToNPCScreen } from "@/client/components/challenges/TalkToNPCScreen"
 import { useClientContext } from "@/client/components/contexts/ClientContextReactContext";
 import { usePointerLockManager } from "@/client/components/contexts/PointerLockContext";
 import {
+  beginPointerLockUnlockWhileOpenV1,
+  endPointerLockUnlockWhileOpenV1,
   hasPointerLockUnlockWhileOpenSurfaceV1,
   isPointerLockUnlockWhileOpenActiveV1,
 } from "@/client/components/contexts/pointerLockModalPolicy";
@@ -40,6 +42,7 @@ export function GameModalController() {
   const lastRelevantKeydownTime = useRef(0);
   const { dragItem, setDragItem } = useInventoryDraggerContext();
   const lastModal = useRef<typeof gameModal>({ ...gameModal });
+  const modalPolicyActive = useRef(false);
 
   useEffect(() => {
     if (context.pushManager.shouldPromptForPermission()) {
@@ -56,9 +59,17 @@ export function GameModalController() {
   // When modal closes / opens / changes
   useEffect(() => {
     if (gameModal.kind !== "empty") {
+      if (!modalPolicyActive.current) {
+        beginPointerLockUnlockWhileOpenV1();
+        modalPolicyActive.current = true;
+      }
       pointerLockManager.unlock();
       lastModal.current = { ...gameModal };
     } else {
+      if (modalPolicyActive.current) {
+        endPointerLockUnlockWhileOpenV1();
+        modalPolicyActive.current = false;
+      }
       if (lastModal.current.onClose) {
         lastModal.current.onClose();
       }
@@ -78,6 +89,15 @@ export function GameModalController() {
       lastModal.current = { ...gameModal };
     }
   }, [gameModalVersion]);
+
+  useEffect(() => {
+    return () => {
+      if (modalPolicyActive.current) {
+        endPointerLockUnlockWhileOpenV1();
+        modalPolicyActive.current = false;
+      }
+    };
+  }, []);
 
   useEffect(() => {
     return cleanListener(window, {

@@ -37,6 +37,11 @@ import {
   unresolvedHarthmereJobsBoardQuestMarkerIdsV1,
 } from "../jobs_board_quest_marker_positions_v1";
 import {
+  harthmereJobsBoardMuckBountyTargetForIdV1,
+  validateHarthmereJobsBoardMuckBountyTargetsV1,
+} from "../jobs_board_muck_bounty_targets_v1";
+import { muckMonsterAreaForPositionV1 } from "../muck_monster_aggression_ai_v1";
+import {
   HARTHMERE_EXOTIC_MATTER_MATERIAL_ITEM_IDS_V1,
   harthmereExoticMatterDepositByIdV1,
   isHarthmereExoticMatterMaterialItemIdV1,
@@ -317,6 +322,32 @@ describe("mmo_jobs_board_authority_v1 — economy auto-seed (V141)", () => {
 });
 
 describe("mmo_jobs_board_authority_v1 — monster hunting (V141)", () => {
+  it("pins every monster-hunt template to a seed-backed Muck bounty target", () => {
+    assert.deepEqual(validateHarthmereJobsBoardMuckBountyTargetsV1(), []);
+    const huntTemplates = HARTHMERE_JOBS_BOARD_AUTO_SEED_TEMPLATES_V141.filter(
+      (template) => template.kind === "hunt" || template.monsterId
+    );
+    assert.ok(huntTemplates.length >= 3, "expected authored bounty templates");
+    for (const template of huntTemplates) {
+      const target = harthmereJobsBoardMuckBountyTargetForIdV1(
+        template.mapMarkerId ?? template.targetId
+      );
+      assert.ok(target, `${template.templateId} must use a Muck bounty target`);
+      assert.equal(target!.monsterId, template.monsterId);
+      assert.equal(target!.monsterTier, template.monsterTier);
+      const marker = harthmereJobsBoardQuestMarkerPositionForIdV1(
+        template.mapMarkerId
+      );
+      assert.ok(marker, `${template.templateId} marker must resolve`);
+      assert.equal(marker!.source, "muck_bounty_target");
+      assert.deepEqual(marker!.position, target!.position);
+      assert.ok(
+        muckMonsterAreaForPositionV1(marker!.position, 1.5),
+        `${template.templateId} must point inside Muck territory`
+      );
+    }
+  });
+
   it("produces at least one Mucker or Hex hunt with party flag + loot hint over many ticks", () => {
     let state = defaultHarthmereJobsBoardStateV1(NOW);
     // Run multiple ticks with different nowMs to exercise the rng selection.

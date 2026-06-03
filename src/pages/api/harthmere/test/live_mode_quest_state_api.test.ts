@@ -13,10 +13,7 @@ describe("live_mode_quest_state API route integration", () => {
   it("uses one Redis MGET for actor and shared quest state when available", async () => {
     const backend = defaultHarthmereLiveModeBackendStateV1(ACTOR, NOW_MS);
     backend.quests.active["api-test-quest"] = {
-      questId: "api-test-quest",
-      startedAtMs: NOW_MS,
-      progress: { step: 1 },
-      mapMarkers: [],
+      progress: 1,
     };
     const mgetCalls: string[][] = [];
     const getCalls: string[] = [];

@@ -104,7 +104,9 @@ export const BiomesUIMount: React.FunctionComponent<{
         hotbar={live.hotbar}
         adapters={live.adapters}
       />
-      <HarthmereJobsBoardWorldInteractionV146 />
+      <HarthmereJobsBoardWorldInteractionV146
+        suppressPrompt={activeTab !== null}
+      />
       <HarthmereBusinessWorldInteractionV1
         suppressPrompt={activeTab !== null}
       />

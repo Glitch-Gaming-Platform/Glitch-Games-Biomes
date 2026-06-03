@@ -1,4 +1,5 @@
 import { useBiomesUIReplaceLegacyFlag } from "@/client/components/biomes_ui/BiomesUIFlags";
+import { usePointerLockUnlockWhileOpenActiveV1 } from "@/client/components/contexts/usePointerLockUnlockWhileOpenActiveV1";
 import React from "react";
 import { BIOMES_UI_OPEN_MENU_SHORTCUT } from "./BiomesUITypes";
 import { Highlightable } from "./highlight/HighlightOverlay";
@@ -63,8 +64,9 @@ export const BiomesUIOpenPrompt: React.FunctionComponent<{
 }> = ({ isOpen = false }) => {
   const replaceLegacy = useBiomesUIReplaceLegacyFlag();
   const nonGameplayScreenVisible = useBiomesUINonGameplayScreenVisibleV137();
+  const uiOpen = usePointerLockUnlockWhileOpenActiveV1();
 
-  if (!replaceLegacy || nonGameplayScreenVisible) {
+  if (!replaceLegacy || isOpen || uiOpen || nonGameplayScreenVisible) {
     return null;
   }
 

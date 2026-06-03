@@ -56,15 +56,15 @@ const generatedVoxelGroveNpcIds = [
 ];
 
 ok(
-  npcs.includes("SNAPSHOT_GROVE_GENERATED_VOXEL_NPC_VERSION_V195"),
-  "generated voxel Grove NPC renderer is versioned"
+  npcs.includes(
+    "snapshot-grove-generated-voxel-npc-v196-player-mesh-fallback"
+  ),
+  "generated voxel Grove NPC fallback renderer is versioned"
 );
 ok(
-  npcs.indexOf("shouldUseSnapshotGroveGeneratedVoxelNpcV195(id, label)") >
-    npcs.indexOf("const npcType = idToNpcType(npcMetadata.type_id)") &&
-    npcs.indexOf("shouldUseSnapshotGroveGeneratedVoxelNpcV195(id, label)") <
-      npcs.indexOf("if (npcType.isPlayerLikeAppearance)"),
-  "generated voxel Grove gate runs before player-like mesh generation"
+  npcs.indexOf("if (npcType.isPlayerLikeAppearance)") <
+    npcs.indexOf("shouldUseSnapshotGroveGeneratedVoxelNpcV195(id, label)"),
+  "player-like Grove NPCs try the player mesh path before generated voxel fallback"
 );
 ok(
   /snapshotGroveNpcIdFromEntityIdV75\(id\)[\s\S]{0,220}return explicitId/.test(npcs),

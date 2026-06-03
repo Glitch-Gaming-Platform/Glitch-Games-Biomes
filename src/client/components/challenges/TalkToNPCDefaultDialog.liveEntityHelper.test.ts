@@ -9,6 +9,7 @@ import {
   harthmereDialogueLiveModeUrlV1,
   submitHarthmereDialogueLiveModeChoiceV1,
 } from "@/client/components/challenges/dialogueLiveModeReputation";
+import { isHarthmereNonLivingDialogueObjectLabelV1 } from "@/client/components/challenges/dialogueObjectSemantics";
 import { contextForLiveEntityHelperQuestV1 } from "@/client/components/challenges/LocalDevLiveEntityHelperQuests";
 import { BIOMES_UI_PLAYER_STATUS_UPDATED_EVENT } from "@/client/components/biomes_ui/adapters/playerStatusAdapter";
 import { getLiveEntityHelperQuestForEntityV1 } from "@/shared/harthmere/live_entity_helper_quests_v1";
@@ -27,6 +28,37 @@ describe("live-entity helper dialog context", () => {
 
     assert.equal(context.hasTalkableDialog, true);
     assert.ok(getLiveEntityHelperQuestForEntityV1(context));
+  });
+
+  it("keeps containers and road objects out of NPC dialogue", () => {
+    assert.equal(
+      isHarthmereNonLivingDialogueObjectLabelV1({
+        label: "Clothing Crate",
+        entityDescription: "Quest container with starter clothes.",
+      }),
+      true
+    );
+    assert.equal(
+      isHarthmereNonLivingDialogueObjectLabelV1({
+        label: "Old Grove Road Post",
+        entityDescription: "A marked route object.",
+      }),
+      true
+    );
+    assert.equal(
+      isHarthmereNonLivingDialogueObjectLabelV1({
+        label: "Billy Rhodes",
+        entityDescription: "Runner, errand scout, and missing road-hand.",
+      }),
+      false
+    );
+    assert.equal(
+      isHarthmereNonLivingDialogueObjectLabelV1({
+        label: "Mucked Robot",
+        entityDescription: "A living service robot with dialogue.",
+      }),
+      false
+    );
   });
 });
 

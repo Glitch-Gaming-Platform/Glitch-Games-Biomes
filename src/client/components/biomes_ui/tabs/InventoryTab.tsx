@@ -356,6 +356,7 @@ export const InventoryTab: React.FunctionComponent<{ adapter?: InventoryAdapter 
                   {item ? (
                     <>
                       {renderInventoryIcon(item)}
+                      <span style={visuallyHiddenStyle}>{item.label}</span>
                       {item.count && item.count > 1 ? <span className="biomes-ui-inventory__count">{item.count}</span> : null}
                     </>
                   ) : null}
@@ -468,18 +469,31 @@ function serializeInventoryRef(ref: InventoryUiRef): string {
   return `${ref.kind}:${ref.idx ?? ref.key ?? ""}`;
 }
 
-function inventoryIconLooksLikeImageUrlV136(icon: string | undefined) {
-  return !!icon && /^(https?:\/\/|data:image\/|blob:|\/buckets\/|buckets\/|\/assets\/|assets\/)/.test(icon);
+function isInventoryImageIcon(icon: string | undefined) {
+  if (!icon) return false;
+  return /^(?:https?:\/\/|data:image\/|blob:|\/)/i.test(icon);
 }
 
 function renderInventoryIcon(item: InventoryUiItem): React.ReactNode {
-  if (inventoryIconLooksLikeImageUrlV136(item.icon)) {
+  if (isInventoryImageIcon(item.icon)) {
     const src = item.icon.startsWith("buckets/") || item.icon.startsWith("assets/")
       ? `/${item.icon}`
       : item.icon;
-    return <img src={src} alt="" aria-hidden style={{ width: 30, height: 30, objectFit: "contain" }} />;
+    return (
+      <img
+        src={src}
+        alt=""
+        aria-hidden
+        data-inventory-icon-kind="image"
+        style={{ width: 30, height: 30, objectFit: "contain" }}
+      />
+    );
   }
-  return <span aria-hidden style={{ fontSize: 22 }}>{item.icon || "◼"}</span>;
+  return (
+    <span aria-hidden data-inventory-icon-kind="glyph" style={{ fontSize: 22 }}>
+      {item.icon || "◼"}
+    </span>
+  );
 }
 
 const CompactInventoryList: React.FunctionComponent<{
@@ -627,10 +641,28 @@ const EquipSlot: React.FunctionComponent<{
       onDoubleClick={onUnequip}
       data-inventory-equipment-slot={label}
     >
-      {item ? renderInventoryIcon(item) : <span aria-hidden style={{ fontSize: 9, opacity: 0.5 }}>{label}</span>}
+      {item ? (
+        <>
+          {renderInventoryIcon(item)}
+          <span style={visuallyHiddenStyle}>{item.label}</span>
+        </>
+      ) : (
+        <span aria-hidden style={{ fontSize: 9, opacity: 0.5 }}>{label}</span>
+      )}
     </button>
   </Highlightable>
 );
 
 const hotbarSyncStyle: React.CSSProperties = { marginTop: 16, paddingTop: 12, borderTop: "1px solid var(--biomes-edge-cyan-soft)" };
 const hotbarRowStyle: React.CSSProperties = { display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center" };
+const visuallyHiddenStyle: React.CSSProperties = {
+  position: "absolute",
+  width: 1,
+  height: 1,
+  padding: 0,
+  margin: -1,
+  overflow: "hidden",
+  clip: "rect(0 0 0 0)",
+  whiteSpace: "nowrap",
+  border: 0,
+};

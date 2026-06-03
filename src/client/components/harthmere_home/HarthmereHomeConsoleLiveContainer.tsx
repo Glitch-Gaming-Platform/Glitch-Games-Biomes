@@ -118,7 +118,6 @@ export function HarthmereHomeConsoleLiveContainer({
       const target = event.target as HTMLElement | null;
       const tagName = target?.tagName?.toLowerCase();
       if (
-        event.defaultPrevented ||
         event.repeat ||
         event.metaKey ||
         event.ctrlKey ||

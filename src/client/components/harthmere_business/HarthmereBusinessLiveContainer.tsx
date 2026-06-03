@@ -1,4 +1,5 @@
 import * as React from "react";
+import { usePointerLockUnlockWhileOpenActiveV1 } from "@/client/components/contexts/usePointerLockUnlockWhileOpenActiveV1";
 import { HarthmereBusinessInterfacePanel } from "./HarthmereBusinessInterfacePanel";
 import { HarthmereBusinessInteractionPrompt } from "./HarthmereBusinessInteractionPrompt";
 import {
@@ -47,6 +48,7 @@ export function HarthmereBusinessLiveContainer({
   >(initialState);
   const [loading, setLoading] = React.useState(!initialState);
   const [error, setError] = React.useState<string | undefined>();
+  const anyUiOpen = usePointerLockUnlockWhileOpenActiveV1();
 
   const refresh = React.useCallback(async () => {
     setLoading(true);
@@ -102,6 +104,7 @@ export function HarthmereBusinessLiveContainer({
         : { visible: false, label: "", helper: "", keyLabel: "E" },
     [adapter, context, state]
   );
+  const canShowWorldPrompt = showPrompt && !open && !anyUiOpen;
 
   React.useEffect(() => {
     if (!open || prompt.visible || !state) return;
@@ -109,12 +112,16 @@ export function HarthmereBusinessLiveContainer({
   }, [onClose, open, prompt.visible, state]);
 
   React.useEffect(() => {
-    if (!prompt.visible || open || !onOpen || typeof window === "undefined") {
+    if (
+      !prompt.visible ||
+      !canShowWorldPrompt ||
+      !onOpen ||
+      typeof window === "undefined"
+    ) {
       return;
     }
     const handler = (event: KeyboardEvent) => {
       if (
-        event.defaultPrevented ||
         event.repeat ||
         event.metaKey ||
         event.ctrlKey ||
@@ -132,13 +139,13 @@ export function HarthmereBusinessLiveContainer({
     };
     window.addEventListener("keydown", handler, true);
     return () => window.removeEventListener("keydown", handler, true);
-  }, [onOpen, open, prompt.visible]);
+  }, [canShowWorldPrompt, onOpen, prompt.visible]);
 
   if (!state && (loading || !error)) return null;
 
   return (
     <>
-      {showPrompt ? (
+      {canShowWorldPrompt ? (
         <HarthmereBusinessInteractionPrompt
           adapter={adapter}
           context={context}

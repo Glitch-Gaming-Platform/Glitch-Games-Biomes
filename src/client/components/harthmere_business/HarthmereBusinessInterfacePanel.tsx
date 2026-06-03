@@ -127,6 +127,17 @@ function displayLabel(value: string | undefined): string {
     .replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
+function playerFacingBusinessNameV1(
+  name: string | undefined,
+  fallbackTypeId: string
+) {
+  const raw = name?.trim();
+  if (!raw) {
+    return displayLabel(fallbackTypeId);
+  }
+  return /[_-]|[a-z][A-Z]/.test(raw) ? displayLabel(raw) : raw;
+}
+
 function ticketPatienceRemaining(
   ticket:
     | { arrivedAtMs: number; patience: number; patienceRemaining: number }
@@ -413,9 +424,6 @@ export const HarthmereBusinessInterfacePanel: React.FunctionComponent<
     activeBusinessId,
     activeTab
   );
-
-  if (!activeBusinessId || !available || !business) return null;
-  const type = businessAdapter.getBusinessType(activeBusinessId);
   const onActivePaneRender = React.useCallback(
     (
       _id: string,
@@ -429,7 +437,7 @@ export const HarthmereBusinessInterfacePanel: React.FunctionComponent<
         kind: "render",
         label: "active-pane",
         durationMs: actualDuration,
-        businessId: activeBusinessId,
+        businessId: activeBusinessId ?? undefined,
         tab: activeTab,
         details: {
           phase,
@@ -439,6 +447,13 @@ export const HarthmereBusinessInterfacePanel: React.FunctionComponent<
       });
     },
     [activeBusinessId, activeTab]
+  );
+
+  if (!activeBusinessId || !available || !business) return null;
+  const type = businessAdapter.getBusinessType(activeBusinessId);
+  const businessDisplayName = playerFacingBusinessNameV1(
+    business.name,
+    business.typeId
   );
   let activePane: React.ReactNode = null;
   switch (activeTab) {
@@ -543,7 +558,7 @@ export const HarthmereBusinessInterfacePanel: React.FunctionComponent<
   return (
     <div
       role="dialog"
-      aria-label={`${business.name} business interface`}
+      aria-label={`${businessDisplayName} business interface`}
       data-harthmere-business-interface="true"
       data-business-interface-scope="inside-business-only"
       data-pointer-lock-policy="unlock-while-open"
@@ -576,7 +591,7 @@ export const HarthmereBusinessInterfacePanel: React.FunctionComponent<
         }}
       >
         <div>
-          <h2 style={panelTitleStyle}>{business.name}</h2>
+          <h2 style={panelTitleStyle}>{businessDisplayName}</h2>
           <p style={mutedTextStyle}>
             {type?.displayName ?? displayLabel(business.typeId)} ·{" "}
             {mode === "owner" ? "Owner Management" : "Customer Services"} ·{" "}

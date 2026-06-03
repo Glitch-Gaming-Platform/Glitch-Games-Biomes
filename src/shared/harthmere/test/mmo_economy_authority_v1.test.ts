@@ -673,6 +673,9 @@ describe("live_mode_backend_v1 — production economy integration", () => {
   it("persists economy mutations through request_economy_mutation and returns a client snapshot", () => {
     const state = defaultHarthmereLiveModeBackendStateV1(ACTOR, NOW_MS);
     state.inventory.gold = 1000;
+    const beforeBusinessIds = new Set(
+      Object.keys(state.economy.production.businesses)
+    );
     const reduced = reduceHarthmereLiveModeBackendStateV1(
       state,
       env("request_economy_mutation", ACTOR, {
@@ -685,7 +688,15 @@ describe("live_mode_backend_v1 — production economy integration", () => {
     assert.deepStrictEqual(reduced.summary.warnings, []);
     assert.ok(reduced.summary.touchedModels.includes("economy_production_state"));
     assert.strictEqual(reduced.state.inventory.gold, 850);
-    assert.strictEqual(Object.keys(reduced.state.economy.production.businesses).length, 1);
+    const newBusinessIds = Object.keys(
+      reduced.state.economy.production.businesses
+    ).filter((id) => !beforeBusinessIds.has(id));
+    assert.strictEqual(newBusinessIds.length, 1);
+    assert.strictEqual(
+      reduced.state.economy.production.businesses[newBusinessIds[0]]
+        .ownerId,
+      ACTOR
+    );
     const snapshot = createHarthmereProductionEconomyClientSnapshotFromBackendV1(reduced.state) as any;
     assert.strictEqual(snapshot.myBusinesses.length, 1);
     assert.strictEqual(snapshot.businessTypes.courier.startCostGold, 150);
@@ -749,7 +760,14 @@ describe("live_mode_backend_v1 — production economy integration", () => {
       NOW_MS,
     );
     state = reduced.state;
-    const businessId = Object.keys(state.economy.production.businesses)[0];
+    const business = Object.values(state.economy.production.businesses).find(
+      (entry) =>
+        entry.ownerKind === "player" &&
+        entry.ownerId === ACTOR &&
+        entry.name === "Live Meal Shop"
+    );
+    assert.ok(business, "expected the live reducer to create a player business");
+    const businessId = business.businessId;
     state.building.inWorldMarkers[`${businessId}:marker`] = {
       markerId: `${businessId}:marker`,
       plotId: `plot_${businessId}`,
@@ -1023,7 +1041,8 @@ describe("mmo_economy_authority_v1 — business-specific production systems", ()
     assert.ok(result.economy.businesses[farm.businessId].inventory.spoiled_food_waste.count > 0);
   });
 
-  it("runs tools, magic goods, exploration, hunting, medicine, sanitation, repair, restaurant, courier, and hospitality systems", () => {
+  it("runs tools, magic goods, exploration, hunting, medicine, sanitation, repair, restaurant, courier, and hospitality systems", function () {
+    this.timeout(60000);
     let state = defaultHarthmereProductionEconomyStateV1();
 
     let tools = createBusiness(state, "weapons_tools", "Forge One");

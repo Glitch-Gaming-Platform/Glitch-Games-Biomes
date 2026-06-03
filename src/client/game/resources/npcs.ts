@@ -101,6 +101,10 @@ import {
   snapshotGroveNpcRouteMotionV137,
 } from "@/shared/harthmere/snapshot_grove_content_v75";
 import {
+  HARTHMERE_MUCK_CREATURE_NPC_ASSET_VERSION_V1,
+  harthmereMuckCreatureAssetKeyForLabelV1,
+} from "@/shared/harthmere/muck_creature_assets_v1";
+import {
   createHarthmereNpcNavigationStateV1,
   resolveHarthmereNpcNavigationStepV1,
   type HarthmereNpcNavigationModeV1,
@@ -3668,8 +3672,7 @@ function makeSnapshotNpcCosmeticsFallbackGltfV1(
 const SNAPSHOT_GROVE_NPC_ASSET_KEY_VERSION_V104 =
   "snapshot-grove-npc-asset-key-v104";
 const SNAPSHOT_GROVE_GENERATED_VOXEL_NPC_VERSION_V195 =
-  "snapshot-grove-generated-voxel-npc-v195";
-
+  "snapshot-grove-generated-voxel-npc-v196-player-mesh-fallback";
 const SNAPSHOT_GROVE_NPC_ASSET_KEYS_V104: Partial<Record<string, string>> = {
   jackie: "npcs/jackie",
   ranger_jane: "npcs/ranger_jane",
@@ -3802,20 +3805,54 @@ async function makeSnapshotGroveNpcAssetMeshV104(
   }
 }
 
+async function makeHarthmereMuckCreatureNpcAssetMeshV1(
+  label: string | undefined,
+  id: BiomesId
+): Promise<GLTF | undefined> {
+  const assetKey = harthmereMuckCreatureAssetKeyForLabelV1(label);
+  if (!assetKey) {
+    return undefined;
+  }
+  const url = resolveAssetUrlUntyped(assetKey);
+  if (!url) {
+    log.warn("HARTHMERE_MUCK_CREATURE_NPC_ASSET_V1 missing asset url; falling back to npc type mesh", {
+      entityId: id,
+      label,
+      assetKey,
+      version: HARTHMERE_MUCK_CREATURE_NPC_ASSET_VERSION_V1,
+    });
+    return undefined;
+  }
+  try {
+    const gltf = await loadGltf(url);
+    setFrustumCulling(gltf, false);
+    gltf.scene.userData.harthmereMuckCreatureNpcAssetVersion =
+      HARTHMERE_MUCK_CREATURE_NPC_ASSET_VERSION_V1;
+    gltf.scene.userData.harthmereMuckCreatureNpcAssetKey = assetKey;
+    return gltf;
+  } catch (error) {
+    log.warn("HARTHMERE_MUCK_CREATURE_NPC_ASSET_V1 failed to load creature mesh; falling back to npc type mesh", {
+      entityId: id,
+      label,
+      assetKey,
+      error,
+    });
+    return undefined;
+  }
+}
+
 async function makeNpcMesh(deps: ClientResourceDeps, id: BiomesId) {
   const npcMetadata = deps.get("/ecs/c/npc_metadata", id);
   ok(npcMetadata);
   const npcType = idToNpcType(npcMetadata.type_id);
   const label = deps.get("/ecs/c/label", id)?.text;
 
-  if (shouldUseSnapshotGroveGeneratedVoxelNpcV195(id, label)) {
-    const mesh = makeLocalDevVoxelNpcGltf(deps, id);
-    setFrustumCulling(mesh, false);
-    mesh.scene.userData.snapshotGroveGeneratedVoxelNpcVersion =
-      SNAPSHOT_GROVE_GENERATED_VOXEL_NPC_VERSION_V195;
-    mesh.scene.userData.snapshotGroveGeneratedVoxelNpcReason =
-      "seeded-grove-npc-without-authored-asset";
-    return mesh;
+  const muckCreatureAssetMesh = await makeHarthmereMuckCreatureNpcAssetMeshV1(
+    label,
+    id
+  );
+  if (muckCreatureAssetMesh) {
+    return muckCreatureAssetMesh;
   }
 
   if (npcType.isPlayerLikeAppearance) {
@@ -3865,6 +3902,16 @@ async function makeNpcMesh(deps: ClientResourceDeps, id: BiomesId) {
         "player-like-generated-mesh-failed";
       return mesh;
     }
+  }
+
+  if (shouldUseSnapshotGroveGeneratedVoxelNpcV195(id, label)) {
+    const mesh = makeLocalDevVoxelNpcGltf(deps, id);
+    setFrustumCulling(mesh, false);
+    mesh.scene.userData.snapshotGroveGeneratedVoxelNpcVersion =
+      SNAPSHOT_GROVE_GENERATED_VOXEL_NPC_VERSION_V195;
+    mesh.scene.userData.snapshotGroveGeneratedVoxelNpcReason =
+      "non-player-like-seeded-grove-npc-without-authored-asset";
+    return mesh;
   }
 
   const localDevOffset = localDevNpcOffset(id);

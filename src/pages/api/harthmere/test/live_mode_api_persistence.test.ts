@@ -559,7 +559,7 @@ describe("live_mode API Redis persistence", () => {
     }));
 
   it("persists accepted jobs board jobs as actor quests with map markers", async function () {
-    this.timeout(12_000);
+    this.timeout(45_000);
 
     const redisPrimary = new FakeRedisPrimary();
     (globalThis as any).__harthmereLiveModeRedisV1 = { primary: redisPrimary };

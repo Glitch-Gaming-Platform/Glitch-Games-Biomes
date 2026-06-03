@@ -109,6 +109,72 @@ describe("live_mode_economy_state API route integration", () => {
     assert.equal(snapshot.actorId, ACTOR);
   });
 
+  it("omits server-only outpost voxel edits from the client economy snapshot", async () => {
+    const sharedBackend = defaultHarthmereLiveModeBackendStateV1(
+      "shared_economy",
+      NOW_MS
+    );
+    const bulkyRecord = JSON.parse(
+      JSON.stringify(
+        HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS_V1.outpost_restaurant_redpot
+      )
+    );
+    bulkyRecord.outpostId = "bulky_api_redpot_payload_guard";
+    bulkyRecord.buildingId = "bulky_api_redpot_payload_guard";
+    const templateEdit = bulkyRecord.materializationPlan.edits[0];
+    bulkyRecord.materializationPlan.edits = Array.from(
+      { length: 2000 },
+      (_, index) => ({
+        ...templateEdit,
+        position: [
+          templateEdit.position[0] + (index % 20),
+          templateEdit.position[1],
+          templateEdit.position[2] + Math.floor(index / 20),
+        ],
+      })
+    );
+    (sharedBackend.economy.production.businessSystems as any).outpostBuildings[
+      bulkyRecord.outpostId
+    ] = bulkyRecord;
+    const rawBackendBytes = Buffer.byteLength(JSON.stringify(sharedBackend));
+
+    const redis = {
+      primary: {
+        get: async (key: string) => {
+          if (key === harthmereLiveModePlayerStateKeyV1(ACTOR)) {
+            return null;
+          }
+          if (key === harthmereLiveModeSharedWorldStateKeyV1()) {
+            return JSON.stringify(
+              createHarthmereLiveModeSharedWorldStateV1(sharedBackend, NOW_MS)
+            );
+          }
+          return null;
+        },
+      },
+    };
+
+    const snapshot = await readHarthmereLiveModeEconomyStateForActorV1({
+      redis,
+      actorId: ACTOR,
+      nowMs: NOW_MS,
+    });
+
+    const slimRecord = (snapshot.businessSystems as any).outpostBuildings[
+      bulkyRecord.outpostId
+    ];
+    assert.equal(slimRecord.outpostId, bulkyRecord.outpostId);
+    assert.deepEqual(
+      slimRecord.dashboardAccessPoint.position,
+      bulkyRecord.dashboardAccessPoint.position
+    );
+    assert.equal(slimRecord.materializationPlan.editCount, 2000);
+    assert.deepEqual(slimRecord.materializationPlan.edits, []);
+    assert.ok(
+      Buffer.byteLength(JSON.stringify(snapshot)) < rawBackendBytes / 3
+    );
+  });
+
   it("reports legacy outpost validation issues without throwing", async () => {
     const sharedBackend = defaultHarthmereLiveModeBackendStateV1(
       "shared_economy",

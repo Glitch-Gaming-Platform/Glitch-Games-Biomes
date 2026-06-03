@@ -1,4 +1,5 @@
 import { defaultDialogForNpc } from "@/client/components/challenges/helpers";
+import { isHarthmereNonLivingDialogueObjectLabelV1 } from "@/client/components/challenges/dialogueObjectSemantics";
 import { TalkToNpc } from "@/client/components/challenges/TalkDialogModal";
 import {
   contextForLiveEntityHelperQuestV1,
@@ -92,6 +93,14 @@ export function useCanTalkToNpc(
       iced,
     })
   );
+  if (
+    isHarthmereNonLivingDialogueObjectLabelV1({
+      label: label?.text,
+      entityDescription: entityDescription?.text,
+    })
+  ) {
+    return false;
+  }
   return (
     canTalkToNpc(deps, entityId) ||
     Boolean(liveEntityHelperQuest) ||
@@ -131,6 +140,14 @@ export function canTalkToNpc(
   const defaultDialog = deps.resources.get("/ecs/c/default_dialog", entityId);
   const questGiver = deps.resources.get("/ecs/c/quest_giver", entityId);
   const label = deps.resources.get("/ecs/c/label", entityId);
+  if (
+    isHarthmereNonLivingDialogueObjectLabelV1({
+      label: label?.text,
+      entityDescription: entityDescription?.text,
+    })
+  ) {
+    return false;
+  }
   const hasDefaultDialog =
     typeof item?.npcDefaultDialog === "string" ||
     typeof npcType?.npcDefaultDialog === "string" ||

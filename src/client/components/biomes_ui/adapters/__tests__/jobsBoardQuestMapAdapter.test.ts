@@ -4,8 +4,14 @@ import {
   jobsBoardAcceptedJobLandmarksForBiomesUIV1,
   jobsBoardTrackableQuestsForBiomesUIV1,
   activeJobsBoardMissionStepsForBiomesUIV1,
+  firstActiveJobsBoardLandmarkForBiomesUIV1,
 } from "../jobsBoardQuestMapAdapter";
 import { harthmereJobsBoardQuestMarkerPositionForIdV1 } from "@/shared/harthmere/jobs_board_quest_marker_positions_v1";
+import {
+  HARTHMERE_JOBS_BOARD_ELITE_MUCKER_BOUNTY_MARKER_ID_V1,
+  HARTHMERE_JOBS_BOARD_ELITE_MUCKER_BOUNTY_TARGET_ID_V1,
+} from "@/shared/harthmere/jobs_board_muck_bounty_targets_v1";
+import { muckMonsterAreaForPositionV1 } from "@/shared/harthmere/muck_monster_aggression_ai_v1";
 import {
   HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1,
   HARTHMERE_JOBS_BOARD_INTERACTION_RADIUS_V145,
@@ -51,9 +57,9 @@ function acceptedJobsBoardSnapshot() {
         kind: "hunt",
         requirements: [
           {
-            targetId: "mucker_elite",
+            targetId: HARTHMERE_JOBS_BOARD_ELITE_MUCKER_BOUNTY_TARGET_ID_V1,
             targetName: "Elite Mucker",
-            mapMarkerId: "muckwad_patch",
+            mapMarkerId: HARTHMERE_JOBS_BOARD_ELITE_MUCKER_BOUNTY_MARKER_ID_V1,
           },
         ],
         rewardGold: 1200,
@@ -65,8 +71,8 @@ function acceptedJobsBoardSnapshot() {
         deadlineAtMs: NOW_MS + 86_400_000,
         acceptedByActorId: "player_jobs_map_001",
         requiresFieldWork: true,
-        mapMarkerId: "muckwad_patch",
-        targetId: "mucker_elite",
+        mapMarkerId: HARTHMERE_JOBS_BOARD_ELITE_MUCKER_BOUNTY_MARKER_ID_V1,
+        targetId: HARTHMERE_JOBS_BOARD_ELITE_MUCKER_BOUNTY_TARGET_ID_V1,
         abuseFlags: [],
         logs: [],
       },
@@ -81,8 +87,8 @@ function acceptedJobsBoardSnapshot() {
         todoText: "Go to the marked location and complete: Clear the Muckwad Patch",
         status: "active",
         kind: "hunt",
-        mapMarkerId: "muckwad_patch",
-        targetId: "mucker_elite",
+        mapMarkerId: HARTHMERE_JOBS_BOARD_ELITE_MUCKER_BOUNTY_MARKER_ID_V1,
+        targetId: HARTHMERE_JOBS_BOARD_ELITE_MUCKER_BOUNTY_TARGET_ID_V1,
         townId: "harthmere_grove",
         regionId: "harthmere_grove_region",
         createdAtMs: NOW_MS,
@@ -105,16 +111,26 @@ function acceptedJobsBoardSnapshot() {
 describe("BiomesUI jobs board quest map adapter", () => {
   it("turns accepted jobs board todos into active quest entries and target map markers", () => {
     const snapshot = acceptedJobsBoardSnapshot();
-    const target = harthmereJobsBoardQuestMarkerPositionForIdV1("muckwad_patch");
+    const target = harthmereJobsBoardQuestMarkerPositionForIdV1(
+      HARTHMERE_JOBS_BOARD_ELITE_MUCKER_BOUNTY_MARKER_ID_V1
+    );
     assert.ok(target, "fixture marker should resolve through the shared marker registry");
 
     const landmarks = jobsBoardAcceptedJobLandmarksForBiomesUIV1(snapshot);
     assert.equal(landmarks.length, 1);
+    assert.deepEqual(firstActiveJobsBoardLandmarkForBiomesUIV1(snapshot), landmarks[0]);
     assert.equal(landmarks[0].id, "jobs_board_marker:harthmere_job_todo_7");
     assert.equal(landmarks[0].kind, "objective");
     assert.equal(landmarks[0].active, true);
-    assert.equal(landmarks[0].mapMarkerId, "muckwad_patch");
+    assert.equal(
+      landmarks[0].mapMarkerId,
+      HARTHMERE_JOBS_BOARD_ELITE_MUCKER_BOUNTY_MARKER_ID_V1
+    );
     assert.deepEqual(landmarks[0].position, target!.position);
+    assert.ok(
+      muckMonsterAreaForPositionV1(landmarks[0].position, 1.5),
+      "accepted bounty map marker must be inside authored Muck territory"
+    );
 
     const quests = jobsBoardTrackableQuestsForBiomesUIV1(snapshot);
     assert.deepEqual(quests, [

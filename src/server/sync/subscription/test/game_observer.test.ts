@@ -283,15 +283,15 @@ describe("Observer tests", () => {
   it("Should sync only the item within the bubble", async () => {
     createLocalObserver();
 
-    const include = <Entity>{
+    const include = {
       id: ID_A,
       label: { text: "Lost in the void" },
-    };
-    const exclude = <Entity>{
+    } as Entity;
+    const exclude = {
       id: ID_B,
       position: { v: [0, 1000, 0] },
       label: { text: "Far away" },
-    };
+    } as Entity;
 
     await observer.start();
 
@@ -306,16 +306,16 @@ describe("Observer tests", () => {
   it("Should sync only the item within the bubble", async () => {
     createLocalObserver();
 
-    const include = <Entity>{
+    const include = {
       id: ID_A,
       position: { v: [0, 1, 0] },
       label: { text: "A" },
-    };
-    const exclude = <Entity>{
+    } as Entity;
+    const exclude = {
       id: ID_B,
       position: { v: [0, 1000, 0] },
       label: { text: "B" },
-    };
+    } as Entity;
 
     await observer.start();
 
@@ -401,16 +401,16 @@ describe("Observer tests", () => {
   it("Should support the bubble moving", async () => {
     createLocalObserver();
 
-    const include = <Entity>{
+    const include = {
       id: ID_A,
       position: { v: [0, 1, 0] },
       label: { text: "A" },
-    };
-    const exclude = <Entity>{
+    } as Entity;
+    const exclude = {
       id: ID_B,
       position: { v: [0, 1000, 0] },
       label: { text: "B" },
-    };
+    } as Entity;
 
     await observer.start();
 
@@ -522,11 +522,11 @@ describe("Observer tests", () => {
       world.applyChanges(
         seedIds.map((id) => ({
           kind: "create",
-          entity: <Entity>{
+          entity: {
             id,
             label: { text: `seeded local-dev entity ${id}` },
             position: { v: [0, 0, 0] },
-          },
+          } as Entity,
         }))
       );
 

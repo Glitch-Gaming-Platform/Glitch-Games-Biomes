@@ -37,11 +37,13 @@ export const GROVE_ECONOMY_STARTER_VERSION_V1 =
 // cycle during shim startup. These constants intentionally mirror the authored
 // Grove bible coordinates used by the economy NPCs; the server/client live
 // grounding pass still raises Grove people to the visible courtyard when needed.
-export const GROVE_ECONOMY_STARTER_NPC_FEET_Y_V137 = 53;
+export const GROVE_ECONOMY_AUTHORED_NPC_FEET_Y_V1 = 53;
+export const GROVE_ECONOMY_STARTER_NPC_FEET_Y_V137 =
+  GROVE_ECONOMY_AUTHORED_NPC_FEET_Y_V1;
 export const GROVE_ECONOMY_STARTER_FOUNTAIN_CENTER_X_V137 = 496;
 export const GROVE_ECONOMY_STARTER_FOUNTAIN_CENTER_Z_V137 = -126;
 
-function groveEconomyStarterFountainPositionV137(
+function groveEconomyFountainPositionV1(
   dx: number,
   dz: number,
 ): Vec3 {
@@ -51,6 +53,9 @@ function groveEconomyStarterFountainPositionV137(
     GROVE_ECONOMY_STARTER_FOUNTAIN_CENTER_Z_V137 + dz,
   ];
 }
+
+const groveEconomyStarterFountainPositionV137 =
+  groveEconomyFountainPositionV1;
 
 // ---------------------------------------------------------------------------
 // 6 new Grove NPCs — early-economy archetypes from the economy PDF.

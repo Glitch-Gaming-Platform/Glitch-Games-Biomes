@@ -15,6 +15,10 @@ import {
   type LiveEntityHelperQuestTargetMarkerV1,
 } from "@/shared/harthmere/live_entity_helper_quests_v1";
 import {
+  HARTHMERE_JOBS_BOARD_MUCK_BOUNTY_TARGETS_V1,
+  type HarthmereJobsBoardMuckBountyTargetV1,
+} from "@/shared/harthmere/jobs_board_muck_bounty_targets_v1";
+import {
   SNAPSHOT_GROVE_LANDMARKS_V75,
   type SnapshotGroveLandmarkV75,
 } from "@/shared/harthmere/snapshot_grove_content_v75";
@@ -30,6 +34,7 @@ export type HarthmereJobsBoardQuestMarkerSourceV1 =
   | "business_outpost_jobs_board"
   | "business_template_target"
   | "exotic_matter_deposit"
+  | "muck_bounty_target"
   | "fallback";
 
 export interface HarthmereJobsBoardQuestMarkerPositionV1 {
@@ -134,6 +139,17 @@ function markerFromExoticMatterDepositV1(
   };
 }
 
+function markerFromMuckBountyTargetV1(
+  target: HarthmereJobsBoardMuckBountyTargetV1
+): HarthmereJobsBoardQuestMarkerPositionV1 {
+  return {
+    markerId: target.markerId,
+    label: target.label,
+    position: [...target.position] as Vec3,
+    source: "muck_bounty_target",
+  };
+}
+
 export function harthmereJobsBoardQuestMarkerPositionsV1(): readonly HarthmereJobsBoardQuestMarkerPositionV1[] {
   return [
     ...SNAPSHOT_GROVE_LANDMARKS_V75.map(markerFromSnapshotLandmarkV1),
@@ -154,6 +170,9 @@ export function harthmereJobsBoardQuestMarkerPositionsV1(): readonly HarthmereJo
     ),
     ...harthmereExoticMatterDepositQuestMarkersV1().map(
       markerFromExoticMatterDepositV1
+    ),
+    ...HARTHMERE_JOBS_BOARD_MUCK_BOUNTY_TARGETS_V1.map(
+      markerFromMuckBountyTargetV1
     ),
   ];
 }

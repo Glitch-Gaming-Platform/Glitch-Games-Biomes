@@ -70,7 +70,11 @@ function inferLiveEntityKindFromEcsRecordV1(
   if (/place|label|board|marker|sign|kiosk|landmark/.test(text) || record.placeable_component) {
     return "object";
   }
-  if (/human|guard|merchant|civilian|farmer|blacksmith|bandit|npc/.test(text)) {
+  if (
+    /human|guard|merchant|civilian|farmer|blacksmith|bandit|guide|banker|clerk|registrar|supplier|teller|healer|town crier|quest giver|owner|npc/.test(
+      text
+    )
+  ) {
     return "human";
   }
   return record.npc_metadata ? "npc" : "live_entity";
@@ -97,7 +101,7 @@ function combatProtectionForEcsRecordV1(
 }
 
 function isHostileByEcsTextV1(text: string) {
-  return /\b(hostile|bandit|muck|muckling|mucker|hex|monster|boss|zombie|undead|wolf|boar|bear|snake|rat)\b/.test(text);
+  return /\b(hostile|bandit|muck|muckling|mucker|muckwad|hex|hexer|monster|boss|zombie|undead|wolf|boar|bear|snake|rat)\b/.test(text);
 }
 
 function defaultHpForKindV1(kind: HarthmereLiveEntityKindV1) {
@@ -162,6 +166,8 @@ export function createHarthmereLiveEntityCombatSnapshotFromEcsRecordV1(
         ? record.isHostile
         : typeof record.hostile === "boolean"
         ? record.hostile
+        : kind === "robot"
+        ? false
         : isHostileByEcsTextV1(text),
     isAlive: hp > 0,
     isAttackable,

@@ -1,6 +1,7 @@
 import * as React from "react";
 import { useClientContext } from "@/client/components/contexts/ClientContextReactContext";
 import { usePointerLockManager } from "@/client/components/contexts/PointerLockContext";
+import { usePointerLockUnlockWhileOpenActiveV1 } from "@/client/components/contexts/usePointerLockUnlockWhileOpenActiveV1";
 import {
   HARTHMERE_JOBS_BOARD_PHYSICAL_BOARDS_V141,
   nearestHarthmereJobsBoardPhysicalPromptV141,
@@ -78,8 +79,13 @@ function dispatchJobsBoardOpenV146(source: string) {
   );
 }
 
-export function HarthmereJobsBoardWorldInteractionV146() {
+export function HarthmereJobsBoardWorldInteractionV146({
+  suppressPrompt = false,
+}: {
+  suppressPrompt?: boolean;
+} = {}) {
   const pointerLockManager = usePointerLockManager();
+  const anyUiOpen = usePointerLockUnlockWhileOpenActiveV1();
   const { reactResources } = useClientContext();
   const shouldReturnPointerLock = React.useRef(false);
   const localPlayer = reactResources.use("/scene/local_player") as unknown;
@@ -89,6 +95,7 @@ export function HarthmereJobsBoardWorldInteractionV146() {
   const cameraPosition = harthmereJobsBoardCameraPositionV146(camera);
   const prompt = nearestHarthmereJobsBoardPhysicalPromptV141(playerPosition);
   const activePrompt = prompt;
+  const promptBlocked = suppressPrompt || (anyUiOpen && !openBoardId);
 
   const open = React.useCallback(
     (_source: string) => {
@@ -127,10 +134,9 @@ export function HarthmereJobsBoardWorldInteractionV146() {
   }, []);
 
   React.useEffect(() => {
-    if (!activePrompt || typeof window === "undefined") return;
+    if (!activePrompt || promptBlocked || typeof window === "undefined") return;
     const handler = (event: KeyboardEvent) => {
       if (
-        event.defaultPrevented ||
         event.repeat ||
         event.metaKey ||
         event.ctrlKey ||
@@ -148,10 +154,10 @@ export function HarthmereJobsBoardWorldInteractionV146() {
     };
     window.addEventListener("keydown", handler, true);
     return () => window.removeEventListener("keydown", handler, true);
-  }, [activePrompt, open]);
+  }, [activePrompt, open, promptBlocked]);
 
   React.useEffect(() => {
-    if (!activePrompt || typeof window === "undefined") return;
+    if (!activePrompt || promptBlocked || typeof window === "undefined") return;
     const handler = (event: MouseEvent) => {
       if (
         event.defaultPrevented ||
@@ -172,7 +178,7 @@ export function HarthmereJobsBoardWorldInteractionV146() {
     };
     window.addEventListener("click", handler, true);
     return () => window.removeEventListener("click", handler, true);
-  }, [activePrompt, open]);
+  }, [activePrompt, open, promptBlocked]);
 
   React.useEffect(() => {
     return () => {
@@ -217,7 +223,7 @@ export function HarthmereJobsBoardWorldInteractionV146() {
 
   return (
     <>
-      {activePrompt && !openBoardId && (
+      {activePrompt && !openBoardId && !promptBlocked && (
         <button
           type="button"
           className="harthmere-jobs-prompt"
