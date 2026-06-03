@@ -39,9 +39,11 @@ function isUuidLike(value) {
 
 const bridgePath = "src/client/game/glitch/harthmere_glitch_bridge.ts";
 const proxyPath = "src/pages/api/glitch/harthmere.ts";
+const wakePath = "src/client/components/WakeUpScreen.tsx";
 const deployPath = "scripts/glitch/deploy-production-local-redis-smoke-v1.sh";
 const bridge = exists(bridgePath) ? read(bridgePath) : "";
 const proxy = exists(proxyPath) ? read(proxyPath) : "";
+const wake = exists(wakePath) ? read(wakePath) : "";
 const deploy = exists(deployPath) ? read(deployPath) : "";
 
 const requiredExactKeys = [
@@ -534,7 +536,9 @@ check(
 );
 check(
   "restore dispatches the v153 all-system refresh events",
-  applySnapshot.includes("dispatchHarthmereCloudRestoreEventsV153();")
+  applySnapshot.includes("dispatchHarthmereCloudRestoreEventsV153({") &&
+    applySnapshot.includes("hasCharacterCustomization") &&
+    applySnapshot.includes("cloudSaveVersion")
 );
 
 const restoreManifest = sectionBetween(
@@ -554,7 +558,29 @@ check(
     bridge.includes(
       "for (const eventName of HARTHMERE_GLITCH_RESTORE_EVENTS_V153)"
     ) &&
-    bridge.includes("window.dispatchEvent(new CustomEvent(eventName))")
+    bridge.includes(
+      "window.dispatchEvent(new CustomEvent(eventName, { detail }))"
+    )
+);
+check(
+  "wake-up builder reloads face/body/clothing after cloud restore",
+  includesAll(wake, [
+    "HARTHMERE_GLITCH_CLOUD_SAVE_RESTORED_EVENT_V153",
+    'reloadFromStorage("cloud-save")',
+    "setHarthmereFace(nextFace)",
+    "setHarthmereBody(nextBody)",
+    "setHarthmereClothing(nextClothing)",
+  ])
+);
+check(
+  "wake-up flow auto-applies restored cloud character instead of asking for name/body again",
+  includesAll(wake, [
+    "hasCurrentHarthmereCharacterCustomization",
+    "detail?.hasCharacterCustomization === true",
+    "cloud_restore_auto_apply",
+    "events.publish(new PlayerInitEvent({ id: userId }))",
+    "window.setTimeout(() => onWakeup(), 0)",
+  ])
 );
 
 const restoreLatest = sectionBetween(
@@ -575,7 +601,8 @@ check(
 check(
   "restoreLatest picks latest version and applies snapshot",
   restoreLatest.includes("Number(b.version ?? 0) - Number(a.version ?? 0)") &&
-    restoreLatest.includes("applySnapshot(latest.decoded_payload)")
+    restoreLatest.includes("applySnapshot(") &&
+    restoreLatest.includes("latest.decoded_payload")
 );
 check(
   "restoreLatest advances and persists base_version after load",
@@ -583,9 +610,14 @@ check(
     bridge.includes("writeStoredCloudSaveVersion")
 );
 check(
-  "restoreLatestIfEmpty prevents stale local overwrite on first boot",
+  "restoreLatestIfEmpty treats a returned Glitch cloud save as source of truth",
   bridge.includes("async restoreLatestIfEmpty") &&
-    bridge.includes("hasMeaningfulLocalProgress(localStorage)")
+    bridge.includes("shouldApplyHarthmereCloudSaveV153") &&
+    bridge.includes("latestCloudVersion: latestVersion") &&
+    bridge.includes(
+      "hasMeaningfulLocalProgress: hasMeaningfulLocalProgress(localStorage)"
+    ) &&
+    bridge.includes("applySnapshot(latest.decoded_payload, latestVersion)")
 );
 check(
   "bridge initializes baseVersion from stored cloud save version",
@@ -1040,13 +1072,15 @@ check(
   "roundtrip restore migrates saved face to current Biomes customization scope",
   migratedRestored[
     `biomes.localDev.harthmere.playerFace.v2.user.${simulatedCustomizationScope}`
-  ] === sampleStorage["biomes.localDev.harthmere.playerFace.v2.user.install_test"]
+  ] ===
+    sampleStorage["biomes.localDev.harthmere.playerFace.v2.user.install_test"]
 );
 check(
   "roundtrip restore migrates saved body to current Biomes customization scope",
   migratedRestored[
     `biomes.localDev.harthmere.playerBody.v2.user.${simulatedCustomizationScope}`
-  ] === sampleStorage["biomes.localDev.harthmere.playerBody.v2.user.install_test"]
+  ] ===
+    sampleStorage["biomes.localDev.harthmere.playerBody.v2.user.install_test"]
 );
 check(
   "roundtrip restore migrates saved clothing to current Biomes customization scope",

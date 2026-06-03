@@ -1670,6 +1670,36 @@ function requiredStockLabel(definition: HarthmereBusinessMiniGameDefinitionV1) {
   return requiredItems.slice(0, 4).map(titleCaseBusinessText).join(", ");
 }
 
+// HARTHMERE_BUSINESS_CLIENT_SESSION_EXPIRY_GUARD_V1
+// The backend stamps each customer session with an `expiresAtMs` and only
+// treats a session as active when `status === "active" && expiresAtMs > now`
+// (see activeCustomerSessionForBusiness in mmo_economy_business_systems_v1.ts).
+// The economy snapshot the server ships to the client keeps stale sessions
+// verbatim (status still "active" with an elapsed expiresAtMs) until the next
+// mutation flips them to "expired". If the client only checks `status` it will
+// surface a dead session: the "Start Shift" button is disabled and every
+// `serve_business_customer` call is rejected with
+// `economy_rejected:business_customer_session_not_active`, which looks like the
+// mini-game is stuck spinning on the current customer. Mirror the backend's
+// time check here so the UI matches authoritative state.
+export function activeHarthmereBusinessClientCustomerSessionV1(
+  state: HarthmereBusinessEconomySnapshotV1,
+  businessId: string,
+  nowMs: number = Date.now()
+): HarthmereBusinessCustomerSessionV1 | undefined {
+  return Object.values(
+    (state.businessSystems.customerSessions ?? {}) as Record<
+      string,
+      HarthmereBusinessCustomerSessionV1
+    >
+  ).find(
+    (session) =>
+      session.businessId === businessId &&
+      session.status === "active" &&
+      session.expiresAtMs > nowMs
+  );
+}
+
 export function getHarthmereBusinessGrowthReportV1(
   state: HarthmereBusinessEconomySnapshotV1,
   businessId: string
@@ -1693,14 +1723,9 @@ export function getHarthmereBusinessGrowthReportV1(
     ] ??
     definition.scalePath[definition.scalePath.length - 1] ??
     "Keep improving service quality.";
-  const session = Object.values(
-    (state.businessSystems.customerSessions ?? {}) as Record<
-      string,
-      HarthmereBusinessCustomerSessionV1
-    >
-  ).find(
-    (candidate) =>
-      candidate.businessId === businessId && candidate.status === "active"
+  const session = activeHarthmereBusinessClientCustomerSessionV1(
+    state,
+    businessId
   );
   const activeWork = session
     ? `${
@@ -2005,20 +2030,16 @@ export function getHarthmereBusinessOperationScreenV1(
 
 export function getHarthmereBusinessCustomerMiniGameV1(
   state: HarthmereBusinessEconomySnapshotV1,
-  businessId: string
+  businessId: string,
+  nowMs: number = Date.now()
 ): HarthmereBusinessCustomerMiniGamePanelV1 {
   const business = state.businesses[businessId];
   const typeId = business?.typeId ?? "general_trader";
   const definition = getHarthmereBusinessMiniGameDefinitionV1(typeId as any);
-  const sessions = Object.values(
-    (state.businessSystems.customerSessions ?? {}) as Record<
-      string,
-      HarthmereBusinessCustomerSessionV1
-    >
-  );
-  const activeSession = sessions.find(
-    (session) =>
-      session.businessId === businessId && session.status === "active"
+  const activeSession = activeHarthmereBusinessClientCustomerSessionV1(
+    state,
+    businessId,
+    nowMs
   );
   const currentTicket = activeHarthmereBusinessCustomerTicketV1(activeSession);
   const currentNpc = findHarthmereBusinessCustomerNpcV1(currentTicket?.npcId);
@@ -2405,12 +2426,23 @@ export function createHarthmereBusinessInterfaceAdapterV1(options: {
     operation: string,
     payload: Record<string, unknown>
   ) => {
-    const response = await options.submit?.(operation, payload);
-    if (response?.economyState)
-      setCurrent(
-        normalizeHarthmereBusinessEconomySnapshotV1(response.economyState)
-      );
-    await refresh();
+    try {
+      const response = await options.submit?.(operation, payload);
+      if (response?.economyState)
+        setCurrent(
+          normalizeHarthmereBusinessEconomySnapshotV1(response.economyState)
+        );
+      await refresh();
+    } catch (error) {
+      // HARTHMERE_BUSINESS_CLIENT_SESSION_EXPIRY_GUARD_V1
+      // A rejected mutation (e.g. serving a customer whose session has expired
+      // server-side) throws before we can apply the response, which would leave
+      // the client showing the now-invalid session forever. Re-pull
+      // authoritative state so the UI recovers (the dead session is dropped and
+      // "Start Shift" re-enables) instead of getting stuck on a stale customer.
+      await refresh();
+      throw error;
+    }
   };
 
   const requireState = () => {

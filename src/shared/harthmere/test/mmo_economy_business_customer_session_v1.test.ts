@@ -755,4 +755,65 @@ describe("mmo economy business customer sessions", function () {
     assert.deepEqual(openOtherActor.warnings, []);
     assert.equal(sessions(openOtherActor.economy)[0].actorId, "not_owner");
   });
+
+  // HARTHMERE_BUSINESS_CLIENT_SESSION_EXPIRY_GUARD_V1 regression:
+  // A customer session that has passed its expiresAtMs must not keep serving.
+  // The first serve after expiry flips it to "expired" and rejects, and
+  // subsequent serves report it is no longer active. Crucially, the player can
+  // immediately start a brand new shift — the stale session must never wedge the
+  // mini-game. This mirrors the authoritative state the client now relies on
+  // (the in-world panel only treats `status === "active" && expiresAtMs > now`
+  // sessions as live).
+  it("expires a stale customer session and lets the owner start a fresh shift", () => {
+    const setup = createOpenBusiness();
+    stockAllRequiredServiceItems(setup.state, setup.businessId, "food_service_restaurant");
+
+    const started = mutate(setup.state, "start_business_customer_session", {
+      businessId: setup.businessId,
+      count: 4,
+    });
+    assert.deepEqual(started.warnings, []);
+    const session = sessions(started.economy)[0];
+    assert.equal(session.status, "active");
+    const afterExpiryMs = session.expiresAtMs + 1;
+
+    // Serving after the session window has elapsed must be rejected, not served.
+    const expiredServe = mutate(started.economy, "serve_business_customer", {
+      businessId: setup.businessId,
+      sessionId: session.sessionId,
+      ticketId: session.currentTicketId,
+      nowMs: afterExpiryMs,
+    });
+    assert.ok(
+      expiredServe.warnings.includes("economy_rejected:business_customer_session_expired"),
+      `expected expiry rejection, got ${expiredServe.warnings.join(", ")}`,
+    );
+    assert.equal(sessions(expiredServe.economy)[0].status, "expired");
+
+    // A second serve attempt on the now-dead session reports it is not active
+    // (this is the warning the live client kept hitting while stuck).
+    const secondServe = mutate(expiredServe.economy, "serve_business_customer", {
+      businessId: setup.businessId,
+      sessionId: session.sessionId,
+      ticketId: session.currentTicketId,
+      nowMs: afterExpiryMs,
+    });
+    assert.ok(
+      secondServe.warnings.includes("economy_rejected:business_customer_session_not_active"),
+      `expected not_active rejection, got ${secondServe.warnings.join(", ")}`,
+    );
+
+    // The expired session must not block a fresh shift.
+    const restarted = mutate(secondServe.economy, "start_business_customer_session", {
+      businessId: setup.businessId,
+      count: 4,
+      nowMs: afterExpiryMs,
+    });
+    assert.deepEqual(restarted.warnings, []);
+    const liveSessions = sessions(restarted.economy).filter(
+      (s) => s.status === "active" && s.expiresAtMs > afterExpiryMs,
+    );
+    assert.equal(liveSessions.length, 1, "exactly one fresh active session");
+    assert.notEqual(liveSessions[0].sessionId, session.sessionId);
+  });
 });

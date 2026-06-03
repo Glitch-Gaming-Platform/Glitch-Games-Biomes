@@ -54,4 +54,52 @@ describe("live_mode_state_read_helpers", () => {
       rawSharedState: "value:shared-key",
     });
   });
+
+  it("coalesces concurrent identical Redis reads", async () => {
+    let release: (() => void) | undefined;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const mgetCalls: string[][] = [];
+    const primary = {
+      get: async () => {
+        throw new Error("get should not be called when mget exists");
+      },
+      mget: async (...keys: string[]) => {
+        mgetCalls.push(keys);
+        await gate;
+        return keys.map((key) => `value:${key}`);
+      },
+    };
+
+    const first = readHarthmereRedisStringsV1(primary, ["player", "shared"]);
+    const second = readHarthmereRedisStringsV1(primary, ["player", "shared"]);
+    release?.();
+
+    assert.deepEqual(await Promise.all([first, second]), [
+      ["value:player", "value:shared"],
+      ["value:player", "value:shared"],
+    ]);
+    assert.deepEqual(mgetCalls, [["player", "shared"]]);
+  });
+
+  it("does not coalesce different Redis key sets", async () => {
+    const mgetCalls: string[][] = [];
+    const primary = {
+      get: async () => {
+        throw new Error("get should not be called when mget exists");
+      },
+      mget: async (...keys: string[]) => {
+        mgetCalls.push(keys);
+        return keys.map((key) => `value:${key}`);
+      },
+    };
+
+    await Promise.all([
+      readHarthmereRedisStringsV1(primary, ["player"]),
+      readHarthmereRedisStringsV1(primary, ["player", "shared"]),
+    ]);
+
+    assert.deepEqual(mgetCalls, [["player"], ["player", "shared"]]);
+  });
 });

@@ -3,11 +3,49 @@ export interface HarthmereRedisReadPrimaryV1 {
   mget?: (...keys: string[]) => Promise<Array<string | null>>;
 }
 
+const globalForHarthmereLiveModeReadInflightV1 =
+  globalThis as typeof globalThis & {
+    __harthmereLiveModeReadInflightV1?: Map<
+      string,
+      Promise<Array<string | null>>
+    >;
+  };
+
+function harthmereLiveModeReadInflightV1() {
+  return (globalForHarthmereLiveModeReadInflightV1.__harthmereLiveModeReadInflightV1 ??=
+    new Map());
+}
+
+export function harthmereLiveModeReadInflightKeyV1(keys: readonly string[]) {
+  return keys.join("\u0000");
+}
+
 export async function readHarthmereRedisStringsV1(
   primary: HarthmereRedisReadPrimaryV1,
   keys: readonly string[]
 ): Promise<Array<string | null>> {
   if (keys.length === 0) return [];
+  const inflight = harthmereLiveModeReadInflightV1();
+  const inflightKey = harthmereLiveModeReadInflightKeyV1(keys);
+  const existing = inflight.get(inflightKey);
+  if (existing) {
+    return existing;
+  }
+  const readPromise = readHarthmereRedisStringsUncachedV1(primary, keys);
+  inflight.set(inflightKey, readPromise);
+  try {
+    return await readPromise;
+  } finally {
+    if (inflight.get(inflightKey) === readPromise) {
+      inflight.delete(inflightKey);
+    }
+  }
+}
+
+async function readHarthmereRedisStringsUncachedV1(
+  primary: HarthmereRedisReadPrimaryV1,
+  keys: readonly string[]
+): Promise<Array<string | null>> {
   if (typeof primary.mget === "function") {
     const values = await primary.mget(...keys);
     return keys.map((_, index) => {

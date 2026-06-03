@@ -1,5 +1,6 @@
 import { connectToRedis } from "@/server/shared/redis/connection";
 import { biomesApiHandler } from "@/server/web/util/api_middleware";
+import { readHarthmereRedisStringsV1 } from "@/server/harthmere/live_mode_state_read_helpers";
 import {
   createHarthmereInventoryLootClientSnapshotFromBackendV1,
   harthmereLiveModePlayerStateKeyV1,
@@ -14,13 +15,17 @@ export const zHarthmereLiveModeInventoryLootStateResponse = z.object({
   inventoryLootState: zJsonRecord,
 });
 
-const globalForHarthmereLiveModeInventoryLootState = globalThis as typeof globalThis & {
-  __harthmereLiveModeInventoryLootStateRedisV1?: ReturnType<typeof connectToRedis>;
-};
+const globalForHarthmereLiveModeInventoryLootState =
+  globalThis as typeof globalThis & {
+    __harthmereLiveModeInventoryLootStateRedisV1?: ReturnType<
+      typeof connectToRedis
+    >;
+  };
 
 export interface HarthmereLiveModeInventoryLootStateRedisV1 {
   primary: {
     get: (key: string) => Promise<string | null>;
+    mget?: (...keys: string[]) => Promise<Array<string | null>>;
   };
 }
 
@@ -34,9 +39,9 @@ export async function readHarthmereLiveModeInventoryLootStateForActorV1(input: {
   actorId: string;
   nowMs: number;
 }) {
-  const rawState = await input.redis.primary.get(
-    harthmereLiveModePlayerStateKeyV1(input.actorId)
-  );
+  const [rawState] = await readHarthmereRedisStringsV1(input.redis.primary, [
+    harthmereLiveModePlayerStateKeyV1(input.actorId),
+  ]);
   const state = parseHarthmereLiveModeBackendStateV1(
     rawState,
     input.actorId,
@@ -57,11 +62,12 @@ export default biomesApiHandler(
     const redis = await liveModeInventoryLootStateRedisV1();
     return {
       ok: true,
-      inventoryLootState: await readHarthmereLiveModeInventoryLootStateForActorV1({
-        redis,
-        actorId,
-        nowMs: Date.now(),
-      }),
+      inventoryLootState:
+        await readHarthmereLiveModeInventoryLootStateForActorV1({
+          redis,
+          actorId,
+          nowMs: Date.now(),
+        }),
     };
-  },
+  }
 );

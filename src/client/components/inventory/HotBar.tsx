@@ -281,7 +281,7 @@ export const HotBar: React.FunctionComponent<{}> = ({}) => {
     };
 
     window.addEventListener("keydown", keyDownCB);
-    window.addEventListener("wheel", wheelCb);
+    window.addEventListener("wheel", wheelCb, { passive: true });
 
     return () => {
       window.removeEventListener("keydown", keyDownCB);

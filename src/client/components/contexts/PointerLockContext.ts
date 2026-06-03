@@ -204,9 +204,26 @@ export class PointerLockManager {
   }
 
   allowHUDInput() {
-    return (
-      this.isLockedAndFocused() && performance.now() > (this.deadZone || 0)
-    );
+    if (performance.now() <= (this.deadZone || 0)) {
+      return false;
+    }
+    // HARTHMERE_HUD_INPUT_LOCKED_WITHOUT_FOCUS_V1
+    // Previously this required isLockedAndFocused() — both pointer lock AND
+    // document.activeElement === the game canvas. In practice the browser often
+    // pointer-locks the canvas while document.activeElement stays on <body>
+    // (e.g. right after entering the world or after any DOM focus shuffle).
+    // While the pointer is locked, keyboard events are still delivered to the
+    // document, so HUD shortcuts like "F" to talk to an NPC should fire — but
+    // the strict focus check swallowed them. The player only recovered by
+    // pressing Escape (releasing the lock) and clicking back in, which finally
+    // put activeElement on the canvas. Treat an active pointer lock as
+    // sufficient; otherwise fall back to the focus-based path for the
+    // unlocked-but-focused case. A focused text input never has the canvas
+    // locked or focused, so typing is unaffected.
+    if (this.isLocked()) {
+      return true;
+    }
+    return this.isFocused();
   }
 
   allowKeyInput() {

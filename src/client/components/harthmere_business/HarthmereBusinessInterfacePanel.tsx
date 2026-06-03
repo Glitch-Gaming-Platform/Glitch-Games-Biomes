@@ -864,6 +864,7 @@ const CustomerMiniGamePane: React.FunctionComponent<{
   const session = panel.activeSession;
   const ticket = panel.currentTicket;
   const [nowMs, setNowMs] = React.useState(() => Date.now());
+  const [actionError, setActionError] = React.useState<string | undefined>();
   React.useEffect(() => {
     if (!ticket) return;
     const timer = window.setInterval(() => setNowMs(Date.now()), 1000);
@@ -890,6 +891,24 @@ const CustomerMiniGamePane: React.FunctionComponent<{
   const edgeCases = React.useMemo(
     () => panel.definition.mechanicSpec.edgeCases.slice(0, 3),
     [panel.definition.mechanicSpec.edgeCases]
+  );
+  const runCustomerAction = React.useCallback(
+    (action: () => Promise<unknown>) => {
+      setActionError(undefined);
+      void action().catch((error) => {
+        const message =
+          error instanceof Error ? error.message : String(error ?? "");
+        if (
+          message.includes("business_customer_session_expired") ||
+          message.includes("business_customer_session_not_active")
+        ) {
+          setActionError("That customer timed out. Start a new shift.");
+          return;
+        }
+        setActionError("The service board could not update. Try again.");
+      });
+    },
+    []
   );
   return (
     <div style={responsiveGridStyle}>
@@ -927,12 +946,17 @@ const CustomerMiniGamePane: React.FunctionComponent<{
             className="biomes-ui-tab"
             type="button"
             disabled={Boolean(session)}
-            onClick={() => void adapter.startCustomerSession(businessId)}
+            onClick={() =>
+              runCustomerAction(() => adapter.startCustomerSession(businessId))
+            }
             style={session ? disabledButtonStyle : startShiftButtonStyle}
           >
             Start Shift
           </button>
         </div>
+        {actionError ? (
+          <p style={{ ...mutedTextStyle, marginTop: 8 }}>{actionError}</p>
+        ) : null}
         {session?.notes.slice(-3).map((note) => (
           <p key={note} style={{ ...mutedTextStyle, marginTop: 6 }}>
             {note}
@@ -977,14 +1001,16 @@ const CustomerMiniGamePane: React.FunctionComponent<{
               ariaLabel="Customer service offers"
               items={offerRows}
               onActivate={(_row, _col, offer) =>
-                void adapter.serveCustomer(
-                  businessId,
-                  offer.offerId,
-                  session?.sessionId,
-                  ticket.ticketId,
-                  createHarthmereBusinessMiniGameDecisionForOfferV1(
-                    panel.typeId as any,
-                    offer.offerId
+                runCustomerAction(() =>
+                  adapter.serveCustomer(
+                    businessId,
+                    offer.offerId,
+                    session?.sessionId,
+                    ticket.ticketId,
+                    createHarthmereBusinessMiniGameDecisionForOfferV1(
+                      panel.typeId as any,
+                      offer.offerId
+                    )
                   )
                 )
               }

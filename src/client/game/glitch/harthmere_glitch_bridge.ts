@@ -11,6 +11,7 @@ import {
   HARTHMERE_GLITCH_BEHAVIOR_EVENT_NAME_V138,
   type HarthmereGlitchBehaviorEventV138,
 } from "@/client/game/glitch/harthmere_glitch_behavior_events";
+import { shouldApplyHarthmereCloudSaveV153 } from "@/client/game/glitch/harthmere_cloud_save_restore_policy_v153";
 
 import { BIOMES_GAME_NAME } from "@/shared/biomes/display_names";
 const DEFAULT_HARTHMERE_TITLE_ID = "42de534c-600f-4228-af9e-b69faef94cce";
@@ -660,10 +661,19 @@ function createSnapshot(
   };
 }
 
-function dispatchHarthmereCloudRestoreEventsV153() {
+type HarthmereCloudRestoreDetailV153 = {
+  restoredKeyCount: number;
+  migratedKeyCount: number;
+  hasCharacterCustomization: boolean;
+  cloudSaveVersion?: number;
+};
+
+function dispatchHarthmereCloudRestoreEventsV153(
+  detail: HarthmereCloudRestoreDetailV153
+) {
   if (!isBrowser()) return;
   for (const eventName of HARTHMERE_GLITCH_RESTORE_EVENTS_V153) {
-    window.dispatchEvent(new CustomEvent(eventName));
+    window.dispatchEvent(new CustomEvent(eventName, { detail }));
   }
 }
 
@@ -700,7 +710,7 @@ function migrateCloudSaveStorageKeyToCurrentScopeV153(key: string) {
   return undefined;
 }
 
-function applySnapshot(snapshot: unknown) {
+function applySnapshot(snapshot: unknown, cloudSaveVersion?: number) {
   if (!isBrowser()) return false;
   const parsed = snapshot as Partial<HarthmereGlitchSnapshot> | undefined;
   if (
@@ -710,8 +720,20 @@ function applySnapshot(snapshot: unknown) {
   ) {
     return false;
   }
+  let restoredKeyCount = 0;
+  let migratedKeyCount = 0;
+  let hasCharacterCustomization = false;
   for (const [key, value] of Object.entries(parsed.localStorage)) {
     if (isHarthmereCloudSaveStorageKeyV153(key) && typeof value === "string") {
+      restoredKeyCount += 1;
+      if (
+        key.startsWith("biomes.localDev.harthmere.playerFace.v2.user.") ||
+        key.startsWith("biomes.localDev.harthmere.playerBody.v2.user.") ||
+        key.startsWith("biomes.localDev.harthmere.playerClothing.v1.user.") ||
+        key.startsWith("biomes.localDev.harthmere.playerBody.v1.user.")
+      ) {
+        hasCharacterCustomization = true;
+      }
       window.localStorage.setItem(
         key,
         key === ACTIVE_USER_SCOPE_KEY
@@ -720,11 +742,17 @@ function applySnapshot(snapshot: unknown) {
       );
       const migratedKey = migrateCloudSaveStorageKeyToCurrentScopeV153(key);
       if (migratedKey) {
+        migratedKeyCount += 1;
         window.localStorage.setItem(migratedKey, value);
       }
     }
   }
-  dispatchHarthmereCloudRestoreEventsV153();
+  dispatchHarthmereCloudRestoreEventsV153({
+    restoredKeyCount,
+    migratedKeyCount,
+    hasCharacterCustomization,
+    cloudSaveVersion,
+  });
   return true;
 }
 
@@ -1668,31 +1696,24 @@ class HarthmereGlitchBridgeController {
   }
 
   async restoreLatestIfEmpty(forceCloudRestoreForUserSwitch = false) {
-    if (forceCloudRestoreForUserSwitch) {
-      return this.restoreLatest();
-    }
-    const localStorage = collectHarthmereStorage();
-    if (hasMeaningfulLocalProgress(localStorage)) {
-      return false;
-    }
-    return this.restoreLatest();
-  }
-
-  async restoreLatest() {
+    void forceCloudRestoreForUserSwitch;
     const response = await this.listSaves();
     const saves = Array.isArray(response?.saves) ? response.saves : [];
-    const latest = saves
-      .filter(
-        (save: any) =>
-          save?.decoded_payload?.version === "harthmere-glitch-save-v1"
-      )
-      .sort(
-        (a: any, b: any) => Number(b.version ?? 0) - Number(a.version ?? 0)
-      )[0];
+    const latest = this.latestHarthmereSave(saves);
     if (!latest?.decoded_payload) {
       return false;
     }
-    const applied = applySnapshot(latest.decoded_payload);
+    const localStorage = collectHarthmereStorage();
+    const latestVersion = normalizeCloudSaveVersion(latest.version);
+    if (
+      !shouldApplyHarthmereCloudSaveV153({
+        latestCloudVersion: latestVersion,
+        hasMeaningfulLocalProgress: hasMeaningfulLocalProgress(localStorage),
+      })
+    ) {
+      return false;
+    }
+    const applied = applySnapshot(latest.decoded_payload, latestVersion);
     if (applied) {
       this.rememberCloudSaveVersion(latest.version, {
         lastAutosaveAt:
@@ -1702,6 +1723,39 @@ class HarthmereGlitchBridgeController {
       });
     }
     return applied;
+  }
+
+  async restoreLatest() {
+    const response = await this.listSaves();
+    const saves = Array.isArray(response?.saves) ? response.saves : [];
+    const latest = this.latestHarthmereSave(saves);
+    if (!latest?.decoded_payload) {
+      return false;
+    }
+    const applied = applySnapshot(
+      latest.decoded_payload,
+      normalizeCloudSaveVersion(latest.version)
+    );
+    if (applied) {
+      this.rememberCloudSaveVersion(latest.version, {
+        lastAutosaveAt:
+          latest.updated_at ??
+          latest.client_timestamp ??
+          new Date().toISOString(),
+      });
+    }
+    return applied;
+  }
+
+  private latestHarthmereSave(saves: any[]) {
+    return saves
+      .filter(
+        (save: any) =>
+          save?.decoded_payload?.version === "harthmere-glitch-save-v1"
+      )
+      .sort(
+        (a: any, b: any) => Number(b.version ?? 0) - Number(a.version ?? 0)
+      )[0];
   }
 
   async saveNow(reason = "manual"): Promise<void> {

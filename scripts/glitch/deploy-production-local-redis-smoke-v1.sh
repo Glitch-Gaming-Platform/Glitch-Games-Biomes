@@ -11,6 +11,7 @@ PUSH_PRODUCTION=0
 SKIP_BUILD=0
 KEEP_LOCAL_SMOKE=0
 REDIS_HEALTH_CHECK_ONLY=0
+BOOTSTRAP_PROD_REDIS_SNAPSHOT=0
 RUN_LOCAL_SMOKE="${RUN_LOCAL_SMOKE:-0}"
 TAG="${TAG:-prod-$(date -u +%Y%m%d%H%M%S)}"
 
@@ -24,6 +25,9 @@ Options:
   --skip-build   Reuse existing .next/dist and Docker image tag.
   --local-smoke  Run the memory-heavy local container HTTP smoke before push.
   --keep-local   Leave local smoke containers running for manual inspection.
+  --bootstrap-prod-redis-snapshot
+                 Explicitly flush and reload production Redis from snapshot_backup.json
+                 before updating Azure. Normal deploys fail fast on snapshot mismatch.
   --redis-health-check-only
                  Only check/repair production Redis AOF/write health, then exit.
   -h, --help     Show this help.
@@ -55,6 +59,10 @@ while [ "$#" -gt 0 ]; do
       ;;
     --keep-local)
       KEEP_LOCAL_SMOKE=1
+      shift
+      ;;
+    --bootstrap-prod-redis-snapshot)
+      BOOTSTRAP_PROD_REDIS_SNAPSHOT=1
       shift
       ;;
     --redis-health-check-only)
@@ -126,6 +134,100 @@ prod_redis_info_value_v186() {
 production_redis_write_probe_v186() {
   local probe_key="codex:deploy-redis-write-probe:${TAG}:$$:${RANDOM}:$(date -u +%s)"
   prod_redis_cli_v186 --raw SET "$probe_key" ok EX 60 NX 2>&1 || true
+}
+
+snapshot_backup_hash_v187() {
+  node -e "const fs=require('fs');const crypto=require('crypto');const p=process.argv[1];process.stdout.write(crypto.createHash('md5').update(fs.readFileSync(p)).digest('hex'))" snapshot_backup.json
+}
+
+production_snapshot_hash_key_v187() {
+  printf 'biomes:%s:snapshot_hash' "${GLITCH_TITLE_ID:-42de534c-600f-4228-af9e-b69faef94cce}"
+}
+
+production_redis_snapshot_hash_v187() {
+  local hash_key="$1"
+  local current_hash
+  current_hash="$(prod_redis_cli_v186 --raw GET "$hash_key" 2>/dev/null | tr -d '\r' || true)"
+  if [ -n "$current_hash" ]; then
+    printf '%s' "$current_hash"
+    return
+  fi
+  prod_redis_cli_v186 --raw GET biomes_data_snapshot_hash 2>/dev/null | tr -d '\r' || true
+}
+
+bootstrap_production_redis_snapshot_v187() {
+  local expected_hash="$1"
+  local hash_key="$2"
+
+  if [ "$BOOTSTRAP_PROD_REDIS_SNAPSHOT" != "1" ]; then
+    return 1
+  fi
+
+  log "Bootstrapping production Redis snapshot hash=$expected_hash host=${PROD_REDIS_HEALTH_HOST}:${PROD_REDIS_PORT}."
+  prod_redis_cli_v186 FLUSHALL >/dev/null
+  if [ -f dist/bootstrap-redis.js ]; then
+    IS_SERVER=1 \
+      SKIP_PROD_LOAD=true \
+      REDIS_HOST="$PROD_REDIS_HEALTH_HOST" \
+      GLITCH_REDIS_HOST="$PROD_REDIS_HEALTH_HOST" \
+      LOCAL_REDIS_HOST="$PROD_REDIS_HEALTH_HOST" \
+      REDIS_PORT="$PROD_REDIS_PORT" \
+      GLITCH_REDIS_PORT="$PROD_REDIS_PORT" \
+      node dist/bootstrap-redis.js snapshot_backup.json
+  else
+    log "WARN dist/bootstrap-redis.js missing; falling back to ts-node Redis bootstrap." >&2
+    IS_SERVER=1 \
+      SKIP_PROD_LOAD=true \
+      REDIS_HOST="$PROD_REDIS_HEALTH_HOST" \
+      GLITCH_REDIS_HOST="$PROD_REDIS_HEALTH_HOST" \
+      LOCAL_REDIS_HOST="$PROD_REDIS_HEALTH_HOST" \
+      REDIS_PORT="$PROD_REDIS_PORT" \
+      GLITCH_REDIS_PORT="$PROD_REDIS_PORT" \
+      node -r ts-node/register scripts/node/bootstrap_redis.ts snapshot_backup.json
+  fi
+  prod_redis_cli_v186 SET "$hash_key" "$expected_hash" >/dev/null
+  prod_redis_cli_v186 SET biomes_data_snapshot_hash "$expected_hash" >/dev/null
+}
+
+check_production_redis_snapshot_hash_v187() {
+  local phase="$1"
+  local expected_hash hash_key current_hash
+
+  if [ ! -f snapshot_backup.json ]; then
+    echo "ERROR snapshot_backup.json is missing; cannot verify production Redis snapshot before $phase." >&2
+    exit 1
+  fi
+
+  expected_hash="$(snapshot_backup_hash_v187)"
+  hash_key="$(production_snapshot_hash_key_v187)"
+  current_hash="$(production_redis_snapshot_hash_v187 "$hash_key")"
+
+  if [ "$current_hash" = "$expected_hash" ]; then
+    prod_redis_cli_v186 SET "$hash_key" "$expected_hash" >/dev/null
+    log "Production Redis snapshot hash OK before $phase: $expected_hash."
+    return
+  fi
+
+  echo "WARN production Redis snapshot mismatch before $phase:" >&2
+  echo "  key=$hash_key" >&2
+  echo "  expected=$expected_hash" >&2
+  echo "  actual=${current_hash:-missing}" >&2
+
+  if ! bootstrap_production_redis_snapshot_v187 "$expected_hash" "$hash_key"; then
+    echo "ERROR refusing to deploy an image whose snapshot does not match production Redis." >&2
+    echo "Run again with --bootstrap-prod-redis-snapshot only when you intend to flush/reload production Redis before Azure update." >&2
+    exit 1
+  fi
+
+  current_hash="$(production_redis_snapshot_hash_v187 "$hash_key")"
+  if [ "$current_hash" != "$expected_hash" ]; then
+    echo "ERROR production Redis snapshot still mismatches after bootstrap:" >&2
+    echo "  expected=$expected_hash" >&2
+    echo "  actual=${current_hash:-missing}" >&2
+    exit 1
+  fi
+
+  log "Production Redis snapshot bootstrap verified before $phase: $expected_hash."
 }
 
 repair_production_redis_aof_v186() {
@@ -457,6 +559,7 @@ run_build_checks() {
   node scripts/harthmere/test-harthmere-live-mode-backend-production-v1.cjs .
   node scripts/harthmere/test-harthmere-live-mode-backend-reducer-v1.cjs .
   node scripts/harthmere/test-harthmere-live-entity-production-smoke-v1.cjs .
+  node scripts/harthmere/test-snapshot-grove-quest-marker-acceptance-v140.cjs .
   node scripts/harthmere/check-biomes-snapshot-bucket-conversion-v1.cjs .
 }
 
@@ -631,11 +734,13 @@ push_and_deploy() {
   require_cmd az
   require_cmd curl
   check_production_redis_aof_health_v186 "production image push"
+  check_production_redis_snapshot_hash_v187 "production image push"
   log "Pushing built image $IMAGE."
   az acr login --name "${ACR_NAME:-GlitchGames}"
   docker push "$IMAGE"
 
   check_production_redis_aof_health_v186 "Azure Container App update"
+  check_production_redis_snapshot_hash_v187 "Azure Container App update"
   log "Updating Azure Container App $AZURE_CONTAINER_APP to $IMAGE."
   az containerapp update \
     --resource-group "$AZURE_RESOURCE_GROUP" \

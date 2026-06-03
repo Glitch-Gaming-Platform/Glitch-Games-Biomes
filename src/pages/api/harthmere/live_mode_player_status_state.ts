@@ -1,5 +1,6 @@
 import { connectToRedis } from "@/server/shared/redis/connection";
 import { biomesApiHandler } from "@/server/web/util/api_middleware";
+import { readHarthmereRedisStringsV1 } from "@/server/harthmere/live_mode_state_read_helpers";
 import {
   createHarthmereLiveModePlayerStatusClientSnapshotV1,
   harthmereLiveModePlayerStateKeyV1,
@@ -49,19 +50,25 @@ function playerStatusReadActorIdV146(input: {
   const installId =
     firstPlayerStatusReadStringV146(input.unsafeRequest.query?.install_id) ??
     firstPlayerStatusReadStringV146(input.unsafeRequest.query?.installId) ??
-    firstPlayerStatusReadStringV146(input.unsafeRequest.headers?.["x-glitch-install-id"]);
+    firstPlayerStatusReadStringV146(
+      input.unsafeRequest.headers?.["x-glitch-install-id"]
+    );
   return installId ? `install:${installId}` : "anonymous:player-status-reader";
 }
 
 function playerStatusStaminaWriteThrottleMsV1() {
-  const raw = Number(process.env.HARTHMERE_PLAYER_STATUS_STAMINA_WRITE_THROTTLE_MS);
+  const raw = Number(
+    process.env.HARTHMERE_PLAYER_STATUS_STAMINA_WRITE_THROTTLE_MS
+  );
   return Number.isFinite(raw) && raw >= 0
     ? Math.trunc(raw)
     : DEFAULT_PLAYER_STATUS_STAMINA_WRITE_THROTTLE_MS_V1;
 }
 
 function playerStatusStaminaMeaningfulDeltaV1() {
-  const raw = Number(process.env.HARTHMERE_PLAYER_STATUS_STAMINA_MEANINGFUL_DELTA);
+  const raw = Number(
+    process.env.HARTHMERE_PLAYER_STATUS_STAMINA_MEANINGFUL_DELTA
+  );
   return Number.isFinite(raw) && raw >= 0
     ? raw
     : DEFAULT_PLAYER_STATUS_STAMINA_MEANINGFUL_DELTA_V1;
@@ -109,6 +116,7 @@ export async function readHarthmereLiveModePlayerStatusStateForActorV1(input: {
   redis: {
     primary: {
       get: (key: string) => Promise<string | null>;
+      mget?: (...keys: string[]) => Promise<Array<string | null>>;
       set?: (key: string, value: string) => Promise<unknown>;
       watch?: (...keys: string[]) => Promise<unknown>;
       unwatch?: () => Promise<unknown>;
@@ -125,7 +133,9 @@ export async function readHarthmereLiveModePlayerStatusStateForActorV1(input: {
   staminaMeaningfulDelta?: number;
 }) {
   const stateKey = harthmereLiveModePlayerStateKeyV1(input.actorId);
-  const rawState = await input.redis.primary.get(stateKey);
+  const [rawState] = await readHarthmereRedisStringsV1(input.redis.primary, [
+    stateKey,
+  ]);
   const state = parseHarthmereLiveModeBackendStateV1(
     rawState,
     input.actorId,
@@ -159,11 +169,9 @@ export async function readHarthmereLiveModePlayerStatusStateForActorV1(input: {
       previousUpdatedAtMs,
       nowMs: input.nowMs,
       throttleMs:
-        input.staminaWriteThrottleMs ??
-        playerStatusStaminaWriteThrottleMsV1(),
+        input.staminaWriteThrottleMs ?? playerStatusStaminaWriteThrottleMsV1(),
       meaningfulDelta:
-        input.staminaMeaningfulDelta ??
-        playerStatusStaminaMeaningfulDeltaV1(),
+        input.staminaMeaningfulDelta ?? playerStatusStaminaMeaningfulDeltaV1(),
     }) &&
     input.redis.primary.set
   ) {
@@ -244,7 +252,9 @@ function playerStatusGameplayActiveV146(input: {
   unsafeRequest: { query?: Record<string, unknown> };
 }) {
   const raw =
-    firstPlayerStatusReadStringV146(input.unsafeRequest.query?.gameplay_active) ??
+    firstPlayerStatusReadStringV146(
+      input.unsafeRequest.query?.gameplay_active
+    ) ??
     firstPlayerStatusReadStringV146(input.unsafeRequest.query?.gameplayActive);
   return /^(1|true|yes)$/i.test(raw ?? "");
 }

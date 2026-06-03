@@ -24,10 +24,7 @@ import {
   type PaletteKey,
 } from "@/shared/asset_defs/color_palettes";
 import { anItem } from "@/shared/game/item";
-import {
-  INVALID_BIOMES_ID,
-  type BiomesId,
-} from "@/shared/ids";
+import { INVALID_BIOMES_ID, type BiomesId } from "@/shared/ids";
 import type { ReadonlyAppearance } from "@/shared/ecs/gen/types";
 import { useClientContext } from "@/client/components/contexts/ClientContextReactContext";
 import { usePointerLockManager } from "@/client/components/contexts/PointerLockContext";
@@ -79,6 +76,9 @@ import {
   applyHarthmereAppearanceBuilderSelection,
   clearHarthmereOtherCustomizationSessionsForUser,
   harthmereClothingCatalogForSlot,
+  harthmerePlayerBodyStorageKey,
+  harthmerePlayerClothingStorageKey,
+  harthmerePlayerFaceStorageKey,
   harthmereThreeJsClothingItem,
   defaultPronounsForGender,
   loadHarthmerePlayerBodyConfig,
@@ -98,7 +98,7 @@ import {
 import { fireAndForget } from "@/shared/util/async";
 import { motion } from "framer-motion";
 import type { PropsWithChildren } from "react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { MathUtils, Spherical, Vector3 } from "three";
 
 export type WakeUpState = "initial" | "name-entry" | "character" | "waking";
@@ -122,7 +122,9 @@ const WakeUpText: React.FunctionComponent<
 > = ({ heading, onTypingComplete, onClick, className, children }) => {
   return (
     <div
-      className={`${className ?? "w-1/2"} flex flex-col content-center items-center gap-2 text-center`}
+      className={`${
+        className ?? "w-1/2"
+      } flex flex-col content-center items-center gap-2 text-center`}
       onClick={() => onClick?.()}
     >
       <Typer
@@ -206,13 +208,13 @@ const HarthmereFaceOptionRow = <T extends string>({
   const auditField = field;
   return (
     <div
-      className="rounded-2xl border border-white/12 bg-white/[0.055] p-3 shadow-[0_12px_28px_rgba(0,0,0,0.16)]"
+      className="rounded-2xl border-white/12 border bg-white/[0.055] p-3 shadow-[0_12px_28px_rgba(0,0,0,0.16)]"
       data-harthmere-builder-option-card={field}
       data-harthmere-builder-field={field}
       data-harthmere-builder-label={label}
       data-harthmere-builder-current-value={value}
     >
-      <div className="mb-2 text-[0.68rem] font-black uppercase tracking-[0.18em] text-amber-100/75">
+      <div className="text-amber-100/75 mb-2 text-[0.68rem] font-black uppercase tracking-[0.18em]">
         {label}
       </div>
       <div
@@ -252,10 +254,10 @@ const HarthmereActualFacePreview: React.FunctionComponent<{
 }> = ({ previewKey, previewAppearance, wearableOverrides }) => {
   return (
     <div
-      className="harthmere-actual-face-preview rounded-2xl border border-white/12 bg-black/25 p-2"
+      className="harthmere-actual-face-preview rounded-2xl border-white/12 border bg-black/25 p-2"
       data-harthmere-builder-face-preview="actual-avatar-face"
     >
-      <div className="mb-1 text-[0.62rem] font-black uppercase tracking-[0.16em] text-amber-100/70">
+      <div className="text-amber-100/70 mb-1 text-[0.62rem] font-black uppercase tracking-[0.16em]">
         Actual face preview
       </div>
       <div className="harthmere-actual-face-preview-frame">
@@ -327,16 +329,16 @@ const HarthmereVoxelFacePreview: React.FunctionComponent<{
     face.mouthStyle === "open"
       ? 16
       : face.mouthStyle === "stern"
-        ? 26
-        : face.mouthStyle === "smirk"
-          ? 30
-          : 38;
+      ? 26
+      : face.mouthStyle === "smirk"
+      ? 30
+      : 38;
   const cheekColor =
     face.cheekStyle === "freckled"
       ? "#6a3c28"
       : face.cheekStyle === "strong"
-        ? "rgba(120,70,50,0.65)"
-        : "rgba(255,160,140,0.55)";
+      ? "rgba(120,70,50,0.65)"
+      : "rgba(255,160,140,0.55)";
   const cheekSize =
     face.cheekStyle === "strong"
       ? { width: 18, height: 12 }
@@ -361,12 +363,12 @@ const HarthmereVoxelFacePreview: React.FunctionComponent<{
         />,
         <div
           key="left"
-          className="absolute left-[-7px] top-4 h-9 w-3"
+          className="h-9 absolute left-[-7px] top-4 w-3"
           style={{ background: hair }}
         />,
         <div
           key="right"
-          className="absolute right-[-7px] top-4 h-9 w-3"
+          className="h-9 absolute right-[-7px] top-4 w-3"
           style={{ background: hair }}
         />,
       ];
@@ -380,7 +382,7 @@ const HarthmereVoxelFacePreview: React.FunctionComponent<{
         />,
         <div
           key="part"
-          className="absolute top-[-8px] h-7 w-2 bg-black/45"
+          className="bg-black/45 absolute top-[-8px] h-7 w-2"
           style={{ left: faceWidth * 0.62 }}
         />,
         <div
@@ -428,21 +430,21 @@ const HarthmereVoxelFacePreview: React.FunctionComponent<{
         />,
         <div
           key="left-braid"
-          className="absolute left-[-12px] top-6 h-14 w-4"
+          className="h-14 absolute left-[-12px] top-6 w-4"
           style={{ background: hair }}
         />,
         <div
           key="right-braid"
-          className="absolute right-[-12px] top-6 h-14 w-4"
+          className="h-14 absolute right-[-12px] top-6 w-4"
           style={{ background: hair }}
         />,
         <div
           key="left-tie"
-          className="absolute left-[-13px] top-[68px] h-2 w-5 bg-yellow-500"
+          className="bg-yellow-500 absolute left-[-13px] top-[68px] h-2 w-5"
         />,
         <div
           key="right-tie"
-          className="absolute right-[-13px] top-[68px] h-2 w-5 bg-yellow-500"
+          className="bg-yellow-500 absolute right-[-13px] top-[68px] h-2 w-5"
         />,
       ];
     }
@@ -532,11 +534,11 @@ const HarthmereVoxelFacePreview: React.FunctionComponent<{
         />,
         <div
           key="left-tie"
-          className="absolute left-[-21px] top-7 h-2 w-6 bg-yellow-500"
+          className="bg-yellow-500 absolute left-[-21px] top-7 h-2 w-6"
         />,
         <div
           key="right-tie"
-          className="absolute right-[-21px] top-7 h-2 w-6 bg-yellow-500"
+          className="bg-yellow-500 absolute right-[-21px] top-7 h-2 w-6"
         />,
       ];
     }
@@ -576,7 +578,7 @@ const HarthmereVoxelFacePreview: React.FunctionComponent<{
       return [
         <div
           key="hood"
-          className="absolute left-[-12px] top-[-14px] rounded-t-xl border-4 border-black/30"
+          className="rounded-t-xl absolute left-[-12px] top-[-14px] border-4 border-black/30"
           style={{
             width: faceWidth + 24,
             height: faceHeight + 18,
@@ -619,7 +621,7 @@ const HarthmereVoxelFacePreview: React.FunctionComponent<{
   })();
 
   return (
-    <div className="flex flex-col items-center gap-1 rounded-xl border border-white/15 bg-black/25 p-3">
+    <div className="rounded-xl border-white/15 flex flex-col items-center gap-1 border bg-black/25 p-3">
       <div
         className="relative rounded-sm border-2 border-black/40"
         style={{
@@ -638,7 +640,7 @@ const HarthmereVoxelFacePreview: React.FunctionComponent<{
         )}
         {face.accessory === "hood" && (
           <div
-            className="absolute left-[-15px] top-[-16px] rounded-t-xl border-4 border-black/30"
+            className="rounded-t-xl absolute left-[-15px] top-[-16px] border-4 border-black/30"
             style={{
               width: faceWidth + 30,
               height: faceHeight + 26,
@@ -649,14 +651,14 @@ const HarthmereVoxelFacePreview: React.FunctionComponent<{
         )}
         {face.accessory === "headband" && (
           <div
-            className="absolute left-[-4px] top-4 h-3 bg-yellow-500"
+            className="bg-yellow-500 absolute left-[-4px] top-4 h-3"
             style={{ width: faceWidth + 8 }}
           />
         )}
         {face.accessory === "spectacles" && (
           <>
             <div
-              className="absolute rounded-sm border-2 border-yellow-100/80"
+              className="border-yellow-100/80 absolute rounded-sm border-2"
               style={{
                 left: faceWidth / 2 - 30,
                 top: eyeY - 3,
@@ -665,7 +667,7 @@ const HarthmereVoxelFacePreview: React.FunctionComponent<{
               }}
             />
             <div
-              className="absolute rounded-sm border-2 border-yellow-100/80"
+              className="border-yellow-100/80 absolute rounded-sm border-2"
               style={{
                 left: faceWidth / 2 + 9,
                 top: eyeY - 3,
@@ -674,7 +676,7 @@ const HarthmereVoxelFacePreview: React.FunctionComponent<{
               }}
             />
             <div
-              className="absolute bg-yellow-100/80"
+              className="bg-yellow-100/80 absolute"
               style={{
                 left: faceWidth / 2 - 8,
                 top: eyeY + 5,
@@ -772,7 +774,7 @@ const HarthmereVoxelFacePreview: React.FunctionComponent<{
           </>
         )}
         <div
-          className="absolute bg-red-950"
+          className="bg-red-950 absolute"
           style={{
             left: faceWidth / 2 - mouthWidth / 2,
             top: faceHeight - 22,
@@ -781,8 +783,8 @@ const HarthmereVoxelFacePreview: React.FunctionComponent<{
               face.mouthStyle === "open"
                 ? 12
                 : face.mouthStyle === "stern"
-                  ? 3
-                  : 4,
+                ? 3
+                : 4,
           }}
         />
         {face.facialHair !== "none" && (
@@ -796,8 +798,8 @@ const HarthmereVoxelFacePreview: React.FunctionComponent<{
                 face.facialHair === "mustache"
                   ? 6
                   : face.facialHair === "full_beard"
-                    ? 26
-                    : 16,
+                  ? 26
+                  : 16,
               background: hair,
             }}
           />
@@ -877,7 +879,7 @@ const HarthmereVoxelBodyPreview: React.FunctionComponent<{
   const torsoHeight = height - legs;
   return (
     <div
-      className="flex flex-col items-center gap-1 rounded-2xl border border-white/15 bg-black/25 p-3"
+      className="rounded-2xl border-white/15 flex flex-col items-center gap-1 border bg-black/25 p-3"
       data-harthmere-builder-mini-clothing-preview="true"
     >
       <div className="relative" style={{ width: 128, height: 148 }}>
@@ -887,12 +889,12 @@ const HarthmereVoxelBodyPreview: React.FunctionComponent<{
         />
         {hasCape && (
           <div
-            className="absolute left-1/2 top-7 -translate-x-1/2 rounded-sm bg-black/45"
+            className="bg-black/45 absolute left-1/2 top-7 -translate-x-1/2 rounded-sm"
             style={{ width: shoulders + 8, height: torsoHeight + legs * 0.72 }}
           />
         )}
         <div
-          className="absolute left-1/2 top-6 -translate-x-1/2 rounded-sm border-2 border-black/35"
+          className="border-black/35 absolute left-1/2 top-6 -translate-x-1/2 rounded-sm border-2"
           style={{
             width: width + bodyType.torsoExtra,
             height: hasRobe ? torsoHeight + 18 : torsoHeight,
@@ -900,10 +902,10 @@ const HarthmereVoxelBodyPreview: React.FunctionComponent<{
           }}
         />
         {hasArmor && (
-          <div className="absolute left-1/2 top-9 h-8 w-20 -translate-x-1/2 rounded-sm bg-white/22" />
+          <div className="top-9 bg-white/22 absolute left-1/2 h-8 w-20 -translate-x-1/2 rounded-sm" />
         )}
         {hasApron && (
-          <div className="absolute left-1/2 top-12 h-16 w-16 -translate-x-1/2 rounded-sm bg-black/28" />
+          <div className="bg-black/28 absolute left-1/2 top-12 h-16 w-16 -translate-x-1/2 rounded-sm" />
         )}
         <div
           className="absolute left-1/2 -translate-x-1/2 rounded-sm bg-black/30"
@@ -922,7 +924,7 @@ const HarthmereVoxelBodyPreview: React.FunctionComponent<{
           style={{ right: 8 + stance.armOffset, width: 14, height: arm }}
         />
         <div
-          className="absolute rounded-sm bg-black/35"
+          className="bg-black/35 absolute rounded-sm"
           style={{
             left: 42 - stance.legSpread,
             top: height - 4,
@@ -931,7 +933,7 @@ const HarthmereVoxelBodyPreview: React.FunctionComponent<{
           }}
         />
         <div
-          className="absolute rounded-sm bg-black/35"
+          className="bg-black/35 absolute rounded-sm"
           style={{
             right: 42 - stance.legSpread,
             top: height - 4,
@@ -964,13 +966,13 @@ const HarthmereVoxelBodyPreview: React.FunctionComponent<{
           <div className="absolute left-1/2 top-[74px] h-4 w-20 -translate-x-1/2 bg-white/25" />
         )}
         {stance.badge === "sash" && (
-          <div className="absolute left-1/2 top-2 h-3 w-20 -translate-x-1/2 bg-yellow-400/70" />
+          <div className="bg-yellow-400/70 absolute left-1/2 top-2 h-3 w-20 -translate-x-1/2" />
         )}
         {stance.badge === "line" && (
-          <div className="absolute left-1/2 top-7 h-16 w-1 -translate-x-1/2 bg-black/45" />
+          <div className="bg-black/45 absolute left-1/2 top-7 h-16 w-1 -translate-x-1/2" />
         )}
         {stance.badge === "collar" && (
-          <div className="absolute left-1/2 top-6 h-2 w-14 -translate-x-1/2 bg-white/50" />
+          <div className="w-14 absolute left-1/2 top-6 h-2 -translate-x-1/2 bg-white/50" />
         )}
       </div>
       <div className="text-xs text-white/75">
@@ -994,42 +996,42 @@ const HarthmereCompactFullBodyPreview: React.FunctionComponent<{
     body.bodyHeight === "very_tall"
       ? "scale-[1.08]"
       : body.bodyHeight === "tall"
-        ? "scale-[1.02]"
-        : body.bodyHeight === "short"
-          ? "scale-[0.92]"
-          : "scale-100";
+      ? "scale-[1.02]"
+      : body.bodyHeight === "short"
+      ? "scale-[0.92]"
+      : "scale-100";
   const shoulderClass =
     body.shoulderWidth === "wide"
       ? "w-40"
       : body.shoulderWidth === "narrow"
-        ? "w-28"
-        : "w-32";
+      ? "w-28"
+      : "w-32";
   const torsoClass =
     body.bodyType === "broad" || body.bodyType === "stocky"
       ? "w-24"
       : body.bodyType === "slim"
-        ? "w-16"
-        : "w-20";
+      ? "w-16"
+      : "w-20";
   const armClass =
     body.armLength === "long"
       ? "h-24"
       : body.armLength === "short"
-        ? "h-16"
-        : "h-20";
+      ? "h-16"
+      : "h-20";
   const legClass =
     body.legLength === "long"
       ? "h-28"
       : body.legLength === "short"
-        ? "h-20"
-        : "h-24";
+      ? "h-20"
+      : "h-24";
   const faceShapeClass =
     face.faceShape === "wide"
       ? "rounded-[1rem] w-24"
       : face.faceShape === "narrow"
-        ? "rounded-[1rem] w-16"
-        : face.faceShape === "soft"
-          ? "rounded-[1.5rem] w-20"
-          : "rounded-[1rem] w-20";
+      ? "rounded-[1rem] w-16"
+      : face.faceShape === "soft"
+      ? "rounded-[1.5rem] w-20"
+      : "rounded-[1rem] w-20";
 
   return (
     <div
@@ -1037,7 +1039,7 @@ const HarthmereCompactFullBodyPreview: React.FunctionComponent<{
       data-harthmere-builder-live-preview="compact-full-body"
     >
       <div className={`relative flex flex-col items-center ${heightClass}`}>
-        <div className="mb-3 rounded-full border border-white/15 bg-black/25 px-3 py-1 text-[0.68rem] font-black uppercase tracking-[0.18em] text-white/75">
+        <div className="border-white/15 mb-3 rounded-full border bg-black/25 px-3 py-1 text-[0.68rem] font-black uppercase tracking-[0.18em] text-white/75">
           Full body preview
         </div>
         <div className="relative flex flex-col items-center">
@@ -1050,7 +1052,7 @@ const HarthmereCompactFullBodyPreview: React.FunctionComponent<{
                 className="absolute left-1/2 top-0 h-8 w-[90%] -translate-x-1/2 rounded-t-[1rem]"
                 style={{ backgroundColor: hair }}
               />
-              <div className="absolute left-1/2 top-6 flex w-11 -translate-x-1/2 justify-between">
+              <div className="w-11 absolute left-1/2 top-6 flex -translate-x-1/2 justify-between">
                 <span
                   className="h-2.5 w-2.5 rounded-full border border-black/20"
                   style={{ backgroundColor: eyes }}
@@ -1060,7 +1062,7 @@ const HarthmereCompactFullBodyPreview: React.FunctionComponent<{
                   style={{ backgroundColor: eyes }}
                 />
               </div>
-              <div className="absolute left-1/2 top-[3.55rem] h-3 w-1.5 -translate-x-1/2 rounded-full bg-black/25" />
+              <div className="w-1.5 absolute left-1/2 top-[3.55rem] h-3 -translate-x-1/2 rounded-full bg-black/25" />
               <div className="absolute left-1/2 top-[4.5rem] h-1 w-8 -translate-x-1/2 rounded-full bg-[#6b3940]/80" />
             </div>
           </div>
@@ -1102,7 +1104,7 @@ const HarthmereCompactFullBodyPreview: React.FunctionComponent<{
             <div className="h-4 w-10 rounded-full border-4 border-[#20143f] bg-[#111827]" />
             <div className="h-4 w-10 rounded-full border-4 border-[#20143f] bg-[#111827]" />
           </div>
-          <div className="mt-4 max-w-[15rem] text-center text-[0.72rem] leading-snug text-white/68">
+          <div className="text-white/68 mt-4 max-w-[15rem] text-center text-[0.72rem] leading-snug">
             Preview stays intentionally compact so the full hero fits inside the
             panel while you customize face, body, and outfit.
           </div>
@@ -1128,22 +1130,22 @@ const HarthmereBuilderTinyAvatarPreview: React.FunctionComponent<{
     body.bodyType === "broad" || body.bodyType === "stocky"
       ? 54
       : body.bodyType === "slim"
-        ? 38
-        : 46;
+      ? 38
+      : 46;
   const shoulderWidth =
     body.shoulderWidth === "wide"
       ? 84
       : body.shoulderWidth === "narrow"
-        ? 62
-        : 72;
+      ? 62
+      : 72;
   const torsoHeight =
     body.bodyHeight === "short"
       ? 58
       : body.bodyHeight === "very_tall"
-        ? 74
-        : body.bodyHeight === "tall"
-          ? 68
-          : 64;
+      ? 74
+      : body.bodyHeight === "tall"
+      ? 68
+      : 64;
   const legHeight =
     body.legLength === "long" ? 58 : body.legLength === "short" ? 42 : 50;
   const armHeight =
@@ -1381,6 +1383,16 @@ const HARTHMERE_BUILDER_GLITCH_SAVE_EVENT =
 const HARTHMERE_BUILDER_FEATURE_AUDIT_VERSION =
   "harthmere-supported-voxel-builder-v182" as const;
 
+const HARTHMERE_GLITCH_CLOUD_SAVE_RESTORED_EVENT_V153 =
+  "biomes:harthmere-glitch-cloud-save-restored-v153" as const;
+
+type HarthmereCloudRestoreDetailV153 = {
+  restoredKeyCount?: number;
+  migratedKeyCount?: number;
+  hasCharacterCustomization?: boolean;
+  cloudSaveVersion?: number;
+};
+
 const HARTHMERE_BUILDER_CLOTHING_SLOTS = HARTHMERE_CLOTHING_SLOTS.filter(
   (slot): slot is HarthmereClothingSlot => slot !== "hair"
 );
@@ -1408,10 +1420,25 @@ function clothingCardSummary(clothing: HarthmereCharacterClothing) {
     .filter(([, item]) => Boolean(item))
     .map(
       ([slot, item]) =>
-        `${clothingSlotLabel(slot as HarthmereClothingSlot)}: ${humanizeClothingLabel(item?.id ?? "")}`
+        `${clothingSlotLabel(
+          slot as HarthmereClothingSlot
+        )}: ${humanizeClothingLabel(item?.id ?? "")}`
     )
     .slice(0, 4)
     .join(" · ");
+}
+
+function hasCurrentHarthmereCharacterCustomization(userId: BiomesId) {
+  if (typeof window === "undefined") return false;
+  try {
+    return Boolean(
+      window.localStorage.getItem(harthmerePlayerFaceStorageKey(userId)) &&
+        window.localStorage.getItem(harthmerePlayerBodyStorageKey(userId)) &&
+        window.localStorage.getItem(harthmerePlayerClothingStorageKey(userId))
+    );
+  } catch {
+    return false;
+  }
 }
 
 function builderUrlInstallId() {
@@ -1564,25 +1591,25 @@ const HarthmereClothingPresetCard: React.FunctionComponent<{
       data-harthmere-builder-clothing-preset={preset.id}
       data-harthmere-builder-clothing-selected={selected ? "true" : "false"}
       aria-pressed={selected}
-      className={`rounded-2xl border p-3 text-left transition focus:outline-none focus:ring-2 focus:ring-amber-200/60 ${
+      className={`rounded-2xl focus:ring-amber-200/60 border p-3 text-left transition focus:outline-none focus:ring-2 ${
         selected
           ? "border-amber-200 bg-amber-200/18 shadow-[0_0_26px_rgba(251,191,36,0.18)]"
-          : "border-white/10 bg-white/[0.045] hover:border-amber-100/30 hover:bg-white/[0.075]"
+          : "hover:border-amber-100/30 border-white/10 bg-white/[0.045] hover:bg-white/[0.075]"
       }`}
       onClick={onSelect}
     >
       <div className="flex items-start justify-between gap-3">
         <div>
           <div className="text-sm font-black text-white">{preset.label}</div>
-          <div className="mt-1 text-xs leading-snug text-white/62">
+          <div className="text-white/62 mt-1 text-xs leading-snug">
             {preset.description}
           </div>
         </div>
-        <div className="rounded-full border border-white/10 bg-black/30 px-2 py-0.5 text-[0.66rem] font-black uppercase tracking-[0.12em] text-amber-100/85">
+        <div className="py-0.5 text-amber-100/85 rounded-full border border-white/10 bg-black/30 px-2 text-[0.66rem] font-black uppercase tracking-[0.12em]">
           {selected ? "On" : "Pick"}
         </div>
       </div>
-      <div className="mt-2 text-[0.68rem] leading-snug text-white/46">
+      <div className="text-white/46 mt-2 text-[0.68rem] leading-snug">
         {clothingCardSummary(preset.clothing)}
       </div>
     </button>
@@ -1606,15 +1633,15 @@ const HarthmereClothingOptionRow: React.FunctionComponent<{
     : slotOptions;
   return (
     <div
-      className="rounded-2xl border border-white/10 bg-black/24 p-3"
+      className="rounded-2xl bg-black/24 border border-white/10 p-3"
       data-harthmere-builder-clothing-slot={slot}
       data-harthmere-builder-clothing-current={current?.id ?? "none"}
     >
       <div className="mb-2 flex items-center justify-between gap-3">
-        <div className="text-[0.7rem] font-black uppercase tracking-[0.18em] text-amber-100/72">
+        <div className="text-amber-100/72 text-[0.7rem] font-black uppercase tracking-[0.18em]">
           {clothingSlotLabel(slot)}
         </div>
-        <div className="max-w-[12rem] truncate rounded-full border border-white/10 bg-white/[0.055] px-2 py-0.5 text-[0.68rem] font-black text-white/80">
+        <div className="py-0.5 max-w-[12rem] truncate rounded-full border border-white/10 bg-white/[0.055] px-2 text-[0.68rem] font-black text-white/80">
           {current ? humanizeClothingLabel(current.id) : "None"}
         </div>
       </div>
@@ -1664,14 +1691,14 @@ const HarthmereVoxelColorOptionRow: React.FunctionComponent<{
   const entries = useMemo(() => colorEntries(palette), [palette]);
   return (
     <div
-      className="rounded-2xl border border-white/10 bg-black/24 p-3"
+      className="rounded-2xl bg-black/24 border border-white/10 p-3"
       data-harthmere-builder-voxel-row={palette}
     >
       <div className="mb-2 flex items-center justify-between gap-3">
-        <div className="text-[0.7rem] font-black uppercase tracking-[0.18em] text-amber-100/72">
+        <div className="text-amber-100/72 text-[0.7rem] font-black uppercase tracking-[0.18em]">
           {label}
         </div>
-        <div className="max-w-[12rem] truncate rounded-full border border-white/10 bg-white/[0.055] px-2 py-0.5 text-[0.66rem] font-black text-white/70">
+        <div className="py-0.5 max-w-[12rem] truncate rounded-full border border-white/10 bg-white/[0.055] px-2 text-[0.66rem] font-black text-white/70">
           {selectedId ?? "—"}
         </div>
       </div>
@@ -1685,8 +1712,10 @@ const HarthmereVoxelColorOptionRow: React.FunctionComponent<{
               aria-pressed={selected}
               aria-label={`${label}: ${entry.id}`}
               data-harthmere-builder-voxel-swatch={entry.id}
-              data-harthmere-builder-voxel-selected={selected ? "true" : "false"}
-              className={`h-7 w-7 rounded-full border transition focus:outline-none focus:ring-2 focus:ring-amber-200/60 ${
+              data-harthmere-builder-voxel-selected={
+                selected ? "true" : "false"
+              }
+              className={`focus:ring-amber-200/60 h-7 w-7 rounded-full border transition focus:outline-none focus:ring-2 ${
                 selected
                   ? "border-amber-200 shadow-[0_0_0_2px_rgba(251,191,36,0.55)]"
                   : "border-white/15 hover:border-amber-100/40"
@@ -1713,14 +1742,14 @@ const HarthmereVoxelHairStyleRow: React.FunctionComponent<{
   );
   return (
     <div
-      className="rounded-2xl border border-white/10 bg-black/24 p-3"
+      className="rounded-2xl bg-black/24 border border-white/10 p-3"
       data-harthmere-builder-voxel-row="hair_style"
     >
       <div className="mb-2 flex items-center justify-between gap-3">
-        <div className="text-[0.7rem] font-black uppercase tracking-[0.18em] text-amber-100/72">
+        <div className="text-amber-100/72 text-[0.7rem] font-black uppercase tracking-[0.18em]">
           Hair style
         </div>
-        <div className="max-w-[12rem] truncate rounded-full border border-white/10 bg-white/[0.055] px-2 py-0.5 text-[0.66rem] font-black text-white/70">
+        <div className="py-0.5 max-w-[12rem] truncate rounded-full border border-white/10 bg-white/[0.055] px-2 text-[0.66rem] font-black text-white/70">
           {selectedId && selectedId !== INVALID_BIOMES_ID
             ? `#${selectedId}`
             : "None"}
@@ -1732,10 +1761,10 @@ const HarthmereVoxelHairStyleRow: React.FunctionComponent<{
           aria-pressed={selectedId === INVALID_BIOMES_ID}
           aria-label="Hair: bald"
           data-harthmere-builder-voxel-hair="none"
-          className={`flex h-12 w-12 items-center justify-center rounded-xl border text-[0.6rem] font-black uppercase tracking-wider transition focus:outline-none focus:ring-2 focus:ring-amber-200/60 ${
+          className={`rounded-xl focus:ring-amber-200/60 flex h-12 w-12 items-center justify-center border text-[0.6rem] font-black uppercase tracking-wider transition focus:outline-none focus:ring-2 ${
             selectedId === INVALID_BIOMES_ID
               ? "border-amber-200 bg-amber-200/15 text-amber-100"
-              : "border-white/15 bg-white/[0.04] text-white/60 hover:border-amber-100/40"
+              : "border-white/15 hover:border-amber-100/40 bg-white/[0.04] text-white/60"
           }`}
           onClick={() => onSelect(INVALID_BIOMES_ID)}
         >
@@ -1751,7 +1780,7 @@ const HarthmereVoxelHairStyleRow: React.FunctionComponent<{
               aria-pressed={selected}
               aria-label={`Hair style ${id}`}
               data-harthmere-builder-voxel-hair={id}
-              className={`flex h-12 w-12 items-center justify-center rounded-xl border bg-black/30 p-1 transition focus:outline-none focus:ring-2 focus:ring-amber-200/60 ${
+              className={`rounded-xl focus:ring-amber-200/60 flex h-12 w-12 items-center justify-center border bg-black/30 p-1 transition focus:outline-none focus:ring-2 ${
                 selected
                   ? "border-amber-200 shadow-[0_0_0_2px_rgba(251,191,36,0.45)]"
                   : "border-white/15 hover:border-amber-100/40"
@@ -1776,17 +1805,20 @@ const HarthmereVoxelHeadShapeRow: React.FunctionComponent<{
   previewAppearance: ReadonlyAppearance;
   onSelect: (id: BiomesId) => void;
 }> = ({ selectedId, previewAppearance, onSelect }) => {
-  const headIds = useMemo(() => getBiscuits(bikkie.schema.head).map(({ id }) => id), []);
+  const headIds = useMemo(
+    () => getBiscuits(bikkie.schema.head).map(({ id }) => id),
+    []
+  );
   return (
     <div
-      className="rounded-2xl border border-white/10 bg-black/24 p-3"
+      className="rounded-2xl bg-black/24 border border-white/10 p-3"
       data-harthmere-builder-voxel-row="head_shape"
     >
       <div className="mb-2 flex items-center justify-between gap-3">
-        <div className="text-[0.7rem] font-black uppercase tracking-[0.18em] text-amber-100/72">
+        <div className="text-amber-100/72 text-[0.7rem] font-black uppercase tracking-[0.18em]">
           Head shape
         </div>
-        <div className="max-w-[12rem] truncate rounded-full border border-white/10 bg-white/[0.055] px-2 py-0.5 text-[0.66rem] font-black text-white/70">
+        <div className="py-0.5 max-w-[12rem] truncate rounded-full border border-white/10 bg-white/[0.055] px-2 text-[0.66rem] font-black text-white/70">
           {selectedId ? `#${selectedId}` : "—"}
         </div>
       </div>
@@ -1800,7 +1832,7 @@ const HarthmereVoxelHeadShapeRow: React.FunctionComponent<{
               aria-pressed={selected}
               aria-label={`Head shape ${id}`}
               data-harthmere-builder-voxel-head={id}
-              className={`relative aspect-square overflow-hidden rounded-xl border bg-black/30 transition focus:outline-none focus:ring-2 focus:ring-amber-200/60 ${
+              className={`rounded-xl focus:ring-amber-200/60 relative aspect-square overflow-hidden border bg-black/30 transition focus:outline-none focus:ring-2 ${
                 selected
                   ? "border-amber-200 shadow-[0_0_0_2px_rgba(251,191,36,0.45)]"
                   : "border-white/15 hover:border-amber-100/40"
@@ -1850,18 +1882,49 @@ const CharacterWakeupContent: React.FunctionComponent<{
   );
 
   useEffect(() => {
-    migrateHarthmereAnonymousCustomizationToUser(userId);
-    const cleanup = clearHarthmereOtherCustomizationSessionsForUser(userId);
-    if (cleanup.removedKeys.length > 0) {
-      console.info(
-        "[HarthmereBuilder] Removed old local character sessions",
-        cleanup
+    const reloadFromStorage = (source: string) => {
+      migrateHarthmereAnonymousCustomizationToUser(userId);
+      const cleanup = clearHarthmereOtherCustomizationSessionsForUser(userId);
+      if (cleanup.removedKeys.length > 0) {
+        console.info(
+          "[HarthmereBuilder] Removed old local character sessions",
+          cleanup
+        );
+      }
+      const nextBody = loadHarthmerePlayerBodyConfig(userId);
+      const nextFace = loadHarthmerePlayerFaceConfig(userId);
+      const nextClothing = loadHarthmerePlayerClothingConfig(userId, nextBody);
+      setHarthmereFace(nextFace);
+      setHarthmereBody(nextBody);
+      setHarthmereClothing(nextClothing);
+      if (harthmereBuilderAuditEnabled()) {
+        window.dispatchEvent(
+          new CustomEvent("biomes:harthmere-builder-cloud-restore-applied", {
+            detail: {
+              version: HARTHMERE_BUILDER_FEATURE_AUDIT_VERSION,
+              source,
+              userId,
+              face: nextFace,
+              body: nextBody,
+              clothing: nextClothing,
+            },
+          })
+        );
+      }
+    };
+
+    reloadFromStorage("mount");
+    const onCloudRestore = () => reloadFromStorage("cloud-save");
+    window.addEventListener(
+      HARTHMERE_GLITCH_CLOUD_SAVE_RESTORED_EVENT_V153,
+      onCloudRestore
+    );
+    return () => {
+      window.removeEventListener(
+        HARTHMERE_GLITCH_CLOUD_SAVE_RESTORED_EVENT_V153,
+        onCloudRestore
       );
-    }
-    const nextBody = loadHarthmerePlayerBodyConfig(userId);
-    setHarthmereFace(loadHarthmerePlayerFaceConfig(userId));
-    setHarthmereBody(nextBody);
-    setHarthmereClothing(loadHarthmerePlayerClothingConfig(userId, nextBody));
+    };
   }, [userId]);
 
   useEffect(() => {
@@ -2087,8 +2150,11 @@ const CharacterWakeupContent: React.FunctionComponent<{
     const auditEnabled =
       process.env.NODE_ENV !== "production" ||
       Boolean(
-        (window as typeof window & { __HARTHMERE_BUILDER_AUDIT_ENABLED?: boolean })
-          .__HARTHMERE_BUILDER_AUDIT_ENABLED
+        (
+          window as typeof window & {
+            __HARTHMERE_BUILDER_AUDIT_ENABLED?: boolean;
+          }
+        ).__HARTHMERE_BUILDER_AUDIT_ENABLED
       );
     if (!auditEnabled) return;
     const expectedFaceFields = [...HARTHMERE_BUILDER_VISUAL_FACE_FIELDS];
@@ -2358,10 +2424,10 @@ const CharacterWakeupContent: React.FunctionComponent<{
           }
           className="grid max-h-[calc(100vh-6.25rem)] min-h-[min(40rem,calc(100vh-6.25rem))] w-full grid-cols-1 gap-5 overflow-hidden text-left lg:grid-cols-[minmax(22rem,30rem)_minmax(0,1fr)]"
         >
-          <aside className="relative flex min-h-0 flex-col gap-4 overflow-hidden rounded-[2rem] border border-amber-200/20 bg-[radial-gradient(circle_at_50%_0%,rgba(251,191,36,0.18),rgba(15,23,42,0.94)_34%,rgba(2,6,23,0.96)_100%)] p-4 shadow-[0_24px_70px_rgba(0,0,0,0.42)] lg:row-span-2">
+          <aside className="border-amber-200/20 relative flex min-h-0 flex-col gap-4 overflow-hidden rounded-[2rem] border bg-[radial-gradient(circle_at_50%_0%,rgba(251,191,36,0.18),rgba(15,23,42,0.94)_34%,rgba(2,6,23,0.96)_100%)] p-4 shadow-[0_24px_70px_rgba(0,0,0,0.42)] lg:row-span-2">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <div className="text-[0.68rem] font-black uppercase tracking-[0.22em] text-amber-200/70">
+                <div className="text-amber-200/70 text-[0.68rem] font-black uppercase tracking-[0.22em]">
                   Live hero preview
                 </div>
                 <div className="mt-1 text-xl font-black text-white drop-shadow">
@@ -2369,20 +2435,17 @@ const CharacterWakeupContent: React.FunctionComponent<{
                   {BIOMES_HARTHMERE_TOWN_NAME}.
                 </div>
               </div>
-              <div className="rounded-full border border-emerald-200/25 bg-emerald-300/10 px-3 py-1 text-[0.68rem] font-black uppercase tracking-[0.16em] text-emerald-100">
+              <div className="border-emerald-200/25 bg-emerald-300/10 text-emerald-100 rounded-full border px-3 py-1 text-[0.68rem] font-black uppercase tracking-[0.16em]">
                 Auto-saved
               </div>
             </div>
-            <div className="preview-container relative min-h-[20rem] flex-1 overflow-hidden rounded-[1.75rem] border border-white/12 bg-[radial-gradient(circle_at_50%_18%,rgba(251,191,36,0.18),rgba(59,35,109,0.88)_38%,rgba(24,16,51,0.96)_100%)] p-4 shadow-inner lg:min-h-[24rem]">
+            <div className="preview-container border-white/12 relative min-h-[20rem] flex-1 overflow-hidden rounded-[1.75rem] border bg-[radial-gradient(circle_at_50%_18%,rgba(251,191,36,0.18),rgba(59,35,109,0.88)_38%,rgba(24,16,51,0.96)_100%)] p-4 shadow-inner lg:min-h-[24rem]">
               <div
                 className="harthmere-builder-real-avatar-frame"
                 data-harthmere-builder-real-avatar-preview="true"
               >
                 <CharacterPreview
-                  previewSlot={makePreviewSlot(
-                    "appearencePreview",
-                    "heroFull"
-                  )}
+                  previewSlot={makePreviewSlot("appearencePreview", "heroFull")}
                   meshVersionKey={harthmereFacePreviewKey}
                   disableLoadingBlur={true}
                   appearanceOverride={previewAppearance}
@@ -2400,7 +2463,7 @@ const CharacterWakeupContent: React.FunctionComponent<{
                 />
               </div>
             </div>
-            <p className="rounded-xl border border-white/10 bg-white/[0.035] p-2 text-[0.72rem] leading-snug text-white/62">
+            <p className="rounded-xl text-white/62 border border-white/10 bg-white/[0.035] p-2 text-[0.72rem] leading-snug">
               Drag to rotate. Skin, eye, hair, and head-shape choices are saved
               before the game starts.
             </p>
@@ -2410,15 +2473,15 @@ const CharacterWakeupContent: React.FunctionComponent<{
             className="harthmere-builder-options-scroll"
             data-harthmere-builder-options-scroll="true"
           >
-            <section className="min-h-0 overflow-y-auto rounded-[2rem] border border-white/14 bg-gradient-to-b from-black/48 to-slate-950/78 p-4 shadow-xl">
-              <div className="sticky top-0 z-10 mb-3 rounded-xl border border-white/10 bg-black/88 px-3 py-2 backdrop-blur">
-                <div className="text-[0.68rem] font-black uppercase tracking-[0.2em] text-amber-200/70">
+            <section className="border-white/14 from-black/48 to-slate-950/78 min-h-0 overflow-y-auto rounded-[2rem] border bg-gradient-to-b p-4 shadow-xl">
+              <div className="rounded-xl bg-black/88 sticky top-0 z-10 mb-3 border border-white/10 px-3 py-2 backdrop-blur">
+                <div className="text-amber-200/70 text-[0.68rem] font-black uppercase tracking-[0.2em]">
                   Voxel character
                 </div>
-                <div className="text-sm text-white/65">
+                <div className="text-white/65 text-sm">
                   Only the options the voxel renderer actually consumes are
-                  shown. Pick a head shape, palette, and hair — the live
-                  preview updates immediately.
+                  shown. Pick a head shape, palette, and hair — the live preview
+                  updates immediately.
                 </div>
               </div>
               <div className="grid grid-cols-1 gap-3">
@@ -2499,8 +2562,9 @@ const CharacterWakeupContent: React.FunctionComponent<{
 const WakeUpContent: React.FunctionComponent<{ onWakeup: () => void }> = ({
   onWakeup,
 }) => {
-  const { userId, reactResources, socialManager } = useClientContext();
+  const { userId, events, reactResources, socialManager } = useClientContext();
   const [state, setState] = useState<WakeUpState>("initial");
+  const cloudRestoreAutoWakeupRef = useRef(false);
   const [nameEntry, setNameEntry] = useState(() => {
     const name = reactResources.get("/ecs/c/label", userId)?.text ?? "";
     if (isInitialUsername(name)) {
@@ -2519,11 +2583,16 @@ const WakeUpContent: React.FunctionComponent<{ onWakeup: () => void }> = ({
       }
       setNameEntry((current) => {
         const currentName = current.trim();
-        const labelName = reactResources.get("/ecs/c/label", userId)?.text ?? "";
+        const labelName =
+          reactResources.get("/ecs/c/label", userId)?.text ?? "";
         if (currentName && !isInitialUsername(currentName)) {
           return current;
         }
-        if (labelName && !isInitialUsername(labelName) && labelName !== glitchName) {
+        if (
+          labelName &&
+          !isInitialUsername(labelName) &&
+          labelName !== glitchName
+        ) {
           return current;
         }
         return glitchName;
@@ -2542,6 +2611,47 @@ const WakeUpContent: React.FunctionComponent<{ onWakeup: () => void }> = ({
       );
     };
   }, [reactResources, userId]);
+
+  useEffect(() => {
+    const onCloudRestore = (event: Event) => {
+      if (cloudRestoreAutoWakeupRef.current) return;
+      const detail = (event as CustomEvent<HarthmereCloudRestoreDetailV153>)
+        .detail;
+      const hasRestoredCharacter =
+        detail?.hasCharacterCustomization === true ||
+        hasCurrentHarthmereCharacterCustomization(userId);
+      if (!hasRestoredCharacter) return;
+
+      const glitchName = getHarthmereGlitchUserName();
+      if (glitchName && !/^guest( user)?$/i.test(glitchName)) {
+        setNameEntry(glitchName);
+      }
+      cloudRestoreAutoWakeupRef.current = true;
+      emitHarthmereGlitchBehaviorEventV138(
+        "character_builder",
+        "cloud_restore_auto_apply",
+        {
+          cloud_save_version: detail?.cloudSaveVersion,
+          restored_key_count: detail?.restoredKeyCount,
+          migrated_key_count: detail?.migratedKeyCount,
+        }
+      );
+      fireAndForget(events.publish(new PlayerInitEvent({ id: userId })));
+      setState("waking");
+      window.setTimeout(() => onWakeup(), 0);
+    };
+
+    window.addEventListener(
+      HARTHMERE_GLITCH_CLOUD_SAVE_RESTORED_EVENT_V153,
+      onCloudRestore
+    );
+    return () => {
+      window.removeEventListener(
+        HARTHMERE_GLITCH_CLOUD_SAVE_RESTORED_EVENT_V153,
+        onCloudRestore
+      );
+    };
+  }, [events, onWakeup, userId]);
 
   const doUsernameSave = async () => {
     emitHarthmereGlitchBehaviorEventV138("onboarding_name", "submit", {
@@ -2580,10 +2690,10 @@ const WakeUpContent: React.FunctionComponent<{ onWakeup: () => void }> = ({
       state === "initial"
         ? "onboarding_intro"
         : state === "name-entry"
-          ? "onboarding_name"
-          : state === "character"
-            ? "character_builder"
-            : "onboarding_wakeup";
+        ? "onboarding_name"
+        : state === "character"
+        ? "character_builder"
+        : "onboarding_wakeup";
     emitHarthmereGlitchBehaviorEventV138(step, "screen_view", { state });
   }, [state]);
 
@@ -2751,9 +2861,8 @@ export const WakeUpScreen: React.FunctionComponent<{}> = ({}) => {
       ];
       return;
     }
-    document.documentElement.dataset[
-      HARTHMERE_WAKE_UP_ACTIVE_DATASET_KEY_V1
-    ] = "true";
+    document.documentElement.dataset[HARTHMERE_WAKE_UP_ACTIVE_DATASET_KEY_V1] =
+      "true";
     return () => {
       delete document.documentElement.dataset[
         HARTHMERE_WAKE_UP_ACTIVE_DATASET_KEY_V1

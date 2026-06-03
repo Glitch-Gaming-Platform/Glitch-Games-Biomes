@@ -61,6 +61,7 @@ import {
 } from "../tutorial/tutorialMissionMap";
 import { abilityVisibleInBiomesLibraryForTest } from "./abilityLibraryVisibility";
 import { mergeInventoryAndHotbarForBiomesBackpackForTest } from "./inventoryAdapterHelpers";
+import { shouldHydrateBiomesUILiveStateForTabV1 } from "./liveStateHydrationPolicy";
 import { readableMapMarkerLabelForTest } from "./mapMarkerLabels";
 import {
   activeBiomesUIMapPinFromMarkerForTest,
@@ -1765,8 +1766,9 @@ export function useBiomesUILiveAdapters({
 
   React.useEffect(() => {
     if (typeof window === "undefined") return;
+    if (!shouldHydrateBiomesUILiveStateForTabV1("banking", activeTab)) return;
     void refreshBankingState();
-  }, [refreshBankingState]);
+  }, [activeTab, refreshBankingState]);
 
   const refreshGuildState = React.useCallback(async () => {
     try {
@@ -1781,8 +1783,9 @@ export function useBiomesUILiveAdapters({
 
   React.useEffect(() => {
     if (typeof window === "undefined") return;
+    if (!shouldHydrateBiomesUILiveStateForTabV1("guild", activeTab)) return;
     void refreshGuildState();
-  }, [refreshGuildState]);
+  }, [activeTab, refreshGuildState]);
 
   const refreshBuildingState = React.useCallback(async () => {
     try {
@@ -1798,8 +1801,9 @@ export function useBiomesUILiveAdapters({
 
   React.useEffect(() => {
     if (typeof window === "undefined") return;
+    if (!shouldHydrateBiomesUILiveStateForTabV1("building", activeTab)) return;
     void refreshBuildingState();
-  }, [refreshBuildingState]);
+  }, [activeTab, refreshBuildingState]);
 
   const submitBuildingSystemLiveModeActionAndStore = React.useCallback(
     async (action: string, payload: Record<string, unknown>) => {
@@ -1828,8 +1832,11 @@ export function useBiomesUILiveAdapters({
 
   React.useEffect(() => {
     if (typeof window === "undefined") return;
+    if (!shouldHydrateBiomesUILiveStateForTabV1("inventoryLoot", activeTab)) {
+      return;
+    }
     void refreshInventoryLootState();
-  }, [refreshInventoryLootState]);
+  }, [activeTab, refreshInventoryLootState]);
 
   const refreshProgressionState = React.useCallback(async () => {
     try {
@@ -1844,8 +1851,10 @@ export function useBiomesUILiveAdapters({
 
   React.useEffect(() => {
     if (typeof window === "undefined") return;
+    if (!shouldHydrateBiomesUILiveStateForTabV1("progression", activeTab))
+      return;
     void refreshProgressionState();
-  }, [refreshProgressionState]);
+  }, [activeTab, refreshProgressionState]);
 
   const refreshDailyState = React.useCallback(async () => {
     try {
@@ -1860,8 +1869,9 @@ export function useBiomesUILiveAdapters({
 
   React.useEffect(() => {
     if (typeof window === "undefined") return;
+    if (!shouldHydrateBiomesUILiveStateForTabV1("daily", activeTab)) return;
     void refreshDailyState();
-  }, [refreshDailyState]);
+  }, [activeTab, refreshDailyState]);
 
   const refreshFarmingFoodState = React.useCallback(async () => {
     try {

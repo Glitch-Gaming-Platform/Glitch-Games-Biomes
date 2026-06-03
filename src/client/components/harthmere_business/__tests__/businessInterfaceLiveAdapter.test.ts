@@ -1203,8 +1203,7 @@ describe("Harthmere in-world business interface v2 screens", () => {
     const state = sampleSnapshot();
     const outpost = JSON.parse(
       JSON.stringify(
-        HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS_V1
-          .outpost_restaurant_redpot
+        HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS_V1.outpost_restaurant_redpot
       )
     );
     const outpostMetadata = HARTHMERE_BUSINESS_OUTPOSTS_V1.find(
@@ -1297,10 +1296,10 @@ describe("Harthmere in-world business interface v2 screens", () => {
         createdAtMs: 1,
       },
     });
-    assert.deepEqual(
-      boards.map((board) => board.markerId).sort(),
-      ["business_player_shop:marker", "business_player_shop:owner-npc"]
-    );
+    assert.deepEqual(boards.map((board) => board.markerId).sort(), [
+      "business_player_shop:marker",
+      "business_player_shop:owner-npc",
+    ]);
     assert.deepEqual(boards[0].position, { x: 12, y: 54, z: -18 });
     assert.equal(boards[0].businessId, "business_player_shop");
   });
@@ -1554,6 +1553,58 @@ describe("Harthmere in-world business interface v2 screens", () => {
     const miniGameJson = JSON.stringify(
       initialAdapter.getCustomerMiniGame("business_clinic")
     );
+    const activeState = sampleSnapshot();
+    const firstOfferId =
+      initialAdapter.getCustomerMiniGame("business_clinic").offers[0]?.offerId;
+    assert.ok(firstOfferId);
+    activeState.businessSystems.customerSessions = {
+      customer_shift_1: {
+        sessionId: "customer_shift_1",
+        businessId: "business_clinic",
+        typeId: "medical_doctor",
+        actorId: "player_a",
+        status: "active",
+        startedAtMs: Date.now(),
+        expiresAtMs: Date.now() + 60_000,
+        currentTicketId: "customer_ticket_1",
+        queue: [
+          {
+            ticketId: "customer_ticket_1",
+            npcId: "customer_jessa_mint",
+            askId: "urgent_checkup",
+            requestedOfferId: firstOfferId,
+            askLine: "I need a checkup before the road gets worse.",
+            status: "waiting",
+            arrivedAtMs: Date.now(),
+            patience: 46,
+            patienceRemaining: 46,
+            difficulty: 1,
+            rewardGold: 40,
+            reputationDelta: 1,
+            needDelta: 3,
+            navGoal: "counterNodeId",
+          },
+        ],
+        servedTicketIds: [],
+        failedTicketIds: [],
+        streak: 0,
+        satisfaction: 50,
+        earnedGold: 0,
+        notes: [],
+      },
+    } as any;
+    const activeAdapter = createHarthmereBusinessInterfaceAdapterV1({
+      state: activeState,
+      hydrated: true,
+      refresh: async () => activeState,
+      submit: async () => ({ ok: true, economyState: activeState }),
+    });
+    const activeMiniGameJson = JSON.stringify(
+      activeAdapter.getCustomerMiniGame("business_clinic")
+    );
+    const firstOfferLabel =
+      activeAdapter.getCustomerMiniGame("business_clinic").offers[0]?.label;
+    assert.ok(firstOfferLabel);
 
     await writeFile(
       entryPath,
@@ -1565,10 +1616,12 @@ describe("Harthmere in-world business interface v2 screens", () => {
         const business = ${businessJson};
         const businessType = ${businessTypeJson};
         const miniGame = ${miniGameJson};
+        const activeMiniGame = ${activeMiniGameJson};
         window.__businessOperations = [];
 
         function Harness() {
           const [ready, setReady] = React.useState(false);
+          const [currentMiniGame, setCurrentMiniGame] = React.useState(miniGame);
           React.useEffect(() => {
             const timer = window.setTimeout(() => setReady(true), 20);
             return () => window.clearTimeout(timer);
@@ -1580,7 +1633,7 @@ describe("Harthmere in-world business interface v2 screens", () => {
               getBusiness: (businessId) => businessId === "business_clinic" ? business : undefined,
               getBusinessType: (businessId) => businessId === "business_clinic" ? businessType : undefined,
               getMode: () => "customer",
-              getCustomerMiniGame: () => miniGame,
+              getCustomerMiniGame: () => currentMiniGame,
               getBikkieGraphics: () => [],
               startCustomerSession: async (businessId) => {
                 window.__businessOperations.push({
@@ -1588,9 +1641,18 @@ describe("Harthmere in-world business interface v2 screens", () => {
                   payload: { businessId },
                 });
                 await new Promise((resolve) => window.setTimeout(resolve, 5));
+                setCurrentMiniGame(activeMiniGame);
+              },
+              serveCustomer: async (businessId, offerId, sessionId, ticketId) => {
+                window.__businessOperations.push({
+                  operation: "serve_customer",
+                  payload: { businessId, offerId, sessionId, ticketId },
+                });
+                await new Promise((resolve) => window.setTimeout(resolve, 5));
+                throw new Error("economy_rejected:business_customer_session_not_active");
               },
             };
-          }, [ready]);
+          }, [ready, currentMiniGame]);
           return (
             <HarthmereBusinessInterfacePanel
               adapter={adapter}
@@ -1640,13 +1702,10 @@ describe("Harthmere in-world business interface v2 screens", () => {
             pluginBuild.onResolve({ filter: /^@\// }, (args) => ({
               path: resolveRepoAliasForEsbuildV1(args.path),
             }));
-            pluginBuild.onResolve(
-              { filter: /PointerLockContext$/ },
-              () => ({
-                path: "pointer-lock-context",
-                namespace: "business-panel-test",
-              })
-            );
+            pluginBuild.onResolve({ filter: /PointerLockContext$/ }, () => ({
+              path: "pointer-lock-context",
+              namespace: "business-panel-test",
+            }));
             pluginBuild.onResolve(
               { filter: /pointerLockModalPolicy$/ },
               () => ({
@@ -1669,7 +1728,10 @@ describe("Harthmere in-world business interface v2 screens", () => {
               })
             );
             pluginBuild.onLoad(
-              { filter: /pointer-lock-context/, namespace: "business-panel-test" },
+              {
+                filter: /pointer-lock-context/,
+                namespace: "business-panel-test",
+              },
               () => ({
                 contents:
                   "export function usePointerLockManager() { return {}; }",
@@ -1677,7 +1739,10 @@ describe("Harthmere in-world business interface v2 screens", () => {
               })
             );
             pluginBuild.onLoad(
-              { filter: /pointer-lock-policy/, namespace: "business-panel-test" },
+              {
+                filter: /pointer-lock-policy/,
+                namespace: "business-panel-test",
+              },
               () => ({
                 contents: [
                   "export function openPointerLockUnlockWhileOpenV1() {}",
@@ -1687,7 +1752,10 @@ describe("Harthmere in-world business interface v2 screens", () => {
               })
             );
             pluginBuild.onLoad(
-              { filter: /bikkie-visual-rendering/, namespace: "business-panel-test" },
+              {
+                filter: /bikkie-visual-rendering/,
+                namespace: "business-panel-test",
+              },
               () => ({
                 contents: [
                   "export const harthmereBikkieVisualGlyphStyleV1 = {};",
@@ -1710,7 +1778,10 @@ describe("Harthmere in-world business interface v2 screens", () => {
               })
             );
             pluginBuild.onLoad(
-              { filter: /business-interface-adapter/, namespace: "business-panel-test" },
+              {
+                filter: /business-interface-adapter/,
+                namespace: "business-panel-test",
+              },
               () => ({
                 contents:
                   "export function formatHarthmereBusinessPlayerWarningV1(value) { return String(value ?? '').replace(/[_:-]+/g, ' '); }",
@@ -1763,6 +1834,22 @@ describe("Harthmere in-world business interface v2 screens", () => {
             payload: { businessId: "business_clinic" },
           },
         ]
+      );
+      await page.getByRole("button", { name: firstOfferLabel }).click();
+      await page
+        .getByText("That customer timed out. Start a new shift.")
+        .waitFor({
+          timeout: 15_000,
+        });
+      assert.deepEqual(browserErrors, []);
+      assert.equal(
+        await page.evaluate(
+          () =>
+            (window as any).__businessOperations.filter(
+              (row: any) => row.operation === "serve_customer"
+            ).length
+        ),
+        1
       );
     } finally {
       await browser.close();

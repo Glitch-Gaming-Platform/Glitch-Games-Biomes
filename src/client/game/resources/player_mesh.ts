@@ -11,7 +11,11 @@ import type {
   ClientResources,
   ClientResourcesBuilder,
 } from "@/client/game/resources/types";
-import { gltfToThree, loadGltf } from "@/client/game/util/gltf_helpers";
+import {
+  gltfToThree,
+  loadGltf,
+  loadGltfWithCoalescedNetworkFetchV1,
+} from "@/client/game/util/gltf_helpers";
 import {
   blockPlaceParticleTexture,
   playerBuffParticleMaterials,
@@ -3515,7 +3519,7 @@ export function setFrustumCulling(gltf: GLTF, frustumCulling: boolean) {
 
 async function genFetchPlayerMeshGLTF(deps: ClientResourceDeps, url: string) {
   const isHarthmereVariantMesh = isHarthmerePlayerBodyVariantUrl(url);
-  const mesh = await loadGltf(url);
+  const mesh = await loadGltfWithCoalescedNetworkFetchV1(url);
   const hash = url;
 
   if (isHarthmereVariantMesh) {

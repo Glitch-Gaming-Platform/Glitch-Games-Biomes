@@ -65,6 +65,7 @@ import {
   biomesUIVitalsDisplayFromLiveStatusForTest,
   formatBiomesResourceLabelForVitalsForTest,
 } from "../adapters/playerStatusAdapter";
+import { shouldHydrateBiomesUILiveStateForTabV1 } from "../adapters/liveStateHydrationPolicy";
 import {
   biomesUIActiveMapPinNavigationAidKindForTest,
   biomesUIActiveMapPinNavigationAidSpecForTest,
@@ -112,6 +113,56 @@ function tagForDataAction(html: string, action: string): string {
 }
 
 describe("Biomes UI progression tabs", () => {
+  it("lazy-hydrates hidden live state tabs while keeping world guidance eager", () => {
+    for (const key of [
+      "banking",
+      "guild",
+      "building",
+      "inventoryLoot",
+      "progression",
+      "daily",
+    ] as const) {
+      assert.equal(shouldHydrateBiomesUILiveStateForTabV1(key, null), false);
+    }
+    assert.equal(
+      shouldHydrateBiomesUILiveStateForTabV1("banking", "banking"),
+      true
+    );
+    assert.equal(
+      shouldHydrateBiomesUILiveStateForTabV1("guild", "guilds"),
+      true
+    );
+    assert.equal(
+      shouldHydrateBiomesUILiveStateForTabV1("building", "land"),
+      true
+    );
+    assert.equal(
+      shouldHydrateBiomesUILiveStateForTabV1("inventoryLoot", "inventory"),
+      true
+    );
+    assert.equal(
+      shouldHydrateBiomesUILiveStateForTabV1("inventoryLoot", "loot"),
+      true
+    );
+    assert.equal(
+      shouldHydrateBiomesUILiveStateForTabV1("progression", "abilities"),
+      true
+    );
+    assert.equal(
+      shouldHydrateBiomesUILiveStateForTabV1("daily", "daily"),
+      true
+    );
+    assert.equal(
+      shouldHydrateBiomesUILiveStateForTabV1("farmingFood", null),
+      true
+    );
+    assert.equal(
+      shouldHydrateBiomesUILiveStateForTabV1("jobsBoard", null),
+      true
+    );
+    assert.equal(shouldHydrateBiomesUILiveStateForTabV1("quest", null), true);
+  });
+
   it("opens with the daily checklist first", () => {
     assert.equal(TAB_ORDER[0], "daily");
     assert.equal(TAB_DESCRIPTORS.daily.shortcut, "R");

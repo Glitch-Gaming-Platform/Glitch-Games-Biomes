@@ -67,11 +67,7 @@ import { updatePlayerSkinnedMaterial } from "@/gen/client/game/shaders/player_sk
 import type { Tweaks } from "@/server/shared/minigames/ruleset/tweaks";
 import type { Disposable } from "@/shared/disposable";
 import { makeDisposable } from "@/shared/disposable";
-import type {
-  ReadonlyEntity,
-  ReadonlyEntityWith,
-} from "@/shared/ecs/gen/entities";
-import { Entity } from "@/shared/ecs/gen/entities";
+import type { ReadonlyEntity } from "@/shared/ecs/gen/entities";
 import type { ReadonlyOptionalDamageSource } from "@/shared/ecs/gen/types";
 import { getAabbForEntity } from "@/shared/game/entity_sizes";
 import {
@@ -147,6 +143,13 @@ import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeom
 import type { GLTF } from "three/examples/jsm/loaders/GLTFLoader";
 import * as SkeletonUtils from "three/examples/jsm/utils/SkeletonUtils";
 
+export {
+  HARTHMERE_NPC_RENDER_COMPONENT_COMPAT_VERSION_V1,
+  harthmereEnsureRenderableNpcEntityV1,
+  isRenderNpcEntity,
+  type RenderNpcEntity,
+} from "@/client/game/resources/harthmere_npc_render_compat_v1";
+import type { RenderNpcEntity } from "@/client/game/resources/harthmere_npc_render_compat_v1";
 
 export interface ActiveBecomeNpcState {
   kind: "active";
@@ -341,26 +344,6 @@ export interface ConsecutiveFrameState {
 }
 
 type NpcChannels = "itemOnHit" | "npcVoice";
-
-const RENDER_NPC_COMPONENTS = [
-  "rigid_body",
-  "npc_metadata",
-  "position",
-  "size",
-  "orientation",
-  "health",
-] as const;
-
-export type RenderNpcEntity = ReadonlyEntityWith<
-  (typeof RENDER_NPC_COMPONENTS)[number]
->;
-
-export function isRenderNpcEntity(
-  entity: ReadonlyEntity
-): entity is RenderNpcEntity {
-  return Entity.has(entity, ...RENDER_NPC_COMPONENTS);
-}
-
 
 const HARTHMERE_NPC_WALK_RUN_ANIMATION_VERSION =
   "harthmere-npc-walk-run-animation-v87";

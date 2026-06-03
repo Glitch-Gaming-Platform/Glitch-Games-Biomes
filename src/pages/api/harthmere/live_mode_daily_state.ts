@@ -1,5 +1,6 @@
 import { connectToRedis } from "@/server/shared/redis/connection";
 import { biomesApiHandler } from "@/server/web/util/api_middleware";
+import { readHarthmereRedisStringsV1 } from "@/server/harthmere/live_mode_state_read_helpers";
 import {
   createHarthmereCareLoopClientSnapshotFromBackendV1,
   harthmereLiveModePlayerStateKeyV1,
@@ -25,10 +26,9 @@ export const zHarthmereLiveModeDailyStateResponse = z.object({
   dailyState: zHarthmereCareLoopClientSnapshotResponse,
 });
 
-const globalForHarthmereLiveModeDailyState =
-  globalThis as typeof globalThis & {
-    __harthmereLiveModeDailyStateRedisV1?: ReturnType<typeof connectToRedis>;
-  };
+const globalForHarthmereLiveModeDailyState = globalThis as typeof globalThis & {
+  __harthmereLiveModeDailyStateRedisV1?: ReturnType<typeof connectToRedis>;
+};
 
 function liveModeDailyStateRedisV1() {
   return (globalForHarthmereLiveModeDailyState.__harthmereLiveModeDailyStateRedisV1 ??=
@@ -36,12 +36,23 @@ function liveModeDailyStateRedisV1() {
 }
 
 export async function readHarthmereLiveModeDailyStateForActorV1(input: {
-  redis: { primary: { get: (key: string) => Promise<string | null> } };
+  redis: {
+    primary: {
+      get: (key: string) => Promise<string | null>;
+      mget?: (...keys: string[]) => Promise<Array<string | null>>;
+    };
+  };
   actorId: string;
   nowMs: number;
 }) {
-  const rawState = await input.redis.primary.get(harthmereLiveModePlayerStateKeyV1(input.actorId));
-  const state = parseHarthmereLiveModeBackendStateV1(rawState, input.actorId, input.nowMs);
+  const [rawState] = await readHarthmereRedisStringsV1(input.redis.primary, [
+    harthmereLiveModePlayerStateKeyV1(input.actorId),
+  ]);
+  const state = parseHarthmereLiveModeBackendStateV1(
+    rawState,
+    input.actorId,
+    input.nowMs
+  );
   state.updatedAtMs = input.nowMs;
   return createHarthmereCareLoopClientSnapshotFromBackendV1(state, input.nowMs);
 }

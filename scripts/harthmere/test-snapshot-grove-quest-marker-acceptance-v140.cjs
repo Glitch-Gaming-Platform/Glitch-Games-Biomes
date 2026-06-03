@@ -48,7 +48,7 @@ function firstTrigger(id) {
 
 ok(
   'accepting a quest only auto-skips an already-satisfied talk_npc opener',
-  /const shouldSkipFirstStep = startsByTalkingToGiver && quest\.objectives\.length > 1;/.test(runtime),
+  /const shouldSkipFirstStep\s*=\s*startsByTalkingToGiver\s*&&\s*quest\.objectives\.length\s*>\s*1;/.test(runtime),
 );
 ok(
   'accepting a quest no longer auto-completes arbitrary non-talk steps just because marker 0 was the giver',
