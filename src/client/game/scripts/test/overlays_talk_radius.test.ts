@@ -37,7 +37,8 @@ function assertTalkable(value: number | undefined) {
 describe("Harthmere NPC talk fallback radius", () => {
   it("keeps nearby front-facing NPCs talkable without requiring an exact ray hit", () => {
     assertTalkable(score([0, 70, -3]));
-    assertTalkable(score([2.8, 70, -5.4]));
+    // Front-facing, side-angled, and within the tightened 4.5m talk radius.
+    assertTalkable(score([2.0, 70, -3.5]));
     assertTalkable(score([0, 70, 0]));
   });
 
@@ -74,7 +75,7 @@ describe("Harthmere NPC talk fallback radius", () => {
 
   it("scores the centered nearby NPC ahead of a farther side candidate", () => {
     const centered = score([0, 70, -3]);
-    const side = score([4, 70, -3]);
+    const side = score([3, 70, -3]);
 
     assertTalkable(centered);
     assertTalkable(side);
@@ -87,7 +88,7 @@ describe("Harthmere NPC talk fallback radius", () => {
         minViewDot: 0.75,
       })
     );
-    assert.equal(score([4, 70, -3], { minViewDot: 0.9 }), undefined);
+    assert.equal(score([3, 70, -2], { minViewDot: 0.9 }), undefined);
     assert.equal(score([0, 70, 1], { minViewDot: -0.25 }), undefined);
   });
 

@@ -1,5 +1,6 @@
 import assert from "assert";
 import {
+  calculateHarthmereDamage,
   resolveHarthmereCombatAction,
   respawnHarthmereCombatant,
   validateHarthmereCombatRequest,
@@ -257,5 +258,31 @@ describe("combat_system_v1 rule oversight fixes", () => {
     assert.equal(valid.combatant.hp, 100);
     assert.equal(valid.combatant.resources?.mana, 30);
     assert.equal(valid.combatant.spawnProtectedUntilMs, NOW + 25_000);
+  });
+});
+
+describe("combat_system_v1 — friendly fire + support abilities (audit hardening)", () => {
+  it("never deals damage for supportive ability types", () => {
+    const healed = calculateHarthmereDamage({
+      attacker: combatant({ id: "healer", attackPoints: 300 }),
+      defender: combatant({ id: "ally", hp: 40, maxHp: 100 }),
+      ability: lethalStrike({ id: "mend", name: "Mend", type: "heal", abilityMultiplier: 1 }),
+      hitResult: "normal_hit",
+    });
+    assert.equal(healed.finalDamage, 0);
+    assert.equal(healed.rawDamage, 0);
+  });
+
+  it("blocks a hostile ability aimed at an allied relationship", () => {
+    const result = validateHarthmereCombatRequest(request({ relationship: "party_member" }));
+    assert.ok(result.reasons.includes("friendly_fire_blocked"));
+    assert.equal(result.ok, false);
+  });
+
+  it("allows a supportive ability on an ally without a friendly-fire block", () => {
+    const result = validateHarthmereCombatRequest(
+      request({ relationship: "party_member", ability: lethalStrike({ id: "mend", name: "Mend", type: "heal" }) })
+    );
+    assert.ok(!result.reasons.includes("friendly_fire_blocked"));
   });
 });

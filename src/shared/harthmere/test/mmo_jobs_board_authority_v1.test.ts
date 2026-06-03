@@ -376,7 +376,40 @@ describe("mmo_jobs_board_authority_v1 — issuers and abuse protections", () => 
     const job2 = Object.keys(posted2.jobsBoard.postings)[0];
     const active = mutate(posted2.jobsBoard, "accept_job", { jobId: job2 }, {}, "seeker");
     const failed = mutate(active.jobsBoard, "cancel_job", { jobId: job2 }, {}, "poster2");
+    // Active cancellation still records the job as "failed" (anti bait-and-switch), but the
+    // escrowed reward must return to the issuer rather than being silently destroyed.
     assert.equal(failed.jobsBoard.postings[job2].status, "failed");
-    assert.equal(failed.inventoryGoldDelta, 0);
+    assert.equal(failed.inventoryGoldDelta, 120);
+    assert.equal(failed.jobsBoard.postings[job2].escrowGold, 0, "escrow must be cleared after refund");
+  });
+});
+
+describe("mmo_jobs_board_authority_v1 — abandon + failure penalty (audit hardening)", () => {
+  it("lets a seeker abandon an accepted job, returning it to open and charging the failure penalty", () => {
+    const posted = mutate(defaultHarthmereJobsBoardStateV1(NOW), "create_job_posting", postPayload(), {}, "poster");
+    const jobId = Object.keys(posted.jobsBoard.postings)[0];
+    const accepted = mutate(posted.jobsBoard, "accept_job", { jobId }, {}, "seeker");
+    assert.equal(accepted.jobsBoard.postings[jobId].status, "active");
+    const penalty = accepted.jobsBoard.postings[jobId].failurePenaltyGold;
+    assert.ok(penalty > 0, "job should carry a failure penalty");
+
+    const abandoned = mutate(accepted.jobsBoard, "abandon_job", { jobId }, {}, "seeker");
+    assert.deepEqual(abandoned.warnings, []);
+    assert.equal(abandoned.jobsBoard.postings[jobId].status, "open", "job returns to the open pool");
+    assert.equal(abandoned.jobsBoard.postings[jobId].acceptedByActorId, undefined);
+    assert.equal(abandoned.inventoryGoldDelta, -penalty, "seeker pays the failure penalty");
+
+    // The freed job can be accepted by another seeker.
+    const reaccepted = mutate(abandoned.jobsBoard, "accept_job", { jobId }, {}, "seeker2");
+    assert.deepEqual(reaccepted.warnings, []);
+    assert.equal(reaccepted.jobsBoard.postings[jobId].acceptedByActorId, "seeker2");
+  });
+
+  it("rejects abandon from an actor who did not accept the job", () => {
+    const posted = mutate(defaultHarthmereJobsBoardStateV1(NOW), "create_job_posting", postPayload(), {}, "poster");
+    const jobId = Object.keys(posted.jobsBoard.postings)[0];
+    const accepted = mutate(posted.jobsBoard, "accept_job", { jobId }, {}, "seeker");
+    const r = mutate(accepted.jobsBoard, "abandon_job", { jobId }, {}, "other");
+    assert.ok(r.warnings.includes("jobs_board_rejected:job_not_accepted_by_actor"));
   });
 });

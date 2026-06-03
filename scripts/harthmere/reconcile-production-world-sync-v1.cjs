@@ -23,6 +23,14 @@ const {
   harthmereSnapshotGroveNpcSeedIdsV1,
 } = require("../../src/server/harthmere/snapshot_grove_npc_ecs_seed_v1");
 const {
+  buildHarthmereBusinessOwnerNpcSeedProposedChangesV1,
+  harthmereBusinessOwnerNpcSeedEntityIdsV1,
+} = require("../../src/server/harthmere/business_owner_npc_ecs_seed_v1");
+const {
+  buildHarthmereBusinessCustomerNpcSeedProposedChangesV1,
+  harthmereBusinessCustomerNpcSeedEntityIdsV1,
+} = require("../../src/server/harthmere/business_customer_npc_ecs_seed_v1");
+const {
   createHarthmereLiveModeSharedWorldStateV1,
   defaultHarthmereLiveModeBackendStateV1,
   harthmereLiveModeSharedWorldStateKeyV1,
@@ -67,6 +75,23 @@ async function reconcileEcsSeeds(world, nowSeconds) {
       label: "Snapshot Grove NPCs",
       ids: harthmereSnapshotGroveNpcSeedIdsV1(),
       build: buildHarthmereSnapshotGroveNpcSeedProposedChangesV1,
+    },
+    {
+      // HARTHMERE_BUSINESS_OWNER_RECONCILE_V1: without this family the 19 shop
+      // owner NPCs are never materialized into production, leaving the businesses
+      // empty. Adding it here is what makes new authored content reach prod on
+      // deploy.
+      label: "Business owner NPCs",
+      ids: harthmereBusinessOwnerNpcSeedEntityIdsV1(),
+      build: buildHarthmereBusinessOwnerNpcSeedProposedChangesV1,
+    },
+    {
+      // HARTHMERE_BUSINESS_CUSTOMER_RECONCILE_V1: the 2-5 standing customer NPCs
+      // inside each business (talkable patrons, not quest givers). Same as the
+      // owners — without this family they never reach production.
+      label: "Business customer NPCs",
+      ids: harthmereBusinessCustomerNpcSeedEntityIdsV1(),
+      build: buildHarthmereBusinessCustomerNpcSeedProposedChangesV1,
     },
   ];
   const requiredIds = seedFamilies.flatMap((family) => family.ids);

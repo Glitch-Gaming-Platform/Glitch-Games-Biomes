@@ -86,7 +86,7 @@ export async function buildRenderers(loader: RegistryLoader<ClientContext>) {
     // HARTHMERE_QUEST_OBJECT_MARKERS_V145: small procedural stand-ins for
     // quest-linked Grove props so map objectives do not point at invisible
     // filtered/asset-dependent objects.
-    makeHarthmereQuestObjectMarkersRendererV145(),
+    makeHarthmereQuestObjectMarkersRendererV145(resources),
     new BoundaryRenderer(resources),
     makeBeamRenderer(mapManager, resources),
     new AudioRenderer(resources, audioManager),

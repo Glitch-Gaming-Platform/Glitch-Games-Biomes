@@ -142,7 +142,9 @@ const CLASS_DEFS: Record<HarthmereClassIdV1, HarthmereClassDefinitionV1> = {
     roles: ["tank", "healer", "damage"],
     specializations: ["protection", "devotion", "wrath"],
     startingAbilities: ["smite", "shield_of_faith", "judgment"],
-    startingSkills: { character_level: 1, melee_combat: 1, holy_magic: 1 },
+    // judgment requires persuasion 1; grant it so the Paladin's own starting ability is
+    // re-learnable (e.g. after a respec/class re-pick), not just bestowed once.
+    startingSkills: { character_level: 1, melee_combat: 1, holy_magic: 1, persuasion: 1 },
   },
   necromancer: {
     id: "necromancer",

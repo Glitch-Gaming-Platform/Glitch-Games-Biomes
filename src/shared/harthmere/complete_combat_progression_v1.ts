@@ -8832,7 +8832,10 @@ export function enemyKillXpRewardV1(context: HarthmereRewardContextV1): { xp: nu
     training_dummy: 0,
   };
 
-  let xp = Math.round(35 * Math.max(1, context.targetLevel) * levelDifferenceXpModifierV1(context.playerLevel, context.targetLevel) * rankModifiers[context.targetRank]);
+  // Fall back to a 1x modifier for any rank not in the table so a missing/evolving rank
+  // yields a finite XP value rather than NaN (which would poison level-gain math).
+  const rankModifier = rankModifiers[context.targetRank] ?? 1;
+  let xp = Math.round(35 * Math.max(1, context.targetLevel) * levelDifferenceXpModifierV1(context.playerLevel, context.targetLevel) * rankModifier);
   if (context.playerLevel - context.targetLevel >= 10) {
     xp = 0;
     reasons.push("enemy_10_plus_levels_lower_no_xp");

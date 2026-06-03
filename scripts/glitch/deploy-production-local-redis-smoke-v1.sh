@@ -556,6 +556,73 @@ validate_production_world_sync_http_v188() {
   log "Live Harthmere world API validation passed for revision $revision."
 }
 
+# HARTHMERE_PRODUCTION_CONTENT_AUDIT_V1:
+# After reconciliation, confirm the authored content families actually exist in
+# production Redis by entity-id range. This is the automatic guard that catches
+# "we added content to the game but it never reached production" (e.g. the 19
+# business owner NPCs that were missing). Entity ids are
+# SNAPSHOT_GROVE_LOCAL_DEV_NPC_BASE_V75 (8810000000010000) + idOffset.
+audit_production_authored_content_v1() {
+  if [ "${HARTHMERE_SKIP_PRODUCTION_CONTENT_AUDIT:-0}" = "1" ]; then
+    log "Skipping production authored-content audit by request."
+    return
+  fi
+  local base=8810000000010000
+  count_present_id_range_v1() {
+    local lo="$1" hi="$2" off
+    { for off in $(seq "$lo" "$hi"); do echo "EXISTS b:$((base + off))"; done; } \
+      | prod_redis_cli_v186 2>/dev/null | grep -c '^1$' || true
+  }
+  local grove_npcs muckers owners customers robots
+  grove_npcs="$(count_present_id_range_v1 9301 9320 | tr -d '[:space:]')"
+  muckers="$(count_present_id_range_v1 9451 9550 | tr -d '[:space:]')"
+  owners="$(count_present_id_range_v1 9601 9619 | tr -d '[:space:]')"
+  # Business customers: 19 businesses x 3 patrons = 57, offsets 9701..9757.
+  customers="$(count_present_id_range_v1 9701 9757 | tr -d '[:space:]')"
+  robots="$(count_present_id_range_v1 9401 9420 | tr -d '[:space:]')"
+  log "Production authored-content audit: groveNpcs=${grove_npcs} muckers=${muckers}/100 businessOwners=${owners}/19 businessCustomers=${customers}/57 robots=${robots}"
+
+  local failed=0
+  if [ "${owners:-0}" -lt 19 ]; then
+    echo "ERROR business owner NPCs missing in production: ${owners}/19 — the reconciler did not materialize them." >&2
+    failed=1
+  fi
+  if [ "${customers:-0}" -lt 57 ]; then
+    echo "ERROR business customer NPCs missing in production: ${customers}/57 — the reconciler did not materialize them." >&2
+    failed=1
+  fi
+  if [ "${muckers:-0}" -lt 100 ]; then
+    echo "ERROR muck monsters missing in production: ${muckers}/100." >&2
+    failed=1
+  fi
+  if [ "${grove_npcs:-0}" -lt 1 ]; then
+    echo "ERROR Snapshot Grove NPCs missing in production: ${grove_npcs}." >&2
+    failed=1
+  fi
+  if [ "$failed" = "1" ]; then
+    echo "ERROR production authored-content audit FAILED — prod/local content discrepancy not resolved." >&2
+    exit 1
+  fi
+  log "Production authored-content audit passed: all authored families materialized in production."
+}
+
+# HARTHMERE_ENTITY_GROUNDING_PROBE_V1 (opt-in):
+# Probe the real production terrain at every seeded entity position and verify
+# the client grounder's scan budget reaches the surface everywhere (no entity
+# floats/buries/cave-traps). Heavy (scans the world + voxeloo decode), so it is
+# off by default; enable with HARTHMERE_RUN_GROUNDING_PROBE=1.
+run_production_grounding_probe_v1() {
+  if [ "${HARTHMERE_RUN_GROUNDING_PROBE:-0}" != "1" ]; then
+    return
+  fi
+  log "Probing production terrain grounding (entity positions vs real surface)."
+  REDIS_HOST="${HARTHMERE_WORLD_SYNC_REDIS_HOST:-$PROD_REDIS_PUBLIC_HOST}" \
+    GLITCH_REDIS_HOST="${HARTHMERE_WORLD_SYNC_REDIS_HOST:-$PROD_REDIS_PUBLIC_HOST}" \
+    REDIS_PORT="${HARTHMERE_WORLD_SYNC_REDIS_PORT:-$PROD_REDIS_PORT}" \
+    IS_SERVER=1 \
+    node scripts/harthmere/probe-production-terrain-grounding-v1.cjs
+}
+
 reconcile_production_world_sync_v188() {
   local revision="$1"
 
@@ -589,6 +656,8 @@ reconcile_production_world_sync_v188() {
     node scripts/harthmere/reconcile-production-world-sync-v1.cjs
 
   validate_production_world_sync_http_v188 "$revision"
+  audit_production_authored_content_v1
+  run_production_grounding_probe_v1
 }
 
 cleanup() {

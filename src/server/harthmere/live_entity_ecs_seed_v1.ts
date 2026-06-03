@@ -8,8 +8,8 @@ import {
 import type { BiomesId } from "@/shared/ids";
 import { LOCAL_DEV_HUMAN_NPC_TYPE_ID, isNpcTypeId } from "@/shared/npc/bikkie";
 import {
-  HARTHMERE_LIVE_ENTITY_PRODUCTION_SEED_IDS_V1,
   HARTHMERE_LIVE_ENTITY_ROBOT_SENTINEL_SEEDS_V1,
+  harthmereActiveLiveEntityProductionSeedIdsV1,
   harthmereGroundedMuckMonsterSeedsInTerritoryV1,
   type HarthmereLiveEntityProductionSeedV1,
 } from "@/shared/harthmere/live_entity_production_seed_v1";
@@ -32,7 +32,9 @@ function proposedFromChangeV1(change: Change): ProposedChange {
 }
 
 export function harthmereLiveEntityProductionSeedIdsV1() {
-  return [...HARTHMERE_LIVE_ENTITY_PRODUCTION_SEED_IDS_V1];
+  // Only the entities that should actually exist (robots + in-territory muckers),
+  // so safe-zone-excluded muckers are never treated as required seeds.
+  return harthmereActiveLiveEntityProductionSeedIdsV1();
 }
 
 export function buildHarthmereLiveEntityProductionSeedChangesV1(input: {

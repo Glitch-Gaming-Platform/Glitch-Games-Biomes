@@ -229,4 +229,22 @@ describe("mmo_class_ability_collectibles_v1", () => {
       .map((npc) => npc.id);
     assert.deepEqual(missing, []);
   });
+
+  it("lets every class learn all of its own (non-business) starting abilities from its starting skills", () => {
+    for (const [classId, classDef] of Object.entries(HARTHMERE_CLASS_DEFINITIONS_V1)) {
+      const skills: Record<string, { level: number }> = {};
+      for (const [skillId, level] of Object.entries(classDef.startingSkills)) {
+        skills[skillId] = { level: level as number };
+      }
+      const classMagic = { classId, skills } as Parameters<typeof canLearnHarthmereAbilityV1>[0]["classMagic"];
+      for (const abilityId of classDef.startingAbilities) {
+        const ability = HARTHMERE_ABILITY_DEFINITIONS_V1[abilityId];
+        // Skip business abilities (gated on business ownership, not class skills) and any
+        // ability not in the core catalog.
+        if (!ability || ability.businessTypeId) continue;
+        const res = canLearnHarthmereAbilityV1({ classMagic, actorId: ACTOR, abilityId });
+        assert.ok(res.ok, `${classId} cannot learn its starting ability ${abilityId}: ${res.warning}`);
+      }
+    }
+  });
 });

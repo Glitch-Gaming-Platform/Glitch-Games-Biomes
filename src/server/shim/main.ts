@@ -60,8 +60,16 @@ import {
   buildHarthmereBusinessOwnerNpcSeedChangesV1,
   harthmereBusinessOwnerNpcSeedEntityIdsV1,
 } from "@/server/harthmere/business_owner_npc_ecs_seed_v1";
+import {
+  buildHarthmereBusinessCustomerNpcSeedChangesV1,
+  harthmereBusinessCustomerNpcSeedEntityIdsV1,
+} from "@/server/harthmere/business_customer_npc_ecs_seed_v1";
 import { HARTHMERE_BUSINESS_OWNER_NPC_SEED_VERSION_V1 } from "@/shared/harthmere/business_owner_npc_seed_v1";
-import { HARTHMERE_LIVE_ENTITY_PRODUCTION_SEED_VERSION_V1 } from "@/shared/harthmere/live_entity_production_seed_v1";
+import { HARTHMERE_BUSINESS_CUSTOMER_NPC_SEED_VERSION_V1 } from "@/shared/harthmere/business_customer_npc_seed_v1";
+import {
+  HARTHMERE_LIVE_ENTITY_PRODUCTION_SEED_VERSION_V1,
+  harthmereExcludedMuckMonsterSeedIdsV1,
+} from "@/shared/harthmere/live_entity_production_seed_v1";
 import { HARTHMERE_GROVE_RACE_MINIGAME_SEED_VERSION_V1 } from "@/shared/harthmere/grove_race_minigame_seed_v1";
 import type { WorldApi } from "@/server/shared/world/api";
 import { npcEntity } from "@/server/spawn/spawn_npc";
@@ -162,7 +170,7 @@ const HARTHMERE_LOCAL_DEV_TERRAIN_BOUNDS_VERSION_V4 = "harthmere-local-dev-terra
 const HARTHMERE_LOCAL_DEV_SEED_CONTENT_PASS_V1 =
   "harthmere-town-design-rebuild-v26-brightcart-left-road-clearance";
 const HARTHMERE_LOCAL_DEV_SEED_FINGERPRINT_VERSION_V1 =
-  "harthmere-local-dev-seed-fingerprint-v2-business-owners";
+  "harthmere-local-dev-seed-fingerprint-v3-business-customers";
 
 const LOCAL_DEV_TERRAIN_ID_BASE = 8_810_000_000_000_000 as BiomesId;
 const LOCAL_DEV_NPC_ID_BASE = 8_810_000_000_010_000 as BiomesId;
@@ -5746,6 +5754,10 @@ function localDevBusinessOwnerNpcIdsV1() {
   return harthmereBusinessOwnerNpcSeedEntityIdsV1();
 }
 
+function localDevBusinessCustomerNpcIdsV1() {
+  return harthmereBusinessCustomerNpcSeedEntityIdsV1();
+}
+
 function isLocalDevQuestGiverNpcId(id: BiomesId) {
   const offset = Number(id) - Number(LOCAL_DEV_NPC_ID_BASE);
   return new Set([
@@ -5944,10 +5956,13 @@ function makeLocalDevSeedFingerprintV1(input: {
   liveEntityProductionSeedIds: BiomesId[];
   groveRaceMinigameSeedIds: BiomesId[];
   businessOwnerNpcIds: BiomesId[];
+  businessCustomerNpcIds: BiomesId[];
 }) {
   return JSON.stringify({
     version: HARTHMERE_LOCAL_DEV_SEED_FINGERPRINT_VERSION_V1,
     businessOwnerNpcSeedVersion: HARTHMERE_BUSINESS_OWNER_NPC_SEED_VERSION_V1,
+    businessCustomerNpcSeedVersion:
+      HARTHMERE_BUSINESS_CUSTOMER_NPC_SEED_VERSION_V1,
     contentPass: HARTHMERE_LOCAL_DEV_SEED_CONTENT_PASS_V1,
     terrainBoundsVersion: HARTHMERE_LOCAL_DEV_TERRAIN_BOUNDS_VERSION_V4,
     npcPositionOverrideVersion: HARTHMERE_NPC_POSITION_OVERRIDE_VERSION_V93,
@@ -5975,6 +5990,7 @@ function makeLocalDevSeedFingerprintV1(input: {
       liveEntityProductionSeeds: input.liveEntityProductionSeedIds.length,
       groveRaceMinigameSeeds: input.groveRaceMinigameSeedIds.length,
       businessOwnerNpcs: input.businessOwnerNpcIds.length,
+      businessCustomerNpcs: input.businessCustomerNpcIds.length,
       fastHarvestableBlocks: HARTHMERE_FAST_HARVESTABLE_BLOCK_BY_COORD.size,
       harvestableTreeCenters: HARTHMERE_HARVESTABLE_TREE_CENTERS.length,
       harvestableOreClusters: HARTHMERE_HARVESTABLE_ORE_CENTERS.length,
@@ -6147,6 +6163,12 @@ function makeLocalDevMiniWorldChanges(
     nowSeconds: secondsSinceEpoch(),
     existingIds,
   });
+  const businessCustomerNpcChanges =
+    buildHarthmereBusinessCustomerNpcSeedChangesV1({
+      tick,
+      nowSeconds: secondsSinceEpoch(),
+      existingIds,
+    });
   changes.push(
     ...npcChanges,
     ...groveNpcChanges,
@@ -6154,6 +6176,7 @@ function makeLocalDevMiniWorldChanges(
     ...liveEntitySeedChanges,
     ...groveRaceSeedChanges,
     ...businessOwnerNpcChanges,
+    ...businessCustomerNpcChanges,
     makeLocalDevSeedMarkerChange(tick, existingIds, seedFingerprint),
   );
 
@@ -6165,6 +6188,7 @@ function makeLocalDevMiniWorldChanges(
     liveEntityProductionSeeds: liveEntitySeedChanges.length,
     groveRaceMinigameSeeds: groveRaceSeedChanges.length,
     businessOwnerNpcs: businessOwnerNpcChanges.length,
+    businessCustomerNpcs: businessCustomerNpcChanges.length,
     runtimeOffsetX: harthmereExtraTownOffsetXV1(),
     runtimeOffsetZ: harthmereExtraTownOffsetZV1(),
     firstSnapshotGroveNpc: groveNpcChanges[0]?.kind === "create" || groveNpcChanges[0]?.kind === "update"
@@ -6190,6 +6214,93 @@ async function existingLocalDevIds(
   return new Set((await worldApi.has(ids)) as BiomesId[]);
 }
 
+// PRODUCTION_CONTENT_SYNC_V1:
+// When a real (non-local) world already exists we must NOT rebuild or overwrite
+// terrain. But authored CONTENT added since the world was first seeded (e.g. the
+// business owner NPCs) would otherwise never appear in production, because the
+// terrain guard used to `return` and skip the whole seed. This creates ONLY the
+// content entities whose ids are missing from the live world — never touching
+// terrain, never updating/deleting anything that already exists — so newly added
+// content reaches production automatically on the next boot.
+async function seedMissingLocalDevContentIntoExistingWorldV1(
+  service: ShimWorldService | undefined,
+  worldApi: WorldApi,
+) {
+  const tick = service ? service.table.tick + 1 : 1;
+  const nowSeconds = secondsSinceEpoch();
+  // An empty existingIds set makes every builder emit "create" changes; we then
+  // keep only the ones whose id is genuinely absent from the live world.
+  const emptyIds = new Set<BiomesId>();
+  const candidate: Change[] = [
+    ...makeLocalDevNpcChanges(tick, emptyIds),
+    ...makeLocalDevSnapshotGroveNpcChangesV75(tick, emptyIds),
+    ...makeLocalDevSnapshotCombatNpcChangesV74(tick, emptyIds),
+    ...buildHarthmereLiveEntityProductionSeedChangesV1({
+      tick,
+      nowSeconds,
+      existingIds: emptyIds,
+    }),
+    ...buildHarthmereGroveRaceMinigameSeedChangesV1({
+      tick,
+      nowSeconds,
+      existingIds: emptyIds,
+    }),
+    ...buildHarthmereBusinessOwnerNpcSeedChangesV1({
+      tick,
+      nowSeconds,
+      existingIds: emptyIds,
+    }),
+    ...buildHarthmereBusinessCustomerNpcSeedChangesV1({
+      tick,
+      nowSeconds,
+      existingIds: emptyIds,
+    }),
+  ];
+  const createChanges = candidate.filter((change) => change.kind === "create");
+  const createIds = createChanges.map((change) =>
+    change.kind === "create" ? change.entity.id : (0 as BiomesId)
+  );
+  const present = await existingLocalDevIds(createIds, service, worldApi);
+  const missing = createChanges.filter(
+    (change) => change.kind === "create" && !present.has(change.entity.id)
+  );
+
+  // Also remove authored content that should no longer exist — currently the
+  // muck monsters that now resolve inside a safe zone (e.g. the road_muckwad
+  // muckers sitting inside the Grove). These were created by an earlier seed and
+  // must be deleted through the proper ECS delete path.
+  const excludedMuckIds = harthmereExcludedMuckMonsterSeedIdsV1();
+  const presentExcludedMuck = await existingLocalDevIds(
+    excludedMuckIds,
+    service,
+    worldApi
+  );
+  const obsoleteDeletes: Change[] = excludedMuckIds
+    .filter((id) => presentExcludedMuck.has(id))
+    .map((id) => ({ kind: "delete", tick, id }));
+
+  const toApply: Change[] = [...missing, ...obsoleteDeletes];
+  if (toApply.length === 0) {
+    log.info(
+      "PRODUCTION_CONTENT_SYNC_V1: all authored content already present; nothing to seed.",
+    );
+    return;
+  }
+  log.warn(
+    "PRODUCTION_CONTENT_SYNC_V1: reconciling authored content in existing world",
+    {
+      created: missing.length,
+      deletedObsoleteMuck: obsoleteDeletes.length,
+      ...firstAndLastLocalDevSeedIds(missing),
+    },
+  );
+  if (service) {
+    service.writeableTable.apply(toApply);
+  } else {
+    await applyLocalDevSeedChangesInDebugBatches(worldApi, toApply);
+  }
+}
+
 async function seedLocalDevTerrainIfMissing(
   service: ShimWorldService | undefined,
   worldApi: WorldApi,
@@ -6204,9 +6315,13 @@ async function seedLocalDevTerrainIfMissing(
     process.env.BIOMES_FORCE_LOCAL_DEV_TOWN !== "1" &&
     process.env.BIOMES_ENABLE_HARTHMERE_EXTRA_TOWN !== "1"
   ) {
+    // PRODUCTION_CONTENT_SYNC_V1: existing non-local terrain — do NOT rebuild
+    // terrain, but still create any missing authored content (e.g. business
+    // owner NPCs) so new content reaches production without a terrain reseed.
     log.info(
-      "Skipping local dev starter town because non-local terrain already exists.",
+      "Existing non-local terrain detected; syncing missing authored content only.",
     );
+    await seedMissingLocalDevContentIntoExistingWorldV1(service, worldApi);
     return;
   }
 
@@ -6217,6 +6332,7 @@ async function seedLocalDevTerrainIfMissing(
   const liveEntityProductionSeedIds = localDevLiveEntityProductionSeedIdsV1();
   const groveRaceMinigameSeedIds = localDevGroveRaceMinigameSeedIdsV1();
   const businessOwnerNpcIds = localDevBusinessOwnerNpcIdsV1();
+  const businessCustomerNpcIds = localDevBusinessCustomerNpcIdsV1();
   const legacyTerrainIds = localDevLegacyTerrainShardIdsV3();
   const activeTerrainIds = new Set(terrainIds);
   const expectedSeedIds = [
@@ -6227,6 +6343,7 @@ async function seedLocalDevTerrainIfMissing(
     ...liveEntityProductionSeedIds,
     ...groveRaceMinigameSeedIds,
     ...businessOwnerNpcIds,
+    ...businessCustomerNpcIds,
   ];
   const seedFingerprint = makeLocalDevSeedFingerprintV1({
     terrainIds,
@@ -6236,6 +6353,7 @@ async function seedLocalDevTerrainIfMissing(
     liveEntityProductionSeedIds,
     groveRaceMinigameSeedIds,
     businessOwnerNpcIds,
+    businessCustomerNpcIds,
   });
   const existingIds = await existingLocalDevIds(
     [

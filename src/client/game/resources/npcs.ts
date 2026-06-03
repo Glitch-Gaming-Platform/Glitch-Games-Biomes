@@ -85,6 +85,9 @@ import {
   type HarthmereVoxelFaceConfig,
 } from "@/shared/harthmere/voxel_faces";
 import type { BiomesId } from "@/shared/ids";
+import { groundHarthmereLiveEntityFeetYV1 } from "@/client/game/util/harthmere_entity_grounding";
+import { isHarthmereBusinessOwnerNpcEntityIdV1 } from "@/shared/harthmere/business_owner_npc_seed_v1";
+import { isHarthmereBusinessCustomerNpcEntityIdV1 } from "@/shared/harthmere/business_customer_npc_seed_v1";
 import {
   SNAPSHOT_LIVE_NPC_GROUNDING_VERSION_V78,
   snapshotGroundLiveNpcPositionV78,
@@ -895,7 +898,6 @@ function publishHarthmereVoxelNpcMotionActorPositionV193(
   }
 }
 
-const HARTHMERE_NPC_TERRAIN_GROUND_SCAN_METERS_V1 = 32;
 let harthmereNpcGroundProbeFrameV1 = -1;
 let harthmereNpcGroundProbeCacheV1 = new Map<string, number | undefined>();
 
@@ -904,7 +906,8 @@ function sampleHarthmereNpcGroundFeetYV1(
   frameNumber: number,
   x: number,
   z: number,
-  preferredY: number
+  preferredY: number,
+  requireOpenSky: boolean
 ): number | undefined {
   if (!Number.isFinite(x) || !Number.isFinite(z) || !Number.isFinite(preferredY)) {
     return undefined;
@@ -916,43 +919,25 @@ function sampleHarthmereNpcGroundFeetYV1(
   const ix = Math.floor(x);
   const iz = Math.floor(z);
   const iy = Math.round(preferredY);
-  const key = `${ix}|${iy}|${iz}`;
+  const key = `${ix}|${iy}|${iz}|${requireOpenSky ? 1 : 0}`;
   if (harthmereNpcGroundProbeCacheV1.has(key)) {
     return harthmereNpcGroundProbeCacheV1.get(key);
   }
 
-  // Route data can come from either authored Grove coordinates or live seeded
-  // Harthmere coordinates, so the renderer probes loaded terrain before
-  // accepting an NPC feet height.
-  const probe = (feetY: number): number | undefined => {
-    try {
-      const blockPosition: Vec3 = [ix, feetY, iz];
-      const checker = resources.get(
-        "/terrain/pathfinding/human_can_occupy",
-        voxelShard(...blockPosition)
-      );
-      return checker.check(blockPosition) ? feetY : undefined;
-    } catch {
-      return undefined;
-    }
-  };
-
-  for (let offset = 0; offset <= HARTHMERE_NPC_TERRAIN_GROUND_SCAN_METERS_V1; offset += 1) {
-    const down = probe(iy - offset);
-    if (down !== undefined) {
-      harthmereNpcGroundProbeCacheV1.set(key, down);
-      return down;
-    }
-    if (offset > 0) {
-      const up = probe(iy + offset);
-      if (up !== undefined) {
-        harthmereNpcGroundProbeCacheV1.set(key, up);
-        return up;
-      }
-    }
-  }
-  harthmereNpcGroundProbeCacheV1.set(key, undefined);
-  return undefined;
+  // Robust, water-aware probe: the generous up/down budget bridges the
+  // Grove(≈70)/wilds(≈54) seam and real hills; water counts as standable support
+  // (rest ON the surface, not the lake bed); requireOpenSky keeps OUTDOOR
+  // entities out of caves, while business owners pass requireOpenSky=false to
+  // stay on the building floor under their roof.
+  const result = groundHarthmereLiveEntityFeetYV1(
+    resources,
+    ix,
+    iz,
+    iy,
+    requireOpenSky
+  );
+  harthmereNpcGroundProbeCacheV1.set(key, result);
+  return result;
 }
 
 function parseHarthmereNavigationObstacleV1(
@@ -1207,7 +1192,12 @@ export class NpcRenderState {
                 frameNumber,
                 x,
                 z,
-                preferredY
+                preferredY,
+                // Outdoor entities (muckers, wild NPCs) avoid caves via open-sky;
+                // business owners AND customers stand on a roofed building floor,
+                // so they opt out (open-sky would push them onto the roof).
+                !isHarthmereBusinessOwnerNpcEntityIdV1(entity.id) &&
+                  !isHarthmereBusinessCustomerNpcEntityIdV1(entity.id)
               ),
           })
         : undefined;

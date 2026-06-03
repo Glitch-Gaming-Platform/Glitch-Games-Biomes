@@ -1,6 +1,9 @@
 import assert from "assert";
 import {
+  HARTHMERE_CARE_LOOP_DAY_MS_V1,
   HARTHMERE_DAILY_TASK_MIN_GOLD_V1,
+  HARTHMERE_DAILY_STREAK_BONUS_GOLD_V1,
+  HARTHMERE_DAILY_STREAK_BONUS_CAP_DAYS_V1,
   applyHarthmereCareLoopInventoryDeltasV1,
   defaultHarthmereCareLoopStateV1,
   harthmereDailyTaskXpRewardV1,
@@ -64,6 +67,67 @@ describe("mmo_care_loops_v1", () => {
       nowMs: TOMORROW + 2 * 24 * 60 * 60 * 1000,
     });
     assert.equal(result.care.daily.streak, 1);
+  });
+
+  it("preserves the daily streak through a backwards-clock blip instead of resetting it", () => {
+    const DAY = 24 * 60 * 60 * 1000;
+    const care0 = defaultHarthmereCareLoopStateV1(ACTOR, NOW);
+    const day1 = reduceHarthmereCareLoopV1(care0, {
+      requestId: "bc_d1", actorId: ACTOR, operation: "daily_check_in", targetId: "check_in", nowMs: NOW,
+    });
+    assert.equal(day1.care.daily.streak, 1);
+    const day2 = reduceHarthmereCareLoopV1(day1.care, {
+      requestId: "bc_d2", actorId: ACTOR, operation: "daily_check_in", targetId: "check_in", nowMs: NOW + DAY,
+    });
+    assert.equal(day2.care.daily.streak, 2);
+    const lastLoginDay = day2.care.daily.lastLoginDay;
+    // Server clock briefly reads an earlier day; claim a not-yet-claimed activity for that day.
+    const back1 = reduceHarthmereCareLoopV1(day2.care, {
+      requestId: "bc_done", actorId: ACTOR, operation: "daily_task_completed", targetId: "garden", nowMs: NOW,
+    });
+    const back2 = reduceHarthmereCareLoopV1(back1.care, {
+      requestId: "bc_claim", actorId: ACTOR, operation: "daily_check_in", targetId: "garden", nowMs: NOW,
+    });
+    assert.deepEqual(back2.warnings, []);
+    assert.equal(back2.care.daily.streak, 2, "a backwards-clock blip must not wipe the streak");
+    assert.equal(back2.care.daily.lastLoginDay, lastLoginDay, "lastLoginDay must not regress");
+  });
+
+  it("pays an escalating daily check-in streak bonus that saturates at a one-week streak", () => {
+    const DAY = HARTHMERE_CARE_LOOP_DAY_MS_V1;
+    const checkIn = (care: HarthmereCareLoopStateV1, dayIndex: number) =>
+      reduceHarthmereCareLoopV1(care, {
+        requestId: `streak_${dayIndex}`,
+        actorId: ACTOR,
+        operation: "daily_check_in",
+        targetId: "check_in",
+        nowMs: NOW + dayIndex * DAY,
+      });
+
+    // Day 1 (streak 1): no bonus — base daily reward only.
+    let r = checkIn(defaultHarthmereCareLoopStateV1(ACTOR, NOW), 0);
+    assert.equal(r.care.daily.streak, 1);
+    assert.equal(r.goldDelta, HARTHMERE_DAILY_TASK_MIN_GOLD_V1);
+
+    // Day 2 (streak 2): +1 step of streak bonus.
+    r = checkIn(r.care, 1);
+    assert.equal(r.care.daily.streak, 2);
+    assert.equal(r.goldDelta, HARTHMERE_DAILY_TASK_MIN_GOLD_V1 + HARTHMERE_DAILY_STREAK_BONUS_GOLD_V1);
+
+    // Maintain a long consecutive streak; the bonus saturates at the weekly cap.
+    let day = 2;
+    while (day < 9) {
+      r = checkIn(r.care, day);
+      day += 1;
+    }
+    const maxBonus =
+      (HARTHMERE_DAILY_STREAK_BONUS_CAP_DAYS_V1 - 1) * HARTHMERE_DAILY_STREAK_BONUS_GOLD_V1;
+    assert.ok(r.care.daily.streak >= HARTHMERE_DAILY_STREAK_BONUS_CAP_DAYS_V1);
+    assert.equal(
+      r.goldDelta,
+      HARTHMERE_DAILY_TASK_MIN_GOLD_V1 + maxBonus,
+      "streak bonus must cap at the one-week maximum",
+    );
   });
 
   it("supports daily check-in rewards and separate cozy tasks on the same day", () => {

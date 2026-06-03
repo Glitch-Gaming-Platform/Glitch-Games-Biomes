@@ -820,7 +820,12 @@ export function rollHarthmereInventoryLootTableV1(
     if (total <= 0) break;
     let pick = rand() * total;
     for (const entry of table.weightedDrops) {
-      pick -= Math.max(0, entry.weight);
+      const weight = Math.max(0, entry.weight);
+      // Skip zero/negative-weight ("disabled") entries entirely. Otherwise a roll where
+      // rand() returns exactly 0 yields pick=0 and the `pick <= 0` boundary would select
+      // a leading zero-weight entry that is supposed to be impossible to drop.
+      if (weight <= 0) continue;
+      pick -= weight;
       if (pick <= 0) {
         addEntry(entry);
         break;

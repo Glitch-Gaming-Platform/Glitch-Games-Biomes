@@ -1,6 +1,7 @@
 import assert from "assert";
 import {
   HARTHMERE_GUILD_CREATION_MIN_LEVEL_V1,
+  HARTHMERE_GUILD_MAX_MEMBERS_V1,
   createHarthmereLiveModeGuildClientSnapshotV1,
   defaultHarthmereLiveModeGuildStateV1,
   hasHarthmereGuildPermissionV1,
@@ -643,5 +644,51 @@ describe("live_mode_backend_v1 — guild integration", function () {
     });
     assert.strictEqual(placed.state.guild.guilds[guildId].guildHall.status, "completed");
     assert.ok(placed.summary.touchedModels.includes("guild_hall"));
+  });
+
+  it("rejects a solo leader leaving while the treasury still holds gold (no orphaned funds)", () => {
+    const { state, guildId } = createGuild();
+    state.guilds[guildId].treasuryGold = 500;
+    const blocked = mutate(state, LEADER, "leave_guild", { guildId });
+    assert.ok(blocked.warnings.includes("guild_rejected:leader_must_empty_before_leaving"), blocked.warnings.join(","));
+    assert.ok(!blocked.guild.guilds[guildId].disbandedAtMs, "guild must not disband while holding assets");
+    // Once emptied, the leader can leave and the guild disbands cleanly.
+    state.guilds[guildId].treasuryGold = 0;
+    const ok = mutate(state, LEADER, "leave_guild", { guildId });
+    assert.deepStrictEqual(ok.warnings, []);
+    assert.ok(ok.guild.guilds[guildId].disbandedAtMs);
+  });
+
+  it("rejects guild tax collection by a non-member even with a server-trusted tax flag", () => {
+    const { state, guildId } = createGuild();
+    const result = mutate(
+      state,
+      "outsider_not_in_guild",
+      "collect_tax",
+      { guildId, amountGold: 1000 },
+      ctx({ trustedTaxCollection: true }),
+    );
+    assert.ok(result.warnings.includes("guild_rejected:tax_collector_not_a_member"), result.warnings.join(","));
+    assert.strictEqual(result.guild.guilds[guildId].treasuryGold, 0, "an outsider must not credit the treasury");
+  });
+
+  it("rejects open-recruitment joins once the guild hits the member cap", () => {
+    const { state, guildId } = createGuild();
+    const guild = state.guilds[guildId];
+    guild.recruitment = "open";
+    // Leader counts as one active member; fill the rest to the cap.
+    for (let i = 0; i < HARTHMERE_GUILD_MAX_MEMBERS_V1 - 1; i++) {
+      guild.members[`filler_${i}`] = {
+        actorId: `filler_${i}`,
+        displayName: `Filler ${i}`,
+        rankId: "member",
+        joinedAtMs: NOW_MS,
+        lastSeenAtMs: NOW_MS,
+        status: "active",
+        contributionXp: 0,
+      } as (typeof guild.members)[string];
+    }
+    const blocked = mutate(state, "late_joiner", "apply_to_guild", { guildId, displayName: "Latecomer" });
+    assert.ok(blocked.warnings.includes("guild_rejected:guild_member_cap_reached"), blocked.warnings.join(","));
   });
 });

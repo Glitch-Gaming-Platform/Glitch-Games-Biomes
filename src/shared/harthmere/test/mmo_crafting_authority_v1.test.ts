@@ -9,10 +9,12 @@ import {
   HARTHMERE_HOME_DECORATION_ITEM_IDS_V1,
   HARTHMERE_HOME_DECORATION_RECIPE_IDS_V1,
   ensureHarthmereProductionCraftingCatalogueV1,
+  harthmereProductionCraftingRecipeIdsV1,
 } from "../mmo_crafting_catalogue_v1";
 import {
   applyHarthmereInventoryMutationResultV1,
   getHarthmereCraftingRecipeV1,
+  getHarthmereCraftingToolV1,
   getHarthmereItemDefinitionV1,
   listHarthmereCraftingStationsV1,
   reduceHarthmereInventoryMutationV1,
@@ -638,6 +640,13 @@ describe("Harthmere crafting authority", () => {
       exoticSkills
     );
     assert.ok(antihydrogen.ok, antihydrogen.errors.join(", "));
+    // The bucket is an action-only tool with no durability pool; the authority must not
+    // emit a durability charge for it (doing so would drive a non-existent value negative).
+    assert.strictEqual(
+      antihydrogen.craftingOutcome?.toolDurabilityCosts[HARTHMERE_CRAFTING_TOOLS_V1.bucket],
+      undefined,
+      "no-durability bucket must not be charged tool durability"
+    );
     assert.strictEqual(
       antihydrogen.itemDeltas[
         HARTHMERE_EXOTIC_MATTER_ITEM_IDS_V1.antihydrogenBlock
@@ -824,5 +833,54 @@ describe("Harthmere crafting authority", () => {
     assert.ok(result.newRecipeIds.includes("harthmere_bell_bronze_ingot"));
     const applied = applyHarthmereInventoryMutationResultV1(base, result);
     assert.ok(applied.knownRecipes.includes("harthmere_bell_bronze_ingot"));
+  });
+});
+
+describe("Production crafting catalogue integrity (audit hardening)", () => {
+  before(() => {
+    ensureHarthmereProductionCraftingCatalogueV1();
+  });
+
+  it("has unique recipe IDs and resolves every referenced item and tool", () => {
+    const ids = harthmereProductionCraftingRecipeIdsV1();
+    assert.strictEqual(new Set(ids).size, ids.length, "duplicate production recipe IDs");
+    for (const id of ids) {
+      const recipe = getHarthmereCraftingRecipeV1(id);
+      assert.ok(recipe, `recipe ${id} not registered`);
+      if (!recipe) continue;
+      // Repair / salvage recipes legitimately have outputCount 0 (they modify the target
+      // item rather than producing a new one); only require a resolvable output when one
+      // is actually produced.
+      assert.ok(recipe.outputCount >= 0, `${id}: negative outputCount`);
+      if (recipe.outputCount > 0) {
+        assert.ok(getHarthmereItemDefinitionV1(recipe.outputItemId), `${id}: output ${recipe.outputItemId} unregistered`);
+      }
+      for (const input of recipe.inputs ?? []) {
+        assert.ok(getHarthmereItemDefinitionV1(input.itemId), `${id}: input ${input.itemId} unregistered`);
+        assert.ok(input.count > 0, `${id}: non-positive input count for ${input.itemId}`);
+      }
+      for (const target of recipe.targetItemIds ?? []) {
+        assert.ok(getHarthmereItemDefinitionV1(target), `${id}: target ${target} unregistered`);
+      }
+      for (const toolId of recipe.requiredToolIds ?? []) {
+        assert.ok(getHarthmereCraftingToolV1(toolId), `${id}: required tool ${toolId} unregistered`);
+      }
+    }
+  });
+
+  it("classifies pure crafting ingredients as materials and finished goods as non-materials", () => {
+    ensureHarthmereProductionCraftingCatalogueV1();
+    for (const itemId of ["repair_part", "bell_metal_fragment", "river_reed"]) {
+      assert.strictEqual(
+        getHarthmereItemDefinitionV1(itemId)?.isCraftingMaterial,
+        true,
+        `${itemId} should be a bulk crafting material`
+      );
+    }
+    assert.strictEqual(
+      getHarthmereItemDefinitionV1("road_repair_kit")?.isCraftingMaterial,
+      false,
+      "road_repair_kit is a finished good, not a bulk material"
+    );
   });
 });

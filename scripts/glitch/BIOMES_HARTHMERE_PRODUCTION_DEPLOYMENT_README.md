@@ -974,3 +974,56 @@ az containerapp logs show \
   --type console \
   --tail 300
 ```
+
+## 21. Authored content reconciliation (NPCs, owners, customers, muckers)
+
+New authored content does NOT reach production by simply existing in code — two
+gates matter:
+
+1. **Boot content-sync** (`src/server/shim/main.ts`,
+   `seedMissingLocalDevContentIntoExistingWorldV1`): on boot, production creates
+   only the *missing* content entities (it never rebuilds/overwrites terrain).
+2. **Deploy reconciler** (`scripts/harthmere/reconcile-production-world-sync-v1.cjs`,
+   run by this deploy script with `APPLY=1` against the public Redis): it
+   materializes the seed *families* listed in its `seedFamilies` array.
+   **When you add a new authored-content family (e.g. business owners), you MUST
+   add it to that array** or it never lands in prod.
+
+After reconciliation the deploy runs `audit_production_authored_content_v1`,
+which fails the deploy if business owners < 19, business customers < 57,
+muckers < 100, or Grove NPCs are missing. See
+`src/shared/harthmere/harthmere-content-reaches-production` notes.
+
+Id bands (offset on `SNAPSHOT_GROVE_LOCAL_DEV_NPC_BASE_V75`): Grove NPCs 9301+,
+robots 9401+, muckers 9451–9550, **business owners 9601–9619**, **business
+customers 9701–9757** (19 businesses × 2–5 patrons = 57). Owners are
+`quest_giver`s at the counter; customers are talkable flavor NPCs only. Both are
+grounded indoors (`requireOpenSky=false`) so they stay on the building floor.
+
+## 22. Entity terrain grounding (NPCs, muckers, quest items, markers)
+
+Entities are seeded with a flat/authored hint Y, then **grounded to the real
+voxel surface on the client at render time** (the server can't cheaply read
+terrain). One module measures the ground and places everything on it:
+
+- Core (pure, tested): `src/shared/harthmere/harthmere_entity_grounding_v1.ts`.
+- Client adapter (terrain + water): `src/client/game/util/harthmere_entity_grounding.ts`.
+- Spec + per-entity registry + live probe numbers:
+  `src/shared/harthmere/harthmere_entity_grounding_manifest_v1.ts`.
+
+It handles hills, the Grove(~70)/wilds(~54) seam, **caves** (outdoor entities
+require open sky so they never ground onto a cave floor), **water** (entities
+rest on the surface, not the lake bed), and indoor business owners/customers
+(stay on the building floor under their roof).
+
+**Future check / accuracy gate** — probe the real production terrain at every
+entity position and verify the grounder budget reaches the surface everywhere:
+
+```bash
+REDIS_HOST=20.127.78.175 GLITCH_REDIS_HOST=20.127.78.175 REDIS_PORT=6379 IS_SERVER=1 \
+  node scripts/harthmere/probe-production-terrain-grounding-v1.cjs
+# Exits non-zero (FAIL) if any position's ground is beyond the scan budget.
+```
+
+Unit tests (hills/seam/caves/buildings/water):
+`src/shared/harthmere/test/harthmere_entity_grounding_v1.test.ts`.

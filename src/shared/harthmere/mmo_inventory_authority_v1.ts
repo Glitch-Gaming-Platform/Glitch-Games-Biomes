@@ -131,6 +131,8 @@ export interface HarthmereItemDefinitionV1 {
   classRestriction: string[];
   /** Item stats applied when equipped */
   stats: Record<string, number>;
+  /** Two-handed weapon: occupies the main hand and forbids an off-hand item at the same time. */
+  twoHanded?: boolean;
   tradeable: boolean;
   /** Optional category used by crafting/economy affordances. */
   category?: string;
@@ -1237,16 +1239,31 @@ function validateCraftItem(
       Math.min(1, recipe.failureMaterialRefundPercent ?? 0)
     );
     if (refundPercent > 0) {
+      // Refund is computed on the TOTAL consumed per item across both the backpack
+      // (itemDeltas) and material-storage (materialStorageDeltas) ledgers, then
+      // distributed. Flooring each ledger separately rounds a real refund down to zero
+      // when a single input was split across backpack + storage (e.g. 1 + 1 at 50%
+      // refunds floor(0.5)+floor(0.5)=0 instead of floor(1.0)=1).
+      const consumedByItem: Record<string, number> = {};
       for (const [itemId, delta] of Object.entries(itemDeltas)) {
-        if (delta < 0) {
-          itemDeltas[itemId] =
-            delta + Math.floor(Math.abs(delta) * refundPercent);
-        }
+        if (delta < 0) consumedByItem[itemId] = (consumedByItem[itemId] ?? 0) + Math.abs(delta);
       }
       for (const [itemId, delta] of Object.entries(materialStorageDeltas)) {
-        if (delta < 0) {
-          materialStorageDeltas[itemId] =
-            delta + Math.floor(Math.abs(delta) * refundPercent);
+        if (delta < 0) consumedByItem[itemId] = (consumedByItem[itemId] ?? 0) + Math.abs(delta);
+      }
+      for (const [itemId, consumed] of Object.entries(consumedByItem)) {
+        let refundUnits = Math.floor(consumed * refundPercent);
+        if (refundUnits <= 0) continue;
+        // Return to the backpack ledger first, capped at what was taken from it; any
+        // remainder goes back to material storage.
+        const backpackConsumed = Math.abs(Math.min(0, itemDeltas[itemId] ?? 0));
+        const toBackpack = Math.min(refundUnits, backpackConsumed);
+        if (toBackpack > 0) {
+          itemDeltas[itemId] = (itemDeltas[itemId] ?? 0) + toBackpack;
+          refundUnits -= toBackpack;
+        }
+        if (refundUnits > 0 && (materialStorageDeltas[itemId] ?? 0) < 0) {
+          materialStorageDeltas[itemId] = (materialStorageDeltas[itemId] ?? 0) + refundUnits;
         }
       }
     }
@@ -1256,10 +1273,18 @@ function validateCraftItem(
     toolItemIds
       .filter(
         (itemId) =>
-          recipe.requiredToolIds?.includes(itemId) ||
-          (recipe.requiredToolActions ?? []).includes(
-            getHarthmereCraftingToolV1(itemId)?.action ?? ""
-          )
+          (recipe.requiredToolIds?.includes(itemId) ||
+            (recipe.requiredToolActions ?? []).includes(
+              getHarthmereCraftingToolV1(itemId)?.action ?? ""
+            )) &&
+          // Only tools with an actual durability pool may be charged durability. A recipe
+          // that lists a no-durability action tool (e.g. a bucket) in requiredToolIds with
+          // a toolDurabilityCost would otherwise drive a non-existent durability value
+          // negative/NaN in the consumer. Durability may be declared on either the item
+          // definition or the tool definition.
+          (getHarthmereItemDefinitionV1(itemId)?.durabilityMax ??
+            getHarthmereCraftingToolV1(itemId)?.durabilityMax ??
+            0) > 0
       )
       .map((itemId) => [itemId, (recipe.toolDurabilityCost ?? 0) * craftCount])
       .filter(([, cost]) => Number(cost) > 0)
@@ -1512,7 +1537,8 @@ function validatePickupItem(
 function validateEquipItem(
   req: HarthmereInventoryMutationRequestV1,
   snapshot: HarthmereInventorySnapshotV1,
-  playerLevel: number
+  playerLevel: number,
+  playerClassId?: string
 ): HarthmereInventoryMutationResultV1 {
   const { requestId, actorId, kind, itemId, targetSlot } = req;
   if (!itemId) return resultFail(requestId, kind, actorId, ["missing_item_id"]);
@@ -1534,6 +1560,36 @@ function validateEquipItem(
   }
   if (playerLevel < def.levelRequirement)
     fail(errors, "level_requirement_not_met");
+  // Enforce class-restricted equipment. Only checked when the caller supplies the class
+  // (the live path always does); without it we cannot determine eligibility so we skip.
+  if (
+    def.classRestriction.length > 0 &&
+    playerClassId &&
+    !def.classRestriction.includes(playerClassId)
+  ) {
+    fail(errors, "class_requirement_not_met");
+  }
+  // Two-handed weapons and off-hand items are mutually exclusive: a two-hander needs both
+  // hands. Equipping either while the other slot is occupied is rejected (the player must
+  // unequip the conflicting item first).
+  const HARTHMERE_MAIN_HAND_SLOT_V1 = "main_hand";
+  const HARTHMERE_OFF_HAND_SLOT_V1 = "off_hand";
+  if (
+    def.twoHanded &&
+    targetSlot === HARTHMERE_MAIN_HAND_SLOT_V1 &&
+    snapshot.equipment[HARTHMERE_OFF_HAND_SLOT_V1]
+  ) {
+    fail(errors, "off_hand_must_be_empty_for_two_handed");
+  }
+  if (targetSlot === HARTHMERE_OFF_HAND_SLOT_V1) {
+    const mainHandItemId = snapshot.equipment[HARTHMERE_MAIN_HAND_SLOT_V1];
+    const mainHandDef = mainHandItemId
+      ? getHarthmereItemDefinitionV1(mainHandItemId)
+      : undefined;
+    if (mainHandDef?.twoHanded) {
+      fail(errors, "two_handed_weapon_blocks_off_hand");
+    }
+  }
   if (availableCount(snapshot, itemId) < 1)
     fail(errors, "insufficient_item_count");
 
@@ -1674,6 +1730,9 @@ export interface HarthmereInventoryMutationContextV1 {
   playerSkills: Record<string, { level: number }>;
   /** Server-owned reputation — never trust client */
   reputation: Record<string, number>;
+  /** Server-owned class id, used to enforce equipment classRestriction. When absent,
+   *  class-restriction enforcement is skipped (the caller could not determine the class). */
+  playerClassId?: string;
   /** Internal server-only escape hatch for timed job completion after inputs were reserved. */
   allowPrepaidCraftingInputs?: boolean;
 }
@@ -1687,6 +1746,7 @@ export function reduceHarthmereInventoryMutationV1(
     playerLevel,
     playerSkills,
     reputation,
+    playerClassId,
     allowPrepaidCraftingInputs,
   } = ctx;
 
@@ -1695,7 +1755,7 @@ export function reduceHarthmereInventoryMutationV1(
       return validatePickupItem(req, snapshot);
 
     case "equip_item":
-      return validateEquipItem(req, snapshot, playerLevel);
+      return validateEquipItem(req, snapshot, playerLevel, playerClassId);
 
     case "unequip_item":
       return validateUnequipItem(req, snapshot);
@@ -1736,6 +1796,16 @@ export function reduceHarthmereInventoryMutationV1(
 
     case "admin_grant":
       return validateAdminGrant(req, snapshot);
+
+    // Declared but not yet implemented. Returning a permissive ok:true passthrough here
+    // is dangerous: a caller that builds its own deltas from a "validated ok" split/merge
+    // result can be driven to duplicate or lose items. Until real validation exists these
+    // must hard-fail rather than silently succeed. (Currently no caller issues them.)
+    case "stack_items":
+    case "split_stack":
+      return resultFail(req.requestId, req.kind, req.actorId, [
+        `mutation_kind_not_implemented:${req.kind}`,
+      ]);
 
     // Remaining kinds pass through with a warning (not yet fully validated)
     default:

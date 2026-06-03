@@ -222,6 +222,18 @@ export function harthmereBusinessOwnerNpcSeedIdsV1(): BiomesId[] {
   return HARTHMERE_BUSINESS_OWNER_NPC_SEEDS_V1.map((seed) => seed.entityId);
 }
 
+const HARTHMERE_BUSINESS_OWNER_ENTITY_ID_SET_V1 = new Set<number>(
+  HARTHMERE_BUSINESS_OWNER_NPC_SEEDS_V1.map((seed) => Number(seed.entityId))
+);
+
+// Business owners stand on a building FLOOR under a roof, so terrain grounding
+// must NOT require open sky for them (that would push them onto the roof).
+export function isHarthmereBusinessOwnerNpcEntityIdV1(
+  id: BiomesId | number | undefined
+): boolean {
+  return id !== undefined && HARTHMERE_BUSINESS_OWNER_ENTITY_ID_SET_V1.has(Number(id));
+}
+
 export function validateHarthmereBusinessOwnerNpcSeedsV1(): string[] {
   const errors: string[] = [];
   const ids = new Set<BiomesId>();

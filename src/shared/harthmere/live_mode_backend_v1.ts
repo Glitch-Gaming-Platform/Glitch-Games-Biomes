@@ -577,7 +577,8 @@ export interface HarthmereLiveModeCrimeRecordV1 {
     | "confiscated"
     | "arrest_pending"
     | "jailed"
-    | "wanted";
+    | "wanted"
+    | "served";
   createdAtMs: number;
 }
 
@@ -687,6 +688,17 @@ export interface HarthmereLiveModeQuestInviteStateV1 {
   sharedQuests: Record<string, HarthmereSharedQuestPartyRecordV1>;
 }
 
+/** A completed auction sale's proceeds, queued for the seller to collect on next sync. */
+export interface HarthmereAuctionSellerPayoutV1 {
+  listingId: string;
+  /** Net gold owed to the seller (sale price minus house tax). */
+  goldNet: number;
+  /** The sold item — removed from the seller's escrow + inventory when collected. */
+  itemId: string;
+  count: number;
+  soldAtMs: number;
+}
+
 export interface HarthmereLiveModeBackendStateV1 {
   version: typeof HARTHMERE_LIVE_MODE_BACKEND_VERSION_V1;
   actorId: string;
@@ -714,6 +726,12 @@ export interface HarthmereLiveModeBackendStateV1 {
     businessRevenueAccumulated: number;
     /** Production-ready society economy: business ownership, contracts, town demand, staff, loans, insurance, markets. */
     production: HarthmereProductionEconomyStateV1;
+    /** Cross-actor auction sale proceeds owed to sellers (sellerId -> queued payouts).
+     *  The buyer queues these on settle; the seller drains them on their next sync. */
+    auctionSellerPayouts: Record<string, HarthmereAuctionSellerPayoutV1[]>;
+    /** Auction payout listingIds this actor has already collected — makes payout delivery
+     *  exactly-once even though the shared blob is last-write-wins and can re-deliver. */
+    claimedAuctionPayoutIds: Record<string, number>;
   };
   /** Physical Grove jobs board: public work postings, accepted seeker todos, anti-abuse state. */
   jobsBoard: HarthmereJobsBoardStateV1;
@@ -1000,6 +1018,10 @@ export interface HarthmereLiveModeSharedWorldStateV1 {
   robotProtection: LiveEntityRobotEnergyStateV1;
   exoticMatterDepositClaims: Record<string, number>;
   questInvites: HarthmereLiveModeQuestInviteStateV1;
+  /** Shared auction marketplace so a buyer can see and settle another player's listing. */
+  auctionListings: Record<string, HarthmereAuctionListingV1>;
+  /** Sale proceeds owed to sellers (sellerId -> queued payouts), collected on the seller's sync. */
+  auctionSellerPayouts: Record<string, HarthmereAuctionSellerPayoutV1[]>;
 }
 
 export interface HarthmereLiveModeSharedBuildingStateV1 {
@@ -1205,6 +1227,24 @@ function recordDelta(
   if (target[key] === 0) {
     delete target[key];
   }
+}
+
+/**
+ * Enforce a levied law fine: charge what the offender can pay from their wallet now and
+ * carry only the unpayable remainder as outstanding law-fine debt. Returns the gold paid.
+ */
+function chargeEnforcedLawFineV1(
+  state: HarthmereLiveModeBackendStateV1,
+  factionId: string,
+  rawFine: number
+): number {
+  const fineOwed = Math.max(0, Math.trunc(rawFine));
+  if (fineOwed <= 0) return 0;
+  const paidNow = Math.min(Math.max(0, state.inventory.gold), fineOwed);
+  state.inventory.gold = Math.max(0, state.inventory.gold - paidNow);
+  const remainder = fineOwed - paidNow;
+  if (remainder > 0) recordDelta(state.law.fines, factionId, remainder);
+  return paidNow;
 }
 
 const HARTHMERE_LIVE_MODE_RESOURCE_KINDS_V1: HarthmereResourceKindV1[] = [
@@ -3587,7 +3627,11 @@ function applyHarthmereLiveModeCrimeEventV1(input: {
   const lineOfSight =
     payloadBoolean(input.envelope, "lineOfSight") ?? witnesses > 0;
   const noise = payloadNumber(input.envelope, "noise") ?? 0;
-  const lighting = payloadString(input.envelope, "lighting") ?? "normal";
+  // Whitelist lighting to the known values. An unknown string (e.g. a client sending
+  // "pitch") otherwise falls through the detection ternary to the "dark" branch (-15),
+  // letting a client fabricate darkness to suppress crime detection.
+  const rawLighting = payloadString(input.envelope, "lighting") ?? "normal";
+  const lighting = ["bright", "normal", "dim", "dark"].includes(rawLighting) ? rawLighting : "normal";
   const disguiseQuality = payloadNumber(input.envelope, "disguiseQuality") ?? 0;
   const guardAlertness = payloadNumber(input.envelope, "guardAlertness") ?? 60;
   const crowdDensity = payloadNumber(input.envelope, "crowdDensity") ?? 0;
@@ -4506,6 +4550,8 @@ export function defaultHarthmereLiveModeBackendStateV1(
       businesses: {},
       businessRevenueAccumulated: 0,
       production: defaultHarthmereProductionEconomyStateV1(),
+      auctionSellerPayouts: {},
+      claimedAuctionPayoutIds: {},
     },
     jobsBoard: defaultHarthmereJobsBoardStateV1(nowMs),
     inventoryLoot: createHarthmereEmptyInventoryLootStateV1(),
@@ -4946,6 +4992,42 @@ function createSharedLawStateFromBackendV1(
   };
 }
 
+function normalizeAuctionSellerPayoutsV1(
+  raw: unknown
+): Record<string, HarthmereAuctionSellerPayoutV1[]> {
+  const out: Record<string, HarthmereAuctionSellerPayoutV1[]> = {};
+  if (!raw || typeof raw !== "object") return out;
+  for (const [sellerId, list] of Object.entries(raw as Record<string, unknown>)) {
+    if (!Array.isArray(list)) continue;
+    const cleaned = list
+      .filter((p): p is Record<string, unknown> => Boolean(p) && typeof p === "object")
+      .map((p) => ({
+        listingId: String(p.listingId ?? ""),
+        goldNet: Math.max(0, Math.trunc(Number(p.goldNet) || 0)),
+        itemId: String(p.itemId ?? ""),
+        count: Math.max(0, Math.trunc(Number(p.count) || 0)),
+        soldAtMs: Math.max(0, Math.trunc(Number(p.soldAtMs) || 0)),
+      }))
+      .filter((p) => p.listingId && p.itemId);
+    if (cleaned.length > 0) out[sellerId] = cleaned;
+  }
+  return out;
+}
+
+function applyAuctionSellerEscrowDeltaV1(
+  state: HarthmereLiveModeBackendStateV1,
+  itemId: string | undefined,
+  escrowDelta: number
+) {
+  if (!itemId || !escrowDelta) return;
+  state.inventory.escrow = { ...state.inventory.escrow };
+  state.inventory.escrow[itemId] = Math.max(
+    0,
+    (state.inventory.escrow[itemId] ?? 0) + escrowDelta
+  );
+  if (state.inventory.escrow[itemId] <= 0) delete state.inventory.escrow[itemId];
+}
+
 export function createHarthmereLiveModeSharedWorldStateV1(
   state: HarthmereLiveModeBackendStateV1,
   nowMs: number = state.updatedAtMs
@@ -4971,6 +5053,10 @@ export function createHarthmereLiveModeSharedWorldStateV1(
     questInvites: normalizeHarthmereQuestInviteStateV1(
       state.questInvites,
       nowMs
+    ),
+    auctionListings: { ...state.economy.auctionListings },
+    auctionSellerPayouts: normalizeAuctionSellerPayoutsV1(
+      state.economy.auctionSellerPayouts
     ),
   };
 }
@@ -5044,6 +5130,10 @@ export function parseHarthmereLiveModeSharedWorldStateV1(
         (parsed as any).questInvites,
         nowMs
       ),
+      auctionListings: { ...((parsed as any).auctionListings ?? {}) },
+      auctionSellerPayouts: normalizeAuctionSellerPayoutsV1(
+        (parsed as any).auctionSellerPayouts
+      ),
     };
   } catch {
     return undefined;
@@ -5068,6 +5158,33 @@ export function mergeHarthmereLiveModeSharedWorldStateIntoBackendV1(
     shared.questInvites,
     nowMs
   );
+  // Auction marketplace is shared so a buyer can see/settle another player's listing.
+  state.economy.auctionListings = { ...(shared.auctionListings ?? {}) };
+  state.economy.auctionSellerPayouts = normalizeAuctionSellerPayoutsV1(
+    shared.auctionSellerPayouts
+  );
+  state.economy.claimedAuctionPayoutIds = state.economy.claimedAuctionPayoutIds ?? {};
+  // Deliver this actor's owed auction sale proceeds exactly once (the shared blob is
+  // last-write-wins and can re-deliver, so guard on the locally-recorded claimed ids).
+  for (const payout of (shared.auctionSellerPayouts ?? {})[state.actorId] ?? []) {
+    if (state.economy.claimedAuctionPayoutIds[payout.listingId]) continue;
+    state.economy.claimedAuctionPayoutIds[payout.listingId] = nowMs;
+    state.inventory.gold = Math.max(0, state.inventory.gold + Math.max(0, payout.goldNet));
+    if (payout.count > 0 && payout.itemId) {
+      // Release the sold stack from the seller's escrow lock and inventory.
+      state.inventory.escrow = { ...state.inventory.escrow };
+      state.inventory.escrow[payout.itemId] = Math.max(
+        0,
+        (state.inventory.escrow[payout.itemId] ?? 0) - payout.count
+      );
+      if (state.inventory.escrow[payout.itemId] <= 0) delete state.inventory.escrow[payout.itemId];
+      state.inventory.items[payout.itemId] = Math.max(
+        0,
+        (state.inventory.items[payout.itemId] ?? 0) - payout.count
+      );
+      if (state.inventory.items[payout.itemId] <= 0) delete state.inventory.items[payout.itemId];
+    }
+  }
   const sharedBuilding = normalizeHarthmereLiveModeSharedBuildingStateV1(
     shared.building
   );
@@ -6228,7 +6345,12 @@ export function reduceHarthmereLiveModeBackendStateV1(
       },
       ...(next.law.recentReputationEvents ?? []),
     ].slice(0, 50);
-    if (fineDeltaBox.value !== 0) {
+    if (fineDeltaBox.value > 0) {
+      // Enforced fine: charge the wallet, carry only the unpayable remainder as debt.
+      if (chargeEnforcedLawFineV1(next, factionId, fineDeltaBox.value) > 0) {
+        touchedModels.add("wallet");
+      }
+    } else if (fineDeltaBox.value < 0) {
       recordDelta(next.law.fines, factionId, fineDeltaBox.value);
     }
     next.law.flags[record.kind] = true;
@@ -6994,6 +7116,11 @@ export function reduceHarthmereLiveModeBackendStateV1(
     "request_vendor_transaction",
     "request_auction_post",
     "request_auction_settle",
+    "request_auction_cancel",
+    "request_auction_recover",
+    "request_auction_expire",
+    "request_pay_fine",
+    "request_clear_bounty",
     "request_bank_transaction",
     "request_crafting",
     "request_inventory_mutation",
@@ -7614,6 +7741,7 @@ export function reduceHarthmereLiveModeBackendStateV1(
         snapshot,
         playerLevel: next.classMagic.skills["character_level"]?.level ?? 1,
         playerSkills: next.classMagic.skills,
+        playerClassId: next.classMagic.classId ?? "warrior",
         reputation: next.law.reputation,
       });
       if (invResult.ok) {
@@ -7741,6 +7869,7 @@ export function reduceHarthmereLiveModeBackendStateV1(
         snapshot,
         playerLevel: next.classMagic.skills["character_level"]?.level ?? 1,
         playerSkills: next.classMagic.skills,
+        playerClassId: next.classMagic.classId ?? "warrior",
         reputation: next.law.reputation,
       });
       if (invResult.ok) {
@@ -7818,6 +7947,8 @@ export function reduceHarthmereLiveModeBackendStateV1(
         sharedStateKeys.add(
           harthmereLiveModeSharedStateKeyV1("auction_listing", listingId)
         );
+        // Publish the listing to the shared marketplace so other players can settle it.
+        sharedStateKeys.add(harthmereLiveModeSharedWorldStateKeyV1());
         touchedModels.add("auction_listing");
         touchedModels.add("inventory_escrow");
         touchedModels.add("wallet");
@@ -7887,25 +8018,203 @@ export function reduceHarthmereLiveModeBackendStateV1(
         sharedStateKeys.add(
           harthmereLiveModeSharedStateKeyV1("auction_listing", listingId)
         );
-        // Seller's escrow release is a shared-state write (handled via event)
-        sharedStateKeys.add(
-          harthmereLiveModeSharedStateKeyV1(
-            "seller_account",
-            auctionResult.listing.sellerId
-          )
-        );
+        // Queue the seller's sale proceeds + escrow/item release for them to collect on
+        // their next sync (the seller is not the acting player here). Replaces the old
+        // empty "seller_account" key that was never consumed, so the seller was never paid.
+        const sellerId = auctionResult.listing.sellerId;
+        next.economy.auctionSellerPayouts = {
+          ...next.economy.auctionSellerPayouts,
+          [sellerId]: [
+            ...(next.economy.auctionSellerPayouts[sellerId] ?? []),
+            {
+              listingId,
+              goldNet: Math.max(0, auctionResult.sellerGoldDelta),
+              itemId,
+              count: itemCount,
+              soldAtMs: nowMs,
+            },
+          ],
+        };
+        sharedStateKeys.add(harthmereLiveModeSharedWorldStateKeyV1());
         touchedModels.add("auction_listing");
+        touchedModels.add("auction_seller_payout");
         touchedModels.add("inventory_items");
         touchedModels.add("wallet");
         touchedModels.add("economy_ledger");
         touchedModels.add("house_tax");
-        void itemCount; // referenced for completeness
       } else {
         warnings.push(
           ...auctionResult.errors.map((e) => `auction_settle_rejected:${e}`)
         );
         touchedModels.add("auction_settle_rejection");
       }
+      break;
+    }
+
+    // -----------------------------------------------------------------------
+    // AUCTION CANCEL — seller pulls their own active listing; escrow released locally
+    // -----------------------------------------------------------------------
+    case "request_auction_cancel": {
+      const listingId =
+        payloadString(envelope, "listingId") ?? envelope.requestId;
+      const currentListing = next.economy.auctionListings[listingId] as
+        | HarthmereAuctionListingV1
+        | undefined;
+      const r = reduceHarthmereAuctionMutationV1(
+        {
+          requestId: envelope.requestId,
+          kind: "cancel_listing",
+          actorId: envelope.actorId,
+          nowMs,
+          listingId,
+        },
+        { actorSnapshot: buildInventorySnapshot(), currentListing }
+      );
+      if (r.ok && r.listing) {
+        next.economy.auctionListings[listingId] = r.listing;
+        applyAuctionSellerEscrowDeltaV1(next, r.listing.itemId, r.sellerEscrowDelta);
+        sharedStateKeys.add(harthmereLiveModeSharedWorldStateKeyV1());
+        touchedModels.add("auction_listing");
+        touchedModels.add("inventory_escrow");
+      } else {
+        warnings.push(...r.errors.map((e) => `auction_cancel_rejected:${e}`));
+        touchedModels.add("auction_cancel_rejection");
+      }
+      break;
+    }
+
+    // -----------------------------------------------------------------------
+    // AUCTION RECOVER — seller reclaims an expired listing's escrowed item
+    // -----------------------------------------------------------------------
+    case "request_auction_recover": {
+      const listingId =
+        payloadString(envelope, "listingId") ?? envelope.requestId;
+      const currentListing = next.economy.auctionListings[listingId] as
+        | HarthmereAuctionListingV1
+        | undefined;
+      const r = reduceHarthmereAuctionMutationV1(
+        {
+          requestId: envelope.requestId,
+          kind: "recover_expired_escrow",
+          actorId: envelope.actorId,
+          nowMs,
+          listingId,
+        },
+        { actorSnapshot: buildInventorySnapshot(), currentListing }
+      );
+      if (r.ok) {
+        applyAuctionSellerEscrowDeltaV1(next, currentListing?.itemId, r.sellerEscrowDelta);
+        // The listing is fully resolved once recovered; drop it from the marketplace.
+        if (currentListing) delete next.economy.auctionListings[listingId];
+        sharedStateKeys.add(harthmereLiveModeSharedWorldStateKeyV1());
+        touchedModels.add("auction_listing");
+        touchedModels.add("inventory_escrow");
+      } else {
+        warnings.push(...r.errors.map((e) => `auction_recover_rejected:${e}`));
+        touchedModels.add("auction_recover_rejection");
+      }
+      break;
+    }
+
+    // -----------------------------------------------------------------------
+    // AUCTION EXPIRE — sweep due active listings to "expired" (escrow stays locked
+    // until the seller recovers it). Safe to call on a periodic tick.
+    // -----------------------------------------------------------------------
+    case "request_auction_expire": {
+      let expired = 0;
+      for (const [lid, listing] of Object.entries(next.economy.auctionListings)) {
+        if (listing.status !== "active" || nowMs <= listing.expiresAtMs) continue;
+        const r = reduceHarthmereAuctionMutationV1(
+          {
+            requestId: `${envelope.requestId}:${lid}`,
+            kind: "expire_listing",
+            actorId: envelope.actorId,
+            nowMs,
+            listingId: lid,
+          },
+          { actorSnapshot: buildInventorySnapshot(), currentListing: listing }
+        );
+        if (r.ok && r.listing) {
+          next.economy.auctionListings[lid] = r.listing;
+          expired++;
+        }
+      }
+      if (expired > 0) {
+        sharedStateKeys.add(harthmereLiveModeSharedWorldStateKeyV1());
+        touchedModels.add("auction_listing");
+      } else {
+        warnings.push("auction_expire:no_listings_due");
+      }
+      break;
+    }
+
+    // -----------------------------------------------------------------------
+    // PAY FINE — settle outstanding law-fine debt against the wallet
+    // -----------------------------------------------------------------------
+    case "request_pay_fine": {
+      const factionId =
+        payloadString(envelope, "factionId") ?? HARTHMERE_CIVIL_LAW_FACTION_ID_V1;
+      const owed = Math.max(0, Math.trunc(next.law.fines[factionId] ?? 0));
+      if (owed <= 0) {
+        warnings.push("pay_fine_rejected:no_outstanding_fine");
+        touchedModels.add("law_fine_rejection");
+        break;
+      }
+      const pay = Math.min(Math.max(0, next.inventory.gold), owed);
+      if (pay <= 0) {
+        warnings.push("pay_fine_rejected:insufficient_gold");
+        touchedModels.add("law_fine_rejection");
+        break;
+      }
+      next.inventory.gold -= pay;
+      const remaining = owed - pay;
+      if (remaining > 0) {
+        next.law.fines[factionId] = remaining;
+      } else {
+        delete next.law.fines[factionId];
+      }
+      touchedModels.add("wallet");
+      touchedModels.add("law_fines");
+      break;
+    }
+
+    // -----------------------------------------------------------------------
+    // CLEAR BOUNTY — offender pays off their own outstanding bounty, which resolves the
+    // crime record(s) and unblocks civil permits (previously a permanent soft-lock).
+    // -----------------------------------------------------------------------
+    case "request_clear_bounty": {
+      const factionId =
+        payloadString(envelope, "factionId") ?? HARTHMERE_CIVIL_LAW_FACTION_ID_V1;
+      const records = next.law.crimeRecords ?? [];
+      const outstanding = records.filter(
+        (r) =>
+          r.factionId === factionId &&
+          (r.status === "wanted" || r.status === "arrest_pending") &&
+          Math.trunc(r.bountyGold ?? 0) > 0
+      );
+      const totalBounty = outstanding.reduce(
+        (sum, r) => sum + Math.max(0, Math.trunc(r.bountyGold ?? 0)),
+        0
+      );
+      if (totalBounty <= 0) {
+        warnings.push("clear_bounty_rejected:no_active_bounty");
+        touchedModels.add("law_bounty_rejection");
+        break;
+      }
+      if (next.inventory.gold < totalBounty) {
+        warnings.push("clear_bounty_rejected:insufficient_gold");
+        touchedModels.add("law_bounty_rejection");
+        break;
+      }
+      next.inventory.gold -= totalBounty;
+      const outstandingIds = new Set(outstanding.map((r) => r.id));
+      next.law.crimeRecords = records.map((r) =>
+        outstandingIds.has(r.id) ? { ...r, status: "served" as const, bountyGold: 0 } : r
+      );
+      sharedStateKeys.add(harthmereLiveModeSharedWorldStateKeyV1());
+      touchedModels.add("wallet");
+      touchedModels.add("law_bounty_cleared");
+      touchedModels.add("law_crime_records");
       break;
     }
 
@@ -7969,6 +8278,7 @@ export function reduceHarthmereLiveModeBackendStateV1(
           snapshot,
           playerLevel: next.classMagic.skills["character_level"]?.level ?? 1,
           playerSkills: next.classMagic.skills,
+        playerClassId: next.classMagic.classId ?? "warrior",
           reputation: next.law.reputation,
         });
         if (bankResult.ok) {
@@ -8960,7 +9270,13 @@ export function reduceHarthmereLiveModeBackendStateV1(
         touchedModels.add("law_reputation_events");
       }
       const fineDelta = fineDeltaBox.value;
-      if (fineDelta !== 0) {
+      if (fineDelta > 0) {
+        // Enforced: charge the wallet, carry only the unpayable remainder as debt.
+        if (chargeEnforcedLawFineV1(next, factionId, fineDelta) > 0) {
+          touchedModels.add("wallet");
+        }
+      } else if (fineDelta < 0) {
+        // Server-authorized fine reduction (e.g. amnesty) reduces outstanding debt.
         recordDelta(next.law.fines, factionId, fineDelta);
       }
       const crimeKind = payloadString(envelope, "crimeKind");
@@ -11605,6 +11921,7 @@ export function reduceHarthmereLiveModeBackendStateV1(
           snapshot,
           playerLevel: next.classMagic.skills["character_level"]?.level ?? 1,
           playerSkills: next.classMagic.skills,
+        playerClassId: next.classMagic.classId ?? "warrior",
           reputation: next.law.reputation,
           allowPrepaidCraftingInputs: true,
         });
@@ -11749,6 +12066,7 @@ export function reduceHarthmereLiveModeBackendStateV1(
         snapshot,
         playerLevel: next.classMagic.skills["character_level"]?.level ?? 1,
         playerSkills: next.classMagic.skills,
+        playerClassId: next.classMagic.classId ?? "warrior",
         reputation: next.law.reputation,
       });
       if (craftResult.ok) {
@@ -11896,15 +12214,24 @@ export function reduceHarthmereLiveModeBackendStateV1(
             touchedModels.add("exotic_matter_rejection");
             break;
           }
-          if (
-            distanceSq3V1(actorPosition, {
-              x: deposit.position[0],
-              y: deposit.position[1],
-              z: deposit.position[2],
-            }) >
+          // Deposits in shifted-world caves render their ore at `terrainPosition`
+          // (X - 512), not `deposit.position`. The player physically stands at the
+          // rendered ore, so proximity must accept either coordinate — otherwise every
+          // shifted-cave deposit (the bulk of the content) is ~512 blocks from
+          // `deposit.position` and can never be mined. Mirrors the dual-position logic in
+          // harthmereExoticMatterDepositAtBlockV1.
+          const mineRadiusSq =
             HARTHMERE_EXOTIC_MATTER_MINE_INTERACTION_RADIUS_V1 *
-              HARTHMERE_EXOTIC_MATTER_MINE_INTERACTION_RADIUS_V1
-          ) {
+            HARTHMERE_EXOTIC_MATTER_MINE_INTERACTION_RADIUS_V1;
+          const minePositions = [deposit.position, deposit.terrainPosition].filter(
+            (value): value is [number, number, number] => Array.isArray(value)
+          );
+          const withinMineRange = minePositions.some(
+            (pos) =>
+              distanceSq3V1(actorPosition, { x: pos[0], y: pos[1], z: pos[2] }) <=
+              mineRadiusSq
+          );
+          if (!withinMineRange) {
             warnings.push("exotic_matter_rejected:deposit_proximity_required");
             touchedModels.add("exotic_matter_rejection");
             break;

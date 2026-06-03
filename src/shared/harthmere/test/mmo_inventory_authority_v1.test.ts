@@ -514,6 +514,52 @@ describe("Crafting", () => {
     const result = reduceHarthmereInventoryMutationV1(req, ctx);
     assert.ok(!result.ok, "should reject when inventory full");
   });
+
+  it("refunds failed-craft materials on the combined consumed total, not per-ledger (no rounding loss)", () => {
+    registerHarthmereCraftingRecipeV1({
+      recipeId: "refund_split_test",
+      outputItemId: "iron_ingot",
+      outputCount: 1,
+      inputs: [{ itemId: "iron_ore", count: 2 }],
+      requiredSkillId: "smithing",
+      requiredSkillLevel: 1,
+      requiredLevel: 1,
+      craftingTimeMs: 1000,
+      xpReward: 10,
+      successChance: 0, // deterministically fails so the refund path runs
+      failureMaterialRefundPercent: 0.5,
+    });
+    // One unit from the backpack and one from material storage: a single input split
+    // across both ledgers. 50% of 2 consumed = 1 unit refunded; per-ledger flooring
+    // (the old bug) would refund floor(0.5)+floor(0.5)=0.
+    const snap = makeSnapshot({
+      items: { iron_ore: 1 },
+      materialStorage: { iron_ore: 1 },
+      knownRecipes: ["refund_split_test"],
+    });
+    const ctx = makeCtx(snap, { playerLevel: 1, playerSkills: { smithing: { level: 1 } } });
+    const req = makeReq({ kind: "craft_item", recipeId: "refund_split_test", count: 1 });
+    const result = reduceHarthmereInventoryMutationV1(req, ctx);
+    assert.ok(result.ok, result.errors?.join(", "));
+    const netConsumed = (result.itemDeltas.iron_ore ?? 0) + (result.materialStorageDeltas.iron_ore ?? 0);
+    assert.strictEqual(netConsumed, -1, "net consumed should be 1 of 2 after the 50% refund");
+    assert.ok(!result.itemDeltas.iron_ingot, "a failed craft produces no output");
+  });
+});
+
+describe("Unimplemented mutation kinds", () => {
+  it("hard-fails split_stack and stack_items instead of a permissive ok passthrough", () => {
+    const snap = makeSnapshot({ items: { iron_ore: 10 } });
+    const ctx = makeCtx(snap);
+    for (const kind of ["split_stack", "stack_items"] as const) {
+      const result = reduceHarthmereInventoryMutationV1(makeReq({ kind, itemId: "iron_ore", count: 5 }), ctx);
+      assert.ok(!result.ok, `${kind} must not silently succeed`);
+      assert.ok(
+        result.errors?.some((e) => e.includes("not_implemented")),
+        `${kind} should report not_implemented, got: ${result.errors?.join(", ")}`
+      );
+    }
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -630,6 +676,58 @@ describe("Quest item grant/remove", () => {
     assert.ok(unequip.ok, unequip.errors?.join(", "));
     assert.strictEqual(unequip.itemDeltas["iron_sword"], 1);
     assert.strictEqual(unequip.equipmentChanges.main_hand, undefined);
+  });
+
+  it("enforces equipment classRestriction when the player class is known", () => {
+    registerHarthmereItemDefinitionV1(makeItem({ itemId: "mage_staff", classRestriction: ["mage"], stats: {} }));
+    const snap = makeSnapshot({ items: { mage_staff: 1 } });
+    const wrong = reduceHarthmereInventoryMutationV1(
+      makeReq({ kind: "equip_item", itemId: "mage_staff", targetSlot: "main_hand" }),
+      makeCtx(snap, { playerClassId: "warrior" })
+    );
+    assert.ok(!wrong.ok, "a warrior must not equip a mage-only item");
+    assert.ok(wrong.errors?.includes("class_requirement_not_met"));
+
+    const right = reduceHarthmereInventoryMutationV1(
+      makeReq({ kind: "equip_item", itemId: "mage_staff", targetSlot: "main_hand" }),
+      makeCtx(snap, { playerClassId: "mage" })
+    );
+    assert.ok(right.ok, right.errors?.join(", "));
+
+    // No class supplied → enforcement skipped (caller could not determine eligibility).
+    const noClass = reduceHarthmereInventoryMutationV1(
+      makeReq({ kind: "equip_item", itemId: "mage_staff", targetSlot: "main_hand" }),
+      makeCtx(snap)
+    );
+    assert.ok(noClass.ok, noClass.errors?.join(", "));
+  });
+
+  it("enforces two-handed weapon vs off-hand slot exclusivity", () => {
+    registerHarthmereItemDefinitionV1(makeItem({ itemId: "greatsword", twoHanded: true, maxStackSize: 1, stats: { attack: 30 } }));
+    registerHarthmereItemDefinitionV1(makeItem({ itemId: "wooden_shield", maxStackSize: 1, stats: { defense: 8 } }));
+
+    // Equipping a two-hander while an off-hand item is equipped is rejected.
+    const blockedByShield = reduceHarthmereInventoryMutationV1(
+      makeReq({ kind: "equip_item", itemId: "greatsword", targetSlot: "main_hand" }),
+      makeCtx(makeSnapshot({ items: { greatsword: 1 }, equipment: { off_hand: "wooden_shield" } }))
+    );
+    assert.ok(!blockedByShield.ok);
+    assert.ok(blockedByShield.errors?.includes("off_hand_must_be_empty_for_two_handed"));
+
+    // Equipping an off-hand item while a two-hander is in the main hand is rejected.
+    const blockedByTwoHander = reduceHarthmereInventoryMutationV1(
+      makeReq({ kind: "equip_item", itemId: "wooden_shield", targetSlot: "off_hand" }),
+      makeCtx(makeSnapshot({ items: { wooden_shield: 1 }, equipment: { main_hand: "greatsword" } }))
+    );
+    assert.ok(!blockedByTwoHander.ok);
+    assert.ok(blockedByTwoHander.errors?.includes("two_handed_weapon_blocks_off_hand"));
+
+    // With both hands free, the two-hander equips cleanly.
+    const ok = reduceHarthmereInventoryMutationV1(
+      makeReq({ kind: "equip_item", itemId: "greatsword", targetSlot: "main_hand" }),
+      makeCtx(makeSnapshot({ items: { greatsword: 1 } }))
+    );
+    assert.ok(ok.ok, ok.errors?.join(", "));
   });
 
   it("blocks dropping quest items and validates destroy counts", () => {

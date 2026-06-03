@@ -3878,6 +3878,18 @@ export async function makeSnapshotPlayerLikeAppearanceMesh(
   mesh.scene.userData.snapshotRichNpcAppearanceVersion =
     SNAPSHOT_RICH_NPC_APPEARANCE_VERSION_V69;
   mesh.scene.userData.snapshotRichNpcAppearanceUrl = url;
+  // HARTHMERE_NPC_BASE_PASS_PARITY_V197:
+  // Player-like NPCs (Snapshot Grove humans like Billy/Jackie, business owners,
+  // sentinels) render through the same generated avatar mesh as real players,
+  // but were returned WITHOUT the base-pass material coercion that real players
+  // always run (see makePlayerMesh / loadPlayerAnimatedMesh). Scene routing
+  // (chooseMixedSceneFallbackV155) only sends a root to SceneBasePass when it
+  // carries the "harthmere-player-avatar-base-pass-materials-v153" marker this
+  // coercion stamps. Without it the avatar body was routed to the secondary
+  // "three" pass where its base-pass materials do not draw — leaving NPCs as
+  // invisible floating nameplates. Coerce here so NPC avatars render identically
+  // to player avatars.
+  coerceHarthmerePlayerObjectMaterialsToBasePass(mesh.scene);
   return mesh;
 }
 

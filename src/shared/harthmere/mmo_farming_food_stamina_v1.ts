@@ -10,9 +10,16 @@ export const HARTHMERE_FARMING_FOOD_STAMINA_VERSION_V1 =
 
 export const HARTHMERE_HALF_DAY_MS_V1 = 12 * 60 * 60 * 1000;
 export const HARTHMERE_DEFAULT_MAX_STAMINA_V1 = 100;
-export const HARTHMERE_FULL_STAMINA_SURVIVAL_MINUTES_V1 = 4 * 60;
+/** Real-time survival clock: 100 points of stamina drain over 2 hours of active gameplay.
+ *  This is a CONSTANT rate (independent of max stamina), so "every 100 stamina = 2 hours"
+ *  holds for every player — a larger max bar simply lasts proportionally longer. */
+export const HARTHMERE_STAMINA_MINUTES_PER_100_V1 = 2 * 60;
 export const HARTHMERE_STAMINA_DRAIN_PER_MINUTE_V1 =
-  HARTHMERE_DEFAULT_MAX_STAMINA_V1 / HARTHMERE_FULL_STAMINA_SURVIVAL_MINUTES_V1;
+  100 / HARTHMERE_STAMINA_MINUTES_PER_100_V1;
+/** Minutes a DEFAULT (100) stamina bar lasts before starvation, derived from the constant
+ *  drain rate (= 120 min). Retained for callers/tests that reason about the default bar. */
+export const HARTHMERE_FULL_STAMINA_SURVIVAL_MINUTES_V1 =
+  HARTHMERE_DEFAULT_MAX_STAMINA_V1 / HARTHMERE_STAMINA_DRAIN_PER_MINUTE_V1;
 
 export type HarthmereSeedSourceV1 = "vendor" | "world" | "monster";
 export type HarthmereSpawnKindV1 = "food" | "animal" | "seed" | "monster";
@@ -79,6 +86,8 @@ export interface HarthmereFarmingPlotV1 {
   wateredAtMs?: number;
   harvestReadyAtMs: number;
   harvestedAtMs?: number;
+  /** Set when a crop withered past its deathTimeMs window without being harvested. */
+  diedAtMs?: number;
 }
 
 export interface HarthmereWorldSpawnV1 {
@@ -551,7 +560,8 @@ export function plantHarthmereCropV1(
   if (!input.plotId) return result(state, ["farming_rejected:missing_plot"]);
   const seed = HARTHMERE_SEED_DEFINITIONS_V1[input.seedItemId];
   if (!seed) return result(state, ["farming_rejected:unknown_seed"]);
-  if (state.plots[input.plotId] && !state.plots[input.plotId].harvestedAtMs) {
+  const occupying = state.plots[input.plotId];
+  if (occupying && !occupying.harvestedAtMs && !occupying.diedAtMs) {
     return result(state, ["farming_rejected:plot_occupied"]);
   }
   const missing = requireItem(state, input.seedItemId, 1, "farming_rejected:missing_seed");
@@ -584,7 +594,17 @@ export function waterHarthmereCropV1(
       [input.plotId]: {
         ...plot,
         wateredAtMs: input.nowMs,
-        harvestReadyAtMs: Math.max(input.nowMs, plot.harvestReadyAtMs - 60 * 60 * 1000),
+        // Cap the watering bonus to a fraction of the crop's total grow time so a flat 1h
+        // shave cannot zero-out (make instantly harvestable) a fast-growing crop whose
+        // grow time is under an hour.
+        harvestReadyAtMs: Math.max(
+          input.nowMs,
+          plot.harvestReadyAtMs -
+            Math.min(
+              60 * 60 * 1000,
+              Math.floor(Math.max(0, plot.harvestReadyAtMs - (plot.plantedAtMs ?? input.nowMs)) * 0.25),
+            ),
+        ),
       },
     },
   });
@@ -597,9 +617,28 @@ export function harvestHarthmereCropV1(
   const plot = state.plots[input.plotId];
   if (!plot) return result(state, ["farming_rejected:unknown_plot"]);
   if (plot.harvestedAtMs) return result(state, ["farming_rejected:already_harvested"]);
-  if (input.nowMs < plot.harvestReadyAtMs) return result(state, ["farming_rejected:not_ready"]);
+  if (plot.diedAtMs) return result(state, ["farming_rejected:crop_withered"]);
   const seed = HARTHMERE_SEED_DEFINITIONS_V1[plot.seedItemId];
   if (!seed) return result(state, ["farming_rejected:unknown_seed"]);
+  // A crop left unharvested past its death window withers and yields nothing. The plot is
+  // marked dead so it can be cleared and replanted (mirrors the harvested-plot flow).
+  if (
+    typeof seed.deathTimeMs === "number" &&
+    seed.deathTimeMs > 0 &&
+    input.nowMs >= plot.plantedAtMs + seed.deathTimeMs
+  ) {
+    return result(
+      {
+        ...state,
+        plots: {
+          ...state.plots,
+          [input.plotId]: { ...plot, diedAtMs: input.nowMs },
+        },
+      },
+      ["farming_rejected:crop_withered"],
+    );
+  }
+  if (input.nowMs < plot.harvestReadyAtMs) return result(state, ["farming_rejected:not_ready"]);
   return result({
     ...state,
     inventory: addItem(state.inventory, seed.yieldItemId, seed.yieldCount),
@@ -681,8 +720,13 @@ export function feedHarthmereLivestockV1(
   }
   const missing = requireItem(state, input.feedItemId, 1, "livestock_rejected:missing_feed");
   if (missing) return result(state, [missing]);
-  const health = Math.min(100, Math.max(0, livestock.health) + 8);
-  const hunger = Math.min(100, Math.max(0, livestock.hunger) + 35);
+  // Normalize possibly-corrupt (NaN) persisted values before arithmetic, mirroring the
+  // stamina path; without this a NaN health/hunger stays NaN forever and the care gate
+  // (`< 25`) silently passes.
+  const baseHealth = Number.isFinite(livestock.health) ? livestock.health : 0;
+  const baseHunger = Number.isFinite(livestock.hunger) ? livestock.hunger : 0;
+  const health = Math.min(100, Math.max(0, baseHealth) + 8);
+  const hunger = Math.min(100, Math.max(0, baseHunger) + 35);
   return result({
     ...state,
     inventory: addItem(state.inventory, input.feedItemId, -1),
@@ -693,10 +737,9 @@ export function feedHarthmereLivestockV1(
         health,
         hunger,
         lastFedAtMs: input.nowMs,
-        productReadyAtMs: Math.min(
-          livestock.productReadyAtMs,
-          input.nowMs + HARTHMERE_LIVESTOCK_PRODUCT_INTERVAL_MS_V1,
-        ),
+        // Feeding maintains the animal but must NOT shorten the product timer — taking the
+        // min let players spam-feed to pull a far-future product ready time earlier.
+        productReadyAtMs: livestock.productReadyAtMs,
       },
     },
   }, [], { [input.feedItemId]: -1 });
@@ -708,7 +751,11 @@ export function collectHarthmereLivestockProductV1(
 ): HarthmereFoodStaminaResultV1 {
   const livestock = state.livestock[input.livestockId];
   if (!livestock) return result(state, ["livestock_rejected:unknown_livestock"]);
-  if (livestock.health < 25 || livestock.hunger < 25) {
+  // Treat a corrupt (NaN) value as "needs care" rather than letting `NaN < 25` (false)
+  // wave the collection through.
+  const careHealth = Number.isFinite(livestock.health) ? livestock.health : 0;
+  const careHunger = Number.isFinite(livestock.hunger) ? livestock.hunger : 0;
+  if (careHealth < 25 || careHunger < 25) {
     return result(state, ["livestock_rejected:animal_needs_care"]);
   }
   if (input.nowMs < livestock.productReadyAtMs) {
@@ -792,11 +839,24 @@ export function eatHarthmereFoodV1(
   const missing = requireItem(state, input.itemId, 1, "food_rejected:missing_food");
   if (missing) return result(state, [missing]);
   const maxStamina = normalizedMaxStaminaV1(state);
-  const stamina = normalizedStaminaValueV1(state);
   const lastStaminaTickMs = normalizedLastStaminaTickMsV1(state, input.nowMs);
+  // Apply the stamina drain that accrued since the last tick BEFORE crediting the
+  // restore, then advance the clock. Otherwise eating discards the pending drain
+  // (advancing lastStaminaTickMs to now while adding to the stale stored value), which
+  // silently grants up to a full survival-interval of free stamina per meal. Mirrors the
+  // drain math in tickHarthmereStaminaV1.
+  const elapsedMs = Math.max(0, input.nowMs - lastStaminaTickMs);
+  // Constant drain rate so 100 stamina always equals 2 hours of gameplay (see constant).
+  const drained = (elapsedMs / 60_000) * HARTHMERE_STAMINA_DRAIN_PER_MINUTE_V1;
+  const currentStamina = Math.max(0, normalizedStaminaValueV1(state) - drained);
+  if (currentStamina <= 0) {
+    // Drained to empty before the meal — the player has starved; a subsequent tick
+    // formalizes the death. Eating cannot revive from zero.
+    return result(state, ["food_rejected:stamina_depleted"]);
+  }
   return result({
     ...state,
-    stamina: Math.min(maxStamina, stamina + food.staminaRestore),
+    stamina: Math.min(maxStamina, currentStamina + food.staminaRestore),
     maxStamina,
     lastStaminaTickMs: Math.max(lastStaminaTickMs, input.nowMs),
     inventory: addItem(state.inventory, input.itemId, -1),
@@ -813,9 +873,8 @@ export function tickHarthmereStaminaV1(
   const maxStamina = normalizedMaxStaminaV1(state);
   const lastStaminaTickMs = normalizedLastStaminaTickMsV1(state, nowMs);
   const elapsedMs = Math.max(0, nowMs - lastStaminaTickMs);
-  const drainPerMinute =
-    maxStamina / HARTHMERE_FULL_STAMINA_SURVIVAL_MINUTES_V1;
-  const drained = (elapsedMs / 60_000) * drainPerMinute;
+  // Constant drain rate so 100 stamina always equals 2 hours of gameplay (see constant).
+  const drained = (elapsedMs / 60_000) * HARTHMERE_STAMINA_DRAIN_PER_MINUTE_V1;
   const nextStamina = Math.max(0, normalizedStaminaValueV1(state) - drained);
   const deathTriggered = nextStamina <= 0 && !state.deadFromStaminaAtMs;
   return result({

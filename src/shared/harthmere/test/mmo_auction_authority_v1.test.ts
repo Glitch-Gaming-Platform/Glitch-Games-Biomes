@@ -456,4 +456,28 @@ describe("previewHarthmereAuctionFeesV1", () => {
     assert.ok(multi.listingFee >= single.listingFee);
     assert.ok(multi.estimatedSellerNet > single.estimatedSellerNet);
   });
+
+  it("conserves items across the post -> expire -> recover lifecycle (no dupe)", () => {
+    const seller = makeSnap();
+    const posted = reduceHarthmereAuctionMutationV1(makePostReq(), { actorSnapshot: seller });
+    assert.ok(posted.ok, posted.errors?.join(","));
+    const listing = posted.listing!;
+    const expiredInput = { ...listing, expiresAtMs: NOW - 1000 };
+    const expired = reduceHarthmereAuctionMutationV1(
+      { requestId: "r2", actorId: "system", kind: "expire_listing", listingId: listing.listingId, nowMs: NOW } as HarthmereAuctionMutationRequestV1,
+      { actorSnapshot: seller, currentListing: expiredInput },
+    );
+    assert.ok(expired.ok, expired.errors?.join(","));
+    const recovered = reduceHarthmereAuctionMutationV1(
+      { requestId: "r3", actorId: "seller_1", kind: "recover_expired_escrow", listingId: listing.listingId, nowMs: NOW } as HarthmereAuctionMutationRequestV1,
+      { actorSnapshot: seller, currentListing: { ...expiredInput, status: "expired" } },
+    );
+    assert.ok(recovered.ok, recovered.errors?.join(","));
+    // The item is never duplicated: net item delta across the whole lifecycle is zero,
+    // and escrow returns to zero once recovered.
+    const netItem = posted.sellerItemDelta + expired.sellerItemDelta + recovered.sellerItemDelta;
+    const netEscrow = posted.sellerEscrowDelta + expired.sellerEscrowDelta + recovered.sellerEscrowDelta;
+    assert.strictEqual(netItem, 0, "item must not be duplicated across post/expire/recover");
+    assert.strictEqual(netEscrow, 0, "escrow must net to zero after recovery");
+  });
 });

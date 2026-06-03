@@ -22,6 +22,7 @@ export const HARTHMERE_ECONOMY_MAX_BUSINESS_INVENTORY_SLOTS_V1 = 240;
 export const HARTHMERE_ECONOMY_MAX_CONTRACT_DURATION_MS_V1 =
   45 * 24 * 60 * 60 * 1000;
 export const HARTHMERE_ECONOMY_DAY_MS_V1 = 24 * 60 * 60 * 1000;
+export const HARTHMERE_ECONOMY_INSURANCE_TERM_DAYS_V1 = 30;
 export const HARTHMERE_ECONOMY_BASE_SALES_TAX_RATE_V1 = 0.06;
 export const HARTHMERE_ECONOMY_MAX_SALES_TAX_RATE_V1 = 0.18;
 export const HARTHMERE_ECONOMY_MARKET_FEE_RATE_V1 = 0.025;
@@ -1926,8 +1927,12 @@ function takeBusinessLoan(result: MutableResult, request: HarthmereEconomyMutati
   const business = requireBusinessManager(result, request, context);
   if (!business) return;
   const principal = positiveInt(request.principalGold, 0);
-  const cap = Math.max(250, 500 + business.licenseLevel * 1000 + Math.max(0, business.reputation) * 10 - business.debtGold);
-  if (principal <= 0 || principal > cap) return reject(result, "economy_rejected:business_loan_principal_invalid");
+  // Existing debt reduces borrowing capacity. When debt fully consumes capacity the
+  // business cannot borrow at all — the 250 floor must not resurrect capacity for a
+  // business that is already over-leveraged.
+  const rawCap = 500 + business.licenseLevel * 1000 + Math.max(0, business.reputation) * 10 - business.debtGold;
+  const cap = Math.max(250, rawCap);
+  if (principal <= 0 || rawCap <= 0 || principal > cap) return reject(result, "economy_rejected:business_loan_principal_invalid");
   const loanId = `econ_loan_${result.next.nextLoanNumber++}`;
   const rate = clampNumber(request.dailyInterestRate, 0.005, 0.08, 0.015);
   result.next.loans[loanId] = {
@@ -1958,16 +1963,19 @@ function payBusinessLoan(result: MutableResult, request: HarthmereEconomyMutatio
   if (amount <= 0) return reject(result, "economy_rejected:invalid_loan_payment");
   if (business.balanceGold < amount) return reject(result, "economy_rejected:business_balance_insufficient_for_loan_payment");
   const balance = calculateLoanBalance(found, request.nowMs);
-  let remaining = Math.min(amount, balance.totalRemaining);
+  // Only charge the borrower for what actually goes toward the loan; an overpayment
+  // beyond the outstanding balance must not be silently burned.
+  const applied = Math.min(amount, balance.totalRemaining);
+  let remaining = applied;
   const interestPaid = Math.min(balance.interestRemaining, remaining);
   found.interestPaid += interestPaid;
   remaining -= interestPaid;
   const principalPaid = Math.min(found.principalRemaining, remaining);
   found.principalRemaining -= principalPaid;
   business.debtGold = Math.max(0, business.debtGold - principalPaid);
-  business.balanceGold -= amount;
+  business.balanceGold -= applied;
   if (found.principalRemaining <= 0 && calculateLoanBalance(found, request.nowMs).interestRemaining <= 0) found.status = "paid";
-  pushLedger(result, { id: request.requestId, kind: "business_loan_payment", businessId: business.businessId, amountGold: -amount }, request);
+  pushLedger(result, { id: request.requestId, kind: "business_loan_payment", businessId: business.businessId, amountGold: -applied }, request);
   result.touched.add("economy_loan");
   result.shared.add(businessSharedKey(business.businessId));
 }
@@ -1979,9 +1987,13 @@ function buyInsurance(result: MutableResult, request: HarthmereEconomyMutationRe
   const premium = positiveInt(request.premiumGoldPerDay, Math.ceil(coverage * 0.01));
   const deductible = positiveInt(request.deductibleGold, Math.ceil(coverage * 0.1));
   if (!request.coverageKind || coverage <= 0) return reject(result, "economy_rejected:invalid_insurance_policy");
-  if (business.balanceGold < premium) return reject(result, "economy_rejected:insurance_premium_unfunded");
+  // The policy grants a full term of coverage up front, so the premium owed is the
+  // per-day rate across the whole term. Charging a single day's premium for 30 days of
+  // claimable coverage is a money-printing exploit (pay 1% of coverage, claim up to 100%).
+  const termPremium = premium * HARTHMERE_ECONOMY_INSURANCE_TERM_DAYS_V1;
+  if (business.balanceGold < termPremium) return reject(result, "economy_rejected:insurance_premium_unfunded");
   const policyId = `econ_policy_${result.next.nextPolicyNumber++}`;
-  business.balanceGold -= premium;
+  business.balanceGold -= termPremium;
   result.next.insurancePolicies[policyId] = {
     policyId,
     businessId: business.businessId,
@@ -1991,7 +2003,7 @@ function buyInsurance(result: MutableResult, request: HarthmereEconomyMutationRe
     premiumGoldPerDay: premium,
     status: "active",
     purchasedAtMs: request.nowMs,
-    expiresAtMs: request.nowMs + 30 * HARTHMERE_ECONOMY_DAY_MS_V1,
+    expiresAtMs: request.nowMs + HARTHMERE_ECONOMY_INSURANCE_TERM_DAYS_V1 * HARTHMERE_ECONOMY_DAY_MS_V1,
     lastPremiumPaidAtMs: request.nowMs,
     claimsPaidGold: 0,
   };

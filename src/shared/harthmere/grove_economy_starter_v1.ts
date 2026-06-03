@@ -345,6 +345,43 @@ export const GROVE_ECONOMY_STARTER_LANDMARKS_V1: SnapshotGroveLandmarkV75[] = [
     area: "old_grove_road",
     visibleOnWorldMap: true,
   },
+  // HARTHMERE_WORLD_OBJECT_PROP_COVERAGE_V197:
+  // Authored prop coverage for world-object types that had no candidate landmark
+  // (door, gate, well, chest), so the F interaction prompt appears for them like
+  // every other Harthmere prop. Labels intentionally contain the prop keyword so
+  // the object classifier resolves the right interaction.
+  {
+    id: "econ_grove_supply_chest",
+    label: "Grove Supply Chest",
+    position: [496, FEET_Y + 1, -138],
+    kind: "interactable",
+    area: "the_grove",
+    visibleOnWorldMap: false,
+  },
+  {
+    id: "econ_grove_storehouse_door",
+    label: "Grove Storehouse Door",
+    position: [494, FEET_Y + 1, -150],
+    kind: "interactable",
+    area: "the_grove",
+    visibleOnWorldMap: false,
+  },
+  {
+    id: "econ_grove_garden_gate",
+    label: "Grove Garden Gate",
+    position: [502, FEET_Y + 1, -145],
+    kind: "interactable",
+    area: "the_grove",
+    visibleOnWorldMap: false,
+  },
+  {
+    id: "econ_grove_wishing_well",
+    label: "Grove Wishing Well",
+    position: [490, FEET_Y + 1, -148],
+    kind: "interactable",
+    area: "the_grove",
+    visibleOnWorldMap: false,
+  },
 ];
 
 // ---------------------------------------------------------------------------

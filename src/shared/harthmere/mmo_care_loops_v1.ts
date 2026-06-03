@@ -8,6 +8,12 @@ export const HARTHMERE_CARE_LOOPS_VERSION_V1 =
   "harthmere-care-loops-v1" as const;
 export const HARTHMERE_CARE_LOOP_DAY_MS_V1 = 24 * 60 * 60 * 1000;
 export const HARTHMERE_DAILY_TASK_MIN_GOLD_V1 = 200;
+/** Daily-return retention hook: the headline daily check-in pays an escalating streak bonus
+ *  for consecutive logins, saturating at a one-week streak so it stays bounded. This gives a
+ *  concrete reason to come back the next day (keep the streak, earn more) on top of the
+ *  other progress vectors (XP, maturing crops, business idle income, tasks). */
+export const HARTHMERE_DAILY_STREAK_BONUS_GOLD_V1 = 25;
+export const HARTHMERE_DAILY_STREAK_BONUS_CAP_DAYS_V1 = 7;
 export const HARTHMERE_DAILY_TASK_COUNT_V1 = 8;
 
 export type HarthmereCareLoopKindV1 =
@@ -426,17 +432,28 @@ export function reduceHarthmereCareLoopV1(
         ? 1
         : previousDay === day - 1
         ? care.daily.streak + 1
-        : previousDay === day
+        : // Same day, or a backwards-clock blip (previousDay in the future): preserve the
+        // streak. Only a genuinely missed day (previousDay < day - 1) resets it. A transient
+        // server-clock regression must not wipe a player's retention streak.
+        previousDay >= day
         ? care.daily.streak
         : 1;
     const reward = HARTHMERE_CARE_DAILY_ACTIVITIES_V1[activity] ?? {};
     const xpReward =
       reward.xp ??
       harthmereDailyTaskXpRewardV1({ actorLevel: request.actorLevel });
-    const goldReward = Math.max(
-      HARTHMERE_DAILY_TASK_MIN_GOLD_V1,
-      reward.gold ?? 0
-    );
+    // The headline daily check-in pays a streak bonus for consecutive logins (once per day),
+    // saturating at a one-week streak. Day 1 (streak 1) adds nothing, so the base daily
+    // reward is unchanged for a first login; each consecutive day grows it up to the cap.
+    const streakBonusGold =
+      activity === "check_in"
+        ? Math.min(
+            Math.max(0, streak - 1),
+            HARTHMERE_DAILY_STREAK_BONUS_CAP_DAYS_V1 - 1
+          ) * HARTHMERE_DAILY_STREAK_BONUS_GOLD_V1
+        : 0;
+    const goldReward =
+      Math.max(HARTHMERE_DAILY_TASK_MIN_GOLD_V1, reward.gold ?? 0) + streakBonusGold;
     const needBump: Record<string, [string, number]> = {
       check_in: ["happiness", 2],
       jobs_board: ["safety", 2],
@@ -450,7 +467,8 @@ export function reduceHarthmereCareLoopV1(
     care = {
       ...care,
       daily: {
-        lastLoginDay: day,
+        // Never let the recorded login day regress on a backwards-clock blip.
+        lastLoginDay: Math.max(day, previousDay ?? day),
         streak,
         completed: {
           ...care.daily.completed,

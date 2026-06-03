@@ -644,6 +644,9 @@ export function replenishHarthmereExoticMatterDepositsV1(input: {
   const nowMs = Math.max(0, Math.trunc(input.nowMs));
   const next = normalizeDepositStateV1(input.state);
   for (const entry of Object.values(next)) {
+    // A depleted entry recovers only once its replenish timer is due. Entries that are
+    // available:false WITHOUT a timer are an intentionally-preserved saved-depleted state
+    // (normal mining always stamps replenishesAtMs), so they are left untouched here.
     if (
       entry.available === false &&
       typeof entry.replenishesAtMs === "number" &&

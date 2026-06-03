@@ -420,23 +420,26 @@ function analyzeHarthmereQuestPerState(
   const completeFailsBeforeReady =
     !earlyComplete.ok && earlyComplete.reasons.includes("objectives_not_ready");
 
-  // Complete grants reward once.
+  // Complete grants reward once. Repeatable quests use a cycle-keyed grant id
+  // (`reward:<id>:<tick>`); "once" quests use the static `reward:<id>`. Match either form.
+  const grantMatchesQuest = (g: string) =>
+    g === `reward:${quest.id}` || g.startsWith(`reward:${quest.id}:`);
   const completeResult = completeHarthmereQuestV47(flowCtx, quest.id);
   const completeGrantsRewardOnce =
     completeResult.ok &&
-    flowCtx.grantedRewardIds.includes(`reward:${quest.id}`) &&
-    flowCtx.grantedRewardIds.filter((g) => g === `reward:${quest.id}`).length ===
-      1;
+    flowCtx.grantedRewardIds.some(grantMatchesQuest) &&
+    flowCtx.grantedRewardIds.filter(grantMatchesQuest).length === 1;
 
   const duplicateComplete = completeHarthmereQuestV47(flowCtx, quest.id);
-  // Duplicate complete must not grant again. Two acceptable paths:
+  // Duplicate complete (same record, no re-accept) must not grant again. Acceptable:
   //   - returns ok but flags reward_already_granted_idempotent
-  //   - returns not ok with the same reason
+  //   - returns not ok (objectives_not_ready / reward_already_granted)
+  //   - the grant count for this quest is still exactly one
   const duplicateCompleteIsIdempotent =
     duplicateComplete.reasons.includes("reward_already_granted") ||
     duplicateComplete.reasons.includes("reward_already_granted_idempotent") ||
-    (flowCtx.grantedRewardIds.filter((g) => g === `reward:${quest.id}`)
-      .length === 1);
+    duplicateComplete.reasons.includes("objectives_not_ready") ||
+    flowCtx.grantedRewardIds.filter(grantMatchesQuest).length === 1;
 
   // ---- failed ---------------------------------------------------------------
   const noQuestCtx = fullyOpenContext(quest);
@@ -695,6 +698,65 @@ if (
         obj,
       );
       assert.ok(noLos.reasons.includes("line_of_sight_blocked"));
+    });
+
+    // ---- Audit-hardening regression tests --------------------------------
+    (it as any)("repeatable quests re-grant their reward on a new cycle", () => {
+      const repeatable = (HARTHMERE_QUEST_CATALOG_V46 as any[]).find(
+        (q) => q.repeatability === "daily" || q.repeatability === "weekly",
+      );
+      assert.ok(repeatable, "expected at least one repeatable quest");
+      const ctx = fullyOpenContext(repeatable);
+      acceptHarthmereQuestV47(ctx, repeatable.id);
+      for (const obj of repeatable.objectives ?? []) advanceObjectiveOnce(ctx, repeatable, obj);
+      const first = completeHarthmereQuestV47(ctx, repeatable.id);
+      assert.ok(first.ok && first.rewardsGranted, "first completion should grant a reward");
+      // New cycle: advance the clock, re-accept (allowed for repeatables), re-complete.
+      ctx.tick += 100;
+      const reaccept = acceptHarthmereQuestV47(ctx, repeatable.id);
+      assert.ok(reaccept.ok, `re-accept of a repeatable should succeed: ${reaccept.reasons}`);
+      assert.strictEqual(ctx.runtimeRecords[repeatable.id].state, "active");
+      for (const obj of repeatable.objectives ?? []) advanceObjectiveOnce(ctx, repeatable, obj);
+      const second = completeHarthmereQuestV47(ctx, repeatable.id);
+      assert.ok(
+        second.ok && Boolean(second.rewardsGranted),
+        `repeatable reward must re-grant on a new cycle: ${JSON.stringify(second.reasons)}`,
+      );
+    });
+
+    (it as any)("abandon is rejected once a quest is completed (terminal state preserved)", () => {
+      const quest = (HARTHMERE_QUEST_CATALOG_V46 as any[]).find((q) => (q.objectives ?? []).length > 0);
+      assert.ok(quest);
+      const ctx = fullyOpenContext(quest);
+      acceptHarthmereQuestV47(ctx, quest.id);
+      for (const obj of quest.objectives ?? []) advanceObjectiveOnce(ctx, quest, obj);
+      completeHarthmereQuestV47(ctx, quest.id);
+      const abandoned = abandonHarthmereQuestV47(ctx, quest.id);
+      assert.ok(!abandoned.ok, "a completed quest must not be abandonable");
+      assert.ok(abandoned.reasons.includes("only_active_quests_can_abandon"));
+      assert.strictEqual(ctx.questStates[quest.id], "completed", "completed state must be preserved");
+    });
+
+    (it as any)("re-accepting a ready-to-complete quest preserves objective progress", () => {
+      const quest = (HARTHMERE_QUEST_CATALOG_V46 as any[]).find((q) => (q.objectives ?? []).length > 0);
+      assert.ok(quest);
+      const ctx = fullyOpenContext(quest);
+      acceptHarthmereQuestV47(ctx, quest.id);
+      for (const obj of quest.objectives ?? []) advanceObjectiveOnce(ctx, quest, obj);
+      assert.strictEqual(ctx.runtimeRecords[quest.id].state, "ready_to_complete");
+      const before = JSON.stringify(ctx.runtimeRecords[quest.id].objectiveProgress);
+      const reaccept = acceptHarthmereQuestV47(ctx, quest.id);
+      assert.ok(reaccept.ok && reaccept.reasons.includes("already_active_idempotent"));
+      assert.strictEqual(
+        ctx.runtimeRecords[quest.id].state,
+        "ready_to_complete",
+        "re-accept must not reset a ready-to-complete quest to active",
+      );
+      assert.strictEqual(
+        JSON.stringify(ctx.runtimeRecords[quest.id].objectiveProgress),
+        before,
+        "objective progress must be preserved on re-accept",
+      );
     });
   });
 }

@@ -568,6 +568,110 @@ describe("mmo_economy_authority_v1 — banking, loans, insurance, and failures",
   });
 });
 
+describe("mmo_economy_authority_v1 — money-conservation edge cases (audit hardening)", () => {
+  it("does not burn gold when a loan is overpaid beyond its outstanding balance", () => {
+    const setup = createBusiness();
+    let state = licenseAndOpen(setup.state, setup.businessId, 1);
+    let result = mutate(state, "take_business_loan", { businessId: setup.businessId, principalGold: 500 });
+    assert.deepStrictEqual(result.warnings, []);
+    state = result.economy;
+    const loanId = Object.keys(state.loans)[0];
+    // Same nowMs => zero accrued interest => totalRemaining === 500.
+    state.businesses[setup.businessId].balanceGold = 2000;
+    result = mutate(state, "pay_business_loan", { businessId: setup.businessId, loanId, amountGold: 800 });
+    assert.deepStrictEqual(result.warnings, []);
+    const after = result.economy.businesses[setup.businessId];
+    // Only the 500 outstanding may be deducted; the 300 overpayment must not vanish.
+    assert.strictEqual(after.balanceGold, 1500);
+    assert.strictEqual(result.economy.loans[loanId].principalRemaining, 0);
+    assert.strictEqual(result.economy.loans[loanId].status, "paid");
+    assert.strictEqual(after.debtGold, 0);
+  });
+
+  it("charges insurance premium for the full coverage term, not a single day", () => {
+    const setup = createBusiness();
+    let state = licenseAndOpen(setup.state, setup.businessId, 1);
+    state.businesses[setup.businessId].balanceGold = 500;
+    const result = mutate(state, "buy_insurance", {
+      businessId: setup.businessId,
+      coverageKind: "all_risk",
+      coverageGold: 300,
+      deductibleGold: 50,
+      premiumGoldPerDay: 10,
+    });
+    assert.deepStrictEqual(result.warnings, []);
+    // 10/day across the 30-day term => 300 charged up front (500 - 300 = 200).
+    assert.strictEqual(result.economy.businesses[setup.businessId].balanceGold, 200);
+  });
+
+  it("rejects insurance when the business cannot fund the full-term premium", () => {
+    const setup = createBusiness();
+    let state = licenseAndOpen(setup.state, setup.businessId, 1);
+    // Enough for a single day's premium (10) but not the full 300 term.
+    state.businesses[setup.businessId].balanceGold = 100;
+    const result = mutate(state, "buy_insurance", {
+      businessId: setup.businessId,
+      coverageKind: "all_risk",
+      coverageGold: 300,
+      deductibleGold: 50,
+      premiumGoldPerDay: 10,
+    });
+    assert.ok(result.warnings.includes("economy_rejected:insurance_premium_unfunded"));
+  });
+
+  it("rejects new loans once existing debt fully consumes borrowing capacity", () => {
+    const setup = createBusiness();
+    let state = licenseAndOpen(setup.state, setup.businessId, 1);
+    // licenseLevel 1 capacity ~1500; pile on debt beyond it.
+    state.businesses[setup.businessId].debtGold = 5000;
+    const result = mutate(state, "take_business_loan", { businessId: setup.businessId, principalGold: 200 });
+    assert.ok(result.warnings.includes("economy_rejected:business_loan_principal_invalid"));
+  });
+
+  it("settles the defaulted loan and clears business debt when collateral is seized", () => {
+    const setup = createBusiness(defaultHarthmereProductionEconomyStateV1(), "general_trader", "Foreclosed Books");
+    let state = licenseAndOpen(setup.state, setup.businessId, 1);
+    let result = mutate(state, "link_business_property", { businessId: setup.businessId, propertyId: "rental_shop", rentGoldPerDay: 5 });
+    assert.deepStrictEqual(result.warnings, []);
+    state = result.economy;
+    result = mutate(state, "take_business_loan", { businessId: setup.businessId, principalGold: 1000, dailyInterestRate: 0.02, dueAtMs: NOW_MS + 1000 });
+    assert.deepStrictEqual(result.warnings, []);
+    state = result.economy;
+    const loanId = Object.keys(state.loans)[0];
+    assert.ok(state.businesses[setup.businessId].debtGold >= 1000);
+    result = mutate(state, "run_loan_default_tick", { nowMs: NOW_MS + 10_000 } as any);
+    state = result.economy;
+    assert.strictEqual((state.loans as any)[loanId].status, "defaulted");
+    result = mutate(state, "seize_loan_collateral", { loanId }, ctx({ allowNpcAdministration: true }));
+    assert.deepStrictEqual(result.warnings, []);
+    const settled = result.economy;
+    assert.strictEqual((settled.loans as any)[loanId].status, "paid");
+    assert.strictEqual((settled.loans as any)[loanId].principalRemaining, 0);
+    assert.strictEqual(settled.businesses[setup.businessId].debtGold, 0);
+    assert.strictEqual((settled as any).businessSystems.propertyIntegrations.rental_shop.ownerKind, "town");
+  });
+
+  it("settles outstanding loans from liquidation proceeds before crediting the owner", () => {
+    const setup = createBusiness(defaultHarthmereProductionEconomyStateV1(), "general_trader", "Liquidation Books");
+    let state = licenseAndOpen(setup.state, setup.businessId, 1);
+    const result0 = mutate(state, "take_business_loan", { businessId: setup.businessId, principalGold: 1000, dailyInterestRate: 0.02 });
+    assert.deepStrictEqual(result0.warnings, []);
+    state = result0.economy;
+    const loanId = Object.keys(state.loans)[0];
+    state.businesses[setup.businessId].inventory = { scrap: { itemId: "scrap", count: 100 } }; // worth 100*2 = 200
+    state.businesses[setup.businessId].balanceGold = 0;
+    state.businesses[setup.businessId].status = "bankrupt";
+    const result = mutate(state, "liquidate_bankrupt_business", { businessId: setup.businessId });
+    assert.deepStrictEqual(result.warnings, []);
+    const after = result.economy;
+    // Proceeds (200) pay down the 1000 loan first; nothing left for the owner.
+    assert.strictEqual((after.loans as any)[loanId].principalRemaining, 800);
+    assert.strictEqual(after.businesses[setup.businessId].balanceGold, 0);
+    assert.strictEqual(after.businesses[setup.businessId].debtGold, 800);
+    assert.strictEqual(after.businesses[setup.businessId].status, "closed");
+  });
+});
+
 describe("mmo_economy_authority_v1 — logistics, market, town simulation, and NPC competition", () => {
   it("ships goods only over safe funded routes and creates a failure on unsafe routes", () => {
     const seller = createBusiness(defaultHarthmereProductionEconomyStateV1(), "general_trader", "Sender Shop");

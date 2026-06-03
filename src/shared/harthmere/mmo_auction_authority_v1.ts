@@ -404,8 +404,9 @@ function validateExpireListing(
 
   return resultOk(req, {
     listing: expired,
-    // Release escrow; items route to seller's overflow/mail on recovery
-    sellerEscrowDelta: -listing.count,
+    // The escrow lock is kept until the seller explicitly recovers it. Releasing escrow
+    // here (while the item also remains in inventory.items) and then re-adding the item in
+    // recover_expired_escrow duplicated the item — keep the lock and release it in recover.
     auditTags: ["auction_expire", listing.listingId, listing.itemId],
   });
 }
@@ -423,28 +424,12 @@ function validateRecoverExpiredEscrow(
   if (listing.status !== "expired") return resultFail(req, ["listing_not_expired"]);
   if (listing.sellerId !== req.actorId) return resultFail(req, ["not_listing_owner"]);
 
-  // Inventory space; if full, send to overflow/mail (handled by caller)
-  const def = getHarthmereItemDefinitionV1(listing.itemId);
-  const warnings: string[] = [];
-  const canFitInInventory =
-    def !== undefined &&
-    Object.keys(sellerSnapshot.items).length < 40 ||
-    (sellerSnapshot.items[listing.itemId] ?? 0) > 0;
-
-  if (!canFitInInventory) {
-    warnings.push("expired_escrow_routed_to_overflow_mail");
-  }
-
   return resultOk(req, {
-    // Items return to the seller's inventory (or mail if full; caller handles)
-    sellerItemDelta: canFitInInventory ? listing.count : 0,
-    warnings,
-    auditTags: [
-      "auction_recover",
-      listing.listingId,
-      listing.itemId,
-      ...(warnings.length > 0 ? ["overflow_mail"] : []),
-    ],
+    // Escrow is a lock overlay — the item never left inventory.items at post time, so
+    // recovery simply releases the lock (escrow -count). Adding sellerItemDelta here would
+    // DUPLICATE the item (the previous code did, producing a free dupe via post→expire→recover).
+    sellerEscrowDelta: -listing.count,
+    auditTags: ["auction_recover", listing.listingId, listing.itemId],
   });
 }
 
@@ -487,6 +472,9 @@ export function reduceHarthmereAuctionMutationV1(
 
     case "recover_expired_escrow":
       return validateRecoverExpiredEscrow(req, ctx.currentListing, ctx.actorSnapshot);
+
+    default:
+      return resultFail(req, [`unknown_mutation_kind:${(req as { kind?: string }).kind ?? "undefined"}`]);
   }
 }
 

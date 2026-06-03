@@ -5334,6 +5334,35 @@ describe("reduceHarthmereLiveModeBackendStateV1 — farming", function () {
     );
   });
 
+  it("mines a shifted-cave deposit when the player stands at its rendered terrainPosition", function () {
+    const deposit = harthmereExoticMatterDepositByIdV1(
+      "exotic_antiboron_mossglass_survey_03"
+    )!;
+    // Shifted-world deposits render their ore at terrainPosition (X - 512), which is where
+    // the player physically stands. Proximity must accept that coordinate; previously only
+    // deposit.position was checked, leaving every shifted-cave deposit un-mineable.
+    assert.ok(deposit.terrainPosition, "expected a shifted deposit with a terrainPosition");
+    const payload = {
+      operation: "mine_exotic_matter_deposit",
+      depositId: deposit.depositId,
+    };
+    const mined = applyOne(freshState(), "request_farming_action", payload, {
+      subsystem: "farming",
+      serverActorPosition: {
+        x: deposit.terrainPosition![0],
+        y: deposit.terrainPosition![1],
+        z: deposit.terrainPosition![2],
+      },
+    });
+    assert.deepEqual(mined.summary.warnings, []);
+    assert.equal(
+      mined.state.inventory.items[
+        HARTHMERE_EXOTIC_MATTER_COMPONENTS_V1.antiboron.itemId
+      ],
+      1
+    );
+  });
+
   it("hunts only dead wild animals and prevents repeated harvests", function () {
     let s = freshState();
     s.combat.entitySnapshots.deer_001 = {
@@ -7438,5 +7467,176 @@ describe("reduceHarthmereLiveModeBackendStateV1 — loan default consequences", 
     ).state;
     assert.strictEqual(repaid.banking.loans[loan.loanId].status, "paid");
     assert.strictEqual(repaid.law.flags.bank_credit_hold, undefined);
+  });
+});
+
+// ===========================================================================
+// Cross-actor auction marketplace: settle pays the seller, cancel/expire/recover
+// ===========================================================================
+
+describe("reduceHarthmereLiveModeBackendStateV1 — cross-actor auction", function () {
+  function sellerWithListing() {
+    const seller = freshState();
+    seller.inventory.items = { iron_sword: 1 };
+    seller.inventory.gold = 1000;
+    const posted = applyOne(seller, "request_auction_post", {
+      itemId: "iron_sword",
+      count: 1,
+      unitPrice: 100,
+    });
+    const listingId = Object.keys(posted.state.economy.auctionListings)[0];
+    return { sellerState: posted.state, listingId };
+  }
+
+  it("pays the seller and de-escrows the item when a different player settles", function () {
+    const { sellerState, listingId } = sellerWithListing();
+    assert.equal(sellerState.inventory.escrow.iron_sword, 1, "item must be escrowed after post");
+
+    // The listing reaches the shared marketplace; a buyer in a separate backend sees it.
+    const shared = createHarthmereLiveModeSharedWorldStateV1(sellerState, NOW_MS);
+    assert.ok(shared.auctionListings[listingId], "listing must publish to shared marketplace");
+    let buyer = defaultHarthmereLiveModeBackendStateV1("auction_buyer", NOW_MS);
+    buyer.inventory.gold = 1000;
+    buyer = mergeHarthmereLiveModeSharedWorldStateIntoBackendV1(buyer, shared, NOW_MS);
+    assert.ok(buyer.economy.auctionListings[listingId], "buyer must see the shared listing");
+
+    const settled = applyOne(buyer, "request_auction_settle", { listingId }, { actorId: "auction_buyer" });
+    assert.deepEqual(
+      settled.summary.warnings.filter((w) => w.startsWith("auction_settle_rejected")),
+      [],
+    );
+    assert.equal(settled.state.inventory.items.iron_sword, 1, "buyer receives the item");
+    assert.equal(settled.state.inventory.gold, 900, "buyer pays the full price");
+
+    // The seller collects the proceeds on their next sync.
+    const sellerGoldBefore = sellerState.inventory.gold;
+    const shared2 = createHarthmereLiveModeSharedWorldStateV1(settled.state, NOW_MS);
+    const paid = mergeHarthmereLiveModeSharedWorldStateIntoBackendV1(sellerState, shared2, NOW_MS);
+    assert.ok(paid.inventory.gold > sellerGoldBefore, "seller must be paid the sale proceeds");
+    assert.equal(paid.inventory.items.iron_sword ?? 0, 0, "sold item leaves the seller inventory");
+    assert.equal(paid.inventory.escrow.iron_sword ?? 0, 0, "sold item leaves the seller escrow");
+
+    // Idempotent: a second sync of the same payout must NOT pay twice.
+    const goldAfterFirst = paid.inventory.gold;
+    const paidAgain = mergeHarthmereLiveModeSharedWorldStateIntoBackendV1(paid, shared2, NOW_MS);
+    assert.equal(paidAgain.inventory.gold, goldAfterFirst, "payout must be delivered exactly once");
+  });
+
+  it("releases escrow when the seller cancels their own active listing", function () {
+    const { sellerState, listingId } = sellerWithListing();
+    const cancelled = applyOne(sellerState, "request_auction_cancel", { listingId });
+    assert.deepEqual(
+      cancelled.summary.warnings.filter((w) => w.startsWith("auction_cancel_rejected")),
+      [],
+    );
+    assert.equal(cancelled.state.economy.auctionListings[listingId].status, "cancelled");
+    assert.equal(cancelled.state.inventory.escrow.iron_sword ?? 0, 0, "escrow released on cancel");
+    assert.equal(cancelled.state.inventory.items.iron_sword, 1, "item is tradeable again");
+  });
+
+  it("expires due listings and lets the seller recover the escrowed item", function () {
+    const { sellerState, listingId } = sellerWithListing();
+    const future = NOW_MS + 40 * 24 * 60 * 60 * 1000; // well past the listing duration
+    const expired = reduceHarthmereLiveModeBackendStateV1(
+      sellerState,
+      makeEnvelope("request_auction_expire", {}),
+      future,
+    );
+    assert.equal(expired.state.economy.auctionListings[listingId].status, "expired");
+    assert.equal(expired.state.inventory.escrow.iron_sword, 1, "escrow stays locked until recovery");
+
+    const recovered = reduceHarthmereLiveModeBackendStateV1(
+      expired.state,
+      makeEnvelope("request_auction_recover", { listingId }),
+      future,
+    );
+    assert.deepEqual(
+      recovered.summary.warnings.filter((w) => w.startsWith("auction_recover_rejected")),
+      [],
+    );
+    assert.equal(recovered.state.inventory.escrow.iron_sword ?? 0, 0, "escrow released on recover");
+    assert.equal(recovered.state.inventory.items.iron_sword, 1, "item returns to the seller");
+  });
+});
+
+// ===========================================================================
+// Enforced fines + clearable bounties (law lifecycle completion)
+// ===========================================================================
+
+describe("reduceHarthmereLiveModeBackendStateV1 — enforced fines + bounty clearing", function () {
+  function commitTheft(state: ReturnType<typeof freshState>, zoneId = "harthmere_market") {
+    return applyOne(
+      state,
+      "request_law_reputation_mutation",
+      {
+        factionId: "city_guard",
+        crimeKind: "theft",
+        valueGold: 400,
+        witnesses: 2,
+        lineOfSight: true,
+        itemIds: ["stolen_relic"],
+        reason: "shop theft witnessed",
+      },
+      { subsystem: "law", zoneId }
+    );
+  }
+
+  it("charges an enforced fine against the offender's wallet", function () {
+    const s = freshState();
+    s.inventory.items.stolen_relic = 1;
+    s.inventory.gold = 5000;
+    const { state } = commitTheft(s);
+    assert.ok(state.inventory.gold < 5000, "fine must be deducted from the wallet");
+    assert.equal(
+      state.law.fines.city_guard ?? 0,
+      0,
+      "a fully-payable fine leaves no outstanding debt",
+    );
+  });
+
+  it("accrues the unpayable fine remainder as debt and lets the offender pay it down later", function () {
+    const s = freshState();
+    s.inventory.items.stolen_relic = 1;
+    s.inventory.gold = 0;
+    const fined = commitTheft(s);
+    const debt = fined.state.law.fines.city_guard ?? 0;
+    assert.ok(debt > 0, "an unpayable fine accrues as debt");
+
+    fined.state.inventory.gold = debt + 100;
+    const paid = applyOne(fined.state, "request_pay_fine", { factionId: "city_guard" });
+    assert.equal(paid.state.law.fines.city_guard ?? 0, 0, "fine debt cleared after payment");
+    assert.equal(paid.state.inventory.gold, 100, "wallet charged exactly the outstanding debt");
+  });
+
+  it("lets an offender clear their own bounty to resolve the soft-lock", function () {
+    const s = freshState();
+    s.inventory.gold = 100000;
+    const crime = applyOne(
+      s,
+      "request_law_reputation_mutation",
+      {
+        factionId: "city_guard",
+        crimeKind: "murder",
+        valueGold: 600,
+        severity: 9,
+        witnesses: 2,
+        lineOfSight: true,
+        reason: "murder witnessed",
+      },
+      { subsystem: "law", zoneId: "harthmere_market" }
+    );
+    const wanted = crime.state.law.crimeRecords.find(
+      (r) => (r.status === "wanted" || r.status === "arrest_pending") && (r.bountyGold ?? 0) > 0
+    );
+    assert.ok(wanted, "a murder must post an active bounty");
+
+    const cleared = applyOne(crime.state, "request_clear_bounty", { factionId: "city_guard" });
+    const resolved = cleared.state.law.crimeRecords.find((r) => r.id === wanted.id);
+    assert.equal(resolved?.status, "served", "bounty record is resolved");
+    assert.equal(resolved?.bountyGold ?? 0, 0, "bounty gold is zeroed");
+    const stillActive = cleared.state.law.crimeRecords.some(
+      (r) => (r.status === "wanted" || r.status === "arrest_pending") && (r.bountyGold ?? 0) > 0
+    );
+    assert.equal(stillActive, false, "no active bounty remains, so civil permits unblock");
   });
 });

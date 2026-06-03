@@ -645,6 +645,17 @@ export function validateHarthmereCombatRequest(request: HarthmereCombatRequestV1
   if (targetBlockedStates.includes(request.target.combatState)) reasons.push(`target_not_attackable_state:${request.target.combatState}`);
   if (request.target.hp <= 0 || request.target.combatState === "dead") reasons.push("target_already_dead");
   if (request.target.combatState === "evading") reasons.push("target_evading");
+  // Friendly fire: a hostile (damaging) ability cannot target an ally/protected
+  // relationship. Supportive abilities (heal/shield/buff/revive) ARE allowed on allies.
+  const allyRelationships: HarthmereCombatRelationship[] = ["friendly", "party_member", "raid_member", "guild_member", "faction_ally", "protected_player", "safe_zone_player"];
+  const supportiveAbilityTypes = ["heal", "shield", "buff", "revive"];
+  if (
+    request.relationship &&
+    allyRelationships.includes(request.relationship) &&
+    !supportiveAbilityTypes.includes(request.ability.type)
+  ) {
+    reasons.push("friendly_fire_blocked");
+  }
   const pvp = isHarthmerePvpAttackLegal(request);
   if (!pvp.legal) reasons.push(pvp.reason);
   if (request.safeZone || request.attacker.safeZone || request.target.safeZone) reasons.push("safe_zone_blocks_hostile_action");
@@ -715,6 +726,9 @@ export function calculateHarthmereDamage(input: {
   rng?: () => number;
 }): HarthmereDamageResultV1 {
   const zero: HarthmereDamageResultV1 = { baseDamage: 0, rawDamage: 0, reduction: 0, absorbDamage: 0, mitigatedDamage: 0, finalDamage: 0 };
+  // Supportive abilities must never deal damage, regardless of abilityMultiplier. Routing
+  // a heal/shield/buff/revive through the weapon-damage formula would damage the target.
+  if (["heal", "shield", "buff", "revive"].includes(input.ability.type)) return zero;
   if (["miss", "dodge", "parry", "immune", "evade", "invalid_target", "out_of_range", "no_line_of_sight", "dead", "interrupted"].includes(input.hitResult)) return zero;
   const rng = input.rng ?? Math.random;
   const baseDamage = Math.max(0, input.attacker.attackPoints * input.ability.abilityMultiplier);

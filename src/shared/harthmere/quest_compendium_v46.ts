@@ -25356,7 +25356,9 @@ export function validateHarthmereQuestActivationV46(
     if (!flags.has(flag)) reasons.push(`missing_flag:${flag}`);
   }
   if (!(quest.activeRules.timeOfDay ?? []).includes(context.timeOfDay)) reasons.push("wrong_time_of_day");
-  if (!(quest.activeRules.activeHours ?? []).includes(context.hour)) reasons.push("wrong_hour");
+  // activeHours is an integer 0..23 list; floor the (possibly fractional) clock hour so a
+  // non-integer game hour (e.g. 12.5) doesn't fail to match and lock out every quest.
+  if (!(quest.activeRules.activeHours ?? []).includes(Math.floor(context.hour))) reasons.push("wrong_hour");
   if (!(quest.activeRules.weather ?? []).includes(context.weather)) reasons.push("wrong_weather");
   if ((context.questStates?.[quest.id] ?? quest.activeRules.initialState) === "completed" && quest.repeatability === "once") {
     reasons.push("already_completed_once");

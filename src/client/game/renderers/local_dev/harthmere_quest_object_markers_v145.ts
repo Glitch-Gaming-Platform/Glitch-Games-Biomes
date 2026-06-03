@@ -12,6 +12,8 @@
 import type { Renderer } from "@/client/game/renderers/renderer_controller";
 import type { Scenes } from "@/client/game/renderers/scenes";
 import { addToScenes } from "@/client/game/renderers/scenes";
+import type { ClientResources } from "@/client/game/resources/types";
+import { groundHarthmereLiveEntityFeetYV1 } from "@/client/game/util/harthmere_entity_grounding";
 import {
   activeLiveEntityHelperQuestMarkerIdV1,
   activeLiveEntityHelperQuestMarkerIdsV1,
@@ -393,15 +395,50 @@ export class HarthmereQuestObjectMarkersRendererV145 implements Renderer {
   private activeQuestStateRefreshSeconds = 0;
   private elapsedSeconds = 0;
 
-  constructor() {
+  constructor(private readonly resources?: ClientResources) {
     this.root.name = `harthmere-quest-object-markers root ${HARTHMERE_QUEST_OBJECT_MARKER_VERSION_V145}`;
     for (const marker of HARTHMERE_QUEST_OBJECT_MARKERS_V145) {
       const mesh = createHarthmereQuestObjectMarkerAnchorV146(marker);
       const beacon = createHarthmereActiveQuestMarkerBeaconV145();
       mesh.add(beacon);
+      // Remember the authored world XZ + hint Y so we can re-ground the marker
+      // onto real terrain each frame (markers are outdoor quest beacons).
+      mesh.userData.harthmereMarkerWorldXZ = [
+        marker.position[0],
+        marker.position[2],
+      ];
+      mesh.userData.harthmereMarkerHintY = marker.position[1];
       this.markerMeshes.set(marker.id, mesh);
       this.activeBeacons.set(marker.id, beacon);
       this.root.add(mesh);
+    }
+  }
+
+  // HARTHMERE_ENTITY_GROUNDING: keep visible quest markers resting on the real
+  // terrain surface (cave-safe + water-aware) instead of a flat authored Y.
+  private groundVisibleMarkersV1(): void {
+    if (!this.resources) {
+      return;
+    }
+    for (const mesh of this.markerMeshes.values()) {
+      if (!mesh.visible) {
+        continue;
+      }
+      const xz = mesh.userData.harthmereMarkerWorldXZ as [number, number] | undefined;
+      const hintY = mesh.userData.harthmereMarkerHintY as number | undefined;
+      if (!xz || hintY === undefined) {
+        continue;
+      }
+      const feetY = groundHarthmereLiveEntityFeetYV1(
+        this.resources,
+        xz[0],
+        xz[1],
+        hintY,
+        true
+      );
+      if (feetY !== undefined) {
+        mesh.position.y = feetY;
+      }
     }
   }
 
@@ -518,10 +555,13 @@ export class HarthmereQuestObjectMarkersRendererV145 implements Renderer {
       this.refreshActiveQuestMarkerFromLocalStateV145();
     }
     this.animateActiveBeaconsV145(dt);
+    this.groundVisibleMarkersV1();
     this.publishDebugV145();
   }
 }
 
-export function makeHarthmereQuestObjectMarkersRendererV145() {
-  return new HarthmereQuestObjectMarkersRendererV145();
+export function makeHarthmereQuestObjectMarkersRendererV145(
+  resources?: ClientResources
+) {
+  return new HarthmereQuestObjectMarkersRendererV145(resources);
 }

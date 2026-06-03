@@ -82,12 +82,17 @@ const HARTHMERE_LIVE_MODE_ACTION_KINDS_V1 = [
   "request_vendor_transaction",
   "request_auction_post",
   "request_auction_settle",
+  "request_auction_cancel",
+  "request_auction_recover",
+  "request_auction_expire",
   "request_bank_transaction",
   "request_mail_transaction",
   "request_guild_mutation",
   "request_economy_mutation",
   "request_jobs_board_mutation",
   "request_law_reputation_mutation",
+  "request_pay_fine",
+  "request_clear_bounty",
   "request_magic_progress",
   "request_quest_state_update",
   "request_property_building_mutation",
@@ -438,6 +443,9 @@ export function harthmereLiveModeMutationSnapshotKeysV1(input: {
     case "request_vendor_transaction":
     case "request_auction_post":
     case "request_auction_settle":
+    case "request_auction_cancel":
+    case "request_auction_recover":
+    case "request_auction_expire":
       snapshots.add("economyState");
       snapshots.add("inventoryLootState");
       snapshots.add("playerStatusState");
@@ -471,6 +479,9 @@ export function harthmereLiveModeMutationSnapshotKeysV1(input: {
       break;
     case "request_magic_progress":
     case "request_law_reputation_mutation":
+    case "request_pay_fine":
+    case "request_clear_bounty":
+      snapshots.add("inventoryLootState");
       snapshots.add("playerStatusState");
       break;
     case "request_inventory_mutation":

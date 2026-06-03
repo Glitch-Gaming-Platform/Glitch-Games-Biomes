@@ -23,6 +23,7 @@ export const HARTHMERE_GUILD_MAX_AUDIT_LOGS_V1 = 200;
 export const HARTHMERE_GUILD_MAX_CHAT_MESSAGES_V1 = 100;
 export const HARTHMERE_GUILD_MAX_BANK_LOGS_V1 = 200;
 export const HARTHMERE_GUILD_MAX_MUTE_DURATION_MS_V1 = 7 * 24 * 60 * 60 * 1000;
+export const HARTHMERE_GUILD_MAX_MEMBERS_V1 = 100;
 
 export type HarthmereGuildTypeV1 =
   | "adventuring"
@@ -667,6 +668,14 @@ function activeGuildMemberV1(guild: HarthmereGuildRecordV1, actorId: string) {
   return member?.status === "active" ? member : undefined;
 }
 
+function activeGuildMemberCountV1(guild: HarthmereGuildRecordV1): number {
+  return Object.values(guild.members).filter((member) => member.status === "active").length;
+}
+
+function guildAtMemberCapV1(guild: HarthmereGuildRecordV1): boolean {
+  return activeGuildMemberCountV1(guild) >= HARTHMERE_GUILD_MAX_MEMBERS_V1;
+}
+
 function guildRankOrderV1(guild: HarthmereGuildRecordV1, rankId: string | undefined) {
   return rankId ? guild.ranks[rankId]?.order ?? 0 : 0;
 }
@@ -923,6 +932,8 @@ export function reduceHarthmereGuildMutationV1(
       reject(result, "applications_closed");
     } else if (Object.values(guild.applications).some((app) => app.applicantActorId === request.actorId && app.status === "pending")) {
       reject(result, "application_already_pending");
+    } else if (guild.recruitment === "open" && guildAtMemberCapV1(guild)) {
+      reject(result, "guild_member_cap_reached");
     } else if (guild.recruitment === "open") {
       guild.members[request.actorId] = {
         actorId: request.actorId,
@@ -967,6 +978,7 @@ export function reduceHarthmereGuildMutationV1(
       const application = request.applicationId ? guild.applications[request.applicationId] : undefined;
       if (!application || application.status !== "pending") reject(result, "application_not_found");
       else if (op === "accept_application" && findActorGuildIdV1(next, application.applicantActorId)) reject(result, "applicant_already_in_guild");
+      else if (op === "accept_application" && guildAtMemberCapV1(guild)) reject(result, "guild_member_cap_reached");
       else {
         application.status = op === "accept_application" ? "accepted" : "rejected";
         application.decidedAtMs = request.nowMs;
@@ -1018,6 +1030,7 @@ export function reduceHarthmereGuildMutationV1(
       reject(result, "invite_expired");
       markGuild(guild, "guild_invite");
     } else if (op === "accept_invite" && findActorGuildIdV1(next, request.actorId)) reject(result, "already_in_guild");
+    else if (op === "accept_invite" && guildAtMemberCapV1(guild)) reject(result, "guild_member_cap_reached");
     else {
       invite.status = op === "accept_invite" ? "accepted" : "declined";
       invite.resolvedAtMs = request.nowMs;
@@ -1043,6 +1056,10 @@ export function reduceHarthmereGuildMutationV1(
     const member = guild.members[request.actorId];
     if (!member) reject(result, "not_a_member");
     else if (guild.leaderActorId === request.actorId && Object.keys(guild.members).filter((id) => guild.members[id].status === "active").length > 1) reject(result, "leader_must_transfer_or_disband_first");
+    // A solo leader leaving disbands the guild — but must first empty the treasury/bank,
+    // exactly like disband_guild. Otherwise the deposited gold/items are orphaned in a
+    // disbanded guild record no one can ever recover (a player loss-of-funds bug).
+    else if (guild.leaderActorId === request.actorId && (guild.treasuryGold > 0 || Object.values(guild.bank.items).some((count) => count > 0))) reject(result, "leader_must_empty_before_leaving");
     else {
       delete guild.members[request.actorId];
       auditV1(next, guild, request.actorId, "member_left", undefined, request.nowMs);
@@ -1164,6 +1181,10 @@ export function reduceHarthmereGuildMutationV1(
     const taxable = positiveIntegerV1(request.amountGold);
     if (!context.trustedTaxCollection) reject(result, "tax_collection_not_server_authorized");
     else if (taxable === undefined) reject(result, "invalid_taxable_gold_amount");
+    // Bind tax collection to the actor's own guild. The target guild is otherwise
+    // attacker-controllable via request.guildId, letting a trusted tax call credit an
+    // arbitrary guild the actor doesn't belong to.
+    else if (!activeGuildMemberV1(guild, request.actorId)) reject(result, "tax_collector_not_a_member");
     else {
       const tax = Math.floor(taxable * guild.taxRate);
       if (tax <= 0) reject(result, "no_tax_due");
@@ -1306,6 +1327,9 @@ export function reduceHarthmereGuildMutationV1(
   } else if (op === "mute_member") {
     if (!hasHarthmereGuildPermissionV1(guild, request.actorId, "moderate_chat", request.nowMs)) reject(result, "missing_permission:moderate_chat");
     else if (!request.targetActorId || !guild.members[request.targetActorId]) reject(result, "member_not_found");
+    // A moderator may not mute the leader or an equal/higher rank — otherwise an officer
+    // can silence the guild leader.
+    else if (!canManageGuildMemberV1(guild, request.actorId, request.targetActorId)) reject(result, "cannot_manage_equal_or_higher_rank");
     else {
       const durationMs = Math.min(
         HARTHMERE_GUILD_MAX_MUTE_DURATION_MS_V1,

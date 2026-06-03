@@ -3079,7 +3079,7 @@ export function normalizeBuildingSystemPropertyRecordV1(input: {
   const plot = buildingSystemPlotByIdV1(raw.plotId);
   const blueprint = buildingSystemBlueprintByIdV1(raw.blueprintId);
   if (plot && blueprint) {
-    return {
+    const merged = {
       ...createBuildingSystemPropertyRecordV1({
         propertyId: input.propertyId,
         ownerId: String(raw.ownerId ?? input.ownerId),
@@ -3101,6 +3101,21 @@ export function normalizeBuildingSystemPropertyRecordV1(input: {
       visualDamageApplied: Boolean(raw.visualDamageApplied),
       upgradedVoxelTier: Math.max(1, Number(raw.upgradedVoxelTier ?? raw.tier ?? 1)),
     };
+    // `...raw` can overwrite the clamped defaults with hostile/corrupt persisted values
+    // (negative value, condition > 100, negative tax balance). Re-clamp the numeric
+    // fields that feed repair/refund/tax math, mirroring the fallback branch below.
+    merged.condition = Math.max(0, Math.min(100, Number(merged.condition ?? 100)));
+    merged.value = Math.max(0, Number(merged.value ?? 0));
+    merged.tier = Math.max(1, Number(merged.tier ?? 1));
+    merged.repairDebtGold = Math.max(0, Number(merged.repairDebtGold ?? 0));
+    merged.taxRate = Math.max(0, Number(merged.taxRate ?? 0));
+    merged.businessTaxRate = Math.max(0, Number(merged.businessTaxRate ?? 0));
+    merged.guildTaxRate = Math.max(0, Number(merged.guildTaxRate ?? 0));
+    merged.taxBalanceGold = Math.max(0, Number(merged.taxBalanceGold ?? 0));
+    merged.storageSlots = Math.max(0, Number(merged.storageSlots ?? 0));
+    merged.storageItemCount = Math.max(0, Number(merged.storageItemCount ?? 0));
+    if (typeof merged.salePriceGold === "number") merged.salePriceGold = Math.max(0, merged.salePriceGold);
+    return merged;
   }
   // Backward compatibility for the older {status, value} record shape.
   return {

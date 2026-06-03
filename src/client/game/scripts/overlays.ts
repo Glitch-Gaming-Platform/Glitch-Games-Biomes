@@ -162,8 +162,13 @@ const OVERLAY_TEXT_TIME_MS = 5300; // Add 300 miliseconds for fade out (beginHid
 
 const MAX_PLAYER_OVERLAY_DIST = 20;
 const MAX_NPC_OVERLAY_DIST = 15;
-export const HARTHMERE_NPC_TALK_INSPECT_RADIUS_V139 = 8.5;
-export const HARTHMERE_NPC_TALK_FALLBACK_RADIUS_V140 = 8.5;
+// HARTHMERE_NPC_TALK_RADIUS_TIGHTEN_V197:
+// The 8.5m talk radius let players talk to NPCs who were clearly not next to
+// them (and, combined with the full-hemisphere fallback, made the talk prompt
+// pop for distant townsfolk). Tighten to a near-conversational range so the
+// "Talk" prompt only shows for an NPC the player is actually standing by.
+export const HARTHMERE_NPC_TALK_INSPECT_RADIUS_V139 = 4.5;
+export const HARTHMERE_NPC_TALK_FALLBACK_RADIUS_V140 = 4.5;
 export const HARTHMERE_NPC_TALK_FALLBACK_CLOSE_RADIUS_V140 = 2.75;
 export const HARTHMERE_NPC_TALK_FALLBACK_MIN_VIEW_DOT_V140 = 0;
 
@@ -1184,21 +1189,31 @@ export class OverlayScript implements Script {
           placerId: entity.placed_by.id,
         };
       }
+      // HARTHMERE_WORLD_OBJECT_PROMPT_PRIORITY_V197:
+      // Prefer the world-object (crate/chest/bag) prompt over the NPC-talk
+      // fallback. The NPC fallback is greedy (8.5m, full forward hemisphere, no
+      // facing gate), so any townsfolk standing near a prop would otherwise
+      // shadow the "Open Container" prompt and players could never interact with
+      // world objects. The object selector enforces a tight facing cone
+      // (minViewDot 0.15, 6.5m), so it only wins when the player is genuinely
+      // looking at the prop; otherwise the NPC-talk prompt still shows.
       return (
-        this.getNearbyNpcTalkInspectableOverlayV140() ??
-        this.getNearbyHarthmereObjectInspectableOverlayV1()
+        this.getNearbyHarthmereObjectInspectableOverlayV1() ??
+        this.getNearbyNpcTalkInspectableOverlayV140()
       );
+    }
+
+    // HARTHMERE_WORLD_OBJECT_PROMPT_PRIORITY_V197: object before NPC fallback
+    // (see rationale above).
+    const nearbyHarthmereObjectOverlay =
+      this.getNearbyHarthmereObjectInspectableOverlayV1();
+    if (nearbyHarthmereObjectOverlay) {
+      return nearbyHarthmereObjectOverlay;
     }
 
     const nearbyNpcTalkOverlay = this.getNearbyNpcTalkInspectableOverlayV140();
     if (nearbyNpcTalkOverlay) {
       return nearbyNpcTalkOverlay;
-    }
-
-    const nearbyHarthmereObjectOverlay =
-      this.getNearbyHarthmereObjectInspectableOverlayV1();
-    if (nearbyHarthmereObjectOverlay) {
-      return nearbyHarthmereObjectOverlay;
     }
 
     if (hitExistingTerrain(hit)) {

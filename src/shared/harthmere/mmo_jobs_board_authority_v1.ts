@@ -939,6 +939,9 @@ function cancelJobPosting(result: MutableJobsResult, request: HarthmereJobsBoard
     // Prevent bait-and-switch abuse: active jobs cannot be silently cancelled by issuer without failing.
     job.status = "failed";
     job.logs.push(`failed_by_cancel:${request.actorId}:${request.nowMs}`);
+    // The seeker did not complete the job, so the escrowed reward must still return to the
+    // issuer — previously it was silently destroyed on an active-job cancel.
+    refundEscrow(result, job, request);
   } else {
     job.status = "cancelled";
     job.cancelledAtMs = request.nowMs;
@@ -954,15 +957,44 @@ function cancelJobPosting(result: MutableJobsResult, request: HarthmereJobsBoard
   result.shared.add(sharedJobKey(job.jobId));
 }
 
+function abandonJobPosting(result: MutableJobsResult, request: HarthmereJobsBoardMutationRequestV1, context: HarthmereJobsBoardMutationContextV1) {
+  const board = requireBoard(result, request, context);
+  if (!board) return;
+  const job = request.jobId ? result.next.postings[request.jobId] : undefined;
+  if (!job) return reject(result, "jobs_board_rejected:job_not_found");
+  if (job.status !== "active") return reject(result, "jobs_board_rejected:job_not_active");
+  if (job.acceptedByActorId !== request.actorId) return reject(result, "jobs_board_rejected:job_not_accepted_by_actor");
+  const seekerId = request.actorId;
+  // The seeker releases the job back to the open pool: the issuer's escrow stays put (the
+  // job remains posted and re-acceptable by anyone), the seeker's active slot frees up, and
+  // the seeker pays the anti-grief failure penalty for not finishing what they accepted.
+  const penalty = Math.max(0, Math.trunc(job.failurePenaltyGold ?? 0));
+  job.status = "open";
+  job.acceptedByActorId = undefined;
+  job.acceptedAtMs = undefined;
+  job.logs.push(`abandoned:${seekerId}:${request.nowMs}`);
+  for (const todo of Object.values(result.next.todos)) {
+    if (todo.jobId === job.jobId && todo.actorId === seekerId) todo.status = "cancelled";
+  }
+  result.next.actorAcceptedJobIds[seekerId] = activeJobIdsForActor(result.next, seekerId);
+  result.next.issuerOpenJobIds[issuerKey(job.issuerKind, job.issuerId)] = openJobIdsForIssuer(result.next, job.issuerKind, job.issuerId);
+  if (penalty > 0) result.goldDelta -= penalty;
+  pushAudit(result, request, { id: request.requestId, kind: "job_abandoned", jobId: job.jobId, boardId: board.boardId, issuerKind: job.issuerKind, issuerId: job.issuerId, amountGold: penalty > 0 ? -penalty : undefined });
+  result.touched.add("jobs_board_posting");
+  result.shared.add(sharedJobKey(job.jobId));
+  result.shared.add(sharedBoardKey(board.boardId));
+}
+
 function expireJobs(result: MutableJobsResult, request: HarthmereJobsBoardMutationRequestV1, context: HarthmereJobsBoardMutationContextV1) {
   const board = requireBoard(result, request, context);
   if (!board) return;
   for (const job of Object.values(result.next.postings)) {
     if ((job.status === "open" || job.status === "active") && job.deadlineAtMs <= request.nowMs) {
-      const wasOpen = job.status === "open";
       job.status = "expired";
       job.logs.push(`expired:${request.nowMs}`);
-      if (wasOpen) refundEscrow(result, job, request);
+      // Refund the escrow whether the job was still open or active-but-unfinished — an
+      // active job that lapses at its deadline must not destroy the issuer's escrowed gold.
+      refundEscrow(result, job, request);
       for (const todo of Object.values(result.next.todos)) {
         if (todo.jobId === job.jobId) todo.status = "expired";
       }
@@ -1900,6 +1932,9 @@ export function reduceHarthmereJobsBoardMutationV1(
       break;
     case "cancel_job":
       cancelJobPosting(result, request, context);
+      break;
+    case "abandon_job":
+      abandonJobPosting(result, request, context);
       break;
     case "expire_jobs":
       expireJobs(result, request, context);

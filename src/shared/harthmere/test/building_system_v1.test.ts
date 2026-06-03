@@ -27,6 +27,9 @@ import {
   createBuildingSystemPropertyRecordV1,
   createBuildingSystemStorageContainerV1,
   validateBuildingSystemGuideConstructionReadinessV1,
+  normalizeBuildingSystemPropertyRecordV1,
+  buildingSystemRepairCostGoldV1,
+  buildingSystemDemolitionRefundGoldV1,
 } from "../building_system_v1";
 
 const NOW_MS = 1_800_000_000_000;
@@ -71,6 +74,38 @@ describe("building_system_v1 — property access and lifecycle oversights", () =
       assert.ok(blueprint.colors?.length, `${blueprint.blueprintId} should carry color metadata`);
       assert.ok(blueprint.description.length > 24);
     }
+  });
+
+  it("clamps hostile/corrupt persisted property fields on normalization (no negative gold math)", () => {
+    const blueprint = BUILDING_SYSTEM_BIKKIE_BLUEPRINTS_V1[0];
+    const plot = BUILDING_SYSTEM_PLOTS_V1.find((candidate) =>
+      candidate.allowedBlueprintIds.includes(blueprint.blueprintId),
+    )!;
+    const property = normalizeBuildingSystemPropertyRecordV1({
+      propertyId: "property_corrupt",
+      ownerId: "builder",
+      nowMs: NOW_MS,
+      raw: {
+        plotId: plot.plotId,
+        blueprintId: blueprint.blueprintId,
+        ownerId: "builder",
+        condition: 9999,
+        value: -100,
+        taxBalanceGold: -50,
+        repairDebtGold: -10,
+        tier: -3,
+        taxRate: -1,
+      },
+    });
+    assert.ok(property.condition >= 0 && property.condition <= 100, `condition ${property.condition}`);
+    assert.ok(property.value >= 0, `value ${property.value}`);
+    assert.ok(property.taxBalanceGold >= 0, `taxBalanceGold ${property.taxBalanceGold}`);
+    assert.ok(property.repairDebtGold >= 0, `repairDebtGold ${property.repairDebtGold}`);
+    assert.ok(property.tier >= 1, `tier ${property.tier}`);
+    assert.ok(property.taxRate >= 0, `taxRate ${property.taxRate}`);
+    // Downstream gold math must never go negative off corrupt input.
+    assert.ok(buildingSystemRepairCostGoldV1(property) >= 0, "repair cost must be non-negative");
+    assert.ok(buildingSystemDemolitionRefundGoldV1(property) >= 0, "demolition refund must be non-negative");
   });
 
   it("keeps every Bikkie blueprint zoned to a plot where authority placement validates", () => {

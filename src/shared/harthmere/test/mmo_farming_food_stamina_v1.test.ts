@@ -5,6 +5,7 @@ import {
   HARTHMERE_HALF_DAY_MS_V1,
   HARTHMERE_LIVESTOCK_PRODUCT_INTERVAL_MS_V1,
   HARTHMERE_FULL_STAMINA_SURVIVAL_MINUTES_V1,
+  HARTHMERE_STAMINA_DRAIN_PER_MINUTE_V1,
   HARTHMERE_SEED_DEFINITIONS_V1,
   collectHarthmereLivestockProductV1,
   cookHarthmereFoodV1,
@@ -329,20 +330,22 @@ describe("mmo_farming_food_stamina_v1", () => {
   });
 
   it("depletes stamina over time, lets food recover it, and triggers death at zero", () => {
+    // Times are halved vs. the old 4h clock because the rate is now 100 per 2h (twice as
+    // fast), which preserves the same stamina trajectory at each step.
     let state = defaultHarthmereFoodStaminaStateV1("player_farm_1", NOW);
     state.stamina = 20;
-    let result = tickHarthmereStaminaV1(state, NOW + 10 * 60_000);
+    let result = tickHarthmereStaminaV1(state, NOW + 5 * 60_000);
     assert.equal(result.deathTriggered, false);
     assert.ok(result.state.stamina > 15 && result.state.stamina < 16);
 
-    result = eatHarthmereFoodV1(result.state, { itemId: "road_ration", nowMs: NOW + 10 * 60_000 });
+    result = eatHarthmereFoodV1(result.state, { itemId: "road_ration", nowMs: NOW + 5 * 60_000 });
     assert.ok(result.state.stamina > 39 && result.state.stamina < 40);
 
-    result = tickHarthmereStaminaV1(result.state, NOW + 60 * 60_000);
+    result = tickHarthmereStaminaV1(result.state, NOW + 30 * 60_000);
     assert.ok(result.state.stamina > 18 && result.state.stamina < 20);
     assert.equal(result.deathTriggered, false);
 
-    result = tickHarthmereStaminaV1(result.state, NOW + 4 * 60 * 60_000);
+    result = tickHarthmereStaminaV1(result.state, NOW + 2 * 60 * 60_000);
     assert.equal(result.state.stamina, 0);
     assert.equal(result.deathTriggered, true);
     assert.ok(result.state.deadFromStaminaAtMs);
@@ -361,7 +364,9 @@ describe("mmo_farming_food_stamina_v1", () => {
     assert.equal(result.state.inventory.grilled_meat, 0);
   });
 
-  it("lets a full stamina bar last four hours before starvation death", () => {
+  it("lets a full 100 stamina bar last exactly two hours before starvation death", () => {
+    // Spec: 100 stamina = 2 hours of gameplay.
+    assert.equal(HARTHMERE_FULL_STAMINA_SURVIVAL_MINUTES_V1, 120);
     const state = defaultHarthmereFoodStaminaStateV1("player_farm_1", NOW);
 
     const justBefore = tickHarthmereStaminaV1(
@@ -371,31 +376,33 @@ describe("mmo_farming_food_stamina_v1", () => {
     assert.equal(justBefore.deathTriggered, false);
     assert.ok(justBefore.state.stamina > 0);
 
-    const atFourHours = tickHarthmereStaminaV1(
+    const atTwoHours = tickHarthmereStaminaV1(
       state,
       NOW + HARTHMERE_FULL_STAMINA_SURVIVAL_MINUTES_V1 * 60_000,
     );
-    assert.equal(atFourHours.state.stamina, 0);
-    assert.equal(atFourHours.deathTriggered, true);
+    assert.equal(atTwoHours.state.stamina, 0);
+    assert.equal(atTwoHours.deathTriggered, true);
   });
 
-  it("scales the four-hour stamina clock to custom max stamina values", () => {
+  it("drains at a constant 100-stamina-per-2-hours rate regardless of max stamina", () => {
     const state = {
       ...defaultHarthmereFoodStaminaStateV1("player_farm_1", NOW),
       stamina: 200,
       maxStamina: 200,
     };
 
+    // Constant rate = 50 stamina/hour (100 per 2h), so a 200 bar loses 50 in the first hour.
     const afterOneHour = tickHarthmereStaminaV1(state, NOW + 60 * 60_000);
     assert.equal(afterOneHour.state.stamina, 150);
     assert.equal(afterOneHour.deathTriggered, false);
 
-    const atFourHours = tickHarthmereStaminaV1(
+    // A 200 bar therefore lasts 4 hours (twice the default 100 bar's 2-hour survival).
+    const atSurvival = tickHarthmereStaminaV1(
       state,
-      NOW + HARTHMERE_FULL_STAMINA_SURVIVAL_MINUTES_V1 * 60_000,
+      NOW + 2 * HARTHMERE_FULL_STAMINA_SURVIVAL_MINUTES_V1 * 60_000,
     );
-    assert.equal(atFourHours.state.stamina, 0);
-    assert.equal(atFourHours.deathTriggered, true);
+    assert.equal(atSurvival.state.stamina, 0);
+    assert.equal(atSurvival.deathTriggered, true);
   });
 
   it("normalizes malformed stamina values instead of skipping death checks", () => {
@@ -519,5 +526,126 @@ describe("mmo_farming_food_stamina_v1", () => {
     assert.equal(result.state.spawns.mucker_1.hp, 0);
     assert.equal(result.state.spawns.mucker_1.depletedAtMs, NOW);
     assert.equal(result.state.spawns.mucker_1.respawnAtMs, NOW + HARTHMERE_HALF_DAY_MS_V1);
+  });
+});
+
+describe("mmo_farming_food_stamina_v1 — survival clock + farming edge cases (audit hardening)", () => {
+  it("applies pending stamina drain before crediting an eaten meal", () => {
+    const foodId = Object.keys(HARTHMERE_FOOD_DEFINITIONS_V1).find(
+      (id) =>
+        HARTHMERE_FOOD_DEFINITIONS_V1[id].edible !== false &&
+        HARTHMERE_FOOD_DEFINITIONS_V1[id].staminaRestore > 0,
+    )!;
+    const restore = HARTHMERE_FOOD_DEFINITIONS_V1[foodId].staminaRestore;
+    // 60 minutes of drain at the constant rate (100 per 2h => 50/hour).
+    const drainOverHour = 60 * HARTHMERE_STAMINA_DRAIN_PER_MINUTE_V1;
+    const startStamina = 80;
+    const base = {
+      ...defaultHarthmereFoodStaminaStateV1("p_eat_drain", NOW),
+      stamina: startStamina,
+      maxStamina: 100,
+      lastStaminaTickMs: NOW,
+      inventory: { [foodId]: 2 },
+    };
+    // Eat 60 min later WITHOUT a preceding tick: the drain must still be applied first.
+    const eaten = eatHarthmereFoodV1(base, { itemId: foodId, nowMs: NOW + 60 * 60 * 1000 });
+    assert.deepEqual(eaten.warnings, []);
+    const expected = Math.min(100, Math.max(0, startStamina - drainOverHour) + restore);
+    assert.ok(
+      Math.abs(eaten.state.stamina - expected) < 0.01,
+      `stamina ${eaten.state.stamina} should be drain-then-restore ${expected}, not the no-drain ${Math.min(100, startStamina + restore)}`,
+    );
+  });
+
+  it("watering cannot make a fast-growing crop instantly harvestable", () => {
+    const state = defaultHarthmereFoodStaminaStateV1("p_water_cap", NOW);
+    state.inventory.seed_carrot = 1;
+    const planted = plantHarthmereCropV1(state, { plotId: "fast_plot", seedItemId: "seed_carrot", nowMs: NOW });
+    assert.deepEqual(planted.warnings, []);
+    const plot = planted.state.plots.fast_plot;
+    const growMs = 20 * 60 * 1000; // under the old flat 1h water bonus
+    const fastState = {
+      ...planted.state,
+      plots: { ...planted.state.plots, fast_plot: { ...plot, harvestReadyAtMs: plot.plantedAtMs + growMs } },
+    };
+    const watered = waterHarthmereCropV1(fastState, { plotId: "fast_plot", nowMs: plot.plantedAtMs });
+    assert.deepEqual(watered.warnings, []);
+    const readyAt = watered.state.plots.fast_plot.harvestReadyAtMs;
+    assert.ok(readyAt > plot.plantedAtMs, "crop became instantly harvestable after watering");
+    assert.ok(readyAt >= plot.plantedAtMs + growMs * 0.75 - 1, "water bonus exceeded the 25% cap");
+    const early = harvestHarthmereCropV1(watered.state, { plotId: "fast_plot", nowMs: plot.plantedAtMs });
+    assert.ok(early.warnings.length > 0, "fast crop should not be harvestable at plant time after watering");
+  });
+
+  it("does not let feeding livestock pull the product timer earlier", () => {
+    const state = defaultHarthmereFoodStaminaStateV1("p_feed", NOW);
+    state.inventory.seed_wheat = 1;
+    const farFuture = NOW + 10 * HARTHMERE_LIVESTOCK_PRODUCT_INTERVAL_MS_V1;
+    state.livestock.cow_1 = {
+      livestockId: "cow_1",
+      species: "cow",
+      ownerId: "p_feed",
+      health: 50,
+      hunger: 50,
+      productItemId: "fresh_milk",
+      productReadyAtMs: farFuture,
+    };
+    const result = feedHarthmereLivestockV1(state, { livestockId: "cow_1", feedItemId: "seed_wheat", nowMs: NOW });
+    assert.deepEqual(result.warnings, []);
+    assert.ok(
+      result.state.livestock.cow_1.productReadyAtMs >= farFuture,
+      "feeding must not shorten the product-ready timer",
+    );
+  });
+
+  it("normalizes corrupt (NaN) livestock health/hunger as needs-care instead of waving collection through", () => {
+    const state = defaultHarthmereFoodStaminaStateV1("p_nan", NOW);
+    state.livestock.cow_1 = {
+      livestockId: "cow_1",
+      species: "cow",
+      ownerId: "p_nan",
+      health: Number.NaN,
+      hunger: Number.NaN,
+      productItemId: "fresh_milk",
+      productReadyAtMs: NOW - 1, // already "ready" so only the care gate can block it
+    };
+    const collected = collectHarthmereLivestockProductV1(state, { livestockId: "cow_1", nowMs: NOW });
+    assert.ok(collected.warnings.includes("livestock_rejected:animal_needs_care"));
+  });
+});
+
+describe("mmo_farming_food_stamina_v1 — crop death/spoilage (audit hardening)", () => {
+  const TOMATO_SEED = "1534621126189358"; // grow 3 days, death window 5 days
+  const DAY_MS = 24 * 60 * 60 * 1000;
+
+  it("withers a crop left unharvested past its death window and frees the plot for replant", () => {
+    const state = defaultHarthmereFoodStaminaStateV1("p_death", NOW);
+    state.inventory[TOMATO_SEED] = 2;
+    const planted = plantHarthmereCropV1(state, { plotId: "death_plot", seedItemId: TOMATO_SEED, nowMs: NOW });
+    assert.deepEqual(planted.warnings, []);
+
+    // Harvest 6 days later — past the 5-day death window — yields nothing and withers.
+    const withered = harvestHarthmereCropV1(planted.state, { plotId: "death_plot", nowMs: NOW + 6 * DAY_MS });
+    assert.ok(withered.warnings.includes("farming_rejected:crop_withered"));
+    assert.ok(withered.state.plots.death_plot.diedAtMs, "plot is marked dead");
+    // The rejection yields nothing — the seed's yield item is not granted.
+    const yieldItem = HARTHMERE_SEED_DEFINITIONS_V1[TOMATO_SEED].yieldItemId;
+    const witheredDeltas = (withered as { itemDeltas?: Record<string, number> }).itemDeltas ?? {};
+    assert.equal(witheredDeltas[yieldItem] ?? 0, 0, "withered crop yields nothing");
+
+    // A withered plot can be cleared and replanted.
+    const replanted = plantHarthmereCropV1(withered.state, { plotId: "death_plot", seedItemId: TOMATO_SEED, nowMs: NOW + 6 * DAY_MS });
+    assert.deepEqual(replanted.warnings, []);
+    assert.equal(replanted.state.plots.death_plot.diedAtMs, undefined, "replant clears the dead marker");
+  });
+
+  it("still harvests a crop within its death window", () => {
+    const state = defaultHarthmereFoodStaminaStateV1("p_window", NOW);
+    state.inventory[TOMATO_SEED] = 1;
+    const planted = plantHarthmereCropV1(state, { plotId: "window_plot", seedItemId: TOMATO_SEED, nowMs: NOW });
+    // 4 days: after the 3-day grow, before the 5-day death window → harvest succeeds.
+    const harvested = harvestHarthmereCropV1(planted.state, { plotId: "window_plot", nowMs: NOW + 4 * DAY_MS });
+    assert.deepEqual(harvested.warnings, []);
+    assert.ok(harvested.state.plots.window_plot.harvestedAtMs);
   });
 });

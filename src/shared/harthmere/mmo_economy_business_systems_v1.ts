@@ -2530,7 +2530,9 @@ function createShelterContract(state: BusinessSystemsEconomyState, request: Hart
 
 function runRentTick(state: BusinessSystemsEconomyState, request: HarthmereEconomyMutationRequestV1, _context: BusinessSystemsContext, warnings: string[], touched: Set<string>, shared: Set<string>) {
   const systems = state.businessSystems!;
-  const days = int(request.days, 1);
+  // Clamp to at least one day so a fractional/negative `days` cannot advance
+  // lastRentPaidAtMs while charging zero rent (free-rent exploit).
+  const days = Math.max(1, Math.min(30, int(request.days, 1)));
   let processed = 0;
   for (const property of Object.values(systems.propertyIntegrations)) {
     if (!property.businessId || property.rentGoldPerDay <= 0 || !property.constructionComplete) continue;
@@ -2577,8 +2579,19 @@ function seizeLoanCollateral(state: BusinessSystemsEconomyState, request: Harthm
   property.ownerKind = "town";
   property.ownerId = "foreclosure_authority";
   property.businessId = undefined;
+  property.collateralLoanId = undefined;
+  // Foreclosure settles the defaulted loan: the seized collateral discharges the debt.
+  // Leaving the loan "defaulted" with a non-zero principal let it be re-seized and kept
+  // the business permanently indebted against an asset it no longer owns.
+  const dischargedPrincipal = Math.max(0, loan.principalRemaining ?? 0);
+  loan.principalRemaining = 0;
+  loan.status = "paid";
+  loan.settledAtMs = request.nowMs;
   const b = state.businesses[loan.businessId];
-  if (b) b.status = "bankrupt";
+  if (b) {
+    b.debtGold = Math.max(0, (b.debtGold ?? 0) - dischargedPrincipal);
+    b.status = "bankrupt";
+  }
   touched.add("economy_business_loans");
   shared.add(systemsSharedKey("property", property.propertyId));
 }
@@ -2589,7 +2602,24 @@ function liquidateBankruptBusiness(state: BusinessSystemsEconomyState, request: 
   if (b.status !== "bankrupt" && b.status !== "suspended") return reject(warnings, touched, "economy_rejected:business_not_eligible_for_liquidation");
   const liquidationValue = Object.values(b.inventory).reduce((sum, stack) => sum + stack.count * 2, 0) + Math.round(b.balanceGold * 0.5);
   b.inventory = {};
-  b.balanceGold = liquidationValue;
+  // Liquidation proceeds settle creditors first; only the remainder goes to the owner.
+  // Previously debt was orphaned and proceeds went entirely to the owner.
+  let proceeds = liquidationValue;
+  for (const loan of Object.values(state.loans) as any[]) {
+    if (loan.businessId !== b.businessId || loan.status === "paid") continue;
+    const owed = Math.max(0, loan.principalRemaining ?? 0);
+    const pay = Math.min(proceeds, owed);
+    loan.principalRemaining = owed - pay;
+    proceeds -= pay;
+    if (loan.principalRemaining <= 0) {
+      loan.status = "paid";
+      loan.settledAtMs = request.nowMs;
+    }
+  }
+  b.debtGold = (Object.values(state.loans) as any[])
+    .filter((loan) => loan.businessId === b.businessId && loan.status !== "paid")
+    .reduce((sum, loan) => sum + Math.max(0, loan.principalRemaining ?? 0), 0);
+  b.balanceGold = proceeds;
   b.status = "closed";
   touched.add("economy_business_bankruptcy");
   shared.add(businessSharedKey(b.businessId));

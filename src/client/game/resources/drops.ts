@@ -17,6 +17,7 @@ import { makeDisposable } from "@/shared/disposable";
 import type { ItemAndCount } from "@/shared/ecs/gen/types";
 import type { BiomesId } from "@/shared/ids";
 import { MAX_ID } from "@/shared/ids";
+import { groundHarthmereLiveEntityFeetYV1 } from "@/client/game/util/harthmere_entity_grounding";
 import { add } from "@/shared/math/linear";
 import type { Vec3 } from "@/shared/math/types";
 import type { RegistryLoader } from "@/shared/registry";
@@ -37,7 +38,22 @@ export interface DropResource {
 function makeDrop({}: ClientContext, deps: ClientResourceDeps, id: BiomesId) {
   const drop = deps.get("/ecs/entity", id);
   ok(drop && drop.position && drop.loose_item);
-  const pos: Vec3 = [...drop.position.v];
+  const rawPos: Vec3 = [...drop.position.v];
+  // HARTHMERE_ENTITY_GROUNDING_V1: rest dropped / quest items on the real terrain
+  // surface so they don't float or sink on hills. Falls back to the stored Y if
+  // the terrain column isn't loaded yet.
+  // Dropped / quest items rest on the outdoor surface (cave-safe + water-aware).
+  const groundedFeetY = groundHarthmereLiveEntityFeetYV1(
+    deps,
+    rawPos[0],
+    rawPos[2],
+    rawPos[1],
+    true
+  );
+  const pos: Vec3 =
+    groundedFeetY === undefined
+      ? rawPos
+      : [rawPos[0], groundedFeetY, rawPos[2]];
 
   const meshPromise = deps
     .get("/scene/item/mesh", new item_mesh.ItemMeshKey(drop.loose_item.item))

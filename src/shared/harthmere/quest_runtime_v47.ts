@@ -276,10 +276,11 @@ export function validateHarthmereQuestObjectiveEventV47(
 
   // Collect/item_grant/item_use/craft/carry require inventory or evidence
   // state to actually change before the objective can advance.
+  // Gate on the OBJECTIVE's contract, not the caller-supplied event type: a talk/inspect
+  // objective must not be blocked just because the (client-influenced) event was typed
+  // "collect", and a collect objective must require the inventory change regardless.
   if (
-    (objective.type === "collect" ||
-      objective.type === "craft" ||
-      (event as any).type === "collect") &&
+    (objective.type === "collect" || objective.type === "craft") &&
     event.inventoryStateChanged === false
   ) {
     reasons.push("inventory_state_unchanged");
@@ -346,8 +347,18 @@ export function acceptHarthmereQuestV47(
     questStates: context.questStates,
   } as any);
   if (!validation.ok) return { ok: false, questId, state: "locked", reasons: validation.reasons };
-  if (context.runtimeRecords[questId]?.state === "active") {
-    return { ok: true, questId, state: "active", record: context.runtimeRecords[questId], reasons: ["already_active_idempotent"] };
+  const existingRecord = context.runtimeRecords[questId];
+  if (existingRecord) {
+    // Idempotent: a duplicate accept of an in-flight quest must NEVER wipe progress.
+    if (existingRecord.state === "active" || existingRecord.state === "ready_to_complete") {
+      return { ok: true, questId, state: existingRecord.state, record: existingRecord, reasons: ["already_active_idempotent"] };
+    }
+    // A non-repeatable quest that is already completed cannot be re-accepted.
+    if (existingRecord.state === "completed" && (quest.repeatability ?? "once") === "once") {
+      return { ok: false, questId, state: "completed", reasons: ["quest_already_completed"] };
+    }
+    // Otherwise (repeatable completed → next cycle, or failed/abandoned → restart) fall
+    // through and create a fresh record.
   }
   const event = { eventId, questId, type: "accept" as const, actorId: context.playerId, authority: "server" as const, tick: context.tick };
   const eventValidation = validateHarthmereQuestRuntimeEventV47(context, event);
@@ -420,13 +431,19 @@ export function completeHarthmereQuestV47(
   const record = context.runtimeRecords[questId];
   if (!quest || !record) return { ok: false, questId, reasons: ["missing_runtime_record"] };
   if (record.state !== "ready_to_complete") return { ok: false, questId, state: record.state, reasons: ["objectives_not_ready"] };
-  const rewardGrantId = `reward:${questId}`;
+  // Repeatable (daily/weekly) quests must re-grant their reward each cycle. Keying the
+  // grant id on the acceptance tick gives each fresh acceptance a distinct id, while a
+  // "once" quest keeps a stable id so it can never be re-granted.
+  const rewardGrantId =
+    (quest.repeatability ?? "once") === "once"
+      ? `reward:${questId}`
+      : `reward:${questId}:${record.acceptedAtTick}`;
   if (context.grantedRewardIds.includes(rewardGrantId)) return { ok: true, questId, state: "completed", record, reasons: ["reward_already_granted_idempotent"] };
   record.state = "completed";
   record.completedAtTick = context.tick;
   record.rewardGrantId = rewardGrantId;
   context.questStates[questId] = "completed";
-  context.completedQuestIds.push(questId);
+  if (!context.completedQuestIds.includes(questId)) context.completedQuestIds.push(questId);
   context.grantedRewardIds.push(rewardGrantId);
   return {
     ok: true,
@@ -523,6 +540,11 @@ export function abandonHarthmereQuestV47(
 ): HarthmereQuestRuntimeResultV47 {
   const record = context.runtimeRecords[questId];
   if (!record) return { ok: false, questId, reasons: ["missing_runtime_record"] };
+  // Only in-flight quests can be abandoned. Abandoning a completed/failed quest would
+  // corrupt its terminal state (and could re-lock chain prerequisites that read it).
+  if (record.state !== "active" && record.state !== "ready_to_complete") {
+    return { ok: false, questId, state: record.state, reasons: ["only_active_quests_can_abandon"] };
+  }
   record.state = "abandoned";
   record.abandonedAtTick = context.tick;
   context.questStates[questId] = "abandoned";

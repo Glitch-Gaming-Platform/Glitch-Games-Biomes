@@ -12,8 +12,16 @@ import {
   isPositionInsideLiveEntityHelperBoundsV1,
 } from "./live_entity_helper_quests_v1";
 import { muckMonsterAreaForPositionV1 } from "./muck_monster_aggression_ai_v1";
+import {
+  HARTHMERE_MUCK_CONTAINMENT_AREAS_V1,
+  type HarthmereMuckContainmentAreaV1,
+} from "./harthmere_muck_monster_containment_v1";
 import { SNAPSHOT_GROVE_LOCAL_DEV_NPC_BASE_V75 } from "./snapshot_grove_content_v75";
-import { snapshotCombatGroundedPositionV135 } from "./snapshot_runtime_rules_v74";
+import {
+  SNAPSHOT_SAFE_AREAS_V74,
+  authoredSnapshotAreaForPointV74,
+  snapshotCombatGroundedPositionV135,
+} from "./snapshot_runtime_rules_v74";
 
 export const HARTHMERE_LIVE_ENTITY_PRODUCTION_SEED_VERSION_V1 =
   "harthmere-live-entity-production-seed-v1" as const;
@@ -257,11 +265,87 @@ export const HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_SEEDS_V1 =
 // `validateHarthmereLiveEntityProductionSeedsV1`), so this drops nothing today;
 // it is a defense-in-depth guarantee that a Hex/Mucker can never be seeded
 // outside the muck if the layout data is ever edited.
+// HARTHMERE_MUCK_MONSTER_SAFE_ZONE_EXCLUSION_V1:
+// A muck monster must never spawn inside an authored SAFE area (the Grove, the
+// Harthmere town core, the safe road). The road_muckwad_patch muck zone overlaps
+// the Grove/town safe radii, so its ambient muckers would otherwise appear
+// "inside the Grove". Drop any monster whose grounded position lands in a safe
+// area. (The single authored tutorial hostile in the combat primer is a separate
+// seed and is intentionally left in place.)
+export function harthmereMuckMonsterPositionIsInSafeZoneV1(
+  position: ReadonlyVec3
+): boolean {
+  return Boolean(
+    authoredSnapshotAreaForPointV74(position, SNAPSHOT_SAFE_AREAS_V74, 0)
+  );
+}
+
+// Deterministic spread point inside a muck area (golden-angle spiral kept within
+// radius - 2 so it stays comfortably inside the muck).
+function muckMonsterRelocationPositionV1(
+  area: HarthmereMuckContainmentAreaV1,
+  index: number
+): Vec3 {
+  const span = 12;
+  const radius =
+    Math.max(0, area.radius - 2) * Math.sqrt(((index % span) + 0.5) / span);
+  const angle = index * 2.399963229728653;
+  return [
+    Number((area.center[0] + Math.cos(angle) * radius).toFixed(3)),
+    area.center[1],
+    Number((area.center[2] + Math.sin(angle) * radius).toFixed(3)),
+  ];
+}
+
+// Every authored muck monster, grounded and guaranteed to live in a real muck
+// area. Muckers/hexes whose authored position lands in a safe zone (e.g. the
+// road_muckwad patch that overlaps the Grove) or outside any muck area are
+// RELOCATED — round-robin across all non-safe muck areas — rather than dropped,
+// so all muckers and hexes end up spread across every muck area in the game and
+// none remain in the Grove.
 export function harthmereGroundedMuckMonsterSeedsInTerritoryV1(): HarthmereLiveEntityProductionSeedV1[] {
-  return HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_SEEDS_V1.map((seed) => ({
-    ...seed,
-    position: snapshotCombatGroundedPositionV135(seed.position),
-  })).filter((seed) => Boolean(muckMonsterAreaForPositionV1(seed.position, 1.5)));
+  const validAreas = HARTHMERE_MUCK_CONTAINMENT_AREAS_V1.filter(
+    (area) => !harthmereMuckMonsterPositionIsInSafeZoneV1(area.center)
+  );
+  let relocateIndex = 0;
+  return HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_SEEDS_V1.map((seed) => {
+    const grounded = snapshotCombatGroundedPositionV135(seed.position);
+    const inMuckArea = Boolean(muckMonsterAreaForPositionV1(grounded, 1.5));
+    const inSafeZone = harthmereMuckMonsterPositionIsInSafeZoneV1(grounded);
+    if (inMuckArea && !inSafeZone) {
+      return { ...seed, position: grounded };
+    }
+    const area = validAreas[relocateIndex % Math.max(1, validAreas.length)];
+    const position = muckMonsterRelocationPositionV1(area, relocateIndex);
+    relocateIndex += 1;
+    return { ...seed, position };
+  });
+}
+
+// Entity ids of authored muck monsters that are NO LONGER spawned (e.g. they
+// landed inside a safe zone like the Grove). A world that was seeded before this
+// exclusion still has them, so the production content-sync uses this list to
+// delete the stragglers (e.g. the 15 road_muckwad muckers inside the Grove).
+export function harthmereExcludedMuckMonsterSeedIdsV1(): BiomesId[] {
+  const kept = new Set(
+    harthmereGroundedMuckMonsterSeedsInTerritoryV1().map((seed) => seed.entityId)
+  );
+  return HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_SEEDS_V1.filter(
+    (seed) => !kept.has(seed.entityId)
+  ).map((seed) => seed.entityId);
+}
+
+// The ids that SHOULD exist in the world: every robot sentinel plus only the
+// muck monsters that survive the muck-territory + safe-zone gate. This is what
+// "expected/required" means for fingerprinting and reconciliation, so the
+// excluded (e.g. Grove) muckers are not treated as required and can be removed.
+export function harthmereActiveLiveEntityProductionSeedIdsV1(): BiomesId[] {
+  return [
+    ...HARTHMERE_LIVE_ENTITY_ROBOT_SENTINEL_SEEDS_V1.map((seed) => seed.entityId),
+    ...harthmereGroundedMuckMonsterSeedsInTerritoryV1().map(
+      (seed) => seed.entityId
+    ),
+  ];
 }
 
 export const HARTHMERE_LIVE_ENTITY_PRODUCTION_SEEDS_V1 = [

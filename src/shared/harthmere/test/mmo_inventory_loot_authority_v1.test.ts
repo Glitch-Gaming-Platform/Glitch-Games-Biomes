@@ -185,6 +185,28 @@ describe("mmo_inventory_loot_authority_v1 oversights", () => {
     assert.equal(secondRoll.some((entry) => entry.itemId === "keystone_fragment"), false);
   });
 
+  it("never selects a zero-weight weighted-drop entry regardless of RNG seed", () => {
+    const table: HarthmereInventoryLootTableV1 = {
+      tableId: "weighted_zero",
+      sourceTypes: ["chest"],
+      tags: [],
+      rolls: 1,
+      guaranteedDrops: [],
+      weightedDrops: [
+        // Leading "disabled" entry; must never drop even when rand() yields exactly 0.
+        { itemId: "iron_sword", minCount: 1, maxCount: 1, weight: 0 },
+        { itemId: "iron_ore", minCount: 1, maxCount: 1, weight: 100 },
+      ],
+      rareDrops: [],
+      questDrops: [],
+    };
+    for (let seed = 1; seed <= 300; seed++) {
+      const rolled = rollHarthmereInventoryLootTableV1(table, ctx, seed);
+      assert.equal(rolled.some((e) => e.itemId === "iron_sword"), false, `zero-weight selected at seed ${seed}`);
+      assert.equal(rolled.some((e) => e.itemId === "iron_ore"), true, `positive-weight entry missing at seed ${seed}`);
+    }
+  });
+
   it("requires active guild membership for guild loot assignment and targets", () => {
     let state = createHarthmereEmptyInventoryLootStateV1();
     state.actors.p1 = createHarthmereInventoryLootActorV1("p1", { guildId: "guild_1" });
