@@ -23,6 +23,8 @@ import type {
   HarthmereBusinessWorldContextV1,
 } from "./businessInterfaceLiveAdapter";
 import { formatHarthmereBusinessPlayerWarningV1 } from "./businessInterfaceLiveAdapter";
+import { businessCheckInDisplayModelV1 } from "./businessDailyCheckInClientV1";
+import { HARTHMERE_BUSINESS_TAB_LABELS_V1 } from "./harthmereBusinessTabsV1";
 
 export interface HarthmereBusinessInterfacePanelProps {
   adapter: HarthmereBusinessInterfaceAdapterV1;
@@ -98,23 +100,8 @@ const CUSTOMER_TABS: CustomerTab[] = [
   "status",
   "market",
 ];
-const TAB_LABELS: Record<PanelTab, string> = {
-  dashboard: "Dashboard",
-  customers: "Customer Counter",
-  orders: "Orders",
-  shopfront: "Shopfront",
-  finance: "Finance",
-  staff: "Staff",
-  empire: "Empire",
-  licenses: "Licenses",
-  operations: "Operations",
-  town: "Town",
-  market: "Market",
-  guild: "Guild",
-  overview: "Overview",
-  services: "Services",
-  status: "Status",
-};
+// Labels live in a pure, unit-tested module (harthmereBusinessTabsV1).
+const TAB_LABELS: Record<string, string> = HARTHMERE_BUSINESS_TAB_LABELS_V1;
 
 function displayLabel(value: string | undefined): string {
   if (!value) return "";
@@ -714,6 +701,7 @@ const OwnerDashboardPane: React.FunctionComponent<{
     business,
     type,
     bikkieGraphics,
+    checkIn,
   } = useMeasuredBusinessMemoV1(
     "owner-dashboard-derive",
     () => ({
@@ -724,10 +712,14 @@ const OwnerDashboardPane: React.FunctionComponent<{
       business: adapter.getBusiness(businessId),
       type: adapter.getBusinessType(businessId),
       bikkieGraphics: adapter.getBikkieGraphics(businessId),
+      checkIn: adapter.getCheckInStatus(businessId),
     }),
     [adapter, businessId],
     { businessId, tab: "dashboard" }
   );
+  const checkInDisplay = checkIn
+    ? businessCheckInDisplayModelV1(checkIn)
+    : undefined;
   const canOpen = Boolean(
     business?.propertyId &&
       business.townId &&
@@ -758,6 +750,39 @@ const OwnerDashboardPane: React.FunctionComponent<{
           Start Shift
         </button>
       </section>
+      {checkInDisplay && (
+        <section style={highlightCardStyle}>
+          <div>
+            <h3 style={sectionTitleStyle}>Daily Check-In</h3>
+            <strong style={heroMetricStyle}>{checkInDisplay.streakLabel}</strong>
+            <p
+              style={
+                checkInDisplay.inLosses
+                  ? { ...mutedTextStyle, color: "#ff9f2f" }
+                  : mutedTextStyle
+              }
+            >
+              {checkInDisplay.revenueLabel}
+            </p>
+            <p style={mutedTextStyle}>{checkInDisplay.madeLabel}</p>
+            <p style={mutedTextStyle}>{checkInDisplay.lostLabel}</p>
+            <p style={mutedTextStyle}>{checkInDisplay.callToAction}</p>
+          </div>
+          <button
+            className="biomes-ui-tab"
+            type="button"
+            disabled={checkInDisplay.checkedInToday}
+            onClick={() => void adapter.checkInDaily(businessId)}
+            style={
+              checkInDisplay.checkedInToday
+                ? disabledButtonStyle
+                : startShiftButtonStyle
+            }
+          >
+            {checkInDisplay.checkedInToday ? "Checked in" : "Check in (+500)"}
+          </button>
+        </section>
+      )}
       <BikkieGraphicsStrip graphics={bikkieGraphics} />
       {dashboard.metrics.map((metric) => (
         <MetricCard
@@ -3219,7 +3244,6 @@ const businessPendingOverlayStyle: React.CSSProperties = {
   bottom: 8,
   zIndex: 2,
   display: "inline-flex",
-  alignItems: "center",
   alignItems: "center",
   gap: 8,
   marginTop: 12,

@@ -59,19 +59,26 @@ export function buildHarthmereBusinessCustomerNpcSeedChangesV1(input: {
       forwardAxis: "minusZ",
       source: HARTHMERE_BUSINESS_CUSTOMER_NPC_SEED_SOURCE_V1,
     });
+    const base = npcEntity(
+      {
+        id: seed.entityId,
+        typeId: LOCAL_DEV_HUMAN_NPC_TYPE_ID,
+        position: seed.position,
+        orientation: seed.orientation,
+        velocity: [0, 0, 0],
+        displayName: seed.displayName,
+        defaultDialog: npcDialogV1(seed.line, ...seed.extraLines),
+      },
+      nowSeconds
+    );
+    // HARTHMERE_BUSINESS_NPC_UNIQUE_VOXEL_V1: drop the uniform default
+    // appearance_component/wearing npcEntity assigns to the player-like human
+    // type so each customer renders from its unique harthmere:* markers via the
+    // voxel generator instead of an identical player_mesh avatar.
+    delete (base as { appearance_component?: unknown }).appearance_component;
+    delete (base as { wearing?: unknown }).wearing;
     const entity = {
-      ...npcEntity(
-        {
-          id: seed.entityId,
-          typeId: LOCAL_DEV_HUMAN_NPC_TYPE_ID,
-          position: seed.position,
-          orientation: seed.orientation,
-          velocity: [0, 0, 0],
-          displayName: seed.displayName,
-          defaultDialog: npcDialogV1(seed.line, ...seed.extraLines),
-        },
-        nowSeconds
-      ),
+      ...base,
       entity_description: EntityDescription.create({
         text: withHarthmereAppearanceMarker(
           withHarthmereBodyAndFaceMarkers(

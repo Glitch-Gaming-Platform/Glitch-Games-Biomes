@@ -2,6 +2,7 @@ import {
   LIVE_ENTITY_HELPER_QUEST_DEFINITIONS_V1,
   liveEntityHelperQuestRewardSummaryV1,
   liveEntityHelperQuestTargetMarkerForKindV1,
+  liveEntityHelperResolveQuestMarkerV1,
   type LiveEntityHelperQuestKindV1,
 } from "@/shared/harthmere/live_entity_helper_quests_v1";
 import type { Vec3 } from "@/shared/math/types";
@@ -16,6 +17,8 @@ export interface BiomesUILiveEntityHelperQuestRecordV1 {
   entityId: string;
   giverName: string;
   at?: number;
+  giverPosition?: readonly number[];
+  readyToTurnIn?: boolean;
 }
 
 export interface BiomesUILiveEntityHelperQuestStateV1 {
@@ -52,6 +55,19 @@ function normalizeRecordV1(
   if (!value || typeof value !== "object") return undefined;
   const record = value as Record<string, unknown>;
   if (!isLiveEntityHelperQuestKindV1(record.kind)) return undefined;
+  const gp = record.giverPosition;
+  const giverPosition =
+    Array.isArray(gp) &&
+    gp.length >= 3 &&
+    Number.isFinite(gp[0]) &&
+    Number.isFinite(gp[1]) &&
+    Number.isFinite(gp[2])
+      ? ([Number(gp[0]), Number(gp[1]), Number(gp[2])] as [
+          number,
+          number,
+          number
+        ])
+      : undefined;
   return {
     questId:
       typeof record.questId === "string" && record.questId.length > 0
@@ -70,6 +86,8 @@ function normalizeRecordV1(
       typeof record.at === "number" && Number.isFinite(record.at)
         ? record.at
         : undefined,
+    ...(giverPosition ? { giverPosition } : {}),
+    ...(record.readyToTurnIn === true ? { readyToTurnIn: true } : {}),
   };
 }
 
@@ -117,7 +135,16 @@ function rewardForKindV1(kind: LiveEntityHelperQuestKindV1) {
 }
 
 export function liveEntityHelperAcceptedQuestLandmarksForBiomesUIV1(
-  raw: unknown
+  raw: unknown,
+  options?: {
+    // Live override for "objective met". When omitted the stored
+    // record.readyToTurnIn flag is used. The BiomesUI adapter passes a live
+    // resolver so the marker flips home the moment the item is collected /
+    // monster defeated, without waiting for a stored-flag write.
+    isReadyToTurnIn?: (
+      record: BiomesUILiveEntityHelperQuestRecordV1
+    ) => boolean;
+  }
 ): BiomesUILiveEntityHelperQuestLandmarkV1[] {
   const seenMarkerIds = new Set<string>();
   return activeRecordsV1(raw).flatMap((record) => {
@@ -125,17 +152,30 @@ export function liveEntityHelperAcceptedQuestLandmarksForBiomesUIV1(
     if (!marker || seenMarkerIds.has(marker.id)) return [];
     seenMarkerIds.add(marker.id);
     const definition = LIVE_ENTITY_HELPER_QUEST_DEFINITIONS_V1[record.kind];
+    const readyToTurnIn =
+      options?.isReadyToTurnIn?.(record) ?? Boolean(record.readyToTurnIn);
+    // Point at the real target while the objective is open; flip to the giver
+    // (return home to turn in) once it's met.
+    const resolved = liveEntityHelperResolveQuestMarkerV1({
+      kind: record.kind,
+      readyToTurnIn,
+      giverPosition: record.giverPosition,
+      giverName: record.giverName,
+    });
     return [
       {
         id: marker.id,
-        label: marker.label,
-        position: [...marker.position] as Vec3,
-        kind: marker.kind === "danger" ? "danger" : "resource",
-        area: marker.areaLabel,
+        label: resolved.label,
+        position: [...resolved.position] as Vec3,
+        kind: resolved.kind,
+        area: resolved.areaLabel,
         visibleOnWorldMap: true as const,
         visibleOnHudMap: true as const,
         active: true as const,
-        description: definition.activeText,
+        description:
+          resolved.phase === "return_to_giver"
+            ? `Objective complete — return to ${record.giverName} to turn in.`
+            : definition.activeText,
         source: BIOMES_UI_LIVE_ENTITY_HELPER_MARKER_SOURCE_V1,
         questKind: record.kind,
       },

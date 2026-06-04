@@ -28,7 +28,8 @@ export const HARTHMERE_LIVE_ENTITY_PRODUCTION_SEED_VERSION_V1 =
 
 export type HarthmereLiveEntityProductionSeedKindV1 =
   | "robot_sentinel"
-  | "ambient_muck_monster";
+  | "ambient_muck_monster"
+  | "ambient_livestock";
 
 export interface HarthmereLiveEntityProductionSeedV1 {
   seedId: string;
@@ -45,6 +46,16 @@ export interface HarthmereLiveEntityProductionSeedV1 {
   combatKind?: "mux" | "hex";
   combatLevel?: number;
   combatHp?: number;
+  /** Wildlife species (e.g. "cow") for ambient_livestock seeds. */
+  species?: string;
+  /** Size tier for ambient_livestock — drives body radius / movement feel. */
+  sizeTier?: "small" | "medium" | "large";
+  /** Units of raw meat dropped when an ambient_livestock animal is hunted. */
+  meatUnits?: number;
+  /** Flat per-hit damage an ambient_livestock animal deals when it retaliates. */
+  attackDamage?: number;
+  /** Flat kill XP an ambient_livestock animal grants when hunted. */
+  killXp?: number;
   robotId?: string;
   energy?: number;
   maxEnergy?: number;
@@ -258,6 +269,156 @@ export const HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_SEEDS_V1 =
   } satisfies HarthmereLiveEntityProductionSeedV1;
 });
 
+// Huntable, passive-but-retaliating wildlife spread across the muck areas.
+// Cows, sheep, and rabbits graze the muck edge, ignore travelers until attacked,
+// then defend themselves; when hunted they drop meat and respawn with the rest
+// of the muck wildlife. Larger animals carry more HP and drop more meat.
+// (road_muckwad_patch is intentionally excluded — it overlaps the Grove/town
+// safe radius, so wildlife there would appear "inside the Grove".)
+const HARTHMERE_LIVE_ENTITY_LIVESTOCK_AREAS_V1: ReadonlyArray<{
+  areaId: string;
+  areaLabel: string;
+}> = [
+  { areaId: "west_muck_breach", areaLabel: "West Muck Breach" },
+  { areaId: "watchtower_muck_clearing", areaLabel: "Watchtower Muck Clearing" },
+  { areaId: "old_wood_mucker_copse", areaLabel: "Old Wood Mucker Copse" },
+  { areaId: "gravewood_pale_muck", areaLabel: "Gravewood Pale Muck" },
+];
+
+interface HarthmereLivestockSpeciesConfigV1 {
+  species: "cow" | "sheep" | "rabbit";
+  displayName: string;
+  sizeTier: "small" | "medium" | "large";
+  combatHp: number;
+  meatUnits: number;
+  attackDamage: number;
+  killXp: number;
+  perArea: number;
+  dialog: string;
+}
+
+// Size tiers: cows are large (most HP, hardest hit, most meat, most XP), sheep
+// medium, rabbits small (least of everything).
+const HARTHMERE_LIVE_ENTITY_LIVESTOCK_SPECIES_V1: readonly HarthmereLivestockSpeciesConfigV1[] =
+  [
+    {
+      species: "cow",
+      displayName: "Muckmeadow Cow",
+      sizeTier: "large",
+      combatHp: 270,
+      meatUnits: 12,
+      attackDamage: 66,
+      killXp: 50,
+      perArea: 2,
+      dialog: "<text>Moo.</text>",
+    },
+    {
+      species: "sheep",
+      displayName: "Muckmeadow Sheep",
+      sizeTier: "medium",
+      combatHp: 110,
+      meatUnits: 4,
+      attackDamage: 30,
+      killXp: 20,
+      perArea: 2,
+      dialog: "<text>Baa.</text>",
+    },
+    {
+      species: "rabbit",
+      displayName: "Muckmeadow Rabbit",
+      sizeTier: "small",
+      combatHp: 22,
+      meatUnits: 1,
+      attackDamage: 15,
+      killXp: 5,
+      perArea: 2,
+      dialog: "<text>*twitches its nose*</text>",
+    },
+  ] as const;
+
+const HARTHMERE_LIVE_ENTITY_LIVESTOCK_PER_AREA_V1 =
+  HARTHMERE_LIVE_ENTITY_LIVESTOCK_SPECIES_V1.reduce(
+    (total, species) => total + species.perArea,
+    0
+  );
+const HARTHMERE_LIVE_ENTITY_LIVESTOCK_FIRST_OFFSET_V1 = 9601;
+
+// Deterministic spread inside the muck area, kept well within radius so animals
+// stay grounded in the muck (not on its sloped edge). `indexInArea` covers every
+// animal of every species in the area so they don't stack on each other.
+function livestockPositionInMuckAreaV1(
+  area: HarthmereMuckContainmentAreaV1,
+  indexInArea: number
+): Vec3 {
+  const radius =
+    Math.max(0, area.radius - 4) *
+    Math.sqrt(
+      (indexInArea + 0.5) / Math.max(1, HARTHMERE_LIVE_ENTITY_LIVESTOCK_PER_AREA_V1)
+    );
+  const angle = indexInArea * 2.399963229728653 + 1;
+  return [
+    Number((area.center[0] + Math.cos(angle) * radius).toFixed(3)),
+    area.center[1],
+    Number((area.center[2] + Math.sin(angle) * radius).toFixed(3)),
+  ];
+}
+
+export const HARTHMERE_LIVE_ENTITY_LIVESTOCK_SEEDS_V1: HarthmereLiveEntityProductionSeedV1[] =
+  HARTHMERE_LIVE_ENTITY_LIVESTOCK_AREAS_V1.flatMap((livestockArea, areaIndex) => {
+    const area = HARTHMERE_MUCK_CONTAINMENT_AREAS_V1.find(
+      (candidate) => candidate.id === livestockArea.areaId
+    );
+    if (!area) {
+      return [];
+    }
+    let indexInArea = 0;
+    return HARTHMERE_LIVE_ENTITY_LIVESTOCK_SPECIES_V1.flatMap((config) =>
+      Array.from({ length: config.perArea }, () => {
+        const localIndex = indexInArea++;
+        const idOffset =
+          HARTHMERE_LIVE_ENTITY_LIVESTOCK_FIRST_OFFSET_V1 +
+          areaIndex * HARTHMERE_LIVE_ENTITY_LIVESTOCK_PER_AREA_V1 +
+          localIndex;
+        return {
+          seedId: `ambient-livestock-${config.species}-${livestockArea.areaId}-${idOffset}`,
+          kind: "ambient_livestock" as const,
+          entityId: entityIdFromOffsetV1(idOffset),
+          idOffset,
+          displayName: `${config.displayName} ${idOffset -
+            HARTHMERE_LIVE_ENTITY_LIVESTOCK_FIRST_OFFSET_V1 +
+            1}`,
+          areaId: livestockArea.areaId,
+          areaLabel: livestockArea.areaLabel,
+          position: livestockPositionInMuckAreaV1(area, localIndex),
+          orientation: [0, 0] as Vec2,
+          dialog: config.dialog,
+          description: `A ${config.displayName.toLowerCase()} grazes the muck near ${livestockArea.areaLabel}. It ignores travelers until struck, then defends itself.`,
+          combatKind: "mux" as const,
+          combatLevel: 1,
+          combatHp: config.combatHp,
+          species: config.species,
+          sizeTier: config.sizeTier,
+          meatUnits: config.meatUnits,
+          attackDamage: config.attackDamage,
+          killXp: config.killXp,
+        } satisfies HarthmereLiveEntityProductionSeedV1;
+      })
+    );
+  });
+
+// Wildlife grounded to the muck floor and kept inside their muck area (mirrors
+// the muck-monster grounding). Animals authored outside any muck territory are
+// dropped.
+export function harthmereGroundedLivestockSeedsInTerritoryV1(): HarthmereLiveEntityProductionSeedV1[] {
+  return HARTHMERE_LIVE_ENTITY_LIVESTOCK_SEEDS_V1.flatMap((seed) => {
+    const grounded = snapshotCombatGroundedPositionV135(seed.position);
+    if (!muckMonsterAreaForPositionV1(grounded, 1.5)) {
+      return [];
+    }
+    return [{ ...seed, position: grounded }];
+  });
+}
+
 // HARTHMERE_MUCK_MONSTER_CONTAINMENT_V1: the canonical set of muck monsters to
 // actually spawn. Each seed position is grounded to the authored muck floor and
 // then gated so ONLY monsters that resolve to a real muck territory are kept.
@@ -297,28 +458,51 @@ function muckMonsterRelocationPositionV1(
   ];
 }
 
-// Every authored muck monster, grounded and guaranteed to live in a real muck
-// area. Muckers/hexes whose authored position lands in a safe zone (e.g. the
-// road_muckwad patch that overlaps the Grove) or outside any muck area are
-// RELOCATED — round-robin across all non-safe muck areas — rather than dropped,
-// so all muckers and hexes end up spread across every muck area in the game and
-// none remain in the Grove.
+// HARTHMERE_VISIBLE_MUCK_SPAWN_ZONES_V1: the three authored, map-labelled muck
+// patches a player actually sees and explores (road_muckwad by spawn, the
+// watchtower clearing, and the old wood). Muck monsters are spread DENSELY and
+// deterministically across THESE — not the larger abstract danger areas
+// (gravewood / west_breach) which are not visibly muck — so wherever a player
+// enters the Muck they meet muckers and hexers. road_muckwad is included even
+// though it nests inside the oversized Grove safe radius: it is the designated
+// starter Muck patch (used by the Road Ahead / Muck Buster training quests) and
+// is exactly where muckers belong. Placement is kept tight inside each patch
+// (radius - 2), so monsters sit in the corrupted terrain, never on Grove streets.
+const HARTHMERE_VISIBLE_MUCK_SPAWN_ZONES_V1: ReadonlyArray<{
+  id: string;
+  share: number;
+}> = [
+  { id: "road_muckwad_patch", share: 24 },
+  { id: "watchtower_muck_patch", share: 36 },
+  { id: "old_wood_muck_patch", share: 40 },
+];
+
+// Every authored muck monster, repositioned into one of the visible muck patches
+// above. The distribution is deterministic (by seed index) so it is stable
+// across processes and reproducible by the deploy reconciler.
 export function harthmereGroundedMuckMonsterSeedsInTerritoryV1(): HarthmereLiveEntityProductionSeedV1[] {
-  const validAreas = HARTHMERE_MUCK_CONTAINMENT_AREAS_V1.filter(
-    (area) => !harthmereMuckMonsterPositionIsInSafeZoneV1(area.center)
-  );
-  let relocateIndex = 0;
-  return HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_SEEDS_V1.map((seed) => {
-    const grounded = snapshotCombatGroundedPositionV135(seed.position);
-    const inMuckArea = Boolean(muckMonsterAreaForPositionV1(grounded, 1.5));
-    const inSafeZone = harthmereMuckMonsterPositionIsInSafeZoneV1(grounded);
-    if (inMuckArea && !inSafeZone) {
-      return { ...seed, position: grounded };
+  const slots: Array<{ area: HarthmereMuckContainmentAreaV1; indexInZone: number }> =
+    [];
+  for (const zone of HARTHMERE_VISIBLE_MUCK_SPAWN_ZONES_V1) {
+    const area = HARTHMERE_MUCK_CONTAINMENT_AREAS_V1.find(
+      (candidate) => candidate.id === zone.id
+    );
+    if (!area) {
+      continue;
     }
-    const area = validAreas[relocateIndex % Math.max(1, validAreas.length)];
-    const position = muckMonsterRelocationPositionV1(area, relocateIndex);
-    relocateIndex += 1;
-    return { ...seed, position };
+    for (let i = 0; i < zone.share; i += 1) {
+      slots.push({ area, indexInZone: i });
+    }
+  }
+  return HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_SEEDS_V1.map((seed, index) => {
+    const slot = slots[index % Math.max(1, slots.length)];
+    if (!slot) {
+      return { ...seed, position: snapshotCombatGroundedPositionV135(seed.position) };
+    }
+    return {
+      ...seed,
+      position: muckMonsterRelocationPositionV1(slot.area, slot.indexInZone),
+    };
   });
 }
 
@@ -345,12 +529,16 @@ export function harthmereActiveLiveEntityProductionSeedIdsV1(): BiomesId[] {
     ...harthmereGroundedMuckMonsterSeedsInTerritoryV1().map(
       (seed) => seed.entityId
     ),
+    ...harthmereGroundedLivestockSeedsInTerritoryV1().map(
+      (seed) => seed.entityId
+    ),
   ];
 }
 
 export const HARTHMERE_LIVE_ENTITY_PRODUCTION_SEEDS_V1 = [
   ...HARTHMERE_LIVE_ENTITY_ROBOT_SENTINEL_SEEDS_V1,
   ...HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_SEEDS_V1,
+  ...HARTHMERE_LIVE_ENTITY_LIVESTOCK_SEEDS_V1,
 ] as const;
 
 export const HARTHMERE_LIVE_ENTITY_PRODUCTION_SEED_IDS_V1 =

@@ -29,6 +29,7 @@ import {
   MinigameElementsSelector,
   NamedQuestGiverSelector,
   NpcMetadataSelector,
+  PlaceableSelector,
   PlayerSelector,
   RestoredPlaceableSelector,
 } from "@/shared/ecs/gen/selectors";
@@ -37,6 +38,7 @@ import {
   canInventoryAcceptBag,
   isInventoryFull,
 } from "@/shared/game/inventory";
+import { anItem } from "@/shared/game/item";
 import type { RequiredItem } from "@/shared/game/spatial";
 import { hitExistingTerrain } from "@/shared/game/spatial";
 import { getTerrainIdAndIsomorphismAtPosition } from "@/shared/game/terrain_helper";
@@ -221,6 +223,12 @@ export function harthmereNpcTalkCandidateScoreForTest(input: {
 let harthmereWorldObjectCandidateCacheV1:
   | HarthmereWorldObjectCandidateV1[]
   | undefined;
+
+// Radius used to gather live ECS world-object candidates from the spatial table.
+// Slightly larger than the selector's own accept radius (6.5m) so the faced-cone
+// scoring in selectNearestHarthmereWorldObjectInspectableV1 still does the final
+// gating; we just want every nearby labeled object in the candidate set.
+const HARTHMERE_WORLD_OBJECT_INSPECT_TABLE_SCAN_RADIUS_V1 = 8;
 
 function harthmereWorldObjectInspectCandidatesV1(): HarthmereWorldObjectCandidateV1[] {
   if (harthmereWorldObjectCandidateCacheV1) {
@@ -1171,7 +1179,14 @@ export class OverlayScript implements Script {
           key: `inspect:robot:${entity.id}`,
           entityId: entity.id,
         };
-      } else if (entity.npc_metadata) {
+      } else if (
+        entity.npc_metadata &&
+        !this.isHarthmereWorldObjectEntityV1(entity)
+      ) {
+        // Real, living NPC. Objects that happen to be bridged as `npc_metadata`
+        // voxel props (their label names a crate/chest/board/...) are excluded
+        // here so they fall through to the world-object prompt below instead of
+        // offering a (non-functional) Talk prompt.
         const npcType = idToNpcType(entity.npc_metadata.type_id);
         return {
           kind: "npc",
@@ -1180,7 +1195,18 @@ export class OverlayScript implements Script {
           entity,
           entityId: entity.id,
         };
-      } else if (entity.placeable_component && entity.placed_by) {
+      } else if (
+        entity.placeable_component &&
+        entity.placed_by &&
+        !this.isAuthoredHarthmereWorldObjectPlaceableV1(entity)
+      ) {
+        // Player-placed placeable: keep the rich, item-type-specific overlay
+        // (container / door / sign / crafting station / ...). Authored Harthmere
+        // world props (a frame/plain placeable whose label names a crate/chest/
+        // ... and that carries a quest_giver) are intentionally excluded here so
+        // they fall through to the world-object prompt below — their placeable
+        // item (a picture frame) otherwise routes to a frame overlay with no
+        // usable engagement. See isAuthoredHarthmereWorldObjectPlaceableV1.
         return {
           kind: "placeable",
           key: `inspect:placeable:${entity.id}`,
@@ -1188,6 +1214,19 @@ export class OverlayScript implements Script {
           itemId: entity.placeable_component.item_id,
           placerId: entity.placed_by.id,
         };
+      }
+      // HARTHMERE_WORLD_OBJECT_DIRECT_HIT_PROMPT_V198:
+      // The cursor ray is directly on an entity we already hold in hand. If its
+      // label/description marks it a non-living world object (a seeded chest /
+      // crate / bin / board / ... that has a `label` but no `placed_by`, so the
+      // rich placeable branch above never fires), surface the world-object
+      // toaster straight from this entity. This is what makes "look at the
+      // chest -> Open Container" work without the object having to be listed in
+      // any static landmark table.
+      const directObjectOverlay =
+        this.harthmereWorldObjectOverlayForEntityV1(entity);
+      if (directObjectOverlay) {
+        return directObjectOverlay;
       }
       // HARTHMERE_WORLD_OBJECT_PROMPT_PRIORITY_V197:
       // Prefer the world-object (crate/chest/bag) prompt over the NPC-talk
@@ -1250,36 +1289,201 @@ export class OverlayScript implements Script {
   }
 
   // HARTHMERE_WORLD_OBJECT_INSPECT_OVERLAY_V1
-  // Produces the "F" inspect/interact prompt for the Grove's procedural world
-  // props (crates, boards, posts, doors, ...). These are not ECS entities, so
-  // we select the nearest faced prop from the static landmark tables and carry
-  // its label/description inline. CursorInspectionComponent then resolves the
-  // same authored interaction (open container, read, craft, repair, ...) it
-  // already uses for placeables and NPCs.
+  // Returns true when an ECS entity's label/description marks it a non-living,
+  // interactable world prop (crate / chest / board / cookpot / door / ...). This
+  // is the same gate the object-interaction semantics use, so the prompt only
+  // appears for objects the resolver knows how to act on.
+  private isHarthmereWorldObjectEntityV1(entity: ReadonlyEntity): boolean {
+    return isHarthmereInspectableWorldObjectV1({
+      label: entity.label?.text,
+      entityDescription: entity.entity_description?.text,
+    });
+  }
+
+  // True when a placeable item already renders its own item-type-specific
+  // inspection overlay (container / door / sign / shop / crafting / outfit /
+  // mailbox / media player). Those must keep their native overlay. Frames and
+  // flagless placeables return false — they have no useful engagement of their
+  // own, so an authored world-object label is allowed to drive the prompt.
+  private placeableItemHasOwnInteractiveOverlayV1(itemId: BiomesId): boolean {
+    const item = anItem(itemId);
+    return Boolean(
+      item.isContainer ||
+        item.isDoor ||
+        item.isShopContainer ||
+        item.isCraftingStation ||
+        item.isOutfitStand ||
+        item.readable ||
+        item.isCustomizableTextSign ||
+        item.isMailbox ||
+        item.isMediaPlayer
+    );
+  }
+
+  // HARTHMERE_AUTHORED_PLACEABLE_WORLD_OBJECT_V199:
+  // The crates/chests/etc. players actually run into are NOT label-only seeded
+  // entities — they are *placed placeables* (placeable_component + placed_by)
+  // authored as picture frames that carry a quest_giver and a world-object
+  // `label` (confirmed against prod redis: "Clothing Crate",
+  // "Chest The Grove Underwater Main", ...). Because they have placed_by, the
+  // rich placeable branch claims them and routes their frame item to a frame
+  // overlay with no usable engagement, and the proximity scan skipped them.
+  // This identifies that authored class so both paths route them to the
+  // world-object ("F") prompt instead. Guards keep player builds untouched:
+  //  - must carry a quest_giver (authored-content marker; player storage chests
+  //    and decor do not), and
+  //  - the placeable item must have no interactive overlay of its own (so real
+  //    player-placed containers/doors/signs keep their native overlay).
+  private isAuthoredHarthmereWorldObjectPlaceableV1(
+    entity: ReadonlyEntity
+  ): boolean {
+    if (!entity.placeable_component || !entity.quest_giver) {
+      return false;
+    }
+    if (!this.isHarthmereWorldObjectEntityV1(entity)) {
+      return false;
+    }
+    return !this.placeableItemHasOwnInteractiveOverlayV1(
+      entity.placeable_component.item_id
+    );
+  }
+
+  // Builds the world-object ("F") overlay directly from a live ECS entity, used
+  // when the cursor ray lands on a labeled world object that the rich placeable
+  // branch did not handle (e.g. a seeded container with no `placed_by`). Carries
+  // the real entityId so the interaction handlers can de-dupe per instance.
+  private harthmereWorldObjectOverlayForEntityV1(
+    entity: ReadonlyEntity
+  ): InspectableOverlay | undefined {
+    if (!this.isHarthmereWorldObjectEntityV1(entity)) {
+      return undefined;
+    }
+    const label = entity.label?.text ?? "";
+    const pos = entity.position?.v;
+    return {
+      kind: "harthmere_object",
+      key: `inspect:harthmere_object:entity:${entity.id}`,
+      entityId: entity.id,
+      objectId: `ecs:${entity.id}`,
+      label,
+      entityDescription: entity.entity_description?.text,
+      pos: pos ? [pos[0], pos[1], pos[2]] : [0, 0, 0],
+    };
+  }
+
+  // Scans the live ECS table near the player for labeled world objects (seeded
+  // chests/crates/boards/...) and returns them as inspect candidates. These are
+  // the objects that exist in the running world but are NOT enumerated in any
+  // static landmark table, which is why they previously never showed a prompt.
+  // Player-placed placeables (`placed_by`) are intentionally skipped so their
+  // richer aimed overlay still wins. `entityIdByCandidateId` lets the caller map
+  // the selected candidate back to its real entityId.
+  private harthmereLiveWorldObjectInspectCandidatesV1(
+    playerPosition: ReadonlyVec3,
+    entityIdByCandidateId: Map<string, BiomesId>
+  ): HarthmereWorldObjectCandidateV1[] {
+    const candidates: HarthmereWorldObjectCandidateV1[] = [];
+    const seen = new Set<BiomesId>();
+    const radius = HARTHMERE_WORLD_OBJECT_INSPECT_TABLE_SCAN_RADIUS_V1;
+    const center = playerPosition;
+    const consider = (entity: ReadonlyEntity) => {
+      if (seen.has(entity.id)) {
+        return;
+      }
+      // Never offer the world-object prompt for the local player, real NPCs,
+      // robots, or player-placed placeables that have their own overlay. Authored
+      // Harthmere world props (frame/plain placeables with a quest_giver +
+      // world-object label) are NOT skipped — they are exactly the seeded
+      // crates/chests that need the prompt (see
+      // isAuthoredHarthmereWorldObjectPlaceableV1).
+      if (
+        entity.player_behavior ||
+        entity.robot_component ||
+        (entity.placeable_component &&
+          entity.placed_by &&
+          !this.isAuthoredHarthmereWorldObjectPlaceableV1(entity))
+      ) {
+        return;
+      }
+      if (!this.isHarthmereWorldObjectEntityV1(entity)) {
+        return;
+      }
+      const pos = entity.position?.v;
+      if (!pos) {
+        return;
+      }
+      seen.add(entity.id);
+      const id = `ecs:${entity.id}`;
+      entityIdByCandidateId.set(id, entity.id);
+      candidates.push({
+        id,
+        label: entity.label?.text ?? "",
+        position: [pos[0], pos[1], pos[2]],
+        entityDescription: entity.entity_description?.text,
+      });
+    };
+    for (const entity of this.table.scan(
+      PlaceableSelector.query.spatial.inSphere({ center, radius })
+    )) {
+      consider(entity);
+    }
+    for (const entity of this.table.scan(
+      NpcMetadataSelector.query.spatial.inSphere({ center, radius })
+    )) {
+      consider(entity);
+    }
+    for (const entity of this.table.scan(
+      NamedQuestGiverSelector.query.spatial.inSphere({ center, radius })
+    )) {
+      consider(entity);
+    }
+    return candidates;
+  }
+
+  // Produces the "F" inspect/interact prompt for nearby world objects. Candidates
+  // come from BOTH the static landmark tables (procedural Grove props) AND the
+  // live ECS table (seeded chests/crates/boards/... that exist in the running
+  // world but aren't enumerated in source). CursorInspectionComponent then
+  // resolves the authored interaction (open container, read, craft, repair, ...)
+  // it already uses for placeables and NPCs.
   private getNearbyHarthmereObjectInspectableOverlayV1():
     | InspectableOverlay
     | undefined {
     const localPlayer = this.resources.get("/scene/local_player");
+    const playerPosition: ReadonlyVec3 = [
+      localPlayer.player.position[0],
+      localPlayer.player.position[1],
+      localPlayer.player.position[2],
+    ];
+    const entityIdByCandidateId = new Map<string, BiomesId>();
+    const liveCandidates = this.harthmereLiveWorldObjectInspectCandidatesV1(
+      localPlayer.player.position,
+      entityIdByCandidateId
+    );
     const selected = selectNearestHarthmereWorldObjectInspectableV1({
-      playerPosition: [
-        localPlayer.player.position[0],
-        localPlayer.player.position[1],
-        localPlayer.player.position[2],
-      ],
+      playerPosition,
       facingView: viewDir([0, localPlayer.player.orientation[1]]) as [
         number,
         number,
         number
       ],
-      candidates: harthmereWorldObjectInspectCandidatesV1(),
+      candidates: [
+        ...harthmereWorldObjectInspectCandidatesV1(),
+        ...liveCandidates,
+      ],
     });
     if (!selected) {
       return undefined;
     }
+    const realEntityId =
+      entityIdByCandidateId.get(selected.id) ?? INVALID_BIOMES_ID;
     return {
       kind: "harthmere_object",
-      key: `inspect:harthmere_object:${selected.id}`,
-      entityId: INVALID_BIOMES_ID,
+      key:
+        realEntityId !== INVALID_BIOMES_ID
+          ? `inspect:harthmere_object:entity:${realEntityId}`
+          : `inspect:harthmere_object:${selected.id}`,
+      entityId: realEntityId,
       objectId: selected.id,
       label: selected.label,
       entityDescription: selected.entityDescription,

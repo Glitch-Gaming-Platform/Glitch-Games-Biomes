@@ -13,7 +13,7 @@ import type { Renderer } from "@/client/game/renderers/renderer_controller";
 import type { Scenes } from "@/client/game/renderers/scenes";
 import { addToScenes } from "@/client/game/renderers/scenes";
 import type { ClientResources } from "@/client/game/resources/types";
-import { groundHarthmereLiveEntityFeetYV1 } from "@/client/game/util/harthmere_entity_grounding";
+import { groundHarthmereLiveEntityFeetYWithStatusV1 } from "@/client/game/util/harthmere_entity_grounding";
 import {
   activeLiveEntityHelperQuestMarkerIdV1,
   activeLiveEntityHelperQuestMarkerIdsV1,
@@ -420,8 +420,12 @@ export class HarthmereQuestObjectMarkersRendererV145 implements Renderer {
     if (!this.resources) {
       return;
     }
-    for (const mesh of this.markerMeshes.values()) {
-      if (!mesh.visible) {
+    for (const [id, mesh] of this.markerMeshes) {
+      const isActive = id === this.activeMarkerId;
+      // Process visible meshes, plus the active marker even if it was deferred
+      // (hidden) last frame while its terrain streamed in — so it can re-appear
+      // once the real surface is known.
+      if (!mesh.visible && !isActive) {
         continue;
       }
       const xz = mesh.userData.harthmereMarkerWorldXZ as [number, number] | undefined;
@@ -429,16 +433,27 @@ export class HarthmereQuestObjectMarkersRendererV145 implements Renderer {
       if (!xz || hintY === undefined) {
         continue;
       }
-      const feetY = groundHarthmereLiveEntityFeetYV1(
+      const result = groundHarthmereLiveEntityFeetYWithStatusV1(
         this.resources,
         xz[0],
         xz[1],
         hintY,
         true
       );
-      if (feetY !== undefined) {
-        mesh.position.y = feetY;
+      if (result.status === "grounded" && result.feetY !== undefined) {
+        // Rest on the real surface and (re)show the active marker.
+        mesh.position.y = result.feetY;
+        if (isActive) {
+          mesh.visible = true;
+        }
+      } else if (result.status === "not-loaded") {
+        // Terrain here hasn't streamed in: DON'T show the marker at the flat
+        // authored Y (that is what made quest items float/sink). Defer; the next
+        // frame re-checks because we still process the active marker when hidden.
+        mesh.visible = false;
       }
+      // "no-surface": terrain is loaded but genuinely has no standable column;
+      // keep the authored Y and current visibility as a best-effort fallback.
     }
   }
 

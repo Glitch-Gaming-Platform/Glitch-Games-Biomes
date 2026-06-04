@@ -1,5 +1,19 @@
 import { reduceHarthmereEconomyBusinessSpecificMutationV1, normalizeHarthmereEconomyBusinessSystemsStateV1, validateHarthmereEconomyBalanceV1 } from "./mmo_economy_business_systems_v1";
 import type { BuildingSystemAnyMaterializationPlanV1 } from "./building_system_v1";
+import {
+  businessMissedDaysV1,
+  businessNeglectRevenueFactorV1,
+  initBusinessDailyCheckInStateV1,
+  processBusinessCheckInV1,
+  type BusinessDailyCheckInStateV1,
+} from "./business_daily_checkin_v1";
+
+// UTC day index, matching harthmereCareDayV1 / the client's harthmereDayIndexV1.
+// Inlined (not imported from mmo_care_loops_v1) to avoid a circular import.
+const HARTHMERE_ECONOMY_CHECK_IN_DAY_MS_V1 = 24 * 60 * 60 * 1000;
+function harthmereEconomyDayIndexV1(nowMs: number): number {
+  return Math.floor(nowMs / HARTHMERE_ECONOMY_CHECK_IN_DAY_MS_V1);
+}
 /*
  * mmo_economy_authority_v1.ts
  *
@@ -165,6 +179,9 @@ export interface HarthmereEconomyBusinessRecordV1 {
   createdAtMs: number;
   updatedAtMs: number;
   flags: Record<string, boolean>;
+  // Owner daily check-in state (streak, gold earned from check-ins, revenue lost
+  // to neglect). Optional for backward compatibility with persisted records.
+  dailyCheckIn?: BusinessDailyCheckInStateV1;
 }
 
 export interface HarthmereEconomyLicenseRecordV1 {
@@ -1395,6 +1412,42 @@ function setBusinessPrices(result: MutableResult, request: HarthmereEconomyMutat
   result.shared.add(businessSharedKey(business.businessId));
 }
 
+// Owner daily check-in: grants a flat gold bonus once per day, keeps the streak
+// going, and resets the neglect clock (so revenue returns to 100%). The revenue
+// penalty + the "lost by not checking in" accounting are applied at sale time in
+// recordCustomerSale; here we pass baseDailyRevenue 0 so the check-in itself does
+// gold + streak + reset only.
+function businessDailyCheckIn(result: MutableResult, request: HarthmereEconomyMutationRequestV1, context: HarthmereEconomyMutationContextV1) {
+  const business = requireBusinessManager(result, request, context);
+  if (!business) return;
+  const today = harthmereEconomyDayIndexV1(request.nowMs);
+  const checkIn = processBusinessCheckInV1(
+    business.dailyCheckIn ?? initBusinessDailyCheckInStateV1(),
+    today,
+    0
+  );
+  if (!checkIn.checkedIn) {
+    reject(result, "economy_rejected:business_already_checked_in_today");
+    return;
+  }
+  business.dailyCheckIn = checkIn.state;
+  business.updatedAtMs = request.nowMs;
+  result.shared.add(businessSharedKey(business.businessId));
+  result.goldDelta += checkIn.goldGranted;
+  pushLedger(
+    result,
+    {
+      id: request.requestId,
+      kind: "business_daily_check_in",
+      businessId: business.businessId,
+      amountGold: checkIn.goldGranted,
+    },
+    request
+  );
+  result.touched.add("wallet");
+  result.touched.add("economy_business_check_in");
+}
+
 function setBusinessTax(result: MutableResult, request: HarthmereEconomyMutationRequestV1, context: HarthmereEconomyMutationContextV1) {
   const business = requireBusinessManager(result, request, context);
   if (!business) return;
@@ -1457,7 +1510,30 @@ function recordCustomerSale(result: MutableResult, request: HarthmereEconomyMuta
   result.goldDelta -= gross;
   const town = ensureTown(result.next, business.townId ?? HARTHMERE_ECONOMY_DEFAULT_TOWN_ID_V1, business.regionId, request.nowMs);
   const tax = collectSalesTax(town, gross, business.salesTaxRate);
-  business.balanceGold += gross - tax;
+  // Daily-check-in neglect: a player-owned business earns full revenue only while
+  // the owner checks in. Each missed day applies an accelerating revenue factor
+  // (eventually negative -> the business operates at a loss). The actual gold lost
+  // is banked on the check-in state so the owner can be shown how much neglect has
+  // cost them. NPC/town/guild businesses are unaffected.
+  const fullEarning = gross - tax;
+  let earning = fullEarning;
+  if (business.ownerKind === "player") {
+    const missedDays = businessMissedDaysV1(
+      business.dailyCheckIn ?? initBusinessDailyCheckInStateV1(),
+      harthmereEconomyDayIndexV1(request.nowMs)
+    );
+    if (missedDays > 0) {
+      const factor = businessNeglectRevenueFactorV1(missedDays);
+      earning = fullEarning * factor;
+      const checkIn = business.dailyCheckIn ?? initBusinessDailyCheckInStateV1();
+      business.dailyCheckIn = {
+        ...checkIn,
+        totalRevenueLostToNeglect:
+          checkIn.totalRevenueLostToNeglect + fullEarning * (1 - factor),
+      };
+    }
+  }
+  business.balanceGold += earning;
   business.customerSatisfaction = clampNumber(business.customerSatisfaction + (business.sanitationRating >= 50 ? 1 : -2), 0, 100, business.customerSatisfaction);
   business.reputation += business.customerSatisfaction >= 65 ? 1 : 0;
   if (request.serviceNeed) addTownNeed(town, request.serviceNeed, Math.min(4, count), request.nowMs);
@@ -2242,6 +2318,9 @@ export function reduceHarthmereEconomyMutationV1(
       break;
     case "set_business_prices":
       setBusinessPrices(result, request, context);
+      break;
+    case "business_daily_check_in":
+      businessDailyCheckIn(result, request, context);
       break;
     case "set_business_tax":
       setBusinessTax(result, request, context);

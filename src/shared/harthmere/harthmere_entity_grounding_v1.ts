@@ -133,6 +133,64 @@ export function findHarthmereGroundFeetYV1(
   return findHarthmereGroundFeetYByCanStandV1(accept, options);
 }
 
+// Tri-state grounding result. The crucial distinction the flat-Y bug missed:
+// "no-surface" (terrain IS loaded but there is genuinely no standable column in
+// budget — keep authored Y) vs "not-loaded" (the column's terrain has not
+// streamed in yet — the authored Y is unverified, so callers should DEFER/hide
+// the entity and retry, NOT stamp the flat authored Y, which is what made quest
+// items float above or sink below the real ground).
+export type HarthmereGroundStatusV1 = "grounded" | "no-surface" | "not-loaded";
+
+export interface HarthmereGroundResultV1 {
+  status: HarthmereGroundStatusV1;
+  feetY?: number;
+}
+
+// Reports whether the voxel column around the entity has been loaded yet. The
+// caller adapts the real terrain resource (e.g. `/terrain/tensor` for the shard
+// === undefined). Sampled across the vertical scan window the grounder probes.
+export type HarthmereLoadedSamplerV1 = (
+  x: number,
+  y: number,
+  z: number
+) => boolean;
+
+// Like findHarthmereGroundFeetYV1 but returns a tri-state. If any voxel the scan
+// would consult is not loaded AND no standable surface was found among loaded
+// voxels, it returns "not-loaded" so the caller can defer rather than trust the
+// authored hint. Once a real surface is found in loaded terrain it returns
+// "grounded" regardless of unloaded voxels elsewhere in the window.
+export function findHarthmereGroundFeetYWithStatusV1(
+  isSolid: HarthmereSolidSamplerV1,
+  isLoaded: HarthmereLoadedSamplerV1,
+  x: number,
+  z: number,
+  options: HarthmereGroundProbeOptionsV1
+): HarthmereGroundResultV1 {
+  const feetY = findHarthmereGroundFeetYV1(isSolid, x, z, options);
+  if (feetY !== undefined) {
+    return { status: "grounded", feetY };
+  }
+  // No surface found. Decide whether that is because terrain is genuinely empty
+  // here or simply not streamed in: if any voxel in the scan window is unloaded,
+  // treat it as not-loaded so the marker is deferred instead of left at hintY.
+  const hintY = Math.round(options.hintY);
+  const down = Math.max(
+    0,
+    Math.floor(options.maxScanDown ?? HARTHMERE_GROUND_SCAN_DOWN_DEFAULT_V1)
+  );
+  const up = Math.max(
+    0,
+    Math.floor(options.maxScanUp ?? HARTHMERE_GROUND_SCAN_UP_DEFAULT_V1)
+  );
+  for (let y = hintY - down - 1; y <= hintY + up + 1; y += 1) {
+    if (!isLoaded(x, y, z)) {
+      return { status: "not-loaded" };
+    }
+  }
+  return { status: "no-surface" };
+}
+
 // Ground a full position: keep X/Z, replace Y with the sampled feet-Y (plus an
 // optional hover, e.g. for floating quest markers). Falls back to the original Y
 // when no surface is found so nothing teleports.

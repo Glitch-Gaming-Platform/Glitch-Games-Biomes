@@ -543,6 +543,116 @@ export function liveEntityHelperQuestTargetMarkerIdForKindV1(
   return liveEntityHelperQuestTargetMarkerForKindV1(kind)?.id;
 }
 
+// HARTHMERE_LIVE_ENTITY_HELPER_MARKER_TARGET_V1
+// The EXACT real-world spot each quest kind points the player to while the
+// objective is still incomplete — not the old per-kind "area" centroid. These
+// are sourced from the real content: the Old Well exotic-matter descent, the
+// West Muck Breach monster cluster center, and the Bluewater supply source. Y is
+// surface-level so the map/compass pin is visible (never buried/floating); the
+// in-world 3D beacon grounds precisely on top (see harthmere_entity_grounding).
+export const LIVE_ENTITY_HELPER_QUEST_ACTIVE_TARGETS_V1: Record<
+  LiveEntityHelperQuestKindV1,
+  {
+    position: readonly [number, number, number];
+    label: string;
+    areaLabel: string;
+  }
+> = {
+  // Old Well descent entrance — HARTHMERE_EXOTIC_MATTER_CAVES_V1 old_well_descent_room.
+  exotic_matter: {
+    position: [400, 53, -235],
+    label: "Exotic Matter — Old Well",
+    areaLabel: "Old Well",
+  },
+  // West Muck Breach monster cluster center — HARTHMERE_LIVE_ENTITY_MUCK_MONSTER
+  // _LAYOUTS_V1 west_muck_breach.center.
+  hard_boss: {
+    position: [236, 54, -506],
+    label: "Muck-Scarred Helix",
+    areaLabel: "West Muck Breach",
+  },
+  // Bluewater supply source (food / clean water).
+  food_water: {
+    position: [604, 53, -168],
+    label: "Food & Water Supply",
+    areaLabel: "River Docks",
+  },
+};
+
+export type LiveEntityHelperQuestMarkerPhaseV1 = "target" | "return_to_giver";
+
+export interface LiveEntityHelperResolvedQuestMarkerV1 {
+  phase: LiveEntityHelperQuestMarkerPhaseV1;
+  position: [number, number, number];
+  label: string;
+  areaLabel: string;
+  kind: "resource" | "danger";
+}
+
+function isFiniteVec3LikeV1(
+  v: readonly number[] | null | undefined
+): v is readonly [number, number, number] {
+  return (
+    !!v &&
+    v.length >= 3 &&
+    Number.isFinite(v[0]) &&
+    Number.isFinite(v[1]) &&
+    Number.isFinite(v[2])
+  );
+}
+
+// Resolve where a quest's map marker should point RIGHT NOW:
+//  - objective incomplete -> the real TARGET site (cave / monster / supply), so
+//    the player heads straight to it.
+//  - objective met (item collected / monster defeated, readyToTurnIn) -> back to
+//    the QUEST GIVER so the player returns to hand it in.
+// Falls back to the target site when readyToTurnIn but the giver position is
+// unknown, so a marker is never dropped.
+export function liveEntityHelperResolveQuestMarkerV1(input: {
+  kind: LiveEntityHelperQuestKindV1;
+  readyToTurnIn?: boolean;
+  giverPosition?: readonly number[] | null;
+  giverName?: string | null;
+}): LiveEntityHelperResolvedQuestMarkerV1 {
+  const target = LIVE_ENTITY_HELPER_QUEST_ACTIVE_TARGETS_V1[input.kind];
+  const markerKind: "resource" | "danger" =
+    input.kind === "hard_boss" ? "danger" : "resource";
+  if (input.readyToTurnIn && isFiniteVec3LikeV1(input.giverPosition)) {
+    const g = input.giverPosition;
+    return {
+      phase: "return_to_giver",
+      position: [g[0], g[1], g[2]],
+      label: input.giverName
+        ? `Return to ${input.giverName}`
+        : "Return to quest giver",
+      areaLabel: target.areaLabel,
+      kind: markerKind,
+    };
+  }
+  return {
+    phase: "target",
+    position: [target.position[0], target.position[1], target.position[2]],
+    label: target.label,
+    areaLabel: target.areaLabel,
+    kind: markerKind,
+  };
+}
+
+// True when the player has satisfied a quest kind's objective (collected the
+// required items / recorded the boss defeat) given the supplied evidence. Pure
+// wrapper over canCompleteLiveEntityHelperQuestV1 so the map layer can decide
+// "ready to turn in" (flip marker home) without duplicating requirement logic.
+export function liveEntityHelperQuestObjectiveMetV1(
+  kind: LiveEntityHelperQuestKindV1,
+  evidence: LiveEntityHelperQuestEvidenceV1
+): boolean {
+  const definition = LIVE_ENTITY_HELPER_QUEST_DEFINITIONS_V1[kind];
+  if (!definition) {
+    return false;
+  }
+  return canCompleteLiveEntityHelperQuestV1(definition, evidence).ok;
+}
+
 export function isLiveEntityHelperPositionInMuckBreachAreaV1(
   position: readonly number[] | undefined
 ) {

@@ -120,21 +120,28 @@ describe("Harthmere live entity production seeds", () => {
     }
   });
 
-  it("seeds server combat snapshots for only Muck territory Muckers and Hexes", () => {
+  it("seeds server combat snapshots for Muck territory Muckers, Hexes, and passive wildlife", () => {
     const snapshots = createHarthmereServerMuckCombatEntitySnapshotsV1(NOW_MS);
     const entries = Object.entries(snapshots);
-    assert.equal(entries.length, HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_SEEDS_V1.length);
+    const muckEntries = entries.filter(
+      ([, snapshot]) =>
+        snapshot.entityKind === "mux" || snapshot.entityKind === "hex"
+    );
+    const animalEntries = entries.filter(
+      ([, snapshot]) => snapshot.entityKind === "animal"
+    );
+
+    // Every authored Muck monster is present, plus the wildlife herd.
+    assert.equal(muckEntries.length, HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_SEEDS_V1.length);
+    assert.ok(animalEntries.length >= 16, "expected the wildlife herd");
+    assert.equal(entries.length, muckEntries.length + animalEntries.length);
     assert.ok(entries.some(([, snapshot]) => snapshot.entityKind === "mux"));
     assert.ok(entries.some(([, snapshot]) => snapshot.entityKind === "hex"));
+
     for (const [entityId, snapshot] of entries) {
       assert.ok(entityId.startsWith("server-muck-combat:"));
-      assert.ok(snapshot.isHostile);
       assert.ok(snapshot.isAttackable);
       assert.ok(snapshot.aiEnabled);
-      assert.ok(
-        snapshot.entityKind === "mux" || snapshot.entityKind === "hex",
-        `${entityId} should be a Mucker or Hex combat entity`
-      );
       assert.ok(
         muckMonsterAreaForPositionV1(
           [snapshot.position.x, snapshot.position.y, snapshot.position.z],
@@ -144,13 +151,24 @@ describe("Harthmere live entity production seeds", () => {
       );
     }
 
+    // Muckers and hexes are hostile; wildlife is passive but retaliates and
+    // drops meat when hunted.
+    for (const [, snapshot] of muckEntries) {
+      assert.ok(snapshot.isHostile);
+    }
+    for (const [, snapshot] of animalEntries) {
+      assert.equal(snapshot.isHostile, false);
+      assert.equal(snapshot.retaliatesWhenAttacked, true);
+      assert.ok(Number((snapshot as any).lootDrops?.raw_meat ?? 0) >= 1);
+    }
+
     const defaultState = defaultHarthmereLiveModeBackendStateV1(
       "server-muck-combat-test",
       NOW_MS
     );
     assert.equal(
       Object.keys(defaultState.combat.entitySnapshots).length,
-      HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_SEEDS_V1.length
+      entries.length
     );
   });
 

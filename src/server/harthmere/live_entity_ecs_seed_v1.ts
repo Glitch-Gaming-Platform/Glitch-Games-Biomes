@@ -10,6 +10,7 @@ import { LOCAL_DEV_HUMAN_NPC_TYPE_ID, isNpcTypeId } from "@/shared/npc/bikkie";
 import {
   HARTHMERE_LIVE_ENTITY_ROBOT_SENTINEL_SEEDS_V1,
   harthmereActiveLiveEntityProductionSeedIdsV1,
+  harthmereGroundedLivestockSeedsInTerritoryV1,
   harthmereGroundedMuckMonsterSeedsInTerritoryV1,
   type HarthmereLiveEntityProductionSeedV1,
 } from "@/shared/harthmere/live_entity_production_seed_v1";
@@ -79,6 +80,35 @@ export function buildHarthmereLiveEntityProductionSeedChangesV1(input: {
   }
 
   for (const seed of harthmereGroundedMuckMonsterSeedsInTerritoryV1()) {
+    const entity = {
+      ...npcEntity(
+        {
+          id: seed.entityId,
+          typeId: monsterTypeId,
+          position: seed.position,
+          orientation: seed.orientation,
+          velocity: [0, 0, 0],
+          displayName: seed.displayName,
+          defaultDialog: seed.dialog,
+        },
+        input.nowSeconds
+      ),
+      entity_description: EntityDescription.create({
+        text: seed.description,
+      }),
+    };
+    changes.push({
+      kind: changeKindForSeedV1(seed, existingIds),
+      tick: input.tick,
+      entity,
+    });
+  }
+
+  // Wildlife (cows, sheep, rabbits) reuse the same damageable NPC type as
+  // muckers so they are huntable; their passive (ignore-until-attacked)
+  // behaviour is enforced by the live-mode combat reducer, and the client
+  // renders the matching animal mesh from the species in the label.
+  for (const seed of harthmereGroundedLivestockSeedsInTerritoryV1()) {
     const entity = {
       ...npcEntity(
         {

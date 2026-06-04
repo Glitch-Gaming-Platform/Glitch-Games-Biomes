@@ -5,64 +5,59 @@ import {
   HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_SEEDS_V1,
   harthmereExcludedMuckMonsterSeedIdsV1,
   harthmereGroundedMuckMonsterSeedsInTerritoryV1,
-  harthmereMuckMonsterPositionIsInSafeZoneV1,
 } from "@/shared/harthmere/live_entity_production_seed_v1";
 import { muckMonsterAreaForPositionV1 } from "@/shared/harthmere/muck_monster_aggression_ai_v1";
 
-describe("muck monster placement (relocation into muck areas)", () => {
-  it("keeps all 100 muckers/hexes (in-safe-zone ones are relocated, not dropped)", () => {
+// The three authored, map-labelled muck patches the player actually explores.
+// Muck monsters are spread densely across these so wherever a player enters the
+// visible Muck they meet muckers/hexers. road_muckwad is the starter patch by
+// spawn (used by the Muck Buster training quest) and MUST be populated even
+// though it nests inside the oversized Grove safe radius.
+const VISIBLE_MUCK_ZONE_IDS_V1 = [
+  "road_muckwad_patch",
+  "watchtower_muck_patch",
+  "old_wood_muck_patch",
+];
+
+describe("muck monster placement (visible muck zones)", () => {
+  it("keeps all 100 muckers/hexes — none dropped", () => {
     const placed = harthmereGroundedMuckMonsterSeedsInTerritoryV1();
     assert.equal(
       placed.length,
       HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_PRODUCTION_COUNT_V1
     );
-    assert.equal(placed.length, HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_SEEDS_V1.length);
-    // Nothing is excluded anymore — every authored mucker is relocated/kept.
+    assert.equal(
+      placed.length,
+      HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_SEEDS_V1.length
+    );
     assert.deepEqual(harthmereExcludedMuckMonsterSeedIdsV1(), []);
   });
 
-  it("REGRESSION: every mucker ends up in a real muck area and NONE in a safe zone (the Grove)", () => {
-    // Sanity: some authored positions DO land in a safe zone — those must move.
-    const authoredInSafe = HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_SEEDS_V1.filter(
-      (seed) => harthmereMuckMonsterPositionIsInSafeZoneV1(seed.position)
-    );
-    assert.ok(
-      authoredInSafe.length > 0,
-      "expected some authored muckers inside a safe zone (the Grove regression)"
-    );
-
+  it("places every mucker inside a real (map-labelled) muck patch", () => {
     for (const seed of harthmereGroundedMuckMonsterSeedsInTerritoryV1()) {
+      const area = muckMonsterAreaForPositionV1(seed.position, 1.5);
       assert.ok(
-        muckMonsterAreaForPositionV1(seed.position, 1.5),
+        area,
         `${seed.seedId} at ${seed.position} is not in a muck area`
       );
-      assert.equal(
-        harthmereMuckMonsterPositionIsInSafeZoneV1(seed.position),
-        false,
-        `${seed.seedId} at ${seed.position} is inside a safe zone`
+      assert.ok(
+        VISIBLE_MUCK_ZONE_IDS_V1.includes(area!.id),
+        `${seed.seedId} resolved to ${area!.id}, not a visible muck patch`
       );
     }
   });
 
-  it("relocates the Grove (road_muckwad) muckers out of the Grove while keeping their ids", () => {
-    const placedById = new Map(
-      harthmereGroundedMuckMonsterSeedsInTerritoryV1().map((s) => [s.entityId, s])
+  it("populates the starter road_muckwad patch by spawn (so the nearest Muck is not empty)", () => {
+    const inRoadMuckwad = harthmereGroundedMuckMonsterSeedsInTerritoryV1().filter(
+      (seed) => muckMonsterAreaForPositionV1(seed.position, 1.5)?.id === "road_muckwad_patch"
     );
-    const groveAuthored = HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_SEEDS_V1.filter(
-      (seed) => harthmereMuckMonsterPositionIsInSafeZoneV1(seed.position)
+    assert.ok(
+      inRoadMuckwad.length >= 10,
+      `expected the starter muck patch to be populated, got ${inRoadMuckwad.length}`
     );
-    for (const seed of groveAuthored) {
-      const placed = placedById.get(seed.entityId);
-      assert.ok(placed, `relocated mucker ${seed.entityId} missing`);
-      assert.equal(
-        harthmereMuckMonsterPositionIsInSafeZoneV1(placed!.position),
-        false,
-        `${seed.seedId} should have been relocated out of the safe zone`
-      );
-    }
   });
 
-  it("spreads muckers/hexes across MULTIPLE muck areas", () => {
+  it("spreads muckers/hexes across all three visible muck patches", () => {
     const areaIds = new Set<string>();
     for (const seed of harthmereGroundedMuckMonsterSeedsInTerritoryV1()) {
       const area = muckMonsterAreaForPositionV1(seed.position, 1.5);
@@ -70,10 +65,12 @@ describe("muck monster placement (relocation into muck areas)", () => {
         areaIds.add(area.id);
       }
     }
-    assert.ok(
-      areaIds.size >= 4,
-      `expected muckers across several muck areas, got ${[...areaIds].join(",")}`
-    );
+    for (const id of VISIBLE_MUCK_ZONE_IDS_V1) {
+      assert.ok(
+        areaIds.has(id),
+        `expected muckers in ${id}; got ${[...areaIds].join(",")}`
+      );
+    }
   });
 
   it("grounds every mucker to a finite Y", () => {

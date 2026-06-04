@@ -352,6 +352,23 @@ const ITEM_DEFINITIONS: Record<string, HarthmereItemDefinition> = {
     description:
       "A flour-dusted apron given to helpers who can carry apples cleanly.",
   },
+  field_trousers: {
+    id: "field_trousers",
+    name: "Grove Field Trousers",
+    category: "cosmetic",
+    subtype: "outfit",
+    quality: "common",
+    icon: "▥",
+    stackable: false,
+    maxStack: 1,
+    slot: "legs",
+    bindType: "bind_on_pickup",
+    baseValue: 12,
+    durabilityMax: 30,
+    stats: { defense: 1 },
+    description:
+      "Sturdy work trousers for the road — the bottoms half of a traveler's starter outfit.",
+  },
   minor_healing_salve: {
     id: "minor_healing_salve",
     name: "Minor Healing Salve",

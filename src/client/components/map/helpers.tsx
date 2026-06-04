@@ -121,6 +121,7 @@ export function getNavigationAidAsset(
 
   switch (navigationAid.kind) {
     case "placed":
+    case "property_for_sale":
       src = beamMagenta.src;
       break;
     case "robot_transmission":

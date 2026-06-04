@@ -26,6 +26,13 @@ import {
   type HarthmereBusinessOutpostProceduralBuildingRecordV1,
   type HarthmereBusinessServiceOfferV1,
 } from "../../../shared/harthmere/business_customer_simulator_v1";
+import {
+  businessCheckInStatusV1,
+  initBusinessDailyCheckInStateV1,
+  type BusinessCheckInStatusV1,
+  type BusinessDailyCheckInStateV1,
+} from "@/shared/harthmere/business_daily_checkin_v1";
+import { harthmereDayIndexV1 } from "@/client/components/harthmere_business/businessDailyCheckInClientV1";
 import type {
   HarthmereBusinessEmployeeAssignableTaskIdV1,
   HarthmereBusinessEmployeeCandidateV1,
@@ -139,6 +146,8 @@ export interface HarthmereBusinessRecordV1 {
   createdAtMs: number;
   updatedAtMs: number;
   flags: Record<string, boolean>;
+  // Owner daily check-in state (streak / made / lost). Provided by the backend.
+  dailyCheckIn?: BusinessDailyCheckInStateV1;
 }
 
 export interface HarthmereBusinessContractV1 {
@@ -2261,6 +2270,7 @@ export interface HarthmereBusinessInterfaceAdapterV1 {
     context: HarthmereBusinessWorldContextV1
   ): HarthmereBusinessInteractionPromptV1;
   getOwnerDashboard(businessId: string): HarthmereBusinessDashboardV1;
+  getCheckInStatus(businessId: string): BusinessCheckInStatusV1 | undefined;
   getGrowthReport(businessId: string): HarthmereBusinessGrowthReportV1;
   getShopfront(businessId: string): HarthmereBusinessShopfrontV1;
   getContractBoard(businessId: string): HarthmereBusinessContractBoardV1;
@@ -2327,6 +2337,7 @@ export interface HarthmereBusinessInterfaceAdapterV1 {
     assignedTask?: HarthmereBusinessEmployeeAssignableTaskIdV1
   ): Promise<void>;
   payPayroll(businessId: string): Promise<void>;
+  checkInDaily(businessId: string): Promise<void>;
   refreshEmployeeCandidates(businessId: string, count?: number): Promise<void>;
   interviewEmployeeCandidate(
     businessId: string,
@@ -2502,6 +2513,20 @@ export function createHarthmereBusinessInterfaceAdapterV1(options: {
       getHarthmereBusinessInteractionPromptV1(requireState(), context),
     getOwnerDashboard: (businessId) =>
       getHarthmereOwnerDashboardV1(requireState(), businessId),
+    getCheckInStatus: (businessId) => {
+      const business = requireState().businesses[businessId];
+      if (!business) {
+        return undefined;
+      }
+      // The "lost by not checking in" total is accumulated server-side from
+      // actual reduced sales, so the client passes baseDailyRevenue 0 here — the
+      // status surfaces the real made/lost totals + streak from the record.
+      return businessCheckInStatusV1(
+        business.dailyCheckIn ?? initBusinessDailyCheckInStateV1(),
+        harthmereDayIndexV1(Date.now()),
+        0
+      );
+    },
     getGrowthReport: (businessId) =>
       getHarthmereBusinessGrowthReportV1(requireState(), businessId),
     getShopfront: (businessId) => {
@@ -2562,6 +2587,8 @@ export function createHarthmereBusinessInterfaceAdapterV1(options: {
         ...(assignedTask ? { assignedTask } : {}),
       }),
     payPayroll: (businessId) => submit("pay_payroll", { businessId }),
+    checkInDaily: (businessId) =>
+      submit("business_daily_check_in", { businessId }),
     refreshEmployeeCandidates: (businessId, count = 3) =>
       submit("refresh_business_employee_candidates", { businessId, count }),
     interviewEmployeeCandidate: (

@@ -102,6 +102,7 @@ import {
   LIVE_ENTITY_HELPER_QUEST_EVENT_V1,
   readLiveEntityHelperQuestStateV1,
 } from "@/client/components/challenges/LocalDevLiveEntityHelperQuestState";
+import { liveEntityHelperQuestRecordReadyToTurnInV1 } from "@/client/components/challenges/LocalDevLiveEntityHelperQuests";
 import { LIVE_ENTITY_HELPER_LIVE_MODE_RESPONSE_EVENT_V1 } from "@/client/components/challenges/liveEntityHelperQuestLiveAdapter";
 import {
   dailyTodoProgressForTest,
@@ -368,7 +369,12 @@ function inferEquipSlot(item: any): string | undefined {
     text.includes("shirt") ||
     text.includes("t_shirt") ||
     text.includes("top") ||
-    text.includes("armor")
+    text.includes("armor") ||
+    text.includes("apron") ||
+    text.includes("vest") ||
+    text.includes("tunic") ||
+    text.includes("jacket") ||
+    text.includes("coat")
   )
     return "chest";
   if (
@@ -376,7 +382,10 @@ function inferEquipSlot(item: any): string | undefined {
     text.includes("legs") ||
     text.includes("jeans") ||
     text.includes("bottoms") ||
-    text.includes("skirt")
+    text.includes("skirt") ||
+    text.includes("trouser") ||
+    text.includes("shorts") ||
+    text.includes("leggings")
   )
     return "legs";
   if (text.includes("boots") || text.includes("shoes") || text.includes("feet"))
@@ -1421,7 +1430,8 @@ export function buildBiomesUIMapAdapterForTest(
       ...(Array.isArray(api?.landmarks) ? api.landmarks : []),
       ...jobsBoardAcceptedJobLandmarksForBiomesUIV1(jobsBoardState),
       ...liveEntityHelperAcceptedQuestLandmarksForBiomesUIV1(
-        liveEntityHelperState
+        liveEntityHelperState,
+        { isReadyToTurnIn: liveEntityHelperQuestRecordReadyToTurnInV1 }
       ),
     ]);
   };

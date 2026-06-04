@@ -161,6 +161,11 @@ const guildRecord = guildId ? state.guild.guilds[guildId] : undefined;
 check(state.guild.treasury === 12, "guild treasury is persisted");
 check(guildRecord?.treasuryGold === 12, "guild directory treasury is persisted");
 
+// Enforced-fine model (hardening): a positive fine is charged to the wallet
+// immediately; only the unpayable remainder is carried as outstanding debt in
+// law.fines. Here the wallet covers the whole 10g fine, so it is paid in full
+// and no debt remains.
+const goldBeforeFine = state.inventory.gold;
 state = apply(state, "request_law_reputation_mutation", "law", {
   factionId: "harthmere_watch",
   reputationDelta: -2,
@@ -168,8 +173,40 @@ state = apply(state, "request_law_reputation_mutation", "law", {
   crimeKind: "theft",
 });
 check(state.law.reputation.harthmere_watch === -2, "signed reputation delta is persisted");
-check(state.law.fines.harthmere_watch === 10, "fine is persisted");
+check(
+  state.inventory.gold === goldBeforeFine - 10,
+  "affordable fine is charged to the wallet",
+  `gold ${state.inventory.gold} expected ${goldBeforeFine - 10}`
+);
+check(
+  (state.law.fines.harthmere_watch ?? 0) === 0,
+  "affordable fine leaves no outstanding debt",
+  `fines=${state.law.fines.harthmere_watch ?? 0}`
+);
 check(state.law.flags.theft === true, "law flag is persisted");
+
+// A fine larger than the wallet pays what it can and persists the remainder as
+// outstanding debt in law.fines (this is the path that writes a fine balance).
+{
+  let poor = defaultHarthmereLiveModeBackendStateV1("player-2", 1000);
+  poor.inventory.gold = 4;
+  poor = apply(poor, "request_law_reputation_mutation", "law", {
+    factionId: "harthmere_watch",
+    reputationDelta: -2,
+    fineDelta: 10,
+    crimeKind: "theft",
+  });
+  check(
+    poor.inventory.gold === 0,
+    "over-wallet fine drains the wallet to zero",
+    `gold=${poor.inventory.gold}`
+  );
+  check(
+    poor.law.fines.harthmere_watch === 6,
+    "over-wallet fine persists the unpayable remainder as debt",
+    `fines=${poor.law.fines.harthmere_watch}`
+  );
+}
 
 if (!state.classMagic.knownAbilities.includes("spark")) {
   state.classMagic.knownAbilities.push("spark");

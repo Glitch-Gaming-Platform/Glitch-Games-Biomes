@@ -18,6 +18,7 @@ import {
 } from "@/client/components/map/markers/harthmere_objective_minimap_pins_v1";
 import { jobsBoardAcceptedJobLandmarksForBiomesUIV1 } from "@/client/components/biomes_ui/adapters/jobsBoardQuestMapAdapter";
 import { liveEntityHelperAcceptedQuestLandmarksForBiomesUIV1 } from "@/client/components/biomes_ui/adapters/liveEntityHelperQuestMapAdapter";
+import { liveEntityHelperQuestRecordReadyToTurnInV1 } from "@/client/components/challenges/LocalDevLiveEntityHelperQuests";
 import {
   fetchHarthmereJobsBoardStateV1,
   HARTHMERE_JOBS_BOARD_STATE_UPDATED_EVENT_V1,
@@ -506,7 +507,9 @@ function useHarthmereObjectiveMiniMapPinsV1(): HarthmereObjectiveMiniMapPinV1[] 
     () =>
       harthmereObjectiveMiniMapPinsFromLandmarksV1([
         ...jobsBoardAcceptedJobLandmarksForBiomesUIV1(jobsRaw),
-        ...liveEntityHelperAcceptedQuestLandmarksForBiomesUIV1(helperState),
+        ...liveEntityHelperAcceptedQuestLandmarksForBiomesUIV1(helperState, {
+          isReadyToTurnIn: liveEntityHelperQuestRecordReadyToTurnInV1,
+        }),
       ]),
     [jobsRaw, helperState]
   );

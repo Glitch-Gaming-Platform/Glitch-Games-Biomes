@@ -1,5 +1,7 @@
-// OptionsTab — graphics, audio, controls (incl. tab shortcut remapping), accessibility.
+// OptionsTab — avatar editor, graphics, audio, controls (incl. tab shortcut
+// remapping), accessibility.
 import * as React from "react";
+import { BiomesUIAvatarEditor } from "../BiomesUIAvatarEditor";
 import { DEFAULT_TAB_SHORTCUTS } from "../shortcuts/BiomesShortcuts";
 import type { TabShortcut } from "../shortcuts/BiomesShortcuts";
 
@@ -33,7 +35,9 @@ export const OptionsTab: React.FunctionComponent<{ adapter?: OptionsAdapter }> =
   }, [recordingFor, shortcuts, adapter]);
 
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24 }}>
+    <div style={{ display: "grid", gap: 24 }}>
+      <BiomesUIAvatarEditor />
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24 }}>
       <section aria-label="Graphics & Audio">
         <h3 style={titleStyle}>Graphics & Performance</h3>
         <Row label="Show Performance Stats"><input type="checkbox" defaultChecked /></Row>
@@ -75,6 +79,7 @@ export const OptionsTab: React.FunctionComponent<{ adapter?: OptionsAdapter }> =
           Hotbar slots 1–9 are always bound to the number keys. Arrow keys and Enter navigate the UI.
         </p>
       </section>
+      </div>
     </div>
   );
 };

@@ -3835,6 +3835,24 @@ async function makeNpcMesh(deps: ClientResourceDeps, id: BiomesId) {
   const npcType = idToNpcType(npcMetadata.type_id);
   const label = deps.get("/ecs/c/label", id)?.text;
 
+  // HARTHMERE_BUSINESS_NPC_UNIQUE_VOXEL_V1:
+  // Business owners and customers are authored with unique harthmere:face/body/
+  // appearance markers (one per NPC). The shared player_mesh avatar pipeline
+  // (taken below for all player-like NPCs) ignores those markers and renders
+  // every shopkeeper/customer with the same default appearance_component, so a
+  // shop full of customers looked identical and did not animate. Route them
+  // through the deterministic voxel NPC generator, which reads each NPC's
+  // markers (unique look) and carries idle/walk animation clips.
+  if (
+    isHarthmereBusinessOwnerNpcEntityIdV1(id) ||
+    isHarthmereBusinessCustomerNpcEntityIdV1(id)
+  ) {
+    const mesh = makeLocalDevVoxelNpcGltf(deps, id);
+    setFrustumCulling(mesh, false);
+    mesh.scene.userData.harthmereBusinessNpcUniqueVoxelV1 = true;
+    return mesh;
+  }
+
   const muckCreatureAssetMesh = await makeHarthmereMuckCreatureNpcAssetMeshV1(
     label,
     id

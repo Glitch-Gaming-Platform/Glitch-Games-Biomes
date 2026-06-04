@@ -16,6 +16,21 @@ export function harthmereMuckCreatureAssetKeyForLabelV1(
       ? "npcs/purple_hexer"
       : "npcs/brown_hexer";
   }
+  // Huntable muck-area wildlife. Checked before the muck guard so a "Muckmeadow
+  // Cow/Sheep/Rabbit" resolves to its animal mesh instead of a mucker.
+  const livestock = normalized.match(
+    /\b(cow|bovine|cattle|ox|oxen|calf|heifer|sheep|ewe|ram|lamb|rabbit|bunny|hare)\b/
+  );
+  if (livestock) {
+    const word = livestock[1];
+    if (/sheep|ewe|ram|lamb/.test(word)) {
+      return "npcs/sheep";
+    }
+    if (/rabbit|bunny|hare/.test(word)) {
+      return "npcs/rabbit";
+    }
+    return "npcs/cow";
+  }
   if (!/muck|mucker|muckling|muckwad/.test(normalized)) {
     return undefined;
   }

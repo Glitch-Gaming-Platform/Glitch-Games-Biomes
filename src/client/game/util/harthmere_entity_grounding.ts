@@ -1,6 +1,10 @@
 import { blockPos, voxelShard } from "@/shared/game/shard";
 import { blockIsEmptyInTensor } from "@/shared/game/terrain_helper";
-import { findHarthmereGroundFeetYV1 } from "@/shared/harthmere/harthmere_entity_grounding_v1";
+import {
+  findHarthmereGroundFeetYV1,
+  findHarthmereGroundFeetYWithStatusV1,
+  type HarthmereGroundResultV1,
+} from "@/shared/harthmere/harthmere_entity_grounding_v1";
 import type { Vec3 } from "@/shared/math/types";
 
 // HARTHMERE_ENTITY_GROUNDING (client adapter)
@@ -50,6 +54,48 @@ export function groundHarthmereLiveEntityFeetYV1(
   const iz = Math.floor(z);
   return findHarthmereGroundFeetYV1(
     (sx, sy, sz) => harthmereTerrainSupportsStandingV1(deps, sx, sy, sz),
+    ix,
+    iz,
+    { hintY: Math.round(hintY), requireOpenSky }
+  );
+}
+
+// True when the terrain shard covering (x,y,z) has streamed in. Used to tell
+// "no surface here" apart from "terrain not loaded yet" so callers can defer a
+// marker instead of leaving it at the unverified authored Y.
+export function harthmereTerrainColumnLoadedV1(
+  deps: { get: (path: any, shard: any) => any },
+  x: number,
+  y: number,
+  z: number
+): boolean {
+  try {
+    const shard = voxelShard(Math.floor(x), Math.floor(y), Math.floor(z));
+    return deps.get("/terrain/tensor", shard) !== undefined;
+  } catch {
+    return false;
+  }
+}
+
+// Tri-state grounding for the renderer: distinguishes grounded / no-surface /
+// not-loaded so a quest marker can be hidden (and retried) while its terrain is
+// still streaming, instead of being stamped at the flat authored Y where it
+// floats above or sinks below the real ground.
+export function groundHarthmereLiveEntityFeetYWithStatusV1(
+  deps: { get: (path: any, shard: any) => any },
+  x: number,
+  z: number,
+  hintY: number,
+  requireOpenSky: boolean
+): HarthmereGroundResultV1 {
+  if (!Number.isFinite(x) || !Number.isFinite(z) || !Number.isFinite(hintY)) {
+    return { status: "no-surface" };
+  }
+  const ix = Math.floor(x);
+  const iz = Math.floor(z);
+  return findHarthmereGroundFeetYWithStatusV1(
+    (sx, sy, sz) => harthmereTerrainSupportsStandingV1(deps, sx, sy, sz),
+    (sx, sy, sz) => harthmereTerrainColumnLoadedV1(deps, sx, sy, sz),
     ix,
     iz,
     { hintY: Math.round(hintY), requireOpenSky }

@@ -56,19 +56,28 @@ export function buildHarthmereBusinessOwnerNpcSeedChangesV1(input: {
       forwardAxis: "minusZ",
       source: HARTHMERE_BUSINESS_OWNER_NPC_SEED_SOURCE_V1,
     });
+    const base = npcEntity(
+      {
+        id: seed.entityId,
+        typeId: LOCAL_DEV_HUMAN_NPC_TYPE_ID,
+        position: seed.position,
+        orientation: seed.orientation,
+        velocity: [0, 0, 0],
+        displayName: seed.displayName,
+        defaultDialog: npcDialogV1(seed.line, ...seed.extraLines),
+      },
+      nowSeconds
+    );
+    // HARTHMERE_BUSINESS_NPC_UNIQUE_VOXEL_V1: npcEntity assigns the uniform
+    // default appearance_component/wearing for the player-like human type, which
+    // made every owner render identically through the player_mesh pipeline. These
+    // NPCs render via the deterministic voxel generator off their unique
+    // harthmere:* markers, so drop the uniform cosmetics (also keeps the player_
+    // mesh per-id varied fallback in play if voxel routing is ever bypassed).
+    delete (base as { appearance_component?: unknown }).appearance_component;
+    delete (base as { wearing?: unknown }).wearing;
     const entity = {
-      ...npcEntity(
-        {
-          id: seed.entityId,
-          typeId: LOCAL_DEV_HUMAN_NPC_TYPE_ID,
-          position: seed.position,
-          orientation: seed.orientation,
-          velocity: [0, 0, 0],
-          displayName: seed.displayName,
-          defaultDialog: npcDialogV1(seed.line, ...seed.extraLines),
-        },
-        nowSeconds
-      ),
+      ...base,
       entity_description: EntityDescription.create({
         text: withHarthmereAppearanceMarker(
           withHarthmereBodyAndFaceMarkers(

@@ -547,7 +547,10 @@ validate_production_world_sync_http_v188() {
 
   log "Validating live Harthmere world APIs on production FQDN and concrete revision FQDN."
   for base in "$revision_origin" "$PROD_ORIGIN"; do
-    validate_world_sync_http_url_v188 "$base" "/ready" "ready"
+    # Liveness/reachability: the app has no "/ready" route (that path renders the
+    # Next.js 404 page). Probe the root "/" — the same path the in-container
+    # healthcheck uses — then the API readiness endpoints below confirm ok:true.
+    validate_world_sync_http_url_v188 "$base" "/" "root reachability"
     validate_world_sync_http_url_v188 "$base" "/api/glitch/runtime_environment" "runtime environment" '"ok"[[:space:]]*:[[:space:]]*true'
     validate_world_sync_http_url_v188 "$base" "/api/harthmere/live_mode_jobs_board_state?install_id=${install_id}" "jobs board shared state" '"ok"[[:space:]]*:[[:space:]]*true'
     validate_world_sync_http_url_v188 "$base" "/api/harthmere/live_mode_player_status_state?install_id=${install_id}&gameplay_active=0" "player status state" '"ok"[[:space:]]*:[[:space:]]*true'

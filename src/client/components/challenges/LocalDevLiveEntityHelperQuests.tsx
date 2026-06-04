@@ -31,6 +31,7 @@ import { BikkieIds } from "@/shared/bikkie/ids";
 import {
   canCompleteLiveEntityHelperQuestV1,
   getLiveEntityHelperQuestForEntityV1,
+  LIVE_ENTITY_HELPER_QUEST_DEFINITIONS_V1,
   liveEntityHelperQuestDeltasV1,
   liveEntityHelperQuestRewardTextV1,
   type LiveEntityHelperQuestEntityContextV1,
@@ -118,6 +119,34 @@ function hardBossDefeatCountFromLiveSnapshotV1(
   return Number.isFinite(progress) && progress >= 1 ? 1 : 0;
 }
 
+// Live "ready to turn in" check for a stored active-quest record: rebuilds the
+// quest instance from its kind and asks whether the objective (required items
+// collected / boss defeated) is satisfied right now. Used by the map adapters so
+// the marker flips from the target site back to the giver the moment the
+// objective is met. Reads the same global inventory/combat state as turn-in, so
+// it can never disagree with whether the quest is actually completable.
+export function liveEntityHelperQuestRecordReadyToTurnInV1(record: {
+  kind: LiveEntityHelperQuestInstanceV1["kind"];
+  questId: string;
+  entityId: string;
+  giverName: string;
+}): boolean {
+  const definition = LIVE_ENTITY_HELPER_QUEST_DEFINITIONS_V1[record.kind];
+  if (!definition) {
+    return false;
+  }
+  const instance: LiveEntityHelperQuestInstanceV1 = {
+    ...definition,
+    questId: record.questId,
+    entityId: record.entityId,
+    giverName: record.giverName,
+  };
+  return canCompleteLiveEntityHelperQuestV1(
+    instance,
+    completionEvidence(instance)
+  ).ok;
+}
+
 function completionEvidence(
   quest: LiveEntityHelperQuestInstanceV1,
   liveSnapshot?: LiveEntityHelperQuestLiveSnapshotV1
@@ -138,7 +167,10 @@ function completionEvidence(
   };
 }
 
-function markQuestActiveLocallyV1(quest: LiveEntityHelperQuestInstanceV1) {
+function markQuestActiveLocallyV1(
+  quest: LiveEntityHelperQuestInstanceV1,
+  giverPosition?: readonly number[] | null
+) {
   const state = readLiveEntityHelperQuestStateV1();
   if (state.completed[quest.questId]) {
     return;
@@ -150,7 +182,7 @@ function markQuestActiveLocallyV1(quest: LiveEntityHelperQuestInstanceV1) {
     ...state,
     active: {
       ...state.active,
-      [quest.questId]: liveEntityHelperQuestRecordV1(quest),
+      [quest.questId]: liveEntityHelperQuestRecordV1(quest, { giverPosition }),
     },
   });
 }
@@ -178,13 +210,13 @@ async function acceptQuest(
       quest,
       context
     );
-    markQuestActiveLocallyV1(quest);
+    markQuestActiveLocallyV1(quest, context.position);
     return snapshot;
   } catch (error) {
     if (isLiveEntityHelperLiveModeRejectionErrorV1(error)) {
       return undefined;
     }
-    markQuestActiveLocallyV1(quest);
+    markQuestActiveLocallyV1(quest, context.position);
     return undefined;
   }
 }

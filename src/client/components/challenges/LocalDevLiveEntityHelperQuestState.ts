@@ -17,6 +17,15 @@ export interface LiveEntityHelperQuestRecordV1 {
   entityId: string;
   giverName: string;
   at: number;
+  // Real world position of the quest-giver NPC, captured at accept time. Used to
+  // send the player BACK to the giver once the objective is met. Previously the
+  // giver position was read then thrown away, so the marker could never point
+  // home for turn-in.
+  giverPosition?: [number, number, number];
+  // True once the objective (item collected / monster defeated) is satisfied but
+  // the quest has not yet been turned in. Flips the map marker from the target
+  // site to the giver.
+  readyToTurnIn?: boolean;
 }
 
 export interface LiveEntityHelperQuestStateV1 {
@@ -37,15 +46,51 @@ export function isLiveEntityHelperQuestBrowserV1() {
 }
 
 export function liveEntityHelperQuestRecordV1(
-  quest: LiveEntityHelperQuestInstanceV1
+  quest: LiveEntityHelperQuestInstanceV1,
+  options?: {
+    giverPosition?: readonly number[] | null;
+    readyToTurnIn?: boolean;
+  }
 ): LiveEntityHelperQuestRecordV1 {
+  const g = options?.giverPosition;
+  const giverPosition =
+    g &&
+    g.length >= 3 &&
+    Number.isFinite(g[0]) &&
+    Number.isFinite(g[1]) &&
+    Number.isFinite(g[2])
+      ? ([g[0], g[1], g[2]] as [number, number, number])
+      : undefined;
   return {
     questId: quest.questId,
     kind: quest.kind,
     entityId: quest.entityId,
     giverName: quest.giverName,
     at: Date.now(),
+    ...(giverPosition ? { giverPosition } : {}),
+    ...(options?.readyToTurnIn ? { readyToTurnIn: true } : {}),
   };
+}
+
+// Mark an ACTIVE quest as ready to turn in (objective met) or not, preserving
+// the rest of the record (esp. the giver position). Flips the map marker home.
+export function markLiveEntityHelperQuestReadyToTurnInV1(
+  questId: string,
+  ready: boolean,
+  state = readLiveEntityHelperQuestStateV1()
+): boolean {
+  const record = state.active[questId];
+  if (!record || Boolean(record.readyToTurnIn) === ready) {
+    return false;
+  }
+  writeLiveEntityHelperQuestStateV1({
+    ...state,
+    active: {
+      ...state.active,
+      [questId]: { ...record, readyToTurnIn: ready },
+    },
+  });
+  return true;
 }
 
 function storageKey() {

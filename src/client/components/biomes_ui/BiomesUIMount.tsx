@@ -15,6 +15,7 @@ import { BiomesUITutorialCueBar } from "./tutorial/BiomesUITutorialCueBar";
 import { BiomesUIVitalsPanel } from "./BiomesUIVitalsPanel";
 import { HarthmereJobsBoardWorldInteractionV146 } from "@/client/components/harthmere_jobs_board/HarthmereJobsBoardWorldInteractionV146";
 import { HarthmereBusinessWorldInteractionV1 } from "@/client/components/harthmere_business/HarthmereBusinessWorldInteractionV1";
+import { HarthmerePropertyForSaleWorldInteractionV1 } from "@/client/components/harthmere_building/HarthmerePropertyForSaleWorldInteractionV1";
 import type { TabKey } from "./BiomesUITypes";
 
 function truthy(value: string | undefined | null): boolean {
@@ -108,6 +109,9 @@ export const BiomesUIMount: React.FunctionComponent<{
         suppressPrompt={activeTab !== null}
       />
       <HarthmereBusinessWorldInteractionV1
+        suppressPrompt={activeTab !== null}
+      />
+      <HarthmerePropertyForSaleWorldInteractionV1
         suppressPrompt={activeTab !== null}
       />
       <BiomesUITutorialCueBar />

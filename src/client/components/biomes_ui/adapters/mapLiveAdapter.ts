@@ -1,4 +1,5 @@
 import { readLiveEntityHelperQuestStateV1 } from "@/client/components/challenges/LocalDevLiveEntityHelperQuestState";
+import { liveEntityHelperQuestRecordReadyToTurnInV1 } from "@/client/components/challenges/LocalDevLiveEntityHelperQuests";
 import {
   firstActiveSnapshotRoadAheadQuestTitleForBiomesUIV73,
   readSnapshotMissionStateV71,
@@ -249,7 +250,8 @@ export function buildBiomesUIMapAdapter(
       ...(Array.isArray(api?.landmarks) ? api.landmarks : []),
       ...jobsBoardAcceptedJobLandmarksForBiomesUIV1(jobsBoardState),
       ...liveEntityHelperAcceptedQuestLandmarksForBiomesUIV1(
-        liveEntityHelperState
+        liveEntityHelperState,
+        { isReadyToTurnIn: liveEntityHelperQuestRecordReadyToTurnInV1 }
       ),
       ...sharedQuestAcceptedLandmarksForBiomesUIV1(liveQuestState),
       ...harthmerePropertyMapLandmarksFromBuildingStateV1(buildingState),

@@ -64,8 +64,13 @@ export function harthmereContainerLootForLabelV1(
 ): HarthmereObjectContainerLootV1[] {
   const text = (label ?? "").toLowerCase();
   if (/clothing|wardrobe|outfit|garment|laundry/.test(text)) {
+    // A full starter outfit: a top (chest) AND bottoms (legs). The Road Ahead
+    // "equip both clothing slots" step requires both halves, so the clothing
+    // container must grant both — otherwise the quest can never complete from
+    // the crate. See hasRequiredClothingV73 in LocalDevSnapshotMissionBridge.
     return [
       { itemId: "baker_apron", quantity: 1 },
+      { itemId: "field_trousers", quantity: 1 },
       { itemId: "cloth_scrap", quantity: 4 },
     ];
   }

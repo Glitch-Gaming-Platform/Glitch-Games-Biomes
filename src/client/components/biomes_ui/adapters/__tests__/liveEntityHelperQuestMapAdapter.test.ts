@@ -7,6 +7,7 @@ import {
   liveEntityHelperTrackableQuestsForBiomesUIV1,
 } from "../liveEntityHelperQuestMapAdapter";
 import {
+  LIVE_ENTITY_HELPER_QUEST_ACTIVE_TARGETS_V1,
   LIVE_ENTITY_HELPER_QUEST_DEFINITIONS_V1,
   liveEntityHelperQuestTargetMarkerForKindV1,
 } from "@/shared/harthmere/live_entity_helper_quests_v1";
@@ -108,6 +109,90 @@ describe("BiomesUI live-entity helper quest map adapter", () => {
     assert.equal(quests[0].status, "completed");
     assert.equal(quests[0].firstMarkerId, undefined);
     assert.ok(quests[0].reward?.includes("Stabilized Exotic Matter"));
+  });
+
+  it("points exotic-matter and monster markers at the REAL target site (not a per-kind area centroid)", () => {
+    for (const kind of ["exotic_matter", "hard_boss"] as const) {
+      const state = {
+        active: {
+          [`live-helper:x:${kind}`]: {
+            questId: `live-helper:x:${kind}`,
+            kind,
+            entityId: "x",
+            giverName: "Mara",
+            at: NOW_MS,
+          },
+        },
+        completed: {},
+      };
+      const landmarks =
+        liveEntityHelperAcceptedQuestLandmarksForBiomesUIV1(state);
+      assert.equal(landmarks.length, 1, `${kind} produces a marker`);
+      assert.deepEqual(
+        landmarks[0].position,
+        [...LIVE_ENTITY_HELPER_QUEST_ACTIVE_TARGETS_V1[kind].position],
+        `${kind} marker points at its real target site`
+      );
+      assert.equal(
+        landmarks[0].kind,
+        kind === "hard_boss" ? "danger" : "resource"
+      );
+      // Y must be a visible, finite surface coordinate.
+      assert.ok(Number.isFinite(landmarks[0].position[1]));
+    }
+  });
+
+  it("flips the marker to the giver position once the stored readyToTurnIn flag is set", () => {
+    const state = {
+      active: {
+        "live-helper:jackie:exotic_matter": {
+          questId: "live-helper:jackie:exotic_matter",
+          kind: "exotic_matter",
+          entityId: "jackie",
+          giverName: "Jackie",
+          at: NOW_MS,
+          giverPosition: [496, 70, -126],
+          readyToTurnIn: true,
+        },
+      },
+      completed: {},
+    };
+    const landmarks = liveEntityHelperAcceptedQuestLandmarksForBiomesUIV1(state);
+    assert.equal(landmarks.length, 1);
+    assert.deepEqual(landmarks[0].position, [496, 70, -126]);
+    assert.equal(landmarks[0].label, "Return to Jackie");
+    assert.ok(landmarks[0].description.includes("return to Jackie"));
+  });
+
+  it("uses the injected isReadyToTurnIn resolver over the stored flag (live objective check)", () => {
+    const state = {
+      active: {
+        "live-helper:jackie:hard_boss": {
+          questId: "live-helper:jackie:hard_boss",
+          kind: "hard_boss",
+          entityId: "jackie",
+          giverName: "Jackie",
+          at: NOW_MS,
+          giverPosition: [10, 64, 20],
+          readyToTurnIn: false,
+        },
+      },
+      completed: {},
+    };
+    // Objective NOT met -> stays on target.
+    const onTarget = liveEntityHelperAcceptedQuestLandmarksForBiomesUIV1(state, {
+      isReadyToTurnIn: () => false,
+    });
+    assert.deepEqual(
+      onTarget[0].position,
+      [...LIVE_ENTITY_HELPER_QUEST_ACTIVE_TARGETS_V1.hard_boss.position]
+    );
+    // Objective met -> flips to giver even though the stored flag is false.
+    const home = liveEntityHelperAcceptedQuestLandmarksForBiomesUIV1(state, {
+      isReadyToTurnIn: () => true,
+    });
+    assert.deepEqual(home[0].position, [10, 64, 20]);
+    assert.equal(home[0].label, "Return to Jackie");
   });
 
   it("deduplicates map markers when two helpers point at the same target", () => {

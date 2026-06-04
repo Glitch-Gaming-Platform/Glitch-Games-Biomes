@@ -28,6 +28,12 @@ import {
 } from "@/shared/harthmere/building_system_v1";
 import * as React from "react";
 import { defaultHarthmereLiveFetchV1 } from "@/client/components/harthmere_live_fetch";
+import { writeActiveBiomesUIMapPinV142 } from "@/client/components/biomes_ui/adapters/mapPinnedDestination";
+import {
+  landTabPlotCategoryV1,
+  landTabPlotCenterV1,
+  type LandTabPlotCategoryV1,
+} from "@/client/components/biomes_ui/tabs/landTabPlotCategoryV1";
 import { Highlightable } from "../highlight/HighlightOverlay";
 import { RovingGrid } from "../nav/RovingGrid";
 import { biomesPlayerList, biomesPlayerSentence, biomesPlayerTitle } from "../playerFacingText";
@@ -467,8 +473,15 @@ export const LandTab: React.FunctionComponent<{
   const plots = adapter?.getPlots?.() ?? BUILDING_SYSTEM_PLOTS_V1;
   const blueprints = adapter?.getBlueprints?.() ?? BUILDING_SYSTEM_BLUEPRINTS_V1;
   const [step, setStep] = React.useState<BuildingUiStep>(initialStep);
+  // Homes vs Business sub-tabs: the whole flow operates on the plots in the
+  // active category.
+  const [category, setCategory] = React.useState<LandTabPlotCategoryV1>("homes");
+  const categoryPlots = React.useMemo(
+    () => plots.filter((plot) => landTabPlotCategoryV1(plot.plotType) === category),
+    [plots, category]
+  );
   const [selectedPlotId, setSelectedPlotId] = React.useState<string>(
-    plots[0]?.plotId ?? ""
+    categoryPlots[0]?.plotId ?? plots[0]?.plotId ?? ""
   );
   const [selectedBlueprintId, setSelectedBlueprintId] = React.useState<string>(
     plots[0]?.allowedBlueprintIds[0] ?? blueprints[0]?.blueprintId ?? ""
@@ -513,6 +526,17 @@ export const LandTab: React.FunctionComponent<{
   React.useEffect(() => {
     void submit("read_state", {});
   }, [submit]);
+
+  // Keep the selection inside the active Homes/Business category.
+  React.useEffect(() => {
+    if (
+      categoryPlots.length > 0 &&
+      !categoryPlots.some((plot) => plot.plotId === selectedPlotId)
+    ) {
+      setSelectedPlotId(categoryPlots[0].plotId);
+      setStep((current) => (current === "steward" ? current : "plots"));
+    }
+  }, [categoryPlots, selectedPlotId]);
 
   React.useEffect(() => {
     if (!selectedPlot) return;
@@ -636,16 +660,32 @@ export const LandTab: React.FunctionComponent<{
     []
   );
 
+  // Drop a map pin (and minimap navigation aid) on the plot so the player can
+  // walk to it; the world hint beam appears as they get close.
+  const locatePlotOnMap = React.useCallback(
+    (plot: BuildingSystemPlotDefinitionV1) => {
+      writeActiveBiomesUIMapPinV142({
+        markerId: `plot_for_sale:${plot.plotId}`,
+        label: plot.displayName,
+        kind: "property",
+        worldPosition: landTabPlotCenterV1(plot),
+        setAtMs: Date.now(),
+      });
+    },
+    []
+  );
+
   return (
     <div className="biomes-building-system" data-testid="building-system-land-tab">
       <section className="biomes-building-hero" aria-label="Building System summary">
         <div>
           <div className="biomes-building-eyebrow">Grove Building System</div>
-          <h3 className="biomes-building-title">Claim muck land. Build with real voxels.</h3>
+          <h3 className="biomes-building-title">Claim frontier land. Build with real voxels.</h3>
           <p className="biomes-building-copy">
             Talk to {BUILDING_SYSTEM_GROVE_STEWARD_NPC_V1.displayName} to complete the
-            {" "}{BUILDING_SYSTEM_MIRA_INTRO_QUEST_V1.displayName} intro quest, buy a Grove plot,
-            choose a blueprint, bring the needed materials, then manage access,
+            {" "}{BUILDING_SYSTEM_MIRA_INTRO_QUEST_V1.displayName} intro quest, then pick the
+            Homes or Businesses tab to claim a plot in its designated frontier area,
+            choose a blueprint, bring the needed materials, and manage access,
             taxes, upgrades, repairs, storage, and sale.
           </p>
         </div>
@@ -655,6 +695,27 @@ export const LandTab: React.FunctionComponent<{
           <span>{lastResponse}</span>
         </div>
       </section>
+
+      <div
+        className="biomes-building-category-tabs"
+        role="tablist"
+        aria-label="Property category"
+        style={{ display: "flex", gap: 8, margin: "8px 0" }}
+      >
+        {(["homes", "business"] as const).map((value) => (
+          <button
+            key={value}
+            type="button"
+            role="tab"
+            aria-selected={category === value}
+            className="biomes-ui-tab"
+            data-selected={category === value ? "true" : undefined}
+            onClick={() => setCategory(value)}
+          >
+            {value === "homes" ? "Homes" : "Businesses"}
+          </button>
+        ))}
+      </div>
 
       <BuildingStepRail activeStep={step} onStepChange={setStep} />
 
@@ -684,12 +745,14 @@ export const LandTab: React.FunctionComponent<{
           )}
           {step === "plots" && (
             <PlotsPanel
-              plots={plots}
+              category={category}
+              plots={categoryPlots}
               ownedPlotIds={serverState.ownedPlotIds}
               safeZones={serverState.safeZones}
               selectedPlotId={selectedPlot?.plotId}
               onSelect={selectPlot}
               onClaim={claimSelectedPlot}
+              onLocate={locatePlotOnMap}
               pending={pendingAction === "claim_plot"}
             />
           )}
@@ -857,73 +920,125 @@ const StewardPanel: React.FunctionComponent<{
 );
 
 const PlotsPanel: React.FunctionComponent<{
+  category: LandTabPlotCategoryV1;
   plots: BuildingSystemPlotDefinitionV1[];
   ownedPlotIds: string[];
   safeZones: BuildingSystemClientStateV3["safeZones"];
   selectedPlotId?: string;
   onSelect: (plot: BuildingSystemPlotDefinitionV1) => void;
   onClaim: () => void;
+  onLocate: (plot: BuildingSystemPlotDefinitionV1) => void;
   pending: boolean;
-}> = ({ plots, ownedPlotIds, safeZones, selectedPlotId, onSelect, onClaim, pending }) => (
-  <section aria-label="Buy Grove plot">
-    <PanelHeader
-      label="Buy Plot"
-      title="Pick muck land in the Grove"
-      copy="Every plot here starts rough. Claiming one records the deed and marks the boundary; terraforming happens later from an owned home or business."
-    />
-    <RovingGrid
-      ariaLabel="Grove purchasable plots"
-      items={gridRows(plots, 2)}
-      onActivate={(_row, _col, plot) => onSelect(plot)}
-      className="biomes-building-grid"
-      renderCell={(plot, { focused }, cell) => (
-        <Highlightable uniqueId={UI_IDS.BUILDING_PLOT(plot.plotId)} showCaption>
-          <button
-            ref={(el) => cell.ref(el)}
-            type="button"
-            tabIndex={cell.tabIndex}
-            onFocus={cell.onFocus}
-            onClick={(event) => {
-              cell.onClick();
-              event.currentTarget.focus();
-            }}
-            onKeyDown={cell.onKeyDown}
-            aria-label={`${plot.displayName}, ${plot.claimPriceGold} gold, ${plot.district}`}
-            data-focused={focused ? "true" : undefined}
-            data-selected={selectedPlotId === plot.plotId ? "true" : undefined}
-            className="biomes-building-card biomes-building-select-card"
-          >
-            <CardTitle title={plot.displayName} meta={`${plot.claimPriceGold} gold`} />
-            <div className="biomes-building-muted">{plot.district}</div>
-            <p>{plot.description}</p>
-            <div className="biomes-building-chip-row">
-              <span className="biomes-building-chip">{biomesPlayerTitle(plot.area)}</span>
-              <span className="biomes-building-chip">{biomesPlayerTitle(plot.plotType)}</span>
-              <span className="biomes-building-chip">
-                {ownedPlotIds.includes(plot.plotId)
-                  ? safeZones[plot.plotId]?.safeFromMuck === true
-                    ? "Terraformed"
-                    : "Muck deed"
-                  : "Mucked"}
-              </span>
-            </div>
-          </button>
-        </Highlightable>
+}> = ({
+  category,
+  plots,
+  ownedPlotIds,
+  safeZones,
+  selectedPlotId,
+  onSelect,
+  onClaim,
+  onLocate,
+  pending,
+}) => {
+  const selectedPlot =
+    plots.find((plot) => plot.plotId === selectedPlotId) ?? plots[0];
+  const homes = category === "homes";
+  return (
+    <section aria-label={homes ? "Homes for sale" : "Businesses for sale"}>
+      <PanelHeader
+        label={homes ? "Homes For Sale" : "Businesses For Sale"}
+        title={
+          homes
+            ? "Claim a homestead in the frontier"
+            : "Claim a business plot in the frontier"
+        }
+        copy="Each plot sits in its own designated area away from the Grove. Pick one to see exactly where it is, then locate it on the map and walk over — the land glows light blue when it's for sale. Claiming records the deed; terraforming and building happen after."
+      />
+      {plots.length === 0 ? (
+        <div className="biomes-building-card">
+          No {homes ? "homes" : "businesses"} are for sale right now.
+        </div>
+      ) : (
+        <RovingGrid
+          ariaLabel={homes ? "Homes for sale" : "Businesses for sale"}
+          items={gridRows(plots, 2)}
+          onActivate={(_row, _col, plot) => onSelect(plot)}
+          className="biomes-building-grid"
+          renderCell={(plot, { focused }, cell) => {
+            const center = landTabPlotCenterV1(plot);
+            const ownedPlot = ownedPlotIds.includes(plot.plotId);
+            return (
+              <Highlightable
+                uniqueId={UI_IDS.BUILDING_PLOT(plot.plotId)}
+                showCaption
+              >
+                <button
+                  ref={(el) => cell.ref(el)}
+                  type="button"
+                  tabIndex={cell.tabIndex}
+                  onFocus={cell.onFocus}
+                  onClick={(event) => {
+                    cell.onClick();
+                    event.currentTarget.focus();
+                  }}
+                  onKeyDown={cell.onKeyDown}
+                  aria-label={`${plot.displayName}, ${plot.claimPriceGold} gold, ${plot.district}, at x ${center[0]}, z ${center[2]}`}
+                  data-focused={focused ? "true" : undefined}
+                  data-selected={
+                    selectedPlotId === plot.plotId ? "true" : undefined
+                  }
+                  className="biomes-building-card biomes-building-select-card"
+                >
+                  <CardTitle
+                    title={plot.displayName}
+                    meta={`${plot.claimPriceGold} gold`}
+                  />
+                  <div className="biomes-building-muted">{plot.district}</div>
+                  <div className="biomes-building-muted">
+                    Location: x {center[0]}, z {center[2]}
+                  </div>
+                  <p>{plot.description}</p>
+                  <div className="biomes-building-chip-row">
+                    <span className="biomes-building-chip">
+                      {biomesPlayerTitle(plot.plotType)}
+                    </span>
+                    <span className="biomes-building-chip">
+                      {ownedPlot
+                        ? safeZones[plot.plotId]?.safeFromMuck === true
+                          ? "Owned · Terraformed"
+                          : "Owned · Muck deed"
+                        : "For sale"}
+                    </span>
+                  </div>
+                </button>
+              </Highlightable>
+            );
+          }}
+        />
       )}
-    />
-    <div className="biomes-building-actions">
-      <button
-        type="button"
-        className="biomes-ui-tab"
-        onClick={onClaim}
-        disabled={pending}
-        aria-disabled={pending}
-      >
-        {pending ? "Claiming…" : "Buy selected plot"}
-      </button>
-    </div>
-  </section>
-);
+      <div className="biomes-building-actions">
+        <button
+          type="button"
+          className="biomes-ui-tab"
+          onClick={() => selectedPlot && onLocate(selectedPlot)}
+          disabled={!selectedPlot}
+          aria-disabled={!selectedPlot}
+        >
+          Locate on map
+        </button>
+        <button
+          type="button"
+          className="biomes-ui-tab"
+          onClick={onClaim}
+          disabled={pending}
+          aria-disabled={pending}
+        >
+          {pending ? "Claiming…" : "Buy selected plot"}
+        </button>
+      </div>
+    </section>
+  );
+};
 
 const BlueprintPanel: React.FunctionComponent<{
   plot: BuildingSystemPlotDefinitionV1;

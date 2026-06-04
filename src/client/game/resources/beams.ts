@@ -50,6 +50,14 @@ export const BEAM_COLOR_NAVIGATION = [
   0.75,
 ] as Color;
 
+// Light blue — marks land that is for sale.
+export const BEAM_COLOR_PROPERTY_FOR_SALE = [
+  0x4d / 0xff,
+  0xc3 / 0xff,
+  0xff / 0xff,
+  0.75,
+] as Color;
+
 export function makeBeamThree(color: Color, width: number = 1) {
   const material = makeNoclipBasicTranslucentMaterial({
     baseColor: color,
@@ -100,6 +108,8 @@ export function addBeamResources(
     switch (beamType) {
       case "quest":
         return makeBeamThree(BEAM_COLOR_QUEST);
+      case "property_for_sale":
+        return makeBeamThree(BEAM_COLOR_PROPERTY_FOR_SALE);
       default:
       case "placed":
         return makeBeamThree(BEAM_COLOR_NAVIGATION);

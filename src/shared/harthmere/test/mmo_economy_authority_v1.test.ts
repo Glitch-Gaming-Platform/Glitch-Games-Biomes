@@ -1463,3 +1463,143 @@ describe("mmo_economy_authority_v1 — business banks, permissions, and balance 
     assert.strictEqual(result.economy.businesses[setup.businessId].status, "closed");
   });
 });
+
+describe("business daily check-in (live economy integration)", () => {
+  const DAY = 86_400_000;
+
+  function ownedOpenBusiness() {
+    const setup = createBusiness();
+    const state = licenseAndOpen(setup.state, setup.businessId, 1);
+    return { state, businessId: setup.businessId };
+  }
+
+  it("grants 500 gold and starts a streak on check-in for an owned business", () => {
+    const { state, businessId } = ownedOpenBusiness();
+    const result = mutate(state, "business_daily_check_in", { businessId });
+    assert.deepStrictEqual(result.warnings, []);
+    assert.strictEqual(result.inventoryGoldDelta, 500);
+    const biz = result.economy.businesses[businessId];
+    assert.strictEqual(biz.dailyCheckIn?.totalGoldFromCheckIns, 500);
+    assert.strictEqual(biz.dailyCheckIn?.currentStreak, 1);
+  });
+
+  it("rejects a second check-in on the same day (no double gold)", () => {
+    const { state, businessId } = ownedOpenBusiness();
+    let result = mutate(state, "business_daily_check_in", { businessId });
+    result = mutate(result.economy, "business_daily_check_in", { businessId });
+    assert.ok(
+      result.warnings.includes(
+        "economy_rejected:business_already_checked_in_today"
+      )
+    );
+    assert.strictEqual(result.inventoryGoldDelta, 0);
+  });
+
+  it("builds a streak across consecutive days", () => {
+    const { state, businessId } = ownedOpenBusiness();
+    let result = mutate(state, "business_daily_check_in", { businessId });
+    result = mutate(result.economy, "business_daily_check_in", {
+      businessId,
+      nowMs: NOW_MS + DAY,
+    });
+    assert.deepStrictEqual(result.warnings, []);
+    const biz = result.economy.businesses[businessId];
+    assert.strictEqual(biz.dailyCheckIn?.currentStreak, 2);
+    assert.strictEqual(biz.dailyCheckIn?.totalGoldFromCheckIns, 1000);
+  });
+
+  it("rejects check-in from a player who does not own/manage the business", () => {
+    const { state, businessId } = ownedOpenBusiness();
+    const result = mutate(state, "business_daily_check_in", {
+      businessId,
+      actorId: "not_the_owner",
+    });
+    assert.ok(
+      result.warnings.includes("economy_rejected:business_permission_required")
+    );
+    assert.strictEqual(result.inventoryGoldDelta, 0);
+  });
+
+  it("applies an accelerating revenue penalty and banks the lost gold while neglected", () => {
+    const { state, businessId } = ownedOpenBusiness();
+    state.businesses[businessId].inventory.worker_meal = {
+      itemId: "worker_meal",
+      count: 10,
+    };
+    state.businesses[businessId].salesTaxRate = 0; // clean math: earning == gross * factor
+    state.regions.harthmere_grove_region.itemDemand.worker_meal = 100;
+    state.regions.harthmere_grove_region.itemSupply.worker_meal = 10;
+
+    // Check in on day D, then make a sale on day D+2 (1 full day missed -> 0.8x).
+    let result = mutate(state, "business_daily_check_in", { businessId });
+    const st = result.economy;
+    const saleDay = NOW_MS + 2 * DAY;
+    const price = economyPriceForItemV1({
+      state: st,
+      regionId: "harthmere_grove_region",
+      townId: "harthmere_grove",
+      itemId: "worker_meal",
+      business: st.businesses[businessId],
+    });
+    const balanceBefore = st.businesses[businessId].balanceGold;
+    result = mutate(
+      st,
+      "record_customer_sale",
+      {
+        actorId: "customer_x",
+        businessId,
+        itemId: "worker_meal",
+        count: 1,
+        nowMs: saleDay,
+      },
+      ctx({ actorGold: price * 4 })
+    );
+    assert.deepStrictEqual(result.warnings, []);
+    const biz = result.economy.businesses[businessId];
+    const earned = biz.balanceGold - balanceBefore;
+    // factor for 1 missed day is 0.8.
+    assert.ok(
+      Math.abs(earned - 0.8 * price) < 1e-6,
+      `neglected sale earned ${earned}, expected ${0.8 * price}`
+    );
+    assert.ok(
+      Math.abs(
+        (biz.dailyCheckIn?.totalRevenueLostToNeglect ?? 0) - 0.2 * price
+      ) < 1e-6,
+      `lost ${biz.dailyCheckIn?.totalRevenueLostToNeglect}, expected ${0.2 * price}`
+    );
+  });
+
+  it("earns full revenue right after checking in (no penalty)", () => {
+    const { state, businessId } = ownedOpenBusiness();
+    state.businesses[businessId].inventory.worker_meal = {
+      itemId: "worker_meal",
+      count: 10,
+    };
+    state.businesses[businessId].salesTaxRate = 0;
+    state.regions.harthmere_grove_region.itemDemand.worker_meal = 100;
+    state.regions.harthmere_grove_region.itemSupply.worker_meal = 10;
+    let result = mutate(state, "business_daily_check_in", { businessId });
+    const st = result.economy;
+    const price = economyPriceForItemV1({
+      state: st,
+      regionId: "harthmere_grove_region",
+      townId: "harthmere_grove",
+      itemId: "worker_meal",
+      business: st.businesses[businessId],
+    });
+    const balanceBefore = st.businesses[businessId].balanceGold;
+    result = mutate(
+      st,
+      "record_customer_sale",
+      { actorId: "customer_y", businessId, itemId: "worker_meal", count: 1 },
+      ctx({ actorGold: price * 4 })
+    );
+    const biz = result.economy.businesses[businessId];
+    assert.ok(
+      Math.abs(biz.balanceGold - balanceBefore - price) < 1e-6,
+      "full revenue on the check-in day"
+    );
+    assert.strictEqual(biz.dailyCheckIn?.totalRevenueLostToNeglect ?? 0, 0);
+  });
+});

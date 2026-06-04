@@ -18,6 +18,7 @@ import { allPlayerShardsLoaded } from "@/client/game/helpers/player_shards";
 import type { Player } from "@/client/game/resources/players";
 import type { ClientResources } from "@/client/game/resources/types";
 import type { Script } from "@/client/game/scripts/script_controller";
+import { clientFallDamageTickV1 } from "@/client/game/util/fall_damage_client_v1";
 import { fixedConstantScalarTransition } from "@/client/game/util/transitions";
 import { respawn } from "@/client/game/util/warping";
 import { reportClientError } from "@/client/util/request_helpers";
@@ -38,6 +39,10 @@ import { DropSelector, PlaceableSelector } from "@/shared/ecs/gen/selectors";
 import type { EmoteType, OptionalDamageSource } from "@/shared/ecs/gen/types";
 import type { CollisionCallback } from "@/shared/game/collision";
 import { CollisionHelper } from "@/shared/game/collision";
+import {
+  initFallTrackerV1,
+  type FallTrackerStateV1,
+} from "@/shared/game/fall_damage_v1";
 import { anItem } from "@/shared/game/item";
 import { getPlayerBuffs } from "@/shared/game/players";
 import { friendlyShardId, shardsForAABB } from "@/shared/game/shard";
@@ -1307,9 +1312,10 @@ const REGEN_INTERVAL_IN_TICKS = 1 * 60; // 1 seconds
 const BLOCK_DAMAGE_DEFAULT_DELAY_IN_TICKS = 1 * 60;
 
 // Fall constants
-const FALL_MINIMUM_IMPACT = 18; // 15 voxels per second
-const FALL_IMPACT_DAMAGE_SCALAR = 1.0;
-const FALL_IMPACT_DAMAGE_GROWTH = 1.2;
+// Impact velocity above which a landing plays the "hit the ground" sound. Fall
+// DAMAGE is now distance-based (see fall_damage_v1 + this.fallTracker), not
+// velocity-based, so the old impact-damage constants were removed.
+const FALL_SOUND_MIN_IMPACT = 10.0;
 
 export class PlayerScript implements Script {
   readonly name = "player";
@@ -1334,6 +1340,7 @@ export class PlayerScript implements Script {
   hadReportedInVoid = false;
 
   // Throttles that implement delay-based health updates.
+  private fallTracker: FallTrackerStateV1 = initFallTrackerV1();
   private shakeThrottle = new EventThrottle(DEFAULT_SHAKE_DELAY_MS);
   private urlRewriteThrottle = new EventThrottle(2000);
   private regenThrottle = new TickThrottle(REGEN_DELAY_IN_TICKS);
@@ -1637,13 +1644,6 @@ export class PlayerScript implements Script {
         )
       );
     }
-  }
-
-  private applyFallDamage(impact: number) {
-    const damage =
-      FALL_IMPACT_DAMAGE_SCALAR *
-      Math.pow(1 + impact - FALL_MINIMUM_IMPACT, FALL_IMPACT_DAMAGE_GROWTH);
-    this.applyHpChange(-damage, { kind: "fall", distance: impact }); // Eagerly apply
   }
 
   private applyDamageShake(hpDelta: number) {
@@ -2204,14 +2204,21 @@ export class PlayerScript implements Script {
     // Process the results of the player motion for side effects.
     const groundImpact = getGroundImpact(result);
 
-    // If the player just landed on the ground, do some stuff.
-    if (
-      !flying &&
-      !swimming &&
-      groundImpact > FALL_MINIMUM_IMPACT * buffJumpMultiplier &&
-      localPlayer.fallAllowsDamage
-    ) {
-      this.applyFallDamage(groundImpact);
+    // Distance-based fall damage: track the apex of the airborne arc and, on
+    // landing, deal 10 damage per 5 feet (blocks) fallen over the first 5. A
+    // normal jump falls short of the 5-foot threshold, so jumps never hurt.
+    // Replaces the old velocity-based impact damage. See fall_damage_v1.
+    const fall = clientFallDamageTickV1(this.fallTracker, {
+      onGround,
+      y: player.position[1],
+      canTakeFallDamage: !flying && !swimming && localPlayer.fallAllowsDamage,
+    });
+    this.fallTracker = fall.state;
+    if (fall.hpDelta < 0) {
+      this.applyHpChange(fall.hpDelta, {
+        kind: "fall",
+        distance: fall.fellBlocks,
+      });
     }
 
     if (groundImpact) {
@@ -2221,7 +2228,7 @@ export class PlayerScript implements Script {
     // Play a sound if we hit the ground hard enough.
     if (swimming && !player.swimming && !flying && result.velocity[1] < -7.0) {
       player.eagerEmote(this.events, this.resources, "splash");
-    } else if (!swimming && !flying && groundImpact > 10.0) {
+    } else if (!swimming && !flying && groundImpact > FALL_SOUND_MIN_IMPACT) {
       player.setSound(
         this.resources,
         this.audioManager,

@@ -193,7 +193,10 @@ import {
   evaluateMuckMonsterAggressionV1,
   muckMonsterAreaForPositionV1,
 } from "./muck_monster_aggression_ai_v1";
-import { HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_SEEDS_V1 } from "./live_entity_production_seed_v1";
+import {
+  HARTHMERE_LIVE_ENTITY_LIVESTOCK_SEEDS_V1,
+  HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_SEEDS_V1,
+} from "./live_entity_production_seed_v1";
 
 import {
   buildingSystemBlueprintByIdV1,
@@ -430,8 +433,8 @@ function positionObjectFromVec3V1(position: readonly number[]) {
 export function createHarthmereServerMuckCombatEntitySnapshotsV1(
   nowMs: number
 ): HarthmereLiveModeBackendStateV1["combat"]["entitySnapshots"] {
-  return Object.fromEntries(
-    HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_SEEDS_V1.flatMap((seed) => {
+  const monsterEntries = HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_SEEDS_V1.flatMap(
+    (seed) => {
       const territory = muckMonsterAreaForPositionV1(seed.position, 1.5);
       if (!territory) {
         return [];
@@ -470,8 +473,103 @@ export function createHarthmereServerMuckCombatEntitySnapshotsV1(
           } satisfies HarthmereLiveCombatEntitySnapshotV1,
         ],
       ];
-    })
+    }
   );
+
+  // Wildlife (cows, sheep, rabbits): passive but attackable. Not hostile (no
+  // unprovoked aggression — see the idle-patrol gate below), but
+  // `retaliatesWhenAttacked`, so they ignore players until struck and then fight
+  // back. Explicit `lootDrops` give meat on defeat, scaled by size: larger
+  // animals carry more HP and drop more meat. Body size also scales with tier so
+  // a rabbit isn't a cow-sized hitbox.
+  const livestockBodyRadiusV1 = (tier: string | undefined) =>
+    tier === "large" ? 1 : tier === "medium" ? 0.7 : 0.45;
+  const livestockMovementSpeedV1 = (tier: string | undefined) =>
+    tier === "small" ? 3.2 : tier === "medium" ? 2.5 : 2;
+  const livestockEntries = HARTHMERE_LIVE_ENTITY_LIVESTOCK_SEEDS_V1.flatMap(
+    (seed) => {
+      if (!muckMonsterAreaForPositionV1(seed.position, 1.5)) {
+        return [];
+      }
+      const hp = Math.max(1, Math.trunc(seed.combatHp ?? 40));
+      const meatUnits = Math.max(1, Math.trunc(seed.meatUnits ?? 1));
+      const position = positionObjectFromVec3V1(seed.position);
+      return [
+        [
+          `server-muck-combat:${seed.seedId}:${seed.idOffset}`,
+          {
+            hp,
+            maxHp: hp,
+            position,
+            homePosition: position,
+            isHostile: false,
+            isAlive: true,
+            isAttackable: true,
+            isLivestock: false,
+            species: seed.species ?? "cow",
+            level: Math.max(1, Math.trunc(seed.combatLevel ?? 1)),
+            entityKind: "animal",
+            movementSpeed: livestockMovementSpeedV1(seed.sizeTier),
+            bodyRadius: livestockBodyRadiusV1(seed.sizeTier),
+            patrolRadius: 6,
+            aggroRange: 0,
+            leashRange: 16,
+            requiresLineOfSight: false,
+            aiEnabled: true,
+            retaliatesWhenAttacked: true,
+            // Hunting any of them yields meat; larger animals drop more.
+            lootDrops: { raw_meat: meatUnits },
+            // Size-scaled flat hit + kill XP (cow > sheep > rabbit).
+            attackDamage: seed.attackDamage,
+            killXp: seed.killXp,
+            animationState: "idle",
+            animationStartedAtMs: nowMs,
+            animationMoving: false,
+            facingYaw: Number(seed.orientation[1] ?? 0),
+            attackRange: 2,
+          } satisfies HarthmereLiveCombatEntitySnapshotV1,
+        ],
+      ];
+    }
+  );
+
+  return Object.fromEntries([...monsterEntries, ...livestockEntries]);
+}
+
+// Seeded muck wildlife (muckers, hexers, cattle) respawn after being hunted.
+// Defeat is recorded on the entity snapshot (`defeatedAtMs`); once the respawn
+// delay elapses we restore the entity to full health at its home. This is
+// deterministic from `defeatedAtMs` + `nowMs`, so it works whether or not the
+// caller persists the revived state.
+export const HARTHMERE_SERVER_MUCK_COMBAT_RESPAWN_MS_V1 = 5 * 60 * 1000;
+
+export function harthmereReviveDefeatedSeededCombatEntitiesV1(
+  entitySnapshots: HarthmereLiveModeBackendStateV1["combat"]["entitySnapshots"],
+  nowMs: number
+): void {
+  for (const [entityId, entity] of Object.entries(entitySnapshots)) {
+    if (!entityId.startsWith("server-muck-combat:")) {
+      continue;
+    }
+    if (entity.isAlive || !entity.defeatedAtMs) {
+      continue;
+    }
+    if (nowMs - entity.defeatedAtMs < HARTHMERE_SERVER_MUCK_COMBAT_RESPAWN_MS_V1) {
+      continue;
+    }
+    entity.hp = entity.maxHp;
+    entity.isAlive = true;
+    entity.isAttackable = true;
+    entity.defeatedAtMs = undefined;
+    entity.killedByActorId = undefined;
+    entity.lastAttackerId = undefined;
+    entity.lastAttackedAtMs = undefined;
+    entity.lastDamageTaken = undefined;
+    entity.lootDropId = undefined;
+    if (entity.homePosition) {
+      entity.position = { ...entity.homePosition };
+    }
+  }
 }
 
 export type HarthmereBankingVaultKindV1 = "personal" | "account" | "materials";
@@ -936,6 +1034,10 @@ export interface HarthmereLiveModeBackendStateV1 {
         lootDrops?: Record<string, number>;
         lootOwnerActorIds?: string[];
         lootDropId?: string;
+        /** Flat per-hit damage for ambient wildlife (overrides the level formula). */
+        attackDamage?: number;
+        /** Flat kill XP for ambient wildlife (overrides the ability xp). */
+        killXp?: number;
       }
     >;
     npcAiTicks: Record<
@@ -4963,6 +5065,10 @@ export function parseHarthmereLiveModeBackendStateV1(
       zoneId: "harthmere_wilderness",
       cause: "hp_zero_state_repaired",
     });
+    harthmereReviveDefeatedSeededCombatEntitiesV1(
+      state.combat.entitySnapshots,
+      nowMs
+    );
     return state;
   } catch {
     return defaultHarthmereLiveModeBackendStateV1(actorId, nowMs);
@@ -6178,7 +6284,14 @@ export function reduceHarthmereLiveModeBackendStateV1(
       combatResult.actorResourceAfter
     );
 
-    const damage = Math.max(0, Math.trunc(Number(combatResult.damage ?? 0)));
+    // Ambient wildlife use a flat, size-scaled hit (cow > sheep > rabbit)
+    // instead of the level-derived combat formula.
+    const damage = Math.max(
+      0,
+      Math.trunc(
+        Number(npcSnapshot.attackDamage ?? combatResult.damage ?? 0)
+      )
+    );
     if (damage > 0) {
       next.combat.hp = Math.max(0, playerHpBefore - damage);
       npcSnapshot.lastAiAttackAtMs = nowMs;
@@ -7312,7 +7425,8 @@ export function reduceHarthmereLiveModeBackendStateV1(
         const xp = computeHarthmereXpRewardV1({
           actorLevel: next.classMagic.skills["character_level"]?.level ?? 1,
           targetLevel: resolvedTarget?.level ?? 1,
-          baseXp: combatResult.xpDelta,
+          // Ambient wildlife grant a flat kill XP (cow 50 / sheep 20 / rabbit 5).
+          baseXp: resolvedTarget?.killXp ?? combatResult.xpDelta,
           contributionScore: 1,
           antiFarmMultiplier: antiFarmRewardMultiplierV1({
             repeatedFarmCount: payloadNumber(envelope, "repeatedFarmCount"),
@@ -12641,7 +12755,13 @@ export function reduceHarthmereLiveModeBackendStateV1(
           Math.max(1, Math.trunc(npcSnapshot?.lastDamageTaken ?? 1))
         );
       }
-      if (decision === "idle_patrol" && npcSnapshot?.isAlive) {
+      if (
+        decision === "idle_patrol" &&
+        npcSnapshot?.isAlive &&
+        // Passive wildlife (e.g. cattle) never initiate unprovoked aggression.
+        // They still retaliate when attacked via the recent-attacker path above.
+        npcSnapshot?.isHostile !== false
+      ) {
         const npcPosition = liveModePositionObjectToTupleV1(
           npcSnapshot.position
         );

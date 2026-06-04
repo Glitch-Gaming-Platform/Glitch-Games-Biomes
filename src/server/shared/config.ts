@@ -127,9 +127,21 @@ const DEFAULT_CONFIG = deepFreeze({
   // How often the server sends a heartbeat - independent of messages.
   wsZrpcHeartbeatIntervalMs: 150,
   // How long the client waits for a heartbeat before being unhealthy.
-  wsZrpcHeartbeatTtlMs: 400,
+  //
+  // HARTHMERE_SYNC_HEARTBEAT_TOLERANCE_V1: the previous 400ms/600ms thresholds
+  // were far too aggressive for the Glitch/Azure deployment. Production showed
+  // synchronous Glitch backend calls (e.g. storeSave) blocking the event loop
+  // for ~2.4s and client frames of 100-180ms (FPS 0 spikes); any stall over
+  // 600ms made the client tear down and RE-BOOTSTRAP the sync stream, which
+  // evicts and re-adds every streamed entity — so NPCs (Doc, Gus, etc.) blinked
+  // out while their nameplate lingered, then returned on resync. Tolerate
+  // multi-second stalls (well under the 10s server idle timeout below) so a
+  // brief hiccup no longer drops the entity stream. The client's own built-in
+  // default is 5000/10000; we stay just under wsZrpcTtlMs to avoid racing the
+  // server-side idle close.
+  wsZrpcHeartbeatTtlMs: 3_000,
   // How long the client waits until reconnecting.
-  wsZrpcHeartbeatReconnectMs: 600,
+  wsZrpcHeartbeatReconnectMs: 8_000,
   // How long the client waits on first connection until reconnecting.
   wsZrpcHeartbeatStartupReconnectMs: 5000,
   // Client backpressure

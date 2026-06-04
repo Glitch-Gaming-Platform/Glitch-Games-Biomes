@@ -10,6 +10,7 @@ import {
 } from "@/shared/harthmere/live_mode_backend_v1";
 import { z } from "zod";
 import { readHarthmerePlayerAndSharedStateStringsV1 } from "@/server/harthmere/live_mode_state_read_helpers";
+import { resolveHarthmereLiveModeActorIdV1 } from "@/server/harthmere/live_mode_actor_resolution_v1";
 
 const zJsonRecord = z.record(z.unknown());
 
@@ -59,13 +60,22 @@ export async function readHarthmereLiveModeEconomyStateForActorV1(input: {
 
 export default biomesApiHandler(
   {
-    auth: "required",
+    // HARTHMERE_BUSINESS_ANONYMOUS_ACCESS_V1: the business interface (buying,
+    // customer mini-games, browsing shops) must work for not-logged-in players
+    // too. Like the other live_mode_*_state endpoints, resolve an install-scoped
+    // actor when there is no user instead of returning 401, so anonymous players
+    // get an economy snapshot, see the "open" prompt, and can transact.
+    auth: "optional",
     method: "GET",
     response: zHarthmereLiveModeEconomyStateResponse,
   },
-  async ({ auth: { userId } }) => {
-    const actorId = String(userId);
+  async ({ auth, unsafeRequest }) => {
     const redis = await liveModeEconomyStateRedisV1();
+    const actorId = await resolveHarthmereLiveModeActorIdV1(
+      redis,
+      { auth, unsafeRequest },
+      "anonymous:economy-reader"
+    );
     const nowMs = Date.now();
     return {
       ok: true,

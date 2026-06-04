@@ -83,8 +83,11 @@ export const CursorInspectionComponent: React.FunctionComponent<
     overlay?.kind === "harthmere_object"
       ? overlay.entityDescription
       : entityDescription?.text;
-  const harthmereObjectInteractionEntityId =
-    overlay?.kind === "harthmere_object" ? INVALID_BIOMES_ID : overlay?.entityId;
+  // For harthmere_object overlays the entityId is INVALID_BIOMES_ID when the
+  // object is a static procedural beacon, but a REAL entity id when the overlay
+  // was built from a live ECS world object (seeded chest/crate/...). Prefer the
+  // real id so container de-dupe and interaction handlers target the instance.
+  const harthmereObjectInteractionEntityId = overlay?.entityId;
   const isHarthmereObjectContainer =
     overlay?.kind !== "placeable" &&
     isHarthmereContainerObjectLabelV1({
