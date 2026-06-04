@@ -3617,6 +3617,396 @@ const CUSTOMER_ROWS: Array<
       voice: "fast soprano",
     },
   ],
+  [
+    "customer_renna_dusk",
+    "Renna Dusk",
+    ["medical_doctor", "biome_farming_rare_foods"],
+    70,
+    3,
+    "gentle",
+    {
+      hairStyle: "long river braid",
+      hairColor: "ash violet",
+      bodyBuild: "willow slim",
+      heightBand: "tall",
+      shoulderShape: "soft slope",
+      posture: "calm settled",
+      gait: "slow glide",
+      eyeColor: "pale lilac",
+      eyeShape: "soft round",
+      browShape: "low gentle",
+      noseShape: "straight slim",
+      noseBridge: "even bridge",
+      skinTone: "cool porcelain",
+      outfit: "herbalist sash dress",
+      accessory: "dried bloom pin",
+      voice: "soft warm alto",
+    },
+  ],
+  [
+    "customer_torv_grane",
+    "Torv Grane",
+    ["weapons_tools", "hunter_wild_meat"],
+    52,
+    2,
+    "gruff",
+    {
+      hairStyle: "buzzed sides topknot",
+      hairColor: "rust brown",
+      bodyBuild: "bull heavy",
+      heightBand: "tall-plus",
+      shoulderShape: "wide block",
+      posture: "planted wide",
+      gait: "stomping roll",
+      eyeColor: "dark amber",
+      eyeShape: "narrow hard",
+      browShape: "heavy low",
+      noseShape: "blunt wide",
+      noseBridge: "thick flat bridge",
+      skinTone: "ruddy tan",
+      outfit: "scarred hide jerkin",
+      accessory: "tooth-strung cord",
+      voice: "deep rumble",
+    },
+  ],
+  [
+    "customer_isla_pemberton",
+    "Isla Pemberton",
+    ["custom_home_property_development", "biome_design_studio"],
+    88,
+    5,
+    "poised",
+    {
+      hairStyle: "sleek low chignon",
+      hairColor: "polished jet",
+      bodyBuild: "elegant lean",
+      heightBand: "average-plus",
+      shoulderShape: "level fine",
+      posture: "regal straight",
+      gait: "measured stride",
+      eyeColor: "slate blue",
+      eyeShape: "almond cool",
+      browShape: "clean arch",
+      noseShape: "refined point",
+      noseBridge: "high slim bridge",
+      skinTone: "warm ivory",
+      outfit: "tailored slate coat",
+      accessory: "silver lapel ruler",
+      voice: "crisp confident",
+    },
+  ],
+  [
+    "customer_dax_oolen",
+    "Dax Oolen",
+    ["courier", "portal_transit_company"],
+    40,
+    2,
+    "restless",
+    {
+      hairStyle: "windswept short crop",
+      hairColor: "sandy blonde",
+      bodyBuild: "wiry runner",
+      heightBand: "short-plus",
+      shoulderShape: "narrow quick",
+      posture: "leaning forward",
+      gait: "bouncing jog",
+      eyeColor: "bright hazel",
+      eyeShape: "darting wide",
+      browShape: "raised quick",
+      noseShape: "small upturned",
+      noseBridge: "light low bridge",
+      skinTone: "sun gold",
+      outfit: "strapped courier vest",
+      accessory: "many buckle satchel",
+      voice: "fast breathy tenor",
+    },
+  ],
+  [
+    "customer_mira_quill",
+    "Mira Quill",
+    ["magic_goods", "exploration_guide"],
+    76,
+    4,
+    "curious",
+    {
+      hairStyle: "frizzy cloud halo",
+      hairColor: "silver white",
+      bodyBuild: "petite soft",
+      heightBand: "short",
+      shoulderShape: "rounded small",
+      posture: "tilted inquisitive",
+      gait: "skipping pad",
+      eyeColor: "glass green",
+      eyeShape: "wide bright",
+      browShape: "high curious",
+      noseShape: "button round",
+      noseBridge: "tiny soft bridge",
+      skinTone: "warm umber",
+      outfit: "star-charted robe",
+      accessory: "floating lens loop",
+      voice: "lilting wondering",
+    },
+  ],
+  [
+    "customer_bronce_hale",
+    "Bronce Hale",
+    ["security_defense_contractor", "repair_maintenance_person"],
+    60,
+    3,
+    "stern",
+    {
+      hairStyle: "high regulation fade",
+      hairColor: "iron gray",
+      bodyBuild: "armored broad",
+      heightBand: "tall",
+      shoulderShape: "square hard",
+      posture: "rigid alert",
+      gait: "marching step",
+      eyeColor: "steel gray",
+      eyeShape: "level sharp",
+      browShape: "flat stern",
+      noseShape: "straight strong",
+      noseBridge: "high straight bridge",
+      skinTone: "cool olive",
+      outfit: "plated guard coat",
+      accessory: "shoulder rank clasp",
+      voice: "clipped command",
+    },
+  ],
+  [
+    "customer_pell_summers",
+    "Pell Summers",
+    ["food_service_restaurant", "general_trader"],
+    80,
+    3,
+    "cheerful",
+    {
+      hairStyle: "round curly mop",
+      hairColor: "warm chestnut",
+      bodyBuild: "plump jolly",
+      heightBand: "average",
+      shoulderShape: "soft broad",
+      posture: "open relaxed",
+      gait: "happy waddle",
+      eyeColor: "warm brown",
+      eyeShape: "crinkled smile",
+      browShape: "soft round",
+      noseShape: "wide friendly",
+      noseBridge: "low soft bridge",
+      skinTone: "rosy tan",
+      outfit: "flour-dusted apron",
+      accessory: "wooden spoon belt",
+      voice: "booming laugh",
+    },
+  ],
+  [
+    "customer_zariah_lune",
+    "Zariah Lune",
+    ["teleport_owner", "portal_transit_company"],
+    66,
+    4,
+    "aloof",
+    {
+      hairStyle: "asymmetric sweep undercut",
+      hairColor: "midnight blue",
+      bodyBuild: "tall lithe",
+      heightBand: "tall-plus",
+      shoulderShape: "angular narrow",
+      posture: "cool detached",
+      gait: "smooth float",
+      eyeColor: "violet glow",
+      eyeShape: "sharp slanted",
+      browShape: "high arched",
+      noseShape: "thin elegant",
+      noseBridge: "high fine bridge",
+      skinTone: "deep cocoa",
+      outfit: "voidsheen wrap coat",
+      accessory: "drifting rune band",
+      voice: "low measured",
+    },
+  ],
+  [
+    "customer_hodgin_marsh",
+    "Hodgin Marsh",
+    ["waste_sanitation_cleanup", "biome_maintenance_repair"],
+    58,
+    2,
+    "easygoing",
+    {
+      hairStyle: "matted side tuft",
+      hairColor: "muddy brown",
+      bodyBuild: "stocky sturdy",
+      heightBand: "short-plus",
+      shoulderShape: "thick rounded",
+      posture: "slouched comfy",
+      gait: "heavy amble",
+      eyeColor: "moss green",
+      eyeShape: "droopy calm",
+      browShape: "bushy low",
+      noseShape: "bulb round",
+      noseBridge: "wide low bridge",
+      skinTone: "earthy brown",
+      outfit: "rubberized work smock",
+      accessory: "looped hose strap",
+      voice: "easy gravel",
+    },
+  ],
+  [
+    "customer_lottie_finch",
+    "Lottie Finch",
+    ["hospitality_inn_hotel_shelter", "food_service_restaurant"],
+    84,
+    3,
+    "warm",
+    {
+      hairStyle: "twin looped buns",
+      hairColor: "honey blonde",
+      bodyBuild: "soft petite",
+      heightBand: "short",
+      shoulderShape: "gentle slope",
+      posture: "welcoming open",
+      gait: "brisk tidy",
+      eyeColor: "amber hazel",
+      eyeShape: "bright round",
+      browShape: "soft curved",
+      noseShape: "small neat",
+      noseBridge: "even soft bridge",
+      skinTone: "warm peach",
+      outfit: "ribboned inn dress",
+      accessory: "ring of brass keys",
+      voice: "bright welcoming",
+    },
+  ],
+  [
+    "customer_garrick_vane",
+    "Garrick Vane",
+    ["exotic_matter_refinery", "security_defense_contractor"],
+    50,
+    4,
+    "intense",
+    {
+      hairStyle: "slicked back widow peak",
+      hairColor: "raven black",
+      bodyBuild: "lean coiled",
+      heightBand: "tall",
+      shoulderShape: "tight square",
+      posture: "predator still",
+      gait: "deliberate prowl",
+      eyeColor: "pale ice blue",
+      eyeShape: "narrow piercing",
+      browShape: "sharp angled",
+      noseShape: "aquiline thin",
+      noseBridge: "high hooked bridge",
+      skinTone: "pale ash",
+      outfit: "sealed hazard suit",
+      accessory: "glowing dosimeter",
+      voice: "quiet edged",
+    },
+  ],
+  [
+    "customer_bex_thornberry",
+    "Bex Thornberry",
+    ["hunter_wild_meat", "biome_farming_rare_foods"],
+    62,
+    2,
+    "blunt",
+    {
+      hairStyle: "rough tied ponytail",
+      hairColor: "dusty auburn",
+      bodyBuild: "rangy tough",
+      heightBand: "average-plus",
+      shoulderShape: "uneven wiry",
+      posture: "ready crouch",
+      gait: "silent track step",
+      eyeColor: "flecked olive",
+      eyeShape: "keen narrow",
+      browShape: "straight low",
+      noseShape: "sharp slim",
+      noseBridge: "lean straight bridge",
+      skinTone: "weathered tan",
+      outfit: "leaf-pattern field cloak",
+      accessory: "antler-handle knife",
+      voice: "flat dry",
+    },
+  ],
+  [
+    "customer_ophel_brightwater",
+    "Ophel Brightwater",
+    ["biome_design_studio", "magic_goods"],
+    78,
+    5,
+    "dreamy",
+    {
+      hairStyle: "flowing wave cascade",
+      hairColor: "seafoam teal",
+      bodyBuild: "tall graceful",
+      heightBand: "tall",
+      shoulderShape: "fluid narrow",
+      posture: "drifting tall",
+      gait: "swaying float",
+      eyeColor: "aqua shimmer",
+      eyeShape: "large dreamy",
+      browShape: "delicate arch",
+      noseShape: "slender soft",
+      noseBridge: "smooth slim bridge",
+      skinTone: "luminous fair",
+      outfit: "layered tide gown",
+      accessory: "shell circlet",
+      voice: "airy melodic",
+    },
+  ],
+  [
+    "customer_klemp_oddfellow",
+    "Klemp Oddfellow",
+    ["general_trader", "repair_maintenance_person"],
+    54,
+    2,
+    "shrewd",
+    {
+      hairStyle: "balding comb-over",
+      hairColor: "graying brown",
+      bodyBuild: "round short",
+      heightBand: "short",
+      shoulderShape: "hunched narrow",
+      posture: "leaning bargaining",
+      gait: "shuffling scurry",
+      eyeColor: "beady black",
+      eyeShape: "squinting small",
+      browShape: "twitchy thin",
+      noseShape: "long pointed",
+      noseBridge: "bumped narrow bridge",
+      skinTone: "sallow tan",
+      outfit: "many-pocketed trade coat",
+      accessory: "coin-laden abacus",
+      voice: "wheedling reedy",
+    },
+  ],
+  [
+    "customer_sena_voss",
+    "Sena Voss",
+    ["exploration_guide", "courier"],
+    68,
+    3,
+    "bold",
+    {
+      hairStyle: "tight cornrow crown",
+      hairColor: "deep espresso",
+      bodyBuild: "athletic firm",
+      heightBand: "average-plus",
+      shoulderShape: "strong level",
+      posture: "confident square",
+      gait: "sure long stride",
+      eyeColor: "warm copper",
+      eyeShape: "wide steady",
+      browShape: "bold straight",
+      noseShape: "broad even",
+      noseBridge: "straight firm bridge",
+      skinTone: "rich deep brown",
+      outfit: "weatherworn trail coat",
+      accessory: "brass trail compass",
+      voice: "clear assured",
+    },
+  ],
 ];
 
 export const HARTHMERE_BUSINESS_CUSTOMER_NPCS_V1: readonly HarthmereBusinessCustomerNpcV1[] =
@@ -6298,6 +6688,216 @@ export function harthmereBusinessCustomerTierForStatsV1(
   return 1;
 }
 
+// HARTHMERE_BUSINESS_SCENARIO_VARIETY_V1
+// Each business only has a handful of base asks (one per real service offer),
+// which made every shift feel repetitive. Instead of hand-authoring hundreds of
+// full asks, we layer two independent, business-agnostic dimensions on top of
+// the base ask at queue-generation time:
+//   1. a customer "persona" that rewrites the request line and shifts the
+//      stakes (patience / difficulty / reward / reputation), and
+//   2. a short greeting/opener.
+// Combined with the base asks this yields hundreds of distinct presented
+// scenarios per business. Selection is seeded from the session id so the queue
+// stays deterministic (server and client agree, and the deterministic-queue
+// test holds), while the strides below are coprime with the pool sizes so every
+// customer in a single (max 12) shift draws a different persona.
+export interface HarthmereBusinessScenarioModifierV1 {
+  id: string;
+  mood: string;
+  linePrefix: string;
+  lineSuffix: string;
+  patienceMultiplier: number;
+  difficultyDelta: number;
+  rewardMultiplier: number;
+  reputationDelta: number;
+}
+
+export const HARTHMERE_BUSINESS_SCENARIO_MODIFIERS_V1: readonly HarthmereBusinessScenarioModifierV1[] =
+  [
+    {
+      id: "regular",
+      mood: "warm",
+      linePrefix: "",
+      lineSuffix: "",
+      patienceMultiplier: 1,
+      difficultyDelta: 0,
+      rewardMultiplier: 1,
+      reputationDelta: 0,
+    },
+    {
+      id: "first_visit",
+      mood: "curious",
+      linePrefix: "First time in here — ",
+      lineSuffix: "",
+      patienceMultiplier: 1.25,
+      difficultyDelta: 0,
+      rewardMultiplier: 1,
+      reputationDelta: 1,
+    },
+    {
+      id: "in_a_hurry",
+      mood: "rushed",
+      linePrefix: "I'm short on time. ",
+      lineSuffix: "",
+      patienceMultiplier: 0.65,
+      difficultyDelta: 1,
+      rewardMultiplier: 1.15,
+      reputationDelta: 0,
+    },
+    {
+      id: "big_spender",
+      mood: "generous",
+      linePrefix: "",
+      lineSuffix: " Coin isn't a problem today.",
+      patienceMultiplier: 1.1,
+      difficultyDelta: 0,
+      rewardMultiplier: 1.5,
+      reputationDelta: 0,
+    },
+    {
+      id: "haggler",
+      mood: "shrewd",
+      linePrefix: "",
+      lineSuffix: " And give me a fair price.",
+      patienceMultiplier: 0.9,
+      difficultyDelta: 1,
+      rewardMultiplier: 0.8,
+      reputationDelta: 0,
+    },
+    {
+      id: "skeptical",
+      mood: "wary",
+      linePrefix: "Not sure you can manage this, but — ",
+      lineSuffix: "",
+      patienceMultiplier: 0.85,
+      difficultyDelta: 1,
+      rewardMultiplier: 1,
+      reputationDelta: 1,
+    },
+    {
+      id: "celebrating",
+      mood: "cheerful",
+      linePrefix: "Big day for me! ",
+      lineSuffix: "",
+      patienceMultiplier: 1.2,
+      difficultyDelta: 0,
+      rewardMultiplier: 1.2,
+      reputationDelta: 1,
+    },
+    {
+      id: "emergency",
+      mood: "panicked",
+      linePrefix: "This can't wait — ",
+      lineSuffix: " Please hurry!",
+      patienceMultiplier: 0.5,
+      difficultyDelta: 2,
+      rewardMultiplier: 1.35,
+      reputationDelta: 1,
+    },
+    {
+      id: "bulk_order",
+      mood: "businesslike",
+      linePrefix: "",
+      lineSuffix: " I'll need this more than once.",
+      patienceMultiplier: 1.15,
+      difficultyDelta: 1,
+      rewardMultiplier: 1.3,
+      reputationDelta: 0,
+    },
+    {
+      id: "vip",
+      mood: "important",
+      linePrefix: "You came highly recommended. ",
+      lineSuffix: "",
+      patienceMultiplier: 0.95,
+      difficultyDelta: 1,
+      rewardMultiplier: 1.4,
+      reputationDelta: 2,
+    },
+    {
+      id: "confused",
+      mood: "unsure",
+      linePrefix: "I might have this wrong, but — ",
+      lineSuffix: "",
+      patienceMultiplier: 1.3,
+      difficultyDelta: 0,
+      rewardMultiplier: 0.95,
+      reputationDelta: 0,
+    },
+    {
+      id: "tipper",
+      mood: "kind",
+      linePrefix: "",
+      lineSuffix: " There's a little extra in it for good work.",
+      patienceMultiplier: 1.05,
+      difficultyDelta: 0,
+      rewardMultiplier: 1.25,
+      reputationDelta: 1,
+    },
+    {
+      id: "returning_fan",
+      mood: "loyal",
+      linePrefix: "Back again — you did great last time. ",
+      lineSuffix: "",
+      patienceMultiplier: 1.2,
+      difficultyDelta: 0,
+      rewardMultiplier: 1.1,
+      reputationDelta: 1,
+    },
+    {
+      id: "tough_customer",
+      mood: "demanding",
+      linePrefix: "",
+      lineSuffix: " And I expect it done right.",
+      patienceMultiplier: 0.8,
+      difficultyDelta: 2,
+      rewardMultiplier: 1.2,
+      reputationDelta: 1,
+    },
+    {
+      id: "quiet",
+      mood: "shy",
+      linePrefix: "Sorry to bother you... ",
+      lineSuffix: "",
+      patienceMultiplier: 1.1,
+      difficultyDelta: 0,
+      rewardMultiplier: 1,
+      reputationDelta: 0,
+    },
+    {
+      id: "frequent_flyer",
+      mood: "breezy",
+      linePrefix: "You know the drill — ",
+      lineSuffix: "",
+      patienceMultiplier: 1,
+      difficultyDelta: 0,
+      rewardMultiplier: 1.05,
+      reputationDelta: 0,
+    },
+  ];
+
+export const HARTHMERE_BUSINESS_SCENARIO_OPENERS_V1: readonly string[] = [
+  "",
+  "Hello there. ",
+  "Hi. ",
+  "Good to see you. ",
+  "Excuse me. ",
+  "Hey. ",
+  "Greetings. ",
+  "Pardon me. ",
+];
+
+// FNV-1a string hash → unsigned 32-bit int. Deterministic, no Math.random, so
+// the generated queue is reproducible across server and client.
+function hashHarthmereScenarioSeedV1(value: string): number {
+  let hash = 2166136261;
+  for (let i = 0; i < value.length; i++) {
+    hash ^= value.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return hash >>> 0;
+}
+
 export function createHarthmereBusinessCustomerQueueV1(input: {
   businessId: string;
   typeId: HarthmereEconomyBusinessTypeIdV1;
@@ -6316,6 +6916,11 @@ export function createHarthmereBusinessCustomerQueueV1(input: {
     ? harthmereBusinessCustomerTierForStatsV1(input.stats)
     : 1;
   let nextTicketNumber = input.nextTicketNumber;
+  const seed = hashHarthmereScenarioSeedV1(
+    `${input.sessionId}:${input.businessId}:${input.typeId}`
+  );
+  const modifiers = HARTHMERE_BUSINESS_SCENARIO_MODIFIERS_V1;
+  const openers = HARTHMERE_BUSINESS_SCENARIO_OPENERS_V1;
   const queue = Array.from(
     { length: Math.max(1, Math.min(12, Math.trunc(input.count))) },
     (_, index) => {
@@ -6326,23 +6931,46 @@ export function createHarthmereBusinessCustomerQueueV1(input: {
         ? preferred
         : HARTHMERE_BUSINESS_CUSTOMER_NPCS_V1;
       const npc = pool[(businessIndex + index * 7 + tier) % pool.length];
+      // The base ask already rotates through every service offer; the
+      // repetitiveness players felt was the identical line + stakes each turn.
+      // So keep the deterministic offer rotation (callers and tests rely on the
+      // first ticket mapping to askTemplates[0] at tier 1) and instead layer an
+      // independent persona + greeting on top so the *presented* scenario
+      // differs every turn. Strides 5 and 3 are coprime with the pool sizes (16
+      // and 8), so each customer in the shift draws a distinct persona/opener.
       const ask =
         definition.askTemplates[
           (index + tier - 1) % definition.askTemplates.length
         ];
+      const modifier = modifiers[(seed * 3 + index * 5) % modifiers.length];
+      const opener = openers[(seed * 7 + index * 3) % openers.length];
+      const askLine = `${opener}${modifier.linePrefix}${ask.line}${modifier.lineSuffix}`;
+      const patience = Math.max(
+        15,
+        Math.round(
+          Math.max(20, ask.patience - (tier - 1) * 5) *
+            modifier.patienceMultiplier
+        )
+      );
       return {
         ticketId: `customer_ticket_${nextTicketNumber++}`,
         npcId: npc.npcId,
         askId: ask.askId,
         requestedOfferId: ask.desiredOfferId,
-        askLine: ask.line,
+        askLine,
         status: "waiting" as const,
         arrivedAtMs: input.nowMs + index * 5000,
-        patience: Math.max(20, ask.patience - (tier - 1) * 5),
-        patienceRemaining: Math.max(20, ask.patience - (tier - 1) * 5),
-        difficulty: ask.difficulty + Math.max(0, tier - 1),
-        rewardGold: ask.rewardGold,
-        reputationDelta: ask.reputationDelta,
+        patience,
+        patienceRemaining: patience,
+        difficulty: Math.max(
+          1,
+          ask.difficulty + Math.max(0, tier - 1) + modifier.difficultyDelta
+        ),
+        rewardGold: Math.max(
+          1,
+          Math.round(ask.rewardGold * modifier.rewardMultiplier)
+        ),
+        reputationDelta: Math.max(0, ask.reputationDelta + modifier.reputationDelta),
         needDelta: ask.needDelta,
         navGoal: ask.navGoal,
       };

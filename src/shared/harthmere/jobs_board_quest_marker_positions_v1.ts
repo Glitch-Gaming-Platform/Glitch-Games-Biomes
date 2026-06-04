@@ -6,6 +6,11 @@ import {
   type HarthmereBusinessOutpostV1,
 } from "@/shared/harthmere/business_customer_simulator_v1";
 import {
+  HARTHMERE_BUSINESS_OWNER_NPC_SEEDS_V1,
+  harthmereBusinessOwnerMarkerIdV151,
+  type HarthmereBusinessOwnerNpcSeedV1,
+} from "@/shared/harthmere/business_owner_npc_seed_v1";
+import {
   harthmereExoticMatterDepositQuestMarkersV1,
   type HarthmereExoticMatterQuestMarkerV1,
 } from "@/shared/harthmere/exotic_matter_caves_v1";
@@ -32,6 +37,7 @@ export type HarthmereJobsBoardQuestMarkerSourceV1 =
   | "live_entity_helper"
   | "business_outpost"
   | "business_outpost_jobs_board"
+  | "business_owner"
   | "business_template_target"
   | "exotic_matter_deposit"
   | "muck_bounty_target"
@@ -128,6 +134,20 @@ function markerFromBusinessTemplateV1(
   };
 }
 
+// HARTHMERE_DELIVERY_RECIPIENT_V151: a delivery whose recipient is a PERSON
+// points at a business owner NPC. Mark them at their authored in-shop position
+// (+1 so the pin sits above the floor), so the player walks the map to find them.
+function markerFromBusinessOwnerV1(
+  seed: HarthmereBusinessOwnerNpcSeedV1
+): HarthmereJobsBoardQuestMarkerPositionV1 {
+  return {
+    markerId: harthmereBusinessOwnerMarkerIdV151(seed.ownerNpcId),
+    label: seed.displayName,
+    position: [seed.position[0], seed.position[1] + 1, seed.position[2]],
+    source: "business_owner",
+  };
+}
+
 function markerFromExoticMatterDepositV1(
   marker: HarthmereExoticMatterQuestMarkerV1
 ): HarthmereJobsBoardQuestMarkerPositionV1 {
@@ -160,6 +180,7 @@ export function harthmereJobsBoardQuestMarkerPositionsV1(): readonly HarthmereJo
       markerFromBusinessOutpostV1(outpost),
       markerFromBusinessOutpostJobsBoardV1(outpost),
     ]),
+    ...HARTHMERE_BUSINESS_OWNER_NPC_SEEDS_V1.map(markerFromBusinessOwnerV1),
     ...HARTHMERE_JOBS_BOARD_BUSINESS_TEMPLATES_V146.map(
       markerFromBusinessTemplateV1
     ).filter(

@@ -16,11 +16,16 @@ import {
   isLiveEntityHelperQuestEligibleEntityV1,
   liveEntityHelperActiveQuestTargetMarkerIdsV1,
   liveEntityHelperQuestDeltasV1,
+  liveEntityHelperQuestEvidenceSinceBaselineV1,
   liveEntityHelperQuestKindForEntityV1,
+  liveEntityHelperQuestObjectiveBaselineV1,
+  liveEntityHelperQuestObjectiveMetV1,
+  liveEntityHelperQuestOfferedForEntityV1,
   liveEntityHelperQuestRewardTextV1,
   liveEntityHelperQuestTargetMarkerForKindV1,
   liveEntityHelperQuestTargetMarkerIdForKindV1,
   liveEntityHelperPrimaryActiveQuestTargetMarkerIdV1,
+  LIVE_ENTITY_HELPER_QUEST_OFFER_RATE_PERCENT_V1,
 } from "../live_entity_helper_quests_v1";
 
 describe("live_entity_helper_quests_v1 - eligibility", () => {
@@ -287,6 +292,119 @@ describe("live_entity_helper_quests_v1 - completion gates", () => {
       repair_voucher: 2,
     });
     assert.equal(deltas.xp.difficulty, "elite");
+  });
+});
+
+describe("live_entity_helper_quests_v1 - accept-time baseline (no instant-complete)", () => {
+  it("does NOT count items the player already held when the quest was accepted", () => {
+    const quest = LIVE_ENTITY_HELPER_QUEST_DEFINITIONS_V1.food_water;
+
+    // Player walks up already carrying the default 5 Road Rations + 2 Clean
+    // Water. Pre-fix, completionEvidence read these raw and the quest was
+    // instantly "done" — the marker flipped straight back to the giver.
+    const current = { inventory: { road_ration: 5, clean_water: 2 } };
+    const baseline = liveEntityHelperQuestObjectiveBaselineV1(quest, current);
+
+    assert.deepEqual(baseline.inventory, { road_ration: 5, clean_water: 2 });
+
+    // With the baseline taken out, NOTHING has been collected yet, so the
+    // objective is not met on accept.
+    const onAccept = liveEntityHelperQuestEvidenceSinceBaselineV1(
+      current,
+      baseline
+    );
+    assert.equal(liveEntityHelperQuestObjectiveMetV1("food_water", onAccept), false);
+  });
+
+  it("completes only once NEW items are collected beyond the baseline", () => {
+    const quest = LIVE_ENTITY_HELPER_QUEST_DEFINITIONS_V1.food_water;
+    const baseline = liveEntityHelperQuestObjectiveBaselineV1(quest, {
+      inventory: { road_ration: 5 },
+    });
+
+    // Gathered exactly the required amounts AFTER accepting.
+    const afterGathering = {
+      inventory: { road_ration: 5 + 3, clean_water: 2 },
+    };
+    const progress = liveEntityHelperQuestEvidenceSinceBaselineV1(
+      afterGathering,
+      baseline
+    );
+    assert.deepEqual(progress.inventory, { road_ration: 3, clean_water: 2 });
+    assert.equal(
+      liveEntityHelperQuestObjectiveMetV1("food_water", progress),
+      true
+    );
+  });
+
+  it("requires a FRESH boss kill after accepting, not a previously-recorded one", () => {
+    const quest = LIVE_ENTITY_HELPER_QUEST_DEFINITIONS_V1.hard_boss;
+    // Boss was already dead/credited at accept time.
+    const baseline = liveEntityHelperQuestObjectiveBaselineV1(quest, {
+      hardBossDefeats: 1,
+    });
+    assert.equal(baseline.hardBossDefeats, 1);
+
+    const stillOnlyOldKill = liveEntityHelperQuestEvidenceSinceBaselineV1(
+      { hardBossDefeats: 1 },
+      baseline
+    );
+    assert.equal(
+      liveEntityHelperQuestObjectiveMetV1("hard_boss", stillOnlyOldKill),
+      false
+    );
+
+    const freshKill = liveEntityHelperQuestEvidenceSinceBaselineV1(
+      { hardBossDefeats: 2 },
+      baseline
+    );
+    assert.equal(
+      liveEntityHelperQuestObjectiveMetV1("hard_boss", freshKill),
+      true
+    );
+  });
+
+  it("treats a missing baseline as count-everything (old in-flight records)", () => {
+    const evidence = liveEntityHelperQuestEvidenceSinceBaselineV1(
+      { inventory: { raw_exotic_matter: 2 } },
+      undefined
+    );
+    assert.equal(
+      liveEntityHelperQuestObjectiveMetV1("exotic_matter", evidence),
+      true
+    );
+  });
+});
+
+describe("live_entity_helper_quests_v1 - quest offer rate (~70%)", () => {
+  it("is a stable per-entity decision (same entity, same answer)", () => {
+    for (const [id, label] of [
+      ["wild-helper", "Frogberry"],
+      ["little-stupid-robot", "little stupid robot"],
+    ] as const) {
+      assert.equal(
+        liveEntityHelperQuestOfferedForEntityV1(id, label),
+        liveEntityHelperQuestOfferedForEntityV1(id, label)
+      );
+    }
+  });
+
+  it("offers a quest to roughly the configured share of eligible entities", () => {
+    let offered = 0;
+    const total = 4000;
+    for (let index = 0; index < total; index += 1) {
+      if (liveEntityHelperQuestOfferedForEntityV1(`ent-${index}`, `NPC ${index}`)) {
+        offered += 1;
+      }
+    }
+    const rate = (offered / total) * 100;
+    // Within ~5 points of the configured rate (70%).
+    assert.ok(
+      Math.abs(rate - LIVE_ENTITY_HELPER_QUEST_OFFER_RATE_PERCENT_V1) <= 5,
+      `offer rate ${rate.toFixed(1)}% should be near ${LIVE_ENTITY_HELPER_QUEST_OFFER_RATE_PERCENT_V1}%`
+    );
+    // And it is neither always-on nor always-off.
+    assert.ok(offered > 0 && offered < total);
   });
 });
 

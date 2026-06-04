@@ -19,14 +19,21 @@ export type HarthmereObjectInteractionKindV1 =
   | "take_photo"
   | "inspect";
 
+/** Physical cooking-station kind for "cook" interactions (campfire/cookpot/oven).
+ *  Mirrors the cookable station kinds in mmo_farming_food_stamina_v1 (excluding
+ *  the station-less "field" recipes). */
+export type HarthmereCookStationKindV1 = "campfire" | "cookpot" | "oven";
+
 export interface HarthmereObjectInteractionV1 {
   kind: HarthmereObjectInteractionKindV1;
   title: string;
   toastVerb: string;
+  /** Set for kind === "cook": which physical station this object represents. */
+  stationKind?: HarthmereCookStationKindV1;
 }
 
 const HARTHMERE_NON_LIVING_OBJECT_RE_V1 =
-  /\b(crates?|chests?|box(?:es)?|barrels?|containers?|caches|satchels?|mailbags?|toolbags?|bags?|baskets?|bins?|lockers?|wardrobes?|cabinets?|shelves|shelf|workbenches|workbench|anvils?|boards?|signs?|posts?|markers?|ledgers?|books?|notes?|carts?|wagons?|lockboxes|strongboxes|stashes|footlockers?|stakes?|stones?|dumm(?:y|ies)|rings?|ropes?|firefl(?:y|ies)|flags?|pots?|fences?|boundar(?:y|ies)|tables?|desks?|mirrors?|moss|towers?|platforms?|offices?|chapels?|materials?|berries|patch(?:es)?|plots?|stretch|spots?|overlooks?|corners?|ovens?|beds?|stands?|cookpots?|pails?|mailboxes?|consoles?|terminals?|grates?|pillars?|candles?|altars?|shrines?|statues?|banners?|lamps?|braziers?|fountains?|wells?|gates?|doors?)\b/i;
+  /\b(crates?|chests?|box(?:es)?|barrels?|containers?|caches|satchels?|mailbags?|toolbags?|bags?|baskets?|bins?|lockers?|wardrobes?|cabinets?|shelves|shelf|workbenches|workbench|anvils?|boards?|signs?|posts?|markers?|ledgers?|books?|notes?|carts?|wagons?|lockboxes|strongboxes|stashes|footlockers?|stakes?|stones?|dumm(?:y|ies)|rings?|ropes?|firefl(?:y|ies)|flags?|pots?|fences?|boundar(?:y|ies)|tables?|desks?|mirrors?|moss|towers?|platforms?|offices?|chapels?|materials?|berries|patch(?:es)?|plots?|stretch|spots?|overlooks?|corners?|ovens?|beds?|stands?|cookpots?|campfires?|firepits?|pails?|mailboxes?|consoles?|terminals?|grates?|pillars?|candles?|altars?|shrines?|statues?|banners?|lamps?|braziers?|fountains?|wells?|gates?|doors?)\b/i;
 
 const HARTHMERE_CONTAINER_OBJECT_RE_V1 =
   /\b(crates?|chests?|box(?:es)?|barrels?|containers?|caches|satchels?|mailbags?|toolbags?|bags?|baskets?|bins?|lockers?|wardrobes?|cabinets?|lockboxes|strongboxes|stashes|footlockers?)\b/i;
@@ -41,7 +48,8 @@ const HARTHMERE_READABLE_OBJECT_RE_V1 =
   /\b(boards?|signs?|posts?|markers?|ledgers?|books?|notes?|mailboxes?|consoles?|terminals?)\b/i;
 const HARTHMERE_CRAFT_STATION_OBJECT_RE_V1 =
   /\b(workbenches|workbench|anvils?)\b/i;
-const HARTHMERE_COOKING_STATION_OBJECT_RE_V1 = /\b(ovens?|cookpots?)\b/i;
+const HARTHMERE_COOKING_STATION_OBJECT_RE_V1 =
+  /\b(ovens?|cookpots?|campfires?|firepits?)\b/i;
 const HARTHMERE_USE_OBJECT_RE_V1 = /\b(pots?|tables?|desks?)\b/i;
 const HARTHMERE_RESOURCE_OBJECT_RE_V1 =
   /\b(berries|berry|muckwad|materials?|patch(?:es)?)\b/i;
@@ -56,9 +64,19 @@ const HARTHMERE_PHOTO_OBJECT_RE_V1 =
 function objectInteractionV1(
   kind: HarthmereObjectInteractionKindV1,
   title: string,
-  toastVerb: string
+  toastVerb: string,
+  stationKind?: HarthmereCookStationKindV1
 ): HarthmereObjectInteractionV1 {
-  return { kind, title, toastVerb };
+  return stationKind ? { kind, title, toastVerb, stationKind } : { kind, title, toastVerb };
+}
+
+/** Resolves which physical cooking station a label/description represents. */
+export function harthmereCookStationKindForTextV1(
+  text: string
+): HarthmereCookStationKindV1 {
+  if (/\bovens?\b/i.test(text)) return "oven";
+  if (/\bcookpots?\b/i.test(text)) return "cookpot";
+  return "campfire";
 }
 
 const HARTHMERE_AUTHORED_OBJECT_INTERACTIONS_V1: ReadonlyMap<
@@ -83,7 +101,12 @@ const HARTHMERE_AUTHORED_OBJECT_INTERACTIONS_V1: ReadonlyMap<
       "Practice",
       "Practiced at"
     ),
-    "carlo's cookpot": objectInteractionV1("cook", "Cook", "Opened cooking at"),
+    "carlo's cookpot": objectInteractionV1(
+      "cook",
+      "Cook",
+      "Opened cooking at",
+      "cookpot"
+    ),
     "charter trade desk": objectInteractionV1("use", "Use Desk", "Used"),
     "chat practice board": objectInteractionV1("read", "Read", "Read"),
     "chest the grove underwater main": objectInteractionV1(
@@ -143,7 +166,12 @@ const HARTHMERE_AUTHORED_OBJECT_INTERACTIONS_V1: ReadonlyMap<
       "Practiced at"
     ),
     "guild project table": objectInteractionV1("use", "Use Table", "Used"),
-    "gus's oven": objectInteractionV1("cook", "Cook", "Opened cooking at"),
+    "gus's oven": objectInteractionV1(
+      "cook",
+      "Cook",
+      "Opened cooking at",
+      "oven"
+    ),
     "harthmere chapel stone": objectInteractionV1(
       "inspect",
       "Inspect",
@@ -330,6 +358,9 @@ function stationTitleForObjectTextV1(text: string) {
   if (/\bcookpots?\b/i.test(text)) {
     return "Cook";
   }
+  if (/\b(campfires?|firepits?)\b/i.test(text)) {
+    return "Cook";
+  }
   if (/\bpots?\b/i.test(text)) {
     return "Use Pot";
   }
@@ -400,6 +431,7 @@ export function harthmereObjectInteractionForLabelV1(input: {
       kind: "cook",
       title: stationTitleForObjectTextV1(text),
       toastVerb: "Opened cooking at",
+      stationKind: harthmereCookStationKindForTextV1(text),
     };
   }
   if (HARTHMERE_CRAFT_STATION_OBJECT_RE_V1.test(text)) {

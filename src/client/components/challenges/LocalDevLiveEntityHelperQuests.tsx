@@ -8,12 +8,14 @@ import {
 import {
   consumeHarthmereItemByItemIdV141,
   grantHarthmereItem,
+  harthmereInventoryCanAcceptItemsV151,
   harthmereInventoryCountByItemIdV141,
 } from "@/client/components/challenges/LocalDevHarthmereInventorySystem";
 import { awardHarthmereXp } from "@/client/components/challenges/LocalDevHarthmereLevelingSystem";
 import {
   LIVE_ENTITY_HELPER_QUEST_EVENT_V1,
   liveEntityHelperQuestDialogKeyV1,
+  liveEntityHelperQuestDialogPhaseV1,
   liveEntityHelperQuestRecordV1,
   readLiveEntityHelperQuestStateV1,
   writeLiveEntityHelperQuestStateV1,
@@ -33,9 +35,13 @@ import {
   getLiveEntityHelperQuestForEntityV1,
   LIVE_ENTITY_HELPER_QUEST_DEFINITIONS_V1,
   liveEntityHelperQuestDeltasV1,
+  liveEntityHelperQuestEvidenceSinceBaselineV1,
+  liveEntityHelperQuestObjectiveBaselineV1,
+  liveEntityHelperQuestOfferedForEntityV1,
   liveEntityHelperQuestRewardTextV1,
   type LiveEntityHelperQuestEntityContextV1,
   type LiveEntityHelperQuestInstanceV1,
+  type LiveEntityHelperQuestObjectiveBaselineV1,
 } from "@/shared/harthmere/live_entity_helper_quests_v1";
 import {
   LIVE_ENTITY_ROBOT_RECHARGE_ITEM_ID_V1,
@@ -130,6 +136,7 @@ export function liveEntityHelperQuestRecordReadyToTurnInV1(record: {
   questId: string;
   entityId: string;
   giverName: string;
+  objectiveBaseline?: LiveEntityHelperQuestObjectiveBaselineV1;
 }): boolean {
   const definition = LIVE_ENTITY_HELPER_QUEST_DEFINITIONS_V1[record.kind];
   if (!definition) {
@@ -143,11 +150,14 @@ export function liveEntityHelperQuestRecordReadyToTurnInV1(record: {
   };
   return canCompleteLiveEntityHelperQuestV1(
     instance,
-    completionEvidence(instance)
+    completionEvidence(instance, undefined, record.objectiveBaseline)
   ).ok;
 }
 
-function completionEvidence(
+// The player's RAW progress (total items held / boss defeats) right now, before
+// any accept-time baseline is taken out. Used both to snapshot the baseline at
+// accept and as the input to completionEvidence.
+function currentRawEvidenceV1(
   quest: LiveEntityHelperQuestInstanceV1,
   liveSnapshot?: LiveEntityHelperQuestLiveSnapshotV1
 ) {
@@ -167,6 +177,20 @@ function completionEvidence(
   };
 }
 
+// Evidence that counts ONLY what was gathered / killed after the quest was
+// accepted: raw progress minus the accept-time baseline. With no baseline (older
+// in-flight records) this is the raw progress, preserving prior behavior.
+function completionEvidence(
+  quest: LiveEntityHelperQuestInstanceV1,
+  liveSnapshot?: LiveEntityHelperQuestLiveSnapshotV1,
+  baseline?: LiveEntityHelperQuestObjectiveBaselineV1
+) {
+  return liveEntityHelperQuestEvidenceSinceBaselineV1(
+    currentRawEvidenceV1(quest, liveSnapshot),
+    baseline
+  );
+}
+
 function markQuestActiveLocallyV1(
   quest: LiveEntityHelperQuestInstanceV1,
   giverPosition?: readonly number[] | null
@@ -178,11 +202,21 @@ function markQuestActiveLocallyV1(
   if (quest.kind === "hard_boss" && !hasActiveHardBossQuest(state)) {
     resetHarthmereCombatNpc(HARTHMERE_LIVE_ENTITY_HELPER_MUCK_BOSS_OFFSET_V1);
   }
+  // Snapshot what the player already holds toward this quest AFTER any boss
+  // reset, so completion later requires NEW items / a fresh kill and the quest
+  // is never instantly "done" on accept (e.g. the default Road Rations).
+  const objectiveBaseline = liveEntityHelperQuestObjectiveBaselineV1(
+    quest,
+    currentRawEvidenceV1(quest)
+  );
   writeLiveEntityHelperQuestStateV1({
     ...state,
     active: {
       ...state.active,
-      [quest.questId]: liveEntityHelperQuestRecordV1(quest, { giverPosition }),
+      [quest.questId]: liveEntityHelperQuestRecordV1(quest, {
+        giverPosition,
+        objectiveBaseline,
+      }),
     },
   });
 }
@@ -221,6 +255,12 @@ async function acceptQuest(
   }
 }
 
+function storedObjectiveBaselineV1(
+  questId: string
+): LiveEntityHelperQuestObjectiveBaselineV1 | undefined {
+  return readLiveEntityHelperQuestStateV1().active[questId]?.objectiveBaseline;
+}
+
 function completeQuestLocallyV1(quest: LiveEntityHelperQuestInstanceV1) {
   const existingState = readLiveEntityHelperQuestStateV1();
   if (
@@ -229,9 +269,27 @@ function completeQuestLocallyV1(quest: LiveEntityHelperQuestInstanceV1) {
   ) {
     return false;
   }
-  const evidence = completionEvidence(quest);
+  const evidence = completionEvidence(
+    quest,
+    undefined,
+    existingState.active[quest.questId]?.objectiveBaseline
+  );
   const check = canCompleteLiveEntityHelperQuestV1(quest, evidence);
   if (!check.ok) {
+    return false;
+  }
+  // HARTHMERE_REWARD_INVENTORY_FIT_V151: refuse the turn-in if the reward items
+  // would not fit, BEFORE consuming the objective items — otherwise a full
+  // backpack silently drops the reward while the quest is marked complete. The
+  // quest stays active and claimable once the player frees space.
+  if (!harthmereInventoryCanAcceptItemsV151(quest.rewards.items)) {
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(
+        new CustomEvent("harthmere-quest-reward-blocked-full-inventory-v151", {
+          detail: { questId: quest.questId, title: quest.title },
+        })
+      );
+    }
     return false;
   }
   const deltas = liveEntityHelperQuestDeltasV1(quest);
@@ -266,7 +324,11 @@ async function completeQuest(
   context: LiveEntityHelperQuestEntityContextV1,
   liveSnapshot: LiveEntityHelperQuestLiveSnapshotV1 | undefined
 ) {
-  const evidence = completionEvidence(quest, liveSnapshot);
+  const evidence = completionEvidence(
+    quest,
+    liveSnapshot,
+    storedObjectiveBaselineV1(quest.questId)
+  );
   const check = canCompleteLiveEntityHelperQuestV1(quest, evidence);
   if (!check.ok) {
     return { ok: false, liveSnapshot: undefined };
@@ -470,10 +532,23 @@ export function useLiveEntityHelperQuestDialogV1(talkingToNPCId: BiomesId) {
     ]
   );
 
-  const quest = useMemo(
-    () => getLiveEntityHelperQuestForEntityV1(questContext),
-    [questContext]
-  );
+  // Only ~70% of otherwise-eligible entities actually hand out a helper quest;
+  // the rest are just normal talkable NPCs. The decision is a stable hash of the
+  // entity, so a given NPC always behaves the same way and an accepted quest
+  // (which could only have been accepted from an offering NPC) still shows for
+  // turn-in.
+  const quest = useMemo(() => {
+    const candidate = getLiveEntityHelperQuestForEntityV1(questContext);
+    if (!candidate) {
+      return undefined;
+    }
+    return liveEntityHelperQuestOfferedForEntityV1(
+      questContext.entityId,
+      questContext.label
+    )
+      ? candidate
+      : undefined;
+  }, [questContext]);
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -546,7 +621,11 @@ export function useLiveEntityHelperQuestDialogV1(talkingToNPCId: BiomesId) {
     state.active[quest.questId] ||
       liveQuestSnapshot?.quests.active[quest.questId] !== undefined
   );
-  const evidence = completionEvidence(quest, liveQuestSnapshot);
+  const evidence = completionEvidence(
+    quest,
+    liveQuestSnapshot,
+    state.active[quest.questId]?.objectiveBaseline
+  );
   const completionCheck = canCompleteLiveEntityHelperQuestV1(quest, evidence);
   const missingText = completionCheck.missing.join(", ");
   const rewardText = liveEntityHelperQuestRewardTextV1(quest);
@@ -676,9 +755,11 @@ export function useLiveEntityHelperQuestDialogV1(talkingToNPCId: BiomesId) {
   return {
     id: liveEntityHelperQuestDialogKeyV1(
       quest.questId,
-      isActive,
-      isCompleted,
-      refreshToken
+      liveEntityHelperQuestDialogPhaseV1(
+        isActive,
+        isCompleted,
+        completionCheck.ok
+      )
     ),
     dialogText: textBlock(statusText),
     actions,

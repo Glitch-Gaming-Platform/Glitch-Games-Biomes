@@ -4,6 +4,11 @@ import {
   HARTHMERE_BIKKIE_SEED_ROWS_V1,
   type HarthmereBikkieItemMetadataV1,
 } from "./mmo_bikkie_farming_food_catalog_v1";
+import {
+  HARTHMERE_CARRY_WEIGHT_LIMIT_V1,
+  harthmereInventoryCarryWeightV1,
+  harthmereInventoryEncumbranceStaminaMultiplierV1,
+} from "./mmo_carry_weight_v1";
 
 export const HARTHMERE_FARMING_FOOD_STAMINA_VERSION_V1 =
   "harthmere-farming-food-stamina-v1" as const;
@@ -78,6 +83,32 @@ export interface HarthmereCookingRecipeV1 {
   metadata?: HarthmereBikkieItemMetadataV1;
 }
 
+/** A single timer-based cooking job sitting in one station's FIFO queue.
+ *  Ingredients are reserved (removed from inventory) at enqueue time; the
+ *  start/ready timestamps are stamped deterministically at enqueue so the
+ *  queue resumes identically across logout/reload. */
+export type HarthmereCookingJobStatusV1 = "pending" | "cooking" | "ready";
+export interface HarthmereCookingJobV1 {
+  jobId: string;
+  recipeId: string;
+  count: number;
+  status: HarthmereCookingJobStatusV1;
+  enqueuedAtMs: number;
+  startedAtMs: number;
+  readyAtMs: number;
+  /** Inputs removed from inventory at enqueue; refunded if the job is cancelled. */
+  reservedInputs: Record<string, number>;
+}
+
+/** Per-physical-station cooking state: one active job + a FIFO queue, keyed in
+ *  state.cooking by a stable station id (placed-placeable ECS id or named landmark). */
+export interface HarthmereCookingStationStateV1 {
+  stationId: string;
+  stationKind: HarthmereCookingStationKindV1;
+  label?: string;
+  jobs: HarthmereCookingJobV1[];
+}
+
 export interface HarthmereFarmingPlotV1 {
   plotId: string;
   seedItemId: string;
@@ -129,6 +160,8 @@ export interface HarthmereFoodStaminaStateV1 {
   plots: Record<string, HarthmereFarmingPlotV1>;
   spawns: Record<string, HarthmereWorldSpawnV1>;
   livestock: Record<string, HarthmereLivestockV1>;
+  /** Timer-based cooking queues keyed by physical station id. */
+  cooking: Record<string, HarthmereCookingStationStateV1>;
 }
 
 export interface HarthmereFoodStaminaResultV1 {
@@ -136,6 +169,8 @@ export interface HarthmereFoodStaminaResultV1 {
   warnings: string[];
   inventoryDeltas: Record<string, number>;
   deathTriggered: boolean;
+  /** Cooking XP earned when a cook job is collected (granted by the reducer). */
+  cookingXpDelta?: number;
 }
 
 function optionalBikkieMetadata(
@@ -473,6 +508,7 @@ export function defaultHarthmereFoodStaminaStateV1(
     plots: {},
     spawns: {},
     livestock: {},
+    cooking: {},
   };
 }
 
@@ -821,6 +857,376 @@ export function cookHarthmereFoodV1(
   }, [], inventoryDeltas);
 }
 
+// ---------------------------------------------------------------------------
+// Timer-based, per-physical-station cooking
+// ---------------------------------------------------------------------------
+//
+// cookHarthmereFoodV1 above is the legacy INSTANT path (kept for back-compat).
+// The functions below implement queued cooking: ingredients are reserved on
+// enqueue, one job cooks at a time per station, additional jobs queue (FIFO)
+// and auto-start as the active one finishes, and finished food waits at the
+// station until collected. All timestamps are stamped at enqueue/cancel so the
+// queue resumes deterministically across logout/reload; tickHarthmereCookingV1
+// only recomputes job *status* from the clock.
+
+/** Shortest/longest real cook time. Authored cookTimeMs is mapped into this band. */
+export const HARTHMERE_COOK_DURATION_MIN_MS_V1 = 20_000;
+export const HARTHMERE_COOK_DURATION_MAX_MS_V1 = 120_000;
+/** Max simultaneously pending+cooking jobs per station (ready jobs do not count). */
+export const HARTHMERE_COOK_QUEUE_CAP_V1 = 5;
+/** Hard cap on TOTAL jobs per station (incl. uncollected `ready` dishes). Bounds
+ *  state growth when finished dishes are never collected. */
+export const HARTHMERE_COOK_STATION_JOBS_MAX_V1 = 20;
+/** A finished dish left uncollected in the pot spoils and disappears after this
+ *  long. This also auto-cleans orphaned stations (e.g. a placed campfire that was
+ *  destroyed): every job eventually finishes, then spoils, then the station is
+ *  pruned — no ECS reconciliation needed. */
+export const HARTHMERE_COOK_SPOIL_MS_V1 = 60 * 60 * 1000;
+
+/** Authored cook-time corpus, computed once, used to normalize durations. */
+const HARTHMERE_COOK_TIME_CORPUS_V1 = (() => {
+  const times = Object.values(HARTHMERE_COOKING_RECIPES_V1)
+    .map((recipe) => Number(recipe.cookTimeMs))
+    .filter((t) => Number.isFinite(t) && t > 0);
+  return {
+    min: times.length ? Math.min(...times) : 0,
+    max: times.length ? Math.max(...times) : 0,
+  };
+})();
+
+/** Maps a recipe's authored cookTimeMs into the [20s, 120s] band (clamp-linear
+ *  across the recipe corpus), then multiplies by the batch count. Monotonic in
+ *  cookTimeMs so harder recipes always take at least as long. */
+export function scaleHarthmereCookDurationMsV1(
+  cookTimeMs: number,
+  count: number,
+): number {
+  const safeCount = Math.max(1, Math.trunc(Number(count) || 1));
+  const { min, max } = HARTHMERE_COOK_TIME_CORPUS_V1;
+  const t = Number(cookTimeMs);
+  const frac =
+    !Number.isFinite(t) || max <= min
+      ? 0
+      : (Math.max(min, Math.min(max, t)) - min) / (max - min);
+  const base =
+    HARTHMERE_COOK_DURATION_MIN_MS_V1 +
+    frac *
+      (HARTHMERE_COOK_DURATION_MAX_MS_V1 - HARTHMERE_COOK_DURATION_MIN_MS_V1);
+  return Math.round(base) * safeCount;
+}
+
+function cookDurationForJobV1(job: HarthmereCookingJobV1): number {
+  const recipe = HARTHMERE_COOKING_RECIPES_V1[job.recipeId];
+  return recipe
+    ? scaleHarthmereCookDurationMsV1(recipe.cookTimeMs, job.count)
+    : Math.max(0, job.readyAtMs - job.startedAtMs);
+}
+
+/** Recomputes each job's status from the clock and FIFO position. The frontmost
+ *  not-yet-ready job is "cooking", later not-ready jobs are "pending", and any
+ *  job whose readyAtMs has elapsed is "ready". Mutates the given station's jobs. */
+function tickStationJobsV1(
+  station: HarthmereCookingStationStateV1,
+  nowMs: number,
+): void {
+  let sawActive = false;
+  for (const job of station.jobs) {
+    if (job.readyAtMs <= nowMs) {
+      job.status = "ready";
+    } else if (!sawActive) {
+      job.status = "cooking";
+      sawActive = true;
+    } else {
+      job.status = "pending";
+    }
+  }
+}
+
+function jobHasSpoiledV1(
+  job: HarthmereCookingJobV1,
+  nowMs: number,
+): boolean {
+  return (
+    job.status === "ready" &&
+    nowMs - job.readyAtMs >= HARTHMERE_COOK_SPOIL_MS_V1
+  );
+}
+
+/** Recomputes statuses, drops spoiled (uncollected > spoil window) dishes, and
+ *  returns undefined when the station has no jobs left (so the caller prunes it).
+ *  Operates on a fresh copy — never mutates the input. */
+function settleStationV1(
+  station: HarthmereCookingStationStateV1,
+  nowMs: number,
+): HarthmereCookingStationStateV1 | undefined {
+  const cloned: HarthmereCookingStationStateV1 = {
+    ...station,
+    jobs: station.jobs.map((job) => ({ ...job })),
+  };
+  tickStationJobsV1(cloned, nowMs);
+  const jobs = cloned.jobs.filter((job) => !jobHasSpoiledV1(job, nowMs));
+  if (jobs.length === 0) {
+    return undefined;
+  }
+  return { ...cloned, jobs };
+}
+
+/** Pure projection over the whole station map: refresh statuses, expire spoiled
+ *  dishes, and prune empty stations. No timestamp mutation. */
+export function tickHarthmereCookingV1(
+  cooking: Record<string, HarthmereCookingStationStateV1>,
+  nowMs: number,
+): Record<string, HarthmereCookingStationStateV1> {
+  const next: Record<string, HarthmereCookingStationStateV1> = {};
+  for (const [stationId, station] of Object.entries(cooking ?? {})) {
+    const settled = settleStationV1(station, nowMs);
+    if (settled) {
+      next[stationId] = settled;
+    }
+  }
+  return next;
+}
+
+/** Re-chains the start/ready timestamps of pending jobs after a removal, leaving
+ *  already-cooking and finished (ready) jobs untouched. The first surviving
+ *  pending job restarts at the cursor (nowMs, or the end of the kept active job). */
+function rebaseStationChainV1(
+  jobs: HarthmereCookingJobV1[],
+  nowMs: number,
+): HarthmereCookingJobV1[] {
+  let cursor = nowMs;
+  return jobs.map((job) => {
+    if (job.status === "ready" || job.readyAtMs <= nowMs) {
+      cursor = Math.max(cursor, job.readyAtMs);
+      return job;
+    }
+    if (job.status === "cooking") {
+      cursor = job.readyAtMs;
+      return job;
+    }
+    const startedAtMs = cursor;
+    const readyAtMs = startedAtMs + cookDurationForJobV1(job);
+    cursor = readyAtMs;
+    return { ...job, startedAtMs, readyAtMs };
+  });
+}
+
+function cookingResult(
+  state: HarthmereFoodStaminaStateV1,
+  warnings: string[],
+  inventory?: Record<string, number>,
+  cooking?: Record<string, HarthmereCookingStationStateV1>,
+  inventoryDeltas: Record<string, number> = {},
+  cookingXpDelta?: number,
+): HarthmereFoodStaminaResultV1 {
+  const next: HarthmereFoodStaminaResultV1 = {
+    state:
+      inventory || cooking
+        ? {
+            ...state,
+            inventory: inventory ?? state.inventory,
+            cooking: cooking ?? state.cooking,
+          }
+        : state,
+    warnings,
+    inventoryDeltas,
+    deathTriggered: false,
+  };
+  if (cookingXpDelta !== undefined) {
+    next.cookingXpDelta = cookingXpDelta;
+  }
+  return next;
+}
+
+/** Queues a recipe at a station: validates the recipe/station/count/queue,
+ *  reserves the ingredients from inventory, and appends a job with deterministic
+ *  chain timestamps (start = max(now, tail.readyAtMs)). */
+export function enqueueHarthmereCookV1(
+  state: HarthmereFoodStaminaStateV1,
+  input: {
+    stationId: string;
+    stationKind?: HarthmereCookingStationKindV1;
+    label?: string;
+    recipeId: string;
+    count?: number;
+    nowMs: number;
+  },
+): HarthmereFoodStaminaResultV1 {
+  if (!input.stationId) {
+    return cookingResult(state, ["cooking_rejected:missing_station_id"]);
+  }
+  const recipe = HARTHMERE_COOKING_RECIPES_V1[input.recipeId];
+  if (!recipe) return cookingResult(state, ["cooking_rejected:unknown_recipe"]);
+  const count = normalizeCookingCount(input.count);
+  if (!count) return cookingResult(state, ["cooking_rejected:invalid_count"]);
+  if (count > recipe.maxBatchCount) {
+    return cookingResult(state, ["cooking_rejected:batch_too_large"]);
+  }
+  const stationKind = input.stationKind ?? "campfire";
+  if (recipe.stationKind !== "field" && stationKind !== recipe.stationKind) {
+    return cookingResult(state, [
+      `cooking_rejected:missing_station:${recipe.stationKind}`,
+    ]);
+  }
+  const existing = state.cooking?.[input.stationId];
+  const jobs = existing ? existing.jobs.map((job) => ({ ...job })) : [];
+  const queuedCount = jobs.filter((job) => job.status !== "ready").length;
+  if (
+    queuedCount >= HARTHMERE_COOK_QUEUE_CAP_V1 ||
+    jobs.length >= HARTHMERE_COOK_STATION_JOBS_MAX_V1
+  ) {
+    return cookingResult(state, ["cooking_rejected:queue_full"]);
+  }
+  // Reservations were already removed from inventory, so availability is just a
+  // check against the current inventory.
+  for (const [itemId, itemCount] of Object.entries(recipe.inputs)) {
+    const warning =
+      itemId === "raw_meat"
+        ? "cooking_rejected:missing_raw_food"
+        : `cooking_rejected:missing_input:${itemId}`;
+    const missing = requireItem(state, itemId, itemCount * count, warning);
+    if (missing) return cookingResult(state, [missing]);
+  }
+  let inventory = { ...state.inventory };
+  const inventoryDeltas: Record<string, number> = {};
+  const reservedInputs: Record<string, number> = {};
+  for (const [itemId, itemCount] of Object.entries(recipe.inputs)) {
+    const amount = itemCount * count;
+    inventory = addItem(inventory, itemId, -amount);
+    inventoryDeltas[itemId] = (inventoryDeltas[itemId] ?? 0) - amount;
+    reservedInputs[itemId] = amount;
+  }
+  const tailReadyAtMs = jobs.length
+    ? jobs[jobs.length - 1].readyAtMs
+    : input.nowMs;
+  const startedAtMs = Math.max(input.nowMs, tailReadyAtMs);
+  const readyAtMs =
+    startedAtMs + scaleHarthmereCookDurationMsV1(recipe.cookTimeMs, count);
+  jobs.push({
+    jobId: `${input.stationId}::${input.recipeId}::${input.nowMs}::${jobs.length}`,
+    recipeId: input.recipeId,
+    count,
+    status: "pending",
+    enqueuedAtMs: input.nowMs,
+    startedAtMs,
+    readyAtMs,
+    reservedInputs,
+  });
+  const cooking = { ...(state.cooking ?? {}) };
+  const station: HarthmereCookingStationStateV1 = {
+    stationId: input.stationId,
+    stationKind,
+    label: input.label ?? existing?.label,
+    jobs,
+  };
+  // settle also clears any sibling dishes that spoiled while away; the freshly
+  // enqueued job keeps the station non-empty.
+  cooking[input.stationId] = settleStationV1(station, input.nowMs) ?? station;
+  return cookingResult(state, [], inventory, cooking, inventoryDeltas);
+}
+
+/** Collects a finished (ready) job's outputs into inventory. Blocks if the
+ *  outputs would push the player over the carry-weight limit. Returns the
+ *  cooking XP to award. Prunes the station once its last job is gone. */
+export function collectHarthmereCookV1(
+  state: HarthmereFoodStaminaStateV1,
+  input: { stationId: string; jobId: string; nowMs: number },
+): HarthmereFoodStaminaResultV1 {
+  const existing = state.cooking?.[input.stationId];
+  if (!existing) return cookingResult(state, ["cooking_rejected:unknown_station"]);
+  const jobs = existing.jobs.map((job) => ({ ...job }));
+  const staged: HarthmereCookingStationStateV1 = { ...existing, jobs };
+  tickStationJobsV1(staged, input.nowMs);
+  const job = jobs.find((candidate) => candidate.jobId === input.jobId);
+  if (!job) return cookingResult(state, ["cooking_rejected:unknown_job"]);
+  if (job.status !== "ready") {
+    return cookingResult(state, ["cooking_rejected:not_ready"]);
+  }
+  const recipe = HARTHMERE_COOKING_RECIPES_V1[job.recipeId];
+  if (!recipe) return cookingResult(state, ["cooking_rejected:unknown_recipe"]);
+  let projected = { ...state.inventory };
+  for (const [itemId, itemCount] of Object.entries(recipe.outputs)) {
+    projected = addItem(projected, itemId, itemCount * job.count);
+  }
+  if (harthmereInventoryCarryWeightV1(projected) > HARTHMERE_CARRY_WEIGHT_LIMIT_V1) {
+    return cookingResult(state, [
+      "cooking_rejected:carry_weight_limit_exceeded",
+    ]);
+  }
+  let inventory = { ...state.inventory };
+  const inventoryDeltas: Record<string, number> = {};
+  for (const [itemId, itemCount] of Object.entries(recipe.outputs)) {
+    const amount = itemCount * job.count;
+    inventory = addItem(inventory, itemId, amount);
+    inventoryDeltas[itemId] = (inventoryDeltas[itemId] ?? 0) + amount;
+  }
+  const remaining = jobs.filter((candidate) => candidate.jobId !== input.jobId);
+  const cooking = { ...(state.cooking ?? {}) };
+  // Removing a finished (past) job never frees the cooking slot earlier, so no
+  // rebase is needed — later jobs keep their fixed timestamps.
+  const settled = remaining.length
+    ? settleStationV1({ ...staged, jobs: remaining }, input.nowMs)
+    : undefined;
+  if (settled) {
+    cooking[input.stationId] = settled;
+  } else {
+    delete cooking[input.stationId];
+  }
+  return cookingResult(
+    state,
+    [],
+    inventory,
+    cooking,
+    inventoryDeltas,
+    recipe.xp * job.count,
+  );
+}
+
+/** Cancels a job. A pending/cooking job refunds its reserved ingredients and
+ *  re-chains the remaining pending jobs earlier. A finished (ready) dish is
+ *  DISCARDED instead — its ingredients were already cooked so nothing is
+ *  refunded; this is the escape hatch when a dish can't be collected (e.g. the
+ *  pack is over the carry-weight limit). */
+export function cancelHarthmereCookV1(
+  state: HarthmereFoodStaminaStateV1,
+  input: { stationId: string; jobId: string; nowMs: number },
+): HarthmereFoodStaminaResultV1 {
+  const existing = state.cooking?.[input.stationId];
+  if (!existing) return cookingResult(state, ["cooking_rejected:unknown_station"]);
+  const jobs = existing.jobs.map((job) => ({ ...job }));
+  const staged: HarthmereCookingStationStateV1 = { ...existing, jobs };
+  tickStationJobsV1(staged, input.nowMs);
+  const job = jobs.find((candidate) => candidate.jobId === input.jobId);
+  if (!job) return cookingResult(state, ["cooking_rejected:unknown_job"]);
+  const isReady = job.status === "ready";
+  let inventory = { ...state.inventory };
+  const inventoryDeltas: Record<string, number> = {};
+  if (!isReady) {
+    // Refund reserved inputs for a not-yet-finished dish. A ready dish's inputs
+    // are already consumed into the food, so discarding it refunds nothing.
+    for (const [itemId, amount] of Object.entries(job.reservedInputs)) {
+      inventory = addItem(inventory, itemId, amount);
+      inventoryDeltas[itemId] = (inventoryDeltas[itemId] ?? 0) + amount;
+    }
+  }
+  const remaining = jobs.filter((candidate) => candidate.jobId !== input.jobId);
+  const cooking = { ...(state.cooking ?? {}) };
+  // Removing a finished (ready) job never frees the cooking slot earlier, so
+  // only re-chain when an active/pending job was removed.
+  const nextJobs = isReady
+    ? remaining
+    : rebaseStationChainV1(remaining, input.nowMs);
+  const settled = nextJobs.length
+    ? settleStationV1({ ...staged, jobs: nextJobs }, input.nowMs)
+    : undefined;
+  if (settled) {
+    cooking[input.stationId] = settled;
+  } else {
+    delete cooking[input.stationId];
+  }
+  return cookingResult(state, [], inventory, cooking, inventoryDeltas);
+}
+
 export function eatHarthmereFoodV1(
   state: HarthmereFoodStaminaStateV1,
   input: { itemId: string; nowMs: number },
@@ -846,8 +1252,13 @@ export function eatHarthmereFoodV1(
   // silently grants up to a full survival-interval of free stamina per meal. Mirrors the
   // drain math in tickHarthmereStaminaV1.
   const elapsedMs = Math.max(0, input.nowMs - lastStaminaTickMs);
-  // Constant drain rate so 100 stamina always equals 2 hours of gameplay (see constant).
-  const drained = (elapsedMs / 60_000) * HARTHMERE_STAMINA_DRAIN_PER_MINUTE_V1;
+  // Constant base drain rate so 100 stamina always equals 2 hours of gameplay (see
+  // constant), accelerated by carry-weight encumbrance — mirrors tickHarthmereStaminaV1.
+  const encumbrance = harthmereInventoryEncumbranceStaminaMultiplierV1(
+    state.inventory
+  );
+  const drained =
+    (elapsedMs / 60_000) * HARTHMERE_STAMINA_DRAIN_PER_MINUTE_V1 * encumbrance;
   const currentStamina = Math.max(0, normalizedStaminaValueV1(state) - drained);
   if (currentStamina <= 0) {
     // Drained to empty before the meal — the player has starved; a subsequent tick
@@ -873,8 +1284,14 @@ export function tickHarthmereStaminaV1(
   const maxStamina = normalizedMaxStaminaV1(state);
   const lastStaminaTickMs = normalizedLastStaminaTickMsV1(state, nowMs);
   const elapsedMs = Math.max(0, nowMs - lastStaminaTickMs);
-  // Constant drain rate so 100 stamina always equals 2 hours of gameplay (see constant).
-  const drained = (elapsedMs / 60_000) * HARTHMERE_STAMINA_DRAIN_PER_MINUTE_V1;
+  // Constant base drain rate so 100 stamina always equals 2 hours of gameplay (see
+  // constant), then accelerated by carry-weight encumbrance: each pound over the limit
+  // compounds the drain (see harthmereEncumbranceStaminaMultiplierV1).
+  const encumbrance = harthmereInventoryEncumbranceStaminaMultiplierV1(
+    state.inventory
+  );
+  const drained =
+    (elapsedMs / 60_000) * HARTHMERE_STAMINA_DRAIN_PER_MINUTE_V1 * encumbrance;
   const nextStamina = Math.max(0, normalizedStaminaValueV1(state) - drained);
   const deathTriggered = nextStamina <= 0 && !state.deadFromStaminaAtMs;
   return result({

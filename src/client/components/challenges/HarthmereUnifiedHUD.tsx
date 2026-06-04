@@ -13,7 +13,9 @@ import {
   reviveHarthmerePlayer,
   useHarthmereAmbientThreats,
   useHarthmereCombatState,
+  useHarthmereFallDamageBridge,
   useHarthmereForwardArcRuntime,
+  useHarthmerePvpIncomingDamageBridgeV1,
   useHarthmereRealtimeCombatAI,
 } from "@/client/components/challenges/LocalDevHarthmereCombat";
 import { HarthmereClassSkillMenuPanel } from "@/client/components/challenges/LocalDevHarthmereClassSkillSystem";
@@ -34,12 +36,17 @@ import { HarthmereGatheringMenuPanel } from "@/client/components/challenges/Loca
 import { HarthmereGuildMenuPanel } from "@/client/components/challenges/LocalDevHarthmereGuildSystem";
 import { HarthmereTradeAuctionMenuPanel } from "@/client/components/challenges/LocalDevHarthmereTradeAuctionSystem";
 import { HarthmereStorageMailRecoveryMenuPanel } from "@/client/components/challenges/LocalDevHarthmereStorageMailRecoverySystem";
+import { HarthmereObjectContainerPanel } from "@/client/components/challenges/HarthmereObjectContainerPanel";
+import { HarthmereCookingStationPanel } from "@/client/components/harthmere_cooking/HarthmereCookingStationPanel";
+import { HarthmereGatheringNodeWorldInteractionV1 } from "@/client/components/challenges/HarthmereGatheringNodeWorldInteractionV1";
 import {
   HarthmereInventoryMenuPanel,
   HarthmereVendorTradePanel,
   cycleHarthmereWeapon,
   ensureHarthmereSpellSlotted,
   ensureHarthmereStarterSwordGranted,
+  ensureHarthmereStarterRepairToolGranted,
+  ensureHarthmereStarterCleanupToolGranted,
   useHarthmereInventoryState,
 } from "@/client/components/challenges/LocalDevHarthmereInventorySystem";
 import { HarthmereLevelingMenuPanel } from "@/client/components/challenges/LocalDevHarthmereLevelingSystem";
@@ -696,6 +703,8 @@ function useHarthmerePlayerSwordVisualBridge() {
     // Give old local-dev saves a sword exactly once. The inventory helper is
     // idempotent, so it is safe when React remounts during development.
     ensureHarthmereStarterSwordGranted();
+    ensureHarthmereStarterRepairToolGranted();
+    ensureHarthmereStarterCleanupToolGranted();
     emitHarthmerePlayerSwordVisual({ action: "grant", drawn: false, itemId });
   }, []);
 
@@ -2532,6 +2541,8 @@ export const HarthmereUnifiedHUD: React.FunctionComponent<{
   useHarthmereAmbientThreats();
   useHarthmereRealtimeCombatAI();
   useHarthmereForwardArcRuntime();
+  useHarthmereFallDamageBridge();
+  useHarthmerePvpIncomingDamageBridgeV1();
   useHarthmereLocalPlayerAttackGestureBridge();
   useHarthmereComprehensiveAnimationRuntimeBridgeV6();
   useHarthmereCombatHotkeys();
@@ -2691,6 +2702,9 @@ export const HarthmereUnifiedHUD: React.FunctionComponent<{
         {runtimeControllers}
         <HarthmereDeathScreenOverlayV139 />
         <HarthmereVendorTradePanel />
+        <HarthmereObjectContainerPanel />
+        <HarthmereCookingStationPanel />
+        <HarthmereGatheringNodeWorldInteractionV1 />
         <HarthmereJobsBoardWorldPromptV141 onOpen={openJobsBoard} />
         <HarthmereHomeConsoleWorldInterfaceV1
           open={homeConsoleOpen}
@@ -2791,6 +2805,9 @@ export const HarthmereUnifiedHUD: React.FunctionComponent<{
         </FloatingPanel>
       )}
       <HarthmereVendorTradePanel />
+      <HarthmereObjectContainerPanel />
+      <HarthmereCookingStationPanel />
+      <HarthmereGatheringNodeWorldInteractionV1 />
       {/* HARTHMERE_JOBS_BOARD_PANEL_V141:
           The live container fetches `/api/harthmere/live_mode_jobs_board_state`
           on mount and replays the server snapshot through every mutation.

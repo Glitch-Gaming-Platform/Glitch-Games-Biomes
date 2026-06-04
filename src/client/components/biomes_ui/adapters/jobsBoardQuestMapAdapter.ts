@@ -5,6 +5,7 @@ import {
   type HarthmereJobsBoardTodoV1,
 } from "../../harthmere_jobs_board/jobsBoardLiveAdapter";
 import { harthmereJobsBoardQuestMarkerPositionForTodoV1 } from "@/shared/harthmere/jobs_board_quest_marker_positions_v1";
+import { formatHarthmereJobTimeRemainingV151 } from "@/shared/harthmere/mmo_jobs_board_authority_v1";
 import type { Vec3 } from "@/shared/math/types";
 import type { MapTrackableQuest } from "../tabs/MapQuestsTab";
 
@@ -35,6 +36,31 @@ export interface BiomesUIJobsBoardMissionStepV1 {
   done: boolean;
 }
 
+// HARTHMERE_JOBS_BOARD_KIND_LABEL_V1:
+// Human-facing label per job kind so an accepted job reads as the work it
+// actually is (a repair shows "Repair", a hunt shows "Hunt") instead of a
+// generic "Accepted job N". This is the fix for the reported bug where a fence
+// repair appeared indistinguishable from — and was eclipsed by — a kill quest.
+const JOBS_BOARD_KIND_LABEL_V1: Record<string, string> = {
+  gather: "Gather",
+  delivery: "Delivery",
+  repair: "Repair",
+  cleanup: "Cleanup",
+  hunt: "Hunt",
+  escort: "Escort",
+  craft: "Craft",
+  medical: "Medical",
+  exploration: "Exploration",
+  construction: "Construction",
+  security: "Security",
+  service: "Service",
+};
+
+export function jobsBoardKindLabelV1(kind: string | undefined): string {
+  if (!kind) return "Job";
+  return JOBS_BOARD_KIND_LABEL_V1[kind] ?? "Job";
+}
+
 const JOBS_BOARD_FALLBACK_POSITION_V1: Vec3 = [
   501.99486179104775,
   71,
@@ -48,8 +74,28 @@ function normalizeJobsBoardSnapshotForBiomesUIV1(
   return normalizeHarthmereJobsBoardSnapshotV1(raw);
 }
 
+export const JOBS_BOARD_MARKER_ID_PREFIX_V1 = "jobs_board_marker:";
+
 function jobsBoardTodoMarkerIdV1(todo: HarthmereJobsBoardTodoV1) {
-  return `jobs_board_marker:${todo.todoId}`;
+  return `${JOBS_BOARD_MARKER_ID_PREFIX_V1}${todo.todoId}`;
+}
+
+// HARTHMERE_STALE_JOBS_BOARD_PIN_V151:
+// A jobs-board active map pin must be dropped once its job is no longer active
+// (completed or abandoned). Otherwise it keeps driving the HUD aid — and, with
+// the world-beacon active-pin override, would keep suppressing other quest
+// beacons — pointing the player at a job they already finished. Only clears a
+// jobs-board pin (never a user-set vendor/property pin), and only against the
+// list of CURRENTLY-active jobs-board marker ids.
+export function shouldClearStaleJobsBoardPinV151(input: {
+  activePinMarkerId: string | undefined;
+  activeJobsBoardMarkerIds: readonly string[];
+}): boolean {
+  const id = input.activePinMarkerId;
+  if (!id || !id.startsWith(JOBS_BOARD_MARKER_ID_PREFIX_V1)) {
+    return false;
+  }
+  return !input.activeJobsBoardMarkerIds.includes(id);
 }
 
 function jobsBoardTodoQuestIdV1(todo: HarthmereJobsBoardTodoV1) {
@@ -90,6 +136,9 @@ function jobsBoardTodoStatusToTrackableStatusV1(
 ): MapTrackableQuest["status"] | undefined {
   if (status === "active") return "active";
   if (status === "completed") return "completed";
+  // Surface failed jobs in the tracker so the player sees the outcome (its map
+  // markers already drop, since only active todos produce landmarks).
+  if (status === "failed") return "failed";
   return undefined;
 }
 
@@ -139,7 +188,8 @@ export function jobsBoardAcceptedJobLandmarksForBiomesUIV1(
 }
 
 export function jobsBoardTrackableQuestsForBiomesUIV1(
-  raw: unknown
+  raw: unknown,
+  nowMs: number = Date.now()
 ): MapTrackableQuest[] {
   const snapshot = normalizeJobsBoardSnapshotForBiomesUIV1(raw);
   if (!snapshot) return [];
@@ -166,26 +216,43 @@ export function jobsBoardTrackableQuestsForBiomesUIV1(
           Number.isFinite(rewardGold) && rewardGold > 0
             ? `${Math.trunc(rewardGold)} gold`
             : undefined,
+        // The job's accept-window countdown (jobs are timed; quests are not).
+        timeRemaining:
+          status === "active"
+            ? formatHarthmereJobTimeRemainingV151(todo.dueAtMs, nowMs)
+            : undefined,
       },
     ];
   });
 }
 
 export function activeJobsBoardMissionStepsForBiomesUIV1(
-  raw: unknown
+  raw: unknown,
+  nowMs: number = Date.now()
 ): BiomesUIJobsBoardMissionStepV1[] {
   const snapshot = normalizeJobsBoardSnapshotForBiomesUIV1(raw);
   if (!snapshot) return [];
   return snapshot.myTodos
     .filter((todo) => todo.status === "active")
-    .map((todo, index) => ({
-      id: jobsBoardTodoQuestIdV1(todo),
-      title: `Accepted job ${index + 1}`,
-      objective:
+    .map((todo) => {
+      const baseObjective =
         todo.todoText ||
-        `Complete accepted board job: ${todo.title || todo.jobId}`,
-      done: false,
-    }));
+        `Complete accepted board job: ${todo.title || todo.jobId}`;
+      const kindLabel = jobsBoardKindLabelV1(todo.kind);
+      // Show the accept-window countdown on the quest entry (jobs are timed).
+      const timeLabel = formatHarthmereJobTimeRemainingV151(todo.dueAtMs, nowMs);
+      return {
+        id: jobsBoardTodoQuestIdV1(todo),
+        // Show the real job title (e.g. "Patch the Safe-Zone Fence") instead of
+        // a generic "Accepted job N", and prefix the objective with the job kind
+        // so the player can tell a repair from a hunt at a glance.
+        title: todo.title || todo.jobId || "Accepted Job",
+        objective: timeLabel
+          ? `[${kindLabel}] ${baseObjective} (${timeLabel})`
+          : `[${kindLabel}] ${baseObjective}`,
+        done: false,
+      };
+    });
 }
 
 export function firstActiveJobsBoardQuestTitleForBiomesUIV1(raw: unknown) {

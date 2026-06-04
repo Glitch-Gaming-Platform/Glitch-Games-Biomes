@@ -10,6 +10,7 @@ import {
   HARTHMERE_QUEST_OBJECT_MARKER_VERSION_V145,
   HARTHMERE_QUEST_OBJECT_MARKER_RENDER_POLICY_V146,
   HARTHMERE_QUEST_OBJECT_MARKERS_V145,
+  harthmereResolveWorldQuestBeaconMarkerIdV151,
   activeHarthmereQuestMarkerIdV145,
   createHarthmereActiveQuestMarkerBeaconV145,
   createHarthmereQuestObjectMarkerAnchorV146,
@@ -36,6 +37,60 @@ import {
   SNAPSHOT_GROVE_QUESTS_V75,
 } from "@/shared/harthmere/snapshot_grove_content_v75";
 import * as THREE from "three";
+
+describe("harthmereResolveWorldQuestBeaconMarkerIdV151 (cross-system eclipse)", () => {
+  it("shows the helper/grove beacon when there is no active pin", () => {
+    assert.equal(
+      harthmereResolveWorldQuestBeaconMarkerIdV151({
+        liveEntityHelperMarkerId: "boss_marker",
+        snapshotGroveMarkerId: "grove_marker",
+      }),
+      "boss_marker"
+    );
+  });
+
+  it("falls back to the snapshot grove beacon when no helper marker", () => {
+    assert.equal(
+      harthmereResolveWorldQuestBeaconMarkerIdV151({
+        snapshotGroveMarkerId: "grove_marker",
+      }),
+      "grove_marker"
+    );
+  });
+
+  it("suppresses the boss beacon while navigating to a jobs-board objective", () => {
+    // The reported bug: a freshly-accepted fence repair (jobs-board pin) was
+    // eclipsed by the boss "kill a monster" world beacon.
+    assert.equal(
+      harthmereResolveWorldQuestBeaconMarkerIdV151({
+        liveEntityHelperMarkerId: "boss_marker",
+        snapshotGroveMarkerId: "grove_marker",
+        activePinMarkerId: "jobs_board_marker:todo-123",
+      }),
+      undefined
+    );
+  });
+
+  it("keeps the beacon when the active pin IS the quest target", () => {
+    assert.equal(
+      harthmereResolveWorldQuestBeaconMarkerIdV151({
+        liveEntityHelperMarkerId: "boss_marker",
+        activePinMarkerId: "boss_marker",
+      }),
+      "boss_marker"
+    );
+  });
+
+  it("ignores non-jobs-board pins (e.g. a located vendor)", () => {
+    assert.equal(
+      harthmereResolveWorldQuestBeaconMarkerIdV151({
+        liveEntityHelperMarkerId: "boss_marker",
+        activePinMarkerId: "vendor_marker:smith",
+      }),
+      "boss_marker"
+    );
+  });
+});
 
 const meshColors = (root: THREE.Object3D): number[] => {
   const colors: number[] = [];

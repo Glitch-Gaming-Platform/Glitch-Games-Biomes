@@ -3,6 +3,7 @@ import type { Change, ProposedChange } from "@/shared/ecs/change";
 import { secondsSinceEpoch } from "@/shared/ecs/config";
 import { EntityDescription, QuestGiver } from "@/shared/ecs/gen/components";
 import { HARTHMERE_BUSINESS_OWNER_NPC_SEEDS_V1 } from "@/shared/harthmere/business_owner_npc_seed_v1";
+import { harthmereBusinessOwnerRoleClothingV1 } from "@/shared/harthmere/business_npc_cosmetics_v1";
 import {
   makeHarthmereNpcAppearanceConfig,
   withHarthmereAppearanceMarker,
@@ -49,10 +50,21 @@ export function buildHarthmereBusinessOwnerNpcSeedChangesV1(input: {
     // Deterministic, per-owner appearance — keyed off the stable entity id and
     // the owner's name/role so every shopkeeper looks distinct (same generator
     // the Grove NPCs and player avatars use).
+    // HARTHMERE_BUSINESS_OWNER_DISTINCT_LOOK_V1: pass the SAME explicit
+    // role-based clothing (with a distinctive hat) that business staff/customers
+    // get, instead of letting the generic auto-derived set make owners look
+    // bland/hatless. Face + body still vary per entity id, so two owners of the
+    // same role share an outfit silhouette but not a face.
+    const { role, clothing } = harthmereBusinessOwnerRoleClothingV1({
+      businessType: seed.businessType,
+      roleTitle: seed.roleTitle,
+    });
     const appearance = makeHarthmereNpcAppearanceConfig({
       id: seed.entityId,
       name: seed.displayName,
+      role,
       roleHint: `${seed.roleTitle} (${seed.businessType})`,
+      clothing,
       forwardAxis: "minusZ",
       source: HARTHMERE_BUSINESS_OWNER_NPC_SEED_SOURCE_V1,
     });
@@ -68,12 +80,15 @@ export function buildHarthmereBusinessOwnerNpcSeedChangesV1(input: {
       },
       nowSeconds
     );
-    // HARTHMERE_BUSINESS_NPC_UNIQUE_VOXEL_V1: npcEntity assigns the uniform
-    // default appearance_component/wearing for the player-like human type, which
-    // made every owner render identically through the player_mesh pipeline. These
-    // NPCs render via the deterministic voxel generator off their unique
-    // harthmere:* markers, so drop the uniform cosmetics (also keeps the player_
-    // mesh per-id varied fallback in play if voxel routing is ever bypassed).
+    // HARTHMERE_BUSINESS_NPC_PLAYER_AVATAR_PARITY_V199: npcEntity assigns a
+    // UNIFORM default appearance_component/wearing for the player-like human
+    // type, which made every owner render identically through the player_mesh
+    // pipeline. Drop those uniform cosmetics so the renderer's deterministic
+    // per-id rich-appearance fallback (snapshotRichNpc*FallbackV69) engages,
+    // giving each shopkeeper a distinct, clothed, animated PLAYER/Grove-style
+    // avatar — the same design as the player, Grove townsfolk, Billy/Donnie/Max
+    // (NOT the blocky voxel NPC design). See makeNpcMesh in
+    // client/game/resources/npcs.ts.
     delete (base as { appearance_component?: unknown }).appearance_component;
     delete (base as { wearing?: unknown }).wearing;
     const entity = {

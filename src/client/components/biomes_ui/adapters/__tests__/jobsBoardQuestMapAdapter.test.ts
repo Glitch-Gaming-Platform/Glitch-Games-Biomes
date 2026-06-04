@@ -5,6 +5,7 @@ import {
   jobsBoardTrackableQuestsForBiomesUIV1,
   activeJobsBoardMissionStepsForBiomesUIV1,
   firstActiveJobsBoardLandmarkForBiomesUIV1,
+  shouldClearStaleJobsBoardPinV151,
 } from "../jobsBoardQuestMapAdapter";
 import { harthmereJobsBoardQuestMarkerPositionForIdV1 } from "@/shared/harthmere/jobs_board_quest_marker_positions_v1";
 import {
@@ -132,7 +133,10 @@ describe("BiomesUI jobs board quest map adapter", () => {
       "accepted bounty map marker must be inside authored Muck territory"
     );
 
-    const quests = jobsBoardTrackableQuestsForBiomesUIV1(snapshot);
+    // Give the accepted todo a known accept-window deadline + a fixed nowMs so the
+    // countdown label (jobs are timed) is deterministic.
+    (snapshot.myTodos[0] as any).dueAtMs = 1000 + 2 * 60 * 60 * 1000; // 2h after now
+    const quests = jobsBoardTrackableQuestsForBiomesUIV1(snapshot, 1000);
     assert.deepEqual(quests, [
       {
         questId: "jobs_board:harthmere_job_todo_7",
@@ -141,6 +145,7 @@ describe("BiomesUI jobs board quest map adapter", () => {
         status: "active",
         firstMarkerId: "jobs_board_marker:harthmere_job_todo_7",
         reward: "1200 gold",
+        timeRemaining: "2h 0m left",
       },
     ]);
 
@@ -151,7 +156,7 @@ describe("BiomesUI jobs board quest map adapter", () => {
     assert.ok(steps[0].objective.includes("Clear the Muckwad Patch"));
   });
 
-  it("does not keep stale cancelled or failed jobs on the active quest map", () => {
+  it("drops markers for non-active todos, but surfaces completed AND failed in the tracker", () => {
     const snapshot = acceptedJobsBoardSnapshot();
     snapshot.myTodos = [
       { ...snapshot.myTodos[0], todoId: "completed_todo", status: "completed" },
@@ -159,12 +164,58 @@ describe("BiomesUI jobs board quest map adapter", () => {
       { ...snapshot.myTodos[0], todoId: "cancelled_todo", status: "cancelled" },
     ] as any;
 
+    // No active todos -> no map markers (failed/completed/cancelled never show).
     const landmarks = jobsBoardAcceptedJobLandmarksForBiomesUIV1(snapshot);
     assert.equal(landmarks.length, 0);
 
+    // The tracker surfaces completed AND failed (so the player sees the outcome);
+    // cancelled is dropped.
     const quests = jobsBoardTrackableQuestsForBiomesUIV1(snapshot);
     assert.deepEqual(quests.map((quest) => [quest.questId, quest.status]), [
       ["jobs_board:completed_todo", "completed"],
+      ["jobs_board:failed_todo", "failed"],
     ]);
+  });
+});
+
+describe("shouldClearStaleJobsBoardPinV151", () => {
+  it("clears a jobs-board pin whose job is no longer active", () => {
+    assert.equal(
+      shouldClearStaleJobsBoardPinV151({
+        activePinMarkerId: "jobs_board_marker:done-todo",
+        activeJobsBoardMarkerIds: ["jobs_board_marker:other-todo"],
+      }),
+      true
+    );
+  });
+
+  it("keeps a jobs-board pin that is still active", () => {
+    assert.equal(
+      shouldClearStaleJobsBoardPinV151({
+        activePinMarkerId: "jobs_board_marker:todo-1",
+        activeJobsBoardMarkerIds: ["jobs_board_marker:todo-1"],
+      }),
+      false
+    );
+  });
+
+  it("never clears a non-jobs-board pin (e.g. a located vendor/property)", () => {
+    assert.equal(
+      shouldClearStaleJobsBoardPinV151({
+        activePinMarkerId: "vendor_marker:smith",
+        activeJobsBoardMarkerIds: [],
+      }),
+      false
+    );
+  });
+
+  it("does nothing when there is no active pin", () => {
+    assert.equal(
+      shouldClearStaleJobsBoardPinV151({
+        activePinMarkerId: undefined,
+        activeJobsBoardMarkerIds: [],
+      }),
+      false
+    );
   });
 });

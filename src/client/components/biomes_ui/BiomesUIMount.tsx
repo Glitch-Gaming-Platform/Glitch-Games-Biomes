@@ -16,6 +16,8 @@ import { BiomesUIVitalsPanel } from "./BiomesUIVitalsPanel";
 import { HarthmereJobsBoardWorldInteractionV146 } from "@/client/components/harthmere_jobs_board/HarthmereJobsBoardWorldInteractionV146";
 import { HarthmereBusinessWorldInteractionV1 } from "@/client/components/harthmere_business/HarthmereBusinessWorldInteractionV1";
 import { HarthmerePropertyForSaleWorldInteractionV1 } from "@/client/components/harthmere_building/HarthmerePropertyForSaleWorldInteractionV1";
+import { HarthmereGatheringNodeWorldInteractionV1 } from "@/client/components/challenges/HarthmereGatheringNodeWorldInteractionV1";
+import { BIOMES_UI_LOCATE_ON_MAP_EVENT_V1 } from "./adapters/mapPinnedDestination";
 import type { TabKey } from "./BiomesUITypes";
 
 function truthy(value: string | undefined | null): boolean {
@@ -72,6 +74,21 @@ export const BiomesUIMount: React.FunctionComponent<{
     setEnabled(forceEnabled || isEnabled());
   }, [forceEnabled]);
 
+  // "Locate on map": when any panel fires the locate request, open the Map tab.
+  // The Map tab itself centers on the pin (it reads the recent active pin on
+  // mount, since this tab switch happens after the event fired).
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+    function onLocate() {
+      setActiveTab("map");
+    }
+    window.addEventListener(BIOMES_UI_LOCATE_ON_MAP_EVENT_V1, onLocate);
+    return () =>
+      window.removeEventListener(BIOMES_UI_LOCATE_ON_MAP_EVENT_V1, onLocate);
+  }, []);
+
   // Allow toggling at runtime via key combo: Shift+Alt+B.
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -104,6 +121,7 @@ export const BiomesUIMount: React.FunctionComponent<{
         onActiveTabChange={live.onActiveTabChange}
         hotbar={live.hotbar}
         adapters={live.adapters}
+        shortcutOverrides={live.shortcuts}
       />
       <HarthmereJobsBoardWorldInteractionV146
         suppressPrompt={activeTab !== null}
@@ -112,6 +130,9 @@ export const BiomesUIMount: React.FunctionComponent<{
         suppressPrompt={activeTab !== null}
       />
       <HarthmerePropertyForSaleWorldInteractionV1
+        suppressPrompt={activeTab !== null}
+      />
+      <HarthmereGatheringNodeWorldInteractionV1
         suppressPrompt={activeTab !== null}
       />
       <BiomesUITutorialCueBar />

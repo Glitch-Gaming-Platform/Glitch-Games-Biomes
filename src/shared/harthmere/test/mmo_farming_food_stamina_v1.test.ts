@@ -26,6 +26,11 @@ import {
   waterHarthmereCropV1,
 } from "../mmo_farming_food_stamina_v1";
 import {
+  HARTHMERE_ENCUMBRANCE_STAMINA_DRAIN_FACTOR_PER_LB_V1,
+  harthmereEncumbranceStaminaMultiplierV1,
+  harthmereInventoryCarryWeightV1,
+} from "../mmo_carry_weight_v1";
+import {
   HARTHMERE_BIKKIE_FOOD_ROWS_V1,
   HARTHMERE_BIKKIE_RECIPE_ROWS_V1,
   HARTHMERE_BIKKIE_SEED_ROWS_V1,
@@ -403,6 +408,90 @@ describe("mmo_farming_food_stamina_v1", () => {
     );
     assert.equal(atSurvival.state.stamina, 0);
     assert.equal(atSurvival.deathTriggered, true);
+  });
+
+  it("drains stamina faster when carrying weight over the limit, and at the base rate otherwise", () => {
+    // steel_sword weighs 5 lb each (tools). 6 = 30 lb → 5 lb over the 25 lb limit.
+    const carryWeight = harthmereInventoryCarryWeightV1({ steel_sword: 6 });
+    assert.equal(carryWeight, 30);
+    const multiplier = harthmereEncumbranceStaminaMultiplierV1(carryWeight);
+    assert.ok(
+      Math.abs(
+        multiplier -
+          Math.pow(HARTHMERE_ENCUMBRANCE_STAMINA_DRAIN_FACTOR_PER_LB_V1, 5)
+      ) < 1e-9
+    );
+    assert.ok(multiplier > 1);
+
+    const oneMinute = 60_000;
+    const baseState = {
+      ...defaultHarthmereFoodStaminaStateV1("player_light", NOW),
+      // Default inventory (road_ration ×2 = 2 lb) is well under the limit.
+      stamina: 100,
+      maxStamina: 100,
+    };
+    const overState = {
+      ...defaultHarthmereFoodStaminaStateV1("player_heavy", NOW),
+      inventory: { steel_sword: 6 },
+      stamina: 100,
+      maxStamina: 100,
+    };
+
+    const baseDrain =
+      100 - tickHarthmereStaminaV1(baseState, NOW + oneMinute).state.stamina;
+    const overDrain =
+      100 - tickHarthmereStaminaV1(overState, NOW + oneMinute).state.stamina;
+
+    // The light player drains at exactly the constant base rate (no penalty).
+    assert.ok(Math.abs(baseDrain - HARTHMERE_STAMINA_DRAIN_PER_MINUTE_V1) < 1e-9);
+    // The overweight player drains by the compounded encumbrance multiplier.
+    assert.ok(Math.abs(overDrain - baseDrain * multiplier) < 1e-9);
+  });
+
+  it("does not penalize stamina drain at exactly the carry-weight limit", () => {
+    // steel_sword ×5 = 25 lb = the limit exactly → no encumbrance penalty.
+    assert.equal(harthmereInventoryCarryWeightV1({ steel_sword: 5 }), 25);
+    const atLimit = {
+      ...defaultHarthmereFoodStaminaStateV1("player_at_limit", NOW),
+      inventory: { steel_sword: 5 },
+      stamina: 100,
+      maxStamina: 100,
+    };
+    const oneHour = 60 * 60_000;
+    const after = tickHarthmereStaminaV1(atLimit, NOW + oneHour);
+    // Base rate = 50 stamina/hour, unchanged by the at-limit load.
+    assert.equal(after.state.stamina, 50);
+  });
+
+  it("applies the encumbrance penalty to the pending drain when eating while overweight", () => {
+    const food = Object.values(HARTHMERE_FOOD_DEFINITIONS_V1).find(
+      (f) => f.edible !== false && f.staminaRestore > 0
+    );
+    assert.ok(food, "expected at least one edible food definition");
+    const overState = {
+      ...defaultHarthmereFoodStaminaStateV1("player_heavy_eater", NOW),
+      // Overweight load plus one unit of the food being eaten.
+      inventory: { steel_sword: 6, [food!.itemId]: 1 },
+      // Start mid-bar so the restored meal does not clamp at max and hide the penalty.
+      stamina: 50,
+      maxStamina: 100,
+    };
+    const multiplier = harthmereEncumbranceStaminaMultiplierV1(
+      harthmereInventoryCarryWeightV1(overState.inventory)
+    );
+    assert.ok(multiplier > 1);
+    const oneMinute = 60_000;
+    const result = eatHarthmereFoodV1(overState, {
+      itemId: food!.itemId,
+      nowMs: NOW + oneMinute,
+    });
+    const pendingDrain =
+      HARTHMERE_STAMINA_DRAIN_PER_MINUTE_V1 * multiplier;
+    const expected = Math.min(
+      100,
+      50 - pendingDrain + food!.staminaRestore
+    );
+    assert.ok(Math.abs(result.state.stamina - expected) < 1e-9);
   });
 
   it("normalizes malformed stamina values instead of skipping death checks", () => {

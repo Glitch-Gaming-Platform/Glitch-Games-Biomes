@@ -104,6 +104,124 @@ export interface HarthmereJobsBoardRequirementV1 {
   targetId?: string;
   targetName?: string;
   mapMarkerId?: string;
+  // HARTHMERE_REPAIR_TOOL_REQUIREMENT_V151: a tool ACTION (e.g. "repair") that
+  // must be satisfied by an EQUIPPED tool to do the work. When the player lacks
+  // it, the quest layer surfaces a "go get the tool" sub-objective instead of
+  // letting the job complete. `requiredToolId` pins a specific tool item.
+  requiredToolAction?: string;
+  requiredToolId?: string;
+  // HARTHMERE_DELIVERY_V151: delivery semantics. `recipientNpcId` makes the
+  // recipient a PERSON (a business owner) the player hands the parcel to by
+  // talking to them; otherwise the recipient is the PLACE at `mapMarkerId`.
+  // `pickupMarkerId`, when set, means the parcel must be COLLECTED there first
+  // (so it is NOT auto-granted on accept); otherwise the parcel (`itemId`) is
+  // placed in the player's inventory on accept.
+  recipientNpcId?: string;
+  pickupMarkerId?: string;
+}
+
+// HARTHMERE_JOB_TOOL_SUBOBJECTIVE_V151: when a job requirement needs a tool the
+// player has not equipped, this turns it into a directive the quest layer shows
+// as a "get the tool first" sub-objective (with its own marker), instead of
+// letting the job silently complete without the tool ever being used.
+export interface HarthmereJobToolSubObjectiveV151 {
+  needsTool: true;
+  requiredToolAction: string;
+  requiredToolId?: string;
+  message: string;
+}
+
+export function harthmereJobRequirementToolSubObjectiveV151(input: {
+  requirements?: HarthmereJobsBoardRequirementV1[];
+  hasEquippedToolForAction: (action: string) => boolean;
+  hasEquippedToolId?: (itemId: string) => boolean;
+}): HarthmereJobToolSubObjectiveV151 | undefined {
+  for (const req of input.requirements ?? []) {
+    if (
+      req.requiredToolId &&
+      input.hasEquippedToolId &&
+      !input.hasEquippedToolId(req.requiredToolId)
+    ) {
+      return {
+        needsTool: true,
+        requiredToolAction: req.requiredToolAction ?? "repair",
+        requiredToolId: req.requiredToolId,
+        message:
+          "Equip the required tool to complete this job. Acquire it from a vendor or craft it, then return to the marked spot.",
+      };
+    }
+    const action = req.requiredToolAction;
+    if (action && !input.hasEquippedToolForAction(action)) {
+      return {
+        needsTool: true,
+        requiredToolAction: action,
+        message: `Equip a ${action} tool to complete this job. Acquire one from a vendor or craft it, then return to the marked spot.`,
+      };
+    }
+  }
+  return undefined;
+}
+
+// HARTHMERE_DELIVERY_V151: marker-id prefix for a business-owner recipient. Kept
+// in sync with harthmereBusinessOwnerMarkerIdV151 (inlined here to avoid pulling
+// the heavy business-owner/outpost module graph into the authority reducer).
+export const HARTHMERE_BUSINESS_OWNER_MARKER_PREFIX_V151 = "harthmere_owner:";
+
+export type HarthmereDeliveryRecipientV151 =
+  | { kind: "person"; ownerNpcId: string; markerId: string }
+  | { kind: "place"; markerId?: string };
+
+export interface HarthmereDeliveryPlanV151 {
+  // The parcel carried/handed off (a requirement itemId), if any.
+  parcelItemId?: string;
+  parcelCount: number;
+  // Grant the parcel to the player on accept (true), or require collecting it at
+  // a pickup location first (false).
+  grantOnAccept: boolean;
+  pickupMarkerId?: string;
+  recipient: HarthmereDeliveryRecipientV151;
+}
+
+export function harthmereDeliveryRequirementV151(
+  job:
+    | { kind?: string; requirements?: HarthmereJobsBoardRequirementV1[] }
+    | undefined
+): HarthmereJobsBoardRequirementV1 | undefined {
+  if (!job || job.kind !== "delivery") {
+    return undefined;
+  }
+  return (job.requirements ?? []).find(
+    (req) => req.recipientNpcId || req.itemId
+  );
+}
+
+// Pure delivery plan: where the parcel comes from (granted on accept vs picked
+// up), and who/where it goes to (a person owner vs a place). Returns undefined
+// for non-delivery jobs or deliveries with neither a parcel nor a recipient.
+export function harthmereDeliveryPlanV151(
+  job:
+    | { kind?: string; requirements?: HarthmereJobsBoardRequirementV1[] }
+    | undefined
+): HarthmereDeliveryPlanV151 | undefined {
+  const req = harthmereDeliveryRequirementV151(job);
+  if (!req) {
+    return undefined;
+  }
+  const recipient: HarthmereDeliveryRecipientV151 = req.recipientNpcId
+    ? {
+        kind: "person",
+        ownerNpcId: req.recipientNpcId,
+        markerId: `${HARTHMERE_BUSINESS_OWNER_MARKER_PREFIX_V151}${req.recipientNpcId}`,
+      }
+    : { kind: "place", markerId: req.mapMarkerId ?? req.targetId };
+  const hasPickup = Boolean(req.pickupMarkerId);
+  return {
+    parcelItemId: req.itemId,
+    parcelCount: Math.max(1, req.count ?? 1),
+    grantOnAccept: Boolean(req.itemId) && !hasPickup,
+    pickupMarkerId: req.pickupMarkerId,
+    recipient,
+  };
 }
 
 export interface HarthmereJobsBoardRewardItemV146 {
@@ -230,6 +348,12 @@ export interface HarthmereJobsBoardMutationRequestV1 {
   completionNote?: string;
   questTodoId?: string;
   completedTargetId?: string;
+  // HARTHMERE_REPAIR_TOOL_COMPLETION_V151: tool action actually used to do the
+  // work (e.g. "repair"), set by the client only when the player performed the
+  // task with the EQUIPPED tool. The server gates completion of any requirement
+  // that declares `requiredToolAction` on this matching — so a repair job cannot
+  // be turned in without the repair tool ever being used.
+  usedToolAction?: string;
 }
 
 export interface HarthmereJobsBoardMutationContextV1 {
@@ -511,8 +635,12 @@ function normalizeRequirements(requirements: HarthmereJobsBoardRequirementV1[] |
     const mapMarkerId = typeof req.mapMarkerId === "string" && req.mapMarkerId.trim() ? req.mapMarkerId.trim().slice(0, 120) : undefined;
     const count = req.count === undefined ? undefined : positiveInt(req.count, 1);
     const serviceUnits = req.serviceUnits === undefined ? undefined : positiveInt(req.serviceUnits, 1);
-    if (!itemId && !serviceKind && !targetId) continue;
-    out.push({ itemId, count, serviceKind, serviceUnits, targetId, targetName, mapMarkerId });
+    const requiredToolAction = typeof req.requiredToolAction === "string" && req.requiredToolAction.trim() ? req.requiredToolAction.trim().slice(0, 40) : undefined;
+    const requiredToolId = typeof req.requiredToolId === "string" && req.requiredToolId.trim() ? req.requiredToolId.trim().slice(0, 80) : undefined;
+    const recipientNpcId = typeof req.recipientNpcId === "string" && req.recipientNpcId.trim() ? req.recipientNpcId.trim().slice(0, 80) : undefined;
+    const pickupMarkerId = typeof req.pickupMarkerId === "string" && req.pickupMarkerId.trim() ? req.pickupMarkerId.trim().slice(0, 120) : undefined;
+    if (!itemId && !serviceKind && !targetId && !recipientNpcId) continue;
+    out.push({ itemId, count, serviceKind, serviceUnits, targetId, targetName, mapMarkerId, requiredToolAction, requiredToolId, recipientNpcId, pickupMarkerId });
   }
   return out.slice(0, 8);
 }
@@ -818,6 +946,12 @@ function acceptJobPosting(result: MutableJobsResult, request: HarthmereJobsBoard
   job.status = "active";
   job.acceptedAtMs = request.nowMs;
   job.acceptedByActorId = request.actorId;
+  // HARTHMERE_JOB_ACCEPT_TIMER_V151: the completion clock starts NOW (on accept),
+  // giving the player a few hours to a day. Set before createTodoForJob so the
+  // todo's dueAtMs inherits this accept-window deadline.
+  job.deadlineAtMs =
+    request.nowMs +
+    harthmereJobAcceptWindowMsV151(`${job.jobId}:${request.actorId}:${request.nowMs}`);
   job.logs.push(`accepted:${request.actorId}:${request.nowMs}`);
   result.next.actorAcceptedJobIds[request.actorId] = activeJobIdsForActor(result.next, request.actorId);
   result.next.actorCooldowns[request.actorId] = { ...cooldown, lastAcceptAtMs: request.nowMs };
@@ -873,6 +1007,30 @@ function completeJobQuest(result: MutableJobsResult, request: HarthmereJobsBoard
   for (const req of serviceRequirements) {
     if (req.targetId && request.completedTargetId !== req.targetId) {
       return reject(result, `jobs_board_rejected:wrong_quest_target:${req.targetId}`);
+    }
+  }
+  // HARTHMERE_REPAIR_TOOL_COMPLETION_V151: any requirement that needs a tool
+  // action (e.g. a repair job) can only be completed when the client reports the
+  // matching tool was actually used (it sets request.usedToolAction only when the
+  // player performed the work with the EQUIPPED tool). This is the server-side
+  // half of the equip-gated repair flow.
+  for (const req of job.requirements) {
+    if (req.requiredToolAction && request.usedToolAction !== req.requiredToolAction) {
+      return reject(result, `jobs_board_rejected:missing_required_tool:${req.requiredToolAction}`);
+    }
+  }
+  // HARTHMERE_DELIVERY_V151: a person-recipient delivery is only complete when it
+  // was handed off to that recipient. The client reports the recipient via
+  // completedTargetId (the owner marker id or the raw ownerNpcId) when the player
+  // delivers by talking to the owner.
+  for (const req of job.requirements) {
+    if (!req.recipientNpcId) continue;
+    const ownerMarkerId = `${HARTHMERE_BUSINESS_OWNER_MARKER_PREFIX_V151}${req.recipientNpcId}`;
+    if (
+      request.completedTargetId !== ownerMarkerId &&
+      request.completedTargetId !== req.recipientNpcId
+    ) {
+      return reject(result, `jobs_board_rejected:not_delivered_to_recipient:${req.recipientNpcId}`);
     }
   }
   actorHasCompletionRequirements(job, request, context, result);
@@ -985,6 +1143,76 @@ function abandonJobPosting(result: MutableJobsResult, request: HarthmereJobsBoar
   result.shared.add(sharedBoardKey(board.boardId));
 }
 
+// HARTHMERE_JOB_ACCEPT_TIMER_V151: when an accepted job's accept-window deadline
+// lapses, mark the player's quest todo FAILED (so the UI shows it failed and its
+// map markers drop — failed todos are no longer "active"), free the seeker slot,
+// and release the posting back to "open" so others can take it. NO escrow
+// movement: the reward stays held for whoever completes it, so this is safe to
+// run on every mutation regardless of who is acting.
+function sweepLapsedAcceptedJobsV151(result: MutableJobsResult, nowMs: number) {
+  let touched = false;
+  for (const job of Object.values(result.next.postings)) {
+    if (job.status !== "active" || job.deadlineAtMs > nowMs) {
+      continue;
+    }
+    job.status = "open";
+    job.acceptedByActorId = undefined;
+    job.acceptedAtMs = undefined;
+    // Reset the (now-passed) accept-window deadline to a fresh open lifetime so
+    // the released job is immediately acceptable again; the next accept resets it
+    // to that taker's accept window.
+    job.deadlineAtMs = nowMs + HARTHMERE_JOBS_BOARD_AUTO_SEED_DEADLINE_MS_V141;
+    job.logs.push(`accept_window_lapsed:${nowMs}`);
+    for (const todo of Object.values(result.next.todos)) {
+      if (todo.jobId === job.jobId && todo.status === "active") {
+        todo.status = "failed";
+        result.shared.add(sharedTodoKey(todo.todoId));
+      }
+    }
+    result.shared.add(sharedJobKey(job.jobId));
+    touched = true;
+  }
+  if (touched) {
+    result.touched.add("jobs_board_posting");
+    result.touched.add("jobs_board_quest_todo");
+  }
+}
+
+// Explicitly FAIL the actor's active quest for a job — used when the objective is
+// failed mid-run (e.g. an escorted NPC is killed). Marks the todo failed (markers
+// drop), frees the seeker slot, and releases the posting back to "open". No
+// escrow movement.
+function failJobQuest(
+  result: MutableJobsResult,
+  request: HarthmereJobsBoardMutationRequestV1
+) {
+  const job = request.jobId ? result.next.postings[request.jobId] : undefined;
+  if (!job) return reject(result, "jobs_board_rejected:job_not_found");
+  const todo = todoForJobAndActor(
+    result.next,
+    job.jobId,
+    request.actorId,
+    request.questTodoId
+  );
+  if (!todo) return reject(result, "jobs_board_rejected:quest_todo_required");
+  if (todo.status !== "active") {
+    return reject(result, `jobs_board_rejected:quest_not_active:${todo.status}`);
+  }
+  todo.status = "failed";
+  if (job.status === "active" && job.acceptedByActorId === request.actorId) {
+    job.status = "open";
+    job.acceptedByActorId = undefined;
+    job.acceptedAtMs = undefined;
+  }
+  job.logs.push(
+    `quest_failed:${request.actorId}:${request.nowMs}:${sanitizeText(request.completionNote, "failed", 60)}`
+  );
+  result.touched.add("jobs_board_quest_todo");
+  result.touched.add("jobs_board_posting");
+  result.shared.add(sharedTodoKey(todo.todoId));
+  result.shared.add(sharedJobKey(job.jobId));
+}
+
 function expireJobs(result: MutableJobsResult, request: HarthmereJobsBoardMutationRequestV1, context: HarthmereJobsBoardMutationContextV1) {
   const board = requireBoard(result, request, context);
   if (!board) return;
@@ -1011,6 +1239,54 @@ function expireJobs(result: MutableJobsResult, request: HarthmereJobsBoardMutati
 export const HARTHMERE_JOBS_BOARD_AUTO_SEED_TARGET_OPEN_V141 = 8;
 export const HARTHMERE_JOBS_BOARD_AUTO_SEED_MAX_PER_TICK_V141 = 4;
 export const HARTHMERE_JOBS_BOARD_AUTO_SEED_DEADLINE_MS_V141 = 24 * 60 * 60 * 1000;
+
+// HARTHMERE_JOB_ACCEPT_TIMER_V151: a job's completion timer starts when it is
+// ACCEPTED (not when posted) — the player then has a few hours to a day to finish
+// it, which keeps people coming back daily. If the window lapses, the accepted
+// job is RELEASED back to "open" (claim lost, seeker slot freed, marker cleared);
+// the escrowed reward stays held for whoever completes it (no escrow movement).
+export const HARTHMERE_JOBS_BOARD_ACCEPT_WINDOW_MIN_MS_V151 = 4 * 60 * 60 * 1000;
+export const HARTHMERE_JOBS_BOARD_ACCEPT_WINDOW_MAX_MS_V151 = 24 * 60 * 60 * 1000;
+
+// Deterministic per-acceptance window in [min, max] (reducers must be pure — no
+// Math.random), seeded from a stable key so the same acceptance always resolves
+// the same deadline.
+export function harthmereJobAcceptWindowMsV151(seedKey: string): number {
+  let h = 2166136261;
+  for (let i = 0; i < seedKey.length; i += 1) {
+    h ^= seedKey.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  const t = ((h >>> 0) % 100000) / 100000;
+  const span =
+    HARTHMERE_JOBS_BOARD_ACCEPT_WINDOW_MAX_MS_V151 -
+    HARTHMERE_JOBS_BOARD_ACCEPT_WINDOW_MIN_MS_V151;
+  return HARTHMERE_JOBS_BOARD_ACCEPT_WINDOW_MIN_MS_V151 + Math.round(t * span);
+}
+
+export function harthmereJobTimeRemainingMsV151(
+  deadlineAtMs: number | undefined,
+  nowMs: number
+): number {
+  if (deadlineAtMs === undefined || !Number.isFinite(deadlineAtMs)) return 0;
+  return Math.max(0, deadlineAtMs - nowMs);
+}
+
+// Player-facing countdown label shown on the job AND its quest entry.
+export function formatHarthmereJobTimeRemainingV151(
+  deadlineAtMs: number | undefined,
+  nowMs: number
+): string {
+  const ms = harthmereJobTimeRemainingMsV151(deadlineAtMs, nowMs);
+  if (deadlineAtMs === undefined) return "";
+  if (ms <= 0) return "Expired";
+  const totalMinutes = Math.floor(ms / 60000);
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  if (hours > 0) return `${hours}h ${minutes}m left`;
+  if (minutes > 0) return `${minutes}m left`;
+  return "under 1m left";
+}
 export const HARTHMERE_JOBS_BOARD_AUTO_SEED_ISSUER_PREFIX_V141 = "harthmere_auto_";
 export const HARTHMERE_JOBS_BOARD_MONSTER_HUNT_REWARD_FLOOR_V141 = 1200;
 export const HARTHMERE_JOBS_BOARD_MONSTER_HUNT_REWARD_CEILING_V141 = 4500;
@@ -1123,8 +1399,17 @@ export const HARTHMERE_JOBS_BOARD_AUTO_SEED_TEMPLATES_V141: AutoSeedTemplate[] =
     issuerId: "harthmere_grove",
     kind: "repair",
     title: "Patch the Safe-Zone Fence",
-    description: "The eastern fence post split again. Replace 3 softwood planks before the next muck flush.",
-    requirements: [{ itemId: "softwood_log", count: 3, mapMarkerId: "grove_repair_fence" }],
+    description: "The eastern fence post split again. Replace 3 softwood planks before the next muck flush — bring a repair tool.",
+    requirements: [
+      {
+        itemId: "softwood_log",
+        count: 3,
+        mapMarkerId: "grove_repair_fence",
+        // Needs a repair tool EQUIPPED to restore the fence blocks. Without one,
+        // the quest layer routes the player to acquire/equip a repair tool first.
+        requiredToolAction: "repair",
+      },
+    ],
     rewardGold: { min: 60, max: 110 },
     requiresFieldWork: true,
     mapMarkerId: "grove_repair_fence",
@@ -1380,12 +1665,14 @@ export const HARTHMERE_JOBS_BOARD_AUTO_SEED_TEMPLATES_V141: AutoSeedTemplate[] =
     issuerKind: "town",
     issuerId: "harthmere_town",
     kind: "delivery",
-    title: "Deliver Ledger Pouch to Market Office",
-    description: "The market office is waiting on a ledger pouch from the bridge clerk. Carry it east without breaking the seal.",
-    requirements: [{ itemId: "harthmere_ledger_pouch", count: 1, mapMarkerId: "harthmere_market_office" }],
+    title: "Deliver Ledger Pouch to Trader Odette Bright",
+    description: "Carry the sealed ledger pouch to Trader Odette Bright at the Brightcart Exchange. You start with the pouch — find her shop on the map and hand it to her.",
+    // Person recipient: the pouch is granted on accept (no pickup), and the
+    // marker leads the player to the owner to hand it off.
+    requirements: [{ itemId: "harthmere_ledger_pouch", count: 1, mapMarkerId: "harthmere_owner:npc_outpost_brightcart_trader", recipientNpcId: "npc_outpost_brightcart_trader" }],
     rewardGold: { min: 60, max: 120 },
     requiresFieldWork: true,
-    mapMarkerId: "harthmere_market_office",
+    mapMarkerId: "harthmere_owner:npc_outpost_brightcart_trader",
     boardScope: "harthmere",
   },
   {
@@ -1407,8 +1694,10 @@ export const HARTHMERE_JOBS_BOARD_AUTO_SEED_TEMPLATES_V141: AutoSeedTemplate[] =
     issuerId: "sergeant_bram_holt",
     kind: "delivery",
     title: "Bram's Bridge Courier Run",
-    description: "Sergeant Bram needs a courier pouch carried from the bridge center to the chapel stone before dusk.",
-    requirements: [{ itemId: "courier_pouch", count: 1, mapMarkerId: "harthmere_chapel_stone" }],
+    description: "Collect the courier pouch at the bridge center, then carry it to Dispatcher Nyle Stampspur at Stampspur Station before dusk.",
+    // Pickup variant: the pouch is NOT granted on accept — the player collects it
+    // at the bridge center first (pickupMarkerId), then delivers to the person.
+    requirements: [{ itemId: "courier_pouch", count: 1, mapMarkerId: "harthmere_owner:npc_outpost_stampspur_dispatcher", recipientNpcId: "npc_outpost_stampspur_dispatcher", pickupMarkerId: "harthmere_bridge_center" }],
     rewardGold: { min: 70, max: 140 },
     requiresFieldWork: true,
     mapMarkerId: "harthmere_bridge_center",
@@ -1917,9 +2206,16 @@ export function reduceHarthmereJobsBoardMutationV1(
   context: HarthmereJobsBoardMutationContextV1,
 ): HarthmereJobsBoardMutationResultV1 {
   const result = makeResult(state, context);
+  // HARTHMERE_JOB_ACCEPT_TIMER_V151: lazily expire lapsed accepted jobs on EVERY
+  // interaction so stale claims (player took a job, ran out of time) are released
+  // and marked failed without needing a separate scheduled tick.
+  sweepLapsedAcceptedJobsV151(result, request.nowMs);
   switch (request.operation) {
     case "create_job_posting":
       createJobPosting(result, request, context);
+      break;
+    case "fail_job_quest":
+      failJobQuest(result, request);
       break;
     case "accept_job":
       acceptJobPosting(result, request, context);

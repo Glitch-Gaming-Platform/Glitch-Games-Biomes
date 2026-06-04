@@ -222,6 +222,34 @@ export function harthmereBusinessOwnerNpcSeedIdsV1(): BiomesId[] {
   return HARTHMERE_BUSINESS_OWNER_NPC_SEEDS_V1.map((seed) => seed.entityId);
 }
 
+// HARTHMERE_DELIVERY_RECIPIENT_V151: stable map-marker id for a business owner,
+// so a delivery job can point at a specific owner and the marker system resolves
+// their in-shop position.
+export function harthmereBusinessOwnerMarkerIdV151(ownerNpcId: string): string {
+  return `harthmere_owner:${ownerNpcId}`;
+}
+
+// Resolve a business owner seed by ownerNpcId, owner marker id, or entity id —
+// the three forms a delivery recipient might be referenced by. Returns undefined
+// for any unknown/blank input so callers can fall back to a place recipient.
+export function harthmereBusinessOwnerSeedByRefV151(
+  ref: string | number | undefined
+): HarthmereBusinessOwnerNpcSeedV1 | undefined {
+  if (ref === undefined || ref === null || ref === "") {
+    return undefined;
+  }
+  const asString = String(ref);
+  const markerOwnerNpcId = asString.startsWith("harthmere_owner:")
+    ? asString.slice("harthmere_owner:".length)
+    : undefined;
+  return HARTHMERE_BUSINESS_OWNER_NPC_SEEDS_V1.find(
+    (seed) =>
+      seed.ownerNpcId === asString ||
+      seed.ownerNpcId === markerOwnerNpcId ||
+      Number(seed.entityId) === Number(ref)
+  );
+}
+
 const HARTHMERE_BUSINESS_OWNER_ENTITY_ID_SET_V1 = new Set<number>(
   HARTHMERE_BUSINESS_OWNER_NPC_SEEDS_V1.map((seed) => Number(seed.entityId))
 );

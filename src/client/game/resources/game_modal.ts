@@ -96,6 +96,9 @@ export interface MinigamePlaceableConfigureModal {
 export interface TextSignConfigureModal {
   kind: "text_sign_configure_modal";
   placeableId: BiomesId;
+  // When true the modal only displays the sign's text (no editing). Used for
+  // players who do not own the sign — they can still read it clearly on screen.
+  readOnly?: boolean;
 }
 
 export interface TreasureRevealModal {

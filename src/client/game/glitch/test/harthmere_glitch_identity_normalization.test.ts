@@ -14,20 +14,25 @@ describe("harthmere Glitch Cloud Save identity normalization", () => {
     title_id: titleId,
     install_id: installId,
     game_user_id: `install:${installId}`,
+    user_id: "43af071c-9922-4e02-ba46-32ee2b7479a6",
     biomes_user_id: 2338109331446422,
     biomes_username: "Glitchinstall25fe66b",
     user_name: "blackmage",
     username: "blackmage",
   };
 
-  it("bootstrap uses biomes_user_id over install-scoped game_user_id", () => {
+  it("bootstrap uses the stable Glitch user id over volatile Biomes ids", () => {
     const identity = normalizeIdentity(harIdentityResponse, installId);
 
-    assert.equal(identity.gameUserId, "biomes:2338109331446422");
+    assert.equal(
+      identity.gameUserId,
+      "glitch:43af071c-9922-4e02-ba46-32ee2b7479a6"
+    );
     assert.notEqual(identity.gameUserId, `install:${installId}`);
+    assert.notEqual(identity.gameUserId, "biomes:2338109331446422");
   });
 
-  it("bridge claim response uses biomes_user_id over install-scoped game_user_id", () => {
+  it("bridge claim response uses the stable Glitch user id over volatile Biomes ids", () => {
     const config: HarthmereGlitchRuntimeConfig = {
       titleId,
       installId,
@@ -39,7 +44,13 @@ describe("harthmere Glitch Cloud Save identity normalization", () => {
       server_session_id: "server-session-test",
     });
 
-    assert.equal(identity.gameUserId, "biomes:2338109331446422");
+    assert.equal(
+      identity.gameUserId,
+      "glitch:43af071c-9922-4e02-ba46-32ee2b7479a6"
+    );
+    assert.equal(identity.glitchUserId, "43af071c-9922-4e02-ba46-32ee2b7479a6");
+    assert.equal(identity.biomesUserId, "2338109331446422");
     assert.notEqual(identity.gameUserId, `install:${installId}`);
+    assert.notEqual(identity.gameUserId, "biomes:2338109331446422");
   });
 });

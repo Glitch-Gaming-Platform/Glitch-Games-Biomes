@@ -27,12 +27,26 @@ export const HARTHMERE_RESOURCE_GATHERING_HIT_CONTRACT_V10 = {
 } as const;
 
 import {
+  harthmereHasAttackableTargetNearPlayerV1,
   performHarthmereCombatAttack,
   performHarthmereForwardArcAttack,
   readHarthmereCombatState,
+  readHarthmereForwardArcRuntime,
   resetHarthmereCombat,
   type HarthmerePlayerAttackType,
 } from "@/client/components/challenges/LocalDevHarthmereCombat";
+import { isHarthmereLocalCombatSafeZonePositionV1 } from "@/client/components/challenges/localDevHarthmereCombatSafetyV1";
+import {
+  harthmerePvpBasicDamageV1,
+  harthmerePvpPlayersInArcV1,
+  type HarthmerePvpCandidatePlayerV1,
+} from "@/client/components/challenges/harthmerePvpHitRules";
+import { useClientContext } from "@/client/components/contexts/ClientContextReactContext";
+import type { ClientContextSubset } from "@/client/game/context";
+import { PlayerSelector } from "@/shared/ecs/gen/selectors";
+import { UpdatePlayerHealthEvent } from "@/shared/ecs/gen/events";
+import type { DamageSource } from "@/shared/ecs/gen/types";
+import { fireAndForget } from "@/shared/util/async";
 import {
   readHarthmereInventoryState,
   writeHarthmereInventoryState,
@@ -43,6 +57,7 @@ import {
   HARTHMERE_COMBAT_INTERFACE_KEY_COPY_V1,
 } from "@/client/components/challenges/harthmereCombatDeathInterfaceRules";
 import { getHarthmereLevelSummary } from "@/client/components/challenges/LocalDevHarthmereLevelingSystem";
+import { shouldEngageHarthmereMousePrimaryAttackV1 } from "@/client/components/challenges/harthmereMousePrimaryAttackRules";
 import { harthmereUserScopedStorageKey } from "@/client/components/challenges/LocalDevHarthmereUserScope";
 import React, { useEffect, useMemo, useState } from "react";
 
@@ -653,6 +668,108 @@ function afterHostileAction(
   };
 }
 
+// HARTHMERE_PVP_DAMAGE_V1
+// Resolve the player-vs-player half of a left-mouse swing. Other players inside
+// the swing arc take real, server-authoritative damage via the vanilla
+// UpdatePlayerHealthEvent path (the same event the vanilla attack uses), so no
+// new networking is invented. Returns the number of players struck. PvP is
+// suppressed inside safe zones (town/Grove) and while the attacker is down.
+export function resolveHarthmerePvpMousePrimaryAttackV1(
+  deps: ClientContextSubset<"events" | "table" | "resources" | "userId">
+): number {
+  if (!isBrowser()) {
+    return 0;
+  }
+  const runtime = readHarthmereForwardArcRuntime();
+  const position = runtime?.position;
+  if (!position) {
+    return 0;
+  }
+  // No PvP in protected areas (town core / Grove respawn).
+  if (isHarthmereLocalCombatSafeZonePositionV1(position)) {
+    return 0;
+  }
+  const combat = readHarthmereCombatState();
+  if (
+    ["dead", "downed", "respawning"].includes(combat.player.combatState) ||
+    combat.player.hp <= 0
+  ) {
+    return 0;
+  }
+
+  const localPlayer = deps.resources.get("/scene/local_player");
+  const center = localPlayer.player.position;
+  const candidates: HarthmerePvpCandidatePlayerV1[] = [];
+  for (const entity of deps.table.scan(
+    PlayerSelector.query.spatial.inSphere(
+      { center, radius: 6 },
+      { approx: true }
+    )
+  )) {
+    if (entity.id === deps.userId) {
+      continue;
+    }
+    if (entity.gremlin || !entity.player_status?.init || !entity.position) {
+      continue;
+    }
+    if (entity.health !== undefined && entity.health.hp <= 0) {
+      continue;
+    }
+    candidates.push({
+      id: entity.id,
+      pos: [entity.position.v[0], entity.position.v[2]],
+    });
+  }
+  if (candidates.length === 0) {
+    return 0;
+  }
+
+  const origin: [number, number] = [position[0], position[2]];
+  const forward = runtime?.forward ?? [0, -1];
+  // Match the NPC basic swing's reach/arc so a swing hits a player standing where
+  // a creature would be hit.
+  const cosHalfAngle = Math.cos((135 * Math.PI) / 360);
+  const hitIds = harthmerePvpPlayersInArcV1({
+    origin,
+    forward,
+    players: candidates,
+    range: 3,
+    cosHalfAngle,
+  });
+  if (hitIds.length === 0) {
+    return 0;
+  }
+
+  const damage = harthmerePvpBasicDamageV1(combat.player.attackPoints);
+  const byId = new Map(candidates.map((c) => [c.id, c]));
+  for (const id of hitIds) {
+    const target = byId.get(id);
+    const dir: [number, number, number] = target
+      ? (() => {
+          const dx = target.pos[0] - origin[0];
+          const dz = target.pos[1] - origin[1];
+          const len = Math.hypot(dx, dz) || 1;
+          return [dx / len, 0, dz / len];
+        })()
+      : [0, 0, -1];
+    const damageSource: DamageSource = {
+      kind: "attack",
+      attacker: deps.userId,
+      dir,
+    };
+    fireAndForget(
+      deps.events.publish(
+        new UpdatePlayerHealthEvent({
+          id,
+          hpDelta: -damage,
+          damageSource,
+        })
+      )
+    );
+  }
+  return hitIds.length;
+}
+
 export function performHarthmereKeyedAttack(attack: HarthmerePlayerAttackType) {
   let state = readHarthmereMultiplayerCombatState();
   const targetOffset = state.currentTargetOffset;
@@ -926,6 +1043,12 @@ function isTypingTarget(target: EventTarget | null) {
 }
 
 export function useHarthmereCombatHotkeys() {
+  // ClientContext is needed for networked PvP (firing UpdatePlayerHealthEvent and
+  // scanning for nearby players). It is stable for the session; a ref keeps the
+  // window listener using a live reference without re-subscribing.
+  const clientContext = useClientContext();
+  const clientContextRef = React.useRef(clientContext);
+  clientContextRef.current = clientContext;
   useEffect(() => {
     if (!isBrowser()) {
       return;
@@ -976,8 +1099,46 @@ export function useHarthmereCombatHotkeys() {
         );
       }
     };
+    // HARTHMERE_MOUSE_PRIMARY_ATTACK_V1:
+    // Players expect the left mouse button to swing — but the Harthmere combat
+    // resolver was only ever wired to the B/H/L keys, so clicking did the vanilla
+    // Biomes attack (which has no concept of muckers/wildlife/other players as
+    // live-entity combatants) and never landed a hit or triggered retaliation.
+    // Mirror the keyboard "basic" attack on left mouse-down. We only fire while
+    // the pointer is locked (i.e. the player is actively in first-person play,
+    // not clicking HUD/UI), and we deliberately do NOT preventDefault so the
+    // vanilla swing animation still plays on top of the resolved arc damage.
+    const mouseHandler = (event: MouseEvent) => {
+      // Cheap gates first; only probe for targets once they pass so a normal
+      // mining/building click pays almost nothing.
+      if (event.button !== 0 || isTypingTarget(event.target)) {
+        return;
+      }
+      if (!document.pointerLockElement) {
+        return;
+      }
+      // Creatures (muckers/hexes/wildlife) — resolve the local arc attack.
+      if (
+        shouldEngageHarthmereMousePrimaryAttackV1({
+          button: event.button,
+          pointerLocked: true,
+          typingTarget: false,
+          hasAttackableTargetNearby: harthmereHasAttackableTargetNearPlayerV1(),
+        })
+      ) {
+        performHarthmereKeyedAttack("basic");
+      }
+      // Other players — fire authoritative networked PvP damage for anyone in the
+      // swing arc. Independent of the creature branch: one click can hit both.
+      resolveHarthmerePvpMousePrimaryAttackV1(clientContextRef.current);
+    };
+
     window.addEventListener("keydown", handler, true);
-    return () => window.removeEventListener("keydown", handler, true);
+    window.addEventListener("mousedown", mouseHandler, true);
+    return () => {
+      window.removeEventListener("keydown", handler, true);
+      window.removeEventListener("mousedown", mouseHandler, true);
+    };
   }, []);
 }
 

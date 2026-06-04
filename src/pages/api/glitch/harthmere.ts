@@ -15,6 +15,10 @@ import { getUserOrCreateIfNotExists } from "@/server/web/db/users";
 import { BIOMES_GAME_NAME } from "@/shared/biomes/display_names";
 import { log } from "@/shared/logging";
 import { Timer } from "@/shared/metrics/timer";
+import {
+  harthmereCloudSaveForeignAuthCandidateIdsV1,
+  harthmereCloudSaveForeignAuthPrimaryIdV1,
+} from "@/server/shared/glitch/harthmere_cloud_save_identity_v1";
 export const config = {
   api: {
     bodyParser: {
@@ -718,7 +722,6 @@ function normalizeIdentityFromValidateResponse(
     guestIdentity || isGuestLikeString(rawGlitchUserId)
       ? undefined
       : rawGlitchUserId;
-
   const userName =
     firstString(
       root.user_name,
@@ -740,12 +743,12 @@ function normalizeIdentityFromValidateResponse(
     install.gameUserId
   );
   const gameUserId =
-    !guestIdentity &&
-    responseGameUserId &&
-    !isGuestLikeString(responseGameUserId)
-      ? responseGameUserId
-      : glitchUserId
+    !guestIdentity && glitchUserId
       ? `glitch:${glitchUserId}`
+      : !guestIdentity &&
+        responseGameUserId &&
+        !isGuestLikeString(responseGameUserId)
+      ? responseGameUserId
       : `install:${installId}`;
 
   return {
@@ -1216,9 +1219,17 @@ function glitchForeignProfile(
 ): ForeignAccountProfile {
   return {
     provider: "dev",
-    id: `glitch:${identity.titleId}:${
-      identity.gameUserId || `install:${identity.installId}`
-    }`,
+    // HARTHMERE_CLOUD_SAVE_IDENTITY_V1: the link key MUST NOT depend on the
+    // volatile `gameUserId` (which flipped between `glitch:<uid>` and
+    // `install:<id>` depending on whether the Glitch validate response happened
+    // to carry a user id), because that minted a fresh biomes user — and thus a
+    // fresh save scope — every session. Use the stable primary key instead.
+    id: harthmereCloudSaveForeignAuthPrimaryIdV1({
+      titleId: identity.titleId,
+      installId: identity.installId,
+      glitchUserId: identity.glitchUserId,
+      userName: identity.userName,
+    }),
     username: stableBiomesUsername(identity),
   };
 }
@@ -1250,11 +1261,41 @@ export async function createBiomesAuthForGlitchIdentity(
   }
 
   const profile = glitchForeignProfile(identity);
-  let link = await findLinkForForeignAuth(
-    context.db,
-    profile.provider,
-    profile.id
-  );
+  // HARTHMERE_CLOUD_SAVE_IDENTITY_V1: resolve the SAME biomes user across
+  // sessions even though the Glitch response is inconsistent about which
+  // identifiers it returns. Try every key the link could legitimately live
+  // under (newest-preference first), reuse the first that exists, and back-fill
+  // the stable primary key so subsequent logins converge to one user.
+  const candidateIds = harthmereCloudSaveForeignAuthCandidateIdsV1({
+    titleId: identity.titleId,
+    installId: identity.installId,
+    glitchUserId: identity.glitchUserId,
+    userName: identity.userName,
+  });
+  let link:
+    | Awaited<ReturnType<typeof findLinkForForeignAuth>>
+    | undefined;
+  let matchedId: string | undefined;
+  for (const candidateId of candidateIds) {
+    try {
+      const found = await findLinkForForeignAuth(
+        context.db,
+        profile.provider,
+        candidateId
+      );
+      if (found) {
+        link = found;
+        matchedId = candidateId;
+        break;
+      }
+    } catch (error) {
+      log.warn("HARTHMERE_CLOUD_SAVE_LINK_LOOKUP_FAILED_V1", {
+        error,
+        candidateId,
+        installId: identity.installId,
+      });
+    }
+  }
   if (!link) {
     link = await connectForeignAuth(
       context.db,
@@ -1262,8 +1303,25 @@ export async function createBiomesAuthForGlitchIdentity(
       profile,
       await context.idGenerator.next()
     );
+  } else if (matchedId !== profile.id) {
+    // The player was found under a legacy/secondary key. Back-fill the stable
+    // primary key (pointing at the SAME user) so the volatile-id flip can never
+    // orphan their progress again.
+    try {
+      await connectForeignAuth(context.db, profile.provider, profile, link.userId);
+    } catch (error) {
+      log.warn("HARTHMERE_CLOUD_SAVE_LINK_BACKFILL_FAILED_V1", {
+        error,
+        matchedId,
+        primaryId: profile.id,
+        userId: link.userId,
+      });
+    }
   }
 
+  if (!link) {
+    throw new Error("HARTHMERE_CLOUD_SAVE_LINK_UNRESOLVED_V1");
+  }
   const user = await getUserOrCreateIfNotExists(
     context.db,
     link.userId,
@@ -1372,10 +1430,12 @@ export default async function handler(
 
       const { user, session, profile } =
         await createBiomesAuthForGlitchIdentity(req, res, identity);
-      const biomesGameUserId = `biomes:${user.id}`;
+      // HARTHMERE_CLOUD_SAVE_IDENTITY_V1: the durable cloud game_user_id is the
+      // stable Glitch account user_id surfaced by normalizeIdentityFromValidateResponse
+      // as identity.gameUserId (`glitch:<user_id>`), which validationJson returns.
+      // biomes_user_id remains the internal biomes user resolved from that scope.
       return res.status(200).json({
         ...validationJson(identity),
-        game_user_id: biomesGameUserId,
         biomes_user_id: user.id,
         biomes_session_id: session.id,
         biomes_username: user.username ?? profile.username,
@@ -1404,25 +1464,25 @@ export default async function handler(
         res,
         identity
       );
-      const cloudIdentity: HarthmereValidatedIdentity = {
-        ...identity,
-        gameUserId: `biomes:${user.id}`,
-      };
+      // HARTHMERE_CLOUD_SAVE_IDENTITY_V1: scope the session and return the cloud
+      // game_user_id off the stable Glitch account id (identity.gameUserId =
+      // `glitch:<user_id>` from the validate response), the canonical user id for
+      // the game. biomes_user_id is the internal biomes user resolved from it.
       const { session, disconnected } = await claimServerSession(
-        cloudIdentity,
+        identity,
         body
       );
       return res.status(200).json({
         ok: true,
         valid: true,
-        title_id: cloudIdentity.titleId,
-        install_id: cloudIdentity.installId,
-        game_user_id: cloudIdentity.gameUserId,
-        glitch_user_id: cloudIdentity.glitchUserId,
-        user_id: cloudIdentity.glitchUserId,
+        title_id: identity.titleId,
+        install_id: identity.installId,
+        game_user_id: identity.gameUserId,
+        glitch_user_id: identity.glitchUserId,
+        user_id: identity.glitchUserId,
         biomes_user_id: user.id,
-        user_name: cloudIdentity.userName,
-        username: cloudIdentity.userName,
+        user_name: identity.userName,
+        username: identity.userName,
         server_session_id: session.serverSessionId,
         idle_session_ms: idleSessionMs(),
         disconnected_session_ids: disconnected.map((s) => s.serverSessionId),

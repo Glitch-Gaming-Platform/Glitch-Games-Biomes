@@ -3,11 +3,29 @@ import {
   type HarthmereDailyTaskActivityIdV1,
   completeHarthmereDailyTaskSoonV1,
 } from "@/client/components/challenges/harthmereDailyTasks";
+import { isHarthmereRepairToolEquippedV151 } from "@/client/components/challenges/LocalDevHarthmereInventorySystem";
+import {
+  harthmereCookingStationIdV1,
+  openHarthmereCookingStationV1,
+} from "@/client/components/harthmere_cooking/harthmereCookingStations";
 import { dispatchHarthmereHudActionEventV96 } from "@/shared/harthmere/harthmere_hud_key_bindings_v96";
 import type { HarthmereObjectInteractionV1 } from "@/shared/harthmere/object_interaction_semantics_v1";
 
 export const HARTHMERE_JOBS_BOARD_OPEN_EVENT_V141 =
   "biomes:harthmere-jobs-board-open-v141" as const;
+
+// HARTHMERE_REPAIR_PERFORMED_EVENT_V151: fired when the player interacts with a
+// repair target. `repaired` is true only when a repair tool is equipped — that
+// is the signal the jobs-board completion flow uses to send usedToolAction and
+// (engine phase) to restore the broken structure's blocks.
+export const HARTHMERE_REPAIR_PERFORMED_EVENT_V151 =
+  "biomes:harthmere-repair-performed-v151" as const;
+
+export interface HarthmereRepairPerformedEventDetailV151 {
+  entityId?: unknown;
+  label?: string | null;
+  repaired: boolean;
+}
 
 export const HARTHMERE_WORLD_OBJECT_INTERACTION_EVENT_V1 =
   "biomes:harthmere-world-object-interaction-v1" as const;
@@ -128,8 +146,48 @@ export function performHarthmereObjectInteractionV1(input: {
     return;
   }
 
-  if (input.interaction.kind === "craft" || input.interaction.kind === "cook") {
+  if (input.interaction.kind === "cook") {
+    const stationKind = input.interaction.stationKind ?? "campfire";
+    const stationId = harthmereCookingStationIdV1(input.entityId, input.label);
+    openHarthmereCookingStationV1({
+      stationId,
+      stationKind,
+      label: input.label,
+      entityId: input.entityId,
+    });
+    return;
+  }
+
+  if (input.interaction.kind === "craft") {
     dispatchHarthmereHudActionEventV96("crafting");
+  }
+
+  // HARTHMERE_REPAIR_TOOL_EQUIP_V151: a repair only happens with a repair tool
+  // EQUIPPED. With one, restore the structure (emit the repair-performed signal
+  // the job flow consumes) and confirm; without one, direct the player to get
+  // and equip a repair tool first instead of silently "repairing" nothing.
+  if (input.interaction.kind === "repair") {
+    const repaired = isHarthmereRepairToolEquippedV151();
+    const repairLabel = input.label?.trim() || "the structure";
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(
+        new CustomEvent(HARTHMERE_REPAIR_PERFORMED_EVENT_V151, {
+          detail: {
+            entityId: input.entityId,
+            label: input.label,
+            repaired,
+          } satisfies HarthmereRepairPerformedEventDetailV151,
+        })
+      );
+    }
+    addToast(input.resources, {
+      kind: "basic",
+      id: `harthmere-repair:${String(input.entityId)}`,
+      message: repaired
+        ? `Repaired ${repairLabel} — your repair tool restored the broken blocks.`
+        : `Equip a repair tool to fix ${repairLabel}. Buy or craft a Repair Mallet, equip it in your main hand, then try again.`,
+    });
+    return;
   }
 
   addToast(input.resources, {

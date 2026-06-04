@@ -3,6 +3,7 @@ import {
   getHarthmereCraftingStationV1,
   getHarthmereCraftingToolV1,
   getHarthmereItemDefinitionV1,
+  harthmereToolBaseValueForTierV151,
   registerHarthmereCraftingRecipeV1,
   registerHarthmereCraftingStationV1,
   registerHarthmereCraftingToolV1,
@@ -41,6 +42,18 @@ export const HARTHMERE_CRAFTING_TOOLS_V1 = {
   wateringCan: "7539420629350045",
   muckBuster: "5354980139910506",
   buildersWand: "7539420629350501",
+  // HARTHMERE_REPAIR_TOOLS_V151: tiered repair tools. Equipped, they RESTORE
+  // broken structure blocks (restore-to-original; see the repair engine phase)
+  // rather than destroying them. Higher tiers restore more blocks per use and
+  // cost more (priced via harthmereToolBaseValueForTierV151).
+  repairMallet: "7539420629350601",
+  reinforcedRepairKit: "7539420629350602",
+  masterRestorationTool: "7539420629350603",
+  // HARTHMERE_CLEANUP_TOOLS_V151: equipped, they convert muck voxels back to dirt
+  // (and plant seeds for gardening). Higher tiers clear more per use and cost more.
+  muckRake: "7539420629350611",
+  reclaimerSpade: "7539420629350612",
+  terraformerWand: "7539420629350613",
 } as const;
 
 export const HARTHMERE_EXOTIC_MATTER_ITEM_IDS_V1 = {
@@ -234,6 +247,7 @@ const TOOLS: HarthmereCraftingToolDefinitionV1[] = [
     action: "destroy",
     tier: 1,
     durabilityMax: 150000,
+    damage: 10,
   },
   {
     itemId: HARTHMERE_CRAFTING_TOOLS_V1.pickaxe,
@@ -241,6 +255,7 @@ const TOOLS: HarthmereCraftingToolDefinitionV1[] = [
     action: "destroy",
     tier: 1,
     durabilityMax: 150000,
+    damage: 10,
   },
   {
     itemId: HARTHMERE_CRAFTING_TOOLS_V1.stonePick,
@@ -248,6 +263,7 @@ const TOOLS: HarthmereCraftingToolDefinitionV1[] = [
     action: "destroy",
     tier: 2,
     durabilityMax: 900000,
+    damage: 22,
   },
   {
     itemId: HARTHMERE_CRAFTING_TOOLS_V1.silverPick,
@@ -255,6 +271,7 @@ const TOOLS: HarthmereCraftingToolDefinitionV1[] = [
     action: "destroy",
     tier: 3,
     durabilityMax: 3600000,
+    damage: 40,
   },
   {
     itemId: HARTHMERE_CRAFTING_TOOLS_V1.woodenFencer,
@@ -299,6 +316,58 @@ const TOOLS: HarthmereCraftingToolDefinitionV1[] = [
     displayName: "Builder's Wand",
     action: "wand",
     tier: 5,
+  },
+  // HARTHMERE_REPAIR_TOOLS_V151: tiered repair tools. repairPower = broken blocks
+  // restored per use; higher tiers restore more and cost more.
+  {
+    itemId: HARTHMERE_CRAFTING_TOOLS_V1.repairMallet,
+    displayName: "Repair Mallet",
+    action: "repair",
+    tier: 1,
+    durabilityMax: 150000,
+    repairPower: 1,
+  },
+  {
+    itemId: HARTHMERE_CRAFTING_TOOLS_V1.reinforcedRepairKit,
+    displayName: "Reinforced Repair Kit",
+    action: "repair",
+    tier: 2,
+    durabilityMax: 900000,
+    repairPower: 4,
+  },
+  {
+    itemId: HARTHMERE_CRAFTING_TOOLS_V1.masterRestorationTool,
+    displayName: "Master Restoration Tool",
+    action: "repair",
+    tier: 3,
+    durabilityMax: 3600000,
+    repairPower: 12,
+  },
+  // HARTHMERE_CLEANUP_TOOLS_V151: convert muck voxels back to dirt (and plant
+  // seeds for gardening). cleanupPower = muck voxels cleared per use.
+  {
+    itemId: HARTHMERE_CRAFTING_TOOLS_V1.muckRake,
+    displayName: "Muck Rake",
+    action: "cleanup",
+    tier: 1,
+    durabilityMax: 150000,
+    cleanupPower: 1,
+  },
+  {
+    itemId: HARTHMERE_CRAFTING_TOOLS_V1.reclaimerSpade,
+    displayName: "Reclaimer Spade",
+    action: "cleanup",
+    tier: 2,
+    durabilityMax: 900000,
+    cleanupPower: 4,
+  },
+  {
+    itemId: HARTHMERE_CRAFTING_TOOLS_V1.terraformerWand,
+    displayName: "Terraformer Wand",
+    action: "cleanup",
+    tier: 3,
+    durabilityMax: 3600000,
+    cleanupPower: 12,
   },
 ];
 
@@ -2498,11 +2567,25 @@ export function ensureHarthmereProductionCraftingCatalogueV1() {
       registerHarthmereItemDefinitionV1(
         item(tool.itemId, tool.displayName, {
           maxStackSize: 1,
-          baseValue: Math.max(1, tool.tier ?? 1) * 20,
+          // Greater-impact tools cost more: price scales with tier and the
+          // tool's damage/repair power (HARTHMERE_TOOL_POWER_V151).
+          baseValue: harthmereToolBaseValueForTierV151(
+            tool.tier,
+            tool.damage ?? tool.repairPower ?? tool.cleanupPower ?? 0
+          ),
           isCraftingMaterial: false,
           category: "tool",
           durabilityMax: tool.durabilityMax,
-          stats: { toolTier: tool.tier ?? 1 },
+          stats: {
+            toolTier: tool.tier ?? 1,
+            ...(tool.damage !== undefined ? { damage: tool.damage } : {}),
+            ...(tool.repairPower !== undefined
+              ? { repairPower: tool.repairPower }
+              : {}),
+            ...(tool.cleanupPower !== undefined
+              ? { cleanupPower: tool.cleanupPower }
+              : {}),
+          },
         })
       );
     }

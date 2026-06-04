@@ -12,10 +12,13 @@ import {
   getHarthmereCombinedPublicTitle,
   useHarthmereReputationState,
 } from "@/client/components/challenges/LocalDevHarthmereReputation";
+import {
+  useHarthmereLevelingState,
+  xpRequiredForNextHarthmereLevel,
+} from "@/client/components/challenges/LocalDevHarthmereLevelingSystem";
 import { BIOMES_GAME_NAME } from "@/shared/biomes/display_names";
 import React from "react";
 import {
-  biomesUIVitalsCombatResourceDisplayForTest,
   biomesUIVitalsDisplayFromLiveStatusForTest,
   useBiomesUIPlayerStatusStateV1,
 } from "./adapters/playerStatusAdapter";
@@ -201,6 +204,7 @@ export const BiomesUIVitalsPanel: React.FunctionComponent<{}> = () => {
   const multiplayer = useHarthmereMultiplayerCombatState();
   const stamina = useHarthmereFoodStaminaState();
   const reputation = useHarthmereReputationState();
+  const leveling = useHarthmereLevelingState();
   const liveStatus = useBiomesUIPlayerStatusStateV1();
 
   const player = combat.player;
@@ -216,31 +220,43 @@ export const BiomesUIVitalsPanel: React.FunctionComponent<{}> = () => {
     standing: reputation.regions.harthmere,
     gold,
   });
-  const combatResource = biomesUIVitalsCombatResourceDisplayForTest(
-    liveStatus,
-    {
-      resourceLabel: display.resourceLabel,
-      resourceValue: display.resourceValue,
-      resourceMax: display.resourceMax,
-    }
-  );
-  const liveStaminaValue = Number(liveStatus?.combat?.resources?.stamina);
-  const liveMaxStaminaValue = Number(liveStatus?.combat?.maxResources?.stamina);
-  const staminaValue = Number.isFinite(liveStaminaValue)
-    ? Math.max(0, liveStaminaValue)
-    : stamina.stamina;
-  const staminaMax = Number.isFinite(liveMaxStaminaValue) && liveMaxStaminaValue > 0
-    ? Math.max(1, liveMaxStaminaValue)
-    : stamina.maxStamina;
+  // HARTHMERE_HEALTH_SOURCE_OF_TRUTH_V1: the Health bar reads the live combat
+  // store directly — the SAME state that fall damage, combat, and healing
+  // mutate — so it is the single source of truth for the player's health.
+  // Routing it through the live-status adapter let the periodically-polled
+  // backend status (which never sees client-side fall damage) override the bar,
+  // so falls appeared to do nothing. The combat store is authoritative here.
+  const healthHp = Math.max(0, Math.round(player.hp));
+  const healthMaxHp = Math.max(1, Math.round(player.maxHp));
+  const healthCombatState = player.combatState ?? display.combatState;
+  // Mana & Stamina, like Health, read their LOCAL real-time systems as the
+  // source of truth — the multiplayer-combat mana pool and the food-stamina
+  // system — NOT the 5-15s-polled backend status. Both of those local systems
+  // tick/consume during gameplay (casting drains mana; sprinting/hunger drains
+  // stamina; eating restores it) and handle their own death/respawn, so binding
+  // to them keeps all three vitals real-time and mutually consistent instead of
+  // snapping back to a stale backend snapshot.
+  const manaValue = Math.max(0, Math.round(multiplayer.mana));
+  const manaMax = Math.max(1, Math.round(multiplayer.maxMana));
+  const staminaValue = Math.max(0, Math.round(stamina.stamina));
+  const staminaMax = Math.max(1, Math.round(stamina.maxStamina));
   const regional = display.standing ?? reputation.regions.harthmere;
-  const headerTitle = display.classLine ?? title;
+  // Level / XP come from the LOCAL leveling system (the source of truth where
+  // quests, gathering, building, and combat actually award XP via
+  // awardHarthmereXp) — not the 5-15s-polled backend status, which doesn't see
+  // those local awards and would otherwise show "Level 1" until the next poll.
+  const playerLevel = Math.max(1, Math.floor(leveling.level));
+  const xpCurrent = Math.max(0, Math.floor(leveling.xpCurrent));
+  const xpNext = Math.max(1, Math.floor(xpRequiredForNextHarthmereLevel(playerLevel)));
+  const levelProgress = `${xpCurrent}/${xpNext} xp`;
+  // Keep the class name from the live status but show the LOCAL level so the
+  // header and the footer Level chip never disagree.
+  const className = display.classLine
+    ?.replace(/\s*·\s*Level\s*\d+\s*$/i, "")
+    .trim();
+  const headerTitle = className ? `${className} · Level ${playerLevel}` : title;
   const panelHighlight = useBlinkTarget<HTMLElement>(UI_IDS.HUD_VITALS);
   const goldHighlight = useBlinkTarget<HTMLDivElement>(UI_IDS.HUD_VITALS_GOLD);
-  const levelProgress =
-    display.xpCurrent !== undefined && display.xpNext !== undefined
-      ? `${display.xpCurrent}/${display.xpNext} xp`
-      : undefined;
-  const playerLevel = display.level ?? 1;
 
   return (
     <aside
@@ -261,22 +277,22 @@ export const BiomesUIVitalsPanel: React.FunctionComponent<{}> = () => {
           </span>
         </div>
         <span className="biomes-ui-vitals-panel__state">
-          {formatStateLabel(display.combatState)}
+          {formatStateLabel(healthCombatState)}
         </span>
       </div>
 
       <div className="biomes-ui-vitals-panel__bars">
         <VitalsBar
           label="Health"
-          value={display.hp}
-          max={display.maxHp}
+          value={healthHp}
+          max={healthMaxHp}
           tone="health"
           uiId={UI_IDS.HUD_VITALS_HEALTH}
         />
         <VitalsBar
-          label={combatResource.resourceLabel}
-          value={combatResource.resourceValue}
-          max={combatResource.resourceMax}
+          label="Mana"
+          value={manaValue}
+          max={manaMax}
           tone="mana"
           uiId={UI_IDS.HUD_VITALS_MANA}
         />

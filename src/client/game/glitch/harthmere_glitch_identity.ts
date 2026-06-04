@@ -16,6 +16,7 @@ export type HarthmereGlitchIdentity = {
   serverSessionId?: string;
   gameUserId: string;
   glitchUserId?: string;
+  biomesUserId?: string;
   userName: string;
   validatedAt?: string;
 };

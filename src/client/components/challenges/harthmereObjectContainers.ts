@@ -1,19 +1,57 @@
 import { grantHarthmereItem } from "@/client/components/challenges/LocalDevHarthmereInventorySystem";
+import { consumeHarthmereItemByItemIdV141 } from "@/client/components/challenges/LocalDevHarthmereInventorySystem";
 import { completeHarthmereDailyTaskSoonV1 } from "@/client/components/challenges/harthmereDailyTasks";
 import { dispatchHarthmereWorldObjectInteractionEventV1 } from "@/client/components/challenges/harthmereObjectInteractions";
-import { addToast } from "@/client/components/toast/helpers";
-import type { ClientResources } from "@/client/game/resources/types";
+import { readRoadAheadClothingCrateReadyV1 } from "@/client/components/challenges/harthmereRoadAheadClothingGate";
 import type { BiomesId } from "@/shared/ids";
 
 export const HARTHMERE_OBJECT_CONTAINER_OPENED_EVENT_V1 =
   "biomes:harthmere-object-container-opened-v1";
 
-const HARTHMERE_OBJECT_CONTAINER_STATE_KEY_V1 =
-  "biomes.localDev.harthmere.objectContainers.v1";
+// HARTHMERE_OBJECT_CONTAINER_UI_V199:
+// Fired whenever the contents of any world-object container change (item taken
+// out or stored in). The container panel subscribes to re-render.
+export const HARTHMERE_OBJECT_CONTAINER_CHANGED_EVENT_V1 =
+  "biomes:harthmere-object-container-changed-v1";
+
+// Fired when the player presses the container interaction; the mounted
+// container panel listens and opens the take/store interface.
+export const HARTHMERE_OBJECT_CONTAINER_OPEN_EVENT_V1 =
+  "biomes:harthmere-object-container-open-v1";
+
+const HARTHMERE_OBJECT_CONTAINER_CONTENTS_KEY_V1 =
+  "biomes.localDev.harthmere.objectContainerContents.v1";
+
+const HARTHMERE_OBJECT_CONTAINER_OPEN_REQUEST_KEY_V1 =
+  "biomes.localDev.harthmere.objectContainerOpenRequest.v1";
 
 export interface HarthmereObjectContainerLootV1 {
   itemId: string;
   quantity: number;
+}
+
+export interface HarthmereObjectContainerSlotV1 {
+  itemId: string;
+  quantity: number;
+}
+
+export interface HarthmereObjectContainerRecordV1 {
+  key: string;
+  label: string;
+  items: HarthmereObjectContainerSlotV1[];
+  // HARTHMERE_ROAD_AHEAD_CLOTHING_GATE_V1: a quest-gated crate (e.g. the Road
+  // Ahead Clothing Crate) starts UNSEALED and empty; it only gets its quest loot
+  // — and becomes sealed — once the quest reaches the right step. A sealed crate
+  // is a normal inventory (take/store, never re-seeded). Non-gated crates seal on
+  // first open. `note` is shown in the panel while a crate is locked/empty.
+  sealed?: boolean;
+  note?: string;
+}
+
+export interface HarthmereObjectContainerOpenRequestV1 {
+  entityId: BiomesId;
+  key: string;
+  label: string;
 }
 
 function isBrowserV1() {
@@ -22,7 +60,10 @@ function isBrowserV1() {
   );
 }
 
-function normalizeContainerKeyV1(entityId: BiomesId, label: string) {
+export function normalizeHarthmereContainerKeyV1(
+  entityId: BiomesId,
+  label: string
+) {
   const normalizedLabel = label
     .trim()
     .toLowerCase()
@@ -31,39 +72,26 @@ function normalizeContainerKeyV1(entityId: BiomesId, label: string) {
   return `${entityId}:${normalizedLabel || "container"}`;
 }
 
-function readOpenedContainersV1() {
-  if (!isBrowserV1()) {
-    return [];
-  }
-  try {
-    const raw = window.localStorage.getItem(
-      HARTHMERE_OBJECT_CONTAINER_STATE_KEY_V1
-    );
-    const parsed = raw ? JSON.parse(raw) : [];
-    return Array.isArray(parsed)
-      ? parsed.filter((value): value is string => typeof value === "string")
-      : [];
-  } catch {
-    return [];
-  }
+// HARTHMERE_ROAD_AHEAD_CLOTHING_GATE_V1: the Clothing Crate is quest-gated — its
+// contents must not appear until The Road Ahead reaches the gear-up step. This
+// is the same family of labels the loot table routes to the clothing outfit.
+const HARTHMERE_CLOTHING_QUEST_CRATE_RE_V1 =
+  /clothing|wardrobe|outfit|garment|laundry/;
+
+export function isHarthmereClothingQuestCrateLabelV1(
+  label?: string | null
+): boolean {
+  return HARTHMERE_CLOTHING_QUEST_CRATE_RE_V1.test((label ?? "").toLowerCase());
 }
 
-function writeOpenedContainersV1(opened: string[]) {
-  if (!isBrowserV1()) {
-    return;
-  }
-  window.localStorage.setItem(
-    HARTHMERE_OBJECT_CONTAINER_STATE_KEY_V1,
-    JSON.stringify([...new Set(opened)])
-  );
-  window.dispatchEvent(new Event(HARTHMERE_OBJECT_CONTAINER_OPENED_EVENT_V1));
-}
+export const HARTHMERE_CLOTHING_CRATE_LOCKED_NOTE_V1 =
+  "This crate is empty for now. Jackie will point you here when it's time to gear up on The Road Ahead.";
 
 export function harthmereContainerLootForLabelV1(
   label?: string | null
 ): HarthmereObjectContainerLootV1[] {
   const text = (label ?? "").toLowerCase();
-  if (/clothing|wardrobe|outfit|garment|laundry/.test(text)) {
+  if (HARTHMERE_CLOTHING_QUEST_CRATE_RE_V1.test(text)) {
     // A full starter outfit: a top (chest) AND bottoms (legs). The Road Ahead
     // "equip both clothing slots" step requires both halves, so the clothing
     // container must grant both — otherwise the quest can never complete from
@@ -120,37 +148,275 @@ export function harthmereContainerLootForLabelV1(
   ];
 }
 
+function readContainerStoreV1(): Record<
+  string,
+  HarthmereObjectContainerRecordV1
+> {
+  if (!isBrowserV1()) {
+    return {};
+  }
+  try {
+    const raw = window.localStorage.getItem(
+      HARTHMERE_OBJECT_CONTAINER_CONTENTS_KEY_V1
+    );
+    const parsed = raw ? JSON.parse(raw) : {};
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      return {};
+    }
+    return parsed as Record<string, HarthmereObjectContainerRecordV1>;
+  } catch {
+    return {};
+  }
+}
+
+function writeContainerStoreV1(
+  store: Record<string, HarthmereObjectContainerRecordV1>
+) {
+  if (!isBrowserV1()) {
+    return;
+  }
+  window.localStorage.setItem(
+    HARTHMERE_OBJECT_CONTAINER_CONTENTS_KEY_V1,
+    JSON.stringify(store)
+  );
+  window.dispatchEvent(new Event(HARTHMERE_OBJECT_CONTAINER_CHANGED_EVENT_V1));
+}
+
+export interface HarthmereContainerSeedOptionsV1 {
+  // HARTHMERE_ROAD_AHEAD_CLOTHING_GATE_V1: whether the Road Ahead clothing is
+  // allowed to appear yet. Injectable for tests; defaults to reading the live
+  // mission state from localStorage.
+  questClothingReady?: boolean;
+}
+
+function lootSlotsForLabelV1(
+  label: string
+): HarthmereObjectContainerSlotV1[] {
+  return harthmereContainerLootForLabelV1(label).map((loot) => ({
+    itemId: loot.itemId,
+    quantity: loot.quantity,
+  }));
+}
+
+// Returns the live record for a container, seeding it from the label-driven
+// loot table. Presence of a SEALED key in the store means the container has
+// already been seeded, so emptying it does NOT refill it.
+//
+// Quest-gated crates (the Road Ahead Clothing Crate) are special: until the
+// quest reaches the gear-up step they stay UNSEALED and empty (re-evaluated each
+// open), so the clothing only appears at the right time. Once the gate opens we
+// fill the quest loot and seal the crate; from then on it is a normal inventory.
+export function getOrSeedHarthmereContainerV1(
+  entityId: BiomesId,
+  label?: string | null,
+  options?: HarthmereContainerSeedOptionsV1
+): HarthmereObjectContainerRecordV1 {
+  const displayLabel = label?.trim() || "Container";
+  const key = normalizeHarthmereContainerKeyV1(entityId, displayLabel);
+  const store = readContainerStoreV1();
+  const existing = store[key];
+
+  if (!isHarthmereClothingQuestCrateLabelV1(displayLabel)) {
+    // Ordinary container: seed once and seal.
+    if (existing) {
+      return existing;
+    }
+    const seeded: HarthmereObjectContainerRecordV1 = {
+      key,
+      label: displayLabel,
+      items: lootSlotsForLabelV1(displayLabel),
+      sealed: true,
+    };
+    store[key] = seeded;
+    writeContainerStoreV1(store);
+    return seeded;
+  }
+
+  // Quest-gated clothing crate.
+  if (existing?.sealed) {
+    // Already filled (the gate opened on a previous interaction); behave normally.
+    return existing;
+  }
+  const ready =
+    options?.questClothingReady ?? readRoadAheadClothingCrateReadyV1();
+  // Preserve anything the player may have stored into the open (unsealed) crate.
+  const carriedItems = existing?.items ?? [];
+
+  if (!ready) {
+    const locked: HarthmereObjectContainerRecordV1 = {
+      key,
+      label: displayLabel,
+      items: carriedItems,
+      sealed: false,
+      note: HARTHMERE_CLOTHING_CRATE_LOCKED_NOTE_V1,
+    };
+    store[key] = locked;
+    writeContainerStoreV1(store);
+    return locked;
+  }
+
+  // The right time: merge the quest loot into whatever is already there, seal it.
+  const merged = mergeContainerSlotsV1(carriedItems, lootSlotsForLabelV1(displayLabel));
+  const filled: HarthmereObjectContainerRecordV1 = {
+    key,
+    label: displayLabel,
+    items: merged,
+    sealed: true,
+  };
+  store[key] = filled;
+  writeContainerStoreV1(store);
+  return filled;
+}
+
+function mergeContainerSlotsV1(
+  base: HarthmereObjectContainerSlotV1[],
+  add: HarthmereObjectContainerSlotV1[]
+): HarthmereObjectContainerSlotV1[] {
+  const merged = base.map((slot) => ({ ...slot }));
+  for (const slot of add) {
+    const existing = merged.find((s) => s.itemId === slot.itemId);
+    if (existing) {
+      existing.quantity += slot.quantity;
+    } else {
+      merged.push({ ...slot });
+    }
+  }
+  return merged;
+}
+
+export function readHarthmereContainerV1(
+  key: string
+): HarthmereObjectContainerRecordV1 | undefined {
+  return readContainerStoreV1()[key];
+}
+
+// Move `quantity` of `itemId` from the container into the player inventory.
+// grantHarthmereItem routes the item to the correct storage (backpack,
+// material storage, quest pouch, keyring) by category. Returns amount taken.
+export function takeFromHarthmereContainerV1(
+  key: string,
+  itemId: string,
+  quantity = 1
+): number {
+  const store = readContainerStoreV1();
+  const record = store[key];
+  if (!record || quantity <= 0) {
+    return 0;
+  }
+  let remaining = quantity;
+  let taken = 0;
+  const items = record.items.map((slot) => ({ ...slot }));
+  for (const slot of items) {
+    if (slot.itemId !== itemId || remaining <= 0) {
+      continue;
+    }
+    const move = Math.min(slot.quantity, remaining);
+    slot.quantity -= move;
+    remaining -= move;
+    taken += move;
+  }
+  if (taken <= 0) {
+    return 0;
+  }
+  record.items = items.filter((slot) => slot.quantity > 0);
+  store[key] = record;
+  writeContainerStoreV1(store);
+  grantHarthmereItem(itemId, taken, `${record.label} contents`);
+  return taken;
+}
+
+export function takeAllFromHarthmereContainerV1(key: string): number {
+  const record = readHarthmereContainerV1(key);
+  if (!record) {
+    return 0;
+  }
+  let total = 0;
+  // Snapshot ids first; each take mutates the stored record.
+  const slots = record.items.map((slot) => ({ ...slot }));
+  for (const slot of slots) {
+    total += takeFromHarthmereContainerV1(key, slot.itemId, slot.quantity);
+  }
+  return total;
+}
+
+// Move `quantity` of `itemId` from the player inventory into the container.
+// Returns the amount actually stored (limited by what the player holds).
+export function putIntoHarthmereContainerV1(
+  key: string,
+  itemId: string,
+  quantity = 1
+): number {
+  const store = readContainerStoreV1();
+  const record = store[key];
+  if (!record || quantity <= 0) {
+    return 0;
+  }
+  const removed = consumeHarthmereItemByItemIdV141(
+    itemId,
+    quantity,
+    `Stored in ${record.label}`
+  );
+  if (removed <= 0) {
+    return 0;
+  }
+  const existing = record.items.find((slot) => slot.itemId === itemId);
+  if (existing) {
+    existing.quantity += removed;
+  } else {
+    record.items = [...record.items, { itemId, quantity: removed }];
+  }
+  store[key] = record;
+  writeContainerStoreV1(store);
+  return removed;
+}
+
+export function readHarthmereContainerOpenRequestV1():
+  | HarthmereObjectContainerOpenRequestV1
+  | undefined {
+  if (!isBrowserV1()) {
+    return undefined;
+  }
+  try {
+    const raw = window.localStorage.getItem(
+      HARTHMERE_OBJECT_CONTAINER_OPEN_REQUEST_KEY_V1
+    );
+    if (!raw) {
+      return undefined;
+    }
+    const parsed = JSON.parse(raw) as HarthmereObjectContainerOpenRequestV1;
+    if (parsed && typeof parsed.key === "string") {
+      return parsed;
+    }
+    return undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+export function clearHarthmereContainerOpenRequestV1() {
+  if (!isBrowserV1()) {
+    return;
+  }
+  window.localStorage.removeItem(HARTHMERE_OBJECT_CONTAINER_OPEN_REQUEST_KEY_V1);
+}
+
+// HARTHMERE_OBJECT_CONTAINER_UI_V199:
+// Opening a container is now a UI action: it seeds the container (first time),
+// runs any label-driven daily-task hooks, and asks the mounted panel to show
+// the take/store interface. It no longer one-shot-grants loot and no longer
+// marks the container "searched" — the player decides what to take or store.
 export function openHarthmereObjectContainerV1({
   entityId,
   label,
-  resources,
 }: {
   entityId: BiomesId;
   label?: string | null;
-  resources: ClientResources;
+  // Accepted for call-site compatibility; the panel is the feedback surface.
+  resources?: unknown;
 }) {
   const displayLabel = label?.trim() || "Container";
-  const key = normalizeContainerKeyV1(entityId, displayLabel);
-  const opened = readOpenedContainersV1();
-  if (opened.includes(key)) {
-    addToast(resources, {
-      kind: "basic",
-      id: `harthmere-object-container:${key}:opened`,
-      message: `${displayLabel} has already been searched.`,
-    });
-    return;
-  }
+  const record = getOrSeedHarthmereContainerV1(entityId, displayLabel);
 
-  const loot = harthmereContainerLootForLabelV1(displayLabel);
-  dispatchHarthmereWorldObjectInteractionEventV1({
-    entityId,
-    label: displayLabel,
-    kind: "open_container",
-    title: "Open Container",
-  });
-  for (const item of loot) {
-    grantHarthmereItem(item.itemId, item.quantity, `${displayLabel} contents`);
-  }
   const labelText = displayLabel.toLowerCase();
   if (/food|ration|satchel|bag|basket|berries|forage/.test(labelText)) {
     completeHarthmereDailyTaskSoonV1("forage_walk");
@@ -158,10 +424,28 @@ export function openHarthmereObjectContainerV1({
   if (/tool|repair|kit|crate|box|chest|container/.test(labelText)) {
     completeHarthmereDailyTaskSoonV1("home_care");
   }
-  writeOpenedContainersV1([...opened, key]);
-  addToast(resources, {
-    kind: "new",
-    id: `harthmere-object-container:${key}:new`,
-    message: `Opened ${displayLabel}. Contents moved to your Harthmere inventory.`,
+
+  dispatchHarthmereWorldObjectInteractionEventV1({
+    entityId,
+    label: displayLabel,
+    kind: "open_container",
+    title: "Open Container",
   });
+
+  const request: HarthmereObjectContainerOpenRequestV1 = {
+    entityId,
+    key: record.key,
+    label: displayLabel,
+  };
+  if (isBrowserV1()) {
+    window.localStorage.setItem(
+      HARTHMERE_OBJECT_CONTAINER_OPEN_REQUEST_KEY_V1,
+      JSON.stringify(request)
+    );
+    window.dispatchEvent(
+      new CustomEvent(HARTHMERE_OBJECT_CONTAINER_OPEN_EVENT_V1, {
+        detail: request,
+      })
+    );
+  }
 }

@@ -97,21 +97,38 @@ import {
   HARTHMERE_SEED_DEFINITIONS_V1,
   collectHarthmereLivestockProductV1,
   cookHarthmereFoodV1,
+  cancelHarthmereCookV1,
+  collectHarthmereCookV1,
   defaultHarthmereFoodStaminaStateV1,
   eatHarthmereFoodV1,
+  enqueueHarthmereCookV1,
   feedHarthmereLivestockV1,
   forageHarthmereFoodSpawnV1,
   gatherHarthmereSeedV1,
   harvestHarthmereCropV1,
   huntHarthmereAnimalForFoodV1,
   plantHarthmereCropV1,
+  tickHarthmereCookingV1,
   tickHarthmereStaminaForGameplayV1,
   waterHarthmereCropV1,
+  type HarthmereCookingStationStateV1,
   type HarthmereFarmingPlotV1,
   type HarthmereFoodStaminaStateV1,
   type HarthmereLivestockV1,
   type HarthmereWorldSpawnV1,
 } from "./mmo_farming_food_stamina_v1";
+import {
+  HARTHMERE_CARRY_WEIGHT_LIMIT_V1,
+  harthmereInventoryCarryWeightV1,
+  harthmereItemUnitWeightV1,
+  isLikelyBankingMaterialItemIdV1,
+  itemCategoryFromDefinitionV1,
+} from "./mmo_carry_weight_v1";
+export {
+  HARTHMERE_CARRY_WEIGHT_LIMIT_V1,
+  harthmereInventoryCarryWeightV1,
+  harthmereItemUnitWeightV1,
+} from "./mmo_carry_weight_v1";
 import {
   defaultHarthmereMedicalHealthStateV1,
   receiveHarthmereDoctorTreatmentV1,
@@ -195,7 +212,7 @@ import {
 } from "./muck_monster_aggression_ai_v1";
 import {
   HARTHMERE_LIVE_ENTITY_LIVESTOCK_SEEDS_V1,
-  HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_SEEDS_V1,
+  harthmereGroundedMuckMonsterSeedsInTerritoryV1,
 } from "./live_entity_production_seed_v1";
 
 import {
@@ -278,7 +295,6 @@ export const HARTHMERE_BANK_MAX_SLOTS_V1 = 120;
 export const HARTHMERE_LOAN_MAX_PRINCIPAL_V1 = 250;
 export const HARTHMERE_LOAN_DAILY_INTEREST_RATE_V1 = 0.015;
 export const HARTHMERE_LOAN_DAY_MS_V1 = 24 * 60 * 60 * 1000;
-export const HARTHMERE_CARRY_WEIGHT_LIMIT_V1 = 25;
 export const HARTHMERE_LOAN_LATE_INTEREST_MULTIPLIER_V1 = 2;
 export const HARTHMERE_LOAN_DEFAULT_PENALTY_RATE_V1 = 0.2;
 export const HARTHMERE_BANK_CREDIT_HOLD_FLAG_V1 = "bank_credit_hold";
@@ -433,7 +449,10 @@ function positionObjectFromVec3V1(position: readonly number[]) {
 export function createHarthmereServerMuckCombatEntitySnapshotsV1(
   nowMs: number
 ): HarthmereLiveModeBackendStateV1["combat"]["entitySnapshots"] {
-  const monsterEntries = HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_SEEDS_V1.flatMap(
+  // Use the SAME grounded/redistributed positions as the seeded ECS entities so
+  // the combat AI never tracks a hostile somewhere a player won't see one (and
+  // never inside the Grove safe zone).
+  const monsterEntries = harthmereGroundedMuckMonsterSeedsInTerritoryV1().flatMap(
     (seed) => {
       const territory = muckMonsterAreaForPositionV1(seed.position, 1.5);
       if (!territory) {
@@ -946,6 +965,7 @@ export interface HarthmereLiveModeBackendStateV1 {
     >;
     harvests: Record<string, number>;
     livestock: Record<string, HarthmereLivestockV1>;
+    cooking: Record<string, HarthmereCookingStationStateV1>;
   };
   mail: {
     messages: Record<
@@ -2100,55 +2120,6 @@ function ensurePlayerOwnedBusinessOwnerNpcMarkersV1(
   }
 }
 
-function itemCategoryFromDefinitionV1(
-  def: HarthmereItemDefinitionV1 | undefined,
-  itemId: string
-) {
-  const text = `${itemId} ${def?.displayName ?? ""}`.toLowerCase();
-  if (def?.isCurrency) return "currency";
-  if (def?.isQuestItem || def?.binding === "quest") return "quest";
-  if (def?.isCraftingMaterial || isLikelyBankingMaterialItemIdV1(itemId))
-    return "materials";
-  if (def?.isConsumable || /potion|food|ration|drink|meal|medicine/.test(text))
-    return "consumables";
-  if (
-    /sword|axe|pickaxe|tool|hammer|bow|staff|wand|shield|armor|helm|boots|glove/.test(
-      text
-    )
-  )
-    return "tools";
-  return "item";
-}
-
-export function harthmereItemUnitWeightV1(itemId: string) {
-  const def = getHarthmereItemDefinitionV1(itemId);
-  const explicit = Number(
-    (def as any)?.weight ??
-      (def as any)?.carryWeight ??
-      (def as any)?.mass ??
-      def?.stats?.weight ??
-      def?.stats?.carryWeight ??
-      def?.stats?.mass
-  );
-  if (Number.isFinite(explicit) && explicit >= 0) {
-    return explicit;
-  }
-  const category = itemCategoryFromDefinitionV1(def, itemId);
-  if (category === "currency") return 0;
-  if (category === "quest") return 0.5;
-  if (category === "materials") return 2;
-  if (category === "tools") return 5;
-  if (category === "consumables") return 1;
-  return 1;
-}
-
-export function harthmereInventoryCarryWeightV1(items: Record<string, number>) {
-  return Object.entries(items ?? {}).reduce((sum, [itemId, count]) => {
-    const safeCount = Math.max(0, Math.trunc(Number(count) || 0));
-    return sum + harthmereItemUnitWeightV1(itemId) * safeCount;
-  }, 0);
-}
-
 function wouldExceedCarryWeightV1(
   items: Record<string, number>,
   itemId: string | undefined,
@@ -2507,12 +2478,6 @@ function humanizeHarthmereItemIdV1(itemId: string) {
   return trimmed
     .replace(/[_-]+/g, " ")
     .replace(/\b\w/g, (m) => m.toUpperCase());
-}
-
-function isLikelyBankingMaterialItemIdV1(itemId: string) {
-  return /(ore|wood|log|stone|clay|fiber|hide|meat|herb|mushroom|ingot|shard|crystal|sand|salt|grain|cloth|coal|copper|iron|silver|gold|exotic|matter|resource|material)/i.test(
-    itemId
-  );
 }
 
 function ensureLiveModeItemDefinitionV1(
@@ -3234,24 +3199,65 @@ function removeLiveEntityHelperQuestMarkerV1(
   }
 }
 
+// How close (XZ blocks) a defeated hostile mucker must be to the boss marker for
+// its kill to count as completing the hard_boss quest. Sized to the West Muck
+// Breach containment zone so a player must actually fight at the marked breach.
+const LIVE_ENTITY_HELPER_BOSS_DEFEAT_CREDIT_RADIUS_V1 = 48;
+
 function hasLiveEntityHelperBossDefeatEvidenceV1(
   state: HarthmereLiveModeBackendStateV1,
   envelope: HarthmereLiveModeAuthorityEnvelopeV1
 ) {
-  const bossEntityId =
-    payloadString(envelope, "bossEntityId") ??
-    LIVE_ENTITY_HELPER_MUCK_BOSS_MARKER_ID_V1;
-  const combatSnapshot = state.combat.entitySnapshots[bossEntityId];
-  if (combatSnapshot) {
-    if (combatSnapshot.isAlive || combatSnapshot.hp > 0) {
-      return false;
+  const actorId = envelope.actorId;
+  const creditedToActor = (
+    snapshot: HarthmereLiveCombatEntitySnapshotV1
+  ): boolean =>
+    snapshot.killedByActorId === actorId ||
+    snapshot.lastAttackerId === actorId ||
+    snapshot.lootOwnerActorIds?.includes(actorId) === true;
+  const isDefeated = (snapshot: HarthmereLiveCombatEntitySnapshotV1): boolean =>
+    !snapshot.isAlive && snapshot.hp <= 0;
+
+  // 1) If the client named a specific defeated entity, honor it when it maps to
+  // a real combat snapshot the actor actually defeated.
+  const explicitBossEntityId = payloadString(envelope, "bossEntityId");
+  if (explicitBossEntityId) {
+    const explicitSnapshot = state.combat.entitySnapshots[explicitBossEntityId];
+    if (explicitSnapshot) {
+      return isDefeated(explicitSnapshot) && creditedToActor(explicitSnapshot);
     }
-    return (
-      combatSnapshot.killedByActorId === envelope.actorId ||
-      combatSnapshot.lastAttackerId === envelope.actorId ||
-      combatSnapshot.lootOwnerActorIds?.includes(envelope.actorId) === true
-    );
   }
+
+  // 2) Primary path: credit a REAL hostile mucker the actor defeated near the
+  // marked breach. The marker id itself is never a combat-snapshot key (snapshots
+  // are keyed `server-muck-combat:...`), so we match by hostility + kill credit +
+  // proximity to the boss marker instead of a string lookup that never hit.
+  const marker = liveEntityHelperQuestTargetMarkerForKindV1("hard_boss");
+  if (marker) {
+    const [markerX, , markerZ] = marker.position;
+    for (const snapshot of Object.values(state.combat.entitySnapshots)) {
+      if (!snapshot || snapshot.isHostile !== true) {
+        continue;
+      }
+      if (!isDefeated(snapshot) || !creditedToActor(snapshot)) {
+        continue;
+      }
+      const home = snapshot.homePosition ?? snapshot.position;
+      if (!home) {
+        continue;
+      }
+      const distance = Math.hypot(
+        Number(home.x) - markerX,
+        Number(home.z) - markerZ
+      );
+      if (distance <= LIVE_ENTITY_HELPER_BOSS_DEFEAT_CREDIT_RADIUS_V1) {
+        return true;
+      }
+    }
+  }
+
+  // 3) Last-resort legacy fallback: only when no real combat snapshot matched
+  // (e.g. a world seeded before combat snapshots existed).
   const clientSawDefeat = payloadBoolean(envelope, "bossDefeated") === true;
   const clientKillCredit = payloadNumber(envelope, "bossKillCredit") ?? 0;
   return clientSawDefeat && clientKillCredit > 0;
@@ -4757,6 +4763,7 @@ export function defaultHarthmereLiveModeBackendStateV1(
       plots: {},
       harvests: {},
       livestock: {},
+      cooking: {},
     },
     mail: {
       messages: {},
@@ -5604,6 +5611,32 @@ export function createHarthmereLiveModeFarmingFoodClientSnapshotV1(
           entity.protectedSpecies !== true,
       })),
     harvests: { ...state.farming.harvests },
+    cookingStations: Object.values(
+      tickHarthmereCookingV1(state.farming.cooking ?? {}, nowMs)
+    ).map((station) => ({
+      stationId: station.stationId,
+      stationKind: station.stationKind,
+      label: station.label,
+      jobs: station.jobs.map((job) => {
+        const recipe = HARTHMERE_COOKING_RECIPES_V1[job.recipeId];
+        const span = Math.max(1, job.readyAtMs - job.startedAtMs);
+        const progress =
+          job.status === "ready"
+            ? 1
+            : Math.max(0, Math.min(1, (nowMs - job.startedAtMs) / span));
+        return {
+          jobId: job.jobId,
+          recipeId: job.recipeId,
+          displayName: recipe?.displayName ?? job.recipeId,
+          count: job.count,
+          status: job.status,
+          startedAtMs: job.startedAtMs,
+          readyAtMs: job.readyAtMs,
+          progress,
+          outputs: recipe?.outputs ?? {},
+        };
+      }),
+    })),
     updatedAtMs: state.updatedAtMs,
   };
 }
@@ -6028,13 +6061,26 @@ export function reduceHarthmereLiveModeBackendStateV1(
     };
   }
 
-  function liveEntityAiCombatDistanceV1(
+  // HARTHMERE_COMBAT_DISTANCE_HORIZONTAL_V1: muck monsters/wildlife are authored
+  // at a flat seed Y (~54) while the real muck terrain — and the player on it —
+  // sits at a different height, so a full 3D distance adds a phantom |dY| (often
+  // 10-40m) and pushes hostiles "out of range", making melee swings pass right
+  // through them. Combat range / aggro / leash for these creatures is resolved on
+  // the HORIZONTAL plane (with generous vertical slack so genuinely different
+  // floors like caves still separate). Used ONLY for muck-creature combat — never
+  // for property/building distance checks, which are real-Y on both sides.
+  function liveEntityCombatHorizontalDistanceV1(
     a: { x: number; y: number; z: number },
     b: { x: number; y: number; z: number }
   ) {
-    return Math.sqrt(
-      Math.pow(a.x - b.x, 2) + Math.pow(a.y - b.y, 2) + Math.pow(a.z - b.z, 2)
+    const HARTHMERE_COMBAT_VERTICAL_TOLERANCE_V1 = 48;
+    const dx = a.x - b.x;
+    const dz = a.z - b.z;
+    const dy = Math.max(
+      0,
+      Math.abs(a.y - b.y) - HARTHMERE_COMBAT_VERTICAL_TOLERANCE_V1
     );
+    return Math.sqrt(dx * dx + dz * dz + dy * dy);
   }
 
   function liveEntityAiRequiresLineOfSightV1(
@@ -6104,7 +6150,7 @@ export function reduceHarthmereLiveModeBackendStateV1(
     if (!liveEntityAiLineOfSightToPlayerV1(input.npcSnapshot)) {
       return "no_line_of_sight";
     }
-    const distance = liveEntityAiCombatDistanceV1(
+    const distance = liveEntityCombatHorizontalDistanceV1(
       input.npcSnapshot.position,
       input.playerPosition
     );
@@ -6207,7 +6253,8 @@ export function reduceHarthmereLiveModeBackendStateV1(
       ? Math.max(0, Number(npcSnapshot.attackRange))
       : ability.rangeUnits;
     if (
-      liveEntityAiCombatDistanceV1(npcSnapshot.position, playerPosition) > range
+      liveEntityCombatHorizontalDistanceV1(npcSnapshot.position, playerPosition) >
+      range
     ) {
       return {
         attackBlockedReason: "target_out_of_range",
@@ -7068,6 +7115,7 @@ export function reduceHarthmereLiveModeBackendStateV1(
       plots,
       spawns,
       livestock: { ...(next.farming.livestock ?? {}) },
+      cooking: { ...(next.farming.cooking ?? {}) },
     };
   }
 
@@ -7095,6 +7143,7 @@ export function reduceHarthmereLiveModeBackendStateV1(
       ])
     );
     next.farming.livestock = { ...authorityState.livestock };
+    next.farming.cooking = { ...authorityState.cooking };
     if (Number.isFinite(authorityState.stamina)) {
       ensureCombatResourcePoolsV1(next).resources.stamina = Math.max(
         0,
@@ -12298,6 +12347,12 @@ export function reduceHarthmereLiveModeBackendStateV1(
       const operation = payloadString(envelope, "operation");
       if (operation) {
         let authority = liveFarmingAuthorityStateV1();
+        // Advance cooking-job statuses from the clock (and expire spoiled dishes /
+        // prune emptied + orphaned stations) before any op reads them. Persist the
+        // cleanup immediately so it survives even if the op below is rejected.
+        authority.cooking = tickHarthmereCookingV1(authority.cooking, nowMs);
+        next.farming.cooking = authority.cooking;
+        touchedModels.add("farming");
         let authorityResult:
           | ReturnType<typeof plantHarthmereCropV1>
           | ReturnType<typeof waterHarthmereCropV1>
@@ -12479,6 +12534,27 @@ export function reduceHarthmereLiveModeBackendStateV1(
             livestockId: payloadString(envelope, "livestockId") ?? "",
             nowMs,
           });
+        } else if (operation === "cook_enqueue") {
+          authorityResult = enqueueHarthmereCookV1(authority, {
+            stationId: payloadString(envelope, "stationId") ?? "",
+            stationKind: payloadString(envelope, "stationKind") as any,
+            label: payloadString(envelope, "label") ?? undefined,
+            recipeId: payloadString(envelope, "recipeId") ?? "",
+            count: payloadNumber(envelope, "count"),
+            nowMs,
+          });
+        } else if (operation === "cook_collect") {
+          authorityResult = collectHarthmereCookV1(authority, {
+            stationId: payloadString(envelope, "stationId") ?? "",
+            jobId: payloadString(envelope, "jobId") ?? "",
+            nowMs,
+          });
+        } else if (operation === "cook_cancel") {
+          authorityResult = cancelHarthmereCookV1(authority, {
+            stationId: payloadString(envelope, "stationId") ?? "",
+            jobId: payloadString(envelope, "jobId") ?? "",
+            nowMs,
+          });
         } else {
           warnings.push("farming_rejected:unsupported_operation");
           touchedModels.add("farming_rejection");
@@ -12539,6 +12615,15 @@ export function reduceHarthmereLiveModeBackendStateV1(
             next.classMagic.skills,
             "cooking",
             (recipe?.xp ?? 10) * cookCount
+          );
+          touchedModels.add("skill_xp");
+        }
+        if (authorityResult.cookingXpDelta) {
+          // Timer-based cooking awards XP on collection (not enqueue).
+          upsertSkill(
+            next.classMagic.skills,
+            "cooking",
+            authorityResult.cookingXpDelta
           );
           touchedModels.add("skill_xp");
         }

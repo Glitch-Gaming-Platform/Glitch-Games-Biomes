@@ -2,9 +2,13 @@
 /// <reference types="node" />
 import assert from "assert";
 import {
+  HARTHMERE_JOBS_BOARD_ACCEPT_WINDOW_MAX_MS_V151,
+  HARTHMERE_JOBS_BOARD_ACCEPT_WINDOW_MIN_MS_V151,
   HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1,
   HARTHMERE_JOBS_BOARD_INTERACTION_RADIUS_V145,
   defaultHarthmereJobsBoardStateV1,
+  formatHarthmereJobTimeRemainingV151,
+  harthmereDeliveryPlanV151,
   isActorAtHarthmereJobsBoardV1,
   reduceHarthmereJobsBoardMutationV1,
   type HarthmereJobsBoardMutationContextV1,
@@ -136,9 +140,16 @@ describe("mmo_jobs_board_authority_v1 — posting, accepting, quest todos, and c
     const accepted = mutate(posted.jobsBoard, "accept_job", { jobId }, {}, "seeker");
     assert.ok(mutate(accepted.jobsBoard, "accept_job", { jobId }, {}, "other").warnings.includes("jobs_board_rejected:job_not_open"));
     assert.ok(mutate(accepted.jobsBoard, "complete_job_quest", { jobId }, { actorInventoryItems: {} }, "seeker").warnings.some((w) => w.includes("missing_completion_item")));
+    // HARTHMERE_JOB_ACCEPT_TIMER_V151: a lapsed accept-window is now auto-FAILED
+    // by the lazy sweep on the next interaction (released to open), so a late
+    // completion is rejected (the job is no longer active for this seeker) and
+    // the seeker's todo is marked failed.
     const expiredState = accepted.jobsBoard;
     expiredState.postings[jobId].deadlineAtMs = NOW - 1;
-    assert.ok(mutate(expiredState, "complete_job_quest", { jobId }, { actorInventoryItems: { repair_part: 2 } }, "seeker").warnings.includes("jobs_board_rejected:job_expired"));
+    const late = mutate(expiredState, "complete_job_quest", { jobId }, { actorInventoryItems: { repair_part: 2 } }, "seeker");
+    assert.ok(late.warnings.length > 0, "late completion is rejected");
+    const lateTodo = Object.values(late.jobsBoard.todos).find((t) => t.jobId === jobId && t.actorId === "seeker");
+    assert.equal(lateTodo?.status, "failed", "the lapsed quest is marked failed");
   });
 
   it("marks expired open jobs as shared-state changes when accept rejects them", () => {
@@ -411,5 +422,193 @@ describe("mmo_jobs_board_authority_v1 — abandon + failure penalty (audit harde
     const accepted = mutate(posted.jobsBoard, "accept_job", { jobId }, {}, "seeker");
     const r = mutate(accepted.jobsBoard, "abandon_job", { jobId }, {}, "other");
     assert.ok(r.warnings.includes("jobs_board_rejected:job_not_accepted_by_actor"));
+  });
+});
+
+describe("mmo_jobs_board_authority_v1 — repair-tool completion gate (HARTHMERE_REPAIR_TOOL_COMPLETION_V151)", () => {
+  function repairPostPayload() {
+    return postPayload({
+      title: "Patch the fence",
+      requirements: [
+        { itemId: "repair_part", count: 1, requiredToolAction: "repair" },
+      ],
+    });
+  }
+
+  it("blocks completing a repair job when the repair tool was not used", () => {
+    const posted = mutate(defaultHarthmereJobsBoardStateV1(NOW), "create_job_posting", repairPostPayload(), {}, "poster");
+    const jobId = Object.keys(posted.jobsBoard.postings)[0];
+    const accepted = mutate(posted.jobsBoard, "accept_job", { jobId }, {}, "seeker");
+    const result = mutate(
+      accepted.jobsBoard,
+      "complete_job_quest",
+      { jobId },
+      { actorInventoryItems: { repair_part: 1 } },
+      "seeker"
+    );
+    assert.ok(
+      result.warnings.includes("jobs_board_rejected:missing_required_tool:repair"),
+      `expected missing_required_tool, got ${JSON.stringify(result.warnings)}`
+    );
+  });
+
+  it("completes a repair job when the repair tool was used (usedToolAction matches)", () => {
+    const posted = mutate(defaultHarthmereJobsBoardStateV1(NOW), "create_job_posting", repairPostPayload(), {}, "poster");
+    const jobId = Object.keys(posted.jobsBoard.postings)[0];
+    const accepted = mutate(posted.jobsBoard, "accept_job", { jobId }, {}, "seeker");
+    const result = mutate(
+      accepted.jobsBoard,
+      "complete_job_quest",
+      { jobId, usedToolAction: "repair" },
+      { actorInventoryItems: { repair_part: 1 } },
+      "seeker"
+    );
+    assert.equal(result.warnings.length, 0, JSON.stringify(result.warnings));
+    const todo = Object.values(result.jobsBoard.todos).find((t) => t.jobId === jobId);
+    assert.equal(todo?.status, "completed");
+  });
+});
+
+describe("mmo_jobs_board_authority_v1 — accept timer + failure (HARTHMERE_JOB_ACCEPT_TIMER_V151)", () => {
+  function postAndAccept(acceptNowMs: number) {
+    const posted = mutate(defaultHarthmereJobsBoardStateV1(NOW), "create_job_posting", postPayload(), {}, "poster");
+    const jobId = Object.keys(posted.jobsBoard.postings)[0];
+    const accepted = mutate(posted.jobsBoard, "accept_job", { jobId, nowMs: acceptNowMs }, {}, "seeker");
+    return { jobId, state: accepted.jobsBoard };
+  }
+
+  it("starts the completion timer on ACCEPT, within a few hours to a day", () => {
+    const acceptNow = NOW;
+    const { jobId, state } = postAndAccept(acceptNow);
+    const job = state.postings[jobId];
+    const window = job.deadlineAtMs - acceptNow;
+    assert.ok(
+      window >= HARTHMERE_JOBS_BOARD_ACCEPT_WINDOW_MIN_MS_V151 &&
+        window <= HARTHMERE_JOBS_BOARD_ACCEPT_WINDOW_MAX_MS_V151,
+      `accept window ${window}ms out of range`
+    );
+    const todo = Object.values(state.todos).find((t) => t.jobId === jobId);
+    assert.equal(todo?.dueAtMs, job.deadlineAtMs, "todo inherits the accept deadline");
+  });
+
+  it("on the next interaction after the window lapses: marks the todo FAILED, releases the job to open, frees the slot", () => {
+    const acceptNow = NOW;
+    const { jobId, state } = postAndAccept(acceptNow);
+    const lapsedNow = acceptNow + HARTHMERE_JOBS_BOARD_ACCEPT_WINDOW_MAX_MS_V151 + 1;
+    // Any mutation runs the lazy sweep first. Use a harmless accept attempt by another seeker.
+    const after = mutate(state, "accept_job", { jobId, nowMs: lapsedNow }, {}, "seeker2");
+    const job = after.jobsBoard.postings[jobId];
+    const todo = Object.values(after.jobsBoard.todos).find((t) => t.actorId === "seeker" && t.jobId === jobId);
+    assert.equal(todo?.status, "failed", "lapsed todo is FAILED");
+    // The original seeker's claim was released; seeker2 then re-accepted it.
+    assert.equal(job.acceptedByActorId, "seeker2");
+  });
+
+  it("fail_job_quest fails the actor's quest and releases the job (e.g. escorted NPC killed)", () => {
+    const { jobId, state } = postAndAccept(NOW);
+    const failed = mutate(state, "fail_job_quest", { jobId }, {}, "seeker");
+    assert.equal(failed.warnings.length, 0, JSON.stringify(failed.warnings));
+    const todo = Object.values(failed.jobsBoard.todos).find((t) => t.jobId === jobId && t.actorId === "seeker");
+    assert.equal(todo?.status, "failed");
+    assert.equal(failed.jobsBoard.postings[jobId].status, "open");
+    assert.equal(failed.jobsBoard.postings[jobId].acceptedByActorId, undefined);
+  });
+
+  it("time-remaining label formats hours/minutes and Expired", () => {
+    assert.equal(formatHarthmereJobTimeRemainingV151(1000 + 3 * 60 * 60 * 1000 + 12 * 60 * 1000, 1000), "3h 12m left");
+    assert.equal(formatHarthmereJobTimeRemainingV151(1000 + 9 * 60 * 1000, 1000), "9m left");
+    assert.equal(formatHarthmereJobTimeRemainingV151(500, 1000), "Expired");
+    assert.equal(formatHarthmereJobTimeRemainingV151(undefined, 1000), "");
+  });
+});
+
+describe("mmo_jobs_board_authority_v1 — delivery (HARTHMERE_DELIVERY_V151)", () => {
+  describe("harthmereDeliveryPlanV151", () => {
+    it("returns undefined for non-delivery jobs", () => {
+      assert.equal(
+        harthmereDeliveryPlanV151({ kind: "repair", requirements: [{ itemId: "x" }] }),
+        undefined
+      );
+    });
+
+    it("grants the parcel on accept for a person recipient with no pickup", () => {
+      const plan = harthmereDeliveryPlanV151({
+        kind: "delivery",
+        requirements: [
+          { itemId: "harthmere_ledger_pouch", count: 1, recipientNpcId: "npc_outpost_brightcart_trader" },
+        ],
+      });
+      assert.ok(plan);
+      assert.equal(plan?.grantOnAccept, true);
+      assert.equal(plan?.parcelItemId, "harthmere_ledger_pouch");
+      assert.deepEqual(plan?.recipient, {
+        kind: "person",
+        ownerNpcId: "npc_outpost_brightcart_trader",
+        markerId: "harthmere_owner:npc_outpost_brightcart_trader",
+      });
+    });
+
+    it("requires pickup (no grant on accept) when a pickup location is set", () => {
+      const plan = harthmereDeliveryPlanV151({
+        kind: "delivery",
+        requirements: [
+          { itemId: "courier_pouch", count: 1, recipientNpcId: "npc_outpost_stampspur_dispatcher", pickupMarkerId: "harthmere_bridge_center" },
+        ],
+      });
+      assert.equal(plan?.grantOnAccept, false);
+      assert.equal(plan?.pickupMarkerId, "harthmere_bridge_center");
+    });
+
+    it("treats a recipient-less delivery as a place delivery", () => {
+      const plan = harthmereDeliveryPlanV151({
+        kind: "delivery",
+        requirements: [{ itemId: "apple_basket", count: 1, mapMarkerId: "grove_mail_bank_satchel" }],
+      });
+      assert.deepEqual(plan?.recipient, { kind: "place", markerId: "grove_mail_bank_satchel" });
+      assert.equal(plan?.grantOnAccept, true);
+    });
+  });
+
+  function deliveryPostPayload() {
+    return postPayload({
+      title: "Deliver pouch to Odette",
+      kind: "delivery",
+      requirements: [
+        { itemId: "repair_part", count: 1, recipientNpcId: "npc_outpost_brightcart_trader" },
+      ],
+    });
+  }
+
+  it("blocks completing a person-delivery that was not handed to the recipient", () => {
+    const posted = mutate(defaultHarthmereJobsBoardStateV1(NOW), "create_job_posting", deliveryPostPayload(), {}, "poster");
+    const jobId = Object.keys(posted.jobsBoard.postings)[0];
+    const accepted = mutate(posted.jobsBoard, "accept_job", { jobId }, {}, "seeker");
+    const result = mutate(
+      accepted.jobsBoard,
+      "complete_job_quest",
+      { jobId },
+      { actorInventoryItems: { repair_part: 1 } },
+      "seeker"
+    );
+    assert.ok(
+      result.warnings.some((w) => w.includes("not_delivered_to_recipient")),
+      JSON.stringify(result.warnings)
+    );
+  });
+
+  it("completes a person-delivery handed to the recipient (completedTargetId matches owner marker)", () => {
+    const posted = mutate(defaultHarthmereJobsBoardStateV1(NOW), "create_job_posting", deliveryPostPayload(), {}, "poster");
+    const jobId = Object.keys(posted.jobsBoard.postings)[0];
+    const accepted = mutate(posted.jobsBoard, "accept_job", { jobId }, {}, "seeker");
+    const result = mutate(
+      accepted.jobsBoard,
+      "complete_job_quest",
+      { jobId, completedTargetId: "harthmere_owner:npc_outpost_brightcart_trader" },
+      { actorInventoryItems: { repair_part: 1 } },
+      "seeker"
+    );
+    assert.equal(result.warnings.length, 0, JSON.stringify(result.warnings));
+    const todo = Object.values(result.jobsBoard.todos).find((t) => t.jobId === jobId);
+    assert.equal(todo?.status, "completed");
   });
 });

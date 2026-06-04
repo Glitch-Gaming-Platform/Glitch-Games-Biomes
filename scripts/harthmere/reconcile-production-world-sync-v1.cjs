@@ -36,6 +36,17 @@ const {
   harthmereLiveModeSharedWorldStateKeyV1,
   parseHarthmereLiveModeSharedWorldStateV1,
 } = require("../../src/shared/harthmere/live_mode_backend_v1");
+const {
+  HARTHMERE_LIVE_ENTITY_ROBOT_SENTINEL_SEEDS_V1,
+  harthmereGroundedMuckMonsterSeedsInTerritoryV1,
+  harthmereGroundedLivestockSeedsInTerritoryV1,
+  harthmereMuckMonsterPositionIsInSafeZoneV1,
+} = require("../../src/shared/harthmere/live_entity_production_seed_v1");
+const { Position, NpcMetadata } = require("../../src/shared/ecs/gen/components");
+const {
+  deserializeRedisEntityState,
+} = require("../../src/server/shared/world/lua/serde");
+const { Redis } = require("ioredis");
 
 const APPLY = process.env.APPLY === "1";
 const SEED_UPSERT_MODE = (
@@ -220,6 +231,146 @@ async function reconcileSharedLiveModeState(nowMs) {
   await redis.quit("production world sync complete");
 }
 
+// HARTHMERE_LIVE_ENTITY_POSITION_REPAIR_V1
+// The family reconcile above reliably CREATES missing entities but does NOT
+// reliably UPDATE existing ones (a batched multi-change apply no-ops in-place
+// position edits). So whenever the seed layout changes — muckers relocated out
+// of the Grove, wildlife re-banded, etc. — entities already in the live world
+// keep their stale positions, which is why this used to need a manual per-entity
+// pass after every deploy. This converges production onto the seed automatically:
+// for every live entity (robot / muck monster / wildlife) that is present but
+// whose position or spawn_position has drifted from the seed, it force-writes
+// both via the proven per-entity apply path. Idempotent (no-op when already
+// correct), and it will NEVER write a muck monster into a safe zone — a hard gate
+// fails the deploy if the seed ever resolves one into the Grove.
+async function repairLiveEntityPositions(world) {
+  const canonical = [
+    ...HARTHMERE_LIVE_ENTITY_ROBOT_SENTINEL_SEEDS_V1.map((seed) => ({
+      id: Number(seed.entityId),
+      position: seed.position,
+      isMonster: false,
+    })),
+    ...harthmereGroundedMuckMonsterSeedsInTerritoryV1().map((seed) => ({
+      id: Number(seed.entityId),
+      position: seed.position,
+      isMonster: true,
+    })),
+    ...harthmereGroundedLivestockSeedsInTerritoryV1().map((seed) => ({
+      id: Number(seed.entityId),
+      position: seed.position,
+      isMonster: false,
+    })),
+  ];
+
+  // A muck monster seed must never resolve into a safe zone. This is a build-time
+  // guarantee (see the gating test), re-checked here so a bad layout fails the
+  // deploy instead of silently dropping a hostile into the Grove.
+  const seedsInSafeZone = canonical.filter(
+    (entry) =>
+      entry.isMonster && harthmereMuckMonsterPositionIsInSafeZoneV1(entry.position)
+  );
+  check(
+    seedsInSafeZone.length === 0,
+    "no muck monster seed resolves into a safe zone (the Grove)",
+    seedsInSafeZone.length
+      ? `${seedsInSafeZone.length} monster seed(s) in a safe zone`
+      : undefined
+  );
+  const safeCanonical = canonical.filter(
+    (entry) =>
+      !(entry.isMonster && harthmereMuckMonsterPositionIsInSafeZoneV1(entry.position))
+  );
+
+  const host =
+    process.env.REDIS_HOST ||
+    process.env.GLITCH_REDIS_HOST ||
+    process.env.LOCAL_REDIS_HOST ||
+    "127.0.0.1";
+  const port = Number(
+    process.env.REDIS_PORT || process.env.GLITCH_REDIS_PORT || "6379"
+  );
+  const redis = new Redis({ host, port, lazyConnect: true });
+  await redis.connect();
+
+  const drift2d = (a, b) =>
+    !a || !b ? Infinity : Math.hypot(a[0] - b[0], a[2] - b[2]);
+  let repaired = 0;
+  let alreadyCorrect = 0;
+  let createdByReconcile = 0;
+  try {
+    for (const entry of safeCanonical) {
+      const raw = await redis.getBuffer(`b:${entry.id}`);
+      let entity;
+      if (raw) {
+        try {
+          [, entity] = deserializeRedisEntityState(entry.id, raw);
+        } catch {
+          entity = undefined;
+        }
+      }
+      if (!entity || !entity.hasPosition?.()) {
+        // Absent/tombstoned — the family reconcile (create path) owns these.
+        createdByReconcile += 1;
+        continue;
+      }
+      const current = entity.position()?.v;
+      const meta = entity.hasNpcMetadata?.() ? entity.npcMetadata() : undefined;
+      const spawn = meta?.spawn_position;
+      const positionDrifted = drift2d(current, entry.position) > 0.5;
+      // spawn_position carries an intentional +-4m spawn-spread jitter (max ~5.7m
+      // euclidean), so only treat it as drift when it is FAR from the seed (a real
+      // layout move, e.g. an old Grove spawn anchor) — never the jitter.
+      const spawnDrifted = drift2d(spawn, entry.position) > 8;
+      if (!positionDrifted && !spawnDrifted) {
+        alreadyCorrect += 1;
+        continue;
+      }
+      if (APPLY) {
+        const npc = NpcMetadata.create({
+          type_id: meta?.type_id,
+          spawn_position: [entry.position[0], entry.position[1], entry.position[2]],
+          spawn_orientation: meta?.spawn_orientation,
+          created_time: meta?.created_time,
+          spawn_event_id: meta?.spawn_event_id,
+          spawn_event_type_id: meta?.spawn_event_type_id,
+        });
+        await world.apply({
+          changes: [
+            {
+              kind: "update",
+              entity: {
+                id: entry.id,
+                position: Position.create({
+                  v: [entry.position[0], entry.position[1], entry.position[2]],
+                }),
+                npc_metadata: npc,
+              },
+            },
+          ],
+        });
+      }
+      repaired += 1;
+    }
+  } finally {
+    redis.disconnect();
+  }
+
+  console.log(
+    JSON.stringify({
+      phase: "live_entity_position_repair",
+      total: canonical.length,
+      repaired,
+      alreadyCorrect,
+      createdByReconcile,
+      apply: APPLY,
+    })
+  );
+  check(
+    true,
+    `live entity positions converged on seed (repaired=${repaired}, ok=${alreadyCorrect})`
+  );
+}
+
 async function main() {
   const nowMs = Date.now();
   const nowSeconds = Math.floor(nowMs / 1000);
@@ -242,6 +393,7 @@ async function main() {
   try {
     await world.waitForHealthy();
     await reconcileEcsSeeds(world, nowSeconds);
+    await repairLiveEntityPositions(world);
     await reconcileSharedLiveModeState(nowMs);
   } finally {
     await world.stop?.();

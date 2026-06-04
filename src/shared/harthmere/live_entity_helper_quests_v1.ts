@@ -653,6 +653,69 @@ export function liveEntityHelperQuestObjectiveMetV1(
   return canCompleteLiveEntityHelperQuestV1(definition, evidence).ok;
 }
 
+// HARTHMERE_LIVE_ENTITY_HELPER_OBJECTIVE_BASELINE_V1
+// A snapshot of what the player ALREADY had toward a quest's requirements at the
+// instant they accepted it: how many of each required item sat in their bags and
+// how many boss defeats were already on the books. Completion is measured as
+// progress made AFTER accepting (current - baseline), so a quest can never be
+// "already done" the moment it is accepted just because the player happened to
+// carry the items (e.g. the default Road Rations) or had previously killed the
+// boss. This is what turns these into real "go fetch it / go kill it" quests.
+export interface LiveEntityHelperQuestObjectiveBaselineV1 {
+  inventory: Record<string, number>;
+  hardBossDefeats: number;
+}
+
+// Capture the accept-time baseline for a quest from the player's current state.
+// Only the items the quest actually requires are recorded.
+export function liveEntityHelperQuestObjectiveBaselineV1(
+  quest: Pick<LiveEntityHelperQuestDefinitionV1, "requirements">,
+  current: LiveEntityHelperQuestEvidenceV1
+): LiveEntityHelperQuestObjectiveBaselineV1 {
+  const inventory: Record<string, number> = {};
+  const currentInventory = current.inventory ?? {};
+  for (const item of quest.requirements.items ?? []) {
+    inventory[item.itemId] = Math.max(
+      0,
+      Math.floor(currentInventory[item.itemId] ?? 0)
+    );
+  }
+  return {
+    inventory,
+    hardBossDefeats: Math.max(0, Math.floor(current.hardBossDefeats ?? 0)),
+  };
+}
+
+// Subtract an accept-time baseline from the player's current evidence so only
+// items collected / boss kills earned AFTER accepting count toward completion.
+// A missing baseline (older record) means "count everything", preserving the
+// previous behavior for in-flight quests.
+export function liveEntityHelperQuestEvidenceSinceBaselineV1(
+  current: LiveEntityHelperQuestEvidenceV1,
+  baseline: LiveEntityHelperQuestObjectiveBaselineV1 | undefined
+): LiveEntityHelperQuestEvidenceV1 {
+  if (!baseline) {
+    return current;
+  }
+  const currentInventory = current.inventory ?? {};
+  const inventory: Record<string, number> = {};
+  const itemIds = new Set([
+    ...Object.keys(currentInventory),
+    ...Object.keys(baseline.inventory ?? {}),
+  ]);
+  for (const itemId of itemIds) {
+    const have = Math.max(0, Math.floor(currentInventory[itemId] ?? 0));
+    const had = Math.max(0, Math.floor(baseline.inventory?.[itemId] ?? 0));
+    inventory[itemId] = Math.max(0, have - had);
+  }
+  const defeats = Math.max(0, Math.floor(current.hardBossDefeats ?? 0));
+  const baseDefeats = Math.max(0, Math.floor(baseline.hardBossDefeats ?? 0));
+  return {
+    inventory,
+    hardBossDefeats: Math.max(0, defeats - baseDefeats),
+  };
+}
+
 export function isLiveEntityHelperPositionInMuckBreachAreaV1(
   position: readonly number[] | undefined
 ) {
@@ -810,6 +873,25 @@ export function liveEntityHelperQuestKindForEntityV1(
     "hard_boss",
   ];
   return kinds[Math.abs(hash) % kinds.length];
+}
+
+// Roughly 70% of otherwise-eligible live entities actually hand out a helper
+// quest; the rest are just regular talkable NPCs. The decision is a stable hash
+// of the entity (NOT random), so the same NPC always behaves the same way across
+// reloads — a given person either has a quest or they don't, they never flicker.
+export const LIVE_ENTITY_HELPER_QUEST_OFFER_RATE_PERCENT_V1 = 70;
+
+export function liveEntityHelperQuestOfferedForEntityV1(
+  entityId: string | number,
+  label = ""
+): boolean {
+  const source = `offer:${String(entityId)}:${label}`;
+  let hash = 2166136261;
+  for (let index = 0; index < source.length; index += 1) {
+    hash ^= source.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return Math.abs(hash) % 100 < LIVE_ENTITY_HELPER_QUEST_OFFER_RATE_PERCENT_V1;
 }
 
 export function getLiveEntityHelperQuestForEntityV1(

@@ -85,7 +85,7 @@ import {
   type HarthmereVoxelFaceConfig,
 } from "@/shared/harthmere/voxel_faces";
 import type { BiomesId } from "@/shared/ids";
-import { groundHarthmereLiveEntityFeetYV1 } from "@/client/game/util/harthmere_entity_grounding";
+import { harthmereGroundedFeetYWithMemoryV1 } from "@/client/game/util/harthmere_entity_grounding";
 import { isHarthmereBusinessOwnerNpcEntityIdV1 } from "@/shared/harthmere/business_owner_npc_seed_v1";
 import { isHarthmereBusinessCustomerNpcEntityIdV1 } from "@/shared/harthmere/business_customer_npc_seed_v1";
 import {
@@ -900,6 +900,10 @@ function publishHarthmereVoxelNpcMotionActorPositionV193(
 
 let harthmereNpcGroundProbeFrameV1 = -1;
 let harthmereNpcGroundProbeCacheV1 = new Map<string, number | undefined>();
+// Persistent (cross-frame) memory of the last REAL surface grounded for a
+// column, so an entity that already settled on the breach floor is not popped
+// back up to the flat authored Y when its terrain shard briefly unloads.
+const harthmereNpcLastGroundedFeetYByColumnV151 = new Map<string, number>();
 
 function sampleHarthmereNpcGroundFeetYV1(
   resources: ClientResources,
@@ -924,20 +928,27 @@ function sampleHarthmereNpcGroundFeetYV1(
     return harthmereNpcGroundProbeCacheV1.get(key);
   }
 
-  // Robust, water-aware probe: the generous up/down budget bridges the
+  // Robust, water-aware tri-state probe: the generous up/down budget bridges the
   // Grove(≈70)/wilds(≈54) seam and real hills; water counts as standable support
   // (rest ON the surface, not the lake bed); requireOpenSky keeps OUTDOOR
   // entities out of caves, while business owners pass requireOpenSky=false to
-  // stay on the building floor under their roof.
-  const result = groundHarthmereLiveEntityFeetYV1(
+  // stay on the building floor under their roof. The tri-state status lets us
+  // tell "terrain not loaded yet" apart from "no surface here", so a kill-target
+  // monster keeps its last real surface (instead of floating at the authored Y)
+  // while its shard streams in, and re-grounds once the surface is known.
+  // Use THE shared world-placement grounder (same as items/drops/markers): one
+  // tri-state probe + keep-last-surface memory, so every NPC is always visible
+  // and never floats or buries.
+  const feetY = harthmereGroundedFeetYWithMemoryV1(
     resources,
+    harthmereNpcLastGroundedFeetYByColumnV151,
     ix,
     iz,
     iy,
     requireOpenSky
   );
-  harthmereNpcGroundProbeCacheV1.set(key, result);
-  return result;
+  harthmereNpcGroundProbeCacheV1.set(key, feetY);
+  return feetY;
 }
 
 function parseHarthmereNavigationObstacleV1(
@@ -3835,23 +3846,18 @@ async function makeNpcMesh(deps: ClientResourceDeps, id: BiomesId) {
   const npcType = idToNpcType(npcMetadata.type_id);
   const label = deps.get("/ecs/c/label", id)?.text;
 
-  // HARTHMERE_BUSINESS_NPC_UNIQUE_VOXEL_V1:
-  // Business owners and customers are authored with unique harthmere:face/body/
-  // appearance markers (one per NPC). The shared player_mesh avatar pipeline
-  // (taken below for all player-like NPCs) ignores those markers and renders
-  // every shopkeeper/customer with the same default appearance_component, so a
-  // shop full of customers looked identical and did not animate. Route them
-  // through the deterministic voxel NPC generator, which reads each NPC's
-  // markers (unique look) and carries idle/walk animation clips.
-  if (
-    isHarthmereBusinessOwnerNpcEntityIdV1(id) ||
-    isHarthmereBusinessCustomerNpcEntityIdV1(id)
-  ) {
-    const mesh = makeLocalDevVoxelNpcGltf(deps, id);
-    setFrustumCulling(mesh, false);
-    mesh.scene.userData.harthmereBusinessNpcUniqueVoxelV1 = true;
-    return mesh;
-  }
+  // HARTHMERE_BUSINESS_NPC_PLAYER_AVATAR_PARITY_V199:
+  // Business owners and customers must render with the SAME player/Grove avatar
+  // design as the player, Grove townsfolk, Billy Rhodes, Donnie, Max, etc. — not
+  // the blocky "Harthmere voxel" NPC design. They are LOCAL_DEV_HUMAN_NPC_TYPE_ID
+  // (isPlayerLikeAppearance === true), so they fall through to the player-like
+  // branch below, which renders via makeSnapshotPlayerLikeAppearanceMesh (the
+  // generated /api/assets/player_mesh.glb pipeline). Their ECS seeds drop the
+  // uniform default appearance_component/wearing, so that pipeline applies the
+  // deterministic per-id rich-appearance fallback (snapshotRichNpc*FallbackV69),
+  // giving each shopkeeper/customer a distinct, clothed, animated avatar that
+  // matches the rest of the cast. (Previously they were diverted here to the
+  // deterministic voxel generator; that produced the wrong art style.)
 
   const muckCreatureAssetMesh = await makeHarthmereMuckCreatureNpcAssetMeshV1(
     label,

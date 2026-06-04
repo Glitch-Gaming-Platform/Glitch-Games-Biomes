@@ -566,6 +566,45 @@ const ITEM_DEFINITIONS: Record<string, HarthmereItemDefinition> = {
     description: "A quiet blessing candle. Best used outside combat.",
   },
 
+  repair_mallet: {
+    id: "repair_mallet",
+    name: "Repair Mallet",
+    category: "tool",
+    subtype: "repair_tool",
+    quality: "common",
+    icon: "🔨",
+    stackable: false,
+    maxStack: 1,
+    // Equippable in the main hand: a tool only has its effect while EQUIPPED.
+    // Equipped, it RESTORES broken structure blocks (fences etc.) instead of
+    // destroying them, and satisfies repair jobs' required-tool gate.
+    slot: "main_hand",
+    requiredLevel: 1,
+    bindType: "bind_on_equip",
+    baseValue: 30,
+    durabilityMax: 60,
+    description:
+      "Equip in your main hand to repair broken structures — it restores their blocks instead of breaking them. Required for repair jobs.",
+  },
+  muck_rake: {
+    id: "muck_rake",
+    name: "Muck Rake",
+    category: "tool",
+    subtype: "cleanup_tool",
+    quality: "common",
+    icon: "🧹",
+    stackable: false,
+    maxStack: 1,
+    // Equippable: clears muck (converts muck voxels back to dirt) and plants
+    // seeds for gardening. Required for cleanup jobs.
+    slot: "main_hand",
+    requiredLevel: 1,
+    bindType: "bind_on_equip",
+    baseValue: 30,
+    durabilityMax: 60,
+    description:
+      "Equip in your main hand to clear muck — it turns muck back into dirt — and to plant seeds. Required for cleanup jobs.",
+  },
   rusty_pickaxe: {
     id: "rusty_pickaxe",
     name: "Rusty Pickaxe",
@@ -2147,6 +2186,41 @@ function itemDef(itemId: string) {
   return ITEM_DEFINITIONS[itemId];
 }
 
+// HARTHMERE_OBJECT_CONTAINER_UI_V199:
+// Lightweight, read-only view of an item definition for surfaces that render
+// item rows/slots outside this module (e.g. the world-object container panel).
+// Keeps the full ITEM_DEFINITIONS map private while letting other components
+// show an item's name, icon, category and stack rules.
+export interface HarthmereItemDisplayV1 {
+  id: string;
+  name: string;
+  icon: string;
+  category: HarthmereItemCategory;
+  quality: HarthmereItemQuality;
+  description: string;
+  stackable: boolean;
+  maxStack: number;
+}
+
+export function getHarthmereItemDisplayV1(
+  itemId: string
+): HarthmereItemDisplayV1 | undefined {
+  const def = ITEM_DEFINITIONS[itemId];
+  if (!def) {
+    return undefined;
+  }
+  return {
+    id: def.id,
+    name: def.name,
+    icon: def.icon,
+    category: def.category,
+    quality: def.quality,
+    description: def.description,
+    stackable: def.stackable,
+    maxStack: def.maxStack,
+  };
+}
+
 function makeItemInstance(
   itemId: string,
   quantity = 1,
@@ -2598,10 +2672,10 @@ export function grantHarthmereItem(
   itemId: string,
   quantity = 1,
   reason = "Item received"
-) {
+): { added: number; overflow: number } {
   const def = itemDef(itemId);
   if (!def) {
-    return;
+    return { added: 0, overflow: quantity };
   }
   const current = readHarthmereInventoryState();
   const { state, added, overflow } = addItemByStorageRules(
@@ -2619,6 +2693,208 @@ export function grantHarthmereItem(
         )}.`
   );
   writeHarthmereInventoryState(next);
+  return { added, overflow };
+}
+
+// HARTHMERE_REWARD_INVENTORY_FIT_V151:
+// Dry-run whether a set of reward items can ALL be received without overflow,
+// threading the simulated state through each item so multiple rewards are
+// checked cumulatively (and special-storage categories like materials/quest
+// items, which never overflow, are accounted for correctly). Callers use this
+// to refuse a quest turn-in that would silently drop reward items when the
+// backpack is full, leaving the quest claimable once the player frees space.
+export function harthmereInventoryCanAcceptItemsV151(
+  items: ReadonlyArray<{ itemId: string; quantity: number }>,
+  state: HarthmereInventoryState = readHarthmereInventoryState()
+): boolean {
+  let working = state;
+  for (const item of items) {
+    if (!itemDef(item.itemId)) {
+      continue;
+    }
+    const result = addItemByStorageRules(working, item.itemId, item.quantity);
+    if (result.overflow > 0) {
+      return false;
+    }
+    working = result.state;
+  }
+  return true;
+}
+
+// HARTHMERE_REPAIR_TOOL_EQUIP_V151: a repair tool only works while EQUIPPED in
+// the main hand. These read the equipped main-hand item and report whether it
+// is a repair tool, so the repair interaction and job completion can gate on it.
+export function isHarthmereRepairToolItemIdV151(
+  itemId: string | undefined
+): boolean {
+  if (!itemId) {
+    return false;
+  }
+  const def = itemDef(itemId);
+  return !!def && def.category === "tool" && def.subtype === "repair_tool";
+}
+
+export function equippedHarthmereRepairToolItemIdV151(
+  state: HarthmereInventoryState = readHarthmereInventoryState()
+): string | undefined {
+  const itemId = state.equipment.main_hand?.itemId;
+  return isHarthmereRepairToolItemIdV151(itemId) ? itemId : undefined;
+}
+
+export function isHarthmereRepairToolEquippedV151(
+  state: HarthmereInventoryState = readHarthmereInventoryState()
+): boolean {
+  return equippedHarthmereRepairToolItemIdV151(state) !== undefined;
+}
+
+// Cleanup tool (muck->dirt + gardening) equip detection — mirror of repair.
+export function isHarthmereCleanupToolItemIdV151(
+  itemId: string | undefined
+): boolean {
+  if (!itemId) {
+    return false;
+  }
+  const def = itemDef(itemId);
+  return !!def && def.category === "tool" && def.subtype === "cleanup_tool";
+}
+
+export function equippedHarthmereCleanupToolItemIdV151(
+  state: HarthmereInventoryState = readHarthmereInventoryState()
+): string | undefined {
+  const itemId = state.equipment.main_hand?.itemId;
+  return isHarthmereCleanupToolItemIdV151(itemId) ? itemId : undefined;
+}
+
+export function isHarthmereCleanupToolEquippedV151(
+  state: HarthmereInventoryState = readHarthmereInventoryState()
+): boolean {
+  return equippedHarthmereCleanupToolItemIdV151(state) !== undefined;
+}
+
+// HARTHMERE_JOB_REWARD_BRIDGE_V151:
+// Jobs-board (and crafting) payouts must land in the player's VISIBLE wallet +
+// inventory (the LocalDev HUD), which is what the player actually spends from —
+// the server jobs-board economy is separate bookkeeping the HUD never reads, so
+// there is no double-pay. This pure core applies a job's reward (gold + items)
+// to a HUD state ONCE per jobId (idempotent), so a re-fired turn-in effect can
+// never double-grant. Items route through addItemByStorageRules (overflow is
+// reported, never silently lost — the turn-in flow refuses when it won't fit).
+export interface HarthmereJobRewardV151 {
+  jobId: string;
+  rewardGold?: number;
+  rewardItems?: ReadonlyArray<{ itemId: string; count: number }>;
+}
+
+export interface HarthmereJobRewardApplyResultV151 {
+  granted: boolean;
+  alreadyGranted: boolean;
+  goldAdded: number;
+  itemsAdded: number;
+  overflow: number;
+}
+
+export function applyHarthmereJobRewardToStateV151(
+  state: HarthmereInventoryState,
+  granted: ReadonlySet<string>,
+  reward: HarthmereJobRewardV151
+): {
+  state: HarthmereInventoryState;
+  granted: Set<string>;
+  result: HarthmereJobRewardApplyResultV151;
+} {
+  const grantedNext = new Set(granted);
+  if (granted.has(reward.jobId)) {
+    return {
+      state,
+      granted: grantedNext,
+      result: { granted: false, alreadyGranted: true, goldAdded: 0, itemsAdded: 0, overflow: 0 },
+    };
+  }
+  let working = state;
+  const gold = Math.max(0, Math.round(Number(reward.rewardGold ?? 0)));
+  if (gold > 0) {
+    working = addGold(working, gold);
+  }
+  let itemsAdded = 0;
+  let overflow = 0;
+  for (const item of reward.rewardItems ?? []) {
+    if (!itemDef(item.itemId)) {
+      continue;
+    }
+    const out = addItemByStorageRules(working, item.itemId, item.count);
+    working = out.state;
+    itemsAdded += out.added;
+    overflow += out.overflow;
+  }
+  grantedNext.add(reward.jobId);
+  return {
+    state: working,
+    granted: grantedNext,
+    result: { granted: true, alreadyGranted: false, goldAdded: gold, itemsAdded, overflow },
+  };
+}
+
+const HARTHMERE_JOB_REWARD_GRANTED_KEY_V151 =
+  "biomes.localDev.harthmere.jobsBoardRewardsGranted.v151";
+
+function readGrantedHarthmereJobRewardsV151(): Set<string> {
+  if (typeof window === "undefined") return new Set();
+  try {
+    const raw = window.localStorage.getItem(HARTHMERE_JOB_REWARD_GRANTED_KEY_V151);
+    const arr = raw ? (JSON.parse(raw) as string[]) : [];
+    return new Set(Array.isArray(arr) ? arr : []);
+  } catch {
+    return new Set();
+  }
+}
+
+export function harthmereJobRewardAlreadyGrantedV151(jobId: string): boolean {
+  return readGrantedHarthmereJobRewardsV151().has(jobId);
+}
+
+// Add gold to the HUD wallet (exported for reward/economy callers).
+export function addHarthmereGoldV151(amount: number, reason = "Gold received") {
+  if (typeof window === "undefined") return;
+  const next = addGold(readHarthmereInventoryState(), amount);
+  writeHarthmereInventoryState(
+    appendLog(next, reason, `+${Math.max(0, Math.round(amount))} gold`)
+  );
+}
+
+// localStorage-backed idempotent job-reward grant used on turn-in.
+export function grantHarthmereJobRewardV151(
+  reward: HarthmereJobRewardV151
+): HarthmereJobRewardApplyResultV151 {
+  if (typeof window === "undefined") {
+    return { granted: false, alreadyGranted: false, goldAdded: 0, itemsAdded: 0, overflow: 0 };
+  }
+  const granted = readGrantedHarthmereJobRewardsV151();
+  const applied = applyHarthmereJobRewardToStateV151(
+    readHarthmereInventoryState(),
+    granted,
+    reward
+  );
+  if (!applied.result.granted) {
+    return applied.result;
+  }
+  writeHarthmereInventoryState(
+    appendLog(
+      applied.state,
+      "Job reward",
+      `${reward.jobId}: +${applied.result.goldAdded} gold, +${applied.result.itemsAdded} items${
+        applied.result.overflow > 0 ? `, overflow ${applied.result.overflow}` : ""
+      }`
+    )
+  );
+  try {
+    window.localStorage.setItem(
+      HARTHMERE_JOB_REWARD_GRANTED_KEY_V151,
+      JSON.stringify([...applied.granted])
+    );
+  } catch {
+    // Reward already applied in-memory; the granted-set persist is best-effort.
+  }
+  return applied.result;
 }
 
 export function grantHarthmereTutorialInventoryItem(
@@ -3197,6 +3473,34 @@ export function ensureHarthmereStarterSwordGranted() {
       "You have an Iron Longsword. Draw or sheathe it with the weapon stance control before fighting."
     )
   );
+}
+
+// HARTHMERE_TOOL_OBTAINABLE_V151: ensure the player can always obtain the job
+// tools, so repair AND cleanup jobs (which require the matching equipped tool)
+// are never soft-locked. Idempotent per tool. The tools are ALSO stocked at the
+// in-world vendor owners so they can be re-bought if sold/dropped (see the
+// vendor catalog), and the resolver guides the player there when one is missing.
+function ensureHarthmereStarterToolGrantedV151(
+  itemId: string,
+  reason: string,
+  state = readHarthmereInventoryState()
+) {
+  const owns =
+    state.equipment.main_hand?.itemId === itemId ||
+    state.equipment.off_hand?.itemId === itemId ||
+    state.backpack.items.some((item) => item.itemId === itemId);
+  if (owns) {
+    return;
+  }
+  grantHarthmereItem(itemId, 1, reason);
+}
+
+export function ensureHarthmereStarterRepairToolGranted() {
+  ensureHarthmereStarterToolGrantedV151("repair_mallet", "Starter repair tool");
+}
+
+export function ensureHarthmereStarterCleanupToolGranted() {
+  ensureHarthmereStarterToolGrantedV151("muck_rake", "Starter cleanup tool");
 }
 
 export function ensureStarterWeaponEquipped() {

@@ -748,6 +748,11 @@ export function createHarthmereJobsBoardAdapterV1(
         questTodoId?: string;
         completedTargetId?: string;
         completionItemDeltas?: Record<string, number>;
+        // HARTHMERE_REPAIR_TOOL_COMPLETION_V151: the tool action the player used
+        // to do the work (e.g. "repair"), set only when the matching tool was
+        // equipped. The server rejects completion of a tool-gated requirement
+        // unless this matches.
+        usedToolAction?: string;
       } = {}
     ) => {
       const steps = planHarthmereJobsBoardCompletionStepsV1(options.todoStatus);
@@ -761,6 +766,9 @@ export function createHarthmereJobsBoardAdapterV1(
           }
           if (options.completionItemDeltas) {
             payload.completionItemDeltas = options.completionItemDeltas;
+          }
+          if (options.usedToolAction) {
+            payload.usedToolAction = options.usedToolAction;
           }
         }
         snapshot = await submitHarthmereJobsBoardMutationV1(step, payload, {

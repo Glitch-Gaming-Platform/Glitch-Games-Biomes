@@ -767,25 +767,25 @@ const claimSessionRoute = sectionBetween(
   'if (op === "heartbeatSession")'
 );
 check(
-  "server autoLogin returns Biomes user id as durable cloud game_user_id",
+  "server autoLogin returns the stable Glitch account user_id as durable cloud game_user_id",
   includesAll(autoLoginRoute, [
     "createBiomesAuthForGlitchIdentity",
-    "const biomesGameUserId = `biomes:${user.id}`",
-    "game_user_id: biomesGameUserId",
+    "...validationJson(identity)",
     "biomes_user_id: user.id",
   ])
 );
 check(
-  "server claimSession promotes install identity to Biomes-scoped cloud identity",
+  "server claimSession returns the stable Glitch account user_id as durable cloud game_user_id",
   includesAll(claimSessionRoute, [
     "createBiomesAuthForGlitchIdentity",
-    "const cloudIdentity: HarthmereValidatedIdentity",
-    "gameUserId: `biomes:${user.id}`",
     "claimServerSession",
-    "cloudIdentity",
-    "game_user_id: cloudIdentity.gameUserId",
+    "game_user_id: identity.gameUserId",
     "biomes_user_id: user.id",
   ])
+);
+check(
+  "validationJson surfaces the Glitch account user_id as the durable game_user_id",
+  proxy.includes("game_user_id: identity.gameUserId")
 );
 for (const [field] of requiredCloudSaveRequestFields) {
   check(

@@ -45,6 +45,7 @@ import {
   serverRuleset,
 } from "@/server/shared/minigames/util";
 import { attribs } from "@/shared/bikkie/schema/attributes";
+import { evaluateRole } from "@/shared/roles";
 import { secondsSinceEpoch } from "@/shared/ecs/config";
 import {
   ContainerInventory,
@@ -540,23 +541,19 @@ export const changeTextSignContentsEventHandler = makeEventHandler(
   "changeTextSignContentsEvent",
   {
     mergeKey: (event) => event.id,
-    prepareInvolves: (event) => ({
+    involves: (event) => ({
       placeable: q.id(event.id).with("placeable_component", "position"),
+      player: event.user_id,
     }),
-    prepare: ({ placeable }) => ({
-      position: placeable.position.v,
-    }),
-    involves: (event, { position }) => ({
-      placeable: q.id(event.id).with("placeable_component", "position"),
-      acl: aclChecker({ kind: "point", point: position }, event.user_id),
-    }),
-    apply: ({ placeable, acl }, event) => {
+    apply: ({ placeable, player }, event) => {
       const itemId = placeable.placeableComponent().item_id;
       ok(anItem(itemId).isCustomizableTextSign);
       const textSignConfiguration = anItem(itemId).textSignConfiguration;
       ok(textSignConfiguration);
 
-      if (!acl.can("destroy", { entity: placeable })) {
+      // Only the player who placed the sign (or an admin) may edit its text.
+      const isOwner = placeable.createdBy()?.id === event.user_id;
+      if (!isOwner && !evaluateRole(player.userRoles()?.roles, "admin")) {
         return;
       }
 

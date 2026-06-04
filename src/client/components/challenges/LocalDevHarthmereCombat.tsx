@@ -22,7 +22,13 @@ import {
   levelHitModifier,
   scaleHarthmereNpcCombatStats,
 } from "@/client/components/challenges/LocalDevHarthmereLevelingSystem";
+import { harthmereIncomingExternalAttackV1 } from "@/client/components/challenges/harthmerePvpHitRules";
 import { useClientContext } from "@/client/components/contexts/ClientContextReactContext";
+import { isPlayer } from "@/shared/game/players";
+import {
+  fallDamageForBlocksV1,
+  FEET_PER_BLOCK_V1,
+} from "@/shared/game/fall_damage_v1";
 import { LIVE_ENTITY_HELPER_MUCK_BOSS_OFFSET_V1 } from "@/shared/harthmere/live_entity_helper_quests_v1";
 import { evaluateMuckMonsterAggressionV1 } from "@/shared/harthmere/muck_monster_aggression_ai_v1";
 import { HARTHMERE_HALF_DAY_MS_V1 } from "@/shared/harthmere/mmo_farming_food_stamina_v1";
@@ -773,6 +779,219 @@ export function downHarthmerePlayerFromSystem(input: {
     }),
     player: { ...state.player, hp: 0, combatState: "downed" },
   });
+}
+
+// Window event the player physics script dispatches when it detects a
+// qualifying fall. The Harthmere HUD shows the combat-system HP (not the ECS
+// health the physics script also writes), so we mirror the fall onto the
+// combat HP here. The string is the cross-module contract — keep it in sync
+// with the dispatch in player.ts.
+export const HARTHMERE_PLAYER_FALL_DAMAGE_EVENT =
+  "biomes:harthmere-player-fall-damage";
+
+// Apply distance-based fall damage to the player's *combat* HP (the value the
+// Harthmere HUD renders). The shared fall_damage_v1 rule is authored for a
+// ~100 HP scale (10 damage per 5 feet); the combat player has a much larger
+// maxHp, so scale the damage by maxHp/100 to keep it proportional. A fall that
+// drains HP to 0 downs the player like any other environmental damage.
+export function applyHarthmereFallDamageFromSystem(fallBlocks: number) {
+  const blocks = Number(fallBlocks);
+  if (!Number.isFinite(blocks) || blocks <= 0) {
+    return;
+  }
+
+  const state = readHarthmereCombatState();
+  const player = state.player;
+  // Already out of the fight — nothing to drain.
+  if (
+    ["dead", "downed", "respawning"].includes(player.combatState) ||
+    player.hp <= 0
+  ) {
+    return;
+  }
+  // Temporarily immune (e.g. just respawned).
+  if (
+    ["invulnerable", "protected_after_respawn"].includes(player.combatState)
+  ) {
+    return;
+  }
+
+  const baseDamage = fallDamageForBlocksV1(blocks);
+  if (baseDamage <= 0) {
+    return;
+  }
+  const scaledDamage = Math.max(
+    1,
+    Math.round((baseDamage * Math.max(1, player.maxHp)) / 100)
+  );
+  const hpBefore = player.hp;
+  const newHp = Math.max(0, hpBefore - scaledDamage);
+  const feet = Math.round(blocks * FEET_PER_BLOCK_V1);
+
+  if (newHp <= 0) {
+    downHarthmerePlayerFromSystem({
+      cause: "fall_damage",
+      killerName: "The Fall",
+      abilityName: "Fall Damage",
+      damageType: "survival",
+      damage: scaledDamage,
+      detail: `You fell ${feet} feet and hit the ground hard. Respawn at Harthmere.`,
+    });
+    return;
+  }
+
+  writeHarthmereCombatState({
+    ...appendCombatLog(state, {
+      attacker: "The Fall",
+      target: player.name,
+      ability: "Fall Damage",
+      result: "crushing_hit",
+      rawDamage: scaledDamage,
+      mitigatedDamage: 0,
+      finalDamage: scaledDamage,
+      targetHpBefore: hpBefore,
+      targetHpAfter: newHp,
+      detail: `You fell ${feet} feet (${scaledDamage} damage).`,
+    }),
+    player: {
+      ...player,
+      hp: newHp,
+      combatState: player.combatState === "idle" ? "alert" : player.combatState,
+    },
+  });
+}
+
+// HARTHMERE_PVP_DAMAGE_V1
+// Mirror an authoritative incoming PvP hit (already applied to the local player's
+// ECS health by the server) onto the Harthmere combat HP the HUD renders. This is
+// the victim side of player-vs-player: the attacker fired UpdatePlayerHealthEvent,
+// the server applied it, and every client (including this victim) now sees the
+// ECS-health drop — we reflect that onto the visible combat HP and down the player
+// if it reaches zero, exactly like environmental/fall damage.
+export function applyHarthmerePvpDamageFromRemotePlayerV1(input: {
+  damage: number;
+  attackerName: string;
+}) {
+  const damage = Math.max(0, Math.round(Number(input.damage)));
+  if (damage <= 0) {
+    return;
+  }
+  const state = readHarthmereCombatState();
+  const player = state.player;
+  // Already out of the fight, or temporarily immune (just respawned) — ignore.
+  if (
+    ["dead", "downed", "respawning"].includes(player.combatState) ||
+    player.hp <= 0
+  ) {
+    return;
+  }
+  if (
+    ["invulnerable", "protected_after_respawn"].includes(player.combatState)
+  ) {
+    return;
+  }
+
+  const attackerName = input.attackerName?.trim() || "Another player";
+  const hpBefore = player.hp;
+  const newHp = Math.max(0, hpBefore - damage);
+
+  if (newHp <= 0) {
+    downHarthmerePlayerFromSystem({
+      cause: "pvp",
+      killerName: attackerName,
+      abilityName: "PvP Strike",
+      damageType: "physical",
+      damage,
+      detail: `${attackerName} struck you down. Respawn at Harthmere.`,
+    });
+    return;
+  }
+
+  writeHarthmereCombatState({
+    ...appendCombatLog(state, {
+      attacker: attackerName,
+      target: player.name,
+      ability: "PvP Strike",
+      result: "normal_hit",
+      rawDamage: damage,
+      mitigatedDamage: 0,
+      finalDamage: damage,
+      targetHpBefore: hpBefore,
+      targetHpAfter: newHp,
+      detail: `${attackerName} hit you for ${damage} damage.`,
+    }),
+    player: {
+      ...player,
+      hp: newHp,
+      combatState:
+        player.combatState === "idle" ? "in_combat" : player.combatState,
+    },
+  });
+}
+
+// Mount once (in the always-present Harthmere HUD) so fall events dispatched by
+// the player physics script drain the visible combat HP.
+export function useHarthmereFallDamageBridge() {
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+    const handler = (event: Event) => {
+      const detail = (event as CustomEvent).detail as
+        | { blocks?: number }
+        | undefined;
+      const blocks = Number(detail?.blocks ?? 0);
+      if (Number.isFinite(blocks) && blocks > 0) {
+        applyHarthmereFallDamageFromSystem(blocks);
+      }
+    };
+    window.addEventListener(HARTHMERE_PLAYER_FALL_DAMAGE_EVENT, handler);
+    return () =>
+      window.removeEventListener(HARTHMERE_PLAYER_FALL_DAMAGE_EVENT, handler);
+  }, []);
+}
+
+// HARTHMERE_PVP_DAMAGE_V1
+// Victim side of PvP. When another player hits us, the attacker fires the vanilla
+// UpdatePlayerHealthEvent and the server applies it to our ECS health. That drop
+// syncs to our client, so we watch our own ECS health here and mirror a fresh
+// external player-attack onto the Harthmere combat HP the HUD renders. We only
+// react to attacks whose attacker is actually another PLAYER (not a vanilla NPC),
+// and de-dupe on the damage timestamp so each hit is reflected exactly once.
+// Mount once in the always-present Harthmere HUD, beside the fall-damage bridge.
+export function useHarthmerePvpIncomingDamageBridgeV1() {
+  const { reactResources, resources, userId } = useClientContext();
+  const health = reactResources.use("/ecs/c/health", userId);
+  const processedRef = useRef<number | undefined>(undefined);
+  useEffect(() => {
+    if (!health) {
+      return;
+    }
+    const source = health.lastDamageSource;
+    const decision = harthmereIncomingExternalAttackV1({
+      localPlayerId: userId,
+      damageSourceKind: source?.kind,
+      attacker: source?.kind === "attack" ? source.attacker : undefined,
+      lastDamageAmount: health.lastDamageAmount ?? undefined,
+      lastDamageTime: health.lastDamageTime ?? undefined,
+      alreadyProcessedTime: processedRef.current,
+    });
+    if (!decision) {
+      return;
+    }
+    // Only mirror damage dealt by another PLAYER — never vanilla mobs/systems.
+    const attackerEntity = resources.get("/ecs/entity", decision.attacker);
+    if (!isPlayer(attackerEntity)) {
+      return;
+    }
+    processedRef.current = health.lastDamageTime ?? undefined;
+    const attackerName =
+      resources.get("/ecs/c/label", decision.attacker)?.text ?? "Another player";
+    applyHarthmerePvpDamageFromRemotePlayerV1({
+      damage: decision.damage,
+      attackerName,
+    });
+  }, [health?.lastDamageTime, health?.lastDamageAmount, userId]);
 }
 
 interface EquippedWeaponContext {
@@ -3904,6 +4123,54 @@ function harthmereForwardArcTargetPositions(): Record<
     ...HARTHMERE_FORWARD_ARC_TARGET_POSITIONS,
     ...readHarthmereRuntimeCombatActors(),
   };
+}
+
+// HARTHMERE_MOUSE_PRIMARY_ATTACK_V1:
+// Cheap "is a live attackable target within striking distance right now?" probe.
+// The left mouse button is shared with voxel-block breaking, so we only engage
+// the combat swing when there is actually something to hit — otherwise a click
+// while mining/building would spam the combat log with empty swings. The radius
+// is intentionally a touch larger than the real arc reach so this NEVER blocks a
+// legitimate hit (a barely-out-of-range probe just resolves to a harmless miss).
+export function harthmereHasAttackableTargetNearPlayerV1(
+  maxRange = 4
+): boolean {
+  if (!isBrowser()) {
+    return false;
+  }
+  const origin = harthmerePlayerCombatOrigin();
+  if (!origin) {
+    return false;
+  }
+  const state = readHarthmereCombatState();
+  const targetPositions = harthmereForwardArcTargetPositions();
+  const candidateOffsets = new Set<number>();
+  for (const key of Object.keys(targetPositions)) {
+    candidateOffsets.add(Number(key));
+  }
+  for (const key of Object.keys(state.npcs)) {
+    const offset = Number(key);
+    if (Number.isFinite(offset)) {
+      candidateOffsets.add(offset);
+    }
+  }
+  for (const offset of candidateOffsets) {
+    const position = targetPositions[offset];
+    if (!position) {
+      continue;
+    }
+    const npc = npcStatsFromState(state, offset);
+    if (!npc.attackable || npc.hp <= 0 || npc.combatState === "dead") {
+      continue;
+    }
+    const dx = position.pos[0] - origin[0];
+    const dz = position.pos[1] - origin[1];
+    const distance = Math.hypot(dx, dz);
+    if (Number.isFinite(distance) && distance <= maxRange + position.radius) {
+      return true;
+    }
+  }
+  return false;
 }
 
 // harthmere-combat-ai-edgecases-v2

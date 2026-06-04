@@ -3,6 +3,7 @@ import { AnonUpsell } from "@/client/components/AnonUpsell";
 import { BuffsHUD } from "@/client/components/BuffsHUD";
 import { CanvasEffects } from "@/client/components/CanvasEffects";
 import { useBiomesUIReplaceLegacyFlag } from "@/client/components/biomes_ui/BiomesUIFlags";
+import { BreathBarHUD } from "@/client/components/BreathBarHUD";
 import { ChatHUD } from "@/client/components/ChatHUD";
 import { useClientContext } from "@/client/components/contexts/ClientContextReactContext";
 import { usePointerLockStatus } from "@/client/components/contexts/PointerLockContext";
@@ -296,6 +297,10 @@ export const BiomesChrome: React.FunctionComponent<{}> = React.memo(({}) => {
 
           {!replaceLegacyBiomesUI && <HotBar />}
           {!replaceLegacyBiomesUI && <ShortcutsHUD />}
+          {/* Underwater breath meter. In legacy mode the HotBar already carries
+              its own breath bar; under BiomesUI that HotBar is hidden, so render
+              this standalone one instead (avoids a duplicate). */}
+          {replaceLegacyBiomesUI && <BreathBarHUD />}
           <InGameAdminHUD />
         </NonObserverOnly>
 

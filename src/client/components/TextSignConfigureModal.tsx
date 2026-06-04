@@ -13,7 +13,8 @@ import { useEffect, useRef } from "react";
 export const TextSignConfigureModal: React.FunctionComponent<{
   onClose?: () => void;
   placeableId: BiomesId;
-}> = ({ onClose, placeableId }) => {
+  readOnly?: boolean;
+}> = ({ onClose, placeableId, readOnly }) => {
   const { reactResources, events, resources, userId } = useClientContext();
   const item = relevantBiscuitForEntityId(resources, placeableId);
 
@@ -33,9 +34,39 @@ export const TextSignConfigureModal: React.FunctionComponent<{
       if (signComponent) {
         inputRef.current.value = signComponent?.text.join("\n");
       }
-      inputRef.current.focus();
+      if (!readOnly) {
+        inputRef.current.focus();
+      }
     }
   }, []);
+
+  // Read-only view for players who do not own the sign: show the text clearly,
+  // no editing.
+  if (readOnly) {
+    const lines = signComponent?.text ?? [];
+    return (
+      <DialogBox>
+        <DialogBoxTitle>Sign</DialogBoxTitle>
+        <DialogBoxContents>
+          <div className="flex flex-col items-center gap-0.4 font-vt text-center">
+            {lines.length > 0 ? (
+              lines.map((line, i) => <div key={i}>{line || " "}</div>)
+            ) : (
+              <div className="secondary-gray">This sign is blank.</div>
+            )}
+          </div>
+          <DialogButton
+            type="primary"
+            onClick={() => {
+              onClose?.();
+            }}
+          >
+            Close
+          </DialogButton>
+        </DialogBoxContents>
+      </DialogBox>
+    );
+  }
 
   return (
     <DialogBox>

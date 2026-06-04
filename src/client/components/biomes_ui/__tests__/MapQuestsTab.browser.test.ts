@@ -182,18 +182,33 @@ describe("MapQuestsTab browser interactions", () => {
         return button?.getAttribute("aria-pressed") === "true";
       });
 
-      await page.getByRole("button", { name: "People" }).click();
-      await page.waitForSelector("[aria-label='people map panel']");
-      assert.ok((await page.textContent("body"))?.includes("Jackie"));
+      // Layers are now multi-select and all start enabled, so every section's
+      // content is visible at once instead of one-at-a-time.
+      await page.waitForSelector("[aria-label='Map panels']");
+      await page.waitForSelector("[data-testid='biomes-map-people-list']");
+      await page.waitForSelector("[data-testid='biomes-map-buildings-services-list']");
+      const allLayersBody = await page.textContent("body");
+      assert.ok(allLayersBody?.includes("Jackie"), "people content visible by default");
+      assert.ok(allLayersBody?.includes("Gus's Oven"), "buildings content visible by default");
+      assert.ok(allLayersBody?.includes("Muckwad Patch"), "geography content visible by default");
 
-      await page.getByRole("button", { name: "Buildings" }).click();
-      await page.waitForSelector("[aria-label='buildings map panel']");
-      assert.ok((await page.textContent("body"))?.includes("Gus's Oven"));
+      // Terrain starts OFF so the map opens clean; it renders only after the
+      // player turns the Terrain layer on.
+      assert.equal(
+        await page.$("[data-testid='biomes-map-terrain-layer']"),
+        null,
+        "terrain layer should be hidden by default"
+      );
+      await page.getByRole("switch", { name: "Toggle terrain layer" }).click();
+      await page.waitForSelector("[data-testid='biomes-map-terrain-layer']");
 
-      await page.getByRole("button", { name: "Geography" }).click();
-      await page.waitForSelector("[data-testid='biomes-map-geography-terrain-layer']");
-      const bodyText = await page.textContent("body");
-      assert.ok(bodyText?.includes("Muckwad Patch"));
+      // Toggling a layer off removes its section; toggling back on restores it.
+      await page.getByRole("switch", { name: "Toggle People layer" }).click();
+      await page.waitForFunction(
+        () => !document.querySelector("[data-testid='biomes-map-people-list']")
+      );
+      await page.getByRole("switch", { name: "Toggle People layer" }).click();
+      await page.waitForSelector("[data-testid='biomes-map-people-list']");
     } finally {
       await browser.close();
       await rm(tempDir, { recursive: true, force: true });

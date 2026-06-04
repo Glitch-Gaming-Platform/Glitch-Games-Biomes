@@ -79,6 +79,7 @@ function normalizeFoodStaminaState(
     plots: raw?.plots ?? {},
     spawns: raw?.spawns ?? {},
     livestock: raw?.livestock ?? {},
+    cooking: raw?.cooking ?? {},
   };
 }
 

@@ -917,6 +917,66 @@ const NODE_DEFINITIONS: ResourceNodeDefinition[] = [
   ...HARTHMERE_DEEP_RESOURCE_NODE_DEFINITIONS,
 ];
 
+// World-facing projection of each gathering node so the in-world renderer and
+// the proximity F-prompt can show + harvest a real, visible node where the map
+// marker points — instead of the harvest only existing inside a HUD menu.
+export interface HarthmereGatheringNodeWorldTargetV1 {
+  id: string;
+  name: string;
+  district: string;
+  profession: GatheringProfession;
+  requiredTool?: string;
+  requiredSkill: number;
+  position: [number, number, number];
+}
+
+// Harvest is short-range: you must be standing on the node, not just in the area.
+export const HARTHMERE_GATHERING_NODE_INTERACTION_RADIUS_V1 = 4.5;
+
+export const HARTHMERE_GATHERING_NODE_WORLD_TARGETS_V1: readonly HarthmereGatheringNodeWorldTargetV1[] =
+  NODE_DEFINITIONS.map((node) => ({
+    id: node.id,
+    name: node.name,
+    district: node.district,
+    profession: node.profession,
+    requiredTool: node.requiredTool,
+    requiredSkill: node.requiredSkill,
+    position: [...node.position] as [number, number, number],
+  }));
+
+export type HarthmereGatheringNodePromptV1 =
+  HarthmereGatheringNodeWorldTargetV1 & { distance: number };
+
+// Nearest harvestable node within interaction range of the player (XZ distance;
+// the authored Y is a flat hint, so the vertical gate stays generous). Mirrors
+// nearestHarthmereBusinessBoardPhysicalPromptV1 / jobs-board proximity.
+export function nearestHarthmereGatheringNodePromptV1(
+  playerPosition: { x: number; y?: number; z: number } | undefined
+): HarthmereGatheringNodePromptV1 | undefined {
+  if (!playerPosition) return undefined;
+  let best: HarthmereGatheringNodeWorldTargetV1 | undefined;
+  let bestDistance = Infinity;
+  for (const target of HARTHMERE_GATHERING_NODE_WORLD_TARGETS_V1) {
+    const distance = Math.hypot(
+      target.position[0] - playerPosition.x,
+      target.position[2] - playerPosition.z
+    );
+    if (
+      distance > HARTHMERE_GATHERING_NODE_INTERACTION_RADIUS_V1 ||
+      distance >= bestDistance
+    ) {
+      continue;
+    }
+    const dy = Math.abs(
+      (playerPosition.y ?? target.position[1]) - target.position[1]
+    );
+    if (dy > 10) continue;
+    best = target;
+    bestDistance = distance;
+  }
+  return best ? { ...best, distance: bestDistance } : undefined;
+}
+
 function isBrowser() {
   return typeof window !== "undefined";
 }

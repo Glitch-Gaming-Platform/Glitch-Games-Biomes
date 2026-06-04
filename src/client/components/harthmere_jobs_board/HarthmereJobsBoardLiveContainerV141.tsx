@@ -21,6 +21,11 @@ import {
 } from "./jobsBoardLiveAdapter";
 import { useHarthmereJobsBoard } from "./useHarthmereJobsBoard";
 import { HarthmereJobsBoardPanel } from "./HarthmereJobsBoardPanel";
+import {
+  grantHarthmereJobRewardV151,
+  harthmereInventoryCanAcceptItemsV151,
+  isHarthmereRepairToolEquippedV151,
+} from "@/client/components/challenges/LocalDevHarthmereInventorySystem";
 
 // HARTHMERE_JOBS_BOARD_HARTHMERE_TOWN_V141:
 // Mirrors the authority module's constants. Hardcoded here so the container
@@ -113,12 +118,45 @@ export function HarthmereJobsBoardLiveContainerV141({
       // then claim the payout. The current todo status decides whether the
       // verification step is still needed.
       const todo = snapshot?.myTodos.find((entry) => entry.jobId === jobId);
-      return run(`complete:${jobId}`, () =>
-        adapter.completeJobFully(jobId, activeBoardId, {
+      // HARTHMERE_REPAIR_TOOL_COMPLETION_V151: report the repair tool as used
+      // when it is equipped, so the server completes a repair-gated job (and
+      // otherwise rejects it, which surfaces the "equip a repair tool" prompt).
+      const usedToolAction = isHarthmereRepairToolEquippedV151()
+        ? "repair"
+        : undefined;
+      const job = snapshot?.myAcceptedJobs.find((entry) => entry.jobId === jobId);
+      const rewardItems = job?.rewardItems ?? [];
+      return run(`complete:${jobId}`, async () => {
+        // HARTHMERE_JOB_REWARD_BRIDGE_V151: refuse the turn-in if the reward items
+        // would not fit, BEFORE the server marks it complete, so a full backpack
+        // never loses the reward. The job stays claimable once space is freed.
+        if (
+          rewardItems.length > 0 &&
+          !harthmereInventoryCanAcceptItemsV151(
+            rewardItems.map((reward) => ({
+              itemId: reward.itemId,
+              quantity: reward.count,
+            }))
+          )
+        ) {
+          throw new Error(
+            "Free up backpack space to collect this job's reward, then turn it in again."
+          );
+        }
+        const completed = await adapter.completeJobFully(jobId, activeBoardId, {
           todoStatus: todo?.status,
           questTodoId: todo?.todoId,
-        })
-      );
+          usedToolAction,
+        });
+        // Bridge the payout into the visible HUD wallet + inventory (idempotent
+        // per jobId, so a re-fired turn-in can't double-grant).
+        grantHarthmereJobRewardV151({
+          jobId,
+          rewardGold: job?.rewardGold,
+          rewardItems,
+        });
+        return completed;
+      });
     },
     [adapter, activeBoardId, run, snapshot],
   );

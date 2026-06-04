@@ -116,8 +116,15 @@ async function main() {
   }
   const serverCombat = createHarthmereServerMuckCombatEntitySnapshotsV1(nowMs);
   const serverCombatEntries = Object.entries(serverCombat);
+  // The combat snapshot now also carries retaliating wildlife (cows/sheep/
+  // rabbits, entityKind "animal") alongside the Muck/Hex hostiles, so assert the
+  // 100 hostiles are all present rather than that the snapshot is hostiles-only.
+  const serverCombatHostileEntries = serverCombatEntries.filter(
+    ([, snapshot]) =>
+      snapshot.entityKind === "mux" || snapshot.entityKind === "hex"
+  );
   check(
-    serverCombatEntries.length ===
+    serverCombatHostileEntries.length ===
       HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_SEEDS_V1.length,
     "live-mode server combat snapshot seeds every production Muck/Hex hostile"
   );

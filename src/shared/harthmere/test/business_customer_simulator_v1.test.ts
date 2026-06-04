@@ -185,8 +185,8 @@ const EXPECTED_OUTPOST_LOCATIONS = {
 } as const;
 
 describe("business_customer_simulator_v1", () => {
-  it("stores 50 unique customer-only NPCs away from the permanent map", () => {
-    assert.equal(HARTHMERE_BUSINESS_CUSTOMER_NPCS_V1.length, 50);
+  it("stores 65 unique customer-only NPCs away from the permanent map", () => {
+    assert.equal(HARTHMERE_BUSINESS_CUSTOMER_NPCS_V1.length, 65);
     const ids = new Set<string>();
     const visualSignatures = new Set<string>();
     for (const npc of HARTHMERE_BUSINESS_CUSTOMER_NPCS_V1) {
@@ -198,8 +198,8 @@ describe("business_customer_simulator_v1", () => {
       ids.add(npc.npcId);
       visualSignatures.add(Object.values(npc.appearance).join("|"));
     }
-    assert.equal(ids.size, 50);
-    assert.equal(visualSignatures.size, 50);
+    assert.equal(ids.size, 65);
+    assert.equal(visualSignatures.size, 65);
   });
 
   it("separates report building references from Grove people/NPC reference coordinates", () => {

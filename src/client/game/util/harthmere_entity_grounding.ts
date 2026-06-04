@@ -77,6 +77,36 @@ export function harthmereTerrainColumnLoadedV1(
   }
 }
 
+// HARTHMERE_NPC_GROUNDED_FEET_RESOLVE_V151:
+// Pure resolver shared by the moving-NPC grounding path (kill-target muck
+// monsters, the muck boss, wandering town NPCs). It applies the same
+// "defer until terrain is loaded" rule the static quest-object markers use, and
+// additionally remembers the last REAL surface grounded for a column so an
+// entity that already settled on the breach floor (e.g. West Muck Breach ~Y14)
+// does not pop back up to the flat authored Y (~53) when its terrain shard
+// briefly unloads. That pop is what made kill targets appear floating/buried —
+// visible above ground from afar, then sunk below ground up close.
+//
+// Returns the feetY to apply (undefined = keep the entity's authored/current Y)
+// and the cache value to retain for this column.
+export function resolveHarthmereNpcGroundedFeetYV1(
+  result: HarthmereGroundResultV1,
+  cachedFeetY: number | undefined
+): { feetY: number | undefined; cache: number | undefined } {
+  if (result.status === "grounded" && result.feetY !== undefined) {
+    return { feetY: result.feetY, cache: result.feetY };
+  }
+  if (result.status === "not-loaded") {
+    // Terrain has not streamed in: reuse the last real surface for this column
+    // if we have one; otherwise keep the authored Y (undefined) and retry next
+    // frame once the shard loads.
+    return { feetY: cachedFeetY, cache: cachedFeetY };
+  }
+  // "no-surface": terrain is loaded but genuinely has no standable column here.
+  // Keep the authored Y as a best-effort fallback and do not poison the cache.
+  return { feetY: undefined, cache: cachedFeetY };
+}
+
 // Tri-state grounding for the renderer: distinguishes grounded / no-surface /
 // not-loaded so a quest marker can be hidden (and retried) while its terrain is
 // still streaming, instead of being stamped at the flat authored Y where it
@@ -100,4 +130,49 @@ export function groundHarthmereLiveEntityFeetYWithStatusV1(
     iz,
     { hintY: Math.round(hintY), requireOpenSky }
   );
+}
+
+// Generic alias: the keep-last-surface resolver is NOT npc-specific — items,
+// drops, the escort follower, and markers all use it so nothing ever floats or
+// buries. Prefer this name for non-npc callers.
+export const resolveHarthmereGroundedFeetYV1 = resolveHarthmereNpcGroundedFeetYV1;
+
+// HARTHMERE_GROUNDED_FEET_WITH_MEMORY_V151:
+// THE single "ground any world-placed thing so it is always visible — never
+// floating, never buried" entrypoint. Used by NPCs (cows/sheep/hexes/muckers/
+// owners), dropped & quest items, gather/quest-object markers, and the escort
+// follower. It runs the one voxel-aware tri-state probe and applies the one
+// keep-last-surface rule, with a per-caller persistent column cache so a thing
+// that already settled on the real surface does not pop to the authored Y while
+// its terrain shard streams. Returns the feet-Y to apply, or undefined to keep
+// the caller's authored/current Y (terrain genuinely unknown).
+export function harthmereGroundedFeetYWithMemoryV1(
+  deps: { get: (path: any, shard: any) => any },
+  cache: Map<string, number>,
+  x: number,
+  z: number,
+  hintY: number,
+  requireOpenSky: boolean
+): number | undefined {
+  if (!Number.isFinite(x) || !Number.isFinite(z) || !Number.isFinite(hintY)) {
+    return undefined;
+  }
+  const key = `${Math.floor(x)}|${Math.floor(z)}|${requireOpenSky ? 1 : 0}`;
+  const status = groundHarthmereLiveEntityFeetYWithStatusV1(
+    deps,
+    x,
+    z,
+    hintY,
+    requireOpenSky
+  );
+  const { feetY, cache: nextCache } = resolveHarthmereGroundedFeetYV1(
+    status,
+    cache.get(key)
+  );
+  if (nextCache === undefined) {
+    cache.delete(key);
+  } else {
+    cache.set(key, nextCache);
+  }
+  return feetY;
 }

@@ -14,6 +14,8 @@ import {
   harthmereBikkieVisualTileStyleV1,
 } from "../biomes_ui/adapters/harthmereBikkieVisualRenderingV1";
 import { createHarthmereBusinessMiniGameDecisionForOfferV1 } from "@/shared/harthmere/business_customer_simulator_v1";
+import { makeHarthmereNpcFaceConfig } from "@/shared/harthmere/voxel_faces";
+import { HarthmereVoxelFacePreview } from "@/client/components/harthmere/HarthmereVoxelFacePreview";
 import type {
   HarthmereBusinessActorModeV1,
   HarthmereBusinessBikkieGraphicV1,
@@ -934,6 +936,23 @@ const CustomerMiniGamePane: React.FunctionComponent<{
   const customerName =
     panel.currentNpc?.displayName ??
     (ticket ? displayLabel(ticket.npcId) : "");
+  // Random customer face per task: seed the shared voxel-face generator from
+  // the unique ticketId so the portrait changes with every customer/turn,
+  // reusing the same faces NPCs use elsewhere in the game.
+  const customerFace = React.useMemo(() => {
+    if (!ticket) {
+      return undefined;
+    }
+    let seed = 2166136261;
+    for (let i = 0; i < ticket.ticketId.length; i++) {
+      seed ^= ticket.ticketId.charCodeAt(i);
+      seed = Math.imul(seed, 16777619);
+    }
+    return makeHarthmereNpcFaceConfig({
+      id: seed >>> 0,
+      name: customerName || ticket.npcId,
+    });
+  }, [ticket?.ticketId, ticket?.npcId, customerName]);
   const npcNameById = React.useMemo(() => {
     const map = new Map<string, string>();
     for (const npc of panel.customerPool) map.set(npc.npcId, npc.displayName);
@@ -1136,10 +1155,21 @@ const CustomerMiniGamePane: React.FunctionComponent<{
           {ticket ? (
             <div key={ticket.ticketId} style={customerSwapStyle}>
               <div style={customerStageStyle}>
-                <span
-                  style={customerAvatarStateStyle(patienceRatio)}
+                <div
+                  style={customerPortraitFrameStyle(patienceRatio)}
                   aria-hidden="true"
-                />
+                >
+                  {customerFace ? (
+                    <div style={customerPortraitScaleStyle}>
+                      <HarthmereVoxelFacePreview
+                        face={customerFace}
+                        hideCaption
+                      />
+                    </div>
+                  ) : (
+                    <span style={customerAvatarStateStyle(patienceRatio)} />
+                  )}
+                </div>
                 <div style={{ minWidth: 0 }}>
                   <strong>{customerName}</strong>
                   <p style={{ ...mutedTextStyle, marginTop: 4 }}>
@@ -2776,7 +2806,7 @@ const progressSweepStyle: React.CSSProperties = {
 };
 const customerStageStyle: React.CSSProperties = {
   display: "grid",
-  gridTemplateColumns: "38px minmax(0, 1fr)",
+  gridTemplateColumns: "60px minmax(0, 1fr)",
   gap: 10,
   alignItems: "center",
   padding: 10,
@@ -3048,6 +3078,36 @@ function patienceBadgeStyle(ratio: number): React.CSSProperties {
       : undefined,
   };
 }
+// Fixed-size portrait frame that holds the (scaled-down) voxel face and keeps
+// the patience-reactive glow/animation the placeholder avatar used to provide.
+function customerPortraitFrameStyle(ratio: number): React.CSSProperties {
+  const urgent = ratio <= 0.25;
+  return {
+    width: 60,
+    height: 60,
+    borderRadius: 8,
+    overflow: "hidden",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    background: "rgba(5, 12, 26, 0.55)",
+    border: "1px solid rgba(154, 199, 230, 0.28)",
+    boxShadow: urgent
+      ? "0 0 18px rgba(255, 107, 107, 0.6)"
+      : "0 0 16px rgba(86, 199, 255, 0.46)",
+    animation: urgent
+      ? "harthmere-business-urgent-v1 0.8s ease-in-out infinite"
+      : "harthmere-business-pulse-v1 1.6s ease-in-out infinite",
+  };
+}
+// The voxel face preview renders at ~94-124px including its own padding; scale
+// it down so it reads as a compact portrait inside the 60px frame.
+const customerPortraitScaleStyle: React.CSSProperties = {
+  transform: "scale(0.5)",
+  transformOrigin: "center",
+  display: "flex",
+  flex: "0 0 auto",
+};
 function customerAvatarStateStyle(ratio: number): React.CSSProperties {
   const urgent = ratio <= 0.25;
   return {

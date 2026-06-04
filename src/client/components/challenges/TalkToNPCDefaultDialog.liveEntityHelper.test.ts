@@ -119,8 +119,13 @@ describe("live-entity helper dialog context", () => {
         { itemId: "river_trout", quantity: 2 },
       ]
     );
+    // The Road Ahead "Gear Up" step requires equipping BOTH clothing slots
+    // (a top in the chest slot AND bottoms in the legs slot), so the Clothing
+    // Crate must contain both halves. baker_apron => chest, field_trousers =>
+    // legs. See hasRequiredClothingV73 in LocalDevSnapshotMissionBridge.
     assert.deepEqual(harthmereContainerLootForLabelV1("Clothing Crate"), [
       { itemId: "baker_apron", quantity: 1 },
+      { itemId: "field_trousers", quantity: 1 },
       { itemId: "cloth_scrap", quantity: 4 },
     ]);
   });

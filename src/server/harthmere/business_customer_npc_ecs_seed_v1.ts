@@ -71,10 +71,12 @@ export function buildHarthmereBusinessCustomerNpcSeedChangesV1(input: {
       },
       nowSeconds
     );
-    // HARTHMERE_BUSINESS_NPC_UNIQUE_VOXEL_V1: drop the uniform default
+    // HARTHMERE_BUSINESS_NPC_PLAYER_AVATAR_PARITY_V199: drop the uniform default
     // appearance_component/wearing npcEntity assigns to the player-like human
-    // type so each customer renders from its unique harthmere:* markers via the
-    // voxel generator instead of an identical player_mesh avatar.
+    // type so each customer renders from the renderer's deterministic per-id
+    // rich-appearance fallback (snapshotRichNpc*FallbackV69) — a distinct,
+    // clothed, animated PLAYER/Grove-style avatar matching the rest of the cast,
+    // instead of an identical default avatar (or the wrong voxel NPC design).
     delete (base as { appearance_component?: unknown }).appearance_component;
     delete (base as { wearing?: unknown }).wearing;
     const entity = {

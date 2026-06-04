@@ -11,6 +11,10 @@ import {
   completeHarthmereDailyTaskSoonV1,
 } from "@/client/components/challenges/harthmereDailyTasks";
 import {
+  harthmereCookingStationIdV1,
+  openHarthmereCookingStationV1,
+} from "@/client/components/harthmere_cooking/harthmereCookingStations";
+import {
   SNAPSHOT_MISSION_STATE_EVENT_V71,
   firstActiveSnapshotRoadAheadQuestTitleForBiomesUIV73,
   readSnapshotMissionStateV71,
@@ -51,6 +55,10 @@ import {
   BIOMES_UI_OPEN_MENU_TAB,
   type TabKey,
 } from "../BiomesUITypes";
+import {
+  DEFAULT_TAB_SHORTCUTS,
+  type TabShortcut,
+} from "../shortcuts/BiomesShortcuts";
 import type { HotbarSlotItem } from "../hotbar/BiomesHotbar";
 import type {
   InventoryContainerKey,
@@ -75,10 +83,10 @@ import {
 import { appendHarthmereBusinessOutpostMapLandmarksV1 } from "./harthmereBusinessMapMarkersV1";
 import {
   activeJobsBoardMissionStepsForBiomesUIV1,
-  firstActiveJobsBoardLandmarkForBiomesUIV1,
   firstActiveJobsBoardQuestTitleForBiomesUIV1,
   jobsBoardAcceptedJobLandmarksForBiomesUIV1,
   jobsBoardTrackableQuestsForBiomesUIV1,
+  shouldClearStaleJobsBoardPinV151,
 } from "./jobsBoardQuestMapAdapter";
 import {
   BIOMES_UI_LIVE_ENTITY_HELPER_MARKER_SOURCE_V1,
@@ -1663,6 +1671,51 @@ export function dispatchBiomesUIOpenTab(tab: TabKey, source = "legacy"): void {
   );
 }
 
+// Persisted tab-shortcut overrides (rebindable in the Options tab). Stored as a
+// sparse { tab: key } map layered over DEFAULT_TAB_SHORTCUTS so new default tabs
+// keep working and only user-changed keys are saved.
+const BIOMES_UI_TAB_SHORTCUTS_STORAGE_KEY_V1 = "biomes.ui.tabShortcuts.v1";
+
+function readPersistedTabShortcutsV1(): TabShortcut[] {
+  if (typeof window === "undefined") {
+    return DEFAULT_TAB_SHORTCUTS;
+  }
+  try {
+    const raw = window.localStorage.getItem(
+      BIOMES_UI_TAB_SHORTCUTS_STORAGE_KEY_V1
+    );
+    if (!raw) {
+      return DEFAULT_TAB_SHORTCUTS;
+    }
+    const overrides = JSON.parse(raw) as Record<string, string>;
+    return DEFAULT_TAB_SHORTCUTS.map((shortcut) => {
+      const key = overrides?.[shortcut.tab];
+      return typeof key === "string" && key
+        ? { ...shortcut, key: key.toLowerCase(), label: key.toUpperCase() }
+        : shortcut;
+    });
+  } catch {
+    return DEFAULT_TAB_SHORTCUTS;
+  }
+}
+
+function persistTabShortcutV1(tab: string, key: string): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+  try {
+    const raw = window.localStorage.getItem(
+      BIOMES_UI_TAB_SHORTCUTS_STORAGE_KEY_V1
+    );
+    const overrides = raw ? (JSON.parse(raw) as Record<string, string>) : {};
+    overrides[tab] = key.toLowerCase();
+    window.localStorage.setItem(
+      BIOMES_UI_TAB_SHORTCUTS_STORAGE_KEY_V1,
+      JSON.stringify(overrides)
+    );
+  } catch {}
+}
+
 export function useBiomesUILiveAdapters({
   activeTab,
   onActiveTabChange,
@@ -1694,6 +1747,21 @@ export function useBiomesUILiveAdapters({
   const [snapshotRevision, setSnapshotRevision] = React.useState(0);
   const [harthmereInventoryRevision, setHarthmereInventoryRevision] =
     React.useState(0);
+  // Tab-shortcut rebindings from the Options tab, persisted to localStorage and
+  // fed back to BiomesUI as shortcutOverrides so the rebinds actually open tabs.
+  const [tabShortcuts, setTabShortcuts] = React.useState<TabShortcut[]>(() =>
+    readPersistedTabShortcutsV1()
+  );
+  const setTabShortcut = React.useCallback((tab: string, key: string) => {
+    persistTabShortcutV1(tab, key);
+    setTabShortcuts((prev) =>
+      prev.map((shortcut) =>
+        shortcut.tab === tab
+          ? { ...shortcut, key: key.toLowerCase(), label: key.toUpperCase() }
+          : shortcut
+      )
+    );
+  }, []);
   const [bankingState, setBankingState] = React.useState<any | undefined>(
     undefined
   );
@@ -1970,9 +2038,21 @@ export function useBiomesUILiveAdapters({
 
   React.useEffect(() => {
     if (typeof window === "undefined") return;
-    const landmark = firstActiveJobsBoardLandmarkForBiomesUIV1(jobsBoardState);
-    if (!landmark) return;
+    const landmarks = jobsBoardAcceptedJobLandmarksForBiomesUIV1(jobsBoardState);
     const existing = readActiveBiomesUIMapPinV142();
+    // Drop a jobs-board pin whose job is no longer active (completed/abandoned)
+    // so it stops driving the HUD aid and suppressing other quest beacons.
+    if (
+      shouldClearStaleJobsBoardPinV151({
+        activePinMarkerId: existing?.markerId,
+        activeJobsBoardMarkerIds: landmarks.map((landmark) => landmark.id),
+      })
+    ) {
+      writeActiveBiomesUIMapPinV142(undefined);
+      return;
+    }
+    const landmark = landmarks[0];
+    if (!landmark) return;
     if (
       existing?.markerId === landmark.id &&
       Array.isArray(existing.worldPosition)
@@ -2277,7 +2357,42 @@ export function useBiomesUILiveAdapters({
       slots,
       selectedIndex,
       onSelect: selectHotbarIndex,
-      onUse: (index: number) => selectHotbarIndex(index),
+      // Using a hotbar slot selects it AND consumes the item when it is a
+      // consumable (food / cooked from raw meat / medical) — the same live-mode
+      // actions the Inventory tab's useItem fires. Non-consumables (blocks,
+      // tools, gear) just become the selected slot, used via world interaction.
+      onUse: (index: number) => {
+        selectHotbarIndex(index);
+        const slot = hotbarSlots[clampHotbarIndex(index, 9)];
+        const itemId = slot?.item?.id ? String(slot.item.id) : undefined;
+        if (!itemId) {
+          return;
+        }
+        if (HARTHMERE_FOOD_DEFINITIONS_V1[itemId]) {
+          fireAndForget(
+            submitFarmingFoodLiveModeAction("eat_food", { itemId })
+              .then(applyLiveModeInventoryResponse)
+              .catch(() => refreshInventoryLootState())
+          );
+        } else if (itemId === "raw_meat") {
+          fireAndForget(
+            submitFarmingFoodLiveModeAction("cook_food", {
+              recipeId: "grilled_meat",
+              rawItemId: "raw_meat",
+              stationKind: "campfire",
+              count: 1,
+            })
+              .then(applyLiveModeInventoryResponse)
+              .catch(() => refreshInventoryLootState())
+          );
+        } else if (HARTHMERE_MEDICAL_ITEM_DEFINITIONS_V1[itemId]) {
+          fireAndForget(
+            submitMedicalLiveModeAction("use_medical_item", { itemId })
+              .then(applyLiveModeInventoryResponse)
+              .catch(() => refreshInventoryLootState())
+          );
+        }
+      },
       onDrop: (index: number) => {
         try {
           const localPlayer = reactResources.get("/scene/local_player");
@@ -2293,9 +2408,11 @@ export function useBiomesUILiveAdapters({
       },
     };
   }, [
+    applyLiveModeInventoryResponse,
     clientContext,
     inventory?.hotbar,
     reactResources,
+    refreshInventoryLootState,
     selectHotbarIndex,
     selectedIndex,
   ]);
@@ -2711,6 +2828,22 @@ export function useBiomesUILiveAdapters({
         ),
       performFarmingFoodAction: (action: FarmingFoodInterfaceActionV1) => {
         if (action.disabled) return;
+        // Cooking is now timer-based and station-bound: redirect the legacy
+        // quick-cook buttons to the new cooking station panel (keyed by the
+        // recipe's station kind) instead of cooking instantly.
+        if (action.operation === "cook_food") {
+          const stationKind = (
+            (action.payload?.stationKind as string) ?? "campfire"
+          ) as "campfire" | "cookpot" | "oven";
+          const label =
+            stationKind.charAt(0).toUpperCase() + stationKind.slice(1);
+          openHarthmereCookingStationV1({
+            stationId: harthmereCookingStationIdV1(undefined, stationKind),
+            stationKind,
+            label,
+          });
+          return;
+        }
         fireAndForget(
           submitFarmingFoodLiveModeAction(action.operation, action.payload)
             .then(applyLiveModeInventoryResponse)
@@ -3050,6 +3183,10 @@ export function useBiomesUILiveAdapters({
     const dailyTasks = dailyTodoTasksFromCareSnapshotForTest(dailyState);
 
     return {
+      options: {
+        getShortcuts: () => tabShortcuts,
+        setShortcut: setTabShortcut,
+      },
       daily: {
         isHydrated: () => dailyHydrated,
         getTasks: () => dailyTasks,
@@ -3344,6 +3481,8 @@ export function useBiomesUILiveAdapters({
     snapshotRevision,
     socialManager,
     submitBuildingSystemLiveModeActionAndStore,
+    tabShortcuts,
+    setTabShortcut,
     userId,
     wearing?.items,
   ]);
@@ -3358,6 +3497,7 @@ export function useBiomesUILiveAdapters({
     hotbar,
     openTab,
     onActiveTabChange: setActiveTabFromUi,
+    shortcuts: tabShortcuts,
     tutorialStep,
   };
 }

@@ -1,5 +1,8 @@
 import { defaultDialogForNpc } from "@/client/components/challenges/helpers";
-import { isHarthmereNonLivingDialogueObjectLabelV1 } from "@/client/components/challenges/dialogueObjectSemantics";
+import {
+  isHarthmereCombatCreatureNpcTypeV1,
+  isHarthmereNonLivingDialogueObjectLabelV1,
+} from "@/client/components/challenges/dialogueObjectSemantics";
 import { TalkToNpc } from "@/client/components/challenges/TalkDialogModal";
 import {
   contextForLiveEntityHelperQuestV1,
@@ -93,6 +96,10 @@ export function useCanTalkToNpc(
       iced,
     })
   );
+  // Muckers / hexers / huntable wildlife are combat creatures, never talkable.
+  if (isHarthmereCombatCreatureNpcTypeV1(npcMetadata?.type_id)) {
+    return false;
+  }
   if (
     isHarthmereNonLivingDialogueObjectLabelV1({
       label: label?.text,
@@ -140,6 +147,12 @@ export function canTalkToNpc(
   const defaultDialog = deps.resources.get("/ecs/c/default_dialog", entityId);
   const questGiver = deps.resources.get("/ecs/c/quest_giver", entityId);
   const label = deps.resources.get("/ecs/c/label", entityId);
+  // Muckers / hexers / huntable wildlife are combat creatures, never talkable —
+  // even though they carry an entity_description that the gate below would
+  // otherwise accept as a "talk" signal.
+  if (isHarthmereCombatCreatureNpcTypeV1(entity?.npc_metadata?.type_id)) {
+    return false;
+  }
   if (
     isHarthmereNonLivingDialogueObjectLabelV1({
       label: label?.text,

@@ -35,6 +35,7 @@ import {
   sharedQuestTrackableQuestsForBiomesUIV1,
 } from "./questInviteAdapter";
 import { readableMapMarkerLabelForTest } from "./mapMarkerLabels";
+import { harthmereMapTerrainRegionsForBoundsV1 } from "./harthmereMapTerrainRegionsV1";
 import {
   HARTHMERE_PROPERTY_MARKER_SOURCE_V1,
   harthmerePropertyMapLandmarksFromBuildingStateV1,
@@ -265,6 +266,12 @@ export function buildBiomesUIMapAdapter(
       void snapshotRevision;
       const landmarks = MapLandmarks();
       return ComputeBounds(VisibleMapLandmarks(landmarks));
+    },
+    getTerrainRegions: () => {
+      void snapshotRevision;
+      const landmarks = MapLandmarks();
+      const bounds = ComputeBounds(VisibleMapLandmarks(landmarks));
+      return harthmereMapTerrainRegionsForBoundsV1(bounds);
     },
     getPlayerMarker: () => {
       void snapshotRevision;

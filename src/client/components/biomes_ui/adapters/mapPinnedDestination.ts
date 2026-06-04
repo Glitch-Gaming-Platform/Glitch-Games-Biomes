@@ -4,6 +4,15 @@ export const BIOMES_UI_ACTIVE_MAP_PIN_STORAGE_KEY_V142 = "biomes_ui_active_map_p
 export const BIOMES_UI_ACTIVE_MAP_PIN_EVENT_V142 = "biomes-ui-active-map-pin-v142";
 export const BIOMES_UI_ACTIVE_MAP_PIN_NAV_AID_ID_V147 = 14_200_147;
 
+// BIOMES_UI_LOCATE_ON_MAP_V1:
+// "Locate on map" should do more than drop a pin — it should open the Map tab
+// and center the map on the target. This event carries that intent: BiomesUIMount
+// switches to the Map tab, and the Map tab centers on the pin. A short recency
+// window lets the Map tab center even if it mounts just after the event fired
+// (the tab-switch and the listener attach are not perfectly ordered).
+export const BIOMES_UI_LOCATE_ON_MAP_EVENT_V1 = "biomes-ui-locate-on-map-v1";
+export const BIOMES_UI_LOCATE_ON_MAP_RECENCY_MS_V1 = 12_000;
+
 export interface BiomesUIActiveMapPinV142 {
   markerId: string;
   label: string;
@@ -134,4 +143,16 @@ export function writeActiveBiomesUIMapPinV142(pin: BiomesUIActiveMapPinV142 | un
     // The map still updates in-memory when storage is unavailable.
   }
   window.dispatchEvent(new CustomEvent(BIOMES_UI_ACTIVE_MAP_PIN_EVENT_V142, { detail: pin }));
+}
+
+// BIOMES_UI_LOCATE_ON_MAP_V1:
+// "Locate on map" entry point. Persists the destination pin (so the nav aid /
+// minimap arrow appear as before) AND asks the UI to open the Map tab and center
+// on it. Used by the Land/Property panels' "Locate on map" buttons.
+export function requestBiomesUILocateOnMapV1(pin: BiomesUIActiveMapPinV142): void {
+  writeActiveBiomesUIMapPinV142(pin);
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(
+    new CustomEvent(BIOMES_UI_LOCATE_ON_MAP_EVENT_V1, { detail: pin })
+  );
 }

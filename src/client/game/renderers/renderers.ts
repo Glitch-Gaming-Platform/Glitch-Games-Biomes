@@ -13,6 +13,7 @@ import { makeHarthmereBusinessBoardMarkerRendererV1 } from "@/client/game/render
 import { makeHarthmereBusinessOutpostBuildingsRendererV1 } from "@/client/game/renderers/local_dev/harthmere_business_outpost_buildings_v1";
 import { makeHarthmereJobsBoardMarkerRendererV144 } from "@/client/game/renderers/local_dev/harthmere_jobs_board_marker_v144";
 import { makeHarthmereQuestObjectMarkersRendererV145 } from "@/client/game/renderers/local_dev/harthmere_quest_object_markers_v145";
+import { makeHarthmereGatheringNodeMarkersRendererV1 } from "@/client/game/renderers/local_dev/harthmere_gathering_node_markers_v1";
 import { makeMuckRenderer } from "@/client/game/renderers/muck";
 import { makeNpcsRenderer } from "@/client/game/renderers/npcs";
 import { makeParticlesRenderer } from "@/client/game/renderers/particles";
@@ -87,6 +88,10 @@ export async function buildRenderers(loader: RegistryLoader<ClientContext>) {
     // quest-linked Grove props so map objectives do not point at invisible
     // filtered/asset-dependent objects.
     makeHarthmereQuestObjectMarkersRendererV145(resources),
+    // HARTHMERE_GATHERING_NODE_MARKERS_V1: visible, terrain-grounded resource
+    // nodes at every gathering position so harvest targets exist in the world
+    // (with an F-prompt) instead of only inside the HUD menu.
+    makeHarthmereGatheringNodeMarkersRendererV1(resources),
     new BoundaryRenderer(resources),
     makeBeamRenderer(mapManager, resources),
     new AudioRenderer(resources, audioManager),

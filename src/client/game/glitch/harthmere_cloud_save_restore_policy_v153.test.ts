@@ -31,4 +31,27 @@ describe("Harthmere Cloud Save restore policy v153", () => {
       true
     );
   });
+
+  it("always restores the cloud save on boot, even when local also has progress (deploy / new device)", () => {
+    // Cloud is the source of truth on load: the player's previous progress must
+    // be applied after a redeploy regardless of whatever sits in local storage.
+    assert.equal(
+      shouldApplyHarthmereCloudSaveV153({
+        latestCloudVersion: 1422,
+        hasMeaningfulLocalProgress: true,
+      }),
+      true
+    );
+  });
+
+  it("force restore always wins (a different account claimed this browser)", () => {
+    assert.equal(
+      shouldApplyHarthmereCloudSaveV153({
+        latestCloudVersion: 1422,
+        hasMeaningfulLocalProgress: true,
+        forceCloudRestore: true,
+      }),
+      true
+    );
+  });
 });

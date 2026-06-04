@@ -18,9 +18,17 @@ import { Highlightable } from "../highlight/HighlightOverlay";
 import { UI_IDS } from "../uniqueIds";
 import {
   activeBiomesUIMapPinFromMarkerForTest,
+  BIOMES_UI_LOCATE_ON_MAP_EVENT_V1,
+  BIOMES_UI_LOCATE_ON_MAP_RECENCY_MS_V1,
   type BiomesUIActiveMapPinV142,
+  readActiveBiomesUIMapPinV142,
   writeActiveBiomesUIMapPinV142,
 } from "../adapters/mapPinnedDestination";
+import {
+  harthmereMapElevationBandForHeightV1,
+  type HarthmereMapTerrainKindV1,
+  type MapTerrainRegionV1,
+} from "../adapters/harthmereMapTerrainRegionsV1";
 
 export type MapMarkerKind =
   | "objective"
@@ -73,9 +81,12 @@ export interface MapTrackableQuest {
   questId: string;
   title: string;
   area: string;
-  status: "active" | "available" | "completed";
+  status: "active" | "available" | "completed" | "failed";
   firstMarkerId?: string;
   reward?: string;
+  // Countdown label for timed jobs (e.g. "3h 12m left" / "Expired"); empty for
+  // untimed quests. Only jobs carry a timer for now.
+  timeRemaining?: string;
 }
 
 interface MapAdapter {
@@ -88,6 +99,9 @@ interface MapAdapter {
   getActiveMapPin?: () => BiomesUIActiveMapPinV142 | undefined;
   setActiveMapPin?: (marker: MapMarker) => void;
   clearActiveMapPin?: () => void;
+  // Authentic terrain regions (town, roads, river, muck, highland), already
+  // projected to 0..100 map units against the same bounds as the markers.
+  getTerrainRegions?: () => MapTerrainRegionV1[];
 }
 
 type MapPanelTab = "quests" | "people" | "buildings" | "properties" | "geography";
@@ -145,23 +159,6 @@ function markerPosition(marker: { x: number; y: number }, zoom: number, pan: { x
   return { left: `${x}%`, top: `${y}%` };
 }
 
-function terrainFeatureStyle(feature: MapTerrainFeature, zoom: number, pan: { x: number; y: number }): React.CSSProperties {
-  const pos = markerPosition(feature, zoom, pan);
-  return {
-    position: "absolute",
-    ...pos,
-    width: `${Math.max(2, feature.width * zoom * 100)}%`,
-    height: `${Math.max(2, feature.height * zoom * 100)}%`,
-    transform: `translate(-50%, -50%) rotate(${feature.rotation ?? 0}deg)`,
-    borderRadius: feature.round ? "999px" : 10,
-    background: TERRAIN_FILL[feature.kind],
-    border: `1px solid ${TERRAIN_STROKE[feature.kind]}`,
-    boxShadow: TERRAIN_SHADOW[feature.kind],
-    opacity: 0.88,
-    pointerEvents: "none",
-  };
-}
-
 export function centeredPanForMapMarkerForTest(
   marker: { x: number; y: number },
   zoom = 1
@@ -215,8 +212,9 @@ export function mapMarkerVisualStateForTest(
 }
 
 export function nextMapZoomForWheelForTest(currentZoom: number, deltaY: number) {
-  const delta = deltaY < 0 ? 0.15 : -0.15;
-  return Math.max(0.5, Math.min(8, currentZoom * (1 + delta)));
+  // Finer, exponential steps for smoother zoom, over a wider range.
+  const delta = deltaY < 0 ? 0.12 : -0.12;
+  return Math.max(0.4, Math.min(16, currentZoom * (1 + delta)));
 }
 
 export { activeBiomesUIMapPinFromMarkerForTest };
@@ -329,6 +327,106 @@ function markersForPanelTab(markers: MapMarker[], tab: MapPanelTab): MapMarker[]
   return markers.filter((marker) => mapPanelTabForMarkerForTest(marker).includes(tab));
 }
 
+// Authentic terrain layer styling (water / muck / town / road / highland / land).
+const TERRAIN_REGION_STYLE: Record<
+  HarthmereMapTerrainKindV1,
+  { fill: string; stroke: string; strokeWidth: number }
+> = {
+  land: { fill: "rgba(36, 54, 40, 0.34)", stroke: "transparent", strokeWidth: 0 },
+  town: { fill: "rgba(190, 145, 72, 0.20)", stroke: "rgba(234, 200, 130, 0.5)", strokeWidth: 0.4 },
+  road: { fill: "none", stroke: "rgba(226, 184, 96, 0.8)", strokeWidth: 0.6 },
+  water: { fill: "rgba(40, 120, 210, 0.36)", stroke: "rgba(125, 211, 252, 0.7)", strokeWidth: 0.5 },
+  muck: { fill: "rgba(108, 47, 162, 0.38)", stroke: "rgba(196, 150, 255, 0.6)", strokeWidth: 0.5 },
+  highland: { fill: "rgba(150, 162, 172, 0.26)", stroke: "rgba(222, 232, 242, 0.5)", strokeWidth: 0.4 },
+  safe_zone: { fill: "rgba(34, 197, 120, 0.10)", stroke: "rgba(120, 230, 170, 0.42)", strokeWidth: 0.4 },
+};
+
+export const TERRAIN_LEGEND_V1: Array<{ kind: HarthmereMapTerrainKindV1; label: string }> = [
+  { kind: "land", label: "Land" },
+  { kind: "water", label: "Water" },
+  { kind: "muck", label: "Muck" },
+  { kind: "town", label: "Town" },
+  { kind: "road", label: "Road" },
+  { kind: "highland", label: "Highland" },
+];
+
+// Terrain rendered as an SVG overlay that shares the marker zoom/pan transform so
+// it stays aligned with the markers drawn on top. The land base is drawn outside
+// the transform so it always fills the canvas; everything else pans/zooms.
+function MapTerrainLayer({
+  regions,
+  zoom,
+  pan,
+}: {
+  regions: MapTerrainRegionV1[];
+  zoom: number;
+  pan: { x: number; y: number };
+}) {
+  if (regions.length === 0) return null;
+  const tx = 50 + pan.x * 100;
+  const ty = 50 + pan.y * 100;
+  const landBase = regions.find((region) => region.kind === "land");
+  const features = regions.filter((region) => region.kind !== "land");
+  return (
+    <svg
+      aria-hidden
+      data-testid="biomes-map-terrain-layer"
+      viewBox="0 0 100 100"
+      preserveAspectRatio="none"
+      style={{ position: "absolute", inset: 0, width: "100%", height: "100%", pointerEvents: "none" }}
+    >
+      {landBase ? (
+        <rect x={-10} y={-10} width={120} height={120} fill={TERRAIN_REGION_STYLE.land.fill} />
+      ) : null}
+      <g transform={`translate(${tx} ${ty}) scale(${zoom}) translate(-50 -50)`}>
+        {features.map((region) => {
+          const style = TERRAIN_REGION_STYLE[region.kind];
+          if (region.shape.type === "ellipse") {
+            return (
+              <ellipse
+                key={region.id}
+                cx={region.shape.cx}
+                cy={region.shape.cy}
+                rx={region.shape.rx}
+                ry={region.shape.ry}
+                fill={style.fill}
+                stroke={style.stroke}
+                strokeWidth={style.strokeWidth}
+              />
+            );
+          }
+          if (region.shape.type === "rect") {
+            return (
+              <rect
+                key={region.id}
+                x={region.shape.x}
+                y={region.shape.y}
+                width={region.shape.w}
+                height={region.shape.h}
+                rx={1.5}
+                fill={style.fill}
+                stroke={style.stroke}
+                strokeWidth={style.strokeWidth}
+              />
+            );
+          }
+          return (
+            <polyline
+              key={region.id}
+              points={region.shape.points.map((p) => `${p.x},${p.y}`).join(" ")}
+              fill="none"
+              stroke={style.stroke}
+              strokeWidth={region.shape.width}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          );
+        })}
+      </g>
+    </svg>
+  );
+}
+
 function filterTokens(value: string): string[] {
   return value
     .trim()
@@ -435,7 +533,14 @@ export const MapQuestsTab: React.FunctionComponent<{ adapter?: MapAdapter }> = (
   const [pan, setPan] = React.useState({ x: 0, y: 0 });
   const [focusedMarkerId, setFocusedMarkerId] = React.useState<string | null>(null);
   const [trackedQuestId, setTrackedQuestId] = React.useState<string | null>(null);
-  const [activeTab, setActiveTab] = React.useState<MapPanelTab>("quests");
+  // Multi-layer model: any combination of category layers can be on at once, so
+  // the map shows their union instead of one-at-a-time. Default: all on.
+  const [enabledLayers, setEnabledLayers] = React.useState<Set<MapPanelTab>>(
+    () => new Set(MAP_PANEL_TABS.map((tab) => tab.id))
+  );
+  // Terrain starts OFF so the map opens clean (just markers); the player can
+  // toggle the authentic terrain layer on from the layer bar when they want it.
+  const [showTerrain, setShowTerrain] = React.useState(false);
   const [panelFilters, setPanelFilters] = React.useState<Record<MapPanelTab, string>>({
     quests: "",
     people: "",
@@ -444,6 +549,15 @@ export const MapQuestsTab: React.FunctionComponent<{ adapter?: MapAdapter }> = (
     geography: "",
   });
   const [activeMapPin, setActiveMapPin] = React.useState<BiomesUIActiveMapPinV142 | undefined>(() => adapter?.getActiveMapPin?.());
+  // "Locate on map" target we still need to pan/zoom to. Seeded from a recent
+  // active pin on mount because the locate event fires during the tab switch,
+  // before this tab is listening. Centering happens once the marker exists.
+  const [pendingLocateMarkerId, setPendingLocateMarkerId] = React.useState<string | undefined>(() => {
+    const pin = readActiveBiomesUIMapPinV142();
+    return pin && Date.now() - pin.setAtMs <= BIOMES_UI_LOCATE_ON_MAP_RECENCY_MS_V1
+      ? pin.markerId
+      : undefined;
+  });
   const canvasRef = React.useRef<HTMLDivElement | null>(null);
   const draggingRef = React.useRef<{ startX: number; startY: number; panX: number; panY: number } | null>(null);
   const didAutoCenterPlayerRef = React.useRef(false);
@@ -462,23 +576,26 @@ export const MapQuestsTab: React.FunctionComponent<{ adapter?: MapAdapter }> = (
   const steps = adapter?.getMissionSteps?.() ?? [];
   const bounds = adapter?.getMapBounds?.();
   const trackableQuests = adapter?.getTrackableQuests?.() ?? [];
-  const activeFilter = panelFilters[activeTab] ?? "";
-  const hasActiveFilter = activeFilter.trim().length > 0;
-  const activePanelLabel =
-    MAP_PANEL_TABS.find((tab) => tab.id === activeTab)?.label ?? "List";
-  const activePanelFilterDescription = activePanelLabel.toLowerCase();
+  const layerEnabled = React.useCallback(
+    (tab: MapPanelTab) => enabledLayers.has(tab),
+    [enabledLayers]
+  );
   const filteredSteps = React.useMemo(
-    () => filterMapMissionStepsForTest(steps, activeTab === "quests" ? activeFilter : ""),
-    [activeFilter, activeTab, steps]
+    () => filterMapMissionStepsForTest(steps, panelFilters.quests),
+    [panelFilters.quests, steps]
   );
   const filteredTrackableQuests = React.useMemo(
-    () => filterMapTrackableQuestsForTest(trackableQuests, activeTab === "quests" ? activeFilter : ""),
-    [activeFilter, activeTab, trackableQuests]
+    () => filterMapTrackableQuestsForTest(trackableQuests, panelFilters.quests),
+    [panelFilters.quests, trackableQuests]
   );
   const focusedMarker = focusedMarkerId ? allMarkers.find((marker) => marker.id === focusedMarkerId) : undefined;
+  // Map markers = union of every enabled category layer (multi-select).
   const visibleMarkers = React.useMemo(
-    () => markersForPanelTab(allMarkers, activeTab),
-    [activeTab, allMarkers]
+    () =>
+      allMarkers.filter((marker) =>
+        mapPanelTabForMarkerForTest(marker).some((tab) => enabledLayers.has(tab))
+      ),
+    [allMarkers, enabledLayers]
   );
   React.useEffect(() => {
     setActiveMapPin(adapter?.getActiveMapPin?.());
@@ -494,29 +611,58 @@ export const MapQuestsTab: React.FunctionComponent<{ adapter?: MapAdapter }> = (
   const propertyMarkers = React.useMemo(() => markersForPanelTab(allMarkers, "properties"), [allMarkers]);
   const geographyMarkers = React.useMemo(() => markersForPanelTab(allMarkers, "geography"), [allMarkers]);
   const filteredPeopleMarkers = React.useMemo(
-    () => filterMapMarkersForTest(peopleMarkers, activeTab === "people" ? activeFilter : ""),
-    [activeFilter, activeTab, peopleMarkers]
+    () => filterMapMarkersForTest(peopleMarkers, panelFilters.people),
+    [panelFilters.people, peopleMarkers]
   );
   const filteredBuildingMarkers = React.useMemo(
-    () => filterMapMarkersForTest(buildingMarkers, activeTab === "buildings" ? activeFilter : ""),
-    [activeFilter, activeTab, buildingMarkers]
+    () => filterMapMarkersForTest(buildingMarkers, panelFilters.buildings),
+    [panelFilters.buildings, buildingMarkers]
   );
   const filteredPropertyMarkers = React.useMemo(
-    () => filterMapMarkersForTest(propertyMarkers, activeTab === "properties" ? activeFilter : ""),
-    [activeFilter, activeTab, propertyMarkers]
+    () => filterMapMarkersForTest(propertyMarkers, panelFilters.properties),
+    [panelFilters.properties, propertyMarkers]
   );
   const filteredGeographyMarkers = React.useMemo(
-    () => filterMapMarkersForTest(geographyMarkers, activeTab === "geography" ? activeFilter : ""),
-    [activeFilter, activeTab, geographyMarkers]
+    () => filterMapMarkersForTest(geographyMarkers, panelFilters.geography),
+    [panelFilters.geography, geographyMarkers]
   );
-  const geographyTerrainFeatures = React.useMemo(
-    () => geographyTerrainFeaturesForMapMarkersForTest(geographyMarkers),
-    [geographyMarkers]
+  // Authentic terrain regions (town/roads/river/muck/highland), projected to
+  // 0..100 map units against the same bounds the markers use.
+  const terrainRegions = React.useMemo(
+    () => adapter?.getTerrainRegions?.() ?? [],
+    [adapter]
   );
+  // Elevation summary from real marker heights (worldPosition Y).
+  const elevationBands = React.useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const marker of allMarkers) {
+      const band = harthmereMapElevationBandForHeightV1(marker.worldPosition?.[1]);
+      counts[band] = (counts[band] ?? 0) + 1;
+    }
+    return counts;
+  }, [allMarkers]);
 
-  const clampZoom = React.useCallback((value: number) => Math.max(0.5, Math.min(8, value)), []);
-  const zoomIn = () => setZoom((value) => clampZoom(Number((value + 0.25).toFixed(2))));
-  const zoomOut = () => setZoom((value) => clampZoom(Number((value - 0.25).toFixed(2))));
+  // Wider zoom range + clamped pan so the map can be inspected closely without
+  // ever being dragged fully off-screen.
+  const clampZoom = React.useCallback((value: number) => Math.max(0.4, Math.min(16, value)), []);
+  const clampPan = React.useCallback(
+    (next: { x: number; y: number }, atZoom: number) => {
+      // Keep the map center within the viewport: allow panning out to the edge of
+      // the zoomed content plus a small margin.
+      const limit = Math.max(0.25, (atZoom - 1) / 2 + 0.25);
+      return {
+        x: Math.max(-limit, Math.min(limit, next.x)),
+        y: Math.max(-limit, Math.min(limit, next.y)),
+      };
+    },
+    []
+  );
+  const setZoomTo = React.useCallback(
+    (value: number) => setZoom(() => clampZoom(Number(value.toFixed(3)))),
+    [clampZoom]
+  );
+  const zoomIn = () => setZoom((value) => clampZoom(Number((value * 1.25).toFixed(3))));
+  const zoomOut = () => setZoom((value) => clampZoom(Number((value / 1.25).toFixed(3))));
   const resetView = () => {
     const nextZoom = playerMarker ? 2 : 1;
     setZoom(nextZoom);
@@ -527,18 +673,53 @@ export const MapQuestsTab: React.FunctionComponent<{ adapter?: MapAdapter }> = (
   const centerOnMarker = React.useCallback((marker: { x: number; y: number; id: string }) => {
     const nextZoom = Math.max(zoom, 2);
     setZoom(nextZoom);
-    setPan(centeredPanForMapMarkerForTest(marker, nextZoom));
+    setPan(clampPan(centeredPanForMapMarkerForTest(marker, nextZoom), nextZoom));
     setFocusedMarkerId(marker.id);
-  }, [zoom]);
+  }, [zoom, clampPan]);
   const centerOnPlayer = () => {
     if (!playerMarker) return;
     centerOnMarker(playerMarker);
   };
-  const updateActiveFilter = (value: string) => {
-    setPanelFilters((filters) => ({ ...filters, [activeTab]: value }));
+  // Fit-to-content: frame all currently-visible markers (zoom + center).
+  const fitToVisible = React.useCallback(() => {
+    const pts = visibleMapMarkers.map((marker) => ({ x: clamp01(marker.x), y: clamp01(marker.y) }));
+    if (pts.length === 0) {
+      setZoom(1);
+      setPan({ x: 0, y: 0 });
+      return;
+    }
+    let minX = 1, maxX = 0, minY = 1, maxY = 0;
+    for (const p of pts) {
+      minX = Math.min(minX, p.x); maxX = Math.max(maxX, p.x);
+      minY = Math.min(minY, p.y); maxY = Math.max(maxY, p.y);
+    }
+    const spanX = Math.max(0.06, maxX - minX);
+    const spanY = Math.max(0.06, maxY - minY);
+    // 0.82 leaves a comfortable margin around the framed content.
+    const nextZoom = clampZoom(Math.min(0.82 / spanX, 0.82 / spanY));
+    const center = { x: (minX + maxX) / 2, y: (minY + maxY) / 2 };
+    setZoom(nextZoom);
+    setPan(clampPan(centeredPanForMapMarkerForTest(center, nextZoom), nextZoom));
+  }, [visibleMapMarkers, clampZoom, clampPan]);
+  const setPanelFilter = (tab: MapPanelTab, value: string) => {
+    setPanelFilters((filters) => ({ ...filters, [tab]: value }));
+  };
+  const toggleLayer = (tab: MapPanelTab) => {
+    setEnabledLayers((prev) => {
+      const next = new Set(prev);
+      if (next.has(tab)) {
+        next.delete(tab);
+      } else {
+        next.add(tab);
+      }
+      return next;
+    });
+  };
+  const setAllLayers = (on: boolean) => {
+    setEnabledLayers(on ? new Set(MAP_PANEL_TABS.map((tab) => tab.id)) : new Set());
   };
   const trackQuest = (quest: MapTrackableQuest) => {
-    setActiveTab("quests");
+    setEnabledLayers((prev) => new Set(prev).add("quests"));
     setTrackedQuestId(quest.questId);
     const marker = quest.firstMarkerId
       ? allMarkers.find((entry) => entry.id === quest.firstMarkerId)
@@ -567,11 +748,48 @@ export const MapQuestsTab: React.FunctionComponent<{ adapter?: MapAdapter }> = (
 
   React.useEffect(() => {
     if (!playerMarker || didAutoCenterPlayerRef.current) return;
+    // A pending "locate on map" wins over the initial player auto-center, so we
+    // don't pan to the player and then immediately jump to the located target.
+    if (pendingLocateMarkerId) {
+      didAutoCenterPlayerRef.current = true;
+      return;
+    }
     didAutoCenterPlayerRef.current = true;
     const nextZoom = 2;
     setZoom(nextZoom);
-    setPan(centeredPanForMapMarkerForTest(playerMarker, nextZoom));
-  }, [playerMarker]);
+    setPan(clampPan(centeredPanForMapMarkerForTest(playerMarker, nextZoom), nextZoom));
+  }, [playerMarker, pendingLocateMarkerId, clampPan]);
+
+  // Live "locate on map" requests while this tab is already open.
+  React.useEffect(() => {
+    if (typeof window === "undefined") return;
+    const handler = (event: Event) => {
+      const pin = (event as CustomEvent).detail as
+        | BiomesUIActiveMapPinV142
+        | undefined;
+      if (pin?.markerId) {
+        setActiveMapPin(pin);
+        setPendingLocateMarkerId(pin.markerId);
+      }
+    };
+    window.addEventListener(BIOMES_UI_LOCATE_ON_MAP_EVENT_V1, handler);
+    return () =>
+      window.removeEventListener(BIOMES_UI_LOCATE_ON_MAP_EVENT_V1, handler);
+  }, []);
+
+  // Center on the located target once its marker is available. Markers hydrate
+  // asynchronously, so this retries (via allMarkers deps) until the marker
+  // exists, then consumes the request.
+  React.useEffect(() => {
+    if (!pendingLocateMarkerId) return;
+    const marker = allMarkers.find(
+      (entry) => entry.id === pendingLocateMarkerId
+    );
+    if (!marker) return;
+    centerOnMarker(marker);
+    setFocusedMarkerId(marker.id);
+    setPendingLocateMarkerId(undefined);
+  }, [pendingLocateMarkerId, allMarkers, centerOnMarker]);
 
   // BIOMES_UI_MAP_TAB_V141:
   // Mouse wheel zoom (Shift+wheel pans horizontally). Centered on the cursor
@@ -580,7 +798,7 @@ export const MapQuestsTab: React.FunctionComponent<{ adapter?: MapAdapter }> = (
   const onWheel = (event: React.WheelEvent<HTMLDivElement>) => {
     event.preventDefault();
     if (event.shiftKey) {
-      setPan((prev) => ({ x: prev.x - event.deltaY / 500, y: prev.y }));
+      setPan((prev) => clampPan({ x: prev.x - event.deltaY / 500, y: prev.y }, zoom));
       return;
     }
     setZoom((prev) => {
@@ -589,10 +807,15 @@ export const MapQuestsTab: React.FunctionComponent<{ adapter?: MapAdapter }> = (
       if (rect) {
         const cursorX = (event.clientX - rect.left) / rect.width;
         const cursorY = (event.clientY - rect.top) / rect.height;
-        setPan((p) => ({
-          x: p.x + (cursorX - 0.5) * (1 / prev - 1 / next),
-          y: p.y + (cursorY - 0.5) * (1 / prev - 1 / next),
-        }));
+        setPan((p) =>
+          clampPan(
+            {
+              x: p.x + (cursorX - 0.5) * (1 / prev - 1 / next),
+              y: p.y + (cursorY - 0.5) * (1 / prev - 1 / next),
+            },
+            next
+          )
+        );
       }
       return next;
     });
@@ -609,7 +832,7 @@ export const MapQuestsTab: React.FunctionComponent<{ adapter?: MapAdapter }> = (
     if (!rect) return;
     const dx = (event.clientX - drag.startX) / rect.width;
     const dy = (event.clientY - drag.startY) / rect.height;
-    setPan({ x: drag.panX + dx, y: drag.panY + dy });
+    setPan(clampPan({ x: drag.panX + dx, y: drag.panY + dy }, zoom));
   };
   const onPointerUp = (event: React.PointerEvent<HTMLDivElement>) => {
     draggingRef.current = null;
@@ -619,10 +842,10 @@ export const MapQuestsTab: React.FunctionComponent<{ adapter?: MapAdapter }> = (
   // BIOMES_UI_MAP_TAB_V141: keyboard pan (arrow keys when the canvas has focus).
   const onKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
     const step = 0.08;
-    if (event.key === "ArrowLeft") { setPan((p) => ({ ...p, x: p.x + step })); event.preventDefault(); }
-    else if (event.key === "ArrowRight") { setPan((p) => ({ ...p, x: p.x - step })); event.preventDefault(); }
-    else if (event.key === "ArrowUp") { setPan((p) => ({ ...p, y: p.y + step })); event.preventDefault(); }
-    else if (event.key === "ArrowDown") { setPan((p) => ({ ...p, y: p.y - step })); event.preventDefault(); }
+    if (event.key === "ArrowLeft") { setPan((p) => clampPan({ ...p, x: p.x + step }, zoom)); event.preventDefault(); }
+    else if (event.key === "ArrowRight") { setPan((p) => clampPan({ ...p, x: p.x - step }, zoom)); event.preventDefault(); }
+    else if (event.key === "ArrowUp") { setPan((p) => clampPan({ ...p, y: p.y + step }, zoom)); event.preventDefault(); }
+    else if (event.key === "ArrowDown") { setPan((p) => clampPan({ ...p, y: p.y - step }, zoom)); event.preventDefault(); }
     else if (event.key === "+" || event.key === "=") { zoomIn(); event.preventDefault(); }
     else if (event.key === "-") { zoomOut(); event.preventDefault(); }
     else if (event.key.toLowerCase() === "c") { centerOnPlayer(); event.preventDefault(); }
@@ -643,35 +866,46 @@ export const MapQuestsTab: React.FunctionComponent<{ adapter?: MapAdapter }> = (
       }}
     >
       <div style={mapTopBarStyle}>
-        <nav aria-label="Map sections" style={mapTabBarStyle}>
+        <nav aria-label="Map layers" style={mapTabBarStyle}>
           {MAP_PANEL_TABS.map((tab) => (
             <button
               key={tab.id}
               type="button"
-              aria-pressed={activeTab === tab.id}
-              onClick={() => setActiveTab(tab.id)}
+              role="switch"
+              aria-checked={layerEnabled(tab.id)}
+              aria-label={`Toggle ${tab.label} layer`}
+              onClick={() => toggleLayer(tab.id)}
               style={{
                 ...mapTabButtonStyle,
-                ...(activeTab === tab.id ? activeMapTabButtonStyle : {}),
+                ...(layerEnabled(tab.id) ? activeMapTabButtonStyle : {}),
               }}
             >
               {tab.label}
             </button>
           ))}
+          <span style={layerToggleDividerStyle} aria-hidden />
+          <button
+            type="button"
+            role="switch"
+            aria-checked={showTerrain}
+            aria-label="Toggle terrain layer"
+            onClick={() => setShowTerrain((value) => !value)}
+            style={{
+              ...mapTabButtonStyle,
+              ...(showTerrain ? activeMapTabButtonStyle : {}),
+            }}
+          >
+            Terrain
+          </button>
         </nav>
-        <label style={filterLabelStyle}>
-          <span style={filterLabelTextStyle}>
-            Filter {activePanelLabel}
-          </span>
-          <input
-            type="search"
-            value={activeFilter}
-            onChange={(event) => updateActiveFilter(event.currentTarget.value)}
-            placeholder={`Filter ${activePanelFilterDescription}`}
-            aria-label={`Filter ${activePanelLabel} list`}
-            style={filterInputStyle}
-          />
-        </label>
+        <div style={layerQuickActionsStyle}>
+          <button type="button" onClick={() => setAllLayers(true)} style={layerQuickButtonStyle}>
+            All
+          </button>
+          <button type="button" onClick={() => setAllLayers(false)} style={layerQuickButtonStyle}>
+            None
+          </button>
+        </div>
       </div>
       <section
         aria-label="Live world map"
@@ -697,10 +931,27 @@ export const MapQuestsTab: React.FunctionComponent<{ adapter?: MapAdapter }> = (
           touchAction: "none",
         }}
       >
+        {/* Terrain is the first child so it paints behind the toolbar/bounds
+            chrome; markers (explicit zIndex) still render on top of it. */}
+        {showTerrain ? (
+          <MapTerrainLayer regions={terrainRegions} zoom={zoom} pan={pan} />
+        ) : null}
         <div style={mapToolbarStyle}>
           <button type="button" onClick={zoomOut} aria-label="Zoom map out">−</button>
-          <span aria-label={`Map zoom ${Math.round(zoom * 100)} percent`}>{Math.round(zoom * 100)}%</span>
+          <input
+            type="range"
+            min={0.4}
+            max={16}
+            step={0.1}
+            value={zoom}
+            onChange={(event) => setZoomTo(Number(event.currentTarget.value))}
+            aria-label="Map zoom level"
+            title="Zoom"
+            style={{ width: 84, accentColor: "var(--biomes-edge-cyan)" }}
+          />
           <button type="button" onClick={zoomIn} aria-label="Zoom map in">+</button>
+          <span aria-label={`Map zoom ${Math.round(zoom * 100)} percent`}>{Math.round(zoom * 100)}%</span>
+          <button type="button" onClick={fitToVisible} title="Fit all markers in view">Fit</button>
           <button type="button" onClick={resetView} title="Reset view (R)">Reset</button>
           <button type="button" onClick={centerOnPlayer} disabled={!playerMarker} title="Center on player (C)">
             Center Player
@@ -710,18 +961,15 @@ export const MapQuestsTab: React.FunctionComponent<{ adapter?: MapAdapter }> = (
         {bounds ? (
           <div style={boundsStyle} aria-label="Current map bounds">
             X {Math.round(bounds.minX)}…{Math.round(bounds.maxX)} · Z {Math.round(bounds.minZ)}…{Math.round(bounds.maxZ)}
-          </div>
-        ) : null}
-
-        {activeTab === "geography" && geographyTerrainFeatures.length > 0 ? (
-          <div aria-hidden data-testid="biomes-map-geography-terrain-layer">
-            {geographyTerrainFeatures.map((feature) => (
-              <div
-                key={feature.id}
-                title={feature.label}
-                style={terrainFeatureStyle(feature, zoom, pan)}
-              />
-            ))}
+            {showTerrain
+              ? ` · Elevation ${
+                  Object.entries(elevationBands)
+                    .sort((a, b) => b[1] - a[1])
+                    .slice(0, 2)
+                    .map(([band]) => band)
+                    .join("/") || "low"
+                }`
+              : ""}
           </div>
         ) : null}
 
@@ -799,6 +1047,24 @@ export const MapQuestsTab: React.FunctionComponent<{ adapter?: MapAdapter }> = (
               {label}
             </span>
           ))}
+          {showTerrain
+            ? TERRAIN_LEGEND_V1.map((entry) => (
+                <span key={`terrain-${entry.kind}`} style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+                  <span
+                    aria-hidden
+                    style={{
+                      width: 9,
+                      height: 9,
+                      borderRadius: 2,
+                      background: TERRAIN_REGION_STYLE[entry.kind].fill,
+                      border: `1px solid ${TERRAIN_REGION_STYLE[entry.kind].stroke}`,
+                      display: "inline-block",
+                    }}
+                  />
+                  {entry.label}
+                </span>
+              ))
+            : null}
           <span style={{ marginLeft: "auto", color: "var(--biomes-fg-dim)" }}>
             wheel to zoom · drag to pan · C center · R reset
           </span>
@@ -811,6 +1077,8 @@ export const MapQuestsTab: React.FunctionComponent<{ adapter?: MapAdapter }> = (
             {focusedMarker.worldPosition ? (
               <small>
                 World {focusedMarker.worldPosition.map((value) => Math.round(value)).join(", ")}
+                {" · "}
+                Elevation: {harthmereMapElevationBandForHeightV1(focusedMarker.worldPosition[1])}
               </small>
             ) : null}
             {focusedMarker.description ? <p style={{ margin: 0 }}>{focusedMarker.description}</p> : null}
@@ -865,11 +1133,27 @@ export const MapQuestsTab: React.FunctionComponent<{ adapter?: MapAdapter }> = (
           </div>
         ) : null}
       </section>
-      <section aria-label={`${activeTab} map panel`} style={sidePanelStyle}>
-        {activeTab === "quests" ? (
+      <section aria-label="Map panels" style={sidePanelStyle}>
+        {enabledLayers.size === 0 ? (
+          <p style={mutedTextStyle}>
+            No layers selected. Turn on a layer above (Quests, People, Buildings,
+            My Properties, Geography) to see its markers and list.
+          </p>
+        ) : null}
+        {layerEnabled("quests") ? (
           <>
             <div>
-              <h3 style={titleStyle}>{title}</h3>
+              <div style={panelSectionHeaderStyle}>
+                <h3 style={titleStyle}>{title}</h3>
+                <input
+                  type="search"
+                  value={panelFilters.quests}
+                  onChange={(event) => setPanelFilter("quests", event.currentTarget.value)}
+                  placeholder="Filter quests"
+                  aria-label="Filter quests list"
+                  style={sectionFilterInputStyle}
+                />
+              </div>
               {steps.length === 0 ? (
                 <p style={mutedTextStyle}>No active quest steps are available yet. Pick a quest below to track it.</p>
               ) : filteredSteps.length === 0 ? (
@@ -928,51 +1212,63 @@ export const MapQuestsTab: React.FunctionComponent<{ adapter?: MapAdapter }> = (
               </div>
             )}
           </>
-        ) : activeTab === "people" ? (
+        ) : null}
+        {layerEnabled("people") ? (
           <MarkerList
             title="People"
-            empty={hasActiveFilter ? "No people match this filter." : "No known people are visible on this map yet."}
+            empty={panelFilters.people.trim() ? "No people match this filter." : "No known people are visible on this map yet."}
             markers={filteredPeopleMarkers}
             playerMarker={playerMarker}
             focusedMarkerId={focusedMarkerId}
             onSelect={centerOnMarker}
             onPin={setActiveDestination}
             activePinMarkerId={activeMapPinMarkerId}
+            filterValue={panelFilters.people}
+            onFilter={(value) => setPanelFilter("people", value)}
           />
-        ) : activeTab === "buildings" ? (
+        ) : null}
+        {layerEnabled("buildings") ? (
           <MarkerList
             title="Buildings & Services"
-            empty={hasActiveFilter ? "No buildings or services match this filter." : "No buildings or services are visible on this map yet."}
+            empty={panelFilters.buildings.trim() ? "No buildings or services match this filter." : "No buildings or services are visible on this map yet."}
             markers={filteredBuildingMarkers}
             playerMarker={playerMarker}
             focusedMarkerId={focusedMarkerId}
             onSelect={centerOnMarker}
             onPin={setActiveDestination}
             activePinMarkerId={activeMapPinMarkerId}
+            filterValue={panelFilters.buildings}
+            onFilter={(value) => setPanelFilter("buildings", value)}
           />
-        ) : activeTab === "properties" ? (
+        ) : null}
+        {layerEnabled("properties") ? (
           <MarkerList
             title="My Properties"
-            empty={hasActiveFilter ? "No properties match this filter." : "No purchased properties are visible on this map yet."}
+            empty={panelFilters.properties.trim() ? "No properties match this filter." : "No purchased properties are visible on this map yet."}
             markers={filteredPropertyMarkers}
             playerMarker={playerMarker}
             focusedMarkerId={focusedMarkerId}
             onSelect={centerOnMarker}
             onPin={setActiveDestination}
             activePinMarkerId={activeMapPinMarkerId}
+            filterValue={panelFilters.properties}
+            onFilter={(value) => setPanelFilter("properties", value)}
           />
-        ) : (
+        ) : null}
+        {layerEnabled("geography") ? (
           <MarkerList
             title="Geography"
-            empty={hasActiveFilter ? "No geography markers match this filter." : "No geography markers are visible on this map yet."}
+            empty={panelFilters.geography.trim() ? "No geography markers match this filter." : "No geography markers are visible on this map yet."}
             markers={filteredGeographyMarkers}
             playerMarker={playerMarker}
             focusedMarkerId={focusedMarkerId}
             onSelect={centerOnMarker}
             onPin={setActiveDestination}
             activePinMarkerId={activeMapPinMarkerId}
+            filterValue={panelFilters.geography}
+            onFilter={(value) => setPanelFilter("geography", value)}
           />
-        )}
+        ) : null}
       </section>
     </div>
   );
@@ -987,6 +1283,8 @@ function MarkerList({
   onSelect,
   onPin,
   activePinMarkerId,
+  filterValue,
+  onFilter,
 }: {
   title: string;
   empty: string;
@@ -996,6 +1294,8 @@ function MarkerList({
   onSelect: (marker: MapMarker) => void;
   onPin: (marker: MapMarker) => void;
   activePinMarkerId?: string;
+  filterValue?: string;
+  onFilter?: (value: string) => void;
 }) {
   const sorted = React.useMemo(() => {
     return markers
@@ -1011,7 +1311,19 @@ function MarkerList({
 
   return (
     <div data-testid={`biomes-map-${title.toLowerCase().replace(/[^a-z]+/g, "-")}-list`}>
-      <h3 style={titleStyle}>{title}</h3>
+      <div style={panelSectionHeaderStyle}>
+        <h3 style={titleStyle}>{title}</h3>
+        {onFilter ? (
+          <input
+            type="search"
+            value={filterValue ?? ""}
+            onChange={(event) => onFilter(event.currentTarget.value)}
+            placeholder={`Filter ${title.toLowerCase()}`}
+            aria-label={`Filter ${title} list`}
+            style={sectionFilterInputStyle}
+          />
+        ) : null}
+      </div>
       {sorted.length === 0 ? (
         <p style={mutedTextStyle}>{empty}</p>
       ) : (
@@ -1071,9 +1383,11 @@ const mapTopBarStyle: React.CSSProperties = { gridColumn: "1 / -1", display: "fl
 const mapTabBarStyle: React.CSSProperties = { display: "flex", gap: 6, minWidth: 0, overflowX: "auto", paddingBottom: 2 };
 const mapTabButtonStyle: React.CSSProperties = { border: "1px solid var(--biomes-edge-cyan-soft)", borderRadius: 4, background: "rgba(7, 12, 26, 0.68)", color: "var(--biomes-fg-muted)", padding: "7px 10px", fontSize: 11, fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase", cursor: "pointer" };
 const activeMapTabButtonStyle: React.CSSProperties = { borderColor: "var(--biomes-edge-cyan)", color: "var(--biomes-fg)", background: "rgba(74, 222, 255, 0.16)" };
-const filterLabelStyle: React.CSSProperties = { display: "grid", gap: 3, width: 220, maxWidth: "100%" };
-const filterLabelTextStyle: React.CSSProperties = { fontSize: 9, fontWeight: 800, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--biomes-fg-muted)" };
-const filterInputStyle: React.CSSProperties = { width: "100%", height: 32, padding: "0 9px", border: "1px solid var(--biomes-edge-cyan-soft)", borderRadius: 4, background: "rgba(7, 12, 26, 0.72)", color: "var(--biomes-fg)", fontSize: 12, outline: "none" };
+const layerToggleDividerStyle: React.CSSProperties = { width: 1, alignSelf: "stretch", margin: "2px 2px", background: "var(--biomes-edge-cyan-soft)" };
+const layerQuickActionsStyle: React.CSSProperties = { display: "flex", gap: 6, flexShrink: 0 };
+const layerQuickButtonStyle: React.CSSProperties = { border: "1px solid var(--biomes-edge-cyan-soft)", borderRadius: 4, background: "rgba(7, 12, 26, 0.6)", color: "var(--biomes-fg-muted)", padding: "7px 9px", fontSize: 11, fontWeight: 800, letterSpacing: "0.06em", textTransform: "uppercase", cursor: "pointer" };
+const panelSectionHeaderStyle: React.CSSProperties = { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 6, flexWrap: "wrap" };
+const sectionFilterInputStyle: React.CSSProperties = { width: 130, maxWidth: "100%", height: 26, padding: "0 8px", border: "1px solid var(--biomes-edge-cyan-soft)", borderRadius: 4, background: "rgba(7, 12, 26, 0.72)", color: "var(--biomes-fg)", fontSize: 11, outline: "none" };
 const sidePanelStyle: React.CSSProperties = { minHeight: 0, overflowY: "auto", display: "grid", alignContent: "start", gap: 12, paddingRight: 4 };
 const listStyle: React.CSSProperties = { listStyle: "none", padding: 0, margin: 0, display: "grid", gap: 4 };
 const listItemFrameStyle = (selected: boolean, accent: string): React.CSSProperties => ({

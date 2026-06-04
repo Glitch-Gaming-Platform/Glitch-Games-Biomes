@@ -2219,6 +2219,25 @@ export class PlayerScript implements Script {
         kind: "fall",
         distance: fall.fellBlocks,
       });
+      // Harthmere local-dev mode renders a separate combat-system HP bar (not
+      // the ECS health applyHpChange writes), so notify it to drain the visible
+      // HP. The listener (useHarthmereFallDamageBridge) only exists in that
+      // mode, so this is a no-op everywhere else. Event name must match
+      // HARTHMERE_PLAYER_FALL_DAMAGE_EVENT in LocalDevHarthmereCombat.
+      const globalScope = globalThis as unknown as {
+        window?: {
+          dispatchEvent?: (event: Event) => boolean;
+          CustomEvent?: typeof CustomEvent;
+        };
+      };
+      const win = globalScope.window;
+      if (win?.dispatchEvent && win.CustomEvent) {
+        win.dispatchEvent(
+          new win.CustomEvent("biomes:harthmere-player-fall-damage", {
+            detail: { blocks: fall.fellBlocks },
+          })
+        );
+      }
     }
 
     if (groundImpact) {

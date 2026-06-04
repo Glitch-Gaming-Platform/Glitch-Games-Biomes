@@ -57,7 +57,7 @@ function pickFromTextV1<T>(items: readonly T[], text: string, salt: string): T {
   return items[stableHashV1(`${text}:${salt}`) % items.length];
 }
 
-function roleForBusinessTextV1(text: string): HarthmereCharacterRole {
+export function roleForBusinessTextV1(text: string): HarthmereCharacterRole {
   if (/security|defense|guard/.test(text)) return "guard";
   if (/hunter|exploration|wild meat|trail/.test(text)) return "hunter";
   if (/medical|doctor|magic/.test(text)) {
@@ -98,7 +98,7 @@ export function harthmereBusinessOutpostStaffSeedV1(
   return 9300000 + (hash % 500000);
 }
 
-function groveBusinessRoleClothingV1(
+export function groveBusinessRoleClothingV1(
   role: HarthmereCharacterRole,
   text: string,
 ): HarthmereCharacterClothing {
@@ -216,6 +216,29 @@ function customerSpecificAppearanceSpreadV1(
     },
     source: `${appearance.source ?? "generated:npc"};customer-freeform-feature-spread-v1`,
   });
+}
+
+// HARTHMERE_BUSINESS_OWNER_DISTINCT_LOOK_V1:
+// The role + role-based clothing a shopkeeper/owner should wear, derived from
+// their business type and job title. Business *staff* and *customers* already
+// pass this explicit clothing (with distinctive hats: straw_hat, hunter_cap,
+// militia_halfhelm, noble_cap, mage_hood) into the appearance generator, which
+// is what makes them read as unique. Owners previously passed no clothing and
+// fell back to the generic auto-derived set — so they looked blander/hatless.
+// This exposes the same role-clothing lookup so the owner seed can opt in.
+export function harthmereBusinessOwnerRoleClothingV1(input: {
+  businessType: string;
+  roleTitle?: string;
+}): {
+  role: HarthmereCharacterRole;
+  roleHint: string;
+  clothing: HarthmereCharacterClothing;
+} {
+  const text = [businessTypeTextV1(input.businessType), input.roleTitle ?? ""]
+    .join(" ")
+    .trim();
+  const role = roleForBusinessTextV1(text);
+  return { role, roleHint: text, clothing: groveBusinessRoleClothingV1(role, text) };
 }
 
 export function harthmereBusinessOutpostStaffAppearanceV1(

@@ -25,6 +25,7 @@ import {
 } from "@/shared/harthmere/live_entity_helper_quests_v1";
 import { harthmereJobsBoardQuestMarkerPositionsV1 } from "@/shared/harthmere/jobs_board_quest_marker_positions_v1";
 import { readSnapshotGroveQuestStateV75 } from "@/client/components/challenges/LocalDevSnapshotGroveBibleRuntime";
+import { readActiveBiomesUIMapPinV142 } from "@/client/components/biomes_ui/adapters/mapPinnedDestination";
 import {
   SNAPSHOT_GROVE_LANDMARKS_V75,
   SNAPSHOT_GROVE_QUESTS_V75,
@@ -34,6 +35,43 @@ import * as THREE from "three";
 
 export const HARTHMERE_QUEST_OBJECT_MARKER_VERSION_V145 =
   "harthmere-quest-object-marker-v145" as const;
+
+// HARTHMERE_WORLD_QUEST_BEACON_ACTIVE_PIN_OVERRIDE_V151:
+// The in-world quest beacon used to ALWAYS prefer the boss-prioritized
+// live-entity-helper marker (then a snapshot-grove quest). That eclipsed a
+// freshly-accepted jobs-board job: the player accepted (say) a fence repair —
+// which sets the active map pin and HUD aid to the fence — yet the world still
+// glowed/aimed the boss "kill a monster" beacon, so the on-screen guidance
+// contradicted the map/HUD and walked the player to a monster.
+//
+// Rule: when the player is actively navigating to a jobs-board objective (an
+// active map pin whose markerId is a jobs-board marker, and which is not this
+// quest's own target), the jobs-board map pin / HUD aid is the single source of
+// guidance — suppress the conflicting helper/grove world beacon. Any other pin
+// (or a pin that IS the quest target) leaves the existing beacon behavior intact.
+export const HARTHMERE_JOBS_BOARD_ACTIVE_PIN_MARKER_PREFIX_V151 =
+  "jobs_board_marker:";
+
+export function harthmereResolveWorldQuestBeaconMarkerIdV151(input: {
+  liveEntityHelperMarkerId?: string;
+  snapshotGroveMarkerId?: string;
+  activePinMarkerId?: string;
+}): string | undefined {
+  const questBeacon =
+    input.liveEntityHelperMarkerId ?? input.snapshotGroveMarkerId;
+  if (!questBeacon) {
+    return undefined;
+  }
+  const pinId = input.activePinMarkerId;
+  if (
+    pinId &&
+    pinId !== questBeacon &&
+    pinId.startsWith(HARTHMERE_JOBS_BOARD_ACTIVE_PIN_MARKER_PREFIX_V151)
+  ) {
+    return undefined;
+  }
+  return questBeacon;
+}
 export const HARTHMERE_QUEST_OBJECT_MARKER_RENDER_POLICY_V146 =
   "active-beacon-only-no-passive-props-v146" as const;
 export const HARTHMERE_ACTIVE_QUEST_MARKER_BLUE_V145 = 0x5bd7ff;
@@ -482,9 +520,15 @@ export class HarthmereQuestObjectMarkersRendererV145 implements Renderer {
     this.applyLiveEntityHelperMarkerVisibilityV145(
       activeLiveEntityHelperQuestMarkerIdsV1(liveEntityHelperState)
     );
+    const snapshotGroveMarkerId = activeHarthmereQuestMarkerIdV145(
+      readSnapshotGroveQuestStateV75()
+    );
     this.applyActiveQuestMarkerIdV145(
-      liveEntityHelperMarkerId ??
-        activeHarthmereQuestMarkerIdV145(readSnapshotGroveQuestStateV75())
+      harthmereResolveWorldQuestBeaconMarkerIdV151({
+        liveEntityHelperMarkerId,
+        snapshotGroveMarkerId,
+        activePinMarkerId: readActiveBiomesUIMapPinV142()?.markerId,
+      })
     );
   }
 

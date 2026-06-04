@@ -4,6 +4,7 @@ import {
   liveEntityHelperQuestTargetMarkerForKindV1,
   liveEntityHelperResolveQuestMarkerV1,
   type LiveEntityHelperQuestKindV1,
+  type LiveEntityHelperQuestObjectiveBaselineV1,
 } from "@/shared/harthmere/live_entity_helper_quests_v1";
 import type { Vec3 } from "@/shared/math/types";
 import type { MapTrackableQuest } from "../tabs/MapQuestsTab";
@@ -19,6 +20,7 @@ export interface BiomesUILiveEntityHelperQuestRecordV1 {
   at?: number;
   giverPosition?: readonly number[];
   readyToTurnIn?: boolean;
+  objectiveBaseline?: LiveEntityHelperQuestObjectiveBaselineV1;
 }
 
 export interface BiomesUILiveEntityHelperQuestStateV1 {
@@ -88,6 +90,36 @@ function normalizeRecordV1(
         : undefined,
     ...(giverPosition ? { giverPosition } : {}),
     ...(record.readyToTurnIn === true ? { readyToTurnIn: true } : {}),
+    ...(() => {
+      const baseline = normalizeObjectiveBaselineV1(record.objectiveBaseline);
+      return baseline ? { objectiveBaseline: baseline } : {};
+    })(),
+  };
+}
+
+function normalizeObjectiveBaselineV1(
+  value: unknown
+): LiveEntityHelperQuestObjectiveBaselineV1 | undefined {
+  if (!value || typeof value !== "object") return undefined;
+  const raw = value as Record<string, unknown>;
+  const inventory: Record<string, number> = {};
+  if (raw.inventory && typeof raw.inventory === "object") {
+    for (const [itemId, count] of Object.entries(
+      raw.inventory as Record<string, unknown>
+    )) {
+      const n = Number(count);
+      if (Number.isFinite(n) && n > 0) {
+        inventory[itemId] = Math.floor(n);
+      }
+    }
+  }
+  const hardBossDefeats = Number(raw.hardBossDefeats);
+  return {
+    inventory,
+    hardBossDefeats:
+      Number.isFinite(hardBossDefeats) && hardBossDefeats > 0
+        ? Math.floor(hardBossDefeats)
+        : 0,
   };
 }
 

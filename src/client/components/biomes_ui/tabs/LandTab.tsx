@@ -28,7 +28,7 @@ import {
 } from "@/shared/harthmere/building_system_v1";
 import * as React from "react";
 import { defaultHarthmereLiveFetchV1 } from "@/client/components/harthmere_live_fetch";
-import { writeActiveBiomesUIMapPinV142 } from "@/client/components/biomes_ui/adapters/mapPinnedDestination";
+import { requestBiomesUILocateOnMapV1 } from "@/client/components/biomes_ui/adapters/mapPinnedDestination";
 import {
   landTabPlotCategoryV1,
   landTabPlotCenterV1,
@@ -660,11 +660,12 @@ export const LandTab: React.FunctionComponent<{
     []
   );
 
-  // Drop a map pin (and minimap navigation aid) on the plot so the player can
-  // walk to it; the world hint beam appears as they get close.
+  // "Locate on map": open the Map tab and center it on the plot, and drop a map
+  // pin (+ minimap navigation aid) so the player can walk to it; the world hint
+  // beam appears as they get close.
   const locatePlotOnMap = React.useCallback(
     (plot: BuildingSystemPlotDefinitionV1) => {
-      writeActiveBiomesUIMapPinV142({
+      requestBiomesUILocateOnMapV1({
         markerId: `plot_for_sale:${plot.plotId}`,
         label: plot.displayName,
         kind: "property",

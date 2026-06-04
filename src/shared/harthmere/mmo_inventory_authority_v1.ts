@@ -174,6 +174,13 @@ export interface HarthmereInventorySnapshotV1 {
   knownRecipes: string[];
   /** Active trade session id if the player is currently trading */
   activeTradeSessionId?: string;
+  /**
+   * Remaining durability per crafting tool itemId. Optional: when omitted (or a
+   * tool is absent), the tool is treated as full, so callers that don't track
+   * durability are unaffected. A tool whose remaining durability is below the
+   * craft's cost is BROKEN and blocks the craft (HARTHMERE_TOOL_DURABILITY_V151).
+   */
+  toolDurability?: Record<string, number>;
 }
 
 // ---------------------------------------------------------------------------
@@ -262,6 +269,16 @@ export interface HarthmereCraftingToolDefinitionV1 {
   action?: string;
   tier?: number;
   durabilityMax?: number;
+  // HARTHMERE_TOOL_POWER_V151: per-tool effect strength. `damage` is how hard the
+  // tool hits — combat damage and how fast it mines/destroys a block; `repairPower`
+  // is how many broken blocks a repair tool restores per use; `cleanupPower` is how
+  // many muck voxels a cleanup tool converts back to dirt per use (the same tool
+  // also plants seeds for gardening). All only take effect while the tool is
+  // EQUIPPED (see harthmereEquippedToolPowerV151). Greater-impact tools cost more
+  // (see harthmereToolBaseValueForTierV151).
+  damage?: number;
+  repairPower?: number;
+  cleanupPower?: number;
 }
 
 export interface HarthmereCraftingOutcomeV1 {
@@ -483,6 +500,118 @@ export function getHarthmereCraftingToolV1(
 
 export function listHarthmereCraftingToolsV1(): HarthmereCraftingToolDefinitionV1[] {
   return [..._craftingToolRegistry.values()];
+}
+
+// ---------------------------------------------------------------------------
+// HARTHMERE_TOOL_POWER_V151: equip-gated tool effect + tier-scaled cost.
+// A tool only applies its effect while EQUIPPED. These pure helpers read the
+// equipped tools and return the strongest matching one for an action, so the
+// callers (combat damage, mining/destroy, repair) all share one rule.
+// ---------------------------------------------------------------------------
+
+export interface HarthmereEquippedToolPowerV151 {
+  itemId?: string;
+  power: number;
+  tier: number;
+}
+
+// Best EQUIPPED tool for `action`, by the requested power metric. Returns power
+// 0 / no itemId when no matching tool is equipped — i.e. an unequipped tool has
+// no effect, and bare-handed actions get the zero baseline.
+export function harthmereEquippedToolPowerV151(
+  snapshot: Pick<HarthmereInventorySnapshotV1, "equipment">,
+  action: string,
+  metric: "damage" | "repairPower" | "cleanupPower" = "damage"
+): HarthmereEquippedToolPowerV151 {
+  let best: HarthmereEquippedToolPowerV151 = {
+    itemId: undefined,
+    power: 0,
+    tier: 0,
+  };
+  for (const equippedItemId of Object.values(snapshot.equipment ?? {})) {
+    const tool = getHarthmereCraftingToolV1(equippedItemId);
+    if (!tool || (action && tool.action !== action)) {
+      continue;
+    }
+    const power = Number(tool[metric] ?? 0);
+    if (power > best.power) {
+      best = { itemId: equippedItemId, power, tier: tool.tier ?? 0 };
+    }
+  }
+  return best;
+}
+
+// Tier/power-scaled base gold value so greater-impact tools cost more. Used to
+// price tools consistently instead of hand-picking a number per vendor.
+export const HARTHMERE_TOOL_BASE_COST_V151 = 25;
+export const HARTHMERE_TOOL_TIER_COST_MULTIPLIER_V151 = 3;
+
+export function harthmereToolBaseValueForTierV151(
+  tier: number | undefined,
+  power = 0
+): number {
+  const t = Math.max(1, Math.floor(tier || 1));
+  return Math.round(
+    HARTHMERE_TOOL_BASE_COST_V151 *
+      Math.pow(HARTHMERE_TOOL_TIER_COST_MULTIPLIER_V151, t - 1) +
+      Math.max(0, power) * 5
+  );
+}
+
+// Repair-job tool gate: a repair task requires a REPAIR tool to be equipped.
+// When one is, returns the tool + its repair power; otherwise returns a
+// directive the quest layer turns into a "go get a repair tool" sub-objective.
+export type HarthmereRepairToolGateV151 =
+  | { ok: true; toolItemId: string; repairPower: number; tier: number }
+  | {
+      ok: false;
+      reason: "no_repair_tool_equipped";
+      requiredAction: "repair";
+    };
+
+export function harthmereRepairToolGateV151(
+  snapshot: Pick<HarthmereInventorySnapshotV1, "equipment">
+): HarthmereRepairToolGateV151 {
+  const best = harthmereEquippedToolPowerV151(snapshot, "repair", "repairPower");
+  if (!best.itemId || best.power <= 0) {
+    return {
+      ok: false,
+      reason: "no_repair_tool_equipped",
+      requiredAction: "repair",
+    };
+  }
+  return {
+    ok: true,
+    toolItemId: best.itemId,
+    repairPower: best.power,
+    tier: best.tier,
+  };
+}
+
+// Cleanup-job tool gate: clearing muck requires a CLEANUP tool equipped (it
+// converts muck voxels back to dirt, and also plants seeds for gardening). Mirror
+// of the repair gate.
+export type HarthmereCleanupToolGateV151 =
+  | { ok: true; toolItemId: string; cleanupPower: number; tier: number }
+  | { ok: false; reason: "no_cleanup_tool_equipped"; requiredAction: "cleanup" };
+
+export function harthmereCleanupToolGateV151(
+  snapshot: Pick<HarthmereInventorySnapshotV1, "equipment">
+): HarthmereCleanupToolGateV151 {
+  const best = harthmereEquippedToolPowerV151(snapshot, "cleanup", "cleanupPower");
+  if (!best.itemId || best.power <= 0) {
+    return {
+      ok: false,
+      reason: "no_cleanup_tool_equipped",
+      requiredAction: "cleanup",
+    };
+  }
+  return {
+    ok: true,
+    toolItemId: best.itemId,
+    cleanupPower: best.power,
+    tier: best.tier,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -1044,6 +1173,30 @@ function validateCraftItem(
     );
     if (bestTier < recipe.minToolTier) {
       fail(errors, "tool_tier_requirement_not_met");
+    }
+  }
+
+  // HARTHMERE_TOOL_DURABILITY_V151: a BROKEN (or insufficiently-durable) tool
+  // blocks the craft. Only tools that would actually be charged durability are
+  // gated, and only when the snapshot reports their remaining durability (an
+  // absent entry is treated as full, so callers that don't track durability are
+  // unaffected).
+  const perCraftToolCostV151 = (recipe.toolDurabilityCost ?? 0) * craftCount;
+  if (perCraftToolCostV151 > 0 && snapshot.toolDurability) {
+    for (const toolId of toolItemIds) {
+      const chargesDurability =
+        (recipe.requiredToolIds?.includes(toolId) ||
+          (recipe.requiredToolActions ?? []).includes(
+            getHarthmereCraftingToolV1(toolId)?.action ?? ""
+          )) &&
+        (getHarthmereItemDefinitionV1(toolId)?.durabilityMax ??
+          getHarthmereCraftingToolV1(toolId)?.durabilityMax ??
+          0) > 0;
+      if (!chargesDurability) continue;
+      const remaining = snapshot.toolDurability[toolId];
+      if (remaining !== undefined && remaining < perCraftToolCostV151) {
+        fail(errors, `insufficient_tool_durability:${toolId}`);
+      }
     }
   }
 

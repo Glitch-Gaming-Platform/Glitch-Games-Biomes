@@ -178,8 +178,8 @@ describe("business_service_procedural_animations_v1", () => {
   it("passes the full procedural visual audit validator", () => {
     const audit = validateHarthmereBusinessProceduralAnimationVisualAuditV1();
     assert.equal(audit.ok, true, audit.warnings.slice(0, 10).join(", "));
-    assert.equal(audit.customerCount, 50);
-    assert.equal(audit.renderedCustomerCells, 50);
+    assert.equal(audit.customerCount, 65);
+    assert.equal(audit.renderedCustomerCells, 65);
     assert.equal(audit.cueCount, Object.keys(HARTHMERE_BUSINESS_SERVICE_ANIMATION_CUE_SPECS_V1).length);
     assert.equal(audit.renderedCueCells, audit.cueCount);
   });

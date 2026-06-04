@@ -102,6 +102,14 @@ export const HARTHMERE_GLITCH_RESTORE_EVENTS_V153 = [
   "biomes:harthmere-food-stamina-changed",
   "biomes:live-entity-robot-energy-v1",
   "biomes:live-entity-helper-quest-v1",
+  // Avatar/appearance refresh: after a cloud restore writes the player's
+  // face/body/clothing keys, the live avatar must re-read them so the restored
+  // character design actually shows (otherwise it only applied on a hard
+  // reload). These are the same events the customization UI fires on edit.
+  "biomes:harthmere-face-changed",
+  "biomes:harthmere-body-changed",
+  "biomes:harthmere-clothing-changed",
+  "biomes:harthmere-appearance-changed",
 ] as const;
 const HARTHMERE_GLITCH_STATE_CHANGE_SAVE_EVENTS_V153 = [
   "biomes:local-dev-snapshot-combat-state-v74",
@@ -196,6 +204,7 @@ type HarthmereGlitchStatus = {
   serverSessionId?: string;
   gameUserId?: string;
   glitchUserId?: string;
+  biomesUserId?: string;
   userName?: string;
   licenseType?: string;
   lastValidationAt?: string;
@@ -797,6 +806,7 @@ function progressionPayloadFromSnapshot(
       storage_key_count: meta.storageKeyCount,
       game_user_id: identity?.gameUserId,
       glitch_user_id: identity?.glitchUserId,
+      biomes_user_id: identity?.biomesUserId,
       user_name: identity?.userName,
     },
   };
@@ -833,9 +843,10 @@ export function identityFromResponse(
       : `install-${config.installId?.slice(0, 8) ?? "local"}`);
   const biomesUserId = firstString(response?.biomes_user_id);
   const gameUserId =
-    (biomesUserId ? `biomes:${biomesUserId}` : undefined) ??
+    (glitchUserId ? `glitch:${glitchUserId}` : undefined) ??
     firstString(response?.game_user_id) ??
-    (glitchUserId ? `glitch:${glitchUserId}` : `install:${config.installId}`);
+    (biomesUserId ? `biomes:${biomesUserId}` : undefined) ??
+    `install:${config.installId}`;
 
   return {
     source: "glitch",
@@ -845,6 +856,7 @@ export function identityFromResponse(
     serverSessionId: firstString(response?.server_session_id),
     gameUserId,
     glitchUserId,
+    biomesUserId,
     userName,
     validatedAt: new Date().toISOString(),
   };
@@ -1354,6 +1366,7 @@ class HarthmereGlitchBridgeController {
         serverSessionId: identity?.serverSessionId,
         gameUserId: identity?.gameUserId,
         glitchUserId: identity?.glitchUserId,
+        biomesUserId: identity?.biomesUserId,
         userName: identity?.userName,
         licenseType: claim?.license_type,
         lastValidationAt: new Date().toISOString(),
@@ -1696,7 +1709,6 @@ class HarthmereGlitchBridgeController {
   }
 
   async restoreLatestIfEmpty(forceCloudRestoreForUserSwitch = false) {
-    void forceCloudRestoreForUserSwitch;
     const response = await this.listSaves();
     const saves = Array.isArray(response?.saves) ? response.saves : [];
     const latest = this.latestHarthmereSave(saves);
@@ -1705,10 +1717,17 @@ class HarthmereGlitchBridgeController {
     }
     const localStorage = collectHarthmereStorage();
     const latestVersion = normalizeCloudSaveVersion(latest.version);
+    // The cloud save is the source of truth on boot: whenever one exists we
+    // restore it so the player's previous progress (items, quests, avatar) is
+    // applied after a redeploy / on a new device. We only decline when there is
+    // no cloud save and local already has meaningful progress (restoring
+    // "nothing" must not wipe local). An explicit force wins for account
+    // switches.
     if (
       !shouldApplyHarthmereCloudSaveV153({
         latestCloudVersion: latestVersion,
         hasMeaningfulLocalProgress: hasMeaningfulLocalProgress(localStorage),
+        forceCloudRestore: forceCloudRestoreForUserSwitch,
       })
     ) {
       return false;
@@ -1822,6 +1841,7 @@ class HarthmereGlitchBridgeController {
           ...snapshot.metadata,
           game_user_id: this.identity?.gameUserId,
           glitch_user_id: this.identity?.glitchUserId,
+          biomes_user_id: this.identity?.biomesUserId,
           user_name: this.identity?.userName,
         },
         base_version: this.baseVersion,

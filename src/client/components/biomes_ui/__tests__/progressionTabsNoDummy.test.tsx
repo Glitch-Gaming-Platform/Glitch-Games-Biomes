@@ -1395,10 +1395,11 @@ describe("Biomes UI progression tabs", () => {
   });
 
   it("computes wheel zoom bounds for the contained map viewport", () => {
-    assert.equal(nextMapZoomForWheelForTest(2, -120), 2.3);
-    assert.equal(nextMapZoomForWheelForTest(2, 120), 1.7);
-    assert.equal(nextMapZoomForWheelForTest(20, -120), 8);
-    assert.equal(nextMapZoomForWheelForTest(0.1, 120), 0.5);
+    // Finer 12% steps over a wider 0.4..16 range (smoother, deeper zoom).
+    assert.equal(nextMapZoomForWheelForTest(2, -120), 2.24);
+    assert.equal(nextMapZoomForWheelForTest(2, 120), 1.76);
+    assert.equal(nextMapZoomForWheelForTest(20, -120), 16);
+    assert.equal(nextMapZoomForWheelForTest(0.1, 120), 0.4);
   });
 
   it("creates active minimap pins only from map markers with valid world positions", () => {

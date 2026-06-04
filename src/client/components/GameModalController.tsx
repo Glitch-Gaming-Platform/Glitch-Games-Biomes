@@ -396,6 +396,7 @@ export function GameModalController() {
         <TextSignConfigureModal
           onClose={close}
           placeableId={gameModal.placeableId}
+          readOnly={gameModal.readOnly}
         />
       );
       allowClickToDismiss = false;

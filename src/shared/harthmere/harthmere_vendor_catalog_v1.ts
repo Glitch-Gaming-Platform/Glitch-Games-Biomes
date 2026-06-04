@@ -275,6 +275,10 @@ export const HARTHMERE_VENDOR_CATALOG_V1: Record<
       { itemId: "rusty_pickaxe", quantity: 1, price: 28 },
       { itemId: "woodcutters_axe", quantity: 1, price: 28 },
       { itemId: "repair_voucher", quantity: 2, price: 20 },
+      // HARTHMERE_TOOL_OBTAINABLE_V151: the job tools are buyable here so the
+      // "go get a repair/cleanup tool" objective is never a dead end.
+      { itemId: "repair_mallet", quantity: 2, price: 30 },
+      { itemId: "muck_rake", quantity: 2, price: 30 },
     ],
     buys: ["weapon", "armor", "tool", "crafting_material", "trade_good", "junk"],
     baseSellModifier: 1.2,

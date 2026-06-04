@@ -21,9 +21,48 @@ export function tryExitPointerLock() {
   }
 }
 
+type PointerLockResult = "locked" | "gesture-required" | "error";
+
+// Desktop Safari and all iOS browsers run WebKit, which only grants pointer
+// lock from an active user gesture. Chrome/Edge (Blink) and Firefox (Gecko)
+// allow timer-driven re-locking (e.g. to ride out Chrome's post-Esc lock
+// cooldown), so we must keep retrying there.
+function isWebKitEngine(): boolean {
+  if (typeof navigator === "undefined") {
+    return false;
+  }
+  const ua = navigator.userAgent;
+  // Apple desktop Safari: has "Safari" but none of the other-engine markers.
+  const isAppleSafari = /^((?!chrome|chromium|android|crios|fxios|edg).)*safari/i.test(
+    ua
+  );
+  // iOS/iPadOS — every browser there is WebKit regardless of branding.
+  const isIOS =
+    /iphone|ipad|ipod/i.test(ua) ||
+    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  return isAppleSafari || isIOS;
+}
+
+// Returns true when a requestPointerLock rejection means "a fresh user gesture
+// is required", which a timer-driven retry can never satisfy. The "user
+// gesture" message match is semantically safe on every engine and is distinct
+// from Chrome's post-Esc cooldown rejection (a SecurityError whose message is
+// "...exited the lock before this request was completed"), so Chrome/Firefox
+// retry behavior is preserved. The broad NotAllowedError-name match is gated
+// to WebKit so a transient NotAllowedError on Blink/Gecko never stops a retry
+// loop that would otherwise succeed.
+function isGestureRequiredError(error: unknown): boolean {
+  const name = (error as { name?: string } | null)?.name;
+  const message = String((error as { message?: string } | null)?.message ?? "");
+  if (/user gesture/i.test(message)) {
+    return true;
+  }
+  return name === "NotAllowedError" && isWebKitEngine();
+}
+
 async function requestPointerLockWithUnadjustedMovement(
   element: HTMLCanvasElement
-) {
+): Promise<PointerLockResult> {
   // Use the unadjustedMovement flag if available.
   // This removes mouse acceleration for better cross-platform mouse movement,
   // but more importantly significantly reduces movement spikes on high
@@ -32,7 +71,7 @@ async function requestPointerLockWithUnadjustedMovement(
 
   if (!supportsPointerLock()) {
     log.warn("Unable to request pointer lock since element doesn't support it");
-    return;
+    return "error";
   }
 
   try {
@@ -43,11 +82,20 @@ async function requestPointerLockWithUnadjustedMovement(
     )({
       unadjustedMovement: true,
     });
+    return "locked";
   } catch (error: any) {
+    if (isGestureRequiredError(error)) {
+      return "gesture-required";
+    }
     try {
       await (element.requestPointerLock() as unknown as Promise<unknown>);
+      return "locked";
     } catch (error: any) {
+      if (isGestureRequiredError(error)) {
+        return "gesture-required";
+      }
       log.warn("Unable to request pointer lock", { error });
+      return "error";
     }
   }
 }
@@ -139,6 +187,11 @@ export class PointerLockManager {
   }
 
   unlock() {
+    this.stopLockRetry();
+    tryExitPointerLock();
+  }
+
+  private stopLockRetry() {
     if (this.lockInterval) {
       clearInterval(this.lockInterval);
       this.lockInterval = undefined;
@@ -147,7 +200,19 @@ export class PointerLockManager {
       this.isEntering = false;
       this.emitter.emit("isEnteringChange");
     }
-    tryExitPointerLock();
+  }
+
+  private tryLock(element: HTMLCanvasElement) {
+    fireAndForget(
+      requestPointerLockWithUnadjustedMovement(element).then((result) => {
+        if (result === "gesture-required") {
+          // The browser (Safari/WebKit) only grants pointer lock from an
+          // active user gesture. Timer-driven retries can never succeed and
+          // only flood the console, so abandon the retry loop immediately.
+          this.stopLockRetry();
+        }
+      })
+    );
   }
 
   focusAndLock() {
@@ -158,11 +223,9 @@ export class PointerLockManager {
     if (this.isLocked()) {
       this.lockElementRef?.current?.focus();
     } else {
-      if (this.lockElementRef.current) {
-        fireAndForget(
-          requestPointerLockWithUnadjustedMovement(this.lockElementRef.current)
-        );
-      }
+      // First attempt runs synchronously within the user gesture that called
+      // focusAndLock(), which is the only attempt Safari will honor.
+      this.tryLock(this.lockElementRef.current);
       this.lockElementRef?.current?.focus();
 
       const start = performance.now();
@@ -170,25 +233,17 @@ export class PointerLockManager {
         if (
           this.isLocked() ||
           performance.now() - start > 5000 ||
-          !this.lockElementRef
+          !this.lockElementRef?.current
         ) {
-          this.isEntering = false;
-          this.emitter.emit("isEnteringChange");
-
+          this.stopLockRetry();
           this.lockElementRef?.current?.focus();
-          clearInterval(this.lockInterval);
-          this.lockInterval = undefined;
         } else {
           if (!this.isEntering) {
             this.isEntering = true;
             this.emitter.emit("isEnteringChange");
           }
           if (this.lockElementRef.current) {
-            fireAndForget(
-              requestPointerLockWithUnadjustedMovement(
-                this.lockElementRef.current
-              )
-            );
+            this.tryLock(this.lockElementRef.current);
           }
         }
       }, 10);

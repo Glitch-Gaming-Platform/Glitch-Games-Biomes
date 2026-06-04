@@ -6,8 +6,11 @@ import {
 } from "@/shared/harthmere/business_customer_simulator_v1";
 import {
   HARTHMERE_BUSINESS_OWNER_NPC_SEEDS_V1,
+  harthmereBusinessOwnerMarkerIdV151,
+  isHarthmereBusinessOwnerNpcEntityIdV1,
   validateHarthmereBusinessOwnerNpcSeedsV1,
 } from "@/shared/harthmere/business_owner_npc_seed_v1";
+import { harthmereJobsBoardQuestMarkerPositionForIdV1 } from "@/shared/harthmere/jobs_board_quest_marker_positions_v1";
 
 describe("business owner NPC seeds", () => {
   it("defines exactly one owner per outpost business", () => {
@@ -80,5 +83,35 @@ describe("business owner NPC seeds", () => {
 
   it("passes its own structural validation", () => {
     assert.deepEqual(validateHarthmereBusinessOwnerNpcSeedsV1(), []);
+  });
+
+  it("grounds every owner on the building floor (not floating/buried)", () => {
+    for (const seed of HARTHMERE_BUSINESS_OWNER_NPC_SEEDS_V1) {
+      const site = HARTHMERE_BUSINESS_OUTPOST_SAFE_SITES_V1.find(
+        (candidate) => candidate.outpostId === seed.outpostId
+      );
+      assert.ok(site, `missing safe site for ${seed.outpostId}`);
+      // Authored at the building floor Y — the grounding system keeps them here.
+      assert.equal(seed.position[1], site?.groundY, `${seed.ownerNpcId} off-floor`);
+      assert.ok(
+        Number.isFinite(seed.position[0]) && Number.isFinite(seed.position[2])
+      );
+      // Recognized by the grounding path that uses requireOpenSky=false (floor,
+      // not roof) — so owners never float onto the roof or bury under it.
+      assert.equal(
+        isHarthmereBusinessOwnerNpcEntityIdV1(seed.entityId),
+        true,
+        `${seed.ownerNpcId} not recognized as a business owner for grounding`
+      );
+    }
+  });
+
+  it("exposes every owner as a resolvable map marker (for delivery recipients)", () => {
+    for (const seed of HARTHMERE_BUSINESS_OWNER_NPC_SEEDS_V1) {
+      const markerId = harthmereBusinessOwnerMarkerIdV151(seed.ownerNpcId);
+      const marker = harthmereJobsBoardQuestMarkerPositionForIdV1(markerId);
+      assert.ok(marker, `owner ${seed.ownerNpcId} must resolve as a marker`);
+      assert.equal(marker?.source, "business_owner");
+    }
   });
 });

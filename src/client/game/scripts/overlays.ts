@@ -60,6 +60,7 @@ import {
 } from "@/shared/math/linear";
 import { clamp } from "@/shared/math/math";
 import type { AABB, ReadonlyVec3, Vec3 } from "@/shared/math/types";
+import { isHarthmereCombatCreatureNpcTypeV1 } from "@/client/components/challenges/dialogueObjectSemantics";
 import { getNpcBehavior, idToNpcType, isNpcTypeId } from "@/shared/npc/bikkie";
 import { displayUsername } from "@/shared/util/helpers";
 import type { VoxelooModule } from "@/shared/wasm/types";
@@ -1505,6 +1506,12 @@ export class OverlayScript implements Script {
       })
     )) {
       if (!isNpcTypeId(entity.npc_metadata.type_id)) {
+        continue;
+      }
+      // Muckers / hexers / huntable wildlife are combat creatures, not
+      // conversational NPCs — never let them win the nearby-talk fallback (which
+      // would otherwise shadow a real NPC standing next to them).
+      if (isHarthmereCombatCreatureNpcTypeV1(entity.npc_metadata.type_id)) {
         continue;
       }
       if (entity.health?.hp !== undefined && entity.health.hp <= 0) {

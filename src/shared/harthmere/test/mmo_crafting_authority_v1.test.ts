@@ -235,6 +235,54 @@ describe("Harthmere crafting authority", () => {
     assert.ok((result.craftingOutcome?.quality ?? 0) >= 50);
   });
 
+  it("blocks crafting with a BROKEN tool (insufficient durability) — HARTHMERE_TOOL_DURABILITY_V151", () => {
+    const recipe: HarthmereCraftingRecipeV1 = {
+      recipeId: "craft_test_durability_recipe",
+      outputItemId: "craft_test_ingot",
+      outputCount: 1,
+      inputs: [{ itemId: "craft_test_ore", count: 1 }],
+      requiredLevel: 1,
+      requiredStationId: "craft_test_forge",
+      requiredToolActions: ["shape"],
+      toolDurabilityCost: 3,
+      successChance: 1,
+      craftingTimeMs: 1000,
+      xpReward: 10,
+    };
+    registerHarthmereCraftingRecipeV1(recipe);
+    const base = (toolDurability?: Record<string, number>) =>
+      snapshot({
+        items: { craft_test_ore: 1, craft_test_hammer: 1 },
+        knownRecipes: [recipe.recipeId],
+        ...(toolDurability ? { toolDurability } : {}),
+      });
+    const req = {
+      recipeId: recipe.recipeId,
+      stationId: "craft_test_forge",
+      toolItemIds: ["craft_test_hammer"],
+    };
+
+    // Broken tool (0 durability < cost 3) -> rejected.
+    const broken = craft(req, base({ craft_test_hammer: 0 }));
+    assert.ok(!broken.ok);
+    assert.ok(
+      broken.errors.some((e) => e.includes("insufficient_tool_durability")),
+      broken.errors.join(", ")
+    );
+
+    // Below cost (2 < 3) -> rejected.
+    const low = craft(req, base({ craft_test_hammer: 2 }));
+    assert.ok(!low.ok);
+
+    // Enough durability -> ok.
+    const ok = craft(req, base({ craft_test_hammer: 100 }));
+    assert.ok(ok.ok, ok.errors.join(", "));
+
+    // No durability tracked (undefined) -> treated as full, ok (non-regressive).
+    const untracked = craft(req, base());
+    assert.ok(untracked.ok, untracked.errors.join(", "));
+  });
+
   it("supports failed crafts with material refund and no output", () => {
     const recipe: HarthmereCraftingRecipeV1 = {
       recipeId: "craft_test_failed_recipe",

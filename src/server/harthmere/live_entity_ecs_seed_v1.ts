@@ -4,6 +4,7 @@ import type { Change, ProposedChange } from "@/shared/ecs/change";
 import {
   EntityDescription,
   RobotComponent,
+  Size,
 } from "@/shared/ecs/gen/components";
 import type { BiomesId } from "@/shared/ids";
 import { LOCAL_DEV_HUMAN_NPC_TYPE_ID, isNpcTypeId } from "@/shared/npc/bikkie";
@@ -12,6 +13,7 @@ import {
   harthmereActiveLiveEntityProductionSeedIdsV1,
   harthmereGroundedLivestockSeedsInTerritoryV1,
   harthmereGroundedMuckMonsterSeedsInTerritoryV1,
+  harthmereLiveEntitySizeForSeedV1,
   type HarthmereLiveEntityProductionSeedV1,
 } from "@/shared/harthmere/live_entity_production_seed_v1";
 
@@ -80,19 +82,25 @@ export function buildHarthmereLiveEntityProductionSeedChangesV1(input: {
   }
 
   for (const seed of harthmereGroundedMuckMonsterSeedsInTerritoryV1()) {
+    const base = npcEntity(
+      {
+        id: seed.entityId,
+        typeId: monsterTypeId,
+        position: seed.position,
+        orientation: seed.orientation,
+        velocity: [0, 0, 0],
+        displayName: seed.displayName,
+      },
+      input.nowSeconds
+    );
+    // HARTHMERE_COMBAT_CREATURE_NOT_TALKABLE_V1: muckers/hexes are hostiles, not
+    // conversational NPCs. default_dialog (from the seed dialog or the npc type)
+    // is what raises the "F: Talk" prompt, so strip it — you attack them, you
+    // don't talk to them.
+    delete (base as { default_dialog?: unknown }).default_dialog;
     const entity = {
-      ...npcEntity(
-        {
-          id: seed.entityId,
-          typeId: monsterTypeId,
-          position: seed.position,
-          orientation: seed.orientation,
-          velocity: [0, 0, 0],
-          displayName: seed.displayName,
-          defaultDialog: seed.dialog,
-        },
-        input.nowSeconds
-      ),
+      ...base,
+      size: Size.create({ v: harthmereLiveEntitySizeForSeedV1(seed) }),
       entity_description: EntityDescription.create({
         text: seed.description,
       }),
@@ -109,19 +117,22 @@ export function buildHarthmereLiveEntityProductionSeedChangesV1(input: {
   // behaviour is enforced by the live-mode combat reducer, and the client
   // renders the matching animal mesh from the species in the label.
   for (const seed of harthmereGroundedLivestockSeedsInTerritoryV1()) {
+    const base = npcEntity(
+      {
+        id: seed.entityId,
+        typeId: monsterTypeId,
+        position: seed.position,
+        orientation: seed.orientation,
+        velocity: [0, 0, 0],
+        displayName: seed.displayName,
+      },
+      input.nowSeconds
+    );
+    // Wildlife are huntable, not conversational — no "F: Talk" prompt.
+    delete (base as { default_dialog?: unknown }).default_dialog;
     const entity = {
-      ...npcEntity(
-        {
-          id: seed.entityId,
-          typeId: monsterTypeId,
-          position: seed.position,
-          orientation: seed.orientation,
-          velocity: [0, 0, 0],
-          displayName: seed.displayName,
-          defaultDialog: seed.dialog,
-        },
-        input.nowSeconds
-      ),
+      ...base,
+      size: Size.create({ v: harthmereLiveEntitySizeForSeedV1(seed) }),
       entity_description: EntityDescription.create({
         text: seed.description,
       }),

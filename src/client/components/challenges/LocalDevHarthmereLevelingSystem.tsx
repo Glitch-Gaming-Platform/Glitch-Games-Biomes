@@ -365,6 +365,30 @@ export function getHarthmereLevelSummary() {
   return { state, xpRequired, derived };
 }
 
+// Live subscription to the local leveling state — the source of truth for the
+// player's level/XP (quests, gathering, building, combat all award XP here via
+// awardHarthmereXp). Re-reads on the leveling-changed event and cross-tab
+// storage writes, mirroring useHarthmereCombatState / useHarthmereFoodStaminaState.
+export function useHarthmereLevelingState(): HarthmereLevelingState {
+  const [state, setState] = useState<HarthmereLevelingState>(() =>
+    readHarthmereLevelingState()
+  );
+  useEffect(() => {
+    if (!isBrowser()) {
+      return;
+    }
+    const refresh = () => setState(readHarthmereLevelingState());
+    refresh();
+    window.addEventListener(HARTHMERE_LEVELING_EVENT, refresh);
+    window.addEventListener("storage", refresh);
+    return () => {
+      window.removeEventListener(HARTHMERE_LEVELING_EVENT, refresh);
+      window.removeEventListener("storage", refresh);
+    };
+  }, []);
+  return state;
+}
+
 function levelDifferenceXpModifier(playerLevel: number, sourceLevel?: number) {
   if (!sourceLevel) {
     return 1;

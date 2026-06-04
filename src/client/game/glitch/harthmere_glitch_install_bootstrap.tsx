@@ -157,14 +157,14 @@ export function normalizeIdentity(json: any, installId: string) {
   const biomesUserId = firstString(json?.biomes_user_id);
   const responseGameUserId = firstString(json?.game_user_id);
   const gameUserId =
-    !guestIdentity && biomesUserId
-      ? `biomes:${biomesUserId}`
+    !guestIdentity && glitchUserId
+      ? `glitch:${glitchUserId}`
       : !guestIdentity &&
         responseGameUserId &&
         !isGuestLikeString(responseGameUserId)
       ? responseGameUserId
-      : glitchUserId
-      ? `glitch:${glitchUserId}`
+      : !guestIdentity && biomesUserId
+      ? `biomes:${biomesUserId}`
       : `install:${installId}`;
 
   const userName =
@@ -179,6 +179,7 @@ export function normalizeIdentity(json: any, installId: string) {
     installId,
     gameUserId,
     glitchUserId,
+    biomesUserId,
     userName,
     licenseType: firstString(json?.license_type),
     validatedAt: new Date().toISOString(),

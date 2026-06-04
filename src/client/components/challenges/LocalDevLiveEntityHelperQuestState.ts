@@ -6,6 +6,7 @@ import {
   liveEntityHelperActiveQuestTargetMarkerIdsV1,
   liveEntityHelperPrimaryActiveQuestTargetMarkerIdV1,
   type LiveEntityHelperQuestInstanceV1,
+  type LiveEntityHelperQuestObjectiveBaselineV1,
 } from "@/shared/harthmere/live_entity_helper_quests_v1";
 
 export const LIVE_ENTITY_HELPER_QUEST_EVENT_V1 =
@@ -26,6 +27,11 @@ export interface LiveEntityHelperQuestRecordV1 {
   // the quest has not yet been turned in. Flips the map marker from the target
   // site to the giver.
   readyToTurnIn?: boolean;
+  // What the player already had toward this quest the instant they accepted it.
+  // Completion is measured as progress made AFTER accepting (current - baseline),
+  // so carrying the required items (or a previously-killed boss) can never mark
+  // the quest done on accept. See liveEntityHelperQuestEvidenceSinceBaselineV1.
+  objectiveBaseline?: LiveEntityHelperQuestObjectiveBaselineV1;
 }
 
 export interface LiveEntityHelperQuestStateV1 {
@@ -50,6 +56,7 @@ export function liveEntityHelperQuestRecordV1(
   options?: {
     giverPosition?: readonly number[] | null;
     readyToTurnIn?: boolean;
+    objectiveBaseline?: LiveEntityHelperQuestObjectiveBaselineV1;
   }
 ): LiveEntityHelperQuestRecordV1 {
   const g = options?.giverPosition;
@@ -69,6 +76,9 @@ export function liveEntityHelperQuestRecordV1(
     at: Date.now(),
     ...(giverPosition ? { giverPosition } : {}),
     ...(options?.readyToTurnIn ? { readyToTurnIn: true } : {}),
+    ...(options?.objectiveBaseline
+      ? { objectiveBaseline: options.objectiveBaseline }
+      : {}),
   };
 }
 
@@ -90,6 +100,23 @@ export function markLiveEntityHelperQuestReadyToTurnInV1(
       [questId]: { ...record, readyToTurnIn: ready },
     },
   });
+  return true;
+}
+
+// Abandon an ACTIVE quest: drop it from the active set WITHOUT completing or
+// rewarding it, so accepted-but-unfinished records (and their active markers)
+// don't accumulate forever. Returns true if a quest was removed. Does not touch
+// `completed`, so a previously finished quest is unaffected.
+export function abandonLiveEntityHelperQuestV1(
+  questId: string,
+  state = readLiveEntityHelperQuestStateV1()
+): boolean {
+  if (!state.active[questId]) {
+    return false;
+  }
+  const active = { ...state.active };
+  delete active[questId];
+  writeLiveEntityHelperQuestStateV1({ ...state, active });
   return true;
 }
 
@@ -153,11 +180,30 @@ export function isLiveEntityHelperMuckBossSpawnedV1(
   );
 }
 
-export function liveEntityHelperQuestDialogKeyV1(
-  questId: string,
+// The dialog identity is the quest's CONVERSATION PHASE, not a refresh counter.
+// Keying on a refresh token meant every inventory/combat tick produced a new id,
+// which restarted the NPC's typing animation and made them "repeat" the same
+// line over and over. Phase-based identity only changes when the NPC genuinely
+// has something new to say (offer -> active -> ready -> completed).
+export type LiveEntityHelperQuestDialogPhaseV1 =
+  | "offer"
+  | "active"
+  | "ready"
+  | "completed";
+
+export function liveEntityHelperQuestDialogPhaseV1(
   isActive: boolean,
   isCompleted: boolean,
-  refreshToken: number
+  objectiveMet: boolean
+): LiveEntityHelperQuestDialogPhaseV1 {
+  if (isCompleted) return "completed";
+  if (isActive) return objectiveMet ? "ready" : "active";
+  return "offer";
+}
+
+export function liveEntityHelperQuestDialogKeyV1(
+  questId: string,
+  phase: LiveEntityHelperQuestDialogPhaseV1
 ) {
-  return `${LIVE_ENTITY_HELPER_QUESTS_VERSION_V1}-${questId}-${isActive}-${isCompleted}-${refreshToken}`;
+  return `${LIVE_ENTITY_HELPER_QUESTS_VERSION_V1}-${questId}-${phase}`;
 }
