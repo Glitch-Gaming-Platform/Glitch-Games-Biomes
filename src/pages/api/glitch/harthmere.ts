@@ -18,6 +18,7 @@ import { Timer } from "@/shared/metrics/timer";
 import {
   harthmereCloudSaveForeignAuthCandidateIdsV1,
   harthmereCloudSaveForeignAuthPrimaryIdV1,
+  harthmereHasStableGlitchAccountV1,
 } from "@/server/shared/glitch/harthmere_cloud_save_identity_v1";
 export const config = {
   api: {
@@ -59,6 +60,10 @@ type QueuedGlitchApiCallV1 = {
 
 export type HarthmereValidatedIdentity = {
   valid: boolean;
+  // True when the install resolves to NO stable Glitch account (a guest). Guests
+  // may play the entire game but get an ephemeral, unlinked biomes user and never
+  // cloud-save (Glitch itself returns GUEST_NOT_ALLOWED for their saves).
+  guest: boolean;
   titleId: string;
   installId: string;
   gameUserId: string;
@@ -290,13 +295,19 @@ function makeLocalDevValidatedIdentity(
     .slice(0, 12);
 
   const userName = `Local${hash}`.slice(0, 20);
+  // Local-dev installs have no real Glitch account, but we still want durable
+  // saves while developing. Give them a STABLE synthetic glitch user id derived
+  // from the install so they resolve to a real (non-guest) account scope instead
+  // of falling into the guest/no-save path that real production guests get.
+  const localDevGlitchUserId = `localdev-${hash}`;
 
   return {
     valid: true,
+    guest: false,
     titleId,
     installId,
-    gameUserId: `install:${installId}`,
-    glitchUserId: undefined,
+    gameUserId: `glitch:${localDevGlitchUserId}`,
+    glitchUserId: localDevGlitchUserId,
     userName,
     licenseType: "local_dev",
     raw: {
@@ -751,8 +762,21 @@ function normalizeIdentityFromValidateResponse(
       ? responseGameUserId
       : `install:${installId}`;
 
+  // A guest is any install that does NOT resolve to a stable Glitch account
+  // (explicit guest markers, or simply no glitch user id and no stable account
+  // name). Guests can play but never cloud-save.
+  const guest =
+    guestIdentity ||
+    !harthmereHasStableGlitchAccountV1({
+      titleId,
+      installId,
+      glitchUserId,
+      userName,
+    });
+
   return {
     valid,
+    guest,
     titleId,
     installId,
     gameUserId,
@@ -774,6 +798,8 @@ function validationJson(identity: HarthmereValidatedIdentity) {
     ...(identity.raw && typeof identity.raw === "object" ? identity.raw : {}),
     ok: true,
     valid: identity.valid,
+    guest: identity.guest,
+    cloud_save: !identity.guest,
     title_id: identity.titleId,
     install_id: identity.installId,
     game_user_id: identity.gameUserId,
@@ -1217,19 +1243,25 @@ function stableBiomesUsername(identity: HarthmereValidatedIdentity) {
 function glitchForeignProfile(
   identity: HarthmereValidatedIdentity
 ): ForeignAccountProfile {
+  // HARTHMERE_CLOUD_SAVE_IDENTITY_V1: the link key MUST NOT depend on the
+  // volatile `gameUserId` (which flipped between `glitch:<uid>` and
+  // `install:<id>` depending on whether the Glitch validate response happened
+  // to carry a user id), because that minted a fresh biomes user — and thus a
+  // fresh save scope — every session. The link is anchored ONLY to the stable
+  // Glitch account; a guest (no account) has no durable link and must never
+  // reach here.
+  const id = harthmereCloudSaveForeignAuthPrimaryIdV1({
+    titleId: identity.titleId,
+    installId: identity.installId,
+    glitchUserId: identity.glitchUserId,
+    userName: identity.userName,
+  });
+  if (!id) {
+    throw new Error("HARTHMERE_GLITCH_PROFILE_REQUIRES_STABLE_ACCOUNT_V1");
+  }
   return {
     provider: "dev",
-    // HARTHMERE_CLOUD_SAVE_IDENTITY_V1: the link key MUST NOT depend on the
-    // volatile `gameUserId` (which flipped between `glitch:<uid>` and
-    // `install:<id>` depending on whether the Glitch validate response happened
-    // to carry a user id), because that minted a fresh biomes user — and thus a
-    // fresh save scope — every session. Use the stable primary key instead.
-    id: harthmereCloudSaveForeignAuthPrimaryIdV1({
-      titleId: identity.titleId,
-      installId: identity.installId,
-      glitchUserId: identity.glitchUserId,
-      userName: identity.userName,
-    }),
+    id,
     username: stableBiomesUsername(identity),
   };
 }
@@ -1258,6 +1290,55 @@ export async function createBiomesAuthForGlitchIdentity(
     !context?.worldApi
   ) {
     throw new Error("MISSING_BIOMES_WEB_CONTEXT");
+  }
+
+  // Guests have no stable Glitch account, so there is nothing durable to anchor a
+  // biomes user / cloud save to. Give them an EPHEMERAL, UNLINKED biomes user so
+  // the entire game is playable, but never create a foreign-auth link (so the id
+  // is not reused or persisted) and never save. Cloud save for guests is rejected
+  // by Glitch itself (GUEST_NOT_ALLOWED) and skipped client-side.
+  if (
+    identity.guest ||
+    !harthmereHasStableGlitchAccountV1({
+      titleId: identity.titleId,
+      installId: identity.installId,
+      glitchUserId: identity.glitchUserId,
+      userName: identity.userName,
+    })
+  ) {
+    const username = stableBiomesUsername(identity);
+    const guestUser = await getUserOrCreateIfNotExists(
+      context.db,
+      await context.idGenerator.next(),
+      username,
+      undefined
+    );
+    try {
+      await ensureLogicHasPlayer(
+        webReq,
+        guestUser.id,
+        guestUser.username ?? username
+      );
+    } catch (error) {
+      log.warn("HARTHMERE_GLITCH_GUEST_PLAYER_BOOTSTRAP_FAILED_V1", {
+        error,
+        userId: guestUser.id,
+        installId: identity.installId,
+      });
+      throw error;
+    }
+    const guestSession = await context.sessionStore.createSession(guestUser.id);
+    setAuthCookies(res, guestSession, req);
+    return {
+      user: guestUser,
+      session: guestSession,
+      profile: {
+        provider: "dev",
+        id: `glitch:${identity.titleId}:guest:${identity.installId}`,
+        username,
+      } satisfies ForeignAccountProfile,
+      guest: true,
+    };
   }
 
   const profile = glitchForeignProfile(identity);
@@ -1344,7 +1425,7 @@ export async function createBiomesAuthForGlitchIdentity(
   const session = await context.sessionStore.createSession(user.id);
   setAuthCookies(res, session, req);
 
-  return { user, session, profile };
+  return { user, session, profile, guest: false };
 }
 
 export async function createBiomesAuthForGlitchInstall(
@@ -1422,13 +1503,15 @@ export default async function handler(
           .status(response.ok ? 200 : response.status || 500)
           .json(response.json ?? response);
       }
-      if (!identity.valid) {
+      // Guests (valid install, no Glitch account) are allowed to play; only a
+      // genuinely invalid install (neither valid nor guest) is rejected.
+      if (!identity.valid && !identity.guest) {
         return res
           .status(403)
           .json({ ok: false, valid: false, error: "INVALID_INSTALL" });
       }
 
-      const { user, session, profile } =
+      const { user, session, profile, guest } =
         await createBiomesAuthForGlitchIdentity(req, res, identity);
       // HARTHMERE_CLOUD_SAVE_IDENTITY_V1: the durable cloud game_user_id is the
       // stable Glitch account user_id surfaced by normalizeIdentityFromValidateResponse
@@ -1436,6 +1519,8 @@ export default async function handler(
       // biomes_user_id remains the internal biomes user resolved from that scope.
       return res.status(200).json({
         ...validationJson(identity),
+        guest,
+        cloud_save: !guest,
         biomes_user_id: user.id,
         biomes_session_id: session.id,
         biomes_username: user.username ?? profile.username,
@@ -1454,12 +1539,14 @@ export default async function handler(
           .status(response.ok ? 200 : response.status || 500)
           .json(response.json ?? response);
       }
-      if (!identity.valid) {
+      // Guests (valid install, no Glitch account) are allowed to play; only a
+      // genuinely invalid install (neither valid nor guest) is rejected.
+      if (!identity.valid && !identity.guest) {
         return res
           .status(403)
           .json({ ok: false, valid: false, error: "INVALID_INSTALL" });
       }
-      const { user } = await createBiomesAuthForGlitchIdentity(
+      const { user, guest } = await createBiomesAuthForGlitchIdentity(
         req,
         res,
         identity
@@ -1475,6 +1562,8 @@ export default async function handler(
       return res.status(200).json({
         ok: true,
         valid: true,
+        guest,
+        cloud_save: !guest,
         title_id: identity.titleId,
         install_id: identity.installId,
         game_user_id: identity.gameUserId,

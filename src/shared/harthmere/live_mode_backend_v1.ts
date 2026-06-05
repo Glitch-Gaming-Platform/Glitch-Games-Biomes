@@ -28,6 +28,13 @@ import {
   type HarthmereHomeDecorationStateV1,
 } from "./home_decoration_authority_v1";
 import {
+  defaultHarthmerePlaceableWorldStateV1,
+  normalizeHarthmerePlaceableWorldStateV1,
+  reduceHarthmerePlaceableWorldMutationV1,
+  type HarthmerePlaceableWorldOperationV1,
+  type HarthmerePlaceableWorldStateV1,
+} from "./mmo_placeable_decor_catalogue_v1";
+import {
   reduceHarthmereCombatActionV1,
   computeHarthmereXpRewardV1,
   getHarthmereAbilityV1,
@@ -163,6 +170,7 @@ import {
   normalizeHarthmereProgressionCollectionsStateV1,
   type HarthmereProgressionCollectionsStateV1,
 } from "./mmo_class_ability_collectibles_v1";
+import { HARTHMERE_VOXEL_INTERACTION_ATTACK_REACH_UNITS_V1 } from "./combat_reach_v1";
 import {
   createHarthmereCareLoopClientSnapshotV1,
   defaultHarthmereCareLoopStateV1,
@@ -858,6 +866,9 @@ export interface HarthmereLiveModeBackendStateV1 {
   crafting: HarthmereLiveModeCraftingStateV1;
   /** Server-owned home and business decoration placements with functional effects. */
   homeDecoration: HarthmereHomeDecorationStateV1;
+  /** Free-world placeable objects (custom builds/decor placed anywhere on the
+   *  terrain, no property-ownership gate). */
+  placeableWorld: HarthmerePlaceableWorldStateV1;
   /** Respec metadata for cooldown/cost enforcement */
   respec: {
     count: number;
@@ -1617,7 +1628,11 @@ function ensureHarthmereLiveModeCombatCatalogueV1() {
       sharedCooldownCategory:
         ability.kind === "combat" ? "global_combat" : undefined,
       sharedCooldownMs: ability.kind === "combat" ? 750 : undefined,
-      rangeUnits: isSupport ? 0 : ability.kind === "combat" ? 12 : 4,
+      rangeUnits: isSupport
+        ? 0
+        : ability.kind === "combat"
+        ? HARTHMERE_VOXEL_INTERACTION_ATTACK_REACH_UNITS_V1
+        : 4,
       requiresLineOfSight: isOffensive,
       allowedInSafeZone: ability.kind !== "combat",
       allowedInPvP: ability.kind === "combat",
@@ -4665,6 +4680,7 @@ export function defaultHarthmereLiveModeBackendStateV1(
     inventoryLoot: createHarthmereEmptyInventoryLootStateV1(),
     crafting: defaultHarthmereLiveModeCraftingStateV1(),
     homeDecoration: defaultHarthmereHomeDecorationStateV1(),
+    placeableWorld: defaultHarthmerePlaceableWorldStateV1(),
     respec: {
       count: 0,
     },
@@ -4837,6 +4853,9 @@ export function parseHarthmereLiveModeBackendStateV1(
       crafting: normalizeCraftingStateV1((parsed as any).crafting),
       homeDecoration: normalizeHarthmereHomeDecorationStateV1(
         (parsed as any).homeDecoration
+      ),
+      placeableWorld: normalizeHarthmerePlaceableWorldStateV1(
+        (parsed as any).placeableWorld
       ),
       guild: normalizeHarthmereLiveModeGuildStateV1(
         (parsed as any).guild,
@@ -5586,6 +5605,8 @@ export function createHarthmereLiveModeFarmingFoodClientSnapshotV1(
       plotId,
       ...plot,
       ready: Number(plot.harvestReadyAtMs ?? Number.POSITIVE_INFINITY) <= nowMs,
+      // Surfaced so the UI can prompt "water for a full harvest" before ripening.
+      watered: Boolean(plot.wateredAtMs),
     })),
     livestock: Object.values(state.farming.livestock).map((livestock) => ({
       ...livestock,
@@ -5769,6 +5790,7 @@ export function createHarthmereLiveModeBuildingClientSnapshotV1(
     completedProperties: state.property.owned,
     buildingProgress: state.property.buildingProgress,
     homeDecoration: state.homeDecoration,
+    placeableWorld: state.placeableWorld,
     inWorldMarkers: state.building.inWorldMarkers,
     storageContainers: state.building.storageContainers,
     doorLocks: state.building.doorLocks,
@@ -5938,7 +5960,11 @@ export function reduceHarthmereLiveModeBackendStateV1(
       mainHandWeaponType: "sword",
       offHandWeaponType: "none",
       deathState: next.combat.deathState ?? "alive",
-      position: { x: 0, y: 0, z: 0 },
+      position: actorWorldPositionFromAuthorityV1(envelope) ?? {
+        x: 0,
+        y: 0,
+        z: 0,
+      },
       pvpFlagged: next.law.flags["pvp_flagged"] ?? false,
       legalFlags: { ...next.law.flags },
     };
@@ -5978,6 +6004,13 @@ export function reduceHarthmereLiveModeBackendStateV1(
     zone: HarthmereZoneSnapshotV1
   ): HarthmereCombatTargetSnapshotV1 {
     const combatProtection = liveEntityCombatProtectionReasonV1(target);
+    const actorPosition = actorWorldPositionFromAuthorityV1(envelope);
+    const targetPosition =
+      actorPosition &&
+      liveEntityCombatHorizontalDistanceV1(actorPosition, target.position) <=
+        HARTHMERE_VOXEL_INTERACTION_ATTACK_REACH_UNITS_V1
+        ? { ...target.position, y: actorPosition.y }
+        : target.position;
     return {
       targetId,
       isHostile: target.isHostile,
@@ -5985,7 +6018,7 @@ export function reduceHarthmereLiveModeBackendStateV1(
       isAttackable: target.isAttackable && !combatProtection,
       hp: target.hp,
       maxHp: target.maxHp,
-      position: target.position,
+      position: targetPosition,
       pvpFlagged: target.pvpFlagged ?? false,
       isPlayer: target.isPlayer ?? false,
       zonePvPRule: target.zonePvPRule ?? zone.pvpRule,
@@ -7290,6 +7323,7 @@ export function reduceHarthmereLiveModeBackendStateV1(
     "request_loadout_change",
     "request_property_building_mutation",
     "request_home_decoration",
+    "request_world_placement",
     "request_guild_mutation",
     "request_economy_mutation",
     "request_medical_action",
@@ -11951,6 +11985,65 @@ export function reduceHarthmereLiveModeBackendStateV1(
       }
       break;
     }
+    case "request_world_placement": {
+      // Free-world placement: place/move/remove a crafted or bought placeable
+      // anywhere on the terrain. No property-ownership gate (a player may build
+      // on open land or land owned by someone else). Only world bounds and
+      // object-vs-object overlap are enforced by the reducer.
+      const operation = payloadString(envelope, "operation") as
+        | HarthmerePlaceableWorldOperationV1
+        | undefined;
+      if (!operation) {
+        warnings.push("world_placement_rejected:missing_operation");
+        touchedModels.add("world_placement_rejection");
+        break;
+      }
+      const positionPayload = payloadRecord(envelope, "position");
+      const result = reduceHarthmerePlaceableWorldMutationV1(
+        next.placeableWorld,
+        {
+          requestId: envelope.requestId,
+          actorId: envelope.actorId,
+          operation,
+          itemId: payloadStringOrNumberV1(envelope, "itemId"),
+          objectId: payloadString(envelope, "objectId"),
+          position: {
+            x:
+              typeof positionPayload?.x === "number"
+                ? positionPayload.x
+                : payloadNumber(envelope, "x"),
+            y:
+              typeof positionPayload?.y === "number"
+                ? positionPayload.y
+                : payloadNumber(envelope, "y"),
+            z:
+              typeof positionPayload?.z === "number"
+                ? positionPayload.z
+                : payloadNumber(envelope, "z"),
+          },
+          rotationDegrees: payloadNumber(envelope, "rotationDegrees"),
+          nowMs,
+        },
+        { actorInventoryItems: next.inventory.items }
+      );
+      if (!result.ok) {
+        for (const error of result.errors) {
+          warnings.push(`world_placement_rejected:${error}`);
+        }
+        touchedModels.add("world_placement_rejection");
+        break;
+      }
+      next.placeableWorld = result.state;
+      for (const [itemId, delta] of Object.entries(result.itemDeltas)) {
+        applyBankRecordDeltaV1(next.inventory.items, itemId, delta);
+      }
+      if (Object.keys(result.itemDeltas).length > 0) {
+        touchedModels.add("inventory_items");
+      }
+      touchedModels.add("world_placement");
+      sharedStateKeys.add(harthmereLiveModeSharedWorldStateKeyV1());
+      break;
+    }
     case "request_crafting": {
       const jobAction = payloadString(envelope, "jobAction") ?? "instant";
       if (jobAction === "cancel") {
@@ -12443,6 +12536,7 @@ export function reduceHarthmereLiveModeBackendStateV1(
             plotId: payloadString(envelope, "plotId") ?? envelope.requestId,
             seedItemId: payloadString(envelope, "seedItemId") ?? "",
             nowMs,
+            plotHasSun: payloadBoolean(envelope, "plotHasSun"),
           });
         } else if (operation === "water") {
           authorityResult = waterHarthmereCropV1(authority, {

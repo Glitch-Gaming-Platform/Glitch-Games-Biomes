@@ -19,6 +19,7 @@ import {
 } from "./shortcuts/BiomesShortcuts";
 import type { TabShortcut } from "./shortcuts/BiomesShortcuts";
 import { BiomesUIOpenPrompt } from "./BiomesUIOpenPrompt";
+import { CurrentQuestObjectiveHUD } from "./CurrentQuestObjectiveHUD";
 import { QuestInviteHUD } from "./quest_invites/QuestInviteHUD";
 
 import { DailyTodoTab } from "./tabs/DailyTodoTab";
@@ -155,6 +156,10 @@ export const BiomesUI: React.FunctionComponent<BiomesUIProps> = ({
   return (
     <>
       <BiomesUIOpenPrompt isOpen={activeTab !== null} />
+      <CurrentQuestObjectiveHUD
+        adapter={adapters?.map}
+        isOpen={activeTab !== null}
+      />
       <QuestInviteHUD adapter={adapters?.questInvites} />
       {paneMode === "overlay" && activeTab !== null && (
         <div

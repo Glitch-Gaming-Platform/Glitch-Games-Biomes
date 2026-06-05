@@ -182,15 +182,11 @@ describe("MapQuestsTab browser interactions", () => {
         return button?.getAttribute("aria-pressed") === "true";
       });
 
-      // Layers are now multi-select and all start enabled, so every section's
-      // content is visible at once instead of one-at-a-time.
+      // Layers are multi-select and the map opens with quests highlighted.
       await page.waitForSelector("[aria-label='Map panels']");
-      await page.waitForSelector("[data-testid='biomes-map-people-list']");
-      await page.waitForSelector("[data-testid='biomes-map-buildings-services-list']");
+      await page.waitForSelector("[data-testid='biomes-map-quest-list']");
       const allLayersBody = await page.textContent("body");
-      assert.ok(allLayersBody?.includes("Jackie"), "people content visible by default");
-      assert.ok(allLayersBody?.includes("Gus's Oven"), "buildings content visible by default");
-      assert.ok(allLayersBody?.includes("Muckwad Patch"), "geography content visible by default");
+      assert.ok(allLayersBody?.includes("Road Work"), "quest content visible by default");
 
       // Terrain starts OFF so the map opens clean; it renders only after the
       // player turns the Terrain layer on.
@@ -202,13 +198,13 @@ describe("MapQuestsTab browser interactions", () => {
       await page.getByRole("switch", { name: "Toggle terrain layer" }).click();
       await page.waitForSelector("[data-testid='biomes-map-terrain-layer']");
 
-      // Toggling a layer off removes its section; toggling back on restores it.
+      // Toggling a layer on shows its section; toggling back off removes it.
+      await page.getByRole("switch", { name: "Toggle People layer" }).click();
+      await page.waitForSelector("[data-testid='biomes-map-people-list']");
       await page.getByRole("switch", { name: "Toggle People layer" }).click();
       await page.waitForFunction(
         () => !document.querySelector("[data-testid='biomes-map-people-list']")
       );
-      await page.getByRole("switch", { name: "Toggle People layer" }).click();
-      await page.waitForSelector("[data-testid='biomes-map-people-list']");
     } finally {
       await browser.close();
       await rm(tempDir, { recursive: true, force: true });

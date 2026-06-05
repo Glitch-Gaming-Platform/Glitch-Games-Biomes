@@ -16,7 +16,15 @@ import {
   harthmereObjectiveMiniMapPinsFromLandmarksV1,
   type HarthmereObjectiveMiniMapPinV1,
 } from "@/client/components/map/markers/harthmere_objective_minimap_pins_v1";
-import { jobsBoardAcceptedJobLandmarksForBiomesUIV1 } from "@/client/components/biomes_ui/adapters/jobsBoardQuestMapAdapter";
+import {
+  jobsBoardAcceptedJobLandmarksForBiomesUIV1,
+  jobsBoardToolSourceLandmarksForBiomesUIV1,
+} from "@/client/components/biomes_ui/adapters/jobsBoardQuestMapAdapter";
+import {
+  HARTHMERE_INVENTORY_EVENT,
+  harthmereJobToolOwnedStateV151,
+  type HarthmereJobToolOwnedStateV151,
+} from "@/client/components/challenges/LocalDevHarthmereInventorySystem";
 import { liveEntityHelperAcceptedQuestLandmarksForBiomesUIV1 } from "@/client/components/biomes_ui/adapters/liveEntityHelperQuestMapAdapter";
 import { liveEntityHelperQuestRecordReadyToTurnInV1 } from "@/client/components/challenges/LocalDevLiveEntityHelperQuests";
 import {
@@ -469,6 +477,9 @@ const BiomesUIActiveMapPinNavigationAidV147: React.FunctionComponent<{}> = () =>
 function useHarthmereObjectiveMiniMapPinsV1(): HarthmereObjectiveMiniMapPinV1[] {
   const [jobsRaw, setJobsRaw] = useState<unknown>(undefined);
   const [helperState, setHelperState] = useState<unknown>(undefined);
+  const [toolOwned, setToolOwned] = useState<HarthmereJobToolOwnedStateV151>(
+    () => harthmereJobToolOwnedStateV151()
+  );
   useEffect(() => {
     let cancelled = false;
     const refreshJobsFromServer = async () => {
@@ -488,11 +499,18 @@ function useHarthmereObjectiveMiniMapPinsV1(): HarthmereObjectiveMiniMapPinV1[] 
       }
     };
     const onHelper = () => setHelperState(readLiveEntityHelperQuestStateV1());
+    // Acquiring (or losing) the repair or cleanup tool flips whether the
+    // "buy the tool here" vendor pin should show, so refresh it on inventory
+    // changes too.
+    const onInventory = () => setToolOwned(harthmereJobToolOwnedStateV151());
     void refreshJobsFromServer();
     onHelper();
+    onInventory();
     window.addEventListener(HARTHMERE_JOBS_BOARD_STATE_UPDATED_EVENT_V1, onJobs);
     window.addEventListener(LIVE_ENTITY_HELPER_QUEST_EVENT_V1, onHelper);
+    window.addEventListener(HARTHMERE_INVENTORY_EVENT, onInventory);
     window.addEventListener("storage", onHelper);
+    window.addEventListener("storage", onInventory);
     return () => {
       cancelled = true;
       window.removeEventListener(
@@ -500,18 +518,21 @@ function useHarthmereObjectiveMiniMapPinsV1(): HarthmereObjectiveMiniMapPinV1[] 
         onJobs
       );
       window.removeEventListener(LIVE_ENTITY_HELPER_QUEST_EVENT_V1, onHelper);
+      window.removeEventListener(HARTHMERE_INVENTORY_EVENT, onInventory);
       window.removeEventListener("storage", onHelper);
+      window.removeEventListener("storage", onInventory);
     };
   }, []);
   return useMemo(
     () =>
       harthmereObjectiveMiniMapPinsFromLandmarksV1([
         ...jobsBoardAcceptedJobLandmarksForBiomesUIV1(jobsRaw),
+        ...jobsBoardToolSourceLandmarksForBiomesUIV1(jobsRaw, toolOwned),
         ...liveEntityHelperAcceptedQuestLandmarksForBiomesUIV1(helperState, {
           isReadyToTurnIn: liveEntityHelperQuestRecordReadyToTurnInV1,
         }),
       ]),
-    [jobsRaw, helperState]
+    [jobsRaw, helperState, toolOwned]
   );
 }
 

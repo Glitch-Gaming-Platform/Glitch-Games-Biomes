@@ -233,6 +233,11 @@ export function liveEntityHelperTrackableQuestsForBiomesUIV1(
         status: "active" as const,
         firstMarkerId: marker?.id,
         reward: rewardForKindV1(record.kind),
+        kind: record.kind,
+        kindLabel: "Helper Quest",
+        objective: definition.activeText,
+        objectives: [definition.activeText],
+        description: definition.offerText,
       };
     });
   const completed = Object.values(state.completed)
@@ -246,6 +251,11 @@ export function liveEntityHelperTrackableQuestsForBiomesUIV1(
         area: `${record.giverName} - ${areaLabelForKindV1(record.kind)}`,
         status: "completed" as const,
         reward: rewardForKindV1(record.kind),
+        kind: record.kind,
+        kindLabel: "Helper Quest",
+        objective: definition.completionText,
+        objectives: [definition.activeText],
+        description: definition.offerText,
       };
     });
   return [...active, ...completed];

@@ -6,17 +6,15 @@ import {
 } from "@/client/components/inventory/crafting/CraftingDetail";
 import { CraftingStationRoyaltyFeeListing } from "@/client/components/inventory/crafting/CraftingStationRoyaltyFeeListing";
 import { useOwnedItems } from "@/client/components/inventory/helpers";
+import {
+  BiomesUIShopChrome,
+  BiomesUIShopSection,
+} from "@/client/components/inventory/BiomesUIShopChrome";
 import type { SlotClickHandler } from "@/client/components/inventory/InventoryControllerContext";
 import { useInventoryDraggerContext } from "@/client/components/inventory/InventoryDragger";
 import { InventoryOverrideContextProvider } from "@/client/components/inventory/InventoryOverrideContext";
 import { NormalSlotWithTooltip } from "@/client/components/inventory/NormalSlotWithTooltip";
-import { SelfInventoryRightPane } from "@/client/components/inventory/SelfInventoryScreen";
-import { RawLeftPane } from "@/client/components/system/mini_phone/split_pane/LeftPane";
-import { PaneBottomDock } from "@/client/components/system/mini_phone/split_pane/PaneBottomDock";
-import { PaneLayout } from "@/client/components/system/mini_phone/split_pane/PaneLayout";
-import { RawRightPane } from "@/client/components/system/mini_phone/split_pane/RightPane";
-import { ScreenTitleBar } from "@/client/components/system/mini_phone/split_pane/ScreenTitleBar";
-import { SplitPaneScreen } from "@/client/components/system/mini_phone/split_pane/SplitPaneScreen";
+import { SelfInventoryRightPaneContent } from "@/client/components/inventory/SelfInventoryScreen";
 import type { ItemAndCount, OwnedItemReference } from "@/shared/ecs/gen/types";
 import type { InventoryAssignmentPattern } from "@/shared/game/inventory";
 import { getSlotByRef } from "@/shared/game/inventory";
@@ -95,30 +93,37 @@ const UnorderedCraftingStationLeftPane: React.FunctionComponent<{
     await onCraft(src);
     clientSideContainer.clear();
   }, [clientSideContainer, onCraft]);
+  const filledSlots = compact(clientSideContainer.slots).length;
 
   return (
-    <PaneLayout
-      extraClassName={`${extraClassName ?? "crafting"}-station`}
-      type="center_both"
+    <BiomesUIShopSection
+      title={`${craftVerb} Inputs`}
+      meta={`${filledSlots}/${minItems} required`}
+      className={`biomes-ui-workshop-section biomes-ui-workshop-section--${extraClassName}`}
     >
-      {range(0, slots).map((_, idx) => (
-        <NormalSlotWithTooltip
-          key={idx}
-          slot={clientSideContainer.slots[idx]?.item}
-          slotReference={{
-            kind: "item",
-            idx,
-          }}
-          entityId={INVALID_BIOMES_ID}
-          onClick={handleItemCellClick}
-        />
-      ))}
-      <PaneBottomDock>
+      <div className="biomes-ui-workshop-station">
+        {range(0, slots).map((_, idx) => (
+          <div className="biomes-ui-workshop-slot" key={idx}>
+            <NormalSlotWithTooltip
+              slot={clientSideContainer.slots[idx]?.item}
+              slotReference={{
+                kind: "item",
+                idx,
+              }}
+              entityId={INVALID_BIOMES_ID}
+              onClick={handleItemCellClick}
+            />
+            <span>Slot {idx + 1}</span>
+          </div>
+        ))}
+      </div>
+      <div className="biomes-ui-workshop-actions">
         <CraftingStationRoyaltyFeeListing stationEntityId={stationEntityId} />
         <CraftButton
           isCrafting={isCrafting}
           craftDuration={CRAFT_DURATION}
-          disabled={compact(clientSideContainer.slots).length < minItems}
+          disabled={filledSlots < minItems}
+          extraClassNames="biomes-ui-workshop-craft-button"
           onClick={() => {
             delayClearCrafting();
             void handleCraft();
@@ -126,8 +131,8 @@ const UnorderedCraftingStationLeftPane: React.FunctionComponent<{
         >
           {craftVerb}
         </CraftButton>
-      </PaneBottomDock>
-    </PaneLayout>
+      </div>
+    </BiomesUIShopSection>
   );
 };
 
@@ -157,29 +162,30 @@ export const UnorderedCraftingStationScreen: React.FunctionComponent<{
   extraClassName ??= "crafting";
   return (
     <InventoryOverrideContextProvider>
-      <SplitPaneScreen
-        extraClassName={extraClassName}
-        leftPaneExtraClassName="biomes-box"
-        rightPaneExtraClassName="biomes-box"
+      <BiomesUIShopChrome
+        title={title}
+        eyebrow="Crafting Station"
+        variant="container"
+        subtitle={`Choose ingredients from your inventory and ${craftVerb.toLowerCase()} when the station is ready.`}
       >
-        <ScreenTitleBar title={title} divider={false} />
-
-        <RawLeftPane>
-          <UnorderedCraftingStationLeftPane
-            slots={slots}
-            extraClassName={`${extraClassName}-station`}
-            stationEntityId={stationEntityId}
-            craftVerb={craftVerb}
-            onCraft={onCraft}
-            multiItemSlot={multiItemSlot}
-            minItems={minItems}
-          />
-        </RawLeftPane>
-
-        <RawRightPane>
-          <SelfInventoryRightPane />
-        </RawRightPane>
-      </SplitPaneScreen>
+        <UnorderedCraftingStationLeftPane
+          slots={slots}
+          extraClassName={`${extraClassName}-station`}
+          stationEntityId={stationEntityId}
+          craftVerb={craftVerb}
+          onCraft={onCraft}
+          multiItemSlot={multiItemSlot}
+          minItems={minItems}
+        />
+        <BiomesUIShopSection
+          title="Your Inventory"
+          className="biomes-ui-shop-section--inventory"
+        >
+          <div className="biomes-ui-shop-inventory-pane biomes-ui-inventory-pane">
+            <SelfInventoryRightPaneContent className="biomes-ui-inventory-stack" />
+          </div>
+        </BiomesUIShopSection>
+      </BiomesUIShopChrome>
     </InventoryOverrideContextProvider>
   );
 };

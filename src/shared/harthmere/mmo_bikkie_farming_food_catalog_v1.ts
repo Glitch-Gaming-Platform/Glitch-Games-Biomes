@@ -152,7 +152,7 @@ export const HARTHMERE_BIKKIE_SEED_ROWS_V1: readonly HarthmereBikkieSeedRowV1[] 
   ["1070858208404281", "Plumeria Seed", "1534621126189775", "Plumeria", "5039373280552545", 1, 259200000, ["vendor", "world"], true, 432000000, 432000000, "Seeds", "plant", "", "drive://item_meshes/seed_peony.vox:1tcnH8VJZHmE4vK_I_Qt8dnOOMEmKYDqP"],
   ["7329245755763306", "Corn Seeds", "4111158347024835", "Corn", "2185129587402304", 1, 57600000, ["vendor", "world"], true, 129600000, 432000000, "Item", "plant", "", "drive://item_meshes/seed_corn.vox:1vWDZWjgTngofQ_8rHqrTaWutZf3ikRpI"],
   ["7539420629350027", "Bellflower Seed", "7539420629350432", "Bellflower", "7539420629350432", 1, 43200000, ["vendor", "world"], null, 100800000, 432000000, "Seeds", "plant", "items/seed_bellflower", "items/seed_bellflower"],
-  ["1534621126189361", "Banana Seed", "8612346131579137", "Banana", "8091388084258471", 11, 86400000, ["vendor", "world"], null, 100800000, 432000000, "Item", "plant", "items/seed_generic", "items/seed_generic"],
+  ["1534621126189361", "Banana Seed", "8612346131579137", "Banana", "8091388084258471", 3, 86400000, ["vendor", "world"], null, 100800000, 432000000, "Item", "plant", "items/seed_generic", "items/seed_generic"],
   ["7046026499878262", "Wood Ear Spores", "1534621126189838", "Red Mushroom", "5232320705487607", 10, 14400000, ["world", "monster"], false, 106358400000, 432000000, "Spores", "plant", "items/mushroom_spores", "items/mushroom_spores"],
 ] as const;
 
@@ -190,9 +190,9 @@ export const HARTHMERE_BIKKIE_RECIPE_ROWS_V1: readonly HarthmereBikkieRecipeRowV
   ["4698269797184310", "Roasted Pumpkin", "oven", [["7539420629350498", 4]], [["8241611436528618", 1]], 3000, 18, 12, "cooking", "Recipe", "", "", ""],
   ["321119642937506", "Roasted Coffee Bean", "cookpot", [["2790846682107025", 4]], [["2817032404062192", 4]], 1000, 14, 12, "cooking", "Recipe", "", "", ""],
   ["3006534339267719", "Roasted Carrot Soup", "cookpot", [["1902599429459579", 3]], [["2573780829056209", 1]], 1000, 11, 12, "cooking", "Item", "", "", ""],
-  ["3242894934816699", "Golden Mushroom Spores", "field", [["6127458937593352", 3], ["7539420629349928", 1]], [["3170539650465345", 4]], 1500, 16, 20, "seed", "Recipe", "", "", ""],
+  ["3242894934816699", "Golden Mushroom Spores", "field", [["6127458937593352", 3], ["7539420629349928", 1]], [["1108069497496786", 4]], 1500, 16, 20, "seed", "Recipe", "", "", ""],
   ["1426432748637232", "Mucker Burger", "cookpot", [["2071428426278062", 2], ["8289848292759112", 1]], [["5754656948700981", 1]], 4000, 17, 12, "cooking", "Recipe", "", "", ""],
-  ["3752138317055497", "Muck-me-not Seeds", "field", [["1534621126189370", 2], ["4537020877769697", 2]], [["6905450518852631", 2]], 1500, 16, 20, "seed", "Recipe", "", "", ""],
+  ["3752138317055497", "Muck-me-not Seeds", "field", [["1534621126189370", 2], ["4537020877769697", 2]], [["922013052023689", 2]], 1500, 16, 20, "seed", "Recipe", "", "", ""],
   ["7910155324407911", "Azalea Seed", "field", [["1534621126189775", 3]], [["1534621126189370", 4]], 1500, 13, 20, "seed", "Recipe", "", "", ""],
   ["2499358250869273", "Rubber Seed", "field", [["7539420629350435", 6], ["4537020877770003", 6]], [["4537020877769700", 1]], 1500, 40, 20, "seed", "Recipe", "", "", ""],
   ["5482463259956995", "Muckshroom", "campfire", [["7516680397131340", 1]], [["6127458937593352", 1]], 1000, 5, 12, "cooking", "recipe", "", "", ""],

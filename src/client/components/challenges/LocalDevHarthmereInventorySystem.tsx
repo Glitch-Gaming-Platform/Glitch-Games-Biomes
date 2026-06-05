@@ -1,6 +1,11 @@
 // LocalDevHarthmereInventorySystem local-dev economy boundary. Do not trust client storage in production.
 import type { TalkDialogStepAction } from "@/client/components/challenges/TalkDialogModalStep";
 import {
+  HARTHMERE_BUSINESS_TOOL_SHOP_NEW_TOOL_DEFS_V151,
+  harthmereBusinessToolForTypeV151,
+  harthmereBusinessToolPurchaseOutcomeV151,
+} from "@/shared/harthmere/harthmere_business_tool_shop_v151";
+import {
   HARTHMERE_VENDOR_STOCK,
   decrementHarthmereVendorStock,
   getHarthmereCurrentVendorStockLine,
@@ -2015,6 +2020,31 @@ for (const def of Object.values(ITEM_DEFINITIONS)) {
   }
 }
 
+// HARTHMERE_BUSINESS_TOOL_SHOP_V151: register the tools introduced for the per-
+// business tool shops (the businesses that had no themed tool). They are real
+// main-hand tools so they can be bought, carried, and equipped like any other.
+for (const seed of HARTHMERE_BUSINESS_TOOL_SHOP_NEW_TOOL_DEFS_V151) {
+  if (ITEM_DEFINITIONS[seed.itemId]) {
+    continue;
+  }
+  ITEM_DEFINITIONS[seed.itemId] = {
+    id: seed.itemId,
+    name: seed.name,
+    category: "tool",
+    subtype: seed.subtype,
+    quality: "common",
+    icon: seed.icon,
+    stackable: false,
+    maxStack: 1,
+    slot: "main_hand",
+    requiredLevel: 1,
+    bindType: "bind_on_pickup",
+    baseValue: seed.baseValue,
+    durabilityMax: 60,
+    description: seed.description,
+  };
+}
+
 const SPELL_DEFINITIONS: Record<string, HarthmereSpellDefinition> = {
   spark_rank_1: {
     id: "spark_rank_1",
@@ -2769,6 +2799,111 @@ export function isHarthmereCleanupToolEquippedV151(
   state: HarthmereInventoryState = readHarthmereInventoryState()
 ): boolean {
   return equippedHarthmereCleanupToolItemIdV151(state) !== undefined;
+}
+
+// HARTHMERE_JOB_TOOL_EQUIP_STATE_V151: a single read of whether the repair/cleanup
+// tools are currently equipped, so the jobs-board map adapters can decide whether
+// to surface a "buy the tool here" vendor marker + quest-detail callout.
+export interface HarthmereJobToolEquipStateV151 {
+  repairToolEquipped: boolean;
+  cleanupToolEquipped: boolean;
+}
+
+export function harthmereJobToolEquipStateV151(
+  state: HarthmereInventoryState = readHarthmereInventoryState()
+): HarthmereJobToolEquipStateV151 {
+  return {
+    repairToolEquipped: isHarthmereRepairToolEquippedV151(state),
+    cleanupToolEquipped: isHarthmereCleanupToolEquippedV151(state),
+  };
+}
+
+// HARTHMERE_JOB_TOOL_OWNED_STATE_V151: whether the player OWNS the repair/cleanup
+// tool at all (backpack OR equipped), not just whether it's equipped. The job
+// buy-redirect is keyed on ownership: a player who already owns the tool is never
+// sent to a shop — they're sent to the job (and may equip the tool they bought).
+export interface HarthmereJobToolOwnedStateV151 {
+  repairToolOwned: boolean;
+  cleanupToolOwned: boolean;
+}
+
+function ownsHarthmereToolMatchingV151(
+  state: HarthmereInventoryState,
+  matches: (itemId: string | undefined) => boolean
+): boolean {
+  if (
+    matches(state.equipment.main_hand?.itemId) ||
+    matches(state.equipment.off_hand?.itemId)
+  ) {
+    return true;
+  }
+  return state.backpack.items.some((item) => matches(item.itemId));
+}
+
+export function harthmereJobToolOwnedStateV151(
+  state: HarthmereInventoryState = readHarthmereInventoryState()
+): HarthmereJobToolOwnedStateV151 {
+  return {
+    repairToolOwned: ownsHarthmereToolMatchingV151(
+      state,
+      isHarthmereRepairToolItemIdV151
+    ),
+    cleanupToolOwned: ownsHarthmereToolMatchingV151(
+      state,
+      isHarthmereCleanupToolItemIdV151
+    ),
+  };
+}
+
+// HARTHMERE_BUSINESS_TOOL_PURCHASE_V151: buy the tool a given business sells,
+// paying with the player's own gold and depositing the tool into their backpack.
+// This is the path a tool-gated job's "buy it at the marked shop" redirect leads
+// to. Idempotent against double-owning: refuses if the player already owns it.
+export function purchaseHarthmereBusinessToolV151(
+  businessType: string | undefined
+): { ok: boolean; reason?: string; toolItemId?: string } {
+  const listing = harthmereBusinessToolForTypeV151(businessType);
+  if (!listing) {
+    return { ok: false, reason: "no_tool" };
+  }
+  let state = readHarthmereInventoryState();
+  const def = itemDef(listing.toolItemId);
+  if (!def) {
+    return { ok: false, reason: "unknown_tool" };
+  }
+  const alreadyOwned = ownsHarthmereToolMatchingV151(
+    state,
+    (id) => id === listing.toolItemId
+  );
+  const outcome = harthmereBusinessToolPurchaseOutcomeV151({
+    businessType,
+    goldAvailable: state.wallet.gold ?? 0,
+    alreadyOwned,
+  });
+  if (!outcome.ok) {
+    const message =
+      outcome.reason === "already_owned"
+        ? `You already own a ${listing.toolName}.`
+        : `${listing.toolName} costs ${listing.priceGold} gold, but you only have ${
+            state.wallet.gold ?? 0
+          }.`;
+    writeHarthmereInventoryState(
+      appendLog(
+        state,
+        outcome.reason === "already_owned" ? "Already Owned" : "Cannot Buy",
+        message
+      )
+    );
+    return { ok: false, reason: outcome.reason };
+  }
+  // Deduct gold, then grant the tool into the backpack.
+  state = {
+    ...state,
+    wallet: { ...state.wallet, gold: outcome.goldAfter },
+  };
+  writeHarthmereInventoryState(state);
+  grantHarthmereItem(listing.toolItemId, 1, `Bought ${listing.toolName}`);
+  return { ok: true, toolItemId: listing.toolItemId };
 }
 
 // HARTHMERE_JOB_REWARD_BRIDGE_V151:

@@ -29,6 +29,7 @@ import {
   fallDamageForBlocksV1,
   FEET_PER_BLOCK_V1,
 } from "@/shared/game/fall_damage_v1";
+import { HARTHMERE_VOXEL_INTERACTION_ATTACK_REACH_UNITS_V1 } from "@/shared/harthmere/combat_reach_v1";
 import { LIVE_ENTITY_HELPER_MUCK_BOSS_OFFSET_V1 } from "@/shared/harthmere/live_entity_helper_quests_v1";
 import { evaluateMuckMonsterAggressionV1 } from "@/shared/harthmere/muck_monster_aggression_ai_v1";
 import { HARTHMERE_HALF_DAY_MS_V1 } from "@/shared/harthmere/mmo_farming_food_stamina_v1";
@@ -423,7 +424,7 @@ const PLAYER_BASIC_ATTACK: CombatAbility = {
   name: "Basic Strike",
   damageType: "slashing",
   abilityMultiplier: 1.0,
-  range: 2.2,
+  range: HARTHMERE_VOXEL_INTERACTION_ATTACK_REACH_UNITS_V1,
   cooldownSeconds: 1.4,
   canCrit: true,
   canBeBlocked: true,
@@ -439,7 +440,7 @@ const PLAYER_HEAVY_ATTACK: CombatAbility = {
   name: "Heavy Strike",
   damageType: "blunt",
   abilityMultiplier: 1.45,
-  range: 2.4,
+  range: HARTHMERE_VOXEL_INTERACTION_ATTACK_REACH_UNITS_V1,
   cooldownSeconds: 2.8,
   canCrit: true,
   canBeBlocked: true,
@@ -4133,7 +4134,7 @@ function harthmereForwardArcTargetPositions(): Record<
 // is intentionally a touch larger than the real arc reach so this NEVER blocks a
 // legitimate hit (a barely-out-of-range probe just resolves to a harmless miss).
 export function harthmereHasAttackableTargetNearPlayerV1(
-  maxRange = 4
+  maxRange = HARTHMERE_VOXEL_INTERACTION_ATTACK_REACH_UNITS_V1
 ): boolean {
   if (!isBrowser()) {
     return false;
@@ -5294,7 +5295,11 @@ function rankedHarthmereForwardArcTargets(
     ability === "heavy" ? PLAYER_HEAVY_ATTACK : PLAYER_BASIC_ATTACK,
     equipped
   );
-  const range = abilityProfile.range + 0.2;
+  const range =
+    Math.max(
+      abilityProfile.range,
+      HARTHMERE_VOXEL_INTERACTION_ATTACK_REACH_UNITS_V1
+    ) + 0.2;
   const halfAngleRadians = ((ability === "heavy" ? 150 : 135) * Math.PI) / 360;
   const cosHalfAngle = Math.cos(halfAngleRadians);
   const maxTargets = ability === "heavy" ? 6 : 4;

@@ -31,6 +31,10 @@ const {
   harthmereBusinessCustomerNpcSeedEntityIdsV1,
 } = require("../../src/server/harthmere/business_customer_npc_ecs_seed_v1");
 const {
+  buildHarthmereBusinessCraftingStationSeedProposedChangesV1,
+  harthmereBusinessCraftingStationSeedEntityIdsV1,
+} = require("../../src/server/harthmere/business_crafting_station_ecs_seed_v1");
+const {
   createHarthmereLiveModeSharedWorldStateV1,
   defaultHarthmereLiveModeBackendStateV1,
   harthmereLiveModeSharedWorldStateKeyV1,
@@ -103,6 +107,16 @@ async function reconcileEcsSeeds(world, nowSeconds) {
       label: "Business customer NPCs",
       ids: harthmereBusinessCustomerNpcSeedEntityIdsV1(),
       build: buildHarthmereBusinessCustomerNpcSeedProposedChangesV1,
+    },
+    {
+      // HARTHMERE_BUSINESS_CRAFTING_STATION_RECONCILE_V1: one in-shop crafting
+      // station placeable per business. Without this family the 19 stations are
+      // never materialized into production, so the shops have nothing to craft
+      // at. Same pattern as the owners/customers — adding it here is what makes
+      // the stations reach prod on deploy.
+      label: "Business crafting stations",
+      ids: harthmereBusinessCraftingStationSeedEntityIdsV1(),
+      build: buildHarthmereBusinessCraftingStationSeedProposedChangesV1,
     },
   ];
   const requiredIds = seedFamilies.flatMap((family) => family.ids);

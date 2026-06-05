@@ -3,7 +3,18 @@ import {
   buildAvatarMutationEventsV1,
   normalizeAvatarHairId,
 } from "@/client/components/biomes_ui/avatarEditorMutations";
+import {
+  BIOMES_UI_AVATAR_OPTION_KINDS,
+  applyAvatarEditorOptionChangeV1,
+  avatarEditorOptionSummaryForTestV1,
+  buildAvatarPreviewWearableOverridesV1,
+  itemForAvatarHairIdV1,
+} from "@/client/components/biomes_ui/avatarEditorOptions";
+import { BikkieRuntime } from "@/shared/bikkie/active";
+import { BikkieIds } from "@/shared/bikkie/ids";
+import type { Biscuit } from "@/shared/bikkie/schema/attributes";
 import type { Appearance } from "@/shared/ecs/gen/types";
+import { anItem } from "@/shared/game/item";
 import { INVALID_BIOMES_ID } from "@/shared/ids";
 import type { BiomesId } from "@/shared/ids";
 import { generateTestId } from "@/shared/test_helpers";
@@ -11,7 +22,9 @@ import assert from "assert";
 
 const USER_ID = generateTestId();
 const HAIR_ID = generateTestId();
+const NEXT_HAIR_ID = generateTestId();
 const HEAD_ID = generateTestId();
+const NEXT_HEAD_ID = generateTestId();
 
 function baseAppearance(): Appearance {
   return {
@@ -23,6 +36,137 @@ function baseAppearance(): Appearance {
 }
 
 describe("BiomesUI avatar editor mutations", () => {
+  before(() => {
+    BikkieRuntime.get().registerBiscuits(
+      new Map<BiomesId, Biscuit>([
+        [
+          HEAD_ID,
+          {
+            id: HEAD_ID,
+            name: "test_head",
+            isHead: true,
+          } as Biscuit,
+        ],
+        [
+          NEXT_HEAD_ID,
+          {
+            id: NEXT_HEAD_ID,
+            name: "next_test_head",
+            isHead: true,
+          } as Biscuit,
+        ],
+        [
+          HAIR_ID,
+          {
+            id: HAIR_ID,
+            name: "test_hair",
+            displayName: "Test Hair",
+            wearAsHair: true,
+            isWearable: true,
+            stackable: 1n,
+          } as Biscuit,
+        ],
+        [
+          NEXT_HAIR_ID,
+          {
+            id: NEXT_HAIR_ID,
+            name: "next_test_hair",
+            displayName: "Next Test Hair",
+            wearAsHair: true,
+            isWearable: true,
+            stackable: 1n,
+          } as Biscuit,
+        ],
+      ])
+    );
+  });
+
+  it("exposes the same five character-design option groups as the wake-up builder", () => {
+    const summaries = avatarEditorOptionSummaryForTestV1();
+
+    assert.deepEqual(
+      summaries.map((entry) => entry.kind),
+      BIOMES_UI_AVATAR_OPTION_KINDS
+    );
+    assert.deepEqual(
+      summaries.map((entry) => entry.label),
+      ["Head shape", "Skin", "Eye color", "Hair color", "Hair style"]
+    );
+    for (const summary of summaries) {
+      assert.ok(
+        summary.count > 0,
+        `${summary.kind} should expose at least one option`
+      );
+    }
+  });
+
+  it("maps every frontend option group to the mesh-backed selection fields", () => {
+    const current = { appearance: baseAppearance(), hairId: HAIR_ID };
+
+    assert.deepEqual(
+      applyAvatarEditorOptionChangeV1(current, {
+        kind: "head",
+        id: NEXT_HEAD_ID,
+      }).appearance,
+      { ...baseAppearance(), head_id: NEXT_HEAD_ID }
+    );
+    assert.deepEqual(
+      applyAvatarEditorOptionChangeV1(current, {
+        kind: "skin",
+        id: "skin_color_9",
+      }).appearance,
+      { ...baseAppearance(), skin_color_id: "skin_color_9" }
+    );
+    assert.deepEqual(
+      applyAvatarEditorOptionChangeV1(current, {
+        kind: "eyes",
+        id: "eye_color_9",
+      }).appearance,
+      { ...baseAppearance(), eye_color_id: "eye_color_9" }
+    );
+    assert.deepEqual(
+      applyAvatarEditorOptionChangeV1(current, {
+        kind: "hairColor",
+        id: "hair_color_9",
+      }).appearance,
+      { ...baseAppearance(), hair_color_id: "hair_color_9" }
+    );
+
+    assert.equal(
+      applyAvatarEditorOptionChangeV1(current, {
+        kind: "hairStyle",
+        id: NEXT_HAIR_ID,
+      }).hairId,
+      NEXT_HAIR_ID
+    );
+    assert.equal(
+      applyAvatarEditorOptionChangeV1(current, {
+        kind: "hairStyle",
+        id: INVALID_BIOMES_ID as BiomesId,
+      }).hairId,
+      undefined
+    );
+  });
+
+  it("updates the preview wearable inputs that rebuild the player mesh", () => {
+    const currentHair = anItem(HAIR_ID);
+    const nextHair = anItem(NEXT_HAIR_ID);
+    const wearing = new Map([[BikkieIds.hair, currentHair]]);
+
+    const withNewHair = buildAvatarPreviewWearableOverridesV1(
+      wearing,
+      nextHair
+    );
+    assert.equal(withNewHair.get(BikkieIds.hair)?.id, NEXT_HAIR_ID);
+
+    const bald = buildAvatarPreviewWearableOverridesV1(wearing, undefined);
+    assert.equal(bald.get(BikkieIds.hair), undefined);
+    assert.equal(
+      itemForAvatarHairIdV1(INVALID_BIOMES_ID as BiomesId),
+      undefined
+    );
+  });
+
   it("builds an AppearanceChangeEvent carrying every appearance part", () => {
     const appearance: Appearance = {
       skin_color_id: "skin_color_5",

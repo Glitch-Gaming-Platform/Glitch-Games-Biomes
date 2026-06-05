@@ -1,6 +1,11 @@
 import { useClientContext } from "@/client/components/contexts/ClientContextReactContext";
+import {
+  BiomesUIShopChrome,
+  BiomesUIShopSection,
+} from "@/client/components/inventory/BiomesUIShopChrome";
 import { useInventoryDraggerContext } from "@/client/components/inventory/InventoryDragger";
-import { SelfInventoryRightPane } from "@/client/components/inventory/SelfInventoryScreen";
+import { InventoryOverrideContextProvider } from "@/client/components/inventory/InventoryOverrideContext";
+import { SelfInventoryRightPaneContent } from "@/client/components/inventory/SelfInventoryScreen";
 import { CraftingDetail } from "@/client/components/inventory/crafting/CraftingDetail";
 import { RecipeRow } from "@/client/components/inventory/crafting/RecipeRow";
 import { RecipeTooltipContent } from "@/client/components/inventory/crafting/RecipeTooltipContent";
@@ -12,10 +17,7 @@ import { craftingCategories } from "@/client/components/inventory/helpers";
 import { DialogButton } from "@/client/components/system/DialogButton";
 import { Img } from "@/client/components/system/Img";
 import { SegmentedControl } from "@/client/components/system/SegmentedControl";
-import { MiniPhoneDialogContent } from "@/client/components/system/mini_phone/MiniPhoneDialog";
 import { PaneActionSheet } from "@/client/components/system/mini_phone/split_pane/PaneActionSheet";
-import { ScreenTitleBar } from "@/client/components/system/mini_phone/split_pane/ScreenTitleBar";
-import { SplitPaneScreen } from "@/client/components/system/mini_phone/split_pane/SplitPaneScreen";
 import type {
   ClientReactResources,
   ClientResources,
@@ -25,9 +27,6 @@ import type { Item, ItemBag } from "@/shared/ecs/gen/types";
 import searchIcon from "/public/hud/icon-16-search.png";
 
 import { ItemIcon } from "@/client/components/inventory/ItemIcon";
-import { LeftPane } from "@/client/components/system/mini_phone/split_pane/LeftPane";
-import { RightBarItem } from "@/client/components/system/mini_phone/split_pane/RightBarItem";
-import { RawRightPane } from "@/client/components/system/mini_phone/split_pane/RightPane";
 import {
   setCurrentBiscuit,
   setInlineAdminVisibility,
@@ -334,7 +333,7 @@ export const GeneralCraftingStationScreen: React.FunctionComponent<{
     );
     const categories = [...craftingCategories, ...remainingCategories];
     recipesContent = (
-      <MiniPhoneDialogContent style="pin-top" extraClassName="hide-scrollbar">
+      <div className="biomes-ui-crafting-scroll hide-scrollbar">
         <div className="recipe-list">
           {categories.map((category) => {
             const recipes = recipesByCategory[category];
@@ -342,7 +341,7 @@ export const GeneralCraftingStationScreen: React.FunctionComponent<{
               return <></>;
             }
             return (
-              <>
+              <React.Fragment key={category}>
                 <label>{category}</label>
                 <ul className="recipe-rows">
                   {recipes.map((r) => (
@@ -356,11 +355,11 @@ export const GeneralCraftingStationScreen: React.FunctionComponent<{
                     />
                   ))}
                 </ul>
-              </>
+              </React.Fragment>
             );
           })}
         </div>
-      </MiniPhoneDialogContent>
+      </div>
     );
   }
   const dragItemName = useMemo(
@@ -392,133 +391,153 @@ export const GeneralCraftingStationScreen: React.FunctionComponent<{
     }
   }, [requiredIngredients]);
 
-  return (
-    <SplitPaneScreen
-      extraClassName={title.toLowerCase().replace(" ", "-")}
-      leftPaneExtraClassName={stationItem ? "biomes-box" : ""}
-      rightPaneExtraClassName={stationItem ? "biomes-box" : ""}
+  const searchAction = !showSearch ? (
+    <button
+      type="button"
+      className="biomes-ui-action-button"
+      aria-label="Search recipes"
+      onClick={() => {
+        const shouldShowSearch = !showSearch;
+        setShowSearch(shouldShowSearch);
+        if (shouldShowSearch && !stationItem) {
+          setShowAll(true);
+        }
+      }}
     >
-      <ScreenTitleBar title={title} divider={false}>
-        {!showSearch && (
-          <RightBarItem>
-            <div
-              className="toolbar-icon"
-              onClick={() => {
-                const shouldShowSearch = !showSearch;
-                setShowSearch(shouldShowSearch);
-                if (shouldShowSearch && !stationItem) {
-                  setShowAll(true);
-                }
-              }}
-            >
-              <Img src={searchIcon.src} alt="" />
-            </div>
-          </RightBarItem>
-        )}
-      </ScreenTitleBar>
-      <LeftPane extraClassName="hide-scrollbar">
-        <div className="bg-image" />
+      <Img src={searchIcon.src} alt="" />
+      Search
+    </button>
+  ) : null;
 
-        {showSearch ? (
-          <div className="crafting-search">
-            <div className="search-bar">
-              <input
-                type="text"
-                value={searchString}
-                placeholder={stationItem ? "Search" : "Search all recipes"}
-                onChange={(e) => {
-                  setSearchString(e.target.value);
-                }}
-                className="search-name"
-                ref={searchFieldRef}
-              />
-
-              {!stationItem && (
-                <ul className="search-options">
-                  <li>
-                    <a
-                      className="search-cancel"
-                      href="#"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        setSearchString("");
-                        setShowSearch(!showSearch);
-                        clearRequiredIngredients();
-                        setShowAll(Boolean(segmentedControlSelectedIndex));
-                      }}
-                    >
-                      Cancel
-                    </a>
-                  </li>
-                </ul>
-              )}
-            </div>
-            {mapMap(requiredIngredients, (ingredient) => (
-              <SearchItemFilter
-                key={ingredient.item.id}
-                item={ingredient.item}
-                onClick={removeRequiredItem}
-              />
-            ))}
-          </div>
-        ) : (
-          <div className="crafting-search">
-            <SegmentedControl
-              index={segmentedControlSelectedIndex}
-              items={["Handcraft", "All"]}
-              onClick={(i) => {
-                setSegmentedControlSelectedIndex(i);
-                setShowAll(i == 1);
-              }}
-            />
-          </div>
-        )}
-
-        <div className="crafting padded-view">
-          <AnimatePresence initial={false}>
-            {!dragItem && (
-              <motion.div
-                key={"recipes-content"}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ delay: 0.15, duration: 0.1 }}
-              >
-                {recipesContent}
-              </motion.div>
-            )}
-            {dragItem && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ delay: 0.15, duration: 0.1 }}
-                className="filter-area"
-                key="filter-area"
-                onMouseUp={() => {
-                  onFilterAreaClick();
-                }}
-              >
-                <div className="filter-label">
-                  Drop to filter recipes by {dragItemName}
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-
-        <PaneActionSheet
-          showing={showRightActionSheet}
-          onClose={() => setShowRightActionSheet(false)}
-          rightBarItem={actionSheetRightItem}
+  return (
+    <InventoryOverrideContextProvider>
+      <BiomesUIShopChrome
+        title={title}
+        eyebrow={stationItem ? "Crafting Station" : "Handcrafting"}
+        variant="container"
+        subtitle={
+          stationItem
+            ? "Search recipes, inspect requirements, and craft from your inventory."
+            : "Browse handcrafting recipes and filter by item."
+        }
+        actions={searchAction}
+      >
+        <BiomesUIShopSection
+          title="Recipes"
+          meta={`${Object.values(recipesByCategory).reduce(
+            (sum, recipes) => sum + recipes.length,
+            0
+          )} known`}
+          className="biomes-ui-crafting-recipes-section"
         >
-          {actionSheetContents}
-        </PaneActionSheet>
-      </LeftPane>
+          <div className="biomes-ui-crafting-search-row">
+            {showSearch ? (
+              <div className="crafting-search">
+                <div className="search-bar">
+                  <input
+                    type="text"
+                    value={searchString}
+                    placeholder={stationItem ? "Search" : "Search all recipes"}
+                    onChange={(e) => {
+                      setSearchString(e.target.value);
+                    }}
+                    className="search-name"
+                    ref={searchFieldRef}
+                  />
 
-      <RawRightPane>
-        <SelfInventoryRightPane />
-      </RawRightPane>
-    </SplitPaneScreen>
+                  {!stationItem && (
+                    <ul className="search-options">
+                      <li>
+                        <a
+                          className="search-cancel"
+                          href="#"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            setSearchString("");
+                            setShowSearch(!showSearch);
+                            clearRequiredIngredients();
+                            setShowAll(Boolean(segmentedControlSelectedIndex));
+                          }}
+                        >
+                          Cancel
+                        </a>
+                      </li>
+                    </ul>
+                  )}
+                </div>
+                {mapMap(requiredIngredients, (ingredient) => (
+                  <SearchItemFilter
+                    key={ingredient.item.id}
+                    item={ingredient.item}
+                    onClick={removeRequiredItem}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="crafting-search">
+                <SegmentedControl
+                  index={segmentedControlSelectedIndex}
+                  items={["Handcraft", "All"]}
+                  onClick={(i) => {
+                    setSegmentedControlSelectedIndex(i);
+                    setShowAll(i == 1);
+                  }}
+                />
+              </div>
+            )}
+          </div>
+
+          <div className="biomes-ui-crafting-recipes-body">
+            <AnimatePresence initial={false}>
+              {!dragItem && (
+                <motion.div
+                  key={"recipes-content"}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ delay: 0.15, duration: 0.1 }}
+                >
+                  {recipesContent}
+                </motion.div>
+              )}
+              {dragItem && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ delay: 0.15, duration: 0.1 }}
+                  className="filter-area"
+                  key="filter-area"
+                  onMouseUp={() => {
+                    onFilterAreaClick();
+                  }}
+                >
+                  <div className="filter-label">
+                    Drop to filter recipes by {dragItemName}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
+          <PaneActionSheet
+            showing={showRightActionSheet}
+            onClose={() => setShowRightActionSheet(false)}
+            rightBarItem={actionSheetRightItem}
+          >
+            {actionSheetContents}
+          </PaneActionSheet>
+        </BiomesUIShopSection>
+
+        <BiomesUIShopSection
+          title="Your Inventory"
+          className="biomes-ui-shop-section--inventory"
+        >
+          <div className="biomes-ui-shop-inventory-pane biomes-ui-inventory-pane">
+            <SelfInventoryRightPaneContent className="biomes-ui-inventory-stack" />
+          </div>
+        </BiomesUIShopSection>
+      </BiomesUIShopChrome>
+    </InventoryOverrideContextProvider>
   );
 };

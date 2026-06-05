@@ -56,6 +56,15 @@ describe("BiomesUI live-entity helper quest map adapter", () => {
         status: "active",
         firstMarkerId: marker!.id,
         reward: "90 XP, 2 Minor Healing Salves, 1 Black Anvil Repair Voucher",
+        kind: "food_water",
+        kindLabel: "Helper Quest",
+        objective:
+          LIVE_ENTITY_HELPER_QUEST_DEFINITIONS_V1.food_water.activeText,
+        objectives: [
+          LIVE_ENTITY_HELPER_QUEST_DEFINITIONS_V1.food_water.activeText,
+        ],
+        description:
+          LIVE_ENTITY_HELPER_QUEST_DEFINITIONS_V1.food_water.offerText,
       },
     ]);
 

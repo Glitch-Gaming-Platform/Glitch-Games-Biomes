@@ -6,6 +6,8 @@ import {
   HARTHMERE_TOOL_SOURCES_V151,
   harthmereJobMarkerPlanV151,
   harthmereJobNotificationV151,
+  harthmereJobRequiredToolActionV151,
+  harthmereJobToolSourceGuidanceV151,
   harthmereSelectTrackedJobV151,
   harthmereTrackedJobMarkerPlanV151,
 } from "@/shared/harthmere/harthmere_job_objective_v151";
@@ -25,6 +27,68 @@ describe("HARTHMERE_TOOL_SOURCES_V151 — tool vendors resolve to real map posit
       );
       assert.equal(marker?.source, "business_owner");
     }
+  });
+});
+
+describe("harthmereJobRequiredToolActionV151 — which kinds need a tool", () => {
+  it("maps repair/cleanup to their tool action and everything else to none", () => {
+    assert.equal(harthmereJobRequiredToolActionV151("repair"), "repair");
+    assert.equal(harthmereJobRequiredToolActionV151("cleanup"), "cleanup");
+    for (const kind of ["hunt", "gather", "delivery", "escort", undefined]) {
+      assert.equal(harthmereJobRequiredToolActionV151(kind), undefined);
+    }
+  });
+});
+
+describe("harthmereJobToolSourceGuidanceV151 — where to buy a tool you don't own", () => {
+  it("returns vendor guidance for a repair job when the tool is NOT owned", () => {
+    const guidance = harthmereJobToolSourceGuidanceV151({
+      kind: "repair",
+      toolOwned: false,
+    });
+    assert.ok(guidance);
+    assert.equal(guidance!.action, "repair");
+    assert.equal(
+      guidance!.vendorMarkerId,
+      HARTHMERE_TOOL_SOURCES_V151.repair.vendorMarkerId
+    );
+    assert.ok(guidance!.hint.includes(HARTHMERE_TOOL_SOURCES_V151.repair.toolName));
+    assert.ok(guidance!.hint.includes(HARTHMERE_TOOL_SOURCES_V151.repair.vendorName));
+    // The vendor marker must resolve to a real map position.
+    assert.ok(
+      harthmereJobsBoardQuestMarkerPositionForIdV1(guidance!.vendorMarkerId)
+    );
+  });
+
+  it("returns cleanup guidance too, with a muck-specific hint", () => {
+    const guidance = harthmereJobToolSourceGuidanceV151({
+      kind: "cleanup",
+      toolOwned: false,
+    });
+    assert.ok(guidance);
+    assert.equal(guidance!.action, "cleanup");
+    assert.ok(/muck/i.test(guidance!.hint));
+  });
+
+  it("returns nothing once the player OWNS the tool (sent to the job, not a shop)", () => {
+    assert.equal(
+      harthmereJobToolSourceGuidanceV151({ kind: "repair", toolOwned: true }),
+      undefined
+    );
+  });
+
+  it("returns nothing when ownership is unknown (no buy redirect unless we KNOW)", () => {
+    assert.equal(
+      harthmereJobToolSourceGuidanceV151({ kind: "repair" }),
+      undefined
+    );
+  });
+
+  it("returns nothing for a kind that needs no tool", () => {
+    assert.equal(
+      harthmereJobToolSourceGuidanceV151({ kind: "hunt", toolOwned: false }),
+      undefined
+    );
   });
 });
 
@@ -143,7 +207,7 @@ describe("harthmereJobMarkerPlanV151 — per-kind phase + marker resolution", ()
         kind: "cleanup",
         requirements: reqs,
         boardMarkerId: BOARD,
-        progress: { cleanedCount: 2, toolEquipped: true },
+        progress: { cleanedCount: 2, toolOwned: true },
       });
       assert.equal(plan.phase, "field");
       assert.equal(plan.activeMarkerId, "muckwad_patch");
@@ -156,7 +220,7 @@ describe("harthmereJobMarkerPlanV151 — per-kind phase + marker resolution", ()
         kind: "cleanup",
         requirements: reqs,
         boardMarkerId: BOARD,
-        progress: { cleanedCount: 0, toolEquipped: false },
+        progress: { cleanedCount: 0, toolOwned: false },
       });
       assert.equal(plan.needsToolAction, "cleanup");
       // Marker points at the tool vendor (a real on-map business owner), not the
@@ -170,7 +234,7 @@ describe("harthmereJobMarkerPlanV151 — per-kind phase + marker resolution", ()
         kind: "cleanup",
         requirements: reqs,
         boardMarkerId: BOARD,
-        progress: { cleanedCount: 5, toolEquipped: true },
+        progress: { cleanedCount: 5, toolOwned: true },
       });
       assert.equal(plan.phase, "return_to_board");
       assert.equal(plan.activeMarkerId, BOARD);
@@ -184,20 +248,20 @@ describe("harthmereJobMarkerPlanV151 — per-kind phase + marker resolution", ()
         requirements: [{ itemId: "softwood_log", count: 3, mapMarkerId: "grove_repair_fence", requiredToolAction: "repair" }],
         fieldMarkerId: "grove_repair_fence",
         boardMarkerId: BOARD,
-        progress: { repaired: false, toolEquipped: false },
+        progress: { repaired: false, toolOwned: false },
       });
       assert.equal(plan.needsToolAction, "repair");
       assert.equal(plan.activeMarkerId, "harthmere_owner:npc_outpost_hingehall_fixer");
       assert.ok(/buy/i.test(plan.hint), plan.hint);
     });
 
-    it("once the tool is equipped, guides back to the structure", () => {
+    it("once the player owns the tool, guides back to the structure", () => {
       const plan = harthmereJobMarkerPlanV151({
         kind: "repair",
         requirements: [{ itemId: "softwood_log", count: 3, mapMarkerId: "grove_repair_fence", requiredToolAction: "repair" }],
         fieldMarkerId: "grove_repair_fence",
         boardMarkerId: BOARD,
-        progress: { repaired: false, toolEquipped: true },
+        progress: { repaired: false, toolOwned: true },
       });
       assert.equal(plan.needsToolAction, undefined);
       assert.equal(plan.activeMarkerId, "grove_repair_fence");

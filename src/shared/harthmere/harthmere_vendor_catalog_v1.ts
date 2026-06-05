@@ -448,6 +448,11 @@ export const HARTHMERE_VENDOR_CATALOG_V1: Record<
       { itemId: "seed_carrot", quantity: 10, price: 2 },
       { itemId: "golden_carrot", quantity: 1, price: 45 },
       { itemId: "woodcutters_axe", quantity: 1, price: 24 },
+      // HARTHMERE_FARM_TOOLS_OBTAINABLE_V1: the core farming tools are buyable here
+      // (also craftable at a Workbench) so watering/tilling is never a dead end.
+      { itemId: "7539420629350046", quantity: 2, price: 22 }, // Hoe
+      { itemId: "7539420629350045", quantity: 2, price: 20 }, // Watering Can
+      { itemId: "4537020877769799", quantity: 2, price: 18 }, // Bucket
     ],
     buys: ["food", "crafting_material", "tool", "trade_good", "junk"],
     baseSellModifier: 0.95,

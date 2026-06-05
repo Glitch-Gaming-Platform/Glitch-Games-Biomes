@@ -120,6 +120,37 @@ export const BIOMES_UI_THEME_CSS = `
   box-shadow: 0 0 10px rgba(74, 222, 255, 0.5);
 }
 
+.biomes-ui-avatar-editor__preview .avatar-viewer,
+.biomes-ui-avatar-editor__preview .three-object-preview-wrapper,
+.biomes-ui-avatar-editor__preview canvas,
+.biomes-ui-avatar-editor__full-preview {
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 420px;
+  display: block;
+}
+
+.biomes-ui-avatar-editor__head-preview,
+.biomes-ui-avatar-editor__head-preview .three-object-preview-wrapper,
+.biomes-ui-avatar-editor__head-preview canvas {
+  position: absolute;
+  inset: 0;
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 0 !important;
+  display: block;
+}
+
+.biomes-ui-avatar-editor__preview .avatar-viewer.loading,
+.biomes-ui-avatar-editor__head-preview.loading {
+  animation: biomes-avatar-editor-pulse 1s ease-in-out infinite;
+}
+
+@keyframes biomes-avatar-editor-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.72; }
+}
+
 .biomes-ui-card {
   background: linear-gradient(180deg, rgba(232, 244, 255, 0.94) 0%, rgba(198, 226, 238, 0.88) 100%);
   color: #101622;
@@ -540,6 +571,542 @@ button.biomes-ui-card:disabled {
   left: 5px;
 }
 
+.biomes-ui-inventory-pane {
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 10px;
+}
+
+.biomes-ui-inventory-stack {
+  --inventory-cell-gap: 3px;
+  --inventory-divider-size: 8px;
+  width: 100%;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.biomes-ui-inventory-stack .inventory-cells.wearables {
+  --cell-width: clamp(30px, 4.2vmin, 38px);
+  --cell-height: var(--cell-width);
+  width: 100%;
+  min-width: 0;
+  justify-content: center;
+  align-items: stretch;
+  flex-wrap: nowrap;
+}
+
+.biomes-ui-inventory-stack .wearables-center {
+  width: min(14rem, calc(100% - (var(--cell-width) * 2) - (var(--inventory-cell-gap) * 2)));
+  min-width: 96px;
+}
+
+.biomes-ui-inventory-stack .wearables-col {
+  flex: 0 0 auto;
+}
+
+.biomes-ui-inventory-stack .avatar-viewer-wrap {
+  width: 100%;
+  height: clamp(110px, 20vh, 170px);
+  border: 1px solid rgba(74, 222, 255, 0.18);
+  border-radius: 6px;
+  background:
+    radial-gradient(circle at 50% 20%, rgba(232, 244, 255, 0.08), transparent 40%),
+    rgba(7, 12, 26, 0.46);
+  box-shadow: inset 0 0 18px rgba(74, 222, 255, 0.06);
+}
+
+.biomes-ui-inventory-stack .avatar-viewer,
+.biomes-ui-inventory-stack .avatar-viewer .three-object-preview-wrapper,
+.biomes-ui-inventory-stack .avatar-viewer canvas {
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 0 !important;
+}
+
+.biomes-ui-inventory-stack .avatar-viewer .click-to-wear {
+  position: absolute;
+  bottom: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  color: var(--biomes-fg-muted);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.biomes-ui-storage-container-grid {
+  --inventory-cell-gap: 4px;
+  --cell-width: clamp(38px, 5vmin, 52px);
+  --cell-height: var(--cell-width);
+  display: grid;
+  gap: var(--inventory-cell-gap);
+  align-content: start;
+  justify-content: start;
+  min-height: 0;
+  overflow: auto;
+  padding: 2px;
+}
+
+.biomes-ui-storage-container-grid .cell {
+  flex: 0 0 auto;
+}
+
+.biomes-ui-container-backdrop {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(3, 7, 18, 0.58);
+  color: var(--biomes-fg);
+  pointer-events: auto;
+  backdrop-filter: blur(6px) saturate(120%);
+  -webkit-backdrop-filter: blur(6px) saturate(120%);
+}
+
+.biomes-ui-container-panel {
+  width: min(58rem, calc(100vw - 1rem));
+  max-height: min(44rem, calc(100dvh - 1.5rem));
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.biomes-ui-container-panel__body {
+  min-height: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.biomes-ui-container-list {
+  min-height: 220px;
+  max-height: min(52vh, 30rem);
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  overflow: auto;
+  padding: 2px;
+}
+
+.biomes-ui-container-list--drag-over {
+  box-shadow: 0 0 0 2px rgba(255, 184, 68, 0.45);
+}
+
+.biomes-ui-container-row {
+  cursor: grab;
+  border: 1px solid rgba(74, 222, 255, 0.22);
+  border-radius: 6px;
+  background: rgba(7, 12, 26, 0.62);
+  color: var(--biomes-fg);
+  padding: 8px;
+  outline: none;
+}
+
+.biomes-ui-container-row:active {
+  cursor: grabbing;
+}
+
+.biomes-ui-container-row[data-focused="true"] {
+  border-color: var(--biomes-warn-amber);
+  box-shadow:
+    0 0 0 2px rgba(255, 184, 68, 0.24),
+    0 0 16px rgba(255, 184, 68, 0.2);
+}
+
+.biomes-ui-container-row__inner {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr) auto;
+  gap: 9px;
+  align-items: center;
+}
+
+.biomes-ui-container-row__icon {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--biomes-edge-cyan-soft);
+  border-radius: 6px;
+  background:
+    radial-gradient(circle at 50% 35%, rgba(232, 244, 255, 0.16), transparent 32%),
+    rgba(13, 22, 44, 0.78);
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.biomes-ui-container-row__copy {
+  min-width: 0;
+}
+
+.biomes-ui-container-row__title {
+  color: var(--biomes-fg);
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.biomes-ui-container-row__subtitle {
+  margin-top: 2px;
+  color: var(--biomes-fg-muted);
+  font-size: 11px;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.biomes-ui-container-row__actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+
+.biomes-ui-container-empty {
+  border: 1px dashed var(--biomes-edge-cyan-soft);
+  border-radius: 6px;
+  background: rgba(7, 12, 26, 0.48);
+  color: var(--biomes-fg-muted);
+  padding: 18px;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.biomes-ui-workshop-section {
+  overflow: hidden;
+}
+
+.biomes-ui-workshop-station {
+  --inventory-cell-gap: 4px;
+  --cell-width: clamp(42px, 7vmin, 58px);
+  --cell-height: var(--cell-width);
+  min-height: 220px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(84px, 1fr));
+  gap: 10px;
+  align-items: stretch;
+}
+
+.biomes-ui-workshop-station--dye {
+  grid-template-columns: minmax(92px, 0.8fr) minmax(92px, 0.8fr) minmax(150px, 1.4fr);
+}
+
+.biomes-ui-workshop-slot,
+.biomes-ui-workshop-preview {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid rgba(74, 222, 255, 0.2);
+  border-radius: 6px;
+  background: rgba(7, 12, 26, 0.44);
+  padding: 10px;
+  color: var(--biomes-fg-muted);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-align: center;
+}
+
+.biomes-ui-workshop-slot .cell {
+  flex: 0 0 auto;
+}
+
+.biomes-ui-workshop-preview {
+  position: relative;
+  overflow: hidden;
+}
+
+.biomes-ui-workshop-preview .avatar-viewer,
+.biomes-ui-workshop-preview .three-object-preview-wrapper,
+.biomes-ui-workshop-preview canvas {
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 150px;
+}
+
+.biomes-ui-workshop-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  border-top: 1px solid var(--biomes-edge-cyan-soft);
+  padding-top: 10px;
+}
+
+.biomes-ui-workshop-actions .craft-button {
+  min-width: min(100%, 13rem);
+}
+
+.biomes-ui-workshop-actions .craft-button button,
+.biomes-ui-workshop-actions .button.dialog-button {
+  border: 1px solid var(--biomes-edge-cyan);
+  border-radius: 5px;
+  background: linear-gradient(180deg, rgba(74, 222, 255, 0.22), rgba(74, 222, 255, 0.08));
+  color: var(--biomes-fg);
+  box-shadow: 0 0 14px rgba(74, 222, 255, 0.2);
+}
+
+.biomes-ui-crafting-recipes-section {
+  position: relative;
+  overflow: hidden;
+}
+
+.biomes-ui-crafting-search-row {
+  min-height: 38px;
+  margin-bottom: 10px;
+}
+
+.biomes-ui-crafting-search-row .crafting-search {
+  gap: 8px;
+  margin: 0;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.biomes-ui-crafting-search-row .search-bar {
+  min-width: min(100%, 14rem);
+}
+
+.biomes-ui-crafting-search-row input.search-name[type="text"] {
+  height: 34px;
+  border: 1px solid var(--biomes-edge-cyan-soft);
+  border-radius: 5px;
+  background: rgba(7, 12, 26, 0.72);
+  color: var(--biomes-fg);
+  font-size: 12px;
+  font-weight: 700;
+  padding: 0 46px 0 10px;
+  outline: none;
+}
+
+.biomes-ui-crafting-search-row input.search-name[type="text"]::placeholder {
+  color: var(--biomes-fg-dim);
+}
+
+.biomes-ui-crafting-search-row input.search-name[type="text"]:focus {
+  border-color: var(--biomes-edge-cyan);
+  box-shadow: 0 0 14px rgba(74, 222, 255, 0.25);
+}
+
+.biomes-ui-crafting-search-row .search-options {
+  right: 10px;
+}
+
+.biomes-ui-crafting-search-row .search-cancel {
+  color: var(--biomes-fg-muted);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.biomes-ui-crafting-search-row .segmented-control {
+  min-width: min(100%, 16rem);
+  border: 1px solid var(--biomes-edge-cyan-soft);
+  border-radius: 5px;
+  background: rgba(7, 12, 26, 0.62);
+  padding: 3px;
+}
+
+.biomes-ui-crafting-search-row .segmented-control li {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 28px;
+  border-radius: 4px;
+  color: var(--biomes-fg-muted);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.biomes-ui-crafting-search-row .segmented-control li.selected {
+  background: linear-gradient(90deg, rgba(74, 222, 255, 0.24), rgba(255, 84, 196, 0.2));
+  color: var(--biomes-fg);
+  box-shadow: 0 0 12px rgba(74, 222, 255, 0.2);
+}
+
+.biomes-ui-crafting-search-row button.dialog-button.item-filter {
+  width: auto;
+  height: 34px;
+  min-height: 34px;
+  border: 1px solid var(--biomes-edge-cyan-soft);
+  border-radius: 5px;
+  background: rgba(7, 12, 26, 0.58);
+  color: var(--biomes-fg);
+  gap: 6px;
+  padding: 0 8px;
+}
+
+.biomes-ui-crafting-search-row .item-filter img.item {
+  width: 22px;
+  height: 22px;
+}
+
+.biomes-ui-crafting-search-row .item-filter img.close {
+  width: 10px;
+  height: 10px;
+  opacity: 0.75;
+}
+
+.biomes-ui-crafting-recipes-body {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.biomes-ui-crafting-scroll {
+  max-height: min(52vh, 30rem);
+  min-height: 220px;
+  overflow: auto;
+  padding: 2px;
+}
+
+.biomes-ui-crafting-recipes-section .recipe-list {
+  width: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+.biomes-ui-crafting-recipes-section .recipe-list > label {
+  display: block;
+  margin: 12px 0 7px;
+  color: var(--biomes-fg-muted);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.16em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.biomes-ui-crafting-recipes-section .recipe-list > label:first-child {
+  margin-top: 0;
+}
+
+.biomes-ui-crafting-recipes-section .recipe-list > ul {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(46px, 1fr));
+  gap: 8px;
+  margin: 0 0 10px;
+  padding: 0;
+}
+
+.biomes-ui-crafting-recipes-section .recipe-row {
+  aspect-ratio: 1;
+  min-height: 46px;
+  border: 1px solid rgba(74, 222, 255, 0.22);
+  border-radius: 6px;
+  background:
+    radial-gradient(circle at 50% 35%, rgba(232, 244, 255, 0.12), transparent 30%),
+    rgba(7, 12, 26, 0.6);
+  box-shadow: inset 0 0 18px rgba(74, 222, 255, 0.06);
+}
+
+.biomes-ui-crafting-recipes-section .recipe-row:hover {
+  border-color: var(--biomes-edge-cyan);
+  box-shadow:
+    inset 0 0 18px rgba(74, 222, 255, 0.08),
+    0 0 14px rgba(74, 222, 255, 0.22);
+}
+
+.biomes-ui-crafting-recipes-section .recipe-row.uncraftable {
+  border-color: rgba(232, 244, 255, 0.12);
+  background: rgba(7, 12, 26, 0.38);
+  box-shadow: none;
+  opacity: 0.58;
+}
+
+.biomes-ui-crafting-recipes-section .recipe-row img {
+  padding: 5px;
+  object-fit: contain;
+}
+
+.biomes-ui-crafting-recipes-section .recipe-row .amount-overlay {
+  right: 4px;
+  bottom: 2px;
+  padding: 1px 4px;
+  border-radius: 4px;
+  background: rgba(3, 7, 18, 0.78);
+  color: var(--biomes-fg);
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.biomes-ui-crafting-recipes-section .recipe-row .crafting-progress-container {
+  left: 6px;
+  right: 6px;
+  bottom: 6px;
+  width: auto;
+  height: 6px;
+  border: 1px solid rgba(74, 222, 255, 0.28);
+  background: rgba(3, 7, 18, 0.75);
+}
+
+.biomes-ui-crafting-recipes-section .empty-recipes,
+.biomes-ui-crafting-recipes-section .filter-area {
+  position: static;
+  transform: none;
+  width: 100%;
+  min-height: 220px;
+  margin: 0;
+  border: 1px dashed var(--biomes-edge-cyan-soft);
+  border-radius: 6px;
+  background: rgba(7, 12, 26, 0.42);
+  color: var(--biomes-fg-muted);
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  text-align: center;
+}
+
+.biomes-ui-crafting-recipes-section .empty-recipes a {
+  color: var(--biomes-edge-cyan);
+  font-weight: 800;
+}
+
+.biomes-ui-crafting-recipes-section .filter-label {
+  max-width: 18rem;
+  color: var(--biomes-fg);
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.biomes-ui-crafting-recipes-section .slideover-bg {
+  position: absolute;
+  border-radius: 6px;
+  background: rgba(3, 7, 18, 0.44);
+}
+
+.biomes-ui-crafting-recipes-section .slideover.biomes-box {
+  border: 1px solid var(--biomes-edge-cyan-soft);
+  background: var(--biomes-bg-glass-strong);
+  color: var(--biomes-fg);
+  box-shadow: 0 0 24px rgba(0, 0, 0, 0.5);
+}
+
 @keyframes biomes-ui-pulse {
   0%, 100% { box-shadow: 0 0 0 0 rgba(74, 222, 255, 0.0), inset 0 0 0 0 rgba(74, 222, 255, 0.0); }
   50%      { box-shadow: 0 0 18px 4px rgba(74, 222, 255, 0.75), inset 0 0 12px 0 rgba(74, 222, 255, 0.45); }
@@ -604,8 +1171,21 @@ button.biomes-ui-card:disabled {
     --cell-width: clamp(32px, 10vw, 40px);
     justify-content: flex-start;
   }
+  .biomes-ui-inventory-stack .inventory-cells.wearables {
+    --cell-width: clamp(28px, 8vw, 34px);
+  }
+  .biomes-ui-inventory-stack .avatar-viewer-wrap { height: clamp(96px, 20vh, 138px); }
   .biomes-ui-shop-section--summary { flex-direction: column; align-items: stretch; }
   .biomes-ui-shop-slot-button { width: 64px; min-height: 86px; }
+  .biomes-ui-container-panel { width: calc(100vw - 0.8rem); max-height: calc(100dvh - 0.8rem); }
+  .biomes-ui-container-panel__body { grid-template-columns: 1fr; }
+  .biomes-ui-container-list { max-height: none; min-height: 180px; }
+  .biomes-ui-workshop-station,
+  .biomes-ui-workshop-station--dye { grid-template-columns: 1fr; }
+  .biomes-ui-crafting-scroll { max-height: none; min-height: 180px; }
+  .biomes-ui-crafting-recipes-section .recipe-list > ul {
+    grid-template-columns: repeat(auto-fill, minmax(42px, 1fr));
+  }
 }
 @media (max-width: 480px) {
   .biomes-ui-slot { width: 38px; height: 38px; }
@@ -615,6 +1195,17 @@ button.biomes-ui-card:disabled {
   .biomes-ui-shop-stepper button,
   .biomes-ui-shop-stepper output { flex: 1 1 36px; }
   .biomes-ui-shop-inventory-pane { --cell-width: 32px; }
+  .biomes-ui-inventory-stack .inventory-cells.wearables { --cell-width: 28px; }
+  .biomes-ui-inventory-stack .wearables-center { min-width: 86px; }
+  .biomes-ui-container-row__inner { grid-template-columns: 34px minmax(0, 1fr); }
+  .biomes-ui-container-row__icon { width: 34px; height: 34px; }
+  .biomes-ui-container-row__actions { grid-column: 1 / -1; justify-content: flex-start; }
+  .biomes-ui-crafting-search-row .search-bar,
+  .biomes-ui-crafting-search-row .segmented-control { min-width: 100%; }
+  .biomes-ui-crafting-recipes-section .recipe-list > ul {
+    grid-template-columns: repeat(auto-fill, minmax(38px, 1fr));
+    gap: 6px;
+  }
 }
 
 .biomes-ui-open-prompt {
@@ -624,11 +1215,12 @@ button.biomes-ui-card:disabled {
   transform: translateY(-50%);
   z-index: 10020;
   display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 13px;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 7px;
+  padding: 9px 10px;
   border: 1px solid rgba(105, 231, 255, 0.35);
-  border-radius: 16px;
+  border-radius: 8px;
   background:
     radial-gradient(circle at 20% 20%, rgba(105, 231, 255, 0.22), transparent 38%),
     linear-gradient(135deg, rgba(6, 12, 28, 0.88), rgba(18, 23, 45, 0.76));
@@ -639,6 +1231,16 @@ button.biomes-ui-card:disabled {
   pointer-events: none;
   backdrop-filter: blur(12px);
   animation: biomes-ui-open-prompt-breathe 1.8s ease-in-out infinite;
+}
+
+.biomes-ui-open-prompt__row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.biomes-ui-open-prompt__row--secondary {
+  opacity: 0.92;
 }
 
 .biomes-ui-open-prompt__key {
@@ -664,7 +1266,7 @@ button.biomes-ui-card:disabled {
 .biomes-ui-open-prompt__label {
   font-size: 12px;
   font-weight: 800;
-  letter-spacing: 0.08em;
+  letter-spacing: 0;
   text-transform: uppercase;
 }
 
@@ -672,6 +1274,44 @@ button.biomes-ui-card:disabled {
   margin-top: 3px;
   font-size: 11px;
   color: rgba(180, 225, 255, 0.8);
+}
+
+.biomes-ui-current-objective-hud {
+  position: fixed;
+  right: 18px;
+  bottom: 112px;
+  z-index: 1092;
+  width: min(330px, calc(100vw - 36px));
+  box-sizing: border-box;
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 221, 130, 0.48);
+  border-radius: 8px;
+  background:
+    radial-gradient(circle at 12% 16%, rgba(255, 221, 130, 0.18), transparent 36%),
+    linear-gradient(135deg, rgba(7, 12, 26, 0.9), rgba(12, 20, 39, 0.82));
+  box-shadow:
+    0 0 22px rgba(255, 221, 130, 0.14),
+    inset 0 0 18px rgba(105, 231, 255, 0.06);
+  color: rgba(238, 250, 255, 0.98);
+  pointer-events: none;
+  backdrop-filter: blur(12px);
+}
+
+.biomes-ui-current-objective-hud__label {
+  margin-bottom: 5px;
+  color: #ffe28a;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.biomes-ui-current-objective-hud__text {
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.28;
+  text-wrap: balance;
+  overflow-wrap: anywhere;
 }
 
 @keyframes biomes-ui-open-prompt-breathe {
@@ -691,6 +1331,12 @@ button.biomes-ui-card:disabled {
     top: auto;
     bottom: 98px;
     transform: none;
+  }
+
+  .biomes-ui-current-objective-hud {
+    right: 10px;
+    bottom: 166px;
+    width: min(320px, calc(100vw - 20px));
   }
 
   @keyframes biomes-ui-open-prompt-breathe {

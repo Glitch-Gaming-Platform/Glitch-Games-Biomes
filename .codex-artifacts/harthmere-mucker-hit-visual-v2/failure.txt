@@ -1,0 +1,3 @@
+Error: Timed out waiting for Harthmere runtime: {"url":"http://127.0.0.1:3000/at/VisualCombatDiagnostics","title":"Biomes","loading":true,"devOverlay":false,"frames":2149,"canvas":{"x":0,"y":0,"width":1440,"height":900,"area":1296000},"hasCombatDebug":true,"actorCount":0,"runtimePlacements":0,"diagnosticActors":0}
+    at waitForRuntimeReady (/Users/devindixon/Development/biomes-game/scripts/harthmere/test-harthmere-left-mouse-mucker-hit-visual-v2.cjs:150:9)
+    at async main (/Users/devindixon/Development/biomes-game/scripts/harthmere/test-harthmere-left-mouse-mucker-hit-visual-v2.cjs:319:20)

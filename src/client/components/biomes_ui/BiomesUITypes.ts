@@ -34,6 +34,8 @@ export const TAB_ORDER: TabKey[] = [
 export const BIOMES_UI_OPEN_MENU_TAB: TabKey = "daily";
 export const BIOMES_UI_OPEN_MENU_SHORTCUT = "R";
 export const BIOMES_UI_OPEN_MENU_KEY_CODE = "KeyR";
+export const BIOMES_UI_QUESTS_SHORTCUT = "J";
+export const BIOMES_UI_QUESTS_KEY_CODE = "KeyJ";
 
 export interface TabDescriptor {
   key: TabKey;

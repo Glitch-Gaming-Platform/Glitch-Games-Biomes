@@ -1,3 +1,4 @@
+import { buildAvatarMutationEventsV1 } from "@/client/components/biomes_ui/avatarEditorMutations";
 import { createLogicTable } from "@/server/logic/ecs";
 import { EventBatchContext } from "@/server/logic/events/context/batch_context";
 import { LogicVersionedEntitySource } from "@/server/logic/events/context/versioned_entity_source";
@@ -6,6 +7,7 @@ import type { WorkByHandler } from "@/server/logic/events/grouping";
 import { newPlayer } from "@/server/logic/utils/players";
 import { IdPoolGenerator, IdPoolLoan } from "@/server/shared/ids/pool";
 import { TestIdGenerator } from "@/server/shared/ids/test_helpers";
+import { bootstrapGlobalConfig } from "@/server/shared/config";
 import { loadVoxeloo } from "@/server/shared/voxeloo";
 import { BikkieRuntime } from "@/shared/bikkie/active";
 import { BikkieIds } from "@/shared/bikkie/ids";
@@ -31,6 +33,8 @@ describe("Appearance events E2E", () => {
 
   let voxeloo!: VoxelooModule;
   before(async () => {
+    process.env.MOCHA_TEST = "1";
+    bootstrapGlobalConfig();
     voxeloo = await loadVoxeloo();
     // The test bikkie tray doesn't ship hair wearables, so register one the
     // HairTransplantEvent handler will accept (it requires wearAsHair).
@@ -108,6 +112,58 @@ describe("Appearance events E2E", () => {
     assert.deepEqual(
       playerChange!.entity.appearance_component?.appearance,
       appearance
+    );
+  });
+
+  it("BiomesUI avatar editor events update the backend mesh inputs", async () => {
+    const table = tableWithPlayer();
+    const appearance: Appearance = {
+      skin_color_id: "skin_color_7",
+      eye_color_id: "eye_color_4",
+      hair_color_id: "hair_color_10",
+      head_id: BikkieIds.androgenous,
+    };
+    const { appearanceEvent, hairEvent } = buildAvatarMutationEventsV1(
+      PLAYER_ID,
+      { appearance, hairId: HAIR_ID }
+    );
+
+    const appearanceProposals = await processOne(
+      table,
+      "appearanceChangeEvent",
+      appearanceChangeEventHandler,
+      [appearanceEvent]
+    );
+    assert.equal(appearanceProposals.length, 1);
+    table.apply(
+      appearanceProposals[0].transaction.changes!.map((c) => ({
+        ...c,
+        tick: 2,
+      }))
+    );
+
+    const hairProposals = await processOne(
+      table,
+      "hairTransplantEvent",
+      hairTransplantEventHandler,
+      [hairEvent]
+    );
+    assert.equal(hairProposals.length, 1);
+
+    const appearanceChange = (
+      appearanceProposals[0].transaction.changes as ProposedUpdate[]
+    ).find((c) => c.entity.id === PLAYER_ID);
+    assert.deepEqual(
+      appearanceChange?.entity.appearance_component?.appearance,
+      appearance
+    );
+
+    const hairChange = (
+      hairProposals[0].transaction.changes as ProposedUpdate[]
+    ).find((c) => c.entity.id === PLAYER_ID);
+    assert.equal(
+      hairChange?.entity.wearing?.items?.get(BikkieIds.hair)?.id,
+      HAIR_ID
     );
   });
 

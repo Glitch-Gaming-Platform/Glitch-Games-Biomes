@@ -12716,22 +12716,25 @@ private harthmerePlayerSword?: THREE.Group;
 
     for (const instance of this.placementInstances) {
       const tier = instance.lodTier;
+      const isRuntimeLife = isHarthmereRuntimeLifePlacement(instance.placement);
       byTier[tier] ??= { visible: 0, hidden: 0 };
       const groupedShow = instance.structuralGroupKey
         ? structuralVisibility.get(instance.structuralGroupKey)
         : undefined;
-      const lodX = isHarthmereRuntimeLifePlacement(instance.placement)
+      const lodX = isRuntimeLife
         ? instance.object.position.x
         : instance.placement.at[0];
-      const lodZ = isHarthmereRuntimeLifePlacement(instance.placement)
+      const lodZ = isRuntimeLife
         ? instance.object.position.z
         : instance.placement.at[2];
-      const show = !origin
-        ? true
-        : groupedShow ?? shouldShowHarthmerePlacementAtDistanceSq(
-            tier,
-            distanceSq2d(origin[0], origin[1], lodX, lodZ),
-          );
+      const show =
+        isRuntimeLife || !origin
+          ? true
+          : groupedShow ??
+            shouldShowHarthmerePlacementAtDistanceSq(
+              tier,
+              distanceSq2d(origin[0], origin[1], lodX, lodZ),
+            );
       instance.object.visible = show;
       if (show) {
         visible += 1;

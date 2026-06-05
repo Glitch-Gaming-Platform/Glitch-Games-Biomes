@@ -368,6 +368,11 @@ export function sharedQuestTrackableQuestsForBiomesUIV1(
       ? `shared_quest_marker:${quest.sharedQuestId}`
       : quest.firstMarkerId,
     reward: quest.reward,
+    kind: quest.questId,
+    kindLabel: "Shared Quest",
+    objective: quest.objectiveText,
+    objectives: [quest.objectiveText],
+    description: quest.objectiveText,
   }));
 }
 
@@ -400,7 +405,7 @@ export function questInviteOptionsFromTrackableQuestsV1(
         title,
         area: text(quest?.area, "Quest"),
         objectiveText: text(
-          quest?.objectiveText ?? quest?.description,
+          quest?.objectiveText ?? quest?.objective ?? quest?.description,
           `Join ${title} together.`
         ),
         reward: maybeText(quest?.reward),

@@ -16,17 +16,18 @@ function check(label, ok) {
 check('helpers v189 native attack bridge constant exists', helpers.includes('HARTHMERE_NATIVE_NPC_ATTACK_DAMAGE_BRIDGE_V189'));
 check('helpers v189 native attack contact event name exists', helpers.includes('biomes:harthmere-native-npc-attack-contact-v189'));
 check('helpers emits native NPC attack contact from handleAttackInteraction', helpers.includes('emitHarthmereNativeNpcAttackContactV189({ attackedEntities, tool })'));
-check('helpers only bridges entities with npc_metadata', helpers.includes('!record.npc_metadata || !record.position'));
+check('helpers bridges NPC metadata and health-backed live creature entities', helpers.includes('hasNpcMetadata') && helpers.includes('isAttackableLiveEntity') && helpers.includes('Boolean(record.health)'));
 check('helpers dispatches browser CustomEvent for confirmed native NPC hits', helpers.includes('window.dispatchEvent(') && helpers.includes('HARTHMERE_NATIVE_NPC_ATTACK_CONTACT_EVENT_V189'));
 check('helpers writes native contact debug global', helpers.includes('__harthmereNativeNpcAttackContactDebugV189'));
+check('helpers records latest native contact timestamp for mouse fallback dedupe', helpers.includes('__harthmereNativeNpcAttackContactLastAtV189'));
 
 check('combat v189 native damage bridge version constant exists', combat.includes('HARTHMERE_NATIVE_NPC_ATTACK_DAMAGE_BRIDGE_V189'));
 check('combat v189 native contact event constant exists', combat.includes('HARTHMERE_NATIVE_NPC_ATTACK_CONTACT_EVENT_V189'));
 check('combat installs native NPC attack damage bridge at module load', combat.includes('installHarthmereNativeNpcAttackDamageBridgeV189();'));
-check('combat listens for native NPC attack contact event', combat.includes('window.addEventListener(HARTHMERE_NATIVE_NPC_ATTACK_CONTACT_EVENT_V189, handler)'));
-check('combat removes native NPC attack bridge listener on cleanup', combat.includes('window.removeEventListener(HARTHMERE_NATIVE_NPC_ATTACK_CONTACT_EVENT_V189, handler)'));
+check('combat listens for native NPC attack contact event', /window\.addEventListener\(\s*HARTHMERE_NATIVE_NPC_ATTACK_CONTACT_EVENT_V189,\s*handler\s*\)/.test(combat));
+check('combat removes native NPC attack bridge listener on cleanup', /window\.removeEventListener\(\s*HARTHMERE_NATIVE_NPC_ATTACK_CONTACT_EVENT_V189,\s*handler\s*\)/.test(combat));
 check('combat resolves raw ECS NPC id from native hit detail', combat.includes('Number(hit.id ?? hit.entityId ?? hit.offset)'));
-check('combat validates target is live and attackable before local damage', combat.includes('!target.attackable || target.hp <= 0 || target.combatState === "dead"'));
+check('combat validates target is live and attackable before local damage', /!target\.attackable\s*\|\|\s*target\.hp <= 0\s*\|\|\s*target\.combatState === "dead"/.test(combat));
 check('combat calls performHarthmereCombatAttack from native bridge', combat.includes('performHarthmereCombatAttack(offset, ability, {'));
 check('combat marks native contact as proven', combat.includes('contactProven: true'));
 check('combat tags native contact source', combat.includes('contactSource: "native_attack_interaction"'));

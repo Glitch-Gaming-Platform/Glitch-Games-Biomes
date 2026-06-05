@@ -4,13 +4,45 @@ import {
   type HarthmereJobsBoardSnapshotV1,
   type HarthmereJobsBoardTodoV1,
 } from "../../harthmere_jobs_board/jobsBoardLiveAdapter";
-import { harthmereJobsBoardQuestMarkerPositionForTodoV1 } from "@/shared/harthmere/jobs_board_quest_marker_positions_v1";
+import {
+  harthmereJobsBoardQuestMarkerPositionForIdV1,
+  harthmereJobsBoardQuestMarkerPositionForTodoV1,
+} from "@/shared/harthmere/jobs_board_quest_marker_positions_v1";
+import { harthmereJobToolSourceGuidanceV151 } from "@/shared/harthmere/harthmere_job_objective_v151";
 import { formatHarthmereJobTimeRemainingV151 } from "@/shared/harthmere/mmo_jobs_board_authority_v1";
 import type { Vec3 } from "@/shared/math/types";
 import type { MapTrackableQuest } from "../tabs/MapQuestsTab";
 
+// HARTHMERE_JOB_TOOL_OWNED_FOR_MAP_V151: whether the player OWNS the repair /
+// cleanup tools (backpack or equipped), passed in by the map surfaces. A job that
+// needs a tool the player does NOT own points them at the business that sells it;
+// once owned, the buy pin drops and the marker returns to the job.
+export interface BiomesUIJobsBoardToolOwnedStateV1 {
+  repairToolOwned?: boolean;
+  cleanupToolOwned?: boolean;
+}
+
+function toolOwnedForActionV1(
+  action: string,
+  toolOwned: BiomesUIJobsBoardToolOwnedStateV1
+): boolean | undefined {
+  if (action === "repair") {
+    return toolOwned.repairToolOwned;
+  }
+  if (action === "cleanup") {
+    return toolOwned.cleanupToolOwned;
+  }
+  return undefined;
+}
+
 export const BIOMES_UI_JOBS_BOARD_ACCEPTED_JOB_MARKER_SOURCE_V1 =
   "jobs_board_accepted_job" as const;
+
+export const BIOMES_UI_JOBS_BOARD_TOOL_SOURCE_MARKER_SOURCE_V1 =
+  "jobs_board_tool_source" as const;
+
+export const JOBS_BOARD_TOOL_SOURCE_MARKER_ID_PREFIX_V1 =
+  "jobs_board_tool_source:";
 
 export interface BiomesUIJobsBoardAcceptedJobLandmarkV1 {
   id: string;
@@ -22,7 +54,9 @@ export interface BiomesUIJobsBoardAcceptedJobLandmarkV1 {
   visibleOnHudMap: true;
   active: true;
   description: string;
-  source: typeof BIOMES_UI_JOBS_BOARD_ACCEPTED_JOB_MARKER_SOURCE_V1;
+  source:
+    | typeof BIOMES_UI_JOBS_BOARD_ACCEPTED_JOB_MARKER_SOURCE_V1
+    | typeof BIOMES_UI_JOBS_BOARD_TOOL_SOURCE_MARKER_SOURCE_V1;
   jobsBoardTodoId: string;
   jobsBoardJobId: string;
   mapMarkerId: string;
@@ -187,9 +221,69 @@ export function jobsBoardAcceptedJobLandmarksForBiomesUIV1(
   });
 }
 
+// HARTHMERE_JOB_TOOL_SOURCE_LANDMARK_V151:
+// For every ACTIVE accepted job that needs a tool the player doesn't have
+// equipped (repair / cleanup), emit a vendor landmark pointing at the shop that
+// sells that tool. This is what makes "the quest tells you WHERE to get the tool"
+// show up as a pin on every map surface that renders accepted-job landmarks
+// (BiomesUI world map, BiomesUI HUD minimap). The vendor is a real on-map business
+// owner, so its position resolves through the shared marker registry.
+export function jobsBoardToolSourceLandmarksForBiomesUIV1(
+  raw: unknown,
+  toolOwned: BiomesUIJobsBoardToolOwnedStateV1 = {}
+): BiomesUIJobsBoardAcceptedJobLandmarkV1[] {
+  const snapshot = normalizeJobsBoardSnapshotForBiomesUIV1(raw);
+  if (!snapshot) return [];
+  const seenTodoIds = new Set<string>();
+
+  return snapshot.myTodos.flatMap((todo) => {
+    if (todo.status !== "active" || seenTodoIds.has(todo.todoId)) {
+      return [];
+    }
+    seenTodoIds.add(todo.todoId);
+    const action =
+      todo.kind === "repair" ? "repair" : todo.kind === "cleanup" ? "cleanup" : undefined;
+    if (!action) return [];
+    // Only guide to the shop when we KNOW the player does NOT own the tool, so a
+    // player who already has it never sees a spurious "buy it" pin (they're sent
+    // to the job instead).
+    if (toolOwnedForActionV1(action, toolOwned) !== false) {
+      return [];
+    }
+    const guidance = harthmereJobToolSourceGuidanceV151({
+      kind: todo.kind,
+      toolOwned: false,
+    });
+    if (!guidance) return [];
+    const vendor = harthmereJobsBoardQuestMarkerPositionForIdV1(
+      guidance.vendorMarkerId
+    );
+    if (!vendor) return [];
+    return [
+      {
+        id: `${JOBS_BOARD_TOOL_SOURCE_MARKER_ID_PREFIX_V1}${todo.todoId}`,
+        label: `Buy ${guidance.toolName} — ${guidance.vendorName}`,
+        position: [...vendor.position] as Vec3,
+        kind: "objective" as const,
+        area: vendor.label,
+        visibleOnWorldMap: true as const,
+        visibleOnHudMap: true as const,
+        active: true as const,
+        description: guidance.hint,
+        source: BIOMES_UI_JOBS_BOARD_TOOL_SOURCE_MARKER_SOURCE_V1,
+        jobsBoardTodoId: todo.todoId,
+        jobsBoardJobId: todo.jobId,
+        mapMarkerId: guidance.vendorMarkerId,
+        targetId: guidance.vendorMarkerId,
+      },
+    ];
+  });
+}
+
 export function jobsBoardTrackableQuestsForBiomesUIV1(
   raw: unknown,
-  nowMs: number = Date.now()
+  nowMs: number = Date.now(),
+  toolOwned: BiomesUIJobsBoardToolOwnedStateV1 = {}
 ): MapTrackableQuest[] {
   const snapshot = normalizeJobsBoardSnapshotForBiomesUIV1(raw);
   if (!snapshot) return [];
@@ -204,6 +298,26 @@ export function jobsBoardTrackableQuestsForBiomesUIV1(
     seenTodoIds.add(todo.todoId);
     const job = jobsById.get(todo.jobId);
     const rewardGold = Number(job?.rewardGold ?? 0);
+    const objective =
+      todo.todoText ||
+      job?.description ||
+      "Follow the job marker and complete the accepted board job.";
+    // Full-detail fields for the click-to-review quest panel. The tool-source
+    // callout only shows for an active job whose tool the player does NOT own.
+    const guidance =
+      status === "active"
+        ? harthmereJobToolSourceGuidanceV151({
+            kind: todo.kind,
+            toolOwned: toolOwnedForActionV1(
+              todo.kind === "repair"
+                ? "repair"
+                : todo.kind === "cleanup"
+                ? "cleanup"
+                : "",
+              toolOwned
+            ),
+          })
+        : undefined;
     return [
       {
         questId: jobsBoardTodoQuestIdV1(todo),
@@ -221,6 +335,20 @@ export function jobsBoardTrackableQuestsForBiomesUIV1(
           status === "active"
             ? formatHarthmereJobTimeRemainingV151(todo.dueAtMs, nowMs)
             : undefined,
+        kind: todo.kind,
+        kindLabel: jobsBoardKindLabelV1(todo.kind),
+        objective,
+        objectives: [objective],
+        description: job?.description || undefined,
+        toolSource: guidance
+          ? {
+              action: guidance.action,
+              toolName: guidance.toolName,
+              vendorName: guidance.vendorName,
+              vendorMarkerId: guidance.vendorMarkerId,
+              hint: guidance.hint,
+            }
+          : undefined,
       },
     ];
   });

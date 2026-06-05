@@ -21,6 +21,10 @@ import {
   ensureHarthmereProductionCraftingCatalogueV1,
 } from "./mmo_crafting_catalogue_v1";
 import { getHarthmereCraftingStationV1 } from "./mmo_inventory_authority_v1";
+import {
+  HARTHMERE_NEW_PLACEABLE_DECOR_SPECS_V1,
+  type HarthmereDecorKindV1,
+} from "./mmo_placeable_decor_catalogue_v1";
 
 export const HARTHMERE_HOME_DECORATION_AUTHORITY_VERSION_V1 =
   "harthmere-home-decoration-authority-v1" as const;
@@ -347,10 +351,46 @@ function createStationDecorationDefinitionsV1(): HarthmereHomeDecorationDefiniti
   });
 }
 
+// HARTHMERE_PLACEABLE_DECOR_V1: the craftable/buyable furniture & decor from the
+// placeable-decor catalogue are also placeable on owned property. Their decor
+// kind already mirrors HarthmereHomeDecorationKindV1, so the mapping is direct;
+// placement tags are derived from the kind.
+const PLACEABLE_DECOR_TAGS_BY_KIND_V1: Record<HarthmereDecorKindV1, string[]> = {
+  crafting_station: ["interior", "workshop", "crafting"],
+  storage: ["interior", "storage"],
+  utility: ["utility", "powered"],
+  lighting: ["interior", "light"],
+  comfort: ["interior", "comfort"],
+  garden: ["exterior", "garden"],
+  business_counter: ["interior", "business"],
+};
+
+function createPlaceableDecorDefinitionsV1(): HarthmereHomeDecorationDefinitionV1[] {
+  return HARTHMERE_NEW_PLACEABLE_DECOR_SPECS_V1.map((spec) =>
+    withGuidePlacementV1({
+      itemId: spec.itemId,
+      displayName: spec.displayName,
+      kind: spec.decorationKind,
+      allowedPropertyUses:
+        spec.allowedPropertyUses as readonly BuildingSystemPlotUseV1[],
+      footprint: {
+        width: spec.footprint.width,
+        depth: spec.footprint.depth,
+        height: spec.footprint.height,
+      },
+      functionalEffects:
+        (spec.functionalEffects as HarthmereHomeDecorationFunctionalEffectsV1) ??
+        {},
+      placementTags: PLACEABLE_DECOR_TAGS_BY_KIND_V1[spec.decorationKind],
+    })
+  );
+}
+
 export function listHarthmereHomeDecorationDefinitionsV1(): HarthmereHomeDecorationDefinitionV1[] {
   return [
     ...createStationDecorationDefinitionsV1(),
     ...BASE_DECORATION_DEFS_V1.map(withGuidePlacementV1),
+    ...createPlaceableDecorDefinitionsV1(),
   ];
 }
 

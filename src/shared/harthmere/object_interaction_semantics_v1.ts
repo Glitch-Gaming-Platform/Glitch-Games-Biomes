@@ -33,7 +33,7 @@ export interface HarthmereObjectInteractionV1 {
 }
 
 const HARTHMERE_NON_LIVING_OBJECT_RE_V1 =
-  /\b(crates?|chests?|box(?:es)?|barrels?|containers?|caches|satchels?|mailbags?|toolbags?|bags?|baskets?|bins?|lockers?|wardrobes?|cabinets?|shelves|shelf|workbenches|workbench|anvils?|boards?|signs?|posts?|markers?|ledgers?|books?|notes?|carts?|wagons?|lockboxes|strongboxes|stashes|footlockers?|stakes?|stones?|dumm(?:y|ies)|rings?|ropes?|firefl(?:y|ies)|flags?|pots?|fences?|boundar(?:y|ies)|tables?|desks?|mirrors?|moss|towers?|platforms?|offices?|chapels?|materials?|berries|patch(?:es)?|plots?|stretch|spots?|overlooks?|corners?|ovens?|beds?|stands?|cookpots?|campfires?|firepits?|pails?|mailboxes?|consoles?|terminals?|grates?|pillars?|candles?|altars?|shrines?|statues?|banners?|lamps?|braziers?|fountains?|wells?|gates?|doors?)\b/i;
+  /\b(crates?|chests?|box(?:es)?|barrels?|containers?|caches|satchels?|mailbags?|toolbags?|bags?|baskets?|bins?|lockers?|wardrobes?|cabinets?|shelves|shelf|workbenches|workbench|anvils?|boards?|signs?|posts?|markers?|ledgers?|books?|notes?|carts?|wagons?|lockboxes|strongboxes|stashes|footlockers?|stakes?|stones?|dumm(?:y|ies)|rings?|ropes?|firefl(?:y|ies)|flags?|pots?|cook\s+pots?|cooking\s+pots?|soup\s+pots?|stew\s+pots?|kettles?|fences?|boundar(?:y|ies)|tables?|desks?|mirrors?|moss|towers?|platforms?|offices?|chapels?|materials?|berries|patch(?:es)?|plots?|branches?|softwood|harvests?|remains?|carcasses?|sounders?|stretch|spots?|overlooks?|corners?|ovens?|beds?|stands?|cookpots?|campfires?|camp\s+fires?|firepits?|fire\s+pits?|fire\s+rings?|hearths?|cooking\s+fires?|pails?|mailboxes?|consoles?|terminals?|grates?|pillars?|candles?|altars?|shrines?|statues?|banners?|lamps?|braziers?|fountains?|wells?|gates?|doors?)\b/i;
 
 const HARTHMERE_CONTAINER_OBJECT_RE_V1 =
   /\b(crates?|chests?|box(?:es)?|barrels?|containers?|caches|satchels?|mailbags?|toolbags?|bags?|baskets?|bins?|lockers?|wardrobes?|cabinets?|lockboxes|strongboxes|stashes|footlockers?)\b/i;
@@ -47,12 +47,12 @@ const HARTHMERE_JOBS_BOARD_OBJECT_RE_V1 = /\bjobs?\s+boards?\b/i;
 const HARTHMERE_READABLE_OBJECT_RE_V1 =
   /\b(boards?|signs?|posts?|markers?|ledgers?|books?|notes?|mailboxes?|consoles?|terminals?)\b/i;
 const HARTHMERE_CRAFT_STATION_OBJECT_RE_V1 =
-  /\b(workbenches|workbench|anvils?)\b/i;
+  /\b(workbenches|workbench|anvils?|craft\s+tables?|crafting\s+tables?)\b/i;
 const HARTHMERE_COOKING_STATION_OBJECT_RE_V1 =
-  /\b(ovens?|cookpots?|campfires?|firepits?)\b/i;
+  /\b(ovens?|cookpots?|cook\s+pots?|cooking\s+pots?|soup\s+pots?|stew\s+pots?|kitchen\s+pots?|kettles?|campfires?|camp\s+fires?|firepits?|fire\s+pits?|fire\s+rings?|hearths?|cooking\s+fires?|pots?)\b/i;
 const HARTHMERE_USE_OBJECT_RE_V1 = /\b(pots?|tables?|desks?)\b/i;
 const HARTHMERE_RESOURCE_OBJECT_RE_V1 =
-  /\b(berries|berry|muckwad|materials?|patch(?:es)?)\b/i;
+  /\b(berries|berry|muckwad|materials?|patch(?:es)?|branches?|softwood|harvests?|remains?|carcasses?|sounders?)\b/i;
 const HARTHMERE_REPAIR_OBJECT_RE_V1 = /\b(repair|broken|scratch|fences?)\b/i;
 const HARTHMERE_PRACTICE_OBJECT_RE_V1 =
   /\b(practice|dumm(?:y|ies)|rings?|ropes?|firefl(?:y|ies)|flags?|stakes?|stretch|spots?)\b/i;
@@ -67,7 +67,9 @@ function objectInteractionV1(
   toastVerb: string,
   stationKind?: HarthmereCookStationKindV1
 ): HarthmereObjectInteractionV1 {
-  return stationKind ? { kind, title, toastVerb, stationKind } : { kind, title, toastVerb };
+  return stationKind
+    ? { kind, title, toastVerb, stationKind }
+    : { kind, title, toastVerb };
 }
 
 /** Resolves which physical cooking station a label/description represents. */
@@ -75,7 +77,13 @@ export function harthmereCookStationKindForTextV1(
   text: string
 ): HarthmereCookStationKindV1 {
   if (/\bovens?\b/i.test(text)) return "oven";
-  if (/\bcookpots?\b/i.test(text)) return "cookpot";
+  if (
+    /\b(cookpots?|cook\s+pots?|cooking\s+pots?|soup\s+pots?|stew\s+pots?|kitchen\s+pots?|kettles?|pots?)\b/i.test(
+      text
+    )
+  ) {
+    return "cookpot";
+  }
   return "campfire";
 }
 
@@ -106,6 +114,18 @@ const HARTHMERE_AUTHORED_OBJECT_INTERACTIONS_V1: ReadonlyMap<
       "Cook",
       "Opened cooking at",
       "cookpot"
+    ),
+    "camp fire": objectInteractionV1(
+      "cook",
+      "Cook",
+      "Opened cooking at",
+      "campfire"
+    ),
+    campfire: objectInteractionV1(
+      "cook",
+      "Cook",
+      "Opened cooking at",
+      "campfire"
     ),
     "charter trade desk": objectInteractionV1("use", "Use Desk", "Used"),
     "chat practice board": objectInteractionV1("read", "Read", "Read"),
@@ -172,6 +192,12 @@ const HARTHMERE_AUTHORED_OBJECT_INTERACTIONS_V1: ReadonlyMap<
       "Opened cooking at",
       "oven"
     ),
+    "cooking pot": objectInteractionV1(
+      "cook",
+      "Cook",
+      "Opened cooking at",
+      "cookpot"
+    ),
     "harthmere chapel stone": objectInteractionV1(
       "inspect",
       "Inspect",
@@ -235,6 +261,11 @@ const HARTHMERE_AUTHORED_OBJECT_INTERACTIONS_V1: ReadonlyMap<
       "Open Container",
       "Opened"
     ),
+    "orchard softwood branches": objectInteractionV1(
+      "gather",
+      "Gather",
+      "Gathered"
+    ),
     "painted route flags": objectInteractionV1(
       "practice",
       "Practice",
@@ -281,6 +312,7 @@ const HARTHMERE_AUTHORED_OBJECT_INTERACTIONS_V1: ReadonlyMap<
       "Open Container",
       "Opened"
     ),
+    "boar sounder harvest": objectInteractionV1("gather", "Gather", "Gathered"),
     "safe-zone boundary stones": objectInteractionV1(
       "inspect",
       "Inspect",
@@ -325,10 +357,16 @@ export function isHarthmereNonLivingObjectLabelV1(input: {
   if (!text) {
     return false;
   }
-  return (
-    HARTHMERE_NON_LIVING_OBJECT_RE_V1.test(text) &&
-    !HARTHMERE_LIVING_OBJECT_EXEMPTION_RE_V1.test(text)
-  );
+  if (!HARTHMERE_NON_LIVING_OBJECT_RE_V1.test(text)) {
+    return false;
+  }
+  if (
+    HARTHMERE_CONTAINER_OBJECT_RE_V1.test(text) ||
+    HARTHMERE_COOKING_STATION_OBJECT_RE_V1.test(text)
+  ) {
+    return true;
+  }
+  return !HARTHMERE_LIVING_OBJECT_EXEMPTION_RE_V1.test(text);
 }
 
 export function isHarthmereContainerObjectLabelV1(input: {
@@ -339,13 +377,13 @@ export function isHarthmereContainerObjectLabelV1(input: {
   if (!text) {
     return false;
   }
-  return (
-    HARTHMERE_CONTAINER_OBJECT_RE_V1.test(text) &&
-    !HARTHMERE_LIVING_OBJECT_EXEMPTION_RE_V1.test(text)
-  );
+  return HARTHMERE_CONTAINER_OBJECT_RE_V1.test(text);
 }
 
 function stationTitleForObjectTextV1(text: string) {
+  if (/\b(craft\s+tables?|crafting\s+tables?)\b/i.test(text)) {
+    return "Craft";
+  }
   if (/\bworkbenches|workbench\b/i.test(text)) {
     return "Craft";
   }
@@ -355,10 +393,18 @@ function stationTitleForObjectTextV1(text: string) {
   if (/\bovens?\b/i.test(text)) {
     return "Cook";
   }
-  if (/\bcookpots?\b/i.test(text)) {
+  if (
+    /\b(cookpots?|cook\s+pots?|cooking\s+pots?|soup\s+pots?|stew\s+pots?|kitchen\s+pots?|kettles?|pots?)\b/i.test(
+      text
+    )
+  ) {
     return "Cook";
   }
-  if (/\b(campfires?|firepits?)\b/i.test(text)) {
+  if (
+    /\b(campfires?|camp\s+fires?|firepits?|fire\s+pits?|fire\s+rings?|hearths?|cooking\s+fires?)\b/i.test(
+      text
+    )
+  ) {
     return "Cook";
   }
   if (/\bpots?\b/i.test(text)) {

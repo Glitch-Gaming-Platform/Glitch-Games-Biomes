@@ -85,6 +85,11 @@ describe("BiomesUI quest invite adapter", () => {
         status: "active",
         firstMarkerId: "shared_quest_marker:shared_accepted",
         reward: "120 XP",
+        kind: "muckwad_patch",
+        kindLabel: "Shared Quest",
+        objective: "Clear the threat together.",
+        objectives: ["Clear the threat together."],
+        description: "Clear the threat together.",
       },
     ]);
 

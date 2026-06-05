@@ -55,6 +55,10 @@ export interface HarthmereJobProgressV151 {
   satisfiedOnAccept?: boolean;
   // Whether the kind-required tool (repair/cleanup) is currently equipped.
   toolEquipped?: boolean;
+  // Whether the player OWNS the kind-required tool (in inventory, equipped or not).
+  // The buy-redirect is keyed on this: only a player who does NOT own the tool is
+  // sent to the shop; once owned, the marker points back at the job.
+  toolOwned?: boolean;
 }
 
 export interface HarthmereJobMarkerPlanV151 {
@@ -109,6 +113,59 @@ export function harthmereToolSourceForActionV151(
   action: string | undefined
 ): HarthmereToolSourceV151 | undefined {
   return action ? HARTHMERE_TOOL_SOURCES_V151[action] : undefined;
+}
+
+// HARTHMERE_JOB_REQUIRED_TOOL_V151: which equipped tool action a job KIND demands
+// before its field work can be done. Repair jobs need a repair tool; cleanup jobs
+// need a cleanup tool. Every other kind needs none. Pure so both the map adapter
+// and the quest detail can agree on "does this job need a tool the player lacks".
+export function harthmereJobRequiredToolActionV151(
+  kind: string | undefined
+): string | undefined {
+  if (kind === "repair") {
+    return "repair";
+  }
+  if (kind === "cleanup") {
+    return "cleanup";
+  }
+  return undefined;
+}
+
+export interface HarthmereJobToolSourceGuidanceV151 extends HarthmereToolSourceV151 {
+  // A complete, user-facing sentence telling the player WHERE to buy the tool.
+  hint: string;
+}
+
+// The single resolver for "this job needs a tool the player does NOT OWN — here is
+// the business that sells it". Returns undefined when the kind needs no tool, when
+// the player already OWNS the tool (they just need to equip it — no shopping trip),
+// or when no vendor is registered. The redirect is keyed on OWNERSHIP, not on
+// whether the tool is equipped: a player who already has the tool is sent to the
+// job, never to a shop.
+export function harthmereJobToolSourceGuidanceV151(input: {
+  kind?: string;
+  toolOwned?: boolean;
+}): HarthmereJobToolSourceGuidanceV151 | undefined {
+  const action = harthmereJobRequiredToolActionV151(input.kind);
+  if (!action) {
+    return undefined;
+  }
+  if (input.toolOwned !== false) {
+    // Owns it (or ownership unknown) -> no buy redirect.
+    return undefined;
+  }
+  const source = harthmereToolSourceForActionV151(action);
+  if (!source) {
+    return undefined;
+  }
+  const what =
+    action === "cleanup"
+      ? `${source.toolName} (it turns muck back into dirt)`
+      : source.toolName;
+  return {
+    ...source,
+    hint: `You don't own a ${what} for this job. Buy one from ${source.vendorName} at the marked shop, then return to the job.`,
+  };
 }
 
 function firstItemRequirementV151(
@@ -245,19 +302,20 @@ export function harthmereJobMarkerPlanV151(input: {
         { requiredCount: required, currentCount: cleaned }
       );
     }
-    if (progress.toolEquipped === false) {
+    // Does NOT own the tool -> redirect to the shop that sells it. Once owned, the
+    // marker flips back to the muck (the player can equip the tool they bought).
+    if (progress.toolOwned === false) {
       const source = harthmereToolSourceForActionV151("cleanup");
       return {
         kind,
         phase: "field",
-        // No tool: guide the player to BUY one from the marked vendor first.
         activeMarkerId: source?.vendorMarkerId ?? req?.mapMarkerId ?? fieldMarker,
         boardMarkerId: board,
         objectiveMet: false,
         needsToolAction: "cleanup",
         hint: source
-          ? `You need a ${source.toolName} (it turns muck back into dirt). Buy one from ${source.vendorName} at the marked shop, equip it, then return to the muck.`
-          : "Equip a cleanup tool to clear the marked muck.",
+          ? `You don't own a ${source.toolName} (it turns muck back into dirt). Buy one from ${source.vendorName} at the marked shop, then return to the muck.`
+          : "Get a cleanup tool to clear the marked muck.",
         requiredCount: required,
         currentCount: cleaned,
       };
@@ -268,7 +326,10 @@ export function harthmereJobMarkerPlanV151(input: {
       activeMarkerId: req?.mapMarkerId ?? fieldMarker,
       boardMarkerId: board,
       objectiveMet: false,
-      hint: `Clear ${cleaned}/${required} muck at the marked spot with your cleanup tool.`,
+      hint:
+        progress.toolEquipped === false
+          ? `Equip your cleanup tool, then clear ${cleaned}/${required} muck at the marked spot.`
+          : `Clear ${cleaned}/${required} muck at the marked spot with your cleanup tool.`,
       requiredCount: required,
       currentCount: cleaned,
     };
@@ -279,19 +340,20 @@ export function harthmereJobMarkerPlanV151(input: {
     if (progress.repaired) {
       return boardPhaseV151(kind, board, "Repaired. Return to the jobs board to collect your reward.");
     }
-    if (progress.toolEquipped === false) {
+    // Does NOT own the tool -> redirect to the shop that sells it. Once owned, the
+    // marker flips back to the structure (the player can equip the tool they bought).
+    if (progress.toolOwned === false) {
       const source = harthmereToolSourceForActionV151("repair");
       return {
         kind,
         phase: "field",
-        // No tool: guide the player to BUY one from the marked vendor first.
         activeMarkerId: source?.vendorMarkerId ?? fieldMarker,
         boardMarkerId: board,
         objectiveMet: false,
         needsToolAction: "repair",
         hint: source
-          ? `You need a ${source.toolName} to fix this. Buy one from ${source.vendorName} at the marked shop, equip it, then return to the structure.`
-          : "Equip a repair tool to fix the marked structure.",
+          ? `You don't own a ${source.toolName} to fix this. Buy one from ${source.vendorName} at the marked shop, then return to the structure.`
+          : "Get a repair tool to fix the marked structure.",
       };
     }
     return {
@@ -300,7 +362,10 @@ export function harthmereJobMarkerPlanV151(input: {
       activeMarkerId: fieldMarker,
       boardMarkerId: board,
       objectiveMet: false,
-      hint: "Repair the marked structure with your repair tool.",
+      hint:
+        progress.toolEquipped === false
+          ? "Equip your repair tool, then repair the marked structure."
+          : "Repair the marked structure with your repair tool.",
     };
   }
 

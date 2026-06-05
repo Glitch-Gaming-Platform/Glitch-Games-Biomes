@@ -7,11 +7,7 @@ import type { PlaceableInspectOverlay } from "@/client/game/resources/overlays";
 import { anItem } from "@/shared/game/item";
 import { harthmereCookStationKindForTextV1 } from "@/shared/harthmere/object_interaction_semantics_v1";
 import { useMemo } from "react";
-
-// A placed campfire / oven / cookpot is a cooking station — pressing F opens the
-// timer-based cooking panel rather than the generic crafting station UI.
-const HARTHMERE_PLACED_COOK_STATION_RE_V1 =
-  /\b(ovens?|cookpots?|campfires?|firepits?)\b/i;
+import { HARTHMERE_PLACED_COOK_STATION_RE_V1 } from "./craftingStationCookRoutingV1";
 
 export const CraftingStationOverlayComponent: React.FunctionComponent<{
   overlay: PlaceableInspectOverlay;

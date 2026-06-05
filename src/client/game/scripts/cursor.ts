@@ -4,7 +4,11 @@ import { traceBlueprints } from "@/client/game/helpers/blueprint";
 import { MarchHelper } from "@/client/game/helpers/march";
 import { occupancyAt } from "@/client/game/helpers/occupancy";
 import type { Cursor } from "@/client/game/resources/cursor";
-import { attackableEntitiesInAttackRegion } from "@/client/game/resources/melee_attack_region";
+import {
+  attackableEntitiesInAttackRegion,
+  canAttackFilter,
+  shouldAddCrosshairMeleeTargetV1,
+} from "@/client/game/resources/melee_attack_region";
 import type { ClientResources } from "@/client/game/resources/types";
 import type { Script } from "@/client/game/scripts/script_controller";
 import type { TerrainHit } from "@/shared/game/spatial";
@@ -127,6 +131,46 @@ export class CursorScript implements Script {
       this,
       player.id
     );
+
+    // HARTHMERE_VOXEL_REACH_ATTACK_V1:
+    // The native melee cone (combat.meleeAttackRegion.far = 3.5) is far shorter
+    // than the world-interaction voxel break/change reach
+    // (building.changeRadius = 8.78). Because a left click is shared between
+    // "break the block" and "attack", aiming at a mucker/animal/player that is
+    // 4-8 units away landed the block break but never registered the creature as
+    // a melee target -- the reported "blocks break but they don't get hit" bug.
+    // Treat whatever the crosshair ray is actually pointing at as an attackable
+    // target out to the same reach used to break blocks, so the same swing that
+    // breaks the block also damages the thing it is aimed at. This rides the
+    // proven native handleAttackInteraction -> Update{Npc,Player}HealthEvent path
+    // (server-authoritative) and covers players, NPCs (muckers/hexes/muxes) and
+    // animals uniformly.
+    if (entityHit && entityHit.kind === "entity") {
+      const reach =
+        this.resources.get("/tweaks").building.changeRadius +
+        this.resources.get("/player/modifiers").reach.increase;
+      const target = entityHit.entity;
+      const ruleSet = this.resources.get("/ruleset/current");
+      const me = this.resources.get("/ecs/entity", player.id);
+      const aclAllowsPlayers = this.permissionsManager.clientActionAllowedAt(
+        "pvp",
+        target.position?.v ?? entityHit.pos
+      );
+      const canAttack = canAttackFilter(ruleSet, aclAllowsPlayers, me, target);
+      if (
+        shouldAddCrosshairMeleeTargetV1({
+          hasEntityHit: true,
+          distance: entityHit.distance,
+          reach,
+          targetId: target.id,
+          playerId: player.id,
+          alreadyIncludedIds: attackableEntities.map((e) => e.id),
+          canAttack,
+        })
+      ) {
+        attackableEntities.push(target);
+      }
+    }
 
     const right = cross([0, -1, 0], direction);
 

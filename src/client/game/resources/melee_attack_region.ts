@@ -8,6 +8,7 @@ import { CollideableSelector } from "@/shared/ecs/gen/selectors";
 import { isEntryDomainAabb } from "@/shared/ecs/spatial/types";
 import { isPlayer } from "@/shared/game/players";
 import type { BiomesId } from "@/shared/ids";
+import { isHarthmereNonLivingObjectLabelV1 } from "@/shared/harthmere/object_interaction_semantics_v1";
 import {
   frustumBoundingSphere,
   frustumToConvexPolytope,
@@ -22,6 +23,49 @@ import {
 import type { ConvexPolytope, Mat4, Sphere } from "@/shared/math/types";
 import { getNpcBehavior, maybeIdToNpcType } from "@/shared/npc/bikkie";
 import * as THREE from "three";
+
+function entityLabelText(x: ReadonlyEntity): string {
+  const record = x as unknown as Record<string, unknown>;
+  const label = (record.label ?? {}) as Record<string, unknown>;
+  return [
+    label.text,
+    label.label,
+    record.name,
+    record.entity_kind,
+    record.species,
+    record.kind,
+  ]
+    .filter((value): value is string => typeof value === "string")
+    .join(" ")
+    .toLowerCase();
+}
+
+function isAttackableLiveEntityWithoutNpcMetadata(x: ReadonlyEntity): boolean {
+  const record = x as unknown as Record<string, unknown>;
+  const label = entityLabelText(x);
+  if (
+    x.player_status ||
+    record.placeable_component ||
+    record.blueprint_component ||
+    record.protection ||
+    isHarthmereNonLivingObjectLabelV1({ label })
+  ) {
+    return false;
+  }
+  if (typeof record.isAttackable === "boolean") {
+    return record.isAttackable;
+  }
+  if (typeof record.attackable === "boolean") {
+    return record.attackable;
+  }
+  return Boolean(
+    x.health &&
+      (record.robot_component ||
+        /muck|mucker|muckling|mux|hex|hexer|animal|livestock|wolf|bear|boar|deer|snake|rat|fox|horse|cow|goat|sheep|pig|chicken|undead|zombie|corpse|monster|creature|boss/.test(
+          label
+        ))
+  );
+}
 
 export function canAttackFilter(
   ruleset: ClientRuleSet,
@@ -43,7 +87,7 @@ export function canAttackFilter(
 
   const npcTypeId = x.npc_metadata?.type_id;
   if (npcTypeId === undefined) {
-    return false;
+    return isAttackableLiveEntityWithoutNpcMetadata(x);
   }
 
   // SNAPSHOT_NPC_ATTACK_FILTER_COMPAT_V1:
@@ -52,9 +96,42 @@ export function canAttackFilter(
   // every frame, so invalid/legacy NPC types must fail soft instead of throwing.
   const npcType = maybeIdToNpcType(npcTypeId);
   if (!npcType) {
+    return isAttackableLiveEntityWithoutNpcMetadata(x);
+  }
+  return (
+    getNpcBehavior(npcType).damageable?.attackable ??
+    isAttackableLiveEntityWithoutNpcMetadata(x)
+  );
+}
+
+// HARTHMERE_VOXEL_REACH_ATTACK_V1:
+// Pure decision for whether the entity currently under the crosshair should be
+// added to the melee attack set. The narrow melee cone
+// (combat.meleeAttackRegion.far) only catches point-blank targets, but a left
+// click is also the "break/change voxel" action which reaches
+// building.changeRadius (~8.78). Aligning the aimed-target attack reach with the
+// voxel reach is what makes "the same swing that breaks the block also hits the
+// creature it's aimed at" true. Extracted as a pure function so the reach/dedup/
+// self-hit branches can be unit-tested without a DOM, table, or renderer.
+export function shouldAddCrosshairMeleeTargetV1(input: {
+  hasEntityHit: boolean;
+  distance: number;
+  reach: number;
+  targetId: BiomesId;
+  playerId: BiomesId;
+  alreadyIncludedIds: ReadonlyArray<BiomesId>;
+  canAttack: boolean;
+}): boolean {
+  if (!input.hasEntityHit || !input.canAttack) {
     return false;
   }
-  return getNpcBehavior(npcType).damageable?.attackable ?? false;
+  if (!Number.isFinite(input.distance) || input.distance > input.reach) {
+    return false;
+  }
+  if (input.targetId === input.playerId) {
+    return false;
+  }
+  return !input.alreadyIncludedIds.includes(input.targetId);
 }
 
 export function attackableEntitiesInAttackRegion(

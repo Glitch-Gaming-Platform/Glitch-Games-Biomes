@@ -38,8 +38,11 @@ import { grantHarthmereItem } from "@/client/components/challenges/LocalDevHarth
 import { harthmereInventoryCountByItemIdV141 } from "@/client/components/challenges/LocalDevHarthmereInventorySystem";
 import {
   HARTHMERE_GATHERING_NODE_WORLD_TARGETS_V1,
+  harthmereGatheringNodeIdForObjectLabelV1,
   nearestHarthmereGatheringNodePromptV1,
   performHarthmereGather,
+  readHarthmereGatheringState,
+  writeHarthmereGatheringState,
 } from "@/client/components/challenges/LocalDevHarthmereGatheringSystem";
 
 // The first authored mining node — a stable anchor for the geometry assertions.
@@ -78,6 +81,33 @@ describe("harthmere gathering node world interaction", () => {
     assert.equal(farAway, undefined);
   });
 
+  it("resolves the screenshot harvest labels to real gathering nodes", () => {
+    assert.equal(
+      harthmereGatheringNodeIdForObjectLabelV1("Orchard Softwood Branches"),
+      "harthmere_orchard_softwood"
+    );
+    assert.equal(
+      harthmereGatheringNodeIdForObjectLabelV1("Boar Sounder Harvest"),
+      "boar_sounder_harvest"
+    );
+  });
+
+  it("offers F prompts at the screenshot harvest node positions", () => {
+    const orchard = nearestHarthmereGatheringNodePromptV1({
+      x: 468,
+      y: 53,
+      z: -118,
+    });
+    assert.equal(orchard?.id, "harthmere_orchard_softwood");
+
+    const boar = nearestHarthmereGatheringNodePromptV1({
+      x: 404,
+      y: 53,
+      z: -414,
+    });
+    assert.equal(boar?.id, "boar_sounder_harvest");
+  });
+
   it("blocks harvesting without the required tool and names the tool", () => {
     const result = performHarthmereGather(IRON_VEIN_ID, {
       ignoreCooldown: true,
@@ -100,6 +130,35 @@ describe("harthmere gathering node world interaction", () => {
     // baseYield guarantees at least 2 iron_ore and 1 rough_stone.
     assert.ok(harthmereInventoryCountByItemIdV141("iron_ore") >= 2);
     assert.ok(harthmereInventoryCountByItemIdV141("rough_stone") >= 1);
+  });
+
+  it("harvests the orchard softwood branches when the axe is held", () => {
+    grantHarthmereItem("woodcutters_axe", 1, "test setup");
+    const result = performHarthmereGather("harthmere_orchard_softwood", {
+      ignoreCooldown: true,
+    });
+    assert.equal(result.ok, true);
+    assert.ok(harthmereInventoryCountByItemIdV141("softwood_log") >= 2);
+    assert.ok(harthmereInventoryCountByItemIdV141("oak_branch") >= 1);
+  });
+
+  it("harvests the boar sounder once skinning requirements are met", () => {
+    grantHarthmereItem("skinning_knife", 1, "test setup");
+    const state = readHarthmereGatheringState();
+    writeHarthmereGatheringState({
+      ...state,
+      professions: {
+        ...state.professions,
+        skinning: { ...state.professions.skinning, level: 2 },
+      },
+    });
+
+    const result = performHarthmereGather("boar_sounder_harvest", {
+      ignoreCooldown: true,
+    });
+    assert.equal(result.ok, true);
+    assert.ok(harthmereInventoryCountByItemIdV141("boar_hide") >= 1);
+    assert.ok(harthmereInventoryCountByItemIdV141("raw_meat") >= 1);
   });
 
   it("puts a freshly gathered node on cooldown (no infinite farming)", () => {

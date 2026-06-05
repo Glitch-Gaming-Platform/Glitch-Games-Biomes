@@ -2,6 +2,7 @@ import assert from "assert";
 import {
   harthmereCloudSaveForeignAuthCandidateIdsV1,
   harthmereCloudSaveForeignAuthPrimaryIdV1,
+  harthmereHasStableGlitchAccountV1,
   isStableHarthmereGlitchUserIdV1,
   isStableHarthmereUserNameV1,
   normalizeHarthmereUserNameSlugV1,
@@ -76,6 +77,7 @@ describe("harthmere cloud save identity (stable scope)", () => {
     it("a userName session can ALWAYS resolve a prior id-session link via candidates", () => {
       // Session A created the link under the glitch-id form.
       const created = harthmereCloudSaveForeignAuthPrimaryIdV1(withId);
+      assert.ok(created, "a session with a glitch id must have a primary key");
       // Session B (no glitch id) must list a candidate set; since the glitch-id
       // form is unavailable, the userName form must be present so future logins
       // converge — and crucially the userName candidate is identical in BOTH
@@ -88,7 +90,9 @@ describe("harthmere cloud save identity (stable scope)", () => {
       assert.ok(candidatesB.includes(userForm));
     });
 
-    it("uses install id only when neither id nor a stable name exist", () => {
+    it("returns undefined (guest) when neither id nor a stable name exist", () => {
+      // No stable Glitch account -> guest. The install id is NOT a durable key:
+      // guests must never silently accrue an install-scoped biomes user.
       assert.equal(
         harthmereCloudSaveForeignAuthPrimaryIdV1({
           titleId: TITLE,
@@ -96,7 +100,51 @@ describe("harthmere cloud save identity (stable scope)", () => {
           userName: "Glitchinstall25fe66b",
           glitchUserId: undefined,
         }),
-        `glitch:${TITLE}:install:${INSTALL}`
+        undefined
+      );
+    });
+  });
+
+  describe("harthmereHasStableGlitchAccountV1 (guest detection)", () => {
+    it("true when a stable glitch user id or account name exists", () => {
+      assert.equal(
+        harthmereHasStableGlitchAccountV1({
+          titleId: TITLE,
+          installId: INSTALL,
+          glitchUserId: "gid",
+          userName: "Guest",
+        }),
+        true
+      );
+      assert.equal(
+        harthmereHasStableGlitchAccountV1({
+          titleId: TITLE,
+          installId: INSTALL,
+          glitchUserId: undefined,
+          userName: "blackmage",
+        }),
+        true
+      );
+    });
+
+    it("false (guest) when only an install / guest-like identity exists", () => {
+      assert.equal(
+        harthmereHasStableGlitchAccountV1({
+          titleId: TITLE,
+          installId: INSTALL,
+          glitchUserId: undefined,
+          userName: "Glitchinstall25fe66b",
+        }),
+        false
+      );
+      assert.equal(
+        harthmereHasStableGlitchAccountV1({
+          titleId: TITLE,
+          installId: INSTALL,
+          glitchUserId: null,
+          userName: "Guest",
+        }),
+        false
       );
     });
   });
@@ -130,6 +178,7 @@ describe("harthmere cloud save identity (stable scope)", () => {
       // stable id form — same biomes user, no orphaned progress.
       const preUpdate = { ...live, glitchUserId: undefined };
       const legacyKey = harthmereCloudSaveForeignAuthPrimaryIdV1(preUpdate);
+      assert.ok(legacyKey, "a session with a stable userName must have a key");
       assert.equal(legacyKey, `glitch:${TITLE}:user:blackmage`);
       const postUpdateCandidates =
         harthmereCloudSaveForeignAuthCandidateIdsV1(live);
@@ -145,7 +194,7 @@ describe("harthmere cloud save identity (stable scope)", () => {
   });
 
   describe("candidate ids", () => {
-    it("dedupe and ordering: glitch id, userName, install", () => {
+    it("dedupe and ordering: glitch id, then userName (never install)", () => {
       const ids = harthmereCloudSaveForeignAuthCandidateIdsV1({
         titleId: TITLE,
         installId: INSTALL,
@@ -155,21 +204,20 @@ describe("harthmere cloud save identity (stable scope)", () => {
       assert.deepEqual(ids, [
         `glitch:${TITLE}:glitch:gid`,
         `glitch:${TITLE}:user:blackmage`,
-        `glitch:${TITLE}:install:${INSTALL}`,
       ]);
     });
 
-    it("guest-only identity collapses to the install candidate", () => {
+    it("guest-only identity has NO candidates (never resolves a durable user)", () => {
       const ids = harthmereCloudSaveForeignAuthCandidateIdsV1({
         titleId: TITLE,
         installId: INSTALL,
         userName: "Guest",
         glitchUserId: null,
       });
-      assert.deepEqual(ids, [`glitch:${TITLE}:install:${INSTALL}`]);
+      assert.deepEqual(ids, []);
     });
 
-    it("the install candidate is always present (the anti-flip guarantee)", () => {
+    it("the install candidate is NEVER produced (install is per-device, not identity)", () => {
       for (const glitchUserId of [undefined, "gid"]) {
         for (const userName of ["blackmage", "Guest", undefined]) {
           const ids = harthmereCloudSaveForeignAuthCandidateIdsV1({
@@ -179,8 +227,8 @@ describe("harthmere cloud save identity (stable scope)", () => {
             glitchUserId,
           });
           assert.ok(
-            ids.includes(`glitch:${TITLE}:install:${INSTALL}`),
-            `install candidate missing for glitchUserId=${glitchUserId} userName=${userName}`
+            !ids.includes(`glitch:${TITLE}:install:${INSTALL}`),
+            `install candidate must not appear for glitchUserId=${glitchUserId} userName=${userName}`
           );
         }
       }

@@ -325,11 +325,12 @@ export function captureProfilePicScreenshot(renderer: ThreeObjectPreview) {
   });
 }
 
-export const SelfInventoryRightPane: React.FunctionComponent<
+export const SelfInventoryRightPaneContent: React.FunctionComponent<
   PropsWithChildren<{
     disableSlotPredicate?: DisableSlotPredicate;
+    className?: string;
   }>
-> = ({ children, disableSlotPredicate }) => {
+> = ({ children, disableSlotPredicate, className }) => {
   const { socialManager, userId } = useClientContext();
   const { handleInventorySlotClick, handleAvatarClick } =
     useInventoryControllerContext();
@@ -411,9 +412,8 @@ export const SelfInventoryRightPane: React.FunctionComponent<
     },
     []
   );
-  return (
-    <PaneLayout type="center_both" extraClassName="inventory-right-pane">
-      <div className="bg-image" />
+  const content = (
+    <>
       <AvatarWearables
         entityId={userId}
         onSlotClick={handleInventorySlotClick}
@@ -423,6 +423,24 @@ export const SelfInventoryRightPane: React.FunctionComponent<
       />
       <InventoryAndHotbarDisplay disableSlotPredicate={disableSlotPredicate} />
       {children}
+    </>
+  );
+  return className ? <div className={className}>{content}</div> : content;
+};
+
+export const SelfInventoryRightPane: React.FunctionComponent<
+  PropsWithChildren<{
+    disableSlotPredicate?: DisableSlotPredicate;
+  }>
+> = ({ children, disableSlotPredicate }) => {
+  return (
+    <PaneLayout type="center_both" extraClassName="inventory-right-pane">
+      <div className="bg-image" />
+      <SelfInventoryRightPaneContent
+        disableSlotPredicate={disableSlotPredicate}
+      >
+        {children}
+      </SelfInventoryRightPaneContent>
     </PaneLayout>
   );
 };

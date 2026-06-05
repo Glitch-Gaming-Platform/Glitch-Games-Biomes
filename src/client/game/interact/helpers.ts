@@ -147,11 +147,20 @@ function emitHarthmereNativeNpcAttackContactV189({
   const hits = attackedEntities
     .map((entity) => {
       const record = entity as unknown as Record<string, unknown>;
-      if (!record.npc_metadata || !record.position) {
+      if (record.player_status || !record.position) {
         return undefined;
       }
       const id = Number(record.id);
       if (!Number.isFinite(id)) {
+        return undefined;
+      }
+      const hasNpcMetadata = Boolean(record.npc_metadata);
+      const isAttackableLiveEntity =
+        Boolean(record.health) &&
+        !record.placeable_component &&
+        !record.blueprint_component &&
+        !record.protection;
+      if (!hasNpcMetadata && !isAttackableLiveEntity) {
         return undefined;
       }
       const labelRecord = (record.label ?? {}) as Record<string, unknown>;
@@ -166,11 +175,11 @@ function emitHarthmereNativeNpcAttackContactV189({
       return {
         id,
         label,
-        hasNpcMetadata: true,
+        hasNpcMetadata,
         hasPosition: true,
       };
     })
-    .filter((hit): hit is { id: number; label: string | undefined; hasNpcMetadata: true; hasPosition: true } =>
+    .filter((hit): hit is { id: number; label: string | undefined; hasNpcMetadata: boolean; hasPosition: true } =>
       Boolean(hit),
     );
 
@@ -199,7 +208,9 @@ function emitHarthmereNativeNpcAttackContactV189({
 
   const win = window as typeof window & {
     __harthmereNativeNpcAttackContactDebugV189?: unknown[];
+    __harthmereNativeNpcAttackContactLastAtV189?: number;
   };
+  win.__harthmereNativeNpcAttackContactLastAtV189 = detail.at;
   win.__harthmereNativeNpcAttackContactDebugV189 = [
     detail,
     ...(win.__harthmereNativeNpcAttackContactDebugV189 ?? []),

@@ -1,7 +1,10 @@
 import { useBiomesUIReplaceLegacyFlag } from "@/client/components/biomes_ui/BiomesUIFlags";
 import { usePointerLockUnlockWhileOpenActiveV1 } from "@/client/components/contexts/usePointerLockUnlockWhileOpenActiveV1";
 import React from "react";
-import { BIOMES_UI_OPEN_MENU_SHORTCUT } from "./BiomesUITypes";
+import {
+  BIOMES_UI_OPEN_MENU_SHORTCUT,
+  BIOMES_UI_QUESTS_SHORTCUT,
+} from "./BiomesUITypes";
 import { Highlightable } from "./highlight/HighlightOverlay";
 import { UI_IDS } from "./uniqueIds";
 
@@ -76,15 +79,28 @@ export const BiomesUIOpenPrompt: React.FunctionComponent<{
         className="biomes-ui-open-prompt"
         data-ui-id={UI_IDS.HUD_PROMPT_OPEN_MENU}
         data-biomes-ui-open={isOpen ? "true" : "false"}
-        aria-label={`Press ${BIOMES_UI_OPEN_MENU_SHORTCUT} to open menu`}
+        aria-label={`Press ${BIOMES_UI_OPEN_MENU_SHORTCUT} to open menu. Press ${BIOMES_UI_QUESTS_SHORTCUT} to open quests`}
       >
-        <div className="biomes-ui-open-prompt__key">
-          {BIOMES_UI_OPEN_MENU_SHORTCUT}
+        <div className="biomes-ui-open-prompt__row">
+          <div className="biomes-ui-open-prompt__key">
+            {BIOMES_UI_OPEN_MENU_SHORTCUT}
+          </div>
+          <div className="biomes-ui-open-prompt__text">
+            <div className="biomes-ui-open-prompt__label">Open Menu</div>
+            <div className="biomes-ui-open-prompt__hint">
+              Press {BIOMES_UI_OPEN_MENU_SHORTCUT}
+            </div>
+          </div>
         </div>
-        <div className="biomes-ui-open-prompt__text">
-          <div className="biomes-ui-open-prompt__label">Open Menu</div>
-          <div className="biomes-ui-open-prompt__hint">
-            Press {BIOMES_UI_OPEN_MENU_SHORTCUT}
+        <div className="biomes-ui-open-prompt__row biomes-ui-open-prompt__row--secondary">
+          <div className="biomes-ui-open-prompt__key">
+            {BIOMES_UI_QUESTS_SHORTCUT}
+          </div>
+          <div className="biomes-ui-open-prompt__text">
+            <div className="biomes-ui-open-prompt__label">Open Quests</div>
+            <div className="biomes-ui-open-prompt__hint">
+              Press {BIOMES_UI_QUESTS_SHORTCUT}
+            </div>
           </div>
         </div>
       </div>

@@ -119,6 +119,8 @@ export const ToastHUDNotif: React.FunctionComponent<{
   delay?: number;
 }> = ({ message, onComplete, delay }) => {
   const newStep = message.kind === "new";
+  const duration = newStep ? 4.8 : 4.25;
+  const initialDelay = (newStep ? 2.5 : 0) + (delay ?? 0);
   let textColor = "";
   switch (message.kind) {
     case "interaction_error":
@@ -136,14 +138,14 @@ export const ToastHUDNotif: React.FunctionComponent<{
       key={message.id}
       initial={{ opacity: 0, scale: 0.75, y: -50 }}
       animate={{
-        opacity: newStep ? [null, 1, 1, 1, 1, 0] : [null, 1, 0],
-        scale: [null, 1, 1],
-        y: newStep ? -50 : -100,
+        opacity: [0, 1, 1, 0],
+        scale: [0.75, 1, 1, 1],
+        y: newStep ? [-50, -50, -50, -58] : [-50, -70, -92, -100],
 
         transition: {
-          times: [0, 0.1, 1],
-          duration: newStep ? 3.5 : 2.5,
-          delay: (newStep ? 2.5 : 0) + (delay ?? 0),
+          times: [0, 0.12, 0.78, 1],
+          duration,
+          delay: initialDelay,
           scale: { type: "spring", bounce: 0.5 },
         },
       }}

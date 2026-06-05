@@ -26,10 +26,7 @@ describe("harthmere live world-object inspect candidates (v198)", () => {
   // The exact labels from the reported screenshots (live, not in any static
   // landmark table) must resolve to the open-container action.
   it("resolves the live container labels from the screenshots", () => {
-    for (const label of [
-      "Clothing Crate",
-      "Chest The Grove Underwater Main",
-    ]) {
+    for (const label of ["Clothing Crate", "Chest The Grove Underwater Main"]) {
       assert.ok(
         isHarthmereInspectableWorldObjectV1({ label }),
         `${label} should be an inspectable world object`
@@ -51,7 +48,11 @@ describe("harthmere live world-object inspect candidates (v198)", () => {
   // It must flow through the selector exactly like a static landmark prop.
   it("selects a live ECS container candidate the player faces", () => {
     const candidates: HarthmereWorldObjectCandidateV1[] = [
-      { id: "ecs:8923129305317123", label: "Clothing Crate", position: [3, 0, 0] },
+      {
+        id: "ecs:8923129305317123",
+        label: "Clothing Crate",
+        position: [3, 0, 0],
+      },
     ];
     const selected = selectNearestHarthmereWorldObjectInspectableV1({
       playerPosition: [0, 0, 0],
@@ -107,6 +108,11 @@ describe("harthmere live world-object inspect candidates (v198)", () => {
       ["Grove Storehouse Door", "open_door"],
       ["Fountain Lesson Board", "read"],
       ["Carlo's Cookpot", "cook"],
+      ["Business Craft Table", "craft"],
+      ["Campfire", "cook"],
+      ["Cooking Pot", "cook"],
+      ["Orchard Softwood Branches", "gather"],
+      ["Boar Sounder Harvest", "gather"],
       ["Broken Safe-Zone Fence", "repair"],
     ];
     for (const [label, kind] of cases) {

@@ -5,17 +5,14 @@ import {
 import { useClientContext } from "@/client/components/contexts/ClientContextReactContext";
 import { useClientSideContainer } from "@/client/components/inventory/client_side_container";
 import { useOwnedItems } from "@/client/components/inventory/helpers";
+import {
+  BiomesUIShopChrome,
+  BiomesUIShopSection,
+} from "@/client/components/inventory/BiomesUIShopChrome";
 import { useInventoryDraggerContext } from "@/client/components/inventory/InventoryDragger";
 import { InventoryOverrideContextProvider } from "@/client/components/inventory/InventoryOverrideContext";
 import { NormalSlotWithTooltip } from "@/client/components/inventory/NormalSlotWithTooltip";
-import { SelfInventoryRightPane } from "@/client/components/inventory/SelfInventoryScreen";
-import { DialogButton } from "@/client/components/system/DialogButton";
-import { RawLeftPane } from "@/client/components/system/mini_phone/split_pane/LeftPane";
-import { PaneBottomDock } from "@/client/components/system/mini_phone/split_pane/PaneBottomDock";
-import { PaneLayout } from "@/client/components/system/mini_phone/split_pane/PaneLayout";
-import { RawRightPane } from "@/client/components/system/mini_phone/split_pane/RightPane";
-import { ScreenTitleBar } from "@/client/components/system/mini_phone/split_pane/ScreenTitleBar";
-import { SplitPaneScreen } from "@/client/components/system/mini_phone/split_pane/SplitPaneScreen";
+import { SelfInventoryRightPaneContent } from "@/client/components/inventory/SelfInventoryScreen";
 import { attribs } from "@/shared/bikkie/schema/attributes";
 import { InventoryDyeEvent } from "@/shared/ecs/gen/events";
 import type { ItemAssignment } from "@/shared/ecs/gen/types";
@@ -121,54 +118,55 @@ const DyingCraftingStationLeftPane: React.FunctionComponent<{}> = ({}) => {
     }
     return ret;
   }, [wearing, clientSideContainer]);
+  const filledSlots = compact(clientSideContainer.slots).length;
   return (
-    <PaneLayout extraClassName="dying-station" type="center_both">
-      <div className="bg-image" />
-      <div className="slotter dye">
-        <NormalSlotWithTooltip
-          slot={clientSideContainer.slots[DYE_IDX]?.item}
-          slotReference={{
-            kind: "item",
-            idx: 0,
-          }}
-          entityId={123 as BiomesId}
-          onClick={handleDyeCellClick}
-        />
-        <div className="label">Dye</div>
+    <BiomesUIShopSection title="Dye Bay" meta={`${filledSlots}/2 inputs`}>
+      <div className="biomes-ui-workshop-station biomes-ui-workshop-station--dye">
+        <div className="biomes-ui-workshop-slot">
+          <NormalSlotWithTooltip
+            slot={clientSideContainer.slots[DYE_IDX]?.item}
+            slotReference={{
+              kind: "item",
+              idx: 0,
+            }}
+            entityId={123 as BiomesId}
+            onClick={handleDyeCellClick}
+          />
+          <span>Dye</span>
+        </div>
+        <div className="biomes-ui-workshop-slot">
+          <NormalSlotWithTooltip
+            slot={clientSideContainer.slots[ITEM_IDX]?.item}
+            slotReference={{
+              kind: "item",
+              idx: 0,
+            }}
+            entityId={123 as BiomesId}
+            onClick={handleItemCellClick}
+          />
+          <span>Dyeable Item</span>
+        </div>
+        <div className="biomes-ui-workshop-preview">
+          <CharacterPreview
+            key="bbq"
+            previewSlot={makePreviewSlot("dying", userId)}
+            wearableOverrides={wearableOverrides}
+            entityId={userId}
+          />
+          <span>Preview</span>
+        </div>
       </div>
-      <div className="divider" />
-      <div className="slotter item">
-        <NormalSlotWithTooltip
-          slot={clientSideContainer.slots[ITEM_IDX]?.item}
-          slotReference={{
-            kind: "item",
-            idx: 0,
-          }}
-          entityId={123 as BiomesId}
-          onClick={handleItemCellClick}
-        />
-        <div className="label">Dyable Item</div>
-      </div>
-      <div className="divider" />
-      <div className="slotter preview">
-        <CharacterPreview
-          key="bbq"
-          previewSlot={makePreviewSlot("dying", userId)}
-          wearableOverrides={wearableOverrides}
-          entityId={userId}
-        />
-        <div className="label">Preview</div>
-      </div>
-      <PaneBottomDock>
-        <DialogButton
-          type="primary"
-          disabled={compact(clientSideContainer.slots).length !== 2}
+      <div className="biomes-ui-workshop-actions">
+        <button
+          type="button"
+          className="biomes-ui-action-button"
+          disabled={filledSlots !== 2}
           onClick={handleDye}
         >
           Dye
-        </DialogButton>
-      </PaneBottomDock>
-    </PaneLayout>
+        </button>
+      </div>
+    </BiomesUIShopSection>
   );
 };
 
@@ -177,21 +175,22 @@ export const DyingCraftingStationScreen: React.FunctionComponent<{
 }> = ({}) => {
   return (
     <InventoryOverrideContextProvider>
-      <SplitPaneScreen
-        extraClassName="wardrobe"
-        leftPaneExtraClassName={"biomes-box"}
-        rightPaneExtraClassName={"biomes-box"}
+      <BiomesUIShopChrome
+        title="Dye-o-matic"
+        eyebrow="Crafting Station"
+        variant="container"
+        subtitle="Slot a dye and dyeable item, then preview the result before applying it."
       >
-        <ScreenTitleBar title={"Dye-o-matic"} divider={false} />
-
-        <RawLeftPane>
-          <DyingCraftingStationLeftPane />
-        </RawLeftPane>
-
-        <RawRightPane>
-          <SelfInventoryRightPane />
-        </RawRightPane>
-      </SplitPaneScreen>
+        <DyingCraftingStationLeftPane />
+        <BiomesUIShopSection
+          title="Your Inventory"
+          className="biomes-ui-shop-section--inventory"
+        >
+          <div className="biomes-ui-shop-inventory-pane biomes-ui-inventory-pane">
+            <SelfInventoryRightPaneContent className="biomes-ui-inventory-stack" />
+          </div>
+        </BiomesUIShopSection>
+      </BiomesUIShopChrome>
     </InventoryOverrideContextProvider>
   );
 };

@@ -16,6 +16,7 @@
 import * as React from "react";
 import { Highlightable } from "../highlight/HighlightOverlay";
 import { UI_IDS } from "../uniqueIds";
+import { questDetailToolShopMarkerCandidatesV1 } from "./questDetailToolSourceV1";
 import {
   activeBiomesUIMapPinFromMarkerForTest,
   BIOMES_UI_LOCATE_ON_MAP_EVENT_V1,
@@ -77,6 +78,18 @@ interface MissionStep { id: string; title: string; objective: string; done: bool
 // Trackable-quest entries surface in the new clickable side list and let
 // the player center the map on each quest's first marker without scrolling
 // through the active mission timeline.
+// HARTHMERE_QUEST_DETAIL_V151: optional fields that let the quests panel show the
+// FULL quest information when a player clicks a quest — the kind, the objective,
+// a longer description, and (for tool-requiring jobs the player can't yet do)
+// where to buy the required tool, with a marker the panel can locate on the map.
+export interface MapTrackableQuestToolSourceV1 {
+  action: string;
+  toolName: string;
+  vendorName: string;
+  vendorMarkerId: string;
+  hint: string;
+}
+
 export interface MapTrackableQuest {
   questId: string;
   title: string;
@@ -87,6 +100,13 @@ export interface MapTrackableQuest {
   // Countdown label for timed jobs (e.g. "3h 12m left" / "Expired"); empty for
   // untimed quests. Only jobs carry a timer for now.
   timeRemaining?: string;
+  // Full-detail fields (shown when the quest is selected/expanded).
+  kind?: string;
+  kindLabel?: string;
+  objective?: string;
+  objectives?: string[];
+  description?: string;
+  toolSource?: MapTrackableQuestToolSourceV1;
 }
 
 interface MapAdapter {
@@ -468,6 +488,11 @@ export function filterMapTrackableQuestsForTest(
       quest.status,
       quest.reward,
       quest.firstMarkerId,
+      quest.kind,
+      quest.kindLabel,
+      quest.objective,
+      quest.objectives?.join(" "),
+      quest.description,
     ])
   );
 }
@@ -533,10 +558,12 @@ export const MapQuestsTab: React.FunctionComponent<{ adapter?: MapAdapter }> = (
   const [pan, setPan] = React.useState({ x: 0, y: 0 });
   const [focusedMarkerId, setFocusedMarkerId] = React.useState<string | null>(null);
   const [trackedQuestId, setTrackedQuestId] = React.useState<string | null>(null);
+  // The quest whose full details are open for review (click a quest to expand).
+  const [selectedQuestId, setSelectedQuestId] = React.useState<string | null>(null);
   // Multi-layer model: any combination of category layers can be on at once, so
-  // the map shows their union instead of one-at-a-time. Default: all on.
+  // the map shows their union instead of one-at-a-time. Default: quests only.
   const [enabledLayers, setEnabledLayers] = React.useState<Set<MapPanelTab>>(
-    () => new Set(MAP_PANEL_TABS.map((tab) => tab.id))
+    () => new Set<MapPanelTab>(["quests"])
   );
   // Terrain starts OFF so the map opens clean (just markers); the player can
   // toggle the authentic terrain layer on from the layer bar when they want it.
@@ -721,6 +748,11 @@ export const MapQuestsTab: React.FunctionComponent<{ adapter?: MapAdapter }> = (
   const trackQuest = (quest: MapTrackableQuest) => {
     setEnabledLayers((prev) => new Set(prev).add("quests"));
     setTrackedQuestId(quest.questId);
+    // Clicking a quest also opens its full details for review (toggle off if it
+    // was already the open one).
+    setSelectedQuestId((current) =>
+      current === quest.questId ? null : quest.questId
+    );
     const marker = quest.firstMarkerId
       ? allMarkers.find((entry) => entry.id === quest.firstMarkerId)
       : undefined;
@@ -745,6 +777,19 @@ export const MapQuestsTab: React.FunctionComponent<{ adapter?: MapAdapter }> = (
     setActiveMapPin(undefined);
   }, [adapter]);
   const activeMapPinMarkerId = activeMapPin?.markerId;
+  // Center on (and set the active destination to) a marker resolved by id — used
+  // by the quest detail's "Locate tool shop on map" button.
+  const locateMarkerById = React.useCallback(
+    (markerId: string | undefined) => {
+      if (!markerId) return;
+      const marker = allMarkers.find((entry) => entry.id === markerId);
+      if (!marker) return;
+      setEnabledLayers((prev) => new Set(prev).add("quests"));
+      centerOnMarker(marker);
+      setActiveDestination(marker);
+    },
+    [allMarkers, centerOnMarker, setActiveDestination]
+  );
 
   React.useEffect(() => {
     if (!playerMarker || didAutoCenterPlayerRef.current) return;
@@ -1191,19 +1236,36 @@ export const MapQuestsTab: React.FunctionComponent<{ adapter?: MapAdapter }> = (
                   <ul style={listStyle}>
                     {filteredTrackableQuests.map((quest) => {
                       const isTracked = trackedQuestId === quest.questId || (trackedQuestId === null && quest.status === "active");
+                      const isSelected = selectedQuestId === quest.questId;
                       return (
                         <li key={quest.questId}>
                           <button
                             type="button"
                             data-testid={`biomes-map-quest-${quest.questId}`}
                             aria-pressed={isTracked}
+                            aria-expanded={isSelected}
                             onClick={() => trackQuest(quest)}
                             style={listButtonStyle(isTracked, quest.status === "active" ? "var(--biomes-warn-amber)" : quest.status === "completed" ? "#78e68c" : "var(--biomes-edge-cyan-soft)")}
                           >
                             <strong style={{ fontSize: 12 }}>{quest.title}</strong>
                             <div style={eyebrowStyle}>{quest.status} · {quest.area}</div>
+                            {quest.objective ? (
+                              <div style={mutedSmallStyle}>{quest.objective}</div>
+                            ) : null}
                             {quest.reward ? <div style={mutedSmallStyle}>Reward: {quest.reward}</div> : null}
                           </button>
+                          {isSelected ? (
+                            <QuestDetailPanel
+                              quest={quest}
+                              onLocateToolShop={(markerIds) =>
+                                locateMarkerById(
+                                  markerIds.find((id) =>
+                                    allMarkers.some((entry) => entry.id === id)
+                                  ) ?? markerIds[markerIds.length - 1]
+                                )
+                              }
+                            />
+                          ) : null}
                         </li>
                       );
                     })}
@@ -1273,6 +1335,110 @@ export const MapQuestsTab: React.FunctionComponent<{ adapter?: MapAdapter }> = (
     </div>
   );
 };
+
+// HARTHMERE_QUEST_DETAIL_PANEL_V151: the full quest information shown when a
+// player clicks a quest in the Quests panel — kind, objective, description,
+// reward, time, and (for a tool-requiring job the player can't yet do) a clear
+// "where to buy the tool" callout with a button that locates the shop on the map.
+function QuestDetailPanel({
+  quest,
+  onLocateToolShop,
+}: {
+  quest: MapTrackableQuest;
+  onLocateToolShop: (markerIds: string[]) => void;
+}) {
+  const objectives = questObjectivesForDetail(quest);
+  return (
+    <div
+      data-testid={`biomes-map-quest-detail-${quest.questId}`}
+      style={{
+        margin: "4px 0 8px",
+        padding: 8,
+        background: "var(--biomes-bg-glass)",
+        border: "1px solid var(--biomes-edge-cyan-soft)",
+        borderRadius: 4,
+        fontSize: 11,
+        color: "var(--biomes-fg)",
+      }}
+    >
+      <div style={eyebrowStyle}>
+        {(quest.kindLabel ?? "Quest")} · {quest.status}
+        {quest.area ? ` · ${quest.area}` : ""}
+      </div>
+      <strong style={{ display: "block", marginTop: 3, fontSize: 12 }}>
+        {quest.title}
+      </strong>
+      {quest.description ? (
+        <p style={{ margin: "4px 0", color: "var(--biomes-fg-muted)", lineHeight: 1.4 }}>
+          {quest.description}
+        </p>
+      ) : null}
+      {objectives.length > 0 ? (
+        <div style={{ marginTop: 6 }}>
+          <strong style={{ fontSize: 11 }}>
+            {objectives.length === 1 ? "Objective" : "Objectives"}
+          </strong>
+          <ol style={{ margin: "3px 0 0 16px", padding: 0 }}>
+            {objectives.map((objective, index) => (
+              <li key={`${quest.questId}:objective:${index}`} style={{ marginBottom: 3, lineHeight: 1.4 }}>
+                {objective}
+              </li>
+            ))}
+          </ol>
+        </div>
+      ) : null}
+      <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginTop: 2 }}>
+        {quest.reward ? <span style={mutedSmallStyle}>Reward: {quest.reward}</span> : null}
+        {quest.timeRemaining ? (
+          <span style={mutedSmallStyle}>Time: {quest.timeRemaining}</span>
+        ) : null}
+      </div>
+      {quest.toolSource ? (
+        <div
+          data-testid={`biomes-map-quest-tool-source-${quest.questId}`}
+          style={{
+            marginTop: 6,
+            padding: 6,
+            background: "rgba(252,211,77,0.12)",
+            border: "1px solid var(--biomes-warn-amber)",
+            borderRadius: 3,
+          }}
+        >
+          <strong style={{ fontSize: 11 }}>Tool needed</strong>
+          <p style={{ margin: "3px 0", lineHeight: 1.4 }}>{quest.toolSource.hint}</p>
+          <button
+            type="button"
+            data-testid={`biomes-map-quest-locate-tool-${quest.questId}`}
+            onClick={() => onLocateToolShop(questDetailToolShopMarkerCandidatesV1(quest))}
+            style={{
+              padding: "4px 8px",
+              fontSize: 11,
+              fontWeight: 800,
+              background: "rgba(252,211,77,0.20)",
+              color: "var(--biomes-fg)",
+              border: "1px solid var(--biomes-warn-amber)",
+              borderRadius: 3,
+              cursor: "pointer",
+            }}
+          >
+            Locate {quest.toolSource.toolName} shop on map
+          </button>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function questObjectivesForDetail(quest: MapTrackableQuest): string[] {
+  const seen = new Set<string>();
+  return [...(quest.objectives ?? []), quest.objective]
+    .map((objective) => (objective ?? "").trim())
+    .filter((objective) => {
+      if (!objective || seen.has(objective)) return false;
+      seen.add(objective);
+      return true;
+    });
+}
 
 function MarkerList({
   title,

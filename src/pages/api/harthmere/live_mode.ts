@@ -97,6 +97,7 @@ const HARTHMERE_LIVE_MODE_ACTION_KINDS_V1 = [
   "request_quest_state_update",
   "request_property_building_mutation",
   "request_home_decoration",
+  "request_world_placement",
   "request_crafting",
   "request_farming_action",
   "request_medical_action",
@@ -451,6 +452,7 @@ export function harthmereLiveModeMutationSnapshotKeysV1(input: {
       snapshots.add("playerStatusState");
       break;
     case "request_property_building_mutation":
+    case "request_world_placement":
       snapshots.add("buildingState");
       snapshots.add("inventoryLootState");
       snapshots.add("playerStatusState");

@@ -2239,14 +2239,19 @@
   integrity sha512-VsXyi8peyRq9PqIz/tpqiL2w3w80OgVMwBHltTml3LmVvXiphgeqmY9mvBw9Wu7e0QWk/fqD37ux8yP5uVekyQ==
 
 "@octokit/openapi-types@^13.9.0":
-  version "13.9.0"
-  resolved "https://registry.npmjs.org/@octokit/openapi-types/-/openapi-types-13.9.0.tgz"
-  integrity sha512-MOYjRyLIM0zzNb9RfEwVK6HLIc2nIF2OMVtMqiNOGbX0SHrQvQbI6X1K16ktmaHr8WUBv+eeul8cD9mz4rNiWQ==
+  version "13.13.1"
+  resolved "https://registry.npmjs.org/@octokit/openapi-types/-/openapi-types-13.13.1.tgz"
+  integrity sha512-4EuKSk3N95UBWFau3Bz9b3pheQ8jQYbKmBL5+GSuY8YDPDwu03J4BjI+66yNi8aaX/3h1qDpb0mbBkLdr+cfGQ==
 
 "@octokit/openapi-types@^17.0.0":
   version "17.0.0"
   resolved "https://registry.npmjs.org/@octokit/openapi-types/-/openapi-types-17.0.0.tgz"
   integrity sha512-V8BVJGN0ZmMlURF55VFHFd/L92XQQ43KvFjNmY1IYbCN3V/h/uUFV6iQi19WEHM395Nn+1qhUbViCAD/1czzog==
+
+"@octokit/openapi-types@^27.0.0":
+  version "27.0.0"
+  resolved "https://registry.npmjs.org/@octokit/openapi-types/-/openapi-types-27.0.0.tgz"
+  integrity sha512-whrdktVs1h6gtR+09+QsNk2+FO+49j6ga1c55YZudfEG+oKJVvJLQi3zkOm5JjiUXAagWK2tI2kTGKJ2Ys7MGA==
 
 "@octokit/plugin-paginate-rest@^6.0.0":
   version "6.0.0"
@@ -14124,7 +14129,7 @@ react-joystick-component@^6.2.0:
 
 "react-leaflet-markercluster@https://github.com/ill-inc/react-leaflet-markercluster":
   version "4.0.0-rc1"
-  resolved "git+https://github.com/ill-inc/react-leaflet-markercluster.git#755d9adc90efe3d59f09951f1e3995ff39746618"
+  resolved "git+ssh://git@github.com/ill-inc/react-leaflet-markercluster.git#755d9adc90efe3d59f09951f1e3995ff39746618"
   dependencies:
     "@react-leaflet/core" "^2.0.0"
     leaflet "^1.8.0"
@@ -17008,10 +17013,10 @@ typescript-plugin-css-modules@^5.0.1:
     stylus "^0.59.0"
     tsconfig-paths "^4.1.2"
 
-typescript@*, typescript@^5.0.4, typescript@>=2.7, "typescript@>=2.8.0 || >= 3.2.0-dev || >= 3.3.0-dev || >= 3.4.0-dev || >= 3.5.0-dev || >= 3.6.0-dev || >= 3.6.0-beta || >= 3.7.0-dev || >= 3.7.0-beta", typescript@>=3.3.1, typescript@>=4.0.0:
-  version "5.0.4"
-  resolved "https://registry.npmjs.org/typescript/-/typescript-5.0.4.tgz"
-  integrity sha512-cW9T5W9xY37cc+jfEnaUvX91foxtHkza3Nw3wkoF4sSlKn0MONdkdEndig/qPBWXNkmplh3NzayQzCiHM4/hqw==
+typescript@*, typescript@^5.9.3, typescript@>=2.7, "typescript@>=2.8.0 || >= 3.2.0-dev || >= 3.3.0-dev || >= 3.4.0-dev || >= 3.5.0-dev || >= 3.6.0-dev || >= 3.6.0-beta || >= 3.7.0-dev || >= 3.7.0-beta", typescript@>=3.3.1, typescript@>=4.0.0:
+  version "5.9.3"
+  resolved "https://registry.npmjs.org/typescript/-/typescript-5.9.3.tgz"
+  integrity sha512-jl1vZzPDinLr9eUt3J/t7V6FgNEw9QjvBPdysz9KfQDD41fQrC2Y4vKQdiaUpFT4bXlb1RHhLpp8wtm6M5TgSw==
 
 typescript@^3.9.10:
   version "3.9.10"
@@ -17287,7 +17292,7 @@ uuid@^9.0.0:
 
 uWebSockets.js@uNetworking/uWebSockets.js#v20.31.0:
   version "20.31.0"
-  resolved "git+https://github.com/uNetworking/uWebSockets.js.git#809b99d2d7d12e2cbf89b7135041e9b41ff84084"
+  resolved "git+ssh://git@github.com/uNetworking/uWebSockets.js.git#809b99d2d7d12e2cbf89b7135041e9b41ff84084"
 
 v8-compile-cache-lib@^3.0.1:
   version "3.0.1"
@@ -17301,7 +17306,7 @@ v8-compile-cache@^2.3.0:
 
 "v8-profiler-next@https://github.com/hyj1991/v8-profiler-next#fd2a2528dc2f956c753c44e592cd5774713e52ac":
   version "1.9.0"
-  resolved "git+https://github.com/hyj1991/v8-profiler-next.git#fd2a2528dc2f956c753c44e592cd5774713e52ac"
+  resolved "git+ssh://git@github.com/hyj1991/v8-profiler-next.git#fd2a2528dc2f956c753c44e592cd5774713e52ac"
   integrity sha512-xNV+2oH7cczdPEXAKE7//D0ja4EVPLdO1l6EA66fCqsBGHrFSFjpAXd64ZuNZtCiVzvYf5SSGRcun17+pRBmBw==
   dependencies:
     "@xprofiler/node-pre-gyp" "^1.0.9"
@@ -18111,7 +18116,7 @@ yuka@^0.7.8:
 
 zod@ill-inc/zod#schemav3:
   version "3.21.6"
-  resolved "git+https://github.com/ill-inc/zod.git#c00c5f3340e0bef51114fa10838e95aca1b12cc0"
+  resolved "git+ssh://git@github.com/ill-inc/zod.git#c00c5f3340e0bef51114fa10838e95aca1b12cc0"
 
 zustand@^4.3.1:
   version "4.3.8"

@@ -1,8 +1,6 @@
 import assert from "assert";
 
-import {
-  GROVE_ECONOMY_STARTER_LANDMARKS_V1,
-} from "@/shared/harthmere/grove_economy_starter_v1";
+import { GROVE_ECONOMY_STARTER_LANDMARKS_V1 } from "@/shared/harthmere/grove_economy_starter_v1";
 import { isHarthmereInspectableWorldObjectV1 } from "@/shared/harthmere/harthmere_world_object_inspectable_v1";
 import {
   harthmereObjectInteractionForLabelV1,
@@ -31,10 +29,15 @@ const PROP_LABELS: ReadonlyArray<readonly [string, string]> = [
   ["flag", "Route Flag"],
   ["cart", "Supply Cart"],
   ["workbench", "Fountain Workbench"],
+  ["craft table", "Business Craft Table"],
   ["oven", "Stone Oven"],
   ["mailbag", "Mailbag Stand"],
   ["cookpot", "Camp Cookpot"],
+  ["campfire", "Campfire"],
+  ["pot", "Cooking Pot"],
   ["patch", "Berry Patch"],
+  ["branches", "Orchard Softwood Branches"],
+  ["harvest", "Boar Sounder Harvest"],
   ["platform", "Service Platform"],
   ["tower", "Service Tower"],
   ["office", "Market Office"],
@@ -80,6 +83,10 @@ describe("world-object F interaction: all prop types", () => {
       "Storehouse Door",
       "Wishing Well",
       "Lesson Board",
+      "Campfire",
+      "Cooking Pot",
+      "Orchard Softwood Branches",
+      "Boar Sounder Harvest",
     ]) {
       assert.equal(
         isHarthmereContainerObjectLabelV1({ label: nonContainer }),
@@ -89,8 +96,44 @@ describe("world-object F interaction: all prop types", () => {
     }
   });
 
+  it("routes targeted F actions without stealing working sign/jobs/use flows", () => {
+    const cases: Array<readonly [string, string, string | undefined]> = [
+      ["Clothing Crate", "open_container", undefined],
+      ["Chest The Grove Underwater Main", "open_container", undefined],
+      ["Campfire", "cook", "campfire"],
+      ["Camp Fire", "cook", "campfire"],
+      ["Stone Oven", "cook", "oven"],
+      ["Cooking Pot", "cook", "cookpot"],
+      ["Soup Pot", "cook", "cookpot"],
+      ["Business Craft Table", "craft", undefined],
+      ["Crafting Table", "craft", undefined],
+      ["Orchard Softwood Branches", "gather", undefined],
+      ["Boar Sounder Harvest", "gather", undefined],
+      ["Fountain Lesson Board", "read", undefined],
+      ["Harthmere Town Jobs Board", "open_jobs_board", undefined],
+      ["Taye's Paint Pot", "use", undefined],
+    ];
+
+    for (const [label, kind, stationKind] of cases) {
+      const interaction = harthmereObjectInteractionForLabelV1({ label });
+      assert.equal(interaction?.kind, kind, `${label} should route to ${kind}`);
+      if (stationKind) {
+        assert.equal(
+          interaction?.stationKind,
+          stationKind,
+          `${label} should use ${stationKind}`
+        );
+      }
+    }
+  });
+
   it("does NOT treat living/NPC labels as world objects", () => {
-    for (const living of ["Jackie", "Mucked Robot", "Foreman Calla Ashe", "Road Mucker"]) {
+    for (const living of [
+      "Jackie",
+      "Mucked Robot",
+      "Foreman Calla Ashe",
+      "Road Mucker",
+    ]) {
       assert.equal(
         isHarthmereInspectableWorldObjectV1({ label: living }),
         false,

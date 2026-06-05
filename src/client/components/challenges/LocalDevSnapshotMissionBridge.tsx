@@ -552,6 +552,7 @@ export function snapshotRoadAheadTrackableQuestsForBiomesUIV73(
   state: SnapshotMissionStateV71 = readSnapshotMissionStateV71()
 ) {
   const { mission, step, completed } = getMissionStepV71(state);
+  const objectives = mission.steps.map((entry) => entry.objective);
   return [
     {
       questId: mission.id,
@@ -564,6 +565,11 @@ export function snapshotRoadAheadTrackableQuestsForBiomesUIV73(
         : ("available" as const),
       firstMarkerId: step.target,
       reward: mission.reward,
+      kind: mission.source,
+      kindLabel: "Story Quest",
+      objective: step.objective,
+      objectives,
+      description: mission.summary,
     },
   ];
 }

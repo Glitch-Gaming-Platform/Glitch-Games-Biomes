@@ -1,0 +1,226 @@
+{
+  "url": "http://127.0.0.1:3000/at/VisualCombatDiagnostics",
+  "artifactsDir": "/Users/devindixon/Development/biomes-game/.codex-artifacts/harthmere-mucker-hit-visual-v1",
+  "before": {
+    "ok": true,
+    "offset": 8810000000019201,
+    "label": "Road Muckling",
+    "targetBefore": 218,
+    "contactDistance": 1.0499999999999545,
+    "nearestOffset": 8810000000019201,
+    "nearestHp": 218,
+    "nearestHitOffsets": [
+      8810000000019201
+    ],
+    "mouseRouterBefore": [
+      {
+        "at": "2026-06-04T20:16:44.160Z",
+        "type": "installed",
+        "version": "harthmere-hard-mouse-router-v1"
+      }
+    ]
+  },
+  "after": {
+    "targetAfter": 209,
+    "nearestAfterHp": 209,
+    "playerAttack": {
+      "attacker": "You",
+      "target": "Road Muckling",
+      "ability": "Fists Strike",
+      "result": "normal_hit",
+      "rawDamage": 12,
+      "mitigatedDamage": 3,
+      "finalDamage": 9,
+      "targetHpBefore": 218,
+      "targetHpAfter": 209,
+      "detail": "You hit Road Muckling with Fists Strike for 9 damage. [GLTF: Attack → HitReact]",
+      "targetOffset": 8810000000019201,
+      "attackerClipPriority": [
+        "Attack",
+        "Attack2",
+        "SideSwing",
+        "Thrusting",
+        "HeavyAttack"
+      ],
+      "effectKind": "physical",
+      "vfxKind": "physical",
+      "targetClipPriority": [
+        "HitReact",
+        "Stunned",
+        "Block",
+        "ShieldBlock"
+      ],
+      "animationKind": "attack",
+      "id": "1780604217162-636681",
+      "at": 1780604217162,
+      "visualKind": "physical",
+      "harthmereNoSparkBasic": true
+    },
+    "recent": [
+      {
+        "attacker": "Road Muckling",
+        "target": "You",
+        "ability": "Muck Slam",
+        "result": "normal_hit",
+        "rawDamage": 36,
+        "mitigatedDamage": 4,
+        "finalDamage": 32,
+        "targetHpBefore": 240,
+        "targetHpAfter": 208,
+        "detail": "Road Muckling hit You with Muck Slam for 32 damage. [GLTF: Attack → HitReact]",
+        "attackerOffset": 8810000000019201,
+        "attackerClipPriority": [
+          "Attack",
+          "Bite",
+          "Claw",
+          "Pounce",
+          "Charge",
+          "Scratch",
+          "Peck",
+          "Kick",
+          "TailWhip",
+          "HeavyAttack"
+        ],
+        "effectKind": "physical",
+        "vfxKind": "physical",
+        "targetClipPriority": [
+          "HitReact",
+          "Stunned",
+          "Block",
+          "ShieldBlock"
+        ],
+        "animationKind": "attack",
+        "id": "1780604217163-495273",
+        "at": 1780604217163,
+        "visualKind": "physical",
+        "harthmereNoSparkBasic": true
+      },
+      {
+        "attacker": "You",
+        "target": "Road Muckling",
+        "ability": "Fists Strike",
+        "result": "normal_hit",
+        "rawDamage": 12,
+        "mitigatedDamage": 3,
+        "finalDamage": 9,
+        "targetHpBefore": 218,
+        "targetHpAfter": 209,
+        "detail": "You hit Road Muckling with Fists Strike for 9 damage. [GLTF: Attack → HitReact]",
+        "targetOffset": 8810000000019201,
+        "attackerClipPriority": [
+          "Attack",
+          "Attack2",
+          "SideSwing",
+          "Thrusting",
+          "HeavyAttack"
+        ],
+        "effectKind": "physical",
+        "vfxKind": "physical",
+        "targetClipPriority": [
+          "HitReact",
+          "Stunned",
+          "Block",
+          "ShieldBlock"
+        ],
+        "animationKind": "attack",
+        "id": "1780604217162-636681",
+        "at": 1780604217162,
+        "visualKind": "physical",
+        "harthmereNoSparkBasic": true
+      }
+    ],
+    "combatEffects": [
+      {
+        "at": 1780604217164,
+        "detail": {
+          "attacker": "Road Muckling",
+          "target": "You",
+          "ability": "Muck Slam",
+          "result": "normal_hit",
+          "rawDamage": 36,
+          "mitigatedDamage": 4,
+          "finalDamage": 32,
+          "targetHpBefore": 240,
+          "targetHpAfter": 208,
+          "detail": "Road Muckling hit You with Muck Slam for 32 damage. [GLTF: Attack → HitReact]",
+          "attackerOffset": 8810000000019201,
+          "attackerClipPriority": [
+            "Attack",
+            "Bite",
+            "Claw",
+            "Pounce",
+            "Charge",
+            "Scratch",
+            "Peck",
+            "Kick",
+            "TailWhip",
+            "HeavyAttack"
+          ],
+          "effectKind": "physical",
+          "vfxKind": "physical",
+          "targetClipPriority": [
+            "HitReact",
+            "Stunned",
+            "Block",
+            "ShieldBlock"
+          ],
+          "animationKind": "attack",
+          "id": "1780604217163-495273",
+          "at": 1780604217163,
+          "visualKind": "physical",
+          "harthmereNoSparkBasic": true
+        }
+      },
+      {
+        "at": 1780604217162,
+        "detail": {
+          "attacker": "You",
+          "target": "Road Muckling",
+          "ability": "Fists Strike",
+          "result": "normal_hit",
+          "rawDamage": 12,
+          "mitigatedDamage": 3,
+          "finalDamage": 9,
+          "targetHpBefore": 218,
+          "targetHpAfter": 209,
+          "detail": "You hit Road Muckling with Fists Strike for 9 damage. [GLTF: Attack → HitReact]",
+          "targetOffset": 8810000000019201,
+          "attackerClipPriority": [
+            "Attack",
+            "Attack2",
+            "SideSwing",
+            "Thrusting",
+            "HeavyAttack"
+          ],
+          "effectKind": "physical",
+          "vfxKind": "physical",
+          "targetClipPriority": [
+            "HitReact",
+            "Stunned",
+            "Block",
+            "ShieldBlock"
+          ],
+          "animationKind": "attack",
+          "id": "1780604217162-636681",
+          "at": 1780604217162,
+          "visualKind": "physical",
+          "harthmereNoSparkBasic": true
+        }
+      }
+    ],
+    "mouseRouterLog": [
+      {
+        "at": "2026-06-04T20:16:56.909Z",
+        "type": "mousedown",
+        "action": "basic"
+      },
+      {
+        "at": "2026-06-04T20:16:44.160Z",
+        "type": "installed",
+        "version": "harthmere-hard-mouse-router-v1"
+      }
+    ]
+  },
+  "hpDelta": -9,
+  "passed": true
+}

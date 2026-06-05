@@ -2,6 +2,7 @@ import { useClientContext } from "@/client/components/contexts/ClientContextReac
 import { defaultHarthmereLiveFetchV1 } from "@/client/components/harthmere_live_fetch";
 import {
   HARTHMERE_INVENTORY_EVENT,
+  harthmereJobToolOwnedStateV151,
   performHarthmereBackpackItemUseForBiomesUI,
   readHarthmereInventoryState,
   type HarthmereItemInstance,
@@ -53,6 +54,7 @@ import type { BiomesUIAdapters } from "../BiomesUI";
 import {
   BIOMES_UI_OPEN_MENU_KEY_CODE,
   BIOMES_UI_OPEN_MENU_TAB,
+  BIOMES_UI_QUESTS_KEY_CODE,
   type TabKey,
 } from "../BiomesUITypes";
 import {
@@ -85,6 +87,7 @@ import {
   activeJobsBoardMissionStepsForBiomesUIV1,
   firstActiveJobsBoardQuestTitleForBiomesUIV1,
   jobsBoardAcceptedJobLandmarksForBiomesUIV1,
+  jobsBoardToolSourceLandmarksForBiomesUIV1,
   jobsBoardTrackableQuestsForBiomesUIV1,
   shouldClearStaleJobsBoardPinV151,
 } from "./jobsBoardQuestMapAdapter";
@@ -152,6 +155,7 @@ const BIOMES_UI_KEY_TO_TAB: Record<string, TabKey> = {
   KeyP: "banking",
   KeyM: "map",
   KeyU: "map",
+  [BIOMES_UI_QUESTS_KEY_CODE]: "map",
   KeyC: "collections",
   KeyV: "inbox",
   Comma: "options",
@@ -1304,6 +1308,12 @@ export function buildBiomesUIMapAdapterForTest(
     Array.isArray(value)
       ? value.filter((item): item is string => typeof item === "string")
       : [];
+  const HumanizeQuestKindLabel = (value: unknown) => {
+    const text = typeof value === "string" && value.trim() ? value : "Quest";
+    return text
+      .replace(/[_-]+/g, " ")
+      .replace(/\b\w/g, (letter) => letter.toUpperCase());
+  };
   const ActiveSnapshotQuest = (quests: any[], state: any) => {
     const completed = new Set(QuestIds(state?.completedQuestIds));
     const activeQuestId =
@@ -1437,6 +1447,10 @@ export function buildBiomesUIMapAdapterForTest(
     return appendHarthmereBusinessOutpostMapLandmarksV1([
       ...(Array.isArray(api?.landmarks) ? api.landmarks : []),
       ...jobsBoardAcceptedJobLandmarksForBiomesUIV1(jobsBoardState),
+      ...jobsBoardToolSourceLandmarksForBiomesUIV1(
+        jobsBoardState,
+        harthmereJobToolOwnedStateV151()
+      ),
       ...liveEntityHelperAcceptedQuestLandmarksForBiomesUIV1(
         liveEntityHelperState,
         { isReadyToTurnIn: liveEntityHelperQuestRecordReadyToTurnInV1 }
@@ -1627,23 +1641,59 @@ export function buildBiomesUIMapAdapterForTest(
       const completed = QuestIds(state?.completedQuestIds);
       const authoredQuests = quests
         .filter((quest: any) => quest && quest.id)
-        .map((quest: any) => ({
-          questId: String(quest.id),
-          title: String(quest.title ?? quest.id),
-          area: String(quest.area ?? "The Grove"),
-          status: completed.includes(quest.id)
+        .map((quest: any) => {
+          const objectives = Array.isArray(quest.objectives)
+            ? quest.objectives
+                .map((objective: unknown) => String(objective ?? "").trim())
+                .filter(Boolean)
+            : [];
+          const status = completed.includes(quest.id)
             ? ("completed" as const)
             : quest.id === activeQuestId || accepted.includes(quest.id)
             ? ("active" as const)
-            : ("available" as const),
-          firstMarkerId:
-            Array.isArray(quest.markerIds) && quest.markerIds.length
-              ? normalizeMarkerId(String(quest.markerIds[0]))
-              : undefined,
-          reward: String(quest.reward ?? ""),
-        }));
+            : ("available" as const);
+          const rawObjectiveIndex = Number(state?.activeObjectiveIndex ?? 0);
+          const objectiveIndex =
+            status === "active" && quest.id === activeQuestId
+              ? Math.max(
+                  0,
+                  Math.min(
+                    objectives.length - 1,
+                    Number.isFinite(rawObjectiveIndex)
+                      ? rawObjectiveIndex
+                      : 0
+                  )
+                )
+              : 0;
+          return {
+            questId: String(quest.id),
+            title: String(quest.title ?? quest.id),
+            area: String(quest.area ?? "The Grove"),
+            status,
+            firstMarkerId:
+              Array.isArray(quest.markerIds) && quest.markerIds.length
+                ? normalizeMarkerId(String(quest.markerIds[0]))
+                : undefined,
+            reward: String(quest.reward ?? ""),
+            kind: String(quest.category ?? "authored_grove_quest"),
+            kindLabel: HumanizeQuestKindLabel(quest.category),
+            objective: objectives[objectiveIndex] ?? objectives[0],
+            objectives,
+            description:
+              typeof quest.hook === "string" && quest.hook.trim()
+                ? quest.hook.trim()
+                : typeof quest.sampleDialogue === "string" &&
+                  quest.sampleDialogue.trim()
+                ? quest.sampleDialogue.trim()
+                : undefined,
+          };
+        });
       return [
-        ...jobsBoardTrackableQuestsForBiomesUIV1(jobsBoardState),
+        ...jobsBoardTrackableQuestsForBiomesUIV1(
+          jobsBoardState,
+          Date.now(),
+          harthmereJobToolOwnedStateV151()
+        ),
         ...snapshotRoadAheadTrackableQuestsForBiomesUIV73(
           readSnapshotMissionStateV71()
         ),

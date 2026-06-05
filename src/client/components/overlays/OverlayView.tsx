@@ -14,6 +14,7 @@ import { PlayerInspectionOverlayComponent } from "@/client/components/overlays/i
 import { RobotInspectionOverlayComponent } from "@/client/components/overlays/inspected/RobotInspectionOverlayComponent";
 import { ContainerOverlayComponent } from "@/client/components/overlays/inspected/placeables/ContainerOverlayComponent";
 import { CraftingStationOverlayComponent } from "@/client/components/overlays/inspected/placeables/CraftingStationOverlayComponent";
+import { isHarthmerePlacedCookStationItemV1 } from "@/client/components/overlays/inspected/placeables/craftingStationCookRoutingV1";
 import { DoorOverlayComponent } from "@/client/components/overlays/inspected/placeables/DoorOverlayComponent";
 import { FramePlaceableOverlayComponent } from "@/client/components/overlays/inspected/placeables/FramePlaceableOverlayComponent";
 import { MailboxOverlayComponent } from "@/client/components/overlays/inspected/placeables/MailboxOverlayComponent";
@@ -83,6 +84,13 @@ export const OverlayComponent: React.FunctionComponent<{
         return <DoorOverlayComponent overlay={overlay} />;
       }
       if (item.isCraftingStation) {
+        return <CraftingStationOverlayComponent overlay={overlay} />;
+      }
+      // A placed campfire / oven / cookpot / fire pit is a cooking station that
+      // is not flagged isCraftingStation. Route it to the same overlay so the
+      // cook "F" prompt opens the cooking panel (CraftingStationOverlayComponent
+      // already splits cook vs craft via HARTHMERE_PLACED_COOK_STATION_RE_V1).
+      if (isHarthmerePlacedCookStationItemV1(item)) {
         return <CraftingStationOverlayComponent overlay={overlay} />;
       }
       if (item.isOutfitStand) {

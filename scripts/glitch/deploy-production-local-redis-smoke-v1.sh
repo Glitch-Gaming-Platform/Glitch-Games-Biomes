@@ -576,17 +576,20 @@ audit_production_authored_content_v1() {
     { for off in $(seq "$lo" "$hi"); do echo "EXISTS b:$((base + off))"; done; } \
       | prod_redis_cli_v186 2>/dev/null | grep -c '^1$' || true
   }
-  local grove_npcs muckers livestock owners customers robots
+  local grove_npcs muckers livestock owners customers stations robots
   grove_npcs="$(count_present_id_range_v1 9301 9320 | tr -d '[:space:]')"
   muckers="$(count_present_id_range_v1 9451 9550 | tr -d '[:space:]')"
   # Wildlife (cows/sheep/rabbits): 24 animals, offsets 9551..9574. MUST stay
   # clear of business owners (9601-9619) — an earlier overlap dropped 19 of them.
   livestock="$(count_present_id_range_v1 9551 9574 | tr -d '[:space:]')"
   owners="$(count_present_id_range_v1 9601 9619 | tr -d '[:space:]')"
+  # Business crafting stations: one per business, 19 total, offsets 9651..9669
+  # (clear of owners 9601-9619 and customers 9701+).
+  stations="$(count_present_id_range_v1 9651 9669 | tr -d '[:space:]')"
   # Business customers: 19 businesses x 3 patrons = 57, offsets 9701..9757.
   customers="$(count_present_id_range_v1 9701 9757 | tr -d '[:space:]')"
   robots="$(count_present_id_range_v1 9401 9420 | tr -d '[:space:]')"
-  log "Production authored-content audit: groveNpcs=${grove_npcs} muckers=${muckers}/100 wildlife=${livestock}/24 businessOwners=${owners}/19 businessCustomers=${customers}/57 robots=${robots}"
+  log "Production authored-content audit: groveNpcs=${grove_npcs} muckers=${muckers}/100 wildlife=${livestock}/24 businessOwners=${owners}/19 businessCraftingStations=${stations}/19 businessCustomers=${customers}/57 robots=${robots}"
 
   local failed=0
   if [ "${livestock:-0}" -lt 24 ]; then
@@ -595,6 +598,10 @@ audit_production_authored_content_v1() {
   fi
   if [ "${owners:-0}" -lt 19 ]; then
     echo "ERROR business owner NPCs missing in production: ${owners}/19 — the reconciler did not materialize them." >&2
+    failed=1
+  fi
+  if [ "${stations:-0}" -lt 19 ]; then
+    echo "ERROR business crafting stations missing in production: ${stations}/19 — the reconciler did not materialize them." >&2
     failed=1
   fi
   if [ "${customers:-0}" -lt 57 ]; then

@@ -75,6 +75,12 @@ import {
   selectNearestHarthmereWorldObjectInspectableV1,
   type HarthmereWorldObjectCandidateV1,
 } from "@/shared/harthmere/harthmere_world_object_inspectable_v1";
+import {
+  HARTHMERE_CRAFTING_TABLE_PROMPT_RADIUS_V1,
+  selectNearestHarthmereCraftingTableV1,
+  type HarthmereCraftingTableCandidateV1,
+} from "@/shared/harthmere/harthmere_crafting_table_proximity_v1";
+import { isHarthmerePlacedCookStationItemV1 } from "@/client/components/overlays/inspected/placeables/craftingStationCookRoutingV1";
 import { ok } from "assert";
 import { isEqual } from "lodash";
 import { Vector3 } from "three";
@@ -1165,7 +1171,11 @@ export class OverlayScript implements Script {
         ? Math.max(changeRadius(this.resources), HARTHMERE_NPC_TALK_INSPECT_RADIUS_V139)
         : changeRadius(this.resources);
       if (hit.distance > maxInspectDistance) {
-        return this.getNearbyNpcTalkInspectableOverlayV140();
+        return (
+          this.getNearbyHarthmereObjectInspectableOverlayV1() ??
+          this.getNearbyHarthmerePlaceableCraftingStationOverlayV1() ??
+          this.getNearbyNpcTalkInspectableOverlayV140()
+        );
       }
       ok(entity.position);
       if (entity.player_behavior) {
@@ -1239,6 +1249,7 @@ export class OverlayScript implements Script {
       // looking at the prop; otherwise the NPC-talk prompt still shows.
       return (
         this.getNearbyHarthmereObjectInspectableOverlayV1() ??
+        this.getNearbyHarthmerePlaceableCraftingStationOverlayV1() ??
         this.getNearbyNpcTalkInspectableOverlayV140()
       );
     }
@@ -1249,6 +1260,12 @@ export class OverlayScript implements Script {
       this.getNearbyHarthmereObjectInspectableOverlayV1();
     if (nearbyHarthmereObjectOverlay) {
       return nearbyHarthmereObjectOverlay;
+    }
+
+    const nearbyHarthmereCraftingStationOverlay =
+      this.getNearbyHarthmerePlaceableCraftingStationOverlayV1();
+    if (nearbyHarthmereCraftingStationOverlay) {
+      return nearbyHarthmereCraftingStationOverlay;
     }
 
     const nearbyNpcTalkOverlay = this.getNearbyNpcTalkInspectableOverlayV140();
@@ -1439,6 +1456,83 @@ export class OverlayScript implements Script {
       consider(entity);
     }
     return candidates;
+  }
+
+  // HARTHMERE_PLACEABLE_CRAFTING_STATION_FALLBACK_V1:
+  // Crafting stations (including campfires / ovens / pots) already have the
+  // correct native placeable overlay when the cursor ray hits them. In Harthmere's
+  // third-person camera, though, standing at the station often does not mean the
+  // cursor ray selects it, so the player sees no F prompt. This proximity fallback
+  // resolves nearby real placeable crafting stations and returns the same
+  // `placeable` inspect overlay the raycast path would have produced, preserving
+  // the existing crafting/cooking routing without changing signs, NPCs, boards, or
+  // ordinary props.
+  private getNearbyHarthmerePlaceableCraftingStationOverlayV1():
+    | InspectableOverlay
+    | undefined {
+    const localPlayer = this.resources.get("/scene/local_player");
+    const playerPosition: ReadonlyVec3 = [
+      localPlayer.player.position[0],
+      localPlayer.player.position[1],
+      localPlayer.player.position[2],
+    ];
+    const entityByCandidateId = new Map<string, ReadonlyEntity>();
+    const candidates: HarthmereCraftingTableCandidateV1[] = [];
+
+    for (const entity of this.table.scan(
+      PlaceableSelector.query.spatial.inSphere({
+        center: localPlayer.player.position,
+        radius: HARTHMERE_CRAFTING_TABLE_PROMPT_RADIUS_V1 + 0.5,
+      })
+    )) {
+      const placeable = entity.placeable_component;
+      const pos = entity.position?.v;
+      if (!placeable || !pos) {
+        continue;
+      }
+      const item = anItem(placeable.item_id);
+      // Crafting stations (workbench/anvil/...) AND placed cooking stations
+      // (campfire / oven / cookpot / fire pit) both get the proximity "F" prompt
+      // here. Cooking stations are not flagged isCraftingStation, so without the
+      // cook predicate the player standing over a campfire would see no prompt.
+      const isCookStation = isHarthmerePlacedCookStationItemV1(item);
+      if (!item.isCraftingStation && !isCookStation) {
+        continue;
+      }
+      const id = String(entity.id);
+      entityByCandidateId.set(id, entity);
+      candidates.push({
+        entityId: id,
+        position: [pos[0], pos[1], pos[2]],
+        isCraftingStation: true,
+        stationName: item.displayName,
+      });
+    }
+
+    const selected = selectNearestHarthmereCraftingTableV1({
+      playerPosition,
+      facingView: viewDir([0, localPlayer.player.orientation[1]]) as [
+        number,
+        number,
+        number
+      ],
+      candidates,
+    });
+    if (!selected) {
+      return undefined;
+    }
+    const entity = entityByCandidateId.get(selected.entityId);
+    if (!entity?.placeable_component) {
+      return undefined;
+    }
+    return {
+      kind: "placeable",
+      key: `inspect:placeable:crafting_station_fallback:${entity.id}`,
+      entityId: entity.id,
+      itemId: entity.placeable_component.item_id,
+      placerId: entity.placed_by?.id ?? INVALID_BIOMES_ID,
+      label: selected.stationName,
+    };
   }
 
   // Produces the "F" inspect/interact prompt for nearby world objects. Candidates

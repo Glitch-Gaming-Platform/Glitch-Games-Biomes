@@ -92,6 +92,7 @@ import {
   buildingSystemPlotByIdV1,
 } from "@/shared/harthmere/building_system_v1";
 import { createHarthmereLiveEntityCombatSnapshotsFromEcsRecordsV1 } from "@/shared/harthmere/live_entity_ecs_bridge_v1";
+import { HARTHMERE_VOXEL_INTERACTION_ATTACK_REACH_UNITS_V1 } from "@/shared/harthmere/combat_reach_v1";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -1320,6 +1321,88 @@ describe("reduceHarthmereLiveModeBackendStateV1 — combat target authority", fu
       )
     );
     assert.ok((state.combat.threat[TARGET] ?? 0) > 0);
+  });
+
+  it("lets production melee hit a live mucker at voxel interaction reach with terrain Y mismatch", function () {
+    const targetId = "server-muck-combat:voxel-reach-mucker";
+    const s = freshState();
+    s.classMagic.knownAbilities = ["basic_strike"];
+    s.classMagic.loadout = { slot_0: "basic_strike" };
+    s.combat.entitySnapshots[targetId] = {
+      hp: 100,
+      maxHp: 100,
+      position: {
+        x: HARTHMERE_VOXEL_INTERACTION_ATTACK_REACH_UNITS_V1,
+        y: 54,
+        z: 0,
+      },
+      isHostile: true,
+      isAlive: true,
+      isAttackable: true,
+      entityKind: "mux",
+      level: 1,
+    };
+
+    const { state, summary } = applyOne(
+      s,
+      "request_attack",
+      { abilityId: "basic_strike" },
+      {
+        targetId,
+        requestId: "voxel_reach_mucker_hit",
+        idempotencyKey: "voxel_reach_mucker_hit_key",
+        serverActorPosition: { x: 0, y: 20, z: 0 },
+      }
+    );
+
+    assert.ok(
+      !summary.warnings.some((warning) =>
+        warning.startsWith("combat_rejected:")
+      ),
+      summary.warnings.join(", ")
+    );
+    assert.ok(state.combat.entitySnapshots[targetId].hp < 100);
+    assert.equal(state.combat.entitySnapshots[targetId].lastAttackerId, ACTOR);
+  });
+
+  it("rejects production melee against a live mucker just beyond voxel interaction reach", function () {
+    const targetId = "server-muck-combat:beyond-voxel-reach-mucker";
+    const s = freshState();
+    s.classMagic.knownAbilities = ["basic_strike"];
+    s.classMagic.loadout = { slot_0: "basic_strike" };
+    s.combat.entitySnapshots[targetId] = {
+      hp: 100,
+      maxHp: 100,
+      position: {
+        x: HARTHMERE_VOXEL_INTERACTION_ATTACK_REACH_UNITS_V1 + 0.01,
+        y: 20,
+        z: 0,
+      },
+      isHostile: true,
+      isAlive: true,
+      isAttackable: true,
+      entityKind: "mux",
+      level: 1,
+    };
+
+    const { state, summary } = applyOne(
+      s,
+      "request_attack",
+      { abilityId: "basic_strike" },
+      {
+        targetId,
+        requestId: "voxel_reach_mucker_miss",
+        idempotencyKey: "voxel_reach_mucker_miss_key",
+        serverActorPosition: { x: 0, y: 20, z: 0 },
+      }
+    );
+
+    assert.ok(summary.warnings.includes("combat_rejected:target_out_of_range"));
+    assert.equal(state.combat.entitySnapshots[targetId].hp, 100);
+    assert.equal(
+      state.combat.entitySnapshots[targetId].lastAttackerId,
+      undefined
+    );
   });
 
   it("spends the ability resource without draining health and mutates target hp", function () {

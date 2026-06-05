@@ -8,6 +8,8 @@
  * backend and all writes are posted through request_economy_mutation.
  */
 
+import { harthmereBusinessToolForTypeV151 } from "@/shared/harthmere/harthmere_business_tool_shop_v151";
+import { harthmereBusinessStorefrontListingsForTypeV1 } from "@/shared/harthmere/harthmere_business_storefront_goods_v1";
 import {
   HARTHMERE_BUSINESS_CUSTOMER_NPCS_V1,
   harthmereBusinessOutpostBusinessIdV1,
@@ -1430,9 +1432,24 @@ export interface HarthmereBusinessGrowthReportV1 {
 
 export interface HarthmereBusinessShopfrontV1 {
   businessId: string;
+  businessType?: string;
   inventory: HarthmereBusinessVisibleInventoryItemV1[];
   acceptsCustomOrders: boolean;
   emptyLabel: string;
+  // HARTHMERE_BUSINESS_TOOL_SHOP_V151: the one tool this business sells to the
+  // player (each of the 19 businesses sells a distinct tool). The panel shows a
+  // "Buy" button for it; the purchase deposits the tool into the player's
+  // inventory so a tool-gated job's redirect leads to a real purchase.
+  toolForSale?: { toolItemId: string; toolName: string; priceGold: number };
+  // HARTHMERE_BUSINESS_STOREFRONT_GOODS_V1: the business's themed building
+  // materials + interior furnishings (5 blocks + 4 interior items), in addition
+  // to its normal inventory + tool. Unlimited supply — bought via the server
+  // buy_storefront_good economy op (no business-inventory deduction).
+  storefrontGoods?: Array<{
+    itemId: string;
+    kind: "block" | "interior";
+    priceGold: number;
+  }>;
 }
 
 export interface HarthmereBusinessContractBoardV1 {
@@ -1863,12 +1880,31 @@ export function getHarthmereBusinessShopfrontV1(
     };
   }
   const inventory = getHarthmereVisibleBusinessInventoryV1(state, businessId);
+  const toolListing = harthmereBusinessToolForTypeV151(business.typeId);
   return {
     businessId,
+    businessType: business.typeId,
     inventory,
     acceptsCustomOrders:
       mode === "customer" && canCustomerUseHarthmereBusinessV1(business),
     emptyLabel: inventory.length ? "" : "No public inventory is stocked yet.",
+    toolForSale: toolListing
+      ? {
+          toolItemId: toolListing.toolItemId,
+          toolName: toolListing.toolName,
+          priceGold: toolListing.priceGold,
+        }
+      : undefined,
+    storefrontGoods:
+      mode === "customer"
+        ? harthmereBusinessStorefrontListingsForTypeV1(business.typeId).map(
+            (listing) => ({
+              itemId: listing.itemId,
+              kind: listing.kind,
+              priceGold: listing.buyPrice,
+            })
+          )
+        : undefined,
   };
 }
 
@@ -2369,6 +2405,11 @@ export interface HarthmereBusinessInterfaceAdapterV1 {
     itemId: string,
     count: number
   ): Promise<void>;
+  buyStorefrontGood(
+    businessId: string,
+    itemId: string,
+    count: number
+  ): Promise<void>;
   runServiceAction(
     businessId: string,
     actionId: string,
@@ -2638,6 +2679,13 @@ export function createHarthmereBusinessInterfaceAdapterV1(options: {
       if (!canCustomerUseHarthmereBusinessV1(business))
         throw new Error("business_not_open");
       await submit("record_customer_sale", { businessId, itemId, count });
+    },
+    buyStorefrontGood: async (businessId, itemId, count) => {
+      const business = requireState().businesses[businessId];
+      if (!business) throw new Error("business_not_found");
+      if (!canCustomerUseHarthmereBusinessV1(business))
+        throw new Error("business_not_open");
+      await submit("buy_storefront_good", { businessId, itemId, count });
     },
     runServiceAction: async (businessId, actionId, overrides = {}) => {
       const state = requireState();

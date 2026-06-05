@@ -108,6 +108,24 @@ describe("harthmere crafting-table proximity gating", () => {
     }
   });
 
+  it("selects a placed campfire as a station candidate for the cooking overlay", () => {
+    const sel = selectNearestHarthmereCraftingTableV1({
+      playerPosition: [0, 0, 0],
+      facingView: facingPlusX,
+      candidates: [
+        {
+          entityId: "campfire-placeable",
+          position: [1.75, 0, 0],
+          isCraftingStation: true,
+          stationName: "Campfire",
+        },
+      ],
+    });
+    assert.ok(sel, "campfire placeable should be selected by proximity");
+    assert.strictEqual(sel!.entityId, "campfire-placeable");
+    assert.strictEqual(sel!.stationName, "Campfire");
+  });
+
   it("picks the nearest faced table when several are nearby", () => {
     const candidates: HarthmereCraftingTableCandidateV1[] = [
       { entityId: "far", position: [5, 0, 0], isCraftingStation: true },

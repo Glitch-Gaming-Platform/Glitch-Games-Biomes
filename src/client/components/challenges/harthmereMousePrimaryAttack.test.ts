@@ -1,7 +1,9 @@
 /// <reference types="mocha" />
 import { isHarthmereCombatCreatureNpcTypeV1 } from "@/client/components/challenges/dialogueObjectSemantics";
 import { shouldEngageHarthmereMousePrimaryAttackV1 } from "@/client/components/challenges/harthmereMousePrimaryAttackRules";
+import { harthmerePvpPlayersInArcV1 } from "@/client/components/challenges/harthmerePvpHitRules";
 import { BikkieIds } from "@/shared/bikkie/ids";
+import { HARTHMERE_VOXEL_INTERACTION_ATTACK_REACH_UNITS_V1 } from "@/shared/harthmere/combat_reach_v1";
 import type { BiomesId } from "@/shared/ids";
 import assert from "assert";
 
@@ -38,6 +40,17 @@ describe("harthmere left-mouse primary attack routing", () => {
     );
   });
 
+  it("engages on a game-canvas click even when pointer lock is unavailable in an embed", () => {
+    assert.equal(
+      shouldEngageHarthmereMousePrimaryAttackV1({
+        ...engaged,
+        pointerLocked: false,
+        gameplayCanvasTarget: true,
+      }),
+      true
+    );
+  });
+
   it("does not attack when the click originated in a text field", () => {
     assert.equal(
       shouldEngageHarthmereMousePrimaryAttackV1({
@@ -55,6 +68,43 @@ describe("harthmere left-mouse primary attack routing", () => {
         hasAttackableTargetNearby: false,
       }),
       false
+    );
+  });
+});
+
+describe("harthmere player-vs-player mouse swing reach", () => {
+  it("hits players at voxel interaction reach but not beyond it", () => {
+    const targetId = 42 as BiomesId;
+    const cosHalfAngle = Math.cos((135 * Math.PI) / 360);
+    assert.deepStrictEqual(
+      harthmerePvpPlayersInArcV1({
+        origin: [0, 0],
+        forward: [1, 0],
+        players: [
+          {
+            id: targetId,
+            pos: [HARTHMERE_VOXEL_INTERACTION_ATTACK_REACH_UNITS_V1, 0],
+          },
+        ],
+        range: HARTHMERE_VOXEL_INTERACTION_ATTACK_REACH_UNITS_V1,
+        cosHalfAngle,
+      }),
+      [targetId]
+    );
+    assert.deepStrictEqual(
+      harthmerePvpPlayersInArcV1({
+        origin: [0, 0],
+        forward: [1, 0],
+        players: [
+          {
+            id: targetId,
+            pos: [HARTHMERE_VOXEL_INTERACTION_ATTACK_REACH_UNITS_V1 + 0.01, 0],
+          },
+        ],
+        range: HARTHMERE_VOXEL_INTERACTION_ATTACK_REACH_UNITS_V1,
+        cosHalfAngle,
+      }),
+      []
     );
   });
 });

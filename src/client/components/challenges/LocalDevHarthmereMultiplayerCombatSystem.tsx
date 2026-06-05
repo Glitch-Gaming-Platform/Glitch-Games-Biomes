@@ -59,6 +59,7 @@ import {
 import { getHarthmereLevelSummary } from "@/client/components/challenges/LocalDevHarthmereLevelingSystem";
 import { shouldEngageHarthmereMousePrimaryAttackV1 } from "@/client/components/challenges/harthmereMousePrimaryAttackRules";
 import { harthmereUserScopedStorageKey } from "@/client/components/challenges/LocalDevHarthmereUserScope";
+import { HARTHMERE_VOXEL_INTERACTION_ATTACK_REACH_UNITS_V1 } from "@/shared/harthmere/combat_reach_v1";
 import React, { useEffect, useMemo, useState } from "react";
 
 const HARTHMERE_NO_SPARK_BASIC_ACTOR_MATCH_VERSION = "harthmere-no-spark-basic-actor-match-v11";
@@ -702,7 +703,10 @@ export function resolveHarthmerePvpMousePrimaryAttackV1(
   const candidates: HarthmerePvpCandidatePlayerV1[] = [];
   for (const entity of deps.table.scan(
     PlayerSelector.query.spatial.inSphere(
-      { center, radius: 6 },
+      {
+        center,
+        radius: HARTHMERE_VOXEL_INTERACTION_ATTACK_REACH_UNITS_V1 + 1,
+      },
       { approx: true }
     )
   )) {
@@ -733,7 +737,7 @@ export function resolveHarthmerePvpMousePrimaryAttackV1(
     origin,
     forward,
     players: candidates,
-    range: 3,
+    range: HARTHMERE_VOXEL_INTERACTION_ATTACK_REACH_UNITS_V1,
     cosHalfAngle,
   });
   if (hitIds.length === 0) {
@@ -1099,34 +1103,16 @@ export function useHarthmereCombatHotkeys() {
         );
       }
     };
-    // HARTHMERE_MOUSE_PRIMARY_ATTACK_V1:
-    // Players expect the left mouse button to swing — but the Harthmere combat
-    // resolver was only ever wired to the B/H/L keys, so clicking did the vanilla
-    // Biomes attack (which has no concept of muckers/wildlife/other players as
-    // live-entity combatants) and never landed a hit or triggered retaliation.
-    // Mirror the keyboard "basic" attack on left mouse-down. We only fire while
-    // the pointer is locked (i.e. the player is actively in first-person play,
-    // not clicking HUD/UI), and we deliberately do NOT preventDefault so the
-    // vanilla swing animation still plays on top of the resolved arc damage.
+    // HARTHMERE_MOUSE_PRIMARY_ATTACK_V2:
+    // Creature/body hits are installed by the module-level hard mouse router so
+    // they exist as soon as the combat module loads. This hook keeps the PvP
+    // half because it needs the live ClientContext for authoritative events.
     const mouseHandler = (event: MouseEvent) => {
-      // Cheap gates first; only probe for targets once they pass so a normal
-      // mining/building click pays almost nothing.
       if (event.button !== 0 || isTypingTarget(event.target)) {
         return;
       }
-      if (!document.pointerLockElement) {
+      if (!isHarthmereGameplayMouseTarget(event.target)) {
         return;
-      }
-      // Creatures (muckers/hexes/wildlife) — resolve the local arc attack.
-      if (
-        shouldEngageHarthmereMousePrimaryAttackV1({
-          button: event.button,
-          pointerLocked: true,
-          typingTarget: false,
-          hasAttackableTargetNearby: harthmereHasAttackableTargetNearPlayerV1(),
-        })
-      ) {
-        performHarthmereKeyedAttack("basic");
       }
       // Other players — fire authoritative networked PvP damage for anyone in the
       // swing arc. Independent of the creature branch: one click can hit both.
@@ -1487,6 +1473,19 @@ function isHarthmereTextEntryTarget(target: EventTarget | null) {
   );
 }
 
+function isHarthmereGameplayMouseTarget(target: EventTarget | null) {
+  if (typeof document !== "undefined" && document.pointerLockElement) {
+    return true;
+  }
+  if (!(target instanceof Element)) {
+    return false;
+  }
+  if (target instanceof HTMLCanvasElement) {
+    return true;
+  }
+  return Boolean(target.closest("canvas"));
+}
+
 function hardCombatActionForCode(code: string): HarthmereHardCombatKey | undefined {
   if (code === "KeyB") {
     return "basic";
@@ -1582,6 +1581,118 @@ function installHarthmereHardCombatKeyRouter() {
 }
 
 installHarthmereHardCombatKeyRouter();
+
+// Harthmere hard combat mouse router
+// ----------------------------------
+// Installed at module load just like the hard key router so left mouse attacks
+// route to Harthmere body combat even on debug/visual pages that do not mount the
+// full HUD hook. PvP remains in the hook because it needs live ClientContext.
+const HARTHMERE_HARD_COMBAT_MOUSE_ROUTER_VERSION =
+  "harthmere-hard-mouse-router-v2";
+
+function installHarthmereHardCombatMouseRouter() {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  const win = window as Window & typeof globalThis & {
+    __harthmereHardCombatMouseRouterVersion?: string;
+    __harthmereHardCombatMouseRouterCleanup?: () => void;
+    __harthmereHardCombatMouseRouterLog?: unknown[];
+    __harthmereNativeNpcAttackContactLastAtV189?: number;
+    __harthmereHardCombatMouseRouter?: {
+      version: string;
+      log: () => unknown[];
+    };
+  };
+
+  if (
+    win.__harthmereHardCombatMouseRouterVersion ===
+    HARTHMERE_HARD_COMBAT_MOUSE_ROUTER_VERSION
+  ) {
+    return;
+  }
+
+  win.__harthmereHardCombatMouseRouterCleanup?.();
+  const log: unknown[] = [];
+  win.__harthmereHardCombatMouseRouterLog = log;
+
+  const pushLog = (entry: Record<string, unknown>) => {
+    const logged = { at: new Date().toISOString(), ...entry };
+    log.unshift(logged);
+    log.length = Math.min(log.length, 80);
+    if (window.localStorage?.getItem("biomes.localDev.harthmere.combatDebug") === "1") {
+      console.info("[HarthmereHardMouseRouter]", logged);
+    }
+  };
+
+  const handler = (event: MouseEvent) => {
+    if (event.button !== 0 || isHarthmereTextEntryTarget(event.target)) {
+      return;
+    }
+    const pointerLocked = Boolean(document.pointerLockElement);
+    const gameplayCanvasTarget = isHarthmereGameplayMouseTarget(event.target);
+    if (!pointerLocked && !gameplayCanvasTarget) {
+      pushLog({ type: "ignored", reason: "not_gameplay_mouse_target" });
+      return;
+    }
+    const hasAttackableTargetNearby = harthmereHasAttackableTargetNearPlayerV1();
+    if (
+      !shouldEngageHarthmereMousePrimaryAttackV1({
+        button: event.button,
+        pointerLocked,
+        gameplayCanvasTarget,
+        typingTarget: false,
+        hasAttackableTargetNearby,
+      })
+    ) {
+      pushLog({ type: "ignored", reason: "no_attackable_target_nearby" });
+      return;
+    }
+    const nativeContactBefore = Number(
+      win.__harthmereNativeNpcAttackContactLastAtV189 ?? 0,
+    );
+    pushLog({
+      type: "mousedown",
+      action: "basic",
+      pointerLocked,
+      gameplayCanvasTarget,
+      delayedFallback: true,
+    });
+    window.setTimeout(() => {
+      const nativeContactAfter = Number(
+        win.__harthmereNativeNpcAttackContactLastAtV189 ?? 0,
+      );
+      if (nativeContactAfter > nativeContactBefore) {
+        pushLog({
+          type: "ignored",
+          reason: "native_voxel_attack_already_hit",
+          nativeContactAfter,
+        });
+        return;
+      }
+      performHarthmereKeyedAttack("basic");
+    }, 80);
+  };
+
+  window.addEventListener("mousedown", handler, true);
+  win.__harthmereHardCombatMouseRouterVersion =
+    HARTHMERE_HARD_COMBAT_MOUSE_ROUTER_VERSION;
+  win.__harthmereHardCombatMouseRouterCleanup = () => {
+    window.removeEventListener("mousedown", handler, true);
+  };
+  win.__harthmereHardCombatMouseRouter = {
+    version: HARTHMERE_HARD_COMBAT_MOUSE_ROUTER_VERSION,
+    log: () => log,
+  };
+
+  pushLog({
+    type: "installed",
+    version: HARTHMERE_HARD_COMBAT_MOUSE_ROUTER_VERSION,
+  });
+}
+
+installHarthmereHardCombatMouseRouter();
 
 
 // v13 combat variation event marker

@@ -944,6 +944,33 @@ export const HARTHMERE_GATHERING_NODE_WORLD_TARGETS_V1: readonly HarthmereGather
     position: [...node.position] as [number, number, number],
   }));
 
+function normalizeHarthmereGatheringLabelV1(label?: string | null) {
+  return (label ?? "")
+    .trim()
+    .replace(/[_-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .toLowerCase();
+}
+
+export function harthmereGatheringNodeIdForObjectLabelV1(
+  label?: string | null
+): string | undefined {
+  const normalized = normalizeHarthmereGatheringLabelV1(label);
+  if (!normalized) {
+    return undefined;
+  }
+  const exact = NODE_DEFINITIONS.find(
+    (node) => normalizeHarthmereGatheringLabelV1(node.name) === normalized
+  );
+  if (exact) {
+    return exact.id;
+  }
+  return NODE_DEFINITIONS.find((node) => {
+    const nodeName = normalizeHarthmereGatheringLabelV1(node.name);
+    return normalized.includes(nodeName) || nodeName.includes(normalized);
+  })?.id;
+}
+
 export type HarthmereGatheringNodePromptV1 =
   HarthmereGatheringNodeWorldTargetV1 & { distance: number };
 

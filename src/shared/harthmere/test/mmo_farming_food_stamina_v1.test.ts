@@ -1,6 +1,7 @@
 import assert from "assert";
 import {
   HARTHMERE_COOKING_RECIPES_V1,
+  HARTHMERE_FARM_MAX_WATER_INTERVAL_MS_V1,
   HARTHMERE_FOOD_DEFINITIONS_V1,
   HARTHMERE_HALF_DAY_MS_V1,
   HARTHMERE_LIVESTOCK_PRODUCT_INTERVAL_MS_V1,
@@ -49,14 +50,17 @@ describe("mmo_farming_food_stamina_v1", () => {
     result = waterHarthmereCropV1(result.state, { plotId: "plot_1", nowMs: NOW + 60_000 });
     assert.equal(result.state.plots.plot_1.wateredAtMs, NOW + 60_000);
 
-    const repeatedWater = waterHarthmereCropV1(result.state, { plotId: "plot_1", nowMs: NOW + 120_000 });
-    assert.ok(repeatedWater.warnings.includes("farming_rejected:already_watered"));
+    // Watering is repeatable — tending again just refreshes the watered time.
+    result = waterHarthmereCropV1(result.state, { plotId: "plot_1", nowMs: NOW + 120_000 });
+    assert.deepEqual(result.warnings, []);
+    assert.equal(result.state.plots.plot_1.wateredAtMs, NOW + 120_000);
 
     const early = harvestHarthmereCropV1(result.state, { plotId: "plot_1", nowMs: NOW + 2 * 60 * 60 * 1000 });
     assert.ok(early.warnings.includes("farming_rejected:not_ready"));
 
     const readyAt = result.state.plots.plot_1.harvestReadyAtMs;
     const harvested = harvestHarthmereCropV1(result.state, { plotId: "plot_1", nowMs: readyAt });
+    // Watered crop → full yield.
     assert.equal(harvested.state.inventory.fresh_carrot, 3);
     assert.ok(harvested.state.plots.plot_1.harvestedAtMs);
   });
@@ -646,24 +650,38 @@ describe("mmo_farming_food_stamina_v1 — survival clock + farming edge cases (a
     );
   });
 
-  it("watering cannot make a fast-growing crop instantly harvestable", () => {
+  it("watering never changes the grow timer (cannot make a crop instantly harvestable)", () => {
     const state = defaultHarthmereFoodStaminaStateV1("p_water_cap", NOW);
     state.inventory.seed_carrot = 1;
     const planted = plantHarthmereCropV1(state, { plotId: "fast_plot", seedItemId: "seed_carrot", nowMs: NOW });
     assert.deepEqual(planted.warnings, []);
     const plot = planted.state.plots.fast_plot;
-    const growMs = 20 * 60 * 1000; // under the old flat 1h water bonus
-    const fastState = {
-      ...planted.state,
-      plots: { ...planted.state.plots, fast_plot: { ...plot, harvestReadyAtMs: plot.plantedAtMs + growMs } },
-    };
-    const watered = waterHarthmereCropV1(fastState, { plotId: "fast_plot", nowMs: plot.plantedAtMs });
+    const readyBefore = plot.harvestReadyAtMs;
+    const watered = waterHarthmereCropV1(planted.state, { plotId: "fast_plot", nowMs: plot.plantedAtMs });
     assert.deepEqual(watered.warnings, []);
-    const readyAt = watered.state.plots.fast_plot.harvestReadyAtMs;
-    assert.ok(readyAt > plot.plantedAtMs, "crop became instantly harvestable after watering");
-    assert.ok(readyAt >= plot.plantedAtMs + growMs * 0.75 - 1, "water bonus exceeded the 25% cap");
+    // Watering records the watered time but leaves the ripen time untouched.
+    assert.equal(watered.state.plots.fast_plot.harvestReadyAtMs, readyBefore);
     const early = harvestHarthmereCropV1(watered.state, { plotId: "fast_plot", nowMs: plot.plantedAtMs });
-    assert.ok(early.warnings.length > 0, "fast crop should not be harvestable at plant time after watering");
+    assert.ok(early.warnings.includes("farming_rejected:not_ready"));
+  });
+
+  it("yields a full harvest only when watered; unwatered crops yield less", () => {
+    const base = defaultHarthmereFoodStaminaStateV1("p_yield", NOW);
+    base.inventory.seed_carrot = 2; // carrot yields 3
+
+    // Unwatered: reduced yield (ceil(3/2) = 2).
+    const dryPlant = plantHarthmereCropV1(base, { plotId: "dry", seedItemId: "seed_carrot", nowMs: NOW });
+    const dryReady = dryPlant.state.plots.dry.harvestReadyAtMs;
+    const dryHarvest = harvestHarthmereCropV1(dryPlant.state, { plotId: "dry", nowMs: dryReady });
+    assert.equal(dryHarvest.state.inventory.fresh_carrot, 2);
+
+    // Watered: full yield (3).
+    const wetPlant = plantHarthmereCropV1(dryHarvest.state, { plotId: "wet", seedItemId: "seed_carrot", nowMs: NOW });
+    const watered = waterHarthmereCropV1(wetPlant.state, { plotId: "wet", nowMs: NOW + 1000 });
+    const wetReady = watered.state.plots.wet.harvestReadyAtMs;
+    const wetHarvest = harvestHarthmereCropV1(watered.state, { plotId: "wet", nowMs: wetReady });
+    // 2 (carried from dry) + 3 (full) = 5.
+    assert.equal(wetHarvest.state.inventory.fresh_carrot, 5);
   });
 
   it("does not let feeding livestock pull the product timer earlier", () => {
@@ -736,5 +754,97 @@ describe("mmo_farming_food_stamina_v1 — crop death/spoilage (audit hardening)"
     const harvested = harvestHarthmereCropV1(planted.state, { plotId: "window_plot", nowMs: NOW + 4 * DAY_MS });
     assert.deepEqual(harvested.warnings, []);
     assert.ok(harvested.state.plots.window_plot.harvestedAtMs);
+  });
+});
+
+describe("mmo_farming_food_stamina_v1 — sun requirement (audit fix)", () => {
+  const SWEET_CORN_SEED = "4851938639186947"; // requiresSun: true
+
+  it("rejects planting a sun crop in a shaded plot, allows it in sun", () => {
+    const base = defaultHarthmereFoodStaminaStateV1("p_sun", NOW);
+    base.inventory[SWEET_CORN_SEED] = 2;
+    assert.equal(HARTHMERE_SEED_DEFINITIONS_V1[SWEET_CORN_SEED].requiresSun, true);
+
+    const shade = plantHarthmereCropV1(base, {
+      plotId: "shade_plot",
+      seedItemId: SWEET_CORN_SEED,
+      nowMs: NOW,
+      plotHasSun: false,
+    });
+    assert.ok(shade.warnings.includes("farming_rejected:requires_sun"));
+
+    const sun = plantHarthmereCropV1(base, {
+      plotId: "sun_plot",
+      seedItemId: SWEET_CORN_SEED,
+      nowMs: NOW,
+      plotHasSun: true,
+    });
+    assert.deepEqual(sun.warnings, []);
+
+    // Unknown sun (undefined) defaults to allowed so existing callers don't break.
+    const unknown = plantHarthmereCropV1(base, {
+      plotId: "unknown_plot",
+      seedItemId: SWEET_CORN_SEED,
+      nowMs: NOW,
+    });
+    assert.deepEqual(unknown.warnings, []);
+  });
+
+  it("does not gate a non-sun crop even in shade", () => {
+    const base = defaultHarthmereFoodStaminaStateV1("p_shade_ok", NOW);
+    base.inventory.seed_carrot = 1;
+    const planted = plantHarthmereCropV1(base, {
+      plotId: "p",
+      seedItemId: "seed_carrot",
+      nowMs: NOW,
+      plotHasSun: false,
+    });
+    assert.deepEqual(planted.warnings, []);
+  });
+});
+
+describe("mmo_farming_food_stamina_v1 — data fixes (audit)", () => {
+  it("clamps absurd authored water intervals into a sane band", () => {
+    // Strawberry Seed's raw interval is ~10.6 quadrillion ms; must be clamped.
+    const strawberry = HARTHMERE_SEED_DEFINITIONS_V1["4537020877769691"];
+    assert.ok(strawberry.waterIntervalMs !== undefined);
+    assert.ok(
+      strawberry.waterIntervalMs! <= HARTHMERE_FARM_MAX_WATER_INTERVAL_MS_V1,
+      `interval ${strawberry.waterIntervalMs} not clamped`,
+    );
+    // Every seed's interval is within the sane band.
+    for (const seed of Object.values(HARTHMERE_SEED_DEFINITIONS_V1)) {
+      if (seed.waterIntervalMs !== undefined) {
+        assert.ok(
+          seed.waterIntervalMs <= HARTHMERE_FARM_MAX_WATER_INTERVAL_MS_V1,
+          `${seed.seedItemId} interval not clamped`,
+        );
+      }
+    }
+  });
+
+  it("gives Banana Seed a sane yield (not the 11 outlier)", () => {
+    assert.equal(HARTHMERE_SEED_DEFINITIONS_V1["1534621126189361"].yieldCount, 3);
+  });
+
+  it("fixes the Muck-me-not Seeds recipe to output muck-me-not (not Ultra Violet)", () => {
+    const recipe = HARTHMERE_COOKING_RECIPES_V1["3752138317055497"];
+    assert.ok(recipe, "muck-me-not recipe exists");
+    assert.ok(
+      (recipe.outputs["922013052023689"] ?? 0) > 0,
+      "outputs the Muck-me-not Seed id",
+    );
+    assert.equal(
+      recipe.outputs["6905450518852631"] ?? 0,
+      0,
+      "no longer outputs the Ultra Violet Seed id",
+    );
+  });
+
+  it("fixes the Golden Mushroom Spores recipe to output gold (not muckshroom) spores", () => {
+    const recipe = HARTHMERE_COOKING_RECIPES_V1["3242894934816699"];
+    assert.ok(recipe, "golden mushroom recipe exists");
+    assert.ok((recipe.outputs["1108069497496786"] ?? 0) > 0);
+    assert.equal(recipe.outputs["3170539650465345"] ?? 0, 0);
   });
 });

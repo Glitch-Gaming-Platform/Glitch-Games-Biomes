@@ -45,8 +45,6 @@ import {
   cycleHarthmereWeapon,
   ensureHarthmereSpellSlotted,
   ensureHarthmereStarterSwordGranted,
-  ensureHarthmereStarterRepairToolGranted,
-  ensureHarthmereStarterCleanupToolGranted,
   useHarthmereInventoryState,
 } from "@/client/components/challenges/LocalDevHarthmereInventorySystem";
 import { HarthmereLevelingMenuPanel } from "@/client/components/challenges/LocalDevHarthmereLevelingSystem";
@@ -703,8 +701,9 @@ function useHarthmerePlayerSwordVisualBridge() {
     // Give old local-dev saves a sword exactly once. The inventory helper is
     // idempotent, so it is safe when React remounts during development.
     ensureHarthmereStarterSwordGranted();
-    ensureHarthmereStarterRepairToolGranted();
-    ensureHarthmereStarterCleanupToolGranted();
+    // NOTE: repair/cleanup tools are NOT granted for free. The player must buy
+    // them from the business that sells them (see harthmere_business_tool_shop_v151);
+    // a job that needs a tool the player lacks redirects them there on the map.
     emitHarthmerePlayerSwordVisual({ action: "grant", drawn: false, itemId });
   }, []);
 

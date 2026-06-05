@@ -8,6 +8,10 @@ import {
   harthmereCookingStationIdV1,
   openHarthmereCookingStationV1,
 } from "@/client/components/harthmere_cooking/harthmereCookingStations";
+import {
+  harthmereGatheringNodeIdForObjectLabelV1,
+  performHarthmereGather,
+} from "@/client/components/challenges/LocalDevHarthmereGatheringSystem";
 import { dispatchHarthmereHudActionEventV96 } from "@/shared/harthmere/harthmere_hud_key_bindings_v96";
 import type { HarthmereObjectInteractionV1 } from "@/shared/harthmere/object_interaction_semantics_v1";
 
@@ -160,6 +164,24 @@ export function performHarthmereObjectInteractionV1(input: {
 
   if (input.interaction.kind === "craft") {
     dispatchHarthmereHudActionEventV96("crafting");
+  }
+
+  if (input.interaction.kind === "gather") {
+    const nodeId = harthmereGatheringNodeIdForObjectLabelV1(input.label);
+    if (nodeId) {
+      const result = performHarthmereGather(nodeId);
+      addToast(input.resources, {
+        kind: "basic",
+        id: `harthmere-gather:${nodeId}`,
+        message:
+          result.message ??
+          harthmereObjectInteractionToastMessageV1({
+            label: input.label,
+            interaction: input.interaction,
+          }),
+      });
+      return;
+    }
   }
 
   // HARTHMERE_REPAIR_TOOL_EQUIP_V151: a repair only happens with a repair tool

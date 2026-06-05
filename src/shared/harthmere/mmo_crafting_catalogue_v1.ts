@@ -13,6 +13,9 @@ import {
   type HarthmereCraftingToolDefinitionV1,
   type HarthmereItemDefinitionV1,
 } from "./mmo_inventory_authority_v1";
+import { ensureHarthmereSpecializedBlocksCatalogueV1 } from "./mmo_specialized_blocks_catalogue_v1";
+import { ensureHarthmerePlaceableDecorCatalogueV1 } from "./mmo_placeable_decor_catalogue_v1";
+import { ensureHarthmereBusinessStorefrontGoodsV1 } from "./harthmere_business_storefront_goods_v1";
 
 export const HARTHMERE_CRAFTING_STATIONS_V1 = {
   anglersTable: "65464304897922",
@@ -40,6 +43,7 @@ export const HARTHMERE_CRAFTING_TOOLS_V1 = {
   fishingRod: "2913506116529081",
   bucket: "4537020877769799",
   wateringCan: "7539420629350045",
+  hoe: "7539420629350046",
   muckBuster: "5354980139910506",
   buildersWand: "7539420629350501",
   // HARTHMERE_REPAIR_TOOLS_V151: tiered repair tools. Equipped, they RESTORE
@@ -304,6 +308,16 @@ const TOOLS: HarthmereCraftingToolDefinitionV1[] = [
     displayName: "Watering Can",
     action: "waterPlant",
     tier: 1,
+    durabilityMax: 600000,
+  },
+  {
+    // HARTHMERE_FARM_TOOLS_OBTAINABLE_V1: the hoe tills soil for planting. Added
+    // so the farming tool set is complete and obtainable (craft + buy).
+    itemId: HARTHMERE_CRAFTING_TOOLS_V1.hoe,
+    displayName: "Hoe",
+    action: "till",
+    tier: 1,
+    durabilityMax: 300000,
   },
   {
     itemId: HARTHMERE_CRAFTING_TOOLS_V1.muckBuster,
@@ -369,6 +383,63 @@ const TOOLS: HarthmereCraftingToolDefinitionV1[] = [
     durabilityMax: 3600000,
     cleanupPower: 12,
   },
+];
+
+// HARTHMERE_FARM_TOOLS_OBTAINABLE_V1: craft recipes for the core farming tools.
+// Handcraftable at the Workbench from basic materials, no tool prerequisite (so
+// the very first hoe/can/bucket is never gated behind already owning a tool).
+function farmingToolRecipeV1(
+  recipeId: string,
+  outputItemId: string,
+  inputs: Array<{ itemId: string; count: number }>,
+  skillId: string
+): HarthmereCraftingRecipeV1 {
+  return {
+    recipeId,
+    outputItemId,
+    outputCount: 1,
+    inputs,
+    requiredLevel: 1,
+    requiredSkillId: skillId,
+    requiredSkillLevel: 1,
+    professionId: skillId,
+    requiredProfessionLevel: 1,
+    requiredStationId: HARTHMERE_CRAFTING_STATIONS_V1.workbench,
+    craftingTimeMs: 2500,
+    xpReward: 15,
+    recipeTier: 1,
+    materialTier: 1,
+    qualityFloor: 40,
+    businessTypeId: "biome_farming_rare_foods",
+    workOrderTag: "farming_tool",
+  };
+}
+
+const HARTHMERE_FARMING_TOOL_RECIPES_V1: HarthmereCraftingRecipeV1[] = [
+  farmingToolRecipeV1(
+    "harthmere_tool_hoe_recipe",
+    HARTHMERE_CRAFTING_TOOLS_V1.hoe,
+    [
+      { itemId: "wood_plank", count: 3 },
+      { itemId: "iron_ingot", count: 1 },
+    ],
+    "carpentry"
+  ),
+  farmingToolRecipeV1(
+    "harthmere_tool_watering_can_recipe",
+    HARTHMERE_CRAFTING_TOOLS_V1.wateringCan,
+    [
+      { itemId: "iron_ingot", count: 2 },
+      { itemId: "wood_plank", count: 1 },
+    ],
+    "blacksmithing"
+  ),
+  farmingToolRecipeV1(
+    "harthmere_tool_bucket_recipe",
+    HARTHMERE_CRAFTING_TOOLS_V1.bucket,
+    [{ itemId: "iron_ingot", count: 2 }],
+    "blacksmithing"
+  ),
 ];
 
 type ItemObjectMetadataV1 = NonNullable<
@@ -2600,6 +2671,30 @@ export function ensureHarthmereProductionCraftingCatalogueV1() {
       registerHarthmereCraftingRecipeV1(recipe);
     }
   }
+  // HARTHMERE_FARM_TOOLS_OBTAINABLE_V1: the core farming tools (hoe, watering can,
+  // bucket) are registered as tool items above; here we make them CRAFTABLE so
+  // they're never a dead end (the watering can in particular is required to water
+  // home gardens). They're also sold at the Orchard Produce Stand (see the vendor
+  // catalog) — craft is cheaper, buying is faster.
+  for (const toolRecipe of HARTHMERE_FARMING_TOOL_RECIPES_V1) {
+    if (!getHarthmereCraftingRecipeV1(toolRecipe.recipeId)) {
+      registerHarthmereCraftingRecipeV1(toolRecipe);
+    }
+  }
+  // HARTHMERE_SPECIALIZED_BLOCKS_V1: register the specialized-block stations,
+  // block items, craft recipes, and vendor entries. Safe against the circular
+  // import: `registered` above is set before any work, so the re-entrant
+  // ensureHarthmereProductionCraftingCatalogueV1() inside this call returns
+  // immediately.
+  ensureHarthmereSpecializedBlocksCatalogueV1();
+  // HARTHMERE_PLACEABLE_DECOR_V1: register placeable furniture/decor/station item
+  // defs, craft recipes, and vendor entries. Same circular-import safety as above
+  // (`registered` is already true, so the re-entrant ensure call no-ops).
+  ensureHarthmerePlaceableDecorCatalogueV1();
+  // HARTHMERE_BUSINESS_STOREFRONT_GOODS_V1: give each of the 19 businesses a
+  // themed storefront (5 blocks + 4 interior items) as unlimited-stock vendor
+  // entries keyed by business type, so they're buyable forever as players arrive.
+  ensureHarthmereBusinessStorefrontGoodsV1();
 }
 
 export function harthmereProductionCraftingRecipeIdsV1() {

@@ -371,6 +371,21 @@ const HARTHMERE_LOCAL_SEED_DEFINITIONS_V1: Record<string, HarthmereSeedDefinitio
   },
 };
 
+/** Some authored Bikkie water intervals are nonsensical (hundreds-to-millions of
+ *  days — clearly bad data). Clamp every seed's interval into a sane band so the
+ *  field is meaningful for the watering mechanic and the UI. */
+export const HARTHMERE_FARM_MIN_WATER_INTERVAL_MS_V1 = 30 * 60 * 1000; // 30 min
+export const HARTHMERE_FARM_MAX_WATER_INTERVAL_MS_V1 = 7 * 24 * 60 * 60 * 1000; // 7 days
+function clampWaterIntervalMsV1(value: number): number {
+  if (!Number.isFinite(value) || value <= 0) {
+    return 0;
+  }
+  return Math.min(
+    HARTHMERE_FARM_MAX_WATER_INTERVAL_MS_V1,
+    Math.max(HARTHMERE_FARM_MIN_WATER_INTERVAL_MS_V1, Math.round(value)),
+  );
+}
+
 const HARTHMERE_BIKKIE_SEED_DEFINITIONS_V1: Record<string, HarthmereSeedDefinitionV1> =
   Object.fromEntries(
     HARTHMERE_BIKKIE_SEED_ROWS_V1.map(([
@@ -401,7 +416,9 @@ const HARTHMERE_BIKKIE_SEED_DEFINITIONS_V1: Record<string, HarthmereSeedDefiniti
         yieldCount,
         cropDisplayName,
         ...(typeof requiresSun === "boolean" ? { requiresSun } : {}),
-        ...(waterIntervalMs > 0 ? { waterIntervalMs } : {}),
+        ...(clampWaterIntervalMsV1(waterIntervalMs) > 0
+          ? { waterIntervalMs: clampWaterIntervalMsV1(waterIntervalMs) }
+          : {}),
         ...(deathTimeMs > 0 ? { deathTimeMs } : {}),
         metadata: optionalBikkieMetadata(
           seedItemId,
@@ -591,11 +608,22 @@ function cookingRecipeIdForInput(input: {
 
 export function plantHarthmereCropV1(
   state: HarthmereFoodStaminaStateV1,
-  input: { plotId: string; seedItemId: string; nowMs: number },
+  input: {
+    plotId: string;
+    seedItemId: string;
+    nowMs: number;
+    /** Whether the target plot gets sun. Defaults to sunny when unknown, so this
+     *  only rejects when the caller explicitly reports shade for a sun crop. */
+    plotHasSun?: boolean;
+  },
 ): HarthmereFoodStaminaResultV1 {
   if (!input.plotId) return result(state, ["farming_rejected:missing_plot"]);
   const seed = HARTHMERE_SEED_DEFINITIONS_V1[input.seedItemId];
   if (!seed) return result(state, ["farming_rejected:unknown_seed"]);
+  // A sun-loving crop cannot be planted in a shaded plot.
+  if (seed.requiresSun === true && input.plotHasSun === false) {
+    return result(state, ["farming_rejected:requires_sun"]);
+  }
   const occupying = state.plots[input.plotId];
   if (occupying && !occupying.harvestedAtMs && !occupying.diedAtMs) {
     return result(state, ["farming_rejected:plot_occupied"]);
@@ -621,27 +649,19 @@ export function waterHarthmereCropV1(
   input: { plotId: string; nowMs: number },
 ): HarthmereFoodStaminaResultV1 {
   const plot = state.plots[input.plotId];
-  if (!plot || plot.harvestedAtMs) return result(state, ["farming_rejected:unknown_active_plot"]);
-  if (plot.wateredAtMs) return result(state, ["farming_rejected:already_watered"]);
+  if (!plot || plot.harvestedAtMs) {
+    return result(state, ["farming_rejected:unknown_active_plot"]);
+  }
+  if (plot.diedAtMs) return result(state, ["farming_rejected:crop_withered"]);
+  // Watering is REPEATABLE (you tend a crop over its life). Recording the latest
+  // watering is what earns the full-harvest yield — an unwatered crop still grows
+  // on rain/soil moisture but yields less (see harvestHarthmereCropV1). It does
+  // not change the grow timer, so watering can never make a crop instantly ripe.
   return result({
     ...state,
     plots: {
       ...state.plots,
-      [input.plotId]: {
-        ...plot,
-        wateredAtMs: input.nowMs,
-        // Cap the watering bonus to a fraction of the crop's total grow time so a flat 1h
-        // shave cannot zero-out (make instantly harvestable) a fast-growing crop whose
-        // grow time is under an hour.
-        harvestReadyAtMs: Math.max(
-          input.nowMs,
-          plot.harvestReadyAtMs -
-            Math.min(
-              60 * 60 * 1000,
-              Math.floor(Math.max(0, plot.harvestReadyAtMs - (plot.plantedAtMs ?? input.nowMs)) * 0.25),
-            ),
-        ),
-      },
+      [input.plotId]: { ...plot, wateredAtMs: input.nowMs },
     },
   });
 }
@@ -675,14 +695,20 @@ export function harvestHarthmereCropV1(
     );
   }
   if (input.nowMs < plot.harvestReadyAtMs) return result(state, ["farming_rejected:not_ready"]);
+  // Watering pays off at harvest: a tended (watered) crop yields its full count;
+  // an unwatered crop still produces, but a reduced harvest (never below 1).
+  const watered = typeof plot.wateredAtMs === "number";
+  const yieldCount = watered
+    ? seed.yieldCount
+    : Math.max(1, Math.ceil(seed.yieldCount / 2));
   return result({
     ...state,
-    inventory: addItem(state.inventory, seed.yieldItemId, seed.yieldCount),
+    inventory: addItem(state.inventory, seed.yieldItemId, yieldCount),
     plots: {
       ...state.plots,
       [input.plotId]: { ...plot, harvestedAtMs: input.nowMs },
     },
-  }, [], { [seed.yieldItemId]: seed.yieldCount });
+  }, [], { [seed.yieldItemId]: yieldCount });
 }
 
 export function gatherHarthmereSeedV1(

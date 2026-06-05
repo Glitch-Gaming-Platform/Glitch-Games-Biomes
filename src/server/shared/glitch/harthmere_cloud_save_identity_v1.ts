@@ -91,32 +91,51 @@ function userNameCandidateIdV1(titleId: string, userName: string) {
   return `glitch:${titleId}:user:${normalizeHarthmereUserNameSlugV1(userName)}`;
 }
 
-function installCandidateIdV1(titleId: string, installId: string) {
-  return `glitch:${titleId}:install:${installId}`;
+// True when this Glitch response carries a STABLE account identity (a real
+// glitch user id, or a stable account name). When false the player is a GUEST:
+// there is no durable identity to anchor a biomes user or a cloud save to, so
+// callers must give them an ephemeral, non-persisted session and never save.
+// The install id is intentionally NOT an account identity — it is per-device and
+// an install with no resolved user is exactly the guest case Glitch returns
+// GUEST_NOT_ALLOWED for.
+export function harthmereHasStableGlitchAccountV1(
+  input: HarthmereCloudSaveIdentityInputV1
+): boolean {
+  return (
+    isStableHarthmereGlitchUserIdV1(input.glitchUserId) ||
+    isStableHarthmereUserNameV1(input.userName)
+  );
 }
 
 // The deterministic key under which a NEW (or back-filled) link is created. This
-// is the stable scope going forward. Preference order:
+// is the stable scope going forward, anchored ONLY to the Glitch account.
+// Preference order:
 //   1. real Glitch user id (most authoritative, cross-device)
 //   2. stable Glitch account name (cross-device, survives biomes-user re-mint)
-//   3. install id (last resort; per-device but stable per device)
+// Returns `undefined` for a guest (no stable Glitch account). The install id is
+// deliberately NOT used as a fallback: it is per-device, and a keyless identity
+// must remain a guest rather than silently accruing a durable, install-scoped
+// biomes user.
 export function harthmereCloudSaveForeignAuthPrimaryIdV1(
   input: HarthmereCloudSaveIdentityInputV1
-): string {
+): string | undefined {
   if (isStableHarthmereGlitchUserIdV1(input.glitchUserId)) {
     return glitchCandidateIdV1(input.titleId, input.glitchUserId);
   }
   if (isStableHarthmereUserNameV1(input.userName)) {
     return userNameCandidateIdV1(input.titleId, input.userName);
   }
-  return installCandidateIdV1(input.titleId, input.installId);
+  return undefined;
 }
 
 // All keys an existing link MIGHT live under, newest-preference first. Lookups
 // try these in order and reuse the first existing link, so a player linked under
-// any legacy form is still recognized. CRUCIALLY this always includes the
-// userName form (when stable) and the install form, regardless of whether the
-// volatile glitch user id is present this call — that is what stops the flip.
+// any legacy account form is still recognized. CRUCIALLY this always includes
+// the userName form (when stable) regardless of whether the (formerly volatile)
+// glitch user id is present this call — that is what lets a glitch-id session and
+// a userName session converge on the same biomes user. The install form is NOT a
+// candidate: a guest is never resolved to a durable user, and a real account is
+// always found via its glitch-id/userName form.
 export function harthmereCloudSaveForeignAuthCandidateIdsV1(
   input: HarthmereCloudSaveIdentityInputV1
 ): string[] {
@@ -127,6 +146,5 @@ export function harthmereCloudSaveForeignAuthCandidateIdsV1(
   if (isStableHarthmereUserNameV1(input.userName)) {
     ids.push(userNameCandidateIdV1(input.titleId, input.userName));
   }
-  ids.push(installCandidateIdV1(input.titleId, input.installId));
   return Array.from(new Set(ids));
 }

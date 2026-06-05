@@ -17,6 +17,8 @@ import { HarthmereJobsBoardWorldInteractionV146 } from "@/client/components/hart
 import { HarthmereBusinessWorldInteractionV1 } from "@/client/components/harthmere_business/HarthmereBusinessWorldInteractionV1";
 import { HarthmerePropertyForSaleWorldInteractionV1 } from "@/client/components/harthmere_building/HarthmerePropertyForSaleWorldInteractionV1";
 import { HarthmereGatheringNodeWorldInteractionV1 } from "@/client/components/challenges/HarthmereGatheringNodeWorldInteractionV1";
+import { HarthmereObjectContainerPanel } from "@/client/components/challenges/HarthmereObjectContainerPanel";
+import { HarthmereCookingStationPanel } from "@/client/components/harthmere_cooking/HarthmereCookingStationPanel";
 import { BIOMES_UI_LOCATE_ON_MAP_EVENT_V1 } from "./adapters/mapPinnedDestination";
 import type { TabKey } from "./BiomesUITypes";
 
@@ -135,6 +137,8 @@ export const BiomesUIMount: React.FunctionComponent<{
       <HarthmereGatheringNodeWorldInteractionV1
         suppressPrompt={activeTab !== null}
       />
+      <HarthmereObjectContainerPanel />
+      <HarthmereCookingStationPanel />
       <BiomesUITutorialCueBar />
       <TutorialDirector step={live.tutorialStep} />
     </>

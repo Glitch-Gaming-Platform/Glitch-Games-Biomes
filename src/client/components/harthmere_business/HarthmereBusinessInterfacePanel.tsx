@@ -1,5 +1,6 @@
 import * as React from "react";
 import { usePointerLockManager } from "../contexts/PointerLockContext";
+import { purchaseHarthmereBusinessToolV151 } from "@/client/components/challenges/LocalDevHarthmereInventorySystem";
 import {
   closePointerLockUnlockWhileOpenV1,
   openPointerLockUnlockWhileOpenV1,
@@ -26,6 +27,7 @@ import type {
 } from "./businessInterfaceLiveAdapter";
 import { formatHarthmereBusinessPlayerWarningV1 } from "./businessInterfaceLiveAdapter";
 import { businessCheckInDisplayModelV1 } from "./businessDailyCheckInClientV1";
+import { harthmereBusinessCustomerFaceSeedV1 } from "./businessMiniGameFacesV1";
 import { HARTHMERE_BUSINESS_TAB_LABELS_V1 } from "./harthmereBusinessTabsV1";
 
 export interface HarthmereBusinessInterfacePanelProps {
@@ -936,23 +938,22 @@ const CustomerMiniGamePane: React.FunctionComponent<{
   const customerName =
     panel.currentNpc?.displayName ??
     (ticket ? displayLabel(ticket.npcId) : "");
-  // Random customer face per task: seed the shared voxel-face generator from
-  // the unique ticketId so the portrait changes with every customer/turn,
-  // reusing the same faces NPCs use elsewhere in the game.
+  // Stable customer face: seed the shared voxel-face generator from the
+  // customer/NPC identity so the portrait matches the Grove-style avatar face
+  // for that person instead of changing with every service ticket.
   const customerFace = React.useMemo(() => {
     if (!ticket) {
       return undefined;
     }
-    let seed = 2166136261;
-    for (let i = 0; i < ticket.ticketId.length; i++) {
-      seed ^= ticket.ticketId.charCodeAt(i);
-      seed = Math.imul(seed, 16777619);
-    }
     return makeHarthmereNpcFaceConfig({
-      id: seed >>> 0,
+      id: harthmereBusinessCustomerFaceSeedV1({
+        npcId: ticket.npcId,
+        displayName: customerName,
+      }),
       name: customerName || ticket.npcId,
+      roleHint: "customer",
     });
-  }, [ticket?.ticketId, ticket?.npcId, customerName]);
+  }, [ticket?.npcId, customerName]);
   const npcNameById = React.useMemo(() => {
     const map = new Map<string, string>();
     for (const npc of panel.customerPool) map.set(npc.npcId, npc.displayName);
@@ -1527,7 +1528,11 @@ const ShopfrontPane: React.FunctionComponent<{
   const [count, setCount] = React.useState("1");
   const [priceItemId, setPriceItemId] = React.useState("");
   const [priceModifier, setPriceModifier] = React.useState("1");
-  const parsedCount = Math.max(1, Number(count) || 1);
+  const rawCount = Number(count);
+  const parsedCount = Number.isFinite(rawCount)
+    ? Math.max(1, Math.trunc(rawCount))
+    : 1;
+  const buyCountLabel = parsedCount > 1 ? `Buy x${parsedCount}` : "Buy";
   return (
     <section style={cardStyle}>
       <h3 style={sectionTitleStyle}>
@@ -1613,10 +1618,78 @@ const ShopfrontPane: React.FunctionComponent<{
           </label>
         </div>
       )}
+      {mode === "customer" && shop.toolForSale ? (
+        <div
+          data-testid="biomes-business-tool-for-sale"
+          style={{
+            margin: "8px 0",
+            padding: 8,
+            border: "1px solid var(--biomes-warn-amber)",
+            borderRadius: 4,
+            background: "rgba(252,211,77,0.12)",
+          }}
+        >
+          <strong style={{ fontSize: 12 }}>Tool for sale</strong>
+          <div style={mutedTextStyle}>
+            {shop.toolForSale.toolName} · {shop.toolForSale.priceGold} gold
+          </div>
+          <button
+            className="biomes-ui-tab"
+            type="button"
+            aria-label={`Buy ${shop.toolForSale.toolName}`}
+            onClick={() => purchaseHarthmereBusinessToolV151(shop.businessType)}
+            style={{ ...buyActionTextStyle, marginTop: 6, width: "100%" }}
+          >
+            Buy {shop.toolForSale.toolName}
+          </button>
+        </div>
+      ) : null}
+      {mode === "customer" && shop.storefrontGoods?.length ? (
+        <div data-testid="biomes-business-storefront-goods" style={{ margin: "8px 0" }}>
+          <strong style={{ fontSize: 12 }}>
+            Building materials &amp; furnishings
+          </strong>
+          <div style={shopfrontGoodsGridStyle}>
+            {shop.storefrontGoods.map((good) => (
+              <button
+                key={good.itemId}
+                type="button"
+                className="biomes-ui-slot"
+                aria-label={`Buy ${parsedCount} ${displayLabel(good.itemId)} for ${
+                  good.priceGold * parsedCount
+                } gold`}
+                style={shopfrontGoodButtonStyle}
+                onClick={() =>
+                  void adapter.buyStorefrontGood(
+                    businessId,
+                    good.itemId,
+                    parsedCount
+                  )
+                }
+              >
+                <div style={shopItemHeaderStyle}>
+                  <strong style={{ fontSize: 12 }}>{displayLabel(good.itemId)}</strong>
+                  <span style={shopItemKindBadgeStyle}>
+                    {good.kind === "block" ? "Block" : "Furnishing"}
+                  </span>
+                </div>
+                <div style={mutedTextStyle}>
+                  Unit price: {good.priceGold} gold
+                </div>
+                <span style={buyActionTextStyle}>
+                  {buyCountLabel}
+                  {parsedCount > 1 ? ` · ${good.priceGold * parsedCount} gold` : ""}
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : null}
       <InventoryGrid
         inventory={shop.inventory}
         emptyLabel={shop.emptyLabel}
         actionLabel={mode === "customer" ? "Buy" : undefined}
+        purchaseCount={mode === "customer" ? parsedCount : undefined}
         onActivate={
           mode === "customer"
             ? (item) =>
@@ -1636,8 +1709,9 @@ const InventoryGrid: React.FunctionComponent<{
   inventory: HarthmereBusinessVisibleInventoryItemV1[];
   emptyLabel: string;
   actionLabel?: string;
+  purchaseCount?: number;
   onActivate?: (item: HarthmereBusinessVisibleInventoryItemV1) => void;
-}> = ({ inventory, emptyLabel, actionLabel, onActivate }) => {
+}> = ({ inventory, emptyLabel, actionLabel, purchaseCount = 1, onActivate }) => {
   const inventoryRows = React.useMemo(() => chunk(inventory, 4), [inventory]);
   if (!inventory.length) return <p style={mutedTextStyle}>{emptyLabel}</p>;
   return (
@@ -1662,16 +1736,19 @@ const InventoryGrid: React.FunctionComponent<{
               flexDirection: "column",
               ...(actionLabel ? shopActionSlotStyle : {}),
             }}
-            aria-label={`${actionLabel ? `${actionLabel} ` : ""}${itemLabel} x${
-              item.count
-            }`}
+            aria-label={`${actionLabel ? `${actionLabel} ${purchaseCount} ` : ""}${itemLabel}`}
           >
             <strong style={{ fontSize: 12 }}>{itemLabel}</strong>
             <span style={mutedTextStyle}>
-              x{item.count} · {item.priceGold} gold
+              Stock x{item.count} · Unit price {item.priceGold} gold
             </span>
             {actionLabel && (
-              <span style={buyActionTextStyle}>{actionLabel}</span>
+              <span style={buyActionTextStyle}>
+                {purchaseCount > 1 ? `${actionLabel} x${purchaseCount}` : actionLabel}
+                {purchaseCount > 1
+                  ? ` · ${item.priceGold * purchaseCount} gold`
+                  : ""}
+              </span>
             )}
           </button>
         );
@@ -2702,9 +2779,12 @@ const buyActionTextStyle: React.CSSProperties = {
   display: "inline-flex",
   alignItems: "center",
   justifyContent: "center",
+  gap: 4,
   minHeight: 24,
+  padding: "4px 8px",
   alignSelf: "stretch",
   borderRadius: 4,
+  border: "1px solid rgba(146, 255, 215, 0.82)",
   color: "#07101a",
   background: "linear-gradient(180deg, #92ffd7 0%, #37dba4 54%, #1aa979 100%)",
   boxShadow: "0 0 14px rgba(55, 219, 164, 0.46)",
@@ -2748,6 +2828,40 @@ const shopActionSlotStyle: React.CSSProperties = {
   background:
     "linear-gradient(180deg, rgba(24, 61, 58, 0.96), rgba(9, 23, 35, 0.98))",
   boxShadow: "0 0 18px rgba(55, 219, 164, 0.28)",
+};
+const shopfrontGoodsGridStyle: React.CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))",
+  gap: 8,
+  marginTop: 6,
+};
+const shopfrontGoodButtonStyle: React.CSSProperties = {
+  ...shopActionSlotStyle,
+  display: "flex",
+  minWidth: 0,
+  minHeight: 118,
+  padding: 8,
+  textAlign: "left",
+  flexDirection: "column",
+  justifyContent: "space-between",
+  alignItems: "stretch",
+};
+const shopItemHeaderStyle: React.CSSProperties = {
+  display: "flex",
+  gap: 6,
+  alignItems: "flex-start",
+  justifyContent: "space-between",
+};
+const shopItemKindBadgeStyle: React.CSSProperties = {
+  flex: "0 0 auto",
+  padding: "2px 5px",
+  border: "1px solid rgba(154, 199, 230, 0.36)",
+  borderRadius: 4,
+  color: "var(--biomes-fg-muted)",
+  fontSize: 9,
+  fontWeight: 800,
+  letterSpacing: 0,
+  textTransform: "uppercase",
 };
 const miniGameArenaStyle: React.CSSProperties = {
   ...highlightCardStyle,

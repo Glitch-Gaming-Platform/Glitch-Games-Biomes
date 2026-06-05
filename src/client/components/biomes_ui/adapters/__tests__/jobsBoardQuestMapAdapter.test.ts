@@ -2,12 +2,15 @@
 import assert from "assert";
 import {
   jobsBoardAcceptedJobLandmarksForBiomesUIV1,
+  jobsBoardToolSourceLandmarksForBiomesUIV1,
   jobsBoardTrackableQuestsForBiomesUIV1,
   activeJobsBoardMissionStepsForBiomesUIV1,
   firstActiveJobsBoardLandmarkForBiomesUIV1,
   shouldClearStaleJobsBoardPinV151,
+  BIOMES_UI_JOBS_BOARD_TOOL_SOURCE_MARKER_SOURCE_V1,
 } from "../jobsBoardQuestMapAdapter";
 import { harthmereJobsBoardQuestMarkerPositionForIdV1 } from "@/shared/harthmere/jobs_board_quest_marker_positions_v1";
+import { HARTHMERE_TOOL_SOURCES_V151 } from "@/shared/harthmere/harthmere_job_objective_v151";
 import {
   HARTHMERE_JOBS_BOARD_ELITE_MUCKER_BOUNTY_MARKER_ID_V1,
   HARTHMERE_JOBS_BOARD_ELITE_MUCKER_BOUNTY_TARGET_ID_V1,
@@ -146,6 +149,16 @@ describe("BiomesUI jobs board quest map adapter", () => {
         firstMarkerId: "jobs_board_marker:harthmere_job_todo_7",
         reward: "1200 gold",
         timeRemaining: "2h 0m left",
+        kind: "hunt",
+        kindLabel: "Hunt",
+        objective:
+          "Go to the marked location and complete: Clear the Muckwad Patch",
+        objectives: [
+          "Go to the marked location and complete: Clear the Muckwad Patch",
+        ],
+        description: "Clear the marked muck threat.",
+        // A hunt needs no tool, so there is no tool-source callout.
+        toolSource: undefined,
       },
     ]);
 
@@ -175,6 +188,105 @@ describe("BiomesUI jobs board quest map adapter", () => {
       ["jobs_board:completed_todo", "completed"],
       ["jobs_board:failed_todo", "failed"],
     ]);
+  });
+});
+
+// A snapshot with a single ACTIVE repair job (which requires a repair tool).
+function repairJobSnapshot() {
+  const snapshot = acceptedJobsBoardSnapshot();
+  snapshot.myAcceptedJobs = [
+    {
+      ...snapshot.myAcceptedJobs[0],
+      jobId: "job_fence_repair",
+      title: "Patch the Safe-Zone Fence",
+      description: "Repair the broken fence on the marked structure.",
+      kind: "repair",
+    },
+  ] as any;
+  snapshot.myTodos = [
+    {
+      ...snapshot.myTodos[0],
+      todoId: "repair_todo_1",
+      jobId: "job_fence_repair",
+      title: "Patch the Safe-Zone Fence",
+      todoText: "Repair the marked fence with a repair tool.",
+      kind: "repair",
+    },
+  ] as any;
+  return snapshot;
+}
+
+describe("BiomesUI jobs board tool-source guidance", () => {
+  it("points a tool-requiring job at the vendor when the tool is NOT equipped", () => {
+    const snapshot = repairJobSnapshot();
+    const vendorMarkerId = HARTHMERE_TOOL_SOURCES_V151.repair.vendorMarkerId;
+    const vendor = harthmereJobsBoardQuestMarkerPositionForIdV1(vendorMarkerId);
+    assert.ok(vendor, "repair vendor must resolve through the shared registry");
+
+    const landmarks = jobsBoardToolSourceLandmarksForBiomesUIV1(snapshot, {
+      repairToolOwned: false,
+      cleanupToolOwned: false,
+    });
+    assert.equal(landmarks.length, 1);
+    assert.equal(landmarks[0].id, "jobs_board_tool_source:repair_todo_1");
+    assert.equal(
+      landmarks[0].source,
+      BIOMES_UI_JOBS_BOARD_TOOL_SOURCE_MARKER_SOURCE_V1
+    );
+    assert.equal(landmarks[0].mapMarkerId, vendorMarkerId);
+    assert.deepEqual(landmarks[0].position, vendor!.position);
+    assert.equal(landmarks[0].visibleOnWorldMap, true);
+    assert.equal(landmarks[0].visibleOnHudMap, true);
+    assert.ok(
+      landmarks[0].label.includes(HARTHMERE_TOOL_SOURCES_V151.repair.toolName)
+    );
+  });
+
+  it("shows NO tool-source pin once the player owns the tool", () => {
+    const snapshot = repairJobSnapshot();
+    const landmarks = jobsBoardToolSourceLandmarksForBiomesUIV1(snapshot, {
+      repairToolOwned: true,
+      cleanupToolOwned: true,
+    });
+    assert.equal(landmarks.length, 0);
+  });
+
+  it("shows NO tool-source pin when ownership is unknown (no false positives)", () => {
+    const snapshot = repairJobSnapshot();
+    // No options passed -> unknown equip state -> we must not nag the player.
+    assert.equal(jobsBoardToolSourceLandmarksForBiomesUIV1(snapshot).length, 0);
+  });
+
+  it("never emits a tool-source pin for a job kind that needs no tool", () => {
+    const snapshot = acceptedJobsBoardSnapshot(); // a hunt
+    const landmarks = jobsBoardToolSourceLandmarksForBiomesUIV1(snapshot, {
+      repairToolOwned: false,
+      cleanupToolOwned: false,
+    });
+    assert.equal(landmarks.length, 0);
+  });
+
+  it("attaches a tool-source detail to the trackable quest when the tool is missing", () => {
+    const snapshot = repairJobSnapshot();
+    const [quest] = jobsBoardTrackableQuestsForBiomesUIV1(snapshot, 1000, {
+      repairToolOwned: false,
+      cleanupToolOwned: false,
+    });
+    assert.ok(quest.toolSource, "missing tool should surface a tool source");
+    assert.equal(quest.toolSource!.action, "repair");
+    assert.equal(
+      quest.toolSource!.vendorMarkerId,
+      HARTHMERE_TOOL_SOURCES_V151.repair.vendorMarkerId
+    );
+    assert.equal(quest.kind, "repair");
+    assert.equal(quest.kindLabel, "Repair");
+    assert.ok(quest.toolSource!.hint.length > 0);
+
+    const equipped = jobsBoardTrackableQuestsForBiomesUIV1(snapshot, 1000, {
+      repairToolOwned: true,
+      cleanupToolOwned: true,
+    });
+    assert.equal(equipped[0].toolSource, undefined);
   });
 });
 

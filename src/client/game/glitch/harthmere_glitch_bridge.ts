@@ -197,7 +197,7 @@ export type HarthmereGlitchRuntimeConfig = {
 
 type HarthmereGlitchStatus = {
   version: 2;
-  mode: "local" | "glitch" | "invalid" | "disconnected";
+  mode: "local" | "glitch" | "guest" | "invalid" | "disconnected";
   valid: boolean;
   titleId: string;
   installId?: string;
@@ -1167,6 +1167,10 @@ class HarthmereGlitchBridgeController {
   private installHeartbeatTimer?: number;
   private stateChangeSaveTimer?: number;
   private valid = false;
+  // True when the player has no stable Glitch account: they can play the entire
+  // game, but cloud save/restore is never run for them (Glitch rejects guest
+  // saves with GUEST_NOT_ALLOWED, and there is nothing durable to scope to).
+  private guest = false;
   private baseVersion = 0;
   private startedAt = Date.now();
   private lastProgressionFlushAt = Date.now();
@@ -1244,6 +1248,14 @@ class HarthmereGlitchBridgeController {
 
     this.enqueueBehaviorEvent("glitch_auth", "start");
     await this.validateAndClaimInstall();
+
+    // Guests play the full game with an ephemeral session: no cloud restore, no
+    // autosave, no heartbeats. Run only a local playtime timer and stop here.
+    if (this.guest) {
+      this.enqueueBehaviorEvent("glitch_auth", "guest");
+      this.startLocalTimers();
+      return;
+    }
 
     if (!this.valid) {
       this.enqueueBehaviorEvent("glitch_auth", "fail", {
@@ -1334,18 +1346,45 @@ class HarthmereGlitchBridgeController {
       }
 
       this.valid = claim?.valid === true;
-      const identity = this.valid
-        ? identityFromResponse(this.config, claim)
-        : undefined;
-      if (this.valid && identity && !isCloudSaveEligibleIdentity(identity)) {
+      // The server marks guests explicitly (guest / cloud_save:false). Build the
+      // identity whenever we have a valid OR guest session so guests still get a
+      // playable in-world identity.
+      const serverGuest = claim?.guest === true || claim?.cloud_save === false;
+      const identity =
+        this.valid || serverGuest
+          ? identityFromResponse(this.config, claim)
+          : undefined;
+      // A guest is anyone without a stable Glitch account. Trust the server flag,
+      // but also fall back to the local eligibility check so an older server
+      // (mid-deploy) that omits the flag still routes install-only sessions to the
+      // guest path instead of a misleading "invalid" error.
+      const guest =
+        serverGuest ||
+        Boolean(identity && !isCloudSaveEligibleIdentity(identity));
+      if (guest) {
+        // Guests CAN play — they just never cloud-save. Establish the identity and
+        // a "guest" status (not an error), then skip all cloud restore/save.
+        this.guest = true;
         this.valid = false;
+        this.identity = identity;
+        if (identity) {
+          writeHarthmereGlitchIdentity(identity);
+          applyIdentityToLocalScope(identity);
+          applyIdentityToGameContext(this.clientContext, identity);
+        }
         writeStatus({
-          mode: "invalid",
+          mode: "guest",
           valid: false,
           titleId: this.config.titleId,
           installId: this.config.installId,
+          serverSessionId: identity?.serverSessionId,
+          gameUserId: identity?.gameUserId,
+          glitchUserId: identity?.glitchUserId,
+          biomesUserId: identity?.biomesUserId,
+          userName: identity?.userName,
+          licenseType: claim?.license_type,
           lastValidationAt: new Date().toISOString(),
-          lastValidationError: "GUEST_NOT_ALLOWED",
+          lastValidationError: undefined,
           playtimeSeconds: this.currentPlaytimeSeconds(),
         });
         return;

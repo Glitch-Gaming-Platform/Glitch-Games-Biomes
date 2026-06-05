@@ -1,4 +1,8 @@
 import { reduceHarthmereEconomyBusinessSpecificMutationV1, normalizeHarthmereEconomyBusinessSystemsStateV1, validateHarthmereEconomyBalanceV1 } from "./mmo_economy_business_systems_v1";
+import {
+  harthmereBusinessStorefrontGoodsForTypeV1,
+  harthmereBusinessStorefrontListingsForTypeV1,
+} from "./harthmere_business_storefront_goods_v1";
 import type { BuildingSystemAnyMaterializationPlanV1 } from "./building_system_v1";
 import {
   businessMissedDaysV1,
@@ -1544,6 +1548,46 @@ function recordCustomerSale(result: MutableResult, request: HarthmereEconomyMuta
   result.shared.add(townSharedKey(town.townId));
 }
 
+// HARTHMERE_BUSINESS_STOREFRONT_GOODS_V1: a customer buys one of the business's
+// themed catalog goods (5 blocks + 4 interior items). Unlike record_customer_sale
+// this is CATALOG-driven, not stocked from business.inventory — so supply is
+// unlimited / self-replenishing no matter how many players buy. Price is server-
+// authoritative (the storefront listing). The buyer pays gold + receives the item;
+// the business still earns the revenue. Does not touch the normal inventory/tool.
+function buyStorefrontGood(result: MutableResult, request: HarthmereEconomyMutationRequestV1, context: HarthmereEconomyMutationContextV1) {
+  const business = getBusiness(result, request.businessId);
+  if (!business) return reject(result, "economy_rejected:business_not_found");
+  if (business.status !== "open") return reject(result, "economy_rejected:business_not_open");
+  const itemId = request.itemId;
+  if (!itemId) return reject(result, "economy_rejected:missing_storefront_item");
+  const goods = harthmereBusinessStorefrontGoodsForTypeV1(business.typeId);
+  const inCatalog =
+    !!goods && (goods.blocks.includes(itemId) || goods.interior.includes(itemId));
+  if (!inCatalog) return reject(result, "economy_rejected:item_not_in_storefront");
+  const count = positiveInt(request.count, 1);
+  const listing = harthmereBusinessStorefrontListingsForTypeV1(business.typeId).find(
+    (entry) => entry.itemId === itemId
+  );
+  const unitPrice = positiveInt(listing?.buyPrice, 0);
+  const gross = unitPrice * count;
+  if (gross <= 0) return reject(result, "economy_rejected:invalid_sale_amount");
+  if (context.actorGold + result.goldDelta < gross) {
+    return reject(result, "economy_rejected:insufficient_customer_gold_for_sale");
+  }
+  // Buyer receives the item (positive itemDelta) and pays gold — NO business
+  // inventory deduction (the catalog is an unlimited supply).
+  recordItemDelta(result.itemDeltas, itemId, count);
+  result.goldDelta -= gross;
+  const town = ensureTown(result.next, business.townId ?? HARTHMERE_ECONOMY_DEFAULT_TOWN_ID_V1, business.regionId, request.nowMs);
+  const tax = collectSalesTax(town, gross, business.salesTaxRate);
+  business.balanceGold += gross - tax;
+  pushLedger(result, { id: request.requestId, kind: "customer_sale_recorded", businessId: business.businessId, amountGold: gross, townId: town.townId }, request);
+  result.touched.add("economy_sale");
+  result.touched.add("economy_tax");
+  result.shared.add(businessSharedKey(business.businessId));
+  result.shared.add(townSharedKey(town.townId));
+}
+
 function normalizeFieldServiceSpec(request: HarthmereEconomyMutationRequestV1): HarthmereEconomyFieldServiceSpecV1 | undefined {
   const raw = request.fieldService;
   if (!raw || raw.required !== true) return undefined;
@@ -2333,6 +2377,9 @@ export function reduceHarthmereEconomyMutationV1(
       break;
     case "record_customer_sale":
       recordCustomerSale(result, request, context);
+      break;
+    case "buy_storefront_good":
+      buyStorefrontGood(result, request, context);
       break;
     case "create_contract":
       createContract(result, request, context);
