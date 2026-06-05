@@ -22,6 +22,7 @@ import {
 import { HARTHMERE_COLLECTIBLE_DEFINITIONS_V1 } from "./mmo_class_ability_collectibles_v1";
 import {
   HARTHMERE_BUSINESS_OUTPOSTS_V1,
+  harthmereBusinessScaledJobPayV1,
   harthmereBusinessOutpostJobsBoardPositionV1,
   type HarthmereBusinessOutpostV1,
 } from "./business_customer_simulator_v1";
@@ -35,18 +36,25 @@ import {
   HARTHMERE_JOBS_BOARD_HEX_WRAITH_BOUNTY_TARGET_ID_V1,
 } from "./jobs_board_muck_bounty_targets_v1";
 
-export const HARTHMERE_JOBS_BOARD_AUTHORITY_VERSION_V1 = "harthmere-jobs-board-authority-v1" as const;
-export const HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1 = "harthmere_grove_market_jobs_board" as const;
-export const HARTHMERE_JOBS_BOARD_GROVE_MARKET_BOARD_VOXEL_V1 = "public/assets/harthmere/vox/props/itch_voxel_asset_pack/Blacksmith Sign.vox" as const;
-export const HARTHMERE_JOBS_BOARD_GROVE_MARKET_BOARD_MARKER_ID_V1 = "harthmere_market_posting_board" as const;
+export const HARTHMERE_JOBS_BOARD_AUTHORITY_VERSION_V1 =
+  "harthmere-jobs-board-authority-v1" as const;
+export const HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1 =
+  "harthmere_grove_market_jobs_board" as const;
+export const HARTHMERE_JOBS_BOARD_GROVE_MARKET_BOARD_VOXEL_V1 =
+  "public/assets/harthmere/vox/props/itch_voxel_asset_pack/Blacksmith Sign.vox" as const;
+export const HARTHMERE_JOBS_BOARD_GROVE_MARKET_BOARD_MARKER_ID_V1 =
+  "harthmere_market_posting_board" as const;
 // HARTHMERE_JOBS_BOARD_HARTHMERE_TOWN_V141:
 // Second physical board located in Harthmere's market district. Lives near
 // the Harthmere Market Office landmark and uses the same voxel kiosk asset
 // as the Grove board. Jobs posted at this board are scoped to the Harthmere
 // town/region so towns/guilds/NPCs based in Harthmere have a board to use.
-export const HARTHMERE_JOBS_BOARD_HARTHMERE_BOARD_ID_V141 = "harthmere_town_market_jobs_board" as const;
-export const HARTHMERE_JOBS_BOARD_HARTHMERE_MARKER_ID_V141 = "harthmere_town_market_posting_board" as const;
-export const HARTHMERE_JOBS_BOARD_HARTHMERE_DISPLAY_NAME_V141 = "Harthmere Town Jobs Board" as const;
+export const HARTHMERE_JOBS_BOARD_HARTHMERE_BOARD_ID_V141 =
+  "harthmere_town_market_jobs_board" as const;
+export const HARTHMERE_JOBS_BOARD_HARTHMERE_MARKER_ID_V141 =
+  "harthmere_town_market_posting_board" as const;
+export const HARTHMERE_JOBS_BOARD_HARTHMERE_DISPLAY_NAME_V141 =
+  "Harthmere Town Jobs Board" as const;
 export const HARTHMERE_JOBS_BOARD_INTERACTION_RADIUS_V145 = 3.25;
 export const HARTHMERE_JOBS_BOARD_MAX_ACTIVE_POSTINGS_PER_ISSUER_V1 = 12;
 export const HARTHMERE_JOBS_BOARD_MAX_ACTIVE_ACCEPTED_PER_SEEKER_V1 = 6;
@@ -58,7 +66,12 @@ export const HARTHMERE_JOBS_BOARD_ACCEPT_COOLDOWN_MS_V1 = 3 * 1000;
 export const HARTHMERE_JOBS_BOARD_MAX_LOGS_V1 = 300;
 export const HARTHMERE_JOBS_BOARD_BUSINESS_AUTO_SEED_MAX_PER_TICK_V1 = 4;
 
-export type HarthmereJobsBoardIssuerKindV1 = "player" | "business" | "guild" | "town" | "npc";
+export type HarthmereJobsBoardIssuerKindV1 =
+  | "player"
+  | "business"
+  | "guild"
+  | "town"
+  | "npc";
 export type HarthmereJobsBoardJobKindV1 =
   | "gather"
   | "delivery"
@@ -72,7 +85,13 @@ export type HarthmereJobsBoardJobKindV1 =
   | "construction"
   | "security"
   | "service";
-export type HarthmereJobsBoardPostingStatusV1 = "open" | "active" | "completed" | "failed" | "cancelled" | "expired";
+export type HarthmereJobsBoardPostingStatusV1 =
+  | "open"
+  | "active"
+  | "completed"
+  | "failed"
+  | "cancelled"
+  | "expired";
 
 export interface HarthmereJobsBoardLocationV1 {
   x: number;
@@ -314,7 +333,10 @@ export interface HarthmereJobsBoardStateV1 {
   todos: Record<string, HarthmereJobsBoardTodoV1>;
   actorAcceptedJobIds: Record<string, string[]>;
   issuerOpenJobIds: Record<string, string[]>;
-  actorCooldowns: Record<string, { lastPostAtMs?: number; lastAcceptAtMs?: number; abuseScore: number }>;
+  actorCooldowns: Record<
+    string,
+    { lastPostAtMs?: number; lastAcceptAtMs?: number; abuseScore: number }
+  >;
   audit: HarthmereJobsBoardAuditEntryV1[];
   nextJobNumber: number;
   nextTodoNumber: number;
@@ -368,7 +390,9 @@ export interface HarthmereJobsBoardMutationContextV1 {
   allowNpcJobPosting?: boolean;
   canManageGuildJobs?: (guildId: string) => boolean;
   canManageTownJobs?: (townId: string) => boolean;
-  canManageBusinessJobs?: (business: HarthmereEconomyBusinessRecordV1) => boolean;
+  canManageBusinessJobs?: (
+    business: HarthmereEconomyBusinessRecordV1
+  ) => boolean;
 }
 
 export interface HarthmereJobsBoardMutationResultV1 {
@@ -393,7 +417,10 @@ type MutableJobsResult = {
   shared: Set<string>;
 };
 
-const HARTHMERE_BUSINESS_OUTPOST_JOB_KIND_BY_TYPE_V1: Record<HarthmereEconomyBusinessTypeIdV1, HarthmereJobsBoardJobKindV1> = {
+const HARTHMERE_BUSINESS_OUTPOST_JOB_KIND_BY_TYPE_V1: Record<
+  HarthmereEconomyBusinessTypeIdV1,
+  HarthmereJobsBoardJobKindV1
+> = {
   exotic_matter_refinery: "craft",
   biome_maintenance_repair: "repair",
   biome_design_studio: "service",
@@ -415,47 +442,63 @@ const HARTHMERE_BUSINESS_OUTPOST_JOB_KIND_BY_TYPE_V1: Record<HarthmereEconomyBus
   hospitality_inn_hotel_shelter: "service",
 };
 
-function harthmereBusinessOutpostJobsBoardIdV1(outpost: HarthmereBusinessOutpostV1) {
+function harthmereBusinessOutpostJobsBoardIdV1(
+  outpost: HarthmereBusinessOutpostV1
+) {
   return `${outpost.outpostId}_jobs_board`;
 }
 
-function harthmereBusinessOutpostJobMarkerIdV1(outpost: HarthmereBusinessOutpostV1) {
+function harthmereBusinessOutpostJobMarkerIdV1(
+  outpost: HarthmereBusinessOutpostV1
+) {
   return `${outpost.outpostId}_job_board`;
 }
 
-const HARTHMERE_BUSINESS_OUTPOST_JOB_BOARD_LOCATIONS_V1: Record<string, HarthmereJobsBoardRecordV1> = Object.fromEntries(
+const HARTHMERE_BUSINESS_OUTPOST_JOB_BOARD_LOCATIONS_V1: Record<
+  string,
+  HarthmereJobsBoardRecordV1
+> = Object.fromEntries(
   HARTHMERE_BUSINESS_OUTPOSTS_V1.map((outpost) => {
     const boardId = harthmereBusinessOutpostJobsBoardIdV1(outpost);
     const markerId = harthmereBusinessOutpostJobMarkerIdV1(outpost);
-    const kind = HARTHMERE_BUSINESS_OUTPOST_JOB_KIND_BY_TYPE_V1[outpost.businessType];
+    const kind =
+      HARTHMERE_BUSINESS_OUTPOST_JOB_KIND_BY_TYPE_V1[outpost.businessType];
     const position = harthmereBusinessOutpostJobsBoardPositionV1(outpost);
-    return [boardId, {
+    return [
       boardId,
-      displayName: `${outpost.displayName} Jobs Board`,
-      townId: outpost.townId,
-      regionId: outpost.regionId,
-      markerId,
-      location: {
-        x: position.x,
-        y: position.y,
-        z: position.z,
-        radius: HARTHMERE_JOBS_BOARD_INTERACTION_RADIUS_V145,
-        district: outpost.district,
-        landmarkId: markerId,
-        voxelAssetHint: "procedural_business_outpost_jobs_board",
-      },
-      acceptedKinds: [kind],
-      requiresPhysicalInteraction: true,
-      createdAtMs: 0,
-    } satisfies HarthmereJobsBoardRecordV1];
-  }),
+      {
+        boardId,
+        displayName: `${outpost.displayName} Jobs Board`,
+        townId: outpost.townId,
+        regionId: outpost.regionId,
+        markerId,
+        location: {
+          x: position.x,
+          y: position.y,
+          z: position.z,
+          radius: HARTHMERE_JOBS_BOARD_INTERACTION_RADIUS_V145,
+          district: outpost.district,
+          landmarkId: markerId,
+          voxelAssetHint: "procedural_business_outpost_jobs_board",
+        },
+        acceptedKinds: [kind],
+        requiresPhysicalInteraction: true,
+        createdAtMs: 0,
+      } satisfies HarthmereJobsBoardRecordV1,
+    ];
+  })
 );
 
 function businessOutpostForJobsBoardIdV1(boardId: string) {
-  return HARTHMERE_BUSINESS_OUTPOSTS_V1.find((outpost) => harthmereBusinessOutpostJobsBoardIdV1(outpost) === boardId);
+  return HARTHMERE_BUSINESS_OUTPOSTS_V1.find(
+    (outpost) => harthmereBusinessOutpostJobsBoardIdV1(outpost) === boardId
+  );
 }
 
-export const HARTHMERE_JOBS_BOARD_LOCATIONS_V1: Record<string, HarthmereJobsBoardRecordV1> = {
+export const HARTHMERE_JOBS_BOARD_LOCATIONS_V1: Record<
+  string,
+  HarthmereJobsBoardRecordV1
+> = {
   [HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1]: {
     boardId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1,
     displayName: "Jobs Board",
@@ -473,7 +516,20 @@ export const HARTHMERE_JOBS_BOARD_LOCATIONS_V1: Record<string, HarthmereJobsBoar
       landmarkId: HARTHMERE_JOBS_BOARD_GROVE_MARKET_BOARD_MARKER_ID_V1,
       voxelAssetHint: HARTHMERE_JOBS_BOARD_GROVE_MARKET_BOARD_VOXEL_V1,
     },
-    acceptedKinds: ["gather", "delivery", "repair", "cleanup", "hunt", "escort", "craft", "medical", "exploration", "construction", "security", "service"],
+    acceptedKinds: [
+      "gather",
+      "delivery",
+      "repair",
+      "cleanup",
+      "hunt",
+      "escort",
+      "craft",
+      "medical",
+      "exploration",
+      "construction",
+      "security",
+      "service",
+    ],
     requiresPhysicalInteraction: true,
     createdAtMs: 0,
   },
@@ -497,15 +553,32 @@ export const HARTHMERE_JOBS_BOARD_LOCATIONS_V1: Record<string, HarthmereJobsBoar
       landmarkId: HARTHMERE_JOBS_BOARD_HARTHMERE_MARKER_ID_V141,
       voxelAssetHint: HARTHMERE_JOBS_BOARD_GROVE_MARKET_BOARD_VOXEL_V1,
     },
-    acceptedKinds: ["gather", "delivery", "repair", "cleanup", "hunt", "escort", "craft", "medical", "exploration", "construction", "security", "service"],
+    acceptedKinds: [
+      "gather",
+      "delivery",
+      "repair",
+      "cleanup",
+      "hunt",
+      "escort",
+      "craft",
+      "medical",
+      "exploration",
+      "construction",
+      "security",
+      "service",
+    ],
     requiresPhysicalInteraction: true,
     createdAtMs: 0,
   },
   ...HARTHMERE_BUSINESS_OUTPOST_JOB_BOARD_LOCATIONS_V1,
 };
 
-export function defaultHarthmereJobsBoardStateV1(nowMs = 0): HarthmereJobsBoardStateV1 {
-  const boards = JSON.parse(JSON.stringify(HARTHMERE_JOBS_BOARD_LOCATIONS_V1)) as Record<string, HarthmereJobsBoardRecordV1>;
+export function defaultHarthmereJobsBoardStateV1(
+  nowMs = 0
+): HarthmereJobsBoardStateV1 {
+  const boards = JSON.parse(
+    JSON.stringify(HARTHMERE_JOBS_BOARD_LOCATIONS_V1)
+  ) as Record<string, HarthmereJobsBoardRecordV1>;
   for (const board of Object.values(boards)) board.createdAtMs = nowMs;
   return {
     version: HARTHMERE_JOBS_BOARD_AUTHORITY_VERSION_V1,
@@ -521,9 +594,15 @@ export function defaultHarthmereJobsBoardStateV1(nowMs = 0): HarthmereJobsBoardS
   };
 }
 
-export function normalizeHarthmereJobsBoardStateV1(raw: unknown, nowMs = 0): HarthmereJobsBoardStateV1 {
+export function normalizeHarthmereJobsBoardStateV1(
+  raw: unknown,
+  nowMs = 0
+): HarthmereJobsBoardStateV1 {
   const defaults = defaultHarthmereJobsBoardStateV1(nowMs);
-  const value = raw && typeof raw === "object" ? raw as Partial<HarthmereJobsBoardStateV1> : {};
+  const value =
+    raw && typeof raw === "object"
+      ? (raw as Partial<HarthmereJobsBoardStateV1>)
+      : {};
   return {
     ...defaults,
     ...value,
@@ -534,7 +613,9 @@ export function normalizeHarthmereJobsBoardStateV1(raw: unknown, nowMs = 0): Har
     actorAcceptedJobIds: { ...(value.actorAcceptedJobIds ?? {}) },
     issuerOpenJobIds: { ...(value.issuerOpenJobIds ?? {}) },
     actorCooldowns: { ...(value.actorCooldowns ?? {}) },
-    audit: Array.isArray(value.audit) ? value.audit.slice(-HARTHMERE_JOBS_BOARD_MAX_LOGS_V1) : [],
+    audit: Array.isArray(value.audit)
+      ? value.audit.slice(-HARTHMERE_JOBS_BOARD_MAX_LOGS_V1)
+      : [],
     nextJobNumber: Math.max(1, Math.trunc(Number(value.nextJobNumber) || 1)),
     nextTodoNumber: Math.max(1, Math.trunc(Number(value.nextTodoNumber) || 1)),
   };
@@ -544,10 +625,15 @@ function cloneJobsState(state: HarthmereJobsBoardStateV1) {
   return normalizeHarthmereJobsBoardStateV1(JSON.parse(JSON.stringify(state)));
 }
 
-function makeResult(state: HarthmereJobsBoardStateV1, context: HarthmereJobsBoardMutationContextV1): MutableJobsResult {
+function makeResult(
+  state: HarthmereJobsBoardStateV1,
+  context: HarthmereJobsBoardMutationContextV1
+): MutableJobsResult {
   return {
     next: cloneJobsState(state),
-    economy: context.economy ? JSON.parse(JSON.stringify(context.economy)) : undefined,
+    economy: context.economy
+      ? JSON.parse(JSON.stringify(context.economy))
+      : undefined,
     goldDelta: 0,
     itemDeltas: {},
     collectibleRewardIds: [],
@@ -562,46 +648,78 @@ function reject(result: MutableJobsResult, warning: string) {
   result.touched.add("jobs_board_rejection");
 }
 
-function pushAudit(result: MutableJobsResult, request: HarthmereJobsBoardMutationRequestV1, entry: Omit<HarthmereJobsBoardAuditEntryV1, "atMs" | "actorId">) {
-  result.next.audit.push({ atMs: request.nowMs, actorId: request.actorId, ...entry });
-  result.next.audit = result.next.audit.slice(-HARTHMERE_JOBS_BOARD_MAX_LOGS_V1);
+function pushAudit(
+  result: MutableJobsResult,
+  request: HarthmereJobsBoardMutationRequestV1,
+  entry: Omit<HarthmereJobsBoardAuditEntryV1, "atMs" | "actorId">
+) {
+  result.next.audit.push({
+    atMs: request.nowMs,
+    actorId: request.actorId,
+    ...entry,
+  });
+  result.next.audit = result.next.audit.slice(
+    -HARTHMERE_JOBS_BOARD_MAX_LOGS_V1
+  );
 }
 
 function issuerKey(kind: HarthmereJobsBoardIssuerKindV1, id: string) {
   return `${kind}:${id}`;
 }
 
-function sharedBoardKey(boardId: string) { return `harthmere:jobs_board:${boardId}`; }
-function sharedJobKey(jobId: string) { return `harthmere:jobs_board:job:${jobId}`; }
-function sharedTodoKey(todoId: string) { return `harthmere:jobs_board:todo:${todoId}`; }
+function sharedBoardKey(boardId: string) {
+  return `harthmere:jobs_board:${boardId}`;
+}
+function sharedJobKey(jobId: string) {
+  return `harthmere:jobs_board:job:${jobId}`;
+}
+function sharedTodoKey(todoId: string) {
+  return `harthmere:jobs_board:todo:${todoId}`;
+}
 
 function positiveInt(value: unknown, fallback = 0) {
   return Math.max(0, Math.trunc(Number(value) || fallback));
 }
 
-function recordItemDelta(target: Record<string, number>, itemId: string, delta: number) {
+function recordItemDelta(
+  target: Record<string, number>,
+  itemId: string,
+  delta: number
+) {
   const next = (target[itemId] ?? 0) + Math.trunc(delta);
   if (next === 0) delete target[itemId];
   else target[itemId] = next;
 }
 
-function distance(a: { x: number; y: number; z: number }, b: { x: number; y: number; z: number }) {
+function distance(
+  a: { x: number; y: number; z: number },
+  b: { x: number; y: number; z: number }
+) {
   return Math.sqrt((a.x - b.x) ** 2 + (a.y - b.y) ** 2 + (a.z - b.z) ** 2);
 }
 
 export function isActorAtHarthmereJobsBoardV1(
   state: HarthmereJobsBoardStateV1,
-  context: Pick<HarthmereJobsBoardMutationContextV1, "nearbyBoardId" | "actorPosition">,
-  boardId: string = HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1,
+  context: Pick<
+    HarthmereJobsBoardMutationContextV1,
+    "nearbyBoardId" | "actorPosition"
+  >,
+  boardId: string = HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1
 ) {
   const board = state.boards[boardId];
   if (!board) return false;
   if (context.nearbyBoardId === boardId) return true;
   if (!context.actorPosition) return false;
-  return distance(context.actorPosition, board.location) <= board.location.radius;
+  return (
+    distance(context.actorPosition, board.location) <= board.location.radius
+  );
 }
 
-function requireBoard(result: MutableJobsResult, request: HarthmereJobsBoardMutationRequestV1, context: HarthmereJobsBoardMutationContextV1) {
+function requireBoard(
+  result: MutableJobsResult,
+  request: HarthmereJobsBoardMutationRequestV1,
+  context: HarthmereJobsBoardMutationContextV1
+) {
   const boardId = request.boardId ?? HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1;
   const board = result.next.boards[boardId];
   if (!board) {
@@ -616,58 +734,123 @@ function requireBoard(result: MutableJobsResult, request: HarthmereJobsBoardMuta
 }
 
 function sanitizeText(value: unknown, fallback: string, max: number) {
-  const text = typeof value === "string" ? value.replace(/\s+/g, " ").trim() : "";
+  const text =
+    typeof value === "string" ? value.replace(/\s+/g, " ").trim() : "";
   return (text || fallback).slice(0, max);
 }
 
 function hasSuspiciousText(text: string) {
   const lowered = text.toLowerCase();
-  return /https?:\/\/|discord\.gg|free\s+gold|dupe|exploit|admin\s+password/.test(lowered);
+  return /https?:\/\/|discord\.gg|free\s+gold|dupe|exploit|admin\s+password/.test(
+    lowered
+  );
 }
 
-function normalizeRequirements(requirements: HarthmereJobsBoardRequirementV1[] | undefined) {
+function normalizeRequirements(
+  requirements: HarthmereJobsBoardRequirementV1[] | undefined
+) {
   const out: HarthmereJobsBoardRequirementV1[] = [];
   for (const req of requirements ?? []) {
-    const itemId = typeof req.itemId === "string" && req.itemId.trim() ? req.itemId.trim().slice(0, 80) : undefined;
-    const serviceKind = typeof req.serviceKind === "string" && req.serviceKind.trim() ? req.serviceKind.trim().slice(0, 80) : undefined;
-    const targetId = typeof req.targetId === "string" && req.targetId.trim() ? req.targetId.trim().slice(0, 120) : undefined;
-    const targetName = typeof req.targetName === "string" && req.targetName.trim() ? req.targetName.trim().slice(0, 120) : undefined;
-    const mapMarkerId = typeof req.mapMarkerId === "string" && req.mapMarkerId.trim() ? req.mapMarkerId.trim().slice(0, 120) : undefined;
-    const count = req.count === undefined ? undefined : positiveInt(req.count, 1);
-    const serviceUnits = req.serviceUnits === undefined ? undefined : positiveInt(req.serviceUnits, 1);
-    const requiredToolAction = typeof req.requiredToolAction === "string" && req.requiredToolAction.trim() ? req.requiredToolAction.trim().slice(0, 40) : undefined;
-    const requiredToolId = typeof req.requiredToolId === "string" && req.requiredToolId.trim() ? req.requiredToolId.trim().slice(0, 80) : undefined;
-    const recipientNpcId = typeof req.recipientNpcId === "string" && req.recipientNpcId.trim() ? req.recipientNpcId.trim().slice(0, 80) : undefined;
-    const pickupMarkerId = typeof req.pickupMarkerId === "string" && req.pickupMarkerId.trim() ? req.pickupMarkerId.trim().slice(0, 120) : undefined;
+    const itemId =
+      typeof req.itemId === "string" && req.itemId.trim()
+        ? req.itemId.trim().slice(0, 80)
+        : undefined;
+    const serviceKind =
+      typeof req.serviceKind === "string" && req.serviceKind.trim()
+        ? req.serviceKind.trim().slice(0, 80)
+        : undefined;
+    const targetId =
+      typeof req.targetId === "string" && req.targetId.trim()
+        ? req.targetId.trim().slice(0, 120)
+        : undefined;
+    const targetName =
+      typeof req.targetName === "string" && req.targetName.trim()
+        ? req.targetName.trim().slice(0, 120)
+        : undefined;
+    const mapMarkerId =
+      typeof req.mapMarkerId === "string" && req.mapMarkerId.trim()
+        ? req.mapMarkerId.trim().slice(0, 120)
+        : undefined;
+    const count =
+      req.count === undefined ? undefined : positiveInt(req.count, 1);
+    const serviceUnits =
+      req.serviceUnits === undefined
+        ? undefined
+        : positiveInt(req.serviceUnits, 1);
+    const requiredToolAction =
+      typeof req.requiredToolAction === "string" &&
+      req.requiredToolAction.trim()
+        ? req.requiredToolAction.trim().slice(0, 40)
+        : undefined;
+    const requiredToolId =
+      typeof req.requiredToolId === "string" && req.requiredToolId.trim()
+        ? req.requiredToolId.trim().slice(0, 80)
+        : undefined;
+    const recipientNpcId =
+      typeof req.recipientNpcId === "string" && req.recipientNpcId.trim()
+        ? req.recipientNpcId.trim().slice(0, 80)
+        : undefined;
+    const pickupMarkerId =
+      typeof req.pickupMarkerId === "string" && req.pickupMarkerId.trim()
+        ? req.pickupMarkerId.trim().slice(0, 120)
+        : undefined;
     if (!itemId && !serviceKind && !targetId && !recipientNpcId) continue;
-    out.push({ itemId, count, serviceKind, serviceUnits, targetId, targetName, mapMarkerId, requiredToolAction, requiredToolId, recipientNpcId, pickupMarkerId });
+    out.push({
+      itemId,
+      count,
+      serviceKind,
+      serviceUnits,
+      targetId,
+      targetName,
+      mapMarkerId,
+      requiredToolAction,
+      requiredToolId,
+      recipientNpcId,
+      pickupMarkerId,
+    });
   }
   return out.slice(0, 8);
 }
 
-function normalizeRewardItems(rewardItems: HarthmereJobsBoardRewardItemV146[] | undefined) {
+function normalizeRewardItems(
+  rewardItems: HarthmereJobsBoardRewardItemV146[] | undefined
+) {
   const out: Record<string, number> = {};
   for (const reward of rewardItems ?? []) {
-    const itemId = typeof reward.itemId === "string" ? reward.itemId.trim().slice(0, 80) : "";
-    if (!itemId || !isKnownHarthmereJobsBoardExecutableItemIdV146(itemId)) continue;
+    const itemId =
+      typeof reward.itemId === "string"
+        ? reward.itemId.trim().slice(0, 80)
+        : "";
+    if (!itemId || !isKnownHarthmereJobsBoardExecutableItemIdV146(itemId))
+      continue;
     const count = positiveInt(reward.count, 1);
     if (count <= 0) continue;
     out[itemId] = (out[itemId] ?? 0) + count;
   }
-  return Object.entries(out).slice(0, 5).map(([itemId, count]) => ({ itemId, count }));
+  return Object.entries(out)
+    .slice(0, 5)
+    .map(([itemId, count]) => ({ itemId, count }));
 }
 
-function normalizeRewardCollectibleIds(rewardCollectibleIds: string[] | undefined) {
-  return Array.from(new Set((rewardCollectibleIds ?? [])
-    .map((id) => typeof id === "string" ? id.trim().slice(0, 120) : "")
-    .filter((id) => id && HARTHMERE_COLLECTIBLE_DEFINITIONS_V1[id])))
-    .slice(0, 3);
+function normalizeRewardCollectibleIds(
+  rewardCollectibleIds: string[] | undefined
+) {
+  return Array.from(
+    new Set(
+      (rewardCollectibleIds ?? [])
+        .map((id) => (typeof id === "string" ? id.trim().slice(0, 120) : ""))
+        .filter((id) => id && HARTHMERE_COLLECTIBLE_DEFINITIONS_V1[id])
+    )
+  ).slice(0, 3);
 }
 
-function itemRewardsToRecord(rewardItems: HarthmereJobsBoardRewardItemV146[] | undefined) {
+function itemRewardsToRecord(
+  rewardItems: HarthmereJobsBoardRewardItemV146[] | undefined
+) {
   const record: Record<string, number> = {};
   for (const reward of rewardItems ?? []) {
-    if (reward.count > 0) record[reward.itemId] = (record[reward.itemId] ?? 0) + reward.count;
+    if (reward.count > 0)
+      record[reward.itemId] = (record[reward.itemId] ?? 0) + reward.count;
   }
   return record;
 }
@@ -675,9 +858,11 @@ function itemRewardsToRecord(rewardItems: HarthmereJobsBoardRewardItemV146[] | u
 function applyBusinessTemplateDefaults(
   result: MutableJobsResult,
   request: HarthmereJobsBoardMutationRequestV1,
-  issuerBusinessType: HarthmereEconomyBusinessTypeIdV1 | undefined,
+  issuerBusinessType: HarthmereEconomyBusinessTypeIdV1 | undefined
 ) {
-  const template = harthmereJobsBoardBusinessTemplateByIdV146(request.templateId);
+  const template = harthmereJobsBoardBusinessTemplateByIdV146(
+    request.templateId
+  );
   if (!request.templateId) return undefined;
   if (!template) {
     reject(result, "jobs_board_rejected:unknown_business_job_template");
@@ -690,8 +875,13 @@ function applyBusinessTemplateDefaults(
   return template;
 }
 
-function validateIssuer(result: MutableJobsResult, request: HarthmereJobsBoardMutationRequestV1, context: HarthmereJobsBoardMutationContextV1) {
-  const issuerKind = request.issuerKind ?? (request.businessId ? "business" : "player");
+function validateIssuer(
+  result: MutableJobsResult,
+  request: HarthmereJobsBoardMutationRequestV1,
+  context: HarthmereJobsBoardMutationContextV1
+) {
+  const issuerKind =
+    request.issuerKind ?? (request.businessId ? "business" : "player");
   let issuerId = request.issuerId ?? request.actorId;
   let issuerBusinessType: HarthmereEconomyBusinessTypeIdV1 | undefined;
   if (issuerKind === "player") {
@@ -708,7 +898,10 @@ function validateIssuer(result: MutableJobsResult, request: HarthmereJobsBoardMu
       reject(result, "jobs_board_rejected:business_not_found");
       return undefined;
     }
-    const canManage = business.ownerKind === "player" && business.ownerId === request.actorId || context.canManageBusinessJobs?.(business) === true;
+    const canManage =
+      (business.ownerKind === "player" &&
+        business.ownerId === request.actorId) ||
+      context.canManageBusinessJobs?.(business) === true;
     if (!canManage) {
       reject(result, "jobs_board_rejected:business_job_permission_required");
       return undefined;
@@ -741,30 +934,58 @@ function validateIssuer(result: MutableJobsResult, request: HarthmereJobsBoardMu
   return undefined;
 }
 
-function chargeEscrow(result: MutableJobsResult, request: HarthmereJobsBoardMutationRequestV1, context: HarthmereJobsBoardMutationContextV1, issuerKind: HarthmereJobsBoardIssuerKindV1, issuerId: string, rewardGold: number, rewardItems: HarthmereJobsBoardRewardItemV146[], rewardCollectibleIds: string[]) {
+function chargeEscrow(
+  result: MutableJobsResult,
+  request: HarthmereJobsBoardMutationRequestV1,
+  context: HarthmereJobsBoardMutationContextV1,
+  issuerKind: HarthmereJobsBoardIssuerKindV1,
+  issuerId: string,
+  rewardGold: number,
+  rewardItems: HarthmereJobsBoardRewardItemV146[],
+  rewardCollectibleIds: string[]
+) {
   if (issuerKind === "player") {
-    if (context.actorGold + result.goldDelta < rewardGold) return reject(result, "jobs_board_rejected:escrow_gold_required");
+    if (context.actorGold + result.goldDelta < rewardGold)
+      return reject(result, "jobs_board_rejected:escrow_gold_required");
     for (const reward of rewardItems) {
-      if ((context.actorInventoryItems[reward.itemId] ?? 0) + (result.itemDeltas[reward.itemId] ?? 0) < reward.count) {
-        return reject(result, `jobs_board_rejected:escrow_item_required:${reward.itemId}`);
+      if (
+        (context.actorInventoryItems[reward.itemId] ?? 0) +
+          (result.itemDeltas[reward.itemId] ?? 0) <
+        reward.count
+      ) {
+        return reject(
+          result,
+          `jobs_board_rejected:escrow_item_required:${reward.itemId}`
+        );
       }
     }
     for (const collectibleId of rewardCollectibleIds) {
       if (!context.actorCollectibles?.[collectibleId]) {
-        return reject(result, `jobs_board_rejected:escrow_collectible_required:${collectibleId}`);
+        return reject(
+          result,
+          `jobs_board_rejected:escrow_collectible_required:${collectibleId}`
+        );
       }
     }
     result.goldDelta -= rewardGold;
-    for (const reward of rewardItems) recordItemDelta(result.itemDeltas, reward.itemId, -reward.count);
+    for (const reward of rewardItems)
+      recordItemDelta(result.itemDeltas, reward.itemId, -reward.count);
     return;
   }
   if (issuerKind === "business") {
     const business = result.economy?.businesses?.[issuerId];
-    if (!business || business.balanceGold < rewardGold) return reject(result, "jobs_board_rejected:business_escrow_gold_required");
+    if (!business || business.balanceGold < rewardGold)
+      return reject(
+        result,
+        "jobs_board_rejected:business_escrow_gold_required"
+      );
     for (const reward of rewardItems) {
       const stack = business.inventory[reward.itemId];
       if (!stack || stack.count < reward.count) {
-        return reject(result, `jobs_board_rejected:business_escrow_item_required:${reward.itemId}`);
+        return reject(
+          result,
+          `jobs_board_rejected:business_escrow_item_required:${reward.itemId}`
+        );
       }
     }
     business.balanceGold -= rewardGold;
@@ -775,7 +996,8 @@ function chargeEscrow(result: MutableJobsResult, request: HarthmereJobsBoardMuta
       if (stack.count <= 0) delete business.inventory[reward.itemId];
     }
     result.touched.add("economy_business_bank");
-    if (rewardItems.length > 0) result.touched.add("economy_business_inventory");
+    if (rewardItems.length > 0)
+      result.touched.add("economy_business_inventory");
     result.shared.add(`harthmere:economy:business:${business.businessId}`);
     return;
   }
@@ -783,11 +1005,16 @@ function chargeEscrow(result: MutableJobsResult, request: HarthmereJobsBoardMuta
   // they are only allowed through explicit permission callbacks and are audit logged.
 }
 
-function refundEscrow(result: MutableJobsResult, job: HarthmereJobsBoardPostingV1, request: HarthmereJobsBoardMutationRequestV1) {
+function refundEscrow(
+  result: MutableJobsResult,
+  job: HarthmereJobsBoardPostingV1,
+  request: HarthmereJobsBoardMutationRequestV1
+) {
   const escrowItems = job.escrowItems ?? itemRewardsToRecord(job.rewardItems);
   if (job.issuerKind === "player" && job.issuerId === request.actorId) {
     if (job.escrowGold > 0) result.goldDelta += job.escrowGold;
-    for (const [itemId, count] of Object.entries(escrowItems)) recordItemDelta(result.itemDeltas, itemId, count);
+    for (const [itemId, count] of Object.entries(escrowItems))
+      recordItemDelta(result.itemDeltas, itemId, count);
   }
   if (job.issuerKind === "business") {
     const business = result.economy?.businesses?.[job.issuerId];
@@ -801,62 +1028,154 @@ function refundEscrow(result: MutableJobsResult, job: HarthmereJobsBoardPostingV
       }
     }
     result.touched.add("economy_business_bank");
-    if (Object.keys(escrowItems).length > 0) result.touched.add("economy_business_inventory");
+    if (Object.keys(escrowItems).length > 0)
+      result.touched.add("economy_business_inventory");
   }
   job.escrowGold = 0;
   job.escrowItems = {};
 }
 
-function openJobIdsForIssuer(state: HarthmereJobsBoardStateV1, kind: HarthmereJobsBoardIssuerKindV1, id: string) {
-  return Object.values(state.postings).filter((job) => job.issuerKind === kind && job.issuerId === id && (job.status === "open" || job.status === "active")).map((job) => job.jobId);
+function openJobIdsForIssuer(
+  state: HarthmereJobsBoardStateV1,
+  kind: HarthmereJobsBoardIssuerKindV1,
+  id: string
+) {
+  return Object.values(state.postings)
+    .filter(
+      (job) =>
+        job.issuerKind === kind &&
+        job.issuerId === id &&
+        (job.status === "open" || job.status === "active")
+    )
+    .map((job) => job.jobId);
 }
 
-function activeJobIdsForActor(state: HarthmereJobsBoardStateV1, actorId: string) {
-  return Object.values(state.postings).filter((job) => job.acceptedByActorId === actorId && job.status === "active").map((job) => job.jobId);
+function activeJobIdsForActor(
+  state: HarthmereJobsBoardStateV1,
+  actorId: string
+) {
+  return Object.values(state.postings)
+    .filter(
+      (job) => job.acceptedByActorId === actorId && job.status === "active"
+    )
+    .map((job) => job.jobId);
 }
 
-function createJobPosting(result: MutableJobsResult, request: HarthmereJobsBoardMutationRequestV1, context: HarthmereJobsBoardMutationContextV1) {
+function createJobPosting(
+  result: MutableJobsResult,
+  request: HarthmereJobsBoardMutationRequestV1,
+  context: HarthmereJobsBoardMutationContextV1
+) {
   const board = requireBoard(result, request, context);
   if (!board) return;
   const issuer = validateIssuer(result, request, context);
   if (!issuer) return;
-  const cooldown = result.next.actorCooldowns[request.actorId] ?? { abuseScore: 0 };
-  if ((cooldown.lastPostAtMs ?? 0) + HARTHMERE_JOBS_BOARD_POST_COOLDOWN_MS_V1 > request.nowMs) {
+  const cooldown = result.next.actorCooldowns[request.actorId] ?? {
+    abuseScore: 0,
+  };
+  if (
+    (cooldown.lastPostAtMs ?? 0) + HARTHMERE_JOBS_BOARD_POST_COOLDOWN_MS_V1 >
+    request.nowMs
+  ) {
     cooldown.abuseScore += 1;
     result.next.actorCooldowns[request.actorId] = cooldown;
     return reject(result, "jobs_board_rejected:post_cooldown");
   }
-  const template = applyBusinessTemplateDefaults(result, request, issuer.issuerBusinessType);
+  const template = applyBusinessTemplateDefaults(
+    result,
+    request,
+    issuer.issuerBusinessType
+  );
   if (result.warnings.length) return;
-  const rewardGold = positiveInt(request.rewardGold, template?.defaultRewardGold ?? 0);
-  if (rewardGold < HARTHMERE_JOBS_BOARD_MIN_REWARD_GOLD_V1) return reject(result, "jobs_board_rejected:reward_too_low");
-  if (rewardGold > HARTHMERE_JOBS_BOARD_MAX_REWARD_GOLD_V1) return reject(result, "jobs_board_rejected:reward_too_high");
-  const deadlineAtMs = request.deadlineAtMs ?? request.nowMs + (template?.defaultDeadlineDays ?? 7) * 24 * 60 * 60 * 1000;
-  if (deadlineAtMs <= request.nowMs || deadlineAtMs - request.nowMs > HARTHMERE_JOBS_BOARD_MAX_DURATION_MS_V1) return reject(result, "jobs_board_rejected:invalid_deadline");
+  const rewardGold = positiveInt(
+    request.rewardGold,
+    template?.defaultRewardGold ?? 0
+  );
+  if (rewardGold < HARTHMERE_JOBS_BOARD_MIN_REWARD_GOLD_V1)
+    return reject(result, "jobs_board_rejected:reward_too_low");
+  if (rewardGold > HARTHMERE_JOBS_BOARD_MAX_REWARD_GOLD_V1)
+    return reject(result, "jobs_board_rejected:reward_too_high");
+  const deadlineAtMs =
+    request.deadlineAtMs ??
+    request.nowMs + (template?.defaultDeadlineDays ?? 7) * 24 * 60 * 60 * 1000;
+  if (
+    deadlineAtMs <= request.nowMs ||
+    deadlineAtMs - request.nowMs > HARTHMERE_JOBS_BOARD_MAX_DURATION_MS_V1
+  )
+    return reject(result, "jobs_board_rejected:invalid_deadline");
   const kind = request.kind ?? template?.kind ?? "service";
-  if (!board.acceptedKinds.includes(kind)) return reject(result, "jobs_board_rejected:unsupported_job_kind");
-  const title = sanitizeText(request.title, template?.title ?? "Work Needed", 100);
-  const description = sanitizeText(request.description, template?.description ?? "See the board notice for details.", 360);
-  const requirements = normalizeRequirements(request.requirements ?? template?.requirements);
-  if (!requirements.length) return reject(result, "jobs_board_rejected:requirements_required");
+  if (!board.acceptedKinds.includes(kind))
+    return reject(result, "jobs_board_rejected:unsupported_job_kind");
+  const title = sanitizeText(
+    request.title,
+    template?.title ?? "Work Needed",
+    100
+  );
+  const description = sanitizeText(
+    request.description,
+    template?.description ?? "See the board notice for details.",
+    360
+  );
+  const requirements = normalizeRequirements(
+    request.requirements ?? template?.requirements
+  );
+  if (!requirements.length)
+    return reject(result, "jobs_board_rejected:requirements_required");
   for (const req of requirements) {
-    if (req.itemId && !isKnownHarthmereJobsBoardExecutableItemIdV146(req.itemId)) {
-      return reject(result, `jobs_board_rejected:unknown_requirement_item:${req.itemId}`);
+    if (
+      req.itemId &&
+      !isKnownHarthmereJobsBoardExecutableItemIdV146(req.itemId)
+    ) {
+      return reject(
+        result,
+        `jobs_board_rejected:unknown_requirement_item:${req.itemId}`
+      );
     }
   }
   const rewardItems = normalizeRewardItems(request.rewardItems);
-  const rewardCollectibleIds = normalizeRewardCollectibleIds(request.rewardCollectibleIds);
-  if ((request.rewardItems ?? []).length !== rewardItems.length) return reject(result, "jobs_board_rejected:invalid_reward_item");
-  if ((request.rewardCollectibleIds ?? []).length !== rewardCollectibleIds.length) return reject(result, "jobs_board_rejected:invalid_reward_collectible");
+  const rewardCollectibleIds = normalizeRewardCollectibleIds(
+    request.rewardCollectibleIds
+  );
+  if ((request.rewardItems ?? []).length !== rewardItems.length)
+    return reject(result, "jobs_board_rejected:invalid_reward_item");
+  if (
+    (request.rewardCollectibleIds ?? []).length !== rewardCollectibleIds.length
+  )
+    return reject(result, "jobs_board_rejected:invalid_reward_collectible");
   const flags: string[] = [];
-  if (hasSuspiciousText(`${title} ${description}`)) flags.push("suspicious_text");
-  const activeIssuerJobs = openJobIdsForIssuer(result.next, issuer.issuerKind, issuer.issuerId);
-  if (activeIssuerJobs.length >= HARTHMERE_JOBS_BOARD_MAX_ACTIVE_POSTINGS_PER_ISSUER_V1) return reject(result, "jobs_board_rejected:issuer_posting_limit");
-  chargeEscrow(result, request, context, issuer.issuerKind, issuer.issuerId, rewardGold, rewardItems, rewardCollectibleIds);
+  if (hasSuspiciousText(`${title} ${description}`))
+    flags.push("suspicious_text");
+  const activeIssuerJobs = openJobIdsForIssuer(
+    result.next,
+    issuer.issuerKind,
+    issuer.issuerId
+  );
+  if (
+    activeIssuerJobs.length >=
+    HARTHMERE_JOBS_BOARD_MAX_ACTIVE_POSTINGS_PER_ISSUER_V1
+  )
+    return reject(result, "jobs_board_rejected:issuer_posting_limit");
+  chargeEscrow(
+    result,
+    request,
+    context,
+    issuer.issuerKind,
+    issuer.issuerId,
+    rewardGold,
+    rewardItems,
+    rewardCollectibleIds
+  );
   if (result.warnings.length) return;
   const jobId = `harthmere_job_${result.next.nextJobNumber++}`;
-  const firstMarker = request.mapMarkerId ?? template?.mapMarkerId ?? requirements.find((req) => req.mapMarkerId)?.mapMarkerId ?? requirements.find((req) => req.targetId)?.targetId;
-  const targetId = request.targetId ?? template?.targetId ?? requirements.find((req) => req.targetId)?.targetId;
+  const firstMarker =
+    request.mapMarkerId ??
+    template?.mapMarkerId ??
+    requirements.find((req) => req.mapMarkerId)?.mapMarkerId ??
+    requirements.find((req) => req.targetId)?.targetId;
+  const targetId =
+    request.targetId ??
+    template?.targetId ??
+    requirements.find((req) => req.targetId)?.targetId;
   result.next.postings[jobId] = {
     jobId,
     boardId: board.boardId,
@@ -880,22 +1199,53 @@ function createJobPosting(result: MutableJobsResult, request: HarthmereJobsBoard
     createdAtMs: request.nowMs,
     deadlineAtMs,
     failurePenaltyGold: Math.round(rewardGold * 0.1),
-    requiresFieldWork: request.requiresFieldWork === true || ["delivery", "repair", "cleanup", "hunt", "escort", "medical", "exploration", "construction", "security"].includes(kind),
+    requiresFieldWork:
+      request.requiresFieldWork === true ||
+      [
+        "delivery",
+        "repair",
+        "cleanup",
+        "hunt",
+        "escort",
+        "medical",
+        "exploration",
+        "construction",
+        "security",
+      ].includes(kind),
     mapMarkerId: firstMarker,
     targetId,
     abuseFlags: flags,
     logs: [`created:${request.actorId}:${request.nowMs}`],
   };
-  result.next.issuerOpenJobIds[issuerKey(issuer.issuerKind, issuer.issuerId)] = openJobIdsForIssuer(result.next, issuer.issuerKind, issuer.issuerId);
-  result.next.actorCooldowns[request.actorId] = { ...cooldown, lastPostAtMs: request.nowMs };
-  pushAudit(result, request, { id: request.requestId, kind: "job_posted", jobId, boardId: board.boardId, issuerKind: issuer.issuerKind, issuerId: issuer.issuerId, amountGold: -rewardGold, reason: flags.join(",") || undefined });
+  result.next.issuerOpenJobIds[issuerKey(issuer.issuerKind, issuer.issuerId)] =
+    openJobIdsForIssuer(result.next, issuer.issuerKind, issuer.issuerId);
+  result.next.actorCooldowns[request.actorId] = {
+    ...cooldown,
+    lastPostAtMs: request.nowMs,
+  };
+  pushAudit(result, request, {
+    id: request.requestId,
+    kind: "job_posted",
+    jobId,
+    boardId: board.boardId,
+    issuerKind: issuer.issuerKind,
+    issuerId: issuer.issuerId,
+    amountGold: -rewardGold,
+    reason: flags.join(",") || undefined,
+  });
   result.touched.add("jobs_board_posting");
   result.shared.add(sharedBoardKey(board.boardId));
   result.shared.add(sharedJobKey(jobId));
 }
 
-function createTodoForJob(result: MutableJobsResult, request: HarthmereJobsBoardMutationRequestV1, job: HarthmereJobsBoardPostingV1) {
-  const existing = Object.values(result.next.todos).find((todo) => todo.jobId === job.jobId && todo.actorId === request.actorId);
+function createTodoForJob(
+  result: MutableJobsResult,
+  request: HarthmereJobsBoardMutationRequestV1,
+  job: HarthmereJobsBoardPostingV1
+) {
+  const existing = Object.values(result.next.todos).find(
+    (todo) => todo.jobId === job.jobId && todo.actorId === request.actorId
+  );
   if (existing) return;
   const todoId = `harthmere_job_todo_${result.next.nextTodoNumber++}`;
   result.next.todos[todoId] = {
@@ -904,7 +1254,9 @@ function createTodoForJob(result: MutableJobsResult, request: HarthmereJobsBoard
     actorId: request.actorId,
     boardId: job.boardId,
     title: job.title,
-    todoText: job.requiresFieldWork ? `Go to the marked location and complete: ${job.title}` : `Complete board job: ${job.title}`,
+    todoText: job.requiresFieldWork
+      ? `Go to the marked location and complete: ${job.title}`
+      : `Complete board job: ${job.title}`,
     status: "active",
     kind: job.kind,
     mapMarkerId: job.mapMarkerId ?? job.targetId,
@@ -919,13 +1271,19 @@ function createTodoForJob(result: MutableJobsResult, request: HarthmereJobsBoard
   result.shared.add(sharedTodoKey(todoId));
 }
 
-function acceptJobPosting(result: MutableJobsResult, request: HarthmereJobsBoardMutationRequestV1, context: HarthmereJobsBoardMutationContextV1) {
+function acceptJobPosting(
+  result: MutableJobsResult,
+  request: HarthmereJobsBoardMutationRequestV1,
+  context: HarthmereJobsBoardMutationContextV1
+) {
   const board = requireBoard(result, request, context);
   if (!board) return;
   const job = request.jobId ? result.next.postings[request.jobId] : undefined;
   if (!job) return reject(result, "jobs_board_rejected:job_not_found");
-  if (job.boardId !== board.boardId) return reject(result, "jobs_board_rejected:wrong_board");
-  if (job.status !== "open") return reject(result, "jobs_board_rejected:job_not_open");
+  if (job.boardId !== board.boardId)
+    return reject(result, "jobs_board_rejected:wrong_board");
+  if (job.status !== "open")
+    return reject(result, "jobs_board_rejected:job_not_open");
   if (job.deadlineAtMs <= request.nowMs) {
     job.status = "expired";
     job.logs.push(`expired_on_accept:${request.nowMs}`);
@@ -935,14 +1293,25 @@ function acceptJobPosting(result: MutableJobsResult, request: HarthmereJobsBoard
     result.shared.add(sharedBoardKey(board.boardId));
     return reject(result, "jobs_board_rejected:job_expired");
   }
-  if (job.issuerKind === "player" && job.issuerId === request.actorId) return reject(result, "jobs_board_rejected:cannot_accept_own_job");
-  const cooldown = result.next.actorCooldowns[request.actorId] ?? { abuseScore: 0 };
-  if ((cooldown.lastAcceptAtMs ?? 0) + HARTHMERE_JOBS_BOARD_ACCEPT_COOLDOWN_MS_V1 > request.nowMs) {
+  if (job.issuerKind === "player" && job.issuerId === request.actorId)
+    return reject(result, "jobs_board_rejected:cannot_accept_own_job");
+  const cooldown = result.next.actorCooldowns[request.actorId] ?? {
+    abuseScore: 0,
+  };
+  if (
+    (cooldown.lastAcceptAtMs ?? 0) +
+      HARTHMERE_JOBS_BOARD_ACCEPT_COOLDOWN_MS_V1 >
+    request.nowMs
+  ) {
     cooldown.abuseScore += 1;
     result.next.actorCooldowns[request.actorId] = cooldown;
     return reject(result, "jobs_board_rejected:accept_cooldown");
   }
-  if (activeJobIdsForActor(result.next, request.actorId).length >= HARTHMERE_JOBS_BOARD_MAX_ACTIVE_ACCEPTED_PER_SEEKER_V1) return reject(result, "jobs_board_rejected:seeker_active_job_limit");
+  if (
+    activeJobIdsForActor(result.next, request.actorId).length >=
+    HARTHMERE_JOBS_BOARD_MAX_ACTIVE_ACCEPTED_PER_SEEKER_V1
+  )
+    return reject(result, "jobs_board_rejected:seeker_active_job_limit");
   job.status = "active";
   job.acceptedAtMs = request.nowMs;
   job.acceptedByActorId = request.actorId;
@@ -951,27 +1320,58 @@ function acceptJobPosting(result: MutableJobsResult, request: HarthmereJobsBoard
   // todo's dueAtMs inherits this accept-window deadline.
   job.deadlineAtMs =
     request.nowMs +
-    harthmereJobAcceptWindowMsV151(`${job.jobId}:${request.actorId}:${request.nowMs}`);
+    harthmereJobAcceptWindowMsV151(
+      `${job.jobId}:${request.actorId}:${request.nowMs}`
+    );
   job.logs.push(`accepted:${request.actorId}:${request.nowMs}`);
-  result.next.actorAcceptedJobIds[request.actorId] = activeJobIdsForActor(result.next, request.actorId);
-  result.next.actorCooldowns[request.actorId] = { ...cooldown, lastAcceptAtMs: request.nowMs };
+  result.next.actorAcceptedJobIds[request.actorId] = activeJobIdsForActor(
+    result.next,
+    request.actorId
+  );
+  result.next.actorCooldowns[request.actorId] = {
+    ...cooldown,
+    lastAcceptAtMs: request.nowMs,
+  };
   createTodoForJob(result, request, job);
-  pushAudit(result, request, { id: request.requestId, kind: "job_accepted", jobId: job.jobId, boardId: board.boardId, issuerKind: job.issuerKind, issuerId: job.issuerId });
+  pushAudit(result, request, {
+    id: request.requestId,
+    kind: "job_accepted",
+    jobId: job.jobId,
+    boardId: board.boardId,
+    issuerKind: job.issuerKind,
+    issuerId: job.issuerId,
+  });
   result.touched.add("jobs_board_posting");
   result.shared.add(sharedJobKey(job.jobId));
   result.shared.add(sharedBoardKey(board.boardId));
 }
 
-function actorHasCompletionRequirements(job: HarthmereJobsBoardPostingV1, request: HarthmereJobsBoardMutationRequestV1, context: HarthmereJobsBoardMutationContextV1, result: MutableJobsResult) {
+function actorHasCompletionRequirements(
+  job: HarthmereJobsBoardPostingV1,
+  request: HarthmereJobsBoardMutationRequestV1,
+  context: HarthmereJobsBoardMutationContextV1,
+  result: MutableJobsResult
+) {
   for (const req of job.requirements) {
     if (!req.itemId) continue;
     const needed = positiveInt(req.count, 1);
     const providedDelta = request.completionItemDeltas?.[req.itemId];
     if (typeof providedDelta === "number") {
-      if (providedDelta !== -needed) return reject(result, `jobs_board_rejected:invalid_completion_delta:${req.itemId}`);
+      if (providedDelta !== -needed)
+        return reject(
+          result,
+          `jobs_board_rejected:invalid_completion_delta:${req.itemId}`
+        );
     }
-    if ((context.actorInventoryItems[req.itemId] ?? 0) + (result.itemDeltas[req.itemId] ?? 0) < needed) {
-      return reject(result, `jobs_board_rejected:missing_completion_item:${req.itemId}`);
+    if (
+      (context.actorInventoryItems[req.itemId] ?? 0) +
+        (result.itemDeltas[req.itemId] ?? 0) <
+      needed
+    ) {
+      return reject(
+        result,
+        `jobs_board_rejected:missing_completion_item:${req.itemId}`
+      );
     }
   }
 }
@@ -980,33 +1380,56 @@ function todoForJobAndActor(
   state: HarthmereJobsBoardStateV1,
   jobId: string,
   actorId: string,
-  questTodoId?: string,
+  questTodoId?: string
 ) {
   if (questTodoId) {
     const todo = state.todos[questTodoId];
     return todo?.jobId === jobId && todo.actorId === actorId ? todo : undefined;
   }
-  return Object.values(state.todos).find((todo) => todo.jobId === jobId && todo.actorId === actorId);
+  return Object.values(state.todos).find(
+    (todo) => todo.jobId === jobId && todo.actorId === actorId
+  );
 }
 
-function completeJobQuest(result: MutableJobsResult, request: HarthmereJobsBoardMutationRequestV1, context: HarthmereJobsBoardMutationContextV1) {
+function completeJobQuest(
+  result: MutableJobsResult,
+  request: HarthmereJobsBoardMutationRequestV1,
+  context: HarthmereJobsBoardMutationContextV1
+) {
   const job = request.jobId ? result.next.postings[request.jobId] : undefined;
   if (!job) return reject(result, "jobs_board_rejected:job_not_found");
-  if (job.status !== "active") return reject(result, "jobs_board_rejected:job_not_active");
-  if (job.acceptedByActorId !== request.actorId) return reject(result, "jobs_board_rejected:job_not_accepted_by_actor");
-  const todo = todoForJobAndActor(result.next, job.jobId, request.actorId, request.questTodoId);
+  if (job.status !== "active")
+    return reject(result, "jobs_board_rejected:job_not_active");
+  if (job.acceptedByActorId !== request.actorId)
+    return reject(result, "jobs_board_rejected:job_not_accepted_by_actor");
+  const todo = todoForJobAndActor(
+    result.next,
+    job.jobId,
+    request.actorId,
+    request.questTodoId
+  );
   if (!todo) return reject(result, "jobs_board_rejected:quest_todo_required");
-  if (todo.status === "completed") return reject(result, "jobs_board_rejected:quest_already_completed");
-  if (todo.status !== "active") return reject(result, `jobs_board_rejected:quest_not_active:${todo.status}`);
+  if (todo.status === "completed")
+    return reject(result, "jobs_board_rejected:quest_already_completed");
+  if (todo.status !== "active")
+    return reject(
+      result,
+      `jobs_board_rejected:quest_not_active:${todo.status}`
+    );
   if (job.deadlineAtMs <= request.nowMs) {
     job.status = "expired";
     todo.status = "expired";
     return reject(result, "jobs_board_rejected:job_expired");
   }
-  const serviceRequirements = job.requirements.filter((req) => !req.itemId && (req.targetId || req.serviceKind));
+  const serviceRequirements = job.requirements.filter(
+    (req) => !req.itemId && (req.targetId || req.serviceKind)
+  );
   for (const req of serviceRequirements) {
     if (req.targetId && request.completedTargetId !== req.targetId) {
-      return reject(result, `jobs_board_rejected:wrong_quest_target:${req.targetId}`);
+      return reject(
+        result,
+        `jobs_board_rejected:wrong_quest_target:${req.targetId}`
+      );
     }
   }
   // HARTHMERE_REPAIR_TOOL_COMPLETION_V151: any requirement that needs a tool
@@ -1015,8 +1438,14 @@ function completeJobQuest(result: MutableJobsResult, request: HarthmereJobsBoard
   // player performed the work with the EQUIPPED tool). This is the server-side
   // half of the equip-gated repair flow.
   for (const req of job.requirements) {
-    if (req.requiredToolAction && request.usedToolAction !== req.requiredToolAction) {
-      return reject(result, `jobs_board_rejected:missing_required_tool:${req.requiredToolAction}`);
+    if (
+      req.requiredToolAction &&
+      request.usedToolAction !== req.requiredToolAction
+    ) {
+      return reject(
+        result,
+        `jobs_board_rejected:missing_required_tool:${req.requiredToolAction}`
+      );
     }
   }
   // HARTHMERE_DELIVERY_V151: a person-recipient delivery is only complete when it
@@ -1030,38 +1459,67 @@ function completeJobQuest(result: MutableJobsResult, request: HarthmereJobsBoard
       request.completedTargetId !== ownerMarkerId &&
       request.completedTargetId !== req.recipientNpcId
     ) {
-      return reject(result, `jobs_board_rejected:not_delivered_to_recipient:${req.recipientNpcId}`);
+      return reject(
+        result,
+        `jobs_board_rejected:not_delivered_to_recipient:${req.recipientNpcId}`
+      );
     }
   }
   actorHasCompletionRequirements(job, request, context, result);
   if (result.warnings.length) return;
   for (const req of job.requirements) {
-    if (req.itemId) recordItemDelta(result.itemDeltas, req.itemId, -positiveInt(req.count, 1));
+    if (req.itemId)
+      recordItemDelta(
+        result.itemDeltas,
+        req.itemId,
+        -positiveInt(req.count, 1)
+      );
   }
   todo.status = "completed";
   job.logs.push(`quest_completed:${request.actorId}:${request.nowMs}`);
-  pushAudit(result, request, { id: request.requestId, kind: "job_quest_completed", jobId: job.jobId, boardId: job.boardId, issuerKind: job.issuerKind, issuerId: job.issuerId, reason: sanitizeText(request.completionNote, "quest completed", 120) });
+  pushAudit(result, request, {
+    id: request.requestId,
+    kind: "job_quest_completed",
+    jobId: job.jobId,
+    boardId: job.boardId,
+    issuerKind: job.issuerKind,
+    issuerId: job.issuerId,
+    reason: sanitizeText(request.completionNote, "quest completed", 120),
+  });
   result.touched.add("jobs_board_quest_todo");
   result.shared.add(sharedTodoKey(todo.todoId));
   result.shared.add(sharedJobKey(job.jobId));
 }
 
-function completeJobPosting(result: MutableJobsResult, request: HarthmereJobsBoardMutationRequestV1, context: HarthmereJobsBoardMutationContextV1) {
+function completeJobPosting(
+  result: MutableJobsResult,
+  request: HarthmereJobsBoardMutationRequestV1,
+  context: HarthmereJobsBoardMutationContextV1
+) {
   const board = requireBoard(result, request, context);
   if (!board) return;
   const job = request.jobId ? result.next.postings[request.jobId] : undefined;
   if (!job) return reject(result, "jobs_board_rejected:job_not_found");
-  if (job.status !== "active") return reject(result, "jobs_board_rejected:job_not_active");
-  if (job.acceptedByActorId !== request.actorId) return reject(result, "jobs_board_rejected:job_not_accepted_by_actor");
+  if (job.status !== "active")
+    return reject(result, "jobs_board_rejected:job_not_active");
+  if (job.acceptedByActorId !== request.actorId)
+    return reject(result, "jobs_board_rejected:job_not_accepted_by_actor");
   if (job.deadlineAtMs <= request.nowMs) {
     job.status = "expired";
     return reject(result, "jobs_board_rejected:job_expired");
   }
-  const todo = todoForJobAndActor(result.next, job.jobId, request.actorId, request.questTodoId);
+  const todo = todoForJobAndActor(
+    result.next,
+    job.jobId,
+    request.actorId,
+    request.questTodoId
+  );
   if (!todo) return reject(result, "jobs_board_rejected:quest_todo_required");
-  if (todo.status !== "completed") return reject(result, "jobs_board_rejected:quest_not_completed");
+  if (todo.status !== "completed")
+    return reject(result, "jobs_board_rejected:quest_not_completed");
   result.goldDelta += job.escrowGold;
-  for (const reward of job.rewardItems ?? []) recordItemDelta(result.itemDeltas, reward.itemId, reward.count);
+  for (const reward of job.rewardItems ?? [])
+    recordItemDelta(result.itemDeltas, reward.itemId, reward.count);
   result.collectibleRewardIds.push(...(job.rewardCollectibleIds ?? []));
   job.escrowGold = 0;
   job.escrowItems = {};
@@ -1069,30 +1527,58 @@ function completeJobPosting(result: MutableJobsResult, request: HarthmereJobsBoa
   job.completedAtMs = request.nowMs;
   job.logs.push(`completed:${request.actorId}:${request.nowMs}`);
   for (const todo of Object.values(result.next.todos)) {
-    if (todo.jobId === job.jobId && todo.actorId === request.actorId) todo.status = "completed";
+    if (todo.jobId === job.jobId && todo.actorId === request.actorId)
+      todo.status = "completed";
   }
-  result.next.actorAcceptedJobIds[request.actorId] = activeJobIdsForActor(result.next, request.actorId);
-  result.next.issuerOpenJobIds[issuerKey(job.issuerKind, job.issuerId)] = openJobIdsForIssuer(result.next, job.issuerKind, job.issuerId);
-  pushAudit(result, request, { id: request.requestId, kind: "job_completed", jobId: job.jobId, boardId: board.boardId, issuerKind: job.issuerKind, issuerId: job.issuerId, amountGold: job.rewardGold, reason: sanitizeText(request.completionNote, "completed", 120) });
+  result.next.actorAcceptedJobIds[request.actorId] = activeJobIdsForActor(
+    result.next,
+    request.actorId
+  );
+  result.next.issuerOpenJobIds[issuerKey(job.issuerKind, job.issuerId)] =
+    openJobIdsForIssuer(result.next, job.issuerKind, job.issuerId);
+  pushAudit(result, request, {
+    id: request.requestId,
+    kind: "job_completed",
+    jobId: job.jobId,
+    boardId: board.boardId,
+    issuerKind: job.issuerKind,
+    issuerId: job.issuerId,
+    amountGold: job.rewardGold,
+    reason: sanitizeText(request.completionNote, "completed", 120),
+  });
   result.touched.add("jobs_board_posting");
   result.touched.add("jobs_board_quest_todo");
   result.shared.add(sharedJobKey(job.jobId));
   result.shared.add(sharedBoardKey(board.boardId));
 }
 
-function cancelJobPosting(result: MutableJobsResult, request: HarthmereJobsBoardMutationRequestV1, context: HarthmereJobsBoardMutationContextV1) {
+function cancelJobPosting(
+  result: MutableJobsResult,
+  request: HarthmereJobsBoardMutationRequestV1,
+  context: HarthmereJobsBoardMutationContextV1
+) {
   const board = requireBoard(result, request, context);
   if (!board) return;
   const job = request.jobId ? result.next.postings[request.jobId] : undefined;
   if (!job) return reject(result, "jobs_board_rejected:job_not_found");
-  if (job.status === "completed") return reject(result, "jobs_board_rejected:cannot_cancel_completed_job");
-  const issuerIsActor = job.issuerKind === "player" && job.issuerId === request.actorId;
-  const business = job.issuerKind === "business" ? context.economy?.businesses?.[job.issuerId] : undefined;
-  const canCancel = issuerIsActor || (business && context.canManageBusinessJobs?.(business) === true) ||
-    (job.issuerKind === "guild" && context.canManageGuildJobs?.(job.issuerId) === true) ||
-    (job.issuerKind === "town" && context.canManageTownJobs?.(job.issuerId) === true) ||
+  if (job.status === "completed")
+    return reject(result, "jobs_board_rejected:cannot_cancel_completed_job");
+  const issuerIsActor =
+    job.issuerKind === "player" && job.issuerId === request.actorId;
+  const business =
+    job.issuerKind === "business"
+      ? context.economy?.businesses?.[job.issuerId]
+      : undefined;
+  const canCancel =
+    issuerIsActor ||
+    (business && context.canManageBusinessJobs?.(business) === true) ||
+    (job.issuerKind === "guild" &&
+      context.canManageGuildJobs?.(job.issuerId) === true) ||
+    (job.issuerKind === "town" &&
+      context.canManageTownJobs?.(job.issuerId) === true) ||
     (job.issuerKind === "npc" && context.allowNpcJobPosting === true);
-  if (!canCancel) return reject(result, "jobs_board_rejected:cancel_permission_required");
+  if (!canCancel)
+    return reject(result, "jobs_board_rejected:cancel_permission_required");
   if (job.status === "active") {
     // Prevent bait-and-switch abuse: active jobs cannot be silently cancelled by issuer without failing.
     job.status = "failed";
@@ -1106,22 +1592,39 @@ function cancelJobPosting(result: MutableJobsResult, request: HarthmereJobsBoard
     refundEscrow(result, job, request);
   }
   for (const todo of Object.values(result.next.todos)) {
-    if (todo.jobId === job.jobId) todo.status = job.status === "cancelled" ? "cancelled" : "failed";
+    if (todo.jobId === job.jobId)
+      todo.status = job.status === "cancelled" ? "cancelled" : "failed";
   }
-  result.next.issuerOpenJobIds[issuerKey(job.issuerKind, job.issuerId)] = openJobIdsForIssuer(result.next, job.issuerKind, job.issuerId);
-  if (job.acceptedByActorId) result.next.actorAcceptedJobIds[job.acceptedByActorId] = activeJobIdsForActor(result.next, job.acceptedByActorId);
-  pushAudit(result, request, { id: request.requestId, kind: "job_cancelled", jobId: job.jobId, boardId: board.boardId, issuerKind: job.issuerKind, issuerId: job.issuerId });
+  result.next.issuerOpenJobIds[issuerKey(job.issuerKind, job.issuerId)] =
+    openJobIdsForIssuer(result.next, job.issuerKind, job.issuerId);
+  if (job.acceptedByActorId)
+    result.next.actorAcceptedJobIds[job.acceptedByActorId] =
+      activeJobIdsForActor(result.next, job.acceptedByActorId);
+  pushAudit(result, request, {
+    id: request.requestId,
+    kind: "job_cancelled",
+    jobId: job.jobId,
+    boardId: board.boardId,
+    issuerKind: job.issuerKind,
+    issuerId: job.issuerId,
+  });
   result.touched.add("jobs_board_posting");
   result.shared.add(sharedJobKey(job.jobId));
 }
 
-function abandonJobPosting(result: MutableJobsResult, request: HarthmereJobsBoardMutationRequestV1, context: HarthmereJobsBoardMutationContextV1) {
+function abandonJobPosting(
+  result: MutableJobsResult,
+  request: HarthmereJobsBoardMutationRequestV1,
+  context: HarthmereJobsBoardMutationContextV1
+) {
   const board = requireBoard(result, request, context);
   if (!board) return;
   const job = request.jobId ? result.next.postings[request.jobId] : undefined;
   if (!job) return reject(result, "jobs_board_rejected:job_not_found");
-  if (job.status !== "active") return reject(result, "jobs_board_rejected:job_not_active");
-  if (job.acceptedByActorId !== request.actorId) return reject(result, "jobs_board_rejected:job_not_accepted_by_actor");
+  if (job.status !== "active")
+    return reject(result, "jobs_board_rejected:job_not_active");
+  if (job.acceptedByActorId !== request.actorId)
+    return reject(result, "jobs_board_rejected:job_not_accepted_by_actor");
   const seekerId = request.actorId;
   // The seeker releases the job back to the open pool: the issuer's escrow stays put (the
   // job remains posted and re-acceptable by anyone), the seeker's active slot frees up, and
@@ -1132,12 +1635,25 @@ function abandonJobPosting(result: MutableJobsResult, request: HarthmereJobsBoar
   job.acceptedAtMs = undefined;
   job.logs.push(`abandoned:${seekerId}:${request.nowMs}`);
   for (const todo of Object.values(result.next.todos)) {
-    if (todo.jobId === job.jobId && todo.actorId === seekerId) todo.status = "cancelled";
+    if (todo.jobId === job.jobId && todo.actorId === seekerId)
+      todo.status = "cancelled";
   }
-  result.next.actorAcceptedJobIds[seekerId] = activeJobIdsForActor(result.next, seekerId);
-  result.next.issuerOpenJobIds[issuerKey(job.issuerKind, job.issuerId)] = openJobIdsForIssuer(result.next, job.issuerKind, job.issuerId);
+  result.next.actorAcceptedJobIds[seekerId] = activeJobIdsForActor(
+    result.next,
+    seekerId
+  );
+  result.next.issuerOpenJobIds[issuerKey(job.issuerKind, job.issuerId)] =
+    openJobIdsForIssuer(result.next, job.issuerKind, job.issuerId);
   if (penalty > 0) result.goldDelta -= penalty;
-  pushAudit(result, request, { id: request.requestId, kind: "job_abandoned", jobId: job.jobId, boardId: board.boardId, issuerKind: job.issuerKind, issuerId: job.issuerId, amountGold: penalty > 0 ? -penalty : undefined });
+  pushAudit(result, request, {
+    id: request.requestId,
+    kind: "job_abandoned",
+    jobId: job.jobId,
+    boardId: board.boardId,
+    issuerKind: job.issuerKind,
+    issuerId: job.issuerId,
+    amountGold: penalty > 0 ? -penalty : undefined,
+  });
   result.touched.add("jobs_board_posting");
   result.shared.add(sharedJobKey(job.jobId));
   result.shared.add(sharedBoardKey(board.boardId));
@@ -1196,7 +1712,10 @@ function failJobQuest(
   );
   if (!todo) return reject(result, "jobs_board_rejected:quest_todo_required");
   if (todo.status !== "active") {
-    return reject(result, `jobs_board_rejected:quest_not_active:${todo.status}`);
+    return reject(
+      result,
+      `jobs_board_rejected:quest_not_active:${todo.status}`
+    );
   }
   todo.status = "failed";
   if (job.status === "active" && job.acceptedByActorId === request.actorId) {
@@ -1205,7 +1724,11 @@ function failJobQuest(
     job.acceptedAtMs = undefined;
   }
   job.logs.push(
-    `quest_failed:${request.actorId}:${request.nowMs}:${sanitizeText(request.completionNote, "failed", 60)}`
+    `quest_failed:${request.actorId}:${request.nowMs}:${sanitizeText(
+      request.completionNote,
+      "failed",
+      60
+    )}`
   );
   result.touched.add("jobs_board_quest_todo");
   result.touched.add("jobs_board_posting");
@@ -1213,11 +1736,18 @@ function failJobQuest(
   result.shared.add(sharedJobKey(job.jobId));
 }
 
-function expireJobs(result: MutableJobsResult, request: HarthmereJobsBoardMutationRequestV1, context: HarthmereJobsBoardMutationContextV1) {
+function expireJobs(
+  result: MutableJobsResult,
+  request: HarthmereJobsBoardMutationRequestV1,
+  context: HarthmereJobsBoardMutationContextV1
+) {
   const board = requireBoard(result, request, context);
   if (!board) return;
   for (const job of Object.values(result.next.postings)) {
-    if ((job.status === "open" || job.status === "active") && job.deadlineAtMs <= request.nowMs) {
+    if (
+      (job.status === "open" || job.status === "active") &&
+      job.deadlineAtMs <= request.nowMs
+    ) {
       job.status = "expired";
       job.logs.push(`expired:${request.nowMs}`);
       // Refund the escrow whether the job was still open or active-but-unfinished — an
@@ -1238,15 +1768,18 @@ function expireJobs(result: MutableJobsResult, request: HarthmereJobsBoardMutati
 // can assert on them and ops can tune them without changing the seeder body.
 export const HARTHMERE_JOBS_BOARD_AUTO_SEED_TARGET_OPEN_V141 = 8;
 export const HARTHMERE_JOBS_BOARD_AUTO_SEED_MAX_PER_TICK_V141 = 4;
-export const HARTHMERE_JOBS_BOARD_AUTO_SEED_DEADLINE_MS_V141 = 24 * 60 * 60 * 1000;
+export const HARTHMERE_JOBS_BOARD_AUTO_SEED_DEADLINE_MS_V141 =
+  24 * 60 * 60 * 1000;
 
 // HARTHMERE_JOB_ACCEPT_TIMER_V151: a job's completion timer starts when it is
 // ACCEPTED (not when posted) — the player then has a few hours to a day to finish
 // it, which keeps people coming back daily. If the window lapses, the accepted
 // job is RELEASED back to "open" (claim lost, seeker slot freed, marker cleared);
 // the escrowed reward stays held for whoever completes it (no escrow movement).
-export const HARTHMERE_JOBS_BOARD_ACCEPT_WINDOW_MIN_MS_V151 = 4 * 60 * 60 * 1000;
-export const HARTHMERE_JOBS_BOARD_ACCEPT_WINDOW_MAX_MS_V151 = 24 * 60 * 60 * 1000;
+export const HARTHMERE_JOBS_BOARD_ACCEPT_WINDOW_MIN_MS_V151 =
+  4 * 60 * 60 * 1000;
+export const HARTHMERE_JOBS_BOARD_ACCEPT_WINDOW_MAX_MS_V151 =
+  24 * 60 * 60 * 1000;
 
 // Deterministic per-acceptance window in [min, max] (reducers must be pure — no
 // Math.random), seeded from a stable key so the same acceptance always resolves
@@ -1287,7 +1820,8 @@ export function formatHarthmereJobTimeRemainingV151(
   if (minutes > 0) return `${minutes}m left`;
   return "under 1m left";
 }
-export const HARTHMERE_JOBS_BOARD_AUTO_SEED_ISSUER_PREFIX_V141 = "harthmere_auto_";
+export const HARTHMERE_JOBS_BOARD_AUTO_SEED_ISSUER_PREFIX_V141 =
+  "harthmere_auto_";
 export const HARTHMERE_JOBS_BOARD_MONSTER_HUNT_REWARD_FLOOR_V141 = 1200;
 export const HARTHMERE_JOBS_BOARD_MONSTER_HUNT_REWARD_CEILING_V141 = 4500;
 export const HARTHMERE_EXOTIC_MATTER_MINING_TEMPLATE_ID_PREFIXES_V1 = [
@@ -1342,11 +1876,19 @@ interface AutoSeedTemplate {
   boardScope?: AutoSeedBoardScope;
 }
 
-function templateBoardScopeMatches(template: AutoSeedTemplate, boardId: string): boolean {
+function templateBoardScopeMatches(
+  template: AutoSeedTemplate,
+  boardId: string
+): boolean {
   const scope = template.boardScope ?? "any";
   if (scope === "any") return true;
-  if (scope === "grove" && boardId === HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1) return true;
-  if (scope === "harthmere" && boardId === HARTHMERE_JOBS_BOARD_HARTHMERE_BOARD_ID_V141) return true;
+  if (scope === "grove" && boardId === HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1)
+    return true;
+  if (
+    scope === "harthmere" &&
+    boardId === HARTHMERE_JOBS_BOARD_HARTHMERE_BOARD_ID_V141
+  )
+    return true;
   return false;
 }
 
@@ -1378,390 +1920,512 @@ function hasOpenExoticMatterMiningJobV1(
   );
 }
 
-export const HARTHMERE_JOBS_BOARD_AUTO_SEED_TEMPLATES_V141: AutoSeedTemplate[] = [
-  // Grove-scoped town/NPC/guild work — these reference Grove landmarks.
-  {
-    templateId: "town_gather_road_rations",
-    issuerKind: "town",
-    issuerId: "harthmere_grove",
-    kind: "gather",
-    title: "Stock the Road Rations Crate",
-    description: "Grove travellers leave hungry. Gather 6 wild berries for the road rations crate at the fountain.",
-    requirements: [{ itemId: "wild_berries", count: 6, mapMarkerId: "grove_garden_edge_berries" }],
-    rewardGold: { min: 35, max: 75 },
-    requiresFieldWork: true,
-    mapMarkerId: "grove_garden_edge_berries",
-    boardScope: "grove",
-  },
-  {
-    templateId: "town_repair_fence",
-    issuerKind: "town",
-    issuerId: "harthmere_grove",
-    kind: "repair",
-    title: "Patch the Safe-Zone Fence",
-    description: "The eastern fence post split again. Replace 3 softwood planks before the next muck flush — bring a repair tool.",
-    requirements: [
-      {
-        itemId: "softwood_log",
-        count: 3,
-        mapMarkerId: "grove_repair_fence",
-        // Needs a repair tool EQUIPPED to restore the fence blocks. Without one,
-        // the quest layer routes the player to acquire/equip a repair tool first.
-        requiredToolAction: "repair",
+export const HARTHMERE_JOBS_BOARD_AUTO_SEED_TEMPLATES_V141: AutoSeedTemplate[] =
+  [
+    // Grove-scoped town/NPC/guild work — these reference Grove landmarks.
+    {
+      templateId: "town_gather_road_rations",
+      issuerKind: "town",
+      issuerId: "harthmere_grove",
+      kind: "gather",
+      title: "Stock the Road Rations Crate",
+      description:
+        "Grove travellers leave hungry. Gather 6 wild berries for the road rations crate at the fountain.",
+      requirements: [
+        {
+          itemId: "wild_berries",
+          count: 6,
+          mapMarkerId: "grove_garden_edge_berries",
+        },
+      ],
+      rewardGold: { min: 35, max: 75 },
+      requiresFieldWork: true,
+      mapMarkerId: "grove_garden_edge_berries",
+      boardScope: "grove",
+    },
+    {
+      templateId: "town_repair_fence",
+      issuerKind: "town",
+      issuerId: "harthmere_grove",
+      kind: "repair",
+      title: "Patch the Safe-Zone Fence",
+      description:
+        "The eastern fence post split again. Replace 3 softwood planks before the next muck flush — bring a repair tool.",
+      requirements: [
+        {
+          itemId: "softwood_log",
+          count: 3,
+          mapMarkerId: "grove_repair_fence",
+          // Needs a repair tool EQUIPPED to restore the fence blocks. Without one,
+          // the quest layer routes the player to acquire/equip a repair tool first.
+          requiredToolAction: "repair",
+        },
+      ],
+      rewardGold: { min: 60, max: 110 },
+      requiresFieldWork: true,
+      mapMarkerId: "grove_repair_fence",
+      boardScope: "grove",
+    },
+    {
+      templateId: "town_cleanup_muck_patch",
+      issuerKind: "town",
+      issuerId: "harthmere_grove",
+      kind: "cleanup",
+      title: "Clear the Muckwad Patch",
+      description:
+        "Five muckwad clumps near the road need clearing before they spread to the practice fields.",
+      requirements: [
+        { itemId: "muckwad", count: 5, mapMarkerId: "muckwad_patch" },
+      ],
+      rewardGold: { min: 90, max: 160 },
+      requiresFieldWork: true,
+      mapMarkerId: "muckwad_patch",
+      boardScope: "grove",
+    },
+    {
+      templateId: "npc_delivery_apples",
+      issuerKind: "npc",
+      issuerId: "old_coop",
+      kind: "delivery",
+      title: "Run the Coop Apple Sack",
+      description:
+        "Old Coop wants an apple sack carried from the hen yard to the fountain bakery satchel.",
+      requirements: [
+        {
+          itemId: "apple_basket",
+          count: 1,
+          mapMarkerId: "grove_mail_bank_satchel",
+        },
+      ],
+      rewardGold: { min: 45, max: 90 },
+      requiresFieldWork: true,
+      mapMarkerId: "grove_mail_bank_satchel",
+      boardScope: "grove",
+    },
+    {
+      templateId: "business_craft_torch",
+      issuerKind: "business",
+      issuerId: "grove_kettle_inn",
+      kind: "craft",
+      title: "Craft Two Travel Torches",
+      description:
+        "The inn ran low on travel torches before dusk. Craft 2 and turn them in at the board.",
+      requirements: [{ itemId: "torch", count: 2 }],
+      rewardGold: { min: 70, max: 120 },
+      requiresFieldWork: false,
+      boardScope: "grove",
+    },
+    {
+      templateId: "guild_escort_road_post",
+      issuerKind: "guild",
+      issuerId: "grove_wayfinder_guild",
+      kind: "escort",
+      title: "Escort a Newcomer to the Road Post",
+      description:
+        "A new arrival needs a steady walk to the Old Grove Road Post. Stay close until they reach it.",
+      requirements: [
+        {
+          targetId: "old_grove_road_post",
+          targetName: "Old Grove Road Post",
+          mapMarkerId: "old_grove_road_post",
+        },
+      ],
+      rewardGold: { min: 50, max: 100 },
+      requiresFieldWork: true,
+      mapMarkerId: "old_grove_road_post",
+      boardScope: "grove",
+    },
+    // HARTHMERE_JOBS_BOARD_MONSTER_HUNT_V141:
+    // Two high-reward party-required hunts. The Mucker variant is a tougher
+    // version of the Mucked Robot the player meets in the muck edges; the Hex
+    // variant is a corrupted boss that drops a sigil and an arcane shard. The
+    // Grove board carries the Mucker hunt (closer to the Grove muck edge); the
+    // Harthmere board carries the Hex wraith hunt (out in Mosslawn closer to
+    // Harthmere's far districts), and there is a third "any" boss for both.
+    {
+      templateId: "hunt_mucker_elite",
+      issuerKind: "town",
+      issuerId: "harthmere_grove",
+      kind: "hunt",
+      title: "Bounty: Elite Mucker at the Muck Edge",
+      description:
+        "An elite Mucker has dug in past the safe-zone boundary. Strong, slow, hits like a piledriver — bring a party. Reward only paid on confirmed kill.",
+      requirements: [
+        {
+          targetId: HARTHMERE_JOBS_BOARD_ELITE_MUCKER_BOUNTY_TARGET_ID_V1,
+          targetName: "Elite Mucker",
+          mapMarkerId: HARTHMERE_JOBS_BOARD_ELITE_MUCKER_BOUNTY_MARKER_ID_V1,
+        },
+      ],
+      rewardGold: {
+        min: HARTHMERE_JOBS_BOARD_MONSTER_HUNT_REWARD_FLOOR_V141,
+        max: 2400,
       },
-    ],
-    rewardGold: { min: 60, max: 110 },
-    requiresFieldWork: true,
-    mapMarkerId: "grove_repair_fence",
-    boardScope: "grove",
-  },
-  {
-    templateId: "town_cleanup_muck_patch",
-    issuerKind: "town",
-    issuerId: "harthmere_grove",
-    kind: "cleanup",
-    title: "Clear the Muckwad Patch",
-    description: "Five muckwad clumps near the road need clearing before they spread to the practice fields.",
-    requirements: [{ itemId: "muckwad", count: 5, mapMarkerId: "muckwad_patch" }],
-    rewardGold: { min: 90, max: 160 },
-    requiresFieldWork: true,
-    mapMarkerId: "muckwad_patch",
-    boardScope: "grove",
-  },
-  {
-    templateId: "npc_delivery_apples",
-    issuerKind: "npc",
-    issuerId: "old_coop",
-    kind: "delivery",
-    title: "Run the Coop Apple Sack",
-    description: "Old Coop wants an apple sack carried from the hen yard to the fountain bakery satchel.",
-    requirements: [{ itemId: "apple_basket", count: 1, mapMarkerId: "grove_mail_bank_satchel" }],
-    rewardGold: { min: 45, max: 90 },
-    requiresFieldWork: true,
-    mapMarkerId: "grove_mail_bank_satchel",
-    boardScope: "grove",
-  },
-  {
-    templateId: "business_craft_torch",
-    issuerKind: "business",
-    issuerId: "grove_kettle_inn",
-    kind: "craft",
-    title: "Craft Two Travel Torches",
-    description: "The inn ran low on travel torches before dusk. Craft 2 and turn them in at the board.",
-    requirements: [{ itemId: "torch", count: 2 }],
-    rewardGold: { min: 70, max: 120 },
-    requiresFieldWork: false,
-    boardScope: "grove",
-  },
-  {
-    templateId: "guild_escort_road_post",
-    issuerKind: "guild",
-    issuerId: "grove_wayfinder_guild",
-    kind: "escort",
-    title: "Escort a Newcomer to the Road Post",
-    description: "A new arrival needs a steady walk to the Old Grove Road Post. Stay close until they reach it.",
-    requirements: [{ targetId: "old_grove_road_post", targetName: "Old Grove Road Post", mapMarkerId: "old_grove_road_post" }],
-    rewardGold: { min: 50, max: 100 },
-    requiresFieldWork: true,
-    mapMarkerId: "old_grove_road_post",
-    boardScope: "grove",
-  },
-  // HARTHMERE_JOBS_BOARD_MONSTER_HUNT_V141:
-  // Two high-reward party-required hunts. The Mucker variant is a tougher
-  // version of the Mucked Robot the player meets in the muck edges; the Hex
-  // variant is a corrupted boss that drops a sigil and an arcane shard. The
-  // Grove board carries the Mucker hunt (closer to the Grove muck edge); the
-  // Harthmere board carries the Hex wraith hunt (out in Mosslawn closer to
-  // Harthmere's far districts), and there is a third "any" boss for both.
-  {
-    templateId: "hunt_mucker_elite",
-    issuerKind: "town",
-    issuerId: "harthmere_grove",
-    kind: "hunt",
-    title: "Bounty: Elite Mucker at the Muck Edge",
-    description: "An elite Mucker has dug in past the safe-zone boundary. Strong, slow, hits like a piledriver — bring a party. Reward only paid on confirmed kill.",
-    requirements: [{ targetId: HARTHMERE_JOBS_BOARD_ELITE_MUCKER_BOUNTY_TARGET_ID_V1, targetName: "Elite Mucker", mapMarkerId: HARTHMERE_JOBS_BOARD_ELITE_MUCKER_BOUNTY_MARKER_ID_V1 }],
-    rewardGold: { min: HARTHMERE_JOBS_BOARD_MONSTER_HUNT_REWARD_FLOOR_V141, max: 2400 },
-    requiresFieldWork: true,
-    mapMarkerId: HARTHMERE_JOBS_BOARD_ELITE_MUCKER_BOUNTY_MARKER_ID_V1,
-    targetId: HARTHMERE_JOBS_BOARD_ELITE_MUCKER_BOUNTY_TARGET_ID_V1,
-    monsterId: "mucker",
-    monsterTier: "elite",
-    monsterPowerLevel: 18,
-    partyRecommended: true,
-    partyMinSize: 3,
-    lootHint: ["Muckheart", "Mucked Plate Fragment", "Elite Reward Chest"],
-    boardScope: "grove",
-  },
-  {
-    templateId: "hunt_hex_boss",
-    issuerKind: "guild",
-    issuerId: "harthmere_warden_guild",
-    kind: "hunt",
-    title: "Bounty: Hex Wraith Sighting in Mosslawn",
-    description: "A Hex wraith has surfaced under the Mosslawn songline near Harthmere's borderlands. Heavily resists single attackers and drops a Hex Sigil. Take a party of four.",
-    requirements: [{ targetId: HARTHMERE_JOBS_BOARD_HEX_WRAITH_BOUNTY_TARGET_ID_V1, targetName: "Hex Wraith", mapMarkerId: HARTHMERE_JOBS_BOARD_HEX_WRAITH_BOUNTY_MARKER_ID_V1 }],
-    rewardGold: { min: 2600, max: HARTHMERE_JOBS_BOARD_MONSTER_HUNT_REWARD_CEILING_V141 },
-    requiresFieldWork: true,
-    mapMarkerId: HARTHMERE_JOBS_BOARD_HEX_WRAITH_BOUNTY_MARKER_ID_V1,
-    targetId: HARTHMERE_JOBS_BOARD_HEX_WRAITH_BOUNTY_TARGET_ID_V1,
-    monsterId: "hex",
-    monsterTier: "boss",
-    monsterPowerLevel: 24,
-    partyRecommended: true,
-    partyMinSize: 4,
-    lootHint: ["Hex Sigil", "Arcane Shard", "Boss Loot Cache"],
-    boardScope: "harthmere",
-  },
-  // HARTHMERE_EXOTIC_MATTER_CAVE_JOBS_V1:
-  // High-value Harthmere board contracts that send miners into confirmed
-  // underground cave rooms for the three antimatter blocks needed to craft Raw
-  // Exotic Matter. These use shared cave deposit markers so the board, map,
-  // renderer, and live backend agree on exact [x, y, z] targets.
-  {
-    templateId: "exotic_matter_mine_antihydrogen",
-    issuerKind: "guild",
-    issuerId: "harthmere_exotic_refiners_guild",
-    kind: "gather",
-    title: "Mine Antihydrogen for Exotic Matter",
-    description: "The refiners need sealed Antihydrogen from the Mossglass survey cave before the next Biome stabilizer run. Mine the marked seam and bring the blocks back intact.",
-    requirements: [
-      {
-        itemId: HARTHMERE_EXOTIC_MATTER_COMPONENTS_V1.antihydrogen.itemId,
-        count: 3,
-        targetId: "harthmere_antihydrogen_deposit",
-        targetName: HARTHMERE_EXOTIC_MATTER_COMPONENTS_V1.antihydrogen.jobTargetName,
-        mapMarkerId: "exotic_antihydrogen_mossglass_survey_02",
+      requiresFieldWork: true,
+      mapMarkerId: HARTHMERE_JOBS_BOARD_ELITE_MUCKER_BOUNTY_MARKER_ID_V1,
+      targetId: HARTHMERE_JOBS_BOARD_ELITE_MUCKER_BOUNTY_TARGET_ID_V1,
+      monsterId: "mucker",
+      monsterTier: "elite",
+      monsterPowerLevel: 18,
+      partyRecommended: true,
+      partyMinSize: 3,
+      lootHint: ["Muckheart", "Mucked Plate Fragment", "Elite Reward Chest"],
+      boardScope: "grove",
+    },
+    {
+      templateId: "hunt_hex_boss",
+      issuerKind: "guild",
+      issuerId: "harthmere_warden_guild",
+      kind: "hunt",
+      title: "Bounty: Hex Wraith Sighting in Mosslawn",
+      description:
+        "A Hex wraith has surfaced under the Mosslawn songline near Harthmere's borderlands. Heavily resists single attackers and drops a Hex Sigil. Take a party of four.",
+      requirements: [
+        {
+          targetId: HARTHMERE_JOBS_BOARD_HEX_WRAITH_BOUNTY_TARGET_ID_V1,
+          targetName: "Hex Wraith",
+          mapMarkerId: HARTHMERE_JOBS_BOARD_HEX_WRAITH_BOUNTY_MARKER_ID_V1,
+        },
+      ],
+      rewardGold: {
+        min: 2600,
+        max: HARTHMERE_JOBS_BOARD_MONSTER_HUNT_REWARD_CEILING_V141,
       },
-    ],
-    rewardGold: { min: 3200, max: HARTHMERE_JOBS_BOARD_MAX_REWARD_GOLD_V1 },
-    requiresFieldWork: true,
-    mapMarkerId: "exotic_antihydrogen_mossglass_survey_02",
-    targetId: "harthmere_antihydrogen_deposit",
-    lootHint: ["Refinery priority pay", "Biome stabilizer supply", "Rare mining bonus"],
-    boardScope: "harthmere",
-  },
-  {
-    templateId: "exotic_matter_mine_antihelium",
-    issuerKind: "guild",
-    issuerId: "harthmere_exotic_refiners_guild",
-    kind: "gather",
-    title: "Mine Antihelium for Exotic Matter",
-    description: "A clean-power order is waiting on Antihelium. Follow the marked cave pocket, mine the contained blocks, and keep the shipment sealed.",
-    requirements: [
-      {
-        itemId: HARTHMERE_EXOTIC_MATTER_COMPONENTS_V1.antihelium.itemId,
-        count: 2,
-        targetId: "harthmere_antihelium_deposit",
-        targetName: HARTHMERE_EXOTIC_MATTER_COMPONENTS_V1.antihelium.jobTargetName,
-        mapMarkerId: "exotic_antihelium_mossglass_survey_05",
-      },
-    ],
-    rewardGold: { min: 3400, max: HARTHMERE_JOBS_BOARD_MAX_REWARD_GOLD_V1 },
-    requiresFieldWork: true,
-    mapMarkerId: "exotic_antihelium_mossglass_survey_05",
-    targetId: "harthmere_antihelium_deposit",
-    lootHint: ["Refinery priority pay", "Teleport fuel supply", "Rare mining bonus"],
-    boardScope: "harthmere",
-  },
-  {
-    templateId: "exotic_matter_mine_antiboron",
-    issuerKind: "guild",
-    issuerId: "harthmere_exotic_refiners_guild",
-    kind: "gather",
-    title: "Mine Antiboron for Exotic Matter",
-    description: "Antiboron is scarce and the refinery is paying accordingly. Mine the marked blackglass vein in the Mossglass survey cave and return with sealed blocks.",
-    requirements: [
-      {
-        itemId: HARTHMERE_EXOTIC_MATTER_COMPONENTS_V1.antiboron.itemId,
-        count: 1,
-        targetId: "harthmere_antiboron_deposit",
-        targetName: HARTHMERE_EXOTIC_MATTER_COMPONENTS_V1.antiboron.jobTargetName,
-        mapMarkerId: "exotic_antiboron_mossglass_survey_03",
-      },
-    ],
-    rewardGold: { min: 3800, max: HARTHMERE_JOBS_BOARD_MAX_REWARD_GOLD_V1 },
-    requiresFieldWork: true,
-    mapMarkerId: "exotic_antiboron_mossglass_survey_03",
-    targetId: "harthmere_antiboron_deposit",
-    lootHint: ["Refinery priority pay", "Alcubierre supply chain", "Rare mining bonus"],
-    boardScope: "harthmere",
-  },
-  {
-    templateId: "deep_exotic_matter_mine_antihydrogen",
-    issuerKind: "guild",
-    issuerId: "harthmere_exotic_refiners_guild",
-    kind: "gather",
-    title: "Deep Mine Antihydrogen for Exotic Matter",
-    description: "A major refinery order needs Antihydrogen from the Deep Spindle massive cave. Mine the marked blue seam and return with sealed blocks.",
-    requirements: [
-      {
-        itemId: HARTHMERE_EXOTIC_MATTER_COMPONENTS_V1.antihydrogen.itemId,
-        count: 5,
-        targetId: "harthmere_deep_antihydrogen_deposit",
-        targetName: HARTHMERE_EXOTIC_MATTER_COMPONENTS_V1.antihydrogen.jobTargetName,
-        mapMarkerId: "exotic_antihydrogen_deep_spindle_14",
-      },
-    ],
-    rewardGold: { min: 4600, max: HARTHMERE_JOBS_BOARD_MAX_REWARD_GOLD_V1 },
-    requiresFieldWork: true,
-    mapMarkerId: "exotic_antihydrogen_deep_spindle_14",
-    targetId: "harthmere_deep_antihydrogen_deposit",
-    lootHint: ["Deep-cave hazard pay", "Biome stabilizer supply", "Rare mining bonus"],
-    boardScope: "harthmere",
-  },
-  {
-    templateId: "deep_exotic_matter_mine_antihelium",
-    issuerKind: "guild",
-    issuerId: "harthmere_exotic_refiners_guild",
-    kind: "gather",
-    title: "Deep Mine Antihelium for Exotic Matter",
-    description: "The clean-power line is short on Antihelium. Push into the Deep Spindle massive cave and mine the marked pocket.",
-    requirements: [
-      {
-        itemId: HARTHMERE_EXOTIC_MATTER_COMPONENTS_V1.antihelium.itemId,
-        count: 4,
-        targetId: "harthmere_deep_antihelium_deposit",
-        targetName: HARTHMERE_EXOTIC_MATTER_COMPONENTS_V1.antihelium.jobTargetName,
-        mapMarkerId: "exotic_antihelium_deep_spindle_15",
-      },
-    ],
-    rewardGold: { min: 4700, max: HARTHMERE_JOBS_BOARD_MAX_REWARD_GOLD_V1 },
-    requiresFieldWork: true,
-    mapMarkerId: "exotic_antihelium_deep_spindle_15",
-    targetId: "harthmere_deep_antihelium_deposit",
-    lootHint: ["Deep-cave hazard pay", "Teleport fuel supply", "Rare mining bonus"],
-    boardScope: "harthmere",
-  },
-  {
-    templateId: "deep_exotic_matter_mine_antiboron",
-    issuerKind: "guild",
-    issuerId: "harthmere_exotic_refiners_guild",
-    kind: "gather",
-    title: "Deep Mine Antiboron for Exotic Matter",
-    description: "Antiboron from the Deep Spindle massive cave is scarce and dangerous to extract. Mine the marked blackglass vein for premium pay.",
-    requirements: [
-      {
-        itemId: HARTHMERE_EXOTIC_MATTER_COMPONENTS_V1.antiboron.itemId,
-        count: 3,
-        targetId: "harthmere_deep_antiboron_deposit",
-        targetName: HARTHMERE_EXOTIC_MATTER_COMPONENTS_V1.antiboron.jobTargetName,
-        mapMarkerId: "exotic_antiboron_deep_spindle_16",
-      },
-    ],
-    rewardGold: { min: 4800, max: HARTHMERE_JOBS_BOARD_MAX_REWARD_GOLD_V1 },
-    requiresFieldWork: true,
-    mapMarkerId: "exotic_antiboron_deep_spindle_16",
-    targetId: "harthmere_deep_antiboron_deposit",
-    lootHint: ["Deep-cave hazard pay", "Alcubierre supply chain", "Rare mining bonus"],
-    boardScope: "harthmere",
-  },
-  // HARTHMERE_JOBS_BOARD_HARTHMERE_TOWN_V141:
-  // Harthmere-scoped town/NPC/business work tied to Harthmere landmarks
-  // (market office, chapel stone, bridge center, Mosslawn). These keep the
-  // Harthmere board populated with town-flavored jobs.
-  {
-    templateId: "harthmere_town_market_delivery",
-    issuerKind: "town",
-    issuerId: "harthmere_town",
-    kind: "delivery",
-    title: "Deliver Ledger Pouch to Trader Odette Bright",
-    description: "Carry the sealed ledger pouch to Trader Odette Bright at the Brightcart Exchange. You start with the pouch — find her shop on the map and hand it to her.",
-    // Person recipient: the pouch is granted on accept (no pickup), and the
-    // marker leads the player to the owner to hand it off.
-    requirements: [{ itemId: "harthmere_ledger_pouch", count: 1, mapMarkerId: "harthmere_owner:npc_outpost_brightcart_trader", recipientNpcId: "npc_outpost_brightcart_trader" }],
-    rewardGold: { min: 60, max: 120 },
-    requiresFieldWork: true,
-    mapMarkerId: "harthmere_owner:npc_outpost_brightcart_trader",
-    boardScope: "harthmere",
-  },
-  {
-    templateId: "harthmere_town_repair_chapel",
-    issuerKind: "town",
-    issuerId: "harthmere_town",
-    kind: "repair",
-    title: "Restore the Chapel Stone Engravings",
-    description: "Wind and muck have dulled the chapel stone. Bring 4 chisel-grade stones and an etcher's mallet to repair the etchings.",
-    requirements: [{ itemId: "rough_stone", count: 4, mapMarkerId: "harthmere_chapel_stone" }],
-    rewardGold: { min: 80, max: 150 },
-    requiresFieldWork: true,
-    mapMarkerId: "harthmere_chapel_stone",
-    boardScope: "harthmere",
-  },
-  {
-    templateId: "harthmere_npc_courier_bridge",
-    issuerKind: "npc",
-    issuerId: "sergeant_bram_holt",
-    kind: "delivery",
-    title: "Bram's Bridge Courier Run",
-    description: "Collect the courier pouch at the bridge center, then carry it to Dispatcher Nyle Stampspur at Stampspur Station before dusk.",
-    // Pickup variant: the pouch is NOT granted on accept — the player collects it
-    // at the bridge center first (pickupMarkerId), then delivers to the person.
-    requirements: [{ itemId: "courier_pouch", count: 1, mapMarkerId: "harthmere_owner:npc_outpost_stampspur_dispatcher", recipientNpcId: "npc_outpost_stampspur_dispatcher", pickupMarkerId: "harthmere_bridge_center" }],
-    rewardGold: { min: 70, max: 140 },
-    requiresFieldWork: true,
-    mapMarkerId: "harthmere_bridge_center",
-    boardScope: "harthmere",
-  },
-  {
-    templateId: "harthmere_business_craft_lantern",
-    issuerKind: "business",
-    issuerId: "harthmere_marketcraft_co",
-    kind: "craft",
-    title: "Forge Three Market Lanterns",
-    description: "The market lamps need replacements. Craft 3 lanterns and turn them in at the Harthmere jobs board.",
-    requirements: [{ itemId: "iron_lantern", count: 3 }],
-    rewardGold: { min: 90, max: 180 },
-    requiresFieldWork: false,
-    boardScope: "harthmere",
-  },
-  {
-    templateId: "harthmere_guild_security_patrol",
-    issuerKind: "guild",
-    issuerId: "harthmere_warden_guild",
-    kind: "security",
-    title: "Night Patrol the Market District",
-    description: "A night patrol pass between bridge and market office. Report anything that doesn't belong.",
-    requirements: [{ targetId: "harthmere_market_office", targetName: "Harthmere Market Office", mapMarkerId: "harthmere_market_office" }],
-    rewardGold: { min: 100, max: 200 },
-    requiresFieldWork: true,
-    mapMarkerId: "harthmere_market_office",
-    boardScope: "harthmere",
-  },
-  // HARTHMERE_JOBS_BOARD_MONSTER_HUNT_V141 (Harthmere-side):
-  // Tougher Mucker variant operating along the Harthmere borderlands. Same
-  // pattern as the Grove Elite Mucker but rewards scale higher because the
-  // monster is later-game power level and the travel distance is bigger.
-  {
-    templateId: "hunt_mucker_alpha",
-    issuerKind: "town",
-    issuerId: "harthmere_town",
-    kind: "hunt",
-    title: "Bounty: Alpha Mucker Past the Bridge",
-    description: "An alpha Mucker is digging up the road past the bridge. Even a small party will struggle — bring four and stay clear of its slam radius.",
-    requirements: [{ targetId: HARTHMERE_JOBS_BOARD_ALPHA_MUCKER_BOUNTY_TARGET_ID_V1, targetName: "Alpha Mucker", mapMarkerId: HARTHMERE_JOBS_BOARD_ALPHA_MUCKER_BOUNTY_MARKER_ID_V1 }],
-    rewardGold: { min: 1800, max: 3600 },
-    requiresFieldWork: true,
-    mapMarkerId: HARTHMERE_JOBS_BOARD_ALPHA_MUCKER_BOUNTY_MARKER_ID_V1,
-    targetId: HARTHMERE_JOBS_BOARD_ALPHA_MUCKER_BOUNTY_TARGET_ID_V1,
-    monsterId: "mucker",
-    monsterTier: "boss",
-    monsterPowerLevel: 22,
-    partyRecommended: true,
-    partyMinSize: 4,
-    lootHint: ["Alpha Muckheart", "Slag Plate", "Boss Loot Cache"],
-    boardScope: "harthmere",
-  },
-];
+      requiresFieldWork: true,
+      mapMarkerId: HARTHMERE_JOBS_BOARD_HEX_WRAITH_BOUNTY_MARKER_ID_V1,
+      targetId: HARTHMERE_JOBS_BOARD_HEX_WRAITH_BOUNTY_TARGET_ID_V1,
+      monsterId: "hex",
+      monsterTier: "boss",
+      monsterPowerLevel: 24,
+      partyRecommended: true,
+      partyMinSize: 4,
+      lootHint: ["Hex Sigil", "Arcane Shard", "Boss Loot Cache"],
+      boardScope: "harthmere",
+    },
+    // HARTHMERE_EXOTIC_MATTER_CAVE_JOBS_V1:
+    // High-value Harthmere board contracts that send miners into confirmed
+    // underground cave rooms for the three antimatter blocks needed to craft Raw
+    // Exotic Matter. These use shared cave deposit markers so the board, map,
+    // renderer, and live backend agree on exact [x, y, z] targets.
+    {
+      templateId: "exotic_matter_mine_antihydrogen",
+      issuerKind: "guild",
+      issuerId: "harthmere_exotic_refiners_guild",
+      kind: "gather",
+      title: "Mine Antihydrogen for Exotic Matter",
+      description:
+        "The refiners need sealed Antihydrogen from the Mossglass survey cave before the next Biome stabilizer run. Mine the marked seam and bring the blocks back intact.",
+      requirements: [
+        {
+          itemId: HARTHMERE_EXOTIC_MATTER_COMPONENTS_V1.antihydrogen.itemId,
+          count: 3,
+          targetId: "harthmere_antihydrogen_deposit",
+          targetName:
+            HARTHMERE_EXOTIC_MATTER_COMPONENTS_V1.antihydrogen.jobTargetName,
+          mapMarkerId: "exotic_antihydrogen_mossglass_survey_02",
+        },
+      ],
+      rewardGold: { min: 3200, max: HARTHMERE_JOBS_BOARD_MAX_REWARD_GOLD_V1 },
+      requiresFieldWork: true,
+      mapMarkerId: "exotic_antihydrogen_mossglass_survey_02",
+      targetId: "harthmere_antihydrogen_deposit",
+      lootHint: [
+        "Refinery priority pay",
+        "Biome stabilizer supply",
+        "Rare mining bonus",
+      ],
+      boardScope: "harthmere",
+    },
+    {
+      templateId: "exotic_matter_mine_antihelium",
+      issuerKind: "guild",
+      issuerId: "harthmere_exotic_refiners_guild",
+      kind: "gather",
+      title: "Mine Antihelium for Exotic Matter",
+      description:
+        "A clean-power order is waiting on Antihelium. Follow the marked cave pocket, mine the contained blocks, and keep the shipment sealed.",
+      requirements: [
+        {
+          itemId: HARTHMERE_EXOTIC_MATTER_COMPONENTS_V1.antihelium.itemId,
+          count: 2,
+          targetId: "harthmere_antihelium_deposit",
+          targetName:
+            HARTHMERE_EXOTIC_MATTER_COMPONENTS_V1.antihelium.jobTargetName,
+          mapMarkerId: "exotic_antihelium_mossglass_survey_05",
+        },
+      ],
+      rewardGold: { min: 3400, max: HARTHMERE_JOBS_BOARD_MAX_REWARD_GOLD_V1 },
+      requiresFieldWork: true,
+      mapMarkerId: "exotic_antihelium_mossglass_survey_05",
+      targetId: "harthmere_antihelium_deposit",
+      lootHint: [
+        "Refinery priority pay",
+        "Teleport fuel supply",
+        "Rare mining bonus",
+      ],
+      boardScope: "harthmere",
+    },
+    {
+      templateId: "exotic_matter_mine_antiboron",
+      issuerKind: "guild",
+      issuerId: "harthmere_exotic_refiners_guild",
+      kind: "gather",
+      title: "Mine Antiboron for Exotic Matter",
+      description:
+        "Antiboron is scarce and the refinery is paying accordingly. Mine the marked blackglass vein in the Mossglass survey cave and return with sealed blocks.",
+      requirements: [
+        {
+          itemId: HARTHMERE_EXOTIC_MATTER_COMPONENTS_V1.antiboron.itemId,
+          count: 1,
+          targetId: "harthmere_antiboron_deposit",
+          targetName:
+            HARTHMERE_EXOTIC_MATTER_COMPONENTS_V1.antiboron.jobTargetName,
+          mapMarkerId: "exotic_antiboron_mossglass_survey_03",
+        },
+      ],
+      rewardGold: { min: 3800, max: HARTHMERE_JOBS_BOARD_MAX_REWARD_GOLD_V1 },
+      requiresFieldWork: true,
+      mapMarkerId: "exotic_antiboron_mossglass_survey_03",
+      targetId: "harthmere_antiboron_deposit",
+      lootHint: [
+        "Refinery priority pay",
+        "Alcubierre supply chain",
+        "Rare mining bonus",
+      ],
+      boardScope: "harthmere",
+    },
+    {
+      templateId: "deep_exotic_matter_mine_antihydrogen",
+      issuerKind: "guild",
+      issuerId: "harthmere_exotic_refiners_guild",
+      kind: "gather",
+      title: "Deep Mine Antihydrogen for Exotic Matter",
+      description:
+        "A major refinery order needs Antihydrogen from the Deep Spindle massive cave. Mine the marked blue seam and return with sealed blocks.",
+      requirements: [
+        {
+          itemId: HARTHMERE_EXOTIC_MATTER_COMPONENTS_V1.antihydrogen.itemId,
+          count: 5,
+          targetId: "harthmere_deep_antihydrogen_deposit",
+          targetName:
+            HARTHMERE_EXOTIC_MATTER_COMPONENTS_V1.antihydrogen.jobTargetName,
+          mapMarkerId: "exotic_antihydrogen_deep_spindle_14",
+        },
+      ],
+      rewardGold: { min: 4600, max: HARTHMERE_JOBS_BOARD_MAX_REWARD_GOLD_V1 },
+      requiresFieldWork: true,
+      mapMarkerId: "exotic_antihydrogen_deep_spindle_14",
+      targetId: "harthmere_deep_antihydrogen_deposit",
+      lootHint: [
+        "Deep-cave hazard pay",
+        "Biome stabilizer supply",
+        "Rare mining bonus",
+      ],
+      boardScope: "harthmere",
+    },
+    {
+      templateId: "deep_exotic_matter_mine_antihelium",
+      issuerKind: "guild",
+      issuerId: "harthmere_exotic_refiners_guild",
+      kind: "gather",
+      title: "Deep Mine Antihelium for Exotic Matter",
+      description:
+        "The clean-power line is short on Antihelium. Push into the Deep Spindle massive cave and mine the marked pocket.",
+      requirements: [
+        {
+          itemId: HARTHMERE_EXOTIC_MATTER_COMPONENTS_V1.antihelium.itemId,
+          count: 4,
+          targetId: "harthmere_deep_antihelium_deposit",
+          targetName:
+            HARTHMERE_EXOTIC_MATTER_COMPONENTS_V1.antihelium.jobTargetName,
+          mapMarkerId: "exotic_antihelium_deep_spindle_15",
+        },
+      ],
+      rewardGold: { min: 4700, max: HARTHMERE_JOBS_BOARD_MAX_REWARD_GOLD_V1 },
+      requiresFieldWork: true,
+      mapMarkerId: "exotic_antihelium_deep_spindle_15",
+      targetId: "harthmere_deep_antihelium_deposit",
+      lootHint: [
+        "Deep-cave hazard pay",
+        "Teleport fuel supply",
+        "Rare mining bonus",
+      ],
+      boardScope: "harthmere",
+    },
+    {
+      templateId: "deep_exotic_matter_mine_antiboron",
+      issuerKind: "guild",
+      issuerId: "harthmere_exotic_refiners_guild",
+      kind: "gather",
+      title: "Deep Mine Antiboron for Exotic Matter",
+      description:
+        "Antiboron from the Deep Spindle massive cave is scarce and dangerous to extract. Mine the marked blackglass vein for premium pay.",
+      requirements: [
+        {
+          itemId: HARTHMERE_EXOTIC_MATTER_COMPONENTS_V1.antiboron.itemId,
+          count: 3,
+          targetId: "harthmere_deep_antiboron_deposit",
+          targetName:
+            HARTHMERE_EXOTIC_MATTER_COMPONENTS_V1.antiboron.jobTargetName,
+          mapMarkerId: "exotic_antiboron_deep_spindle_16",
+        },
+      ],
+      rewardGold: { min: 4800, max: HARTHMERE_JOBS_BOARD_MAX_REWARD_GOLD_V1 },
+      requiresFieldWork: true,
+      mapMarkerId: "exotic_antiboron_deep_spindle_16",
+      targetId: "harthmere_deep_antiboron_deposit",
+      lootHint: [
+        "Deep-cave hazard pay",
+        "Alcubierre supply chain",
+        "Rare mining bonus",
+      ],
+      boardScope: "harthmere",
+    },
+    // HARTHMERE_JOBS_BOARD_HARTHMERE_TOWN_V141:
+    // Harthmere-scoped town/NPC/business work tied to Harthmere landmarks
+    // (market office, chapel stone, bridge center, Mosslawn). These keep the
+    // Harthmere board populated with town-flavored jobs.
+    {
+      templateId: "harthmere_town_market_delivery",
+      issuerKind: "town",
+      issuerId: "harthmere_town",
+      kind: "delivery",
+      title: "Deliver Ledger Pouch to Trader Odette Bright",
+      description:
+        "Carry the sealed ledger pouch to Trader Odette Bright at the Brightcart Exchange. You start with the pouch — find her shop on the map and hand it to her.",
+      // Person recipient: the pouch is granted on accept (no pickup), and the
+      // marker leads the player to the owner to hand it off.
+      requirements: [
+        {
+          itemId: "harthmere_ledger_pouch",
+          count: 1,
+          mapMarkerId: "harthmere_owner:npc_outpost_brightcart_trader",
+          recipientNpcId: "npc_outpost_brightcart_trader",
+        },
+      ],
+      rewardGold: { min: 60, max: 120 },
+      requiresFieldWork: true,
+      mapMarkerId: "harthmere_owner:npc_outpost_brightcart_trader",
+      boardScope: "harthmere",
+    },
+    {
+      templateId: "harthmere_town_repair_chapel",
+      issuerKind: "town",
+      issuerId: "harthmere_town",
+      kind: "repair",
+      title: "Restore the Chapel Stone Engravings",
+      description:
+        "Wind and muck have dulled the chapel stone. Bring 4 chisel-grade stones and an etcher's mallet to repair the etchings.",
+      requirements: [
+        {
+          itemId: "rough_stone",
+          count: 4,
+          mapMarkerId: "harthmere_chapel_stone",
+        },
+      ],
+      rewardGold: { min: 80, max: 150 },
+      requiresFieldWork: true,
+      mapMarkerId: "harthmere_chapel_stone",
+      boardScope: "harthmere",
+    },
+    {
+      templateId: "harthmere_npc_courier_bridge",
+      issuerKind: "npc",
+      issuerId: "sergeant_bram_holt",
+      kind: "delivery",
+      title: "Bram's Bridge Courier Run",
+      description:
+        "Collect the courier pouch at the bridge center, then carry it to Dispatcher Nyle Stampspur at Stampspur Station before dusk.",
+      // Pickup variant: the pouch is NOT granted on accept — the player collects it
+      // at the bridge center first (pickupMarkerId), then delivers to the person.
+      requirements: [
+        {
+          itemId: "courier_pouch",
+          count: 1,
+          mapMarkerId: "harthmere_owner:npc_outpost_stampspur_dispatcher",
+          recipientNpcId: "npc_outpost_stampspur_dispatcher",
+          pickupMarkerId: "harthmere_bridge_center",
+        },
+      ],
+      rewardGold: { min: 70, max: 140 },
+      requiresFieldWork: true,
+      mapMarkerId: "harthmere_bridge_center",
+      boardScope: "harthmere",
+    },
+    {
+      templateId: "harthmere_business_craft_lantern",
+      issuerKind: "business",
+      issuerId: "harthmere_marketcraft_co",
+      kind: "craft",
+      title: "Forge Three Market Lanterns",
+      description:
+        "The market lamps need replacements. Craft 3 lanterns and turn them in at the Harthmere jobs board.",
+      requirements: [{ itemId: "iron_lantern", count: 3 }],
+      rewardGold: { min: 90, max: 180 },
+      requiresFieldWork: false,
+      boardScope: "harthmere",
+    },
+    {
+      templateId: "harthmere_guild_security_patrol",
+      issuerKind: "guild",
+      issuerId: "harthmere_warden_guild",
+      kind: "security",
+      title: "Night Patrol the Market District",
+      description:
+        "A night patrol pass between bridge and market office. Report anything that doesn't belong.",
+      requirements: [
+        {
+          targetId: "harthmere_market_office",
+          targetName: "Harthmere Market Office",
+          mapMarkerId: "harthmere_market_office",
+        },
+      ],
+      rewardGold: { min: 100, max: 200 },
+      requiresFieldWork: true,
+      mapMarkerId: "harthmere_market_office",
+      boardScope: "harthmere",
+    },
+    // HARTHMERE_JOBS_BOARD_MONSTER_HUNT_V141 (Harthmere-side):
+    // Tougher Mucker variant operating along the Harthmere borderlands. Same
+    // pattern as the Grove Elite Mucker but rewards scale higher because the
+    // monster is later-game power level and the travel distance is bigger.
+    {
+      templateId: "hunt_mucker_alpha",
+      issuerKind: "town",
+      issuerId: "harthmere_town",
+      kind: "hunt",
+      title: "Bounty: Alpha Mucker Past the Bridge",
+      description:
+        "An alpha Mucker is digging up the road past the bridge. Even a small party will struggle — bring four and stay clear of its slam radius.",
+      requirements: [
+        {
+          targetId: HARTHMERE_JOBS_BOARD_ALPHA_MUCKER_BOUNTY_TARGET_ID_V1,
+          targetName: "Alpha Mucker",
+          mapMarkerId: HARTHMERE_JOBS_BOARD_ALPHA_MUCKER_BOUNTY_MARKER_ID_V1,
+        },
+      ],
+      rewardGold: { min: 1800, max: 3600 },
+      requiresFieldWork: true,
+      mapMarkerId: HARTHMERE_JOBS_BOARD_ALPHA_MUCKER_BOUNTY_MARKER_ID_V1,
+      targetId: HARTHMERE_JOBS_BOARD_ALPHA_MUCKER_BOUNTY_TARGET_ID_V1,
+      monsterId: "mucker",
+      monsterTier: "boss",
+      monsterPowerLevel: 22,
+      partyRecommended: true,
+      partyMinSize: 4,
+      lootHint: ["Alpha Muckheart", "Slag Plate", "Boss Loot Cache"],
+      boardScope: "harthmere",
+    },
+  ];
 
 // Small deterministic PRNG used by the seeder so tests can run with a fixed
 // "now" timestamp and assert exact outputs. Mulberry32 is plenty for picking
 // templates and rolling reward amounts.
 function autoSeedRngV141(seed: number) {
-  let state = (seed >>> 0) || 0x9E3779B9;
+  let state = seed >>> 0 || 0x9e3779b9;
   return () => {
     state |= 0;
-    state = (state + 0x6D2B79F5) | 0;
+    state = (state + 0x6d2b79f5) | 0;
     let t = state;
     t = Math.imul(t ^ (t >>> 15), t | 1);
     t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
@@ -1769,7 +2433,10 @@ function autoSeedRngV141(seed: number) {
   };
 }
 
-function countOpenAutoPostings(state: HarthmereJobsBoardStateV1, boardId: string): number {
+function countOpenAutoPostings(
+  state: HarthmereJobsBoardStateV1,
+  boardId: string
+): number {
   let count = 0;
   for (const job of Object.values(state.postings)) {
     if (job.boardId !== boardId) continue;
@@ -1783,7 +2450,7 @@ function countOpenAutoPostings(state: HarthmereJobsBoardStateV1, boardId: string
 function expireStaleAutoPostingsForBoardV1(
   result: MutableJobsResult,
   request: HarthmereJobsBoardMutationRequestV1,
-  boardId: string,
+  boardId: string
 ) {
   let expired = 0;
   for (const job of Object.values(result.next.postings)) {
@@ -1818,7 +2485,7 @@ function expireStaleAutoPostingsForBoardV1(
 function hasOpenBusinessTemplateJob(
   state: HarthmereJobsBoardStateV1,
   boardId: string,
-  businessId: string,
+  businessId: string
 ) {
   return Object.values(state.postings).some(
     (job) =>
@@ -1833,7 +2500,7 @@ function hasOpenBusinessTemplateJob(
 function hasOpenOutpostStarterJob(
   state: HarthmereJobsBoardStateV1,
   boardId: string,
-  outpostId: string,
+  outpostId: string
 ) {
   return Object.values(state.postings).some(
     (job) =>
@@ -1848,16 +2515,20 @@ function economyAutoSeedBusinessOutpostStarterJob(
   result: MutableJobsResult,
   request: HarthmereJobsBoardMutationRequestV1,
   board: HarthmereJobsBoardRecordV1,
-  outpost: HarthmereBusinessOutpostV1,
+  outpost: HarthmereBusinessOutpostV1
 ) {
   if (hasOpenOutpostStarterJob(result.next, board.boardId, outpost.outpostId)) {
     result.touched.add("jobs_board_outpost_starter_noop");
     return;
   }
-  const kind = HARTHMERE_BUSINESS_OUTPOST_JOB_KIND_BY_TYPE_V1[outpost.businessType];
+  const kind =
+    HARTHMERE_BUSINESS_OUTPOST_JOB_KIND_BY_TYPE_V1[outpost.businessType];
   const rewardGold = Math.max(
     HARTHMERE_JOBS_BOARD_MIN_REWARD_GOLD_V1,
-    Math.min(HARTHMERE_JOBS_BOARD_MAX_REWARD_GOLD_V1, outpost.job.rewardGold),
+    Math.min(
+      HARTHMERE_JOBS_BOARD_MAX_REWARD_GOLD_V1,
+      harthmereBusinessScaledJobPayV1(outpost.job.rewardGold)
+    )
   );
   let jobId = `harthmere_outpost_starter_${result.next.nextJobNumber++}`;
   while (result.next.postings[jobId]) {
@@ -1872,13 +2543,15 @@ function economyAutoSeedBusinessOutpostStarterJob(
     title: `${outpost.job.title} at ${outpost.displayName}`,
     description: `${outpost.job.starterTask} Teaches: ${outpost.job.teaches}`,
     kind,
-    requirements: [{
-      serviceKind: outpost.businessType,
-      serviceUnits: 1,
-      targetId: outpost.outpostId,
-      targetName: outpost.displayName,
-      mapMarkerId: harthmereBusinessOutpostJobMarkerIdV1(outpost),
-    }],
+    requirements: [
+      {
+        serviceKind: outpost.businessType,
+        serviceUnits: 1,
+        targetId: outpost.outpostId,
+        targetName: outpost.displayName,
+        mapMarkerId: harthmereBusinessOutpostJobMarkerIdV1(outpost),
+      },
+    ],
     templateId: `business_outpost_starter:${outpost.outpostId}`,
     rewardGold,
     escrowGold: rewardGold,
@@ -1893,7 +2566,9 @@ function economyAutoSeedBusinessOutpostStarterJob(
     mapMarkerId: harthmereBusinessOutpostJobMarkerIdV1(outpost),
     targetId: outpost.outpostId,
     abuseFlags: [],
-    logs: [`auto_seeded_business_outpost_starter:${outpost.outpostId}:${request.nowMs}`],
+    logs: [
+      `auto_seeded_business_outpost_starter:${outpost.outpostId}:${request.nowMs}`,
+    ],
     autoPosted: true,
     source: "economy_auto_seed",
   };
@@ -1924,35 +2599,53 @@ function economyAutoSeedBusinessOutpostStarterJob(
 function economyAutoSeedProductionBusinessJobs(
   result: MutableJobsResult,
   request: HarthmereJobsBoardMutationRequestV1,
-  board: HarthmereJobsBoardRecordV1,
+  board: HarthmereJobsBoardRecordV1
 ) {
   let produced = 0;
   const businesses = Object.values(result.economy?.businesses ?? {})
-    .filter((business) =>
-      business.status === "open" &&
-      (business.townId === board.townId || business.regionId === board.regionId)
+    .filter(
+      (business) =>
+        business.status === "open" &&
+        (business.townId === board.townId ||
+          business.regionId === board.regionId)
     )
     .sort((a, b) => a.businessId.localeCompare(b.businessId));
 
   for (const business of businesses) {
-    if (produced >= HARTHMERE_JOBS_BOARD_BUSINESS_AUTO_SEED_MAX_PER_TICK_V1) break;
-    if (hasOpenBusinessTemplateJob(result.next, board.boardId, business.businessId)) continue;
+    if (produced >= HARTHMERE_JOBS_BOARD_BUSINESS_AUTO_SEED_MAX_PER_TICK_V1)
+      break;
+    if (
+      hasOpenBusinessTemplateJob(
+        result.next,
+        board.boardId,
+        business.businessId
+      )
+    )
+      continue;
     const template = HARTHMERE_JOBS_BOARD_BUSINESS_TEMPLATES_V146.find(
-      (entry) => entry.businessType === business.typeId && board.acceptedKinds.includes(entry.kind)
+      (entry) =>
+        entry.businessType === business.typeId &&
+        board.acceptedKinds.includes(entry.kind)
     );
     if (!template) continue;
     const issuerKey = `business:${business.businessId}`;
     const issuerOpen = result.next.issuerOpenJobIds[issuerKey]?.length ?? 0;
-    if (issuerOpen >= HARTHMERE_JOBS_BOARD_MAX_ACTIVE_POSTINGS_PER_ISSUER_V1) continue;
+    if (issuerOpen >= HARTHMERE_JOBS_BOARD_MAX_ACTIVE_POSTINGS_PER_ISSUER_V1)
+      continue;
     const rewardGold = Math.max(
       HARTHMERE_JOBS_BOARD_MIN_REWARD_GOLD_V1,
-      Math.min(HARTHMERE_JOBS_BOARD_MAX_REWARD_GOLD_V1, template.defaultRewardGold)
+      Math.min(
+        HARTHMERE_JOBS_BOARD_MAX_REWARD_GOLD_V1,
+        template.defaultRewardGold
+      )
     );
     if (business.balanceGold < rewardGold) continue;
     business.balanceGold -= rewardGold;
-    let jobId = `${HARTHMERE_JOBS_BOARD_AUTO_SEED_ISSUER_PREFIX_V141}${result.next.nextJobNumber++}`;
+    let jobId = `${HARTHMERE_JOBS_BOARD_AUTO_SEED_ISSUER_PREFIX_V141}${result
+      .next.nextJobNumber++}`;
     while (result.next.postings[jobId]) {
-      jobId = `${HARTHMERE_JOBS_BOARD_AUTO_SEED_ISSUER_PREFIX_V141}${result.next.nextJobNumber++}`;
+      jobId = `${HARTHMERE_JOBS_BOARD_AUTO_SEED_ISSUER_PREFIX_V141}${result.next
+        .nextJobNumber++}`;
     }
     const posting: HarthmereJobsBoardPostingV1 = {
       jobId,
@@ -1972,7 +2665,8 @@ function economyAutoSeedProductionBusinessJobs(
       townId: business.townId ?? board.townId,
       regionId: business.regionId ?? board.regionId,
       createdAtMs: request.nowMs,
-      deadlineAtMs: request.nowMs + template.defaultDeadlineDays * 24 * 60 * 60 * 1000,
+      deadlineAtMs:
+        request.nowMs + template.defaultDeadlineDays * 24 * 60 * 60 * 1000,
       failurePenaltyGold: Math.round(rewardGold * 0.1),
       requiresFieldWork: true,
       mapMarkerId: template.mapMarkerId,
@@ -2022,7 +2716,7 @@ function economyAutoSeedProductionBusinessJobs(
 function economyAutoSeedJobs(
   result: MutableJobsResult,
   request: HarthmereJobsBoardMutationRequestV1,
-  context: HarthmereJobsBoardMutationContextV1,
+  context: HarthmereJobsBoardMutationContextV1
 ) {
   const boardId = request.boardId ?? HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1;
   const board = result.next.boards[boardId];
@@ -2042,8 +2736,8 @@ function economyAutoSeedJobs(
     0,
     Math.min(
       HARTHMERE_JOBS_BOARD_AUTO_SEED_MAX_PER_TICK_V141,
-      HARTHMERE_JOBS_BOARD_AUTO_SEED_TARGET_OPEN_V141 - openAuto,
-    ),
+      HARTHMERE_JOBS_BOARD_AUTO_SEED_TARGET_OPEN_V141 - openAuto
+    )
   );
   if (slotsToFill === 0) {
     result.touched.add("jobs_board_auto_seed_noop");
@@ -2058,10 +2752,11 @@ function economyAutoSeedJobs(
     boardSeed = (boardSeed * 31 + boardId.charCodeAt(i)) | 0;
   }
   const rng = autoSeedRngV141((request.nowMs ^ boardSeed) >>> 0);
-  const templates = HARTHMERE_JOBS_BOARD_AUTO_SEED_TEMPLATES_V141.filter((tpl) =>
-    board.acceptedKinds.includes(tpl.kind) &&
-    templateBoardScopeMatches(tpl, boardId) &&
-    harthmereAutoSeedTemplateRequirementsObtainableV1(tpl.requirements),
+  const templates = HARTHMERE_JOBS_BOARD_AUTO_SEED_TEMPLATES_V141.filter(
+    (tpl) =>
+      board.acceptedKinds.includes(tpl.kind) &&
+      templateBoardScopeMatches(tpl, boardId) &&
+      harthmereAutoSeedTemplateRequirementsObtainableV1(tpl.requirements)
   );
   if (templates.length === 0) {
     result.touched.add("jobs_board_auto_seed_no_templates");
@@ -2091,7 +2786,10 @@ function economyAutoSeedJobs(
         : templates;
     const template = templatePool[Math.floor(rng() * templatePool.length)];
     if (!template) break;
-    if (usedTemplateIds.has(template.templateId) && usedTemplateIds.size < templates.length) {
+    if (
+      usedTemplateIds.has(template.templateId) &&
+      usedTemplateIds.size < templates.length
+    ) {
       continue;
     }
     const issuerKey = `${template.issuerKind}:${template.issuerId}`;
@@ -2105,8 +2803,8 @@ function economyAutoSeedJobs(
       HARTHMERE_JOBS_BOARD_MIN_REWARD_GOLD_V1,
       Math.min(
         HARTHMERE_JOBS_BOARD_MAX_REWARD_GOLD_V1,
-        Math.round(template.rewardGold.min + rng() * Math.max(0, rewardSpan)),
-      ),
+        Math.round(template.rewardGold.min + rng() * Math.max(0, rewardSpan))
+      )
     );
     // HARTHMERE_JOBS_BOARD_AUTO_POSTING_V141:
     // For business-issued auto jobs, we must actually debit the business's
@@ -2124,9 +2822,11 @@ function economyAutoSeedJobs(
       result.touched.add("economy_business_bank");
       result.shared.add(`harthmere:economy:business:${business.businessId}`);
     }
-    let jobId = `${HARTHMERE_JOBS_BOARD_AUTO_SEED_ISSUER_PREFIX_V141}${result.next.nextJobNumber++}`;
+    let jobId = `${HARTHMERE_JOBS_BOARD_AUTO_SEED_ISSUER_PREFIX_V141}${result
+      .next.nextJobNumber++}`;
     while (result.next.postings[jobId]) {
-      jobId = `${HARTHMERE_JOBS_BOARD_AUTO_SEED_ISSUER_PREFIX_V141}${result.next.nextJobNumber++}`;
+      jobId = `${HARTHMERE_JOBS_BOARD_AUTO_SEED_ISSUER_PREFIX_V141}${result.next
+        .nextJobNumber++}`;
     }
     const flags: string[] = [];
     if (hasSuspiciousText(`${template.title} ${template.description}`)) {
@@ -2149,15 +2849,14 @@ function economyAutoSeedJobs(
       townId: board.townId,
       regionId: board.regionId,
       createdAtMs: request.nowMs,
-      deadlineAtMs: request.nowMs + HARTHMERE_JOBS_BOARD_AUTO_SEED_DEADLINE_MS_V141,
+      deadlineAtMs:
+        request.nowMs + HARTHMERE_JOBS_BOARD_AUTO_SEED_DEADLINE_MS_V141,
       failurePenaltyGold: Math.round(rewardGold * 0.1),
       requiresFieldWork: template.requiresFieldWork,
       mapMarkerId: template.mapMarkerId,
       targetId: template.targetId,
       abuseFlags: flags,
-      logs: [
-        `auto_seeded:${template.templateId}:${request.nowMs}`,
-      ],
+      logs: [`auto_seeded:${template.templateId}:${request.nowMs}`],
       autoPosted: true,
       source: "economy_auto_seed",
       partyRecommended: template.partyRecommended,
@@ -2188,7 +2887,9 @@ function economyAutoSeedJobs(
       issuerKind: template.issuerKind,
       issuerId: template.issuerId,
       amountGold: -rewardGold,
-      reason: template.monsterId ? `monster_hunt:${template.monsterId}` : template.templateId,
+      reason: template.monsterId
+        ? `monster_hunt:${template.monsterId}`
+        : template.templateId,
     });
     result.touched.add("jobs_board_posting");
     result.shared.add(sharedBoardKey(boardId));
@@ -2203,7 +2904,7 @@ function economyAutoSeedJobs(
 export function reduceHarthmereJobsBoardMutationV1(
   state: HarthmereJobsBoardStateV1,
   request: HarthmereJobsBoardMutationRequestV1,
-  context: HarthmereJobsBoardMutationContextV1,
+  context: HarthmereJobsBoardMutationContextV1
 ): HarthmereJobsBoardMutationResultV1 {
   const result = makeResult(state, context);
   // HARTHMERE_JOB_ACCEPT_TIMER_V151: lazily expire lapsed accepted jobs on EVERY
@@ -2239,7 +2940,10 @@ export function reduceHarthmereJobsBoardMutationV1(
       economyAutoSeedJobs(result, request, context);
       break;
     default:
-      reject(result, `jobs_board_rejected:unsupported_operation:${request.operation}`);
+      reject(
+        result,
+        `jobs_board_rejected:unsupported_operation:${request.operation}`
+      );
   }
   return {
     jobsBoard: result.next,
@@ -2253,19 +2957,32 @@ export function reduceHarthmereJobsBoardMutationV1(
   };
 }
 
-export function createHarthmereJobsBoardClientSnapshotV1(state: HarthmereJobsBoardStateV1, actorId: string) {
-  return createHarthmereJobsBoardClientSnapshotAtTimeV1(state, actorId, Date.now());
+export function createHarthmereJobsBoardClientSnapshotV1(
+  state: HarthmereJobsBoardStateV1,
+  actorId: string
+) {
+  return createHarthmereJobsBoardClientSnapshotAtTimeV1(
+    state,
+    actorId,
+    Date.now()
+  );
 }
 
 export function createHarthmereJobsBoardClientSnapshotAtTimeV1(
   state: HarthmereJobsBoardStateV1,
   actorId: string,
-  nowMs: number,
+  nowMs: number
 ) {
   const postings = Object.values(state.postings);
-  const myPostedJobs = postings.filter((job) => job.issuerKind === "player" && job.issuerId === actorId);
-  const myAcceptedJobs = postings.filter((job) => job.acceptedByActorId === actorId);
-  const myTodos = Object.values(state.todos).filter((todo) => todo.actorId === actorId);
+  const myPostedJobs = postings.filter(
+    (job) => job.issuerKind === "player" && job.issuerId === actorId
+  );
+  const myAcceptedJobs = postings.filter(
+    (job) => job.acceptedByActorId === actorId
+  );
+  const myTodos = Object.values(state.todos).filter(
+    (todo) => todo.actorId === actorId
+  );
   return {
     version: state.version,
     actorId,
@@ -2283,8 +3000,10 @@ export function createHarthmereJobsBoardClientSnapshotAtTimeV1(
     safety: {
       minRewardGold: HARTHMERE_JOBS_BOARD_MIN_REWARD_GOLD_V1,
       maxRewardGold: HARTHMERE_JOBS_BOARD_MAX_REWARD_GOLD_V1,
-      maxActivePostingsPerIssuer: HARTHMERE_JOBS_BOARD_MAX_ACTIVE_POSTINGS_PER_ISSUER_V1,
-      maxActiveAcceptedPerSeeker: HARTHMERE_JOBS_BOARD_MAX_ACTIVE_ACCEPTED_PER_SEEKER_V1,
+      maxActivePostingsPerIssuer:
+        HARTHMERE_JOBS_BOARD_MAX_ACTIVE_POSTINGS_PER_ISSUER_V1,
+      maxActiveAcceptedPerSeeker:
+        HARTHMERE_JOBS_BOARD_MAX_ACTIVE_ACCEPTED_PER_SEEKER_V1,
       requiresPhysicalBoardInteraction: true,
     },
   };

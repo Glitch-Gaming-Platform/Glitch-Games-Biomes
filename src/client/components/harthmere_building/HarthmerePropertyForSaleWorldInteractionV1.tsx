@@ -12,6 +12,7 @@ import {
   type HarthmerePropertyMapBuildingStateV1,
 } from "@/client/components/biomes_ui/adapters/propertyMapMarkersV1";
 import { addToast } from "@/client/components/toast/helpers";
+import { harthmereGroundedFeetYWithMemoryV1 } from "@/client/game/util/harthmere_entity_grounding";
 import { nearestPropertyForSaleLandmarkV1 } from "./propertyForSaleProximityV1";
 
 export const HARTHMERE_PROPERTY_FOR_SALE_WORLD_INTERACTION_VERSION_V1 =
@@ -74,11 +75,39 @@ export function HarthmerePropertyForSaleWorldInteractionV1({
 
   const nearestPlotId = nearest?.landmark.plotId;
   const toastedPlotIdRef = React.useRef<string | undefined>(undefined);
+  // Per-column last-grounded surface memory, shared with the NPC/animal/marker
+  // grounder. Rests the for-sale beam on the REAL terrain (cave-safe, water-aware)
+  // instead of the flat authored plot Y, exactly like the muckers/animals/quest
+  // markers — so the beam never floats above or buries below the plot ground.
+  const groundCacheRef = React.useRef<Map<string, number>>(new Map());
+
+  const beamPosition = React.useMemo<[number, number, number] | undefined>(() => {
+    const pos = nearest?.landmark.position;
+    if (!pos) {
+      return undefined;
+    }
+    const feetY = harthmereGroundedFeetYWithMemoryV1(
+      resources,
+      groundCacheRef.current,
+      pos[0],
+      pos[2],
+      pos[1],
+      true
+    );
+    // Fall back to the authored Y while the plot terrain is still streaming in;
+    // a later render re-grounds it once the surface is known.
+    return [pos[0], feetY ?? pos[1], pos[2]];
+  }, [
+    resources,
+    nearest?.landmark.position[0],
+    nearest?.landmark.position[1],
+    nearest?.landmark.position[2],
+  ]);
 
   // Beam: register/move a light-blue navigation aid over the nearest for-sale
   // plot, and tear it down when none is in range.
   React.useEffect(() => {
-    if (!nearest) {
+    if (!beamPosition) {
       mapManager.removeNavigationAid(PROPERTY_FOR_SALE_NAV_AID_ID_V1);
       return;
     }
@@ -86,19 +115,14 @@ export function HarthmerePropertyForSaleWorldInteractionV1({
       {
         kind: "property_for_sale",
         autoremoveWhenNear: false,
-        target: { kind: "position", position: nearest.landmark.position },
+        target: { kind: "position", position: beamPosition },
       },
       PROPERTY_FOR_SALE_NAV_AID_ID_V1
     );
     return () => {
       mapManager.removeNavigationAid(PROPERTY_FOR_SALE_NAV_AID_ID_V1);
     };
-  }, [
-    mapManager,
-    nearestPlotId,
-    nearest?.landmark.position[0],
-    nearest?.landmark.position[2],
-  ]);
+  }, [mapManager, nearestPlotId, beamPosition?.[0], beamPosition?.[1], beamPosition?.[2]]);
 
   // Toast once per entry into a plot's radius.
   React.useEffect(() => {

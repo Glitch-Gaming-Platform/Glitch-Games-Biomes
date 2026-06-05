@@ -209,8 +209,10 @@ function emitHarthmereNativeNpcAttackContactV189({
   const win = window as typeof window & {
     __harthmereNativeNpcAttackContactDebugV189?: unknown[];
     __harthmereNativeNpcAttackContactLastAtV189?: number;
+    __harthmereNativeNpcAttackContactLastHitsV189?: typeof hits;
   };
   win.__harthmereNativeNpcAttackContactLastAtV189 = detail.at;
+  win.__harthmereNativeNpcAttackContactLastHitsV189 = hits;
   win.__harthmereNativeNpcAttackContactDebugV189 = [
     detail,
     ...(win.__harthmereNativeNpcAttackContactDebugV189 ?? []),

@@ -352,7 +352,7 @@ export interface HarthmereInventoryMutationRequestV1 {
   /** Server-looked-up recipe; never trust client-supplied recipe */
   recipeId?: string;
   /** Server-verified crafting station/tool context. */
-  stationId?: string;
+  stationId?: string | number;
   stationType?: string;
   toolItemIds?: string[];
   optionalReagentItemIds?: string[];
@@ -476,10 +476,25 @@ export function registerHarthmereCraftingStationV1(
   _craftingStationRegistry.set(station.stationId, station);
 }
 
+export function normalizeHarthmereCraftingStationIdV1(
+  stationId: string | number | undefined
+): string | undefined {
+  if (typeof stationId === "number" && Number.isFinite(stationId)) {
+    return String(Math.trunc(stationId));
+  }
+  if (typeof stationId === "string" && stationId.length > 0) {
+    return stationId;
+  }
+  return undefined;
+}
+
 export function getHarthmereCraftingStationV1(
-  stationId: string | undefined
+  stationId: string | number | undefined
 ): HarthmereCraftingStationDefinitionV1 | undefined {
-  return stationId ? _craftingStationRegistry.get(stationId) : undefined;
+  const normalizedStationId = normalizeHarthmereCraftingStationIdV1(stationId);
+  return normalizedStationId
+    ? _craftingStationRegistry.get(normalizedStationId)
+    : undefined;
 }
 
 export function listHarthmereCraftingStationsV1(): HarthmereCraftingStationDefinitionV1[] {
@@ -1093,10 +1108,11 @@ function validateCraftItem(
   const prepaidInputs =
     req.prepaidCraftingInputs === true && allowPrepaidCraftingInputs;
   const workflowKind = recipe.workflowKind ?? "craft";
-  const station = getHarthmereCraftingStationV1(req.stationId);
+  const stationId = normalizeHarthmereCraftingStationIdV1(req.stationId);
+  const station = getHarthmereCraftingStationV1(stationId);
   const stationType = station?.stationType ?? req.stationType;
-  if (req.stationId && !station) {
-    fail(errors, `unknown_station_id:${req.stationId}`);
+  if (stationId && !station) {
+    fail(errors, `unknown_station_id:${stationId}`);
   }
   if (req.prepaidCraftingInputs === true && !allowPrepaidCraftingInputs) {
     fail(errors, "prepaid_crafting_inputs_not_allowed");
@@ -1132,7 +1148,7 @@ function validateCraftItem(
     }
   }
 
-  if (recipe.requiredStationId && req.stationId !== recipe.requiredStationId) {
+  if (recipe.requiredStationId && stationId !== recipe.requiredStationId) {
     fail(errors, `missing_station:${recipe.requiredStationId}`);
   }
   if (
@@ -1459,7 +1475,7 @@ function validateCraftItem(
     quality,
     qualityTier: craftingQualityTierV1(quality),
     craftedByActorId: actorId,
-    stationId: req.stationId,
+    stationId,
     stationType,
     toolItemIds,
     optionalReagentItemIds: [...optionalReagentCounts.keys()],

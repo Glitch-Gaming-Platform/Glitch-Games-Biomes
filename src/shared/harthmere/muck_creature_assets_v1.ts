@@ -8,7 +8,11 @@ export function harthmereMuckCreatureAssetKeyForLabelV1(
   if (!normalized) {
     return undefined;
   }
-  if (/robot|sentinel|jackie|billy|doctor|merchant|owner|clerk/.test(normalized)) {
+  if (
+    /robot|bot|sentinel|sentential|sentiental|jackie|billy|doctor|merchant|owner|clerk/.test(
+      normalized
+    )
+  ) {
     return undefined;
   }
   if (/hex|hexer|wraith/.test(normalized)) {

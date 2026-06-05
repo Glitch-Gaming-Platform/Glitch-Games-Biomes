@@ -20,6 +20,7 @@ import { HarthmereGatheringNodeWorldInteractionV1 } from "@/client/components/ch
 import { HarthmereObjectContainerPanel } from "@/client/components/challenges/HarthmereObjectContainerPanel";
 import { HarthmereCookingStationPanel } from "@/client/components/harthmere_cooking/HarthmereCookingStationPanel";
 import { BIOMES_UI_LOCATE_ON_MAP_EVENT_V1 } from "./adapters/mapPinnedDestination";
+import { useBiomesHUDVisibilitySnapshotV1 } from "./hudVisibilitySettings";
 import type { TabKey } from "./BiomesUITypes";
 
 function truthy(value: string | undefined | null): boolean {
@@ -66,6 +67,7 @@ export const BiomesUIMount: React.FunctionComponent<{
   const replacementMode = forceEnabled || replaceLegacy;
   const [enabled, setEnabled] = useState<boolean>(() => false);
   const [activeTab, setActiveTab] = useState<TabKey | null>(null);
+  const hudVisibility = useBiomesHUDVisibilitySnapshotV1();
   const live = useBiomesUILiveAdapters({
     activeTab,
     onActiveTabChange: setActiveTab,
@@ -117,7 +119,7 @@ export const BiomesUIMount: React.FunctionComponent<{
 
   return (
     <>
-      <BiomesUIVitalsPanel />
+      {hudVisibility.vitals && <BiomesUIVitalsPanel />}
       <BiomesUI
         activeTab={activeTab}
         onActiveTabChange={live.onActiveTabChange}
@@ -139,7 +141,7 @@ export const BiomesUIMount: React.FunctionComponent<{
       />
       <HarthmereObjectContainerPanel />
       <HarthmereCookingStationPanel />
-      <BiomesUITutorialCueBar />
+      {hudVisibility.helpButtons && <BiomesUITutorialCueBar />}
       <TutorialDirector step={live.tutorialStep} />
     </>
   );

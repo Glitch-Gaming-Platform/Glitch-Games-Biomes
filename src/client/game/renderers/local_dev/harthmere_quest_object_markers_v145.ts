@@ -13,7 +13,7 @@ import type { Renderer } from "@/client/game/renderers/renderer_controller";
 import type { Scenes } from "@/client/game/renderers/scenes";
 import { addToScenes } from "@/client/game/renderers/scenes";
 import type { ClientResources } from "@/client/game/resources/types";
-import { groundHarthmereLiveEntityFeetYWithStatusV1 } from "@/client/game/util/harthmere_entity_grounding";
+import { harthmereGroundedFeetYWithMemoryV1 } from "@/client/game/util/harthmere_entity_grounding";
 import {
   activeLiveEntityHelperQuestMarkerIdV1,
   activeLiveEntityHelperQuestMarkerIdsV1,
@@ -74,10 +74,15 @@ export function harthmereResolveWorldQuestBeaconMarkerIdV151(input: {
 }
 export const HARTHMERE_QUEST_OBJECT_MARKER_RENDER_POLICY_V146 =
   "active-beacon-only-no-passive-props-v146" as const;
+export const HARTHMERE_VISIBLE_WORLD_OBJECT_MARKER_RENDER_POLICY_V197 =
+  "visible-authored-world-prop-v197" as const;
 export const HARTHMERE_ACTIVE_QUEST_MARKER_BLUE_V145 = 0x5bd7ff;
 export const HARTHMERE_ACTIVE_QUEST_MARKER_CAP_V145 = 0xffffff;
 
 const ACTIVE_QUEST_BEACON_REFRESH_SECONDS_V145 = 0.25;
+
+export const HARTHMERE_VISIBLE_WORLD_OBJECT_MARKER_IDS_V197: ReadonlySet<string> =
+  new Set(["econ_grove_billy_post", "econ_grove_billy_toolbag"]);
 
 const QUEST_OBJECT_MARKER_SKIP_IDS_V145 = new Set([
   // The jobs boards have their own oversized renderer because they are a
@@ -109,9 +114,18 @@ export function isRenderableHarthmereQuestObjectLandmarkV145(
 ): boolean {
   return Boolean(
     (landmark.questIds?.length ||
+      HARTHMERE_VISIBLE_WORLD_OBJECT_MARKER_IDS_V197.has(landmark.id) ||
       SNAPSHOT_GROVE_OBJECTIVE_MARKER_IDS_V145.has(landmark.id)) &&
       landmark.kind !== "npc" &&
       !QUEST_OBJECT_MARKER_SKIP_IDS_V145.has(landmark.id)
+  );
+}
+
+export function isVisibleHarthmereWorldObjectMarkerV197(
+  markerOrId: HarthmereQuestObjectMarkerV145 | string
+): boolean {
+  return HARTHMERE_VISIBLE_WORLD_OBJECT_MARKER_IDS_V197.has(
+    typeof markerOrId === "string" ? markerOrId : markerOrId.id
   );
 }
 
@@ -316,7 +330,19 @@ export function createHarthmereQuestObjectMarkerMeshV145(
     addBoxV145(group, [0.26, 1.35, 0.26], [0, 0.72, 0], wood);
     addBoxV145(group, [1.0, 0.18, 0.18], [0, 1.18, 0], darkWood);
     addBoxV145(group, [0.42, 0.42, 0.14], [0, 0.58, 0.18], accent);
-  } else if (/crate|basket|satchel|bank/.test(text)) {
+  } else if (/drop post|road post|post|marker/.test(text)) {
+    addBoxV145(group, [0.16, 1.28, 0.16], [-0.22, 0.68, 0], wood);
+    addBoxV145(group, [0.82, 0.36, 0.1], [0.14, 1.12, 0], parchment);
+    addBoxV145(group, [0.58, 0.045, 0.04], [0.16, 1.18, 0.06], 0x1d2b44);
+    addBoxV145(group, [0.5, 0.34, 0.3], [0.28, 0.32, 0.2], darkWood);
+    addBoxV145(group, [0.38, 0.08, 0.32], [0.28, 0.52, 0.2], accent);
+  } else if (/toolbag|mailbag|satchel|bag/.test(text)) {
+    addBoxV145(group, [0.88, 0.46, 0.56], [0, 0.34, 0], darkWood);
+    addBoxV145(group, [0.68, 0.11, 0.5], [0, 0.61, 0], accent);
+    addBoxV145(group, [0.12, 0.52, 0.08], [-0.26, 0.42, -0.28], parchment);
+    addBoxV145(group, [0.12, 0.52, 0.08], [0.26, 0.42, -0.28], parchment);
+    addBoxV145(group, [0.4, 0.08, 0.1], [0, 0.76, -0.26], accent);
+  } else if (/crate|basket|bank/.test(text)) {
     addBoxV145(group, [0.95, 0.52, 0.72], [0, 0.34, 0], darkWood);
     addBoxV145(group, [0.78, 0.1, 0.78], [0, 0.64, 0], accent);
     addBoxV145(group, [0.1, 0.52, 0.78], [-0.34, 0.36, 0], wood);
@@ -429,6 +455,10 @@ export class HarthmereQuestObjectMarkersRendererV145 implements Renderer {
   private readonly root = new THREE.Group();
   private readonly activeBeacons = new Map<string, THREE.Group>();
   private readonly markerMeshes = new Map<string, THREE.Group>();
+  // Per-column last-grounded surface memory, shared with NPCs/items/gather nodes
+  // via the one grounder. Keeps a marker resting on the real surface (never
+  // buried at the flat authored Y) while its terrain shard streams in.
+  private readonly groundedFeetYByColumnV1 = new Map<string, number>();
   private activeMarkerId: string | undefined;
   private activeQuestStateRefreshSeconds = 0;
   private elapsedSeconds = 0;
@@ -436,7 +466,16 @@ export class HarthmereQuestObjectMarkersRendererV145 implements Renderer {
   constructor(private readonly resources?: ClientResources) {
     this.root.name = `harthmere-quest-object-markers root ${HARTHMERE_QUEST_OBJECT_MARKER_VERSION_V145}`;
     for (const marker of HARTHMERE_QUEST_OBJECT_MARKERS_V145) {
-      const mesh = createHarthmereQuestObjectMarkerAnchorV146(marker);
+      const isVisibleWorldObject =
+        isVisibleHarthmereWorldObjectMarkerV197(marker);
+      const mesh = isVisibleWorldObject
+        ? createHarthmereQuestObjectMarkerMeshV145(marker)
+        : createHarthmereQuestObjectMarkerAnchorV146(marker);
+      if (isVisibleWorldObject) {
+        mesh.userData.harthmereQuestObjectMarkerAlwaysVisible = true;
+        mesh.userData.harthmereQuestObjectMarkerRenderPolicy =
+          HARTHMERE_VISIBLE_WORLD_OBJECT_MARKER_RENDER_POLICY_V197;
+      }
       const beacon = createHarthmereActiveQuestMarkerBeaconV145();
       mesh.add(beacon);
       // Remember the authored world XZ + hint Y so we can re-ground the marker
@@ -460,10 +499,12 @@ export class HarthmereQuestObjectMarkersRendererV145 implements Renderer {
     }
     for (const [id, mesh] of this.markerMeshes) {
       const isActive = id === this.activeMarkerId;
+      const isAlwaysVisible =
+        mesh.userData.harthmereQuestObjectMarkerAlwaysVisible === true;
       // Process visible meshes, plus the active marker even if it was deferred
       // (hidden) last frame while its terrain streamed in — so it can re-appear
       // once the real surface is known.
-      if (!mesh.visible && !isActive) {
+      if (!mesh.visible && !isActive && !isAlwaysVisible) {
         continue;
       }
       const xz = mesh.userData.harthmereMarkerWorldXZ as [number, number] | undefined;
@@ -471,27 +512,31 @@ export class HarthmereQuestObjectMarkersRendererV145 implements Renderer {
       if (!xz || hintY === undefined) {
         continue;
       }
-      const result = groundHarthmereLiveEntityFeetYWithStatusV1(
+      // Use THE shared world-placement grounder — the SAME one muckers, animals,
+      // and dropped/quest items use (npcs.ts / drops.ts): one tri-state probe +
+      // keep-last-surface memory. A defined feetY is the real (or last-known
+      // real) surface; undefined means terrain is genuinely unknown here.
+      const feetY = harthmereGroundedFeetYWithMemoryV1(
         this.resources,
+        this.groundedFeetYByColumnV1,
         xz[0],
         xz[1],
         hintY,
         true
       );
-      if (result.status === "grounded" && result.feetY !== undefined) {
-        // Rest on the real surface and (re)show the active marker.
-        mesh.position.y = result.feetY;
-        if (isActive) {
+      if (feetY !== undefined) {
+        // Rest on the (remembered) real surface and (re)show the active marker.
+        mesh.position.y = feetY;
+        if (isActive || isAlwaysVisible) {
           mesh.visible = true;
         }
-      } else if (result.status === "not-loaded") {
-        // Terrain here hasn't streamed in: DON'T show the marker at the flat
-        // authored Y (that is what made quest items float/sink). Defer; the next
-        // frame re-checks because we still process the active marker when hidden.
+      } else {
+        // Terrain hasn't streamed in and we have no remembered surface yet:
+        // DON'T show the marker at the flat authored Y (that is what made quest
+        // items float/sink/bury). Defer; the next frame re-checks because we
+        // still process the active marker when hidden.
         mesh.visible = false;
       }
-      // "no-surface": terrain is loaded but genuinely has no standable column;
-      // keep the authored Y and current visibility as a best-effort fallback.
     }
   }
 
@@ -559,7 +604,9 @@ export class HarthmereQuestObjectMarkersRendererV145 implements Renderer {
       const active = id === markerId;
       const markerGroup = this.markerMeshes.get(id);
       if (markerGroup) {
-        markerGroup.visible = active;
+        markerGroup.visible =
+          active ||
+          markerGroup.userData.harthmereQuestObjectMarkerAlwaysVisible === true;
       }
       beacon.visible = active;
       beacon.position.y = 0;

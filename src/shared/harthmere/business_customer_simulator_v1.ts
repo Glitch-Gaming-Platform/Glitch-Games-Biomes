@@ -41,6 +41,17 @@ export {
 
 export const HARTHMERE_BUSINESS_CUSTOMER_SIMULATOR_VERSION_V1 =
   "harthmere-business-customer-simulator-v1" as const;
+export const HARTHMERE_BUSINESS_JOB_PAY_DIVISOR_V1 = 4 as const;
+
+export function harthmereBusinessScaledJobPayV1(rewardGold: number): number {
+  return Math.max(
+    1,
+    Math.round(
+      Math.max(0, Number(rewardGold) || 0) /
+        HARTHMERE_BUSINESS_JOB_PAY_DIVISOR_V1
+    )
+  );
+}
 
 export type HarthmereBusinessCustomerMapPlacementV1 = "none";
 export type HarthmereBusinessCustomerSpawnPolicyV1 =
@@ -4111,6 +4122,14 @@ function definition(
 ): HarthmereBusinessMiniGameDefinitionV1 {
   return {
     ...input,
+    offers: input.offers.map((offer) => ({
+      ...offer,
+      rewardGold: harthmereBusinessScaledJobPayV1(offer.rewardGold),
+    })),
+    askTemplates: input.askTemplates.map((ask) => ({
+      ...ask,
+      rewardGold: harthmereBusinessScaledJobPayV1(ask.rewardGold),
+    })),
     mechanicSpec: getHarthmereBusinessMiniGameSpecV1(input.typeId),
     navigation: nav(input.typeId),
     progression: progression(input.scaleNoun),
@@ -6970,7 +6989,10 @@ export function createHarthmereBusinessCustomerQueueV1(input: {
           1,
           Math.round(ask.rewardGold * modifier.rewardMultiplier)
         ),
-        reputationDelta: Math.max(0, ask.reputationDelta + modifier.reputationDelta),
+        reputationDelta: Math.max(
+          0,
+          ask.reputationDelta + modifier.reputationDelta
+        ),
         needDelta: ask.needDelta,
         navGoal: ask.navGoal,
       };
@@ -7956,7 +7978,10 @@ type HarthmereBusinessThematicFixtureV1 = readonly [
 ];
 
 const HARTHMERE_BUSINESS_THEMATIC_INTERIOR_FIXTURES_V1: Readonly<
-  Record<HarthmereEconomyBusinessTypeIdV1, readonly HarthmereBusinessThematicFixtureV1[]>
+  Record<
+    HarthmereEconomyBusinessTypeIdV1,
+    readonly HarthmereBusinessThematicFixtureV1[]
+  >
 > = {
   exotic_matter_refinery: [
     ["Coolant tank bank", "stock_storage", [1.2, 2.0, 1.2], "stock"],
@@ -8088,7 +8113,14 @@ const HARTHMERE_BUSINESS_FUNCTIONAL_FIXTURE_SLOTS_V1 = {
 } as const;
 
 const HARTHMERE_BUSINESS_THEMATIC_FIXTURE_SLOT_POOL_V1: readonly HarthmereBusinessDecorFixtureSlotV1[] =
-  ["leftMid", "leftBack", "leftFront", "rightFront", "centerBack", "innerFrontLeft"];
+  [
+    "leftMid",
+    "leftBack",
+    "leftFront",
+    "rightFront",
+    "centerBack",
+    "innerFrontLeft",
+  ];
 
 function harthmereBusinessDecorFixtureSeedsV1(
   typeId: HarthmereEconomyBusinessTypeIdV1
@@ -8139,7 +8171,8 @@ function harthmereBusinessDecorFixtureSeedsV1(
   ];
   // Layer the hand-authored character props on top, each pinned to its own slot from
   // the spaced pool so the interior reads as the real trade while staying passable.
-  const thematic = HARTHMERE_BUSINESS_THEMATIC_INTERIOR_FIXTURES_V1[typeId] ?? [];
+  const thematic =
+    HARTHMERE_BUSINESS_THEMATIC_INTERIOR_FIXTURES_V1[typeId] ?? [];
   thematic.forEach(([label, role, size, colorHint], index) => {
     const slot =
       HARTHMERE_BUSINESS_THEMATIC_FIXTURE_SLOT_POOL_V1[

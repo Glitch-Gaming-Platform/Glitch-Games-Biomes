@@ -1,4 +1,5 @@
 import assert from "assert";
+import { BikkieIds } from "@/shared/bikkie/ids";
 import {
   HARTHMERE_EXOTIC_MATTER_BLOCK_ITEM_IDS_V1,
   HARTHMERE_EXOTIC_MATTER_ITEM_IDS_V1,
@@ -782,6 +783,32 @@ describe("Harthmere crafting authority", () => {
     assert.strictEqual(
       stabilized.craftingOutcome?.workOrderTag,
       "stabilization"
+    );
+  });
+
+  it("accepts placed Bikkie station ids for station-gated crafting", () => {
+    ensureHarthmereProductionCraftingCatalogueV1();
+    const result = craft(
+      {
+        recipeId: HARTHMERE_EXOTIC_MATTER_RECIPE_IDS_V1.antihydrogenBlock,
+        stationId: BikkieIds.thermoblaster,
+        toolItemIds: [HARTHMERE_CRAFTING_TOOLS_V1.bucket],
+      },
+      snapshot({
+        items: { [HARTHMERE_CRAFTING_TOOLS_V1.bucket]: 1 },
+        materialStorage: {
+          [HARTHMERE_EXOTIC_MATTER_ITEM_IDS_V1.antiprotonCapsule]: 1,
+          [HARTHMERE_EXOTIC_MATTER_ITEM_IDS_V1.positronCapsule]: 1,
+          [HARTHMERE_EXOTIC_MATTER_ITEM_IDS_V1.containmentFilter]: 1,
+        },
+        knownRecipes: [HARTHMERE_EXOTIC_MATTER_RECIPE_IDS_V1.antihydrogenBlock],
+      }),
+      { exotic_refining: { level: 20 } }
+    );
+    assert.ok(result.ok, result.errors.join(", "));
+    assert.strictEqual(
+      result.craftingOutcome?.stationId,
+      HARTHMERE_CRAFTING_STATIONS_V1.thermoblaster
     );
   });
 

@@ -65,7 +65,11 @@ function distance2dV1(left: readonly number[], right: readonly number[]) {
 
 export function isMuckMonsterNameV1(name: string | undefined) {
   const text = String(name ?? "").toLowerCase();
-  if (/robot|sentinel|shield|beacon|board|voucher|ration|matter/.test(text)) {
+  if (
+    /robot|bot|sentinel|sentential|sentiental|shield|beacon|board|voucher|ration|matter/.test(
+      text
+    )
+  ) {
     return false;
   }
   return /muck[-\s]scarred|muckling|mucker|muckwad|muck\b|helix|hex|hexer|pale\s+muck/.test(

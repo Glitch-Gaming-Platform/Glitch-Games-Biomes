@@ -1171,8 +1171,8 @@ describe("Biomes UI progression tabs", () => {
     assert.ok(html.includes("Geography"));
     assert.ok(html.includes("Grove Jobs Board"));
     assert.ok(html.includes("Center Player"));
-    assert.ok(html.includes("Filter Quests"));
-    assert.ok(html.includes('aria-label="Filter Quests list"'));
+    assert.ok(html.includes("Filter quests"));
+    assert.ok(html.includes('aria-label="Filter quests list"'));
   });
 
   it("filters the active MapQuestsTab list by the selected tab data", () => {
@@ -1449,35 +1449,35 @@ describe("Biomes UI progression tabs", () => {
   it("maps active BiomesUI destinations onto differently colored navigation marker families", () => {
     assert.equal(
       biomesUIActiveMapPinNavigationAidKindForTest("objective"),
-      "puzzle"
+      "map_pin"
     );
     assert.equal(
       biomesUIActiveMapPinNavigationAidKindForTest("quest"),
-      "puzzle"
+      "map_pin"
     );
     assert.equal(
       biomesUIActiveMapPinNavigationAidKindForTest("resource"),
-      "farming"
+      "map_pin"
     );
     assert.equal(
       biomesUIActiveMapPinNavigationAidKindForTest("safe_zone"),
-      "farming"
+      "map_pin"
     );
     assert.equal(
       biomesUIActiveMapPinNavigationAidKindForTest("danger"),
-      "hunting"
+      "map_pin"
     );
     assert.equal(
       biomesUIActiveMapPinNavigationAidKindForTest("route"),
-      "fishing"
+      "map_pin"
     );
     assert.equal(
       biomesUIActiveMapPinNavigationAidKindForTest("business"),
-      "camera"
+      "map_pin"
     );
     assert.equal(
       biomesUIActiveMapPinNavigationAidKindForTest("property"),
-      "camera"
+      "map_pin"
     );
 
     const spec = biomesUIActiveMapPinNavigationAidSpecForTest({
@@ -1492,7 +1492,7 @@ describe("Biomes UI progression tabs", () => {
         kind: "position",
         position: [518, 70, -122],
       },
-      kind: "puzzle",
+      kind: "map_pin",
       autoremoveWhenNear: false,
     });
   });

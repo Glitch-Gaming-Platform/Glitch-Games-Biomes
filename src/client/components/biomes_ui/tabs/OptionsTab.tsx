@@ -1,20 +1,106 @@
 // OptionsTab — avatar editor, graphics, audio, controls (incl. tab shortcut
 // remapping), accessibility.
+import {
+  type BiomesHUDVisibilityIdV1,
+  useBiomesHUDVisibilitySnapshotV1,
+  useBiomesHUDVisibilitySettingV1,
+} from "@/client/components/biomes_ui/hudVisibilitySettings";
+import { useTypedStorageItem } from "@/client/util/typed_local_storage";
+import dynamic from "next/dynamic";
 import * as React from "react";
-import { BiomesUIAvatarEditor } from "../BiomesUIAvatarEditor";
 import { DEFAULT_TAB_SHORTCUTS } from "../shortcuts/BiomesShortcuts";
 import type { TabShortcut } from "../shortcuts/BiomesShortcuts";
+import { OptionsControlsSurfaceForTest } from "./OptionsControlsSurface";
 
 interface OptionsAdapter {
   getShortcuts?: () => TabShortcut[];
   setShortcut?: (tab: string, key: string) => void;
 }
 
-export const OptionsTab: React.FunctionComponent<{ adapter?: OptionsAdapter }> = ({ adapter }) => {
+const BiomesUIAvatarEditor = dynamic(
+  () =>
+    import("../BiomesUIAvatarEditor").then(
+      (module) => module.BiomesUIAvatarEditor
+    ),
+  {
+    ssr: false,
+    loading: () => (
+      <section aria-label="Avatar" style={{ marginBottom: 24 }}>
+        <h3 style={avatarLoadingTitleStyle}>Avatar</h3>
+        <p style={avatarLoadingCopyStyle}>Loading character...</p>
+      </section>
+    ),
+  }
+);
+
+export const OptionsTab: React.FunctionComponent<{
+  adapter?: OptionsAdapter;
+}> = ({ adapter }) => {
   const [shortcuts, setShortcuts] = React.useState<TabShortcut[]>(
     adapter?.getShortcuts?.() ?? DEFAULT_TAB_SHORTCUTS
   );
   const [recordingFor, setRecordingFor] = React.useState<string | null>(null);
+  const [showPerformanceHUD, setShowPerformanceHUD] = useTypedStorageItem(
+    "settings.hud.showPerformance",
+    true
+  );
+  const [graphicsQuality, setGraphicsQuality] = useTypedStorageItem(
+    "settings.graphics.quality",
+    "auto"
+  );
+  const [effectsVolume, setEffectsVolume] = useTypedStorageItem(
+    "settings.volume.effects",
+    100
+  );
+  const [musicVolume, setMusicVolume] = useTypedStorageItem(
+    "settings.volume.music",
+    50
+  );
+  const [voiceVolume, setVoiceVolume] = useTypedStorageItem(
+    "settings.volume.voice",
+    50
+  );
+  const hudVisibility = useBiomesHUDVisibilitySnapshotV1();
+  const [, setObjectivesVisible] =
+    useBiomesHUDVisibilitySettingV1("objectives");
+  const [, setMiniMapVisible] = useBiomesHUDVisibilitySettingV1("miniMap");
+  const [, setHelpButtonsVisible] =
+    useBiomesHUDVisibilitySettingV1("helpButtons");
+  const [, setHotbarVisible] = useBiomesHUDVisibilitySettingV1("hotbar");
+  const [, setVitalsVisible] = useBiomesHUDVisibilitySettingV1("vitals");
+  const [, setActionBarVisible] = useBiomesHUDVisibilitySettingV1("actionBar");
+  const setHudVisibility = React.useCallback(
+    (id: BiomesHUDVisibilityIdV1, visible: boolean) => {
+      switch (id) {
+        case "objectives":
+          setObjectivesVisible(visible);
+          break;
+        case "miniMap":
+          setMiniMapVisible(visible);
+          break;
+        case "helpButtons":
+          setHelpButtonsVisible(visible);
+          break;
+        case "hotbar":
+          setHotbarVisible(visible);
+          break;
+        case "vitals":
+          setVitalsVisible(visible);
+          break;
+        case "actionBar":
+          setActionBarVisible(visible);
+          break;
+      }
+    },
+    [
+      setActionBarVisible,
+      setHelpButtonsVisible,
+      setHotbarVisible,
+      setMiniMapVisible,
+      setObjectivesVisible,
+      setVitalsVisible,
+    ]
+  );
 
   React.useEffect(() => {
     if (!recordingFor) return;
@@ -24,7 +110,7 @@ export const OptionsTab: React.FunctionComponent<{ adapter?: OptionsAdapter }> =
       const next = shortcuts.map((s) =>
         s.tab === tabBeingRecorded
           ? { ...s, key: e.key.toLowerCase(), label: e.key.toUpperCase() }
-          : s,
+          : s
       );
       setShortcuts(next);
       adapter?.setShortcut?.(tabBeingRecorded, e.key.toLowerCase());
@@ -37,57 +123,37 @@ export const OptionsTab: React.FunctionComponent<{ adapter?: OptionsAdapter }> =
   return (
     <div style={{ display: "grid", gap: 24 }}>
       <BiomesUIAvatarEditor />
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24 }}>
-      <section aria-label="Graphics & Audio">
-        <h3 style={titleStyle}>Graphics & Performance</h3>
-        <Row label="Show Performance Stats"><input type="checkbox" defaultChecked /></Row>
-        <Row label="Quality">
-          <select aria-label="Quality"><option>Auto</option><option>Low</option><option>Medium</option><option>High</option></select>
-        </Row>
-
-        <h3 style={{ ...titleStyle, marginTop: 18 }}>Sound</h3>
-        <Row label="Sound Effects"><input type="range" min={0} max={100} defaultValue={100} /></Row>
-        <Row label="Music"><input type="range" min={0} max={100} defaultValue={50} /></Row>
-        <Row label="Voices"><input type="range" min={0} max={100} defaultValue={50} /></Row>
-
-        <h3 style={{ ...titleStyle, marginTop: 18 }}>Accessibility</h3>
-        <Row label="High-contrast highlights"><input type="checkbox" /></Row>
-        <Row label="Reduce motion (blink animations)"><input type="checkbox" /></Row>
-        <Row label="Screen-reader friendly captions"><input type="checkbox" defaultChecked /></Row>
-      </section>
-      <section aria-label="Keyboard shortcuts">
-        <h3 style={titleStyle}>Tab Shortcuts</h3>
-        <table aria-label="Tab shortcut bindings" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
-          <thead>
-            <tr><th align="left">Tab</th><th align="left">Key</th><th /></tr>
-          </thead>
-          <tbody>
-            {shortcuts.map((s) => (
-              <tr key={s.tab}>
-                <td style={{ padding: "4px 0", textTransform: "capitalize" }}>{s.tab}</td>
-                <td><kbd>{s.label}</kbd></td>
-                <td>
-                  <button type="button" className="biomes-ui-tab" onClick={() => setRecordingFor(s.tab)}>
-                    {recordingFor === s.tab ? "Press a key…" : "Rebind"}
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        <p style={{ fontSize: 11, color: "var(--biomes-fg-muted)", marginTop: 10 }}>
-          Hotbar slots 1–9 are always bound to the number keys. Arrow keys and Enter navigate the UI.
-        </p>
-      </section>
-      </div>
+      <OptionsControlsSurfaceForTest
+        showPerformanceHUD={showPerformanceHUD}
+        onShowPerformanceHUDChange={setShowPerformanceHUD}
+        graphicsQuality={graphicsQuality}
+        onGraphicsQualityChange={setGraphicsQuality}
+        effectsVolume={effectsVolume}
+        onEffectsVolumeChange={setEffectsVolume}
+        musicVolume={musicVolume}
+        onMusicVolumeChange={setMusicVolume}
+        voiceVolume={voiceVolume}
+        onVoiceVolumeChange={setVoiceVolume}
+        hudVisibility={hudVisibility}
+        onHudVisibilityChange={setHudVisibility}
+        shortcuts={shortcuts}
+        recordingFor={recordingFor}
+        onStartRecordingShortcut={setRecordingFor}
+      />
     </div>
   );
 };
 
-const Row: React.FunctionComponent<{ label: string; children: React.ReactNode }> = ({ label, children }) => (
-  <label style={{ display: "grid", gridTemplateColumns: "1fr auto", alignItems: "center", padding: "4px 0", fontSize: 12 }}>
-    <span>{label}</span>
-    {children}
-  </label>
-);
-const titleStyle: React.CSSProperties = { margin: "0 0 8px", fontSize: 11, letterSpacing: "0.16em", textTransform: "uppercase", color: "var(--biomes-fg-muted)" };
+const avatarLoadingTitleStyle: React.CSSProperties = {
+  margin: "0 0 8px",
+  fontSize: 11,
+  letterSpacing: 0,
+  textTransform: "uppercase",
+  color: "var(--biomes-fg-muted)",
+};
+
+const avatarLoadingCopyStyle: React.CSSProperties = {
+  margin: 0,
+  fontSize: 12,
+  color: "var(--biomes-fg-muted)",
+};

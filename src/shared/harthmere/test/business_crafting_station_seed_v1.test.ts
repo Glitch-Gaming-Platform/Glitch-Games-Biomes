@@ -13,6 +13,11 @@ import {
   validateHarthmereBusinessCraftingStationSeedsV1,
 } from "@/shared/harthmere/business_crafting_station_seed_v1";
 import { harthmereBusinessOwnerNpcSeedIdsV1 } from "@/shared/harthmere/business_owner_npc_seed_v1";
+import { ensureHarthmereProductionCraftingCatalogueV1 } from "@/shared/harthmere/mmo_crafting_catalogue_v1";
+import {
+  getHarthmereCraftingStationV1,
+  normalizeHarthmereCraftingStationIdV1,
+} from "@/shared/harthmere/mmo_inventory_authority_v1";
 
 describe("business crafting station seeds", () => {
   it("defines exactly one crafting station per outpost business", () => {
@@ -42,6 +47,21 @@ describe("business crafting station seeds", () => {
         `${seed.outpostId} must reference a real station item id`
       );
       assert.ok(seed.stationName.trim().length > 0);
+    }
+  });
+
+  it("normalizes every seeded station item id to a registered crafting station", () => {
+    ensureHarthmereProductionCraftingCatalogueV1();
+    for (const seed of HARTHMERE_BUSINESS_CRAFTING_STATION_SEEDS_V1) {
+      const normalizedStationId = normalizeHarthmereCraftingStationIdV1(
+        seed.stationItemId
+      );
+      const station = getHarthmereCraftingStationV1(normalizedStationId);
+      assert.ok(
+        station,
+        `${seed.outpostId} station item ${seed.stationItemId} must resolve`
+      );
+      assert.equal(station!.displayName, seed.stationName);
     }
   });
 

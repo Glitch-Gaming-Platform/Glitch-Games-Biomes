@@ -47,7 +47,8 @@ function dispatchLiveEntityHelperLiveModeResponseV1(body: any) {
 
 export function harthmereLiveEntityHelperLiveModeUrlV1(search?: string) {
   const rawSearch =
-    search ?? (typeof window !== "undefined" ? window.location.search : "");
+    search ??
+    (typeof window !== "undefined" ? window.location?.search ?? "" : "");
   const params = new URLSearchParams(rawSearch);
   const installId = params.get("install_id") ?? params.get("installId");
   const endpoint = "/api/harthmere/live_mode";
@@ -58,7 +59,8 @@ export function harthmereLiveEntityHelperLiveModeUrlV1(search?: string) {
 
 export function harthmereLiveEntityHelperLiveModeHeadersV1(search?: string) {
   const rawSearch =
-    search ?? (typeof window !== "undefined" ? window.location.search : "");
+    search ??
+    (typeof window !== "undefined" ? window.location?.search ?? "" : "");
   const params = new URLSearchParams(rawSearch);
   const installId = params.get("install_id") ?? params.get("installId");
   const headers: Record<string, string> = {

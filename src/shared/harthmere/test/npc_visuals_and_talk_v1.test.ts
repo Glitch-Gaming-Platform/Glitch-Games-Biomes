@@ -179,4 +179,21 @@ describe("Harthmere NPC visuals and talk affordances", () => {
     assert.equal(parsed?.body.outfitColor, "ember");
     assert.equal(parsed?.clothing.torso?.id, "work_apron");
   });
+
+  it("uses the Grove helper robot skin for bot and sentential living-entity labels", () => {
+    for (const name of ["Mucked Restoro Bot", "Archive Sentential"]) {
+      const appearance = makeHarthmereNpcAppearanceConfig({
+        id: 8_810_000_001_200 + name.length,
+        name,
+        roleHint: `${name} living entity helper`,
+        forwardAxis: "minusZ",
+      });
+
+      assert.equal(appearance.face.skinTone, "metal", name);
+      assert.equal(appearance.face.faceShape, "soft", name);
+      assert.equal(appearance.face.eyeColor, "blue", name);
+      assert.equal(appearance.body.bodyType, "broad", name);
+      assert.equal(appearance.body.legLength, "short", name);
+    }
+  });
 });

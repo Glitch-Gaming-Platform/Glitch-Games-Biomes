@@ -2230,6 +2230,10 @@ export interface HarthmereItemDisplayV1 {
   description: string;
   stackable: boolean;
   maxStack: number;
+  slot?: string;
+  canEquip: boolean;
+  canUse: boolean;
+  useEffectType?: string;
 }
 
 export function getHarthmereItemDisplayV1(
@@ -2248,6 +2252,10 @@ export function getHarthmereItemDisplayV1(
     description: def.description,
     stackable: def.stackable,
     maxStack: def.maxStack,
+    slot: def.slot,
+    canEquip: Boolean(def.slot),
+    canUse: Boolean(def.useEffect),
+    useEffectType: def.useEffect?.type,
   };
 }
 
@@ -2884,9 +2892,9 @@ export function purchaseHarthmereBusinessToolV151(
     const message =
       outcome.reason === "already_owned"
         ? `You already own a ${listing.toolName}.`
-        : `${listing.toolName} costs ${listing.priceGold} gold, but you only have ${
-            state.wallet.gold ?? 0
-          }.`;
+        : `${listing.toolName} costs ${
+            listing.priceGold
+          } gold, but you only have ${state.wallet.gold ?? 0}.`;
     writeHarthmereInventoryState(
       appendLog(
         state,
@@ -2942,7 +2950,13 @@ export function applyHarthmereJobRewardToStateV151(
     return {
       state,
       granted: grantedNext,
-      result: { granted: false, alreadyGranted: true, goldAdded: 0, itemsAdded: 0, overflow: 0 },
+      result: {
+        granted: false,
+        alreadyGranted: true,
+        goldAdded: 0,
+        itemsAdded: 0,
+        overflow: 0,
+      },
     };
   }
   let working = state;
@@ -2965,7 +2979,13 @@ export function applyHarthmereJobRewardToStateV151(
   return {
     state: working,
     granted: grantedNext,
-    result: { granted: true, alreadyGranted: false, goldAdded: gold, itemsAdded, overflow },
+    result: {
+      granted: true,
+      alreadyGranted: false,
+      goldAdded: gold,
+      itemsAdded,
+      overflow,
+    },
   };
 }
 
@@ -2975,7 +2995,9 @@ const HARTHMERE_JOB_REWARD_GRANTED_KEY_V151 =
 function readGrantedHarthmereJobRewardsV151(): Set<string> {
   if (typeof window === "undefined") return new Set();
   try {
-    const raw = window.localStorage.getItem(HARTHMERE_JOB_REWARD_GRANTED_KEY_V151);
+    const raw = window.localStorage.getItem(
+      HARTHMERE_JOB_REWARD_GRANTED_KEY_V151
+    );
     const arr = raw ? (JSON.parse(raw) as string[]) : [];
     return new Set(Array.isArray(arr) ? arr : []);
   } catch {
@@ -3001,7 +3023,13 @@ export function grantHarthmereJobRewardV151(
   reward: HarthmereJobRewardV151
 ): HarthmereJobRewardApplyResultV151 {
   if (typeof window === "undefined") {
-    return { granted: false, alreadyGranted: false, goldAdded: 0, itemsAdded: 0, overflow: 0 };
+    return {
+      granted: false,
+      alreadyGranted: false,
+      goldAdded: 0,
+      itemsAdded: 0,
+      overflow: 0,
+    };
   }
   const granted = readGrantedHarthmereJobRewardsV151();
   const applied = applyHarthmereJobRewardToStateV151(
@@ -3016,8 +3044,12 @@ export function grantHarthmereJobRewardV151(
     appendLog(
       applied.state,
       "Job reward",
-      `${reward.jobId}: +${applied.result.goldAdded} gold, +${applied.result.itemsAdded} items${
-        applied.result.overflow > 0 ? `, overflow ${applied.result.overflow}` : ""
+      `${reward.jobId}: +${applied.result.goldAdded} gold, +${
+        applied.result.itemsAdded
+      } items${
+        applied.result.overflow > 0
+          ? `, overflow ${applied.result.overflow}`
+          : ""
       }`
     )
   );
@@ -3412,8 +3444,40 @@ function useBackpackItem(instanceId: string) {
   }
 }
 
-export function performHarthmereBackpackItemUseForBiomesUI(instanceId: string) {
-  useBackpackItem(instanceId);
+function resolveBackpackInstanceIdForBiomesUI(
+  instanceId: string,
+  itemId?: string
+) {
+  const state = readHarthmereInventoryState();
+  if (state.backpack.items.some((item) => item.instanceId === instanceId)) {
+    return instanceId;
+  }
+  const fallbackInstanceId = itemId
+    ? state.backpack.items.find((item) => item.itemId === itemId)?.instanceId
+    : undefined;
+  if (fallbackInstanceId) {
+    writeHarthmereInventoryState(state);
+    return fallbackInstanceId;
+  }
+  return instanceId;
+}
+
+export function performHarthmereBackpackItemUseForBiomesUI(
+  instanceId: string,
+  itemId?: string
+) {
+  useBackpackItem(resolveBackpackInstanceIdForBiomesUI(instanceId, itemId));
+}
+
+export function performHarthmereBackpackItemEquipForBiomesUI(
+  instanceId: string,
+  itemId?: string
+) {
+  equipBackpackItem(resolveBackpackInstanceIdForBiomesUI(instanceId, itemId));
+}
+
+export function performHarthmereEquipmentItemUnequipForBiomesUI(slot: string) {
+  unequipItem(slot as EquipmentSlot);
 }
 
 function equipBackpackItem(instanceId: string) {

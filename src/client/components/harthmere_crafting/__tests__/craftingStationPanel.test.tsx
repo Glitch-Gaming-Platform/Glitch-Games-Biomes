@@ -1,6 +1,7 @@
 import assert from "assert";
 import * as React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+import { BikkieIds } from "@/shared/bikkie/ids";
 import {
   HARTHMERE_CRAFTING_STATIONS_V1,
   HARTHMERE_CRAFTING_TOOLS_V1,
@@ -95,6 +96,31 @@ describe("HarthmereCraftingStationPanel", () => {
     assert.equal(exoticBlock?.outputVisual.shape, "block");
     assert.equal(exoticBlock?.outputVisual.source, "procedural_voxel");
     assert.equal(exoticBlock?.outputVisual.procedural.canGenerateWithVoxels, true);
+  });
+
+  it("surfaces Thermoblaster recipes when opened from its placed Bikkie station id", () => {
+    ensureHarthmereProductionCraftingCatalogueV1();
+    const snapshot = normalizeHarthmereCraftingStationClientSnapshotV1({
+      stationId: BikkieIds.thermoblaster,
+      stationName: "Thermoblaster",
+      knownRecipes: [],
+      skills: { exotic_refining: { level: 1 } },
+    });
+    assert.strictEqual(
+      snapshot.stationId,
+      HARTHMERE_CRAFTING_STATIONS_V1.thermoblaster
+    );
+    const recipes = createHarthmereCraftingVisibleRecipesV1(snapshot);
+    const exoticRecipe = recipes.find(
+      (entry) =>
+        entry.recipe.recipeId ===
+        HARTHMERE_EXOTIC_MATTER_RECIPE_IDS_V1.stabilizedExoticMatter
+    );
+    assert.ok(
+      exoticRecipe,
+      "Thermoblaster should show its station recipes even before the recipe is learned"
+    );
+    assert.strictEqual(exoticRecipe?.stationOk, true);
   });
 
   it("maps craft, start, complete, and cancel actions to request_crafting payloads", async () => {

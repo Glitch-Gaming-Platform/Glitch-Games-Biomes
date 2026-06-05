@@ -11,10 +11,12 @@ import {
   HARTHMERE_QUEST_OBJECT_MARKER_RENDER_POLICY_V146,
   HARTHMERE_QUEST_OBJECT_MARKERS_V145,
   harthmereResolveWorldQuestBeaconMarkerIdV151,
+  HARTHMERE_VISIBLE_WORLD_OBJECT_MARKER_RENDER_POLICY_V197,
   activeHarthmereQuestMarkerIdV145,
   createHarthmereActiveQuestMarkerBeaconV145,
   createHarthmereQuestObjectMarkerAnchorV146,
   createHarthmereQuestObjectMarkerMeshV145,
+  isVisibleHarthmereWorldObjectMarkerV197,
   isRenderableHarthmereQuestObjectLandmarkV145,
   makeHarthmereQuestObjectMarkersRendererV145,
 } from "@/client/game/renderers/local_dev/harthmere_quest_object_markers_v145";
@@ -124,7 +126,7 @@ const findActiveBeacon = (markerGroup: THREE.Group) =>
   ) as THREE.Group | undefined;
 
 describe("Harthmere quest object procedural markers V145", () => {
-  it("registers every quest-linked non-NPC objective without requiring passive world props", () => {
+  it("registers every quest-linked or visible authored non-NPC objective without requiring broad passive world props", () => {
     const expected = SNAPSHOT_GROVE_LANDMARKS_V75.filter(
       isRenderableHarthmereQuestObjectLandmarkV145
     );
@@ -250,6 +252,8 @@ describe("Harthmere quest object procedural markers V145", () => {
       "exotic_antihydrogen_windowlight_02",
       "exotic_antihelium_deep_spindle_15",
       "exotic_antiboron_deep_spindle_16",
+      "econ_grove_billy_post",
+      "econ_grove_billy_toolbag",
     ];
 
     for (const id of sampleIds) {
@@ -344,7 +348,7 @@ describe("Harthmere quest object procedural markers V145", () => {
     }
   });
 
-  it("uses invisible active-beacon anchors in the live renderer instead of passive primitive props", () => {
+  it("uses invisible active-beacon anchors in the live renderer except for authored visible props", () => {
     const marker = HARTHMERE_QUEST_OBJECT_MARKERS_V145[0];
     const anchor = createHarthmereQuestObjectMarkerAnchorV146(marker);
     assert.equal(anchor.visible, false);
@@ -360,10 +364,28 @@ describe("Harthmere quest object procedural markers V145", () => {
     const root = findRendererRoot(scenes);
     assert.ok(root, "quest object root must attach to the scene");
     for (const child of root!.children) {
+      const markerId = child.userData.harthmereQuestObjectMarkerId as string;
+      if (isVisibleHarthmereWorldObjectMarkerV197(markerId)) {
+        assert.equal(
+          child.visible,
+          true,
+          `${markerId} should render an authored visible world prop`
+        );
+        assert.equal(
+          child.userData.harthmereQuestObjectMarkerRenderPolicy,
+          HARTHMERE_VISIBLE_WORLD_OBJECT_MARKER_RENDER_POLICY_V197
+        );
+        assert.ok(
+          child.children.length > 1,
+          "visible authored props should carry geometry plus the hidden active beacon"
+        );
+        continue;
+      }
+
       assert.equal(
         child.visible,
         false,
-        `${child.userData.harthmereQuestObjectMarkerId} should not render a passive primitive marker body`
+        `${markerId} should not render a passive primitive marker body`
       );
       assert.equal(
         child.userData.harthmereQuestObjectMarkerRenderPolicy,
@@ -374,6 +396,44 @@ describe("Harthmere quest object procedural markers V145", () => {
         1,
         "renderer anchors should only carry the hidden active beacon"
       );
+    }
+  });
+
+  it("renders Billy's real nearby interactables as visible world objects", () => {
+    const expectedLabels = new Map([
+      ["econ_grove_billy_post", "Billy's Drop Post"],
+      ["econ_grove_billy_toolbag", "Billy's Toolbag"],
+    ]);
+
+    const renderer = makeHarthmereQuestObjectMarkersRendererV145();
+    const scenes = createNewScenes();
+    renderer.draw(scenes, 0.016);
+    const root = findRendererRoot(scenes);
+    assert.ok(root, "quest object root must attach to the scene");
+
+    for (const [id, label] of expectedLabels) {
+      const marker = HARTHMERE_QUEST_OBJECT_MARKERS_V145.find(
+        (candidate) => candidate.id === id
+      );
+      assert.ok(marker, `${id} should be registered as a visible prop`);
+      assert.equal(marker!.label, label);
+
+      const group = findMarkerGroup(root!, id);
+      assert.ok(group, `${id} should have a renderer group`);
+      assert.equal(group!.visible, true);
+      assert.equal(
+        group!.userData.harthmereQuestObjectMarkerAlwaysVisible,
+        true
+      );
+      assert.equal(
+        group!.userData.harthmereQuestObjectMarkerRenderPolicy,
+        HARTHMERE_VISIBLE_WORLD_OBJECT_MARKER_RENDER_POLICY_V197
+      );
+      assert.ok(
+        group!.children.some((child) => child instanceof THREE.Mesh),
+        `${id} should include visible prop mesh geometry`
+      );
+      assert.equal(findActiveBeacon(group!)?.visible, false);
     }
   });
 
@@ -424,10 +484,15 @@ describe("Harthmere quest object procedural markers V145", () => {
   });
 
   it("only shows the blue pole and white cap for the current user's active quest marker", () => {
-    const activeMarker = HARTHMERE_QUEST_OBJECT_MARKERS_V145[0];
-    const inactiveMarker = HARTHMERE_QUEST_OBJECT_MARKERS_V145.find(
-      (marker) => marker.id !== activeMarker.id
+    const activeMarker = HARTHMERE_QUEST_OBJECT_MARKERS_V145.find(
+      (marker) => !isVisibleHarthmereWorldObjectMarkerV197(marker)
     );
+    const inactiveMarker = HARTHMERE_QUEST_OBJECT_MARKERS_V145.find(
+      (marker) =>
+        marker.id !== activeMarker?.id &&
+        !isVisibleHarthmereWorldObjectMarkerV197(marker)
+    );
+    assert.ok(activeMarker, "expected an active-beacon-only marker");
     assert.ok(inactiveMarker, "expected at least two quest object markers");
 
     const renderer = makeHarthmereQuestObjectMarkersRendererV145();
@@ -436,7 +501,7 @@ describe("Harthmere quest object procedural markers V145", () => {
 
     const root = findRendererRoot(scenes);
     assert.ok(root, "quest object root must attach to the scene");
-    const activeGroup = findMarkerGroup(root!, activeMarker.id);
+    const activeGroup = findMarkerGroup(root!, activeMarker!.id);
     const inactiveGroup = findMarkerGroup(root!, inactiveMarker!.id);
     assert.ok(activeGroup, "active marker group should exist");
     assert.ok(inactiveGroup, "inactive marker group should exist");

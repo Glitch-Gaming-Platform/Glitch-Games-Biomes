@@ -1,7 +1,9 @@
 import assert from "assert";
+import { BikkieIds } from "@/shared/bikkie/ids";
 import {
   createHarthmereCraftingStationClientSnapshotFromBackendV1,
   defaultHarthmereLiveModeBackendStateV1,
+  parseHarthmereLiveModeBackendStateV1,
   reduceHarthmereLiveModeBackendStateV1,
   type HarthmereLiveModeBackendStateV1,
 } from "../live_mode_backend_v1";
@@ -72,6 +74,36 @@ function reduce(
 }
 
 describe("Harthmere live-mode crafting backend", () => {
+  it("seeds starter workbench recipes for fresh and existing live-mode saves", () => {
+    const fresh = defaultHarthmereLiveModeBackendStateV1(ACTOR, NOW);
+    assert.ok(
+      fresh.classMagic.knownRecipes.includes("harthmere_carpentry_wood_plank")
+    );
+    assert.ok(
+      fresh.classMagic.knownRecipes.includes("harthmere_tool_hoe_recipe")
+    );
+
+    const existing = parseHarthmereLiveModeBackendStateV1(
+      JSON.stringify({
+        actorId: ACTOR,
+        classMagic: { knownRecipes: [] },
+      }),
+      ACTOR,
+      NOW
+    );
+    const snapshot = createHarthmereCraftingStationClientSnapshotFromBackendV1(
+      existing,
+      HARTHMERE_CRAFTING_STATIONS_V1.workbench,
+      undefined,
+      NOW
+    );
+    assert.ok(snapshot.knownRecipes.includes("harthmere_carpentry_wood_plank"));
+    assert.ok(
+      snapshot.knownRecipes.length >= 10,
+      snapshot.knownRecipes.join(",")
+    );
+  });
+
   it("starts and completes timed server crafting jobs with reserved materials", () => {
     const start = reduce(freshState(), {
       recipeId: "harthmere_carpentry_wood_plank",
@@ -287,5 +319,18 @@ describe("Harthmere live-mode crafting backend", () => {
     assert.strictEqual(snapshot.stationName, "Workbench");
     assert.strictEqual(snapshot.materialStorage.wood_log, 4);
     assert.ok(snapshot.knownRecipes.includes("harthmere_carpentry_wood_plank"));
+  });
+
+  it("normalizes placed Bikkie crafting station ids in the client snapshot", () => {
+    const state = freshState();
+    const snapshot = createHarthmereCraftingStationClientSnapshotFromBackendV1(
+      state,
+      BikkieIds.thermoblaster
+    );
+    assert.strictEqual(
+      snapshot.stationId,
+      HARTHMERE_CRAFTING_STATIONS_V1.thermoblaster
+    );
+    assert.strictEqual(snapshot.stationName, "Thermoblaster");
   });
 });

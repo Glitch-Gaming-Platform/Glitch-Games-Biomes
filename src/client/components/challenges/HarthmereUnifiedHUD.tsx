@@ -121,6 +121,7 @@ import {
   biomesUIVitalsDisplayFromLiveStatusForTest,
   useBiomesUIPlayerStatusStateV1,
 } from "@/client/components/biomes_ui/adapters/playerStatusAdapter";
+import { useBiomesHUDVisibilitySnapshotV1 } from "@/client/components/biomes_ui/hudVisibilitySettings";
 import { useClientContext } from "@/client/components/contexts/ClientContextReactContext";
 import { usePointerLockManager } from "@/client/components/contexts/PointerLockContext";
 import { setHarthmereLocalDevUserScope } from "@/client/components/challenges/LocalDevHarthmereUserScope";
@@ -2053,7 +2054,11 @@ function HarthmereBusinessWorldInterfaceV1({
     [selectedBusinessId]
   );
   const openFromPrompt = React.useCallback(
-    (prompt: NonNullable<ReturnType<typeof nearestHarthmereBusinessBoardPhysicalPromptV1>>) => {
+    (
+      prompt: NonNullable<
+        ReturnType<typeof nearestHarthmereBusinessBoardPhysicalPromptV1>
+      >
+    ) => {
       setSelectedBusinessId(prompt.businessId);
       onOpen();
     },
@@ -2545,6 +2550,7 @@ export const HarthmereUnifiedHUD: React.FunctionComponent<{
   useHarthmereLocalPlayerAttackGestureBridge();
   useHarthmereComprehensiveAnimationRuntimeBridgeV6();
   useHarthmereCombatHotkeys();
+  const hudVisibility = useBiomesHUDVisibilitySnapshotV1();
   const [panel, setPanel] = useState<HarthmereHudPanelV97>();
   const [systemsTab, setSystemsTab] = useState<MenuTab | undefined>();
   const [focusAction, setFocusAction] = useState<
@@ -2622,7 +2628,10 @@ export const HarthmereUnifiedHUD: React.FunctionComponent<{
         }
       }
     };
-    window.addEventListener(HARTHMERE_JOBS_BOARD_OPEN_EVENT_V141, openJobsBoard);
+    window.addEventListener(
+      HARTHMERE_JOBS_BOARD_OPEN_EVENT_V141,
+      openJobsBoard
+    );
     window.addEventListener("keydown", keyHandler);
     return () => {
       window.removeEventListener(
@@ -2727,20 +2736,26 @@ export const HarthmereUnifiedHUD: React.FunctionComponent<{
   return (
     <>
       {runtimeControllers}
-      <CompactStatusCluster />
+      {hudVisibility.vitals && <CompactStatusCluster />}
       <HarthmereDeathScreenOverlayV139 />
-      <div className="fixed left-2 top-[9.25rem] z-30 md:left-3 md:top-[10.25rem]">
-        <HarthmereDeathHUD />
-      </div>
+      {hudVisibility.vitals && (
+        <div className="fixed left-2 top-[9.25rem] z-30 md:left-3 md:top-[10.25rem]">
+          <HarthmereDeathHUD />
+        </div>
+      )}
       <HarthmereEnemyHealthBarsHUD />
-      <div className="fixed right-2 top-2 z-30 md:right-4 md:top-4">
-        <MiniMapHUD />
-      </div>
-      <div className="pointer-events-auto fixed right-2 top-[20.25rem] z-30 w-[min(19rem,calc(100vw-1rem))] max-sm:hidden md:right-4 md:top-[20.75rem]">
-        <SnapshotGroveMapHUDV75 />
-      </div>
-      <FightSideControls />
-      <UtilityActionBar onAction={openHudAction} />
+      {hudVisibility.miniMap && (
+        <div className="fixed right-2 top-2 z-30 md:right-4 md:top-4">
+          <MiniMapHUD />
+        </div>
+      )}
+      {hudVisibility.objectives && (
+        <div className="pointer-events-auto fixed right-2 top-[20.25rem] z-30 w-[min(19rem,calc(100vw-1rem))] max-sm:hidden md:right-4 md:top-[20.75rem]">
+          <SnapshotGroveMapHUDV75 />
+        </div>
+      )}
+      {hudVisibility.helpButtons && <FightSideControls />}
+      {hudVisibility.actionBar && <UtilityActionBar onAction={openHudAction} />}
       <SnapshotGroveTutorChatPanelV109 />
       <HarthmereJobsBoardWorldPromptV141 onOpen={openJobsBoard} />
       <HarthmereHomeConsoleWorldInterfaceV1

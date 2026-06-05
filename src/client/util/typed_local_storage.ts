@@ -107,6 +107,12 @@ export const zSettings = z.object({
   "settings.hud.hideReturnToGame": z.boolean(),
   "settings.hud.keepOverlaysVisible": z.boolean(),
   "settings.hud.hideChrome": z.boolean(),
+  "settings.hud.showObjectives": z.boolean(),
+  "settings.hud.showMiniMap": z.boolean(),
+  "settings.hud.showHelpButtons": z.boolean(),
+  "settings.hud.showHotbar": z.boolean(),
+  "settings.hud.showVitals": z.boolean(),
+  "settings.hud.showActionBar": z.boolean(),
 
   "settings.cam.cinematicMode": z.boolean(),
   "settings.cam.printResolution": z.boolean(),
@@ -157,18 +163,26 @@ export const changeEmitter =
 
 changeEmitter.setMaxListeners(100);
 
+function getBrowserLocalStorageV1(): Storage | undefined {
+  try {
+    return typeof localStorage !== "undefined" ? localStorage : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 export function setTypedStorageItem<T extends keyof TypesafeLocalStorageSchema>(
   key: T,
   value: TypesafeLocalStorageSchema[T]
 ): void {
-  localStorage.setItem(key, JSON.stringify(value));
+  getBrowserLocalStorageV1()?.setItem(key, JSON.stringify(value));
   (changeEmitter as EventEmitter).emit(`change:${key}`, value);
 }
 
 export function getTypedStorageItem<T extends keyof TypesafeLocalStorageSchema>(
   key: T
 ): TypesafeLocalStorageSchema[T] | null {
-  const val = localStorage.getItem(key);
+  const val = getBrowserLocalStorageV1()?.getItem(key) ?? null;
   const parsed = zTypesafeLocalStorageSchema.shape[key].safeParse(
     val !== null ? JSON.parse(val) : undefined
   );

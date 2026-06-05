@@ -48,6 +48,13 @@ export interface LiveEntityHelperQuestEntityContextV1 {
   isMuckMonster?: boolean;
   isJobsBoard?: boolean;
   isMountOnly?: boolean;
+  // V152: the entity already owns authored quest content. Every seeded Grove /
+  // Harthmere quest NPC and business owner carries an ECS `quest_giver`
+  // component (Jackie, Billy Rhodes, the town givers, shop owners, ...). A
+  // living entity that already has a quest must NOT also hand out a generic
+  // "outside the Grove" helper quest — the helper quests are for the anonymous
+  // wilds living entities that have no quest of their own.
+  hasQuestGiverComponent?: boolean;
 }
 
 export interface LiveEntityHelperQuestItemRequirementV1 {
@@ -789,7 +796,7 @@ const LIVE_ENTITY_HELPER_JOBS_BOARD_LABEL_REGEX_V148 =
 // whose label contains "Muck" because their area name does. Same rules as
 // before — exposed as a helper so the exclusion check can call it too.
 const LIVE_ENTITY_HELPER_ROBOT_LABEL_REGEX_V148 =
-  /\b(robot|bot|sentinel|construct|automaton|drone|android)\b/i;
+  /\b(robots?|bots?|sentinels?|sententials?|sentientals?|constructs?|automatons?|drones?|androids?)\b/i;
 
 export function isLiveEntityHelperLabelMuckMonsterV148(
   label: string | undefined
@@ -817,6 +824,15 @@ export function isLiveEntityHelperQuestEligibleEntityV1(
     return false;
   }
   if (isLiveEntityHelperQuestExcludedPositionV1(context.position)) {
+    return false;
+  }
+  // V152: an entity that already owns authored quest content (an ECS
+  // `quest_giver` component) never hands out a helper quest. This is the robust,
+  // identity-based rule the geographic Grove/Harthmere bounds only approximated:
+  // Billy Rhodes and every other seeded quest NPC / shop owner carry the
+  // component regardless of where they wander, so they stay out of the helper
+  // pipeline even if they step outside the exclusion box.
+  if (context.hasQuestGiverComponent) {
     return false;
   }
   // V148: explicit + heuristic exclusions for entity classes that the

@@ -6,6 +6,7 @@ import {
   openPointerLockUnlockWhileOpenV1,
   type PointerLockUnlockWhileOpenReturnRefV1,
 } from "../contexts/pointerLockModalPolicy";
+import { ClientContextReactContext } from "../contexts/ClientContextReactContext";
 import { installBiomesUITheme } from "../biomes_ui/theme/biomesUITheme";
 import { RovingGrid } from "../biomes_ui/nav/RovingGrid";
 import {
@@ -15,8 +16,6 @@ import {
   harthmereBikkieVisualTileStyleV1,
 } from "../biomes_ui/adapters/harthmereBikkieVisualRenderingV1";
 import { createHarthmereBusinessMiniGameDecisionForOfferV1 } from "@/shared/harthmere/business_customer_simulator_v1";
-import { makeHarthmereNpcFaceConfig } from "@/shared/harthmere/voxel_faces";
-import { HarthmereVoxelFacePreview } from "@/client/components/harthmere/HarthmereVoxelFacePreview";
 import type {
   HarthmereBusinessActorModeV1,
   HarthmereBusinessBikkieGraphicV1,
@@ -27,8 +26,14 @@ import type {
 } from "./businessInterfaceLiveAdapter";
 import { formatHarthmereBusinessPlayerWarningV1 } from "./businessInterfaceLiveAdapter";
 import { businessCheckInDisplayModelV1 } from "./businessDailyCheckInClientV1";
-import { harthmereBusinessCustomerFaceSeedV1 } from "./businessMiniGameFacesV1";
+import {
+  harthmereBusinessCustomerPlayerMeshAvatarV1,
+  type HarthmereBusinessCustomerPlayerMeshAvatarV1,
+} from "./businessMiniGameFacesV1";
 import { HARTHMERE_BUSINESS_TAB_LABELS_V1 } from "./harthmereBusinessTabsV1";
+import { MathUtils, Spherical, Vector3 } from "three";
+
+type CharacterPreviewModuleV1 = typeof import("../character/CharacterPreview");
 
 export interface HarthmereBusinessInterfacePanelProps {
   adapter: HarthmereBusinessInterfaceAdapterV1;
@@ -81,6 +86,8 @@ declare global {
     };
   }
 }
+
+type ShopfrontMerchKindV1 = "tool" | "block" | "interior" | "stock";
 
 const OWNER_TABS: OwnerTab[] = [
   "dashboard",
@@ -163,6 +170,8 @@ function installHarthmereBusinessPendingStylesV1() {
     "@keyframes harthmere-business-toast-v1 { 0% { opacity: 0; transform: translateY(8px) scale(.98); } 100% { opacity: 1; transform: none; } }",
     "@keyframes harthmere-business-urgent-v1 { 0%, 100% { opacity: 1; } 50% { opacity: .45; } }",
     "@keyframes harthmere-business-rise-v1 { 0% { opacity: 0; transform: translateY(6px); } 100% { opacity: 1; transform: none; } }",
+    ".harthmere-business-customer-mesh-avatar, .harthmere-business-customer-mesh-avatar .three-object-preview-wrapper { width: 100%; height: 100%; min-height: 60px; overflow: hidden; }",
+    ".harthmere-business-customer-mesh-avatar canvas { width: 100% !important; height: 100% !important; }",
   ].join("\n");
   document.head.appendChild(style);
 }
@@ -284,6 +293,60 @@ function chunk<T>(items: readonly T[], size: number): T[][] {
   return rows.length ? rows : [[]];
 }
 
+const BUSINESS_BACKEND_MUTATION_METHODS_V1 = new Set<string>([
+  "submitOperation",
+  "createBankAccount",
+  "transferPersonalToBusinessBank",
+  "transferBusinessToPersonalBank",
+  "depositInventory",
+  "withdrawInventory",
+  "setPrices",
+  "openBusiness",
+  "hireWorker",
+  "assignWorker",
+  "fireWorker",
+  "trainWorker",
+  "promoteWorker",
+  "payPayroll",
+  "checkInDaily",
+  "refreshEmployeeCandidates",
+  "interviewEmployeeCandidate",
+  "negotiateEmployeeCandidate",
+  "hireEmployeeCandidate",
+  "runEmployeeTask",
+  "runEmployeeMoraleTick",
+  "acceptContract",
+  "fulfillContract",
+  "grantPermission",
+  "purchaseShopItem",
+  "buyStorefrontGood",
+  "runServiceAction",
+  "requestCustomerService",
+  "startCustomerSession",
+  "serveCustomer",
+  "openBranch",
+  "assignAutomation",
+  "assignBranchManager",
+  "routeBranchStock",
+  "scheduleBranchStaff",
+  "closeBranch",
+  "settleEmpireDay",
+]);
+
+const BUSINESS_BACKEND_REQUEST_SKIPPED_V1 = Symbol(
+  "harthmere_business_backend_request_skipped"
+);
+
+function isBusinessBackendRequestSkippedV1(value: unknown): boolean {
+  return value === BUSINESS_BACKEND_REQUEST_SKIPPED_V1;
+}
+
+const BusinessBackendPendingContextV1 = React.createContext(false);
+
+function useBusinessBackendPendingV1(): boolean {
+  return React.useContext(BusinessBackendPendingContextV1);
+}
+
 function usePendingBusinessAdapterV1(
   adapter: HarthmereBusinessInterfaceAdapterV1
 ): {
@@ -291,6 +354,7 @@ function usePendingBusinessAdapterV1(
   pending: boolean;
 } {
   const [pendingCount, setPendingCount] = React.useState(0);
+  const pendingRef = React.useRef(false);
   const wrapped = React.useMemo(
     () =>
       new Proxy(adapter as any, {
@@ -298,12 +362,29 @@ function usePendingBusinessAdapterV1(
           const value = Reflect.get(target, prop, receiver);
           if (typeof value !== "function") return value;
           return (...args: unknown[]) => {
-            const result = value.apply(target, args);
-            if (!result || typeof result.then !== "function") return result;
+            if (!BUSINESS_BACKEND_MUTATION_METHODS_V1.has(String(prop))) {
+              return value.apply(target, args);
+            }
+            if (pendingRef.current) {
+              return Promise.resolve(BUSINESS_BACKEND_REQUEST_SKIPPED_V1);
+            }
+            pendingRef.current = true;
             setPendingCount((count) => count + 1);
-            return result.finally(() =>
-              setPendingCount((count) => Math.max(0, count - 1))
-            );
+            const release = () => {
+              pendingRef.current = false;
+              setPendingCount((count) => Math.max(0, count - 1));
+            };
+            try {
+              const result = value.apply(target, args);
+              if (!result || typeof result.then !== "function") {
+                release();
+                return result;
+              }
+              return result.finally(release);
+            } catch (error) {
+              release();
+              throw error;
+            }
           };
         },
       }) as HarthmereBusinessInterfaceAdapterV1,
@@ -550,92 +631,100 @@ export const HarthmereBusinessInterfacePanel: React.FunctionComponent<
   }
 
   return (
-    <div
-      role="dialog"
-      aria-label={`${businessDisplayName} business interface`}
-      data-harthmere-business-interface="true"
-      data-business-interface-scope="inside-business-only"
-      data-pointer-lock-policy="unlock-while-open"
-      data-mouse-policy="show-while-open"
-      data-business-id={activeBusinessId}
-      data-business-mode={mode}
-      className="biomes-ui-panel"
-      style={{
-        position: compact ? "relative" : "fixed",
-        inset: compact
-          ? undefined
-          : "max(10px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-right)) max(10px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left))",
-        zIndex: compact ? undefined : 1250,
-        maxWidth: compact ? undefined : 1180,
-        width: compact ? "100%" : "calc(100vw - 20px)",
-        maxHeight: compact ? undefined : "calc(100vh - 20px)",
-        boxSizing: "border-box",
-        margin: compact ? undefined : "auto",
-        overflow: "auto",
-        padding: compact ? 12 : "16px 18px",
-      }}
-    >
-      <header
+    <BusinessBackendPendingContextV1.Provider value={backendPending}>
+      <div
+        role="dialog"
+        aria-label={`${businessDisplayName} business interface`}
+        data-harthmere-business-interface="true"
+        data-business-interface-scope="inside-business-only"
+        data-pointer-lock-policy="unlock-while-open"
+        data-mouse-policy="show-while-open"
+        data-business-id={activeBusinessId}
+        data-business-mode={mode}
+        data-business-backend-pending={backendPending ? "true" : "false"}
+        className="biomes-ui-panel"
         style={{
-          display: "grid",
-          gridTemplateColumns: "minmax(0, 1fr) auto",
-          gap: 12,
-          alignItems: "start",
-          marginBottom: 12,
+          position: compact ? "relative" : "fixed",
+          inset: compact
+            ? undefined
+            : "max(10px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-right)) max(10px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left))",
+          zIndex: compact ? undefined : 1250,
+          maxWidth: compact ? undefined : 1180,
+          width: compact ? "100%" : "calc(100vw - 20px)",
+          maxHeight: compact ? undefined : "calc(100vh - 20px)",
+          boxSizing: "border-box",
+          margin: compact ? undefined : "auto",
+          overflow: "auto",
+          padding: compact ? 12 : "16px 18px",
         }}
       >
-        <div>
-          <h2 style={panelTitleStyle}>{businessDisplayName}</h2>
-          <p style={mutedTextStyle}>
-            {type?.displayName ?? displayLabel(business.typeId)} ·{" "}
-            {mode === "owner" ? "Owner Management" : "Customer Services"} ·{" "}
-            {displayLabel(business.status)}
-          </p>
-        </div>
-        <button
-          type="button"
-          className="biomes-ui-tab"
-          onClick={onClose}
-          aria-label="Close business interface"
+        <header
+          style={{
+            display: "grid",
+            gridTemplateColumns: "minmax(0, 1fr) auto",
+            gap: 12,
+            alignItems: "start",
+            marginBottom: 12,
+          }}
         >
-          Close
-        </button>
-      </header>
-
-      <nav
-        aria-label="Business interface sections"
-        style={{ display: "flex", flexWrap: "wrap", gap: 4, marginBottom: 12 }}
-      >
-        {tabs.map((tab) => (
+          <div>
+            <h2 style={panelTitleStyle}>{businessDisplayName}</h2>
+            <p style={mutedTextStyle}>
+              {type?.displayName ?? displayLabel(business.typeId)} ·{" "}
+              {mode === "owner" ? "Owner Management" : "Customer Services"} ·{" "}
+              {displayLabel(business.status)}
+            </p>
+          </div>
           <button
-            key={tab}
             type="button"
             className="biomes-ui-tab"
-            aria-selected={activeTab === tab}
-            onClick={() => setActiveTab(tab)}
+            onClick={onClose}
+            aria-label="Close business interface"
           >
-            {TAB_LABELS[tab]}
+            Close
           </button>
-        ))}
-      </nav>
+        </header>
 
-      <React.Profiler
-        id={`harthmere-business-${activeTab}`}
-        onRender={onActivePaneRender}
-      >
-        {activePane}
-      </React.Profiler>
-      {backendPending ? (
-        <div
-          style={businessPendingOverlayStyle}
-          aria-live="polite"
-          aria-busy="true"
+        <nav
+          aria-label="Business interface sections"
+          style={{
+            display: "flex",
+            flexWrap: "wrap",
+            gap: 4,
+            marginBottom: 12,
+          }}
         >
-          <span style={businessPendingSpinnerStyle} aria-hidden="true" />
-          Updating business...
-        </div>
-      ) : null}
-    </div>
+          {tabs.map((tab) => (
+            <button
+              key={tab}
+              type="button"
+              className="biomes-ui-tab"
+              aria-selected={activeTab === tab}
+              onClick={() => setActiveTab(tab)}
+            >
+              {TAB_LABELS[tab]}
+            </button>
+          ))}
+        </nav>
+
+        <React.Profiler
+          id={`harthmere-business-${activeTab}`}
+          onRender={onActivePaneRender}
+        >
+          {activePane}
+        </React.Profiler>
+        {backendPending ? (
+          <div
+            style={businessPendingOverlayStyle}
+            aria-live="polite"
+            aria-busy="true"
+          >
+            <span style={businessPendingSpinnerStyle} aria-hidden="true" />
+            Updating business...
+          </div>
+        ) : null}
+      </div>
+    </BusinessBackendPendingContextV1.Provider>
   );
 };
 
@@ -697,6 +786,7 @@ const OwnerDashboardPane: React.FunctionComponent<{
   adapter: HarthmereBusinessInterfaceAdapterV1;
   businessId: string;
 }> = ({ adapter, businessId }) => {
+  const backendPending = useBusinessBackendPendingV1();
   const {
     dashboard,
     report,
@@ -747,9 +837,13 @@ const OwnerDashboardPane: React.FunctionComponent<{
         <button
           className="biomes-ui-tab"
           type="button"
-          disabled={Boolean(session)}
+          data-business-backend-action="true"
+          disabled={backendPending || Boolean(session)}
           onClick={() => void adapter.startCustomerSession(businessId)}
-          style={session ? disabledButtonStyle : startShiftButtonStyle}
+          style={backendActionStyleV1(
+            session ? disabledButtonStyle : startShiftButtonStyle,
+            backendPending
+          )}
         >
           Start Shift
         </button>
@@ -758,7 +852,9 @@ const OwnerDashboardPane: React.FunctionComponent<{
         <section style={highlightCardStyle}>
           <div>
             <h3 style={sectionTitleStyle}>Daily Check-In</h3>
-            <strong style={heroMetricStyle}>{checkInDisplay.streakLabel}</strong>
+            <strong style={heroMetricStyle}>
+              {checkInDisplay.streakLabel}
+            </strong>
             <p
               style={
                 checkInDisplay.inLosses
@@ -775,13 +871,15 @@ const OwnerDashboardPane: React.FunctionComponent<{
           <button
             className="biomes-ui-tab"
             type="button"
-            disabled={checkInDisplay.checkedInToday}
+            data-business-backend-action="true"
+            disabled={backendPending || checkInDisplay.checkedInToday}
             onClick={() => void adapter.checkInDaily(businessId)}
-            style={
+            style={backendActionStyleV1(
               checkInDisplay.checkedInToday
                 ? disabledButtonStyle
-                : startShiftButtonStyle
-            }
+                : startShiftButtonStyle,
+              backendPending
+            )}
           >
             {checkInDisplay.checkedInToday ? "Checked in" : "Check in (+500)"}
           </button>
@@ -838,7 +936,8 @@ const OwnerDashboardPane: React.FunctionComponent<{
           <button
             className="biomes-ui-tab"
             type="button"
-            disabled={!canOpen}
+            data-business-backend-action="true"
+            disabled={backendPending || !canOpen}
             onClick={() =>
               canOpen &&
               void adapter.openBusiness(
@@ -847,7 +946,10 @@ const OwnerDashboardPane: React.FunctionComponent<{
                 business?.townId
               )
             }
-            style={!canOpen ? disabledButtonStyle : undefined}
+            style={backendActionStyleV1(
+              !canOpen ? disabledButtonStyle : undefined,
+              backendPending
+            )}
           >
             Open Business
           </button>
@@ -887,6 +989,7 @@ const CustomerMiniGamePane: React.FunctionComponent<{
   adapter: HarthmereBusinessInterfaceAdapterV1;
   businessId: string;
 }> = ({ adapter, businessId }) => {
+  const backendPending = useBusinessBackendPendingV1();
   const panel = useMeasuredBusinessMemoV1(
     "customer-minigame-derive",
     () => adapter.getCustomerMiniGame(businessId),
@@ -936,24 +1039,17 @@ const CustomerMiniGamePane: React.FunctionComponent<{
   );
   const difficultyTier = mechanic.difficultyScaling[0];
   const customerName =
-    panel.currentNpc?.displayName ??
-    (ticket ? displayLabel(ticket.npcId) : "");
-  // Stable customer face: seed the shared voxel-face generator from the
-  // customer/NPC identity so the portrait matches the Grove-style avatar face
-  // for that person instead of changing with every service ticket.
-  const customerFace = React.useMemo(() => {
+    panel.currentNpc?.displayName ?? (ticket ? displayLabel(ticket.npcId) : "");
+  const customerAvatar = React.useMemo(() => {
     if (!ticket) {
       return undefined;
     }
-    return makeHarthmereNpcFaceConfig({
-      id: harthmereBusinessCustomerFaceSeedV1({
-        npcId: ticket.npcId,
-        displayName: customerName,
-      }),
-      name: customerName || ticket.npcId,
-      roleHint: "customer",
+    return harthmereBusinessCustomerPlayerMeshAvatarV1({
+      npcId: ticket.npcId,
+      displayName: customerName,
+      appearance: panel.currentNpc?.appearance,
     });
-  }, [ticket?.npcId, customerName]);
+  }, [ticket?.npcId, customerName, panel.currentNpc?.appearance]);
   const npcNameById = React.useMemo(() => {
     const map = new Map<string, string>();
     for (const npc of panel.customerPool) map.set(npc.npcId, npc.displayName);
@@ -982,7 +1078,8 @@ const CustomerMiniGamePane: React.FunctionComponent<{
   const runCustomerAction = React.useCallback(
     (action: () => Promise<unknown>, successMessage?: string) => {
       void action()
-        .then(() => {
+        .then((result) => {
+          if (isBusinessBackendRequestSkippedV1(result)) return;
           if (successMessage) pushFeedback("success", successMessage);
         })
         .catch((error) => {
@@ -992,10 +1089,16 @@ const CustomerMiniGamePane: React.FunctionComponent<{
             message.includes("business_customer_session_expired") ||
             message.includes("business_customer_session_not_active")
           ) {
-            pushFeedback("error", "That customer timed out. Start a new shift.");
+            pushFeedback(
+              "error",
+              "That customer timed out. Start a new shift."
+            );
             return;
           }
-          pushFeedback("error", "The service board could not update. Try again.");
+          pushFeedback(
+            "error",
+            "The service board could not update. Try again."
+          );
         });
     },
     [pushFeedback]
@@ -1028,9 +1131,16 @@ const CustomerMiniGamePane: React.FunctionComponent<{
                 label="Served"
                 value={`${served}/${session.queue.length}`}
               />
-              <StatChip label="Gold" value={`${session.earnedGold}`} tone="gold" />
+              <StatChip
+                label="Gold"
+                value={`${session.earnedGold}`}
+                tone="gold"
+              />
               <StatChip label="Streak" value={`${session.streak}`} />
-              <StatChip label="Satisfaction" value={`${session.satisfaction}`} />
+              <StatChip
+                label="Satisfaction"
+                value={`${session.satisfaction}`}
+              />
               <StatChip
                 label="Missed"
                 value={`${failed}`}
@@ -1052,26 +1162,23 @@ const CustomerMiniGamePane: React.FunctionComponent<{
           )}
         </div>
         <div style={progressTrackStyle} aria-hidden="true">
-          <div
-            style={{ ...progressFillStyle, width: `${progressPercent}%` }}
-          />
-          {session && !shiftComplete ? <div style={progressSweepStyle} /> : null}
+          <div style={{ ...progressFillStyle, width: `${progressPercent}%` }} />
+          {session && !shiftComplete ? (
+            <div style={progressSweepStyle} />
+          ) : null}
         </div>
         {shiftComplete ? (
           <div style={summaryCardStyle} data-business-minigame-summary="true">
             <strong style={summaryTitleStyle}>Shift complete</strong>
             <p style={summaryLineStyle}>
-              You served {served} of {session?.queue.length} customers and earned{" "}
-              {session?.earnedGold ?? 0} gold.{" "}
+              You served {served} of {session?.queue.length} customers and
+              earned {session?.earnedGold ?? 0} gold.{" "}
               {failed
                 ? `${failed} customer${failed === 1 ? "" : "s"} timed out.`
                 : "Clean sheet — nobody left unhappy!"}
             </p>
             <div style={summaryStatRowStyle}>
-              <StatChip
-                label="Best streak"
-                value={`${session?.streak ?? 0}`}
-              />
+              <StatChip label="Best streak" value={`${session?.streak ?? 0}`} />
               <StatChip
                 label="Satisfaction"
                 value={`${session?.satisfaction ?? 0}`}
@@ -1080,8 +1187,13 @@ const CustomerMiniGamePane: React.FunctionComponent<{
             <button
               className="biomes-ui-tab"
               type="button"
+              data-business-backend-action="true"
+              disabled={backendPending}
               onClick={startShift}
-              style={startShiftButtonStyle}
+              style={backendActionStyleV1(
+                startShiftButtonStyle,
+                backendPending
+              )}
             >
               Start New Shift
             </button>
@@ -1091,8 +1203,13 @@ const CustomerMiniGamePane: React.FunctionComponent<{
             <button
               className="biomes-ui-tab"
               type="button"
+              data-business-backend-action="true"
+              disabled={backendPending}
               onClick={startShift}
-              style={startShiftButtonStyle}
+              style={backendActionStyleV1(
+                startShiftButtonStyle,
+                backendPending
+              )}
             >
               Start Shift
             </button>
@@ -1160,13 +1277,11 @@ const CustomerMiniGamePane: React.FunctionComponent<{
                   style={customerPortraitFrameStyle(patienceRatio)}
                   aria-hidden="true"
                 >
-                  {customerFace ? (
-                    <div style={customerPortraitScaleStyle}>
-                      <HarthmereVoxelFacePreview
-                        face={customerFace}
-                        hideCaption
-                      />
-                    </div>
+                  {customerAvatar ? (
+                    <CustomerPlayerMeshPortrait
+                      avatar={customerAvatar}
+                      ticketId={ticket.ticketId}
+                    />
                   ) : (
                     <span style={customerAvatarStateStyle(patienceRatio)} />
                   )}
@@ -1207,7 +1322,8 @@ const CustomerMiniGamePane: React.FunctionComponent<{
               <RovingGrid
                 ariaLabel="Customer service offers"
                 items={offerRows}
-                onActivate={(_row, _col, offer) =>
+                onActivate={(_row, _col, offer) => {
+                  if (backendPending) return;
                   runCustomerAction(
                     () =>
                       adapter.serveCustomer(
@@ -1220,9 +1336,11 @@ const CustomerMiniGamePane: React.FunctionComponent<{
                           offer.offerId
                         )
                       ),
-                    `Served ${customerName || "customer"} · +${offer.rewardGold} gold`
-                  )
-                }
+                    `Served ${customerName || "customer"} · +${
+                      offer.rewardGold
+                    } gold`
+                  );
+                }}
                 renderCell={(offer, _coords, cell) => (
                   <button
                     ref={cell.ref}
@@ -1231,7 +1349,16 @@ const CustomerMiniGamePane: React.FunctionComponent<{
                     onKeyDown={cell.onKeyDown}
                     onClick={cell.onClick}
                     className="biomes-ui-tab"
-                    style={serviceButtonStyle}
+                    data-business-backend-action="true"
+                    data-business-minigame-offer-pending={
+                      backendPending ? "true" : "false"
+                    }
+                    disabled={backendPending}
+                    aria-disabled={backendPending}
+                    style={backendActionStyleV1(
+                      serviceButtonStyle,
+                      backendPending
+                    )}
                     aria-label={offer.label}
                   >
                     <span style={offerHeadRowStyle}>
@@ -1378,6 +1505,71 @@ const StatChip: React.FunctionComponent<{
   </div>
 );
 
+const CustomerPlayerMeshPortrait: React.FunctionComponent<{
+  avatar: HarthmereBusinessCustomerPlayerMeshAvatarV1;
+  ticketId: string;
+}> = ({ avatar, ticketId }) => {
+  const { clientContext } = React.useContext(ClientContextReactContext);
+  const [previewModule, setPreviewModule] =
+    React.useState<CharacterPreviewModuleV1 | null>(null);
+  const cameraPos = React.useMemo(
+    () =>
+      new Vector3().setFromSpherical(
+        new Spherical(2.05, MathUtils.degToRad(72), MathUtils.degToRad(198))
+      ),
+    []
+  );
+  const controlTarget = React.useMemo(() => new Vector3(0, 1.42, 0), []);
+  React.useEffect(() => {
+    if (!clientContext || typeof window === "undefined") {
+      return;
+    }
+    let mounted = true;
+    void import("../character/CharacterPreview")
+      .then((module) => {
+        if (mounted) {
+          setPreviewModule(module);
+        }
+      })
+      .catch(() => {
+        if (mounted) {
+          setPreviewModule(null);
+        }
+      });
+    return () => {
+      mounted = false;
+    };
+  }, [clientContext]);
+  if (!clientContext || typeof window === "undefined" || !previewModule) {
+    return (
+      <span
+        style={customerMeshAvatarFallbackStyle}
+        data-business-customer-avatar-fallback="no-client-context"
+      />
+    );
+  }
+  const { CharacterPreview, makePreviewSlot } = previewModule;
+  return (
+    <CharacterPreview
+      previewSlot={makePreviewSlot(
+        "appearencePreview",
+        `business-customer-${ticketId}-${avatar.seed}`
+      )}
+      meshVersionKey={avatar.meshVersionKey}
+      disableLoadingBlur={true}
+      appearanceOverride={avatar.appearance}
+      wearableOverrides={avatar.wearableOverrides}
+      controlTarget={controlTarget}
+      cameraPos={cameraPos}
+      cameraFOV={24}
+      controls={false}
+      animate={false}
+      extraClassName="harthmere-business-customer-mesh-avatar"
+      canShowWearableHint={false}
+    />
+  );
+};
+
 function patienceColorV1(ratio: number): string {
   if (ratio > 0.5) return "linear-gradient(90deg, #56c7ff, #92ffd7)";
   if (ratio > 0.25) return "linear-gradient(90deg, #ffd23f, #ff9f2f)";
@@ -1412,7 +1604,9 @@ const CustomerOverviewPane: React.FunctionComponent<{
       />
       <BikkieGraphicsStrip graphics={miniGame.bikkieGraphics} />
       <section style={howToCardStyle}>
-        <h3 style={sectionTitleStyle}>{miniGame.definition.mechanicSpec.gameTitle}</h3>
+        <h3 style={sectionTitleStyle}>
+          {miniGame.definition.mechanicSpec.gameTitle}
+        </h3>
         <p style={{ ...mutedTextStyle, marginBottom: 12 }}>
           {miniGame.definition.customerGoal}
         </p>
@@ -1444,6 +1638,7 @@ const ContractBoardPane: React.FunctionComponent<{
   adapter: HarthmereBusinessInterfaceAdapterV1;
   businessId: string;
 }> = ({ adapter, businessId }) => {
+  const backendPending = useBusinessBackendPendingV1();
   const board = useMeasuredBusinessMemoV1(
     "contract-board-derive",
     () => adapter.getContractBoard(businessId),
@@ -1459,6 +1654,9 @@ const ContractBoardPane: React.FunctionComponent<{
           <button
             className="biomes-ui-tab"
             type="button"
+            data-business-backend-action="true"
+            disabled={backendPending}
+            style={backendActionStyleV1(undefined, backendPending)}
             onClick={() =>
               void adapter.acceptContract(businessId, contract.contractId)
             }
@@ -1474,6 +1672,9 @@ const ContractBoardPane: React.FunctionComponent<{
           <button
             className="biomes-ui-tab"
             type="button"
+            data-business-backend-action="true"
+            disabled={backendPending}
+            style={backendActionStyleV1(undefined, backendPending)}
             onClick={() =>
               void adapter.fulfillContract(businessId, contract.contractId)
             }
@@ -1518,6 +1719,7 @@ const ShopfrontPane: React.FunctionComponent<{
   businessId: string;
   mode: HarthmereBusinessActorModeV1;
 }> = ({ adapter, businessId, mode }) => {
+  const backendPending = useBusinessBackendPendingV1();
   const shop = useMeasuredBusinessMemoV1(
     "shopfront-derive",
     () => adapter.getShopfront(businessId),
@@ -1533,6 +1735,47 @@ const ShopfrontPane: React.FunctionComponent<{
     ? Math.max(1, Math.trunc(rawCount))
     : 1;
   const buyCountLabel = parsedCount > 1 ? `Buy x${parsedCount}` : "Buy";
+  const storefrontGoods = shop.storefrontGoods ?? [];
+  const buildingMaterials = storefrontGoods.filter(
+    (good) => good.kind === "block"
+  );
+  const furnishings = storefrontGoods.filter(
+    (good) => good.kind === "interior"
+  );
+  const renderStorefrontGood = (
+    good: (typeof storefrontGoods)[number],
+    merchKind: ShopfrontMerchKindV1
+  ) => (
+    <button
+      key={good.itemId}
+      type="button"
+      data-business-backend-action="true"
+      data-testid={`biomes-business-storefront-good-${good.itemId}`}
+      aria-label={`Buy ${displayLabel(good.itemId)}${
+        parsedCount > 1 ? ` x${parsedCount}` : ""
+      }`}
+      disabled={backendPending}
+      style={backendActionStyleV1(
+        shopfrontGoodButtonStyle(merchKind),
+        backendPending
+      )}
+      onClick={() =>
+        void adapter.buyStorefrontGood(businessId, good.itemId, parsedCount)
+      }
+    >
+      <div style={shopItemHeaderStyle}>
+        <strong style={shopItemNameStyle}>{displayLabel(good.itemId)}</strong>
+        <span style={shopfrontKindBadgeStyle(merchKind)}>
+          {shopfrontKindLabelV1(merchKind)}
+        </span>
+      </div>
+      <div style={shopItemMetaStyle}>Unit price {good.priceGold} gold</div>
+      <span style={buyActionTextStyle}>
+        {buyCountLabel}
+        {parsedCount > 1 ? ` · ${good.priceGold * parsedCount} gold` : ""}
+      </span>
+    </button>
+  );
   return (
     <section style={cardStyle}>
       <h3 style={sectionTitleStyle}>
@@ -1558,6 +1801,12 @@ const ShopfrontPane: React.FunctionComponent<{
             <button
               className="biomes-ui-tab"
               type="button"
+              data-business-backend-action="true"
+              disabled={backendPending || !itemId}
+              style={backendActionStyleV1(
+                !itemId ? disabledButtonStyle : undefined,
+                backendPending
+              )}
               onClick={() =>
                 itemId &&
                 void adapter.depositInventory(businessId, itemId, parsedCount)
@@ -1568,6 +1817,12 @@ const ShopfrontPane: React.FunctionComponent<{
             <button
               className="biomes-ui-tab"
               type="button"
+              data-business-backend-action="true"
+              disabled={backendPending || !itemId}
+              style={backendActionStyleV1(
+                !itemId ? disabledButtonStyle : undefined,
+                backendPending
+              )}
               onClick={() =>
                 itemId &&
                 void adapter.withdrawInventory(businessId, itemId, parsedCount)
@@ -1594,6 +1849,12 @@ const ShopfrontPane: React.FunctionComponent<{
             <button
               className="biomes-ui-tab"
               type="button"
+              data-business-backend-action="true"
+              disabled={backendPending || !priceItemId}
+              style={backendActionStyleV1(
+                !priceItemId ? disabledButtonStyle : undefined,
+                backendPending
+              )}
               onClick={() =>
                 priceItemId &&
                 void adapter.setPrices(businessId, {
@@ -1619,106 +1880,153 @@ const ShopfrontPane: React.FunctionComponent<{
         </div>
       )}
       {mode === "customer" && shop.toolForSale ? (
-        <div
-          data-testid="biomes-business-tool-for-sale"
-          style={{
-            margin: "8px 0",
-            padding: 8,
-            border: "1px solid var(--biomes-warn-amber)",
-            borderRadius: 4,
-            background: "rgba(252,211,77,0.12)",
-          }}
+        <ShopfrontMerchSection
+          kind="tool"
+          title="Tools"
+          countLabel="1 tool"
+          dataTestId="biomes-business-tool-for-sale"
         >
-          <strong style={{ fontSize: 12 }}>Tool for sale</strong>
-          <div style={mutedTextStyle}>
-            {shop.toolForSale.toolName} · {shop.toolForSale.priceGold} gold
+          <div style={shopfrontToolListingStyle}>
+            <div style={shopItemHeaderStyle}>
+              <strong style={shopItemNameStyle}>
+                {shop.toolForSale.toolName}
+              </strong>
+              <span style={shopfrontKindBadgeStyle("tool")}>Tool</span>
+            </div>
+            <div style={shopItemMetaStyle}>
+              Unit price {shop.toolForSale.priceGold} gold
+            </div>
+            <button
+              className="biomes-ui-tab"
+              type="button"
+              aria-label={`Buy ${shop.toolForSale.toolName}`}
+              data-business-backend-action="true"
+              disabled={backendPending}
+              onClick={() =>
+                purchaseHarthmereBusinessToolV151(shop.businessType)
+              }
+              style={backendActionStyleV1(
+                { ...buyActionTextStyle, width: "100%" },
+                backendPending
+              )}
+            >
+              Buy {shop.toolForSale.toolName}
+            </button>
           </div>
-          <button
-            className="biomes-ui-tab"
-            type="button"
-            aria-label={`Buy ${shop.toolForSale.toolName}`}
-            onClick={() => purchaseHarthmereBusinessToolV151(shop.businessType)}
-            style={{ ...buyActionTextStyle, marginTop: 6, width: "100%" }}
-          >
-            Buy {shop.toolForSale.toolName}
-          </button>
+        </ShopfrontMerchSection>
+      ) : null}
+      {mode === "customer" && storefrontGoods.length ? (
+        <div
+          data-testid="biomes-business-storefront-goods"
+          style={shopfrontSectionStackStyle}
+        >
+          {buildingMaterials.length ? (
+            <ShopfrontMerchSection
+              kind="block"
+              title="Building Materials"
+              countLabel={`${buildingMaterials.length} materials`}
+            >
+              <div style={shopfrontGoodsGridStyle}>
+                {buildingMaterials.map((good) =>
+                  renderStorefrontGood(good, "block")
+                )}
+              </div>
+            </ShopfrontMerchSection>
+          ) : null}
+          {furnishings.length ? (
+            <ShopfrontMerchSection
+              kind="interior"
+              title="Furnishings"
+              countLabel={`${furnishings.length} furnishings`}
+            >
+              <div style={shopfrontGoodsGridStyle}>
+                {furnishings.map((good) =>
+                  renderStorefrontGood(good, "interior")
+                )}
+              </div>
+            </ShopfrontMerchSection>
+          ) : null}
         </div>
       ) : null}
-      {mode === "customer" && shop.storefrontGoods?.length ? (
-        <div data-testid="biomes-business-storefront-goods" style={{ margin: "8px 0" }}>
-          <strong style={{ fontSize: 12 }}>
-            Building materials &amp; furnishings
-          </strong>
-          <div style={shopfrontGoodsGridStyle}>
-            {shop.storefrontGoods.map((good) => (
-              <button
-                key={good.itemId}
-                type="button"
-                className="biomes-ui-slot"
-                aria-label={`Buy ${parsedCount} ${displayLabel(good.itemId)} for ${
-                  good.priceGold * parsedCount
-                } gold`}
-                style={shopfrontGoodButtonStyle}
-                onClick={() =>
-                  void adapter.buyStorefrontGood(
-                    businessId,
-                    good.itemId,
-                    parsedCount
-                  )
-                }
-              >
-                <div style={shopItemHeaderStyle}>
-                  <strong style={{ fontSize: 12 }}>{displayLabel(good.itemId)}</strong>
-                  <span style={shopItemKindBadgeStyle}>
-                    {good.kind === "block" ? "Block" : "Furnishing"}
-                  </span>
-                </div>
-                <div style={mutedTextStyle}>
-                  Unit price: {good.priceGold} gold
-                </div>
-                <span style={buyActionTextStyle}>
-                  {buyCountLabel}
-                  {parsedCount > 1 ? ` · ${good.priceGold * parsedCount} gold` : ""}
-                </span>
-              </button>
-            ))}
-          </div>
-        </div>
-      ) : null}
-      <InventoryGrid
-        inventory={shop.inventory}
-        emptyLabel={shop.emptyLabel}
-        actionLabel={mode === "customer" ? "Buy" : undefined}
-        purchaseCount={mode === "customer" ? parsedCount : undefined}
-        onActivate={
-          mode === "customer"
-            ? (item) =>
-                void adapter.purchaseShopItem(
-                  businessId,
-                  item.itemId,
-                  parsedCount
-                )
-            : undefined
-        }
-      />
+      {mode === "customer" ? (
+        <ShopfrontMerchSection
+          kind="stock"
+          title="Shop Stock"
+          countLabel={`${shop.inventory.length} stocked`}
+        >
+          <InventoryGrid
+            inventory={shop.inventory}
+            emptyLabel={shop.emptyLabel}
+            actionLabel="Buy"
+            itemKind="stock"
+            purchaseCount={parsedCount}
+            onActivate={(item) =>
+              !backendPending &&
+              void adapter.purchaseShopItem(
+                businessId,
+                item.itemId,
+                parsedCount
+              )
+            }
+          />
+        </ShopfrontMerchSection>
+      ) : (
+        <InventoryGrid
+          inventory={shop.inventory}
+          emptyLabel={shop.emptyLabel}
+        />
+      )}
     </section>
   );
 };
+
+const ShopfrontMerchSection: React.FunctionComponent<{
+  kind: ShopfrontMerchKindV1;
+  title: string;
+  countLabel?: string;
+  dataTestId?: string;
+  children: React.ReactNode;
+}> = ({ kind, title, countLabel, dataTestId, children }) => (
+  <div
+    data-testid={dataTestId ?? `biomes-business-storefront-section-${kind}`}
+    style={shopfrontSectionStyle(kind)}
+  >
+    <div style={shopfrontSectionHeaderStyle}>
+      <strong style={shopfrontSectionTitleStyle(kind)}>{title}</strong>
+      {countLabel ? (
+        <span style={shopfrontSectionCountStyle(kind)}>{countLabel}</span>
+      ) : null}
+    </div>
+    {children}
+  </div>
+);
 
 const InventoryGrid: React.FunctionComponent<{
   inventory: HarthmereBusinessVisibleInventoryItemV1[];
   emptyLabel: string;
   actionLabel?: string;
+  itemKind?: ShopfrontMerchKindV1;
   purchaseCount?: number;
   onActivate?: (item: HarthmereBusinessVisibleInventoryItemV1) => void;
-}> = ({ inventory, emptyLabel, actionLabel, purchaseCount = 1, onActivate }) => {
+}> = ({
+  inventory,
+  emptyLabel,
+  actionLabel,
+  itemKind = "stock",
+  purchaseCount = 1,
+  onActivate,
+}) => {
+  const backendPending = useBusinessBackendPendingV1();
   const inventoryRows = React.useMemo(() => chunk(inventory, 4), [inventory]);
   if (!inventory.length) return <p style={mutedTextStyle}>{emptyLabel}</p>;
   return (
     <RovingGrid
       ariaLabel="Business shopfront inventory"
       items={inventoryRows}
-      onActivate={(_row, _col, item) => onActivate?.(item)}
+      onActivate={(_row, _col, item) => {
+        if (actionLabel && backendPending) return;
+        onActivate?.(item);
+      }}
       renderCell={(item, _coords, cell) => {
         const itemLabel = displayLabel(item.itemId);
         return (
@@ -1729,22 +2037,40 @@ const InventoryGrid: React.FunctionComponent<{
             onKeyDown={cell.onKeyDown}
             onClick={cell.onClick}
             className="biomes-ui-slot"
-            style={{
-              width: 150,
-              minHeight: 96,
-              padding: 8,
-              flexDirection: "column",
-              ...(actionLabel ? shopActionSlotStyle : {}),
-            }}
-            aria-label={`${actionLabel ? `${actionLabel} ${purchaseCount} ` : ""}${itemLabel}`}
+            data-business-backend-action={actionLabel ? "true" : undefined}
+            disabled={Boolean(actionLabel && backendPending)}
+            style={backendActionStyleV1(
+              {
+                width: 150,
+                minHeight: actionLabel ? 112 : 96,
+                padding: 8,
+                flexDirection: "column",
+                ...(actionLabel ? shopfrontInventoryButtonStyle(itemKind) : {}),
+              },
+              Boolean(actionLabel && backendPending)
+            )}
+            aria-label={
+              actionLabel
+                ? `${actionLabel} ${itemLabel}${
+                    item.count > 1 ? ` x${item.count}` : ""
+                  }`
+                : itemLabel
+            }
           >
             <strong style={{ fontSize: 12 }}>{itemLabel}</strong>
+            {actionLabel ? (
+              <span style={shopfrontKindBadgeStyle(itemKind)}>
+                {shopfrontKindLabelV1(itemKind)}
+              </span>
+            ) : null}
             <span style={mutedTextStyle}>
               Stock x{item.count} · Unit price {item.priceGold} gold
             </span>
             {actionLabel && (
               <span style={buyActionTextStyle}>
-                {purchaseCount > 1 ? `${actionLabel} x${purchaseCount}` : actionLabel}
+                {purchaseCount > 1
+                  ? `${actionLabel} x${purchaseCount}`
+                  : actionLabel}
                 {purchaseCount > 1
                   ? ` · ${item.priceGold * purchaseCount} gold`
                   : ""}
@@ -1761,6 +2087,7 @@ const FinancePane: React.FunctionComponent<{
   adapter: HarthmereBusinessInterfaceAdapterV1;
   businessId: string;
 }> = ({ adapter, businessId }) => {
+  const backendPending = useBusinessBackendPendingV1();
   const panel = useMeasuredBusinessMemoV1(
     "finance-derive",
     () => adapter.getFinancePanel(businessId),
@@ -1803,6 +2130,9 @@ const FinancePane: React.FunctionComponent<{
           <button
             className="biomes-ui-tab"
             type="button"
+            data-business-backend-action="true"
+            disabled={backendPending}
+            style={backendActionStyleV1(undefined, backendPending)}
             onClick={() => void adapter.createBankAccount(businessId)}
           >
             Create Account
@@ -1810,6 +2140,9 @@ const FinancePane: React.FunctionComponent<{
           <button
             className="biomes-ui-tab"
             type="button"
+            data-business-backend-action="true"
+            disabled={backendPending}
+            style={backendActionStyleV1(undefined, backendPending)}
             onClick={() =>
               void adapter.transferPersonalToBusinessBank(
                 businessId,
@@ -1822,6 +2155,9 @@ const FinancePane: React.FunctionComponent<{
           <button
             className="biomes-ui-tab"
             type="button"
+            data-business-backend-action="true"
+            disabled={backendPending}
+            style={backendActionStyleV1(undefined, backendPending)}
             onClick={() =>
               void adapter.transferBusinessToPersonalBank(
                 businessId,
@@ -1841,6 +2177,7 @@ const StaffPane: React.FunctionComponent<{
   adapter: HarthmereBusinessInterfaceAdapterV1;
   businessId: string;
 }> = ({ adapter, businessId }) => {
+  const backendPending = useBusinessBackendPendingV1();
   const panel = useMeasuredBusinessMemoV1(
     "staff-derive",
     () => adapter.getStaffPanel(businessId),
@@ -1871,6 +2208,9 @@ const StaffPane: React.FunctionComponent<{
         <button
           className="biomes-ui-tab"
           type="button"
+          data-business-backend-action="true"
+          disabled={backendPending}
+          style={backendActionStyleV1(undefined, backendPending)}
           onClick={() =>
             void adapter.hireWorker(
               businessId,
@@ -1884,6 +2224,9 @@ const StaffPane: React.FunctionComponent<{
         <button
           className="biomes-ui-tab"
           type="button"
+          data-business-backend-action="true"
+          disabled={backendPending}
+          style={backendActionStyleV1(undefined, backendPending)}
           onClick={() => void adapter.payPayroll(businessId)}
         >
           Pay Payroll
@@ -1891,6 +2234,9 @@ const StaffPane: React.FunctionComponent<{
         <button
           className="biomes-ui-tab"
           type="button"
+          data-business-backend-action="true"
+          disabled={backendPending}
+          style={backendActionStyleV1(undefined, backendPending)}
           onClick={() => void adapter.refreshEmployeeCandidates(businessId, 3)}
         >
           Find Help
@@ -1936,6 +2282,12 @@ const StaffPane: React.FunctionComponent<{
         <button
           className="biomes-ui-tab"
           type="button"
+          data-business-backend-action="true"
+          disabled={backendPending || !targetActorId}
+          style={backendActionStyleV1(
+            !targetActorId ? disabledButtonStyle : undefined,
+            backendPending
+          )}
           onClick={() =>
             targetActorId &&
             void adapter.grantPermission(businessId, targetActorId, [
@@ -1967,6 +2319,9 @@ const StaffPane: React.FunctionComponent<{
               <button
                 className="biomes-ui-tab"
                 type="button"
+                data-business-backend-action="true"
+                disabled={backendPending}
+                style={backendActionStyleV1(undefined, backendPending)}
                 onClick={() =>
                   void adapter.assignWorker(
                     businessId,
@@ -1980,6 +2335,9 @@ const StaffPane: React.FunctionComponent<{
               <button
                 className="biomes-ui-tab"
                 type="button"
+                data-business-backend-action="true"
+                disabled={backendPending}
+                style={backendActionStyleV1(undefined, backendPending)}
                 onClick={() =>
                   void adapter.runEmployeeTask(
                     businessId,
@@ -1993,6 +2351,9 @@ const StaffPane: React.FunctionComponent<{
               <button
                 className="biomes-ui-tab"
                 type="button"
+                data-business-backend-action="true"
+                disabled={backendPending}
+                style={backendActionStyleV1(undefined, backendPending)}
                 onClick={() =>
                   void adapter.trainWorker(businessId, employee.employeeId)
                 }
@@ -2002,6 +2363,9 @@ const StaffPane: React.FunctionComponent<{
               <button
                 className="biomes-ui-tab"
                 type="button"
+                data-business-backend-action="true"
+                disabled={backendPending}
+                style={backendActionStyleV1(undefined, backendPending)}
                 onClick={() =>
                   void adapter.promoteWorker(
                     businessId,
@@ -2015,6 +2379,9 @@ const StaffPane: React.FunctionComponent<{
               <button
                 className="biomes-ui-tab"
                 type="button"
+                data-business-backend-action="true"
+                disabled={backendPending}
+                style={backendActionStyleV1(undefined, backendPending)}
                 onClick={() =>
                   void adapter.fireWorker(businessId, employee.employeeId)
                 }
@@ -2049,6 +2416,9 @@ const StaffPane: React.FunctionComponent<{
                 <button
                   className="biomes-ui-tab"
                   type="button"
+                  data-business-backend-action="true"
+                  disabled={backendPending}
+                  style={backendActionStyleV1(undefined, backendPending)}
                   onClick={() =>
                     void adapter.interviewEmployeeCandidate(
                       businessId,
@@ -2062,6 +2432,9 @@ const StaffPane: React.FunctionComponent<{
                 <button
                   className="biomes-ui-tab"
                   type="button"
+                  data-business-backend-action="true"
+                  disabled={backendPending}
+                  style={backendActionStyleV1(undefined, backendPending)}
                   onClick={() =>
                     void adapter.negotiateEmployeeCandidate(
                       businessId,
@@ -2075,6 +2448,9 @@ const StaffPane: React.FunctionComponent<{
                 <button
                   className="biomes-ui-tab"
                   type="button"
+                  data-business-backend-action="true"
+                  disabled={backendPending}
+                  style={backendActionStyleV1(undefined, backendPending)}
                   onClick={() =>
                     void adapter.hireEmployeeCandidate(
                       businessId,
@@ -2113,6 +2489,7 @@ const EmpirePane: React.FunctionComponent<{
   adapter: HarthmereBusinessInterfaceAdapterV1;
   businessId: string;
 }> = ({ adapter, businessId }) => {
+  const backendPending = useBusinessBackendPendingV1();
   const { panel, staff, shop } = useMeasuredBusinessMemoV1(
     "empire-derive",
     () => ({
@@ -2159,21 +2536,26 @@ const EmpirePane: React.FunctionComponent<{
           <button
             className="biomes-ui-tab"
             type="button"
-            disabled={!panel.openBranchEligible}
+            data-business-backend-action="true"
+            disabled={backendPending || !panel.openBranchEligible}
             onClick={() =>
               void adapter.openBranch(
                 businessId,
                 panel.outpostBuildings[0]?.outpostId
               )
             }
-            style={!panel.openBranchEligible ? disabledButtonStyle : undefined}
+            style={backendActionStyleV1(
+              !panel.openBranchEligible ? disabledButtonStyle : undefined,
+              backendPending
+            )}
           >
             Open Branch
           </button>
           <button
             className="biomes-ui-tab"
             type="button"
-            disabled={!firstBranch}
+            data-business-backend-action="true"
+            disabled={backendPending || !firstBranch}
             onClick={() =>
               firstBranch &&
               void adapter.assignAutomation(
@@ -2182,16 +2564,23 @@ const EmpirePane: React.FunctionComponent<{
                 firstBranch.branchId
               )
             }
-            style={!firstBranch ? disabledButtonStyle : undefined}
+            style={backendActionStyleV1(
+              !firstBranch ? disabledButtonStyle : undefined,
+              backendPending
+            )}
           >
             Assign Manager
           </button>
           <button
             className="biomes-ui-tab"
             type="button"
-            disabled={!panel.branches.length}
+            data-business-backend-action="true"
+            disabled={backendPending || !panel.branches.length}
             onClick={() => void adapter.settleEmpireDay(businessId, 1)}
-            style={!panel.branches.length ? disabledButtonStyle : undefined}
+            style={backendActionStyleV1(
+              !panel.branches.length ? disabledButtonStyle : undefined,
+              backendPending
+            )}
           >
             Collect Day
           </button>
@@ -2200,7 +2589,8 @@ const EmpirePane: React.FunctionComponent<{
           <button
             className="biomes-ui-tab"
             type="button"
-            disabled={!firstBranch || !firstEmployee}
+            data-business-backend-action="true"
+            disabled={backendPending || !firstBranch || !firstEmployee}
             onClick={() =>
               firstBranch &&
               firstEmployee &&
@@ -2210,16 +2600,18 @@ const EmpirePane: React.FunctionComponent<{
                 firstEmployee.employeeId
               )
             }
-            style={
-              !firstBranch || !firstEmployee ? disabledButtonStyle : undefined
-            }
+            style={backendActionStyleV1(
+              !firstBranch || !firstEmployee ? disabledButtonStyle : undefined,
+              backendPending
+            )}
           >
             Set Regional Manager
           </button>
           <button
             className="biomes-ui-tab"
             type="button"
-            disabled={!firstBranch || !staff.length}
+            data-business-backend-action="true"
+            disabled={backendPending || !firstBranch || !staff.length}
             onClick={() =>
               firstBranch &&
               void adapter.scheduleBranchStaff(
@@ -2230,21 +2622,26 @@ const EmpirePane: React.FunctionComponent<{
                   .map((employee) => employee.employeeId)
               )
             }
-            style={
-              !firstBranch || !staff.length ? disabledButtonStyle : undefined
-            }
+            style={backendActionStyleV1(
+              !firstBranch || !staff.length ? disabledButtonStyle : undefined,
+              backendPending
+            )}
           >
             Schedule Staff
           </button>
           <button
             className="biomes-ui-tab"
             type="button"
-            disabled={!firstBranch}
+            data-business-backend-action="true"
+            disabled={backendPending || !firstBranch}
             onClick={() =>
               firstBranch &&
               void adapter.closeBranch(businessId, firstBranch.branchId)
             }
-            style={!firstBranch ? disabledButtonStyle : undefined}
+            style={backendActionStyleV1(
+              !firstBranch ? disabledButtonStyle : undefined,
+              backendPending
+            )}
           >
             Close Branch
           </button>
@@ -2267,7 +2664,8 @@ const EmpirePane: React.FunctionComponent<{
           <button
             className="biomes-ui-tab"
             type="button"
-            disabled={!firstBranch || !routeItemId}
+            data-business-backend-action="true"
+            disabled={backendPending || !firstBranch || !routeItemId}
             onClick={() =>
               firstBranch &&
               routeItemId &&
@@ -2278,9 +2676,10 @@ const EmpirePane: React.FunctionComponent<{
                 Math.max(1, Number(routeCount) || 1)
               )
             }
-            style={
-              !firstBranch || !routeItemId ? disabledButtonStyle : undefined
-            }
+            style={backendActionStyleV1(
+              !firstBranch || !routeItemId ? disabledButtonStyle : undefined,
+              backendPending
+            )}
           >
             Route Stock
           </button>
@@ -2423,6 +2822,7 @@ const OperationsPane: React.FunctionComponent<{
   businessId: string;
   mode: HarthmereBusinessActorModeV1;
 }> = ({ adapter, businessId, mode }) => {
+  const backendPending = useBusinessBackendPendingV1();
   const screen = useMeasuredBusinessMemoV1(
     "operations-derive",
     () => adapter.getOperationScreen(businessId),
@@ -2439,11 +2839,15 @@ const OperationsPane: React.FunctionComponent<{
         <RovingGrid
           ariaLabel="Business operation actions"
           items={actionRows}
-          onActivate={(_row, _col, action) =>
+          onActivate={(_row, _col, action) => {
+            if (backendPending) return;
             mode === "owner"
               ? void adapter.runServiceAction(businessId, action.actionId)
-              : void adapter.requestCustomerService(businessId, action.actionId)
-          }
+              : void adapter.requestCustomerService(
+                  businessId,
+                  action.actionId
+                );
+          }}
           renderCell={(action, _coords, cell) => (
             <button
               ref={cell.ref}
@@ -2452,7 +2856,10 @@ const OperationsPane: React.FunctionComponent<{
               onKeyDown={cell.onKeyDown}
               onClick={cell.onClick}
               className="biomes-ui-tab"
-              style={serviceButtonStyle}
+              data-business-backend-action="true"
+              disabled={backendPending}
+              aria-disabled={backendPending}
+              style={backendActionStyleV1(serviceButtonStyle, backendPending)}
               aria-label={action.label}
             >
               <strong>{action.label}</strong>
@@ -2794,6 +3201,20 @@ const disabledButtonStyle: React.CSSProperties = {
   opacity: 0.55,
   cursor: "not-allowed",
 };
+const pendingBackendActionStyleV1: React.CSSProperties = {
+  opacity: 0.45,
+  filter: "grayscale(0.65)",
+  cursor: "wait",
+};
+
+function backendActionStyleV1(
+  base: React.CSSProperties | undefined,
+  pending: boolean
+): React.CSSProperties | undefined {
+  if (!pending) return base;
+  return { ...(base ?? {}), ...pendingBackendActionStyleV1 };
+}
+
 const startShiftButtonStyle: React.CSSProperties = {
   color: "#06111f",
   background: "linear-gradient(180deg, #fff477 0%, #ffd23f 48%, #ff9f2f 100%)",
@@ -2829,40 +3250,214 @@ const shopActionSlotStyle: React.CSSProperties = {
     "linear-gradient(180deg, rgba(24, 61, 58, 0.96), rgba(9, 23, 35, 0.98))",
   boxShadow: "0 0 18px rgba(55, 219, 164, 0.28)",
 };
+const shopfrontSectionStackStyle: React.CSSProperties = {
+  display: "grid",
+  gap: 10,
+  margin: "8px 0",
+};
 const shopfrontGoodsGridStyle: React.CSSProperties = {
   display: "grid",
   gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))",
   gap: 8,
   marginTop: 6,
-};
-const shopfrontGoodButtonStyle: React.CSSProperties = {
-  ...shopActionSlotStyle,
-  display: "flex",
-  minWidth: 0,
-  minHeight: 118,
-  padding: 8,
-  textAlign: "left",
-  flexDirection: "column",
-  justifyContent: "space-between",
   alignItems: "stretch",
+};
+const shopfrontMerchTonesV1: Record<
+  ShopfrontMerchKindV1,
+  {
+    label: string;
+    accent: string;
+    border: string;
+    glow: string;
+    surfaceTop: string;
+    surfaceBottom: string;
+    badgeBg: string;
+    badgeText: string;
+  }
+> = {
+  tool: {
+    label: "Tool",
+    accent: "#ffd166",
+    border: "rgba(255, 209, 102, 0.82)",
+    glow: "rgba(255, 188, 64, 0.28)",
+    surfaceTop: "rgba(87, 61, 20, 0.84)",
+    surfaceBottom: "rgba(20, 18, 30, 0.98)",
+    badgeBg: "rgba(255, 209, 102, 0.2)",
+    badgeText: "#ffe7a6",
+  },
+  block: {
+    label: "Building Material",
+    accent: "#58c7ff",
+    border: "rgba(88, 199, 255, 0.76)",
+    glow: "rgba(88, 199, 255, 0.24)",
+    surfaceTop: "rgba(24, 65, 88, 0.8)",
+    surfaceBottom: "rgba(9, 20, 36, 0.98)",
+    badgeBg: "rgba(88, 199, 255, 0.18)",
+    badgeText: "#b9ecff",
+  },
+  interior: {
+    label: "Furnishing",
+    accent: "#f78ac6",
+    border: "rgba(247, 138, 198, 0.72)",
+    glow: "rgba(247, 138, 198, 0.24)",
+    surfaceTop: "rgba(78, 37, 63, 0.82)",
+    surfaceBottom: "rgba(22, 16, 35, 0.98)",
+    badgeBg: "rgba(247, 138, 198, 0.18)",
+    badgeText: "#ffd0e8",
+  },
+  stock: {
+    label: "Shop Stock",
+    accent: "#7cf2ae",
+    border: "rgba(124, 242, 174, 0.76)",
+    glow: "rgba(83, 222, 146, 0.24)",
+    surfaceTop: "rgba(25, 73, 52, 0.82)",
+    surfaceBottom: "rgba(9, 24, 31, 0.98)",
+    badgeBg: "rgba(124, 242, 174, 0.18)",
+    badgeText: "#c8ffdf",
+  },
+};
+function shopfrontKindLabelV1(kind: ShopfrontMerchKindV1): string {
+  return shopfrontMerchTonesV1[kind].label;
+}
+function shopfrontSectionStyle(
+  kind: ShopfrontMerchKindV1
+): React.CSSProperties {
+  const tone = shopfrontMerchTonesV1[kind];
+  return {
+    margin: "8px 0",
+    padding: 10,
+    border: `1px solid ${tone.border}`,
+    borderRadius: 4,
+    background: `linear-gradient(180deg, ${tone.surfaceTop}, rgba(9, 14, 26, 0.94))`,
+    boxShadow: `inset 4px 0 0 ${tone.accent}, 0 0 18px ${tone.glow}`,
+  };
+}
+const shopfrontSectionHeaderStyle: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  gap: 10,
+  minWidth: 0,
+};
+function shopfrontSectionTitleStyle(
+  kind: ShopfrontMerchKindV1
+): React.CSSProperties {
+  const tone = shopfrontMerchTonesV1[kind];
+  return {
+    minWidth: 0,
+    color: tone.badgeText,
+    fontSize: 12,
+    lineHeight: 1.2,
+    textTransform: "uppercase",
+    letterSpacing: "0.08em",
+  };
+}
+function shopfrontSectionCountStyle(
+  kind: ShopfrontMerchKindV1
+): React.CSSProperties {
+  const tone = shopfrontMerchTonesV1[kind];
+  return {
+    flex: "0 0 auto",
+    padding: "2px 6px",
+    border: `1px solid ${tone.border}`,
+    borderRadius: 4,
+    color: tone.badgeText,
+    background: tone.badgeBg,
+    fontSize: 9,
+    fontWeight: 800,
+    textTransform: "uppercase",
+    letterSpacing: "0.06em",
+    whiteSpace: "nowrap",
+  };
+}
+function shopfrontItemSurfaceStyle(
+  kind: ShopfrontMerchKindV1
+): React.CSSProperties {
+  const tone = shopfrontMerchTonesV1[kind];
+  return {
+    ...shopActionSlotStyle,
+    display: "flex",
+    boxSizing: "border-box",
+    border: `1px solid ${tone.border}`,
+    borderRadius: 4,
+    background: `linear-gradient(180deg, ${tone.surfaceTop}, ${tone.surfaceBottom})`,
+    boxShadow: `inset 3px 0 0 ${tone.accent}, 0 0 18px ${tone.glow}`,
+    textAlign: "left",
+    flexDirection: "column",
+    justifyContent: "space-between",
+    alignItems: "stretch",
+    gap: 8,
+    color: "var(--biomes-fg)",
+    cursor: "pointer",
+    clipPath:
+      "polygon(8px 0, calc(100% - 8px) 0, 100% 8px, 100% calc(100% - 8px), calc(100% - 8px) 100%, 8px 100%, 0 calc(100% - 8px), 0 8px)",
+    whiteSpace: "normal",
+    textTransform: "none",
+    letterSpacing: 0,
+  };
+}
+function shopfrontGoodButtonStyle(
+  kind: ShopfrontMerchKindV1
+): React.CSSProperties {
+  return {
+    ...shopfrontItemSurfaceStyle(kind),
+    width: "100%",
+    minWidth: 170,
+    minHeight: 126,
+    padding: 10,
+  };
+}
+function shopfrontInventoryButtonStyle(
+  kind: ShopfrontMerchKindV1
+): React.CSSProperties {
+  return {
+    ...shopfrontItemSurfaceStyle(kind),
+    width: 150,
+    minHeight: 112,
+    padding: 8,
+  };
+}
+const shopfrontToolListingStyle: React.CSSProperties = {
+  ...shopfrontItemSurfaceStyle("tool"),
+  minHeight: 0,
+  marginTop: 6,
+  padding: 10,
+  cursor: "default",
 };
 const shopItemHeaderStyle: React.CSSProperties = {
   display: "flex",
   gap: 6,
   alignItems: "flex-start",
   justifyContent: "space-between",
+  minWidth: 0,
 };
-const shopItemKindBadgeStyle: React.CSSProperties = {
-  flex: "0 0 auto",
-  padding: "2px 5px",
-  border: "1px solid rgba(154, 199, 230, 0.36)",
-  borderRadius: 4,
-  color: "var(--biomes-fg-muted)",
-  fontSize: 9,
-  fontWeight: 800,
-  letterSpacing: 0,
-  textTransform: "uppercase",
+const shopItemNameStyle: React.CSSProperties = {
+  minWidth: 0,
+  fontSize: 12,
+  lineHeight: 1.2,
+  overflowWrap: "anywhere",
 };
+const shopItemMetaStyle: React.CSSProperties = {
+  ...mutedTextStyle,
+  lineHeight: 1.35,
+};
+function shopfrontKindBadgeStyle(
+  kind: ShopfrontMerchKindV1
+): React.CSSProperties {
+  const tone = shopfrontMerchTonesV1[kind];
+  return {
+    flex: "0 0 auto",
+    padding: "2px 5px",
+    border: `1px solid ${tone.border}`,
+    borderRadius: 4,
+    color: tone.badgeText,
+    background: tone.badgeBg,
+    fontSize: 9,
+    fontWeight: 800,
+    letterSpacing: 0,
+    textTransform: "uppercase",
+  };
+}
 const miniGameArenaStyle: React.CSSProperties = {
   ...highlightCardStyle,
   gridTemplateColumns: "1fr",
@@ -3104,14 +3699,16 @@ const toastSuccessStyle: React.CSSProperties = {
   ...toastBaseStyle,
   color: "#06211a",
   border: "1px solid rgba(146, 255, 215, 0.7)",
-  background: "linear-gradient(180deg, rgba(146, 255, 215, 0.96), rgba(55, 219, 164, 0.92))",
+  background:
+    "linear-gradient(180deg, rgba(146, 255, 215, 0.96), rgba(55, 219, 164, 0.92))",
   boxShadow: "0 0 18px rgba(55, 219, 164, 0.4)",
 };
 const toastErrorStyle: React.CSSProperties = {
   ...toastBaseStyle,
   color: "#2a0d0d",
   border: "1px solid rgba(255, 143, 107, 0.7)",
-  background: "linear-gradient(180deg, rgba(255, 178, 150, 0.96), rgba(255, 107, 107, 0.9))",
+  background:
+    "linear-gradient(180deg, rgba(255, 178, 150, 0.96), rgba(255, 107, 107, 0.9))",
   boxShadow: "0 0 18px rgba(255, 107, 107, 0.36)",
 };
 const toastDotStyle: React.CSSProperties = {
@@ -3192,8 +3789,8 @@ function patienceBadgeStyle(ratio: number): React.CSSProperties {
       : undefined,
   };
 }
-// Fixed-size portrait frame that holds the (scaled-down) voxel face and keeps
-// the patience-reactive glow/animation the placeholder avatar used to provide.
+// Fixed-size portrait frame that holds the generated player-mesh avatar and
+// keeps the patience-reactive glow/animation the placeholder used to provide.
 function customerPortraitFrameStyle(ratio: number): React.CSSProperties {
   const urgent = ratio <= 0.25;
   return {
@@ -3214,13 +3811,12 @@ function customerPortraitFrameStyle(ratio: number): React.CSSProperties {
       : "harthmere-business-pulse-v1 1.6s ease-in-out infinite",
   };
 }
-// The voxel face preview renders at ~94-124px including its own padding; scale
-// it down so it reads as a compact portrait inside the 60px frame.
-const customerPortraitScaleStyle: React.CSSProperties = {
-  transform: "scale(0.5)",
-  transformOrigin: "center",
-  display: "flex",
-  flex: "0 0 auto",
+const customerMeshAvatarFallbackStyle: React.CSSProperties = {
+  width: "100%",
+  height: "100%",
+  display: "block",
+  background:
+    "linear-gradient(180deg, rgba(86,199,255,0.18), rgba(5,12,26,0.55))",
 };
 function customerAvatarStateStyle(ratio: number): React.CSSProperties {
   const urgent = ratio <= 0.25;

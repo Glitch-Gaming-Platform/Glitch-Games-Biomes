@@ -2236,6 +2236,9 @@ function localDevVoxelFaceSpec(
   const robot =
     offset === 2 ||
     label?.toLowerCase().includes("bolt") ||
+    /\b(robots?|bots?|sentinels?|sententials?|sentientals?)\b/i.test(
+      label ?? ""
+    ) ||
     faceConfig?.skinTone === "metal";
 
   const faceShape = faceConfig?.faceShape ?? pickLocalDev(HARTHMERE_FACE_SHAPES_FALLBACK, seed, 4);
@@ -3348,7 +3351,11 @@ function addLocalDevNpcUniqueEnhancementDetails(
   const labelTextV137 = (label ?? "").toLowerCase();
   const headYV137 = body.legLength + body.torsoHeight + body.stanceYOffset + 0.22;
 
-  if (/mucked robot|buddy|service robot|robot/.test(labelTextV137)) {
+  if (
+    /\b(mucked robot|buddy|service robot|robots?|bots?|sentinels?|sententials?|sentientals?)\b/.test(
+      labelTextV137
+    )
+  ) {
     const glow = /mucked/.test(labelTextV137) ? 0xb86bff : 0x66ddff;
     root.add(
       localDevVoxelBox("harthmere-grove-robot-antenna-v137", [0.035, 0.24, 0.035], [side * 0.11, headYV137 + 0.16, -0.01], metal),
@@ -3684,6 +3691,9 @@ const SNAPSHOT_GROVE_NPC_ASSET_KEYS_V104: Partial<Record<string, string>> = {
   mucked_robot: "npcs/mucked_robot",
 };
 
+const SNAPSHOT_GROVE_ROBOT_LIKE_LABEL_REGEX_V104 =
+  /\b(robots?|bots?|sentinels?|sententials?|sentientals?)\b/i;
+
 function snapshotGroveNpcAssetKeyForEntityV104(
   id: BiomesId,
   label?: string,
@@ -3693,7 +3703,15 @@ function snapshotGroveNpcAssetKeyForEntityV104(
   const labelMatchedId = SNAPSHOT_GROVE_NPCS_V75.find(
     (npc) => npc.displayName.toLowerCase() === normalizedLabel,
   )?.id;
-  return SNAPSHOT_GROVE_NPC_ASSET_KEYS_V104[explicitId ?? labelMatchedId ?? ""];
+  const matchedAsset =
+    SNAPSHOT_GROVE_NPC_ASSET_KEYS_V104[explicitId ?? labelMatchedId ?? ""];
+  if (matchedAsset) {
+    return matchedAsset;
+  }
+  if (SNAPSHOT_GROVE_ROBOT_LIKE_LABEL_REGEX_V104.test(normalizedLabel)) {
+    return SNAPSHOT_GROVE_NPC_ASSET_KEYS_V104.buddy;
+  }
+  return undefined;
 }
 
 function snapshotGroveGeneratedVoxelNpcIdForEntityV195(
@@ -3871,6 +3889,20 @@ async function makeNpcMesh(deps: ClientResourceDeps, id: BiomesId) {
       muckCreatureAssetMesh,
       "muck-creature-asset-empty"
     );
+  }
+
+  if (SNAPSHOT_GROVE_ROBOT_LIKE_LABEL_REGEX_V104.test(label ?? "")) {
+    const snapshotGroveRobotAssetMesh =
+      await makeSnapshotGroveNpcAssetMeshV104(deps, id);
+    if (snapshotGroveRobotAssetMesh) {
+      return ensureVisibleNpcGltfV196(
+        deps,
+        id,
+        npcType,
+        snapshotGroveRobotAssetMesh,
+        "snapshot-grove-robot-asset-empty"
+      );
+    }
   }
 
   if (npcType.isPlayerLikeAppearance) {

@@ -189,6 +189,10 @@ describe("Harthmere live entity production seeds", () => {
     );
     assert.ok(robotChange && robotChange.kind !== "delete");
     assert.equal(robotChange.tick, 77);
+    assert.equal(
+      robotChange.entity.npc_metadata?.type_id,
+      BikkieIds.biomesRobot
+    );
     assert.equal(robotChange.entity.robot_component?.internal_battery_charge, 100);
     assert.equal(robotChange.entity.entity_description?.text.includes("_"), false);
 

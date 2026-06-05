@@ -1,5 +1,9 @@
 import assert from "assert";
+import * as React from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { HarthmereBusinessInterfacePanel } from "../HarthmereBusinessInterfacePanel";
 import {
+  createHarthmereBusinessInterfaceAdapterV1,
   getHarthmereBusinessShopfrontV1,
   normalizeHarthmereBusinessEconomySnapshotV1,
 } from "../businessInterfaceLiveAdapter";
@@ -58,5 +62,57 @@ describe("business shopfront surfaces BOTH blocks and furnishings", () => {
       4,
       `expected 4 furnishings, got ${interior.length}: ${JSON.stringify(goods)}`
     );
+  });
+
+  it("renders storefront goods as shop cards instead of compact inventory slots", () => {
+    const snapshot = normalizeHarthmereBusinessEconomySnapshotV1({
+      actorId: "customer_a",
+      businesses: {
+        biz_refinery: openBusiness(
+          "biz_refinery",
+          "exotic_matter_refinery"
+        ),
+      },
+    } as any);
+    const adapter = createHarthmereBusinessInterfaceAdapterV1({
+      state: snapshot,
+      hydrated: true,
+      refresh: async () => snapshot,
+      submit: async () => ({ ok: true, economyState: snapshot }),
+    });
+
+    const html = renderToStaticMarkup(
+      React.createElement(HarthmereBusinessInterfacePanel, {
+        adapter,
+        nearbyBusinessId: "biz_refinery",
+        compact: true,
+        initialTab: "shopfront",
+      })
+    );
+
+    const storefrontCards =
+      html.match(/data-testid="biomes-business-storefront-good-/g) ?? [];
+    assert.ok(storefrontCards.length >= 9);
+    assert.ok(
+      html.includes('data-testid="biomes-business-storefront-section-block"')
+    );
+    assert.ok(
+      html.includes(
+        'data-testid="biomes-business-storefront-section-interior"'
+      )
+    );
+    assert.ok(
+      html.includes('data-testid="biomes-business-storefront-section-stock"')
+    );
+    assert.ok(html.includes('data-testid="biomes-business-tool-for-sale"'));
+    assert.ok(html.includes("Building Materials"));
+    assert.ok(html.includes("Furnishings"));
+    assert.ok(html.includes("Shop Stock"));
+    assert.equal(
+      html.includes('class="biomes-ui-slot"'),
+      false,
+      "storefront goods should not inherit hotbar/inventory slot dimensions"
+    );
+    assert.ok(html.includes("Buy Containment Tongs"));
   });
 });

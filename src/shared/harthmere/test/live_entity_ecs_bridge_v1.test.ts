@@ -42,6 +42,18 @@ describe("live entity ECS bridge v1", () => {
         health: { hp: 50, maxHp: 50 },
         label: { text: "Billy's Toolbag" },
       },
+      "b:1007": {
+        npc_metadata: { type_id: 45, spawn_position: [0, 0, 0] },
+        position: { v: [17, 60, 21] },
+        health: { hp: 90, maxHp: 140 },
+        label: { text: "Mucked Restoro Bot" },
+      },
+      "b:1008": {
+        npc_metadata: { type_id: 46, spawn_position: [0, 0, 0] },
+        position: { v: [18, 60, 21] },
+        health: { hp: 90, maxHp: 140 },
+        label: { text: "Archive Sentential" },
+      },
     });
 
     assert.equal(snapshots["b:1001"].entityKind, "human");
@@ -67,6 +79,11 @@ describe("live entity ECS bridge v1", () => {
     assert.equal(snapshots["b:1006"].combatProtection, "immobile_object");
     assert.equal(snapshots["b:1006"].isAttackable, false);
     assert.equal(snapshots["b:1006"].aiEnabled, false);
+
+    assert.equal(snapshots["b:1007"].entityKind, "robot");
+    assert.equal(snapshots["b:1007"].isHostile, false);
+    assert.equal(snapshots["b:1008"].entityKind, "robot");
+    assert.equal(snapshots["b:1008"].isHostile, false);
   });
 
   it("keeps protected species and friendly humans as noncombatants while livestock and owned pets stay attackable", () => {

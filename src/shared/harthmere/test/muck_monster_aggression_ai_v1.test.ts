@@ -20,6 +20,8 @@ describe("muck_monster_aggression_ai_v1", () => {
     assert.ok(readiness.productionReadiness.includes("server_authoritative_validation"));
     assert.equal(isMuckMonsterNameV1("Muck-Scarred Helix"), true);
     assert.equal(isMuckMonsterNameV1("West Breach Shield Robot"), false);
+    assert.equal(isMuckMonsterNameV1("Mucked Restoro Bot"), false);
+    assert.equal(isMuckMonsterNameV1("Archive Sentential"), false);
   });
 
   it("becomes aggressive when a player enters close Muck territory", () => {

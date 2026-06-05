@@ -345,6 +345,14 @@ export const GROVE_ECONOMY_STARTER_LANDMARKS_V1: SnapshotGroveLandmarkV75[] = [
     area: "old_grove_road",
     visibleOnWorldMap: true,
   },
+  {
+    id: "econ_grove_billy_toolbag",
+    label: "Billy's Toolbag",
+    position: [501, FEET_Y + 1, -139],
+    kind: "interactable",
+    area: "old_grove_road",
+    visibleOnWorldMap: false,
+  },
   // HARTHMERE_WORLD_OBJECT_PROP_COVERAGE_V197:
   // Authored prop coverage for world-object types that had no candidate landmark
   // (door, gate, well, chest), so the F interaction prompt appears for them like

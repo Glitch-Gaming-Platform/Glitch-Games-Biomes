@@ -87,13 +87,31 @@ describe("live-entity helper dialog context", () => {
       }),
       false
     );
-    assert.ok(
+    // Billy Rhodes is a living NPC (not a non-living object), but he already
+    // owns authored quest content — every seeded Grove/Harthmere NPC carries an
+    // ECS quest_giver component. A quest giver must NOT also hand out a generic
+    // helper quest, regardless of where he wanders.
+    assert.equal(
       getLiveEntityHelperQuestForEntityV1(
         contextForLiveEntityHelperQuestV1({
           entityId: 9002 as BiomesId,
           label: "Billy Rhodes",
           position: [100, 54, 100],
           defaultDialog: "I'm Billy. I run parcels and messages.",
+          questGiver: { concurrent_quests: 1 },
+        })
+      ),
+      undefined
+    );
+    // The SAME living entity without authored quest content (no quest_giver) is
+    // an anonymous wilds local and stays eligible for a helper quest.
+    assert.ok(
+      getLiveEntityHelperQuestForEntityV1(
+        contextForLiveEntityHelperQuestV1({
+          entityId: 9002 as BiomesId,
+          label: "Wandering Stranger",
+          position: [100, 54, 100],
+          defaultDialog: "I'm just passing through.",
         })
       )
     );

@@ -3974,7 +3974,13 @@ function harthmereGroveUniqueNpcKeyV137(name: string, roleHint?: string) {
   if (/^doc\b|doctor|field medic|muck researcher/.test(text))
     return "doc" as const;
   if (/mucked robot/.test(text)) return "mucked_robot" as const;
-  if (/^buddy\b|service robot/.test(text)) return "buddy" as const;
+  if (
+    /^buddy\b|service robot|\b(robots?|bots?|sentinels?|sententials?|sentientals?)\b/.test(
+      text
+    )
+  ) {
+    return "buddy" as const;
+  }
   if (/rosalyn/.test(text)) return "rosalyn" as const;
   if (/nia.*guild clerk|guild clerk.*nia/.test(text))
     return "nia_guild_clerk" as const;

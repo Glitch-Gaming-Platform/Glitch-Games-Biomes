@@ -50,13 +50,16 @@ export function buildHarthmereLiveEntityProductionSeedChangesV1(input: {
   const monsterTypeId = isNpcTypeId(BikkieIds.dMucker)
     ? BikkieIds.dMucker
     : LOCAL_DEV_HUMAN_NPC_TYPE_ID;
+  const robotTypeId = isNpcTypeId(BikkieIds.biomesRobot)
+    ? BikkieIds.biomesRobot
+    : LOCAL_DEV_HUMAN_NPC_TYPE_ID;
 
   for (const seed of HARTHMERE_LIVE_ENTITY_ROBOT_SENTINEL_SEEDS_V1) {
     const entity = {
       ...npcEntity(
         {
           id: seed.entityId,
-          typeId: LOCAL_DEV_HUMAN_NPC_TYPE_ID,
+          typeId: robotTypeId,
           position: seed.position,
           orientation: seed.orientation,
           velocity: [0, 0, 0],

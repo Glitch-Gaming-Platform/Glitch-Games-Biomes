@@ -3,6 +3,7 @@ import { AnonUpsell } from "@/client/components/AnonUpsell";
 import { BuffsHUD } from "@/client/components/BuffsHUD";
 import { CanvasEffects } from "@/client/components/CanvasEffects";
 import { useBiomesUIReplaceLegacyFlag } from "@/client/components/biomes_ui/BiomesUIFlags";
+import { useBiomesHUDVisibilitySettingV1 } from "@/client/components/biomes_ui/hudVisibilitySettings";
 import { BreathBarHUD } from "@/client/components/BreathBarHUD";
 import { ChatHUD } from "@/client/components/ChatHUD";
 import { useClientContext } from "@/client/components/contexts/ClientContextReactContext";
@@ -232,6 +233,7 @@ export const BiomesChrome: React.FunctionComponent<{}> = React.memo(({}) => {
     "settings.hud.keepOverlaysVisible",
     null
   );
+  const [showHotbar] = useBiomesHUDVisibilitySettingV1("hotbar");
   const replaceLegacyBiomesUI = useBiomesUIReplaceLegacyFlag();
 
   return (
@@ -295,7 +297,7 @@ export const BiomesChrome: React.FunctionComponent<{}> = React.memo(({}) => {
 
           <QuestSideEffects />
 
-          {!replaceLegacyBiomesUI && <HotBar />}
+          {!replaceLegacyBiomesUI && showHotbar && <HotBar />}
           {!replaceLegacyBiomesUI && <ShortcutsHUD />}
           {/* Underwater breath meter. In legacy mode the HotBar already carries
               its own breath bar; under BiomesUI that HotBar is hidden, so render

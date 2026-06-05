@@ -4,6 +4,7 @@
 import assert from "assert";
 import {
   HARTHMERE_BUSINESS_OUTPOSTS_V1,
+  harthmereBusinessScaledJobPayV1,
   harthmereBusinessOutpostJobsBoardPositionV1,
 } from "../business_customer_simulator_v1";
 import {
@@ -21,7 +22,10 @@ function boardIdForOutpost(outpostId: string) {
   return `${outpostId}_jobs_board`;
 }
 
-function ctx(boardId: string, overrides: Partial<HarthmereJobsBoardMutationContextV1> = {}): HarthmereJobsBoardMutationContextV1 {
+function ctx(
+  boardId: string,
+  overrides: Partial<HarthmereJobsBoardMutationContextV1> = {}
+): HarthmereJobsBoardMutationContextV1 {
   return {
     actorGold: 1000,
     actorInventoryItems: {},
@@ -35,7 +39,7 @@ function mutate(
   boardId: string,
   operation: string,
   payload: Record<string, unknown> = {},
-  actorId = "player_a",
+  actorId = "player_a"
 ) {
   return reduceHarthmereJobsBoardMutationV1(
     state,
@@ -47,7 +51,7 @@ function mutate(
       boardId,
       ...payload,
     } as any,
-    ctx(boardId),
+    ctx(boardId)
   );
 }
 
@@ -59,20 +63,39 @@ describe("mmo_jobs_board_authority_v1 — business outpost starter jobs", () => 
       assert.ok(board, `${outpost.outpostId} should have a jobs board`);
       assert.equal(board.townId, outpost.townId);
       assert.notEqual(board.townId, "harthmere_grove");
-      const boardPosition = harthmereBusinessOutpostJobsBoardPositionV1(outpost);
+      const boardPosition =
+        harthmereBusinessOutpostJobsBoardPositionV1(outpost);
       assert.equal(board.location.x, boardPosition.x);
       assert.equal(board.location.z, boardPosition.z);
       assert.equal(board.location.district, outpost.district);
       assert.equal(board.acceptedKinds.length, 1);
-      assert.equal(HARTHMERE_JOBS_BOARD_LOCATIONS_V1[board.boardId].markerId, `${outpost.outpostId}_job_board`);
-      assert.equal(isActorAtHarthmereJobsBoardV1(state, { actorPosition: { ...boardPosition, y: outpost.position.y } }, board.boardId), true);
+      assert.equal(
+        HARTHMERE_JOBS_BOARD_LOCATIONS_V1[board.boardId].markerId,
+        `${outpost.outpostId}_job_board`
+      );
+      assert.equal(
+        isActorAtHarthmereJobsBoardV1(
+          state,
+          { actorPosition: { ...boardPosition, y: outpost.position.y } },
+          board.boardId
+        ),
+        true
+      );
     }
   });
 
   it("auto-seeds an acceptable starter job at the business before the player owns one", () => {
-    const outpost = HARTHMERE_BUSINESS_OUTPOSTS_V1.find((entry) => entry.businessType === "food_service_restaurant")!;
+    const outpost = HARTHMERE_BUSINESS_OUTPOSTS_V1.find(
+      (entry) => entry.businessType === "food_service_restaurant"
+    )!;
     const boardId = boardIdForOutpost(outpost.outpostId);
-    const seeded = mutate(defaultHarthmereJobsBoardStateV1(NOW), boardId, "economy_auto_seed_jobs", {}, "economy_seeder");
+    const seeded = mutate(
+      defaultHarthmereJobsBoardStateV1(NOW),
+      boardId,
+      "economy_auto_seed_jobs",
+      {},
+      "economy_seeder"
+    );
     assert.deepEqual(seeded.warnings, []);
     const job = Object.values(seeded.jobsBoard.postings)[0];
     assert.equal(job.boardId, boardId);
@@ -81,10 +104,19 @@ describe("mmo_jobs_board_authority_v1 — business outpost starter jobs", () => 
     assert.equal(job.issuerBusinessType, outpost.businessType);
     assert.equal(job.title, `${outpost.job.title} at ${outpost.displayName}`);
     assert.equal(job.targetId, outpost.outpostId);
-    assert.equal(job.rewardGold, outpost.job.rewardGold);
+    assert.equal(
+      job.rewardGold,
+      harthmereBusinessScaledJobPayV1(outpost.job.rewardGold)
+    );
     assert.equal(job.autoPosted, true);
 
-    const accepted = mutate(seeded.jobsBoard, boardId, "accept_job", { jobId: job.jobId }, "job_seeker");
+    const accepted = mutate(
+      seeded.jobsBoard,
+      boardId,
+      "accept_job",
+      { jobId: job.jobId },
+      "job_seeker"
+    );
     assert.deepEqual(accepted.warnings, []);
     assert.equal(accepted.jobsBoard.postings[job.jobId].status, "active");
     const todo = Object.values(accepted.jobsBoard.todos)[0];

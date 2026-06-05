@@ -21,6 +21,7 @@ export const BIOMES_UI_THEME_CSS = `
   --biomes-fg-muted: rgba(232, 244, 255, 0.65);
   --biomes-fg-dim: rgba(232, 244, 255, 0.4);
   --biomes-radius: 6px;
+  --biomes-right-hud-width: 166px;
   --biomes-clip: polygon(
     12px 0,
     100% 0,
@@ -1214,11 +1215,13 @@ button.biomes-ui-card:disabled {
   top: 50%;
   transform: translateY(-50%);
   z-index: 10020;
+  width: min(var(--biomes-right-hud-width), calc(100vw - 36px));
   display: flex;
   flex-direction: column;
   align-items: stretch;
   gap: 7px;
   padding: 9px 10px;
+  box-sizing: border-box;
   border: 1px solid rgba(105, 231, 255, 0.35);
   border-radius: 8px;
   background:
@@ -1281,7 +1284,7 @@ button.biomes-ui-card:disabled {
   right: 18px;
   bottom: 112px;
   z-index: 1092;
-  width: min(330px, calc(100vw - 36px));
+  width: min(var(--biomes-right-hud-width), calc(100vw - 36px));
   box-sizing: border-box;
   padding: 10px 12px;
   border: 1px solid rgba(255, 221, 130, 0.48);
@@ -1330,13 +1333,14 @@ button.biomes-ui-card:disabled {
     right: 10px;
     top: auto;
     bottom: 98px;
+    width: min(var(--biomes-right-hud-width), calc(100vw - 20px));
     transform: none;
   }
 
   .biomes-ui-current-objective-hud {
     right: 10px;
     bottom: 166px;
-    width: min(320px, calc(100vw - 20px));
+    width: min(var(--biomes-right-hud-width), calc(100vw - 20px));
   }
 
   @keyframes biomes-ui-open-prompt-breathe {

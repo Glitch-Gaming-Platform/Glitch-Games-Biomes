@@ -441,6 +441,10 @@ export function contextForLiveEntityHelperQuestV1(input: {
     isMuckMonster: Boolean(input.isMuckMonster),
     isJobsBoard: Boolean(input.isJobsBoard),
     isMountOnly,
+    // V152: any entity flagged as an authored quest giver in ECS already has a
+    // quest of its own (Grove/Harthmere NPCs incl. Billy Rhodes, shop owners),
+    // so it must never also offer a generic helper quest.
+    hasQuestGiverComponent: Boolean(input.questGiver),
   };
 }
 

@@ -11,6 +11,7 @@ import {
   getHarthmereCraftingStationV1,
   getHarthmereItemDefinitionV1,
   listHarthmereCraftingRecipesV1,
+  normalizeHarthmereCraftingStationIdV1,
   type HarthmereCraftingOutcomeV1,
   type HarthmereCraftingRecipeV1,
 } from "@/shared/harthmere/mmo_inventory_authority_v1";
@@ -99,6 +100,12 @@ export interface CreateHarthmereCraftingStationAdapterOptionsV1 {
     warnings?: string[];
   }>;
 }
+
+type HarthmereCraftingStationClientSnapshotInputV1 = Partial<
+  Omit<HarthmereCraftingStationClientSnapshotV1, "stationId">
+> & {
+  stationId?: string | number;
+};
 
 function countAvailable(
   snapshot: HarthmereCraftingStationClientSnapshotV1,
@@ -531,11 +538,12 @@ export function harthmereCraftingHandcraftPartitionV1(
 }
 
 export function normalizeHarthmereCraftingStationClientSnapshotV1(
-  input: Partial<HarthmereCraftingStationClientSnapshotV1> | undefined
+  input: HarthmereCraftingStationClientSnapshotInputV1 | undefined
 ): HarthmereCraftingStationClientSnapshotV1 {
   ensureHarthmereProductionCraftingCatalogueV1();
   const stationId =
-    input?.stationId ?? HARTHMERE_CRAFTING_STATIONS_V1.workbench;
+    normalizeHarthmereCraftingStationIdV1(input?.stationId) ??
+    HARTHMERE_CRAFTING_STATIONS_V1.workbench;
   const station = getHarthmereCraftingStationV1(stationId);
   return {
     actorId: input?.actorId ?? "",

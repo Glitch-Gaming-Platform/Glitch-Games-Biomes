@@ -18,6 +18,10 @@ import {
   type HarthmereTerrainTypeV1,
 } from "@/shared/harthmere/mmo_building_authority_v1";
 import { safeGetTerrainId } from "@/shared/asset_defs/terrain";
+import {
+  findHarthmereGroundFeetYV1,
+  type HarthmereSolidSamplerV1,
+} from "@/shared/harthmere/harthmere_entity_grounding_v1";
 import type { BiomesId } from "@/shared/ids";
 import { BikkieIds } from "@/shared/bikkie/ids";
 
@@ -1798,6 +1802,103 @@ export function buildingSystemDefaultOriginV1(
     y: plot.groundY + 1,
     z: Math.floor((plot.bounds.zMin + plot.bounds.zMax - blueprint.footprint.depth) / 2),
   };
+}
+
+// HARTHMERE_BUILDING_TERRAIN_GROUNDING_V1
+//
+// Plots author a single flat `groundY` (the wilds floor hint). A baked building
+// or boundary/deed marker stamped at that flat Y floats above or buries below
+// real terrain wherever the surface differs — the same flat-Y bug the muckers,
+// animals, drops, and quest markers were fixed for with the shared grounder.
+// Baked voxels cannot be re-grounded every frame like a rendered mesh, so we
+// instead resolve the REAL surface ONCE, at materialization, and shift the whole
+// plan onto it. The probe reuses the one shared terrain scan
+// (`findHarthmereGroundFeetYV1`); the caller supplies an `isSolid` sampler over
+// the real voxel terrain. If the surface cannot be resolved the plan is returned
+// UNCHANGED (authored Y), so a missing/unreadable column can only ever leave a
+// structure where it is today — never teleport or bury it.
+const BUILDING_GROUND_SHIFT_SCAN_V1 = 24;
+
+export function shiftBuildingSystemMaterializationPlanYV1<
+  T extends BuildingSystemAnyMaterializationPlanV1
+>(plan: T, shiftY: number): T {
+  if (!Number.isFinite(shiftY) || shiftY === 0) {
+    return plan;
+  }
+  const shiftPosition = (
+    position: [number, number, number]
+  ): [number, number, number] => [position[0], position[1] + shiftY, position[2]];
+  const next: any = {
+    ...plan,
+    edits: plan.edits.map((edit) => ({
+      ...edit,
+      position: shiftPosition(edit.position),
+    })),
+  };
+  if (plan.inWorldMarkers) {
+    next.inWorldMarkers = plan.inWorldMarkers.map((marker) => ({
+      ...marker,
+      position: shiftPosition(marker.position),
+    }));
+  }
+  if ("origin" in plan && plan.origin) {
+    next.origin = { ...plan.origin, y: plan.origin.y + shiftY };
+  }
+  return next as T;
+}
+
+// Resolve the real surface under a materialization plan and return a copy shifted
+// so it rests on that surface. A building (has `origin`) is aligned so its FLOOR
+// (origin.y) sits flush with the ground the player walks on; a markers-only plan
+// (plot claim / terraform) is aligned so its lowest marker block rests on the
+// surface. The vertical shift is clamped to the scan window so even a surprising
+// probe can never fling a structure far, and an unresolved surface yields the
+// unchanged plan.
+export function groundedBuildingSystemMaterializationPlanV1<
+  T extends BuildingSystemAnyMaterializationPlanV1
+>(
+  plan: T,
+  isSolid: HarthmereSolidSamplerV1,
+  options?: { maxScan?: number }
+): T {
+  if (!plan.edits.length) {
+    return plan;
+  }
+  let sumX = 0;
+  let sumZ = 0;
+  let minEditY = Infinity;
+  for (const edit of plan.edits) {
+    sumX += edit.position[0];
+    sumZ += edit.position[2];
+    minEditY = Math.min(minEditY, edit.position[1]);
+  }
+  const columnX = Math.floor(sumX / plan.edits.length);
+  const columnZ = Math.floor(sumZ / plan.edits.length);
+  const hasOrigin = "origin" in plan && Boolean((plan as any).origin);
+  // For a building, the floor we walk on is origin.y; aligning the floor flush
+  // with the surface means standing-on-floor == standing-on-outside-ground.
+  // For a markers-only plan, the lowest marker block should rest on the surface.
+  const referenceY = hasOrigin
+    ? (plan as BuildingSystemMaterializationPlanV1).origin.y
+    : minEditY;
+  const scan = Math.max(1, Math.floor(options?.maxScan ?? BUILDING_GROUND_SHIFT_SCAN_V1));
+  const groundedFeetY = findHarthmereGroundFeetYV1(isSolid, columnX, columnZ, {
+    hintY: Math.round(referenceY),
+    maxScanDown: scan,
+    maxScanUp: scan,
+    requireOpenSky: false,
+  });
+  if (groundedFeetY === undefined) {
+    return plan;
+  }
+  // A building's floor block sits one below the standable feet level (you stand
+  // ON the floor); a marker block rests AT the surface feet level.
+  const targetReferenceY = hasOrigin ? groundedFeetY - 1 : groundedFeetY;
+  const shiftY = Math.max(
+    -scan,
+    Math.min(scan, targetReferenceY - referenceY)
+  );
+  return shiftBuildingSystemMaterializationPlanYV1(plan, shiftY);
 }
 
 function clampBuildingSystemGuideCoordinateV1(

@@ -68,11 +68,20 @@ export function formatHarthmereCookItemNameV1(itemId: string): string {
   if (name && name !== itemId) {
     return name;
   }
+  if (/^\d{6,}$/.test(itemId)) {
+    return `Ingredient ${itemId.slice(-4)}`;
+  }
   return itemId
     .replace(/[_-]+/g, " ")
     .replace(/\s+/g, " ")
     .trim()
     .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+export function isHarthmereCookingStationRecipeVisibleV1(
+  recipe: HarthmereCookingRecipeV1
+): boolean {
+  return !recipe.recipeType || recipe.recipeType === "cooking";
 }
 
 /** "field" recipes need no station and cook anywhere; otherwise the recipe's
@@ -168,7 +177,11 @@ export function createHarthmereCookVisibleRecipesV1(
   stationKind: string
 ): HarthmereCookVisibleRecipeV1[] {
   return Object.values(HARTHMERE_COOKING_RECIPES_V1)
-    .filter((recipe) => harthmereCookRecipeStationOkV1(recipe, stationKind))
+    .filter(
+      (recipe) =>
+        isHarthmereCookingStationRecipeVisibleV1(recipe) &&
+        harthmereCookRecipeStationOkV1(recipe, stationKind)
+    )
     .map((recipe) => visibleRecipeV1(recipe, inventory, stationKind))
     .sort((a, b) => a.displayName.localeCompare(b.displayName));
 }

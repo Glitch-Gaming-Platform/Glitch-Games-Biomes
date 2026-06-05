@@ -37,6 +37,14 @@ describe("harthmere muck creature npc assets", () => {
       undefined
     );
     assert.equal(
+      harthmereMuckCreatureAssetKeyForLabelV1("Mucked Restoro Bot"),
+      undefined
+    );
+    assert.equal(
+      harthmereMuckCreatureAssetKeyForLabelV1("Archive Sentential"),
+      undefined
+    );
+    assert.equal(
       harthmereMuckCreatureAssetKeyForLabelV1("Greenlamp Walk-In Clinic owner"),
       undefined
     );

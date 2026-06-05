@@ -17,6 +17,7 @@ import {
   validateHarthmereBusinessOutpostSafeSitingV1,
   HARTHMERE_BUSINESS_SERVICE_ANIMATION_CUE_SPECS_V1,
   HARTHMERE_BUSINESS_SERVICE_ITEM_CATALOG_V1,
+  HARTHMERE_BUSINESS_JOB_PAY_DIVISOR_V1,
   HARTHMERE_GROVE_BUSINESS_BUILDING_REFERENCE_COORDINATES_V1,
   HARTHMERE_GROVE_BUSINESS_BUILDING_SOURCE_SCAN_V1,
   HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_COORDINATES_V1,
@@ -29,6 +30,7 @@ import {
   createHarthmereBusinessCustomerQueueV1,
   createHarthmereBusinessMiniGameDecisionForOfferV1,
   defaultHarthmereBusinessCustomerStatsV1,
+  harthmereBusinessScaledJobPayV1,
   harthmereBusinessOutpostGroundYV1,
   getHarthmereBusinessBikkieGraphicForServiceCueV1,
   getHarthmereBusinessBikkieGraphicsV1,
@@ -687,6 +689,28 @@ describe("business_customer_simulator_v1", () => {
         );
       }
     }
+  });
+
+  it("cuts 19-business mini-game job pay to one quarter of authored values", () => {
+    const restaurant =
+      HARTHMERE_BUSINESS_MINIGAME_DEFINITIONS_V1.food_service_restaurant;
+    assert.equal(HARTHMERE_BUSINESS_JOB_PAY_DIVISOR_V1, 4);
+    assert.equal(
+      restaurant.offers.find((offer) => offer.offerId === "serve_worker_meal")
+        ?.rewardGold,
+      harthmereBusinessScaledJobPayV1(35)
+    );
+    assert.equal(
+      restaurant.askTemplates.find((ask) => ask.askId === "hot_meal")
+        ?.rewardGold,
+      harthmereBusinessScaledJobPayV1(40)
+    );
+    assert.equal(
+      HARTHMERE_BUSINESS_MINIGAME_DEFINITIONS_V1.medical_doctor.offers.find(
+        (offer) => offer.offerId === "field_medkit_sale"
+      )?.rewardGold,
+      harthmereBusinessScaledJobPayV1(85)
+    );
   });
 
   it("materializes every outpost as a server-owned procedural voxel building with passable customer paths", () => {

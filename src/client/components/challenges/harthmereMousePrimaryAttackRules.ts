@@ -23,3 +23,28 @@ export function shouldEngageHarthmereMousePrimaryAttackV1(input: {
     input.hasAttackableTargetNearby
   );
 }
+
+// Left mouse is the voxel-break / native attack action. It must resolve like
+// the original cursor attack path, not like the keyboard B/H hotkeys where the
+// first press can be consumed by weapon draw state.
+export function shouldBypassHarthmereKeyboardDrawGateForMousePrimaryAttackV1(input: {
+  source: "mouse_primary" | "keyboard_hotkey";
+  hasPhysicalWeapon: boolean;
+  weaponDrawn: boolean;
+}): boolean {
+  return (
+    input.source === "mouse_primary" &&
+    input.hasPhysicalWeapon &&
+    !input.weaponDrawn
+  );
+}
+
+export function harthmereLiveModeCombatTargetIdForSeedV1(input: {
+  seedId: string;
+  idOffset: number;
+}): string | undefined {
+  if (!input.seedId.trim() || !Number.isFinite(input.idOffset)) {
+    return undefined;
+  }
+  return `server-muck-combat:${input.seedId}:${input.idOffset}`;
+}

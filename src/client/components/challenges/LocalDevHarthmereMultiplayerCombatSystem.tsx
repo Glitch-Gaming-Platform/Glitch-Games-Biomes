@@ -33,8 +33,13 @@ import {
   readHarthmereCombatState,
   readHarthmereForwardArcRuntime,
   resetHarthmereCombat,
+  type HarthmereForwardArcRuntimeSnapshot,
   type HarthmerePlayerAttackType,
 } from "@/client/components/challenges/LocalDevHarthmereCombat";
+import {
+  harthmereDialogueLiveModeHeadersV1,
+  harthmereDialogueLiveModeUrlV1,
+} from "@/client/components/challenges/dialogueLiveModeReputation";
 import { isHarthmereLocalCombatSafeZonePositionV1 } from "@/client/components/challenges/localDevHarthmereCombatSafetyV1";
 import {
   harthmerePvpBasicDamageV1,
@@ -42,7 +47,9 @@ import {
   type HarthmerePvpCandidatePlayerV1,
 } from "@/client/components/challenges/harthmerePvpHitRules";
 import { useClientContext } from "@/client/components/contexts/ClientContextReactContext";
+import { defaultHarthmereLiveFetchV1 } from "@/client/components/harthmere_live_fetch";
 import type { ClientContextSubset } from "@/client/game/context";
+import { publishHarthmereLiveEntityCombatMotionToRendererV1 } from "@/client/game/resources/harthmere_live_entity_motion_bridge_v1";
 import { PlayerSelector } from "@/shared/ecs/gen/selectors";
 import { UpdatePlayerHealthEvent } from "@/shared/ecs/gen/events";
 import type { DamageSource } from "@/shared/ecs/gen/types";
@@ -57,9 +64,24 @@ import {
   HARTHMERE_COMBAT_INTERFACE_KEY_COPY_V1,
 } from "@/client/components/challenges/harthmereCombatDeathInterfaceRules";
 import { getHarthmereLevelSummary } from "@/client/components/challenges/LocalDevHarthmereLevelingSystem";
-import { shouldEngageHarthmereMousePrimaryAttackV1 } from "@/client/components/challenges/harthmereMousePrimaryAttackRules";
+import {
+  harthmereLiveModeCombatTargetIdForSeedV1,
+  shouldBypassHarthmereKeyboardDrawGateForMousePrimaryAttackV1,
+  shouldEngageHarthmereMousePrimaryAttackV1,
+} from "@/client/components/challenges/harthmereMousePrimaryAttackRules";
+import {
+  harthmereCrosshairAimFromEventV1,
+  harthmereHasCrosshairCombatTargetV1,
+  pickHarthmereCrosshairCombatTargetV1,
+  readHarthmereCrosshairCombatActorsV1,
+  type HarthmereCrosshairAimV1,
+} from "@/client/components/challenges/harthmereCrosshairCombatTargetV1";
 import { harthmereUserScopedStorageKey } from "@/client/components/challenges/LocalDevHarthmereUserScope";
 import { HARTHMERE_VOXEL_INTERACTION_ATTACK_REACH_UNITS_V1 } from "@/shared/harthmere/combat_reach_v1";
+import {
+  harthmereGroundedLivestockSeedsInTerritoryV1,
+  harthmereGroundedMuckMonsterSeedsInTerritoryV1,
+} from "@/shared/harthmere/live_entity_production_seed_v1";
 import React, { useEffect, useMemo, useState } from "react";
 
 const HARTHMERE_NO_SPARK_BASIC_ACTOR_MATCH_VERSION = "harthmere-no-spark-basic-actor-match-v11";
@@ -772,6 +794,285 @@ export function resolveHarthmerePvpMousePrimaryAttackV1(
     );
   }
   return hitIds.length;
+}
+
+const HARTHMERE_MOUSE_LIVE_MODE_ATTACK_BRIDGE_VERSION_V1 =
+  "harthmere-mouse-live-mode-attack-bridge-v1";
+const HARTHMERE_LIVE_MODE_BASIC_ATTACK_ABILITY_ID_V1 = "basic_strike";
+const HARTHMERE_LIVE_MODE_MOUSE_ATTACK_ZONE_ID_V1 = "harthmere_wilderness";
+
+const HARTHMERE_LIVE_MODE_TARGET_BY_ECS_ID_V1 = new Map<number, string>(
+  [
+    ...harthmereGroundedMuckMonsterSeedsInTerritoryV1(),
+    ...harthmereGroundedLivestockSeedsInTerritoryV1(),
+  ].flatMap((seed) => {
+    const targetId = harthmereLiveModeCombatTargetIdForSeedV1(seed);
+    const entityId = Number(seed.entityId);
+    return targetId && Number.isFinite(entityId) ? [[entityId, targetId]] : [];
+  })
+);
+
+export function harthmereLiveModeCombatTargetIdForEcsEntityV1(
+  entityId: number | string | undefined
+): string | undefined {
+  const numeric = Number(entityId);
+  return Number.isFinite(numeric)
+    ? HARTHMERE_LIVE_MODE_TARGET_BY_ECS_ID_V1.get(numeric)
+    : undefined;
+}
+
+type HarthmereNativeNpcAttackContactHitV189 = {
+  id?: number | string;
+  entityId?: number | string;
+  offset?: number | string;
+  label?: string;
+};
+
+function harthmereMousePrimaryAttackOffsetsFromNativeHitsV1(
+  hits: ReadonlyArray<HarthmereNativeNpcAttackContactHitV189> | undefined
+): number[] {
+  if (!Array.isArray(hits)) {
+    return [];
+  }
+  const offsets: number[] = [];
+  for (const hit of hits) {
+    const offset = Number(hit.id ?? hit.entityId ?? hit.offset);
+    if (Number.isFinite(offset)) {
+      offsets.push(offset);
+    }
+  }
+  return offsets;
+}
+
+function debugHarthmereMouseLiveModeAttackV1(entry: Record<string, unknown>) {
+  if (!isBrowser()) {
+    return;
+  }
+  const logged = {
+    at: new Date().toISOString(),
+    version: HARTHMERE_MOUSE_LIVE_MODE_ATTACK_BRIDGE_VERSION_V1,
+    ...entry,
+  };
+  const win = window as typeof window & {
+    __harthmereMouseLiveModeAttackDebugV1?: unknown[];
+  };
+  win.__harthmereMouseLiveModeAttackDebugV1 = [
+    logged,
+    ...(win.__harthmereMouseLiveModeAttackDebugV1 ?? []),
+  ].slice(0, 100);
+  if (
+    window.localStorage?.getItem("biomes.localDev.harthmere.combatDebug") ===
+    "1"
+  ) {
+    console.info("[HarthmereMouseLiveModeAttack]", logged);
+  }
+}
+
+function submitHarthmereLiveModeMousePrimaryAttackV1(
+  hitOffsets: ReadonlyArray<number>,
+  runtime: HarthmereForwardArcRuntimeSnapshot | undefined,
+  source: "native_contact" | "forward_arc_fallback"
+) {
+  if (!isBrowser() || hitOffsets.length === 0) {
+    return;
+  }
+  const targetIds = [
+    ...new Set(
+      hitOffsets
+        .map((offset) => harthmereLiveModeCombatTargetIdForEcsEntityV1(offset))
+        .filter((targetId): targetId is string => Boolean(targetId))
+    ),
+  ];
+  if (targetIds.length === 0) {
+    debugHarthmereMouseLiveModeAttackV1({
+      type: "ignored",
+      reason: "no_seeded_live_mode_target",
+      source,
+      hitOffsets,
+    });
+    return;
+  }
+
+  for (const targetId of targetIds) {
+    const requestId = `harthmere_mouse_attack_${Date.now()}_${Math.random()
+      .toString(36)
+      .slice(2)}`;
+    fireAndForget(
+      (async () => {
+        const response = await defaultHarthmereLiveFetchV1(
+          harthmereDialogueLiveModeUrlV1(window.location.search),
+          {
+            method: "POST",
+            credentials: "same-origin",
+            headers: harthmereDialogueLiveModeHeadersV1(window.location.search),
+            body: JSON.stringify({
+              requestId,
+              idempotencyKey: requestId,
+              targetId,
+              actionKind: "request_attack",
+              subsystem: "combat",
+              actorEntityVersion: 1,
+              zoneId: HARTHMERE_LIVE_MODE_MOUSE_ATTACK_ZONE_ID_V1,
+              payload: {
+                abilityId: HARTHMERE_LIVE_MODE_BASIC_ATTACK_ABILITY_ID_V1,
+              },
+              clientClaims: {
+                source,
+                hitOffsets,
+                runtimePosition: runtime?.position,
+                runtimeForward: runtime?.forward,
+              },
+            }),
+          }
+        );
+        const body = await response.json().catch(() => undefined);
+        if (body?.combatState) {
+          publishHarthmereLiveEntityCombatMotionToRendererV1(body.combatState);
+        }
+        debugHarthmereMouseLiveModeAttackV1({
+          type: response.ok ? "submitted" : "rejected",
+          source,
+          targetId,
+          status: response.status,
+          ok: body?.ok,
+          warnings: body?.summary?.warnings ?? body?.validation?.warnings,
+          errors: body?.validation?.errors,
+        });
+      })().catch((error) => {
+        debugHarthmereMouseLiveModeAttackV1({
+          type: "error",
+          source,
+          targetId,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      })
+    );
+  }
+}
+
+export function performHarthmereMousePrimaryAttackV1(
+  aim?: HarthmereCrosshairAimV1
+) {
+  let state = readHarthmereMultiplayerCombatState();
+  const attack: Exclude<HarthmerePlayerAttackType, "spark"> = "basic";
+  debugHarthmereKeyCombat("mouse_primary.attack.start", {
+    attack,
+    weaponDrawn: state.weaponDrawn,
+    cooldowns: state.cooldowns,
+  });
+
+  const combat = readHarthmereCombatState();
+  const blockedReason = getHarthmereMultiplayerAttackDisabledReasonV1(
+    attack,
+    state,
+    combat.player,
+  );
+  if (blockedReason) {
+    writeHarthmereMultiplayerCombatState(
+      appendLog(state, "Action Blocked", blockedReason),
+    );
+    return { hitOffsets: [], candidateOffsets: [] };
+  }
+
+  if (!cooldownReady(state, attack)) {
+    writeHarthmereMultiplayerCombatState(
+      appendLog(state, "On Cooldown", `${attack} is not ready yet.`),
+    );
+    return { hitOffsets: [], candidateOffsets: [] };
+  }
+
+  const equippedWeapon = readHarthmereInventoryState().equipment.main_hand;
+  const equippedWeaponItemId = equippedWeapon?.itemId;
+  const hasPhysicalWeapon = Boolean(equippedWeaponItemId);
+  const bypassedDrawGate =
+    shouldBypassHarthmereKeyboardDrawGateForMousePrimaryAttackV1({
+      source: "mouse_primary",
+      hasPhysicalWeapon,
+      weaponDrawn: state.weaponDrawn,
+    });
+  if (bypassedDrawGate) {
+    state = { ...state, weaponDrawn: true };
+    emitHarthmereWeaponVisualState("draw", true, attack, equippedWeaponItemId);
+  }
+
+  emitHarthmereFullAnimationRequestV6({
+    family: hasPhysicalWeapon ? "ranged" : "creature",
+    action: hasPhysicalWeapon ? attack : "attack",
+    phase: "start",
+    itemId: equippedWeaponItemId,
+  });
+  emitAttackAnimation(attack, {
+    itemId: equippedWeaponItemId,
+    emptyHanded: !hasPhysicalWeapon,
+    weaponVisual: hasPhysicalWeapon,
+  });
+  if (hasPhysicalWeapon) {
+    emitHarthmereWeaponVisualState("attack", true, attack, equippedWeaponItemId);
+  }
+
+  const runtime = readHarthmereForwardArcRuntime();
+
+  // HARTHMERE_CROSSHAIR_COMBAT_TARGET_V1: prefer the creature actually under the
+  // crosshair (camera-projected screen position published by the renderer) over
+  // the forward-arc cone. The arc depends on the player body-forward/yaw/origin
+  // runtime, which in the embed build is frequently missing or in the wrong
+  // coordinate frame -> "no target inside the arc" -> every swing misses even
+  // when you are aiming straight at a mucker. Screen targeting is the literal
+  // "hit what you are pointing at" and works without that runtime.
+  let arcResult: { hitOffsets: number[]; candidateOffsets: number[] };
+  const crosshairActors = readHarthmereCrosshairCombatActorsV1();
+  const crosshairPick = aim
+    ? pickHarthmereCrosshairCombatTargetV1({
+        actors: crosshairActors,
+        aim,
+        playerX: runtime?.position?.[0],
+        playerZ: runtime?.position?.[2],
+        worldReach: HARTHMERE_VOXEL_INTERACTION_ATTACK_REACH_UNITS_V1,
+      })
+    : undefined;
+
+  if (crosshairPick) {
+    performHarthmereCombatAttack(crosshairPick.offset, attack, {
+      contactProven: true,
+      contactSource: "forward_arc",
+      contactDistance: crosshairPick.worldDistance,
+      contactReason: "crosshair_aimed_actor",
+      debugLabel: `crosshair:${attack}`,
+    });
+    arcResult = {
+      hitOffsets: [crosshairPick.offset],
+      candidateOffsets: crosshairActors.map((actor) => actor.offset),
+    };
+    submitHarthmereLiveModeMousePrimaryAttackV1(
+      arcResult.hitOffsets,
+      runtime,
+      "forward_arc_fallback"
+    );
+  } else {
+    arcResult = performHarthmereForwardArcAttack(attack, runtime);
+    submitHarthmereLiveModeMousePrimaryAttackV1(
+      arcResult.hitOffsets,
+      runtime,
+      "forward_arc_fallback"
+    );
+  }
+  recordHarthmereSwordImpactTimingDebug(attack, {
+    phase: "mouse_primary_immediate",
+    hitOffsets: arcResult.hitOffsets,
+    candidateOffsets: arcResult.candidateOffsets,
+    bypassedDrawGate,
+  });
+
+  state = setCooldown(state, attack, 1.4);
+  writeHarthmereMultiplayerCombatState(
+    afterHostileAction(
+      state,
+      "Mouse Attack",
+      `Left mouse resolved a basic attack and hit ${arcResult.hitOffsets.length} target(s). Candidates checked: ${arcResult.candidateOffsets.length}.`,
+      { damage: 18 },
+    ),
+  );
+  return arcResult;
 }
 
 export function performHarthmereKeyedAttack(attack: HarthmerePlayerAttackType) {
@@ -1588,7 +1889,7 @@ installHarthmereHardCombatKeyRouter();
 // route to Harthmere body combat even on debug/visual pages that do not mount the
 // full HUD hook. PvP remains in the hook because it needs live ClientContext.
 const HARTHMERE_HARD_COMBAT_MOUSE_ROUTER_VERSION =
-  "harthmere-hard-mouse-router-v2";
+  "harthmere-hard-mouse-router-v3";
 
 function installHarthmereHardCombatMouseRouter() {
   if (typeof window === "undefined") {
@@ -1600,6 +1901,7 @@ function installHarthmereHardCombatMouseRouter() {
     __harthmereHardCombatMouseRouterCleanup?: () => void;
     __harthmereHardCombatMouseRouterLog?: unknown[];
     __harthmereNativeNpcAttackContactLastAtV189?: number;
+    __harthmereNativeNpcAttackContactLastHitsV189?: HarthmereNativeNpcAttackContactHitV189[];
     __harthmereHardCombatMouseRouter?: {
       version: string;
       log: () => unknown[];
@@ -1636,7 +1938,28 @@ function installHarthmereHardCombatMouseRouter() {
       pushLog({ type: "ignored", reason: "not_gameplay_mouse_target" });
       return;
     }
-    const hasAttackableTargetNearby = harthmereHasAttackableTargetNearPlayerV1();
+    // HARTHMERE_CROSSHAIR_COMBAT_TARGET_V1: the aim point is viewport-centre
+    // under pointer lock, otherwise the exact pixel the player clicked.
+    const aim = harthmereCrosshairAimFromEventV1({
+      pointerLocked,
+      clientX: event.clientX,
+      clientY: event.clientY,
+      viewportWidth: window.innerWidth,
+      viewportHeight: window.innerHeight,
+    });
+    const runtimeForGate = readHarthmereForwardArcRuntime();
+    const hasCrosshairTarget = harthmereHasCrosshairCombatTargetV1({
+      actors: readHarthmereCrosshairCombatActorsV1(),
+      aim,
+      playerX: runtimeForGate?.position?.[0],
+      playerZ: runtimeForGate?.position?.[2],
+      worldReach: HARTHMERE_VOXEL_INTERACTION_ATTACK_REACH_UNITS_V1,
+    });
+    // Engage if there is something under the crosshair OR within the legacy
+    // proximity probe. The crosshair check does not need the player-origin
+    // runtime, so it still engages when that snapshot is missing.
+    const hasAttackableTargetNearby =
+      hasCrosshairTarget || harthmereHasAttackableTargetNearPlayerV1();
     if (
       !shouldEngageHarthmereMousePrimaryAttackV1({
         button: event.button,
@@ -1664,14 +1987,24 @@ function installHarthmereHardCombatMouseRouter() {
         win.__harthmereNativeNpcAttackContactLastAtV189 ?? 0,
       );
       if (nativeContactAfter > nativeContactBefore) {
+        const nativeHitOffsets =
+          harthmereMousePrimaryAttackOffsetsFromNativeHitsV1(
+            win.__harthmereNativeNpcAttackContactLastHitsV189,
+          );
+        submitHarthmereLiveModeMousePrimaryAttackV1(
+          nativeHitOffsets,
+          readHarthmereForwardArcRuntime(),
+          "native_contact",
+        );
         pushLog({
           type: "ignored",
           reason: "native_voxel_attack_already_hit",
           nativeContactAfter,
+          nativeHitOffsets,
         });
         return;
       }
-      performHarthmereKeyedAttack("basic");
+      performHarthmereMousePrimaryAttackV1(aim);
     }, 80);
   };
 

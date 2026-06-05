@@ -21,6 +21,10 @@ import type { TabShortcut } from "./shortcuts/BiomesShortcuts";
 import { BiomesUIOpenPrompt } from "./BiomesUIOpenPrompt";
 import { CurrentQuestObjectiveHUD } from "./CurrentQuestObjectiveHUD";
 import { QuestInviteHUD } from "./quest_invites/QuestInviteHUD";
+import {
+  type BiomesHUDVisibilitySnapshotV1,
+  useBiomesHUDVisibilitySnapshotV1,
+} from "./hudVisibilitySettings";
 
 import { DailyTodoTab } from "./tabs/DailyTodoTab";
 import { InventoryTab } from "./tabs/InventoryTab";
@@ -50,6 +54,7 @@ export interface BiomesUIProps {
   shortcutOverrides?: TabShortcut[];
   adapters?: BiomesUIAdapters;
   paneMode?: "overlay" | "compact";
+  hudVisibilityOverride?: Partial<BiomesHUDVisibilitySnapshotV1>;
 }
 
 export interface BiomesUIAdapters {
@@ -87,11 +92,14 @@ export const BiomesUI: React.FunctionComponent<BiomesUIProps> = ({
   shortcutOverrides,
   adapters,
   paneMode = "overlay",
+  hudVisibilityOverride,
 }) => {
   const pointerLockManager = usePointerLockManager();
-  const shouldReturnPointerLock =
-    useRef<PointerLockUnlockWhileOpenReturnRefV1>({ current: false });
+  const shouldReturnPointerLock = useRef<PointerLockUnlockWhileOpenReturnRefV1>(
+    { current: false }
+  );
   const shortcuts = shortcutOverrides ?? DEFAULT_TAB_SHORTCUTS;
+  const hudVisibility = useBiomesHUDVisibilitySnapshotV1(hudVisibilityOverride);
 
   useEffect(() => {
     installBiomesUITheme();
@@ -155,11 +163,15 @@ export const BiomesUI: React.FunctionComponent<BiomesUIProps> = ({
 
   return (
     <>
-      <BiomesUIOpenPrompt isOpen={activeTab !== null} />
-      <CurrentQuestObjectiveHUD
-        adapter={adapters?.map}
-        isOpen={activeTab !== null}
-      />
+      {hudVisibility.helpButtons && (
+        <BiomesUIOpenPrompt isOpen={activeTab !== null} />
+      )}
+      {hudVisibility.objectives && (
+        <CurrentQuestObjectiveHUD
+          adapter={adapters?.map}
+          isOpen={activeTab !== null}
+        />
+      )}
       <QuestInviteHUD adapter={adapters?.questInvites} />
       {paneMode === "overlay" && activeTab !== null && (
         <div
@@ -237,57 +249,63 @@ export const BiomesUI: React.FunctionComponent<BiomesUIProps> = ({
           </div>
         </div>
       )}
-      <div
-        style={{
-          position: "fixed",
-          left: 0,
-          right: 0,
-          bottom: 16,
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          gap: 8,
-          zIndex: 1090,
-          pointerEvents: "none",
-        }}
-      >
-        <div style={{ pointerEvents: "auto" }}>
-          <BiomesHotbar
-            slots={hotbar.slots}
-            selectedIndex={hotbar.selectedIndex}
-            onSelect={(i) => {
-              emitHarthmereGlitchBehaviorEventV138("hotbar", "select_slot", {
-                slot: i + 1,
-              });
-              hotbar.onSelect(i);
-            }}
-            onUse={
-              hotbar.onUse
-                ? (i) => {
-                    emitHarthmereGlitchBehaviorEventV138("hotbar", "use_slot", {
-                      slot: i + 1,
-                    });
-                    hotbar.onUse?.(i);
-                  }
-                : undefined
-            }
-            onDrop={
-              hotbar.onDrop
-                ? (i) => {
-                    emitHarthmereGlitchBehaviorEventV138(
-                      "hotbar",
-                      "drop_slot",
-                      {
-                        slot: i + 1,
-                      }
-                    );
-                    hotbar.onDrop?.(i);
-                  }
-                : undefined
-            }
-          />
+      {hudVisibility.hotbar && (
+        <div
+          style={{
+            position: "fixed",
+            left: 0,
+            right: 0,
+            bottom: 16,
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: 8,
+            zIndex: 1090,
+            pointerEvents: "none",
+          }}
+        >
+          <div style={{ pointerEvents: "auto" }}>
+            <BiomesHotbar
+              slots={hotbar.slots}
+              selectedIndex={hotbar.selectedIndex}
+              onSelect={(i) => {
+                emitHarthmereGlitchBehaviorEventV138("hotbar", "select_slot", {
+                  slot: i + 1,
+                });
+                hotbar.onSelect(i);
+              }}
+              onUse={
+                hotbar.onUse
+                  ? (i) => {
+                      emitHarthmereGlitchBehaviorEventV138(
+                        "hotbar",
+                        "use_slot",
+                        {
+                          slot: i + 1,
+                        }
+                      );
+                      hotbar.onUse?.(i);
+                    }
+                  : undefined
+              }
+              onDrop={
+                hotbar.onDrop
+                  ? (i) => {
+                      emitHarthmereGlitchBehaviorEventV138(
+                        "hotbar",
+                        "drop_slot",
+                        {
+                          slot: i + 1,
+                        }
+                      );
+                      hotbar.onDrop?.(i);
+                    }
+                  : undefined
+              }
+            />
+          </div>
         </div>
-      </div>
+      )}
     </>
   );
 };

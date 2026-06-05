@@ -117,6 +117,20 @@ export const HarthmereCraftingStationPanel: React.FunctionComponent<
     React.useState<HarthmereCraftingStationPanelTabV1>(
       TABS.includes(initialTab) ? initialTab : "recipes"
     );
+  const [busy, setBusy] = React.useState(false);
+  const busyRef = React.useRef(false);
+
+  const runAction = React.useCallback(async (action: () => Promise<void>) => {
+    if (busyRef.current) return;
+    busyRef.current = true;
+    setBusy(true);
+    try {
+      await action();
+    } finally {
+      busyRef.current = false;
+      setBusy(false);
+    }
+  }, []);
 
   React.useEffect(() => installBiomesUITheme(), []);
   React.useEffect(() => {
@@ -226,14 +240,29 @@ export const HarthmereCraftingStationPanel: React.FunctionComponent<
       </nav>
 
       {activeTab === "recipes" && (
-        <RecipePane recipes={recipes} adapter={adapter} />
+        <RecipePane
+          recipes={recipes}
+          adapter={adapter}
+          busy={busy}
+          onRunAction={runAction}
+        />
       )}
       {activeTab === "jobs" && (
-        <JobsPane snapshot={snapshot} adapter={adapter} />
+        <JobsPane
+          snapshot={snapshot}
+          adapter={adapter}
+          busy={busy}
+          onRunAction={runAction}
+        />
       )}
       {activeTab === "services" && (
         <ServicesPane recipes={recipes} snapshot={snapshot} />
       )}
+      {busy ? (
+        <div style={craftingPendingNoticeStyle} aria-live="polite">
+          Updating crafting...
+        </div>
+      ) : null}
     </div>
   );
 };
@@ -241,7 +270,9 @@ export const HarthmereCraftingStationPanel: React.FunctionComponent<
 const RecipePane: React.FunctionComponent<{
   recipes: HarthmereCraftingVisibleRecipeV1[];
   adapter: HarthmereCraftingStationAdapterV1;
-}> = ({ recipes, adapter }) => {
+  busy: boolean;
+  onRunAction: (action: () => Promise<void>) => void;
+}> = ({ recipes, adapter, busy, onRunAction }) => {
   return (
     <section style={sectionGridStyle}>
       <RovingGrid
@@ -249,7 +280,8 @@ const RecipePane: React.FunctionComponent<{
         items={chunk(recipes, 2)}
         style={{ display: "grid", gap: 6 }}
         onActivate={(_, __, entry) => {
-          if (entry.canCraft) void adapter.craft(entry.recipe.recipeId);
+          if (busy || !entry.canCraft) return;
+          onRunAction(() => adapter.craft(entry.recipe.recipeId));
         }}
         renderCell={(entry, coords, cellProps) => (
           <button
@@ -257,13 +289,21 @@ const RecipePane: React.FunctionComponent<{
             type="button"
             role="gridcell"
             className="biomes-ui-card"
-            aria-disabled={!entry.canCraft}
+            disabled={busy || !entry.canCraft}
+            aria-disabled={busy || !entry.canCraft}
             aria-label={`${entry.outputName} recipe`}
             data-crafting-recipe-id={entry.recipe.recipeId}
+            data-crafting-backend-action="true"
             data-focused={coords.focused ? "true" : "false"}
             style={{
               ...recipeButtonStyle,
-              opacity: entry.canCraft ? 1 : 0.58,
+              opacity: busy ? 0.45 : entry.canCraft ? 1 : 0.58,
+              filter: busy ? "grayscale(0.65)" : undefined,
+              cursor: busy
+                ? "wait"
+                : entry.canCraft
+                ? "pointer"
+                : "not-allowed",
               outline: coords.focused
                 ? "2px solid rgba(255,255,255,0.72)"
                 : "none",
@@ -279,7 +319,11 @@ const RecipePane: React.FunctionComponent<{
               </span>
             </span>
             <span style={recipeSmallLineStyle}>
-              {entry.canCraft ? "Ready" : entry.missing.slice(0, 3).join(", ")}
+              {busy
+                ? "Updating..."
+                : entry.canCraft
+                ? "Ready"
+                : entry.missing.slice(0, 3).join(", ")}
             </span>
           </button>
         )}
@@ -293,7 +337,9 @@ const JobsPane: React.FunctionComponent<{
     ReturnType<HarthmereCraftingStationAdapterV1["getSnapshot"]>
   >;
   adapter: HarthmereCraftingStationAdapterV1;
-}> = ({ snapshot, adapter }) => {
+  busy: boolean;
+  onRunAction: (action: () => Promise<void>) => void;
+}> = ({ snapshot, adapter, busy, onRunAction }) => {
   const jobs = snapshot.activeJobs;
   return (
     <section style={sectionGridStyle}>
@@ -316,14 +362,22 @@ const JobsPane: React.FunctionComponent<{
               <button
                 type="button"
                 className="biomes-ui-tab"
-                onClick={() => void adapter.completeJob(job.jobId)}
+                data-crafting-backend-action="true"
+                disabled={busy}
+                style={busy ? pendingButtonStyle : undefined}
+                onClick={() =>
+                  onRunAction(() => adapter.completeJob(job.jobId))
+                }
               >
                 Complete
               </button>
               <button
                 type="button"
                 className="biomes-ui-tab"
-                onClick={() => void adapter.cancelJob(job.jobId)}
+                data-crafting-backend-action="true"
+                disabled={busy}
+                style={busy ? pendingButtonStyle : undefined}
+                onClick={() => onRunAction(() => adapter.cancelJob(job.jobId))}
               >
                 Cancel
               </button>
@@ -381,6 +435,22 @@ const mutedStyle: React.CSSProperties = {
   fontSize: 12,
   lineHeight: 1.35,
   letterSpacing: 0,
+};
+
+const pendingButtonStyle: React.CSSProperties = {
+  opacity: 0.45,
+  filter: "grayscale(0.65)",
+  cursor: "wait",
+};
+
+const craftingPendingNoticeStyle: React.CSSProperties = {
+  marginTop: 10,
+  padding: "7px 9px",
+  border: "1px solid rgba(125, 211, 252, 0.32)",
+  borderRadius: 4,
+  background: "rgba(7, 12, 26, 0.7)",
+  color: "rgba(255,255,255,0.78)",
+  fontSize: 12,
 };
 
 const smallLineStyle: React.CSSProperties = {

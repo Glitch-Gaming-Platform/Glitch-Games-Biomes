@@ -10,14 +10,15 @@ import { resolveAssetUrlUntyped } from "@/galois/interface/asset_paths";
 
 export function humanizeBiomesInventoryItemIdV1(
   itemId: string,
-  fallback: string,
+  fallback: string
 ): string {
   const knownName = harthmereFarmingFoodItemDisplayNameV1(itemId);
   if (knownName) return knownName;
-  if (!itemId || itemId === fallback) return fallback;
+  if (!itemId) return fallback;
   const parts = itemId.split("/").filter(Boolean);
   const tail = parts[parts.length - 1] ?? itemId;
   const readable = tail
+    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
     .replace(/[_-]+/g, " ")
     .replace(/\b\w/g, (m) => m.toUpperCase());
   if (/^[a-f0-9]{16,}$/i.test(tail)) {
@@ -26,7 +27,10 @@ export function humanizeBiomesInventoryItemIdV1(
   return readable || fallback;
 }
 
-const LOCAL_BIKKIE_VISUAL_ALIASES_V1: Record<string, HarthmereBikkieItemMetadataV1> = {
+const LOCAL_BIKKIE_VISUAL_ALIASES_V1: Record<
+  string,
+  HarthmereBikkieItemMetadataV1
+> = {
   seed_carrot: {
     bikkieId: "4537020877769703",
     displayName: "Carrot Seed",
@@ -117,7 +121,12 @@ export function biomesInventoryItemIconV1(itemId: string): string {
   if (food.source === "drink") return "DR";
   if (foodName.includes("corn")) return "CO";
   if (foodName.includes("meat")) return "ME";
-  if (foodName.includes("stew") || foodName.includes("meal") || foodName.includes("soup")) return "ST";
+  if (
+    foodName.includes("stew") ||
+    foodName.includes("meal") ||
+    foodName.includes("soup")
+  )
+    return "ST";
   if (foodName.includes("tart")) return "TA";
   if (foodName.includes("bread")) return "BR";
   if (foodName.includes("berries") || foodName.includes("berry")) return "BE";

@@ -29,7 +29,10 @@ import {
   parseHarthmereLiveModeSharedWorldStateV1,
   reduceHarthmereLiveModeBackendStateV1,
 } from "@/shared/harthmere/live_mode_backend_v1";
-import type { BuildingSystemAnyMaterializationPlanV1 } from "@/shared/harthmere/building_system_v1";
+import {
+  groundedBuildingSystemMaterializationPlanV1,
+  type BuildingSystemAnyMaterializationPlanV1,
+} from "@/shared/harthmere/building_system_v1";
 import {
   buildHarthmereLiveModePersistenceMutationPlanV1,
   createHarthmereLiveModeEventV1,
@@ -785,6 +788,51 @@ export function jobsBoardPositionFromLiveModeBodyV151(
     : undefined;
 }
 
+function liveModeNumberV1(value: unknown): number | undefined {
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? numeric : undefined;
+}
+
+function liveModePositionFromUnknownV1(value: unknown) {
+  if (Array.isArray(value)) {
+    const x = liveModeNumberV1(value[0]);
+    const y = liveModeNumberV1(value[1]);
+    const z = liveModeNumberV1(value[2]);
+    return x === undefined || y === undefined || z === undefined
+      ? undefined
+      : { x, y, z };
+  }
+  if (!value || typeof value !== "object") {
+    return undefined;
+  }
+  const record = value as Record<string, unknown>;
+  const x = liveModeNumberV1(record.x);
+  const y = liveModeNumberV1(record.y);
+  const z = liveModeNumberV1(record.z);
+  return x === undefined || y === undefined || z === undefined
+    ? undefined
+    : { x, y, z };
+}
+
+export function combatActorPositionFromInstallLiveModeBodyV1(
+  body: z.infer<typeof zLiveModeRequest>
+) {
+  if (
+    body.actionKind !== "request_attack" &&
+    body.actionKind !== "request_ability_cast"
+  ) {
+    return undefined;
+  }
+  if (body.subsystem !== "combat" && body.subsystem !== "ability") {
+    return undefined;
+  }
+  const claims = body.clientClaims ?? {};
+  return (
+    liveModePositionFromUnknownV1(claims.runtimePosition) ??
+    liveModePositionFromUnknownV1(claims.actorPosition)
+  );
+}
+
 function route_real_attacks_abilities_xp_loot_death_respawn_through_shared_rules(
   envelope: HarthmereLiveModeAuthorityEnvelopeV1,
   plan: NonNullable<LiveModeResponse["mutationPlan"]>
@@ -1086,6 +1134,106 @@ export async function publishBuildingSystemMaterializationPlansToEcsV1(input: {
   };
 }
 
+// HARTHMERE_BUILDING_TERRAIN_GROUNDING_V1 (server probe):
+// Resolve the REAL surface under each player building / plot-claim plan and shift
+// the plan onto it, so a baked structure rests on the ground instead of the flat
+// authored plot Y — the same correctness the muckers/animals/markers get from the
+// shared grounder, applied once at bake time because voxels cannot be re-grounded
+// per frame. Read-only: it probes ONLY the committed seed terrain (player diffs
+// ignored, so we never ground onto another player's build) using the same
+// `seed.get` call the writer uses. Pre-authored server outpost plans are left
+// alone, and ANY failure (missing/unreadable column, no standable surface) falls
+// back to the unchanged plans, so the worst case is exactly today's behavior —
+// a structure is never buried or teleported, only ever corrected onto real ground.
+async function groundBuildingSystemPlansToRealTerrainV1(input: {
+  worldApi: WorldApi;
+  askApi?: Pick<AskApi, "scanForExport">;
+  plans: BuildingSystemAnyMaterializationPlanV1[];
+}): Promise<BuildingSystemAnyMaterializationPlanV1[]> {
+  const SCAN = 24;
+  const groundablePlans = input.plans.filter(
+    (plan) =>
+      !isHarthmereServerOutpostMaterializationPlanV1(plan) && plan.edits.length
+  );
+  if (!groundablePlans.length) {
+    return input.plans;
+  }
+  try {
+    // For each plan, load a vertical window of seed terrain around its edit
+    // centroid so the shared scan can find the real surface there.
+    const probePositions: Vec3[] = [];
+    for (const plan of groundablePlans) {
+      let sumX = 0;
+      let sumZ = 0;
+      let minEditY = Infinity;
+      for (const edit of plan.edits) {
+        sumX += edit.position[0];
+        sumZ += edit.position[2];
+        minEditY = Math.min(minEditY, edit.position[1]);
+      }
+      const referenceY =
+        "origin" in plan && (plan as any).origin
+          ? (plan as any).origin.y
+          : minEditY;
+      const columnX = Math.floor(sumX / plan.edits.length);
+      const columnZ = Math.floor(sumZ / plan.edits.length);
+      const anchorY = Math.round(referenceY);
+      for (let y = anchorY - SCAN - 1; y <= anchorY + SCAN + 1; y += 1) {
+        probePositions.push([columnX, y, columnZ]);
+      }
+    }
+    const terrainResolution = await resolveTerrainEntityIdsForMaterializationV1({
+      askApi: input.askApi,
+      positions: probePositions,
+    });
+    const voxeloo = await loadVoxeloo();
+    const editor = input.worldApi.edit();
+    const shardIds = [...new Set(probePositions.map((p) => voxelShard(...p)))];
+    const terrainIds = shardIds.map(
+      (shardId) =>
+        terrainResolution.terrainIdsByShard.get(shardId) ??
+        (shardId as unknown as BiomesId)
+    );
+    const terrainEntities = await editor.get(terrainIds);
+    const seedByShard = new Map<string, any>();
+    try {
+      for (let i = 0; i < shardIds.length; i += 1) {
+        const terrainEntity = terrainEntities[i];
+        if (!terrainEntity) {
+          continue;
+        }
+        const seed = new voxeloo.VolumeBlock_U32();
+        loadBlockWrapper(voxeloo, seed, terrainEntity.shardSeed());
+        seedByShard.set(shardIds[i], seed);
+      }
+      const isSolid = (x: number, y: number, z: number): boolean => {
+        try {
+          const seed = seedByShard.get(voxelShard(x, y, z));
+          if (!seed) {
+            return false;
+          }
+          return seed.get(...blockPos(x, y, z)) !== 0;
+        } catch {
+          return false;
+        }
+      };
+      return input.plans.map((plan) =>
+        isHarthmereServerOutpostMaterializationPlanV1(plan)
+          ? plan
+          : groundedBuildingSystemMaterializationPlanV1(plan, isSolid, {
+              maxScan: SCAN,
+            })
+      );
+    } finally {
+      for (const seed of seedByShard.values()) {
+        seed.delete();
+      }
+    }
+  } catch {
+    return input.plans;
+  }
+}
+
 export async function materializeBuildingSystemMaterializationPlansToTerrainV1(input: {
   worldApi: WorldApi;
   logicApi?: LogicApi;
@@ -1106,7 +1254,17 @@ export async function materializeBuildingSystemMaterializationPlansToTerrainV1(i
     };
   }
 
-  const worldPositions = input.plans.flatMap((plan) =>
+  // Ground each plan onto the REAL surface before baking, so a building/marker
+  // rests on the terrain instead of the flat authored plot Y (see
+  // groundBuildingSystemPlansToRealTerrainV1). Best-effort: failure returns the
+  // authored-Y plans unchanged.
+  const plans = await groundBuildingSystemPlansToRealTerrainV1({
+    worldApi: input.worldApi,
+    askApi: input.askApi,
+    plans: input.plans,
+  });
+
+  const worldPositions = plans.flatMap((plan) =>
     plan.edits.map((edit) =>
       buildingSystemMaterializationWorldPositionForTestV1(plan, edit.position)
     )
@@ -1128,7 +1286,7 @@ export async function materializeBuildingSystemMaterializationPlansToTerrainV1(i
   let directTerrainEditCount = 0;
   let shiftedOutpostEditEventCount = 0;
   const placeGroupEvents: GameEvent[] = [];
-  for (const plan of input.plans) {
+  for (const plan of plans) {
     const shiftedOutpost = isHarthmereServerOutpostMaterializationPlanV1(plan);
     for (const edit of plan.edits) {
       const position = buildingSystemMaterializationWorldPositionForTestV1(
@@ -1714,7 +1872,8 @@ export default biomesApiHandler(
             worldApi,
             actorIdentity.userId
           )
-        : jobsBoardPositionFromLiveModeBodyV151(body);
+        : combatActorPositionFromInstallLiveModeBodyV1(body) ??
+          jobsBoardPositionFromLiveModeBodyV151(body);
     const serverTargetPosition = await readServerTargetPositionForQuestInviteV1(
       worldApi,
       body

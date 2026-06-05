@@ -1,11 +1,78 @@
 /// <reference types="mocha" />
 import { isHarthmereCombatCreatureNpcTypeV1 } from "@/client/components/challenges/dialogueObjectSemantics";
-import { shouldEngageHarthmereMousePrimaryAttackV1 } from "@/client/components/challenges/harthmereMousePrimaryAttackRules";
+import {
+  applyHarthmereFallDamageFromSystem,
+  readHarthmereCombatState,
+  resetHarthmereCombat,
+} from "@/client/components/challenges/LocalDevHarthmereCombat";
+import { setHarthmereLocalDevUserScope } from "@/client/components/challenges/LocalDevHarthmereUserScope";
+import {
+  harthmereLiveModeCombatTargetIdForSeedV1,
+  shouldBypassHarthmereKeyboardDrawGateForMousePrimaryAttackV1,
+  shouldEngageHarthmereMousePrimaryAttackV1,
+} from "@/client/components/challenges/harthmereMousePrimaryAttackRules";
+import { fallDamageForBlocksV1 } from "@/shared/game/fall_damage_v1";
 import { harthmerePvpPlayersInArcV1 } from "@/client/components/challenges/harthmerePvpHitRules";
 import { BikkieIds } from "@/shared/bikkie/ids";
 import { HARTHMERE_VOXEL_INTERACTION_ATTACK_REACH_UNITS_V1 } from "@/shared/harthmere/combat_reach_v1";
 import type { BiomesId } from "@/shared/ids";
 import assert from "assert";
+
+class MemoryStorage implements Storage {
+  private values = new Map<string, string>();
+
+  get length() {
+    return this.values.size;
+  }
+
+  clear(): void {
+    this.values.clear();
+  }
+
+  getItem(key: string): string | null {
+    return this.values.get(key) ?? null;
+  }
+
+  key(index: number): string | null {
+    return Array.from(this.values.keys())[index] ?? null;
+  }
+
+  removeItem(key: string): void {
+    this.values.delete(key);
+  }
+
+  setItem(key: string, value: string): void {
+    this.values.set(key, String(value));
+  }
+}
+
+function installHarthmereCombatBrowserShimForTest() {
+  const localStorage = new MemoryStorage();
+  const sessionStorage = new MemoryStorage();
+  const dispatchEvent = () => true;
+  Object.defineProperty(globalThis, "window", {
+    configurable: true,
+    value: {
+      localStorage,
+      sessionStorage,
+      dispatchEvent,
+    },
+  });
+  if (typeof globalThis.CustomEvent === "undefined") {
+    Object.defineProperty(globalThis, "CustomEvent", {
+      configurable: true,
+      value: class TestCustomEvent<T = unknown> extends Event {
+        readonly detail: T | undefined;
+
+        constructor(type: string, init?: CustomEventInit<T>) {
+          super(type);
+          this.detail = init?.detail;
+        }
+      },
+    });
+  }
+  return { localStorage, sessionStorage };
+}
 
 describe("harthmere left-mouse primary attack routing", () => {
   const engaged = {
@@ -69,6 +136,80 @@ describe("harthmere left-mouse primary attack routing", () => {
       }),
       false
     );
+  });
+
+  it("does not let keyboard-only weapon draw state swallow a mouse attack", () => {
+    assert.equal(
+      shouldBypassHarthmereKeyboardDrawGateForMousePrimaryAttackV1({
+        source: "mouse_primary",
+        hasPhysicalWeapon: true,
+        weaponDrawn: false,
+      }),
+      true
+    );
+    assert.equal(
+      shouldBypassHarthmereKeyboardDrawGateForMousePrimaryAttackV1({
+        source: "keyboard_hotkey",
+        hasPhysicalWeapon: true,
+        weaponDrawn: false,
+      }),
+      false
+    );
+  });
+
+  it("maps production seeded live entities to the combat target id the live backend owns", () => {
+    assert.equal(
+      harthmereLiveModeCombatTargetIdForSeedV1({
+        seedId: "old-wood-mucker-8",
+        idOffset: 1308,
+      }),
+      "server-muck-combat:old-wood-mucker-8:1308"
+    );
+    assert.equal(
+      harthmereLiveModeCombatTargetIdForSeedV1({
+        seedId: "",
+        idOffset: 1308,
+      }),
+      undefined
+    );
+  });
+});
+
+describe("harthmere visible player fall damage", () => {
+  const storage = installHarthmereCombatBrowserShimForTest();
+
+  beforeEach(() => {
+    storage.localStorage.clear();
+    storage.sessionStorage.clear();
+    setHarthmereLocalDevUserScope("fall-damage-test-user");
+    resetHarthmereCombat();
+  });
+
+  it("drains the Harthmere combat HP that BiomesUI vitals render", () => {
+    const before = readHarthmereCombatState().player;
+    const fallBlocks = 20;
+    const expectedDamage = Math.max(
+      1,
+      Math.round(
+        (fallDamageForBlocksV1(fallBlocks) * Math.max(1, before.maxHp)) / 100
+      )
+    );
+
+    applyHarthmereFallDamageFromSystem(fallBlocks);
+
+    const after = readHarthmereCombatState().player;
+    assert.equal(after.hp, before.hp - expectedDamage);
+    assert.equal(after.combatState, "alert");
+  });
+
+  it("ignores falls below the damage threshold", () => {
+    const before = readHarthmereCombatState().player;
+
+    applyHarthmereFallDamageFromSystem(4);
+
+    const after = readHarthmereCombatState().player;
+    assert.equal(after.hp, before.hp);
+    assert.equal(after.combatState, before.combatState);
   });
 });
 

@@ -1,7 +1,10 @@
 // Frontend tests for the client per-tick fall-damage decision used by the player
 // simulation loop: tracks the fall and yields the HP delta on landing.
 
-import { clientFallDamageTickV1 } from "@/client/game/util/fall_damage_client_v1";
+import {
+  clientFallDamageTickV1,
+  clientFallDamageTickWithGraceV1,
+} from "@/client/game/util/fall_damage_client_v1";
 import { initFallTrackerV1 } from "@/shared/game/fall_damage_v1";
 import assert from "assert";
 
@@ -97,5 +100,68 @@ describe("client fall-damage tick", () => {
       { fellBlocks: 12, hpDelta: -20 },
       { fellBlocks: 15, hpDelta: -30 },
     ]);
+  });
+
+  it("suppresses a protected landing without erasing the next real fall", () => {
+    let state = initFallTrackerV1(100);
+
+    let tick = clientFallDamageTickWithGraceV1(state, {
+      onGround: false,
+      y: 90,
+      canTakeFallDamage: true,
+      canApplyFallDamage: false,
+    });
+    state = tick.state;
+    assert.equal(tick.hpDelta, 0);
+    assert.equal(tick.rawHpDelta, 0);
+
+    tick = clientFallDamageTickWithGraceV1(state, {
+      onGround: true,
+      y: 80,
+      canTakeFallDamage: true,
+      canApplyFallDamage: false,
+    });
+    state = tick.state;
+    assert.equal(tick.fellBlocks, 20);
+    assert.equal(tick.hpDelta, 0);
+    assert.equal(tick.rawHpDelta, -40);
+
+    tick = clientFallDamageTickWithGraceV1(state, {
+      onGround: false,
+      y: 70,
+      canTakeFallDamage: true,
+      canApplyFallDamage: true,
+    });
+    state = tick.state;
+    assert.equal(tick.hpDelta, 0);
+
+    tick = clientFallDamageTickWithGraceV1(state, {
+      onGround: true,
+      y: 60,
+      canTakeFallDamage: true,
+      canApplyFallDamage: true,
+    });
+    assert.equal(tick.fellBlocks, 20);
+    assert.equal(tick.hpDelta, -40);
+  });
+
+  it("treats a ground-impact landing as grounded even before cached environment catches up", () => {
+    let state = initFallTrackerV1(90);
+    let tick = clientFallDamageTickWithGraceV1(state, {
+      onGround: false,
+      y: 80,
+      canTakeFallDamage: true,
+      canApplyFallDamage: true,
+    });
+    state = tick.state;
+
+    tick = clientFallDamageTickWithGraceV1(state, {
+      onGround: true,
+      y: 70,
+      canTakeFallDamage: true,
+      canApplyFallDamage: true,
+    });
+    assert.equal(tick.fellBlocks, 20);
+    assert.equal(tick.hpDelta, -40);
   });
 });

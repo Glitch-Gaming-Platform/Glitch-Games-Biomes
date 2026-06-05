@@ -2,9 +2,11 @@ import assert from "assert";
 import {
   createHarthmereCookVisibleRecipesV1,
   createHarthmereCookingAdapterV1,
+  formatHarthmereCookItemNameV1,
   formatHarthmereCookingPlayerErrorV1,
   harthmereCookMaxCookableV1,
   harthmereCookRecipeDetailV1,
+  isHarthmereCookingStationRecipeVisibleV1,
   harthmereCookStationJobsV1,
   playerMessageFromCookingWarningV1,
   type HarthmereCookSnapshotV1,
@@ -24,13 +26,35 @@ describe("cookingStationLiveAdapter — recipe projection", () => {
     assert.ok(ids.includes("grilled_meat"), "campfire shows grilled_meat");
     assert.ok(!ids.includes("worker_meal"), "campfire hides cookpot recipes");
     assert.ok(!ids.includes("berry_tart"), "campfire hides oven recipes");
-    // Any station-less "field" recipe is cookable everywhere.
+    // Any station-less cooking recipe is cookable everywhere.
     const fieldRecipe = Object.values(HARTHMERE_COOKING_RECIPES_V1).find(
-      (r) => r.stationKind === "field",
+      (r) =>
+        r.stationKind === "field" &&
+        isHarthmereCookingStationRecipeVisibleV1(r),
     );
     if (fieldRecipe) {
       assert.ok(ids.includes(fieldRecipe.recipeId), "field recipes show anywhere");
     }
+  });
+
+  it("hides seed and fertilizer recipes from cooking station lists", () => {
+    const recipes = createHarthmereCookVisibleRecipesV1({}, "campfire");
+    assert.ok(recipes.length > 0);
+    assert.equal(
+      recipes.some((recipe) => recipe.recipe.recipeType === "seed"),
+      false,
+      "campfires should not show seed recipes"
+    );
+    assert.equal(
+      recipes.some((recipe) => recipe.recipe.recipeType === "fertilizer"),
+      false,
+      "campfires should not show fertilizer recipes"
+    );
+    assert.equal(
+      recipes.some((recipe) => /seed|fertilizer/i.test(recipe.displayName)),
+      false,
+      "campfires should not read like a farming bench"
+    );
   });
 
   it("computes have-vs-need and canCook from inventory", () => {
@@ -60,6 +84,10 @@ describe("cookingStationLiveAdapter — recipe projection", () => {
       recipe.maxBatchCount,
     );
     assert.equal(harthmereCookMaxCookableV1(recipe, {}), 0);
+  });
+
+  it("shortens unknown numeric item ids for player-facing ingredient names", () => {
+    assert.equal(formatHarthmereCookItemNameV1("1534621126189406"), "Ingredient 9406");
   });
 
   it("scales ingredient need and duration with batch count in the detail view", () => {

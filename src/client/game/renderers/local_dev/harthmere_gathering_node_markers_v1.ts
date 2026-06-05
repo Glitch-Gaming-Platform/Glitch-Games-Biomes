@@ -9,7 +9,7 @@ import type { Renderer } from "@/client/game/renderers/renderer_controller";
 import type { Scenes } from "@/client/game/renderers/scenes";
 import { addToScenes } from "@/client/game/renderers/scenes";
 import type { ClientResources } from "@/client/game/resources/types";
-import { groundHarthmereLiveEntityFeetYWithStatusV1 } from "@/client/game/util/harthmere_entity_grounding";
+import { harthmereGroundedFeetYWithMemoryV1 } from "@/client/game/util/harthmere_entity_grounding";
 import {
   HARTHMERE_GATHERING_NODE_WORLD_TARGETS_V1,
   type HarthmereGatheringNodeWorldTargetV1,
@@ -107,6 +107,10 @@ export class HarthmereGatheringNodeMarkerRendererV1 implements Renderer {
   public readonly name = HARTHMERE_GATHERING_NODE_MARKER_VERSION_V1;
   private readonly root = new THREE.Group();
   private readonly meshes = new Map<string, THREE.Group>();
+  // Per-column last-grounded surface memory (same grounder as NPCs/items): keeps
+  // a node resting on the real surface instead of burying at the flat authored Y
+  // when its terrain shard briefly unloads.
+  private readonly groundedFeetYByColumnV1 = new Map<string, number>();
 
   constructor(private readonly resources?: ClientResources) {
     this.root.name = `harthmere-gathering-node-markers root ${HARTHMERE_GATHERING_NODE_MARKER_VERSION_V1}`;
@@ -139,21 +143,24 @@ export class HarthmereGatheringNodeMarkerRendererV1 implements Renderer {
       if (!xz || hintY === undefined) {
         continue;
       }
-      const result = groundHarthmereLiveEntityFeetYWithStatusV1(
+      // Use THE shared world-placement grounder muckers/animals/items use: one
+      // tri-state probe + keep-last-surface memory. A defined feetY is the real
+      // (or last-known real) surface; undefined means terrain is unknown here.
+      const feetY = harthmereGroundedFeetYWithMemoryV1(
         this.resources,
+        this.groundedFeetYByColumnV1,
         xz[0],
         xz[1],
         hintY,
         true
       );
-      if (result.status === "grounded" && result.feetY !== undefined) {
-        mesh.position.y = result.feetY;
+      if (feetY !== undefined) {
+        mesh.position.y = feetY;
         mesh.visible = true;
-      } else if (result.status === "not-loaded") {
-        mesh.visible = false;
       } else {
-        // "no-surface": keep the authored Y as a best-effort fallback.
-        mesh.visible = true;
+        // Terrain hasn't streamed in and there's no remembered surface yet: hide
+        // for this frame rather than showing at the flat authored Y (buried).
+        mesh.visible = false;
       }
     }
   }

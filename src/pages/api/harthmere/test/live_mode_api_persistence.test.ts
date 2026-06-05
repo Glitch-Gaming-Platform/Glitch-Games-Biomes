@@ -2,6 +2,7 @@ import assert from "assert";
 import {
   HARTHMERE_BUILDING_MATERIALIZATION_ECS_PUBLISH_CHUNK_SIZE_V1,
   buildingSystemMaterializationWorldPositionForTestV1,
+  combatActorPositionFromInstallLiveModeBodyV1,
   harthmereLiveModeMutationSnapshotKeysV1,
   jobsBoardPositionFromLiveModeBodyV151,
   liveModeActorIdentityFromRequestV151,
@@ -272,6 +273,49 @@ describe("live_mode API Redis persistence", () => {
         actorEntityVersion: 1,
         zoneId: "harthmere_grove",
         payload: { boardId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1 },
+      } as any),
+      undefined
+    );
+  });
+
+  it("derives install-only combat actor position only for attack requests", () => {
+    assert.deepEqual(
+      combatActorPositionFromInstallLiveModeBodyV1({
+        requestId: "combat-pos",
+        idempotencyKey: "combat-pos",
+        targetId: "server-muck-combat:old-wood-mucker-8:1308",
+        actionKind: "request_attack",
+        subsystem: "combat",
+        actorEntityVersion: 1,
+        zoneId: "harthmere_wilderness",
+        payload: { abilityId: "basic_strike" },
+        clientClaims: { runtimePosition: [496, 53, -126] },
+      } as any),
+      { x: 496, y: 53, z: -126 }
+    );
+    assert.equal(
+      combatActorPositionFromInstallLiveModeBodyV1({
+        requestId: "combat-pos-bad",
+        idempotencyKey: "combat-pos-bad",
+        actionKind: "request_attack",
+        subsystem: "combat",
+        actorEntityVersion: 1,
+        zoneId: "harthmere_wilderness",
+        payload: { abilityId: "basic_strike" },
+        clientClaims: { runtimePosition: [496, "nope", -126] },
+      } as any),
+      undefined
+    );
+    assert.equal(
+      combatActorPositionFromInstallLiveModeBodyV1({
+        requestId: "not-combat-pos",
+        idempotencyKey: "not-combat-pos",
+        actionKind: "request_inventory_mutation",
+        subsystem: "inventory",
+        actorEntityVersion: 1,
+        zoneId: "harthmere_wilderness",
+        payload: {},
+        clientClaims: { runtimePosition: [496, 53, -126] },
       } as any),
       undefined
     );

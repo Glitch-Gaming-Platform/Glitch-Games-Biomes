@@ -59,17 +59,25 @@ describe("live_entity_helper_quests_v1 - eligibility", () => {
   });
 
   it("allows robot-labeled live entities outside excluded towns when robot metadata is missing", () => {
-    const context = {
-      entityId: "little-stupid-robot",
-      label: "little stupid robot",
-      position: [232, 54, -506],
-    } as const;
+    const labels = [
+      "little stupid robot",
+      "Mucked Restoro Bot",
+      "Archive Sentential",
+    ] as const;
 
-    assert.equal(isLiveEntityHelperQuestEligibleEntityV1(context), true);
+    for (const label of labels) {
+      const context = {
+        entityId: label.toLowerCase().replace(/\s+/g, "-"),
+        label,
+        position: [232, 54, -506],
+      } as const;
 
-    const quest = getLiveEntityHelperQuestForEntityV1(context);
-    assert.ok(quest);
-    assert.match(quest.buttonName, /^Help with /);
+      assert.equal(isLiveEntityHelperQuestEligibleEntityV1(context), true);
+
+      const quest = getLiveEntityHelperQuestForEntityV1(context);
+      assert.ok(quest);
+      assert.match(quest.buttonName, /^Help with /);
+    }
   });
 
   it("allows talkable live entities outside excluded towns when ECS actor metadata is missing", () => {
@@ -119,6 +127,34 @@ describe("live_entity_helper_quests_v1 - eligibility", () => {
       isLiveEntityHelperQuestEligibleEntityV1({
         entityId: "plain-object",
         position: [1000, 70, 600],
+      }),
+      false
+    );
+  });
+
+  it("excludes any entity that already owns a quest (quest_giver component)", () => {
+    // A wandering NPC well outside the Grove/Harthmere boxes is normally
+    // eligible...
+    assert.equal(
+      isLiveEntityHelperQuestEligibleEntityV1({
+        entityId: "wilds-local",
+        position: [1000, 70, 600],
+        hasAppearanceComponent: true,
+        hasNpcMetadata: true,
+      }),
+      true
+    );
+    // ...but the same entity carrying an authored quest_giver component (e.g.
+    // Billy Rhodes, a town giver, or a shop owner) must never hand out a generic
+    // helper quest, even if it wanders outside the exclusion bounds.
+    assert.equal(
+      isLiveEntityHelperQuestEligibleEntityV1({
+        entityId: "billy-rhodes",
+        label: "Billy Rhodes",
+        position: [1000, 70, 600],
+        hasAppearanceComponent: true,
+        hasNpcMetadata: true,
+        hasQuestGiverComponent: true,
       }),
       false
     );

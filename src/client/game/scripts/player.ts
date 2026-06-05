@@ -18,7 +18,7 @@ import { allPlayerShardsLoaded } from "@/client/game/helpers/player_shards";
 import type { Player } from "@/client/game/resources/players";
 import type { ClientResources } from "@/client/game/resources/types";
 import type { Script } from "@/client/game/scripts/script_controller";
-import { clientFallDamageTickV1 } from "@/client/game/util/fall_damage_client_v1";
+import { clientFallDamageTickWithGraceV1 } from "@/client/game/util/fall_damage_client_v1";
 import { fixedConstantScalarTransition } from "@/client/game/util/transitions";
 import { respawn } from "@/client/game/util/warping";
 import { reportClientError } from "@/client/util/request_helpers";
@@ -2203,15 +2203,19 @@ export class PlayerScript implements Script {
 
     // Process the results of the player motion for side effects.
     const groundImpact = getGroundImpact(result);
+    const nextPosition = add(player.position, result.movement.impulse);
+    const canTrackFallDamage = !flying && !swimming;
+    const landedThisTick = onGround || groundImpact > 0;
 
     // Distance-based fall damage: track the apex of the airborne arc and, on
     // landing, deal 10 damage per 5 feet (blocks) fallen over the first 5. A
     // normal jump falls short of the 5-foot threshold, so jumps never hurt.
     // Replaces the old velocity-based impact damage. See fall_damage_v1.
-    const fall = clientFallDamageTickV1(this.fallTracker, {
-      onGround,
-      y: player.position[1],
-      canTakeFallDamage: !flying && !swimming && localPlayer.fallAllowsDamage,
+    const fall = clientFallDamageTickWithGraceV1(this.fallTracker, {
+      onGround: landedThisTick,
+      y: nextPosition[1],
+      canTakeFallDamage: canTrackFallDamage,
+      canApplyFallDamage: localPlayer.fallAllowsDamage,
     });
     this.fallTracker = fall.state;
     if (fall.hpDelta < 0) {
@@ -2240,7 +2244,7 @@ export class PlayerScript implements Script {
       }
     }
 
-    if (groundImpact) {
+    if (groundImpact || (onGround && canTrackFallDamage)) {
       localPlayer.fallAllowsDamage = true;
     }
 
@@ -2269,7 +2273,6 @@ export class PlayerScript implements Script {
       }
     }
 
-    const nextPosition = add(player.position, result.movement.impulse);
     const edgeSafePosition = maybeClampLocalDevHarthmereEdgePosition(nextPosition);
     const hitLocalDevEdge = !approxEquals(edgeSafePosition, nextPosition);
     const townSafePosition = maybeResolveLocalDevHarthmereHorizontalTownPosition(

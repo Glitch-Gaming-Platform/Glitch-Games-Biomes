@@ -10,6 +10,7 @@ import {
   getHarthmereCraftingRecipeV1,
   getHarthmereCraftingStationV1,
   getHarthmereCraftingToolV1,
+  normalizeHarthmereCraftingStationIdV1,
   registerHarthmereItemDefinitionV1,
   type HarthmereCraftingOutcomeV1,
   type HarthmereCraftingRecipeV1,
@@ -18,7 +19,11 @@ import {
   type HarthmereInventoryMutationRequestV1,
   type HarthmereInventoryMutationResultV1,
 } from "./mmo_inventory_authority_v1";
-import { ensureHarthmereProductionCraftingCatalogueV1 } from "./mmo_crafting_catalogue_v1";
+import {
+  HARTHMERE_CRAFTING_STATION_RECIPE_IDS_V1,
+  HARTHMERE_HOME_DECORATION_RECIPE_IDS_V1,
+  ensureHarthmereProductionCraftingCatalogueV1,
+} from "./mmo_crafting_catalogue_v1";
 import { ensureHarthmereProductionVendorCatalogV1 } from "./harthmere_vendor_catalog_v1";
 import {
   defaultHarthmereHomeDecorationStateV1,
@@ -460,8 +465,8 @@ export function createHarthmereServerMuckCombatEntitySnapshotsV1(
   // Use the SAME grounded/redistributed positions as the seeded ECS entities so
   // the combat AI never tracks a hostile somewhere a player won't see one (and
   // never inside the Grove safe zone).
-  const monsterEntries = harthmereGroundedMuckMonsterSeedsInTerritoryV1().flatMap(
-    (seed) => {
+  const monsterEntries =
+    harthmereGroundedMuckMonsterSeedsInTerritoryV1().flatMap((seed) => {
       const territory = muckMonsterAreaForPositionV1(seed.position, 1.5);
       if (!territory) {
         return [];
@@ -500,8 +505,7 @@ export function createHarthmereServerMuckCombatEntitySnapshotsV1(
           } satisfies HarthmereLiveCombatEntitySnapshotV1,
         ],
       ];
-    }
-  );
+    });
 
   // Wildlife (cows, sheep, rabbits): passive but attackable. Not hostile (no
   // unprovoked aggression — see the idle-patrol gate below), but
@@ -581,7 +585,10 @@ export function harthmereReviveDefeatedSeededCombatEntitiesV1(
     if (entity.isAlive || !entity.defeatedAtMs) {
       continue;
     }
-    if (nowMs - entity.defeatedAtMs < HARTHMERE_SERVER_MUCK_COMBAT_RESPAWN_MS_V1) {
+    if (
+      nowMs - entity.defeatedAtMs <
+      HARTHMERE_SERVER_MUCK_COMBAT_RESPAWN_MS_V1
+    ) {
       continue;
     }
     entity.hp = entity.maxHp;
@@ -3754,7 +3761,9 @@ function applyHarthmereLiveModeCrimeEventV1(input: {
   // "pitch") otherwise falls through the detection ternary to the "dark" branch (-15),
   // letting a client fabricate darkness to suppress crime detection.
   const rawLighting = payloadString(input.envelope, "lighting") ?? "normal";
-  const lighting = ["bright", "normal", "dim", "dark"].includes(rawLighting) ? rawLighting : "normal";
+  const lighting = ["bright", "normal", "dim", "dark"].includes(rawLighting)
+    ? rawLighting
+    : "normal";
   const disguiseQuality = payloadNumber(input.envelope, "disguiseQuality") ?? 0;
   const guardAlertness = payloadNumber(input.envelope, "guardAlertness") ?? 60;
   const crowdDensity = payloadNumber(input.envelope, "crowdDensity") ?? 0;
@@ -4557,6 +4566,40 @@ function wouldDirectInventoryPayloadExceedCarryWeightV1(
   );
 }
 
+const HARTHMERE_STARTER_KNOWN_RECIPE_IDS_V1 = [
+  HARTHMERE_CRAFTING_STATION_RECIPE_IDS_V1.workbench,
+  HARTHMERE_CRAFTING_STATION_RECIPE_IDS_V1.thermolite,
+  HARTHMERE_CRAFTING_STATION_RECIPE_IDS_V1.kitchen,
+  HARTHMERE_CRAFTING_STATION_RECIPE_IDS_V1.tailoringBooth,
+  HARTHMERE_CRAFTING_STATION_RECIPE_IDS_V1.seedMill,
+  HARTHMERE_CRAFTING_STATION_RECIPE_IDS_V1.anglersTable,
+  HARTHMERE_CRAFTING_STATION_RECIPE_IDS_V1.composter,
+  HARTHMERE_HOME_DECORATION_RECIPE_IDS_V1.storageCabinet,
+  HARTHMERE_HOME_DECORATION_RECIPE_IDS_V1.hearthLamp,
+  HARTHMERE_HOME_DECORATION_RECIPE_IDS_V1.gardenPlanterBox,
+  "harthmere_tool_hoe_recipe",
+  "harthmere_tool_watering_can_recipe",
+  "harthmere_tool_bucket_recipe",
+  "harthmere_blacksmith_repair_iron_sword",
+  "harthmere_blacksmith_salvage_iron_sword",
+  "harthmere_carpentry_wood_plank",
+  "harthmere_carpentry_road_repair_kit",
+  "harthmere_leatherworking_boiled_leather",
+  "harthmere_alchemy_herbal_extract",
+] as const;
+
+function normalizeKnownRecipesWithStarterSetV1(value?: unknown): string[] {
+  const recipes = new Set<string>(HARTHMERE_STARTER_KNOWN_RECIPE_IDS_V1);
+  if (Array.isArray(value)) {
+    for (const recipeId of value) {
+      if (typeof recipeId === "string" && recipeId.length > 0) {
+        recipes.add(recipeId);
+      }
+    }
+  }
+  return [...recipes];
+}
+
 function upsertSkill(
   target: Record<string, { xp: number; level: number }>,
   skillId: string,
@@ -4746,7 +4789,7 @@ export function defaultHarthmereLiveModeBackendStateV1(
     },
     classMagic: {
       knownAbilities: [],
-      knownRecipes: [],
+      knownRecipes: normalizeKnownRecipesWithStarterSetV1(),
       skills: {},
       magicSchools: {},
       loadout: {},
@@ -4914,7 +4957,13 @@ export function parseHarthmereLiveModeBackendStateV1(
           ...((parsed.law as any)?.detentionUntilMs ?? {}),
         },
       },
-      classMagic: { ...defaults.classMagic, ...(parsed.classMagic ?? {}) },
+      classMagic: {
+        ...defaults.classMagic,
+        ...(parsed.classMagic ?? {}),
+        knownRecipes: normalizeKnownRecipesWithStarterSetV1(
+          (parsed.classMagic as any)?.knownRecipes
+        ),
+      },
       collections: normalizeHarthmereProgressionCollectionsStateV1(
         (parsed as any).collections
       ),
@@ -5129,10 +5178,14 @@ function normalizeAuctionSellerPayoutsV1(
 ): Record<string, HarthmereAuctionSellerPayoutV1[]> {
   const out: Record<string, HarthmereAuctionSellerPayoutV1[]> = {};
   if (!raw || typeof raw !== "object") return out;
-  for (const [sellerId, list] of Object.entries(raw as Record<string, unknown>)) {
+  for (const [sellerId, list] of Object.entries(
+    raw as Record<string, unknown>
+  )) {
     if (!Array.isArray(list)) continue;
     const cleaned = list
-      .filter((p): p is Record<string, unknown> => Boolean(p) && typeof p === "object")
+      .filter(
+        (p): p is Record<string, unknown> => Boolean(p) && typeof p === "object"
+      )
       .map((p) => ({
         listingId: String(p.listingId ?? ""),
         goldNet: Math.max(0, Math.trunc(Number(p.goldNet) || 0)),
@@ -5157,7 +5210,8 @@ function applyAuctionSellerEscrowDeltaV1(
     0,
     (state.inventory.escrow[itemId] ?? 0) + escrowDelta
   );
-  if (state.inventory.escrow[itemId] <= 0) delete state.inventory.escrow[itemId];
+  if (state.inventory.escrow[itemId] <= 0)
+    delete state.inventory.escrow[itemId];
 }
 
 export function createHarthmereLiveModeSharedWorldStateV1(
@@ -5295,13 +5349,18 @@ export function mergeHarthmereLiveModeSharedWorldStateIntoBackendV1(
   state.economy.auctionSellerPayouts = normalizeAuctionSellerPayoutsV1(
     shared.auctionSellerPayouts
   );
-  state.economy.claimedAuctionPayoutIds = state.economy.claimedAuctionPayoutIds ?? {};
+  state.economy.claimedAuctionPayoutIds =
+    state.economy.claimedAuctionPayoutIds ?? {};
   // Deliver this actor's owed auction sale proceeds exactly once (the shared blob is
   // last-write-wins and can re-deliver, so guard on the locally-recorded claimed ids).
-  for (const payout of (shared.auctionSellerPayouts ?? {})[state.actorId] ?? []) {
+  for (const payout of (shared.auctionSellerPayouts ?? {})[state.actorId] ??
+    []) {
     if (state.economy.claimedAuctionPayoutIds[payout.listingId]) continue;
     state.economy.claimedAuctionPayoutIds[payout.listingId] = nowMs;
-    state.inventory.gold = Math.max(0, state.inventory.gold + Math.max(0, payout.goldNet));
+    state.inventory.gold = Math.max(
+      0,
+      state.inventory.gold + Math.max(0, payout.goldNet)
+    );
     if (payout.count > 0 && payout.itemId) {
       // Release the sold stack from the seller's escrow lock and inventory.
       state.inventory.escrow = { ...state.inventory.escrow };
@@ -5309,12 +5368,14 @@ export function mergeHarthmereLiveModeSharedWorldStateIntoBackendV1(
         0,
         (state.inventory.escrow[payout.itemId] ?? 0) - payout.count
       );
-      if (state.inventory.escrow[payout.itemId] <= 0) delete state.inventory.escrow[payout.itemId];
+      if (state.inventory.escrow[payout.itemId] <= 0)
+        delete state.inventory.escrow[payout.itemId];
       state.inventory.items[payout.itemId] = Math.max(
         0,
         (state.inventory.items[payout.itemId] ?? 0) - payout.count
       );
-      if (state.inventory.items[payout.itemId] <= 0) delete state.inventory.items[payout.itemId];
+      if (state.inventory.items[payout.itemId] <= 0)
+        delete state.inventory.items[payout.itemId];
     }
   }
   const sharedBuilding = normalizeHarthmereLiveModeSharedBuildingStateV1(
@@ -5540,15 +5601,16 @@ export function createHarthmereLiveEntityCombatClientSnapshotV1(
 
 export function createHarthmereCraftingStationClientSnapshotFromBackendV1(
   state: HarthmereLiveModeBackendStateV1,
-  stationId?: string,
+  stationId?: string | number,
   stationType?: string,
   nowMs: number = state.updatedAtMs
 ) {
   ensureHarthmereProductionCraftingCatalogueV1();
-  const station = getHarthmereCraftingStationV1(stationId);
+  const normalizedStationId = normalizeHarthmereCraftingStationIdV1(stationId);
+  const station = getHarthmereCraftingStationV1(normalizedStationId);
   return {
     actorId: state.actorId,
-    stationId,
+    stationId: normalizedStationId,
     stationType: stationType ?? station?.stationType,
     stationName: station?.displayName ?? "Crafting Station",
     gold: state.inventory.gold,
@@ -6286,8 +6348,10 @@ export function reduceHarthmereLiveModeBackendStateV1(
       ? Math.max(0, Number(npcSnapshot.attackRange))
       : ability.rangeUnits;
     if (
-      liveEntityCombatHorizontalDistanceV1(npcSnapshot.position, playerPosition) >
-      range
+      liveEntityCombatHorizontalDistanceV1(
+        npcSnapshot.position,
+        playerPosition
+      ) > range
     ) {
       return {
         attackBlockedReason: "target_out_of_range",
@@ -6368,9 +6432,7 @@ export function reduceHarthmereLiveModeBackendStateV1(
     // instead of the level-derived combat formula.
     const damage = Math.max(
       0,
-      Math.trunc(
-        Number(npcSnapshot.attackDamage ?? combatResult.damage ?? 0)
-      )
+      Math.trunc(Number(npcSnapshot.attackDamage ?? combatResult.damage ?? 0))
     );
     if (damage > 0) {
       next.combat.hp = Math.max(0, playerHpBefore - damage);
@@ -6838,7 +6900,13 @@ export function reduceHarthmereLiveModeBackendStateV1(
     if (target.entityKind) return target.entityKind;
     const text = `${entityId} ${target.species ?? ""}`.toLowerCase();
     if (target.isLivestock || target.protectedSpecies) return "animal";
-    if (/robot|sentinel|construct/.test(text)) return "robot";
+    if (
+      /\b(robots?|bots?|sentinels?|sententials?|sentientals?|constructs?)\b/.test(
+        text
+      )
+    ) {
+      return "robot";
+    }
     if (/mux|muck|muckling|mucker/.test(text)) return "mux";
     if (/hex|hexer/.test(text)) return "hex";
     if (/undead|zombie|corpse|drowned|dead/.test(text)) return "undead";
@@ -8269,7 +8337,11 @@ export function reduceHarthmereLiveModeBackendStateV1(
       );
       if (r.ok && r.listing) {
         next.economy.auctionListings[listingId] = r.listing;
-        applyAuctionSellerEscrowDeltaV1(next, r.listing.itemId, r.sellerEscrowDelta);
+        applyAuctionSellerEscrowDeltaV1(
+          next,
+          r.listing.itemId,
+          r.sellerEscrowDelta
+        );
         sharedStateKeys.add(harthmereLiveModeSharedWorldStateKeyV1());
         touchedModels.add("auction_listing");
         touchedModels.add("inventory_escrow");
@@ -8300,7 +8372,11 @@ export function reduceHarthmereLiveModeBackendStateV1(
         { actorSnapshot: buildInventorySnapshot(), currentListing }
       );
       if (r.ok) {
-        applyAuctionSellerEscrowDeltaV1(next, currentListing?.itemId, r.sellerEscrowDelta);
+        applyAuctionSellerEscrowDeltaV1(
+          next,
+          currentListing?.itemId,
+          r.sellerEscrowDelta
+        );
         // The listing is fully resolved once recovered; drop it from the marketplace.
         if (currentListing) delete next.economy.auctionListings[listingId];
         sharedStateKeys.add(harthmereLiveModeSharedWorldStateKeyV1());
@@ -8319,8 +8395,11 @@ export function reduceHarthmereLiveModeBackendStateV1(
     // -----------------------------------------------------------------------
     case "request_auction_expire": {
       let expired = 0;
-      for (const [lid, listing] of Object.entries(next.economy.auctionListings)) {
-        if (listing.status !== "active" || nowMs <= listing.expiresAtMs) continue;
+      for (const [lid, listing] of Object.entries(
+        next.economy.auctionListings
+      )) {
+        if (listing.status !== "active" || nowMs <= listing.expiresAtMs)
+          continue;
         const r = reduceHarthmereAuctionMutationV1(
           {
             requestId: `${envelope.requestId}:${lid}`,
@@ -8350,7 +8429,8 @@ export function reduceHarthmereLiveModeBackendStateV1(
     // -----------------------------------------------------------------------
     case "request_pay_fine": {
       const factionId =
-        payloadString(envelope, "factionId") ?? HARTHMERE_CIVIL_LAW_FACTION_ID_V1;
+        payloadString(envelope, "factionId") ??
+        HARTHMERE_CIVIL_LAW_FACTION_ID_V1;
       const owed = Math.max(0, Math.trunc(next.law.fines[factionId] ?? 0));
       if (owed <= 0) {
         warnings.push("pay_fine_rejected:no_outstanding_fine");
@@ -8381,7 +8461,8 @@ export function reduceHarthmereLiveModeBackendStateV1(
     // -----------------------------------------------------------------------
     case "request_clear_bounty": {
       const factionId =
-        payloadString(envelope, "factionId") ?? HARTHMERE_CIVIL_LAW_FACTION_ID_V1;
+        payloadString(envelope, "factionId") ??
+        HARTHMERE_CIVIL_LAW_FACTION_ID_V1;
       const records = next.law.crimeRecords ?? [];
       const outstanding = records.filter(
         (r) =>
@@ -8406,7 +8487,9 @@ export function reduceHarthmereLiveModeBackendStateV1(
       next.inventory.gold -= totalBounty;
       const outstandingIds = new Set(outstanding.map((r) => r.id));
       next.law.crimeRecords = records.map((r) =>
-        outstandingIds.has(r.id) ? { ...r, status: "served" as const, bountyGold: 0 } : r
+        outstandingIds.has(r.id)
+          ? { ...r, status: "served" as const, bountyGold: 0 }
+          : r
       );
       sharedStateKeys.add(harthmereLiveModeSharedWorldStateKeyV1());
       touchedModels.add("wallet");
@@ -8475,7 +8558,7 @@ export function reduceHarthmereLiveModeBackendStateV1(
           snapshot,
           playerLevel: next.classMagic.skills["character_level"]?.level ?? 1,
           playerSkills: next.classMagic.skills,
-        playerClassId: next.classMagic.classId ?? "warrior",
+          playerClassId: next.classMagic.classId ?? "warrior",
           reputation: next.law.reputation,
         });
         if (bankResult.ok) {
@@ -12177,7 +12260,7 @@ export function reduceHarthmereLiveModeBackendStateV1(
           snapshot,
           playerLevel: next.classMagic.skills["character_level"]?.level ?? 1,
           playerSkills: next.classMagic.skills,
-        playerClassId: next.classMagic.classId ?? "warrior",
+          playerClassId: next.classMagic.classId ?? "warrior",
           reputation: next.law.reputation,
           allowPrepaidCraftingInputs: true,
         });
@@ -12363,7 +12446,9 @@ export function reduceHarthmereLiveModeBackendStateV1(
             actorId: envelope.actorId,
             recipeId,
             count: craftCount,
-            stationId: craftReq.stationId,
+            stationId: normalizeHarthmereCraftingStationIdV1(
+              craftReq.stationId
+            ),
             stationType: craftReq.stationType,
             toolItemIds: craftReq.toolItemIds ?? [],
             optionalReagentItemIds: craftReq.optionalReagentItemIds ?? [],
@@ -12385,7 +12470,9 @@ export function reduceHarthmereLiveModeBackendStateV1(
             actorId: envelope.actorId,
             recipeId,
             count: craftCount,
-            stationId: craftReq.stationId,
+            stationId: normalizeHarthmereCraftingStationIdV1(
+              craftReq.stationId
+            ),
             stationType: craftReq.stationType,
             toolItemIds: craftReq.toolItemIds ?? [],
             optionalReagentItemIds: craftReq.optionalReagentItemIds ?? [],
@@ -12485,13 +12572,19 @@ export function reduceHarthmereLiveModeBackendStateV1(
           const mineRadiusSq =
             HARTHMERE_EXOTIC_MATTER_MINE_INTERACTION_RADIUS_V1 *
             HARTHMERE_EXOTIC_MATTER_MINE_INTERACTION_RADIUS_V1;
-          const minePositions = [deposit.position, deposit.terrainPosition].filter(
-            (value): value is [number, number, number] => Array.isArray(value)
+          const minePositions = [
+            deposit.position,
+            deposit.terrainPosition,
+          ].filter((value): value is [number, number, number] =>
+            Array.isArray(value)
           );
           const withinMineRange = minePositions.some(
             (pos) =>
-              distanceSq3V1(actorPosition, { x: pos[0], y: pos[1], z: pos[2] }) <=
-              mineRadiusSq
+              distanceSq3V1(actorPosition, {
+                x: pos[0],
+                y: pos[1],
+                z: pos[2],
+              }) <= mineRadiusSq
           );
           if (!withinMineRange) {
             warnings.push("exotic_matter_rejected:deposit_proximity_required");

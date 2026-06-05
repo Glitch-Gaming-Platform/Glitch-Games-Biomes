@@ -13,6 +13,11 @@ import {
   shouldClearStaleActiveMapPinV1,
   writeActiveBiomesUIMapPinV142,
 } from "./mapPinnedDestination";
+import {
+  readBiomesUIMainQuestSelectionV1,
+  setBiomesUIMainQuestFromTrackableQuestV1,
+  writeBiomesUIMainQuestSelectionV1,
+} from "./mainQuestSelection";
 import { appendHarthmereBusinessOutpostMapLandmarksV1 } from "./harthmereBusinessMapMarkersV1";
 import {
   activeJobsBoardMissionStepsForBiomesUIV1,
@@ -249,7 +254,9 @@ export function buildBiomesUIMapAdapter(
     const kind = String(landmark?.kind ?? "").toLowerCase();
     return kind === "business" ||
       kind === "property" ||
-      landmark?.source === HARTHMERE_PROPERTY_MARKER_SOURCE_V1
+      landmark?.source === HARTHMERE_PROPERTY_MARKER_SOURCE_V1 ||
+      landmark?.source === BIOMES_UI_LIVE_ENTITY_HELPER_MARKER_SOURCE_V1 ||
+      landmark?.source === BIOMES_UI_SHARED_QUEST_MARKER_SOURCE_V1
       ? id
       : normalizeMarkerId(id);
   };
@@ -520,7 +527,9 @@ export function buildBiomesUIMapAdapter(
             status,
             firstMarkerId:
               Array.isArray(quest.markerIds) && quest.markerIds.length
-                ? normalizeMarkerId(String(quest.markerIds[0]))
+                ? normalizeMarkerId(
+                    String(quest.markerIds[objectiveIndex] ?? quest.markerIds[0])
+                  )
                 : undefined,
             reward: String(quest.reward ?? ""),
             kind: String(quest.category ?? "authored_grove_quest"),
@@ -552,6 +561,10 @@ export function buildBiomesUIMapAdapter(
         ...authoredQuests,
       ];
     },
+    getMainQuestSelection: () => readBiomesUIMainQuestSelectionV1(),
+    setMainQuest: (quest: any) =>
+      setBiomesUIMainQuestFromTrackableQuestV1(quest),
+    clearMainQuest: () => writeBiomesUIMainQuestSelectionV1(undefined),
     getActiveMapPin: () => {
       const pin = readActiveBiomesUIMapPinV142();
       if (!pin) {

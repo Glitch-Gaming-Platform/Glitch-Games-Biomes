@@ -57,11 +57,17 @@ describe("live-entity helper classifier — widening (V148)", () => {
   });
 
   it("accepts a little-stupid-robot-style entity by robot keyword in the label", () => {
-    const context = ctx({
-      entityId: "little-stupid-robot",
-      label: "little stupid robot",
-    });
-    assert.equal(isLiveEntityHelperQuestEligibleEntityV1(context), true);
+    for (const label of [
+      "little stupid robot",
+      "Mucked Restoro Bot",
+      "Archive Sentential",
+    ]) {
+      const context = ctx({
+        entityId: label.toLowerCase().replace(/\s+/g, "-"),
+        label,
+      });
+      assert.equal(isLiveEntityHelperQuestEligibleEntityV1(context), true);
+    }
   });
 
   it("accepts a robot entity outside the towns whose only signal is a robot ECS component", () => {

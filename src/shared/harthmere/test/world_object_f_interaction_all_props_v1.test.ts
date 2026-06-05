@@ -146,6 +146,7 @@ describe("world-object F interaction: all prop types", () => {
 describe("world-object F interaction: door/gate/well/chest candidates exist", () => {
   it("the previously-missing prop types now have authored candidate landmarks", () => {
     const newProps = [
+      "econ_grove_billy_toolbag",
       "econ_grove_supply_chest",
       "econ_grove_storehouse_door",
       "econ_grove_garden_gate",

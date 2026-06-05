@@ -57,13 +57,18 @@ function textForRecordV1(entityId: string, record: Record<string, unknown>) {
     .toLowerCase();
 }
 
+const ROBOT_LIKE_LABEL_REGEX_V1 =
+  /\b(robots?|bots?|sentinels?|sententials?|sentientals?|constructs?|automatons?|drones?|androids?)\b/i;
+
 function inferLiveEntityKindFromEcsRecordV1(
   entityId: string,
   record: Record<string, unknown>
 ): HarthmereLiveEntityKindV1 {
   const text = textForRecordV1(entityId, record);
   if (isHarthmereNonLivingObjectLabelV1({ label: text })) return "object";
-  if (record.robot_component) return "robot";
+  if (record.robot_component || ROBOT_LIKE_LABEL_REGEX_V1.test(text)) {
+    return "robot";
+  }
   if (record.player_status) return "human";
   if (/mux|muck|muckling|mucker/.test(text)) return "mux";
   if (/hex|hexer/.test(text)) return "hex";

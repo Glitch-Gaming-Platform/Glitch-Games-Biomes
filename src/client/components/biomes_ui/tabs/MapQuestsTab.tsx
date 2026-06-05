@@ -26,6 +26,14 @@ import {
   writeActiveBiomesUIMapPinV142,
 } from "../adapters/mapPinnedDestination";
 import {
+  BIOMES_UI_MAIN_QUEST_EVENT_V1,
+  type BiomesUIMainQuestSelectionV1,
+  mainQuestFromTrackableQuestsForTest,
+  readBiomesUIMainQuestSelectionV1,
+  setBiomesUIMainQuestFromTrackableQuestV1,
+  writeBiomesUIMainQuestSelectionV1,
+} from "../adapters/mainQuestSelection";
+import {
   harthmereMapElevationBandForHeightV1,
   type HarthmereMapTerrainKindV1,
   type MapTerrainRegionV1,
@@ -58,7 +66,14 @@ export interface MapMarker {
   worldPosition?: [number, number, number];
 }
 
-type MapTerrainKind = "water" | "muck" | "road" | "town" | "resource" | "safe_zone" | "highland";
+type MapTerrainKind =
+  | "water"
+  | "muck"
+  | "road"
+  | "town"
+  | "resource"
+  | "safe_zone"
+  | "highland";
 
 export interface MapTerrainFeature {
   id: string;
@@ -72,7 +87,12 @@ export interface MapTerrainFeature {
   round?: boolean;
 }
 
-interface MissionStep { id: string; title: string; objective: string; done: boolean }
+interface MissionStep {
+  id: string;
+  title: string;
+  objective: string;
+  done: boolean;
+}
 
 // BIOMES_UI_MAP_TAB_QUESTS_V141:
 // Trackable-quest entries surface in the new clickable side list and let
@@ -114,17 +134,29 @@ interface MapAdapter {
   getPlayerMarker?: () => MapMarker | undefined;
   getMissionTitle?: () => string;
   getMissionSteps?: () => MissionStep[];
-  getMapBounds?: () => { minX: number; maxX: number; minZ: number; maxZ: number } | undefined;
+  getMapBounds?: () =>
+    | { minX: number; maxX: number; minZ: number; maxZ: number }
+    | undefined;
   getTrackableQuests?: () => MapTrackableQuest[];
   getActiveMapPin?: () => BiomesUIActiveMapPinV142 | undefined;
   setActiveMapPin?: (marker: MapMarker) => void;
   clearActiveMapPin?: () => void;
+  getMainQuestSelection?: () => BiomesUIMainQuestSelectionV1 | undefined;
+  setMainQuest?: (
+    quest: MapTrackableQuest
+  ) => BiomesUIMainQuestSelectionV1 | undefined;
+  clearMainQuest?: () => void;
   // Authentic terrain regions (town, roads, river, muck, highland), already
   // projected to 0..100 map units against the same bounds as the markers.
   getTerrainRegions?: () => MapTerrainRegionV1[];
 }
 
-type MapPanelTab = "quests" | "people" | "buildings" | "properties" | "geography";
+type MapPanelTab =
+  | "quests"
+  | "people"
+  | "buildings"
+  | "properties"
+  | "geography";
 
 const MAP_PANEL_TABS: Array<{ id: MapPanelTab; label: string }> = [
   { id: "quests", label: "Quests" },
@@ -173,7 +205,11 @@ function clamp01(value: number): number {
   return Math.max(0, Math.min(1, value));
 }
 
-function markerPosition(marker: { x: number; y: number }, zoom: number, pan: { x: number; y: number }) {
+function markerPosition(
+  marker: { x: number; y: number },
+  zoom: number,
+  pan: { x: number; y: number }
+) {
   const x = ((clamp01(marker.x) - 0.5) * zoom + 0.5 + pan.x) * 100;
   const y = ((clamp01(marker.y) - 0.5) * zoom + 0.5 + pan.y) * 100;
   return { left: `${x}%`, top: `${y}%` };
@@ -190,12 +226,21 @@ export function centeredPanForMapMarkerForTest(
   };
 }
 
-export function mapPanelTabForMarkerForTest(marker: Pick<MapMarker, "kind" | "active">): MapPanelTab[] {
+export function mapPanelTabForMarkerForTest(
+  marker: Pick<MapMarker, "kind" | "active">
+): MapPanelTab[] {
   if (marker.kind === "player") return MAP_PANEL_TABS.map((entry) => entry.id);
   const tabs: MapPanelTab[] = [];
-  if (marker.kind === "objective" || marker.kind === "quest" || marker.active) tabs.push("quests");
+  if (marker.kind === "objective" || marker.kind === "quest" || marker.active)
+    tabs.push("quests");
   if (marker.kind === "vendor") tabs.push("people");
-  if (marker.kind === "store" || marker.kind === "business" || marker.kind === "bank" || marker.kind === "quest") tabs.push("buildings");
+  if (
+    marker.kind === "store" ||
+    marker.kind === "business" ||
+    marker.kind === "bank" ||
+    marker.kind === "quest"
+  )
+    tabs.push("buildings");
   if (marker.kind === "property") tabs.push("properties");
   if (
     marker.kind === "safe_zone" ||
@@ -210,7 +255,9 @@ export function mapPanelTabForMarkerForTest(marker: Pick<MapMarker, "kind" | "ac
   return tabs.length ? tabs : ["geography"];
 }
 
-export function shouldRenderMapMarkerLabelForTest(marker: Pick<MapMarker, "label">): boolean {
+export function shouldRenderMapMarkerLabelForTest(
+  marker: Pick<MapMarker, "label">
+): boolean {
   return marker.label.trim().length > 0;
 }
 
@@ -220,7 +267,9 @@ export function mapMarkerVisualStateForTest(
 ) {
   const isPlayer = marker.kind === "player";
   const isPinnedDestination =
-    !isPlayer && Boolean(activeMapPinMarkerId) && activeMapPinMarkerId === marker.id;
+    !isPlayer &&
+    Boolean(activeMapPinMarkerId) &&
+    activeMapPinMarkerId === marker.id;
   const isActive = Boolean(marker.active) || isPinnedDestination;
   return {
     isPlayer,
@@ -231,22 +280,39 @@ export function mapMarkerVisualStateForTest(
   };
 }
 
-export function nextMapZoomForWheelForTest(currentZoom: number, deltaY: number) {
+export function nextMapZoomForWheelForTest(
+  currentZoom: number,
+  deltaY: number
+) {
   // Finer, exponential steps for smoother zoom, over a wider range.
   const delta = deltaY < 0 ? 0.12 : -0.12;
   return Math.max(0.4, Math.min(16, currentZoom * (1 + delta)));
 }
 
+export function preventCancelableMapWheelDefaultForTest(
+  event: Pick<React.WheelEvent<HTMLDivElement>, "cancelable" | "preventDefault">
+) {
+  if (!event.cancelable) {
+    return false;
+  }
+  event.preventDefault();
+  return true;
+}
+
 export { activeBiomesUIMapPinFromMarkerForTest };
 
 const TERRAIN_FILL: Record<MapTerrainKind, string> = {
-  water: "linear-gradient(135deg, rgba(37, 99, 235, 0.32), rgba(14, 165, 233, 0.20))",
+  water:
+    "linear-gradient(135deg, rgba(37, 99, 235, 0.32), rgba(14, 165, 233, 0.20))",
   muck: "linear-gradient(135deg, rgba(91, 33, 182, 0.38), rgba(76, 29, 149, 0.18))",
   road: "linear-gradient(90deg, rgba(180, 83, 9, 0.30), rgba(234, 179, 8, 0.22))",
   town: "linear-gradient(135deg, rgba(20, 184, 166, 0.22), rgba(34, 197, 94, 0.16))",
-  resource: "linear-gradient(135deg, rgba(34, 197, 94, 0.28), rgba(132, 204, 22, 0.16))",
-  safe_zone: "linear-gradient(135deg, rgba(16, 185, 129, 0.30), rgba(125, 211, 252, 0.14))",
-  highland: "linear-gradient(135deg, rgba(148, 163, 184, 0.22), rgba(100, 116, 139, 0.12))",
+  resource:
+    "linear-gradient(135deg, rgba(34, 197, 94, 0.28), rgba(132, 204, 22, 0.16))",
+  safe_zone:
+    "linear-gradient(135deg, rgba(16, 185, 129, 0.30), rgba(125, 211, 252, 0.14))",
+  highland:
+    "linear-gradient(135deg, rgba(148, 163, 184, 0.22), rgba(100, 116, 139, 0.12))",
 };
 
 const TERRAIN_STROKE: Record<MapTerrainKind, string> = {
@@ -269,7 +335,9 @@ const TERRAIN_SHADOW: Record<MapTerrainKind, string> = {
   highland: "0 0 18px rgba(148, 163, 184, 0.10)",
 };
 
-export function geographyTerrainFeaturesForMapMarkersForTest(markers: MapMarker[]): MapTerrainFeature[] {
+export function geographyTerrainFeaturesForMapMarkersForTest(
+  markers: MapMarker[]
+): MapTerrainFeature[] {
   return markers
     .filter((marker) => marker.kind !== "player")
     .map((marker): MapTerrainFeature | undefined => {
@@ -289,7 +357,11 @@ export function geographyTerrainFeaturesForMapMarkersForTest(markers: MapMarker[
           round: true,
         };
       }
-      if (marker.kind === "route" || text.includes("road") || text.includes("bridge")) {
+      if (
+        marker.kind === "route" ||
+        text.includes("road") ||
+        text.includes("bridge")
+      ) {
         return {
           id: `terrain-route-${marker.id}`,
           label: `${marker.label} route`,
@@ -334,7 +406,10 @@ export function geographyTerrainFeaturesForMapMarkersForTest(markers: MapMarker[
           y: marker.y,
           width: 0.1,
           height: 0.08,
-          kind: text.includes("stone") || text.includes("mountain") ? "highland" : "resource",
+          kind:
+            text.includes("stone") || text.includes("mountain")
+              ? "highland"
+              : "resource",
           round: true,
         };
       }
@@ -343,8 +418,13 @@ export function geographyTerrainFeaturesForMapMarkersForTest(markers: MapMarker[
     .filter((feature): feature is MapTerrainFeature => Boolean(feature));
 }
 
-function markersForPanelTab(markers: MapMarker[], tab: MapPanelTab): MapMarker[] {
-  return markers.filter((marker) => mapPanelTabForMarkerForTest(marker).includes(tab));
+function markersForPanelTab(
+  markers: MapMarker[],
+  tab: MapPanelTab
+): MapMarker[] {
+  return markers.filter((marker) =>
+    mapPanelTabForMarkerForTest(marker).includes(tab)
+  );
 }
 
 // Authentic terrain layer styling (water / muck / town / road / highland / land).
@@ -352,16 +432,43 @@ const TERRAIN_REGION_STYLE: Record<
   HarthmereMapTerrainKindV1,
   { fill: string; stroke: string; strokeWidth: number }
 > = {
-  land: { fill: "rgba(36, 54, 40, 0.34)", stroke: "transparent", strokeWidth: 0 },
-  town: { fill: "rgba(190, 145, 72, 0.20)", stroke: "rgba(234, 200, 130, 0.5)", strokeWidth: 0.4 },
+  land: {
+    fill: "rgba(36, 54, 40, 0.34)",
+    stroke: "transparent",
+    strokeWidth: 0,
+  },
+  town: {
+    fill: "rgba(190, 145, 72, 0.20)",
+    stroke: "rgba(234, 200, 130, 0.5)",
+    strokeWidth: 0.4,
+  },
   road: { fill: "none", stroke: "rgba(226, 184, 96, 0.8)", strokeWidth: 0.6 },
-  water: { fill: "rgba(40, 120, 210, 0.36)", stroke: "rgba(125, 211, 252, 0.7)", strokeWidth: 0.5 },
-  muck: { fill: "rgba(108, 47, 162, 0.38)", stroke: "rgba(196, 150, 255, 0.6)", strokeWidth: 0.5 },
-  highland: { fill: "rgba(150, 162, 172, 0.26)", stroke: "rgba(222, 232, 242, 0.5)", strokeWidth: 0.4 },
-  safe_zone: { fill: "rgba(34, 197, 120, 0.10)", stroke: "rgba(120, 230, 170, 0.42)", strokeWidth: 0.4 },
+  water: {
+    fill: "rgba(40, 120, 210, 0.36)",
+    stroke: "rgba(125, 211, 252, 0.7)",
+    strokeWidth: 0.5,
+  },
+  muck: {
+    fill: "rgba(108, 47, 162, 0.38)",
+    stroke: "rgba(196, 150, 255, 0.6)",
+    strokeWidth: 0.5,
+  },
+  highland: {
+    fill: "rgba(150, 162, 172, 0.26)",
+    stroke: "rgba(222, 232, 242, 0.5)",
+    strokeWidth: 0.4,
+  },
+  safe_zone: {
+    fill: "rgba(34, 197, 120, 0.10)",
+    stroke: "rgba(120, 230, 170, 0.42)",
+    strokeWidth: 0.4,
+  },
 };
 
-export const TERRAIN_LEGEND_V1: Array<{ kind: HarthmereMapTerrainKindV1; label: string }> = [
+export const TERRAIN_LEGEND_V1: Array<{
+  kind: HarthmereMapTerrainKindV1;
+  label: string;
+}> = [
   { kind: "land", label: "Land" },
   { kind: "water", label: "Water" },
   { kind: "muck", label: "Muck" },
@@ -393,10 +500,22 @@ function MapTerrainLayer({
       data-testid="biomes-map-terrain-layer"
       viewBox="0 0 100 100"
       preserveAspectRatio="none"
-      style={{ position: "absolute", inset: 0, width: "100%", height: "100%", pointerEvents: "none" }}
+      style={{
+        position: "absolute",
+        inset: 0,
+        width: "100%",
+        height: "100%",
+        pointerEvents: "none",
+      }}
     >
       {landBase ? (
-        <rect x={-10} y={-10} width={120} height={120} fill={TERRAIN_REGION_STYLE.land.fill} />
+        <rect
+          x={-10}
+          y={-10}
+          width={120}
+          height={120}
+          fill={TERRAIN_REGION_STYLE.land.fill}
+        />
       ) : null}
       <g transform={`translate(${tx} ${ty}) scale(${zoom}) translate(-50 -50)`}>
         {features.map((region) => {
@@ -448,11 +567,7 @@ function MapTerrainLayer({
 }
 
 function filterTokens(value: string): string[] {
-  return value
-    .trim()
-    .toLowerCase()
-    .split(/\s+/)
-    .filter(Boolean);
+  return value.trim().toLowerCase().split(/\s+/).filter(Boolean);
 }
 
 function textMatchesFilter(filter: string, values: Array<unknown>): boolean {
@@ -465,7 +580,10 @@ function textMatchesFilter(filter: string, values: Array<unknown>): boolean {
   return tokens.every((token) => haystack.includes(token));
 }
 
-export function filterMapMissionStepsForTest(steps: MissionStep[], filter: string): MissionStep[] {
+export function filterMapMissionStepsForTest(
+  steps: MissionStep[],
+  filter: string
+): MissionStep[] {
   return steps.filter((step) =>
     textMatchesFilter(filter, [
       step.id,
@@ -497,7 +615,10 @@ export function filterMapTrackableQuestsForTest(
   );
 }
 
-export function filterMapMarkersForTest(markers: MapMarker[], filter: string): MapMarker[] {
+export function filterMapMarkersForTest(
+  markers: MapMarker[],
+  filter: string
+): MapMarker[] {
   return markers.filter((marker) =>
     textMatchesFilter(filter, [
       marker.id,
@@ -509,7 +630,25 @@ export function filterMapMarkersForTest(markers: MapMarker[], filter: string): M
   );
 }
 
-function distanceFromPlayer(marker: MapMarker, player?: MapMarker): number | undefined {
+export function questMapMarkerCandidatesForTest(
+  quest: MapTrackableQuest
+): string[] {
+  const seen = new Set<string>();
+  return [
+    quest.firstMarkerId,
+    ...questDetailToolShopMarkerCandidatesV1(quest),
+  ].filter((markerId): markerId is string => {
+    const id = markerId?.trim();
+    if (!id || seen.has(id)) return false;
+    seen.add(id);
+    return true;
+  });
+}
+
+function distanceFromPlayer(
+  marker: MapMarker,
+  player?: MapMarker
+): number | undefined {
   if (!marker.worldPosition || !player?.worldPosition) return undefined;
   const dx = marker.worldPosition[0] - player.worldPosition[0];
   const dz = marker.worldPosition[2] - player.worldPosition[2];
@@ -553,13 +692,21 @@ function ensureMapTabStylesV141() {
   document.head.appendChild(style);
 }
 
-export const MapQuestsTab: React.FunctionComponent<{ adapter?: MapAdapter }> = ({ adapter }) => {
+export const MapQuestsTab: React.FunctionComponent<{
+  adapter?: MapAdapter;
+}> = ({ adapter }) => {
   const [zoom, setZoom] = React.useState(1);
   const [pan, setPan] = React.useState({ x: 0, y: 0 });
-  const [focusedMarkerId, setFocusedMarkerId] = React.useState<string | null>(null);
-  const [trackedQuestId, setTrackedQuestId] = React.useState<string | null>(null);
+  const [focusedMarkerId, setFocusedMarkerId] = React.useState<string | null>(
+    null
+  );
+  const [trackedQuestId, setTrackedQuestId] = React.useState<string | null>(
+    null
+  );
   // The quest whose full details are open for review (click a quest to expand).
-  const [selectedQuestId, setSelectedQuestId] = React.useState<string | null>(null);
+  const [selectedQuestId, setSelectedQuestId] = React.useState<string | null>(
+    null
+  );
   // Multi-layer model: any combination of category layers can be on at once, so
   // the map shows their union instead of one-at-a-time. Default: quests only.
   const [enabledLayers, setEnabledLayers] = React.useState<Set<MapPanelTab>>(
@@ -568,25 +715,43 @@ export const MapQuestsTab: React.FunctionComponent<{ adapter?: MapAdapter }> = (
   // Terrain starts OFF so the map opens clean (just markers); the player can
   // toggle the authentic terrain layer on from the layer bar when they want it.
   const [showTerrain, setShowTerrain] = React.useState(false);
-  const [panelFilters, setPanelFilters] = React.useState<Record<MapPanelTab, string>>({
+  const [panelFilters, setPanelFilters] = React.useState<
+    Record<MapPanelTab, string>
+  >({
     quests: "",
     people: "",
     buildings: "",
     properties: "",
     geography: "",
   });
-  const [activeMapPin, setActiveMapPin] = React.useState<BiomesUIActiveMapPinV142 | undefined>(() => adapter?.getActiveMapPin?.());
+  const [activeMapPin, setActiveMapPin] = React.useState<
+    BiomesUIActiveMapPinV142 | undefined
+  >(() => adapter?.getActiveMapPin?.());
+  const [mainQuestSelection, setMainQuestSelection] = React.useState<
+    BiomesUIMainQuestSelectionV1 | undefined
+  >(
+    () =>
+      adapter?.getMainQuestSelection?.() ?? readBiomesUIMainQuestSelectionV1()
+  );
   // "Locate on map" target we still need to pan/zoom to. Seeded from a recent
   // active pin on mount because the locate event fires during the tab switch,
   // before this tab is listening. Centering happens once the marker exists.
-  const [pendingLocateMarkerId, setPendingLocateMarkerId] = React.useState<string | undefined>(() => {
+  const [pendingLocateMarkerId, setPendingLocateMarkerId] = React.useState<
+    string | undefined
+  >(() => {
     const pin = readActiveBiomesUIMapPinV142();
-    return pin && Date.now() - pin.setAtMs <= BIOMES_UI_LOCATE_ON_MAP_RECENCY_MS_V1
+    return pin &&
+      Date.now() - pin.setAtMs <= BIOMES_UI_LOCATE_ON_MAP_RECENCY_MS_V1
       ? pin.markerId
       : undefined;
   });
   const canvasRef = React.useRef<HTMLDivElement | null>(null);
-  const draggingRef = React.useRef<{ startX: number; startY: number; panX: number; panY: number } | null>(null);
+  const draggingRef = React.useRef<{
+    startX: number;
+    startY: number;
+    panX: number;
+    panY: number;
+  } | null>(null);
   const didAutoCenterPlayerRef = React.useRef(false);
 
   React.useEffect(() => ensureMapTabStylesV141(), []);
@@ -603,6 +768,12 @@ export const MapQuestsTab: React.FunctionComponent<{ adapter?: MapAdapter }> = (
   const steps = adapter?.getMissionSteps?.() ?? [];
   const bounds = adapter?.getMapBounds?.();
   const trackableQuests = adapter?.getTrackableQuests?.() ?? [];
+  const mainQuest = React.useMemo(
+    () =>
+      mainQuestFromTrackableQuestsForTest(trackableQuests, mainQuestSelection),
+    [trackableQuests, mainQuestSelection]
+  );
+  const mainQuestId = mainQuest?.questId ?? mainQuestSelection?.questId;
   const layerEnabled = React.useCallback(
     (tab: MapPanelTab) => enabledLayers.has(tab),
     [enabledLayers]
@@ -615,28 +786,84 @@ export const MapQuestsTab: React.FunctionComponent<{ adapter?: MapAdapter }> = (
     () => filterMapTrackableQuestsForTest(trackableQuests, panelFilters.quests),
     [panelFilters.quests, trackableQuests]
   );
-  const focusedMarker = focusedMarkerId ? allMarkers.find((marker) => marker.id === focusedMarkerId) : undefined;
+  const focusedMarker = focusedMarkerId
+    ? allMarkers.find((marker) => marker.id === focusedMarkerId)
+    : undefined;
   // Map markers = union of every enabled category layer (multi-select).
   const visibleMarkers = React.useMemo(
     () =>
       allMarkers.filter((marker) =>
-        mapPanelTabForMarkerForTest(marker).some((tab) => enabledLayers.has(tab))
+        mapPanelTabForMarkerForTest(marker).some((tab) =>
+          enabledLayers.has(tab)
+        )
       ),
     [allMarkers, enabledLayers]
   );
   React.useEffect(() => {
     setActiveMapPin(adapter?.getActiveMapPin?.());
-  }, [adapter, markers.length, playerMarker?.worldPosition?.join(","), visibleMarkers.length]);
+  }, [
+    adapter,
+    markers.length,
+    playerMarker?.worldPosition?.join(","),
+    visibleMarkers.length,
+  ]);
+  React.useEffect(() => {
+    setMainQuestSelection(
+      adapter?.getMainQuestSelection?.() ?? readBiomesUIMainQuestSelectionV1()
+    );
+  }, [adapter]);
+  React.useEffect(() => {
+    if (typeof window === "undefined") return;
+    const onMainQuestChanged = (event: Event) => {
+      const next =
+        (event as CustomEvent<BiomesUIMainQuestSelectionV1 | undefined>)
+          .detail ??
+        adapter?.getMainQuestSelection?.() ??
+        readBiomesUIMainQuestSelectionV1();
+      setMainQuestSelection(next);
+    };
+    window.addEventListener(BIOMES_UI_MAIN_QUEST_EVENT_V1, onMainQuestChanged);
+    window.addEventListener("storage", onMainQuestChanged);
+    return () => {
+      window.removeEventListener(
+        BIOMES_UI_MAIN_QUEST_EVENT_V1,
+        onMainQuestChanged
+      );
+      window.removeEventListener("storage", onMainQuestChanged);
+    };
+  }, [adapter]);
+  React.useEffect(() => {
+    if (!mainQuestSelection || trackableQuests.length === 0) return;
+    if (mainQuest) return;
+    if (adapter?.clearMainQuest) {
+      adapter.clearMainQuest();
+    } else {
+      writeBiomesUIMainQuestSelectionV1(undefined);
+    }
+    setMainQuestSelection(undefined);
+  }, [adapter, mainQuest, mainQuestSelection, trackableQuests]);
   const visibleMapMarkers = React.useMemo(() => {
     if (!playerMarker) return visibleMarkers;
     return visibleMarkers.some((marker) => marker.id === playerMarker.id)
       ? visibleMarkers
       : [...visibleMarkers, playerMarker];
   }, [playerMarker, visibleMarkers]);
-  const peopleMarkers = React.useMemo(() => markersForPanelTab(allMarkers, "people"), [allMarkers]);
-  const buildingMarkers = React.useMemo(() => markersForPanelTab(allMarkers, "buildings"), [allMarkers]);
-  const propertyMarkers = React.useMemo(() => markersForPanelTab(allMarkers, "properties"), [allMarkers]);
-  const geographyMarkers = React.useMemo(() => markersForPanelTab(allMarkers, "geography"), [allMarkers]);
+  const peopleMarkers = React.useMemo(
+    () => markersForPanelTab(allMarkers, "people"),
+    [allMarkers]
+  );
+  const buildingMarkers = React.useMemo(
+    () => markersForPanelTab(allMarkers, "buildings"),
+    [allMarkers]
+  );
+  const propertyMarkers = React.useMemo(
+    () => markersForPanelTab(allMarkers, "properties"),
+    [allMarkers]
+  );
+  const geographyMarkers = React.useMemo(
+    () => markersForPanelTab(allMarkers, "geography"),
+    [allMarkers]
+  );
   const filteredPeopleMarkers = React.useMemo(
     () => filterMapMarkersForTest(peopleMarkers, panelFilters.people),
     [panelFilters.people, peopleMarkers]
@@ -663,7 +890,9 @@ export const MapQuestsTab: React.FunctionComponent<{ adapter?: MapAdapter }> = (
   const elevationBands = React.useMemo(() => {
     const counts: Record<string, number> = {};
     for (const marker of allMarkers) {
-      const band = harthmereMapElevationBandForHeightV1(marker.worldPosition?.[1]);
+      const band = harthmereMapElevationBandForHeightV1(
+        marker.worldPosition?.[1]
+      );
       counts[band] = (counts[band] ?? 0) + 1;
     }
     return counts;
@@ -671,7 +900,10 @@ export const MapQuestsTab: React.FunctionComponent<{ adapter?: MapAdapter }> = (
 
   // Wider zoom range + clamped pan so the map can be inspected closely without
   // ever being dragged fully off-screen.
-  const clampZoom = React.useCallback((value: number) => Math.max(0.4, Math.min(16, value)), []);
+  const clampZoom = React.useCallback(
+    (value: number) => Math.max(0.4, Math.min(16, value)),
+    []
+  );
   const clampPan = React.useCallback(
     (next: { x: number; y: number }, atZoom: number) => {
       // Keep the map center within the viewport: allow panning out to the edge of
@@ -688,37 +920,56 @@ export const MapQuestsTab: React.FunctionComponent<{ adapter?: MapAdapter }> = (
     (value: number) => setZoom(() => clampZoom(Number(value.toFixed(3)))),
     [clampZoom]
   );
-  const zoomIn = () => setZoom((value) => clampZoom(Number((value * 1.25).toFixed(3))));
-  const zoomOut = () => setZoom((value) => clampZoom(Number((value / 1.25).toFixed(3))));
+  const zoomIn = () =>
+    setZoom((value) => clampZoom(Number((value * 1.25).toFixed(3))));
+  const zoomOut = () =>
+    setZoom((value) => clampZoom(Number((value / 1.25).toFixed(3))));
   const resetView = () => {
     const nextZoom = playerMarker ? 2 : 1;
     setZoom(nextZoom);
-    setPan(playerMarker ? centeredPanForMapMarkerForTest(playerMarker, nextZoom) : { x: 0, y: 0 });
+    setPan(
+      playerMarker
+        ? centeredPanForMapMarkerForTest(playerMarker, nextZoom)
+        : { x: 0, y: 0 }
+    );
     setFocusedMarkerId(null);
     setTrackedQuestId(null);
   };
-  const centerOnMarker = React.useCallback((marker: { x: number; y: number; id: string }) => {
-    const nextZoom = Math.max(zoom, 2);
-    setZoom(nextZoom);
-    setPan(clampPan(centeredPanForMapMarkerForTest(marker, nextZoom), nextZoom));
-    setFocusedMarkerId(marker.id);
-  }, [zoom, clampPan]);
+  const centerOnMarker = React.useCallback(
+    (marker: { x: number; y: number; id: string }) => {
+      const nextZoom = Math.max(zoom, 2);
+      setZoom(nextZoom);
+      setPan(
+        clampPan(centeredPanForMapMarkerForTest(marker, nextZoom), nextZoom)
+      );
+      setFocusedMarkerId(marker.id);
+    },
+    [zoom, clampPan]
+  );
   const centerOnPlayer = () => {
     if (!playerMarker) return;
     centerOnMarker(playerMarker);
   };
   // Fit-to-content: frame all currently-visible markers (zoom + center).
   const fitToVisible = React.useCallback(() => {
-    const pts = visibleMapMarkers.map((marker) => ({ x: clamp01(marker.x), y: clamp01(marker.y) }));
+    const pts = visibleMapMarkers.map((marker) => ({
+      x: clamp01(marker.x),
+      y: clamp01(marker.y),
+    }));
     if (pts.length === 0) {
       setZoom(1);
       setPan({ x: 0, y: 0 });
       return;
     }
-    let minX = 1, maxX = 0, minY = 1, maxY = 0;
+    let minX = 1,
+      maxX = 0,
+      minY = 1,
+      maxY = 0;
     for (const p of pts) {
-      minX = Math.min(minX, p.x); maxX = Math.max(maxX, p.x);
-      minY = Math.min(minY, p.y); maxY = Math.max(maxY, p.y);
+      minX = Math.min(minX, p.x);
+      maxX = Math.max(maxX, p.x);
+      minY = Math.min(minY, p.y);
+      maxY = Math.max(maxY, p.y);
     }
     const spanX = Math.max(0.06, maxX - minX);
     const spanY = Math.max(0.06, maxY - minY);
@@ -726,7 +977,9 @@ export const MapQuestsTab: React.FunctionComponent<{ adapter?: MapAdapter }> = (
     const nextZoom = clampZoom(Math.min(0.82 / spanX, 0.82 / spanY));
     const center = { x: (minX + maxX) / 2, y: (minY + maxY) / 2 };
     setZoom(nextZoom);
-    setPan(clampPan(centeredPanForMapMarkerForTest(center, nextZoom), nextZoom));
+    setPan(
+      clampPan(centeredPanForMapMarkerForTest(center, nextZoom), nextZoom)
+    );
   }, [visibleMapMarkers, clampZoom, clampPan]);
   const setPanelFilter = (tab: MapPanelTab, value: string) => {
     setPanelFilters((filters) => ({ ...filters, [tab]: value }));
@@ -743,31 +996,23 @@ export const MapQuestsTab: React.FunctionComponent<{ adapter?: MapAdapter }> = (
     });
   };
   const setAllLayers = (on: boolean) => {
-    setEnabledLayers(on ? new Set(MAP_PANEL_TABS.map((tab) => tab.id)) : new Set());
-  };
-  const trackQuest = (quest: MapTrackableQuest) => {
-    setEnabledLayers((prev) => new Set(prev).add("quests"));
-    setTrackedQuestId(quest.questId);
-    // Clicking a quest also opens its full details for review (toggle off if it
-    // was already the open one).
-    setSelectedQuestId((current) =>
-      current === quest.questId ? null : quest.questId
+    setEnabledLayers(
+      on ? new Set(MAP_PANEL_TABS.map((tab) => tab.id)) : new Set()
     );
-    const marker = quest.firstMarkerId
-      ? allMarkers.find((entry) => entry.id === quest.firstMarkerId)
-      : undefined;
-    if (marker) centerOnMarker(marker);
   };
-  const setActiveDestination = React.useCallback((marker: MapMarker) => {
-    const pin = activeBiomesUIMapPinFromMarkerForTest(marker);
-    if (!pin) return;
-    if (adapter?.setActiveMapPin) {
-      adapter.setActiveMapPin(marker);
-    } else {
-      writeActiveBiomesUIMapPinV142(pin);
-    }
-    setActiveMapPin(pin);
-  }, [adapter]);
+  const setActiveDestination = React.useCallback(
+    (marker: MapMarker) => {
+      const pin = activeBiomesUIMapPinFromMarkerForTest(marker);
+      if (!pin) return;
+      if (adapter?.setActiveMapPin) {
+        adapter.setActiveMapPin(marker);
+      } else {
+        writeActiveBiomesUIMapPinV142(pin);
+      }
+      setActiveMapPin(pin);
+    },
+    [adapter]
+  );
   const clearActiveDestination = React.useCallback(() => {
     if (adapter?.clearActiveMapPin) {
       adapter.clearActiveMapPin();
@@ -776,6 +1021,51 @@ export const MapQuestsTab: React.FunctionComponent<{ adapter?: MapAdapter }> = (
     }
     setActiveMapPin(undefined);
   }, [adapter]);
+  const questMarkerForMap = React.useCallback(
+    (quest: MapTrackableQuest) => {
+      for (const markerId of questMapMarkerCandidatesForTest(quest)) {
+        const marker = allMarkers.find((entry) => entry.id === markerId);
+        if (marker) return marker;
+      }
+      return undefined;
+    },
+    [allMarkers]
+  );
+  const centerQuestOnMap = React.useCallback(
+    (quest: MapTrackableQuest, options: { pin?: boolean } = {}) => {
+      setEnabledLayers((prev) => new Set(prev).add("quests"));
+      const marker = questMarkerForMap(quest);
+      if (!marker) return false;
+      centerOnMarker(marker);
+      setFocusedMarkerId(marker.id);
+      if (options.pin) {
+        setActiveDestination(marker);
+      }
+      return true;
+    },
+    [centerOnMarker, questMarkerForMap, setActiveDestination]
+  );
+  const trackQuest = (quest: MapTrackableQuest) => {
+    setTrackedQuestId(quest.questId);
+    // Clicking a quest also opens its full details for review (toggle off if it
+    // was already the open one).
+    setSelectedQuestId((current) =>
+      current === quest.questId ? null : quest.questId
+    );
+    centerQuestOnMap(quest);
+  };
+  const setMainQuest = React.useCallback(
+    (quest: MapTrackableQuest) => {
+      const selection =
+        adapter?.setMainQuest?.(quest) ??
+        setBiomesUIMainQuestFromTrackableQuestV1(quest);
+      setMainQuestSelection(selection);
+      setTrackedQuestId(quest.questId);
+      setSelectedQuestId(quest.questId);
+      centerQuestOnMap(quest, { pin: true });
+    },
+    [adapter, centerQuestOnMap]
+  );
   const activeMapPinMarkerId = activeMapPin?.markerId;
   // Center on (and set the active destination to) a marker resolved by id — used
   // by the quest detail's "Locate tool shop on map" button.
@@ -802,7 +1092,9 @@ export const MapQuestsTab: React.FunctionComponent<{ adapter?: MapAdapter }> = (
     didAutoCenterPlayerRef.current = true;
     const nextZoom = 2;
     setZoom(nextZoom);
-    setPan(clampPan(centeredPanForMapMarkerForTest(playerMarker, nextZoom), nextZoom));
+    setPan(
+      clampPan(centeredPanForMapMarkerForTest(playerMarker, nextZoom), nextZoom)
+    );
   }, [playerMarker, pendingLocateMarkerId, clampPan]);
 
   // Live "locate on map" requests while this tab is already open.
@@ -841,9 +1133,11 @@ export const MapQuestsTab: React.FunctionComponent<{ adapter?: MapAdapter }> = (
   // so the point under the pointer stays put — same behaviour every modern
   // map UI uses.
   const onWheel = (event: React.WheelEvent<HTMLDivElement>) => {
-    event.preventDefault();
+    preventCancelableMapWheelDefaultForTest(event);
     if (event.shiftKey) {
-      setPan((prev) => clampPan({ x: prev.x - event.deltaY / 500, y: prev.y }, zoom));
+      setPan((prev) =>
+        clampPan({ x: prev.x - event.deltaY / 500, y: prev.y }, zoom)
+      );
       return;
     }
     setZoom((prev) => {
@@ -867,7 +1161,12 @@ export const MapQuestsTab: React.FunctionComponent<{ adapter?: MapAdapter }> = (
   };
   const onPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
     if ((event.target as HTMLElement).closest("button[data-marker]")) return;
-    draggingRef.current = { startX: event.clientX, startY: event.clientY, panX: pan.x, panY: pan.y };
+    draggingRef.current = {
+      startX: event.clientX,
+      startY: event.clientY,
+      panX: pan.x,
+      panY: pan.y,
+    };
     (event.target as HTMLElement).setPointerCapture(event.pointerId);
   };
   const onPointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
@@ -881,20 +1180,39 @@ export const MapQuestsTab: React.FunctionComponent<{ adapter?: MapAdapter }> = (
   };
   const onPointerUp = (event: React.PointerEvent<HTMLDivElement>) => {
     draggingRef.current = null;
-    try { (event.target as HTMLElement).releasePointerCapture(event.pointerId); } catch {}
+    try {
+      (event.target as HTMLElement).releasePointerCapture(event.pointerId);
+    } catch {}
   };
 
   // BIOMES_UI_MAP_TAB_V141: keyboard pan (arrow keys when the canvas has focus).
   const onKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
     const step = 0.08;
-    if (event.key === "ArrowLeft") { setPan((p) => clampPan({ ...p, x: p.x + step }, zoom)); event.preventDefault(); }
-    else if (event.key === "ArrowRight") { setPan((p) => clampPan({ ...p, x: p.x - step }, zoom)); event.preventDefault(); }
-    else if (event.key === "ArrowUp") { setPan((p) => clampPan({ ...p, y: p.y + step }, zoom)); event.preventDefault(); }
-    else if (event.key === "ArrowDown") { setPan((p) => clampPan({ ...p, y: p.y - step }, zoom)); event.preventDefault(); }
-    else if (event.key === "+" || event.key === "=") { zoomIn(); event.preventDefault(); }
-    else if (event.key === "-") { zoomOut(); event.preventDefault(); }
-    else if (event.key.toLowerCase() === "c") { centerOnPlayer(); event.preventDefault(); }
-    else if (event.key.toLowerCase() === "r") { resetView(); event.preventDefault(); }
+    if (event.key === "ArrowLeft") {
+      setPan((p) => clampPan({ ...p, x: p.x + step }, zoom));
+      event.preventDefault();
+    } else if (event.key === "ArrowRight") {
+      setPan((p) => clampPan({ ...p, x: p.x - step }, zoom));
+      event.preventDefault();
+    } else if (event.key === "ArrowUp") {
+      setPan((p) => clampPan({ ...p, y: p.y + step }, zoom));
+      event.preventDefault();
+    } else if (event.key === "ArrowDown") {
+      setPan((p) => clampPan({ ...p, y: p.y - step }, zoom));
+      event.preventDefault();
+    } else if (event.key === "+" || event.key === "=") {
+      zoomIn();
+      event.preventDefault();
+    } else if (event.key === "-") {
+      zoomOut();
+      event.preventDefault();
+    } else if (event.key.toLowerCase() === "c") {
+      centerOnPlayer();
+      event.preventDefault();
+    } else if (event.key.toLowerCase() === "r") {
+      resetView();
+      event.preventDefault();
+    }
   };
 
   return (
@@ -911,7 +1229,7 @@ export const MapQuestsTab: React.FunctionComponent<{ adapter?: MapAdapter }> = (
       }}
     >
       <div style={mapTopBarStyle}>
-        <nav aria-label="Map layers" style={mapTabBarStyle}>
+        <nav aria-label="Map sections" style={mapTabBarStyle}>
           {MAP_PANEL_TABS.map((tab) => (
             <button
               key={tab.id}
@@ -944,10 +1262,18 @@ export const MapQuestsTab: React.FunctionComponent<{ adapter?: MapAdapter }> = (
           </button>
         </nav>
         <div style={layerQuickActionsStyle}>
-          <button type="button" onClick={() => setAllLayers(true)} style={layerQuickButtonStyle}>
+          <button
+            type="button"
+            onClick={() => setAllLayers(true)}
+            style={layerQuickButtonStyle}
+          >
             All
           </button>
-          <button type="button" onClick={() => setAllLayers(false)} style={layerQuickButtonStyle}>
+          <button
+            type="button"
+            onClick={() => setAllLayers(false)}
+            style={layerQuickButtonStyle}
+          >
             None
           </button>
         </div>
@@ -982,7 +1308,9 @@ export const MapQuestsTab: React.FunctionComponent<{ adapter?: MapAdapter }> = (
           <MapTerrainLayer regions={terrainRegions} zoom={zoom} pan={pan} />
         ) : null}
         <div style={mapToolbarStyle}>
-          <button type="button" onClick={zoomOut} aria-label="Zoom map out">−</button>
+          <button type="button" onClick={zoomOut} aria-label="Zoom map out">
+            −
+          </button>
           <input
             type="range"
             min={0.4}
@@ -994,18 +1322,36 @@ export const MapQuestsTab: React.FunctionComponent<{ adapter?: MapAdapter }> = (
             title="Zoom"
             style={{ width: 84, accentColor: "var(--biomes-edge-cyan)" }}
           />
-          <button type="button" onClick={zoomIn} aria-label="Zoom map in">+</button>
-          <span aria-label={`Map zoom ${Math.round(zoom * 100)} percent`}>{Math.round(zoom * 100)}%</span>
-          <button type="button" onClick={fitToVisible} title="Fit all markers in view">Fit</button>
-          <button type="button" onClick={resetView} title="Reset view (R)">Reset</button>
-          <button type="button" onClick={centerOnPlayer} disabled={!playerMarker} title="Center on player (C)">
+          <button type="button" onClick={zoomIn} aria-label="Zoom map in">
+            +
+          </button>
+          <span aria-label={`Map zoom ${Math.round(zoom * 100)} percent`}>
+            {Math.round(zoom * 100)}%
+          </span>
+          <button
+            type="button"
+            onClick={fitToVisible}
+            title="Fit all markers in view"
+          >
+            Fit
+          </button>
+          <button type="button" onClick={resetView} title="Reset view (R)">
+            Reset
+          </button>
+          <button
+            type="button"
+            onClick={centerOnPlayer}
+            disabled={!playerMarker}
+            title="Center on player (C)"
+          >
             Center Player
           </button>
         </div>
 
         {bounds ? (
           <div style={boundsStyle} aria-label="Current map bounds">
-            X {Math.round(bounds.minX)}…{Math.round(bounds.maxX)} · Z {Math.round(bounds.minZ)}…{Math.round(bounds.maxZ)}
+            X {Math.round(bounds.minX)}…{Math.round(bounds.maxX)} · Z{" "}
+            {Math.round(bounds.minZ)}…{Math.round(bounds.maxZ)}
             {showTerrain
               ? ` · Elevation ${
                   Object.entries(elevationBands)
@@ -1019,17 +1365,28 @@ export const MapQuestsTab: React.FunctionComponent<{ adapter?: MapAdapter }> = (
         ) : null}
 
         {visibleMapMarkers.length === 0 ? (
-          <div style={emptyMapStyle}>No live map markers are available for this player yet.</div>
+          <div style={emptyMapStyle}>
+            No live map markers are available for this player yet.
+          </div>
         ) : (
           visibleMapMarkers.map((marker) => {
-            const visual = mapMarkerVisualStateForTest(marker, activeMapPinMarkerId);
+            const visual = mapMarkerVisualStateForTest(
+              marker,
+              activeMapPinMarkerId
+            );
             return (
-              <Highlightable key={marker.id} uniqueId={UI_IDS.MAP_MARKER(marker.id)} showCaption>
+              <Highlightable
+                key={marker.id}
+                uniqueId={UI_IDS.MAP_MARKER(marker.id)}
+                showCaption
+              >
                 <button
                   type="button"
                   data-marker={marker.id}
                   className="biomes-map-marker"
-                  aria-label={`${marker.label} ${KIND_LABEL[marker.kind]} marker`}
+                  aria-label={`${marker.label} ${
+                    KIND_LABEL[marker.kind]
+                  } marker`}
                   tabIndex={0}
                   onClick={() => setFocusedMarkerId(marker.id)}
                   onFocus={() => setFocusedMarkerId(marker.id)}
@@ -1040,20 +1397,28 @@ export const MapQuestsTab: React.FunctionComponent<{ adapter?: MapAdapter }> = (
                     transform: "translate(-50%, -50%)",
                     width: visual.size,
                     height: visual.size,
-                    borderRadius: marker.kind === "store" || marker.kind === "business" || marker.kind === "bank" || marker.kind === "property" ? 3 : "50%",
+                    borderRadius:
+                      marker.kind === "store" ||
+                      marker.kind === "business" ||
+                      marker.kind === "bank" ||
+                      marker.kind === "property"
+                        ? 3
+                        : "50%",
                     background: KIND_COLOR[marker.kind],
-                    border: visual.isPlayer ? "3px solid #111827" : "2px solid #fff",
+                    border: visual.isPlayer
+                      ? "3px solid #111827"
+                      : "2px solid #fff",
                     boxShadow: visual.isPlayer
                       ? "0 0 14px rgba(255,255,255,0.7)"
                       : visual.isActive
-                        ? "0 0 14px rgba(252,211,77,0.9)"
-                        : "0 0 8px rgba(74,222,255,0.65)",
+                      ? "0 0 14px rgba(252,211,77,0.9)"
+                      : "0 0 8px rgba(74,222,255,0.65)",
                     cursor: "pointer",
                     animation: visual.isPlayer
                       ? "biomesMapPlayerPulseV141 1.6s ease-in-out infinite"
                       : visual.isActive
-                        ? "biomesMapActivePingV141 1.4s ease-in-out infinite"
-                        : undefined,
+                      ? "biomesMapActivePingV141 1.4s ease-in-out infinite"
+                      : undefined,
                     zIndex: visual.zIndex,
                   }}
                 >
@@ -1087,14 +1452,39 @@ export const MapQuestsTab: React.FunctionComponent<{ adapter?: MapAdapter }> = (
 
         <div style={legendStyle} aria-label="Map legend">
           {Object.entries(KIND_LABEL).map(([kind, label]) => (
-            <span key={kind} style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
-              <span aria-hidden style={{ width: 8, height: 8, borderRadius: kind === "store" || kind === "business" || kind === "bank" || kind === "property" ? 2 : "50%", background: KIND_COLOR[kind as MapMarkerKind], display: "inline-block" }} />
+            <span
+              key={kind}
+              style={{ display: "inline-flex", alignItems: "center", gap: 4 }}
+            >
+              <span
+                aria-hidden
+                style={{
+                  width: 8,
+                  height: 8,
+                  borderRadius:
+                    kind === "store" ||
+                    kind === "business" ||
+                    kind === "bank" ||
+                    kind === "property"
+                      ? 2
+                      : "50%",
+                  background: KIND_COLOR[kind as MapMarkerKind],
+                  display: "inline-block",
+                }}
+              />
               {label}
             </span>
           ))}
           {showTerrain
             ? TERRAIN_LEGEND_V1.map((entry) => (
-                <span key={`terrain-${entry.kind}`} style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+                <span
+                  key={`terrain-${entry.kind}`}
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 4,
+                  }}
+                >
                   <span
                     aria-hidden
                     style={{
@@ -1102,7 +1492,9 @@ export const MapQuestsTab: React.FunctionComponent<{ adapter?: MapAdapter }> = (
                       height: 9,
                       borderRadius: 2,
                       background: TERRAIN_REGION_STYLE[entry.kind].fill,
-                      border: `1px solid ${TERRAIN_REGION_STYLE[entry.kind].stroke}`,
+                      border: `1px solid ${
+                        TERRAIN_REGION_STYLE[entry.kind].stroke
+                      }`,
                       display: "inline-block",
                     }}
                   />
@@ -1121,12 +1513,20 @@ export const MapQuestsTab: React.FunctionComponent<{ adapter?: MapAdapter }> = (
             <span>{KIND_LABEL[focusedMarker.kind]}</span>
             {focusedMarker.worldPosition ? (
               <small>
-                World {focusedMarker.worldPosition.map((value) => Math.round(value)).join(", ")}
+                World{" "}
+                {focusedMarker.worldPosition
+                  .map((value) => Math.round(value))
+                  .join(", ")}
                 {" · "}
-                Elevation: {harthmereMapElevationBandForHeightV1(focusedMarker.worldPosition[1])}
+                Elevation:{" "}
+                {harthmereMapElevationBandForHeightV1(
+                  focusedMarker.worldPosition[1]
+                )}
               </small>
             ) : null}
-            {focusedMarker.description ? <p style={{ margin: 0 }}>{focusedMarker.description}</p> : null}
+            {focusedMarker.description ? (
+              <p style={{ margin: 0 }}>{focusedMarker.description}</p>
+            ) : null}
             <button
               type="button"
               onClick={() => centerOnMarker(focusedMarker)}
@@ -1181,8 +1581,8 @@ export const MapQuestsTab: React.FunctionComponent<{ adapter?: MapAdapter }> = (
       <section aria-label="Map panels" style={sidePanelStyle}>
         {enabledLayers.size === 0 ? (
           <p style={mutedTextStyle}>
-            No layers selected. Turn on a layer above (Quests, People, Buildings,
-            My Properties, Geography) to see its markers and list.
+            No layers selected. Turn on a layer above (Quests, People,
+            Buildings, My Properties, Geography) to see its markers and list.
           </p>
         ) : null}
         {layerEnabled("quests") ? (
@@ -1193,14 +1593,19 @@ export const MapQuestsTab: React.FunctionComponent<{ adapter?: MapAdapter }> = (
                 <input
                   type="search"
                   value={panelFilters.quests}
-                  onChange={(event) => setPanelFilter("quests", event.currentTarget.value)}
+                  onChange={(event) =>
+                    setPanelFilter("quests", event.currentTarget.value)
+                  }
                   placeholder="Filter quests"
                   aria-label="Filter quests list"
                   style={sectionFilterInputStyle}
                 />
               </div>
               {steps.length === 0 ? (
-                <p style={mutedTextStyle}>No active quest steps are available yet. Pick a quest below to track it.</p>
+                <p style={mutedTextStyle}>
+                  No active quest steps are available yet. Pick a quest below to
+                  track it.
+                </p>
               ) : filteredSteps.length === 0 ? (
                 <p style={mutedTextStyle}>No quest steps match this filter.</p>
               ) : (
@@ -1209,19 +1614,38 @@ export const MapQuestsTab: React.FunctionComponent<{ adapter?: MapAdapter }> = (
                     <li
                       key={step.id}
                       tabIndex={0}
-                      aria-label={`${step.title}, ${step.done ? "completed" : "in progress"}`}
+                      aria-label={`${step.title}, ${
+                        step.done ? "completed" : "in progress"
+                      }`}
                       style={{
                         padding: 8,
                         marginBottom: 4,
                         background: "var(--biomes-bg-glass)",
                         border: "1px solid var(--biomes-edge-cyan-soft)",
-                        borderLeft: step.done ? "3px solid #78e68c" : "3px solid var(--biomes-warn-amber)",
+                        borderLeft: step.done
+                          ? "3px solid #78e68c"
+                          : "3px solid var(--biomes-warn-amber)",
                       }}
                     >
-                      <strong style={{ fontSize: 12, textDecoration: step.done ? "line-through" : undefined, opacity: step.done ? 0.65 : 1 }}>
+                      <strong
+                        style={{
+                          fontSize: 12,
+                          textDecoration: step.done
+                            ? "line-through"
+                            : undefined,
+                          opacity: step.done ? 0.65 : 1,
+                        }}
+                      >
                         {step.title}
                       </strong>
-                      <div style={{ fontSize: 11, color: "var(--biomes-fg-muted)" }}>{step.objective}</div>
+                      <div
+                        style={{
+                          fontSize: 11,
+                          color: "var(--biomes-fg-muted)",
+                        }}
+                      >
+                        {step.objective}
+                      </div>
                     </li>
                   ))}
                 </ol>
@@ -1235,25 +1659,83 @@ export const MapQuestsTab: React.FunctionComponent<{ adapter?: MapAdapter }> = (
                 ) : (
                   <ul style={listStyle}>
                     {filteredTrackableQuests.map((quest) => {
-                      const isTracked = trackedQuestId === quest.questId || (trackedQuestId === null && quest.status === "active");
+                      const isMainQuest = mainQuestId === quest.questId;
+                      const isTracked =
+                        isMainQuest ||
+                        trackedQuestId === quest.questId ||
+                        (trackedQuestId === null &&
+                          !mainQuestId &&
+                          quest.status === "active");
                       const isSelected = selectedQuestId === quest.questId;
+                      const questMarker = questMarkerForMap(quest);
+                      const canSetMain =
+                        quest.status !== "completed" &&
+                        quest.status !== "failed" &&
+                        Boolean(questMarker?.worldPosition);
+                      const accent = isMainQuest
+                        ? "var(--biomes-warn-amber)"
+                        : quest.status === "active"
+                        ? "var(--biomes-warn-amber)"
+                        : quest.status === "completed"
+                        ? "#78e68c"
+                        : "var(--biomes-edge-cyan-soft)";
                       return (
                         <li key={quest.questId}>
-                          <button
-                            type="button"
-                            data-testid={`biomes-map-quest-${quest.questId}`}
-                            aria-pressed={isTracked}
-                            aria-expanded={isSelected}
-                            onClick={() => trackQuest(quest)}
-                            style={listButtonStyle(isTracked, quest.status === "active" ? "var(--biomes-warn-amber)" : quest.status === "completed" ? "#78e68c" : "var(--biomes-edge-cyan-soft)")}
-                          >
-                            <strong style={{ fontSize: 12 }}>{quest.title}</strong>
-                            <div style={eyebrowStyle}>{quest.status} · {quest.area}</div>
-                            {quest.objective ? (
-                              <div style={mutedSmallStyle}>{quest.objective}</div>
-                            ) : null}
-                            {quest.reward ? <div style={mutedSmallStyle}>Reward: {quest.reward}</div> : null}
-                          </button>
+                          <div style={questListItemStyle(isTracked, accent)}>
+                            <button
+                              type="button"
+                              data-testid={`biomes-map-quest-${quest.questId}`}
+                              aria-pressed={isTracked}
+                              aria-expanded={isSelected}
+                              onClick={() => trackQuest(quest)}
+                              style={questListBodyStyle}
+                            >
+                              <strong style={{ fontSize: 12 }}>
+                                {quest.title}
+                              </strong>
+                              <div style={eyebrowStyle}>
+                                {isMainQuest ? "main · " : ""}
+                                {quest.status} · {quest.area}
+                              </div>
+                              {quest.objective ? (
+                                <div style={mutedSmallStyle}>
+                                  {quest.objective}
+                                </div>
+                              ) : null}
+                              {quest.reward ? (
+                                <div style={mutedSmallStyle}>
+                                  Reward: {quest.reward}
+                                </div>
+                              ) : null}
+                            </button>
+                            <div style={questActionsStyle}>
+                              <button
+                                type="button"
+                                data-testid={`biomes-map-quest-set-main-${quest.questId}`}
+                                aria-pressed={isMainQuest}
+                                disabled={!canSetMain}
+                                onClick={() => setMainQuest(quest)}
+                                style={questActionButtonStyle(
+                                  isMainQuest,
+                                  !canSetMain
+                                )}
+                              >
+                                {isMainQuest ? "Main Quest" : "Set Main"}
+                              </button>
+                              <button
+                                type="button"
+                                data-testid={`biomes-map-quest-center-${quest.questId}`}
+                                disabled={!questMarker}
+                                onClick={() => centerQuestOnMap(quest)}
+                                style={questActionButtonStyle(
+                                  false,
+                                  !questMarker
+                                )}
+                              >
+                                Center
+                              </button>
+                            </div>
+                          </div>
                           {isSelected ? (
                             <QuestDetailPanel
                               quest={quest}
@@ -1278,7 +1760,11 @@ export const MapQuestsTab: React.FunctionComponent<{ adapter?: MapAdapter }> = (
         {layerEnabled("people") ? (
           <MarkerList
             title="People"
-            empty={panelFilters.people.trim() ? "No people match this filter." : "No known people are visible on this map yet."}
+            empty={
+              panelFilters.people.trim()
+                ? "No people match this filter."
+                : "No known people are visible on this map yet."
+            }
             markers={filteredPeopleMarkers}
             playerMarker={playerMarker}
             focusedMarkerId={focusedMarkerId}
@@ -1292,7 +1778,11 @@ export const MapQuestsTab: React.FunctionComponent<{ adapter?: MapAdapter }> = (
         {layerEnabled("buildings") ? (
           <MarkerList
             title="Buildings & Services"
-            empty={panelFilters.buildings.trim() ? "No buildings or services match this filter." : "No buildings or services are visible on this map yet."}
+            empty={
+              panelFilters.buildings.trim()
+                ? "No buildings or services match this filter."
+                : "No buildings or services are visible on this map yet."
+            }
             markers={filteredBuildingMarkers}
             playerMarker={playerMarker}
             focusedMarkerId={focusedMarkerId}
@@ -1306,7 +1796,11 @@ export const MapQuestsTab: React.FunctionComponent<{ adapter?: MapAdapter }> = (
         {layerEnabled("properties") ? (
           <MarkerList
             title="My Properties"
-            empty={panelFilters.properties.trim() ? "No properties match this filter." : "No purchased properties are visible on this map yet."}
+            empty={
+              panelFilters.properties.trim()
+                ? "No properties match this filter."
+                : "No purchased properties are visible on this map yet."
+            }
             markers={filteredPropertyMarkers}
             playerMarker={playerMarker}
             focusedMarkerId={focusedMarkerId}
@@ -1320,7 +1814,11 @@ export const MapQuestsTab: React.FunctionComponent<{ adapter?: MapAdapter }> = (
         {layerEnabled("geography") ? (
           <MarkerList
             title="Geography"
-            empty={panelFilters.geography.trim() ? "No geography markers match this filter." : "No geography markers are visible on this map yet."}
+            empty={
+              panelFilters.geography.trim()
+                ? "No geography markers match this filter."
+                : "No geography markers are visible on this map yet."
+            }
             markers={filteredGeographyMarkers}
             playerMarker={playerMarker}
             focusedMarkerId={focusedMarkerId}
@@ -1362,14 +1860,20 @@ function QuestDetailPanel({
       }}
     >
       <div style={eyebrowStyle}>
-        {(quest.kindLabel ?? "Quest")} · {quest.status}
+        {quest.kindLabel ?? "Quest"} · {quest.status}
         {quest.area ? ` · ${quest.area}` : ""}
       </div>
       <strong style={{ display: "block", marginTop: 3, fontSize: 12 }}>
         {quest.title}
       </strong>
       {quest.description ? (
-        <p style={{ margin: "4px 0", color: "var(--biomes-fg-muted)", lineHeight: 1.4 }}>
+        <p
+          style={{
+            margin: "4px 0",
+            color: "var(--biomes-fg-muted)",
+            lineHeight: 1.4,
+          }}
+        >
           {quest.description}
         </p>
       ) : null}
@@ -1380,7 +1884,10 @@ function QuestDetailPanel({
           </strong>
           <ol style={{ margin: "3px 0 0 16px", padding: 0 }}>
             {objectives.map((objective, index) => (
-              <li key={`${quest.questId}:objective:${index}`} style={{ marginBottom: 3, lineHeight: 1.4 }}>
+              <li
+                key={`${quest.questId}:objective:${index}`}
+                style={{ marginBottom: 3, lineHeight: 1.4 }}
+              >
                 {objective}
               </li>
             ))}
@@ -1388,7 +1895,9 @@ function QuestDetailPanel({
         </div>
       ) : null}
       <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginTop: 2 }}>
-        {quest.reward ? <span style={mutedSmallStyle}>Reward: {quest.reward}</span> : null}
+        {quest.reward ? (
+          <span style={mutedSmallStyle}>Reward: {quest.reward}</span>
+        ) : null}
         {quest.timeRemaining ? (
           <span style={mutedSmallStyle}>Time: {quest.timeRemaining}</span>
         ) : null}
@@ -1405,11 +1914,15 @@ function QuestDetailPanel({
           }}
         >
           <strong style={{ fontSize: 11 }}>Tool needed</strong>
-          <p style={{ margin: "3px 0", lineHeight: 1.4 }}>{quest.toolSource.hint}</p>
+          <p style={{ margin: "3px 0", lineHeight: 1.4 }}>
+            {quest.toolSource.hint}
+          </p>
           <button
             type="button"
             data-testid={`biomes-map-quest-locate-tool-${quest.questId}`}
-            onClick={() => onLocateToolShop(questDetailToolShopMarkerCandidatesV1(quest))}
+            onClick={() =>
+              onLocateToolShop(questDetailToolShopMarkerCandidatesV1(quest))
+            }
             style={{
               padding: "4px 8px",
               fontSize: 11,
@@ -1468,15 +1981,21 @@ function MarkerList({
       .filter((marker) => marker.kind !== "player")
       .slice()
       .sort((a, b) => {
-        const da = distanceFromPlayer(a, playerMarker) ?? Number.POSITIVE_INFINITY;
-        const db = distanceFromPlayer(b, playerMarker) ?? Number.POSITIVE_INFINITY;
+        const da =
+          distanceFromPlayer(a, playerMarker) ?? Number.POSITIVE_INFINITY;
+        const db =
+          distanceFromPlayer(b, playerMarker) ?? Number.POSITIVE_INFINITY;
         if (da !== db) return da - db;
         return a.label.localeCompare(b.label);
       });
   }, [markers, playerMarker]);
 
   return (
-    <div data-testid={`biomes-map-${title.toLowerCase().replace(/[^a-z]+/g, "-")}-list`}>
+    <div
+      data-testid={`biomes-map-${title
+        .toLowerCase()
+        .replace(/[^a-z]+/g, "-")}-list`}
+    >
       <div style={panelSectionHeaderStyle}>
         <h3 style={titleStyle}>{title}</h3>
         {onFilter ? (
@@ -1500,7 +2019,9 @@ function MarkerList({
             const activeDestination = activePinMarkerId === marker.id;
             return (
               <li key={marker.id}>
-                <div style={listItemFrameStyle(selected, KIND_COLOR[marker.kind])}>
+                <div
+                  style={listItemFrameStyle(selected, KIND_COLOR[marker.kind])}
+                >
                   <button
                     type="button"
                     aria-pressed={selected}
@@ -1509,9 +2030,12 @@ function MarkerList({
                   >
                     <strong style={{ fontSize: 12 }}>{marker.label}</strong>
                     <div style={eyebrowStyle}>
-                      {KIND_LABEL[marker.kind]}{distance !== undefined ? ` · ${distance}m from you` : ""}
+                      {KIND_LABEL[marker.kind]}
+                      {distance !== undefined ? ` · ${distance}m from you` : ""}
                     </div>
-                    {marker.description ? <div style={mutedSmallStyle}>{marker.description}</div> : null}
+                    {marker.description ? (
+                      <div style={mutedSmallStyle}>{marker.description}</div>
+                    ) : null}
                   </button>
                   {marker.worldPosition ? (
                     <button
@@ -1536,27 +2060,190 @@ function MarkerList({
   );
 }
 
-const titleStyle: React.CSSProperties = { margin: "0 0 8px", fontSize: 11, letterSpacing: "0.16em", textTransform: "uppercase", color: "var(--biomes-fg-muted)" };
-const mutedTextStyle: React.CSSProperties = { margin: 0, fontSize: 12, color: "var(--biomes-fg-muted)" };
-const mutedSmallStyle: React.CSSProperties = { fontSize: 11, color: "var(--biomes-fg-muted)" };
-const eyebrowStyle: React.CSSProperties = { fontSize: 10, color: "var(--biomes-fg-muted)", letterSpacing: "0.04em", textTransform: "uppercase" };
-const mapToolbarStyle: React.CSSProperties = { position: "absolute", zIndex: 5, top: 8, left: 8, display: "flex", alignItems: "center", gap: 6, padding: 6, border: "1px solid var(--biomes-edge-cyan-soft)", borderRadius: 4, background: "rgba(7, 12, 26, 0.86)", fontSize: 11 };
-const boundsStyle: React.CSSProperties = { position: "absolute", zIndex: 5, top: 8, right: 8, padding: "4px 6px", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 4, background: "rgba(7, 12, 26, 0.72)", fontSize: 10, color: "var(--biomes-fg-muted)" };
-const emptyMapStyle: React.CSSProperties = { position: "absolute", inset: 0, display: "grid", placeItems: "center", padding: 20, color: "var(--biomes-fg-muted)", fontSize: 12, textAlign: "center" };
-const legendStyle: React.CSSProperties = { position: "absolute", zIndex: 5, left: 8, right: 8, bottom: 8, display: "flex", flexWrap: "wrap", gap: "8px 10px", padding: 6, border: "1px solid rgba(255,255,255,0.12)", borderRadius: 4, background: "rgba(7, 12, 26, 0.76)", fontSize: 10, color: "var(--biomes-fg-muted)" };
-const markerCardStyle: React.CSSProperties = { position: "absolute", zIndex: 6, right: 8, bottom: 54, width: 240, display: "grid", gap: 3, padding: 8, border: "1px solid var(--biomes-edge-cyan-soft)", borderRadius: 4, background: "rgba(7, 12, 26, 0.92)", color: "var(--biomes-fg)", fontSize: 11 };
-const mapTopBarStyle: React.CSSProperties = { gridColumn: "1 / -1", display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 10, minWidth: 0, flexWrap: "wrap" };
-const mapTabBarStyle: React.CSSProperties = { display: "flex", gap: 6, minWidth: 0, overflowX: "auto", paddingBottom: 2 };
-const mapTabButtonStyle: React.CSSProperties = { border: "1px solid var(--biomes-edge-cyan-soft)", borderRadius: 4, background: "rgba(7, 12, 26, 0.68)", color: "var(--biomes-fg-muted)", padding: "7px 10px", fontSize: 11, fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase", cursor: "pointer" };
-const activeMapTabButtonStyle: React.CSSProperties = { borderColor: "var(--biomes-edge-cyan)", color: "var(--biomes-fg)", background: "rgba(74, 222, 255, 0.16)" };
-const layerToggleDividerStyle: React.CSSProperties = { width: 1, alignSelf: "stretch", margin: "2px 2px", background: "var(--biomes-edge-cyan-soft)" };
-const layerQuickActionsStyle: React.CSSProperties = { display: "flex", gap: 6, flexShrink: 0 };
-const layerQuickButtonStyle: React.CSSProperties = { border: "1px solid var(--biomes-edge-cyan-soft)", borderRadius: 4, background: "rgba(7, 12, 26, 0.6)", color: "var(--biomes-fg-muted)", padding: "7px 9px", fontSize: 11, fontWeight: 800, letterSpacing: "0.06em", textTransform: "uppercase", cursor: "pointer" };
-const panelSectionHeaderStyle: React.CSSProperties = { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 6, flexWrap: "wrap" };
-const sectionFilterInputStyle: React.CSSProperties = { width: 130, maxWidth: "100%", height: 26, padding: "0 8px", border: "1px solid var(--biomes-edge-cyan-soft)", borderRadius: 4, background: "rgba(7, 12, 26, 0.72)", color: "var(--biomes-fg)", fontSize: 11, outline: "none" };
-const sidePanelStyle: React.CSSProperties = { minHeight: 0, overflowY: "auto", display: "grid", alignContent: "start", gap: 12, paddingRight: 4 };
-const listStyle: React.CSSProperties = { listStyle: "none", padding: 0, margin: 0, display: "grid", gap: 4 };
-const listItemFrameStyle = (selected: boolean, accent: string): React.CSSProperties => ({
+const titleStyle: React.CSSProperties = {
+  margin: "0 0 8px",
+  fontSize: 11,
+  letterSpacing: "0.16em",
+  textTransform: "uppercase",
+  color: "var(--biomes-fg-muted)",
+};
+const mutedTextStyle: React.CSSProperties = {
+  margin: 0,
+  fontSize: 12,
+  color: "var(--biomes-fg-muted)",
+};
+const mutedSmallStyle: React.CSSProperties = {
+  fontSize: 11,
+  color: "var(--biomes-fg-muted)",
+};
+const eyebrowStyle: React.CSSProperties = {
+  fontSize: 10,
+  color: "var(--biomes-fg-muted)",
+  letterSpacing: "0.04em",
+  textTransform: "uppercase",
+};
+const mapToolbarStyle: React.CSSProperties = {
+  position: "absolute",
+  zIndex: 5,
+  top: 8,
+  left: 8,
+  display: "flex",
+  alignItems: "center",
+  gap: 6,
+  padding: 6,
+  border: "1px solid var(--biomes-edge-cyan-soft)",
+  borderRadius: 4,
+  background: "rgba(7, 12, 26, 0.86)",
+  fontSize: 11,
+};
+const boundsStyle: React.CSSProperties = {
+  position: "absolute",
+  zIndex: 5,
+  top: 8,
+  right: 8,
+  padding: "4px 6px",
+  border: "1px solid rgba(255,255,255,0.12)",
+  borderRadius: 4,
+  background: "rgba(7, 12, 26, 0.72)",
+  fontSize: 10,
+  color: "var(--biomes-fg-muted)",
+};
+const emptyMapStyle: React.CSSProperties = {
+  position: "absolute",
+  inset: 0,
+  display: "grid",
+  placeItems: "center",
+  padding: 20,
+  color: "var(--biomes-fg-muted)",
+  fontSize: 12,
+  textAlign: "center",
+};
+const legendStyle: React.CSSProperties = {
+  position: "absolute",
+  zIndex: 5,
+  left: 8,
+  right: 8,
+  bottom: 8,
+  display: "flex",
+  flexWrap: "wrap",
+  gap: "8px 10px",
+  padding: 6,
+  border: "1px solid rgba(255,255,255,0.12)",
+  borderRadius: 4,
+  background: "rgba(7, 12, 26, 0.76)",
+  fontSize: 10,
+  color: "var(--biomes-fg-muted)",
+};
+const markerCardStyle: React.CSSProperties = {
+  position: "absolute",
+  zIndex: 6,
+  right: 8,
+  bottom: 54,
+  width: 240,
+  display: "grid",
+  gap: 3,
+  padding: 8,
+  border: "1px solid var(--biomes-edge-cyan-soft)",
+  borderRadius: 4,
+  background: "rgba(7, 12, 26, 0.92)",
+  color: "var(--biomes-fg)",
+  fontSize: 11,
+};
+const mapTopBarStyle: React.CSSProperties = {
+  gridColumn: "1 / -1",
+  display: "flex",
+  alignItems: "flex-start",
+  justifyContent: "space-between",
+  gap: 10,
+  minWidth: 0,
+  flexWrap: "wrap",
+};
+const mapTabBarStyle: React.CSSProperties = {
+  display: "flex",
+  gap: 6,
+  minWidth: 0,
+  overflowX: "auto",
+  paddingBottom: 2,
+};
+const mapTabButtonStyle: React.CSSProperties = {
+  border: "1px solid var(--biomes-edge-cyan-soft)",
+  borderRadius: 4,
+  background: "rgba(7, 12, 26, 0.68)",
+  color: "var(--biomes-fg-muted)",
+  padding: "7px 10px",
+  fontSize: 11,
+  fontWeight: 800,
+  letterSpacing: "0.08em",
+  textTransform: "uppercase",
+  cursor: "pointer",
+};
+const activeMapTabButtonStyle: React.CSSProperties = {
+  borderColor: "var(--biomes-edge-cyan)",
+  color: "var(--biomes-fg)",
+  background: "rgba(74, 222, 255, 0.16)",
+};
+const layerToggleDividerStyle: React.CSSProperties = {
+  width: 1,
+  alignSelf: "stretch",
+  margin: "2px 2px",
+  background: "var(--biomes-edge-cyan-soft)",
+};
+const layerQuickActionsStyle: React.CSSProperties = {
+  display: "flex",
+  gap: 6,
+  flexShrink: 0,
+};
+const layerQuickButtonStyle: React.CSSProperties = {
+  border: "1px solid var(--biomes-edge-cyan-soft)",
+  borderRadius: 4,
+  background: "rgba(7, 12, 26, 0.6)",
+  color: "var(--biomes-fg-muted)",
+  padding: "7px 9px",
+  fontSize: 11,
+  fontWeight: 800,
+  letterSpacing: "0.06em",
+  textTransform: "uppercase",
+  cursor: "pointer",
+};
+const panelSectionHeaderStyle: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  gap: 8,
+  marginBottom: 6,
+  flexWrap: "wrap",
+};
+const sectionFilterInputStyle: React.CSSProperties = {
+  width: 130,
+  maxWidth: "100%",
+  height: 26,
+  padding: "0 8px",
+  border: "1px solid var(--biomes-edge-cyan-soft)",
+  borderRadius: 4,
+  background: "rgba(7, 12, 26, 0.72)",
+  color: "var(--biomes-fg)",
+  fontSize: 11,
+  outline: "none",
+};
+const sidePanelStyle: React.CSSProperties = {
+  minHeight: 0,
+  overflowY: "auto",
+  display: "grid",
+  alignContent: "start",
+  gap: 12,
+  paddingRight: 4,
+};
+const listStyle: React.CSSProperties = {
+  listStyle: "none",
+  padding: 0,
+  margin: 0,
+  display: "grid",
+  gap: 4,
+};
+const listItemFrameStyle = (
+  selected: boolean,
+  accent: string
+): React.CSSProperties => ({
   display: "grid",
   gridTemplateColumns: "minmax(0, 1fr) auto",
   alignItems: "stretch",
@@ -1578,6 +2265,45 @@ const listButtonBodyStyle: React.CSSProperties = {
   cursor: "pointer",
   font: "inherit",
 };
+const questListItemStyle = (
+  selected: boolean,
+  accent: string
+): React.CSSProperties => ({
+  display: "grid",
+  gap: 7,
+  padding: 8,
+  background: selected ? "rgba(74,222,255,0.18)" : "var(--biomes-bg-glass)",
+  border: "1px solid var(--biomes-edge-cyan-soft)",
+  borderLeft: `3px solid ${accent}`,
+});
+const questListBodyStyle: React.CSSProperties = {
+  ...listButtonBodyStyle,
+};
+const questActionsStyle: React.CSSProperties = {
+  display: "flex",
+  flexWrap: "wrap",
+  gap: 6,
+};
+function questActionButtonStyle(
+  selected: boolean,
+  disabled = false
+): React.CSSProperties {
+  return {
+    padding: "5px 8px",
+    border: selected
+      ? "1px solid var(--biomes-warn-amber)"
+      : "1px solid var(--biomes-edge-cyan-soft)",
+    borderRadius: 3,
+    background: selected ? "rgba(252,211,77,0.20)" : "rgba(7, 12, 26, 0.58)",
+    color: disabled ? "var(--biomes-fg-dim)" : "var(--biomes-fg)",
+    fontSize: 10,
+    fontWeight: 800,
+    letterSpacing: "0.04em",
+    textTransform: "uppercase",
+    cursor: disabled ? "not-allowed" : "pointer",
+    opacity: disabled ? 0.55 : 1,
+  };
+}
 const pinButtonStyle: React.CSSProperties = {
   alignSelf: "center",
   padding: "5px 7px",
@@ -1594,17 +2320,3 @@ const activePinButtonStyle: React.CSSProperties = {
   borderColor: "var(--biomes-warn-amber)",
   background: "rgba(252,211,77,0.20)",
 };
-function listButtonStyle(selected: boolean, accent: string): React.CSSProperties {
-  return {
-    display: "block",
-    textAlign: "left",
-    width: "100%",
-    padding: 8,
-    background: selected ? "rgba(74,222,255,0.18)" : "var(--biomes-bg-glass)",
-    color: "var(--biomes-fg)",
-    border: "1px solid var(--biomes-edge-cyan-soft)",
-    borderLeft: `3px solid ${accent}`,
-    cursor: "pointer",
-    font: "inherit",
-  };
-}

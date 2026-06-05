@@ -14,6 +14,8 @@ import {
   buildingSystemCanOpenDoorLockV1,
   buildingSystemCanUseStorageContainerV1,
   buildingSystemDefaultOriginV1,
+  groundedBuildingSystemMaterializationPlanV1,
+  shiftBuildingSystemMaterializationPlanYV1,
   buildingSystemMaterialRequirementLinesV1,
   buildingSystemPlotByIdV1,
   countBuildingSystemVoxelLabelsV1,
@@ -457,5 +459,87 @@ describe("building_system_v1 — property access and lifecycle oversights", () =
     assert.strictEqual(result.property.abandoned, true);
     assert.strictEqual(result.property.status, "abandoned");
     assert.ok(result.warnings.includes("property_marked_abandoned:unpaid_taxes"));
+  });
+});
+
+describe("building_system_v1 - terrain grounding (rest on real surface)", () => {
+  // A flat synthetic surface: solid at/below `groundTopY`, air above. The shared
+  // scan finds feet at groundTopY + 1 (stand on top of the solid block).
+  const flatSurfaceSolid = (groundTopY: number) => (
+    _x: number,
+    y: number,
+    _z: number
+  ) => y <= groundTopY;
+
+  function buildShopPlan() {
+    const plot = buildingSystemPlotByIdV1("grove_crossroads_shop_lot");
+    const blueprint = buildingSystemBlueprintByIdV1("grove_voxel_shop_tier_1");
+    assert.ok(plot && blueprint);
+    return createBuildingSystemMaterializationPlanV1({
+      requestId: "grounding_shop_plan",
+      actorId: "shop_owner",
+      propertyId: "property_grounding_shop",
+      plot: plot!,
+      blueprint: blueprint!,
+      activatedAtMs: NOW_MS,
+    });
+  }
+
+  it("shifts a building plan so its floor rests flush on the real surface", () => {
+    const plan = buildShopPlan();
+    // Plot authored groundY is 54 -> floor (origin.y) is 55. Pretend the real
+    // ground top is 52 (feet 53), i.e. the building was floating ~3 blocks.
+    const grounded = groundedBuildingSystemMaterializationPlanV1(
+      plan,
+      flatSurfaceSolid(52)
+    );
+    // Floor flush with the surface: stand-on-floor == ground feet (53), so the
+    // floor block (origin.y) lands at feet - 1 = 52.
+    assert.strictEqual(grounded.origin.y, 52);
+    assert.strictEqual(grounded.origin.y, plan.origin.y - 3);
+    // Every edit + marker shifted by the same -3, footprint XZ untouched.
+    for (let i = 0; i < plan.edits.length; i += 1) {
+      assert.strictEqual(grounded.edits[i].position[0], plan.edits[i].position[0]);
+      assert.strictEqual(
+        grounded.edits[i].position[1],
+        plan.edits[i].position[1] - 3
+      );
+      assert.strictEqual(grounded.edits[i].position[2], plan.edits[i].position[2]);
+    }
+    for (let i = 0; i < (plan.inWorldMarkers?.length ?? 0); i += 1) {
+      assert.strictEqual(
+        grounded.inWorldMarkers![i].position[1],
+        plan.inWorldMarkers![i].position[1] - 3
+      );
+    }
+  });
+
+  it("leaves a plan untouched when no real surface can be resolved (never buries)", () => {
+    const plan = buildShopPlan();
+    const grounded = groundedBuildingSystemMaterializationPlanV1(
+      plan,
+      () => false // terrain unreadable / empty column
+    );
+    assert.strictEqual(grounded, plan);
+  });
+
+  it("does not shift a plan already resting on the surface", () => {
+    const plan = buildShopPlan();
+    // Real ground top so that floor (origin.y) is already flush: floor == feet-1
+    // => feet == origin.y + 1 => ground top == origin.y.
+    const grounded = groundedBuildingSystemMaterializationPlanV1(
+      plan,
+      flatSurfaceSolid(plan.origin.y)
+    );
+    assert.strictEqual(grounded.origin.y, plan.origin.y);
+    assert.deepStrictEqual(
+      grounded.edits.map((edit) => edit.position[1]),
+      plan.edits.map((edit) => edit.position[1])
+    );
+  });
+
+  it("shiftBuildingSystemMaterializationPlanYV1 is a no-op for a zero shift", () => {
+    const plan = buildShopPlan();
+    assert.strictEqual(shiftBuildingSystemMaterializationPlanYV1(plan, 0), plan);
   });
 });
