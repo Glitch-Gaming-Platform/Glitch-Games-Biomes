@@ -1,3 +1,4 @@
+import { isDayTime, sunInclination } from "@/shared/game/sun_moon_position";
 import {
   chooseHarthmereCombatAIDecisionV1,
   type HarthmereCombatAIArchetypeIdV1,
@@ -60,7 +61,14 @@ function asVec3V1(value: readonly number[] | undefined) {
 }
 
 function distance2dV1(left: readonly number[], right: readonly number[]) {
-  return Math.hypot(Number(left[0]) - Number(right[0]), Number(left[2]) - Number(right[2]));
+  return Math.hypot(
+    Number(left[0]) - Number(right[0]),
+    Number(left[2]) - Number(right[2])
+  );
+}
+
+export function isNightForMuckMonsterAggressionV1(nowMs: number | undefined) {
+  return !isDayTime(sunInclination((nowMs ?? 0) / 1000));
 }
 
 export function isMuckMonsterNameV1(name: string | undefined) {
@@ -96,8 +104,11 @@ export function muckMonsterAreaForPositionV1(
     return undefined;
   }
   const muck =
-    authoredSnapshotAreaForPointV74(pos, SNAPSHOT_HARTHMERE_MUCK_ZONES_V74, pad) ??
-    authoredSnapshotAreaForPointV74(pos, SNAPSHOT_DANGER_AREAS_V74, pad);
+    authoredSnapshotAreaForPointV74(
+      pos,
+      SNAPSHOT_HARTHMERE_MUCK_ZONES_V74,
+      pad
+    ) ?? authoredSnapshotAreaForPointV74(pos, SNAPSHOT_DANGER_AREAS_V74, pad);
   if (muck) {
     return {
       id: muck.id,
@@ -173,6 +184,16 @@ export function evaluateMuckMonsterAggressionV1(
       distanceToPlayer,
     };
   }
+  if (!isNightForMuckMonsterAggressionV1(input.nowMs)) {
+    return {
+      ...base,
+      reason: "daylight_blocks_unprovoked_muck_aggression",
+      territoryId: territory.id,
+      territoryLabel: territory.label,
+      distanceToPlayer,
+      warning: false,
+    };
+  }
   if (distanceToPlayer > leashRadius) {
     return {
       ...base,
@@ -224,7 +245,8 @@ export function evaluateMuckMonsterAggressionV1(
     spawnProtected: false,
     pvpAllowed: true,
     bossPhase:
-      archetypeId === "boss_phase_controller" && (input.monsterHpPercent ?? 1) < 0.5
+      archetypeId === "boss_phase_controller" &&
+      (input.monsterHpPercent ?? 1) < 0.5
         ? 2
         : 1,
     enrageTimerSeconds: 90,

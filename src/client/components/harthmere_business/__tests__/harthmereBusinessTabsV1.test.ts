@@ -1,5 +1,4 @@
-// Frontend test for the BusinessUI tab labels — in particular that the mini-game
-// tab (the "customers" tab, which renders CustomerMiniGamePane) reads "Mini Game".
+// Frontend test for the BusinessUI tab labels.
 
 import {
   HARTHMERE_BUSINESS_TAB_LABELS_V1,
@@ -8,9 +7,15 @@ import {
 import assert from "assert";
 
 describe("Harthmere business tab labels", () => {
-  it("labels the mini-game tab 'Mini Game'", () => {
-    assert.strictEqual(HARTHMERE_BUSINESS_TAB_LABELS_V1.customers, "Mini Game");
-    assert.strictEqual(harthmereBusinessTabLabelV1("customers"), "Mini Game");
+  it("labels the mini-game tab 'Day Job Mini-Game'", () => {
+    assert.strictEqual(
+      HARTHMERE_BUSINESS_TAB_LABELS_V1.customers,
+      "Day Job Mini-Game"
+    );
+    assert.strictEqual(
+      harthmereBusinessTabLabelV1("customers"),
+      "Day Job Mini-Game"
+    );
   });
 
   it("keeps the other tab labels intact", () => {

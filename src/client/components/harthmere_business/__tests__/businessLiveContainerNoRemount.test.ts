@@ -1,5 +1,6 @@
 /// <reference types="mocha" />
 import assert from "assert";
+import { readFileSync } from "fs";
 import { planHarthmereBusinessRefreshLoadingV1 } from "../HarthmereBusinessLiveContainer";
 
 // HARTHMERE_BUSINESS_NO_REMOUNT_ON_ACTION_V1
@@ -41,5 +42,14 @@ describe("Harthmere business live container refresh loading plan", () => {
       hasLoaded = plan.hasLoadedAfter;
     }
     assert.deepStrictEqual(loadingEvents, [true, false, false, false, false]);
+  });
+
+  it("opens the customer business interface on Overview by default", () => {
+    const source = readFileSync(
+      "src/client/components/harthmere_business/HarthmereBusinessLiveContainer.tsx",
+      "utf8"
+    );
+    assert.match(source, /initialTab="overview"/);
+    assert.doesNotMatch(source, /initialTab="customers"/);
   });
 });

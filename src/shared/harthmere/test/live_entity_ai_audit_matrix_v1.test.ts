@@ -2,9 +2,7 @@
 
 import assert from "assert";
 import { harthmereMuckCreatureAssetKeyForLabelV1 } from "../muck_creature_assets_v1";
-import {
-  createHarthmereLiveEntityCombatSnapshotsFromEcsRecordsV1,
-} from "../live_entity_ecs_bridge_v1";
+import { createHarthmereLiveEntityCombatSnapshotsFromEcsRecordsV1 } from "../live_entity_ecs_bridge_v1";
 import {
   HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_PRODUCTION_COUNT_V1,
   HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_SEEDS_V1,
@@ -26,6 +24,7 @@ import {
 } from "../npc_navigation_guard_v1";
 
 const NOW_MS = 1_800_001_000_000;
+const NIGHT_NOW_MS = NOW_MS + 2_600_000;
 
 function flatGround(feetY: number) {
   return (_x: number, _z: number, _preferredY: number) => feetY;
@@ -87,7 +86,10 @@ describe("Harthmere live entity AI audit matrix v1", () => {
     });
 
     assert.equal(snapshots["b:guide"].entityKind, "human");
-    assert.equal(snapshots["b:guide"].combatProtection, "friendly_noncombatant");
+    assert.equal(
+      snapshots["b:guide"].combatProtection,
+      "friendly_noncombatant"
+    );
     assert.equal(snapshots["b:guide"].isAttackable, false);
     assert.equal(snapshots["b:guide"].aiEnabled, false);
 
@@ -161,7 +163,10 @@ describe("Harthmere live entity AI audit matrix v1", () => {
       seenAreas.add(seed.areaId);
     }
     assert.ok(hexCount > 0, "production must include Hexes");
-    assert.ok(seenAreas.size >= 7, "production must cover every authored Muck layout");
+    assert.ok(
+      seenAreas.size >= 7,
+      "production must cover every authored Muck layout"
+    );
 
     for (const seed of HARTHMERE_LIVE_ENTITY_ROBOT_SENTINEL_SEEDS_V1) {
       assert.ok(seed.robotId, `${seed.displayName} robot id`);
@@ -173,7 +178,9 @@ describe("Harthmere live entity AI audit matrix v1", () => {
   it("selects server-validated AI intents for every combat archetype and blocks Muck aggression outside safe rules", () => {
     const readiness = validateHarthmereCombatAIReadinessV1();
     assert.equal(readiness.ok, true, readiness.errors.join(", "));
-    assert.ok(readiness.productionReadiness.includes("server_authoritative_validation"));
+    assert.ok(
+      readiness.productionReadiness.includes("server_authoritative_validation")
+    );
 
     for (const archetypeId of Object.keys(HARTHMERE_COMBAT_AI_ARCHETYPES_V1)) {
       const decision = chooseHarthmereCombatAIDecisionV1({
@@ -202,7 +209,9 @@ describe("Harthmere live entity AI audit matrix v1", () => {
       assert.ok(
         decision.serverActionRequest.serverMustValidate.includes("range")
       );
-      assert.ok(decision.serverActionRequest.rejectedClientClaims.includes("damage"));
+      assert.ok(
+        decision.serverActionRequest.rejectedClientClaims.includes("damage")
+      );
     }
 
     const muckSeed = HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_SEEDS_V1[0];
@@ -210,8 +219,12 @@ describe("Harthmere live entity AI audit matrix v1", () => {
       monsterId: String(muckSeed.entityId),
       monsterName: muckSeed.displayName,
       monsterPosition: muckSeed.position,
-      playerPosition: [muckSeed.position[0] + 1, muckSeed.position[1], muckSeed.position[2]],
-      nowMs: NOW_MS,
+      playerPosition: [
+        muckSeed.position[0] + 1,
+        muckSeed.position[1],
+        muckSeed.position[2],
+      ],
+      nowMs: NIGHT_NOW_MS,
     });
     assert.equal(aggro.aggressive, true);
     assert.equal(aggro.reason, "player_entered_muck_territory");
@@ -230,9 +243,13 @@ describe("Harthmere live entity AI audit matrix v1", () => {
       monsterId: String(muckSeed.entityId),
       monsterName: muckSeed.displayName,
       monsterPosition: muckSeed.position,
-      playerPosition: [muckSeed.position[0] + 1, muckSeed.position[1], muckSeed.position[2]],
+      playerPosition: [
+        muckSeed.position[0] + 1,
+        muckSeed.position[1],
+        muckSeed.position[2],
+      ],
       spawnProtected: true,
-      nowMs: NOW_MS,
+      nowMs: NIGHT_NOW_MS,
     });
     assert.equal(spawnProtected.aggressive, false);
     assert.equal(

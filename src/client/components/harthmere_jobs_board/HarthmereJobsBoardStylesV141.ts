@@ -444,6 +444,130 @@ export const HARTHMERE_JOBS_BOARD_CSS_V141 = `
   font-size: 0.66rem;
   color: var(--biomes-fg-muted, rgba(232, 244, 255, 0.65));
 }
+.harthmere-gathering-node-prompt {
+  isolation: isolate;
+  overflow: hidden;
+  gap: 0.75rem;
+  min-width: min(19rem, calc(100vw - 2rem));
+  max-width: min(23rem, calc(100vw - 2rem));
+  padding: 0.62rem 0.78rem;
+  background:
+    linear-gradient(90deg, rgba(74, 222, 255, 0.16) 0%, transparent 38%, rgba(255, 184, 68, 0.1) 100%),
+    linear-gradient(180deg, rgba(17, 26, 48, 0.96) 0%, rgba(7, 12, 26, 0.94) 100%),
+    rgba(8, 14, 32, 0.94);
+  border: 1px solid rgba(125, 230, 255, 0.78);
+  border-radius: 8px;
+  font-size: 0.82rem;
+  text-align: left;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    0 12px 28px rgba(0, 0, 0, 0.5),
+    0 0 18px rgba(74, 222, 255, 0.22);
+}
+.harthmere-gathering-node-prompt:hover,
+.harthmere-gathering-node-prompt:focus-visible {
+  border-color: rgba(165, 243, 252, 0.95);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.14),
+    0 14px 30px rgba(0, 0, 0, 0.54),
+    0 0 22px rgba(74, 222, 255, 0.3);
+}
+.harthmere-gathering-node-prompt:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.7);
+  outline-offset: 3px;
+}
+.harthmere-gathering-node-prompt__key-group {
+  flex: 0 0 auto;
+  display: grid;
+  justify-items: center;
+  gap: 0.18rem;
+}
+.harthmere-gathering-node-prompt .harthmere-jobs-prompt__key {
+  min-width: 2.15rem;
+  height: 2.05rem;
+  padding: 0 0.5rem;
+  background: linear-gradient(180deg, rgba(224, 251, 255, 0.22) 0%, rgba(74, 222, 255, 0.16) 100%);
+  border: 1px solid rgba(165, 243, 252, 0.78);
+  border-bottom-color: rgba(34, 211, 238, 0.48);
+  border-radius: 6px;
+  color: #ffffff;
+  font-size: 1rem;
+  font-weight: 900;
+  letter-spacing: 0;
+  line-height: 1;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.28),
+    0 4px 10px rgba(0, 0, 0, 0.25);
+}
+.harthmere-gathering-node-prompt__key-hint {
+  color: rgba(232, 244, 255, 0.6);
+  font-size: 0.58rem;
+  font-weight: 800;
+  letter-spacing: 0;
+  line-height: 1;
+  text-transform: uppercase;
+}
+.harthmere-gathering-node-prompt__body {
+  min-width: 0;
+  display: grid;
+  gap: 0.14rem;
+}
+.harthmere-gathering-node-prompt__verb {
+  color: rgba(125, 230, 255, 0.9);
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0;
+  line-height: 1;
+  text-transform: uppercase;
+}
+.harthmere-gathering-node-prompt strong {
+  color: #ffffff;
+  font-size: 0.94rem;
+  font-weight: 800;
+  letter-spacing: 0;
+  line-height: 1.12;
+  overflow-wrap: anywhere;
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.45);
+}
+.harthmere-gathering-node-prompt__detail {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  max-width: 100%;
+  min-height: 1.1rem;
+  padding: 0.14rem 0.42rem;
+  border-radius: 6px;
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0;
+  line-height: 1.1;
+  overflow-wrap: anywhere;
+  text-transform: none;
+}
+.harthmere-gathering-node-prompt__detail--requirement {
+  color: #fde68a;
+  background: rgba(245, 158, 11, 0.16);
+  border: 1px solid rgba(251, 191, 36, 0.48);
+  box-shadow: inset 0 0 12px rgba(245, 158, 11, 0.1);
+}
+.harthmere-gathering-node-prompt__detail--error {
+  color: #fecaca;
+  background: rgba(239, 68, 68, 0.18);
+  border: 1px solid rgba(248, 113, 113, 0.5);
+  box-shadow: inset 0 0 12px rgba(239, 68, 68, 0.12);
+}
+.harthmere-gathering-node-prompt__detail--success {
+  color: #bbf7d0;
+  background: rgba(34, 197, 94, 0.18);
+  border: 1px solid rgba(74, 222, 128, 0.48);
+}
+
+@media (max-width: 540px) {
+  .harthmere-gathering-node-prompt {
+    min-width: min(17rem, calc(100vw - 1.5rem));
+    max-width: calc(100vw - 1.5rem);
+  }
+}
 
 @media (max-width: 540px) {
   .harthmere-jobs-board__backdrop {

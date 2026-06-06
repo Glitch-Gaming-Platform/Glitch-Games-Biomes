@@ -64,16 +64,29 @@ function normalizeMarkerId(markerId: string): string {
   )
     return "mira_grove_land_steward";
   if (lower.includes("jackie")) return "jackie";
+  if (lower.includes("jump") || lower.includes("stretch")) return "jump_run";
   if (lower.includes("road")) return "road_marker";
   if (lower.includes("muck")) return "muckwad_patch";
   if (lower.includes("build") || lower.includes("place"))
     return "building_spot";
+  if (
+    lower.includes("wardrobe") ||
+    lower.includes("mirror") ||
+    lower.includes("locks")
+  )
+    return "wardrobe";
   if (
     lower.includes("selfie") ||
     lower.includes("overlook") ||
     lower.includes("camera")
   )
     return "selfie_overlook";
+  if (
+    lower.includes("craft") ||
+    lower.includes("service_tower") ||
+    lower.includes("tower_platform")
+  )
+    return "crafting_stop";
   return markerId.replace(/^npc_/, "").replace(/^grove_/, "");
 }
 
@@ -135,7 +148,8 @@ export function buildBiomesUIMapAdapter(
   playerWorldPos?: [number, number, number],
   jobsBoardState?: unknown,
   liveQuestState?: unknown,
-  buildingState?: HarthmerePropertyMapBuildingStateV1
+  buildingState?: HarthmerePropertyMapBuildingStateV1,
+  roadAheadChallengeStepHints?: Iterable<unknown>
 ) {
   const NormalizeWorldXZ = (
     worldX: number,
@@ -326,6 +340,14 @@ export function buildBiomesUIMapAdapter(
         state,
         liveQuestState
       );
+      const roadAheadQuest = snapshotRoadAheadTrackableQuestsForBiomesUIV73(
+        readSnapshotMissionStateV71(),
+        roadAheadChallengeStepHints
+      )[0];
+      const activeRoadAheadMarkerId =
+        roadAheadQuest?.status === "active"
+          ? roadAheadQuest.firstMarkerId
+          : undefined;
       const activeMarkerIds: string[] = Array.isArray(activeQuest?.markerIds)
         ? activeQuest.markerIds
         : [];
@@ -350,8 +372,12 @@ export function buildBiomesUIMapAdapter(
           bounds
         );
         const kind = LandmarkKind(landmark);
+        const markerId = MarkerId(landmark);
         const isInActiveChain = activeMarkerIds.includes(landmark.id);
         const isCurrentObjective = activeObjectiveMarker === landmark.id;
+        const isRoadAheadObjective =
+          activeRoadAheadMarkerId !== undefined &&
+          markerId === activeRoadAheadMarkerId;
         const isAcceptedJobMarker =
           landmark?.active === true && kind === "objective";
         const isLiveEntityHelperMarker =
@@ -362,17 +388,19 @@ export function buildBiomesUIMapAdapter(
           landmark?.source === BIOMES_UI_SHARED_QUEST_MARKER_SOURCE_V1;
         const isActiveQuestMarker =
           isCurrentObjective ||
+          isRoadAheadObjective ||
           isInActiveChain ||
           isAcceptedJobMarker ||
           isLiveEntityHelperMarker ||
           isSharedQuestMarker;
         result.push({
-          id: MarkerId(landmark),
+          id: markerId,
           label: readableMapMarkerLabelForTest(landmark),
           x,
           y,
           kind:
             isCurrentObjective ||
+            isRoadAheadObjective ||
             isAcceptedJobMarker ||
             isLiveEntityHelperMarker ||
             isSharedQuestMarker
@@ -390,6 +418,8 @@ export function buildBiomesUIMapAdapter(
             ? String(landmark.description ?? "Shared quest target.")
             : isAcceptedJobMarker
             ? String(landmark.description ?? "Accepted jobs board task.")
+            : isRoadAheadObjective
+            ? "Current Road Ahead objective - head here to advance the route."
             : isCurrentObjective
             ? "Current objective - head here to advance the active quest."
             : isInActiveChain
@@ -425,7 +455,8 @@ export function buildBiomesUIMapAdapter(
         activeQuest?.title ??
           firstActiveJobsBoardQuestTitleForBiomesUIV1(jobsBoardState) ??
           firstActiveSnapshotRoadAheadQuestTitleForBiomesUIV73(
-            readSnapshotMissionStateV71()
+            readSnapshotMissionStateV71(),
+            roadAheadChallengeStepHints
           ) ??
           firstActiveLiveEntityHelperQuestTitleForBiomesUIV1(
             liveEntityHelperState
@@ -451,7 +482,8 @@ export function buildBiomesUIMapAdapter(
         const jobsBoardSteps =
           activeJobsBoardMissionStepsForBiomesUIV1(jobsBoardState);
         const roadAheadSteps = snapshotRoadAheadMissionStepsForBiomesUIV73(
-          readSnapshotMissionStateV71()
+          readSnapshotMissionStateV71(),
+          roadAheadChallengeStepHints
         );
         return jobsBoardSteps.length
           ? jobsBoardSteps
@@ -514,9 +546,7 @@ export function buildBiomesUIMapAdapter(
                   0,
                   Math.min(
                     objectives.length - 1,
-                    Number.isFinite(rawObjectiveIndex)
-                      ? rawObjectiveIndex
-                      : 0
+                    Number.isFinite(rawObjectiveIndex) ? rawObjectiveIndex : 0
                   )
                 )
               : 0;
@@ -528,7 +558,9 @@ export function buildBiomesUIMapAdapter(
             firstMarkerId:
               Array.isArray(quest.markerIds) && quest.markerIds.length
                 ? normalizeMarkerId(
-                    String(quest.markerIds[objectiveIndex] ?? quest.markerIds[0])
+                    String(
+                      quest.markerIds[objectiveIndex] ?? quest.markerIds[0]
+                    )
                   )
                 : undefined,
             reward: String(quest.reward ?? ""),
@@ -552,7 +584,8 @@ export function buildBiomesUIMapAdapter(
           harthmereJobToolOwnedStateV151()
         ),
         ...snapshotRoadAheadTrackableQuestsForBiomesUIV73(
-          readSnapshotMissionStateV71()
+          readSnapshotMissionStateV71(),
+          roadAheadChallengeStepHints
         ),
         ...liveEntityHelperTrackableQuestsForBiomesUIV1(
           readLiveEntityHelperQuestStateV1()

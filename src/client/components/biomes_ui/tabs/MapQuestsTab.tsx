@@ -611,6 +611,7 @@ export function filterMapTrackableQuestsForTest(
       quest.objective,
       quest.objectives?.join(" "),
       quest.description,
+      quest.timeRemaining,
     ])
   );
 }
@@ -1702,6 +1703,14 @@ export const MapQuestsTab: React.FunctionComponent<{
                                   {quest.objective}
                                 </div>
                               ) : null}
+                              {quest.timeRemaining ? (
+                                <div
+                                  data-testid={`biomes-map-quest-time-${quest.questId}`}
+                                  style={questTimeLimitStyle}
+                                >
+                                  Time limit: {quest.timeRemaining}
+                                </div>
+                              ) : null}
                               {quest.reward ? (
                                 <div style={mutedSmallStyle}>
                                   Reward: {quest.reward}
@@ -1899,7 +1908,12 @@ function QuestDetailPanel({
           <span style={mutedSmallStyle}>Reward: {quest.reward}</span>
         ) : null}
         {quest.timeRemaining ? (
-          <span style={mutedSmallStyle}>Time: {quest.timeRemaining}</span>
+          <span
+            data-testid={`biomes-map-quest-detail-time-${quest.questId}`}
+            style={mutedSmallStyle}
+          >
+            Time limit: {quest.timeRemaining}
+          </span>
         ) : null}
       </div>
       {quest.toolSource ? (
@@ -2075,6 +2089,11 @@ const mutedTextStyle: React.CSSProperties = {
 const mutedSmallStyle: React.CSSProperties = {
   fontSize: 11,
   color: "var(--biomes-fg-muted)",
+};
+const questTimeLimitStyle: React.CSSProperties = {
+  fontSize: 11,
+  color: "var(--biomes-warn-amber)",
+  fontWeight: 800,
 };
 const eyebrowStyle: React.CSSProperties = {
   fontSize: 10,

@@ -73,8 +73,9 @@ export function normalizeHarthmereContainerKeyV1(
 }
 
 // HARTHMERE_ROAD_AHEAD_CLOTHING_GATE_V1: the Clothing Crate is quest-gated — its
-// contents must not appear until The Road Ahead reaches the gear-up step. This
-// is the same family of labels the loot table routes to the clothing outfit.
+// contents must not appear until The Road Ahead has passed the Billy/Muckwad
+// handoff. This is the same family of labels the loot table routes to the
+// clothing outfit.
 const HARTHMERE_CLOTHING_QUEST_CRATE_RE_V1 =
   /clothing|wardrobe|outfit|garment|laundry/;
 
@@ -85,7 +86,7 @@ export function isHarthmereClothingQuestCrateLabelV1(
 }
 
 export const HARTHMERE_CLOTHING_CRATE_LOCKED_NOTE_V1 =
-  "This crate is empty for now. Jackie will point you here when it's time to gear up on The Road Ahead.";
+  "This crate is empty for now. Billy or Jackie will point you here when it's time to gear up on The Road Ahead.";
 
 export function harthmereContainerLootForLabelV1(
   label?: string | null
@@ -189,9 +190,7 @@ export interface HarthmereContainerSeedOptionsV1 {
   questClothingReady?: boolean;
 }
 
-function lootSlotsForLabelV1(
-  label: string
-): HarthmereObjectContainerSlotV1[] {
+function lootSlotsForLabelV1(label: string): HarthmereObjectContainerSlotV1[] {
   return harthmereContainerLootForLabelV1(label).map((loot) => ({
     itemId: loot.itemId,
     quantity: loot.quantity,
@@ -203,9 +202,10 @@ function lootSlotsForLabelV1(
 // already been seeded, so emptying it does NOT refill it.
 //
 // Quest-gated crates (the Road Ahead Clothing Crate) are special: until the
-// quest reaches the gear-up step they stay UNSEALED and empty (re-evaluated each
-// open), so the clothing only appears at the right time. Once the gate opens we
-// fill the quest loot and seal the crate; from then on it is a normal inventory.
+// quest reaches the post-Muckwad handoff they stay UNSEALED and empty
+// (re-evaluated each open), so the clothing only appears at the right time. Once
+// the gate opens we fill the quest loot and seal the crate; from then on it is a
+// normal inventory.
 export function getOrSeedHarthmereContainerV1(
   entityId: BiomesId,
   label?: string | null,
@@ -256,7 +256,10 @@ export function getOrSeedHarthmereContainerV1(
   }
 
   // The right time: merge the quest loot into whatever is already there, seal it.
-  const merged = mergeContainerSlotsV1(carriedItems, lootSlotsForLabelV1(displayLabel));
+  const merged = mergeContainerSlotsV1(
+    carriedItems,
+    lootSlotsForLabelV1(displayLabel)
+  );
   const filled: HarthmereObjectContainerRecordV1 = {
     key,
     label: displayLabel,
@@ -288,6 +291,41 @@ export function readHarthmereContainerV1(
   key: string
 ): HarthmereObjectContainerRecordV1 | undefined {
   return readContainerStoreV1()[key];
+}
+
+// Called by the Road Ahead bridge when the Billy/Muckwad handoff advances. If a
+// player already opened the Clothing Crate while it was locked, this fills that
+// known unsealed record immediately instead of waiting for a close/reopen.
+export function fillKnownRoadAheadClothingCratesV1(
+  options?: HarthmereContainerSeedOptionsV1
+): HarthmereObjectContainerRecordV1[] {
+  const ready =
+    options?.questClothingReady ?? readRoadAheadClothingCrateReadyV1();
+  if (!ready) {
+    return [];
+  }
+  const store = readContainerStoreV1();
+  const filled: HarthmereObjectContainerRecordV1[] = [];
+  for (const [key, record] of Object.entries(store)) {
+    if (record.sealed || !isHarthmereClothingQuestCrateLabelV1(record.label)) {
+      continue;
+    }
+    const next: HarthmereObjectContainerRecordV1 = {
+      ...record,
+      items: mergeContainerSlotsV1(
+        record.items ?? [],
+        lootSlotsForLabelV1(record.label)
+      ),
+      sealed: true,
+      note: undefined,
+    };
+    store[key] = next;
+    filled.push(next);
+  }
+  if (filled.length > 0) {
+    writeContainerStoreV1(store);
+  }
+  return filled;
 }
 
 // Move `quantity` of `itemId` from the container into the player inventory.
@@ -397,7 +435,9 @@ export function clearHarthmereContainerOpenRequestV1() {
   if (!isBrowserV1()) {
     return;
   }
-  window.localStorage.removeItem(HARTHMERE_OBJECT_CONTAINER_OPEN_REQUEST_KEY_V1);
+  window.localStorage.removeItem(
+    HARTHMERE_OBJECT_CONTAINER_OPEN_REQUEST_KEY_V1
+  );
 }
 
 // HARTHMERE_OBJECT_CONTAINER_UI_V199:

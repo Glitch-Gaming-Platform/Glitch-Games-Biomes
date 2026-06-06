@@ -59,13 +59,12 @@ export class RequestThrottler<Args extends unknown[]> {
 }
 
 export class RequestBatchers {
-  postRequestBatcher = new TimedRequestBatcher<
-    FeedPostBundle | undefined,
-    BiomesId
-  >(async (ids) => {
-    const ret = await fetchPostBundles(ids);
-    return ret.posts;
-  });
+  postRequestBatcher = new TimedRequestBatcher<FeedPostBundle | null, BiomesId>(
+    async (ids) => {
+      const ret = await fetchPostBundles(ids);
+      return ret.posts;
+    }
+  );
   userInfoBundleRequestBatcher = new TimedRequestBatcher<
     UserInfoBundle | undefined,
     BiomesId

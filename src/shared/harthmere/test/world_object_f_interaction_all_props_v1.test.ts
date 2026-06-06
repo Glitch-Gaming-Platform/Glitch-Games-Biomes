@@ -111,6 +111,9 @@ describe("world-object F interaction: all prop types", () => {
       ["Boar Sounder Harvest", "gather", undefined],
       ["Fountain Lesson Board", "read", undefined],
       ["Harthmere Town Jobs Board", "open_jobs_board", undefined],
+      ["Farming Wanted Board", "open_wanted_board", undefined],
+      ["Guard Yard Bounty Board", "open_wanted_board", undefined],
+      ["Road Warrant Board", "open_wanted_board", undefined],
       ["Taye's Paint Pot", "use", undefined],
     ];
 

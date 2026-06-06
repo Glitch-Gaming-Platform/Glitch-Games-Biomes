@@ -517,6 +517,7 @@ export const zReachedCheckpoints = z.map(zBiomesId, zT186);
 export const zFarmingPlayerAction = z.discriminatedUnion("kind", [
   zT199.extend({ kind: z.literal("water") }),
   zT201.extend({ kind: z.literal("fertilize") }),
+  z.object({ kind: z.literal("harvest"), timestamp: zF64 }),
   zT203.extend({ kind: z.literal("adminDestroy") }),
   zT205.extend({ kind: z.literal("poke") }),
 ]);
@@ -1227,6 +1228,7 @@ export type FarmingPlayerAction =
   | ({ kind: "fertilize"; fertilizer: Item; timestamp: number } & {
       kind: "fertilize";
     })
+  | ({ kind: "harvest"; timestamp: number } & { kind: "harvest" })
   | ({ kind: "adminDestroy"; timestamp: number } & { kind: "adminDestroy" })
   | ({ kind: "poke"; timestamp: number } & { kind: "poke" });
 type T208 = { type_ids: BiomesId[] };
@@ -1430,6 +1432,7 @@ export type FarmingPlayerActionList = (
   | ({ kind: "fertilize"; fertilizer: Item; timestamp: number } & {
       kind: "fertilize";
     })
+  | ({ kind: "harvest"; timestamp: number } & { kind: "harvest" })
   | ({ kind: "adminDestroy"; timestamp: number } & { kind: "adminDestroy" })
   | ({ kind: "poke"; timestamp: number } & { kind: "poke" })
 )[];
@@ -3174,6 +3177,9 @@ export type ReadonlyFarmingPlayerAction =
       readonly fertilizer: ReadonlyItem;
       readonly timestamp: number;
     } & { kind: "fertilize" })
+  | ({ readonly kind: "harvest"; readonly timestamp: number } & {
+      kind: "harvest";
+    })
   | ({ readonly kind: "adminDestroy"; readonly timestamp: number } & {
       kind: "adminDestroy";
     })
@@ -3433,6 +3439,9 @@ export type ReadonlyFarmingPlayerActionList = ReadonlyArray<
       readonly fertilizer: ReadonlyItem;
       readonly timestamp: number;
     } & { kind: "fertilize" })
+  | ({ readonly kind: "harvest"; readonly timestamp: number } & {
+      kind: "harvest";
+    })
   | ({ readonly kind: "adminDestroy"; readonly timestamp: number } & {
       kind: "adminDestroy";
     })
@@ -6978,6 +6987,11 @@ export function serializeFarmingPlayerAction(
         ...serializeT201(value),
         kind: "fertilize",
       };
+    case "harvest":
+      return {
+        ...value,
+        kind: "harvest",
+      };
     case "adminDestroy":
       return {
         ...value,
@@ -7005,6 +7019,11 @@ export function deserializeFarmingPlayerAction(
       return {
         ...deserializeT201(obj),
         kind: "fertilize",
+      };
+    case "harvest":
+      return {
+        timestamp: deserializeF64(obj.timestamp),
+        kind: "harvest",
       };
     case "adminDestroy":
       return {

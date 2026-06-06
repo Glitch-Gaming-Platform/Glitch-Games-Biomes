@@ -14,6 +14,7 @@ import { TutorialDirector } from "./tutorial/TutorialDirector";
 import { BiomesUITutorialCueBar } from "./tutorial/BiomesUITutorialCueBar";
 import { BiomesUIVitalsPanel } from "./BiomesUIVitalsPanel";
 import { HarthmereJobsBoardWorldInteractionV146 } from "@/client/components/harthmere_jobs_board/HarthmereJobsBoardWorldInteractionV146";
+import { HarthmereWantedBoardWorldInteractionV1 } from "@/client/components/harthmere_wanted_board/HarthmereWantedBoardWorldInteractionV1";
 import { HarthmereBusinessWorldInteractionV1 } from "@/client/components/harthmere_business/HarthmereBusinessWorldInteractionV1";
 import { HarthmerePropertyForSaleWorldInteractionV1 } from "@/client/components/harthmere_building/HarthmerePropertyForSaleWorldInteractionV1";
 import { HarthmereGatheringNodeWorldInteractionV1 } from "@/client/components/challenges/HarthmereGatheringNodeWorldInteractionV1";
@@ -128,6 +129,9 @@ export const BiomesUIMount: React.FunctionComponent<{
         shortcutOverrides={live.shortcuts}
       />
       <HarthmereJobsBoardWorldInteractionV146
+        suppressPrompt={activeTab !== null}
+      />
+      <HarthmereWantedBoardWorldInteractionV1
         suppressPrompt={activeTab !== null}
       />
       <HarthmereBusinessWorldInteractionV1

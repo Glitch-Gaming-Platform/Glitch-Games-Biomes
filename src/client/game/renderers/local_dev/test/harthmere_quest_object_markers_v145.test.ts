@@ -139,7 +139,9 @@ describe("Harthmere quest object procedural markers V145", () => {
         (marker) =>
           !SNAPSHOT_GROVE_LANDMARKS_V75.some(
             (landmark) => landmark.id === marker.markerId
-          ) && marker.source !== "live_entity_helper"
+          ) &&
+          marker.source !== "live_entity_helper" &&
+          marker.source !== "business_outpost_jobs_board"
       );
     assert.equal(
       HARTHMERE_QUEST_OBJECT_MARKERS_V145.length,

@@ -1,5 +1,11 @@
 # Harthmere Complete Combat, Progression, Ability, Skill, Equipment, Loot, PvP, and Death Rules v1
 
+> **Hitting creatures / rendering / spawns / respawn:** how every living thing
+> (muckers, hexes, animals, quest & escort creatures, town humans) is rendered on
+> its real ECS entity so it is hittable and non-flickering, randomly spread
+> across the world, and respawns 30–60 min after death, is documented in
+> [`docs/harthmere/HARTHMERE_LIVE_CREATURE_ECS_RENDER_V1.md`](./harthmere/HARTHMERE_LIVE_CREATURE_ECS_RENDER_V1.md).
+
 This package adds the missing shared rules layer around the earlier combat v1 engine.
 
 It implements:

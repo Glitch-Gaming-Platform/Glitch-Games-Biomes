@@ -1,7 +1,13 @@
-import { reduceHarthmereEconomyBusinessSpecificMutationV1, normalizeHarthmereEconomyBusinessSystemsStateV1, validateHarthmereEconomyBalanceV1 } from "./mmo_economy_business_systems_v1";
+import {
+  reduceHarthmereEconomyBusinessSpecificMutationV1,
+  normalizeHarthmereEconomyBusinessSystemsStateV1,
+  validateHarthmereEconomyBalanceV1,
+} from "./mmo_economy_business_systems_v1";
 import {
   harthmereBusinessStorefrontGoodsForTypeV1,
+  harthmereBusinessStorefrontLearnableRecipeIdsV1,
   harthmereBusinessStorefrontListingsForTypeV1,
+  harthmereBusinessStorefrontRecipeBookForItemV1,
 } from "./harthmere_business_storefront_goods_v1";
 import type { BuildingSystemAnyMaterializationPlanV1 } from "./building_system_v1";
 import {
@@ -148,7 +154,10 @@ export interface HarthmereEconomyInventoryStackV1 {
   contaminated?: boolean;
 }
 
-export type HarthmereEconomyInventoryRecordV1 = Record<string, HarthmereEconomyInventoryStackV1>;
+export type HarthmereEconomyInventoryRecordV1 = Record<
+  string,
+  HarthmereEconomyInventoryStackV1
+>;
 
 export interface HarthmereEconomyBusinessRecordV1 {
   businessId: string;
@@ -474,6 +483,7 @@ export interface HarthmereEconomyMutationContextV1 {
   [key: string]: any;
   actorGold: number;
   actorInventoryItems: Record<string, number>;
+  actorKnownRecipes?: string[];
   actorGuildId?: string;
   actorTownIds?: string[];
   allowNpcAdministration?: boolean;
@@ -486,6 +496,7 @@ export interface HarthmereEconomyMutationResultV1 {
   economy: HarthmereProductionEconomyStateV1;
   inventoryGoldDelta: number;
   inventoryItemDeltas: Record<string, number>;
+  newRecipeIds: string[];
   warnings: string[];
   touchedModels: string[];
   sharedStateKeys: string[];
@@ -496,6 +507,7 @@ type MutableResult = {
   next: HarthmereProductionEconomyStateV1;
   goldDelta: number;
   itemDeltas: Record<string, number>;
+  newRecipeIds: string[];
   warnings: string[];
   touched: Set<string>;
   shared: Set<string>;
@@ -572,7 +584,11 @@ export const HARTHMERE_ECONOMY_BUSINESS_TYPES_V1: Record<
     requiredLicense: "basic_trade",
     minimumLicenseLevel: 1,
     serviceNeeds: ["property_condition", "maintenance", "timeline_stability"],
-    inputItemFamilies: ["repair_kit", "stabilized_exotic_matter", "anchor_part"],
+    inputItemFamilies: [
+      "repair_kit",
+      "stabilized_exotic_matter",
+      "anchor_part",
+    ],
     outputItemFamilies: ["inspection", "repair", "safety_certificate"],
     riskLevel: 3,
     civicImportance: 5,
@@ -851,7 +867,10 @@ export const HARTHMERE_ECONOMY_BUSINESS_TYPES_V1: Record<
   },
 };
 
-export const HARTHMERE_ECONOMY_RECIPE_CATALOG_V1: Record<string, HarthmereEconomyProductionRecipeV1> = {
+export const HARTHMERE_ECONOMY_RECIPE_CATALOG_V1: Record<
+  string,
+  HarthmereEconomyProductionRecipeV1
+> = {
   stabilize_exotic_matter: {
     recipeId: "stabilize_exotic_matter",
     businessType: "exotic_matter_refinery",
@@ -943,9 +962,13 @@ export function defaultHarthmereProductionEconomyStateV1(): HarthmereProductionE
   };
 }
 
-export function normalizeHarthmereProductionEconomyStateV1(raw: unknown): HarthmereProductionEconomyStateV1 {
+export function normalizeHarthmereProductionEconomyStateV1(
+  raw: unknown
+): HarthmereProductionEconomyStateV1 {
   const defaults = defaultHarthmereProductionEconomyStateV1();
-  const value = (raw && typeof raw === "object" ? raw : {}) as Partial<HarthmereProductionEconomyStateV1>;
+  const value = (
+    raw && typeof raw === "object" ? raw : {}
+  ) as Partial<HarthmereProductionEconomyStateV1>;
   return {
     ...defaults,
     ...value,
@@ -962,13 +985,21 @@ export function normalizeHarthmereProductionEconomyStateV1(raw: unknown): Harthm
     tradeRoutes: { ...(value.tradeRoutes ?? {}) },
     failures: { ...(value.failures ?? {}) },
     marketOrders: { ...(value.marketOrders ?? {}) },
-    businessSystems: normalizeHarthmereEconomyBusinessSystemsStateV1((value as any).businessSystems),
-    ledger: Array.isArray(value.ledger) ? value.ledger.slice(-HARTHMERE_ECONOMY_MAX_LOGS_V1) : [],
+    businessSystems: normalizeHarthmereEconomyBusinessSystemsStateV1(
+      (value as any).businessSystems
+    ),
+    ledger: Array.isArray(value.ledger)
+      ? value.ledger.slice(-HARTHMERE_ECONOMY_MAX_LOGS_V1)
+      : [],
   };
 }
 
-function cloneEconomyState(state: HarthmereProductionEconomyStateV1): HarthmereProductionEconomyStateV1 {
-  return normalizeHarthmereProductionEconomyStateV1(JSON.parse(JSON.stringify(state)));
+function cloneEconomyState(
+  state: HarthmereProductionEconomyStateV1
+): HarthmereProductionEconomyStateV1 {
+  return normalizeHarthmereProductionEconomyStateV1(
+    JSON.parse(JSON.stringify(state))
+  );
 }
 
 function clampNumber(value: unknown, min: number, max: number, fallback = min) {
@@ -981,20 +1012,36 @@ function positiveInt(value: unknown, fallback = 0) {
   return Math.max(0, Math.trunc(Number(value) || fallback));
 }
 
-function recordItemDelta(target: Record<string, number>, itemId: string, delta: number) {
+function recordItemDelta(
+  target: Record<string, number>,
+  itemId: string,
+  delta: number
+) {
   const next = (target[itemId] ?? 0) + Math.trunc(delta);
   if (next === 0) delete target[itemId];
   else target[itemId] = next;
 }
 
-function applyInventoryDelta(inventory: HarthmereEconomyInventoryRecordV1, itemId: string, delta: number) {
+function applyInventoryDelta(
+  inventory: HarthmereEconomyInventoryRecordV1,
+  itemId: string,
+  delta: number
+) {
   const current = inventory[itemId]?.count ?? 0;
   const next = current + Math.trunc(delta);
   if (next <= 0) delete inventory[itemId];
-  else inventory[itemId] = { ...(inventory[itemId] ?? { itemId, count: 0 }), itemId, count: next };
+  else
+    inventory[itemId] = {
+      ...(inventory[itemId] ?? { itemId, count: 0 }),
+      itemId,
+      count: next,
+    };
 }
 
-function inventoryCount(inventory: HarthmereEconomyInventoryRecordV1, itemId: string) {
+function inventoryCount(
+  inventory: HarthmereEconomyInventoryRecordV1,
+  itemId: string
+) {
   return Math.max(0, inventory[itemId]?.count ?? 0);
 }
 
@@ -1002,15 +1049,26 @@ function occupiedInventorySlots(inventory: HarthmereEconomyInventoryRecordV1) {
   return Object.values(inventory).filter((stack) => stack.count > 0).length;
 }
 
-function inventoryHasCapacity(inventory: HarthmereEconomyInventoryRecordV1, itemId: string, maxSlots: number) {
-  return inventoryCount(inventory, itemId) > 0 || occupiedInventorySlots(inventory) < maxSlots;
+function inventoryHasCapacity(
+  inventory: HarthmereEconomyInventoryRecordV1,
+  itemId: string,
+  maxSlots: number
+) {
+  return (
+    inventoryCount(inventory, itemId) > 0 ||
+    occupiedInventorySlots(inventory) < maxSlots
+  );
 }
 
 function businessType(typeId: HarthmereEconomyBusinessTypeIdV1 | undefined) {
   return typeId ? HARTHMERE_ECONOMY_BUSINESS_TYPES_V1[typeId] : undefined;
 }
 
-function ownerKey(ownerKind: HarthmereEconomyOwnerKindV1, ownerId: string, licenseClass: HarthmereEconomyLicenseClassV1) {
+function ownerKey(
+  ownerKind: HarthmereEconomyOwnerKindV1,
+  ownerId: string,
+  licenseClass: HarthmereEconomyLicenseClassV1
+) {
   return `${ownerKind}:${ownerId}:${licenseClass}`;
 }
 
@@ -1026,7 +1084,11 @@ function contractSharedKey(contractId: string) {
   return `harthmere:live_mode:v1:economy_contract:${contractId}`;
 }
 
-function pushLedger(result: MutableResult, entry: Omit<HarthmereEconomyLedgerEntryV1, "atMs" | "actorId">, request: HarthmereEconomyMutationRequestV1) {
+function pushLedger(
+  result: MutableResult,
+  entry: Omit<HarthmereEconomyLedgerEntryV1, "atMs" | "actorId">,
+  request: HarthmereEconomyMutationRequestV1
+) {
   result.next.ledger.push({
     atMs: request.nowMs,
     actorId: request.actorId,
@@ -1036,12 +1098,20 @@ function pushLedger(result: MutableResult, entry: Omit<HarthmereEconomyLedgerEnt
   result.touched.add("economy_ledger");
 }
 
-function reject(result: MutableResult, warning: string, model = "economy_rejection") {
+function reject(
+  result: MutableResult,
+  warning: string,
+  model = "economy_rejection"
+) {
   result.warnings.push(warning);
   result.touched.add(model);
 }
 
-function ensureRegion(state: HarthmereProductionEconomyStateV1, regionId: string, nowMs: number) {
+function ensureRegion(
+  state: HarthmereProductionEconomyStateV1,
+  regionId: string,
+  nowMs: number
+) {
   if (!state.regions[regionId]) {
     state.regions[regionId] = {
       regionId,
@@ -1056,19 +1126,35 @@ function ensureRegion(state: HarthmereProductionEconomyStateV1, regionId: string
   return state.regions[regionId];
 }
 
-function defaultTownNeeds(nowMs: number): Record<HarthmereEconomyNeedIdV1, HarthmereEconomyTownNeedStateV1> {
-  const out = {} as Record<HarthmereEconomyNeedIdV1, HarthmereEconomyTownNeedStateV1>;
+function defaultTownNeeds(
+  nowMs: number
+): Record<HarthmereEconomyNeedIdV1, HarthmereEconomyTownNeedStateV1> {
+  const out = {} as Record<
+    HarthmereEconomyNeedIdV1,
+    HarthmereEconomyTownNeedStateV1
+  >;
   for (const need of NEEDS) {
     out[need] = {
       value: 65,
-      demandWeight: need === "food" || need === "health" || need === "safety" || need === "sanitation" ? 1.25 : 1,
+      demandWeight:
+        need === "food" ||
+        need === "health" ||
+        need === "safety" ||
+        need === "sanitation"
+          ? 1.25
+          : 1,
       lastUpdatedAtMs: nowMs,
     };
   }
   return out;
 }
 
-function ensureTown(state: HarthmereProductionEconomyStateV1, townId: string, regionId: string, nowMs: number) {
+function ensureTown(
+  state: HarthmereProductionEconomyStateV1,
+  townId: string,
+  regionId: string,
+  nowMs: number
+) {
   const region = ensureRegion(state, regionId, nowMs);
   if (!state.towns[townId]) {
     state.towns[townId] = {
@@ -1082,7 +1168,9 @@ function ensureTown(state: HarthmereProductionEconomyStateV1, townId: string, re
       happiness: 65,
       timelineInstability: 25,
       taxRevenueGold: 0,
-      serviceCoverage: Object.fromEntries(NEEDS.map((need) => [need, 0])) as Record<HarthmereEconomyNeedIdV1, number>,
+      serviceCoverage: Object.fromEntries(
+        NEEDS.map((need) => [need, 0])
+      ) as Record<HarthmereEconomyNeedIdV1, number>,
       lastTickAtMs: nowMs,
     };
   }
@@ -1098,12 +1186,16 @@ function getBusiness(result: MutableResult, businessId: string | undefined) {
 function canManageBusiness(
   business: HarthmereEconomyBusinessRecordV1,
   request: HarthmereEconomyMutationRequestV1,
-  context: HarthmereEconomyMutationContextV1,
+  context: HarthmereEconomyMutationContextV1
 ) {
-  if (business.ownerKind === "player") return business.ownerId === request.actorId;
-  if (business.ownerKind === "npc") return context.allowNpcAdministration === true;
-  if (business.ownerKind === "guild") return context.canManageGuildBusiness?.(business.ownerId) === true;
-  if (business.ownerKind === "town") return context.canManageTownBusiness?.(business.ownerId) === true;
+  if (business.ownerKind === "player")
+    return business.ownerId === request.actorId;
+  if (business.ownerKind === "npc")
+    return context.allowNpcAdministration === true;
+  if (business.ownerKind === "guild")
+    return context.canManageGuildBusiness?.(business.ownerId) === true;
+  if (business.ownerKind === "town")
+    return context.canManageTownBusiness?.(business.ownerId) === true;
   return false;
 }
 
@@ -1112,7 +1204,7 @@ function validateOwner(
   ownerKind: HarthmereEconomyOwnerKindV1,
   ownerId: string,
   request: HarthmereEconomyMutationRequestV1,
-  context: HarthmereEconomyMutationContextV1,
+  context: HarthmereEconomyMutationContextV1
 ) {
   if (ownerKind === "player" && ownerId !== request.actorId) {
     reject(result, "economy_rejected:cannot_register_for_other_player");
@@ -1122,29 +1214,53 @@ function validateOwner(
     reject(result, "economy_rejected:npc_business_requires_admin_context");
     return false;
   }
-  if (ownerKind === "guild" && context.canManageGuildBusiness?.(ownerId) !== true) {
+  if (
+    ownerKind === "guild" &&
+    context.canManageGuildBusiness?.(ownerId) !== true
+  ) {
     reject(result, "economy_rejected:guild_business_permission_required");
     return false;
   }
-  if (ownerKind === "town" && context.canManageTownBusiness?.(ownerId) !== true) {
+  if (
+    ownerKind === "town" &&
+    context.canManageTownBusiness?.(ownerId) !== true
+  ) {
     reject(result, "economy_rejected:town_business_permission_required");
     return false;
   }
   return true;
 }
 
-function activeBusinessCountForOwner(state: HarthmereProductionEconomyStateV1, ownerKind: HarthmereEconomyOwnerKindV1, ownerId: string) {
+function activeBusinessCountForOwner(
+  state: HarthmereProductionEconomyStateV1,
+  ownerKind: HarthmereEconomyOwnerKindV1,
+  ownerId: string
+) {
   return Object.values(state.businesses).filter(
-    (business) => business.ownerKind === ownerKind && business.ownerId === ownerId && business.status !== "closed" && business.status !== "bankrupt",
+    (business) =>
+      business.ownerKind === ownerKind &&
+      business.ownerId === ownerId &&
+      business.status !== "closed" &&
+      business.status !== "bankrupt"
   ).length;
 }
 
-function licenseForBusiness(state: HarthmereProductionEconomyStateV1, business: HarthmereEconomyBusinessRecordV1) {
-  const key = ownerKey(business.ownerKind, business.ownerId, business.licenseClass);
+function licenseForBusiness(
+  state: HarthmereProductionEconomyStateV1,
+  business: HarthmereEconomyBusinessRecordV1
+) {
+  const key = ownerKey(
+    business.ownerKind,
+    business.ownerId,
+    business.licenseClass
+  );
   return state.licenses[key];
 }
 
-function ensureBusinessLicenseLevel(state: HarthmereProductionEconomyStateV1, business: HarthmereEconomyBusinessRecordV1) {
+function ensureBusinessLicenseLevel(
+  state: HarthmereProductionEconomyStateV1,
+  business: HarthmereEconomyBusinessRecordV1
+) {
   const license = licenseForBusiness(state, business);
   if (license && !license.suspended) {
     business.licenseLevel = Math.max(business.licenseLevel, license.level);
@@ -1153,9 +1269,16 @@ function ensureBusinessLicenseLevel(state: HarthmereProductionEconomyStateV1, bu
 
 export function economyBasePriceForItemV1(itemId: string) {
   const text = itemId.toLowerCase();
-  if (/raw_exotic|anchor_core|portal_fuel|teleport_fuel|destination_crystal/.test(text)) return 80;
-  if (/stabilized_exotic|crystal|relic|ward|potion|antidote/.test(text)) return 45;
-  if (/weapon|sword|armor|scanner|repair_tool|field_medkit/.test(text)) return 35;
+  if (
+    /raw_exotic|anchor_core|portal_fuel|teleport_fuel|destination_crystal/.test(
+      text
+    )
+  )
+    return 80;
+  if (/stabilized_exotic|crystal|relic|ward|potion|antidote/.test(text))
+    return 45;
+  if (/weapon|sword|armor|scanner|repair_tool|field_medkit/.test(text))
+    return 35;
   if (/meal|meat|crop|herb|food|water|ration/.test(text)) return 8;
   if (/wood|stone|iron|metal|plank|ingot|ore/.test(text)) return 12;
   if (/waste|compost|spent_filter/.test(text)) return 2;
@@ -1174,13 +1297,32 @@ export function economyPriceForItemV1(input: {
   const supply = Math.max(0, region?.itemSupply[input.itemId] ?? 0);
   const demand = Math.max(0, region?.itemDemand[input.itemId] ?? 0);
   const scarcity = clampNumber((demand + 20) / (supply + 20), 0.5, 3, 1);
-  const regionalIndex = clampNumber(region?.priceIndex[input.itemId] ?? 1, 0.4, 4, 1);
-  const modifier = clampNumber(input.business?.priceModifiers[input.itemId] ?? 1, 0.25, 5, 1);
+  const regionalIndex = clampNumber(
+    region?.priceIndex[input.itemId] ?? 1,
+    0.4,
+    4,
+    1
+  );
+  const modifier = clampNumber(
+    input.business?.priceModifiers[input.itemId] ?? 1,
+    0.25,
+    5,
+    1
+  );
   return Math.max(1, Math.round(base * scarcity * regionalIndex * modifier));
 }
 
-function addTownNeed(town: HarthmereEconomyTownStateV1, need: HarthmereEconomyNeedIdV1, delta: number, nowMs: number) {
-  const current = town.needs[need] ?? { value: 65, demandWeight: 1, lastUpdatedAtMs: nowMs };
+function addTownNeed(
+  town: HarthmereEconomyTownStateV1,
+  need: HarthmereEconomyNeedIdV1,
+  delta: number,
+  nowMs: number
+) {
+  const current = town.needs[need] ?? {
+    value: 65,
+    demandWeight: 1,
+    lastUpdatedAtMs: nowMs,
+  };
   town.needs[need] = {
     ...current,
     value: clampNumber(current.value + delta, 0, 100, current.value),
@@ -1188,39 +1330,100 @@ function addTownNeed(town: HarthmereEconomyTownStateV1, need: HarthmereEconomyNe
   };
 }
 
-function degradeTownNeeds(town: HarthmereEconomyTownStateV1, days: number, nowMs: number) {
+function degradeTownNeeds(
+  town: HarthmereEconomyTownStateV1,
+  days: number,
+  nowMs: number
+) {
   for (const need of NEEDS) {
-    const baseDecay = need === "timeline_stability" ? 1.2 : need === "sanitation" || need === "food" ? 1.4 : 0.9;
-    addTownNeed(town, need, -baseDecay * days * town.needs[need].demandWeight, nowMs);
+    const baseDecay =
+      need === "timeline_stability"
+        ? 1.2
+        : need === "sanitation" || need === "food"
+        ? 1.4
+        : 0.9;
+    addTownNeed(
+      town,
+      need,
+      -baseDecay * days * town.needs[need].demandWeight,
+      nowMs
+    );
   }
   town.cleanlinessRating = town.needs.sanitation.value;
   town.safetyRating = town.needs.safety.value;
-  town.happiness = Math.round((town.needs.food.value + town.needs.housing.value + town.needs.safety.value + town.needs.health.value + town.needs.tourism.value) / 5);
-  town.timelineInstability = clampNumber(100 - town.needs.timeline_stability.value, 0, 100, 0);
+  town.happiness = Math.round(
+    (town.needs.food.value +
+      town.needs.housing.value +
+      town.needs.safety.value +
+      town.needs.health.value +
+      town.needs.tourism.value) /
+      5
+  );
+  town.timelineInstability = clampNumber(
+    100 - town.needs.timeline_stability.value,
+    0,
+    100,
+    0
+  );
 }
 
-function serviceCapacityForBusiness(state: HarthmereProductionEconomyStateV1, business: HarthmereEconomyBusinessRecordV1) {
-  const workers = business.employees.map((id) => state.employees[id]).filter(Boolean);
-  const avgSkill = workers.length ? workers.reduce((sum, worker) => sum + worker.skill, 0) / workers.length : 1;
-  return Math.max(1, Math.round(3 + workers.length * 3 + avgSkill + business.reputation / 40));
+function serviceCapacityForBusiness(
+  state: HarthmereProductionEconomyStateV1,
+  business: HarthmereEconomyBusinessRecordV1
+) {
+  const workers = business.employees
+    .map((id) => state.employees[id])
+    .filter(Boolean);
+  const avgSkill = workers.length
+    ? workers.reduce((sum, worker) => sum + worker.skill, 0) / workers.length
+    : 1;
+  return Math.max(
+    1,
+    Math.round(3 + workers.length * 3 + avgSkill + business.reputation / 40)
+  );
 }
 
-function businessHasConsumableStockForNeed(business: HarthmereEconomyBusinessRecordV1, need: HarthmereEconomyNeedIdV1) {
-  if (need === "food") return Object.keys(business.inventory).some((itemId) => /meal|food|meat|crop|ration|soup/i.test(itemId));
-  if (need === "health") return Object.keys(business.inventory).some((itemId) => /medicine|medkit|antidote|herb|bandage|tonic/i.test(itemId));
-  if (need === "energy" || need === "travel") return Object.keys(business.inventory).some((itemId) => /fuel|crystal|anchor|exotic/i.test(itemId));
-  if (need === "maintenance" || need === "property_condition") return Object.keys(business.inventory).some((itemId) => /repair|tool|wood|stone|metal|parts|plank|ingot/i.test(itemId));
-  if (need === "sanitation") return Object.keys(business.inventory).some((itemId) => /reagent|filter|barrel|waste|clean/i.test(itemId));
+function businessHasConsumableStockForNeed(
+  business: HarthmereEconomyBusinessRecordV1,
+  need: HarthmereEconomyNeedIdV1
+) {
+  if (need === "food")
+    return Object.keys(business.inventory).some((itemId) =>
+      /meal|food|meat|crop|ration|soup/i.test(itemId)
+    );
+  if (need === "health")
+    return Object.keys(business.inventory).some((itemId) =>
+      /medicine|medkit|antidote|herb|bandage|tonic/i.test(itemId)
+    );
+  if (need === "energy" || need === "travel")
+    return Object.keys(business.inventory).some((itemId) =>
+      /fuel|crystal|anchor|exotic/i.test(itemId)
+    );
+  if (need === "maintenance" || need === "property_condition")
+    return Object.keys(business.inventory).some((itemId) =>
+      /repair|tool|wood|stone|metal|parts|plank|ingot/i.test(itemId)
+    );
+  if (need === "sanitation")
+    return Object.keys(business.inventory).some((itemId) =>
+      /reagent|filter|barrel|waste|clean/i.test(itemId)
+    );
   return true;
 }
 
-function consumeOneRelevantStockForNeed(business: HarthmereEconomyBusinessRecordV1, need: HarthmereEconomyNeedIdV1) {
+function consumeOneRelevantStockForNeed(
+  business: HarthmereEconomyBusinessRecordV1,
+  need: HarthmereEconomyNeedIdV1
+) {
   const candidates = Object.keys(business.inventory).filter((itemId) => {
     if (need === "food") return /meal|food|meat|crop|ration|soup/i.test(itemId);
-    if (need === "health") return /medicine|medkit|antidote|herb|bandage|tonic/i.test(itemId);
-    if (need === "energy" || need === "travel") return /fuel|crystal|anchor|exotic/i.test(itemId);
-    if (need === "maintenance" || need === "property_condition") return /repair|tool|wood|stone|metal|parts|plank|ingot/i.test(itemId);
-    if (need === "sanitation") return /reagent|filter|barrel|clean/i.test(itemId);
+    if (need === "health")
+      return /medicine|medkit|antidote|herb|bandage|tonic/i.test(itemId);
+    if (need === "energy" || need === "travel")
+      return /fuel|crystal|anchor|exotic/i.test(itemId);
+    if (need === "maintenance" || need === "property_condition")
+      return /repair|tool|wood|stone|metal|parts|plank|ingot/i.test(itemId);
+    if (need === "sanitation")
+      return /reagent|filter|barrel|clean/i.test(itemId);
     return false;
   });
   const itemId = candidates[0];
@@ -1228,21 +1431,52 @@ function consumeOneRelevantStockForNeed(business: HarthmereEconomyBusinessRecord
   return itemId;
 }
 
-function collectSalesTax(town: HarthmereEconomyTownStateV1, grossGold: number, taxRate: number) {
-  const tax = Math.max(0, Math.round(grossGold * clampNumber(taxRate, 0, HARTHMERE_ECONOMY_MAX_SALES_TAX_RATE_V1, HARTHMERE_ECONOMY_BASE_SALES_TAX_RATE_V1)));
+function collectSalesTax(
+  town: HarthmereEconomyTownStateV1,
+  grossGold: number,
+  taxRate: number
+) {
+  const tax = Math.max(
+    0,
+    Math.round(
+      grossGold *
+        clampNumber(
+          taxRate,
+          0,
+          HARTHMERE_ECONOMY_MAX_SALES_TAX_RATE_V1,
+          HARTHMERE_ECONOMY_BASE_SALES_TAX_RATE_V1
+        )
+    )
+  );
   town.publicBudgetGold += tax;
   town.taxRevenueGold += tax;
   return tax;
 }
 
-function licenseFeeGold(licenseClass: HarthmereEconomyLicenseClassV1, level: number) {
-  const risky = licenseClass === "hazardous_material" || licenseClass === "portal_transit" || licenseClass === "medical" || licenseClass === "security" || licenseClass === "magic_goods";
+function licenseFeeGold(
+  licenseClass: HarthmereEconomyLicenseClassV1,
+  level: number
+) {
+  const risky =
+    licenseClass === "hazardous_material" ||
+    licenseClass === "portal_transit" ||
+    licenseClass === "medical" ||
+    licenseClass === "security" ||
+    licenseClass === "magic_goods";
   return Math.max(25, Math.round(level * level * (risky ? 120 : 60)));
 }
 
-function calculateLoanBalance(loan: HarthmereEconomyLoanRecordV1, nowMs: number) {
-  const days = Math.max(0, Math.ceil((nowMs - loan.openedAtMs) / HARTHMERE_ECONOMY_DAY_MS_V1));
-  const interestAccrued = Math.ceil(loan.principalRemaining * loan.dailyInterestRate * days);
+function calculateLoanBalance(
+  loan: HarthmereEconomyLoanRecordV1,
+  nowMs: number
+) {
+  const days = Math.max(
+    0,
+    Math.ceil((nowMs - loan.openedAtMs) / HARTHMERE_ECONOMY_DAY_MS_V1)
+  );
+  const interestAccrued = Math.ceil(
+    loan.principalRemaining * loan.dailyInterestRate * days
+  );
   const interestRemaining = Math.max(0, interestAccrued - loan.interestPaid);
   return {
     days,
@@ -1257,6 +1491,7 @@ function makeResult(state: HarthmereProductionEconomyStateV1): MutableResult {
     next: cloneEconomyState(state),
     goldDelta: 0,
     itemDeltas: {},
+    newRecipeIds: [],
     warnings: [],
     touched: new Set<string>(),
     shared: new Set<string>(),
@@ -1264,11 +1499,14 @@ function makeResult(state: HarthmereProductionEconomyStateV1): MutableResult {
   };
 }
 
-function finalizeResult(result: MutableResult): HarthmereEconomyMutationResultV1 {
+function finalizeResult(
+  result: MutableResult
+): HarthmereEconomyMutationResultV1 {
   return {
     economy: normalizeHarthmereProductionEconomyStateV1(result.next),
     inventoryGoldDelta: result.goldDelta,
     inventoryItemDeltas: { ...result.itemDeltas },
+    newRecipeIds: [...result.newRecipeIds],
     warnings: result.warnings,
     touchedModels: [...result.touched],
     sharedStateKeys: [...result.shared],
@@ -1278,7 +1516,11 @@ function finalizeResult(result: MutableResult): HarthmereEconomyMutationResultV1
   };
 }
 
-function requireBusinessManager(result: MutableResult, request: HarthmereEconomyMutationRequestV1, context: HarthmereEconomyMutationContextV1) {
+function requireBusinessManager(
+  result: MutableResult,
+  request: HarthmereEconomyMutationRequestV1,
+  context: HarthmereEconomyMutationContextV1
+) {
   const business = getBusiness(result, request.businessId);
   if (!business) {
     reject(result, "economy_rejected:business_not_found");
@@ -1291,25 +1533,38 @@ function requireBusinessManager(result: MutableResult, request: HarthmereEconomy
   return business;
 }
 
-function registerBusiness(result: MutableResult, request: HarthmereEconomyMutationRequestV1, context: HarthmereEconomyMutationContextV1) {
+function registerBusiness(
+  result: MutableResult,
+  request: HarthmereEconomyMutationRequestV1,
+  context: HarthmereEconomyMutationContextV1
+) {
   const def = businessType(request.businessType);
   if (!def) return reject(result, "economy_rejected:unknown_business_type");
   const name = (request.name ?? "").trim();
-  if (name.length < 3 || name.length > 80) return reject(result, "economy_rejected:invalid_business_name");
+  if (name.length < 3 || name.length > 80)
+    return reject(result, "economy_rejected:invalid_business_name");
   const ownerKind = request.ownerKind ?? "player";
   const ownerId = request.ownerId ?? request.actorId;
   if (!validateOwner(result, ownerKind, ownerId, request, context)) return;
   const maxBusinessCount = context.maxBusinessCount ?? 10;
-  if (activeBusinessCountForOwner(result.next, ownerKind, ownerId) >= maxBusinessCount) {
+  if (
+    activeBusinessCountForOwner(result.next, ownerKind, ownerId) >=
+    maxBusinessCount
+  ) {
     return reject(result, "economy_rejected:owner_business_limit_reached");
   }
   if (ownerKind === "player" && context.actorGold < def.startCostGold) {
     return reject(result, "economy_rejected:insufficient_gold_for_startup");
   }
   const duplicate = Object.values(result.next.businesses).find(
-    (business) => business.ownerKind === ownerKind && business.ownerId === ownerId && business.name.toLowerCase() === name.toLowerCase() && business.status !== "closed",
+    (business) =>
+      business.ownerKind === ownerKind &&
+      business.ownerId === ownerId &&
+      business.name.toLowerCase() === name.toLowerCase() &&
+      business.status !== "closed"
   );
-  if (duplicate) return reject(result, "economy_rejected:duplicate_business_name_for_owner");
+  if (duplicate)
+    return reject(result, "economy_rejected:duplicate_business_name_for_owner");
   const businessId = `econ_business_${result.next.nextBusinessNumber++}`;
   const regionId = request.regionId ?? HARTHMERE_ECONOMY_DEFAULT_REGION_ID_V1;
   const nowMs = request.nowMs;
@@ -1350,19 +1605,37 @@ function registerBusiness(result: MutableResult, request: HarthmereEconomyMutati
   if (ownerKind === "player") result.goldDelta -= def.startCostGold;
   ensureRegion(result.next, regionId, nowMs);
   if (request.townId) ensureTown(result.next, request.townId, regionId, nowMs);
-  pushLedger(result, { id: request.requestId, kind: "business_registered", businessId, amountGold: -def.startCostGold }, request);
+  pushLedger(
+    result,
+    {
+      id: request.requestId,
+      kind: "business_registered",
+      businessId,
+      amountGold: -def.startCostGold,
+    },
+    request
+  );
   result.touched.add("economy_business");
   result.shared.add(businessSharedKey(businessId));
 }
 
-function issueLicense(result: MutableResult, request: HarthmereEconomyMutationRequestV1, context: HarthmereEconomyMutationContextV1) {
+function issueLicense(
+  result: MutableResult,
+  request: HarthmereEconomyMutationRequestV1,
+  context: HarthmereEconomyMutationContextV1
+) {
   const business = requireBusinessManager(result, request, context);
   if (!business) return;
   const level = Math.max(1, Math.min(4, positiveInt(request.licenseLevel, 1)));
   const licenseClass = request.licenseClass ?? business.licenseClass;
-  if (licenseClass !== business.licenseClass) return reject(result, "economy_rejected:license_class_mismatch");
+  if (licenseClass !== business.licenseClass)
+    return reject(result, "economy_rejected:license_class_mismatch");
   const fee = licenseFeeGold(licenseClass, level);
-  if (business.ownerKind === "player" && context.actorGold + result.goldDelta < fee) return reject(result, "economy_rejected:insufficient_gold_for_license");
+  if (
+    business.ownerKind === "player" &&
+    context.actorGold + result.goldDelta < fee
+  )
+    return reject(result, "economy_rejected:insufficient_gold_for_license");
   const key = ownerKey(business.ownerKind, business.ownerId, licenseClass);
   result.next.licenses[key] = {
     licenseId: key,
@@ -1377,20 +1650,35 @@ function issueLicense(result: MutableResult, request: HarthmereEconomyMutationRe
   business.licenseLevel = result.next.licenses[key].level;
   business.updatedAtMs = request.nowMs;
   if (business.ownerKind === "player") result.goldDelta -= fee;
-  pushLedger(result, { id: request.requestId, kind: "license_issued", businessId: business.businessId, amountGold: -fee }, request);
+  pushLedger(
+    result,
+    {
+      id: request.requestId,
+      kind: "license_issued",
+      businessId: business.businessId,
+      amountGold: -fee,
+    },
+    request
+  );
   result.touched.add("economy_license");
   result.shared.add(businessSharedKey(business.businessId));
 }
 
-function openBusiness(result: MutableResult, request: HarthmereEconomyMutationRequestV1, context: HarthmereEconomyMutationContextV1) {
+function openBusiness(
+  result: MutableResult,
+  request: HarthmereEconomyMutationRequestV1,
+  context: HarthmereEconomyMutationContextV1
+) {
   const business = requireBusinessManager(result, request, context);
   if (!business) return;
   const def = HARTHMERE_ECONOMY_BUSINESS_TYPES_V1[business.typeId];
   ensureBusinessLicenseLevel(result.next, business);
-  if (business.licenseLevel < def.minimumLicenseLevel) return reject(result, "economy_rejected:license_level_too_low");
+  if (business.licenseLevel < def.minimumLicenseLevel)
+    return reject(result, "economy_rejected:license_level_too_low");
   const propertyId = request.propertyId ?? business.propertyId;
   const townId = request.townId ?? business.townId;
-  if (!propertyId) return reject(result, "economy_rejected:property_required_to_open");
+  if (!propertyId)
+    return reject(result, "economy_rejected:property_required_to_open");
   if (!townId) return reject(result, "economy_rejected:town_required_to_open");
   const regionId = request.regionId ?? business.regionId;
   business.propertyId = propertyId;
@@ -1399,13 +1687,26 @@ function openBusiness(result: MutableResult, request: HarthmereEconomyMutationRe
   business.status = "open";
   business.updatedAtMs = request.nowMs;
   ensureTown(result.next, townId, regionId, request.nowMs);
-  pushLedger(result, { id: request.requestId, kind: "business_opened", businessId: business.businessId, townId }, request);
+  pushLedger(
+    result,
+    {
+      id: request.requestId,
+      kind: "business_opened",
+      businessId: business.businessId,
+      townId,
+    },
+    request
+  );
   result.touched.add("economy_business");
   result.shared.add(businessSharedKey(business.businessId));
   result.shared.add(townSharedKey(townId));
 }
 
-function setBusinessPrices(result: MutableResult, request: HarthmereEconomyMutationRequestV1, context: HarthmereEconomyMutationContextV1) {
+function setBusinessPrices(
+  result: MutableResult,
+  request: HarthmereEconomyMutationRequestV1,
+  context: HarthmereEconomyMutationContextV1
+) {
   const business = requireBusinessManager(result, request, context);
   if (!business) return;
   for (const [key, rawValue] of Object.entries(request.priceModifiers ?? {})) {
@@ -1421,7 +1722,11 @@ function setBusinessPrices(result: MutableResult, request: HarthmereEconomyMutat
 // penalty + the "lost by not checking in" accounting are applied at sale time in
 // recordCustomerSale; here we pass baseDailyRevenue 0 so the check-in itself does
 // gold + streak + reset only.
-function businessDailyCheckIn(result: MutableResult, request: HarthmereEconomyMutationRequestV1, context: HarthmereEconomyMutationContextV1) {
+function businessDailyCheckIn(
+  result: MutableResult,
+  request: HarthmereEconomyMutationRequestV1,
+  context: HarthmereEconomyMutationContextV1
+) {
   const business = requireBusinessManager(result, request, context);
   if (!business) return;
   const today = harthmereEconomyDayIndexV1(request.nowMs);
@@ -1452,67 +1757,135 @@ function businessDailyCheckIn(result: MutableResult, request: HarthmereEconomyMu
   result.touched.add("economy_business_check_in");
 }
 
-function setBusinessTax(result: MutableResult, request: HarthmereEconomyMutationRequestV1, context: HarthmereEconomyMutationContextV1) {
+function setBusinessTax(
+  result: MutableResult,
+  request: HarthmereEconomyMutationRequestV1,
+  context: HarthmereEconomyMutationContextV1
+) {
   const business = requireBusinessManager(result, request, context);
   if (!business) return;
-  const rate = clampNumber(request.salesTaxRate, 0, HARTHMERE_ECONOMY_MAX_SALES_TAX_RATE_V1, business.salesTaxRate);
+  const rate = clampNumber(
+    request.salesTaxRate,
+    0,
+    HARTHMERE_ECONOMY_MAX_SALES_TAX_RATE_V1,
+    business.salesTaxRate
+  );
   business.salesTaxRate = rate;
   business.updatedAtMs = request.nowMs;
   result.touched.add("economy_tax");
   result.shared.add(businessSharedKey(business.businessId));
 }
 
-function depositBusinessInventory(result: MutableResult, request: HarthmereEconomyMutationRequestV1, context: HarthmereEconomyMutationContextV1) {
+function depositBusinessInventory(
+  result: MutableResult,
+  request: HarthmereEconomyMutationRequestV1,
+  context: HarthmereEconomyMutationContextV1
+) {
   const business = requireBusinessManager(result, request, context);
   if (!business) return;
   const itemId = request.itemId;
   const count = positiveInt(request.count, 1);
-  if (!itemId || count <= 0) return reject(result, "economy_rejected:invalid_deposit_item");
-  if ((context.actorInventoryItems[itemId] ?? 0) + (result.itemDeltas[itemId] ?? 0) < count) return reject(result, "economy_rejected:item_not_available_for_deposit");
-  if (!inventoryHasCapacity(business.inventory, itemId, business.storageMaxSlots)) return reject(result, "economy_rejected:business_storage_full");
+  if (!itemId || count <= 0)
+    return reject(result, "economy_rejected:invalid_deposit_item");
+  if (
+    (context.actorInventoryItems[itemId] ?? 0) +
+      (result.itemDeltas[itemId] ?? 0) <
+    count
+  )
+    return reject(result, "economy_rejected:item_not_available_for_deposit");
+  if (
+    !inventoryHasCapacity(business.inventory, itemId, business.storageMaxSlots)
+  )
+    return reject(result, "economy_rejected:business_storage_full");
   applyInventoryDelta(business.inventory, itemId, count);
   recordItemDelta(result.itemDeltas, itemId, -count);
   business.updatedAtMs = request.nowMs;
-  pushLedger(result, { id: request.requestId, kind: "business_inventory_deposited", businessId: business.businessId, itemDeltas: { [itemId]: count } }, request);
+  pushLedger(
+    result,
+    {
+      id: request.requestId,
+      kind: "business_inventory_deposited",
+      businessId: business.businessId,
+      itemDeltas: { [itemId]: count },
+    },
+    request
+  );
   result.touched.add("economy_business_inventory");
   result.shared.add(businessSharedKey(business.businessId));
 }
 
-function withdrawBusinessInventory(result: MutableResult, request: HarthmereEconomyMutationRequestV1, context: HarthmereEconomyMutationContextV1) {
+function withdrawBusinessInventory(
+  result: MutableResult,
+  request: HarthmereEconomyMutationRequestV1,
+  context: HarthmereEconomyMutationContextV1
+) {
   const business = requireBusinessManager(result, request, context);
   if (!business) return;
   const itemId = request.itemId;
   const count = positiveInt(request.count, 1);
-  if (!itemId || count <= 0) return reject(result, "economy_rejected:invalid_withdraw_item");
-  if (inventoryCount(business.inventory, itemId) < count) return reject(result, "economy_rejected:business_inventory_insufficient");
+  if (!itemId || count <= 0)
+    return reject(result, "economy_rejected:invalid_withdraw_item");
+  if (inventoryCount(business.inventory, itemId) < count)
+    return reject(result, "economy_rejected:business_inventory_insufficient");
   applyInventoryDelta(business.inventory, itemId, -count);
   recordItemDelta(result.itemDeltas, itemId, count);
   business.updatedAtMs = request.nowMs;
-  pushLedger(result, { id: request.requestId, kind: "business_inventory_withdrawn", businessId: business.businessId, itemDeltas: { [itemId]: -count } }, request);
+  pushLedger(
+    result,
+    {
+      id: request.requestId,
+      kind: "business_inventory_withdrawn",
+      businessId: business.businessId,
+      itemDeltas: { [itemId]: -count },
+    },
+    request
+  );
   result.touched.add("economy_business_inventory");
   result.shared.add(businessSharedKey(business.businessId));
 }
 
-function recordCustomerSale(result: MutableResult, request: HarthmereEconomyMutationRequestV1, context: HarthmereEconomyMutationContextV1) {
+function recordCustomerSale(
+  result: MutableResult,
+  request: HarthmereEconomyMutationRequestV1,
+  context: HarthmereEconomyMutationContextV1
+) {
   const business = getBusiness(result, request.businessId);
   if (!business) return reject(result, "economy_rejected:business_not_found");
-  if (business.status !== "open") return reject(result, "economy_rejected:business_not_open");
+  if (business.status !== "open")
+    return reject(result, "economy_rejected:business_not_open");
   const itemId = request.itemId;
   const count = positiveInt(request.count, 1);
   let gross = positiveInt(request.amountGold, 0);
   if (itemId) {
-    if (inventoryCount(business.inventory, itemId) < count) return reject(result, "economy_rejected:sale_inventory_insufficient");
-    const listedGross = economyPriceForItemV1({ state: result.next, regionId: business.regionId, townId: business.townId, itemId, business }) * count;
+    if (inventoryCount(business.inventory, itemId) < count)
+      return reject(result, "economy_rejected:sale_inventory_insufficient");
+    const listedGross =
+      economyPriceForItemV1({
+        state: result.next,
+        regionId: business.regionId,
+        townId: business.townId,
+        itemId,
+        business,
+      }) * count;
     gross = Math.max(gross, listedGross);
   }
   if (gross <= 0) return reject(result, "economy_rejected:invalid_sale_amount");
-  if (context.actorGold + result.goldDelta < gross) return reject(result, "economy_rejected:insufficient_customer_gold_for_sale");
+  if (context.actorGold + result.goldDelta < gross)
+    return reject(
+      result,
+      "economy_rejected:insufficient_customer_gold_for_sale"
+    );
   if (itemId) {
     applyInventoryDelta(business.inventory, itemId, -count);
     recordItemDelta(result.itemDeltas, itemId, count);
   }
   result.goldDelta -= gross;
-  const town = ensureTown(result.next, business.townId ?? HARTHMERE_ECONOMY_DEFAULT_TOWN_ID_V1, business.regionId, request.nowMs);
+  const town = ensureTown(
+    result.next,
+    business.townId ?? HARTHMERE_ECONOMY_DEFAULT_TOWN_ID_V1,
+    business.regionId,
+    request.nowMs
+  );
   const tax = collectSalesTax(town, gross, business.salesTaxRate);
   // Daily-check-in neglect: a player-owned business earns full revenue only while
   // the owner checks in. Each missed day applies an accelerating revenue factor
@@ -1529,7 +1902,8 @@ function recordCustomerSale(result: MutableResult, request: HarthmereEconomyMuta
     if (missedDays > 0) {
       const factor = businessNeglectRevenueFactorV1(missedDays);
       earning = fullEarning * factor;
-      const checkIn = business.dailyCheckIn ?? initBusinessDailyCheckInStateV1();
+      const checkIn =
+        business.dailyCheckIn ?? initBusinessDailyCheckInStateV1();
       business.dailyCheckIn = {
         ...checkIn,
         totalRevenueLostToNeglect:
@@ -1538,10 +1912,26 @@ function recordCustomerSale(result: MutableResult, request: HarthmereEconomyMuta
     }
   }
   business.balanceGold += earning;
-  business.customerSatisfaction = clampNumber(business.customerSatisfaction + (business.sanitationRating >= 50 ? 1 : -2), 0, 100, business.customerSatisfaction);
+  business.customerSatisfaction = clampNumber(
+    business.customerSatisfaction + (business.sanitationRating >= 50 ? 1 : -2),
+    0,
+    100,
+    business.customerSatisfaction
+  );
   business.reputation += business.customerSatisfaction >= 65 ? 1 : 0;
-  if (request.serviceNeed) addTownNeed(town, request.serviceNeed, Math.min(4, count), request.nowMs);
-  pushLedger(result, { id: request.requestId, kind: "customer_sale_recorded", businessId: business.businessId, amountGold: gross, townId: town.townId }, request);
+  if (request.serviceNeed)
+    addTownNeed(town, request.serviceNeed, Math.min(4, count), request.nowMs);
+  pushLedger(
+    result,
+    {
+      id: request.requestId,
+      kind: "customer_sale_recorded",
+      businessId: business.businessId,
+      amountGold: gross,
+      townId: town.townId,
+    },
+    request
+  );
   result.touched.add("economy_sale");
   result.touched.add("economy_tax");
   result.shared.add(businessSharedKey(business.businessId));
@@ -1554,72 +1944,150 @@ function recordCustomerSale(result: MutableResult, request: HarthmereEconomyMuta
 // unlimited / self-replenishing no matter how many players buy. Price is server-
 // authoritative (the storefront listing). The buyer pays gold + receives the item;
 // the business still earns the revenue. Does not touch the normal inventory/tool.
-function buyStorefrontGood(result: MutableResult, request: HarthmereEconomyMutationRequestV1, context: HarthmereEconomyMutationContextV1) {
+function buyStorefrontGood(
+  result: MutableResult,
+  request: HarthmereEconomyMutationRequestV1,
+  context: HarthmereEconomyMutationContextV1
+) {
   const business = getBusiness(result, request.businessId);
   if (!business) return reject(result, "economy_rejected:business_not_found");
-  if (business.status !== "open") return reject(result, "economy_rejected:business_not_open");
+  if (business.status !== "open")
+    return reject(result, "economy_rejected:business_not_open");
   const itemId = request.itemId;
-  if (!itemId) return reject(result, "economy_rejected:missing_storefront_item");
+  if (!itemId)
+    return reject(result, "economy_rejected:missing_storefront_item");
   const goods = harthmereBusinessStorefrontGoodsForTypeV1(business.typeId);
+  const listing = harthmereBusinessStorefrontListingsForTypeV1(
+    business.typeId
+  ).find((entry) => entry.itemId === itemId);
+  const recipeBook = harthmereBusinessStorefrontRecipeBookForItemV1(itemId);
   const inCatalog =
-    !!goods && (goods.blocks.includes(itemId) || goods.interior.includes(itemId));
-  if (!inCatalog) return reject(result, "economy_rejected:item_not_in_storefront");
+    !!goods &&
+    (goods.blocks.includes(itemId) ||
+      goods.interior.includes(itemId) ||
+      listing?.kind === "recipe_book");
+  if (!inCatalog)
+    return reject(result, "economy_rejected:item_not_in_storefront");
   const count = positiveInt(request.count, 1);
-  const listing = harthmereBusinessStorefrontListingsForTypeV1(business.typeId).find(
-    (entry) => entry.itemId === itemId
-  );
+  if (listing?.kind === "recipe_book" && count !== 1) {
+    return reject(result, "economy_rejected:recipe_book_single_purchase_only");
+  }
   const unitPrice = positiveInt(listing?.buyPrice, 0);
   const gross = unitPrice * count;
   if (gross <= 0) return reject(result, "economy_rejected:invalid_sale_amount");
   if (context.actorGold + result.goldDelta < gross) {
-    return reject(result, "economy_rejected:insufficient_customer_gold_for_sale");
+    return reject(
+      result,
+      "economy_rejected:insufficient_customer_gold_for_sale"
+    );
   }
-  // Buyer receives the item (positive itemDelta) and pays gold — NO business
-  // inventory deduction (the catalog is an unlimited supply).
-  recordItemDelta(result.itemDeltas, itemId, count);
+  if (listing?.kind === "recipe_book") {
+    if (!recipeBook) {
+      return reject(result, "economy_rejected:unknown_recipe_book");
+    }
+    const learnableRecipeIds = harthmereBusinessStorefrontLearnableRecipeIdsV1(
+      itemId,
+      context.actorKnownRecipes ?? []
+    );
+    if (learnableRecipeIds.length === 0) {
+      return reject(result, "economy_rejected:recipe_book_already_learned");
+    }
+    result.newRecipeIds.push(...learnableRecipeIds);
+  } else {
+    // Buyer receives the item (positive itemDelta) and pays gold — NO business
+    // inventory deduction (the catalog is an unlimited supply).
+    recordItemDelta(result.itemDeltas, itemId, count);
+  }
   result.goldDelta -= gross;
-  const town = ensureTown(result.next, business.townId ?? HARTHMERE_ECONOMY_DEFAULT_TOWN_ID_V1, business.regionId, request.nowMs);
+  const town = ensureTown(
+    result.next,
+    business.townId ?? HARTHMERE_ECONOMY_DEFAULT_TOWN_ID_V1,
+    business.regionId,
+    request.nowMs
+  );
   const tax = collectSalesTax(town, gross, business.salesTaxRate);
   business.balanceGold += gross - tax;
-  pushLedger(result, { id: request.requestId, kind: "customer_sale_recorded", businessId: business.businessId, amountGold: gross, townId: town.townId }, request);
+  pushLedger(
+    result,
+    {
+      id: request.requestId,
+      kind: "customer_sale_recorded",
+      businessId: business.businessId,
+      amountGold: gross,
+      townId: town.townId,
+    },
+    request
+  );
   result.touched.add("economy_sale");
   result.touched.add("economy_tax");
+  if (listing?.kind === "recipe_book") result.touched.add("known_recipes");
   result.shared.add(businessSharedKey(business.businessId));
   result.shared.add(townSharedKey(town.townId));
 }
 
-function normalizeFieldServiceSpec(request: HarthmereEconomyMutationRequestV1): HarthmereEconomyFieldServiceSpecV1 | undefined {
+function normalizeFieldServiceSpec(
+  request: HarthmereEconomyMutationRequestV1
+): HarthmereEconomyFieldServiceSpecV1 | undefined {
   const raw = request.fieldService;
   if (!raw || raw.required !== true) return undefined;
-  const serviceKind = typeof raw.serviceKind === "string" && raw.serviceKind.trim() ? raw.serviceKind.trim().slice(0, 80) : "field_service";
+  const serviceKind =
+    typeof raw.serviceKind === "string" && raw.serviceKind.trim()
+      ? raw.serviceKind.trim().slice(0, 80)
+      : "field_service";
   return {
     required: true,
     serviceKind,
-    targetId: typeof raw.targetId === "string" && raw.targetId.trim() ? raw.targetId.trim().slice(0, 120) : undefined,
-    mapMarkerId: typeof raw.mapMarkerId === "string" && raw.mapMarkerId.trim() ? raw.mapMarkerId.trim().slice(0, 120) : undefined,
-    questTitle: typeof raw.questTitle === "string" && raw.questTitle.trim() ? raw.questTitle.trim().slice(0, 120) : undefined,
-    todoText: typeof raw.todoText === "string" && raw.todoText.trim() ? raw.todoText.trim().slice(0, 180) : undefined,
+    targetId:
+      typeof raw.targetId === "string" && raw.targetId.trim()
+        ? raw.targetId.trim().slice(0, 120)
+        : undefined,
+    mapMarkerId:
+      typeof raw.mapMarkerId === "string" && raw.mapMarkerId.trim()
+        ? raw.mapMarkerId.trim().slice(0, 120)
+        : undefined,
+    questTitle:
+      typeof raw.questTitle === "string" && raw.questTitle.trim()
+        ? raw.questTitle.trim().slice(0, 120)
+        : undefined,
+    todoText:
+      typeof raw.todoText === "string" && raw.todoText.trim()
+        ? raw.todoText.trim().slice(0, 180)
+        : undefined,
   };
 }
 
-function ensureBusinessServiceQuestForContract(result: MutableResult, business: HarthmereEconomyBusinessRecordV1, contract: HarthmereEconomyContractRecordV1, request: HarthmereEconomyMutationRequestV1) {
+function ensureBusinessServiceQuestForContract(
+  result: MutableResult,
+  business: HarthmereEconomyBusinessRecordV1,
+  contract: HarthmereEconomyContractRecordV1,
+  request: HarthmereEconomyMutationRequestV1
+) {
   const fieldService = contract.fieldService;
   if (!fieldService?.required) return;
-  const systems = normalizeHarthmereEconomyBusinessSystemsStateV1((result.next as any).businessSystems);
+  const systems = normalizeHarthmereEconomyBusinessSystemsStateV1(
+    (result.next as any).businessSystems
+  );
   (result.next as any).businessSystems = systems;
-  const existing = Object.values((systems as any).serviceQuests ?? {}).find((quest: any) => quest.contractId === contract.contractId);
+  const existing = Object.values((systems as any).serviceQuests ?? {}).find(
+    (quest: any) => quest.contractId === contract.contractId
+  );
   if (existing) return;
-  const questNumber = (systems as any).nextServiceQuestNumber ?? (Object.keys((systems as any).serviceQuests ?? {}).length + 1);
+  const questNumber =
+    (systems as any).nextServiceQuestNumber ??
+    Object.keys((systems as any).serviceQuests ?? {}).length + 1;
   const questId = `business_service_quest_${questNumber}`;
   (systems as any).nextServiceQuestNumber = questNumber + 1;
-  (systems as any).serviceQuests = { ...((systems as any).serviceQuests ?? {}) };
+  (systems as any).serviceQuests = {
+    ...((systems as any).serviceQuests ?? {}),
+  };
   (systems as any).serviceQuests[questId] = {
     questId,
     contractId: contract.contractId,
     businessId: business.businessId,
     acceptedByActorId: request.actorId,
     title: fieldService.questTitle ?? contract.title,
-    todoText: fieldService.todoText ?? `Complete field service for ${contract.title}`,
+    todoText:
+      fieldService.todoText ?? `Complete field service for ${contract.title}`,
     status: "active",
     serviceKind: fieldService.serviceKind,
     targetId: fieldService.targetId,
@@ -1632,21 +2100,41 @@ function ensureBusinessServiceQuestForContract(result: MutableResult, business: 
     dueAtMs: contract.deadlineAtMs,
   };
   contract.logs.push(`service_quest_created:${questId}:${request.nowMs}`);
-  pushLedger(result, { id: `${request.requestId}:service_quest`, kind: "business_service_quest_created", businessId: business.businessId, contractId: contract.contractId }, request);
+  pushLedger(
+    result,
+    {
+      id: `${request.requestId}:service_quest`,
+      kind: "business_service_quest_created",
+      businessId: business.businessId,
+      contractId: contract.contractId,
+    },
+    request
+  );
   result.touched.add("economy_business_service_quest");
   result.shared.add(`harthmere:economy:business_service_quest:${questId}`);
 }
 
-function createContract(result: MutableResult, request: HarthmereEconomyMutationRequestV1, context: HarthmereEconomyMutationContextV1) {
+function createContract(
+  result: MutableResult,
+  request: HarthmereEconomyMutationRequestV1,
+  context: HarthmereEconomyMutationContextV1
+) {
   const requirements = request.requirements ?? [];
-  if (!requirements.length) return reject(result, "economy_rejected:contract_requirements_required");
+  if (!requirements.length)
+    return reject(result, "economy_rejected:contract_requirements_required");
   const rewardGold = positiveInt(request.rewardGold, 0);
-  if (rewardGold <= 0) return reject(result, "economy_rejected:contract_reward_required");
-  const deadlineAtMs = request.deadlineAtMs ?? request.nowMs + 7 * HARTHMERE_ECONOMY_DAY_MS_V1;
-  if (deadlineAtMs <= request.nowMs || deadlineAtMs - request.nowMs > HARTHMERE_ECONOMY_MAX_CONTRACT_DURATION_MS_V1) {
+  if (rewardGold <= 0)
+    return reject(result, "economy_rejected:contract_reward_required");
+  const deadlineAtMs =
+    request.deadlineAtMs ?? request.nowMs + 7 * HARTHMERE_ECONOMY_DAY_MS_V1;
+  if (
+    deadlineAtMs <= request.nowMs ||
+    deadlineAtMs - request.nowMs > HARTHMERE_ECONOMY_MAX_CONTRACT_DURATION_MS_V1
+  ) {
     return reject(result, "economy_rejected:invalid_contract_deadline");
   }
-  let issuerKind: HarthmereEconomyContractRecordV1["issuerKind"] = request.ownerKind ?? "player";
+  let issuerKind: HarthmereEconomyContractRecordV1["issuerKind"] =
+    request.ownerKind ?? "player";
   let issuerId = request.ownerId ?? request.actorId;
   let escrowGold = rewardGold;
   if (request.businessId) {
@@ -1654,10 +2142,15 @@ function createContract(result: MutableResult, request: HarthmereEconomyMutation
     if (!business) return;
     issuerKind = "business";
     issuerId = business.businessId;
-    if (business.balanceGold < rewardGold) return reject(result, "economy_rejected:business_contract_escrow_insufficient");
+    if (business.balanceGold < rewardGold)
+      return reject(
+        result,
+        "economy_rejected:business_contract_escrow_insufficient"
+      );
     business.balanceGold -= rewardGold;
   } else if (issuerKind === "player") {
-    if (context.actorGold + result.goldDelta < rewardGold) return reject(result, "economy_rejected:contract_escrow_insufficient");
+    if (context.actorGold + result.goldDelta < rewardGold)
+      return reject(result, "economy_rejected:contract_escrow_insufficient");
     result.goldDelta -= rewardGold;
   } else if (!validateOwner(result, issuerKind, issuerId, request, context)) {
     return;
@@ -1683,84 +2176,169 @@ function createContract(result: MutableResult, request: HarthmereEconomyMutation
     escrowGold,
     logs: [`created:${request.actorId}:${request.nowMs}`],
   };
-  pushLedger(result, { id: request.requestId, kind: "contract_created", contractId, amountGold: -escrowGold }, request);
+  pushLedger(
+    result,
+    {
+      id: request.requestId,
+      kind: "contract_created",
+      contractId,
+      amountGold: -escrowGold,
+    },
+    request
+  );
   result.touched.add("economy_contract");
   result.shared.add(contractSharedKey(contractId));
 }
 
-function acceptContract(result: MutableResult, request: HarthmereEconomyMutationRequestV1, context: HarthmereEconomyMutationContextV1) {
-  const contract = request.contractId ? result.next.contracts[request.contractId] : undefined;
+function acceptContract(
+  result: MutableResult,
+  request: HarthmereEconomyMutationRequestV1,
+  context: HarthmereEconomyMutationContextV1
+) {
+  const contract = request.contractId
+    ? result.next.contracts[request.contractId]
+    : undefined;
   if (!contract) return reject(result, "economy_rejected:contract_not_found");
-  if (contract.status !== "open") return reject(result, "economy_rejected:contract_not_open");
-  if (contract.deadlineAtMs <= request.nowMs) return reject(result, "economy_rejected:contract_expired");
+  if (contract.status !== "open")
+    return reject(result, "economy_rejected:contract_not_open");
+  if (contract.deadlineAtMs <= request.nowMs)
+    return reject(result, "economy_rejected:contract_expired");
   const business = requireBusinessManager(result, request, context);
   if (!business) return;
-  if (contract.businessType && contract.businessType !== business.typeId) return reject(result, "economy_rejected:wrong_business_type_for_contract");
+  if (contract.businessType && contract.businessType !== business.typeId)
+    return reject(result, "economy_rejected:wrong_business_type_for_contract");
   contract.status = "active";
   contract.acceptedByBusinessId = business.businessId;
   contract.acceptedByActorId = request.actorId;
   contract.logs.push(`accepted:${business.businessId}:${request.nowMs}`);
-  if (!business.activeContracts.includes(contract.contractId)) business.activeContracts.push(contract.contractId);
-  if (request.createQuestOnAccept !== false) ensureBusinessServiceQuestForContract(result, business, contract, request);
-  pushLedger(result, { id: request.requestId, kind: "contract_accepted", businessId: business.businessId, contractId: contract.contractId }, request);
+  if (!business.activeContracts.includes(contract.contractId))
+    business.activeContracts.push(contract.contractId);
+  if (request.createQuestOnAccept !== false)
+    ensureBusinessServiceQuestForContract(result, business, contract, request);
+  pushLedger(
+    result,
+    {
+      id: request.requestId,
+      kind: "contract_accepted",
+      businessId: business.businessId,
+      contractId: contract.contractId,
+    },
+    request
+  );
   result.touched.add("economy_contract");
   result.shared.add(contractSharedKey(contract.contractId));
   result.shared.add(businessSharedKey(business.businessId));
 }
 
-function fulfillContract(result: MutableResult, request: HarthmereEconomyMutationRequestV1, context: HarthmereEconomyMutationContextV1) {
-  const contract = request.contractId ? result.next.contracts[request.contractId] : undefined;
+function fulfillContract(
+  result: MutableResult,
+  request: HarthmereEconomyMutationRequestV1,
+  context: HarthmereEconomyMutationContextV1
+) {
+  const contract = request.contractId
+    ? result.next.contracts[request.contractId]
+    : undefined;
   if (!contract) return reject(result, "economy_rejected:contract_not_found");
-  if (contract.status !== "active") return reject(result, "economy_rejected:contract_not_active");
+  if (contract.status !== "active")
+    return reject(result, "economy_rejected:contract_not_active");
   if (contract.deadlineAtMs <= request.nowMs) {
     contract.status = "expired";
     return reject(result, "economy_rejected:contract_expired");
   }
   const business = requireBusinessManager(result, request, context);
-  if (!business || contract.acceptedByBusinessId !== business.businessId) return reject(result, "economy_rejected:contract_not_accepted_by_business");
+  if (!business || contract.acceptedByBusinessId !== business.businessId)
+    return reject(result, "economy_rejected:contract_not_accepted_by_business");
   for (const req of contract.requirements) {
-    if (req.itemId && inventoryCount(business.inventory, req.itemId) < positiveInt(req.count, 1)) {
-      return reject(result, `economy_rejected:contract_missing_item:${req.itemId}`);
+    if (
+      req.itemId &&
+      inventoryCount(business.inventory, req.itemId) < positiveInt(req.count, 1)
+    ) {
+      return reject(
+        result,
+        `economy_rejected:contract_missing_item:${req.itemId}`
+      );
     }
   }
   for (const req of contract.requirements) {
-    if (req.itemId) applyInventoryDelta(business.inventory, req.itemId, -positiveInt(req.count, 1));
+    if (req.itemId)
+      applyInventoryDelta(
+        business.inventory,
+        req.itemId,
+        -positiveInt(req.count, 1)
+      );
     if (req.serviceNeed && contract.townId) {
-      const town = ensureTown(result.next, contract.townId, contract.regionId, request.nowMs);
-      addTownNeed(town, req.serviceNeed, positiveInt(req.serviceUnits, 1), request.nowMs);
+      const town = ensureTown(
+        result.next,
+        contract.townId,
+        contract.regionId,
+        request.nowMs
+      );
+      addTownNeed(
+        town,
+        req.serviceNeed,
+        positiveInt(req.serviceUnits, 1),
+        request.nowMs
+      );
       result.shared.add(townSharedKey(town.townId));
     }
   }
   business.balanceGold += contract.escrowGold;
   business.reputation += contract.reputationDelta;
   business.completedContracts += 1;
-  business.activeContracts = business.activeContracts.filter((id) => id !== contract.contractId);
+  business.activeContracts = business.activeContracts.filter(
+    (id) => id !== contract.contractId
+  );
   contract.status = "fulfilled";
   contract.completedAtMs = request.nowMs;
   contract.escrowGold = 0;
   contract.logs.push(`fulfilled:${business.businessId}:${request.nowMs}`);
-  pushLedger(result, { id: request.requestId, kind: "contract_fulfilled", businessId: business.businessId, contractId: contract.contractId, amountGold: contract.rewardGold }, request);
+  pushLedger(
+    result,
+    {
+      id: request.requestId,
+      kind: "contract_fulfilled",
+      businessId: business.businessId,
+      contractId: contract.contractId,
+      amountGold: contract.rewardGold,
+    },
+    request
+  );
   result.touched.add("economy_contract");
   result.touched.add("economy_business_inventory");
   result.shared.add(contractSharedKey(contract.contractId));
   result.shared.add(businessSharedKey(business.businessId));
 }
 
-function cancelContract(result: MutableResult, request: HarthmereEconomyMutationRequestV1, context: HarthmereEconomyMutationContextV1) {
-  const contract = request.contractId ? result.next.contracts[request.contractId] : undefined;
+function cancelContract(
+  result: MutableResult,
+  request: HarthmereEconomyMutationRequestV1,
+  context: HarthmereEconomyMutationContextV1
+) {
+  const contract = request.contractId
+    ? result.next.contracts[request.contractId]
+    : undefined;
   if (!contract) return reject(result, "economy_rejected:contract_not_found");
-  if (contract.status === "fulfilled") return reject(result, "economy_rejected:cannot_cancel_fulfilled_contract");
-  const issuerIsActor = contract.issuerKind === "player" && contract.issuerId === request.actorId;
+  if (contract.status === "fulfilled")
+    return reject(result, "economy_rejected:cannot_cancel_fulfilled_contract");
+  const issuerIsActor =
+    contract.issuerKind === "player" && contract.issuerId === request.actorId;
   let issuerBusiness: HarthmereEconomyBusinessRecordV1 | undefined;
   if (contract.issuerKind === "business") {
     issuerBusiness = result.next.businesses[contract.issuerId];
   }
-  if (!issuerIsActor && !(issuerBusiness && canManageBusiness(issuerBusiness, request, context))) {
-    return reject(result, "economy_rejected:contract_cancel_permission_required");
+  if (
+    !issuerIsActor &&
+    !(issuerBusiness && canManageBusiness(issuerBusiness, request, context))
+  ) {
+    return reject(
+      result,
+      "economy_rejected:contract_cancel_permission_required"
+    );
   }
   contract.status = "cancelled";
   if (contract.escrowGold > 0) {
-    if (contract.issuerKind === "player") result.goldDelta += contract.escrowGold;
+    if (contract.issuerKind === "player")
+      result.goldDelta += contract.escrowGold;
     if (issuerBusiness) issuerBusiness.balanceGold += contract.escrowGold;
   }
   contract.escrowGold = 0;
@@ -1768,26 +2346,42 @@ function cancelContract(result: MutableResult, request: HarthmereEconomyMutation
   result.shared.add(contractSharedKey(contract.contractId));
 }
 
-function generateTownContracts(result: MutableResult, request: HarthmereEconomyMutationRequestV1, context: HarthmereEconomyMutationContextV1) {
+function generateTownContracts(
+  result: MutableResult,
+  request: HarthmereEconomyMutationRequestV1,
+  context: HarthmereEconomyMutationContextV1
+) {
   const townId = request.townId ?? HARTHMERE_ECONOMY_DEFAULT_TOWN_ID_V1;
   const regionId = request.regionId ?? HARTHMERE_ECONOMY_DEFAULT_REGION_ID_V1;
   const town = ensureTown(result.next, townId, regionId, request.nowMs);
   const maxContracts = Math.max(1, Math.min(5, positiveInt(request.count, 3)));
-  const needs = NEEDS
-    .map((need) => ({ need, shortage: 100 - town.needs[need].value, weight: town.needs[need].demandWeight }))
+  const needs = NEEDS.map((need) => ({
+    need,
+    shortage: 100 - town.needs[need].value,
+    weight: town.needs[need].demandWeight,
+  }))
     .filter((row) => row.shortage >= 25)
     .sort((a, b) => b.shortage * b.weight - a.shortage * a.weight)
     .slice(0, maxContracts);
-  if (!needs.length) return reject(result, "economy_rejected:town_has_no_contract_shortage", "economy_contract_generation");
+  if (!needs.length)
+    return reject(
+      result,
+      "economy_rejected:town_has_no_contract_shortage",
+      "economy_contract_generation"
+    );
   for (const row of needs) {
     const reward = Math.max(25, Math.round(row.shortage * row.weight * 4));
     if (town.publicBudgetGold < reward) {
-      result.warnings.push(`economy_warning:town_budget_insufficient_for_need:${row.need}`);
+      result.warnings.push(
+        `economy_warning:town_budget_insufficient_for_need:${row.need}`
+      );
       continue;
     }
     town.publicBudgetGold -= reward;
     const contractId = `econ_contract_${result.next.nextContractNumber++}`;
-    const businessType = Object.values(HARTHMERE_ECONOMY_BUSINESS_TYPES_V1).find((def) => def.serviceNeeds.includes(row.need))?.typeId;
+    const businessType = Object.values(
+      HARTHMERE_ECONOMY_BUSINESS_TYPES_V1
+    ).find((def) => def.serviceNeeds.includes(row.need))?.typeId;
     result.next.contracts[contractId] = {
       contractId,
       issuerKind: "town",
@@ -1796,7 +2390,9 @@ function generateTownContracts(result: MutableResult, request: HarthmereEconomyM
       regionId,
       title: `Town need: ${row.need.replace(/_/g, " ")}`,
       businessType,
-      requirements: [{ serviceNeed: row.need, serviceUnits: Math.ceil(row.shortage / 5) }],
+      requirements: [
+        { serviceNeed: row.need, serviceUnits: Math.ceil(row.shortage / 5) },
+      ],
       rewardGold: reward,
       reputationDelta: 5,
       status: "open",
@@ -1812,31 +2408,72 @@ function generateTownContracts(result: MutableResult, request: HarthmereEconomyM
   result.shared.add(townSharedKey(townId));
 }
 
-function produceRecipe(result: MutableResult, request: HarthmereEconomyMutationRequestV1, context: HarthmereEconomyMutationContextV1) {
+function produceRecipe(
+  result: MutableResult,
+  request: HarthmereEconomyMutationRequestV1,
+  context: HarthmereEconomyMutationContextV1
+) {
   const business = requireBusinessManager(result, request, context);
   if (!business) return;
-  if (business.status !== "open") return reject(result, "economy_rejected:business_not_open");
-  const recipe = request.recipeId ? result.next.recipes[request.recipeId] : undefined;
+  if (business.status !== "open")
+    return reject(result, "economy_rejected:business_not_open");
+  const recipe = request.recipeId
+    ? result.next.recipes[request.recipeId]
+    : undefined;
   if (!recipe) return reject(result, "economy_rejected:recipe_not_found");
-  if (recipe.businessType !== business.typeId) return reject(result, "economy_rejected:recipe_wrong_business_type");
-  if (business.licenseLevel < recipe.minimumLicenseLevel) return reject(result, "economy_rejected:recipe_license_level_too_low");
-  if (business.balanceGold < recipe.energyCostGold) return reject(result, "economy_rejected:recipe_energy_cost_unfunded");
+  if (recipe.businessType !== business.typeId)
+    return reject(result, "economy_rejected:recipe_wrong_business_type");
+  if (business.licenseLevel < recipe.minimumLicenseLevel)
+    return reject(result, "economy_rejected:recipe_license_level_too_low");
+  if (business.balanceGold < recipe.energyCostGold)
+    return reject(result, "economy_rejected:recipe_energy_cost_unfunded");
   const avgSkill = business.employees.length
-    ? business.employees.reduce((sum, id) => sum + (result.next.employees[id]?.skill ?? 0), 0) / business.employees.length
+    ? business.employees.reduce(
+        (sum, id) => sum + (result.next.employees[id]?.skill ?? 0),
+        0
+      ) / business.employees.length
     : 1;
-  if (avgSkill < recipe.skillRequirement) return reject(result, "economy_rejected:recipe_skill_requirement_not_met");
+  if (avgSkill < recipe.skillRequirement)
+    return reject(result, "economy_rejected:recipe_skill_requirement_not_met");
   for (const [itemId, count] of Object.entries(recipe.inputs)) {
-    if (inventoryCount(business.inventory, itemId) < count) return reject(result, `economy_rejected:recipe_missing_input:${itemId}`);
+    if (inventoryCount(business.inventory, itemId) < count)
+      return reject(result, `economy_rejected:recipe_missing_input:${itemId}`);
   }
-  for (const itemId of Object.keys({ ...recipe.outputs, ...(recipe.wasteOutputs ?? {}) })) {
-    if (!inventoryHasCapacity(business.inventory, itemId, business.storageMaxSlots)) return reject(result, "economy_rejected:business_storage_full_for_recipe_output");
+  for (const itemId of Object.keys({
+    ...recipe.outputs,
+    ...(recipe.wasteOutputs ?? {}),
+  })) {
+    if (
+      !inventoryHasCapacity(
+        business.inventory,
+        itemId,
+        business.storageMaxSlots
+      )
+    )
+      return reject(
+        result,
+        "economy_rejected:business_storage_full_for_recipe_output"
+      );
   }
-  for (const [itemId, count] of Object.entries(recipe.inputs)) applyInventoryDelta(business.inventory, itemId, -count);
-  for (const [itemId, count] of Object.entries(recipe.outputs)) applyInventoryDelta(business.inventory, itemId, count);
-  for (const [itemId, count] of Object.entries(recipe.wasteOutputs ?? {})) applyInventoryDelta(business.inventory, itemId, count);
+  for (const [itemId, count] of Object.entries(recipe.inputs))
+    applyInventoryDelta(business.inventory, itemId, -count);
+  for (const [itemId, count] of Object.entries(recipe.outputs))
+    applyInventoryDelta(business.inventory, itemId, count);
+  for (const [itemId, count] of Object.entries(recipe.wasteOutputs ?? {}))
+    applyInventoryDelta(business.inventory, itemId, count);
   business.balanceGold -= recipe.energyCostGold;
-  business.reputation += recipe.riskLevel >= 4 && business.safetyRating < 50 ? -2 : 1;
-  pushLedger(result, { id: request.requestId, kind: "recipe_produced", businessId: business.businessId, amountGold: -recipe.energyCostGold }, request);
+  business.reputation +=
+    recipe.riskLevel >= 4 && business.safetyRating < 50 ? -2 : 1;
+  pushLedger(
+    result,
+    {
+      id: request.requestId,
+      kind: "recipe_produced",
+      businessId: business.businessId,
+      amountGold: -recipe.energyCostGold,
+    },
+    request
+  );
   result.touched.add("economy_production");
   result.shared.add(businessSharedKey(business.businessId));
 }
@@ -1871,33 +2508,59 @@ const HARTHMERE_ECONOMY_EMPLOYEE_TASK_ALIASES_V1: Record<string, string> = {
 };
 
 function normalizeEmployeeAssignedTaskV1(value: string | undefined) {
-  const key = (value ?? "").trim().toLowerCase().replace(/[\s-]+/g, "_");
+  const key = (value ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/[\s-]+/g, "_");
   return key ? HARTHMERE_ECONOMY_EMPLOYEE_TASK_ALIASES_V1[key] : undefined;
 }
 
-function hireWorker(result: MutableResult, request: HarthmereEconomyMutationRequestV1, context: HarthmereEconomyMutationContextV1) {
+function hireWorker(
+  result: MutableResult,
+  request: HarthmereEconomyMutationRequestV1,
+  context: HarthmereEconomyMutationContextV1
+) {
   const business = requireBusinessManager(result, request, context);
   if (!business) return;
-  if (business.employees.length >= 30) return reject(result, "economy_rejected:business_employee_capacity_full");
-  const employeeId = request.employeeId ?? `econ_employee_${result.next.nextEmployeeNumber++}`;
+  if (business.employees.length >= 30)
+    return reject(result, "economy_rejected:business_employee_capacity_full");
+  const employeeId =
+    request.employeeId ?? `econ_employee_${result.next.nextEmployeeNumber++}`;
   const employeeNpcId =
     request.employeeNpcId ??
-    (request.employeeActorId ? undefined : `generated_worker:${business.businessId}:${employeeId}`);
-  if (!request.employeeActorId && !employeeNpcId) return reject(result, "economy_rejected:worker_identity_required");
+    (request.employeeActorId
+      ? undefined
+      : `generated_worker:${business.businessId}:${employeeId}`);
+  if (!request.employeeActorId && !employeeNpcId)
+    return reject(result, "economy_rejected:worker_identity_required");
   const role = (request.role ?? "worker").trim().slice(0, 40);
-  if (!role || /[<>]/.test(role)) return reject(result, "economy_rejected:invalid_worker_role");
+  if (!role || /[<>]/.test(role))
+    return reject(result, "economy_rejected:invalid_worker_role");
   const wageNumber = Number(request.wageGoldPerDay ?? 1);
-  if (!Number.isFinite(wageNumber) || wageNumber < 1 || wageNumber > 10_000) return reject(result, "economy_rejected:invalid_worker_wage");
+  if (!Number.isFinite(wageNumber) || wageNumber < 1 || wageNumber > 10_000)
+    return reject(result, "economy_rejected:invalid_worker_wage");
   const skillNumber = Number(request.skill ?? 1);
-  if (!Number.isFinite(skillNumber) || skillNumber < 1 || skillNumber > 10) return reject(result, "economy_rejected:invalid_worker_skill");
-  if (request.employeeActorId && Object.values(result.next.employees).some((employee) => employee.actorId === request.employeeActorId)) {
+  if (!Number.isFinite(skillNumber) || skillNumber < 1 || skillNumber > 10)
+    return reject(result, "economy_rejected:invalid_worker_skill");
+  if (
+    request.employeeActorId &&
+    Object.values(result.next.employees).some(
+      (employee) => employee.actorId === request.employeeActorId
+    )
+  ) {
     return reject(result, "economy_rejected:employee_actor_already_hired");
   }
-  if (employeeNpcId && Object.values(result.next.employees).some((employee) => employee.npcId === employeeNpcId)) {
+  if (
+    employeeNpcId &&
+    Object.values(result.next.employees).some(
+      (employee) => employee.npcId === employeeNpcId
+    )
+  ) {
     return reject(result, "economy_rejected:employee_npc_already_hired");
   }
   const wage = Math.max(1, positiveInt(wageNumber, 1));
-  if (result.next.employees[employeeId]) return reject(result, "economy_rejected:employee_already_exists");
+  if (result.next.employees[employeeId])
+    return reject(result, "economy_rejected:employee_already_exists");
   result.next.employees[employeeId] = {
     employeeId,
     businessId: business.businessId,
@@ -1918,45 +2581,79 @@ function hireWorker(result: MutableResult, request: HarthmereEconomyMutationRequ
   result.shared.add(businessSharedKey(business.businessId));
 }
 
-function fireWorker(result: MutableResult, request: HarthmereEconomyMutationRequestV1, context: HarthmereEconomyMutationContextV1) {
+function fireWorker(
+  result: MutableResult,
+  request: HarthmereEconomyMutationRequestV1,
+  context: HarthmereEconomyMutationContextV1
+) {
   const business = requireBusinessManager(result, request, context);
   if (!business || !request.employeeId) return;
   const employee = result.next.employees[request.employeeId];
-  if (!employee || employee.businessId !== business.businessId) return reject(result, "economy_rejected:employee_not_found");
-  business.employees = business.employees.filter((id) => id !== employee.employeeId);
-  business.wageGoldPerDay = Math.max(0, business.wageGoldPerDay - employee.wageGoldPerDay);
+  if (!employee || employee.businessId !== business.businessId)
+    return reject(result, "economy_rejected:employee_not_found");
+  business.employees = business.employees.filter(
+    (id) => id !== employee.employeeId
+  );
+  business.wageGoldPerDay = Math.max(
+    0,
+    business.wageGoldPerDay - employee.wageGoldPerDay
+  );
   delete result.next.employees[employee.employeeId];
   result.touched.add("economy_employee");
   result.shared.add(businessSharedKey(business.businessId));
 }
 
-function assignWorker(result: MutableResult, request: HarthmereEconomyMutationRequestV1, context: HarthmereEconomyMutationContextV1) {
+function assignWorker(
+  result: MutableResult,
+  request: HarthmereEconomyMutationRequestV1,
+  context: HarthmereEconomyMutationContextV1
+) {
   const business = requireBusinessManager(result, request, context);
   if (!business || !request.employeeId) return;
   const employee = result.next.employees[request.employeeId];
-  if (!employee || employee.businessId !== business.businessId) return reject(result, "economy_rejected:employee_not_found");
-  const task = normalizeEmployeeAssignedTaskV1(request.assignedTask ?? request.role ?? employee.assignedTask);
-  if (!task) return reject(result, "economy_rejected:invalid_business_employee_task");
+  if (!employee || employee.businessId !== business.businessId)
+    return reject(result, "economy_rejected:employee_not_found");
+  const task = normalizeEmployeeAssignedTaskV1(
+    request.assignedTask ?? request.role ?? employee.assignedTask
+  );
+  if (!task)
+    return reject(result, "economy_rejected:invalid_business_employee_task");
   employee.assignedTask = task;
   result.touched.add("economy_employee");
   result.shared.add(businessSharedKey(business.businessId));
 }
 
-function payPayroll(result: MutableResult, request: HarthmereEconomyMutationRequestV1, context: HarthmereEconomyMutationContextV1) {
+function payPayroll(
+  result: MutableResult,
+  request: HarthmereEconomyMutationRequestV1,
+  context: HarthmereEconomyMutationContextV1
+) {
   const business = requireBusinessManager(result, request, context);
   if (!business) return;
   let due = 0;
   for (const employeeId of business.employees) {
     const employee = result.next.employees[employeeId];
     if (!employee) continue;
-    const days = Math.max(1, Math.ceil((request.nowMs - employee.lastPaidAtMs) / HARTHMERE_ECONOMY_DAY_MS_V1));
+    const days = Math.max(
+      1,
+      Math.ceil(
+        (request.nowMs - employee.lastPaidAtMs) / HARTHMERE_ECONOMY_DAY_MS_V1
+      )
+    );
     due += employee.wageGoldPerDay * days;
   }
-  if (due <= 0) return reject(result, "economy_rejected:no_payroll_due", "economy_payroll");
+  if (due <= 0)
+    return reject(result, "economy_rejected:no_payroll_due", "economy_payroll");
   if (business.balanceGold < due) {
     for (const employeeId of business.employees) {
       const employee = result.next.employees[employeeId];
-      if (employee) employee.morale = clampNumber(employee.morale - 15, 0, 100, employee.morale);
+      if (employee)
+        employee.morale = clampNumber(
+          employee.morale - 15,
+          0,
+          100,
+          employee.morale
+        );
     }
     business.status = "suspended";
     return reject(result, "economy_rejected:business_payroll_insufficient");
@@ -1966,36 +2663,86 @@ function payPayroll(result: MutableResult, request: HarthmereEconomyMutationRequ
     const employee = result.next.employees[employeeId];
     if (employee) {
       employee.lastPaidAtMs = request.nowMs;
-      employee.morale = clampNumber(employee.morale + 3, 0, 100, employee.morale);
-      employee.loyalty = clampNumber(employee.loyalty + 1, 0, 100, employee.loyalty);
+      employee.morale = clampNumber(
+        employee.morale + 3,
+        0,
+        100,
+        employee.morale
+      );
+      employee.loyalty = clampNumber(
+        employee.loyalty + 1,
+        0,
+        100,
+        employee.loyalty
+      );
     }
   }
-  pushLedger(result, { id: request.requestId, kind: "payroll_paid", businessId: business.businessId, amountGold: -due }, request);
+  pushLedger(
+    result,
+    {
+      id: request.requestId,
+      kind: "payroll_paid",
+      businessId: business.businessId,
+      amountGold: -due,
+    },
+    request
+  );
   result.touched.add("economy_payroll");
   result.shared.add(businessSharedKey(business.businessId));
 }
 
-function trainWorker(result: MutableResult, request: HarthmereEconomyMutationRequestV1, context: HarthmereEconomyMutationContextV1) {
+function trainWorker(
+  result: MutableResult,
+  request: HarthmereEconomyMutationRequestV1,
+  context: HarthmereEconomyMutationContextV1
+) {
   const business = requireBusinessManager(result, request, context);
   if (!business || !request.employeeId) return;
   const employee = result.next.employees[request.employeeId];
-  if (!employee || employee.businessId !== business.businessId) return reject(result, "economy_rejected:employee_not_found");
+  if (!employee || employee.businessId !== business.businessId)
+    return reject(result, "economy_rejected:employee_not_found");
   const cost = Math.max(20, Math.round(employee.skill * 25));
-  if (business.balanceGold < cost) return reject(result, "economy_rejected:training_cost_unfunded");
+  if (business.balanceGold < cost)
+    return reject(result, "economy_rejected:training_cost_unfunded");
   business.balanceGold -= cost;
   employee.skill = clampNumber(employee.skill + 1, 1, 10, employee.skill);
-  pushLedger(result, { id: request.requestId, kind: "worker_trained", businessId: business.businessId, amountGold: -cost }, request);
+  pushLedger(
+    result,
+    {
+      id: request.requestId,
+      kind: "worker_trained",
+      businessId: business.businessId,
+      amountGold: -cost,
+    },
+    request
+  );
   result.touched.add("economy_employee");
   result.shared.add(businessSharedKey(business.businessId));
 }
 
-function runTownTick(result: MutableResult, request: HarthmereEconomyMutationRequestV1) {
+function runTownTick(
+  result: MutableResult,
+  request: HarthmereEconomyMutationRequestV1
+) {
   const townId = request.townId ?? HARTHMERE_ECONOMY_DEFAULT_TOWN_ID_V1;
   const regionId = request.regionId ?? HARTHMERE_ECONOMY_DEFAULT_REGION_ID_V1;
   const town = ensureTown(result.next, townId, regionId, request.nowMs);
-  const days = Math.max(1, Math.min(30, positiveInt(request.days, Math.ceil((request.nowMs - town.lastTickAtMs) / HARTHMERE_ECONOMY_DAY_MS_V1) || 1)));
+  const days = Math.max(
+    1,
+    Math.min(
+      30,
+      positiveInt(
+        request.days,
+        Math.ceil(
+          (request.nowMs - town.lastTickAtMs) / HARTHMERE_ECONOMY_DAY_MS_V1
+        ) || 1
+      )
+    )
+  );
   degradeTownNeeds(town, days, request.nowMs);
-  town.serviceCoverage = Object.fromEntries(NEEDS.map((need) => [need, 0])) as Record<HarthmereEconomyNeedIdV1, number>;
+  town.serviceCoverage = Object.fromEntries(
+    NEEDS.map((need) => [need, 0])
+  ) as Record<HarthmereEconomyNeedIdV1, number>;
   for (const business of Object.values(result.next.businesses)) {
     if (business.status !== "open" || business.townId !== townId) continue;
     const def = HARTHMERE_ECONOMY_BUSINESS_TYPES_V1[business.typeId];
@@ -2008,12 +2755,24 @@ function runTownTick(result: MutableResult, request: HarthmereEconomyMutationReq
       if (lift <= 0) continue;
       addTownNeed(town, need, lift, request.nowMs);
       town.serviceCoverage[need] += lift;
-      const gross = Math.max(2, Math.round(lift * (1 + def.civicImportance / 10)));
+      const gross = Math.max(
+        2,
+        Math.round(lift * (1 + def.civicImportance / 10))
+      );
       const tax = collectSalesTax(town, gross, business.salesTaxRate);
       business.balanceGold += gross - tax;
-      business.customerSatisfaction = clampNumber(business.customerSatisfaction + 1, 0, 100, business.customerSatisfaction);
+      business.customerSatisfaction = clampNumber(
+        business.customerSatisfaction + 1,
+        0,
+        100,
+        business.customerSatisfaction
+      );
       if (consumed) {
-        const region = ensureRegion(result.next, business.regionId, request.nowMs);
+        const region = ensureRegion(
+          result.next,
+          business.regionId,
+          request.nowMs
+        );
         region.itemDemand[consumed] = (region.itemDemand[consumed] ?? 0) + 1;
       }
       result.shared.add(businessSharedKey(business.businessId));
@@ -2024,35 +2783,80 @@ function runTownTick(result: MutableResult, request: HarthmereEconomyMutationReq
   result.shared.add(townSharedKey(townId));
 }
 
-function runUpkeepTick(result: MutableResult, request: HarthmereEconomyMutationRequestV1, context: HarthmereEconomyMutationContextV1) {
+function runUpkeepTick(
+  result: MutableResult,
+  request: HarthmereEconomyMutationRequestV1,
+  context: HarthmereEconomyMutationContextV1
+) {
   const business = requireBusinessManager(result, request, context);
   if (!business) return;
-  const days = Math.max(1, Math.min(30, positiveInt(request.days, Math.ceil((request.nowMs - business.lastTickAtMs) / HARTHMERE_ECONOMY_DAY_MS_V1) || 1)));
-  const due = Math.round((business.upkeepGoldPerDay + business.rentGoldPerDay) * days);
+  const days = Math.max(
+    1,
+    Math.min(
+      30,
+      positiveInt(
+        request.days,
+        Math.ceil(
+          (request.nowMs - business.lastTickAtMs) / HARTHMERE_ECONOMY_DAY_MS_V1
+        ) || 1
+      )
+    )
+  );
+  const due = Math.round(
+    (business.upkeepGoldPerDay + business.rentGoldPerDay) * days
+  );
   if (business.balanceGold < due) {
     business.status = business.status === "bankrupt" ? "bankrupt" : "suspended";
-    business.customerSatisfaction = clampNumber(business.customerSatisfaction - 10, 0, 100, business.customerSatisfaction);
+    business.customerSatisfaction = clampNumber(
+      business.customerSatisfaction - 10,
+      0,
+      100,
+      business.customerSatisfaction
+    );
     return reject(result, "economy_rejected:business_upkeep_insufficient");
   }
   business.balanceGold -= due;
   business.lastTickAtMs = request.nowMs;
   if (business.status === "suspended") business.status = "open";
-  business.customerSatisfaction = clampNumber(business.customerSatisfaction + 1, 0, 100, business.customerSatisfaction);
-  pushLedger(result, { id: request.requestId, kind: "business_upkeep_paid", businessId: business.businessId, amountGold: -due }, request);
+  business.customerSatisfaction = clampNumber(
+    business.customerSatisfaction + 1,
+    0,
+    100,
+    business.customerSatisfaction
+  );
+  pushLedger(
+    result,
+    {
+      id: request.requestId,
+      kind: "business_upkeep_paid",
+      businessId: business.businessId,
+      amountGold: -due,
+    },
+    request
+  );
   result.touched.add("economy_upkeep");
   result.shared.add(businessSharedKey(business.businessId));
 }
 
-function takeBusinessLoan(result: MutableResult, request: HarthmereEconomyMutationRequestV1, context: HarthmereEconomyMutationContextV1) {
+function takeBusinessLoan(
+  result: MutableResult,
+  request: HarthmereEconomyMutationRequestV1,
+  context: HarthmereEconomyMutationContextV1
+) {
   const business = requireBusinessManager(result, request, context);
   if (!business) return;
   const principal = positiveInt(request.principalGold, 0);
   // Existing debt reduces borrowing capacity. When debt fully consumes capacity the
   // business cannot borrow at all — the 250 floor must not resurrect capacity for a
   // business that is already over-leveraged.
-  const rawCap = 500 + business.licenseLevel * 1000 + Math.max(0, business.reputation) * 10 - business.debtGold;
+  const rawCap =
+    500 +
+    business.licenseLevel * 1000 +
+    Math.max(0, business.reputation) * 10 -
+    business.debtGold;
   const cap = Math.max(250, rawCap);
-  if (principal <= 0 || rawCap <= 0 || principal > cap) return reject(result, "economy_rejected:business_loan_principal_invalid");
+  if (principal <= 0 || rawCap <= 0 || principal > cap)
+    return reject(result, "economy_rejected:business_loan_principal_invalid");
   const loanId = `econ_loan_${result.next.nextLoanNumber++}`;
   const rate = clampNumber(request.dailyInterestRate, 0.005, 0.08, 0.015);
   result.next.loans[loanId] = {
@@ -2063,25 +2867,46 @@ function takeBusinessLoan(result: MutableResult, request: HarthmereEconomyMutati
     interestPaid: 0,
     dailyInterestRate: rate,
     openedAtMs: request.nowMs,
-    dueAtMs: request.dueAtMs ?? request.nowMs + 14 * HARTHMERE_ECONOMY_DAY_MS_V1,
+    dueAtMs:
+      request.dueAtMs ?? request.nowMs + 14 * HARTHMERE_ECONOMY_DAY_MS_V1,
     status: "active",
   };
   business.balanceGold += principal;
   business.debtGold += principal;
-  pushLedger(result, { id: request.requestId, kind: "business_loan_issued", businessId: business.businessId, amountGold: principal }, request);
+  pushLedger(
+    result,
+    {
+      id: request.requestId,
+      kind: "business_loan_issued",
+      businessId: business.businessId,
+      amountGold: principal,
+    },
+    request
+  );
   result.touched.add("economy_loan");
   result.shared.add(businessSharedKey(business.businessId));
 }
 
-function payBusinessLoan(result: MutableResult, request: HarthmereEconomyMutationRequestV1, context: HarthmereEconomyMutationContextV1) {
+function payBusinessLoan(
+  result: MutableResult,
+  request: HarthmereEconomyMutationRequestV1,
+  context: HarthmereEconomyMutationContextV1
+) {
   const business = requireBusinessManager(result, request, context);
   if (!business) return;
   const found = request.loanId ? result.next.loans[request.loanId] : undefined;
-  if (!found || found.businessId !== business.businessId) return reject(result, "economy_rejected:business_loan_not_found");
-  if (found.status === "paid") return reject(result, "economy_rejected:business_loan_already_paid");
+  if (!found || found.businessId !== business.businessId)
+    return reject(result, "economy_rejected:business_loan_not_found");
+  if (found.status === "paid")
+    return reject(result, "economy_rejected:business_loan_already_paid");
   const amount = positiveInt(request.amountGold, 0);
-  if (amount <= 0) return reject(result, "economy_rejected:invalid_loan_payment");
-  if (business.balanceGold < amount) return reject(result, "economy_rejected:business_balance_insufficient_for_loan_payment");
+  if (amount <= 0)
+    return reject(result, "economy_rejected:invalid_loan_payment");
+  if (business.balanceGold < amount)
+    return reject(
+      result,
+      "economy_rejected:business_balance_insufficient_for_loan_payment"
+    );
   const balance = calculateLoanBalance(found, request.nowMs);
   // Only charge the borrower for what actually goes toward the loan; an overpayment
   // beyond the outstanding balance must not be silently burned.
@@ -2094,24 +2919,49 @@ function payBusinessLoan(result: MutableResult, request: HarthmereEconomyMutatio
   found.principalRemaining -= principalPaid;
   business.debtGold = Math.max(0, business.debtGold - principalPaid);
   business.balanceGold -= applied;
-  if (found.principalRemaining <= 0 && calculateLoanBalance(found, request.nowMs).interestRemaining <= 0) found.status = "paid";
-  pushLedger(result, { id: request.requestId, kind: "business_loan_payment", businessId: business.businessId, amountGold: -applied }, request);
+  if (
+    found.principalRemaining <= 0 &&
+    calculateLoanBalance(found, request.nowMs).interestRemaining <= 0
+  )
+    found.status = "paid";
+  pushLedger(
+    result,
+    {
+      id: request.requestId,
+      kind: "business_loan_payment",
+      businessId: business.businessId,
+      amountGold: -applied,
+    },
+    request
+  );
   result.touched.add("economy_loan");
   result.shared.add(businessSharedKey(business.businessId));
 }
 
-function buyInsurance(result: MutableResult, request: HarthmereEconomyMutationRequestV1, context: HarthmereEconomyMutationContextV1) {
+function buyInsurance(
+  result: MutableResult,
+  request: HarthmereEconomyMutationRequestV1,
+  context: HarthmereEconomyMutationContextV1
+) {
   const business = requireBusinessManager(result, request, context);
   if (!business) return;
   const coverage = positiveInt(request.coverageGold, 0);
-  const premium = positiveInt(request.premiumGoldPerDay, Math.ceil(coverage * 0.01));
-  const deductible = positiveInt(request.deductibleGold, Math.ceil(coverage * 0.1));
-  if (!request.coverageKind || coverage <= 0) return reject(result, "economy_rejected:invalid_insurance_policy");
+  const premium = positiveInt(
+    request.premiumGoldPerDay,
+    Math.ceil(coverage * 0.01)
+  );
+  const deductible = positiveInt(
+    request.deductibleGold,
+    Math.ceil(coverage * 0.1)
+  );
+  if (!request.coverageKind || coverage <= 0)
+    return reject(result, "economy_rejected:invalid_insurance_policy");
   // The policy grants a full term of coverage up front, so the premium owed is the
   // per-day rate across the whole term. Charging a single day's premium for 30 days of
   // claimable coverage is a money-printing exploit (pay 1% of coverage, claim up to 100%).
   const termPremium = premium * HARTHMERE_ECONOMY_INSURANCE_TERM_DAYS_V1;
-  if (business.balanceGold < termPremium) return reject(result, "economy_rejected:insurance_premium_unfunded");
+  if (business.balanceGold < termPremium)
+    return reject(result, "economy_rejected:insurance_premium_unfunded");
   const policyId = `econ_policy_${result.next.nextPolicyNumber++}`;
   business.balanceGold -= termPremium;
   result.next.insurancePolicies[policyId] = {
@@ -2123,7 +2973,9 @@ function buyInsurance(result: MutableResult, request: HarthmereEconomyMutationRe
     premiumGoldPerDay: premium,
     status: "active",
     purchasedAtMs: request.nowMs,
-    expiresAtMs: request.nowMs + HARTHMERE_ECONOMY_INSURANCE_TERM_DAYS_V1 * HARTHMERE_ECONOMY_DAY_MS_V1,
+    expiresAtMs:
+      request.nowMs +
+      HARTHMERE_ECONOMY_INSURANCE_TERM_DAYS_V1 * HARTHMERE_ECONOMY_DAY_MS_V1,
     lastPremiumPaidAtMs: request.nowMs,
     claimsPaidGold: 0,
   };
@@ -2131,7 +2983,11 @@ function buyInsurance(result: MutableResult, request: HarthmereEconomyMutationRe
   result.shared.add(businessSharedKey(business.businessId));
 }
 
-function recordFailureEvent(result: MutableResult, request: HarthmereEconomyMutationRequestV1, context: HarthmereEconomyMutationContextV1) {
+function recordFailureEvent(
+  result: MutableResult,
+  request: HarthmereEconomyMutationRequestV1,
+  context: HarthmereEconomyMutationContextV1
+) {
   const business = requireBusinessManager(result, request, context);
   if (!business) return;
   const severity = clampNumber(request.severity, 1, 10, 1);
@@ -2143,60 +2999,118 @@ function recordFailureEvent(result: MutableResult, request: HarthmereEconomyMuta
     severity,
     cause: (request.cause ?? "unspecified").slice(0, 120),
     createdAtMs: request.nowMs,
-    repairCostGold: positiveInt(request.repairCostGold, Math.round(severity * 25)),
+    repairCostGold: positiveInt(
+      request.repairCostGold,
+      Math.round(severity * 25)
+    ),
   };
-  business.customerSatisfaction = clampNumber(business.customerSatisfaction - severity * 3, 0, 100, business.customerSatisfaction);
+  business.customerSatisfaction = clampNumber(
+    business.customerSatisfaction - severity * 3,
+    0,
+    100,
+    business.customerSatisfaction
+  );
   business.reputation -= Math.round(severity / 2);
   if (severity >= 7) business.status = "suspended";
   result.touched.add("economy_failure");
   result.shared.add(businessSharedKey(business.businessId));
 }
 
-function resolveFailureEvent(result: MutableResult, request: HarthmereEconomyMutationRequestV1, context: HarthmereEconomyMutationContextV1) {
+function resolveFailureEvent(
+  result: MutableResult,
+  request: HarthmereEconomyMutationRequestV1,
+  context: HarthmereEconomyMutationContextV1
+) {
   const business = requireBusinessManager(result, request, context);
   if (!business || !request.failureId) return;
   const failure = result.next.failures[request.failureId];
-  if (!failure || failure.businessId !== business.businessId) return reject(result, "economy_rejected:failure_not_found");
-  if (failure.resolvedAtMs) return reject(result, "economy_rejected:failure_already_resolved");
-  if (business.balanceGold < failure.repairCostGold) return reject(result, "economy_rejected:failure_repair_unfunded");
+  if (!failure || failure.businessId !== business.businessId)
+    return reject(result, "economy_rejected:failure_not_found");
+  if (failure.resolvedAtMs)
+    return reject(result, "economy_rejected:failure_already_resolved");
+  if (business.balanceGold < failure.repairCostGold)
+    return reject(result, "economy_rejected:failure_repair_unfunded");
   business.balanceGold -= failure.repairCostGold;
   failure.resolvedAtMs = request.nowMs;
   if (business.status === "suspended") business.status = "open";
-  business.customerSatisfaction = clampNumber(business.customerSatisfaction + 5, 0, 100, business.customerSatisfaction);
+  business.customerSatisfaction = clampNumber(
+    business.customerSatisfaction + 5,
+    0,
+    100,
+    business.customerSatisfaction
+  );
   result.touched.add("economy_failure");
   result.shared.add(businessSharedKey(business.businessId));
 }
 
-function fileInsuranceClaim(result: MutableResult, request: HarthmereEconomyMutationRequestV1, context: HarthmereEconomyMutationContextV1) {
+function fileInsuranceClaim(
+  result: MutableResult,
+  request: HarthmereEconomyMutationRequestV1,
+  context: HarthmereEconomyMutationContextV1
+) {
   const business = requireBusinessManager(result, request, context);
   if (!business || !request.policyId || !request.failureId) return;
   const policy = result.next.insurancePolicies[request.policyId];
   const failure = result.next.failures[request.failureId];
-  if (!policy || policy.businessId !== business.businessId || policy.status !== "active") return reject(result, "economy_rejected:insurance_policy_not_active");
-  if (!failure || failure.businessId !== business.businessId) return reject(result, "economy_rejected:failure_not_found");
-  if (failure.insuranceClaimId) return reject(result, "economy_rejected:failure_claim_already_filed");
-  if (policy.expiresAtMs <= request.nowMs) return reject(result, "economy_rejected:insurance_policy_expired");
-  if (policy.coverageKind !== failure.kind && policy.coverageKind !== "all_risk") return reject(result, "economy_rejected:insurance_coverage_mismatch");
-  const payout = Math.max(0, Math.min(policy.coverageGold - policy.claimsPaidGold, failure.repairCostGold - policy.deductibleGold));
-  if (payout <= 0) return reject(result, "economy_rejected:insurance_claim_below_deductible");
+  if (
+    !policy ||
+    policy.businessId !== business.businessId ||
+    policy.status !== "active"
+  )
+    return reject(result, "economy_rejected:insurance_policy_not_active");
+  if (!failure || failure.businessId !== business.businessId)
+    return reject(result, "economy_rejected:failure_not_found");
+  if (failure.insuranceClaimId)
+    return reject(result, "economy_rejected:failure_claim_already_filed");
+  if (policy.expiresAtMs <= request.nowMs)
+    return reject(result, "economy_rejected:insurance_policy_expired");
+  if (
+    policy.coverageKind !== failure.kind &&
+    policy.coverageKind !== "all_risk"
+  )
+    return reject(result, "economy_rejected:insurance_coverage_mismatch");
+  const payout = Math.max(
+    0,
+    Math.min(
+      policy.coverageGold - policy.claimsPaidGold,
+      failure.repairCostGold - policy.deductibleGold
+    )
+  );
+  if (payout <= 0)
+    return reject(result, "economy_rejected:insurance_claim_below_deductible");
   business.balanceGold += payout;
   policy.claimsPaidGold += payout;
   failure.insuranceClaimId = `claim:${policy.policyId}:${failure.failureId}`;
-  pushLedger(result, { id: request.requestId, kind: "insurance_claim_paid", businessId: business.businessId, amountGold: payout }, request);
+  pushLedger(
+    result,
+    {
+      id: request.requestId,
+      kind: "insurance_claim_paid",
+      businessId: business.businessId,
+      amountGold: payout,
+    },
+    request
+  );
   result.touched.add("economy_insurance");
   result.shared.add(businessSharedKey(business.businessId));
 }
 
-function registerTradeRoute(result: MutableResult, request: HarthmereEconomyMutationRequestV1, context: HarthmereEconomyMutationContextV1) {
+function registerTradeRoute(
+  result: MutableResult,
+  request: HarthmereEconomyMutationRequestV1,
+  context: HarthmereEconomyMutationContextV1
+) {
   const ownerKind = request.ownerKind ?? "player";
   const ownerId = request.ownerId ?? request.actorId;
   if (!validateOwner(result, ownerKind, ownerId, request, context)) return;
   const origin = request.originTownId;
   const destination = request.destinationTownId;
-  if (!origin || !destination || origin === destination) return reject(result, "economy_rejected:invalid_trade_route_towns");
+  if (!origin || !destination || origin === destination)
+    return reject(result, "economy_rejected:invalid_trade_route_towns");
   const distance = Math.max(1, positiveInt(request.distanceUnits, 1));
   const cost = Math.round(distance * 20);
-  if (ownerKind === "player" && context.actorGold + result.goldDelta < cost) return reject(result, "economy_rejected:trade_route_setup_unfunded");
+  if (ownerKind === "player" && context.actorGold + result.goldDelta < cost)
+    return reject(result, "economy_rejected:trade_route_setup_unfunded");
   const routeId = `econ_route_${result.next.nextRouteNumber++}`;
   result.next.tradeRoutes[routeId] = {
     routeId,
@@ -2206,28 +3120,54 @@ function registerTradeRoute(result: MutableResult, request: HarthmereEconomyMuta
     destinationTownId: destination,
     distanceUnits: distance,
     safetyRating: clampNumber(request.safetyRating, 0, 100, 50),
-    transitFeeGold: positiveInt(request.transitFeeGold, Math.round(distance * 3)),
+    transitFeeGold: positiveInt(
+      request.transitFeeGold,
+      Math.round(distance * 3)
+    ),
     createdAtMs: request.nowMs,
     active: true,
   };
   if (ownerKind === "player") result.goldDelta -= cost;
-  ensureTown(result.next, origin, request.regionId ?? HARTHMERE_ECONOMY_DEFAULT_REGION_ID_V1, request.nowMs);
-  ensureTown(result.next, destination, request.regionId ?? HARTHMERE_ECONOMY_DEFAULT_REGION_ID_V1, request.nowMs);
+  ensureTown(
+    result.next,
+    origin,
+    request.regionId ?? HARTHMERE_ECONOMY_DEFAULT_REGION_ID_V1,
+    request.nowMs
+  );
+  ensureTown(
+    result.next,
+    destination,
+    request.regionId ?? HARTHMERE_ECONOMY_DEFAULT_REGION_ID_V1,
+    request.nowMs
+  );
   result.touched.add("economy_logistics");
 }
 
-function shipGoods(result: MutableResult, request: HarthmereEconomyMutationRequestV1, context: HarthmereEconomyMutationContextV1) {
+function shipGoods(
+  result: MutableResult,
+  request: HarthmereEconomyMutationRequestV1,
+  context: HarthmereEconomyMutationContextV1
+) {
   const from = requireBusinessManager(result, request, context);
-  const to = request.toBusinessId ? result.next.businesses[request.toBusinessId] : undefined;
-  const route = request.routeId ? result.next.tradeRoutes[request.routeId] : undefined;
+  const to = request.toBusinessId
+    ? result.next.businesses[request.toBusinessId]
+    : undefined;
+  const route = request.routeId
+    ? result.next.tradeRoutes[request.routeId]
+    : undefined;
   const itemId = request.itemId;
   const count = positiveInt(request.count, 1);
-  if (!from || !to || !route || !itemId) return reject(result, "economy_rejected:invalid_shipment");
-  if (!route.active) return reject(result, "economy_rejected:trade_route_inactive");
-  if (inventoryCount(from.inventory, itemId) < count) return reject(result, "economy_rejected:shipment_inventory_insufficient");
-  if (!inventoryHasCapacity(to.inventory, itemId, to.storageMaxSlots)) return reject(result, "economy_rejected:destination_storage_full");
+  if (!from || !to || !route || !itemId)
+    return reject(result, "economy_rejected:invalid_shipment");
+  if (!route.active)
+    return reject(result, "economy_rejected:trade_route_inactive");
+  if (inventoryCount(from.inventory, itemId) < count)
+    return reject(result, "economy_rejected:shipment_inventory_insufficient");
+  if (!inventoryHasCapacity(to.inventory, itemId, to.storageMaxSlots))
+    return reject(result, "economy_rejected:destination_storage_full");
   const fee = route.transitFeeGold * count;
-  if (from.balanceGold < fee) return reject(result, "economy_rejected:shipment_fee_unfunded");
+  if (from.balanceGold < fee)
+    return reject(result, "economy_rejected:shipment_fee_unfunded");
   if (route.safetyRating < 25) {
     const failureId = `econ_failure_${result.next.nextFailureNumber++}`;
     result.next.failures[failureId] = {
@@ -2239,7 +3179,11 @@ function shipGoods(result: MutableResult, request: HarthmereEconomyMutationReque
       createdAtMs: request.nowMs,
       repairCostGold: Math.round(fee * 1.5),
     };
-    return reject(result, "economy_rejected:shipment_route_too_unsafe", "economy_logistics");
+    return reject(
+      result,
+      "economy_rejected:shipment_route_too_unsafe",
+      "economy_logistics"
+    );
   }
   from.balanceGold -= fee;
   applyInventoryDelta(from.inventory, itemId, -count);
@@ -2251,41 +3195,85 @@ function shipGoods(result: MutableResult, request: HarthmereEconomyMutationReque
   result.shared.add(businessSharedKey(to.businessId));
 }
 
-function registerNpcBusiness(result: MutableResult, request: HarthmereEconomyMutationRequestV1, context: HarthmereEconomyMutationContextV1) {
-  if (!context.allowNpcAdministration) return reject(result, "economy_rejected:npc_business_requires_admin_context");
-  return registerBusiness(result, { ...request, ownerKind: "npc", ownerId: request.ownerId ?? request.employeeNpcId ?? "npc_owner", name: request.name ?? "NPC Business" }, context);
+function registerNpcBusiness(
+  result: MutableResult,
+  request: HarthmereEconomyMutationRequestV1,
+  context: HarthmereEconomyMutationContextV1
+) {
+  if (!context.allowNpcAdministration)
+    return reject(
+      result,
+      "economy_rejected:npc_business_requires_admin_context"
+    );
+  return registerBusiness(
+    result,
+    {
+      ...request,
+      ownerKind: "npc",
+      ownerId: request.ownerId ?? request.employeeNpcId ?? "npc_owner",
+      name: request.name ?? "NPC Business",
+    },
+    context
+  );
 }
 
-function runNpcCompetitionTick(result: MutableResult, request: HarthmereEconomyMutationRequestV1) {
+function runNpcCompetitionTick(
+  result: MutableResult,
+  request: HarthmereEconomyMutationRequestV1
+) {
   const regionId = request.regionId ?? HARTHMERE_ECONOMY_DEFAULT_REGION_ID_V1;
   const region = ensureRegion(result.next, regionId, request.nowMs);
   for (const business of Object.values(result.next.businesses)) {
-    if (business.ownerKind !== "npc" || business.status !== "open" || business.regionId !== regionId) continue;
+    if (
+      business.ownerKind !== "npc" ||
+      business.status !== "open" ||
+      business.regionId !== regionId
+    )
+      continue;
     const def = HARTHMERE_ECONOMY_BUSINESS_TYPES_V1[business.typeId];
     for (const family of def.outputItemFamilies) {
-      region.itemSupply[family] = (region.itemSupply[family] ?? 0) + Math.max(1, business.licenseLevel);
-      region.priceIndex[family] = clampNumber((region.priceIndex[family] ?? 1) * 0.98, 0.4, 4, 1);
+      region.itemSupply[family] =
+        (region.itemSupply[family] ?? 0) + Math.max(1, business.licenseLevel);
+      region.priceIndex[family] = clampNumber(
+        (region.priceIndex[family] ?? 1) * 0.98,
+        0.4,
+        4,
+        1
+      );
     }
   }
   region.lastTickAtMs = request.nowMs;
   result.touched.add("economy_npc_competition");
 }
 
-function postMarketOrder(result: MutableResult, request: HarthmereEconomyMutationRequestV1, context: HarthmereEconomyMutationContextV1) {
+function postMarketOrder(
+  result: MutableResult,
+  request: HarthmereEconomyMutationRequestV1,
+  context: HarthmereEconomyMutationContextV1
+) {
   const business = requireBusinessManager(result, request, context);
   if (!business || !request.itemId || !request.orderKind) return;
   const count = positiveInt(request.count, 1);
-  const unitPrice = positiveInt(request.unitPriceGold, economyBasePriceForItemV1(request.itemId));
-  if (count <= 0 || unitPrice <= 0) return reject(result, "economy_rejected:invalid_market_order");
+  const unitPrice = positiveInt(
+    request.unitPriceGold,
+    economyBasePriceForItemV1(request.itemId)
+  );
+  if (count <= 0 || unitPrice <= 0)
+    return reject(result, "economy_rejected:invalid_market_order");
   let escrowGold = 0;
   let escrowItems = 0;
   if (request.orderKind === "sell") {
-    if (inventoryCount(business.inventory, request.itemId) < count) return reject(result, "economy_rejected:market_sell_inventory_insufficient");
+    if (inventoryCount(business.inventory, request.itemId) < count)
+      return reject(
+        result,
+        "economy_rejected:market_sell_inventory_insufficient"
+      );
     applyInventoryDelta(business.inventory, request.itemId, -count);
     escrowItems = count;
   } else {
     escrowGold = count * unitPrice;
-    if (business.balanceGold < escrowGold) return reject(result, "economy_rejected:market_buy_escrow_insufficient");
+    if (business.balanceGold < escrowGold)
+      return reject(result, "economy_rejected:market_buy_escrow_insufficient");
     business.balanceGold -= escrowGold;
   }
   const orderId = `econ_market_${result.next.nextMarketOrderNumber++}`;
@@ -2298,7 +3286,8 @@ function postMarketOrder(result: MutableResult, request: HarthmereEconomyMutatio
     unitPriceGold: unitPrice,
     status: "open",
     createdAtMs: request.nowMs,
-    expiresAtMs: request.deadlineAtMs ?? request.nowMs + 7 * HARTHMERE_ECONOMY_DAY_MS_V1,
+    expiresAtMs:
+      request.deadlineAtMs ?? request.nowMs + 7 * HARTHMERE_ECONOMY_DAY_MS_V1,
     escrowGold,
     escrowItems,
   };
@@ -2306,35 +3295,62 @@ function postMarketOrder(result: MutableResult, request: HarthmereEconomyMutatio
   result.shared.add(businessSharedKey(business.businessId));
 }
 
-function settleMarketOrder(result: MutableResult, request: HarthmereEconomyMutationRequestV1, context: HarthmereEconomyMutationContextV1) {
-  const order = request.orderId ? result.next.marketOrders[request.orderId] : undefined;
+function settleMarketOrder(
+  result: MutableResult,
+  request: HarthmereEconomyMutationRequestV1,
+  context: HarthmereEconomyMutationContextV1
+) {
+  const order = request.orderId
+    ? result.next.marketOrders[request.orderId]
+    : undefined;
   const business = requireBusinessManager(result, request, context);
   if (!order || !business) return;
-  if (order.status !== "open") return reject(result, "economy_rejected:market_order_not_open");
+  if (order.status !== "open")
+    return reject(result, "economy_rejected:market_order_not_open");
   if (order.expiresAtMs <= request.nowMs) {
     order.status = "expired";
     return reject(result, "economy_rejected:market_order_expired");
   }
   const ownerBusiness = result.next.businesses[order.businessId];
-  if (!ownerBusiness) return reject(result, "economy_rejected:market_order_owner_missing");
+  if (!ownerBusiness)
+    return reject(result, "economy_rejected:market_order_owner_missing");
   const total = order.count * order.unitPriceGold;
   const fee = Math.round(total * HARTHMERE_ECONOMY_MARKET_FEE_RATE_V1);
   if (order.kind === "sell") {
-    if (business.balanceGold < total) return reject(result, "economy_rejected:market_buyer_funds_insufficient");
-    if (!inventoryHasCapacity(business.inventory, order.itemId, business.storageMaxSlots)) return reject(result, "economy_rejected:market_buyer_storage_full");
+    if (business.balanceGold < total)
+      return reject(result, "economy_rejected:market_buyer_funds_insufficient");
+    if (
+      !inventoryHasCapacity(
+        business.inventory,
+        order.itemId,
+        business.storageMaxSlots
+      )
+    )
+      return reject(result, "economy_rejected:market_buyer_storage_full");
     business.balanceGold -= total;
     ownerBusiness.balanceGold += Math.max(0, total - fee);
     applyInventoryDelta(business.inventory, order.itemId, order.count);
     order.escrowItems = 0;
   } else {
-    if (inventoryCount(business.inventory, order.itemId) < order.count) return reject(result, "economy_rejected:market_seller_inventory_insufficient");
+    if (inventoryCount(business.inventory, order.itemId) < order.count)
+      return reject(
+        result,
+        "economy_rejected:market_seller_inventory_insufficient"
+      );
     applyInventoryDelta(business.inventory, order.itemId, -order.count);
     applyInventoryDelta(ownerBusiness.inventory, order.itemId, order.count);
     business.balanceGold += Math.max(0, total - fee);
     order.escrowGold = 0;
   }
   order.status = "filled";
-  const town = ownerBusiness.townId ? ensureTown(result.next, ownerBusiness.townId, ownerBusiness.regionId, request.nowMs) : undefined;
+  const town = ownerBusiness.townId
+    ? ensureTown(
+        result.next,
+        ownerBusiness.townId,
+        ownerBusiness.regionId,
+        request.nowMs
+      )
+    : undefined;
   if (town) town.publicBudgetGold += fee;
   result.touched.add("economy_market");
   result.shared.add(businessSharedKey(business.businessId));
@@ -2344,7 +3360,7 @@ function settleMarketOrder(result: MutableResult, request: HarthmereEconomyMutat
 export function reduceHarthmereEconomyMutationV1(
   state: HarthmereProductionEconomyStateV1,
   request: HarthmereEconomyMutationRequestV1,
-  context: HarthmereEconomyMutationContextV1,
+  context: HarthmereEconomyMutationContextV1
 ): HarthmereEconomyMutationResultV1 {
   const result = makeResult(state);
   switch (request.operation) {
@@ -2454,19 +3470,31 @@ export function reduceHarthmereEconomyMutationV1(
       settleMarketOrder(result, request, context);
       break;
     default: {
-      const businessSpecific = reduceHarthmereEconomyBusinessSpecificMutationV1(result.next, request, context);
+      const businessSpecific = reduceHarthmereEconomyBusinessSpecificMutationV1(
+        result.next,
+        request,
+        context
+      );
       if (!businessSpecific.handled) {
-        reject(result, `economy_rejected:unsupported_operation:${request.operation}`);
+        reject(
+          result,
+          `economy_rejected:unsupported_operation:${request.operation}`
+        );
         break;
       }
       result.next = businessSpecific.economy;
       result.goldDelta += businessSpecific.inventoryGoldDelta;
-      for (const [itemId, delta] of Object.entries(businessSpecific.inventoryItemDeltas)) {
+      for (const [itemId, delta] of Object.entries(
+        businessSpecific.inventoryItemDeltas
+      )) {
         recordItemDelta(result.itemDeltas, itemId, delta);
       }
-      for (const warning of businessSpecific.warnings) result.warnings.push(warning);
-      for (const model of businessSpecific.touchedModels) result.touched.add(model);
-      for (const key of businessSpecific.sharedStateKeys) result.shared.add(key);
+      for (const warning of businessSpecific.warnings)
+        result.warnings.push(warning);
+      for (const model of businessSpecific.touchedModels)
+        result.touched.add(model);
+      for (const key of businessSpecific.sharedStateKeys)
+        result.shared.add(key);
       for (const plan of businessSpecific.buildingMaterializationPlans ?? []) {
         result.buildingMaterializationPlans.push(plan);
       }
@@ -2479,18 +3507,26 @@ export function reduceHarthmereEconomyMutationV1(
 export function createHarthmereProductionEconomyClientSnapshotV1(
   state: HarthmereProductionEconomyStateV1,
   actorId: string,
+  actorKnownRecipes: readonly string[] = []
 ) {
-  const actorBusinesses = Object.values(state.businesses).filter((business) =>
-    business.ownerKind === "player" && business.ownerId === actorId,
+  const actorBusinesses = Object.values(state.businesses).filter(
+    (business) =>
+      business.ownerKind === "player" && business.ownerId === actorId
   );
-  const openContracts = Object.values(state.contracts).filter((contract) => contract.status === "open");
-  const activeContracts = Object.values(state.contracts).filter((contract) =>
-    contract.status === "active" &&
-    actorBusinesses.some((business) => business.businessId === contract.acceptedByBusinessId),
+  const openContracts = Object.values(state.contracts).filter(
+    (contract) => contract.status === "open"
+  );
+  const activeContracts = Object.values(state.contracts).filter(
+    (contract) =>
+      contract.status === "active" &&
+      actorBusinesses.some(
+        (business) => business.businessId === contract.acceptedByBusinessId
+      )
   );
   return {
     version: state.version,
     actorId,
+    actorKnownRecipes: [...actorKnownRecipes],
     businessTypes: HARTHMERE_ECONOMY_BUSINESS_TYPES_V1,
     recipeCatalog: state.recipes,
     businesses: state.businesses,
@@ -2506,16 +3542,17 @@ export function createHarthmereProductionEconomyClientSnapshotV1(
     tradeRoutes: state.tradeRoutes,
     failures: state.failures,
     marketOrders: state.marketOrders,
-    businessSystems: createHarthmereProductionEconomyBusinessSystemsClientSnapshotV1(
-      (state as any).businessSystems,
-    ),
+    businessSystems:
+      createHarthmereProductionEconomyBusinessSystemsClientSnapshotV1(
+        (state as any).businessSystems
+      ),
     balanceWarnings: validateHarthmereEconomyBalanceV1(state),
     ledger: state.ledger.slice(-100),
   };
 }
 
 export function createHarthmereProductionEconomyBusinessSystemsClientSnapshotV1(
-  raw: unknown,
+  raw: unknown
 ) {
   const systems = normalizeHarthmereEconomyBusinessSystemsStateV1(raw);
   const outpostBuildings = Object.fromEntries(
@@ -2537,7 +3574,7 @@ export function createHarthmereProductionEconomyBusinessSystemsClientSnapshotV1(
             : materializationPlan,
         },
       ];
-    }),
+    })
   );
   return {
     ...systems,

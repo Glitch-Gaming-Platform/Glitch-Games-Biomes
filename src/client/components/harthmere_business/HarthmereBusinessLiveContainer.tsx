@@ -190,7 +190,7 @@ export function HarthmereBusinessLiveContainer({
           adapter={adapter}
           nearbyBusinessId={context.nearbyBusinessId}
           context={context}
-          initialTab="customers"
+          initialTab="overview"
           onClose={onClose}
         />
       ) : null}

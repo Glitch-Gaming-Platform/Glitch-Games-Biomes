@@ -197,15 +197,18 @@ RUN set -eux; \
     chmod 755 node_modules/.bin/prebuild-install 2>/dev/null || true; \
     chmod 755 node_modules/node-gyp/bin/node-gyp.js 2>/dev/null || true; \
     chmod 755 node_modules/.bin/node-gyp 2>/dev/null || true; \
+    if [ -d node_modules/.ignored/uWebSockets.js ] && [ -d node_modules/uWebSockets.js ]; then \
+      cp -n node_modules/.ignored/uWebSockets.js/uws_linux_x64_*.node node_modules/uWebSockets.js/ 2>/dev/null || true; \
+    fi; \
     ls -l node_modules/.bin/node-gyp-build node_modules/node-gyp-build/bin.js 2>/dev/null || true
 
 
 # Rebuild native Node modules for the container platform.
 # Dockerfile.biomes packages local node_modules, which may come from macOS/arm64.
-# The production image here is linux/amd64, so sharp and websocket native helpers
-# must have Linux x64 bindings.
+# The production image here is linux/amd64, so sharp, uWebSockets.js, and
+# websocket native helpers must have Linux x64 bindings.
 RUN npm rebuild sharp bufferutil utf-8-validate segfault-handler --platform=linux --arch=x64 --foreground-scripts \
-    && node -e "for (const m of ['sharp','bufferutil','utf-8-validate','segfault-handler']) { require(m); console.log('OK native module', m, process.platform, process.arch); }"
+    && node -e "for (const m of ['sharp','uWebSockets.js','bufferutil','utf-8-validate','segfault-handler']) { require(m); console.log('OK native module', m, process.platform, process.arch); }"
 
 # HARTHMERE_GALOIS_RUNTIME_PACKAGING_V179:
 # Generated local player meshes call src/galois/py/assets/build.py, which imports

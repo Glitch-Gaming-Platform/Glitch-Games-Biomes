@@ -15,7 +15,13 @@ import type {
   FarmingFoodInterfaceModelV1,
 } from "../adapters/farmingFoodInterfaceAdapter";
 
-export type InventoryContainerKey = "backpack" | "hotbar" | "equipment" | "material_storage" | "overflow" | "wallet";
+export type InventoryContainerKey =
+  | "backpack"
+  | "hotbar"
+  | "equipment"
+  | "material_storage"
+  | "overflow"
+  | "wallet";
 
 export interface InventoryUiRef {
   kind: "item" | "hotbar" | "wearable" | "currency";
@@ -61,7 +67,9 @@ interface InventoryStorageSummary {
 }
 
 interface InventoryAdapter {
-  getEquipment?: () => InventoryEquipmentSlot[] | Partial<Record<string, InventoryUiItem | null>>;
+  getEquipment?: () =>
+    | InventoryEquipmentSlot[]
+    | Partial<Record<string, InventoryUiItem | null>>;
   getBackpack?: () => {
     items: Array<InventoryUiItem | null>;
     maxSlots: number;
@@ -71,8 +79,16 @@ interface InventoryAdapter {
     materialStorage?: InventoryStorageSummary;
     overflow?: InventoryUiItem[];
   };
-  getCurrencies?: () => Array<{ id: string; name: string; amount: number; icon: string }>;
-  getHotbar?: () => { items: Array<InventoryUiItem | null>; selectedIndex: number };
+  getCurrencies?: () => Array<{
+    id: string;
+    name: string;
+    amount: number;
+    icon: string;
+  }>;
+  getHotbar?: () => {
+    items: Array<InventoryUiItem | null>;
+    selectedIndex: number;
+  };
   getFarmingFood?: () => FarmingFoodInterfaceModelV1 | undefined;
   getSelectedItem?: () => InventoryUiItem | null;
   selectItem?: (ref: InventoryUiRef) => void;
@@ -80,35 +96,203 @@ interface InventoryAdapter {
   equipItem?: (ref: InventoryUiRef, equipSlot?: string) => void;
   unequipItem?: (ref: InventoryUiRef) => void;
   moveItem?: (src: InventoryUiRef, dst: InventoryUiRef) => void;
-  splitStack?: (src: InventoryUiRef, dst: InventoryUiRef, count: number) => void;
-  combineStack?: (src: InventoryUiRef, dst: InventoryUiRef, count: number) => void;
+  splitStack?: (
+    src: InventoryUiRef,
+    dst: InventoryUiRef,
+    count: number
+  ) => void;
+  combineStack?: (
+    src: InventoryUiRef,
+    dst: InventoryUiRef,
+    count: number
+  ) => void;
   dropItem?: (ref: InventoryUiRef, count?: number) => void;
   destroyItem?: (ref: InventoryUiRef, count?: number) => void;
   sortInventory?: () => void;
   performFarmingFoodAction?: (action: FarmingFoodInterfaceActionV1) => void;
 }
 
-const EQUIPMENT_ORDER: Array<{ id: string; label: string; key: string; highlight: string }> = [
-  { id: "head", label: "Head", key: "head", highlight: UI_IDS.INVENTORY_SLOT_HEAD },
-  { id: "chest", label: "Chest", key: "chest", highlight: UI_IDS.INVENTORY_SLOT_CHEST },
-  { id: "legs", label: "Legs", key: "legs", highlight: UI_IDS.INVENTORY_SLOT_LEGS },
-  { id: "feet", label: "Feet", key: "feet", highlight: UI_IDS.INVENTORY_SLOT_FEET },
-  { id: "hands", label: "Hands", key: "hands", highlight: UI_IDS.INVENTORY_SLOT_HANDS },
-  { id: "main_hand", label: "Main Hand", key: "main_hand", highlight: UI_IDS.INVENTORY_SLOT_MAIN_HAND },
-  { id: "off_hand", label: "Off Hand", key: "off_hand", highlight: UI_IDS.INVENTORY_SLOT_OFF_HAND },
+const EQUIPMENT_ORDER: Array<{
+  id: string;
+  label: string;
+  key: string;
+  highlight: string;
+}> = [
+  {
+    id: "head",
+    label: "Head",
+    key: "head",
+    highlight: UI_IDS.INVENTORY_SLOT_HEAD,
+  },
+  {
+    id: "chest",
+    label: "Chest",
+    key: "chest",
+    highlight: UI_IDS.INVENTORY_SLOT_CHEST,
+  },
+  {
+    id: "legs",
+    label: "Legs",
+    key: "legs",
+    highlight: UI_IDS.INVENTORY_SLOT_LEGS,
+  },
+  {
+    id: "feet",
+    label: "Feet",
+    key: "feet",
+    highlight: UI_IDS.INVENTORY_SLOT_FEET,
+  },
+  {
+    id: "hands",
+    label: "Hands",
+    key: "hands",
+    highlight: UI_IDS.INVENTORY_SLOT_HANDS,
+  },
+  {
+    id: "main_hand",
+    label: "Main Hand",
+    key: "main_hand",
+    highlight: UI_IDS.INVENTORY_SLOT_MAIN_HAND,
+  },
+  {
+    id: "off_hand",
+    label: "Off Hand",
+    key: "off_hand",
+    highlight: UI_IDS.INVENTORY_SLOT_OFF_HAND,
+  },
 ];
 
-const FILTERS = ["all", "gear", "tools", "materials", "consumables", "quest"] as const;
+const FILTERS = [
+  "all",
+  "gear",
+  "tools",
+  "materials",
+  "consumables",
+  "quest",
+] as const;
 type InventoryFilter = (typeof FILTERS)[number];
 
-export const InventoryTab: React.FunctionComponent<{ adapter?: InventoryAdapter }> = ({
-  adapter,
-}) => {
+export const BIOMES_INVENTORY_DRAG_MIME_V1 =
+  "application/x-biomes-inventory-ref+json";
+export const BIOMES_INVENTORY_HOTBAR_SLOT_COUNT_V1 = 9;
+const BIOMES_INVENTORY_DRAG_TEXT_PREFIX_V1 = "biomes-inventory-ref:";
+
+type InventoryDragDataTransferV1 = Pick<DataTransfer, "getData" | "setData"> &
+  Partial<Pick<DataTransfer, "effectAllowed" | "dropEffect">>;
+
+function normalizeInventoryDragRefV1(raw: unknown): InventoryUiRef | undefined {
+  if (!raw || typeof raw !== "object") return undefined;
+  const candidate = raw as Partial<InventoryUiRef>;
+  if (candidate.kind === "item" || candidate.kind === "hotbar") {
+    const idx = Number(candidate.idx);
+    if (!Number.isInteger(idx) || idx < 0) return undefined;
+    return { kind: candidate.kind, idx };
+  }
+  if (candidate.kind === "wearable" || candidate.kind === "currency") {
+    if (candidate.key === undefined || candidate.key === null) {
+      return undefined;
+    }
+    return { kind: candidate.kind, key: candidate.key };
+  }
+  return undefined;
+}
+
+export function serializeInventoryDragRefV1(ref: InventoryUiRef): string {
+  return JSON.stringify({
+    kind: ref.kind,
+    idx: ref.idx,
+    key: ref.key,
+  });
+}
+
+export function parseInventoryDragRefV1(
+  payload: string | null | undefined
+): InventoryUiRef | undefined {
+  if (!payload) return undefined;
+  const text = payload.startsWith(BIOMES_INVENTORY_DRAG_TEXT_PREFIX_V1)
+    ? payload.slice(BIOMES_INVENTORY_DRAG_TEXT_PREFIX_V1.length)
+    : payload;
+  try {
+    return normalizeInventoryDragRefV1(JSON.parse(text));
+  } catch {
+    return undefined;
+  }
+}
+
+export function writeInventoryDragRefToTransferV1(
+  dataTransfer: InventoryDragDataTransferV1,
+  ref: InventoryUiRef
+) {
+  const payload = serializeInventoryDragRefV1(ref);
+  dataTransfer.setData(BIOMES_INVENTORY_DRAG_MIME_V1, payload);
+  dataTransfer.setData(
+    "text/plain",
+    `${BIOMES_INVENTORY_DRAG_TEXT_PREFIX_V1}${payload}`
+  );
+  dataTransfer.effectAllowed = "move";
+}
+
+export function readInventoryDragRefFromTransferV1(
+  dataTransfer: Pick<DataTransfer, "getData">
+): InventoryUiRef | undefined {
+  return (
+    parseInventoryDragRefV1(
+      dataTransfer.getData(BIOMES_INVENTORY_DRAG_MIME_V1)
+    ) ?? parseInventoryDragRefV1(dataTransfer.getData("text/plain"))
+  );
+}
+
+function canMoveInventoryRefToHotbarV1(ref: InventoryUiRef | undefined) {
+  return ref?.kind === "item" || ref?.kind === "hotbar";
+}
+
+export function canMoveInventoryItemToHotbarV1(
+  item: InventoryUiItem | null | undefined
+) {
+  return (
+    !!item?.ref &&
+    item.canMove !== false &&
+    canMoveInventoryRefToHotbarV1(item.ref)
+  );
+}
+
+export function resolveInventoryHotbarDropV1(
+  src: InventoryUiRef | null | undefined,
+  hotbarIndex: number
+): { src: InventoryUiRef; dst: InventoryUiRef } | undefined {
+  if (
+    !src ||
+    !Number.isInteger(hotbarIndex) ||
+    hotbarIndex < 0 ||
+    hotbarIndex >= BIOMES_INVENTORY_HOTBAR_SLOT_COUNT_V1 ||
+    !canMoveInventoryRefToHotbarV1(src)
+  ) {
+    return undefined;
+  }
+  if (src.kind === "hotbar" && src.idx === hotbarIndex) {
+    return undefined;
+  }
+  return { src, dst: { kind: "hotbar", idx: hotbarIndex } };
+}
+
+export const InventoryTab: React.FunctionComponent<{
+  adapter?: InventoryAdapter;
+}> = ({ adapter }) => {
   const [query, setQuery] = React.useState("");
   const [filter, setFilter] = React.useState<InventoryFilter>("all");
-  const [selectedRef, setSelectedRef] = React.useState<InventoryUiRef | null>(null);
+  const [selectedRef, setSelectedRef] = React.useState<InventoryUiRef | null>(
+    null
+  );
+  const [draggedRef, setDraggedRef] = React.useState<InventoryUiRef | null>(
+    null
+  );
 
-  const backpack = adapter?.getBackpack?.() ?? { items: [], maxSlots: 0, usedSlots: 0, capacityLabel: "Inventory unavailable" };
+  const backpack = adapter?.getBackpack?.() ?? {
+    items: [],
+    maxSlots: 0,
+    usedSlots: 0,
+    capacityLabel: "Inventory unavailable",
+  };
   const hotbar = adapter?.getHotbar?.() ?? { items: [], selectedIndex: -1 };
   const currencies = adapter?.getCurrencies?.() ?? [];
   const farmingFood = adapter?.getFarmingFood?.();
@@ -120,11 +304,13 @@ export const InventoryTab: React.FunctionComponent<{ adapter?: InventoryAdapter 
     hotbar.items.find((item): item is InventoryUiItem => Boolean(item)) ??
     null;
   const materialStorage = backpack.materialStorage;
-  const materialItems = materialStorage?.items.filter((item): item is InventoryUiItem => !!item) ?? [];
+  const materialItems =
+    materialStorage?.items.filter((item): item is InventoryUiItem => !!item) ??
+    [];
   const overflowItems = backpack.overflow ?? [];
   const firstEmptyBackpackIndex = React.useMemo(
     () => backpack.items.findIndex((item) => !item),
-    [backpack.items],
+    [backpack.items]
   );
 
   const cells = React.useMemo(() => {
@@ -134,7 +320,11 @@ export const InventoryTab: React.FunctionComponent<{ adapter?: InventoryAdapter 
       if (!item) return null;
       const label = item.label.toLowerCase();
       const category = String(item.category ?? "").toLowerCase();
-      const matchesQuery = !q || label.includes(q) || category.includes(q) || item.id.toLowerCase().includes(q);
+      const matchesQuery =
+        !q ||
+        label.includes(q) ||
+        category.includes(q) ||
+        item.id.toLowerCase().includes(q);
       const matchesFilter =
         filter === "all" ||
         category.includes(filter) ||
@@ -156,12 +346,61 @@ export const InventoryTab: React.FunctionComponent<{ adapter?: InventoryAdapter 
       setSelectedRef(item.ref);
       adapter?.selectItem?.(item.ref);
     },
-    [adapter],
+    [adapter]
+  );
+
+  const startInventoryDrag = React.useCallback(
+    (event: React.DragEvent, item: InventoryUiItem | null) => {
+      if (
+        !adapter?.moveItem ||
+        !canMoveInventoryItemToHotbarV1(item) ||
+        !item?.ref
+      ) {
+        event.preventDefault();
+        return;
+      }
+      writeInventoryDragRefToTransferV1(event.dataTransfer, item.ref);
+      setDraggedRef(item.ref);
+    },
+    [adapter]
+  );
+
+  const endInventoryDrag = React.useCallback(() => {
+    setDraggedRef(null);
+  }, []);
+
+  const handleHotbarDragOver = React.useCallback(
+    (event: React.DragEvent, hotbarIndex: number) => {
+      if (!adapter?.moveItem) return;
+      const sourceRef =
+        draggedRef ?? readInventoryDragRefFromTransferV1(event.dataTransfer);
+      if (!resolveInventoryHotbarDropV1(sourceRef, hotbarIndex)) return;
+      event.preventDefault();
+      event.dataTransfer.dropEffect = "move";
+    },
+    [adapter, draggedRef]
+  );
+
+  const handleHotbarDrop = React.useCallback(
+    (event: React.DragEvent, hotbarIndex: number) => {
+      if (!adapter?.moveItem) return;
+      const sourceRef =
+        readInventoryDragRefFromTransferV1(event.dataTransfer) ?? draggedRef;
+      const move = resolveInventoryHotbarDropV1(sourceRef, hotbarIndex);
+      setDraggedRef(null);
+      if (!move) return;
+      event.preventDefault();
+      adapter.moveItem(move.src, move.dst);
+    },
+    [adapter, draggedRef]
   );
 
   return (
     <div className="biomes-ui-inventory" data-production-inventory="true">
-      <section className="biomes-ui-inventory__sidebar" aria-label="Inventory character state">
+      <section
+        className="biomes-ui-inventory__sidebar"
+        aria-label="Inventory character state"
+      >
         <div style={sectionHeaderRowStyle}>
           <h3 style={titleStyle}>Equipped</h3>
           <button
@@ -186,18 +425,26 @@ export const InventoryTab: React.FunctionComponent<{ adapter?: InventoryAdapter 
                   adapter?.selectItem?.(slot.item.ref);
                 }
               }}
-              onUnequip={() => slot.item?.ref && adapter?.unequipItem?.(slot.item.ref)}
+              onUnequip={() =>
+                slot.item?.ref && adapter?.unequipItem?.(slot.item.ref)
+              }
             />
           ))}
         </div>
 
         <h3 style={{ ...titleStyle, marginTop: 16 }}>Currencies</h3>
-        <div className="biomes-ui-inventory__currency-list" aria-label="Currencies">
+        <div
+          className="biomes-ui-inventory__currency-list"
+          aria-label="Currencies"
+        >
           {currencies.length === 0 ? (
             <p style={mutedTextStyle}>No currency balances found.</p>
           ) : (
             currencies.map((currency) => (
-              <div key={currency.id} className="biomes-ui-inventory__currency-row">
+              <div
+                key={currency.id}
+                className="biomes-ui-inventory__currency-row"
+              >
                 <span aria-hidden>{currency.icon}</span>
                 <span>{currency.name}</span>
                 <strong>{currency.amount.toLocaleString()}</strong>
@@ -234,7 +481,10 @@ export const InventoryTab: React.FunctionComponent<{ adapter?: InventoryAdapter 
         ) : null}
       </section>
 
-      <section className="biomes-ui-inventory__main" aria-label="Backpack inventory">
+      <section
+        className="biomes-ui-inventory__main"
+        aria-label="Backpack inventory"
+      >
         <div className="biomes-ui-inventory__toolbar">
           <label className="biomes-ui-inventory__search">
             <span>Search</span>
@@ -245,7 +495,11 @@ export const InventoryTab: React.FunctionComponent<{ adapter?: InventoryAdapter 
               placeholder="filter by item, material, quest..."
             />
           </label>
-          <div className="biomes-ui-inventory__filters" role="tablist" aria-label="Inventory filters">
+          <div
+            className="biomes-ui-inventory__filters"
+            role="tablist"
+            aria-label="Inventory filters"
+          >
             {FILTERS.map((entry) => (
               <button
                 key={entry}
@@ -263,21 +517,51 @@ export const InventoryTab: React.FunctionComponent<{ adapter?: InventoryAdapter 
 
         <h3 style={titleStyle}>
           Backpack
-          <span style={{ marginLeft: 8, fontSize: 11, color: backpack.weight?.overLimit ? "var(--biomes-fg-danger, #ff7777)" : "var(--biomes-fg-muted)" }}>
-            {backpack.usedSlots ?? backpack.items.filter(Boolean).length} / {backpack.maxSlots}
-            {backpack.capacityLabel ? ` · ${biomesPlayerTitle(backpack.capacityLabel)}` : ""}
-            {backpack.weight ? ` · Weight ${backpack.weight.current.toFixed(1)} / ${backpack.weight.max.toFixed(1)}` : ""}
+          <span
+            style={{
+              marginLeft: 8,
+              fontSize: 11,
+              color: backpack.weight?.overLimit
+                ? "var(--biomes-fg-danger, #ff7777)"
+                : "var(--biomes-fg-muted)",
+            }}
+          >
+            {backpack.usedSlots ?? backpack.items.filter(Boolean).length} /{" "}
+            {backpack.maxSlots}
+            {backpack.capacityLabel
+              ? ` · ${biomesPlayerTitle(backpack.capacityLabel)}`
+              : ""}
+            {backpack.weight
+              ? ` · Weight ${backpack.weight.current.toFixed(
+                  1
+                )} / ${backpack.weight.max.toFixed(1)}`
+              : ""}
           </span>
         </h3>
         {backpack.weight?.overLimit ? (
-          <p style={{ ...mutedTextStyle, marginBottom: 8, color: "var(--biomes-fg-danger, #ff7777)" }}>
-            Carry weight is over the field limit. Store heavy items in homes, shops, or approved storage before taking more.
+          <p
+            style={{
+              ...mutedTextStyle,
+              marginBottom: 8,
+              color: "var(--biomes-fg-danger, #ff7777)",
+            }}
+          >
+            Carry weight is over the field limit. Store heavy items in homes,
+            shops, or approved storage before taking more.
           </p>
         ) : null}
+        <MaterialStorageShelf
+          items={materialItems}
+          usedSlots={materialStorage?.usedSlots}
+          maxSlots={materialStorage?.maxSlots}
+        />
         <RovingGrid
           ariaLabel="Backpack slots"
           items={cells}
           renderCell={(item, { focused }, cell) => {
+            const canDragItem =
+              canMoveInventoryItemToHotbarV1(item) &&
+              Boolean(adapter?.moveItem);
             const slotButton = React.createElement(
               "button",
               {
@@ -295,120 +579,355 @@ export const InventoryTab: React.FunctionComponent<{ adapter?: InventoryAdapter 
                     selectItem(item);
                   }
                 },
-                className: "biomes-ui-slot biomes-ui-inventory__slot",
-                "aria-label": item ? `${item.label}${item.count ? ` x${item.count}` : ""}` : "Empty slot",
+                className: `biomes-ui-slot biomes-ui-inventory__slot${
+                  item ? " biomes-ui-inventory-tooltip-target" : ""
+                }`,
+                "aria-label": item
+                  ? `${item.label}${item.count ? ` x${item.count}` : ""}`
+                  : "Empty slot",
+                title: item ? inventoryTooltipLabel(item) : "Empty slot",
+                "data-inventory-tooltip": item
+                  ? inventoryTooltipLabel(item)
+                  : undefined,
                 "data-focused": focused ? "true" : undefined,
-                "data-selected": selectedRef && item?.ref && refsEqual(selectedRef, item.ref) ? "true" : undefined,
-                "data-inventory-ref": item?.ref ? serializeInventoryRef(item.ref) : undefined,
+                "data-selected":
+                  selectedRef && item?.ref && refsEqual(selectedRef, item.ref)
+                    ? "true"
+                    : undefined,
+                "data-inventory-ref": item?.ref
+                  ? serializeInventoryRef(item.ref)
+                  : undefined,
+                "data-inventory-draggable": canDragItem ? "true" : undefined,
+                "data-inventory-dragging":
+                  item?.ref && draggedRef && refsEqual(draggedRef, item.ref)
+                    ? "true"
+                    : undefined,
+                draggable: canDragItem ? true : undefined,
+                onDragStart: canDragItem
+                  ? (event: React.DragEvent) => startInventoryDrag(event, item)
+                  : undefined,
+                onDragEnd: canDragItem ? endInventoryDrag : undefined,
                 style: { width: 52, height: 52 },
               },
               item
-                ? React.createElement(React.Fragment, null,
+                ? React.createElement(
+                    React.Fragment,
+                    null,
                     renderInventoryIcon(item),
                     item.count && item.count > 1
-                      ? React.createElement("span", { className: "biomes-ui-inventory__count" }, item.count)
+                      ? React.createElement(
+                          "span",
+                          { className: "biomes-ui-inventory__count" },
+                          item.count
+                        )
                       : null,
                     item.durability
                       ? React.createElement("span", {
                           className: "biomes-ui-inventory__durability",
-                          style: { width: `${Math.max(4, Math.min(100, (item.durability.current / Math.max(1, item.durability.max)) * 100))}%` },
+                          style: {
+                            width: `${Math.max(
+                              4,
+                              Math.min(
+                                100,
+                                (item.durability.current /
+                                  Math.max(1, item.durability.max)) *
+                                  100
+                              )
+                            )}%`,
+                          },
                         })
-                      : null,
+                      : null
                   )
-                : null,
+                : null
             );
             return item
-              ? React.createElement(
-                  Highlightable,
-                  {
-                    uniqueId: UI_IDS.INVENTORY_ITEM(item.id),
-                    showCaption: true,
-                    children: slotButton,
-                  },
-                )
+              ? React.createElement(Highlightable, {
+                  uniqueId: UI_IDS.INVENTORY_ITEM(item.id),
+                  showCaption: true,
+                  children: slotButton,
+                })
               : slotButton;
           }}
         />
 
-        <div className="biomes-ui-inventory__hotbar-sync" aria-label="Hotbar inventory sync" style={hotbarSyncStyle}>
+        <div
+          className="biomes-ui-inventory__hotbar-sync"
+          aria-label="Hotbar inventory sync"
+          style={hotbarSyncStyle}
+        >
           <h3 style={titleStyle}>
             Hotbar / quick slots
-            <span style={{ marginLeft: 8, fontSize: 11, color: "var(--biomes-fg-muted)" }}>
+            <span
+              style={{
+                marginLeft: 8,
+                fontSize: 11,
+                color: "var(--biomes-fg-muted)",
+              }}
+            >
               Mirrors the bottom HUD hotbar
             </span>
           </h3>
           <div style={hotbarRowStyle}>
-            {Array.from({ length: 9 }, (_unused, index) => {
-              const item = hotbar.items[index] ?? null;
-              const selected = index === hotbar.selectedIndex;
-              return (
-                <button
-                  key={`hotbar-sync-${index}`}
-                  type="button"
-                  className="biomes-ui-slot biomes-ui-inventory__slot"
-                  aria-label={item ? `Hotbar ${index + 1}: ${item.label}` : `Hotbar ${index + 1}: empty`}
-                  data-hotbar-sync-slot={index + 1}
-                  data-selected={selected ? "true" : undefined}
-                  data-inventory-ref={item?.ref ? serializeInventoryRef(item.ref) : undefined}
-                  onClick={() => selectItem(item)}
-                  style={{ width: 44, height: 44, borderColor: selected ? "var(--biomes-edge-magenta)" : undefined }}
-                >
-                  {item ? (
-                    <>
-                      {renderInventoryIcon(item)}
-                      <span style={visuallyHiddenStyle}>{item.label}</span>
-                      {item.count && item.count > 1 ? <span className="biomes-ui-inventory__count">{item.count}</span> : null}
-                    </>
-                  ) : null}
-                </button>
-              );
-            })}
+            {Array.from(
+              { length: BIOMES_INVENTORY_HOTBAR_SLOT_COUNT_V1 },
+              (_unused, index) => {
+                const item = hotbar.items[index] ?? null;
+                const selected = index === hotbar.selectedIndex;
+                const canDragHotbarItem =
+                  canMoveInventoryItemToHotbarV1(item) &&
+                  Boolean(adapter?.moveItem);
+                const hotbarDropActive = Boolean(
+                  adapter?.moveItem &&
+                    resolveInventoryHotbarDropV1(draggedRef, index)
+                );
+                return (
+                  <button
+                    key={`hotbar-sync-${index}`}
+                    type="button"
+                    className={`biomes-ui-slot biomes-ui-inventory__slot${
+                      item ? " biomes-ui-inventory-tooltip-target" : ""
+                    }`}
+                    aria-label={
+                      item
+                        ? `Hotbar ${index + 1}: ${item.label}`
+                        : `Hotbar ${index + 1}: empty`
+                    }
+                    title={
+                      item
+                        ? `Hotbar ${index + 1}: ${inventoryTooltipLabel(item)}`
+                        : `Hotbar ${index + 1}: empty`
+                    }
+                    data-inventory-tooltip={
+                      item ? inventoryTooltipLabel(item) : undefined
+                    }
+                    data-hotbar-sync-slot={index + 1}
+                    data-hotbar-drop-target="true"
+                    data-hotbar-drop-index={index}
+                    data-hotbar-drop-enabled={
+                      adapter?.moveItem ? "true" : "false"
+                    }
+                    data-hotbar-drop-active={
+                      hotbarDropActive ? "true" : undefined
+                    }
+                    data-selected={selected ? "true" : undefined}
+                    data-inventory-ref={
+                      item?.ref ? serializeInventoryRef(item.ref) : undefined
+                    }
+                    data-inventory-draggable={
+                      canDragHotbarItem ? "true" : undefined
+                    }
+                    data-inventory-dragging={
+                      item?.ref && draggedRef && refsEqual(draggedRef, item.ref)
+                        ? "true"
+                        : undefined
+                    }
+                    draggable={canDragHotbarItem ? true : undefined}
+                    onClick={() => selectItem(item)}
+                    onDragStart={
+                      canDragHotbarItem
+                        ? (event) => startInventoryDrag(event, item)
+                        : undefined
+                    }
+                    onDragEnd={canDragHotbarItem ? endInventoryDrag : undefined}
+                    onDragOver={(event) => handleHotbarDragOver(event, index)}
+                    onDrop={(event) => handleHotbarDrop(event, index)}
+                    style={{
+                      width: 44,
+                      height: 44,
+                      borderColor: selected
+                        ? "var(--biomes-edge-magenta)"
+                        : undefined,
+                    }}
+                  >
+                    {item ? (
+                      <>
+                        {renderInventoryIcon(item)}
+                        <span style={visuallyHiddenStyle}>{item.label}</span>
+                        {item.count && item.count > 1 ? (
+                          <span className="biomes-ui-inventory__count">
+                            {item.count}
+                          </span>
+                        ) : null}
+                      </>
+                    ) : null}
+                  </button>
+                );
+              }
+            )}
           </div>
         </div>
       </section>
 
-      <section className="biomes-ui-inventory__details" aria-label="Selected item details">
+      <section
+        className="biomes-ui-inventory__details"
+        aria-label="Selected item details"
+      >
         <h3 style={titleStyle}>Selected Item</h3>
         {selectedItem ? (
           <div className="biomes-ui-inventory__details-card">
             <div className="biomes-ui-inventory__details-heading">
-              <span aria-hidden style={{ fontSize: 28 }}>{renderInventoryIcon(selectedItem)}</span>
+              <span aria-hidden style={{ fontSize: 28 }}>
+                {renderInventoryIcon(selectedItem)}
+              </span>
               <div>
                 <strong>{selectedItem.label}</strong>
-                <p>{biomesPlayerTitle(selectedItem.category ?? selectedItem.quality ?? "inventory item")}</p>
+                <p>
+                  {biomesPlayerTitle(
+                    selectedItem.category ??
+                      selectedItem.quality ??
+                      "inventory item"
+                  )}
+                </p>
               </div>
             </div>
-            {selectedItem.description ? <p style={mutedTextStyle}>{selectedItem.description}</p> : null}
-            {selectedItem.storageLocation && selectedItem.storageLocation !== selectedItem.source ? (
-              <p style={mutedTextStyle}>{biomesPlayerTitle(selectedItem.storageLocation)}</p>
+            {selectedItem.description ? (
+              <p style={mutedTextStyle}>{selectedItem.description}</p>
+            ) : null}
+            {selectedItem.storageLocation &&
+            selectedItem.storageLocation !== selectedItem.source ? (
+              <p style={mutedTextStyle}>
+                {biomesPlayerTitle(selectedItem.storageLocation)}
+              </p>
             ) : null}
             {selectedItem.protectedReason ? (
-              <p style={{ ...mutedTextStyle, color: "var(--biomes-fg-warning, #ffc66d)" }}>
+              <p
+                style={{
+                  ...mutedTextStyle,
+                  color: "var(--biomes-fg-warning, #ffc66d)",
+                }}
+              >
                 {selectedItem.protectedReason}
               </p>
             ) : null}
-            <div className="biomes-ui-inventory__actions" aria-label="Inventory item actions">
-              <Highlightable uniqueId={UI_IDS.INVENTORY_ACTION("use")} showCaption>
-                <button type="button" onClick={() => selectedItem.ref && adapter?.useItem?.(selectedItem.ref)} disabled={!selectedItem.ref || selectedItem.canUse === false} data-inventory-action="use">Use / Select</button>
+            <div
+              className="biomes-ui-inventory__actions"
+              aria-label="Inventory item actions"
+            >
+              <Highlightable
+                uniqueId={UI_IDS.INVENTORY_ACTION("use")}
+                showCaption
+              >
+                <button
+                  type="button"
+                  onClick={() =>
+                    selectedItem.ref && adapter?.useItem?.(selectedItem.ref)
+                  }
+                  disabled={!selectedItem.ref || selectedItem.canUse === false}
+                  data-inventory-action="use"
+                >
+                  Use / Select
+                </button>
               </Highlightable>
-              <Highlightable uniqueId={UI_IDS.INVENTORY_ACTION("equip")} showCaption>
-                <button type="button" onClick={() => selectedItem.ref && adapter?.equipItem?.(selectedItem.ref, selectedItem.equipSlot)} disabled={!selectedItem.equipSlot || selectedItem.canEquip === false} data-inventory-action="equip">Equip</button>
+              <Highlightable
+                uniqueId={UI_IDS.INVENTORY_ACTION("equip")}
+                showCaption
+              >
+                <button
+                  type="button"
+                  onClick={() =>
+                    selectedItem.ref &&
+                    adapter?.equipItem?.(
+                      selectedItem.ref,
+                      selectedItem.equipSlot
+                    )
+                  }
+                  disabled={
+                    !selectedItem.equipSlot || selectedItem.canEquip === false
+                  }
+                  data-inventory-action="equip"
+                >
+                  Equip
+                </button>
               </Highlightable>
-              <Highlightable uniqueId={UI_IDS.INVENTORY_ACTION("move-hotbar")} showCaption>
-                <button type="button" onClick={() => selectedItem.ref && adapter?.moveItem?.(selectedItem.ref, { kind: "hotbar", idx: 0 })} disabled={!selectedItem.ref || selectedItem.canMove === false} data-inventory-action="move-hotbar">Hotbar 1</button>
+              <Highlightable
+                uniqueId={UI_IDS.INVENTORY_ACTION("move-hotbar")}
+                showCaption
+              >
+                <button
+                  type="button"
+                  onClick={() =>
+                    selectedItem.ref &&
+                    adapter?.moveItem?.(selectedItem.ref, {
+                      kind: "hotbar",
+                      idx: 0,
+                    })
+                  }
+                  disabled={!selectedItem.ref || selectedItem.canMove === false}
+                  data-inventory-action="move-hotbar"
+                >
+                  Hotbar 1
+                </button>
               </Highlightable>
-              <button type="button" onClick={() => selectedItem.ref && firstEmptyBackpackIndex >= 0 && adapter?.splitStack?.(selectedItem.ref, { kind: "item", idx: firstEmptyBackpackIndex }, Math.max(1, Math.floor((selectedItem.count ?? 1) / 2)))} disabled={(selectedItem.count ?? 1) < 2 || firstEmptyBackpackIndex < 0 || selectedItem.canSplit === false} data-inventory-action="split">Split</button>
-              <Highlightable uniqueId={UI_IDS.INVENTORY_ACTION("drop-one")} showCaption>
-                <button type="button" onClick={() => selectedItem.ref && adapter?.dropItem?.(selectedItem.ref, 1)} disabled={!selectedItem.ref || selectedItem.canDrop === false} data-inventory-action="drop-one">Drop 1</button>
+              <button
+                type="button"
+                onClick={() =>
+                  selectedItem.ref &&
+                  firstEmptyBackpackIndex >= 0 &&
+                  adapter?.splitStack?.(
+                    selectedItem.ref,
+                    { kind: "item", idx: firstEmptyBackpackIndex },
+                    Math.max(1, Math.floor((selectedItem.count ?? 1) / 2))
+                  )
+                }
+                disabled={
+                  (selectedItem.count ?? 1) < 2 ||
+                  firstEmptyBackpackIndex < 0 ||
+                  selectedItem.canSplit === false
+                }
+                data-inventory-action="split"
+              >
+                Split
+              </button>
+              <Highlightable
+                uniqueId={UI_IDS.INVENTORY_ACTION("drop-one")}
+                showCaption
+              >
+                <button
+                  type="button"
+                  onClick={() =>
+                    selectedItem.ref && adapter?.dropItem?.(selectedItem.ref, 1)
+                  }
+                  disabled={!selectedItem.ref || selectedItem.canDrop === false}
+                  data-inventory-action="drop-one"
+                >
+                  Drop 1
+                </button>
               </Highlightable>
-              <Highlightable uniqueId={UI_IDS.INVENTORY_ACTION("drop-all")} showCaption>
-                <button type="button" onClick={() => selectedItem.ref && adapter?.dropItem?.(selectedItem.ref)} disabled={!selectedItem.ref || selectedItem.canDrop === false} data-inventory-action="drop-all">Drop All</button>
+              <Highlightable
+                uniqueId={UI_IDS.INVENTORY_ACTION("drop-all")}
+                showCaption
+              >
+                <button
+                  type="button"
+                  onClick={() =>
+                    selectedItem.ref && adapter?.dropItem?.(selectedItem.ref)
+                  }
+                  disabled={!selectedItem.ref || selectedItem.canDrop === false}
+                  data-inventory-action="drop-all"
+                >
+                  Drop All
+                </button>
               </Highlightable>
-              <button type="button" onClick={() => selectedItem.ref && adapter?.destroyItem?.(selectedItem.ref, 1)} disabled={!selectedItem.ref || selectedItem.canDestroy === false} data-inventory-action="destroy">Destroy</button>
+              <button
+                type="button"
+                onClick={() =>
+                  selectedItem.ref &&
+                  adapter?.destroyItem?.(selectedItem.ref, 1)
+                }
+                disabled={
+                  !selectedItem.ref || selectedItem.canDestroy === false
+                }
+                data-inventory-action="destroy"
+              >
+                Destroy
+              </button>
             </div>
           </div>
         ) : (
-          <p style={mutedTextStyle}>Select a backpack, hotbar, or equipment slot to inspect and act on it.</p>
+          <p style={mutedTextStyle}>
+            Select a backpack, hotbar, or equipment slot to inspect and act on
+            it.
+          </p>
         )}
         <div className="biomes-ui-inventory__contract-note">
           Changes you make here are saved to your character.
@@ -419,11 +938,15 @@ export const InventoryTab: React.FunctionComponent<{ adapter?: InventoryAdapter 
 };
 
 function normalizeEquipment(
-  raw?: InventoryEquipmentSlot[] | Partial<Record<string, InventoryUiItem | null>>,
+  raw?:
+    | InventoryEquipmentSlot[]
+    | Partial<Record<string, InventoryUiItem | null>>
 ): Array<InventoryEquipmentSlot & { highlight: string }> {
   if (Array.isArray(raw)) {
     return EQUIPMENT_ORDER.map((slot) => {
-      const found = raw.find((entry) => entry.id === slot.id || String(entry.ref?.key) === slot.key);
+      const found = raw.find(
+        (entry) => entry.id === slot.id || String(entry.ref?.key) === slot.key
+      );
       return {
         id: slot.id,
         label: found?.label ?? slot.label,
@@ -446,7 +969,7 @@ function findItemByRef(
   backpackItems: Array<InventoryUiItem | null>,
   equipment: Array<InventoryEquipmentSlot>,
   ref: InventoryUiRef | null,
-  hotbarItems: Array<InventoryUiItem | null> = [],
+  hotbarItems: Array<InventoryUiItem | null> = []
 ): InventoryUiItem | null {
   if (!ref) return null;
   for (const item of backpackItems) {
@@ -462,7 +985,11 @@ function findItemByRef(
 }
 
 function refsEqual(a: InventoryUiRef, b: InventoryUiRef): boolean {
-  return a.kind === b.kind && a.idx === b.idx && String(a.key ?? "") === String(b.key ?? "");
+  return (
+    a.kind === b.kind &&
+    a.idx === b.idx &&
+    String(a.key ?? "") === String(b.key ?? "")
+  );
 }
 
 function serializeInventoryRef(ref: InventoryUiRef): string {
@@ -474,16 +1001,24 @@ function isInventoryImageIcon(icon: string | undefined) {
   return /^(?:https?:\/\/|data:image\/|blob:|\/)/i.test(icon);
 }
 
+function inventoryTooltipLabel(item: InventoryUiItem) {
+  return item.count && item.count > 1
+    ? `${item.label} x${item.count}`
+    : item.label;
+}
+
 function renderInventoryIcon(item: InventoryUiItem): React.ReactNode {
   if (isInventoryImageIcon(item.icon)) {
-    const src = item.icon.startsWith("buckets/") || item.icon.startsWith("assets/")
-      ? `/${item.icon}`
-      : item.icon;
+    const src =
+      item.icon.startsWith("buckets/") || item.icon.startsWith("assets/")
+        ? `/${item.icon}`
+        : item.icon;
     return (
       <img
         src={src}
         alt=""
         aria-hidden
+        draggable={false}
         data-inventory-icon-kind="image"
         style={{ width: 30, height: 30, objectFit: "contain" }}
       />
@@ -495,6 +1030,48 @@ function renderInventoryIcon(item: InventoryUiItem): React.ReactNode {
     </span>
   );
 }
+
+const MaterialStorageShelf: React.FunctionComponent<{
+  items: InventoryUiItem[];
+  usedSlots?: number;
+  maxSlots?: number;
+}> = ({ items, usedSlots, maxSlots }) => {
+  if (items.length === 0) {
+    return null;
+  }
+  return (
+    <div
+      className="biomes-ui-inventory__material-shelf"
+      aria-label="Material storage"
+    >
+      <div className="biomes-ui-inventory__material-shelf-header">
+        <h3 style={{ ...titleStyle, marginBottom: 0 }}>Material Storage</h3>
+        {typeof maxSlots === "number" && maxSlots > 0 ? (
+          <span>
+            {usedSlots ?? items.length} / {maxSlots}
+          </span>
+        ) : null}
+      </div>
+      <div role="list" className="biomes-ui-inventory__material-shelf-list">
+        {items.map((item) => (
+          <div
+            key={`material-shelf-${item.id}`}
+            role="listitem"
+            className="biomes-ui-inventory__material-chip biomes-ui-inventory-tooltip-target"
+            title={inventoryTooltipLabel(item)}
+            data-inventory-tooltip={inventoryTooltipLabel(item)}
+          >
+            {renderInventoryIcon(item)}
+            {item.count && item.count > 1 ? (
+              <span className="biomes-ui-inventory__count">{item.count}</span>
+            ) : null}
+            <span style={visuallyHiddenStyle}>{item.label}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
 
 const CompactInventoryList: React.FunctionComponent<{
   title: string;
@@ -509,22 +1086,35 @@ const CompactInventoryList: React.FunctionComponent<{
     <h3 style={{ ...titleStyle, marginBottom: 8 }}>
       {title}
       {typeof maxSlots === "number" && maxSlots > 0 ? (
-        <span style={{ marginLeft: 8, fontSize: 11, color: "var(--biomes-fg-muted)" }}>
+        <span
+          style={{
+            marginLeft: 8,
+            fontSize: 11,
+            color: "var(--biomes-fg-muted)",
+          }}
+        >
           {usedSlots ?? items.length} / {maxSlots}
         </span>
       ) : null}
     </h3>
     {items.length === 0 ? (
-      emptyText ? <p style={mutedTextStyle}>{emptyText}</p> : null
+      emptyText ? (
+        <p style={mutedTextStyle}>{emptyText}</p>
+      ) : null
     ) : (
       <div role="list" style={{ display: "grid", gap: 4 }}>
         {items.map((item) => (
           <div
             key={`${tone}_${item.id}`}
             role="listitem"
-            className="biomes-ui-inventory__currency-row"
+            className="biomes-ui-inventory__currency-row biomes-ui-inventory-tooltip-target"
+            title={inventoryTooltipLabel(item)}
+            data-inventory-tooltip={inventoryTooltipLabel(item)}
             style={{
-              borderColor: tone === "overflow" ? "var(--biomes-fg-danger, #ff7777)" : undefined,
+              borderColor:
+                tone === "overflow"
+                  ? "var(--biomes-fg-danger, #ff7777)"
+                  : undefined,
             }}
           >
             <span aria-hidden>{renderInventoryIcon(item)}</span>
@@ -543,13 +1133,15 @@ const FarmingFoodSection: React.FunctionComponent<{
 }> = ({ model, onAction }) => {
   const staminaPct = Math.max(
     0,
-    Math.min(100, (model.stamina / Math.max(1, model.maxStamina)) * 100),
+    Math.min(100, (model.stamina / Math.max(1, model.maxStamina)) * 100)
   );
   const visibleActions = model.actions.filter(
     (action) =>
       action.id !== "forage_food" ||
       !action.disabled ||
-      model.actions.some((entry) => entry.id === "forage_food" && !entry.disabled),
+      model.actions.some(
+        (entry) => entry.id === "forage_food" && !entry.disabled
+      )
   );
   return (
     <div aria-label="Farming hunting cattle and food" style={{ marginTop: 16 }}>
@@ -590,7 +1182,8 @@ const FarmingFoodSection: React.FunctionComponent<{
         ))}
       </div>
       <p style={{ ...mutedTextStyle, marginTop: 8 }}>
-        {model.plots.length} plots · {model.livestock.length} livestock · {model.wildlife.length} wildlife
+        {model.plots.length} plots · {model.livestock.length} livestock ·{" "}
+        {model.wildlife.length} wildlife
       </p>
     </div>
   );
@@ -634,9 +1227,12 @@ const EquipSlot: React.FunctionComponent<{
   <Highlightable uniqueId={id} showCaption>
     <button
       type="button"
-      className="biomes-ui-slot"
+      className={`biomes-ui-slot${
+        item ? " biomes-ui-inventory-tooltip-target" : ""
+      }`}
       aria-label={item ? `${label}: ${item.label}` : `${label}: empty`}
-      title={item?.label ?? label}
+      title={item ? inventoryTooltipLabel(item) : label}
+      data-inventory-tooltip={item ? inventoryTooltipLabel(item) : undefined}
       onClick={onClick}
       onDoubleClick={onUnequip}
       data-inventory-equipment-slot={label}
@@ -647,14 +1243,25 @@ const EquipSlot: React.FunctionComponent<{
           <span style={visuallyHiddenStyle}>{item.label}</span>
         </>
       ) : (
-        <span aria-hidden style={{ fontSize: 9, opacity: 0.5 }}>{label}</span>
+        <span aria-hidden style={{ fontSize: 9, opacity: 0.5 }}>
+          {label}
+        </span>
       )}
     </button>
   </Highlightable>
 );
 
-const hotbarSyncStyle: React.CSSProperties = { marginTop: 16, paddingTop: 12, borderTop: "1px solid var(--biomes-edge-cyan-soft)" };
-const hotbarRowStyle: React.CSSProperties = { display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center" };
+const hotbarSyncStyle: React.CSSProperties = {
+  marginTop: 16,
+  paddingTop: 12,
+  borderTop: "1px solid var(--biomes-edge-cyan-soft)",
+};
+const hotbarRowStyle: React.CSSProperties = {
+  display: "flex",
+  flexWrap: "wrap",
+  gap: 6,
+  alignItems: "center",
+};
 const visuallyHiddenStyle: React.CSSProperties = {
   position: "absolute",
   width: 1,

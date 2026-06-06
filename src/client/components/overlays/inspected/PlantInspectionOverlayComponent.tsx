@@ -2,10 +2,14 @@ import { useClientContext } from "@/client/components/contexts/ClientContextReac
 import { ProgressBar } from "@/client/components/HealthBarHUD";
 import type { InspectShortcuts } from "@/client/components/overlays/inspected/CursorInspectionOverlayComponent";
 import { CursorInspectionComponent } from "@/client/components/overlays/inspected/CursorInspectionOverlayComponent";
+import { plantInspectionCanHarvestV1 } from "@/client/components/overlays/inspected/plantInspectionShortcuts";
 import type { PlantInspectOverlay } from "@/client/game/resources/overlays";
 import { getBiscuit } from "@/shared/bikkie/active";
 import { secondsSinceEpoch } from "@/shared/ecs/config";
-import { AdminDestroyPlantEvent } from "@/shared/ecs/gen/events";
+import {
+  AdminDestroyPlantEvent,
+  HarvestPlantEvent,
+} from "@/shared/ecs/gen/events";
 import type { BiomesId } from "@/shared/ids";
 import { fireAndForget } from "@/shared/util/async";
 import { plantTimeString } from "@/shared/util/helpers";
@@ -45,6 +49,10 @@ export const PlantInspectionOverlayComponent: React.FunctionComponent<{
 
   const plantBiscuit =
     plant && plant.seed ? getBiscuit(plant?.seed) : undefined;
+  const harvestPermitted = plantInspectionCanHarvestV1(
+    plant?.status,
+    plantBiscuit?.farming?.kind
+  );
 
   if (waterLevel === undefined) {
     return null;
@@ -89,6 +97,22 @@ export const PlantInspectionOverlayComponent: React.FunctionComponent<{
   );
 
   const shortcuts: InspectShortcuts = [];
+  if (harvestPermitted) {
+    shortcuts.push({
+      title: "Harvest",
+      onKeyDown: () => {
+        fireAndForget(
+          events.publish(
+            new HarvestPlantEvent({
+              id: userId,
+              plant_id: overlay.entityId,
+              position: overlay.pos,
+            })
+          )
+        );
+      },
+    });
+  }
   if (destroyPermitted) {
     shortcuts.push({
       title: "[Admin] Destroy Plant",

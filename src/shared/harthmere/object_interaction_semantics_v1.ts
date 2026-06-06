@@ -6,6 +6,7 @@ export type HarthmereObjectInteractionKindV1 =
   | "open_door"
   | "open_gate"
   | "open_jobs_board"
+  | "open_wanted_board"
   | "read"
   | "craft"
   | "cook"
@@ -44,6 +45,8 @@ const HARTHMERE_LIVING_OBJECT_EXEMPTION_RE_V1 =
 const HARTHMERE_DOOR_OBJECT_RE_V1 = /\bdoors?\b/i;
 const HARTHMERE_GATE_OBJECT_RE_V1 = /\bgates?\b/i;
 const HARTHMERE_JOBS_BOARD_OBJECT_RE_V1 = /\bjobs?\s+boards?\b/i;
+const HARTHMERE_WANTED_BOARD_OBJECT_RE_V1 =
+  /\b(?:wanted|bount(?:y|ies)|warrants?|patrol)\s+(?:boards?|posts?|notices?)\b|\b(?:boards?|posts?|notices?)\s+(?:wanted|bount(?:y|ies)|warrants?|patrol)\b/i;
 const HARTHMERE_READABLE_OBJECT_RE_V1 =
   /\b(boards?|signs?|posts?|markers?|ledgers?|books?|notes?|mailboxes?|consoles?|terminals?)\b/i;
 const HARTHMERE_CRAFT_STATION_OBJECT_RE_V1 =
@@ -218,6 +221,21 @@ const HARTHMERE_AUTHORED_OBJECT_INTERACTIONS_V1: ReadonlyMap<
       "Open Jobs Board",
       "Opened"
     ),
+    "wanted board": objectInteractionV1(
+      "open_wanted_board",
+      "Open Wanted Board",
+      "Opened"
+    ),
+    "farming wanted board": objectInteractionV1(
+      "open_wanted_board",
+      "Open Wanted Board",
+      "Opened"
+    ),
+    "bounty board": objectInteractionV1(
+      "open_wanted_board",
+      "Open Wanted Board",
+      "Opened"
+    ),
     "kit's mailbag stand": objectInteractionV1(
       "open_container",
       "Open Container",
@@ -366,6 +384,12 @@ export function isHarthmereNonLivingObjectLabelV1(input: {
   ) {
     return true;
   }
+  if (
+    HARTHMERE_JOBS_BOARD_OBJECT_RE_V1.test(text) ||
+    HARTHMERE_WANTED_BOARD_OBJECT_RE_V1.test(text)
+  ) {
+    return true;
+  }
   return !HARTHMERE_LIVING_OBJECT_EXEMPTION_RE_V1.test(text);
 }
 
@@ -445,6 +469,13 @@ export function harthmereObjectInteractionForLabelV1(input: {
   }
   if (HARTHMERE_GATE_OBJECT_RE_V1.test(text)) {
     return { kind: "open_gate", title: "Open Gate", toastVerb: "Opened" };
+  }
+  if (HARTHMERE_WANTED_BOARD_OBJECT_RE_V1.test(text)) {
+    return {
+      kind: "open_wanted_board",
+      title: "Open Wanted Board",
+      toastVerb: "Opened",
+    };
   }
   if (HARTHMERE_JOBS_BOARD_OBJECT_RE_V1.test(text)) {
     return {

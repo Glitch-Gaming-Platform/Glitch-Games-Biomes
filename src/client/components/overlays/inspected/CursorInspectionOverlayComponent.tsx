@@ -2,6 +2,7 @@ import { useCanTalkToNpc } from "@/client/components/challenges/TalkToNPCDefault
 import { openHarthmereObjectContainerV1 } from "@/client/components/challenges/harthmereObjectContainers";
 import { performHarthmereObjectInteractionV1 } from "@/client/components/challenges/harthmereObjectInteractions";
 import { useClientContext } from "@/client/components/contexts/ClientContextReactContext";
+import { CURSOR_INSPECTION_SHORTCUT_KEYS_FOR_TEST } from "@/client/components/overlays/inspected/inspectionShortcutKeys";
 import { MaybeError } from "@/client/components/system/MaybeError";
 import { ShortcutText } from "@/client/components/system/ShortcutText";
 import type { InspectableOverlay } from "@/client/game/resources/overlays";
@@ -15,13 +16,6 @@ import {
 import { relevantBiscuitForEntityId } from "@/shared/npc/bikkie";
 import type { PropsWithChildren } from "react";
 import { useMemo } from "react";
-const shortcutKeys = [
-  { key: "F", keyCode: "KeyF" },
-  { key: "G", keyCode: "KeyG" },
-  { key: "H", keyCode: "KeyH" },
-  { key: "J", keyCode: "KeyJ" },
-  { key: "K", keyCode: "KeyK" },
-];
 
 export type InspectShortcut = {
   title: string | JSX.Element;
@@ -111,8 +105,7 @@ export const CursorInspectionComponent: React.FunctionComponent<
   // `overlay?.entityId` truthiness gate would hide their prompt. Treat the
   // harthmere_object overlay as an actionable target explicitly.
   const harthmereObjectActionable = Boolean(
-    overlay &&
-      (overlay.kind === "harthmere_object" || overlay.entityId)
+    overlay && (overlay.kind === "harthmere_object" || overlay.entityId)
   );
 
   const trueShortcuts = useMemo(() => {
@@ -228,9 +221,12 @@ export const CursorInspectionComponent: React.FunctionComponent<
           {trueShortcuts.map((shortcut, i) => (
             <ShortcutText
               disabled={shortcut.disabled}
-              shortcut={shortcutKeys[i].key}
+              shortcut={CURSOR_INSPECTION_SHORTCUT_KEYS_FOR_TEST[i].key}
               key={i}
-              keyCode={shortcutKeys[i].keyCode as GlobalKeyCode}
+              keyCode={
+                CURSOR_INSPECTION_SHORTCUT_KEYS_FOR_TEST[i]
+                  .keyCode as GlobalKeyCode
+              }
               onKeyDown={shortcut.onKeyDown}
             >
               {shortcut.title}

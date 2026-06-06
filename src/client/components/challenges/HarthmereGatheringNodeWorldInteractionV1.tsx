@@ -77,7 +77,8 @@ export function HarthmereGatheringNodeWorldInteractionV1({
     if (!prompt) return;
     const result = performHarthmereGather(prompt.id);
     showFeedback(
-      result.message ?? (result.ok ? `Harvested ${prompt.name}.` : "Cannot harvest here."),
+      result.message ??
+        (result.ok ? `Harvested ${prompt.name}.` : "Cannot harvest here."),
       result.ok
     );
   }, [prompt, showFeedback]);
@@ -116,11 +117,16 @@ export function HarthmereGatheringNodeWorldInteractionV1({
   if (!prompt || promptBlocked) {
     return null;
   }
+  const detailState = feedback
+    ? feedback.ok
+      ? "success"
+      : "error"
+    : "requirement";
 
   return (
     <button
       type="button"
-      className="harthmere-jobs-prompt"
+      className="harthmere-jobs-prompt harthmere-gathering-node-prompt"
       onClick={(event) => {
         event.preventDefault();
         event.stopPropagation();
@@ -130,10 +136,22 @@ export function HarthmereGatheringNodeWorldInteractionV1({
       aria-label={`Harvest ${prompt.name}`}
       data-testid="harthmere-gathering-node-world-prompt-v1"
     >
-      <span className="harthmere-jobs-prompt__key">F</span>
-      <span>
-        <strong>Harvest {prompt.name}</strong>
-        <small>
+      <span
+        className="harthmere-gathering-node-prompt__key-group"
+        aria-hidden="true"
+      >
+        <span className="harthmere-jobs-prompt__key">F</span>
+        <span className="harthmere-gathering-node-prompt__key-hint">
+          Action
+        </span>
+      </span>
+      <span className="harthmere-gathering-node-prompt__body">
+        <span className="harthmere-gathering-node-prompt__verb">Harvest</span>
+        <strong>{prompt.name}</strong>
+        <small
+          className={`harthmere-gathering-node-prompt__detail harthmere-gathering-node-prompt__detail--${detailState}`}
+          data-state={detailState}
+        >
           {feedback ? feedback.message : requirementLabelV1(prompt)}
         </small>
       </span>

@@ -39,6 +39,7 @@ import { editEventHandler } from "@/server/logic/events/handlers/edits";
 import { emoteEventHandler } from "@/server/logic/events/handlers/emotes";
 import {
   fertilizePlantEventHandler,
+  harvestPlantEventHandler,
   plantSeedEventHandler,
   pokePlantEventHandler,
   replenishWateringCanEventHandler,
@@ -208,6 +209,7 @@ export function eventHandlerMapFor(serverMods: ServerMods) {
     plantSeedEventHandler,
     waterPlantsEventHandler,
     fertilizePlantEventHandler,
+    harvestPlantEventHandler,
     replenishWateringCanEventHandler,
     pokePlantEventHandler,
 

@@ -169,9 +169,7 @@ export function biomesUIVitalsDisplayFromLiveStatusForTest(
           likeability: Math.round(safeNumber(live.standing.likeability)),
           legal: Math.round(safeNumber(live.standing.legal)),
           notoriety: Math.round(safeNumber(live.standing.notoriety)),
-          notorietyFloor: Math.round(
-            safeNumber(live.standing.notorietyFloor)
-          ),
+          notorietyFloor: Math.round(safeNumber(live.standing.notorietyFloor)),
         }
       : fallback.standing,
     gold: safeWhole(live.gold, fallback.gold ?? 0),
@@ -202,8 +200,7 @@ export function biomesUIPlayerStatusEndpointV146(
   options?: { gameplayActive?: boolean }
 ): string {
   const rawSearch =
-    search ??
-    (typeof window !== "undefined" ? window.location.search : "");
+    search ?? (typeof window !== "undefined" ? window.location.search : "");
   const params = new URLSearchParams(rawSearch);
   const installId = params.get("install_id") ?? params.get("installId");
   const output: string[] = [];
@@ -218,11 +215,18 @@ export function biomesUIPlayerStatusEndpointV146(
 function biomesUIPlayerStatusGameplayActiveV1() {
   if (typeof document === "undefined") return false;
   if (document.visibilityState !== "visible") return false;
-  return Boolean(document.pointerLockElement);
+  if (document.documentElement.dataset.harthmereWakeUpActive === "true") {
+    return false;
+  }
+  return true;
 }
 
 function biomesUIPlayerStatusRefreshDelayMsV1() {
   return biomesUIPlayerStatusGameplayActiveV1() ? 5_000 : 15_000;
+}
+
+export function biomesUIPlayerStatusGameplayActiveForTest() {
+  return biomesUIPlayerStatusGameplayActiveV1();
 }
 
 export async function fetchBiomesUIPlayerStatusV1(
@@ -244,8 +248,9 @@ export async function fetchBiomesUIPlayerStatusV1(
 }
 
 export function useBiomesUIPlayerStatusStateV1() {
-  const [status, setStatus] =
-    React.useState<BiomesUIPlayerStatusSnapshotV1 | undefined>(undefined);
+  const [status, setStatus] = React.useState<
+    BiomesUIPlayerStatusSnapshotV1 | undefined
+  >(undefined);
 
   React.useEffect(() => {
     if (typeof window === "undefined") return;
@@ -254,7 +259,10 @@ export function useBiomesUIPlayerStatusStateV1() {
     let timer: number | undefined;
     const schedule = () => {
       if (cancelled) return;
-      timer = window.setTimeout(refresh, biomesUIPlayerStatusRefreshDelayMsV1());
+      timer = window.setTimeout(
+        refresh,
+        biomesUIPlayerStatusRefreshDelayMsV1()
+      );
     };
     const refresh = async () => {
       if (refreshInFlight) return;
@@ -270,7 +278,8 @@ export function useBiomesUIPlayerStatusStateV1() {
       }
     };
     const onStatus = (event: Event) => {
-      const next = (event as CustomEvent<BiomesUIPlayerStatusSnapshotV1>).detail;
+      const next = (event as CustomEvent<BiomesUIPlayerStatusSnapshotV1>)
+        .detail;
       if (next && typeof next === "object") {
         setStatus(next);
       } else {
@@ -282,7 +291,10 @@ export function useBiomesUIPlayerStatusStateV1() {
     return () => {
       cancelled = true;
       if (timer !== undefined) window.clearTimeout(timer);
-      window.removeEventListener(BIOMES_UI_PLAYER_STATUS_UPDATED_EVENT, onStatus);
+      window.removeEventListener(
+        BIOMES_UI_PLAYER_STATUS_UPDATED_EVENT,
+        onStatus
+      );
     };
   }, []);
 

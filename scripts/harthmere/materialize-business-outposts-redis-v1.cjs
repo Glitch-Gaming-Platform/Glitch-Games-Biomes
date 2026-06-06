@@ -31,6 +31,10 @@ const REDIS_PORT = Number.parseInt(
 );
 const APPLY = process.env.APPLY === "1";
 const SCAN_COUNT = Number.parseInt(process.env.SCAN_COUNT || "2500", 10);
+const APPLY_SHARD_BATCH_SIZE = Math.max(
+  1,
+  Number.parseInt(process.env.APPLY_SHARD_BATCH_SIZE || "8", 10)
+);
 const OUTPOST_ID_FILTER = (
   process.env.OUTPOST_ID ||
   process.env.OUTPOST_IDS ||
@@ -158,56 +162,94 @@ async function main() {
   }
 
   const world = new RedisWorld(await connectToRedisWithLua("ecs"));
-  await world.waitForHealthy();
-  const editor = world.edit();
-  const terrainIds = [...found.values()].map((entry) => entry.id);
-  const terrainEntities = await editor.get(terrainIds);
-  const idToEntity = new Map();
-  for (let i = 0; i < terrainIds.length; i += 1) {
-    const entity = terrainEntities[i];
-    if (!entity)
-      throw new Error(`Resolved terrain entity missing: ${terrainIds[i]}`);
-    idToEntity.set(terrainIds[i], entity);
-  }
-
   let changedShardCount = 0;
   let appliedEditCount = 0;
-  for (const [shardId, edits] of editsByShard) {
-    const entity = idToEntity.get(found.get(shardId).id);
-    const seed = new voxeloo.VolumeBlock_U32();
-    const diff = new voxeloo.SparseBlock_U32();
-    try {
-      loadBlockWrapper(voxeloo, seed, entity.shardSeed());
-      loadBlockWrapper(voxeloo, diff, entity.shardDiff());
-      for (const edit of edits) {
-        const local = blockPos(...edit.position);
-        if (edit.value === 0) {
-          if (seed.get(...local) === 0) {
-            diff.del(...local);
-          } else {
-            diff.set(...local, 0);
-          }
-        } else {
-          diff.set(...local, edit.value);
+  const shardEntries = [...editsByShard.entries()].sort(([a], [b]) =>
+    String(a).localeCompare(String(b))
+  );
+  try {
+    await world.waitForHealthy();
+    for (
+      let batchStart = 0;
+      batchStart < shardEntries.length;
+      batchStart += APPLY_SHARD_BATCH_SIZE
+    ) {
+      const batchEntries = shardEntries.slice(
+        batchStart,
+        batchStart + APPLY_SHARD_BATCH_SIZE
+      );
+      const editor = world.edit();
+      const terrainIds = batchEntries.map(
+        ([shardId]) => found.get(shardId).id
+      );
+      const terrainEntities = await editor.get(terrainIds);
+      const idToEntity = new Map();
+      for (let i = 0; i < terrainIds.length; i += 1) {
+        const entity = terrainEntities[i];
+        if (!entity) {
+          throw new Error(`Resolved terrain entity missing: ${terrainIds[i]}`);
         }
-        appliedEditCount += 1;
+        idToEntity.set(terrainIds[i], entity);
       }
-      entity.mutableShardDiff().buffer = saveBlockWrapper(voxeloo, diff).buffer;
-      changedShardCount += 1;
-    } finally {
-      seed.delete();
-      diff.delete();
-    }
-  }
 
-  await editor.commit();
-  await world.stop?.();
+      let batchChangedShardCount = 0;
+      let batchAppliedEditCount = 0;
+      for (const [shardId, edits] of batchEntries) {
+        const entity = idToEntity.get(found.get(shardId).id);
+        const seed = new voxeloo.VolumeBlock_U32();
+        const diff = new voxeloo.SparseBlock_U32();
+        try {
+          loadBlockWrapper(voxeloo, seed, entity.shardSeed());
+          loadBlockWrapper(voxeloo, diff, entity.shardDiff());
+          for (const edit of edits) {
+            const local = blockPos(...edit.position);
+            if (edit.value === 0) {
+              if (seed.get(...local) === 0) {
+                diff.del(...local);
+              } else {
+                diff.set(...local, 0);
+              }
+            } else {
+              diff.set(...local, edit.value);
+            }
+            batchAppliedEditCount += 1;
+          }
+          entity.mutableShardDiff().buffer = saveBlockWrapper(
+            voxeloo,
+            diff
+          ).buffer;
+          batchChangedShardCount += 1;
+        } finally {
+          seed.delete();
+          diff.delete();
+        }
+      }
+
+      await editor.commit();
+      changedShardCount += batchChangedShardCount;
+      appliedEditCount += batchAppliedEditCount;
+      console.error(
+        JSON.stringify({
+          phase: "applyShardBatch",
+          batchIndex: Math.floor(batchStart / APPLY_SHARD_BATCH_SIZE) + 1,
+          batchCount: Math.ceil(
+            shardEntries.length / APPLY_SHARD_BATCH_SIZE
+          ),
+          changedShardCount,
+          appliedEditCount,
+        })
+      );
+    }
+  } finally {
+    await world.stop?.();
+  }
   console.log(
     JSON.stringify(
       {
         applied: true,
         changedShardCount,
         appliedEditCount,
+        applyShardBatchSize: APPLY_SHARD_BATCH_SIZE,
       },
       null,
       2

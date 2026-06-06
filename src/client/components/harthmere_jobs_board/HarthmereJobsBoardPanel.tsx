@@ -491,7 +491,7 @@ export function HarthmereJobsBoardPanel({
                   return (
                     <>
                 <strong>{job.title}</strong>
-                <span>{job.kindLabel} · {job.rewardGold} gold</span>
+                <span>{job.kindLabel} · {job.rewardGold} gold{job.timeRemaining ? ` · ${job.timeRemaining}` : ""}</span>
                 <small>{job.requiresFieldWork ? "Creates map/quest todo" : "Turn in at board"}</small>
                 {job.warning && <em>{job.warning}</em>}
                 <button
@@ -524,7 +524,7 @@ export function HarthmereJobsBoardPanel({
                   return (
                     <>
                 <strong>{job.title}</strong>
-                <span>{job.status} · {job.rewardGold} gold</span>
+                <span>{job.status} · {job.rewardGold} gold{job.timeRemaining ? ` · ${job.timeRemaining}` : ""}</span>
                 <small>{job.todo?.todoText ?? "Return to the board when complete."}</small>
                 <button
                   type="button"

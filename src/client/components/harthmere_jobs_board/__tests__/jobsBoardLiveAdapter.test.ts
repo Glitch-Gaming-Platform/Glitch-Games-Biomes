@@ -445,25 +445,33 @@ describe("Harthmere universal jobs board live adapter", () => {
 
   it("normalizes available jobs, accepted jobs, posted jobs, tabs, and safety panel", () => {
     const snapshot = sampleSnapshot();
-    const available = getHarthmereAvailableJobsPanelV1(snapshot);
+    snapshot.openJobs[0].deadlineAtMs = NOW + 3 * 60 * 60 * 1000;
+    snapshot.myAcceptedJobs[0].deadlineAtMs = NOW + 2 * 60 * 60 * 1000;
+    const available = getHarthmereAvailableJobsPanelV1(
+      snapshot,
+      snapshot.defaultBoardId,
+      NOW
+    );
     assert.equal(available[0].jobId, "job_1");
     assert.equal(available[0].requiresFieldWork, true);
+    assert.equal(available[0].timeRemaining, "3h 0m left");
     assert.equal(available[1].warning, "Flagged for review");
-    const mine = getHarthmereMyJobsPanelV1(snapshot);
+    const mine = getHarthmereMyJobsPanelV1(snapshot, NOW);
     assert.equal(mine[0].todo!.questBoardTodo, true);
     assert.equal(mine[0].canComplete, true);
+    assert.equal(mine[0].timeRemaining, "2h 0m left");
     // HARTHMERE_JOBS_BOARD_COMPLETION_WIRING_V1: an ACTIVE todo on an active job
     // is now turn-in-able (the two-step completion verifies + pays); the button
     // is no longer gated to only already-"completed" todos (which never happened
     // because the client never sent complete_job_quest).
     snapshot.myTodos[0].status = "active";
-    assert.equal(getHarthmereMyJobsPanelV1(snapshot)[0].canComplete, true);
+    assert.equal(getHarthmereMyJobsPanelV1(snapshot, NOW)[0].canComplete, true);
     // A failed/expired todo cannot be turned in.
     snapshot.myTodos[0].status = "failed";
-    assert.equal(getHarthmereMyJobsPanelV1(snapshot)[0].canComplete, false);
+    assert.equal(getHarthmereMyJobsPanelV1(snapshot, NOW)[0].canComplete, false);
     // No live todo at all -> cannot complete.
     snapshot.myTodos = [];
-    assert.equal(getHarthmereMyJobsPanelV1(snapshot)[0].canComplete, false);
+    assert.equal(getHarthmereMyJobsPanelV1(snapshot, NOW)[0].canComplete, false);
     const posted = getHarthmerePostedJobsPanelV1(snapshot);
     assert.equal(posted[0].canCancel, true);
     assert.deepEqual(

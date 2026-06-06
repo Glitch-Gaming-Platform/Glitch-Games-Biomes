@@ -30,7 +30,7 @@ export const zUserInfoBatchResponse = zUserInfoBundle.nullable().array();
 export type UserInfoBatchResponse = z.infer<typeof zUserInfoBatchResponse>;
 
 export const zPostBatchResponse = z.object({
-  posts: zFeedPostBundle.optional().array(),
+  posts: zFeedPostBundle.nullable().array(),
 });
 export type PostBatchResponse = z.infer<typeof zPostBatchResponse>;
 

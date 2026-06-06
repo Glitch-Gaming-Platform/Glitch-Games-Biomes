@@ -11,6 +11,16 @@
 import { harthmereBusinessToolForTypeV151 } from "@/shared/harthmere/harthmere_business_tool_shop_v151";
 import { harthmereBusinessStorefrontListingsForTypeV1 } from "@/shared/harthmere/harthmere_business_storefront_goods_v1";
 import {
+  harthmereResolveBikkieVisualV1,
+  type HarthmereResolvedBikkieVisualV1,
+} from "@/shared/harthmere/bikkie_visual_resolver_v1";
+import { getHarthmereItemDefinitionV1 } from "@/shared/harthmere/mmo_inventory_authority_v1";
+import {
+  HARTHMERE_FOOD_DEFINITIONS_V1,
+  HARTHMERE_SEED_DEFINITIONS_V1,
+} from "@/shared/harthmere/mmo_farming_food_stamina_v1";
+import { HARTHMERE_MEDICAL_ITEM_DEFINITIONS_V1 } from "@/shared/harthmere/mmo_medical_health_v1";
+import {
   HARTHMERE_BUSINESS_CUSTOMER_NPCS_V1,
   harthmereBusinessOutpostBusinessIdV1,
   activeHarthmereBusinessCustomerTicketV1,
@@ -315,6 +325,7 @@ export interface HarthmereBusinessSystemsSnapshotV1 {
 export interface HarthmereBusinessEconomySnapshotV1 {
   version?: string;
   actorId: string;
+  actorKnownRecipes?: string[];
   businessTypes: Record<
     HarthmereBusinessTypeIdV1,
     HarthmereBusinessTypeDefinitionV1
@@ -354,11 +365,13 @@ export interface HarthmereBusinessInterfaceResponseV1 {
 
 export interface HarthmereBusinessVisibleInventoryItemV1 {
   itemId: string;
+  displayName?: string;
   count: number;
   priceGold: number;
   condition?: number;
   expiresAtMs?: number;
   contaminated?: boolean;
+  visual?: HarthmereResolvedBikkieVisualV1;
 }
 
 export interface HarthmereBusinessMoneySummaryV1 {
@@ -387,6 +400,7 @@ export interface HarthmereBusinessServiceActionV1 {
   defaultPayload?: Record<string, unknown>;
   serviceNeed?: string;
   rewardGold?: number;
+  priceGold?: number;
   requiresWorldService?: boolean;
   fieldServiceKind?: string;
   defaultTargetId?: string;
@@ -1010,6 +1024,11 @@ export function normalizeHarthmereBusinessEconomySnapshotV1(
     version:
       typeof snapshot.version === "string" ? snapshot.version : undefined,
     actorId,
+    actorKnownRecipes: Array.isArray(snapshot.actorKnownRecipes)
+      ? snapshot.actorKnownRecipes.filter(
+          (entry): entry is string => typeof entry === "string"
+        )
+      : [],
     businessTypes: jsonRecord(snapshot.businessTypes) as any,
     recipeCatalog: jsonRecord(snapshot.recipeCatalog),
     businesses,
@@ -1137,6 +1156,51 @@ export function canCustomerUseHarthmereBusinessV1(
   return business?.status === "open";
 }
 
+function harthmereBusinessItemDisplayNameV1(
+  itemId: string,
+  fallback?: string
+): string {
+  return (
+    getHarthmereItemDefinitionV1(itemId)?.displayName ??
+    HARTHMERE_FOOD_DEFINITIONS_V1[itemId]?.displayName ??
+    HARTHMERE_SEED_DEFINITIONS_V1[itemId]?.displayName ??
+    HARTHMERE_MEDICAL_ITEM_DEFINITIONS_V1[itemId]?.displayName ??
+    fallback ??
+    itemId
+  );
+}
+
+function harthmereBusinessItemKindHintV1(
+  itemId: string,
+  fallback?: string
+): string | undefined {
+  if (getHarthmereItemDefinitionV1(itemId)?.category) {
+    return getHarthmereItemDefinitionV1(itemId)?.category;
+  }
+  if (HARTHMERE_FOOD_DEFINITIONS_V1[itemId]) return "food";
+  if (HARTHMERE_SEED_DEFINITIONS_V1[itemId]) return "seed";
+  if (HARTHMERE_MEDICAL_ITEM_DEFINITIONS_V1[itemId]) return "medical utility";
+  return fallback;
+}
+
+export function getHarthmereBusinessItemVisualV1(
+  itemId: string,
+  fallbackLabel?: string,
+  kindHint?: string
+): HarthmereResolvedBikkieVisualV1 | undefined {
+  const definition = getHarthmereItemDefinitionV1(itemId);
+  const displayName = harthmereBusinessItemDisplayNameV1(itemId, fallbackLabel);
+  if (!definition && !displayName) return undefined;
+  return harthmereResolveBikkieVisualV1({
+    id: itemId,
+    label: displayName,
+    kind:
+      definition?.category ?? harthmereBusinessItemKindHintV1(itemId, kindHint),
+    description: definition?.description,
+    objectMetadata: definition?.objectMetadata,
+  });
+}
+
 function itemPrice(
   state: HarthmereBusinessEconomySnapshotV1,
   business: HarthmereBusinessRecordV1,
@@ -1150,6 +1214,24 @@ function itemPrice(
   return Math.max(1, Math.round(base * modifier));
 }
 
+export function harthmereBusinessServicePriceGoldV1(
+  action: HarthmereBusinessServiceActionV1
+): number {
+  const explicit = Number(action.priceGold);
+  if (Number.isFinite(explicit) && explicit > 0) {
+    return Math.max(1, Math.round(explicit));
+  }
+  const reward = Number(action.rewardGold ?? action.defaultPayload?.rewardGold);
+  if (Number.isFinite(reward) && reward > 0) {
+    return Math.max(1, Math.round(reward));
+  }
+  const operationCost = Number(action.defaultPayload?.amountGold);
+  if (Number.isFinite(operationCost) && operationCost > 0) {
+    return Math.max(1, Math.round(operationCost));
+  }
+  return 15;
+}
+
 export function getHarthmereVisibleBusinessInventoryV1(
   state: HarthmereBusinessEconomySnapshotV1,
   businessId: string
@@ -1160,7 +1242,9 @@ export function getHarthmereVisibleBusinessInventoryV1(
     .filter((stack) => stack.count > 0)
     .map((stack) => ({
       ...stack,
+      displayName: harthmereBusinessItemDisplayNameV1(stack.itemId),
       priceGold: itemPrice(state, business, stack.itemId),
+      visual: getHarthmereBusinessItemVisualV1(stack.itemId),
     }))
     .sort((a, b) => a.itemId.localeCompare(b.itemId));
 }
@@ -1302,9 +1386,15 @@ export function getHarthmereBusinessServiceActionsV1(
   typeId: HarthmereBusinessTypeIdV1,
   mode: HarthmereBusinessActorModeV1
 ): HarthmereBusinessServiceActionV1[] {
-  return (HARTHMERE_BUSINESS_SERVICE_ACTIONS_V1[typeId] ?? []).filter(
+  const actions = (HARTHMERE_BUSINESS_SERVICE_ACTIONS_V1[typeId] ?? []).filter(
     (action) => action.audience === mode || action.audience === "both"
   );
+  return mode === "customer"
+    ? actions.map((action) => ({
+        ...action,
+        priceGold: harthmereBusinessServicePriceGoldV1(action),
+      }))
+    : actions;
 }
 
 export interface HarthmereBusinessWorldContextV1 {
@@ -1440,15 +1530,24 @@ export interface HarthmereBusinessShopfrontV1 {
   // player (each of the 19 businesses sells a distinct tool). The panel shows a
   // "Buy" button for it; the purchase deposits the tool into the player's
   // inventory so a tool-gated job's redirect leads to a real purchase.
-  toolForSale?: { toolItemId: string; toolName: string; priceGold: number };
+  toolForSale?: {
+    toolItemId: string;
+    toolName: string;
+    priceGold: number;
+    visual?: HarthmereResolvedBikkieVisualV1;
+  };
   // HARTHMERE_BUSINESS_STOREFRONT_GOODS_V1: the business's themed building
   // materials + interior furnishings (5 blocks + 4 interior items), in addition
   // to its normal inventory + tool. Unlimited supply — bought via the server
   // buy_storefront_good economy op (no business-inventory deduction).
   storefrontGoods?: Array<{
     itemId: string;
-    kind: "block" | "interior";
+    displayName?: string;
+    kind: "block" | "interior" | "recipe_book";
     priceGold: number;
+    recipeIds?: readonly string[];
+    learned?: boolean;
+    visual?: HarthmereResolvedBikkieVisualV1;
   }>;
 }
 
@@ -1893,6 +1992,11 @@ export function getHarthmereBusinessShopfrontV1(
           toolItemId: toolListing.toolItemId,
           toolName: toolListing.toolName,
           priceGold: toolListing.priceGold,
+          visual: getHarthmereBusinessItemVisualV1(
+            toolListing.toolItemId,
+            toolListing.toolName,
+            "tool"
+          ),
         }
       : undefined,
     storefrontGoods:
@@ -1900,8 +2004,25 @@ export function getHarthmereBusinessShopfrontV1(
         ? harthmereBusinessStorefrontListingsForTypeV1(business.typeId).map(
             (listing) => ({
               itemId: listing.itemId,
+              displayName: harthmereBusinessItemDisplayNameV1(listing.itemId),
               kind: listing.kind,
               priceGold: listing.buyPrice,
+              recipeIds: listing.recipeIds,
+              learned:
+                listing.kind === "recipe_book"
+                  ? (listing.recipeIds ?? []).every((recipeId) =>
+                      (state.actorKnownRecipes ?? []).includes(recipeId)
+                    )
+                  : undefined,
+              visual: getHarthmereBusinessItemVisualV1(
+                listing.itemId,
+                undefined,
+                listing.kind === "block"
+                  ? "block"
+                  : listing.kind === "recipe_book"
+                  ? "document"
+                  : "furnishing"
+              ),
             })
           )
         : undefined,
@@ -2254,7 +2375,13 @@ function serviceContractPayload(
   action: HarthmereBusinessServiceActionV1,
   overrides: Record<string, unknown>
 ) {
-  const rewardGold = Number(overrides.rewardGold ?? action.rewardGold ?? 75);
+  const priceGold = Number(
+    overrides.priceGold ??
+      overrides.amountGold ??
+      overrides.rewardGold ??
+      harthmereBusinessServicePriceGoldV1(action)
+  );
+  const rewardGold = priceGold;
   return {
     ownerKind: "player",
     ownerId: state.actorId,
@@ -2265,6 +2392,9 @@ function serviceContractPayload(
     rewardGold,
     townId: business.townId,
     regionId: business.regionId,
+    amountGold: priceGold,
+    priceGold,
+    customerPriceGold: priceGold,
     deadlineAtMs: Number(
       overrides.deadlineAtMs ?? Date.now() + 7 * 24 * 60 * 60 * 1000
     ),
@@ -2720,8 +2850,16 @@ export function createHarthmereBusinessInterfaceAdapterV1(options: {
           serviceContractPayload(state, business, action, overrides)
         );
       } else {
+        const priceGold = Number(
+          overrides.priceGold ??
+            overrides.amountGold ??
+            action.priceGold ??
+            harthmereBusinessServicePriceGoldV1(action)
+        );
         await submit(action.operation, {
           businessId,
+          amountGold: priceGold,
+          priceGold,
           ...(action.defaultPayload ?? {}),
           ...overrides,
         });

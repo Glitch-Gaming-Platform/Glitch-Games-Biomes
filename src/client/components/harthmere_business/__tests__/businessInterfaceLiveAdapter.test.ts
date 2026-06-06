@@ -50,6 +50,7 @@ import {
   getHarthmereBusinessServiceActionsV1,
   getHarthmereCustomerOrdersV1,
   getHarthmereVisibleBusinessInventoryV1,
+  harthmereBusinessServicePriceGoldV1,
   harthmereBusinessWorldContextPayloadV1,
   isHarthmereBusinessInterfaceAvailableV1,
   nearestHarthmereBusinessDashboardWorldContextV1,
@@ -632,7 +633,8 @@ describe("Harthmere in-world business interface live adapter", () => {
       })
     );
     assert.ok(html.includes("Current Customer"));
-    assert.ok(html.includes("Customer Counter"));
+    assert.ok(html.includes("Day Job Mini-Game"));
+    assert.ok(html.includes("Take a day job to earn some gold."));
     assert.ok(html.includes("Buff Economy Service Line"));
     assert.ok(html.includes("Service line panel"));
     assert.ok(html.includes("Jessa Mint"));
@@ -990,6 +992,9 @@ describe("Harthmere in-world business interface live adapter", () => {
     );
     assert.equal(operations[0].payload.targetBusinessId, "business_clinic");
     assert.equal(operations[0].payload.rewardGold, 175);
+    assert.equal(operations[0].payload.amountGold, 175);
+    assert.equal(operations[0].payload.priceGold, 175);
+    assert.equal(operations[0].payload.customerPriceGold, 175);
     assert.deepEqual(operations[0].payload.requirements, [
       { serviceNeed: "health", serviceUnits: 1 },
     ]);
@@ -1103,6 +1108,12 @@ describe("Harthmere in-world business interface live adapter", () => {
       for (const action of actions) {
         assert.ok(action.actionId);
         assert.ok(action.label);
+        if (action.audience === "customer" || action.audience === "both") {
+          assert.ok(
+            harthmereBusinessServicePriceGoldV1(action) > 0,
+            `${typeId}:${action.actionId} should have a customer service price`
+          );
+        }
         assert.ok(action.operation);
         assert.ok(action.description.length > 10);
       }
@@ -1451,7 +1462,8 @@ describe("Harthmere in-world business interface v2 screens", () => {
         compact: true,
       })
     );
-    assert.ok(html.includes("Customer Counter"));
+    assert.ok(html.includes("Day Job Mini-Game"));
+    assert.ok(html.includes("Take a day job to earn some gold."));
     assert.ok(html.includes('data-business-mode="customer"'));
   });
 
@@ -2207,6 +2219,23 @@ describe("Harthmere in-world business interface v2 screens", () => {
     assert.ok(statusHtml.includes("Next Step"));
     assert.ok(statusHtml.includes("Business Trust"));
     assert.ok(statusHtml.includes("Your Requests"));
+
+    const servicesHtml = renderToStaticMarkup(
+      React.createElement(HarthmereBusinessInterfacePanel, {
+        adapter: customerAdapter,
+        nearbyBusinessId: "business_clinic",
+        compact: true,
+        initialTab: "services",
+      })
+    );
+    assert.ok(servicesHtml.includes("Choose a paid service"));
+    assert.ok(servicesHtml.includes("Buy Service"));
+    assert.ok(servicesHtml.includes("Request Care"));
+    assert.ok(servicesHtml.includes("120 gold"));
+    assert.ok(
+      servicesHtml.includes('aria-label="Buy service: Request Care, 120 gold"')
+    );
+    assert.ok(servicesHtml.includes('data-business-service-price-gold="120"'));
   });
 
   it("builds tailored operation screens for every business type without dummy runtime records", () => {

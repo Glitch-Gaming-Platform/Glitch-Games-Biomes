@@ -13,6 +13,7 @@ import {
 } from "../harthmereBusinessMapMarkersV1";
 import { buildBiomesUIMapAdapterForTest } from "../mapLiveAdapter";
 import { HARTHMERE_BUSINESS_OUTPOSTS_V1 } from "@/shared/harthmere/business_customer_simulator_v1";
+import { NUX_PAIRED_STEPS } from "@/client/util/nux/state_machines";
 
 // The adapter module reads window globals; mock window first.
 const globalAny = global as any;
@@ -73,6 +74,38 @@ const FIXTURE_LANDMARKS = [
     position: [512, 70, -152],
     kind: "resource",
     area: "muck_edges",
+    visibleOnWorldMap: true,
+  },
+  {
+    id: "old_grove_road_post",
+    label: "Old Grove Road Post",
+    position: [500, 70, -140],
+    kind: "connector",
+    area: "old_grove_road",
+    visibleOnWorldMap: true,
+  },
+  {
+    id: "road_jump_stretch",
+    label: "Road Jump Stretch",
+    position: [548, 70, -170],
+    kind: "connector",
+    area: "old_grove_road",
+    visibleOnWorldMap: true,
+  },
+  {
+    id: "lovely_locks_mirror",
+    label: "Lovely Locks Mirror",
+    position: [778, 70, 200],
+    kind: "interactable",
+    area: "lovely_locks",
+    visibleOnWorldMap: true,
+  },
+  {
+    id: "service_tower_platform",
+    label: "Service Tower Platform",
+    position: [504, 70, -130],
+    kind: "interactable",
+    area: "the_grove",
     visibleOnWorldMap: true,
   },
   {
@@ -492,6 +525,90 @@ describe("biomes_ui map adapter (V141)", () => {
       adapter.getMissionSteps()[0]?.objective,
       "Follow Jackie's marker to the Old Grove Road Post just outside The Grove."
     );
+  });
+
+  it("lights the Road Ahead map quest from a native active step hint without accepting the bridge", () => {
+    installFixture({
+      acceptedQuestIds: [],
+      activeObjectiveIndex: 0,
+      completedQuestIds: [],
+    });
+
+    const adapter = buildBiomesUIMapAdapterForTest(
+      1,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      [{ id: NUX_PAIRED_STEPS.ROAD_AHEAD_COLLECT_MUCKWAD }]
+    );
+    const quest = adapter
+      .getTrackableQuests()
+      .find((entry) => entry.questId === "snapshot_road_ahead_full_chain");
+
+    assert.equal(quest?.status, "active");
+    assert.equal(quest?.firstMarkerId, "muckwad_patch");
+    assert.equal(
+      quest?.objective,
+      "Break a muckwad or another soft non-flora block near the road."
+    );
+    assert.equal(adapter.getMissionTitle(), "Road Ahead");
+    assert.equal(adapter.getMissionSteps()[1]?.title, "Current step 2");
+    const marker = adapter
+      .getMarkers()
+      .find((entry) => entry.id === "muckwad_patch");
+    assert.equal(marker?.kind, "objective");
+    assert.equal(marker?.active, true);
+  });
+
+  it("normalizes every Road Ahead bridge target to an existing map marker", () => {
+    installFixture({
+      acceptedQuestIds: [],
+      activeObjectiveIndex: 0,
+      completedQuestIds: [],
+    });
+
+    const wearAdapter = buildBiomesUIMapAdapterForTest(
+      1,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      [NUX_PAIRED_STEPS.ROAD_AHEAD_WEAR]
+    );
+    const wardrobe = wearAdapter
+      .getMarkers()
+      .find((entry) => entry.id === "wardrobe");
+    assert.equal(wardrobe?.active, true);
+    assert.equal(wardrobe?.kind, "objective");
+
+    const jumpAdapter = buildBiomesUIMapAdapterForTest(
+      1,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      [NUX_PAIRED_STEPS.ROAD_AHEAD_FIND_BAG]
+    );
+    const jump = jumpAdapter
+      .getMarkers()
+      .find((entry) => entry.id === "jump_run");
+    assert.equal(jump?.active, true);
+    assert.equal(jump?.kind, "objective");
+
+    const craftAdapter = buildBiomesUIMapAdapterForTest(
+      1,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      [NUX_PAIRED_STEPS.BUSTED_MUCK_BUSTERS]
+    );
+    const crafting = craftAdapter
+      .getMarkers()
+      .find((entry) => entry.id === "crafting_stop");
+    assert.equal(crafting?.active, true);
+    assert.equal(crafting?.kind, "objective");
   });
 
   it("marks Snapshot Grove quests active from live-mode quest state", () => {

@@ -35,6 +35,8 @@ import {
   HARTHMERE_JOBS_BOARD_HEX_WRAITH_BOUNTY_MARKER_ID_V1,
   HARTHMERE_JOBS_BOARD_HEX_WRAITH_BOUNTY_TARGET_ID_V1,
 } from "./jobs_board_muck_bounty_targets_v1";
+import { harthmereJobsBoardQuestMarkerPositionForIdV1 } from "./jobs_board_quest_marker_positions_v1";
+import type { BiomesId } from "@/shared/ids";
 
 export const HARTHMERE_JOBS_BOARD_AUTHORITY_VERSION_V1 =
   "harthmere-jobs-board-authority-v1" as const;
@@ -92,6 +94,29 @@ export type HarthmereJobsBoardPostingStatusV1 =
   | "failed"
   | "cancelled"
   | "expired";
+
+export type HarthmereEscortCompanionStatusV151 =
+  | "following"
+  | "arrived"
+  | "completed"
+  | "failed";
+
+export interface HarthmereEscortCompanionV151 {
+  companionId: string;
+  entityId: BiomesId;
+  jobId: string;
+  actorId: string;
+  displayName: string;
+  status: HarthmereEscortCompanionStatusV151;
+  position: { x: number; y: number; z: number };
+  destination: { x: number; y: number; z: number };
+  destinationTargetId?: string;
+  destinationMarkerId?: string;
+  createdAtMs: number;
+  updatedAtMs: number;
+  arrivedAtMs?: number;
+  failedAtMs?: number;
+}
 
 export interface HarthmereJobsBoardLocationV1 {
   x: number;
@@ -293,6 +318,7 @@ export interface HarthmereJobsBoardPostingV1 {
   monsterTier?: "normal" | "strong" | "elite" | "boss";
   monsterPowerLevel?: number;
   lootHint?: string[];
+  escortCompanion?: HarthmereEscortCompanionV151;
 }
 
 export interface HarthmereJobsBoardTodoV1 {
@@ -1315,14 +1341,19 @@ function acceptJobPosting(
   job.status = "active";
   job.acceptedAtMs = request.nowMs;
   job.acceptedByActorId = request.actorId;
-  // HARTHMERE_JOB_ACCEPT_TIMER_V151: the completion clock starts NOW (on accept),
-  // giving the player a few hours to a day. Set before createTodoForJob so the
-  // todo's dueAtMs inherits this accept-window deadline.
+  // HARTHMERE_JOB_ACCEPT_TIMER_V151: the completion clock starts NOW (on accept).
+  // Escort jobs get a strict 2-5 hour companion window; other timed job kinds
+  // keep the existing few-hours-to-day window. Set before createTodoForJob so
+  // the todo's dueAtMs inherits this accept-window deadline.
   job.deadlineAtMs =
     request.nowMs +
-    harthmereJobAcceptWindowMsV151(
-      `${job.jobId}:${request.actorId}:${request.nowMs}`
-    );
+    harthmereAcceptedJobWindowMsV151(job, request.actorId, request.nowMs);
+  job.escortCompanion = createEscortCompanionForAcceptedJobV151(
+    result.next,
+    job,
+    request,
+    context
+  );
   job.logs.push(`accepted:${request.actorId}:${request.nowMs}`);
   result.next.actorAcceptedJobIds[request.actorId] = activeJobIdsForActor(
     result.next,
@@ -1342,6 +1373,10 @@ function acceptJobPosting(
     issuerId: job.issuerId,
   });
   result.touched.add("jobs_board_posting");
+  if (job.escortCompanion) {
+    result.touched.add("escort_companion");
+    result.touched.add("live_entity_combat");
+  }
   result.shared.add(sharedJobKey(job.jobId));
   result.shared.add(sharedBoardKey(board.boardId));
 }
@@ -1431,6 +1466,12 @@ function completeJobQuest(
         `jobs_board_rejected:wrong_quest_target:${req.targetId}`
       );
     }
+  }
+  if (
+    job.kind === "escort" &&
+    job.escortCompanion?.status !== "arrived"
+  ) {
+    return reject(result, "jobs_board_rejected:escort_companion_not_arrived");
   }
   // HARTHMERE_REPAIR_TOOL_COMPLETION_V151: any requirement that needs a tool
   // action (e.g. a repair job) can only be completed when the client reports the
@@ -1525,6 +1566,12 @@ function completeJobPosting(
   job.escrowItems = {};
   job.status = "completed";
   job.completedAtMs = request.nowMs;
+  if (job.escortCompanion) {
+    job.escortCompanion.status = "completed";
+    job.escortCompanion.updatedAtMs = request.nowMs;
+    result.touched.add("escort_companion");
+    result.touched.add("live_entity_combat");
+  }
   job.logs.push(`completed:${request.actorId}:${request.nowMs}`);
   for (const todo of Object.values(result.next.todos)) {
     if (todo.jobId === job.jobId && todo.actorId === request.actorId)
@@ -1591,6 +1638,16 @@ function cancelJobPosting(
     job.cancelledAtMs = request.nowMs;
     refundEscrow(result, job, request);
   }
+  if (job.escortCompanion) {
+    job.escortCompanion.status =
+      job.status === "cancelled" ? "completed" : "failed";
+    job.escortCompanion.updatedAtMs = request.nowMs;
+    if (job.escortCompanion.status === "failed") {
+      job.escortCompanion.failedAtMs = request.nowMs;
+    }
+    result.touched.add("escort_companion");
+    result.touched.add("live_entity_combat");
+  }
   for (const todo of Object.values(result.next.todos)) {
     if (todo.jobId === job.jobId)
       todo.status = job.status === "cancelled" ? "cancelled" : "failed";
@@ -1633,6 +1690,13 @@ function abandonJobPosting(
   job.status = "open";
   job.acceptedByActorId = undefined;
   job.acceptedAtMs = undefined;
+  if (job.escortCompanion) {
+    job.escortCompanion.status = "failed";
+    job.escortCompanion.updatedAtMs = request.nowMs;
+    job.escortCompanion.failedAtMs = request.nowMs;
+    result.touched.add("escort_companion");
+    result.touched.add("live_entity_combat");
+  }
   job.logs.push(`abandoned:${seekerId}:${request.nowMs}`);
   for (const todo of Object.values(result.next.todos)) {
     if (todo.jobId === job.jobId && todo.actorId === seekerId)
@@ -1674,6 +1738,11 @@ function sweepLapsedAcceptedJobsV151(result: MutableJobsResult, nowMs: number) {
     job.status = "open";
     job.acceptedByActorId = undefined;
     job.acceptedAtMs = undefined;
+    if (job.escortCompanion) {
+      job.escortCompanion.status = "failed";
+      job.escortCompanion.updatedAtMs = nowMs;
+      job.escortCompanion.failedAtMs = nowMs;
+    }
     // Reset the (now-passed) accept-window deadline to a fresh open lifetime so
     // the released job is immediately acceptable again; the next accept resets it
     // to that taker's accept window.
@@ -1691,6 +1760,8 @@ function sweepLapsedAcceptedJobsV151(result: MutableJobsResult, nowMs: number) {
   if (touched) {
     result.touched.add("jobs_board_posting");
     result.touched.add("jobs_board_quest_todo");
+    result.touched.add("escort_companion");
+    result.touched.add("live_entity_combat");
   }
 }
 
@@ -1723,6 +1794,13 @@ function failJobQuest(
     job.acceptedByActorId = undefined;
     job.acceptedAtMs = undefined;
   }
+  if (job.escortCompanion) {
+    job.escortCompanion.status = "failed";
+    job.escortCompanion.updatedAtMs = request.nowMs;
+    job.escortCompanion.failedAtMs = request.nowMs;
+    result.touched.add("escort_companion");
+    result.touched.add("live_entity_combat");
+  }
   job.logs.push(
     `quest_failed:${request.actorId}:${request.nowMs}:${sanitizeText(
       request.completionNote,
@@ -1750,6 +1828,13 @@ function expireJobs(
     ) {
       job.status = "expired";
       job.logs.push(`expired:${request.nowMs}`);
+      if (job.escortCompanion) {
+        job.escortCompanion.status = "failed";
+        job.escortCompanion.updatedAtMs = request.nowMs;
+        job.escortCompanion.failedAtMs = request.nowMs;
+        result.touched.add("escort_companion");
+        result.touched.add("live_entity_combat");
+      }
       // Refund the escrow whether the job was still open or active-but-unfinished — an
       // active job that lapses at its deadline must not destroy the issuer's escrowed gold.
       refundEscrow(result, job, request);
@@ -1780,21 +1865,133 @@ export const HARTHMERE_JOBS_BOARD_ACCEPT_WINDOW_MIN_MS_V151 =
   4 * 60 * 60 * 1000;
 export const HARTHMERE_JOBS_BOARD_ACCEPT_WINDOW_MAX_MS_V151 =
   24 * 60 * 60 * 1000;
+export const HARTHMERE_ESCORT_ACCEPT_WINDOW_MIN_MS_V151 =
+  2 * 60 * 60 * 1000;
+export const HARTHMERE_ESCORT_ACCEPT_WINDOW_MAX_MS_V151 =
+  5 * 60 * 60 * 1000;
+export const HARTHMERE_ESCORT_COMPANION_ENTITY_ID_BASE_V151 =
+  8_810_000_000_030_000 as BiomesId;
 
 // Deterministic per-acceptance window in [min, max] (reducers must be pure — no
 // Math.random), seeded from a stable key so the same acceptance always resolves
 // the same deadline.
 export function harthmereJobAcceptWindowMsV151(seedKey: string): number {
+  return harthmereDeterministicWindowMsV151(
+    seedKey,
+    HARTHMERE_JOBS_BOARD_ACCEPT_WINDOW_MIN_MS_V151,
+    HARTHMERE_JOBS_BOARD_ACCEPT_WINDOW_MAX_MS_V151
+  );
+}
+
+export function harthmereEscortAcceptWindowMsV151(seedKey: string): number {
+  return harthmereDeterministicWindowMsV151(
+    seedKey,
+    HARTHMERE_ESCORT_ACCEPT_WINDOW_MIN_MS_V151,
+    HARTHMERE_ESCORT_ACCEPT_WINDOW_MAX_MS_V151
+  );
+}
+
+function harthmereDeterministicHashV151(seedKey: string): number {
   let h = 2166136261;
   for (let i = 0; i < seedKey.length; i += 1) {
     h ^= seedKey.charCodeAt(i);
     h = Math.imul(h, 16777619);
   }
-  const t = ((h >>> 0) % 100000) / 100000;
-  const span =
-    HARTHMERE_JOBS_BOARD_ACCEPT_WINDOW_MAX_MS_V151 -
-    HARTHMERE_JOBS_BOARD_ACCEPT_WINDOW_MIN_MS_V151;
-  return HARTHMERE_JOBS_BOARD_ACCEPT_WINDOW_MIN_MS_V151 + Math.round(t * span);
+  return h >>> 0;
+}
+
+function harthmereDeterministicWindowMsV151(
+  seedKey: string,
+  minMs: number,
+  maxMs: number
+): number {
+  const t = (harthmereDeterministicHashV151(seedKey) % 100000) / 100000;
+  const span = maxMs - minMs;
+  return minMs + Math.round(t * span);
+}
+
+export function harthmereAcceptedJobWindowMsV151(
+  job: Pick<HarthmereJobsBoardPostingV1, "jobId" | "kind">,
+  actorId: string,
+  nowMs: number
+): number {
+  const seedKey = `${job.jobId}:${actorId}:${nowMs}`;
+  return job.kind === "escort"
+    ? harthmereEscortAcceptWindowMsV151(seedKey)
+    : harthmereJobAcceptWindowMsV151(seedKey);
+}
+
+export function harthmereEscortCompanionEntityIdV151(
+  jobId: string,
+  actorId: string
+): BiomesId {
+  const offset =
+    harthmereDeterministicHashV151(`escort-companion:${jobId}:${actorId}`) %
+    500_000;
+  return (Number(HARTHMERE_ESCORT_COMPANION_ENTITY_ID_BASE_V151) +
+    offset) as BiomesId;
+}
+
+function pointObjectV151(value: { x: number; y: number; z: number }) {
+  return {
+    x: Number(value.x) || 0,
+    y: Number(value.y) || 0,
+    z: Number(value.z) || 0,
+  };
+}
+
+function createEscortCompanionForAcceptedJobV151(
+  state: HarthmereJobsBoardStateV1,
+  job: HarthmereJobsBoardPostingV1,
+  request: HarthmereJobsBoardMutationRequestV1,
+  context: HarthmereJobsBoardMutationContextV1
+): HarthmereEscortCompanionV151 | undefined {
+  if (job.kind !== "escort") return undefined;
+  const boardRecord =
+    state.boards[job.boardId] ??
+    (request.boardId ? state.boards[request.boardId] : undefined);
+  const anchor =
+    context.actorPosition ??
+    (boardRecord
+      ? {
+          x: boardRecord.location.x,
+          y: boardRecord.location.y + 1,
+          z: boardRecord.location.z,
+        }
+      : { x: 501.99486179104775, y: 70, z: -132.00350672753194 });
+  const destinationMarker =
+    harthmereJobsBoardQuestMarkerPositionForIdV1(job.mapMarkerId) ??
+    harthmereJobsBoardQuestMarkerPositionForIdV1(job.targetId);
+  const destination = destinationMarker
+    ? {
+        x: destinationMarker.position[0],
+        y: destinationMarker.position[1],
+        z: destinationMarker.position[2],
+      }
+    : pointObjectV151(anchor);
+  const position = {
+    x: anchor.x + 1.35,
+    y: anchor.y,
+    z: anchor.z + 1.1,
+  };
+  const entityId = harthmereEscortCompanionEntityIdV151(
+    job.jobId,
+    request.actorId
+  );
+  return {
+    companionId: `escort_companion:${job.jobId}:${request.actorId}`,
+    entityId,
+    jobId: job.jobId,
+    actorId: request.actorId,
+    displayName: "Newcomer",
+    status: "following",
+    position,
+    destination,
+    destinationTargetId: job.targetId,
+    destinationMarkerId: destinationMarker?.markerId ?? job.mapMarkerId,
+    createdAtMs: request.nowMs,
+    updatedAtMs: request.nowMs,
+  };
 }
 
 export function harthmereJobTimeRemainingMsV151(

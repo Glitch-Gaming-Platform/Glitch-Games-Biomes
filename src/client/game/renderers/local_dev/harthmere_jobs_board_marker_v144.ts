@@ -26,12 +26,18 @@
 import type { Renderer } from "@/client/game/renderers/renderer_controller";
 import type { Scenes } from "@/client/game/renderers/scenes";
 import { addToScenes } from "@/client/game/renderers/scenes";
+import {
+  HARTHMERE_BUSINESS_OUTPOSTS_V1,
+  harthmereBusinessOutpostJobsBoardPositionV1,
+} from "@/shared/harthmere/business_customer_simulator_v1";
 import * as THREE from "three";
 
 export const HARTHMERE_JOBS_BOARD_PROCEDURAL_MARKER_VERSION_V144 =
   "harthmere-jobs-board-procedural-marker-v144" as const;
 export const HARTHMERE_JOBS_BOARD_PROCEDURAL_POLISH_VERSION_V146 =
   "harthmere-jobs-board-procedural-polish-v146" as const;
+export const HARTHMERE_JOBS_BOARD_WANTED_NOTICE_GRAPHIC_VERSION_V148 =
+  "harthmere-jobs-board-wanted-notice-graphic-v148" as const;
 export const HARTHMERE_JOBS_BOARD_FRONT_FLIP_YAW_V147 = Math.PI;
 
 export interface HarthmereJobsBoardMarkerLocationV144 {
@@ -62,6 +68,18 @@ export const HARTHMERE_JOBS_BOARD_MARKER_LOCATIONS_V144: readonly HarthmereJobsB
     // Warm amber for the Harthmere market district.
     accentColor: 0xffb74d,
   },
+  ...HARTHMERE_BUSINESS_OUTPOSTS_V1.map((outpost, index) => {
+    const position = harthmereBusinessOutpostJobsBoardPositionV1(outpost);
+    const palette = [0x4cc9ff, 0xffb74d, 0xf472b6, 0x84cc16, 0xc084fc];
+    return {
+      id: `${outpost.outpostId}_jobs_board`,
+      label: `${outpost.displayName} Jobs Board`,
+      x: position.x,
+      y: position.y,
+      z: position.z,
+      accentColor: palette[index % palette.length],
+    } satisfies HarthmereJobsBoardMarkerLocationV144;
+  }),
 ];
 
 function createHarthmereJobsBoardMaterialV146(color: THREE.Color, opacity = 1) {
@@ -184,6 +202,10 @@ export function createHarthmereJobsBoardKioskMeshV144(
     HARTHMERE_JOBS_BOARD_PROCEDURAL_MARKER_VERSION_V144;
   group.userData.harthmereJobsBoardPolishVersion =
     HARTHMERE_JOBS_BOARD_PROCEDURAL_POLISH_VERSION_V146;
+  group.userData.harthmereJobsBoardGraphicVersion =
+    HARTHMERE_JOBS_BOARD_WANTED_NOTICE_GRAPHIC_VERSION_V148;
+  group.userData.harthmereJobsBoardGraphicSource =
+    "wanted_board_notice_graphic";
   group.userData.harthmereJobsBoardMarkerId = location.id;
   group.userData.harthmereJobsBoardFrontYaw =
     HARTHMERE_JOBS_BOARD_FRONT_FLIP_YAW_V147;
@@ -197,6 +219,8 @@ export function createHarthmereJobsBoardKioskMeshV144(
   const darkStone = new THREE.Color(0x6f7885);
   const parchment = new THREE.Color(0xf3dfb1);
   const parchmentAlt = new THREE.Color(0xe9c98d);
+  const warrantRed = new THREE.Color(0xb6374b);
+  const noticeBlue = new THREE.Color(0xb9d7dd);
   const ink = new THREE.Color(0x233047);
   const gold = new THREE.Color(0xffd54f);
   const moss = new THREE.Color(0x577f5b);
@@ -211,6 +235,8 @@ export function createHarthmereJobsBoardKioskMeshV144(
     darkStone: createHarthmereJobsBoardMaterialV146(darkStone),
     parchment: createHarthmereJobsBoardMaterialV146(parchment),
     parchmentAlt: createHarthmereJobsBoardMaterialV146(parchmentAlt),
+    warrantRed: createHarthmereJobsBoardMaterialV146(warrantRed),
+    noticeBlue: createHarthmereJobsBoardMaterialV146(noticeBlue),
     ink: createHarthmereJobsBoardMaterialV146(ink),
     gold: createHarthmereJobsBoardMaterialV146(gold),
     moss: createHarthmereJobsBoardMaterialV146(moss),
@@ -384,7 +410,7 @@ export function createHarthmereJobsBoardKioskMeshV144(
     "Jobs Board moss roof trim",
     [5.85, 0.18, 0.86],
     [0, 5.28, -0.04],
-    mats.moss,
+    mats.noticeBlue,
     "roof_trim"
   );
   addHarthmereJobsBoardBoxV146(
@@ -415,6 +441,43 @@ export function createHarthmereJobsBoardKioskMeshV144(
       "side_ribbon"
     );
   }
+
+  // Wanted-board graphic pass: jobs boards now share the same public notice
+  // board read as the farming/wanted boards in the world: mixed papers, a
+  // prominent red warrant, and a blue roof strip. Functionality remains the
+  // jobs-board proximity gate; this is purely the reusable map prop graphic.
+  addHarthmereJobsBoardBoxV146(
+    group,
+    "Jobs Board wanted graphic red warrant",
+    [0.62, 0.92, 0.065],
+    [1.42, 2.08, 0.43],
+    mats.warrantRed,
+    "wanted_board_warrant_notice"
+  );
+  addHarthmereJobsBoardBoxV146(
+    group,
+    "Jobs Board wanted graphic blue permit",
+    [0.7, 1.0, 0.06],
+    [0.74, 3.28, 0.43],
+    mats.noticeBlue,
+    "wanted_board_blue_notice"
+  );
+  addHarthmereJobsBoardBoxV146(
+    group,
+    "Jobs Board wanted graphic yellow slip",
+    [0.42, 0.32, 0.06],
+    [-1.82, 3.58, 0.43],
+    mats.gold,
+    "wanted_board_yellow_notice"
+  );
+  addHarthmereJobsBoardBoxV146(
+    group,
+    "Jobs Board wanted graphic source marker",
+    [0.08, 0.08, 0.08],
+    [0, 0.82, 2.16],
+    mats.warrantRed,
+    "wanted_board_graphic_marker"
+  ).visible = false;
 
   // Lanterns in front and behind the prop make it easy to see from both
   // approach directions around the fountain path.
@@ -502,6 +565,7 @@ export class HarthmereJobsBoardMarkerRendererV144 implements Renderer {
       (window as any).__harthmereJobsBoardMarkerDebugV144 = {
         version: HARTHMERE_JOBS_BOARD_PROCEDURAL_MARKER_VERSION_V144,
         polishVersion: HARTHMERE_JOBS_BOARD_PROCEDURAL_POLISH_VERSION_V146,
+        graphicVersion: HARTHMERE_JOBS_BOARD_WANTED_NOTICE_GRAPHIC_VERSION_V148,
         boards: () =>
           HARTHMERE_JOBS_BOARD_MARKER_LOCATIONS_V144.map((location) => ({
             id: location.id,

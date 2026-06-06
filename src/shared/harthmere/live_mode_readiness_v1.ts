@@ -64,6 +64,7 @@ export type HarthmereLiveModeActionKindV1 =
   | "request_loot_roll"
   | "request_loot_claim"
   | "request_death_transition"
+  | "request_environment_damage"
   | "request_revive"
   | "request_respawn"
   | "request_npc_ai_tick"

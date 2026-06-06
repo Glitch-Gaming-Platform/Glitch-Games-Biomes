@@ -14,6 +14,7 @@ import {
   HARTHMERE_JOBS_BOARD_FRONT_FLIP_YAW_V147,
   HARTHMERE_JOBS_BOARD_PROCEDURAL_MARKER_VERSION_V144,
   HARTHMERE_JOBS_BOARD_PROCEDURAL_POLISH_VERSION_V146,
+  HARTHMERE_JOBS_BOARD_WANTED_NOTICE_GRAPHIC_VERSION_V148,
   createHarthmereJobsBoardKioskMeshV144,
   makeHarthmereJobsBoardMarkerRendererV144,
 } from "@/client/game/renderers/local_dev/harthmere_jobs_board_marker_v144";
@@ -100,6 +101,14 @@ describe("Harthmere jobs board kiosk placements V141/V143", () => {
       mesh.userData.harthmereJobsBoardPolishVersion,
       HARTHMERE_JOBS_BOARD_PROCEDURAL_POLISH_VERSION_V146,
     );
+    assert.equal(
+      mesh.userData.harthmereJobsBoardGraphicVersion,
+      HARTHMERE_JOBS_BOARD_WANTED_NOTICE_GRAPHIC_VERSION_V148,
+    );
+    assert.equal(
+      mesh.userData.harthmereJobsBoardGraphicSource,
+      "wanted_board_notice_graphic",
+    );
 
     const box = new THREE.Box3().setFromObject(mesh);
     const size = new THREE.Vector3();
@@ -160,6 +169,9 @@ describe("Harthmere jobs board kiosk placements V141/V143", () => {
     assert.equal(partCounts.get("interaction_glow"), 1, "board should have one visible interaction glow tile");
     assert.equal(partCounts.get("animated_banner"), 1, "board should keep a lightweight animated pennant");
     assert.equal(partCounts.get("lantern_glow"), 4, "board should be readable from both fountain path directions");
+    assert.equal(partCounts.get("wanted_board_graphic_marker"), 1, "jobs boards should use the shared wanted-board notice graphic");
+    assert.equal(partCounts.get("wanted_board_warrant_notice"), 1, "wanted-board graphic should include a red warrant notice");
+    assert.equal(partCounts.get("wanted_board_blue_notice"), 1, "wanted-board graphic should include a blue pinned notice");
   });
 
   it("flips the posted face and access step onto the opposite world side", () => {
@@ -293,6 +305,29 @@ describe("Harthmere jobs board kiosk placements V141/V143", () => {
       65,
       "Harthmere Town kiosk Y must use the measured live market-district ground (65)",
     );
+  });
+
+  it("renders every physical jobs board with the shared wanted-board notice graphic", () => {
+    const renderedIds = new Set(
+      HARTHMERE_JOBS_BOARD_MARKER_LOCATIONS_V144.map((location) => location.id)
+    );
+    for (const board of HARTHMERE_JOBS_BOARD_PHYSICAL_BOARDS_V141) {
+      assert.ok(
+        renderedIds.has(board.boardId),
+        `${board.boardId} should be drawn by the jobs-board renderer, not the generic quest-object marker`
+      );
+      const location = HARTHMERE_JOBS_BOARD_MARKER_LOCATIONS_V144.find(
+        (candidate) => candidate.id === board.boardId
+      );
+      assert.equal(location?.x, board.position.x);
+      assert.equal(location?.y, board.position.y);
+      assert.equal(location?.z, board.position.z);
+      const mesh = createHarthmereJobsBoardKioskMeshV144(location!);
+      assert.equal(
+        mesh.userData.harthmereJobsBoardGraphicVersion,
+        HARTHMERE_JOBS_BOARD_WANTED_NOTICE_GRAPHIC_VERSION_V148
+      );
+    }
   });
 
   it("keeps the rendered kiosks inside the proximity gate radius (player can interact)", () => {

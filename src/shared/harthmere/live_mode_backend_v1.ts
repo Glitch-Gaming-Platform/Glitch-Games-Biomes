@@ -3,6 +3,7 @@ import type {
   HarthmereLiveModeAnySubsystemV1,
   HarthmereLiveModeAuthorityEnvelopeV1,
 } from "./live_mode_readiness_v1";
+import { fallDamageForBlocksV1 } from "@/shared/game/fall_damage_v1";
 import {
   reduceHarthmereInventoryMutationV1,
   applyHarthmereInventoryMutationResultV1,
@@ -91,6 +92,7 @@ import {
   defaultHarthmereJobsBoardStateV1,
   normalizeHarthmereJobsBoardStateV1,
   reduceHarthmereJobsBoardMutationV1,
+  type HarthmereEscortCompanionV151,
   type HarthmereJobsBoardStateV1,
 } from "./mmo_jobs_board_authority_v1";
 import { harthmereJobsBoardQuestMarkerPositionForTodoV1 } from "./jobs_board_quest_marker_positions_v1";
@@ -1076,6 +1078,14 @@ export interface HarthmereLiveModeBackendStateV1 {
         attackDamage?: number;
         /** Flat kill XP for ambient wildlife (overrides the ability xp). */
         killXp?: number;
+        escortJobId?: string;
+        escortActorId?: string;
+        escortCompanionId?: string;
+        escortDisplayName?: string;
+        escortDestination?: { x: number; y: number; z: number };
+        escortDestinationTargetId?: string;
+        escortDestinationMarkerId?: string;
+        escortStatus?: HarthmereEscortCompanionV151["status"];
       }
     >;
     npcAiTicks: Record<
@@ -5592,6 +5602,12 @@ export function createHarthmereLiveEntityCombatClientSnapshotV1(
           animationMoving: entity.animationMoving,
           facingYaw: entity.facingYaw,
           combatProtection: entity.combatProtection,
+          escortJobId: entity.escortJobId,
+          escortActorId: entity.escortActorId,
+          escortCompanionId: entity.escortCompanionId,
+          escortDisplayName: entity.escortDisplayName,
+          escortDestination: entity.escortDestination,
+          escortStatus: entity.escortStatus,
         },
       ])
     ),
@@ -5795,8 +5811,100 @@ export function createHarthmereProductionEconomyClientSnapshotFromBackendV1(
   );
   return createHarthmereProductionEconomyClientSnapshotV1(
     state.economy.production,
-    state.actorId
+    state.actorId,
+    state.classMagic.knownRecipes
   );
+}
+
+function harthmereJobsBoardLawRecordSummaryV1(
+  record: HarthmereLiveModeCrimeRecordV1
+) {
+  return {
+    id: record.id,
+    actorId: record.actorId,
+    kind: record.kind,
+    zoneId: record.zoneId,
+    factionId: record.factionId,
+    locationId: record.locationId,
+    targetId: record.targetId,
+    restrictedAreaId: record.restrictedAreaId,
+    resourceNodeId: record.resourceNodeId,
+    severity: Math.max(0, Math.trunc(Number(record.severity) || 0)),
+    valueGold: Math.max(0, Math.trunc(Number(record.valueGold) || 0)),
+    witnessLevel: record.witnessLevel,
+    witnesses: Math.max(0, Math.trunc(Number(record.witnesses) || 0)),
+    detected: Boolean(record.detected),
+    response: record.response,
+    fineGold: Math.max(0, Math.trunc(Number(record.fineGold) || 0)),
+    bountyGold: Math.max(0, Math.trunc(Number(record.bountyGold) || 0)),
+    status: record.status,
+    evidenceExpiresAtMs: Math.max(
+      0,
+      Math.trunc(Number(record.evidenceExpiresAtMs) || 0)
+    ),
+    createdAtMs: Math.max(0, Math.trunc(Number(record.createdAtMs) || 0)),
+  };
+}
+
+export function createHarthmereJobsBoardLawSummaryFromBackendV1(
+  state: HarthmereLiveModeBackendStateV1
+) {
+  const primaryStanding = liveModePrimaryStandingV1(state);
+  const activeBounties = (state.law.crimeRecords ?? [])
+    .filter(
+      (record) =>
+        (record.status === "wanted" || record.status === "arrest_pending") &&
+        Math.trunc(Number(record.bountyGold) || 0) > 0
+    )
+    .sort(
+      (a, b) =>
+        Math.max(0, Math.trunc(Number(b.bountyGold) || 0)) -
+          Math.max(0, Math.trunc(Number(a.bountyGold) || 0)) ||
+        Math.max(0, Math.trunc(Number(b.createdAtMs) || 0)) -
+          Math.max(0, Math.trunc(Number(a.createdAtMs) || 0))
+    )
+    .map(harthmereJobsBoardLawRecordSummaryV1);
+  const myActiveBounties = activeBounties.filter(
+    (record) => record.actorId === state.actorId
+  );
+  const positiveFines = Object.fromEntries(
+    Object.entries(state.law.fines ?? {})
+      .map(([factionId, value]): [string, number] => [
+        factionId,
+        Math.max(0, Math.trunc(Number(value) || 0)),
+      ])
+      .filter(([, value]) => value > 0)
+  );
+  return {
+    version: "harthmere-jobs-board-law-summary-v1",
+    actorId: state.actorId,
+    standing: {
+      scopeId: primaryStanding.scopeId,
+      ...primaryStanding.standing,
+    },
+    fines: positiveFines,
+    flags: publicLawFlagsV1(state.law.flags),
+    activeBounties,
+    myActiveBounties,
+    totalBountyGold: activeBounties.reduce(
+      (sum, record) => sum + record.bountyGold,
+      0
+    ),
+    myTotalBountyGold: myActiveBounties.reduce(
+      (sum, record) => sum + record.bountyGold,
+      0
+    ),
+    recentCrimeRecords: (state.law.crimeRecords ?? [])
+      .slice()
+      .sort(
+        (a, b) =>
+          Math.max(0, Math.trunc(Number(b.createdAtMs) || 0)) -
+          Math.max(0, Math.trunc(Number(a.createdAtMs) || 0))
+      )
+      .slice(0, 10)
+      .map(harthmereJobsBoardLawRecordSummaryV1),
+    updatedAtMs: state.updatedAtMs,
+  };
 }
 
 export function createHarthmereJobsBoardClientSnapshotFromBackendV1(
@@ -5825,6 +5933,7 @@ export function createHarthmereJobsBoardClientSnapshotFromBackendV1(
     inventoryItems: state.inventory.items,
     discoveredCollectibles: state.collections.discovered,
     myBusinesses,
+    lawSummary: createHarthmereJobsBoardLawSummaryFromBackendV1(state),
   };
 }
 
@@ -6964,6 +7073,166 @@ export function reduceHarthmereLiveModeBackendStateV1(
     return true;
   }
 
+  function escortCompanionEntityIdV151(
+    companion: HarthmereEscortCompanionV151
+  ) {
+    return String(companion.entityId);
+  }
+
+  function activeEscortCompanionCanRenderV151(
+    companion: HarthmereEscortCompanionV151
+  ) {
+    return companion.status === "following" || companion.status === "arrived";
+  }
+
+  function syncEscortCompanionCombatSnapshotV151(
+    companion: HarthmereEscortCompanionV151
+  ) {
+    const entityId = escortCompanionEntityIdV151(companion);
+    if (!activeEscortCompanionCanRenderV151(companion)) {
+      if (next.combat.entitySnapshots[entityId]) {
+        delete next.combat.entitySnapshots[entityId];
+        delete next.combat.npcAiTicks[entityId];
+        delete next.combat.liveEntityNavigation[entityId];
+        touchedModels.add("escort_companion");
+        touchedModels.add("live_entity_combat");
+      }
+      return;
+    }
+    const existing = next.combat.entitySnapshots[entityId];
+    next.combat.entitySnapshots[entityId] = {
+      hp: existing?.hp ?? 20,
+      maxHp: existing?.maxHp ?? 20,
+      position: { ...companion.position },
+      homePosition: existing?.homePosition ?? { ...companion.position },
+      isHostile: false,
+      isAlive: companion.status !== "failed",
+      isAttackable: false,
+      entityKind: "human",
+      movementSpeed: 4.4,
+      bodyRadius: 0.45,
+      patrolRadius: 0.25,
+      aggroRange: 0,
+      leashRange: 5000,
+      requiresLineOfSight: false,
+      aiEnabled: companion.status === "following",
+      animationState:
+        companion.status === "arrived"
+          ? "idle"
+          : existing?.animationState ?? "idle",
+      animationStartedAtMs: existing?.animationStartedAtMs ?? nowMs,
+      animationMoving:
+        companion.status === "arrived"
+          ? false
+          : existing?.animationMoving ?? false,
+      facingYaw: existing?.facingYaw,
+      combatProtection: "friendly_noncombatant",
+      retaliatesWhenAttacked: false,
+      escortJobId: companion.jobId,
+      escortActorId: companion.actorId,
+      escortCompanionId: companion.companionId,
+      escortDisplayName: companion.displayName,
+      escortDestination: { ...companion.destination },
+      escortDestinationTargetId: companion.destinationTargetId,
+      escortDestinationMarkerId: companion.destinationMarkerId,
+      escortStatus: companion.status,
+    };
+    touchedModels.add("escort_companion");
+    touchedModels.add("live_entity_combat");
+  }
+
+  function syncAllEscortCompanionsToCombatV151() {
+    for (const job of Object.values(next.jobsBoard.postings)) {
+      if (!job.escortCompanion) continue;
+      syncEscortCompanionCombatSnapshotV151(job.escortCompanion);
+    }
+  }
+
+  function horizontalDistanceObjectV151(
+    a: { x: number; y: number; z: number },
+    b: { x: number; y: number; z: number }
+  ) {
+    return Math.hypot(a.x - b.x, a.z - b.z);
+  }
+
+  function syncJobsBoardEscortCompanionFromSnapshotV151(
+    snapshot: HarthmereLiveModeBackendStateV1["combat"]["entitySnapshots"][string],
+    status?: HarthmereEscortCompanionV151["status"]
+  ) {
+    if (!snapshot.escortJobId) return undefined;
+    const job = next.jobsBoard.postings[snapshot.escortJobId];
+    const companion = job?.escortCompanion;
+    if (!companion) return undefined;
+    companion.position = { ...snapshot.position };
+    companion.updatedAtMs = nowMs;
+    if (status && companion.status !== status) {
+      companion.status = status;
+      if (status === "arrived") companion.arrivedAtMs = nowMs;
+      if (status === "failed") companion.failedAtMs = nowMs;
+    }
+    snapshot.escortStatus = companion.status;
+    touchedModels.add("escort_companion");
+    touchedModels.add("jobs_board_quest_todo");
+    touchedModels.add("live_entity_combat");
+    return { job, companion };
+  }
+
+  function completeArrivedEscortQuestV151(
+    snapshot: HarthmereLiveModeBackendStateV1["combat"]["entitySnapshots"][string]
+  ) {
+    if (!snapshot.escortJobId || !snapshot.escortActorId) return;
+    const job = next.jobsBoard.postings[snapshot.escortJobId];
+    if (!job || job.status !== "active") return;
+    if (job.acceptedByActorId !== snapshot.escortActorId) return;
+    const todo = Object.values(next.jobsBoard.todos).find(
+      (candidate) =>
+        candidate.jobId === job.jobId &&
+        candidate.actorId === snapshot.escortActorId &&
+        candidate.status === "active"
+    );
+    if (!todo) return;
+    const companion = job.escortCompanion;
+    if (!companion || companion.status !== "arrived") return;
+    const result = reduceHarthmereJobsBoardMutationV1(
+      next.jobsBoard,
+      {
+        requestId: `${envelope.requestId}:escort_arrived:${job.jobId}`,
+        actorId: snapshot.escortActorId,
+        nowMs,
+        operation: "complete_job_quest",
+        boardId: job.boardId,
+        jobId: job.jobId,
+        questTodoId: todo.todoId,
+        completedTargetId:
+          companion.destinationTargetId ??
+          companion.destinationMarkerId ??
+          job.targetId,
+        completionNote: "escort companion arrived",
+      } as any,
+      {
+        actorGold: next.inventory.gold,
+        actorInventoryItems: next.inventory.items,
+        actorCollectibles: next.collections.discovered,
+        actorGuildId: next.guild.memberGuildId,
+        actorPosition: snapshot.position,
+        nearbyBoardId: job.boardId,
+        economy: next.economy.production,
+      }
+    );
+    next.jobsBoard = result.jobsBoard;
+    for (const warning of result.warnings) warnings.push(warning);
+    for (const model of result.touchedModels) touchedModels.add(model);
+    for (const key of result.sharedStateKeys) sharedStateKeys.add(key);
+    if (!result.warnings.length) {
+      const questId = `jobs_board:${todo.todoId}`;
+      delete next.quests.active[questId];
+      next.quests.completed[questId] = nowMs;
+      delete next.building.inWorldMarkers[`jobs_board_marker:${todo.todoId}`];
+      touchedModels.add("building_state");
+      touchedModels.add("quest_state");
+    }
+  }
+
   function liveEntityPositionFromObjectV1(position: {
     x: number;
     y: number;
@@ -7016,6 +7285,7 @@ export function reduceHarthmereLiveModeBackendStateV1(
     const shouldChase =
       input.decision === "retaliate_to_recent_attacker" ||
       input.decision === "engage_highest_threat" ||
+      input.decision === "escort_follow_player" ||
       input.decision.startsWith("muck_unprovoked:");
     if (shouldChase && targetPosition) {
       const dx = targetPosition.x - current.x;
@@ -7074,6 +7344,7 @@ export function reduceHarthmereLiveModeBackendStateV1(
     if (!input.isAlive) return "death";
     if (!input.animationMoving) return "idle";
     if (input.decision.includes("flee")) return "flee";
+    if (input.decision === "escort_follow_player") return "run";
     if (input.movementMode === "combat_chase") {
       return input.kind === "animal" ||
         input.kind === "monster" ||
@@ -7120,6 +7391,7 @@ export function reduceHarthmereLiveModeBackendStateV1(
     const movementMode: HarthmereNpcNavigationModeV1 =
       input.decision === "retaliate_to_recent_attacker" ||
       input.decision === "engage_highest_threat" ||
+      input.decision === "escort_follow_player" ||
       input.decision.startsWith("muck_unprovoked:")
         ? "combat_chase"
         : "town_wander";
@@ -9248,6 +9520,7 @@ export function reduceHarthmereLiveModeBackendStateV1(
         }
       );
       next.jobsBoard = result.jobsBoard;
+      syncAllEscortCompanionsToCombatV151();
       if (result.economy) next.economy.production = result.economy;
       next.inventory.gold = Math.max(
         0,
@@ -9400,6 +9673,7 @@ export function reduceHarthmereLiveModeBackendStateV1(
         {
           actorGold: next.inventory.gold,
           actorInventoryItems: next.inventory.items,
+          actorKnownRecipes: next.classMagic.knownRecipes,
           actorGuildId: next.guild.memberGuildId,
           canManageGuildBusiness: (guildId: string) =>
             guildId === next.guild.memberGuildId &&
@@ -9424,6 +9698,15 @@ export function reduceHarthmereLiveModeBackendStateV1(
         result.inventoryItemDeltas
       )) {
         applyBankRecordDeltaV1(next.inventory.items, itemId, Number(delta));
+      }
+      for (const recipeId of result.newRecipeIds ?? []) {
+        if (
+          getHarthmereCraftingRecipeV1(recipeId) &&
+          !next.classMagic.knownRecipes.includes(recipeId)
+        ) {
+          next.classMagic.knownRecipes.push(recipeId);
+          touchedModels.add("known_recipes");
+        }
       }
       for (const warning of result.warnings) warnings.push(warning);
       for (const model of result.touchedModels) touchedModels.add(model);
@@ -12940,6 +13223,60 @@ export function reduceHarthmereLiveModeBackendStateV1(
       };
       touchedModels.add("death_record");
       break;
+    case "request_environment_damage": {
+      const damageKind = payloadString(envelope, "damageKind") ?? "unknown";
+      if (damageKind !== "fall") {
+        warnings.push("environment_damage_rejected:unsupported_kind");
+        touchedModels.add("environment_damage_rejection");
+        break;
+      }
+      if (
+        (next.combat.deathState ?? "alive") !== "alive" ||
+        next.combat.hp <= 0
+      ) {
+        warnings.push("environment_damage_ignored:not_alive");
+        touchedModels.add("environment_damage_rejection");
+        break;
+      }
+      if (Number(next.combat.respawnProtectionUntilMs ?? 0) > nowMs) {
+        warnings.push("environment_damage_ignored:protected");
+        touchedModels.add("environment_damage_rejection");
+        break;
+      }
+      const fallBlocks = Math.max(
+        0,
+        payloadNumber(envelope, "fallBlocks") ?? 0
+      );
+      const baseDamage = fallDamageForBlocksV1(fallBlocks);
+      if (baseDamage <= 0) {
+        warnings.push("environment_damage_ignored:below_threshold");
+        touchedModels.add("environment_damage_rejection");
+        break;
+      }
+      const scaledDamage = Math.max(
+        1,
+        Math.round((baseDamage * Math.max(1, next.combat.maxHp)) / 100)
+      );
+      next.combat.hp = Math.max(0, next.combat.hp - scaledDamage);
+      touchedModels.add("combat_state");
+      touchedModels.add("player_status");
+      touchedModels.add("environment_damage");
+      if (next.combat.hp <= 0) {
+        next.combat.deathState = "dead";
+        next.combat.deathRecords[envelope.requestId] = {
+          deathId: envelope.requestId,
+          cause: "fall_damage",
+          zoneId: envelope.zoneId,
+          atMs: nowMs,
+          respawnAvailableAtMs:
+            nowMs +
+            Math.max(0, payloadNumber(envelope, "respawnDelayMs") ?? 5_000),
+        };
+        touchedModels.add("death_state");
+        touchedModels.add("death_record");
+      }
+      break;
+    }
     case "request_revive":
       if (
         next.combat.deathState !== "dead" &&
@@ -13021,6 +13358,15 @@ export function reduceHarthmereLiveModeBackendStateV1(
       let targetId = recentAttackerStillRelevant
         ? recentAttackerId
         : storedThreatTargetId;
+      if (
+        npcSnapshot?.escortJobId &&
+        npcSnapshot.escortActorId === next.actorId &&
+        npcSnapshot.escortStatus !== "arrived" &&
+        npcSnapshot.isAlive
+      ) {
+        decision = "escort_follow_player";
+        targetId = next.actorId;
+      }
       if (recentAttackerStillRelevant && recentAttackerId) {
         next.combat.threat[recentAttackerId] = Math.max(
           next.combat.threat[recentAttackerId] ?? 0,
@@ -13078,7 +13424,7 @@ export function reduceHarthmereLiveModeBackendStateV1(
         }
       }
       const playerTargetBlockReason =
-        npcSnapshot && targetId === next.actorId
+        npcSnapshot && targetId === next.actorId && !npcSnapshot.escortJobId
           ? liveEntityAiPlayerTargetBlockReasonV1({
               npcId,
               npcSnapshot,
@@ -13120,7 +13466,7 @@ export function reduceHarthmereLiveModeBackendStateV1(
       const attack = applyLiveEntityAiPlayerAttackV1({
         npcId,
         npcSnapshot,
-        targetId,
+        targetId: npcSnapshot?.escortJobId ? undefined : targetId,
       });
       const attackSummary = playerTargetBlockReason
         ? {
@@ -13155,6 +13501,29 @@ export function reduceHarthmereLiveModeBackendStateV1(
       touchedModels.add(envelope.subsystem);
       touchedModels.add("npc_ai_state");
       if (movement) {
+        if (
+          npcSnapshot?.escortJobId &&
+          npcSnapshot.escortDestination &&
+          npcSnapshot.escortStatus !== "arrived"
+        ) {
+          if (
+            horizontalDistanceObjectV151(
+              npcSnapshot.position,
+              npcSnapshot.escortDestination
+            ) <= 3.25
+          ) {
+            npcSnapshot.position = { ...npcSnapshot.escortDestination };
+            npcSnapshot.animationState = "idle";
+            npcSnapshot.animationMoving = false;
+            syncJobsBoardEscortCompanionFromSnapshotV151(
+              npcSnapshot,
+              "arrived"
+            );
+            completeArrivedEscortQuestV151(npcSnapshot);
+          } else {
+            syncJobsBoardEscortCompanionFromSnapshotV151(npcSnapshot);
+          }
+        }
         touchedModels.add("live_entity_movement");
         touchedModels.add("live_entity_animation");
       }

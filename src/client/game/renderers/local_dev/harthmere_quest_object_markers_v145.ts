@@ -138,6 +138,7 @@ const resolvedJobsBoardQuestMarkersV145 = () => {
       (marker) =>
         !existing.has(marker.markerId) &&
         marker.source !== "live_entity_helper" &&
+        marker.source !== "business_outpost_jobs_board" &&
         !QUEST_OBJECT_MARKER_SKIP_IDS_V145.has(marker.markerId)
     )
     .map((marker) => ({

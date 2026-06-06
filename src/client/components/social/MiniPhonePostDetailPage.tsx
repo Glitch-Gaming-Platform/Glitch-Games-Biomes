@@ -27,6 +27,7 @@ import { ScreenTitleBar } from "@/client/components/system/mini_phone/split_pane
 import { SplitPaneScreen } from "@/client/components/system/mini_phone/split_pane/SplitPaneScreen";
 import { useShowingTemporaryURL } from "@/client/util/hooks";
 import { useCachedPostBundle } from "@/client/util/social_manager_hooks";
+import { miniPhonePostDetailLoadState } from "@/client/components/social/MiniPhonePostDetailState";
 import type {
   CommentPostRequest,
   CommentPostResponse,
@@ -77,6 +78,7 @@ export const MiniPhonePostDetailPage: React.FunctionComponent<{
   const [showWarpersList, setShowWarpersList] = useState(false);
   const [commentFieldValue, setCommentFieldValue] = useState("");
   const [isCommenting, setIsCommenting] = useState(false);
+  const loadState = miniPhonePostDetailLoadState(post);
 
   useEffect(() => {
     gardenHose.publish({
@@ -138,6 +140,42 @@ export const MiniPhonePostDetailPage: React.FunctionComponent<{
 
   useShowingTemporaryURL(postPublicPermalink(postId));
 
+  const moreMenuItems = [
+    {
+      label: copyLinkText,
+      onClick: () => {
+        const url = absoluteWebServerURL(postPublicPermalink(postId));
+        void navigator.clipboard.writeText(url);
+        setCopyLinkText("Copied");
+        setTimeout(() => {
+          setCopyLinkText("Copy Link to Post");
+          setShowMore(false);
+        }, 500);
+      },
+    },
+    ...(post
+      ? [
+          post.userId === userId
+            ? {
+                label: "Delete",
+                type: "destructive" as const,
+                onClick: () => {
+                  setShowDeleteMenu(true);
+                  setShowMore(false);
+                },
+              }
+            : {
+                label: "Report",
+                type: "destructive" as const,
+                onClick: () => {
+                  setShowReportMenu(true);
+                  setShowMore(false);
+                },
+              },
+        ]
+      : []),
+  ];
+
   return (
     <SplitPaneScreen>
       <ScreenTitleBar title="Photo">
@@ -147,11 +185,18 @@ export const MiniPhonePostDetailPage: React.FunctionComponent<{
       </ScreenTitleBar>
 
       <LeftPane>
-        {!post ? (
+        {loadState === "loading" ? (
           <>
             <MaybeError error={error} />
             Loading
           </>
+        ) : loadState === "missing" ? (
+          <div className="padded-view">
+            <MaybeError error={error} />
+            <div className="description">
+              This photo is no longer available.
+            </div>
+          </div>
         ) : (
           <>
             <div className="padded-view">
@@ -283,8 +328,10 @@ export const MiniPhonePostDetailPage: React.FunctionComponent<{
         </PaneActionSheet>
       </LeftPane>
       <RightPane type="center">
-        {!post ? (
+        {loadState === "loading" ? (
           <>Loading...</>
+        ) : loadState === "missing" ? (
+          <div className="description">Photo unavailable</div>
         ) : (
           <Img
             src={imageUrlForSize("big", post.imageUrls)}
@@ -293,42 +340,7 @@ export const MiniPhonePostDetailPage: React.FunctionComponent<{
         )}
       </RightPane>
 
-      <MiniPhoneScreenMoreMenu
-        items={[
-          {
-            label: copyLinkText,
-            onClick: () => {
-              if (post) {
-                const url = absoluteWebServerURL(postPublicPermalink(post.id));
-                void navigator.clipboard.writeText(url);
-                setCopyLinkText("Copied");
-                setTimeout(() => {
-                  setCopyLinkText("Copy Link to Post");
-                  setShowMore(false);
-                }, 500);
-              }
-            },
-          },
-          post?.userId !== userId
-            ? {
-                label: "Delete",
-                type: "destructive",
-                onClick: () => {
-                  setShowDeleteMenu(true);
-                  setShowMore(false);
-                },
-              }
-            : {
-                label: "Report",
-                type: "destructive",
-                onClick: () => {
-                  setShowReportMenu(true);
-                  setShowMore(false);
-                },
-              },
-        ]}
-        showing={showMore}
-      />
+      <MiniPhoneScreenMoreMenu items={moreMenuItems} showing={showMore} />
       {showDeleteMenu && (
         <MiniPhoneSubModal
           onDismissal={() => {

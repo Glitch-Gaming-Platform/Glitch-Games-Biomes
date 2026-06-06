@@ -52,6 +52,7 @@ import {
   buildHarthmereLiveEntityProductionSeedChangesV1,
   harthmereLiveEntityProductionSeedIdsV1,
 } from "@/server/harthmere/live_entity_ecs_seed_v1";
+import { harthmereSharedLiveCreatureRespawnRegistryV1 } from "@/shared/harthmere/live_creature_respawn_registry_v1";
 import {
   buildHarthmereGroveRaceMinigameSeedChangesV1,
   harthmereGroveRaceMinigameSeedIdsV1,
@@ -6164,6 +6165,13 @@ function makeLocalDevMiniWorldChanges(
       tick,
       nowSeconds: secondsSinceEpoch(),
       existingIds,
+      // Leave recently-killed muckers/animals dead until their respawn window
+      // (30-60 min) elapses, instead of re-creating them on the next tick.
+      isRespawnSuppressed: (id) =>
+        harthmereSharedLiveCreatureRespawnRegistryV1().isSuppressed(
+          id,
+          Date.now()
+        ),
     }
   );
   const groveRaceSeedChanges = buildHarthmereGroveRaceMinigameSeedChangesV1({

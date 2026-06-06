@@ -62,6 +62,7 @@ import {
 } from "../adapters/farmingFoodInterfaceAdapter";
 import {
   biomesUIPlayerStatusEndpointV146,
+  biomesUIPlayerStatusGameplayActiveForTest,
   biomesUIVitalsCombatResourceDisplayForTest,
   biomesUIVitalsDisplayFromLiveStatusForTest,
   formatBiomesResourceLabelForVitalsForTest,
@@ -431,6 +432,29 @@ describe("Biomes UI progression tabs", () => {
       biomesUIPlayerStatusEndpointV146("?installId=install with spaces"),
       "/api/harthmere/live_mode_player_status_state?install_id=install%20with%20spaces"
     );
+  });
+
+  it("treats visible Harthmere gameplay as active even when pointer lock is released", () => {
+    const previousDocument = (globalThis as any).document;
+    try {
+      (globalThis as any).document = {
+        visibilityState: "visible",
+        pointerLockElement: null,
+        documentElement: { dataset: {} },
+      };
+      assert.equal(biomesUIPlayerStatusGameplayActiveForTest(), true);
+
+      (
+        globalThis as any
+      ).document.documentElement.dataset.harthmereWakeUpActive = "true";
+      assert.equal(biomesUIPlayerStatusGameplayActiveForTest(), false);
+    } finally {
+      if (previousDocument === undefined) {
+        delete (globalThis as any).document;
+      } else {
+        (globalThis as any).document = previousDocument;
+      }
+    }
   });
 
   it("formats non-mana class resources for the HUD", () => {

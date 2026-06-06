@@ -11,13 +11,16 @@ import {
 import { validateHarthmereCombatAIReadinessV1 } from "../third_party_combat_ai_v1";
 
 const NOW_MS = 1_700_000_000_000;
+const NIGHT_NOW_MS = NOW_MS + 2_800_000;
 
 describe("muck_monster_aggression_ai_v1", () => {
   it("uses the production combat AI readiness stack for Muck creatures", () => {
     const readiness = validateHarthmereCombatAIReadinessV1();
     assert.equal(readiness.ok, true);
     assert.ok(readiness.productionReadiness.includes("intent_only_ai"));
-    assert.ok(readiness.productionReadiness.includes("server_authoritative_validation"));
+    assert.ok(
+      readiness.productionReadiness.includes("server_authoritative_validation")
+    );
     assert.equal(isMuckMonsterNameV1("Muck-Scarred Helix"), true);
     assert.equal(isMuckMonsterNameV1("West Breach Shield Robot"), false);
     assert.equal(isMuckMonsterNameV1("Mucked Restoro Bot"), false);
@@ -30,7 +33,7 @@ describe("muck_monster_aggression_ai_v1", () => {
       monsterName: "Mossy Muckling",
       monsterPosition: [332, 54, -390],
       playerPosition: [334, 54, -391],
-      nowMs: NOW_MS,
+      nowMs: NIGHT_NOW_MS,
     });
     assert.equal(result.aggressive, true);
     assert.equal(result.reason, "player_entered_muck_territory");
@@ -41,13 +44,29 @@ describe("muck_monster_aggression_ai_v1", () => {
     assert.equal(result.decision?.targetId, "player");
   });
 
+  it("does not start unprovoked aggression during the day", () => {
+    const result = evaluateMuckMonsterAggressionV1({
+      monsterId: "muckling-daylight",
+      monsterName: "Mossy Muckling",
+      monsterPosition: [332, 54, -390],
+      playerPosition: [334, 54, -391],
+      nowMs: NOW_MS,
+    });
+    assert.equal(result.aggressive, false);
+    assert.equal(result.reason, "daylight_blocks_unprovoked_muck_aggression");
+  });
+
   it("warns but does not aggro outside the small unprovoked radius", () => {
     const result = evaluateMuckMonsterAggressionV1({
       monsterId: "mucker-002",
       monsterName: "Old Wood Mucker",
       monsterPosition: [640, 54, -455],
-      playerPosition: [640 + MUCK_MONSTER_UNPROVOKED_AGGRO_RADIUS_V1 + 2, 54, -455],
-      nowMs: NOW_MS,
+      playerPosition: [
+        640 + MUCK_MONSTER_UNPROVOKED_AGGRO_RADIUS_V1 + 2,
+        54,
+        -455,
+      ],
+      nowMs: NIGHT_NOW_MS,
     });
     assert.equal(result.aggressive, false);
     assert.equal(result.reason, "outside_unprovoked_aggro_radius");
@@ -61,7 +80,7 @@ describe("muck_monster_aggression_ai_v1", () => {
       monsterPosition: [332, 54, -390],
       playerPosition: [333, 54, -390],
       safeZone: true,
-      nowMs: NOW_MS,
+      nowMs: NIGHT_NOW_MS,
     });
     assert.equal(protectedResult.aggressive, false);
     assert.equal(
@@ -75,7 +94,7 @@ describe("muck_monster_aggression_ai_v1", () => {
       monsterPosition: [332, 54, -390],
       playerPosition: [333, 54, -390],
       spawnProtected: true,
-      nowMs: NOW_MS,
+      nowMs: NIGHT_NOW_MS,
     });
     assert.equal(spawnProtected.aggressive, false);
     assert.equal(
@@ -108,7 +127,7 @@ describe("muck_monster_aggression_ai_v1", () => {
       monsterPosition: [232, 54, -506],
       playerPosition: [234, 54, -507],
       monsterHpPercent: 0.42,
-      nowMs: NOW_MS,
+      nowMs: NIGHT_NOW_MS,
     });
     assert.equal(result.aggressive, true);
     assert.equal(result.archetypeId, "boss_phase_controller");

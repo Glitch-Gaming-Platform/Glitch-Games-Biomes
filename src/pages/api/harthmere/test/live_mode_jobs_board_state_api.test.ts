@@ -79,6 +79,62 @@ describe("live_mode_jobs_board_state API route integration", () => {
     );
   });
 
+  it("includes active law bounties in the jobs-board snapshot for wanted boards", async () => {
+    const backend = defaultHarthmereLiveModeBackendStateV1(ACTOR, NOW_MS);
+    backend.law.standing.city_guard = {
+      likeability: -10,
+      legal: -500,
+      notoriety: 850,
+      notorietyFloor: 0,
+    };
+    backend.law.fines.city_guard = 35;
+    backend.law.crimeRecords.push({
+      id: "wanted_crime_api_1",
+      actorId: ACTOR,
+      kind: "murder",
+      zoneId: "harthmere_market",
+      factionId: "city_guard",
+      itemIds: [],
+      severity: 900,
+      valueGold: 600,
+      witnessLevel: "witnessed",
+      witnesses: 2,
+      detected: true,
+      detectionScore: 100,
+      response: "combat",
+      fineGold: 0,
+      bountyGold: 900,
+      confiscatedItemIds: [],
+      evidenceExpiresAtMs: NOW_MS + 86_400_000,
+      status: "wanted",
+      createdAtMs: NOW_MS,
+    });
+    const redis = {
+      primary: {
+        get: async (key: string) =>
+          key === harthmereLiveModePlayerStateKeyV1(ACTOR)
+            ? JSON.stringify(backend)
+            : null,
+      },
+    };
+
+    const snapshot = await readHarthmereLiveModeJobsBoardStateForActorV1({
+      redis,
+      actorId: ACTOR,
+      nowMs: NOW_MS,
+    });
+
+    assert.equal((snapshot as any).lawSummary.actorId, ACTOR);
+    assert.equal((snapshot as any).lawSummary.standing.legal, -500);
+    assert.equal((snapshot as any).lawSummary.fines.city_guard, 35);
+    assert.equal((snapshot as any).lawSummary.activeBounties.length, 1);
+    assert.equal(
+      (snapshot as any).lawSummary.activeBounties[0].id,
+      "wanted_crime_api_1"
+    );
+    assert.equal((snapshot as any).lawSummary.totalBountyGold, 900);
+  });
+
   it("uses one Redis MGET for actor and shared jobs-board state when available", async () => {
     const backend = defaultHarthmereLiveModeBackendStateV1(ACTOR, NOW_MS);
     const mgetCalls: string[][] = [];

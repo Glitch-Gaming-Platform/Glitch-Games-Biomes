@@ -90,6 +90,40 @@ describe("Inventory", () => {
       assert.ok(tommy.inventory!.items[1]?.item.id === BikkieIds.dirt);
     });
 
+    it("should move backpack items into hotbar slots", async () => {
+      setItemAtSlotIndex(
+        logic.world,
+        tommyd.id,
+        countOf(BikkieIds.dirt, undefined, 12n),
+        0
+      );
+
+      await logic.publish(
+        new GameEvent(
+          tommyd.id,
+          new InventorySwapEvent({
+            src_id: tommyd.id,
+            src: {
+              kind: "item",
+              idx: 0,
+            },
+            dst_id: tommyd.id,
+            dst: {
+              kind: "hotbar",
+              idx: 2,
+            },
+            player_id: tommyd.id,
+          })
+        )
+      );
+
+      const newTommy = logic.world.table.get(tommyd.id);
+      ok(newTommy);
+      assert.ok(newTommy.inventory!.items[0] === undefined);
+      assert.ok(newTommy.inventory!.hotbar[2]?.count === 12n);
+      assert.ok(newTommy.inventory!.hotbar[2]?.item.id === BikkieIds.dirt);
+    });
+
     it("shouldn't work between crazy slots", async () => {
       setItemAtSlotIndex(
         logic.world,

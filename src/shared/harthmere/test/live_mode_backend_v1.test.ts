@@ -52,6 +52,7 @@ import {
   buildHarthmereLiveModePersistenceMutationPlanV1,
   validateHarthmereLiveModeReadinessV1,
 } from "@/shared/harthmere/live_mode_readiness_v1";
+import { fallDamageForBlocksV1 } from "@/shared/game/fall_damage_v1";
 import {
   HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1,
   HARTHMERE_JOBS_BOARD_HARTHMERE_BOARD_ID_V141,
@@ -93,6 +94,7 @@ import {
 } from "@/shared/harthmere/building_system_v1";
 import { createHarthmereLiveEntityCombatSnapshotsFromEcsRecordsV1 } from "@/shared/harthmere/live_entity_ecs_bridge_v1";
 import { HARTHMERE_VOXEL_INTERACTION_ATTACK_REACH_UNITS_V1 } from "@/shared/harthmere/combat_reach_v1";
+import { HARTHMERE_RECIPE_BOOKS_V1 } from "../harthmere_recipe_books_v1";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -910,6 +912,74 @@ describe("parseHarthmereLiveModeBackendStateV1", function () {
     );
   });
 
+  it("learns recipes from a one-time business storefront recipe book purchase", function () {
+    const book = HARTHMERE_RECIPE_BOOKS_V1.find(
+      (entry) => entry.businessType === "weapons_tools"
+    )!;
+    let state = freshState();
+    state.inventory.gold = 50_000;
+    state.classMagic.knownRecipes = state.classMagic.knownRecipes.filter(
+      (recipeId) => !book.recipeIds.includes(recipeId)
+    );
+    addOpenProductionBusiness(state, "business_weapons_books", {
+      typeId: book.businessType,
+      marker: [100, 65, 100],
+    });
+
+    const bought = applyOne(
+      state,
+      "request_economy_mutation",
+      {
+        operation: "buy_storefront_good",
+        businessId: "business_weapons_books",
+        itemId: book.itemId,
+        count: 1,
+      },
+      {
+        subsystem: "economy",
+        serverActorPosition: { x: 100, y: 65, z: 100 },
+      }
+    );
+    assert.deepEqual(
+      bought.summary.warnings.filter((warning) =>
+        warning.startsWith("economy_rejected")
+      ),
+      []
+    );
+    for (const recipeId of book.recipeIds) {
+      assert.ok(
+        bought.state.classMagic.knownRecipes.includes(recipeId),
+        `${recipeId} should be learned`
+      );
+    }
+    assert.equal(
+      bought.state.inventory.items[book.itemId] ?? 0,
+      0,
+      "recipe books unlock recipes immediately instead of entering inventory"
+    );
+
+    const repeat = applyOne(
+      bought.state,
+      "request_economy_mutation",
+      {
+        operation: "buy_storefront_good",
+        businessId: "business_weapons_books",
+        itemId: book.itemId,
+        count: 1,
+      },
+      {
+        subsystem: "economy",
+        serverActorPosition: { x: 100, y: 65, z: 100 },
+      }
+    );
+    assert.ok(
+      repeat.summary.warnings.includes(
+        "economy_rejected:recipe_book_already_learned"
+      ),
+      JSON.stringify(repeat.summary.warnings)
+    );
+  });
+
   it("accepts business customer sessions through a server-known interaction marker payload", function () {
     const state = freshState();
     addOpenProductionBusiness(state, "business_clinic_marker_payload", {
@@ -1173,6 +1243,55 @@ describe("reduceHarthmereLiveModeBackendStateV1 — death lifecycle", function (
       Object.values(state.combat.deathRecords).some(
         (record) => record.cause === "fall"
       )
+    );
+  });
+
+  it("request_environment_damage applies canonical fall damage to live player status", function () {
+    const s = freshState();
+    s.combat.hp = 240;
+    s.combat.maxHp = 240;
+
+    const { state, summary } = applyOne(s, "request_environment_damage", {
+      damageKind: "fall",
+      fallBlocks: 20,
+    });
+    const expectedDamage = Math.max(
+      1,
+      Math.round((fallDamageForBlocksV1(20) * 240) / 100)
+    );
+
+    assert.strictEqual(state.combat.hp, 240 - expectedDamage);
+    assert.strictEqual(state.combat.deathState, "alive");
+    assert.ok(summary.touchedModels.includes("environment_damage"));
+    assert.ok(summary.touchedModels.includes("player_status"));
+    assert.strictEqual(
+      createHarthmereLiveModePlayerStatusClientSnapshotV1(state).combat.hp,
+      state.combat.hp
+    );
+  });
+
+  it("request_environment_damage records death when fall damage is fatal", function () {
+    const s = freshState();
+    s.combat.hp = 20;
+    s.combat.maxHp = 100;
+
+    const { state } = applyOne(
+      s,
+      "request_environment_damage",
+      {
+        damageKind: "fall",
+        fallBlocks: 20,
+      },
+      {
+        requestId: "fatal_fall_damage",
+      }
+    );
+
+    assert.strictEqual(state.combat.hp, 0);
+    assert.strictEqual(state.combat.deathState, "dead");
+    assert.strictEqual(
+      state.combat.deathRecords.fatal_fall_damage.cause,
+      "fall_damage"
     );
   });
 
@@ -5424,7 +5543,10 @@ describe("reduceHarthmereLiveModeBackendStateV1 — farming", function () {
     // Shifted-world deposits render their ore at terrainPosition (X - 512), which is where
     // the player physically stands. Proximity must accept that coordinate; previously only
     // deposit.position was checked, leaving every shifted-cave deposit un-mineable.
-    assert.ok(deposit.terrainPosition, "expected a shifted deposit with a terrainPosition");
+    assert.ok(
+      deposit.terrainPosition,
+      "expected a shifted deposit with a terrainPosition"
+    );
     const payload = {
       operation: "mine_exotic_matter_deposit",
       depositId: deposit.depositId,
@@ -6694,13 +6816,199 @@ describe("reduceHarthmereLiveModeBackendStateV1 — physical jobs board and live
     assert.equal(Object.values(state.jobsBoard.todos)[0]?.actorId, ACTOR);
   });
 
+  function addOpenEscortJob(state: HarthmereLiveModeBackendStateV1) {
+    state.jobsBoard.postings.job_escort_newcomer = {
+      jobId: "job_escort_newcomer",
+      boardId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1,
+      issuerKind: "town",
+      issuerId: "harthmere_grove",
+      title: "Escort a Newcomer to the Road Post",
+      description: "Walk a newcomer to the road post.",
+      kind: "escort",
+      requirements: [
+        {
+          serviceKind: "escort",
+          serviceUnits: 1,
+          targetId: "old_grove_road_post",
+          targetName: "Road Post",
+          mapMarkerId: "old_grove_road_post",
+        },
+      ],
+      rewardGold: 91,
+      escrowGold: 91,
+      reputationDelta: 1,
+      status: "open",
+      townId: "harthmere_grove",
+      regionId: "harthmere_grove_region",
+      createdAtMs: NOW_MS,
+      deadlineAtMs: NOW_MS + 86_400_000,
+      failurePenaltyGold: 0,
+      requiresFieldWork: true,
+      mapMarkerId: "old_grove_road_post",
+      targetId: "old_grove_road_post",
+      abuseFlags: [],
+      logs: [],
+    } as any;
+  }
+
+  it("accepting an escort job spawns a friendly human companion next to the actor", function () {
+    const s = freshState();
+    const actorPosition = {
+      x: 501.99486179104775,
+      y: 70,
+      z: -132.00350672753194,
+    };
+    addOpenEscortJob(s);
+    const { state, summary } = applyOne(
+      s,
+      "request_jobs_board_mutation",
+      {
+        operation: "accept_job",
+        boardId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1,
+        jobId: "job_escort_newcomer",
+      },
+      {
+        subsystem: "jobs",
+        targetId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1,
+        serverActorPosition: actorPosition,
+      }
+    );
+    assert.deepEqual(summary.warnings, []);
+    const companion =
+      state.jobsBoard.postings.job_escort_newcomer.escortCompanion;
+    assert.ok(companion, "accepted escort should create companion metadata");
+    const snapshot = state.combat.entitySnapshots[String(companion!.entityId)];
+    assert.ok(snapshot, "accepted escort should create a live entity snapshot");
+    assert.equal(snapshot.entityKind, "human");
+    assert.equal(snapshot.isHostile, false);
+    assert.equal(snapshot.isAttackable, false);
+    assert.equal(snapshot.combatProtection, "friendly_noncombatant");
+    assert.equal(snapshot.escortActorId, ACTOR);
+    assert.ok(
+      Math.hypot(
+        snapshot.position.x - actorPosition.x,
+        snapshot.position.z - actorPosition.z
+      ) < 2
+    );
+  });
+
+  it("escort companion AI follows the actor coordinates and animates as moving", function () {
+    let s = freshState();
+    addOpenEscortJob(s);
+    ({ state: s } = applyOne(
+      s,
+      "request_jobs_board_mutation",
+      {
+        operation: "accept_job",
+        boardId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1,
+        jobId: "job_escort_newcomer",
+      },
+      {
+        subsystem: "jobs",
+        targetId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1,
+        serverActorPosition: {
+          x: 501.99486179104775,
+          y: 70,
+          z: -132.00350672753194,
+        },
+      }
+    ));
+    const companion = s.jobsBoard.postings.job_escort_newcomer.escortCompanion!;
+    const before = {
+      ...s.combat.entitySnapshots[String(companion.entityId)].position,
+    };
+    ({ state: s } = applyOne(
+      s,
+      "request_npc_ai_tick",
+      { npcId: String(companion.entityId), thinkIntervalMs: 1000 },
+      {
+        subsystem: "npc_ai",
+        targetId: String(companion.entityId),
+        serverActorPosition: { x: before.x + 12, y: before.y, z: before.z },
+      }
+    ));
+    const tick = s.combat.npcAiTicks[String(companion.entityId)];
+    const after = s.combat.entitySnapshots[String(companion.entityId)];
+    assert.equal(tick.decision, "escort_follow_player");
+    assert.equal(tick.targetId, ACTOR);
+    assert.equal(tick.movementMode, "combat_chase");
+    assert.equal(tick.animationState, "run");
+    assert.equal(tick.animationMoving, true);
+    assert.ok(after.position.x > before.x, "escort should step toward actor x");
+    assert.equal(
+      s.jobsBoard.postings.job_escort_newcomer.escortCompanion!.position.x,
+      after.position.x
+    );
+  });
+
+  it("escort arrival completes the quest objective and removes its active marker", function () {
+    let s = freshState();
+    addOpenEscortJob(s);
+    ({ state: s } = applyOne(
+      s,
+      "request_jobs_board_mutation",
+      {
+        operation: "accept_job",
+        boardId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1,
+        jobId: "job_escort_newcomer",
+      },
+      {
+        subsystem: "jobs",
+        targetId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1,
+        serverActorPosition: {
+          x: 501.99486179104775,
+          y: 70,
+          z: -132.00350672753194,
+        },
+      }
+    ));
+    const companion = s.jobsBoard.postings.job_escort_newcomer.escortCompanion!;
+    const target = harthmereJobsBoardQuestMarkerPositionForIdV1(
+      "old_grove_road_post"
+    )!;
+    s.combat.entitySnapshots[String(companion.entityId)].position = {
+      x: target.position[0] - 1,
+      y: target.position[1],
+      z: target.position[2],
+    };
+    const todo = Object.values(s.jobsBoard.todos)[0];
+    assert.ok(s.building.inWorldMarkers[`jobs_board_marker:${todo.todoId}`]);
+    ({ state: s } = applyOne(
+      s,
+      "request_npc_ai_tick",
+      { npcId: String(companion.entityId), thinkIntervalMs: 1000 },
+      {
+        subsystem: "npc_ai",
+        targetId: String(companion.entityId),
+        serverActorPosition: {
+          x: target.position[0],
+          y: target.position[1],
+          z: target.position[2],
+        },
+      }
+    ));
+    assert.equal(
+      s.jobsBoard.postings.job_escort_newcomer.escortCompanion!.status,
+      "arrived"
+    );
+    assert.equal(Object.values(s.jobsBoard.todos)[0].status, "completed");
+    assert.equal(
+      s.building.inWorldMarkers[`jobs_board_marker:${todo.todoId}`],
+      undefined
+    );
+    assert.equal(s.quests.active[`jobs_board:${todo.todoId}`], undefined);
+    assert.equal(s.quests.completed[`jobs_board:${todo.todoId}`], NOW_MS);
+  });
+
   it("places accepted jobs board quest markers at their resolved world target instead of a placeholder", function () {
     const s = freshState();
-    const target =
-      harthmereJobsBoardQuestMarkerPositionForIdV1(
-        HARTHMERE_JOBS_BOARD_ELITE_MUCKER_BOUNTY_MARKER_ID_V1
-      );
-    assert.ok(target, "expected Elite Mucker bounty to resolve as a quest marker");
+    const target = harthmereJobsBoardQuestMarkerPositionForIdV1(
+      HARTHMERE_JOBS_BOARD_ELITE_MUCKER_BOUNTY_MARKER_ID_V1
+    );
+    assert.ok(
+      target,
+      "expected Elite Mucker bounty to resolve as a quest marker"
+    );
     s.jobsBoard.postings.job_muck_hunt = {
       jobId: "job_muck_hunt",
       boardId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1,
@@ -7573,48 +7881,121 @@ describe("reduceHarthmereLiveModeBackendStateV1 — cross-actor auction", functi
 
   it("pays the seller and de-escrows the item when a different player settles", function () {
     const { sellerState, listingId } = sellerWithListing();
-    assert.equal(sellerState.inventory.escrow.iron_sword, 1, "item must be escrowed after post");
+    assert.equal(
+      sellerState.inventory.escrow.iron_sword,
+      1,
+      "item must be escrowed after post"
+    );
 
     // The listing reaches the shared marketplace; a buyer in a separate backend sees it.
-    const shared = createHarthmereLiveModeSharedWorldStateV1(sellerState, NOW_MS);
-    assert.ok(shared.auctionListings[listingId], "listing must publish to shared marketplace");
+    const shared = createHarthmereLiveModeSharedWorldStateV1(
+      sellerState,
+      NOW_MS
+    );
+    assert.ok(
+      shared.auctionListings[listingId],
+      "listing must publish to shared marketplace"
+    );
     let buyer = defaultHarthmereLiveModeBackendStateV1("auction_buyer", NOW_MS);
     buyer.inventory.gold = 1000;
-    buyer = mergeHarthmereLiveModeSharedWorldStateIntoBackendV1(buyer, shared, NOW_MS);
-    assert.ok(buyer.economy.auctionListings[listingId], "buyer must see the shared listing");
-
-    const settled = applyOne(buyer, "request_auction_settle", { listingId }, { actorId: "auction_buyer" });
-    assert.deepEqual(
-      settled.summary.warnings.filter((w) => w.startsWith("auction_settle_rejected")),
-      [],
+    buyer = mergeHarthmereLiveModeSharedWorldStateIntoBackendV1(
+      buyer,
+      shared,
+      NOW_MS
     );
-    assert.equal(settled.state.inventory.items.iron_sword, 1, "buyer receives the item");
-    assert.equal(settled.state.inventory.gold, 900, "buyer pays the full price");
+    assert.ok(
+      buyer.economy.auctionListings[listingId],
+      "buyer must see the shared listing"
+    );
+
+    const settled = applyOne(
+      buyer,
+      "request_auction_settle",
+      { listingId },
+      { actorId: "auction_buyer" }
+    );
+    assert.deepEqual(
+      settled.summary.warnings.filter((w) =>
+        w.startsWith("auction_settle_rejected")
+      ),
+      []
+    );
+    assert.equal(
+      settled.state.inventory.items.iron_sword,
+      1,
+      "buyer receives the item"
+    );
+    assert.equal(
+      settled.state.inventory.gold,
+      900,
+      "buyer pays the full price"
+    );
 
     // The seller collects the proceeds on their next sync.
     const sellerGoldBefore = sellerState.inventory.gold;
-    const shared2 = createHarthmereLiveModeSharedWorldStateV1(settled.state, NOW_MS);
-    const paid = mergeHarthmereLiveModeSharedWorldStateIntoBackendV1(sellerState, shared2, NOW_MS);
-    assert.ok(paid.inventory.gold > sellerGoldBefore, "seller must be paid the sale proceeds");
-    assert.equal(paid.inventory.items.iron_sword ?? 0, 0, "sold item leaves the seller inventory");
-    assert.equal(paid.inventory.escrow.iron_sword ?? 0, 0, "sold item leaves the seller escrow");
+    const shared2 = createHarthmereLiveModeSharedWorldStateV1(
+      settled.state,
+      NOW_MS
+    );
+    const paid = mergeHarthmereLiveModeSharedWorldStateIntoBackendV1(
+      sellerState,
+      shared2,
+      NOW_MS
+    );
+    assert.ok(
+      paid.inventory.gold > sellerGoldBefore,
+      "seller must be paid the sale proceeds"
+    );
+    assert.equal(
+      paid.inventory.items.iron_sword ?? 0,
+      0,
+      "sold item leaves the seller inventory"
+    );
+    assert.equal(
+      paid.inventory.escrow.iron_sword ?? 0,
+      0,
+      "sold item leaves the seller escrow"
+    );
 
     // Idempotent: a second sync of the same payout must NOT pay twice.
     const goldAfterFirst = paid.inventory.gold;
-    const paidAgain = mergeHarthmereLiveModeSharedWorldStateIntoBackendV1(paid, shared2, NOW_MS);
-    assert.equal(paidAgain.inventory.gold, goldAfterFirst, "payout must be delivered exactly once");
+    const paidAgain = mergeHarthmereLiveModeSharedWorldStateIntoBackendV1(
+      paid,
+      shared2,
+      NOW_MS
+    );
+    assert.equal(
+      paidAgain.inventory.gold,
+      goldAfterFirst,
+      "payout must be delivered exactly once"
+    );
   });
 
   it("releases escrow when the seller cancels their own active listing", function () {
     const { sellerState, listingId } = sellerWithListing();
-    const cancelled = applyOne(sellerState, "request_auction_cancel", { listingId });
+    const cancelled = applyOne(sellerState, "request_auction_cancel", {
+      listingId,
+    });
     assert.deepEqual(
-      cancelled.summary.warnings.filter((w) => w.startsWith("auction_cancel_rejected")),
-      [],
+      cancelled.summary.warnings.filter((w) =>
+        w.startsWith("auction_cancel_rejected")
+      ),
+      []
     );
-    assert.equal(cancelled.state.economy.auctionListings[listingId].status, "cancelled");
-    assert.equal(cancelled.state.inventory.escrow.iron_sword ?? 0, 0, "escrow released on cancel");
-    assert.equal(cancelled.state.inventory.items.iron_sword, 1, "item is tradeable again");
+    assert.equal(
+      cancelled.state.economy.auctionListings[listingId].status,
+      "cancelled"
+    );
+    assert.equal(
+      cancelled.state.inventory.escrow.iron_sword ?? 0,
+      0,
+      "escrow released on cancel"
+    );
+    assert.equal(
+      cancelled.state.inventory.items.iron_sword,
+      1,
+      "item is tradeable again"
+    );
   });
 
   it("expires due listings and lets the seller recover the escrowed item", function () {
@@ -7623,22 +8004,39 @@ describe("reduceHarthmereLiveModeBackendStateV1 — cross-actor auction", functi
     const expired = reduceHarthmereLiveModeBackendStateV1(
       sellerState,
       makeEnvelope("request_auction_expire", {}),
-      future,
+      future
     );
-    assert.equal(expired.state.economy.auctionListings[listingId].status, "expired");
-    assert.equal(expired.state.inventory.escrow.iron_sword, 1, "escrow stays locked until recovery");
+    assert.equal(
+      expired.state.economy.auctionListings[listingId].status,
+      "expired"
+    );
+    assert.equal(
+      expired.state.inventory.escrow.iron_sword,
+      1,
+      "escrow stays locked until recovery"
+    );
 
     const recovered = reduceHarthmereLiveModeBackendStateV1(
       expired.state,
       makeEnvelope("request_auction_recover", { listingId }),
-      future,
+      future
     );
     assert.deepEqual(
-      recovered.summary.warnings.filter((w) => w.startsWith("auction_recover_rejected")),
-      [],
+      recovered.summary.warnings.filter((w) =>
+        w.startsWith("auction_recover_rejected")
+      ),
+      []
     );
-    assert.equal(recovered.state.inventory.escrow.iron_sword ?? 0, 0, "escrow released on recover");
-    assert.equal(recovered.state.inventory.items.iron_sword, 1, "item returns to the seller");
+    assert.equal(
+      recovered.state.inventory.escrow.iron_sword ?? 0,
+      0,
+      "escrow released on recover"
+    );
+    assert.equal(
+      recovered.state.inventory.items.iron_sword,
+      1,
+      "item returns to the seller"
+    );
   });
 });
 
@@ -7647,7 +8045,10 @@ describe("reduceHarthmereLiveModeBackendStateV1 — cross-actor auction", functi
 // ===========================================================================
 
 describe("reduceHarthmereLiveModeBackendStateV1 — enforced fines + bounty clearing", function () {
-  function commitTheft(state: ReturnType<typeof freshState>, zoneId = "harthmere_market") {
+  function commitTheft(
+    state: ReturnType<typeof freshState>,
+    zoneId = "harthmere_market"
+  ) {
     return applyOne(
       state,
       "request_law_reputation_mutation",
@@ -7669,11 +8070,14 @@ describe("reduceHarthmereLiveModeBackendStateV1 — enforced fines + bounty clea
     s.inventory.items.stolen_relic = 1;
     s.inventory.gold = 5000;
     const { state } = commitTheft(s);
-    assert.ok(state.inventory.gold < 5000, "fine must be deducted from the wallet");
+    assert.ok(
+      state.inventory.gold < 5000,
+      "fine must be deducted from the wallet"
+    );
     assert.equal(
       state.law.fines.city_guard ?? 0,
       0,
-      "a fully-payable fine leaves no outstanding debt",
+      "a fully-payable fine leaves no outstanding debt"
     );
   });
 
@@ -7686,9 +8090,19 @@ describe("reduceHarthmereLiveModeBackendStateV1 — enforced fines + bounty clea
     assert.ok(debt > 0, "an unpayable fine accrues as debt");
 
     fined.state.inventory.gold = debt + 100;
-    const paid = applyOne(fined.state, "request_pay_fine", { factionId: "city_guard" });
-    assert.equal(paid.state.law.fines.city_guard ?? 0, 0, "fine debt cleared after payment");
-    assert.equal(paid.state.inventory.gold, 100, "wallet charged exactly the outstanding debt");
+    const paid = applyOne(fined.state, "request_pay_fine", {
+      factionId: "city_guard",
+    });
+    assert.equal(
+      paid.state.law.fines.city_guard ?? 0,
+      0,
+      "fine debt cleared after payment"
+    );
+    assert.equal(
+      paid.state.inventory.gold,
+      100,
+      "wallet charged exactly the outstanding debt"
+    );
   });
 
   it("lets an offender clear their own bounty to resolve the soft-lock", function () {
@@ -7709,17 +8123,29 @@ describe("reduceHarthmereLiveModeBackendStateV1 — enforced fines + bounty clea
       { subsystem: "law", zoneId: "harthmere_market" }
     );
     const wanted = crime.state.law.crimeRecords.find(
-      (r) => (r.status === "wanted" || r.status === "arrest_pending") && (r.bountyGold ?? 0) > 0
+      (r) =>
+        (r.status === "wanted" || r.status === "arrest_pending") &&
+        (r.bountyGold ?? 0) > 0
     );
     assert.ok(wanted, "a murder must post an active bounty");
 
-    const cleared = applyOne(crime.state, "request_clear_bounty", { factionId: "city_guard" });
-    const resolved = cleared.state.law.crimeRecords.find((r) => r.id === wanted.id);
+    const cleared = applyOne(crime.state, "request_clear_bounty", {
+      factionId: "city_guard",
+    });
+    const resolved = cleared.state.law.crimeRecords.find(
+      (r) => r.id === wanted.id
+    );
     assert.equal(resolved?.status, "served", "bounty record is resolved");
     assert.equal(resolved?.bountyGold ?? 0, 0, "bounty gold is zeroed");
     const stillActive = cleared.state.law.crimeRecords.some(
-      (r) => (r.status === "wanted" || r.status === "arrest_pending") && (r.bountyGold ?? 0) > 0
+      (r) =>
+        (r.status === "wanted" || r.status === "arrest_pending") &&
+        (r.bountyGold ?? 0) > 0
     );
-    assert.equal(stillActive, false, "no active bounty remains, so civil permits unblock");
+    assert.equal(
+      stillActive,
+      false,
+      "no active bounty remains, so civil permits unblock"
+    );
   });
 });

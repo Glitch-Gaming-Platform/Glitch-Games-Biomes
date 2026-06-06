@@ -12,6 +12,7 @@ import {
 import type { AABB, ReadonlyVec3 } from "@/shared/math/types";
 import {
   chaseAttackTargetTick,
+  nightMuckerHexUnprovokedAggroParams,
   updateAttackTarget,
 } from "@/shared/npc/behavior/chase_attack";
 import { scheduleFollowTick } from "@/shared/npc/behavior/schedule_follow";
@@ -68,6 +69,15 @@ function effectiveChaseAttackParamsV1(
   npc: SimulatedNpc,
   behavior: ReturnType<typeof getNpcBehavior>
 ): BehaviorChaseAttackParams | undefined {
+  const nightAggroChaseAttack = nightMuckerHexUnprovokedAggroParams(
+    npc,
+    behavior.chaseAttack,
+    ATTACKED_NPC_RETALIATION_CHASE_ATTACK_PARAMS_V1
+  );
+  if (nightAggroChaseAttack) {
+    return nightAggroChaseAttack;
+  }
+
   if (behavior.chaseAttack) {
     return behavior.chaseAttack;
   }
@@ -215,7 +225,9 @@ export function npcTickLogic(
   // schedule entries should follow its route. This must take precedence over
   // the quest-giver "stay home" fallback, otherwise scheduled quest-givers
   // (most Harthmere town NPCs) stand still at spawn forever.
-  const hasActiveSchedule = Boolean((npc.state as any).schedule?.entries?.length);
+  const hasActiveSchedule = Boolean(
+    (npc.state as any).schedule?.entries?.length
+  );
 
   const locomotion = selectNpcLocomotion({
     swim: Boolean(behavior.swim),

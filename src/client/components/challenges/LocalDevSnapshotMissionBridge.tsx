@@ -1,6 +1,7 @@
 import { getOwnedItems } from "@/client/components/inventory/helpers";
 import type { TalkDialogStepAction } from "@/client/components/challenges/TalkDialogModalStep";
 import { completeHarthmereDailyTaskSoonV1 } from "@/client/components/challenges/harthmereDailyTasks";
+import { fillKnownRoadAheadClothingCratesV1 } from "@/client/components/challenges/harthmereObjectContainers";
 import { awardHarthmereQuestXp } from "@/client/components/challenges/LocalDevHarthmereLevelingSystem";
 import { addToast } from "@/client/components/toast/helpers";
 import { useClientContext } from "@/client/components/contexts/ClientContextReactContext";
@@ -8,6 +9,7 @@ import type { GardenHoseEvent } from "@/client/events/api";
 import {
   GENESIS_CROSSROADS_LOCATION,
   JACKIE_ID,
+  NUXES,
   NUX_PAIRED_STEPS,
 } from "@/client/util/nux/state_machines";
 import { BikkieIds } from "@/shared/bikkie/ids";
@@ -397,6 +399,123 @@ export function readSnapshotMissionStateV71(): SnapshotMissionStateV71 {
   }
 }
 
+type SnapshotRoadAheadChallengeStepHintV73 =
+  | {
+      id?: unknown;
+      stepId?: unknown;
+      challengeStepId?: unknown;
+    }
+  | unknown;
+
+function snapshotRoadAheadChallengeStepHintIdV73(
+  hint: SnapshotRoadAheadChallengeStepHintV73
+) {
+  if (hint === undefined || hint === null) {
+    return undefined;
+  }
+  if (typeof hint === "object") {
+    const record = hint as {
+      id?: unknown;
+      stepId?: unknown;
+      challengeStepId?: unknown;
+    };
+    const candidate = record.stepId ?? record.challengeStepId ?? record.id;
+    return candidate === undefined || candidate === null
+      ? undefined
+      : String(candidate);
+  }
+  return String(hint);
+}
+
+function snapshotRoadAheadChallengeStepHintIdsV73(
+  hints?: Iterable<SnapshotRoadAheadChallengeStepHintV73>
+) {
+  const ids = new Set<string>();
+  for (const hint of hints ?? []) {
+    const id = snapshotRoadAheadChallengeStepHintIdV73(hint);
+    if (id) {
+      ids.add(id);
+    }
+  }
+  return ids;
+}
+
+function snapshotRoadAheadStepIndexForChallengeStepHintIdsV73(
+  hints?: Iterable<SnapshotRoadAheadChallengeStepHintV73>
+) {
+  const ids = snapshotRoadAheadChallengeStepHintIdsV73(hints);
+  if (!ids.size) {
+    return undefined;
+  }
+  return firstSnapshotMissionV71().steps.findIndex(
+    (step) => step.challengeStepId && ids.has(String(step.challengeStepId))
+  );
+}
+
+const SNAPSHOT_ROAD_AHEAD_NUX_TO_STEP_ID_V73 = new Map<number, BiomesId>([
+  [
+    NUXES.INTRO_QUESTS,
+    NUX_PAIRED_STEPS.ROAD_AHEAD_MEET_UP_WITH_BILLY as BiomesId,
+  ],
+  [NUXES.BREAK_BLOCKS, NUX_PAIRED_STEPS.ROAD_AHEAD_COLLECT_MUCKWAD as BiomesId],
+  [NUXES.PLACE_BLOCKS, NUX_PAIRED_STEPS.ROAD_AHEAD_PLACE_BLOCKS as BiomesId],
+  [NUXES.WEAR_STUFF, NUX_PAIRED_STEPS.ROAD_AHEAD_WEAR as BiomesId],
+  [NUXES.RUN_AND_JUMP, NUX_PAIRED_STEPS.ROAD_AHEAD_FIND_BAG as BiomesId],
+  [NUXES.SELFIE_PHOTO, NUX_PAIRED_STEPS.ROAD_AHEAD_SELFIE as BiomesId],
+  [NUXES.HANDCRAFT_BUSTER, NUX_PAIRED_STEPS.BUSTED_MUCK_BUSTERS as BiomesId],
+]);
+
+export function snapshotRoadAheadChallengeStepHintsFromActiveNuxesForBiomesUIV73(
+  activeNuxes: unknown
+) {
+  if (!Array.isArray(activeNuxes)) {
+    return [];
+  }
+  return activeNuxes
+    .map((entry) => {
+      const nuxId = Number((entry as { nuxId?: unknown })?.nuxId);
+      return Number.isFinite(nuxId)
+        ? SNAPSHOT_ROAD_AHEAD_NUX_TO_STEP_ID_V73.get(nuxId)
+        : undefined;
+    })
+    .filter((id): id is BiomesId => id !== undefined);
+}
+
+function snapshotRoadAheadStateForBiomesUIV73(
+  state: SnapshotMissionStateV71,
+  challengeStepHints?: Iterable<SnapshotRoadAheadChallengeStepHintV73>
+): SnapshotMissionStateV71 {
+  const activeStepIndex =
+    snapshotRoadAheadStepIndexForChallengeStepHintIdsV73(challengeStepHints);
+  if (activeStepIndex === undefined || activeStepIndex < 0) {
+    return state;
+  }
+
+  const mission = firstSnapshotMissionV71();
+  const missionStepIndexById = new Map(
+    mission.steps.map((step, index) => [step.id, index])
+  );
+  const completedStepIds = [
+    ...new Set([
+      ...state.completedStepIds.filter((id) => {
+        const index = missionStepIndexById.get(id);
+        return index === undefined || index < activeStepIndex;
+      }),
+      ...mission.steps.slice(0, activeStepIndex).map((step) => step.id),
+    ]),
+  ];
+
+  return normalizeSnapshotMissionStateV73({
+    ...state,
+    accepted: true,
+    active: { ...state.active, [mission.id]: activeStepIndex },
+    currentStepIndex: activeStepIndex,
+    completedStepIds,
+    completed: state.completed.filter((id) => id !== mission.id),
+    pinned: [...new Set([...state.pinned, mission.id])],
+  });
+}
+
 export function writeSnapshotMissionStateV71(state: SnapshotMissionStateV71) {
   if (!isBrowserV71()) {
     return;
@@ -410,6 +529,70 @@ export function writeSnapshotMissionStateV71(state: SnapshotMissionStateV71) {
     JSON.stringify(next)
   );
   window.dispatchEvent(new Event(SNAPSHOT_MISSION_STATE_EVENT_V71));
+}
+
+export function recordSnapshotRoadAheadChallengeStepForBiomesUIV73(
+  stepId: unknown,
+  eventKind: "begin" | "complete"
+) {
+  if (!isBrowserV71()) {
+    return false;
+  }
+  const mission = firstSnapshotMissionV71();
+  const stepIndex = mission.steps.findIndex(
+    (step) =>
+      step.challengeStepId !== undefined &&
+      String(step.challengeStepId) === String(stepId)
+  );
+  if (stepIndex < 0) {
+    return false;
+  }
+
+  const state = readSnapshotMissionStateV71();
+  const completedMission =
+    eventKind === "complete" && stepIndex >= mission.steps.length - 1;
+  const targetStepIndex = completedMission
+    ? stepIndex
+    : eventKind === "complete"
+    ? Math.min(stepIndex + 1, mission.steps.length - 1)
+    : stepIndex;
+  const shouldMoveStep =
+    isMissionCompletedV73(state) ||
+    !state.accepted ||
+    targetStepIndex >= state.currentStepIndex;
+  const nextStepIndex = shouldMoveStep
+    ? targetStepIndex
+    : state.currentStepIndex;
+  const completedThroughIndex =
+    eventKind === "complete" ? stepIndex + 1 : nextStepIndex;
+  const completedStepIds = [
+    ...new Set([
+      ...state.completedStepIds,
+      ...mission.steps.slice(0, completedThroughIndex).map((step) => step.id),
+    ]),
+  ];
+  const active = { ...state.active };
+  if (completedMission) {
+    delete active[mission.id];
+  } else {
+    active[mission.id] = nextStepIndex;
+  }
+
+  writeSnapshotMissionStateV71({
+    ...state,
+    accepted: true,
+    active,
+    currentStepIndex: nextStepIndex,
+    completedStepIds,
+    completed: completedMission
+      ? [...new Set([...state.completed, mission.id])]
+      : state.completed.filter((id) => id !== mission.id),
+    pinned: completedMission
+      ? state.pinned.filter((id) => id !== mission.id)
+      : [...new Set([...state.pinned, mission.id])],
+  });
+  fillKnownRoadAheadClothingCratesV1();
+  return true;
 }
 
 function readSnapshotMissionEventsV73(): SnapshotMissionEventV73[] {
@@ -510,48 +693,74 @@ function isMissionCompletedV73(state: SnapshotMissionStateV71) {
   return state.completed.includes(SNAPSHOT_MISSION_ID_V73);
 }
 
-function getMissionStepV71(state: SnapshotMissionStateV71) {
+function getMissionStepV71(
+  state: SnapshotMissionStateV71,
+  challengeStepHints?: Iterable<SnapshotRoadAheadChallengeStepHintV73>
+) {
+  const uiState = snapshotRoadAheadStateForBiomesUIV73(
+    state,
+    challengeStepHints
+  );
   const mission = firstSnapshotMissionV71();
-  const completed = isMissionCompletedV73(state);
+  const completed = isMissionCompletedV73(uiState);
   const stepIndex = completed
     ? mission.steps.length - 1
-    : Math.max(0, Math.min(state.currentStepIndex, mission.steps.length - 1));
+    : Math.max(0, Math.min(uiState.currentStepIndex, mission.steps.length - 1));
   return {
     mission,
     stepIndex,
-    activeStepIndex: state.accepted && !completed ? stepIndex : undefined,
+    state: uiState,
+    activeStepIndex: uiState.accepted && !completed ? stepIndex : undefined,
     completed,
     step: mission.steps[stepIndex] ?? mission.steps[0],
   };
 }
 
 export function snapshotRoadAheadMissionStepsForBiomesUIV73(
-  state: SnapshotMissionStateV71 = readSnapshotMissionStateV71()
+  state: SnapshotMissionStateV71 = readSnapshotMissionStateV71(),
+  challengeStepHints?: Iterable<SnapshotRoadAheadChallengeStepHintV73>
 ) {
-  const { mission, activeStepIndex, completed } = getMissionStepV71(state);
+  const {
+    mission,
+    state: uiState,
+    activeStepIndex,
+    completed,
+  } = getMissionStepV71(state, challengeStepHints);
   if (!state.accepted && !completed) {
-    return [];
+    const projectedState = snapshotRoadAheadStateForBiomesUIV73(
+      state,
+      challengeStepHints
+    );
+    if (!projectedState.accepted) {
+      return [];
+    }
   }
   return mission.steps.slice(1).map((step, index) => {
     const stepIndex = index + 1;
     return {
       id: `${mission.id}:${step.id}`,
       title:
-        completed || state.completedStepIds.includes(step.id)
+        completed || uiState.completedStepIds.includes(step.id)
           ? `Completed step ${stepIndex}`
           : stepIndex === activeStepIndex
           ? `Current step ${stepIndex}`
           : `Upcoming step ${stepIndex}`,
       objective: step.objective,
-      done: completed || state.completedStepIds.includes(step.id),
+      done: completed || uiState.completedStepIds.includes(step.id),
     };
   });
 }
 
 export function snapshotRoadAheadTrackableQuestsForBiomesUIV73(
-  state: SnapshotMissionStateV71 = readSnapshotMissionStateV71()
+  state: SnapshotMissionStateV71 = readSnapshotMissionStateV71(),
+  challengeStepHints?: Iterable<SnapshotRoadAheadChallengeStepHintV73>
 ) {
-  const { mission, step, completed } = getMissionStepV71(state);
+  const {
+    mission,
+    state: uiState,
+    step,
+    completed,
+  } = getMissionStepV71(state, challengeStepHints);
   const objectives = mission.steps.map((entry) => entry.objective);
   return [
     {
@@ -560,7 +769,7 @@ export function snapshotRoadAheadTrackableQuestsForBiomesUIV73(
       area: mission.district,
       status: completed
         ? ("completed" as const)
-        : state.accepted
+        : uiState.accepted
         ? ("active" as const)
         : ("available" as const),
       firstMarkerId: step.target,
@@ -575,9 +784,14 @@ export function snapshotRoadAheadTrackableQuestsForBiomesUIV73(
 }
 
 export function firstActiveSnapshotRoadAheadQuestTitleForBiomesUIV73(
-  state: SnapshotMissionStateV71 = readSnapshotMissionStateV71()
+  state: SnapshotMissionStateV71 = readSnapshotMissionStateV71(),
+  challengeStepHints?: Iterable<SnapshotRoadAheadChallengeStepHintV73>
 ) {
-  return state.accepted && !isMissionCompletedV73(state)
+  const uiState = snapshotRoadAheadStateForBiomesUIV73(
+    state,
+    challengeStepHints
+  );
+  return uiState.accepted && !isMissionCompletedV73(uiState)
     ? firstSnapshotMissionV71().title
     : undefined;
 }
@@ -808,20 +1022,22 @@ function advanceSnapshotRoadAheadV73(
   if (completedMission) {
     const active = { ...state.active };
     delete active[mission.id];
-    writeSnapshotMissionStateV71({
+    const nextState = {
       ...state,
       active,
       completedStepIds,
       completed: [...new Set([...state.completed, mission.id])],
       currentStepIndex: stepIndex,
       updatedAt: Date.now(),
-    });
+    };
+    writeSnapshotMissionStateV71(nextState);
+    fillKnownRoadAheadClothingCratesV1();
     return;
   }
 
   const nextStepIndex = stepIndex + 1;
   const nextStep = mission.steps[nextStepIndex];
-  writeSnapshotMissionStateV71({
+  const nextState = {
     ...state,
     accepted: true,
     active: { ...state.active, [mission.id]: nextStepIndex },
@@ -829,7 +1045,9 @@ function advanceSnapshotRoadAheadV73(
     completedStepIds,
     pinned: [...new Set([...state.pinned, mission.id])],
     updatedAt: Date.now(),
-  });
+  };
+  writeSnapshotMissionStateV71(nextState);
+  fillKnownRoadAheadClothingCratesV1();
   if (nextStep) {
     publishStepBeginV73(gardenHose, nextStep);
     if (resources) {

@@ -104,6 +104,23 @@ describe("harthmere world object inspectable selection", () => {
     assert.strictEqual(selected!.interaction.kind, "open_jobs_board");
   });
 
+  it("opens wanted and bounty board props with the wanted-board action", () => {
+    const selected = selectNearestHarthmereWorldObjectInspectableV1({
+      playerPosition: [0, 0, 0],
+      facingView: facingPlusX,
+      candidates: [
+        {
+          id: "wanted",
+          label: "Farming Wanted Board",
+          position: [2, 0, 0],
+        },
+      ],
+    });
+    assert.ok(selected);
+    assert.strictEqual(selected!.interaction.kind, "open_wanted_board");
+    assert.strictEqual(selected!.interaction.title, "Open Wanted Board");
+  });
+
   it("returns undefined when nothing interactable is nearby", () => {
     const selected = selectNearestHarthmereWorldObjectInspectableV1({
       playerPosition: [0, 0, 0],

@@ -44,8 +44,14 @@ export function buildHarthmereLiveEntityProductionSeedChangesV1(input: {
   tick: number;
   nowSeconds: number;
   existingIds?: ReadonlySet<BiomesId>;
+  // HARTHMERE_LIVE_CREATURE_RESPAWN_V1: when a creature was recently killed this
+  // returns true for its id, so the reconciler leaves it dead until the 30-60
+  // minute respawn window elapses instead of re-creating it next tick. Robots
+  // (structural) are never suppressed.
+  isRespawnSuppressed?: (id: BiomesId) => boolean;
 }) {
   const existingIds = input.existingIds ?? new Set<BiomesId>();
+  const isRespawnSuppressed = input.isRespawnSuppressed ?? (() => false);
   const changes: Change[] = [];
   const monsterTypeId = isNpcTypeId(BikkieIds.dMucker)
     ? BikkieIds.dMucker
@@ -108,8 +114,13 @@ export function buildHarthmereLiveEntityProductionSeedChangesV1(input: {
         text: seed.description,
       }),
     };
+    const muckerKind = changeKindForSeedV1(seed, existingIds);
+    // Respawn gate: a recently-killed mucker/hex stays dead until its timer is up.
+    if (muckerKind === "create" && isRespawnSuppressed(seed.entityId)) {
+      continue;
+    }
     changes.push({
-      kind: changeKindForSeedV1(seed, existingIds),
+      kind: muckerKind,
       tick: input.tick,
       entity,
     });
@@ -140,8 +151,13 @@ export function buildHarthmereLiveEntityProductionSeedChangesV1(input: {
         text: seed.description,
       }),
     };
+    const livestockKind = changeKindForSeedV1(seed, existingIds);
+    // Respawn gate: a recently-hunted animal stays gone until its timer is up.
+    if (livestockKind === "create" && isRespawnSuppressed(seed.entityId)) {
+      continue;
+    }
     changes.push({
-      kind: changeKindForSeedV1(seed, existingIds),
+      kind: livestockKind,
       tick: input.tick,
       entity,
     });

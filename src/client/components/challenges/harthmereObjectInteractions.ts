@@ -17,6 +17,8 @@ import type { HarthmereObjectInteractionV1 } from "@/shared/harthmere/object_int
 
 export const HARTHMERE_JOBS_BOARD_OPEN_EVENT_V141 =
   "biomes:harthmere-jobs-board-open-v141" as const;
+export const HARTHMERE_WANTED_BOARD_OPEN_EVENT_V1 =
+  "biomes:harthmere-wanted-board-open-v1" as const;
 
 // HARTHMERE_REPAIR_PERFORMED_EVENT_V151: fired when the player interacts with a
 // repair target. `repaired` is true only when a repair tool is equipped — that
@@ -86,7 +88,10 @@ function dailyTasksForObjectInteractionV1(input: {
 }): HarthmereDailyTaskActivityIdV1[] {
   const label = (input.label ?? "").toLowerCase();
   const tasks = new Set<HarthmereDailyTaskActivityIdV1>();
-  if (input.interaction.kind === "open_jobs_board") {
+  if (
+    input.interaction.kind === "open_jobs_board" ||
+    input.interaction.kind === "open_wanted_board"
+  ) {
     tasks.add("jobs_board");
   }
   if (input.interaction.kind === "gather") {
@@ -139,11 +144,22 @@ export function performHarthmereObjectInteractionV1(input: {
     completeHarthmereDailyTaskSoonV1(activityId);
   }
 
-  if (input.interaction.kind === "open_jobs_board") {
+  if (
+    input.interaction.kind === "open_jobs_board" ||
+    input.interaction.kind === "open_wanted_board"
+  ) {
+    const eventName =
+      input.interaction.kind === "open_wanted_board"
+        ? HARTHMERE_WANTED_BOARD_OPEN_EVENT_V1
+        : HARTHMERE_JOBS_BOARD_OPEN_EVENT_V141;
     if (typeof window !== "undefined") {
       window.dispatchEvent(
-        new CustomEvent(HARTHMERE_JOBS_BOARD_OPEN_EVENT_V141, {
-          detail: { source: "harthmere_object_interaction" },
+        new CustomEvent(eventName, {
+          detail: {
+            source: "harthmere_object_interaction",
+            entityId: input.entityId,
+            label: input.label,
+          },
         })
       );
     }

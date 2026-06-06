@@ -276,6 +276,18 @@ export class FarmingGrowthPlantTicker implements BaseFarmingPlantTicker {
     const plantComponent = plant.entity.mutableFarmingPlantComponent();
     farmLog(`    (${plant.entity.position()?.v})`, 3);
 
+    const harvested = handlePlayerAction(plantComponent, "harvest", () => {
+      if (plantComponent.status !== "fully_grown") {
+        return false;
+      }
+      farmLog(`    Harvested`, 3);
+      this.destroy(context, true);
+      return true;
+    });
+    if (harvested) {
+      return true;
+    }
+
     const stage = plantComponent.stage ?? 0;
     const stageSpec = this.getStageSpec(stage);
     const transition = this.getGrowthTransition(stage);

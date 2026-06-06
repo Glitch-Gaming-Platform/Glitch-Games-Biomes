@@ -12,6 +12,7 @@ import {
   restoreItemWaterAmount,
 } from "@/server/logic/utils/water_amount";
 import { getTerrainID } from "@/shared/asset_defs/terrain";
+import { BikkieIds } from "@/shared/bikkie/ids";
 import { terrainIdToBlock } from "@/shared/bikkie/terrain";
 import { secondsSinceEpoch } from "@/shared/ecs/config";
 import type { FarmingPlant } from "@/shared/ecs/gen/entities";
@@ -25,8 +26,13 @@ import { getPlayerBuffsByComponents } from "@/shared/game/players";
 import { voxelShard, worldPos } from "@/shared/game/shard";
 import type { BiomesId } from "@/shared/ids";
 import { log } from "@/shared/logging";
-import { sub } from "@/shared/math/linear";
+import { equals, sub } from "@/shared/math/linear";
 import { ok } from "assert";
+
+const TREE_SEED_IDS = new Set<BiomesId>([
+  BikkieIds.oakSeed,
+  BikkieIds.rubberSeed,
+]);
 
 function getPlayerBuffsByEntity(entity: QueriedEntity) {
   return getPlayerBuffsByComponents({
@@ -34,6 +40,10 @@ function getPlayerBuffsByEntity(entity: QueriedEntity) {
     wearing: entity.wearing(),
     selectedItem: entity.selectedItem(),
   });
+}
+
+function isTreeSeed(seed: BiomesId) {
+  return anItem(seed).farming?.kind === "tree" || TREE_SEED_IDS.has(seed);
 }
 
 export const tillSoilEventHandler = makeEventHandler("tillSoilEvent", {
@@ -334,6 +344,36 @@ export const fertilizePlantEventHandler = makeEventHandler(
     },
   }
 );
+
+export const harvestPlantEventHandler = makeEventHandler("harvestPlantEvent", {
+  mergeKey: (event) => event.id,
+  involves: (event) => ({
+    plant: q.id(event.plant_id).with("farming_plant_component", "position"),
+    acl: aclChecker({ kind: "point", point: event.position }, event.id),
+  }),
+  apply({ plant, acl }, event) {
+    const position = plant.position()?.v;
+    if (!position || !equals(position, event.position)) {
+      return;
+    }
+    const plantComponent = plant.mutableFarmingPlantComponent();
+    if (plantComponent.status !== "fully_grown") {
+      return;
+    }
+    if (isTreeSeed(plantComponent.seed)) {
+      return;
+    }
+    if (!acl.can("destroy", { entity: plant })) {
+      return;
+    }
+
+    plantComponent.player_actions.push({
+      kind: "harvest",
+      timestamp: secondsSinceEpoch(),
+    });
+    log.info(`Player ${event.id} harvesting plant ${plant.id}`);
+  },
+});
 
 export const pokePlantEventHandler = makeEventHandler("pokePlantEvent", {
   mergeKey: (event) => event.id,

@@ -69,9 +69,13 @@ describe("Harthmere inventory BiomesUI presentation and actions", () => {
     const trousers = getHarthmereItemDisplayV1("field_trousers");
     assert.equal(apron?.name, "Dawn Loaf Apron");
     assert.equal(apron?.slot, "chest");
+    assert.equal(apron?.icon, "🥼");
     assert.equal(trousers?.name, "Grove Field Trousers");
     assert.equal(trousers?.slot, "legs");
+    assert.equal(trousers?.icon, "👖");
     assert.notEqual(apron?.icon, trousers?.icon);
+    assert.notEqual(apron?.icon, "▣");
+    assert.notEqual(trousers?.icon, "▥");
     assert.equal(
       humanizeBiomesInventoryItemIdV1("bakerApron", "bakerApron"),
       "Baker Apron"

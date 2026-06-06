@@ -28,7 +28,9 @@ import {
   parseHarthmereLiveModeBackendStateV1,
   parseHarthmereLiveModeSharedWorldStateV1,
   reduceHarthmereLiveModeBackendStateV1,
+  type HarthmereLiveModeBackendStateV1,
 } from "@/shared/harthmere/live_mode_backend_v1";
+import { buildHarthmereEscortCompanionNpcProposedChangesV151 } from "@/server/harthmere/escort_companion_npc_ecs_v151";
 import {
   groundedBuildingSystemMaterializationPlanV1,
   type BuildingSystemAnyMaterializationPlanV1,
@@ -70,6 +72,7 @@ const HARTHMERE_LIVE_MODE_ACTION_KINDS_V1 = [
   "request_loot_roll",
   "request_loot_claim",
   "request_death_transition",
+  "request_environment_damage",
   "request_revive",
   "request_respawn",
   "request_npc_ai_tick",
@@ -472,6 +475,7 @@ export function harthmereLiveModeMutationSnapshotKeysV1(input: {
       break;
     case "request_attack":
     case "request_death_transition":
+    case "request_environment_damage":
     case "request_revive":
     case "request_respawn":
     case "request_npc_ai_tick":
@@ -1182,10 +1186,12 @@ async function groundBuildingSystemPlansToRealTerrainV1(input: {
         probePositions.push([columnX, y, columnZ]);
       }
     }
-    const terrainResolution = await resolveTerrainEntityIdsForMaterializationV1({
-      askApi: input.askApi,
-      positions: probePositions,
-    });
+    const terrainResolution = await resolveTerrainEntityIdsForMaterializationV1(
+      {
+        askApi: input.askApi,
+        positions: probePositions,
+      }
+    );
     const voxeloo = await loadVoxeloo();
     const editor = input.worldApi.edit();
     const shardIds = [...new Set(probePositions.map((p) => voxelShard(...p)))];
@@ -1394,6 +1400,39 @@ export async function materializeBuildingSystemMaterializationPlansToTerrainV1(i
     shiftedOutpostEditEventCount,
     usedLegacyShardIds: terrainResolution.usedLegacyShardIds,
   };
+}
+
+export function harthmereEscortCompanionsFromBackendStateV151(
+  state: HarthmereLiveModeBackendStateV1
+) {
+  return Object.values(state.jobsBoard.postings)
+    .map((job) => job.escortCompanion)
+    .filter((companion): companion is NonNullable<typeof companion> =>
+      Boolean(companion)
+    );
+}
+
+export async function materializeHarthmereEscortCompanionsToEcsV151(input: {
+  worldApi: WorldApi;
+  state: HarthmereLiveModeBackendStateV1;
+  nowSeconds: number;
+}) {
+  const companions = harthmereEscortCompanionsFromBackendStateV151(input.state);
+  if (!companions.length) {
+    return { changeCount: 0, outcome: "success" as const };
+  }
+  const ids = companions.map((companion) => companion.entityId);
+  const existing = new Set(await input.worldApi.has(ids));
+  const changes = buildHarthmereEscortCompanionNpcProposedChangesV151({
+    companions,
+    existingIds: existing,
+    nowSeconds: input.nowSeconds,
+  });
+  if (!changes.length) {
+    return { changeCount: 0, outcome: "success" as const };
+  }
+  const applied = await input.worldApi.apply({ changes });
+  return { changeCount: changes.length, outcome: applied.outcome };
 }
 
 export async function ensureHarthmereWorldMaterializerPlayerExistsV1(
@@ -1787,6 +1826,46 @@ export async function persistHarthmereLiveModeResponseV1(
         24 * 60 * 60
       );
       mark("materialization_ms", stageStartedAt);
+    }
+
+    if (
+      reduced.summary.touchedModels.some((model) =>
+        model.toLowerCase().includes("escort_companion")
+      )
+    ) {
+      stageStartedAt = Date.now();
+      try {
+        if (!deps.worldApi) {
+          persistedResponse.backendMutation?.warnings.push(
+            "escort_companion_materialization_deferred:no_world_api"
+          );
+        } else {
+          const materialized =
+            await materializeHarthmereEscortCompanionsToEcsV151({
+              worldApi: deps.worldApi,
+              state: reduced.state,
+              nowSeconds: Math.floor(now / 1000),
+            });
+          persistedResponse.backendMutation?.warnings.push(
+            `escort_companion_materialized:changes:${materialized.changeCount}:outcome:${materialized.outcome}`
+          );
+        }
+      } catch (error) {
+        persistedResponse.backendMutation?.warnings.push(
+          `escort_companion_materialization_deferred:${String(
+            error instanceof Error ? error.message : error
+          ).slice(0, 240)}`
+        );
+      }
+      await redis.primary.set(
+        key,
+        JSON.stringify(
+          slimHarthmereLiveModeIdempotencyResponseV1(persistedResponse)
+        ),
+        "EX",
+        24 * 60 * 60
+      );
+      mark("escort_companion_materialization_ms", stageStartedAt);
     }
 
     const persistMs = Date.now() - persistStartedAt;

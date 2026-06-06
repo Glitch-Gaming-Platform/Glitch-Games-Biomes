@@ -2,6 +2,8 @@
 /// <reference types="node" />
 import assert from "assert";
 import {
+  HARTHMERE_ESCORT_ACCEPT_WINDOW_MAX_MS_V151,
+  HARTHMERE_ESCORT_ACCEPT_WINDOW_MIN_MS_V151,
   HARTHMERE_JOBS_BOARD_ACCEPT_WINDOW_MAX_MS_V151,
   HARTHMERE_JOBS_BOARD_ACCEPT_WINDOW_MIN_MS_V151,
   HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1,
@@ -68,6 +70,26 @@ function postPayload(extra: Record<string, unknown> = {}) {
     requiresFieldWork: true,
     ...extra,
   };
+}
+
+function escortPostPayload(extra: Record<string, unknown> = {}) {
+  return postPayload({
+    title: "Escort a Newcomer to the Road Post",
+    description: "Walk a newcomer safely to the road post.",
+    kind: "escort",
+    requirements: [
+      {
+        serviceKind: "escort",
+        serviceUnits: 1,
+        targetId: "old_grove_road_post",
+        targetName: "Road Post",
+        mapMarkerId: "old_grove_road_post",
+      },
+    ],
+    rewardGold: 91,
+    requiresFieldWork: true,
+    ...extra,
+  });
 }
 
 describe("mmo_jobs_board_authority_v1 — board location and empty state", () => {
@@ -477,7 +499,7 @@ describe("mmo_jobs_board_authority_v1 — accept timer + failure (HARTHMERE_JOB_
     return { jobId, state: accepted.jobsBoard };
   }
 
-  it("starts the completion timer on ACCEPT, within a few hours to a day", () => {
+  it("keeps non-escort accepted timers in the existing few-hours-to-day range", () => {
     const acceptNow = NOW;
     const { jobId, state } = postAndAccept(acceptNow);
     const job = state.postings[jobId];
@@ -489,6 +511,55 @@ describe("mmo_jobs_board_authority_v1 — accept timer + failure (HARTHMERE_JOB_
     );
     const todo = Object.values(state.todos).find((t) => t.jobId === jobId);
     assert.equal(todo?.dueAtMs, job.deadlineAtMs, "todo inherits the accept deadline");
+  });
+
+  it("starts escort accepted timers in the 2-5 hour range and creates a companion", () => {
+    const acceptNow = NOW;
+    const posted = mutate(defaultHarthmereJobsBoardStateV1(NOW), "create_job_posting", escortPostPayload(), {}, "poster");
+    const jobId = Object.keys(posted.jobsBoard.postings)[0];
+    const accepted = mutate(
+      posted.jobsBoard,
+      "accept_job",
+      { jobId, nowMs: acceptNow },
+      { actorPosition: { x: 501.99486179104775, y: 70, z: -132.00350672753194 } },
+      "seeker"
+    );
+    const job = accepted.jobsBoard.postings[jobId];
+    const window = job.deadlineAtMs - acceptNow;
+    assert.ok(
+      window >= HARTHMERE_ESCORT_ACCEPT_WINDOW_MIN_MS_V151 &&
+        window <= HARTHMERE_ESCORT_ACCEPT_WINDOW_MAX_MS_V151,
+      `escort accept window ${window}ms out of range`
+    );
+    assert.ok(job.escortCompanion, "escort accept should attach a companion");
+    assert.equal(job.escortCompanion!.displayName, "Newcomer");
+    assert.equal(job.escortCompanion!.status, "following");
+    assert.ok(job.escortCompanion!.position.x > 501.99);
+    assert.equal(Object.values(accepted.jobsBoard.todos).find((t) => t.jobId === jobId)?.dueAtMs, job.deadlineAtMs);
+  });
+
+  it("does not complete an escort quest until the companion has arrived", () => {
+    const posted = mutate(defaultHarthmereJobsBoardStateV1(NOW), "create_job_posting", escortPostPayload(), {}, "poster");
+    const jobId = Object.keys(posted.jobsBoard.postings)[0];
+    const accepted = mutate(posted.jobsBoard, "accept_job", { jobId }, {}, "seeker");
+    const early = mutate(
+      accepted.jobsBoard,
+      "complete_job_quest",
+      { jobId, completedTargetId: "old_grove_road_post" },
+      {},
+      "seeker"
+    );
+    assert.ok(early.warnings.includes("jobs_board_rejected:escort_companion_not_arrived"));
+    accepted.jobsBoard.postings[jobId].escortCompanion!.status = "arrived";
+    const completed = mutate(
+      accepted.jobsBoard,
+      "complete_job_quest",
+      { jobId, completedTargetId: "old_grove_road_post" },
+      {},
+      "seeker"
+    );
+    assert.equal(completed.warnings.length, 0, JSON.stringify(completed.warnings));
+    assert.equal(Object.values(completed.jobsBoard.todos)[0].status, "completed");
   });
 
   it("on the next interaction after the window lapses: marks the todo FAILED, releases the job to open, frees the slot", () => {

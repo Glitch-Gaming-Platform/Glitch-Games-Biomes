@@ -6,12 +6,14 @@ import {
   validateHarthmereBusinessStorefrontGoodsV1,
 } from "../harthmere_business_storefront_goods_v1";
 import {
+  getHarthmereItemDefinitionV1,
   getHarthmereVendorEntryV1,
   reduceHarthmereInventoryMutationV1,
   type HarthmereInventoryMutationRequestV1,
   type HarthmereInventorySnapshotV1,
 } from "../mmo_inventory_authority_v1";
 import { HARTHMERE_BUSINESS_OUTPOSTS_V1 } from "../business_customer_simulator_v1";
+import { harthmereResolveBikkieVisualV1 } from "../bikkie_visual_resolver_v1";
 
 const NOW_MS = 1_762_000_000_000;
 const ACTOR = "storefront_player";
@@ -58,7 +60,7 @@ describe("Harthmere business storefront goods", () => {
     ensureHarthmereBusinessStorefrontGoodsV1();
   });
 
-  it("gives all 19 businesses a valid 5-block + 4-interior storefront", () => {
+  it("gives all 19 businesses a valid 5-block + 4-interior + 1-book storefront", () => {
     assert.deepEqual(validateHarthmereBusinessStorefrontGoodsV1(), []);
     // Every real outpost business type is covered.
     const types = new Set(harthmereBusinessStorefrontTypesV1());
@@ -71,16 +73,59 @@ describe("Harthmere business storefront goods", () => {
     assert.equal(types.size, 19);
   });
 
-  it("registers each good as an UNLIMITED (stock -1) vendor entry on its business", () => {
+  it("registers repeat-buy goods, but not one-time recipe books, as unlimited vendor entries", () => {
     for (const businessType of harthmereBusinessStorefrontTypesV1()) {
       const listings =
         harthmereBusinessStorefrontListingsForTypeV1(businessType);
-      assert.equal(listings.length, 9, `${businessType} should sell 9 goods`);
+      assert.equal(listings.length, 10, `${businessType} should sell 10 goods`);
+      assert.equal(
+        listings.filter((listing) => listing.kind === "recipe_book").length,
+        1,
+        `${businessType} should sell exactly one recipe book`
+      );
       for (const listing of listings) {
         const entry = getHarthmereVendorEntryV1(businessType, listing.itemId);
+        if (listing.kind === "recipe_book") {
+          assert.equal(
+            entry,
+            undefined,
+            `${businessType}:${listing.itemId} must not bypass one-time rules through buy_from_vendor`
+          );
+          continue;
+        }
         assert.ok(entry, `${businessType} missing entry for ${listing.itemId}`);
         assert.equal(entry!.stock, -1, "must be unlimited/self-replenishing");
         assert.ok(entry!.buyPrice > 0);
+      }
+    }
+  });
+
+  it("registers enough metadata for every storefront good to resolve a Bikkie visual", () => {
+    for (const businessType of harthmereBusinessStorefrontTypesV1()) {
+      for (const listing of harthmereBusinessStorefrontListingsForTypeV1(
+        businessType
+      )) {
+        const definition = getHarthmereItemDefinitionV1(listing.itemId);
+        assert.ok(
+          definition,
+          `${businessType}:${listing.itemId} should have an item definition`
+        );
+        const visual = harthmereResolveBikkieVisualV1({
+          id: listing.itemId,
+          label: definition!.displayName,
+          kind: definition!.category ?? listing.kind,
+          description: definition!.description,
+          objectMetadata: definition!.objectMetadata,
+        });
+        assert.ok(
+          visual.visualId.length > 0,
+          `${businessType}:${listing.itemId} visual id`
+        );
+        assert.ok(
+          visual.glyph.length > 0,
+          `${businessType}:${listing.itemId} glyph`
+        );
+        assert.match(visual.primaryHex, /^#[0-9a-f]{6}$/);
       }
     }
   });
@@ -93,10 +138,7 @@ describe("Harthmere business storefront goods", () => {
     // Buy a large quantity repeatedly — stock -1 means it never runs out.
     for (let i = 0; i < 50; i++) {
       const result = buy(state, businessType, listing.itemId, 10);
-      assert.ok(
-        result.ok,
-        `buy ${i} failed: ${result.errors.join(",")}`
-      );
+      assert.ok(result.ok, `buy ${i} failed: ${result.errors.join(",")}`);
       // apply gold/item deltas into a fresh snapshot for the next iteration
       state = snapshot({
         gold: state.gold + result.goldDelta,

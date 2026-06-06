@@ -17,8 +17,7 @@ describe("MapQuestsTab main quest controls", () => {
       area: "West Muck Breach",
       status: "active",
       firstMarkerId: "helix_marker",
-      objective:
-        "Defeat the Muck-Scarred Helix at the West Muck Breach.",
+      objective: "Defeat the Muck-Scarred Helix at the West Muck Breach.",
     };
 
     const html = renderToStaticMarkup(
@@ -46,6 +45,62 @@ describe("MapQuestsTab main quest controls", () => {
     assert.ok(html.includes("biomes-map-quest-center-muck_breach_boss"));
     assert.ok(html.includes("Main Quest"));
     assert.ok(html.includes("West Muck Breach"));
+  });
+
+  it("shows time limits for timed quests without adding one to untimed quests", () => {
+    const timedQuest: MapTrackableQuest = {
+      questId: "patch_fence",
+      title: "Patch the Safe-Zone Fence",
+      area: "The Grove",
+      status: "active",
+      firstMarkerId: "fence_marker",
+      objective: "Repair the marked fence before the job timer expires.",
+      reward: "99 gold",
+      timeRemaining: "8h 18m left",
+    };
+    const untimedQuest: MapTrackableQuest = {
+      questId: "road_ahead",
+      title: "Road Ahead",
+      area: "The Grove",
+      status: "available",
+      firstMarkerId: "road_marker",
+      objective: "Speak with Jackie in The Grove.",
+      reward: "Road Ready milestone",
+    };
+
+    const html = renderToStaticMarkup(
+      <MapQuestsTab
+        adapter={{
+          getMarkers: () => [
+            {
+              id: "fence_marker",
+              label: "Patch the Safe-Zone Fence",
+              x: 0.6,
+              y: 0.4,
+              kind: "objective",
+              active: true,
+              worldPosition: [520, 70, -150],
+            },
+            {
+              id: "road_marker",
+              label: "Old Grove Road Post",
+              x: 0.4,
+              y: 0.4,
+              kind: "objective",
+              worldPosition: [490, 70, -140],
+            },
+          ],
+          getTrackableQuests: () => [timedQuest, untimedQuest],
+        }}
+      />
+    );
+
+    assert.ok(html.includes('data-testid="biomes-map-quest-time-patch_fence"'));
+    assert.ok(html.includes("Time limit: 8h 18m left"));
+    assert.equal(
+      html.includes('data-testid="biomes-map-quest-time-road_ahead"'),
+      false
+    );
   });
 
   it("resolves a quest's current marker before tool-source marker fallbacks", () => {

@@ -3,6 +3,7 @@ import { AudioScript } from "@/client/game/scripts/audio";
 import { CameraScript } from "@/client/game/scripts/camera";
 import { CursorScript } from "@/client/game/scripts/cursor";
 import { ForbiddenEditsScript } from "@/client/game/scripts/forbidden_edits";
+import { HarthmereLiveCreatureBridgeScript } from "@/client/game/scripts/harthmere_live_creature_bridge_script";
 import { InteractScript } from "@/client/game/scripts/interact";
 import { OverlayScript } from "@/client/game/scripts/overlays";
 import { ParticlesScript } from "@/client/game/scripts/particles";
@@ -69,6 +70,10 @@ function getScripts(
       deps.voxeloo
     ),
     new AudioScript(resources, table, audioManager),
+    // Bridge live-creature ECS entities (muckers/animals/hexes/quest creatures)
+    // to the Harthmere renderer so each is drawn on its real entity and is
+    // hittable by the native attack ray.
+    new HarthmereLiveCreatureBridgeScript(table),
     resources.get("/server/sync_target").kind === "localUser"
       ? new InteractScript(deps)
       : undefined,

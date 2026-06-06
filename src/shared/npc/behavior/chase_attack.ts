@@ -2,14 +2,24 @@ import { secondsSinceEpoch } from "@/shared/ecs/config";
 import { Emote } from "@/shared/ecs/gen/components";
 import type { ReadonlyEntity } from "@/shared/ecs/gen/entities";
 import { Entity } from "@/shared/ecs/gen/entities";
+import { CollisionHelper } from "@/shared/game/collision";
 import {
   getPlayerBuffs,
   getPlayerModifiersFromBuffs,
 } from "@/shared/game/players";
+import { isDayTime, sunInclination } from "@/shared/game/sun_moon_position";
 import type { BiomesId } from "@/shared/ids";
 import { zBiomesId } from "@/shared/ids";
 import { degToRad, diffAngle } from "@/shared/math/angles";
-import { distSq, length, sub, yaw } from "@/shared/math/linear";
+import {
+  add,
+  centerAndSideLengthToAABB,
+  distSq,
+  length,
+  scale,
+  sub,
+  yaw,
+} from "@/shared/math/linear";
 import type { ReadonlyVec3, Vec3 } from "@/shared/math/types";
 import { isSafeZone } from "@/shared/npc/behavior/common";
 import {
@@ -40,6 +50,10 @@ import { z } from "zod";
 const CHASE_PATH_TARGET_DRIFT_METERS = 3.0;
 const CHASE_PATH_TARGET_DRIFT_SQ =
   CHASE_PATH_TARGET_DRIFT_METERS * CHASE_PATH_TARGET_DRIFT_METERS;
+export const NIGHT_MUCKER_HEX_UNPROVOKED_AGGRO_DISTANCE = 18;
+const LINE_OF_SIGHT_SAMPLE_STEP_METERS = 0.45;
+const LINE_OF_SIGHT_SAMPLE_BOX_METERS = 0.18;
+const DEFAULT_PLAYER_EYE_HEIGHT_METERS = 1.45;
 
 // The strike of a swing lands `attackStrikeMomentSecs / attackAnimationMultiplier`
 // seconds in. If that delay is >= the attack interval, every new swing restarts
@@ -53,7 +67,8 @@ export function effectiveAttackStrikeDelaySecs(params: {
 }): number {
   const animationMultiplier =
     params.attackAnimationMultiplier > 0 ? params.attackAnimationMultiplier : 1;
-  const rawDelay = Math.max(0, params.attackStrikeMomentSecs) / animationMultiplier;
+  const rawDelay =
+    Math.max(0, params.attackStrikeMomentSecs) / animationMultiplier;
   if (!(params.attackIntervalSecs > 0)) {
     return rawDelay;
   }
@@ -76,6 +91,128 @@ export function chasePathTargetIsStale(
   }
   const destination = nodes[nodes.length - 1].position;
   return distSq(destination, targetPosition) > maxDriftSq;
+}
+
+export function isNightForNpcAggro(seconds: number): boolean {
+  return !isDayTime(sunInclination(seconds));
+}
+
+export function isMuckerOrHexerNameForNightAggro(
+  name: string | undefined
+): boolean {
+  const text = String(name ?? "").toLowerCase();
+  if (
+    /robot|bot|sentinel|sentential|sentiental|shield|beacon|board|voucher|ration|matter|ward/.test(
+      text
+    )
+  ) {
+    return false;
+  }
+  return /\b(muckling|mucker|muckwad|hex|hexer)\b|muck[-\s]scarred|pale\s+muck/.test(
+    text
+  );
+}
+
+function isMuckerOrHexerNpcForNightAggro(npc: SimulatedNpc): boolean {
+  const type = npc.type as unknown as {
+    name?: string;
+    displayName?: string;
+  };
+  return isMuckerOrHexerNameForNightAggro(
+    [npc.label, type.displayName, type.name].filter(Boolean).join(" ")
+  );
+}
+
+export function nightMuckerHexUnprovokedAggroParams(
+  npc: SimulatedNpc,
+  baseParams: BehaviorChaseAttackParams | undefined,
+  fallbackParams: BehaviorChaseAttackParams
+): BehaviorChaseAttackParams | undefined {
+  if (!isMuckerOrHexerNpcForNightAggro(npc)) {
+    return undefined;
+  }
+
+  const base = baseParams ?? fallbackParams;
+  const authoredAggroDistance =
+    base.aggroTrigger.kind === "proximity"
+      ? base.aggroTrigger.distance
+      : NIGHT_MUCKER_HEX_UNPROVOKED_AGGRO_DISTANCE;
+  const aggroDistance = Math.max(
+    authoredAggroDistance,
+    NIGHT_MUCKER_HEX_UNPROVOKED_AGGRO_DISTANCE
+  );
+  return {
+    ...base,
+    aggroTrigger: { kind: "proximity", distance: aggroDistance },
+    disengageDistance: Math.max(base.disengageDistance, aggroDistance),
+  };
+}
+
+function eyePosition(
+  position: ReadonlyVec3,
+  height = DEFAULT_PLAYER_EYE_HEIGHT_METERS
+): Vec3 {
+  return add(position, [0, Math.max(0.4, height), 0]);
+}
+
+export function hasTerrainLineOfSight(
+  env: Environment,
+  from: ReadonlyVec3,
+  to: ReadonlyVec3,
+  fromEyeHeight = DEFAULT_PLAYER_EYE_HEIGHT_METERS,
+  toEyeHeight = DEFAULT_PLAYER_EYE_HEIGHT_METERS
+): boolean {
+  const fromEye = eyePosition(from, fromEyeHeight);
+  const toEye = eyePosition(to, toEyeHeight);
+  const delta = sub(toEye, fromEye);
+  const distance = length(delta);
+  if (distance <= LINE_OF_SIGHT_SAMPLE_STEP_METERS * 2) {
+    return true;
+  }
+
+  const direction = scale(1 / distance, delta);
+  for (
+    let d = LINE_OF_SIGHT_SAMPLE_STEP_METERS;
+    d < distance - LINE_OF_SIGHT_SAMPLE_STEP_METERS;
+    d += LINE_OF_SIGHT_SAMPLE_STEP_METERS
+  ) {
+    const sample = add(fromEye, scale(d, direction));
+    if (
+      CollisionHelper.intersectAnyAABB(
+        (id) => env.resources.get("/physics/boxes", id),
+        centerAndSideLengthToAABB(sample, LINE_OF_SIGHT_SAMPLE_BOX_METERS)
+      )
+    ) {
+      return false;
+    }
+  }
+  return true;
+}
+
+function hasLineOfSightToPlayer(
+  env: Environment,
+  npc: SimulatedNpc,
+  player: ReadonlyEntity
+): boolean {
+  if (!player.position) {
+    return false;
+  }
+  const npcEyeHeight =
+    Array.isArray(npc.size) && Number.isFinite(npc.size[1])
+      ? Math.max(0.5, npc.size[1] * 0.72)
+      : DEFAULT_PLAYER_EYE_HEIGHT_METERS;
+  const playerSize = player.size?.v;
+  const playerEyeHeight =
+    playerSize && Number.isFinite(playerSize[1])
+      ? Math.max(0.5, playerSize[1] * 0.72)
+      : DEFAULT_PLAYER_EYE_HEIGHT_METERS;
+  return hasTerrainLineOfSight(
+    env,
+    npc.position,
+    player.position.v,
+    npcEyeHeight,
+    playerEyeHeight
+  );
 }
 
 export const zChaseAttackComponent = z.object({
@@ -123,7 +260,8 @@ export function chaseAttackTargetTick(
   // falling back to direct pursuit if pathfinding cannot produce a route.
   const vecToPlayer = sub(target.position.v, npc.position);
   const distToPlayer = length(vecToPlayer);
-  const chaseTarget = nextChasePathTarget(env, npc, target.position.v) ?? target.position.v;
+  const chaseTarget =
+    nextChasePathTarget(env, npc, target.position.v) ?? target.position.v;
   const vecToChaseTarget = sub(chaseTarget, npc.position);
   const angleToPlayer = yaw(vecToChaseTarget);
 
@@ -132,12 +270,17 @@ export function chaseAttackTargetTick(
   }
 
   if (distToPlayer >= params.attackDistance) {
-    const diffAngleToPlayer = Math.abs(diffAngle(angleToPlayer, npc.orientation[1]));
+    const diffAngleToPlayer = Math.abs(
+      diffAngle(angleToPlayer, npc.orientation[1])
+    );
     // Keep chasing even while turning. The old cosine multiplier hit zero
     // whenever the target was behind the NPC, which made combatants pivot in
     // place and feel broken. Use a floor so they keep closing distance while
     // rotateTargetTick catches up.
-    const turnSlowdown = Math.max(0.35, Math.cos(Math.min(diffAngleToPlayer, Math.PI / 2)));
+    const turnSlowdown = Math.max(
+      0.35,
+      Math.cos(Math.min(diffAngleToPlayer, Math.PI / 2))
+    );
     out.forwardSpeed = getNpcRunSpeed(npc.type) * turnSlowdown;
     return out;
   }
@@ -171,23 +314,23 @@ export function chaseAttackTargetTick(
     // We haven't started an attack, but we can attack, so attack.
     const attackTime = now;
     npc.mutableState().chaseAttack!.attackTime = attackTime;
-        // HARTHMERE_NPC_ATTACK_ANIM_PULSE_V2_INSTALL_MARKER
-        // Re-pulse the emote window so the renderer's Attack clip
-        // (fileAnimationName: "Attack") triggers visibly each strike.
-        const __animPulseEmote = {
-          emote_type: "attack" as const,
-          emote_start_time: attackTime,
-          emote_expiry_time:
-            attackTime +
-            (params.attackStrikeMomentSecs ?? 0.5) *
-              (params.attackAnimationMultiplier ?? 1) +
-            0.4,
-        };
-        // SimulatedNpc.setEmote() below is the supported path; mutableEmote()
-        // was an older internal hook that no longer exists on SimulatedNpc.
-        // Leaving the computed pulse object inert here keeps the attack-pulse
-        // metadata available for future telemetry without touching a missing API.
-        void __animPulseEmote;
+    // HARTHMERE_NPC_ATTACK_ANIM_PULSE_V2_INSTALL_MARKER
+    // Re-pulse the emote window so the renderer's Attack clip
+    // (fileAnimationName: "Attack") triggers visibly each strike.
+    const __animPulseEmote = {
+      emote_type: "attack" as const,
+      emote_start_time: attackTime,
+      emote_expiry_time:
+        attackTime +
+        (params.attackStrikeMomentSecs ?? 0.5) *
+          (params.attackAnimationMultiplier ?? 1) +
+        0.4,
+    };
+    // SimulatedNpc.setEmote() below is the supported path; mutableEmote()
+    // was an older internal hook that no longer exists on SimulatedNpc.
+    // Leaving the computed pulse object inert here keeps the attack-pulse
+    // metadata available for future telemetry without touching a missing API.
+    void __animPulseEmote;
 
     npc.setEmote(
       Emote.create({
@@ -354,9 +497,7 @@ export interface RetaliationDecisionInputs {
   deAggroDistanceSq: number;
   lookupEntity: (
     id: BiomesId
-  ) =>
-    | { position?: { v: ReadonlyVec3 }; health?: { hp: number } }
-    | undefined;
+  ) => { position?: { v: ReadonlyVec3 }; health?: { hp: number } } | undefined;
   now: number;
   memorySeconds: number;
 }
@@ -373,10 +514,7 @@ export function evaluateRetaliationTarget(
     now,
     memorySeconds,
   } = inputs;
-  if (
-    lastDamageSource?.kind !== "attack" ||
-    lastDamageTime === undefined
-  ) {
+  if (lastDamageSource?.kind !== "attack" || lastDamageTime === undefined) {
     return undefined;
   }
   if (now - lastDamageTime >= memorySeconds) {
@@ -433,7 +571,11 @@ function chooseProximityTarget(
   env: Environment,
   npc: SimulatedNpc,
   aggroDistance: number,
-  threatTable: ThreatTable | undefined
+  threatTable: ThreatTable | undefined,
+  options: {
+    requireLineOfSight?: boolean;
+    allowNearestFallback?: boolean;
+  } = {}
 ): BiomesId | undefined {
   const candidates: ThreatTargetCandidate[] = [];
   for (const playerId of env.ecsMetaIndex.player_selector.scanSphere({
@@ -452,7 +594,18 @@ function chooseProximityTarget(
       continue;
     }
     if (
-      isSafeZone(env.voxeloo, player.position.v, env.ecsMetaIndex, env.resources)
+      isSafeZone(
+        env.voxeloo,
+        player.position.v,
+        env.ecsMetaIndex,
+        env.resources
+      )
+    ) {
+      continue;
+    }
+    if (
+      options.requireLineOfSight &&
+      !hasLineOfSightToPlayer(env, npc, player)
     ) {
       continue;
     }
@@ -462,7 +615,11 @@ function chooseProximityTarget(
       threat: threatTable?.[String(player.id)] ?? 0,
     });
   }
-  return pickThreatPreferredTarget(candidates);
+  const eligibleCandidates =
+    options.allowNearestFallback === false
+      ? candidates.filter((candidate) => candidate.threat > 0)
+      : candidates;
+  return pickThreatPreferredTarget(eligibleCandidates);
 }
 
 export function updateAttackTarget(
@@ -480,6 +637,8 @@ export function updateAttackTarget(
   decayNpcThreat(npc);
 
   const deAggroDistanceSq = params.disengageDistance ** 2;
+  const usesNightMuckerHexAggro = isMuckerOrHexerNpcForNightAggro(npc);
+  const isNight = isNightForNpcAggro(secondsSinceEpoch());
 
   // HARTHMERE_NPC_RETALIATION_SAFE_ZONE_V1:
   // Independent of the aggro trigger kind, if the NPC was just attacked by a
@@ -517,14 +676,34 @@ export function updateAttackTarget(
       // commit to a fight should not get ignored in favor of a stranger
       // wandering into aggro range.
       targetId = recentAttackerId;
+    } else if (usesNightMuckerHexAggro && !isNight) {
+      // Hexes/muckers are only proactively hostile at night. During the day
+      // they can still fight back through recent-attacker/threat paths, but a
+      // harmless player walking by is not a valid target.
+      targetId = chooseProximityTarget(
+        env,
+        npc,
+        params.disengageDistance,
+        npc.state.threat?.table,
+        { allowNearestFallback: false }
+      );
     } else {
       // Acquire the highest-threat valid player in aggro range (whoever has
       // dealt the most damage / taunted), falling back to the nearest one.
       targetId = chooseProximityTarget(
         env,
         npc,
-        params.aggroTrigger.distance,
-        npc.state.threat?.table
+        usesNightMuckerHexAggro
+          ? Math.max(
+              params.aggroTrigger.distance,
+              NIGHT_MUCKER_HEX_UNPROVOKED_AGGRO_DISTANCE
+            )
+          : params.aggroTrigger.distance,
+        npc.state.threat?.table,
+        {
+          allowNearestFallback: true,
+          requireLineOfSight: usesNightMuckerHexAggro,
+        }
       );
     }
   }
@@ -533,6 +712,9 @@ export function updateAttackTarget(
   if (targetId) {
     const attackTarget = env.resources.get("/ecs/entity", targetId);
     const buffs = getPlayerBuffs(env.voxeloo, env.resources, targetId);
+    const targetIsProvoked =
+      targetId === recentAttackerId ||
+      (npc.state.threat?.table?.[String(targetId)] ?? 0) > 0;
 
     if (!attackTarget?.position || (attackTarget.health?.hp ?? 0) <= 0) {
       targetId = undefined;
@@ -541,6 +723,12 @@ export function updateAttackTarget(
     ) {
       targetId = undefined;
     } else if (getPlayerModifiersFromBuffs(buffs)?.peace.enabled) {
+      targetId = undefined;
+    } else if (
+      usesNightMuckerHexAggro &&
+      !targetIsProvoked &&
+      (!isNight || !hasLineOfSightToPlayer(env, npc, attackTarget))
+    ) {
       targetId = undefined;
     }
   }

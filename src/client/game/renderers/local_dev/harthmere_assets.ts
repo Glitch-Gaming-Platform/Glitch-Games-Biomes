@@ -108,6 +108,37 @@ import {
   harthmereBusinessOutpostStaffAssetV1,
 } from "@/shared/harthmere/business_npc_cosmetics_v1";
 import { LIVE_ENTITY_ROBOT_PROTECTION_AREAS_V1 } from "@/shared/harthmere/live_entity_robot_energy_protection_v1";
+import {
+  reconcileHarthmereLiveCreatureBridgeV1,
+  readHarthmereLiveCreatureBridgeV1,
+  type HarthmereLiveCreatureBridgeRecordV1,
+} from "@/shared/harthmere/live_creature_ecs_bridge_v1";
+
+// HARTHMERE_ECS_CREATURE_RENDER_V1: when enabled (default), muck monsters,
+// animals, hexes and quest creatures are drawn from their live ECS entities so
+// the visible mesh sits exactly on the server entity and the native attack ray
+// hits it. The static PLACEMENTS copies of those creatures are suppressed to
+// avoid duplicates. Set localStorage "biomes.localDev.harthmere.ecsCreatureRender"
+// to "0" to fall back to the old static-only rendering.
+function harthmereEcsCreatureRenderEnabledV1(): boolean {
+  if (typeof window === "undefined") {
+    return true;
+  }
+  return (
+    window.localStorage?.getItem(
+      "biomes.localDev.harthmere.ecsCreatureRender"
+    ) !== "0"
+  );
+}
+
+function isHarthmereEcsDrivenCreatureAssetV1(asset: string): boolean {
+  // Every living thing is now driven from its ECS entity: muck monsters / hexes
+  // / quest creatures ("townsperson_undead"), wildlife ("animal_*") AND town
+  // humans / escort / quest NPCs (all other "townsperson_*"). Suppress their
+  // static placements so the ECS mesh is the only copy (no flicker, hittable).
+  // Robots are NOT life assets, so they stay on their own render path.
+  return asset.startsWith("townsperson_") || asset.startsWith("animal_");
+}
 
 const HARTHMERE_NO_SPARK_BASIC_ACTOR_MATCH_VERSION = "harthmere-no-spark-basic-actor-match-v11";
 const HARTHMERE_FIX_DEBUG_RENDERER_CALL_VERSION = "harthmere-fix-debug-renderer-call-v1";
@@ -12339,6 +12370,10 @@ private harthmerePlayerSword?: THREE.Group;
   private readonly animated: AnimatedInstance[] = [];
   private readonly combatLifeInstances: CombatLifeInstance[] = [];
   private readonly placementInstances: HarthmerePlacementRuntimeInstance[] = [];
+  // HARTHMERE_ECS_CREATURE_RENDER_V1: meshes drawn from live ECS creature
+  // entities, keyed by entity id, so they can be repositioned / disposed as the
+  // bridge updates.
+  private readonly harthmereEcsLiveCreatures = new Map<number, THREE.Object3D>();
   private readonly spawnedLifePositions: Array<[number, number]> = [];
   private readonly deadCombatObjects = new WeakSet<THREE.Object3D>();
   private harthmerePlacementLodUpdateIn = 0;
@@ -12515,6 +12550,7 @@ private harthmerePlayerSword?: THREE.Group;
         instance.object.rotation.y += instance.spin * dt;
       }
     }
+    this.reconcileHarthmereEcsLiveCreaturesV1();
     for (const instance of this.combatLifeInstances) {
       this.applyCombatPulse(instance);
     }
@@ -16571,6 +16607,109 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
     return true;
   }
 
+  // HARTHMERE_ECS_CREATURE_RENDER_V1
+  // Reconcile the meshes we draw for live ECS creatures against the latest
+  // bridge snapshot published by HarthmereLiveCreatureBridgeScript. Each creature
+  // is drawn on its real entity position (combatOffset = entity id) so the native
+  // attack ray hits exactly what the player sees.
+  private reconcileHarthmereEcsLiveCreaturesV1() {
+    if (!harthmereEcsCreatureRenderEnabledV1()) {
+      if (this.harthmereEcsLiveCreatures.size > 0) {
+        for (const id of [...this.harthmereEcsLiveCreatures.keys()]) {
+          this.removeHarthmereEcsLiveCreatureV1(id);
+        }
+      }
+      return;
+    }
+    const records = readHarthmereLiveCreatureBridgeV1();
+    const { toAdd, toUpdate, toRemove } = reconcileHarthmereLiveCreatureBridgeV1(
+      new Set(this.harthmereEcsLiveCreatures.keys()),
+      records
+    );
+    for (const record of toAdd) {
+      this.addHarthmereEcsLiveCreatureV1(record);
+    }
+    for (const record of toUpdate) {
+      this.updateHarthmereEcsLiveCreatureV1(record);
+    }
+    for (const id of toRemove) {
+      this.removeHarthmereEcsLiveCreatureV1(id);
+    }
+  }
+
+  private addHarthmereEcsLiveCreatureV1(
+    record: HarthmereLiveCreatureBridgeRecordV1
+  ) {
+    const placement: RuntimePlacement = {
+      asset: record.asset,
+      at: record.at,
+      rot: record.yaw,
+      scale: record.scale,
+      name: record.label,
+      // Drives the combat-actor registry + native hit alignment.
+      combatOffset: record.id,
+    };
+    const beforeCount = this.combatLifeInstances.length;
+    if (!this.addHarthmereProceduralLifePlacement(placement)) {
+      return;
+    }
+    // addHarthmereProceduralLifePlacement registers the new actor as the last
+    // combat-life instance; capture its object so we can move/dispose it later.
+    if (this.combatLifeInstances.length > beforeCount) {
+      const object =
+        this.combatLifeInstances[this.combatLifeInstances.length - 1].object;
+      object.userData.harthmereEcsCreatureId = record.id;
+      this.harthmereEcsLiveCreatures.set(record.id, object);
+    }
+  }
+
+  private updateHarthmereEcsLiveCreatureV1(
+    record: HarthmereLiveCreatureBridgeRecordV1
+  ) {
+    const object = this.harthmereEcsLiveCreatures.get(record.id);
+    if (!object) {
+      return;
+    }
+    // Smoothly chase the entity's authoritative position so movement reads
+    // naturally between bridge ticks.
+    object.position.x += (record.at[0] - object.position.x) * 0.4;
+    object.position.y += (record.at[1] - object.position.y) * 0.4;
+    object.position.z += (record.at[2] - object.position.z) * 0.4;
+    object.rotation.y = record.yaw;
+  }
+
+  private removeHarthmereEcsLiveCreatureV1(id: number) {
+    const object = this.harthmereEcsLiveCreatures.get(id);
+    this.harthmereEcsLiveCreatures.delete(id);
+    if (!object) {
+      return;
+    }
+    this.root.remove(object);
+    const dropByObject = <T extends { object: THREE.Object3D }>(arr: T[]) => {
+      for (let i = arr.length - 1; i >= 0; i -= 1) {
+        if (arr[i].object === object) {
+          arr.splice(i, 1);
+        }
+      }
+    };
+    dropByObject(this.combatLifeInstances);
+    dropByObject(this.animated);
+    dropByObject(this.placementInstances);
+    object.traverse((child) => {
+      const mesh = child as THREE.Mesh;
+      mesh.geometry?.dispose?.();
+      const material = mesh.material as
+        | THREE.Material
+        | THREE.Material[]
+        | undefined;
+      if (Array.isArray(material)) {
+        material.forEach((m) => m.dispose?.());
+      } else {
+        material?.dispose?.();
+      }
+    });
+  }
+
   private async loadAll() {
     const preparedRuntimePlacements = prepareHarthmereRuntimePlacementsV3(RUNTIME_PLACEMENTS_V48);
     const runtimePlacements = preparedRuntimePlacements.placements;
@@ -16634,6 +16773,15 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
     }
     for (const authoredPlacement of runtimePlacements) {
       if (authoredPlacement.robotProtectionAreaId) {
+        continue;
+      }
+      // HARTHMERE_ECS_CREATURE_RENDER_V1: skip static muck/animal/hex creatures;
+      // they are now drawn from their live ECS entities (see
+      // reconcileHarthmereEcsLiveCreaturesV1) so the visible mesh is hittable.
+      if (
+        harthmereEcsCreatureRenderEnabledV1() &&
+        isHarthmereEcsDrivenCreatureAssetV1(authoredPlacement.asset)
+      ) {
         continue;
       }
       const placement = this.resolveHarthmereRuntimePlacement(authoredPlacement);

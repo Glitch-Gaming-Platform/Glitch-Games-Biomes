@@ -3,6 +3,8 @@ import assert from "assert";
 import {
   chasePathTargetIsStale,
   effectiveAttackStrikeDelaySecs,
+  isMuckerOrHexerNameForNightAggro,
+  isNightForNpcAggro,
 } from "@/shared/npc/behavior/chase_attack";
 import type { Path } from "@/shared/npc/behavior/pathfinding";
 
@@ -79,10 +81,28 @@ describe("chase attack: stale path detection", () => {
   it("REGRESSION: rebuilds the path once the target drifts past the threshold", () => {
     // Target ran 10 blocks away from the cached path end; without this the NPC
     // would chase the stale spot until the 8s stuck timer fired.
-    assert.equal(chasePathTargetIsStale(pathTo([10, 0, 0]), [20, 0, 0], 9), true);
+    assert.equal(
+      chasePathTargetIsStale(pathTo([10, 0, 0]), [20, 0, 0], 9),
+      true
+    );
   });
 
   it("treats an empty path as stale", () => {
     assert.equal(chasePathTargetIsStale({ nodes: [] }, [0, 0, 0], 9), true);
+  });
+});
+
+describe("chase attack: night muck/hex aggression helpers", () => {
+  it("classifies muckers and hexes without matching protected robots or wards", () => {
+    assert.equal(isMuckerOrHexerNameForNightAggro("Mossy Muckling"), true);
+    assert.equal(isMuckerOrHexerNameForNightAggro("Old Wood Mucker"), true);
+    assert.equal(isMuckerOrHexerNameForNightAggro("Pale Hexer"), true);
+    assert.equal(isMuckerOrHexerNameForNightAggro("Mucker Ward"), false);
+    assert.equal(isMuckerOrHexerNameForNightAggro("Mucked Robot"), false);
+  });
+
+  it("uses the game sun clock for night detection", () => {
+    assert.equal(isNightForNpcAggro(0), true);
+    assert.equal(isNightForNpcAggro(1_700_000_000), false);
   });
 });

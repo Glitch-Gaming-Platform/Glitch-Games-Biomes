@@ -77,9 +77,13 @@ const BiomesPostOverlayComponent: React.FunctionComponent<{
 
   const shortcuts: InspectShortcuts = [
     {
-      title: `View ${
-        photoBundle ? `${photoBundle.author.username}'s` : ""
-      } photo`,
+      title:
+        photoBundle === null
+          ? "Photo unavailable"
+          : `View ${
+              photoBundle ? `${photoBundle.author.username}'s` : ""
+            } photo`,
+      disabled: photoBundle === null,
       onKeyDown: () => {
         gardenHose.publish({ kind: "inspect_frame" });
         reactResources.set("/game_modal", {

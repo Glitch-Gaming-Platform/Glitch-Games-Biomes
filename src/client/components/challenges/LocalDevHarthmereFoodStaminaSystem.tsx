@@ -7,12 +7,8 @@ import {
   tickHarthmereStaminaForGameplayV1,
   type HarthmereFoodStaminaStateV1,
 } from "@/shared/harthmere/mmo_farming_food_stamina_v1";
-import { usePointerLockManager } from "@/client/components/contexts/PointerLockContext";
-import {
-  downHarthmerePlayerFromSystem,
-} from "@/client/components/challenges/LocalDevHarthmereCombat";
+import { downHarthmerePlayerFromSystem } from "@/client/components/challenges/LocalDevHarthmereCombat";
 import { harthmereUserScopedStorageKey } from "@/client/components/challenges/LocalDevHarthmereUserScope";
-import { useClientContext } from "@/client/components/contexts/ClientContextReactContext";
 import React, { useEffect, useState } from "react";
 
 export const HARTHMERE_FOOD_STAMINA_STATE_KEY =
@@ -35,13 +31,13 @@ function dispatchFoodStaminaEvent() {
 }
 
 function normalizeFoodStaminaState(
-  raw: Partial<HarthmereFoodStaminaStateV1> | undefined,
+  raw: Partial<HarthmereFoodStaminaStateV1> | undefined
 ): HarthmereFoodStaminaStateV1 {
   const now = Date.now();
   const fallback = defaultHarthmereFoodStaminaStateV1("local-player", now);
   const maxStamina = Math.max(
     1,
-    Number(raw?.maxStamina ?? HARTHMERE_DEFAULT_MAX_STAMINA_V1),
+    Number(raw?.maxStamina ?? HARTHMERE_DEFAULT_MAX_STAMINA_V1)
   );
   const savedStateVersion = raw?.stateVersion;
   const migratingFromOldFastDrain =
@@ -49,12 +45,13 @@ function normalizeFoodStaminaState(
     savedStateVersion !== HARTHMERE_FARMING_FOOD_STAMINA_VERSION_V1;
   const savedStamina = Math.max(
     0,
-    Math.min(maxStamina, Number(raw?.stamina ?? fallback.stamina)),
+    Math.min(maxStamina, Number(raw?.stamina ?? fallback.stamina))
   );
   const savedDeathAt = Number.isFinite(raw?.deadFromStaminaAtMs)
     ? Number(raw?.deadFromStaminaAtMs)
     : undefined;
-  const repairPlayableZeroStamina = savedStamina <= 0 && savedDeathAt === undefined;
+  const repairPlayableZeroStamina =
+    savedStamina <= 0 && savedDeathAt === undefined;
   const resetToPlayableStamina =
     (migratingFromOldFastDrain && savedStamina <= 0) ||
     repairPlayableZeroStamina;
@@ -70,11 +67,12 @@ function normalizeFoodStaminaState(
     lastStaminaTickMs: resetToPlayableStamina
       ? now
       : Number.isFinite(raw?.lastStaminaTickMs)
-        ? Number(raw?.lastStaminaTickMs)
-        : now,
-    deadFromStaminaAtMs: migratingFromOldFastDrain || repairPlayableZeroStamina
-      ? undefined
-      : savedDeathAt,
+      ? Number(raw?.lastStaminaTickMs)
+      : now,
+    deadFromStaminaAtMs:
+      migratingFromOldFastDrain || repairPlayableZeroStamina
+        ? undefined
+        : savedDeathAt,
     inventory: raw?.inventory ?? fallback.inventory,
     plots: raw?.plots ?? {},
     spawns: raw?.spawns ?? {},
@@ -91,7 +89,7 @@ export function readHarthmereFoodStaminaState(): HarthmereFoodStaminaStateV1 {
   }
   try {
     const raw = window.localStorage.getItem(
-      harthmereUserScopedStorageKey(HARTHMERE_FOOD_STAMINA_STATE_KEY),
+      harthmereUserScopedStorageKey(HARTHMERE_FOOD_STAMINA_STATE_KEY)
     );
     return normalizeFoodStaminaState(raw ? JSON.parse(raw) : undefined);
   } catch {
@@ -99,13 +97,15 @@ export function readHarthmereFoodStaminaState(): HarthmereFoodStaminaStateV1 {
   }
 }
 
-export function writeHarthmereFoodStaminaState(state: HarthmereFoodStaminaStateV1) {
+export function writeHarthmereFoodStaminaState(
+  state: HarthmereFoodStaminaStateV1
+) {
   if (!isBrowser()) {
     return;
   }
   window.localStorage.setItem(
     harthmereUserScopedStorageKey(HARTHMERE_FOOD_STAMINA_STATE_KEY),
-    JSON.stringify(normalizeFoodStaminaState(state)),
+    JSON.stringify(normalizeFoodStaminaState(state))
   );
   dispatchFoodStaminaEvent();
 }
@@ -113,13 +113,14 @@ export function writeHarthmereFoodStaminaState(state: HarthmereFoodStaminaStateV
 export function isHarthmereWakeUpScreenActiveV1() {
   return (
     isBrowser() &&
-    document.documentElement.dataset[HARTHMERE_WAKE_UP_ACTIVE_DATASET_KEY_V1] ===
-      "true"
+    document.documentElement.dataset[
+      HARTHMERE_WAKE_UP_ACTIVE_DATASET_KEY_V1
+    ] === "true"
   );
 }
 
 export function restoreHarthmereFoodStaminaToFullForRespawn(
-  reason = "Restored stamina after respawn.",
+  reason = "Restored stamina after respawn."
 ) {
   const before = readHarthmereFoodStaminaState();
   const result = restoreHarthmereStaminaToFullV1(before, Date.now());
@@ -128,7 +129,7 @@ export function restoreHarthmereFoodStaminaToFullForRespawn(
     window.dispatchEvent(
       new CustomEvent("biomes:harthmere-food-stamina-restored", {
         detail: { reason, stamina: result.state.stamina },
-      }),
+      })
     );
   }
   return result;
@@ -139,20 +140,27 @@ export function useHarthmereFoodStaminaState() {
   useEffect(() => {
     const refresh = () => setState(readHarthmereFoodStaminaState());
     window.addEventListener(HARTHMERE_FOOD_STAMINA_EVENT, refresh);
-    return () => window.removeEventListener(HARTHMERE_FOOD_STAMINA_EVENT, refresh);
+    return () =>
+      window.removeEventListener(HARTHMERE_FOOD_STAMINA_EVENT, refresh);
   }, []);
   return state;
 }
 
 export function eatHarthmereFoodForStamina(itemId: string) {
   const before = readHarthmereFoodStaminaState();
-  const result = eatHarthmereFoodV1({
-    ...before,
-    inventory: { ...before.inventory, [itemId]: Math.max(1, before.inventory[itemId] ?? 0) },
-  }, {
-    itemId,
-    nowMs: Date.now(),
-  });
+  const result = eatHarthmereFoodV1(
+    {
+      ...before,
+      inventory: {
+        ...before.inventory,
+        [itemId]: Math.max(1, before.inventory[itemId] ?? 0),
+      },
+    },
+    {
+      itemId,
+      nowMs: Date.now(),
+    }
+  );
   writeHarthmereFoodStaminaState({
     ...result.state,
     inventory: before.inventory,
@@ -160,40 +168,35 @@ export function eatHarthmereFoodForStamina(itemId: string) {
   return result;
 }
 
-export const HarthmereFoodStaminaRuntimeController: React.FunctionComponent<{}> = () => {
-  const { reactResources } = useClientContext();
-  const pointerLockManager = usePointerLockManager();
-  useEffect(() => {
-    const isGameplayActive = () => {
-      if (!isBrowser() || document.visibilityState !== "visible") {
-        return false;
-      }
-      if (isHarthmereWakeUpScreenActiveV1()) {
-        return false;
-      }
-      const gameModal = reactResources.get("/game_modal");
-      if (gameModal.kind !== "empty") {
-        return false;
-      }
-      return pointerLockManager.isLocked();
-    };
-    const tick = () => {
-      const result = tickHarthmereStaminaForGameplayV1(
-        readHarthmereFoodStaminaState(),
-        { nowMs: Date.now(), gameplayActive: isGameplayActive() },
-      );
-      writeHarthmereFoodStaminaState(result.state);
-      if (result.deathTriggered) {
-        downHarthmerePlayerFromSystem({
-          cause: "Stamina reached zero",
-          killerName: "Starvation and exhaustion",
-          detail: "You ran out of stamina. Eat food to keep your body going.",
-        });
-      }
-    };
-    const id = window.setInterval(tick, 15_000);
-    tick();
-    return () => window.clearInterval(id);
-  }, [pointerLockManager, reactResources]);
-  return null;
-};
+export const HarthmereFoodStaminaRuntimeController: React.FunctionComponent<{}> =
+  () => {
+    useEffect(() => {
+      const isGameplayActive = () => {
+        if (!isBrowser() || document.visibilityState !== "visible") {
+          return false;
+        }
+        if (isHarthmereWakeUpScreenActiveV1()) {
+          return false;
+        }
+        return true;
+      };
+      const tick = () => {
+        const result = tickHarthmereStaminaForGameplayV1(
+          readHarthmereFoodStaminaState(),
+          { nowMs: Date.now(), gameplayActive: isGameplayActive() }
+        );
+        writeHarthmereFoodStaminaState(result.state);
+        if (result.deathTriggered) {
+          downHarthmerePlayerFromSystem({
+            cause: "Stamina reached zero",
+            killerName: "Starvation and exhaustion",
+            detail: "You ran out of stamina. Eat food to keep your body going.",
+          });
+        }
+      };
+      const id = window.setInterval(tick, 15_000);
+      tick();
+      return () => window.clearInterval(id);
+    }, []);
+    return null;
+  };

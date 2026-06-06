@@ -21,8 +21,10 @@ import {
 import {
   SNAPSHOT_MISSION_STATE_EVENT_V71,
   firstActiveSnapshotRoadAheadQuestTitleForBiomesUIV73,
+  recordSnapshotRoadAheadChallengeStepForBiomesUIV73,
   readSnapshotMissionStateV71,
   recordSnapshotRoadAheadEquippedGearSlotForBiomesUIV73,
+  snapshotRoadAheadChallengeStepHintsFromActiveNuxesForBiomesUIV73,
   snapshotRoadAheadMissionStepsForBiomesUIV73,
   snapshotRoadAheadTrackableQuestsForBiomesUIV73,
 } from "@/client/components/challenges/LocalDevSnapshotMissionBridge";
@@ -1015,6 +1017,22 @@ function stackRecordToInventoryUiItemsV135(
     });
 }
 
+function mergeInventoryStackRecordsV1(
+  ...records: Array<Record<string, number> | undefined>
+): Record<string, number> | undefined {
+  const merged: Record<string, number> = {};
+  for (const record of records) {
+    for (const [itemId, count] of Object.entries(record ?? {})) {
+      const quantity = Number(count);
+      if (!Number.isFinite(quantity) || quantity <= 0) {
+        continue;
+      }
+      merged[itemId] = (merged[itemId] ?? 0) + quantity;
+    }
+  }
+  return Object.keys(merged).length > 0 ? merged : undefined;
+}
+
 function instanceRecordToInventoryUiItemsV135(
   instanceIds: string[] | undefined,
   instances: Record<string, any> | undefined,
@@ -1947,6 +1965,7 @@ export function useBiomesUILiveAdapters({
     chatIo,
     socialManager,
     gardenHose,
+    resources,
   } = clientContext;
   const pointerLockManager = usePointerLockManager();
   const inventory = reactResources.use("/ecs/c/inventory", userId) as any;
@@ -1957,7 +1976,19 @@ export function useBiomesUILiveAdapters({
     (reactResources.use("/dms") as { messages?: any[] })?.messages ?? [];
   const activityMessages =
     (reactResources.use("/activity") as { messages?: any[] })?.messages ?? [];
+  const activeNuxes =
+    (reactResources.use("/nuxes/state_active") as { value?: unknown[] })
+      ?.value ?? [];
   const [snapshotRevision, setSnapshotRevision] = React.useState(0);
+  const roadAheadChallengeStepHints = React.useMemo(
+    () => [
+      ...(resources.cached("/challenges/active_leaves") ?? []),
+      ...snapshotRoadAheadChallengeStepHintsFromActiveNuxesForBiomesUIV73(
+        activeNuxes
+      ),
+    ],
+    [activeNuxes, resources, snapshotRevision]
+  );
   const [harthmereInventoryRevision, setHarthmereInventoryRevision] =
     React.useState(0);
   // Tab-shortcut rebindings from the Options tab, persisted to localStorage and
@@ -2208,6 +2239,18 @@ export function useBiomesUILiveAdapters({
       }
       if (event?.kind === "challenge_step_complete") {
         completeHarthmereDailyTaskSoonV1("main_quest");
+      }
+      if (
+        event?.kind === "challenge_step_begin" ||
+        event?.kind === "challenge_step_complete"
+      ) {
+        const recorded = recordSnapshotRoadAheadChallengeStepForBiomesUIV73(
+          event.stepId,
+          event.kind === "challenge_step_begin" ? "begin" : "complete"
+        );
+        if (recorded) {
+          setSnapshotRevision((value) => value + 1);
+        }
       }
     };
     gardenHose.on("anyEvent", handler);
@@ -2800,8 +2843,12 @@ export function useBiomesUILiveAdapters({
               !("maxSlots" in materialStorageSnapshot)
             ? materialStorageSnapshot
             : undefined;
+        const combinedMaterialStorageItems = mergeInventoryStackRecordsV1(
+          materialStorageItems as Record<string, number> | undefined,
+          localHarthmereInventoryState.materialStorage
+        );
         const materialStorageUiItems = stackRecordToInventoryUiItemsV135(
-          materialStorageItems,
+          combinedMaterialStorageItems,
           "material_storage",
           "item",
           {
@@ -2866,10 +2913,10 @@ export function useBiomesUILiveAdapters({
           },
           materialStorage: {
             items: materialStorageUiItems,
-            maxSlots: Number(materialStorageSnapshot?.maxSlots ?? 0),
-            usedSlots: Number(
-              materialStorageSnapshot?.usedSlots ??
-                materialStorageUiItems.length
+            maxSlots: Number(materialStorageSnapshot?.maxSlots ?? 32),
+            usedSlots: Math.max(
+              Number(materialStorageSnapshot?.usedSlots ?? 0),
+              materialStorageUiItems.length
             ),
             capacityLabel: "Material Storage",
           },
@@ -3588,7 +3635,8 @@ export function useBiomesUILiveAdapters({
         playerWorldPos,
         jobsBoardState,
         liveQuestState,
-        buildingState
+        buildingState,
+        roadAheadChallengeStepHints
       ),
       questInvites: questInvitesAdapter,
       guilds: guildAdapter,
@@ -3761,6 +3809,7 @@ export function useBiomesUILiveAdapters({
     refreshInventoryLootState,
     refreshProgressionState,
     refreshQuestState,
+    roadAheadChallengeStepHints,
     snapshotRevision,
     socialManager,
     submitBuildingSystemLiveModeActionAndStore,

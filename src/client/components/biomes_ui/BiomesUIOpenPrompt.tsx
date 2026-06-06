@@ -8,7 +8,8 @@ import {
 import { Highlightable } from "./highlight/HighlightOverlay";
 import { UI_IDS } from "./uniqueIds";
 
-const BIOMES_UI_NON_GAMEPLAY_SCREEN_SELECTORS_V137 = [
+export const BIOMES_UI_NON_GAMEPLAY_SCREEN_SELECTORS_V137 = [
+  ".loading-wrapper",
   ".wake-up-container",
   ".harthmere-wakeup-character-builder",
   ".harthmere-wakeup-name-entry",
@@ -17,16 +18,42 @@ const BIOMES_UI_NON_GAMEPLAY_SCREEN_SELECTORS_V137 = [
   "[data-ui-id='enter_world.screen']",
 ] as const;
 
-function biomesUIIsNonGameplayScreenVisibleV137() {
-  if (typeof document === "undefined") {
+type BiomesUINonGameplayRootV137 = Pick<ParentNode, "querySelector">;
+type BiomesUINonGameplayStyleReaderV137 = (
+  element: Element
+) => Pick<CSSStyleDeclaration, "display" | "visibility">;
+
+function defaultBiomesUINonGameplayRootV137():
+  | BiomesUINonGameplayRootV137
+  | undefined {
+  return typeof document === "undefined" ? undefined : document;
+}
+
+function defaultBiomesUINonGameplayStyleReaderV137():
+  | BiomesUINonGameplayStyleReaderV137
+  | undefined {
+  return typeof window === "undefined"
+    ? undefined
+    : (element) => window.getComputedStyle(element);
+}
+
+export function biomesUIIsNonGameplayScreenVisibleV137(
+  root:
+    | BiomesUINonGameplayRootV137
+    | undefined = defaultBiomesUINonGameplayRootV137(),
+  readStyle:
+    | BiomesUINonGameplayStyleReaderV137
+    | undefined = defaultBiomesUINonGameplayStyleReaderV137()
+) {
+  if (!root || !readStyle) {
     return false;
   }
   return BIOMES_UI_NON_GAMEPLAY_SCREEN_SELECTORS_V137.some((selector) => {
-    const element = document.querySelector(selector) as HTMLElement | null;
+    const element = root.querySelector(selector);
     if (!element) {
       return false;
     }
-    const style = window.getComputedStyle(element);
+    const style = readStyle(element);
     const rect = element.getBoundingClientRect();
     return (
       style.display !== "none" &&

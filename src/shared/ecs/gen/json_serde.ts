@@ -9669,6 +9669,24 @@ class FertilizePlantEventSerde {
     });
   }
 }
+class HarvestPlantEventSerde {
+  static serialize(event: ev.HarvestPlantEvent) {
+    return {
+      kind: "harvestPlantEvent",
+      id: t.serializeBiomesId(event.id),
+      plant_id: t.serializeBiomesId(event.plant_id),
+      position: event.position,
+    };
+  }
+
+  static deserialize(data: any) {
+    return new ev.HarvestPlantEvent({
+      id: t.deserializeBiomesId(data.id),
+      plant_id: t.deserializeBiomesId(data.plant_id),
+      position: t.deserializeVec3i(data.position),
+    });
+  }
+}
 class AdminDestroyPlantEventSerde {
   static serialize(event: ev.AdminDestroyPlantEvent) {
     return {
@@ -11105,6 +11123,8 @@ export class EventSerde {
         return FertilizePlantEventSerde.serialize(
           event as ev.FertilizePlantEvent
         );
+      case "harvestPlantEvent":
+        return HarvestPlantEventSerde.serialize(event as ev.HarvestPlantEvent);
       case "adminDestroyPlantEvent":
         return AdminDestroyPlantEventSerde.serialize(
           event as ev.AdminDestroyPlantEvent
@@ -11501,6 +11521,8 @@ export class EventSerde {
         return WaterPlantsEventSerde.deserialize(data);
       case "fertilizePlantEvent":
         return FertilizePlantEventSerde.deserialize(data);
+      case "harvestPlantEvent":
+        return HarvestPlantEventSerde.deserialize(data);
       case "adminDestroyPlantEvent":
         return AdminDestroyPlantEventSerde.deserialize(data);
       case "fishingClaimEvent":

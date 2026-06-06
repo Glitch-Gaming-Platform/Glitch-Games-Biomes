@@ -15,6 +15,7 @@ import {
   harthmereBikkieVisualImageUrlV1,
   harthmereBikkieVisualTileStyleV1,
 } from "../biomes_ui/adapters/harthmereBikkieVisualRenderingV1";
+import type { HarthmereResolvedBikkieVisualV1 } from "@/shared/harthmere/bikkie_visual_resolver_v1";
 import { createHarthmereBusinessMiniGameDecisionForOfferV1 } from "@/shared/harthmere/business_customer_simulator_v1";
 import type {
   HarthmereBusinessActorModeV1,
@@ -24,7 +25,10 @@ import type {
   HarthmereBusinessVisibleInventoryItemV1,
   HarthmereBusinessWorldContextV1,
 } from "./businessInterfaceLiveAdapter";
-import { formatHarthmereBusinessPlayerWarningV1 } from "./businessInterfaceLiveAdapter";
+import {
+  formatHarthmereBusinessPlayerWarningV1,
+  harthmereBusinessServicePriceGoldV1,
+} from "./businessInterfaceLiveAdapter";
 import { businessCheckInDisplayModelV1 } from "./businessDailyCheckInClientV1";
 import {
   harthmereBusinessCustomerPlayerMeshAvatarV1,
@@ -87,7 +91,12 @@ declare global {
   }
 }
 
-type ShopfrontMerchKindV1 = "tool" | "block" | "interior" | "stock";
+type ShopfrontMerchKindV1 =
+  | "tool"
+  | "block"
+  | "interior"
+  | "recipe_book"
+  | "stock";
 
 const OWNER_TABS: OwnerTab[] = [
   "dashboard",
@@ -393,20 +402,23 @@ function usePendingBusinessAdapterV1(
   return { adapter: wrapped, pending: pendingCount > 0 };
 }
 
-const BikkieVisualTile: React.FunctionComponent<{
-  graphic: HarthmereBusinessBikkieGraphicV1;
-}> = ({ graphic }) => {
-  const imageUrl = harthmereBikkieVisualImageUrlV1(graphic.visual);
+const BikkieVisualTileForVisualV1: React.FunctionComponent<{
+  visual: HarthmereResolvedBikkieVisualV1;
+  size?: number;
+  dataTestId?: string;
+}> = ({ visual, size, dataTestId }) => {
+  const imageUrl = harthmereBikkieVisualImageUrlV1(visual);
   return (
     <span
-      aria-label={graphic.visual.ariaLabel}
-      title={graphic.visual.metadataSummary}
-      style={harthmereBikkieVisualTileStyleV1(graphic.visual)}
+      aria-label={visual.ariaLabel}
+      title={visual.metadataSummary}
+      style={harthmereBikkieVisualTileStyleV1(visual, size)}
+      data-testid={dataTestId}
       data-bikkie-visual="true"
-      data-visual-source={graphic.visual.source}
-      data-visual-kind={graphic.visual.shape}
-      data-visual-id={graphic.visual.visualId}
-      data-icon-asset-path={graphic.visual.iconAssetPath}
+      data-visual-source={visual.source}
+      data-visual-kind={visual.shape}
+      data-visual-id={visual.visualId}
+      data-icon-asset-path={visual.iconAssetPath}
     >
       {imageUrl ? (
         <img
@@ -417,12 +429,14 @@ const BikkieVisualTile: React.FunctionComponent<{
           data-bikkie-visual-img="true"
         />
       ) : null}
-      <span style={harthmereBikkieVisualGlyphStyleV1}>
-        {graphic.visual.glyph}
-      </span>
+      <span style={harthmereBikkieVisualGlyphStyleV1}>{visual.glyph}</span>
     </span>
   );
 };
+
+const BikkieVisualTile: React.FunctionComponent<{
+  graphic: HarthmereBusinessBikkieGraphicV1;
+}> = ({ graphic }) => <BikkieVisualTileForVisualV1 visual={graphic.visual} />;
 
 export const HarthmereBusinessInterfacePanel: React.FunctionComponent<
   HarthmereBusinessInterfacePanelProps
@@ -1116,8 +1130,9 @@ const CustomerMiniGamePane: React.FunctionComponent<{
         <div style={heroGlowStyle} aria-hidden="true" />
         <div style={heroTopRowStyle}>
           <div style={{ minWidth: 0 }}>
-            <span style={heroEyebrowStyle}>Customer Counter</span>
+            <span style={heroEyebrowStyle}>Day Job Mini-Game</span>
             <strong style={miniGameTitleStyle}>{mechanic.gameTitle}</strong>
+            <p style={dayJobIntroStyle}>Take a day job to earn some gold.</p>
           </div>
           <span style={session ? miniGameBadgeLiveStyle : miniGameBadgeStyle}>
             {session ? "Shift Live" : "Ready"}
@@ -1742,40 +1757,74 @@ const ShopfrontPane: React.FunctionComponent<{
   const furnishings = storefrontGoods.filter(
     (good) => good.kind === "interior"
   );
+  const recipeBooks = storefrontGoods.filter(
+    (good) => good.kind === "recipe_book"
+  );
   const renderStorefrontGood = (
     good: (typeof storefrontGoods)[number],
     merchKind: ShopfrontMerchKindV1
-  ) => (
-    <button
-      key={good.itemId}
-      type="button"
-      data-business-backend-action="true"
-      data-testid={`biomes-business-storefront-good-${good.itemId}`}
-      aria-label={`Buy ${displayLabel(good.itemId)}${
-        parsedCount > 1 ? ` x${parsedCount}` : ""
-      }`}
-      disabled={backendPending}
-      style={backendActionStyleV1(
-        shopfrontGoodButtonStyle(merchKind),
-        backendPending
-      )}
-      onClick={() =>
-        void adapter.buyStorefrontGood(businessId, good.itemId, parsedCount)
-      }
-    >
-      <div style={shopItemHeaderStyle}>
-        <strong style={shopItemNameStyle}>{displayLabel(good.itemId)}</strong>
-        <span style={shopfrontKindBadgeStyle(merchKind)}>
-          {shopfrontKindLabelV1(merchKind)}
+  ) => {
+    const itemLabel = good.displayName ?? displayLabel(good.itemId);
+    const isRecipeBook = merchKind === "recipe_book";
+    const purchaseCount = isRecipeBook ? 1 : parsedCount;
+    const learned = Boolean(good.learned);
+    const disabled = backendPending || learned;
+    const actionLabel = learned
+      ? "Learned"
+      : isRecipeBook
+      ? "Learn"
+      : buyCountLabel;
+    return (
+      <button
+        key={good.itemId}
+        type="button"
+        data-business-backend-action="true"
+        data-testid={`biomes-business-storefront-good-${good.itemId}`}
+        aria-label={`${isRecipeBook ? "Learn" : "Buy"} ${itemLabel}${
+          !isRecipeBook && parsedCount > 1 ? ` x${parsedCount}` : ""
+        }`}
+        disabled={disabled}
+        style={backendActionStyleV1(
+          shopfrontGoodButtonStyle(merchKind),
+          disabled
+        )}
+        onClick={() =>
+          void adapter.buyStorefrontGood(businessId, good.itemId, purchaseCount)
+        }
+      >
+        <div style={shopfrontItemLeadStyle}>
+          {good.visual ? (
+            <BikkieVisualTileForVisualV1
+              visual={good.visual}
+              size={38}
+              dataTestId={`biomes-business-storefront-good-icon-${good.itemId}`}
+            />
+          ) : null}
+          <div style={shopfrontItemTextStyle}>
+            <div style={shopItemHeaderStyle}>
+              <strong style={shopItemNameStyle}>{itemLabel}</strong>
+              <span style={shopfrontKindBadgeStyle(merchKind)}>
+                {shopfrontKindLabelV1(merchKind)}
+              </span>
+            </div>
+            <div style={shopItemMetaStyle}>
+              {isRecipeBook
+                ? `${good.recipeIds?.length ?? 0} recipes · ${
+                    good.priceGold
+                  } gold`
+                : `Unit price ${good.priceGold} gold`}
+            </div>
+          </div>
+        </div>
+        <span style={buyActionTextStyle}>
+          {actionLabel}
+          {!learned && !isRecipeBook && parsedCount > 1
+            ? ` · ${good.priceGold * parsedCount} gold`
+            : ""}
         </span>
-      </div>
-      <div style={shopItemMetaStyle}>Unit price {good.priceGold} gold</div>
-      <span style={buyActionTextStyle}>
-        {buyCountLabel}
-        {parsedCount > 1 ? ` · ${good.priceGold * parsedCount} gold` : ""}
-      </span>
-    </button>
-  );
+      </button>
+    );
+  };
   return (
     <section style={cardStyle}>
       <h3 style={sectionTitleStyle}>
@@ -1887,14 +1936,25 @@ const ShopfrontPane: React.FunctionComponent<{
           dataTestId="biomes-business-tool-for-sale"
         >
           <div style={shopfrontToolListingStyle}>
-            <div style={shopItemHeaderStyle}>
-              <strong style={shopItemNameStyle}>
-                {shop.toolForSale.toolName}
-              </strong>
-              <span style={shopfrontKindBadgeStyle("tool")}>Tool</span>
-            </div>
-            <div style={shopItemMetaStyle}>
-              Unit price {shop.toolForSale.priceGold} gold
+            <div style={shopfrontItemLeadStyle}>
+              {shop.toolForSale.visual ? (
+                <BikkieVisualTileForVisualV1
+                  visual={shop.toolForSale.visual}
+                  size={38}
+                  dataTestId="biomes-business-tool-for-sale-icon"
+                />
+              ) : null}
+              <div style={shopfrontItemTextStyle}>
+                <div style={shopItemHeaderStyle}>
+                  <strong style={shopItemNameStyle}>
+                    {shop.toolForSale.toolName}
+                  </strong>
+                  <span style={shopfrontKindBadgeStyle("tool")}>Tool</span>
+                </div>
+                <div style={shopItemMetaStyle}>
+                  Unit price {shop.toolForSale.priceGold} gold
+                </div>
+              </div>
             </div>
             <button
               className="biomes-ui-tab"
@@ -1942,6 +2002,19 @@ const ShopfrontPane: React.FunctionComponent<{
               <div style={shopfrontGoodsGridStyle}>
                 {furnishings.map((good) =>
                   renderStorefrontGood(good, "interior")
+                )}
+              </div>
+            </ShopfrontMerchSection>
+          ) : null}
+          {recipeBooks.length ? (
+            <ShopfrontMerchSection
+              kind="recipe_book"
+              title="Recipe Books"
+              countLabel={`${recipeBooks.length} books`}
+            >
+              <div style={shopfrontGoodsGridStyle}>
+                {recipeBooks.map((good) =>
+                  renderStorefrontGood(good, "recipe_book")
                 )}
               </div>
             </ShopfrontMerchSection>
@@ -2028,7 +2101,7 @@ const InventoryGrid: React.FunctionComponent<{
         onActivate?.(item);
       }}
       renderCell={(item, _coords, cell) => {
-        const itemLabel = displayLabel(item.itemId);
+        const itemLabel = item.displayName ?? displayLabel(item.itemId);
         return (
           <button
             ref={cell.ref}
@@ -2045,6 +2118,9 @@ const InventoryGrid: React.FunctionComponent<{
                 minHeight: actionLabel ? 112 : 96,
                 padding: 8,
                 flexDirection: "column",
+                alignItems: "stretch",
+                gap: 6,
+                textAlign: "left",
                 ...(actionLabel ? shopfrontInventoryButtonStyle(itemKind) : {}),
               },
               Boolean(actionLabel && backendPending)
@@ -2057,6 +2133,13 @@ const InventoryGrid: React.FunctionComponent<{
                 : itemLabel
             }
           >
+            {item.visual ? (
+              <BikkieVisualTileForVisualV1
+                visual={item.visual}
+                size={34}
+                dataTestId={`biomes-business-shop-stock-icon-${item.itemId}`}
+              />
+            ) : null}
             <strong style={{ fontSize: 12 }}>{itemLabel}</strong>
             {actionLabel ? (
               <span style={shopfrontKindBadgeStyle(itemKind)}>
@@ -2835,37 +2918,65 @@ const OperationsPane: React.FunctionComponent<{
   return (
     <section style={cardStyle}>
       <h3 style={sectionTitleStyle}>{screen.title} Operations</h3>
+      {mode === "customer" ? (
+        <p style={{ ...mutedTextStyle, marginBottom: 10 }}>
+          Choose a paid service from this business. Buying a service creates a
+          request for the owner to fulfill.
+        </p>
+      ) : null}
       {actions.length ? (
         <RovingGrid
           ariaLabel="Business operation actions"
           items={actionRows}
           onActivate={(_row, _col, action) => {
             if (backendPending) return;
-            mode === "owner"
-              ? void adapter.runServiceAction(businessId, action.actionId)
-              : void adapter.requestCustomerService(
-                  businessId,
-                  action.actionId
-                );
+            if (mode === "owner") {
+              void adapter.runServiceAction(businessId, action.actionId);
+              return;
+            }
+            const priceGold = harthmereBusinessServicePriceGoldV1(action);
+            void adapter.requestCustomerService(businessId, action.actionId, {
+              amountGold: priceGold,
+              priceGold,
+            });
           }}
-          renderCell={(action, _coords, cell) => (
-            <button
-              ref={cell.ref}
-              tabIndex={cell.tabIndex}
-              onFocus={cell.onFocus}
-              onKeyDown={cell.onKeyDown}
-              onClick={cell.onClick}
-              className="biomes-ui-tab"
-              data-business-backend-action="true"
-              disabled={backendPending}
-              aria-disabled={backendPending}
-              style={backendActionStyleV1(serviceButtonStyle, backendPending)}
-              aria-label={action.label}
-            >
-              <strong>{action.label}</strong>
-              <span style={mutedTextStyle}>{action.description}</span>
-            </button>
-          )}
+          renderCell={(action, _coords, cell) => {
+            const priceGold = harthmereBusinessServicePriceGoldV1(action);
+            const isCustomer = mode !== "owner";
+            return (
+              <button
+                ref={cell.ref}
+                tabIndex={cell.tabIndex}
+                onFocus={cell.onFocus}
+                onKeyDown={cell.onKeyDown}
+                onClick={cell.onClick}
+                className="biomes-ui-tab"
+                data-business-backend-action="true"
+                data-business-service-price-gold={
+                  isCustomer ? priceGold : undefined
+                }
+                disabled={backendPending}
+                aria-disabled={backendPending}
+                style={backendActionStyleV1(serviceButtonStyle, backendPending)}
+                aria-label={
+                  isCustomer
+                    ? `Buy service: ${action.label}, ${priceGold} gold`
+                    : action.label
+                }
+              >
+                <span style={serviceOfferHeaderStyle}>
+                  <strong>{action.label}</strong>
+                  {isCustomer ? (
+                    <span style={servicePriceBadgeStyle}>{priceGold} gold</span>
+                  ) : null}
+                </span>
+                <span style={mutedTextStyle}>{action.description}</span>
+                {isCustomer ? (
+                  <span style={serviceBuyCtaStyle}>Buy Service</span>
+                ) : null}
+              </button>
+            );
+          }}
         />
       ) : (
         <p style={mutedTextStyle}>
@@ -3244,6 +3355,42 @@ const serviceButtonStyle: React.CSSProperties = {
   boxShadow:
     "0 8px 20px rgba(0, 0, 0, 0.24), 0 0 16px rgba(84, 184, 255, 0.18)",
 };
+const serviceOfferHeaderStyle: React.CSSProperties = {
+  width: "100%",
+  display: "flex",
+  alignItems: "flex-start",
+  justifyContent: "space-between",
+  gap: 10,
+};
+const servicePriceBadgeStyle: React.CSSProperties = {
+  flex: "0 0 auto",
+  padding: "3px 7px",
+  color: "#06111f",
+  background: "linear-gradient(180deg, #fff477, #ffbd3f)",
+  border: "1px solid rgba(255, 246, 142, 0.95)",
+  borderRadius: 999,
+  fontSize: 10,
+  fontWeight: 900,
+  lineHeight: 1,
+  whiteSpace: "nowrap",
+};
+const serviceBuyCtaStyle: React.CSSProperties = {
+  marginTop: "auto",
+  alignSelf: "stretch",
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  minHeight: 28,
+  padding: "0 10px",
+  color: "#06111f",
+  background: "linear-gradient(180deg, #92ffd7, #37dba4)",
+  border: "1px solid rgba(169, 255, 225, 0.9)",
+  borderRadius: 4,
+  fontSize: 11,
+  fontWeight: 900,
+  textTransform: "uppercase",
+  letterSpacing: "0.08em",
+};
 const shopActionSlotStyle: React.CSSProperties = {
   borderColor: "rgba(97, 244, 188, 0.82)",
   background:
@@ -3304,6 +3451,16 @@ const shopfrontMerchTonesV1: Record<
     surfaceBottom: "rgba(22, 16, 35, 0.98)",
     badgeBg: "rgba(247, 138, 198, 0.18)",
     badgeText: "#ffd0e8",
+  },
+  recipe_book: {
+    label: "Recipe Book",
+    accent: "#d8b26e",
+    border: "rgba(216, 178, 110, 0.76)",
+    glow: "rgba(216, 178, 110, 0.22)",
+    surfaceTop: "rgba(82, 62, 36, 0.82)",
+    surfaceBottom: "rgba(24, 20, 28, 0.98)",
+    badgeBg: "rgba(216, 178, 110, 0.18)",
+    badgeText: "#f4d99e",
   },
   stock: {
     label: "Shop Stock",
@@ -3424,6 +3581,18 @@ const shopfrontToolListingStyle: React.CSSProperties = {
   padding: 10,
   cursor: "default",
 };
+const shopfrontItemLeadStyle: React.CSSProperties = {
+  display: "flex",
+  gap: 8,
+  alignItems: "flex-start",
+  minWidth: 0,
+};
+const shopfrontItemTextStyle: React.CSSProperties = {
+  display: "grid",
+  gap: 6,
+  flex: "1 1 auto",
+  minWidth: 0,
+};
 const shopItemHeaderStyle: React.CSSProperties = {
   display: "flex",
   gap: 6,
@@ -3475,6 +3644,11 @@ const miniGameTitleStyle: React.CSSProperties = {
   fontSize: 20,
   color: "var(--biomes-fg)",
   lineHeight: 1.1,
+};
+const dayJobIntroStyle: React.CSSProperties = {
+  ...mutedTextStyle,
+  marginTop: 6,
+  color: "#d8f7ff",
 };
 const miniGameBadgeStyle: React.CSSProperties = {
   display: "inline-flex",

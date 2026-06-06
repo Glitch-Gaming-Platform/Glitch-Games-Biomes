@@ -96,6 +96,7 @@ export interface EventSet {
   readonly plantSeedEvent?: PlantSeedEvent[];
   readonly waterPlantsEvent?: WaterPlantsEvent[];
   readonly fertilizePlantEvent?: FertilizePlantEvent[];
+  readonly harvestPlantEvent?: HarvestPlantEvent[];
   readonly adminDestroyPlantEvent?: AdminDestroyPlantEvent[];
   readonly fishingClaimEvent?: FishingClaimEvent[];
   readonly fishingCaughtEvent?: FishingCaughtEvent[];
@@ -251,6 +252,7 @@ interface SuperEventSet {
   readonly plantSeedEvent: PlantSeedEvent[];
   readonly waterPlantsEvent: WaterPlantsEvent[];
   readonly fertilizePlantEvent: FertilizePlantEvent[];
+  readonly harvestPlantEvent: HarvestPlantEvent[];
   readonly adminDestroyPlantEvent: AdminDestroyPlantEvent[];
   readonly fishingClaimEvent: FishingClaimEvent[];
   readonly fishingCaughtEvent: FishingCaughtEvent[];
@@ -3084,6 +3086,34 @@ export class FertilizePlantEvent implements Event {
   }
 }
 
+export interface HandlerHarvestPlantEvent {
+  readonly kind: "harvestPlantEvent";
+  readonly id: BiomesId;
+  readonly plant_id: BiomesId;
+  position: t.Vec3i;
+}
+
+export class HarvestPlantEvent implements Event {
+  readonly kind = "harvestPlantEvent";
+  readonly id: BiomesId;
+  readonly plant_id: BiomesId;
+  position: t.ReadonlyVec3i;
+
+  constructor({
+    id = t.defaultBiomesId,
+    plant_id = t.defaultBiomesId,
+    position = t.defaultVec3i(),
+  }: {
+    id?: BiomesId;
+    plant_id?: BiomesId;
+    position?: t.ReadonlyVec3i;
+  }) {
+    this.id = id;
+    this.plant_id = plant_id;
+    this.position = position;
+  }
+}
+
 export interface HandlerAdminDestroyPlantEvent {
   readonly kind: "adminDestroyPlantEvent";
   readonly id: BiomesId;
@@ -4932,6 +4962,7 @@ export type AnyHandlerEvent =
   | HandlerPlantSeedEvent
   | HandlerWaterPlantsEvent
   | HandlerFertilizePlantEvent
+  | HandlerHarvestPlantEvent
   | HandlerAdminDestroyPlantEvent
   | HandlerFishingClaimEvent
   | HandlerFishingCaughtEvent
@@ -5086,6 +5117,7 @@ export type AnyEvent =
   | PlantSeedEvent
   | WaterPlantsEvent
   | FertilizePlantEvent
+  | HarvestPlantEvent
   | AdminDestroyPlantEvent
   | FishingClaimEvent
   | FishingCaughtEvent

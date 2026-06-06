@@ -487,16 +487,30 @@ export function harthmereMuckMonsterPositionIsInSafeZoneV1(
   );
 }
 
-// Deterministic spread point inside a muck area (golden-angle spiral kept within
-// radius - 2 so it stays comfortably inside the muck).
-function muckMonsterRelocationPositionV1(
+// HARTHMERE_RANDOM_WORLD_SPAWN_V1: small deterministic PRNG (mulberry32). Seeded
+// by the creature's stable idOffset so the "random" world spread is identical
+// across processes and reproducible by the deploy reconciler — random-looking,
+// not actually nondeterministic.
+function harthmereSpawnRngV1(seed: number): () => number {
+  let a = seed >>> 0;
+  return () => {
+    a = (a + 0x6d2b79f5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+// A uniformly-random point inside a muck area (kept within radius - 2 so it
+// stays comfortably inside the muck floor), deterministic for a given seed.
+function muckMonsterRandomPositionV1(
   area: HarthmereMuckContainmentAreaV1,
-  index: number
+  seed: number
 ): Vec3 {
-  const span = 12;
-  const radius =
-    Math.max(0, area.radius - 2) * Math.sqrt(((index % span) + 0.5) / span);
-  const angle = index * 2.399963229728653;
+  const rng = harthmereSpawnRngV1(seed);
+  const maxR = Math.max(0, area.radius - 2);
+  const radius = maxR * Math.sqrt(rng());
+  const angle = rng() * Math.PI * 2;
   return [
     Number((area.center[0] + Math.cos(angle) * radius).toFixed(3)),
     area.center[1],
@@ -504,60 +518,45 @@ function muckMonsterRelocationPositionV1(
   ];
 }
 
-// HARTHMERE_MUCK_SPAWN_ZONES_V1: the muck areas muck monsters are spread across.
-//
-// CRITICAL — road_muckwad_patch is DELIBERATELY EXCLUDED. Its center ([512,-152])
-// sits 62m inside the Grove's 132m safe radius, so any monster placed there reads
-// as "muckers in the Grove" — the recurring complaint. EVERY zone below is wholly
-// outside the Grove/town safe radii (asserted at module load + in the gating
-// test), so no deploy can ever reseed a monster into the Grove again. The bulk
-// goes to the two nearest map-labelled visible patches (watchtower / old wood);
-// the rest spreads to the further muck areas so they appear "across all the muck
-// areas" without crowding spawn.
-const HARTHMERE_MUCK_SPAWN_ZONES_V1: ReadonlyArray<{
-  id: string;
-  share: number;
-}> = [
-  { id: "watchtower_muck_patch", share: 30 },
-  { id: "old_wood_muck_patch", share: 30 },
-  { id: "gravewood_pale_muck", share: 20 },
-  { id: "west_muck_breach", share: 20 },
-];
+// Every muck containment area whose center is safely outside the Grove/town. The
+// Grove-overlapping road_muckwad_patch is excluded here by the safe-zone guard,
+// so muckers spread across ALL the real muck regions of the world rather than a
+// hand-picked four.
+function harthmereNonSafeMuckAreasV1(): HarthmereMuckContainmentAreaV1[] {
+  return HARTHMERE_MUCK_CONTAINMENT_AREAS_V1.filter(
+    (area) => !harthmereMuckMonsterPositionIsInSafeZoneV1(area.center)
+  );
+}
 
-// Every authored muck monster, repositioned into one of the non-safe muck zones
-// above. Deterministic (by seed index) so it is stable across processes and
-// reproducible by the deploy reconciler. A final hard guard drops any position
-// that resolves into a safe zone — a monster can NEVER end up in the Grove.
+// Every authored muck monster, randomly (but deterministically) spread across
+// all non-safe muck regions of the world. A final hard guard re-rolls any
+// position that resolves into a safe zone — a monster can NEVER end up in the
+// Grove.
 export function harthmereGroundedMuckMonsterSeedsInTerritoryV1(): HarthmereLiveEntityProductionSeedV1[] {
-  const slots: Array<{ area: HarthmereMuckContainmentAreaV1; indexInZone: number }> =
-    [];
-  for (const zone of HARTHMERE_MUCK_SPAWN_ZONES_V1) {
-    const area = HARTHMERE_MUCK_CONTAINMENT_AREAS_V1.find(
-      (candidate) => candidate.id === zone.id
-    );
-    // Defense-in-depth: never spread into a zone whose center is in a safe area.
-    if (!area || harthmereMuckMonsterPositionIsInSafeZoneV1(area.center)) {
-      continue;
-    }
-    for (let i = 0; i < zone.share; i += 1) {
-      slots.push({ area, indexInZone: i });
-    }
-  }
+  const areas = harthmereNonSafeMuckAreasV1();
+  const fallbackArea = areas[0];
   return HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_SEEDS_V1.map((seed, index) => {
-    const slot = slots[index % Math.max(1, slots.length)];
-    let position = slot
-      ? muckMonsterRelocationPositionV1(slot.area, slot.indexInZone)
-      : snapshotCombatGroundedPositionV135(seed.position);
-    // Hard guard: if a placement ever lands in a safe zone (it shouldn't), pull
-    // it to the first non-safe spawn zone so the Grove can never contain muckers.
-    if (harthmereMuckMonsterPositionIsInSafeZoneV1(position)) {
-      const fallback = HARTHMERE_MUCK_CONTAINMENT_AREAS_V1.find(
-        (candidate) =>
-          !harthmereMuckMonsterPositionIsInSafeZoneV1(candidate.center)
-      );
-      if (fallback) {
-        position = muckMonsterRelocationPositionV1(fallback, index);
-      }
+    const stableSeed = Number.isFinite(seed.idOffset) ? seed.idOffset : index;
+    let position: Vec3;
+    if (areas.length === 0) {
+      position = snapshotCombatGroundedPositionV135(seed.position);
+    } else {
+      // Deterministically choose a muck region for this creature, then a random
+      // point inside it.
+      const areaPick = harthmereSpawnRngV1(stableSeed ^ 0x9e3779b9)();
+      const area = areas[Math.min(areas.length - 1, Math.floor(areaPick * areas.length))];
+      position = muckMonsterRandomPositionV1(area, stableSeed);
+    }
+    // Hard guard: if a placement ever lands in a safe zone (it shouldn't, since
+    // every source area is non-safe), re-roll it deep inside the fallback area.
+    let guard = 0;
+    while (
+      harthmereMuckMonsterPositionIsInSafeZoneV1(position) &&
+      fallbackArea &&
+      guard < 8
+    ) {
+      position = muckMonsterRandomPositionV1(fallbackArea, stableSeed + 1 + guard);
+      guard += 1;
     }
     // Snap to the real flat-wilds feet height so muckers stand on the muck floor
     // instead of floating ~1 block above it (authored zone center Y is 54).

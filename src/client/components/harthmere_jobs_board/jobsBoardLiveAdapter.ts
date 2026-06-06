@@ -2,6 +2,7 @@ import {
   HARTHMERE_BUSINESS_OUTPOSTS_V1,
   harthmereBusinessOutpostJobsBoardPositionV1,
 } from "../../../shared/harthmere/business_customer_simulator_v1";
+import { formatHarthmereJobTimeRemainingV151 } from "../../../shared/harthmere/mmo_jobs_board_authority_v1";
 import { completeHarthmereDailyTaskV1 } from "@/client/components/challenges/harthmereDailyTasks";
 import { fetchHarthmereLiveWithTimeoutV1 } from "@/client/components/harthmere_live_fetch";
 
@@ -143,6 +144,7 @@ export interface HarthmereJobsBoardPostingV1 {
   regionId: string;
   createdAtMs: number;
   deadlineAtMs: number;
+  acceptedAtMs?: number;
   acceptedByActorId?: string;
   requiresFieldWork: boolean;
   mapMarkerId?: string;
@@ -188,6 +190,49 @@ export interface HarthmereJobsBoardRecordV1 {
   requiresPhysicalInteraction: true;
 }
 
+export interface HarthmereJobsBoardLawCrimeRecordV1 {
+  id: string;
+  actorId: string;
+  kind: string;
+  zoneId: string;
+  factionId: string;
+  locationId?: string;
+  targetId?: string;
+  restrictedAreaId?: string;
+  resourceNodeId?: string;
+  severity: number;
+  valueGold: number;
+  witnessLevel?: string;
+  witnesses: number;
+  detected: boolean;
+  response: string;
+  fineGold: number;
+  bountyGold: number;
+  status: string;
+  evidenceExpiresAtMs: number;
+  createdAtMs: number;
+}
+
+export interface HarthmereJobsBoardLawSummaryV1 {
+  version: string;
+  actorId: string;
+  standing: {
+    scopeId?: string;
+    likeability: number;
+    legal: number;
+    notoriety: number;
+    notorietyFloor?: number;
+  };
+  fines: Record<string, number>;
+  flags: Record<string, boolean>;
+  activeBounties: HarthmereJobsBoardLawCrimeRecordV1[];
+  myActiveBounties: HarthmereJobsBoardLawCrimeRecordV1[];
+  totalBountyGold: number;
+  myTotalBountyGold: number;
+  recentCrimeRecords: HarthmereJobsBoardLawCrimeRecordV1[];
+  updatedAtMs?: number;
+}
+
 export interface HarthmereJobsBoardSnapshotV1 {
   version: string;
   actorId: string;
@@ -221,6 +266,104 @@ export interface HarthmereJobsBoardSnapshotV1 {
     balanceGold: number;
     inventory?: Record<string, { itemId: string; count: number }>;
   }>;
+  lawSummary?: HarthmereJobsBoardLawSummaryV1;
+}
+
+function safeWholeV1(value: unknown, fallback = 0) {
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? Math.max(0, Math.trunc(numeric)) : fallback;
+}
+
+function safeSignedNumberV1(value: unknown, fallback = 0) {
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? numeric : fallback;
+}
+
+function normalizeHarthmereJobsBoardLawCrimeRecordV1(
+  raw: any
+): HarthmereJobsBoardLawCrimeRecordV1 {
+  return {
+    id: String(raw?.id ?? ""),
+    actorId: String(raw?.actorId ?? ""),
+    kind: String(raw?.kind ?? "unknown"),
+    zoneId: String(raw?.zoneId ?? ""),
+    factionId: String(raw?.factionId ?? "harthmere"),
+    locationId:
+      raw?.locationId === undefined ? undefined : String(raw.locationId),
+    targetId: raw?.targetId === undefined ? undefined : String(raw.targetId),
+    restrictedAreaId:
+      raw?.restrictedAreaId === undefined
+        ? undefined
+        : String(raw.restrictedAreaId),
+    resourceNodeId:
+      raw?.resourceNodeId === undefined
+        ? undefined
+        : String(raw.resourceNodeId),
+    severity: safeWholeV1(raw?.severity),
+    valueGold: safeWholeV1(raw?.valueGold),
+    witnessLevel:
+      raw?.witnessLevel === undefined ? undefined : String(raw.witnessLevel),
+    witnesses: safeWholeV1(raw?.witnesses),
+    detected: Boolean(raw?.detected),
+    response: String(raw?.response ?? ""),
+    fineGold: safeWholeV1(raw?.fineGold),
+    bountyGold: safeWholeV1(raw?.bountyGold),
+    status: String(raw?.status ?? "recorded"),
+    evidenceExpiresAtMs: safeWholeV1(raw?.evidenceExpiresAtMs),
+    createdAtMs: safeWholeV1(raw?.createdAtMs),
+  };
+}
+
+function normalizeHarthmereJobsBoardLawSummaryV1(
+  raw: any
+): HarthmereJobsBoardLawSummaryV1 | undefined {
+  if (!raw || typeof raw !== "object") return undefined;
+  const standing = raw.standing ?? {};
+  return {
+    version: String(raw.version ?? "harthmere-jobs-board-law-summary-v1"),
+    actorId: String(raw.actorId ?? ""),
+    standing: {
+      scopeId:
+        standing.scopeId === undefined ? undefined : String(standing.scopeId),
+      likeability: Math.round(safeSignedNumberV1(standing.likeability)),
+      legal: Math.round(safeSignedNumberV1(standing.legal)),
+      notoriety: Math.round(safeSignedNumberV1(standing.notoriety)),
+      notorietyFloor:
+        standing.notorietyFloor === undefined
+          ? undefined
+          : Math.round(safeSignedNumberV1(standing.notorietyFloor)),
+    },
+    fines:
+      raw.fines && typeof raw.fines === "object"
+        ? Object.fromEntries(
+            Object.entries(raw.fines)
+              .map(([factionId, value]) => [factionId, safeWholeV1(value)])
+              .filter(([, value]) => value > 0)
+          )
+        : {},
+    flags:
+      raw.flags && typeof raw.flags === "object"
+        ? Object.fromEntries(
+            Object.entries(raw.flags).map(([flagId, enabled]) => [
+              flagId,
+              Boolean(enabled),
+            ])
+          )
+        : {},
+    activeBounties: Array.isArray(raw.activeBounties)
+      ? raw.activeBounties.map(normalizeHarthmereJobsBoardLawCrimeRecordV1)
+      : [],
+    myActiveBounties: Array.isArray(raw.myActiveBounties)
+      ? raw.myActiveBounties.map(normalizeHarthmereJobsBoardLawCrimeRecordV1)
+      : [],
+    totalBountyGold: safeWholeV1(raw.totalBountyGold),
+    myTotalBountyGold: safeWholeV1(raw.myTotalBountyGold),
+    recentCrimeRecords: Array.isArray(raw.recentCrimeRecords)
+      ? raw.recentCrimeRecords.map(normalizeHarthmereJobsBoardLawCrimeRecordV1)
+      : [],
+    updatedAtMs:
+      raw.updatedAtMs === undefined ? undefined : safeWholeV1(raw.updatedAtMs),
+  };
 }
 
 export interface HarthmereJobsBoardWorldContextV1 {
@@ -287,6 +430,7 @@ export function normalizeHarthmereJobsBoardSnapshotV1(
         ? { ...raw.discoveredCollectibles }
         : undefined,
     myBusinesses: Array.isArray(raw?.myBusinesses) ? raw.myBusinesses : [],
+    lawSummary: normalizeHarthmereJobsBoardLawSummaryV1(raw?.lawSummary),
   };
 }
 
@@ -424,7 +568,8 @@ export function getHarthmereJobsBoardTabsV1(
 
 export function getHarthmereAvailableJobsPanelV1(
   snapshot: HarthmereJobsBoardSnapshotV1,
-  boardId = snapshot.defaultBoardId
+  boardId = snapshot.defaultBoardId,
+  nowMs = Date.now()
 ) {
   return snapshot.openJobs
     .filter((job) => job.boardId === boardId)
@@ -437,6 +582,10 @@ export function getHarthmereAvailableJobsPanelV1(
       kindLabel: HARTHMERE_JOBS_BOARD_JOB_KIND_LABELS_V1[job.kind],
       rewardGold: job.rewardGold,
       deadlineAtMs: job.deadlineAtMs,
+      timeRemaining: formatHarthmereJobTimeRemainingV151(
+        job.deadlineAtMs,
+        nowMs
+      ),
       issuerKind: job.issuerKind,
       requiresFieldWork: job.requiresFieldWork,
       targetLabel:
@@ -447,7 +596,8 @@ export function getHarthmereAvailableJobsPanelV1(
 }
 
 export function getHarthmereMyJobsPanelV1(
-  snapshot: HarthmereJobsBoardSnapshotV1
+  snapshot: HarthmereJobsBoardSnapshotV1,
+  nowMs = Date.now()
 ) {
   return snapshot.myAcceptedJobs.map((job) => {
     const todo = snapshot.myTodos.find((entry) => entry.jobId === job.jobId);
@@ -456,6 +606,11 @@ export function getHarthmereMyJobsPanelV1(
       title: job.title,
       status: job.status,
       rewardGold: job.rewardGold,
+      deadlineAtMs: job.deadlineAtMs,
+      timeRemaining: formatHarthmereJobTimeRemainingV151(
+        job.deadlineAtMs,
+        nowMs
+      ),
       todo,
       todoStatus: todo?.status,
       questTodoId: todo?.todoId,

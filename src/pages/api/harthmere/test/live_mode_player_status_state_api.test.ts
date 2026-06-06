@@ -100,8 +100,8 @@ describe("live_mode_player_status_state API route integration", () => {
     });
     const persisted = JSON.parse(stored);
 
-    assert.equal(snapshot.combat.resources.stamina, 81);
-    assert.equal(persisted.combat.resources.stamina, 81);
+    assert.equal(snapshot.combat.resources.stamina, 58);
+    assert.equal(persisted.combat.resources.stamina, 58);
     assert.equal(persisted.combat.lastStaminaTickMs, NOW_MS);
     assert.equal(snapshot.combat.deathState, "alive");
   });
@@ -152,7 +152,7 @@ describe("live_mode_player_status_state API route integration", () => {
     const persisted = JSON.parse(stored);
     assert.deepEqual(watched, [[stateKey]]);
     assert.equal(persisted.inventory.gold, 99);
-    assert.equal(persisted.combat.resources.stamina, 81);
+    assert.equal(persisted.combat.resources.stamina, 58);
   });
 
   it("uses a four-hour stamina clock for custom max stamina pools", async () => {

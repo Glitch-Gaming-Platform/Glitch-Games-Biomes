@@ -37,6 +37,7 @@ import {
   readHarthmereInventoryState,
 } from "@/client/components/challenges/LocalDevHarthmereInventorySystem";
 import {
+  fillKnownRoadAheadClothingCratesV1,
   getOrSeedHarthmereContainerV1,
   putIntoHarthmereContainerV1,
   readHarthmereContainerV1,
@@ -47,6 +48,13 @@ import {
   harthmereContainerEnterActionV1,
   resolveHarthmereContainerTransferV1,
 } from "@/client/components/challenges/harthmereContainerTransferInteractionV1";
+import {
+  ROAD_AHEAD_CLOTHING_STOCK_PRECEDING_STEP_ID_V1,
+  ROAD_AHEAD_CLOTHING_STOCK_STEP_ID_V1,
+  ROAD_AHEAD_MISSION_ID_V1,
+  ROAD_AHEAD_MISSION_STATE_KEY_V1,
+  ROAD_AHEAD_STEP_ORDER_V1,
+} from "@/client/components/challenges/harthmereRoadAheadClothingGate";
 import type { BiomesId } from "@/shared/ids";
 
 function countInContainer(key: string, itemId: string): number {
@@ -59,6 +67,22 @@ function countInContainer(key: string, itemId: string): number {
     .reduce((sum, slot) => sum + slot.quantity, 0);
 }
 
+function writeRoadAheadStockedMissionState() {
+  const stockIndex = ROAD_AHEAD_STEP_ORDER_V1.indexOf(
+    ROAD_AHEAD_CLOTHING_STOCK_STEP_ID_V1
+  );
+  localStorageMock.setItem(
+    ROAD_AHEAD_MISSION_STATE_KEY_V1,
+    JSON.stringify({
+      accepted: true,
+      active: { [ROAD_AHEAD_MISSION_ID_V1]: stockIndex },
+      completed: [],
+      currentStepIndex: stockIndex,
+      completedStepIds: [ROAD_AHEAD_CLOTHING_STOCK_PRECEDING_STEP_ID_V1],
+    })
+  );
+}
+
 describe("harthmere object container take/store interface", () => {
   beforeEach(() => {
     // Re-point the global window at this file's mock; see the matching note in
@@ -67,13 +91,18 @@ describe("harthmere object container take/store interface", () => {
     localStorageMock.clear();
   });
 
-  // The Road Ahead clothing only appears once the quest reaches the gear-up
-  // step; pass questClothingReady so these transfer tests exercise the filled crate.
+  // The Road Ahead clothing only appears once the quest reaches the
+  // Billy/Muckwad handoff; pass questClothingReady so these transfer tests
+  // exercise the filled crate.
   const READY = { questClothingReady: true } as const;
 
   it("seeds the Clothing Crate with both clothing halves for The Road Ahead", () => {
     const entityId = 4242 as BiomesId;
-    const record = getOrSeedHarthmereContainerV1(entityId, "Clothing Crate", READY);
+    const record = getOrSeedHarthmereContainerV1(
+      entityId,
+      "Clothing Crate",
+      READY
+    );
     assert.equal(countInContainer(record.key, "baker_apron"), 1);
     assert.equal(countInContainer(record.key, "field_trousers"), 1);
     assert.equal(countInContainer(record.key, "cloth_scrap"), 4);
@@ -81,7 +110,11 @@ describe("harthmere object container take/store interface", () => {
 
   it("moves an item from the container into the player inventory on Take", () => {
     const entityId = 4243 as BiomesId;
-    const { key } = getOrSeedHarthmereContainerV1(entityId, "Clothing Crate", READY);
+    const { key } = getOrSeedHarthmereContainerV1(
+      entityId,
+      "Clothing Crate",
+      READY
+    );
     const before = harthmereInventoryCountByItemIdV141("baker_apron");
     const taken = takeFromHarthmereContainerV1(key, "baker_apron", 1);
     assert.equal(taken, 1);
@@ -92,9 +125,34 @@ describe("harthmere object container take/store interface", () => {
     );
   });
 
+  it("routes taken crafting materials into material storage instead of loose backpack slots", () => {
+    const entityId = 42430 as BiomesId;
+    const { key } = getOrSeedHarthmereContainerV1(entityId, "Old Supply Box");
+    const before = readHarthmereInventoryState();
+    const beforeBackpackSlots = before.backpack.items.length;
+    const beforeRoughStone = before.materialStorage.rough_stone ?? 0;
+
+    const taken = takeFromHarthmereContainerV1(key, "rough_stone", 2);
+    const after = readHarthmereInventoryState();
+
+    assert.equal(taken, 2);
+    assert.equal(countInContainer(key, "rough_stone"), 0);
+    assert.equal(after.materialStorage.rough_stone, beforeRoughStone + 2);
+    assert.equal(after.backpack.items.length, beforeBackpackSlots);
+    assert.equal(
+      after.backpack.items.some((item) => item.itemId === "rough_stone"),
+      false
+    );
+    assert.match(after.recent[0]?.detail ?? "", /material storage/i);
+  });
+
   it("stores a player item back into the container on Store", () => {
     const entityId = 4244 as BiomesId;
-    const { key } = getOrSeedHarthmereContainerV1(entityId, "Clothing Crate", READY);
+    const { key } = getOrSeedHarthmereContainerV1(
+      entityId,
+      "Clothing Crate",
+      READY
+    );
     takeFromHarthmereContainerV1(key, "baker_apron", 1);
     assert.equal(harthmereInventoryCountByItemIdV141("baker_apron"), 1);
     const stored = putIntoHarthmereContainerV1(key, "baker_apron", 1);
@@ -105,7 +163,11 @@ describe("harthmere object container take/store interface", () => {
 
   it("Take All empties the container into the inventory", () => {
     const entityId = 4245 as BiomesId;
-    const { key } = getOrSeedHarthmereContainerV1(entityId, "Clothing Crate", READY);
+    const { key } = getOrSeedHarthmereContainerV1(
+      entityId,
+      "Clothing Crate",
+      READY
+    );
     takeAllFromHarthmereContainerV1(key);
     const record = readHarthmereContainerV1(key);
     assert.equal(record?.items.length, 0);
@@ -115,7 +177,7 @@ describe("harthmere object container take/store interface", () => {
   });
 
   describe("Road Ahead clothing crate is quest-gated (right time)", () => {
-    it("is EMPTY and locked before the gear-up step", () => {
+    it("is EMPTY and locked before the Billy/Muckwad handoff", () => {
       const entityId = 4250 as BiomesId;
       const record = getOrSeedHarthmereContainerV1(entityId, "Clothing Crate", {
         questClothingReady: false,
@@ -126,7 +188,7 @@ describe("harthmere object container take/store interface", () => {
       assert.equal(harthmereInventoryCountByItemIdV141("baker_apron"), 0);
     });
 
-    it("fills with the outfit once the quest reaches the gear-up step", () => {
+    it("fills with the outfit once the quest reaches the clothing handoff", () => {
       const entityId = 4251 as BiomesId;
       // Player walks up early: empty + unsealed.
       const before = getOrSeedHarthmereContainerV1(entityId, "Clothing Crate", {
@@ -140,6 +202,51 @@ describe("harthmere object container take/store interface", () => {
       assert.equal(after.sealed, true);
       assert.equal(countInContainer(after.key, "baker_apron"), 1);
       assert.equal(countInContainer(after.key, "field_trousers"), 1);
+    });
+
+    it("fills an already-opened locked crate when the quest handoff completes", () => {
+      const entityId = 4254 as BiomesId;
+      const before = getOrSeedHarthmereContainerV1(entityId, "Clothing Crate", {
+        questClothingReady: false,
+      });
+      assert.equal(before.sealed, false);
+      assert.equal(before.items.length, 0);
+
+      const filled = fillKnownRoadAheadClothingCratesV1({
+        questClothingReady: true,
+      });
+
+      assert.equal(filled.length, 1);
+      assert.equal(filled[0].key, before.key);
+      assert.equal(readHarthmereContainerV1(before.key)?.sealed, true);
+      assert.equal(countInContainer(before.key, "baker_apron"), 1);
+      assert.equal(countInContainer(before.key, "field_trousers"), 1);
+    });
+
+    it("seeds a first-open crate from the live Road Ahead mission state", () => {
+      const entityId = 4255 as BiomesId;
+      writeRoadAheadStockedMissionState();
+
+      const record = getOrSeedHarthmereContainerV1(entityId, "Clothing Crate");
+
+      assert.equal(record.sealed, true);
+      assert.equal(countInContainer(record.key, "baker_apron"), 1);
+      assert.equal(countInContainer(record.key, "field_trousers"), 1);
+    });
+
+    it("fills a locked crate from the live Road Ahead mission state", () => {
+      const entityId = 4256 as BiomesId;
+      const before = getOrSeedHarthmereContainerV1(entityId, "Clothing Crate", {
+        questClothingReady: false,
+      });
+      writeRoadAheadStockedMissionState();
+
+      const filled = fillKnownRoadAheadClothingCratesV1();
+
+      assert.equal(filled.length, 1);
+      assert.equal(filled[0].key, before.key);
+      assert.equal(countInContainer(before.key, "baker_apron"), 1);
+      assert.equal(countInContainer(before.key, "field_trousers"), 1);
     });
 
     it("does not re-grant the outfit after it has been taken (sealed)", () => {
@@ -162,9 +269,13 @@ describe("harthmere object container take/store interface", () => {
 
     it("preserves items the player stored while it was still locked", () => {
       const entityId = 4253 as BiomesId;
-      const { key } = getOrSeedHarthmereContainerV1(entityId, "Clothing Crate", {
-        questClothingReady: false,
-      });
+      const { key } = getOrSeedHarthmereContainerV1(
+        entityId,
+        "Clothing Crate",
+        {
+          questClothingReady: false,
+        }
+      );
       // Give the player something and stash it in the locked crate.
       grantHarthmereItem("rough_stone", 2, "test setup");
       putIntoHarthmereContainerV1(key, "rough_stone", 2);
@@ -190,7 +301,11 @@ describe("harthmere object container take/store interface", () => {
 
   // Universality: put/take works for ANY container, not just the quest crate.
   // Exercises a generic (non-clothing) crate, a toolbag, and a basket.
-  for (const label of ["Dockside Storage Crate", "Worker's Toolbag", "Forage Basket"]) {
+  for (const label of [
+    "Dockside Storage Crate",
+    "Worker's Toolbag",
+    "Forage Basket",
+  ]) {
     it(`take OUT and put IN works for a generic container: ${label}`, () => {
       const entityId = (4260 + label.length) as BiomesId;
       const seeded = getOrSeedHarthmereContainerV1(entityId, label);
@@ -209,7 +324,11 @@ describe("harthmere object container take/store interface", () => {
       );
 
       // Put it back IN — it leaves the player inventory and re-enters the crate.
-      const storedBack = putIntoHarthmereContainerV1(seeded.key, first.itemId, 1);
+      const storedBack = putIntoHarthmereContainerV1(
+        seeded.key,
+        first.itemId,
+        1
+      );
       assert.equal(storedBack, 1);
       assert.equal(countInContainer(seeded.key, first.itemId), first.quantity);
       assert.equal(
@@ -231,7 +350,10 @@ describe("harthmere object container take/store interface", () => {
       containerItems: { itemId: string; quantity: number }[],
       inventoryQty: number
     ): number {
-      const action = resolveHarthmereContainerTransferV1(sourceSide, targetSide);
+      const action = resolveHarthmereContainerTransferV1(
+        sourceSide,
+        targetSide
+      );
       if (action === "take") {
         const item = containerItems.find((i) => i.itemId === itemId);
         return takeFromHarthmereContainerV1(key, itemId, item?.quantity ?? 1);
@@ -244,7 +366,10 @@ describe("harthmere object container take/store interface", () => {
 
     it("dragging a container item onto the inventory takes the WHOLE stack", () => {
       const entityId = 4270 as BiomesId;
-      const { key } = getOrSeedHarthmereContainerV1(entityId, "Old Storage Bin");
+      const { key } = getOrSeedHarthmereContainerV1(
+        entityId,
+        "Old Storage Bin"
+      );
       const items = readHarthmereContainerV1(key)!.items.map((s) => ({ ...s }));
       const stacked = items.find((i) => i.quantity > 1) ?? items[0];
       const before = harthmereInventoryCountByItemIdV141(stacked.itemId);
@@ -266,7 +391,10 @@ describe("harthmere object container take/store interface", () => {
 
     it("dragging an inventory item onto the container stores the WHOLE stack", () => {
       const entityId = 4271 as BiomesId;
-      const { key } = getOrSeedHarthmereContainerV1(entityId, "Old Storage Bin");
+      const { key } = getOrSeedHarthmereContainerV1(
+        entityId,
+        "Old Storage Bin"
+      );
       grantHarthmereItem("iron_ore", 3, "test setup");
       const moved = applyDrag(key, "inventory", "container", "iron_ore", [], 3);
       assert.equal(moved, 3);
@@ -276,7 +404,10 @@ describe("harthmere object container take/store interface", () => {
 
     it("a same-column drop moves nothing", () => {
       const entityId = 4272 as BiomesId;
-      const { key } = getOrSeedHarthmereContainerV1(entityId, "Old Storage Bin");
+      const { key } = getOrSeedHarthmereContainerV1(
+        entityId,
+        "Old Storage Bin"
+      );
       const items = readHarthmereContainerV1(key)!.items.map((s) => ({ ...s }));
       const target = items[0];
       const movedC = applyDrag(
@@ -288,7 +419,14 @@ describe("harthmere object container take/store interface", () => {
         0
       );
       grantHarthmereItem("iron_ore", 2, "test setup");
-      const movedI = applyDrag(key, "inventory", "inventory", "iron_ore", [], 2);
+      const movedI = applyDrag(
+        key,
+        "inventory",
+        "inventory",
+        "iron_ore",
+        [],
+        2
+      );
       assert.equal(movedC, 0);
       assert.equal(movedI, 0);
       assert.equal(countInContainer(key, target.itemId), target.quantity);
@@ -297,7 +435,10 @@ describe("harthmere object container take/store interface", () => {
 
     it("Enter on a focused container item takes it; on an inventory item stores it", () => {
       const entityId = 4273 as BiomesId;
-      const { key } = getOrSeedHarthmereContainerV1(entityId, "Old Storage Bin");
+      const { key } = getOrSeedHarthmereContainerV1(
+        entityId,
+        "Old Storage Bin"
+      );
       // Container item focused -> Enter resolves to 'take'.
       assert.equal(harthmereContainerEnterActionV1("container"), "take");
       const items = readHarthmereContainerV1(key)!.items.map((s) => ({ ...s }));
@@ -318,7 +459,10 @@ describe("harthmere object container take/store interface", () => {
 
     it("a drag carrying a stale item id resolves to a no-op move (no crash)", () => {
       const entityId = 4274 as BiomesId;
-      const { key } = getOrSeedHarthmereContainerV1(entityId, "Old Storage Bin");
+      const { key } = getOrSeedHarthmereContainerV1(
+        entityId,
+        "Old Storage Bin"
+      );
       // Item not present in the container: take resolves to 0 moved.
       const moved = applyDrag(
         key,
