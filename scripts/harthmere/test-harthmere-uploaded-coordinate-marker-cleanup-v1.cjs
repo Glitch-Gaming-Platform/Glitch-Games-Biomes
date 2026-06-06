@@ -14,19 +14,22 @@ const {
 } = require("../../src/shared/harthmere/mmo_jobs_board_authority_v1");
 
 const reportedProductionCoordinates = [
-  [502.88384366119976, 70.5, -126.15055725255803],
-  [503.9002534604286, 69.875, -121.73357661985989],
-  [505.6902987785366, 69.875, -121.01353435079503],
-  [493.1333636378383, 69.875, -125.12448462045509],
-  [493.11811232266956, 69.875, -122.04491326171234],
-  [492.06089566201985, 69.875, -121.88038131859605],
-  [488.2517270448635, 69.875, -122.00613420667908],
-  [486.0663381737527, 69.875, -120.01241981895568],
-  [499.9583978752843, 69, -139.72897404951524],
-  [527.9694072798106, 70, -152.07775039439758],
-  [523.7424461188757, 69, -154.1793703067409],
-  [665.1302257049798, 65, -168.0914691219139],
-  [665.0414534892493, 65, -159.8637924113891],
+  { coord: [502.88384366119976, 70.5, -126.15055725255803] },
+  { coord: [503.9002534604286, 69.875, -121.73357661985989] },
+  { coord: [505.6902987785366, 69.875, -121.01353435079503] },
+  { coord: [493.1333636378383, 69.875, -125.12448462045509] },
+  { coord: [493.11811232266956, 69.875, -122.04491326171234] },
+  { coord: [492.06089566201985, 69.875, -121.88038131859605] },
+  { coord: [488.2517270448635, 69.875, -122.00613420667908] },
+  { coord: [486.0663381737527, 69.875, -120.01241981895568] },
+  { coord: [499.9583978752843, 69, -139.72897404951524] },
+  { coord: [527.9694072798106, 70, -152.07775039439758] },
+  { coord: [523.7424461188757, 69, -154.1793703067409] },
+  // The Greenlamp frontage audit points are historical uploaded prop
+  // coordinates. Their canonical jobs-board markers now live at the clinic ECS
+  // outpost/owner anchors, which are farther back in the same building footprint.
+  { coord: [665.1302257049798, 65, -168.0914691219139], maxDistance: 25 },
+  { coord: [665.0414534892493, 65, -159.8637924113891], maxDistance: 25 },
 ];
 
 function nearestMarker(coord) {
@@ -47,12 +50,14 @@ const root = scenes.three.children.find((child) =>
 );
 assert.ok(root, "quest object marker root should attach to the scene");
 
-for (const coord of reportedProductionCoordinates) {
+for (const audit of reportedProductionCoordinates) {
+  const coord = audit.coord;
+  const maxDistance = audit.maxDistance ?? 15;
   const nearest = nearestMarker(coord);
   assert.ok(nearest, `expected a registry marker near ${coord.join(",")}`);
   assert.ok(
-    nearest.distance < 15,
-    `expected an audited marker within 15m of ${coord.join(",")}, got ${nearest.distance.toFixed(2)}m`
+    nearest.distance < maxDistance,
+    `expected an audited marker within ${maxDistance}m of ${coord.join(",")}, got ${nearest.distance.toFixed(2)}m`
   );
   const markerGroup = root.children.find(
     (child) =>
