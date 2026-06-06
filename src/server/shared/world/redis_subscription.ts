@@ -38,6 +38,14 @@ const postFilterChanges = createCounter({
   help: "Number of changes received from Redis, after filtering",
 });
 
+function isExpectedRedisStreamReconnectError(error: unknown): boolean {
+  const message =
+    error instanceof Error ? error.message : String(error ?? "");
+  return /Connection is closed|Socket closed|ECONNRESET|ETIMEDOUT|EPIPE/i.test(
+    message
+  );
+}
+
 const flushes = createCounter({
   name: "world_subscription_flushes",
   help: "Number of flush events",
@@ -269,9 +277,12 @@ export class RedisWorldSubscription {
             yield this.flush();
           }
         } catch (error) {
-          log.error("Redis stream error, waiting 500ms and retrying...", {
-            error,
-          });
+          const message = "Redis stream interrupted, waiting 500ms and retrying...";
+          if (isExpectedRedisStreamReconnectError(error)) {
+            log.warn(message, { error });
+          } else {
+            log.error(message, { error });
+          }
           await sleep(CONFIG.redisStreamBackoffMs, signal);
         }
       }

@@ -4,6 +4,7 @@ import {
   InventoryThrowEvent,
 } from "@/shared/ecs/gen/events";
 import type { OwnedItemReference } from "@/shared/ecs/gen/types";
+import { maybeGetSlotByRef } from "@/shared/game/inventory";
 import { terrainMarch } from "@/shared/game/terrain_march";
 import type { BiomesId } from "@/shared/ids";
 import { add, dist, normalizev, scale } from "@/shared/math/linear";
@@ -45,12 +46,14 @@ export function getThrowPosition(
 
 export async function throwInventoryItem(
   deps: ClientContextSubset<
-    "events" | "resources" | "clientConfig" | "voxeloo"
+    "events" | "resources" | "clientConfig" | "voxeloo" | "gardenHose"
   >,
   entityId: BiomesId,
   slotReference: OwnedItemReference,
   count?: bigint
 ) {
+  const inventory = deps.resources.get("/ecs/c/inventory", entityId);
+  const thrownItem = maybeGetSlotByRef({ inventory }, slotReference)?.item;
   await deps.events.publish(
     new InventoryThrowEvent({
       id: entityId,
@@ -59,6 +62,9 @@ export async function throwInventoryItem(
       position: getThrowPosition(deps),
     })
   );
+  if (thrownItem?.isBlock) {
+    deps.gardenHose.publish({ kind: "block_inventory_throw" });
+  }
 }
 
 export async function destroyInventoryItem(

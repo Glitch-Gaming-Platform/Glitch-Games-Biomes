@@ -39,6 +39,21 @@ export const zPostBatchRequest = z.object({
 });
 export type PostBatchRequest = z.infer<typeof zPostBatchRequest>;
 
+export function orderedNullablePostBatchResponse<T extends { id: BiomesId }>(
+  ids: readonly BiomesId[],
+  posts: readonly (T | null | undefined)[]
+): { posts: Array<T | null> } {
+  const byId = new Map<BiomesId, T>();
+  for (const post of posts) {
+    if (post) {
+      byId.set(post.id, post);
+    }
+  }
+  return {
+    posts: ids.map((id) => byId.get(id) ?? null),
+  };
+}
+
 export async function fetchUserInfoBundle(userId: BiomesId) {
   return jsonFetch<UserInfoBundle>(
     pathWithQuery("/api/social/user_info", {

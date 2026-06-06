@@ -25,6 +25,7 @@ export type GardenHoseEvent =
         | "open_pause"
         | "inventory_overflow_item_received"
         | "inventory_overflow_opened"
+        | "block_inventory_throw"
         | "enter_water"
         | "enter_cave"
         | "close_pause"

@@ -113,13 +113,16 @@ import {
   readHarthmereLiveCreatureBridgeV1,
   type HarthmereLiveCreatureBridgeRecordV1,
 } from "@/shared/harthmere/live_creature_ecs_bridge_v1";
+import { harthmereLiveModeCombatTargetIdForVisibleActorV1 } from "@/shared/harthmere/visible_combat_target_v1";
 
 // HARTHMERE_ECS_CREATURE_RENDER_V1: when enabled (default), muck monsters,
 // animals, hexes and quest creatures are drawn from their live ECS entities so
 // the visible mesh sits exactly on the server entity and the native attack ray
-// hits it. The static PLACEMENTS copies of those creatures are suppressed to
-// avoid duplicates. Set localStorage "biomes.localDev.harthmere.ecsCreatureRender"
-// to "0" to fall back to the old static-only rendering.
+// hits it. Static PLACEMENTS life actors stay enabled by default as a stable
+// fallback for Glitch/embed sessions where the ECS bridge can be empty or stale;
+// those static actors now publish live-mode target ids and are attackable too.
+// Set localStorage "biomes.localDev.harthmere.ecsCreatureRender" to "0" to
+// disable the ECS overlay entirely.
 function harthmereEcsCreatureRenderEnabledV1(): boolean {
   if (typeof window === "undefined") {
     return true;
@@ -128,6 +131,17 @@ function harthmereEcsCreatureRenderEnabledV1(): boolean {
     window.localStorage?.getItem(
       "biomes.localDev.harthmere.ecsCreatureRender"
     ) !== "0"
+  );
+}
+
+function harthmereSuppressStaticLifeForEcsV1(): boolean {
+  if (typeof window === "undefined") {
+    return false;
+  }
+  return (
+    window.localStorage?.getItem(
+      "biomes.localDev.harthmere.suppressStaticLifeForEcs"
+    ) === "1"
   );
 }
 
@@ -198,6 +212,7 @@ type RuntimePlacement = {
   collision?: HarthmereCollisionConfig;
   lodTier?: HarthmereLodTier;
   combatOffset?: number;
+  liveModeTargetId?: string;
   robotProtectionAreaId?: string;
   appearance?: HarthmereCharacterAppearance;
   bob?: number;
@@ -291,6 +306,7 @@ type CombatLifeInstance = {
   asset: string;
   district?: string;
   combatOffset?: number;
+  liveModeTargetId?: string;
   robotProtectionAreaId?: string;
   forwardAxis: HarthmereModelForwardAxis;
   appearance?: HarthmereCharacterAppearance;
@@ -12997,6 +13013,8 @@ private harthmerePlayerSword?: THREE.Group;
       }
       positions[String(actor.combatOffset)] = {
         offset: actor.combatOffset,
+        liveModeTargetId: actor.liveModeTargetId,
+        targetId: actor.liveModeTargetId,
         label: actor.label,
         asset: actor.asset,
         district: actor.district,
@@ -16285,15 +16303,27 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
       (object.userData.harthmereAppearance as HarthmereCharacterAppearance | undefined) ??
       harthmereRuntimeAppearanceForPlacement(placement);
     const forwardAxis = appearance.forwardAxis ?? harthmereModelForwardAxis(placement.asset);
+    const label = placement.name ?? placement.asset;
+    const liveModeTargetId =
+      placement.liveModeTargetId ??
+      harthmereLiveModeCombatTargetIdForVisibleActorV1({
+        offset: placement.combatOffset,
+        label,
+        asset: placement.asset,
+        species: appearance.species,
+        world: placement.at,
+      });
     object.userData.harthmereAppearance = appearance;
     object.userData.harthmereForwardAxis = forwardAxis;
     object.userData.harthmereAnchors = appearance.anchors;
+    object.userData.harthmereLiveModeTargetId = liveModeTargetId;
 
     debugHarthmereRenderer("renderer.register_actor", {
-      label: placement.name ?? placement.asset,
+      label,
       asset: placement.asset,
       district: placement.district,
       combatOffset: placement.combatOffset,
+      liveModeTargetId,
       robotProtectionAreaId: placement.robotProtectionAreaId,
       clipCount: clips.length,
       clips: clips.map((clip) => clip.name),
@@ -16307,10 +16337,11 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
     applyHarthmereRuntimeFacialExpressionToObject(object, appearance.facialExpression);
     this.combatLifeInstances.push({
       object,
-      label: placement.name ?? placement.asset,
+      label,
       asset: placement.asset,
       district: placement.district,
       combatOffset: placement.combatOffset,
+      liveModeTargetId,
       robotProtectionAreaId: placement.robotProtectionAreaId,
       forwardAxis,
       appearance,
@@ -16775,11 +16806,13 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
       if (authoredPlacement.robotProtectionAreaId) {
         continue;
       }
-      // HARTHMERE_ECS_CREATURE_RENDER_V1: skip static muck/animal/hex creatures;
-      // they are now drawn from their live ECS entities (see
-      // reconcileHarthmereEcsLiveCreaturesV1) so the visible mesh is hittable.
+      // HARTHMERE_ECS_CREATURE_RENDER_V1: ECS-only static suppression is now
+      // opt-in. In production embed sessions the ECS bridge can briefly be empty
+      // or stale, and default suppression made creatures flicker or disappear
+      // and removed the crosshair combat actor we need for left-click attacks.
       if (
         harthmereEcsCreatureRenderEnabledV1() &&
+        harthmereSuppressStaticLifeForEcsV1() &&
         isHarthmereEcsDrivenCreatureAssetV1(authoredPlacement.asset)
       ) {
         continue;

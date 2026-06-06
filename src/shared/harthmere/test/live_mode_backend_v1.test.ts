@@ -1295,6 +1295,26 @@ describe("reduceHarthmereLiveModeBackendStateV1 — death lifecycle", function (
     );
   });
 
+  it("request_environment_damage applies drowning damage to live player status", function () {
+    const s = freshState();
+    s.combat.hp = 12;
+    s.combat.maxHp = 100;
+
+    const { state, summary } = applyOne(s, "request_environment_damage", {
+      damageKind: "drowning",
+      damage: 3,
+    });
+
+    assert.strictEqual(state.combat.hp, 9);
+    assert.strictEqual(state.combat.deathState, "alive");
+    assert.ok(summary.touchedModels.includes("environment_damage"));
+    assert.ok(summary.touchedModels.includes("player_status"));
+    assert.strictEqual(
+      createHarthmereLiveModePlayerStatusClientSnapshotV1(state).combat.hp,
+      9
+    );
+  });
+
   it("repairs zero-HP alive snapshots so status and respawn treat the player as dead", function () {
     const s = freshState();
     s.combat.hp = 0;
@@ -4040,6 +4060,23 @@ describe("reduceHarthmereLiveModeBackendStateV1 — loot and inventory mutation"
       { source: "admin_tool", subsystem: "inventory" }
     );
     assert.strictEqual(state.inventory.items.health_potion, 2);
+  });
+
+  it("request_inventory_item_action drops material storage through authority", function () {
+    const s = freshState();
+    s.banking.materialStorage = { iron_ore: 3 };
+
+    const { state, summary } = applyOne(s, "request_inventory_item_action", {
+      operation: "drop_item",
+      itemId: "iron_ore",
+      count: 1,
+      sourceSlot: "material_storage",
+    });
+
+    assert.strictEqual(state.banking.materialStorage.iron_ore, 2);
+    assert.strictEqual(state.inventory.items.iron_ore ?? 0, 0);
+    assert.ok(summary.touchedModels.includes("material_storage"));
+    assert.ok(summary.touchedModels.includes("player_status"));
   });
 
   it("loot claim records entry in lootClaims with nowMs", function () {

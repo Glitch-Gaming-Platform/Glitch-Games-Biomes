@@ -32,7 +32,7 @@ class FakeDataTransfer {
 describe("Biomes UI inventory hotbar drag and drop", () => {
   it("serializes inventory refs through the drag data transfer", () => {
     const transfer = new FakeDataTransfer();
-    const ref = { kind: "item" as const, idx: 7 };
+    const ref = { kind: "item" as const, idx: 7, key: "harthmere:abc" };
 
     writeInventoryDragRefToTransferV1(transfer, ref);
 
@@ -60,6 +60,15 @@ describe("Biomes UI inventory hotbar drag and drop", () => {
         ref: { kind: "currency", key: "gold" },
       }),
       false
+    );
+    assert.equal(
+      canMoveInventoryItemToHotbarV1({
+        id: "rough_stone",
+        label: "Rough Stone",
+        icon: "□",
+        ref: { kind: "material", key: "rough_stone" },
+      }),
+      true
     );
     assert.equal(
       canMoveInventoryItemToHotbarV1({
@@ -92,6 +101,13 @@ describe("Biomes UI inventory hotbar drag and drop", () => {
       {
         src: { kind: "hotbar", idx: 2 },
         dst: { kind: "hotbar", idx: 4 },
+      }
+    );
+    assert.deepEqual(
+      resolveInventoryHotbarDropV1({ kind: "material", key: "rough_stone" }, 3),
+      {
+        src: { kind: "material", key: "rough_stone" },
+        dst: { kind: "hotbar", idx: 3 },
       }
     );
     assert.equal(
@@ -143,6 +159,7 @@ describe("Biomes UI inventory hotbar drag and drop", () => {
                   icon: "I",
                   count: 12,
                   category: "materials",
+                  ref: { kind: "material", key: "audit_ingot" },
                   source: "material_storage",
                   storageLocation: "material_storage",
                 },
@@ -182,6 +199,7 @@ describe("Biomes UI inventory hotbar drag and drop", () => {
     assert.ok(html.includes("Hotbar Snack"));
     assert.ok(html.includes("Audit Ingot"));
     assert.ok(html.includes("Material Storage"));
+    assert.ok(html.includes('data-inventory-draggable="true"'));
     assert.ok(html.includes('title="Muckwad x6"'));
     assert.ok(html.includes('data-inventory-tooltip="Muckwad x6"'));
     assert.ok(html.includes('title="Hotbar 1: Hotbar Snack x2"'));

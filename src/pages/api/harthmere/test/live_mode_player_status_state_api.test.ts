@@ -106,6 +106,41 @@ describe("live_mode_player_status_state API route integration", () => {
     assert.equal(snapshot.combat.deathState, "alive");
   });
 
+  it("counts material storage weight when applying stamina encumbrance", async () => {
+    const backend = defaultHarthmereLiveModeBackendStateV1(ACTOR, NOW_MS);
+    backend.combat.resources.stamina = 108;
+    backend.combat.maxResources.stamina = 108;
+    backend.combat.lastStaminaTickMs = NOW_MS - 60 * 60 * 1000;
+    backend.banking.materialStorage = { iron_ore: 14 };
+    let stored = JSON.stringify(backend);
+    const redis = {
+      primary: {
+        get: async () => stored,
+        set: async (_key: string, value: string) => {
+          stored = value;
+        },
+      },
+    };
+
+    const snapshot = await readHarthmereLiveModePlayerStatusStateForActorV1({
+      redis,
+      actorId: ACTOR,
+      nowMs: NOW_MS,
+      gameplayActive: true,
+    });
+    const persisted = JSON.parse(stored);
+
+    assert.ok(
+      snapshot.combat.resources.stamina < 58,
+      `expected encumbrance drain below base-drain stamina, got ${snapshot.combat.resources.stamina}`
+    );
+    assert.equal(
+      persisted.combat.resources.stamina,
+      snapshot.combat.resources.stamina
+    );
+    assert.equal(snapshot.combat.deathState, "alive");
+  });
+
   it("persists stamina ticks with WATCH so polling does not overwrite newer actor state", async () => {
     const staleBackend = defaultHarthmereLiveModeBackendStateV1(ACTOR, NOW_MS);
     staleBackend.inventory.gold = 1;

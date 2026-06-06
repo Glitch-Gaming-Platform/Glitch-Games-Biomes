@@ -85,6 +85,7 @@ const HARTHMERE_LIVE_MODE_ACTION_KINDS_V1 = [
   "request_respec",
   "request_loadout_change",
   "request_inventory_mutation",
+  "request_inventory_item_action",
   "request_vendor_transaction",
   "request_auction_post",
   "request_auction_settle",
@@ -465,6 +466,10 @@ export function harthmereLiveModeMutationSnapshotKeysV1(input: {
       break;
     case "request_crafting":
       snapshots.add("craftingState");
+      snapshots.add("inventoryLootState");
+      snapshots.add("playerStatusState");
+      break;
+    case "request_inventory_item_action":
       snapshots.add("inventoryLootState");
       snapshots.add("playerStatusState");
       break;

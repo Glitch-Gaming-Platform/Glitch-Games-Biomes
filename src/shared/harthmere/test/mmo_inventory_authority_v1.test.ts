@@ -30,7 +30,9 @@ import {
 // Test fixtures
 // ---------------------------------------------------------------------------
 
-function makeItem(overrides: Partial<HarthmereItemDefinitionV1> = {}): HarthmereItemDefinitionV1 {
+function makeItem(
+  overrides: Partial<HarthmereItemDefinitionV1> = {}
+): HarthmereItemDefinitionV1 {
   return {
     itemId: "iron_sword",
     displayName: "Iron Sword",
@@ -50,7 +52,9 @@ function makeItem(overrides: Partial<HarthmereItemDefinitionV1> = {}): Harthmere
   };
 }
 
-function makeSnapshot(overrides: Partial<HarthmereInventorySnapshotV1> = {}): HarthmereInventorySnapshotV1 {
+function makeSnapshot(
+  overrides: Partial<HarthmereInventorySnapshotV1> = {}
+): HarthmereInventorySnapshotV1 {
   return {
     actorId: "player_1",
     gold: 500,
@@ -69,10 +73,18 @@ function makeCtx(
   snapshot: HarthmereInventorySnapshotV1,
   overrides: Partial<HarthmereInventoryMutationContextV1> = {}
 ): HarthmereInventoryMutationContextV1 {
-  return { snapshot, playerLevel: 10, playerSkills: {}, reputation: {}, ...overrides };
+  return {
+    snapshot,
+    playerLevel: 10,
+    playerSkills: {},
+    reputation: {},
+    ...overrides,
+  };
 }
 
-function makeReq(overrides: Partial<HarthmereInventoryMutationRequestV1> = {}): HarthmereInventoryMutationRequestV1 {
+function makeReq(
+  overrides: Partial<HarthmereInventoryMutationRequestV1> = {}
+): HarthmereInventoryMutationRequestV1 {
   return {
     requestId: "req_1",
     actorId: "player_1",
@@ -84,58 +96,96 @@ function makeReq(overrides: Partial<HarthmereInventoryMutationRequestV1> = {}): 
 // Register test catalogue entries once
 before(() => {
   registerHarthmereItemDefinitionV1(makeItem({ itemId: "iron_sword" }));
-  registerHarthmereItemDefinitionV1(makeItem({
-    itemId: "health_potion",
-    maxStackSize: 20,
-    baseValue: 25,
-    isConsumable: true,
-    consumableCooldownCategory: "potion",
-    consumableCooldownMs: 30_000,
-  }));
-  registerHarthmereItemDefinitionV1(makeItem({
-    itemId: "fire_tome",
-    isSpellTome: true,
-    grantsAbilityId: "fireball",
-    levelRequirement: 5,
-    baseValue: 200,
-  }));
-  registerHarthmereItemDefinitionV1(makeItem({
-    itemId: "quest_relic",
-    isQuestItem: true,
-    binding: "quest",
-    tradeable: false,
-    baseValue: 0,
-  }));
-  registerHarthmereItemDefinitionV1(makeItem({
-    itemId: "bound_armor",
-    binding: "on_pickup",
-    tradeable: false,
-    baseValue: 300,
-  }));
-  registerHarthmereItemDefinitionV1(makeItem({
-    itemId: "iron_ore",
-    maxStackSize: 200,
-    baseValue: 5,
-    isCraftingMaterial: true,
-  }));
-  registerHarthmereItemDefinitionV1(makeItem({
-    itemId: "iron_ingot",
-    maxStackSize: 100,
-    baseValue: 12,
-    isCraftingMaterial: true,
-  }));
-  registerHarthmereItemDefinitionV1(makeItem({
-    itemId: "gold_coin",
-    maxStackSize: 9999,
-    baseValue: 1,
-    isCurrency: true,
-    stats: {},
-  }));
+  registerHarthmereItemDefinitionV1(
+    makeItem({
+      itemId: "health_potion",
+      maxStackSize: 20,
+      baseValue: 25,
+      isConsumable: true,
+      consumableCooldownCategory: "potion",
+      consumableCooldownMs: 30_000,
+    })
+  );
+  registerHarthmereItemDefinitionV1(
+    makeItem({
+      itemId: "fire_tome",
+      isSpellTome: true,
+      grantsAbilityId: "fireball",
+      levelRequirement: 5,
+      baseValue: 200,
+    })
+  );
+  registerHarthmereItemDefinitionV1(
+    makeItem({
+      itemId: "quest_relic",
+      isQuestItem: true,
+      binding: "quest",
+      tradeable: false,
+      baseValue: 0,
+    })
+  );
+  registerHarthmereItemDefinitionV1(
+    makeItem({
+      itemId: "bound_armor",
+      binding: "on_pickup",
+      tradeable: false,
+      baseValue: 300,
+    })
+  );
+  registerHarthmereItemDefinitionV1(
+    makeItem({
+      itemId: "iron_ore",
+      maxStackSize: 200,
+      baseValue: 5,
+      isCraftingMaterial: true,
+    })
+  );
+  registerHarthmereItemDefinitionV1(
+    makeItem({
+      itemId: "iron_ingot",
+      maxStackSize: 100,
+      baseValue: 12,
+      isCraftingMaterial: true,
+    })
+  );
+  registerHarthmereItemDefinitionV1(
+    makeItem({
+      itemId: "gold_coin",
+      maxStackSize: 9999,
+      baseValue: 1,
+      isCurrency: true,
+      stats: {},
+    })
+  );
 
   // One entry per vendor+item pair
-  registerHarthmereVendorEntryV1({ vendorId: "blacksmith", itemId: "iron_sword",   buyPrice: 120, sellPrice: 60,  stock: 5,  requiredFaction: "city_guard", requiredReputationTier: 0 });
-  registerHarthmereVendorEntryV1({ vendorId: "blacksmith", itemId: "health_potion", buyPrice: 30,  sellPrice: 12, stock: -1, requiredFaction: "city_guard", requiredReputationTier: 0 });
-  registerHarthmereVendorEntryV1({ vendorId: "restricted_vendor", itemId: "iron_sword", buyPrice: 200, sellPrice: 100, stock: 1, requiredFaction: "noble_guild", requiredReputationTier: 5 });
+  registerHarthmereVendorEntryV1({
+    vendorId: "blacksmith",
+    itemId: "iron_sword",
+    buyPrice: 120,
+    sellPrice: 60,
+    stock: 5,
+    requiredFaction: "city_guard",
+    requiredReputationTier: 0,
+  });
+  registerHarthmereVendorEntryV1({
+    vendorId: "blacksmith",
+    itemId: "health_potion",
+    buyPrice: 30,
+    sellPrice: 12,
+    stock: -1,
+    requiredFaction: "city_guard",
+    requiredReputationTier: 0,
+  });
+  registerHarthmereVendorEntryV1({
+    vendorId: "restricted_vendor",
+    itemId: "iron_sword",
+    buyPrice: 200,
+    sellPrice: 100,
+    stock: 1,
+    requiredFaction: "noble_guild",
+    requiredReputationTier: 5,
+  });
 
   registerHarthmereCraftingRecipeV1({
     recipeId: "smelt_iron",
@@ -158,8 +208,14 @@ describe("Inventory utilities", () => {
   it("countInventorySlots counts distinct item types", () => {
     assert.strictEqual(countInventorySlots({}), 0);
     assert.strictEqual(countInventorySlots({ iron_sword: 1 }), 1);
-    assert.strictEqual(countInventorySlots({ iron_sword: 1, health_potion: 5 }), 2);
-    assert.strictEqual(countInventorySlots({ iron_sword: 0, health_potion: -1, iron_ore: 3 }), 1);
+    assert.strictEqual(
+      countInventorySlots({ iron_sword: 1, health_potion: 5 }),
+      2
+    );
+    assert.strictEqual(
+      countInventorySlots({ iron_sword: 0, health_potion: -1, iron_ore: 3 }),
+      1
+    );
   });
 
   it("inventoryHasCapacity returns true when under limit", () => {
@@ -180,16 +236,55 @@ describe("Inventory utilities", () => {
 
   it("isConsumableOnCooldown uses server clock, not client", () => {
     const now = Date.now();
-    assert.ok(isConsumableOnCooldown(makeSnapshot({ consumableCooldowns: { potion: now + 10_000 } }), "potion", now));
-    assert.ok(!isConsumableOnCooldown(makeSnapshot({ consumableCooldowns: { potion: now - 1 } }), "potion", now));
-    assert.ok(!isConsumableOnCooldown(makeSnapshot({ consumableCooldowns: {} }), "potion", now));
+    assert.ok(
+      isConsumableOnCooldown(
+        makeSnapshot({ consumableCooldowns: { potion: now + 10_000 } }),
+        "potion",
+        now
+      )
+    );
+    assert.ok(
+      !isConsumableOnCooldown(
+        makeSnapshot({ consumableCooldowns: { potion: now - 1 } }),
+        "potion",
+        now
+      )
+    );
+    assert.ok(
+      !isConsumableOnCooldown(
+        makeSnapshot({ consumableCooldowns: {} }),
+        "potion",
+        now
+      )
+    );
   });
 
   it("availableCount excludes escrowed items", () => {
-    assert.strictEqual(availableCount(makeSnapshot({ items: { iron_sword: 2 }, escrow: { iron_sword: 1 } }), "iron_sword"), 1);
-    assert.strictEqual(availableCount(makeSnapshot({ items: { iron_sword: 1 }, escrow: { iron_sword: 1 } }), "iron_sword"), 0);
-    assert.strictEqual(availableCount(makeSnapshot({ items: { iron_sword: 1 }, escrow: {} }), "iron_sword"), 1);
-    assert.strictEqual(availableCount(makeSnapshot({ items: {}, escrow: {} }), "iron_sword"), 0);
+    assert.strictEqual(
+      availableCount(
+        makeSnapshot({ items: { iron_sword: 2 }, escrow: { iron_sword: 1 } }),
+        "iron_sword"
+      ),
+      1
+    );
+    assert.strictEqual(
+      availableCount(
+        makeSnapshot({ items: { iron_sword: 1 }, escrow: { iron_sword: 1 } }),
+        "iron_sword"
+      ),
+      0
+    );
+    assert.strictEqual(
+      availableCount(
+        makeSnapshot({ items: { iron_sword: 1 }, escrow: {} }),
+        "iron_sword"
+      ),
+      1
+    );
+    assert.strictEqual(
+      availableCount(makeSnapshot({ items: {}, escrow: {} }), "iron_sword"),
+      0
+    );
   });
 });
 
@@ -201,26 +296,47 @@ describe("Vendor buy", () => {
   it("succeeds for basic purchase with enough gold", () => {
     const snap = makeSnapshot({ gold: 200 });
     const ctx = makeCtx(snap);
-    const req = makeReq({ kind: "buy_from_vendor", vendorId: "blacksmith", itemId: "iron_sword", count: 1 });
+    const req = makeReq({
+      kind: "buy_from_vendor",
+      vendorId: "blacksmith",
+      itemId: "iron_sword",
+      count: 1,
+    });
     const result = reduceHarthmereInventoryMutationV1(req, ctx);
-    assert.ok(result.ok, `expected ok but got errors: ${result.errors?.join(", ")}`);
+    assert.ok(
+      result.ok,
+      `expected ok but got errors: ${result.errors?.join(", ")}`
+    );
     assert.ok(result.goldDelta < 0, "buying should cost gold");
-    assert.ok((result.itemDeltas["iron_sword"] ?? 0) > 0, "should receive item");
+    assert.ok(
+      (result.itemDeltas["iron_sword"] ?? 0) > 0,
+      "should receive item"
+    );
   });
 
   it("fails when player cannot afford it", () => {
     const snap = makeSnapshot({ gold: 10 });
     const ctx = makeCtx(snap);
-    const req = makeReq({ kind: "buy_from_vendor", vendorId: "blacksmith", itemId: "iron_sword", count: 1 });
+    const req = makeReq({
+      kind: "buy_from_vendor",
+      vendorId: "blacksmith",
+      itemId: "iron_sword",
+      count: 1,
+    });
     const result = reduceHarthmereInventoryMutationV1(req, ctx);
     assert.ok(!result.ok);
-    assert.ok(result.errors?.some(e => e.includes("gold")));
+    assert.ok(result.errors?.some((e) => e.includes("gold")));
   });
 
   it("fails when vendor or item not found", () => {
     const snap = makeSnapshot({ gold: 9999 });
     const ctx = makeCtx(snap);
-    const req = makeReq({ kind: "buy_from_vendor", vendorId: "nonexistent", itemId: "iron_sword", count: 1 });
+    const req = makeReq({
+      kind: "buy_from_vendor",
+      vendorId: "nonexistent",
+      itemId: "iron_sword",
+      count: 1,
+    });
     const result = reduceHarthmereInventoryMutationV1(req, ctx);
     assert.ok(!result.ok);
   });
@@ -228,16 +344,26 @@ describe("Vendor buy", () => {
   it("fails when reputation is insufficient", () => {
     const snap = makeSnapshot({ gold: 5000 });
     const ctx = makeCtx(snap, { reputation: { noble_guild: 2 } });
-    const req = makeReq({ kind: "buy_from_vendor", vendorId: "restricted_vendor", itemId: "iron_sword", count: 1 });
+    const req = makeReq({
+      kind: "buy_from_vendor",
+      vendorId: "restricted_vendor",
+      itemId: "iron_sword",
+      count: 1,
+    });
     const result = reduceHarthmereInventoryMutationV1(req, ctx);
     assert.ok(!result.ok);
-    assert.ok(result.errors?.some(e => e.includes("reputation")));
+    assert.ok(result.errors?.some((e) => e.includes("reputation")));
   });
 
   it("succeeds when reputation requirement is met", () => {
     const snap = makeSnapshot({ gold: 5000 });
     const ctx = makeCtx(snap, { reputation: { noble_guild: 5 } });
-    const req = makeReq({ kind: "buy_from_vendor", vendorId: "restricted_vendor", itemId: "iron_sword", count: 1 });
+    const req = makeReq({
+      kind: "buy_from_vendor",
+      vendorId: "restricted_vendor",
+      itemId: "iron_sword",
+      count: 1,
+    });
     const result = reduceHarthmereInventoryMutationV1(req, ctx);
     assert.ok(result.ok, result.errors?.join(", "));
   });
@@ -245,7 +371,12 @@ describe("Vendor buy", () => {
   it("rejects buying 0 or negative count", () => {
     const snap = makeSnapshot({ gold: 9999 });
     const ctx = makeCtx(snap);
-    const req = makeReq({ kind: "buy_from_vendor", vendorId: "blacksmith", itemId: "iron_sword", count: 0 });
+    const req = makeReq({
+      kind: "buy_from_vendor",
+      vendorId: "blacksmith",
+      itemId: "iron_sword",
+      count: 0,
+    });
     const result = reduceHarthmereInventoryMutationV1(req, ctx);
     assert.ok(!result.ok);
   });
@@ -253,7 +384,12 @@ describe("Vendor buy", () => {
   it("rejects buying more than stock allows", () => {
     const snap = makeSnapshot({ gold: 9999 });
     const ctx = makeCtx(snap);
-    const req = makeReq({ kind: "buy_from_vendor", vendorId: "blacksmith", itemId: "iron_sword", count: 99 });
+    const req = makeReq({
+      kind: "buy_from_vendor",
+      vendorId: "blacksmith",
+      itemId: "iron_sword",
+      count: 99,
+    });
     const result = reduceHarthmereInventoryMutationV1(req, ctx);
     assert.ok(!result.ok);
   });
@@ -261,7 +397,12 @@ describe("Vendor buy", () => {
   it("succeeds buying unlimited-stock item in large quantity", () => {
     const snap = makeSnapshot({ gold: 9999 });
     const ctx = makeCtx(snap);
-    const req = makeReq({ kind: "buy_from_vendor", vendorId: "blacksmith", itemId: "health_potion", count: 10 });
+    const req = makeReq({
+      kind: "buy_from_vendor",
+      vendorId: "blacksmith",
+      itemId: "health_potion",
+      count: 10,
+    });
     const result = reduceHarthmereInventoryMutationV1(req, ctx);
     assert.ok(result.ok, result.errors?.join(", "));
     assert.strictEqual(result.itemDeltas["health_potion"], 10);
@@ -276,7 +417,12 @@ describe("Vendor sell", () => {
   it("succeeds when player owns item", () => {
     const snap = makeSnapshot({ items: { iron_sword: 1 } });
     const ctx = makeCtx(snap);
-    const req = makeReq({ kind: "sell_to_vendor", vendorId: "blacksmith", itemId: "iron_sword", count: 1 });
+    const req = makeReq({
+      kind: "sell_to_vendor",
+      vendorId: "blacksmith",
+      itemId: "iron_sword",
+      count: 1,
+    });
     const result = reduceHarthmereInventoryMutationV1(req, ctx);
     assert.ok(result.ok, result.errors?.join(", "));
     assert.ok(result.goldDelta > 0, "selling should grant gold");
@@ -286,7 +432,12 @@ describe("Vendor sell", () => {
   it("fails when player does not own item", () => {
     const snap = makeSnapshot({ items: {} });
     const ctx = makeCtx(snap);
-    const req = makeReq({ kind: "sell_to_vendor", vendorId: "blacksmith", itemId: "iron_sword", count: 1 });
+    const req = makeReq({
+      kind: "sell_to_vendor",
+      vendorId: "blacksmith",
+      itemId: "iron_sword",
+      count: 1,
+    });
     const result = reduceHarthmereInventoryMutationV1(req, ctx);
     assert.ok(!result.ok);
   });
@@ -294,16 +445,26 @@ describe("Vendor sell", () => {
   it("blocks selling quest items", () => {
     const snap = makeSnapshot({ items: { quest_relic: 1 } });
     const ctx = makeCtx(snap);
-    const req = makeReq({ kind: "sell_to_vendor", vendorId: "blacksmith", itemId: "quest_relic", count: 1 });
+    const req = makeReq({
+      kind: "sell_to_vendor",
+      vendorId: "blacksmith",
+      itemId: "quest_relic",
+      count: 1,
+    });
     const result = reduceHarthmereInventoryMutationV1(req, ctx);
     assert.ok(!result.ok);
-    assert.ok(result.errors?.some(e => e.includes("quest")));
+    assert.ok(result.errors?.some((e) => e.includes("quest")));
   });
 
   it("blocks selling bound items", () => {
     const snap = makeSnapshot({ items: { bound_armor: 1 } });
     const ctx = makeCtx(snap);
-    const req = makeReq({ kind: "sell_to_vendor", vendorId: "blacksmith", itemId: "bound_armor", count: 1 });
+    const req = makeReq({
+      kind: "sell_to_vendor",
+      vendorId: "blacksmith",
+      itemId: "bound_armor",
+      count: 1,
+    });
     const result = reduceHarthmereInventoryMutationV1(req, ctx);
     assert.ok(!result.ok);
   });
@@ -311,7 +472,12 @@ describe("Vendor sell", () => {
   it("fails if trying to sell more than owned", () => {
     const snap = makeSnapshot({ items: { iron_ore: 2 } });
     const ctx = makeCtx(snap);
-    const req = makeReq({ kind: "sell_to_vendor", vendorId: "blacksmith", itemId: "iron_ore", count: 5 });
+    const req = makeReq({
+      kind: "sell_to_vendor",
+      vendorId: "blacksmith",
+      itemId: "iron_ore",
+      count: 5,
+    });
     const result = reduceHarthmereInventoryMutationV1(req, ctx);
     assert.ok(!result.ok);
   });
@@ -319,16 +485,29 @@ describe("Vendor sell", () => {
   it("blocks selling items the vendor does not buy", () => {
     const snap = makeSnapshot({ items: { iron_ore: 1 } });
     const ctx = makeCtx(snap);
-    const req = makeReq({ kind: "sell_to_vendor", vendorId: "blacksmith", itemId: "iron_ore", count: 1 });
+    const req = makeReq({
+      kind: "sell_to_vendor",
+      vendorId: "blacksmith",
+      itemId: "iron_ore",
+      count: 1,
+    });
     const result = reduceHarthmereInventoryMutationV1(req, ctx);
     assert.ok(!result.ok);
     assert.ok(result.errors?.includes("vendor_does_not_buy_item"));
   });
 
   it("cannot sell items that are in escrow", () => {
-    const snap = makeSnapshot({ items: { iron_ore: 5 }, escrow: { iron_ore: 4 } });
+    const snap = makeSnapshot({
+      items: { iron_ore: 5 },
+      escrow: { iron_ore: 4 },
+    });
     const ctx = makeCtx(snap);
-    const req = makeReq({ kind: "sell_to_vendor", vendorId: "blacksmith", itemId: "iron_ore", count: 3 });
+    const req = makeReq({
+      kind: "sell_to_vendor",
+      vendorId: "blacksmith",
+      itemId: "iron_ore",
+      count: 3,
+    });
     const result = reduceHarthmereInventoryMutationV1(req, ctx);
     assert.ok(!result.ok, "should block selling escrowed stock");
   });
@@ -351,7 +530,12 @@ describe("Use item / spell tome", () => {
     const now = Date.now();
     const snap = makeSnapshot({ items: { health_potion: 5 } });
     const ctx = makeCtx(snap);
-    const req = makeReq({ kind: "use_item", itemId: "health_potion", count: 0, nowMs: now });
+    const req = makeReq({
+      kind: "use_item",
+      itemId: "health_potion",
+      count: 0,
+      nowMs: now,
+    });
     const result = reduceHarthmereInventoryMutationV1(req, ctx);
     assert.ok(!result.ok);
     assert.ok(result.errors?.includes("invalid_count"));
@@ -359,19 +543,33 @@ describe("Use item / spell tome", () => {
 
   it("fails when on cooldown", () => {
     const now = Date.now();
-    const snap = makeSnapshot({ items: { health_potion: 5 }, consumableCooldowns: { potion: now + 60_000 } });
+    const snap = makeSnapshot({
+      items: { health_potion: 5 },
+      consumableCooldowns: { potion: now + 60_000 },
+    });
     const ctx = makeCtx(snap);
-    const req = makeReq({ kind: "use_item", itemId: "health_potion", nowMs: now });
+    const req = makeReq({
+      kind: "use_item",
+      itemId: "health_potion",
+      nowMs: now,
+    });
     const result = reduceHarthmereInventoryMutationV1(req, ctx);
     assert.ok(!result.ok);
-    assert.ok(result.errors?.some(e => e.includes("cooldown")));
+    assert.ok(result.errors?.some((e) => e.includes("cooldown")));
   });
 
   it("succeeds when cooldown has expired", () => {
     const now = Date.now();
-    const snap = makeSnapshot({ items: { health_potion: 5 }, consumableCooldowns: { potion: now - 1 } });
+    const snap = makeSnapshot({
+      items: { health_potion: 5 },
+      consumableCooldowns: { potion: now - 1 },
+    });
     const ctx = makeCtx(snap, { playerLevel: 1 });
-    const req = makeReq({ kind: "use_item", itemId: "health_potion", nowMs: now });
+    const req = makeReq({
+      kind: "use_item",
+      itemId: "health_potion",
+      nowMs: now,
+    });
     const result = reduceHarthmereInventoryMutationV1(req, ctx);
     assert.ok(result.ok, result.errors?.join(", "));
   });
@@ -382,7 +580,7 @@ describe("Use item / spell tome", () => {
     const req = makeReq({ kind: "learn_spell_from_tome", itemId: "fire_tome" });
     const result = reduceHarthmereInventoryMutationV1(req, ctx);
     assert.ok(!result.ok);
-    assert.ok(result.errors?.some(e => e.includes("level")));
+    assert.ok(result.errors?.some((e) => e.includes("level")));
   });
 
   it("succeeds learning spell tome at required level", () => {
@@ -395,12 +593,15 @@ describe("Use item / spell tome", () => {
   });
 
   it("fails learning already-known spell", () => {
-    const snap = makeSnapshot({ items: { fire_tome: 1 }, knownAbilities: ["fireball"] });
+    const snap = makeSnapshot({
+      items: { fire_tome: 1 },
+      knownAbilities: ["fireball"],
+    });
     const ctx = makeCtx(snap, { playerLevel: 10 });
     const req = makeReq({ kind: "learn_spell_from_tome", itemId: "fire_tome" });
     const result = reduceHarthmereInventoryMutationV1(req, ctx);
     assert.ok(!result.ok);
-    assert.ok(result.errors?.some(e => e.includes("already_known")));
+    assert.ok(result.errors?.some((e) => e.includes("already_known")));
   });
 });
 
@@ -410,9 +611,19 @@ describe("Use item / spell tome", () => {
 
 describe("Crafting", () => {
   it("succeeds with sufficient materials and known recipe", () => {
-    const snap = makeSnapshot({ items: { iron_ore: 10 }, knownRecipes: ["smelt_iron"] });
-    const ctx = makeCtx(snap, { playerLevel: 1, playerSkills: { smithing: { level: 1 } } });
-    const req = makeReq({ kind: "craft_item", recipeId: "smelt_iron", count: 2 });
+    const snap = makeSnapshot({
+      items: { iron_ore: 10 },
+      knownRecipes: ["smelt_iron"],
+    });
+    const ctx = makeCtx(snap, {
+      playerLevel: 1,
+      playerSkills: { smithing: { level: 1 } },
+    });
+    const req = makeReq({
+      kind: "craft_item",
+      recipeId: "smelt_iron",
+      count: 2,
+    });
     const result = reduceHarthmereInventoryMutationV1(req, ctx);
     assert.ok(result.ok, result.errors?.join(", "));
     assert.strictEqual(result.itemDeltas["iron_ore"], -6);
@@ -421,9 +632,19 @@ describe("Crafting", () => {
   });
 
   it("rejects zero-count crafting instead of silently crafting one item", () => {
-    const snap = makeSnapshot({ items: { iron_ore: 10 }, knownRecipes: ["smelt_iron"] });
-    const ctx = makeCtx(snap, { playerLevel: 1, playerSkills: { smithing: { level: 1 } } });
-    const req = makeReq({ kind: "craft_item", recipeId: "smelt_iron", count: 0 });
+    const snap = makeSnapshot({
+      items: { iron_ore: 10 },
+      knownRecipes: ["smelt_iron"],
+    });
+    const ctx = makeCtx(snap, {
+      playerLevel: 1,
+      playerSkills: { smithing: { level: 1 } },
+    });
+    const req = makeReq({
+      kind: "craft_item",
+      recipeId: "smelt_iron",
+      count: 0,
+    });
     const result = reduceHarthmereInventoryMutationV1(req, ctx);
     assert.ok(!result.ok);
     assert.ok(result.errors?.includes("invalid_count"));
@@ -434,9 +655,19 @@ describe("Crafting", () => {
     for (let i = 0; i < HARTHMERE_DEFAULT_INVENTORY_SLOTS_V1 - 1; i++) {
       fullItems[`filler_${i}`] = 1;
     }
-    const snap = makeSnapshot({ items: fullItems, knownRecipes: ["smelt_iron"] });
-    const ctx = makeCtx(snap, { playerLevel: 1, playerSkills: { smithing: { level: 1 } } });
-    const req = makeReq({ kind: "craft_item", recipeId: "smelt_iron", count: 1 });
+    const snap = makeSnapshot({
+      items: fullItems,
+      knownRecipes: ["smelt_iron"],
+    });
+    const ctx = makeCtx(snap, {
+      playerLevel: 1,
+      playerSkills: { smithing: { level: 1 } },
+    });
+    const req = makeReq({
+      kind: "craft_item",
+      recipeId: "smelt_iron",
+      count: 1,
+    });
     const result = reduceHarthmereInventoryMutationV1(req, ctx);
     assert.ok(result.ok, result.errors?.join(", "));
     assert.strictEqual(result.itemDeltas["iron_ore"], -3);
@@ -449,8 +680,15 @@ describe("Crafting", () => {
       materialStorage: { iron_ore: 2 },
       knownRecipes: ["smelt_iron"],
     });
-    const ctx = makeCtx(snap, { playerLevel: 1, playerSkills: { smithing: { level: 1 } } });
-    const req = makeReq({ kind: "craft_item", recipeId: "smelt_iron", count: 1 });
+    const ctx = makeCtx(snap, {
+      playerLevel: 1,
+      playerSkills: { smithing: { level: 1 } },
+    });
+    const req = makeReq({
+      kind: "craft_item",
+      recipeId: "smelt_iron",
+      count: 1,
+    });
     const result = reduceHarthmereInventoryMutationV1(req, ctx);
     assert.ok(result.ok, result.errors?.join(", "));
     assert.strictEqual(result.itemDeltas.iron_ore, -1);
@@ -468,49 +706,104 @@ describe("Crafting", () => {
       materialStorage: { iron_ore: 3 },
       knownRecipes: ["smelt_iron"],
     });
-    const ctx = makeCtx(snap, { playerLevel: 1, playerSkills: { smithing: { level: 1 } } });
-    const req = makeReq({ kind: "craft_item", recipeId: "smelt_iron", count: 1 });
+    const ctx = makeCtx(snap, {
+      playerLevel: 1,
+      playerSkills: { smithing: { level: 1 } },
+    });
+    const req = makeReq({
+      kind: "craft_item",
+      recipeId: "smelt_iron",
+      count: 1,
+    });
     const result = reduceHarthmereInventoryMutationV1(req, ctx);
     assert.ok(!result.ok);
     assert.ok(result.errors?.includes("inventory_full"));
   });
 
   it("fails with insufficient materials", () => {
-    const snap = makeSnapshot({ items: { iron_ore: 2 }, knownRecipes: ["smelt_iron"] });
-    const ctx = makeCtx(snap, { playerLevel: 1, playerSkills: { smithing: { level: 1 } } });
-    const req = makeReq({ kind: "craft_item", recipeId: "smelt_iron", count: 1 });
+    const snap = makeSnapshot({
+      items: { iron_ore: 2 },
+      knownRecipes: ["smelt_iron"],
+    });
+    const ctx = makeCtx(snap, {
+      playerLevel: 1,
+      playerSkills: { smithing: { level: 1 } },
+    });
+    const req = makeReq({
+      kind: "craft_item",
+      recipeId: "smelt_iron",
+      count: 1,
+    });
     const result = reduceHarthmereInventoryMutationV1(req, ctx);
     assert.ok(!result.ok);
-    assert.ok(result.errors?.some(e => e.includes("material") || e.includes("insufficient")));
+    assert.ok(
+      result.errors?.some(
+        (e) => e.includes("material") || e.includes("insufficient")
+      )
+    );
   });
 
   it("fails with unknown recipe", () => {
     const snap = makeSnapshot({ items: { iron_ore: 10 }, knownRecipes: [] });
-    const ctx = makeCtx(snap, { playerLevel: 1, playerSkills: { smithing: { level: 1 } } });
-    const req = makeReq({ kind: "craft_item", recipeId: "smelt_iron", count: 1 });
+    const ctx = makeCtx(snap, {
+      playerLevel: 1,
+      playerSkills: { smithing: { level: 1 } },
+    });
+    const req = makeReq({
+      kind: "craft_item",
+      recipeId: "smelt_iron",
+      count: 1,
+    });
     const result = reduceHarthmereInventoryMutationV1(req, ctx);
     assert.ok(!result.ok);
-    assert.ok(result.errors?.some(e => e.includes("recipe_not_known") || e.includes("recipe")));
+    assert.ok(
+      result.errors?.some(
+        (e) => e.includes("recipe_not_known") || e.includes("recipe")
+      )
+    );
   });
 
   it("fails when skill level is insufficient", () => {
-    const snap = makeSnapshot({ items: { iron_ore: 10 }, knownRecipes: ["smelt_iron"] });
-    const ctx = makeCtx(snap, { playerLevel: 1, playerSkills: { smithing: { level: 0 } } });
-    const req = makeReq({ kind: "craft_item", recipeId: "smelt_iron", count: 1 });
+    const snap = makeSnapshot({
+      items: { iron_ore: 10 },
+      knownRecipes: ["smelt_iron"],
+    });
+    const ctx = makeCtx(snap, {
+      playerLevel: 1,
+      playerSkills: { smithing: { level: 0 } },
+    });
+    const req = makeReq({
+      kind: "craft_item",
+      recipeId: "smelt_iron",
+      count: 1,
+    });
     const result = reduceHarthmereInventoryMutationV1(req, ctx);
     assert.ok(!result.ok);
   });
 
   it("refuses if output exceeds max stack size", () => {
-    const snap = makeSnapshot({ items: { iron_ore: 999 }, knownRecipes: ["smelt_iron"] });
+    const snap = makeSnapshot({
+      items: { iron_ore: 999 },
+      knownRecipes: ["smelt_iron"],
+    });
     // Fill inventory to near capacity to trigger overflow
     const fullItems: Record<string, number> = { iron_ore: 999 };
     for (let i = 0; i < HARTHMERE_DEFAULT_INVENTORY_SLOTS_V1 - 1; i++) {
       fullItems[`filler_${i}`] = 1;
     }
-    const snap2 = makeSnapshot({ items: fullItems, knownRecipes: ["smelt_iron"] });
-    const ctx = makeCtx(snap2, { playerLevel: 1, playerSkills: { smithing: { level: 1 } } });
-    const req = makeReq({ kind: "craft_item", recipeId: "smelt_iron", count: 1 });
+    const snap2 = makeSnapshot({
+      items: fullItems,
+      knownRecipes: ["smelt_iron"],
+    });
+    const ctx = makeCtx(snap2, {
+      playerLevel: 1,
+      playerSkills: { smithing: { level: 1 } },
+    });
+    const req = makeReq({
+      kind: "craft_item",
+      recipeId: "smelt_iron",
+      count: 1,
+    });
     const result = reduceHarthmereInventoryMutationV1(req, ctx);
     assert.ok(!result.ok, "should reject when inventory full");
   });
@@ -537,13 +830,29 @@ describe("Crafting", () => {
       materialStorage: { iron_ore: 1 },
       knownRecipes: ["refund_split_test"],
     });
-    const ctx = makeCtx(snap, { playerLevel: 1, playerSkills: { smithing: { level: 1 } } });
-    const req = makeReq({ kind: "craft_item", recipeId: "refund_split_test", count: 1 });
+    const ctx = makeCtx(snap, {
+      playerLevel: 1,
+      playerSkills: { smithing: { level: 1 } },
+    });
+    const req = makeReq({
+      kind: "craft_item",
+      recipeId: "refund_split_test",
+      count: 1,
+    });
     const result = reduceHarthmereInventoryMutationV1(req, ctx);
     assert.ok(result.ok, result.errors?.join(", "));
-    const netConsumed = (result.itemDeltas.iron_ore ?? 0) + (result.materialStorageDeltas.iron_ore ?? 0);
-    assert.strictEqual(netConsumed, -1, "net consumed should be 1 of 2 after the 50% refund");
-    assert.ok(!result.itemDeltas.iron_ingot, "a failed craft produces no output");
+    const netConsumed =
+      (result.itemDeltas.iron_ore ?? 0) +
+      (result.materialStorageDeltas.iron_ore ?? 0);
+    assert.strictEqual(
+      netConsumed,
+      -1,
+      "net consumed should be 1 of 2 after the 50% refund"
+    );
+    assert.ok(
+      !result.itemDeltas.iron_ingot,
+      "a failed craft produces no output"
+    );
   });
 });
 
@@ -552,11 +861,16 @@ describe("Unimplemented mutation kinds", () => {
     const snap = makeSnapshot({ items: { iron_ore: 10 } });
     const ctx = makeCtx(snap);
     for (const kind of ["split_stack", "stack_items"] as const) {
-      const result = reduceHarthmereInventoryMutationV1(makeReq({ kind, itemId: "iron_ore", count: 5 }), ctx);
+      const result = reduceHarthmereInventoryMutationV1(
+        makeReq({ kind, itemId: "iron_ore", count: 5 }),
+        ctx
+      );
       assert.ok(!result.ok, `${kind} must not silently succeed`);
       assert.ok(
         result.errors?.some((e) => e.includes("not_implemented")),
-        `${kind} should report not_implemented, got: ${result.errors?.join(", ")}`
+        `${kind} should report not_implemented, got: ${result.errors?.join(
+          ", "
+        )}`
       );
     }
   });
@@ -570,7 +884,11 @@ describe("Bank transfer", () => {
   it("deposits item from inventory to bank", () => {
     const snap = makeSnapshot({ items: { iron_ore: 5 }, bank: {} });
     const ctx = makeCtx(snap);
-    const req = makeReq({ kind: "transfer_to_bank", bankItemId: "iron_ore", bankCount: 3 });
+    const req = makeReq({
+      kind: "transfer_to_bank",
+      bankItemId: "iron_ore",
+      bankCount: 3,
+    });
     const result = reduceHarthmereInventoryMutationV1(req, ctx);
     assert.ok(result.ok, result.errors?.join(", "));
     assert.strictEqual(result.itemDeltas["iron_ore"], -3);
@@ -580,7 +898,11 @@ describe("Bank transfer", () => {
   it("withdraws item from bank to inventory", () => {
     const snap = makeSnapshot({ items: {}, bank: { iron_ore: 5 } });
     const ctx = makeCtx(snap);
-    const req = makeReq({ kind: "withdraw_from_bank", bankItemId: "iron_ore", bankCount: 2 });
+    const req = makeReq({
+      kind: "withdraw_from_bank",
+      bankItemId: "iron_ore",
+      bankCount: 2,
+    });
     const result = reduceHarthmereInventoryMutationV1(req, ctx);
     assert.ok(result.ok, result.errors?.join(", "));
     assert.strictEqual(result.itemDeltas["iron_ore"], 2);
@@ -590,7 +912,11 @@ describe("Bank transfer", () => {
   it("fails depositing more than owned", () => {
     const snap = makeSnapshot({ items: { iron_ore: 1 }, bank: {} });
     const ctx = makeCtx(snap);
-    const req = makeReq({ kind: "transfer_to_bank", bankItemId: "iron_ore", bankCount: 5 });
+    const req = makeReq({
+      kind: "transfer_to_bank",
+      bankItemId: "iron_ore",
+      bankCount: 5,
+    });
     const result = reduceHarthmereInventoryMutationV1(req, ctx);
     assert.ok(!result.ok);
   });
@@ -598,15 +924,26 @@ describe("Bank transfer", () => {
   it("fails withdrawing more than in bank", () => {
     const snap = makeSnapshot({ items: {}, bank: { iron_ore: 1 } });
     const ctx = makeCtx(snap);
-    const req = makeReq({ kind: "withdraw_from_bank", bankItemId: "iron_ore", bankCount: 5 });
+    const req = makeReq({
+      kind: "withdraw_from_bank",
+      bankItemId: "iron_ore",
+      bankCount: 5,
+    });
     const result = reduceHarthmereInventoryMutationV1(req, ctx);
     assert.ok(!result.ok);
   });
 
   it("fails withdrawing when the destination stack would exceed its max size", () => {
-    const snap = makeSnapshot({ items: { health_potion: 15 }, bank: { health_potion: 10 } });
+    const snap = makeSnapshot({
+      items: { health_potion: 15 },
+      bank: { health_potion: 10 },
+    });
     const ctx = makeCtx(snap);
-    const req = makeReq({ kind: "withdraw_from_bank", bankItemId: "health_potion", bankCount: 10 });
+    const req = makeReq({
+      kind: "withdraw_from_bank",
+      bankItemId: "health_potion",
+      bankCount: 10,
+    });
     const result = reduceHarthmereInventoryMutationV1(req, ctx);
     assert.ok(!result.ok);
     assert.ok(result.errors?.includes("inventory_stack_size_exceeded"));
@@ -615,7 +952,11 @@ describe("Bank transfer", () => {
   it("blocks depositing quest items", () => {
     const snap = makeSnapshot({ items: { quest_relic: 1 }, bank: {} });
     const ctx = makeCtx(snap);
-    const req = makeReq({ kind: "transfer_to_bank", bankItemId: "quest_relic", bankCount: 1 });
+    const req = makeReq({
+      kind: "transfer_to_bank",
+      bankItemId: "quest_relic",
+      bankCount: 1,
+    });
     const result = reduceHarthmereInventoryMutationV1(req, ctx);
     assert.ok(!result.ok);
   });
@@ -629,7 +970,12 @@ describe("Quest item grant/remove", () => {
   it("grants quest item to player", () => {
     const snap = makeSnapshot({ items: {} });
     const ctx = makeCtx(snap);
-    const req = makeReq({ kind: "grant_quest_item", itemId: "quest_relic", count: 1, questId: "quest_1" });
+    const req = makeReq({
+      kind: "grant_quest_item",
+      itemId: "quest_relic",
+      count: 1,
+      questId: "quest_1",
+    });
     const result = reduceHarthmereInventoryMutationV1(req, ctx);
     assert.ok(result.ok, result.errors?.join(", "));
     assert.strictEqual(result.itemDeltas["quest_relic"], 1);
@@ -638,15 +984,28 @@ describe("Quest item grant/remove", () => {
   it("removes quest item from player", () => {
     const snap = makeSnapshot({ items: { quest_relic: 1 } });
     const ctx = makeCtx(snap);
-    const req = makeReq({ kind: "remove_quest_item", itemId: "quest_relic", count: 1, questId: "quest_1" });
+    const req = makeReq({
+      kind: "remove_quest_item",
+      itemId: "quest_relic",
+      count: 1,
+      questId: "quest_1",
+    });
     const result = reduceHarthmereInventoryMutationV1(req, ctx);
     assert.ok(result.ok, result.errors?.join(", "));
   });
 
   it("removes only the requested quest count across backpack and bank", () => {
-    const snap = makeSnapshot({ items: { quest_relic: 4 }, bank: { quest_relic: 4 } });
+    const snap = makeSnapshot({
+      items: { quest_relic: 4 },
+      bank: { quest_relic: 4 },
+    });
     const ctx = makeCtx(snap);
-    const req = makeReq({ kind: "remove_quest_item", itemId: "quest_relic", count: 5, questId: "quest_1" });
+    const req = makeReq({
+      kind: "remove_quest_item",
+      itemId: "quest_relic",
+      count: 5,
+      questId: "quest_1",
+    });
     const result = reduceHarthmereInventoryMutationV1(req, ctx);
     assert.ok(result.ok, result.errors?.join(", "));
     assert.strictEqual(result.itemDeltas["quest_relic"], -4);
@@ -666,65 +1025,128 @@ describe("Quest item grant/remove", () => {
   it("validates equip and unequip instead of passing through unsupported changes", () => {
     const snap = makeSnapshot({ items: { iron_sword: 1 } });
     const ctx = makeCtx(snap, { playerLevel: 10 });
-    const equip = reduceHarthmereInventoryMutationV1(makeReq({ kind: "equip_item", itemId: "iron_sword", targetSlot: "main_hand" }), ctx);
+    const equip = reduceHarthmereInventoryMutationV1(
+      makeReq({
+        kind: "equip_item",
+        itemId: "iron_sword",
+        targetSlot: "main_hand",
+      }),
+      ctx
+    );
     assert.ok(equip.ok, equip.errors?.join(", "));
     assert.strictEqual(equip.itemDeltas["iron_sword"], -1);
     assert.strictEqual(equip.equipmentChanges.main_hand, "iron_sword");
 
     const equipped = applyHarthmereInventoryMutationResultV1(snap, equip);
-    const unequip = reduceHarthmereInventoryMutationV1(makeReq({ kind: "unequip_item", sourceSlot: "main_hand" }), makeCtx(equipped));
+    const unequip = reduceHarthmereInventoryMutationV1(
+      makeReq({ kind: "unequip_item", sourceSlot: "main_hand" }),
+      makeCtx(equipped)
+    );
     assert.ok(unequip.ok, unequip.errors?.join(", "));
     assert.strictEqual(unequip.itemDeltas["iron_sword"], 1);
     assert.strictEqual(unequip.equipmentChanges.main_hand, undefined);
   });
 
   it("enforces equipment classRestriction when the player class is known", () => {
-    registerHarthmereItemDefinitionV1(makeItem({ itemId: "mage_staff", classRestriction: ["mage"], stats: {} }));
+    registerHarthmereItemDefinitionV1(
+      makeItem({ itemId: "mage_staff", classRestriction: ["mage"], stats: {} })
+    );
     const snap = makeSnapshot({ items: { mage_staff: 1 } });
     const wrong = reduceHarthmereInventoryMutationV1(
-      makeReq({ kind: "equip_item", itemId: "mage_staff", targetSlot: "main_hand" }),
+      makeReq({
+        kind: "equip_item",
+        itemId: "mage_staff",
+        targetSlot: "main_hand",
+      }),
       makeCtx(snap, { playerClassId: "warrior" })
     );
     assert.ok(!wrong.ok, "a warrior must not equip a mage-only item");
     assert.ok(wrong.errors?.includes("class_requirement_not_met"));
 
     const right = reduceHarthmereInventoryMutationV1(
-      makeReq({ kind: "equip_item", itemId: "mage_staff", targetSlot: "main_hand" }),
+      makeReq({
+        kind: "equip_item",
+        itemId: "mage_staff",
+        targetSlot: "main_hand",
+      }),
       makeCtx(snap, { playerClassId: "mage" })
     );
     assert.ok(right.ok, right.errors?.join(", "));
 
     // No class supplied → enforcement skipped (caller could not determine eligibility).
     const noClass = reduceHarthmereInventoryMutationV1(
-      makeReq({ kind: "equip_item", itemId: "mage_staff", targetSlot: "main_hand" }),
+      makeReq({
+        kind: "equip_item",
+        itemId: "mage_staff",
+        targetSlot: "main_hand",
+      }),
       makeCtx(snap)
     );
     assert.ok(noClass.ok, noClass.errors?.join(", "));
   });
 
   it("enforces two-handed weapon vs off-hand slot exclusivity", () => {
-    registerHarthmereItemDefinitionV1(makeItem({ itemId: "greatsword", twoHanded: true, maxStackSize: 1, stats: { attack: 30 } }));
-    registerHarthmereItemDefinitionV1(makeItem({ itemId: "wooden_shield", maxStackSize: 1, stats: { defense: 8 } }));
+    registerHarthmereItemDefinitionV1(
+      makeItem({
+        itemId: "greatsword",
+        twoHanded: true,
+        maxStackSize: 1,
+        stats: { attack: 30 },
+      })
+    );
+    registerHarthmereItemDefinitionV1(
+      makeItem({
+        itemId: "wooden_shield",
+        maxStackSize: 1,
+        stats: { defense: 8 },
+      })
+    );
 
     // Equipping a two-hander while an off-hand item is equipped is rejected.
     const blockedByShield = reduceHarthmereInventoryMutationV1(
-      makeReq({ kind: "equip_item", itemId: "greatsword", targetSlot: "main_hand" }),
-      makeCtx(makeSnapshot({ items: { greatsword: 1 }, equipment: { off_hand: "wooden_shield" } }))
+      makeReq({
+        kind: "equip_item",
+        itemId: "greatsword",
+        targetSlot: "main_hand",
+      }),
+      makeCtx(
+        makeSnapshot({
+          items: { greatsword: 1 },
+          equipment: { off_hand: "wooden_shield" },
+        })
+      )
     );
     assert.ok(!blockedByShield.ok);
-    assert.ok(blockedByShield.errors?.includes("off_hand_must_be_empty_for_two_handed"));
+    assert.ok(
+      blockedByShield.errors?.includes("off_hand_must_be_empty_for_two_handed")
+    );
 
     // Equipping an off-hand item while a two-hander is in the main hand is rejected.
     const blockedByTwoHander = reduceHarthmereInventoryMutationV1(
-      makeReq({ kind: "equip_item", itemId: "wooden_shield", targetSlot: "off_hand" }),
-      makeCtx(makeSnapshot({ items: { wooden_shield: 1 }, equipment: { main_hand: "greatsword" } }))
+      makeReq({
+        kind: "equip_item",
+        itemId: "wooden_shield",
+        targetSlot: "off_hand",
+      }),
+      makeCtx(
+        makeSnapshot({
+          items: { wooden_shield: 1 },
+          equipment: { main_hand: "greatsword" },
+        })
+      )
     );
     assert.ok(!blockedByTwoHander.ok);
-    assert.ok(blockedByTwoHander.errors?.includes("two_handed_weapon_blocks_off_hand"));
+    assert.ok(
+      blockedByTwoHander.errors?.includes("two_handed_weapon_blocks_off_hand")
+    );
 
     // With both hands free, the two-hander equips cleanly.
     const ok = reduceHarthmereInventoryMutationV1(
-      makeReq({ kind: "equip_item", itemId: "greatsword", targetSlot: "main_hand" }),
+      makeReq({
+        kind: "equip_item",
+        itemId: "greatsword",
+        targetSlot: "main_hand",
+      }),
       makeCtx(makeSnapshot({ items: { greatsword: 1 } }))
     );
     assert.ok(ok.ok, ok.errors?.join(", "));
@@ -733,22 +1155,68 @@ describe("Quest item grant/remove", () => {
   it("blocks dropping quest items and validates destroy counts", () => {
     const snap = makeSnapshot({ items: { quest_relic: 1, iron_ore: 2 } });
     const ctx = makeCtx(snap);
-    const dropQuest = reduceHarthmereInventoryMutationV1(makeReq({ kind: "drop_item", itemId: "quest_relic", count: 1 }), ctx);
+    const dropQuest = reduceHarthmereInventoryMutationV1(
+      makeReq({ kind: "drop_item", itemId: "quest_relic", count: 1 }),
+      ctx
+    );
     assert.ok(!dropQuest.ok);
     assert.ok(dropQuest.errors?.includes("cannot_drop_quest_item"));
 
-    const destroyZero = reduceHarthmereInventoryMutationV1(makeReq({ kind: "destroy_item", itemId: "iron_ore", count: 0 }), ctx);
+    const destroyZero = reduceHarthmereInventoryMutationV1(
+      makeReq({ kind: "destroy_item", itemId: "iron_ore", count: 0 }),
+      ctx
+    );
     assert.ok(!destroyZero.ok);
     assert.ok(destroyZero.errors?.includes("invalid_count"));
+  });
+
+  it("drops and destroys directly from material storage when requested", () => {
+    const snap = makeSnapshot({
+      items: {},
+      materialStorage: { iron_ore: 3 },
+    });
+    const ctx = makeCtx(snap);
+
+    const dropMaterial = reduceHarthmereInventoryMutationV1(
+      makeReq({
+        kind: "drop_item",
+        itemId: "iron_ore",
+        count: 2,
+        sourceSlot: "material_storage",
+      }),
+      ctx
+    );
+    assert.ok(dropMaterial.ok, dropMaterial.errors?.join(", "));
+    assert.deepStrictEqual(dropMaterial.itemDeltas, {});
+    assert.strictEqual(dropMaterial.materialStorageDeltas.iron_ore, -2);
+
+    const destroyTooMany = reduceHarthmereInventoryMutationV1(
+      makeReq({
+        kind: "destroy_item",
+        itemId: "iron_ore",
+        count: 4,
+        sourceSlot: "material_storage",
+      }),
+      ctx
+    );
+    assert.ok(!destroyTooMany.ok);
+    assert.ok(destroyTooMany.errors?.includes("insufficient_item_count"));
   });
 
   it("fails removing quest item player does not have", () => {
     const snap = makeSnapshot({ items: {} });
     const ctx = makeCtx(snap);
-    const req = makeReq({ kind: "remove_quest_item", itemId: "quest_relic", count: 1, questId: "quest_1" });
+    const req = makeReq({
+      kind: "remove_quest_item",
+      itemId: "quest_relic",
+      count: 1,
+      questId: "quest_1",
+    });
     const result = reduceHarthmereInventoryMutationV1(req, ctx);
     // Returns a warning-only success when item is missing — quest system handles gracefully
-    assert.ok(result.warnings?.some(w => w.includes("mismatch")) || !result.ok);
+    assert.ok(
+      result.warnings?.some((w) => w.includes("mismatch")) || !result.ok
+    );
   });
 });
 
@@ -760,7 +1228,11 @@ describe("Admin grant", () => {
   it("grants any item regardless of normal rules", () => {
     const snap = makeSnapshot({ gold: 0, items: {} });
     const ctx = makeCtx(snap);
-    const req = makeReq({ kind: "admin_grant", itemId: "iron_sword", count: 5 });
+    const req = makeReq({
+      kind: "admin_grant",
+      itemId: "iron_sword",
+      count: 5,
+    });
     const result = reduceHarthmereInventoryMutationV1(req, ctx);
     assert.ok(result.ok, result.errors?.join(", "));
     assert.strictEqual(result.itemDeltas["iron_sword"], 5);

@@ -2,6 +2,7 @@
 import assert from "assert";
 import { resolveHarthmereLiveModeActorIdV1 } from "@/server/harthmere/live_mode_actor_resolution_v1";
 import {
+  harthmereLiveModeInstallGameUserLinkKeyV1,
   harthmereLiveModeInstallLinkKeyV1,
 } from "@/shared/harthmere/live_mode_actor_identity_v1";
 import { harthmereLiveModePlayerStateKeyV1 } from "@/shared/harthmere/live_mode_backend_v1";
@@ -33,7 +34,9 @@ describe("resolveHarthmereLiveModeActorIdV1 (server healing)", () => {
   it("authed first sighting adopts a stranded install blob into the empty user key", async () => {
     const installId = "25f687dd";
     const userId = "5542414781262472";
-    const installKey = harthmereLiveModePlayerStateKeyV1(`install:${installId}`);
+    const installKey = harthmereLiveModePlayerStateKeyV1(
+      `install:${installId}`
+    );
     const userKey = harthmereLiveModePlayerStateKeyV1(userId);
     const strandedBlob = '{"level":7,"gold":999,"actorId":"install:25f687dd"}';
     const redis = fakeRedisV1({ [installKey]: strandedBlob });
@@ -60,7 +63,9 @@ describe("resolveHarthmereLiveModeActorIdV1 (server healing)", () => {
   it("authed first sighting NEVER overwrites an existing user blob", async () => {
     const installId = "i1";
     const userId = "u1";
-    const installKey = harthmereLiveModePlayerStateKeyV1(`install:${installId}`);
+    const installKey = harthmereLiveModePlayerStateKeyV1(
+      `install:${installId}`
+    );
     const userKey = harthmereLiveModePlayerStateKeyV1(userId);
     const realUserBlob = '{"level":42,"gold":1}';
     const redis = fakeRedisV1({
@@ -104,6 +109,33 @@ describe("resolveHarthmereLiveModeActorIdV1 (server healing)", () => {
     assert.strictEqual(actorId, userId);
     // Read path should not write anything.
     assert.deepStrictEqual(redis.sets, []);
+  });
+
+  it("stable Glitch game-user link wins after deploy and adopts the old live blob", async () => {
+    const installId = "25f687dd";
+    const oldUserId = "8711576235822475";
+    const newUserId = "7804034240681026";
+    const gameUserId = "glitch:43af071c-9922-4e02-ba46-32ee2b7479a6";
+    const oldUserStateKey = harthmereLiveModePlayerStateKeyV1(oldUserId);
+    const gameUserStateKey = harthmereLiveModePlayerStateKeyV1(gameUserId);
+    const oldUserBlob = '{"level":1,"gold":96,"actorId":"8711576235822475"}';
+    const redis = fakeRedisV1({
+      [harthmereLiveModeInstallLinkKeyV1(installId)]: oldUserId,
+      [harthmereLiveModeInstallGameUserLinkKeyV1(installId)]: gameUserId,
+      [oldUserStateKey]: oldUserBlob,
+    });
+
+    const actorId = await resolveHarthmereLiveModeActorIdV1(
+      redis,
+      {
+        auth: { userId: newUserId },
+        unsafeRequest: { query: { install_id: installId } },
+      },
+      ANON
+    );
+
+    assert.strictEqual(actorId, gameUserId);
+    assert.strictEqual(redis.store.get(gameUserStateKey), oldUserBlob);
   });
 
   it("install-only request with no link falls back to the install bucket", async () => {

@@ -35,6 +35,7 @@ import { eatHarthmereFoodForStamina } from "@/client/components/challenges/Local
 import { getHarthmereLevelSummary } from "@/client/components/challenges/LocalDevHarthmereLevelingSystem";
 import { readHarthmereReputationState } from "@/client/components/challenges/LocalDevHarthmereReputation";
 import { SNAPSHOT_GROVE_QUESTS_V75 } from "@/shared/harthmere/snapshot_grove_content_v75";
+import { harthmereLocalItemBikkieWearableV1 } from "@/shared/harthmere/harthmere_bikkie_wearables_v1";
 import { HARTHMERE_LOCAL_DEV_ITEM_USE_EVENT_V130 } from "@/shared/harthmere/snapshot_grove_trigger_contract_v130";
 import React, { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
@@ -2231,6 +2232,8 @@ export interface HarthmereItemDisplayV1 {
   stackable: boolean;
   maxStack: number;
   slot?: string;
+  bikkieWearableSlot?: number;
+  bikkieWearableItemId?: number;
   canEquip: boolean;
   canUse: boolean;
   useEffectType?: string;
@@ -2243,6 +2246,7 @@ export function getHarthmereItemDisplayV1(
   if (!def) {
     return undefined;
   }
+  const wearable = harthmereLocalItemBikkieWearableV1(def.id);
   return {
     id: def.id,
     name: def.name,
@@ -2253,10 +2257,113 @@ export function getHarthmereItemDisplayV1(
     stackable: def.stackable,
     maxStack: def.maxStack,
     slot: def.slot,
+    bikkieWearableSlot: wearable ? Number(wearable.slot) : undefined,
+    bikkieWearableItemId: wearable ? Number(wearable.itemId) : undefined,
     canEquip: Boolean(def.slot),
     canUse: Boolean(def.useEffect),
     useEffectType: def.useEffect?.type,
   };
+}
+
+function hotbarSlotKeyForBiomesUI(index: number) {
+  const clamped = Math.max(0, Math.min(8, Math.trunc(index)));
+  return `slot_${clamped + 1}`;
+}
+
+function hasHarthmereHotbarAssignableItem(
+  state: HarthmereInventoryState,
+  itemId: string
+) {
+  return (
+    state.backpack.items.some((item) => item.itemId === itemId) ||
+    state.questPouch.some((item) => item.itemId === itemId) ||
+    (state.materialStorage[itemId] ?? 0) > 0 ||
+    Object.values(state.equipment).some((item) => item?.itemId === itemId)
+  );
+}
+
+export function performHarthmereHotbarAssignForBiomesUI(
+  itemId: string,
+  hotbarIndex: number,
+  allowKnownItem = false
+) {
+  const state = readHarthmereInventoryState();
+  if (
+    !itemDef(itemId) ||
+    (!allowKnownItem && !hasHarthmereHotbarAssignableItem(state, itemId))
+  ) {
+    return false;
+  }
+  writeHarthmereInventoryState({
+    ...state,
+    hotbar: {
+      ...state.hotbar,
+      [hotbarSlotKeyForBiomesUI(hotbarIndex)]: itemId,
+    },
+  });
+  return true;
+}
+
+export function performHarthmereMaterialStorageRemoveForBiomesUI(
+  itemId: string,
+  count = 1
+) {
+  const state = readHarthmereInventoryState();
+  const removeCount = Math.max(1, Math.trunc(Number(count) || 1));
+  const available = Math.max(0, Number(state.materialStorage[itemId] ?? 0));
+  const removed = Math.min(available, removeCount);
+  if (removed <= 0) {
+    return 0;
+  }
+  const nextMaterialStorage = { ...state.materialStorage };
+  const remaining = available - removed;
+  if (remaining <= 0) {
+    delete nextMaterialStorage[itemId];
+  } else {
+    nextMaterialStorage[itemId] = remaining;
+  }
+  writeHarthmereInventoryState({
+    ...state,
+    materialStorage: nextMaterialStorage,
+  });
+  return removed;
+}
+
+export function performHarthmereHotbarSlotMoveForBiomesUI(
+  fromHotbarIndex: number,
+  toHotbarIndex: number
+) {
+  if (
+    !Number.isInteger(fromHotbarIndex) ||
+    !Number.isInteger(toHotbarIndex) ||
+    fromHotbarIndex < 0 ||
+    fromHotbarIndex > 8 ||
+    toHotbarIndex < 0 ||
+    toHotbarIndex > 8 ||
+    fromHotbarIndex === toHotbarIndex
+  ) {
+    return false;
+  }
+  const state = readHarthmereInventoryState();
+  const fromKey = hotbarSlotKeyForBiomesUI(fromHotbarIndex);
+  const toKey = hotbarSlotKeyForBiomesUI(toHotbarIndex);
+  const nextHotbar = { ...state.hotbar };
+  const fromItemId = nextHotbar[fromKey];
+  nextHotbar[fromKey] = nextHotbar[toKey];
+  nextHotbar[toKey] = fromItemId;
+  writeHarthmereInventoryState({ ...state, hotbar: nextHotbar });
+  return true;
+}
+
+export function performHarthmereHotbarClearForBiomesUI(hotbarIndex: number) {
+  const state = readHarthmereInventoryState();
+  const key = hotbarSlotKeyForBiomesUI(hotbarIndex);
+  if (!state.hotbar[key]) {
+    return false;
+  }
+  const nextHotbar = { ...state.hotbar, [key]: undefined };
+  writeHarthmereInventoryState({ ...state, hotbar: nextHotbar });
+  return true;
 }
 
 function makeItemInstance(

@@ -39,7 +39,9 @@ export interface HarthmereLiveModeActorRequestV1 {
   };
 }
 
-function firstHarthmereActorRequestStringV1(value: unknown): string | undefined {
+function firstHarthmereActorRequestStringV1(
+  value: unknown
+): string | undefined {
   const candidate = Array.isArray(value) ? value[0] : value;
   return typeof candidate === "string" && candidate.trim()
     ? candidate.trim()
@@ -74,7 +76,9 @@ export function resolveHarthmereLiveModeActorIdentityV1(
 ): HarthmereLiveModeActorIdentityV1 {
   const userId =
     input.auth?.userId !== undefined ? String(input.auth.userId) : undefined;
-  const installId = harthmereLiveModeInstallIdFromRequestV1(input.unsafeRequest);
+  const installId = harthmereLiveModeInstallIdFromRequestV1(
+    input.unsafeRequest
+  );
   return {
     userId: userId && userId.trim() ? userId : undefined,
     installId,
@@ -83,6 +87,10 @@ export function resolveHarthmereLiveModeActorIdentityV1(
 
 export function harthmereLiveModeInstallLinkKeyV1(installId: string) {
   return `harthmere:live_mode:v1:install_user_link:${installId}`;
+}
+
+export function harthmereLiveModeInstallGameUserLinkKeyV1(installId: string) {
+  return `harthmere:live_mode:v1:install_game_user_link:${installId}`;
 }
 
 export function harthmereLiveModeInstallActorIdV1(installId: string) {
@@ -100,12 +108,13 @@ export interface HarthmereLiveModeActorKeyPlanV1 {
   considerInstallOrphan?: { installId: string; userId: string };
 }
 
-// Pure decision: given the resolved identity and any KNOWN existing
-// install->user link, decide which player_state key to use and what bookkeeping
-// to perform. No I/O.
+// Pure decision: given the resolved identity and any KNOWN existing install
+// links, decide which player_state key to use and what bookkeeping to perform.
+// No I/O.
 export function planHarthmereLiveModeActorKeyV1(input: {
   userId?: string;
   installId?: string;
+  linkedGameUserId?: string;
   // The user id currently linked to this install, if the caller already looked
   // it up. Undefined when unknown / no link exists.
   linkedUserId?: string;
@@ -118,6 +127,14 @@ export function planHarthmereLiveModeActorKeyV1(input: {
     input.linkedUserId && input.linkedUserId.trim()
       ? input.linkedUserId
       : undefined;
+  const linkedGameUserId =
+    input.linkedGameUserId && input.linkedGameUserId.trim()
+      ? input.linkedGameUserId
+      : undefined;
+
+  if (installId && linkedGameUserId) {
+    return { actorId: linkedGameUserId };
+  }
 
   if (userId) {
     const plan: HarthmereLiveModeActorKeyPlanV1 = { actorId: userId };

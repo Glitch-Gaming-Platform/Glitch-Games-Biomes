@@ -83,3 +83,50 @@ export async function submitHarthmereFallDamageLiveModeV1(
   dispatchHarthmereEnvironmentDamageStatusV1(body);
   return body;
 }
+
+export async function submitHarthmereDrowningDamageLiveModeV1(
+  damage: number,
+  options: {
+    fetchImpl?: typeof fetch;
+    locationSearch?: string;
+    requestIdPrefix?: string;
+  } = {}
+) {
+  const amount = Number(damage);
+  if (!Number.isFinite(amount) || amount <= 0) {
+    return undefined;
+  }
+  const fetchImpl = options.fetchImpl ?? fetch;
+  const requestId = `${
+    options.requestIdPrefix ?? "harthmere_drowning_damage"
+  }_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+  const response = await fetchImpl(
+    harthmereLiveModeEnvironmentDamageUrlV1(options.locationSearch),
+    {
+      method: "POST",
+      credentials: "same-origin",
+      headers: harthmereLiveModeEnvironmentDamageHeadersV1(
+        options.locationSearch
+      ),
+      body: JSON.stringify({
+        requestId,
+        idempotencyKey: requestId,
+        actionKind: "request_environment_damage",
+        subsystem: "combat",
+        actorEntityVersion: 1,
+        zoneId: "the_grove",
+        payload: {
+          damageKind: "drowning",
+          damage: amount,
+        },
+        clientClaims: {},
+      }),
+    }
+  );
+  const body = await response.json();
+  if (!response.ok || body?.ok === false) {
+    throw new Error("harthmere_drowning_damage_live_mode_failed");
+  }
+  dispatchHarthmereEnvironmentDamageStatusV1(body);
+  return body;
+}

@@ -61,18 +61,23 @@ Each frame `reconcileHarthmereEcsLiveCreaturesV1()` reads the bridge and:
   range).
 
 Static `PLACEMENTS` creatures and town humans (`townsperson_*` and `animal_*`)
-are **suppressed** while ECS render is on, so the ECS mesh is the only copy — no
-duplicates, no flicker.
+stay enabled by default as a stable fallback for Glitch/embed sessions where the
+ECS bridge can be empty or stale. Those static actors now publish live-mode
+target ids and visible world positions, so they are attackable through the
+crosshair live-mode route even when their server seed is not co-located.
 
 **Flag:** set `localStorage["biomes.localDev.harthmere.ecsCreatureRender"] = "0"`
-to fall back to the old static-only rendering (escape hatch).
+to disable the ECS overlay entirely. Set
+`localStorage["biomes.localDev.harthmere.suppressStaticLifeForEcs"] = "1"` only
+when you explicitly want ECS-only rendering and can verify the bridge is stable.
 
 ### 4. Crosshair targeting (`src/client/components/challenges/harthmereCrosshairCombatTargetV1.ts`)
 
 Left-click resolves the creature under the crosshair using the renderer's
 camera-projected screen positions, independent of the fragile forward-arc
-facing/origin runtime. (Primary path is now the native ray on the co-located
-entity; this remains as a registry-based fallback.)
+facing/origin runtime. The actor snapshot carries `liveModeTargetId` and visible
+`world` position; the client submits that target id, and the backend uses the
+visible position for guarded reach validation on `server-muck-combat:*` targets.
 
 ### 5. Random world spawns (`live_entity_production_seed_v1.ts`)
 

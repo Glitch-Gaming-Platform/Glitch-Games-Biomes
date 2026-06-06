@@ -1074,7 +1074,9 @@ function shouldEventCompleteStepV73(
         !isFloraId(event.terrainId)
       );
     case "place_voxel":
-      return event.kind === "place_voxel";
+      return (
+        event.kind === "place_voxel" || event.kind === "block_inventory_throw"
+      );
     case "running_jump":
       return event.kind === "jump" && event.running;
     case "photo":
@@ -1086,6 +1088,26 @@ function shouldEventCompleteStepV73(
     default:
       return false;
   }
+}
+
+export function handleSnapshotRoadAheadEventForTestV73(event: GardenHoseEvent) {
+  const published: GardenHoseEvent[] = [];
+  const current = readSnapshotMissionStateV71();
+  const { step, completed } = getMissionStepV71(current);
+  if (
+    current.accepted &&
+    !completed &&
+    shouldEventCompleteStepV73(step, event)
+  ) {
+    advanceSnapshotRoadAheadV73(
+      { publish: (publishedEvent) => published.push(publishedEvent) },
+      event.kind
+    );
+  }
+  return {
+    published,
+    state: readSnapshotMissionStateV71(),
+  };
 }
 
 function hasRequiredClothingV73(wearing: {

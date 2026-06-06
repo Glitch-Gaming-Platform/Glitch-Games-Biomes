@@ -24,7 +24,7 @@ export type InventoryContainerKey =
   | "wallet";
 
 export interface InventoryUiRef {
-  kind: "item" | "hotbar" | "wearable" | "currency";
+  kind: "item" | "hotbar" | "wearable" | "currency" | "material";
   idx?: number;
   key?: string | number;
 }
@@ -186,7 +186,20 @@ function normalizeInventoryDragRefV1(raw: unknown): InventoryUiRef | undefined {
   if (candidate.kind === "item" || candidate.kind === "hotbar") {
     const idx = Number(candidate.idx);
     if (!Number.isInteger(idx) || idx < 0) return undefined;
-    return { kind: candidate.kind, idx };
+    return {
+      kind: candidate.kind,
+      idx,
+      key:
+        candidate.key === undefined || candidate.key === null
+          ? undefined
+          : candidate.key,
+    };
+  }
+  if (candidate.kind === "material") {
+    if (candidate.key === undefined || candidate.key === null) {
+      return undefined;
+    }
+    return { kind: "material", key: candidate.key };
   }
   if (candidate.kind === "wearable" || candidate.kind === "currency") {
     if (candidate.key === undefined || candidate.key === null) {
@@ -243,7 +256,9 @@ export function readInventoryDragRefFromTransferV1(
 }
 
 function canMoveInventoryRefToHotbarV1(ref: InventoryUiRef | undefined) {
-  return ref?.kind === "item" || ref?.kind === "hotbar";
+  return (
+    ref?.kind === "item" || ref?.kind === "hotbar" || ref?.kind === "material"
+  );
 }
 
 export function canMoveInventoryItemToHotbarV1(
@@ -297,16 +312,22 @@ export const InventoryTab: React.FunctionComponent<{
   const currencies = adapter?.getCurrencies?.() ?? [];
   const farmingFood = adapter?.getFarmingFood?.();
   const equipment = normalizeEquipment(adapter?.getEquipment?.());
-  const selectedItem =
-    findItemByRef(backpack.items, equipment, selectedRef, hotbar.items) ??
-    adapter?.getSelectedItem?.() ??
-    backpack.items.find((item): item is InventoryUiItem => Boolean(item)) ??
-    hotbar.items.find((item): item is InventoryUiItem => Boolean(item)) ??
-    null;
   const materialStorage = backpack.materialStorage;
   const materialItems =
     materialStorage?.items.filter((item): item is InventoryUiItem => !!item) ??
     [];
+  const selectedItem =
+    findItemByRef(
+      backpack.items,
+      equipment,
+      selectedRef,
+      hotbar.items,
+      materialItems
+    ) ??
+    adapter?.getSelectedItem?.() ??
+    backpack.items.find((item): item is InventoryUiItem => Boolean(item)) ??
+    hotbar.items.find((item): item is InventoryUiItem => Boolean(item)) ??
+    null;
   const overflowItems = backpack.overflow ?? [];
   const firstEmptyBackpackIndex = React.useMemo(
     () => backpack.items.findIndex((item) => !item),
@@ -554,6 +575,10 @@ export const InventoryTab: React.FunctionComponent<{
           items={materialItems}
           usedSlots={materialStorage?.usedSlots}
           maxSlots={materialStorage?.maxSlots}
+          onSelect={selectItem}
+          onDragStart={startInventoryDrag}
+          onDragEnd={endInventoryDrag}
+          canDrag={Boolean(adapter?.moveItem)}
         />
         <RovingGrid
           ariaLabel="Backpack slots"
@@ -969,13 +994,17 @@ function findItemByRef(
   backpackItems: Array<InventoryUiItem | null>,
   equipment: Array<InventoryEquipmentSlot>,
   ref: InventoryUiRef | null,
-  hotbarItems: Array<InventoryUiItem | null> = []
+  hotbarItems: Array<InventoryUiItem | null> = [],
+  materialItems: Array<InventoryUiItem | null> = []
 ): InventoryUiItem | null {
   if (!ref) return null;
   for (const item of backpackItems) {
     if (item?.ref && refsEqual(item.ref, ref)) return item;
   }
   for (const item of hotbarItems) {
+    if (item?.ref && refsEqual(item.ref, ref)) return item;
+  }
+  for (const item of materialItems) {
     if (item?.ref && refsEqual(item.ref, ref)) return item;
   }
   for (const slot of equipment) {
@@ -1035,7 +1064,19 @@ const MaterialStorageShelf: React.FunctionComponent<{
   items: InventoryUiItem[];
   usedSlots?: number;
   maxSlots?: number;
-}> = ({ items, usedSlots, maxSlots }) => {
+  onSelect?: (item: InventoryUiItem) => void;
+  onDragStart?: (event: React.DragEvent, item: InventoryUiItem | null) => void;
+  onDragEnd?: () => void;
+  canDrag?: boolean;
+}> = ({
+  items,
+  usedSlots,
+  maxSlots,
+  onSelect,
+  onDragStart,
+  onDragEnd,
+  canDrag,
+}) => {
   if (items.length === 0) {
     return null;
   }
@@ -1053,21 +1094,31 @@ const MaterialStorageShelf: React.FunctionComponent<{
         ) : null}
       </div>
       <div role="list" className="biomes-ui-inventory__material-shelf-list">
-        {items.map((item) => (
-          <div
-            key={`material-shelf-${item.id}`}
-            role="listitem"
-            className="biomes-ui-inventory__material-chip biomes-ui-inventory-tooltip-target"
-            title={inventoryTooltipLabel(item)}
-            data-inventory-tooltip={inventoryTooltipLabel(item)}
-          >
-            {renderInventoryIcon(item)}
-            {item.count && item.count > 1 ? (
-              <span className="biomes-ui-inventory__count">{item.count}</span>
-            ) : null}
-            <span style={visuallyHiddenStyle}>{item.label}</span>
-          </div>
-        ))}
+        {items.map((item) => {
+          const draggable =
+            Boolean(canDrag) && canMoveInventoryItemToHotbarV1(item);
+          return (
+            <button
+              key={`material-shelf-${item.id}`}
+              type="button"
+              role="listitem"
+              className="biomes-ui-inventory__material-chip biomes-ui-inventory-tooltip-target"
+              title={inventoryTooltipLabel(item)}
+              data-inventory-tooltip={inventoryTooltipLabel(item)}
+              data-inventory-draggable={draggable ? "true" : "false"}
+              draggable={draggable}
+              onClick={() => onSelect?.(item)}
+              onDragStart={(event) => onDragStart?.(event, item)}
+              onDragEnd={onDragEnd}
+            >
+              {renderInventoryIcon(item)}
+              {item.count && item.count > 1 ? (
+                <span className="biomes-ui-inventory__count">{item.count}</span>
+              ) : null}
+              <span style={visuallyHiddenStyle}>{item.label}</span>
+            </button>
+          );
+        })}
       </div>
     </div>
   );

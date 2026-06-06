@@ -23,13 +23,19 @@ function installWindowShim() {
 installWindowShim();
 
 import {
+  handleSnapshotRoadAheadEventForTestV73,
   recordSnapshotRoadAheadChallengeStepForBiomesUIV73,
   readSnapshotMissionStateV71,
   snapshotRoadAheadChallengeStepHintsFromActiveNuxesForBiomesUIV73,
   snapshotRoadAheadMissionStepsForBiomesUIV73,
   snapshotRoadAheadTrackableQuestsForBiomesUIV73,
+  writeSnapshotMissionStateV71,
 } from "@/client/components/challenges/LocalDevSnapshotMissionBridge";
-import { NUXES, NUX_PAIRED_STEPS } from "@/client/util/nux/state_machines";
+import {
+  JACKIE_ID,
+  NUXES,
+  NUX_PAIRED_STEPS,
+} from "@/client/util/nux/state_machines";
 
 describe("LocalDevSnapshotMissionBridge Road Ahead UI projection", () => {
   beforeEach(() => {
@@ -99,5 +105,127 @@ describe("LocalDevSnapshotMissionBridge Road Ahead UI projection", () => {
     assert.equal(steps[2]?.done, true);
     assert.equal(steps[3]?.title, "Current step 4");
     assert.equal(steps[3]?.done, false);
+  });
+
+  it("keeps the current Road Ahead bridge completable from legacy native step events", () => {
+    assert.equal(
+      recordSnapshotRoadAheadChallengeStepForBiomesUIV73(
+        NUX_PAIRED_STEPS.ROAD_AHEAD_MEET_UP_WITH_BILLY,
+        "begin"
+      ),
+      true
+    );
+    assert.equal(readSnapshotMissionStateV71().currentStepIndex, 1);
+
+    assert.equal(
+      recordSnapshotRoadAheadChallengeStepForBiomesUIV73(
+        NUX_PAIRED_STEPS.ROAD_AHEAD_MEET_UP_WITH_BILLY,
+        "complete"
+      ),
+      true
+    );
+    assert.equal(readSnapshotMissionStateV71().currentStepIndex, 2);
+
+    handleSnapshotRoadAheadEventForTestV73({
+      kind: "destroy",
+      terrainId: 1 as any,
+    });
+    assert.equal(readSnapshotMissionStateV71().currentStepIndex, 3);
+
+    const placeResult = handleSnapshotRoadAheadEventForTestV73({
+      kind: "place_voxel",
+    });
+    assert.equal(placeResult.state.currentStepIndex, 4);
+    assert.ok(
+      placeResult.state.completedStepIds.includes("road_ahead_place_blocks")
+    );
+    assert.ok(
+      placeResult.published.some(
+        (event) =>
+          event.kind === "challenge_step_complete" &&
+          event.stepId === NUX_PAIRED_STEPS.ROAD_AHEAD_PLACE_BLOCKS
+      )
+    );
+    assert.ok(
+      placeResult.published.some(
+        (event) =>
+          event.kind === "challenge_step_begin" &&
+          event.stepId === NUX_PAIRED_STEPS.ROAD_AHEAD_WEAR
+      )
+    );
+
+    assert.equal(
+      recordSnapshotRoadAheadChallengeStepForBiomesUIV73(
+        NUX_PAIRED_STEPS.ROAD_AHEAD_WEAR,
+        "complete"
+      ),
+      true
+    );
+    assert.equal(readSnapshotMissionStateV71().currentStepIndex, 5);
+
+    handleSnapshotRoadAheadEventForTestV73({
+      kind: "jump",
+      running: true,
+    });
+    assert.equal(readSnapshotMissionStateV71().currentStepIndex, 6);
+
+    handleSnapshotRoadAheadEventForTestV73({
+      kind: "photo_post_attempt",
+    });
+    assert.equal(readSnapshotMissionStateV71().currentStepIndex, 7);
+
+    handleSnapshotRoadAheadEventForTestV73({
+      kind: "destroy",
+      terrainId: 1 as any,
+    });
+    assert.equal(readSnapshotMissionStateV71().currentStepIndex, 8);
+
+    assert.equal(
+      recordSnapshotRoadAheadChallengeStepForBiomesUIV73(
+        NUX_PAIRED_STEPS.BUSTED_MUCK_BUSTERS,
+        "complete"
+      ),
+      true
+    );
+    assert.equal(readSnapshotMissionStateV71().currentStepIndex, 9);
+
+    const finalResult = handleSnapshotRoadAheadEventForTestV73({
+      kind: "talk_npc",
+      npcId: JACKIE_ID,
+    });
+    assert.deepEqual(finalResult.state.completed, [
+      "snapshot_road_ahead_full_chain",
+    ]);
+    assert.equal(
+      finalResult.state.active.snapshot_road_ahead_full_chain,
+      undefined
+    );
+  });
+
+  it("accepts dropped block proof for the Road Ahead block placement step only when active", () => {
+    writeSnapshotMissionStateV71({
+      accepted: true,
+      active: { snapshot_road_ahead_full_chain: 3 },
+      currentStepIndex: 3,
+      completedStepIds: [
+        "meet_jackie_in_grove",
+        "road_ahead_meet_up_with_billy",
+        "road_ahead_collect_muckwad",
+      ],
+      completed: [],
+      pinned: ["snapshot_road_ahead_full_chain"],
+      rewards: [],
+    });
+
+    handleSnapshotRoadAheadEventForTestV73({ kind: "inventory_change" });
+    assert.equal(readSnapshotMissionStateV71().currentStepIndex, 3);
+
+    const result = handleSnapshotRoadAheadEventForTestV73({
+      kind: "block_inventory_throw",
+    });
+    assert.equal(result.state.currentStepIndex, 4);
+    assert.ok(
+      result.state.completedStepIds.includes("road_ahead_place_blocks")
+    );
   });
 });

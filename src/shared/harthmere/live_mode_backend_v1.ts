@@ -2226,6 +2226,17 @@ function wouldCraftCompletionExceedCarryWeightV1(
   );
 }
 
+function carriedItemsForWeightV1(
+  items: Record<string, number>,
+  materialStorage: Record<string, number> | undefined
+) {
+  const carried = { ...items };
+  for (const [itemId, count] of Object.entries(materialStorage ?? {})) {
+    applyBankRecordDeltaV1(carried, itemId, Math.trunc(Number(count) || 0));
+  }
+  return carried;
+}
+
 function selectedLiveCraftingToolItemIdsV1(
   snapshot: HarthmereInventorySnapshotV1,
   requestedToolItemIds: string[]
@@ -2639,11 +2650,20 @@ export function createHarthmereLiveModeBankingClientSnapshotV1(
     actorId: state.actorId,
     gold: state.inventory.gold,
     carryWeight: {
-      current: harthmereInventoryCarryWeightV1(state.inventory.items),
+      current: harthmereInventoryCarryWeightV1(
+        carriedItemsForWeightV1(
+          state.inventory.items,
+          state.banking.materialStorage
+        )
+      ),
       max: HARTHMERE_CARRY_WEIGHT_LIMIT_V1,
       overLimit:
-        harthmereInventoryCarryWeightV1(state.inventory.items) >
-        HARTHMERE_CARRY_WEIGHT_LIMIT_V1,
+        harthmereInventoryCarryWeightV1(
+          carriedItemsForWeightV1(
+            state.inventory.items,
+            state.banking.materialStorage
+          )
+        ) > HARTHMERE_CARRY_WEIGHT_LIMIT_V1,
     },
     creditHold: !!state.law.flags[HARTHMERE_BANK_CREDIT_HOLD_FLAG_V1],
     personalVault: {
@@ -3706,6 +3726,33 @@ function actorWorldPositionFromAuthorityV1(
   return x === undefined || y === undefined || z === undefined
     ? undefined
     : { x, y, z };
+}
+
+function clientClaimedVisibleCombatTargetPositionV1(
+  envelope: HarthmereLiveModeAuthorityEnvelopeV1
+): { x: number; y: number; z: number } | undefined {
+  const raw = envelope.clientClaims?.targetPosition;
+  let x: unknown;
+  let y: unknown;
+  let z: unknown;
+  if (Array.isArray(raw)) {
+    [x, y, z] = raw;
+  } else if (raw && typeof raw === "object") {
+    const record = raw as Record<string, unknown>;
+    x = record.x;
+    y = record.y;
+    z = record.z;
+  }
+  const nx = Number(x);
+  const ny = Number(y);
+  const nz = Number(z);
+  return Number.isFinite(nx) && Number.isFinite(ny) && Number.isFinite(nz)
+    ? { x: nx, y: ny, z: nz }
+    : undefined;
+}
+
+function isServerMuckCombatTargetIdV1(targetId: string): boolean {
+  return targetId.startsWith("server-muck-combat:");
 }
 
 function applyHarthmereLiveModeCrimeEventV1(input: {
@@ -5764,7 +5811,10 @@ export function tickHarthmereLiveModeStaminaForGameplayV1(
     maxStamina,
     lastStaminaTickMs,
     deadFromStaminaAtMs,
-    inventory: { ...state.inventory.items },
+    inventory: carriedItemsForWeightV1(
+      state.inventory.items,
+      state.banking.materialStorage
+    ),
   };
   const result = tickHarthmereStaminaForGameplayV1(authorityState, input);
   const nextStamina = Math.max(
@@ -6176,10 +6226,27 @@ export function reduceHarthmereLiveModeBackendStateV1(
   ): HarthmereCombatTargetSnapshotV1 {
     const combatProtection = liveEntityCombatProtectionReasonV1(target);
     const actorPosition = actorWorldPositionFromAuthorityV1(envelope);
+    const visibleTargetPosition =
+      actorPosition && isServerMuckCombatTargetIdV1(targetId)
+        ? clientClaimedVisibleCombatTargetPositionV1(envelope)
+        : undefined;
+    const visibleTargetReach =
+      HARTHMERE_VOXEL_INTERACTION_ATTACK_REACH_UNITS_V1 +
+      Math.max(0, Number(target.bodyRadius ?? 1)) +
+      0.75;
     const targetPosition =
       actorPosition &&
-      liveEntityCombatHorizontalDistanceV1(actorPosition, target.position) <=
-        HARTHMERE_VOXEL_INTERACTION_ATTACK_REACH_UNITS_V1
+      visibleTargetPosition &&
+      liveEntityCombatHorizontalDistanceV1(
+        actorPosition,
+        visibleTargetPosition
+      ) <= visibleTargetReach
+        ? { ...visibleTargetPosition, y: actorPosition.y }
+        : actorPosition &&
+          liveEntityCombatHorizontalDistanceV1(
+            actorPosition,
+            target.position
+          ) <= HARTHMERE_VOXEL_INTERACTION_ATTACK_REACH_UNITS_V1
         ? { ...target.position, y: actorPosition.y }
         : target.position;
     return {
@@ -7659,6 +7726,8 @@ export function reduceHarthmereLiveModeBackendStateV1(
     "request_bank_transaction",
     "request_crafting",
     "request_inventory_mutation",
+    "request_inventory_item_action",
+    "request_equipment_change",
     "request_respec",
     "request_loadout_change",
     "request_property_building_mutation",
@@ -7923,19 +7992,116 @@ export function reduceHarthmereLiveModeBackendStateV1(
     case "request_equipment_change": {
       const slot = payloadString(envelope, "slot") ?? "main_hand";
       const itemId = payloadString(envelope, "itemId");
-      if (itemId) {
-        // Ownership check: item must be in inventory (server verifies)
-        if (next.inventory.items[itemId] === undefined) {
-          warnings.push("equipment_rejected:item_not_in_inventory");
-          touchedModels.add("equipment_rejection");
+      const snapshot = buildInventorySnapshot();
+      const invReq: HarthmereInventoryMutationRequestV1 = {
+        requestId: envelope.requestId,
+        actorId: envelope.actorId,
+        kind: itemId ? "equip_item" : "unequip_item",
+        nowMs,
+        itemId,
+        targetSlot: slot,
+        sourceSlot: slot,
+      };
+      const invResult = reduceHarthmereInventoryMutationV1(invReq, {
+        snapshot,
+        playerLevel: next.classMagic.skills["character_level"]?.level ?? 1,
+        playerSkills: next.classMagic.skills,
+        playerClassId: next.classMagic.classId ?? "warrior",
+        reputation: next.law.reputation,
+      });
+      if (invResult.ok) {
+        const updated = applyHarthmereInventoryMutationResultV1(
+          snapshot,
+          invResult
+        );
+        next.inventory.items = updated.items;
+        next.inventory.gold = updated.gold;
+        next.inventory.escrow = updated.escrow;
+        next.inventory.equipment = updated.equipment;
+        next.banking.materialStorage =
+          updated.materialStorage ?? next.banking.materialStorage;
+        next.inventory.consumableCooldowns = updated.consumableCooldowns;
+        if (updated.equipment[slot]) {
+          next.classMagic.loadout[slot] = updated.equipment[slot];
         } else {
-          next.inventory.equipment[slot] = itemId;
-          next.classMagic.loadout[slot] = itemId;
-          touchedModels.add("equipment_slots");
-          touchedModels.add("loadout");
+          delete next.classMagic.loadout[slot];
+        }
+        touchedModels.add("inventory_items");
+        touchedModels.add("equipment_slots");
+        touchedModels.add("loadout");
+        if (Object.keys(invResult.materialStorageDeltas ?? {}).length > 0) {
+          touchedModels.add("material_storage");
         }
       } else {
-        warnings.push("equipment_request_missing_item_id");
+        warnings.push(
+          ...invResult.errors.map((e) => `equipment_rejected:${e}`)
+        );
+        touchedModels.add("equipment_rejection");
+      }
+      break;
+    }
+
+    case "request_inventory_item_action": {
+      const operation = payloadString(envelope, "operation");
+      const allowed = new Set<HarthmereInventoryMutationRequestV1["kind"]>([
+        "drop_item",
+        "destroy_item",
+        "equip_item",
+        "unequip_item",
+      ]);
+      if (!operation || !allowed.has(operation as any)) {
+        warnings.push("inventory_item_rejected:unsupported_operation");
+        touchedModels.add("inventory_rejection");
+        break;
+      }
+      const kind = operation as HarthmereInventoryMutationRequestV1["kind"];
+      const snapshot = buildInventorySnapshot();
+      const count = payloadPositiveWholeCountV1(envelope);
+      const invReq: HarthmereInventoryMutationRequestV1 = {
+        requestId: envelope.requestId,
+        actorId: envelope.actorId,
+        kind,
+        nowMs,
+        itemId: payloadString(envelope, "itemId"),
+        count:
+          kind === "drop_item" || kind === "destroy_item" ? count ?? 1 : count,
+        sourceSlot: payloadString(envelope, "sourceSlot"),
+        targetSlot:
+          payloadString(envelope, "targetSlot") ??
+          payloadString(envelope, "slot"),
+      };
+      const invResult = reduceHarthmereInventoryMutationV1(invReq, {
+        snapshot,
+        playerLevel: next.classMagic.skills["character_level"]?.level ?? 1,
+        playerSkills: next.classMagic.skills,
+        playerClassId: next.classMagic.classId ?? "warrior",
+        reputation: next.law.reputation,
+      });
+      if (invResult.ok) {
+        const updated = applyHarthmereInventoryMutationResultV1(
+          snapshot,
+          invResult
+        );
+        next.inventory.items = updated.items;
+        next.inventory.gold = updated.gold;
+        next.inventory.escrow = updated.escrow;
+        next.inventory.equipment = updated.equipment;
+        next.inventory.consumableCooldowns = updated.consumableCooldowns;
+        next.banking.materialStorage =
+          updated.materialStorage ?? next.banking.materialStorage;
+        touchedModels.add("inventory_items");
+        touchedModels.add("player_status");
+        if (Object.keys(invResult.materialStorageDeltas ?? {}).length > 0) {
+          touchedModels.add("material_storage");
+        }
+        if (Object.keys(invResult.equipmentChanges ?? {}).length > 0) {
+          touchedModels.add("equipment_slots");
+        }
+      } else {
+        warnings.push(
+          ...invResult.errors.map((e) => `inventory_item_rejected:${e}`)
+        );
+        touchedModels.add("inventory_rejection");
       }
       break;
     }
@@ -8289,6 +8455,9 @@ export function reduceHarthmereLiveModeBackendStateV1(
         next.inventory.items = updated.items;
         next.inventory.gold = updated.gold;
         next.inventory.escrow = updated.escrow;
+        next.banking.materialStorage =
+          updated.materialStorage ?? next.banking.materialStorage;
+        next.inventory.equipment = updated.equipment;
         next.inventory.consumableCooldowns = updated.consumableCooldowns;
         if (
           envelope.actionKind === "request_inventory_mutation" &&
@@ -8301,6 +8470,12 @@ export function reduceHarthmereLiveModeBackendStateV1(
         next.combat.lootClaims[envelope.requestId] = nowMs;
         touchedModels.add("inventory_items");
         touchedModels.add("loot_claims");
+        if (Object.keys(invResult.materialStorageDeltas ?? {}).length > 0) {
+          touchedModels.add("material_storage");
+        }
+        if (Object.keys(invResult.equipmentChanges ?? {}).length > 0) {
+          touchedModels.add("equipment_slots");
+        }
       } else {
         if (
           invResult.errors.some(
@@ -13225,7 +13400,7 @@ export function reduceHarthmereLiveModeBackendStateV1(
       break;
     case "request_environment_damage": {
       const damageKind = payloadString(envelope, "damageKind") ?? "unknown";
-      if (damageKind !== "fall") {
+      if (damageKind !== "fall" && damageKind !== "drowning") {
         warnings.push("environment_damage_rejected:unsupported_kind");
         touchedModels.add("environment_damage_rejection");
         break;
@@ -13243,20 +13418,28 @@ export function reduceHarthmereLiveModeBackendStateV1(
         touchedModels.add("environment_damage_rejection");
         break;
       }
-      const fallBlocks = Math.max(
-        0,
-        payloadNumber(envelope, "fallBlocks") ?? 0
-      );
-      const baseDamage = fallDamageForBlocksV1(fallBlocks);
-      if (baseDamage <= 0) {
+      const scaledDamage =
+        damageKind === "fall"
+          ? (() => {
+              const fallBlocks = Math.max(
+                0,
+                payloadNumber(envelope, "fallBlocks") ?? 0
+              );
+              const baseDamage = fallDamageForBlocksV1(fallBlocks);
+              if (baseDamage <= 0) {
+                return 0;
+              }
+              return Math.max(
+                1,
+                Math.round((baseDamage * Math.max(1, next.combat.maxHp)) / 100)
+              );
+            })()
+          : Math.max(1, Math.round(payloadNumber(envelope, "damage") ?? 1));
+      if (scaledDamage <= 0) {
         warnings.push("environment_damage_ignored:below_threshold");
         touchedModels.add("environment_damage_rejection");
         break;
       }
-      const scaledDamage = Math.max(
-        1,
-        Math.round((baseDamage * Math.max(1, next.combat.maxHp)) / 100)
-      );
       next.combat.hp = Math.max(0, next.combat.hp - scaledDamage);
       touchedModels.add("combat_state");
       touchedModels.add("player_status");
@@ -13265,7 +13448,7 @@ export function reduceHarthmereLiveModeBackendStateV1(
         next.combat.deathState = "dead";
         next.combat.deathRecords[envelope.requestId] = {
           deathId: envelope.requestId,
-          cause: "fall_damage",
+          cause: damageKind === "fall" ? "fall_damage" : "drowning",
           zoneId: envelope.zoneId,
           atMs: nowMs,
           respawnAvailableAtMs:

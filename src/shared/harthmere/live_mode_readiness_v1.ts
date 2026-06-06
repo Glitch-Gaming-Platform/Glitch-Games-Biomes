@@ -77,6 +77,7 @@ export type HarthmereLiveModeActionKindV1 =
   | "request_respec"
   | "request_loadout_change"
   | "request_inventory_mutation"
+  | "request_inventory_item_action"
   | "request_vendor_transaction"
   | "request_auction_post"
   | "request_auction_settle"

@@ -587,7 +587,11 @@ export type HarthmereRepairToolGateV151 =
 export function harthmereRepairToolGateV151(
   snapshot: Pick<HarthmereInventorySnapshotV1, "equipment">
 ): HarthmereRepairToolGateV151 {
-  const best = harthmereEquippedToolPowerV151(snapshot, "repair", "repairPower");
+  const best = harthmereEquippedToolPowerV151(
+    snapshot,
+    "repair",
+    "repairPower"
+  );
   if (!best.itemId || best.power <= 0) {
     return {
       ok: false,
@@ -608,12 +612,20 @@ export function harthmereRepairToolGateV151(
 // of the repair gate.
 export type HarthmereCleanupToolGateV151 =
   | { ok: true; toolItemId: string; cleanupPower: number; tier: number }
-  | { ok: false; reason: "no_cleanup_tool_equipped"; requiredAction: "cleanup" };
+  | {
+      ok: false;
+      reason: "no_cleanup_tool_equipped";
+      requiredAction: "cleanup";
+    };
 
 export function harthmereCleanupToolGateV151(
   snapshot: Pick<HarthmereInventorySnapshotV1, "equipment">
 ): HarthmereCleanupToolGateV151 {
-  const best = harthmereEquippedToolPowerV151(snapshot, "cleanup", "cleanupPower");
+  const best = harthmereEquippedToolPowerV151(
+    snapshot,
+    "cleanup",
+    "cleanupPower"
+  );
   if (!best.itemId || best.power <= 0) {
     return {
       ok: false,
@@ -1415,10 +1427,14 @@ function validateCraftItem(
       // refunds floor(0.5)+floor(0.5)=0 instead of floor(1.0)=1).
       const consumedByItem: Record<string, number> = {};
       for (const [itemId, delta] of Object.entries(itemDeltas)) {
-        if (delta < 0) consumedByItem[itemId] = (consumedByItem[itemId] ?? 0) + Math.abs(delta);
+        if (delta < 0)
+          consumedByItem[itemId] =
+            (consumedByItem[itemId] ?? 0) + Math.abs(delta);
       }
       for (const [itemId, delta] of Object.entries(materialStorageDeltas)) {
-        if (delta < 0) consumedByItem[itemId] = (consumedByItem[itemId] ?? 0) + Math.abs(delta);
+        if (delta < 0)
+          consumedByItem[itemId] =
+            (consumedByItem[itemId] ?? 0) + Math.abs(delta);
       }
       for (const [itemId, consumed] of Object.entries(consumedByItem)) {
         let refundUnits = Math.floor(consumed * refundPercent);
@@ -1432,7 +1448,8 @@ function validateCraftItem(
           refundUnits -= toBackpack;
         }
         if (refundUnits > 0 && (materialStorageDeltas[itemId] ?? 0) < 0) {
-          materialStorageDeltas[itemId] = (materialStorageDeltas[itemId] ?? 0) + refundUnits;
+          materialStorageDeltas[itemId] =
+            (materialStorageDeltas[itemId] ?? 0) + refundUnits;
         }
       }
     }
@@ -1850,12 +1867,20 @@ function validateRemoveCarriedItem(
         : "cannot_destroy_quest_item"
     );
   }
-  if (availableCount(snapshot, itemId) < count)
+  const sourceSlot = String(req.sourceSlot ?? "");
+  const fromMaterialStorage = sourceSlot === "material_storage";
+  if (fromMaterialStorage) {
+    if ((snapshot.materialStorage?.[itemId] ?? 0) < count) {
+      fail(errors, "insufficient_item_count");
+    }
+  } else if (availableCount(snapshot, itemId) < count) {
     fail(errors, "insufficient_item_count");
+  }
   if (errors.length > 0) return resultFail(requestId, kind, actorId, errors);
 
   return resultOk(requestId, kind, actorId, {
-    itemDeltas: { [itemId]: -count },
+    itemDeltas: fromMaterialStorage ? {} : { [itemId]: -count },
+    materialStorageDeltas: fromMaterialStorage ? { [itemId]: -count } : {},
     auditTags: [kind, itemId],
   });
 }

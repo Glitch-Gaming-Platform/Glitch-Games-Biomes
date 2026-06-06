@@ -53,6 +53,30 @@ describe("harthmereCrosshairCombatTargetV1", () => {
     assert.equal(pick?.offset, 3);
   });
 
+  it("carries the live-mode target id and visible world position for server submit", () => {
+    const pick = pickHarthmereCrosshairCombatTargetV1({
+      actors: [
+        actor({
+          offset: 88,
+          targetId: "server-muck-combat:old-wood-mucker-2:1302",
+          worldX: 4,
+          worldY: 54,
+          worldZ: -2,
+        }),
+      ],
+      aim: CENTER,
+      playerX: 0,
+      playerZ: 0,
+      worldReach: 8.78,
+    });
+
+    assert.equal(
+      pick?.targetId,
+      "server-muck-combat:old-wood-mucker-2:1302"
+    );
+    assert.deepEqual(pick?.targetPosition, [4, 54, -2]);
+  });
+
   it("ignores actors far from the crosshair", () => {
     const pick = pickHarthmereCrosshairCombatTargetV1({
       actors: [actor({ offset: 9, screenX: 50, screenY: 80 })],

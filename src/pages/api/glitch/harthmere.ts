@@ -13,6 +13,11 @@ import type { ForeignAccountProfile } from "@/server/shared/auth/types";
 import type { WebServerRequest } from "@/server/web/context";
 import { getUserOrCreateIfNotExists } from "@/server/web/db/users";
 import { BIOMES_GAME_NAME } from "@/shared/biomes/display_names";
+import {
+  harthmereLiveModeInstallGameUserLinkKeyV1,
+  harthmereLiveModeInstallLinkKeyV1,
+} from "@/shared/harthmere/live_mode_actor_identity_v1";
+import { parseBiomesId, type BiomesId } from "@/shared/ids";
 import { log } from "@/shared/logging";
 import { Timer } from "@/shared/metrics/timer";
 import {
@@ -251,6 +256,26 @@ async function setJsonInRedisV1(
     await redis.primary.set(key, JSON.stringify(value), "EX", ttlSeconds);
   } catch (error) {
     log.warn("GLITCH_HARTHMERE_REDIS_SESSION_WRITE_FAILED", { key, error });
+  }
+}
+
+async function setStringInRedisV1(
+  key: string,
+  value: string,
+  ttlSeconds?: number
+) {
+  if (!shouldUseRedisHarthmereSessionStoreV1()) {
+    return;
+  }
+  try {
+    const redis = await harthmereGlitchRedisV1();
+    if (ttlSeconds !== undefined) {
+      await redis.primary.set(key, value, "EX", ttlSeconds);
+    } else {
+      await redis.primary.set(key, value);
+    }
+  } catch (error) {
+    log.warn("GLITCH_HARTHMERE_REDIS_STRING_WRITE_FAILED", { key, error });
   }
 }
 
@@ -1096,6 +1121,74 @@ function makeSavePayload(snapshot: unknown) {
   };
 }
 
+function biomesUserIdFromDecodedSavePayloadV1(
+  decodedPayload: unknown
+): BiomesId | undefined {
+  const raw = firstString(
+    (decodedPayload as any)?.identity?.biomesUserId,
+    (decodedPayload as any)?.identity?.biomes_user_id,
+    (decodedPayload as any)?.metadata?.biomes_user_id
+  );
+  if (!raw) return undefined;
+  try {
+    return parseBiomesId(raw);
+  } catch {
+    return undefined;
+  }
+}
+
+async function latestBiomesUserIdFromGlitchSaveV1(
+  identity: HarthmereValidatedIdentity
+): Promise<BiomesId | undefined> {
+  if (identity.guest || !identity.valid) {
+    return undefined;
+  }
+  try {
+    const response = await callGlitchApi(
+      `/titles/${encodeURIComponent(
+        identity.titleId
+      )}/installs/${encodeURIComponent(identity.installId)}/saves`,
+      { label: "recoverBiomesUserIdFromCloudSave" }
+    );
+    if (!response.ok) {
+      return undefined;
+    }
+    const latest = collectionData(response.json)
+      .map((save) => ({ ...save, decoded_payload: decodeSavePayload(save) }))
+      .filter(
+        (save) => save?.decoded_payload?.version === "harthmere-glitch-save-v1"
+      )
+      .sort((a, b) => Number(b.version ?? 0) - Number(a.version ?? 0))[0];
+    return biomesUserIdFromDecodedSavePayloadV1(latest?.decoded_payload);
+  } catch (error) {
+    log.warn("HARTHMERE_CLOUD_SAVE_BIOMES_USER_RECOVERY_FAILED_V1", {
+      error,
+      installId: identity.installId,
+      gameUserId: identity.gameUserId,
+    });
+    return undefined;
+  }
+}
+
+async function rememberStableGlitchLiveModeActorV1(
+  identity: HarthmereValidatedIdentity,
+  biomesUserId?: BiomesId
+) {
+  if (!identity.installId || identity.guest || !identity.gameUserId) {
+    return;
+  }
+  await setStringInRedisV1(
+    harthmereLiveModeInstallGameUserLinkKeyV1(identity.installId),
+    identity.gameUserId
+  );
+  if (biomesUserId !== undefined) {
+    await setStringInRedisV1(
+      harthmereLiveModeInstallLinkKeyV1(identity.installId),
+      String(biomesUserId)
+    );
+  }
+}
+
 function normalizeProgressionPayload(body: JsonMap) {
   const payload =
     body.payload && typeof body.payload === "object" ? body.payload : {};
@@ -1353,9 +1446,7 @@ export async function createBiomesAuthForGlitchIdentity(
     glitchUserId: identity.glitchUserId,
     userName: identity.userName,
   });
-  let link:
-    | Awaited<ReturnType<typeof findLinkForForeignAuth>>
-    | undefined;
+  let link: Awaited<ReturnType<typeof findLinkForForeignAuth>> | undefined;
   let matchedId: string | undefined;
   for (const candidateId of candidateIds) {
     try {
@@ -1377,19 +1468,26 @@ export async function createBiomesAuthForGlitchIdentity(
       });
     }
   }
+  let recoveredBiomesUserId: BiomesId | undefined;
   if (!link) {
+    recoveredBiomesUserId = await latestBiomesUserIdFromGlitchSaveV1(identity);
     link = await connectForeignAuth(
       context.db,
       profile.provider,
       profile,
-      await context.idGenerator.next()
+      recoveredBiomesUserId ?? (await context.idGenerator.next())
     );
   } else if (matchedId !== profile.id) {
     // The player was found under a legacy/secondary key. Back-fill the stable
     // primary key (pointing at the SAME user) so the volatile-id flip can never
     // orphan their progress again.
     try {
-      await connectForeignAuth(context.db, profile.provider, profile, link.userId);
+      await connectForeignAuth(
+        context.db,
+        profile.provider,
+        profile,
+        link.userId
+      );
     } catch (error) {
       log.warn("HARTHMERE_CLOUD_SAVE_LINK_BACKFILL_FAILED_V1", {
         error,
@@ -1424,6 +1522,7 @@ export async function createBiomesAuthForGlitchIdentity(
 
   const session = await context.sessionStore.createSession(user.id);
   setAuthCookies(res, session, req);
+  await rememberStableGlitchLiveModeActorV1(identity, user.id);
 
   return { user, session, profile, guest: false };
 }

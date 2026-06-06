@@ -868,32 +868,79 @@ function debugHarthmereMouseLiveModeAttackV1(entry: Record<string, unknown>) {
   }
 }
 
+type HarthmereMousePrimaryLiveModeHitV1 = {
+  offset: number;
+  targetId?: string;
+  targetPosition?: [number, number, number];
+};
+
+function normalizeHarthmereMouseLiveModeHitV1(
+  hit: number | HarthmereMousePrimaryLiveModeHitV1
+): HarthmereMousePrimaryLiveModeHitV1 | undefined {
+  if (typeof hit === "number") {
+    return Number.isFinite(hit) ? { offset: hit } : undefined;
+  }
+  const offset = Number(hit.offset);
+  if (!Number.isFinite(offset)) {
+    return undefined;
+  }
+  return {
+    offset,
+    targetId:
+      typeof hit.targetId === "string" && hit.targetId.trim()
+        ? hit.targetId.trim()
+        : undefined,
+    targetPosition: hit.targetPosition,
+  };
+}
+
 function submitHarthmereLiveModeMousePrimaryAttackV1(
-  hitOffsets: ReadonlyArray<number>,
+  hits: ReadonlyArray<number | HarthmereMousePrimaryLiveModeHitV1>,
   runtime: HarthmereForwardArcRuntimeSnapshot | undefined,
-  source: "native_contact" | "forward_arc_fallback"
+  source: "native_contact" | "forward_arc_fallback" | "crosshair_visible_actor"
 ) {
-  if (!isBrowser() || hitOffsets.length === 0) {
+  if (!isBrowser() || hits.length === 0) {
     return;
   }
-  const targetIds = [
-    ...new Set(
-      hitOffsets
-        .map((offset) => harthmereLiveModeCombatTargetIdForEcsEntityV1(offset))
-        .filter((targetId): targetId is string => Boolean(targetId))
-    ),
-  ];
-  if (targetIds.length === 0) {
+  const normalizedHits = hits
+    .map((hit) => normalizeHarthmereMouseLiveModeHitV1(hit))
+    .filter((hit): hit is HarthmereMousePrimaryLiveModeHitV1 => Boolean(hit));
+  const requests = new Map<
+    string,
+    {
+      targetId: string;
+      hitOffsets: number[];
+      targetPosition?: [number, number, number];
+    }
+  >();
+  for (const hit of normalizedHits) {
+    const targetId =
+      hit.targetId ?? harthmereLiveModeCombatTargetIdForEcsEntityV1(hit.offset);
+    if (!targetId) {
+      continue;
+    }
+    const request = requests.get(targetId) ?? {
+      targetId,
+      hitOffsets: [],
+      targetPosition: hit.targetPosition,
+    };
+    request.hitOffsets.push(hit.offset);
+    request.targetPosition ??= hit.targetPosition;
+    requests.set(targetId, request);
+  }
+  if (requests.size === 0) {
     debugHarthmereMouseLiveModeAttackV1({
       type: "ignored",
       reason: "no_seeded_live_mode_target",
       source,
-      hitOffsets,
+      hitOffsets: normalizedHits.map((hit) => hit.offset),
+      hitTargets: normalizedHits.map((hit) => hit.targetId),
     });
     return;
   }
 
-  for (const targetId of targetIds) {
+  for (const request of requests.values()) {
+    const { targetId } = request;
     const requestId = `harthmere_mouse_attack_${Date.now()}_${Math.random()
       .toString(36)
       .slice(2)}`;
@@ -918,9 +965,10 @@ function submitHarthmereLiveModeMousePrimaryAttackV1(
               },
               clientClaims: {
                 source,
-                hitOffsets,
+                hitOffsets: request.hitOffsets,
                 runtimePosition: runtime?.position,
                 runtimeForward: runtime?.forward,
+                targetPosition: request.targetPosition,
               },
             }),
           }
@@ -933,6 +981,7 @@ function submitHarthmereLiveModeMousePrimaryAttackV1(
           type: response.ok ? "submitted" : "rejected",
           source,
           targetId,
+          targetPosition: request.targetPosition,
           status: response.status,
           ok: body?.ok,
           warnings: body?.summary?.warnings ?? body?.validation?.warnings,
@@ -1044,9 +1093,15 @@ export function performHarthmereMousePrimaryAttackV1(
       candidateOffsets: crosshairActors.map((actor) => actor.offset),
     };
     submitHarthmereLiveModeMousePrimaryAttackV1(
-      arcResult.hitOffsets,
+      [
+        {
+          offset: crosshairPick.offset,
+          targetId: crosshairPick.targetId,
+          targetPosition: crosshairPick.targetPosition,
+        },
+      ],
       runtime,
-      "forward_arc_fallback"
+      "crosshair_visible_actor"
     );
   } else {
     arcResult = performHarthmereForwardArcAttack(attack, runtime);

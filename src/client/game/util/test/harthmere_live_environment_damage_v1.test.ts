@@ -3,6 +3,7 @@ import { BIOMES_UI_PLAYER_STATUS_UPDATED_EVENT } from "@/client/components/biome
 import {
   harthmereLiveModeEnvironmentDamageHeadersV1,
   harthmereLiveModeEnvironmentDamageUrlV1,
+  submitHarthmereDrowningDamageLiveModeV1,
   submitHarthmereFallDamageLiveModeV1,
 } from "../harthmere_live_environment_damage_v1";
 
@@ -77,6 +78,54 @@ describe("Harthmere live environment damage client", () => {
       {
         type: BIOMES_UI_PLAYER_STATUS_UPDATED_EVENT,
         detail: { combat: { hp: 168, maxHp: 240 } },
+      },
+    ]);
+  });
+
+  it("posts drowning damage and publishes the returned player status", async () => {
+    const dispatched: Array<{ type: string; detail: any }> = [];
+    (globalThis as any).CustomEvent = class {
+      type: string;
+      detail: any;
+      constructor(type: string, init?: { detail?: any }) {
+        this.type = type;
+        this.detail = init?.detail;
+      }
+    };
+    (globalThis as any).window = {
+      location: { search: "" },
+      dispatchEvent: (event: any) => {
+        dispatched.push({ type: event.type, detail: event.detail });
+      },
+    };
+
+    const calls: Array<{ url: string; init: any; body: any }> = [];
+    const fetchImpl = (async (url: string, init: any) => {
+      calls.push({ url, init, body: JSON.parse(init.body) });
+      return {
+        ok: true,
+        json: async () => ({
+          ok: true,
+          playerStatusState: { combat: { hp: 9, maxHp: 100 } },
+        }),
+      };
+    }) as any;
+
+    await submitHarthmereDrowningDamageLiveModeV1(3, {
+      fetchImpl,
+      requestIdPrefix: "test_drown",
+    });
+
+    assert.equal(calls.length, 1);
+    assert.equal(calls[0].url, "/api/harthmere/live_mode");
+    assert.deepEqual(calls[0].body.payload, {
+      damageKind: "drowning",
+      damage: 3,
+    });
+    assert.deepEqual(dispatched, [
+      {
+        type: BIOMES_UI_PLAYER_STATUS_UPDATED_EVENT,
+        detail: { combat: { hp: 9, maxHp: 100 } },
       },
     ]);
   });

@@ -339,6 +339,32 @@ function computeDrawDistance(
   return DRAW_DISTANCES[resolved.drawDistance];
 }
 
+export function applyMinimumDrawDistanceV1(
+  drawDistance: number,
+  minDrawDistance: number | undefined
+) {
+  return Number.isFinite(minDrawDistance)
+    ? Math.max(drawDistance, minDrawDistance as number)
+    : drawDistance;
+}
+
+export function applyDrawDistanceFloorsV1(
+  drawDistance: number,
+  options: {
+    hardMinDrawDistance?: number;
+    dynamicMinDrawDistance?: number;
+    isDynamicDrawDistance: boolean;
+  }
+) {
+  const hardFloored = applyMinimumDrawDistanceV1(
+    drawDistance,
+    options.hardMinDrawDistance
+  );
+  return options.isDynamicDrawDistance
+    ? applyMinimumDrawDistanceV1(hardFloored, options.dynamicMinDrawDistance)
+    : hardFloored;
+}
+
 function genGraphicsSettingsDynamic(
   context: ClientContext,
   deps: ClientResourceDeps
@@ -352,11 +378,16 @@ function genGraphicsSettingsDynamic(
       : deps.get("/settings/graphics/dynamic_render_scale").value ??
         (gpuTier <= 1 ? 0.5 : 1.0);
 
-  const drawDistance =
-    computedSettings.drawDistance === "dynamic"
-      ? deps.get("/settings/graphics/dynamic_draw_distance").value ??
-        DRAW_DISTANCES.low
-      : computedSettings.drawDistance;
+  const isDynamicDrawDistance = computedSettings.drawDistance === "dynamic";
+  const dynamicDrawDistance = isDynamicDrawDistance
+    ? deps.get("/settings/graphics/dynamic_draw_distance").value ??
+      DRAW_DISTANCES.low
+    : computedSettings.drawDistance;
+  const drawDistance = applyDrawDistanceFloorsV1(dynamicDrawDistance, {
+    hardMinDrawDistance: context.clientConfig.minDrawDistance,
+    dynamicMinDrawDistance: context.clientConfig.dynamicMinDrawDistance,
+    isDynamicDrawDistance,
+  });
 
   return {
     ...computedSettings,

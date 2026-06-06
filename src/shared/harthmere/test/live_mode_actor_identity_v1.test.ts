@@ -2,6 +2,7 @@
 import assert from "assert";
 import {
   harthmereLiveModeInstallActorIdV1,
+  harthmereLiveModeInstallGameUserLinkKeyV1,
   harthmereLiveModeInstallIdFromRequestV1,
   harthmereLiveModeInstallLinkKeyV1,
   planHarthmereLiveModeActorKeyV1,
@@ -17,11 +18,15 @@ describe("Harthmere live-mode actor identity resolution", () => {
   describe("install id extraction", () => {
     it("reads install_id / installId from query and the header", () => {
       assert.strictEqual(
-        harthmereLiveModeInstallIdFromRequestV1({ query: { install_id: "abc" } }),
+        harthmereLiveModeInstallIdFromRequestV1({
+          query: { install_id: "abc" },
+        }),
         "abc"
       );
       assert.strictEqual(
-        harthmereLiveModeInstallIdFromRequestV1({ query: { installId: "def" } }),
+        harthmereLiveModeInstallIdFromRequestV1({
+          query: { installId: "def" },
+        }),
         "def"
       );
       assert.strictEqual(
@@ -43,7 +48,9 @@ describe("Harthmere live-mode actor identity resolution", () => {
 
     it("returns undefined when nothing usable is present", () => {
       assert.strictEqual(
-        harthmereLiveModeInstallIdFromRequestV1({ query: { install_id: "   " } }),
+        harthmereLiveModeInstallIdFromRequestV1({
+          query: { install_id: "   " },
+        }),
         undefined
       );
       assert.strictEqual(
@@ -168,6 +175,22 @@ describe("Harthmere live-mode actor identity resolution", () => {
       assert.strictEqual(plan.actorId, "u1");
     });
 
+    it("stable Glitch game-user link beats a freshly-minted numeric auth user", () => {
+      const plan = planHarthmereLiveModeActorKeyV1({
+        userId: "7804034240681026",
+        installId: "i1",
+        linkedUserId: "8711576235822475",
+        linkedGameUserId: "glitch:43af071c-9922-4e02-ba46-32ee2b7479a6",
+        anonymousFallback: fallback,
+      });
+      assert.strictEqual(
+        plan.actorId,
+        "glitch:43af071c-9922-4e02-ba46-32ee2b7479a6"
+      );
+      assert.strictEqual(plan.writeInstallLink, undefined);
+      assert.strictEqual(plan.considerInstallOrphan, undefined);
+    });
+
     it("no userId and no installId -> anonymous fallback", () => {
       const plan = planHarthmereLiveModeActorKeyV1({
         anonymousFallback: fallback,
@@ -239,6 +262,13 @@ describe("Harthmere live-mode actor identity resolution", () => {
       assert.strictEqual(
         harthmereLiveModeInstallLinkKeyV1("i1"),
         "harthmere:live_mode:v1:install_user_link:i1"
+      );
+    });
+
+    it("install game-user link key is namespaced and stable", () => {
+      assert.strictEqual(
+        harthmereLiveModeInstallGameUserLinkKeyV1("i1"),
+        "harthmere:live_mode:v1:install_game_user_link:i1"
       );
     });
   });

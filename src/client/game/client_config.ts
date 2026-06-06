@@ -81,6 +81,8 @@ const BASE_CLIENT_CONFIG = {
   gpuTier: 0,
   gpuName: "Unknown",
   forceDrawDistance: undefined as number | undefined,
+  minDrawDistance: undefined as number | undefined,
+  dynamicMinDrawDistance: undefined as number | undefined,
   forceRenderScale: undefined as number | undefined,
   forceGraphicsQuality: undefined as GraphicsQuality | undefined,
   allowSoftwareWebGL: false,
@@ -154,6 +156,22 @@ function doURLOverrides(clientConfig: ClientConfig) {
       log.error(`Invalid value ${val} for forceDrawDistance.`);
     } else {
       clientConfig.forceDrawDistance = forceDrawDistance;
+    }
+  });
+  applyParam("minDrawDistance", (val) => {
+    const minDrawDistance = parseInt(val);
+    if (isNaN(minDrawDistance) || minDrawDistance < 0) {
+      log.error(`Invalid value ${val} for minDrawDistance.`);
+    } else {
+      clientConfig.minDrawDistance = minDrawDistance;
+    }
+  });
+  applyParam("dynamicMinDrawDistance", (val) => {
+    const dynamicMinDrawDistance = parseInt(val);
+    if (isNaN(dynamicMinDrawDistance) || dynamicMinDrawDistance < 0) {
+      log.error(`Invalid value ${val} for dynamicMinDrawDistance.`);
+    } else {
+      clientConfig.dynamicMinDrawDistance = dynamicMinDrawDistance;
     }
   });
   applyParam("forceRenderScale", (val) => {
@@ -436,6 +454,13 @@ export async function initializeClientConfig(
     installIdInUrl;
 
   if (isGlitchLocalRuntime && typeof window !== "undefined") {
+    // Harthmere is an open, landmark-driven world. Let dynamic graphics reduce
+    // resolution/render scale under load, but keep auto terrain + sync distance
+    // from collapsing to the 64m "short headlight" view seen in production logs.
+    // Explicit low/safe user choices can still stay low; minDrawDistance remains
+    // available as the hard URL/config override when that is wanted.
+    ret.dynamicMinDrawDistance = 128;
+
     const resolved = resolveGlitchLocalSyncBaseUrl({
       installIdInUrl,
       explicit: process.env.NEXT_PUBLIC_GLITCH_SYNC_BASE_URL,

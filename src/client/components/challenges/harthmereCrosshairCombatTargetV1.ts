@@ -20,11 +20,16 @@ export type HarthmereCrosshairCombatActorV1 = {
   offset: number;
   attackable: boolean;
   radius: number;
+  targetId?: string;
+  label?: string;
+  asset?: string;
+  species?: string;
   screenX?: number;
   screenY?: number;
   screenVisible?: boolean;
   screenDepth?: number;
   worldX?: number;
+  worldY?: number;
   worldZ?: number;
 };
 
@@ -53,6 +58,8 @@ export type HarthmereCrosshairPickResultV1 = {
   offset: number;
   screenDistancePx: number;
   worldDistance?: number;
+  targetId?: string;
+  targetPosition?: [number, number, number];
 };
 
 function clampNumber(value: number, min: number, max: number): number {
@@ -139,7 +146,23 @@ export function pickHarthmereCrosshairCombatTargetV1(
       (screenDistancePx === best.screenDistancePx &&
         (worldDistance ?? Infinity) < (best.worldDistance ?? Infinity))
     ) {
-      best = { offset: actor.offset, screenDistancePx, worldDistance };
+      const targetPosition =
+        Number.isFinite(actor.worldX) &&
+        Number.isFinite(actor.worldY) &&
+        Number.isFinite(actor.worldZ)
+          ? [
+              actor.worldX as number,
+              actor.worldY as number,
+              actor.worldZ as number,
+            ] satisfies [number, number, number]
+          : undefined;
+      best = {
+        offset: actor.offset,
+        screenDistancePx,
+        worldDistance,
+        targetId: actor.targetId,
+        targetPosition,
+      };
     }
   }
   return best;
@@ -214,15 +237,31 @@ export function readHarthmereCrosshairCombatActorsV1(): HarthmereCrosshairCombat
       }
       const screen = parseScreen(actor.screen);
       const world = Array.isArray(actor.world) ? actor.world : undefined;
+      const targetId =
+        typeof actor.liveModeTargetId === "string" && actor.liveModeTargetId.trim()
+          ? actor.liveModeTargetId.trim()
+          : typeof actor.targetId === "string" && actor.targetId.trim()
+            ? actor.targetId.trim()
+            : undefined;
       byOffset.set(offset, {
         offset,
         attackable: actor.attackable === false ? false : true,
         radius: Number.isFinite(Number(actor.radius)) ? Number(actor.radius) : 1.15,
+        targetId,
+        label: typeof actor.label === "string" ? actor.label : undefined,
+        asset: typeof actor.asset === "string" ? actor.asset : undefined,
+        species:
+          typeof actor.species === "string"
+            ? actor.species
+            : typeof actor.appearanceSpecies === "string"
+              ? actor.appearanceSpecies
+              : undefined,
         screenX: screen?.x,
         screenY: screen?.y,
         screenVisible: screen?.visible,
         screenDepth: screen?.depth,
         worldX: world ? Number(world[0]) : undefined,
+        worldY: world ? Number(world[1]) : undefined,
         worldZ: world ? Number(world[2]) : undefined,
       });
     }

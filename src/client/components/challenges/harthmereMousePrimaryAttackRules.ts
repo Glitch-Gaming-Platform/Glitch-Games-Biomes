@@ -1,4 +1,6 @@
 // HARTHMERE_MOUSE_PRIMARY_ATTACK_V1
+import { harthmereServerMuckCombatTargetIdForSeedV1 } from "@/shared/harthmere/visible_combat_target_v1";
+
 // Pure decision rule for whether a raw left mouse-down should resolve a Harthmere
 // basic attack. The left mouse button is shared with voxel-block breaking and
 // camera/UI interaction, so combat is only engaged when ALL of these hold:
@@ -43,8 +45,5 @@ export function harthmereLiveModeCombatTargetIdForSeedV1(input: {
   seedId: string;
   idOffset: number;
 }): string | undefined {
-  if (!input.seedId.trim() || !Number.isFinite(input.idOffset)) {
-    return undefined;
-  }
-  return `server-muck-combat:${input.seedId}:${input.idOffset}`;
+  return harthmereServerMuckCombatTargetIdForSeedV1(input);
 }

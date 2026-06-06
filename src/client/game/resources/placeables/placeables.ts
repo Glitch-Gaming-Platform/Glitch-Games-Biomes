@@ -34,9 +34,10 @@ import { BikkieIds } from "@/shared/bikkie/ids";
 import { makeDisposable } from "@/shared/disposable";
 import { anItem } from "@/shared/game/item";
 import type { BiomesId } from "@/shared/ids";
+import { log } from "@/shared/logging";
 import type { RegistryLoader } from "@/shared/registry";
 import { ok } from "assert";
-import { Box3, PositionalAudio } from "three";
+import { Box3, Group, PositionalAudio } from "three";
 
 async function genPlaceableAudio(deps: ClientResourceDeps, id: BiomesId) {
   const { listener: audioListener, manager: audioManager } = deps.get("/audio");
@@ -78,35 +79,73 @@ async function makePlaceableMesh(
   id: BiomesId
 ): Promise<AnimatedPlaceableMesh> {
   const placeableComponent = deps.get("/ecs/c/placeable_component", id);
-  ok(placeableComponent);
-  const placeableItem = anItem(placeableComponent.item_id);
+  try {
+    if (!placeableComponent) {
+      return makeFallbackPlaceableMesh(deps, id, "missing_placeable_component");
+    }
+    const placeableItem = anItem(placeableComponent.item_id);
 
-  if (placeableItem.isFrame) {
-    return makePlaceableFrameMesh(context, deps, id);
+    if (placeableItem.isFrame) {
+      return makePlaceableFrameMesh(context, deps, id);
+    }
+
+    if (placeableItem.isShopContainer) {
+      return makePlaceableShopContainerMesh(context, deps, id);
+    }
+
+    if (placeableItem.id === BikkieIds.campfire) {
+      return makeCampfirePlaceableMesh(context, deps, id);
+    }
+
+    if (placeableItem.id === BikkieIds.muckBusterRedux) {
+      return makeMuckBusterReduxMesh(context, deps, id);
+    }
+
+    if (placeableItem.isPlayerLikeAppearance) {
+      const mesh = await makePlayerLikeAppearanceMesh(deps, id);
+      return makeBasicAnimatedPlaceableMesh(deps, id, [], {
+        gltf: mesh,
+        noBreakableMaterial: true,
+        meshUrl: makeECSWearablesUrl(deps, id),
+      });
+    }
+
+    return makeBasicPlaceableMesh(context, deps, id);
+  } catch (error) {
+    return makeFallbackPlaceableMesh(deps, id, error);
   }
+}
 
-  if (placeableItem.isShopContainer) {
-    return makePlaceableShopContainerMesh(context, deps, id);
+function makeFallbackPlaceableMesh(
+  deps: ClientResourceDeps,
+  id: BiomesId,
+  error: unknown
+): AnimatedPlaceableMesh {
+  const group = new Group();
+  group.name = `fallback-placeable-${id}`;
+  const position = deps.get("/ecs/c/position", id);
+  const orientation = deps.get("/ecs/c/orientation", id);
+  const placeableComponent = deps.get("/ecs/c/placeable_component", id);
+  if (position) {
+    group.position.fromArray(position.v);
   }
-
-  if (placeableItem.id === BikkieIds.campfire) {
-    return makeCampfirePlaceableMesh(context, deps, id);
-  }
-
-  if (placeableItem.id === BikkieIds.muckBusterRedux) {
-    return makeMuckBusterReduxMesh(context, deps, id);
-  }
-
-  if (placeableItem.isPlayerLikeAppearance) {
-    const mesh = await makePlayerLikeAppearanceMesh(deps, id);
-    return makeBasicAnimatedPlaceableMesh(deps, id, [], {
-      gltf: mesh,
-      noBreakableMaterial: true,
-      meshUrl: makeECSWearablesUrl(deps, id),
-    });
-  }
-
-  return makeBasicPlaceableMesh(context, deps, id);
+  setPlaceableOrientation(group, orientation?.v);
+  log.warn("PLACEABLE_MESH_FALLBACK_V1", {
+    id,
+    itemId: placeableComponent?.item_id,
+    error,
+  });
+  return makeDisposable(
+    {
+      placeableId: id,
+      three: group,
+      spatialLighting: getPlaceableSpatialLighting(deps, id),
+      url: `fallback-placeable:${id}`,
+    },
+    () => {
+      group.clear();
+    }
+  );
 }
 
 async function updatePlaceableMesh(

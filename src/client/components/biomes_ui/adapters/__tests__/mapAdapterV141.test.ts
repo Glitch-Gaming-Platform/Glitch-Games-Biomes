@@ -85,6 +85,14 @@ const FIXTURE_LANDMARKS = [
     visibleOnWorldMap: true,
   },
   {
+    id: "building_practice_spot",
+    label: "Building Practice Spot",
+    position: [528, 70, -152],
+    kind: "interactable",
+    area: "old_grove_road",
+    visibleOnWorldMap: true,
+  },
+  {
     id: "road_jump_stretch",
     label: "Road Jump Stretch",
     position: [548, 70, -170],
@@ -527,6 +535,43 @@ describe("biomes_ui map adapter (V141)", () => {
     );
   });
 
+  it("marks the Road Ahead block placement step as an active map objective", () => {
+    installFixture({
+      acceptedQuestIds: [],
+      activeObjectiveIndex: 0,
+      completedQuestIds: [],
+    });
+    globalAny.window.localStorage.setItem(
+      "biomes.localDev.snapshotMissionState.v73",
+      JSON.stringify({
+        accepted: true,
+        active: { snapshot_road_ahead_full_chain: 3 },
+        currentStepIndex: 3,
+        completedStepIds: [
+          "meet_jackie_in_grove",
+          "road_ahead_meet_up_with_billy",
+          "road_ahead_collect_muckwad",
+        ],
+        completed: [],
+        pinned: ["snapshot_road_ahead_full_chain"],
+        rewards: [],
+      })
+    );
+
+    const adapter = buildBiomesUIMapAdapterForTest(1);
+    const quest = adapter
+      .getTrackableQuests()
+      .find((entry) => entry.questId === "snapshot_road_ahead_full_chain");
+    assert.equal(quest?.status, "active");
+    assert.equal(quest?.firstMarkerId, "building_spot");
+
+    const marker = adapter
+      .getMarkers()
+      .find((entry) => entry.id === "building_spot");
+    assert.equal(marker?.kind, "objective");
+    assert.equal(marker?.active, true);
+  });
+
   it("lights the Road Ahead map quest from a native active step hint without accepting the bridge", () => {
     installFixture({
       acceptedQuestIds: [],
@@ -567,6 +612,20 @@ describe("biomes_ui map adapter (V141)", () => {
       activeObjectiveIndex: 0,
       completedQuestIds: [],
     });
+
+    const placeAdapter = buildBiomesUIMapAdapterForTest(
+      1,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      [NUX_PAIRED_STEPS.ROAD_AHEAD_PLACE_BLOCKS]
+    );
+    const building = placeAdapter
+      .getMarkers()
+      .find((entry) => entry.id === "building_spot");
+    assert.equal(building?.active, true);
+    assert.equal(building?.kind, "objective");
 
     const wearAdapter = buildBiomesUIMapAdapterForTest(
       1,

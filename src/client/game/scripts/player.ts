@@ -19,7 +19,10 @@ import type { Player } from "@/client/game/resources/players";
 import type { ClientResources } from "@/client/game/resources/types";
 import type { Script } from "@/client/game/scripts/script_controller";
 import { clientFallDamageTickWithGraceV1 } from "@/client/game/util/fall_damage_client_v1";
-import { submitHarthmereFallDamageLiveModeV1 } from "@/client/game/util/harthmere_live_environment_damage_v1";
+import {
+  submitHarthmereDrowningDamageLiveModeV1,
+  submitHarthmereFallDamageLiveModeV1,
+} from "@/client/game/util/harthmere_live_environment_damage_v1";
 import { fixedConstantScalarTransition } from "@/client/game/util/transitions";
 import { respawn } from "@/client/game/util/warping";
 import { reportClientError } from "@/client/util/request_helpers";
@@ -2097,9 +2100,14 @@ export class PlayerScript implements Script {
     if (canBreathe) {
       this.drownThrottle.reset(DROWN_DELAY_IN_TICKS);
     } else if (this.drownThrottle.tick(DROWN_INTERVAL_IN_TICKS)) {
-      this.applyHpChange(-this.tweaks.healthWaterDamageAmount, {
+      const damage = this.tweaks.healthWaterDamageAmount;
+      this.applyHpChange(-damage, {
         kind: "drown",
       });
+      fireAndForget(
+        submitHarthmereDrowningDamageLiveModeV1(damage),
+        "Error submitting Harthmere live drowning damage"
+      );
     }
   }
 

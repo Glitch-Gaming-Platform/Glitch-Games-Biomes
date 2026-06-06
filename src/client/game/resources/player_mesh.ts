@@ -32,7 +32,10 @@ import {
 } from "@/client/game/util/player_animations";
 import { clonePlayerSkinnedMaterial } from "@/client/game/util/skinning";
 import { resolveAssetUrl } from "@/galois/interface/asset_paths";
-import { makeBasicMaterial, updateBasicMaterial } from "@/gen/client/game/shaders/basic";
+import {
+  makeBasicMaterial,
+  updateBasicMaterial,
+} from "@/gen/client/game/shaders/basic";
 import type { CharacterAnimationTiming } from "@/server/shared/minigames/ruleset/tweaks";
 import {
   makePlayerMeshQueryString,
@@ -54,6 +57,7 @@ import {
   type HarthmereVoxelBodyConfig,
   type HarthmereVoxelFaceConfig,
 } from "@/shared/harthmere/voxel_faces";
+import { harthmereLocalEquipmentBikkieWearablesV1 } from "@/shared/harthmere/harthmere_bikkie_wearables_v1";
 import { BikkieIds } from "@/shared/bikkie/ids";
 import type { Disposable } from "@/shared/disposable";
 import { makeDisposable } from "@/shared/disposable";
@@ -98,9 +102,12 @@ const HARTHMERE_PLAYER_BODY_VARIANT_SCALE = 0.68;
 // V164 keeps the legacy URL prefix only so already-cached static variant URLs can
 // be detected and normalized; no environment switch can route players away from
 // /api/assets/player_mesh.glb anymore.
-const HARTHMERE_PLAYER_FACE_BODY_VISUAL_REFINEMENT_VERSION = "harthmere-face-body-visual-refinement-v11";
-const HARTHMERE_PLAYER_MODULAR_CLOTHING_RUNTIME_VERSION = "harthmere-modular-clothing-runtime-v16-polished-threejs-catalog";
-const HARTHMERE_PLAYER_CLOTHING_RENDER_MODE_STORAGE_KEY = "biomes.localDev.harthmere.clothingRenderer";
+const HARTHMERE_PLAYER_FACE_BODY_VISUAL_REFINEMENT_VERSION =
+  "harthmere-face-body-visual-refinement-v11";
+const HARTHMERE_PLAYER_MODULAR_CLOTHING_RUNTIME_VERSION =
+  "harthmere-modular-clothing-runtime-v16-polished-threejs-catalog";
+const HARTHMERE_PLAYER_CLOTHING_RENDER_MODE_STORAGE_KEY =
+  "biomes.localDev.harthmere.clothingRenderer";
 
 function isHarthmerePlayerBodyVariantUrl(url: string) {
   return url.includes(`${HARTHMERE_PLAYER_BODY_VARIANT_BASE_URL}/`);
@@ -137,8 +144,17 @@ function harthmerePlayerBodyVariantUrl(id: BiomesId) {
       `fh:${face.facialHair}`,
       `ch:${face.cheekStyle}`,
       `ac:${face.accessory}`,
-      `eq:${Object.entries(appearance.equipment).map(([slot, item]) => `${slot}:${item}`).join(",")}`,
-      `cl:${Object.entries(appearance.clothing).map(([slot, item]) => `${slot}:${item?.id ?? ""}:${item?.bindMode ?? ""}:${item?.modelUrl ?? ""}`).join(",")}`,
+      `eq:${Object.entries(appearance.equipment)
+        .map(([slot, item]) => `${slot}:${item}`)
+        .join(",")}`,
+      `cl:${Object.entries(appearance.clothing)
+        .map(
+          ([slot, item]) =>
+            `${slot}:${item?.id ?? ""}:${item?.bindMode ?? ""}:${
+              item?.modelUrl ?? ""
+            }`
+        )
+        .join(",")}`,
     ].join(";")
   );
   // The actual static file path only depends on body type + outfit color. The
@@ -207,7 +223,8 @@ async function makePlayerMesh(
   const cosmetics = harthmereLiveHumanMeshCosmeticsV1(
     id,
     wearing?.items,
-    appearance?.appearance
+    appearance?.appearance,
+    { includeLocalHarthmereWearables: userId === id }
   );
 
   const mesh = await makeAnimatedMesh(
@@ -248,7 +265,8 @@ async function updatePlayerMesh(
   const cosmetics = harthmereLiveHumanMeshCosmeticsV1(
     id,
     wearing?.items,
-    appearance?.appearance
+    appearance?.appearance,
+    { includeLocalHarthmereWearables: userId === id }
   );
   const url = playerMeshUrlForId(id, cosmetics.wearables, cosmetics.appearance);
   const isLocalPlayer = userId === id;
@@ -386,7 +404,7 @@ const HARTHMERE_PLAYER_DEATH_POSE_VERSION_V135 =
   "harthmere-player-death-pose-v135" as const;
 
 function installHarthmerePlayerDeathPoseBridgeV135(
-  root: THREE.Object3D,
+  root: THREE.Object3D
 ): (() => void) | undefined {
   if (typeof window === "undefined") {
     return undefined;
@@ -411,8 +429,16 @@ function installHarthmerePlayerDeathPoseBridgeV135(
       // A readable voxel/MMO death pose: collapse the local visual body onto
       // its side without changing the authoritative ECS position. Respawn
       // restores the neutral transform.
-      root.position.set(neutral.position.x, neutral.position.y - 0.45, neutral.position.z);
-      root.rotation.set(neutral.rotation.x - 1.32, neutral.rotation.y, neutral.rotation.z + 0.18);
+      root.position.set(
+        neutral.position.x,
+        neutral.position.y - 0.45,
+        neutral.position.z
+      );
+      root.rotation.set(
+        neutral.rotation.x - 1.32,
+        neutral.rotation.y,
+        neutral.rotation.z + 0.18
+      );
       root.scale.set(neutral.scale.x, neutral.scale.y * 0.98, neutral.scale.z);
     } else {
       root.position.copy(neutral.position);
@@ -427,7 +453,9 @@ function installHarthmerePlayerDeathPoseBridgeV135(
   };
 
   window.addEventListener(HARTHMERE_PLAYER_DEATH_POSE_EVENT_V135, handler);
-  applyPose(document.documentElement.dataset.harthmereDeathMovementLocked !== undefined);
+  applyPose(
+    document.documentElement.dataset.harthmereDeathMovementLocked !== undefined
+  );
   return () => {
     window.removeEventListener(HARTHMERE_PLAYER_DEATH_POSE_EVENT_V135, handler);
     applyPose(false);
@@ -436,7 +464,7 @@ function installHarthmerePlayerDeathPoseBridgeV135(
 
 function installHarthmereGroveInspiredAvatarPolishV100(
   root: THREE.Object3D,
-  appearance: HarthmereCharacterAppearance,
+  appearance: HarthmereCharacterAppearance
 ) {
   // Runtime metadata for locomotion systems and debug previews. The actual
   // visible pass is below in the voxel face/hair pieces; this keeps walk/run
@@ -446,7 +474,10 @@ function installHarthmereGroveInspiredAvatarPolishV100(
     HARTHMERE_GROVE_INSPIRED_AVATAR_POLISH_VERSION_V100;
   root.userData.harthmereLocomotionStyle = {
     idle: "soft-alert",
-    walk: appearance.body.stance === "heroic" ? "confident-town-watch" : "light-storybook-step",
+    walk:
+      appearance.body.stance === "heroic"
+        ? "confident-town-watch"
+        : "light-storybook-step",
     run: "forward-readable-run",
     turn: "small-shoulder-lead",
   };
@@ -477,7 +508,8 @@ async function makeAnimatedMesh(
       : undefined;
   const playerAnimatedMesh = loadPlayerAnimatedMesh(mesh, animationTimings);
   if (localDevHarthmereAppearance) {
-    playerAnimatedMesh.three.userData.harthmereAppearance = localDevHarthmereAppearance;
+    playerAnimatedMesh.three.userData.harthmereAppearance =
+      localDevHarthmereAppearance;
     playerAnimatedMesh.three.userData.harthmereForwardAxis =
       localDevHarthmereAppearance.forwardAxis;
   }
@@ -490,18 +522,19 @@ async function makeAnimatedMesh(
     }
     playerAnimatedMesh.three.userData.harthmerePlayerNpcParityMinimalAvatarVersion =
       HARTHMERE_PLAYER_NPC_PARITY_MINIMAL_AVATAR_VERSION_V183;
-    playerAnimatedMesh.three.userData.harthmerePlayerNpcParityMinimalAvatarPolicy = {
-      source: "player_mesh.ts",
-      stripsGeneratedPlayerOverlayShell: true,
-      stripsPlayerOnlySimpleFaceOverlay: true,
-      stripsPlayerOnlyModularClothingRuntime: true,
-      stripsPlayerOnlyUniqueEnhancements: true,
-      stripsPlayerOnlyScabbardShieldQuiverStaffPolish: true,
-      stripsPlayerOnlyFullPolishDetails: true,
-      stripsPlayerOnlyExpressionBridge: true,
-      keepsComputedGeneratedMesh: true,
-      keepsRuntimeWeaponAttachment: true,
-    };
+    playerAnimatedMesh.three.userData.harthmerePlayerNpcParityMinimalAvatarPolicy =
+      {
+        source: "player_mesh.ts",
+        stripsGeneratedPlayerOverlayShell: true,
+        stripsPlayerOnlySimpleFaceOverlay: true,
+        stripsPlayerOnlyModularClothingRuntime: true,
+        stripsPlayerOnlyUniqueEnhancements: true,
+        stripsPlayerOnlyScabbardShieldQuiverStaffPolish: true,
+        stripsPlayerOnlyFullPolishDetails: true,
+        stripsPlayerOnlyExpressionBridge: true,
+        keepsComputedGeneratedMesh: true,
+        keepsRuntimeWeaponAttachment: true,
+      };
 
     // Keep the renderer-safe material coercion and the standard weapon/item
     // attachment. This is the important part of "strip the avatar, not the
@@ -533,7 +566,8 @@ async function makeAnimatedMesh(
     hideHarthmereVariantBuiltInHead(playerAnimatedMesh.three);
     applyLocalDevPlayerInnerBodyConfig(
       playerAnimatedMesh.three,
-      localDevHarthmereAppearance?.body ?? loadHarthmerePlayerAppearanceConfig(id).body,
+      localDevHarthmereAppearance?.body ??
+        loadHarthmerePlayerAppearanceConfig(id).body,
       HARTHMERE_PLAYER_BODY_VARIANT_SCALE
     );
     // HARTHMERE_PLAYER_VOXEL_CONSTRUCTION_V110:
@@ -552,7 +586,7 @@ async function makeAnimatedMesh(
   addLocalDevSimpleFaceToObject(playerAnimatedMesh.three, id);
   await addHarthmerePlayerModularClothingRuntime(
     playerAnimatedMesh.three,
-    localDevHarthmereAppearance ?? loadHarthmerePlayerAppearanceConfig(id),
+    localDevHarthmereAppearance ?? loadHarthmerePlayerAppearanceConfig(id)
   );
   // HARTHMERE_PLAYER_GROVE_PARITY_POLISH_V103: bring the player avatar up to
   // the visual richness of the Grove voxel NPCs. The body/face/clothing
@@ -568,31 +602,30 @@ async function makeAnimatedMesh(
     playerAnimatedMesh.three,
     polishAppearance,
     polishMetrics,
-    id,
+    id
   );
   if (isHarthmereVariantMesh) {
     addHarthmerePlayerBoneAttachedEquipmentPolish(
       playerAnimatedMesh.three,
       polishAppearance,
-      polishMetrics,
+      polishMetrics
     );
   }
   addHarthmerePlayerAvatarFullPolishDetails(
     playerAnimatedMesh.three,
     polishAppearance,
     polishMetrics,
-    id,
+    id
   );
-  const disposeSwordSheathBridge = installHarthmerePlayerSwordSheathVisibilityBridge(
-    playerAnimatedMesh.three,
-  );
+  const disposeSwordSheathBridge =
+    installHarthmerePlayerSwordSheathVisibilityBridge(playerAnimatedMesh.three);
   installHarthmereGroveInspiredAvatarPolishV100(
     playerAnimatedMesh.three,
-    localDevHarthmereAppearance ?? loadHarthmerePlayerAppearanceConfig(id),
+    localDevHarthmereAppearance ?? loadHarthmerePlayerAppearanceConfig(id)
   );
   const disposeExpressionBridge = installHarthmerePlayerFacialExpressionBridge(
     playerAnimatedMesh.three,
-    id,
+    id
   );
 
   // HARTHMERE_PLAYER_AVATAR_BASE_PASS_MATERIALS_V153: after all Harthmere
@@ -821,7 +854,10 @@ function makeLocalDevFaceTexture(
   return texture;
 }
 let harthmerePlayerToonGradientMap: THREE.DataTexture | undefined;
-const harthmerePlayerRoundedVoxelGeometryCache = new Map<string, THREE.BufferGeometry>();
+const harthmerePlayerRoundedVoxelGeometryCache = new Map<
+  string,
+  THREE.BufferGeometry
+>();
 
 function getHarthmerePlayerToonGradientMap() {
   if (harthmerePlayerToonGradientMap) {
@@ -833,16 +869,13 @@ function getHarthmerePlayerToonGradientMap() {
   // pixels. MeshToonMaterial samples this nearest-filtered ramp to create
   // clean cel bands on the rounded voxel pieces.
   const data = new Uint8Array([
-    58, 58, 58, 255,
-    128, 128, 128, 255,
-    205, 205, 205, 255,
-    255, 255, 255, 255,
+    58, 58, 58, 255, 128, 128, 128, 255, 205, 205, 205, 255, 255, 255, 255, 255,
   ]);
   harthmerePlayerToonGradientMap = new THREE.DataTexture(
     data,
     4,
     1,
-    THREE.RGBAFormat,
+    THREE.RGBAFormat
   );
   harthmerePlayerToonGradientMap.magFilter = THREE.NearestFilter;
   harthmerePlayerToonGradientMap.minFilter = THREE.NearestFilter;
@@ -853,7 +886,7 @@ function getHarthmerePlayerToonGradientMap() {
 }
 
 function makeHarthmerePlayerRoundedVoxelGeometry(
-  size: [number, number, number],
+  size: [number, number, number]
 ) {
   const minEdge = Math.min(...size);
   const radius = Math.max(0.002, Math.min(0.045, minEdge * 0.18));
@@ -873,7 +906,7 @@ function makeHarthmerePlayerRoundedVoxelGeometry(
     size[1],
     size[2],
     segments,
-    radius,
+    radius
   );
   geometry.computeVertexNormals();
   geometry.name = "harthmere-player-rounded-voxel-geometry";
@@ -881,7 +914,9 @@ function makeHarthmerePlayerRoundedVoxelGeometry(
   return geometry;
 }
 
-function harthmereColorToBasePassTuple(color: number): [number, number, number] {
+function harthmereColorToBasePassTuple(
+  color: number
+): [number, number, number] {
   return new THREE.Color(color).toArray() as [number, number, number];
 }
 
@@ -909,23 +944,32 @@ function localDevBoltHeadMaterial(color: number) {
   return material;
 }
 
-function harthmereMaterialColor(material: THREE.Material): [number, number, number] {
-  const maybeColor = (material as THREE.Material & { color?: THREE.Color }).color;
+function harthmereMaterialColor(
+  material: THREE.Material
+): [number, number, number] {
+  const maybeColor = (material as THREE.Material & { color?: THREE.Color })
+    .color;
   return maybeColor instanceof THREE.Color
     ? (maybeColor.toArray() as [number, number, number])
     : [1, 1, 1];
 }
 
-function harthmereMaterialMap(material: THREE.Material): THREE.Texture | undefined {
-  return (material as THREE.Material & { map?: THREE.Texture | null }).map ?? undefined;
+function harthmereMaterialMap(
+  material: THREE.Material
+): THREE.Texture | undefined {
+  return (
+    (material as THREE.Material & { map?: THREE.Texture | null }).map ??
+    undefined
+  );
 }
 
 function harthmereMaterialUsesVertexColors(material: THREE.Material): boolean {
-  return !!(material as THREE.Material & { vertexColors?: boolean }).vertexColors;
+  return !!(material as THREE.Material & { vertexColors?: boolean })
+    .vertexColors;
 }
 
 function makeHarthmereNonSkinnedBasePassMaterialFromMaterial(
-  material: THREE.Material,
+  material: THREE.Material
 ): BasePassMaterial {
   const map = harthmereMaterialMap(material);
   const next = makeBasicMaterial({
@@ -942,28 +986,32 @@ function makeHarthmereNonSkinnedBasePassMaterialFromMaterial(
     harthmerePlayerAvatarBasePassMaterialsVersion:
       "harthmere-player-avatar-base-pass-materials-v153",
     harthmereConvertedFromThreeMaterialType:
-      (material as THREE.Material & { type?: string }).type ?? material.constructor.name,
+      (material as THREE.Material & { type?: string }).type ??
+      material.constructor.name,
   };
   return next;
 }
 
 function coerceHarthmerePlayerMaterialToBasePass(
   material: THREE.Material,
-  skinned: boolean,
+  skinned: boolean
 ): THREE.Material {
   if (material instanceof BasePassMaterial) {
     return material;
   }
   if (skinned) {
     const next = clonePlayerSkinnedMaterial();
-    next.name = `${material.name || "harthmere-player-skinned-material"}-skinned-base-pass-v153`;
+    next.name = `${
+      material.name || "harthmere-player-skinned-material"
+    }-skinned-base-pass-v153`;
     next.side = material.side;
     next.userData = {
       ...material.userData,
       harthmerePlayerAvatarBasePassMaterialsVersion:
         "harthmere-player-avatar-base-pass-materials-v153",
       harthmereConvertedFromThreeMaterialType:
-        (material as THREE.Material & { type?: string }).type ?? material.constructor.name,
+        (material as THREE.Material & { type?: string }).type ??
+        material.constructor.name,
     };
     return next;
   }
@@ -988,7 +1036,10 @@ function coerceHarthmerePlayerObjectMaterialsToBasePass(root: THREE.Object3D) {
       child.material = nextMaterials;
       return;
     }
-    const next = coerceHarthmerePlayerMaterialToBasePass(child.material, skinned);
+    const next = coerceHarthmerePlayerMaterialToBasePass(
+      child.material,
+      skinned
+    );
     if (next !== child.material) {
       converted += 1;
       child.material = next;
@@ -999,7 +1050,9 @@ function coerceHarthmerePlayerObjectMaterialsToBasePass(root: THREE.Object3D) {
   root.userData.harthmerePlayerAvatarBasePassMaterialsConverted = converted;
 }
 
-function rememberHarthmerePlayerFacePartNeutralTransform(object: THREE.Object3D) {
+function rememberHarthmerePlayerFacePartNeutralTransform(
+  object: THREE.Object3D
+) {
   // Facial expressions are runtime state, not saved character-builder state.
   // Store the neutral transform once so combat/dialogue/relationship moments can
   // bend eyes, brows, and mouths, then reliably return them to the selected face.
@@ -1011,13 +1064,24 @@ function rememberHarthmerePlayerFacePartNeutralTransform(object: THREE.Object3D)
   };
 }
 
-function restoreHarthmerePlayerFacePartNeutralTransform(object: THREE.Object3D) {
+function restoreHarthmerePlayerFacePartNeutralTransform(
+  object: THREE.Object3D
+) {
   const neutral = object.userData.harthmereExpressionNeutral as
-    | { position: number[]; rotation: number[]; scale: number[]; visible: boolean }
+    | {
+        position: number[];
+        rotation: number[];
+        scale: number[];
+        visible: boolean;
+      }
     | undefined;
   if (!neutral) return;
   object.position.fromArray(neutral.position);
-  object.rotation.set(neutral.rotation[0] ?? 0, neutral.rotation[1] ?? 0, neutral.rotation[2] ?? 0);
+  object.rotation.set(
+    neutral.rotation[0] ?? 0,
+    neutral.rotation[1] ?? 0,
+    neutral.rotation[2] ?? 0
+  );
   object.scale.fromArray(neutral.scale);
   object.visible = neutral.visible;
 }
@@ -1093,13 +1157,21 @@ function removeLocalDevFaceObject(root: THREE.Object3D, name: string) {
   }
 }
 
-function harthmereVoxelColorChannelMix(source: number, target: number, amount: number) {
+function harthmereVoxelColorChannelMix(
+  source: number,
+  target: number,
+  amount: number
+) {
   const sourcePart = source & 0xff;
   const targetPart = target & 0xff;
   return Math.round(sourcePart + (targetPart - sourcePart) * amount) & 0xff;
 }
 
-function harthmereVoxelColorMix(source: number, target: number, amount: number) {
+function harthmereVoxelColorMix(
+  source: number,
+  target: number,
+  amount: number
+) {
   const r = harthmereVoxelColorChannelMix(source >> 16, target >> 16, amount);
   const g = harthmereVoxelColorChannelMix(source >> 8, target >> 8, amount);
   const b = harthmereVoxelColorChannelMix(source, target, amount);
@@ -1115,23 +1187,32 @@ function harthmereVoxelColorDarken(color: number, amount = 0.24) {
 }
 
 function localDevPlayerVoxelFaceFromConfig(
-  faceConfig: HarthmereVoxelFaceConfig,
+  faceConfig: HarthmereVoxelFaceConfig
 ): LocalDevPlayerVoxelFaceSpec {
-  const headWidthByShape: Record<HarthmereVoxelFaceConfig["faceShape"], number> = {
+  const headWidthByShape: Record<
+    HarthmereVoxelFaceConfig["faceShape"],
+    number
+  > = {
     bolt_square: 0.48,
     wide: 0.56,
     narrow: 0.4,
     tall: 0.46,
     soft: 0.52,
   };
-  const headHeightByShape: Record<HarthmereVoxelFaceConfig["faceShape"], number> = {
+  const headHeightByShape: Record<
+    HarthmereVoxelFaceConfig["faceShape"],
+    number
+  > = {
     bolt_square: 0.48,
     wide: 0.46,
     narrow: 0.5,
     tall: 0.6,
     soft: 0.46,
   };
-  const headDepthByShape: Record<HarthmereVoxelFaceConfig["faceShape"], number> = {
+  const headDepthByShape: Record<
+    HarthmereVoxelFaceConfig["faceShape"],
+    number
+  > = {
     bolt_square: 0.42,
     wide: 0.44,
     narrow: 0.36,
@@ -1142,27 +1223,30 @@ function localDevPlayerVoxelFaceFromConfig(
   const headHeight = headHeightByShape[faceConfig.faceShape];
   const headDepth = headDepthByShape[faceConfig.faceShape];
 
-  const eyeSpreadByShape: Record<HarthmereVoxelFaceConfig["eyeShape"], number> = {
-    square: 0.105,
-    wide: 0.135,
-    small: 0.088,
-    sleepy: 0.112,
-    sharp: 0.122,
-  };
-  const eyeWidthByShape: Record<HarthmereVoxelFaceConfig["eyeShape"], number> = {
-    square: 0.06,
-    wide: 0.09,
-    small: 0.04,
-    sleepy: 0.075,
-    sharp: 0.08,
-  };
-  const eyeHeightByShape: Record<HarthmereVoxelFaceConfig["eyeShape"], number> = {
-    square: 0.055,
-    wide: 0.045,
-    small: 0.04,
-    sleepy: 0.026,
-    sharp: 0.034,
-  };
+  const eyeSpreadByShape: Record<HarthmereVoxelFaceConfig["eyeShape"], number> =
+    {
+      square: 0.105,
+      wide: 0.135,
+      small: 0.088,
+      sleepy: 0.112,
+      sharp: 0.122,
+    };
+  const eyeWidthByShape: Record<HarthmereVoxelFaceConfig["eyeShape"], number> =
+    {
+      square: 0.06,
+      wide: 0.09,
+      small: 0.04,
+      sleepy: 0.075,
+      sharp: 0.08,
+    };
+  const eyeHeightByShape: Record<HarthmereVoxelFaceConfig["eyeShape"], number> =
+    {
+      square: 0.055,
+      wide: 0.045,
+      small: 0.04,
+      sleepy: 0.026,
+      sharp: 0.034,
+    };
   const eyeYByShape: Record<HarthmereVoxelFaceConfig["eyeShape"], number> = {
     square: 1.6,
     wide: 1.598,
@@ -1173,7 +1257,10 @@ function localDevPlayerVoxelFaceFromConfig(
   const eyeSpread = eyeSpreadByShape[faceConfig.eyeShape];
   const eyeY = eyeYByShape[faceConfig.eyeShape];
 
-  const noseSizeByStyle: Record<HarthmereVoxelFaceConfig["noseStyle"], [number, number, number]> = {
+  const noseSizeByStyle: Record<
+    HarthmereVoxelFaceConfig["noseStyle"],
+    [number, number, number]
+  > = {
     small: [0.052, 0.06, 0.06],
     straight: [0.072, 0.088, 0.074],
     wide: [0.108, 0.07, 0.08],
@@ -1188,7 +1275,10 @@ function localDevPlayerVoxelFaceFromConfig(
     button: 1.545,
   };
 
-  const mouthWidthByStyle: Record<HarthmereVoxelFaceConfig["mouthStyle"], number> = {
+  const mouthWidthByStyle: Record<
+    HarthmereVoxelFaceConfig["mouthStyle"],
+    number
+  > = {
     line: 0.16,
     smile: 0.17,
     frown: 0.17,
@@ -1196,7 +1286,10 @@ function localDevPlayerVoxelFaceFromConfig(
     stern: 0.12,
     smirk: 0.15,
   };
-  const mouthHeightByStyle: Record<HarthmereVoxelFaceConfig["mouthStyle"], number> = {
+  const mouthHeightByStyle: Record<
+    HarthmereVoxelFaceConfig["mouthStyle"],
+    number
+  > = {
     line: 0.025,
     smile: 0.026,
     frown: 0.026,
@@ -1204,16 +1297,20 @@ function localDevPlayerVoxelFaceFromConfig(
     stern: 0.022,
     smirk: 0.026,
   };
-  const mouthYByStyle: Record<HarthmereVoxelFaceConfig["mouthStyle"], number> = {
-    line: 1.44,
-    smile: 1.455,
-    frown: 1.425,
-    open: 1.438,
-    stern: 1.442,
-    smirk: 1.452,
-  };
+  const mouthYByStyle: Record<HarthmereVoxelFaceConfig["mouthStyle"], number> =
+    {
+      line: 1.44,
+      smile: 1.455,
+      frown: 1.425,
+      open: 1.438,
+      stern: 1.442,
+      smirk: 1.452,
+    };
 
-  const hairThicknessByStyle: Record<HarthmereVoxelFaceConfig["hairStyle"], number> = {
+  const hairThicknessByStyle: Record<
+    HarthmereVoxelFaceConfig["hairStyle"],
+    number
+  > = {
     flat: 0.11,
     side_part: 0.13,
     short_crown: 0.16,
@@ -1229,7 +1326,10 @@ function localDevPlayerVoxelFaceFromConfig(
     pigtails: 0.12,
     wavy: 0.15,
   };
-  const sideburnHeightByStyle: Record<HarthmereVoxelFaceConfig["hairStyle"], number> = {
+  const sideburnHeightByStyle: Record<
+    HarthmereVoxelFaceConfig["hairStyle"],
+    number
+  > = {
     flat: 0.2,
     side_part: 0.18,
     short_crown: 0.14,
@@ -1254,26 +1354,75 @@ function localDevPlayerVoxelFaceFromConfig(
     hair: HARTHMERE_PLAYER_HAIR_COLORS[faceConfig.hairColor],
     eye: HARTHMERE_PLAYER_EYE_COLORS[faceConfig.eyeColor],
     mouth: faceConfig.mouthStyle === "open" ? 0x6b2f33 : 0x2a1712,
-    cheek: faceConfig.cheekStyle === "freckled" ? 0x6a3c28 : faceConfig.cheekStyle === "strong" ? 0x8a5844 : 0xd98a7c,
+    cheek:
+      faceConfig.cheekStyle === "freckled"
+        ? 0x6a3c28
+        : faceConfig.cheekStyle === "strong"
+        ? 0x8a5844
+        : 0xd98a7c,
     headSize: [headWidth, headHeight, headDepth],
     headPosition: [0, 1.58, -0.01],
     hairSize: [headWidth + 0.02, hairThickness, headDepth + 0.02],
     hairPosition: [0, 1.58 + headHeight / 2 + hairThickness / 2, -0.01],
-    leftSideburnSize: [faceConfig.hairStyle === "braids" ? 0.07 : 0.08, sideburnHeight, headDepth + 0.02],
+    leftSideburnSize: [
+      faceConfig.hairStyle === "braids" ? 0.07 : 0.08,
+      sideburnHeight,
+      headDepth + 0.02,
+    ],
     leftSideburnPosition: [-headWidth / 2 - 0.015, 1.6, -0.01],
-    rightSideburnSize: [faceConfig.hairStyle === "braids" ? 0.07 : 0.08, sideburnHeight, headDepth + 0.02],
+    rightSideburnSize: [
+      faceConfig.hairStyle === "braids" ? 0.07 : 0.08,
+      sideburnHeight,
+      headDepth + 0.02,
+    ],
     rightSideburnPosition: [headWidth / 2 + 0.015, 1.6, -0.01],
-    leftEyeSize: [eyeWidthByShape[faceConfig.eyeShape], eyeHeightByShape[faceConfig.eyeShape], 0.03],
+    leftEyeSize: [
+      eyeWidthByShape[faceConfig.eyeShape],
+      eyeHeightByShape[faceConfig.eyeShape],
+      0.03,
+    ],
     leftEyePosition: [-eyeSpread, eyeY, -headDepth / 2 - 0.032],
-    rightEyeSize: [eyeWidthByShape[faceConfig.eyeShape], eyeHeightByShape[faceConfig.eyeShape], 0.03],
+    rightEyeSize: [
+      eyeWidthByShape[faceConfig.eyeShape],
+      eyeHeightByShape[faceConfig.eyeShape],
+      0.03,
+    ],
     rightEyePosition: [eyeSpread, eyeY, -headDepth / 2 - 0.032],
     noseSize: noseSizeByStyle[faceConfig.noseStyle],
-    nosePosition: [0, noseYByStyle[faceConfig.noseStyle], -headDepth / 2 - 0.052],
-    mouthSize: [mouthWidthByStyle[faceConfig.mouthStyle], mouthHeightByStyle[faceConfig.mouthStyle], 0.026],
-    mouthPosition: [faceConfig.mouthStyle === "smirk" ? 0.028 : 0, mouthYByStyle[faceConfig.mouthStyle], -headDepth / 2 - 0.04],
-    browSize: [faceConfig.browStyle === "soft" ? 0.09 : faceConfig.browStyle === "stern" ? 0.14 : 0.12, faceConfig.browStyle === "scarred" ? 0.026 : 0.02, 0.026],
-    leftBrowPosition: [-eyeSpread, eyeY + (faceConfig.browStyle === "soft" ? 0.055 : 0.07), -headDepth / 2 - 0.04],
-    rightBrowPosition: [eyeSpread, eyeY + (faceConfig.browStyle === "stern" ? 0.052 : 0.07), -headDepth / 2 - 0.04],
+    nosePosition: [
+      0,
+      noseYByStyle[faceConfig.noseStyle],
+      -headDepth / 2 - 0.052,
+    ],
+    mouthSize: [
+      mouthWidthByStyle[faceConfig.mouthStyle],
+      mouthHeightByStyle[faceConfig.mouthStyle],
+      0.026,
+    ],
+    mouthPosition: [
+      faceConfig.mouthStyle === "smirk" ? 0.028 : 0,
+      mouthYByStyle[faceConfig.mouthStyle],
+      -headDepth / 2 - 0.04,
+    ],
+    browSize: [
+      faceConfig.browStyle === "soft"
+        ? 0.09
+        : faceConfig.browStyle === "stern"
+        ? 0.14
+        : 0.12,
+      faceConfig.browStyle === "scarred" ? 0.026 : 0.02,
+      0.026,
+    ],
+    leftBrowPosition: [
+      -eyeSpread,
+      eyeY + (faceConfig.browStyle === "soft" ? 0.055 : 0.07),
+      -headDepth / 2 - 0.04,
+    ],
+    rightBrowPosition: [
+      eyeSpread,
+      eyeY + (faceConfig.browStyle === "stern" ? 0.052 : 0.07),
+      -headDepth / 2 - 0.04,
+    ],
     accessory: faceConfig.accessory,
     cheekStyle: faceConfig.cheekStyle,
     eyeShape: faceConfig.eyeShape,
@@ -1302,21 +1451,22 @@ type HarthmerePlayerFaceSideProfile = {
   hairLockSide: "left" | "right" | "none";
 };
 
-const HARTHMERE_SYMMETRIC_PLAYER_FACE_SIDE_PROFILE: HarthmerePlayerFaceSideProfile = {
-  leftWidthScale: 1,
-  rightWidthScale: 1,
-  leftHeightScale: 1,
-  rightHeightScale: 1,
-  leftYOffset: 0,
-  rightYOffset: 0,
-  leftZOffset: 0,
-  rightZOffset: 0,
-  highlightSide: "left",
-  jawNotchSide: "none",
-  markSide: "none",
-  hairPartSide: "left",
-  hairLockSide: "none",
-};
+const HARTHMERE_SYMMETRIC_PLAYER_FACE_SIDE_PROFILE: HarthmerePlayerFaceSideProfile =
+  {
+    leftWidthScale: 1,
+    rightWidthScale: 1,
+    leftHeightScale: 1,
+    rightHeightScale: 1,
+    leftYOffset: 0,
+    rightYOffset: 0,
+    leftZOffset: 0,
+    rightZOffset: 0,
+    highlightSide: "left",
+    jawNotchSide: "none",
+    markSide: "none",
+    hairPartSide: "left",
+    hairLockSide: "none",
+  };
 
 function harthmerePlayerFaceProfileSeed(faceConfig: HarthmereVoxelFaceConfig) {
   let seed = 2166136261;
@@ -1342,7 +1492,7 @@ function harthmerePlayerFaceProfileSeed(faceConfig: HarthmereVoxelFaceConfig) {
 }
 
 function harthmerePlayerFaceSideProfile(
-  faceConfig: HarthmereVoxelFaceConfig,
+  faceConfig: HarthmereVoxelFaceConfig
 ): HarthmerePlayerFaceSideProfile {
   const seed = harthmerePlayerFaceProfileSeed(faceConfig);
   const majorLeft = (seed & 1) === 0;
@@ -1359,10 +1509,13 @@ function harthmerePlayerFaceSideProfile(
     leftZOffset: majorLeft ? -0.008 : 0.006,
     rightZOffset: majorLeft ? 0.006 : -0.008,
     highlightSide: majorLeft ? "left" : "right",
-    jawNotchSide: jawVariant === 0 ? "none" : jawVariant === 1 ? "left" : "right",
-    markSide: markVariant === 0 ? "none" : markVariant % 2 === 0 ? "left" : "right",
+    jawNotchSide:
+      jawVariant === 0 ? "none" : jawVariant === 1 ? "left" : "right",
+    markSide:
+      markVariant === 0 ? "none" : markVariant % 2 === 0 ? "left" : "right",
     hairPartSide: ((seed >>> 5) & 1) === 0 ? "left" : "right",
-    hairLockSide: lockVariant === 0 ? "none" : lockVariant % 2 === 0 ? "left" : "right",
+    hairLockSide:
+      lockVariant === 0 ? "none" : lockVariant % 2 === 0 ? "left" : "right",
   };
 }
 
@@ -1442,101 +1595,211 @@ const LOCAL_DEV_PLAYER_VOXEL_FACE: LocalDevPlayerVoxelFaceSpec = {
 
 function shiftLocalDevFacePositionY(
   position: [number, number, number],
-  yOffset: number,
+  yOffset: number
 ): [number, number, number] {
   return [position[0], position[1] + yOffset, position[2]];
 }
 
 function shiftLocalDevPlayerVoxelFaceSpecY(
   face: LocalDevPlayerVoxelFaceSpec,
-  yOffset: number,
+  yOffset: number
 ): LocalDevPlayerVoxelFaceSpec {
   return {
     ...face,
     headPosition: shiftLocalDevFacePositionY(face.headPosition, yOffset),
     hairPosition: shiftLocalDevFacePositionY(face.hairPosition, yOffset),
-    leftSideburnPosition: shiftLocalDevFacePositionY(face.leftSideburnPosition, yOffset),
-    rightSideburnPosition: shiftLocalDevFacePositionY(face.rightSideburnPosition, yOffset),
+    leftSideburnPosition: shiftLocalDevFacePositionY(
+      face.leftSideburnPosition,
+      yOffset
+    ),
+    rightSideburnPosition: shiftLocalDevFacePositionY(
+      face.rightSideburnPosition,
+      yOffset
+    ),
     leftEyePosition: shiftLocalDevFacePositionY(face.leftEyePosition, yOffset),
-    rightEyePosition: shiftLocalDevFacePositionY(face.rightEyePosition, yOffset),
+    rightEyePosition: shiftLocalDevFacePositionY(
+      face.rightEyePosition,
+      yOffset
+    ),
     nosePosition: shiftLocalDevFacePositionY(face.nosePosition, yOffset),
     mouthPosition: shiftLocalDevFacePositionY(face.mouthPosition, yOffset),
-    leftBrowPosition: shiftLocalDevFacePositionY(face.leftBrowPosition, yOffset),
-    rightBrowPosition: shiftLocalDevFacePositionY(face.rightBrowPosition, yOffset),
+    leftBrowPosition: shiftLocalDevFacePositionY(
+      face.leftBrowPosition,
+      yOffset
+    ),
+    rightBrowPosition: shiftLocalDevFacePositionY(
+      face.rightBrowPosition,
+      yOffset
+    ),
   };
 }
 
-function scaleHarthmereExpressionPart(object: THREE.Object3D | undefined, scale: [number, number, number]) {
+function scaleHarthmereExpressionPart(
+  object: THREE.Object3D | undefined,
+  scale: [number, number, number]
+) {
   if (!object) return;
-  object.scale.set(object.scale.x * scale[0], object.scale.y * scale[1], object.scale.z * scale[2]);
+  object.scale.set(
+    object.scale.x * scale[0],
+    object.scale.y * scale[1],
+    object.scale.z * scale[2]
+  );
 }
-function moveHarthmereExpressionPart(object: THREE.Object3D | undefined, x: number, y: number, z: number) {
+function moveHarthmereExpressionPart(
+  object: THREE.Object3D | undefined,
+  x: number,
+  y: number,
+  z: number
+) {
   if (!object) return;
-  object.position.x += x; object.position.y += y; object.position.z += z;
+  object.position.x += x;
+  object.position.y += y;
+  object.position.z += z;
 }
-function rotateHarthmereExpressionPart(object: THREE.Object3D | undefined, z: number) {
+function rotateHarthmereExpressionPart(
+  object: THREE.Object3D | undefined,
+  z: number
+) {
   if (!object) return;
   object.rotation.z += z;
 }
-function applyHarthmerePlayerFacialExpressionToFaceRoot(faceRoot: THREE.Object3D, input: HarthmereFacialExpressionState) {
+function applyHarthmerePlayerFacialExpressionToFaceRoot(
+  faceRoot: THREE.Object3D,
+  input: HarthmereFacialExpressionState
+) {
   const state = makeHarthmereFacialExpressionState(input);
   const intensity = state.intensity;
-  faceRoot.traverse((object) => restoreHarthmerePlayerFacePartNeutralTransform(object));
+  faceRoot.traverse((object) =>
+    restoreHarthmerePlayerFacePartNeutralTransform(object)
+  );
   const leftEye = faceRoot.getObjectByName("local-dev-bolt-left-eye");
   const rightEye = faceRoot.getObjectByName("local-dev-bolt-right-eye");
   const leftBrow = faceRoot.getObjectByName("local-dev-bolt-left-brow");
   const rightBrow = faceRoot.getObjectByName("local-dev-bolt-right-brow");
   const mouth = faceRoot.getObjectByName("local-dev-bolt-mouth");
-  const leftMouth = faceRoot.getObjectByName("local-dev-bolt-smile-left") ?? faceRoot.getObjectByName("local-dev-bolt-frown-left") ?? faceRoot.getObjectByName("local-dev-bolt-smirk-corner");
-  const rightMouth = faceRoot.getObjectByName("local-dev-bolt-smile-right") ?? faceRoot.getObjectByName("local-dev-bolt-frown-right");
+  const leftMouth =
+    faceRoot.getObjectByName("local-dev-bolt-smile-left") ??
+    faceRoot.getObjectByName("local-dev-bolt-frown-left") ??
+    faceRoot.getObjectByName("local-dev-bolt-smirk-corner");
+  const rightMouth =
+    faceRoot.getObjectByName("local-dev-bolt-smile-right") ??
+    faceRoot.getObjectByName("local-dev-bolt-frown-right");
   const teeth = faceRoot.getObjectByName("local-dev-bolt-open-mouth-teeth");
   switch (state.expression) {
-    case "happy": case "friendly":
-      scaleHarthmereExpressionPart(leftEye, [1.06, 0.78, 1]); scaleHarthmereExpressionPart(rightEye, [1.06, 0.78, 1]);
-      moveHarthmereExpressionPart(leftBrow, 0, 0.015 * intensity, 0); moveHarthmereExpressionPart(rightBrow, 0, 0.015 * intensity, 0);
-      scaleHarthmereExpressionPart(mouth, [1.18, 0.9, 1]); moveHarthmereExpressionPart(mouth, 0, 0.018 * intensity, 0);
-      rotateHarthmereExpressionPart(leftMouth, 0.28 * intensity); rotateHarthmereExpressionPart(rightMouth, -0.28 * intensity); break;
+    case "happy":
+    case "friendly":
+      scaleHarthmereExpressionPart(leftEye, [1.06, 0.78, 1]);
+      scaleHarthmereExpressionPart(rightEye, [1.06, 0.78, 1]);
+      moveHarthmereExpressionPart(leftBrow, 0, 0.015 * intensity, 0);
+      moveHarthmereExpressionPart(rightBrow, 0, 0.015 * intensity, 0);
+      scaleHarthmereExpressionPart(mouth, [1.18, 0.9, 1]);
+      moveHarthmereExpressionPart(mouth, 0, 0.018 * intensity, 0);
+      rotateHarthmereExpressionPart(leftMouth, 0.28 * intensity);
+      rotateHarthmereExpressionPart(rightMouth, -0.28 * intensity);
+      break;
     case "sad":
-      scaleHarthmereExpressionPart(leftEye, [0.92, 0.82, 1]); scaleHarthmereExpressionPart(rightEye, [0.92, 0.82, 1]);
-      moveHarthmereExpressionPart(leftBrow, 0, -0.015 * intensity, 0); moveHarthmereExpressionPart(rightBrow, 0, -0.015 * intensity, 0);
-      rotateHarthmereExpressionPart(leftBrow, -0.18 * intensity); rotateHarthmereExpressionPart(rightBrow, 0.18 * intensity);
-      moveHarthmereExpressionPart(mouth, 0, -0.018 * intensity, 0); rotateHarthmereExpressionPart(leftMouth, -0.28 * intensity); rotateHarthmereExpressionPart(rightMouth, 0.28 * intensity); break;
-    case "angry": case "determined":
-      scaleHarthmereExpressionPart(leftEye, [1.05, 0.68, 1]); scaleHarthmereExpressionPart(rightEye, [1.05, 0.68, 1]);
-      moveHarthmereExpressionPart(leftBrow, 0, -0.01 * intensity, 0); moveHarthmereExpressionPart(rightBrow, 0, -0.01 * intensity, 0);
-      rotateHarthmereExpressionPart(leftBrow, -0.34 * intensity); rotateHarthmereExpressionPart(rightBrow, 0.34 * intensity); scaleHarthmereExpressionPart(mouth, [0.9, 0.78, 1]); break;
+      scaleHarthmereExpressionPart(leftEye, [0.92, 0.82, 1]);
+      scaleHarthmereExpressionPart(rightEye, [0.92, 0.82, 1]);
+      moveHarthmereExpressionPart(leftBrow, 0, -0.015 * intensity, 0);
+      moveHarthmereExpressionPart(rightBrow, 0, -0.015 * intensity, 0);
+      rotateHarthmereExpressionPart(leftBrow, -0.18 * intensity);
+      rotateHarthmereExpressionPart(rightBrow, 0.18 * intensity);
+      moveHarthmereExpressionPart(mouth, 0, -0.018 * intensity, 0);
+      rotateHarthmereExpressionPart(leftMouth, -0.28 * intensity);
+      rotateHarthmereExpressionPart(rightMouth, 0.28 * intensity);
+      break;
+    case "angry":
+    case "determined":
+      scaleHarthmereExpressionPart(leftEye, [1.05, 0.68, 1]);
+      scaleHarthmereExpressionPart(rightEye, [1.05, 0.68, 1]);
+      moveHarthmereExpressionPart(leftBrow, 0, -0.01 * intensity, 0);
+      moveHarthmereExpressionPart(rightBrow, 0, -0.01 * intensity, 0);
+      rotateHarthmereExpressionPart(leftBrow, -0.34 * intensity);
+      rotateHarthmereExpressionPart(rightBrow, 0.34 * intensity);
+      scaleHarthmereExpressionPart(mouth, [0.9, 0.78, 1]);
+      break;
     case "surprised":
-      scaleHarthmereExpressionPart(leftEye, [1.2, 1.24, 1]); scaleHarthmereExpressionPart(rightEye, [1.2, 1.24, 1]);
-      moveHarthmereExpressionPart(leftBrow, 0, 0.035 * intensity, 0); moveHarthmereExpressionPart(rightBrow, 0, 0.035 * intensity, 0);
-      scaleHarthmereExpressionPart(mouth, [0.75, 1.9, 1]); if (teeth) teeth.visible = true; break;
+      scaleHarthmereExpressionPart(leftEye, [1.2, 1.24, 1]);
+      scaleHarthmereExpressionPart(rightEye, [1.2, 1.24, 1]);
+      moveHarthmereExpressionPart(leftBrow, 0, 0.035 * intensity, 0);
+      moveHarthmereExpressionPart(rightBrow, 0, 0.035 * intensity, 0);
+      scaleHarthmereExpressionPart(mouth, [0.75, 1.9, 1]);
+      if (teeth) teeth.visible = true;
+      break;
     case "afraid":
-      scaleHarthmereExpressionPart(leftEye, [1.12, 1.12, 1]); scaleHarthmereExpressionPart(rightEye, [1.12, 1.12, 1]);
-      moveHarthmereExpressionPart(leftBrow, 0, 0.026 * intensity, 0); moveHarthmereExpressionPart(rightBrow, 0, 0.026 * intensity, 0);
-      rotateHarthmereExpressionPart(leftBrow, 0.18 * intensity); rotateHarthmereExpressionPart(rightBrow, -0.18 * intensity); scaleHarthmereExpressionPart(mouth, [0.9, 1.45, 1]); break;
+      scaleHarthmereExpressionPart(leftEye, [1.12, 1.12, 1]);
+      scaleHarthmereExpressionPart(rightEye, [1.12, 1.12, 1]);
+      moveHarthmereExpressionPart(leftBrow, 0, 0.026 * intensity, 0);
+      moveHarthmereExpressionPart(rightBrow, 0, 0.026 * intensity, 0);
+      rotateHarthmereExpressionPart(leftBrow, 0.18 * intensity);
+      rotateHarthmereExpressionPart(rightBrow, -0.18 * intensity);
+      scaleHarthmereExpressionPart(mouth, [0.9, 1.45, 1]);
+      break;
     case "hurt":
-      scaleHarthmereExpressionPart(leftEye, [0.62, 0.55, 1]); scaleHarthmereExpressionPart(rightEye, [1.08, 0.82, 1]);
-      rotateHarthmereExpressionPart(leftBrow, -0.28 * intensity); rotateHarthmereExpressionPart(rightBrow, 0.18 * intensity);
-      moveHarthmereExpressionPart(mouth, 0.015 * intensity, -0.012 * intensity, 0); rotateHarthmereExpressionPart(mouth, -0.12 * intensity); break;
+      scaleHarthmereExpressionPart(leftEye, [0.62, 0.55, 1]);
+      scaleHarthmereExpressionPart(rightEye, [1.08, 0.82, 1]);
+      rotateHarthmereExpressionPart(leftBrow, -0.28 * intensity);
+      rotateHarthmereExpressionPart(rightBrow, 0.18 * intensity);
+      moveHarthmereExpressionPart(
+        mouth,
+        0.015 * intensity,
+        -0.012 * intensity,
+        0
+      );
+      rotateHarthmereExpressionPart(mouth, -0.12 * intensity);
+      break;
     case "dead":
-      scaleHarthmereExpressionPart(leftEye, [1.2, 0.34, 1]); scaleHarthmereExpressionPart(rightEye, [1.2, 0.34, 1]);
-      rotateHarthmereExpressionPart(leftEye, 0.48); rotateHarthmereExpressionPart(rightEye, -0.48); scaleHarthmereExpressionPart(mouth, [0.8, 0.55, 1]); break;
-    case "thinking": case "suspicious":
-      scaleHarthmereExpressionPart(leftEye, [0.92, 0.72, 1]); scaleHarthmereExpressionPart(rightEye, [1.08, 0.88, 1]);
-      rotateHarthmereExpressionPart(leftBrow, state.expression === "suspicious" ? -0.22 : 0.18); rotateHarthmereExpressionPart(rightBrow, state.expression === "suspicious" ? 0.08 : -0.08);
-      moveHarthmereExpressionPart(mouth, state.expression === "suspicious" ? 0.014 : 0, 0, 0); break;
-    case "neutral": default: break;
+      scaleHarthmereExpressionPart(leftEye, [1.2, 0.34, 1]);
+      scaleHarthmereExpressionPart(rightEye, [1.2, 0.34, 1]);
+      rotateHarthmereExpressionPart(leftEye, 0.48);
+      rotateHarthmereExpressionPart(rightEye, -0.48);
+      scaleHarthmereExpressionPart(mouth, [0.8, 0.55, 1]);
+      break;
+    case "thinking":
+    case "suspicious":
+      scaleHarthmereExpressionPart(leftEye, [0.92, 0.72, 1]);
+      scaleHarthmereExpressionPart(rightEye, [1.08, 0.88, 1]);
+      rotateHarthmereExpressionPart(
+        leftBrow,
+        state.expression === "suspicious" ? -0.22 : 0.18
+      );
+      rotateHarthmereExpressionPart(
+        rightBrow,
+        state.expression === "suspicious" ? 0.08 : -0.08
+      );
+      moveHarthmereExpressionPart(
+        mouth,
+        state.expression === "suspicious" ? 0.014 : 0,
+        0,
+        0
+      );
+      break;
+    case "neutral":
+    default:
+      break;
   }
   faceRoot.userData.harthmereFacialExpression = state;
 }
-function applyHarthmerePlayerFacialExpressionToObject(root: THREE.Object3D, state: HarthmereFacialExpressionState) {
-  root.traverse((object) => { if (object.userData.harthmerePlayerFaceExpressionRoot) applyHarthmerePlayerFacialExpressionToFaceRoot(object, state); });
+function applyHarthmerePlayerFacialExpressionToObject(
+  root: THREE.Object3D,
+  state: HarthmereFacialExpressionState
+) {
+  root.traverse((object) => {
+    if (object.userData.harthmerePlayerFaceExpressionRoot)
+      applyHarthmerePlayerFacialExpressionToFaceRoot(object, state);
+  });
 }
-function installHarthmerePlayerFacialExpressionBridge(root: THREE.Object3D, userId: BiomesId) {
+function installHarthmerePlayerFacialExpressionBridge(
+  root: THREE.Object3D,
+  userId: BiomesId
+) {
   if (typeof window === "undefined") return undefined;
   const actorIds = new Set(["player", "you", "Player", String(userId)]);
   let lastStateAt = 0;
   const handler = (event: Event) => {
-    const detail = (event as CustomEvent).detail as HarthmereFacialExpressionState | undefined;
+    const detail = (event as CustomEvent).detail as
+      | HarthmereFacialExpressionState
+      | undefined;
     if (!detail) return;
     const actorId = String(detail.actorId ?? detail.targetId ?? "player");
     if (!actorIds.has(actorId)) return;
@@ -1547,19 +1810,39 @@ function installHarthmerePlayerFacialExpressionBridge(root: THREE.Object3D, user
     if (remaining > 0) {
       window.setTimeout(() => {
         if (lastStateAt !== state.at) return;
-        applyHarthmerePlayerFacialExpressionToObject(root, makeHarthmereFacialExpressionState({ actorId, expression: "neutral", source: "ambient", reason: "expression-expired" }));
+        applyHarthmerePlayerFacialExpressionToObject(
+          root,
+          makeHarthmereFacialExpressionState({
+            actorId,
+            expression: "neutral",
+            source: "ambient",
+            reason: "expression-expired",
+          })
+        );
       }, remaining);
     }
   };
   window.addEventListener(HARTHMERE_FACIAL_EXPRESSION_EVENT, handler);
-  const win = window as typeof window & { __harthmereSetPlayerFacialExpression?: (expression: string, options?: Record<string, unknown>) => unknown };
-  win.__harthmereSetPlayerFacialExpression = (expression, options = {}) => dispatchHarthmereFacialExpressionEvent({ ...options, actorId: "player", expression, source: String(options.source ?? "script") });
-  return () => window.removeEventListener(HARTHMERE_FACIAL_EXPRESSION_EVENT, handler);
+  const win = window as typeof window & {
+    __harthmereSetPlayerFacialExpression?: (
+      expression: string,
+      options?: Record<string, unknown>
+    ) => unknown;
+  };
+  win.__harthmereSetPlayerFacialExpression = (expression, options = {}) =>
+    dispatchHarthmereFacialExpressionEvent({
+      ...options,
+      actorId: "player",
+      expression,
+      source: String(options.source ?? "script"),
+    });
+  return () =>
+    window.removeEventListener(HARTHMERE_FACIAL_EXPRESSION_EVENT, handler);
 }
 
 function harthmereFindAnchor(
   root: THREE.Object3D,
-  candidates: readonly string[],
+  candidates: readonly string[]
 ): THREE.Object3D | undefined {
   for (const name of candidates) {
     const found = root.getObjectByName(name);
@@ -1572,7 +1855,7 @@ function harthmereFindAnchor(
 
 function harthmereVariantHeadAnchor(
   root: THREE.Object3D,
-  anchors: HarthmereCharacterAttachmentAnchors = HARTHMERE_DEFAULT_HUMAN_ANCHORS,
+  anchors: HarthmereCharacterAttachmentAnchors = HARTHMERE_DEFAULT_HUMAN_ANCHORS
 ): THREE.Object3D | undefined {
   // Prefer neck/spine anchors for the custom voxel head. Some body variants have
   // a Head node, but we hide that built-in head before adding the Harthmere face;
@@ -1613,7 +1896,7 @@ const HARTHMERE_PLAYER_CLOTHING_SLOT_ANCHORS: Record<
 
 function harthmereFindAnchorByPatterns(
   root: THREE.Object3D,
-  patterns: readonly RegExp[],
+  patterns: readonly RegExp[]
 ): THREE.Object3D | undefined {
   let found: THREE.Object3D | undefined;
   root.traverse((child) => {
@@ -1630,7 +1913,7 @@ function harthmereFindAnchorByPatterns(
 
 function harthmerePlayerClothingAnchor(
   root: THREE.Object3D,
-  anchor: HarthmereRuntimeClothingAnchor,
+  anchor: HarthmereRuntimeClothingAnchor
 ): THREE.Object3D {
   const byKind: Record<HarthmereRuntimeClothingAnchor, readonly RegExp[]> = {
     head: [/^head$/i, /head/i],
@@ -1646,7 +1929,9 @@ function harthmerePlayerClothingAnchor(
   return harthmereFindAnchorByPatterns(root, byKind[anchor]) ?? root;
 }
 
-function harthmerePlayerClothingPalette(appearance: HarthmereCharacterAppearance) {
+function harthmerePlayerClothingPalette(
+  appearance: HarthmereCharacterAppearance
+) {
   const bodyColor = {
     earth: 0x7a5c42,
     forest: 0x446948,
@@ -1661,7 +1946,10 @@ function harthmerePlayerClothingPalette(appearance: HarthmereCharacterAppearance
     dark: harthmereVoxelColorDarken(bodyColor, 0.34),
     leather: 0x5b3a24,
     metal: 0x9ca3af,
-    accent: appearance.role === "guard" ? 0xb8b2a4 : harthmereVoxelColorLighten(bodyColor, 0.42),
+    accent:
+      appearance.role === "guard"
+        ? 0xb8b2a4
+        : harthmereVoxelColorLighten(bodyColor, 0.42),
   };
 }
 
@@ -1671,7 +1959,7 @@ function addHarthmerePlayerClothingBox(
   size: [number, number, number],
   position: [number, number, number],
   color: number,
-  rotation?: [number, number, number],
+  rotation?: [number, number, number]
 ) {
   const mesh = localDevBoltHeadBox(name, size, position, color);
   mesh.castShadow = true;
@@ -1703,13 +1991,19 @@ type HarthmerePlayerClothingFitMetrics = {
   headDepth: number;
 };
 
-function harthmerePlayerClothingRenderMode(item: HarthmereClothingItem): HarthmerePlayerClothingRenderMode {
-  const explicit = item.renderMode as HarthmerePlayerClothingRenderMode | undefined;
+function harthmerePlayerClothingRenderMode(
+  item: HarthmereClothingItem
+): HarthmerePlayerClothingRenderMode {
+  const explicit = item.renderMode as
+    | HarthmerePlayerClothingRenderMode
+    | undefined;
   if (explicit === "gltf" || explicit === "threejs" || explicit === "auto") {
     return explicit;
   }
   if (typeof window !== "undefined") {
-    const stored = window.localStorage.getItem(HARTHMERE_PLAYER_CLOTHING_RENDER_MODE_STORAGE_KEY);
+    const stored = window.localStorage.getItem(
+      HARTHMERE_PLAYER_CLOTHING_RENDER_MODE_STORAGE_KEY
+    );
     if (stored === "gltf" || stored === "threejs" || stored === "auto") {
       return stored;
     }
@@ -1718,7 +2012,7 @@ function harthmerePlayerClothingRenderMode(item: HarthmereClothingItem): Harthme
 }
 
 function harthmerePlayerClothingFitMetrics(
-  appearance: HarthmereCharacterAppearance,
+  appearance: HarthmereCharacterAppearance
 ): HarthmerePlayerClothingFitMetrics {
   const body = appearance.body;
   const torsoWidth =
@@ -1747,11 +2041,16 @@ function harthmerePlayerClothingFitMetrics(
       : body.shoulderWidth === "narrow"
       ? torsoWidth + 0.04
       : torsoWidth + 0.14;
-  const legLength = body.legLength === "long" ? 0.64 : body.legLength === "short" ? 0.4 : 0.52;
-  const armLength = body.armLength === "long" ? 0.7 : body.armLength === "short" ? 0.46 : 0.58;
-  const stanceOffset = body.stance === "heroic" ? 0.05 : body.stance === "reserved" ? -0.03 : 0;
-  const stanceArmX = body.stance === "heroic" ? 0.035 : body.stance === "reserved" ? -0.02 : 0;
-  const legSpread = body.stance === "heroic" ? 0.07 : body.stance === "reserved" ? 0.02 : 0.045;
+  const legLength =
+    body.legLength === "long" ? 0.64 : body.legLength === "short" ? 0.4 : 0.52;
+  const armLength =
+    body.armLength === "long" ? 0.7 : body.armLength === "short" ? 0.46 : 0.58;
+  const stanceOffset =
+    body.stance === "heroic" ? 0.05 : body.stance === "reserved" ? -0.03 : 0;
+  const stanceArmX =
+    body.stance === "heroic" ? 0.035 : body.stance === "reserved" ? -0.02 : 0;
+  const legSpread =
+    body.stance === "heroic" ? 0.07 : body.stance === "reserved" ? 0.02 : 0.045;
   const heightNudge =
     body.bodyHeight === "short"
       ? -0.03
@@ -1767,7 +2066,8 @@ function harthmerePlayerClothingFitMetrics(
     armLength,
     legLength: legLength + heightNudge,
     torsoY: legLength + torsoHeight / 2 + stanceOffset + heightNudge * 0.5,
-    shoulderY: legLength + torsoHeight * 0.74 + stanceOffset + heightNudge * 0.5,
+    shoulderY:
+      legLength + torsoHeight * 0.74 + stanceOffset + heightNudge * 0.5,
     hipY: legLength + 0.08 + stanceOffset,
     legSpread,
     stanceOffset,
@@ -1780,7 +2080,7 @@ function harthmerePlayerClothingFitMetrics(
 function harthmerePlayerClothingTargetSize(
   slot: HarthmereClothingSlot,
   item: HarthmereClothingItem,
-  metrics: HarthmerePlayerClothingFitMetrics,
+  metrics: HarthmerePlayerClothingFitMetrics
 ): THREE.Vector3 | undefined {
   const fitScale = item.fitScale ?? 1;
   if (item.fitMode === "none") {
@@ -1790,36 +2090,45 @@ function harthmerePlayerClothingTargetSize(
     const robe = /robe|shroud/i.test(item.id);
     return new THREE.Vector3(
       (metrics.torsoWidth + 0.16) * fitScale,
-      (metrics.torsoHeight + (robe ? metrics.legLength * 0.55 : 0.1)) * fitScale,
-      0.36 * fitScale,
+      (metrics.torsoHeight + (robe ? metrics.legLength * 0.55 : 0.1)) *
+        fitScale,
+      0.36 * fitScale
     );
   }
   if (slot === "legs") {
     return new THREE.Vector3(
       (metrics.torsoWidth + 0.18) * fitScale,
       Math.max(0.34, metrics.legLength * 0.95) * fitScale,
-      0.26 * fitScale,
+      0.26 * fitScale
     );
   }
   if (slot === "feet") {
     return new THREE.Vector3(
       (metrics.torsoWidth + 0.18) * fitScale,
       0.14 * fitScale,
-      0.26 * fitScale,
+      0.26 * fitScale
     );
   }
   if (slot === "hands") {
     return new THREE.Vector3(
       (metrics.shoulderWidth + 0.2) * fitScale,
       Math.max(0.14, metrics.armLength * 0.34) * fitScale,
-      0.18 * fitScale,
+      0.18 * fitScale
     );
   }
   if (slot === "belt") {
-    return new THREE.Vector3((metrics.torsoWidth + 0.18) * fitScale, 0.08 * fitScale, 0.36 * fitScale);
+    return new THREE.Vector3(
+      (metrics.torsoWidth + 0.18) * fitScale,
+      0.08 * fitScale,
+      0.36 * fitScale
+    );
   }
   if (slot === "head" || slot === "hair") {
-    return new THREE.Vector3((metrics.headWidth + 0.14) * fitScale, 0.24 * fitScale, (metrics.headDepth + 0.1) * fitScale);
+    return new THREE.Vector3(
+      (metrics.headWidth + 0.14) * fitScale,
+      0.24 * fitScale,
+      (metrics.headDepth + 0.1) * fitScale
+    );
   }
   if (slot === "face") {
     return new THREE.Vector3(0.32 * fitScale, 0.16 * fitScale, 0.08 * fitScale);
@@ -1839,7 +2148,7 @@ function harthmerePlayerClothingTargetSize(
 function fitHarthmerePlayerClothingObjectToBody(
   object: THREE.Object3D,
   item: HarthmereClothingItem,
-  metrics: HarthmerePlayerClothingFitMetrics,
+  metrics: HarthmerePlayerClothingFitMetrics
 ): void {
   const target = harthmerePlayerClothingTargetSize(item.slot, item, metrics);
   if (!target) {
@@ -1858,11 +2167,12 @@ function fitHarthmerePlayerClothingObjectToBody(
   const scale = Math.min(
     target.x / current.x,
     target.y / current.y,
-    target.z / current.z,
+    target.z / current.z
   );
   const safeScale = Math.max(0.05, Math.min(20, scale));
   object.scale.multiplyScalar(safeScale);
-  object.userData.harthmereClothingBodyFitVersion = "harthmere-clothing-body-fit-v16-polished-threejs-catalog";
+  object.userData.harthmereClothingBodyFitVersion =
+    "harthmere-clothing-body-fit-v16-polished-threejs-catalog";
   object.userData.harthmereClothingBodyFitTarget = target.toArray();
 }
 
@@ -1872,7 +2182,7 @@ function addHarthmerePlayerProceduralClothingProxy(
   item: HarthmereClothingItem,
   appearance: HarthmereCharacterAppearance,
   metrics: HarthmerePlayerClothingFitMetrics,
-  anchorKind: HarthmereRuntimeClothingAnchor,
+  anchorKind: HarthmereRuntimeClothingAnchor
 ) {
   const palette = harthmerePlayerClothingPalette(appearance);
   const name = `harthmere-player-clothing-${slot}-${item.id}`;
@@ -1887,36 +2197,138 @@ function addHarthmerePlayerProceduralClothingProxy(
     prefix: string,
     y: number,
     frontZ: number,
-    width = metrics.torsoWidth + 0.18,
+    width = metrics.torsoWidth + 0.18
   ) => {
-    addHarthmerePlayerClothingBox(group, `${name}-${prefix}-front`, [width, 0.035, 0.045], [0, y, frontZ], palette.trim);
-    addHarthmerePlayerClothingBox(group, `${name}-${prefix}-back`, [width * 0.94, 0.03, 0.04], [0, y, 0.14], palette.dark);
+    addHarthmerePlayerClothingBox(
+      group,
+      `${name}-${prefix}-front`,
+      [width, 0.035, 0.045],
+      [0, y, frontZ],
+      palette.trim
+    );
+    addHarthmerePlayerClothingBox(
+      group,
+      `${name}-${prefix}-back`,
+      [width * 0.94, 0.03, 0.04],
+      [0, y, 0.14],
+      palette.dark
+    );
   };
 
   if (slot === "head" || slot === "hair") {
     if (/helmet|guard_helmet/i.test(variant)) {
-      addHarthmerePlayerClothingBox(group, `${name}-helmet-bowl`, [metrics.headWidth + 0.14, 0.13, metrics.headDepth + 0.14], [0, 0.08, 0], palette.metal);
-      addHarthmerePlayerClothingBox(group, `${name}-helmet-brow`, [metrics.headWidth + 0.2, 0.04, 0.075], [0, 0.015, -metrics.headDepth / 2 - 0.055], palette.dark);
-      addHarthmerePlayerClothingBox(group, `${name}-helmet-left-cheek`, [0.04, 0.18, 0.07], [-(metrics.headWidth / 2 + 0.055), -0.035, -metrics.headDepth / 2 + 0.02], palette.metal);
-      addHarthmerePlayerClothingBox(group, `${name}-helmet-right-cheek`, [0.04, 0.18, 0.07], [metrics.headWidth / 2 + 0.055, -0.035, -metrics.headDepth / 2 + 0.02], palette.metal);
-      addHarthmerePlayerClothingBox(group, `${name}-crest`, [0.07, 0.22, 0.08], [0, 0.25, 0], palette.accent);
+      addHarthmerePlayerClothingBox(
+        group,
+        `${name}-helmet-bowl`,
+        [metrics.headWidth + 0.14, 0.13, metrics.headDepth + 0.14],
+        [0, 0.08, 0],
+        palette.metal
+      );
+      addHarthmerePlayerClothingBox(
+        group,
+        `${name}-helmet-brow`,
+        [metrics.headWidth + 0.2, 0.04, 0.075],
+        [0, 0.015, -metrics.headDepth / 2 - 0.055],
+        palette.dark
+      );
+      addHarthmerePlayerClothingBox(
+        group,
+        `${name}-helmet-left-cheek`,
+        [0.04, 0.18, 0.07],
+        [
+          -(metrics.headWidth / 2 + 0.055),
+          -0.035,
+          -metrics.headDepth / 2 + 0.02,
+        ],
+        palette.metal
+      );
+      addHarthmerePlayerClothingBox(
+        group,
+        `${name}-helmet-right-cheek`,
+        [0.04, 0.18, 0.07],
+        [metrics.headWidth / 2 + 0.055, -0.035, -metrics.headDepth / 2 + 0.02],
+        palette.metal
+      );
+      addHarthmerePlayerClothingBox(
+        group,
+        `${name}-crest`,
+        [0.07, 0.22, 0.08],
+        [0, 0.25, 0],
+        palette.accent
+      );
     } else if (/hood/i.test(variant)) {
-      addHarthmerePlayerClothingBox(group, `${name}-hood-cap`, [metrics.headWidth + 0.18, 0.18, metrics.headDepth + 0.18], [0, 0.07, 0.02], palette.dark);
-      addHarthmerePlayerClothingBox(group, `${name}-hood-brow-shadow`, [metrics.headWidth + 0.12, 0.05, 0.05], [0, 0.005, -metrics.headDepth / 2 - 0.06], palette.trim);
-      addHarthmerePlayerClothingBox(group, `${name}-hood-drape`, [metrics.headWidth + 0.12, 0.22, 0.05], [0, -0.13, 0.12], palette.dark);
+      addHarthmerePlayerClothingBox(
+        group,
+        `${name}-hood-cap`,
+        [metrics.headWidth + 0.18, 0.18, metrics.headDepth + 0.18],
+        [0, 0.07, 0.02],
+        palette.dark
+      );
+      addHarthmerePlayerClothingBox(
+        group,
+        `${name}-hood-brow-shadow`,
+        [metrics.headWidth + 0.12, 0.05, 0.05],
+        [0, 0.005, -metrics.headDepth / 2 - 0.06],
+        palette.trim
+      );
+      addHarthmerePlayerClothingBox(
+        group,
+        `${name}-hood-drape`,
+        [metrics.headWidth + 0.12, 0.22, 0.05],
+        [0, -0.13, 0.12],
+        palette.dark
+      );
     } else if (/hat|cap|wide_brim|soft_cap/i.test(variant)) {
-      const brimDepth = /wide_brim|straw/i.test(variant) ? metrics.headDepth + 0.28 : metrics.headDepth + 0.14;
-      addHarthmerePlayerClothingBox(group, `${name}-brim`, [metrics.headWidth + 0.28, 0.04, brimDepth], [0, 0.035, -0.01], palette.trim);
-      addHarthmerePlayerClothingBox(group, `${name}-crown`, [metrics.headWidth * 0.62, 0.14, metrics.headDepth * 0.7], [0, 0.145, 0], palette.cloth);
-      addHarthmerePlayerClothingBox(group, `${name}-hat-band`, [metrics.headWidth * 0.7, 0.035, metrics.headDepth * 0.76], [0, 0.09, -0.005], palette.dark);
+      const brimDepth = /wide_brim|straw/i.test(variant)
+        ? metrics.headDepth + 0.28
+        : metrics.headDepth + 0.14;
+      addHarthmerePlayerClothingBox(
+        group,
+        `${name}-brim`,
+        [metrics.headWidth + 0.28, 0.04, brimDepth],
+        [0, 0.035, -0.01],
+        palette.trim
+      );
+      addHarthmerePlayerClothingBox(
+        group,
+        `${name}-crown`,
+        [metrics.headWidth * 0.62, 0.14, metrics.headDepth * 0.7],
+        [0, 0.145, 0],
+        palette.cloth
+      );
+      addHarthmerePlayerClothingBox(
+        group,
+        `${name}-hat-band`,
+        [metrics.headWidth * 0.7, 0.035, metrics.headDepth * 0.76],
+        [0, 0.09, -0.005],
+        palette.dark
+      );
     }
     return;
   }
 
   if (slot === "face" && /mask/i.test(variant)) {
-    addHarthmerePlayerClothingBox(group, `${name}-mask-main`, [metrics.headWidth * 0.58, 0.075, 0.04], [0, -0.02, -metrics.headDepth / 2 - 0.04], palette.dark);
-    addHarthmerePlayerClothingBox(group, `${name}-mask-left-tie`, [0.08, 0.035, 0.035], [-(metrics.headWidth * 0.36), -0.015, -metrics.headDepth / 2 - 0.025], palette.trim);
-    addHarthmerePlayerClothingBox(group, `${name}-mask-right-tie`, [0.08, 0.035, 0.035], [metrics.headWidth * 0.36, -0.015, -metrics.headDepth / 2 - 0.025], palette.trim);
+    addHarthmerePlayerClothingBox(
+      group,
+      `${name}-mask-main`,
+      [metrics.headWidth * 0.58, 0.075, 0.04],
+      [0, -0.02, -metrics.headDepth / 2 - 0.04],
+      palette.dark
+    );
+    addHarthmerePlayerClothingBox(
+      group,
+      `${name}-mask-left-tie`,
+      [0.08, 0.035, 0.035],
+      [-(metrics.headWidth * 0.36), -0.015, -metrics.headDepth / 2 - 0.025],
+      palette.trim
+    );
+    addHarthmerePlayerClothingBox(
+      group,
+      `${name}-mask-right-tie`,
+      [0.08, 0.035, 0.035],
+      [metrics.headWidth * 0.36, -0.015, -metrics.headDepth / 2 - 0.025],
+      palette.trim
+    );
     return;
   }
 
@@ -1927,48 +2339,190 @@ function addHarthmerePlayerProceduralClothingProxy(
     const merchant = /merchant|noble|doublet/i.test(variant);
     const hunter = /hunter|jerkin/i.test(variant);
     const torn = /torn|scrap|patched/i.test(variant);
-    const torsoHeight = metrics.torsoHeight + (robe ? metrics.legLength * 0.58 : 0.08);
+    const torsoHeight =
+      metrics.torsoHeight + (robe ? metrics.legLength * 0.58 : 0.08);
     const torsoY = metrics.torsoY - (robe ? metrics.legLength * 0.23 : 0);
-    const chestColor = armor ? palette.metal : hunter ? palette.leather : palette.cloth;
-    addHarthmerePlayerClothingBox(group, `${name}-front-panel`, [metrics.torsoWidth + 0.14, torsoHeight, 0.065], [0, torsoY, -0.175], chestColor);
-    addHarthmerePlayerClothingBox(group, `${name}-back-panel`, [metrics.torsoWidth + 0.12, torsoHeight * 0.93, 0.055], [0, torsoY, 0.15], palette.dark);
-    addHarthmerePlayerClothingBox(group, `${name}-left-side-panel`, [0.06, torsoHeight * 0.92, 0.31], [-(metrics.torsoWidth / 2 + 0.06), torsoY, -0.01], chestColor);
-    addHarthmerePlayerClothingBox(group, `${name}-right-side-panel`, [0.06, torsoHeight * 0.92, 0.31], [metrics.torsoWidth / 2 + 0.06, torsoY, -0.01], chestColor);
+    const chestColor = armor
+      ? palette.metal
+      : hunter
+      ? palette.leather
+      : palette.cloth;
+    addHarthmerePlayerClothingBox(
+      group,
+      `${name}-front-panel`,
+      [metrics.torsoWidth + 0.14, torsoHeight, 0.065],
+      [0, torsoY, -0.175],
+      chestColor
+    );
+    addHarthmerePlayerClothingBox(
+      group,
+      `${name}-back-panel`,
+      [metrics.torsoWidth + 0.12, torsoHeight * 0.93, 0.055],
+      [0, torsoY, 0.15],
+      palette.dark
+    );
+    addHarthmerePlayerClothingBox(
+      group,
+      `${name}-left-side-panel`,
+      [0.06, torsoHeight * 0.92, 0.31],
+      [-(metrics.torsoWidth / 2 + 0.06), torsoY, -0.01],
+      chestColor
+    );
+    addHarthmerePlayerClothingBox(
+      group,
+      `${name}-right-side-panel`,
+      [0.06, torsoHeight * 0.92, 0.31],
+      [metrics.torsoWidth / 2 + 0.06, torsoY, -0.01],
+      chestColor
+    );
     addTrimPair("collar", metrics.torsoY + metrics.torsoHeight * 0.5, -0.205);
-    addTrimPair("hem", torsoY - torsoHeight * 0.5, -0.2, metrics.torsoWidth + 0.2);
+    addTrimPair(
+      "hem",
+      torsoY - torsoHeight * 0.5,
+      -0.2,
+      metrics.torsoWidth + 0.2
+    );
 
     if (armor) {
-      addHarthmerePlayerClothingBox(group, `${name}-left-pauldron`, [0.18, 0.08, 0.24], [-(metrics.shoulderWidth / 2 + 0.02), metrics.shoulderY + 0.02, -0.035], palette.metal);
-      addHarthmerePlayerClothingBox(group, `${name}-right-pauldron`, [0.18, 0.08, 0.24], [metrics.shoulderWidth / 2 + 0.02, metrics.shoulderY + 0.02, -0.035], palette.metal);
-      addHarthmerePlayerClothingBox(group, `${name}-tabard-stripe`, [0.12, torsoHeight * 0.92, 0.075], [0, torsoY, -0.235], palette.accent);
-      addHarthmerePlayerClothingBox(group, `${name}-chest-emblem`, [0.16, 0.13, 0.08], [0, metrics.torsoY + metrics.torsoHeight * 0.18, -0.27], palette.trim);
+      addHarthmerePlayerClothingBox(
+        group,
+        `${name}-left-pauldron`,
+        [0.18, 0.08, 0.24],
+        [-(metrics.shoulderWidth / 2 + 0.02), metrics.shoulderY + 0.02, -0.035],
+        palette.metal
+      );
+      addHarthmerePlayerClothingBox(
+        group,
+        `${name}-right-pauldron`,
+        [0.18, 0.08, 0.24],
+        [metrics.shoulderWidth / 2 + 0.02, metrics.shoulderY + 0.02, -0.035],
+        palette.metal
+      );
+      addHarthmerePlayerClothingBox(
+        group,
+        `${name}-tabard-stripe`,
+        [0.12, torsoHeight * 0.92, 0.075],
+        [0, torsoY, -0.235],
+        palette.accent
+      );
+      addHarthmerePlayerClothingBox(
+        group,
+        `${name}-chest-emblem`,
+        [0.16, 0.13, 0.08],
+        [0, metrics.torsoY + metrics.torsoHeight * 0.18, -0.27],
+        palette.trim
+      );
       if (/scale_vest/i.test(variant)) {
         for (let row = 0; row < 3; row += 1) {
-          addHarthmerePlayerClothingBox(group, `${name}-scale-row-${row}`, [metrics.torsoWidth + 0.05 - row * 0.03, 0.035, 0.08], [0, metrics.torsoY + 0.15 - row * 0.12, -0.255], palette.dark);
+          addHarthmerePlayerClothingBox(
+            group,
+            `${name}-scale-row-${row}`,
+            [metrics.torsoWidth + 0.05 - row * 0.03, 0.035, 0.08],
+            [0, metrics.torsoY + 0.15 - row * 0.12, -0.255],
+            palette.dark
+          );
         }
       }
     }
     if (hunter) {
-      addHarthmerePlayerClothingBox(group, `${name}-diagonal-strap`, [0.07, torsoHeight * 1.04, 0.075], [-0.08, torsoY, -0.235], palette.leather, [0, 0, -0.32]);
-      addHarthmerePlayerClothingBox(group, `${name}-fur-collar`, [metrics.torsoWidth + 0.16, 0.08, 0.34], [0, metrics.torsoY + metrics.torsoHeight * 0.5, -0.02], palette.trim);
+      addHarthmerePlayerClothingBox(
+        group,
+        `${name}-diagonal-strap`,
+        [0.07, torsoHeight * 1.04, 0.075],
+        [-0.08, torsoY, -0.235],
+        palette.leather,
+        [0, 0, -0.32]
+      );
+      addHarthmerePlayerClothingBox(
+        group,
+        `${name}-fur-collar`,
+        [metrics.torsoWidth + 0.16, 0.08, 0.34],
+        [0, metrics.torsoY + metrics.torsoHeight * 0.5, -0.02],
+        palette.trim
+      );
     }
     if (robe || /mage/i.test(variant)) {
-      addHarthmerePlayerClothingBox(group, `${name}-robe-sash`, [0.075, torsoHeight * 1.04, 0.08], [-0.13, torsoY, -0.235], palette.accent, [0, 0, -0.16]);
-      addHarthmerePlayerClothingBox(group, `${name}-robe-center-fold`, [0.045, torsoHeight * 0.95, 0.075], [0.08, torsoY - 0.02, -0.24], palette.trim);
+      addHarthmerePlayerClothingBox(
+        group,
+        `${name}-robe-sash`,
+        [0.075, torsoHeight * 1.04, 0.08],
+        [-0.13, torsoY, -0.235],
+        palette.accent,
+        [0, 0, -0.16]
+      );
+      addHarthmerePlayerClothingBox(
+        group,
+        `${name}-robe-center-fold`,
+        [0.045, torsoHeight * 0.95, 0.075],
+        [0.08, torsoY - 0.02, -0.24],
+        palette.trim
+      );
     }
     if (apron) {
-      addHarthmerePlayerClothingBox(group, `${name}-apron`, [metrics.torsoWidth * 0.76, torsoHeight * 0.86, 0.075], [0, torsoY - 0.02, -0.245], palette.leather);
-      addHarthmerePlayerClothingBox(group, `${name}-apron-pocket`, [0.16, 0.1, 0.08], [0.12, metrics.hipY + 0.08, -0.295], palette.dark);
+      addHarthmerePlayerClothingBox(
+        group,
+        `${name}-apron`,
+        [metrics.torsoWidth * 0.76, torsoHeight * 0.86, 0.075],
+        [0, torsoY - 0.02, -0.245],
+        palette.leather
+      );
+      addHarthmerePlayerClothingBox(
+        group,
+        `${name}-apron-pocket`,
+        [0.16, 0.1, 0.08],
+        [0.12, metrics.hipY + 0.08, -0.295],
+        palette.dark
+      );
     }
     if (merchant) {
-      addHarthmerePlayerClothingBox(group, `${name}-left-lapel`, [0.08, torsoHeight * 0.68, 0.075], [-0.13, torsoY + 0.04, -0.245], palette.trim, [0, 0, -0.08]);
-      addHarthmerePlayerClothingBox(group, `${name}-right-lapel`, [0.08, torsoHeight * 0.68, 0.075], [0.13, torsoY + 0.04, -0.245], palette.trim, [0, 0, 0.08]);
-      addHarthmerePlayerClothingBox(group, `${name}-coat-button-top`, [0.045, 0.045, 0.08], [0, metrics.torsoY + 0.14, -0.285], palette.metal);
-      addHarthmerePlayerClothingBox(group, `${name}-coat-button-bottom`, [0.045, 0.045, 0.08], [0, metrics.torsoY - 0.04, -0.285], palette.metal);
+      addHarthmerePlayerClothingBox(
+        group,
+        `${name}-left-lapel`,
+        [0.08, torsoHeight * 0.68, 0.075],
+        [-0.13, torsoY + 0.04, -0.245],
+        palette.trim,
+        [0, 0, -0.08]
+      );
+      addHarthmerePlayerClothingBox(
+        group,
+        `${name}-right-lapel`,
+        [0.08, torsoHeight * 0.68, 0.075],
+        [0.13, torsoY + 0.04, -0.245],
+        palette.trim,
+        [0, 0, 0.08]
+      );
+      addHarthmerePlayerClothingBox(
+        group,
+        `${name}-coat-button-top`,
+        [0.045, 0.045, 0.08],
+        [0, metrics.torsoY + 0.14, -0.285],
+        palette.metal
+      );
+      addHarthmerePlayerClothingBox(
+        group,
+        `${name}-coat-button-bottom`,
+        [0.045, 0.045, 0.08],
+        [0, metrics.torsoY - 0.04, -0.285],
+        palette.metal
+      );
     }
     if (torn) {
-      addHarthmerePlayerClothingBox(group, `${name}-torn-left-patch`, [0.14, 0.12, 0.08], [-(metrics.torsoWidth * 0.24), metrics.torsoY - 0.03, -0.275], palette.trim, [0, 0, -0.12]);
-      addHarthmerePlayerClothingBox(group, `${name}-torn-right-patch`, [0.12, 0.11, 0.08], [metrics.torsoWidth * 0.26, metrics.torsoY + 0.11, -0.275], palette.dark, [0, 0, 0.16]);
+      addHarthmerePlayerClothingBox(
+        group,
+        `${name}-torn-left-patch`,
+        [0.14, 0.12, 0.08],
+        [-(metrics.torsoWidth * 0.24), metrics.torsoY - 0.03, -0.275],
+        palette.trim,
+        [0, 0, -0.12]
+      );
+      addHarthmerePlayerClothingBox(
+        group,
+        `${name}-torn-right-patch`,
+        [0.12, 0.11, 0.08],
+        [metrics.torsoWidth * 0.26, metrics.torsoY + 0.11, -0.275],
+        palette.dark,
+        [0, 0, 0.16]
+      );
     }
     return;
   }
@@ -1981,20 +2535,86 @@ function addHarthmerePlayerProceduralClothingProxy(
     const patched = /patched|torn/i.test(variant);
     const robe = /robe|skirt/i.test(variant);
     if (robe) {
-      addHarthmerePlayerClothingBox(group, `${name}-robe-skirt-front`, [metrics.torsoWidth + 0.12, metrics.legLength * 0.86, 0.06], [0, legY, -0.15], palette.cloth);
-      addHarthmerePlayerClothingBox(group, `${name}-robe-skirt-back`, [metrics.torsoWidth + 0.08, metrics.legLength * 0.82, 0.05], [0, legY, 0.12], palette.dark);
-      addHarthmerePlayerClothingBox(group, `${name}-robe-split`, [0.035, metrics.legLength * 0.72, 0.075], [0, legY - 0.05, -0.205], palette.trim);
+      addHarthmerePlayerClothingBox(
+        group,
+        `${name}-robe-skirt-front`,
+        [metrics.torsoWidth + 0.12, metrics.legLength * 0.86, 0.06],
+        [0, legY, -0.15],
+        palette.cloth
+      );
+      addHarthmerePlayerClothingBox(
+        group,
+        `${name}-robe-skirt-back`,
+        [metrics.torsoWidth + 0.08, metrics.legLength * 0.82, 0.05],
+        [0, legY, 0.12],
+        palette.dark
+      );
+      addHarthmerePlayerClothingBox(
+        group,
+        `${name}-robe-split`,
+        [0.035, metrics.legLength * 0.72, 0.075],
+        [0, legY - 0.05, -0.205],
+        palette.trim
+      );
       return;
     }
-    addHarthmerePlayerClothingBox(group, `${name}-left-trouser-front`, [0.18, metrics.legLength * 0.9, 0.07], [leftX, legY, -0.13], armored ? palette.metal : palette.dark);
-    addHarthmerePlayerClothingBox(group, `${name}-right-trouser-front`, [0.18, metrics.legLength * 0.9, 0.07], [rightX, legY, -0.13], armored ? palette.metal : palette.dark);
-    addHarthmerePlayerClothingBox(group, `${name}-left-trouser-back`, [0.16, metrics.legLength * 0.85, 0.05], [leftX, legY, 0.11], palette.cloth);
-    addHarthmerePlayerClothingBox(group, `${name}-right-trouser-back`, [0.16, metrics.legLength * 0.85, 0.05], [rightX, legY, 0.11], palette.cloth);
-    addHarthmerePlayerClothingBox(group, `${name}-left-knee-detail`, [0.19, 0.055, 0.08], [leftX, legY + metrics.legLength * 0.08, -0.18], armored ? palette.dark : palette.trim);
-    addHarthmerePlayerClothingBox(group, `${name}-right-knee-detail`, [0.19, 0.055, 0.08], [rightX, legY + metrics.legLength * 0.08, -0.18], armored ? palette.dark : palette.trim);
+    addHarthmerePlayerClothingBox(
+      group,
+      `${name}-left-trouser-front`,
+      [0.18, metrics.legLength * 0.9, 0.07],
+      [leftX, legY, -0.13],
+      armored ? palette.metal : palette.dark
+    );
+    addHarthmerePlayerClothingBox(
+      group,
+      `${name}-right-trouser-front`,
+      [0.18, metrics.legLength * 0.9, 0.07],
+      [rightX, legY, -0.13],
+      armored ? palette.metal : palette.dark
+    );
+    addHarthmerePlayerClothingBox(
+      group,
+      `${name}-left-trouser-back`,
+      [0.16, metrics.legLength * 0.85, 0.05],
+      [leftX, legY, 0.11],
+      palette.cloth
+    );
+    addHarthmerePlayerClothingBox(
+      group,
+      `${name}-right-trouser-back`,
+      [0.16, metrics.legLength * 0.85, 0.05],
+      [rightX, legY, 0.11],
+      palette.cloth
+    );
+    addHarthmerePlayerClothingBox(
+      group,
+      `${name}-left-knee-detail`,
+      [0.19, 0.055, 0.08],
+      [leftX, legY + metrics.legLength * 0.08, -0.18],
+      armored ? palette.dark : palette.trim
+    );
+    addHarthmerePlayerClothingBox(
+      group,
+      `${name}-right-knee-detail`,
+      [0.19, 0.055, 0.08],
+      [rightX, legY + metrics.legLength * 0.08, -0.18],
+      armored ? palette.dark : palette.trim
+    );
     if (patched) {
-      addHarthmerePlayerClothingBox(group, `${name}-left-patch`, [0.11, 0.1, 0.075], [leftX - 0.02, legY - 0.12, -0.19], palette.trim);
-      addHarthmerePlayerClothingBox(group, `${name}-right-patch`, [0.12, 0.09, 0.075], [rightX + 0.02, legY + 0.07, -0.19], palette.leather);
+      addHarthmerePlayerClothingBox(
+        group,
+        `${name}-left-patch`,
+        [0.11, 0.1, 0.075],
+        [leftX - 0.02, legY - 0.12, -0.19],
+        palette.trim
+      );
+      addHarthmerePlayerClothingBox(
+        group,
+        `${name}-right-patch`,
+        [0.12, 0.09, 0.075],
+        [rightX + 0.02, legY + 0.07, -0.19],
+        palette.leather
+      );
     }
     return;
   }
@@ -2004,12 +2624,48 @@ function addHarthmerePlayerProceduralClothingProxy(
     const rightX = metrics.torsoWidth / 4 + metrics.legSpread;
     const heavy = /guard|mud|boot/i.test(variant);
     const soleColor = heavy ? 0x111111 : palette.dark;
-    addHarthmerePlayerClothingBox(group, `${name}-left-boot`, [heavy ? 0.21 : 0.18, 0.12, heavy ? 0.2 : 0.17], [leftX, 0.08, -0.035], soleColor);
-    addHarthmerePlayerClothingBox(group, `${name}-right-boot`, [heavy ? 0.21 : 0.18, 0.12, heavy ? 0.2 : 0.17], [rightX, 0.08, -0.035], soleColor);
-    addHarthmerePlayerClothingBox(group, `${name}-left-toe`, [heavy ? 0.22 : 0.18, 0.05, 0.08], [leftX, 0.055, -0.16], palette.leather);
-    addHarthmerePlayerClothingBox(group, `${name}-right-toe`, [heavy ? 0.22 : 0.18, 0.05, 0.08], [rightX, 0.055, -0.16], palette.leather);
-    addHarthmerePlayerClothingBox(group, `${name}-left-cuff`, [heavy ? 0.22 : 0.18, 0.055, 0.18], [leftX, 0.18, -0.02], palette.trim);
-    addHarthmerePlayerClothingBox(group, `${name}-right-cuff`, [heavy ? 0.22 : 0.18, 0.055, 0.18], [rightX, 0.18, -0.02], palette.trim);
+    addHarthmerePlayerClothingBox(
+      group,
+      `${name}-left-boot`,
+      [heavy ? 0.21 : 0.18, 0.12, heavy ? 0.2 : 0.17],
+      [leftX, 0.08, -0.035],
+      soleColor
+    );
+    addHarthmerePlayerClothingBox(
+      group,
+      `${name}-right-boot`,
+      [heavy ? 0.21 : 0.18, 0.12, heavy ? 0.2 : 0.17],
+      [rightX, 0.08, -0.035],
+      soleColor
+    );
+    addHarthmerePlayerClothingBox(
+      group,
+      `${name}-left-toe`,
+      [heavy ? 0.22 : 0.18, 0.05, 0.08],
+      [leftX, 0.055, -0.16],
+      palette.leather
+    );
+    addHarthmerePlayerClothingBox(
+      group,
+      `${name}-right-toe`,
+      [heavy ? 0.22 : 0.18, 0.05, 0.08],
+      [rightX, 0.055, -0.16],
+      palette.leather
+    );
+    addHarthmerePlayerClothingBox(
+      group,
+      `${name}-left-cuff`,
+      [heavy ? 0.22 : 0.18, 0.055, 0.18],
+      [leftX, 0.18, -0.02],
+      palette.trim
+    );
+    addHarthmerePlayerClothingBox(
+      group,
+      `${name}-right-cuff`,
+      [heavy ? 0.22 : 0.18, 0.055, 0.18],
+      [rightX, 0.18, -0.02],
+      palette.trim
+    );
     return;
   }
 
@@ -2017,53 +2673,213 @@ function addHarthmerePlayerProceduralClothingProxy(
     const rightX = metrics.shoulderWidth / 2 + 0.06 + metrics.stanceArmX;
     const leftX = -rightX;
     const y = metrics.shoulderY - metrics.armLength * 0.45;
-    addHarthmerePlayerClothingBox(group, `${name}-right-glove`, [0.13, 0.14, 0.13], [rightX, y, -0.04], palette.leather);
-    addHarthmerePlayerClothingBox(group, `${name}-left-glove`, [0.13, 0.14, 0.13], [leftX, y, -0.04], palette.leather);
-    addHarthmerePlayerClothingBox(group, `${name}-right-cuff`, [0.15, 0.045, 0.14], [rightX, y + 0.09, -0.035], palette.trim);
-    addHarthmerePlayerClothingBox(group, `${name}-left-cuff`, [0.15, 0.045, 0.14], [leftX, y + 0.09, -0.035], palette.trim);
+    addHarthmerePlayerClothingBox(
+      group,
+      `${name}-right-glove`,
+      [0.13, 0.14, 0.13],
+      [rightX, y, -0.04],
+      palette.leather
+    );
+    addHarthmerePlayerClothingBox(
+      group,
+      `${name}-left-glove`,
+      [0.13, 0.14, 0.13],
+      [leftX, y, -0.04],
+      palette.leather
+    );
+    addHarthmerePlayerClothingBox(
+      group,
+      `${name}-right-cuff`,
+      [0.15, 0.045, 0.14],
+      [rightX, y + 0.09, -0.035],
+      palette.trim
+    );
+    addHarthmerePlayerClothingBox(
+      group,
+      `${name}-left-cuff`,
+      [0.15, 0.045, 0.14],
+      [leftX, y + 0.09, -0.035],
+      palette.trim
+    );
     if (/guard|braced/i.test(variant)) {
-      addHarthmerePlayerClothingBox(group, `${name}-right-bracer`, [0.16, 0.08, 0.15], [rightX, y + 0.16, -0.035], palette.metal);
-      addHarthmerePlayerClothingBox(group, `${name}-left-bracer`, [0.16, 0.08, 0.15], [leftX, y + 0.16, -0.035], palette.metal);
+      addHarthmerePlayerClothingBox(
+        group,
+        `${name}-right-bracer`,
+        [0.16, 0.08, 0.15],
+        [rightX, y + 0.16, -0.035],
+        palette.metal
+      );
+      addHarthmerePlayerClothingBox(
+        group,
+        `${name}-left-bracer`,
+        [0.16, 0.08, 0.15],
+        [leftX, y + 0.16, -0.035],
+        palette.metal
+      );
     }
     return;
   }
 
   if (slot === "belt") {
-    addHarthmerePlayerClothingBox(group, `${name}-belt-front`, [metrics.torsoWidth + 0.2, 0.06, 0.075], [0, metrics.hipY, -0.18], palette.leather);
-    addHarthmerePlayerClothingBox(group, `${name}-belt-back`, [metrics.torsoWidth + 0.16, 0.05, 0.065], [0, metrics.hipY, 0.15], palette.leather);
-    addHarthmerePlayerClothingBox(group, `${name}-buckle`, [0.095, 0.075, 0.04], [0, metrics.hipY, -0.235], palette.metal);
+    addHarthmerePlayerClothingBox(
+      group,
+      `${name}-belt-front`,
+      [metrics.torsoWidth + 0.2, 0.06, 0.075],
+      [0, metrics.hipY, -0.18],
+      palette.leather
+    );
+    addHarthmerePlayerClothingBox(
+      group,
+      `${name}-belt-back`,
+      [metrics.torsoWidth + 0.16, 0.05, 0.065],
+      [0, metrics.hipY, 0.15],
+      palette.leather
+    );
+    addHarthmerePlayerClothingBox(
+      group,
+      `${name}-buckle`,
+      [0.095, 0.075, 0.04],
+      [0, metrics.hipY, -0.235],
+      palette.metal
+    );
     if (/knife/i.test(variant)) {
-      const knife = addHarthmerePlayerClothingBox(group, `${name}-belt-knife`, [0.045, 0.3, 0.055], [metrics.torsoWidth / 2 + 0.08, metrics.hipY - 0.04, -0.04], palette.metal, [0, 0, -0.28]);
+      const knife = addHarthmerePlayerClothingBox(
+        group,
+        `${name}-belt-knife`,
+        [0.045, 0.3, 0.055],
+        [metrics.torsoWidth / 2 + 0.08, metrics.hipY - 0.04, -0.04],
+        palette.metal,
+        [0, 0, -0.28]
+      );
       knife.userData.harthmereRigidWeaponProxy = item.id;
     }
     if (/ledger/i.test(variant)) {
-      addHarthmerePlayerClothingBox(group, `${name}-ledger`, [0.15, 0.13, 0.045], [-(metrics.torsoWidth / 2 + 0.06), metrics.hipY - 0.03, -0.09], palette.trim);
+      addHarthmerePlayerClothingBox(
+        group,
+        `${name}-ledger`,
+        [0.15, 0.13, 0.045],
+        [-(metrics.torsoWidth / 2 + 0.06), metrics.hipY - 0.03, -0.09],
+        palette.trim
+      );
     }
     if (/tool|rope/i.test(variant)) {
-      addHarthmerePlayerClothingBox(group, `${name}-side-pouch`, [0.13, 0.12, 0.06], [metrics.torsoWidth / 2 + 0.08, metrics.hipY - 0.04, -0.1], palette.dark);
-      addHarthmerePlayerClothingBox(group, `${name}-hanging-loop`, [0.045, 0.2, 0.045], [-(metrics.torsoWidth / 2 + 0.07), metrics.hipY - 0.08, -0.06], palette.leather);
+      addHarthmerePlayerClothingBox(
+        group,
+        `${name}-side-pouch`,
+        [0.13, 0.12, 0.06],
+        [metrics.torsoWidth / 2 + 0.08, metrics.hipY - 0.04, -0.1],
+        palette.dark
+      );
+      addHarthmerePlayerClothingBox(
+        group,
+        `${name}-hanging-loop`,
+        [0.045, 0.2, 0.045],
+        [-(metrics.torsoWidth / 2 + 0.07), metrics.hipY - 0.08, -0.06],
+        palette.leather
+      );
     }
     return;
   }
 
   if (slot === "back") {
     if (/quiver|bedroll/i.test(variant)) {
-      addHarthmerePlayerClothingBox(group, `${name}-quiver`, [0.16, 0.45, 0.12], [0.14, 0, 0.1], palette.leather, [0, 0, -0.18]);
-      addHarthmerePlayerClothingBox(group, `${name}-bedroll`, [0.32, 0.14, 0.14], [-0.04, -0.26, 0.13], palette.trim, [0, 0, 0.08]);
-      addHarthmerePlayerClothingBox(group, `${name}-strap`, [0.06, 0.62, 0.05], [-0.1, 0, 0.04], palette.dark, [0, 0, 0.28]);
-      addHarthmerePlayerClothingBox(group, `${name}-fletching`, [0.22, 0.06, 0.09], [0.12, 0.25, 0.12], palette.trim);
+      addHarthmerePlayerClothingBox(
+        group,
+        `${name}-quiver`,
+        [0.16, 0.45, 0.12],
+        [0.14, 0, 0.1],
+        palette.leather,
+        [0, 0, -0.18]
+      );
+      addHarthmerePlayerClothingBox(
+        group,
+        `${name}-bedroll`,
+        [0.32, 0.14, 0.14],
+        [-0.04, -0.26, 0.13],
+        palette.trim,
+        [0, 0, 0.08]
+      );
+      addHarthmerePlayerClothingBox(
+        group,
+        `${name}-strap`,
+        [0.06, 0.62, 0.05],
+        [-0.1, 0, 0.04],
+        palette.dark,
+        [0, 0, 0.28]
+      );
+      addHarthmerePlayerClothingBox(
+        group,
+        `${name}-fletching`,
+        [0.22, 0.06, 0.09],
+        [0.12, 0.25, 0.12],
+        palette.trim
+      );
     } else if (/cape|shroud/i.test(variant)) {
       const ragged = /ragged|shroud/i.test(variant);
-      addHarthmerePlayerClothingBox(group, `${name}-cape`, [metrics.torsoWidth + 0.18, metrics.torsoHeight + metrics.legLength * 0.58, 0.055], [0, -0.1, 0.15], ragged ? palette.dark : palette.cloth);
-      addHarthmerePlayerClothingBox(group, `${name}-cape-left-notch`, [0.12, 0.16, 0.06], [-(metrics.torsoWidth * 0.28), -0.55, 0.16], ragged ? 0x1f1f1f : palette.dark, [0, 0, -0.12]);
-      addHarthmerePlayerClothingBox(group, `${name}-cape-clasp`, [0.19, 0.07, 0.065], [0, 0.32, 0.1], palette.metal);
+      addHarthmerePlayerClothingBox(
+        group,
+        `${name}-cape`,
+        [
+          metrics.torsoWidth + 0.18,
+          metrics.torsoHeight + metrics.legLength * 0.58,
+          0.055,
+        ],
+        [0, -0.1, 0.15],
+        ragged ? palette.dark : palette.cloth
+      );
+      addHarthmerePlayerClothingBox(
+        group,
+        `${name}-cape-left-notch`,
+        [0.12, 0.16, 0.06],
+        [-(metrics.torsoWidth * 0.28), -0.55, 0.16],
+        ragged ? 0x1f1f1f : palette.dark,
+        [0, 0, -0.12]
+      );
+      addHarthmerePlayerClothingBox(
+        group,
+        `${name}-cape-clasp`,
+        [0.19, 0.07, 0.065],
+        [0, 0.32, 0.1],
+        palette.metal
+      );
     } else if (/satchel/i.test(variant)) {
-      addHarthmerePlayerClothingBox(group, `${name}-satchel`, [0.28, 0.24, 0.12], [0.18, -0.1, 0.14], palette.leather);
-      addHarthmerePlayerClothingBox(group, `${name}-satchel-flap`, [0.29, 0.07, 0.13], [0.18, 0.03, 0.12], palette.trim);
-      addHarthmerePlayerClothingBox(group, `${name}-satchel-strap`, [0.055, 0.58, 0.05], [-0.05, 0.05, 0.04], palette.dark, [0, 0, -0.34]);
+      addHarthmerePlayerClothingBox(
+        group,
+        `${name}-satchel`,
+        [0.28, 0.24, 0.12],
+        [0.18, -0.1, 0.14],
+        palette.leather
+      );
+      addHarthmerePlayerClothingBox(
+        group,
+        `${name}-satchel-flap`,
+        [0.29, 0.07, 0.13],
+        [0.18, 0.03, 0.12],
+        palette.trim
+      );
+      addHarthmerePlayerClothingBox(
+        group,
+        `${name}-satchel-strap`,
+        [0.055, 0.58, 0.05],
+        [-0.05, 0.05, 0.04],
+        palette.dark,
+        [0, 0, -0.34]
+      );
     } else {
-      addHarthmerePlayerClothingBox(group, `${name}-pack`, [0.32, 0.42, 0.16], [0, 0, 0.12], palette.leather);
-      addHarthmerePlayerClothingBox(group, `${name}-pack-flap`, [0.34, 0.08, 0.17], [0, 0.12, 0.1], palette.trim);
+      addHarthmerePlayerClothingBox(
+        group,
+        `${name}-pack`,
+        [0.32, 0.42, 0.16],
+        [0, 0, 0.12],
+        palette.leather
+      );
+      addHarthmerePlayerClothingBox(
+        group,
+        `${name}-pack-flap`,
+        [0.34, 0.08, 0.17],
+        [0, 0.12, 0.1],
+        palette.trim
+      );
     }
     return;
   }
@@ -2072,30 +2888,94 @@ function addHarthmerePlayerProceduralClothingProxy(
     const short = /dagger/i.test(variant);
     const bow = /bow/i.test(variant);
     if (bow) {
-      const upper = addHarthmerePlayerClothingBox(group, `${name}-bow-upper`, [0.045, 0.42, 0.045], [0.02, 0.03, -0.02], palette.leather, [0, 0, 0.22]);
+      const upper = addHarthmerePlayerClothingBox(
+        group,
+        `${name}-bow-upper`,
+        [0.045, 0.42, 0.045],
+        [0.02, 0.03, -0.02],
+        palette.leather,
+        [0, 0, 0.22]
+      );
       upper.userData.harthmereRigidWeaponProxy = item.id;
-      addHarthmerePlayerClothingBox(group, `${name}-bow-lower`, [0.045, 0.42, 0.045], [0.02, -0.28, -0.02], palette.leather, [0, 0, -0.22]);
-      addHarthmerePlayerClothingBox(group, `${name}-bow-string`, [0.02, 0.64, 0.02], [0.08, -0.12, -0.02], palette.trim);
+      addHarthmerePlayerClothingBox(
+        group,
+        `${name}-bow-lower`,
+        [0.045, 0.42, 0.045],
+        [0.02, -0.28, -0.02],
+        palette.leather,
+        [0, 0, -0.22]
+      );
+      addHarthmerePlayerClothingBox(
+        group,
+        `${name}-bow-string`,
+        [0.02, 0.64, 0.02],
+        [0.08, -0.12, -0.02],
+        palette.trim
+      );
     } else {
-      const weapon = addHarthmerePlayerClothingBox(group, `${name}-blade`, [short ? 0.05 : 0.055, short ? 0.34 : 0.68, 0.055], [0.02, short ? -0.08 : -0.22, -0.02], palette.metal, [0, 0, -0.18]);
+      const weapon = addHarthmerePlayerClothingBox(
+        group,
+        `${name}-blade`,
+        [short ? 0.05 : 0.055, short ? 0.34 : 0.68, 0.055],
+        [0.02, short ? -0.08 : -0.22, -0.02],
+        palette.metal,
+        [0, 0, -0.18]
+      );
       weapon.userData.harthmereRigidWeaponProxy = item.id;
-      addHarthmerePlayerClothingBox(group, `${name}-hilt`, [0.14, 0.045, 0.055], [0.02, short ? -0.26 : -0.56, -0.02], palette.trim, [0, 0, -0.18]);
+      addHarthmerePlayerClothingBox(
+        group,
+        `${name}-hilt`,
+        [0.14, 0.045, 0.055],
+        [0.02, short ? -0.26 : -0.56, -0.02],
+        palette.trim,
+        [0, 0, -0.18]
+      );
     }
     return;
   }
 
   if (slot === "shield") {
-    addHarthmerePlayerClothingBox(group, `${name}-shield`, [0.3, 0.4, 0.08], [-0.02, -0.04, -0.1], palette.metal);
-    addHarthmerePlayerClothingBox(group, `${name}-shield-rim-top`, [0.24, 0.045, 0.09], [-0.02, 0.18, -0.14], palette.dark);
-    addHarthmerePlayerClothingBox(group, `${name}-shield-rim-bottom`, [0.24, 0.045, 0.09], [-0.02, -0.26, -0.14], palette.dark);
-    addHarthmerePlayerClothingBox(group, `${name}-shield-boss`, [0.105, 0.105, 0.09], [-0.02, -0.04, -0.16], palette.accent);
+    addHarthmerePlayerClothingBox(
+      group,
+      `${name}-shield`,
+      [0.3, 0.4, 0.08],
+      [-0.02, -0.04, -0.1],
+      palette.metal
+    );
+    addHarthmerePlayerClothingBox(
+      group,
+      `${name}-shield-rim-top`,
+      [0.24, 0.045, 0.09],
+      [-0.02, 0.18, -0.14],
+      palette.dark
+    );
+    addHarthmerePlayerClothingBox(
+      group,
+      `${name}-shield-rim-bottom`,
+      [0.24, 0.045, 0.09],
+      [-0.02, -0.26, -0.14],
+      palette.dark
+    );
+    addHarthmerePlayerClothingBox(
+      group,
+      `${name}-shield-boss`,
+      [0.105, 0.105, 0.09],
+      [-0.02, -0.04, -0.16],
+      palette.accent
+    );
     return;
   }
 
-  group.userData.harthmereUnhandledThreeJsClothingSlot = { slot, item, anchorKind };
+  group.userData.harthmereUnhandledThreeJsClothingSlot = {
+    slot,
+    item,
+    anchorKind,
+  };
 }
 
-function harthmereFindFirstSkinnedMesh(root: THREE.Object3D): THREE.SkinnedMesh | undefined {
+function harthmereFindFirstSkinnedMesh(
+  root: THREE.Object3D
+): THREE.SkinnedMesh | undefined {
   let found: THREE.SkinnedMesh | undefined;
   root.traverse((child) => {
     if (!found && child instanceof THREE.SkinnedMesh) {
@@ -2107,7 +2987,7 @@ function harthmereFindFirstSkinnedMesh(root: THREE.Object3D): THREE.SkinnedMesh 
 
 function bindHarthmereSkinnedClothingToBodySkeleton(
   bodyRoot: THREE.Object3D,
-  clothingRoot: THREE.Object3D,
+  clothingRoot: THREE.Object3D
 ) {
   const bodySkinnedMesh = harthmereFindFirstSkinnedMesh(bodyRoot);
   if (!bodySkinnedMesh) {
@@ -2130,7 +3010,7 @@ function bindHarthmereSkinnedClothingToBodySkeleton(
 }
 
 async function loadHarthmerePlayerClothingModel(
-  item: HarthmereClothingItem,
+  item: HarthmereClothingItem
 ): Promise<THREE.Object3D | undefined> {
   if (!item.modelUrl) {
     return undefined;
@@ -2144,19 +3024,22 @@ async function loadHarthmerePlayerClothingModel(
       HARTHMERE_PLAYER_MODULAR_CLOTHING_RUNTIME_VERSION;
     return object;
   } catch (error) {
-    log.warn("Failed to load Harthmere modular clothing GLB; using procedural proxy", {
-      itemId: item.id,
-      slot: item.slot,
-      modelUrl: item.modelUrl,
-      error,
-    });
+    log.warn(
+      "Failed to load Harthmere modular clothing GLB; using procedural proxy",
+      {
+        itemId: item.id,
+        slot: item.slot,
+        modelUrl: item.modelUrl,
+        error,
+      }
+    );
     return undefined;
   }
 }
 
 async function addHarthmerePlayerModularClothingRuntime(
   root: THREE.Object3D,
-  appearance: HarthmereCharacterAppearance,
+  appearance: HarthmereCharacterAppearance
 ) {
   const clothing: HarthmereCharacterClothing = appearance.clothing;
   const metrics = harthmerePlayerClothingFitMetrics(appearance);
@@ -2174,7 +3057,10 @@ async function addHarthmerePlayerModularClothingRuntime(
       hiddenZones.add(zone);
     }
     const renderMode = harthmerePlayerClothingRenderMode(item);
-    const bodyFittedThreeJs = renderMode === "threejs" && item.fitMode !== "anchor" && item.fitMode !== "none";
+    const bodyFittedThreeJs =
+      renderMode === "threejs" &&
+      item.fitMode !== "anchor" &&
+      item.fitMode !== "none";
     const anchorKind = bodyFittedThreeJs
       ? "root"
       : (item.attachBone as HarthmereRuntimeClothingAnchor | undefined) ??
@@ -2197,18 +3083,30 @@ async function addHarthmerePlayerModularClothingRuntime(
 
     if (clothingModel) {
       fitHarthmerePlayerClothingObjectToBody(clothingModel, item, metrics);
-      const skinned = bindHarthmereSkinnedClothingToBodySkeleton(root, clothingModel);
+      const skinned = bindHarthmereSkinnedClothingToBodySkeleton(
+        root,
+        clothingModel
+      );
       if (!skinned) {
         // Rigid GLB accessories still follow the selected bone/anchor even if
         // they are not skinned. This is correct for helmets, weapons, shields,
         // packs, belts, and other solid items.
-        clothingModel.userData.harthmereRigidClothingAttachedToAnchor = anchorKind;
+        clothingModel.userData.harthmereRigidClothingAttachedToAnchor =
+          anchorKind;
       }
-      clothingModel.userData.harthmereClothingBodyCustomization = appearance.body;
+      clothingModel.userData.harthmereClothingBodyCustomization =
+        appearance.body;
       group.add(clothingModel);
       gltfSlots.push(slot);
     } else {
-      addHarthmerePlayerProceduralClothingProxy(group, slot, item, appearance, metrics, anchorKind);
+      addHarthmerePlayerProceduralClothingProxy(
+        group,
+        slot,
+        item,
+        appearance,
+        metrics,
+        anchorKind
+      );
       threeJsSlots.push(slot);
     }
     attachedSlots.push(slot);
@@ -2228,13 +3126,14 @@ async function addHarthmerePlayerModularClothingRuntime(
 
 function addLocalDevPlayerVoxelFaceParts(
   group: THREE.Group,
-  face: LocalDevPlayerVoxelFaceSpec,
+  face: LocalDevPlayerVoxelFaceSpec
 ) {
   const headWidth = face.headSize[0];
   const headHeight = face.headSize[1];
   const headDepth = face.headSize[2];
   const faceFrontZ = face.leftEyePosition[2];
-  const anchoredYOffset = face.headPosition[1] - LOCAL_DEV_PLAYER_VOXEL_FACE.headPosition[1];
+  const anchoredYOffset =
+    face.headPosition[1] - LOCAL_DEV_PLAYER_VOXEL_FACE.headPosition[1];
   const fy = (value: number) => value + anchoredYOffset;
   const headBottomY = face.headPosition[1] - headHeight / 2;
   const headTopY = face.headPosition[1] + headHeight / 2;
@@ -2244,7 +3143,7 @@ function addLocalDevPlayerVoxelFaceParts(
     size: [number, number, number],
     position: [number, number, number],
     color: number,
-    rotationZ = 0,
+    rotationZ = 0
   ) => {
     const box = localDevBoltHeadBox(name, size, position, color);
     if (rotationZ !== 0) {
@@ -2254,241 +3153,845 @@ function addLocalDevPlayerVoxelFaceParts(
     group.add(box);
     return box;
   };
-  const addHair = (name: string, size: [number, number, number], position: [number, number, number]) => {
+  const addHair = (
+    name: string,
+    size: [number, number, number],
+    position: [number, number, number]
+  ) => {
     addBox(name, size, position, face.hair);
   };
   const hairHighlight = harthmereVoxelColorLighten(face.hair, 0.22);
   const hairShadow = harthmereVoxelColorDarken(face.hair, 0.22);
   const skinHighlight = harthmereVoxelColorLighten(face.skin, 0.12);
-  const sideProfile = face.sideProfile ?? HARTHMERE_SYMMETRIC_PLAYER_FACE_SIDE_PROFILE;
-  const leftSideColor = sideProfile.highlightSide === "left" ? skinHighlight : face.skinShadow;
-  const rightSideColor = sideProfile.highlightSide === "right" ? skinHighlight : face.skinShadow;
+  const sideProfile =
+    face.sideProfile ?? HARTHMERE_SYMMETRIC_PLAYER_FACE_SIDE_PROFILE;
+  const leftSideColor =
+    sideProfile.highlightSide === "left" ? skinHighlight : face.skinShadow;
+  const rightSideColor =
+    sideProfile.highlightSide === "right" ? skinHighlight : face.skinShadow;
   const sideHairAccent = harthmereVoxelColorLighten(face.hair, 0.1);
 
   group.add(
-    localDevBoltHeadBox("local-dev-bolt-head", face.headSize, face.headPosition, face.skin),
+    localDevBoltHeadBox(
+      "local-dev-bolt-head",
+      face.headSize,
+      face.headPosition,
+      face.skin
+    ),
     localDevBoltHeadBox(
       "local-dev-bolt-skin-shadow",
       [headWidth, 0.055, headDepth],
       [0, headBottomY + 0.03, -0.01],
-      face.skinShadow,
-    ),
+      face.skinShadow
+    )
   );
   // Voxel polish: add tiny planes/boxes that read as cheekbones, forehead light,
   // and jaw shadow from the normal gameplay camera. This keeps the art blocky
   // but avoids the flat sticker-face look.
-  addBox("local-dev-bolt-forehead-light", [headWidth * 0.52, 0.03, 0.018], [0, face.leftBrowPosition[1] + 0.115, faceFrontZ - 0.014], skinHighlight);
-  addBox("local-dev-bolt-jaw-shadow", [headWidth * 0.62, 0.035, 0.018], [0, headBottomY + 0.072, faceFrontZ - 0.014], face.skinShadow);
+  addBox(
+    "local-dev-bolt-forehead-light",
+    [headWidth * 0.52, 0.03, 0.018],
+    [0, face.leftBrowPosition[1] + 0.115, faceFrontZ - 0.014],
+    skinHighlight
+  );
+  addBox(
+    "local-dev-bolt-jaw-shadow",
+    [headWidth * 0.62, 0.035, 0.018],
+    [0, headBottomY + 0.072, faceFrontZ - 0.014],
+    face.skinShadow
+  );
 
   // V11: side-specific head sculpting. This keeps the Bolt voxel style while
   // making each side of the head read differently from gameplay camera angles.
   addBox(
     "local-dev-bolt-left-side-plane-asym",
-    [0.026 * sideProfile.leftWidthScale, headHeight * 0.54 * sideProfile.leftHeightScale, Math.max(0.08, headDepth * 0.72 + sideProfile.leftZOffset)],
-    [-headWidth / 2 - 0.016, face.headPosition[1] + sideProfile.leftYOffset, -0.004 + sideProfile.leftZOffset],
-    leftSideColor,
+    [
+      0.026 * sideProfile.leftWidthScale,
+      headHeight * 0.54 * sideProfile.leftHeightScale,
+      Math.max(0.08, headDepth * 0.72 + sideProfile.leftZOffset),
+    ],
+    [
+      -headWidth / 2 - 0.016,
+      face.headPosition[1] + sideProfile.leftYOffset,
+      -0.004 + sideProfile.leftZOffset,
+    ],
+    leftSideColor
   );
   addBox(
     "local-dev-bolt-right-side-plane-asym",
-    [0.026 * sideProfile.rightWidthScale, headHeight * 0.54 * sideProfile.rightHeightScale, Math.max(0.08, headDepth * 0.72 + sideProfile.rightZOffset)],
-    [headWidth / 2 + 0.016, face.headPosition[1] + sideProfile.rightYOffset, -0.004 + sideProfile.rightZOffset],
-    rightSideColor,
+    [
+      0.026 * sideProfile.rightWidthScale,
+      headHeight * 0.54 * sideProfile.rightHeightScale,
+      Math.max(0.08, headDepth * 0.72 + sideProfile.rightZOffset),
+    ],
+    [
+      headWidth / 2 + 0.016,
+      face.headPosition[1] + sideProfile.rightYOffset,
+      -0.004 + sideProfile.rightZOffset,
+    ],
+    rightSideColor
   );
   if (sideProfile.jawNotchSide === "left") {
-    addBox("local-dev-bolt-left-jaw-notch-asym", [0.038, 0.07, 0.022], [-headWidth / 2 + 0.024, headBottomY + 0.105, faceFrontZ - 0.014], face.skinShadow, -0.14);
+    addBox(
+      "local-dev-bolt-left-jaw-notch-asym",
+      [0.038, 0.07, 0.022],
+      [-headWidth / 2 + 0.024, headBottomY + 0.105, faceFrontZ - 0.014],
+      face.skinShadow,
+      -0.14
+    );
   } else if (sideProfile.jawNotchSide === "right") {
-    addBox("local-dev-bolt-right-jaw-notch-asym", [0.038, 0.07, 0.022], [headWidth / 2 - 0.024, headBottomY + 0.105, faceFrontZ - 0.014], face.skinShadow, 0.14);
+    addBox(
+      "local-dev-bolt-right-jaw-notch-asym",
+      [0.038, 0.07, 0.022],
+      [headWidth / 2 - 0.024, headBottomY + 0.105, faceFrontZ - 0.014],
+      face.skinShadow,
+      0.14
+    );
   }
   if (sideProfile.markSide === "left") {
-    addBox("local-dev-bolt-left-face-mark-asym", [0.022, 0.022, 0.014], [-headWidth * 0.29, face.mouthPosition[1] + 0.065, faceFrontZ - 0.03], face.mouth);
+    addBox(
+      "local-dev-bolt-left-face-mark-asym",
+      [0.022, 0.022, 0.014],
+      [-headWidth * 0.29, face.mouthPosition[1] + 0.065, faceFrontZ - 0.03],
+      face.mouth
+    );
   } else if (sideProfile.markSide === "right") {
-    addBox("local-dev-bolt-right-face-mark-asym", [0.022, 0.022, 0.014], [headWidth * 0.29, face.mouthPosition[1] + 0.065, faceFrontZ - 0.03], face.mouth);
+    addBox(
+      "local-dev-bolt-right-face-mark-asym",
+      [0.022, 0.022, 0.014],
+      [headWidth * 0.29, face.mouthPosition[1] + 0.065, faceFrontZ - 0.03],
+      face.mouth
+    );
   }
   if (sideProfile.hairLockSide === "left") {
-    addBox("local-dev-bolt-left-side-hair-lock-asym", [0.045, 0.18, 0.05], [-headWidth / 2 - 0.038, face.leftBrowPosition[1] - 0.025, faceFrontZ + 0.018], sideHairAccent, -0.08);
+    addBox(
+      "local-dev-bolt-left-side-hair-lock-asym",
+      [0.045, 0.18, 0.05],
+      [
+        -headWidth / 2 - 0.038,
+        face.leftBrowPosition[1] - 0.025,
+        faceFrontZ + 0.018,
+      ],
+      sideHairAccent,
+      -0.08
+    );
   } else if (sideProfile.hairLockSide === "right") {
-    addBox("local-dev-bolt-right-side-hair-lock-asym", [0.045, 0.18, 0.05], [headWidth / 2 + 0.038, face.rightBrowPosition[1] - 0.025, faceFrontZ + 0.018], sideHairAccent, 0.08);
+    addBox(
+      "local-dev-bolt-right-side-hair-lock-asym",
+      [0.045, 0.18, 0.05],
+      [
+        headWidth / 2 + 0.038,
+        face.rightBrowPosition[1] - 0.025,
+        faceFrontZ + 0.018,
+      ],
+      sideHairAccent,
+      0.08
+    );
   }
 
   switch (face.hairStyle) {
     case "shaved":
-      addHair("local-dev-bolt-shaved-top", [headWidth + 0.03, 0.03, headDepth + 0.03], [0, face.headPosition[1] + headHeight / 2 + 0.02, -0.01]);
-      addHair("local-dev-bolt-shaved-front-line", [headWidth + 0.02, 0.022, 0.05], [0, face.leftBrowPosition[1] + 0.05, faceFrontZ - 0.025]);
+      addHair(
+        "local-dev-bolt-shaved-top",
+        [headWidth + 0.03, 0.03, headDepth + 0.03],
+        [0, face.headPosition[1] + headHeight / 2 + 0.02, -0.01]
+      );
+      addHair(
+        "local-dev-bolt-shaved-front-line",
+        [headWidth + 0.02, 0.022, 0.05],
+        [0, face.leftBrowPosition[1] + 0.05, faceFrontZ - 0.025]
+      );
       break;
     case "balding":
-      addHair("local-dev-bolt-balding-back", [headWidth + 0.04, 0.07, headDepth + 0.04], [0, face.headPosition[1] + headHeight / 2 + 0.04, 0.06]);
-      addHair("local-dev-bolt-balding-left", [0.075, 0.24, headDepth + 0.04], [-headWidth / 2 - 0.018, fy(1.61), -0.005]);
-      addHair("local-dev-bolt-balding-right", [0.075, 0.24, headDepth + 0.04], [headWidth / 2 + 0.018, fy(1.61), -0.005]);
+      addHair(
+        "local-dev-bolt-balding-back",
+        [headWidth + 0.04, 0.07, headDepth + 0.04],
+        [0, face.headPosition[1] + headHeight / 2 + 0.04, 0.06]
+      );
+      addHair(
+        "local-dev-bolt-balding-left",
+        [0.075, 0.24, headDepth + 0.04],
+        [-headWidth / 2 - 0.018, fy(1.61), -0.005]
+      );
+      addHair(
+        "local-dev-bolt-balding-right",
+        [0.075, 0.24, headDepth + 0.04],
+        [headWidth / 2 + 0.018, fy(1.61), -0.005]
+      );
       break;
     case "side_part":
-      addHair("local-dev-bolt-sidepart-top", [headWidth + 0.06, 0.12, headDepth + 0.05], [0, face.hairPosition[1], -0.01]);
-      addHair("local-dev-bolt-sidepart-sweep", [headWidth * 0.76, 0.075, 0.075], [-headWidth * 0.12, face.leftBrowPosition[1] + 0.058, faceFrontZ - 0.03]);
-      addBox("local-dev-bolt-sidepart-line", [0.024, 0.145, 0.08], [headWidth * 0.18, face.hairPosition[1] - 0.035, faceFrontZ - 0.025], 0x0f0c0a);
+      addHair(
+        "local-dev-bolt-sidepart-top",
+        [headWidth + 0.06, 0.12, headDepth + 0.05],
+        [0, face.hairPosition[1], -0.01]
+      );
+      addHair(
+        "local-dev-bolt-sidepart-sweep",
+        [headWidth * 0.76, 0.075, 0.075],
+        [-headWidth * 0.12, face.leftBrowPosition[1] + 0.058, faceFrontZ - 0.03]
+      );
+      addBox(
+        "local-dev-bolt-sidepart-line",
+        [0.024, 0.145, 0.08],
+        [headWidth * 0.18, face.hairPosition[1] - 0.035, faceFrontZ - 0.025],
+        0x0f0c0a
+      );
       break;
     case "short_crown":
-      addHair("local-dev-bolt-crown-top", [headWidth + 0.07, 0.17, headDepth + 0.07], [0, face.hairPosition[1] + 0.035, -0.01]);
-      addHair("local-dev-bolt-crown-front", [headWidth + 0.03, 0.08, 0.08], [0, face.leftBrowPosition[1] + 0.062, faceFrontZ - 0.03]);
-      addHair("local-dev-bolt-crown-left-side", [0.05, 0.14, 0.08], [-headWidth / 2, fy(1.63), faceFrontZ - 0.02]);
+      addHair(
+        "local-dev-bolt-crown-top",
+        [headWidth + 0.07, 0.17, headDepth + 0.07],
+        [0, face.hairPosition[1] + 0.035, -0.01]
+      );
+      addHair(
+        "local-dev-bolt-crown-front",
+        [headWidth + 0.03, 0.08, 0.08],
+        [0, face.leftBrowPosition[1] + 0.062, faceFrontZ - 0.03]
+      );
+      addHair(
+        "local-dev-bolt-crown-left-side",
+        [0.05, 0.14, 0.08],
+        [-headWidth / 2, fy(1.63), faceFrontZ - 0.02]
+      );
       break;
     case "curly":
-      addHair("local-dev-bolt-curly-top", [headWidth + 0.08, 0.14, headDepth + 0.07], [0, face.hairPosition[1] + 0.025, -0.01]);
+      addHair(
+        "local-dev-bolt-curly-top",
+        [headWidth + 0.08, 0.14, headDepth + 0.07],
+        [0, face.hairPosition[1] + 0.025, -0.01]
+      );
       for (let i = 0; i < 6; i += 1) {
-        addHair(`local-dev-bolt-curl-${i}`, [0.09, 0.095, 0.08], [-headWidth / 2 + 0.045 + i * (headWidth / 5), face.leftBrowPosition[1] + (i % 2 ? 0.04 : 0.075), faceFrontZ - 0.035]);
+        addHair(
+          `local-dev-bolt-curl-${i}`,
+          [0.09, 0.095, 0.08],
+          [
+            -headWidth / 2 + 0.045 + i * (headWidth / 5),
+            face.leftBrowPosition[1] + (i % 2 ? 0.04 : 0.075),
+            faceFrontZ - 0.035,
+          ]
+        );
       }
       break;
     case "braids":
-      addHair("local-dev-bolt-braids-top", [headWidth + 0.05, 0.11, headDepth + 0.045], [0, face.hairPosition[1], -0.01]);
-      addHair("local-dev-bolt-left-braid", [0.075, 0.44, 0.09], [-headWidth / 2 - 0.05, fy(1.46), faceFrontZ + 0.02]);
-      addHair("local-dev-bolt-right-braid", [0.075, 0.44, 0.09], [headWidth / 2 + 0.05, fy(1.46), faceFrontZ + 0.02]);
-      addBox("local-dev-bolt-left-braid-tie", [0.09, 0.035, 0.09], [-headWidth / 2 - 0.05, fy(1.22), faceFrontZ + 0.02], 0xd6a632);
-      addBox("local-dev-bolt-right-braid-tie", [0.09, 0.035, 0.09], [headWidth / 2 + 0.05, fy(1.22), faceFrontZ + 0.02], 0xd6a632);
+      addHair(
+        "local-dev-bolt-braids-top",
+        [headWidth + 0.05, 0.11, headDepth + 0.045],
+        [0, face.hairPosition[1], -0.01]
+      );
+      addHair(
+        "local-dev-bolt-left-braid",
+        [0.075, 0.44, 0.09],
+        [-headWidth / 2 - 0.05, fy(1.46), faceFrontZ + 0.02]
+      );
+      addHair(
+        "local-dev-bolt-right-braid",
+        [0.075, 0.44, 0.09],
+        [headWidth / 2 + 0.05, fy(1.46), faceFrontZ + 0.02]
+      );
+      addBox(
+        "local-dev-bolt-left-braid-tie",
+        [0.09, 0.035, 0.09],
+        [-headWidth / 2 - 0.05, fy(1.22), faceFrontZ + 0.02],
+        0xd6a632
+      );
+      addBox(
+        "local-dev-bolt-right-braid-tie",
+        [0.09, 0.035, 0.09],
+        [headWidth / 2 + 0.05, fy(1.22), faceFrontZ + 0.02],
+        0xd6a632
+      );
       break;
     case "bob":
-      addHair("local-dev-bolt-bob-top", [headWidth + 0.06, 0.12, headDepth + 0.06], [0, headTopY + 0.055, -0.01]);
-      addHair("local-dev-bolt-bob-left", [0.105, 0.34, headDepth + 0.05], [-headWidth / 2 - 0.035, fy(1.5), -0.005]);
-      addHair("local-dev-bolt-bob-right", [0.105, 0.34, headDepth + 0.05], [headWidth / 2 + 0.035, fy(1.5), -0.005]);
-      addHair("local-dev-bolt-bob-bangs", [headWidth + 0.02, 0.07, 0.08], [0, face.leftBrowPosition[1] + 0.06, faceFrontZ - 0.035]);
+      addHair(
+        "local-dev-bolt-bob-top",
+        [headWidth + 0.06, 0.12, headDepth + 0.06],
+        [0, headTopY + 0.055, -0.01]
+      );
+      addHair(
+        "local-dev-bolt-bob-left",
+        [0.105, 0.34, headDepth + 0.05],
+        [-headWidth / 2 - 0.035, fy(1.5), -0.005]
+      );
+      addHair(
+        "local-dev-bolt-bob-right",
+        [0.105, 0.34, headDepth + 0.05],
+        [headWidth / 2 + 0.035, fy(1.5), -0.005]
+      );
+      addHair(
+        "local-dev-bolt-bob-bangs",
+        [headWidth + 0.02, 0.07, 0.08],
+        [0, face.leftBrowPosition[1] + 0.06, faceFrontZ - 0.035]
+      );
       break;
     case "long":
-      addHair("local-dev-bolt-long-top", [headWidth + 0.06, 0.12, headDepth + 0.06], [0, headTopY + 0.055, -0.01]);
-      addHair("local-dev-bolt-long-back", [headWidth + 0.08, 0.62, 0.1], [0, fy(1.38), headDepth / 2 + 0.025]);
-      addHair("local-dev-bolt-long-left", [0.105, 0.55, 0.095], [-headWidth / 2 - 0.045, fy(1.38), faceFrontZ + 0.035]);
-      addHair("local-dev-bolt-long-right", [0.105, 0.55, 0.095], [headWidth / 2 + 0.045, fy(1.38), faceFrontZ + 0.035]);
+      addHair(
+        "local-dev-bolt-long-top",
+        [headWidth + 0.06, 0.12, headDepth + 0.06],
+        [0, headTopY + 0.055, -0.01]
+      );
+      addHair(
+        "local-dev-bolt-long-back",
+        [headWidth + 0.08, 0.62, 0.1],
+        [0, fy(1.38), headDepth / 2 + 0.025]
+      );
+      addHair(
+        "local-dev-bolt-long-left",
+        [0.105, 0.55, 0.095],
+        [-headWidth / 2 - 0.045, fy(1.38), faceFrontZ + 0.035]
+      );
+      addHair(
+        "local-dev-bolt-long-right",
+        [0.105, 0.55, 0.095],
+        [headWidth / 2 + 0.045, fy(1.38), faceFrontZ + 0.035]
+      );
       break;
     case "bun":
-      addHair("local-dev-bolt-bun-top", [headWidth + 0.05, 0.095, headDepth + 0.05], [0, headTopY + 0.045, -0.01]);
-      addHair("local-dev-bolt-bun-back", [0.24, 0.24, 0.16], [0, headTopY + 0.03, headDepth / 2 + 0.08]);
-      addHair("local-dev-bolt-bun-front", [headWidth * 0.7, 0.045, 0.06], [-0.03, face.leftBrowPosition[1] + 0.055, faceFrontZ - 0.03]);
+      addHair(
+        "local-dev-bolt-bun-top",
+        [headWidth + 0.05, 0.095, headDepth + 0.05],
+        [0, headTopY + 0.045, -0.01]
+      );
+      addHair(
+        "local-dev-bolt-bun-back",
+        [0.24, 0.24, 0.16],
+        [0, headTopY + 0.03, headDepth / 2 + 0.08]
+      );
+      addHair(
+        "local-dev-bolt-bun-front",
+        [headWidth * 0.7, 0.045, 0.06],
+        [-0.03, face.leftBrowPosition[1] + 0.055, faceFrontZ - 0.03]
+      );
       break;
     case "pigtails":
-      addHair("local-dev-bolt-pigtails-top", [headWidth + 0.05, 0.1, headDepth + 0.04], [0, headTopY + 0.05, -0.01]);
-      addHair("local-dev-bolt-left-pigtail", [0.13, 0.35, 0.12], [-headWidth / 2 - 0.12, fy(1.42), -0.01]);
-      addHair("local-dev-bolt-right-pigtail", [0.13, 0.35, 0.12], [headWidth / 2 + 0.12, fy(1.42), -0.01]);
-      addBox("local-dev-bolt-left-pigtail-tie", [0.15, 0.035, 0.12], [-headWidth / 2 - 0.12, fy(1.58), -0.01], 0xd6a632);
-      addBox("local-dev-bolt-right-pigtail-tie", [0.15, 0.035, 0.12], [headWidth / 2 + 0.12, fy(1.58), -0.01], 0xd6a632);
+      addHair(
+        "local-dev-bolt-pigtails-top",
+        [headWidth + 0.05, 0.1, headDepth + 0.04],
+        [0, headTopY + 0.05, -0.01]
+      );
+      addHair(
+        "local-dev-bolt-left-pigtail",
+        [0.13, 0.35, 0.12],
+        [-headWidth / 2 - 0.12, fy(1.42), -0.01]
+      );
+      addHair(
+        "local-dev-bolt-right-pigtail",
+        [0.13, 0.35, 0.12],
+        [headWidth / 2 + 0.12, fy(1.42), -0.01]
+      );
+      addBox(
+        "local-dev-bolt-left-pigtail-tie",
+        [0.15, 0.035, 0.12],
+        [-headWidth / 2 - 0.12, fy(1.58), -0.01],
+        0xd6a632
+      );
+      addBox(
+        "local-dev-bolt-right-pigtail-tie",
+        [0.15, 0.035, 0.12],
+        [headWidth / 2 + 0.12, fy(1.58), -0.01],
+        0xd6a632
+      );
       break;
     case "wavy":
-      addHair("local-dev-bolt-wavy-top", [headWidth + 0.08, 0.13, headDepth + 0.06], [0, headTopY + 0.055, -0.01]);
-      addHair("local-dev-bolt-wavy-left", [0.095, 0.32, 0.09], [-headWidth / 2 - 0.035, fy(1.49), -0.02]);
-      addHair("local-dev-bolt-wavy-right", [0.095, 0.32, 0.09], [headWidth / 2 + 0.035, fy(1.49), -0.02]);
+      addHair(
+        "local-dev-bolt-wavy-top",
+        [headWidth + 0.08, 0.13, headDepth + 0.06],
+        [0, headTopY + 0.055, -0.01]
+      );
+      addHair(
+        "local-dev-bolt-wavy-left",
+        [0.095, 0.32, 0.09],
+        [-headWidth / 2 - 0.035, fy(1.49), -0.02]
+      );
+      addHair(
+        "local-dev-bolt-wavy-right",
+        [0.095, 0.32, 0.09],
+        [headWidth / 2 + 0.035, fy(1.49), -0.02]
+      );
       for (let i = 0; i < 4; i += 1) {
-        addHair(`local-dev-bolt-wave-${i}`, [0.095, 0.065, 0.075], [-headWidth / 2 + 0.06 + i * (headWidth / 3), face.leftBrowPosition[1] + (i % 2 ? 0.035 : 0.065), faceFrontZ - 0.035]);
+        addHair(
+          `local-dev-bolt-wave-${i}`,
+          [0.095, 0.065, 0.075],
+          [
+            -headWidth / 2 + 0.06 + i * (headWidth / 3),
+            face.leftBrowPosition[1] + (i % 2 ? 0.035 : 0.065),
+            faceFrontZ - 0.035,
+          ]
+        );
       }
       break;
     case "hood":
-      addHair("local-dev-bolt-hood-back", [headWidth + 0.2, headHeight + 0.18, headDepth + 0.18], [0, fy(1.57), 0.04]);
-      addHair("local-dev-bolt-hood-top", [headWidth + 0.16, 0.13, headDepth + 0.16], [0, face.hairPosition[1], -0.01]);
-      addHair("local-dev-bolt-hood-rim", [headWidth + 0.12, 0.08, 0.08], [0, face.leftBrowPosition[1] + 0.055, faceFrontZ - 0.035]);
+      addHair(
+        "local-dev-bolt-hood-back",
+        [headWidth + 0.2, headHeight + 0.18, headDepth + 0.18],
+        [0, fy(1.57), 0.04]
+      );
+      addHair(
+        "local-dev-bolt-hood-top",
+        [headWidth + 0.16, 0.13, headDepth + 0.16],
+        [0, face.hairPosition[1], -0.01]
+      );
+      addHair(
+        "local-dev-bolt-hood-rim",
+        [headWidth + 0.12, 0.08, 0.08],
+        [0, face.leftBrowPosition[1] + 0.055, faceFrontZ - 0.035]
+      );
       break;
     case "cap":
-      addHair("local-dev-bolt-cap", [headWidth + 0.12, 0.12, headDepth + 0.08], [0, face.hairPosition[1] + 0.01, -0.01]);
-      addHair("local-dev-bolt-cap-brim-front", [headWidth + 0.22, 0.045, 0.13], [0, face.leftBrowPosition[1] + 0.055, faceFrontZ - 0.052]);
+      addHair(
+        "local-dev-bolt-cap",
+        [headWidth + 0.12, 0.12, headDepth + 0.08],
+        [0, face.hairPosition[1] + 0.01, -0.01]
+      );
+      addHair(
+        "local-dev-bolt-cap-brim-front",
+        [headWidth + 0.22, 0.045, 0.13],
+        [0, face.leftBrowPosition[1] + 0.055, faceFrontZ - 0.052]
+      );
       break;
     case "flat":
     default:
       addHair("local-dev-bolt-hair", face.hairSize, face.hairPosition);
-      addHair("local-dev-bolt-left-sideburn", face.leftSideburnSize, face.leftSideburnPosition);
-      addHair("local-dev-bolt-right-sideburn", face.rightSideburnSize, face.rightSideburnPosition);
-      addHair("local-dev-bolt-front-fringe", [headWidth + 0.02, 0.055, 0.065], [0, face.leftBrowPosition[1] + 0.055, faceFrontZ - 0.028]);
+      addHair(
+        "local-dev-bolt-left-sideburn",
+        face.leftSideburnSize,
+        face.leftSideburnPosition
+      );
+      addHair(
+        "local-dev-bolt-right-sideburn",
+        face.rightSideburnSize,
+        face.rightSideburnPosition
+      );
+      addHair(
+        "local-dev-bolt-front-fringe",
+        [headWidth + 0.02, 0.055, 0.065],
+        [0, face.leftBrowPosition[1] + 0.055, faceFrontZ - 0.028]
+      );
       break;
   }
 
   // Hair silhouette polish. These extra voxels act like highlights, shadow
   // breaks, and strands without leaving the authored voxel style.
   if (face.hairStyle !== "shaved" && face.hairStyle !== "balding") {
-    addBox("local-dev-bolt-hair-front-highlight", [headWidth * 0.56, 0.028, 0.032], [-headWidth * 0.08, face.leftBrowPosition[1] + 0.077, faceFrontZ - 0.042], hairHighlight);
-    addBox("local-dev-bolt-hair-back-shadow", [headWidth * 0.62, 0.036, 0.03], [headWidth * 0.04, headTopY + 0.025, headDepth / 2 - 0.02], hairShadow);
+    addBox(
+      "local-dev-bolt-hair-front-highlight",
+      [headWidth * 0.56, 0.028, 0.032],
+      [-headWidth * 0.08, face.leftBrowPosition[1] + 0.077, faceFrontZ - 0.042],
+      hairHighlight
+    );
+    addBox(
+      "local-dev-bolt-hair-back-shadow",
+      [headWidth * 0.62, 0.036, 0.03],
+      [headWidth * 0.04, headTopY + 0.025, headDepth / 2 - 0.02],
+      hairShadow
+    );
   }
   if (face.hairStyle === "curly" || face.hairStyle === "wavy") {
-    addBox("local-dev-bolt-hair-extra-curl-left", [0.075, 0.07, 0.055], [-headWidth / 2 + 0.035, face.leftBrowPosition[1] + 0.02, faceFrontZ - 0.026], hairHighlight);
-    addBox("local-dev-bolt-hair-extra-curl-right", [0.075, 0.07, 0.055], [headWidth / 2 - 0.035, face.leftBrowPosition[1] + 0.036, faceFrontZ - 0.026], hairShadow);
-    addBox("local-dev-bolt-grove-soft-fringe-left", [0.06, 0.12, 0.05], [-headWidth * 0.22, face.leftBrowPosition[1] + 0.005, faceFrontZ - 0.038], hairHighlight, -0.16);
-    addBox("local-dev-bolt-grove-soft-fringe-right", [0.055, 0.105, 0.05], [headWidth * 0.22, face.leftBrowPosition[1] + 0.012, faceFrontZ - 0.038], hairShadow, 0.14);
+    addBox(
+      "local-dev-bolt-hair-extra-curl-left",
+      [0.075, 0.07, 0.055],
+      [
+        -headWidth / 2 + 0.035,
+        face.leftBrowPosition[1] + 0.02,
+        faceFrontZ - 0.026,
+      ],
+      hairHighlight
+    );
+    addBox(
+      "local-dev-bolt-hair-extra-curl-right",
+      [0.075, 0.07, 0.055],
+      [
+        headWidth / 2 - 0.035,
+        face.leftBrowPosition[1] + 0.036,
+        faceFrontZ - 0.026,
+      ],
+      hairShadow
+    );
+    addBox(
+      "local-dev-bolt-grove-soft-fringe-left",
+      [0.06, 0.12, 0.05],
+      [-headWidth * 0.22, face.leftBrowPosition[1] + 0.005, faceFrontZ - 0.038],
+      hairHighlight,
+      -0.16
+    );
+    addBox(
+      "local-dev-bolt-grove-soft-fringe-right",
+      [0.055, 0.105, 0.05],
+      [headWidth * 0.22, face.leftBrowPosition[1] + 0.012, faceFrontZ - 0.038],
+      hairShadow,
+      0.14
+    );
   }
-  if (face.hairStyle === "side_part" || face.hairStyle === "bob" || face.hairStyle === "long") {
-    addBox("local-dev-bolt-grove-side-wisp-left", [0.045, 0.16, 0.045], [-headWidth / 2 - 0.026, face.leftBrowPosition[1] - 0.005, faceFrontZ - 0.018], sideHairAccent, -0.08);
-    addBox("local-dev-bolt-grove-side-wisp-right", [0.04, 0.13, 0.045], [headWidth / 2 + 0.026, face.rightBrowPosition[1] + 0.005, faceFrontZ - 0.018], hairShadow, 0.07);
+  if (
+    face.hairStyle === "side_part" ||
+    face.hairStyle === "bob" ||
+    face.hairStyle === "long"
+  ) {
+    addBox(
+      "local-dev-bolt-grove-side-wisp-left",
+      [0.045, 0.16, 0.045],
+      [
+        -headWidth / 2 - 0.026,
+        face.leftBrowPosition[1] - 0.005,
+        faceFrontZ - 0.018,
+      ],
+      sideHairAccent,
+      -0.08
+    );
+    addBox(
+      "local-dev-bolt-grove-side-wisp-right",
+      [0.04, 0.13, 0.045],
+      [
+        headWidth / 2 + 0.026,
+        face.rightBrowPosition[1] + 0.005,
+        faceFrontZ - 0.018,
+      ],
+      hairShadow,
+      0.07
+    );
   }
 
   const leftEyeRotation = face.eyeShape === "sharp" ? 0.18 : 0;
   const rightEyeRotation = face.eyeShape === "sharp" ? -0.18 : 0;
-  addBox("local-dev-bolt-left-eye", face.leftEyeSize, face.leftEyePosition, face.eye, leftEyeRotation);
-  addBox("local-dev-bolt-right-eye", face.rightEyeSize, face.rightEyePosition, face.eye, rightEyeRotation);
-  addBox("local-dev-bolt-left-eye-glint", [0.016, 0.014, 0.012], [face.leftEyePosition[0] - 0.012, face.leftEyePosition[1] + 0.012, face.leftEyePosition[2] - 0.018], 0xf5f1dc);
-  addBox("local-dev-bolt-right-eye-glint", [0.016, 0.014, 0.012], [face.rightEyePosition[0] - 0.012, face.rightEyePosition[1] + 0.012, face.rightEyePosition[2] - 0.018], 0xf5f1dc);
+  addBox(
+    "local-dev-bolt-left-eye",
+    face.leftEyeSize,
+    face.leftEyePosition,
+    face.eye,
+    leftEyeRotation
+  );
+  addBox(
+    "local-dev-bolt-right-eye",
+    face.rightEyeSize,
+    face.rightEyePosition,
+    face.eye,
+    rightEyeRotation
+  );
+  addBox(
+    "local-dev-bolt-left-eye-glint",
+    [0.016, 0.014, 0.012],
+    [
+      face.leftEyePosition[0] - 0.012,
+      face.leftEyePosition[1] + 0.012,
+      face.leftEyePosition[2] - 0.018,
+    ],
+    0xf5f1dc
+  );
+  addBox(
+    "local-dev-bolt-right-eye-glint",
+    [0.016, 0.014, 0.012],
+    [
+      face.rightEyePosition[0] - 0.012,
+      face.rightEyePosition[1] + 0.012,
+      face.rightEyePosition[2] - 0.018,
+    ],
+    0xf5f1dc
+  );
   if (face.eyeShape === "sleepy") {
-    addBox("local-dev-bolt-left-sleepy-lid", [face.leftEyeSize[0] + 0.018, 0.014, 0.014], [face.leftEyePosition[0], face.leftEyePosition[1] + 0.02, face.leftEyePosition[2] - 0.018], face.skinShadow);
-    addBox("local-dev-bolt-right-sleepy-lid", [face.rightEyeSize[0] + 0.018, 0.014, 0.014], [face.rightEyePosition[0], face.rightEyePosition[1] + 0.02, face.rightEyePosition[2] - 0.018], face.skinShadow);
+    addBox(
+      "local-dev-bolt-left-sleepy-lid",
+      [face.leftEyeSize[0] + 0.018, 0.014, 0.014],
+      [
+        face.leftEyePosition[0],
+        face.leftEyePosition[1] + 0.02,
+        face.leftEyePosition[2] - 0.018,
+      ],
+      face.skinShadow
+    );
+    addBox(
+      "local-dev-bolt-right-sleepy-lid",
+      [face.rightEyeSize[0] + 0.018, 0.014, 0.014],
+      [
+        face.rightEyePosition[0],
+        face.rightEyePosition[1] + 0.02,
+        face.rightEyePosition[2] - 0.018,
+      ],
+      face.skinShadow
+    );
   }
 
   const leftBrowRotation =
     face.browStyle === "arched" ? 0.22 : face.browStyle === "stern" ? -0.2 : 0;
   const rightBrowRotation =
     face.browStyle === "arched" ? -0.22 : face.browStyle === "stern" ? 0.2 : 0;
-  addBox("local-dev-bolt-left-brow", face.browSize, face.leftBrowPosition, face.hair, leftBrowRotation);
-  addBox("local-dev-bolt-right-brow", face.browSize, face.rightBrowPosition, face.hair, rightBrowRotation);
-  addBox("local-dev-bolt-left-brow-shadow", [face.browSize[0] * 0.88, 0.012, 0.012], [face.leftBrowPosition[0], face.leftBrowPosition[1] - 0.026, face.leftBrowPosition[2] - 0.012], hairShadow, leftBrowRotation);
-  addBox("local-dev-bolt-right-brow-shadow", [face.browSize[0] * 0.88, 0.012, 0.012], [face.rightBrowPosition[0], face.rightBrowPosition[1] - 0.026, face.rightBrowPosition[2] - 0.012], hairShadow, rightBrowRotation);
+  addBox(
+    "local-dev-bolt-left-brow",
+    face.browSize,
+    face.leftBrowPosition,
+    face.hair,
+    leftBrowRotation
+  );
+  addBox(
+    "local-dev-bolt-right-brow",
+    face.browSize,
+    face.rightBrowPosition,
+    face.hair,
+    rightBrowRotation
+  );
+  addBox(
+    "local-dev-bolt-left-brow-shadow",
+    [face.browSize[0] * 0.88, 0.012, 0.012],
+    [
+      face.leftBrowPosition[0],
+      face.leftBrowPosition[1] - 0.026,
+      face.leftBrowPosition[2] - 0.012,
+    ],
+    hairShadow,
+    leftBrowRotation
+  );
+  addBox(
+    "local-dev-bolt-right-brow-shadow",
+    [face.browSize[0] * 0.88, 0.012, 0.012],
+    [
+      face.rightBrowPosition[0],
+      face.rightBrowPosition[1] - 0.026,
+      face.rightBrowPosition[2] - 0.012,
+    ],
+    hairShadow,
+    rightBrowRotation
+  );
   if (face.browStyle === "scarred") {
-    addBox("local-dev-bolt-brow-scar-1", [0.024, 0.1, 0.016], [face.leftBrowPosition[0] + 0.05, face.leftBrowPosition[1] - 0.015, faceFrontZ - 0.02], 0xf1d0b8, -0.38);
+    addBox(
+      "local-dev-bolt-brow-scar-1",
+      [0.024, 0.1, 0.016],
+      [
+        face.leftBrowPosition[0] + 0.05,
+        face.leftBrowPosition[1] - 0.015,
+        faceFrontZ - 0.02,
+      ],
+      0xf1d0b8,
+      -0.38
+    );
   }
 
-  addBox("local-dev-bolt-nose", face.noseSize, face.nosePosition, face.skinShadow);
+  addBox(
+    "local-dev-bolt-nose",
+    face.noseSize,
+    face.nosePosition,
+    face.skinShadow
+  );
   if (face.noseStyle === "button") {
-    addBox("local-dev-bolt-button-nose-tip", [0.105, 0.032, 0.034], [0, face.nosePosition[1] - 0.045, face.nosePosition[2] - 0.025], face.skinShadow);
+    addBox(
+      "local-dev-bolt-button-nose-tip",
+      [0.105, 0.032, 0.034],
+      [0, face.nosePosition[1] - 0.045, face.nosePosition[2] - 0.025],
+      face.skinShadow
+    );
   } else if (face.noseStyle === "wide") {
-    addBox("local-dev-bolt-wide-nose-bridge", [0.03, 0.045, 0.03], [0, face.nosePosition[1] + 0.04, face.nosePosition[2] - 0.02], face.skinShadow);
+    addBox(
+      "local-dev-bolt-wide-nose-bridge",
+      [0.03, 0.045, 0.03],
+      [0, face.nosePosition[1] + 0.04, face.nosePosition[2] - 0.02],
+      face.skinShadow
+    );
   }
 
-  addBox("local-dev-bolt-mouth", face.mouthSize, face.mouthPosition, face.mouth);
+  addBox(
+    "local-dev-bolt-mouth",
+    face.mouthSize,
+    face.mouthPosition,
+    face.mouth
+  );
   if (face.mouthStyle === "smile") {
-    addBox("local-dev-bolt-smile-left", [0.045, 0.026, 0.024], [face.mouthPosition[0] - face.mouthSize[0] / 2, face.mouthPosition[1] + 0.02, face.mouthPosition[2]], face.mouth, 0.35);
-    addBox("local-dev-bolt-smile-right", [0.045, 0.026, 0.024], [face.mouthPosition[0] + face.mouthSize[0] / 2, face.mouthPosition[1] + 0.02, face.mouthPosition[2]], face.mouth, -0.35);
+    addBox(
+      "local-dev-bolt-smile-left",
+      [0.045, 0.026, 0.024],
+      [
+        face.mouthPosition[0] - face.mouthSize[0] / 2,
+        face.mouthPosition[1] + 0.02,
+        face.mouthPosition[2],
+      ],
+      face.mouth,
+      0.35
+    );
+    addBox(
+      "local-dev-bolt-smile-right",
+      [0.045, 0.026, 0.024],
+      [
+        face.mouthPosition[0] + face.mouthSize[0] / 2,
+        face.mouthPosition[1] + 0.02,
+        face.mouthPosition[2],
+      ],
+      face.mouth,
+      -0.35
+    );
   } else if (face.mouthStyle === "frown") {
-    addBox("local-dev-bolt-frown-left", [0.045, 0.026, 0.024], [face.mouthPosition[0] - face.mouthSize[0] / 2, face.mouthPosition[1] - 0.02, face.mouthPosition[2]], face.mouth, -0.35);
-    addBox("local-dev-bolt-frown-right", [0.045, 0.026, 0.024], [face.mouthPosition[0] + face.mouthSize[0] / 2, face.mouthPosition[1] - 0.02, face.mouthPosition[2]], face.mouth, 0.35);
+    addBox(
+      "local-dev-bolt-frown-left",
+      [0.045, 0.026, 0.024],
+      [
+        face.mouthPosition[0] - face.mouthSize[0] / 2,
+        face.mouthPosition[1] - 0.02,
+        face.mouthPosition[2],
+      ],
+      face.mouth,
+      -0.35
+    );
+    addBox(
+      "local-dev-bolt-frown-right",
+      [0.045, 0.026, 0.024],
+      [
+        face.mouthPosition[0] + face.mouthSize[0] / 2,
+        face.mouthPosition[1] - 0.02,
+        face.mouthPosition[2],
+      ],
+      face.mouth,
+      0.35
+    );
   } else if (face.mouthStyle === "open") {
-    addBox("local-dev-bolt-open-mouth-teeth", [face.mouthSize[0] * 0.82, 0.018, 0.028], [face.mouthPosition[0], face.mouthPosition[1] + 0.02, face.mouthPosition[2] - 0.004], 0xf6e6d0);
+    addBox(
+      "local-dev-bolt-open-mouth-teeth",
+      [face.mouthSize[0] * 0.82, 0.018, 0.028],
+      [
+        face.mouthPosition[0],
+        face.mouthPosition[1] + 0.02,
+        face.mouthPosition[2] - 0.004,
+      ],
+      0xf6e6d0
+    );
   } else if (face.mouthStyle === "stern") {
-    addBox("local-dev-bolt-stern-mouth-shadow", [face.mouthSize[0] + 0.04, 0.014, 0.02], [face.mouthPosition[0], face.mouthPosition[1] - 0.025, face.mouthPosition[2]], 0x140b08);
+    addBox(
+      "local-dev-bolt-stern-mouth-shadow",
+      [face.mouthSize[0] + 0.04, 0.014, 0.02],
+      [
+        face.mouthPosition[0],
+        face.mouthPosition[1] - 0.025,
+        face.mouthPosition[2],
+      ],
+      0x140b08
+    );
   } else if (face.mouthStyle === "smirk") {
-    addBox("local-dev-bolt-smirk-corner", [0.05, 0.024, 0.024], [face.mouthPosition[0] + face.mouthSize[0] / 2, face.mouthPosition[1] + 0.02, face.mouthPosition[2]], face.mouth, -0.32);
+    addBox(
+      "local-dev-bolt-smirk-corner",
+      [0.05, 0.024, 0.024],
+      [
+        face.mouthPosition[0] + face.mouthSize[0] / 2,
+        face.mouthPosition[1] + 0.02,
+        face.mouthPosition[2],
+      ],
+      face.mouth,
+      -0.32
+    );
   }
 
-  addBox("local-dev-bolt-mouth-lower-pixel", [Math.max(0.045, face.mouthSize[0] * 0.38), 0.012, 0.012], [face.mouthPosition[0], face.mouthPosition[1] - 0.035, face.mouthPosition[2] - 0.016], face.mouth === 0x6b2f33 ? 0x3f1718 : face.skinShadow);
+  addBox(
+    "local-dev-bolt-mouth-lower-pixel",
+    [Math.max(0.045, face.mouthSize[0] * 0.38), 0.012, 0.012],
+    [
+      face.mouthPosition[0],
+      face.mouthPosition[1] - 0.035,
+      face.mouthPosition[2] - 0.016,
+    ],
+    face.mouth === 0x6b2f33 ? 0x3f1718 : face.skinShadow
+  );
   if (face.mouthStyle === "open") {
-    addBox("local-dev-bolt-open-mouth-bottom-shadow", [face.mouthSize[0] * 0.72, 0.015, 0.014], [face.mouthPosition[0], face.mouthPosition[1] - 0.02, face.mouthPosition[2] - 0.018], 0x2a0d10);
+    addBox(
+      "local-dev-bolt-open-mouth-bottom-shadow",
+      [face.mouthSize[0] * 0.72, 0.015, 0.014],
+      [
+        face.mouthPosition[0],
+        face.mouthPosition[1] - 0.02,
+        face.mouthPosition[2] - 0.018,
+      ],
+      0x2a0d10
+    );
   }
 
   if (face.cheekStyle && face.cheekStyle !== "none") {
     const cheekSize: [number, number, number] =
-      face.cheekStyle === "strong" ? [0.09, 0.07, 0.026] : [0.065, 0.045, 0.024];
+      face.cheekStyle === "strong"
+        ? [0.09, 0.07, 0.026]
+        : [0.065, 0.045, 0.024];
     const cheekY = face.cheekStyle === "strong" ? fy(1.49) : fy(1.51);
-    addBox("local-dev-bolt-left-cheek", cheekSize, [-0.18, cheekY, face.mouthPosition[2] - 0.024], face.cheek);
-    addBox("local-dev-bolt-right-cheek", cheekSize, [0.18, cheekY, face.mouthPosition[2] - 0.024], face.cheek);
+    addBox(
+      "local-dev-bolt-left-cheek",
+      cheekSize,
+      [-0.18, cheekY, face.mouthPosition[2] - 0.024],
+      face.cheek
+    );
+    addBox(
+      "local-dev-bolt-right-cheek",
+      cheekSize,
+      [0.18, cheekY, face.mouthPosition[2] - 0.024],
+      face.cheek
+    );
     if (face.cheekStyle === "freckled") {
-      addBox("local-dev-bolt-freckle-1", [0.018, 0.018, 0.012], [-0.13, fy(1.525), face.mouthPosition[2] - 0.04], face.mouth);
-      addBox("local-dev-bolt-freckle-2", [0.018, 0.018, 0.012], [0.13, fy(1.525), face.mouthPosition[2] - 0.04], face.mouth);
-      addBox("local-dev-bolt-freckle-3", [0.016, 0.016, 0.012], [-0.21, fy(1.505), face.mouthPosition[2] - 0.04], face.mouth);
+      addBox(
+        "local-dev-bolt-freckle-1",
+        [0.018, 0.018, 0.012],
+        [-0.13, fy(1.525), face.mouthPosition[2] - 0.04],
+        face.mouth
+      );
+      addBox(
+        "local-dev-bolt-freckle-2",
+        [0.018, 0.018, 0.012],
+        [0.13, fy(1.525), face.mouthPosition[2] - 0.04],
+        face.mouth
+      );
+      addBox(
+        "local-dev-bolt-freckle-3",
+        [0.016, 0.016, 0.012],
+        [-0.21, fy(1.505), face.mouthPosition[2] - 0.04],
+        face.mouth
+      );
     }
   }
 
   switch (face.facialHair) {
     case "mustache":
-      addBox("local-dev-bolt-mustache", [0.18, 0.04, 0.028], [0, fy(1.49), face.mouthPosition[2] - 0.02], face.hair);
+      addBox(
+        "local-dev-bolt-mustache",
+        [0.18, 0.04, 0.028],
+        [0, fy(1.49), face.mouthPosition[2] - 0.02],
+        face.hair
+      );
       break;
     case "goatee":
-      addBox("local-dev-bolt-goatee-mustache", [0.15, 0.03, 0.028], [0, fy(1.49), face.mouthPosition[2] - 0.02], face.hair);
-      addBox("local-dev-bolt-goatee-chin", [0.09, 0.08, 0.028], [0, fy(1.385), face.mouthPosition[2] - 0.016], face.hair);
+      addBox(
+        "local-dev-bolt-goatee-mustache",
+        [0.15, 0.03, 0.028],
+        [0, fy(1.49), face.mouthPosition[2] - 0.02],
+        face.hair
+      );
+      addBox(
+        "local-dev-bolt-goatee-chin",
+        [0.09, 0.08, 0.028],
+        [0, fy(1.385), face.mouthPosition[2] - 0.016],
+        face.hair
+      );
       break;
     case "short_beard":
-      addBox("local-dev-bolt-short-beard", [0.22, 0.085, 0.028], [0, fy(1.385), face.mouthPosition[2] - 0.016], face.hair);
+      addBox(
+        "local-dev-bolt-short-beard",
+        [0.22, 0.085, 0.028],
+        [0, fy(1.385), face.mouthPosition[2] - 0.016],
+        face.hair
+      );
       break;
     case "full_beard":
-      addBox("local-dev-bolt-full-beard", [0.25, 0.17, 0.032], [0, fy(1.365), face.mouthPosition[2] - 0.018], face.hair);
-      addBox("local-dev-bolt-full-mustache", [0.18, 0.04, 0.03], [0, fy(1.49), face.mouthPosition[2] - 0.024], face.hair);
-      addBox("local-dev-bolt-left-beard-side", [0.055, 0.18, 0.028], [-headWidth / 2 - 0.002, fy(1.42), face.mouthPosition[2] - 0.012], face.hair);
-      addBox("local-dev-bolt-right-beard-side", [0.055, 0.18, 0.028], [headWidth / 2 + 0.002, fy(1.42), face.mouthPosition[2] - 0.012], face.hair);
+      addBox(
+        "local-dev-bolt-full-beard",
+        [0.25, 0.17, 0.032],
+        [0, fy(1.365), face.mouthPosition[2] - 0.018],
+        face.hair
+      );
+      addBox(
+        "local-dev-bolt-full-mustache",
+        [0.18, 0.04, 0.03],
+        [0, fy(1.49), face.mouthPosition[2] - 0.024],
+        face.hair
+      );
+      addBox(
+        "local-dev-bolt-left-beard-side",
+        [0.055, 0.18, 0.028],
+        [-headWidth / 2 - 0.002, fy(1.42), face.mouthPosition[2] - 0.012],
+        face.hair
+      );
+      addBox(
+        "local-dev-bolt-right-beard-side",
+        [0.055, 0.18, 0.028],
+        [headWidth / 2 + 0.002, fy(1.42), face.mouthPosition[2] - 0.012],
+        face.hair
+      );
       break;
     case "none":
     default:
@@ -2496,19 +3999,85 @@ function addLocalDevPlayerVoxelFaceParts(
   }
 
   if (face.accessory === "cap" && face.hairStyle !== "cap") {
-    addBox("local-dev-bolt-accessory-cap", [headWidth + 0.14, 0.1, headDepth + 0.08], [0, face.headPosition[1] + headHeight / 2 + 0.07, -0.01], 0x38405a);
-    addBox("local-dev-bolt-accessory-cap-brim", [headWidth + 0.22, 0.04, 0.12], [0, face.leftBrowPosition[1] + 0.06, faceFrontZ - 0.05], 0x38405a);
+    addBox(
+      "local-dev-bolt-accessory-cap",
+      [headWidth + 0.14, 0.1, headDepth + 0.08],
+      [0, face.headPosition[1] + headHeight / 2 + 0.07, -0.01],
+      0x38405a
+    );
+    addBox(
+      "local-dev-bolt-accessory-cap-brim",
+      [headWidth + 0.22, 0.04, 0.12],
+      [0, face.leftBrowPosition[1] + 0.06, faceFrontZ - 0.05],
+      0x38405a
+    );
   } else if (face.accessory === "hood" && face.hairStyle !== "hood") {
-    addBox("local-dev-bolt-accessory-hood-back", [headWidth + 0.18, headHeight + 0.16, headDepth + 0.16], [0, fy(1.57), 0.04], 0x32343f);
-    addBox("local-dev-bolt-accessory-hood-rim", [headWidth + 0.12, 0.075, 0.08], [0, face.leftBrowPosition[1] + 0.058, faceFrontZ - 0.035], 0x32343f);
+    addBox(
+      "local-dev-bolt-accessory-hood-back",
+      [headWidth + 0.18, headHeight + 0.16, headDepth + 0.16],
+      [0, fy(1.57), 0.04],
+      0x32343f
+    );
+    addBox(
+      "local-dev-bolt-accessory-hood-rim",
+      [headWidth + 0.12, 0.075, 0.08],
+      [0, face.leftBrowPosition[1] + 0.058, faceFrontZ - 0.035],
+      0x32343f
+    );
   } else if (face.accessory === "headband") {
-    addBox("local-dev-bolt-headband", [headWidth + 0.1, 0.045, 0.045], [0, face.leftBrowPosition[1] + 0.045, faceFrontZ - 0.018], 0xd6a632);
+    addBox(
+      "local-dev-bolt-headband",
+      [headWidth + 0.1, 0.045, 0.045],
+      [0, face.leftBrowPosition[1] + 0.045, faceFrontZ - 0.018],
+      0xd6a632
+    );
   } else if (face.accessory === "spectacles") {
-    addBox("local-dev-bolt-left-spectacles-top", [0.105, 0.012, 0.012], [face.leftEyePosition[0], face.leftEyePosition[1] + 0.036, face.leftEyePosition[2] - 0.01], 0xd8d3c1);
-    addBox("local-dev-bolt-left-spectacles-bottom", [0.105, 0.012, 0.012], [face.leftEyePosition[0], face.leftEyePosition[1] - 0.036, face.leftEyePosition[2] - 0.01], 0xd8d3c1);
-    addBox("local-dev-bolt-right-spectacles-top", [0.105, 0.012, 0.012], [face.rightEyePosition[0], face.rightEyePosition[1] + 0.036, face.rightEyePosition[2] - 0.01], 0xd8d3c1);
-    addBox("local-dev-bolt-right-spectacles-bottom", [0.105, 0.012, 0.012], [face.rightEyePosition[0], face.rightEyePosition[1] - 0.036, face.rightEyePosition[2] - 0.01], 0xd8d3c1);
-    addBox("local-dev-bolt-spectacles-bridge", [0.05, 0.012, 0.012], [0, face.leftEyePosition[1], face.leftEyePosition[2] - 0.01], 0xd8d3c1);
+    addBox(
+      "local-dev-bolt-left-spectacles-top",
+      [0.105, 0.012, 0.012],
+      [
+        face.leftEyePosition[0],
+        face.leftEyePosition[1] + 0.036,
+        face.leftEyePosition[2] - 0.01,
+      ],
+      0xd8d3c1
+    );
+    addBox(
+      "local-dev-bolt-left-spectacles-bottom",
+      [0.105, 0.012, 0.012],
+      [
+        face.leftEyePosition[0],
+        face.leftEyePosition[1] - 0.036,
+        face.leftEyePosition[2] - 0.01,
+      ],
+      0xd8d3c1
+    );
+    addBox(
+      "local-dev-bolt-right-spectacles-top",
+      [0.105, 0.012, 0.012],
+      [
+        face.rightEyePosition[0],
+        face.rightEyePosition[1] + 0.036,
+        face.rightEyePosition[2] - 0.01,
+      ],
+      0xd8d3c1
+    );
+    addBox(
+      "local-dev-bolt-right-spectacles-bottom",
+      [0.105, 0.012, 0.012],
+      [
+        face.rightEyePosition[0],
+        face.rightEyePosition[1] - 0.036,
+        face.rightEyePosition[2] - 0.01,
+      ],
+      0xd8d3c1
+    );
+    addBox(
+      "local-dev-bolt-spectacles-bridge",
+      [0.05, 0.012, 0.012],
+      [0, face.leftEyePosition[1], face.leftEyePosition[2] - 0.01],
+      0xd8d3c1
+    );
   }
 }
 
@@ -2545,7 +4114,7 @@ type HarthmerePlayerBodyPolishMetrics = {
 function addLocalDevPlayerEquipmentPolish(
   group: THREE.Group,
   appearance: HarthmereCharacterAppearance,
-  metrics: HarthmerePlayerBodyPolishMetrics,
+  metrics: HarthmerePlayerBodyPolishMetrics
 ): void {
   const equipment = appearance.equipment;
   const leather = 0x3b2418;
@@ -2555,26 +4124,79 @@ function addLocalDevPlayerEquipmentPolish(
   // slot strings as NPC/runtime gear and can be replaced by GLTF attachments
   // later without changing saved appearance data.
   if (equipment.hip || /sword|dagger|knife/i.test(equipment.mainHand ?? "")) {
-    const sheath = localDevBoltHeadBox("local-dev-player-hip-sheath-polish", [0.055, 0.42, 0.075], [metrics.torsoWidth / 2 + 0.08, 0.52, 0.07], darkLeather);
+    const sheath = localDevBoltHeadBox(
+      "local-dev-player-hip-sheath-polish",
+      [0.055, 0.42, 0.075],
+      [metrics.torsoWidth / 2 + 0.08, 0.52, 0.07],
+      darkLeather
+    );
     sheath.rotation.z = -0.24;
     group.add(sheath);
-    group.add(localDevBoltHeadBox("local-dev-player-hip-sheath-cap-polish", [0.07, 0.035, 0.085], [metrics.torsoWidth / 2 + 0.035, 0.34, 0.07], metal));
+    group.add(
+      localDevBoltHeadBox(
+        "local-dev-player-hip-sheath-cap-polish",
+        [0.07, 0.035, 0.085],
+        [metrics.torsoWidth / 2 + 0.035, 0.34, 0.07],
+        metal
+      )
+    );
   }
   if (/shield/i.test(equipment.offHand ?? "")) {
-    group.add(localDevBoltHeadBox("local-dev-player-left-arm-shield-polish", [0.18, 0.26, 0.055], [-(metrics.shoulderWidth / 2 + 0.115), 0.86, -0.085], metal));
-    group.add(localDevBoltHeadBox("local-dev-player-left-arm-shield-boss-polish", [0.075, 0.075, 0.065], [-(metrics.shoulderWidth / 2 + 0.115), 0.86, -0.13], 0xd6a632));
+    group.add(
+      localDevBoltHeadBox(
+        "local-dev-player-left-arm-shield-polish",
+        [0.18, 0.26, 0.055],
+        [-(metrics.shoulderWidth / 2 + 0.115), 0.86, -0.085],
+        metal
+      )
+    );
+    group.add(
+      localDevBoltHeadBox(
+        "local-dev-player-left-arm-shield-boss-polish",
+        [0.075, 0.075, 0.065],
+        [-(metrics.shoulderWidth / 2 + 0.115), 0.86, -0.13],
+        0xd6a632
+      )
+    );
   }
-  if (/quiver|bow/i.test(equipment.back ?? "") || /bow/i.test(equipment.mainHand ?? "")) {
-    const quiver = localDevBoltHeadBox("local-dev-player-back-quiver-polish", [0.12, 0.42, 0.09], [metrics.torsoWidth / 2 + 0.05, metrics.torsoY + 0.05, 0.18], leather);
+  if (
+    /quiver|bow/i.test(equipment.back ?? "") ||
+    /bow/i.test(equipment.mainHand ?? "")
+  ) {
+    const quiver = localDevBoltHeadBox(
+      "local-dev-player-back-quiver-polish",
+      [0.12, 0.42, 0.09],
+      [metrics.torsoWidth / 2 + 0.05, metrics.torsoY + 0.05, 0.18],
+      leather
+    );
     quiver.rotation.z = -0.18;
     group.add(quiver);
-    group.add(localDevBoltHeadBox("local-dev-player-quiver-fletching-polish", [0.14, 0.06, 0.1], [metrics.torsoWidth / 2 + 0.0, metrics.torsoY + 0.27, 0.2], 0xf0e6d2));
+    group.add(
+      localDevBoltHeadBox(
+        "local-dev-player-quiver-fletching-polish",
+        [0.14, 0.06, 0.1],
+        [metrics.torsoWidth / 2 + 0.0, metrics.torsoY + 0.27, 0.2],
+        0xf0e6d2
+      )
+    );
   }
   if (/staff|wand/i.test(equipment.mainHand ?? "")) {
-    const staff = localDevBoltHeadBox("local-dev-player-right-hand-staff-polish", [0.035, 0.78, 0.035], [metrics.shoulderWidth / 2 + 0.18, 0.82, -0.04], leather);
+    const staff = localDevBoltHeadBox(
+      "local-dev-player-right-hand-staff-polish",
+      [0.035, 0.78, 0.035],
+      [metrics.shoulderWidth / 2 + 0.18, 0.82, -0.04],
+      leather
+    );
     staff.rotation.z = -0.08;
     group.add(staff);
-    group.add(localDevBoltHeadBox("local-dev-player-staff-cap-polish", [0.07, 0.07, 0.07], [metrics.shoulderWidth / 2 + 0.15, 1.2, -0.04], 0x6f5ca8));
+    group.add(
+      localDevBoltHeadBox(
+        "local-dev-player-staff-cap-polish",
+        [0.07, 0.07, 0.07],
+        [metrics.shoulderWidth / 2 + 0.15, 1.2, -0.04],
+        0x6f5ca8
+      )
+    );
   }
 }
 
@@ -2636,7 +4258,9 @@ function removeHarthmerePlayerGroveParityPolish(root: THREE.Object3D): void {
   }
 }
 
-function tagHarthmerePlayerAvatarFullPolish(object: THREE.Object3D): THREE.Object3D {
+function tagHarthmerePlayerAvatarFullPolish(
+  object: THREE.Object3D
+): THREE.Object3D {
   object.userData.harthmerePlayerGroveParityPolishVersion =
     HARTHMERE_PLAYER_GROVE_PARITY_POLISH_VERSION_V103;
   object.userData.harthmerePlayerAvatarFullPolishVersion =
@@ -2655,7 +4279,7 @@ function addHarthmerePlayerUniqueEnhancementDetails(
   root: THREE.Object3D,
   appearance: HarthmereCharacterAppearance,
   metrics: HarthmerePlayerClothingFitMetrics,
-  id?: BiomesId,
+  id?: BiomesId
 ): void {
   if (process.env.NODE_ENV === "production") {
     return;
@@ -2689,7 +4313,7 @@ function addHarthmerePlayerUniqueEnhancementDetails(
     "harthmere-player-unique-shoulder-cloak-v103",
     [0.14, 0.28 + ((seed >>> 4) % 4) * 0.025, 0.05],
     [side * (metrics.shoulderWidth / 2 - 0.04), 0.02, 0.11],
-    (seed >>> 9) % 3 === 0 ? accent : trim,
+    (seed >>> 9) % 3 === 0 ? accent : trim
   );
   shoulderCloak.userData.harthmerePlayerGroveParityPolishVersion =
     HARTHMERE_PLAYER_GROVE_PARITY_POLISH_VERSION_V103;
@@ -2700,7 +4324,7 @@ function addHarthmerePlayerUniqueEnhancementDetails(
     "harthmere-player-unique-chest-patch-v103",
     [0.075 + ((seed >>> 12) % 2) * 0.025, 0.095, 0.022],
     [opposite * 0.1, 0.06, -0.135],
-    (seed >>> 15) % 2 === 0 ? accent : palette.dark,
+    (seed >>> 15) % 2 === 0 ? accent : palette.dark
   );
   group.add(chestPatch);
 
@@ -2710,7 +4334,7 @@ function addHarthmerePlayerUniqueEnhancementDetails(
     "harthmere-player-unique-pouch-v103",
     [0.095, 0.13, 0.075],
     [opposite * (metrics.torsoWidth / 2 + 0.05), -0.18, 0.085],
-    leather,
+    leather
   );
   group.add(pouch);
 
@@ -2721,7 +4345,7 @@ function addHarthmerePlayerUniqueEnhancementDetails(
       "harthmere-player-unique-bandolier-v103",
       [0.045, metrics.torsoHeight + 0.1, 0.04],
       [side * 0.045, 0, -0.13],
-      leather,
+      leather
     );
     bandolier.rotation.z = side * 0.36;
     group.add(bandolier);
@@ -2734,8 +4358,8 @@ function addHarthmerePlayerUniqueEnhancementDetails(
         "harthmere-player-unique-guard-medal-v103",
         [0.05, 0.065, 0.022],
         [side * 0.085, 0.15, -0.15],
-        metal,
-      ),
+        metal
+      )
     );
   } else if (appearance.role === "merchant") {
     group.add(
@@ -2743,8 +4367,8 @@ function addHarthmerePlayerUniqueEnhancementDetails(
         "harthmere-player-unique-ledger-roll-v103",
         [0.14, 0.075, 0.06],
         [side * (metrics.torsoWidth / 2 + 0.085), -0.05, 0.095],
-        0xd8c49a,
-      ),
+        0xd8c49a
+      )
     );
   } else if (appearance.role === "farmer") {
     group.add(
@@ -2752,8 +4376,8 @@ function addHarthmerePlayerUniqueEnhancementDetails(
         "harthmere-player-unique-rope-coil-v103",
         [0.12, 0.12, 0.04],
         [side * (metrics.torsoWidth / 2 + 0.065), -0.14, 0.095],
-        0xb99655,
-      ),
+        0xb99655
+      )
     );
   } else if (appearance.role === "bandit" || appearance.role === "hostile") {
     group.add(
@@ -2761,8 +4385,8 @@ function addHarthmerePlayerUniqueEnhancementDetails(
         "harthmere-player-unique-red-sash-knot-v103",
         [0.085, 0.085, 0.045],
         [side * 0.14, -0.19, -0.14],
-        0x8b2f2d,
-      ),
+        0x8b2f2d
+      )
     );
   } else if (appearance.role === "clergy") {
     group.add(
@@ -2770,8 +4394,8 @@ function addHarthmerePlayerUniqueEnhancementDetails(
         "harthmere-player-unique-prayer-cord-v103",
         [0.03, 0.22, 0.025],
         [opposite * 0.06, -0.04, -0.14],
-        0xd6b56a,
-      ),
+        0xd6b56a
+      )
     );
   } else if (appearance.role === "hunter") {
     group.add(
@@ -2779,8 +4403,8 @@ function addHarthmerePlayerUniqueEnhancementDetails(
         "harthmere-player-unique-fang-charm-v103",
         [0.045, 0.05, 0.02],
         [side * 0.07, 0.13, -0.14],
-        0xf0e6d2,
-      ),
+        0xf0e6d2
+      )
     );
   }
 
@@ -2791,7 +4415,7 @@ function addHarthmerePlayerUniqueEnhancementDetails(
 function addHarthmerePlayerBoneAttachedEquipmentPolish(
   root: THREE.Object3D,
   appearance: HarthmereCharacterAppearance,
-  metrics: HarthmerePlayerClothingFitMetrics,
+  metrics: HarthmerePlayerClothingFitMetrics
 ): void {
   if (process.env.NODE_ENV === "production") {
     return;
@@ -2832,7 +4456,7 @@ function addHarthmerePlayerBoneAttachedEquipmentPolish(
       "harthmere-player-hip-scabbard-v103",
       [0.055, 0.42, 0.075],
       [metrics.torsoWidth / 2 + 0.08, -0.06, 0.07],
-      darkLeather,
+      darkLeather
     );
     scabbard.rotation.z = -0.24;
     scabbardWrap.add(scabbard);
@@ -2841,16 +4465,16 @@ function addHarthmerePlayerBoneAttachedEquipmentPolish(
         "harthmere-player-hip-scabbard-cap-v103",
         [0.07, 0.035, 0.085],
         [metrics.torsoWidth / 2 + 0.035, 0.12, 0.07],
-        metal,
-      ),
+        metal
+      )
     );
     scabbardWrap.add(
       localDevBoltHeadBox(
         "harthmere-player-hip-scabbard-tip-v103",
         [0.05, 0.04, 0.05],
         [metrics.torsoWidth / 2 + 0.16, -0.18, 0.07],
-        metal,
-      ),
+        metal
+      )
     );
   }
 
@@ -2866,20 +4490,23 @@ function addHarthmerePlayerBoneAttachedEquipmentPolish(
         "harthmere-player-shield-face-v103",
         [0.18, 0.26, 0.055],
         [0, 0, -0.06],
-        metal,
-      ),
+        metal
+      )
     );
     shieldWrap.add(
       localDevBoltHeadBox(
         "harthmere-player-shield-boss-v103",
         [0.075, 0.075, 0.065],
         [0, 0, -0.105],
-        0xd6a632,
-      ),
+        0xd6a632
+      )
     );
   }
 
-  if (/quiver|bow/i.test(equipment.back ?? "") || /bow/i.test(equipment.mainHand ?? "")) {
+  if (
+    /quiver|bow/i.test(equipment.back ?? "") ||
+    /bow/i.test(equipment.mainHand ?? "")
+  ) {
     // Back quiver attached to the spine bone, slight tilt for readability.
     const quiverWrap = new THREE.Group();
     quiverWrap.name = "harthmere-player-quiver-wrap-v103";
@@ -2889,7 +4516,7 @@ function addHarthmerePlayerBoneAttachedEquipmentPolish(
       "harthmere-player-quiver-v103",
       [0.12, 0.42, 0.09],
       [metrics.torsoWidth / 2 + 0.05, 0.05, 0.18],
-      leather,
+      leather
     );
     quiver.rotation.z = -0.18;
     quiverWrap.add(quiver);
@@ -2898,8 +4525,8 @@ function addHarthmerePlayerBoneAttachedEquipmentPolish(
         "harthmere-player-quiver-fletching-v103",
         [0.14, 0.06, 0.1],
         [metrics.torsoWidth / 2, 0.27, 0.2],
-        0xf0e6d2,
-      ),
+        0xf0e6d2
+      )
     );
   }
 
@@ -2913,7 +4540,7 @@ function addHarthmerePlayerBoneAttachedEquipmentPolish(
       "harthmere-player-staff-v103",
       [0.035, 0.78, 0.035],
       [0.04, 0.32, -0.04],
-      leather,
+      leather
     );
     staff.rotation.z = -0.08;
     staffWrap.add(staff);
@@ -2922,8 +4549,8 @@ function addHarthmerePlayerBoneAttachedEquipmentPolish(
         "harthmere-player-staff-cap-v103",
         [0.07, 0.07, 0.07],
         [0.04, 0.7, -0.04],
-        0x6f5ca8,
-      ),
+        0x6f5ca8
+      )
     );
   }
 }
@@ -2932,7 +4559,7 @@ function addHarthmerePlayerAvatarFullPolishDetails(
   root: THREE.Object3D,
   appearance: HarthmereCharacterAppearance,
   metrics: HarthmerePlayerClothingFitMetrics,
-  id?: BiomesId,
+  id?: BiomesId
 ): void {
   if (process.env.NODE_ENV === "production") {
     return;
@@ -2942,7 +4569,9 @@ function addHarthmerePlayerAvatarFullPolishDetails(
   const palette = harthmerePlayerClothingPalette(appearance);
   const faceRoot = root.getObjectByName("local-dev-bolt-head-shell");
   if (faceRoot) {
-    const existing = faceRoot.getObjectByName("harthmere-player-avatar-face-polish-v104");
+    const existing = faceRoot.getObjectByName(
+      "harthmere-player-avatar-face-polish-v104"
+    );
     existing?.parent?.remove(existing);
     const faceGroup = new THREE.Group();
     faceGroup.name = "harthmere-player-avatar-face-polish-v104";
@@ -2957,18 +4586,26 @@ function addHarthmerePlayerAvatarFullPolishDetails(
           localDevBoltHeadBox(
             "harthmere-player-left-eye-glint-v104",
             [0.018, 0.018, 0.012],
-            [leftEye.position.x + 0.018, leftEye.position.y + 0.01, leftEye.position.z - 0.024],
-            0xf8f7ef,
-          ),
+            [
+              leftEye.position.x + 0.018,
+              leftEye.position.y + 0.01,
+              leftEye.position.z - 0.024,
+            ],
+            0xf8f7ef
+          )
         ),
         tagHarthmerePlayerAvatarFullPolish(
           localDevBoltHeadBox(
             "harthmere-player-right-eye-glint-v104",
             [0.018, 0.018, 0.012],
-            [rightEye.position.x + 0.018, rightEye.position.y + 0.01, rightEye.position.z - 0.024],
-            0xf8f7ef,
-          ),
-        ),
+            [
+              rightEye.position.x + 0.018,
+              rightEye.position.y + 0.01,
+              rightEye.position.z - 0.024,
+            ],
+            0xf8f7ef
+          )
+        )
       );
     }
     if (head) {
@@ -2976,7 +4613,7 @@ function addHarthmerePlayerAvatarFullPolishDetails(
       const headZ = head.position.z;
       const skinHighlight = harthmereVoxelColorLighten(
         HARTHMERE_PLAYER_SKIN_COLORS[appearance.face.skinTone] ?? 0xd19a68,
-        0.1,
+        0.1
       );
       faceGroup.add(
         tagHarthmerePlayerAvatarFullPolish(
@@ -2984,24 +4621,26 @@ function addHarthmerePlayerAvatarFullPolishDetails(
             "harthmere-player-left-ear-v104",
             [0.04, 0.09, 0.035],
             [-metrics.headWidth / 2 - 0.03, headY - 0.01, headZ + 0.015],
-            skinHighlight,
-          ),
+            skinHighlight
+          )
         ),
         tagHarthmerePlayerAvatarFullPolish(
           localDevBoltHeadBox(
             "harthmere-player-right-ear-v104",
             [0.04, 0.09, 0.035],
             [metrics.headWidth / 2 + 0.03, headY - 0.01, headZ + 0.015],
-            skinHighlight,
-          ),
-        ),
+            skinHighlight
+          )
+        )
       );
     }
     faceRoot.add(faceGroup);
   }
 
   const torsoAnchor = harthmerePlayerClothingAnchor(root, "torso");
-  const existingBody = torsoAnchor.getObjectByName("harthmere-player-avatar-body-polish-v104");
+  const existingBody = torsoAnchor.getObjectByName(
+    "harthmere-player-avatar-body-polish-v104"
+  );
   existingBody?.parent?.remove(existingBody);
   const bodyGroup = new THREE.Group();
   bodyGroup.name = "harthmere-player-avatar-body-polish-v104";
@@ -3014,41 +4653,45 @@ function addHarthmerePlayerAvatarFullPolishDetails(
         "harthmere-player-front-seam-v104",
         [0.03, Math.max(0.28, metrics.torsoHeight * 0.58), 0.018],
         [0, -0.02, -0.155],
-        palette.dark,
-      ),
+        palette.dark
+      )
     ),
     tagHarthmerePlayerAvatarFullPolish(
       localDevBoltHeadBox(
         "harthmere-player-belt-buckle-v104",
         [0.075, 0.055, 0.028],
         [0, -metrics.torsoHeight / 2 + 0.08, -0.17],
-        buckleColor,
-      ),
+        buckleColor
+      )
     ),
     tagHarthmerePlayerAvatarFullPolish(
       localDevBoltHeadBox(
         "harthmere-player-left-shoulder-highlight-v104",
         [0.11, 0.04, 0.022],
         [-metrics.shoulderWidth / 2 + 0.09, 0.17, -0.16],
-        palette.trim,
-      ),
+        palette.trim
+      )
     ),
     tagHarthmerePlayerAvatarFullPolish(
       localDevBoltHeadBox(
         "harthmere-player-right-shoulder-highlight-v104",
         [0.11, 0.04, 0.022],
         [metrics.shoulderWidth / 2 - 0.09, 0.17, -0.16],
-        palette.trim,
-      ),
-    ),
+        palette.trim
+      )
+    )
   );
 
   if (((seed >>> 20) & 1) === 1) {
     const charm = localDevBoltHeadBox(
       "harthmere-player-small-belt-charm-v104",
       [0.04, 0.08, 0.026],
-      [metrics.torsoWidth / 2 + 0.045, -metrics.torsoHeight / 2 + 0.045, -0.155],
-      palette.accent,
+      [
+        metrics.torsoWidth / 2 + 0.045,
+        -metrics.torsoHeight / 2 + 0.045,
+        -0.155,
+      ],
+      palette.accent
     );
     charm.rotation.z = 0.18;
     bodyGroup.add(tagHarthmerePlayerAvatarFullPolish(charm));
@@ -3076,7 +4719,7 @@ function addHarthmerePlayerAvatarFullPolishDetails(
 // while drawn or mid-attack. Returns a disposer so makeAnimatedMesh can clean
 // up the listener with the rest of the player mesh.
 function installHarthmerePlayerSwordSheathVisibilityBridge(
-  root: THREE.Object3D,
+  root: THREE.Object3D
 ): (() => void) | undefined {
   if (typeof window === "undefined") {
     return undefined;
@@ -3103,11 +4746,13 @@ function installHarthmerePlayerSwordSheathVisibilityBridge(
   applyVisibility(false);
 
   const handler = (event: Event) => {
-    const detail = (event as CustomEvent<{
-      drawn?: boolean;
-      action?: string;
-      drawAmount?: number;
-    }>).detail;
+    const detail = (
+      event as CustomEvent<{
+        drawn?: boolean;
+        action?: string;
+        drawAmount?: number;
+      }>
+    ).detail;
     if (!detail) {
       return;
     }
@@ -3121,23 +4766,20 @@ function installHarthmerePlayerSwordSheathVisibilityBridge(
     }
     if (detail.action === "sheathe") {
       applyVisibility(false);
-    } else if (
-      detail.action === "draw" ||
-      detail.action === "attack"
-    ) {
+    } else if (detail.action === "draw" || detail.action === "attack") {
       applyVisibility(true);
     }
   };
 
   window.addEventListener(
     "biomes:harthmere-player-sword-visual",
-    handler as EventListener,
+    handler as EventListener
   );
 
   return () => {
     window.removeEventListener(
       "biomes:harthmere-player-sword-visual",
-      handler as EventListener,
+      handler as EventListener
     );
   };
 }
@@ -3163,10 +4805,18 @@ function harthmereBodyVisualScales(body: HarthmereVoxelBodyConfig) {
       : body.bodyType === "soft"
       ? 1.05
       : 1;
-  const depthScale = body.bodyType === "stocky" ? 1.1 : body.bodyType === "soft" ? 1.08 : 1;
-  const armScale = body.armLength === "long" ? 1.16 : body.armLength === "short" ? 0.86 : 1;
-  const legScale = body.legLength === "long" ? 1.15 : body.legLength === "short" ? 0.86 : 1;
-  const shoulderScale = body.shoulderWidth === "wide" ? 1.16 : body.shoulderWidth === "narrow" ? 0.9 : 1;
+  const depthScale =
+    body.bodyType === "stocky" ? 1.1 : body.bodyType === "soft" ? 1.08 : 1;
+  const armScale =
+    body.armLength === "long" ? 1.16 : body.armLength === "short" ? 0.86 : 1;
+  const legScale =
+    body.legLength === "long" ? 1.15 : body.legLength === "short" ? 0.86 : 1;
+  const shoulderScale =
+    body.shoulderWidth === "wide"
+      ? 1.16
+      : body.shoulderWidth === "narrow"
+      ? 0.9
+      : 1;
   const torsoWidthScale =
     body.bodyType === "slim"
       ? 0.88
@@ -3179,7 +4829,8 @@ function harthmereBodyVisualScales(body: HarthmereVoxelBodyConfig) {
       : body.bodyType === "soft"
       ? 1.06
       : 1;
-  const torsoHeightScale = body.bodyType === "stocky" ? 0.96 : body.bodyType === "athletic" ? 1.04 : 1;
+  const torsoHeightScale =
+    body.bodyType === "stocky" ? 0.96 : body.bodyType === "athletic" ? 1.04 : 1;
   return {
     heightScale,
     widthScale,
@@ -3195,7 +4846,7 @@ function harthmereBodyVisualScales(body: HarthmereVoxelBodyConfig) {
 function applyLocalDevPlayerInnerBodyConfig(
   root: THREE.Object3D,
   body: HarthmereVoxelBodyConfig,
-  baseScale = 1,
+  baseScale = 1
 ): void {
   const scales = harthmereBodyVisualScales(body);
 
@@ -3215,19 +4866,47 @@ function applyLocalDevPlayerInnerBodyConfig(
       return;
     }
 
-    if (/(^|[_ -])(spine|chest|torso|body|hips|pelvis)([_ -]|$)/i.test(object.name)) {
+    if (
+      /(^|[_ -])(spine|chest|torso|body|hips|pelvis)([_ -]|$)/i.test(
+        object.name
+      )
+    ) {
       object.scale.x *= scales.torsoWidthScale * scales.shoulderScale;
       object.scale.y *= scales.torsoHeightScale;
       object.scale.z *= scales.depthScale;
-    } else if (/(^|[_ -])(l|left)[_ -]?(arm|forearm|hand|shoulder)([_ -]|$)/i.test(object.name)) {
+    } else if (
+      /(^|[_ -])(l|left)[_ -]?(arm|forearm|hand|shoulder)([_ -]|$)/i.test(
+        object.name
+      )
+    ) {
       object.scale.y *= scales.armScale;
-      object.scale.x *= body.shoulderWidth === "wide" ? 1.08 : body.shoulderWidth === "narrow" ? 0.94 : 1;
-    } else if (/(^|[_ -])(r|right)[_ -]?(arm|forearm|hand|shoulder)([_ -]|$)/i.test(object.name)) {
+      object.scale.x *=
+        body.shoulderWidth === "wide"
+          ? 1.08
+          : body.shoulderWidth === "narrow"
+          ? 0.94
+          : 1;
+    } else if (
+      /(^|[_ -])(r|right)[_ -]?(arm|forearm|hand|shoulder)([_ -]|$)/i.test(
+        object.name
+      )
+    ) {
       object.scale.y *= scales.armScale;
-      object.scale.x *= body.shoulderWidth === "wide" ? 1.08 : body.shoulderWidth === "narrow" ? 0.94 : 1;
-    } else if (/(^|[_ -])(l|left)[_ -]?(leg|thigh|shin|foot)([_ -]|$)/i.test(object.name)) {
+      object.scale.x *=
+        body.shoulderWidth === "wide"
+          ? 1.08
+          : body.shoulderWidth === "narrow"
+          ? 0.94
+          : 1;
+    } else if (
+      /(^|[_ -])(l|left)[_ -]?(leg|thigh|shin|foot)([_ -]|$)/i.test(object.name)
+    ) {
       object.scale.y *= scales.legScale;
-    } else if (/(^|[_ -])(r|right)[_ -]?(leg|thigh|shin|foot)([_ -]|$)/i.test(object.name)) {
+    } else if (
+      /(^|[_ -])(r|right)[_ -]?(leg|thigh|shin|foot)([_ -]|$)/i.test(
+        object.name
+      )
+    ) {
       object.scale.y *= scales.legScale;
     }
   });
@@ -3241,7 +4920,9 @@ function applyLocalDevPlayerInnerBodyConfig(
 
 function normalizeHarthmereVariantAnimations(gltf: GLTF) {
   const sourceAnimations = [...gltf.animations];
-  const sourceAnimationNames = new Set(sourceAnimations.map((clip) => clip.name));
+  const sourceAnimationNames = new Set(
+    sourceAnimations.map((clip) => clip.name)
+  );
   const normalized: THREE.AnimationClip[] = [];
 
   for (const clip of sourceAnimations) {
@@ -3265,8 +4946,12 @@ function normalizeHarthmereVariantAnimations(gltf: GLTF) {
   // with a matching name, so the old unconditional clone made attack2 look
   // identical to the regular Attack on Harthmere variants.
   if (!normalizedAnimationNames.has("Attack2")) {
-    const heavyAttack = sourceAnimations.find((clip) => clip.name === "HeavyAttack");
-    const regularAttack = sourceAnimations.find((clip) => clip.name === "Attack");
+    const heavyAttack = sourceAnimations.find(
+      (clip) => clip.name === "HeavyAttack"
+    );
+    const regularAttack = sourceAnimations.find(
+      (clip) => clip.name === "Attack"
+    );
     const fallback = heavyAttack ?? regularAttack;
     if (fallback) {
       const attack2Alias = fallback.clone();
@@ -3316,14 +5001,16 @@ function hideHarthmereVariantBuiltInHead(root: THREE.Object3D) {
 function addLocalDevPlayerBodyShellToObject(
   root: THREE.Object3D,
   userId?: BiomesId,
-  options: { applyInnerBodyConfig?: boolean } = {},
+  options: { applyInnerBodyConfig?: boolean } = {}
 ): void {
   if (process.env.NODE_ENV === "production") {
     return;
   }
   removeLocalDevFaceObject(root, "local-dev-player-body-shell");
 
-  const appearance = userId ? loadHarthmerePlayerAppearanceConfig(userId) : undefined;
+  const appearance = userId
+    ? loadHarthmerePlayerAppearanceConfig(userId)
+    : undefined;
   const body = appearance?.body;
   if (!body) {
     return;
@@ -3368,39 +5055,125 @@ function addLocalDevPlayerBodyShellToObject(
       : body.shoulderWidth === "narrow"
       ? torsoWidth + 0.04
       : torsoWidth + 0.14;
-  const legLength = body.legLength === "long" ? 0.64 : body.legLength === "short" ? 0.4 : 0.52;
-  const armLength = body.armLength === "long" ? 0.7 : body.armLength === "short" ? 0.46 : 0.58;
-  const stanceOffset = body.stance === "heroic" ? 0.05 : body.stance === "reserved" ? -0.03 : 0;
-  const stanceArmX = body.stance === "heroic" ? 0.035 : body.stance === "reserved" ? -0.02 : 0;
-  const legSpread = body.stance === "heroic" ? 0.07 : body.stance === "reserved" ? 0.02 : 0.045;
+  const legLength =
+    body.legLength === "long" ? 0.64 : body.legLength === "short" ? 0.4 : 0.52;
+  const armLength =
+    body.armLength === "long" ? 0.7 : body.armLength === "short" ? 0.46 : 0.58;
+  const stanceOffset =
+    body.stance === "heroic" ? 0.05 : body.stance === "reserved" ? -0.03 : 0;
+  const stanceArmX =
+    body.stance === "heroic" ? 0.035 : body.stance === "reserved" ? -0.02 : 0;
+  const legSpread =
+    body.stance === "heroic" ? 0.07 : body.stance === "reserved" ? 0.02 : 0.045;
 
   const group = new THREE.Group();
   group.name = "local-dev-player-body-shell";
   group.renderOrder = 18;
   group.add(
-    localDevBoltHeadBox("local-dev-body-shoulders", [shoulderWidth, 0.08, 0.24], [0, 1.18, -0.005], bodyUnderlayerColor),
-    localDevBoltHeadBox("local-dev-body-torso", [torsoWidth, torsoHeight, 0.27], [0, 0.9 + stanceOffset, 0], bodyUnderlayerColor),
-    localDevBoltHeadBox("local-dev-body-belt", [torsoWidth + 0.055, 0.06, 0.29], [0, 0.58 + stanceOffset, 0], 0x221915),
-    localDevBoltHeadBox("local-dev-body-left-arm", [0.105, armLength, 0.12], [-shoulderWidth / 2 - 0.055 - stanceArmX, 0.92, 0], limbUnderlayerColor),
-    localDevBoltHeadBox("local-dev-body-right-arm", [0.105, armLength, 0.12], [shoulderWidth / 2 + 0.055 + stanceArmX, 0.92, 0], limbUnderlayerColor),
-    localDevBoltHeadBox("local-dev-body-left-leg", [0.13, legLength, 0.13], [-torsoWidth / 4 - legSpread, 0.26, 0], 0x2c2b2f),
-    localDevBoltHeadBox("local-dev-body-right-leg", [0.13, legLength, 0.13], [torsoWidth / 4 + legSpread, 0.26, 0], 0x2c2b2f),
+    localDevBoltHeadBox(
+      "local-dev-body-shoulders",
+      [shoulderWidth, 0.08, 0.24],
+      [0, 1.18, -0.005],
+      bodyUnderlayerColor
+    ),
+    localDevBoltHeadBox(
+      "local-dev-body-torso",
+      [torsoWidth, torsoHeight, 0.27],
+      [0, 0.9 + stanceOffset, 0],
+      bodyUnderlayerColor
+    ),
+    localDevBoltHeadBox(
+      "local-dev-body-belt",
+      [torsoWidth + 0.055, 0.06, 0.29],
+      [0, 0.58 + stanceOffset, 0],
+      0x221915
+    ),
+    localDevBoltHeadBox(
+      "local-dev-body-left-arm",
+      [0.105, armLength, 0.12],
+      [-shoulderWidth / 2 - 0.055 - stanceArmX, 0.92, 0],
+      limbUnderlayerColor
+    ),
+    localDevBoltHeadBox(
+      "local-dev-body-right-arm",
+      [0.105, armLength, 0.12],
+      [shoulderWidth / 2 + 0.055 + stanceArmX, 0.92, 0],
+      limbUnderlayerColor
+    ),
+    localDevBoltHeadBox(
+      "local-dev-body-left-leg",
+      [0.13, legLength, 0.13],
+      [-torsoWidth / 4 - legSpread, 0.26, 0],
+      0x2c2b2f
+    ),
+    localDevBoltHeadBox(
+      "local-dev-body-right-leg",
+      [0.13, legLength, 0.13],
+      [torsoWidth / 4 + legSpread, 0.26, 0],
+      0x2c2b2f
+    )
   );
-  const accentColor = HARTHMERE_PLAYER_BODY_OUTFIT_ACCENT_COLORS[body.outfitColor];
+  const accentColor =
+    HARTHMERE_PLAYER_BODY_OUTFIT_ACCENT_COLORS[body.outfitColor];
   const trimColor = HARTHMERE_PLAYER_BODY_OUTFIT_TRIM_COLORS[body.outfitColor];
   // Outfit polish stays in voxel primitives: collar, cuffs, hem, boot tops,
   // lacing, and role/equipment trim. This is cheaper and more consistent than
   // importing a dependency for procedural human styling.
   group.add(
-    localDevBoltHeadBox("local-dev-body-collar-polish", [torsoWidth + 0.05, 0.04, 0.305], [0, 1.2 + stanceOffset, -0.024], accentColor),
-    localDevBoltHeadBox("local-dev-body-hem-polish", [torsoWidth + 0.09, 0.04, 0.305], [0, 0.66 + stanceOffset, -0.024], accentColor),
-    localDevBoltHeadBox("local-dev-body-left-cuff-polish", [0.13, 0.045, 0.135], [-shoulderWidth / 2 - 0.055 - stanceArmX, 0.62, -0.02], trimColor),
-    localDevBoltHeadBox("local-dev-body-right-cuff-polish", [0.13, 0.045, 0.135], [shoulderWidth / 2 + 0.055 + stanceArmX, 0.62, -0.02], trimColor),
-    localDevBoltHeadBox("local-dev-body-left-boot-polish", [0.15, 0.1, 0.15], [-torsoWidth / 4 - legSpread, 0.07, -0.02], 0x151515),
-    localDevBoltHeadBox("local-dev-body-right-boot-polish", [0.15, 0.1, 0.15], [torsoWidth / 4 + legSpread, 0.07, -0.02], 0x151515),
-    localDevBoltHeadBox("local-dev-body-lacing-1-polish", [0.035, 0.035, 0.02], [0, 1.04 + stanceOffset, -0.16], trimColor),
-    localDevBoltHeadBox("local-dev-body-lacing-2-polish", [0.035, 0.035, 0.02], [0, 0.94 + stanceOffset, -0.16], trimColor),
-    localDevBoltHeadBox("local-dev-body-lacing-3-polish", [0.035, 0.035, 0.02], [0, 0.84 + stanceOffset, -0.16], trimColor),
+    localDevBoltHeadBox(
+      "local-dev-body-collar-polish",
+      [torsoWidth + 0.05, 0.04, 0.305],
+      [0, 1.2 + stanceOffset, -0.024],
+      accentColor
+    ),
+    localDevBoltHeadBox(
+      "local-dev-body-hem-polish",
+      [torsoWidth + 0.09, 0.04, 0.305],
+      [0, 0.66 + stanceOffset, -0.024],
+      accentColor
+    ),
+    localDevBoltHeadBox(
+      "local-dev-body-left-cuff-polish",
+      [0.13, 0.045, 0.135],
+      [-shoulderWidth / 2 - 0.055 - stanceArmX, 0.62, -0.02],
+      trimColor
+    ),
+    localDevBoltHeadBox(
+      "local-dev-body-right-cuff-polish",
+      [0.13, 0.045, 0.135],
+      [shoulderWidth / 2 + 0.055 + stanceArmX, 0.62, -0.02],
+      trimColor
+    ),
+    localDevBoltHeadBox(
+      "local-dev-body-left-boot-polish",
+      [0.15, 0.1, 0.15],
+      [-torsoWidth / 4 - legSpread, 0.07, -0.02],
+      0x151515
+    ),
+    localDevBoltHeadBox(
+      "local-dev-body-right-boot-polish",
+      [0.15, 0.1, 0.15],
+      [torsoWidth / 4 + legSpread, 0.07, -0.02],
+      0x151515
+    ),
+    localDevBoltHeadBox(
+      "local-dev-body-lacing-1-polish",
+      [0.035, 0.035, 0.02],
+      [0, 1.04 + stanceOffset, -0.16],
+      trimColor
+    ),
+    localDevBoltHeadBox(
+      "local-dev-body-lacing-2-polish",
+      [0.035, 0.035, 0.02],
+      [0, 0.94 + stanceOffset, -0.16],
+      trimColor
+    ),
+    localDevBoltHeadBox(
+      "local-dev-body-lacing-3-polish",
+      [0.035, 0.035, 0.02],
+      [0, 0.84 + stanceOffset, -0.16],
+      trimColor
+    )
   );
   const leftArm = group.getObjectByName("local-dev-body-left-arm");
   const rightArm = group.getObjectByName("local-dev-body-right-arm");
@@ -3432,23 +5205,58 @@ function addLocalDevPlayerBodyShellToObject(
     stanceOffset,
   });
   if (body.bodyType === "athletic") {
-    group.add(localDevBoltHeadBox("local-dev-body-athletic-chest", [torsoWidth + 0.08, 0.08, 0.285], [0, 1.06 + stanceOffset, -0.02], harthmereVoxelColorLighten(bodyUnderlayerColor, 0.16)));
+    group.add(
+      localDevBoltHeadBox(
+        "local-dev-body-athletic-chest",
+        [torsoWidth + 0.08, 0.08, 0.285],
+        [0, 1.06 + stanceOffset, -0.02],
+        harthmereVoxelColorLighten(bodyUnderlayerColor, 0.16)
+      )
+    );
   } else if (body.bodyType === "soft") {
-    group.add(localDevBoltHeadBox("local-dev-body-soft-waist", [torsoWidth + 0.09, 0.09, 0.285], [0, 0.7 + stanceOffset, -0.02], harthmereVoxelColorLighten(bodyUnderlayerColor, 0.16)));
+    group.add(
+      localDevBoltHeadBox(
+        "local-dev-body-soft-waist",
+        [torsoWidth + 0.09, 0.09, 0.285],
+        [0, 0.7 + stanceOffset, -0.02],
+        harthmereVoxelColorLighten(bodyUnderlayerColor, 0.16)
+      )
+    );
   }
   if (body.stance === "heroic") {
-    group.add(localDevBoltHeadBox("local-dev-body-hero-sash", [torsoWidth + 0.08, 0.055, 0.3], [0, 1.05, -0.025], 0xd6a632));
+    group.add(
+      localDevBoltHeadBox(
+        "local-dev-body-hero-sash",
+        [torsoWidth + 0.08, 0.055, 0.3],
+        [0, 1.05, -0.025],
+        0xd6a632
+      )
+    );
   } else if (body.stance === "reserved") {
-    group.add(localDevBoltHeadBox("local-dev-body-reserved-line", [0.035, 0.46, 0.3], [0, 0.92, -0.025], 0x111111));
+    group.add(
+      localDevBoltHeadBox(
+        "local-dev-body-reserved-line",
+        [0.035, 0.46, 0.3],
+        [0, 0.92, -0.025],
+        0x111111
+      )
+    );
   } else if (body.stance === "upright") {
-    group.add(localDevBoltHeadBox("local-dev-body-upright-collar", [torsoWidth + 0.04, 0.045, 0.295], [0, 1.2, -0.022], 0xf6e6d0));
+    group.add(
+      localDevBoltHeadBox(
+        "local-dev-body-upright-collar",
+        [torsoWidth + 0.04, 0.045, 0.295],
+        [0, 1.2, -0.022],
+        0xf6e6d0
+      )
+    );
   }
   root.add(group);
 }
 
 function addLocalDevBoltHeadShellToObject(
   root: THREE.Object3D,
-  userId?: BiomesId,
+  userId?: BiomesId
 ): void {
   if (process.env.NODE_ENV === "production") {
     return;
@@ -3481,13 +5289,13 @@ function addLocalDevBoltHeadShellToObject(
     : LOCAL_DEV_PLAYER_VOXEL_FACE;
   const variantAnchor = harthmereVariantHeadAnchor(
     root,
-    appearance?.anchors ?? HARTHMERE_DEFAULT_HUMAN_ANCHORS,
+    appearance?.anchors ?? HARTHMERE_DEFAULT_HUMAN_ANCHORS
   );
   const variantBuiltInHead = root.getObjectByName("Head");
   const face = variantAnchor
     ? shiftLocalDevPlayerVoxelFaceSpecY(
         baseFace,
-        (variantBuiltInHead?.position.y ?? 0.34) - baseFace.headPosition[1],
+        (variantBuiltInHead?.position.y ?? 0.34) - baseFace.headPosition[1]
       )
     : baseFace;
 
@@ -3497,7 +5305,7 @@ function addLocalDevBoltHeadShellToObject(
 
 function addLocalDevSimpleFaceToObject(
   root: THREE.Object3D,
-  userId?: BiomesId,
+  userId?: BiomesId
 ): void {
   if (process.env.NODE_ENV === "production") {
     return;
@@ -3627,7 +5435,6 @@ export async function makePlayerLikeAppearanceMesh(
   return mesh;
 }
 
-
 // SNAPSHOT_RICH_NPC_APPEARANCE_V69:
 // Snapshot NPCs were meant to use the upstream player-like wearable mesh
 // generator: /api/assets/player_mesh.glb?top=...&bottoms=...&sc=...&ec=...&hc=...
@@ -3636,8 +5443,14 @@ export async function makePlayerLikeAppearanceMesh(
 // original voxel player assets instead of Harthmere-only NPC/body variants.
 const SNAPSHOT_RICH_NPC_APPEARANCE_VERSION_V69 =
   "snapshot-rich-npc-appearance-v69";
+const HARTHMERE_LOCAL_INVENTORY_STATE_KEY_V1 =
+  "biomes.localDev.harthmere.inventoryState.v1";
 
-function snapshotRichNpcPickV69<T>(items: readonly T[], id: BiomesId, salt: number): T {
+function snapshotRichNpcPickV69<T>(
+  items: readonly T[],
+  id: BiomesId,
+  salt: number
+): T {
   const numericId = Number(id) || 1;
   const value = Math.abs(Math.sin(numericId * (salt + 11.731)) * 1000003);
   return items[Math.floor(value) % items.length]!;
@@ -3660,7 +5473,9 @@ function snapshotRichNpcHasUsefulWearablesV69(
   return !!wearables && Array.from(wearables.values()).some(Boolean);
 }
 
-function snapshotRichNpcFallbackAppearanceV69(id: BiomesId): ReadonlyAppearance {
+function snapshotRichNpcFallbackAppearanceV69(
+  id: BiomesId
+): ReadonlyAppearance {
   return {
     skin_color_id: snapshotRichNpcPickV69(
       [
@@ -3681,7 +5496,13 @@ function snapshotRichNpcFallbackAppearanceV69(id: BiomesId): ReadonlyAppearance 
       1
     ),
     eye_color_id: snapshotRichNpcPickV69(
-      ["eye_color_0", "eye_color_1", "eye_color_2", "eye_color_3", "eye_color_4"],
+      [
+        "eye_color_0",
+        "eye_color_1",
+        "eye_color_2",
+        "eye_color_3",
+        "eye_color_4",
+      ],
       id,
       2
     ),
@@ -3705,71 +5526,59 @@ function snapshotRichNpcFallbackAppearanceV69(id: BiomesId): ReadonlyAppearance 
 }
 
 const SNAPSHOT_RICH_NPC_FALLBACK_HAIR_ITEMS_V69 = [
-  1534621126189652,
-  1534621126189649,
-  4537020877769664,
-  1534621126189628,
-  4537020877769985,
-  7539420629350273,
-  1534621126189616,
-  7539420629350306,
+  1534621126189652, 1534621126189649, 4537020877769664, 1534621126189628,
+  4537020877769985, 7539420629350273, 1534621126189616, 7539420629350306,
   1534621126189781,
 ] as unknown as readonly BiomesId[];
 
 const SNAPSHOT_RICH_NPC_FALLBACK_FACE_ITEMS_V69 = [
-  1534621126189721,
-  4537020877769619,
-  1253469164164001,
-  4537020877770051,
-  1534621126189763,
-  7539420629350378,
-  1534621126189766,
-  7539420629350423,
+  1534621126189721, 4537020877769619, 1253469164164001, 4537020877770051,
+  1534621126189763, 7539420629350378, 1534621126189766, 7539420629350423,
 ] as unknown as readonly BiomesId[];
 
 const SNAPSHOT_RICH_NPC_FALLBACK_EAR_ITEMS_V69 = [
-  4537020877769946,
-  6972293019634374,
-  7539420629350408,
-  1534621126189604,
-  4537020877770078,
-  1534621126189751,
+  4537020877769946, 6972293019634374, 7539420629350408, 1534621126189604,
+  4537020877770078, 1534621126189751,
 ] as unknown as readonly BiomesId[];
 
 const SNAPSHOT_RICH_NPC_FALLBACK_NECK_ITEMS_V69 = [
-  7539420629350393,
-  4537020877769610,
-  8863177783996661,
-  7539420629349940,
+  7539420629350393, 4537020877769610, 8863177783996661, 7539420629349940,
   4537020877769613,
 ] as unknown as readonly BiomesId[];
 
 const SNAPSHOT_RICH_NPC_FALLBACK_HAND_ITEMS_V69 = [
-  4005037263305075,
-  7539420629350390,
-  7539420629349934,
-  4537020877769607,
+  4005037263305075, 7539420629350390, 7539420629349934, 4537020877769607,
   1534621126189724,
 ] as unknown as readonly BiomesId[];
 
-function snapshotRichNpcFallbackWearablesV69(id: BiomesId): ReadonlyItemAssignment {
+function snapshotRichNpcFallbackWearablesV69(
+  id: BiomesId
+): ReadonlyItemAssignment {
   const items = new Map<BiomesId, Item>();
   const add = (slot: BiomesId, itemId: BiomesId) => {
     try {
       items.set(slot, anItem(itemId));
     } catch (error) {
-      log.warn("SNAPSHOT_RICH_NPC_APPEARANCE_V69 could not resolve fallback wearable", {
-        slot,
-        itemId,
-        error,
-      });
+      log.warn(
+        "SNAPSHOT_RICH_NPC_APPEARANCE_V69 could not resolve fallback wearable",
+        {
+          slot,
+          itemId,
+          error,
+        }
+      );
     }
   };
 
   add(
     BikkieIds.top,
     snapshotRichNpcPickV69(
-      [BikkieIds.tatteredTop, BikkieIds.grassyTop, BikkieIds.pjTop, BikkieIds.ogTShirt],
+      [
+        BikkieIds.tatteredTop,
+        BikkieIds.grassyTop,
+        BikkieIds.pjTop,
+        BikkieIds.ogTShirt,
+      ],
       id,
       4
     )
@@ -3777,7 +5586,12 @@ function snapshotRichNpcFallbackWearablesV69(id: BiomesId): ReadonlyItemAssignme
   add(
     BikkieIds.bottoms,
     snapshotRichNpcPickV69(
-      [BikkieIds.tatteredSkirt, BikkieIds.grassyBottom, BikkieIds.pjBottoms, BikkieIds.bellBottoms],
+      [
+        BikkieIds.tatteredSkirt,
+        BikkieIds.grassyBottom,
+        BikkieIds.pjBottoms,
+        BikkieIds.bellBottoms,
+      ],
       id,
       5
     )
@@ -3805,7 +5619,12 @@ function snapshotRichNpcFallbackWearablesV69(id: BiomesId): ReadonlyItemAssignme
   );
 
   const hat = snapshotRichNpcPickV69(
-    [undefined, BikkieIds.flowerCrown, BikkieIds.sombrero, BikkieIds.aviatorHat],
+    [
+      undefined,
+      BikkieIds.flowerCrown,
+      BikkieIds.sombrero,
+      BikkieIds.aviatorHat,
+    ],
     id,
     6
   );
@@ -3825,22 +5644,82 @@ function snapshotRichNpcFallbackWearablesV69(id: BiomesId): ReadonlyItemAssignme
   return items;
 }
 
+function harthmereLocalPlayerBikkieWearablesV1():
+  | ReadonlyItemAssignment
+  | undefined {
+  const storage =
+    typeof window !== "undefined" ? window.localStorage : undefined;
+  if (!storage) {
+    return undefined;
+  }
+  try {
+    const raw = storage.getItem(HARTHMERE_LOCAL_INVENTORY_STATE_KEY_V1);
+    if (!raw) {
+      return undefined;
+    }
+    const state = JSON.parse(raw) as {
+      equipment?: Record<string, { itemId?: string } | undefined>;
+    };
+    const mapped = harthmereLocalEquipmentBikkieWearablesV1(state.equipment);
+    if (mapped.length === 0) {
+      return undefined;
+    }
+    const items = new Map<BiomesId, Item>();
+    for (const wearable of mapped) {
+      try {
+        items.set(wearable.slot, anItem(wearable.itemId));
+      } catch (error) {
+        log.warn("Could not resolve local Harthmere Bikkie wearable", {
+          slot: wearable.slot,
+          itemId: wearable.itemId,
+          error,
+        });
+      }
+    }
+    return items.size > 0 ? items : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function mergeWearableAssignmentsV1(
+  base: ReadonlyItemAssignment | undefined,
+  overlay: ReadonlyItemAssignment | undefined
+): ReadonlyItemAssignment | undefined {
+  if (!overlay || overlay.size === 0) {
+    return base;
+  }
+  const merged = new Map<BiomesId, Item>();
+  for (const [slot, item] of base ?? []) {
+    merged.set(slot, item);
+  }
+  for (const [slot, item] of overlay) {
+    merged.set(slot, item);
+  }
+  return merged;
+}
+
 const HARTHMERE_LIVE_HUMAN_COSMETICS_FALLBACK_VERSION_V1 =
   "harthmere-live-human-cosmetics-fallback-v1";
 
 function harthmereLiveHumanMeshCosmeticsV1(
   id: BiomesId,
   wearables?: ReadonlyItemAssignment,
-  appearance?: ReadonlyAppearance
+  appearance?: ReadonlyAppearance,
+  options: { includeLocalHarthmereWearables?: boolean } = {}
 ) {
   const hasWearables = snapshotRichNpcHasUsefulWearablesV69(wearables);
   const hasAppearance = snapshotRichNpcHasUsefulAppearanceV69(appearance);
   const usedWearablesFallback = !hasWearables;
   const usedAppearanceFallback = !hasAppearance;
+  const localWearables = options.includeLocalHarthmereWearables
+    ? harthmereLocalPlayerBikkieWearablesV1()
+    : undefined;
+  const baseWearables = hasWearables
+    ? wearables
+    : snapshotRichNpcFallbackWearablesV69(id);
   return {
-    wearables: hasWearables
-      ? wearables
-      : snapshotRichNpcFallbackWearablesV69(id),
+    wearables: mergeWearableAssignmentsV1(baseWearables, localWearables),
     appearance: hasAppearance
       ? appearance
       : snapshotRichNpcFallbackAppearanceV69(id),
@@ -3849,6 +5728,7 @@ function harthmereLiveHumanMeshCosmeticsV1(
       version: HARTHMERE_LIVE_HUMAN_COSMETICS_FALLBACK_VERSION_V1,
       usedWearablesFallback,
       usedAppearanceFallback,
+      usedLocalHarthmereWearables: Boolean(localWearables?.size),
     },
   };
 }
@@ -3862,7 +5742,9 @@ export async function makeSnapshotPlayerLikeAppearanceMesh(
   const wearables = snapshotRichNpcHasUsefulWearablesV69(wearing?.items)
     ? wearing?.items
     : snapshotRichNpcFallbackWearablesV69(id);
-  const finalAppearance = snapshotRichNpcHasUsefulAppearanceV69(appearance?.appearance)
+  const finalAppearance = snapshotRichNpcHasUsefulAppearanceV69(
+    appearance?.appearance
+  )
     ? appearance?.appearance
     : snapshotRichNpcFallbackAppearanceV69(id);
 
