@@ -1475,7 +1475,7 @@ export function biscuitToJson(biscuit: Biscuit, includeBinary = false) {
         return visitAttribute([...attribute.entries()]);
       } else if (isBinaryData(attribute)) {
         if (includeBinary) {
-          return Buffer.from(attribute).toString("base64");
+          return Buffer.from(attribute as any).toString("base64");
         } else {
           return "<omitted>";
         }

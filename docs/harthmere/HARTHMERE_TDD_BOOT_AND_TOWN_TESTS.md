@@ -153,6 +153,104 @@ node scripts/harthmere/test-harthmere-live-browser-regression-suite-v1.cjs \
 
 ---
 
+## 4A. Fast AI browser boot checklist
+
+Use this path when an AI agent needs to get into the playable browser quickly
+for manual verification, screenshots, or live interaction debugging.
+
+1. Check whether a local web server is already listening:
+
+```bash
+cd /Users/devindixon/Development/biomes-game
+
+lsof -i :3000 -sTCP:LISTEN || true
+```
+
+If nothing is listening, start Harthmere:
+
+```bash
+HUSKY=0 \
+SKIP_PROD_LOAD=true \
+SKIP_MISSING_ASSET_CHECK=true \
+BIOMES_FORCE_LOCAL_DEV_TOWN=1 \
+./b data-snapshot run --no-pip-install
+```
+
+If Redis is running but the world looks empty or login/player state behaves like
+a cold boot, populate Redis from the installed snapshot before starting again:
+
+```bash
+./b data-snapshot ensure-redis-populated
+```
+
+2. Do not open the root page for game testing. The root page can be the
+   marketing/landing page. Find or use the actual runtime URL:
+
+```bash
+node scripts/harthmere/find-harthmere-live-runtime-url-v1.cjs \
+  /Users/devindixon/Development/biomes-game
+```
+
+The usual fast URL is:
+
+```text
+http://localhost:3000/at/Joe
+```
+
+3. Open that `/at/...` URL in the browser automation surface. For Codex desktop
+   sessions, use the Browser plugin / in-app browser and navigate the selected tab
+   to the runtime URL. Keep the browser open while testing interaction bugs; do not
+   reload between each click unless code changed or the page is stale.
+
+4. Confirm the runtime loaded before testing gameplay:
+
+- the visible page is the game, not `Biomes — Join the community shaping a new world`
+- a canvas is visible
+- the top HUD/game chrome is visible
+- the game is not covered by a Next.js compile-error overlay
+- browser console errors are collected before and after the interaction
+
+5. For live tests that need a target position, use the runtime debug hook from
+   the browser console when it exists:
+
+```js
+window.__harthmereLivePlayerDebug?.teleportTo({ x: 496, y: 70, z: -129 });
+```
+
+Reload only if the helper reports a stored teleport but the player does not move
+immediately.
+
+6. For voice/dialogue regressions, first run the component-level browser test.
+   It does not need the full game server and is faster than trying to hit a crowded
+   NPC in-world:
+
+```bash
+npm exec -- mocha -- --require ts-node/register/transpile-only --require tsconfig-paths/register \
+  src/client/components/challenges/TalkDialogModalStep.browser.test.tsx
+```
+
+That test must prove each rendered conversation scene requests and plays audio
+once, page clicks continue working, real choices cannot be bypassed, clicking
+the mic enters recording, clicking the page stops recording, extra clicks during
+transcription do not advance/close, and empty or failed speech-to-text results
+leave the conversation clickable.
+
+7. Use the full live browser suite only after the page above is loaded:
+
+```bash
+HARTHMERE_E2E_URL="http://localhost:3000/at/Joe" \
+node scripts/harthmere/test-harthmere-live-browser-regression-suite-v1.cjs \
+  /Users/devindixon/Development/biomes-game
+```
+
+If a live in-world interaction cannot be targeted reliably because other
+interactables are closer, say that explicitly and keep the component browser test
+as the proof for dialog/audio behavior. Do not claim an in-world conversation
+passed unless the browser actually opened that NPC dialogue and clicked through
+the relevant stages.
+
+---
+
 ## 5. Static/source test suite
 
 Run the full static town suite:
@@ -312,7 +410,7 @@ Protects against renderer-authored building/prop AABBs being fed into the vertic
 Horizontal town collision should prevent walking through objects. The legacy vertical bridge should remain opt-in only for debugging:
 
 ```js
-window.__harthmereEnableVerticalPlayerTownCollision = true
+window.__harthmereEnableVerticalPlayerTownCollision = true;
 ```
 
 ---
@@ -489,12 +587,12 @@ Wall shelf against east chapel wall
 The live tests use these globals when the Harthmere runtime is loaded:
 
 ```js
-window.__harthmereTownAudit
-window.__harthmereCollisionE2E
-window.__harthmereCollisionOverlayAudit
-window.__harthmereHorizontalPlayerTownCollisionStats
-window.__harthmereNpcCollisionObstacles
-window.__harthmereTownWalkDebug
+window.__harthmereTownAudit;
+window.__harthmereCollisionE2E;
+window.__harthmereCollisionOverlayAudit;
+window.__harthmereHorizontalPlayerTownCollisionStats;
+window.__harthmereNpcCollisionObstacles;
+window.__harthmereTownWalkDebug;
 ```
 
 Useful console probe:
@@ -710,11 +808,19 @@ World positions use `[x, y, z]`:
 - map markers may use a display height, but physical boards/NPCs/items need a
   grounded gameplay height
 
-The live installed snapshot terrain is the source of truth for grounding. The
-authored/local terrain helper can return a flat or incomplete height and may
-not match the live rendered ground. If the terrain is hilly, stepped, or built
-from snapshot shards, measure or derive the live terrain height before locking
-the placement.
+The production terrain placement map is the source of truth for Harthmere quest
+items, monsters, map pins, HUD targets, quest pointers, and random spawn pools:
+
+```text
+docs/harthmere/HARTHMERE_PRODUCTION_TERRAIN_PLACEMENT_MAP_V1.md
+src/shared/harthmere/production_terrain_placement_map_v1.ts
+src/shared/harthmere/generated/production_terrain_placement_map_v1.ts
+```
+
+The authored/local terrain helper can return a flat or incomplete height and
+may not match the live rendered ground. If the terrain is hilly, stepped,
+roofed, underwater, or built from snapshot shards, resolve the placement from
+the generated production map before locking it.
 
 Placement source-of-truth rules:
 
@@ -728,6 +834,16 @@ Placement source-of-truth rules:
   shared data or an idempotent production seeder.
 - Do not move one buried object by hand when a whole cluster shares the same
   terrain mismatch. Fix or document the cluster rule.
+- Use `resolveHarthmereQuestObjectivePlacementV1` or
+  `getHarthmereQuestResolvedWaypointV47` for fixed quest objectives.
+- Use `resolveHarthmereProductionMarkerPositionV1` for shared marker ids such
+  as Jobs Board, business, and live-helper landmarks.
+- Use `chooseHarthmereQuestOutdoorSpawnPointV1` for random outdoor content and
+  `chooseHarthmereQuestCaveSpawnPointV1` for random cave content.
+- BiomesUI Map, HUD/minimap, quest pointer, server authority, and 3D markers
+  should all consume the same resolved `recommendedPosition`.
+- Do not shift authored Harthmere coordinates twice; quest/runtime helpers
+  perform the authored-to-world transform before terrain resolution.
 
 Before declaring a placement correct, verify:
 

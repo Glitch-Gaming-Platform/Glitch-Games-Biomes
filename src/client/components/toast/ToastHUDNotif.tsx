@@ -1,6 +1,8 @@
 import { useClientContext } from "@/client/components/contexts/ClientContextReactContext";
-import type { InteractionErrorToastMessage } from "@/client/components/toast/types";
-import { ToastMessage } from "@/client/components/toast/types";
+import type {
+  InteractionErrorToastMessage,
+  ToastMessage,
+} from "@/client/components/toast/types";
 import { useLocationNameForPosition } from "@/client/util/location_helpers";
 import { assertNever } from "@/shared/util/type_helpers";
 import { motion } from "framer-motion";

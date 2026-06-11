@@ -8,7 +8,7 @@ import { ok } from "assert";
 import * as fs from "fs";
 import fetch from "node-fetch";
 import { dirname, join } from "path";
-import * as stream from "stream";
+import * as stream from "node:stream";
 
 const publicDir = "public";
 const assetDataDir = join(publicDir, "asset_data");
@@ -44,7 +44,7 @@ export async function ensurePublishedAssetsAreLocal(): Promise<void> {
         );
       }
       const dataWrite = response.body.pipe(
-        fs.createWriteStream(destinationFilePath)
+        fs.createWriteStream(destinationFilePath) as any
       );
       return stream.promises.finished(dataWrite);
     }

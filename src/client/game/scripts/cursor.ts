@@ -8,9 +8,11 @@ import {
   attackableEntitiesInAttackRegion,
   canAttackFilter,
   shouldAddCrosshairMeleeTargetV1,
+  traceNpcMetadataCursorHitsV1,
 } from "@/client/game/resources/melee_attack_region";
 import type { ClientResources } from "@/client/game/resources/types";
 import type { Script } from "@/client/game/scripts/script_controller";
+import type { ReadonlyEntity } from "@/shared/ecs/gen/entities";
 import type { TerrainHit } from "@/shared/game/spatial";
 import { traceEntities } from "@/shared/game/spatial";
 import { TerrainHelper } from "@/shared/game/terrain_helper";
@@ -40,16 +42,37 @@ export class CursorScript implements Script {
     const maxDistance = MAX_CURSOR_DISTANCE;
     // Check entities hit by the ray.
 
+    const cursorEntityFilter = (e: ReadonlyEntity) =>
+      !e.gremlin &&
+      e.id !== this.userId &&
+      (!e.health || e.health.hp > 0) &&
+      !e.protection && // TODO: Add an "interactable" component to entities the user can interact with.
+      !e.blueprint_component;
     const entityHits = traceEntities(this.table, source, direction, {
       maxDistance,
-      entityFilter: (e) =>
-        !e.gremlin &&
-        e.id !== this.userId &&
-        (!e.health || e.health.hp > 0) &&
-        !e.protection && // TODO: Add an "interactable" component to entities the user can interact with.
-        !e.blueprint_component,
+      entityFilter: cursorEntityFilter,
     });
-    let entityHit = last(entityHits);
+    // HARTHMERE_NPC_METADATA_CURSOR_ATTACK_V1:
+    // Rendering can see NPCs through NpcMetadataSelector, while the generic
+    // cursor ray only sees CollideableSelector entities. Snapshot/live Harthmere
+    // creatures can therefore draw a body and still be invisible to attacks if
+    // their ECS record lacks `collideable`. Add an attack-oriented metadata ray
+    // pass so visible muckers/hexes/animals/NPCs with position+size can be hit.
+    const npcMetadataEntityHits = traceNpcMetadataCursorHitsV1(
+      this.table,
+      source,
+      direction,
+      {
+        maxDistance,
+        entityFilter: cursorEntityFilter,
+        excludeIds: new Set(entityHits.map((hit) => hit.entity.id)),
+      }
+    );
+    let entityHit = last(
+      [...entityHits, ...npcMetadataEntityHits].sort(
+        (a, b) => b.distance - a.distance
+      )
+    );
 
     const terrainHelper = TerrainHelper.fromResources(
       this.voxeloo,

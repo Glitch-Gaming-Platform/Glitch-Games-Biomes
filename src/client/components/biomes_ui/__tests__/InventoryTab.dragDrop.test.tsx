@@ -17,8 +17,8 @@ import {
 
 class FakeDataTransfer {
   readonly data = new Map<string, string>();
-  effectAllowed = "";
-  dropEffect = "";
+  effectAllowed: DataTransfer["effectAllowed"] = "uninitialized";
+  dropEffect: DataTransfer["dropEffect"] = "none";
 
   getData(type: string) {
     return this.data.get(type) ?? "";

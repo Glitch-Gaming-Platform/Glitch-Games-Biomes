@@ -5,6 +5,10 @@ import { fillKnownRoadAheadClothingCratesV1 } from "@/client/components/challeng
 import { awardHarthmereQuestXp } from "@/client/components/challenges/LocalDevHarthmereLevelingSystem";
 import { addToast } from "@/client/components/toast/helpers";
 import { useClientContext } from "@/client/components/contexts/ClientContextReactContext";
+import {
+  HARTHMERE_INVENTORY_EVENT,
+  readHarthmereInventoryState,
+} from "@/client/components/challenges/LocalDevHarthmereInventorySystem";
 import type { GardenHoseEvent } from "@/client/events/api";
 import {
   GENESIS_CROSSROADS_LOCATION,
@@ -668,6 +672,39 @@ function readSnapshotRoadAheadEquippedGearSlotsV73() {
   }
 }
 
+function readSnapshotRoadAheadLocalHarthmereClothingSlotsV73() {
+  if (!isBrowserV71()) return [];
+  const equipment = readHarthmereInventoryState().equipment;
+  const slots: string[] = [];
+  if (equipment.chest?.itemId) slots.push("chest");
+  if (equipment.legs?.itemId) slots.push("legs");
+  return slots;
+}
+
+function isSnapshotRoadAheadLocalMuckClearingToolV73(itemId: string) {
+  return (
+    itemId === "muck_rake" ||
+    itemId === "muck_buster" ||
+    itemId === "practice_muck_buster"
+  );
+}
+
+function readSnapshotRoadAheadLocalHarthmereMuckClearingToolV73() {
+  if (!isBrowserV71()) return false;
+  const inventory = readHarthmereInventoryState();
+  return Boolean(
+    [
+      inventory.equipment.main_hand,
+      inventory.equipment.off_hand,
+      ...inventory.backpack.items,
+    ].some(
+      (item) =>
+        item?.itemId &&
+        isSnapshotRoadAheadLocalMuckClearingToolV73(item.itemId)
+    )
+  );
+}
+
 export function recordSnapshotRoadAheadEquippedGearSlotForBiomesUIV73(
   slot: string | undefined
 ) {
@@ -1114,10 +1151,27 @@ function hasRequiredClothingV73(wearing: {
   items: { get(id: BiomesId): unknown };
 }) {
   const bridgeSlots = new Set(readSnapshotRoadAheadEquippedGearSlotsV73());
-  return Boolean(
-    (wearing.items.get(BikkieIds.top) || bridgeSlots.has("chest")) &&
-      (wearing.items.get(BikkieIds.bottoms) || bridgeSlots.has("legs"))
+  const localHarthmereSlots = new Set(
+    readSnapshotRoadAheadLocalHarthmereClothingSlotsV73()
   );
+  return Boolean(
+    (wearing.items.get(BikkieIds.top) ||
+      bridgeSlots.has("chest") ||
+      localHarthmereSlots.has("chest")) &&
+      (wearing.items.get(BikkieIds.bottoms) ||
+        bridgeSlots.has("legs") ||
+        localHarthmereSlots.has("legs"))
+  );
+}
+
+export function snapshotRoadAheadHasRequiredClothingForTestV73(wearing: {
+  items: { get(id: BiomesId): unknown };
+}) {
+  return hasRequiredClothingV73(wearing);
+}
+
+export function snapshotRoadAheadHasLocalMuckClearingToolForTestV73() {
+  return readSnapshotRoadAheadLocalHarthmereMuckClearingToolV73();
 }
 
 export const SnapshotMissionRuntimeControllerV71: React.FunctionComponent<{}> =
@@ -1142,6 +1196,7 @@ export const SnapshotMissionRuntimeControllerV71: React.FunctionComponent<{}> =
         SNAPSHOT_ROAD_AHEAD_EQUIPPED_GEAR_EVENT_V73,
         refresh
       );
+      window.addEventListener(HARTHMERE_INVENTORY_EVENT, refresh);
       return () => {
         window.removeEventListener("storage", refresh);
         window.removeEventListener(SNAPSHOT_MISSION_STATE_EVENT_V71, refresh);
@@ -1149,6 +1204,7 @@ export const SnapshotMissionRuntimeControllerV71: React.FunctionComponent<{}> =
           SNAPSHOT_ROAD_AHEAD_EQUIPPED_GEAR_EVENT_V73,
           refresh
         );
+        window.removeEventListener(HARTHMERE_INVENTORY_EVENT, refresh);
       };
     }, []);
 
@@ -1211,7 +1267,8 @@ export const SnapshotMissionRuntimeControllerV71: React.FunctionComponent<{}> =
       const ownedItems = getOwnedItems(resources, userId);
       const hasMuckBuster =
         matchingItemRefs(ownedItems, (entry) => Boolean(entry?.item.unmuck))
-          .length > 0;
+          .length > 0 ||
+        readSnapshotRoadAheadLocalHarthmereMuckClearingToolV73();
       if (hasMuckBuster) {
         advanceSnapshotRoadAheadV73(
           gardenHose,

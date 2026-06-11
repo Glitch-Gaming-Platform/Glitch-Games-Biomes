@@ -156,6 +156,7 @@ import {
   HARTHMERE_PROPERTY_MARKER_SOURCE_V1,
   type HarthmerePropertyMapBuildingStateV1,
 } from "./propertyMapMarkersV1";
+import { HARTHMERE_BUSINESS_INVENTORY_LOOT_UPDATED_EVENT_V1 } from "@/client/components/harthmere_business/businessInterfaceLiveAdapter";
 
 export const BIOMES_UI_OPEN_TAB_EVENT = "biomes-ui-open-tab";
 
@@ -176,6 +177,17 @@ const BIOMES_UI_KEY_TO_TAB: Record<string, TabKey> = {
   KeyV: "inbox",
   Comma: "options",
 };
+
+function hasActiveHarthmereGatheringNodePromptV1() {
+  return (
+    typeof document !== "undefined" &&
+    Boolean(
+      document.querySelector(
+        '[data-harthmere-gathering-node-world-prompt-v1="active"]'
+      )
+    )
+  );
+}
 
 const BIOMES_UI_TAB_TO_GARDEN_HOSE_TABS: Partial<Record<TabKey, string[]>> = {
   daily: ["daily"],
@@ -1476,7 +1488,7 @@ async function submitMedicalLiveModeAction(
 }
 
 async function submitEquipmentLiveModeAction(
-  itemId: string,
+  itemId: string | undefined,
   slot: string
 ): Promise<any> {
   const requestId = `biomes_ui_equipment_${slot}_${Date.now()}_${Math.random()
@@ -2340,6 +2352,40 @@ export function useBiomesUILiveAdapters({
   }, [refreshDailyState]);
 
   React.useEffect(() => {
+    if (typeof window === "undefined") return;
+    const handler = (event: Event) => {
+      const detail = (event as CustomEvent<any>).detail ?? {};
+      const body = detail.body ?? {
+        inventoryLootState: detail.inventoryLootState,
+        playerStatusState: detail.playerStatusState,
+      };
+      const nextInventoryLootState =
+        detail.inventoryLootState ?? body?.inventoryLootState;
+      if (nextInventoryLootState) {
+        setInventoryLootState(nextInventoryLootState);
+        setInventoryLootHydrated(true);
+        window.dispatchEvent(
+          new CustomEvent("biomes:live-mode-wallet-updated", {
+            detail: { gold: (nextInventoryLootState as any)?.actor?.gold },
+          })
+        );
+      } else {
+        void refreshInventoryLootState();
+      }
+      dispatchLiveModePlayerStatusFromBodyV1(body);
+    };
+    window.addEventListener(
+      HARTHMERE_BUSINESS_INVENTORY_LOOT_UPDATED_EVENT_V1,
+      handler
+    );
+    return () =>
+      window.removeEventListener(
+        HARTHMERE_BUSINESS_INVENTORY_LOOT_UPDATED_EVENT_V1,
+        handler
+      );
+  }, [refreshInventoryLootState]);
+
+  React.useEffect(() => {
     const handler = (event: any) => {
       if (event?.kind === "destroy") {
         completeHarthmereDailyTaskSoonV1("forage_walk");
@@ -2636,6 +2682,9 @@ export function useBiomesUILiveAdapters({
         event.altKey ||
         isTypingInInput(event.target)
       ) {
+        return;
+      }
+      if (event.code === "KeyF" && hasActiveHarthmereGatheringNodePromptV1()) {
         return;
       }
       const model = buildFarmingFoodInterfaceModelForTest(
@@ -2957,7 +3006,7 @@ export function useBiomesUILiveAdapters({
     const combinedMaterialStorageItems = mergeInventoryStackRecordsV1(
       materialStorageItems as Record<string, number> | undefined,
       localHarthmereInventoryState.materialStorage
-    );
+    ) ?? {};
 
     const liveItemForRef = (ref: InventoryUiRef): InventoryUiItem | null => {
       if (ref.kind !== "item" || isLocalHarthmereItemRefV132(ref)) return null;
@@ -3007,6 +3056,57 @@ export function useBiomesUILiveAdapters({
     const localHarthmereEquipmentSlotForRef = (
       ref: InventoryUiRef
     ): string | undefined => localHarthmereEquipmentSlotFromRefV132(ref);
+    const equipmentItemForWearableRef = (
+      ref: InventoryUiRef
+    ): InventoryUiItem | null => {
+      if (ref.kind !== "wearable") return null;
+      const localSlot = localHarthmereEquipmentSlotForRef(ref);
+      if (localSlot) {
+        const item = (localHarthmereInventoryState.equipment as any)?.[
+          localSlot
+        ];
+        return item
+          ? {
+              ...localHarthmereEquipmentItemToUiItemV132(item, localSlot),
+              canUnequip: true,
+            }
+          : null;
+      }
+      const slot = String(ref.key ?? "");
+      if (!slot) return null;
+      const backendItemId = (backendActor?.equipment as any)?.[slot];
+      if (backendItemId) {
+        const item = stackRecordToInventoryUiItemsV135(
+          { [String(backendItemId)]: 1 },
+          "equipment",
+          "wearable",
+          {
+            description: "Equipped from your Harthmere inventory.",
+            canEquip: false,
+            canMove: false,
+            canSplit: false,
+            canDrop: false,
+            canDestroy: false,
+          }
+        )[0];
+        return item
+          ? {
+              ...item,
+              ref: { kind: "wearable", key: slot },
+              canUnequip: true,
+            }
+          : null;
+      }
+      const ecsEntry = equipmentItems.find(([key]) => key === slot);
+      return ecsEntry
+        ? slotToInventoryUiItem(
+            { item: ecsEntry[1], count: 1 },
+            `wearable_${slot}`,
+            { kind: "wearable", key: slot },
+            "equipment"
+          )
+        : null;
+    };
 
     const inventoryAdapter = {
       getBackpack: () => {
@@ -3126,7 +3226,10 @@ export function useBiomesUILiveAdapters({
                     kind: "wearable" as const,
                     key: `${HARTHMERE_BIOMES_UI_LOCAL_EQUIPMENT_REF_PREFIX_V132}${key}`,
                   },
-                  item: localHarthmereEquipmentItemToUiItemV132(item, key),
+                  item: {
+                    ...localHarthmereEquipmentItemToUiItemV132(item, key),
+                    canUnequip: true,
+                  },
                 },
               ]
             : []
@@ -3150,16 +3253,28 @@ export function useBiomesUILiveAdapters({
           id: key,
           label: key.replace(/_/g, " "),
           ref: { kind: "wearable" as const, key },
-          item: stackRecordToInventoryUiItemsV135(
-            { [String(itemId)]: 1 },
-            "equipment",
-            "wearable",
-            {
-              description: "Equipped from your Harthmere inventory.",
-              canEquip: false,
-              canMove: false,
-            }
-          )[0],
+          item: (() => {
+            const item = stackRecordToInventoryUiItemsV135(
+              { [String(itemId)]: 1 },
+              "equipment",
+              "wearable",
+              {
+                description: "Equipped from your Harthmere inventory.",
+                canEquip: false,
+                canMove: false,
+                canSplit: false,
+                canDrop: false,
+                canDestroy: false,
+              }
+            )[0];
+            return item
+              ? {
+                  ...item,
+                  ref: { kind: "wearable" as const, key },
+                  canUnequip: true,
+                }
+              : item;
+          })(),
         }));
         const seen = new Set(localEquipment.map((entry) => entry.id));
         const visibleEcsEquipment = ecsEquipment.filter((entry) => {
@@ -3215,6 +3330,9 @@ export function useBiomesUILiveAdapters({
             ref,
             "hotbar"
           );
+        }
+        if (ref.kind === "wearable") {
+          return equipmentItemForWearableRef(ref);
         }
         return null;
       },
@@ -3409,6 +3527,17 @@ export function useBiomesUILiveAdapters({
         if (localSlot) {
           performHarthmereEquipmentItemUnequipForBiomesUI(localSlot);
           return;
+        }
+        if (ref.kind === "wearable" && ref.key !== undefined) {
+          const slot = String(ref.key);
+          if (slot && (backendActor?.equipment as any)?.[slot]) {
+            fireAndForget(
+              submitEquipmentLiveModeAction(undefined, slot)
+                .then(applyLiveModeInventoryResponse)
+                .catch(() => refreshInventoryLootState())
+            );
+            return;
+          }
         }
         const emptyIndex = Math.max(
           0,

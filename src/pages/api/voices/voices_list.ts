@@ -1,6 +1,9 @@
-import { getSecret } from "@/server/shared/secrets";
+import {
+  azureSpeechConfigFromEnvV1,
+  listAzureSpeechVoicesV1,
+} from "@/server/shared/azure_speech";
 import { biomesApiHandler } from "@/server/web/util/api_middleware";
-import { jsonFetch } from "@/shared/util/fetch_helpers";
+import { log } from "@/shared/logging";
 import { z } from "zod";
 
 export const zVoicesListResponse = z.object({
@@ -14,37 +17,35 @@ export const zVoicesListResponse = z.object({
 
 export type VoicesListResponse = z.infer<typeof zVoicesListResponse>;
 
-interface ElevenLabsVoicesResponse {
-  voices: {
-    name: string;
-    voice_id: string;
-  }[];
-}
-
 export default biomesApiHandler(
   {
     auth: "required",
     response: zVoicesListResponse,
   },
   async () => {
-    const key = getSecret("elevenlabs-api-key").trim();
-    if (!key) {
+    const config = azureSpeechConfigFromEnvV1();
+    if (!config) {
       return { voices: [] };
     }
-    const ret = await jsonFetch<ElevenLabsVoicesResponse>(
-      "https://api.elevenlabs.io/v1/voices",
-      {
-        headers: {
-          "xi-api-key": key,
-        },
-      }
-    );
+    try {
+      const voices = await listAzureSpeechVoicesV1({ config });
 
-    return {
-      voices: ret.voices.map((voice) => ({
-        name: voice.name,
-        voiceId: voice.voice_id,
-      })),
-    };
+      return {
+        voices: (voices ?? []).flatMap((voice) => {
+          if (!voice.ShortName) {
+            return [];
+          }
+          return [
+            {
+              name: voice.Name ?? voice.ShortName,
+              voiceId: voice.ShortName,
+            },
+          ];
+        }),
+      };
+    } catch (error) {
+      log.warn("Azure Speech voices list unavailable", { error });
+      return { voices: [] };
+    }
   }
 );

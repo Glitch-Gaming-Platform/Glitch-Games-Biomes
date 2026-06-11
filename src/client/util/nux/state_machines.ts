@@ -309,6 +309,9 @@ const placeBlocksNux: NUXStateMachineDefinition<NUXStates<NUXES.PLACE_BLOCKS>> =
         advance: shortCircuitForStepComplete(
           NUX_PAIRED_STEPS.ROAD_AHEAD_PLACE_BLOCKS as BiomesId,
           (ctx, _data, event) => {
+            if (event.kind === "place_voxel") {
+              return "complete";
+            }
             if (event.kind === "selection_change") {
               const selection = ctx.resources.get("/hotbar/selection");
               if (!selection?.item || !selection.item.isBlock) {
@@ -387,12 +390,15 @@ const runAndJumpNux: NUXStateMachineDefinition<NUXStates<NUXES.RUN_AND_JUMP>> =
       }),
 
       run_and_jump_run: {
-        subscribedEvents: ["jump"],
-        advance: (_ctx, _data, event) => {
-          if (event.kind === "jump" && event.running) {
-            return "complete";
+        subscribedEvents: ["jump", "challenge_step_complete"],
+        advance: shortCircuitForStepComplete(
+          NUX_PAIRED_STEPS.ROAD_AHEAD_FIND_BAG as BiomesId,
+          (_ctx, _data, event) => {
+            if (event.kind === "jump" && event.running) {
+              return "complete";
+            }
           }
-        },
+        ),
       },
     },
   };
@@ -436,6 +442,7 @@ const takeSelfie: NUXStateMachineDefinition<NUXStates<NUXES.SELFIE_PHOTO>> = {
       subscribedEvents: [
         "selection_change",
         "local_inventory_selection_change",
+        "challenge_step_complete",
         "challenge_complete",
       ],
       advance: shortCircuitForStepComplete(
@@ -443,7 +450,8 @@ const takeSelfie: NUXStateMachineDefinition<NUXStates<NUXES.SELFIE_PHOTO>> = {
         (ctx, _data, event) => {
           const selection = ctx.resources.get("/hotbar/selection");
           if (
-            event.kind === "selection_change" &&
+            (event.kind === "selection_change" ||
+              event.kind === "local_inventory_selection_change") &&
             selection.kind === "camera"
           ) {
             return {

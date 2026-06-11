@@ -28,7 +28,7 @@ import { removeValue } from "@/shared/util/collections";
 import { RpcError, okOrRpcError } from "@/shared/zrpc/errors";
 import * as grpc from "@/shared/zrpc/grpc";
 import { ok } from "assert";
-import { EventEmitter } from "events";
+import EventEmitter from "node:events";
 import { compact } from "lodash";
 import type TypedEventEmitter from "typed-emitter";
 
@@ -49,7 +49,7 @@ export type ActiveClientSyncEvents = {
   closed: () => void;
 };
 
-export class ActiveClientSync extends (EventEmitter as {
+export class ActiveClientSync extends (EventEmitter as unknown as {
   new (): TypedEventEmitter<ActiveClientSyncEvents>;
 }) {
   private readonly controller = new BackgroundTaskController();

@@ -1835,7 +1835,7 @@ export function shiftBuildingSystemMaterializationPlanYV1<
       position: shiftPosition(edit.position),
     })),
   };
-  if (plan.inWorldMarkers) {
+  if ("inWorldMarkers" in plan && plan.inWorldMarkers) {
     next.inWorldMarkers = plan.inWorldMarkers.map((marker) => ({
       ...marker,
       position: shiftPosition(marker.position),

@@ -10,6 +10,11 @@ import dynamic from "next/dynamic";
 import * as React from "react";
 import { DEFAULT_TAB_SHORTCUTS } from "../shortcuts/BiomesShortcuts";
 import type { TabShortcut } from "../shortcuts/BiomesShortcuts";
+import {
+  biomesUIMicrophoneOptionsFromDevicesV1,
+  biomesUISelectedMicrophoneDeviceIdV1,
+} from "./microphoneDeviceSettings";
+import type { BiomesUIMicrophoneDeviceOptionV1 } from "./microphoneDeviceSettings";
 import { OptionsControlsSurfaceForTest } from "./OptionsControlsSurface";
 
 interface OptionsAdapter {
@@ -60,6 +65,22 @@ export const OptionsTab: React.FunctionComponent<{
     "settings.volume.voice",
     50
   );
+  const [npcSpeechEnabled, setNpcSpeechEnabled] = useTypedStorageItem(
+    "settings.voice.npcSpeechEnabled",
+    true
+  );
+  const [microphoneInputEnabled, setMicrophoneInputEnabled] =
+    useTypedStorageItem("settings.voice.microphoneInputEnabled", true);
+  const [microphoneDeviceId, setMicrophoneDeviceId] = useTypedStorageItem(
+    "settings.voice.microphoneDeviceId",
+    ""
+  );
+  const [microphoneDevices, setMicrophoneDevices] = React.useState<
+    BiomesUIMicrophoneDeviceOptionV1[]
+  >(() => biomesUIMicrophoneOptionsFromDevicesV1([]));
+  const [microphoneRefreshState, setMicrophoneRefreshState] = React.useState<
+    "idle" | "loading" | "unavailable"
+  >("idle");
   const hudVisibility = useBiomesHUDVisibilitySnapshotV1();
   const [, setObjectivesVisible] =
     useBiomesHUDVisibilitySettingV1("objectives");
@@ -120,6 +141,39 @@ export const OptionsTab: React.FunctionComponent<{
     return () => document.removeEventListener("keydown", onKey, true);
   }, [recordingFor, shortcuts, adapter]);
 
+  const refreshMicrophoneDevices = React.useCallback(
+    async (requestPermission: boolean) => {
+      const mediaDevices =
+        typeof navigator !== "undefined" ? navigator.mediaDevices : undefined;
+      if (!mediaDevices?.enumerateDevices) {
+        setMicrophoneRefreshState("unavailable");
+        setMicrophoneDevices(biomesUIMicrophoneOptionsFromDevicesV1([]));
+        return;
+      }
+
+      setMicrophoneRefreshState("loading");
+      let stream: MediaStream | undefined;
+      try {
+        if (requestPermission && mediaDevices.getUserMedia) {
+          stream = await mediaDevices.getUserMedia({ audio: true });
+        }
+        const devices = await mediaDevices.enumerateDevices();
+        setMicrophoneDevices(biomesUIMicrophoneOptionsFromDevicesV1(devices));
+        setMicrophoneRefreshState("idle");
+      } catch {
+        setMicrophoneRefreshState("unavailable");
+        setMicrophoneDevices(biomesUIMicrophoneOptionsFromDevicesV1([]));
+      } finally {
+        stream?.getTracks().forEach((track) => track.stop());
+      }
+    },
+    []
+  );
+
+  React.useEffect(() => {
+    void refreshMicrophoneDevices(false);
+  }, [refreshMicrophoneDevices]);
+
   return (
     <div style={{ display: "grid", gap: 24 }}>
       <BiomesUIAvatarEditor />
@@ -134,6 +188,20 @@ export const OptionsTab: React.FunctionComponent<{
         onMusicVolumeChange={setMusicVolume}
         voiceVolume={voiceVolume}
         onVoiceVolumeChange={setVoiceVolume}
+        npcSpeechEnabled={npcSpeechEnabled}
+        onNpcSpeechEnabledChange={setNpcSpeechEnabled}
+        microphoneInputEnabled={microphoneInputEnabled}
+        onMicrophoneInputEnabledChange={setMicrophoneInputEnabled}
+        microphoneDevices={microphoneDevices}
+        selectedMicrophoneDeviceId={biomesUISelectedMicrophoneDeviceIdV1({
+          selectedDeviceId: microphoneDeviceId,
+          options: microphoneDevices,
+        })}
+        microphoneRefreshState={microphoneRefreshState}
+        onMicrophoneDeviceChange={setMicrophoneDeviceId}
+        onRefreshMicrophoneDevices={() => {
+          void refreshMicrophoneDevices(true);
+        }}
         hudVisibility={hudVisibility}
         onHudVisibilityChange={setHudVisibility}
         shortcuts={shortcuts}

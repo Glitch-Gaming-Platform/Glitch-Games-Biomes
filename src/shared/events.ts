@@ -1,7 +1,7 @@
 import { nextImmediate, safeSetImmediate } from "@/shared/util/async";
 import { autoId } from "@/shared/util/auto_id";
 import { ok } from "assert";
-import { EventEmitter } from "stream";
+import EventEmitter from "events";
 import type TypedEventEmitter from "typed-emitter";
 import type { EventMap } from "typed-emitter";
 

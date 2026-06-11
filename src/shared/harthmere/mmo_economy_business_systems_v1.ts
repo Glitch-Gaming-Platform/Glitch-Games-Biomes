@@ -780,6 +780,50 @@ function produceInventory(b: HarthmereEconomyBusinessRecordV1, items: Record<str
   for (const [itemId, count] of Object.entries(items)) applyItem(b.inventory, itemId, count, extras);
 }
 
+function isPublicNpcServiceBusinessV1(
+  b: HarthmereEconomyBusinessRecordV1
+): boolean {
+  return b.ownerKind === "npc" || b.ownerKind === "town";
+}
+
+function ensurePublicNpcBusinessServiceStockV1(
+  b: HarthmereEconomyBusinessRecordV1,
+  requiredItems: Record<string, number>
+): boolean {
+  if (!isPublicNpcServiceBusinessV1(b)) return false;
+  let changed = false;
+  for (const [itemId, rawCount] of Object.entries(requiredItems)) {
+    const count = Math.max(0, Math.trunc(Number(rawCount) || 0));
+    if (count <= 0) continue;
+    const missing = count - itemCount(b.inventory, itemId);
+    if (missing > 0) {
+      applyItem(b.inventory, itemId, missing);
+      changed = true;
+    }
+  }
+  return changed;
+}
+
+function ensurePublicNpcBusinessQueueServiceStockV1(
+  b: HarthmereEconomyBusinessRecordV1,
+  definition: NonNullable<ReturnType<typeof getHarthmereBusinessMiniGameDefinitionV1>>,
+  queue: HarthmereBusinessCustomerSessionV1["queue"]
+): boolean {
+  const requiredItems: Record<string, number> = {};
+  for (const ticket of queue) {
+    const offer = definition.offers.find(
+      (entry) => entry.offerId === ticket.requestedOfferId
+    );
+    for (const [itemId, rawCount] of Object.entries(
+      offer?.requiredItems ?? {}
+    )) {
+      const count = Math.max(0, Math.trunc(Number(rawCount) || 0));
+      if (count > 0) requiredItems[itemId] = (requiredItems[itemId] ?? 0) + count;
+    }
+  }
+  return ensurePublicNpcBusinessServiceStockV1(b, requiredItems);
+}
+
 const HARTHMERE_BUSINESS_CUSTOMER_SESSION_MS_V1 = 2 * 60 * 60 * 1000;
 const HARTHMERE_BUSINESS_CUSTOMER_DAY_MS_V1 = 24 * 60 * 60 * 1000;
 const HARTHMERE_BUSINESS_CUSTOMER_PATIENCE_STEP_MS_V1 = 1000;
@@ -1494,6 +1538,8 @@ function startBusinessCustomerSession(state: BusinessSystemsEconomyState, reques
     stats,
   });
   systems.nextCustomerTicketNumber = queueResult.nextTicketNumber;
+  const restockedPublicServiceBoard =
+    ensurePublicNpcBusinessQueueServiceStockV1(b, definition, queueResult.queue);
   const firstTicket = queueResult.queue[0];
   const today = customerDay(request.nowMs);
   const dailyBonusGold = stats.lastDailyServedDay === today ? 0 : 10 + tier * 5;
@@ -1520,10 +1566,14 @@ function startBusinessCustomerSession(state: BusinessSystemsEconomyState, reques
       `Customers are guided from the entrance to the queue, then to the counter, then back out after service.`,
       `UI: ${definition.mechanicSpec.uiElements.map((element) => element.label).join(", ")}`,
       `Today: ${definition.dailyReturnTriggers[today % definition.dailyReturnTriggers.length]}`,
+      ...(restockedPublicServiceBoard
+        ? ["Public service stock refreshed for the waiting customers."]
+        : []),
     ],
   };
   b.flags.customer_service_shift_started = true;
   touched.add("economy_business_customer_session");
+  if (restockedPublicServiceBoard) touched.add("economy_business_inventory");
   shared.add(businessSharedKey(b.businessId));
   shared.add(systemsSharedKey("customer_session", sessionId));
   for (const session of expired) shared.add(systemsSharedKey("customer_session", session.sessionId));
@@ -1633,6 +1683,11 @@ function serveBusinessCustomer(state: BusinessSystemsEconomyState, request: Hart
     session.notes.push(`${definition.mechanicSpec.gameTitle}: ${minigameResult.passedRules.length} rules verified.`);
   }
 
+  if (ensurePublicNpcBusinessServiceStockV1(b, offer.requiredItems)) {
+    session.notes.push("Public service stock refreshed for this customer.");
+    touched.add("economy_business_inventory");
+    shared.add(businessSharedKey(b.businessId));
+  }
   if (!requireInventory(b, warnings, touched, offer.requiredItems)) return;
   consumeInventory(b, offer.requiredItems);
   if (offer.producedItems) produceInventory(b, offer.producedItems);

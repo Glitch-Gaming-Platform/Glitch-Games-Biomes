@@ -6,7 +6,7 @@ import path from "path";
 import { chromium } from "playwright";
 
 describe("InventoryTab browser actions", () => {
-  it("wires Use/Select, Equip, Hotbar, Split, Drop, and Destroy to the inventory adapter", async function () {
+  it("wires Use/Select, Equip, Unequip, Hotbar, Split, Drop, and Destroy to the inventory adapter", async function () {
     this.timeout(45_000);
 
     const tempDir = await mkdtemp(
@@ -38,9 +38,10 @@ describe("InventoryTab browser actions", () => {
           category: "gear",
           equipSlot: "chest",
           ref: selectedRef,
-          source: "backpack",
+          source: "equipment",
           canUse: true,
           canEquip: true,
+          canUnequip: true,
           canMove: true,
           canSplit: true,
           canDrop: true,
@@ -62,6 +63,7 @@ describe("InventoryTab browser actions", () => {
           getSelectedItem: () => selectedItem,
           useItem: (ref) => record("use", { ref }),
           equipItem: (ref, slot) => record("equip", { ref, slot }),
+          unequipItem: (ref) => record("unequip", { ref }),
           moveItem: (src, dst) => record("move", { src, dst }),
           splitStack: (src, dst, count) => record("split", { src, dst, count }),
           dropItem: (ref, count) => record("drop", { ref, count: count ?? "all" }),
@@ -131,6 +133,7 @@ describe("InventoryTab browser actions", () => {
       for (const action of [
         "use",
         "equip",
+        "unequip",
         "move-hotbar",
         "split",
         "drop-one",
@@ -149,6 +152,7 @@ describe("InventoryTab browser actions", () => {
           kind: "equip",
           payload: { ref: { kind: "item", idx: 0 }, slot: "chest" },
         },
+        { kind: "unequip", payload: { ref: { kind: "item", idx: 0 } } },
         {
           kind: "move",
           payload: {

@@ -139,7 +139,7 @@ function isHostileByEcsTextV1(text: string) {
 
 function defaultHpForKindV1(kind: HarthmereLiveEntityKindV1) {
   if (kind === "robot" || kind === "construct") return 140;
-  if (kind === "monster" || kind === "mux" || kind === "hex") return 120;
+  if (kind === "monster" || kind === "mux" || kind === "hex") return 600;
   if (kind === "animal" || kind === "undead") return 80;
   if (kind === "object") return 1;
   return 100;

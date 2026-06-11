@@ -101,6 +101,10 @@ function firstReadyPlot(snapshot: any) {
   );
 }
 
+function plotIdForFarmingAction(plot: any) {
+  return String(plot?.plotId ?? plot?.cropId ?? "");
+}
+
 function firstFeedItemId(snapshot: any) {
   return Object.keys(snapshot?.inventory ?? {}).find(
     (itemId) => count(snapshot, itemId) > 0 && isHarthmereLivestockFeedItemV1(itemId)
@@ -212,7 +216,7 @@ export function buildFarmingFoodInterfaceModelForTest(
       id: "water_plot",
       label: "Water Plot",
       operation: "water",
-      payload: { plotId: activePlot?.cropId ?? activePlot?.plotId ?? "" },
+      payload: { plotId: plotIdForFarmingAction(activePlot) },
       disabled: !activePlot || !!activePlot.wateredAtMs,
       blockedReason: !activePlot
         ? "No active plot."
@@ -224,7 +228,7 @@ export function buildFarmingFoodInterfaceModelForTest(
       id: "harvest_plot",
       label: "Harvest Plot",
       operation: "harvest",
-      payload: { plotId: readyPlot?.cropId ?? readyPlot?.plotId ?? "" },
+      payload: { plotId: plotIdForFarmingAction(readyPlot) },
       disabled: !readyPlot,
       blockedReason: readyPlot ? undefined : "No crop is ready.",
     },

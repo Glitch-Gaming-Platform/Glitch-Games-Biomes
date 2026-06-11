@@ -22,7 +22,10 @@ const hud = read("src/client/components/challenges/HarthmereUnifiedHUD.tsx");
 const player = read("src/client/game/resources/player_mesh.ts");
 
 ok(runtime.includes("snapshot-grove-mission-critical-v110"), "runtime version is bumped to mission-critical v110");
-ok(/import \{ grantHarthmereItem \}/.test(runtime), "runtime can grant practice items through the real Harthmere inventory system");
+ok(
+  /import\s*\{[\s\S]*\bgrantHarthmereItem\b[\s\S]*\}\s*from\s*"@\/client\/components\/challenges\/LocalDevHarthmereInventorySystem"/.test(runtime),
+  "runtime can grant practice items through the real Harthmere inventory system"
+);
 ok(/function snapshotGrovePracticeItemForObjectiveV110\(/.test(runtime), "runtime maps mission objective text to concrete practice pickup items");
 ok(/function grantSnapshotGrovePracticeItemV110\(/.test(runtime), "runtime grants the practice pickup item when the contextual action is used");
 ok(/itemId: "mudroot"/.test(runtime), "Sticky Medicine/root-sample objectives grant/count a mudroot practice item");
@@ -70,7 +73,7 @@ if (legacySystemsPanelRetired) {
 ok(/HARTHMERE_PLAYER_VOXEL_CONSTRUCTION_V110/.test(player), "player mesh documents the voxel-construction v110 path");
 ok(/addLocalDevPlayerBodyShellToObject\(\s*playerAnimatedMesh\.three,\s*id,\s*\{[\s\S]{0,120}applyInnerBodyConfig:\s*false/.test(player), "Harthmere variant-path players now receive the local-dev voxel body shell without double-scaling the GLTF");
 ok(/harthmere-player-voxel-construction-v110/.test(player), "player mesh tags the avatar for debug inspection as voxel-construction v110");
-ok(/options:\s*\{ applyInnerBodyConfig\?: boolean \} = \{\}/.test(player), "player voxel body shell supports skipping duplicate inner-body scaling");
+ok(/options:\s*\{[\s\S]{0,220}applyInnerBodyConfig\?: boolean[\s\S]{0,220}\}\s*=\s*\{\}/.test(player), "player voxel body shell supports skipping duplicate inner-body scaling");
 
 // Quest authoring coverage: every quest must have equal objective/trigger/marker lengths,
 // all referenced markers must resolve to a landmark or NPC, and tutorial steps should not

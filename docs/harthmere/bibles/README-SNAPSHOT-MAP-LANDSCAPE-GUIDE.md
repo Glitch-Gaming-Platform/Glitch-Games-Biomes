@@ -104,6 +104,20 @@ Use real terrain/entity data for:
 
 Client-only GLTF/FBX/OBJ assets are acceptable only for decoration after the canonical world layer already exists.
 
+For Harthmere quest items, monsters, BiomesUI map pins, HUD targets, quest
+pointers, and random spawn pools, the canonical placement layer is the
+generated production terrain placement map:
+
+```text
+docs/harthmere/HARTHMERE_PRODUCTION_TERRAIN_PLACEMENT_MAP_V1.md
+src/shared/harthmere/production_terrain_placement_map_v1.ts
+```
+
+Do not place those systems from authored `y=0`, local-dev terrain height, or a
+client-only visual mesh. Resolve the production `recommendedPosition` first,
+then let rendering, HUD projection, and map projection consume that same world
+coordinate.
+
 ---
 
 ## 3. Important snapshot assets and buckets

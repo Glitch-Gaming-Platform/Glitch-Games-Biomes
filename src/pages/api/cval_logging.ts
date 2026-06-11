@@ -133,9 +133,13 @@ function averageCval(path: string[]) {
   };
 }
 
-function histogramCval(path: string[], buckets: number[]) {
+function histogramCval(
+  path: string[],
+  buckets: number[],
+  options?: LookupCvalOptions
+) {
   return (cvals: JSONable) => {
-    const value = getNumberAtPath(path, cvals);
+    const value = getNumberAtPath(path, cvals, options);
     if (!value) {
       return;
     }
@@ -355,7 +359,9 @@ const cvalAggregators: CvalAggregator[] = [
   averageCval(["renderer", "npcs", "numNpcs"]),
   averageCval(["renderer", "npcs", "numRenderedNpcs"]),
   averageCval(["game", "table"]),
-  histogramCval(["game", "startupLoadSeconds"], exponentialBuckets(0.5, 2, 8)),
+  histogramCval(["game", "startupLoadSeconds"], exponentialBuckets(0.5, 2, 8), {
+    warnIfNotFound: false,
+  }),
   histogramCval(
     ["metrics", "performanceTiming", "network", "rtt"],
     exponentialBuckets(10, 2, 8)

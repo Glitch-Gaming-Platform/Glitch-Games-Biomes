@@ -96,6 +96,10 @@ describe("live entity AI frontend and SSR surfaces", () => {
     );
     assert.ok(muckSeed);
     assert.ok(hexSeed);
+    const muck = muckSeed;
+    const hex = hexSeed;
+    const robotSeed = HARTHMERE_LIVE_ENTITY_ROBOT_SENTINEL_SEEDS_V1[0];
+    assert.ok(robotSeed);
 
     const snapshots = createHarthmereLiveEntityCombatSnapshotsFromEcsRecordsV1({
       billy: {
@@ -105,27 +109,27 @@ describe("live entity AI frontend and SSR surfaces", () => {
         label: { text: "Billy Rhodes" },
       },
       muckwad: {
-        npc_metadata: { type_id: 2, spawn_position: muckSeed!.position },
-        position: { v: muckSeed!.position },
-        health: { hp: muckSeed!.combatHp, maxHp: muckSeed!.combatHp },
-        label: { text: muckSeed!.displayName },
+        npc_metadata: { type_id: 2, spawn_position: muck.position },
+        position: { v: muck.position },
+        health: { hp: muck.combatHp, maxHp: muck.combatHp },
+        label: { text: muck.displayName },
       },
       hexer: {
-        npc_metadata: { type_id: 3, spawn_position: hexSeed!.position },
-        position: { v: hexSeed!.position },
-        health: { hp: hexSeed!.combatHp, maxHp: hexSeed!.combatHp },
-        label: { text: hexSeed!.displayName },
+        npc_metadata: { type_id: 3, spawn_position: hex.position },
+        position: { v: hex.position },
+        health: { hp: hex.combatHp, maxHp: hex.combatHp },
+        label: { text: hex.displayName },
       },
       robot: {
         npc_metadata: {
           type_id: 4,
-          spawn_position: HARTHMERE_LIVE_ENTITY_ROBOT_SENTINEL_SEEDS_V1[0].position,
+          spawn_position: robotSeed.position,
         },
-        position: { v: HARTHMERE_LIVE_ENTITY_ROBOT_SENTINEL_SEEDS_V1[0].position },
+        position: { v: robotSeed.position },
         robot_component: { internal_battery_charge: 80 },
         health: { hp: 140, maxHp: 140 },
         label: {
-          text: HARTHMERE_LIVE_ENTITY_ROBOT_SENTINEL_SEEDS_V1[0].displayName,
+          text: robotSeed.displayName,
         },
       },
       nina: {
@@ -143,33 +147,29 @@ describe("live entity AI frontend and SSR surfaces", () => {
           {
             id: "billy",
             label: "Billy Rhodes",
-            kind: snapshots.billy.entityKind,
+            kind: snapshots.billy.entityKind ?? "npc",
           },
           {
             id: "muckwad",
-            label: muckSeed!.displayName,
-            kind: snapshots.muckwad.entityKind,
-            assetKey: harthmereMuckCreatureAssetKeyForLabelV1(
-              muckSeed!.displayName
-            ),
+            label: muck.displayName,
+            kind: snapshots.muckwad.entityKind ?? "npc",
+            assetKey: harthmereMuckCreatureAssetKeyForLabelV1(muck.displayName),
           },
           {
             id: "hexer",
-            label: hexSeed!.displayName,
-            kind: snapshots.hexer.entityKind,
-            assetKey: harthmereMuckCreatureAssetKeyForLabelV1(
-              hexSeed!.displayName
-            ),
+            label: hex.displayName,
+            kind: snapshots.hexer.entityKind ?? "npc",
+            assetKey: harthmereMuckCreatureAssetKeyForLabelV1(hex.displayName),
           },
           {
             id: "robot",
-            label: HARTHMERE_LIVE_ENTITY_ROBOT_SENTINEL_SEEDS_V1[0].displayName,
-            kind: snapshots.robot.entityKind,
+            label: robotSeed.displayName,
+            kind: snapshots.robot.entityKind ?? "npc",
           },
           {
             id: "nina",
             label: "Nina",
-            kind: snapshots.nina.entityKind,
+            kind: snapshots.nina.entityKind ?? "npc",
           },
         ]}
       />
@@ -208,7 +208,7 @@ describe("live entity AI frontend and SSR surfaces", () => {
         {sections.map((section, index) => (
           <article key={index}>
             <p>{section.text.replace(/<[^>]*>/g, "")}</p>
-            {section.actions.map((action) => (
+            {(section.actions ?? []).map((action) => (
               <button key={action.name}>{action.name}</button>
             ))}
           </article>

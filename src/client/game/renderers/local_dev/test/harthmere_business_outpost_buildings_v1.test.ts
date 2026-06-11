@@ -37,12 +37,19 @@ const GUIDE_INTERIOR_ASSETS_V1 = new Set([
   "table_small",
   "table_medium",
   "table_long",
+  "chair",
+  "stool_fp",
   "bench_fp",
+  "bed_twin1",
+  "nightstand",
   "cabinet",
   "bookcase_2",
+  "rack",
   "shelf_large",
   "shelf_small_bottles",
+  "book_stack_2",
   "candle_triple",
+  "obj_lamp_ground_small",
   "crate_wooden_fp",
   "chest",
 ]);
@@ -408,27 +415,34 @@ describe("Harthmere business outpost guide renderer V1", () => {
     const root = scenes.three.children.find((c) =>
       c.name.includes(HARTHMERE_BUSINESS_OUTPOST_BUILDING_RENDER_VERSION_V1)
     );
-    for (const child of (root?.children ?? [])) {
-      assert.equal(child.visible, false, `${child.name} white proxy box must stay invisible`);
+    for (const child of root?.children ?? []) {
+      assert.equal(
+        child.visible,
+        false,
+        `${child.name} white proxy box must stay invisible`
+      );
     }
   });
 
   it("builds every outpost at its terrain-pad ground Y, not at the Grove's 53.05 base", () => {
-    const { harthmereBusinessOutpostGroundYV1 } = require("@/shared/harthmere/business_customer_simulator_v1");
+    const {
+      harthmereBusinessOutpostGroundYV1,
+    } = require("@/shared/harthmere/business_customer_simulator_v1");
     for (const outpost of HARTHMERE_BUSINESS_OUTPOSTS_V1) {
       const groundY: number = harthmereBusinessOutpostGroundYV1(outpost);
-      const record = HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS_V1[outpost.outpostId];
+      const record =
+        HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS_V1[outpost.outpostId];
       // The procedural building record's origin.y must equal the terrain-pad Y.
       assert.equal(
         record.origin.y,
         groundY,
-        `${outpost.outpostId} origin.y must be terrain-pad ${groundY}, not Grove 53.05`,
+        `${outpost.outpostId} origin.y must be terrain-pad ${groundY}, not Grove 53.05`
       );
       // Production captures span cliffs, lowlands, and shoreline pads; the
       // renderer should honor each captured Y instead of flattening them.
       assert.ok(
         Number.isFinite(groundY) && groundY >= 0,
-        `${outpost.outpostId} ground Y=${groundY} must be a captured production pad height`,
+        `${outpost.outpostId} ground Y=${groundY} must be a captured production pad height`
       );
     }
   });
@@ -475,49 +489,62 @@ describe("Harthmere business outpost guide renderer V1", () => {
     assert.equal(
       body.includes("createHarthmereBlockBuiltServiceBuildingV43"),
       false,
-      "must not use GLTF shell helper — business buildings are server-materialized voxels",
+      "must not use GLTF shell helper — business buildings are server-materialized voxels"
     );
     // Must NOT use legacy floating props at Grove GROUND_Y.
-    for (const banned of ['"table_medium"', '"scroll_1_fp"', '"obj_sign_post"', "renderLocalScaffolds"]) {
-      assert.equal(body.includes(banned), false, `must not emit legacy floating ${banned}`);
+    for (const banned of [
+      '"table_medium"',
+      '"scroll_1_fp"',
+      '"obj_sign_post"',
+      "renderLocalScaffolds",
+    ]) {
+      assert.equal(
+        body.includes(banned),
+        false,
+        `must not emit legacy floating ${banned}`
+      );
     }
     assert.equal(
       body.includes('"obj_kiosk"'),
       false,
-      "business boards must not use filtered OBJ kiosk runtime placements",
+      "business boards must not use filtered OBJ kiosk runtime placements"
     );
     assert.equal(
       body.includes("BIG BUSINESS BOARD"),
       false,
-      "business boards must come from the procedural marker renderer, not the runtime placement list",
+      "business boards must come from the procedural marker renderer, not the runtime placement list"
     );
     // Must still place the owner NPC with proper cosmetics.
     assert.ok(
-      body.includes("appearance: harthmereBusinessOutpostStaffAppearanceV1(outpost)"),
-      "staff NPC must carry the shared Grove/townsperson cosmetic appearance schema",
+      body.includes(
+        "appearance: harthmereBusinessOutpostStaffAppearanceV1(outpost)"
+      ),
+      "staff NPC must carry the shared Grove/townsperson cosmetic appearance schema"
     );
     assert.ok(
       SOURCE.includes("@/shared/harthmere/business_npc_cosmetics_v1"),
-      "business outpost staff cosmetics must live in the shared Grove business NPC helper",
+      "business outpost staff cosmetics must live in the shared Grove business NPC helper"
     );
     assert.equal(
       SOURCE.includes("harthmere-business-outpost-procedural-staff-v1"),
       false,
-      "must not use the old outpost-only appearance source",
+      "must not use the old outpost-only appearance source"
     );
     assert.ok(
-      SOURCE.includes("HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS_V1[outpost.outpostId]"),
-      "staff NPC must anchor to the procedural voxel building record",
+      SOURCE.includes(
+        "HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS_V1[outpost.outpostId]"
+      ),
+      "staff NPC must anchor to the procedural voxel building record"
     );
     assert.ok(
       SOURCE.includes("record.serviceCounter.x + 4") &&
         SOURCE.includes("record.serviceCounter.z + 1"),
-      "staff NPC must stand at a clear interior work point near the service counter",
+      "staff NPC must stand at a clear interior work point near the service counter"
     );
     assert.ok(
       body.includes("inside business staff NPC") &&
         body.includes('lodTier = "always"'),
-      "staff NPC must be an always-visible inside-business placement",
+      "staff NPC must be an always-visible inside-business placement"
     );
   });
 
@@ -651,6 +678,11 @@ describe("Harthmere business outpost guide renderer V1", () => {
           `${record.outpostId} multi-level visual must use the guide wall stair asset`
         );
       }
+      assert.equal(
+        audit.assets.has("crate_wooden_fp"),
+        false,
+        `${record.outpostId} guide furniture should render as shelves, cabinets, counters, lamps, and seating, not crate assets`
+      );
 
       for (const asset of audit.assets) {
         const isAllowedGuideAsset =
@@ -723,7 +755,8 @@ describe("Harthmere business outpost guide renderer V1", () => {
           break;
         case "market_baskets":
         case "workshop_crates":
-          assert.ok(audit.assets.has("crate_wooden_fp"));
+          assert.ok(audit.assets.has("shelf_large"));
+          assert.ok(audit.assets.has("logs"));
           break;
       }
     }
@@ -768,9 +801,10 @@ describe("Harthmere business outpost guide renderer V1", () => {
       assert.equal(record.jobsBoardPosition.y, record.origin.y);
       assert.equal(record.jobsBoardPosition.z, record.origin.z - 3);
     }
-    assert.deepEqual(Array.from(groundYs).sort((a, b) => a - b), [
-      26, 36, 40, 42, 43, 44, 45, 46, 47, 49, 51, 52, 53, 62, 64, 65, 66,
-    ]);
+    assert.deepEqual(
+      Array.from(groundYs).sort((a, b) => a - b),
+      [26, 36, 40, 42, 43, 44, 45, 46, 47, 49, 51, 52, 53, 62, 64, 65, 66]
+    );
   });
 
   it("marks every guide mesh invisible so server voxel outposts are not covered by white proxy boxes", () => {
@@ -780,13 +814,16 @@ describe("Harthmere business outpost guide renderer V1", () => {
     const root = scenes.three.children.find((child) =>
       child.name.includes(HARTHMERE_BUSINESS_OUTPOST_BUILDING_RENDER_VERSION_V1)
     );
-    assert.ok(root, "guide root must still attach so data/debug inspector works");
+    assert.ok(
+      root,
+      "guide root must still attach so data/debug inspector works"
+    );
     assert.equal(root?.children.length, HARTHMERE_BUSINESS_OUTPOSTS_V1.length);
     for (const child of root!.children) {
       assert.equal(
         child.visible,
         false,
-        `${child.name} guide proxy must be invisible; real building comes from server voxel materialization`,
+        `${child.name} guide proxy must be invisible; real building comes from server voxel materialization`
       );
       // userData must still be intact for the debug inspector and audit tools.
       assert.ok(child.userData.harthmereBusinessOutpostId);

@@ -15,7 +15,7 @@ import type { AABB, ReadonlyOrientedPoint, Vec3 } from "@/shared/math/types";
 import { hoursToMs, minutesToMs } from "@/shared/util/durations";
 import deepFreeze from "deep-freeze-strict";
 import { cloneDeep } from "lodash";
-import { EventEmitter } from "stream";
+import EventEmitter from "node:events";
 import type TypedEventEmitter from "typed-emitter";
 
 export const DEFAULT_CONFIG_LOOKUP_PATHS: LookupPath[] = [

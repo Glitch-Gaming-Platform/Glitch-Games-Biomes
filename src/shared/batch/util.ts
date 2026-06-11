@@ -1,4 +1,4 @@
-import { createInterface } from "readline";
+import * as readline from "node:readline";
 
 export function* batchAsync<T>(transactions: T[], size: number) {
   const batch: T[] = [];
@@ -19,10 +19,10 @@ export async function promptToContinue(
 ) {
   process.stdout.write(msg);
   return new Promise<void>((resolve) => {
-    const rl = createInterface({
+    const rl = readline.createInterface({
       input: process.stdin,
       output: process.stdout,
-    });
+    } as unknown as readline.ReadLineOptions);
     rl.question(msg, () => {
       rl.close();
       resolve();

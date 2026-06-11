@@ -23,7 +23,10 @@ import {
   LIVE_ENTITY_HELPER_QUEST_TARGET_MARKERS_V1,
   type LiveEntityHelperQuestTargetMarkerV1,
 } from "@/shared/harthmere/live_entity_helper_quests_v1";
-import { harthmereJobsBoardQuestMarkerPositionsV1 } from "@/shared/harthmere/jobs_board_quest_marker_positions_v1";
+import {
+  harthmereJobsBoardQuestMarkerPositionsV1,
+  harthmereJobsBoardQuestMarkerRuntimePositionV1,
+} from "@/shared/harthmere/jobs_board_quest_marker_positions_v1";
 import { readSnapshotGroveQuestStateV75 } from "@/client/components/challenges/LocalDevSnapshotGroveBibleRuntime";
 import { readActiveBiomesUIMapPinV142 } from "@/client/components/biomes_ui/adapters/mapPinnedDestination";
 import {
@@ -31,6 +34,7 @@ import {
   SNAPSHOT_GROVE_QUESTS_V75,
   type SnapshotGroveLandmarkV75,
 } from "@/shared/harthmere/snapshot_grove_content_v75";
+import { isHarthmereContainerObjectLabelV1 } from "@/shared/harthmere/object_interaction_semantics_v1";
 import * as THREE from "three";
 
 export const HARTHMERE_QUEST_OBJECT_MARKER_VERSION_V145 =
@@ -82,7 +86,10 @@ export const HARTHMERE_ACTIVE_QUEST_MARKER_CAP_V145 = 0xffffff;
 const ACTIVE_QUEST_BEACON_REFRESH_SECONDS_V145 = 0.25;
 
 export const HARTHMERE_VISIBLE_WORLD_OBJECT_MARKER_IDS_V197: ReadonlySet<string> =
-  new Set(["econ_grove_billy_post", "econ_grove_billy_toolbag"]);
+  new Set([
+    // Non-container authored props that must stay physically visible in world.
+    "econ_grove_billy_post",
+  ]);
 
 const QUEST_OBJECT_MARKER_SKIP_IDS_V145 = new Set([
   // The jobs boards have their own oversized renderer because they are a
@@ -115,17 +122,10 @@ export function isRenderableHarthmereQuestObjectLandmarkV145(
   return Boolean(
     (landmark.questIds?.length ||
       HARTHMERE_VISIBLE_WORLD_OBJECT_MARKER_IDS_V197.has(landmark.id) ||
+      isHarthmereContainerObjectLabelV1({ label: landmark.label }) ||
       SNAPSHOT_GROVE_OBJECTIVE_MARKER_IDS_V145.has(landmark.id)) &&
       landmark.kind !== "npc" &&
       !QUEST_OBJECT_MARKER_SKIP_IDS_V145.has(landmark.id)
-  );
-}
-
-export function isVisibleHarthmereWorldObjectMarkerV197(
-  markerOrId: HarthmereQuestObjectMarkerV145 | string
-): boolean {
-  return HARTHMERE_VISIBLE_WORLD_OBJECT_MARKER_IDS_V197.has(
-    typeof markerOrId === "string" ? markerOrId : markerOrId.id
   );
 }
 
@@ -141,6 +141,7 @@ const resolvedJobsBoardQuestMarkersV145 = () => {
         marker.source !== "business_outpost_jobs_board" &&
         !QUEST_OBJECT_MARKER_SKIP_IDS_V145.has(marker.markerId)
     )
+    .map(harthmereJobsBoardQuestMarkerRuntimePositionV1)
     .map((marker) => ({
       id: marker.markerId,
       label: marker.label,
@@ -184,6 +185,26 @@ export const HARTHMERE_QUEST_OBJECT_MARKERS_V145: readonly HarthmereQuestObjectM
     ),
     ...resolvedJobsBoardQuestMarkersV145(),
   ];
+
+export function isVisibleHarthmereWorldObjectMarkerV197(
+  markerOrId: HarthmereQuestObjectMarkerV145 | string
+): boolean {
+  if (typeof markerOrId !== "string") {
+    return (
+      HARTHMERE_VISIBLE_WORLD_OBJECT_MARKER_IDS_V197.has(markerOrId.id) ||
+      isHarthmereContainerObjectLabelV1({ label: markerOrId.label })
+    );
+  }
+  if (HARTHMERE_VISIBLE_WORLD_OBJECT_MARKER_IDS_V197.has(markerOrId)) {
+    return true;
+  }
+  const marker = HARTHMERE_QUEST_OBJECT_MARKERS_V145.find(
+    (candidate) => candidate.id === markerOrId
+  );
+  return marker
+    ? isHarthmereContainerObjectLabelV1({ label: marker.label })
+    : false;
+}
 
 export function activeHarthmereQuestMarkerIdV145(
   state: HarthmereQuestObjectMarkerStateV145
@@ -343,11 +364,28 @@ export function createHarthmereQuestObjectMarkerMeshV145(
     addBoxV145(group, [0.12, 0.52, 0.08], [-0.26, 0.42, -0.28], parchment);
     addBoxV145(group, [0.12, 0.52, 0.08], [0.26, 0.42, -0.28], parchment);
     addBoxV145(group, [0.4, 0.08, 0.1], [0, 0.76, -0.26], accent);
-  } else if (/crate|basket|bank/.test(text)) {
+  } else if (/first[-\s]?aid|aid bin|medicine|medical/.test(text)) {
+    addBoxV145(group, [0.94, 0.46, 0.68], [0, 0.34, 0], 0xf4f1e8);
+    addBoxV145(group, [0.78, 0.12, 0.74], [0, 0.62, 0], accent);
+    addBoxV145(group, [0.16, 0.34, 0.04], [0, 0.36, -0.36], 0xd93f3f);
+    addBoxV145(group, [0.48, 0.12, 0.04], [0, 0.36, -0.365], 0xd93f3f);
+    addBoxV145(group, [0.34, 0.07, 0.08], [0, 0.78, -0.18], 0xd8d5c8);
+  } else if (/barrels?/.test(text)) {
+    addCylinderV145(group, 0.36, 0.72, [0, 0.44, 0], darkWood, 12);
+    addCylinderV145(group, 0.38, 0.08, [0, 0.82, 0], accent, 12);
+    addCylinderV145(group, 0.38, 0.08, [0, 0.08, 0], accent, 12);
+    addBoxV145(group, [0.86, 0.08, 0.08], [0, 0.52, 0.3], wood);
+    addBoxV145(group, [0.86, 0.08, 0.08], [0, 0.3, 0.3], wood);
+  } else if (
+    /crate|basket|bank|chest|box(?:es)?|bin|container|cache|locker|wardrobe|cabinet|lockbox|strongbox|stash|footlocker/.test(
+      text
+    )
+  ) {
     addBoxV145(group, [0.95, 0.52, 0.72], [0, 0.34, 0], darkWood);
     addBoxV145(group, [0.78, 0.1, 0.78], [0, 0.64, 0], accent);
     addBoxV145(group, [0.1, 0.52, 0.78], [-0.34, 0.36, 0], wood);
     addBoxV145(group, [0.1, 0.52, 0.78], [0.34, 0.36, 0], wood);
+    addBoxV145(group, [0.18, 0.16, 0.08], [0, 0.39, -0.39], parchment);
   } else if (/ledger|board|table|workbench|desk|mirror/.test(text)) {
     addBoxV145(group, [1.25, 0.12, 0.72], [0, 0.78, 0], darkWood);
     addBoxV145(group, [0.14, 0.72, 0.14], [-0.48, 0.42, -0.22], wood);
@@ -361,10 +399,16 @@ export function createHarthmereQuestObjectMarkerMeshV145(
     group.add(ring);
     addBoxV145(group, [0.12, 0.5, 0.12], [-0.72, 0.32, 0], wood);
     addBoxV145(group, [0.12, 0.5, 0.12], [0.72, 0.32, 0], wood);
-  } else if (/antihydrogen|antihelium|antiboron|exotic|antimatter|deposit/.test(text)) {
+  } else if (
+    /antihydrogen|antihelium|antiboron|exotic|antimatter|deposit/.test(text)
+  ) {
     addCylinderV145(group, 0.32, 0.92, [0, 0.52, 0], 0x151927, 9);
-    addBoxV145(group, [0.92, 0.16, 0.16], [0, 0.82, 0], accent).rotation.z =
-      0.72;
+    addBoxV145(
+      group,
+      [0.92, 0.16, 0.16],
+      [0, 0.82, 0],
+      accent
+    ).rotation.z = 0.72;
     addBoxV145(group, [0.92, 0.16, 0.16], [0, 0.44, 0], accent).rotation.z =
       -0.72;
     addBoxV145(group, [0.22, 0.22, 0.22], [0.28, 1.08, 0.18], 0xffffff);
@@ -508,7 +552,9 @@ export class HarthmereQuestObjectMarkersRendererV145 implements Renderer {
       if (!mesh.visible && !isActive && !isAlwaysVisible) {
         continue;
       }
-      const xz = mesh.userData.harthmereMarkerWorldXZ as [number, number] | undefined;
+      const xz = mesh.userData.harthmereMarkerWorldXZ as
+        | [number, number]
+        | undefined;
       const hintY = mesh.userData.harthmereMarkerHintY as number | undefined;
       if (!xz || hintY === undefined) {
         continue;
@@ -642,10 +688,9 @@ export class HarthmereQuestObjectMarkersRendererV145 implements Renderer {
             )?.label ?? id,
           visible: mesh.visible,
           position: [mesh.position.x, mesh.position.y, mesh.position.z],
-          dynamic:
-            HARTHMERE_QUEST_OBJECT_MARKERS_V145.find(
-              (marker) => marker.id === id
-            )?.dynamic,
+          dynamic: HARTHMERE_QUEST_OBJECT_MARKERS_V145.find(
+            (marker) => marker.id === id
+          )?.dynamic,
           beaconVisible: this.activeBeacons.get(id)?.visible === true,
         })),
     };

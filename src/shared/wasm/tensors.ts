@@ -115,7 +115,7 @@ export class Tensor<D extends DataType> {
       if (typeof source === "string") {
         buffer.assign(Buffer.from(source, "base64"));
       } else {
-        buffer.assign(source);
+        buffer.assign(source as Uint8Array<ArrayBuffer>);
       }
       this.cpp.load(buffer);
     });

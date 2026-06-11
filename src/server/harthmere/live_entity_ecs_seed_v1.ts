@@ -5,6 +5,7 @@ import {
   EntityDescription,
   RobotComponent,
   Size,
+  Voice,
 } from "@/shared/ecs/gen/components";
 import type { BiomesId } from "@/shared/ids";
 import { LOCAL_DEV_HUMAN_NPC_TYPE_ID, isNpcTypeId } from "@/shared/npc/bikkie";
@@ -16,6 +17,8 @@ import {
   harthmereLiveEntitySizeForSeedV1,
   type HarthmereLiveEntityProductionSeedV1,
 } from "@/shared/harthmere/live_entity_production_seed_v1";
+import { harthmereVoiceProfileForActorV1 } from "@/shared/harthmere/npc_voice_profiles_v1";
+import { resolveHarthmereProductionMarkerPositionV1 } from "@/shared/harthmere/production_terrain_placement_map_v1";
 
 function changeKindForSeedV1(
   seed: HarthmereLiveEntityProductionSeedV1,
@@ -32,6 +35,17 @@ function proposedFromChangeV1(change: Change): ProposedChange {
     return { kind: "create", entity: change.entity };
   }
   return { kind: "update", entity: change.entity };
+}
+
+function productionPlacedLiveEntitySeedPositionV1(
+  seed: HarthmereLiveEntityProductionSeedV1,
+  source: "live_muck_monster" | "live_livestock"
+) {
+  return resolveHarthmereProductionMarkerPositionV1({
+    source,
+    markerId: seed.seedId,
+    fallback: seed.position,
+  });
 }
 
 export function harthmereLiveEntityProductionSeedIdsV1() {
@@ -82,6 +96,17 @@ export function buildHarthmereLiveEntityProductionSeedChangesV1(input: {
       entity_description: EntityDescription.create({
         text: seed.description,
       }),
+      voice: Voice.create({
+        voice: harthmereVoiceProfileForActorV1({
+          source: "live_entity_seed_v1",
+          id: seed.seedId,
+          entityId: seed.entityId,
+          displayName: seed.displayName,
+          role: seed.kind,
+          kind: seed.kind,
+          background: seed.description,
+        }).voiceParameterId,
+      }),
     };
     changes.push({
       kind: changeKindForSeedV1(seed, existingIds),
@@ -95,7 +120,10 @@ export function buildHarthmereLiveEntityProductionSeedChangesV1(input: {
       {
         id: seed.entityId,
         typeId: monsterTypeId,
-        position: seed.position,
+        position: productionPlacedLiveEntitySeedPositionV1(
+          seed,
+          "live_muck_monster"
+        ),
         orientation: seed.orientation,
         velocity: [0, 0, 0],
         displayName: seed.displayName,
@@ -135,7 +163,10 @@ export function buildHarthmereLiveEntityProductionSeedChangesV1(input: {
       {
         id: seed.entityId,
         typeId: monsterTypeId,
-        position: seed.position,
+        position: productionPlacedLiveEntitySeedPositionV1(
+          seed,
+          "live_livestock"
+        ),
         orientation: seed.orientation,
         velocity: [0, 0, 0],
         displayName: seed.displayName,

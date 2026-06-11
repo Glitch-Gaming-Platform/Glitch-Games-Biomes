@@ -19,6 +19,10 @@ describe("harthmere gathering node world interaction styles", () => {
       source,
       /className="harthmere-jobs-prompt harthmere-gathering-node-prompt"/
     );
+    assert.match(
+      source,
+      /data-harthmere-gathering-node-world-prompt-v1="active"/
+    );
     assert.match(source, /harthmere-gathering-node-prompt__key-group/);
     assert.match(source, /harthmere-gathering-node-prompt__verb/);
 

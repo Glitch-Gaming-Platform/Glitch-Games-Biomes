@@ -27,6 +27,7 @@ export interface MuckMonsterAggressionInputV1 {
   safeZone?: boolean;
   spawnProtected?: boolean;
   lineOfSight?: boolean;
+  muckExposureForcesAggression?: boolean;
   alliesNearby?: number;
   enemiesNearby?: number;
   aggroRadius?: number;
@@ -184,7 +185,10 @@ export function evaluateMuckMonsterAggressionV1(
       distanceToPlayer,
     };
   }
-  if (!isNightForMuckMonsterAggressionV1(input.nowMs)) {
+  if (
+    !input.muckExposureForcesAggression &&
+    !isNightForMuckMonsterAggressionV1(input.nowMs)
+  ) {
     return {
       ...base,
       reason: "daylight_blocks_unprovoked_muck_aggression",

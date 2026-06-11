@@ -19,7 +19,7 @@ import type {
   Server as HTTPServer,
   IncomingMessage,
   ServerResponse,
-} from "http";
+} from "node:http";
 import type { ParsedUrlQuery } from "querystring";
 import { parse } from "url";
 
@@ -27,8 +27,8 @@ function addListenerToExistingServer(
   http: HTTPServer,
   interceptor: (req: IncomingMessage, res: ServerResponse) => boolean
 ) {
-  http.listeners("request").forEach((listener) => {
-    http.removeListener("request", listener as any);
+  (http as any).listeners("request").forEach((listener: any) => {
+    (http as any).removeListener("request", listener);
     http.on("request", (req, res) => {
       if (!interceptor(req, res)) {
         listener(req, res);

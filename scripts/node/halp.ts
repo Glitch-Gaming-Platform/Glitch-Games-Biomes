@@ -18,11 +18,15 @@ async function halp(message?: string) {
       if (!file.isFile() || file.name.startsWith(".")) {
         return;
       }
+      const data = await readFile(path.join(".b", file.name));
       attachments.push({
         title: file.name,
         filename: file.name,
         mimeType: mime(file.name) || "text/plain",
-        data: await readFile(path.join(".b", file.name)),
+        data: data.buffer.slice(
+          data.byteOffset,
+          data.byteOffset + data.byteLength
+        ) as ArrayBuffer,
       });
     })
   );

@@ -126,4 +126,74 @@ describe("Harthmere live entity render motion bridge v1", () => {
       undefined
     );
   });
+
+  it("overrides stale walking motion for defeated live entities", () => {
+    (globalThis as any).window = {
+      __harthmereVoxelNpcMotionV193: {
+        "b:dead-cow": {
+          animationState: "walk",
+          animationMoving: true,
+          targetPos: [9, 9],
+        },
+      },
+    };
+    const result = publishHarthmereLiveEntityCombatMotionToRendererV1(
+      {
+        entitySnapshots: {
+          "b:dead-cow": {
+            hp: 0,
+            maxHp: 270,
+            isAlive: false,
+            isAttackable: false,
+            position: { x: 1, y: 54.1, z: 2 },
+            defeatedAtMs: 1_700_000_000_000,
+            facingYaw: 0.25,
+          },
+        },
+      },
+      1_700_000_000_100
+    );
+
+    assert.deepEqual(result, { published: 1, skipped: 0 });
+    const motion = (globalThis as any).window.__harthmereVoxelNpcMotionV193[
+      "b:dead-cow"
+    ];
+    assert.equal(motion.reason, "live_entity_dead_stop");
+    assert.equal(motion.animationState, "death");
+    assert.equal(motion.animationMoving, false);
+    assert.deepEqual(motion.targetPos, [1, 2]);
+    assert.equal(motion.speed, 0);
+    assert.equal(motion.navigationBlocked, true);
+  });
+
+  it("publishes damaged live entity health for overhead combat bars", () => {
+    (globalThis as any).window = {};
+    const result = publishHarthmereLiveEntityCombatMotionToRendererV1(
+      {
+        entitySnapshots: {
+          "server-muck-combat:watchtower:1": {
+            hp: 320,
+            maxHp: 600,
+            isAlive: true,
+            isAttackable: true,
+            position: { x: 332, y: 53, z: -390 },
+            lastDamageTaken: 80,
+            lastAttackedAtMs: 1_700_000_000_000,
+          },
+        },
+      },
+      1_700_000_000_100
+    );
+
+    assert.deepEqual(result, { published: 0, skipped: 0 });
+    const health = (globalThis as any).window
+      .__harthmereLiveEntityCombatHealthV1[
+      "server-muck-combat:watchtower:1"
+    ];
+    assert.equal(health.hp, 320);
+    assert.equal(health.maxHp, 600);
+    assert.equal(health.isAlive, true);
+    assert.equal(health.isAttackable, true);
+    assert.ok(health.showUntilMs > 1_700_000_000_100);
+  });
 });

@@ -2,6 +2,7 @@ import {
   getHarthmereBusinessOutpostMapMarkersV1,
   type HarthmereBusinessOutpostMapMarkerV1,
 } from "@/shared/harthmere/business_customer_simulator_v1";
+import { resolveHarthmereProductionMarkerPositionV1 } from "@/shared/harthmere/production_terrain_placement_map_v1";
 import type { Vec3 } from "@/shared/math/types";
 
 export const HARTHMERE_BUSINESS_MINIMAP_MAX_DISTANCE_METERS_V1 = 220;
@@ -48,7 +49,10 @@ export function harthmereBusinessMiniMapPinsForPlayerForTest(
   return getHarthmereBusinessOutpostMapMarkersV1()
     .filter((marker) => marker.visibleOnHudMap)
     .map((marker) => {
-      const position = marker.position as Vec3;
+      const position = resolveHarthmereProductionMarkerPositionV1({
+        markerId: marker.markerId,
+        fallback: marker.position as Vec3,
+      });
       return {
         key: marker.markerId,
         markerId: marker.markerId,

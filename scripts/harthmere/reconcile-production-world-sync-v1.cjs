@@ -46,6 +46,9 @@ const {
   harthmereGroundedLivestockSeedsInTerritoryV1,
   harthmereMuckMonsterPositionIsInSafeZoneV1,
 } = require("../../src/shared/harthmere/live_entity_production_seed_v1");
+const {
+  resolveHarthmereProductionMarkerPositionV1,
+} = require("../../src/shared/harthmere/production_terrain_placement_map_v1");
 const { Position, NpcMetadata } = require("../../src/shared/ecs/gen/components");
 const {
   deserializeRedisEntityState,
@@ -258,6 +261,12 @@ async function reconcileSharedLiveModeState(nowMs) {
 // correct), and it will NEVER write a muck monster into a safe zone — a hard gate
 // fails the deploy if the seed ever resolves one into the Grove.
 async function repairLiveEntityPositions(world) {
+  const placedSeedPosition = (seed, source) =>
+    resolveHarthmereProductionMarkerPositionV1({
+      source,
+      markerId: seed.seedId,
+      fallback: seed.position,
+    });
   const canonical = [
     ...HARTHMERE_LIVE_ENTITY_ROBOT_SENTINEL_SEEDS_V1.map((seed) => ({
       id: Number(seed.entityId),
@@ -266,12 +275,12 @@ async function repairLiveEntityPositions(world) {
     })),
     ...harthmereGroundedMuckMonsterSeedsInTerritoryV1().map((seed) => ({
       id: Number(seed.entityId),
-      position: seed.position,
+      position: placedSeedPosition(seed, "live_muck_monster"),
       isMonster: true,
     })),
     ...harthmereGroundedLivestockSeedsInTerritoryV1().map((seed) => ({
       id: Number(seed.entityId),
-      position: seed.position,
+      position: placedSeedPosition(seed, "live_livestock"),
       isMonster: false,
     })),
   ];

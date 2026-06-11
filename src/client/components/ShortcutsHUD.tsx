@@ -1,6 +1,7 @@
 import { useClientContext } from "@/client/components/contexts/ClientContextReactContext";
 import { usePointerLockManager } from "@/client/components/contexts/PointerLockContext";
 import { useInventoryDraggerContext } from "@/client/components/inventory/InventoryDragger";
+import { shouldFocusAndLockForGameplayMovementKeyV1 } from "@/client/components/shortcutsHudMovementFocus";
 import type { GameModal } from "@/client/game/resources/game_modal";
 import type { GlobalKeyCode } from "@/client/game/util/keyboard";
 import { cleanListener } from "@/client/util/helpers";
@@ -25,8 +26,10 @@ const HARTHMERE_RESERVED_KEY_CODES = new Set([
 ]);
 
 function isLocalDevHarthmereReservedKey(code: string) {
-  return process.env.NODE_ENV !== "production" &&
-    HARTHMERE_RESERVED_KEY_CODES.has(code);
+  return (
+    process.env.NODE_ENV !== "production" &&
+    HARTHMERE_RESERVED_KEY_CODES.has(code)
+  );
 }
 
 export const ShortcutsHUD: React.FunctionComponent<{}> = ({}) => {
@@ -57,8 +60,16 @@ export const ShortcutsHUD: React.FunctionComponent<{}> = ({}) => {
             lastInputKeydown.current = performance.now();
           } else {
             if (
-              (lk == "KeyW" || lk == "KeyA" || lk == "KeyS" || lk == "KeyD") &&
-              gameModal.kind === "tabbed_pause"
+              shouldFocusAndLockForGameplayMovementKeyV1({
+                code: lk,
+                modalKind: gameModal.kind,
+                inInputElement: inInputEl,
+                repeat: event.repeat,
+                altKey: event.altKey,
+                ctrlKey: event.ctrlKey,
+                metaKey: event.metaKey,
+                pointerLocked: pointerLockManager.isLocked(),
+              })
             ) {
               pointerLockManager.focusAndLock();
             }

@@ -3,6 +3,13 @@
 import assert from "assert";
 import { humanizeBiomesInventoryItemIdV1 } from "@/client/components/biomes_ui/adapters/inventoryItemPresentation";
 import { BikkieIds } from "@/shared/bikkie/ids";
+import {
+  harthmereBikkieWearableSlotsFromAssignmentV1,
+  harthmereBikkieWearablesUseGeneratedBodyV1,
+  harthmereBikkieWearablesUseGeneratedHeadV1,
+  harthmereClothingSlotsHiddenByBikkieWearablesV1,
+  harthmereLocalEquipmentBikkieWearablesV1,
+} from "@/shared/harthmere/harthmere_bikkie_wearables_v1";
 
 const memoryStore = new Map<string, string>();
 const localStorageShim = {
@@ -111,6 +118,37 @@ describe("Harthmere inventory BiomesUI presentation and actions", () => {
     assert.equal(
       state.backpack.items.some((item) => item.itemId === "baker_apron"),
       true
+    );
+  });
+
+  it("maps equipped Harthmere and Bikkie clothes to visible avatar slots", () => {
+    assert.deepEqual(
+      harthmereLocalEquipmentBikkieWearablesV1({
+        chest: { itemId: "baker_apron" },
+        legs: "field_trousers",
+        back: { itemId: "patched_cloak" },
+        main_hand: { itemId: "iron_longsword" },
+      }),
+      [
+        { slot: BikkieIds.top, itemId: BikkieIds.grassyTop },
+        { slot: BikkieIds.bottoms, itemId: BikkieIds.bellBottoms },
+        { slot: BikkieIds.outerwear, itemId: BikkieIds.poncho },
+      ]
+    );
+
+    const slots = harthmereBikkieWearableSlotsFromAssignmentV1(
+      new Map([
+        [BikkieIds.top, { id: BikkieIds.grassyTop }],
+        [BikkieIds.bottoms, { id: BikkieIds.bellBottoms }],
+        [BikkieIds.hat, { id: BikkieIds.flowerCrown }],
+      ])
+    );
+
+    assert.equal(harthmereBikkieWearablesUseGeneratedBodyV1(slots), true);
+    assert.equal(harthmereBikkieWearablesUseGeneratedHeadV1(slots), true);
+    assert.deepEqual(
+      [...harthmereClothingSlotsHiddenByBikkieWearablesV1(slots)].sort(),
+      ["belt", "hair", "head", "legs", "torso"]
     );
   });
 

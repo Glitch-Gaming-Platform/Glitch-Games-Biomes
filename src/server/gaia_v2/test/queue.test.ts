@@ -5,7 +5,7 @@ import {
 } from "@/server/gaia_v2/queue";
 import type { ShardId } from "@/shared/game/shard";
 import assert from "assert";
-import { EventEmitter } from "events";
+import EventEmitter from "node:events";
 
 class FakeSharder implements QueueSharder {
   #emitter = new EventEmitter();

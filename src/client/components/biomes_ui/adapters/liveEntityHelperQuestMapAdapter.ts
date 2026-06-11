@@ -6,6 +6,7 @@ import {
   type LiveEntityHelperQuestKindV1,
   type LiveEntityHelperQuestObjectiveBaselineV1,
 } from "@/shared/harthmere/live_entity_helper_quests_v1";
+import { resolveHarthmereProductionMarkerPositionV1 } from "@/shared/harthmere/production_terrain_placement_map_v1";
 import type { Vec3 } from "@/shared/math/types";
 import type { MapTrackableQuest } from "../tabs/MapQuestsTab";
 
@@ -198,7 +199,10 @@ export function liveEntityHelperAcceptedQuestLandmarksForBiomesUIV1(
       {
         id: marker.id,
         label: resolved.label,
-        position: [...resolved.position] as Vec3,
+        position: resolveHarthmereProductionMarkerPositionV1({
+          markerId: resolved.id,
+          fallback: resolved.position,
+        }),
         kind: resolved.kind,
         area: resolved.areaLabel,
         visibleOnWorldMap: true as const,

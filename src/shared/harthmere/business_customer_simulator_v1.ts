@@ -205,6 +205,7 @@ export interface HarthmereBusinessCustomerTicketV1 {
   reputationDelta: number;
   needDelta: number;
   navGoal: string;
+  scenarioId?: string;
 }
 
 export interface HarthmereBusinessCustomerSessionV1 {
@@ -639,12 +640,19 @@ export const HARTHMERE_GROVE_BUSINESS_BUILDING_SOURCE_SCAN_V1 = Object.freeze({
       "table_small",
       "table_medium",
       "table_long",
+      "chair",
+      "stool_fp",
       "bench_fp",
+      "bed_twin1",
+      "nightstand",
       "cabinet",
       "bookcase_2",
+      "rack",
       "shelf_large",
       "shelf_small_bottles",
+      "book_stack_2",
       "candle_triple",
+      "obj_lamp_ground_small",
       "crate_wooden_fp",
       "chest",
     ],
@@ -980,6 +988,165 @@ export const HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_V1 = Object.freeze({
         "hallway and doorway views show simple wood interior circulation",
         "nearby garden beds and table-like exterior furniture cue lodging/farm stock",
         "wall-mounted light and glass side room should stay visible from entries",
+      ],
+    },
+  ],
+  constructionFindings: [
+    {
+      coordinateIndex: 0,
+      patternId: "civic_stone_threshold",
+      hasBuildingOrThreshold: true,
+      constructedWith: [
+        "stone floor/courtyard threshold",
+        "wall greenery",
+        "benches and crates outside the central aisle",
+      ],
+    },
+    {
+      coordinateIndex: 1,
+      patternId: "compact_clinic_counter_bed",
+      hasBuildingOrThreshold: true,
+      constructedWith: [
+        "compact storefront shell",
+        "colored counter with bottles",
+        "bed or bench zone",
+        "glass partitions",
+        "clear center aisle",
+      ],
+    },
+    {
+      coordinateIndex: 2,
+      patternId: "stone_counter_bench_lamp",
+      hasBuildingOrThreshold: true,
+      constructedWith: [
+        "stone room",
+        "purple counter/table accent",
+        "wall bench or bed furniture",
+        "floor lamp and side table",
+      ],
+    },
+    {
+      coordinateIndex: 3,
+      patternId: "warm_wood_lodging_room",
+      hasBuildingOrThreshold: true,
+      constructedWith: [
+        "warm wood floor and wall language",
+        "simple table",
+        "bed furniture",
+        "lamp supported on side table",
+        "open front-door line",
+      ],
+    },
+    {
+      coordinateIndex: 4,
+      patternId: "garden_workroom",
+      hasBuildingOrThreshold: true,
+      constructedWith: [
+        "wood-and-glass workroom",
+        "seating and table work zone",
+        "green bench/bed against wall",
+        "window planters and small table stock",
+      ],
+    },
+    {
+      coordinateIndex: 5,
+      patternId: "blue_shelf_stair_shop",
+      hasBuildingOrThreshold: true,
+      constructedWith: [
+        "shelf wall with books and bottles",
+        "white counter service face",
+        "tool/key sign",
+        "side stair kept out of the counter path",
+      ],
+    },
+    {
+      coordinateIndex: 6,
+      patternId: "greenhouse_clinic_corridor",
+      hasBuildingOrThreshold: true,
+      constructedWith: [
+        "glass-and-white corridor walls",
+        "bench/bed behind glass panels",
+        "planters linking outside and inside",
+      ],
+    },
+    {
+      coordinateIndex: 7,
+      patternId: "threshold_sign_shop",
+      hasBuildingOrThreshold: true,
+      constructedWith: [
+        "shop threshold",
+        "blackboard/sign access point",
+        "exterior posts facing the path",
+        "visible glass storefront line",
+      ],
+    },
+    {
+      coordinateIndex: 8,
+      patternId: "stone_glass_stair_display",
+      hasBuildingOrThreshold: true,
+      constructedWith: [
+        "stone-and-glass room",
+        "stair and raised display ledge",
+        "supported pedestal stock",
+        "window plants and bottles",
+      ],
+    },
+    {
+      coordinateIndex: 9,
+      patternId: "gray_office_lounge",
+      hasBuildingOrThreshold: true,
+      constructedWith: [
+        "clean gray office room",
+        "desk and chair",
+        "couch or bench",
+        "planter",
+        "floor lamp",
+        "wall cabinet with small bottle display",
+      ],
+    },
+    {
+      coordinateIndex: 10,
+      patternId: "long_windowed_counter_shop",
+      hasBuildingOrThreshold: true,
+      constructedWith: [
+        "long room",
+        "wooden desk/counter",
+        "shelf wall",
+        "small gifts or stock on the desk",
+        "large windows",
+        "colored vertical panels",
+      ],
+    },
+    {
+      coordinateIndex: 11,
+      patternId: "garden_entry_frontage",
+      hasBuildingOrThreshold: true,
+      constructedWith: [
+        "garden entry",
+        "planters and signs",
+        "public-facing entry furniture",
+      ],
+    },
+    {
+      coordinateIndex: 12,
+      patternId: "glass_veranda_lounge",
+      hasBuildingOrThreshold: true,
+      constructedWith: [
+        "wood floor",
+        "glass balcony or veranda panels",
+        "benches and low railings",
+        "supported wall signs and lamps",
+      ],
+    },
+    {
+      coordinateIndex: 13,
+      patternId: "wood_hall_lodging",
+      hasBuildingOrThreshold: true,
+      constructedWith: [
+        "wood hallway and doorway circulation",
+        "garden/farm stock furniture nearby",
+        "wall-mounted light",
+        "glass side room",
       ],
     },
   ],
@@ -6710,7 +6877,7 @@ export function harthmereBusinessCustomerTierForStatsV1(
 // HARTHMERE_BUSINESS_SCENARIO_VARIETY_V1
 // Each business only has a handful of base asks (one per real service offer),
 // which made every shift feel repetitive. Instead of hand-authoring hundreds of
-// full asks, we layer two independent, business-agnostic dimensions on top of
+// full asks, we layer thirty business-agnostic scenario dimensions on top of
 // the base ask at queue-generation time:
 //   1. a customer "persona" that rewrites the request line and shifts the
 //      stakes (patience / difficulty / reward / reputation), and
@@ -6719,7 +6886,7 @@ export function harthmereBusinessCustomerTierForStatsV1(
 // scenarios per business. Selection is seeded from the session id so the queue
 // stays deterministic (server and client agree, and the deterministic-queue
 // test holds), while the strides below are coprime with the pool sizes so every
-// customer in a single (max 12) shift draws a different persona.
+// customer in a single (max 12) shift draws a different scenario.
 export interface HarthmereBusinessScenarioModifierV1 {
   id: string;
   mood: string;
@@ -6893,6 +7060,146 @@ export const HARTHMERE_BUSINESS_SCENARIO_MODIFIERS_V1: readonly HarthmereBusines
       rewardMultiplier: 1.05,
       reputationDelta: 0,
     },
+    {
+      id: "after_hours",
+      mood: "tired",
+      linePrefix: "I know it's late, but ",
+      lineSuffix: "",
+      patienceMultiplier: 0.9,
+      difficultyDelta: 1,
+      rewardMultiplier: 1.2,
+      reputationDelta: 0,
+    },
+    {
+      id: "festival_rush",
+      mood: "festive",
+      linePrefix: "Festival rush is eating my schedule. ",
+      lineSuffix: "",
+      patienceMultiplier: 0.75,
+      difficultyDelta: 1,
+      rewardMultiplier: 1.3,
+      reputationDelta: 1,
+    },
+    {
+      id: "inspection_pressure",
+      mood: "formal",
+      linePrefix: "The inspector is already on the way. ",
+      lineSuffix: "",
+      patienceMultiplier: 0.7,
+      difficultyDelta: 2,
+      rewardMultiplier: 1.25,
+      reputationDelta: 2,
+    },
+    {
+      id: "family_errand",
+      mood: "hopeful",
+      linePrefix: "My family is counting on this. ",
+      lineSuffix: "",
+      patienceMultiplier: 1.15,
+      difficultyDelta: 0,
+      rewardMultiplier: 1.1,
+      reputationDelta: 1,
+    },
+    {
+      id: "route_delay",
+      mood: "anxious",
+      linePrefix: "The road delay ruined my timing. ",
+      lineSuffix: "",
+      patienceMultiplier: 0.8,
+      difficultyDelta: 1,
+      rewardMultiplier: 1.15,
+      reputationDelta: 0,
+    },
+    {
+      id: "fragile_goods",
+      mood: "careful",
+      linePrefix: "Please handle this gently. ",
+      lineSuffix: " It breaks if rushed.",
+      patienceMultiplier: 1.05,
+      difficultyDelta: 2,
+      rewardMultiplier: 1.35,
+      reputationDelta: 1,
+    },
+    {
+      id: "short_on_coin",
+      mood: "apologetic",
+      linePrefix: "I cannot pay much, but ",
+      lineSuffix: "",
+      patienceMultiplier: 1.25,
+      difficultyDelta: 0,
+      rewardMultiplier: 0.75,
+      reputationDelta: 1,
+    },
+    {
+      id: "guild_order",
+      mood: "official",
+      linePrefix: "This is for my guild. ",
+      lineSuffix: " The paperwork needs to match.",
+      patienceMultiplier: 0.95,
+      difficultyDelta: 1,
+      rewardMultiplier: 1.25,
+      reputationDelta: 1,
+    },
+    {
+      id: "bad_previous_service",
+      mood: "bristly",
+      linePrefix: "The last place botched this. ",
+      lineSuffix: "",
+      patienceMultiplier: 0.75,
+      difficultyDelta: 1,
+      rewardMultiplier: 1.1,
+      reputationDelta: 2,
+    },
+    {
+      id: "new_resident",
+      mood: "earnest",
+      linePrefix: "I'm new in Harthmere. ",
+      lineSuffix: "",
+      patienceMultiplier: 1.3,
+      difficultyDelta: 0,
+      rewardMultiplier: 1,
+      reputationDelta: 1,
+    },
+    {
+      id: "rain_soaked",
+      mood: "miserable",
+      linePrefix: "I'm soaked through. ",
+      lineSuffix: "",
+      patienceMultiplier: 0.85,
+      difficultyDelta: 1,
+      rewardMultiplier: 1.15,
+      reputationDelta: 0,
+    },
+    {
+      id: "lost_receipt",
+      mood: "embarrassed",
+      linePrefix: "I lost the receipt, sorry. ",
+      lineSuffix: "",
+      patienceMultiplier: 1.1,
+      difficultyDelta: 1,
+      rewardMultiplier: 0.95,
+      reputationDelta: 0,
+    },
+    {
+      id: "premium_client",
+      mood: "polished",
+      linePrefix: "I'm paying for premium service. ",
+      lineSuffix: "",
+      patienceMultiplier: 0.85,
+      difficultyDelta: 2,
+      rewardMultiplier: 1.6,
+      reputationDelta: 2,
+    },
+    {
+      id: "neighbor_referral",
+      mood: "trusting",
+      linePrefix: "A neighbor said you would know what to do. ",
+      lineSuffix: "",
+      patienceMultiplier: 1.15,
+      difficultyDelta: 0,
+      rewardMultiplier: 1.1,
+      reputationDelta: 1,
+    },
   ];
 
 export const HARTHMERE_BUSINESS_SCENARIO_OPENERS_V1: readonly string[] = [
@@ -6956,7 +7263,7 @@ export function createHarthmereBusinessCustomerQueueV1(input: {
       // first ticket mapping to askTemplates[0] at tier 1) and instead layer an
       // independent persona + greeting on top so the *presented* scenario
       // differs every turn. Strides 5 and 3 are coprime with the pool sizes (16
-      // and 8), so each customer in the shift draws a distinct persona/opener.
+      // and 8), so each customer in the shift draws a distinct scenario/opener.
       const ask =
         definition.askTemplates[
           (index + tier - 1) % definition.askTemplates.length
@@ -6995,6 +7302,7 @@ export function createHarthmereBusinessCustomerQueueV1(input: {
         ),
         needDelta: ask.needDelta,
         navGoal: ask.navGoal,
+        scenarioId: `${ask.askId}:${modifier.id}`,
       };
     }
   );
@@ -7937,7 +8245,7 @@ function harthmereBusinessOutpostBuildingStyleKitV1(
 // business can stage a richer, hand-authored interior while keeping the central
 // door -> queue -> counter -> exit corridor and the four customer path nodes
 // completely clear of physical decor.
-type HarthmereBusinessDecorFixtureSlotV1 =
+export type HarthmereBusinessDecorFixtureSlotV1 =
   | "left"
   | "right"
   | "backLeft"
@@ -7956,13 +8264,625 @@ type HarthmereBusinessDecorFixtureSlotV1 =
   | "innerBackLeft"
   | "innerBackRight";
 
-type HarthmereBusinessDecorFixtureSeedV1 = {
+export type HarthmereBusinessDecorFixtureSeedV1 = {
   label: string;
   role: HarthmereBusinessOutpostInteriorFixtureRoleV1;
   side: HarthmereBusinessDecorFixtureSlotV1;
   size: readonly [number, number, number];
   colorHint: HarthmereBusinessOutpostInteriorFixtureV1["colorHint"];
 };
+
+export type HarthmereGroveBusinessInteriorReferencePatternIdV1 =
+  (typeof HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_V1.constructionFindings)[number]["patternId"];
+
+const referenceFixtureV1 = (
+  label: string,
+  role: HarthmereBusinessOutpostInteriorFixtureRoleV1,
+  side: HarthmereBusinessDecorFixtureSlotV1,
+  size: readonly [number, number, number],
+  colorHint: HarthmereBusinessOutpostInteriorFixtureV1["colorHint"]
+): HarthmereBusinessDecorFixtureSeedV1 => ({
+  label,
+  role,
+  side,
+  size,
+  colorHint,
+});
+
+export const HARTHMERE_GROVE_BUSINESS_INTERIOR_REFERENCE_TEMPLATE_FIXTURES_V1: Readonly<
+  Record<
+    HarthmereGroveBusinessInteriorReferencePatternIdV1,
+    readonly HarthmereBusinessDecorFixtureSeedV1[]
+  >
+> = {
+  civic_stone_threshold: [
+    referenceFixtureV1(
+      "Stone threshold bench",
+      "seating",
+      "leftFront",
+      [2.4, 0.85, 1.0],
+      "wood"
+    ),
+    referenceFixtureV1(
+      "Threshold stock sideboard",
+      "stock_storage",
+      "rightFront",
+      [1.4, 1.25, 1.4],
+      "stock"
+    ),
+    referenceFixtureV1(
+      "Wall greenery planter",
+      "business_decor",
+      "leftMid",
+      [1.3, 1.45, 0.7],
+      "accent"
+    ),
+    referenceFixtureV1(
+      "Public notice side table",
+      "service_table",
+      "rightMid",
+      [1.6, 0.95, 1.0],
+      "wood"
+    ),
+    referenceFixtureV1(
+      "Aisle edge candle post",
+      "business_decor",
+      "innerFrontLeft",
+      [0.6, 1.45, 0.6],
+      "safety"
+    ),
+  ],
+  compact_clinic_counter_bed: [
+    referenceFixtureV1(
+      "Bottle counter run",
+      "service_table",
+      "leftMid",
+      [2.2, 0.95, 1.0],
+      "accent"
+    ),
+    referenceFixtureV1(
+      "Recovery bed nook",
+      "seating",
+      "leftBack",
+      [2.5, 0.75, 1.2],
+      "trim"
+    ),
+    referenceFixtureV1(
+      "Glass partition screen",
+      "business_decor",
+      "innerBackLeft",
+      [0.7, 1.9, 1.2],
+      "safety"
+    ),
+    referenceFixtureV1(
+      "Medicine bottle wall shelf",
+      "stock_storage",
+      "rightBack",
+      [1.4, 1.9, 1.0],
+      "accent"
+    ),
+    referenceFixtureV1(
+      "Waiting chair",
+      "seating",
+      "rightFront",
+      [0.9, 0.95, 0.9],
+      "wood"
+    ),
+    referenceFixtureV1(
+      "Tiny side lamp table",
+      "service_table",
+      "innerFrontLeft",
+      [1.0, 0.9, 1.0],
+      "wood"
+    ),
+  ],
+  stone_counter_bench_lamp: [
+    referenceFixtureV1(
+      "Purple counter table",
+      "service_table",
+      "leftMid",
+      [2.4, 0.95, 1.0],
+      "accent"
+    ),
+    referenceFixtureV1(
+      "Wall bench service bed",
+      "seating",
+      "leftBack",
+      [2.5, 0.75, 1.1],
+      "wood"
+    ),
+    referenceFixtureV1(
+      "Floor lamp beside bench",
+      "business_decor",
+      "leftFront",
+      [0.6, 1.5, 0.6],
+      "safety"
+    ),
+    referenceFixtureV1(
+      "Small supported side table",
+      "service_table",
+      "rightFront",
+      [1.0, 0.9, 1.0],
+      "wood"
+    ),
+    referenceFixtureV1(
+      "Window bottle shelf",
+      "stock_storage",
+      "rightBack",
+      [1.4, 1.9, 1.0],
+      "accent"
+    ),
+  ],
+  warm_wood_lodging_room: [
+    referenceFixtureV1(
+      "Warm room table",
+      "service_table",
+      "leftMid",
+      [2.0, 0.95, 1.2],
+      "wood"
+    ),
+    referenceFixtureV1(
+      "Wood room chair",
+      "seating",
+      "innerFrontLeft",
+      [0.9, 0.95, 0.9],
+      "wood"
+    ),
+    referenceFixtureV1(
+      "Guest bed against wall",
+      "seating",
+      "leftBack",
+      [2.5, 0.75, 1.2],
+      "trim"
+    ),
+    referenceFixtureV1(
+      "Lamp nightstand",
+      "service_table",
+      "rightFront",
+      [1.0, 0.9, 1.0],
+      "wood"
+    ),
+    referenceFixtureV1(
+      "Footlocker cabinet",
+      "stock_storage",
+      "rightBack",
+      [1.3, 1.0, 1.0],
+      "stock"
+    ),
+    referenceFixtureV1(
+      "Wall cabinet wardrobe",
+      "stock_storage",
+      "leftFront",
+      [1.3, 1.8, 0.7],
+      "trim"
+    ),
+  ],
+  garden_workroom: [
+    referenceFixtureV1(
+      "Garden work table",
+      "service_table",
+      "leftMid",
+      [2.2, 0.95, 1.2],
+      "wood"
+    ),
+    referenceFixtureV1(
+      "Workroom chair",
+      "seating",
+      "innerFrontLeft",
+      [0.9, 0.95, 0.9],
+      "wood"
+    ),
+    referenceFixtureV1(
+      "Green bench bed",
+      "seating",
+      "leftBack",
+      [2.4, 0.75, 1.1],
+      "accent"
+    ),
+    referenceFixtureV1(
+      "Window planter shelf",
+      "business_decor",
+      "rightFront",
+      [1.5, 1.1, 0.7],
+      "accent"
+    ),
+    referenceFixtureV1(
+      "Small stock table",
+      "service_table",
+      "rightMid",
+      [1.3, 0.9, 1.0],
+      "stock"
+    ),
+    referenceFixtureV1(
+      "Back cabinet stock",
+      "stock_storage",
+      "rightBack",
+      [1.3, 1.85, 0.8],
+      "stock"
+    ),
+  ],
+  blue_shelf_stair_shop: [
+    referenceFixtureV1(
+      "Blue room shelf wall",
+      "stock_storage",
+      "leftBack",
+      [1.4, 1.9, 1.1],
+      "accent"
+    ),
+    referenceFixtureV1(
+      "Book and bottle rack",
+      "stock_storage",
+      "rightBack",
+      [1.4, 1.9, 1.1],
+      "stock"
+    ),
+    referenceFixtureV1(
+      "White service counter face",
+      "service_table",
+      "leftMid",
+      [2.2, 0.95, 1.0],
+      "safety"
+    ),
+    referenceFixtureV1(
+      "Tool and key wall sign",
+      "business_decor",
+      "innerBackRight",
+      [1.2, 1.55, 0.5],
+      "trim"
+    ),
+    referenceFixtureV1(
+      "Stair side display shelf",
+      "stock_storage",
+      "rightFront",
+      [1.2, 1.15, 1.0],
+      "stock"
+    ),
+    referenceFixtureV1(
+      "Counter stool",
+      "seating",
+      "innerFrontLeft",
+      [0.8, 0.9, 0.8],
+      "wood"
+    ),
+  ],
+  greenhouse_clinic_corridor: [
+    referenceFixtureV1(
+      "Glass corridor partition",
+      "business_decor",
+      "leftMid",
+      [0.7, 1.9, 1.4],
+      "safety"
+    ),
+    referenceFixtureV1(
+      "Tucked bench behind glass",
+      "seating",
+      "leftBack",
+      [2.3, 0.75, 1.1],
+      "trim"
+    ),
+    referenceFixtureV1(
+      "Clean white service table",
+      "service_table",
+      "rightMid",
+      [2.0, 0.95, 1.0],
+      "safety"
+    ),
+    referenceFixtureV1(
+      "Indoor planter line",
+      "business_decor",
+      "rightFront",
+      [1.6, 1.0, 0.8],
+      "accent"
+    ),
+    referenceFixtureV1(
+      "Bottle shelf behind glass",
+      "stock_storage",
+      "rightBack",
+      [1.4, 1.8, 0.9],
+      "accent"
+    ),
+  ],
+  threshold_sign_shop: [
+    referenceFixtureV1(
+      "Blackboard access sign",
+      "business_decor",
+      "innerFrontLeft",
+      [1.2, 1.5, 0.4],
+      "accent"
+    ),
+    referenceFixtureV1(
+      "Exterior post-side table",
+      "service_table",
+      "leftFront",
+      [1.6, 0.9, 1.0],
+      "wood"
+    ),
+    referenceFixtureV1(
+      "Glass storefront display",
+      "business_decor",
+      "rightFront",
+      [1.3, 1.5, 0.7],
+      "safety"
+    ),
+    referenceFixtureV1(
+      "Threshold waiting bench",
+      "seating",
+      "leftMid",
+      [2.2, 0.85, 1.0],
+      "wood"
+    ),
+    referenceFixtureV1(
+      "Entry stock display",
+      "stock_storage",
+      "rightMid",
+      [1.2, 1.15, 1.2],
+      "stock"
+    ),
+  ],
+  stone_glass_stair_display: [
+    referenceFixtureV1(
+      "Raised glass display ledge",
+      "service_table",
+      "leftMid",
+      [2.2, 0.95, 1.0],
+      "safety"
+    ),
+    referenceFixtureV1(
+      "Pedestal focal stock",
+      "business_decor",
+      "centerBack",
+      [1.1, 1.25, 1.1],
+      "accent"
+    ),
+    referenceFixtureV1(
+      "Stair-side bottle shelf",
+      "stock_storage",
+      "rightBack",
+      [1.4, 1.9, 1.0],
+      "accent"
+    ),
+    referenceFixtureV1(
+      "Window plant stand",
+      "business_decor",
+      "rightFront",
+      [1.2, 1.25, 0.8],
+      "accent"
+    ),
+    referenceFixtureV1(
+      "Small stair landing table",
+      "service_table",
+      "leftBack",
+      [1.3, 0.9, 1.0],
+      "wood"
+    ),
+    referenceFixtureV1(
+      "Glass display lamp",
+      "business_decor",
+      "innerFrontLeft",
+      [0.6, 1.5, 0.6],
+      "safety"
+    ),
+  ],
+  gray_office_lounge: [
+    referenceFixtureV1(
+      "Office desk",
+      "service_table",
+      "leftMid",
+      [2.2, 0.95, 1.1],
+      "wood"
+    ),
+    referenceFixtureV1(
+      "Office chair",
+      "seating",
+      "innerFrontLeft",
+      [0.9, 0.95, 0.9],
+      "wood"
+    ),
+    referenceFixtureV1(
+      "Customer couch bench",
+      "seating",
+      "leftBack",
+      [2.5, 0.85, 1.1],
+      "trim"
+    ),
+    referenceFixtureV1(
+      "Planter beside couch",
+      "business_decor",
+      "leftFront",
+      [1.0, 1.2, 0.8],
+      "accent"
+    ),
+    referenceFixtureV1(
+      "Office floor lamp",
+      "business_decor",
+      "rightFront",
+      [0.6, 1.5, 0.6],
+      "safety"
+    ),
+    referenceFixtureV1(
+      "Black wall cabinet bottles",
+      "stock_storage",
+      "rightBack",
+      [1.4, 1.8, 0.8],
+      "accent"
+    ),
+  ],
+  long_windowed_counter_shop: [
+    referenceFixtureV1(
+      "Long wooden desk counter",
+      "service_table",
+      "leftMid",
+      [2.8, 0.95, 1.0],
+      "wood"
+    ),
+    referenceFixtureV1(
+      "Shelf wall of stock",
+      "stock_storage",
+      "rightBack",
+      [1.4, 1.9, 1.2],
+      "stock"
+    ),
+    referenceFixtureV1(
+      "Small gifts on desk",
+      "business_decor",
+      "innerBackRight",
+      [1.0, 1.05, 0.7],
+      "accent"
+    ),
+    referenceFixtureV1(
+      "Colored identity panel",
+      "business_decor",
+      "leftBack",
+      [1.0, 1.7, 0.4],
+      "accent"
+    ),
+    referenceFixtureV1(
+      "Window-side waiting chair",
+      "seating",
+      "rightFront",
+      [0.9, 0.95, 0.9],
+      "wood"
+    ),
+    referenceFixtureV1(
+      "Counter lamp",
+      "business_decor",
+      "innerFrontLeft",
+      [0.6, 1.4, 0.6],
+      "safety"
+    ),
+  ],
+  garden_entry_frontage: [
+    referenceFixtureV1(
+      "Entry planter box",
+      "business_decor",
+      "leftFront",
+      [1.5, 1.0, 0.8],
+      "accent"
+    ),
+    referenceFixtureV1(
+      "Public sign table",
+      "service_table",
+      "rightFront",
+      [1.5, 0.9, 1.0],
+      "wood"
+    ),
+    referenceFixtureV1(
+      "Garden waiting bench",
+      "seating",
+      "leftMid",
+      [2.2, 0.85, 1.0],
+      "wood"
+    ),
+    referenceFixtureV1(
+      "Entry stock basket",
+      "stock_storage",
+      "rightMid",
+      [1.2, 1.1, 1.2],
+      "stock"
+    ),
+  ],
+  glass_veranda_lounge: [
+    referenceFixtureV1(
+      "Veranda lounge bench",
+      "seating",
+      "leftMid",
+      [2.5, 0.85, 1.1],
+      "wood"
+    ),
+    referenceFixtureV1(
+      "Low glass railing",
+      "business_decor",
+      "leftBack",
+      [1.6, 1.0, 0.5],
+      "safety"
+    ),
+    referenceFixtureV1(
+      "Wood overlook table",
+      "service_table",
+      "rightMid",
+      [1.8, 0.9, 1.0],
+      "wood"
+    ),
+    referenceFixtureV1(
+      "Wall sign lamp",
+      "business_decor",
+      "innerBackRight",
+      [1.0, 1.5, 0.4],
+      "safety"
+    ),
+    referenceFixtureV1(
+      "Veranda storage cabinet",
+      "stock_storage",
+      "rightBack",
+      [1.4, 1.0, 1.0],
+      "stock"
+    ),
+  ],
+  wood_hall_lodging: [
+    referenceFixtureV1(
+      "Wood hallway side table",
+      "service_table",
+      "leftMid",
+      [1.8, 0.9, 1.0],
+      "wood"
+    ),
+    referenceFixtureV1(
+      "Doorway bench",
+      "seating",
+      "leftBack",
+      [2.3, 0.85, 1.0],
+      "wood"
+    ),
+    referenceFixtureV1(
+      "Wall-mounted hall light",
+      "business_decor",
+      "innerBackRight",
+      [0.7, 1.5, 0.5],
+      "safety"
+    ),
+    referenceFixtureV1(
+      "Glass side-room screen",
+      "business_decor",
+      "rightMid",
+      [0.7, 1.9, 1.3],
+      "safety"
+    ),
+    referenceFixtureV1(
+      "Farm stock sideboard",
+      "stock_storage",
+      "rightBack",
+      [1.4, 1.2, 1.4],
+      "stock"
+    ),
+  ],
+} as const;
+
+export const HARTHMERE_BUSINESS_REFERENCE_INTERIOR_TEMPLATE_BY_TYPE_V1: Readonly<
+  Record<
+    HarthmereEconomyBusinessTypeIdV1,
+    HarthmereGroveBusinessInteriorReferencePatternIdV1
+  >
+> = {
+  exotic_matter_refinery: "stone_glass_stair_display",
+  biome_maintenance_repair: "blue_shelf_stair_shop",
+  biome_design_studio: "garden_workroom",
+  security_defense_contractor: "civic_stone_threshold",
+  portal_transit_company: "stone_glass_stair_display",
+  biome_farming_rare_foods: "greenhouse_clinic_corridor",
+  weapons_tools: "blue_shelf_stair_shop",
+  magic_goods: "stone_counter_bench_lamp",
+  exploration_guide: "gray_office_lounge",
+  custom_home_property_development: "gray_office_lounge",
+  general_trader: "long_windowed_counter_shop",
+  hunter_wild_meat: "garden_workroom",
+  medical_doctor: "compact_clinic_counter_bed",
+  teleport_owner: "stone_glass_stair_display",
+  waste_sanitation_cleanup: "compact_clinic_counter_bed",
+  repair_maintenance_person: "blue_shelf_stair_shop",
+  food_service_restaurant: "warm_wood_lodging_room",
+  courier: "long_windowed_counter_shop",
+  hospitality_inn_hotel_shelter: "glass_veranda_lounge",
+} as const;
 
 // Hand-authored "character" props per business type. These dress each interior so
 // it reads as the real trade (a forge has an anvil and ember light, a clinic has a
@@ -7986,7 +8906,7 @@ const HARTHMERE_BUSINESS_THEMATIC_INTERIOR_FIXTURES_V1: Readonly<
   exotic_matter_refinery: [
     ["Coolant tank bank", "stock_storage", [1.2, 2.0, 1.2], "stock"],
     ["Hazard containment cage", "business_decor", [1.4, 1.8, 1.4], "safety"],
-    ["Spent filter crate stack", "stock_storage", [1.4, 1.2, 1.4], "stock"],
+    ["Spent filter shelf", "stock_storage", [1.4, 1.2, 1.4], "stock"],
     ["Hazard warning lantern", "business_decor", [0.6, 1.5, 0.6], "safety"],
   ],
   biome_maintenance_repair: [
@@ -8015,7 +8935,7 @@ const HARTHMERE_BUSINESS_THEMATIC_INTERIOR_FIXTURES_V1: Readonly<
   ],
   biome_farming_rare_foods: [
     ["Cold larder shelf", "stock_storage", [1.3, 1.9, 2.0], "stock"],
-    ["Harvest crate stack", "stock_storage", [1.4, 1.2, 1.4], "stock"],
+    ["Harvest display shelf", "stock_storage", [1.4, 1.2, 1.4], "stock"],
     ["Seedling planter bed", "business_decor", [1.6, 0.6, 1.0], "accent"],
     ["Herb drying rack", "business_decor", [1.2, 1.7, 0.5], "wood"],
   ],
@@ -8034,7 +8954,7 @@ const HARTHMERE_BUSINESS_THEMATIC_INTERIOR_FIXTURES_V1: Readonly<
   ],
   exploration_guide: [
     ["Route wall map", "business_decor", [1.2, 1.6, 0.4], "accent"],
-    ["Trailhead supply crate", "stock_storage", [1.4, 1.2, 1.4], "stock"],
+    ["Trailhead supply rack", "stock_storage", [1.4, 1.2, 1.4], "stock"],
     ["Expedition planning bench", "seating", [2.2, 0.9, 1.0], "wood"],
     ["Lantern and gear rack", "business_decor", [1.2, 1.7, 0.5], "trim"],
   ],
@@ -8047,14 +8967,14 @@ const HARTHMERE_BUSINESS_THEMATIC_INTERIOR_FIXTURES_V1: Readonly<
   general_trader: [
     ["Dry goods shelf", "stock_storage", [1.3, 1.95, 1.0], "stock"],
     ["Seed and tool barrel", "business_decor", [1.0, 1.1, 1.0], "wood"],
-    ["Ready order crate stack", "stock_storage", [1.4, 1.2, 1.4], "stock"],
+    ["Ready order shelf", "stock_storage", [1.4, 1.2, 1.4], "stock"],
     ["Price chalk board", "business_decor", [1.2, 1.5, 0.3], "accent"],
   ],
   hunter_wild_meat: [
     ["Walk-in cold larder", "stock_storage", [1.3, 1.9, 2.0], "stock"],
     ["Hanging cuts rack", "business_decor", [1.2, 1.9, 0.8], "trim"],
     ["Hide tanning bench", "seating", [1.8, 0.9, 1.0], "wood"],
-    ["Ice crate bin", "business_decor", [1.0, 1.0, 1.0], "stock"],
+    ["Ice display trough", "business_decor", [1.0, 1.0, 1.0], "stock"],
   ],
   medical_doctor: [
     ["Recovery cot bed", "seating", [2.0, 0.7, 1.0], "trim"],
@@ -8069,9 +8989,9 @@ const HARTHMERE_BUSINESS_THEMATIC_INTERIOR_FIXTURES_V1: Readonly<
     ["Link stability lantern", "business_decor", [0.6, 1.6, 0.6], "safety"],
   ],
   waste_sanitation_cleanup: [
-    ["Sorting bin row", "stock_storage", [1.8, 1.2, 1.0], "stock"],
+    ["Sorting wash trough row", "stock_storage", [1.8, 1.2, 1.0], "stock"],
     ["Decon spray station", "workstation", [1.2, 1.6, 1.0], "accent"],
-    ["Recycling crate stack", "stock_storage", [1.4, 1.2, 1.4], "stock"],
+    ["Recycling sorting rack", "stock_storage", [1.4, 1.2, 1.4], "stock"],
     ["Hazard warning lantern", "business_decor", [0.6, 1.4, 0.6], "safety"],
   ],
   repair_maintenance_person: [
@@ -8096,7 +9016,7 @@ const HARTHMERE_BUSINESS_THEMATIC_INTERIOR_FIXTURES_V1: Readonly<
   hospitality_inn_hotel_shelter: [
     ["Lobby notice board", "business_decor", [1.2, 1.7, 0.4], "accent"],
     ["Guest lounge bench", "seating", [2.4, 0.9, 1.0], "wood"],
-    ["Linen chest", "stock_storage", [1.4, 1.0, 1.0], "stock"],
+    ["Linen cabinet", "stock_storage", [1.4, 1.0, 1.0], "stock"],
     ["Welcome sideboard", "service_table", [1.8, 0.95, 1.0], "wood"],
     ["Hearth lantern", "business_decor", [0.8, 1.4, 0.8], "safety"],
   ],
@@ -8111,6 +9031,27 @@ const HARTHMERE_BUSINESS_FUNCTIONAL_FIXTURE_SLOTS_V1 = {
   stockSurface: "rightBack",
   warningSurface: "innerFrontRight",
 } as const;
+
+const HARTHMERE_BUSINESS_DECOR_SLOT_FALLBACK_POOL_V1: readonly HarthmereBusinessDecorFixtureSlotV1[] =
+  [
+    "leftFront",
+    "rightFront",
+    "leftMid",
+    "rightMid",
+    "leftBack",
+    "rightBack",
+    "frontLeft",
+    "frontRight",
+    "backLeft",
+    "backRight",
+    "innerFrontLeft",
+    "innerFrontRight",
+    "innerBackLeft",
+    "innerBackRight",
+    "centerBack",
+    "left",
+    "right",
+  ];
 
 const HARTHMERE_BUSINESS_THEMATIC_FIXTURE_SLOT_POOL_V1: readonly HarthmereBusinessDecorFixtureSlotV1[] =
   [
@@ -8132,6 +9073,31 @@ function harthmereBusinessDecorFixtureSeedsV1(
     size: readonly [number, number, number],
     colorHint: HarthmereBusinessOutpostInteriorFixtureV1["colorHint"]
   ) => ({ label, role, side, size, colorHint });
+  const usedSlots = new Set<HarthmereBusinessDecorFixtureSlotV1>();
+  const seeds: HarthmereBusinessDecorFixtureSeedV1[] = [];
+  const reserveSlot = (preferred: HarthmereBusinessDecorFixtureSlotV1) => {
+    if (!usedSlots.has(preferred)) {
+      usedSlots.add(preferred);
+      return preferred;
+    }
+    const fallback = HARTHMERE_BUSINESS_DECOR_SLOT_FALLBACK_POOL_V1.find(
+      (slot) => !usedSlots.has(slot)
+    );
+    if (fallback) {
+      usedSlots.add(fallback);
+      return fallback;
+    }
+    return preferred;
+  };
+  const pushFixture = (
+    label: string,
+    role: HarthmereBusinessOutpostInteriorFixtureRoleV1,
+    side: HarthmereBusinessDecorFixtureSlotV1,
+    size: readonly [number, number, number],
+    colorHint: HarthmereBusinessOutpostInteriorFixtureV1["colorHint"]
+  ) => {
+    seeds.push(fixture(label, role, reserveSlot(side), size, colorHint));
+  };
   // Every business type has a mini-game spec; the spec's interiorFixtureLabels drive
   // the four functional surface labels so each business keeps its correct named
   // surfaces (e.g. "Buff service line" for the restaurant, "Severity triage board"
@@ -8139,38 +9105,46 @@ function harthmereBusinessDecorFixtureSeedsV1(
   const mechanicSpec = getHarthmereBusinessMiniGameSpecV1(typeId);
   const [primaryBoard, serviceSurface, stockSurface, warningSurface] =
     mechanicSpec.interiorFixtureLabels;
-  const seeds: HarthmereBusinessDecorFixtureSeedV1[] = [
-    fixture(
-      primaryBoard,
-      "workstation",
-      HARTHMERE_BUSINESS_FUNCTIONAL_FIXTURE_SLOTS_V1.primaryBoard,
-      [1.8, 1.15, 0.9],
-      "accent"
-    ),
-    fixture(
-      serviceSurface,
-      "service_table",
-      HARTHMERE_BUSINESS_FUNCTIONAL_FIXTURE_SLOTS_V1.serviceSurface,
-      [1.3, 0.95, 1.6],
-      "wood"
-    ),
-    fixture(
-      stockSurface,
-      "stock_storage",
-      HARTHMERE_BUSINESS_FUNCTIONAL_FIXTURE_SLOTS_V1.stockSurface,
-      [1.3, 1.95, 1.6],
-      "stock"
-    ),
-    fixture(
-      warningSurface,
-      "business_decor",
-      HARTHMERE_BUSINESS_FUNCTIONAL_FIXTURE_SLOTS_V1.warningSurface,
-      [1.3, 1.2, 1.0],
-      "safety"
-    ),
-  ];
-  // Layer the hand-authored character props on top, each pinned to its own slot from
-  // the spaced pool so the interior reads as the real trade while staying passable.
+  pushFixture(
+    primaryBoard,
+    "workstation",
+    HARTHMERE_BUSINESS_FUNCTIONAL_FIXTURE_SLOTS_V1.primaryBoard,
+    [1.8, 1.15, 0.9],
+    "accent"
+  );
+  pushFixture(
+    serviceSurface,
+    "service_table",
+    HARTHMERE_BUSINESS_FUNCTIONAL_FIXTURE_SLOTS_V1.serviceSurface,
+    [1.3, 0.95, 1.6],
+    "wood"
+  );
+  pushFixture(
+    stockSurface,
+    "stock_storage",
+    HARTHMERE_BUSINESS_FUNCTIONAL_FIXTURE_SLOTS_V1.stockSurface,
+    [1.3, 1.95, 1.6],
+    "stock"
+  );
+  pushFixture(
+    warningSurface,
+    "business_decor",
+    HARTHMERE_BUSINESS_FUNCTIONAL_FIXTURE_SLOTS_V1.warningSurface,
+    [1.3, 1.2, 1.0],
+    "safety"
+  );
+  // Rebuild the room around the player's supplied Grove references: counters,
+  // shelves, beds/benches, tables, chairs, lamps, planters, and display ledges.
+  const referenceTemplateId =
+    HARTHMERE_BUSINESS_REFERENCE_INTERIOR_TEMPLATE_BY_TYPE_V1[typeId];
+  for (const seed of HARTHMERE_GROVE_BUSINESS_INTERIOR_REFERENCE_TEMPLATE_FIXTURES_V1[
+    referenceTemplateId
+  ] ?? []) {
+    pushFixture(seed.label, seed.role, seed.side, seed.size, seed.colorHint);
+  }
+  // Layer the trade-specific props on top, each pinned to an unused slot from
+  // the spaced pool so the interior reads as the real business while staying
+  // passable.
   const thematic =
     HARTHMERE_BUSINESS_THEMATIC_INTERIOR_FIXTURES_V1[typeId] ?? [];
   thematic.forEach(([label, role, size, colorHint], index) => {
@@ -8178,7 +9152,7 @@ function harthmereBusinessDecorFixtureSeedsV1(
       HARTHMERE_BUSINESS_THEMATIC_FIXTURE_SLOT_POOL_V1[
         index % HARTHMERE_BUSINESS_THEMATIC_FIXTURE_SLOT_POOL_V1.length
       ];
-    seeds.push(fixture(label, role, slot, size, colorHint));
+    pushFixture(label, role, slot, size, colorHint);
   });
   return seeds;
 }
@@ -8650,7 +9624,7 @@ function harthmereOutpostVoxelPaletteForStyleKitV1(
         ? blocks.hay
         : styleKit.exteriorDressing === "garden_planters"
         ? blocks.moss
-        : blocks.woodCrate,
+        : blocks.oakLumber,
   };
 }
 
@@ -8667,6 +9641,7 @@ function applyHarthmereOutpostVoxelPaletteV1(
     if (edit.label === "stair") edit.value = palette.stair;
     if (edit.label === "door_lock") edit.value = palette.sign;
     if (edit.label === "safe_ground") edit.value = palette.stair;
+    if (edit.label === "storage_container") edit.value = palette.sign;
   }
 }
 
@@ -8697,7 +9672,7 @@ function harthmereOutpostFixtureVoxelValueV1(
   if (/forge|anvil|tool|bench|repair|fix|vise|workstation/.test(token))
     return HARTHMERE_OUTPOST_TERRAIN_BLOCKS_V1.stonePolished;
   if (/parcel|dispatch|package|orders|courier/.test(token))
-    return HARTHMERE_OUTPOST_TERRAIN_BLOCKS_V1.woodCrate;
+    return HARTHMERE_OUTPOST_TERRAIN_BLOCKS_V1.oakLumber;
   if (/basin|barrel|wash|quench|cleanup|sanitation/.test(token))
     return HARTHMERE_OUTPOST_TERRAIN_BLOCKS_V1.clay;
   if (/fresh|harvest|crop|ingredient|food|larder|meat/.test(token))
@@ -8707,14 +9682,32 @@ function harthmereOutpostFixtureVoxelValueV1(
       token
     )
   )
-    return HARTHMERE_OUTPOST_TERRAIN_BLOCKS_V1.woodCrate;
+    return HARTHMERE_OUTPOST_TERRAIN_BLOCKS_V1.oakLumber;
   if (/trail|camp|field/.test(token))
     return HARTHMERE_OUTPOST_TERRAIN_BLOCKS_V1.stonePolished;
   if (/bench|seat|stool|cot/.test(token))
     return HARTHMERE_OUTPOST_TERRAIN_BLOCKS_V1.oakLumber;
   if (/table|counter|desk|scale|sideboard/.test(token))
     return HARTHMERE_OUTPOST_TERRAIN_BLOCKS_V1.oakLumber;
-  return HARTHMERE_OUTPOST_TERRAIN_BLOCKS_V1.woodCrate;
+  return HARTHMERE_OUTPOST_TERRAIN_BLOCKS_V1.oakLumber;
+}
+
+function harthmereOutpostFixtureAccentVoxelValueV1(token: string): BiomesId {
+  const blocks = HARTHMERE_OUTPOST_TERRAIN_BLOCKS_V1;
+  if (/medical|clinic|medicine|bottle|sanitation|wash|decon/.test(token))
+    return blocks.clay;
+  if (/food|fresh|harvest|ingredient|pantry|larder|meat|meal|seed/.test(token))
+    return blocks.hay;
+  if (
+    /crystal|glass|portal|teleport|magic|rune|ward|arcane|lamp|lantern/.test(
+      token
+    )
+  )
+    return blocks.simpleGlass;
+  if (/forge|tool|weapon|armor|repair|refinery|hazard|security/.test(token))
+    return blocks.stonePolished;
+  if (/plant|green|garden|seedling|herb/.test(token)) return blocks.moss;
+  return blocks.oakLumber;
 }
 
 function pushHarthmereOutpostFixtureVoxelsV1(input: {
@@ -8768,24 +9761,86 @@ function pushHarthmereOutpostFixtureVoxelsV1(input: {
     pushIfFree([x0, y, z0], blocks.oakLumber, "business_marker");
     pushIfFree([x0, y + 1, z0], blocks.simpleGlass, "business_marker");
     pushIfFree([x0, y + 2, z0], blocks.hay, "business_marker");
-    pushIfFree([x0 - 1, y, z0], blocks.woodCrate, "storage_container");
-    pushIfFree([x0 + 1, y, z0], blocks.woodCrate, "storage_container");
+    pushIfFree([x0 - 1, y, z0], blocks.oakLog, "frame");
+    pushIfFree([x0 - 1, y + 1, z0], blocks.oakLumber, "storage_container");
+    pushIfFree([x0 + 1, y, z0], blocks.oakLog, "frame");
+    pushIfFree([x0 + 1, y + 1, z0], blocks.oakLumber, "storage_container");
+    return;
+  }
+
+  if (/chair|stool/.test(token)) {
+    pushIfFree([x0, y, z0], blocks.oakLumber, "interior");
+    pushIfFree([x0, y + 1, z0], blocks.oakLog, "frame");
+    pushIfFree([x0, y + 2, z0], blocks.oakLumber, "interior");
+    return;
+  }
+
+  if (
+    input.fixture.role === "seating" &&
+    /bed|cot|couch|bench|lounge/.test(token)
+  ) {
+    for (let x = x0; x <= x1; x += 1) {
+      for (let z = z0; z <= z1; z += 1) {
+        pushIfFree([x, y, z], blocks.oakLumber, "interior");
+      }
+    }
+    for (let x = x0; x <= x1; x += 1) {
+      pushIfFree([x, y + 1, z0], value, "interior");
+    }
+    return;
+  }
+
+  if (/plant|planter|greenery/.test(token)) {
+    for (let x = x0; x <= x1; x += 1) {
+      for (let z = z0; z <= z1; z += 1) {
+        pushIfFree([x, y, z], blocks.clay, "storage_container");
+        pushIfFree([x, y + 1, z], blocks.moss, "interior");
+      }
+    }
+    return;
+  }
+
+  if (/lamp|lantern|candle/.test(token)) {
+    pushIfFree([x0, y, z0], blocks.oakLog, "frame");
+    pushIfFree([x0, y + 1, z0], blocks.oakLog, "frame");
+    pushIfFree([x0, y + 2, z0], blocks.simpleGlass, "business_marker");
+    return;
+  }
+
+  if (/partition|screen|railing|glass/.test(token)) {
+    for (let z = z0; z <= z1; z += 1) {
+      pushIfFree([x0, y, z], blocks.simpleGlass, "business_marker");
+      pushIfFree([x0, y + 1, z], blocks.simpleGlass, "business_marker");
+    }
     return;
   }
 
   if (input.fixture.role === "stock_storage") {
-    for (let z = z0; z <= z1; z += 1) {
-      const stockValue =
-        z % 3 === 0
-          ? blocks.hay
-          : z % 3 === 1
+    const alongX = width >= depth;
+    const length = Math.max(3, alongX ? width : depth);
+    const displayValue = harthmereOutpostFixtureAccentVoxelValueV1(token);
+    for (let index = 0; index < length; index += 1) {
+      const sx = alongX ? x0 + index : x0;
+      const sz = alongX ? z0 : z0 + index;
+      const endPost = index === 0 || index === length - 1;
+      if (endPost) {
+        pushIfFree([sx, y, sz], blocks.oakLog, "frame");
+        pushIfFree([sx, y + 1, sz], blocks.oakLog, "frame");
+        pushIfFree([sx, y + 2, sz], blocks.oakLog, "frame");
+        continue;
+      }
+      pushIfFree([sx, y, sz], blocks.oakLumber, "storage_container");
+      pushIfFree(
+        [sx, y + 1, sz],
+        index % 3 === 0
+          ? displayValue
+          : index % 3 === 1
           ? blocks.simpleGlass
-          : blocks.woodCrate;
-      pushIfFree([x0, y, z], blocks.oakLumber, "storage_container");
-      pushIfFree([x0, y + 1, z], stockValue, "storage_container");
+          : blocks.hay,
+        "storage_container"
+      );
+      pushIfFree([sx, y + 2, sz], blocks.oakLumber, "interior");
     }
-    pushIfFree([x0, y + 2, z0], blocks.oakLog, "interior");
-    pushIfFree([x0, y + 2, z1], blocks.oakLog, "interior");
     return;
   }
 
@@ -8817,15 +9872,56 @@ function pushHarthmereOutpostFixtureVoxelsV1(input: {
   }
 
   if (input.fixture.role === "business_decor") {
-    pushIfFree([x0, y, z0], blocks.oakLog, "interior");
-    pushIfFree([x0, y + 1, z0], value, "interior");
-    pushIfFree([x0, y + 2, z0], blocks.simpleGlass, "interior");
+    const accentValue = harthmereOutpostFixtureAccentVoxelValueV1(token);
+    if (/board|panel|map|pegboard|cabinet|wall|sign|rack/.test(token)) {
+      pushIfFree([x0, y, z0], blocks.oakLog, "frame");
+      pushIfFree([x0, y + 1, z0], blocks.oakLumber, "interior");
+      pushIfFree([x0, y + 2, z0], accentValue, "business_marker");
+      if (width > 1) {
+        pushIfFree([x0 + 1, y + 1, z0], blocks.oakLumber, "interior");
+        pushIfFree([x0 + 1, y + 2, z0], blocks.simpleGlass, "business_marker");
+      }
+      return;
+    }
+    if (
+      /display|plinth|stand|model|sample|armor|containment|cage/.test(token)
+    ) {
+      pushIfFree([x0, y, z0], blocks.stonePolished, "frame");
+      pushIfFree([x0, y + 1, z0], accentValue, "business_marker");
+      pushIfFree([x0, y + 2, z0], blocks.simpleGlass, "business_marker");
+      return;
+    }
+    if (/hearth|forge|cauldron|kiln|furnace|ember|steam/.test(token)) {
+      pushIfFree([x0, y, z0], blocks.stonePolished, "frame");
+      pushIfFree([x0, y + 1, z0], blocks.clay, "interior");
+      pushIfFree([x0, y + 2, z0], blocks.simpleGlass, "business_marker");
+      if (width > 1)
+        pushIfFree([x0 + 1, y + 1, z0], blocks.stoneBrick, "interior");
+      return;
+    }
+    if (/trough|barrel|bucket|wash|spray|sorting/.test(token)) {
+      pushIfFree([x0, y, z0], blocks.stonePolished, "frame");
+      pushIfFree([x0, y + 1, z0], blocks.clay, "interior");
+      if (width > 1) pushIfFree([x0 + 1, y + 1, z0], blocks.clay, "interior");
+      return;
+    }
+    pushIfFree([x0, y, z0], blocks.oakLog, "frame");
+    pushIfFree([x0, y + 1, z0], accentValue, "interior");
+    pushIfFree([x0, y + 2, z0], blocks.simpleGlass, "business_marker");
     return;
   }
 
+  const accentValue = harthmereOutpostFixtureAccentVoxelValueV1(token);
   for (let x = x0; x < x0 + width; x += 1) {
     for (let z = z0; z < z0 + depth; z += 1) {
-      pushIfFree([x, y, z], value, label);
+      const edge =
+        x === x0 || x === x0 + width - 1 || z === z0 || z === z0 + depth - 1;
+      pushIfFree([x, y, z], edge ? blocks.oakLog : blocks.oakLumber, "frame");
+      pushIfFree(
+        [x, y + 1, z],
+        x === x0 && z === z0 ? accentValue : value,
+        label
+      );
     }
   }
 }
@@ -8841,7 +9937,7 @@ function harthmereOutpostInteriorAccentValueV1(
     return blocks.simpleGlass;
   if (/weapons|repair|maintenance|security|refinery/.test(businessType))
     return blocks.stonePolished;
-  return blocks.woodCrate;
+  return blocks.oakLumber;
 }
 
 function addHarthmereOutpostGuideVoxelsV1(input: {
@@ -9183,7 +10279,7 @@ function addHarthmereOutpostGuideVoxelsV1(input: {
       tryPolish([x0 + 5, y0 + 2, z1 - 4], blocks.oakLog, "frame");
       tryPolish(
         [x0 + 7, y0 + 2, z1 - 4],
-        blocks.woodCrate,
+        blocks.stonePolished,
         "storage_container"
       );
       tableWithSeatsLegacy(x1 - 5, z0 + 6, blocks.stonePolished);
@@ -9414,7 +10510,7 @@ function addHarthmereOutpostGuideVoxelsV1(input: {
   for (const dx of [-3, -1, 1, 3]) {
     tryPush(
       [doorX + dx, y0 + 2, counterZ],
-      blocks.woodCrate,
+      blocks.simpleGlass,
       "storage_container"
     );
   }
@@ -9437,7 +10533,7 @@ function addHarthmereOutpostGuideVoxelsV1(input: {
     [x1 - 4, z1 - 3],
     [x1 - 3, z1 - 3],
   ] as Array<[number, number]>) {
-    tryPush([x, y0 + 1, z], blocks.woodCrate, "storage_container");
+    tryPush([x, y0 + 1, z], blocks.oakLumber, "storage_container");
     tryPush([x, y0 + 2, z], blocks.oakLumber, "interior");
   }
 
@@ -9472,7 +10568,7 @@ function addHarthmereOutpostGuideVoxelsV1(input: {
     : /medical|sanitation/.test(input.outpost.businessType)
     ? blocks.clay
     : /courier/.test(input.outpost.businessType)
-    ? blocks.woodCrate
+    ? blocks.oakLumber
     : /design|property|security|portal|teleport|magic|exotic/.test(
         input.outpost.businessType
       )
@@ -9511,7 +10607,7 @@ function addHarthmereOutpostGuideVoxelsV1(input: {
     pushHarthmereOutpostVoxelEditV1(
       materializationPlan,
       [x, y0 + 1, z0 - 2],
-      blocks.woodCrate,
+      blocks.oakLumber,
       "interior"
     );
     pushHarthmereOutpostVoxelEditV1(
@@ -9684,7 +10780,7 @@ function addHarthmereOutpostBusinessSignatureV1(input: {
   };
   const sidePlanterLine = (value: BiomesId, z = z0 - 5) => {
     for (const dx of [-8, -6, 6, 8]) {
-      place([doorX + dx, y0 + 1, z], blocks.woodCrate, "storage_container");
+      place([doorX + dx, y0 + 1, z], blocks.clay, "storage_container");
       place([doorX + dx, y0 + 2, z], value, "business_marker");
     }
   };
@@ -10016,7 +11112,7 @@ function addHarthmereOutpostBusinessSignatureV1(input: {
         box(
           [doorX + dx, y0 + 1, z0 - 5],
           [doorX + dx + 1, y0 + 2, z0 - 4],
-          blocks.woodCrate,
+          blocks.oakLumber,
           "storage_container"
         );
       box(
@@ -10028,7 +11124,7 @@ function addHarthmereOutpostBusinessSignatureV1(input: {
       box(
         [doorX + 6, y0 + 1, z0 - 6],
         [doorX + 9, y0 + 2, z0 - 5],
-        blocks.woodCrate,
+        blocks.oakLumber,
         "storage_container"
       );
       porchRail(blocks.oakLumber, -9, 9);
@@ -10162,13 +11258,13 @@ function addHarthmereOutpostBusinessSignatureV1(input: {
       box(
         [doorX - 8, y0 + 1, z0 - 5],
         [doorX - 5, y0 + 2, z0 - 4],
-        blocks.woodCrate,
+        blocks.oakLumber,
         "storage_container"
       );
       box(
         [doorX + 5, y0 + 1, z0 - 5],
         [doorX + 8, y0 + 2, z0 - 4],
-        blocks.woodCrate,
+        blocks.oakLumber,
         "storage_container"
       );
       column(doorX, z0 - 6, y0 + 1, 4, blocks.oakLog, "frame");
@@ -10179,7 +11275,7 @@ function addHarthmereOutpostBusinessSignatureV1(input: {
         blocks.stonePolished,
         "safe_ground"
       );
-      frontPosts([-5, 5], 3, blocks.oakLog, blocks.woodCrate);
+      frontPosts([-5, 5], 3, blocks.oakLog, blocks.oakLumber);
       frontIcon(blocks.oakLumber, [
         [-2, 1],
         [-1, 1],
@@ -11016,7 +12112,7 @@ export const HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS_V1: Readonly<
 );
 
 export const HARTHMERE_BUSINESS_OUTPOST_REBUILD_REVISION_V1 =
-  "harthmere-business-outpost-rebuild-solid-voxel-production-coordinates-v18" as const;
+  "harthmere-business-outpost-rebuild-real-interior-fixtures-v20" as const;
 
 export interface HarthmereBusinessOutpostSafeSiteV1 {
   outpostId: string;

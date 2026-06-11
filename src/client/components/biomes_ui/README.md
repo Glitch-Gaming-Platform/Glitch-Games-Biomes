@@ -191,6 +191,14 @@ standalone browser harness for click/drag/wheel interactions lives in
 `MapQuestsTab.browser.test.ts` and is intentionally pending until the
 repo browser bundler can mount this React tab reliably under `ts-mocha`.
 
+Harthmere map markers must use the generated production terrain placement map
+when a quest, jobs-board marker, business marker, or helper landmark has a
+world position. The map tab should receive the same resolved
+`recommendedPosition` used by the HUD/minimap, active destination/quest pointer,
+server authority, and 3D marker. See
+`docs/harthmere/HARTHMERE_PRODUCTION_TERRAIN_PLACEMENT_MAP_V1.md` for the
+regeneration command and resolver APIs.
+
 Harthmere player-owned business outposts are map markers too. Their
 canonical marker data comes from the backend-generated business outpost
 records in `business_customer_simulator_v1.ts`, not from hand-placed

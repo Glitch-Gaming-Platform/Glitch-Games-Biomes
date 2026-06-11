@@ -211,7 +211,7 @@
     "@types/ndarray": "^1.0.11",
     "@types/ndarray-ops": "^1.2.4",
     "@types/ndarray-scratch": "^1.2.2",
-    "@types/node": "^20.0.0",
+    "@types/node": "20.19.42",
     "@types/node-fetch": "^2.6.3",
     "@types/node-gzip": "^1.1.0",
     "@types/pluralize": "^0.0.29",

@@ -21,11 +21,12 @@ import type {
 } from "@/shared/api/sync";
 import type { Delete } from "@/shared/ecs/change";
 import { changedBiomesId } from "@/shared/ecs/change";
-import { SyntheticStats, WorldMetadata } from "@/shared/ecs/gen/components";
+import { SyntheticStats } from "@/shared/ecs/gen/components";
 import type { Entity } from "@/shared/ecs/gen/entities";
 import type { SerializeForClient } from "@/shared/ecs/gen/json_serde";
 import { WorldMetadataId } from "@/shared/ecs/ids";
 import type { VersionMap } from "@/shared/ecs/version";
+import { fallbackWorldMetadataV1 } from "@/shared/game/ecs_resources";
 import { friendlyShardId } from "@/shared/game/shard";
 import type { BiomesId } from "@/shared/ids";
 import { INVALID_BIOMES_ID } from "@/shared/ids";
@@ -124,19 +125,6 @@ const syncObserverInitialVmSize = createCounter({
   help: "Initial size of the version map for observers",
 });
 
-function fallbackWorldMetadata() {
-  // Local sparse snapshots can contain HFC/synthetic entries for WorldMetadataId
-  // without the actual world_metadata component. The client requires this
-  // component during startup, so give it a conservative local-world boundary
-  // instead of letting /at crash on a missing metadata assertion.
-  return WorldMetadata.create({
-    aabb: {
-      v0: [-2048, -256, -2048],
-      v1: [2048, 512, 2048],
-    },
-  });
-}
-
 function requiredForSyncTarget(syncTarget: SyncTarget): BiomesId | undefined {
   switch (syncTarget.kind) {
     case "localUser":
@@ -147,7 +135,6 @@ function requiredForSyncTarget(syncTarget: SyncTarget): BiomesId | undefined {
       return undefined;
   }
 }
-
 
 const LOCAL_DEV_TERRAIN_ID_BASE = 8_810_000_000_000_000 as BiomesId;
 const LOCAL_DEV_NPC_ID_BASE = 8_810_000_000_010_000 as BiomesId;
@@ -259,6 +246,9 @@ export class Observer {
     };
 
     this.requiredId = requiredForSyncTarget(syncTarget) ?? INVALID_BIOMES_ID;
+    // World metadata is globally required by the client resource graph. Keep it
+    // resident even if sparse Glitch/world snapshots do not index it normally.
+    this.residentSet.add(WorldMetadataId);
     if (this.requiredId) {
       this.residentSet.add(this.requiredId);
     }
@@ -288,7 +278,7 @@ export class Observer {
       id: WorldMetadataId,
       ...materializedMeta,
       world_metadata:
-        materializedMeta?.world_metadata ?? fallbackWorldMetadata(),
+        materializedMeta?.world_metadata ?? fallbackWorldMetadataV1(),
       synthetic_stats: SyntheticStats.create({
         online_players: this.context.syncIndex.playerCount,
       }),
@@ -783,7 +773,7 @@ export class Observer {
   private purgeUnknownEntities() {
     const purgeChanges: Delete[] = [];
     for (const [id, clientVersion] of this.versionMap) {
-      if (id === this.requiredId) {
+      if (id === this.requiredId || id === WorldMetadataId) {
         continue;
       }
       if (!this.context.syncIndex.has(id)) {

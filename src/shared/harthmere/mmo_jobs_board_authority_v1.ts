@@ -35,7 +35,7 @@ import {
   HARTHMERE_JOBS_BOARD_HEX_WRAITH_BOUNTY_MARKER_ID_V1,
   HARTHMERE_JOBS_BOARD_HEX_WRAITH_BOUNTY_TARGET_ID_V1,
 } from "./jobs_board_muck_bounty_targets_v1";
-import { harthmereJobsBoardQuestMarkerPositionForIdV1 } from "./jobs_board_quest_marker_positions_v1";
+import { harthmereJobsBoardQuestMarkerRuntimePositionForIdV1 } from "./jobs_board_quest_marker_positions_v1";
 import type { BiomesId } from "@/shared/ids";
 
 export const HARTHMERE_JOBS_BOARD_AUTHORITY_VERSION_V1 =
@@ -1960,8 +1960,8 @@ function createEscortCompanionForAcceptedJobV151(
         }
       : { x: 501.99486179104775, y: 70, z: -132.00350672753194 });
   const destinationMarker =
-    harthmereJobsBoardQuestMarkerPositionForIdV1(job.mapMarkerId) ??
-    harthmereJobsBoardQuestMarkerPositionForIdV1(job.targetId);
+    harthmereJobsBoardQuestMarkerRuntimePositionForIdV1(job.mapMarkerId) ??
+    harthmereJobsBoardQuestMarkerRuntimePositionForIdV1(job.targetId);
   const destination = destinationMarker
     ? {
         x: destinationMarker.position[0],

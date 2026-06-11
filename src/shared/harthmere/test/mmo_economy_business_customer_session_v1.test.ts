@@ -317,6 +317,48 @@ describe("mmo economy business customer sessions", function () {
     assert.equal(stillWaiting.servedTicketIds.length, 0);
   });
 
+  it("restocks public NPC service boards instead of blocking active clinic customers", () => {
+    const setup = createOpenBusiness("medical_doctor");
+    setup.state.businesses[setup.businessId].ownerKind = "npc";
+    setup.state.businesses[setup.businessId].ownerId = "doctor_greenlamp";
+    setup.state.businesses[setup.businessId].inventory = {};
+
+    let result = mutate(setup.state, "start_business_customer_session", {
+      businessId: setup.businessId,
+      count: 1,
+    });
+    assert.deepEqual(result.warnings, []);
+
+    const session = sessions(result.economy)[0];
+    const ticket = session.queue.find(
+      (entry) => entry.ticketId === session.currentTicketId
+    );
+    assert.ok(ticket);
+    const offer =
+      HARTHMERE_BUSINESS_MINIGAME_DEFINITIONS_V1.medical_doctor.offers.find(
+        (entry) => entry.offerId === ticket!.requestedOfferId
+      );
+    assert.ok(offer);
+    assert.ok(Object.keys(offer!.requiredItems).length > 0);
+
+    result.economy.businesses[setup.businessId].inventory = {};
+    result = mutate(result.economy, "serve_business_customer", {
+      businessId: setup.businessId,
+      sessionId: session.sessionId,
+      ticketId: session.currentTicketId,
+      offerId: offer!.offerId,
+      minigameAction: createHarthmereBusinessMiniGameDecisionForOfferV1(
+        "medical_doctor",
+        offer!.offerId,
+      ),
+    });
+
+    assert.deepEqual(result.warnings, []);
+    const served = sessions(result.economy)[0];
+    assert.equal(served.servedTicketIds.length, 1);
+    assert.equal(served.failedTicketIds.length, 0);
+  });
+
   it("fails the ticket when the business mini-game rule decision is wrong", () => {
     const setup = createOpenBusiness();
     setup.state.businesses[setup.businessId].inventory.worker_meal = { itemId: "worker_meal", count: 2 };

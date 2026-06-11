@@ -19,14 +19,14 @@ import { EntityVersionStamper } from "@/shared/ecs/version";
 import { WrappedChange } from "@/shared/ecs/zod";
 import type { FirehoseEvent } from "@/shared/firehose/events";
 import type { BiomesId } from "@/shared/ids";
-import { EventEmitter } from "stream";
+import EventEmitter from "node:events";
 import type TypedEventEmitter from "typed-emitter";
 
 export type InMemoryWorldEvents = ReplicaEvents & {
   events: (events: FirehoseEvent[]) => void;
 };
 
-export class InMemoryWorld extends (EventEmitter as {
+export class InMemoryWorld extends (EventEmitter as unknown as {
   new (): TypedEventEmitter<InMemoryWorldEvents>;
 }) {
   private readonly baseTable = new VersionedTableImpl(

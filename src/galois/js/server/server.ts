@@ -7,12 +7,12 @@ import type {
 } from "@/galois/server/interface";
 import { log } from "@/shared/logging";
 import { ok } from "assert";
-import type { ChildProcess } from "child_process";
-import { spawn } from "child_process";
+import type { ChildProcess } from "node:child_process";
+import { spawn } from "node:child_process";
 import { existsSync } from "fs";
 import { join } from "path";
-import * as readline from "readline";
-import type { Readable, Writable } from "stream";
+import * as readline from "node:readline";
+import type { Readable, Writable } from "node:stream";
 
 function isNamedQuery(query: AssetQuery): query is NamedQuery {
   return Object.hasOwn(query, "name");
@@ -230,12 +230,12 @@ export class BatchAssetServer implements AssetServer {
         const rl = readline.createInterface({
           input: output,
           crlfDelay: Infinity,
-        });
+        } as unknown as readline.ReadLineOptions);
         let done = false;
         const cleanup = () => {
-          child.off("exit", handleExit);
-          output.off("error", handleError);
-          output.off("close", handleClose);
+          (child as any).removeListener("exit", handleExit);
+          output.removeListener("error", handleError);
+          output.removeListener("close", handleClose);
           rl.close();
         };
         const rejectOnce = (error: Error) => {

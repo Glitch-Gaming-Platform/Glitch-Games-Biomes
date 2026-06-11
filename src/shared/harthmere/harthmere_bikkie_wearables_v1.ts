@@ -1,5 +1,6 @@
 import { BikkieIds } from "@/shared/bikkie/ids";
 import type { BiomesId } from "@/shared/ids";
+import type { HarthmereClothingSlot } from "@/shared/harthmere/voxel_faces";
 
 export interface HarthmereBikkieWearableV1 {
   slot: BiomesId;
@@ -45,11 +46,14 @@ export function harthmereLocalItemBikkieWearableV1(
 }
 
 export function harthmereLocalEquipmentBikkieWearablesV1(
-  equipment: Record<string, { itemId?: string } | undefined> | undefined
+  equipment:
+    | Record<string, string | { itemId?: string } | undefined>
+    | undefined
 ): HarthmereBikkieWearableV1[] {
   const wearables: HarthmereBikkieWearableV1[] = [];
   for (const [equipmentSlot, item] of Object.entries(equipment ?? {})) {
-    const wearable = harthmereLocalItemBikkieWearableV1(item?.itemId);
+    const itemId = typeof item === "string" ? item : item?.itemId;
+    const wearable = harthmereLocalItemBikkieWearableV1(itemId);
     if (!wearable) {
       continue;
     }
@@ -61,4 +65,86 @@ export function harthmereLocalEquipmentBikkieWearablesV1(
     });
   }
   return wearables;
+}
+
+const HARTHMERE_BIKKIE_BODY_WEARABLE_SLOTS_V1 = new Set<BiomesId>([
+  BikkieIds.outerwear,
+  BikkieIds.top,
+  BikkieIds.bottoms,
+  BikkieIds.feet,
+  BikkieIds.hands,
+]);
+
+const HARTHMERE_BIKKIE_HEAD_WEARABLE_SLOTS_V1 = new Set<BiomesId>([
+  BikkieIds.head,
+  BikkieIds.hair,
+  BikkieIds.hat,
+  BikkieIds.face,
+  BikkieIds.ears,
+  BikkieIds.neck,
+]);
+
+const HARTHMERE_BIKKIE_WEARABLE_HIDDEN_CLOTHING_SLOTS_V1 = new Map<
+  BiomesId,
+  readonly HarthmereClothingSlot[]
+>([
+  [BikkieIds.head, ["head"]],
+  [BikkieIds.hair, ["hair"]],
+  [BikkieIds.hat, ["head", "hair"]],
+  [BikkieIds.face, ["face"]],
+  [BikkieIds.ears, ["head"]],
+  [BikkieIds.neck, ["head"]],
+  [BikkieIds.outerwear, ["torso", "back", "belt"]],
+  [BikkieIds.top, ["torso", "belt"]],
+  [BikkieIds.bottoms, ["legs", "belt"]],
+  [BikkieIds.feet, ["feet"]],
+  [BikkieIds.hands, ["hands"]],
+]);
+
+export function harthmereBikkieWearableSlotsFromAssignmentV1(
+  wearables?: ReadonlyMap<BiomesId, unknown>
+): ReadonlySet<BiomesId> {
+  const slots = new Set<BiomesId>();
+  for (const [slot, item] of wearables ?? []) {
+    if (item && HARTHMERE_BIKKIE_WEARABLE_HIDDEN_CLOTHING_SLOTS_V1.has(slot)) {
+      slots.add(slot);
+    }
+  }
+  return slots;
+}
+
+export function harthmereBikkieWearablesUseGeneratedBodyV1(
+  slots: ReadonlySet<BiomesId>
+): boolean {
+  for (const slot of slots) {
+    if (HARTHMERE_BIKKIE_BODY_WEARABLE_SLOTS_V1.has(slot)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+export function harthmereBikkieWearablesUseGeneratedHeadV1(
+  slots: ReadonlySet<BiomesId>
+): boolean {
+  for (const slot of slots) {
+    if (HARTHMERE_BIKKIE_HEAD_WEARABLE_SLOTS_V1.has(slot)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+export function harthmereClothingSlotsHiddenByBikkieWearablesV1(
+  slots: ReadonlySet<BiomesId>
+): ReadonlySet<HarthmereClothingSlot> {
+  const hidden = new Set<HarthmereClothingSlot>();
+  for (const slot of slots) {
+    for (const clothingSlot of HARTHMERE_BIKKIE_WEARABLE_HIDDEN_CLOTHING_SLOTS_V1.get(
+      slot
+    ) ?? []) {
+      hidden.add(clothingSlot);
+    }
+  }
+  return hidden;
 }

@@ -8,6 +8,10 @@ const scriptPath = path.join(
   "scripts/glitch/deploy-production-local-redis-smoke-v1.sh"
 );
 const script = fs.readFileSync(scriptPath, "utf8");
+const stackRunner = fs.readFileSync(
+  path.join(root, "scripts/glitch/run-glitch-local-game-stack-v92.sh"),
+  "utf8"
+);
 
 let failed = false;
 function ok(condition, message) {
@@ -84,6 +88,10 @@ ok(
 ok(
   script.includes("test-production-redis6-stream-compat-v1.cjs"),
   "script guards Redis 6 stream command compatibility"
+);
+ok(
+  script.includes("test-production-deploy-local-redis-smoke-v1.cjs"),
+  "script runs its own production deploy guardrail assertions"
 );
 ok(
   script.includes("check-harthmere-mission-critical-suite-v112.cjs"),
@@ -220,6 +228,29 @@ ok(
 ok(
   script.includes("biomes_data_snapshot_hash"),
   "deploy preserves the legacy production Redis snapshot hash key"
+);
+ok(
+  script.includes("check_production_redis_snapshot_materialized_v190"),
+  "deploy verifies production Redis has materialized world data, not only a hash marker"
+);
+ok(
+  script.includes("required_seed_keys_present"),
+  "deploy reports required production Redis seed-key presence during snapshot checks"
+);
+ok(
+  stackRunner.includes("snapshot_redis_required_seeds_present"),
+  "runtime verifies required world seed keys before accepting a snapshot hash"
+);
+ok(
+  stackRunner.includes(
+    "dbsize=$dbsize required_seed_keys_present=$required_count/3"
+  ),
+  "runtime crash diagnostics include Redis dbsize and seed-key presence"
+);
+ok(
+  script.includes("GLITCH_DISABLE_GCP=1") &&
+    script.includes("GLITCH_SKIP_GOOGLE_SECRETS=1"),
+  "explicit production Redis bootstrap disables Google Secret Manager for local recovery"
 );
 ok(
   script.includes(

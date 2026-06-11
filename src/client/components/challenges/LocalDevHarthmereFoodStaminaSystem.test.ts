@@ -1,6 +1,16 @@
 import assert from "assert";
-import { HARTHMERE_FARMING_FOOD_STAMINA_VERSION_V1 } from "@/shared/harthmere/mmo_farming_food_stamina_v1";
-import { normalizeFoodStaminaStateForTest } from "./LocalDevHarthmereFoodStaminaSystem";
+import {
+  HARTHMERE_FARMING_FOOD_STAMINA_VERSION_V1,
+  defaultHarthmereFoodStaminaStateV1,
+  tickHarthmereStaminaForGameplayV1,
+} from "@/shared/harthmere/mmo_farming_food_stamina_v1";
+import {
+  carriedHarthmereLocalInventoryFromStorageValuesForStaminaV1,
+  carriedHarthmereLocalInventoryForStaminaV1,
+  normalizeFoodStaminaStateForTest,
+} from "./LocalDevHarthmereFoodStaminaSystem";
+
+const NOW_MS = 1_700_000_000_000;
 
 describe("LocalDevHarthmereFoodStaminaSystem", () => {
   it("migrates old fast-drain zero-stamina saves back to a playable state", () => {
@@ -55,5 +65,86 @@ describe("LocalDevHarthmereFoodStaminaSystem", () => {
     assert.equal(migrated.stamina, 100);
     assert.equal(migrated.deadFromStaminaAtMs, undefined);
     assert.ok(migrated.lastStaminaTickMs > 1_700_000_000_000);
+  });
+
+  it("uses local carried inventory when applying overweight stamina drain", () => {
+    const carried = carriedHarthmereLocalInventoryForStaminaV1({
+      backpack: {
+        items: [
+          { itemId: "iron_longsword", quantity: 2 },
+          { itemId: "road_ration", quantity: 5 },
+        ],
+      },
+      materialStorage: {
+        iron_ore: 10,
+        fresh_egg: 0,
+      },
+    });
+
+    assert.deepEqual(carried, {
+      iron_longsword: 2,
+      road_ration: 5,
+      iron_ore: 10,
+    });
+
+    const baseline = defaultHarthmereFoodStaminaStateV1(
+      "local-player",
+      NOW_MS
+    );
+    const baselineTick = tickHarthmereStaminaForGameplayV1(baseline, {
+      nowMs: NOW_MS + 60_000,
+      gameplayActive: true,
+    });
+    const overweightTick = tickHarthmereStaminaForGameplayV1(
+      {
+        ...baseline,
+        inventory: carried ?? baseline.inventory,
+      },
+      {
+        nowMs: NOW_MS + 60_000,
+        gameplayActive: true,
+      }
+    );
+
+    assert.ok(
+      overweightTick.state.stamina < baselineTick.state.stamina,
+      `expected overweight stamina ${overweightTick.state.stamina} below baseline ${baselineTick.state.stamina}`
+    );
+  });
+
+  it("reads the scoped inventory storage before the legacy key for stamina drain", () => {
+    const scoped = JSON.stringify({
+      backpack: {
+        items: [{ itemId: "iron_longsword", quantity: 3 }],
+      },
+      materialStorage: {
+        raw_meat: 12,
+      },
+    });
+    const legacy = JSON.stringify({
+      backpack: {
+        items: [{ itemId: "road_ration", quantity: 1 }],
+      },
+    });
+
+    assert.deepEqual(
+      carriedHarthmereLocalInventoryFromStorageValuesForStaminaV1(
+        scoped,
+        legacy
+      ),
+      {
+        iron_longsword: 3,
+        raw_meat: 12,
+      }
+    );
+    assert.deepEqual(
+      carriedHarthmereLocalInventoryFromStorageValuesForStaminaV1(
+        "{not-json",
+        legacy
+      ),
+      {
+        road_ration: 1,
+      }
+    );
   });
 });

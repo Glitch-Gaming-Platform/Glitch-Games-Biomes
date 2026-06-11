@@ -1,10 +1,15 @@
 import type { QuestStepBundle } from "@/client/components/challenges/helpers";
-import { unslugNpcDescription } from "@/client/components/challenges/helpers";
+import {
+  playerVoiceContextForNpcChatV1,
+  questVoiceContextForStepBundleV1,
+  unslugNpcDescription,
+} from "@/client/components/challenges/helpers";
 import { ItemBagDisplay } from "@/client/components/challenges/QuestViews";
 import type {
   ButtonLayout,
   TalkDialogInfo,
   TalkDialogStepAction,
+  TalkDialogVoiceInput,
 } from "@/client/components/challenges/TalkDialogModalStep";
 import { TalkDialogModalStep } from "@/client/components/challenges/TalkDialogModalStep";
 import { useClientContext } from "@/client/components/contexts/ClientContextReactContext";
@@ -18,9 +23,15 @@ import {
 import { determineTakePattern } from "@/shared/game/inventory";
 import type { ItemBag } from "@/shared/game/types";
 import type { BiomesId } from "@/shared/ids";
+import { log } from "@/shared/logging";
 import { fireAndForget } from "@/shared/util/async";
+import { jsonPost } from "@/shared/util/fetch_helpers";
+import type {
+  GeneratedChatRequest,
+  GeneratedChatResponse,
+} from "@/pages/api/npcs/generated_chat";
 import type { PropsWithChildren } from "react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 const talkToItemDisplayContainerClasses = "flex justify-center gap-0.6";
 const talkToItemDisplayCellClasses = "bg-tooltip-bg w-10 h-10";
@@ -65,10 +76,19 @@ export const TalkToNpcQuestView: React.FunctionComponent<{
   onClose: () => void;
   stepBundle: QuestStepBundle;
 }> = ({ talkingToNPCId, stepBundle, onClose, onStepComplete }) => {
-  const { userId, events } = useClientContext();
+  const { userId, events, reactResources } = useClientContext();
+  const [voiceDialogText, setVoiceDialogText] = useState<string | undefined>();
+  const [voiceQuerying, setVoiceQuerying] = useState(false);
+  const voiceMessageContext = useRef<string | undefined>();
 
   const questId = stepBundle.questBundle.biscuit.id;
   const stepId = stepBundle.step.id;
+
+  useEffect(() => {
+    voiceMessageContext.current = undefined;
+    setVoiceDialogText(undefined);
+    setVoiceQuerying(false);
+  }, [talkingToNPCId, questId, stepId]);
 
   const acceptQuest = useCallback((challengeId: BiomesId) => {
     if (stepBundle.stepCompleted) {
@@ -157,17 +177,66 @@ export const TalkToNpcQuestView: React.FunctionComponent<{
   const additionalActions = stepBundle.canDecline
     ? [getDeclineAction(onClose, stepBundle.declineText || "No, Thanks")]
     : [];
+  const activeQuestContext =
+    stepBundle.questBundle.state === "in_progress" && !stepBundle.stepCompleted
+      ? questVoiceContextForStepBundleV1(stepBundle)
+      : undefined;
+  const handleVoiceTranscript = useCallback(
+    async (message: string) => {
+      setVoiceQuerying(true);
+      try {
+        const res = await jsonPost<GeneratedChatResponse, GeneratedChatRequest>(
+          "/api/npcs/generated_chat",
+          {
+            entityId: talkingToNPCId,
+            messageContext: voiceMessageContext.current,
+            userResponse: message,
+            questContext: activeQuestContext,
+            userContext: playerVoiceContextForNpcChatV1({
+              reactResources,
+              userId,
+            }),
+          }
+        );
+        voiceMessageContext.current = res.messageContext;
+        setVoiceDialogText(res.nextDialog.message);
+      } catch (error) {
+        log.warn("Quest NPC voice response unavailable", {
+          error,
+          talkingToNPCId,
+          questId: stepBundle.questBundle.biscuit.id,
+        });
+      } finally {
+        setVoiceQuerying(false);
+      }
+    },
+    [
+      activeQuestContext,
+      reactResources,
+      stepBundle.questBundle.biscuit.id,
+      talkingToNPCId,
+      userId,
+    ]
+  );
+  const questVoiceInput: TalkDialogVoiceInput = {
+    disabled: voiceQuerying,
+    onTranscript: handleVoiceTranscript,
+  };
+  const dialogText = voiceQuerying
+    ? "<text>[listens closely...]</text>"
+    : voiceDialogText ?? stepBundle.dialogText;
 
   if (stepBundle.rewardsList?.length) {
     return (
       <TalkToNpcWithRewards
         talkingToNpcId={talkingToNPCId}
         id={stepId}
-        dialogText={stepBundle.dialogText}
+        dialogText={dialogText}
         completeStep={completeStep}
         advanceText={stepBundle.acceptText}
         rewards={stepBundle.rewardsList}
         additionalActions={additionalActions}
+        voiceInput={questVoiceInput}
       />
     );
   } else if (stepBundle.itemsToTake?.size) {
@@ -175,12 +244,13 @@ export const TalkToNpcQuestView: React.FunctionComponent<{
       <TalkToNpcWithTakeItems
         talkingToNpcId={talkingToNPCId}
         id={stepId}
-        dialogText={stepBundle.dialogText}
+        dialogText={dialogText}
         itemsToTake={stepBundle.itemsToTake}
         completeStep={completeStep}
         advanceText={stepBundle.acceptText}
         onClose={onClose}
         additionalActions={additionalActions}
+        voiceInput={questVoiceInput}
       />
     );
   } else {
@@ -188,10 +258,11 @@ export const TalkToNpcQuestView: React.FunctionComponent<{
       <TalkToNpc
         talkingToNpcId={talkingToNPCId}
         id={stepId}
-        dialogText={stepBundle.dialogText}
+        dialogText={dialogText}
         completeStep={completeStep}
         advanceText={stepBundle.acceptText}
         additionalActions={additionalActions}
+        voiceInput={questVoiceInput}
       />
     );
   }
@@ -244,6 +315,7 @@ export const TalkToNpc: React.FunctionComponent<{
   children?: React.ReactNode;
   buttonLayout?: ButtonLayout;
   additionalActions?: TalkDialogStepAction[];
+  voiceInput?: TalkDialogVoiceInput;
 }> = ({
   id,
   talkingToNpcId,
@@ -253,6 +325,7 @@ export const TalkToNpc: React.FunctionComponent<{
   children,
   buttonLayout,
   additionalActions,
+  voiceInput,
 }) => {
   const clientContext = useClientContext();
   return (
@@ -261,6 +334,7 @@ export const TalkToNpc: React.FunctionComponent<{
         id={id}
         entityId={talkingToNpcId}
         buttonLayout={buttonLayout}
+        voiceInput={voiceInput}
         dialog={textAndFinalStepToDialog({
           clientContext,
           text: dialogText,
@@ -320,6 +394,7 @@ const TalkToNpcWithRewards: React.FunctionComponent<{
   advanceText?: string;
   rewards: ItemBag[];
   additionalActions?: TalkDialogStepAction[];
+  voiceInput?: TalkDialogVoiceInput;
 }> = ({
   id,
   talkingToNpcId,
@@ -328,6 +403,7 @@ const TalkToNpcWithRewards: React.FunctionComponent<{
   advanceText,
   rewards,
   additionalActions,
+  voiceInput,
 }) => {
   const clientContext = useClientContext();
 
@@ -360,6 +436,7 @@ const TalkToNpcWithRewards: React.FunctionComponent<{
       <TalkDialogModalStep
         id={id}
         entityId={talkingToNpcId}
+        voiceInput={voiceInput}
         dialog={textAndFinalStepToDialog({
           clientContext,
           text: dialogText,
@@ -394,6 +471,7 @@ const TalkToNpcWithTakeItems: React.FunctionComponent<{
   advanceText?: string;
   onClose: () => unknown;
   additionalActions?: TalkDialogStepAction[];
+  voiceInput?: TalkDialogVoiceInput;
 }> = ({
   id,
   talkingToNpcId,
@@ -403,6 +481,7 @@ const TalkToNpcWithTakeItems: React.FunctionComponent<{
   advanceText,
   onClose,
   additionalActions,
+  voiceInput,
 }) => {
   const clientContext = useClientContext();
   const resources = clientContext.resources;
@@ -456,6 +535,7 @@ const TalkToNpcWithTakeItems: React.FunctionComponent<{
       <TalkDialogModalStep
         id={`${id}-${text.length}`}
         entityId={talkingToNpcId}
+        voiceInput={voiceInput}
         dialog={textAndFinalStepToDialog({
           clientContext,
           text,

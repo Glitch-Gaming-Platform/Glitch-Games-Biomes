@@ -15,7 +15,7 @@ export function toImgStr(bytes: Uint8Array) {
 }
 
 export function toImgUrl(blob: string) {
-  return URL.createObjectURL(new Blob([blobToBytes(blob)]));
+  return URL.createObjectURL(new Blob([blobToBytes(blob) as unknown as BlobPart]));
 }
 
 export function toImgBytes(blob: string) {

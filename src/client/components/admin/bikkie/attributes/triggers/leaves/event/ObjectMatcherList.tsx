@@ -60,7 +60,7 @@ export const ObjectMatcherList: React.FunctionComponent<{
   onChange: (val: ObjectMatcher) => unknown;
   ignoreFields?: string[];
 }> = ({ schema, matcher, onChange, ignoreFields }) => {
-  if (schema instanceof ZodDiscriminatedUnion<any, any[]>) {
+  if (schema instanceof ZodDiscriminatedUnion) {
     return (
       <DiscriminatedUnionMatcherList
         schema={schema}
@@ -254,7 +254,7 @@ function extractFieldsFromSubschema(
   }
 
   if (
-    subschema instanceof ZodArray<any> &&
+    subschema instanceof ZodArray &&
     (subschema.element instanceof ZodObject ||
       subschema.element instanceof ZodDiscriminatedUnion)
   ) {

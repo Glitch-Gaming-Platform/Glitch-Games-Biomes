@@ -29,7 +29,7 @@ import { compactMap } from "@/shared/util/collections";
 import { zrpcWebDeserialize, zrpcWebSerialize } from "@/shared/zrpc/serde";
 import { ok } from "assert";
 import { createReadStream } from "fs";
-import type { Writable } from "stream";
+import type { Writable } from "node:stream";
 import type Chain from "stream-chain";
 import StreamArray from "stream-json/streamers/StreamArray";
 
@@ -149,13 +149,13 @@ export async function* iterBackupEntriesFromFile(
   path: string
 ): AsyncGenerator<BackupEntry> {
   yield* iterBackupEntriesFromPipeline(
-    createReadStream(path).pipe(StreamArray.withParser())
+    createReadStream(path).pipe(StreamArray.withParser() as any) as Chain
   );
 }
 
 export async function* iterBackupEntitiesFromFile(path: string) {
   for await (const [version, entity] of iterBackupEntitiesFromPipeline(
-    createReadStream(path).pipe(StreamArray.withParser())
+    createReadStream(path).pipe(StreamArray.withParser() as any) as Chain
   )) {
     yield [version, entity] as const;
   }

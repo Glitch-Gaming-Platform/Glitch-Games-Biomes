@@ -2,7 +2,11 @@ import { npcEntity } from "@/server/spawn/spawn_npc";
 import { BikkieIds } from "@/shared/bikkie/ids";
 import type { Change, ProposedChange } from "@/shared/ecs/change";
 import { secondsSinceEpoch } from "@/shared/ecs/config";
-import { EntityDescription, QuestGiver } from "@/shared/ecs/gen/components";
+import {
+  EntityDescription,
+  QuestGiver,
+  Voice,
+} from "@/shared/ecs/gen/components";
 import { LOCAL_DEV_HUMAN_NPC_TYPE_ID, isNpcTypeId } from "@/shared/npc/bikkie";
 import {
   SNAPSHOT_GROVE_NPCS_V75,
@@ -10,6 +14,7 @@ import {
   snapshotGroveGroundedPositionV75,
   snapshotGroveNpcEntityIdV75,
 } from "@/shared/harthmere/snapshot_grove_content_v75";
+import { harthmereVoiceProfileForActorV1 } from "@/shared/harthmere/npc_voice_profiles_v1";
 import {
   makeHarthmereNpcAppearanceConfig,
   withHarthmereAppearanceMarker,
@@ -93,6 +98,17 @@ export function buildHarthmereSnapshotGroveNpcSeedChangesV1(input: {
       quest_giver: QuestGiver.create({
         concurrent_quests: 1,
         concurrent_quest_dialog: npcDialogV1(npc.line),
+      }),
+      voice: Voice.create({
+        voice: harthmereVoiceProfileForActorV1({
+          source: "snapshot_grove_v75",
+          id: npc.id,
+          entityId: id,
+          displayName: npc.displayName,
+          role: npc.role,
+          kind: "humanoid",
+          background: npc.background,
+        }).voiceParameterId,
       }),
     };
     changes.push({

@@ -51,7 +51,7 @@ export const ZfsObject = <S extends z.ZodObject<any>, V extends z.infer<S>>({
     if (valueKeys.includes(shapeKey)) {
       continue;
     }
-    if (!(propertyType instanceof z.ZodOptional<z.ZodTypeAny>)) {
+    if (!(propertyType instanceof z.ZodOptional)) {
       continue;
     }
     const innerType = propertyType._def.innerType;

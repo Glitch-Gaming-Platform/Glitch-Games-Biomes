@@ -1,6 +1,6 @@
-import type { Server } from "http";
-import net from "net";
-import type { Duplex } from "stream";
+import type { Server } from "node:http";
+import net from "node:net";
+import type { Duplex } from "node:stream";
 import { log } from "@/shared/logging";
 
 const DEFAULT_SYNC_PROXY_PORT = 4900;
@@ -118,8 +118,8 @@ export function installGlitchSyncWsProxy(server: Server) {
     upstream.once("error", failUpstreamConnect);
     socket.once("error", failClientBeforeConnect);
     upstream.once("connect", () => {
-      upstream.off("error", failUpstreamConnect);
-      socket.off("error", failClientBeforeConnect);
+      upstream.removeListener("error", failUpstreamConnect);
+      socket.removeListener("error", failClientBeforeConnect);
       attachSocketGuards({
         client: socket,
         upstream,
@@ -141,7 +141,7 @@ export function installGlitchSyncWsProxy(server: Server) {
       if (head.length > 0) {
         upstream.write(head);
       }
-      socket.pipe(upstream).pipe(socket);
+      (socket as any).pipe(upstream).pipe(socket);
     });
   });
 

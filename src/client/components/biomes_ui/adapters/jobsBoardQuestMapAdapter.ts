@@ -5,8 +5,8 @@ import {
   type HarthmereJobsBoardTodoV1,
 } from "../../harthmere_jobs_board/jobsBoardLiveAdapter";
 import {
-  harthmereJobsBoardQuestMarkerPositionForIdV1,
-  harthmereJobsBoardQuestMarkerPositionForTodoV1,
+  harthmereJobsBoardQuestMarkerRuntimePositionForIdV1,
+  harthmereJobsBoardQuestMarkerRuntimePositionForTodoV1,
 } from "@/shared/harthmere/jobs_board_quest_marker_positions_v1";
 import { harthmereJobToolSourceGuidanceV151 } from "@/shared/harthmere/harthmere_job_objective_v151";
 import { formatHarthmereJobTimeRemainingV151 } from "@/shared/harthmere/mmo_jobs_board_authority_v1";
@@ -192,7 +192,7 @@ export function jobsBoardAcceptedJobLandmarksForBiomesUIV1(
     }
     seenTodoIds.add(todo.todoId);
     const job = jobsById.get(todo.jobId);
-    const marker = harthmereJobsBoardQuestMarkerPositionForTodoV1({
+    const marker = harthmereJobsBoardQuestMarkerRuntimePositionForTodoV1({
       mapMarkerId: todo.mapMarkerId ?? job?.mapMarkerId,
       targetId: todo.targetId ?? job?.targetId,
       fallbackPosition: jobsBoardTodoFallbackPositionV1(snapshot, todo),
@@ -255,7 +255,7 @@ export function jobsBoardToolSourceLandmarksForBiomesUIV1(
       toolOwned: false,
     });
     if (!guidance) return [];
-    const vendor = harthmereJobsBoardQuestMarkerPositionForIdV1(
+    const vendor = harthmereJobsBoardQuestMarkerRuntimePositionForIdV1(
       guidance.vendorMarkerId
     );
     if (!vendor) return [];

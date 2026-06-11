@@ -111,9 +111,9 @@ export const MiniPhonePostDetailPage: React.FunctionComponent<{
           "/api/social/comment_post",
           {
             comment: commentText,
-            documentId: post.id,
+            documentId: post!.id,
             documentType: "post",
-            to: post.author.id,
+            to: post!.author.id,
             nonce: Math.random(),
           }
         );
@@ -155,7 +155,7 @@ export const MiniPhonePostDetailPage: React.FunctionComponent<{
     },
     ...(post
       ? [
-          post.userId === userId
+          post!.userId === userId
             ? {
                 label: "Delete",
                 type: "destructive" as const,
@@ -203,30 +203,30 @@ export const MiniPhonePostDetailPage: React.FunctionComponent<{
               <div className="comments-list">
                 <MaybeError error={error} />
                 <div className="attribution-container">
-                  <MiniPhoneUserAvatarLink user={post.author} />
+                  <MiniPhoneUserAvatarLink user={post!.author} />
                   <div className="owner">
                     <div className="attribution">
-                      <MiniPhoneUserLink userId={post.author.id}>
-                        {displayUsername(post.author.username)}
+                      <MiniPhoneUserLink userId={post!.author.id}>
+                        {displayUsername(post!.author.username)}
                       </MiniPhoneUserLink>
                       {` `}
                       <PhotoFeaturingStringLinked
-                        post={post}
+                        post={post!}
                         linkType="inline"
                       />
                     </div>
                     <div className="description">
-                      {post.caption && <>{post.caption}</>}
+                      {post!.caption && <>{post!.caption}</>}
                       <div className="location-timestamp">
                         <div className="timestamp">
-                          {epochMsToDuration(post.createMs)}
+                          {epochMsToDuration(post!.createMs)}
                         </div>
                       </div>
                     </div>
                   </div>
                 </div>
 
-                {post.commentBundle?.comments?.map((c) => (
+                {post!.commentBundle?.comments?.map((c) => (
                   <PreviewComment
                     comment={c.comment}
                     user={c.user}
@@ -263,7 +263,7 @@ export const MiniPhonePostDetailPage: React.FunctionComponent<{
                   {post?.minigame && (
                     <MinigamePlayButton
                       buttonType="action"
-                      minigame={post.minigame}
+                      minigame={post!.minigame}
                     />
                   )}
                 </div>
@@ -334,7 +334,7 @@ export const MiniPhonePostDetailPage: React.FunctionComponent<{
           <div className="description">Photo unavailable</div>
         ) : (
           <Img
-            src={imageUrlForSize("big", post.imageUrls)}
+            src={imageUrlForSize("big", post!.imageUrls)}
             className="preview pixelate"
           />
         )}

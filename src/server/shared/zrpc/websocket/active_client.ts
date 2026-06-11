@@ -33,7 +33,7 @@ import {
   LAMEDUCK_PATH,
 } from "@/shared/zrpc/websocket_client";
 import { Unpackr } from "msgpackr";
-import { EventEmitter } from "stream";
+import EventEmitter from "node:events";
 import type TypedEventEmitter from "typed-emitter";
 import type { WebSocket } from "uWebSockets.js";
 
@@ -65,7 +65,7 @@ export const messageSize = createHistogram({
 const unpackr = new Unpackr({ useRecords: false, copyBuffers: true });
 
 export class ActiveWebSocketClient
-  extends (EventEmitter as {
+  extends (EventEmitter as unknown as {
     new (): TypedEventEmitter<WebSocketClientEvents>;
   })
   implements WebSocketConnection

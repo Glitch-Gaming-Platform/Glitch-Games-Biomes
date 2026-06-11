@@ -16,6 +16,7 @@ import { Scanner } from "@/server/sync/subscription/scanner";
 import { SyncIndex } from "@/server/sync/subscription/sync_index";
 import type { SyncTarget } from "@/shared/api/sync";
 import { zSyncChange } from "@/shared/api/sync";
+import type { Update } from "@/shared/ecs/change";
 import { Iced } from "@/shared/ecs/gen/components";
 import type { Entity } from "@/shared/ecs/gen/entities";
 import { WorldMetadataId } from "@/shared/ecs/ids";
@@ -73,7 +74,7 @@ describe("Observer tests", () => {
       db,
       syncIndex,
       syncTarget.kind === "entity" ? syncTarget.entityId : USER_ID,
-      SYNC_RADIUS,
+      SYNC_RADIUS
     );
     observer = new Observer(
       {
@@ -125,7 +126,9 @@ describe("Observer tests", () => {
     }
   };
 
-  const idsFromBootstrap = (changes: Awaited<ReturnType<Observer["start"]>>) => {
+  const idsFromBootstrap = (
+    changes: Awaited<ReturnType<Observer["start"]>>
+  ) => {
     return new Set(
       changes
         .map((c) => zSyncChange.parse(c).change)
@@ -133,8 +136,8 @@ describe("Observer tests", () => {
           typeof change === "number"
             ? [change]
             : change.kind === "update"
-              ? [change.entity.id]
-              : []
+            ? [change.entity.id]
+            : []
         )
     );
   };
@@ -162,6 +165,38 @@ describe("Observer tests", () => {
           entity: world.table.get(USER_ID),
         },
       ]
+    );
+  });
+
+  it("keeps fallback world metadata resident when a sparse backend is missing metadata", async () => {
+    world.applyChanges([
+      {
+        kind: "delete",
+        id: WorldMetadataId,
+      },
+    ]);
+    await yieldToOthers();
+
+    createLocalObserver(new Map([[WorldMetadataId, 99]]));
+
+    const initial = await observer.start();
+    const changes = initial.map((c) => zSyncChange.parse(c).change);
+    assert.equal(
+      changes.some(
+        (change) => typeof change !== "number" && change.kind === "delete"
+      ),
+      false,
+      "bootstrap should not delete the required world metadata entity"
+    );
+    const metadataUpdate = changes
+      .filter(
+        (change): change is Update =>
+          typeof change !== "number" && change.kind === "update"
+      )
+      .find((change) => change.entity.id === WorldMetadataId);
+    assert.ok(
+      metadataUpdate?.entity.world_metadata,
+      "bootstrap should include fallback world_metadata"
     );
   });
 

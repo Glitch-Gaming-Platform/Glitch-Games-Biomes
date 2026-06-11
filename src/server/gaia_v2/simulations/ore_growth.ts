@@ -107,7 +107,7 @@ export class OreGrowthSimulation extends Simulation {
         cdf -= prob;
       }
     }
-    return oresTable.keys().next().value;
+    return oresTable.keys().next().value!;
   }
 
   async update(

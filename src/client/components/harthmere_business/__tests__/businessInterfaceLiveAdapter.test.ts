@@ -25,6 +25,7 @@ import {
 import {
   HARTHMERE_BUSINESS_SERVICE_ACTIONS_V1,
   HARTHMERE_BUSINESS_TYPE_ORDER_V1,
+  HARTHMERE_BUSINESS_INVENTORY_LOOT_UPDATED_EVENT_V1,
   canCustomerUseHarthmereBusinessV1,
   createHarthmereBusinessInterfaceAdapterV1,
   fetchHarthmereBusinessEconomyStateV1,
@@ -339,6 +340,61 @@ describe("Harthmere in-world business interface live adapter", () => {
     assert.equal(typeof envelope.clientSentAtMs, "number");
     assert.equal(envelope.payload.operation, "deposit_business_inventory");
     assert.equal(envelope.payload.businessId, "business_food");
+  });
+
+  it("broadcasts inventory loot updates from business mutations for HUD wallet refreshes", async () => {
+    const originalWindow = (globalThis as any).window;
+    const originalCustomEvent = (globalThis as any).CustomEvent;
+    const events: any[] = [];
+    class TestCustomEvent {
+      type: string;
+      detail: unknown;
+      constructor(type: string, init?: { detail?: unknown }) {
+        this.type = type;
+        this.detail = init?.detail;
+      }
+    }
+    (globalThis as any).CustomEvent = TestCustomEvent;
+    (globalThis as any).window = {
+      dispatchEvent: (event: any) => {
+        events.push(event);
+        return true;
+      },
+    };
+    try {
+      const state = sampleSnapshot();
+      const inventoryLootState = { actor: { gold: 225 } };
+      const playerStatusState = { health: 88 };
+      const adapter = createHarthmereBusinessInterfaceAdapterV1({
+        state,
+        hydrated: true,
+        refresh: async () => state,
+        submit: async () => ({
+          ok: true,
+          economyState: state,
+          inventoryLootState,
+          playerStatusState,
+        }),
+      });
+
+      await adapter.serveCustomer(
+        "business_food",
+        "serve_worker_meal",
+        "customer_shift_1",
+        "customer_ticket_1"
+      );
+
+      assert.equal(events.length, 1);
+      assert.equal(
+        events[0].type,
+        HARTHMERE_BUSINESS_INVENTORY_LOOT_UPDATED_EVENT_V1
+      );
+      assert.deepEqual(events[0].detail.inventoryLootState, inventoryLootState);
+      assert.deepEqual(events[0].detail.playerStatusState, playerStatusState);
+    } finally {
+      (globalThis as any).window = originalWindow;
+      (globalThis as any).CustomEvent = originalCustomEvent;
+    }
   });
 
   it("posts every production business minigame start and serve mutation with the required live-mode envelope", async () => {
@@ -1233,6 +1289,7 @@ describe("Harthmere in-world business interface v2 screens", () => {
       ownerId: outpostMetadata.ownerNpcId,
       name: outpost.displayName,
     };
+    assert.ok(state.businessSystems.customerStats);
     state.businessSystems.customerStats[businessId] = {
       businessId,
       totalServed: 60,

@@ -17,6 +17,10 @@ export const HARTHMERE_FOOD_STAMINA_EVENT =
   "biomes:harthmere-food-stamina-changed";
 export const HARTHMERE_WAKE_UP_ACTIVE_DATASET_KEY_V1 =
   "harthmereWakeUpActive" as const;
+const HARTHMERE_LOCAL_INVENTORY_STATE_KEY_FOR_STAMINA_V1 =
+  "biomes.localDev.harthmere.inventoryState.v1";
+const HARTHMERE_LOCAL_INVENTORY_EVENT_FOR_STAMINA_V1 =
+  "biomes:harthmere-inventory-changed";
 
 function isBrowser() {
   return (
@@ -27,6 +31,85 @@ function isBrowser() {
 function dispatchFoodStaminaEvent() {
   if (isBrowser()) {
     window.dispatchEvent(new CustomEvent(HARTHMERE_FOOD_STAMINA_EVENT));
+  }
+}
+
+function addPositiveItemCount(
+  items: Record<string, number>,
+  itemId: unknown,
+  count: unknown
+) {
+  const key = String(itemId ?? "").trim();
+  const amount = Math.max(0, Math.trunc(Number(count) || 0));
+  if (!key || amount <= 0) {
+    return;
+  }
+  items[key] = (items[key] ?? 0) + amount;
+}
+
+export function carriedHarthmereLocalInventoryForStaminaV1(
+  raw: unknown
+): Record<string, number> | undefined {
+  if (!raw || typeof raw !== "object") {
+    return undefined;
+  }
+  const state = raw as {
+    backpack?: { items?: unknown[] };
+    materialStorage?: Record<string, unknown>;
+  };
+  const items: Record<string, number> = {};
+  for (const entry of Array.isArray(state.backpack?.items)
+    ? state.backpack.items
+    : []) {
+    const item = entry as { itemId?: unknown; quantity?: unknown };
+    addPositiveItemCount(items, item.itemId, item.quantity ?? 1);
+  }
+  for (const [itemId, count] of Object.entries(state.materialStorage ?? {})) {
+    addPositiveItemCount(items, itemId, count);
+  }
+  return items;
+}
+
+export function carriedHarthmereLocalInventoryFromStorageValuesForStaminaV1(
+  scopedRaw: string | null | undefined,
+  legacyRaw: string | null | undefined
+): Record<string, number> | undefined {
+  for (const raw of [scopedRaw, legacyRaw]) {
+    if (!raw) continue;
+    try {
+      const carried = carriedHarthmereLocalInventoryForStaminaV1(
+        JSON.parse(raw)
+      );
+      if (carried) return carried;
+    } catch {
+      // Try the next storage slot. User-scoped saves replaced the legacy key,
+      // but old local-dev sessions may still only have the legacy entry.
+    }
+  }
+  return undefined;
+}
+
+function readCurrentCarriedInventoryForStaminaV1():
+  | Record<string, number>
+  | undefined {
+  if (!isBrowser()) {
+    return undefined;
+  }
+  try {
+    const scopedRaw = window.localStorage.getItem(
+      harthmereUserScopedStorageKey(
+        HARTHMERE_LOCAL_INVENTORY_STATE_KEY_FOR_STAMINA_V1
+      )
+    );
+    const legacyRaw = window.localStorage.getItem(
+      HARTHMERE_LOCAL_INVENTORY_STATE_KEY_FOR_STAMINA_V1
+    );
+    return carriedHarthmereLocalInventoryFromStorageValuesForStaminaV1(
+      scopedRaw,
+      legacyRaw
+    );
+  } catch {
+    return undefined;
   }
 }
 
@@ -140,8 +223,11 @@ export function useHarthmereFoodStaminaState() {
   useEffect(() => {
     const refresh = () => setState(readHarthmereFoodStaminaState());
     window.addEventListener(HARTHMERE_FOOD_STAMINA_EVENT, refresh);
-    return () =>
+    window.addEventListener("storage", refresh);
+    return () => {
       window.removeEventListener(HARTHMERE_FOOD_STAMINA_EVENT, refresh);
+      window.removeEventListener("storage", refresh);
+    };
   }, []);
   return state;
 }
@@ -181,8 +267,12 @@ export const HarthmereFoodStaminaRuntimeController: React.FunctionComponent<{}> 
         return true;
       };
       const tick = () => {
+        const before = readHarthmereFoodStaminaState();
+        const carriedInventory = readCurrentCarriedInventoryForStaminaV1();
         const result = tickHarthmereStaminaForGameplayV1(
-          readHarthmereFoodStaminaState(),
+          carriedInventory
+            ? { ...before, inventory: carriedInventory }
+            : before,
           { nowMs: Date.now(), gameplayActive: isGameplayActive() }
         );
         writeHarthmereFoodStaminaState(result.state);
@@ -195,8 +285,20 @@ export const HarthmereFoodStaminaRuntimeController: React.FunctionComponent<{}> 
         }
       };
       const id = window.setInterval(tick, 15_000);
+      window.addEventListener(
+        HARTHMERE_LOCAL_INVENTORY_EVENT_FOR_STAMINA_V1,
+        tick
+      );
+      window.addEventListener("storage", tick);
       tick();
-      return () => window.clearInterval(id);
+      return () => {
+        window.clearInterval(id);
+        window.removeEventListener(
+          HARTHMERE_LOCAL_INVENTORY_EVENT_FOR_STAMINA_V1,
+          tick
+        );
+        window.removeEventListener("storage", tick);
+      };
     }, []);
     return null;
   };

@@ -108,7 +108,8 @@ const normalizeHarthmereVisibleAttackLabel = (
   return normalized;
 };
 
-const HARTHMERE_COMBAT_RULESET_REVISION = "harthmere-death-ai-dialog-render-v1";
+const HARTHMERE_COMBAT_RULESET_REVISION =
+  "harthmere-muck-hex-5x-death-loot-v1";
 
 const HARTHMERE_TRAINING_DUMMY_OFFSET = 9001;
 const HARTHMERE_DRAIN_RAT_OFFSET = 9002;
@@ -789,6 +790,8 @@ export function downHarthmerePlayerFromSystem(input: {
 // with the dispatch in player.ts.
 export const HARTHMERE_PLAYER_FALL_DAMAGE_EVENT =
   "biomes:harthmere-player-fall-damage";
+export const HARTHMERE_PLAYER_DROWNING_DAMAGE_EVENT =
+  "biomes:harthmere-player-drowning-damage";
 
 // Apply distance-based fall damage to the player's *combat* HP (the value the
 // Harthmere HUD renders). The shared fall_damage_v1 rule is authored for a
@@ -853,6 +856,62 @@ export function applyHarthmereFallDamageFromSystem(fallBlocks: number) {
       targetHpBefore: hpBefore,
       targetHpAfter: newHp,
       detail: `You fell ${feet} feet (${scaledDamage} damage).`,
+    }),
+    player: {
+      ...player,
+      hp: newHp,
+      combatState: player.combatState === "idle" ? "alert" : player.combatState,
+    },
+  });
+}
+
+export function applyHarthmereDrowningDamageFromSystem(damageAmount: number) {
+  const damage = Math.max(0, Math.round(Number(damageAmount)));
+  if (damage <= 0) {
+    return;
+  }
+
+  const state = readHarthmereCombatState();
+  const player = state.player;
+  if (
+    ["dead", "downed", "respawning"].includes(player.combatState) ||
+    player.hp <= 0
+  ) {
+    return;
+  }
+  if (
+    ["invulnerable", "protected_after_respawn"].includes(player.combatState)
+  ) {
+    return;
+  }
+
+  const hpBefore = player.hp;
+  const newHp = Math.max(0, hpBefore - damage);
+
+  if (newHp <= 0) {
+    downHarthmerePlayerFromSystem({
+      cause: "drowning",
+      killerName: "Deep Water",
+      abilityName: "Drowning",
+      damageType: "survival",
+      damage,
+      detail: "You ran out of breath and drowned. Respawn at Harthmere.",
+    });
+    return;
+  }
+
+  writeHarthmereCombatState({
+    ...appendCombatLog(state, {
+      attacker: "Deep Water",
+      target: player.name,
+      ability: "Drowning",
+      result: "normal_hit",
+      rawDamage: damage,
+      mitigatedDamage: 0,
+      finalDamage: damage,
+      targetHpBefore: hpBefore,
+      targetHpAfter: newHp,
+      detail: `You ran out of breath and took ${damage} damage.`,
     }),
     player: {
       ...player,
@@ -949,6 +1008,29 @@ export function useHarthmereFallDamageBridge() {
     window.addEventListener(HARTHMERE_PLAYER_FALL_DAMAGE_EVENT, handler);
     return () =>
       window.removeEventListener(HARTHMERE_PLAYER_FALL_DAMAGE_EVENT, handler);
+  }, []);
+}
+
+export function useHarthmereDrowningDamageBridge() {
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+    const handler = (event: Event) => {
+      const detail = (event as CustomEvent).detail as
+        | { damage?: number }
+        | undefined;
+      const damage = Number(detail?.damage ?? 0);
+      if (Number.isFinite(damage) && damage > 0) {
+        applyHarthmereDrowningDamageFromSystem(damage);
+      }
+    };
+    window.addEventListener(HARTHMERE_PLAYER_DROWNING_DAMAGE_EVENT, handler);
+    return () =>
+      window.removeEventListener(
+        HARTHMERE_PLAYER_DROWNING_DAMAGE_EVENT,
+        handler
+      );
   }, []);
 }
 
@@ -4750,23 +4832,23 @@ function statsForRuntimeCombatActor(
     attackRange = 2.35;
     attackSpeed = 0.82;
   } else if (/greater\s+hexer|greater.*hex/.test(text)) {
-    hp = 620;
-    attackPoints = 76;
-    armor = 82;
+    hp = 3100;
+    attackPoints = 380;
+    armor = 410;
     evasion = 9;
     attackRange = 2.25;
     attackSpeed = 0.76;
   } else if (/lesser\s+hexer|hex|hexer/.test(text)) {
-    hp = 420;
-    attackPoints = 54;
-    armor = 56;
+    hp = 2100;
+    attackPoints = 270;
+    armor = 280;
     evasion = 10;
     attackRange = 2.05;
     attackSpeed = 0.82;
   } else if (/mossy\s+muckling|muckling|muck/.test(text)) {
-    hp = 300;
-    attackPoints = 42;
-    armor = 48;
+    hp = 1500;
+    attackPoints = 210;
+    armor = 240;
     evasion = 8;
     attackRange = 1.8;
     attackSpeed = 0.92;

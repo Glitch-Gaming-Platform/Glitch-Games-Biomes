@@ -380,9 +380,13 @@ function genGraphicsSettingsDynamic(
 
   const isDynamicDrawDistance = computedSettings.drawDistance === "dynamic";
   const dynamicDrawDistance = isDynamicDrawDistance
-    ? deps.get("/settings/graphics/dynamic_draw_distance").value ??
-      DRAW_DISTANCES.low
-    : computedSettings.drawDistance;
+    ? (() => {
+        const value = deps.get("/settings/graphics/dynamic_draw_distance").value;
+        return typeof value === "number" ? value : DRAW_DISTANCES.low;
+      })()
+    : typeof computedSettings.drawDistance === "number"
+      ? computedSettings.drawDistance
+      : DRAW_DISTANCES.low;
   const drawDistance = applyDrawDistanceFloorsV1(dynamicDrawDistance, {
     hardMinDrawDistance: context.clientConfig.minDrawDistance,
     dynamicMinDrawDistance: context.clientConfig.dynamicMinDrawDistance,

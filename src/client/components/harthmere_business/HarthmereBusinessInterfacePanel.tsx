@@ -1109,6 +1109,13 @@ const CustomerMiniGamePane: React.FunctionComponent<{
             );
             return;
           }
+          if (message.includes("economy_rejected:")) {
+            pushFeedback(
+              "error",
+              formatHarthmereBusinessPlayerWarningV1(message)
+            );
+            return;
+          }
           pushFeedback(
             "error",
             "The service board could not update. Try again."

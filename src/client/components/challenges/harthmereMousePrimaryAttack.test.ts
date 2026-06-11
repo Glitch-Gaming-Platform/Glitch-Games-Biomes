@@ -1,6 +1,7 @@
 /// <reference types="mocha" />
 import { isHarthmereCombatCreatureNpcTypeV1 } from "@/client/components/challenges/dialogueObjectSemantics";
 import {
+  applyHarthmereDrowningDamageFromSystem,
   applyHarthmereFallDamageFromSystem,
   readHarthmereCombatState,
   resetHarthmereCombat,
@@ -206,6 +207,38 @@ describe("harthmere visible player fall damage", () => {
     const before = readHarthmereCombatState().player;
 
     applyHarthmereFallDamageFromSystem(4);
+
+    const after = readHarthmereCombatState().player;
+    assert.equal(after.hp, before.hp);
+    assert.equal(after.combatState, before.combatState);
+  });
+});
+
+describe("harthmere visible player drowning damage", () => {
+  const storage = installHarthmereCombatBrowserShimForTest();
+
+  beforeEach(() => {
+    storage.localStorage.clear();
+    storage.sessionStorage.clear();
+    setHarthmereLocalDevUserScope("drowning-damage-test-user");
+    resetHarthmereCombat();
+  });
+
+  it("drains the Harthmere combat HP that BiomesUI vitals render", () => {
+    const before = readHarthmereCombatState().player;
+
+    applyHarthmereDrowningDamageFromSystem(7);
+
+    const after = readHarthmereCombatState().player;
+    assert.equal(after.hp, before.hp - 7);
+    assert.equal(after.combatState, "alert");
+  });
+
+  it("ignores nonpositive drowning damage", () => {
+    const before = readHarthmereCombatState().player;
+
+    applyHarthmereDrowningDamageFromSystem(0);
+    applyHarthmereDrowningDamageFromSystem(-5);
 
     const after = readHarthmereCombatState().player;
     assert.equal(after.hp, before.hp);

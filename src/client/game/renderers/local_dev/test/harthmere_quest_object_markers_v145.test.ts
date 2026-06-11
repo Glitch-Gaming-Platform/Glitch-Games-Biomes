@@ -38,6 +38,7 @@ import {
   SNAPSHOT_GROVE_LANDMARKS_V75,
   SNAPSHOT_GROVE_QUESTS_V75,
 } from "@/shared/harthmere/snapshot_grove_content_v75";
+import { isHarthmereContainerObjectLabelV1 } from "@/shared/harthmere/object_interaction_semantics_v1";
 import * as THREE from "three";
 
 describe("harthmereResolveWorldQuestBeaconMarkerIdV151 (cross-system eclipse)", () => {
@@ -256,6 +257,10 @@ describe("Harthmere quest object procedural markers V145", () => {
       "exotic_antiboron_deep_spindle_16",
       "econ_grove_billy_post",
       "econ_grove_billy_toolbag",
+      "grove_tool_crate",
+      "grove_first_aid_bin",
+      "econ_grove_supply_chest",
+      "sanitation_barrels_marker",
     ];
 
     for (const id of sampleIds) {
@@ -437,6 +442,80 @@ describe("Harthmere quest object procedural markers V145", () => {
       );
       assert.equal(findActiveBeacon(group!)?.visible, false);
     }
+  });
+
+  it("renders every authored container marker as a visible world object with prop geometry", () => {
+    const renderer = makeHarthmereQuestObjectMarkersRendererV145();
+    const scenes = createNewScenes();
+    renderer.draw(scenes, 0.016);
+    const root = findRendererRoot(scenes);
+    assert.ok(root, "quest object root must attach to the scene");
+
+    const containerMarkers = HARTHMERE_QUEST_OBJECT_MARKERS_V145.filter(
+      (marker) => isHarthmereContainerObjectLabelV1({ label: marker.label })
+    );
+    assert.ok(
+      containerMarkers.length >= 10,
+      "expected the Grove/tutorial/jobs-board container markers to be registered"
+    );
+
+    for (const marker of containerMarkers) {
+      assert.equal(
+        isVisibleHarthmereWorldObjectMarkerV197(marker),
+        true,
+        `${marker.id} (${marker.label}) should be marked visible`
+      );
+
+      const group = findMarkerGroup(root!, marker.id);
+      assert.ok(group, `${marker.id} should have a renderer group`);
+      assert.equal(
+        group!.visible,
+        true,
+        `${marker.id} (${marker.label}) should render visibly`
+      );
+      assert.equal(
+        group!.userData.harthmereQuestObjectMarkerAlwaysVisible,
+        true
+      );
+      assert.equal(
+        group!.userData.harthmereQuestObjectMarkerRenderPolicy,
+        HARTHMERE_VISIBLE_WORLD_OBJECT_MARKER_RENDER_POLICY_V197
+      );
+
+      let meshCount = 0;
+      group!.traverse((child) => {
+        if (child instanceof THREE.Mesh) {
+          meshCount += 1;
+        }
+      });
+      assert.ok(
+        meshCount >= 5,
+        `${marker.id} (${marker.label}) should use container prop art, got ${meshCount} meshes`
+      );
+    }
+  });
+
+  it("promotes container landmarks without quest ids into the marker renderer", () => {
+    const supplyChest = SNAPSHOT_GROVE_LANDMARKS_V75.find(
+      (landmark) => landmark.id === "econ_grove_supply_chest"
+    );
+    assert.ok(supplyChest, "Grove Supply Chest landmark should exist");
+    assert.equal(supplyChest!.questIds, undefined);
+    assert.equal(
+      isRenderableHarthmereQuestObjectLandmarkV145(supplyChest!),
+      true,
+      "container landmarks should be renderable even without a quest id"
+    );
+    assert.ok(
+      HARTHMERE_QUEST_OBJECT_MARKERS_V145.some(
+        (marker) => marker.id === "econ_grove_supply_chest"
+      ),
+      "Grove Supply Chest should enter the procedural marker list"
+    );
+    assert.equal(
+      isVisibleHarthmereWorldObjectMarkerV197("econ_grove_supply_chest"),
+      true
+    );
   });
 
   it("resolves the user's current active quest step to exactly one marker id", () => {

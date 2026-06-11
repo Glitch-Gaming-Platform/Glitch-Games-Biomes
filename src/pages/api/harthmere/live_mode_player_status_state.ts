@@ -6,6 +6,7 @@ import {
   createHarthmereLiveModePlayerStatusClientSnapshotV1,
   harthmereLiveModePlayerStateKeyV1,
   parseHarthmereLiveModeBackendStateV1,
+  repairHarthmereStatusReadStaminaDeathV1,
   tickHarthmereLiveModeStaminaForGameplayV1,
 } from "@/shared/harthmere/live_mode_backend_v1";
 import { z } from "zod";
@@ -130,9 +131,13 @@ export async function readHarthmereLiveModePlayerStatusStateForActorV1(input: {
   )
     ? Number(state.combat.deadFromStaminaAtMs)
     : undefined;
+  const statusReadRepair = repairHarthmereStatusReadStaminaDeathV1(state, {
+    nowMs: input.nowMs,
+  });
   const staminaTick = tickHarthmereLiveModeStaminaForGameplayV1(state, {
     nowMs: input.nowMs,
     gameplayActive: input.gameplayActive === true,
+    allowDeathFromStamina: false,
   });
   const nextStamina = Number(state.combat.resources.stamina ?? 0);
   const nextDeadFromStaminaAtMs = Number.isFinite(
@@ -142,7 +147,7 @@ export async function readHarthmereLiveModePlayerStatusStateForActorV1(input: {
     : undefined;
   if (
     shouldPersistHarthmerePlayerStatusStaminaTickV1({
-      changed: staminaTick.changed,
+      changed: staminaTick.changed || statusReadRepair.changed,
       deathTriggered: staminaTick.deathTriggered,
       previousDeadFromStaminaAtMs,
       nextDeadFromStaminaAtMs,
@@ -178,11 +183,18 @@ export async function readHarthmereLiveModePlayerStatusStateForActorV1(input: {
         )
           ? Number(latestState.combat.deadFromStaminaAtMs)
           : undefined;
+        const latestStatusReadRepair = repairHarthmereStatusReadStaminaDeathV1(
+          latestState,
+          {
+            nowMs: input.nowMs,
+          }
+        );
         const latestStaminaTick = tickHarthmereLiveModeStaminaForGameplayV1(
           latestState,
           {
             nowMs: input.nowMs,
             gameplayActive: input.gameplayActive === true,
+            allowDeathFromStamina: false,
           }
         );
         const latestNextStamina = Number(
@@ -195,7 +207,8 @@ export async function readHarthmereLiveModePlayerStatusStateForActorV1(input: {
           : undefined;
         if (
           shouldPersistHarthmerePlayerStatusStaminaTickV1({
-            changed: latestStaminaTick.changed,
+            changed:
+              latestStaminaTick.changed || latestStatusReadRepair.changed,
             deathTriggered: latestStaminaTick.deathTriggered,
             previousDeadFromStaminaAtMs: latestPreviousDeadFromStaminaAtMs,
             nextDeadFromStaminaAtMs: latestNextDeadFromStaminaAtMs,

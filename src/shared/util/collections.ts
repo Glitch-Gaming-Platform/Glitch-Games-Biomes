@@ -207,7 +207,7 @@ export function onlyMapValue<Key, Value>(
   input: ReadonlyMap<Key, Value>
 ): Value {
   ok(input.size === 1);
-  return input.values().next().value;
+  return input.values().next().value as Value;
 }
 
 export function anyMapValue<Key, Value>(
@@ -279,7 +279,9 @@ export function mapSet<KT, RT>(
 export function maybeFirstSetValue<Key>(
   input?: ReadonlySet<Key>
 ): Key | undefined {
-  return !input || input.size === 0 ? undefined : input.values().next().value;
+  return !input || input.size === 0
+    ? undefined
+    : (input.values().next().value as Key);
 }
 
 export function firstSetValue<Key>(input: ReadonlySet<Key>): Key | undefined {
@@ -288,7 +290,7 @@ export function firstSetValue<Key>(input: ReadonlySet<Key>): Key | undefined {
 
 export function onlySetValue<Key>(input: ReadonlySet<Key>): Key {
   ok(input.size === 1);
-  return input.values().next().value;
+  return input.values().next().value as Key;
 }
 
 export function isSuperset<T>(set: Set<T>, subset: Set<T>) {

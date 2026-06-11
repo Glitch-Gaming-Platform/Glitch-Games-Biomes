@@ -134,6 +134,7 @@ export function HarthmereGatheringNodeWorldInteractionV1({
         harvest();
       }}
       aria-label={`Harvest ${prompt.name}`}
+      data-harthmere-gathering-node-world-prompt-v1="active"
       data-testid="harthmere-gathering-node-world-prompt-v1"
     >
       <span

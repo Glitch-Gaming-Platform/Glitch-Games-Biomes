@@ -32,7 +32,6 @@ export type WearableAssignment = [
   PaletteOption<"color_palettes/item_primary_colors"> | undefined
 ][];
 
-
 // HARTHMERE_GENERATED_MESH_DEFAULT_WEARABLES_V182:
 // A bare generated player mesh uses the upstream base_model.vox. That base
 // mesh has bright white default clothing/underlayer geometry, which looked
@@ -57,7 +56,9 @@ export function ensurePlayerMeshDefaultWearablesV182(
   if (!playerMeshWearableAssignmentHasSlotV182(withDefaults, BikkieIds.top)) {
     withDefaults.push([BikkieIds.top, BikkieIds.muckyTop, undefined]);
   }
-  if (!playerMeshWearableAssignmentHasSlotV182(withDefaults, BikkieIds.bottoms)) {
+  if (
+    !playerMeshWearableAssignmentHasSlotV182(withDefaults, BikkieIds.bottoms)
+  ) {
     withDefaults.push([BikkieIds.bottoms, BikkieIds.muckySkirt, undefined]);
   }
   if (!playerMeshWearableAssignmentHasSlotV182(withDefaults, BikkieIds.feet)) {
@@ -72,10 +73,9 @@ export function makePlayerMeshQueryString(
   eyeColorId?: PaletteOption<"color_palettes/eye_colors">,
   hairColorId?: PaletteOption<"color_palettes/hair_colors">
 ): string {
-  const queryParams = ensurePlayerMeshDefaultWearablesV182(wearables).map(([type, id, dye]) => [
-    `${type}`,
-    `${id}${dye ? `,${dye}` : ""}`,
-  ]);
+  const queryParams = ensurePlayerMeshDefaultWearablesV182(wearables).map(
+    ([type, id, dye]) => [`${type}`, `${id}${dye ? `,${dye}` : ""}`]
+  );
 
   // Include the asset server version in the URL requests as well.
   queryParams.push([
@@ -102,7 +102,7 @@ export function makePlayerMeshUrl(
   eyeColorId?: PaletteOption<"color_palettes/eye_colors">,
   hairColorId?: PaletteOption<"color_palettes/hair_colors">
 ): string {
-  return `REMOVED_STATIC_PLAYER_MESH_BODY_PATH_POLICY${makePlayerMeshQueryString(
+  return `/api/assets/player_mesh.glb${makePlayerMeshQueryString(
     wearables,
     skinColorId,
     eyeColorId,

@@ -155,6 +155,28 @@ production_redis_snapshot_hash_v187() {
   prod_redis_cli_v186 --raw GET biomes_data_snapshot_hash 2>/dev/null | tr -d '\r' || true
 }
 
+check_production_redis_snapshot_materialized_v190() {
+  local phase="$1"
+  local dbsize required_count
+  dbsize="$(prod_redis_cli_v186 --raw DBSIZE 2>/dev/null | tr -d '\r' || true)"
+  required_count="$(
+    prod_redis_cli_v186 --raw EXISTS \
+      b:8810000000019301 \
+      b:8810000000019401 \
+      b:8810000000019451 2>/dev/null | tr -d '\r' || true
+  )"
+
+  if [ "${dbsize:-0}" -lt 1000 ] || [ "${required_count:-0}" -lt 3 ]; then
+    echo "ERROR production Redis snapshot is not materially loaded before $phase:" >&2
+    echo "  dbsize=${dbsize:-unknown}" >&2
+    echo "  required_seed_keys_present=${required_count:-unknown}/3" >&2
+    echo "  required bootstrap keys: Grove NPC, robot, Muck/Hex hostile" >&2
+    return 1
+  fi
+
+  log "Production Redis snapshot materialization OK before $phase: dbsize=$dbsize required_seed_keys_present=$required_count/3."
+}
+
 bootstrap_production_redis_snapshot_v187() {
   local expected_hash="$1"
   local hash_key="$2"
@@ -173,6 +195,9 @@ bootstrap_production_redis_snapshot_v187() {
       LOCAL_REDIS_HOST="$PROD_REDIS_HEALTH_HOST" \
       REDIS_PORT="$PROD_REDIS_PORT" \
       GLITCH_REDIS_PORT="$PROD_REDIS_PORT" \
+      GLITCH_DISABLE_GCP=1 \
+      GLITCH_SKIP_GOOGLE_SECRETS=1 \
+      GLITCH_DISABLE_DISCORD=1 \
       node dist/bootstrap-redis.js snapshot_backup.json
   else
     log "WARN dist/bootstrap-redis.js missing; falling back to ts-node Redis bootstrap." >&2
@@ -183,6 +208,9 @@ bootstrap_production_redis_snapshot_v187() {
       LOCAL_REDIS_HOST="$PROD_REDIS_HEALTH_HOST" \
       REDIS_PORT="$PROD_REDIS_PORT" \
       GLITCH_REDIS_PORT="$PROD_REDIS_PORT" \
+      GLITCH_DISABLE_GCP=1 \
+      GLITCH_SKIP_GOOGLE_SECRETS=1 \
+      GLITCH_DISABLE_DISCORD=1 \
       node -r ts-node/register scripts/node/bootstrap_redis.ts snapshot_backup.json
   fi
   prod_redis_cli_v186 SET "$hash_key" "$expected_hash" >/dev/null
@@ -205,18 +233,28 @@ check_production_redis_snapshot_hash_v187() {
   if [ "$current_hash" = "$expected_hash" ]; then
     prod_redis_cli_v186 SET "$hash_key" "$expected_hash" >/dev/null
     log "Production Redis snapshot hash OK before $phase: $expected_hash."
-    return
+    if check_production_redis_snapshot_materialized_v190 "$phase"; then
+      return
+    fi
+    if ! bootstrap_production_redis_snapshot_v187 "$expected_hash" "$hash_key"; then
+      echo "ERROR refusing to deploy with a hash marker but missing production Redis world data." >&2
+      echo "Run again with --bootstrap-prod-redis-snapshot only when you intend to flush/reload production Redis before Azure update." >&2
+      exit 1
+    fi
+    current_hash="$(production_redis_snapshot_hash_v187 "$hash_key")"
   fi
 
-  echo "WARN production Redis snapshot mismatch before $phase:" >&2
-  echo "  key=$hash_key" >&2
-  echo "  expected=$expected_hash" >&2
-  echo "  actual=${current_hash:-missing}" >&2
+  if [ "$current_hash" != "$expected_hash" ]; then
+    echo "WARN production Redis snapshot mismatch before $phase:" >&2
+    echo "  key=$hash_key" >&2
+    echo "  expected=$expected_hash" >&2
+    echo "  actual=${current_hash:-missing}" >&2
 
-  if ! bootstrap_production_redis_snapshot_v187 "$expected_hash" "$hash_key"; then
-    echo "ERROR refusing to deploy an image whose snapshot does not match production Redis." >&2
-    echo "Run again with --bootstrap-prod-redis-snapshot only when you intend to flush/reload production Redis before Azure update." >&2
-    exit 1
+    if ! bootstrap_production_redis_snapshot_v187 "$expected_hash" "$hash_key"; then
+      echo "ERROR refusing to deploy an image whose snapshot does not match production Redis." >&2
+      echo "Run again with --bootstrap-prod-redis-snapshot only when you intend to flush/reload production Redis before Azure update." >&2
+      exit 1
+    fi
   fi
 
   current_hash="$(production_redis_snapshot_hash_v187 "$hash_key")"
@@ -227,6 +265,7 @@ check_production_redis_snapshot_hash_v187() {
     exit 1
   fi
 
+  check_production_redis_snapshot_materialized_v190 "$phase"
   log "Production Redis snapshot bootstrap verified before $phase: $expected_hash."
 }
 
@@ -717,6 +756,7 @@ run_build_checks() {
   node scripts/harthmere/test-harthmere-no-google-npc-text-v1.cjs .
   node scripts/harthmere/test-glitch-aegis-telemetry-mucker-clearance-v138.cjs .
   node scripts/glitch/test-production-api-route-imports-v1.cjs .
+  node scripts/glitch/test-production-deploy-local-redis-smoke-v1.cjs .
   node scripts/glitch/test-production-redis6-stream-compat-v1.cjs .
   node scripts/glitch/test-production-redis-shared-world-v1.cjs .
   node scripts/harthmere/test-glitch-prod-bucket-asset-proxy-v146.cjs .
@@ -958,7 +998,13 @@ push_and_deploy() {
       BIOMES_ENABLE_HARTHMERE_EXTRA_TOWN=0 \
       GLITCH_DISABLE_GCP=1 \
       GLITCH_SKIP_GOOGLE_SECRETS=1 \
-      GLITCH_DISABLE_DISCORD=1
+      GLITCH_DISABLE_DISCORD=1 \
+      AZURE_OPENAI_ENDPOINT="${AZURE_OPENAI_ENDPOINT:-https://glitch-openai-instance.openai.azure.com/}" \
+      AZURE_OPENAI_API_VERSION="${AZURE_OPENAI_API_VERSION:-2025-04-01-preview}" \
+      AZURE_OPENAI_DEPLOYMENT="${AZURE_OPENAI_DEPLOYMENT:-gpt-5.5}" \
+      AZURE_OPENAI_API_KEY=secretref:azure-openai-api-key \
+      AZURE_SPEECH_REGION="${AZURE_SPEECH_REGION:-eastus2}" \
+      AZURE_SPEECH_KEY=secretref:azure-speech-key
 
   local latest_revision
   latest_revision="$(az containerapp show \

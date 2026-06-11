@@ -18,13 +18,41 @@ async function rawHarthmereLiveFetchWithTimeoutV1(
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    return await fetchImpl(input, {
-      ...requestInit,
-      signal: controller.signal,
-    });
+    try {
+      return await fetchImpl(input, {
+        ...requestInit,
+        signal: controller.signal,
+      });
+    } catch (error) {
+      if (
+        controller.signal.aborted &&
+        isHarthmereLiveFetchAbortErrorV1(error)
+      ) {
+        return new Response(
+          JSON.stringify({
+            error: "harthmere_live_fetch_timeout",
+            timeoutMs,
+          }),
+          {
+            status: 504,
+            headers: { "Content-Type": "application/json" },
+          }
+        );
+      }
+      throw error;
+    }
   } finally {
     clearTimeout(timeout);
   }
+}
+
+export function isHarthmereLiveFetchAbortErrorV1(error: unknown) {
+  return typeof DOMException !== "undefined" && error instanceof DOMException
+    ? error.name === "AbortError"
+    : error instanceof Error
+    ? error.name === "AbortError" ||
+      error.message.toLowerCase().includes("aborted")
+    : false;
 }
 
 // HARTHMERE_LIVE_FETCH_COALESCE_V1

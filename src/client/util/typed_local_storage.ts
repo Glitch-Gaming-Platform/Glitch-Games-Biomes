@@ -94,6 +94,9 @@ export const zSettings = z.object({
   "settings.volume.effects": z.number().default(100),
   "settings.volume.media": z.number().default(50),
   "settings.volume.voice": z.number().default(50),
+  "settings.voice.microphoneDeviceId": z.string().default(""),
+  "settings.voice.npcSpeechEnabled": z.boolean().default(true),
+  "settings.voice.microphoneInputEnabled": z.boolean().default(true),
 
   "inventory.craftByDefault": z.boolean(),
 

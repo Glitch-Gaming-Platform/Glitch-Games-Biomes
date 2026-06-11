@@ -6,14 +6,12 @@ patches in a row (v91, v92, v93, v94) chased the same bug and three of them
 fixed the wrong layer. Read this before adding a v95.
 
 > **TL;DR rule that prevents the recurring bug:**
-> The local-dev terrain generator returns flat ground (`localDevTerrainHeight`
-> always returns `STARTER_TOWN_GROUND_Y = 52`). The **live installed snapshot
-> terrain** is **not** flat — it has raised plazas, dock platforms, tavern
-> floors, and bank counters at y=58 to y=73. Any code that places an NPC,
-> sets a quest marker, or grounds an entity using authored terrain alone
-> **will be wrong** at runtime. Use the v94 cluster anchor table
-> (`HARTHMERE_NPC_STABLE_ANCHOR_V94`), or measure live with the v90 mission
-> audit before introducing new positions.
+> The local-dev terrain generator returns flat ground, but production terrain
+> is not flat and includes raised streets, roofs, indoor floors, water, caves,
+> and hollows. New quest items, monsters, map pins, HUD targets, and random
+> spawns must use the production terrain placement map, not authored `y=0`,
+> old cluster constants, or one-off coordinate patches. See
+> `docs/harthmere/HARTHMERE_PRODUCTION_TERRAIN_PLACEMENT_MAP_V1.md`.
 
 For the current startup, visual-testing, Redis seeding, and shared
 coordinate-source rules, also read:
@@ -25,6 +23,50 @@ docs/harthmere/HARTHMERE_TDD_BOOT_AND_TOWN_TESTS.md
 That guide is the canonical checklist for fast warm starts, when to use
 Playwright/live browser checks instead of static render scripts, and how to
 avoid invisible, floating, buried, or production-mismatched placements.
+
+---
+
+## 0. Current production terrain placement map
+
+The current placement source of truth is generated from production terrain:
+
+```text
+src/shared/harthmere/generated/production_terrain_placement_map_v1.ts
+```
+
+Runtime code should go through:
+
+```text
+src/shared/harthmere/production_terrain_placement_map_v1.ts
+```
+
+Regenerate and check it with:
+
+```bash
+NODE_OPTIONS=--max-old-space-size=8192 \
+node scripts/harthmere/build-production-terrain-placement-map-v1.cjs \
+  --write \
+  --stride=8 \
+  --margin=64
+
+node scripts/harthmere/check-harthmere-production-placement-map-v1.cjs
+```
+
+The older v90/v94 audit and anchor notes below are historical context for the
+bug class. They are still useful for understanding why authored/local terrain
+failed, but they are not the preferred workflow for new quest items, monster
+spawns, BiomesUI map markers, HUD targets, or quest pointers.
+
+Correct current rules:
+
+- Fixed quest objectives use `resolveHarthmereQuestObjectivePlacementV1` or
+  `getHarthmereQuestResolvedWaypointV47`.
+- Jobs-board, business, and live-helper markers use
+  `resolveHarthmereProductionMarkerPositionV1` through their local adapter.
+- Random above-ground placement uses `chooseHarthmereQuestOutdoorSpawnPointV1`.
+- Random cave placement uses `chooseHarthmereQuestCaveSpawnPointV1`.
+- The BiomesUI map, HUD/minimap, quest pointer, server authority, and 3D marker
+  should all consume the same resolved `recommendedPosition`.
 
 ---
 

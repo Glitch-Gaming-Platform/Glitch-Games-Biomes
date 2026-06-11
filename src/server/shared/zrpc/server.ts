@@ -58,7 +58,7 @@ function createStreamingHandler<
     const context = {
       signal: controller.signal,
     };
-    call.on("cancelled", () => {
+    (call as any).on("cancelled", () => {
       controller.abort("client requested cancellation");
     });
 
@@ -125,7 +125,7 @@ function createUnaryHandler<
     const context = {
       signal: controller.signal,
     };
-    call.on("cancelled", () => {
+    (call as any).on("cancelled", () => {
       controller.abort("client requested cancellation");
     });
 

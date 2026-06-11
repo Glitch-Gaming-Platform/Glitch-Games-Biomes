@@ -13,6 +13,7 @@ import {
   reviveHarthmerePlayer,
   useHarthmereAmbientThreats,
   useHarthmereCombatState,
+  useHarthmereDrowningDamageBridge,
   useHarthmereFallDamageBridge,
   useHarthmereForwardArcRuntime,
   useHarthmerePvpIncomingDamageBridgeV1,
@@ -39,7 +40,9 @@ import { HarthmereStorageMailRecoveryMenuPanel } from "@/client/components/chall
 import { HarthmereObjectContainerPanel } from "@/client/components/challenges/HarthmereObjectContainerPanel";
 import { HarthmereCookingStationPanel } from "@/client/components/harthmere_cooking/HarthmereCookingStationPanel";
 import { HarthmereGatheringNodeWorldInteractionV1 } from "@/client/components/challenges/HarthmereGatheringNodeWorldInteractionV1";
+import { HarthmereLootDropWorldInteractionV1 } from "@/client/components/challenges/HarthmereLootDropWorldInteractionV1";
 import {
+  HARTHMERE_INVENTORY_EVENT,
   HarthmereInventoryMenuPanel,
   HarthmereVendorTradePanel,
   cycleHarthmereWeapon,
@@ -720,6 +723,25 @@ function useHarthmerePlayerSwordVisualBridge() {
   }, [itemId, multiplayer.weaponDrawn]);
 }
 
+function useHarthmereLocalPlayerWearableMeshBridge() {
+  const { resources, userId } = useClientContext();
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+    const refresh = () => {
+      resources.invalidate("/scene/player/mesh", userId);
+    };
+    window.addEventListener(HARTHMERE_INVENTORY_EVENT, refresh);
+    window.addEventListener("storage", refresh);
+    return () => {
+      window.removeEventListener(HARTHMERE_INVENTORY_EVENT, refresh);
+      window.removeEventListener("storage", refresh);
+    };
+  }, [resources, userId]);
+}
+
 // harthmere-full-animation-runtime-v6
 type HarthmereFullAnimationFamilyV6 =
   | "creature"
@@ -1097,15 +1119,8 @@ function CompactStatusCluster() {
   const manaPct =
     (combatResource.resourceValue / Math.max(1, combatResource.resourceMax)) *
     100;
-  const liveStaminaValue = Number(liveStatus?.combat?.resources?.stamina);
-  const liveMaxStaminaValue = Number(liveStatus?.combat?.maxResources?.stamina);
-  const staminaValue = Number.isFinite(liveStaminaValue)
-    ? Math.max(0, liveStaminaValue)
-    : stamina.stamina;
-  const staminaMax =
-    Number.isFinite(liveMaxStaminaValue) && liveMaxStaminaValue > 0
-      ? Math.max(1, liveMaxStaminaValue)
-      : stamina.maxStamina;
+  const staminaValue = Math.max(0, stamina.stamina);
+  const staminaMax = Math.max(1, stamina.maxStamina);
   const staminaPct = (staminaValue / Math.max(1, staminaMax)) * 100;
 
   return (
@@ -1450,6 +1465,8 @@ function FightSideControls() {
 
 type HarthmereCombatActorHudSnapshotV96 = {
   offset?: number;
+  targetId?: string;
+  liveModeTargetId?: string;
   label?: string;
   asset?: string;
   district?: string;
@@ -1466,6 +1483,16 @@ type HarthmereCombatActorHudSnapshotV96 = {
     depth: number;
   };
   at?: number;
+};
+
+type HarthmereLiveEntityHealthHudSnapshotV1 = {
+  entityId: string;
+  hp: number;
+  maxHp: number;
+  isAlive: boolean;
+  isAttackable: boolean;
+  lastAttackedAtMs?: number;
+  showUntilMs: number;
 };
 
 function readHarthmereCombatActorHudSnapshotsV96(): Record<
@@ -1498,16 +1525,51 @@ function useHarthmereCombatActorHudSnapshotsV96(intervalMs = 120) {
   return snapshots;
 }
 
+function readHarthmereLiveEntityHealthHudSnapshotsV1(): Record<
+  string,
+  HarthmereLiveEntityHealthHudSnapshotV1
+> {
+  if (typeof window === "undefined") {
+    return {};
+  }
+  const win = window as typeof window & {
+    __harthmereLiveEntityCombatHealthV1?: Record<
+      string,
+      HarthmereLiveEntityHealthHudSnapshotV1
+    >;
+  };
+  return win.__harthmereLiveEntityCombatHealthV1 ?? {};
+}
+
+function useHarthmereLiveEntityHealthHudSnapshotsV1(intervalMs = 120) {
+  const [snapshots, setSnapshots] = useState<
+    Record<string, HarthmereLiveEntityHealthHudSnapshotV1>
+  >({});
+  useEffect(() => {
+    const refresh = () =>
+      setSnapshots(readHarthmereLiveEntityHealthHudSnapshotsV1());
+    refresh();
+    const interval = window.setInterval(refresh, intervalMs);
+    return () => window.clearInterval(interval);
+  }, [intervalMs]);
+  return snapshots;
+}
+
 function HarthmereEnemyHealthBarsHUD() {
   const combat = useHarthmereCombatState();
   const multiplayer = useHarthmereMultiplayerCombatState();
   const actorHud = useHarthmereCombatActorHudSnapshotsV96(100);
+  const liveEntityHealth = useHarthmereLiveEntityHealthHudSnapshotsV1(100);
   const selectedOffset =
     multiplayer.currentTargetOffset ?? combat.selectedNpcOffset;
+  const selectedActor =
+    selectedOffset !== undefined ? actorHud[String(selectedOffset)] : undefined;
+  const selectedLiveTargetId =
+    selectedActor?.liveModeTargetId ?? selectedActor?.targetId;
   const now = Date.now();
   const viewportWidth = typeof window !== "undefined" ? window.innerWidth : 0;
   const viewportHeight = typeof window !== "undefined" ? window.innerHeight : 0;
-  const rows = Object.entries(combat.npcs)
+  const localRows = Object.entries(combat.npcs)
     .map(([offsetText, npc]) => {
       const offset = Number(offsetText);
       const actor = actorHud[offsetText];
@@ -1546,11 +1608,66 @@ function HarthmereEnemyHealthBarsHUD() {
             npc.behavior !== "passive"),
       };
     })
-    .filter((row) => row.show)
+    .filter((row) => row.show);
+  const actorsByLiveTargetId = new Map<string, HarthmereCombatActorHudSnapshotV96>();
+  for (const actor of Object.values(actorHud)) {
+    const liveId = actor.liveModeTargetId ?? actor.targetId;
+    if (liveId) {
+      actorsByLiveTargetId.set(String(liveId), actor);
+    }
+  }
+  const liveRows = Object.entries(liveEntityHealth)
+    .map(([entityId, health]) => {
+      const actor = actorsByLiveTargetId.get(entityId);
+      const screen = actor?.screen;
+      const alive = health.isAlive && health.hp > 0;
+      const damaged = health.hp < health.maxHp;
+      const recentlyDamaged =
+        (health.lastAttackedAtMs ?? 0) > 0 &&
+        now - Number(health.lastAttackedAtMs) < 20_000;
+      const selected = entityId === selectedLiveTargetId;
+      const visible =
+        Boolean(screen?.visible) &&
+        (screen?.x ?? -1) >= -48 &&
+        (screen?.x ?? 0) <= viewportWidth + 48 &&
+        (screen?.y ?? -1) >= -48 &&
+        (screen?.y ?? 0) <= viewportHeight + 48;
+      return {
+        offset: Number.NaN,
+        key: `live-${entityId}`,
+        label: actor?.label ?? entityId.replace(/^.*:/, ""),
+        hp: health.hp,
+        maxHp: health.maxHp,
+        selected,
+        screen,
+        show:
+          alive &&
+          visible &&
+          health.isAttackable !== false &&
+          health.showUntilMs >= now &&
+          (selected || damaged || recentlyDamaged),
+      };
+    })
+    .filter((row) => row.show);
+  const rows = [
+    ...localRows.map((row) => ({
+      key: `${row.offset}-${row.npc.name}`,
+      label: row.npc.name,
+      hp: row.npc.hp,
+      maxHp: row.npc.maxHp,
+      selected: row.offset === selectedOffset,
+      screen: row.screen,
+      depth: row.screen?.depth ?? 1,
+    })),
+    ...liveRows.map((row) => ({
+      ...row,
+      depth: row.screen?.depth ?? 1,
+    })),
+  ]
     .sort((a, b) => {
-      if (a.offset === selectedOffset) return -1;
-      if (b.offset === selectedOffset) return 1;
-      return (a.screen?.depth ?? 1) - (b.screen?.depth ?? 1);
+      if (a.selected) return -1;
+      if (b.selected) return 1;
+      return a.depth - b.depth;
     })
     .slice(0, 24);
 
@@ -1560,15 +1677,14 @@ function HarthmereEnemyHealthBarsHUD() {
 
   return (
     <div className="pointer-events-none fixed inset-0 z-30" aria-hidden="true">
-      {rows.map(({ offset, npc, screen }) => {
+      {rows.map(({ key, label, hp, maxHp, selected, screen }) => {
         const pct = Math.max(
           0,
-          Math.min(100, (npc.hp / Math.max(1, npc.maxHp)) * 100)
+          Math.min(100, (hp / Math.max(1, maxHp)) * 100)
         );
-        const selected = offset === selectedOffset;
         return (
           <div
-            key={`${offset}-${npc.name}`}
+            key={key}
             className={`px-1.5 absolute w-[7.25rem] -translate-x-1/2 -translate-y-full rounded-md border py-1 text-center text-white shadow-lg backdrop-blur-sm sm:w-[8.75rem] ${
               selected
                 ? "border-red-200/80 bg-black/80"
@@ -1577,9 +1693,9 @@ function HarthmereEnemyHealthBarsHUD() {
             style={{ left: screen?.x ?? 0, top: (screen?.y ?? 0) - 8 }}
           >
             <div className="flex items-center justify-between gap-1 text-[9px] font-bold leading-none sm:text-[10px]">
-              <span className="truncate text-left">{npc.name}</span>
+              <span className="truncate text-left">{label}</span>
               <span className="text-red-100 shrink-0 tabular-nums">
-                {npc.hp}/{npc.maxHp}
+                {hp}/{maxHp}
               </span>
             </div>
             <div className="h-1.5 ring-black/35 mt-1 overflow-hidden rounded-full bg-white/20 ring-1 sm:h-2">
@@ -2520,6 +2636,7 @@ export const HarthmereUnifiedHUD: React.FunctionComponent<{
   hideLegacyVisuals?: boolean;
 }> = ({ hideLegacyVisuals = false }) => {
   useHarthmerePlayerSwordVisualBridge();
+  useHarthmereLocalPlayerWearableMeshBridge();
   const pointerLockManager = usePointerLockManager();
   const jobsBoardReturnPointerLockRef = React.useRef(false);
   const { userId, reactResources } = useClientContext();
@@ -2546,6 +2663,7 @@ export const HarthmereUnifiedHUD: React.FunctionComponent<{
   useHarthmereRealtimeCombatAI();
   useHarthmereForwardArcRuntime();
   useHarthmereFallDamageBridge();
+  useHarthmereDrowningDamageBridge();
   useHarthmerePvpIncomingDamageBridgeV1();
   useHarthmereLocalPlayerAttackGestureBridge();
   useHarthmereComprehensiveAnimationRuntimeBridgeV6();
@@ -2713,6 +2831,7 @@ export const HarthmereUnifiedHUD: React.FunctionComponent<{
         <HarthmereObjectContainerPanel />
         <HarthmereCookingStationPanel />
         <HarthmereGatheringNodeWorldInteractionV1 />
+        <HarthmereLootDropWorldInteractionV1 />
         <HarthmereJobsBoardWorldPromptV141 onOpen={openJobsBoard} />
         <HarthmereHomeConsoleWorldInterfaceV1
           open={homeConsoleOpen}
@@ -2822,6 +2941,7 @@ export const HarthmereUnifiedHUD: React.FunctionComponent<{
       <HarthmereObjectContainerPanel />
       <HarthmereCookingStationPanel />
       <HarthmereGatheringNodeWorldInteractionV1 />
+      <HarthmereLootDropWorldInteractionV1 />
       {/* HARTHMERE_JOBS_BOARD_PANEL_V141:
           The live container fetches `/api/harthmere/live_mode_jobs_board_state`
           on mount and replays the server snapshot through every mutation.

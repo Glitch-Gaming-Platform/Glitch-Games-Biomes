@@ -17,13 +17,13 @@ import { BiomesId } from "@/shared/ids";
 import { relevantBiscuitForEntity } from "@/shared/npc/bikkie";
 import { compact, sample, uniq } from "lodash";
 import { ChatCompletionRequestMessage, Configuration, OpenAIApi } from "openai";
-import { createInterface } from "readline";
+import * as readline from "node:readline";
 
 function askQuestion(query: string) {
-  const rl = createInterface({
+  const rl = readline.createInterface({
     input: process.stdin,
     output: process.stdout,
-  });
+  } as unknown as readline.ReadLineOptions);
 
   return new Promise<string>((resolve) =>
     rl.question(query, (ans: string) => {

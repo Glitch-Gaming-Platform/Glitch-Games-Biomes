@@ -18,8 +18,15 @@ function ok(cond, msg) {
 console.log("== Harthmere no-Google NPC text fallback v1 ==");
 
 const generatedChat = read("src/pages/api/npcs/generated_chat.ts");
-const talkDialog = read("src/client/components/challenges/TalkToNPCDefaultDialog.tsx");
+const talkDialog = read(
+  "src/client/components/challenges/TalkToNPCDefaultDialog.tsx"
+);
 const voiceRoute = read("src/pages/api/voices/text_to_speech.ts");
+const speechRoute = read("src/pages/api/voices/speech_to_text.ts");
+const speechStatusRoute = read("src/pages/api/voices/speech_status.ts");
+const speechButton = read(
+  "src/client/components/system/NpcSpeechInputButton.tsx"
+);
 const voiceClient = read("src/client/components/system/VoiceChat.tsx");
 const deploy = read("scripts/glitch/deploy-production-local-redis-smoke-v1.sh");
 
@@ -38,12 +45,20 @@ ok(
 );
 ok(
   generatedChat.indexOf("const [entity, user] = await worldApi.get") <
-    generatedChat.indexOf('const key = getSecret("openai-api-key").trim()'),
-  "generated chat loads entity context before checking optional OpenAI config"
+    generatedChat.indexOf("const azureConfig = azureOpenAIConfigFromEnvV1()"),
+  "generated chat loads entity context before checking optional Azure OpenAI config"
 );
 ok(
-  !generatedChat.includes('okOrAPIError(key, "killswitched", "OpenAI API key not found!")'),
+  !generatedChat.includes(
+    'okOrAPIError(key, "killswitched", "OpenAI API key not found!")'
+  ),
   "missing OpenAI key no longer returns a production 503"
+);
+ok(
+  !generatedChat.includes("OpenAIApi") &&
+    !generatedChat.includes("gpt-3.5-turbo") &&
+    !generatedChat.includes("openai-api-key"),
+  "generated chat uses Azure OpenAI env config instead of legacy OpenAI SDK secrets"
 );
 ok(
   talkDialog.includes("matchedAction?.followUpText ?? fallbackDialogText"),
@@ -54,13 +69,35 @@ ok(
   "client dialog does not collapse failed generated chat to the old dead-end text"
 );
 ok(
-  voiceRoute.includes('return { url: "" };'),
-  "voice route returns a silent success when ElevenLabs is intentionally absent"
+  voiceRoute.includes("azureSpeechConfigFromEnvV1") &&
+    voiceRoute.includes('return { url: "" };') &&
+    !voiceRoute.toLowerCase().includes("el" + "even"),
+  "voice route is Azure-only and returns silent success when Azure Speech is absent"
 );
 ok(
-  voiceClient.includes("if (!res.url)") &&
-    voiceClient.includes("return;"),
+  voiceClient.includes("if (!res.url)") && voiceClient.includes("return;"),
   "voice client treats empty audio URLs as text-only dialogue"
+);
+ok(
+  speechRoute.includes("azureSpeechConfigFromEnvV1") &&
+    speechRoute.includes("unavailableReason") &&
+    speechRoute.includes('text: ""'),
+  "speech-to-text route is optional when Azure Speech is absent"
+);
+ok(
+  speechStatusRoute.includes("azureSpeechConfigFromEnvV1") &&
+    speechStatusRoute.includes("azureOpenAIConfigFromEnvV1") &&
+    speechButton.includes("/api/voices/speech_status") &&
+    speechButton.includes("return null"),
+  "speech button is hidden unless Azure speech and generated chat are configured"
+);
+ok(
+  speechButton.includes("/api/voices/speech_to_text") &&
+    speechButton.includes('size="small"') &&
+    talkDialog.includes("handleVoiceTranscript") &&
+    talkDialog.includes("activeQuestVoiceContextForNpcV1") &&
+    talkDialog.includes("voiceConversationActive"),
+  "NPC dialog has a small Azure speech input wired to quest-aware generated responses"
 );
 ok(
   deploy.includes("test-harthmere-no-google-npc-text-v1.cjs"),

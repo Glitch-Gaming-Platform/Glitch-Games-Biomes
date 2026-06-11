@@ -335,9 +335,12 @@ function normalizeHarthmereJobsBoardLawSummaryV1(
     },
     fines:
       raw.fines && typeof raw.fines === "object"
-        ? Object.fromEntries(
+          ? Object.fromEntries(
             Object.entries(raw.fines)
-              .map(([factionId, value]) => [factionId, safeWholeV1(value)])
+              .map(
+                ([factionId, value]) =>
+                  [factionId, safeWholeV1(value)] as [string, number]
+              )
               .filter(([, value]) => value > 0)
           )
         : {},

@@ -86,6 +86,24 @@ describe("BiomesUI HUD visibility settings", () => {
           true
         );
       }
+      assert.equal(
+        zTypesafeLocalStorageSchema.shape[
+          "settings.voice.microphoneDeviceId"
+        ].safeParse("studio-mic").success,
+        true
+      );
+      assert.equal(
+        zTypesafeLocalStorageSchema.shape[
+          "settings.voice.npcSpeechEnabled"
+        ].safeParse(false).success,
+        true
+      );
+      assert.equal(
+        zTypesafeLocalStorageSchema.shape[
+          "settings.voice.microphoneInputEnabled"
+        ].safeParse(false).success,
+        true
+      );
     });
   });
 
@@ -113,6 +131,11 @@ describe("BiomesUI HUD visibility settings", () => {
         effectsVolume={100}
         musicVolume={50}
         voiceVolume={50}
+        microphoneDevices={[
+          { deviceId: "", label: "Browser Default" },
+          { deviceId: "studio", label: "Studio Mic" },
+        ]}
+        selectedMicrophoneDeviceId="studio"
         hudVisibility={biomesHUDVisibilitySnapshotWithDefaultsForTest()}
         shortcuts={DEFAULT_TAB_SHORTCUTS}
       />
@@ -123,6 +146,13 @@ describe("BiomesUI HUD visibility settings", () => {
     }
     assert.ok(html.includes("Show Performance Stats"));
     assert.ok(html.includes("Sound Effects"));
+    assert.ok(html.includes("NPC Speech"));
+    assert.ok(html.includes("Microphone Input"));
+    assert.ok(html.includes("Microphone"));
+    assert.ok(html.includes("Studio Mic"));
+    assert.ok(html.includes('aria-label="NPC Speech"'));
+    assert.ok(html.includes('aria-label="Microphone Input"'));
+    assert.ok(html.includes('aria-label="Microphone"'));
     assert.equal(html.includes("High-contrast highlights"), false);
     assert.equal(html.includes("Screen-reader friendly captions"), false);
   });
@@ -159,5 +189,53 @@ describe("BiomesUI HUD visibility settings", () => {
     assert.equal(objectivesInput.includes("checked"), false);
     assert.equal(hotbarInput.includes("checked"), false);
     assert.equal(miniMapInput.includes("checked"), true);
+  });
+
+  it("renders voice and microphone toggles on by default and disables microphone controls when off", () => {
+    const defaultHtml = renderToStaticMarkup(
+      <OptionsControlsSurfaceForTest
+        showPerformanceHUD={true}
+        graphicsQuality="auto"
+        effectsVolume={100}
+        musicVolume={50}
+        voiceVolume={50}
+        hudVisibility={biomesHUDVisibilitySnapshotWithDefaultsForTest()}
+        shortcuts={DEFAULT_TAB_SHORTCUTS}
+      />
+    );
+    const npcSpeechInput =
+      defaultHtml.match(/<input[^>]*aria-label="NPC Speech"[^>]*>/)?.[0] ?? "";
+    const microphoneInput =
+      defaultHtml.match(
+        /<input[^>]*aria-label="Microphone Input"[^>]*>/
+      )?.[0] ?? "";
+    assert.ok(npcSpeechInput.includes("checked"));
+    assert.ok(microphoneInput.includes("checked"));
+
+    const disabledHtml = renderToStaticMarkup(
+      <OptionsControlsSurfaceForTest
+        showPerformanceHUD={true}
+        graphicsQuality="auto"
+        effectsVolume={100}
+        musicVolume={50}
+        voiceVolume={50}
+        npcSpeechEnabled={false}
+        microphoneInputEnabled={false}
+        hudVisibility={biomesHUDVisibilitySnapshotWithDefaultsForTest()}
+        shortcuts={DEFAULT_TAB_SHORTCUTS}
+      />
+    );
+    const disabledNpcSpeechInput =
+      disabledHtml.match(/<input[^>]*aria-label="NPC Speech"[^>]*>/)?.[0] ?? "";
+    const disabledMicrophoneInput =
+      disabledHtml.match(
+        /<input[^>]*aria-label="Microphone Input"[^>]*>/
+      )?.[0] ?? "";
+    const microphoneSelect =
+      disabledHtml.match(/<select[^>]*aria-label="Microphone"[^>]*>/)?.[0] ??
+      "";
+    assert.equal(disabledNpcSpeechInput.includes("checked"), false);
+    assert.equal(disabledMicrophoneInput.includes("checked"), false);
+    assert.ok(microphoneSelect.includes("disabled"));
   });
 });

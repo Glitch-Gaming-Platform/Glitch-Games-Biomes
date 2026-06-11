@@ -28,6 +28,40 @@ import { pack, unpack } from "msgpackr";
 const FIREHOSE_KEY = Buffer.from("firehose");
 const EVENT_PAYLOAD_FIELD_NAME = Buffer.from("d");
 
+function redisErrorMessage(error: unknown): string {
+  return String((error as { message?: unknown })?.message ?? error);
+}
+
+export function isRedisNoGroupErrorV1(error: unknown): boolean {
+  return redisErrorMessage(error).toLowerCase().includes("nogroup");
+}
+
+function isRedisBusyGroupError(error: unknown): boolean {
+  return redisErrorMessage(error).toLowerCase().includes("busygroup");
+}
+
+async function createRedisFirehoseConsumerGroup(
+  redis: BiomesRedis,
+  group: string,
+  reason: string
+): Promise<boolean> {
+  try {
+    await redis.primary.xgroup("CREATE", FIREHOSE_KEY, group, "$", "MKSTREAM");
+    log.warn("Created Redis firehose consumer group.", { group, reason });
+    return true;
+  } catch (error) {
+    if (isRedisBusyGroupError(error)) {
+      return false;
+    }
+    log.warn("Failed to create Redis firehose consumer group.", {
+      group,
+      reason,
+      error,
+    });
+    return false;
+  }
+}
+
 // Convert firehose events to Redis.
 export function serializeRedisEvent(
   events: ReadonlyArray<FirehoseEvent>
@@ -132,8 +166,7 @@ export class RedisFirehoseSubscription {
   }
 
   private unsupportedCommand(error: unknown, command: string) {
-    const message = String((error as { message?: unknown })?.message ?? error)
-      .toLowerCase();
+    const message = redisErrorMessage(error).toLowerCase();
     return message.includes("unknown command") && message.includes(command);
   }
 
@@ -147,7 +180,12 @@ export class RedisFirehoseSubscription {
       "-",
       "+",
       CONFIG.firehoseClientBatchSize
-    )) as [Buffer, Buffer, Buffer | number | string, Buffer | number | string][];
+    )) as [
+      Buffer,
+      Buffer,
+      Buffer | number | string,
+      Buffer | number | string
+    ][];
     const claimIds = pending
       .filter((entry) => Number(entry[2]) >= minIdleMs)
       .map(([id]) => id);
@@ -186,11 +224,24 @@ export class RedisFirehoseSubscription {
         try {
           return await this.getMissedEventsWithXPending();
         } catch (fallbackError) {
+          if (
+            await this.recoverMissingConsumerGroup(
+              fallbackError,
+              "recover missed events with xpending fallback"
+            )
+          ) {
+            return [[], []];
+          }
           log.warn("Failed to get missed events with Redis 6 fallback", {
             error: fallbackError,
           });
           return [[], []];
         }
+      }
+      if (
+        await this.recoverMissingConsumerGroup(error, "recover missed events")
+      ) {
+        return [[], []];
       }
       log.warn("Failed to get missed events", { error });
     }
@@ -202,6 +253,17 @@ export class RedisFirehoseSubscription {
       return false;
     }
     this.supportsXAutoClaim = false;
+    return true;
+  }
+
+  private async recoverMissingConsumerGroup(
+    error: unknown,
+    reason: string
+  ): Promise<boolean> {
+    if (!isRedisNoGroupErrorV1(error)) {
+      return false;
+    }
+    await createRedisFirehoseConsumerGroup(this.redis, this.group, reason);
     return true;
   }
 
@@ -228,6 +290,11 @@ export class RedisFirehoseSubscription {
         return this.eventsFromItems(items as [RedisStreamId, Buffer[]][]);
       }
     } catch (error) {
+      if (
+        await this.recoverMissingConsumerGroup(error, "recover live events")
+      ) {
+        return [ackIds, events];
+      }
       log.error("Failed to get my events", { error });
     }
     return [ackIds, events];
@@ -235,7 +302,16 @@ export class RedisFirehoseSubscription {
 
   private async ackEvents(acks: Buffer[]): Promise<void> {
     if (acks.length > 0) {
-      await this.redis.primary.xack(FIREHOSE_KEY, this.group, ...acks);
+      try {
+        await this.redis.primary.xack(FIREHOSE_KEY, this.group, ...acks);
+      } catch (error) {
+        if (
+          await this.recoverMissingConsumerGroup(error, "recover event ack")
+        ) {
+          return;
+        }
+        throw error;
+      }
     }
   }
 
@@ -330,17 +406,7 @@ export class RedisFirehose implements Firehose {
       "firehose.subscribe",
       async (signal) => {
         firehoseCount.inc();
-        try {
-          await this.redis.primary.xgroup(
-            "CREATE",
-            FIREHOSE_KEY,
-            group,
-            "$",
-            "MKSTREAM"
-          );
-        } catch (error) {
-          // Ignore the error, it's probably fine [due to it already existing].
-        }
+        await createRedisFirehoseConsumerGroup(this.redis, group, "subscribe");
         return new RedisFirehoseSubscription(
           this.redis,
           group,

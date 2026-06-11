@@ -52,6 +52,9 @@ import type {
 } from "../../../shared/harthmere/business_employee_ai_v1";
 import { fetchHarthmereLiveWithTimeoutV1 } from "@/client/components/harthmere_live_fetch";
 
+export const HARTHMERE_BUSINESS_INVENTORY_LOOT_UPDATED_EVENT_V1 =
+  "biomes:harthmere-business-inventory-loot-updated-v1";
+
 export type {
   HarthmereBusinessBikkieGraphicV1,
   HarthmereBusinessCustomerNpcV1,
@@ -360,7 +363,30 @@ export interface HarthmereBusinessEconomySnapshotV1 {
 export interface HarthmereBusinessInterfaceResponseV1 {
   ok?: boolean;
   economyState?: HarthmereBusinessEconomySnapshotV1;
+  inventoryLootState?: unknown;
+  playerStatusState?: unknown;
   backendMutation?: { warnings?: string[] };
+}
+
+function dispatchHarthmereBusinessInventoryLootUpdatedV1(
+  response: HarthmereBusinessInterfaceResponseV1 | undefined
+) {
+  if (
+    typeof window === "undefined" ||
+    !response?.inventoryLootState ||
+    typeof CustomEvent === "undefined"
+  ) {
+    return;
+  }
+  window.dispatchEvent(
+    new CustomEvent(HARTHMERE_BUSINESS_INVENTORY_LOOT_UPDATED_EVENT_V1, {
+      detail: {
+        body: response,
+        inventoryLootState: response.inventoryLootState,
+        playerStatusState: response.playerStatusState,
+      },
+    })
+  );
 }
 
 export interface HarthmereBusinessVisibleInventoryItemV1 {
@@ -1108,7 +1134,9 @@ export async function submitHarthmereBusinessEconomyMutationV1(
         actorEntityVersion: 1,
         zoneId: options.zoneId ?? "the_grove",
         payload: { operation, ...payload },
+        includeSnapshots: ["economyState", "inventoryLootState", "playerStatusState"],
       }),
+      timeoutMs: 30_000,
     }
   );
   if (!response.ok)
@@ -2610,6 +2638,7 @@ export function createHarthmereBusinessInterfaceAdapterV1(options: {
   ) => {
     try {
       const response = await options.submit?.(operation, payload);
+      dispatchHarthmereBusinessInventoryLootUpdatedV1(response);
       if (response?.economyState)
         setCurrent(
           normalizeHarthmereBusinessEconomySnapshotV1(response.economyState)

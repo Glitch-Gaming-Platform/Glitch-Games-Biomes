@@ -308,7 +308,7 @@ export function harthmereRecipeBookForItemV1(
   itemId: string | undefined
 ): HarthmereRecipeBookDefinitionV1 | undefined {
   if (!itemId) return undefined;
-  return recipeBookByItemIdV1.get(itemId);
+  return recipeBookByItemIdV1.get(itemId as HarthmereRecipeBookIdV1);
 }
 
 export function harthmereRecipeBookForBusinessTypeV1(
@@ -355,7 +355,7 @@ function recipeBookItemDefinitionV1(
     tradeable: false,
     category: "recipe_book",
     objectMetadata: {
-      objectKind: "recipe_book",
+      objectKind: "paperwork",
       physicalForm: "document",
       visualDescription: book.displayName,
       colors: ["paper", "ink", "gold"],

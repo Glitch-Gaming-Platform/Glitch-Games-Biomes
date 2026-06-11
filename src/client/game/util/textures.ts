@@ -20,7 +20,7 @@ export function makeColorMap(
     }
     data = mappedData;
   }
-  const ret = new THREE.DataTexture(data, w, h);
+  const ret = new THREE.DataTexture(data as unknown as BufferSource, w, h);
   ret.flipY = flip;
   ret.format = THREE.RGBAFormat;
   ret.internalFormat = "SRGB8_ALPHA8";
@@ -54,7 +54,7 @@ export function makeColorMapArray(
     }
     data = mappedData;
   }
-  const ret = new THREE.DataArrayTexture(data, w, h, d);
+  const ret = new THREE.DataArrayTexture(data as unknown as BufferSource, w, h, d);
   ret.format = THREE.RGBAFormat;
   ret.generateMipmaps = true;
   ret.internalFormat = srgb ? "SRGB8_ALPHA8" : "RGBA8";
@@ -68,7 +68,7 @@ export function makeColorMapArray(
 }
 
 export function makeAlphaMap(data: Uint8Array, w: number, h: number) {
-  const ret = new THREE.DataTexture(data, w, h);
+  const ret = new THREE.DataTexture(data as unknown as BufferSource, w, h);
   ret.format = THREE.RedFormat;
   ret.generateMipmaps = false;
   ret.internalFormat = "R8";
@@ -82,7 +82,7 @@ export function makeAlphaMap(data: Uint8Array, w: number, h: number) {
 }
 
 export function makeBufferTexture(data: Uint32Array, h: number, w: number) {
-  const ret = new THREE.DataTexture(data, w, h);
+  const ret = new THREE.DataTexture(data as unknown as BufferSource, w, h);
   ret.format = THREE.RedIntegerFormat;
   ret.internalFormat = "R32UI";
   ret.type = THREE.UnsignedIntType;

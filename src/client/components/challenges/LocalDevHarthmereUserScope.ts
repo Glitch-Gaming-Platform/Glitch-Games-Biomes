@@ -17,13 +17,13 @@ function anonymousSessionScope() {
     return HARTHMERE_ANONYMOUS_SCOPE;
   }
   const existing = window.sessionStorage?.getItem(
-    HARTHMERE_ANONYMOUS_SESSION_SCOPE_KEY,
+    HARTHMERE_ANONYMOUS_SESSION_SCOPE_KEY
   );
   if (existing) {
     return existing;
   }
   const next = `anonymous-${Date.now()}-${Math.floor(
-    Math.random() * 1_000_000,
+    Math.random() * 1_000_000
   )}`;
   window.sessionStorage?.setItem(HARTHMERE_ANONYMOUS_SESSION_SCOPE_KEY, next);
   return next;
@@ -39,7 +39,7 @@ function normalizeScope(userId: BiomesId | number | string | undefined | null) {
 }
 
 export function setHarthmereLocalDevUserScope(
-  userId: BiomesId | number | string | undefined | null,
+  userId: BiomesId | number | string | undefined | null
 ) {
   if (!isBrowser()) {
     return;
@@ -49,7 +49,10 @@ export function setHarthmereLocalDevUserScope(
   window.localStorage.setItem(HARTHMERE_ACTIVE_USER_SCOPE_KEY, scope);
   window.dispatchEvent(new CustomEvent("biomes:harthmere-reputation-changed"));
   window.dispatchEvent(new CustomEvent("biomes:harthmere-combat-changed"));
-  window.dispatchEvent(new CustomEvent("biomes:harthmere-multiplayer-combat-changed"));
+  window.dispatchEvent(new CustomEvent("biomes:harthmere-death-changed"));
+  window.dispatchEvent(
+    new CustomEvent("biomes:harthmere-multiplayer-combat-changed")
+  );
   window.dispatchEvent(new CustomEvent("biomes:harthmere-leveling-changed"));
 }
 
@@ -59,7 +62,7 @@ export function getHarthmereLocalDevUserScope() {
   }
   return normalizeScope(
     window.sessionStorage?.getItem(HARTHMERE_ACTIVE_USER_SCOPE_KEY) ??
-      window.localStorage.getItem(HARTHMERE_ACTIVE_USER_SCOPE_KEY),
+      window.localStorage.getItem(HARTHMERE_ACTIVE_USER_SCOPE_KEY)
   );
 }
 

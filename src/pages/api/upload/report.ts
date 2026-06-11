@@ -23,6 +23,13 @@ import { capitalize, isObject } from "lodash";
 import { render } from "prettyjson";
 import { z } from "zod";
 
+function exactArrayBuffer(data: Uint8Array): ArrayBuffer {
+  return data.buffer.slice(
+    data.byteOffset,
+    data.byteOffset + data.byteLength
+  ) as ArrayBuffer;
+}
+
 export const zReportProfileTarget = z.object({
   kind: z.literal("profile"),
   targetId: zBiomesId,
@@ -167,16 +174,20 @@ export default biomesApiHandler(
         title: "Client Cvals",
         filename: "client_cvals.json",
         mimeType: "application/json",
-        data: new TextEncoder().encode(
-          render(reportData.clientCvals, { noColor: true })
+        data: exactArrayBuffer(
+          new TextEncoder().encode(
+            render(reportData.clientCvals, { noColor: true })
+          )
         ),
       },
       {
         title: "ECS State",
         filename: "ecs.json",
         mimeType: "application/json",
-        data: new TextEncoder().encode(
-          render(makeJsonSafe(entity?.materialize()), { noColor: true })
+        data: exactArrayBuffer(
+          new TextEncoder().encode(
+            render(makeJsonSafe(entity?.materialize()), { noColor: true })
+          )
         ),
       },
     ];

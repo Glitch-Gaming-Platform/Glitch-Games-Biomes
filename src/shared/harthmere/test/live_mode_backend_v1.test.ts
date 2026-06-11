@@ -22,6 +22,8 @@ import {
   createHarthmereLiveModeQuestClientSnapshotV1,
   mergeHarthmereLiveModeSharedWorldStateIntoBackendV1,
   parseHarthmereLiveModeSharedWorldStateV1,
+  repairHarthmereStatusReadStaminaDeathV1,
+  tickHarthmereLiveModeStaminaForGameplayV1,
   type HarthmereLiveModeBackendStateV1,
 } from "../live_mode_backend_v1";
 import {
@@ -59,6 +61,7 @@ import {
   HARTHMERE_JOBS_BOARD_INTERACTION_RADIUS_V145,
 } from "@/shared/harthmere/mmo_jobs_board_authority_v1";
 import { harthmereJobsBoardQuestMarkerPositionForIdV1 } from "@/shared/harthmere/jobs_board_quest_marker_positions_v1";
+import { resolveHarthmereProductionMarkerPositionV1 } from "@/shared/harthmere/production_terrain_placement_map_v1";
 import {
   HARTHMERE_JOBS_BOARD_ELITE_MUCKER_BOUNTY_MARKER_ID_V1,
   HARTHMERE_JOBS_BOARD_ELITE_MUCKER_BOUNTY_TARGET_ID_V1,
@@ -919,7 +922,7 @@ describe("parseHarthmereLiveModeBackendStateV1", function () {
     let state = freshState();
     state.inventory.gold = 50_000;
     state.classMagic.knownRecipes = state.classMagic.knownRecipes.filter(
-      (recipeId) => !book.recipeIds.includes(recipeId)
+      (recipeId) => !(book.recipeIds as readonly string[]).includes(recipeId)
     );
     addOpenProductionBusiness(state, "business_weapons_books", {
       typeId: book.businessType,
@@ -1342,6 +1345,106 @@ describe("reduceHarthmereLiveModeBackendStateV1 — death lifecycle", function (
     assert.strictEqual(respawned.combat.hp, respawned.combat.maxHp);
   });
 
+  it("can suppress stamina-depleted death while status polling reaches zero stamina", function () {
+    const s = freshState();
+    s.combat.hp = 80;
+    s.combat.deathState = "alive";
+    s.combat.resources.stamina = 1;
+    s.combat.maxResources.stamina = 100;
+    s.combat.lastStaminaTickMs = NOW_MS - 10 * 60 * 1000;
+
+    const result = tickHarthmereLiveModeStaminaForGameplayV1(s, {
+      nowMs: NOW_MS,
+      gameplayActive: true,
+      allowDeathFromStamina: false,
+    });
+
+    assert.strictEqual(result.changed, true);
+    assert.strictEqual(result.deathTriggered, false);
+    assert.strictEqual(s.combat.hp, 80);
+    assert.strictEqual(s.combat.deathState, "alive");
+    assert.strictEqual(s.combat.resources.stamina, 0);
+    assert.strictEqual(s.combat.deadFromStaminaAtMs, undefined);
+    assert.strictEqual(Object.keys(s.combat.deathRecords).length, 0);
+  });
+
+  it("still records stamina-depleted deaths when explicitly allowed", function () {
+    const s = freshState();
+    s.combat.hp = 80;
+    s.combat.deathState = "alive";
+    s.combat.resources.stamina = 1;
+    s.combat.maxResources.stamina = 100;
+    s.combat.lastStaminaTickMs = NOW_MS - 10 * 60 * 1000;
+
+    const result = tickHarthmereLiveModeStaminaForGameplayV1(s, {
+      nowMs: NOW_MS,
+      gameplayActive: true,
+    });
+
+    assert.strictEqual(result.deathTriggered, true);
+    assert.strictEqual(s.combat.hp, 0);
+    assert.strictEqual(s.combat.deathState, "dead");
+    assert.ok(s.combat.deadFromStaminaAtMs);
+    assert.ok(
+      Object.values(s.combat.deathRecords).some(
+        (record) => record.cause === "stamina_depleted"
+      )
+    );
+  });
+
+  it("repairs stale status-read stamina deaths without reviving newer real deaths", function () {
+    const staminaDeath = freshState();
+    const staminaDeadAtMs = NOW_MS - 60_000;
+    staminaDeath.combat.hp = 0;
+    staminaDeath.combat.maxHp = 100;
+    staminaDeath.combat.deathState = "dead";
+    staminaDeath.combat.resources.stamina = 0;
+    staminaDeath.combat.maxResources.stamina = 100;
+    staminaDeath.combat.deadFromStaminaAtMs = staminaDeadAtMs;
+    staminaDeath.combat.deathRecords[`stamina_depleted_${staminaDeadAtMs}`] = {
+      deathId: `stamina_depleted_${staminaDeadAtMs}`,
+      cause: "stamina_depleted",
+      zoneId: "harthmere",
+      atMs: staminaDeadAtMs,
+      respawnAvailableAtMs: staminaDeadAtMs + 5_000,
+    };
+
+    assert.strictEqual(
+      repairHarthmereStatusReadStaminaDeathV1(staminaDeath, {
+        nowMs: NOW_MS,
+      }).changed,
+      true
+    );
+    assert.strictEqual(staminaDeath.combat.hp, 100);
+    assert.strictEqual(staminaDeath.combat.deathState, "alive");
+    assert.strictEqual(
+      staminaDeath.combat.resources.stamina,
+      staminaDeath.combat.maxResources.stamina
+    );
+    assert.strictEqual(staminaDeath.combat.deadFromStaminaAtMs, undefined);
+
+    const fallDeath = freshState();
+    fallDeath.combat.hp = 0;
+    fallDeath.combat.deathState = "dead";
+    fallDeath.combat.deadFromStaminaAtMs = staminaDeadAtMs;
+    fallDeath.combat.deathRecords.fatal_fall_damage = {
+      deathId: "fatal_fall_damage",
+      cause: "fall_damage",
+      zoneId: "harthmere",
+      atMs: staminaDeadAtMs + 1,
+      respawnAvailableAtMs: staminaDeadAtMs + 5_000,
+    };
+
+    assert.strictEqual(
+      repairHarthmereStatusReadStaminaDeathV1(fallDeath, {
+        nowMs: NOW_MS,
+      }).changed,
+      false
+    );
+    assert.strictEqual(fallDeath.combat.hp, 0);
+    assert.strictEqual(fallDeath.combat.deathState, "dead");
+  });
+
   it("request_revive restores hp to 25% of maxHp and deathState=alive", function () {
     const s = freshState();
     s.combat.hp = 0;
@@ -1349,10 +1452,12 @@ describe("reduceHarthmereLiveModeBackendStateV1 — death lifecycle", function (
     s.combat.maxHp = 200;
     s.combat.resources.mana = 0;
     s.combat.maxResources.mana = 120;
+    s.combat.deadFromStaminaAtMs = NOW_MS - 1000;
     const { state } = applyOne(s, "request_revive");
     assert.strictEqual(state.combat.deathState, "alive");
     assert.strictEqual(state.combat.hp, 50); // 25% of 200
     assert.strictEqual(state.combat.resources.mana, 30);
+    assert.strictEqual(state.combat.deadFromStaminaAtMs, undefined);
   });
 
   it("request_respawn restores hp to maxHp", function () {
@@ -1362,10 +1467,12 @@ describe("reduceHarthmereLiveModeBackendStateV1 — death lifecycle", function (
     s.combat.maxHp = 80;
     s.combat.resources.mana = 0;
     s.combat.maxResources.mana = 120;
+    s.combat.deadFromStaminaAtMs = NOW_MS - 1000;
     const { state } = applyOne(s, "request_respawn");
     assert.strictEqual(state.combat.hp, 80);
     assert.strictEqual(state.combat.deathState, "alive");
     assert.strictEqual(state.combat.resources.mana, 120);
+    assert.strictEqual(state.combat.deadFromStaminaAtMs, undefined);
   });
 
   it("death → revive → death cycle is stable", function () {
@@ -3231,9 +3338,20 @@ describe("reduceHarthmereLiveModeBackendStateV1 — combat target authority", fu
     ));
     const dropId = s.combat.entitySnapshots[targetId].lootDropId!;
     assert.equal(s.combat.entitySnapshots[targetId].isAlive, false);
+    assert.equal(s.combat.entitySnapshots[targetId].animationState, "death");
+    assert.equal(s.combat.entitySnapshots[targetId].animationMoving, false);
     assert.ok(dropId);
     assert.equal(s.inventoryLoot.lootDrops[dropId].status, "available");
     assert.equal(s.inventoryLoot.lootDrops[dropId].itemStacks.health_potion, 1);
+    assert.ok(
+      s.combat.entitySnapshots[targetId].position.y > 0,
+      "defeated body should be lifted above the terrain contact point"
+    );
+    assert.ok(
+      s.inventoryLoot.lootDrops[dropId].position.y >
+        s.combat.entitySnapshots[targetId].position.y,
+      "loot should spawn visibly above the defeated body/ground"
+    );
 
     const claimed = applyOne(
       s,
@@ -3298,6 +3416,38 @@ describe("reduceHarthmereLiveModeBackendStateV1 — combat target authority", fu
     assert.equal(claimed.inventoryLoot.lootDrops[dropId].status, "claimed");
     assert.equal(claimed.banking.materialStorage.raw_meat, 2);
     assert.equal(claimed.inventory.items.raw_meat ?? 0, 0);
+  });
+
+  it("defaults named livestock species to raw meat even when bridged without animal kind", function () {
+    const s = freshState();
+    const targetId = "live-cow-species-meat-drop";
+    s.classMagic.knownAbilities = ["basic_attack"];
+    s.classMagic.loadout = { slot_0: "basic_attack" };
+    s.combat.entitySnapshots[targetId] = {
+      hp: 1,
+      maxHp: 30,
+      position: { x: 1, y: 0, z: 0 },
+      isHostile: false,
+      isAlive: true,
+      isAttackable: true,
+      entityKind: "npc",
+      species: "cow",
+      level: 1,
+    };
+
+    const result = applyOne(
+      s,
+      "request_attack",
+      { abilityId: "basic_attack" },
+      {
+        targetId,
+        requestId: "live_hit_4_cow_species_meat",
+        idempotencyKey: "live_hit_4_cow_species_meat_key",
+      }
+    ).state;
+    const dropId = result.combat.entitySnapshots[targetId].lootDropId!;
+    assert.ok(dropId);
+    assert.equal(result.inventoryLoot.lootDrops[dropId].itemStacks.raw_meat, 2);
   });
 
   it("does not auto-meat protected animals, owned pets, or explicit meat drops", function () {
@@ -4599,7 +4749,10 @@ describe("reduceHarthmereLiveModeBackendStateV1 — quest state", function () {
       result.state.building.inWorldMarkers[
         LIVE_ENTITY_HELPER_MUCK_BOSS_MARKER_ID_V1
       ].position,
-      marker!.position
+      resolveHarthmereProductionMarkerPositionV1({
+        markerId: LIVE_ENTITY_HELPER_MUCK_BOSS_MARKER_ID_V1,
+        fallback: marker!.position,
+      })
     );
 
     const notReady = canCompleteLiveEntityHelperQuestV1(quest!, {

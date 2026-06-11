@@ -30,7 +30,7 @@ export function makeThreeTexture(
 ) {
   ok([3, 4].includes(pixels.shape[2]));
   const [h, w] = pixels.shape;
-  const ret = new THREE.DataTexture(maybeAddAlpha3(pixels).data, w, h);
+  const ret = new THREE.DataTexture(maybeAddAlpha3(pixels).data as unknown as BufferSource, w, h);
   ret.flipY = flip;
   ret.format = THREE.RGBAFormat;
   ret.generateMipmaps = true;
@@ -51,7 +51,7 @@ export function makeThreeTextureArray(
 ) {
   ok([3, 4].includes(pixels.shape[3]));
   const [d, h, w] = pixels.shape;
-  const ret = new THREE.DataArrayTexture(maybeAddAlpha4(pixels).data, w, h, d);
+  const ret = new THREE.DataArrayTexture(maybeAddAlpha4(pixels).data as unknown as BufferSource, w, h, d);
   ret.flipY = flip;
   ret.format = THREE.RGBAFormat;
   ret.generateMipmaps = true;

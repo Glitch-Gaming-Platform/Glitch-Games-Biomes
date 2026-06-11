@@ -207,7 +207,7 @@ export function createDropsForBag<
         dropIds.pop()!,
         origin,
         mined,
-        [bag.values().next().value],
+        [bag.values().next().value!],
         dropFilter
       )
     );

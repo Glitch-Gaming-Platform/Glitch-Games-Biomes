@@ -365,6 +365,36 @@ describe("Biomes UI progression tabs", () => {
     assert.equal(display.resourceValue, 3);
   });
 
+  it("does not let positive local vitals hide a server-dead live status", () => {
+    const display = biomesUIVitalsDisplayFromLiveStatusForTest(
+      {
+        className: "Warrior",
+        level: 1,
+        combat: {
+          hp: 0,
+          maxHp: 100,
+          deathState: "dead",
+          primaryResource: "stamina",
+          resource: 0,
+          maxResource: 100,
+        },
+      },
+      {
+        hp: 61,
+        maxHp: 240,
+        combatState: "ready",
+        resourceLabel: "Mana",
+        resourceValue: 122,
+        resourceMax: 122,
+      }
+    );
+
+    assert.equal(display.hp, 0);
+    assert.equal(display.maxHp, 100);
+    assert.equal(display.combatState, "dead");
+    assert.equal(display.resourceValue, 0);
+  });
+
   it("does not let stale live death metadata keep the HUD at full health", () => {
     const display = biomesUIVitalsDisplayFromLiveStatusForTest(
       {
@@ -843,7 +873,7 @@ describe("Biomes UI progression tabs", () => {
         seed_carrot: 1,
       },
       availableCookingStations: ["campfire"],
-      plots: [{ plotId: "farm_plot_001", ready: true }],
+      plots: [{ plotId: "farm_plot_001", cropId: "wheat", ready: true }],
       livestock: [
         {
           livestockId: "cow_001",
@@ -865,6 +895,10 @@ describe("Biomes UI progression tabs", () => {
     assert.deepEqual(farmingFoodQuickActionForKeyV1(model, "KeyF")?.payload, {
       plotId: "farm_plot_001",
     });
+    assert.deepEqual(
+      model.actions.find((action) => action.id === "water_plot")?.payload,
+      { plotId: "farm_plot_001" }
+    );
     assert.equal(
       farmingFoodQuickActionForKeyV1(model, "KeyR")?.id,
       "eat_best_food"

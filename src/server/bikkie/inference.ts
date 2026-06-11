@@ -74,8 +74,10 @@ function toDataUri(buffer: Buffer) {
 function loadVoxForWorld(
   data: Buffer | l.GeneralNode<"Vox">,
   { color, isWearable }: { color?: string; isWearable?: boolean }
-) {
-  let vox = data instanceof Buffer ? l.LoadVox(toDataUri(data)) : data;
+): l.GeneralNode<"Vox"> {
+  let vox: l.GeneralNode<"Vox"> = Buffer.isBuffer(data)
+    ? l.LoadVox(toDataUri(data))
+    : data;
   const colorDescriptor = colorStringToDescriptor(color);
   if (colorDescriptor) {
     vox = l.ReplacePaletteEntries(

@@ -1,5 +1,5 @@
 import { applySourceMapToLine, SourceMapCache } from "@/server/web/source_maps";
-import readline from "readline";
+import * as readline from "node:readline";
 
 // Use this script to deobfuscate a given stack trace.
 // The source maps used for the translation will be looked up in the
@@ -15,7 +15,7 @@ async function main() {
     input: process.stdin,
     output: process.stdout,
     terminal: false,
-  });
+  } as unknown as readline.ReadLineOptions);
 
   const sourceMapCache = new SourceMapCache();
 

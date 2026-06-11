@@ -241,12 +241,12 @@ export function computeTriggerProgress(
       const children = triggerDef.triggers.map((child) =>
         computeTriggerProgress(userId, table, deps, child, stateProvider)
       );
-      const completedChildren = state?.firedAt
-        ? children.length
-        : children.reduce(
-            (acc, child) => acc + child?.progressPercentage ?? 0,
-            0
-          );
+          const completedChildren = state?.firedAt
+            ? children.length
+            : children.reduce(
+                (acc, child) => acc + (child?.progressPercentage ?? 0),
+                0
+              );
 
       const count = state?.firedAt
         ? children.length

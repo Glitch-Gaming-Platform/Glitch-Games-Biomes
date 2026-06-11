@@ -31,6 +31,9 @@ const overlay = read(
 const objectInteractions = read(
   "src/client/components/challenges/harthmereObjectInteractions.ts"
 );
+const objectContainers = read(
+  "src/client/components/challenges/harthmereObjectContainers.ts"
+);
 const dialogueSemantics = read(
   "src/client/components/challenges/dialogueObjectSemantics.ts"
 );
@@ -227,9 +230,17 @@ ok(
   "inspect overlay restores an F-key container action for authored objects"
 );
 ok(
+  objectContainers.includes("HARTHMERE_ROAD_AHEAD_CLOTHING_LOOT_VERSION_V1") &&
+    objectContainers.includes("backfillLegacySealedRoadAheadClothingCrateV1") &&
+    objectContainers.includes("questLootVersion"),
+  "object containers backfill legacy sealed Road Ahead clothing crates once"
+);
+ok(
   overlay.includes("isHarthmereNonLivingObjectLabelV1") &&
     overlay.includes("performHarthmereObjectInteractionV1") &&
-    objectInteractions.includes("HARTHMERE_WORLD_OBJECT_INTERACTION_EVENT_V1") &&
+    objectInteractions.includes(
+      "HARTHMERE_WORLD_OBJECT_INTERACTION_EVENT_V1"
+    ) &&
     objectInteractions.includes(
       "dispatchHarthmereWorldObjectInteractionEventV1"
     ),

@@ -1,4 +1,5 @@
 import type { NavigationAidKind, NavigationAidSpec } from "@/client/game/helpers/navigation_aids";
+import { resolveHarthmereProductionMarkerPositionV1 } from "@/shared/harthmere/production_terrain_placement_map_v1";
 
 export const BIOMES_UI_ACTIVE_MAP_PIN_STORAGE_KEY_V142 = "biomes_ui_active_map_pin_v142";
 export const BIOMES_UI_ACTIVE_MAP_PIN_EVENT_V142 = "biomes-ui-active-map-pin-v142";
@@ -73,11 +74,15 @@ export function activeBiomesUIMapPinFromMarkerForTest(marker: BiomesUIMapPinSour
   if (!markerId || !label || !worldPosition) {
     return undefined;
   }
+  const resolvedWorldPosition = resolveHarthmereProductionMarkerPositionV1({
+    markerId,
+    fallback: worldPosition,
+  }) as [number, number, number];
   return {
     markerId,
     label,
     kind: String(marker.kind ?? "objective"),
-    worldPosition,
+    worldPosition: resolvedWorldPosition,
     description: typeof marker.description === "string" && marker.description.trim() ? marker.description.trim() : undefined,
     setAtMs: nowMs,
   };

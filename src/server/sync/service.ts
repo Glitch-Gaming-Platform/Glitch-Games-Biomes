@@ -47,6 +47,7 @@ import { decodeVersionMap, zEncodedVersionMap } from "@/shared/ecs/version";
 import type { WrappedEvent } from "@/shared/ecs/zod";
 import { WrappedChange } from "@/shared/ecs/zod";
 import { reportFunnelStage } from "@/shared/funnel";
+import { fallbackWorldMetadataV1 } from "@/shared/game/ecs_resources";
 import type { BiomesId } from "@/shared/ids";
 import { log } from "@/shared/logging";
 import { growAABB } from "@/shared/math/linear";
@@ -479,16 +480,21 @@ export class SyncService
           lastUpdatedPlayerCount.elapsed >
             CONFIG.syncUpdatePlayerCountThrottleMs
         ) {
-          const [tick] = await this.worldApi.getWithVersion(WorldMetadataId);
+          const [tick, worldMetadataEntity] =
+            await this.worldApi.getWithVersion(WorldMetadataId);
+          const materializedMetadata = worldMetadataEntity?.materialize();
           lastUpdatedPlayerCount.reset();
           lastSentPlayers = this.index.playerCount;
           yield {
             ecs: [
               new WrappedSyncChange({
                 kind: "update",
-                tick,
+                tick: tick ?? 1,
                 entity: {
                   id: WorldMetadataId,
+                  world_metadata:
+                    materializedMetadata?.world_metadata ??
+                    fallbackWorldMetadataV1(),
                   synthetic_stats: SyntheticStats.create({
                     online_players: lastSentPlayers,
                   }),

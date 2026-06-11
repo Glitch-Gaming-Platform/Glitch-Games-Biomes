@@ -2104,6 +2104,20 @@ export class PlayerScript implements Script {
       this.applyHpChange(-damage, {
         kind: "drown",
       });
+      const globalScope = globalThis as unknown as {
+        window?: {
+          dispatchEvent?: (event: Event) => boolean;
+          CustomEvent?: typeof CustomEvent;
+        };
+      };
+      const win = globalScope.window;
+      if (win?.dispatchEvent && win.CustomEvent) {
+        win.dispatchEvent(
+          new win.CustomEvent("biomes:harthmere-player-drowning-damage", {
+            detail: { damage },
+          })
+        );
+      }
       fireAndForget(
         submitHarthmereDrowningDamageLiveModeV1(damage),
         "Error submitting Harthmere live drowning damage"
@@ -2528,6 +2542,7 @@ export class PlayerScript implements Script {
       y: nextPosition[1],
       canTakeFallDamage: canTrackFallDamage,
       canApplyFallDamage: localPlayer.fallAllowsDamage,
+      landingImpactFallbackBlocks: groundImpact,
     });
     this.fallTracker = fall.state;
     if (fall.hpDelta < 0) {

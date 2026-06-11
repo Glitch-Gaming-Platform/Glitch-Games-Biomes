@@ -152,10 +152,7 @@ export class UserRobot implements Robot {
   ) {
     ok(this.delta.robotComponent());
     this.inventory = _inventory.inventory as ContainerInventoryEditor;
-    ok(this.delta.robotComponent()?.internal_battery_charge !== undefined);
-    ok(this.delta.robotComponent()?.internal_battery_capacity !== undefined);
-    ok(this.delta.robotComponent()?.trigger_at !== undefined);
-    ok(this.delta.robotComponent()?.last_update !== undefined);
+    this.repairLegacyRobotComponent();
 
     const timeSinceLastUpdate =
       secondsSinceEpoch() - this.delta.robotComponent()!.last_update!;
@@ -201,6 +198,51 @@ export class UserRobot implements Robot {
 
   private setLastUpdateToBeNow() {
     this.delta.mutableRobotComponent().last_update = secondsSinceEpoch();
+  }
+
+  private repairLegacyRobotComponent() {
+    const robotComponent = this.delta.mutableRobotComponent();
+    const now = secondsSinceEpoch();
+    const repairedFields: string[] = [];
+    const inferredCharge =
+      robotComponent.trigger_at !== undefined
+        ? Math.max(0, robotComponent.trigger_at - now)
+        : DEFAULT_ROBOT_EXPIRATION_S;
+
+    if (robotComponent.internal_battery_capacity === undefined) {
+      robotComponent.internal_battery_capacity = Math.max(
+        ROBOT_EXPIRATION_S,
+        inferredCharge
+      );
+      repairedFields.push("internal_battery_capacity");
+    }
+    if (robotComponent.internal_battery_charge === undefined) {
+      robotComponent.internal_battery_charge = Math.min(
+        robotComponent.internal_battery_capacity,
+        inferredCharge
+      );
+      repairedFields.push("internal_battery_charge");
+    }
+    if (robotComponent.last_update === undefined) {
+      robotComponent.last_update = now;
+      repairedFields.push("last_update");
+    }
+    if (robotComponent.trigger_at === undefined) {
+      robotComponent.trigger_at = now + robotComponent.internal_battery_charge;
+      repairedFields.push("trigger_at");
+    }
+
+    if (repairedFields.length > 0) {
+      log.warn("Repaired legacy user robot battery metadata.", {
+        robotId: this.delta.id,
+        repairedFields,
+      });
+    }
+
+    ok(robotComponent.internal_battery_charge !== undefined);
+    ok(robotComponent.internal_battery_capacity !== undefined);
+    ok(robotComponent.trigger_at !== undefined);
+    ok(robotComponent.last_update !== undefined);
   }
 
   id(): BiomesId {

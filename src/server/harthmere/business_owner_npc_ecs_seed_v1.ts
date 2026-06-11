@@ -1,9 +1,14 @@
 import { npcEntity } from "@/server/spawn/spawn_npc";
 import type { Change, ProposedChange } from "@/shared/ecs/change";
 import { secondsSinceEpoch } from "@/shared/ecs/config";
-import { EntityDescription, QuestGiver } from "@/shared/ecs/gen/components";
+import {
+  EntityDescription,
+  QuestGiver,
+  Voice,
+} from "@/shared/ecs/gen/components";
 import { HARTHMERE_BUSINESS_OWNER_NPC_SEEDS_V1 } from "@/shared/harthmere/business_owner_npc_seed_v1";
 import { harthmereBusinessOwnerRoleClothingV1 } from "@/shared/harthmere/business_npc_cosmetics_v1";
+import { harthmereVoiceProfileForActorV1 } from "@/shared/harthmere/npc_voice_profiles_v1";
 import {
   makeHarthmereNpcAppearanceConfig,
   withHarthmereAppearanceMarker,
@@ -106,6 +111,17 @@ export function buildHarthmereBusinessOwnerNpcSeedChangesV1(input: {
       quest_giver: QuestGiver.create({
         concurrent_quests: 1,
         concurrent_quest_dialog: npcDialogV1(seed.line),
+      }),
+      voice: Voice.create({
+        voice: harthmereVoiceProfileForActorV1({
+          source: "business_owner_v1",
+          id: seed.ownerNpcId,
+          entityId: seed.entityId,
+          displayName: seed.displayName,
+          role: seed.roleTitle,
+          kind: "humanoid",
+          background: seed.description,
+        }).voiceParameterId,
       }),
     };
     changes.push({

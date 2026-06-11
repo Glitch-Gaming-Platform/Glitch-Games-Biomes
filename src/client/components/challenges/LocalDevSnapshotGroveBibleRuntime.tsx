@@ -1,7 +1,10 @@
 import type { TalkDialogStepAction } from "@/client/components/challenges/TalkDialogModalStep";
 import { useClientContext } from "@/client/components/contexts/ClientContextReactContext";
-import { grantHarthmereItem } from "@/client/components/challenges/LocalDevHarthmereInventorySystem";
-import { grantHarthmereTutorialInventoryItem } from "@/client/components/challenges/LocalDevHarthmereInventorySystem";
+import {
+  HARTHMERE_INVENTORY_EVENT,
+  grantHarthmereItem,
+  grantHarthmereTutorialInventoryItem,
+} from "@/client/components/challenges/LocalDevHarthmereInventorySystem";
 import {
   HARTHMERE_WORLD_OBJECT_INTERACTION_EVENT_V1,
   type HarthmereWorldObjectInteractionEventDetailV1,
@@ -793,6 +796,8 @@ function snapshotGroveEventFromWorldObjectInteractionV1(
     "cook",
     "check_outfit",
     "take_photo",
+    "recover",
+    "tend",
   ].includes(kind);
 
   switch (trigger) {
@@ -807,7 +812,16 @@ function snapshotGroveEventFromWorldObjectInteractionV1(
       }
       return undefined;
     case "interact":
-      if (isWorldUse || kind === "open_container") {
+      if (
+        isWorldUse ||
+        kind === "open_container" ||
+        (kind === "gather" &&
+          isSnapshotGroveWorldObjectPickupTriggerV1(
+            quest,
+            objectiveIndex,
+            trigger
+          ))
+      ) {
         return { ...base, kind: "inspect_frame" } as any;
       }
       return undefined;
@@ -829,12 +843,12 @@ function snapshotGroveEventFromWorldObjectInteractionV1(
       }
       return undefined;
     case "item_grant":
-      if (kind === "open_container" || kind === "gather") {
+      if (isWorldUse || kind === "open_container" || kind === "gather") {
         return { ...base, kind: "inventory_change" } as any;
       }
       return undefined;
     case "collect":
-      if (kind === "open_container" || kind === "gather") {
+      if (isWorldUse || kind === "open_container" || kind === "gather") {
         return { ...base, kind: "inventory_change" } as any;
       }
       return undefined;
@@ -859,15 +873,65 @@ type SnapshotGrovePracticeItemV110 = {
   label: string;
 };
 
+let snapshotGroveSuppressInventoryAdvanceDepthV1 = 0;
+
+function withSnapshotGroveInventoryAdvanceSuppressedV1<T>(fn: () => T): T {
+  snapshotGroveSuppressInventoryAdvanceDepthV1 += 1;
+  try {
+    return fn();
+  } finally {
+    snapshotGroveSuppressInventoryAdvanceDepthV1 = Math.max(
+      0,
+      snapshotGroveSuppressInventoryAdvanceDepthV1 - 1
+    );
+  }
+}
+
+function snapshotGroveObjectiveTextV110(
+  quest: SnapshotGroveQuestV75,
+  objectiveIndex: number
+) {
+  return (
+    quest.objectives[
+      Math.max(0, Math.min(quest.objectives.length - 1, objectiveIndex))
+    ] ?? ""
+  );
+}
+
 function snapshotGrovePracticeItemForObjectiveV110(
   quest: SnapshotGroveQuestV75,
   objectiveIndex: number
 ): SnapshotGrovePracticeItemV110 | undefined {
-  const objective =
-    quest.objectives[
-      Math.max(0, Math.min(quest.objectives.length - 1, objectiveIndex))
-    ];
-  const text = `${quest.id} ${quest.title} ${objective}`.toLowerCase();
+  const text = snapshotGroveObjectiveTextV110(
+    quest,
+    objectiveIndex
+  ).toLowerCase();
+  if (
+    /clean root|mucked root|root sample|muck sample|sealed muck|mudroot/.test(
+      text
+    )
+  ) {
+    return {
+      itemId: "mudroot",
+      quantity: 1,
+      label: /mucked|muck|sealed/.test(text)
+        ? "Mucked Root Sample"
+        : "Clean Root Sample",
+    };
+  }
+  if (/mushrooms?|fungus|spore|cap/.test(text)) {
+    return {
+      itemId: "forest_mushroom",
+      quantity: 1,
+      label: "Forage Mushroom",
+    };
+  }
+  if (/grain|wheat|feed/.test(text)) {
+    return { itemId: "field_wheat", quantity: 1, label: "Practice Grain" };
+  }
+  if (/bright berr|berries|berry/.test(text)) {
+    return { itemId: "wild_berries", quantity: 1, label: "Bright Berries" };
+  }
   if (/ration|food|snack|eat/.test(text)) {
     return { itemId: "road_ration", quantity: 1, label: "Road Ration" };
   }
@@ -879,39 +943,24 @@ function snapshotGrovePracticeItemForObjectiveV110(
     };
   }
   if (
-    /clean root|mucked root|root sample|muck sample|sealed muck|mudroot/.test(
+    /wood scraps?|scrap wood|practice sticks?|sticks?|branches?|wheel|ingredients?|skewers?/.test(
       text
     )
   ) {
-    return {
-      itemId: "mudroot",
-      quantity: 1,
-      label: /mucked|muck/.test(text)
-        ? "Mucked Root Sample"
-        : "Clean Root Sample",
-    };
-  }
-  if (/bright berr|berries|berry/.test(text)) {
-    return { itemId: "wild_berries", quantity: 1, label: "Bright Berries" };
-  }
-  if (/wood scrap|practice stick|stick|branch|wheel/.test(text)) {
     return {
       itemId: "softwood_log",
       quantity: text.includes("three") || text.includes("3") ? 3 : 1,
       label: "Practice Wood",
     };
   }
-  if (/stone|repair piece|block|road block|place/.test(text)) {
+  if (
+    /stone|repair piece|block|road block|drop|dropped stack|stack back/.test(
+      text
+    )
+  ) {
     return { itemId: "rough_stone", quantity: 1, label: "Practice Stone" };
   }
-  if (/cloth|trade slot|practice item/.test(text)) {
-    return {
-      itemId: "cloth_scrap",
-      quantity: 1,
-      label: "Practice Trade Cloth",
-    };
-  }
-  if (/bolt|coil|metal/.test(text)) {
+  if (/bolt|coil|metal|hinges?|part/.test(text)) {
     return { itemId: "scrap_metal", quantity: 1, label: "Road Bolt" };
   }
   if (/key/.test(text)) {
@@ -920,7 +969,32 @@ function snapshotGrovePracticeItemForObjectiveV110(
   if (/camera|photo/.test(text)) {
     return { itemId: "old_coin", quantity: 1, label: "Camera Practice Token" };
   }
+  if (/rubbings?|track rubbings?/.test(text)) {
+    return {
+      itemId: "cloth_scrap",
+      quantity: text.includes("three") || text.includes("3") ? 3 : 1,
+      label: "Track Rubbings",
+    };
+  }
+  if (
+    /cloth|trade slot|practice item|pail|parcel|packet|letter|slip|sack|basket|tray|order|recipe|tuning strip|strip/.test(
+      text
+    )
+  ) {
+    return {
+      itemId: "cloth_scrap",
+      quantity: 1,
+      label: "Practice Trade Cloth",
+    };
+  }
   return undefined;
+}
+
+export function snapshotGrovePracticeItemForObjectiveForTestV110(
+  quest: SnapshotGroveQuestV75,
+  objectiveIndex: number
+) {
+  return snapshotGrovePracticeItemForObjectiveV110(quest, objectiveIndex);
 }
 
 function grantSnapshotGrovePracticeItemV110(
@@ -944,6 +1018,54 @@ function grantSnapshotGrovePracticeItemV110(
     `${quest.title}: ${item.label}`
   );
   return item;
+}
+
+function isSnapshotGroveWorldObjectPickupTriggerV1(
+  quest: SnapshotGroveQuestV75,
+  objectiveIndex: number,
+  trigger: string | undefined
+) {
+  if (trigger === "collect" || trigger === "item_grant") {
+    return true;
+  }
+  if (trigger !== "interact") {
+    return false;
+  }
+  return /\b(take|pick up|collect|gather|retrieve|recover|dig)\b/i.test(
+    snapshotGroveObjectiveTextV110(quest, objectiveIndex)
+  );
+}
+
+function grantSnapshotGroveWorldObjectPickupItemV1(
+  quest: SnapshotGroveQuestV75,
+  objectiveIndex: number,
+  trigger: string | undefined
+) {
+  if (
+    !isSnapshotGroveWorldObjectPickupTriggerV1(quest, objectiveIndex, trigger)
+  ) {
+    return undefined;
+  }
+  const item = snapshotGrovePracticeItemForObjectiveV110(quest, objectiveIndex);
+  if (!item) {
+    return undefined;
+  }
+  grantHarthmereItem(
+    item.itemId,
+    item.quantity,
+    `${quest.title}: ${item.label}`
+  );
+  return item;
+}
+
+export function grantSnapshotGroveWorldObjectPickupItemForTestV1(
+  quest: SnapshotGroveQuestV75,
+  objectiveIndex: number,
+  trigger: string | undefined
+) {
+  return withSnapshotGroveInventoryAdvanceSuppressedV1(() =>
+    grantSnapshotGroveWorldObjectPickupItemV1(quest, objectiveIndex, trigger)
+  );
 }
 
 // SNAPSHOT_GROVE_TUTOR_HIGHLIGHTS_V109:
@@ -1762,15 +1884,45 @@ export const SnapshotGroveBibleRuntimeControllerV75: React.FunctionComponent<{}>
       if (typeof window === "undefined") {
         return;
       }
+      const handler = () => {
+        if (snapshotGroveSuppressInventoryAdvanceDepthV1 > 0) {
+          return;
+        }
+        const current = readSnapshotGroveQuestStateV75();
+        const quest = questByIdV75(current.activeQuestId);
+        if (!quest || current.completedQuestIds.includes(quest.id)) {
+          return;
+        }
+        const event = { kind: "inventory_change" } as GardenHoseEvent;
+        if (
+          doesEventAdvanceQuestV75(event, quest, current.activeObjectiveIndex)
+        ) {
+          advanceSnapshotGroveQuestV75(
+            quest,
+            mapManager,
+            "local inventory changed",
+            resources
+          );
+        }
+      };
+      window.addEventListener(HARTHMERE_INVENTORY_EVENT, handler);
+      return () =>
+        window.removeEventListener(HARTHMERE_INVENTORY_EVENT, handler);
+    }, [mapManager, resources]);
+
+    useEffect(() => {
+      if (typeof window === "undefined") {
+        return;
+      }
       const handler = (browserEvent: Event) => {
         const current = readSnapshotGroveQuestStateV75();
         const quest = questByIdV75(current.activeQuestId);
         if (!quest || current.completedQuestIds.includes(quest.id)) {
           return;
         }
-        const detail = (browserEvent as CustomEvent<
-          HarthmereWorldObjectInteractionEventDetailV1
-        >).detail;
+        const detail = (
+          browserEvent as CustomEvent<HarthmereWorldObjectInteractionEventDetailV1>
+        ).detail;
         if (!detail) {
           return;
         }
@@ -1783,10 +1935,22 @@ export const SnapshotGroveBibleRuntimeControllerV75: React.FunctionComponent<{}>
           event &&
           doesEventAdvanceQuestV75(event, quest, current.activeObjectiveIndex)
         ) {
+          const grantedPracticeItem =
+            withSnapshotGroveInventoryAdvanceSuppressedV1(() =>
+              grantSnapshotGroveWorldObjectPickupItemV1(
+                quest,
+                current.activeObjectiveIndex,
+                (event as any).trigger
+              )
+            );
           advanceSnapshotGroveQuestV75(
             quest,
             mapManager,
-            `${detail.kind}:${detail.label ?? "world_object"}`,
+            grantedPracticeItem
+              ? `${detail.kind}:${detail.label ?? "world_object"}:${
+                  grantedPracticeItem.itemId
+                }`
+              : `${detail.kind}:${detail.label ?? "world_object"}`,
             resources
           );
         }

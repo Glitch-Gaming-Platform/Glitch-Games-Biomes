@@ -605,7 +605,7 @@ function fixtureMaterialV1(
     case "safety":
       return guideGlassMaterialV1();
     case "stock":
-      return guideMaterialV1("woodContainer");
+      return guideMaterialV1("warm_wood_plank");
     case "trim":
       return guideMaterialV1(record.buildingStyleKit.trim);
     case "wall":
@@ -622,9 +622,26 @@ function fixtureSourceAssetKeyV1(
   if (fixture.role === "customer_queue_space") return undefined;
   if (fixture.role === "service_counter") return "table_long";
   if (fixture.role === "dashboard_access") return "table_small";
+  if (/chair/.test(label)) return "chair";
+  if (/stool/.test(label)) return "stool_fp";
+  if (/bed|cot/.test(label)) return "bed_twin1";
+  if (/nightstand/.test(label)) return "nightstand";
+  if (/lamp/.test(label)) return "obj_lamp_ground_small";
   if (fixture.role === "seating") return "bench_fp";
   if (fixture.role === "primary_station") return fixture.bikkieGraphicId;
-  if (/book|blueprint|sample|shelf|rack|larder|pantry|storage|stock/.test(label)) {
+  if (fixture.role === "stock_storage") {
+    if (
+      /cabinet|wardrobe|locker|linen|deed|permit|medicine|apothecary/.test(
+        label
+      )
+    )
+      return "cabinet";
+    return "shelf_large";
+  }
+  if (/book|ledger|gift|notice/.test(label)) return "book_stack_2";
+  if (
+    /book|blueprint|sample|shelf|rack|larder|pantry|storage|stock/.test(label)
+  ) {
     return "shelf_large";
   }
   if (
@@ -634,7 +651,7 @@ function fixtureSourceAssetKeyV1(
   )
     return "cabinet";
   if (/crate|cart|chest|linen|bin|tank|canister|barrel|drum|vat/.test(label))
-    return "crate_wooden_fp";
+    return "cabinet";
   if (
     /candle|lantern|rune|ward|magic|steam|warning|anomaly|light|hearth|cauldron|forge|kiln|furnace|ember/.test(
       label
@@ -849,11 +866,11 @@ function addGuideExteriorDressingV1(
         addExteriorAssetV1(
           group,
           record,
-          "crate_wooden_fp",
-          `guide crate ${offset}`,
-          [0.95, 0.72, 0.95],
-          [baseX + offset, baseY + 0.36, baseZ - 0.6],
-          "woodContainer"
+          offset === 5.4 ? "logs" : "shelf_large",
+          `guide storefront display ${offset}`,
+          offset === 5.4 ? [1.2, 0.5, 0.8] : [1.1, 1.2, 0.55],
+          [baseX + offset, baseY + (offset === 5.4 ? 0.25 : 0.6), baseZ - 0.6],
+          "warm_wood_plank"
         );
       }
       break;

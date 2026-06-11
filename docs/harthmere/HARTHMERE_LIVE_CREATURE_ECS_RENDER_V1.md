@@ -1,12 +1,24 @@
 # Harthmere Live-Creature ECS Render, Targeting, Spawns & Respawn (V1)
 
-This document describes the system that makes every living thing in Harthmere —
-muckers, hexes, animals, quest/escort/hired creatures, **and** town humans (the
-Doc, the Chef, guards, merchants) — render on its real ECS entity so it is
-**hittable**, **non-flickering**, randomly spread across the world, and
-**respawns** after it is killed.
+> **Status update:** this document originally treated ECS-driven rendering and
+> crosshair live-mode targeting as the primary fix for creature hits. That was
+> incomplete. The working hit fix is the native cursor/ECS attack path described
+> in `docs/harthmere/HARTHMERE_NATIVE_CURSOR_ATTACK_TARGETING_V1.md`.
+>
+> In short: seeded muckers, hexes, cows, sheep, and rabbits are real ECS entities
+> with `collideable`; the blocker was that their reused `dMucker` NPC type has
+> `damageable.attackable: false`, so `canAttackFilter(...)` omitted them before
+> left-click could publish `UpdateNpcHealthEvent`. The current fix lets explicit
+> Harthmere live-target semantics override that legacy Bikkie flag and adds a
+> metadata ray fallback for renderable NPCs missing from `CollideableSelector`.
 
-## The bug this fixes
+This document describes the render/respawn system that can make living things in Harthmere:
+muckers, hexes, animals, quest/escort/hired creatures, **and** town humans (the
+Doc, the Chef, guards, merchants) render on their real ECS entities so they are
+**non-flickering**, randomly spread across the world, and able to line up with
+the native cursor hit path. It is not the primary damage fix by itself.
+
+## The rendering bug this addresses
 
 Historically the creatures you saw were **client-side renderer meshes** drawn
 from a static `PLACEMENTS` list in
@@ -23,7 +35,37 @@ muck patches and out of the Grove. So:
 - Town NPCs that existed as **both** a static placement and a seeded ECS entity
   flickered as the two representations competed.
 
-The fix is to make the **visible mesh be the ECS entity**: one source of truth.
+The render-side fix is to make the **visible mesh be the ECS entity**: one
+source of truth. The attack-side fix is separate and lives in the native cursor
+filter; see `HARTHMERE_NATIVE_CURSOR_ATTACK_TARGETING_V1.md`.
+
+## Attack Path Correction
+
+The confirmed working attack path is:
+
+1. `src/client/game/scripts/cursor.ts` ray-tests ECS entities and fills
+   `cursor.attackableEntities`.
+2. `src/client/game/interact/item_types/attack_destroy_delegate_item_spec.ts`
+   uses `tryAttack(...)` only when that list is non-empty.
+3. `src/client/game/interact/helpers.ts` publishes `UpdateNpcHealthEvent` or
+   `UpdatePlayerHealthEvent`.
+
+Muckers/hexes/animals were not only a render-position problem. The seeded
+production live entities are real ECS entities with `position`, `size`,
+`health`, `npc_metadata`, `npc_state`, and `collideable`. They were omitted by
+`canAttackFilter(...)` because they reuse `dMucker`, whose Bikkie behavior has
+`damageable.attackable: false`.
+
+Current attack-specific changes:
+
+- `melee_attack_region.ts`: Harthmere live-target labels/components override the
+  legacy Bikkie `attackable:false` flag for real health-backed targets.
+- `cursor.ts`: an attack-only `NpcMetadataSelector` ray fallback catches
+  renderable NPCs that have `position + size` but are absent from
+  `CollideableSelector`.
+
+The renderer bridge and `window.__harthmereCombatActorPositions` are not the
+primary fix for normal ECS targets. They are fallback/debug support only.
 
 ## How it works
 
@@ -73,11 +115,15 @@ when you explicitly want ECS-only rendering and can verify the bridge is stable.
 
 ### 4. Crosshair targeting (`src/client/components/challenges/harthmereCrosshairCombatTargetV1.ts`)
 
-Left-click resolves the creature under the crosshair using the renderer's
-camera-projected screen positions, independent of the fragile forward-arc
-facing/origin runtime. The actor snapshot carries `liveModeTargetId` and visible
-`world` position; the client submits that target id, and the backend uses the
-visible position for guarded reach validation on `server-muck-combat:*` targets.
+Crosshair screen targeting is a live-mode fallback/debug path for renderer-only
+actors. It should not be treated as the primary fix for seeded ECS creatures.
+For real ECS entities, the native cursor path in
+`scripts/cursor.ts` + `melee_attack_region.ts` is the source of truth.
+
+Use this path only when diagnosing install/embed mode or a renderer-only actor
+that has no co-located ECS entity. Normal Harthmere muckers, hexes, animals,
+robots, sentinels, bots, NPCs, and players should enter combat through
+`cursor.attackableEntities` and the normal health events.
 
 ### 5. Random world spawns (`live_entity_production_seed_v1.ts`)
 
@@ -86,8 +132,12 @@ visible position for guarded reach validation on `server-muck-combat:*` targets.
 non-safe muck regions of the world, instead of four hand-picked patches.
 Invariants preserved (asserted by `live_entity_muck_monster_gating_v1.test.ts`):
 all creatures kept, none in a safe zone (the Grove/town), every one inside a real
-muck area, spread across several areas, finite Y (existing grounding kept — the Y
-system is unchanged on purpose).
+muck area, spread across several non-Grove areas, and every default runtime spawn
+uses the generated production terrain placement map's `outdoor_surface`
+`recommendedPosition` instead of the flat local-dev fallback Y. The placement-map
+builder calls the same seed function with `useProductionPlacementMap: false` so
+new scans regenerate from deterministic authored X/Z positions rather than
+reading their own generated output.
 
 ### 6. Respawn on death (30–60 min)
 
@@ -115,7 +165,9 @@ system is unchanged on purpose).
 | `shared/harthmere/live_creature_respawn_registry_v1.ts` | kill → respawn suppression registry |
 | `client/game/scripts/harthmere_live_creature_bridge_script.ts` | publishes ECS creatures to the renderer bridge |
 | `client/game/renderers/local_dev/harthmere_assets.ts` | reconciles ECS creature meshes; suppresses static life placements |
-| `client/components/challenges/harthmereCrosshairCombatTargetV1.ts` | crosshair targeting (fallback) |
+| `client/game/resources/melee_attack_region.ts` | native attackability filter, Harthmere live-target override, metadata ray fallback |
+| `client/game/scripts/cursor.ts` | native cursor entity trace plus NPC metadata attack fallback |
+| `client/components/challenges/harthmereCrosshairCombatTargetV1.ts` | live-mode crosshair fallback/debug targeting |
 | `shared/harthmere/live_entity_production_seed_v1.ts` | randomized world spawn distribution |
 | `server/harthmere/live_entity_ecs_seed_v1.ts` | respawn-suppression hook in the seed builder |
 | `server/shim/main.ts` | wires the shared respawn registry into the reconciler |
@@ -129,16 +181,18 @@ Pure unit tests (frontend/backend, no browser):
 - `live_creature_respawn_registry_v1.test.ts` — 5
 - `live_entity_muck_monster_gating_v1.test.ts` — 5 (spawn invariants preserved)
 - `harthmereCrosshairCombatTargetV1.test.ts` — 8
+- `melee_attack_region.test.ts` — native cursor attackability and metadata ray
+  fallback coverage
 
 Run a file: `node_modules/.bin/mocha --require ts-node/register --require
 tsconfig-paths/register --extension ts <path>` (use **Node 20** per `.nvmrc`).
 
 ## Verification status
 
-Pure logic is unit-tested and green. The renderer reconciliation, publisher
-script and seed/respawn wiring are type-simple and integrated against the real
-APIs, but the end-to-end render/hit behaviour must be confirmed in a running
-build (no live game in the authoring sandbox). No live browser test was run, per
-instruction. If any decorative static-only NPC turns out to lack an ECS entity
-and disappears, flip `ecsCreatureRender` to `0` and report which NPC so its seed
-can be added.
+The native cursor attack fix was confirmed in-game after the filter correction.
+Focused tests cover the `dMucker` `attackable:false` blocker and metadata ray
+fallback. No live browser visual test was run, per instruction.
+
+If a visible decorative static-only animal/undead still cannot be hit, first
+check whether it has a real ECS entity at the same position. Native attacks
+cannot damage a mesh that is only a renderer placement.

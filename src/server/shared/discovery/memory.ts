@@ -1,7 +1,7 @@
 import type { ServiceDiscoveryApi } from "@/server/shared/discovery/api";
 import { autoId } from "@/shared/util/auto_id";
 import { DefaultMap } from "@/shared/util/collections";
-import { EventEmitter } from "events";
+import EventEmitter from "node:events";
 
 export class MemoryServiceDiscovery {
   private readonly emitter = new EventEmitter();

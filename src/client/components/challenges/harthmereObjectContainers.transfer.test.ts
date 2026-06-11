@@ -31,6 +31,9 @@ const windowMock = {
 };
 (globalThis as unknown as { window: unknown }).window = windowMock;
 
+const CONTAINER_STORE_KEY_V1 =
+  "biomes.localDev.harthmere.objectContainerContents.v1";
+
 import {
   grantHarthmereItem,
   harthmereInventoryCountByItemIdV141,
@@ -39,6 +42,7 @@ import {
 import {
   fillKnownRoadAheadClothingCratesV1,
   getOrSeedHarthmereContainerV1,
+  normalizeHarthmereContainerKeyV1,
   putIntoHarthmereContainerV1,
   readHarthmereContainerV1,
   takeAllFromHarthmereContainerV1,
@@ -81,6 +85,26 @@ function writeRoadAheadStockedMissionState() {
       completedStepIds: [ROAD_AHEAD_CLOTHING_STOCK_PRECEDING_STEP_ID_V1],
     })
   );
+}
+
+function writeLegacySealedContainerRecord(
+  entityId: BiomesId,
+  label: string,
+  items: { itemId: string; quantity: number }[]
+): string {
+  const key = normalizeHarthmereContainerKeyV1(entityId, label);
+  localStorageMock.setItem(
+    CONTAINER_STORE_KEY_V1,
+    JSON.stringify({
+      [key]: {
+        key,
+        label,
+        items,
+        sealed: true,
+      },
+    })
+  );
+  return key;
 }
 
 describe("harthmere object container take/store interface", () => {
@@ -247,6 +271,65 @@ describe("harthmere object container take/store interface", () => {
       assert.equal(filled[0].key, before.key);
       assert.equal(countInContainer(before.key, "baker_apron"), 1);
       assert.equal(countInContainer(before.key, "field_trousers"), 1);
+    });
+
+    it("backfills a HAR-style legacy sealed clothing crate that only had old filler loot", () => {
+      const entityId = 5165478204703095 as BiomesId;
+      const key = writeLegacySealedContainerRecord(entityId, "Clothing Crate", [
+        { itemId: "cloth_scrap", quantity: 1 },
+      ]);
+
+      const repaired = getOrSeedHarthmereContainerV1(
+        entityId,
+        "Clothing Crate",
+        READY
+      );
+
+      assert.equal(repaired.key, key);
+      assert.equal(repaired.sealed, true);
+      assert.equal(countInContainer(key, "baker_apron"), 1);
+      assert.equal(countInContainer(key, "field_trousers"), 1);
+      assert.equal(
+        countInContainer(key, "cloth_scrap"),
+        1,
+        "legacy filler is preserved without duplicating the new filler stack"
+      );
+    });
+
+    it("repairs known sealed legacy clothing crates when the mission handoff completes", () => {
+      const entityId = 4257 as BiomesId;
+      const key = writeLegacySealedContainerRecord(entityId, "Clothing Crate", [
+        { itemId: "cloth_scrap", quantity: 1 },
+      ]);
+
+      const filled = fillKnownRoadAheadClothingCratesV1({
+        questClothingReady: true,
+      });
+
+      assert.equal(filled.length, 1);
+      assert.equal(filled[0].key, key);
+      assert.equal(countInContainer(key, "baker_apron"), 1);
+      assert.equal(countInContainer(key, "field_trousers"), 1);
+      assert.equal(countInContainer(key, "cloth_scrap"), 1);
+    });
+
+    it("does not re-add a missing outfit half from a sealed crate that already had quest clothing", () => {
+      const entityId = 4258 as BiomesId;
+      const key = writeLegacySealedContainerRecord(entityId, "Clothing Crate", [
+        { itemId: "baker_apron", quantity: 1 },
+        { itemId: "cloth_scrap", quantity: 1 },
+      ]);
+
+      const reopened = getOrSeedHarthmereContainerV1(
+        entityId,
+        "Clothing Crate",
+        READY
+      );
+
+      assert.equal(reopened.key, key);
+      assert.equal(countInContainer(key, "baker_apron"), 1);
+      assert.equal(countInContainer(key, "field_trousers"), 0);
+      assert.equal(countInContainer(key, "cloth_scrap"), 1);
     });
 
     it("does not re-grant the outfit after it has been taken (sealed)", () => {

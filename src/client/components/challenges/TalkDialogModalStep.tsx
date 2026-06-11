@@ -7,13 +7,28 @@ import { useClientContext } from "@/client/components/contexts/ClientContextReac
 import { useSelectedLanguage } from "@/client/components/inventory/LanguageSelector";
 import type { DialogButtonType } from "@/client/components/system/DialogButton";
 import { DialogButton } from "@/client/components/system/DialogButton";
+import {
+  NpcSpeechInputButton,
+  NPC_SPEECH_STOP_RECORDING_EVENT_V1,
+} from "@/client/components/system/NpcSpeechInputButton";
+import type { NpcSpeechButtonStateV1 } from "@/client/components/system/npcSpeechInputState";
 import { Tooltipped } from "@/client/components/system/Tooltipped";
 import { VoiceChat } from "@/client/components/system/VoiceChat";
 import { selectHarthmereCombatTarget } from "@/client/components/challenges/LocalDevHarthmereMultiplayerCombatSystem";
+import {
+  talkDialogAdvanceDecisionForTestV1,
+  talkDialogHasChoiceActionsForTestV1,
+  talkDialogShouldShowVoiceInputForTestV1,
+} from "@/client/components/challenges/talkDialogModalFlow";
 import { cleanListener } from "@/client/util/helpers";
 import { useEffectAsync } from "@/client/util/hooks";
+import { useTypedStorageItem } from "@/client/util/typed_local_storage";
 
 import type { Voice } from "@/shared/ecs/gen/components";
+import {
+  harthmereAzureVoiceIdOrFallbackV1,
+  harthmereVoiceProfileForActorV1,
+} from "@/shared/harthmere/npc_voice_profiles_v1";
 import type { BiomesId } from "@/shared/ids";
 import { relevantBiscuitForEntityId } from "@/shared/npc/bikkie";
 import { AnimatePresence, motion } from "framer-motion";
@@ -43,10 +58,29 @@ export interface TalkDialogStepAction {
   closeAfterPerformed?: boolean;
 }
 
+export interface TalkDialogVoiceInput {
+  disabled?: boolean;
+  maxRecordingMs?: number;
+  onTranscript: (text: string) => unknown;
+}
+
 const HARTHMERE_VENDOR_TRADE_CLOSE_TALK_EVENT =
   "biomes:harthmere-close-talk-for-vendor";
 
 export type ButtonLayout = "horizontal-rectangle" | "vertical";
+
+export function resolveTalkDialogAzureVoiceForTestV1(input: {
+  voiceComponent?: Voice;
+  fallbackVoice: Voice;
+}) {
+  const voice = harthmereAzureVoiceIdOrFallbackV1({
+    voiceId: input.voiceComponent?.voice,
+    fallbackVoiceId: input.fallbackVoice.voice,
+  });
+  return voice === input.voiceComponent?.voice
+    ? input.voiceComponent
+    : input.fallbackVoice;
+}
 
 export const ClickToContinue: React.FunctionComponent<{
   className?: string;
@@ -71,6 +105,7 @@ export const TalkDialogModalStep: React.FunctionComponent<
     dialog: TalkDialogInfo[];
     onClose?: () => void;
     buttonLayout?: ButtonLayout;
+    voiceInput?: TalkDialogVoiceInput;
   }>
 > = ({
   id,
@@ -78,13 +113,14 @@ export const TalkDialogModalStep: React.FunctionComponent<
   dialog,
   buttonLayout = "horizontal-rectangle",
   onClose,
+  voiceInput,
   children,
 }) => {
   const { reactResources, resources } = useClientContext();
 
   const [label, npcMetadata] = reactResources.useAll(
     ["/ecs/c/label", entityId],
-    ["/ecs/c/npc_metadata", entityId],
+    ["/ecs/c/npc_metadata", entityId]
   );
 
   const npcType = npcTypeForNpcId(reactResources, npcMetadata?.type_id);
@@ -103,35 +139,12 @@ export const TalkDialogModalStep: React.FunctionComponent<
       buttonLayout={buttonLayout}
       id={id}
       onClose={onClose}
+      voiceInput={voiceInput}
     >
       {children}
     </GenericTalkDialogModalStep>
   );
 };
-
-function defaultVoiceForEntityId(entityId: BiomesId): Voice {
-  const allVoices = [
-    ["Ada", "Rb6wDVt4As6GIBwMEmLo"],
-    ["Adam", "pNInz6obpgDQGcFmaJgB"],
-    ["Adewale", "vD3fnZOnBAZAFnsxeA4q"],
-    ["Antoni", "ErXwobaYiN019PkySvjV"],
-    ["Arnold", "VR6AewLTigWG4xSOukaG"],
-    ["Bella", "EXAVITQu4vr4xnSDxMaL"],
-    ["Brim", "PwftKFfZxUEGOrJgcaZ2"],
-    ["Bruce", "OnRugliPnYuPahOe6foh"],
-    ["Domi", "AZnzlk1XvdvUeBnXmlld"],
-    ["Elli", "MF3mGyEYCl7XYWbV9V6O"],
-    ["Josh", "TxGEqnHWrfWFTfGW9XjX"],
-    ["Matthew", "GjAqk1Kl3r0UbWJCIEde"],
-    ["Rachel", "21m00Tcm4TlvDq8ikWAM"],
-    ["Sam", "yoZ06aMxZJJ28mfd3POQ"],
-    ["Wayne", "TRSrL0HMQMWj1tMy22mU"],
-  ];
-
-  return {
-    voice: allVoices[entityId % allVoices.length][1],
-  };
-}
 
 export const GenericTalkDialogModalStep: React.FunctionComponent<
   PropsWithChildren<{
@@ -141,6 +154,7 @@ export const GenericTalkDialogModalStep: React.FunctionComponent<
     buttonLayout?: ButtonLayout;
     onClose?: () => any;
     id: string | BiomesId | number;
+    voiceInput?: TalkDialogVoiceInput;
   }>
 > = ({
   entityId,
@@ -149,6 +163,7 @@ export const GenericTalkDialogModalStep: React.FunctionComponent<
   onClose,
   buttonLayout = "horizontal-rectangle",
   id,
+  voiceInput,
   children,
 }) => {
   const { reactResources } = useClientContext();
@@ -157,10 +172,29 @@ export const GenericTalkDialogModalStep: React.FunctionComponent<
   const [dialogIndex, setDialogIndex] = useState(0);
   const [shouldFinishTyping, setShouldFinishTyping] = useState(false);
   const [actionFollowUp, setActionFollowUp] = useState<TalkDialogInfo>();
+  const [voiceInputState, setVoiceInputState] =
+    useState<NpcSpeechButtonStateV1>("idle");
+  const [microphoneInputEnabled] = useTypedStorageItem(
+    "settings.voice.microphoneInputEnabled",
+    true
+  );
 
-  const voice =
-    reactResources.use("/ecs/c/voice", entityId) ??
-    defaultVoiceForEntityId(entityId);
+  const [voiceComponent, entityDescription] = reactResources.useAll(
+    ["/ecs/c/voice", entityId],
+    ["/ecs/c/entity_description", entityId]
+  );
+  const fallbackVoice: Voice = {
+    voice: harthmereVoiceProfileForActorV1({
+      source: "runtime_entity",
+      entityId,
+      displayName: title,
+      background: entityDescription?.text,
+    }).voiceParameterId,
+  };
+  const voice = resolveTalkDialogAzureVoiceForTestV1({
+    voiceComponent,
+    fallbackVoice,
+  });
 
   const currentDialog =
     actionFollowUp ?? (dialog[dialogIndex] as TalkDialogInfo | undefined);
@@ -172,7 +206,9 @@ export const GenericTalkDialogModalStep: React.FunctionComponent<
     }
   }, [entityId, title]);
 
-  const hasActions = !!currentDialog?.actions?.length;
+  const hasChoiceActions = talkDialogHasChoiceActionsForTestV1(
+    currentDialog?.actions
+  );
 
   const finishTyping = () => {
     if (!typingComplete) {
@@ -230,22 +266,31 @@ export const GenericTalkDialogModalStep: React.FunctionComponent<
     };
     window.addEventListener(
       HARTHMERE_VENDOR_TRADE_CLOSE_TALK_EVENT,
-      closeForVendor,
+      closeForVendor
     );
     return () => {
       window.removeEventListener(
         HARTHMERE_VENDOR_TRADE_CLOSE_TALK_EVENT,
-        closeForVendor,
+        closeForVendor
       );
     };
   }, [onClose]);
 
   useEffect(() => {
     const advance = () => {
-      if (!typingComplete) {
+      const decision = talkDialogAdvanceDecisionForTestV1({
+        typingComplete,
+        hasChoiceActions,
+        voiceInputState,
+      });
+      if (decision === "finish_typing") {
         finishTyping();
-      } else if (!hasActions) {
+      } else if (decision === "stop_recording") {
+        window.dispatchEvent(new Event(NPC_SPEECH_STOP_RECORDING_EVENT_V1));
+      } else if (decision === "go_next") {
         goNext();
+      } else if (voiceInput && hasChoiceActions) {
+        window.dispatchEvent(new Event(NPC_SPEECH_STOP_RECORDING_EVENT_V1));
       }
     };
     return cleanListener(window, {
@@ -258,7 +303,14 @@ export const GenericTalkDialogModalStep: React.FunctionComponent<
         advance();
       },
     });
-  }, [hasActions, typingComplete, dialogIndex, dialog]);
+  }, [
+    hasChoiceActions,
+    typingComplete,
+    dialogIndex,
+    dialog,
+    voiceInputState,
+    voiceInput,
+  ]);
 
   const chatVoices = reactResources.get("/tweaks").chatVoices;
 
@@ -277,7 +329,7 @@ export const GenericTalkDialogModalStep: React.FunctionComponent<
     const { shownText, spokenText } = await maybeTranslateDialogText(
       reactResources,
       currentDialog.text,
-      language,
+      language
     );
     setTranslatedText(shownText);
     setTranslatedSpokenText(spokenText);
@@ -288,6 +340,11 @@ export const GenericTalkDialogModalStep: React.FunctionComponent<
   }
 
   const actions: TalkDialogStepAction[] = currentDialog.actions ?? [];
+  const showVoiceInput = talkDialogShouldShowVoiceInputForTestV1({
+    hasVoiceInput: Boolean(voiceInput),
+    microphoneInputEnabled,
+    actionCount: actions.length,
+  });
 
   const showNpcAcceptContainer =
     typingComplete && (currentDialog.children || actions.length > 0);
@@ -298,6 +355,9 @@ export const GenericTalkDialogModalStep: React.FunctionComponent<
           text={translatedSpokenText}
           voice={voice.voice}
           language={chatTranslation ? language : undefined}
+          playbackKey={`${entityId}:${id}:${dialogIndex}:${
+            actionFollowUp?.text ? "followup" : "dialog"
+          }`}
         />
       )}
       <AnimatePresence>
@@ -328,6 +388,22 @@ export const GenericTalkDialogModalStep: React.FunctionComponent<
               transition={{ duration: 0.5 }}
             >
               {currentDialog.children}
+              {showVoiceInput && voiceInput && (
+                <div
+                  onClick={(event) => event.stopPropagation()}
+                  onKeyUp={(event) => event.stopPropagation()}
+                  onMouseDown={(event) => event.stopPropagation()}
+                  onMouseUp={(event) => event.stopPropagation()}
+                >
+                  <NpcSpeechInputButton
+                    disabled={voiceInput.disabled}
+                    language={chatTranslation ? language : undefined}
+                    maxRecordingMs={voiceInput.maxRecordingMs}
+                    onStateChange={setVoiceInputState}
+                    onTranscript={voiceInput.onTranscript}
+                  />
+                </div>
+              )}
               {currentDialog.actions?.length && (
                 <div
                   className={`flex ${
@@ -374,7 +450,7 @@ export const GenericTalkDialogModalStep: React.FunctionComponent<
             </motion.div>
           )}
         </motion.div>
-        {typingComplete && actions.length === 0 && (
+        {typingComplete && !hasChoiceActions && (
           <ClickToContinue
             customText={
               dialogIndex === dialog.length - 1

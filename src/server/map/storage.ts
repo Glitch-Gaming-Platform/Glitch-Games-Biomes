@@ -128,7 +128,9 @@ export class MapStore {
   }
 
   write(name: TileKey, data: Uint8Array) {
-    const fingerprint = crc32(data).toString(16);
+    const fingerprint = crc32(
+      Buffer.from(data.buffer, data.byteOffset, data.byteLength)
+    ).toString(16);
     if (
       this.versionIsStale(name) ||
       this.fingerprints.get(name) != fingerprint

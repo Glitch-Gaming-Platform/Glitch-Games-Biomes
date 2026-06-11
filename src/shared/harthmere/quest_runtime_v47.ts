@@ -9,6 +9,10 @@ import {
   validateHarthmereQuestActivationV46,
 } from "./quest_compendium_v46";
 import { shiftHarthmereAuthoredPositionToWorldV71 } from "./coordinate_transform_v71";
+import {
+  resolveHarthmereQuestObjectivePlacementV1,
+  type HarthmereProductionPlacementPurposeV1,
+} from "./production_terrain_placement_map_v1";
 
 export const HARTHMERE_QUEST_RUNTIME_VERSION_V47 = 47 as const;
 
@@ -205,6 +209,47 @@ function distanceBetweenV47(
   return Math.sqrt(dx * dx + dy * dy + dz * dz);
 }
 
+function placementPurposeForObjectiveV47(
+  objective: any
+): HarthmereProductionPlacementPurposeV1 {
+  switch (objective?.type) {
+    case "combat":
+      return "monster";
+    case "collect":
+    case "craft":
+    case "read":
+      return "quest_item";
+    case "talk":
+      return "npc";
+    case "inspect":
+    case "choice":
+    case "escort":
+      return "interactable";
+    default:
+      return "quest_marker";
+  }
+}
+
+export function getHarthmereQuestResolvedWaypointV47(
+  questId: string,
+  objective?: any
+): [number, number, number] | undefined {
+  const quest = getHarthmereQuestByIdV46(questId);
+  const source = objective?.location ?? quest?.location;
+  if (!quest || !source?.waypoint) {
+    return undefined;
+  }
+  const fallback = shiftHarthmereAuthoredPositionToWorldV71(
+    source.waypoint
+  ) as [number, number, number];
+  return resolveHarthmereQuestObjectivePlacementV1({
+    questId,
+    objectiveId: objective?.id,
+    fallback,
+    purpose: placementPurposeForObjectiveV47(objective),
+  }).recommendedPosition as [number, number, number];
+}
+
 // Per state-map: talk objectives = max distance 5 with line of sight,
 // inspect objectives = max distance 4 with line of sight, near_location
 // completes when player is within 8m. Other types default to 6m.
@@ -245,9 +290,10 @@ export function validateHarthmereQuestObjectiveEventV47(
   // Server-side line-of-sight + distance for talk/inspect.
   const requiresLoS = !!objective?.validation?.requiresLineOfSight;
   const maxDistance = maxDistanceForObjectiveV47(objective);
-  const objectiveWaypoint = objective?.location?.waypoint
-    ? (shiftHarthmereAuthoredPositionToWorldV71(objective.location.waypoint) as [number, number, number])
-    : undefined;
+  const objectiveWaypoint = getHarthmereQuestResolvedWaypointV47(
+    quest.id,
+    objective
+  );
   const dist = distanceBetweenV47(event.actorPosition, objectiveWaypoint);
   if (event.actorPosition && objectiveWaypoint && dist !== undefined && dist > maxDistance) {
     reasons.push("player_too_far");
@@ -576,7 +622,13 @@ export function getHarthmereQuestMapHintV47(
     ? quest.objectives.find((objective: any) => !record.objectiveProgress[objective.id]?.completed)
     : undefined;
   const source = firstOpenObjective?.location ?? quest.location;
-  const waypoint = shiftHarthmereAuthoredPositionToWorldV71(source.waypoint);
+  const waypoint =
+    getHarthmereQuestResolvedWaypointV47(questId, firstOpenObjective) ??
+    (shiftHarthmereAuthoredPositionToWorldV71(source.waypoint) as [
+      number,
+      number,
+      number,
+    ]);
   return {
     questId,
     objectiveId: firstOpenObjective?.id,

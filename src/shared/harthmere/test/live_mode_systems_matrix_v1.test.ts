@@ -354,6 +354,7 @@ describe("Harthmere live-mode MMO systems matrix", function () {
       { subsystem: "farming" }
     ).state;
     assert.equal(eaten.inventory.items.grilled_meat ?? 0, 0);
+    assert.ok(eaten.combat.resources.stamina !== undefined);
     assert.ok(eaten.combat.resources.stamina > 50);
   });
 });

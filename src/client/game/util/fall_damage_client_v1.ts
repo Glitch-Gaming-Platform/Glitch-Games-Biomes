@@ -38,6 +38,10 @@ export interface ClientFallDamageTickWithGraceInputV1
   // the health change without resetting airborne tracking like `canTakeFallDamage`
   // does for water/climbing/flying.
   canApplyFallDamage: boolean;
+  // Movement normally reports the exact fall distance through the tracker. If
+  // cached ground state misses the airborne transition, a hard landing impact
+  // can still supply a conservative distance fallback for that landing tick.
+  landingImpactFallbackBlocks?: number;
 }
 
 export function clientFallDamageTickWithGraceV1(
@@ -45,8 +49,25 @@ export function clientFallDamageTickWithGraceV1(
   input: ClientFallDamageTickWithGraceInputV1
 ): ClientFallDamageTickResultV1 {
   const tick = clientFallDamageTickV1(state, input);
+  const fallbackBlocks =
+    input.canTakeFallDamage && tick.fellBlocks <= 0
+      ? Math.max(0, Number(input.landingImpactFallbackBlocks ?? 0))
+      : 0;
+  const fallbackDamage = fallDamageForBlocksV1(fallbackBlocks);
+  const rawHpDelta =
+    tick.rawHpDelta < 0
+      ? tick.rawHpDelta
+      : fallbackDamage > 0
+      ? -fallbackDamage
+      : 0;
+  const fellBlocks =
+    tick.fellBlocks > 0 || fallbackDamage <= 0
+      ? tick.fellBlocks
+      : fallbackBlocks;
   return {
     ...tick,
-    hpDelta: input.canApplyFallDamage ? tick.hpDelta : 0,
+    fellBlocks,
+    hpDelta: input.canApplyFallDamage ? rawHpDelta : 0,
+    rawHpDelta,
   };
 }

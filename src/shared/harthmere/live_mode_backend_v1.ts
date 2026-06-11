@@ -95,7 +95,7 @@ import {
   type HarthmereEscortCompanionV151,
   type HarthmereJobsBoardStateV1,
 } from "./mmo_jobs_board_authority_v1";
-import { harthmereJobsBoardQuestMarkerPositionForTodoV1 } from "./jobs_board_quest_marker_positions_v1";
+import { harthmereJobsBoardQuestMarkerRuntimePositionForTodoV1 } from "./jobs_board_quest_marker_positions_v1";
 import {
   HARTHMERE_EXOTIC_MATTER_DEPOSIT_REPLENISH_MS_V1,
   defaultHarthmereExoticMatterDepositStateV1,
@@ -105,6 +105,7 @@ import {
   mineHarthmereExoticMatterDepositV1,
   replenishHarthmereExoticMatterDepositsV1,
 } from "./exotic_matter_caves_v1";
+import { resolveHarthmereProductionMarkerPositionV1 } from "./production_terrain_placement_map_v1";
 import {
   HARTHMERE_COOKING_RECIPES_V1,
   HARTHMERE_FOOD_DEFINITIONS_V1,
@@ -226,7 +227,7 @@ import {
   muckMonsterAreaForPositionV1,
 } from "./muck_monster_aggression_ai_v1";
 import {
-  HARTHMERE_LIVE_ENTITY_LIVESTOCK_SEEDS_V1,
+  harthmereGroundedLivestockSeedsInTerritoryV1,
   harthmereGroundedMuckMonsterSeedsInTerritoryV1,
 } from "./live_entity_production_seed_v1";
 
@@ -450,6 +451,10 @@ export type HarthmereLiveEntityCombatProtectionV1 =
 export const HARTHMERE_SERVER_MUCK_COMBAT_ENTITY_SEED_VERSION_V1 =
   "harthmere-server-muck-combat-entity-seed-v1" as const;
 
+export const HARTHMERE_MUCK_HEX_STRENGTH_MULTIPLIER_V1 = 5 as const;
+const HARTHMERE_LIVE_ENTITY_DEFEAT_POSITION_LIFT_V1 = 1.1;
+const HARTHMERE_LIVE_ENTITY_LOOT_DROP_POSITION_LIFT_V1 = 1.35;
+
 type HarthmereLiveCombatEntitySnapshotV1 =
   HarthmereLiveModeBackendStateV1["combat"]["entitySnapshots"][string];
 
@@ -459,6 +464,78 @@ function positionObjectFromVec3V1(position: readonly number[]) {
     y: Number(position[1]),
     z: Number(position[2]),
   };
+}
+
+function resolveLiveEntityProductionSeedPositionV1(
+  seed: {
+    seedId: string;
+    position: readonly number[];
+  },
+  source: "live_muck_monster" | "live_livestock"
+) {
+  return resolveHarthmereProductionMarkerPositionV1({
+    source,
+    markerId: seed.seedId,
+    fallback: [seed.position[0], seed.position[1], seed.position[2]] as [
+      number,
+      number,
+      number
+    ],
+  });
+}
+
+function boostedMuckHexHpV1(baseHp: number, entityKind: "mux" | "hex") {
+  return Math.max(
+    1,
+    Math.trunc(
+      baseHp *
+        (entityKind === "mux" || entityKind === "hex"
+          ? HARTHMERE_MUCK_HEX_STRENGTH_MULTIPLIER_V1
+          : 1)
+    )
+  );
+}
+
+function boostedMuckHexAttackDamageV1(input: {
+  entityKind: "mux" | "hex";
+  combatLevel?: number;
+}) {
+  const level = Math.max(1, Math.trunc(Number(input.combatLevel ?? 1)));
+  const base =
+    input.entityKind === "hex" ? (level >= 4 ? 24 : 18) : level >= 3 ? 16 : 14;
+  return Math.max(
+    1,
+    Math.trunc(base * HARTHMERE_MUCK_HEX_STRENGTH_MULTIPLIER_V1)
+  );
+}
+
+function liveEntityLiftedPositionV1(
+  position: { x: number; y: number; z: number },
+  lift: number
+) {
+  return {
+    x: Number(position.x),
+    y: Number(position.y) + lift,
+    z: Number(position.z),
+  };
+}
+
+function liveEntityDefeatRestingPositionV1(
+  target: HarthmereLiveCombatEntitySnapshotV1
+) {
+  return liveEntityLiftedPositionV1(
+    target.position,
+    HARTHMERE_LIVE_ENTITY_DEFEAT_POSITION_LIFT_V1
+  );
+}
+
+function liveEntityLootDropPositionV1(
+  target: HarthmereLiveCombatEntitySnapshotV1
+) {
+  return liveEntityLiftedPositionV1(
+    target.position,
+    HARTHMERE_LIVE_ENTITY_LOOT_DROP_POSITION_LIFT_V1
+  );
 }
 
 export function createHarthmereServerMuckCombatEntitySnapshotsV1(
@@ -473,9 +550,14 @@ export function createHarthmereServerMuckCombatEntitySnapshotsV1(
       if (!territory) {
         return [];
       }
-      const hp = Math.max(1, Math.trunc(seed.combatHp ?? 110));
       const entityKind = seed.combatKind ?? "mux";
-      const position = positionObjectFromVec3V1(seed.position);
+      const hp = boostedMuckHexHpV1(
+        Math.max(1, Math.trunc(seed.combatHp ?? 110)),
+        entityKind
+      );
+      const position = positionObjectFromVec3V1(
+        resolveLiveEntityProductionSeedPositionV1(seed, "live_muck_monster")
+      );
       return [
         [
           `server-muck-combat:${seed.seedId}:${seed.idOffset}`,
@@ -504,6 +586,10 @@ export function createHarthmereServerMuckCombatEntitySnapshotsV1(
             resources: entityKind === "hex" ? { mana: 60 } : undefined,
             maxResources: entityKind === "hex" ? { mana: 60 } : undefined,
             attackRange: entityKind === "hex" ? 6.5 : 2.4,
+            attackDamage: boostedMuckHexAttackDamageV1({
+              entityKind,
+              combatLevel: seed.combatLevel,
+            }),
           } satisfies HarthmereLiveCombatEntitySnapshotV1,
         ],
       ];
@@ -519,14 +605,16 @@ export function createHarthmereServerMuckCombatEntitySnapshotsV1(
     tier === "large" ? 1 : tier === "medium" ? 0.7 : 0.45;
   const livestockMovementSpeedV1 = (tier: string | undefined) =>
     tier === "small" ? 3.2 : tier === "medium" ? 2.5 : 2;
-  const livestockEntries = HARTHMERE_LIVE_ENTITY_LIVESTOCK_SEEDS_V1.flatMap(
-    (seed) => {
+  const livestockEntries =
+    harthmereGroundedLivestockSeedsInTerritoryV1().flatMap((seed) => {
       if (!muckMonsterAreaForPositionV1(seed.position, 1.5)) {
         return [];
       }
       const hp = Math.max(1, Math.trunc(seed.combatHp ?? 40));
       const meatUnits = Math.max(1, Math.trunc(seed.meatUnits ?? 1));
-      const position = positionObjectFromVec3V1(seed.position);
+      const position = positionObjectFromVec3V1(
+        resolveLiveEntityProductionSeedPositionV1(seed, "live_livestock")
+      );
       return [
         [
           `server-muck-combat:${seed.seedId}:${seed.idOffset}`,
@@ -563,8 +651,7 @@ export function createHarthmereServerMuckCombatEntitySnapshotsV1(
           } satisfies HarthmereLiveCombatEntitySnapshotV1,
         ],
       ];
-    }
-  );
+    });
 
   return Object.fromEntries([...monsterEntries, ...livestockEntries]);
 }
@@ -3234,7 +3321,10 @@ function upsertLiveEntityHelperQuestMarkerV1(
     markerId: marker.id,
     plotId: `live_entity_helper:${quest.kind}`,
     kind: "map_marker",
-    position: marker.position,
+    position: resolveHarthmereProductionMarkerPositionV1({
+      markerId: marker.id,
+      fallback: marker.position,
+    }),
     label: marker.label,
     createdAtMs: nowMs,
   };
@@ -3428,6 +3518,17 @@ function isLiveEntityRobotProtectedPositionV1(
   const area = liveEntityRobotProtectionAreaForPositionV1(position);
   return area
     ? state.robotProtection.areas[area.areaId]?.safeFromMuck === true
+    : false;
+}
+
+function isLiveEntityRobotMuckedPositionV1(
+  state: HarthmereLiveModeBackendStateV1,
+  position: readonly number[] | undefined
+) {
+  const area = liveEntityRobotProtectionAreaForPositionV1(position);
+  return area
+    ? state.robotProtection.areas[area.areaId]?.status === "mucked" ||
+        state.robotProtection.areas[area.areaId]?.safeFromMuck === false
     : false;
 }
 
@@ -5643,6 +5744,10 @@ export function createHarthmereLiveEntityCombatClientSnapshotV1(
         {
           entityKind: entity.entityKind,
           position: entity.position,
+          hp: entity.hp,
+          maxHp: entity.maxHp,
+          lastDamageTaken: entity.lastDamageTaken,
+          lastAttackedAtMs: entity.lastAttackedAtMs,
           isAlive: entity.isAlive,
           isAttackable: entity.isAttackable,
           animationState: entity.animationState,
@@ -5789,9 +5894,14 @@ export function createHarthmereLiveModeFarmingFoodClientSnapshotV1(
 
 export function tickHarthmereLiveModeStaminaForGameplayV1(
   state: HarthmereLiveModeBackendStateV1,
-  input: { nowMs: number; gameplayActive: boolean }
+  input: {
+    nowMs: number;
+    gameplayActive: boolean;
+    allowDeathFromStamina?: boolean;
+  }
 ) {
   const pools = ensureCombatResourcePoolsV1(state);
+  const allowDeathFromStamina = input.allowDeathFromStamina !== false;
   const maxStamina = Math.max(1, Number(pools.maxResources.stamina ?? 100));
   const previousStamina = Math.max(
     0,
@@ -5826,9 +5936,11 @@ export function tickHarthmereLiveModeStaminaForGameplayV1(
 
   pools.resources.stamina = nextStamina;
   state.combat.lastStaminaTickMs = result.state.lastStaminaTickMs;
-  state.combat.deadFromStaminaAtMs = result.state.deadFromStaminaAtMs;
+  state.combat.deadFromStaminaAtMs = allowDeathFromStamina
+    ? result.state.deadFromStaminaAtMs
+    : previousStoredDeadAt;
 
-  if (result.deathTriggered) {
+  if (result.deathTriggered && allowDeathFromStamina) {
     state.combat.hp = 0;
     state.combat.deathState = "dead";
     const deathId = `stamina_depleted_${Math.trunc(input.nowMs)}`;
@@ -5843,13 +5955,55 @@ export function tickHarthmereLiveModeStaminaForGameplayV1(
 
   return {
     warnings: result.warnings,
-    deathTriggered: result.deathTriggered,
+    deathTriggered: result.deathTriggered && allowDeathFromStamina,
     changed:
       Math.abs(nextStamina - previousStamina) > 0.0001 ||
       state.combat.lastStaminaTickMs !== previousStoredLastTick ||
       state.combat.deadFromStaminaAtMs !== previousStoredDeadAt ||
-      result.deathTriggered,
+      (result.deathTriggered && allowDeathFromStamina),
   };
+}
+
+function latestHarthmereLiveModeDeathRecordV1(
+  state: HarthmereLiveModeBackendStateV1
+) {
+  return Object.values(state.combat.deathRecords ?? {})
+    .filter(
+      (
+        record
+      ): record is HarthmereLiveModeBackendStateV1["combat"]["deathRecords"][string] =>
+        Boolean(record) && Number.isFinite(Number(record.atMs))
+    )
+    .sort((a, b) => Number(b.atMs) - Number(a.atMs))[0];
+}
+
+export function repairHarthmereStatusReadStaminaDeathV1(
+  state: HarthmereLiveModeBackendStateV1,
+  input: { nowMs: number; restoreRatio?: number }
+) {
+  const deadFromStaminaAtMs = Number(state.combat.deadFromStaminaAtMs);
+  if (
+    !Number.isFinite(deadFromStaminaAtMs) ||
+    liveModePlayerDeathStateForHpV1(state) !== "dead" ||
+    normalizedLiveModePlayerHpV1(state) > 0
+  ) {
+    return { changed: false };
+  }
+
+  const latestDeathRecord = latestHarthmereLiveModeDeathRecordV1(state);
+  if (latestDeathRecord && latestDeathRecord.cause !== "stamina_depleted") {
+    return { changed: false };
+  }
+
+  const maxHp = Math.max(1, Math.trunc(Number(state.combat.maxHp ?? 100)));
+  state.combat.maxHp = maxHp;
+  state.combat.hp = maxHp;
+  state.combat.deathState = "alive";
+  state.combat.deadFromStaminaAtMs = undefined;
+  state.combat.lastStaminaTickMs = input.nowMs;
+  restoreCombatResourcesV1(state, input.restoreRatio ?? 1);
+
+  return { changed: true };
 }
 
 export function createHarthmereProductionEconomyClientSnapshotFromBackendV1(
@@ -6834,7 +6988,7 @@ export function reduceHarthmereLiveModeBackendStateV1(
     if (target.ownerId && !target.isLivestock) return false;
     if (target.entityKind === "animal") return true;
     const species = `${target.species ?? ""}`.toLowerCase();
-    return /\b(wolf|bear|boar|deer|elk|moose|rabbit|hare|fox|snake|rat|stag|doe|buck)\b/.test(
+    return /\b(wolf|bear|boar|deer|elk|moose|rabbit|hare|fox|snake|rat|stag|doe|buck|cow|sheep|goat|pig|boar|chicken|duck|turkey|horse)\b/.test(
       species
     );
   }
@@ -6865,7 +7019,7 @@ export function reduceHarthmereLiveModeBackendStateV1(
       sourceKind: liveEntityLootSourceKindV1(target),
       sourceId: targetId,
       sourceLevel: target.level,
-      position: target.position,
+      position: liveEntityLootDropPositionV1(target),
       itemStacks,
       instanceIds: [],
       ownerActorIds: [
@@ -7867,6 +8021,11 @@ export function reduceHarthmereLiveModeBackendStateV1(
           resolvedTarget.isAttackable = false;
           resolvedTarget.killedByActorId = envelope.actorId;
           resolvedTarget.defeatedAtMs = nowMs;
+          resolvedTarget.position =
+            liveEntityDefeatRestingPositionV1(resolvedTarget);
+          resolvedTarget.animationState = "death";
+          resolvedTarget.animationMoving = false;
+          resolvedTarget.animationStartedAtMs = nowMs;
           if (wasAliveBeforeDamage && resolvedTargetId) {
             recordLiveEntityOwnedAnimalKillCrimeV1(
               resolvedTargetId,
@@ -9721,13 +9880,14 @@ export function reduceHarthmereLiveModeBackendStateV1(
           next.quests.active[questId] = { stepId: todo.jobId, progress: 0 };
           if (todo.mapMarkerId) {
             const board = next.jobsBoard.boards[todo.boardId];
-            const marker = harthmereJobsBoardQuestMarkerPositionForTodoV1({
-              mapMarkerId: todo.mapMarkerId,
-              targetId: todo.targetId,
-              fallbackPosition: board
-                ? [board.location.x, board.location.y + 1, board.location.z]
-                : [501.99486179104775, 71, -132.00350672753194],
-            });
+            const marker =
+              harthmereJobsBoardQuestMarkerRuntimePositionForTodoV1({
+                mapMarkerId: todo.mapMarkerId,
+                targetId: todo.targetId,
+                fallbackPosition: board
+                  ? [board.location.x, board.location.y + 1, board.location.z]
+                  : [501.99486179104775, 71, -132.00350672753194],
+              });
             next.building.inWorldMarkers[`jobs_board_marker:${todo.todoId}`] = {
               markerId: `jobs_board_marker:${todo.todoId}`,
               plotId: marker.markerId,
@@ -9768,7 +9928,11 @@ export function reduceHarthmereLiveModeBackendStateV1(
                 markerId: `jobs_board_exotic_deposit:${todo.todoId}:${marker.depositId}`,
                 plotId: marker.markerId,
                 kind: "map_marker",
-                position: marker.position,
+                position: resolveHarthmereProductionMarkerPositionV1({
+                  source: "exotic_matter_deposit",
+                  markerId: marker.depositId,
+                  fallback: marker.position,
+                }),
                 label: `${todo.title}: ${marker.label}`,
                 createdAtMs: todo.createdAtMs,
               };
@@ -9896,6 +10060,7 @@ export function reduceHarthmereLiveModeBackendStateV1(
           amount: result.inventoryGoldDelta,
           atMs: nowMs,
         });
+        touchedModels.add("wallet");
         touchedModels.add("economy_ledger");
       }
       touchedModels.add("economy_production_state");
@@ -13471,6 +13636,7 @@ export function reduceHarthmereLiveModeBackendStateV1(
       }
       next.combat.deathState = "alive";
       next.combat.hp = Math.max(1, Math.floor(next.combat.maxHp * 0.25));
+      next.combat.deadFromStaminaAtMs = undefined;
       restoreCombatResourcesV1(next, 0.25);
       next.combat.respawnProtectionUntilMs =
         nowMs +
@@ -13486,6 +13652,7 @@ export function reduceHarthmereLiveModeBackendStateV1(
       }
       next.combat.deathState = "alive";
       next.combat.hp = next.combat.maxHp;
+      next.combat.deadFromStaminaAtMs = undefined;
       restoreCombatResourcesV1(next, 1);
       next.combat.respawnProtectionUntilMs =
         nowMs +
@@ -13594,6 +13761,9 @@ export function reduceHarthmereLiveModeBackendStateV1(
           spawnProtected: (next.combat.respawnProtectionUntilMs ?? 0) > nowMs,
           lineOfSight:
             payloadString(envelope, "lineOfSight") === "false" ? false : true,
+          muckExposureForcesAggression:
+            isLiveEntityRobotMuckedPositionV1(next, npcPosition) ||
+            isLiveEntityRobotMuckedPositionV1(next, actorPosition),
         });
         if (aggression.aggressive) {
           decision = `muck_unprovoked:${

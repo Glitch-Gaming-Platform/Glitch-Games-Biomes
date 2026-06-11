@@ -2,7 +2,9 @@
 import {
   canAttackFilter,
   shouldAddCrosshairMeleeTargetV1,
+  traceNpcMetadataCursorHitsV1,
 } from "@/client/game/resources/melee_attack_region";
+import { BikkieIds } from "@/shared/bikkie/ids";
 import { HARTHMERE_VOXEL_INTERACTION_ATTACK_REACH_UNITS_V1 } from "@/shared/harthmere/combat_reach_v1";
 import type { BiomesId } from "@/shared/ids";
 import assert from "assert";
@@ -33,6 +35,34 @@ describe("harthmere melee attack entity filtering", () => {
     } as any;
 
     assert.equal(canAttackFilter(ruleset, false, undefined, jobsBoard), false);
+  });
+
+  it("allows real Harthmere muckers even when their NPC type says attackable=false", () => {
+    const mucker = {
+      id: 103 as BiomesId,
+      health: { hp: 20, maxHp: 20 },
+      npc_metadata: { type_id: BikkieIds.dMucker },
+      label: { text: "Old Wood Mucker" },
+      position: { v: [0, 0, 0] },
+      size: { v: [1, 1.2, 1] },
+      collideable: {},
+    } as any;
+
+    assert.equal(canAttackFilter(ruleset, false, undefined, mucker), true);
+  });
+
+  it("allows real Harthmere animals even when they reuse the dMucker NPC type", () => {
+    const cow = {
+      id: 104 as BiomesId,
+      health: { hp: 20, maxHp: 20 },
+      npc_metadata: { type_id: BikkieIds.dMucker },
+      label: { text: "Muckmeadow Cow" },
+      position: { v: [0, 0, 0] },
+      size: { v: [1.3, 1.5, 2] },
+      collideable: {},
+    } as any;
+
+    assert.equal(canAttackFilter(ruleset, false, undefined, cow), true);
   });
 });
 
@@ -108,5 +138,63 @@ describe("crosshair melee target inclusion (HARTHMERE_VOXEL_REACH_ATTACK_V1)", (
       shouldAddCrosshairMeleeTargetV1({ ...base, distance: NaN }),
       false
     );
+  });
+});
+
+describe("Harthmere NPC metadata cursor ray fallback", () => {
+  const npc = {
+    id: 501 as BiomesId,
+    npc_metadata: { type_id: -1 },
+    position: { v: [0, 0, 5] },
+    size: { v: [1, 2, 1] },
+    health: { hp: 10, maxHp: 10 },
+    label: { text: "Old Wood Mucker" },
+    // Intentionally no collideable component: this is the production failure
+    // mode where the NPC renderer can see the entity but traceEntities() cannot.
+  } as any;
+
+  it("ray-tests positioned NPCs even when they are not in CollideableSelector", () => {
+    const table = { scan: () => [npc] } as any;
+    const hits = traceNpcMetadataCursorHitsV1(
+      table,
+      [0, 1, 0],
+      [0, 0, 1],
+      { maxDistance: 8 }
+    );
+
+    assert.equal(hits.length, 1);
+    assert.equal(hits[0].entity.id, npc.id);
+    assert.equal(hits[0].distance, 4.5);
+  });
+
+  it("honors filters and dedupes entities already found by the collideable trace", () => {
+    const table = { scan: () => [npc] } as any;
+
+    assert.deepEqual(
+      traceNpcMetadataCursorHitsV1(table, [0, 1, 0], [0, 0, 1], {
+        maxDistance: 8,
+        entityFilter: () => false,
+      }),
+      []
+    );
+    assert.deepEqual(
+      traceNpcMetadataCursorHitsV1(table, [0, 1, 0], [0, 0, 1], {
+        maxDistance: 8,
+        excludeIds: new Set([npc.id]),
+      }),
+      []
+    );
+  });
+
+  it("does not manufacture a hit when the ray misses the NPC box", () => {
+    const table = { scan: () => [npc] } as any;
+    const hits = traceNpcMetadataCursorHitsV1(
+      table,
+      [4, 1, 0],
+      [0, 0, 1],
+      { maxDistance: 8 }
+    );
+
+    assert.deepEqual(hits, []);
   });
 });

@@ -54,8 +54,9 @@ function migrateTrigger(
     if (!(field in obj) || !obj[field]) {
       return false;
     }
-    const mapped = idUpgrades.get(obj[field] as BiomesId);
-    if (mapped !== obj[field]) {
+    const current = obj[field] as unknown as BiomesId;
+    const mapped = idUpgrades.get(current);
+    if (mapped !== current) {
       (obj as any)[field] = mapped;
       return true;
     }
@@ -66,7 +67,7 @@ function migrateTrigger(
     if (!obj[field]) {
       return false;
     }
-    const item = obj[field] as Item;
+    const item = obj[field] as unknown as Item;
     return migrateId(item, "id");
   };
 
@@ -77,12 +78,13 @@ function migrateTrigger(
     if (!obj[field]) {
       return false;
     }
-    let mapped: BiomesId | undefined = idUpgrades.get(obj[field] as BiomesId);
+    const current = obj[field] as unknown as BiomesId;
+    let mapped: BiomesId | undefined = idUpgrades.get(current);
     if (mapped === LEGACY_HANDCRAFT) {
       // Handcraft is no longer a station.
       mapped = undefined;
     }
-    if (mapped !== obj[field]) {
+    if (mapped !== current) {
       (obj as any)[field] = mapped;
       return true;
     }

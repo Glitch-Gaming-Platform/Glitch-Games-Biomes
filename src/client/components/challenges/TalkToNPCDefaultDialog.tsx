@@ -1,4 +1,9 @@
-import { defaultDialogForNpc } from "@/client/components/challenges/helpers";
+import {
+  activeQuestVoiceContextForNpcV1,
+  defaultDialogForNpc,
+  playerVoiceContextForNpcChatV1,
+  useRelevantStepsForEntity,
+} from "@/client/components/challenges/helpers";
 import {
   isHarthmereCombatCreatureNpcTypeV1,
   isHarthmereNonLivingDialogueObjectLabelV1,
@@ -38,7 +43,7 @@ import {
   relevantBiscuitForEntityId,
 } from "@/shared/npc/bikkie";
 import { jsonPost } from "@/shared/util/fetch_helpers";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 export function useCanTalkToNpc(
   deps: ClientContextSubset<"resources" | "reactResources">,
@@ -221,7 +226,7 @@ export const TalkToNpcDefaultDialog: React.FunctionComponent<{
   onClose: () => unknown;
 }> = ({ talkingToNPCId, onClose }) => {
   const clientContext = useClientContext();
-  const { resources } = clientContext;
+  const { resources, reactResources, userId } = clientContext;
   const initialDefaultDialog = defaultDialogForNpc(resources, talkingToNPCId);
   const label = resources.get("/ecs/c/label", talkingToNPCId)?.text;
   const entityDescription = resources.get(
@@ -246,6 +251,7 @@ export const TalkToNpcDefaultDialog: React.FunctionComponent<{
   );
   const liveEntityHelperDialog =
     useLiveEntityHelperQuestDialogV1(talkingToNPCId);
+  const relevantQuestSteps = useRelevantStepsForEntity(talkingToNPCId);
   const [id, setId] = useState(0);
   const fallbackDialogText = harthmereFallbackNpcDialogTextV143({
     name: label,
@@ -347,8 +353,16 @@ export const TalkToNpcDefaultDialog: React.FunctionComponent<{
     ];
   });
   const [querying, setQuerying] = useState(false);
+  const [voiceConversationActive, setVoiceConversationActive] = useState(false);
 
   const lastMessageContext = useRef<string | undefined>(undefined);
+  const lastVoiceQuestContext = useRef<string | undefined>(undefined);
+  useEffect(() => {
+    lastMessageContext.current = undefined;
+    lastVoiceQuestContext.current = undefined;
+    setVoiceConversationActive(false);
+    setQuerying(false);
+  }, [talkingToNPCId]);
   const withLiveEntityHelperDialogText = useCallback(
     (dialogText: string) =>
       liveEntityHelperDialog?.dialogText
@@ -365,7 +379,7 @@ export const TalkToNpcDefaultDialog: React.FunctionComponent<{
   );
 
   const respondWith = useCallback(
-    async (message: string | undefined) => {
+    async (message: string | undefined, questContext?: string) => {
       setQuerying(true);
       try {
         const res = await jsonPost<GeneratedChatResponse, GeneratedChatRequest>(
@@ -374,6 +388,11 @@ export const TalkToNpcDefaultDialog: React.FunctionComponent<{
             entityId: talkingToNPCId,
             messageContext: lastMessageContext.current,
             userResponse: message,
+            questContext,
+            userContext: playerVoiceContextForNpcChatV1({
+              reactResources,
+              userId,
+            }),
           }
         );
         setCurrentDialog(res.nextDialog.message);
@@ -407,7 +426,7 @@ export const TalkToNpcDefaultDialog: React.FunctionComponent<{
                     : `${delta} relationship with this NPC`
                   : undefined,
               onPerformed: () => {
-                void respondWith(e);
+                void respondWith(e, lastVoiceQuestContext.current);
               },
             };
           })
@@ -429,11 +448,26 @@ export const TalkToNpcDefaultDialog: React.FunctionComponent<{
       applyDialogueReputationChoice,
       fallbackDialogText,
       makeFallbackActions,
+      reactResources,
       talkingToNPCId,
+      userId,
     ]
   );
+  const handleVoiceTranscript = useCallback(
+    (text: string) => {
+      const questContext = activeQuestVoiceContextForNpcV1(relevantQuestSteps);
+      lastVoiceQuestContext.current = questContext;
+      setVoiceConversationActive(true);
+      void respondWith(text, questContext);
+    },
+    [relevantQuestSteps, respondWith]
+  );
+  const voiceInput = {
+    disabled: querying,
+    onTranscript: handleVoiceTranscript,
+  };
 
-  if (liveEntityHelperDialog) {
+  if (!voiceConversationActive && liveEntityHelperDialog) {
     return (
       <TalkToNpc
         talkingToNpcId={talkingToNPCId}
@@ -449,6 +483,7 @@ export const TalkToNpcDefaultDialog: React.FunctionComponent<{
           ...e,
           disabled: querying || e.disabled,
         }))}
+        voiceInput={voiceInput}
       />
     );
   }
@@ -457,7 +492,7 @@ export const TalkToNpcDefaultDialog: React.FunctionComponent<{
   // Grove bible/tutorial dialogue must win before the legacy Road Ahead bridge.
   // Otherwise Jackie always shows only the old bridge and the fountain lessons
   // assigned to Jackie/Rosalyn/Taye/Nia are technically present but invisible.
-  if (snapshotGroveNpcDialog) {
+  if (!voiceConversationActive && snapshotGroveNpcDialog) {
     return (
       <TalkToNpc
         talkingToNpcId={talkingToNPCId}
@@ -471,11 +506,12 @@ export const TalkToNpcDefaultDialog: React.FunctionComponent<{
         additionalActions={withLiveEntityHelperActions(
           snapshotGroveNpcDialog.actions
         )}
+        voiceInput={voiceInput}
       />
     );
   }
 
-  if (snapshotMissionDialog) {
+  if (!voiceConversationActive && snapshotMissionDialog) {
     return (
       <TalkToNpc
         talkingToNpcId={talkingToNPCId}
@@ -489,11 +525,12 @@ export const TalkToNpcDefaultDialog: React.FunctionComponent<{
         additionalActions={withLiveEntityHelperActions(
           snapshotMissionDialog.actions
         )}
+        voiceInput={voiceInput}
       />
     );
   }
 
-  if (snapshotLiveNpcLoreDialog) {
+  if (!voiceConversationActive && snapshotLiveNpcLoreDialog) {
     return (
       <TalkToNpc
         talkingToNpcId={talkingToNPCId}
@@ -507,11 +544,12 @@ export const TalkToNpcDefaultDialog: React.FunctionComponent<{
         additionalActions={withLiveEntityHelperActions(
           snapshotLiveNpcLoreDialog.actions
         )}
+        voiceInput={voiceInput}
       />
     );
   }
 
-  if (localDevHarthmereDialog) {
+  if (!voiceConversationActive && localDevHarthmereDialog) {
     return (
       <TalkToNpc
         talkingToNpcId={talkingToNPCId}
@@ -525,6 +563,7 @@ export const TalkToNpcDefaultDialog: React.FunctionComponent<{
         additionalActions={withLiveEntityHelperActions(
           localDevHarthmereDialog.actions
         )}
+        voiceInput={voiceInput}
       />
     );
   }
@@ -547,6 +586,7 @@ export const TalkToNpcDefaultDialog: React.FunctionComponent<{
           disabled: querying || e.disabled,
         })
       )}
+      voiceInput={voiceInput}
     />
   );
 };

@@ -131,7 +131,10 @@ export async function stringSHAHash(input: string) {
   }
 
   // NOTE: the following only works in secure contexts (localhost, https, etc)
-  const hashBuffer = await c.subtle.digest("SHA-256", msgBuffer);
+  const hashBuffer = await c.subtle.digest(
+    "SHA-256",
+    msgBuffer as unknown as BufferSource
+  );
 
   // convert ArrayBuffer to Array
   const hashArray = Array.from(new Uint8Array(hashBuffer));

@@ -15,8 +15,8 @@ import type {
   Server as HTTPServer,
   IncomingMessage,
   ServerResponse,
-} from "http";
-import { createServer } from "http";
+} from "node:http";
+import { createServer } from "node:http";
 import { createReadStream } from "fs";
 import { open, readdir, stat } from "fs/promises";
 import type { NextApiRequest } from "next";
@@ -492,7 +492,7 @@ async function tryServeGlitchLocalBucketAssetV146(
       if (req.method === "HEAD") {
         res.end();
       } else {
-        createReadStream(candidate.path).pipe(res);
+        createReadStream(candidate.path).pipe(res as any);
       }
       return true;
     } catch {

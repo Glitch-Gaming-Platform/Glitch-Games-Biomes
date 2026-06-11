@@ -48,6 +48,7 @@ export interface InventoryUiItem {
   canSplit?: boolean;
   canDrop?: boolean;
   canDestroy?: boolean;
+  canUnequip?: boolean;
   protectedReason?: string;
   selected?: boolean;
 }
@@ -862,6 +863,26 @@ export const InventoryTab: React.FunctionComponent<{
                   data-inventory-action="equip"
                 >
                   Equip
+                </button>
+              </Highlightable>
+              <Highlightable
+                uniqueId={UI_IDS.INVENTORY_ACTION("unequip")}
+                showCaption
+              >
+                <button
+                  type="button"
+                  onClick={() =>
+                    selectedItem.ref &&
+                    adapter?.unequipItem?.(selectedItem.ref)
+                  }
+                  disabled={
+                    !selectedItem.ref ||
+                    selectedItem.source !== "equipment" ||
+                    selectedItem.canUnequip === false
+                  }
+                  data-inventory-action="unequip"
+                >
+                  Unequip
                 </button>
               </Highlightable>
               <Highlightable

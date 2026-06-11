@@ -23,6 +23,7 @@ import {
   HARTHMERE_JOBS_BOARD_MUCK_BOUNTY_TARGETS_V1,
   type HarthmereJobsBoardMuckBountyTargetV1,
 } from "@/shared/harthmere/jobs_board_muck_bounty_targets_v1";
+import { resolveHarthmereProductionMarkerPositionV1 } from "@/shared/harthmere/production_terrain_placement_map_v1";
 import {
   SNAPSHOT_GROVE_LANDMARKS_V75,
   type SnapshotGroveLandmarkV75,
@@ -209,6 +210,25 @@ export function harthmereJobsBoardQuestMarkerPositionForIdV1(
   );
 }
 
+export function harthmereJobsBoardQuestMarkerRuntimePositionV1(
+  marker: HarthmereJobsBoardQuestMarkerPositionV1
+): HarthmereJobsBoardQuestMarkerPositionV1 {
+  return {
+    ...marker,
+    position: resolveHarthmereProductionMarkerPositionV1({
+      markerId: marker.markerId,
+      fallback: marker.position,
+    }),
+  };
+}
+
+export function harthmereJobsBoardQuestMarkerRuntimePositionForIdV1(
+  markerId: string | undefined
+): HarthmereJobsBoardQuestMarkerPositionV1 | undefined {
+  const marker = harthmereJobsBoardQuestMarkerPositionForIdV1(markerId);
+  return marker ? harthmereJobsBoardQuestMarkerRuntimePositionV1(marker) : undefined;
+}
+
 export function harthmereJobsBoardQuestMarkerPositionForTodoV1(input: {
   mapMarkerId?: string;
   targetId?: string;
@@ -222,6 +242,16 @@ export function harthmereJobsBoardQuestMarkerPositionForTodoV1(input: {
       position: [...input.fallbackPosition] as Vec3,
       source: "fallback",
     }
+  );
+}
+
+export function harthmereJobsBoardQuestMarkerRuntimePositionForTodoV1(input: {
+  mapMarkerId?: string;
+  targetId?: string;
+  fallbackPosition: Vec3;
+}): HarthmereJobsBoardQuestMarkerPositionV1 {
+  return harthmereJobsBoardQuestMarkerRuntimePositionV1(
+    harthmereJobsBoardQuestMarkerPositionForTodoV1(input)
   );
 }
 

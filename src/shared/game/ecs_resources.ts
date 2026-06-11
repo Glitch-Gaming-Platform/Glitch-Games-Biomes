@@ -4,6 +4,7 @@ import type {
   ComponentResourcePaths,
   ReadonlyWorldMetadata,
 } from "@/shared/ecs/gen/components";
+import { WorldMetadata } from "@/shared/ecs/gen/components";
 import type { EntityResourcePaths } from "@/shared/ecs/gen/entities";
 import {
   ENTITY_PROP_TO_RESOURCE_PATH,
@@ -23,7 +24,6 @@ import type {
   TypedResourceDeps,
   TypedResources,
 } from "@/shared/resources/types";
-import { ok } from "assert";
 
 interface BaseEcsResourcePaths {
   "/ecs/metadata": PathDef<[], ReadonlyWorldMetadata>;
@@ -36,6 +36,17 @@ export type EcsResourcePaths = BaseEcsResourcePaths &
 export type EcsResources = TypedResources<EcsResourcePaths>;
 export type EcsResourceDeps = TypedResourceDeps<EcsResourcePaths>;
 type EcsResourcesBuilder = BiomesResourcesBuilder<EcsResourcePaths>;
+
+let loggedMissingWorldMetadataFallback = false;
+
+export function fallbackWorldMetadataV1(): ReadonlyWorldMetadata {
+  return WorldMetadata.create({
+    aabb: {
+      v0: [-2048, -256, -2048],
+      v1: [2048, 512, 2048],
+    },
+  });
+}
 
 function invalidateEcsResource(
   localUserId: BiomesId | undefined,
@@ -138,10 +149,16 @@ export function addTableResources<MI extends MetaIndex<MI>>(
 ) {
   builder.add("/ecs/metadata", () => {
     const entity = table.get(WorldMetadataId);
-    ok(
-      entity !== undefined && entity.world_metadata !== undefined,
-      "Missing world metadata!"
-    );
+    if (entity?.world_metadata === undefined) {
+      if (!loggedMissingWorldMetadataFallback) {
+        loggedMissingWorldMetadataFallback = true;
+        log.warn("World metadata missing; using fallback metadata.", {
+          hasWorldMetadataEntity: entity !== undefined,
+          worldMetadataEntityFields: entity ? Object.keys(entity) : [],
+        });
+      }
+      return fallbackWorldMetadataV1();
+    }
     return entity.world_metadata;
   });
 

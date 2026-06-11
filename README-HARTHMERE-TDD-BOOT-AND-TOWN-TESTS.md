@@ -19,6 +19,23 @@ for fast warm starts, when to use the live browser instead of static render
 scripts, how `[x, y, z]` coordinates map to terrain, and how to avoid
 invisible, floating, buried, or mismatched production placements.
 
+For future AI/browser sessions, go straight to section `4A. Fast AI browser
+boot checklist` in the main guide. It documents the fastest path from this repo
+to a playable `/at/...` browser runtime, the Redis warm-start command, the
+runtime URL finder, and the voice/dialogue browser test that catches repeat
+audio and click-freeze regressions.
+
+For terrain-correct quest items, monsters, HUD targets, BiomesUI map pins, and
+quest pointers, also read:
+
+```text
+docs/harthmere/HARTHMERE_PRODUCTION_TERRAIN_PLACEMENT_MAP_V1.md
+```
+
+That guide explains how to regenerate the production terrain placement map from
+Azure/Redis read-only data and which resolver to use before placing anything on
+the map.
+
 Start normal local Harthmere:
 
 ```bash

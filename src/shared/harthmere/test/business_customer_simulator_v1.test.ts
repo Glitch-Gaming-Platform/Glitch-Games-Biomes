@@ -2,6 +2,7 @@
 
 import assert from "assert";
 import { isTerrainID, safeGetTerrainId } from "../../asset_defs/terrain";
+import { BUILDING_SYSTEM_TERRAIN_BLOCKS_V1 } from "../building_system_v1";
 import {
   HARTHMERE_BUSINESS_CUSTOMER_NPCS_V1,
   HARTHMERE_BUSINESS_MINIGAME_DEFINITIONS_V1,
@@ -13,6 +14,8 @@ import {
   HARTHMERE_BUSINESS_OUTPOST_SAFE_SITES_V1,
   HARTHMERE_BUSINESS_OUTPOST_TERRAIN_GROUND_Y_BY_ID_V1,
   HARTHMERE_BUSINESS_OUTPOSTS_V1,
+  HARTHMERE_BUSINESS_REFERENCE_INTERIOR_TEMPLATE_BY_TYPE_V1,
+  HARTHMERE_BUSINESS_SCENARIO_MODIFIERS_V1,
   isPointInsideHarthmereBusinessSafeSiteV1,
   validateHarthmereBusinessOutpostSafeSitingV1,
   HARTHMERE_BUSINESS_SERVICE_ANIMATION_CUE_SPECS_V1,
@@ -22,6 +25,7 @@ import {
   HARTHMERE_GROVE_BUSINESS_BUILDING_SOURCE_SCAN_V1,
   HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_COORDINATES_V1,
   HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_V1,
+  HARTHMERE_GROVE_BUSINESS_INTERIOR_REFERENCE_TEMPLATE_FIXTURES_V1,
   HARTHMERE_GROVE_BUSINESS_PEOPLE_REFERENCE_COORDINATES_V1,
   HARTHMERE_GROVE_BUSINESS_PEOPLE_SOURCE_SCAN_V1,
   applyHarthmereBusinessCozyServiceRewardV1,
@@ -233,6 +237,22 @@ describe("business_customer_simulator_v1", () => {
       HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_V1.interiorFindings.length,
       HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_COORDINATES_V1.length
     );
+    assert.equal(
+      HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_V1.constructionFindings
+        .length,
+      HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_COORDINATES_V1.length
+    );
+    assert.ok(
+      HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_V1.constructionFindings.every(
+        (finding) =>
+          finding.hasBuildingOrThreshold && finding.constructedWith.length >= 3
+      )
+    );
+    assert.ok(
+      HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_V1.constructionFindings.some(
+        (finding) => finding.patternId === "gray_office_lounge"
+      )
+    );
     assert.ok(
       HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_V1.reusableInteriorCues.some(
         (cue) => cue.includes("service counters")
@@ -279,6 +299,10 @@ describe("business_customer_simulator_v1", () => {
     assert.deepEqual(
       Object.keys(HARTHMERE_BUSINESS_MINIGAME_DEFINITIONS_V1).sort(),
       businessTypes.sort()
+    );
+    assert.ok(
+      HARTHMERE_BUSINESS_SCENARIO_MODIFIERS_V1.length >= 30,
+      "mini-game queues need at least 30 scenario modifiers for variety"
     );
     for (const typeId of businessTypes) {
       const definition =
@@ -589,6 +613,10 @@ describe("business_customer_simulator_v1", () => {
     });
     assert.equal(result.queue.length, 5);
     assert.equal(result.nextTicketNumber, 12);
+    assert.equal(
+      new Set(result.queue.map((ticket) => ticket.scenarioId)).size,
+      result.queue.length
+    );
     for (const ticket of result.queue) {
       assert.ok(
         HARTHMERE_BUSINESS_CUSTOMER_NPCS_V1.some(
@@ -898,6 +926,30 @@ describe("business_customer_simulator_v1", () => {
         ),
         `${outpost.outpostId} must include its business-specific fixture ${exactPresentation[3]}`
       );
+      const referenceTemplateId =
+        HARTHMERE_BUSINESS_REFERENCE_INTERIOR_TEMPLATE_BY_TYPE_V1[
+          outpost.businessType
+        ];
+      assert.ok(
+        referenceTemplateId,
+        `${outpost.outpostId} must map to a scanned Grove interior template`
+      );
+      const referenceTemplateFixtures =
+        HARTHMERE_GROVE_BUSINESS_INTERIOR_REFERENCE_TEMPLATE_FIXTURES_V1[
+          referenceTemplateId
+        ];
+      assert.ok(
+        referenceTemplateFixtures.length >= 4,
+        `${outpost.outpostId} must inherit multiple furniture pieces from ${referenceTemplateId}`
+      );
+      for (const referenceFixture of referenceTemplateFixtures) {
+        assert.ok(
+          record.interiorFixtures.some(
+            (fixture) => fixture.label === referenceFixture.label
+          ),
+          `${outpost.outpostId} must include reference furniture "${referenceFixture.label}" from ${referenceTemplateId}`
+        );
+      }
       const wallPositions = new Set(
         record.materializationPlan.edits
           .filter((edit) => edit.label === "wall")
@@ -1400,7 +1452,7 @@ describe("business_customer_simulator_v1", () => {
     const plans = createHarthmereBusinessOutpostRebuildMaterializationPlansV1();
     assert.equal(plans.length, HARTHMERE_BUSINESS_OUTPOSTS_V1.length * 2);
     assert.ok(
-      HARTHMERE_BUSINESS_OUTPOST_REBUILD_REVISION_V1.includes("solid-voxel")
+      HARTHMERE_BUSINESS_OUTPOST_REBUILD_REVISION_V1.includes("real-interior")
     );
     for (let index = 0; index < plans.length; index += 2) {
       const cleanup = plans[index];
@@ -1456,6 +1508,20 @@ describe("business_customer_simulator_v1", () => {
       assert.ok(rebuild.edits.some((edit) => edit.label === "foundation"));
       assert.ok(rebuild.edits.some((edit) => edit.label === "wall"));
       assert.ok(rebuild.edits.some((edit) => edit.label === "business_marker"));
+      assert.equal(
+        rebuild.edits.filter(
+          (edit) =>
+            [
+              "business_marker",
+              "frame",
+              "interior",
+              "storage_container",
+            ].includes(edit.label) &&
+            edit.value === BUILDING_SYSTEM_TERRAIN_BLOCKS_V1.woodCrate
+        ).length,
+        0,
+        `${rebuild.requestId} must not dress real business interiors with crate/box terrain`
+      );
     }
   });
 

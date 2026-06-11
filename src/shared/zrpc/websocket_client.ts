@@ -33,7 +33,7 @@ import { willEverBeReady } from "@/shared/zrpc/core";
 import { RpcClientError, wrapClientError } from "@/shared/zrpc/errors";
 import * as grpc from "@/shared/zrpc/grpc";
 import { prepare } from "@/shared/zrpc/serde";
-import { EventEmitter } from "events";
+import EventEmitter from "events";
 import type { Data } from "isomorphic-ws";
 import WebSocket from "isomorphic-ws";
 import { isEqual, mapKeys, mapValues } from "lodash";
@@ -111,7 +111,7 @@ function dataLength(data: Data) {
     if (data instanceof Buffer) {
       return data.length;
     }
-    return data.reduce((acc, buf) => acc + buf.length, 0);
+    return (data as Buffer[]).reduce((acc, buf) => acc + buf.length, 0);
   }
   log.warn(`Unexpected data type from WebSocket: ${typeof data}`);
   return 0;
@@ -153,7 +153,7 @@ export type HeartbeatConfig = z.infer<typeof zHeartbeatConfig>;
 // requests are terminated with state CANCELLED. If you do not wait for the socket
 // to be ready, requests are failed fast with state UNIMPLEMENTED.
 export class WebSocketZrpcClient
-  extends (EventEmitter as {
+  extends (EventEmitter as unknown as {
     new (): TypedEventEmitter<WebSocketChannelEvents>;
   })
   implements WebSocketChannel
@@ -580,7 +580,7 @@ export class WebSocketZrpcClient
         // Internal message.
         return { reqId: data };
       } else if (data instanceof ArrayBuffer) {
-        data = new Uint8Array(data);
+        data = Buffer.from(data);
       }
       if (process.env.IS_SERVER) {
         if (Array.isArray(data)) {

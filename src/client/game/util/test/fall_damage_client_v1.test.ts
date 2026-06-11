@@ -164,4 +164,29 @@ describe("client fall-damage tick", () => {
     assert.equal(tick.fellBlocks, 20);
     assert.equal(tick.hpDelta, -40);
   });
+
+  it("uses hard landing impact as a fallback when cached ground state missed the fall", () => {
+    const tick = clientFallDamageTickWithGraceV1(initFallTrackerV1(90), {
+      onGround: true,
+      y: 70,
+      canTakeFallDamage: true,
+      canApplyFallDamage: true,
+      landingImpactFallbackBlocks: 20,
+    });
+    assert.equal(tick.fellBlocks, 20);
+    assert.equal(tick.hpDelta, -40);
+    assert.equal(tick.rawHpDelta, -40);
+  });
+
+  it("does not let the impact fallback bypass fall-damage immunity", () => {
+    const tick = clientFallDamageTickWithGraceV1(initFallTrackerV1(90), {
+      onGround: true,
+      y: 70,
+      canTakeFallDamage: false,
+      canApplyFallDamage: true,
+      landingImpactFallbackBlocks: 20,
+    });
+    assert.equal(tick.fellBlocks, 0);
+    assert.equal(tick.hpDelta, 0);
+  });
 });

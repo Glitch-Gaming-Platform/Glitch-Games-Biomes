@@ -2,6 +2,7 @@ import {
   getHarthmereBusinessOutpostMapMarkersV1,
   type HarthmereBusinessOutpostMapMarkerV1,
 } from "@/shared/harthmere/business_customer_simulator_v1";
+import { resolveHarthmereProductionMarkerPositionV1 } from "@/shared/harthmere/production_terrain_placement_map_v1";
 
 export interface HarthmereBusinessMapLandmarkV1 {
   id: string;
@@ -25,7 +26,10 @@ export function harthmereBusinessOutpostMapLandmarksV1(): HarthmereBusinessMapLa
   return getHarthmereBusinessOutpostMapMarkersV1().map((marker) => ({
     id: marker.markerId,
     label: marker.label,
-    position: marker.position,
+    position: resolveHarthmereProductionMarkerPositionV1({
+      markerId: marker.markerId,
+      fallback: marker.position,
+    }) as [number, number, number],
     kind: "business" as const,
     area: marker.area,
     visibleOnWorldMap: true as const,

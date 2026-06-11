@@ -4,14 +4,21 @@ import type { Player } from "@/client/game/resources/players";
 import type { ClientRuleSet } from "@/server/shared/minigames/ruleset/client_types";
 import type { TweakableConfig } from "@/server/shared/minigames/ruleset/tweaks";
 import type { ReadonlyEntity } from "@/shared/ecs/gen/entities";
-import { CollideableSelector } from "@/shared/ecs/gen/selectors";
+import {
+  CollideableSelector,
+  NpcMetadataSelector,
+} from "@/shared/ecs/gen/selectors";
 import { isEntryDomainAabb } from "@/shared/ecs/spatial/types";
+import { getAabbForEntity } from "@/shared/game/entity_sizes";
+import type { EntityHit } from "@/shared/game/spatial";
 import { isPlayer } from "@/shared/game/players";
 import type { BiomesId } from "@/shared/ids";
 import { isHarthmereNonLivingObjectLabelV1 } from "@/shared/harthmere/object_interaction_semantics_v1";
 import {
+  add,
   frustumBoundingSphere,
   frustumToConvexPolytope,
+  intersectRayAabb,
   intersectConvexPolytopeAABB,
   makeOrthoProjection,
   makeTranslation,
@@ -19,8 +26,14 @@ import {
   makeYRotate,
   mulm4,
   pointInConvexPolytope,
+  scale,
 } from "@/shared/math/linear";
-import type { ConvexPolytope, Mat4, Sphere } from "@/shared/math/types";
+import type {
+  ConvexPolytope,
+  Mat4,
+  ReadonlyVec3,
+  Sphere,
+} from "@/shared/math/types";
 import { getNpcBehavior, maybeIdToNpcType } from "@/shared/npc/bikkie";
 import * as THREE from "three";
 
@@ -86,8 +99,9 @@ export function canAttackFilter(
   }
 
   const npcTypeId = x.npc_metadata?.type_id;
+  const harthmereLiveAttackable = isAttackableLiveEntityWithoutNpcMetadata(x);
   if (npcTypeId === undefined) {
-    return isAttackableLiveEntityWithoutNpcMetadata(x);
+    return harthmereLiveAttackable;
   }
 
   // SNAPSHOT_NPC_ATTACK_FILTER_COMPAT_V1:
@@ -96,12 +110,19 @@ export function canAttackFilter(
   // every frame, so invalid/legacy NPC types must fail soft instead of throwing.
   const npcType = maybeIdToNpcType(npcTypeId);
   if (!npcType) {
-    return isAttackableLiveEntityWithoutNpcMetadata(x);
+    return harthmereLiveAttackable;
   }
-  return (
-    getNpcBehavior(npcType).damageable?.attackable ??
-    isAttackableLiveEntityWithoutNpcMetadata(x)
-  );
+  // HARTHMERE_LIVE_NPC_ATTACKABLE_OVERRIDE_V1:
+  // The Harthmere live creatures are seeded as real NPCs but reuse legacy NPC
+  // types like dMucker/biomesRobot whose Bikkie behavior has
+  // damageable.attackable=false. If we return that false directly, the cursor
+  // omits a perfectly real, collideable, health-backed mucker/hex/animal before
+  // AttackDestroyDelegate can publish UpdateNpcHealthEvent. Let explicit
+  // Harthmere live-target semantics win for those labels/components while
+  // keeping ordinary non-combat NPCs filtered out.
+  return getNpcBehavior(npcType).damageable?.attackable === true
+    ? true
+    : harthmereLiveAttackable;
 }
 
 // HARTHMERE_VOXEL_REACH_ATTACK_V1:
@@ -132,6 +153,51 @@ export function shouldAddCrosshairMeleeTargetV1(input: {
     return false;
   }
   return !input.alreadyIncludedIds.includes(input.targetId);
+}
+
+export function traceNpcMetadataCursorHitsV1(
+  table: ClientTable,
+  from: ReadonlyVec3,
+  dir: ReadonlyVec3,
+  params: {
+    maxDistance: number;
+    entityFilter?: (entity: ReadonlyEntity) => boolean;
+    excludeIds?: ReadonlySet<BiomesId>;
+  }
+): EntityHit[] {
+  const entityHits: EntityHit[] = [];
+  const halfDistance = params.maxDistance * 0.5;
+  const rayMidpoint = add(from, scale(halfDistance, dir));
+
+  for (const entity of table.scan(
+    NpcMetadataSelector.query.spatial.inSphere({
+      center: rayMidpoint,
+      radius: halfDistance,
+    })
+  )) {
+    if (params.excludeIds?.has(entity.id)) {
+      continue;
+    }
+    if (params.entityFilter && !params.entityFilter(entity)) {
+      continue;
+    }
+    const aabb = getAabbForEntity(entity);
+    if (!aabb) {
+      continue;
+    }
+    const maybeHit = intersectRayAabb(from, dir, aabb);
+    if (maybeHit && maybeHit.distance <= params.maxDistance) {
+      entityHits.push({
+        kind: "entity",
+        entity,
+        distance: maybeHit.distance,
+        pos: maybeHit.pos,
+      });
+    }
+  }
+
+  entityHits.sort((a, b) => b.distance - a.distance);
+  return entityHits;
 }
 
 export function attackableEntitiesInAttackRegion(

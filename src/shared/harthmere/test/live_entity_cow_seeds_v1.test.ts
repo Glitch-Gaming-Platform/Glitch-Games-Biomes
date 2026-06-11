@@ -1,12 +1,18 @@
 import {
+  HARTHMERE_MUCK_HEX_STRENGTH_MULTIPLIER_V1,
   createHarthmereServerMuckCombatEntitySnapshotsV1,
 } from "@/shared/harthmere/live_mode_backend_v1";
 import {
   HARTHMERE_LIVE_ENTITY_LIVESTOCK_SEEDS_V1,
   harthmereGroundedLivestockSeedsInTerritoryV1,
+  harthmereGroundedMuckMonsterSeedsInTerritoryV1,
 } from "@/shared/harthmere/live_entity_production_seed_v1";
 import { harthmereMuckCreatureAssetKeyForLabelV1 } from "@/shared/harthmere/muck_creature_assets_v1";
 import { muckMonsterAreaForPositionV1 } from "@/shared/harthmere/muck_monster_aggression_ai_v1";
+import {
+  getHarthmereProductionPlacementByKeyV1,
+  harthmereProductionPlacementKeyV1,
+} from "@/shared/harthmere/production_terrain_placement_map_v1";
 import assert from "assert";
 
 const SPECIES = ["cow", "sheep", "rabbit"] as const;
@@ -32,6 +38,11 @@ describe("Muck-area wildlife (cows, sheep, rabbits)", () => {
     const grounded = harthmereGroundedLivestockSeedsInTerritoryV1();
     assert.ok(grounded.length >= 16, "expected the full wildlife herd");
     for (const seed of grounded) {
+      const placement = getHarthmereProductionPlacementByKeyV1(
+        harthmereProductionPlacementKeyV1("live_livestock", seed.seedId)
+      );
+      assert.ok(placement, `${seed.seedId} is missing a production placement`);
+      assert.deepEqual(seed.position, placement.recommendedPosition);
       assert.ok(
         muckMonsterAreaForPositionV1(seed.position, 1.5),
         `${seed.seedId} is not inside a muck area`
@@ -115,5 +126,31 @@ describe("Muck-area wildlife (cows, sheep, rabbits)", () => {
       cow!.bodyRadius > rabbit!.bodyRadius,
       "cow hitbox should be larger than rabbit"
     );
+  });
+
+  it("boosts Muckers and Hexes to the five-times production threat tier", () => {
+    const snapshots = createHarthmereServerMuckCombatEntitySnapshotsV1(1000);
+    const seeds = harthmereGroundedMuckMonsterSeedsInTerritoryV1();
+    const firstMucker = seeds.find((seed) => seed.combatKind !== "hex");
+    const firstHex = seeds.find((seed) => seed.combatKind === "hex");
+    assert.ok(firstMucker && firstHex, "expected both mucker and hex seeds");
+
+    const mucker = snapshots[
+      `server-muck-combat:${firstMucker.seedId}:${firstMucker.idOffset}`
+    ] as Record<string, any>;
+    const hex = snapshots[
+      `server-muck-combat:${firstHex.seedId}:${firstHex.idOffset}`
+    ] as Record<string, any>;
+
+    assert.equal(
+      mucker.maxHp,
+      (firstMucker.combatHp ?? 110) * HARTHMERE_MUCK_HEX_STRENGTH_MULTIPLIER_V1
+    );
+    assert.equal(
+      hex.maxHp,
+      (firstHex.combatHp ?? 120) * HARTHMERE_MUCK_HEX_STRENGTH_MULTIPLIER_V1
+    );
+    assert.ok(mucker.attackDamage >= 70);
+    assert.ok(hex.attackDamage >= 90);
   });
 });

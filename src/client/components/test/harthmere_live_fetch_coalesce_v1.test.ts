@@ -2,6 +2,7 @@
 import assert from "assert";
 import {
   coalescedHarthmereLiveFetchV1,
+  isHarthmereLiveFetchAbortErrorV1,
   planHarthmereLiveFetchCacheV1,
   resetHarthmereLiveFetchCacheV1,
 } from "@/client/components/harthmere_live_fetch";
@@ -41,14 +42,19 @@ describe("harthmere live fetch coalescing", () => {
   describe("planHarthmereLiveFetchCacheV1", () => {
     it("caches idempotent GETs by url", () => {
       assert.deepStrictEqual(
-        planHarthmereLiveFetchCacheV1({ url: "/api/harthmere/live_mode_building_state" }),
+        planHarthmereLiveFetchCacheV1({
+          url: "/api/harthmere/live_mode_building_state",
+        }),
         { cacheable: true, key: "GET /api/harthmere/live_mode_building_state" }
       );
     });
 
     it("never caches POSTs", () => {
       assert.deepStrictEqual(
-        planHarthmereLiveFetchCacheV1({ method: "POST", url: "/api/harthmere/live_mode" }),
+        planHarthmereLiveFetchCacheV1({
+          method: "POST",
+          url: "/api/harthmere/live_mode",
+        }),
         { cacheable: false }
       );
     });
@@ -75,7 +81,11 @@ describe("harthmere live fetch coalescing", () => {
     gate.resolve(fakeResponse("server-1"));
     const [ra, rb] = await Promise.all([a, b]);
 
-    assert.strictEqual(calls, 1, "the second concurrent GET must reuse the first");
+    assert.strictEqual(
+      calls,
+      1,
+      "the second concurrent GET must reuse the first"
+    );
     // Both callers get an independently-readable clone of the same payload.
     assert.strictEqual((ra as any)._tag, "server-1");
     assert.strictEqual((rb as any)._tag, "server-1");
@@ -98,11 +108,19 @@ describe("harthmere live fetch coalescing", () => {
     await coalescedHarthmereLiveFetchV1(fetchImpl, url, {}, opts);
     clock = 1_500; // within TTL
     await coalescedHarthmereLiveFetchV1(fetchImpl, url, {}, opts);
-    assert.strictEqual(calls, 1, "a GET within the TTL window reuses the cached response");
+    assert.strictEqual(
+      calls,
+      1,
+      "a GET within the TTL window reuses the cached response"
+    );
 
     clock = 2_600; // past TTL
     await coalescedHarthmereLiveFetchV1(fetchImpl, url, {}, opts);
-    assert.strictEqual(calls, 2, "after the TTL expires the endpoint is fetched again");
+    assert.strictEqual(
+      calls,
+      2,
+      "after the TTL expires the endpoint is fetched again"
+    );
   });
 
   it("does NOT coalesce different urls", async () => {
@@ -111,8 +129,16 @@ describe("harthmere live fetch coalescing", () => {
       calls += 1;
       return fakeResponse(`server-${calls}`);
     }) as unknown as typeof fetch;
-    await coalescedHarthmereLiveFetchV1(fetchImpl, "/api/harthmere/live_mode_quest_state", {});
-    await coalescedHarthmereLiveFetchV1(fetchImpl, "/api/harthmere/live_mode_building_state", {});
+    await coalescedHarthmereLiveFetchV1(
+      fetchImpl,
+      "/api/harthmere/live_mode_quest_state",
+      {}
+    );
+    await coalescedHarthmereLiveFetchV1(
+      fetchImpl,
+      "/api/harthmere/live_mode_building_state",
+      {}
+    );
     assert.strictEqual(calls, 2);
   });
 
@@ -142,7 +168,12 @@ describe("harthmere live fetch coalescing", () => {
     assert.strictEqual((first as any).ok, false);
     // Still within TTL, but the failed response must NOT be cached.
     clock = 1_100;
-    const second = await coalescedHarthmereLiveFetchV1(fetchImpl, url, {}, opts);
+    const second = await coalescedHarthmereLiveFetchV1(
+      fetchImpl,
+      url,
+      {},
+      opts
+    );
     assert.strictEqual(calls, 2, "a non-ok response is not reused");
     assert.strictEqual((second as any).ok, true);
   });
@@ -161,5 +192,77 @@ describe("harthmere live fetch coalescing", () => {
     const ok = await coalescedHarthmereLiveFetchV1(fetchImpl, url, {});
     assert.strictEqual(calls, 2);
     assert.strictEqual((ok as any)._tag, "server-ok");
+  });
+
+  it("turns its own timeout abort into a non-ok response instead of an uncaught page error", async () => {
+    let calls = 0;
+    const fetchImpl = (async (
+      _input: RequestInfo | URL,
+      init?: RequestInit
+    ) => {
+      calls += 1;
+      return new Promise<Response>((_resolve, reject) => {
+        init?.signal?.addEventListener("abort", () => {
+          reject(
+            new DOMException("signal is aborted without reason", "AbortError")
+          );
+        });
+      });
+    }) as unknown as typeof fetch;
+
+    const response = await coalescedHarthmereLiveFetchV1(
+      fetchImpl,
+      "/api/harthmere/live_mode_player_status_state",
+      { timeoutMs: 1 }
+    );
+    assert.equal(response.ok, false);
+    assert.equal(response.status, 504);
+    assert.deepEqual(await response.json(), {
+      error: "harthmere_live_fetch_timeout",
+      timeoutMs: 1,
+    });
+    assert.equal(calls, 1);
+  });
+
+  it("does not cache a timeout response, so the next poll can recover immediately", async () => {
+    let calls = 0;
+    const fetchImpl = (async (
+      _input: RequestInfo | URL,
+      init?: RequestInit
+    ) => {
+      calls += 1;
+      if (calls === 1) {
+        return new Promise<Response>((_resolve, reject) => {
+          init?.signal?.addEventListener("abort", () => {
+            reject(
+              new DOMException("signal is aborted without reason", "AbortError")
+            );
+          });
+        });
+      }
+      return fakeResponse("recovered");
+    }) as unknown as typeof fetch;
+
+    const url = "/api/harthmere/live_mode_player_status_state";
+    const first = await coalescedHarthmereLiveFetchV1(fetchImpl, url, {
+      timeoutMs: 1,
+    });
+    assert.equal(first.ok, false);
+    const second = await coalescedHarthmereLiveFetchV1(fetchImpl, url, {});
+    assert.equal(calls, 2);
+    assert.equal((second as any)._tag, "recovered");
+  });
+
+  it("recognizes the browser abort errors produced by timed out fetches", () => {
+    assert.equal(
+      isHarthmereLiveFetchAbortErrorV1(
+        new DOMException("signal is aborted without reason", "AbortError")
+      ),
+      true
+    );
+    const abort = new Error("The operation was aborted.");
+    abort.name = "AbortError";
+    assert.equal(isHarthmereLiveFetchAbortErrorV1(abort), true);
+    assert.equal(isHarthmereLiveFetchAbortErrorV1(new Error("network")), false);
   });
 });

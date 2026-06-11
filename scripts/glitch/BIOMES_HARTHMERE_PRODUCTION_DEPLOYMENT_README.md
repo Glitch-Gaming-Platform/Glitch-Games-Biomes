@@ -163,6 +163,71 @@ Do not bake Redis connection details into the Docker image. Set `REDIS_HOST` and
 
 ---
 
+## 2A. Optional Azure NPC voice and speech
+
+NPC voice is Azure-only and optional. If the Azure OpenAI or Azure Speech
+settings are omitted, the game stays text-only and the microphone button remains
+hidden.
+
+The verified resources are:
+
+```bash
+OPENAI_RESOURCE="glitch-openai-instance"      # Azure OpenAI, eastus
+SPEECH_RESOURCE="devin-md9b1bq5-eastus2"     # Azure AI Services/Speech, eastus2
+OPENAI_DEPLOYMENT="gpt-5.5"
+```
+
+Recommended Container App secret setup:
+
+```bash
+az containerapp secret set \
+  --resource-group openai-resource-group \
+  --name biomes-node-vnet \
+  --secrets \
+    azure-openai-api-key="<do-not-commit>" \
+    azure-speech-key="<do-not-commit>"
+
+az containerapp update \
+  --resource-group openai-resource-group \
+  --name biomes-node-vnet \
+  --set-env-vars \
+    AZURE_OPENAI_ENDPOINT="https://glitch-openai-instance.openai.azure.com/" \
+    AZURE_OPENAI_API_VERSION="2025-04-01-preview" \
+    AZURE_OPENAI_DEPLOYMENT="gpt-5.5" \
+    AZURE_OPENAI_API_KEY="secretref:azure-openai-api-key" \
+    AZURE_SPEECH_REGION="eastus2" \
+    AZURE_SPEECH_KEY="secretref:azure-speech-key"
+```
+
+Useful verification commands:
+
+```bash
+az cognitiveservices account deployment list \
+  --resource-group openai-resource-group \
+  --name glitch-openai-instance \
+  --query "[].{name:name,model:properties.model.name,version:properties.model.version,sku:sku.name,capacity:sku.capacity,rateLimits:properties.rateLimits}" \
+  -o table
+
+az cognitiveservices usage list \
+  --location eastus2 \
+  --query "[?contains(name.value, 'OpenAI') && (contains(name.value, 'audio') || contains(name.value, 'whisper') || contains(name.value, 'tts') || contains(name.value, 'transcribe') || contains(name.value, 'realtime'))].{name:name.value,current:currentValue,limit:limit,unit:unit}" \
+  -o table
+```
+
+Static NPC line recordings can be generated after secrets are present:
+
+```bash
+node scripts/harthmere/generate-harthmere-npc-voice-recordings-v1.cjs --dry-run
+```
+
+Full docs:
+
+```text
+docs/harthmere/HARTHMERE_AZURE_VOICE_AND_SPEECH_V1.md
+```
+
+---
+
 ## 3. Why the VNet environment is required
 
 The Redis VM has no public IP. That is intentional for production security.
@@ -982,10 +1047,10 @@ gates matter:
 
 1. **Boot content-sync** (`src/server/shim/main.ts`,
    `seedMissingLocalDevContentIntoExistingWorldV1`): on boot, production creates
-   only the *missing* content entities (it never rebuilds/overwrites terrain).
+   only the _missing_ content entities (it never rebuilds/overwrites terrain).
 2. **Deploy reconciler** (`scripts/harthmere/reconcile-production-world-sync-v1.cjs`,
    run by this deploy script with `APPLY=1` against the public Redis): it
-   materializes the seed *families* listed in its `seedFamilies` array.
+   materializes the seed _families_ listed in its `seedFamilies` array.
    **When you add a new authored-content family (e.g. business owners), you MUST
    add it to that array** or it never lands in prod.
 
@@ -1000,30 +1065,58 @@ customers 9701–9757** (19 businesses × 2–5 patrons = 57). Owners are
 `quest_giver`s at the counter; customers are talkable flavor NPCs only. Both are
 grounded indoors (`requireOpenSky=false`) so they stay on the building floor.
 
-## 22. Entity terrain grounding (NPCs, muckers, quest items, markers)
+## 22. Entity terrain grounding and production placement map
 
-Entities are seeded with a flat/authored hint Y, then **grounded to the real
-voxel surface on the client at render time** (the server can't cheaply read
-terrain). One module measures the ground and places everything on it:
+The current placement source of truth is the generated production terrain
+placement map:
+
+```text
+docs/harthmere/HARTHMERE_PRODUCTION_TERRAIN_PLACEMENT_MAP_V1.md
+src/shared/harthmere/production_terrain_placement_map_v1.ts
+src/shared/harthmere/generated/production_terrain_placement_map_v1.ts
+```
+
+Use it for quest items, quest markers, monsters, NPCs, interactables, BiomesUI
+map pins, HUD/minimap targets, active quest pointers, and random spawn pools.
+The map is generated from real production terrain and records outdoor surfaces,
+indoor/cave floors, cave/hollow clusters, and deterministic spawn points.
+
+Regenerate it from production with read-only Azure/Redis access:
+
+```bash
+az account show
+
+NODE_OPTIONS=--max-old-space-size=8192 \
+node scripts/harthmere/build-production-terrain-placement-map-v1.cjs \
+  --write \
+  --stride=8 \
+  --margin=64
+
+node scripts/harthmere/check-harthmere-production-placement-map-v1.cjs
+```
+
+The scanner uses `az account show`, `az containerapp show`, and Redis `mget`
+terrain reads. It writes only local generated files/artifacts when `--write` is
+present. It must not seed or mutate production.
+
+Runtime rules:
+
+- Fixed quest objectives use `resolveHarthmereQuestObjectivePlacementV1` or
+  `getHarthmereQuestResolvedWaypointV47`.
+- Jobs Board, business, and live-helper markers use
+  `resolveHarthmereProductionMarkerPositionV1` through their adapters.
+- Random outdoor content uses `chooseHarthmereQuestOutdoorSpawnPointV1`.
+- Random cave content uses `chooseHarthmereQuestCaveSpawnPointV1`.
+- BiomesUI Map, HUD/minimap, quest pointer, server authority, and 3D markers
+  should all use the same resolved `recommendedPosition`.
+
+The client terrain grounder still exists as a final visual safety layer:
 
 - Core (pure, tested): `src/shared/harthmere/harthmere_entity_grounding_v1.ts`.
 - Client adapter (terrain + water): `src/client/game/util/harthmere_entity_grounding.ts`.
 - Spec + per-entity registry + live probe numbers:
   `src/shared/harthmere/harthmere_entity_grounding_manifest_v1.ts`.
 
-It handles hills, the Grove(~70)/wilds(~54) seam, **caves** (outdoor entities
-require open sky so they never ground onto a cave floor), **water** (entities
-rest on the surface, not the lake bed), and indoor business owners/customers
-(stay on the building floor under their roof).
-
-**Future check / accuracy gate** — probe the real production terrain at every
-entity position and verify the grounder budget reaches the surface everywhere:
-
-```bash
-REDIS_HOST=20.127.78.175 GLITCH_REDIS_HOST=20.127.78.175 REDIS_PORT=6379 IS_SERVER=1 \
-  node scripts/harthmere/probe-production-terrain-grounding-v1.cjs
-# Exits non-zero (FAIL) if any position's ground is beyond the scan budget.
-```
-
-Unit tests (hills/seam/caves/buildings/water):
-`src/shared/harthmere/test/harthmere_entity_grounding_v1.test.ts`.
+Do not patch invisible, underground, or floating content with magic Y constants.
+Regenerate or inspect the production placement map instead, then wire every
+player-facing surface to the same resolved position.

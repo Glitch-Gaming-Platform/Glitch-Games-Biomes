@@ -46,6 +46,9 @@ export interface HarthmereObjectContainerRecordV1 {
   // first open. `note` is shown in the panel while a crate is locked/empty.
   sealed?: boolean;
   note?: string;
+  // One-shot marker for quest loot migrations/backfills. Older saves do not
+  // have this, so repair logic must also look at the actual contents.
+  questLootVersion?: string;
 }
 
 export interface HarthmereObjectContainerOpenRequestV1 {
@@ -87,6 +90,14 @@ export function isHarthmereClothingQuestCrateLabelV1(
 
 export const HARTHMERE_CLOTHING_CRATE_LOCKED_NOTE_V1 =
   "This crate is empty for now. Billy or Jackie will point you here when it's time to gear up on The Road Ahead.";
+
+const HARTHMERE_ROAD_AHEAD_CLOTHING_LOOT_VERSION_V1 =
+  "road-ahead-clothing-outfit-v1";
+
+const HARTHMERE_CLOTHING_QUEST_REQUIRED_ITEM_IDS_V1 = [
+  "baker_apron",
+  "field_trousers",
+];
 
 export function harthmereContainerLootForLabelV1(
   label?: string | null
@@ -197,6 +208,65 @@ function lootSlotsForLabelV1(label: string): HarthmereObjectContainerSlotV1[] {
   }));
 }
 
+function isRequiredClothingQuestItemIdV1(itemId: string): boolean {
+  return HARTHMERE_CLOTHING_QUEST_REQUIRED_ITEM_IDS_V1.includes(itemId);
+}
+
+function containerItemQuantityV1(
+  items: HarthmereObjectContainerSlotV1[],
+  itemId: string
+): number {
+  return items
+    .filter((slot) => slot.itemId === itemId)
+    .reduce((sum, slot) => sum + Math.max(0, slot.quantity), 0);
+}
+
+function hasAnyRequiredClothingQuestItemV1(
+  items: HarthmereObjectContainerSlotV1[]
+): boolean {
+  return items.some(
+    (slot) => slot.quantity > 0 && isRequiredClothingQuestItemIdV1(slot.itemId)
+  );
+}
+
+function missingRequiredClothingQuestLootSlotsV1(
+  label: string,
+  items: HarthmereObjectContainerSlotV1[]
+): HarthmereObjectContainerSlotV1[] {
+  return lootSlotsForLabelV1(label)
+    .filter((slot) => isRequiredClothingQuestItemIdV1(slot.itemId))
+    .map((slot) => ({
+      itemId: slot.itemId,
+      quantity: slot.quantity - containerItemQuantityV1(items, slot.itemId),
+    }))
+    .filter((slot) => slot.quantity > 0);
+}
+
+function backfillLegacySealedRoadAheadClothingCrateV1(
+  record: HarthmereObjectContainerRecordV1
+): HarthmereObjectContainerRecordV1 | undefined {
+  const items = record.items ?? [];
+  if (
+    !record.sealed ||
+    record.questLootVersion === HARTHMERE_ROAD_AHEAD_CLOTHING_LOOT_VERSION_V1 ||
+    items.length <= 0 ||
+    hasAnyRequiredClothingQuestItemV1(items)
+  ) {
+    return undefined;
+  }
+  const missing = missingRequiredClothingQuestLootSlotsV1(record.label, items);
+  if (missing.length <= 0) {
+    return undefined;
+  }
+  return {
+    ...record,
+    items: mergeContainerSlotsV1(items, missing),
+    sealed: true,
+    note: undefined,
+    questLootVersion: HARTHMERE_ROAD_AHEAD_CLOTHING_LOOT_VERSION_V1,
+  };
+}
+
 // Returns the live record for a container, seeding it from the label-driven
 // loot table. Presence of a SEALED key in the store means the container has
 // already been seeded, so emptying it does NOT refill it.
@@ -233,12 +303,20 @@ export function getOrSeedHarthmereContainerV1(
   }
 
   // Quest-gated clothing crate.
+  const ready =
+    options?.questClothingReady ?? readRoadAheadClothingCrateReadyV1();
   if (existing?.sealed) {
+    if (ready) {
+      const repaired = backfillLegacySealedRoadAheadClothingCrateV1(existing);
+      if (repaired) {
+        store[key] = repaired;
+        writeContainerStoreV1(store);
+        return repaired;
+      }
+    }
     // Already filled (the gate opened on a previous interaction); behave normally.
     return existing;
   }
-  const ready =
-    options?.questClothingReady ?? readRoadAheadClothingCrateReadyV1();
   // Preserve anything the player may have stored into the open (unsealed) crate.
   const carriedItems = existing?.items ?? [];
 
@@ -265,6 +343,7 @@ export function getOrSeedHarthmereContainerV1(
     label: displayLabel,
     items: merged,
     sealed: true,
+    questLootVersion: HARTHMERE_ROAD_AHEAD_CLOTHING_LOOT_VERSION_V1,
   };
   store[key] = filled;
   writeContainerStoreV1(store);
@@ -307,18 +386,24 @@ export function fillKnownRoadAheadClothingCratesV1(
   const store = readContainerStoreV1();
   const filled: HarthmereObjectContainerRecordV1[] = [];
   for (const [key, record] of Object.entries(store)) {
-    if (record.sealed || !isHarthmereClothingQuestCrateLabelV1(record.label)) {
+    if (!isHarthmereClothingQuestCrateLabelV1(record.label)) {
       continue;
     }
-    const next: HarthmereObjectContainerRecordV1 = {
-      ...record,
-      items: mergeContainerSlotsV1(
-        record.items ?? [],
-        lootSlotsForLabelV1(record.label)
-      ),
-      sealed: true,
-      note: undefined,
-    };
+    const next = record.sealed
+      ? backfillLegacySealedRoadAheadClothingCrateV1(record)
+      : ({
+          ...record,
+          items: mergeContainerSlotsV1(
+            record.items ?? [],
+            lootSlotsForLabelV1(record.label)
+          ),
+          sealed: true,
+          note: undefined,
+          questLootVersion: HARTHMERE_ROAD_AHEAD_CLOTHING_LOOT_VERSION_V1,
+        } satisfies HarthmereObjectContainerRecordV1);
+    if (!next) {
+      continue;
+    }
     store[key] = next;
     filled.push(next);
   }

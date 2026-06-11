@@ -26,11 +26,17 @@ import {
   handleSnapshotRoadAheadEventForTestV73,
   recordSnapshotRoadAheadChallengeStepForBiomesUIV73,
   readSnapshotMissionStateV71,
+  snapshotRoadAheadHasLocalMuckClearingToolForTestV73,
+  snapshotRoadAheadHasRequiredClothingForTestV73,
   snapshotRoadAheadChallengeStepHintsFromActiveNuxesForBiomesUIV73,
   snapshotRoadAheadMissionStepsForBiomesUIV73,
   snapshotRoadAheadTrackableQuestsForBiomesUIV73,
   writeSnapshotMissionStateV71,
 } from "@/client/components/challenges/LocalDevSnapshotMissionBridge";
+import {
+  readHarthmereInventoryState,
+  writeHarthmereInventoryState,
+} from "@/client/components/challenges/LocalDevHarthmereInventorySystem";
 import {
   JACKIE_ID,
   NUXES,
@@ -227,5 +233,80 @@ describe("LocalDevSnapshotMissionBridge Road Ahead UI projection", () => {
     assert.ok(
       result.state.completedStepIds.includes("road_ahead_place_blocks")
     );
+  });
+
+  it("counts local Harthmere equipped clothes for the Road Ahead clothing step", () => {
+    const state = readHarthmereInventoryState();
+    try {
+      writeHarthmereInventoryState({
+        ...state,
+        equipment: {
+          ...state.equipment,
+          chest: {
+            instanceId: "test_baker_apron",
+            itemId: "baker_apron",
+            location: "equipment",
+            equipmentSlot: "chest",
+            quantity: 1,
+            bound: false,
+            stolen: false,
+            locked: false,
+            enchantments: [],
+            acquiredAt: 1,
+          },
+          legs: {
+            instanceId: "test_field_trousers",
+            itemId: "field_trousers",
+            location: "equipment",
+            equipmentSlot: "legs",
+            quantity: 1,
+            bound: false,
+            stolen: false,
+            locked: false,
+            enchantments: [],
+            acquiredAt: 1,
+          },
+        },
+      });
+
+      assert.equal(
+        snapshotRoadAheadHasRequiredClothingForTestV73({
+          items: { get: () => undefined },
+        }),
+        true
+      );
+    } finally {
+      writeHarthmereInventoryState(state);
+    }
+  });
+
+  it("counts the local Harthmere muck rake for the Road Ahead Muck Buster step", () => {
+    const state = readHarthmereInventoryState();
+    try {
+      writeHarthmereInventoryState({
+        ...state,
+        backpack: {
+          ...state.backpack,
+          items: [
+            {
+              instanceId: "test_muck_rake",
+              itemId: "muck_rake",
+              location: "backpack",
+              slotIndex: 0,
+              quantity: 1,
+              bound: false,
+              stolen: false,
+              locked: false,
+              enchantments: [],
+              acquiredAt: 1,
+            },
+          ],
+        },
+      });
+
+      assert.equal(snapshotRoadAheadHasLocalMuckClearingToolForTestV73(), true);
+    } finally {
+      writeHarthmereInventoryState(state);
+    }
   });
 });

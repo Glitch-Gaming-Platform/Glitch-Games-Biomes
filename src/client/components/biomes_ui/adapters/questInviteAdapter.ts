@@ -1,6 +1,6 @@
 import type { MapTrackableQuest } from "../tabs/MapQuestsTab";
 import { fetchHarthmereLiveWithTimeoutV1 } from "@/client/components/harthmere_live_fetch";
-import { harthmereJobsBoardQuestMarkerPositionForIdV1 } from "@/shared/harthmere/jobs_board_quest_marker_positions_v1";
+import { harthmereJobsBoardQuestMarkerRuntimePositionForIdV1 } from "@/shared/harthmere/jobs_board_quest_marker_positions_v1";
 
 export const HARTHMERE_QUEST_INVITES_UPDATED_EVENT_V1 =
   "harthmere:quest-invites-updated-v1";
@@ -320,7 +320,7 @@ export function resolveSharedQuestMarkerPositionV1(quest: {
   if (quest.markerWorldPosition) {
     return quest.markerWorldPosition;
   }
-  const resolved = harthmereJobsBoardQuestMarkerPositionForIdV1(
+  const resolved = harthmereJobsBoardQuestMarkerRuntimePositionForIdV1(
     quest.firstMarkerId
   );
   return resolved

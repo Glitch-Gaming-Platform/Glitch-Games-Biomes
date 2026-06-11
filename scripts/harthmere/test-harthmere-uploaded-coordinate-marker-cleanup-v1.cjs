@@ -7,6 +7,8 @@ const { createNewScenes } = require("../../src/client/game/renderers/scenes");
 const {
   HARTHMERE_QUEST_OBJECT_MARKERS_V145,
   HARTHMERE_QUEST_OBJECT_MARKER_RENDER_POLICY_V146,
+  HARTHMERE_VISIBLE_WORLD_OBJECT_MARKER_RENDER_POLICY_V197,
+  isVisibleHarthmereWorldObjectMarkerV197,
   makeHarthmereQuestObjectMarkersRendererV145,
 } = require("../../src/client/game/renderers/local_dev/harthmere_quest_object_markers_v145");
 const {
@@ -64,6 +66,25 @@ for (const audit of reportedProductionCoordinates) {
       child.userData.harthmereQuestObjectMarkerId === nearest.marker.id
   );
   assert.ok(markerGroup, `renderer should still register ${nearest.marker.id}`);
+  if (isVisibleHarthmereWorldObjectMarkerV197(nearest.marker)) {
+    assert.equal(
+      markerGroup.visible,
+      true,
+      `${nearest.marker.id} should render as an authored visible world object near uploaded production coordinate ${coord.join(",")}`
+    );
+    assert.equal(
+      markerGroup.userData.harthmereQuestObjectMarkerRenderPolicy,
+      HARTHMERE_VISIBLE_WORLD_OBJECT_MARKER_RENDER_POLICY_V197
+    );
+    assert.ok(
+      markerGroup.children.length > 1,
+      `${nearest.marker.id} should carry authored prop geometry plus the active beacon`
+    );
+    console.log(
+      `OK ${coord.map((n) => Math.round(n * 1000) / 1000).join(",")} -> ${nearest.marker.id} visible authored prop (${nearest.distance.toFixed(2)}m)`
+    );
+    continue;
+  }
   assert.equal(
     markerGroup.visible,
     false,

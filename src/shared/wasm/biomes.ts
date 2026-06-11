@@ -29,7 +29,7 @@ export function loadBlock<T extends ValueType, B extends Block<T>>(
     if (typeof source === "string") {
       buffer.assign(Buffer.from(source, "base64"));
     } else {
-      buffer.assign(source);
+      buffer.assign(source as Uint8Array<ArrayBuffer>);
     }
     block.loadBuffer(buffer);
   });

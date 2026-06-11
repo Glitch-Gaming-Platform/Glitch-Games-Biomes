@@ -1,12 +1,10 @@
-import { getSecret } from "@/server/shared/secrets";
-import { uploadToBucket } from "@/server/web/cloud_storage/cloud_storage";
+import {
+  azureSpeechConfigFromEnvV1,
+  synthesizeAzureSpeechV1,
+} from "@/server/shared/azure_speech";
 import { biomesApiHandler } from "@/server/web/util/api_middleware";
-import { APIError } from "@/shared/api/errors";
 import { log } from "@/shared/logging";
-import { jsonPostAnyResponse } from "@/shared/util/fetch_helpers";
-import { hash as md5 } from "spark-md5";
 import { z } from "zod";
-import { bucketURL } from "@/shared/url_types";
 
 export const zChatVoiceRequest = z.object({
   text: z.string(),
@@ -22,74 +20,38 @@ export const zChatVoiceResponse = z.object({
 
 export type ChatVoiceResponse = z.infer<typeof zChatVoiceResponse>;
 
-function hashChatVoiceRequest(request: ChatVoiceRequest): string {
-  const language = (request.language ?? "").split("-")[0];
-  const languageTag = language === "en" ? "" : `:${language}`;
-  return md5(`${request.voice}:${request.text}${languageTag}`);
-}
-
 export default biomesApiHandler(
   {
     auth: "required",
     body: zChatVoiceRequest,
     response: zChatVoiceResponse,
   },
-  async ({ context: { db }, body: { text, voice, language } }) => {
-    // Check cache.
-    const hash = hashChatVoiceRequest({ text, voice });
-    const doc = await db.collection("voices-cache").doc(hash).get();
-    if (doc.exists) {
-      // Return cached URL.
-      return { url: doc.data()!.url };
-    }
-
-    const key = getSecret("elevenlabs-api-key").trim();
-    if (!key) {
+  async ({ body: { text, voice, language } }) => {
+    const config = azureSpeechConfigFromEnvV1();
+    if (!config) {
       return { url: "" };
     }
 
-    // Get voice audio from Eleven Labs.
-    const response = await jsonPostAnyResponse(
-      `https://api.elevenlabs.io/v1/text-to-speech/${voice}/stream`,
-      {
+    try {
+      const result = await synthesizeAzureSpeechV1({
+        config,
         text: text.trim(),
-        optimize_streaming_latency: 4,
-        model_id:
-          language === "en"
-            ? "eleven_monolingual_v1"
-            : "eleven_multilingual_v1",
-      },
-      {
-        headers: {
-          "xi-api-key": key,
-        },
+        voice,
+        language,
+      });
+      if (!result) {
+        return { url: "" };
       }
-    );
-    const contentType = response.headers.get("content-type");
-    const isJson =
-      !!contentType && contentType.indexOf("application/json") !== -1;
-    if (isJson) {
-      log.error("Error getting voice audio", await response.json());
-      throw new APIError("bad_param", "Couldn't get voice audio");
+      return {
+        url: `data:${result.contentType};base64,${result.audio.toString(
+          "base64"
+        )}`,
+      };
+    } catch (error) {
+      log.warn("Azure Speech text-to-speech unavailable; using text only", {
+        error,
+      });
+      return { url: "" };
     }
-
-    // Upload to cloud storage.
-    const filename = `voices/${hash}.mp3`;
-    await uploadToBucket(
-      "biomes-static",
-      filename,
-      Buffer.from(await response.arrayBuffer())
-    );
-    const url = bucketURL("biomes-static", filename);
-
-    // Save to cache.
-    await db.collection("voices-cache").doc(hash).set({
-      text,
-      voice,
-      url,
-    });
-
-    // Return URL.
-    return { url };
   }
 );

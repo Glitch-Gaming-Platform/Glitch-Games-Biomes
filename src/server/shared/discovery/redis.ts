@@ -21,7 +21,7 @@ import {
 import { asyncBackoffOnAllErrors } from "@/shared/util/retry_helpers";
 import { zrpcWebDeserialize, zrpcWebSerialize } from "@/shared/zrpc/serde";
 import { ok } from "assert";
-import { EventEmitter } from "events";
+import EventEmitter from "node:events";
 import { isEqual } from "lodash";
 
 class AdvertisedValue {

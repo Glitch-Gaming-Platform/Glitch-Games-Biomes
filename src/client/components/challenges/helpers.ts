@@ -27,6 +27,7 @@ import {
   CompleteQuestStepAtEntityEvent,
 } from "@/shared/ecs/gen/events";
 import type { ItemBag } from "@/shared/game/types";
+import { harthmereLocationVoiceMetadataForPositionV1 } from "@/shared/harthmere/location_voice_context_v1";
 import type { BiomesId } from "@/shared/ids";
 import type { NpcType } from "@/shared/npc/bikkie";
 import {
@@ -37,6 +38,7 @@ import {
 import { sleep } from "@/shared/util/async";
 import { compactMap } from "@/shared/util/collections";
 import { jsonPost } from "@/shared/util/fetch_helpers";
+import { andify } from "@/shared/util/text";
 import { first, last } from "lodash";
 import { useMemo } from "react";
 
@@ -60,6 +62,37 @@ export interface QuestStepBundle {
 
   rewardsList?: ItemBag[];
   itemsToTake?: ItemBag;
+}
+
+export function questVoiceContextForStepBundleV1(
+  stepBundle: QuestStepBundle
+): string {
+  return [
+    `Quest: ${stepBundle.questBundle.biscuit.displayName}`,
+    `Quest state: ${stepBundle.questBundle.state}`,
+    stepBundle.step.description
+      ? `Current NPC dialogue: ${removeTagsInDescription(
+          stepBundle.step.description
+        )}`
+      : undefined,
+    stepBundle.acceptText
+      ? `Primary action: ${stepBundle.acceptText}`
+      : undefined,
+    stepBundle.declineText
+      ? `Decline action: ${stepBundle.declineText}`
+      : undefined,
+  ]
+    .filter(Boolean)
+    .join("\n");
+}
+
+export function activeQuestVoiceContextForNpcV1(
+  stepBundles: readonly QuestStepBundle[]
+): string | undefined {
+  const stepBundle = stepBundles.find(
+    (step) => step.questBundle.state === "in_progress" && !step.stepCompleted
+  );
+  return stepBundle ? questVoiceContextForStepBundleV1(stepBundle) : undefined;
 }
 
 export function useAvailableRobotSteps() {
@@ -271,7 +304,10 @@ export function defaultDialogForNpc(
   const dialogComponent = resources.get("/ecs/c/default_dialog", entityId);
   let biscuit: ReturnType<typeof relevantBiscuitForEntityId> | undefined;
   try {
-    biscuit = relevantBiscuitForEntityId(resources as ClientResources, entityId);
+    biscuit = relevantBiscuitForEntityId(
+      resources as ClientResources,
+      entityId
+    );
   } catch {
     biscuit = undefined;
   }
@@ -293,6 +329,63 @@ export function defaultDialogForNpc(
       : undefined) ??
     "The road is noisy today, but I can spare a moment. Ask what you need, and keep your hands where the law can see them."
   );
+}
+
+function roundVoiceCoordV1(value: number | undefined) {
+  return Number.isFinite(value) ? Math.round(value!) : undefined;
+}
+
+function itemAssignmentNamesV1(items: any): string[] {
+  if (!items) {
+    return [];
+  }
+  const values = items instanceof Map ? [...items.values()] : Object.values(items);
+  return values
+    .map((item: any) => item?.displayName ?? item?.item?.displayName)
+    .filter((name): name is string => typeof name === "string" && name.length > 0);
+}
+
+export function playerVoiceContextForNpcChatV1(input: {
+  reactResources: ClientResources | ClientReactResources;
+  userId: BiomesId;
+}) {
+  const localPlayer = input.reactResources.get("/scene/local_player");
+  const position = localPlayer?.player?.position as
+    | [number, number, number]
+    | undefined;
+  const location = harthmereLocationVoiceMetadataForPositionV1(position);
+  const wearing = input.reactResources.get("/ecs/c/wearing", input.userId);
+  const appearance = input.reactResources.get(
+    "/ecs/c/appearance_component",
+    input.userId
+  );
+  const wornItems = itemAssignmentNamesV1((wearing as any)?.items);
+  const appearanceParts = Object.entries((appearance as any)?.appearance ?? {})
+    .filter(([, value]) => value !== undefined && value !== null && value !== "")
+    .slice(0, 12)
+    .map(([key, value]) => `${key}=${String(value)}`);
+
+  return [
+    "Current player context:",
+    position
+      ? `- Position: ${[
+          roundVoiceCoordV1(position[0]),
+          roundVoiceCoordV1(position[1]),
+          roundVoiceCoordV1(position[2]),
+        ].join(", ")}.`
+      : undefined,
+    location
+      ? `- Location: ${location.name}. ${location.story}`
+      : "- Location: unknown part of Harthmere.",
+    wornItems.length
+      ? `- Wearing: ${andify(wornItems)}.`
+      : "- Wearing: no readable worn item names.",
+    appearanceParts.length
+      ? `- Avatar visual data: ${appearanceParts.join(", ")}.`
+      : "- Avatar visual data: not available.",
+  ]
+    .filter(Boolean)
+    .join("\n");
 }
 
 export function getClaimableRewardsTrigger(

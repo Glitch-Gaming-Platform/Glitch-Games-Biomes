@@ -300,6 +300,27 @@ snapshot_redis_lock_key() {
   printf 'biomes:%s:snapshot_bootstrap_lock' "${GLITCH_TITLE_ID:-default}"
 }
 
+snapshot_redis_required_seed_status() {
+  local dbsize
+  local required_count
+  dbsize="$(redis_cli_runtime dbsize 2>/dev/null || true)"
+  required_count="$(
+    redis_cli_runtime exists \
+      b:8810000000019301 \
+      b:8810000000019401 \
+      b:8810000000019451 2>/dev/null || true
+  )"
+  printf '%s %s' "${dbsize:-0}" "${required_count:-0}"
+}
+
+snapshot_redis_required_seeds_present() {
+  local status dbsize required_count
+  status="$(snapshot_redis_required_seed_status)"
+  dbsize="${status%% *}"
+  required_count="${status##* }"
+  [ "${dbsize:-0}" -ge 1000 ] && [ "${required_count:-0}" -ge 3 ]
+}
+
 is_external_redis_runtime() {
   [ "$GLITCH_REDIS_MODE" = "external" ] || [ "$(redis_configured_host)" != "127.0.0.1" ]
 }
@@ -355,12 +376,24 @@ ensure_snapshot_redis_populated() {
     fi
   fi
   if [ "$installed_hash" = "$bootstrapped_hash" ]; then
+    if ! snapshot_redis_required_seeds_present; then
+      local status dbsize required_count
+      status="$(snapshot_redis_required_seed_status)"
+      dbsize="${status%% *}"
+      required_count="${status##* }"
+      log "ERROR Redis snapshot hash matches but required bootstrap world data is missing: dbsize=$dbsize required_seed_keys_present=$required_count/3. Run the explicit bootstrap job with GLITCH_SNAPSHOT_BOOTSTRAP_ROLE=1, GLITCH_POPULATE_SNAPSHOT_REDIS=1, and GLITCH_ALLOW_SNAPSHOT_REDIS_FLUSH=1 before app replicas." >&2
+      return 1
+    fi
     log "Redis is already populated with the installed snapshot data."
     return 0
   fi
 
   if ! snapshot_redis_populate_requested; then
-    log "Snapshot Redis populate skipped for external production Redis hash=$installed_hash previous=${bootstrapped_hash:-missing} key=$hash_key"
+    local status dbsize required_count
+    status="$(snapshot_redis_required_seed_status)"
+    dbsize="${status%% *}"
+    required_count="${status##* }"
+    log "Snapshot Redis populate skipped for external production Redis hash=$installed_hash previous=${bootstrapped_hash:-missing} key=$hash_key dbsize=$dbsize required_seed_keys_present=$required_count/3"
     if [ "${GLITCH_REQUIRE_SNAPSHOT_REDIS:-1}" = "1" ]; then
       log "ERROR production Redis is not loaded with this image's snapshot. Run the explicit bootstrap job with GLITCH_SNAPSHOT_BOOTSTRAP_ROLE=1, GLITCH_POPULATE_SNAPSHOT_REDIS=1, and GLITCH_ALLOW_SNAPSHOT_REDIS_FLUSH=1 before deploying app replicas." >&2
       return 1

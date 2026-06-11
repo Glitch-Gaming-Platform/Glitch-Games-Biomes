@@ -57,7 +57,13 @@ import {
   type HarthmereVoxelBodyConfig,
   type HarthmereVoxelFaceConfig,
 } from "@/shared/harthmere/voxel_faces";
-import { harthmereLocalEquipmentBikkieWearablesV1 } from "@/shared/harthmere/harthmere_bikkie_wearables_v1";
+import {
+  harthmereBikkieWearableSlotsFromAssignmentV1,
+  harthmereBikkieWearablesUseGeneratedBodyV1,
+  harthmereBikkieWearablesUseGeneratedHeadV1,
+  harthmereClothingSlotsHiddenByBikkieWearablesV1,
+  harthmereLocalEquipmentBikkieWearablesV1,
+} from "@/shared/harthmere/harthmere_bikkie_wearables_v1";
 import { BikkieIds } from "@/shared/bikkie/ids";
 import type { Disposable } from "@/shared/disposable";
 import { makeDisposable } from "@/shared/disposable";
@@ -513,6 +519,8 @@ async function makeAnimatedMesh(
     playerAnimatedMesh.three.userData.harthmereForwardAxis =
       localDevHarthmereAppearance.forwardAxis;
   }
+  const bikkieWearableSlots =
+    harthmereBikkieWearableSlotsFromAssignmentV1(wearables);
 
   if (shouldUseHarthmerePlayerNpcParityMinimalAvatarV183()) {
     if (isHarthmereVariantMesh) {
@@ -577,16 +585,34 @@ async function makeAnimatedMesh(
     // the variant mesh above already applied the GLTF scale/proportion pass.
     addLocalDevPlayerBodyShellToObject(playerAnimatedMesh.three, id, {
       applyInnerBodyConfig: false,
+      useGeneratedBikkieWearableBody:
+        harthmereBikkieWearablesUseGeneratedBodyV1(bikkieWearableSlots),
+      bikkieWearableSlots,
     });
     playerAnimatedMesh.three.userData.harthmerePlayerVoxelConstructionVersion =
       "harthmere-player-voxel-construction-v110";
   } else {
-    addLocalDevPlayerBodyShellToObject(playerAnimatedMesh.three, id);
+    addLocalDevPlayerBodyShellToObject(playerAnimatedMesh.three, id, {
+      useGeneratedBikkieWearableBody:
+        harthmereBikkieWearablesUseGeneratedBodyV1(bikkieWearableSlots),
+      bikkieWearableSlots,
+    });
   }
-  addLocalDevSimpleFaceToObject(playerAnimatedMesh.three, id);
+  if (harthmereBikkieWearablesUseGeneratedHeadV1(bikkieWearableSlots)) {
+    removeLocalDevPlayerFaceOverlays(playerAnimatedMesh.three);
+    playerAnimatedMesh.three.userData.harthmereGeneratedHeadWearableSlotsV1 = [
+      ...bikkieWearableSlots,
+    ];
+  } else {
+    addLocalDevSimpleFaceToObject(playerAnimatedMesh.three, id);
+  }
   await addHarthmerePlayerModularClothingRuntime(
     playerAnimatedMesh.three,
-    localDevHarthmereAppearance ?? loadHarthmerePlayerAppearanceConfig(id)
+    localDevHarthmereAppearance ?? loadHarthmerePlayerAppearanceConfig(id),
+    {
+      hiddenClothingSlots:
+        harthmereClothingSlotsHiddenByBikkieWearablesV1(bikkieWearableSlots),
+    }
   );
   // HARTHMERE_PLAYER_GROVE_PARITY_POLISH_V103: bring the player avatar up to
   // the visual richness of the Grove voxel NPCs. The body/face/clothing
@@ -1155,6 +1181,12 @@ function removeLocalDevFaceObject(root: THREE.Object3D, name: string) {
   if (existing?.parent) {
     existing.parent.remove(existing);
   }
+}
+
+function removeLocalDevPlayerFaceOverlays(root: THREE.Object3D) {
+  removeLocalDevFaceObject(root, "local-dev-bolt-head-shell");
+  removeLocalDevFaceObject(root, "local-dev-voxel-face");
+  removeLocalDevFaceObject(root, "local-dev-detailed-face");
 }
 
 function harthmereVoxelColorChannelMix(
@@ -3039,7 +3071,10 @@ async function loadHarthmerePlayerClothingModel(
 
 async function addHarthmerePlayerModularClothingRuntime(
   root: THREE.Object3D,
-  appearance: HarthmereCharacterAppearance
+  appearance: HarthmereCharacterAppearance,
+  options: {
+    hiddenClothingSlots?: ReadonlySet<HarthmereClothingSlot>;
+  } = {}
 ) {
   const clothing: HarthmereCharacterClothing = appearance.clothing;
   const metrics = harthmerePlayerClothingFitMetrics(appearance);
@@ -3048,7 +3083,12 @@ async function addHarthmerePlayerModularClothingRuntime(
   const fittedSlots: string[] = [];
   const gltfSlots: string[] = [];
   const threeJsSlots: string[] = [];
+  const skippedSlots: string[] = [];
   for (const slot of Object.keys(clothing) as HarthmereClothingSlot[]) {
+    if (options.hiddenClothingSlots?.has(slot)) {
+      skippedSlots.push(slot);
+      continue;
+    }
     const item = clothing[slot];
     if (!item) {
       continue;
@@ -3120,6 +3160,7 @@ async function addHarthmerePlayerModularClothingRuntime(
   root.userData.harthmereBodyFittedClothingSlots = fittedSlots;
   root.userData.harthmereGltfClothingSlots = gltfSlots;
   root.userData.harthmereThreeJsClothingSlots = threeJsSlots;
+  root.userData.harthmereBikkieWearableSkippedClothingSlotsV1 = skippedSlots;
   root.userData.harthmereClothingFitMetrics = metrics;
   root.userData.harthmereHiddenBodyZones = [...hiddenZones];
 }
@@ -5001,7 +5042,11 @@ function hideHarthmereVariantBuiltInHead(root: THREE.Object3D) {
 function addLocalDevPlayerBodyShellToObject(
   root: THREE.Object3D,
   userId?: BiomesId,
-  options: { applyInnerBodyConfig?: boolean } = {}
+  options: {
+    applyInnerBodyConfig?: boolean;
+    useGeneratedBikkieWearableBody?: boolean;
+    bikkieWearableSlots?: ReadonlySet<BiomesId>;
+  } = {}
 ): void {
   if (process.env.NODE_ENV === "production") {
     return;
@@ -5020,6 +5065,14 @@ function addLocalDevPlayerBodyShellToObject(
 
   if (options.applyInnerBodyConfig !== false) {
     applyLocalDevPlayerInnerBodyConfig(root, body);
+  }
+
+  if (options.useGeneratedBikkieWearableBody) {
+    root.userData.harthmereGeneratedBodyWearableSlotsV1 = [
+      ...(options.bikkieWearableSlots ?? []),
+    ];
+    root.userData.harthmerePlayerBodyShellSkippedForBikkieWearablesV1 = true;
+    return;
   }
 
   // The body shell is only an inner collision/silhouette layer. The visible
@@ -5262,9 +5315,7 @@ function addLocalDevBoltHeadShellToObject(
     return;
   }
 
-  removeLocalDevFaceObject(root, "local-dev-bolt-head-shell");
-  removeLocalDevFaceObject(root, "local-dev-voxel-face");
-  removeLocalDevFaceObject(root, "local-dev-detailed-face");
+  removeLocalDevPlayerFaceOverlays(root);
 
   // Match the simple block head used by Bolt / the local-dev Harthmere
   // townspeople. For the Harthmere body-variant GLTFs, attach the custom

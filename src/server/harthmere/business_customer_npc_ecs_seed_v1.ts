@@ -1,8 +1,9 @@
 import { npcEntity } from "@/server/spawn/spawn_npc";
 import type { Change, ProposedChange } from "@/shared/ecs/change";
 import { secondsSinceEpoch } from "@/shared/ecs/config";
-import { EntityDescription } from "@/shared/ecs/gen/components";
+import { EntityDescription, Voice } from "@/shared/ecs/gen/components";
 import { HARTHMERE_BUSINESS_CUSTOMER_NPC_SEEDS_V1 } from "@/shared/harthmere/business_customer_npc_seed_v1";
+import { harthmereVoiceProfileForActorV1 } from "@/shared/harthmere/npc_voice_profiles_v1";
 import {
   makeHarthmereNpcAppearanceConfig,
   withHarthmereAppearanceMarker,
@@ -90,6 +91,17 @@ export function buildHarthmereBusinessCustomerNpcSeedChangesV1(input: {
           ),
           appearance
         ),
+      }),
+      voice: Voice.create({
+        voice: harthmereVoiceProfileForActorV1({
+          source: "business_customer_v1",
+          id: seed.customerNpcId,
+          entityId: seed.entityId,
+          displayName: seed.displayName,
+          role: seed.roleTitle,
+          kind: "humanoid",
+          background: seed.background,
+        }).voiceParameterId,
       }),
     };
     changes.push({

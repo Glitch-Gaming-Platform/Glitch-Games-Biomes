@@ -62,7 +62,7 @@ class TerrainUpdateQueue {
   next(): TerrainColumn | undefined {
     // Return newly added terrain first.
     if (this.newTerrainQueue.size > 0) {
-      const next = this.newTerrainQueue.keys().next().value;
+      const next = this.newTerrainQueue.keys().next().value!;
       this.newTerrainQueue.delete(next);
       return next;
     }
@@ -72,7 +72,7 @@ class TerrainUpdateQueue {
     }
 
     // Now return existing terrain.
-    const [nextKey, next] = this.terrain.entries().next().value;
+    const [nextKey, next] = this.terrain.entries().next().value!;
     // Refresh its position in the queue.
     this.terrain.delete(nextKey);
     this.terrain.set(nextKey, next);
