@@ -92,10 +92,23 @@ AZURE_CONTAINER_APP="${AZURE_CONTAINER_APP:-biomes-node-vnet}"
 AZURE_MIN_REPLICAS="${AZURE_MIN_REPLICAS:-1}"
 AZURE_MAX_REPLICAS="${AZURE_MAX_REPLICAS:-10}"
 PROD_REDIS_HOST="${PROD_REDIS_HOST:-10.0.0.12}"
-PROD_REDIS_PUBLIC_HOST="${PROD_REDIS_PUBLIC_HOST:-20.127.78.175}"
-PROD_REDIS_HEALTH_HOST="${PROD_REDIS_HEALTH_HOST:-$PROD_REDIS_PUBLIC_HOST}"
+PROD_REDIS_PUBLIC_HOST="${PROD_REDIS_PUBLIC_HOST:-}"
+PROD_REDIS_HEALTH_HOST="${PROD_REDIS_HEALTH_HOST:-$PROD_REDIS_HOST}"
+PROD_REDIS_HEALTH_MODE="${PROD_REDIS_HEALTH_MODE:-azure-vm}"
+PROD_REDIS_VM_RESOURCE_GROUP="${PROD_REDIS_VM_RESOURCE_GROUP:-$AZURE_RESOURCE_GROUP}"
+PROD_REDIS_VM_NAME="${PROD_REDIS_VM_NAME:-biomes-redis-prod}"
+PROD_REDIS_NSG_RESOURCE_GROUP="${PROD_REDIS_NSG_RESOURCE_GROUP:-$AZURE_RESOURCE_GROUP}"
+PROD_REDIS_NSG_NAME="${PROD_REDIS_NSG_NAME:-biomes-redis-prod-nsg}"
+PROD_REDIS_ALLOWED_SOURCE_PREFIX="${PROD_REDIS_ALLOWED_SOURCE_PREFIX:-10.0.1.0/27}"
+PROD_REDIS_RECONCILE_HOST="${PROD_REDIS_RECONCILE_HOST:-$PROD_REDIS_PUBLIC_HOST}"
 PROD_REDIS_PORT="${PROD_REDIS_PORT:-6379}"
 PROD_REDIS_AOF_AUTOFIX="${PROD_REDIS_AOF_AUTOFIX:-1}"
+PROD_REDIS_RDB_DIR="${PROD_REDIS_RDB_DIR:-/var/lib/redis}"
+PROD_REDIS_RDB_FILENAME="${PROD_REDIS_RDB_FILENAME:-dump.rdb}"
+PROD_REDIS_SAVE_SCHEDULE="${PROD_REDIS_SAVE_SCHEDULE:-900 1 300 10 60 10000}"
+HARTHMERE_BUSINESS_OUTPOST_MATERIALIZATION_MODE="${HARTHMERE_BUSINESS_OUTPOST_MATERIALIZATION_MODE:-per-outpost}"
+HARTHMERE_BUSINESS_OUTPOST_MATERIALIZATION_SCAN_COUNT="${HARTHMERE_BUSINESS_OUTPOST_MATERIALIZATION_SCAN_COUNT:-5000}"
+HARTHMERE_BUSINESS_OUTPOST_MATERIALIZATION_APPLY_SHARD_BATCH_SIZE="${HARTHMERE_BUSINESS_OUTPOST_MATERIALIZATION_APPLY_SHARD_BATCH_SIZE:-2}"
 LOCAL_NETWORK="${LOCAL_NETWORK:-biomes-prod-smoke-net}"
 LOCAL_REDIS_CONTAINER="${LOCAL_REDIS_CONTAINER:-biomes-prod-smoke-redis}"
 LOCAL_REDIS_IMAGE="${LOCAL_REDIS_IMAGE:-redis:6.0.16-alpine}"
@@ -115,8 +128,61 @@ require_cmd() {
   fi
 }
 
+extract_az_run_command_stdout_v191() {
+  node -e '
+const fs = require("fs");
+const raw = fs.readFileSync(0, "utf8");
+const parsed = JSON.parse(raw);
+const message = parsed?.value?.[0]?.message ?? "";
+const stdoutMarker = "[stdout]\n";
+const stderrMarker = "\n[stderr]\n";
+const stdoutStart = message.indexOf(stdoutMarker);
+const stderrStart = message.indexOf(stderrMarker);
+if (stdoutStart === -1 || stderrStart === -1 || stderrStart < stdoutStart) {
+  process.stdout.write(message);
+  process.exit(0);
+}
+process.stdout.write(message.slice(stdoutStart + stdoutMarker.length, stderrStart));
+const stderr = message.slice(stderrStart + stderrMarker.length).trim();
+if (stderr) {
+  process.stderr.write(`${stderr}\n`);
+}
+'
+}
+
 prod_redis_cli_v186() {
-  redis-cli -h "$PROD_REDIS_HEALTH_HOST" -p "$PROD_REDIS_PORT" "$@"
+  if [ "$PROD_REDIS_HEALTH_MODE" = "direct" ]; then
+    redis-cli -h "$PROD_REDIS_HEALTH_HOST" -p "$PROD_REDIS_PORT" "$@"
+    return
+  fi
+
+  if [ "$PROD_REDIS_HEALTH_MODE" != "azure-vm" ]; then
+    echo "ERROR unsupported PROD_REDIS_HEALTH_MODE=$PROD_REDIS_HEALTH_MODE; expected azure-vm or direct." >&2
+    return 2
+  fi
+
+  require_cmd az
+  require_cmd node
+
+  local remote_cmd="" quoted arg output
+  for arg in redis-cli -h 127.0.0.1 -p "$PROD_REDIS_PORT" "$@"; do
+    printf -v quoted '%q' "$arg"
+    remote_cmd+="$quoted "
+  done
+
+  if ! output="$(
+    az vm run-command invoke \
+      --resource-group "$PROD_REDIS_VM_RESOURCE_GROUP" \
+      --name "$PROD_REDIS_VM_NAME" \
+      --command-id RunShellScript \
+      --scripts "set -eu; $remote_cmd" \
+      -o json
+  )"; then
+    printf '%s\n' "$output" >&2
+    return 1
+  fi
+
+  printf '%s' "$output" | extract_az_run_command_stdout_v191
 }
 
 prod_redis_config_get_v186() {
@@ -134,6 +200,88 @@ prod_redis_info_value_v186() {
 production_redis_write_probe_v186() {
   local probe_key="codex:deploy-redis-write-probe:${TAG}:$$:${RANDOM}:$(date -u +%s)"
   prod_redis_cli_v186 --raw SET "$probe_key" ok EX 60 NX 2>&1 || true
+}
+
+check_production_redis_network_guard_v191() {
+  require_cmd az
+  require_cmd node
+
+  log "Checking production Redis NSG guardrails on $PROD_REDIS_NSG_NAME."
+  local rules_json
+  rules_json="$(
+    az network nsg rule list \
+      --resource-group "$PROD_REDIS_NSG_RESOURCE_GROUP" \
+      --nsg-name "$PROD_REDIS_NSG_NAME" \
+      -o json
+  )"
+
+  RULES_JSON="$rules_json" node -e '
+const port = process.argv[1];
+const allowedSource = process.argv[2];
+const rules = JSON.parse(process.env.RULES_JSON || "[]");
+
+function values(...parts) {
+  return parts.flatMap((part) => {
+    if (!part) {
+      return [];
+    }
+    return Array.isArray(part) ? part : [part];
+  });
+}
+
+function portMatches(rule) {
+  const ports = values(rule.destinationPortRange, rule.destinationPortRanges);
+  return ports.includes(port) || ports.includes("*");
+}
+
+function sourceMatches(rule, source) {
+  return values(rule.sourceAddressPrefix, rule.sourceAddressPrefixes).includes(source);
+}
+
+function publicSource(rule) {
+  return values(rule.sourceAddressPrefix, rule.sourceAddressPrefixes).some((source) =>
+    ["*", "0.0.0.0/0", "Internet", "Any"].includes(source)
+  );
+}
+
+const inbound6379 = rules.filter(
+  (rule) => rule.direction === "Inbound" && portMatches(rule)
+);
+const unsafeAllows = inbound6379.filter(
+  (rule) => rule.access === "Allow" && publicSource(rule)
+);
+const subnetAllow = inbound6379.find(
+  (rule) => rule.access === "Allow" && sourceMatches(rule, allowedSource)
+);
+const denyOther = inbound6379.find(
+  (rule) => rule.access === "Deny" && publicSource(rule)
+);
+
+if (unsafeAllows.length || !subnetAllow || !denyOther) {
+  if (unsafeAllows.length) {
+    console.error(
+      `ERROR Redis port ${port} has public allow rule(s): ${unsafeAllows
+        .map((rule) => rule.name)
+        .join(", ")}`
+    );
+  }
+  if (!subnetAllow) {
+    console.error(
+      `ERROR Redis port ${port} is missing an allow rule from ${allowedSource}.`
+    );
+  }
+  if (!denyOther) {
+    console.error(
+      `ERROR Redis port ${port} is missing an explicit deny-all rule after the Container Apps subnet allow.`
+    );
+  }
+  process.exit(1);
+}
+
+console.log(
+  `OK Redis NSG allows ${allowedSource} and explicitly denies other ${port}/tcp sources.`
+);
+' "$PROD_REDIS_PORT" "$PROD_REDIS_ALLOWED_SOURCE_PREFIX"
 }
 
 snapshot_backup_hash_v187() {
@@ -185,6 +333,13 @@ bootstrap_production_redis_snapshot_v187() {
     return 1
   fi
 
+  if [ "$PROD_REDIS_HEALTH_MODE" = "azure-vm" ]; then
+    echo "ERROR refusing local production Redis bootstrap while Redis is private." >&2
+    echo "Run the snapshot bootstrap from an in-VNet one-time job/container, then re-run deploy." >&2
+    echo "This guard prevents FLUSHALL without a reachable private path to reload snapshot_backup.json." >&2
+    return 1
+  fi
+
   log "Bootstrapping production Redis snapshot hash=$expected_hash host=${PROD_REDIS_HEALTH_HOST}:${PROD_REDIS_PORT}."
   prod_redis_cli_v186 FLUSHALL >/dev/null
   if [ -f dist/bootstrap-redis.js ]; then
@@ -215,6 +370,35 @@ bootstrap_production_redis_snapshot_v187() {
   fi
   prod_redis_cli_v186 SET "$hash_key" "$expected_hash" >/dev/null
   prod_redis_cli_v186 SET biomes_data_snapshot_hash "$expected_hash" >/dev/null
+}
+
+force_production_redis_bgsave_v191() {
+  local phase="$1"
+  local started info in_progress last_status
+
+  log "Forcing production Redis RDB save after $phase."
+  started="$(prod_redis_cli_v186 --raw BGSAVE 2>&1 | tr -d '\r' || true)"
+  if ! printf '%s\n' "$started" | grep -Eq 'Background saving started|Background save already in progress'; then
+    echo "WARN production Redis BGSAVE returned: $started" >&2
+  fi
+
+  local i=0
+  while [ "$i" -lt "${PROD_REDIS_BGSAVE_POLLS:-60}" ]; do
+    info="$(prod_redis_cli_v186 --raw INFO persistence 2>/dev/null || true)"
+    in_progress="$(printf '%s\n' "$info" | awk -F: '$1 == "rdb_bgsave_in_progress" { gsub(/\r/, "", $2); print $2; exit }')"
+    last_status="$(printf '%s\n' "$info" | awk -F: '$1 == "rdb_last_bgsave_status" { gsub(/\r/, "", $2); print $2; exit }')"
+    if [ "${in_progress:-0}" = "0" ]; then
+      break
+    fi
+    i=$((i + 1))
+    sleep "${PROD_REDIS_BGSAVE_SLEEP_SECONDS:-2}"
+  done
+
+  if [ "${last_status:-unknown}" != "ok" ]; then
+    echo "ERROR production Redis RDB save did not finish cleanly after $phase: rdb_last_bgsave_status=${last_status:-unknown}" >&2
+    exit 1
+  fi
+  log "Production Redis RDB save OK after $phase."
 }
 
 check_production_redis_snapshot_hash_v187() {
@@ -273,17 +457,24 @@ repair_production_redis_aof_v186() {
   log "Repairing production Redis persistence guardrails on ${PROD_REDIS_HEALTH_HOST}:${PROD_REDIS_PORT}."
   prod_redis_cli_v186 CONFIG SET appendonly no >/dev/null
   prod_redis_cli_v186 CONFIG SET stop-writes-on-bgsave-error no >/dev/null
-  prod_redis_cli_v186 CONFIG SET dbfilename dump.rdb >/dev/null
-  prod_redis_cli_v186 CONFIG SET save "" >/dev/null
+  prod_redis_cli_v186 CONFIG SET dir "$PROD_REDIS_RDB_DIR" >/dev/null
+  prod_redis_cli_v186 CONFIG SET dbfilename "$PROD_REDIS_RDB_FILENAME" >/dev/null
+  prod_redis_cli_v186 CONFIG SET save "$PROD_REDIS_SAVE_SCHEDULE" >/dev/null
   prod_redis_cli_v186 CONFIG REWRITE >/dev/null || true
+  force_production_redis_bgsave_v191 "Redis persistence repair"
 }
 
 check_production_redis_aof_health_v186() {
   local phase="$1"
-  require_cmd redis-cli
+  if [ "$PROD_REDIS_HEALTH_MODE" = "direct" ]; then
+    require_cmd redis-cli
+  else
+    require_cmd az
+    require_cmd node
+  fi
 
   log "Checking production Redis AOF/write health before $phase."
-  local ping appendonly aof_enabled aof_last_write_status rdb_last_bgsave_status dbfilename write_probe
+  local ping appendonly aof_enabled aof_last_write_status rdb_last_bgsave_status dbfilename dir save write_probe
   ping="$(prod_redis_cli_v186 --raw PING 2>&1 || true)"
   if [ "$ping" != "PONG" ]; then
     echo "ERROR production Redis health check cannot PING ${PROD_REDIS_HEALTH_HOST}:${PROD_REDIS_PORT}: $ping" >&2
@@ -291,7 +482,9 @@ check_production_redis_aof_health_v186() {
   fi
 
   appendonly="$(prod_redis_config_get_v186 appendonly)"
+  dir="$(prod_redis_config_get_v186 dir)"
   dbfilename="$(prod_redis_config_get_v186 dbfilename)"
+  save="$(prod_redis_config_get_v186 save)"
   aof_enabled="$(prod_redis_info_value_v186 persistence aof_enabled)"
   aof_last_write_status="$(prod_redis_info_value_v186 persistence aof_last_write_status)"
   rdb_last_bgsave_status="$(prod_redis_info_value_v186 persistence rdb_last_bgsave_status)"
@@ -310,14 +503,20 @@ check_production_redis_aof_health_v186() {
   if [ "$appendonly" != "no" ] || [ "$aof_enabled" != "0" ]; then
     needs_repair=1
   fi
-  if [ "$dbfilename" != "dump.rdb" ]; then
+  if [ "$dbfilename" != "$PROD_REDIS_RDB_FILENAME" ]; then
+    needs_repair=1
+  fi
+  if [ "$dir" != "$PROD_REDIS_RDB_DIR" ] || [ "$save" != "$PROD_REDIS_SAVE_SCHEDULE" ]; then
+    needs_repair=1
+  fi
+  if [ "$rdb_last_bgsave_status" = "err" ]; then
     needs_repair=1
   fi
 
   if [ "$needs_repair" = "1" ]; then
     echo "WARN production Redis persistence/write health needs repair:" >&2
     echo "  appendonly=${appendonly:-unknown} aof_enabled=${aof_enabled:-unknown} aof_last_write_status=${aof_last_write_status:-unknown}" >&2
-    echo "  rdb_last_bgsave_status=${rdb_last_bgsave_status:-unknown} dbfilename=${dbfilename:-unknown}" >&2
+    echo "  rdb_last_bgsave_status=${rdb_last_bgsave_status:-unknown} dir=${dir:-unknown} dbfilename=${dbfilename:-unknown} save=${save:-unknown}" >&2
     echo "  write_probe=$write_probe" >&2
     if [ "$PROD_REDIS_AOF_AUTOFIX" != "1" ]; then
       echo "ERROR refusing to continue with unhealthy production Redis because PROD_REDIS_AOF_AUTOFIX=$PROD_REDIS_AOF_AUTOFIX." >&2
@@ -326,20 +525,40 @@ check_production_redis_aof_health_v186() {
     fi
     repair_production_redis_aof_v186
     appendonly="$(prod_redis_config_get_v186 appendonly)"
+    dir="$(prod_redis_config_get_v186 dir)"
     dbfilename="$(prod_redis_config_get_v186 dbfilename)"
+    save="$(prod_redis_config_get_v186 save)"
     aof_enabled="$(prod_redis_info_value_v186 persistence aof_enabled)"
     aof_last_write_status="$(prod_redis_info_value_v186 persistence aof_last_write_status)"
+    rdb_last_bgsave_status="$(prod_redis_info_value_v186 persistence rdb_last_bgsave_status)"
     write_probe="$(production_redis_write_probe_v186)"
   fi
 
-  if [ "$appendonly" != "no" ] || [ "$aof_enabled" != "0" ] || [ "$dbfilename" != "dump.rdb" ] || [ "$write_probe" != "OK" ]; then
+  if [ "$appendonly" != "no" ] || [ "$aof_enabled" != "0" ] || [ "$dir" != "$PROD_REDIS_RDB_DIR" ] || [ "$dbfilename" != "$PROD_REDIS_RDB_FILENAME" ] || [ "$save" != "$PROD_REDIS_SAVE_SCHEDULE" ] || [ "$rdb_last_bgsave_status" != "ok" ] || [ "$write_probe" != "OK" ]; then
     echo "ERROR production Redis AOF/write health check failed after repair attempt:" >&2
     echo "  appendonly=${appendonly:-unknown} aof_enabled=${aof_enabled:-unknown} aof_last_write_status=${aof_last_write_status:-unknown}" >&2
-    echo "  dbfilename=${dbfilename:-unknown} write_probe=$write_probe" >&2
+    echo "  rdb_last_bgsave_status=${rdb_last_bgsave_status:-unknown} dir=${dir:-unknown} dbfilename=${dbfilename:-unknown} save=${save:-unknown} write_probe=$write_probe" >&2
     exit 1
   fi
 
-  log "Production Redis write health OK: appendonly=$appendonly aof_enabled=$aof_enabled dbfilename=$dbfilename."
+  log "Production Redis write health OK: appendonly=$appendonly aof_enabled=$aof_enabled dir=$dir dbfilename=$dbfilename save=\"$save\"."
+}
+
+check_production_world_sync_runner_v191() {
+  if [ "${HARTHMERE_SKIP_WORLD_SYNC_RECONCILIATION:-0}" = "1" ]; then
+    return
+  fi
+
+  if [ -z "${PROD_REDIS_RECONCILE_HOST:-}" ] && [ "$PROD_REDIS_HEALTH_MODE" = "direct" ]; then
+    PROD_REDIS_RECONCILE_HOST="$PROD_REDIS_HEALTH_HOST"
+  fi
+
+  if [ -z "${PROD_REDIS_RECONCILE_HOST:-}" ]; then
+    echo "ERROR post-deploy world sync needs direct Redis access from an in-VNet runner." >&2
+    echo "Production Redis is intentionally private; do not re-open the public Redis IP." >&2
+    echo "Run deploy from an Azure/VNet runner or set HARTHMERE_SKIP_WORLD_SYNC_RECONCILIATION=1 for an app-only rollout." >&2
+    exit 1
+  fi
 }
 
 wait_for_azure_revision_ready_v151() {
@@ -612,8 +831,11 @@ audit_production_authored_content_v1() {
   local base=8810000000010000
   count_present_id_range_v1() {
     local lo="$1" hi="$2" off
-    { for off in $(seq "$lo" "$hi"); do echo "EXISTS b:$((base + off))"; done; } \
-      | prod_redis_cli_v186 2>/dev/null | grep -c '^1$' || true
+    local keys=()
+    for off in $(seq "$lo" "$hi"); do
+      keys+=("b:$((base + off))")
+    done
+    prod_redis_cli_v186 --raw EXISTS "${keys[@]}" 2>/dev/null | tr -d '\r' || true
   }
   local grove_npcs muckers livestock owners customers stations robots
   grove_npcs="$(count_present_id_range_v1 9301 9320 | tr -d '[:space:]')"
@@ -672,11 +894,77 @@ run_production_grounding_probe_v1() {
     return
   fi
   log "Probing production terrain grounding (entity positions vs real surface)."
-  REDIS_HOST="${HARTHMERE_WORLD_SYNC_REDIS_HOST:-$PROD_REDIS_PUBLIC_HOST}" \
-    GLITCH_REDIS_HOST="${HARTHMERE_WORLD_SYNC_REDIS_HOST:-$PROD_REDIS_PUBLIC_HOST}" \
+  REDIS_HOST="${HARTHMERE_WORLD_SYNC_REDIS_HOST:-$PROD_REDIS_RECONCILE_HOST}" \
+    GLITCH_REDIS_HOST="${HARTHMERE_WORLD_SYNC_REDIS_HOST:-$PROD_REDIS_RECONCILE_HOST}" \
     REDIS_PORT="${HARTHMERE_WORLD_SYNC_REDIS_PORT:-$PROD_REDIS_PORT}" \
     IS_SERVER=1 \
     node scripts/harthmere/probe-production-terrain-grounding-v1.cjs
+}
+
+harthmere_business_outpost_ids_v1() {
+  node -r ts-node/register/transpile-only -r tsconfig-paths/register - <<'NODE'
+const { HARTHMERE_BUSINESS_OUTPOSTS_V1 } = require("./src/shared/harthmere/business_customer_simulator_v1");
+for (const outpost of HARTHMERE_BUSINESS_OUTPOSTS_V1) {
+  console.log(outpost.outpostId);
+}
+NODE
+}
+
+materialize_production_business_outposts_v1() {
+  local redis_host redis_port scan_count shard_batch_size mode
+  redis_host="${HARTHMERE_BUSINESS_OUTPOST_MATERIALIZATION_REDIS_HOST:-$PROD_REDIS_RECONCILE_HOST}"
+  redis_port="${HARTHMERE_BUSINESS_OUTPOST_MATERIALIZATION_REDIS_PORT:-$PROD_REDIS_PORT}"
+  scan_count="$HARTHMERE_BUSINESS_OUTPOST_MATERIALIZATION_SCAN_COUNT"
+  shard_batch_size="$HARTHMERE_BUSINESS_OUTPOST_MATERIALIZATION_APPLY_SHARD_BATCH_SIZE"
+  mode="$HARTHMERE_BUSINESS_OUTPOST_MATERIALIZATION_MODE"
+
+  if [ "$mode" = "bulk" ]; then
+    log "Reconciling all Harthmere business outpost terrain in one materializer process."
+    APPLY=1 \
+      IS_SERVER=1 \
+      REDIS_HOST="$redis_host" \
+      GLITCH_REDIS_HOST="$redis_host" \
+      LOCAL_REDIS_HOST="$redis_host" \
+      REDIS_PORT="$redis_port" \
+      GLITCH_REDIS_PORT="$redis_port" \
+      SCAN_COUNT="$scan_count" \
+      APPLY_SHARD_BATCH_SIZE="$shard_batch_size" \
+      node scripts/harthmere/materialize-business-outposts-redis-v1.cjs
+    return
+  fi
+
+  if [ "$mode" != "per-outpost" ]; then
+    echo "ERROR unknown HARTHMERE_BUSINESS_OUTPOST_MATERIALIZATION_MODE=$mode; expected per-outpost or bulk." >&2
+    exit 1
+  fi
+
+  log "Reconciling Harthmere business outpost terrain one outpost at a time to avoid production OOM."
+  local outpost_ids outpost_id materialized_count expected_count
+  outpost_ids="$(harthmere_business_outpost_ids_v1)"
+  materialized_count=0
+  expected_count=19
+  while IFS= read -r outpost_id; do
+    [ -n "$outpost_id" ] || continue
+    log "Reconciling Harthmere business outpost terrain: $outpost_id"
+    APPLY=1 \
+      IS_SERVER=1 \
+      REDIS_HOST="$redis_host" \
+      GLITCH_REDIS_HOST="$redis_host" \
+      LOCAL_REDIS_HOST="$redis_host" \
+      REDIS_PORT="$redis_port" \
+      GLITCH_REDIS_PORT="$redis_port" \
+      SCAN_COUNT="$scan_count" \
+      APPLY_SHARD_BATCH_SIZE="$shard_batch_size" \
+      OUTPOST_ID="$outpost_id" \
+      node scripts/harthmere/materialize-business-outposts-redis-v1.cjs
+    materialized_count=$((materialized_count + 1))
+  done <<< "$outpost_ids"
+
+  if [ "$materialized_count" -ne "$expected_count" ]; then
+    echo "ERROR business outpost terrain materialization processed ${materialized_count}/${expected_count} outposts." >&2
+    exit 1
+  fi
+  log "Harthmere business outpost terrain materialization processed ${materialized_count}/${expected_count} outposts."
 }
 
 reconcile_production_world_sync_v188() {
@@ -692,11 +980,7 @@ reconcile_production_world_sync_v188() {
 
   if [ "${HARTHMERE_SKIP_BUSINESS_OUTPOST_MATERIALIZATION:-0}" != "1" ]; then
     log "Reconciling Harthmere business outpost terrain against production Redis."
-    APPLY=1 \
-      IS_SERVER=1 \
-      REDIS_HOST="${HARTHMERE_BUSINESS_OUTPOST_MATERIALIZATION_REDIS_HOST:-$PROD_REDIS_PUBLIC_HOST}" \
-      REDIS_PORT="${HARTHMERE_BUSINESS_OUTPOST_MATERIALIZATION_REDIS_PORT:-$PROD_REDIS_PORT}" \
-      node scripts/harthmere/materialize-business-outposts-redis-v1.cjs
+    materialize_production_business_outposts_v1
   else
     log "Skipping Harthmere business outpost terrain reconciliation by request."
   fi
@@ -704,15 +988,16 @@ reconcile_production_world_sync_v188() {
   log "Reconciling Harthmere production world sync against production Redis."
   APPLY=1 \
     IS_SERVER=1 \
-    REDIS_HOST="${HARTHMERE_WORLD_SYNC_REDIS_HOST:-$PROD_REDIS_PUBLIC_HOST}" \
-    GLITCH_REDIS_HOST="${HARTHMERE_WORLD_SYNC_REDIS_HOST:-$PROD_REDIS_PUBLIC_HOST}" \
-    LOCAL_REDIS_HOST="${HARTHMERE_WORLD_SYNC_REDIS_HOST:-$PROD_REDIS_PUBLIC_HOST}" \
+    REDIS_HOST="${HARTHMERE_WORLD_SYNC_REDIS_HOST:-$PROD_REDIS_RECONCILE_HOST}" \
+    GLITCH_REDIS_HOST="${HARTHMERE_WORLD_SYNC_REDIS_HOST:-$PROD_REDIS_RECONCILE_HOST}" \
+    LOCAL_REDIS_HOST="${HARTHMERE_WORLD_SYNC_REDIS_HOST:-$PROD_REDIS_RECONCILE_HOST}" \
     REDIS_PORT="${HARTHMERE_WORLD_SYNC_REDIS_PORT:-$PROD_REDIS_PORT}" \
     GLITCH_REDIS_PORT="${HARTHMERE_WORLD_SYNC_REDIS_PORT:-$PROD_REDIS_PORT}" \
     node scripts/harthmere/reconcile-production-world-sync-v1.cjs
 
   validate_production_world_sync_http_v188 "$revision"
   audit_production_authored_content_v1
+  force_production_redis_bgsave_v191 "post-deploy world sync reconciliation"
   run_production_grounding_probe_v1
 }
 
@@ -961,6 +1246,8 @@ push_and_deploy() {
 
   require_cmd az
   require_cmd curl
+  check_production_redis_network_guard_v191
+  check_production_world_sync_runner_v191
   check_production_redis_aof_health_v186 "production image push"
   check_production_redis_snapshot_hash_v187 "production image push"
   log "Pushing built image $IMAGE."
@@ -1021,7 +1308,9 @@ push_and_deploy() {
 }
 
 if [ "$REDIS_HEALTH_CHECK_ONLY" = "1" ]; then
+  check_production_redis_network_guard_v191
   check_production_redis_aof_health_v186 "manual Redis health check"
+  check_production_redis_snapshot_hash_v187 "manual Redis health check"
   exit 0
 fi
 

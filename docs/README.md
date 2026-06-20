@@ -39,6 +39,17 @@ That guide documents the verified Azure CLI checks, the optional environment
 variables, the small microphone dialogue flow, and how active quest context is
 sent to the NPC AI only while that quest is in progress.
 
+### Production Redis Crash Loop Runbook
+
+For the 2026-06-15 production crash-loop recovery, Redis persistence/NSG
+guardrails, Harthmere authored-content reconciliation checks, and the safe
+deploy commands now required for private Redis, read:
+
+```text
+docs/production/biomes-containerapp-redis-crashloop-20260615.md
+scripts/glitch/BIOMES_HARTHMERE_PRODUCTION_DEPLOYMENT_README.md
+```
+
 ### Local Development
 
 ```bash

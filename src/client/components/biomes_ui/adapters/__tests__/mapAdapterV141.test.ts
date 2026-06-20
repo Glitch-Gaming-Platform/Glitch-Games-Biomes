@@ -428,21 +428,21 @@ describe("biomes_ui map adapter (V141)", () => {
       undefined,
       undefined,
       {
-        ownedPlotIds: ["grove_muckstead_cottage_lot"],
+        ownedPlotIds: ["grove_crossroads_shop_lot"],
         safeZones: {
-          grove_muckstead_cottage_lot: {
+          grove_crossroads_shop_lot: {
             safeFromMuck: false,
             activatedAtMs: 123,
             area: "the_grove",
           },
         },
         inWorldMarkers: {
-          "grove_muckstead_cottage_lot:map": {
-            markerId: "grove_muckstead_cottage_lot:map",
-            plotId: "grove_muckstead_cottage_lot",
+          "grove_crossroads_shop_lot:map": {
+            markerId: "grove_crossroads_shop_lot:map",
+            plotId: "grove_crossroads_shop_lot",
             kind: "map_marker",
             position: [512, 72, -150],
-            label: "Muckstead Cottage Lot muck deed",
+            label: "Watchtower Frontier Shop Lot muck deed",
             createdAtMs: 123,
           },
         },
@@ -451,7 +451,7 @@ describe("biomes_ui map adapter (V141)", () => {
     const marker = adapter
       .getMarkers()
       .find(
-        (entry: any) => entry.id === "property:grove_muckstead_cottage_lot"
+        (entry: any) => entry.id === "property:grove_crossroads_shop_lot"
       );
     assert.ok(marker, "owned muck deed should appear on the BiomesUI map");
     assert.equal(marker.kind, "property");

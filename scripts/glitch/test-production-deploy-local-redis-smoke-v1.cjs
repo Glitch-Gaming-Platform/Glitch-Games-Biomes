@@ -179,9 +179,29 @@ ok(
 );
 ok(
   script.includes(
-    'PROD_REDIS_HEALTH_HOST="${PROD_REDIS_HEALTH_HOST:-$PROD_REDIS_PUBLIC_HOST}"'
+    'PROD_REDIS_HEALTH_MODE="${PROD_REDIS_HEALTH_MODE:-azure-vm}"'
   ),
-  "deploy checks production Redis through the public health host by default"
+  "deploy checks production Redis through Azure VM run-command by default"
+);
+ok(
+  script.includes('PROD_REDIS_PUBLIC_HOST="${PROD_REDIS_PUBLIC_HOST:-}"'),
+  "deploy does not default to the public Redis IP"
+);
+ok(
+  script.includes("check_production_redis_network_guard_v191"),
+  "deploy checks Redis NSG guardrails before production changes"
+);
+ok(
+  script.includes("deny-all rule after the Container Apps subnet allow"),
+  "deploy requires an explicit Redis deny-all NSG rule after the subnet allow"
+);
+ok(
+  script.includes("refusing local production Redis bootstrap while Redis is private"),
+  "deploy refuses destructive local Redis bootstrap when Redis is private"
+);
+ok(
+  script.includes("do not re-open the public Redis IP"),
+  "deploy blocks post-deploy world sync unless it has a private Redis runner"
 );
 ok(
   script.includes('PROD_REDIS_AOF_AUTOFIX="${PROD_REDIS_AOF_AUTOFIX:-1}"'),
@@ -275,12 +295,24 @@ ok(
   "deploy repair unblocks writes after persistence failure"
 );
 ok(
-  script.includes("CONFIG SET dbfilename dump.rdb"),
+  script.includes('CONFIG SET dbfilename "$PROD_REDIS_RDB_FILENAME"'),
   "deploy repair restores the safe Redis RDB filename"
 );
 ok(
-  script.includes('CONFIG SET save ""'),
-  "deploy repair disables RDB snapshots for the shared Redis runtime"
+  script.includes('CONFIG SET dir "$PROD_REDIS_RDB_DIR"'),
+  "deploy repair restores the safe Redis RDB directory"
+);
+ok(
+  script.includes('CONFIG SET save "$PROD_REDIS_SAVE_SCHEDULE"'),
+  "deploy repair keeps scheduled RDB snapshots enabled for the shared Redis runtime"
+);
+ok(
+  script.includes('PROD_REDIS_SAVE_SCHEDULE="${PROD_REDIS_SAVE_SCHEDULE:-900 1 300 10 60 10000}"'),
+  "deploy uses the production Redis RDB save schedule by default"
+);
+ok(
+  script.includes("force_production_redis_bgsave_v191"),
+  "deploy forces a Redis RDB save after persistence repair"
 );
 ok(
   script.includes("CONFIG REWRITE"),
@@ -338,21 +370,55 @@ ok(
 );
 ok(
   script.includes(
-    "HARTHMERE_BUSINESS_OUTPOST_MATERIALIZATION_REDIS_HOST:-$PROD_REDIS_PUBLIC_HOST"
+    'HARTHMERE_BUSINESS_OUTPOST_MATERIALIZATION_MODE="${HARTHMERE_BUSINESS_OUTPOST_MATERIALIZATION_MODE:-per-outpost}"'
   ),
-  "business outpost reconciliation defaults to the production Redis public host"
+  "production deploy defaults business outpost materialization to per-outpost mode"
+);
+ok(
+  script.includes("harthmere_business_outpost_ids_v1"),
+  "production deploy reads canonical business outpost ids from shared data"
+);
+ok(
+  script.includes('OUTPOST_ID="$outpost_id"'),
+  "production deploy materializes business outpost terrain one outpost at a time"
+);
+ok(
+  script.includes("processed ${materialized_count}/${expected_count} outposts"),
+  "production deploy fails when the business terrain materializer does not cover all outposts"
+);
+ok(
+  script.includes(
+    'HARTHMERE_BUSINESS_OUTPOST_MATERIALIZATION_APPLY_SHARD_BATCH_SIZE="${HARTHMERE_BUSINESS_OUTPOST_MATERIALIZATION_APPLY_SHARD_BATCH_SIZE:-2}"'
+  ),
+  "production deploy uses small shard batches for business outpost terrain materialization"
+);
+ok(
+  script.includes(
+    "HARTHMERE_BUSINESS_OUTPOST_MATERIALIZATION_REDIS_HOST:-$PROD_REDIS_RECONCILE_HOST"
+  ),
+  "business outpost reconciliation uses the explicitly configured private Redis runner host"
 );
 ok(
   script.includes("reconcile-production-world-sync-v1.cjs"),
   "production deploy runs the broad Harthmere world sync reconciler"
 );
 ok(
-  script.includes("HARTHMERE_WORLD_SYNC_REDIS_HOST:-$PROD_REDIS_PUBLIC_HOST"),
-  "broad world sync reconciliation defaults to the production Redis public host"
+  script.includes("HARTHMERE_WORLD_SYNC_REDIS_HOST:-$PROD_REDIS_RECONCILE_HOST"),
+  "broad world sync reconciliation uses the explicitly configured private Redis runner host"
 );
 ok(
   script.includes("validate_production_world_sync_http_v188"),
   "production deploy validates live Harthmere world APIs after Redis reconciliation"
+);
+ok(
+  script.includes("audit_production_authored_content_v1"),
+  "production deploy audits authored Harthmere content after Redis reconciliation"
+);
+ok(
+  script.includes(
+    'force_production_redis_bgsave_v191 "post-deploy world sync reconciliation"'
+  ),
+  "production deploy persists reconciled authored content with a forced RDB save"
 );
 ok(
   script.includes("/api/harthmere/live_mode_jobs_board_state"),

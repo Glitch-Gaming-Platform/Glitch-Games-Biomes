@@ -28,20 +28,42 @@ Use the guarded deploy script instead of hand-running build/upload commands:
 scripts/glitch/deploy-production-local-redis-smoke-v1.sh
 ```
 
-That command builds the production Next and webpack artifacts, builds the Docker image locally, starts the production image against a local Redis container, bootstraps only that local Redis with the packaged snapshot, and runs the Glitch smoke tests. It does not upload anything by default.
+That command runs the production source guardrails, builds the production Next
+and webpack artifacts, and builds the Docker image locally. It does not upload
+anything by default.
 
-Only after the local production-image smoke passes, deploy the exact tested image:
+The local production-image HTTP smoke is memory-heavy and is now opt-in. Run it
+when you need the full local container proof:
 
 ```bash
+scripts/glitch/deploy-production-local-redis-smoke-v1.sh --local-smoke
+```
+
+For an app-only production deploy from a local workstation, keep production
+Redis private and skip the post-deploy Redis world-sync phase:
+
+```bash
+HARTHMERE_SKIP_WORLD_SYNC_RECONCILIATION=1 \
 scripts/glitch/deploy-production-local-redis-smoke-v1.sh --push
 ```
 
-The script avoids `az acr build`; production upload is `docker push` of the locally-smoked image, followed by `az containerapp update`. That keeps remote upload/build cost low and prevents pushing an image that has not run locally first.
+For a full production deploy with post-deploy world reconciliation, run from an
+Azure/VNet runner that can reach private Redis and pass the private Redis host:
+
+```bash
+PROD_REDIS_RECONCILE_HOST=10.0.0.12 \
+scripts/glitch/deploy-production-local-redis-smoke-v1.sh --push
+```
+
+The script avoids `az acr build`; production upload is `docker push` of the
+locally-built image, followed by `az containerapp update`. Before any production
+update it validates the private Redis NSG, Redis write/persistence health,
+snapshot hash, and required world seed keys.
 
 The validated production image was:
 
 ```text
-glitchgames.azurecr.io/biomes-node:prod-20260522202153
+glitchgames.azurecr.io/biomes-node:prod-20260611185041
 ```
 
 Do not paste the title token into source control or this README. It must be injected as a Container App secret.
@@ -147,7 +169,7 @@ Internal sync process: 4900
 
 ### Redis
 
-The Redis VM is private-only and reachable from the VNet environment at:
+The Redis service is private-only and reachable from the VNet environment at:
 
 ```text
 10.0.0.12:6379
@@ -160,6 +182,33 @@ biomes-redis-prod.glitch.internal
 ```
 
 Do not bake Redis connection details into the Docker image. Set `REDIS_HOST` and `GLITCH_REDIS_HOST` at runtime. The current production Container App uses `10.0.0.12`.
+
+Production Redis must remain private. Do not restore a public `6379` allow rule
+or set `PROD_REDIS_PUBLIC_HOST` for normal deploys. The deployment script checks
+Redis health through Azure VM run-command by default (`PROD_REDIS_HEALTH_MODE=azure-vm`)
+so local deploys can verify Redis without opening the socket to the internet.
+
+Required Redis network guardrails:
+
+- NSG `biomes-redis-prod-nsg` allows `6379/tcp` only from the Container Apps
+  subnet `10.0.1.0/27`.
+- The same NSG has an explicit deny rule for all other `6379/tcp` sources.
+- External probes to the Redis public IP must time out.
+
+Required Redis persistence guardrails:
+
+- `appendonly=no`
+- `dir=/var/lib/redis`
+- `dbfilename=dump.rdb`
+- `save="900 1 300 10 60 10000"`
+- `rdb_last_bgsave_status=ok`
+
+Use the guarded health check after any Redis VM, disk, NSG, or snapshot repair:
+
+```bash
+HARTHMERE_SKIP_WORLD_SYNC_RECONCILIATION=1 \
+scripts/glitch/deploy-production-local-redis-smoke-v1.sh --redis-health-check-only
+```
 
 ---
 
@@ -230,7 +279,8 @@ docs/harthmere/HARTHMERE_AZURE_VOICE_AND_SPEECH_V1.md
 
 ## 3. Why the VNet environment is required
 
-The Redis VM has no public IP. That is intentional for production security.
+The Redis VM must not accept public Redis traffic. Port `6379` is intentionally
+limited to the VNet Container Apps subnet by NSG rules.
 
 The original Container Apps environment was not VNet-integrated. That meant the game container could not reach or resolve Redis. The logs showed failures such as:
 
@@ -864,6 +914,11 @@ Before build:
 
 Before deploy:
 
+- [ ] `scripts/glitch/deploy-production-local-redis-smoke-v1.sh --redis-health-check-only` passes.
+- [ ] Redis NSG allows `6379/tcp` from `10.0.1.0/27` and explicitly denies all other sources.
+- [ ] Public Redis access is blocked; do not reopen `6379` to `*`, `Internet`, or `0.0.0.0/0`.
+- [ ] Redis persistence is `dir=/var/lib/redis`, `dbfilename=dump.rdb`, `save="900 1 300 10 60 10000"`, and `rdb_last_bgsave_status=ok`.
+- [ ] Production Redis snapshot hash matches `snapshot_backup.json`, and required seed keys are present (`required_seed_keys_present=3/3`).
 - [ ] Docker image builds locally.
 - [ ] Local Docker runtime starts or validates Redis, populates the installed snapshot only when explicitly requested, then starts shim, bikkie, logic, oob, sidefx, sync, and web.
 - [ ] Local `/api/glitch/harthmere` returns `valid:true`.
@@ -877,6 +932,14 @@ After deploy:
 
 - [ ] Revision is `Running`.
 - [ ] Revision is `Healthy`.
+- [ ] `audit_production_authored_content_v1` passes: business owners `19/19`,
+  business crafting stations `19/19`, business customers `57/57`, muckers
+  `100/100`, and wildlife `24/24`.
+- [ ] Business outpost terrain materialization logs
+  `processed 19/19 outposts` and no `missingShardCount` failures. NPCs/boards
+  without the voxel building means this step was skipped or killed.
+- [ ] Post-reconciliation Redis `BGSAVE` completed with
+  `rdb_last_bgsave_status=ok`.
 - [ ] Logs show production sync URL and `GLITCH_SAME_ORIGIN_SYNC_WS_PROXY_V129 installed`.
 - [ ] Logs show `Redis is already populated with the installed snapshot data.`; production app replicas must not run the snapshot populate path.
 - [ ] Logs show `registerWorldApi:got-config mode=hfc-hybrid`.
@@ -895,15 +958,16 @@ After deploy:
 Container App: biomes-node-vnet
 Resource Group: openai-resource-group
 Environment: glitch-prod-vnet-env
-Revision: biomes-node-vnet--0000004
+Revision: biomes-node-vnet--0000110
 Revision State: Running
 Health State: Healthy
 Traffic Weight: 100
-Image: glitchgames.azurecr.io/biomes-node:prod-20260522202153
+Image: glitchgames.azurecr.io/biomes-node:prod-20260611185041
 Web URL: https://biomes-node-vnet.thankfulfield-9814940f.eastus.azurecontainerapps.io
 Sync URL: https://biomes-node-vnet.thankfulfield-9814940f.eastus.azurecontainerapps.io
 Redis Host: 10.0.0.12
 Redis Port: 6379
+Redis snapshot hash: 3013026c00d11eb16ab4cacfb524b317
 Title ID: 42de534c-600f-4228-af9e-b69faef94cce
 ```
 
@@ -921,123 +985,26 @@ title_id: 42de534c-600f-4228-af9e-b69faef94cce
 
 ## 20. Minimal redeploy command summary
 
-Use this only after the one-time infrastructure is already in place.
+Use the guarded script. Do not hand-run `az containerapp update` for normal
+production deploys, because that bypasses the Redis NSG, persistence, snapshot,
+traffic-pinning, and stale-revision checks.
 
 ```bash
 cd /Users/devindixon/Development/biomes-game
 
-export RG="openai-resource-group"
-export APP_VNET="biomes-node-vnet"
-export ACR_NAME="GlitchGames"
-export ACR_SERVER="glitchgames.azurecr.io"
-export WEB_FQDN="biomes-node-vnet.thankfulfield-9814940f.eastus.azurecontainerapps.io"
-export NEXT_PUBLIC_GLITCH_SYNC_BASE_URL="https://$WEB_FQDN"
+# App-only local deploy; Redis stays private and no world-sync writes run.
+HARTHMERE_SKIP_WORLD_SYNC_RECONCILIATION=1 \
+scripts/glitch/deploy-production-local-redis-smoke-v1.sh --push
+```
 
-rm -rf .next/cache
+For a full deploy with authored-content/world reconciliation, run from a host
+inside the Azure VNet and use:
 
-GLITCH_RUNTIME=1 \
-GLITCH_LOCAL_ASSETS=1 \
-NEXT_PUBLIC_GLITCH_RUNTIME=1 \
-NEXT_PUBLIC_GLITCH_LOCAL_ASSETS=1 \
-NEXT_PUBLIC_BIOMES_ENABLE_HARTHMERE_EXTRA_TOWN=0 \
-NEXT_PUBLIC_BIOMES_FORCE_LOCAL_DEV_TOWN=0 \
-NEXT_PUBLIC_BIOMES_START_IN_HARTHMERE=0 \
-NEXT_PUBLIC_GLITCH_SYNC_BASE_URL="$NEXT_PUBLIC_GLITCH_SYNC_BASE_URL" \
-NODE_ENV=production \
-NEXT_TELEMETRY_DISABLED=1 \
-NODE_OPTIONS="--openssl-legacy-provider" \
-./node_modules/.bin/next build
+```bash
+cd /Users/devindixon/Development/biomes-game
 
-NODE_ENV=production \
-NODE_OPTIONS="--openssl-legacy-provider" \
-node -r ts-node/register ./node_modules/webpack-cli/bin/cli.js \
-  --config server.webpack.config.ts \
-  --mode production
-
-node scripts/glitch/assert-glitch-build-artifacts-current.cjs .
-
-docker buildx build \
-  --platform linux/amd64 \
-  --progress=plain \
-  -f Dockerfile.biomes \
-  -t glitch-harthmere-biomes:production \
-  --load \
-  .
-
-docker network create glitch-dev 2>/dev/null || true
-docker rm -f glitch-redis-local biomes-local 2>/dev/null || true
-docker run -d --name glitch-redis-local --network glitch-dev redis:6.0.16-alpine
-
-printf "GLITCH_TITLE_TOKEN: "
-stty -echo
-IFS= read -r GLITCH_TITLE_TOKEN
-stty echo
-printf "\n"
-
-docker run -d \
-  --name biomes-local \
-  --network glitch-dev \
-  -p 3000:3000 \
-  -p 4900:4900 \
-  -e GLITCH_TITLE_TOKEN="$GLITCH_TITLE_TOKEN" \
-  -e GLITCH_TITLE_ID="42de534c-600f-4228-af9e-b69faef94cce" \
-  -e GLITCH_API_BASE_URL="https://api.glitch.fun/api" \
-  -e REDIS_HOST="glitch-redis-local" \
-  -e GLITCH_REDIS_HOST="glitch-redis-local" \
-  -e REDIS_PORT="6379" \
-  -e GLITCH_REDIS_PORT="6379" \
-  -e NEXT_PUBLIC_GLITCH_SYNC_BASE_URL="http://127.0.0.1:4900" \
-  glitch-harthmere-biomes:production
-
-curl -i \
-  -X POST \
-  -H 'Content-Type: application/json' \
-  -d '{"op":"validate","install_id":"f7f602be-8d32-4fd6-9eba-2d3b7e6dafd7"}' \
-  http://127.0.0.1:3000/api/glitch/harthmere
-
-export IMAGE_TAG="biomes-node:prod-$(date +%Y%m%d%H%M%S)"
-export IMAGE="$ACR_SERVER/$IMAGE_TAG"
-
-az acr login --name "$ACR_NAME"
-docker tag glitch-harthmere-biomes:production "$IMAGE"
-docker push "$IMAGE"
-
-az containerapp update \
-  --resource-group "$RG" \
-  --name "$APP_VNET" \
-  --image "$IMAGE" \
-  --set-env-vars \
-    NEXT_PUBLIC_GLITCH_SYNC_BASE_URL="https://biomes-node-vnet.thankfulfield-9814940f.eastus.azurecontainerapps.io" \
-    NEXT_PUBLIC_BIOMES_ENABLE_HARTHMERE_EXTRA_TOWN="0" \
-    NEXT_PUBLIC_BIOMES_FORCE_LOCAL_DEV_TOWN="0" \
-    NEXT_PUBLIC_BIOMES_START_IN_HARTHMERE="0" \
-    BIOMES_ENABLE_HARTHMERE_EXTRA_TOWN="0" \
-    BIOMES_FORCE_LOCAL_DEV_TOWN="0" \
-    BIOMES_CREATE_LOCAL_DEV_TERRAIN="1" \
-    BIOMES_START_IN_HARTHMERE="0" \
-    GLITCH_REDIS_MODE="external" \
-    GLITCH_POPULATE_SNAPSHOT_REDIS="0" \
-    GLITCH_REQUIRE_SNAPSHOT_REDIS="1" \
-    GLITCH_TITLE_TOKEN=secretref:glitch-title-token \
-    GLITCH_TITLE_ID="42de534c-600f-4228-af9e-b69faef94cce" \
-    GLITCH_API_BASE_URL="https://api.glitch.fun/api" \
-    REDIS_HOST="10.0.0.12" \
-    REDIS_PORT="6379" \
-    GLITCH_REDIS_HOST="10.0.0.12" \
-    GLITCH_REDIS_PORT="6379"
-
-REV=$(az containerapp show \
-  --resource-group "$RG" \
-  --name "$APP_VNET" \
-  --query "properties.latestRevisionName" \
-  -o tsv)
-
-az containerapp logs show \
-  --resource-group "$RG" \
-  --name "$APP_VNET" \
-  --revision "$REV" \
-  --type console \
-  --tail 300
+PROD_REDIS_RECONCILE_HOST=10.0.0.12 \
+scripts/glitch/deploy-production-local-redis-smoke-v1.sh --push
 ```
 
 ## 21. Authored content reconciliation (NPCs, owners, customers, muckers)
@@ -1049,21 +1016,34 @@ gates matter:
    `seedMissingLocalDevContentIntoExistingWorldV1`): on boot, production creates
    only the _missing_ content entities (it never rebuilds/overwrites terrain).
 2. **Deploy reconciler** (`scripts/harthmere/reconcile-production-world-sync-v1.cjs`,
-   run by this deploy script with `APPLY=1` against the public Redis): it
-   materializes the seed _families_ listed in its `seedFamilies` array.
+   run by this deploy script with `APPLY=1` from an in-VNet runner against
+   private Redis): it materializes the seed _families_ listed in its
+   `seedFamilies` array.
    **When you add a new authored-content family (e.g. business owners), you MUST
    add it to that array** or it never lands in prod.
+3. **Business outpost terrain materializer**
+   (`scripts/harthmere/materialize-business-outposts-redis-v1.cjs`): production
+   must also write the voxel shard diffs for the authored shop buildings. The
+   deploy script defaults this to `HARTHMERE_BUSINESS_OUTPOST_MATERIALIZATION_MODE=per-outpost`
+   with `OUTPOST_ID=<id>` and small shard batches, because the single bulk
+   materializer can exceed the production app container memory. Do not switch to
+   bulk mode for production unless the container memory profile has been
+   re-tested.
 
 After reconciliation the deploy runs `audit_production_authored_content_v1`,
-which fails the deploy if business owners < 19, business customers < 57,
-muckers < 100, or Grove NPCs are missing. See
+which fails the deploy if business owners < 19, business crafting stations <
+19, business customers < 57, muckers < 100, or Grove NPCs are missing. Once
+that audit and the per-outpost terrain materialization pass, the deploy forces a
+Redis `BGSAVE` so newly reconciled authored content and building voxel diffs are
+durable before the next Redis restart. See
 `src/shared/harthmere/harthmere-content-reaches-production` notes.
 
 Id bands (offset on `SNAPSHOT_GROVE_LOCAL_DEV_NPC_BASE_V75`): Grove NPCs 9301+,
 robots 9401+, muckers 9451–9550, **business owners 9601–9619**, **business
-customers 9701–9757** (19 businesses × 2–5 patrons = 57). Owners are
-`quest_giver`s at the counter; customers are talkable flavor NPCs only. Both are
-grounded indoors (`requireOpenSky=false`) so they stay on the building floor.
+crafting stations 9651–9669**, and **business customers 9701–9757** (19
+businesses × 3 patrons = 57). Owners are `quest_giver`s at the counter;
+customers are talkable flavor NPCs only. Owners/customers are grounded indoors
+(`requireOpenSky=false`) so they stay on the building floor.
 
 ## 22. Entity terrain grounding and production placement map
 
@@ -1081,11 +1061,13 @@ map pins, HUD/minimap targets, active quest pointers, and random spawn pools.
 The map is generated from real production terrain and records outdoor surfaces,
 indoor/cave floors, cave/hollow clusters, and deterministic spawn points.
 
-Regenerate it from production with read-only Azure/Redis access:
+Regenerate it from production with read-only Azure/Redis access from an
+Azure/VNet host that can reach private Redis:
 
 ```bash
 az account show
 
+HARTHMERE_WORLD_SYNC_REDIS_HOST=10.0.0.12 \
 NODE_OPTIONS=--max-old-space-size=8192 \
 node scripts/harthmere/build-production-terrain-placement-map-v1.cjs \
   --write \
@@ -1097,7 +1079,8 @@ node scripts/harthmere/check-harthmere-production-placement-map-v1.cjs
 
 The scanner uses `az account show`, `az containerapp show`, and Redis `mget`
 terrain reads. It writes only local generated files/artifacts when `--write` is
-present. It must not seed or mutate production.
+present. It must not seed or mutate production, and Redis must not be reopened
+publicly for this workflow.
 
 Runtime rules:
 

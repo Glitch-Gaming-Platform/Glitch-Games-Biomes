@@ -79,11 +79,15 @@ Useful overrides:
 ```bash
 AZURE_RESOURCE_GROUP=openai-resource-group
 AZURE_CONTAINER_APP=biomes-node-vnet
-PROD_REDIS_PUBLIC_HOST=20.127.78.175
+HARTHMERE_WORLD_SYNC_REDIS_HOST=10.0.0.12
 PROD_REDIS_PORT=6379
 HARTHMERE_PLACEMENT_MAP_STRIDE=8
 HARTHMERE_PLACEMENT_MAP_MARGIN=64
 ```
+
+Run this scanner only from an Azure/VNet host that can reach private Redis.
+Production Redis `6379` must not be reopened to the public internet for terrain
+map generation.
 
 Use a smaller stride only when you need a denser diagnostic pass and can afford
 the scan time. Keep the checked-in map at the agreed stride unless you are
