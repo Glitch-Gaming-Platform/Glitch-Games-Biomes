@@ -282,8 +282,7 @@ RUN set -eux; \
     chmod 755 ./b; \
     chmod 755 scripts/b/bootstrap.py 2>/dev/null || true; \
     chmod 755 scripts/glitch/run-glitch-web.sh 2>/dev/null || true; \
-    chmod 755 scripts/glitch/run-glitch-local-game-stack-v92.sh 2>/dev/null || true; \
-    chmod 755 scripts/glitch/run-glitch-local-game-stack-v92.sh 2>/dev/null || true; \
+    chmod 755 scripts/glitch/run-glitch-local-game-stack.sh 2>/dev/null || true; \
     chmod 755 scripts/glitch/prepare-glitch-image.sh 2>/dev/null || true; \
     chmod 755 scripts/glitch/healthcheck-glitch-web.cjs 2>/dev/null || true; \
     find scripts -type f -name '*.sh' -exec chmod 755 {} \; || true
@@ -303,4 +302,4 @@ EXPOSE 3000 4900
 # was the reason the original image built fine but never satisfied
 # /api/glitch/harthmere or opened 4900.
 ENTRYPOINT ["/usr/bin/tini", "--"]
-CMD ["./scripts/glitch/run-glitch-local-game-stack-v92.sh"]
+CMD ["./scripts/glitch/run-glitch-local-game-stack.sh"]

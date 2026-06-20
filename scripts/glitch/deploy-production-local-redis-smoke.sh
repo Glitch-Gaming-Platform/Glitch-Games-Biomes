@@ -1128,6 +1128,14 @@ build_artifacts() {
 }
 
 build_image() {
+  local cache_args=()
+  if [ -n "${DOCKER_BUILD_CACHE_FROM:-}" ]; then
+    cache_args+=(--cache-from "$DOCKER_BUILD_CACHE_FROM")
+  fi
+  if [ -n "${DOCKER_BUILD_CACHE_TO:-}" ]; then
+    cache_args+=(--cache-to "$DOCKER_BUILD_CACHE_TO")
+  fi
+
   log "Building local production image $LOCAL_IMAGE for $DOCKER_PLATFORM."
   docker buildx build \
     --platform "$DOCKER_PLATFORM" \
@@ -1135,6 +1143,7 @@ build_image() {
     -f Dockerfile.biomes \
     -t "$LOCAL_IMAGE" \
     -t "$IMAGE" \
+    "${cache_args[@]}" \
     .
 }
 

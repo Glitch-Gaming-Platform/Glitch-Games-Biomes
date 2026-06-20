@@ -21,6 +21,7 @@ concurrency:
 
 env:
   CI: "1"
+  HUSKY: "0"
   NEXT_TELEMETRY_DISABLED: "1"
   AZURE_CORE_OUTPUT: none
   PROD_ORIGIN: https://biomes-node-vnet.thankfulfield-9814940f.eastus.azurecontainerapps.io
@@ -32,6 +33,8 @@ env:
   AZURE_CONTAINER_APP: biomes-node-vnet
   GLITCH_TITLE_ID: 42de534c-600f-4228-af9e-b69faef94cce
   GLITCH_API_BASE_URL: https://api.glitch.fun/api
+  DOCKER_BUILD_CACHE_FROM: type=local,src=/tmp/.buildx-cache
+  DOCKER_BUILD_CACHE_TO: type=local,dest=/tmp/.buildx-cache-new,mode=max
   HARTHMERE_SKIP_WORLD_SYNC_RECONCILIATION: "1"
 
 jobs:
@@ -74,8 +77,25 @@ jobs:
           } > "$git_config"
           echo "GIT_CONFIG_GLOBAL=$git_config" >> "$GITHUB_ENV"
 
+      - name: Restore node_modules cache
+        id: node-modules-cache
+        uses: actions/cache@v4
+        with:
+          path: node_modules
+          key: ${{ runner.os }}-node20-node-modules-${{ hashFiles('yarn.lock') }}-production-deploy-v1
+          restore-keys: |
+            ${{ runner.os }}-node20-node-modules-
+
       - name: Install dependencies
         run: yarn install --production=false --frozen-lockfile --non-interactive
+
+      - name: Restore Docker layer cache
+        uses: actions/cache@v4
+        with:
+          path: /tmp/.buildx-cache
+          key: ${{ runner.os }}-buildx-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-buildx-
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -117,3 +137,12 @@ jobs:
             TAG="prod-${GITHUB_SHA::12}"
           fi
           scripts/glitch/deploy-production-local-redis-smoke.sh --push --tag "$TAG"
+
+      - name: Promote refreshed Docker layer cache
+        if: always()
+        run: |
+          set -euo pipefail
+          if [ -d /tmp/.buildx-cache-new ]; then
+            rm -rf /tmp/.buildx-cache
+            mv /tmp/.buildx-cache-new /tmp/.buildx-cache
+          fi

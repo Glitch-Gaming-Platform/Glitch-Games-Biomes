@@ -111,6 +111,11 @@ GLITCH_TITLE_TOKEN=secretref:glitch-title-token
 The title token lives only as the Azure Container App secret
 `glitch-title-token`; it is not stored in GitHub or source control.
 
+The workflow restores a `node_modules` cache before `yarn install` and a Buildx
+layer cache before Docker packaging. The first run can still be slow because it
+has to populate both caches; later runs should reuse dependency and image
+layers when `yarn.lock`, Dockerfile layers, and copied assets have not changed.
+
 The validated production image was:
 
 ```text

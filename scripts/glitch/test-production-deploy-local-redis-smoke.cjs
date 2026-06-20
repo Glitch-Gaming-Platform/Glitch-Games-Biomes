@@ -12,6 +12,7 @@ const stackRunner = fs.readFileSync(
   path.join(root, "scripts/glitch/run-glitch-local-game-stack.sh"),
   "utf8"
 );
+const dockerfile = fs.readFileSync(path.join(root, "Dockerfile.biomes"), "utf8");
 
 let failed = false;
 function ok(condition, message) {
@@ -180,8 +181,21 @@ ok(
   "Docker build loads the tested image locally before push"
 );
 ok(
+  script.includes("DOCKER_BUILD_CACHE_FROM") &&
+    script.includes("DOCKER_BUILD_CACHE_TO"),
+  "Docker build can consume and refresh an external Buildx layer cache"
+);
+ok(
   !/^\s*az acr build\b/m.test(script),
   "script avoids expensive remote ACR source uploads"
+);
+ok(
+  dockerfile.includes('CMD ["./scripts/glitch/run-glitch-local-game-stack.sh"]'),
+  "Docker image starts the unified Glitch local game stack script"
+);
+ok(
+  !dockerfile.includes("run-glitch-local-game-stack-v92"),
+  "Docker image no longer references removed versioned stack scripts"
 );
 ok(
   script.includes('docker push "$IMAGE"'),
