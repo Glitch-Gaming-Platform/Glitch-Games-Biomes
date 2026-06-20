@@ -42,6 +42,7 @@ env:
   DOCKER_BUILD_CACHE_FROM: type=local,src=/tmp/.buildx-cache
   DOCKER_BUILD_CACHE_TO: type=local,dest=/tmp/.buildx-cache-new,mode=max
   HARTHMERE_SKIP_WORLD_SYNC_RECONCILIATION: "1"
+  ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: "true"
 
 jobs:
   deploy:
@@ -55,39 +56,26 @@ jobs:
 
     steps:
       - name: Checkout source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           lfs: true
 
       - name: Set up Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version-file: .nvmrc
 
       - name: Install build CLIs
         run: npm install -g yarn@1 @bazel/bazelisk
 
-      - name: Configure private Git dependencies
-        env:
-          BIOMES_DEPENDENCY_GITHUB_TOKEN: ${{ secrets.BIOMES_DEPENDENCY_GITHUB_TOKEN }}
-        run: |
-          set -euo pipefail
-          if [ -z "${BIOMES_DEPENDENCY_GITHUB_TOKEN:-}" ]; then
-            echo "Missing GitHub production environment secret: BIOMES_DEPENDENCY_GITHUB_TOKEN" >&2
-            exit 1
-          fi
-          git_config="$RUNNER_TEMP/gitconfig-private-deps"
-          {
-            printf '[url "https://x-access-token:%s@github.com/"]\n' "$BIOMES_DEPENDENCY_GITHUB_TOKEN"
-            printf '    insteadOf = ssh://git@github.com/\n'
-            printf '    insteadOf = git+ssh://git@github.com/\n'
-            printf '    insteadOf = git@github.com:\n'
-          } > "$git_config"
-          echo "GIT_CONFIG_GLOBAL=$git_config" >> "$GITHUB_ENV"
+      - name: Configure GitHub Git dependencies
+        uses: ./.github/actions/configure-github-git-deps
+        with:
+          token: ${{ secrets.BIOMES_DEPENDENCY_GITHUB_TOKEN }}
 
       - name: Restore node_modules cache
         id: node-modules-cache
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: node_modules
           key: ${{ runner.os }}-node20-node-modules-${{ hashFiles('yarn.lock') }}-production-deploy-cache
@@ -98,7 +86,7 @@ jobs:
         run: yarn install --production=false --frozen-lockfile --non-interactive
 
       - name: Restore Docker layer cache
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: /tmp/.buildx-cache
           key: ${{ runner.os }}-buildx-${{ github.sha }}

@@ -9,14 +9,23 @@ jobs:
   test-deploy:
     name: Test docs deployment
     runs-on: ubuntu-latest
+    env:
+      ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: "true"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           lfs: true
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
-          node-version: 18
-          cache: yarn
+          node-version-file: .nvmrc
+
+      - name: Install Yarn
+        run: npm install -g yarn@1
+
+      - name: Configure GitHub Git dependencies
+        uses: ./.github/actions/configure-github-git-deps
+        with:
+          token: ${{ secrets.BIOMES_DEPENDENCY_GITHUB_TOKEN }}
 
       - name: Install project dependencies
         run: yarn install --frozen-lockfile

@@ -2,6 +2,11 @@ name: "Cached yarn install"
 
 description: "Run 'yarn install', if out-of-date"
 
+inputs:
+  token:
+    description: "Optional token for private GitHub package dependencies."
+    required: false
+
 branding:
   icon: "download"
   color: "green"
@@ -9,9 +14,16 @@ branding:
 runs:
   using: "composite"
   steps:
-    - uses: actions/setup-node@v4
+    - name: Configure GitHub Git dependencies
+      uses: ./.github/actions/configure-github-git-deps
       with:
-        node-version: "20"
+        token: ${{ inputs.token }}
+
+    - uses: actions/setup-node@v6
+      env:
+        ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: "true"
+      with:
+        node-version-file: .nvmrc
 
     - run: npm install -g yarn
       shell: bash
@@ -25,7 +37,7 @@ runs:
       shell: bash
 
     - name: Restore node_modules cache
-      uses: actions/cache@v4
+      uses: actions/cache@v5
       id: node_modules-cache
       with:
         path: ./node_modules

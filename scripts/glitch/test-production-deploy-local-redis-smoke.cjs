@@ -17,6 +17,14 @@ const deployWorkflow = fs.readFileSync(
   path.join(root, ".github/workflows/azure-production-deploy.yml"),
   "utf8"
 );
+const cachedYarnAction = fs.readFileSync(
+  path.join(root, ".github/actions/cached-yarn-install/action.yml"),
+  "utf8"
+);
+const gitDepsAction = fs.readFileSync(
+  path.join(root, ".github/actions/configure-github-git-deps/action.yml"),
+  "utf8"
+);
 
 let failed = false;
 function ok(condition, message) {
@@ -123,6 +131,26 @@ ok(
 ok(
   deployWorkflow.includes("npm install -g yarn@1 @bazel/bazelisk"),
   "production workflow installs Bazelisk before deploy script generation checks"
+);
+ok(
+  deployWorkflow.includes("./.github/actions/configure-github-git-deps"),
+  "production workflow configures GitHub package URL rewrites before Yarn"
+);
+ok(
+  cachedYarnAction.includes("./.github/actions/configure-github-git-deps") &&
+    cachedYarnAction.includes("token: ${{ inputs.token }}"),
+  "shared Yarn install action configures GitHub package URL rewrites"
+);
+ok(
+  gitDepsAction.includes("git+ssh://git@github.com/") &&
+    gitDepsAction.includes("ssh://git@github.com/") &&
+    gitDepsAction.includes("git@github.com:"),
+  "Git dependency rewrite covers Yarn SSH URL variants"
+);
+ok(
+  gitDepsAction.includes("https://x-access-token:") &&
+    gitDepsAction.includes("https://github.com/"),
+  "Git dependency rewrite supports private-token and public-HTTPS fallback modes"
 );
 ok(
   script.includes("check-harthmere-mission-critical-suite.cjs"),

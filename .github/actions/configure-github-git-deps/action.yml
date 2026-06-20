@@ -1,0 +1,39 @@
+name: "Configure GitHub Git dependencies"
+
+description: "Route GitHub package Git URLs through HTTPS, with an optional token."
+
+inputs:
+  token:
+    description: "Optional token for private GitHub package dependencies."
+    required: false
+
+runs:
+  using: "composite"
+  steps:
+    - name: Configure GitHub dependency URLs
+      shell: bash
+      env:
+        DEPENDENCY_GITHUB_TOKEN: ${{ inputs.token }}
+      run: |
+        set -euo pipefail
+
+        if [ -n "${DEPENDENCY_GITHUB_TOKEN:-}" ]; then
+          echo "::add-mask::$DEPENDENCY_GITHUB_TOKEN"
+          github_base="https://x-access-token:${DEPENDENCY_GITHUB_TOKEN}@github.com/"
+        else
+          github_base="https://github.com/"
+        fi
+
+        git_config="$RUNNER_TEMP/github-git-deps-config"
+        : > "$git_config"
+
+        existing_global="${GIT_CONFIG_GLOBAL:-$HOME/.gitconfig}"
+        if [ -f "$existing_global" ]; then
+          git config --file "$git_config" --add include.path "$existing_global"
+        fi
+
+        git config --file "$git_config" --add "url.${github_base}.insteadOf" "ssh://git@github.com/"
+        git config --file "$git_config" --add "url.${github_base}.insteadOf" "git+ssh://git@github.com/"
+        git config --file "$git_config" --add "url.${github_base}.insteadOf" "git@github.com:"
+
+        echo "GIT_CONFIG_GLOBAL=$git_config" >> "$GITHUB_ENV"

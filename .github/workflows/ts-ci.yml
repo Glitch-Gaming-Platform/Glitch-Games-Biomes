@@ -18,11 +18,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
       - name: git lfs pull
         uses: ./.github/actions/cached-lfs-pull
       - name: yarn install
         uses: ./.github/actions/cached-yarn-install
+        with:
+          token: ${{ secrets.BIOMES_DEPENDENCY_GITHUB_TOKEN }}
       - name: bazel setup
         uses: ./.github/actions/bazel
       - name: Create/activate virtual environment.
