@@ -13,6 +13,10 @@ const stackRunner = fs.readFileSync(
   "utf8"
 );
 const dockerfile = fs.readFileSync(path.join(root, "Dockerfile.biomes"), "utf8");
+const deployWorkflow = fs.readFileSync(
+  path.join(root, ".github/workflows/azure-production-deploy.yml"),
+  "utf8"
+);
 
 let failed = false;
 function ok(condition, message) {
@@ -105,6 +109,20 @@ ok(
 ok(
   script.includes("test-production-deploy-local-redis-smoke.cjs"),
   "script runs its own production deploy guardrail assertions"
+);
+ok(
+  script.includes("ensure_generated_ts_deps") &&
+    script.includes("./b --no-check-ts-deps ts-deps build"),
+  "script generates ignored TypeScript deps before import-based guardrails"
+);
+ok(
+  script.indexOf("ensure_generated_ts_deps") <
+    script.indexOf("test-production-api-route-imports.cjs"),
+  "script generates TypeScript deps before sweeping API route imports"
+);
+ok(
+  deployWorkflow.includes("npm install -g yarn@1 @bazel/bazelisk"),
+  "production workflow installs Bazelisk before deploy script generation checks"
 );
 ok(
   script.includes("check-harthmere-mission-critical-suite.cjs"),

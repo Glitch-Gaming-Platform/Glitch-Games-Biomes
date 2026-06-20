@@ -1054,8 +1054,19 @@ fetch_title_token_if_needed() {
   fi
 }
 
+ensure_generated_ts_deps() {
+  log "Generating TypeScript dependencies for production route imports."
+  if ! command -v bazel >/dev/null 2>&1 && ! command -v bazelisk >/dev/null 2>&1; then
+    echo "ERROR Bazel/Bazelisk is required to generate TypeScript dependencies." >&2
+    echo "Install it with: npm install -g @bazel/bazelisk" >&2
+    exit 1
+  fi
+  ./b --no-check-ts-deps ts-deps build
+}
+
 run_build_checks() {
   log "Running production source guardrails."
+  ensure_generated_ts_deps
   node scripts/harthmere/test-harthmere-world-chat-live.cjs .
   BIOMES_PROD_STREAM_REDIS_CHECK=0 node scripts/harthmere/test-harthmere-stream-workers-production.cjs .
   node scripts/harthmere/test-harthmere-no-google-npc-text.cjs .

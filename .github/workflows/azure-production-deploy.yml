@@ -64,8 +64,8 @@ jobs:
         with:
           node-version-file: .nvmrc
 
-      - name: Install Yarn
-        run: npm install -g yarn@1
+      - name: Install build CLIs
+        run: npm install -g yarn@1 @bazel/bazelisk
 
       - name: Configure private Git dependencies
         env:
