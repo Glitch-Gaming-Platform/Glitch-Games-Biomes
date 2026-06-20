@@ -18,7 +18,7 @@ import type { TalkDialogStepAction } from "@/client/components/challenges/TalkDi
 import React, { useEffect, useMemo, useState } from "react";
 
 const HARTHMERE_GATHERING_STATE_KEY =
-  "biomes.localDev.harthmere.gatheringState.v1";
+  "biomes.localDev.harthmere.gatheringState";
 const HARTHMERE_GATHERING_EVENT = "biomes:harthmere-gathering-changed";
 
 type GatheringProfession =
@@ -920,7 +920,7 @@ const NODE_DEFINITIONS: ResourceNodeDefinition[] = [
 // World-facing projection of each gathering node so the in-world renderer and
 // the proximity F-prompt can show + harvest a real, visible node where the map
 // marker points — instead of the harvest only existing inside a HUD menu.
-export interface HarthmereGatheringNodeWorldTargetV1 {
+export interface HarthmereGatheringNodeWorldTarget {
   id: string;
   name: string;
   district: string;
@@ -931,9 +931,9 @@ export interface HarthmereGatheringNodeWorldTargetV1 {
 }
 
 // Harvest is short-range: you must be standing on the node, not just in the area.
-export const HARTHMERE_GATHERING_NODE_INTERACTION_RADIUS_V1 = 4.5;
+export const HARTHMERE_GATHERING_NODE_INTERACTION_RADIUS = 4.5;
 
-export const HARTHMERE_GATHERING_NODE_WORLD_TARGETS_V1: readonly HarthmereGatheringNodeWorldTargetV1[] =
+export const HARTHMERE_GATHERING_NODE_WORLD_TARGETS: readonly HarthmereGatheringNodeWorldTarget[] =
   NODE_DEFINITIONS.map((node) => ({
     id: node.id,
     name: node.name,
@@ -944,7 +944,7 @@ export const HARTHMERE_GATHERING_NODE_WORLD_TARGETS_V1: readonly HarthmereGather
     position: [...node.position] as [number, number, number],
   }));
 
-function normalizeHarthmereGatheringLabelV1(label?: string | null) {
+function normalizeHarthmereGatheringLabel(label?: string | null) {
   return (label ?? "")
     .trim()
     .replace(/[_-]+/g, " ")
@@ -952,44 +952,44 @@ function normalizeHarthmereGatheringLabelV1(label?: string | null) {
     .toLowerCase();
 }
 
-export function harthmereGatheringNodeIdForObjectLabelV1(
+export function harthmereGatheringNodeIdForObjectLabel(
   label?: string | null
 ): string | undefined {
-  const normalized = normalizeHarthmereGatheringLabelV1(label);
+  const normalized = normalizeHarthmereGatheringLabel(label);
   if (!normalized) {
     return undefined;
   }
   const exact = NODE_DEFINITIONS.find(
-    (node) => normalizeHarthmereGatheringLabelV1(node.name) === normalized
+    (node) => normalizeHarthmereGatheringLabel(node.name) === normalized
   );
   if (exact) {
     return exact.id;
   }
   return NODE_DEFINITIONS.find((node) => {
-    const nodeName = normalizeHarthmereGatheringLabelV1(node.name);
+    const nodeName = normalizeHarthmereGatheringLabel(node.name);
     return normalized.includes(nodeName) || nodeName.includes(normalized);
   })?.id;
 }
 
-export type HarthmereGatheringNodePromptV1 =
-  HarthmereGatheringNodeWorldTargetV1 & { distance: number };
+export type HarthmereGatheringNodePrompt =
+  HarthmereGatheringNodeWorldTarget & { distance: number };
 
 // Nearest harvestable node within interaction range of the player (XZ distance;
 // the authored Y is a flat hint, so the vertical gate stays generous). Mirrors
-// nearestHarthmereBusinessBoardPhysicalPromptV1 / jobs-board proximity.
-export function nearestHarthmereGatheringNodePromptV1(
+// nearestHarthmereBusinessBoardPhysicalPrompt / jobs-board proximity.
+export function nearestHarthmereGatheringNodePrompt(
   playerPosition: { x: number; y?: number; z: number } | undefined
-): HarthmereGatheringNodePromptV1 | undefined {
+): HarthmereGatheringNodePrompt | undefined {
   if (!playerPosition) return undefined;
-  let best: HarthmereGatheringNodeWorldTargetV1 | undefined;
+  let best: HarthmereGatheringNodeWorldTarget | undefined;
   let bestDistance = Infinity;
-  for (const target of HARTHMERE_GATHERING_NODE_WORLD_TARGETS_V1) {
+  for (const target of HARTHMERE_GATHERING_NODE_WORLD_TARGETS) {
     const distance = Math.hypot(
       target.position[0] - playerPosition.x,
       target.position[2] - playerPosition.z
     );
     if (
-      distance > HARTHMERE_GATHERING_NODE_INTERACTION_RADIUS_V1 ||
+      distance > HARTHMERE_GATHERING_NODE_INTERACTION_RADIUS ||
       distance >= bestDistance
     ) {
       continue;
@@ -1515,7 +1515,7 @@ function professionLabel(profession: GatheringProfession) {
     .join(" ");
 }
 
-function harthmereGatheringResourceIconV96(itemId: string): string {
+function harthmereGatheringResourceIcon(itemId: string): string {
   const text = itemId.toLowerCase();
   if (/log|wood|branch|bark|willow|sap|pitch|heartwood|birch|oak|pine|timber/.test(text)) return "🪵";
   if (/ore|iron|coal|silver|gold|stone|shard|nugget|garnet|rock|marble|quartz|crystal/.test(text)) return "⛏️";
@@ -1865,7 +1865,7 @@ export const HarthmereGatheringMenuPanel: React.FunctionComponent<{}> = () => {
                     key={itemId}
                     className="flex items-center gap-2 rounded border border-white/10 bg-white/5 p-2"
                   >
-                    <span className="shrink-0 text-base" aria-hidden="true">{harthmereGatheringResourceIconV96(itemId)}</span>
+                    <span className="shrink-0 text-base" aria-hidden="true">{harthmereGatheringResourceIcon(itemId)}</span>
                     <span className="min-w-0 flex-1 truncate capitalize">{itemId.replaceAll("_", " ")}</span>
                     <span className="shrink-0 font-semibold text-lime-100">x{quantity}</span>
                   </div>

@@ -6,9 +6,9 @@ import {
 } from "@/client/components/hooks/client_hooks";
 import { installBiomesUITheme } from "@/client/components/biomes_ui/theme/biomesUITheme";
 import {
-  questInviteOptionsFromTrackableQuestsV1,
-  submitHarthmereQuestInviteMutationV1,
-  type HarthmereQuestInviteOptionV1,
+  questInviteOptionsFromTrackableQuests,
+  submitHarthmereQuestInviteMutation,
+  type HarthmereQuestInviteOption,
 } from "@/client/components/biomes_ui/adapters/questInviteAdapter";
 import { useAvailableOrInProgressChallenges } from "@/client/components/challenges/helpers";
 import type { UserListType } from "@/client/components/inventory/SelfInventoryScreen";
@@ -18,7 +18,7 @@ import { AvatarWearables } from "@/client/components/social/AvatarWearables";
 import { MiniPhoneFollowList } from "@/client/components/social/MiniPhoneFollowList";
 import { ReportFlow } from "@/client/components/social/ReportFlow";
 import { TeamBadge } from "@/client/components/social/TeamLabel";
-import { nextBiomesProfileFocusIndexForKeyV1 } from "@/client/components/social/biomesProfileKeyboard";
+import { nextBiomesProfileFocusIndexForKey } from "@/client/components/social/biomesProfileKeyboard";
 import type { SocialMiniPhonePayload } from "@/client/components/social/types";
 import { MaybeError, useError } from "@/client/components/system/MaybeError";
 import { MaybeGridSpinner } from "@/client/components/system/MaybeGridSpinner";
@@ -55,7 +55,7 @@ import React, {
 
 const PROFILE_FOCUSABLE_SELECTOR =
   '[data-biomes-profile-focusable="true"]:not([disabled])';
-const QUEST_INVITE_PROFILE_MAX_DISTANCE_METERS_V1 = 16;
+const QUEST_INVITE_PROFILE_MAX_DISTANCE_METERS = 16;
 
 function isTypingInProfileInput(): boolean {
   if (typeof document === "undefined") {
@@ -69,7 +69,7 @@ function isTypingInProfileInput(): boolean {
   return tag === "input" || tag === "textarea" || active.isContentEditable;
 }
 
-function vec3FromUnknownV1(
+function vec3FromUnknown(
   value: unknown
 ): [number, number, number] | undefined {
   const raw = Array.isArray(value) ? value : undefined;
@@ -85,10 +85,10 @@ function vec3FromUnknownV1(
 function positionVec3FromComponent(
   value: unknown
 ): [number, number, number] | undefined {
-  return vec3FromUnknownV1((value as any)?.v);
+  return vec3FromUnknown((value as any)?.v);
 }
 
-function isWithinQuestInviteProfileDistanceV1(
+function isWithinQuestInviteProfileDistance(
   left: [number, number, number] | undefined,
   right: [number, number, number] | undefined
 ) {
@@ -98,15 +98,15 @@ function isWithinQuestInviteProfileDistanceV1(
   const dz = left[2] - right[2];
   return (
     dx * dx + dy * dy + dz * dz <=
-    QUEST_INVITE_PROFILE_MAX_DISTANCE_METERS_V1 *
-      QUEST_INVITE_PROFILE_MAX_DISTANCE_METERS_V1
+    QUEST_INVITE_PROFILE_MAX_DISTANCE_METERS *
+      QUEST_INVITE_PROFILE_MAX_DISTANCE_METERS
   );
 }
 
-function questInviteOptionsFromChallengeBundlesV1(
+function questInviteOptionsFromChallengeBundles(
   challenges: unknown[]
-): HarthmereQuestInviteOptionV1[] {
-  return questInviteOptionsFromTrackableQuestsV1(
+): HarthmereQuestInviteOption[] {
+  return questInviteOptionsFromTrackableQuests(
     challenges
       .filter((challenge: any) =>
         ["available", "in_progress"].includes(String(challenge?.state ?? ""))
@@ -126,7 +126,7 @@ function questInviteOptionsFromChallengeBundlesV1(
           reward: Array.isArray(challenge?.progress?.rewards)
             ? `${challenge.progress.rewards.length} rewards`
             : undefined,
-          markerWorldPosition: questInviteMarkerWorldPositionFromProgressV1(
+          markerWorldPosition: questInviteMarkerWorldPositionFromProgress(
             challenge?.progress
           ),
         };
@@ -134,7 +134,7 @@ function questInviteOptionsFromChallengeBundlesV1(
   );
 }
 
-function questInviteMarkerWorldPositionFromProgressV1(
+function questInviteMarkerWorldPositionFromProgress(
   progress: unknown
 ): [number, number, number] | undefined {
   const rawProgress = progress as any;
@@ -150,7 +150,7 @@ function questInviteMarkerWorldPositionFromProgressV1(
     rawProgress?.position,
   ];
   for (const candidate of candidates) {
-    const position = vec3FromUnknownV1(candidate);
+    const position = vec3FromUnknown(candidate);
     if (position) return position;
   }
   return undefined;
@@ -181,7 +181,7 @@ export const MiniPhoneProfile: React.FunctionComponent<{
   const isSelfProfile = userId === context.userId;
   const availableChallenges = useAvailableOrInProgressChallenges();
   const questInviteOptions = useMemo(
-    () => questInviteOptionsFromChallengeBundlesV1(availableChallenges ?? []),
+    () => questInviteOptionsFromChallengeBundles(availableChallenges ?? []),
     [availableChallenges]
   );
 
@@ -331,7 +331,7 @@ export const MiniPhoneProfile: React.FunctionComponent<{
     context.userId,
     "position"
   );
-  const canInviteToQuestFromProfile = isWithinQuestInviteProfileDistanceV1(
+  const canInviteToQuestFromProfile = isWithinQuestInviteProfileDistance(
     positionVec3FromComponent(selfPosition),
     positionVec3FromComponent(targetPosition)
   );
@@ -354,13 +354,13 @@ export const MiniPhoneProfile: React.FunctionComponent<{
   }, [userInfo]);
 
   const sendQuestInvite = useCallback(
-    async (option: HarthmereQuestInviteOptionV1) => {
+    async (option: HarthmereQuestInviteOption) => {
       setInvitingQuestId(option.questId);
       setQuestInviteMessage(undefined);
       try {
         const markerWorldPosition =
           option.markerWorldPosition ?? positionVec3FromComponent(selfPosition);
-        await submitHarthmereQuestInviteMutationV1({
+        await submitHarthmereQuestInviteMutation({
           operation: "invite_to_quest",
           inviteeActorId: String(userId),
           questId: option.questId,
@@ -549,7 +549,7 @@ export const MiniPhoneProfile: React.FunctionComponent<{
       if (currentIndex < 0) {
         return;
       }
-      const nextIndex = nextBiomesProfileFocusIndexForKeyV1({
+      const nextIndex = nextBiomesProfileFocusIndexForKey({
         key: event.key,
         currentIndex,
         itemCount: focusable.length,

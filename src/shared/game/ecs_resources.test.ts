@@ -25,8 +25,8 @@ describe("ECS metadata resources", () => {
 
     const metadata = resources.get("/ecs/metadata");
 
-    assert.deepEqual(metadata.aabb.v0, [-2048, -256, -2048]);
-    assert.deepEqual(metadata.aabb.v1, [2048, 512, 2048]);
+    assert.deepEqual(metadata.aabb, [-2048, -256, -2048]);
+    assert.deepEqual(metadata.aabb, [2048, 512, 2048]);
   });
 
   it("uses fallback metadata for synthetic-only WorldMetadataId updates", () => {
@@ -44,8 +44,8 @@ describe("ECS metadata resources", () => {
 
     const metadata = resources.get("/ecs/metadata");
 
-    assert.deepEqual(metadata.aabb.v0, [-2048, -256, -2048]);
-    assert.deepEqual(metadata.aabb.v1, [2048, 512, 2048]);
+    assert.deepEqual(metadata.aabb, [-2048, -256, -2048]);
+    assert.deepEqual(metadata.aabb, [2048, 512, 2048]);
   });
 
   it("prefers real world metadata when present", () => {
@@ -68,7 +68,7 @@ describe("ECS metadata resources", () => {
 
     const metadata = resources.get("/ecs/metadata");
 
-    assert.deepEqual(metadata.aabb.v0, [-10, -20, -30]);
-    assert.deepEqual(metadata.aabb.v1, [10, 20, 30]);
+    assert.deepEqual(metadata.aabb, [-10, -20, -30]);
+    assert.deepEqual(metadata.aabb, [10, 20, 30]);
   });
 });

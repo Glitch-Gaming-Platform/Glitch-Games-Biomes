@@ -630,29 +630,29 @@ VILL_H_W_SBEAM.vox
   _source/voxel_packs/itch_voxel_asset_pack/Village House Stuff/VILL_H_W_SBEAM.vox
   vox/props/itch_voxel_asset_pack/Village House Stuff/VILL_H_W_SBEAM.vox
 
-VILL_H_W_V1.vox
-  _source/voxel_packs/itch_voxel_asset_pack/Village House Stuff/VILL_H_W_V1.vox
-  vox/props/itch_voxel_asset_pack/Village House Stuff/VILL_H_W_V1.vox
+VILL_H_W.vox
+  _source/voxel_packs/itch_voxel_asset_pack/Village House Stuff/VILL_H_W.vox
+  vox/props/itch_voxel_asset_pack/Village House Stuff/VILL_H_W.vox
 
-VILL_H_W_V2.vox
-  _source/voxel_packs/itch_voxel_asset_pack/Village House Stuff/VILL_H_W_V2.vox
-  vox/props/itch_voxel_asset_pack/Village House Stuff/VILL_H_W_V2.vox
+VILL_H_W.vox
+  _source/voxel_packs/itch_voxel_asset_pack/Village House Stuff/VILL_H_W.vox
+  vox/props/itch_voxel_asset_pack/Village House Stuff/VILL_H_W.vox
 
 VILL_H_W_V2_INV.vox
   _source/voxel_packs/itch_voxel_asset_pack/Village House Stuff/VILL_H_W_V2_INV.vox
   vox/props/itch_voxel_asset_pack/Village House Stuff/VILL_H_W_V2_INV.vox
 
-VILL_H_W_V3.vox
-  _source/voxel_packs/itch_voxel_asset_pack/Village House Stuff/VILL_H_W_V3.vox
-  vox/props/itch_voxel_asset_pack/Village House Stuff/VILL_H_W_V3.vox
+VILL_H_W.vox
+  _source/voxel_packs/itch_voxel_asset_pack/Village House Stuff/VILL_H_W.vox
+  vox/props/itch_voxel_asset_pack/Village House Stuff/VILL_H_W.vox
 
-VILL_H_W_V4.5.vox
-  _source/voxel_packs/itch_voxel_asset_pack/Village House Stuff/VILL_H_W_V4.5.vox
-  vox/props/itch_voxel_asset_pack/Village House Stuff/VILL_H_W_V4.5.vox
+VILL_H_W.5.vox
+  _source/voxel_packs/itch_voxel_asset_pack/Village House Stuff/VILL_H_W.5.vox
+  vox/props/itch_voxel_asset_pack/Village House Stuff/VILL_H_W.5.vox
 
-VILL_H_W_V4.vox
-  _source/voxel_packs/itch_voxel_asset_pack/Village House Stuff/VILL_H_W_V4.vox
-  vox/props/itch_voxel_asset_pack/Village House Stuff/VILL_H_W_V4.vox
+VILL_H_W.vox
+  _source/voxel_packs/itch_voxel_asset_pack/Village House Stuff/VILL_H_W.vox
+  vox/props/itch_voxel_asset_pack/Village House Stuff/VILL_H_W.vox
 
 VoxelGraveyard_AssetsShowcase.vox
   _source/voxel_packs/voxel_graveyard/Vox/VoxelGraveyard_AssetsShowcase.vox

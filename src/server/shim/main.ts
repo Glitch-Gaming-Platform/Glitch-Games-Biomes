@@ -49,34 +49,34 @@ import {
   zRemoteStorageService,
 } from "@/server/shared/storage/remote";
 import {
-  buildHarthmereLiveEntityProductionSeedChangesV1,
-  harthmereLiveEntityProductionSeedIdsV1,
-} from "@/server/harthmere/live_entity_ecs_seed_v1";
-import { harthmereSharedLiveCreatureRespawnRegistryV1 } from "@/shared/harthmere/live_creature_respawn_registry_v1";
+  buildHarthmereLiveEntityProductionSeedChanges,
+  harthmereLiveEntityProductionSeedIds,
+} from "@/server/harthmere/live_entity_ecs_seed";
+import { harthmereSharedLiveCreatureRespawnRegistry } from "@/shared/harthmere/live_creature_respawn_registry";
 import {
-  buildHarthmereGroveRaceMinigameSeedChangesV1,
-  harthmereGroveRaceMinigameSeedIdsV1,
-} from "@/server/harthmere/grove_race_minigame_ecs_seed_v1";
+  buildHarthmereGroveRaceMinigameSeedChanges,
+  harthmereGroveRaceMinigameSeedIds,
+} from "@/server/harthmere/grove_race_minigame_ecs_seed";
 import {
-  buildHarthmereBusinessOwnerNpcSeedChangesV1,
-  harthmereBusinessOwnerNpcSeedEntityIdsV1,
-} from "@/server/harthmere/business_owner_npc_ecs_seed_v1";
+  buildHarthmereBusinessOwnerNpcSeedChanges,
+  harthmereBusinessOwnerNpcSeedEntityIds,
+} from "@/server/harthmere/business_owner_npc_ecs_seed";
 import {
-  buildHarthmereBusinessCustomerNpcSeedChangesV1,
-  harthmereBusinessCustomerNpcSeedEntityIdsV1,
-} from "@/server/harthmere/business_customer_npc_ecs_seed_v1";
+  buildHarthmereBusinessCustomerNpcSeedChanges,
+  harthmereBusinessCustomerNpcSeedEntityIds,
+} from "@/server/harthmere/business_customer_npc_ecs_seed";
 import {
-  buildHarthmereBusinessCraftingStationSeedChangesV1,
-  harthmereBusinessCraftingStationSeedEntityIdsV1,
-} from "@/server/harthmere/business_crafting_station_ecs_seed_v1";
-import { HARTHMERE_BUSINESS_CRAFTING_STATION_SEED_VERSION_V1 } from "@/shared/harthmere/business_crafting_station_seed_v1";
-import { HARTHMERE_BUSINESS_OWNER_NPC_SEED_VERSION_V1 } from "@/shared/harthmere/business_owner_npc_seed_v1";
-import { HARTHMERE_BUSINESS_CUSTOMER_NPC_SEED_VERSION_V1 } from "@/shared/harthmere/business_customer_npc_seed_v1";
+  buildHarthmereBusinessCraftingStationSeedChanges,
+  harthmereBusinessCraftingStationSeedEntityIds,
+} from "@/server/harthmere/business_crafting_station_ecs_seed";
+import { HARTHMERE_BUSINESS_CRAFTING_STATION_SEED_VERSION } from "@/shared/harthmere/business_crafting_station_seed";
+import { HARTHMERE_BUSINESS_OWNER_NPC_SEED_VERSION } from "@/shared/harthmere/business_owner_npc_seed";
+import { HARTHMERE_BUSINESS_CUSTOMER_NPC_SEED_VERSION } from "@/shared/harthmere/business_customer_npc_seed";
 import {
-  HARTHMERE_LIVE_ENTITY_PRODUCTION_SEED_VERSION_V1,
-  harthmereExcludedMuckMonsterSeedIdsV1,
-} from "@/shared/harthmere/live_entity_production_seed_v1";
-import { HARTHMERE_GROVE_RACE_MINIGAME_SEED_VERSION_V1 } from "@/shared/harthmere/grove_race_minigame_seed_v1";
+  HARTHMERE_LIVE_ENTITY_PRODUCTION_SEED_VERSION,
+  harthmereExcludedMuckMonsterSeedIds,
+} from "@/shared/harthmere/live_entity_production_seed";
+import { HARTHMERE_GROVE_RACE_MINIGAME_SEED_VERSION } from "@/shared/harthmere/grove_race_minigame_seed";
 import type { WorldApi } from "@/server/shared/world/api";
 import { npcEntity } from "@/server/spawn/spawn_npc";
 import { registerWorldApi } from "@/server/shared/world/register";
@@ -132,19 +132,19 @@ import {
   type HarthmereVoxelFaceConfig,
 } from "@/shared/harthmere/voxel_faces";
 import {
-  SNAPSHOT_HARTHMERE_HOSTILE_SPAWNS_V74,
-  SNAPSHOT_HARTHMERE_MUCK_ZONES_V74,
-  isAuthoredPointInSnapshotMuckZoneV74,
-  snapshotCombatGroundedPositionV135,
-} from "@/shared/harthmere/snapshot_runtime_rules_v74";
+  SNAPSHOT_HARTHMERE_HOSTILE_SPAWNS,
+  SNAPSHOT_HARTHMERE_MUCK_ZONES,
+  isAuthoredPointInSnapshotMuckZone,
+  snapshotCombatGroundedPosition,
+} from "@/shared/harthmere/snapshot_runtime_rules";
 import {
-  SNAPSHOT_GROVE_NPCS_V75,
-  SNAPSHOT_GROVE_NPC_GROUNDING_VERSION_V75,
-  snapshotGroveGroundedPositionV75,
-  snapshotGroveNpcEntityIdV75,
-} from "@/shared/harthmere/snapshot_grove_content_v75";
-import { harthmereExoticMatterDepositAtBlockV1 } from "@/shared/harthmere/exotic_matter_caves_v1";
-import { createHarthmereBusinessOutpostRebuildMaterializationPlansV1 } from "@/shared/harthmere/business_customer_simulator_v1";
+  SNAPSHOT_GROVE_NPCS,
+  SNAPSHOT_GROVE_NPC_GROUNDING_VERSION,
+  snapshotGroveGroundedPosition,
+  snapshotGroveNpcEntityId,
+} from "@/shared/harthmere/snapshot_grove_content";
+import { harthmereExoticMatterDepositAtBlock } from "@/shared/harthmere/exotic_matter_caves";
+import { createHarthmereBusinessOutpostRebuildMaterializationPlans } from "@/shared/harthmere/business_customer_simulator";
 
 export interface ShimServerConfig extends BaseServerConfig {
   bootstrapMode: BootstrapMode;
@@ -172,11 +172,11 @@ async function registerShimWorldService(
   return new ShimWorldService(new InMemoryWorld(true, firehose));
 }
 
-const HARTHMERE_LOCAL_DEV_TERRAIN_BOUNDS_VERSION_V4 = "harthmere-local-dev-terrain-bounds-v4";
-const HARTHMERE_LOCAL_DEV_SEED_CONTENT_PASS_V1 =
-  "harthmere-town-design-rebuild-v26-brightcart-left-road-clearance";
-const HARTHMERE_LOCAL_DEV_SEED_FINGERPRINT_VERSION_V1 =
-  "harthmere-local-dev-seed-fingerprint-v3-business-customers";
+const HARTHMERE_LOCAL_DEV_TERRAIN_BOUNDS_VERSION = "harthmere-local-dev-terrain-bounds";
+const HARTHMERE_LOCAL_DEV_SEED_CONTENT_PASS =
+  "harthmere-town-design-rebuild-brightcart-left-road-clearance";
+const HARTHMERE_LOCAL_DEV_SEED_FINGERPRINT_VERSION =
+  "harthmere-local-dev-seed-fingerprint-business-customers";
 
 const LOCAL_DEV_TERRAIN_ID_BASE = 8_810_000_000_000_000 as BiomesId;
 const LOCAL_DEV_NPC_ID_BASE = 8_810_000_000_010_000 as BiomesId;
@@ -187,33 +187,33 @@ const LOCAL_DEV_SEED_MARKER_ID = 8_810_000_000_020_000 as BiomesId;
 const STARTER_TOWN_GROUND_Y = 52;
 const STARTER_TOWN_SPAWN: Vec3 = [486, STARTER_TOWN_GROUND_Y + 1, -209];
 
-// HARTHMERE_CONNECTED_MAP_ROAD_VERSION_V66:
+// HARTHMERE_CONNECTED_MAP_ROAD_VERSION:
 // Harthmere is no longer treated as a hidden far-away local-dev island.
 // The authored road below connects the snapshot edge to Harthmere's west
 // approach when the default +512 x offset is active:
 //   authored [128, -209] -> [392, -209]
 //   shifted  [640, -209] -> [904, -209]
 // Keep this shard-aligned and close enough that players can follow the road.
-const HARTHMERE_CONNECTED_MAP_ROAD_VERSION_V66 = "harthmere-snapshot-connected-road-v66";
-const HARTHMERE_CONNECTED_MAP_DEFAULT_OFFSET_X_V66 = 512;
-const HARTHMERE_CONNECTED_MAP_DEFAULT_OFFSET_Z_V66 = 0;
-const HARTHMERE_SNAPSHOT_EDGE_ROAD_AUTHORED_START_X_V66 = 128;
-const HARTHMERE_SNAPSHOT_EDGE_ROAD_AUTHORED_Z_V66 = -209;
-const HARTHMERE_WEST_GATE_AUTHORED_X_V66 = 392;
+const HARTHMERE_CONNECTED_MAP_ROAD_VERSION = "harthmere-snapshot-connected-road";
+const HARTHMERE_CONNECTED_MAP_DEFAULT_OFFSET_X = 512;
+const HARTHMERE_CONNECTED_MAP_DEFAULT_OFFSET_Z = 0;
+const HARTHMERE_SNAPSHOT_EDGE_ROAD_AUTHORED_START_X = 128;
+const HARTHMERE_SNAPSHOT_EDGE_ROAD_AUTHORED_Z = -209;
+const HARTHMERE_WEST_GATE_AUTHORED_X = 392;
 
-// HARTHMERE_EXTRA_TOWN_OFFSET_V1:
+// HARTHMERE_EXTRA_TOWN_OFFSET:
 // In snapshot-merge mode, Harthmere becomes a shifted extra town instead of
 // the base spawn world. The default offset is shard-aligned: 512 / 32 = 16.
-const HARTHMERE_EXTRA_TOWN_OFFSET_X_V1 = Number.parseInt(
+const HARTHMERE_EXTRA_TOWN_OFFSET_X = Number.parseInt(
   process.env.BIOMES_HARTHMERE_EXTRA_TOWN_OFFSET_X ?? "512",
   10,
 );
-const HARTHMERE_EXTRA_TOWN_OFFSET_Z_V1 = Number.parseInt(
+const HARTHMERE_EXTRA_TOWN_OFFSET_Z = Number.parseInt(
   process.env.BIOMES_HARTHMERE_EXTRA_TOWN_OFFSET_Z ?? "0",
   10,
 );
-function shouldUseHarthmereExtraTownOffsetV1() {
-  // HARTHMERE_GROVE_SEPARATION_V72:
+function shouldUseHarthmereExtraTownOffset() {
+  // HARTHMERE_GROVE_SEPARATION:
   // With the production snapshot installed, BIOMES_FORCE_LOCAL_DEV_TOWN means
   // "seed Harthmere as the connected extra town". It must never paint the
   // Harthmere terrain/NPC layer directly over The Grove. Use
@@ -229,38 +229,38 @@ function shouldUseHarthmereExtraTownOffsetV1() {
     process.env.BIOMES_FORCE_LOCAL_DEV_TOWN === "1"
   );
 }
-function harthmereExtraTownOffsetXV1() {
-  return shouldUseHarthmereExtraTownOffsetV1() ? HARTHMERE_EXTRA_TOWN_OFFSET_X_V1 : 0;
+function harthmereExtraTownOffsetX() {
+  return shouldUseHarthmereExtraTownOffset() ? HARTHMERE_EXTRA_TOWN_OFFSET_X : 0;
 }
-function harthmereExtraTownOffsetZV1() {
-  return shouldUseHarthmereExtraTownOffsetV1() ? HARTHMERE_EXTRA_TOWN_OFFSET_Z_V1 : 0;
+function harthmereExtraTownOffsetZ() {
+  return shouldUseHarthmereExtraTownOffset() ? HARTHMERE_EXTRA_TOWN_OFFSET_Z : 0;
 }
-function harthmereExtraTownShardOffsetXV1() {
-  return Math.trunc(harthmereExtraTownOffsetXV1() / SHARD_DIM);
+function harthmereExtraTownShardOffsetX() {
+  return Math.trunc(harthmereExtraTownOffsetX() / SHARD_DIM);
 }
-function harthmereExtraTownShardOffsetZV1() {
-  return Math.trunc(harthmereExtraTownOffsetZV1() / SHARD_DIM);
+function harthmereExtraTownShardOffsetZ() {
+  return Math.trunc(harthmereExtraTownOffsetZ() / SHARD_DIM);
 }
-function harthmereAuthoredWorldXV1(worldX: number) {
-  return worldX - harthmereExtraTownOffsetXV1();
+function harthmereAuthoredWorldX(worldX: number) {
+  return worldX - harthmereExtraTownOffsetX();
 }
-function harthmereAuthoredWorldZV1(worldZ: number) {
-  return worldZ - harthmereExtraTownOffsetZV1();
+function harthmereAuthoredWorldZ(worldZ: number) {
+  return worldZ - harthmereExtraTownOffsetZ();
 }
-function harthmereWorldPositionV1(position: Vec3): Vec3 {
+function harthmereWorldPosition(position: Vec3): Vec3 {
   return [
-    position[0] + harthmereExtraTownOffsetXV1(),
+    position[0] + harthmereExtraTownOffsetX(),
     position[1],
-    position[2] + harthmereExtraTownOffsetZV1(),
+    position[2] + harthmereExtraTownOffsetZ(),
   ];
 }
 
-function harthmereBusinessOutpostSeedTerrainEditsByShardV1() {
+function harthmereBusinessOutpostSeedTerrainEditsByShard() {
   const editsByShard = new Map<
     string,
     { position: Vec3; value: TerrainID }[]
   >();
-  for (const plan of createHarthmereBusinessOutpostRebuildMaterializationPlansV1()) {
+  for (const plan of createHarthmereBusinessOutpostRebuildMaterializationPlans()) {
     for (const edit of plan.edits) {
       // Business outposts now use the production/world coordinates captured
       // from __harthmereLivePlayerDebug.getPosition(), so local screenshots
@@ -277,31 +277,31 @@ function harthmereBusinessOutpostSeedTerrainEditsByShardV1() {
   return editsByShard;
 }
 
-const HARTHMERE_BUSINESS_OUTPOST_SEED_TERRAIN_EDITS_BY_SHARD_V1 =
-  harthmereBusinessOutpostSeedTerrainEditsByShardV1();
+const HARTHMERE_BUSINESS_OUTPOST_SEED_TERRAIN_EDITS_BY_SHARD =
+  harthmereBusinessOutpostSeedTerrainEditsByShard();
 
-const HARTHMERE_BUSINESS_OUTPOST_SEED_TERRAIN_SHARDS_V1 = Array.from(
-  HARTHMERE_BUSINESS_OUTPOST_SEED_TERRAIN_EDITS_BY_SHARD_V1.keys(),
+const HARTHMERE_BUSINESS_OUTPOST_SEED_TERRAIN_SHARDS = Array.from(
+  HARTHMERE_BUSINESS_OUTPOST_SEED_TERRAIN_EDITS_BY_SHARD.keys(),
 ).map((shardId) => shardDecode(shardId as ReturnType<typeof voxelShard>));
 
-// SNAPSHOT_GROVE_VISIBLE_NPCS_V83:
+// SNAPSHOT_GROVE_VISIBLE_NPCS:
 // Keep Grove snapshot NPCs in authored Grove X/Z, but ground them on the live
 // installed snapshot courtyard height. The logs showed the player standing at
 // y=70.5 while seeded Grove NPCs were at y=53, which means the cast existed but
 // was buried under the visible courtyard. Do not apply the Harthmere +512 X
 // offset here; only fix the Grove live Y band.
-function snapshotGroveRuntimeGroundedPositionV81(position: Vec3): Vec3 {
-  return snapshotGroveGroundedPositionV75(position);
+function snapshotGroveRuntimeGroundedPosition(position: Vec3): Vec3 {
+  return snapshotGroveGroundedPosition(position);
 }
 
-function snapshotCombatRuntimeGroundedPositionV135(position: Vec3): Vec3 {
-  return snapshotCombatGroundedPositionV135(position);
+function snapshotCombatRuntimeGroundedPosition(position: Vec3): Vec3 {
+  return snapshotCombatGroundedPosition(position);
 }
 
-const GLITCH_SNAPSHOT_NPC_GROUNDING_REPAIR_VERSION_V145 =
-  "glitch-snapshot-npc-grounding-repair-v145";
+const GLITCH_SNAPSHOT_NPC_GROUNDING_REPAIR_VERSION =
+  "glitch-snapshot-npc-grounding-repair";
 
-const GLITCH_SNAPSHOT_NPC_GROUNDING_REPAIRS_V145 = new Map<BiomesId, number>([
+const GLITCH_SNAPSHOT_NPC_GROUNDING_REPAIRS = new Map<BiomesId, number>([
   [3442733339259323 as BiomesId, 67],
   [5565155013544756 as BiomesId, 58],
   [2562755261964429 as BiomesId, 65],
@@ -356,11 +356,11 @@ const GLITCH_SNAPSHOT_NPC_GROUNDING_REPAIRS_V145 = new Map<BiomesId, number>([
   [419660649242611 as BiomesId, 77],
 ]);
 
-async function repairKnownSnapshotNpcGroundingV145(worldApi: WorldApi) {
+async function repairKnownSnapshotNpcGrounding(worldApi: WorldApi) {
   if (process.env.GLITCH_REPAIR_SNAPSHOT_NPC_GROUNDING === "0") {
     return;
   }
-  const ids = [...GLITCH_SNAPSHOT_NPC_GROUNDING_REPAIRS_V145.keys()];
+  const ids = [...GLITCH_SNAPSHOT_NPC_GROUNDING_REPAIRS.keys()];
   const existing = await worldApi.getWithVersion(ids);
   const changes: ProposedChange[] = [];
   for (const [, lazyEntity] of existing) {
@@ -369,7 +369,7 @@ async function repairKnownSnapshotNpcGroundingV145(worldApi: WorldApi) {
     if (!entity || !position) {
       continue;
     }
-    const targetFeetY = GLITCH_SNAPSHOT_NPC_GROUNDING_REPAIRS_V145.get(entity.id);
+    const targetFeetY = GLITCH_SNAPSHOT_NPC_GROUNDING_REPAIRS.get(entity.id);
     if (targetFeetY === undefined || Math.abs(position[1] - targetFeetY) <= 0.25) {
       continue;
     }
@@ -386,21 +386,21 @@ async function repairKnownSnapshotNpcGroundingV145(worldApi: WorldApi) {
   }
   const { outcome } = await worldApi.apply({ changes });
   log.warn("Repaired known snapshot NPC grounding from production perf report", {
-    version: GLITCH_SNAPSHOT_NPC_GROUNDING_REPAIR_VERSION_V145,
+    version: GLITCH_SNAPSHOT_NPC_GROUNDING_REPAIR_VERSION,
     outcome,
     repairs: changes.length,
   });
 }
 
 
-// HARTHMERE_NPC_GROUNDING_VERSION_V67
+// HARTHMERE_NPC_GROUNDING_VERSION
 // Harthmere NPCs are authored to stand on server terrain. Never preserve stale
 // Y values from old local-dev placements after snapshot/extra-town shifting.
-const HARTHMERE_NPC_GROUNDING_VERSION_V67 = "harthmere-npc-grounding-v67";
-const HARTHMERE_NPC_TERRAIN_FOOTING_VERSION_V87 =
-  "harthmere-npc-terrain-footing-v87";
+const HARTHMERE_NPC_GROUNDING_VERSION = "harthmere-npc-grounding";
+const HARTHMERE_NPC_TERRAIN_FOOTING_VERSION =
+  "harthmere-npc-terrain-footing";
 
-function harthmereIsNpcFootingBlockV87(
+function harthmereIsNpcFootingBlock(
   materials: ReturnType<typeof localDevMaterials>,
   block: TerrainID | undefined,
 ) {
@@ -419,7 +419,7 @@ function harthmereIsNpcFootingBlockV87(
   ].includes(block);
 }
 
-function harthmereNpcFeetYForAuthoredPositionV87(position: Vec3) {
+function harthmereNpcFeetYForAuthoredPosition(position: Vec3) {
   const materials = localDevMaterials();
   const authoredX = Math.round(position[0]);
   const authoredZ = Math.round(position[2]);
@@ -430,7 +430,7 @@ function harthmereNpcFeetYForAuthoredPositionV87(position: Vec3) {
   // generator, so authored X/Z is the single source of truth here.
   for (let worldY = STARTER_TOWN_GROUND_Y + 40; worldY >= STARTER_TOWN_GROUND_Y + 1; worldY -= 1) {
     const block = starterTownAboveGroundBlockAt(materials, authoredX, worldY, authoredZ);
-    if (harthmereIsNpcFootingBlockV87(materials, block)) {
+    if (harthmereIsNpcFootingBlock(materials, block)) {
       feetY = worldY + 1;
       break;
     }
@@ -439,16 +439,16 @@ function harthmereNpcFeetYForAuthoredPositionV87(position: Vec3) {
   return feetY;
 }
 
-const HARTHMERE_NPC_SAFE_SPAWN_VERSION_V89 =
-  "harthmere-npc-safe-visible-grounded-spawn-v93";
+const HARTHMERE_NPC_SAFE_SPAWN_VERSION =
+  "harthmere-npc-safe-visible-grounded-spawn";
 
-function harthmereBuildingAtAuthoredColumnV89(x: number, z: number) {
-  return HARTHMERE_V6_BUILDINGS.find((building) =>
-    harthmereV6IsInsideRectV1(x, z, building.x0, building.x1, building.z0, building.z1, 0),
+function harthmereBuildingAtAuthoredColumn(x: number, z: number) {
+  return HARTHMERE_BUILDINGS.find((building) =>
+    harthmereIsInsideRect(x, z, building.x0, building.x1, building.z0, building.z1, 0),
   );
 }
 
-function harthmereDoorOutsideCandidatesV89(building: HarthmereV6Building): Vec3[] {
+function harthmereDoorOutsideCandidates(building: HarthmereBuilding): Vec3[] {
   const out: Vec3[] = [];
   if (building.doorSide === "north") {
     for (let dx = -2; dx <= 2; dx += 1) out.push([building.doorCenter + dx, STARTER_TOWN_GROUND_Y + 1, building.z0 - 2]);
@@ -462,7 +462,7 @@ function harthmereDoorOutsideCandidatesV89(building: HarthmereV6Building): Vec3[
   return out;
 }
 
-function harthmereColumnHasNpcClearanceV89(
+function harthmereColumnHasNpcClearance(
   materials: ReturnType<typeof localDevMaterials>,
   authoredX: number,
   authoredZ: number,
@@ -479,23 +479,23 @@ function harthmereColumnHasNpcClearanceV89(
   return true;
 }
 
-function harthmereNpcFeetYForAuthoredColumnV91(authoredX: number, authoredZ: number) {
-  return harthmereNpcFeetYForAuthoredPositionV87([
+function harthmereNpcFeetYForAuthoredColumn(authoredX: number, authoredZ: number) {
+  return harthmereNpcFeetYForAuthoredPosition([
     authoredX,
     STARTER_TOWN_GROUND_Y + 1,
     authoredZ,
   ]);
 }
 
-function harthmereNpcSafeAuthoredPositionV89(position: Vec3): Vec3 {
+function harthmereNpcSafeAuthoredPosition(position: Vec3): Vec3 {
   const materials = localDevMaterials();
   const originX = Math.round(position[0]);
   const originZ = Math.round(position[2]);
   const candidates: Vec3[] = [];
 
-  const building = harthmereBuildingAtAuthoredColumnV89(originX, originZ);
+  const building = harthmereBuildingAtAuthoredColumn(originX, originZ);
   if (building) {
-    candidates.push(...harthmereDoorOutsideCandidatesV89(building));
+    candidates.push(...harthmereDoorOutsideCandidates(building));
   }
 
   for (let radius = 0; radius <= 14; radius += 1) {
@@ -521,24 +521,24 @@ function harthmereNpcSafeAuthoredPositionV89(position: Vec3): Vec3 {
     // clearance carved below. Every candidate now gets grounded against the
     // authored column it actually lands on instead of the old flat y=53 town
     // assumption that caused buried and floating NPC audits.
-    if (harthmereV6IsInsideAnyBuildingFootprintV1(x, z, 0)) continue;
-    const candidateFeetY = harthmereNpcFeetYForAuthoredColumnV91(x, z);
-    if (!harthmereColumnHasNpcClearanceV89(materials, x, z, candidateFeetY)) continue;
+    if (harthmereIsInsideAnyBuildingFootprint(x, z, 0)) continue;
+    const candidateFeetY = harthmereNpcFeetYForAuthoredColumn(x, z);
+    if (!harthmereColumnHasNpcClearance(materials, x, z, candidateFeetY)) continue;
     return [x, candidateFeetY, z];
   }
 
-  return [originX, harthmereNpcFeetYForAuthoredPositionV87(position), originZ];
+  return [originX, harthmereNpcFeetYForAuthoredPosition(position), originZ];
 }
 
-const HARTHMERE_NPC_POSITION_OVERRIDE_VERSION_V93 =
-  "harthmere-known-audit-npc-safe-position-overrides-v93";
+const HARTHMERE_NPC_POSITION_OVERRIDE_VERSION =
+  "harthmere-known-audit-npc-safe-position-overrides";
 
 // The v90/v84 audit series repeatedly identified the same bad cluster: legacy
 // Harthmere NPCs authored at flat y=53 in places where the live terrain/floors
 // are y=58-73, especially the docks, tavern, market-board roof edge, guard yard,
 // and civic hill. Keep this as data so future audits can remove entries once the
 // authored town layout is rebuilt, instead of reintroducing roof/interior spawns.
-const HARTHMERE_NPC_AUTHORED_POSITION_OVERRIDES_V93 = new Map<number, Vec3>([
+const HARTHMERE_NPC_AUTHORED_POSITION_OVERRIDES = new Map<number, Vec3>([
   [3, [503, STARTER_TOWN_GROUND_Y + 1, -211]], // Toma, Builder near board
   [6, [545, STARTER_TOWN_GROUND_Y + 1, -223]], // Banker Merl Voss
   [11, [531, STARTER_TOWN_GROUND_Y + 1, -187]], // Garrick, Bartender
@@ -561,18 +561,18 @@ const HARTHMERE_NPC_AUTHORED_POSITION_OVERRIDES_V93 = new Map<number, Vec3>([
   [65, [594, STARTER_TOWN_GROUND_Y + 1, -214]], // River Knots Lookout
 ]);
 
-function harthmereNpcAuthoredPositionWithAuditOverrideV93(npc: StarterNpc): Vec3 {
+function harthmereNpcAuthoredPositionWithAuditOverride(npc: StarterNpc): Vec3 {
   const offset = Number(npc.id) - Number(LOCAL_DEV_NPC_ID_BASE);
-  return HARTHMERE_NPC_AUTHORED_POSITION_OVERRIDES_V93.get(offset) ?? npc.position;
+  return HARTHMERE_NPC_AUTHORED_POSITION_OVERRIDES.get(offset) ?? npc.position;
 }
 
-function harthmereGroundedNpcWorldPositionV67(position: Vec3): Vec3 {
-  const safeAuthored = harthmereNpcSafeAuthoredPositionV89(position);
-  const shifted = harthmereWorldPositionV1(safeAuthored);
+function harthmereGroundedNpcWorldPosition(position: Vec3): Vec3 {
+  const safeAuthored = harthmereNpcSafeAuthoredPosition(position);
+  const shifted = harthmereWorldPosition(safeAuthored);
   return [shifted[0], safeAuthored[1], shifted[2]];
 }
 
-// HARTHMERE_PERF_AND_PLACEMENT_V94
+// HARTHMERE_PERF_AND_PLACEMENT
 //
 // Every prior patch (v91, v92, v93) failed in the same way: it adjusted NPC
 // authored Y values that the *local-dev terrain generator* still re-grounded
@@ -585,11 +585,11 @@ function harthmereGroundedNpcWorldPositionV67(position: Vec3): Vec3 {
 // safe-relocation pass override them.
 //
 // Two structural fixes:
-//   1. Per-NPC anchor table (HARTHMERE_NPC_STABLE_ANCHOR_V94) seeded from the
+//   1. Per-NPC anchor table (HARTHMERE_NPC_STABLE_ANCHOR) seeded from the
 //      mission-audit cluster measurements. NPCs with a stable anchor skip the
 //      outward safe-relocation search entirely — that search was the source of
 //      multiple NPCs collapsing to the same first-found clearance spot.
-//   2. A shared collision claim set (`HarthmereNpcClaimSetV94`) prevents two
+//   2. A shared collision claim set (`HarthmereNpcClaimSet`) prevents two
 //      anchored NPCs from landing on the same (x, z) by nudging the second one
 //      ±2 blocks in a deterministic per-id direction.
 //
@@ -607,22 +607,22 @@ function harthmereGroundedNpcWorldPositionV67(position: Vec3): Vec3 {
 // When adding a new NPC: pick the cluster from the table above and set its
 // authored Y to the cluster's feetY. Do NOT rely on the safe-relocation pass
 // to find the right Y — that pass reads the authored generator, which is flat.
-const HARTHMERE_PERF_AND_PLACEMENT_VERSION_V94 =
-  "harthmere-perf-and-placement-v94";
+const HARTHMERE_PERF_AND_PLACEMENT_VERSION =
+  "harthmere-perf-and-placement";
 
 // Cluster feet-Y constants — every value below was measured from a
-// `harthmere-mission-audit-v90` capture (targetTerrain.feetY field), or
+// `harthmere-mission-audit` capture (targetTerrain.feetY field), or
 // derived by neighbor inference where the audit lacked direct coverage.
-const HARTHMERE_CLUSTER_FEET_Y_BASE_V94 = STARTER_TOWN_GROUND_Y + 1; // 53
-const HARTHMERE_CLUSTER_FEET_Y_APOTHECARY_V94 = 58;
-const HARTHMERE_CLUSTER_FEET_Y_BANK_V94 = 58;
-const HARTHMERE_CLUSTER_FEET_Y_TAVERN_V94 = 63;
-const HARTHMERE_CLUSTER_FEET_Y_PLAZA_FOUNTAIN_V94 = 68;
-const HARTHMERE_CLUSTER_FEET_Y_SMITHY_V94 = 68;
-const HARTHMERE_CLUSTER_FEET_Y_DOCKS_V94 = 73;
-const HARTHMERE_CLUSTER_FEET_Y_NOBLE_RISE_V94 = 63;
-const HARTHMERE_CLUSTER_FEET_Y_GUARD_YARD_V94 = 58;
-const HARTHMERE_CLUSTER_FEET_Y_NORTH_GATE_V94 = 58;
+const HARTHMERE_CLUSTER_FEET_Y_BASE = STARTER_TOWN_GROUND_Y + 1; // 53
+const HARTHMERE_CLUSTER_FEET_Y_APOTHECARY = 58;
+const HARTHMERE_CLUSTER_FEET_Y_BANK = 58;
+const HARTHMERE_CLUSTER_FEET_Y_TAVERN = 63;
+const HARTHMERE_CLUSTER_FEET_Y_PLAZA_FOUNTAIN = 68;
+const HARTHMERE_CLUSTER_FEET_Y_SMITHY = 68;
+const HARTHMERE_CLUSTER_FEET_Y_DOCKS = 73;
+const HARTHMERE_CLUSTER_FEET_Y_NOBLE_RISE = 63;
+const HARTHMERE_CLUSTER_FEET_Y_GUARD_YARD = 58;
+const HARTHMERE_CLUSTER_FEET_Y_NORTH_GATE = 58;
 
 // Per-NPC stable anchor table keyed by id offset (id = LOCAL_DEV_NPC_ID_BASE
 // + offset). Coordinates are authored (pre-shift). Y is the measured cluster
@@ -633,103 +633,103 @@ const HARTHMERE_CLUSTER_FEET_Y_NORTH_GATE_V94 = 58;
 //   2. The Y is the actual snapshot terrain feet-Y at that XZ.
 //   3. The NPC will NOT be re-located by safe-relocation; this is the final
 //      placement.
-const HARTHMERE_NPC_STABLE_ANCHOR_V94 = new Map<number, Vec3>([
+const HARTHMERE_NPC_STABLE_ANCHOR = new Map<number, Vec3>([
   // --- Welcome / orientation around the Plaza fountain ---
-  [1, [488, HARTHMERE_CLUSTER_FEET_Y_APOTHECARY_V94, -205]], // Mira, Town Guide
-  [2, [505, HARTHMERE_CLUSTER_FEET_Y_PLAZA_FOUNTAIN_V94, -211]], // Bolt, Archive Robot
-  [3, [507, HARTHMERE_CLUSTER_FEET_Y_PLAZA_FOUNTAIN_V94, -213]], // Toma, Builder (off board)
-  [41, [503, HARTHMERE_CLUSTER_FEET_Y_PLAZA_FOUNTAIN_V94, -209]], // Market Board
-  [42, [501, HARTHMERE_CLUSTER_FEET_Y_PLAZA_FOUNTAIN_V94, -211]], // Town Crier Pell
+  [1, [488, HARTHMERE_CLUSTER_FEET_Y_APOTHECARY, -205]], // Mira, Town Guide
+  [2, [505, HARTHMERE_CLUSTER_FEET_Y_PLAZA_FOUNTAIN, -211]], // Bolt, Archive Robot
+  [3, [507, HARTHMERE_CLUSTER_FEET_Y_PLAZA_FOUNTAIN, -213]], // Toma, Builder (off board)
+  [41, [503, HARTHMERE_CLUSTER_FEET_Y_PLAZA_FOUNTAIN, -209]], // Market Board
+  [42, [501, HARTHMERE_CLUSTER_FEET_Y_PLAZA_FOUNTAIN, -211]], // Town Crier Pell
 
   // --- Plaza fountain craftsmen (audit collision target) ---
-  [29, [510, HARTHMERE_CLUSTER_FEET_Y_PLAZA_FOUNTAIN_V94, -217]], // Master Osric Vale (smithy door)
-  [48, [504, HARTHMERE_CLUSTER_FEET_Y_PLAZA_FOUNTAIN_V94, -215]], // Garrik Fen, Carpenter
-  [49, [497, HARTHMERE_CLUSTER_FEET_Y_PLAZA_FOUNTAIN_V94, -223]], // Helna Voss
+  [29, [510, HARTHMERE_CLUSTER_FEET_Y_PLAZA_FOUNTAIN, -217]], // Master Osric Vale (smithy door)
+  [48, [504, HARTHMERE_CLUSTER_FEET_Y_PLAZA_FOUNTAIN, -215]], // Garrik Fen, Carpenter
+  [49, [497, HARTHMERE_CLUSTER_FEET_Y_PLAZA_FOUNTAIN, -223]], // Helna Voss
 
   // --- Black Anvil smithy interior approach ---
-  [7, [532, HARTHMERE_CLUSTER_FEET_Y_SMITHY_V94, -228]], // Brann, Weapons Teller
-  [67, [528, HARTHMERE_CLUSTER_FEET_Y_SMITHY_V94, -225]], // Forge Apprentice Luth
+  [7, [532, HARTHMERE_CLUSTER_FEET_Y_SMITHY, -228]], // Brann, Weapons Teller
+  [67, [528, HARTHMERE_CLUSTER_FEET_Y_SMITHY, -225]], // Forge Apprentice Luth
 
   // --- Bank / Services Plaza ---
-  [6, [552, HARTHMERE_CLUSTER_FEET_Y_BANK_V94, -222]], // Banker Merl Voss
-  [35, [538, HARTHMERE_CLUSTER_FEET_Y_BANK_V94, -204]], // Lysa, Cloth Merchant
-  [36, [556, HARTHMERE_CLUSTER_FEET_Y_BANK_V94, -228]], // Perrin, Moneylender
-  [43, [549, HARTHMERE_CLUSTER_FEET_Y_BANK_V94, -213]], // Courier Anwen
-  [59, [544, HARTHMERE_CLUSTER_FEET_Y_BANK_V94, -220]], // Guild Registrar Wyne
-  [60, [556, HARTHMERE_CLUSTER_FEET_Y_BANK_V94, -218]], // Auction Clerk Pellam
+  [6, [552, HARTHMERE_CLUSTER_FEET_Y_BANK, -222]], // Banker Merl Voss
+  [35, [538, HARTHMERE_CLUSTER_FEET_Y_BANK, -204]], // Lysa, Cloth Merchant
+  [36, [556, HARTHMERE_CLUSTER_FEET_Y_BANK, -228]], // Perrin, Moneylender
+  [43, [549, HARTHMERE_CLUSTER_FEET_Y_BANK, -213]], // Courier Anwen
+  [59, [544, HARTHMERE_CLUSTER_FEET_Y_BANK, -220]], // Guild Registrar Wyne
+  [60, [556, HARTHMERE_CLUSTER_FEET_Y_BANK, -218]], // Auction Clerk Pellam
 
   // --- Copper Kettle tavern (audit-measured y=63) ---
-  [11, [538, HARTHMERE_CLUSTER_FEET_Y_TAVERN_V94, -194]], // Garrick, Bartender
-  [12, [550, HARTHMERE_CLUSTER_FEET_Y_TAVERN_V94, -200]], // Jori, Dockhand
-  [13, [554, HARTHMERE_CLUSTER_FEET_Y_TAVERN_V94, -190]], // Bela, Storyteller
-  [14, [546, HARTHMERE_CLUSTER_FEET_Y_TAVERN_V94, -186]], // Kip, Card Player
-  [15, [540, HARTHMERE_CLUSTER_FEET_Y_TAVERN_V94, -188]], // Sola, Traveler
-  [16, [558, HARTHMERE_CLUSTER_FEET_Y_TAVERN_V94, -200]], // Mern, Tavern Bard
-  [30, [545, HARTHMERE_CLUSTER_FEET_Y_TAVERN_V94, -192]], // Elowen Pike
-  [57, [536, HARTHMERE_CLUSTER_FEET_Y_TAVERN_V94, -198]], // Traveling Merchant Ossa
+  [11, [538, HARTHMERE_CLUSTER_FEET_Y_TAVERN, -194]], // Garrick, Bartender
+  [12, [550, HARTHMERE_CLUSTER_FEET_Y_TAVERN, -200]], // Jori, Dockhand
+  [13, [554, HARTHMERE_CLUSTER_FEET_Y_TAVERN, -190]], // Bela, Storyteller
+  [14, [546, HARTHMERE_CLUSTER_FEET_Y_TAVERN, -186]], // Kip, Card Player
+  [15, [540, HARTHMERE_CLUSTER_FEET_Y_TAVERN, -188]], // Sola, Traveler
+  [16, [558, HARTHMERE_CLUSTER_FEET_Y_TAVERN, -200]], // Mern, Tavern Bard
+  [30, [545, HARTHMERE_CLUSTER_FEET_Y_TAVERN, -192]], // Elowen Pike
+  [57, [536, HARTHMERE_CLUSTER_FEET_Y_TAVERN, -198]], // Traveling Merchant Ossa
 
   // --- River Docks (audit-measured y=73) ---
-  [34, [584, HARTHMERE_CLUSTER_FEET_Y_DOCKS_V94, -183]], // Tovin Reed (dockmaster office)
-  [51, [594, HARTHMERE_CLUSTER_FEET_Y_DOCKS_V94, -185]], // Ferry Master Wren
-  [65, [602, HARTHMERE_CLUSTER_FEET_Y_DOCKS_V94, -176]], // River Knots Lookout
+  [34, [584, HARTHMERE_CLUSTER_FEET_Y_DOCKS, -183]], // Tovin Reed (dockmaster office)
+  [51, [594, HARTHMERE_CLUSTER_FEET_Y_DOCKS, -185]], // Ferry Master Wren
+  [65, [602, HARTHMERE_CLUSTER_FEET_Y_DOCKS, -176]], // River Knots Lookout
 
   // --- Bakery / Market belt (audit-confirmed y=53) ---
-  [4, [441, HARTHMERE_CLUSTER_FEET_Y_BASE_V94, -202]], // Pip, Harbor Mascot
-  [5, [434, HARTHMERE_CLUSTER_FEET_Y_BASE_V94, -192]], // Maren Dawnloaf
-  [28, [440, HARTHMERE_CLUSTER_FEET_Y_BASE_V94, -200]], // Mara Thistle
-  [50, [457, HARTHMERE_CLUSTER_FEET_Y_BASE_V94, -194]], // Selka Weaver
-  [58, [445, HARTHMERE_CLUSTER_FEET_Y_BASE_V94, -198]], // Food Vendor Marae
-  [68, [428, HARTHMERE_CLUSTER_FEET_Y_BASE_V94, -188]], // Bakery Apprentice Noll
-  [69, [450, HARTHMERE_CLUSTER_FEET_Y_BASE_V94, -206]], // Market Guard Sen
+  [4, [441, HARTHMERE_CLUSTER_FEET_Y_BASE, -202]], // Pip, Harbor Mascot
+  [5, [434, HARTHMERE_CLUSTER_FEET_Y_BASE, -192]], // Maren Dawnloaf
+  [28, [440, HARTHMERE_CLUSTER_FEET_Y_BASE, -200]], // Mara Thistle
+  [50, [457, HARTHMERE_CLUSTER_FEET_Y_BASE, -194]], // Selka Weaver
+  [58, [445, HARTHMERE_CLUSTER_FEET_Y_BASE, -198]], // Food Vendor Marae
+  [68, [428, HARTHMERE_CLUSTER_FEET_Y_BASE, -188]], // Bakery Apprentice Noll
+  [69, [450, HARTHMERE_CLUSTER_FEET_Y_BASE, -206]], // Market Guard Sen
 
   // --- Apothecary / Magic Shop belt (raised y=58) ---
-  [8, [456, HARTHMERE_CLUSTER_FEET_Y_APOTHECARY_V94, -176]], // Luma, Healer
-  [9, [514, HARTHMERE_CLUSTER_FEET_Y_APOTHECARY_V94, -168]], // Edrin Starling
-  [47, [460, HARTHMERE_CLUSTER_FEET_Y_APOTHECARY_V94, -172]], // Ysabet Fenlow
+  [8, [456, HARTHMERE_CLUSTER_FEET_Y_APOTHECARY, -176]], // Luma, Healer
+  [9, [514, HARTHMERE_CLUSTER_FEET_Y_APOTHECARY, -168]], // Edrin Starling
+  [47, [460, HARTHMERE_CLUSTER_FEET_Y_APOTHECARY, -172]], // Ysabet Fenlow
 
   // --- Chapel / Temple Green (authored y=53 is correct) ---
-  [31, [477, HARTHMERE_CLUSTER_FEET_Y_BASE_V94, -139]], // Father Aldren
-  [46, [486, HARTHMERE_CLUSTER_FEET_Y_BASE_V94, -136]], // Sister Maelle
-  [66, [472, HARTHMERE_CLUSTER_FEET_Y_BASE_V94, -134]], // Chapel Choir Child
-  [38, [518, HARTHMERE_CLUSTER_FEET_Y_BASE_V94, -137]], // Mirel, Gravekeeper
+  [31, [477, HARTHMERE_CLUSTER_FEET_Y_BASE, -139]], // Father Aldren
+  [46, [486, HARTHMERE_CLUSTER_FEET_Y_BASE, -136]], // Sister Maelle
+  [66, [472, HARTHMERE_CLUSTER_FEET_Y_BASE, -134]], // Chapel Choir Child
+  [38, [518, HARTHMERE_CLUSTER_FEET_Y_BASE, -137]], // Mirel, Gravekeeper
 
   // --- Mudden Ward / Farm / Orchard ---
-  [10, [444, HARTHMERE_CLUSTER_FEET_Y_BASE_V94, -236]], // Tilda Fen
-  [33, [404, HARTHMERE_CLUSTER_FEET_Y_BASE_V94, -160]], // Nessa Crowe
-  [37, [431, HARTHMERE_CLUSTER_FEET_Y_BASE_V94, -112]], // Old Jory
-  [40, [399, HARTHMERE_CLUSTER_FEET_Y_BASE_V94, -235]], // Sable, Smuggler
-  [52, [418, HARTHMERE_CLUSTER_FEET_Y_BASE_V94, -156]], // Mudden Child Lio
-  [53, [424, HARTHMERE_CLUSTER_FEET_Y_BASE_V94, -152]], // Washerwoman Cale
-  [61, [406, HARTHMERE_CLUSTER_FEET_Y_BASE_V94, -162]], // Rat Catcher Dima
-  [62, [486, HARTHMERE_CLUSTER_FEET_Y_BASE_V94, -188]], // Bell-Witness Ora (well)
-  [63, [462, HARTHMERE_CLUSTER_FEET_Y_BASE_V94, -112]], // Apple Picker Ren
-  [70, [402, HARTHMERE_CLUSTER_FEET_Y_BASE_V94, -235]], // Underways Echo
+  [10, [444, HARTHMERE_CLUSTER_FEET_Y_BASE, -236]], // Tilda Fen
+  [33, [404, HARTHMERE_CLUSTER_FEET_Y_BASE, -160]], // Nessa Crowe
+  [37, [431, HARTHMERE_CLUSTER_FEET_Y_BASE, -112]], // Old Jory
+  [40, [399, HARTHMERE_CLUSTER_FEET_Y_BASE, -235]], // Sable, Smuggler
+  [52, [418, HARTHMERE_CLUSTER_FEET_Y_BASE, -156]], // Mudden Child Lio
+  [53, [424, HARTHMERE_CLUSTER_FEET_Y_BASE, -152]], // Washerwoman Cale
+  [61, [406, HARTHMERE_CLUSTER_FEET_Y_BASE, -162]], // Rat Catcher Dima
+  [62, [486, HARTHMERE_CLUSTER_FEET_Y_BASE, -188]], // Bell-Witness Ora (well)
+  [63, [462, HARTHMERE_CLUSTER_FEET_Y_BASE, -112]], // Apple Picker Ren
+  [70, [402, HARTHMERE_CLUSTER_FEET_Y_BASE, -235]], // Underways Echo
 
   // --- Reeve Hall / Noble Rise (raised y=63) ---
-  [32, [564, HARTHMERE_CLUSTER_FEET_Y_NOBLE_RISE_V94, -262]], // Reeve Caldus Merrow
-  [54, [555, HARTHMERE_CLUSTER_FEET_Y_NOBLE_RISE_V94, -260]], // Tax Clerk Iven
-  [55, [570, HARTHMERE_CLUSTER_FEET_Y_NOBLE_RISE_V94, -258]], // Noble Servant Rose
+  [32, [564, HARTHMERE_CLUSTER_FEET_Y_NOBLE_RISE, -262]], // Reeve Caldus Merrow
+  [54, [555, HARTHMERE_CLUSTER_FEET_Y_NOBLE_RISE, -260]], // Tax Clerk Iven
+  [55, [570, HARTHMERE_CLUSTER_FEET_Y_NOBLE_RISE, -258]], // Noble Servant Rose
 
   // --- North Gate / Guard Yard / Stables ---
-  [27, [486, HARTHMERE_CLUSTER_FEET_Y_NORTH_GATE_V94, -277]], // Sergeant Bram Holt
-  [39, [482, HARTHMERE_CLUSTER_FEET_Y_NORTH_GATE_V94, -280]], // Rusk, Toll Clerk
-  [44, [512, HARTHMERE_CLUSTER_FEET_Y_GUARD_YARD_V94, -266]], // Drill Instructor Hal
-  [45, [518, HARTHMERE_CLUSTER_FEET_Y_GUARD_YARD_V94, -262]], // Bounty Clerk Rowan
-  [56, [504, HARTHMERE_CLUSTER_FEET_Y_GUARD_YARD_V94, -262]], // Guard Quartermaster Tarrow
-  [64, [432, HARTHMERE_CLUSTER_FEET_Y_BASE_V94, -260]], // Stablehand Corin
+  [27, [486, HARTHMERE_CLUSTER_FEET_Y_NORTH_GATE, -277]], // Sergeant Bram Holt
+  [39, [482, HARTHMERE_CLUSTER_FEET_Y_NORTH_GATE, -280]], // Rusk, Toll Clerk
+  [44, [512, HARTHMERE_CLUSTER_FEET_Y_GUARD_YARD, -266]], // Drill Instructor Hal
+  [45, [518, HARTHMERE_CLUSTER_FEET_Y_GUARD_YARD, -262]], // Bounty Clerk Rowan
+  [56, [504, HARTHMERE_CLUSTER_FEET_Y_GUARD_YARD, -262]], // Guard Quartermaster Tarrow
+  [64, [432, HARTHMERE_CLUSTER_FEET_Y_BASE, -260]], // Stablehand Corin
 ]);
 
 // Walker NPC ids (17-26) intentionally NOT in the anchor table — they wander.
 // They keep using the existing safe-relocation, which is correct for movers.
 // The check script verifies named-and-stationary NPCs are anchored.
 
-type HarthmereNpcClaimSetV94 = Set<string>;
+type HarthmereNpcClaimSet = Set<string>;
 
-function harthmereClaimKeyV94(x: number, z: number): string {
+function harthmereClaimKey(x: number, z: number): string {
   return `${Math.round(x)}:${Math.round(z)}`;
 }
 
-function harthmereDeterministicNudgeV94(idOffset: number): [number, number] {
+function harthmereDeterministicNudge(idOffset: number): [number, number] {
   // Spread a colliding pair by ±2 along one of 8 compass directions chosen
   // from the NPC's id offset. Deterministic so re-runs don't shuffle people.
   const directions: ReadonlyArray<[number, number]> = [
@@ -739,65 +739,65 @@ function harthmereDeterministicNudgeV94(idOffset: number): [number, number] {
   return directions[Math.abs(idOffset) % directions.length];
 }
 
-function harthmereResolveCollisionV94(
+function harthmereResolveCollision(
   authored: Vec3,
   idOffset: number,
-  claimed: HarthmereNpcClaimSetV94,
+  claimed: HarthmereNpcClaimSet,
 ): Vec3 {
   let x = Math.round(authored[0]);
   let z = Math.round(authored[2]);
   const y = authored[1];
-  if (!claimed.has(harthmereClaimKeyV94(x, z))) {
-    claimed.add(harthmereClaimKeyV94(x, z));
+  if (!claimed.has(harthmereClaimKey(x, z))) {
+    claimed.add(harthmereClaimKey(x, z));
     return [x, y, z];
   }
-  const [nudgeX, nudgeZ] = harthmereDeterministicNudgeV94(idOffset);
+  const [nudgeX, nudgeZ] = harthmereDeterministicNudge(idOffset);
   for (let attempt = 1; attempt <= 6; attempt += 1) {
     const tryX = x + nudgeX * attempt;
     const tryZ = z + nudgeZ * attempt;
-    if (!claimed.has(harthmereClaimKeyV94(tryX, tryZ))) {
-      claimed.add(harthmereClaimKeyV94(tryX, tryZ));
+    if (!claimed.has(harthmereClaimKey(tryX, tryZ))) {
+      claimed.add(harthmereClaimKey(tryX, tryZ));
       return [tryX, y, tryZ];
     }
   }
   // Worst case, still claim something even if it overlaps; the NPC remains
   // visible and quest markers can still resolve them.
-  claimed.add(harthmereClaimKeyV94(x, z));
+  claimed.add(harthmereClaimKey(x, z));
   return [x, y, z];
 }
 
-function harthmereStableAnchorAuthoredPositionV94(
+function harthmereStableAnchorAuthoredPosition(
   npc: StarterNpc,
-  claimed: HarthmereNpcClaimSetV94,
+  claimed: HarthmereNpcClaimSet,
 ): Vec3 | undefined {
   const offset = Number(npc.id) - Number(LOCAL_DEV_NPC_ID_BASE);
-  const anchor = HARTHMERE_NPC_STABLE_ANCHOR_V94.get(offset);
+  const anchor = HARTHMERE_NPC_STABLE_ANCHOR.get(offset);
   if (!anchor) {
     return undefined;
   }
-  return harthmereResolveCollisionV94(anchor, offset, claimed);
+  return harthmereResolveCollision(anchor, offset, claimed);
 }
 
-function harthmereGroundedNpcWorldPositionWithClaimV94(
+function harthmereGroundedNpcWorldPositionWithClaim(
   npc: StarterNpc,
-  claimed: HarthmereNpcClaimSetV94,
+  claimed: HarthmereNpcClaimSet,
 ): Vec3 {
   // Anchored NPCs use their measured-cluster Y and skip safe-relocation
   // entirely — that's what was collapsing multiple NPCs onto the same first
   // available clearance column. Non-anchored NPCs (walkers, late additions)
   // still go through the legacy safe-relocation path.
-  const anchorAuthored = harthmereStableAnchorAuthoredPositionV94(npc, claimed);
+  const anchorAuthored = harthmereStableAnchorAuthoredPosition(npc, claimed);
   if (anchorAuthored) {
-    const shifted = harthmereWorldPositionV1(anchorAuthored);
+    const shifted = harthmereWorldPosition(anchorAuthored);
     return [shifted[0], anchorAuthored[1], shifted[2]];
   }
-  const legacyAuthored = harthmereNpcAuthoredPositionWithAuditOverrideV93(npc);
-  const safeAuthored = harthmereNpcSafeAuthoredPositionV89(legacyAuthored);
-  const claimedKey = harthmereClaimKeyV94(safeAuthored[0], safeAuthored[2]);
+  const legacyAuthored = harthmereNpcAuthoredPositionWithAuditOverride(npc);
+  const safeAuthored = harthmereNpcSafeAuthoredPosition(legacyAuthored);
+  const claimedKey = harthmereClaimKey(safeAuthored[0], safeAuthored[2]);
   if (!claimed.has(claimedKey)) {
     claimed.add(claimedKey);
   }
-  const shifted = harthmereWorldPositionV1(safeAuthored);
+  const shifted = harthmereWorldPosition(safeAuthored);
   return [shifted[0], safeAuthored[1], shifted[2]];
 }
 
@@ -811,7 +811,7 @@ const STARTER_TOWN_SAFE_Z1 = -32;
 // blocks even when testing inside the town, which showed up in logs as ~19s of
 // terrain seeding and poor frame pacing. Default to the town + near-wilds band;
 // set BIOMES_HARTHMERE_PERF_PROFILE=full for long-distance world screenshots.
-const HARTHMERE_LOCAL_DEV_PERF_PROFILE_V3 = process.env.BIOMES_HARTHMERE_PERF_PROFILE === "full" ? "full" : "optimized";
+const HARTHMERE_LOCAL_DEV_PERF_PROFILE = process.env.BIOMES_HARTHMERE_PERF_PROFILE === "full" ? "full" : "optimized";
 const HARTHMERE_FULL_WILDS_SHARD_X0 = -8;
 const HARTHMERE_FULL_WILDS_SHARD_X1 = 38;
 const HARTHMERE_FULL_WILDS_SHARD_Z0 = -31;
@@ -820,18 +820,18 @@ const HARTHMERE_OPTIMIZED_WILDS_SHARD_X0 = 6;
 const HARTHMERE_OPTIMIZED_WILDS_SHARD_X1 = 23;
 const HARTHMERE_OPTIMIZED_WILDS_SHARD_Z0 = -16;
 const HARTHMERE_OPTIMIZED_WILDS_SHARD_Z1 = 5;
-const STARTER_TOWN_WILDS_SHARD_X0 = HARTHMERE_LOCAL_DEV_PERF_PROFILE_V3 === "full" ? HARTHMERE_FULL_WILDS_SHARD_X0 : HARTHMERE_OPTIMIZED_WILDS_SHARD_X0;
-const STARTER_TOWN_WILDS_SHARD_X1 = HARTHMERE_LOCAL_DEV_PERF_PROFILE_V3 === "full" ? HARTHMERE_FULL_WILDS_SHARD_X1 : HARTHMERE_OPTIMIZED_WILDS_SHARD_X1;
-const STARTER_TOWN_WILDS_SHARD_Z0 = HARTHMERE_LOCAL_DEV_PERF_PROFILE_V3 === "full" ? HARTHMERE_FULL_WILDS_SHARD_Z0 : HARTHMERE_OPTIMIZED_WILDS_SHARD_Z0;
-const STARTER_TOWN_WILDS_SHARD_Z1 = HARTHMERE_LOCAL_DEV_PERF_PROFILE_V3 === "full" ? HARTHMERE_FULL_WILDS_SHARD_Z1 : HARTHMERE_OPTIMIZED_WILDS_SHARD_Z1;
+const STARTER_TOWN_WILDS_SHARD_X0 = HARTHMERE_LOCAL_DEV_PERF_PROFILE === "full" ? HARTHMERE_FULL_WILDS_SHARD_X0 : HARTHMERE_OPTIMIZED_WILDS_SHARD_X0;
+const STARTER_TOWN_WILDS_SHARD_X1 = HARTHMERE_LOCAL_DEV_PERF_PROFILE === "full" ? HARTHMERE_FULL_WILDS_SHARD_X1 : HARTHMERE_OPTIMIZED_WILDS_SHARD_X1;
+const STARTER_TOWN_WILDS_SHARD_Z0 = HARTHMERE_LOCAL_DEV_PERF_PROFILE === "full" ? HARTHMERE_FULL_WILDS_SHARD_Z0 : HARTHMERE_OPTIMIZED_WILDS_SHARD_Z0;
+const STARTER_TOWN_WILDS_SHARD_Z1 = HARTHMERE_LOCAL_DEV_PERF_PROFILE === "full" ? HARTHMERE_FULL_WILDS_SHARD_Z1 : HARTHMERE_OPTIMIZED_WILDS_SHARD_Z1;
 const STARTER_TOWN_WILDS_X0 = STARTER_TOWN_WILDS_SHARD_X0 * SHARD_DIM;
 const STARTER_TOWN_WILDS_X1 = (STARTER_TOWN_WILDS_SHARD_X1 + 1) * SHARD_DIM;
 const STARTER_TOWN_WILDS_Z0 = STARTER_TOWN_WILDS_SHARD_Z0 * SHARD_DIM;
 const STARTER_TOWN_WILDS_Z1 = (STARTER_TOWN_WILDS_SHARD_Z1 + 1) * SHARD_DIM;
-const HARTHMERE_LEGACY_LOCAL_DEV_TERRAIN_SHARD_COUNT_V3 =
+const HARTHMERE_LEGACY_LOCAL_DEV_TERRAIN_SHARD_COUNT =
   (HARTHMERE_FULL_WILDS_SHARD_X1 - HARTHMERE_FULL_WILDS_SHARD_X0 + 1) *
   (HARTHMERE_FULL_WILDS_SHARD_Z1 - HARTHMERE_FULL_WILDS_SHARD_Z0 + 1);
-const HARTHMERE_SUPPLEMENTAL_TERRAIN_SHARDS_V1: ReadonlyArray<{
+const HARTHMERE_SUPPLEMENTAL_TERRAIN_SHARDS: ReadonlyArray<{
   readonly shardX: number;
   readonly shardY: number;
   readonly shardZ: number;
@@ -843,7 +843,7 @@ const HARTHMERE_SUPPLEMENTAL_TERRAIN_SHARDS_V1: ReadonlyArray<{
   ),
 ];
 
-function isHarthmereLocalDevTerrainShardEnabledForWorldV3(worldX: number, worldZ: number) {
+function isHarthmereLocalDevTerrainShardEnabledForWorld(worldX: number, worldZ: number) {
   const shardX = Math.floor(worldX / SHARD_DIM);
   const shardZ = Math.floor(worldZ / SHARD_DIM);
   return shardX >= STARTER_TOWN_WILDS_SHARD_X0 && shardX <= STARTER_TOWN_WILDS_SHARD_X1 &&
@@ -2209,21 +2209,21 @@ function starterTownInteriorAndStoryBlockAt(
   return undefined;
 }
 
-// HARTHMERE_CLEAN_TOWN_REBUILD_V6_START
+// HARTHMERE_CLEAN_TOWN_REBUILD_START
 
-// HARTHMERE_SERVER_VOXEL_ALL_BUILDINGS_DUNGEONS_V64
+// HARTHMERE_SERVER_VOXEL_ALL_BUILDINGS_DUNGEONS
 // Server-side terrain is now the owner for structural buildings, town walls,
 // bridge parapets, watchtowers, and the Old Well/Underways dungeon. Runtime
 // GLB assets may still decorate rooms, but walls/floors/ceilings/stairs are
 // real voxel terrain blocks seeded by the shim.
-const HARTHMERE_SERVER_VOXEL_ALL_BUILDINGS_DUNGEONS_VERSION_V64 =
-  "harthmere-server-voxel-all-buildings-dungeons-v64";
+const HARTHMERE_SERVER_VOXEL_ALL_BUILDINGS_DUNGEONS_VERSION =
+  "harthmere-server-voxel-all-buildings-dungeons";
 
 // Preserve the V6 names because starterTownSurfaceMaterial() and
 // starterTownAboveGroundBlockAt() already call these functions.
-type HarthmereV6Mat = keyof ReturnType<typeof localDevMaterials>;
-type HarthmereV6DoorSide = "north" | "south" | "east" | "west";
-type HarthmereV64Profile =
+type HarthmereMat = keyof ReturnType<typeof localDevMaterials>;
+type HarthmereDoorSide = "north" | "south" | "east" | "west";
+type HarthmereProfile =
   | "house"
   | "service"
   | "apartment"
@@ -2233,7 +2233,7 @@ type HarthmereV64Profile =
   | "bridge"
   | "dungeon";
 
-type HarthmereV64Stairs = {
+type HarthmereStairs = {
   x0: number;
   z0: number;
   width: number;
@@ -2241,60 +2241,60 @@ type HarthmereV64Stairs = {
   direction: "east" | "west" | "north" | "south";
 };
 
-type HarthmereV64Balcony = {
+type HarthmereBalcony = {
   side: "north" | "south" | "east" | "west";
   start: number;
   end: number;
   depth: number;
   floor: number;
-  material?: HarthmereV6Mat;
+  material?: HarthmereMat;
 };
 
-type HarthmereV6Building = {
+type HarthmereBuilding = {
   name: string;
   district: string;
-  profile?: HarthmereV64Profile;
+  profile?: HarthmereProfile;
   x0: number;
   x1: number;
   z0: number;
   z1: number;
-  wall: HarthmereV6Mat;
-  roof: HarthmereV6Mat;
-  floor: HarthmereV6Mat;
-  trim?: HarthmereV6Mat;
-  doorSide: HarthmereV6DoorSide;
+  wall: HarthmereMat;
+  roof: HarthmereMat;
+  floor: HarthmereMat;
+  trim?: HarthmereMat;
+  doorSide: HarthmereDoorSide;
   doorCenter: number;
   floors?: number;
   upper?: boolean;
-  stairs?: HarthmereV64Stairs;
-  balcony?: HarthmereV64Balcony;
+  stairs?: HarthmereStairs;
+  balcony?: HarthmereBalcony;
   chimney?: [number, number];
 };
 
-function harthmereV64StairsFor(
+function harthmereStairsFor(
   x0: number,
   z0: number,
-  direction: HarthmereV64Stairs["direction"] = "east",
+  direction: HarthmereStairs["direction"] = "east",
   length = 5,
   width = 2,
-): HarthmereV64Stairs {
+): HarthmereStairs {
   return { x0, z0, direction, length, width };
 }
 
-const HARTHMERE_V6_BUILDINGS: HarthmereV6Building[] = [
+const HARTHMERE_BUILDINGS: HarthmereBuilding[] = [
   // --- North Gate / walls / guard structures ---
-  { name: "north_gate_west_gatehouse", district: "North Gate", profile: "gatehouse", x0: 462, x1: 476, z0: -288, z1: -270, wall: "stoneBrick", roof: "stoneShingles", floor: "stonePolished", trim: "coal", doorSide: "south", doorCenter: 469, floors: 2, stairs: harthmereV64StairsFor(465, -276, "east"), chimney: [464, -285] },
-  { name: "north_gate_east_gatehouse", district: "North Gate", profile: "gatehouse", x0: 498, x1: 512, z0: -288, z1: -270, wall: "stoneBrick", roof: "stoneShingles", floor: "stonePolished", trim: "coal", doorSide: "south", doorCenter: 505, floors: 2, stairs: harthmereV64StairsFor(501, -276, "east"), chimney: [510, -285] },
+  { name: "north_gate_west_gatehouse", district: "North Gate", profile: "gatehouse", x0: 462, x1: 476, z0: -288, z1: -270, wall: "stoneBrick", roof: "stoneShingles", floor: "stonePolished", trim: "coal", doorSide: "south", doorCenter: 469, floors: 2, stairs: harthmereStairsFor(465, -276, "east"), chimney: [464, -285] },
+  { name: "north_gate_east_gatehouse", district: "North Gate", profile: "gatehouse", x0: 498, x1: 512, z0: -288, z1: -270, wall: "stoneBrick", roof: "stoneShingles", floor: "stonePolished", trim: "coal", doorSide: "south", doorCenter: 505, floors: 2, stairs: harthmereStairsFor(501, -276, "east"), chimney: [510, -285] },
   { name: "north_gate_toll_booth", district: "North Gate", profile: "service", x0: 478, x1: 492, z0: -272, z1: -258, wall: "stoneBrick", roof: "redWool", floor: "stonePolished", trim: "yellowWool", doorSide: "south", doorCenter: 485, floors: 1 },
   { name: "harthmere_stables", district: "North Gate", profile: "service", x0: 440, x1: 458, z0: -276, z1: -254, wall: "stoneBrick", roof: "hay", floor: "dirt", trim: "yellowWool", doorSide: "east", doorCenter: -265, floors: 1 },
   { name: "guard_yard_office", district: "Guard District", profile: "service", x0: 500, x1: 524, z0: -278, z1: -258, wall: "stoneBrick", roof: "redWool", floor: "stonePolished", trim: "blackWool", doorSide: "south", doorCenter: 512, floors: 1, chimney: [522, -275] },
-  { name: "guard_barracks_bunkhouse", district: "Guard District", profile: "service", x0: 526, x1: 548, z0: -278, z1: -258, wall: "stoneBrick", roof: "redWool", floor: "stonePolished", trim: "blackWool", doorSide: "south", doorCenter: 537, floors: 2, stairs: harthmereV64StairsFor(530, -272, "east") },
+  { name: "guard_barracks_bunkhouse", district: "Guard District", profile: "service", x0: 526, x1: 548, z0: -278, z1: -258, wall: "stoneBrick", roof: "redWool", floor: "stonePolished", trim: "blackWool", doorSide: "south", doorCenter: 537, floors: 2, stairs: harthmereStairsFor(530, -272, "east") },
 
   // --- Residential / player / noble rise ---
-  { name: "traveler_hearth_player_house", district: "Residential District", profile: "house", x0: 448, x1: 466, z0: -266, z1: -246, wall: "stoneBrick", roof: "blueWool", floor: "stonePolished", trim: "whiteWool", doorSide: "east", doorCenter: -256, floors: 2, upper: true, stairs: harthmereV64StairsFor(452, -260, "east"), balcony: { side: "east", start: -262, end: -252, depth: 3, floor: 2, material: "stonePolished" }, chimney: [450, -263] },
-  { name: "mara_thistle_two_story_house", district: "Residential District", profile: "house", x0: 470, x1: 490, z0: -246, z1: -226, wall: "stoneBrick", roof: "greenWool", floor: "stonePolished", trim: "whiteWool", doorSide: "south", doorCenter: 480, floors: 2, stairs: harthmereV64StairsFor(474, -240, "east"), balcony: { side: "south", start: 475, end: 486, depth: 3, floor: 2, material: "stonePolished" }, chimney: [488, -242] },
-  { name: "reeve_hall", district: "Noble Rise", profile: "service", x0: 550, x1: 582, z0: -272, z1: -250, wall: "stonePolished", roof: "redWool", floor: "stoneBrick", trim: "greenWool", doorSide: "south", doorCenter: 566, floors: 2, upper: true, stairs: harthmereV64StairsFor(554, -266, "east"), balcony: { side: "south", start: 558, end: 574, depth: 3, floor: 2, material: "stoneBrick" }, chimney: [579, -269] },
-  { name: "edrik_vane_noble_rise_estate", district: "Noble Rise", profile: "service", x0: 586, x1: 622, z0: -276, z1: -248, wall: "stonePolished", roof: "redWool", floor: "stoneBrick", trim: "goldOre", doorSide: "west", doorCenter: -262, floors: 2, stairs: harthmereV64StairsFor(592, -270, "east"), balcony: { side: "west", start: -270, end: -256, depth: 3, floor: 2, material: "stoneBrick" }, chimney: [618, -272] },
+  { name: "traveler_hearth_player_house", district: "Residential District", profile: "house", x0: 448, x1: 466, z0: -266, z1: -246, wall: "stoneBrick", roof: "blueWool", floor: "stonePolished", trim: "whiteWool", doorSide: "east", doorCenter: -256, floors: 2, upper: true, stairs: harthmereStairsFor(452, -260, "east"), balcony: { side: "east", start: -262, end: -252, depth: 3, floor: 2, material: "stonePolished" }, chimney: [450, -263] },
+  { name: "mara_thistle_two_story_house", district: "Residential District", profile: "house", x0: 470, x1: 490, z0: -246, z1: -226, wall: "stoneBrick", roof: "greenWool", floor: "stonePolished", trim: "whiteWool", doorSide: "south", doorCenter: 480, floors: 2, stairs: harthmereStairsFor(474, -240, "east"), balcony: { side: "south", start: 475, end: 486, depth: 3, floor: 2, material: "stonePolished" }, chimney: [488, -242] },
+  { name: "reeve_hall", district: "Noble Rise", profile: "service", x0: 550, x1: 582, z0: -272, z1: -250, wall: "stonePolished", roof: "redWool", floor: "stoneBrick", trim: "greenWool", doorSide: "south", doorCenter: 566, floors: 2, upper: true, stairs: harthmereStairsFor(554, -266, "east"), balcony: { side: "south", start: 558, end: 574, depth: 3, floor: 2, material: "stoneBrick" }, chimney: [579, -269] },
+  { name: "edrik_vane_noble_rise_estate", district: "Noble Rise", profile: "service", x0: 586, x1: 622, z0: -276, z1: -248, wall: "stonePolished", roof: "redWool", floor: "stoneBrick", trim: "goldOre", doorSide: "west", doorCenter: -262, floors: 2, stairs: harthmereStairsFor(592, -270, "east"), balcony: { side: "west", start: -270, end: -256, depth: 3, floor: 2, material: "stoneBrick" }, chimney: [618, -272] },
 
   // --- Market / services / crafting ---
   { name: "dawn_loaf_bakery", district: "Market District", profile: "service", x0: 418, x1: 442, z0: -204, z1: -184, wall: "stoneBrick", roof: "yellowWool", floor: "stoneBrick", trim: "hay", doorSide: "east", doorCenter: -194, floors: 1, chimney: [421, -201] },
@@ -2304,8 +2304,8 @@ const HARTHMERE_V6_BUILDINGS: HarthmereV6Building[] = [
   { name: "black_anvil_smithy", district: "Craftsman Row", profile: "service", x0: 520, x1: 544, z0: -242, z1: -220, wall: "stoneBrick", roof: "blackWool", floor: "stonePolished", trim: "coal", doorSide: "south", doorCenter: 532, floors: 1, chimney: [523, -238] },
   { name: "crafters_workshop", district: "Craftsman Row", profile: "service", x0: 494, x1: 514, z0: -238, z1: -220, wall: "stoneBrick", roof: "thatch", floor: "stoneBrick", trim: "hay", doorSide: "south", doorCenter: 504, floors: 1, chimney: [512, -235] },
   { name: "green_mortar_apothecary", district: "Temple Market Edge", profile: "service", x0: 448, x1: 466, z0: -184, z1: -168, wall: "stoneBrick", roof: "greenWool", floor: "stoneBrick", trim: "whiteWool", doorSide: "east", doorCenter: -176, floors: 1 },
-  { name: "wyrm_and_candle_magic_shop", district: "Temple Market Edge", profile: "service", x0: 508, x1: 528, z0: -178, z1: -158, wall: "stoneBrick", roof: "blueWool", floor: "stonePolished", trim: "diamondOre", doorSide: "south", doorCenter: 518, floors: 2, stairs: harthmereV64StairsFor(512, -172, "east") },
-  { name: "copper_kettle_inn", district: "Entertainment District", profile: "service", x0: 532, x1: 566, z0: -208, z1: -180, wall: "stoneBrick", roof: "redWool", floor: "stonePolished", trim: "yellowWool", doorSide: "west", doorCenter: -194, floors: 2, upper: true, stairs: harthmereV64StairsFor(536, -202, "east"), balcony: { side: "west", start: -202, end: -188, depth: 3, floor: 2, material: "stonePolished" }, chimney: [562, -184] },
+  { name: "wyrm_and_candle_magic_shop", district: "Temple Market Edge", profile: "service", x0: 508, x1: 528, z0: -178, z1: -158, wall: "stoneBrick", roof: "blueWool", floor: "stonePolished", trim: "diamondOre", doorSide: "south", doorCenter: 518, floors: 2, stairs: harthmereStairsFor(512, -172, "east") },
+  { name: "copper_kettle_inn", district: "Entertainment District", profile: "service", x0: 532, x1: 566, z0: -208, z1: -180, wall: "stoneBrick", roof: "redWool", floor: "stonePolished", trim: "yellowWool", doorSide: "west", doorCenter: -194, floors: 2, upper: true, stairs: harthmereStairsFor(536, -202, "east"), balcony: { side: "west", start: -202, end: -188, depth: 3, floor: 2, material: "stonePolished" }, chimney: [562, -184] },
 
   // --- Temple / docks / outskirts ---
   { name: "saint_verena_chapel", district: "Temple Green", profile: "service", x0: 466, x1: 494, z0: -150, z1: -128, wall: "stonePolished", roof: "blueWool", floor: "stoneBrick", trim: "whiteWool", doorSide: "south", doorCenter: 480, floors: 1 },
@@ -2315,64 +2315,64 @@ const HARTHMERE_V6_BUILDINGS: HarthmereV6Building[] = [
   { name: "harthmere_watermill", district: "Farm Outskirts", profile: "service", x0: 418, x1: 440, z0: -122, z1: -104, wall: "stoneBrick", roof: "thatch", floor: "stonePolished", trim: "hay", doorSide: "south", doorCenter: 429, floors: 1, chimney: [421, -119] },
 
   // --- Mudden Ward / poorer housing ---
-  { name: "mudden_ward_shelter", district: "Mudden Ward", profile: "slum", x0: 398, x1: 426, z0: -170, z1: -148, wall: "stoneBrick", roof: "blackWool", floor: "stonePolished", trim: "coal", doorSide: "east", doorCenter: -158, floors: 2, stairs: harthmereV64StairsFor(402, -164, "east"), chimney: [401, -166] },
-  { name: "mudden_laundry_house", district: "Mudden Ward", profile: "slum", x0: 398, x1: 418, z0: -144, z1: -130, wall: "stoneBrick", roof: "blackWool", floor: "stonePolished", trim: "coal", doorSide: "east", doorCenter: -137, floors: 2, stairs: harthmereV64StairsFor(402, -140, "east") },
+  { name: "mudden_ward_shelter", district: "Mudden Ward", profile: "slum", x0: 398, x1: 426, z0: -170, z1: -148, wall: "stoneBrick", roof: "blackWool", floor: "stonePolished", trim: "coal", doorSide: "east", doorCenter: -158, floors: 2, stairs: harthmereStairsFor(402, -164, "east"), chimney: [401, -166] },
+  { name: "mudden_laundry_house", district: "Mudden Ward", profile: "slum", x0: 398, x1: 418, z0: -144, z1: -130, wall: "stoneBrick", roof: "blackWool", floor: "stonePolished", trim: "coal", doorSide: "east", doorCenter: -137, floors: 2, stairs: harthmereStairsFor(402, -140, "east") },
 
   // --- Expanded residential apartments outside the wall. These replace the
   // transparent/prop shells with real collision and walkable upper floors. ---
-  { name: "rosewall_house", district: "Residential District", profile: "apartment", x0: 340, x1: 360, z0: -326, z1: -310, wall: "stoneBrick", roof: "blueWool", floor: "stonePolished", trim: "whiteWool", doorSide: "south", doorCenter: 350, floors: 2, stairs: harthmereV64StairsFor(344, -322, "east"), balcony: { side: "south", start: 344, end: 356, depth: 3, floor: 2, material: "stonePolished" } },
-  { name: "sunbeam_house", district: "Residential District", profile: "apartment", x0: 368, x1: 388, z0: -326, z1: -310, wall: "stoneBrick", roof: "yellowWool", floor: "stonePolished", trim: "whiteWool", doorSide: "south", doorCenter: 378, floors: 2, stairs: harthmereV64StairsFor(372, -322, "east"), balcony: { side: "south", start: 372, end: 384, depth: 3, floor: 2, material: "stonePolished" } },
-  { name: "blue_shutter_house", district: "Residential District", profile: "apartment", x0: 396, x1: 416, z0: -326, z1: -310, wall: "stoneBrick", roof: "blueWool", floor: "stonePolished", trim: "whiteWool", doorSide: "south", doorCenter: 406, floors: 2, stairs: harthmereV64StairsFor(400, -322, "east"), balcony: { side: "south", start: 400, end: 412, depth: 3, floor: 2, material: "stonePolished" } },
-  { name: "chimneybend_house", district: "Residential District", profile: "apartment", x0: 424, x1: 444, z0: -326, z1: -310, wall: "stoneBrick", roof: "redWool", floor: "stonePolished", trim: "whiteWool", doorSide: "south", doorCenter: 434, floors: 2, stairs: harthmereV64StairsFor(428, -322, "east"), balcony: { side: "south", start: 428, end: 440, depth: 3, floor: 2, material: "stonePolished" } },
-  { name: "lavender_lane_house", district: "Residential District", profile: "apartment", x0: 452, x1: 472, z0: -326, z1: -310, wall: "stoneBrick", roof: "greenWool", floor: "stonePolished", trim: "whiteWool", doorSide: "south", doorCenter: 462, floors: 2, stairs: harthmereV64StairsFor(456, -322, "east"), balcony: { side: "south", start: 456, end: 468, depth: 3, floor: 2, material: "stonePolished" } },
-  { name: "brass_knocker_house", district: "Residential District", profile: "apartment", x0: 340, x1: 360, z0: -362, z1: -346, wall: "stoneBrick", roof: "blueWool", floor: "stonePolished", trim: "whiteWool", doorSide: "north", doorCenter: 350, floors: 2, stairs: harthmereV64StairsFor(344, -358, "east"), balcony: { side: "north", start: 344, end: 356, depth: 3, floor: 2, material: "stonePolished" } },
-  { name: "appleblossom_house", district: "Residential District", profile: "apartment", x0: 368, x1: 388, z0: -362, z1: -346, wall: "stoneBrick", roof: "greenWool", floor: "stonePolished", trim: "whiteWool", doorSide: "north", doorCenter: 378, floors: 2, stairs: harthmereV64StairsFor(372, -358, "east"), balcony: { side: "north", start: 372, end: 384, depth: 3, floor: 2, material: "stonePolished" } },
-  { name: "wheatgold_house", district: "Residential District", profile: "apartment", x0: 396, x1: 416, z0: -362, z1: -346, wall: "stoneBrick", roof: "yellowWool", floor: "stonePolished", trim: "whiteWool", doorSide: "north", doorCenter: 406, floors: 2, stairs: harthmereV64StairsFor(400, -358, "east"), balcony: { side: "north", start: 400, end: 412, depth: 3, floor: 2, material: "stonePolished" } },
-  { name: "canalview_house", district: "Residential District", profile: "apartment", x0: 424, x1: 444, z0: -362, z1: -346, wall: "stoneBrick", roof: "blueWool", floor: "stonePolished", trim: "whiteWool", doorSide: "north", doorCenter: 434, floors: 2, stairs: harthmereV64StairsFor(428, -358, "east"), balcony: { side: "north", start: 428, end: 440, depth: 3, floor: 2, material: "stonePolished" } },
-  { name: "millers_rest_house", district: "Residential District", profile: "apartment", x0: 452, x1: 472, z0: -362, z1: -346, wall: "stoneBrick", roof: "redWool", floor: "stonePolished", trim: "whiteWool", doorSide: "north", doorCenter: 462, floors: 2, stairs: harthmereV64StairsFor(456, -358, "east"), balcony: { side: "north", start: 456, end: 468, depth: 3, floor: 2, material: "stonePolished" } },
+  { name: "rosewall_house", district: "Residential District", profile: "apartment", x0: 340, x1: 360, z0: -326, z1: -310, wall: "stoneBrick", roof: "blueWool", floor: "stonePolished", trim: "whiteWool", doorSide: "south", doorCenter: 350, floors: 2, stairs: harthmereStairsFor(344, -322, "east"), balcony: { side: "south", start: 344, end: 356, depth: 3, floor: 2, material: "stonePolished" } },
+  { name: "sunbeam_house", district: "Residential District", profile: "apartment", x0: 368, x1: 388, z0: -326, z1: -310, wall: "stoneBrick", roof: "yellowWool", floor: "stonePolished", trim: "whiteWool", doorSide: "south", doorCenter: 378, floors: 2, stairs: harthmereStairsFor(372, -322, "east"), balcony: { side: "south", start: 372, end: 384, depth: 3, floor: 2, material: "stonePolished" } },
+  { name: "blue_shutter_house", district: "Residential District", profile: "apartment", x0: 396, x1: 416, z0: -326, z1: -310, wall: "stoneBrick", roof: "blueWool", floor: "stonePolished", trim: "whiteWool", doorSide: "south", doorCenter: 406, floors: 2, stairs: harthmereStairsFor(400, -322, "east"), balcony: { side: "south", start: 400, end: 412, depth: 3, floor: 2, material: "stonePolished" } },
+  { name: "chimneybend_house", district: "Residential District", profile: "apartment", x0: 424, x1: 444, z0: -326, z1: -310, wall: "stoneBrick", roof: "redWool", floor: "stonePolished", trim: "whiteWool", doorSide: "south", doorCenter: 434, floors: 2, stairs: harthmereStairsFor(428, -322, "east"), balcony: { side: "south", start: 428, end: 440, depth: 3, floor: 2, material: "stonePolished" } },
+  { name: "lavender_lane_house", district: "Residential District", profile: "apartment", x0: 452, x1: 472, z0: -326, z1: -310, wall: "stoneBrick", roof: "greenWool", floor: "stonePolished", trim: "whiteWool", doorSide: "south", doorCenter: 462, floors: 2, stairs: harthmereStairsFor(456, -322, "east"), balcony: { side: "south", start: 456, end: 468, depth: 3, floor: 2, material: "stonePolished" } },
+  { name: "brass_knocker_house", district: "Residential District", profile: "apartment", x0: 340, x1: 360, z0: -362, z1: -346, wall: "stoneBrick", roof: "blueWool", floor: "stonePolished", trim: "whiteWool", doorSide: "north", doorCenter: 350, floors: 2, stairs: harthmereStairsFor(344, -358, "east"), balcony: { side: "north", start: 344, end: 356, depth: 3, floor: 2, material: "stonePolished" } },
+  { name: "appleblossom_house", district: "Residential District", profile: "apartment", x0: 368, x1: 388, z0: -362, z1: -346, wall: "stoneBrick", roof: "greenWool", floor: "stonePolished", trim: "whiteWool", doorSide: "north", doorCenter: 378, floors: 2, stairs: harthmereStairsFor(372, -358, "east"), balcony: { side: "north", start: 372, end: 384, depth: 3, floor: 2, material: "stonePolished" } },
+  { name: "wheatgold_house", district: "Residential District", profile: "apartment", x0: 396, x1: 416, z0: -362, z1: -346, wall: "stoneBrick", roof: "yellowWool", floor: "stonePolished", trim: "whiteWool", doorSide: "north", doorCenter: 406, floors: 2, stairs: harthmereStairsFor(400, -358, "east"), balcony: { side: "north", start: 400, end: 412, depth: 3, floor: 2, material: "stonePolished" } },
+  { name: "canalview_house", district: "Residential District", profile: "apartment", x0: 424, x1: 444, z0: -362, z1: -346, wall: "stoneBrick", roof: "blueWool", floor: "stonePolished", trim: "whiteWool", doorSide: "north", doorCenter: 434, floors: 2, stairs: harthmereStairsFor(428, -358, "east"), balcony: { side: "north", start: 428, end: 440, depth: 3, floor: 2, material: "stonePolished" } },
+  { name: "millers_rest_house", district: "Residential District", profile: "apartment", x0: 452, x1: 472, z0: -362, z1: -346, wall: "stoneBrick", roof: "redWool", floor: "stonePolished", trim: "whiteWool", doorSide: "north", doorCenter: 462, floors: 2, stairs: harthmereStairsFor(456, -358, "east"), balcony: { side: "north", start: 456, end: 468, depth: 3, floor: 2, material: "stonePolished" } },
 
   // --- Four/five story Mudden Ward stacks; stairs and slabs are real terrain. ---
-  { name: "tangle_stairs_stack", district: "Mudden Ward", profile: "slum", x0: 366, x1: 382, z0: -134, z1: -118, wall: "stoneBrick", roof: "blackWool", floor: "stonePolished", trim: "coal", doorSide: "east", doorCenter: -126, floors: 5, stairs: harthmereV64StairsFor(369, -130, "east"), balcony: { side: "east", start: -131, end: -122, depth: 3, floor: 3, material: "stonePolished" } },
-  { name: "soot_ladder_stack", district: "Mudden Ward", profile: "slum", x0: 394, x1: 410, z0: -112, z1: -96, wall: "stoneBrick", roof: "blackWool", floor: "stonePolished", trim: "coal", doorSide: "south", doorCenter: 402, floors: 5, stairs: harthmereV64StairsFor(397, -108, "east"), balcony: { side: "south", start: 397, end: 407, depth: 3, floor: 3, material: "stonePolished" } },
-  { name: "dripline_stack", district: "Mudden Ward", profile: "slum", x0: 422, x1: 438, z0: -134, z1: -118, wall: "stoneBrick", roof: "blackWool", floor: "stonePolished", trim: "coal", doorSide: "west", doorCenter: -126, floors: 4, stairs: harthmereV64StairsFor(425, -130, "east"), balcony: { side: "west", start: -131, end: -122, depth: 3, floor: 3, material: "stonePolished" } },
-  { name: "washline_stack", district: "Mudden Ward", profile: "slum", x0: 450, x1: 466, z0: -112, z1: -96, wall: "stoneBrick", roof: "blackWool", floor: "stonePolished", trim: "coal", doorSide: "north", doorCenter: 458, floors: 4, stairs: harthmereV64StairsFor(453, -108, "east"), balcony: { side: "north", start: 453, end: 463, depth: 3, floor: 3, material: "stonePolished" } },
+  { name: "tangle_stairs_stack", district: "Mudden Ward", profile: "slum", x0: 366, x1: 382, z0: -134, z1: -118, wall: "stoneBrick", roof: "blackWool", floor: "stonePolished", trim: "coal", doorSide: "east", doorCenter: -126, floors: 5, stairs: harthmereStairsFor(369, -130, "east"), balcony: { side: "east", start: -131, end: -122, depth: 3, floor: 3, material: "stonePolished" } },
+  { name: "soot_ladder_stack", district: "Mudden Ward", profile: "slum", x0: 394, x1: 410, z0: -112, z1: -96, wall: "stoneBrick", roof: "blackWool", floor: "stonePolished", trim: "coal", doorSide: "south", doorCenter: 402, floors: 5, stairs: harthmereStairsFor(397, -108, "east"), balcony: { side: "south", start: 397, end: 407, depth: 3, floor: 3, material: "stonePolished" } },
+  { name: "dripline_stack", district: "Mudden Ward", profile: "slum", x0: 422, x1: 438, z0: -134, z1: -118, wall: "stoneBrick", roof: "blackWool", floor: "stonePolished", trim: "coal", doorSide: "west", doorCenter: -126, floors: 4, stairs: harthmereStairsFor(425, -130, "east"), balcony: { side: "west", start: -131, end: -122, depth: 3, floor: 3, material: "stonePolished" } },
+  { name: "washline_stack", district: "Mudden Ward", profile: "slum", x0: 450, x1: 466, z0: -112, z1: -96, wall: "stoneBrick", roof: "blackWool", floor: "stonePolished", trim: "coal", doorSide: "north", doorCenter: 458, floors: 4, stairs: harthmereStairsFor(453, -108, "east"), balcony: { side: "north", start: 453, end: 463, depth: 3, floor: 3, material: "stonePolished" } },
 
   // --- Surface-accessible dungeon buildings; below-ground rooms are carved by
-  // HARTHMERE_V64_DUNGEON_AREAS and harthmereV6ShouldCarveDungeonAirBlockAt(). ---
+  // HARTHMERE_DUNGEON_AREAS and harthmereShouldCarveDungeonAirBlockAt(). ---
   { name: "old_well_underways_entry_house", district: "Old Well Underways", profile: "dungeon", x0: 394, x1: 408, z0: -242, z1: -228, wall: "stoneBrick", roof: "blackWool", floor: "stonePolished", trim: "coal", doorSide: "east", doorCenter: -235, floors: 1 },
   { name: "rat_crown_drain_house", district: "Old Well Underways", profile: "dungeon", x0: 410, x1: 426, z0: -244, z1: -230, wall: "stoneBrick", roof: "blackWool", floor: "stonePolished", trim: "coal", doorSide: "west", doorCenter: -237, floors: 1 },
 ];
 
-// HARTHMERE_SERVER_VOXEL_OCCUPANCY_STRUCTURES_V65_START
-// HARTHMERE_SERVER_VOXEL_OCCUPANCY_STRUCTURES_VERSION_V65
+// HARTHMERE_SERVER_VOXEL_OCCUPANCY_STRUCTURES_START
+// HARTHMERE_SERVER_VOXEL_OCCUPANCY_STRUCTURES_VERSION
 // Extra server-owned structures that replace the remaining large runtime OBJ/GLB
 // silhouettes: wilds houses, watch posts, watermill/windmill landmarks, dockside
 // homes, and NPC trade/home annexes. These are terrain blocks, not prop shells.
-const HARTHMERE_SERVER_VOXEL_OCCUPANCY_STRUCTURES_VERSION_V65 =
-  "harthmere-server-voxel-occupancy-structures-v65";
+const HARTHMERE_SERVER_VOXEL_OCCUPANCY_STRUCTURES_VERSION =
+  "harthmere-server-voxel-occupancy-structures";
 
-const HARTHMERE_V65_ADDITIONAL_SERVER_STRUCTURES: HarthmereV6Building[] = [
-  { name: "last_watch_post_bunkhouse", district: "Harthmere Wilds - Last Watch Post", profile: "tower", x0: 470, x1: 490, z0: -340, z1: -320, wall: "stoneBrick", roof: "redWool", floor: "stonePolished", trim: "coal", doorSide: "south", doorCenter: 480, floors: 2, stairs: harthmereV64StairsFor(474, -334, "east"), chimney: [488, -337] },
-  { name: "miller_rest_watermill", district: "Harthmere Wilds - Mill Road", profile: "service", x0: 374, x1: 394, z0: -414, z1: -394, wall: "stoneBrick", roof: "thatch", floor: "stonePolished", trim: "oakLog", doorSide: "east", doorCenter: -404, floors: 2, stairs: harthmereV64StairsFor(378, -408, "east"), chimney: [377, -411] },
+const HARTHMERE_ADDITIONAL_SERVER_STRUCTURES: HarthmereBuilding[] = [
+  { name: "last_watch_post_bunkhouse", district: "Harthmere Wilds - Last Watch Post", profile: "tower", x0: 470, x1: 490, z0: -340, z1: -320, wall: "stoneBrick", roof: "redWool", floor: "stonePolished", trim: "coal", doorSide: "south", doorCenter: 480, floors: 2, stairs: harthmereStairsFor(474, -334, "east"), chimney: [488, -337] },
+  { name: "miller_rest_watermill", district: "Harthmere Wilds - Mill Road", profile: "service", x0: 374, x1: 394, z0: -414, z1: -394, wall: "stoneBrick", roof: "thatch", floor: "stonePolished", trim: "oakLog", doorSide: "east", doorCenter: -404, floors: 2, stairs: harthmereStairsFor(378, -408, "east"), chimney: [377, -411] },
   { name: "mill_worker_cottage", district: "Harthmere Wilds - Mill Road", profile: "house", x0: 398, x1: 414, z0: -402, z1: -386, wall: "stoneBrick", roof: "yellowWool", floor: "stonePolished", trim: "whiteWool", doorSide: "south", doorCenter: 406, floors: 1, chimney: [401, -399] },
-  { name: "northwest_ruined_watchtower", district: "Harthmere Wilds - Northwest Watchtower Ridge", profile: "tower", x0: 154, x1: 168, z0: -638, z1: -624, wall: "stoneBrick", roof: "blackWool", floor: "stonePolished", trim: "coal", doorSide: "south", doorCenter: 161, floors: 3, stairs: harthmereV64StairsFor(157, -634, "east") },
-  { name: "southwest_orchard_windmill", district: "Harthmere Wilds - Southwest Orchardwood", profile: "tower", x0: 154, x1: 170, z0: 162, z1: 180, wall: "stoneBrick", roof: "yellowWool", floor: "stonePolished", trim: "oakLog", doorSide: "south", doorCenter: 162, floors: 3, stairs: harthmereV64StairsFor(158, 166, "east") },
+  { name: "northwest_ruined_watchtower", district: "Harthmere Wilds - Northwest Watchtower Ridge", profile: "tower", x0: 154, x1: 168, z0: -638, z1: -624, wall: "stoneBrick", roof: "blackWool", floor: "stonePolished", trim: "coal", doorSide: "south", doorCenter: 161, floors: 3, stairs: harthmereStairsFor(157, -634, "east") },
+  { name: "southwest_orchard_windmill", district: "Harthmere Wilds - Southwest Orchardwood", profile: "tower", x0: 154, x1: 170, z0: 162, z1: 180, wall: "stoneBrick", roof: "yellowWool", floor: "stonePolished", trim: "oakLog", doorSide: "south", doorCenter: 162, floors: 3, stairs: harthmereStairsFor(158, 166, "east") },
   { name: "greenmere_edge_cabin", district: "Harthmere Wilds - Greenmere Edge", profile: "house", x0: 540, x1: 558, z0: -438, z1: -420, wall: "stoneBrick", roof: "greenWool", floor: "stonePolished", trim: "oakLog", doorSide: "south", doorCenter: 549, floors: 1, chimney: [555, -435] },
   { name: "charcoal_burners_camp", district: "Harthmere Wilds - Charcoal Camp", profile: "house", x0: 236, x1: 254, z0: -650, z1: -632, wall: "stoneBrick", roof: "blackWool", floor: "stonePolished", trim: "coal", doorSide: "south", doorCenter: 245, floors: 1, chimney: [239, -647] },
   { name: "briarfen_stilt_hut", district: "Harthmere Wilds - Briarfen", profile: "house", x0: 648, x1: 668, z0: -286, z1: -266, wall: "stoneBrick", roof: "greenWool", floor: "stonePolished", trim: "oakLog", doorSide: "west", doorCenter: -276, floors: 1, chimney: [665, -283] },
   { name: "grave_tender_caretaker_house", district: "Harthmere Wilds - Southeast Gravewood", profile: "house", x0: 748, x1: 768, z0: 202, z1: 222, wall: "stoneBrick", roof: "blackWool", floor: "stonePolished", trim: "whiteWool", doorSide: "north", doorCenter: 758, floors: 1, chimney: [765, 205] },
   { name: "deep_old_wood_glade_lodge", district: "Harthmere Wilds - Deep Old Wood", profile: "house", x0: 700, x1: 720, z0: -692, z1: -672, wall: "stoneBrick", roof: "greenWool", floor: "stonePolished", trim: "oakLog", doorSide: "south", doorCenter: 710, floors: 1, chimney: [717, -689] },
   { name: "thornbridge_crossing_shelter", district: "Harthmere Wilds - Thornbridge Crossing", profile: "service", x0: 342, x1: 356, z0: -506, z1: -490, wall: "stoneBrick", roof: "greenWool", floor: "stonePolished", trim: "oakLog", doorSide: "west", doorCenter: -498, floors: 1 },
-  { name: "mail_post_house", district: "Player Services Plaza", profile: "service", x0: 520, x1: 534, z0: -224, z1: -210, wall: "stoneBrick", roof: "blueWool", floor: "stonePolished", trim: "whiteWool", doorSide: "south", doorCenter: 527, floors: 2, stairs: harthmereV64StairsFor(523, -220, "east") },
-  { name: "tailor_loft_house", district: "Market District", profile: "service", x0: 468, x1: 486, z0: -184, z1: -168, wall: "stoneBrick", roof: "yellowWool", floor: "stonePolished", trim: "whiteWool", doorSide: "south", doorCenter: 477, floors: 2, stairs: harthmereV64StairsFor(472, -180, "east") },
+  { name: "mail_post_house", district: "Player Services Plaza", profile: "service", x0: 520, x1: 534, z0: -224, z1: -210, wall: "stoneBrick", roof: "blueWool", floor: "stonePolished", trim: "whiteWool", doorSide: "south", doorCenter: 527, floors: 2, stairs: harthmereStairsFor(523, -220, "east") },
+  { name: "tailor_loft_house", district: "Market District", profile: "service", x0: 468, x1: 486, z0: -184, z1: -168, wall: "stoneBrick", roof: "yellowWool", floor: "stonePolished", trim: "whiteWool", doorSide: "south", doorCenter: 477, floors: 2, stairs: harthmereStairsFor(472, -180, "east") },
   { name: "tannery_court_house", district: "Farm Outskirts", profile: "service", x0: 472, x1: 490, z0: -124, z1: -106, wall: "stoneBrick", roof: "thatch", floor: "stonePolished", trim: "oakLog", doorSide: "north", doorCenter: 481, floors: 1, chimney: [487, -121] },
-  { name: "dockside_family_house", district: "River Docks", profile: "apartment", x0: 552, x1: 572, z0: -174, z1: -154, wall: "stoneBrick", roof: "blueWool", floor: "stonePolished", trim: "whiteWool", doorSide: "east", doorCenter: -164, floors: 2, stairs: harthmereV64StairsFor(556, -168, "east"), balcony: { side: "east", start: -170, end: -160, depth: 3, floor: 2, material: "stonePolished" }, chimney: [555, -171] },
+  { name: "dockside_family_house", district: "River Docks", profile: "apartment", x0: 552, x1: 572, z0: -174, z1: -154, wall: "stoneBrick", roof: "blueWool", floor: "stonePolished", trim: "whiteWool", doorSide: "east", doorCenter: -164, floors: 2, stairs: harthmereStairsFor(556, -168, "east"), balcony: { side: "east", start: -170, end: -160, depth: 3, floor: 2, material: "stonePolished" }, chimney: [555, -171] },
 ];
 
-HARTHMERE_V6_BUILDINGS.push(...HARTHMERE_V65_ADDITIONAL_SERVER_STRUCTURES);
-// HARTHMERE_SERVER_VOXEL_OCCUPANCY_STRUCTURES_V65_END
+HARTHMERE_BUILDINGS.push(...HARTHMERE_ADDITIONAL_SERVER_STRUCTURES);
+// HARTHMERE_SERVER_VOXEL_OCCUPANCY_STRUCTURES_END
 
-const HARTHMERE_V64_DUNGEON_AREAS: ReadonlyArray<{
+const HARTHMERE_DUNGEON_AREAS: ReadonlyArray<{
   readonly name: string;
   readonly x0: number;
   readonly x1: number;
@@ -2395,32 +2395,32 @@ const HARTHMERE_V64_DUNGEON_AREAS: ReadonlyArray<{
   { name: "harthmere_high_vault_massive_cave", x0: -350, x1: -286, z0: 277, z1: 341, y0: 45, y1: 57 },
 ];
 
-function harthmereV6Mat(
+function harthmereMat(
   materials: ReturnType<typeof localDevMaterials>,
-  key: HarthmereV6Mat,
+  key: HarthmereMat,
 ): TerrainID {
   return materials[key] as TerrainID;
 }
 
-function harthmereV64FloorCount(building: HarthmereV6Building): number {
+function harthmereFloorCount(building: HarthmereBuilding): number {
   return Math.max(1, building.floors ?? (building.upper ? 2 : 1));
 }
 
-function harthmereV64StoryHeight(building: HarthmereV6Building): number {
+function harthmereStoryHeight(building: HarthmereBuilding): number {
   return building.profile === "slum" ? 4 : 5;
 }
 
-function harthmereV64TopRelY(building: HarthmereV6Building): number {
-  return harthmereV64FloorCount(building) * harthmereV64StoryHeight(building);
+function harthmereTopRelY(building: HarthmereBuilding): number {
+  return harthmereFloorCount(building) * harthmereStoryHeight(building);
 }
 
-function harthmereV6IsDoor(
-  building: HarthmereV6Building,
+function harthmereIsDoor(
+  building: HarthmereBuilding,
   worldX: number,
   worldZ: number,
   relY: number,
 ) {
-  const storyHeight = harthmereV64StoryHeight(building);
+  const storyHeight = harthmereStoryHeight(building);
   if (relY < 1 || relY > Math.min(3, storyHeight - 1)) {
     return false;
   }
@@ -2437,14 +2437,14 @@ function harthmereV6IsDoor(
   return worldX === building.x1 && Math.abs(worldZ - building.doorCenter) <= 1;
 }
 
-// BIOMES_HARTHMERE_BUILDING_ACCESS_CLEARANCE_V89
+// BIOMES_HARTHMERE_BUILDING_ACCESS_CLEARANCE
 // The v84/v87 walk surveys showed high collision density around the shifted
 // Harthmere town and the player reported that many shops felt blocked off by
 // walls. Keep the solid block buildings, but carve a short doorway lane through
 // the outside threshold and first few interior blocks so every authored building
 // has a visible, walkable entry.
-function harthmereV89DoorLaneClearanceBlock(
-  building: HarthmereV6Building,
+function harthmereDoorLaneClearanceBlock(
+  building: HarthmereBuilding,
   worldX: number,
   worldY: number,
   worldZ: number,
@@ -2464,7 +2464,7 @@ function harthmereV89DoorLaneClearanceBlock(
   return Math.abs(worldZ - building.doorCenter) <= 2 && inRange(worldX, building.x1 - 3, building.x1 + 3);
 }
 
-function harthmereV64BalconyBounds(building: HarthmereV6Building) {
+function harthmereBalconyBounds(building: HarthmereBuilding) {
   const b = building.balcony;
   if (!b) return undefined;
   if (b.side === "east") return [building.x1 + 1, building.x1 + b.depth, b.start, b.end] as const;
@@ -2473,8 +2473,8 @@ function harthmereV64BalconyBounds(building: HarthmereV6Building) {
   return [b.start, b.end, building.z0 - b.depth, building.z0 - 1] as const;
 }
 
-function harthmereV64WithinBuildingExpandedBounds(
-  building: HarthmereV6Building,
+function harthmereWithinBuildingExpandedBounds(
+  building: HarthmereBuilding,
   worldX: number,
   worldZ: number,
 ) {
@@ -2482,7 +2482,7 @@ function harthmereV64WithinBuildingExpandedBounds(
   let x1 = building.x1 + 1;
   let z0 = building.z0 - 1;
   let z1 = building.z1 + 1;
-  const b = harthmereV64BalconyBounds(building);
+  const b = harthmereBalconyBounds(building);
   if (b) {
     x0 = Math.min(x0, b[0] - 1);
     x1 = Math.max(x1, b[1] + 1);
@@ -2492,8 +2492,8 @@ function harthmereV64WithinBuildingExpandedBounds(
   return inRect(worldX, worldZ, x0, x1, z0, z1);
 }
 
-const HARTHMERE_CLEAR_ROOF_STREET_AIR_VERSION_V1 = "harthmere-clear-roof-street-air-v1";
-const HARTHMERE_CLEAR_STREET_RECTS_V1: ReadonlyArray<readonly [number, number, number, number]> = [
+const HARTHMERE_CLEAR_ROOF_STREET_AIR_VERSION = "harthmere-clear-roof-street-air";
+const HARTHMERE_CLEAR_STREET_RECTS: ReadonlyArray<readonly [number, number, number, number]> = [
   [478, 496, -292, -214],
   [414, 606, -218, -202],
   [586, 612, -218, -176],
@@ -2503,7 +2503,7 @@ const HARTHMERE_CLEAR_STREET_RECTS_V1: ReadonlyArray<readonly [number, number, n
   [362, 470, -138, -92],
 ];
 
-function harthmereV6IsInsideRectV1(
+function harthmereIsInsideRect(
   worldX: number,
   worldZ: number,
   x0: number,
@@ -2515,76 +2515,76 @@ function harthmereV6IsInsideRectV1(
   return worldX >= x0 - pad && worldX <= x1 + pad && worldZ >= z0 - pad && worldZ <= z1 + pad;
 }
 
-function harthmereV6IsInsideAnyBuildingFootprintV1(worldX: number, worldZ: number, pad = 0) {
-  return HARTHMERE_V6_BUILDINGS.some((building) => {
-    if (harthmereV6IsInsideRectV1(worldX, worldZ, building.x0, building.x1, building.z0, building.z1, pad)) {
+function harthmereIsInsideAnyBuildingFootprint(worldX: number, worldZ: number, pad = 0) {
+  return HARTHMERE_BUILDINGS.some((building) => {
+    if (harthmereIsInsideRect(worldX, worldZ, building.x0, building.x1, building.z0, building.z1, pad)) {
       return true;
     }
-    const balcony = harthmereV64BalconyBounds(building);
-    return balcony ? harthmereV6IsInsideRectV1(worldX, worldZ, balcony[0], balcony[1], balcony[2], balcony[3], pad) : false;
+    const balcony = harthmereBalconyBounds(building);
+    return balcony ? harthmereIsInsideRect(worldX, worldZ, balcony[0], balcony[1], balcony[2], balcony[3], pad) : false;
   });
 }
 
-function harthmereV6IsInsideClearStreetRectV1(worldX: number, worldZ: number) {
-  return HARTHMERE_CLEAR_STREET_RECTS_V1.some(([x0, x1, z0, z1]) =>
-    harthmereV6IsInsideRectV1(worldX, worldZ, x0, x1, z0, z1),
+function harthmereIsInsideClearStreetRect(worldX: number, worldZ: number) {
+  return HARTHMERE_CLEAR_STREET_RECTS.some(([x0, x1, z0, z1]) =>
+    harthmereIsInsideRect(worldX, worldZ, x0, x1, z0, z1),
   );
 }
 
-function harthmereV6ShouldClearStreetAirBlockV1(worldX: number, worldY: number, worldZ: number) {
+function harthmereShouldClearStreetAirBlock(worldX: number, worldY: number, worldZ: number) {
   const relY = worldY - STARTER_TOWN_GROUND_Y;
   if (relY < 1 || relY > 32) return false;
-  if (!harthmereV6IsInsideClearStreetRectV1(worldX, worldZ)) return false;
-  return !harthmereV6IsInsideAnyBuildingFootprintV1(worldX, worldZ, 0);
+  if (!harthmereIsInsideClearStreetRect(worldX, worldZ)) return false;
+  return !harthmereIsInsideAnyBuildingFootprint(worldX, worldZ, 0);
 }
 
-function harthmereV6ShouldClearRoofAirBlockV1(worldX: number, worldY: number, worldZ: number) {
+function harthmereShouldClearRoofAirBlock(worldX: number, worldY: number, worldZ: number) {
   const relY = worldY - STARTER_TOWN_GROUND_Y;
-  for (const building of HARTHMERE_V6_BUILDINGS) {
-    if (!harthmereV64WithinBuildingExpandedBounds(building, worldX, worldZ)) continue;
-    return relY > harthmereV64TopRelY(building) && relY <= 32;
+  for (const building of HARTHMERE_BUILDINGS) {
+    if (!harthmereWithinBuildingExpandedBounds(building, worldX, worldZ)) continue;
+    return relY > harthmereTopRelY(building) && relY <= 32;
   }
   return false;
 }
 
-function harthmereV6ShouldForceClearRoofStreetAirBlockV1(worldX: number, worldY: number, worldZ: number) {
+function harthmereShouldForceClearRoofStreetAirBlock(worldX: number, worldY: number, worldZ: number) {
   return (
-    harthmereV6ShouldClearStreetAirBlockV1(worldX, worldY, worldZ) ||
-    harthmereV6ShouldClearRoofAirBlockV1(worldX, worldY, worldZ)
+    harthmereShouldClearStreetAirBlock(worldX, worldY, worldZ) ||
+    harthmereShouldClearRoofAirBlock(worldX, worldY, worldZ)
   );
 }
 
-function harthmereV64IsInDungeonArea(worldX: number, worldZ: number, relY: number) {
-  return HARTHMERE_V64_DUNGEON_AREAS.some((area) =>
+function harthmereIsInDungeonArea(worldX: number, worldZ: number, relY: number) {
+  return HARTHMERE_DUNGEON_AREAS.some((area) =>
     inRect(worldX, worldZ, area.x0, area.x1, area.z0, area.z1) && inRange(relY, area.y0, area.y1),
   );
 }
 
-function harthmereV64IsDungeonBoundary(worldX: number, worldZ: number, relY: number) {
-  return HARTHMERE_V64_DUNGEON_AREAS.some((area) => {
+function harthmereIsDungeonBoundary(worldX: number, worldZ: number, relY: number) {
+  return HARTHMERE_DUNGEON_AREAS.some((area) => {
     if (!inRange(relY, area.y0, area.y1)) return false;
     if (!inRect(worldX, worldZ, area.x0, area.x1, area.z0, area.z1)) return false;
     return worldX === area.x0 || worldX === area.x1 || worldZ === area.z0 || worldZ === area.z1;
   });
 }
 
-function harthmereV6ShouldCarveDungeonAirBlockAt(worldX: number, worldY: number, worldZ: number) {
+function harthmereShouldCarveDungeonAirBlockAt(worldX: number, worldY: number, worldZ: number) {
   const relY = worldY - STARTER_TOWN_GROUND_Y;
-  return HARTHMERE_V64_DUNGEON_AREAS.some((area) => {
+  return HARTHMERE_DUNGEON_AREAS.some((area) => {
     if (!inRange(relY, area.y0 + 1, area.y1)) return false;
     if (!inRect(worldX, worldZ, area.x0, area.x1, area.z0, area.z1)) return false;
-    if (harthmereV64IsDungeonBoundary(worldX, worldZ, relY)) return false;
+    if (harthmereIsDungeonBoundary(worldX, worldZ, relY)) return false;
     return true;
   });
 }
 
-function harthmereExoticMatterDepositTerrainV1(
+function harthmereExoticMatterDepositTerrain(
   materials: ReturnType<typeof localDevMaterials>,
   worldX: number,
   worldY: number,
   worldZ: number,
 ): TerrainID | undefined {
-  const deposit = harthmereExoticMatterDepositAtBlockV1({
+  const deposit = harthmereExoticMatterDepositAtBlock({
     x: worldX,
     y: worldY,
     z: worldZ,
@@ -2597,14 +2597,14 @@ function harthmereExoticMatterDepositTerrainV1(
     : materials.ironOre;
 }
 
-function harthmereV64DungeonBlockAt(
+function harthmereDungeonBlockAt(
   materials: ReturnType<typeof localDevMaterials>,
   worldX: number,
   worldY: number,
   worldZ: number,
 ): TerrainID | undefined {
   const relY = worldY - STARTER_TOWN_GROUND_Y;
-  const exoticMatterDeposit = harthmereExoticMatterDepositTerrainV1(
+  const exoticMatterDeposit = harthmereExoticMatterDepositTerrain(
     materials,
     worldX,
     worldY,
@@ -2612,7 +2612,7 @@ function harthmereV64DungeonBlockAt(
   );
   if (exoticMatterDeposit !== undefined) return exoticMatterDeposit;
 
-  for (const area of HARTHMERE_V64_DUNGEON_AREAS) {
+  for (const area of HARTHMERE_DUNGEON_AREAS) {
     if (!inRect(worldX, worldZ, area.x0, area.x1, area.z0, area.z1)) continue;
     const boundary = worldX === area.x0 || worldX === area.x1 || worldZ === area.z0 || worldZ === area.z1;
     if (relY === area.y0 - 1) {
@@ -2634,7 +2634,7 @@ function harthmereV64DungeonBlockAt(
   return undefined;
 }
 
-function harthmereV6SurfaceMaterial(
+function harthmereSurfaceMaterial(
   materials: ReturnType<typeof localDevMaterials>,
   worldX: number,
   worldZ: number,
@@ -2645,7 +2645,7 @@ function harthmereV6SurfaceMaterial(
 
   if (marketDistance <= 34) return marketDistance <= 9 ? materials.stonePolished : materials.stoneBrick;
 
-  // HARTHMERE_CONNECTED_ROAD_SURFACE_V67:
+  // HARTHMERE_CONNECTED_ROAD_SURFACE:
   // Explicit snapshot-edge connector road. This is authored pre-offset; when
   // BIOMES_ENABLE_HARTHMERE_EXTRA_TOWN=1 and the default +512 x offset is used,
   // this becomes world x=640..904 at z=-209. That gives a real visible road from
@@ -2693,8 +2693,8 @@ function harthmereV6SurfaceMaterial(
   return undefined;
 }
 
-function harthmereV64StairStepFor(
-  stair: HarthmereV64Stairs,
+function harthmereStairStepFor(
+  stair: HarthmereStairs,
   worldX: number,
   worldZ: number,
 ): number | undefined {
@@ -2720,14 +2720,14 @@ function harthmereV64StairStepFor(
   return stair.z0 + stair.length - 1 - worldZ;
 }
 
-function harthmereV64IsStairOrLanding(
-  building: HarthmereV6Building,
+function harthmereIsStairOrLanding(
+  building: HarthmereBuilding,
   worldX: number,
   worldZ: number,
 ) {
   const stair = building.stairs;
   if (!stair) return false;
-  const step = harthmereV64StairStepFor(stair, worldX, worldZ);
+  const step = harthmereStairStepFor(stair, worldX, worldZ);
   if (step !== undefined) return true;
   if (stair.direction === "east" || stair.direction === "west") {
     return worldZ >= stair.z0 && worldZ < stair.z0 + stair.width && worldX >= stair.x0 && worldX <= stair.x0 + stair.length + 1;
@@ -2735,15 +2735,15 @@ function harthmereV64IsStairOrLanding(
   return worldX >= stair.x0 && worldX < stair.x0 + stair.width && worldZ >= stair.z0 && worldZ <= stair.z0 + stair.length + 1;
 }
 
-function harthmereV64BalconyDoor(
-  building: HarthmereV6Building,
+function harthmereBalconyDoor(
+  building: HarthmereBuilding,
   worldX: number,
   worldZ: number,
   relY: number,
 ) {
   const b = building.balcony;
   if (!b) return false;
-  const storyHeight = harthmereV64StoryHeight(building);
+  const storyHeight = harthmereStoryHeight(building);
   const baseY = (b.floor - 1) * storyHeight;
   if (relY < baseY + 1 || relY > baseY + 3) return false;
   if (b.side === "east") return worldX === building.x1 && worldZ >= b.start + 1 && worldZ <= b.end - 1;
@@ -2752,83 +2752,83 @@ function harthmereV64BalconyDoor(
   return worldZ === building.z0 && worldX >= b.start + 1 && worldX <= b.end - 1;
 }
 
-// HARTHMERE_AUTO_EXTERNAL_STAIRS_VERSION_V67
+// HARTHMERE_AUTO_EXTERNAL_STAIRS_VERSION
 // Multi-floor buildings must have a physical voxel stair/landing. If a building
 // definition forgets explicit `stairs`, generate a conservative exterior stair
 // off the door side instead of leaving the upper floor as a floating box.
-const HARTHMERE_AUTO_EXTERNAL_STAIRS_VERSION_V67 = "harthmere-auto-external-stairs-v67";
+const HARTHMERE_AUTO_EXTERNAL_STAIRS_VERSION = "harthmere-auto-external-stairs";
 
-function harthmereV67DefaultStairsForBuilding(building: HarthmereV6Building): HarthmereV64Stairs | undefined {
-  if (harthmereV64FloorCount(building) < 2 || building.stairs) return undefined;
+function harthmereDefaultStairsForBuilding(building: HarthmereBuilding): HarthmereStairs | undefined {
+  if (harthmereFloorCount(building) < 2 || building.stairs) return undefined;
   const centerX = Math.floor((building.x0 + building.x1) / 2);
   const centerZ = Math.floor((building.z0 + building.z1) / 2);
-  if (building.doorSide === "south") return harthmereV64StairsFor(centerX - 2, building.z1 + 2, "east", 6, 2);
-  if (building.doorSide === "north") return harthmereV64StairsFor(centerX - 2, building.z0 - 7, "east", 6, 2);
-  if (building.doorSide === "east") return harthmereV64StairsFor(building.x1 + 2, centerZ - 2, "south", 6, 2);
-  return harthmereV64StairsFor(building.x0 - 7, centerZ - 2, "south", 6, 2);
+  if (building.doorSide === "south") return harthmereStairsFor(centerX - 2, building.z1 + 2, "east", 6, 2);
+  if (building.doorSide === "north") return harthmereStairsFor(centerX - 2, building.z0 - 7, "east", 6, 2);
+  if (building.doorSide === "east") return harthmereStairsFor(building.x1 + 2, centerZ - 2, "south", 6, 2);
+  return harthmereStairsFor(building.x0 - 7, centerZ - 2, "south", 6, 2);
 }
 
-function harthmereV67AutoExternalStairBlockAt(
+function harthmereAutoExternalStairBlockAt(
   materials: ReturnType<typeof localDevMaterials>,
-  building: HarthmereV6Building,
+  building: HarthmereBuilding,
   worldX: number,
   worldY: number,
   worldZ: number,
 ): TerrainID | undefined {
-  const stair = harthmereV67DefaultStairsForBuilding(building);
+  const stair = harthmereDefaultStairsForBuilding(building);
   if (!stair) return undefined;
   const relY = worldY - STARTER_TOWN_GROUND_Y;
-  const storyHeight = harthmereV64StoryHeight(building);
-  const step = harthmereV64StairStepFor(stair, worldX, worldZ);
+  const storyHeight = harthmereStoryHeight(building);
+  const step = harthmereStairStepFor(stair, worldX, worldZ);
   if (step !== undefined && relY === Math.min(storyHeight, step + 1)) {
-    return building.floor ? harthmereV6Mat(materials, building.floor) : materials.stoneBrick;
+    return building.floor ? harthmereMat(materials, building.floor) : materials.stoneBrick;
   }
   // Landing outside upper doorway.
   if (stair.direction === "east" || stair.direction === "west") {
     const landingX = stair.direction === "east" ? stair.x0 + stair.length : stair.x0 - 1;
     if (inRange(worldX, landingX - 1, landingX + 1) && inRange(worldZ, stair.z0, stair.z0 + stair.width - 1) && relY === storyHeight) {
-      return building.floor ? harthmereV6Mat(materials, building.floor) : materials.stoneBrick;
+      return building.floor ? harthmereMat(materials, building.floor) : materials.stoneBrick;
     }
   } else {
     const landingZ = stair.direction === "south" ? stair.z0 + stair.length : stair.z0 - 1;
     if (inRange(worldZ, landingZ - 1, landingZ + 1) && inRange(worldX, stair.x0, stair.x0 + stair.width - 1) && relY === storyHeight) {
-      return building.floor ? harthmereV6Mat(materials, building.floor) : materials.stoneBrick;
+      return building.floor ? harthmereMat(materials, building.floor) : materials.stoneBrick;
     }
   }
   return undefined;
 }
 
 
-function harthmereV64BalconyBlockAt(
+function harthmereBalconyBlockAt(
   materials: ReturnType<typeof localDevMaterials>,
-  building: HarthmereV6Building,
+  building: HarthmereBuilding,
   worldX: number,
   worldY: number,
   worldZ: number,
 ): TerrainID | undefined {
   const b = building.balcony;
   if (!b) return undefined;
-  const bounds = harthmereV64BalconyBounds(building);
+  const bounds = harthmereBalconyBounds(building);
   if (!bounds || !inRect(worldX, worldZ, bounds[0], bounds[1], bounds[2], bounds[3])) return undefined;
   const relY = worldY - STARTER_TOWN_GROUND_Y;
-  const storyHeight = harthmereV64StoryHeight(building);
+  const storyHeight = harthmereStoryHeight(building);
   const deckY = (b.floor - 1) * storyHeight;
   const edge = worldX === bounds[0] || worldX === bounds[1] || worldZ === bounds[2] || worldZ === bounds[3];
 
-  if (relY === deckY) return harthmereV6Mat(materials, b.material ?? building.floor);
-  if (edge && relY === deckY + 1) return building.trim ? harthmereV6Mat(materials, building.trim) : materials.stoneBrick;
+  if (relY === deckY) return harthmereMat(materials, b.material ?? building.floor);
+  if (edge && relY === deckY + 1) return building.trim ? harthmereMat(materials, building.trim) : materials.stoneBrick;
   return undefined;
 }
 
-// HARTHMERE_SERVER_VOXEL_ROOM_PARTITIONS_V65_START
-// HARTHMERE_SERVER_VOXEL_ROOM_PARTITIONS_VERSION_V65
+// HARTHMERE_SERVER_VOXEL_ROOM_PARTITIONS_START
+// HARTHMERE_SERVER_VOXEL_ROOM_PARTITIONS_VERSION
 // Adds interior rooms to the server-side voxel buildings. Furniture stays as
 // runtime props, but rooms/walls/floors/ceilings remain real terrain.
-const HARTHMERE_SERVER_VOXEL_ROOM_PARTITIONS_VERSION_V65 =
-  "harthmere-server-voxel-room-partitions-v65";
+const HARTHMERE_SERVER_VOXEL_ROOM_PARTITIONS_VERSION =
+  "harthmere-server-voxel-room-partitions";
 
-function harthmereV65BuildingNeedsRooms(building: HarthmereV6Building) {
-  const floors = harthmereV64FloorCount(building);
+function harthmereBuildingNeedsRooms(building: HarthmereBuilding) {
+  const floors = harthmereFloorCount(building);
   const label = (building.name + " " + building.district + " " + (building.profile ?? "")).toLowerCase();
   return (
     floors >= 2 ||
@@ -2839,22 +2839,22 @@ function harthmereV65BuildingNeedsRooms(building: HarthmereV6Building) {
   );
 }
 
-function harthmereV65InteriorPartitionBlockAt(
+function harthmereInteriorPartitionBlockAt(
   materials: ReturnType<typeof localDevMaterials>,
-  building: HarthmereV6Building,
+  building: HarthmereBuilding,
   worldX: number,
   worldY: number,
   worldZ: number,
 ): TerrainID | undefined {
-  if (!harthmereV65BuildingNeedsRooms(building)) return undefined;
+  if (!harthmereBuildingNeedsRooms(building)) return undefined;
 
   const relY = worldY - STARTER_TOWN_GROUND_Y;
-  const floors = harthmereV64FloorCount(building);
-  const storyHeight = harthmereV64StoryHeight(building);
+  const floors = harthmereFloorCount(building);
+  const storyHeight = harthmereStoryHeight(building);
   const inside = inRect(worldX, worldZ, building.x0 + 1, building.x1 - 1, building.z0 + 1, building.z1 - 1);
   if (!inside) return undefined;
-  if (harthmereV89DoorLaneClearanceBlock(building, worldX, worldY, worldZ)) return undefined;
-  if (building.stairs && harthmereV64IsStairOrLanding(building, worldX, worldZ)) return undefined;
+  if (harthmereDoorLaneClearanceBlock(building, worldX, worldY, worldZ)) return undefined;
+  if (building.stairs && harthmereIsStairOrLanding(building, worldX, worldZ)) return undefined;
 
   const midX = Math.floor((building.x0 + building.x1) / 2);
   const midZ = Math.floor((building.z0 + building.z1) / 2);
@@ -2875,36 +2875,36 @@ function harthmereV65InteriorPartitionBlockAt(
       Math.abs(worldZ - building.stairs.z0) <= building.stairs.width + 2;
 
     if ((verticalRoomWall && !verticalDoorGap && !stairVoid) || (horizontalRoomWall && !horizontalDoorGap && !stairVoid)) {
-      return building.trim ? harthmereV6Mat(materials, building.trim) : harthmereV6Mat(materials, building.wall);
+      return building.trim ? harthmereMat(materials, building.trim) : harthmereMat(materials, building.wall);
     }
   }
 
   return undefined;
 }
-// HARTHMERE_SERVER_VOXEL_ROOM_PARTITIONS_V65_END
+// HARTHMERE_SERVER_VOXEL_ROOM_PARTITIONS_END
 
-function harthmereV6BuildingBlockAt(
+function harthmereBuildingBlockAt(
   materials: ReturnType<typeof localDevMaterials>,
-  building: HarthmereV6Building,
+  building: HarthmereBuilding,
   worldX: number,
   worldY: number,
   worldZ: number,
 ): TerrainID | undefined {
-  if (!harthmereV64WithinBuildingExpandedBounds(building, worldX, worldZ)) return undefined;
+  if (!harthmereWithinBuildingExpandedBounds(building, worldX, worldZ)) return undefined;
 
   const relY = worldY - STARTER_TOWN_GROUND_Y;
-  const floors = harthmereV64FloorCount(building);
-  const storyHeight = harthmereV64StoryHeight(building);
+  const floors = harthmereFloorCount(building);
+  const storyHeight = harthmereStoryHeight(building);
   const inside = inRect(worldX, worldZ, building.x0, building.x1, building.z0, building.z1);
   const perimeter = inside && (worldX === building.x0 || worldX === building.x1 || worldZ === building.z0 || worldZ === building.z1);
   const corner = (worldX === building.x0 || worldX === building.x1) && (worldZ === building.z0 || worldZ === building.z1);
 
-  if (harthmereV89DoorLaneClearanceBlock(building, worldX, worldY, worldZ)) return undefined;
+  if (harthmereDoorLaneClearanceBlock(building, worldX, worldY, worldZ)) return undefined;
 
-  const balconyBlock = harthmereV64BalconyBlockAt(materials, building, worldX, worldY, worldZ);
+  const balconyBlock = harthmereBalconyBlockAt(materials, building, worldX, worldY, worldZ);
   if (balconyBlock !== undefined) return balconyBlock;
 
-  const roomPartitionBlock = harthmereV65InteriorPartitionBlockAt(materials, building, worldX, worldY, worldZ);
+  const roomPartitionBlock = harthmereInteriorPartitionBlockAt(materials, building, worldX, worldY, worldZ);
   if (roomPartitionBlock !== undefined) return roomPartitionBlock;
 
   if (building.chimney) {
@@ -2919,61 +2919,61 @@ function harthmereV6BuildingBlockAt(
     const isTop = floor === floors - 1;
 
     if (building.stairs && floor < floors - 1) {
-      const step = harthmereV64StairStepFor(building.stairs, worldX, worldZ);
+      const step = harthmereStairStepFor(building.stairs, worldX, worldZ);
       if (step !== undefined) {
         const stairY = baseY + 1 + Math.min(step, storyHeight - 1);
-        if (relY === stairY) return harthmereV6Mat(materials, building.floor);
+        if (relY === stairY) return harthmereMat(materials, building.floor);
       }
     }
 
-    if (relY === baseY && inside) return harthmereV6Mat(materials, building.floor);
+    if (relY === baseY && inside) return harthmereMat(materials, building.floor);
 
     if (relY >= baseY + 1 && relY <= baseY + storyHeight - 1 && perimeter) {
-      const groundDoor = floor === 0 && harthmereV6IsDoor(building, worldX, worldZ, relY);
-      const balconyDoor = harthmereV64BalconyDoor(building, worldX, worldZ, relY);
+      const groundDoor = floor === 0 && harthmereIsDoor(building, worldX, worldZ, relY);
+      const balconyDoor = harthmereBalconyDoor(building, worldX, worldZ, relY);
       if (groundDoor || balconyDoor) return undefined;
-      if (corner && building.trim) return harthmereV6Mat(materials, building.trim);
+      if (corner && building.trim) return harthmereMat(materials, building.trim);
       const window = relY === baseY + Math.min(3, storyHeight - 1) && !corner && (worldX + worldZ + floor) % 5 === 0;
-      return window ? materials.simpleGlass : harthmereV6Mat(materials, building.wall);
+      return window ? materials.simpleGlass : harthmereMat(materials, building.wall);
     }
 
     if (relY === baseY + storyHeight) {
       const roofPad = isTop ? 1 : 0;
       const onSlab = inRect(worldX, worldZ, building.x0 - roofPad, building.x1 + roofPad, building.z0 - roofPad, building.z1 + roofPad);
       if (!onSlab) continue;
-      if (!isTop && building.stairs && harthmereV64IsStairOrLanding(building, worldX, worldZ)) return undefined;
-      return harthmereV6Mat(materials, isTop ? building.roof : building.floor);
+      if (!isTop && building.stairs && harthmereIsStairOrLanding(building, worldX, worldZ)) return undefined;
+      return harthmereMat(materials, isTop ? building.roof : building.floor);
     }
   }
 
   return undefined;
 }
 
-// HARTHMERE_SERVER_VOXEL_WILDS_STRUCTURES_TREES_V65_START
-// HARTHMERE_SERVER_VOXEL_WILDS_STRUCTURES_TREES_VERSION_V65
+// HARTHMERE_SERVER_VOXEL_WILDS_STRUCTURES_TREES_START
+// HARTHMERE_SERVER_VOXEL_WILDS_STRUCTURES_TREES_VERSION
 // Server-side replacements for remaining large wilds structures. The 5,000
 // backend voxel tree field is present but env-gated because the earlier wilds
 // seed was already a performance risk; turn it on only for profiling/screenshot
-// passes with BIOMES_LOCAL_DEV_BACKEND_VOXEL_TREES_V65=1.
-const HARTHMERE_SERVER_VOXEL_WILDS_STRUCTURES_TREES_VERSION_V65 =
-  "harthmere-server-voxel-wilds-structures-trees-v65";
-const HARTHMERE_V65_BACKEND_VOXEL_TREE_TARGET = 5000;
-const HARTHMERE_V65_BACKEND_VOXEL_TREES_ENABLED =
-  process.env.BIOMES_LOCAL_DEV_BACKEND_VOXEL_TREES_V65 === "1";
+// passes with BIOMES_LOCAL_DEV_BACKEND_VOXEL_TREES=1.
+const HARTHMERE_SERVER_VOXEL_WILDS_STRUCTURES_TREES_VERSION =
+  "harthmere-server-voxel-wilds-structures-trees";
+const HARTHMERE_BACKEND_VOXEL_TREE_TARGET = 5000;
+const HARTHMERE_BACKEND_VOXEL_TREES_ENABLED =
+  process.env.BIOMES_LOCAL_DEV_BACKEND_VOXEL_TREES === "1";
 
-function harthmereV65Hash2(x: number, z: number) {
+function harthmereHash2(x: number, z: number) {
   let h = Math.imul(x ^ 0x9e3779b9, 0x85ebca6b) ^ Math.imul(z ^ 0xc2b2ae35, 0x27d4eb2d);
   h ^= h >>> 15;
   return h >>> 0;
 }
 
-function harthmereV65VoxelTreeBlockAt(
+function harthmereVoxelTreeBlockAt(
   materials: ReturnType<typeof localDevMaterials>,
   worldX: number,
   worldY: number,
   worldZ: number,
 ): TerrainID | undefined {
-  if (!HARTHMERE_V65_BACKEND_VOXEL_TREES_ENABLED) return undefined;
+  if (!HARTHMERE_BACKEND_VOXEL_TREES_ENABLED) return undefined;
   const relY = worldY - STARTER_TOWN_GROUND_Y;
   if (relY < 1 || relY > 8) return undefined;
   if (worldX < 96 || worldX > 760 || worldZ < -724 || worldZ > -320) return undefined;
@@ -2982,7 +2982,7 @@ function harthmereV65VoxelTreeBlockAt(
   const cell = 6;
   const cx = Math.floor(worldX / cell);
   const cz = Math.floor(worldZ / cell);
-  const h = harthmereV65Hash2(cx, cz);
+  const h = harthmereHash2(cx, cz);
   if ((h % 100) >= 70) return undefined;
   const anchorX = cx * cell + 2 + (h % 3);
   const anchorZ = cz * cell + 2 + ((h >>> 8) % 3);
@@ -2997,7 +2997,7 @@ function harthmereV65VoxelTreeBlockAt(
   return undefined;
 }
 
-function harthmereV65WildsServerStructureBlockAt(
+function harthmereWildsServerStructureBlockAt(
   materials: ReturnType<typeof localDevMaterials>,
   worldX: number,
   worldY: number,
@@ -3036,11 +3036,11 @@ function harthmereV65WildsServerStructureBlockAt(
     if (edge && !gate && inRange(relY, 1, 2)) return relY === 2 ? materials.blackWool : materials.stoneBrick;
   }
 
-  return harthmereV65VoxelTreeBlockAt(materials, worldX, worldY, worldZ);
+  return harthmereVoxelTreeBlockAt(materials, worldX, worldY, worldZ);
 }
-// HARTHMERE_SERVER_VOXEL_WILDS_STRUCTURES_TREES_V65_END
+// HARTHMERE_SERVER_VOXEL_WILDS_STRUCTURES_TREES_END
 
-function harthmereV64PriorityStructureBlockAt(
+function harthmerePriorityStructureBlockAt(
   materials: ReturnType<typeof localDevMaterials>,
   worldX: number,
   worldY: number,
@@ -3048,7 +3048,7 @@ function harthmereV64PriorityStructureBlockAt(
 ): TerrainID | undefined {
   const relY = worldY - STARTER_TOWN_GROUND_Y;
 
-  const v65WildsServerBlock = harthmereV65WildsServerStructureBlockAt(materials, worldX, worldY, worldZ);
+  const v65WildsServerBlock = harthmereWildsServerStructureBlockAt(materials, worldX, worldY, worldZ);
   if (v65WildsServerBlock !== undefined) return v65WildsServerBlock;
 
   // Large, obvious north-gate crossbar. It is before the street clear pass so
@@ -3067,7 +3067,7 @@ function harthmereV64PriorityStructureBlockAt(
   return undefined;
 }
 
-function harthmereV6WallAndGateBlockAt(
+function harthmereWallAndGateBlockAt(
   materials: ReturnType<typeof localDevMaterials>,
   worldX: number,
   worldY: number,
@@ -3109,7 +3109,7 @@ function harthmereV6WallAndGateBlockAt(
   return undefined;
 }
 
-function harthmereV6FenceBlockAt(
+function harthmereFenceBlockAt(
   materials: ReturnType<typeof localDevMaterials>,
   worldX: number,
   worldY: number,
@@ -3141,7 +3141,7 @@ function harthmereV6FenceBlockAt(
   return undefined;
 }
 
-function harthmereV6LandmarkBlockAt(
+function harthmereLandmarkBlockAt(
   materials: ReturnType<typeof localDevMaterials>,
   worldX: number,
   worldY: number,
@@ -3150,7 +3150,7 @@ function harthmereV6LandmarkBlockAt(
   const relY = worldY - STARTER_TOWN_GROUND_Y;
 
 
-// HARTHMERE_CONNECTED_ROAD_BLOCK_CUES_VERSION_V67:
+// HARTHMERE_CONNECTED_ROAD_BLOCK_CUES_VERSION:
 // Block-built replacements for the removed GLB signs/lamps/banners on the
 // snapshot-edge road. These are terrain blocks, so they cannot float, 404, or
 // drift apart from the shifted town.
@@ -3163,7 +3163,7 @@ const roadPosts = [
 for (const [px, pz, cap] of roadPosts) {
   if (worldX === px && worldZ === pz && inRange(relY, 1, 3)) return materials.oakLog;
   if (Math.abs(worldX - px) <= 1 && worldZ === pz && relY === 4) {
-    return harthmereV6Mat(materials, cap);
+    return harthmereMat(materials, cap);
   }
 }
 const roadBannerPosts = [168, 224, 336] as const;
@@ -3192,7 +3192,7 @@ for (const px of roadBannerPosts) {
   ] as const;
   for (const [sx, sz, mat] of serviceSigns) {
     if (worldX === sx && worldZ === sz && inRange(relY, 1, 2)) return materials.oakLog;
-    if (Math.abs(worldX - sx) <= 1 && worldZ === sz && relY === 3) return harthmereV6Mat(materials, mat as HarthmereV6Mat);
+    if (Math.abs(worldX - sx) <= 1 && worldZ === sz && relY === 3) return harthmereMat(materials, mat as HarthmereMat);
   }
 
   const dockDecks =
@@ -3218,33 +3218,33 @@ for (const px of roadBannerPosts) {
   return undefined;
 }
 
-function harthmereV6FullTownBlockAt(
+function harthmereFullTownBlockAt(
   materials: ReturnType<typeof localDevMaterials>,
   worldX: number,
   worldY: number,
   worldZ: number,
 ): TerrainID | undefined {
-  const priorityBlock = harthmereV64PriorityStructureBlockAt(materials, worldX, worldY, worldZ);
+  const priorityBlock = harthmerePriorityStructureBlockAt(materials, worldX, worldY, worldZ);
   if (priorityBlock !== undefined) return priorityBlock;
 
-  const dungeonBlock = harthmereV64DungeonBlockAt(materials, worldX, worldY, worldZ);
+  const dungeonBlock = harthmereDungeonBlockAt(materials, worldX, worldY, worldZ);
   if (dungeonBlock !== undefined) return dungeonBlock;
 
-  if (harthmereV6ShouldForceClearRoofStreetAirBlockV1(worldX, worldY, worldZ)) return undefined;
+  if (harthmereShouldForceClearRoofStreetAirBlock(worldX, worldY, worldZ)) return undefined;
 
-  for (const building of HARTHMERE_V6_BUILDINGS) {
-    const block = harthmereV6BuildingBlockAt(materials, building, worldX, worldY, worldZ);
+  for (const building of HARTHMERE_BUILDINGS) {
+    const block = harthmereBuildingBlockAt(materials, building, worldX, worldY, worldZ);
     if (block !== undefined) return block;
   }
 
   return (
-    harthmereV6WallAndGateBlockAt(materials, worldX, worldY, worldZ) ??
-    harthmereV6FenceBlockAt(materials, worldX, worldY, worldZ) ??
-    harthmereV6LandmarkBlockAt(materials, worldX, worldY, worldZ)
+    harthmereWallAndGateBlockAt(materials, worldX, worldY, worldZ) ??
+    harthmereFenceBlockAt(materials, worldX, worldY, worldZ) ??
+    harthmereLandmarkBlockAt(materials, worldX, worldY, worldZ)
   );
 }
 
-// HARTHMERE_CLEAN_TOWN_REBUILD_V6_END
+// HARTHMERE_CLEAN_TOWN_REBUILD_END
 
 function distanceToSegment2D(
   worldX: number,
@@ -3272,12 +3272,12 @@ function localDevWildsHash(worldX: number, worldZ: number, salt = 0) {
 
 function isHarthmereWideWildsRoad(worldX: number, worldZ: number, width = 4) {
   const roads = [
-    // HARTHMERE_CONNECTED_MAP_ROAD_V66: road from the snapshot edge into Harthmere's west approach.
+    // HARTHMERE_CONNECTED_MAP_ROAD: road from the snapshot edge into Harthmere's west approach.
     [
-      HARTHMERE_SNAPSHOT_EDGE_ROAD_AUTHORED_START_X_V66,
-      HARTHMERE_SNAPSHOT_EDGE_ROAD_AUTHORED_Z_V66,
-      HARTHMERE_WEST_GATE_AUTHORED_X_V66,
-      HARTHMERE_SNAPSHOT_EDGE_ROAD_AUTHORED_Z_V66,
+      HARTHMERE_SNAPSHOT_EDGE_ROAD_AUTHORED_START_X,
+      HARTHMERE_SNAPSHOT_EDGE_ROAD_AUTHORED_Z,
+      HARTHMERE_WEST_GATE_AUTHORED_X,
+      HARTHMERE_SNAPSHOT_EDGE_ROAD_AUTHORED_Z,
     ],
     // North road out of the gate and into Greenmere.
     [486, -286, 486, STARTER_TOWN_WILDS_Z0 + 36],
@@ -3305,8 +3305,8 @@ function isInsideAuthoredHarthmereTown(worldX: number, worldZ: number, pad = 0) 
 }
 
 
-function isHarthmereSnapshotMuckPatchV74(worldX: number, worldZ: number) {
-  return isAuthoredPointInSnapshotMuckZoneV74([worldX, STARTER_TOWN_GROUND_Y + 1, worldZ], 0);
+function isHarthmereSnapshotMuckPatch(worldX: number, worldZ: number) {
+  return isAuthoredPointInSnapshotMuckZone([worldX, STARTER_TOWN_GROUND_Y + 1, worldZ], 0);
 }
 
 function harthmereWideWildsSurfaceMaterial(
@@ -3316,10 +3316,10 @@ function harthmereWideWildsSurfaceMaterial(
 ): TerrainID | undefined {
   const hash = localDevWildsHash(worldX, worldZ, 13);
 
-  // SNAPSHOT_MUCK_TERRAIN_SURFACE_V74: source-visible muck/muckwad
-  // tutorial areas are authored once in snapshot_runtime_rules_v74 and painted
+  // SNAPSHOT_MUCK_TERRAIN_SURFACE: source-visible muck/muckwad
+  // tutorial areas are authored once in snapshot_runtime_rules and painted
   // as real terrain, not GLB decoration.
-  if (isHarthmereSnapshotMuckPatchV74(worldX, worldZ)) {
+  if (isHarthmereSnapshotMuckPatch(worldX, worldZ)) {
     return materials.muckwad;
   }
 
@@ -3330,7 +3330,7 @@ function harthmereWideWildsSurfaceMaterial(
     return hash % 3 === 0 ? materials.dirt : materials.grass;
   }
 
-  // HARTHMERE_CONNECTED_MAP_ROAD_SURFACE_V66:
+  // HARTHMERE_CONNECTED_MAP_ROAD_SURFACE:
   // The snapshot-edge road should read like the Wilds bible: packed dirt,
   // pale gravel, wagon ruts, grass shoulders, and signs of civilization before
   // the player reaches the safer town gate. The hard road lane is handled by
@@ -3339,10 +3339,10 @@ function harthmereWideWildsSurfaceMaterial(
     distanceToSegment2D(
       worldX,
       worldZ,
-      HARTHMERE_SNAPSHOT_EDGE_ROAD_AUTHORED_START_X_V66,
-      HARTHMERE_SNAPSHOT_EDGE_ROAD_AUTHORED_Z_V66,
-      HARTHMERE_WEST_GATE_AUTHORED_X_V66,
-      HARTHMERE_SNAPSHOT_EDGE_ROAD_AUTHORED_Z_V66,
+      HARTHMERE_SNAPSHOT_EDGE_ROAD_AUTHORED_START_X,
+      HARTHMERE_SNAPSHOT_EDGE_ROAD_AUTHORED_Z,
+      HARTHMERE_WEST_GATE_AUTHORED_X,
+      HARTHMERE_SNAPSHOT_EDGE_ROAD_AUTHORED_Z,
     ) <= 16
   ) {
     if (hash % 11 === 0) return materials.hay;
@@ -3550,7 +3550,7 @@ function setHarthmereFastBlock(
   z: number,
   materialName: HarthmereFastHarvestableMaterialName,
 ) {
-  if (!isHarthmereLocalDevTerrainShardEnabledForWorldV3(x, z)) {
+  if (!isHarthmereLocalDevTerrainShardEnabledForWorld(x, z)) {
     return;
   }
   if (
@@ -4082,7 +4082,7 @@ function harthmereWideWildsBlockAt(
   ] as const;
   for (const [sx, sz, mat] of waystones) {
     if (worldX === sx && worldZ === sz && inRange(relY, 1, 3)) {
-      return relY === 3 ? harthmereV6Mat(materials, mat as HarthmereV6Mat) : materials.stoneBrick;
+      return relY === 3 ? harthmereMat(materials, mat as HarthmereMat) : materials.stoneBrick;
     }
   }
 
@@ -4114,7 +4114,7 @@ function starterTownSurfaceMaterial(
   worldZ: number,
   current: TerrainID,
 ): TerrainID {
-  const harthmereV6Surface = harthmereV6SurfaceMaterial(
+  const harthmereSurface = harthmereSurfaceMaterial(
     materials,
     worldX,
     worldZ,
@@ -4124,7 +4124,7 @@ function starterTownSurfaceMaterial(
     worldX,
     worldZ,
   );
-  return harthmereV6Surface ?? wideWildsSurface ?? current;
+  return harthmereSurface ?? wideWildsSurface ?? current;
 }
 
 function chickenBlockAt(
@@ -4358,7 +4358,7 @@ function starterTownAboveGroundBlockAt(
   worldZ: number,
 ): TerrainID | undefined {
   return (
-    harthmereV6FullTownBlockAt(materials, worldX, worldY, worldZ) ??
+    harthmereFullTownBlockAt(materials, worldX, worldY, worldZ) ??
     harthmereWideWildsBlockAt(materials, worldX, worldY, worldZ)
   );
 }
@@ -4424,9 +4424,9 @@ function localDevTerrainShardSpecs() {
   };
   const pushSpec = (shardX: number, shardY: number, shardZ: number) => {
     pushRuntimeSpec(
-      shardX + harthmereExtraTownShardOffsetXV1(),
+      shardX + harthmereExtraTownShardOffsetX(),
       shardY,
-      shardZ + harthmereExtraTownShardOffsetZV1(),
+      shardZ + harthmereExtraTownShardOffsetZ(),
     );
   };
 
@@ -4448,31 +4448,31 @@ function localDevTerrainShardSpecs() {
       }
     }
   }
-  for (const shard of HARTHMERE_SUPPLEMENTAL_TERRAIN_SHARDS_V1) {
+  for (const shard of HARTHMERE_SUPPLEMENTAL_TERRAIN_SHARDS) {
     pushSpec(shard.shardX, shard.shardY, shard.shardZ);
   }
-  for (const [shardX, shardY, shardZ] of HARTHMERE_BUSINESS_OUTPOST_SEED_TERRAIN_SHARDS_V1) {
+  for (const [shardX, shardY, shardZ] of HARTHMERE_BUSINESS_OUTPOST_SEED_TERRAIN_SHARDS) {
     pushRuntimeSpec(shardX, shardY, shardZ);
   }
   return specs;
 }
 
-function localDevLegacyTerrainShardIdsV3() {
-  return Array.from({ length: HARTHMERE_LEGACY_LOCAL_DEV_TERRAIN_SHARD_COUNT_V3 }, (_, offset) =>
+function localDevLegacyTerrainShardIds() {
+  return Array.from({ length: HARTHMERE_LEGACY_LOCAL_DEV_TERRAIN_SHARD_COUNT }, (_, offset) =>
     (LOCAL_DEV_TERRAIN_ID_BASE + offset) as BiomesId,
   );
 }
 
-function makeLocalDevStaleTerrainDeletesV3(
+function makeLocalDevStaleTerrainDeletes(
   tick: number,
   activeTerrainIds: Set<BiomesId>,
   existingIds: Set<BiomesId>,
 ): Change[] {
-  if (HARTHMERE_LOCAL_DEV_PERF_PROFILE_V3 === "full") {
+  if (HARTHMERE_LOCAL_DEV_PERF_PROFILE === "full") {
     return [];
   }
   const deletes: Change[] = [];
-  for (const id of localDevLegacyTerrainShardIdsV3()) {
+  for (const id of localDevLegacyTerrainShardIds()) {
     if (!activeTerrainIds.has(id) && existingIds.has(id)) {
       deletes.push({ kind: "delete", tick, id });
     }
@@ -4510,8 +4510,8 @@ function makeLocalDevTerrainShard(
       for (let x = 0; x < SHARD_DIM; x += 1) {
         const worldX = v0[0] + x;
         const worldZ = v0[2] + z;
-        const authoredWorldX = harthmereAuthoredWorldXV1(worldX);
-        const authoredWorldZ = harthmereAuthoredWorldZV1(worldZ);
+        const authoredWorldX = harthmereAuthoredWorldX(worldX);
+        const authoredWorldZ = harthmereAuthoredWorldZ(worldZ);
 
         if (hasGroundInShard) {
           for (let y = 0; y <= groundLocalY; y += 1) {
@@ -4547,7 +4547,7 @@ function makeLocalDevTerrainShard(
               );
               if (authoredUnderground) {
                 seedBlock.set(x, y, z, authoredUnderground);
-              } else if (!harthmereV6ShouldCarveDungeonAirBlockAt(authoredWorldX, worldY, authoredWorldZ)) {
+              } else if (!harthmereShouldCarveDungeonAirBlockAt(authoredWorldX, worldY, authoredWorldZ)) {
                 seedBlock.set(x, y, z, base);
               }
             }
@@ -4576,7 +4576,7 @@ function makeLocalDevTerrainShard(
             );
             if (authoredUnderground) {
               seedBlock.set(x, y, z, authoredUnderground);
-            } else if (!harthmereV6ShouldCarveDungeonAirBlockAt(authoredWorldX, worldY, authoredWorldZ)) {
+            } else if (!harthmereShouldCarveDungeonAirBlockAt(authoredWorldX, worldY, authoredWorldZ)) {
               seedBlock.set(x, y, z, materials.stone);
             }
           }
@@ -4598,7 +4598,7 @@ function makeLocalDevTerrainShard(
     }
 
     const businessOutpostEdits =
-      HARTHMERE_BUSINESS_OUTPOST_SEED_TERRAIN_EDITS_BY_SHARD_V1.get(
+      HARTHMERE_BUSINESS_OUTPOST_SEED_TERRAIN_EDITS_BY_SHARD.get(
         voxelShard(...v0),
       ) ?? [];
     for (const edit of businessOutpostEdits) {
@@ -4767,7 +4767,7 @@ function starterTownNpcs(): StarterNpc[] {
       "Maren Dawnloaf, Baker",
       [434, y, -192],
       [0, 1.55],
-      // HARTHMERE_PERF_AND_PLACEMENT_V94 — dialogue rewritten from the
+      // HARTHMERE_PERF_AND_PLACEMENT — dialogue rewritten from the
       // Bellbound bible (III.3): she's a halfling, fourth-generation Loaf
       // family, best friends with Mara Thistle, quietly subsidizes the
       // chapel's bread for the Mudden Ward.
@@ -5630,9 +5630,9 @@ function starterTownNpcs(): StarterNpc[] {
 }
 
 
-const SNAPSHOT_GROVE_COMBAT_NO_HARTHMERE_OFFSET_V75 = "snapshot-grove-combat-no-harthmere-offset-v75";
+const SNAPSHOT_GROVE_COMBAT_NO_HARTHMERE_OFFSET = "snapshot-grove-combat-no-harthmere-offset";
 
-function makeLocalDevSnapshotCombatNpcChangesV74(
+function makeLocalDevSnapshotCombatNpcChanges(
   tick: number,
   existingIds: Set<BiomesId>,
 ) {
@@ -5642,18 +5642,18 @@ function makeLocalDevSnapshotCombatNpcChangesV74(
     ? BikkieIds.dMucker
     : LOCAL_DEV_HUMAN_NPC_TYPE_ID;
 
-  for (const spawn of SNAPSHOT_HARTHMERE_HOSTILE_SPAWNS_V74) {
+  for (const spawn of SNAPSHOT_HARTHMERE_HOSTILE_SPAWNS) {
     const id = (Number(LOCAL_DEV_NPC_ID_BASE) + spawn.idOffset) as BiomesId;
     const entity = npcEntity(
       {
         id,
         typeId,
-        // SNAPSHOT_COMBAT_MUCKER_GROUNDING_VERSION_V135:
+        // SNAPSHOT_COMBAT_MUCKER_GROUNDING_VERSION:
         // Combat Muckers/Hexers are dMucker-style hostile creatures with their
         // own damageable health/interaction body. They live on the authored
         // wilds/muck terrain layer, not the raised Grove fountain courtyard, so
-        // do not use snapshotGroveGroundedPositionV75 here.
-        position: snapshotCombatRuntimeGroundedPositionV135(spawn.authoredPosition),
+        // do not use snapshotGroveGroundedPosition here.
+        position: snapshotCombatRuntimeGroundedPosition(spawn.authoredPosition),
         orientation: [0, 0],
         velocity: [0, 0, 0],
         displayName: spawn.displayName,
@@ -5667,7 +5667,7 @@ function makeLocalDevSnapshotCombatNpcChangesV74(
       entity: {
         ...entity,
         entity_description: EntityDescription.create({
-          text: `SNAPSHOT_COMBAT_RUNTIME_V74 ${spawn.profile} ${spawn.areaId} leash=${spawn.leashRadius}`,
+          text: `SNAPSHOT_COMBAT_RUNTIME ${spawn.profile} ${spawn.areaId} leash=${spawn.leashRadius}`,
         }),
       },
     });
@@ -5676,35 +5676,35 @@ function makeLocalDevSnapshotCombatNpcChangesV74(
 }
 
 
-function makeLocalDevSnapshotGroveNpcChangesV75(
+function makeLocalDevSnapshotGroveNpcChanges(
   tick: number,
   existingIds: Set<BiomesId>,
 ) {
   const now = secondsSinceEpoch();
   const changes: Change[] = [];
-  for (const npc of SNAPSHOT_GROVE_NPCS_V75) {
+  for (const npc of SNAPSHOT_GROVE_NPCS) {
     if (!npc.seedServerNpc) {
       continue;
     }
-    const id = snapshotGroveNpcEntityIdV75(npc);
+    const id = snapshotGroveNpcEntityId(npc);
     const typeId = npc.id === "mucked_robot" && isNpcTypeId(BikkieIds.dMucker)
       ? BikkieIds.dMucker
       : LOCAL_DEV_HUMAN_NPC_TYPE_ID;
-    const description = `${SNAPSHOT_GROVE_NPC_GROUNDING_VERSION_V75} ${npc.shortDescription} ${npc.role}`;
+    const description = `${SNAPSHOT_GROVE_NPC_GROUNDING_VERSION} ${npc.shortDescription} ${npc.role}`;
     const appearance = makeHarthmereNpcAppearanceConfig({
       id,
       name: npc.displayName,
       roleHint: npc.role,
       forwardAxis: "minusZ",
-      source: "snapshot-grove-npc-seed-v135",
+      source: "snapshot-grove-npc-seed",
     });
     const entity = {
       ...npcEntity(
         {
           id,
           typeId,
-          // v75 compatibility marker: snapshotGroveGroundedPositionV75(npc.authoredPosition)
-          position: snapshotGroveRuntimeGroundedPositionV81(npc.authoredPosition),
+          // v75 compatibility marker: snapshotGroveGroundedPosition(npc.authoredPosition)
+          position: snapshotGroveRuntimeGroundedPosition(npc.authoredPosition),
           orientation: npc.orientation ?? [0, 3.14],
           velocity: [0, 0, 0],
           displayName: npc.displayName,
@@ -5736,36 +5736,36 @@ function makeLocalDevSnapshotGroveNpcChangesV75(
   return changes;
 }
 
-function localDevSnapshotGroveNpcIdsV75() {
-  return SNAPSHOT_GROVE_NPCS_V75.filter((npc) => npc.seedServerNpc).map((npc) =>
-    snapshotGroveNpcEntityIdV75(npc),
+function localDevSnapshotGroveNpcIds() {
+  return SNAPSHOT_GROVE_NPCS.filter((npc) => npc.seedServerNpc).map((npc) =>
+    snapshotGroveNpcEntityId(npc),
   );
 }
 
-function localDevSnapshotCombatNpcIdsV74() {
-  return SNAPSHOT_HARTHMERE_HOSTILE_SPAWNS_V74.map(
+function localDevSnapshotCombatNpcIds() {
+  return SNAPSHOT_HARTHMERE_HOSTILE_SPAWNS.map(
     (spawn) => (Number(LOCAL_DEV_NPC_ID_BASE) + spawn.idOffset) as BiomesId,
   );
 }
 
-function localDevLiveEntityProductionSeedIdsV1() {
-  return harthmereLiveEntityProductionSeedIdsV1();
+function localDevLiveEntityProductionSeedIds() {
+  return harthmereLiveEntityProductionSeedIds();
 }
 
-function localDevGroveRaceMinigameSeedIdsV1() {
-  return harthmereGroveRaceMinigameSeedIdsV1();
+function localDevGroveRaceMinigameSeedIds() {
+  return harthmereGroveRaceMinigameSeedIds();
 }
 
-function localDevBusinessOwnerNpcIdsV1() {
-  return harthmereBusinessOwnerNpcSeedEntityIdsV1();
+function localDevBusinessOwnerNpcIds() {
+  return harthmereBusinessOwnerNpcSeedEntityIds();
 }
 
-function localDevBusinessCustomerNpcIdsV1() {
-  return harthmereBusinessCustomerNpcSeedEntityIdsV1();
+function localDevBusinessCustomerNpcIds() {
+  return harthmereBusinessCustomerNpcSeedEntityIds();
 }
 
-function localDevBusinessCraftingStationIdsV1() {
-  return harthmereBusinessCraftingStationSeedEntityIdsV1();
+function localDevBusinessCraftingStationIds() {
+  return harthmereBusinessCraftingStationSeedEntityIds();
 }
 
 function isLocalDevQuestGiverNpcId(id: BiomesId) {
@@ -5783,7 +5783,7 @@ function makeLocalDevNpcChanges(tick: number, existingIds: Set<BiomesId>) {
   // (x, z) — this is the v94 fix for the audit-confirmed stacking bug
   // (Tovin Reed + Ferry Master Wren + River Knots Lookout all at [1084,53,-188];
   // Toma + Master Osric + Market Board all at [1010,58,-219]).
-  const claimedV94: HarthmereNpcClaimSetV94 = new Set();
+  const claimed: HarthmereNpcClaimSet = new Set();
   for (const npc of starterTownNpcs()) {
     const typeId = resolveNpcTypeId(npc.preferredTypes, npc.fallbackTypes);
     if (!typeId) {
@@ -5799,7 +5799,7 @@ function makeLocalDevNpcChanges(tick: number, existingIds: Set<BiomesId>) {
         {
           id: npc.id,
           typeId,
-          position: harthmereGroundedNpcWorldPositionWithClaimV94(npc, claimedV94),
+          position: harthmereGroundedNpcWorldPositionWithClaim(npc, claimed),
           orientation: npc.orientation,
           velocity: npc.velocity,
           displayName: npc.displayName,
@@ -5958,7 +5958,7 @@ function makeLocalDevObsoleteTerrainDeletionChanges(
   return changes;
 }
 
-function makeLocalDevSeedFingerprintV1(input: {
+function makeLocalDevSeedFingerprint(input: {
   terrainIds: BiomesId[];
   npcIds: BiomesId[];
   snapshotGroveNpcIds: BiomesId[];
@@ -5970,30 +5970,30 @@ function makeLocalDevSeedFingerprintV1(input: {
   businessCraftingStationIds: BiomesId[];
 }) {
   return JSON.stringify({
-    version: HARTHMERE_LOCAL_DEV_SEED_FINGERPRINT_VERSION_V1,
-    businessOwnerNpcSeedVersion: HARTHMERE_BUSINESS_OWNER_NPC_SEED_VERSION_V1,
+    version: HARTHMERE_LOCAL_DEV_SEED_FINGERPRINT_VERSION,
+    businessOwnerNpcSeedVersion: HARTHMERE_BUSINESS_OWNER_NPC_SEED_VERSION,
     businessCustomerNpcSeedVersion:
-      HARTHMERE_BUSINESS_CUSTOMER_NPC_SEED_VERSION_V1,
+      HARTHMERE_BUSINESS_CUSTOMER_NPC_SEED_VERSION,
     businessCraftingStationSeedVersion:
-      HARTHMERE_BUSINESS_CRAFTING_STATION_SEED_VERSION_V1,
-    contentPass: HARTHMERE_LOCAL_DEV_SEED_CONTENT_PASS_V1,
-    terrainBoundsVersion: HARTHMERE_LOCAL_DEV_TERRAIN_BOUNDS_VERSION_V4,
-    npcPositionOverrideVersion: HARTHMERE_NPC_POSITION_OVERRIDE_VERSION_V93,
-    perfAndPlacementVersion: HARTHMERE_PERF_AND_PLACEMENT_VERSION_V94,
-    performanceProfile: HARTHMERE_LOCAL_DEV_PERF_PROFILE_V3,
+      HARTHMERE_BUSINESS_CRAFTING_STATION_SEED_VERSION,
+    contentPass: HARTHMERE_LOCAL_DEV_SEED_CONTENT_PASS,
+    terrainBoundsVersion: HARTHMERE_LOCAL_DEV_TERRAIN_BOUNDS_VERSION,
+    npcPositionOverrideVersion: HARTHMERE_NPC_POSITION_OVERRIDE_VERSION,
+    perfAndPlacementVersion: HARTHMERE_PERF_AND_PLACEMENT_VERSION,
+    performanceProfile: HARTHMERE_LOCAL_DEV_PERF_PROFILE,
     liveEntityProductionSeedVersion:
-      HARTHMERE_LIVE_ENTITY_PRODUCTION_SEED_VERSION_V1,
+      HARTHMERE_LIVE_ENTITY_PRODUCTION_SEED_VERSION,
     groveRaceMinigameSeedVersion:
-      HARTHMERE_GROVE_RACE_MINIGAME_SEED_VERSION_V1,
+      HARTHMERE_GROVE_RACE_MINIGAME_SEED_VERSION,
     offsets: {
-      x: harthmereExtraTownOffsetXV1(),
-      z: harthmereExtraTownOffsetZV1(),
+      x: harthmereExtraTownOffsetX(),
+      z: harthmereExtraTownOffsetZ(),
     },
     bounds: {
-      x0: STARTER_TOWN_WILDS_X0 + harthmereExtraTownOffsetXV1(),
-      x1: STARTER_TOWN_WILDS_X1 + harthmereExtraTownOffsetXV1(),
-      z0: STARTER_TOWN_WILDS_Z0 + harthmereExtraTownOffsetZV1(),
-      z1: STARTER_TOWN_WILDS_Z1 + harthmereExtraTownOffsetZV1(),
+      x0: STARTER_TOWN_WILDS_X0 + harthmereExtraTownOffsetX(),
+      x1: STARTER_TOWN_WILDS_X1 + harthmereExtraTownOffsetX(),
+      z0: STARTER_TOWN_WILDS_Z0 + harthmereExtraTownOffsetZ(),
+      z1: STARTER_TOWN_WILDS_Z1 + harthmereExtraTownOffsetZ(),
     },
     counts: {
       terrain: input.terrainIds.length,
@@ -6106,7 +6106,7 @@ function makeLocalDevMiniWorldChanges(
   if (staleTerrainDeletes.length) {
     changes.push(...staleTerrainDeletes);
     log.warn("Pruning obsolete local dev terrain shards", {
-      version: HARTHMERE_LOCAL_DEV_TERRAIN_BOUNDS_VERSION_V4,
+      version: HARTHMERE_LOCAL_DEV_TERRAIN_BOUNDS_VERSION,
       count: staleTerrainDeletes.length,
     });
   }
@@ -6116,7 +6116,7 @@ function makeLocalDevMiniWorldChanges(
     terrainShardSpecs: specs.length,
     existingLocalDevIds: existingIds.size,
     fastHarvestableBlocks: HARTHMERE_FAST_HARVESTABLE_BLOCK_BY_COORD.size,
-    muckZones: SNAPSHOT_HARTHMERE_MUCK_ZONES_V74.length,
+    muckZones: SNAPSHOT_HARTHMERE_MUCK_ZONES.length,
     harvestableTreeCenters: HARTHMERE_HARVESTABLE_TREE_CENTERS.length,
     harvestableOreClusters: HARTHMERE_HARVESTABLE_ORE_CENTERS.length,
     harvestableForageClusters: HARTHMERE_HARVESTABLE_FORAGE_CENTERS.length,
@@ -6158,9 +6158,9 @@ function makeLocalDevMiniWorldChanges(
 
   const npcStartedAt = Date.now();
   const npcChanges = makeLocalDevNpcChanges(tick, existingIds);
-  const groveNpcChanges = makeLocalDevSnapshotGroveNpcChangesV75(tick, existingIds);
-  const combatNpcChanges = makeLocalDevSnapshotCombatNpcChangesV74(tick, existingIds);
-  const liveEntitySeedChanges = buildHarthmereLiveEntityProductionSeedChangesV1(
+  const groveNpcChanges = makeLocalDevSnapshotGroveNpcChanges(tick, existingIds);
+  const combatNpcChanges = makeLocalDevSnapshotCombatNpcChanges(tick, existingIds);
+  const liveEntitySeedChanges = buildHarthmereLiveEntityProductionSeedChanges(
     {
       tick,
       nowSeconds: secondsSinceEpoch(),
@@ -6168,30 +6168,30 @@ function makeLocalDevMiniWorldChanges(
       // Leave recently-killed muckers/animals dead until their respawn window
       // (30-60 min) elapses, instead of re-creating them on the next tick.
       isRespawnSuppressed: (id) =>
-        harthmereSharedLiveCreatureRespawnRegistryV1().isSuppressed(
+        harthmereSharedLiveCreatureRespawnRegistry().isSuppressed(
           id,
           Date.now()
         ),
     }
   );
-  const groveRaceSeedChanges = buildHarthmereGroveRaceMinigameSeedChangesV1({
+  const groveRaceSeedChanges = buildHarthmereGroveRaceMinigameSeedChanges({
     tick,
     nowSeconds: secondsSinceEpoch(),
     existingIds,
   });
-  const businessOwnerNpcChanges = buildHarthmereBusinessOwnerNpcSeedChangesV1({
+  const businessOwnerNpcChanges = buildHarthmereBusinessOwnerNpcSeedChanges({
     tick,
     nowSeconds: secondsSinceEpoch(),
     existingIds,
   });
   const businessCustomerNpcChanges =
-    buildHarthmereBusinessCustomerNpcSeedChangesV1({
+    buildHarthmereBusinessCustomerNpcSeedChanges({
       tick,
       nowSeconds: secondsSinceEpoch(),
       existingIds,
     });
   const businessCraftingStationChanges =
-    buildHarthmereBusinessCraftingStationSeedChangesV1({
+    buildHarthmereBusinessCraftingStationSeedChanges({
       tick,
       nowSeconds: secondsSinceEpoch(),
       existingIds,
@@ -6218,8 +6218,8 @@ function makeLocalDevMiniWorldChanges(
     businessOwnerNpcs: businessOwnerNpcChanges.length,
     businessCustomerNpcs: businessCustomerNpcChanges.length,
     businessCraftingStations: businessCraftingStationChanges.length,
-    runtimeOffsetX: harthmereExtraTownOffsetXV1(),
-    runtimeOffsetZ: harthmereExtraTownOffsetZV1(),
+    runtimeOffsetX: harthmereExtraTownOffsetX(),
+    runtimeOffsetZ: harthmereExtraTownOffsetZ(),
     firstSnapshotGroveNpc: groveNpcChanges[0]?.kind === "create" || groveNpcChanges[0]?.kind === "update"
       ? groveNpcChanges[0].entity.position?.v
       : undefined,
@@ -6243,7 +6243,7 @@ async function existingLocalDevIds(
   return new Set((await worldApi.has(ids)) as BiomesId[]);
 }
 
-// PRODUCTION_CONTENT_SYNC_V1:
+// PRODUCTION_CONTENT_SYNC:
 // When a real (non-local) world already exists we must NOT rebuild or overwrite
 // terrain. But authored CONTENT added since the world was first seeded (e.g. the
 // business owner NPCs) would otherwise never appear in production, because the
@@ -6251,7 +6251,7 @@ async function existingLocalDevIds(
 // content entities whose ids are missing from the live world — never touching
 // terrain, never updating/deleting anything that already exists — so newly added
 // content reaches production automatically on the next boot.
-async function seedMissingLocalDevContentIntoExistingWorldV1(
+async function seedMissingLocalDevContentIntoExistingWorld(
   service: ShimWorldService | undefined,
   worldApi: WorldApi,
 ) {
@@ -6262,29 +6262,29 @@ async function seedMissingLocalDevContentIntoExistingWorldV1(
   const emptyIds = new Set<BiomesId>();
   const candidate: Change[] = [
     ...makeLocalDevNpcChanges(tick, emptyIds),
-    ...makeLocalDevSnapshotGroveNpcChangesV75(tick, emptyIds),
-    ...makeLocalDevSnapshotCombatNpcChangesV74(tick, emptyIds),
-    ...buildHarthmereLiveEntityProductionSeedChangesV1({
+    ...makeLocalDevSnapshotGroveNpcChanges(tick, emptyIds),
+    ...makeLocalDevSnapshotCombatNpcChanges(tick, emptyIds),
+    ...buildHarthmereLiveEntityProductionSeedChanges({
       tick,
       nowSeconds,
       existingIds: emptyIds,
     }),
-    ...buildHarthmereGroveRaceMinigameSeedChangesV1({
+    ...buildHarthmereGroveRaceMinigameSeedChanges({
       tick,
       nowSeconds,
       existingIds: emptyIds,
     }),
-    ...buildHarthmereBusinessOwnerNpcSeedChangesV1({
+    ...buildHarthmereBusinessOwnerNpcSeedChanges({
       tick,
       nowSeconds,
       existingIds: emptyIds,
     }),
-    ...buildHarthmereBusinessCustomerNpcSeedChangesV1({
+    ...buildHarthmereBusinessCustomerNpcSeedChanges({
       tick,
       nowSeconds,
       existingIds: emptyIds,
     }),
-    ...buildHarthmereBusinessCraftingStationSeedChangesV1({
+    ...buildHarthmereBusinessCraftingStationSeedChanges({
       tick,
       nowSeconds,
       existingIds: emptyIds,
@@ -6303,7 +6303,7 @@ async function seedMissingLocalDevContentIntoExistingWorldV1(
   // muck monsters that now resolve inside a safe zone (e.g. the road_muckwad
   // muckers sitting inside the Grove). These were created by an earlier seed and
   // must be deleted through the proper ECS delete path.
-  const excludedMuckIds = harthmereExcludedMuckMonsterSeedIdsV1();
+  const excludedMuckIds = harthmereExcludedMuckMonsterSeedIds();
   const presentExcludedMuck = await existingLocalDevIds(
     excludedMuckIds,
     service,
@@ -6316,12 +6316,12 @@ async function seedMissingLocalDevContentIntoExistingWorldV1(
   const toApply: Change[] = [...missing, ...obsoleteDeletes];
   if (toApply.length === 0) {
     log.info(
-      "PRODUCTION_CONTENT_SYNC_V1: all authored content already present; nothing to seed.",
+      "PRODUCTION_CONTENT_SYNC: all authored content already present; nothing to seed.",
     );
     return;
   }
   log.warn(
-    "PRODUCTION_CONTENT_SYNC_V1: reconciling authored content in existing world",
+    "PRODUCTION_CONTENT_SYNC: reconciling authored content in existing world",
     {
       created: missing.length,
       deletedObsoleteMuck: obsoleteDeletes.length,
@@ -6349,26 +6349,26 @@ async function seedLocalDevTerrainIfMissing(
     process.env.BIOMES_FORCE_LOCAL_DEV_TOWN !== "1" &&
     process.env.BIOMES_ENABLE_HARTHMERE_EXTRA_TOWN !== "1"
   ) {
-    // PRODUCTION_CONTENT_SYNC_V1: existing non-local terrain — do NOT rebuild
+    // PRODUCTION_CONTENT_SYNC: existing non-local terrain — do NOT rebuild
     // terrain, but still create any missing authored content (e.g. business
     // owner NPCs) so new content reaches production without a terrain reseed.
     log.info(
       "Existing non-local terrain detected; syncing missing authored content only.",
     );
-    await seedMissingLocalDevContentIntoExistingWorldV1(service, worldApi);
+    await seedMissingLocalDevContentIntoExistingWorld(service, worldApi);
     return;
   }
 
   const terrainIds = localDevTerrainShardSpecs().map((spec) => spec.id);
   const npcIds = starterTownNpcs().map((npc) => npc.id);
-  const snapshotGroveNpcIds = localDevSnapshotGroveNpcIdsV75();
-  const snapshotCombatNpcIds = localDevSnapshotCombatNpcIdsV74();
-  const liveEntityProductionSeedIds = localDevLiveEntityProductionSeedIdsV1();
-  const groveRaceMinigameSeedIds = localDevGroveRaceMinigameSeedIdsV1();
-  const businessOwnerNpcIds = localDevBusinessOwnerNpcIdsV1();
-  const businessCustomerNpcIds = localDevBusinessCustomerNpcIdsV1();
-  const businessCraftingStationIds = localDevBusinessCraftingStationIdsV1();
-  const legacyTerrainIds = localDevLegacyTerrainShardIdsV3();
+  const snapshotGroveNpcIds = localDevSnapshotGroveNpcIds();
+  const snapshotCombatNpcIds = localDevSnapshotCombatNpcIds();
+  const liveEntityProductionSeedIds = localDevLiveEntityProductionSeedIds();
+  const groveRaceMinigameSeedIds = localDevGroveRaceMinigameSeedIds();
+  const businessOwnerNpcIds = localDevBusinessOwnerNpcIds();
+  const businessCustomerNpcIds = localDevBusinessCustomerNpcIds();
+  const businessCraftingStationIds = localDevBusinessCraftingStationIds();
+  const legacyTerrainIds = localDevLegacyTerrainShardIds();
   const activeTerrainIds = new Set(terrainIds);
   const expectedSeedIds = [
     ...terrainIds,
@@ -6381,7 +6381,7 @@ async function seedLocalDevTerrainIfMissing(
     ...businessCustomerNpcIds,
     ...businessCraftingStationIds,
   ];
-  const seedFingerprint = makeLocalDevSeedFingerprintV1({
+  const seedFingerprint = makeLocalDevSeedFingerprint({
     terrainIds,
     npcIds,
     snapshotGroveNpcIds,
@@ -6423,7 +6423,7 @@ async function seedLocalDevTerrainIfMissing(
     markerFingerprint === seedFingerprint
   ) {
     log.info("Skipping local dev starter town seed; fingerprint already current.", {
-      fingerprintVersion: HARTHMERE_LOCAL_DEV_SEED_FINGERPRINT_VERSION_V1,
+      fingerprintVersion: HARTHMERE_LOCAL_DEV_SEED_FINGERPRINT_VERSION,
       expectedSeedIds: expectedSeedIds.length,
       terrainShards: terrainIds.length,
       npcs:
@@ -6432,8 +6432,8 @@ async function seedLocalDevTerrainIfMissing(
         snapshotCombatNpcIds.length +
         liveEntityProductionSeedIds.length,
       groveRaceMinigameSeeds: groveRaceMinigameSeedIds.length,
-      runtimeOffsetX: harthmereExtraTownOffsetXV1(),
-      runtimeOffsetZ: harthmereExtraTownOffsetZV1(),
+      runtimeOffsetX: harthmereExtraTownOffsetX(),
+      runtimeOffsetZ: harthmereExtraTownOffsetZ(),
     });
     return;
   }
@@ -6454,7 +6454,7 @@ async function seedLocalDevTerrainIfMissing(
       log.info(
         "Adopted existing markerless local dev starter town seed; future boots can skip terrain rebuild.",
         {
-          fingerprintVersion: HARTHMERE_LOCAL_DEV_SEED_FINGERPRINT_VERSION_V1,
+          fingerprintVersion: HARTHMERE_LOCAL_DEV_SEED_FINGERPRINT_VERSION,
           expectedSeedIds: expectedSeedIds.length,
           terrainShards: terrainIds.length,
           npcs:
@@ -6463,8 +6463,8 @@ async function seedLocalDevTerrainIfMissing(
             snapshotCombatNpcIds.length +
             liveEntityProductionSeedIds.length,
           groveRaceMinigameSeeds: groveRaceMinigameSeedIds.length,
-          runtimeOffsetX: harthmereExtraTownOffsetXV1(),
-          runtimeOffsetZ: harthmereExtraTownOffsetZV1(),
+          runtimeOffsetX: harthmereExtraTownOffsetX(),
+          runtimeOffsetZ: harthmereExtraTownOffsetZ(),
         },
       );
       return;
@@ -6473,10 +6473,10 @@ async function seedLocalDevTerrainIfMissing(
 
   const voxeloo = await loadVoxeloo();
   log.warn("Seeding local dev starter town terrain", {
-    contentPass: HARTHMERE_LOCAL_DEV_SEED_CONTENT_PASS_V1,
-    npcPositionOverrideVersion: HARTHMERE_NPC_POSITION_OVERRIDE_VERSION_V93,
-    performanceProfile: HARTHMERE_LOCAL_DEV_PERF_PROFILE_V3,
-    fingerprintVersion: HARTHMERE_LOCAL_DEV_SEED_FINGERPRINT_VERSION_V1,
+    contentPass: HARTHMERE_LOCAL_DEV_SEED_CONTENT_PASS,
+    npcPositionOverrideVersion: HARTHMERE_NPC_POSITION_OVERRIDE_VERSION,
+    performanceProfile: HARTHMERE_LOCAL_DEV_PERF_PROFILE,
+    fingerprintVersion: HARTHMERE_LOCAL_DEV_SEED_FINGERPRINT_VERSION,
     markerFingerprintMatched: markerFingerprint === seedFingerprint,
     markerFingerprintPresent: Boolean(markerFingerprint),
     forceReseed: shouldForceReseed,
@@ -6486,8 +6486,8 @@ async function seedLocalDevTerrainIfMissing(
     harvestableOreClusters: HARTHMERE_HARVESTABLE_ORE_CENTERS.length,
     harvestableForageClusters: HARTHMERE_HARVESTABLE_FORAGE_CENTERS.length,
     fastHarvestableBlocks: HARTHMERE_FAST_HARVESTABLE_BLOCK_BY_COORD.size,
-    x: [STARTER_TOWN_WILDS_X0 + harthmereExtraTownOffsetXV1(), STARTER_TOWN_WILDS_X1 + harthmereExtraTownOffsetXV1()],
-    z: [STARTER_TOWN_WILDS_Z0 + harthmereExtraTownOffsetZV1(), STARTER_TOWN_WILDS_Z1 + harthmereExtraTownOffsetZV1()],
+    x: [STARTER_TOWN_WILDS_X0 + harthmereExtraTownOffsetX(), STARTER_TOWN_WILDS_X1 + harthmereExtraTownOffsetX()],
+    z: [STARTER_TOWN_WILDS_Z0 + harthmereExtraTownOffsetZ(), STARTER_TOWN_WILDS_Z1 + harthmereExtraTownOffsetZ()],
   });
   const tick = service ? service.table.tick + 1 : 1;
   const changes = makeLocalDevMiniWorldChanges(
@@ -6496,7 +6496,7 @@ async function seedLocalDevTerrainIfMissing(
     existingIds,
     seedFingerprint,
   );
-  changes.push(...makeLocalDevStaleTerrainDeletesV3(tick, new Set(terrainIds), existingIds));
+  changes.push(...makeLocalDevStaleTerrainDeletes(tick, new Set(terrainIds), existingIds));
 
   if (service) {
     log.warn("Applying local dev starter town seed changes to shim table", {
@@ -6528,23 +6528,23 @@ async function seedLocalDevTerrainIfMissing(
   );
 
   log.warn("Seeded local dev starter town", {
-    contentPass: HARTHMERE_LOCAL_DEV_SEED_CONTENT_PASS_V1,
-    npcPositionOverrideVersion: HARTHMERE_NPC_POSITION_OVERRIDE_VERSION_V93,
-    performanceProfile: HARTHMERE_LOCAL_DEV_PERF_PROFILE_V3,
-    fingerprintVersion: HARTHMERE_LOCAL_DEV_SEED_FINGERPRINT_VERSION_V1,
+    contentPass: HARTHMERE_LOCAL_DEV_SEED_CONTENT_PASS,
+    npcPositionOverrideVersion: HARTHMERE_NPC_POSITION_OVERRIDE_VERSION,
+    performanceProfile: HARTHMERE_LOCAL_DEV_PERF_PROFILE,
+    fingerprintVersion: HARTHMERE_LOCAL_DEV_SEED_FINGERPRINT_VERSION,
     terrainShards: terrainUpdates.length,
     npcs: npcUpdates.length,
     harvestableTreeCenters: HARTHMERE_HARVESTABLE_TREE_CENTERS.length,
     harvestableOreClusters: HARTHMERE_HARVESTABLE_ORE_CENTERS.length,
     harvestableForageClusters: HARTHMERE_HARVESTABLE_FORAGE_CENTERS.length,
     fastHarvestableBlocks: HARTHMERE_FAST_HARVESTABLE_BLOCK_BY_COORD.size,
-    spawn: harthmereWorldPositionV1(STARTER_TOWN_SPAWN),
+    spawn: harthmereWorldPosition(STARTER_TOWN_SPAWN),
     groundY: STARTER_TOWN_GROUND_Y,
-    runtimeOffsetX: harthmereExtraTownOffsetXV1(),
-    runtimeOffsetZ: harthmereExtraTownOffsetZV1(),
-    x: [STARTER_TOWN_WILDS_X0 + harthmereExtraTownOffsetXV1(), STARTER_TOWN_WILDS_X1 + harthmereExtraTownOffsetXV1()],
+    runtimeOffsetX: harthmereExtraTownOffsetX(),
+    runtimeOffsetZ: harthmereExtraTownOffsetZ(),
+    x: [STARTER_TOWN_WILDS_X0 + harthmereExtraTownOffsetX(), STARTER_TOWN_WILDS_X1 + harthmereExtraTownOffsetX()],
     y: [32, 96],
-    z: [STARTER_TOWN_WILDS_Z0 + harthmereExtraTownOffsetZV1(), STARTER_TOWN_WILDS_Z1 + harthmereExtraTownOffsetZV1()],
+    z: [STARTER_TOWN_WILDS_Z0 + harthmereExtraTownOffsetZ(), STARTER_TOWN_WILDS_Z1 + harthmereExtraTownOffsetZ()],
   });
 }
 
@@ -6661,7 +6661,7 @@ async function start({
   if (!shimWorldService) {
     await seedLocalDevTerrainIfMissing(undefined, worldApi);
   }
-  await repairKnownSnapshotNpcGroundingV145(worldApi);
+  await repairKnownSnapshotNpcGrounding(worldApi);
 
   // Expose all shim services.
   rpcServer.install(zShimNotifierService, notifierService);

@@ -3,15 +3,15 @@
 import assert from "assert";
 import * as React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { harthmereMuckCreatureAssetKeyForLabelV1 } from "@/shared/harthmere/muck_creature_assets_v1";
+import { harthmereMuckCreatureAssetKeyForLabel } from "@/shared/harthmere/muck_creature_assets";
 import {
-  createHarthmereLiveEntityCombatSnapshotsFromEcsRecordsV1,
-} from "@/shared/harthmere/live_entity_ecs_bridge_v1";
+  createHarthmereLiveEntityCombatSnapshotsFromEcsRecords,
+} from "@/shared/harthmere/live_entity_ecs_bridge";
 import {
-  HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_SEEDS_V1,
-  HARTHMERE_LIVE_ENTITY_ROBOT_SENTINEL_SEEDS_V1,
-} from "@/shared/harthmere/live_entity_production_seed_v1";
-import { robotTalkDialogSectionsWithLiveEntityHelperV1 } from "@/client/components/modals/robot/liveEntityRobotDialogPresentationV1";
+  HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_SEEDS,
+  HARTHMERE_LIVE_ENTITY_ROBOT_SENTINEL_SEEDS,
+} from "@/shared/harthmere/live_entity_production_seed";
+import { robotTalkDialogSectionsWithLiveEntityHelper } from "@/client/components/modals/robot/liveEntityRobotDialogPresentation";
 
 const FORBIDDEN_VISIBLE_COPY = [
   "npc_metadata",
@@ -88,20 +88,20 @@ function LiveEntityAISurfaceAuditPanel({
 
 describe("live entity AI frontend and SSR surfaces", () => {
   it("SSR-renders representative live entity families with player-facing copy and creature asset hooks", () => {
-    const muckSeed = HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_SEEDS_V1.find(
+    const muckSeed = HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_SEEDS.find(
       (seed) => seed.displayName.includes("Road Muckwad")
     );
-    const hexSeed = HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_SEEDS_V1.find(
+    const hexSeed = HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_SEEDS.find(
       (seed) => seed.displayName.includes("Gravewood Pale Hexer")
     );
     assert.ok(muckSeed);
     assert.ok(hexSeed);
     const muck = muckSeed;
     const hex = hexSeed;
-    const robotSeed = HARTHMERE_LIVE_ENTITY_ROBOT_SENTINEL_SEEDS_V1[0];
+    const robotSeed = HARTHMERE_LIVE_ENTITY_ROBOT_SENTINEL_SEEDS[0];
     assert.ok(robotSeed);
 
-    const snapshots = createHarthmereLiveEntityCombatSnapshotsFromEcsRecordsV1({
+    const snapshots = createHarthmereLiveEntityCombatSnapshotsFromEcsRecords({
       billy: {
         npc_metadata: { type_id: 1, spawn_position: [500, 53, -120] },
         position: { v: [500, 53, -120] },
@@ -153,13 +153,13 @@ describe("live entity AI frontend and SSR surfaces", () => {
             id: "muckwad",
             label: muck.displayName,
             kind: snapshots.muckwad.entityKind ?? "npc",
-            assetKey: harthmereMuckCreatureAssetKeyForLabelV1(muck.displayName),
+            assetKey: harthmereMuckCreatureAssetKeyForLabel(muck.displayName),
           },
           {
             id: "hexer",
             label: hex.displayName,
             kind: snapshots.hexer.entityKind ?? "npc",
-            assetKey: harthmereMuckCreatureAssetKeyForLabelV1(hex.displayName),
+            assetKey: harthmereMuckCreatureAssetKeyForLabel(hex.displayName),
           },
           {
             id: "robot",
@@ -194,7 +194,7 @@ describe("live entity AI frontend and SSR surfaces", () => {
   });
 
   it("keeps robot helper dialogue ahead of normal transmissions without leaking server internals", () => {
-    const sections = robotTalkDialogSectionsWithLiveEntityHelperV1({
+    const sections = robotTalkDialogSectionsWithLiveEntityHelper({
       transmissionText: "No transmissions",
       transmissionActions: [],
       liveEntityHelperDialog: {

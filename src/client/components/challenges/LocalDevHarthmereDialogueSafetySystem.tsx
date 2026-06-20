@@ -1,10 +1,10 @@
 
 import React, { useEffect, useState } from "react";
 
-export const HARTHMERE_DIALOGUE_SAFETY_VERSION = "harthmere-dialogue-edge-safety-v1";
+export const HARTHMERE_DIALOGUE_SAFETY_VERSION = "harthmere-dialogue-edge-safety";
 // dialogue choice idempotency: processedChoiceRequestIds prevents duplicate choice effects.
 // no repeated greeting variation: chooseHarthmereGreetingVariation avoids repeating identical lines back-to-back.
-export const HARTHMERE_DIALOGUE_SAFETY_STORAGE_KEY = "biomes.localDev.harthmere.dialogueSafety.v1";
+export const HARTHMERE_DIALOGUE_SAFETY_STORAGE_KEY = "biomes.localDev.harthmere.dialogueSafety";
 
 export type HarthmereDialogueSession = {
   requestId: string;
@@ -151,5 +151,5 @@ export const HarthmereDialogueSafetyPanel: React.FunctionComponent<{}> = () => {
     window.addEventListener("biomes:harthmere-dialogue-safety", on);
     return () => window.removeEventListener("biomes:harthmere-dialogue-safety", on);
   }, []);
-  return <div className="space-y-2 rounded-xl border border-white/10 bg-white/5 p-3 text-xs" data-harthmere-dialogue-safety="v1"><div className="text-sm font-bold text-violet-100">Dialogue Safety</div><div>Active: {state.active?.requestId ?? "none"}</div><div>Transcript lines: {state.transcript.length}</div><div>Journal summaries: {state.journalSummaries.length}</div><div>Interrupts: {state.interrupts.length}</div></div>;
+  return <div className="space-y-2 rounded-xl border border-white/10 bg-white/5 p-3 text-xs" data-harthmere-dialogue-safety="current"><div className="text-sm font-bold text-violet-100">Dialogue Safety</div><div>Active: {state.active?.requestId ?? "none"}</div><div>Transcript lines: {state.transcript.length}</div><div>Journal summaries: {state.journalSummaries.length}</div><div>Interrupts: {state.interrupts.length}</div></div>;
 };

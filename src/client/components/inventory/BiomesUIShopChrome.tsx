@@ -2,8 +2,8 @@ import { maybeUseExistingMiniPhoneContext } from "@/client/components/system/min
 import { usePointerLockManager } from "@/client/components/contexts/PointerLockContext";
 import { installBiomesUITheme } from "@/client/components/biomes_ui/theme/biomesUITheme";
 import {
-  clampBiomesUIShopAmountV1,
-  nextBiomesUIShopAmountV1,
+  clampBiomesUIShopAmount,
+  nextBiomesUIShopAmount,
 } from "@/client/components/inventory/shopBiomesUIModel";
 import type { PropsWithChildren, ReactNode } from "react";
 import React, { useEffect, useRef } from "react";
@@ -20,27 +20,27 @@ function isTypingInInput() {
   return tag === "input" || tag === "textarea" || active.isContentEditable;
 }
 
-export interface BiomesUIShopPointerLockLikeV1 {
+export interface BiomesUIShopPointerLockLike {
   isLocked(): boolean;
   unlock(): void;
   focusAndLock(): void;
 }
 
-export interface BiomesUIShopPointerLockReturnRefV1 {
+export interface BiomesUIShopPointerLockReturnRef {
   current: boolean;
 }
 
-export function openBiomesUIShopPointerLockV1(
-  pointerLockManager: BiomesUIShopPointerLockLikeV1,
-  shouldReturnPointerLockRef: BiomesUIShopPointerLockReturnRefV1
+export function openBiomesUIShopPointerLock(
+  pointerLockManager: BiomesUIShopPointerLockLike,
+  shouldReturnPointerLockRef: BiomesUIShopPointerLockReturnRef
 ) {
   shouldReturnPointerLockRef.current = pointerLockManager.isLocked();
   pointerLockManager.unlock();
 }
 
-export function closeBiomesUIShopPointerLockV1(
-  pointerLockManager: BiomesUIShopPointerLockLikeV1,
-  shouldReturnPointerLockRef: BiomesUIShopPointerLockReturnRefV1
+export function closeBiomesUIShopPointerLock(
+  pointerLockManager: BiomesUIShopPointerLockLike,
+  shouldReturnPointerLockRef: BiomesUIShopPointerLockReturnRef
 ) {
   if (!shouldReturnPointerLockRef.current) {
     return;
@@ -67,12 +67,12 @@ export const BiomesUIShopChrome: React.FunctionComponent<
   useEffect(() => installBiomesUITheme(), []);
 
   useEffect(() => {
-    openBiomesUIShopPointerLockV1(
+    openBiomesUIShopPointerLock(
       pointerLockManager,
       shouldReturnPointerLockRef
     );
     return () =>
-      closeBiomesUIShopPointerLockV1(
+      closeBiomesUIShopPointerLock(
         pointerLockManager,
         shouldReturnPointerLockRef
       );
@@ -176,9 +176,9 @@ export const BiomesUIShopAmountStepper: React.FunctionComponent<{
   largeStep = 10,
   disabled,
 }) => {
-  const safeValue = clampBiomesUIShopAmountV1(value, min, max);
+  const safeValue = clampBiomesUIShopAmount(value, min, max);
   const changeBy = (delta: number) => {
-    onChange(nextBiomesUIShopAmountV1(safeValue, delta, min, max));
+    onChange(nextBiomesUIShopAmount(safeValue, delta, min, max));
   };
 
   return (

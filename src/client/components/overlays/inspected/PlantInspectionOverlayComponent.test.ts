@@ -1,15 +1,15 @@
 import { CURSOR_INSPECTION_SHORTCUT_KEYS_FOR_TEST } from "@/client/components/overlays/inspected/inspectionShortcutKeys";
 import {
-  plantInspectionCanHarvestV1,
+  plantInspectionCanHarvest,
   plantInspectionShortcutTitlesForTest,
 } from "@/client/components/overlays/inspected/plantInspectionShortcuts";
 import assert from "assert";
 
 describe("PlantInspectionOverlayComponent harvest shortcut", () => {
   it("shows harvest only for fully grown non-tree plants", () => {
-    assert.equal(plantInspectionCanHarvestV1("fully_grown", "plant"), true);
-    assert.equal(plantInspectionCanHarvestV1("fully_grown", "tree"), false);
-    assert.equal(plantInspectionCanHarvestV1("growing", "plant"), false);
+    assert.equal(plantInspectionCanHarvest("fully_grown", "plant"), true);
+    assert.equal(plantInspectionCanHarvest("fully_grown", "tree"), false);
+    assert.equal(plantInspectionCanHarvest("growing", "plant"), false);
   });
 
   it("puts harvest on the F shortcut before admin destroy", () => {

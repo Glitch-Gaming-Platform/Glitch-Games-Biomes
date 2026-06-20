@@ -1,9 +1,9 @@
-import { fetchHarthmereLiveWithTimeoutV1 } from "@/client/components/harthmere_live_fetch";
+import { fetchHarthmereLiveWithTimeout } from "@/client/components/harthmere_live_fetch";
 
-export const HARTHMERE_DAILY_TASK_COMPLETED_EVENT_V1 =
-  "biomes:harthmere-daily-task-completed-v1" as const;
+export const HARTHMERE_DAILY_TASK_COMPLETED_EVENT =
+  "biomes:harthmere-daily-task-completed" as const;
 
-export type HarthmereDailyTaskActivityIdV1 =
+export type HarthmereDailyTaskActivityId =
   | "check_in"
   | "jobs_board"
   | "eat_meal"
@@ -13,28 +13,28 @@ export type HarthmereDailyTaskActivityIdV1 =
   | "garden_care"
   | "home_care";
 
-const inFlightDailyTaskCompletionsV1 = new Set<string>();
+const inFlightDailyTaskCompletions = new Set<string>();
 
-function dispatchHarthmereDailyTaskCompletedEventV1(
-  activityId: HarthmereDailyTaskActivityIdV1,
+function dispatchHarthmereDailyTaskCompletedEvent(
+  activityId: HarthmereDailyTaskActivityId,
   body?: unknown
 ) {
   if (typeof window === "undefined") return;
   window.dispatchEvent(
-    new CustomEvent(HARTHMERE_DAILY_TASK_COMPLETED_EVENT_V1, {
+    new CustomEvent(HARTHMERE_DAILY_TASK_COMPLETED_EVENT, {
       detail: { activityId, body },
     })
   );
 }
 
-export async function completeHarthmereDailyTaskV1(
-  activityId: HarthmereDailyTaskActivityIdV1,
+export async function completeHarthmereDailyTask(
+  activityId: HarthmereDailyTaskActivityId,
   options: { fetchImpl?: typeof fetch; requestId?: string } = {}
 ) {
-  if (inFlightDailyTaskCompletionsV1.has(activityId)) {
+  if (inFlightDailyTaskCompletions.has(activityId)) {
     return undefined;
   }
-  inFlightDailyTaskCompletionsV1.add(activityId);
+  inFlightDailyTaskCompletions.add(activityId);
   try {
     const fetchImpl = options.fetchImpl ?? fetch;
     const requestId =
@@ -42,7 +42,7 @@ export async function completeHarthmereDailyTaskV1(
       `harthmere_daily_${activityId}_${Date.now()}_${Math.random()
         .toString(36)
         .slice(2)}`;
-    const response = await fetchHarthmereLiveWithTimeoutV1(
+    const response = await fetchHarthmereLiveWithTimeout(
       fetchImpl,
       "/api/harthmere/live_mode",
       {
@@ -72,15 +72,15 @@ export async function completeHarthmereDailyTaskV1(
           `daily_task_completion_failed:${activityId}`
       );
     }
-    dispatchHarthmereDailyTaskCompletedEventV1(activityId, body);
+    dispatchHarthmereDailyTaskCompletedEvent(activityId, body);
     return body;
   } finally {
-    inFlightDailyTaskCompletionsV1.delete(activityId);
+    inFlightDailyTaskCompletions.delete(activityId);
   }
 }
 
-export function completeHarthmereDailyTaskSoonV1(
-  activityId: HarthmereDailyTaskActivityIdV1
+export function completeHarthmereDailyTaskSoon(
+  activityId: HarthmereDailyTaskActivityId
 ) {
-  void completeHarthmereDailyTaskV1(activityId).catch(() => {});
+  void completeHarthmereDailyTask(activityId).catch(() => {});
 }

@@ -1,30 +1,30 @@
 import {
-  HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1,
-  normalizeHarthmereJobsBoardSnapshotV1,
-  type HarthmereJobsBoardSnapshotV1,
-  type HarthmereJobsBoardTodoV1,
+  HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID,
+  normalizeHarthmereJobsBoardSnapshot,
+  type HarthmereJobsBoardSnapshot,
+  type HarthmereJobsBoardTodo,
 } from "../../harthmere_jobs_board/jobsBoardLiveAdapter";
 import {
-  harthmereJobsBoardQuestMarkerRuntimePositionForIdV1,
-  harthmereJobsBoardQuestMarkerRuntimePositionForTodoV1,
-} from "@/shared/harthmere/jobs_board_quest_marker_positions_v1";
-import { harthmereJobToolSourceGuidanceV151 } from "@/shared/harthmere/harthmere_job_objective_v151";
-import { formatHarthmereJobTimeRemainingV151 } from "@/shared/harthmere/mmo_jobs_board_authority_v1";
+  harthmereJobsBoardQuestMarkerRuntimePositionForId,
+  harthmereJobsBoardQuestMarkerRuntimePositionForTodo,
+} from "@/shared/harthmere/jobs_board_quest_marker_positions";
+import { harthmereJobToolSourceGuidance } from "@/shared/harthmere/harthmere_job_objective";
+import { formatHarthmereJobTimeRemaining } from "@/shared/harthmere/mmo_jobs_board_authority";
 import type { Vec3 } from "@/shared/math/types";
 import type { MapTrackableQuest } from "../tabs/MapQuestsTab";
 
-// HARTHMERE_JOB_TOOL_OWNED_FOR_MAP_V151: whether the player OWNS the repair /
+// HARTHMERE_JOB_TOOL_OWNED_FOR_MAP: whether the player OWNS the repair /
 // cleanup tools (backpack or equipped), passed in by the map surfaces. A job that
 // needs a tool the player does NOT own points them at the business that sells it;
 // once owned, the buy pin drops and the marker returns to the job.
-export interface BiomesUIJobsBoardToolOwnedStateV1 {
+export interface BiomesUIJobsBoardToolOwnedState {
   repairToolOwned?: boolean;
   cleanupToolOwned?: boolean;
 }
 
-function toolOwnedForActionV1(
+function toolOwnedForAction(
   action: string,
-  toolOwned: BiomesUIJobsBoardToolOwnedStateV1
+  toolOwned: BiomesUIJobsBoardToolOwnedState
 ): boolean | undefined {
   if (action === "repair") {
     return toolOwned.repairToolOwned;
@@ -35,16 +35,16 @@ function toolOwnedForActionV1(
   return undefined;
 }
 
-export const BIOMES_UI_JOBS_BOARD_ACCEPTED_JOB_MARKER_SOURCE_V1 =
+export const BIOMES_UI_JOBS_BOARD_ACCEPTED_JOB_MARKER_SOURCE =
   "jobs_board_accepted_job" as const;
 
-export const BIOMES_UI_JOBS_BOARD_TOOL_SOURCE_MARKER_SOURCE_V1 =
+export const BIOMES_UI_JOBS_BOARD_TOOL_SOURCE_MARKER_SOURCE =
   "jobs_board_tool_source" as const;
 
-export const JOBS_BOARD_TOOL_SOURCE_MARKER_ID_PREFIX_V1 =
+export const JOBS_BOARD_TOOL_SOURCE_MARKER_ID_PREFIX =
   "jobs_board_tool_source:";
 
-export interface BiomesUIJobsBoardAcceptedJobLandmarkV1 {
+export interface BiomesUIJobsBoardAcceptedJobLandmark {
   id: string;
   label: string;
   position: Vec3;
@@ -55,27 +55,27 @@ export interface BiomesUIJobsBoardAcceptedJobLandmarkV1 {
   active: true;
   description: string;
   source:
-    | typeof BIOMES_UI_JOBS_BOARD_ACCEPTED_JOB_MARKER_SOURCE_V1
-    | typeof BIOMES_UI_JOBS_BOARD_TOOL_SOURCE_MARKER_SOURCE_V1;
+    | typeof BIOMES_UI_JOBS_BOARD_ACCEPTED_JOB_MARKER_SOURCE
+    | typeof BIOMES_UI_JOBS_BOARD_TOOL_SOURCE_MARKER_SOURCE;
   jobsBoardTodoId: string;
   jobsBoardJobId: string;
   mapMarkerId: string;
   targetId?: string;
 }
 
-export interface BiomesUIJobsBoardMissionStepV1 {
+export interface BiomesUIJobsBoardMissionStep {
   id: string;
   title: string;
   objective: string;
   done: boolean;
 }
 
-// HARTHMERE_JOBS_BOARD_KIND_LABEL_V1:
+// HARTHMERE_JOBS_BOARD_KIND_LABEL:
 // Human-facing label per job kind so an accepted job reads as the work it
 // actually is (a repair shows "Repair", a hunt shows "Hunt") instead of a
 // generic "Accepted job N". This is the fix for the reported bug where a fence
 // repair appeared indistinguishable from — and was eclipsed by — a kill quest.
-const JOBS_BOARD_KIND_LABEL_V1: Record<string, string> = {
+const JOBS_BOARD_KIND_LABEL: Record<string, string> = {
   gather: "Gather",
   delivery: "Delivery",
   repair: "Repair",
@@ -90,73 +90,73 @@ const JOBS_BOARD_KIND_LABEL_V1: Record<string, string> = {
   service: "Service",
 };
 
-export function jobsBoardKindLabelV1(kind: string | undefined): string {
+export function jobsBoardKindLabel(kind: string | undefined): string {
   if (!kind) return "Job";
-  return JOBS_BOARD_KIND_LABEL_V1[kind] ?? "Job";
+  return JOBS_BOARD_KIND_LABEL[kind] ?? "Job";
 }
 
-const JOBS_BOARD_FALLBACK_POSITION_V1: Vec3 = [
+const JOBS_BOARD_FALLBACK_POSITION: Vec3 = [
   501.99486179104775,
   71,
   -132.00350672753194,
 ];
 
-function normalizeJobsBoardSnapshotForBiomesUIV1(
+function normalizeJobsBoardSnapshotForBiomesUI(
   raw: unknown
-): HarthmereJobsBoardSnapshotV1 | undefined {
+): HarthmereJobsBoardSnapshot | undefined {
   if (!raw || typeof raw !== "object") return undefined;
-  return normalizeHarthmereJobsBoardSnapshotV1(raw);
+  return normalizeHarthmereJobsBoardSnapshot(raw);
 }
 
-export const JOBS_BOARD_MARKER_ID_PREFIX_V1 = "jobs_board_marker:";
+export const JOBS_BOARD_MARKER_ID_PREFIX = "jobs_board_marker:";
 
-function jobsBoardTodoMarkerIdV1(todo: HarthmereJobsBoardTodoV1) {
-  return `${JOBS_BOARD_MARKER_ID_PREFIX_V1}${todo.todoId}`;
+function jobsBoardTodoMarkerId(todo: HarthmereJobsBoardTodo) {
+  return `${JOBS_BOARD_MARKER_ID_PREFIX}${todo.todoId}`;
 }
 
-// HARTHMERE_STALE_JOBS_BOARD_PIN_V151:
+// HARTHMERE_STALE_JOBS_BOARD_PIN:
 // A jobs-board active map pin must be dropped once its job is no longer active
 // (completed or abandoned). Otherwise it keeps driving the HUD aid — and, with
 // the world-beacon active-pin override, would keep suppressing other quest
 // beacons — pointing the player at a job they already finished. Only clears a
 // jobs-board pin (never a user-set vendor/property pin), and only against the
 // list of CURRENTLY-active jobs-board marker ids.
-export function shouldClearStaleJobsBoardPinV151(input: {
+export function shouldClearStaleJobsBoardPin(input: {
   activePinMarkerId: string | undefined;
   activeJobsBoardMarkerIds: readonly string[];
 }): boolean {
   const id = input.activePinMarkerId;
-  if (!id || !id.startsWith(JOBS_BOARD_MARKER_ID_PREFIX_V1)) {
+  if (!id || !id.startsWith(JOBS_BOARD_MARKER_ID_PREFIX)) {
     return false;
   }
   return !input.activeJobsBoardMarkerIds.includes(id);
 }
 
-function jobsBoardTodoQuestIdV1(todo: HarthmereJobsBoardTodoV1) {
+function jobsBoardTodoQuestId(todo: HarthmereJobsBoardTodo) {
   return `jobs_board:${todo.todoId}`;
 }
 
-function jobsBoardTodoFallbackPositionV1(
-  snapshot: HarthmereJobsBoardSnapshotV1,
-  todo: HarthmereJobsBoardTodoV1
+function jobsBoardTodoFallbackPosition(
+  snapshot: HarthmereJobsBoardSnapshot,
+  todo: HarthmereJobsBoardTodo
 ): Vec3 {
   const board =
     snapshot.boards[todo.boardId] ??
     snapshot.boards[snapshot.defaultBoardId] ??
-    snapshot.boards[HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1];
+    snapshot.boards[HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID];
   const location = board?.location;
   const x = Number(location?.x);
   const y = Number(location?.y);
   const z = Number(location?.z);
   if (!Number.isFinite(x) || !Number.isFinite(z)) {
-    return [...JOBS_BOARD_FALLBACK_POSITION_V1] as Vec3;
+    return [...JOBS_BOARD_FALLBACK_POSITION] as Vec3;
   }
-  return [x, Number.isFinite(y) ? y + 1 : JOBS_BOARD_FALLBACK_POSITION_V1[1], z];
+  return [x, Number.isFinite(y) ? y + 1 : JOBS_BOARD_FALLBACK_POSITION[1], z];
 }
 
-function jobsBoardTodoAreaV1(
-  snapshot: HarthmereJobsBoardSnapshotV1,
-  todo: HarthmereJobsBoardTodoV1
+function jobsBoardTodoArea(
+  snapshot: HarthmereJobsBoardSnapshot,
+  todo: HarthmereJobsBoardTodo
 ) {
   return (
     snapshot.boards[todo.boardId]?.location?.district ??
@@ -165,8 +165,8 @@ function jobsBoardTodoAreaV1(
   );
 }
 
-function jobsBoardTodoStatusToTrackableStatusV1(
-  status: HarthmereJobsBoardTodoV1["status"]
+function jobsBoardTodoStatusToTrackableStatus(
+  status: HarthmereJobsBoardTodo["status"]
 ): MapTrackableQuest["status"] | undefined {
   if (status === "active") return "active";
   if (status === "completed") return "completed";
@@ -176,10 +176,10 @@ function jobsBoardTodoStatusToTrackableStatusV1(
   return undefined;
 }
 
-export function jobsBoardAcceptedJobLandmarksForBiomesUIV1(
+export function jobsBoardAcceptedJobLandmarksForBiomesUI(
   raw: unknown
-): BiomesUIJobsBoardAcceptedJobLandmarkV1[] {
-  const snapshot = normalizeJobsBoardSnapshotForBiomesUIV1(raw);
+): BiomesUIJobsBoardAcceptedJobLandmark[] {
+  const snapshot = normalizeJobsBoardSnapshotForBiomesUI(raw);
   if (!snapshot) return [];
   const jobsById = new Map(
     snapshot.myAcceptedJobs.map((job) => [job.jobId, job])
@@ -192,18 +192,18 @@ export function jobsBoardAcceptedJobLandmarksForBiomesUIV1(
     }
     seenTodoIds.add(todo.todoId);
     const job = jobsById.get(todo.jobId);
-    const marker = harthmereJobsBoardQuestMarkerRuntimePositionForTodoV1({
+    const marker = harthmereJobsBoardQuestMarkerRuntimePositionForTodo({
       mapMarkerId: todo.mapMarkerId ?? job?.mapMarkerId,
       targetId: todo.targetId ?? job?.targetId,
-      fallbackPosition: jobsBoardTodoFallbackPositionV1(snapshot, todo),
+      fallbackPosition: jobsBoardTodoFallbackPosition(snapshot, todo),
     });
     return [
       {
-        id: jobsBoardTodoMarkerIdV1(todo),
+        id: jobsBoardTodoMarkerId(todo),
         label: todo.title || job?.title || "Accepted Job",
         position: marker.position,
         kind: "objective" as const,
-        area: jobsBoardTodoAreaV1(snapshot, todo),
+        area: jobsBoardTodoArea(snapshot, todo),
         visibleOnWorldMap: true as const,
         visibleOnHudMap: true as const,
         active: true as const,
@@ -211,7 +211,7 @@ export function jobsBoardAcceptedJobLandmarksForBiomesUIV1(
           todo.todoText ||
           job?.description ||
           "Follow the job marker and complete the accepted board job.",
-        source: BIOMES_UI_JOBS_BOARD_ACCEPTED_JOB_MARKER_SOURCE_V1,
+        source: BIOMES_UI_JOBS_BOARD_ACCEPTED_JOB_MARKER_SOURCE,
         jobsBoardTodoId: todo.todoId,
         jobsBoardJobId: todo.jobId,
         mapMarkerId: marker.markerId,
@@ -221,18 +221,18 @@ export function jobsBoardAcceptedJobLandmarksForBiomesUIV1(
   });
 }
 
-// HARTHMERE_JOB_TOOL_SOURCE_LANDMARK_V151:
+// HARTHMERE_JOB_TOOL_SOURCE_LANDMARK:
 // For every ACTIVE accepted job that needs a tool the player doesn't have
 // equipped (repair / cleanup), emit a vendor landmark pointing at the shop that
 // sells that tool. This is what makes "the quest tells you WHERE to get the tool"
 // show up as a pin on every map surface that renders accepted-job landmarks
 // (BiomesUI world map, BiomesUI HUD minimap). The vendor is a real on-map business
 // owner, so its position resolves through the shared marker registry.
-export function jobsBoardToolSourceLandmarksForBiomesUIV1(
+export function jobsBoardToolSourceLandmarksForBiomesUI(
   raw: unknown,
-  toolOwned: BiomesUIJobsBoardToolOwnedStateV1 = {}
-): BiomesUIJobsBoardAcceptedJobLandmarkV1[] {
-  const snapshot = normalizeJobsBoardSnapshotForBiomesUIV1(raw);
+  toolOwned: BiomesUIJobsBoardToolOwnedState = {}
+): BiomesUIJobsBoardAcceptedJobLandmark[] {
+  const snapshot = normalizeJobsBoardSnapshotForBiomesUI(raw);
   if (!snapshot) return [];
   const seenTodoIds = new Set<string>();
 
@@ -247,21 +247,21 @@ export function jobsBoardToolSourceLandmarksForBiomesUIV1(
     // Only guide to the shop when we KNOW the player does NOT own the tool, so a
     // player who already has it never sees a spurious "buy it" pin (they're sent
     // to the job instead).
-    if (toolOwnedForActionV1(action, toolOwned) !== false) {
+    if (toolOwnedForAction(action, toolOwned) !== false) {
       return [];
     }
-    const guidance = harthmereJobToolSourceGuidanceV151({
+    const guidance = harthmereJobToolSourceGuidance({
       kind: todo.kind,
       toolOwned: false,
     });
     if (!guidance) return [];
-    const vendor = harthmereJobsBoardQuestMarkerRuntimePositionForIdV1(
+    const vendor = harthmereJobsBoardQuestMarkerRuntimePositionForId(
       guidance.vendorMarkerId
     );
     if (!vendor) return [];
     return [
       {
-        id: `${JOBS_BOARD_TOOL_SOURCE_MARKER_ID_PREFIX_V1}${todo.todoId}`,
+        id: `${JOBS_BOARD_TOOL_SOURCE_MARKER_ID_PREFIX}${todo.todoId}`,
         label: `Buy ${guidance.toolName} — ${guidance.vendorName}`,
         position: [...vendor.position] as Vec3,
         kind: "objective" as const,
@@ -270,7 +270,7 @@ export function jobsBoardToolSourceLandmarksForBiomesUIV1(
         visibleOnHudMap: true as const,
         active: true as const,
         description: guidance.hint,
-        source: BIOMES_UI_JOBS_BOARD_TOOL_SOURCE_MARKER_SOURCE_V1,
+        source: BIOMES_UI_JOBS_BOARD_TOOL_SOURCE_MARKER_SOURCE,
         jobsBoardTodoId: todo.todoId,
         jobsBoardJobId: todo.jobId,
         mapMarkerId: guidance.vendorMarkerId,
@@ -280,12 +280,12 @@ export function jobsBoardToolSourceLandmarksForBiomesUIV1(
   });
 }
 
-export function jobsBoardTrackableQuestsForBiomesUIV1(
+export function jobsBoardTrackableQuestsForBiomesUI(
   raw: unknown,
   nowMs: number = Date.now(),
-  toolOwned: BiomesUIJobsBoardToolOwnedStateV1 = {}
+  toolOwned: BiomesUIJobsBoardToolOwnedState = {}
 ): MapTrackableQuest[] {
-  const snapshot = normalizeJobsBoardSnapshotForBiomesUIV1(raw);
+  const snapshot = normalizeJobsBoardSnapshotForBiomesUI(raw);
   if (!snapshot) return [];
   const jobsById = new Map(
     snapshot.myAcceptedJobs.map((job) => [job.jobId, job])
@@ -293,7 +293,7 @@ export function jobsBoardTrackableQuestsForBiomesUIV1(
   const seenTodoIds = new Set<string>();
 
   return snapshot.myTodos.flatMap((todo) => {
-    const status = jobsBoardTodoStatusToTrackableStatusV1(todo.status);
+    const status = jobsBoardTodoStatusToTrackableStatus(todo.status);
     if (!status || seenTodoIds.has(todo.todoId)) return [];
     seenTodoIds.add(todo.todoId);
     const job = jobsById.get(todo.jobId);
@@ -306,9 +306,9 @@ export function jobsBoardTrackableQuestsForBiomesUIV1(
     // callout only shows for an active job whose tool the player does NOT own.
     const guidance =
       status === "active"
-        ? harthmereJobToolSourceGuidanceV151({
+        ? harthmereJobToolSourceGuidance({
             kind: todo.kind,
-            toolOwned: toolOwnedForActionV1(
+            toolOwned: toolOwnedForAction(
               todo.kind === "repair"
                 ? "repair"
                 : todo.kind === "cleanup"
@@ -320,12 +320,12 @@ export function jobsBoardTrackableQuestsForBiomesUIV1(
         : undefined;
     return [
       {
-        questId: jobsBoardTodoQuestIdV1(todo),
+        questId: jobsBoardTodoQuestId(todo),
         title: todo.title || job?.title || "Accepted Job",
-        area: jobsBoardTodoAreaV1(snapshot, todo),
+        area: jobsBoardTodoArea(snapshot, todo),
         status,
         firstMarkerId:
-          status === "active" ? jobsBoardTodoMarkerIdV1(todo) : undefined,
+          status === "active" ? jobsBoardTodoMarkerId(todo) : undefined,
         reward:
           Number.isFinite(rewardGold) && rewardGold > 0
             ? `${Math.trunc(rewardGold)} gold`
@@ -333,10 +333,10 @@ export function jobsBoardTrackableQuestsForBiomesUIV1(
         // The job's accept-window countdown (jobs are timed; quests are not).
         timeRemaining:
           status === "active"
-            ? formatHarthmereJobTimeRemainingV151(todo.dueAtMs, nowMs)
+            ? formatHarthmereJobTimeRemaining(todo.dueAtMs, nowMs)
             : undefined,
         kind: todo.kind,
-        kindLabel: jobsBoardKindLabelV1(todo.kind),
+        kindLabel: jobsBoardKindLabel(todo.kind),
         objective,
         objectives: [objective],
         description: job?.description || undefined,
@@ -354,11 +354,11 @@ export function jobsBoardTrackableQuestsForBiomesUIV1(
   });
 }
 
-export function activeJobsBoardMissionStepsForBiomesUIV1(
+export function activeJobsBoardMissionStepsForBiomesUI(
   raw: unknown,
   nowMs: number = Date.now()
-): BiomesUIJobsBoardMissionStepV1[] {
-  const snapshot = normalizeJobsBoardSnapshotForBiomesUIV1(raw);
+): BiomesUIJobsBoardMissionStep[] {
+  const snapshot = normalizeJobsBoardSnapshotForBiomesUI(raw);
   if (!snapshot) return [];
   return snapshot.myTodos
     .filter((todo) => todo.status === "active")
@@ -366,11 +366,11 @@ export function activeJobsBoardMissionStepsForBiomesUIV1(
       const baseObjective =
         todo.todoText ||
         `Complete accepted board job: ${todo.title || todo.jobId}`;
-      const kindLabel = jobsBoardKindLabelV1(todo.kind);
+      const kindLabel = jobsBoardKindLabel(todo.kind);
       // Show the accept-window countdown on the quest entry (jobs are timed).
-      const timeLabel = formatHarthmereJobTimeRemainingV151(todo.dueAtMs, nowMs);
+      const timeLabel = formatHarthmereJobTimeRemaining(todo.dueAtMs, nowMs);
       return {
-        id: jobsBoardTodoQuestIdV1(todo),
+        id: jobsBoardTodoQuestId(todo),
         // Show the real job title (e.g. "Patch the Safe-Zone Fence") instead of
         // a generic "Accepted job N", and prefix the objective with the job kind
         // so the player can tell a repair from a hunt at a glance.
@@ -383,11 +383,11 @@ export function activeJobsBoardMissionStepsForBiomesUIV1(
     });
 }
 
-export function firstActiveJobsBoardQuestTitleForBiomesUIV1(raw: unknown) {
-  const snapshot = normalizeJobsBoardSnapshotForBiomesUIV1(raw);
+export function firstActiveJobsBoardQuestTitleForBiomesUI(raw: unknown) {
+  const snapshot = normalizeJobsBoardSnapshotForBiomesUI(raw);
   return snapshot?.myTodos.find((todo) => todo.status === "active")?.title;
 }
 
-export function firstActiveJobsBoardLandmarkForBiomesUIV1(raw: unknown) {
-  return jobsBoardAcceptedJobLandmarksForBiomesUIV1(raw)[0];
+export function firstActiveJobsBoardLandmarkForBiomesUI(raw: unknown) {
+  return jobsBoardAcceptedJobLandmarksForBiomesUI(raw)[0];
 }

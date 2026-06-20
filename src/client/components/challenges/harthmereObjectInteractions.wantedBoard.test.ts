@@ -1,7 +1,7 @@
 import assert from "assert";
 import {
-  HARTHMERE_WANTED_BOARD_OPEN_EVENT_V1,
-  performHarthmereObjectInteractionV1,
+  HARTHMERE_WANTED_BOARD_OPEN_EVENT,
+  performHarthmereObjectInteraction,
 } from "./harthmereObjectInteractions";
 
 describe("harthmere object interactions wanted board dispatch", () => {
@@ -17,12 +17,12 @@ describe("harthmere object interactions wanted board dispatch", () => {
       json: async () => ({ ok: true }),
     });
     let detail: any;
-    windowTarget.addEventListener(HARTHMERE_WANTED_BOARD_OPEN_EVENT_V1, (event) => {
+    windowTarget.addEventListener(HARTHMERE_WANTED_BOARD_OPEN_EVENT, (event) => {
       detail = (event as CustomEvent).detail;
     });
 
     try {
-      performHarthmereObjectInteractionV1({
+      performHarthmereObjectInteraction({
         label: "Farming Wanted Board",
         entityId: "wanted_board_entity",
         interaction: {

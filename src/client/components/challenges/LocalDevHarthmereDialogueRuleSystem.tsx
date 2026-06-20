@@ -1,14 +1,14 @@
 import React from "react";
 
-export const HARTHMERE_DIALOGUE_RULE_SYSTEM_VERSION = "harthmere-dialogue-rule-system-v1";
+export const HARTHMERE_DIALOGUE_RULE_SYSTEM_VERSION = "harthmere-dialogue-rule-system";
 
 export const HARTHMERE_DIALOGUE_LOCAL_STORAGE_KEYS = {
-  sessions: "harthmere.dialogue.sessions.v1",
-  transcripts: "harthmere.dialogue.transcripts.v1",
-  memory: "harthmere.dialogue.memory.v1",
-  cooldowns: "harthmere.dialogue.cooldowns.v1",
-  idempotency: "harthmere.dialogue.idempotency.v1",
-  journalSummaries: "harthmere.dialogue.journalSummaries.v1",
+  sessions: "harthmere.dialogue.sessions",
+  transcripts: "harthmere.dialogue.transcripts",
+  memory: "harthmere.dialogue.memory",
+  cooldowns: "harthmere.dialogue.cooldowns",
+  idempotency: "harthmere.dialogue.idempotency",
+  journalSummaries: "harthmere.dialogue.journalSummaries",
 } as const;
 
 export type HarthmereDialogueChoiceType =

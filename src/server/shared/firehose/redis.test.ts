@@ -1,6 +1,6 @@
 import {
   RedisFirehoseSubscription,
-  isRedisNoGroupErrorV1,
+  isRedisNoGroupError,
 } from "@/server/shared/firehose/redis";
 import assert from "assert";
 
@@ -12,8 +12,8 @@ function noGroupError() {
 
 describe("RedisFirehose missing consumer group recovery", () => {
   it("recognizes Redis NOGROUP errors", () => {
-    assert.equal(isRedisNoGroupErrorV1(noGroupError()), true);
-    assert.equal(isRedisNoGroupErrorV1(new Error("BUSYGROUP")), false);
+    assert.equal(isRedisNoGroupError(noGroupError()), true);
+    assert.equal(isRedisNoGroupError(new Error("BUSYGROUP")), false);
   });
 
   it("recreates the group when live event reads lose the Redis stream group", async () => {

@@ -30,7 +30,7 @@ import type { GLTF } from "three/examples/jsm/loaders/GLTFLoader";
 const BIKKIE_PLACEABLES_TRANSFORM = makeYRotate(Math.PI);
 
 
-// GLITCH_SNAPSHOT_PLACEABLE_GALOIS_FALLBACK_V1:
+// GLITCH_SNAPSHOT_PLACEABLE_GALOIS_FALLBACK:
 // The 2026-05-16 snapshot bucket is the asset authority, but Glitch keeps newer
 // source/Bikkie definitions. Some Glitch-added placeables may still reference a
 // legacy galoisPath that is not present in the imported snapshot asset_versions
@@ -51,7 +51,7 @@ function makeMissingPlaceableGltf(item: Item, galoisPath: string): GLTF {
     scenes: [scene],
     animations: [],
     cameras: [],
-    asset: { version: "2.0", generator: "glitch-snapshot-placeable-galois-fallback-v1" },
+    asset: { version: "2.0", generator: "glitch-snapshot-placeable-galois-fallback" },
     parser: undefined,
     userData: { missingPlaceableGaloisPath: galoisPath, itemId: item.id },
   } as unknown as GLTF;

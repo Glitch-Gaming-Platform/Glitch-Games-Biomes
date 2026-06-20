@@ -3,13 +3,13 @@
 import assert from "assert";
 import fs from "fs";
 import path from "path";
-import { HARTHMERE_JOBS_BOARD_CSS_V141 } from "@/client/components/harthmere_jobs_board/HarthmereJobsBoardStylesV141";
+import { HARTHMERE_JOBS_BOARD_CSS } from "@/client/components/harthmere_jobs_board/HarthmereJobsBoardStyles";
 
 describe("harthmere gathering node world interaction styles", () => {
   const source = fs.readFileSync(
     path.join(
       process.cwd(),
-      "src/client/components/challenges/HarthmereGatheringNodeWorldInteractionV1.tsx"
+      "src/client/components/challenges/HarthmereGatheringNodeWorldInteraction.tsx"
     ),
     "utf8"
   );
@@ -21,12 +21,12 @@ describe("harthmere gathering node world interaction styles", () => {
     );
     assert.match(
       source,
-      /data-harthmere-gathering-node-world-prompt-v1="active"/
+      /data-harthmere-gathering-node-world-prompt="active"/
     );
     assert.match(source, /harthmere-gathering-node-prompt__key-group/);
     assert.match(source, /harthmere-gathering-node-prompt__verb/);
 
-    const gatherRule = HARTHMERE_JOBS_BOARD_CSS_V141.match(
+    const gatherRule = HARTHMERE_JOBS_BOARD_CSS.match(
       /\.harthmere-gathering-node-prompt\s*\{[^}]+\}/
     )?.[0];
     assert.ok(gatherRule, "expected gathering prompt rule to exist");
@@ -49,14 +49,14 @@ describe("harthmere gathering node world interaction styles", () => {
     );
     assert.match(source, /data-state=\{detailState\}/);
 
-    const detailRule = HARTHMERE_JOBS_BOARD_CSS_V141.match(
+    const detailRule = HARTHMERE_JOBS_BOARD_CSS.match(
       /\.harthmere-gathering-node-prompt__detail\s*\{[^}]+\}/
     )?.[0];
     assert.ok(detailRule, "expected detail pill base rule to exist");
     assert.match(detailRule, /border-radius:\s*6px;/);
     assert.match(detailRule, /text-transform:\s*none;/);
 
-    const requirementRule = HARTHMERE_JOBS_BOARD_CSS_V141.match(
+    const requirementRule = HARTHMERE_JOBS_BOARD_CSS.match(
       /\.harthmere-gathering-node-prompt__detail--requirement\s*\{[^}]+\}/
     )?.[0];
     assert.ok(requirementRule, "expected amber requirement rule to exist");
@@ -66,7 +66,7 @@ describe("harthmere gathering node world interaction styles", () => {
       /background:\s*rgba\(245,\s*158,\s*11,\s*0\.16\);/
     );
 
-    const errorRule = HARTHMERE_JOBS_BOARD_CSS_V141.match(
+    const errorRule = HARTHMERE_JOBS_BOARD_CSS.match(
       /\.harthmere-gathering-node-prompt__detail--error\s*\{[^}]+\}/
     )?.[0];
     assert.ok(errorRule, "expected red error rule to exist");

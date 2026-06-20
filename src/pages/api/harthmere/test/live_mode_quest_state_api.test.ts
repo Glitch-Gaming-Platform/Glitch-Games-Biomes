@@ -1,17 +1,17 @@
 import assert from "assert";
-import { readHarthmereLiveModeQuestStateForActorV1 } from "../live_mode_quest_state";
+import { readHarthmereLiveModeQuestStateForActor } from "../live_mode_quest_state";
 import {
-  defaultHarthmereLiveModeBackendStateV1,
-  harthmereLiveModePlayerStateKeyV1,
-  harthmereLiveModeSharedWorldStateKeyV1,
-} from "@/shared/harthmere/live_mode_backend_v1";
+  defaultHarthmereLiveModeBackendState,
+  harthmereLiveModePlayerStateKey,
+  harthmereLiveModeSharedWorldStateKey,
+} from "@/shared/harthmere/live_mode_backend";
 
 const ACTOR = "player_api_quest_001";
 const NOW_MS = 1_700_300_000_000;
 
 describe("live_mode_quest_state API route integration", () => {
   it("uses one Redis MGET for actor and shared quest state when available", async () => {
-    const backend = defaultHarthmereLiveModeBackendStateV1(ACTOR, NOW_MS);
+    const backend = defaultHarthmereLiveModeBackendState(ACTOR, NOW_MS);
     backend.quests.active["api-test-quest"] = {
       progress: 1,
     };
@@ -26,7 +26,7 @@ describe("live_mode_quest_state API route integration", () => {
         mget: async (...keys: string[]) => {
           mgetCalls.push(keys);
           return keys.map((key) =>
-            key === harthmereLiveModePlayerStateKeyV1(ACTOR)
+            key === harthmereLiveModePlayerStateKey(ACTOR)
               ? JSON.stringify(backend)
               : null
           );
@@ -34,15 +34,15 @@ describe("live_mode_quest_state API route integration", () => {
       },
     };
 
-    const snapshot = await readHarthmereLiveModeQuestStateForActorV1({
+    const snapshot = await readHarthmereLiveModeQuestStateForActor({
       redis,
       actorId: ACTOR,
       nowMs: NOW_MS,
     });
 
     assert.deepEqual(mgetCalls, [[
-      harthmereLiveModePlayerStateKeyV1(ACTOR),
-      harthmereLiveModeSharedWorldStateKeyV1(),
+      harthmereLiveModePlayerStateKey(ACTOR),
+      harthmereLiveModeSharedWorldStateKey(),
     ]]);
     assert.deepEqual(getCalls, []);
     assert.equal(snapshot.actorId, ACTOR);

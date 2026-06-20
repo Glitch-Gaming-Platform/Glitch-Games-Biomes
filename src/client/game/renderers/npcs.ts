@@ -4,7 +4,7 @@ import { nearestKEntitiesInFrustum } from "@/client/game/renderers/cull_entities
 import type { Renderer } from "@/client/game/renderers/renderer_controller";
 import type { Scenes } from "@/client/game/renderers/scenes";
 import { drawLimitValueWithTweak } from "@/client/game/resources/graphics_settings";
-import { harthmereEnsureRenderableNpcEntityV1 } from "@/client/game/resources/harthmere_npc_render_compat_v1";
+import { harthmereEnsureRenderableNpcEntity } from "@/client/game/resources/harthmere_npc_render_compat";
 import type { ClientResources } from "@/client/game/resources/types";
 import { NpcMetadataSelector } from "@/shared/ecs/gen/selectors";
 import { Cval } from "@/shared/util/cvals";
@@ -72,10 +72,10 @@ export const makeNpcsRenderer = (
         }
       }
       for (const rawEntity of entities) {
-        // HARTHMERE_NPC_RENDER_COMPONENT_COMPAT_V1: fill safe defaults for NPCs
+        // HARTHMERE_NPC_RENDER_COMPONENT_COMPAT: fill safe defaults for NPCs
         // missing combat components (health/size/orientation/rigid_body) so
         // they render a body instead of just a floating nameplate.
-        const entity = harthmereEnsureRenderableNpcEntityV1(rawEntity);
+        const entity = harthmereEnsureRenderableNpcEntity(rawEntity);
         if (!entity) {
           continue;
         }

@@ -2,7 +2,7 @@ import { biomesApiHandler } from "@/server/web/util/api_middleware";
 import { zBiomesId, type BiomesId } from "@/shared/ids";
 import { zVec3f } from "@/shared/math/types";
 import { z } from "zod";
-import { SNAPSHOT_GROVE_LANDMARKS_V75 } from "@/shared/harthmere/snapshot_grove_content_v75";
+import { SNAPSHOT_GROVE_LANDMARKS } from "@/shared/harthmere/snapshot_grove_content";
 
 export const zLandmark = z.object({
   id: zBiomesId,
@@ -17,12 +17,12 @@ export const zLandmarksResponse = zLandmark.array();
 
 export type LandmarksResponse = z.infer<typeof zLandmarksResponse>;
 
-export const SNAPSHOT_MISSION_WORLD_MAP_LANDMARKS_VERSION_V71 =
-  "snapshot-mission-world-map-landmarks-v71";
-export const SNAPSHOT_GROVE_WORLD_MAP_LANDMARKS_VERSION_V75 =
-  "snapshot-grove-world-map-landmarks-v75";
+export const SNAPSHOT_MISSION_WORLD_MAP_LANDMARKS_VERSION =
+  "snapshot-mission-world-map-landmarks";
+export const SNAPSHOT_GROVE_WORLD_MAP_LANDMARKS_VERSION =
+  "snapshot-grove-world-map-landmarks";
 
-const SNAPSHOT_MISSION_WORLD_MAP_LANDMARKS_V71: Landmark[] = [
+const SNAPSHOT_MISSION_WORLD_MAP_LANDMARKS: Landmark[] = [
   {
     id: 8997551883502310 as BiomesId,
     importance: 0,
@@ -80,8 +80,8 @@ const SNAPSHOT_MISSION_WORLD_MAP_LANDMARKS_V71: Landmark[] = [
 ];
 
 
-const SNAPSHOT_GROVE_WORLD_MAP_LANDMARKS_V75: Landmark[] =
-  SNAPSHOT_GROVE_LANDMARKS_V75.filter((landmark) => landmark.visibleOnWorldMap).map(
+const SNAPSHOT_GROVE_WORLD_MAP_LANDMARKS: Landmark[] =
+  SNAPSHOT_GROVE_LANDMARKS.filter((landmark) => landmark.visibleOnWorldMap).map(
     (landmark, index): Landmark => ({
       id: (8997551883502400 + index) as BiomesId,
       importance:
@@ -91,7 +91,7 @@ const SNAPSHOT_GROVE_WORLD_MAP_LANDMARKS_V75: Landmark[] =
     }),
   );
 
-function shouldExposeSnapshotMissionLandmarksV71() {
+function shouldExposeSnapshotMissionLandmarks() {
   return (
     process.env.BIOMES_ENABLE_SNAPSHOT_MISSION_BRIDGE === "1" ||
     process.env.SKIP_PROD_LOAD === "true" ||
@@ -100,15 +100,15 @@ function shouldExposeSnapshotMissionLandmarksV71() {
   );
 }
 
-function appendSnapshotMissionLandmarksV71(items: Landmark[]): Landmark[] {
-  if (!shouldExposeSnapshotMissionLandmarksV71()) {
+function appendSnapshotMissionLandmarks(items: Landmark[]): Landmark[] {
+  if (!shouldExposeSnapshotMissionLandmarks()) {
     return items;
   }
   const seen = new Set(items.map((item) => item.name));
   const appended = [...items];
   for (const item of [
-    ...SNAPSHOT_MISSION_WORLD_MAP_LANDMARKS_V71,
-    ...SNAPSHOT_GROVE_WORLD_MAP_LANDMARKS_V75,
+    ...SNAPSHOT_MISSION_WORLD_MAP_LANDMARKS,
+    ...SNAPSHOT_GROVE_WORLD_MAP_LANDMARKS,
   ]) {
     if (seen.has(item.name)) {
       continue;
@@ -144,6 +144,6 @@ export default biomesApiHandler(
         },
       ];
     });
-    return appendSnapshotMissionLandmarksV71(scanned);
+    return appendSnapshotMissionLandmarks(scanned);
   }
 );

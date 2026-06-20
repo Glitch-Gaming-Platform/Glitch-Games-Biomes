@@ -1,21 +1,21 @@
 /// <reference types="mocha" />
 import assert from "assert";
 import {
-  createHarthmereJobsBoardAdapterV1,
-  planHarthmereJobsBoardCompletionStepsV1,
+  createHarthmereJobsBoardAdapter,
+  planHarthmereJobsBoardCompletionSteps,
 } from "@/client/components/harthmere_jobs_board/jobsBoardLiveAdapter";
 
-// HARTHMERE_JOBS_BOARD_COMPLETION_WIRING_V1
+// HARTHMERE_JOBS_BOARD_COMPLETION_WIRING
 // Locks the fix for the P0 where no job could ever be completed/paid: the client
 // now drives the two server steps (verify the work, then claim the payout).
 
-describe("planHarthmereJobsBoardCompletionStepsV1", () => {
+describe("planHarthmereJobsBoardCompletionSteps", () => {
   it("verifies the work THEN pays when the todo is not yet completed", () => {
-    assert.deepStrictEqual(planHarthmereJobsBoardCompletionStepsV1("active"), [
+    assert.deepStrictEqual(planHarthmereJobsBoardCompletionSteps("active"), [
       "complete_job_quest",
       "complete_job",
     ]);
-    assert.deepStrictEqual(planHarthmereJobsBoardCompletionStepsV1(undefined), [
+    assert.deepStrictEqual(planHarthmereJobsBoardCompletionSteps(undefined), [
       "complete_job_quest",
       "complete_job",
     ]);
@@ -23,7 +23,7 @@ describe("planHarthmereJobsBoardCompletionStepsV1", () => {
 
   it("skips re-verifying when the todo is already completed", () => {
     assert.deepStrictEqual(
-      planHarthmereJobsBoardCompletionStepsV1("completed"),
+      planHarthmereJobsBoardCompletionSteps("completed"),
       ["complete_job"]
     );
   });
@@ -54,17 +54,17 @@ function recordingFetch(opts: { rejectOps?: Set<string> } = {}) {
   return { ops, fetchImpl };
 }
 
-describe("createHarthmereJobsBoardAdapterV1.completeJobFully", () => {
+describe("createHarthmereJobsBoardAdapter.completeJobFully", () => {
   it("sends complete_job_quest then complete_job for an unfinished todo", async () => {
     const { ops, fetchImpl } = recordingFetch();
-    const adapter = createHarthmereJobsBoardAdapterV1(fetchImpl);
+    const adapter = createHarthmereJobsBoardAdapter(fetchImpl);
     await adapter.completeJobFully("job1", "board1", { todoStatus: "active" });
     assert.deepStrictEqual(ops, ["complete_job_quest", "complete_job"]);
   });
 
   it("sends only complete_job when the todo is already completed", async () => {
     const { ops, fetchImpl } = recordingFetch();
-    const adapter = createHarthmereJobsBoardAdapterV1(fetchImpl);
+    const adapter = createHarthmereJobsBoardAdapter(fetchImpl);
     await adapter.completeJobFully("job1", "board1", { todoStatus: "completed" });
     assert.deepStrictEqual(ops, ["complete_job"]);
   });
@@ -73,7 +73,7 @@ describe("createHarthmereJobsBoardAdapterV1.completeJobFully", () => {
     const { ops, fetchImpl } = recordingFetch({
       rejectOps: new Set(["complete_job_quest"]),
     });
-    const adapter = createHarthmereJobsBoardAdapterV1(fetchImpl);
+    const adapter = createHarthmereJobsBoardAdapter(fetchImpl);
     await assert.rejects(
       adapter.completeJobFully("job1", "board1", { todoStatus: "active" }),
       /missing_completion_item/
@@ -88,7 +88,7 @@ describe("createHarthmereJobsBoardAdapterV1.completeJobFully", () => {
       sentBodies.push(JSON.parse(init.body));
       return { ok: true, json: async () => ({ ok: true, jobsBoardState: {} }) } as unknown as Response;
     }) as unknown as typeof fetch;
-    const adapter = createHarthmereJobsBoardAdapterV1(fetchImpl);
+    const adapter = createHarthmereJobsBoardAdapter(fetchImpl);
     await adapter.completeJobFully("job1", "board1", {
       todoStatus: "active",
       completedTargetId: "refinery_intake",

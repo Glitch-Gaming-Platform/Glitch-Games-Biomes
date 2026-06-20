@@ -1,4 +1,4 @@
-import { buildAvatarMutationEventsV1 } from "@/client/components/biomes_ui/avatarEditorMutations";
+import { buildAvatarMutationEvents } from "@/client/components/biomes_ui/avatarEditorMutations";
 import { createLogicTable } from "@/server/logic/ecs";
 import { EventBatchContext } from "@/server/logic/events/context/batch_context";
 import { LogicVersionedEntitySource } from "@/server/logic/events/context/versioned_entity_source";
@@ -123,7 +123,7 @@ describe("Appearance events E2E", () => {
       hair_color_id: "hair_color_10",
       head_id: BikkieIds.androgenous,
     };
-    const { appearanceEvent, hairEvent } = buildAvatarMutationEventsV1(
+    const { appearanceEvent, hairEvent } = buildAvatarMutationEvents(
       PLAYER_ID,
       { appearance, hairId: HAIR_ID }
     );

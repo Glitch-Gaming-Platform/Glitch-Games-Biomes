@@ -1,6 +1,6 @@
 import {
-  resolveRemoteOobFetchUrlV1,
-  useSameOriginOobFetchV1,
+  resolveRemoteOobFetchUrl,
+  useSameOriginOobFetch,
 } from "@/shared/api/oob";
 import type { BiomesId } from "@/shared/ids";
 import assert from "assert";
@@ -10,7 +10,7 @@ const userId = 123 as BiomesId;
 describe("RemoteOobFetcher URL routing", () => {
   it("keeps production OOB same-origin without a dev user query", () => {
     assert.equal(
-      resolveRemoteOobFetchUrlV1({
+      resolveRemoteOobFetchUrl({
         hostname: "example.com",
         nodeEnv: "production",
         oobPort: "4700",
@@ -22,7 +22,7 @@ describe("RemoteOobFetcher URL routing", () => {
 
   it("keeps ordinary dev OOB on the configured OOB port", () => {
     assert.equal(
-      resolveRemoteOobFetchUrlV1({
+      resolveRemoteOobFetchUrl({
         hostname: "localhost",
         nodeEnv: "development",
         oobPort: "4700",
@@ -40,7 +40,7 @@ describe("RemoteOobFetcher URL routing", () => {
       { nextPublicBiomesSnapshotMergeMode: "1" },
     ]) {
       assert.equal(
-        useSameOriginOobFetchV1({
+        useSameOriginOobFetch({
           hostname: "localhost",
           nodeEnv: "development",
           oobPort: "4700",
@@ -50,7 +50,7 @@ describe("RemoteOobFetcher URL routing", () => {
         true
       );
       assert.equal(
-        resolveRemoteOobFetchUrlV1({
+        resolveRemoteOobFetchUrl({
           hostname: "localhost",
           nodeEnv: "development",
           oobPort: "4700",

@@ -1,7 +1,7 @@
 import {
   useHarthmereCombatState,
 } from "@/client/components/challenges/LocalDevHarthmereCombat";
-import { defaultHarthmereLiveFetchV1 } from "@/client/components/harthmere_live_fetch";
+import { defaultHarthmereLiveFetch } from "@/client/components/harthmere_live_fetch";
 import {
   useHarthmereMultiplayerCombatState,
 } from "@/client/components/challenges/LocalDevHarthmereMultiplayerCombatSystem";
@@ -20,7 +20,7 @@ import { BIOMES_GAME_NAME } from "@/shared/biomes/display_names";
 import React from "react";
 import {
   biomesUIVitalsDisplayFromLiveStatusForTest,
-  useBiomesUIPlayerStatusStateV1,
+  useBiomesUIPlayerStatusState,
 } from "./adapters/playerStatusAdapter";
 import type { HighlightStyle } from "./highlight/HighlightRegistry";
 import { useBlinkTarget } from "./highlight/useBlinkTarget";
@@ -164,7 +164,7 @@ function useLiveModeGoldBalance(): number {
     let cancelled = false;
     const readGold = async () => {
       try {
-        const response = await defaultHarthmereLiveFetchV1(
+        const response = await defaultHarthmereLiveFetch(
           "/api/harthmere/live_mode_inventory_loot_state",
           {
             method: "GET",
@@ -205,7 +205,7 @@ export const BiomesUIVitalsPanel: React.FunctionComponent<{}> = () => {
   const stamina = useHarthmereFoodStaminaState();
   const reputation = useHarthmereReputationState();
   const leveling = useHarthmereLevelingState();
-  const liveStatus = useBiomesUIPlayerStatusStateV1();
+  const liveStatus = useBiomesUIPlayerStatusState();
 
   const player = combat.player;
   const title = getHarthmereCombinedPublicTitle(reputation);
@@ -220,7 +220,7 @@ export const BiomesUIVitalsPanel: React.FunctionComponent<{}> = () => {
     standing: reputation.regions.harthmere,
     gold,
   });
-  // HARTHMERE_HEALTH_SOURCE_OF_TRUTH_V1: the Health bar reads the live combat
+  // HARTHMERE_HEALTH_SOURCE_OF_TRUTH: the Health bar reads the live combat
   // store directly — the SAME state that fall damage, combat, and healing
   // mutate — so it is the single source of truth for the player's health.
   // Routing it through the live-status adapter let the periodically-polled

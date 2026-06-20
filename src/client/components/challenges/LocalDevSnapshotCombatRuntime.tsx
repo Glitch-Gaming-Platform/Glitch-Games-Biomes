@@ -8,26 +8,26 @@ import { matchingItemRefs } from "@/shared/game/inventory";
 import type { BiomesId } from "@/shared/ids";
 import type { ReadonlyVec3, Vec3 } from "@/shared/math/types";
 import {
-  SNAPSHOT_COMBAT_PRIMER_STEPS_V74,
-  SNAPSHOT_HARTHMERE_HOSTILE_SPAWNS_V74,
-  SNAPSHOT_HARTHMERE_MUCK_ZONES_V74,
-  SNAPSHOT_PORT_COVERAGE_V74,
-  SNAPSHOT_RUNTIME_RULES_VERSION_V74,
-  combatStepWorldPositionV74,
-} from "@/shared/harthmere/snapshot_runtime_rules_v74";
+  SNAPSHOT_COMBAT_PRIMER_STEPS,
+  SNAPSHOT_HARTHMERE_HOSTILE_SPAWNS,
+  SNAPSHOT_HARTHMERE_MUCK_ZONES,
+  SNAPSHOT_PORT_COVERAGE,
+  SNAPSHOT_RUNTIME_RULES_VERSION,
+  combatStepWorldPosition,
+} from "@/shared/harthmere/snapshot_runtime_rules";
 import React, { useEffect, useMemo, useState } from "react";
 
-export const SNAPSHOT_COMBAT_RUNTIME_VERSION_V74 =
-  "snapshot-combat-muck-runtime-v74";
+export const SNAPSHOT_COMBAT_RUNTIME_VERSION =
+  "snapshot-combat-muck-runtime";
 
-const SNAPSHOT_COMBAT_STATE_KEY_V74 =
-  "biomes.localDev.snapshotCombatState.v74";
-const SNAPSHOT_COMBAT_STATE_EVENT_V74 =
-  "biomes:local-dev-snapshot-combat-state-v74";
-const SNAPSHOT_COMBAT_NAV_AID_ID_V74 = 710_174;
-const SNAPSHOT_COMBAT_XP_ID_V74 = "snapshot-combat-primer-v74";
+const SNAPSHOT_COMBAT_STATE_KEY =
+  "biomes.localDev.snapshotCombatState";
+const SNAPSHOT_COMBAT_STATE_EVENT =
+  "biomes:local-dev-snapshot-combat-state";
+const SNAPSHOT_COMBAT_NAV_AID_ID = 710_174;
+const SNAPSHOT_COMBAT_XP_ID = "snapshot-combat-primer";
 
-interface SnapshotCombatStateV74 {
+interface SnapshotCombatState {
   accepted: boolean;
   currentStepIndex: number;
   completedStepIds: string[];
@@ -38,7 +38,7 @@ interface SnapshotCombatStateV74 {
   updatedAt?: number;
 }
 
-const EMPTY_COMBAT_STATE_V74: SnapshotCombatStateV74 = {
+const EMPTY_COMBAT_STATE: SnapshotCombatState = {
   accepted: true,
   currentStepIndex: 0,
   completedStepIds: [],
@@ -47,7 +47,7 @@ const EMPTY_COMBAT_STATE_V74: SnapshotCombatStateV74 = {
   kills: {},
 };
 
-type HarthmereCombatEffectDetailV74 = {
+type HarthmereCombatEffectDetail = {
   target?: string;
   targetOffset?: number;
   finalDamage?: number;
@@ -57,22 +57,22 @@ type HarthmereCombatEffectDetailV74 = {
   detail?: string;
 };
 
-function isBrowserV74() {
+function isBrowser() {
   return typeof window !== "undefined" && typeof window.localStorage !== "undefined";
 }
 
-function normalizeCombatStateV74(
-  state: Partial<SnapshotCombatStateV74> | undefined,
-): SnapshotCombatStateV74 {
+function normalizeCombatState(
+  state: Partial<SnapshotCombatState> | undefined,
+): SnapshotCombatState {
   if (!state) {
-    return { ...EMPTY_COMBAT_STATE_V74 };
+    return { ...EMPTY_COMBAT_STATE };
   }
   return {
     accepted: state.accepted !== false,
     currentStepIndex: Math.max(
       0,
       Math.min(
-        SNAPSHOT_COMBAT_PRIMER_STEPS_V74.length - 1,
+        SNAPSHOT_COMBAT_PRIMER_STEPS.length - 1,
         Number.isFinite(state.currentStepIndex) ? Number(state.currentStepIndex) : 0,
       ),
     ),
@@ -85,55 +85,55 @@ function normalizeCombatStateV74(
   };
 }
 
-export function readSnapshotCombatStateV74(): SnapshotCombatStateV74 {
-  if (!isBrowserV74()) {
-    return { ...EMPTY_COMBAT_STATE_V74 };
+export function readSnapshotCombatState(): SnapshotCombatState {
+  if (!isBrowser()) {
+    return { ...EMPTY_COMBAT_STATE };
   }
   try {
-    const raw = window.localStorage.getItem(SNAPSHOT_COMBAT_STATE_KEY_V74);
-    return normalizeCombatStateV74(raw ? JSON.parse(raw) : undefined);
+    const raw = window.localStorage.getItem(SNAPSHOT_COMBAT_STATE_KEY);
+    return normalizeCombatState(raw ? JSON.parse(raw) : undefined);
   } catch {
-    return { ...EMPTY_COMBAT_STATE_V74 };
+    return { ...EMPTY_COMBAT_STATE };
   }
 }
 
-function writeSnapshotCombatStateV74(state: SnapshotCombatStateV74) {
-  if (!isBrowserV74()) {
+function writeSnapshotCombatState(state: SnapshotCombatState) {
+  if (!isBrowser()) {
     return;
   }
-  const next = normalizeCombatStateV74({ ...state, updatedAt: Date.now() });
-  window.localStorage.setItem(SNAPSHOT_COMBAT_STATE_KEY_V74, JSON.stringify(next));
-  window.dispatchEvent(new Event(SNAPSHOT_COMBAT_STATE_EVENT_V74));
+  const next = normalizeCombatState({ ...state, updatedAt: Date.now() });
+  window.localStorage.setItem(SNAPSHOT_COMBAT_STATE_KEY, JSON.stringify(next));
+  window.dispatchEvent(new Event(SNAPSHOT_COMBAT_STATE_EVENT));
 }
 
-function currentCombatStepV74(state: SnapshotCombatStateV74) {
-  return SNAPSHOT_COMBAT_PRIMER_STEPS_V74[
-    Math.max(0, Math.min(state.currentStepIndex, SNAPSHOT_COMBAT_PRIMER_STEPS_V74.length - 1))
+function currentCombatStep(state: SnapshotCombatState) {
+  return SNAPSHOT_COMBAT_PRIMER_STEPS[
+    Math.max(0, Math.min(state.currentStepIndex, SNAPSHOT_COMBAT_PRIMER_STEPS.length - 1))
   ];
 }
 
-function markRewardV74(state: SnapshotCombatStateV74, reward: string) {
+function markReward(state: SnapshotCombatState, reward: string) {
   return [...new Set([...state.rewards, reward])];
 }
 
-function advanceCombatStepV74(reason: string) {
-  const state = readSnapshotCombatStateV74();
+function advanceCombatStep(reason: string) {
+  const state = readSnapshotCombatState();
   if (state.completed) {
     return;
   }
-  const step = currentCombatStepV74(state);
+  const step = currentCombatStep(state);
   if (!step || state.completedStepIds.includes(step.id)) {
     return;
   }
   const nextCompleted = [...new Set([...state.completedStepIds, step.id])];
-  const atEnd = state.currentStepIndex >= SNAPSHOT_COMBAT_PRIMER_STEPS_V74.length - 1;
-  awardHarthmereQuestXp(SNAPSHOT_COMBAT_XP_ID_V74, "Wilds Combat Primer", atEnd);
-  writeSnapshotCombatStateV74({
+  const atEnd = state.currentStepIndex >= SNAPSHOT_COMBAT_PRIMER_STEPS.length - 1;
+  awardHarthmereQuestXp(SNAPSHOT_COMBAT_XP_ID, "Wilds Combat Primer", atEnd);
+  writeSnapshotCombatState({
     ...state,
     currentStepIndex: atEnd ? state.currentStepIndex : state.currentStepIndex + 1,
     completedStepIds: nextCompleted,
     completed: atEnd,
-    rewards: markRewardV74(state, step.reward),
+    rewards: markReward(state, step.reward),
     lastEvent: `${step.title}: ${reason}`,
   });
 }
@@ -142,14 +142,14 @@ function distance2D(a: ReadonlyVec3, b: ReadonlyVec3) {
   return Math.hypot(a[0] - b[0], a[2] - b[2]);
 }
 
-function pinSnapshotCombatTargetV74(
+function pinSnapshotCombatTarget(
   mapManager: {
     addNavigationAid: (aid: any, id?: number) => number;
     removeNavigationAid?: (id: number) => void;
   },
   targetPos: ReadonlyVec3,
 ) {
-  mapManager.removeNavigationAid?.(SNAPSHOT_COMBAT_NAV_AID_ID_V74);
+  mapManager.removeNavigationAid?.(SNAPSHOT_COMBAT_NAV_AID_ID);
   return mapManager.addNavigationAid(
     {
       kind: "placed",
@@ -159,18 +159,18 @@ function pinSnapshotCombatTargetV74(
         position: [...targetPos],
       },
     },
-    SNAPSHOT_COMBAT_NAV_AID_ID_V74,
+    SNAPSHOT_COMBAT_NAV_AID_ID,
   );
 }
 
-function isSnapshotHostileCombatOffsetV74(offset: number | undefined) {
+function isSnapshotHostileCombatOffset(offset: number | undefined) {
   if (offset === undefined) {
     return false;
   }
-  return SNAPSHOT_HARTHMERE_HOSTILE_SPAWNS_V74.some((spawn) => spawn.idOffset === offset);
+  return SNAPSHOT_HARTHMERE_HOSTILE_SPAWNS.some((spawn) => spawn.idOffset === offset);
 }
 
-function isSnapshotHostileNameV74(name: string | undefined) {
+function isSnapshotHostileName(name: string | undefined) {
   if (!name) {
     return false;
   }
@@ -178,63 +178,63 @@ function isSnapshotHostileNameV74(name: string | undefined) {
   return lower.includes("muckling") || lower.includes("mucker");
 }
 
-export const SnapshotCombatRuntimeControllerV74: React.FunctionComponent<{}> = () => {
+export const SnapshotCombatRuntimeController: React.FunctionComponent<{}> = () => {
   const { gardenHose, mapManager, reactResources, resources, userId } = useClientContext();
   const localPlayer = reactResources.use("/scene/local_player");
   const inventory = reactResources.use("/ecs/c/inventory", userId);
-  const [state, setState] = useState<SnapshotCombatStateV74>(() => readSnapshotCombatStateV74());
+  const [state, setState] = useState<SnapshotCombatState>(() => readSnapshotCombatState());
 
   useEffect(() => {
-    const refresh = () => setState(readSnapshotCombatStateV74());
+    const refresh = () => setState(readSnapshotCombatState());
     window.addEventListener("storage", refresh);
-    window.addEventListener(SNAPSHOT_COMBAT_STATE_EVENT_V74, refresh);
+    window.addEventListener(SNAPSHOT_COMBAT_STATE_EVENT, refresh);
     return () => {
       window.removeEventListener("storage", refresh);
-      window.removeEventListener(SNAPSHOT_COMBAT_STATE_EVENT_V74, refresh);
+      window.removeEventListener(SNAPSHOT_COMBAT_STATE_EVENT, refresh);
     };
   }, []);
 
   useEffect(() => {
-    if (!isBrowserV74()) {
+    if (!isBrowser()) {
       return;
     }
     const win = window as typeof window & {
-      __snapshotPortV74?: Record<string, unknown>;
+      __snapshotPort?: Record<string, unknown>;
     };
-    win.__snapshotPortV74 = {
-      version: SNAPSHOT_RUNTIME_RULES_VERSION_V74,
-      coverage: SNAPSHOT_PORT_COVERAGE_V74,
-      readCombatState: readSnapshotCombatStateV74,
-      resetCombatState: () => writeSnapshotCombatStateV74({ ...EMPTY_COMBAT_STATE_V74 }),
-      completeCombatStep: (reason = "manual developer completion") => advanceCombatStepV74(reason),
-      hostiles: SNAPSHOT_HARTHMERE_HOSTILE_SPAWNS_V74,
-      muckZones: SNAPSHOT_HARTHMERE_MUCK_ZONES_V74,
+    win.__snapshotPort = {
+      version: SNAPSHOT_RUNTIME_RULES_VERSION,
+      coverage: SNAPSHOT_PORT_COVERAGE,
+      readCombatState: readSnapshotCombatState,
+      resetCombatState: () => writeSnapshotCombatState({ ...EMPTY_COMBAT_STATE }),
+      completeCombatStep: (reason = "manual developer completion") => advanceCombatStep(reason),
+      hostiles: SNAPSHOT_HARTHMERE_HOSTILE_SPAWNS,
+      muckZones: SNAPSHOT_HARTHMERE_MUCK_ZONES,
     };
   }, []);
 
   useEffect(() => {
     const handler = (event: Event) => {
-      const detail = (event as CustomEvent<HarthmereCombatEffectDetailV74>).detail;
-      const current = readSnapshotCombatStateV74();
+      const detail = (event as CustomEvent<HarthmereCombatEffectDetail>).detail;
+      const current = readSnapshotCombatState();
       if (current.completed) {
         return;
       }
-      const step = currentCombatStepV74(current);
+      const step = currentCombatStep(current);
       const isSnapshotHostile =
-        isSnapshotHostileCombatOffsetV74(detail?.targetOffset) ||
-        isSnapshotHostileNameV74(detail?.target);
+        isSnapshotHostileCombatOffset(detail?.targetOffset) ||
+        isSnapshotHostileName(detail?.target);
       if (!isSnapshotHostile) {
         return;
       }
       if (step.trigger === "damage_hostile" && (detail?.finalDamage ?? 0) > 0) {
-        advanceCombatStepV74(`hit ${detail.target ?? "hostile"}`);
+        advanceCombatStep(`hit ${detail.target ?? "hostile"}`);
       }
       if (
         step.trigger === "defeat_hostile" &&
         ((detail?.result === "dead" || (detail?.targetHpAfter ?? 1) <= 0) &&
           (detail?.targetHpBefore ?? 0) >= 0)
       ) {
-        advanceCombatStepV74(`defeated ${detail.target ?? "hostile"}`);
+        advanceCombatStep(`defeated ${detail.target ?? "hostile"}`);
       }
     };
     window.addEventListener(HARTHMERE_COMBAT_EFFECT_EVENT, handler);
@@ -243,13 +243,13 @@ export const SnapshotCombatRuntimeControllerV74: React.FunctionComponent<{}> = (
 
   useEffect(() => {
     const handler = (event: GardenHoseEvent) => {
-      const current = readSnapshotCombatStateV74();
+      const current = readSnapshotCombatState();
       if (current.completed) {
         return;
       }
-      const step = currentCombatStepV74(current);
+      const step = currentCombatStep(current);
       if (step.trigger === "destroy_muck" && event.kind === "destroy" && event.terrainId && !isFloraId(event.terrainId)) {
-        advanceCombatStepV74("cleared muck or loose terrain");
+        advanceCombatStep("cleared muck or loose terrain");
       }
     };
     gardenHose.on("anyEvent", handler);
@@ -257,27 +257,27 @@ export const SnapshotCombatRuntimeControllerV74: React.FunctionComponent<{}> = (
   }, [gardenHose]);
 
   useEffect(() => {
-    const current = readSnapshotCombatStateV74();
+    const current = readSnapshotCombatState();
     if (current.completed) {
       return;
     }
-    const step = currentCombatStepV74(current);
+    const step = currentCombatStep(current);
     if (step.trigger !== "location") {
       return;
     }
     const playerPos = localPlayer.player.position as Vec3;
-    const targetPos = combatStepWorldPositionV74(step);
+    const targetPos = combatStepWorldPosition(step);
     if (distance2D(playerPos, targetPos) <= (step.radius ?? 10)) {
-      advanceCombatStepV74("entered the marked danger area");
+      advanceCombatStep("entered the marked danger area");
     }
   }, [localPlayer.player.position, state.currentStepIndex, state.completed]);
 
   useEffect(() => {
-    const current = readSnapshotCombatStateV74();
+    const current = readSnapshotCombatState();
     if (current.completed) {
       return;
     }
-    const step = currentCombatStepV74(current);
+    const step = currentCombatStep(current);
     if (step.trigger !== "craft_muck_buster") {
       return;
     }
@@ -285,16 +285,16 @@ export const SnapshotCombatRuntimeControllerV74: React.FunctionComponent<{}> = (
     const hasMuckBuster =
       matchingItemRefs(ownedItems, (entry) => Boolean(entry?.item.unmuck)).length > 0;
     if (hasMuckBuster) {
-      advanceCombatStepV74("muck-clearing tool ready");
+      advanceCombatStep("muck-clearing tool ready");
     }
   }, [inventory, resources, state.currentStepIndex, state.completed, userId]);
 
   useEffect(() => {
-    const current = readSnapshotCombatStateV74();
+    const current = readSnapshotCombatState();
     if (current.completed) {
       return;
     }
-    const step = currentCombatStepV74(current);
+    const step = currentCombatStep(current);
     if (step.trigger !== "defeat_hostile") {
       return;
     }
@@ -302,11 +302,11 @@ export const SnapshotCombatRuntimeControllerV74: React.FunctionComponent<{}> = (
     // UpdateNpcHealthEvent kill advances the same reusable combat primer even if
     // it did not pass through the local Harthmere visual-combat event bridge.
     const interval = window.setInterval(() => {
-      for (const spawn of SNAPSHOT_HARTHMERE_HOSTILE_SPAWNS_V74) {
+      for (const spawn of SNAPSHOT_HARTHMERE_HOSTILE_SPAWNS) {
         const entityId = (8_810_000_000_010_000 + spawn.idOffset) as BiomesId;
         const health = reactResources.get("/ecs/c/health", entityId);
         if (health && health.hp <= 0) {
-          advanceCombatStepV74(`defeated ${spawn.displayName}`);
+          advanceCombatStep(`defeated ${spawn.displayName}`);
           return;
         }
       }
@@ -315,33 +315,33 @@ export const SnapshotCombatRuntimeControllerV74: React.FunctionComponent<{}> = (
   }, [reactResources, state.currentStepIndex, state.completed]);
 
   useEffect(() => {
-    const step = currentCombatStepV74(state);
+    const step = currentCombatStep(state);
     if (!step || state.completed) {
       return;
     }
-    pinSnapshotCombatTargetV74(mapManager, combatStepWorldPositionV74(step));
+    pinSnapshotCombatTarget(mapManager, combatStepWorldPosition(step));
   }, [mapManager, state.currentStepIndex, state.completed]);
 
   return null;
 };
 
-function useSnapshotCombatStateV74() {
-  const [state, setState] = useState<SnapshotCombatStateV74>(() => readSnapshotCombatStateV74());
+function useSnapshotCombatState() {
+  const [state, setState] = useState<SnapshotCombatState>(() => readSnapshotCombatState());
   useEffect(() => {
-    const refresh = () => setState(readSnapshotCombatStateV74());
+    const refresh = () => setState(readSnapshotCombatState());
     const interval = window.setInterval(refresh, 500);
     window.addEventListener("storage", refresh);
-    window.addEventListener(SNAPSHOT_COMBAT_STATE_EVENT_V74, refresh);
+    window.addEventListener(SNAPSHOT_COMBAT_STATE_EVENT, refresh);
     return () => {
       window.clearInterval(interval);
       window.removeEventListener("storage", refresh);
-      window.removeEventListener(SNAPSHOT_COMBAT_STATE_EVENT_V74, refresh);
+      window.removeEventListener(SNAPSHOT_COMBAT_STATE_EVENT, refresh);
     };
   }, []);
   return state;
 }
 
-function compassDirectionV74(dx: number, dz: number) {
+function compassDirection(dx: number, dz: number) {
   const absX = Math.abs(dx);
   const absZ = Math.abs(dz);
   if (absX < 4 && absZ < 4) return "here";
@@ -352,17 +352,17 @@ function compassDirectionV74(dx: number, dz: number) {
   return `${northSouth}-${eastWest}`;
 }
 
-export const SnapshotCombatMapHUDV74: React.FunctionComponent<{}> = () => {
+export const SnapshotCombatMapHUD: React.FunctionComponent<{}> = () => {
   const { reactResources, mapManager } = useClientContext();
   const localPlayer = reactResources.use("/scene/local_player");
-  const state = useSnapshotCombatStateV74();
-  const step = currentCombatStepV74(state);
-  const targetPos = combatStepWorldPositionV74(step);
+  const state = useSnapshotCombatState();
+  const step = currentCombatStep(state);
+  const targetPos = combatStepWorldPosition(step);
   const playerPos = localPlayer.player.position as Vec3;
   const dx = targetPos[0] - playerPos[0];
   const dz = targetPos[2] - playerPos[2];
   const distance = Math.round(Math.hypot(dx, dz));
-  const direction = compassDirectionV74(dx, dz);
+  const direction = compassDirection(dx, dz);
 
   return (
     <div className="rounded-xl border border-red-200/20 bg-red-950/35 p-2 text-white shadow-lg">
@@ -372,7 +372,7 @@ export const SnapshotCombatMapHUDV74: React.FunctionComponent<{}> = () => {
             Wilds Combat Primer
           </div>
           <div className="text-xs text-white/70">
-            Snapshot Combat · {state.completed ? "Completed" : `Step ${state.currentStepIndex + 1}/${SNAPSHOT_COMBAT_PRIMER_STEPS_V74.length}`}
+            Snapshot Combat · {state.completed ? "Completed" : `Step ${state.currentStepIndex + 1}/${SNAPSHOT_COMBAT_PRIMER_STEPS.length}`}
           </div>
         </div>
         {!state.completed && (
@@ -394,7 +394,7 @@ export const SnapshotCombatMapHUDV74: React.FunctionComponent<{}> = () => {
       )}
       <button
         className="mt-2 rounded bg-red-300/20 px-2 py-1 text-[11px] font-semibold text-red-100 hover:bg-red-300/30"
-        onClick={() => pinSnapshotCombatTargetV74(mapManager, targetPos)}
+        onClick={() => pinSnapshotCombatTarget(mapManager, targetPos)}
       >
         Mark combat objective
       </button>
@@ -402,11 +402,11 @@ export const SnapshotCombatMapHUDV74: React.FunctionComponent<{}> = () => {
   );
 };
 
-export const SnapshotCombatJournalPanelV74: React.FunctionComponent<{}> = () => {
-  const state = useSnapshotCombatStateV74();
-  const step = currentCombatStepV74(state);
+export const SnapshotCombatJournalPanel: React.FunctionComponent<{}> = () => {
+  const state = useSnapshotCombatState();
+  const step = currentCombatStep(state);
   const hostileNames = useMemo(
-    () => SNAPSHOT_HARTHMERE_HOSTILE_SPAWNS_V74.map((spawn) => spawn.displayName).join(", "),
+    () => SNAPSHOT_HARTHMERE_HOSTILE_SPAWNS.map((spawn) => spawn.displayName).join(", "),
     [],
   );
 
@@ -420,7 +420,7 @@ export const SnapshotCombatJournalPanelV74: React.FunctionComponent<{}> = () => 
           </div>
         </div>
         <div className="text-xs font-semibold text-red-100">
-          {state.completed ? "Completed" : `In Progress · ${state.currentStepIndex + 1}/${SNAPSHOT_COMBAT_PRIMER_STEPS_V74.length}`}
+          {state.completed ? "Completed" : `In Progress · ${state.currentStepIndex + 1}/${SNAPSHOT_COMBAT_PRIMER_STEPS.length}`}
         </div>
       </div>
       <div className="mt-1 text-xs leading-snug text-white/85">

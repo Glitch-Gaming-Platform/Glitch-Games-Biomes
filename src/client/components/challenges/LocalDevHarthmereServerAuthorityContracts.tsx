@@ -1,7 +1,7 @@
 
 import React from "react";
 
-export const HARTHMERE_SERVER_AUTHORITY_CONTRACT_VERSION = "harthmere-server-authoritative-production-contracts-v1";
+export const HARTHMERE_SERVER_AUTHORITY_CONTRACT_VERSION = "harthmere-server-authoritative-production-contracts";
 
 export type HarthmereAuthoritativeMutation = "inventory" | "wallet" | "trade" | "auction" | "bank" | "mail" | "quest" | "dialogue" | "reputation" | "legal" | "world" | "combat" | "death" | "respawn" | "pvp" | "party" | "raid";
 export type HarthmereTransactionStatus = "pending" | "committed" | "rolled_back" | "rejected";
@@ -108,4 +108,4 @@ export function validateHarthmereServerCombatAuthority(payload: Record<string, u
 export const HARTHMERE_SERVER_AUDIT_LOG_FIELDS = ["transactionId", "idempotencyKey", "actorId", "mutation", "beforeHash", "afterHash", "status", "auditLog", "clientSuppliedFieldsRejected"];
 export const HARTHMERE_SERVER_ATOMICITY_RULES = ["single database transaction", "row/version lock", "idempotency key", "rollback on partial failure", "append-only audit log", "client spoof rejection", "server recomputes price/reward/standing", "server recomputes combat hit/damage/death/reward"];
 
-export const HarthmereServerAuthorityPanel: React.FunctionComponent<{}> = () => <div className="space-y-2 rounded-xl border border-white/10 bg-white/5 p-3 text-xs" data-harthmere-server-authority="v1"><div className="text-sm font-bold text-cyan-100">Server Authority Contracts</div><div>Models: {Object.keys(HARTHMERE_SERVER_AUTHORITY_MODELS).join(", ")}</div><div>Rules: {HARTHMERE_SERVER_ATOMICITY_RULES.join(" · ")}</div></div>;
+export const HarthmereServerAuthorityPanel: React.FunctionComponent<{}> = () => <div className="space-y-2 rounded-xl border border-white/10 bg-white/5 p-3 text-xs" data-harthmere-server-authority="current"><div className="text-sm font-bold text-cyan-100">Server Authority Contracts</div><div>Models: {Object.keys(HARTHMERE_SERVER_AUTHORITY_MODELS).join(", ")}</div><div>Rules: {HARTHMERE_SERVER_ATOMICITY_RULES.join(" · ")}</div></div>;

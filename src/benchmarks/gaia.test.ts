@@ -1,4 +1,4 @@
-import { tensorToMap } from "@/server/gaia_v2/test/simulations.test";
+import { tensorToMap } from "@/server/gaia/test/simulations.test";
 import { loadVoxeloo } from "@/server/shared/voxeloo";
 import { getTerrainID } from "@/shared/asset_defs/terrain";
 import { using } from "@/shared/deletable";
@@ -6,7 +6,7 @@ import type { Vec3 } from "@/shared/math/types";
 import { Timer } from "@/shared/metrics/timer";
 import { Tensor, TensorUpdate } from "@/shared/wasm/tensors";
 import type { VoxelooModule } from "@/shared/wasm/types";
-import type { GaiaTerrainMapV2 } from "@/shared/wasm/types/gaia";
+import type { GaiaTerrainMap } from "@/shared/wasm/types/gaia";
 
 const size = 96;
 const shape = [size, size, size] as Vec3;
@@ -14,7 +14,7 @@ const shape = [size, size, size] as Vec3;
 function createRandomScene(
   voxeloo: VoxelooModule,
   lights: number
-): GaiaTerrainMapV2 {
+): GaiaTerrainMap {
   return using(Tensor.make(voxeloo, shape, "U32"), (tensor) => {
     const writer = new TensorUpdate(tensor);
 

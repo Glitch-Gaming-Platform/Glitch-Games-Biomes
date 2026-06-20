@@ -27,7 +27,7 @@ import {
   CompleteQuestStepAtEntityEvent,
 } from "@/shared/ecs/gen/events";
 import type { ItemBag } from "@/shared/game/types";
-import { harthmereLocationVoiceMetadataForPositionV1 } from "@/shared/harthmere/location_voice_context_v1";
+import { harthmereLocationVoiceMetadataForPosition } from "@/shared/harthmere/location_voice_context";
 import type { BiomesId } from "@/shared/ids";
 import type { NpcType } from "@/shared/npc/bikkie";
 import {
@@ -64,7 +64,7 @@ export interface QuestStepBundle {
   itemsToTake?: ItemBag;
 }
 
-export function questVoiceContextForStepBundleV1(
+export function questVoiceContextForStepBundle(
   stepBundle: QuestStepBundle
 ): string {
   return [
@@ -86,13 +86,13 @@ export function questVoiceContextForStepBundleV1(
     .join("\n");
 }
 
-export function activeQuestVoiceContextForNpcV1(
+export function activeQuestVoiceContextForNpc(
   stepBundles: readonly QuestStepBundle[]
 ): string | undefined {
   const stepBundle = stepBundles.find(
     (step) => step.questBundle.state === "in_progress" && !step.stepCompleted
   );
-  return stepBundle ? questVoiceContextForStepBundleV1(stepBundle) : undefined;
+  return stepBundle ? questVoiceContextForStepBundle(stepBundle) : undefined;
 }
 
 export function useAvailableRobotSteps() {
@@ -331,11 +331,11 @@ export function defaultDialogForNpc(
   );
 }
 
-function roundVoiceCoordV1(value: number | undefined) {
+function roundVoiceCoord(value: number | undefined) {
   return Number.isFinite(value) ? Math.round(value!) : undefined;
 }
 
-function itemAssignmentNamesV1(items: any): string[] {
+function itemAssignmentNames(items: any): string[] {
   if (!items) {
     return [];
   }
@@ -345,7 +345,7 @@ function itemAssignmentNamesV1(items: any): string[] {
     .filter((name): name is string => typeof name === "string" && name.length > 0);
 }
 
-export function playerVoiceContextForNpcChatV1(input: {
+export function playerVoiceContextForNpcChat(input: {
   reactResources: ClientResources | ClientReactResources;
   userId: BiomesId;
 }) {
@@ -353,13 +353,13 @@ export function playerVoiceContextForNpcChatV1(input: {
   const position = localPlayer?.player?.position as
     | [number, number, number]
     | undefined;
-  const location = harthmereLocationVoiceMetadataForPositionV1(position);
+  const location = harthmereLocationVoiceMetadataForPosition(position);
   const wearing = input.reactResources.get("/ecs/c/wearing", input.userId);
   const appearance = input.reactResources.get(
     "/ecs/c/appearance_component",
     input.userId
   );
-  const wornItems = itemAssignmentNamesV1((wearing as any)?.items);
+  const wornItems = itemAssignmentNames((wearing as any)?.items);
   const appearanceParts = Object.entries((appearance as any)?.appearance ?? {})
     .filter(([, value]) => value !== undefined && value !== null && value !== "")
     .slice(0, 12)
@@ -369,9 +369,9 @@ export function playerVoiceContextForNpcChatV1(input: {
     "Current player context:",
     position
       ? `- Position: ${[
-          roundVoiceCoordV1(position[0]),
-          roundVoiceCoordV1(position[1]),
-          roundVoiceCoordV1(position[2]),
+          roundVoiceCoord(position[0]),
+          roundVoiceCoord(position[1]),
+          roundVoiceCoord(position[2]),
         ].join(", ")}.`
       : undefined,
     location

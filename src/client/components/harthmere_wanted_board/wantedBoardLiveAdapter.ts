@@ -1,28 +1,28 @@
 import {
-  HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1,
-  HARTHMERE_JOBS_BOARD_JOB_KIND_LABELS_V1,
-  displayNameForHarthmereJobsBoardV145,
-  harthmereJobsBoardMutationUrlV151,
-  type HarthmereJobsBoardLawCrimeRecordV1,
-  type HarthmereJobsBoardPostingV1,
-  type HarthmereJobsBoardSnapshotV1,
+  HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID,
+  HARTHMERE_JOBS_BOARD_JOB_KIND_LABELS,
+  displayNameForHarthmereJobsBoard,
+  harthmereJobsBoardMutationUrl,
+  type HarthmereJobsBoardLawCrimeRecord,
+  type HarthmereJobsBoardPosting,
+  type HarthmereJobsBoardSnapshot,
 } from "@/client/components/harthmere_jobs_board/jobsBoardLiveAdapter";
-import { fetchHarthmereLiveWithTimeoutV1 } from "@/client/components/harthmere_live_fetch";
-import { formatHarthmereJobTimeRemainingV151 } from "@/shared/harthmere/mmo_jobs_board_authority_v1";
-import { HARTHMERE_JOBS_BOARD_MUCK_BOUNTY_TARGETS_V1 } from "@/shared/harthmere/jobs_board_muck_bounty_targets_v1";
-import { HARTHMERE_TOWN_LAW_RULES_V1 } from "@/shared/harthmere/town_law";
+import { fetchHarthmereLiveWithTimeout } from "@/client/components/harthmere_live_fetch";
+import { formatHarthmereJobTimeRemaining } from "@/shared/harthmere/mmo_jobs_board_authority";
+import { HARTHMERE_JOBS_BOARD_MUCK_BOUNTY_TARGETS } from "@/shared/harthmere/jobs_board_muck_bounty_targets";
+import { HARTHMERE_TOWN_LAW_RULES } from "@/shared/harthmere/town_law";
 
-export const HARTHMERE_WANTED_BOARD_VERSION_V1 =
-  "harthmere-wanted-board-v1" as const;
+export const HARTHMERE_WANTED_BOARD_VERSION =
+  "harthmere-wanted-board" as const;
 
-export type HarthmereWantedBoardNoticeSourceV1 =
+export type HarthmereWantedBoardNoticeSource =
   | "jobs_board"
   | "law_system"
   | "muck_watchlist";
 
-export interface HarthmereWantedBoardNoticeV1 {
+export interface HarthmereWantedBoardNotice {
   noticeId: string;
-  source: HarthmereWantedBoardNoticeSourceV1;
+  source: HarthmereWantedBoardNoticeSource;
   title: string;
   subtitle: string;
   description: string;
@@ -44,7 +44,7 @@ export interface HarthmereWantedBoardNoticeV1 {
   warning?: string;
 }
 
-export interface HarthmereWantedBoardLawPanelV1 {
+export interface HarthmereWantedBoardLawPanel {
   legal: number;
   likeability: number;
   notoriety: number;
@@ -56,15 +56,15 @@ export interface HarthmereWantedBoardLawPanelV1 {
   guidance: string[];
 }
 
-export interface HarthmereWantedBoardViewV1 {
-  version: typeof HARTHMERE_WANTED_BOARD_VERSION_V1;
+export interface HarthmereWantedBoardView {
+  version: typeof HARTHMERE_WANTED_BOARD_VERSION;
   boardId: string;
   boardName: string;
-  openNotices: HarthmereWantedBoardNoticeV1[];
-  myNotices: HarthmereWantedBoardNoticeV1[];
-  lawNotices: HarthmereWantedBoardNoticeV1[];
-  watchlistNotices: HarthmereWantedBoardNoticeV1[];
-  law: HarthmereWantedBoardLawPanelV1;
+  openNotices: HarthmereWantedBoardNotice[];
+  myNotices: HarthmereWantedBoardNotice[];
+  lawNotices: HarthmereWantedBoardNotice[];
+  watchlistNotices: HarthmereWantedBoardNotice[];
+  law: HarthmereWantedBoardLawPanel;
   totals: {
     open: number;
     mine: number;
@@ -74,10 +74,10 @@ export interface HarthmereWantedBoardViewV1 {
   };
 }
 
-const WANTED_JOB_TEXT_RE_V1 =
+const WANTED_JOB_TEXT_RE =
   /\b(wanted|bount(?:y|ies)|warrant|hunt|muck|mucker|hex|patrol|outlaw|bandit|guard|security|threat|monster)\b/i;
 
-function jobTargetLabelV1(job: HarthmereJobsBoardPostingV1) {
+function jobTargetLabel(job: HarthmereJobsBoardPosting) {
   return (
     job.requirements.find((req) => req.targetName)?.targetName ??
     job.targetId ??
@@ -86,7 +86,7 @@ function jobTargetLabelV1(job: HarthmereJobsBoardPostingV1) {
   );
 }
 
-function jobMarkerIdV1(job: HarthmereJobsBoardPostingV1) {
+function jobMarkerId(job: HarthmereJobsBoardPosting) {
   return (
     job.mapMarkerId ??
     job.requirements.find((req) => req.mapMarkerId)?.mapMarkerId ??
@@ -94,11 +94,11 @@ function jobMarkerIdV1(job: HarthmereJobsBoardPostingV1) {
   );
 }
 
-export function isHarthmereWantedBoardJobV1(
-  job: HarthmereJobsBoardPostingV1 | undefined
+export function isHarthmereWantedBoardJob(
+  job: HarthmereJobsBoardPosting | undefined
 ) {
   if (!job) return false;
-  const auto = job as HarthmereJobsBoardPostingV1 & {
+  const auto = job as HarthmereJobsBoardPosting & {
     monsterId?: string;
     monsterTier?: string;
     partyRecommended?: boolean;
@@ -112,21 +112,21 @@ export function isHarthmereWantedBoardJobV1(
         .join(" ")
     )
     .join(" ");
-  return WANTED_JOB_TEXT_RE_V1.test(
+  return WANTED_JOB_TEXT_RE.test(
     `${job.title} ${job.description} ${job.kind} ${requirementsText}`
   );
 }
 
-function noticeFromJobV1(input: {
-  job: HarthmereJobsBoardPostingV1;
-  snapshot: HarthmereJobsBoardSnapshotV1;
+function noticeFromJob(input: {
+  job: HarthmereJobsBoardPosting;
+  snapshot: HarthmereJobsBoardSnapshot;
   nowMs: number;
   mine?: boolean;
-}): HarthmereWantedBoardNoticeV1 {
+}): HarthmereWantedBoardNotice {
   const { job, snapshot, nowMs } = input;
   const board = snapshot.boards[job.boardId];
-  const targetLabel = jobTargetLabelV1(job);
-  const markerId = jobMarkerIdV1(job);
+  const targetLabel = jobTargetLabel(job);
+  const markerId = jobMarkerId(job);
   const warning = job.abuseFlags.length
     ? "This notice has audit flags."
     : (job as any).partyRecommended
@@ -137,19 +137,19 @@ function noticeFromJobV1(input: {
     source: "jobs_board",
     jobId: job.jobId,
     boardId: job.boardId,
-    boardName: displayNameForHarthmereJobsBoardV145(board),
+    boardName: displayNameForHarthmereJobsBoard(board),
     title: job.title,
     subtitle: targetLabel
-      ? `${HARTHMERE_JOBS_BOARD_JOB_KIND_LABELS_V1[job.kind]} · ${targetLabel}`
-      : HARTHMERE_JOBS_BOARD_JOB_KIND_LABELS_V1[job.kind],
+      ? `${HARTHMERE_JOBS_BOARD_JOB_KIND_LABELS[job.kind]} · ${targetLabel}`
+      : HARTHMERE_JOBS_BOARD_JOB_KIND_LABELS[job.kind],
     description: job.description,
     rewardGold: Math.max(0, Math.trunc(Number(job.rewardGold) || 0)),
     status: job.status,
     targetId: job.targetId,
     markerId,
     targetLabel,
-    kindLabel: HARTHMERE_JOBS_BOARD_JOB_KIND_LABELS_V1[job.kind],
-    timeRemaining: formatHarthmereJobTimeRemainingV151(
+    kindLabel: HARTHMERE_JOBS_BOARD_JOB_KIND_LABELS[job.kind],
+    timeRemaining: formatHarthmereJobTimeRemaining(
       job.deadlineAtMs,
       nowMs
     ),
@@ -159,25 +159,25 @@ function noticeFromJobV1(input: {
   };
 }
 
-function titleCaseV1(value: string) {
+function titleCase(value: string) {
   return String(value || "unknown")
     .replace(/_/g, " ")
     .replace(/\b\w/g, (match) => match.toUpperCase());
 }
 
-function noticeFromLawRecordV1(
-  record: HarthmereJobsBoardLawCrimeRecordV1,
+function noticeFromLawRecord(
+  record: HarthmereJobsBoardLawCrimeRecord,
   actorId: string
-): HarthmereWantedBoardNoticeV1 {
+): HarthmereWantedBoardNotice {
   const ownRecord = record.actorId === actorId;
-  const kind = titleCaseV1(record.kind);
+  const kind = titleCase(record.kind);
   const target = record.targetId || record.locationId || record.zoneId;
   return {
     noticeId: `law:${record.id}`,
     source: "law_system",
     crimeId: record.id,
     title: `${kind} Warrant`,
-    subtitle: `${record.factionId} · ${titleCaseV1(record.status)}`,
+    subtitle: `${record.factionId} · ${titleCase(record.status)}`,
     description: target
       ? `${record.actorId} is wanted for ${kind.toLowerCase()} near ${target}.`
       : `${record.actorId} is wanted for ${kind.toLowerCase()}.`,
@@ -197,11 +197,11 @@ function noticeFromLawRecordV1(
   };
 }
 
-function watchlistNoticeForTargetV1(
-  target: (typeof HARTHMERE_JOBS_BOARD_MUCK_BOUNTY_TARGETS_V1)[number],
+function watchlistNoticeForTarget(
+  target: (typeof HARTHMERE_JOBS_BOARD_MUCK_BOUNTY_TARGETS)[number],
   coveredTargetIds: Set<string>,
   coveredMarkerIds: Set<string>
-): HarthmereWantedBoardNoticeV1 | undefined {
+): HarthmereWantedBoardNotice | undefined {
   if (coveredTargetIds.has(target.targetId) || coveredMarkerIds.has(target.markerId)) {
     return undefined;
   }
@@ -209,7 +209,7 @@ function watchlistNoticeForTargetV1(
     noticeId: `watch:${target.targetId}`,
     source: "muck_watchlist",
     title: target.label,
-    subtitle: `${titleCaseV1(target.monsterTier)} ${titleCaseV1(target.monsterId)}`,
+    subtitle: `${titleCase(target.monsterTier)} ${titleCase(target.monsterId)}`,
     description: `${target.targetName} has been sighted in ${target.areaLabel}. Watch for a live bounty posting before claiming a reward.`,
     rewardGold: 0,
     status: "watchlisted",
@@ -224,7 +224,7 @@ function watchlistNoticeForTargetV1(
   };
 }
 
-function defaultLawPanelV1(): HarthmereWantedBoardLawPanelV1 {
+function defaultLawPanel(): HarthmereWantedBoardLawPanel {
   return {
     legal: 0,
     likeability: 0,
@@ -234,18 +234,18 @@ function defaultLawPanelV1(): HarthmereWantedBoardLawPanelV1 {
     myActiveBountyGold: 0,
     publicFlags: [],
     guidance: [
-      HARTHMERE_TOWN_LAW_RULES_V1.warnings,
-      HARTHMERE_TOWN_LAW_RULES_V1.trespass,
-      HARTHMERE_TOWN_LAW_RULES_V1.criminal,
+      HARTHMERE_TOWN_LAW_RULES.warnings,
+      HARTHMERE_TOWN_LAW_RULES.trespass,
+      HARTHMERE_TOWN_LAW_RULES.criminal,
     ],
   };
 }
 
-function lawPanelFromSnapshotV1(
-  snapshot: HarthmereJobsBoardSnapshotV1
-): HarthmereWantedBoardLawPanelV1 {
+function lawPanelFromSnapshot(
+  snapshot: HarthmereJobsBoardSnapshot
+): HarthmereWantedBoardLawPanel {
   const law = snapshot.lawSummary;
-  if (!law) return defaultLawPanelV1();
+  if (!law) return defaultLawPanel();
   return {
     legal: law.standing.legal,
     likeability: law.standing.likeability,
@@ -259,34 +259,34 @@ function lawPanelFromSnapshotV1(
       .map(([flag]) => flag)
       .sort(),
     guidance: [
-      HARTHMERE_TOWN_LAW_RULES_V1.warnings,
-      HARTHMERE_TOWN_LAW_RULES_V1.trespass,
-      HARTHMERE_TOWN_LAW_RULES_V1.temple,
-      HARTHMERE_TOWN_LAW_RULES_V1.criminal,
+      HARTHMERE_TOWN_LAW_RULES.warnings,
+      HARTHMERE_TOWN_LAW_RULES.trespass,
+      HARTHMERE_TOWN_LAW_RULES.temple,
+      HARTHMERE_TOWN_LAW_RULES.criminal,
     ],
   };
 }
 
-export function buildHarthmereWantedBoardViewV1(
-  snapshot: HarthmereJobsBoardSnapshotV1,
-  boardId = snapshot.defaultBoardId || HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1,
+export function buildHarthmereWantedBoardView(
+  snapshot: HarthmereJobsBoardSnapshot,
+  boardId = snapshot.defaultBoardId || HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID,
   nowMs = Date.now()
-): HarthmereWantedBoardViewV1 {
+): HarthmereWantedBoardView {
   const board = snapshot.boards[boardId] ?? snapshot.boards[snapshot.defaultBoardId];
-  const wantedOpenJobs = snapshot.openJobs.filter(isHarthmereWantedBoardJobV1);
-  const myWantedJobs = snapshot.myAcceptedJobs.filter(isHarthmereWantedBoardJobV1);
+  const wantedOpenJobs = snapshot.openJobs.filter(isHarthmereWantedBoardJob);
+  const myWantedJobs = snapshot.myAcceptedJobs.filter(isHarthmereWantedBoardJob);
   const openNotices = wantedOpenJobs
-    .map((job) => noticeFromJobV1({ job, snapshot, nowMs }))
+    .map((job) => noticeFromJob({ job, snapshot, nowMs }))
     .sort(
       (a, b) =>
         b.rewardGold - a.rewardGold ||
         String(a.timeRemaining ?? "").localeCompare(String(b.timeRemaining ?? ""))
     );
   const myNotices = myWantedJobs
-    .map((job) => noticeFromJobV1({ job, snapshot, nowMs, mine: true }))
+    .map((job) => noticeFromJob({ job, snapshot, nowMs, mine: true }))
     .sort((a, b) => b.rewardGold - a.rewardGold);
   const lawNotices = (snapshot.lawSummary?.activeBounties ?? [])
-    .map((record) => noticeFromLawRecordV1(record, snapshot.actorId))
+    .map((record) => noticeFromLawRecord(record, snapshot.actorId))
     .sort((a, b) => b.rewardGold - a.rewardGold);
   const coveredTargetIds = new Set(
     [...openNotices, ...myNotices]
@@ -298,20 +298,20 @@ export function buildHarthmereWantedBoardViewV1(
       .map((notice) => notice.markerId)
       .filter((value): value is string => Boolean(value))
   );
-  const watchlistNotices = HARTHMERE_JOBS_BOARD_MUCK_BOUNTY_TARGETS_V1.map(
-    (target) => watchlistNoticeForTargetV1(target, coveredTargetIds, coveredMarkerIds)
-  ).filter((notice): notice is HarthmereWantedBoardNoticeV1 => Boolean(notice));
+  const watchlistNotices = HARTHMERE_JOBS_BOARD_MUCK_BOUNTY_TARGETS.map(
+    (target) => watchlistNoticeForTarget(target, coveredTargetIds, coveredMarkerIds)
+  ).filter((notice): notice is HarthmereWantedBoardNotice => Boolean(notice));
   return {
-    version: HARTHMERE_WANTED_BOARD_VERSION_V1,
+    version: HARTHMERE_WANTED_BOARD_VERSION,
     boardId,
     boardName: board
-      ? displayNameForHarthmereJobsBoardV145(board)
+      ? displayNameForHarthmereJobsBoard(board)
       : "Wanted Board",
     openNotices,
     myNotices,
     lawNotices,
     watchlistNotices,
-    law: lawPanelFromSnapshotV1(snapshot),
+    law: lawPanelFromSnapshot(snapshot),
     totals: {
       open: openNotices.length,
       mine: myNotices.length,
@@ -325,7 +325,7 @@ export function buildHarthmereWantedBoardViewV1(
   };
 }
 
-function harthmereWantedBoardMutationHeadersV1(search?: string) {
+function harthmereWantedBoardMutationHeaders(search?: string) {
   const rawSearch =
     search ?? (typeof window !== "undefined" ? window.location.search : "");
   const params = new URLSearchParams(rawSearch);
@@ -339,7 +339,7 @@ function harthmereWantedBoardMutationHeadersV1(search?: string) {
   return headers;
 }
 
-export async function submitHarthmereWantedBoardClearBountyV1(options: {
+export async function submitHarthmereWantedBoardClearBounty(options: {
   factionId?: string;
   fetchImpl?: typeof fetch;
   requestId?: string;
@@ -352,13 +352,13 @@ export async function submitHarthmereWantedBoardClearBountyV1(options: {
     `wanted_board_clear_bounty_${Date.now()}_${Math.random()
       .toString(36)
       .slice(2)}`;
-  const response = await fetchHarthmereLiveWithTimeoutV1(
+  const response = await fetchHarthmereLiveWithTimeout(
     fetchImpl,
-    harthmereJobsBoardMutationUrlV151(options.locationSearch),
+    harthmereJobsBoardMutationUrl(options.locationSearch),
     {
       method: "POST",
       credentials: "same-origin",
-      headers: harthmereWantedBoardMutationHeadersV1(options.locationSearch),
+      headers: harthmereWantedBoardMutationHeaders(options.locationSearch),
       body: JSON.stringify({
         requestId,
         idempotencyKey: requestId,

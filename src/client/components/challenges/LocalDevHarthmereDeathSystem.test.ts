@@ -1,9 +1,9 @@
 import {
-  effectiveHarthmereDeathStateForRespawnV140,
-  harthmereLivePlayerDeathSyncSummaryForTestV1,
+  effectiveHarthmereDeathStateForRespawn,
+  harthmereLivePlayerDeathSyncSummaryForTest,
   type HarthmereDeathState,
 } from "@/client/components/challenges/LocalDevHarthmereDeathSystem";
-import { harthmereRespawnDisabledReasonV1 } from "@/client/components/challenges/harthmereCombatDeathInterfaceRules";
+import { harthmereRespawnDisabledReason } from "@/client/components/challenges/harthmereCombatDeathInterfaceRules";
 import assert from "assert";
 
 describe("Harthmere live death sync", () => {
@@ -17,7 +17,7 @@ describe("Harthmere live death sync", () => {
     } satisfies HarthmereDeathState);
 
   it("treats live hp zero as dead even when the death state string is missing", () => {
-    const summary = harthmereLivePlayerDeathSyncSummaryForTestV1({
+    const summary = harthmereLivePlayerDeathSyncSummaryForTest({
       combat: { hp: 0, maxHp: 100 },
     });
 
@@ -26,7 +26,7 @@ describe("Harthmere live death sync", () => {
   });
 
   it("treats live positive hp and alive state as recovered", () => {
-    const summary = harthmereLivePlayerDeathSyncSummaryForTestV1({
+    const summary = harthmereLivePlayerDeathSyncSummaryForTest({
       combat: { hp: 61, maxHp: 240, deathState: "alive" },
     });
 
@@ -35,7 +35,7 @@ describe("Harthmere live death sync", () => {
   });
 
   it("does not let a dead live state look alive just because hp is stale positive", () => {
-    const summary = harthmereLivePlayerDeathSyncSummaryForTestV1({
+    const summary = harthmereLivePlayerDeathSyncSummaryForTest({
       combat: { hp: 61, maxHp: 240, deathState: "dead" },
     });
 
@@ -44,7 +44,7 @@ describe("Harthmere live death sync", () => {
   });
 
   it("makes a local hp-zero player immediately respawnable at The Grove", () => {
-    const effective = effectiveHarthmereDeathStateForRespawnV140({
+    const effective = effectiveHarthmereDeathStateForRespawn({
       death: aliveDeathState(),
       combatHp: 0,
       combatMaxHp: 240,
@@ -55,13 +55,13 @@ describe("Harthmere live death sync", () => {
     assert.equal(effective.state, "dead");
     assert.equal(effective.currentDeath?.cause, "HP reached zero");
     assert.equal(
-      harthmereRespawnDisabledReasonV1(effective, "the_grove"),
+      harthmereRespawnDisabledReason(effective, "the_grove"),
       undefined
     );
   });
 
   it("makes a dead combat-state player respawnable even if hp has not caught up", () => {
-    const effective = effectiveHarthmereDeathStateForRespawnV140({
+    const effective = effectiveHarthmereDeathStateForRespawn({
       death: aliveDeathState(),
       combatHp: 61,
       combatMaxHp: 240,
@@ -72,13 +72,13 @@ describe("Harthmere live death sync", () => {
     assert.equal(effective.state, "dead");
     assert.match(effective.currentDeath?.cause ?? "", /Combat state is dead/);
     assert.equal(
-      harthmereRespawnDisabledReasonV1(effective, "the_grove"),
+      harthmereRespawnDisabledReason(effective, "the_grove"),
       undefined
     );
   });
 
   it("makes a live hp-zero player status respawnable before local storage catches up", () => {
-    const effective = effectiveHarthmereDeathStateForRespawnV140({
+    const effective = effectiveHarthmereDeathStateForRespawn({
       death: aliveDeathState(),
       combatHp: 240,
       combatMaxHp: 240,
@@ -91,7 +91,7 @@ describe("Harthmere live death sync", () => {
     assert.equal(effective.state, "dead");
     assert.equal(effective.currentDeath?.cause, "HP reached zero");
     assert.equal(
-      harthmereRespawnDisabledReasonV1(effective, "the_grove"),
+      harthmereRespawnDisabledReason(effective, "the_grove"),
       undefined
     );
   });
@@ -116,7 +116,7 @@ describe("Harthmere live death sync", () => {
       },
     });
 
-    const effective = effectiveHarthmereDeathStateForRespawnV140({
+    const effective = effectiveHarthmereDeathStateForRespawn({
       death,
       combatHp: 0,
       combatMaxHp: 240,
@@ -130,7 +130,7 @@ describe("Harthmere live death sync", () => {
 
   it("does not turn normal positive-hp combat into a death screen", () => {
     const death = aliveDeathState();
-    const effective = effectiveHarthmereDeathStateForRespawnV140({
+    const effective = effectiveHarthmereDeathStateForRespawn({
       death,
       combatHp: 240,
       combatMaxHp: 240,

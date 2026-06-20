@@ -1,7 +1,7 @@
 import assert from "assert";
 import {
-  HARTHMERE_NPC_TALK_FALLBACK_CLOSE_RADIUS_V140,
-  HARTHMERE_NPC_TALK_FALLBACK_RADIUS_V140,
+  HARTHMERE_NPC_TALK_FALLBACK_CLOSE_RADIUS,
+  HARTHMERE_NPC_TALK_FALLBACK_RADIUS,
   harthmereNpcTalkCandidateScoreForTest,
 } from "../overlays";
 
@@ -43,9 +43,9 @@ describe("Harthmere NPC talk fallback radius", () => {
   });
 
   it("enforces the fallback radius inclusively at the edge", () => {
-    assertTalkable(score([0, 70, -HARTHMERE_NPC_TALK_FALLBACK_RADIUS_V140]));
+    assertTalkable(score([0, 70, -HARTHMERE_NPC_TALK_FALLBACK_RADIUS]));
     assert.equal(
-      score([0, 70, -HARTHMERE_NPC_TALK_FALLBACK_RADIUS_V140 - 0.001]),
+      score([0, 70, -HARTHMERE_NPC_TALK_FALLBACK_RADIUS - 0.001]),
       undefined
     );
   });
@@ -53,13 +53,13 @@ describe("Harthmere NPC talk fallback radius", () => {
   it("allows very close side-angle conversations while the NPC remains in the front half-plane", () => {
     assertTalkable(
       score([
-        HARTHMERE_NPC_TALK_FALLBACK_CLOSE_RADIUS_V140 - 0.25,
+        HARTHMERE_NPC_TALK_FALLBACK_CLOSE_RADIUS - 0.25,
         70,
         -0.1,
       ])
     );
     assertTalkable(
-      score([HARTHMERE_NPC_TALK_FALLBACK_CLOSE_RADIUS_V140 - 0.25, 70, 0])
+      score([HARTHMERE_NPC_TALK_FALLBACK_CLOSE_RADIUS - 0.25, 70, 0])
     );
   });
 
@@ -67,7 +67,7 @@ describe("Harthmere NPC talk fallback radius", () => {
     assert.equal(score([0, 70, 1]), undefined);
     assert.equal(score([0, 70, 5]), undefined);
     assert.equal(
-      score([HARTHMERE_NPC_TALK_FALLBACK_CLOSE_RADIUS_V140 - 0.25, 70, 0.01]),
+      score([HARTHMERE_NPC_TALK_FALLBACK_CLOSE_RADIUS - 0.25, 70, 0.01]),
       undefined
     );
     assert.equal(score([3, 70, 0.5]), undefined);
@@ -84,7 +84,7 @@ describe("Harthmere NPC talk fallback radius", () => {
 
   it("honors stricter front-cone thresholds without making close side interactions fail", () => {
     assertTalkable(
-      score([HARTHMERE_NPC_TALK_FALLBACK_CLOSE_RADIUS_V140 - 0.25, 70, 0], {
+      score([HARTHMERE_NPC_TALK_FALLBACK_CLOSE_RADIUS - 0.25, 70, 0], {
         minViewDot: 0.75,
       })
     );

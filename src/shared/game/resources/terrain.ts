@@ -312,7 +312,7 @@ function genTerrainBoxes(
 
   // HACK(taylor): Clear non-occluding blocks.
   return using(voxeloo.clearNonCollidingBlocks(block), (block) => {
-    const boxes = voxeloo.to_boxes(block.mask(), shard.box.v0);
+    const boxes = voxeloo.to_boxes(block.mask(), shard.box);
     return makeDisposable(boxes, () => boxes.delete());
   });
 }

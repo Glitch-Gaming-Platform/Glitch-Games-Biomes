@@ -74,8 +74,8 @@ async function setupGroupTest(voxeloo: VoxelooModule, logic: TestLogicApi) {
   ok(terrainName && isTerrainName(terrainName));
   const terrainID = getTerrainID(terrainName);
   const tensor = using(new voxeloo.GroupTensorBuilder(), (builder) => {
-    builder.setBlock(sub([25, 25, 25], box.v0), toBlockId(terrainID), 0, 0, 0);
-    builder.setBlock(sub([26, 25, 25], box.v0), toBlockId(terrainID), 0, 0, 0);
+    builder.setBlock(sub([25, 25, 25], box), toBlockId(terrainID), 0, 0, 0);
+    builder.setBlock(sub([26, 25, 25], box), toBlockId(terrainID), 0, 0, 0);
     return builder.build().save();
   });
 

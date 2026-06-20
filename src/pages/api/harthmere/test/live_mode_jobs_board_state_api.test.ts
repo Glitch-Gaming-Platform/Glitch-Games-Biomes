@@ -1,27 +1,27 @@
 import assert from "assert";
 import {
-  readHarthmereLiveModeJobsBoardStateForActorV1,
+  readHarthmereLiveModeJobsBoardStateForActor,
 } from "../live_mode_jobs_board_state";
 import {
-  createHarthmereLiveModeSharedWorldStateV1,
-  defaultHarthmereLiveModeBackendStateV1,
-  harthmereLiveModePlayerStateKeyV1,
-  harthmereLiveModeSharedWorldStateKeyV1,
-} from "@/shared/harthmere/live_mode_backend_v1";
+  createHarthmereLiveModeSharedWorldState,
+  defaultHarthmereLiveModeBackendState,
+  harthmereLiveModePlayerStateKey,
+  harthmereLiveModeSharedWorldStateKey,
+} from "@/shared/harthmere/live_mode_backend";
 import {
-  HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1,
-  HARTHMERE_JOBS_BOARD_HARTHMERE_BOARD_ID_V141,
-} from "@/shared/harthmere/mmo_jobs_board_authority_v1";
+  HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID,
+  HARTHMERE_JOBS_BOARD_HARTHMERE_BOARD_ID,
+} from "@/shared/harthmere/mmo_jobs_board_authority";
 
 const ACTOR = "player_api_jobs_001";
 const NOW_MS = 1_700_300_000_000;
 
 describe("live_mode_jobs_board_state API route integration", () => {
   it("reads Redis state and returns the actor's two physical jobs boards", async () => {
-    const backend = defaultHarthmereLiveModeBackendStateV1(ACTOR, NOW_MS);
+    const backend = defaultHarthmereLiveModeBackendState(ACTOR, NOW_MS);
     backend.jobsBoard.postings.harthmere_auto_1 = {
       jobId: "harthmere_auto_1",
-      boardId: HARTHMERE_JOBS_BOARD_HARTHMERE_BOARD_ID_V141,
+      boardId: HARTHMERE_JOBS_BOARD_HARTHMERE_BOARD_ID,
       issuerKind: "town",
       issuerId: "harthmere_town",
       title: "Test Harthmere board job",
@@ -53,34 +53,34 @@ describe("live_mode_jobs_board_state API route integration", () => {
       },
     };
 
-    const snapshot = await readHarthmereLiveModeJobsBoardStateForActorV1({
+    const snapshot = await readHarthmereLiveModeJobsBoardStateForActor({
       redis,
       actorId: ACTOR,
       nowMs: NOW_MS,
     });
 
     assert.deepEqual(calls.sort(), [
-      harthmereLiveModePlayerStateKeyV1(ACTOR),
-      harthmereLiveModeSharedWorldStateKeyV1(),
+      harthmereLiveModePlayerStateKey(ACTOR),
+      harthmereLiveModeSharedWorldStateKey(),
     ].sort());
     assert.equal(snapshot.actorId, ACTOR);
-    assert.ok(snapshot.boards[HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1]);
-    assert.ok(snapshot.boards[HARTHMERE_JOBS_BOARD_HARTHMERE_BOARD_ID_V141]);
-    assert.equal(snapshot.boards[HARTHMERE_JOBS_BOARD_HARTHMERE_BOARD_ID_V141].location.x, 1046);
-    assert.equal(snapshot.boards[HARTHMERE_JOBS_BOARD_HARTHMERE_BOARD_ID_V141].location.z, -202);
+    assert.ok(snapshot.boards[HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID]);
+    assert.ok(snapshot.boards[HARTHMERE_JOBS_BOARD_HARTHMERE_BOARD_ID]);
+    assert.equal(snapshot.boards[HARTHMERE_JOBS_BOARD_HARTHMERE_BOARD_ID].location.x, 1046);
+    assert.equal(snapshot.boards[HARTHMERE_JOBS_BOARD_HARTHMERE_BOARD_ID].location.z, -202);
     const existingHarthmereJob = snapshot.openJobs.find(
       (job) => job.jobId === "harthmere_auto_1",
     );
-    assert.equal(existingHarthmereJob?.boardId, HARTHMERE_JOBS_BOARD_HARTHMERE_BOARD_ID_V141);
+    assert.equal(existingHarthmereJob?.boardId, HARTHMERE_JOBS_BOARD_HARTHMERE_BOARD_ID);
     assert.equal(existingHarthmereJob?.source, "economy_auto_seed");
     assert.ok(
-      snapshot.openJobs.some((job) => job.boardId === HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1),
+      snapshot.openJobs.some((job) => job.boardId === HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID),
       "read path should top up the Grove board when it is empty",
     );
   });
 
   it("includes active law bounties in the jobs-board snapshot for wanted boards", async () => {
-    const backend = defaultHarthmereLiveModeBackendStateV1(ACTOR, NOW_MS);
+    const backend = defaultHarthmereLiveModeBackendState(ACTOR, NOW_MS);
     backend.law.standing.city_guard = {
       likeability: -10,
       legal: -500,
@@ -112,13 +112,13 @@ describe("live_mode_jobs_board_state API route integration", () => {
     const redis = {
       primary: {
         get: async (key: string) =>
-          key === harthmereLiveModePlayerStateKeyV1(ACTOR)
+          key === harthmereLiveModePlayerStateKey(ACTOR)
             ? JSON.stringify(backend)
             : null,
       },
     };
 
-    const snapshot = await readHarthmereLiveModeJobsBoardStateForActorV1({
+    const snapshot = await readHarthmereLiveModeJobsBoardStateForActor({
       redis,
       actorId: ACTOR,
       nowMs: NOW_MS,
@@ -136,7 +136,7 @@ describe("live_mode_jobs_board_state API route integration", () => {
   });
 
   it("uses one Redis MGET for actor and shared jobs-board state when available", async () => {
-    const backend = defaultHarthmereLiveModeBackendStateV1(ACTOR, NOW_MS);
+    const backend = defaultHarthmereLiveModeBackendState(ACTOR, NOW_MS);
     const mgetCalls: string[][] = [];
     const getCalls: string[] = [];
     const redis = {
@@ -148,7 +148,7 @@ describe("live_mode_jobs_board_state API route integration", () => {
         mget: async (...keys: string[]) => {
           mgetCalls.push(keys);
           return keys.map((key) =>
-            key === harthmereLiveModePlayerStateKeyV1(ACTOR)
+            key === harthmereLiveModePlayerStateKey(ACTOR)
               ? JSON.stringify(backend)
               : null
           );
@@ -156,15 +156,15 @@ describe("live_mode_jobs_board_state API route integration", () => {
       },
     };
 
-    const snapshot = await readHarthmereLiveModeJobsBoardStateForActorV1({
+    const snapshot = await readHarthmereLiveModeJobsBoardStateForActor({
       redis,
       actorId: ACTOR,
       nowMs: NOW_MS,
     });
 
     assert.deepEqual(mgetCalls, [[
-      harthmereLiveModePlayerStateKeyV1(ACTOR),
-      harthmereLiveModeSharedWorldStateKeyV1(),
+      harthmereLiveModePlayerStateKey(ACTOR),
+      harthmereLiveModeSharedWorldStateKey(),
     ]]);
     assert.deepEqual(getCalls, []);
     assert.equal(snapshot.actorId, ACTOR);
@@ -180,21 +180,21 @@ describe("live_mode_jobs_board_state API route integration", () => {
         },
       },
     };
-    const snapshot = await readHarthmereLiveModeJobsBoardStateForActorV1({
+    const snapshot = await readHarthmereLiveModeJobsBoardStateForActor({
       redis,
       actorId: ACTOR,
       nowMs: NOW_MS,
     });
 
     assert.equal(snapshot.actorId, ACTOR);
-    assert.ok(snapshot.boards[HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1]);
-    assert.ok(snapshot.boards[HARTHMERE_JOBS_BOARD_HARTHMERE_BOARD_ID_V141]);
+    assert.ok(snapshot.boards[HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID]);
+    assert.ok(snapshot.boards[HARTHMERE_JOBS_BOARD_HARTHMERE_BOARD_ID]);
     assert.ok(
-      snapshot.openJobs.some((job) => job.boardId === HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1),
+      snapshot.openJobs.some((job) => job.boardId === HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID),
       "fresh local players should see Grove jobs instead of a blank board",
     );
     assert.ok(
-      snapshot.openJobs.some((job) => job.boardId === HARTHMERE_JOBS_BOARD_HARTHMERE_BOARD_ID_V141),
+      snapshot.openJobs.some((job) => job.boardId === HARTHMERE_JOBS_BOARD_HARTHMERE_BOARD_ID),
       "fresh local players should see Harthmere town jobs too",
     );
     assert.ok(snapshot.openJobs.every((job) => job.source === "economy_auto_seed"));
@@ -211,7 +211,7 @@ describe("live_mode_jobs_board_state API route integration", () => {
         },
       },
     };
-    await readHarthmereLiveModeJobsBoardStateForActorV1({
+    await readHarthmereLiveModeJobsBoardStateForActor({
       redis,
       actorId: ACTOR,
       nowMs: NOW_MS,
@@ -219,17 +219,17 @@ describe("live_mode_jobs_board_state API route integration", () => {
     });
 
     assert.equal(writes.length, 1, "explicit compatibility mode still persists seeded jobs");
-    assert.equal(writes[0]?.key, harthmereLiveModeSharedWorldStateKeyV1());
+    assert.equal(writes[0]?.key, harthmereLiveModeSharedWorldStateKey());
   });
 
   it("expires stale shared auto jobs on read before returning clickable open jobs", async () => {
-    const sharedBackend = defaultHarthmereLiveModeBackendStateV1(
+    const sharedBackend = defaultHarthmereLiveModeBackendState(
       "shared_board",
       NOW_MS,
     );
     sharedBackend.jobsBoard.postings.expired_shared_auto = {
       jobId: "expired_shared_auto",
-      boardId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1,
+      boardId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID,
       issuerKind: "town",
       issuerId: "harthmere_grove",
       title: "Expired shared public job",
@@ -254,17 +254,17 @@ describe("live_mode_jobs_board_state API route integration", () => {
     sharedBackend.jobsBoard.issuerOpenJobIds["town:harthmere_grove"] = [
       "expired_shared_auto",
     ];
-    const actorBackend = defaultHarthmereLiveModeBackendStateV1(ACTOR, NOW_MS);
+    const actorBackend = defaultHarthmereLiveModeBackendState(ACTOR, NOW_MS);
     const writes: Array<{ key: string; value: string }> = [];
     const redis = {
       primary: {
         get: async (key: string) => {
-          if (key === harthmereLiveModePlayerStateKeyV1(ACTOR)) {
+          if (key === harthmereLiveModePlayerStateKey(ACTOR)) {
             return JSON.stringify(actorBackend);
           }
-          if (key === harthmereLiveModeSharedWorldStateKeyV1()) {
+          if (key === harthmereLiveModeSharedWorldStateKey()) {
             return JSON.stringify(
-              createHarthmereLiveModeSharedWorldStateV1(sharedBackend, NOW_MS),
+              createHarthmereLiveModeSharedWorldState(sharedBackend, NOW_MS),
             );
           }
           return null;
@@ -275,7 +275,7 @@ describe("live_mode_jobs_board_state API route integration", () => {
       },
     };
 
-    const snapshot = await readHarthmereLiveModeJobsBoardStateForActorV1({
+    const snapshot = await readHarthmereLiveModeJobsBoardStateForActor({
       redis,
       actorId: ACTOR,
       nowMs: NOW_MS,
@@ -288,7 +288,7 @@ describe("live_mode_jobs_board_state API route integration", () => {
     );
     assert.ok(
       snapshot.openJobs.some(
-        (job) => job.boardId === HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1,
+        (job) => job.boardId === HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID,
       ),
       "the read path should replace expired auto jobs with current board work",
     );
@@ -301,10 +301,10 @@ describe("live_mode_jobs_board_state API route integration", () => {
   });
 
   it("prefers shared public board state over an empty actor-local board", async () => {
-    const sharedBackend = defaultHarthmereLiveModeBackendStateV1("shared_board", NOW_MS);
+    const sharedBackend = defaultHarthmereLiveModeBackendState("shared_board", NOW_MS);
     sharedBackend.jobsBoard.postings.shared_job_1 = {
       jobId: "shared_job_1",
-      boardId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1,
+      boardId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID,
       issuerKind: "town",
       issuerId: "harthmere_grove",
       title: "Shared public job",
@@ -326,22 +326,22 @@ describe("live_mode_jobs_board_state API route integration", () => {
       autoPosted: true,
       source: "economy_auto_seed",
     };
-    const actorBackend = defaultHarthmereLiveModeBackendStateV1(ACTOR, NOW_MS);
+    const actorBackend = defaultHarthmereLiveModeBackendState(ACTOR, NOW_MS);
     const redis = {
       primary: {
         get: async (key: string) => {
-          if (key === harthmereLiveModePlayerStateKeyV1(ACTOR)) {
+          if (key === harthmereLiveModePlayerStateKey(ACTOR)) {
             return JSON.stringify(actorBackend);
           }
-          if (key === harthmereLiveModeSharedWorldStateKeyV1()) {
-            return JSON.stringify(createHarthmereLiveModeSharedWorldStateV1(sharedBackend, NOW_MS));
+          if (key === harthmereLiveModeSharedWorldStateKey()) {
+            return JSON.stringify(createHarthmereLiveModeSharedWorldState(sharedBackend, NOW_MS));
           }
           return null;
         },
       },
     };
 
-    const snapshot = await readHarthmereLiveModeJobsBoardStateForActorV1({
+    const snapshot = await readHarthmereLiveModeJobsBoardStateForActor({
       redis,
       actorId: ACTOR,
       nowMs: NOW_MS,
@@ -351,10 +351,10 @@ describe("live_mode_jobs_board_state API route integration", () => {
   });
 
   it("returns the actor's accepted shared jobs as quest-board todos", async () => {
-    const sharedBackend = defaultHarthmereLiveModeBackendStateV1("shared_board", NOW_MS);
+    const sharedBackend = defaultHarthmereLiveModeBackendState("shared_board", NOW_MS);
     sharedBackend.jobsBoard.postings.shared_accepted_job = {
       jobId: "shared_accepted_job",
-      boardId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1,
+      boardId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID,
       issuerKind: "town",
       issuerId: "harthmere_grove",
       title: "Clear the Muckwad Patch",
@@ -390,7 +390,7 @@ describe("live_mode_jobs_board_state API route integration", () => {
       todoId: "harthmere_job_todo_42",
       jobId: "shared_accepted_job",
       actorId: ACTOR,
-      boardId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1,
+      boardId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID,
       title: "Clear the Muckwad Patch",
       todoText: "Go to the marked location and complete: Clear the Muckwad Patch",
       status: "active",
@@ -405,22 +405,22 @@ describe("live_mode_jobs_board_state API route integration", () => {
     };
     sharedBackend.jobsBoard.actorAcceptedJobIds[ACTOR] = ["shared_accepted_job"];
 
-    const actorBackend = defaultHarthmereLiveModeBackendStateV1(ACTOR, NOW_MS);
+    const actorBackend = defaultHarthmereLiveModeBackendState(ACTOR, NOW_MS);
     const redis = {
       primary: {
         get: async (key: string) => {
-          if (key === harthmereLiveModePlayerStateKeyV1(ACTOR)) {
+          if (key === harthmereLiveModePlayerStateKey(ACTOR)) {
             return JSON.stringify(actorBackend);
           }
-          if (key === harthmereLiveModeSharedWorldStateKeyV1()) {
-            return JSON.stringify(createHarthmereLiveModeSharedWorldStateV1(sharedBackend, NOW_MS));
+          if (key === harthmereLiveModeSharedWorldStateKey()) {
+            return JSON.stringify(createHarthmereLiveModeSharedWorldState(sharedBackend, NOW_MS));
           }
           return null;
         },
       },
     };
 
-    const snapshot = await readHarthmereLiveModeJobsBoardStateForActorV1({
+    const snapshot = await readHarthmereLiveModeJobsBoardStateForActor({
       redis,
       actorId: ACTOR,
       nowMs: NOW_MS,

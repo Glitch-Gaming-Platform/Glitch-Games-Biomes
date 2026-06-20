@@ -7,7 +7,7 @@ import path from "path";
 const ROOT = process.cwd();
 
 const WORLD_INTERACTION_FILES = [
-  "src/client/components/harthmere_jobs_board/HarthmereJobsBoardWorldInteractionV146.tsx",
+  "src/client/components/harthmere_jobs_board/HarthmereJobsBoardWorldInteraction.tsx",
   "src/client/components/harthmere_business/HarthmereBusinessLiveContainer.tsx",
   "src/client/components/harthmere_home/HarthmereHomeConsoleLiveContainer.tsx",
   "src/client/components/challenges/HarthmereUnifiedHUD.tsx",
@@ -42,7 +42,7 @@ describe("world interaction F/E keys", () => {
       assert.match(source, /event\.repeat/, `${relative} must ignore repeats`);
       assert.match(
         source,
-        /input|textarea|select|isContentEditable|eventStartedInEditableV146|isTypingInBusinessInputV1/,
+        /input|textarea|select|isContentEditable|eventStartedInEditable|isTypingInBusinessInput/,
         `${relative} must keep text-entry safety`
       );
     }

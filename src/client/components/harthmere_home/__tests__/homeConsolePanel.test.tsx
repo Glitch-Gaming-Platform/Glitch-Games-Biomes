@@ -2,36 +2,36 @@ import assert from "assert";
 import * as React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import {
-  buildingSystemBlueprintByIdV1,
-  buildingSystemPlotByIdV1,
-  createBuildingSystemHomeConsoleMarkerV1,
-  type BuildingSystemPropertyRecordV1,
-} from "@/shared/harthmere/building_system_v1";
+  buildingSystemBlueprintById,
+  buildingSystemPlotById,
+  createBuildingSystemHomeConsoleMarker,
+  type BuildingSystemPropertyRecord,
+} from "@/shared/harthmere/building_system";
 import {
-  defaultHarthmereHomeDecorationStateV1,
-  reduceHarthmereHomeDecorationMutationV1,
-  type HarthmereHomeDecorationStateV1,
-} from "@/shared/harthmere/home_decoration_authority_v1";
+  defaultHarthmereHomeDecorationState,
+  reduceHarthmereHomeDecorationMutation,
+  type HarthmereHomeDecorationState,
+} from "@/shared/harthmere/home_decoration_authority";
 import {
-  HARTHMERE_CRAFTING_STATIONS_V1,
-  HARTHMERE_CRAFTING_TOOLS_V1,
-  HARTHMERE_HOME_DECORATION_ITEM_IDS_V1,
-  ensureHarthmereProductionCraftingCatalogueV1,
-} from "@/shared/harthmere/mmo_crafting_catalogue_v1";
+  HARTHMERE_CRAFTING_STATIONS,
+  HARTHMERE_CRAFTING_TOOLS,
+  HARTHMERE_HOME_DECORATION_ITEM_IDS,
+  ensureHarthmereProductionCraftingCatalogue,
+} from "@/shared/harthmere/mmo_crafting_catalogue";
 import {
   HarthmereHomeConsoleLiveContainer,
   HarthmereHomeConsolePanel,
   HarthmereHomeConsolePrompt,
-  createHarthmereHomeConsoleAdapterV1,
-  fetchHarthmereHomeConsoleBuildingStateV1,
-  formatHarthmereHomeConsolePlayerErrorV1,
-  getHarthmereHomeConsolePanelV1,
-  listHarthmereHomeConsoleMarkersV1,
-  nearestHarthmereHomeConsoleWorldContextV1,
-  normalizeHarthmereHomeConsoleClientSnapshotV1,
-  submitHarthmereHomeDecorationMutationV1,
-  type HarthmereHomeConsoleClientSnapshotV1,
-  type HarthmereHomeConsoleSubmitPayloadV1,
+  createHarthmereHomeConsoleAdapter,
+  fetchHarthmereHomeConsoleBuildingState,
+  formatHarthmereHomeConsolePlayerError,
+  getHarthmereHomeConsolePanel,
+  listHarthmereHomeConsoleMarkers,
+  nearestHarthmereHomeConsoleWorldContext,
+  normalizeHarthmereHomeConsoleClientSnapshot,
+  submitHarthmereHomeDecorationMutation,
+  type HarthmereHomeConsoleClientSnapshot,
+  type HarthmereHomeConsoleSubmitPayload,
 } from "../";
 
 const ACTOR = "home_console_actor";
@@ -39,8 +39,8 @@ const OTHER = "home_console_other";
 const NOW = 1_770_000_000_000;
 
 function property(
-  overrides: Partial<BuildingSystemPropertyRecordV1> = {}
-): BuildingSystemPropertyRecordV1 {
+  overrides: Partial<BuildingSystemPropertyRecord> = {}
+): BuildingSystemPropertyRecord {
   return {
     propertyId: "property_grove_muckstead_cottage_lot",
     plotId: "grove_muckstead_cottage_lot",
@@ -101,12 +101,12 @@ function property(
 }
 
 function place(
-  state: HarthmereHomeDecorationStateV1,
-  prop: BuildingSystemPropertyRecordV1,
+  state: HarthmereHomeDecorationState,
+  prop: BuildingSystemPropertyRecord,
   itemId: string,
   requestId: string
 ) {
-  const result = reduceHarthmereHomeDecorationMutationV1(
+  const result = reduceHarthmereHomeDecorationMutation(
     state,
     {
       requestId,
@@ -128,37 +128,37 @@ function place(
 function snapshot(
   actorId = ACTOR,
   prop = property()
-): HarthmereHomeConsoleClientSnapshotV1 {
-  ensureHarthmereProductionCraftingCatalogueV1();
-  let homeDecoration = defaultHarthmereHomeDecorationStateV1();
+): HarthmereHomeConsoleClientSnapshot {
+  ensureHarthmereProductionCraftingCatalogue();
+  let homeDecoration = defaultHarthmereHomeDecorationState();
   homeDecoration = place(
     homeDecoration,
     prop,
-    HARTHMERE_HOME_DECORATION_ITEM_IDS_V1.gardenPlanterBox,
+    HARTHMERE_HOME_DECORATION_ITEM_IDS.gardenPlanterBox,
     "place-garden"
   );
   homeDecoration = place(
     homeDecoration,
     prop,
-    HARTHMERE_CRAFTING_STATIONS_V1.workbench,
+    HARTHMERE_CRAFTING_STATIONS.workbench,
     "place-workbench"
   );
-  const plot = buildingSystemPlotByIdV1(prop.plotId)!;
-  const blueprint = buildingSystemBlueprintByIdV1(prop.blueprintId)!;
-  const marker = createBuildingSystemHomeConsoleMarkerV1({
+  const plot = buildingSystemPlotById(prop.plotId)!;
+  const blueprint = buildingSystemBlueprintById(prop.blueprintId)!;
+  const marker = createBuildingSystemHomeConsoleMarker({
     property: prop,
     plot,
     blueprint,
     nowMs: NOW,
   });
-  return normalizeHarthmereHomeConsoleClientSnapshotV1({
+  return normalizeHarthmereHomeConsoleClientSnapshot({
     actorId,
     gold: 75,
     inventoryItems: {
-      [HARTHMERE_HOME_DECORATION_ITEM_IDS_V1.storageCabinet]: 1,
-      [HARTHMERE_HOME_DECORATION_ITEM_IDS_V1.hearthLamp]: 1,
+      [HARTHMERE_HOME_DECORATION_ITEM_IDS.storageCabinet]: 1,
+      [HARTHMERE_HOME_DECORATION_ITEM_IDS.hearthLamp]: 1,
       grain_seed: 2,
-      [HARTHMERE_CRAFTING_TOOLS_V1.wateringCan]: 1,
+      [HARTHMERE_CRAFTING_TOOLS.wateringCan]: 1,
     },
     completedProperties: { [prop.propertyId]: prop },
     homeDecoration,
@@ -170,8 +170,8 @@ function snapshot(
 describe("HarthmereHomeConsolePanel", () => {
   it("renders a BiomesUI owner-only home management interface with Bikkie visuals", () => {
     const state = snapshot();
-    const marker = listHarthmereHomeConsoleMarkersV1(state)[0];
-    const adapter = createHarthmereHomeConsoleAdapterV1({
+    const marker = listHarthmereHomeConsoleMarkers(state)[0];
+    const adapter = createHarthmereHomeConsoleAdapter({
       state,
       context: {
         insideHome: true,
@@ -237,8 +237,8 @@ describe("HarthmereHomeConsolePanel", () => {
 
   it("shows a discoverable prompt only for the home owner inside the home", () => {
     const state = snapshot();
-    const marker = listHarthmereHomeConsoleMarkersV1(state)[0];
-    const adapter = createHarthmereHomeConsoleAdapterV1({ state });
+    const marker = listHarthmereHomeConsoleMarkers(state)[0];
+    const adapter = createHarthmereHomeConsoleAdapter({ state });
     const html = renderToStaticMarkup(
       React.createElement(HarthmereHomeConsolePrompt, {
         adapter,
@@ -263,7 +263,7 @@ describe("HarthmereHomeConsolePanel", () => {
     assert.ok(html.includes("min-height:82px"));
     assert.ok(html.includes("width:min(calc(100vw - 24px), 590px)"));
 
-    const outsider = createHarthmereHomeConsoleAdapterV1({
+    const outsider = createHarthmereHomeConsoleAdapter({
       state: snapshot(OTHER),
     });
     assert.equal(
@@ -292,14 +292,14 @@ describe("HarthmereHomeConsolePanel", () => {
       ""
     );
     assert.equal(
-      getHarthmereHomeConsolePanelV1(snapshot(OTHER), {
+      getHarthmereHomeConsolePanel(snapshot(OTHER), {
         insideHome: true,
         nearbyConsoleId: marker.markerId,
       }).accessReason,
       "not_owner"
     );
     assert.equal(
-      getHarthmereHomeConsolePanelV1(state, {
+      getHarthmereHomeConsolePanel(state, {
         insideHome: true,
         nearbyPropertyId: property().propertyId,
       }).accessReason,
@@ -309,8 +309,8 @@ describe("HarthmereHomeConsolePanel", () => {
 
   it("resolves the nearby in-world console from player position", () => {
     const state = snapshot();
-    const marker = listHarthmereHomeConsoleMarkersV1(state)[0];
-    const context = nearestHarthmereHomeConsoleWorldContextV1(state, {
+    const marker = listHarthmereHomeConsoleMarkers(state)[0];
+    const context = nearestHarthmereHomeConsoleWorldContext(state, {
       x: marker.position[0],
       y: marker.position[1],
       z: marker.position[2],
@@ -319,7 +319,7 @@ describe("HarthmereHomeConsolePanel", () => {
     assert.equal(context.nearbyConsoleId, marker.markerId);
     assert.equal(context.nearbyPropertyId, property().propertyId);
 
-    const farContext = nearestHarthmereHomeConsoleWorldContextV1(state, {
+    const farContext = nearestHarthmereHomeConsoleWorldContext(state, {
       x: marker.position[0] + 100,
       y: marker.position[1],
       z: marker.position[2],
@@ -330,9 +330,9 @@ describe("HarthmereHomeConsolePanel", () => {
 
   it("maps console actions to home decoration live-mode payloads", async () => {
     const state = snapshot();
-    const marker = listHarthmereHomeConsoleMarkersV1(state)[0];
-    const payloads: HarthmereHomeConsoleSubmitPayloadV1[] = [];
-    const adapter = createHarthmereHomeConsoleAdapterV1({
+    const marker = listHarthmereHomeConsoleMarkers(state)[0];
+    const payloads: HarthmereHomeConsoleSubmitPayload[] = [];
+    const adapter = createHarthmereHomeConsoleAdapter({
       state,
       context: {
         insideHome: true,
@@ -343,7 +343,7 @@ describe("HarthmereHomeConsolePanel", () => {
         return { ok: true, buildingState: state };
       },
     });
-    await adapter.placeDecoration(HARTHMERE_HOME_DECORATION_ITEM_IDS_V1.storageCabinet);
+    await adapter.placeDecoration(HARTHMERE_HOME_DECORATION_ITEM_IDS.storageCabinet);
     await adapter.moveDecoration("decor_property_grove_muckstead_cottage_lot_1", { x: 1, y: 0, z: 2 }, 90);
     await adapter.useDecoration("decor_property_grove_muckstead_cottage_lot_2");
     await adapter.removeDecoration("decor_property_grove_muckstead_cottage_lot_1");
@@ -365,7 +365,7 @@ describe("HarthmereHomeConsolePanel", () => {
     assert.equal(payloads[0].propertyId, property().propertyId);
     assert.equal(
       payloads[0].itemId,
-      HARTHMERE_HOME_DECORATION_ITEM_IDS_V1.storageCabinet
+      HARTHMERE_HOME_DECORATION_ITEM_IDS.storageCabinet
     );
     assert.equal(payloads[1].rotationDegrees, 90);
     assert.equal(payloads[4].seedItemId, "grain_seed");
@@ -380,11 +380,11 @@ describe("HarthmereHomeConsolePanel", () => {
         json: async () => ({ ok: true, buildingState: snapshot() }),
       };
     }) as any;
-    await submitHarthmereHomeDecorationMutationV1(
+    await submitHarthmereHomeDecorationMutation(
       {
         operation: "place_decoration",
         propertyId: property().propertyId,
-        itemId: HARTHMERE_HOME_DECORATION_ITEM_IDS_V1.storageCabinet,
+        itemId: HARTHMERE_HOME_DECORATION_ITEM_IDS.storageCabinet,
       },
       { fetchImpl, requestId: "fixed_home_console_request" }
     );
@@ -411,7 +411,7 @@ describe("HarthmereHomeConsolePanel", () => {
         json: async () => ({ ok: true, buildingState: snapshot() }),
       };
     }) as any;
-    const state = await fetchHarthmereHomeConsoleBuildingStateV1(fetchImpl);
+    const state = await fetchHarthmereHomeConsoleBuildingState(fetchImpl);
     assert.equal(calls[0].url, "/api/harthmere/live_mode_building_state");
     assert.equal(calls[0].init.method, "GET");
     assert.equal(calls[0].init.credentials, "same-origin");
@@ -425,7 +425,7 @@ describe("HarthmereHomeConsolePanel", () => {
 
   it("renders the live container prompt and panel from an initial building snapshot", () => {
     const state = snapshot();
-    const marker = listHarthmereHomeConsoleMarkersV1(state)[0];
+    const marker = listHarthmereHomeConsoleMarkers(state)[0];
     const playerPosition = {
       x: marker.position[0],
       y: marker.position[1],
@@ -456,7 +456,7 @@ describe("HarthmereHomeConsolePanel", () => {
   });
 
   it("formats home console warnings without exposing backend codes", () => {
-    const message = formatHarthmereHomeConsolePlayerErrorV1([
+    const message = formatHarthmereHomeConsolePlayerError([
       "home_decoration_rejected:property_not_owned",
       "home_decoration_rejected:missing_watering_can",
       "home_decoration_rejected:console_proximity_required",

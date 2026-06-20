@@ -1,0 +1,300 @@
+export const HARTHMERE_RESIDENT_HOUSING_VERSION = "harthmere-resident-slum-vertical-housing";
+export const HARTHMERE_RESIDENT_HOUSING_BLOCK_BUILD_VERSION = "harthmere-resident-slum-block-built-accessible-housing";
+export const HARTHMERE_RESIDENT_HOUSING_STONE_SHELL_VERSION = "harthmere-resident-slum-stone-shell-housing";
+export const HARTHMERE_RESIDENT_HOUSING_LIVING_QUARTERS_REBUILD_VERSION = "harthmere-living-quarters-voxel-rebuild-npc-dispersal";
+export const HARTHMERE_RESIDENT_HOUSING_VOXEL_REBUILD_VERSION = "harthmere-living-quarters-voxel-block-rebuild-doors-balconies";
+// BUILDING_PERF_FIX: signed marker so the renderer log line
+// confirms the building/perf patches above are loaded into the
+// shipped bundle. If you see this version on the "Loaded rebuilt
+// Harthmere town and Wilds assets" log line the fix is live.
+export const HARTHMERE_BUILDING_PERF_FIX = "harthmere-building-and-collision-perf-fix";
+// Transparent homes removed: resident and Mudden homes were rebuilt as
+// block-built shells with floors, doors, stairs, rooms, and collision instead
+// of client-only transparent placeholder houses.
+
+export type HarthmereResidentHousingStyle = "residential" | "slum";
+
+export type HarthmereResidentHousingBuilding = {
+  readonly id: string;
+  readonly name: string;
+  readonly district: "Residential District" | "Mudden Ward";
+  readonly style: HarthmereResidentHousingStyle;
+  readonly x: number;
+  readonly z: number;
+  readonly w: number;
+  readonly d: number;
+  readonly rot: number;
+  readonly floors: number;
+  readonly roomsPerFloor: number;
+  readonly stairDx: number;
+  readonly stairDz: number;
+  readonly theme: "nice" | "poor";
+};
+
+export type HarthmereResidentHousingDecorItem = {
+  readonly role: "bed" | "storage" | "light" | "table" | "personal" | "wall";
+  readonly asset: string;
+  readonly dx: number;
+  readonly dz: number;
+  readonly y: number;
+  readonly rot: number;
+  readonly scale: number;
+  readonly label: string;
+};
+
+export type HarthmereResidentHomeAssignment = {
+  readonly actorName: string;
+  readonly actorAsset: string;
+  readonly actorDistrict: string;
+  readonly homeId: string;
+  readonly buildingName: string;
+  readonly floor: number;
+  readonly room: number;
+  readonly homeType: "nice_room" | "slum_room" | "stable" | "kennel" | "roost" | "wild_lair" | "crypt" | "barracks_bunk" | "service_quarters";
+};
+
+export const HARTHMERE_RESIDENT_HOUSING_EXPECTED_NPC_COUNT = 194;
+export const HARTHMERE_RESIDENT_HOUSING_EXPECTED_HUMANOID_COUNT = 133;
+export const HARTHMERE_RESIDENT_HOUSING_EXPECTED_ANIMAL_COUNT = 61;
+export const HARTHMERE_RESIDENT_HOUSING_EXPECTED_MUDDEN_COUNT = 14;
+export const HARTHMERE_RESIDENT_HOUSING_EXPECTED_TOWN_NON_WILD_COUNT = 122;
+
+export const HARTHMERE_RESIDENTIAL_HOUSE_BUILDINGS = [
+  // current: rebuilt as block-built two-story resident quarters. IDs/names stay stable so
+  // existing NPC home assignments remain attached to the same designed home records.
+  { id: "res_v38_home_01", name: "Rosewall House", district: "Residential District", style: "residential", x: 350, z: -318, w: 21, d: 17, rot: 0, floors: 2, roomsPerFloor: 8, stairDx: -7.2, stairDz: 5.1, theme: "nice" },
+  { id: "res_v38_home_02", name: "Sunbeam House", district: "Residential District", style: "residential", x: 378, z: -318, w: 21, d: 17, rot: 0, floors: 2, roomsPerFloor: 8, stairDx: -7.2, stairDz: 5.1, theme: "nice" },
+  { id: "res_v38_home_03", name: "Blue Shutter House", district: "Residential District", style: "residential", x: 406, z: -318, w: 21, d: 17, rot: 0, floors: 2, roomsPerFloor: 8, stairDx: -7.2, stairDz: 5.1, theme: "nice" },
+  { id: "res_v38_home_04", name: "Chimneybend House", district: "Residential District", style: "residential", x: 434, z: -318, w: 21, d: 17, rot: 0, floors: 2, roomsPerFloor: 8, stairDx: -7.2, stairDz: 5.1, theme: "nice" },
+  { id: "res_v38_home_05", name: "Lavender Lane House", district: "Residential District", style: "residential", x: 462, z: -318, w: 21, d: 17, rot: 0, floors: 2, roomsPerFloor: 8, stairDx: -7.2, stairDz: 5.1, theme: "nice" },
+  { id: "res_v38_home_06", name: "Brass Knocker House", district: "Residential District", style: "residential", x: 350, z: -354, w: 21, d: 17, rot: Math.PI, floors: 2, roomsPerFloor: 8, stairDx: -7.2, stairDz: 5.1, theme: "nice" },
+  { id: "res_v38_home_07", name: "Appleblossom House", district: "Residential District", style: "residential", x: 378, z: -354, w: 21, d: 17, rot: Math.PI, floors: 2, roomsPerFloor: 8, stairDx: -7.2, stairDz: 5.1, theme: "nice" },
+  { id: "res_v38_home_08", name: "Wheatgold House", district: "Residential District", style: "residential", x: 406, z: -354, w: 21, d: 17, rot: Math.PI, floors: 2, roomsPerFloor: 8, stairDx: -7.2, stairDz: 5.1, theme: "nice" },
+  { id: "res_v38_home_09", name: "Canalview House", district: "Residential District", style: "residential", x: 434, z: -354, w: 21, d: 17, rot: Math.PI, floors: 2, roomsPerFloor: 8, stairDx: -7.2, stairDz: 5.1, theme: "nice" },
+  { id: "res_v38_home_10", name: "Miller's Rest House", district: "Residential District", style: "residential", x: 462, z: -354, w: 21, d: 17, rot: Math.PI, floors: 2, roomsPerFloor: 8, stairDx: -7.2, stairDz: 5.1, theme: "nice" },
+] as const satisfies readonly HarthmereResidentHousingBuilding[];
+
+export const HARTHMERE_SLUM_STACK_BUILDINGS = [
+  // current: rebuilt as dense but navigable four/five-story Mudden Ward block stacks.
+  { id: "slum_v38_stack_01", name: "Tangle Stairs Stack", district: "Mudden Ward", style: "slum", x: 374, z: -126, w: 16, d: 14, rot: Math.PI / 2, floors: 5, roomsPerFloor: 5, stairDx: -4.4, stairDz: 4.2, theme: "poor" },
+  { id: "slum_v38_stack_02", name: "Soot Ladder Stack", district: "Mudden Ward", style: "slum", x: 402, z: -104, w: 16, d: 14, rot: 0, floors: 5, roomsPerFloor: 5, stairDx: -4.4, stairDz: 4.2, theme: "poor" },
+  { id: "slum_v38_stack_03", name: "Dripline Stack", district: "Mudden Ward", style: "slum", x: 430, z: -126, w: 16, d: 14, rot: -Math.PI / 2, floors: 4, roomsPerFloor: 5, stairDx: -4.4, stairDz: 4.2, theme: "poor" },
+  { id: "slum_v38_stack_04", name: "Washline Stack", district: "Mudden Ward", style: "slum", x: 458, z: -104, w: 16, d: 14, rot: Math.PI, floors: 4, roomsPerFloor: 5, stairDx: -4.4, stairDz: 4.2, theme: "poor" },
+] as const satisfies readonly HarthmereResidentHousingBuilding[];
+
+export const HARTHMERE_RESIDENTIAL_ROOM_DECOR = [
+  { role: "bed", asset: "bed_twin2", dx: -1.85, dz: -1.00, y: 0.16, rot: Math.PI / 2, scale: 1.05, label: "full-size made bed with quilt standard resident scale" },
+  { role: "storage", asset: "chest_wood_fp", dx: 1.85, dz: -1.1, y: 0.08, rot: 0, scale: 0.42, label: "personal storage chest" },
+  { role: "light", asset: "candlestick_fp", dx: -1.9, dz: 1.10, y: 0.58, rot: 0, scale: 0.24, label: "warm bedside candle supported on nightstand" },
+  { role: "table", asset: "nightstand", dx: -1.25, dz: 1.10, y: 0.02, rot: 0, scale: 0.30, label: "small writing nightstand" },
+  { role: "personal", asset: "book_stack_1", dx: 1.22, dz: 1.05, y: 0.54, rot: 0.12, scale: 0.24, label: "personal book stack supported on shelf" },
+  { role: "wall", asset: "banner_green", dx: 0.0, dz: -1.82, y: 1.12, rot: 0, scale: 0.26, label: "clean wall hanging" },
+] as const satisfies readonly HarthmereResidentHousingDecorItem[];
+
+export const HARTHMERE_SLUM_ROOM_DECOR = [
+  { role: "bed", asset: "bed_twin2", dx: -1.45, dz: -0.88, y: 0.16, rot: Math.PI / 2, scale: 1.0, label: "full-size patched sleeping pallet standard slum scale" },
+  { role: "storage", asset: "crate_wooden_fp", dx: 1.45, dz: -0.95, y: 0.08, rot: 0.15, scale: 0.44, label: "shared crate storage" },
+  { role: "light", asset: "candle_1_fp", dx: -1.35, dz: 0.98, y: 0.50, rot: 0, scale: 0.22, label: "stub candle supported on crate" },
+  { role: "table", asset: "stool_fp", dx: 1.38, dz: 0.90, y: 0.08, rot: 0, scale: 0.38, label: "stool used as table" },
+  { role: "personal", asset: "bag_fp", dx: 0.0, dz: 1.35, y: 0.02, rot: -0.1, scale: 0.28, label: "family bundle tucked by wall" },
+  { role: "wall", asset: "banner_brown", dx: 0.0, dz: -1.62, y: 0.96, rot: 0, scale: 0.24, label: "patched hanging cloth" },
+] as const satisfies readonly HarthmereResidentHousingDecorItem[];
+
+export const HARTHMERE_RESIDENTIAL_ROOM_CAPACITY = HARTHMERE_RESIDENTIAL_HOUSE_BUILDINGS.reduce(
+  (total, building) => total + building.floors * building.roomsPerFloor,
+  0,
+);
+
+export const HARTHMERE_SLUM_ROOM_CAPACITY = HARTHMERE_SLUM_STACK_BUILDINGS.reduce(
+  (total, building) => total + building.floors * building.roomsPerFloor,
+  0,
+);
+
+export function normalizeHarthmereHousingDistrict(input?: string): string {
+  const raw = String(input ?? "").toLowerCase();
+  if (/mudden|slum|wash house/.test(raw)) return "mudden_ward";
+  if (/residential|cottage|house|farm/.test(raw)) return "residential";
+  if (/north gate|stable/.test(raw)) return "north_gate";
+  if (/market|bakery/.test(raw)) return "market_square";
+  if (/player services|bank|auction|storage|guild|wardrobe/.test(raw)) return "player_services";
+  if (/craftsman|black anvil|smith|apothecary|magic shop/.test(raw)) return "craftsman_row";
+  if (/copper kettle|inn|tavern/.test(raw)) return "copper_kettle";
+  if (/temple|chapel|cemetery|grave/.test(raw)) return "temple_green";
+  if (/noble|reeve|legal|tax/.test(raw)) return "noble_rise";
+  if (/river docks|dock|ferry|warehouse|river/.test(raw)) return "river_docks";
+  if (/guard yard|barracks|duel|bounty/.test(raw)) return "guard_yard";
+  if (/old well|underways|drain|crypt/.test(raw)) return "old_well_underways";
+  if (/wilds|greenmere|gravewood|briarfen|watchtower|orchard|forest|wood|ridge|field|road/.test(raw)) return "wilds";
+  return "unknown";
+}
+
+function hashHarthmereHousingString(value: string): number {
+  let hash = 2166136261;
+  for (let i = 0; i < value.length; i += 1) {
+    hash ^= value.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return Math.abs(hash >>> 0);
+}
+
+function residentialRoomForIndex(index: number) {
+  const building = HARTHMERE_RESIDENTIAL_HOUSE_BUILDINGS[index % HARTHMERE_RESIDENTIAL_HOUSE_BUILDINGS.length];
+  const local = Math.floor(index / HARTHMERE_RESIDENTIAL_HOUSE_BUILDINGS.length) % (building.floors * building.roomsPerFloor);
+  return {
+    building,
+    floor: Math.floor(local / building.roomsPerFloor) + 1,
+    room: (local % building.roomsPerFloor) + 1,
+  };
+}
+
+function slumRoomForIndex(index: number) {
+  const building = HARTHMERE_SLUM_STACK_BUILDINGS[index % HARTHMERE_SLUM_STACK_BUILDINGS.length];
+  const local = Math.floor(index / HARTHMERE_SLUM_STACK_BUILDINGS.length) % (building.floors * building.roomsPerFloor);
+  return {
+    building,
+    floor: Math.floor(local / building.roomsPerFloor) + 1,
+    room: (local % building.roomsPerFloor) + 1,
+  };
+}
+
+export function makeHarthmereResidentRoomCenter(
+  building: HarthmereResidentHousingBuilding,
+  roomIndex: number,
+): { readonly dx: number; readonly dz: number } {
+  const columns = building.style === "slum" ? 2 : 3;
+  const rows = Math.ceil(building.roomsPerFloor / columns);
+  const column = roomIndex % columns;
+  const row = Math.floor(roomIndex / columns);
+  const usableW = building.w - (building.style === "slum" ? 5.2 : 5.8);
+  const usableD = building.d - (building.style === "slum" ? 4.6 : 5.0);
+  return {
+    dx: -usableW / 2 + (column + 0.5) * (usableW / columns),
+    dz: -usableD / 2 + (row + 0.5) * (usableD / rows),
+  };
+}
+
+export function makeHarthmereResidentialRoomDecor(
+  style: HarthmereResidentHousingStyle,
+): readonly HarthmereResidentHousingDecorItem[] {
+  return style === "slum" ? HARTHMERE_SLUM_ROOM_DECOR : HARTHMERE_RESIDENTIAL_ROOM_DECOR;
+}
+
+export function assignHarthmereResidentHome(
+  actor: { readonly name?: string; readonly asset?: string; readonly district?: string },
+  index: number,
+): HarthmereResidentHomeAssignment {
+  const actorName = String(actor.name ?? actor.asset ?? `npc_${index}`);
+  const actorAsset = String(actor.asset ?? "unknown");
+  const actorDistrict = String(actor.district ?? "unknown");
+  const district = normalizeHarthmereHousingDistrict(actorDistrict);
+  const isAnimal = actorAsset.startsWith("animal_");
+  const hash = hashHarthmereHousingString(`${actorName}|${actorAsset}|${actorDistrict}|${index}`);
+
+  if (isAnimal) {
+    const animalType = actorAsset.replace(/^animal_/, "");
+    const homeType = /horse|cow|pig|sheep|chicken/.test(animalType)
+      ? "stable"
+      : /dog|cat/.test(animalType)
+        ? "kennel"
+        : /crow|pigeon/.test(animalType)
+          ? "roost"
+          : "wild_lair";
+    return {
+      actorName,
+      actorAsset,
+      actorDistrict,
+      homeId: `${district}_${animalType}_${homeType}`,
+      buildingName: homeType === "wild_lair" ? "wild den or burrow" : `${district} ${homeType}`,
+      floor: 1,
+      room: 1,
+      homeType,
+    };
+  }
+
+  if (district === "mudden_ward") {
+    const room = slumRoomForIndex(hash);
+    return {
+      actorName,
+      actorAsset,
+      actorDistrict,
+      homeId: `${room.building.id}_f${room.floor}_r${room.room}`,
+      buildingName: room.building.name,
+      floor: room.floor,
+      room: room.room,
+      homeType: "slum_room",
+    };
+  }
+
+  if (district === "guard_yard") {
+    return {
+      actorName,
+      actorAsset,
+      actorDistrict,
+      homeId: "guard_barracks_bunkhouse",
+      buildingName: "Guard Barracks",
+      floor: 1,
+      room: (hash % 12) + 1,
+      homeType: "barracks_bunk",
+    };
+  }
+
+  if (district === "old_well_underways" || actorAsset.includes("undead")) {
+    return {
+      actorName,
+      actorAsset,
+      actorDistrict,
+      homeId: "old_well_crypt_rest",
+      buildingName: "Old Well / Underways crypt rest",
+      floor: 1,
+      room: (hash % 8) + 1,
+      homeType: "crypt",
+    };
+  }
+
+  if (district === "wilds") {
+    return {
+      actorName,
+      actorAsset,
+      actorDistrict,
+      homeId: "wilds_camp_or_lair",
+      buildingName: "Harthmere Wilds camp or lair",
+      floor: 1,
+      room: (hash % 20) + 1,
+      homeType: "wild_lair",
+    };
+  }
+
+  const room = residentialRoomForIndex(hash);
+  return {
+    actorName,
+    actorAsset,
+    actorDistrict,
+    homeId: `${room.building.id}_f${room.floor}_r${room.room}`,
+    buildingName: room.building.name,
+    floor: room.floor,
+    room: room.room,
+    homeType: district === "residential" ? "nice_room" : "service_quarters",
+  };
+}
+
+export function createHarthmereResidentHomeAssignmentSummary(
+  actors: readonly { readonly name?: string; readonly asset?: string; readonly district?: string }[],
+) {
+  const assignments = actors.map((actor, index) => assignHarthmereResidentHome(actor, index));
+  const humanoidCount = actors.filter((actor) => String(actor.asset ?? "").startsWith("townsperson_")).length;
+  const animalCount = actors.filter((actor) => String(actor.asset ?? "").startsWith("animal_")).length;
+  const muddenCount = assignments.filter((assignment) => assignment.homeType === "slum_room").length;
+  const residentialRoomAssignments = assignments.filter((assignment) => assignment.homeType === "nice_room" || assignment.homeType === "service_quarters").length;
+  return {
+    version: HARTHMERE_RESIDENT_HOUSING_VERSION,
+    totalNpcCount: actors.length,
+    humanoidCount,
+    animalCount,
+    muddenCount,
+    residentialRoomAssignments,
+    residentialCapacity: HARTHMERE_RESIDENTIAL_ROOM_CAPACITY,
+    slumCapacity: HARTHMERE_SLUM_ROOM_CAPACITY,
+    allHaveHome: assignments.every((assignment) => Boolean(assignment.homeId && assignment.buildingName)),
+    assignments,
+  };
+}

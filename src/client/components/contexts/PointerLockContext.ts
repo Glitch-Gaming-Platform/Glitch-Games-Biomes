@@ -262,7 +262,7 @@ export class PointerLockManager {
     if (performance.now() <= (this.deadZone || 0)) {
       return false;
     }
-    // HARTHMERE_HUD_INPUT_LOCKED_WITHOUT_FOCUS_V1
+    // HARTHMERE_HUD_INPUT_LOCKED_WITHOUT_FOCUS
     // Previously this required isLockedAndFocused() — both pointer lock AND
     // document.activeElement === the game canvas. In practice the browser often
     // pointer-locks the canvas while document.activeElement stays on <body>

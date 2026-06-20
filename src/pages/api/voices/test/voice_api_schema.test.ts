@@ -9,7 +9,7 @@ describe("voice API schemas", () => {
     assert.equal(
       zChatVoiceRequest.safeParse({
         text: "Hello",
-        voice: "azure-speech-v1|voice=en-US-AvaNeural",
+        voice: "azure-speech|voice=en-US-AvaNeural",
         language: "en-US",
       }).success,
       true
@@ -17,7 +17,7 @@ describe("voice API schemas", () => {
     assert.equal(zChatVoiceRequest.safeParse({ text: "Hello" }).success, false);
     assert.equal(
       zChatVoiceRequest.safeParse({
-        voice: "azure-speech-v1|voice=en-US-AvaNeural",
+        voice: "azure-speech|voice=en-US-AvaNeural",
       }).success,
       false
     );

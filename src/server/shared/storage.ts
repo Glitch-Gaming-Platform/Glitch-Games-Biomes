@@ -214,14 +214,14 @@ export async function createStorageBackend(
 export async function registerBiomesStorage<C extends StorageContext>(
   loader: RegistryLoader<C>
 ) {
-  console.log("GLITCH_STARTUP_TRACE_V2 registerBiomesStorage:enter");
+  console.log("GLITCH_STARTUP_TRACE registerBiomesStorage:enter");
   const config = await loader.get("config");
   console.log(
-    `GLITCH_STARTUP_TRACE_V2 registerBiomesStorage:got-config storageMode=${config.storageMode}`
+    `GLITCH_STARTUP_TRACE registerBiomesStorage:got-config storageMode=${config.storageMode}`
   );
   const bdb = createBdb(
     await createStorageBackend(config.storageMode, config.copyOnWriteSnapshot)
   );
-  console.log("GLITCH_STARTUP_TRACE_V2 registerBiomesStorage:done");
+  console.log("GLITCH_STARTUP_TRACE registerBiomesStorage:done");
   return bdb;
 }

@@ -7,8 +7,8 @@ import {
   BiomesUIShopAmountStepper,
   BiomesUIShopChrome,
   BiomesUIShopSection,
-  closeBiomesUIShopPointerLockV1,
-  openBiomesUIShopPointerLockV1,
+  closeBiomesUIShopPointerLock,
+  openBiomesUIShopPointerLock,
 } from "../BiomesUIShopChrome";
 import { BIOMES_UI_THEME_CSS } from "@/client/components/biomes_ui/theme/biomesUITheme";
 import { RovingGrid } from "@/client/components/biomes_ui/nav/RovingGrid";
@@ -86,9 +86,9 @@ describe("BiomesUI shop chrome", () => {
     };
     const shouldReturn = { current: false };
 
-    openBiomesUIShopPointerLockV1(manager, shouldReturn);
-    closeBiomesUIShopPointerLockV1(manager, shouldReturn);
-    closeBiomesUIShopPointerLockV1(manager, shouldReturn);
+    openBiomesUIShopPointerLock(manager, shouldReturn);
+    closeBiomesUIShopPointerLock(manager, shouldReturn);
+    closeBiomesUIShopPointerLock(manager, shouldReturn);
 
     assert.deepEqual(calls, ["unlock", "focusAndLock"]);
   });
@@ -102,8 +102,8 @@ describe("BiomesUI shop chrome", () => {
     };
     const shouldReturn = { current: false };
 
-    openBiomesUIShopPointerLockV1(manager, shouldReturn);
-    closeBiomesUIShopPointerLockV1(manager, shouldReturn);
+    openBiomesUIShopPointerLock(manager, shouldReturn);
+    closeBiomesUIShopPointerLock(manager, shouldReturn);
 
     assert.deepEqual(calls, ["unlock"]);
   });

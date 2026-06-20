@@ -6,8 +6,8 @@ import {
   grantHarthmereTutorialInventoryItem,
 } from "@/client/components/challenges/LocalDevHarthmereInventorySystem";
 import {
-  HARTHMERE_WORLD_OBJECT_INTERACTION_EVENT_V1,
-  type HarthmereWorldObjectInteractionEventDetailV1,
+  HARTHMERE_WORLD_OBJECT_INTERACTION_EVENT,
+  type HarthmereWorldObjectInteractionEventDetail,
 } from "@/client/components/challenges/harthmereObjectInteractions";
 import { addToast } from "@/client/components/toast/helpers";
 import type { GardenHoseEvent } from "@/client/events/api";
@@ -15,68 +15,68 @@ import { JACKIE_ID } from "@/client/util/nux/state_machines";
 import type { BiomesId } from "@/shared/ids";
 import type { Vec3 } from "@/shared/math/types";
 import {
-  SNAPSHOT_GROVE_BIBLE_CONTENT_VERSION_V75,
-  SNAPSHOT_GROVE_LANDMARKS_V75,
-  SNAPSHOT_GROVE_NPCS_V75,
-  SNAPSHOT_GROVE_LIVE_NPC_FEET_Y_V83,
-  SNAPSHOT_GROVE_QUESTS_V75,
-  snapshotGroveGroundedPositionV75,
-  snapshotGroveLandmarkByIdV75,
-  snapshotGroveNpcEntityIdV75,
-  snapshotGroveNpcIdFromEntityIdV75,
-  type SnapshotGroveNpcV75,
-  type SnapshotGroveQuestV75,
-} from "@/shared/harthmere/snapshot_grove_content_v75";
+  SNAPSHOT_GROVE_BIBLE_CONTENT_VERSION,
+  SNAPSHOT_GROVE_LANDMARKS,
+  SNAPSHOT_GROVE_NPCS,
+  SNAPSHOT_GROVE_LIVE_NPC_FEET_Y,
+  SNAPSHOT_GROVE_QUESTS,
+  snapshotGroveGroundedPosition,
+  snapshotGroveLandmarkById,
+  snapshotGroveNpcEntityId,
+  snapshotGroveNpcIdFromEntityId,
+  type SnapshotGroveNpc,
+  type SnapshotGroveQuest,
+} from "@/shared/harthmere/snapshot_grove_content";
 import {
-  HARTHMERE_LOCAL_DEV_ITEM_USE_EVENT_V130,
-  SNAPSHOT_GROVE_CONTEXTUAL_PRACTICE_TRIGGER_KIND_SET_V130,
-  snapshotGroveItemUseEventMatchesObjectiveV130,
-  snapshotGroveTutorialInventoryGrantsForQuestV130,
-} from "@/shared/harthmere/snapshot_grove_trigger_contract_v130";
+  HARTHMERE_LOCAL_DEV_ITEM_USE_EVENT,
+  SNAPSHOT_GROVE_CONTEXTUAL_PRACTICE_TRIGGER_KIND_SET,
+  snapshotGroveItemUseEventMatchesObjective,
+  snapshotGroveTutorialInventoryGrantsForQuest,
+} from "@/shared/harthmere/snapshot_grove_trigger_contract";
 import React, { useEffect, useMemo, useState } from "react";
 
-export const SNAPSHOT_GROVE_BIBLE_RUNTIME_VERSION_V75 =
-  "snapshot-grove-mission-critical-v111 snapshot-grove-mission-critical-v110 snapshot-grove-bible-graduation-chain-v108";
+export const SNAPSHOT_GROVE_BIBLE_RUNTIME_VERSION =
+  "snapshot-grove-mission-critical snapshot-grove-mission-critical snapshot-grove-bible-graduation-chain";
 
-export const SNAPSHOT_GROVE_QUEST_STATE_KEY_V75 =
-  "biomes.localDev.snapshotGroveQuestState.v75";
+export const SNAPSHOT_GROVE_QUEST_STATE_KEY =
+  "biomes.localDev.snapshotGroveQuestState";
 
-export const SNAPSHOT_GROVE_QUEST_STATE_EVENT_V75 =
-  "biomes:local-dev-snapshot-grove-quest-state-v75";
+export const SNAPSHOT_GROVE_QUEST_STATE_EVENT =
+  "biomes:local-dev-snapshot-grove-quest-state";
 
-const SNAPSHOT_GROVE_LIKEABILITY_KEY_V75 =
-  "biomes.localDev.snapshotGroveLikeability.v75";
+const SNAPSHOT_GROVE_LIKEABILITY_KEY =
+  "biomes.localDev.snapshotGroveLikeability";
 
-// SNAPSHOT_GROVE_QUEST_MARKER_VISIBILITY_V107:
+// SNAPSHOT_GROVE_QUEST_MARKER_VISIBILITY:
 // The Grove map should show every step marker for the active quest at the
 // same time, so the player can see the full path of the lesson and which
 // stop they are on. Previously a single nav-aid id replaced markers as the
-// step advanced; v107 reserves a contiguous range so up to 12 step markers
+// step advanced; current reserves a contiguous range so up to 12 step markers
 // can coexist on the world map.
-const SNAPSHOT_GROVE_NAV_AID_BASE_V107 = 750_100;
-const SNAPSHOT_GROVE_NAV_AID_MAX_STEPS_V107 = 12;
-const SNAPSHOT_GROVE_NAV_AID_LEGACY_V75 = 750_075;
-const SNAPSHOT_GROVE_ACTIVE_MARKER_AUTOREMOVE_V75 = {
+const SNAPSHOT_GROVE_NAV_AID_BASE = 750_100;
+const SNAPSHOT_GROVE_NAV_AID_MAX_STEPS = 12;
+const SNAPSHOT_GROVE_NAV_AID_LEGACY = 750_075;
+const SNAPSHOT_GROVE_ACTIVE_MARKER_AUTOREMOVE = {
   autoremoveWhenNear: true,
 } as const;
-const SNAPSHOT_GROVE_QUEST_CONTROLLED_MARKER_V110 = {
+const SNAPSHOT_GROVE_QUEST_CONTROLLED_MARKER = {
   autoremoveWhenNear: false,
 } as const;
-function snapshotGroveStepNavAidIdV107(stepIndex: number) {
+function snapshotGroveStepNavAidId(stepIndex: number) {
   const clamped = Math.max(
     0,
-    Math.min(SNAPSHOT_GROVE_NAV_AID_MAX_STEPS_V107 - 1, stepIndex)
+    Math.min(SNAPSHOT_GROVE_NAV_AID_MAX_STEPS - 1, stepIndex)
   );
-  return SNAPSHOT_GROVE_NAV_AID_BASE_V107 + clamped;
+  return SNAPSHOT_GROVE_NAV_AID_BASE + clamped;
 }
-function snapshotGroveAllStepNavAidIdsV107() {
+function snapshotGroveAllStepNavAidIds() {
   return Array.from(
-    { length: SNAPSHOT_GROVE_NAV_AID_MAX_STEPS_V107 },
-    (_unused, index) => SNAPSHOT_GROVE_NAV_AID_BASE_V107 + index
+    { length: SNAPSHOT_GROVE_NAV_AID_MAX_STEPS },
+    (_unused, index) => SNAPSHOT_GROVE_NAV_AID_BASE + index
   );
 }
 
-const SNAPSHOT_GROVE_FOUNTAIN_TUTORIAL_QUEST_IDS_V100 = [
+const SNAPSHOT_GROVE_FOUNTAIN_TUTORIAL_QUEST_IDS = [
   "fountain_buttons_first",
   "painted_path_language",
   "road_ready_bag_check",
@@ -92,15 +92,15 @@ const SNAPSHOT_GROVE_FOUNTAIN_TUTORIAL_QUEST_IDS_V100 = [
   "fountain_trade_table_promises",
 ] as const;
 
-const SNAPSHOT_GROVE_FOUNTAIN_TUTORIAL_QUEST_ID_SET_V100 = new Set<string>(
-  SNAPSHOT_GROVE_FOUNTAIN_TUTORIAL_QUEST_IDS_V100
+const SNAPSHOT_GROVE_FOUNTAIN_TUTORIAL_QUEST_ID_SET = new Set<string>(
+  SNAPSHOT_GROVE_FOUNTAIN_TUTORIAL_QUEST_IDS
 );
 
-const SNAPSHOT_GROVE_QUEST_ID_SET_V100 = new Set(
-  SNAPSHOT_GROVE_QUESTS_V75.map((quest) => quest.id)
+const SNAPSHOT_GROVE_QUEST_ID_SET = new Set(
+  SNAPSHOT_GROVE_QUESTS.map((quest) => quest.id)
 );
 
-const SNAPSHOT_GROVE_LIVE_LABEL_TO_PROFILE_ID_V103: Readonly<
+const SNAPSHOT_GROVE_LIVE_LABEL_TO_PROFILE_ID: Readonly<
   Record<string, string>
 > = {
   rosalyn: "rosalyn",
@@ -115,14 +115,14 @@ const SNAPSHOT_GROVE_LIVE_LABEL_TO_PROFILE_ID_V103: Readonly<
   "nina guild clerk": "guild_clerk_nia",
 };
 
-const SNAPSHOT_GROVE_LIVE_LABEL_CONTAINS_V103: readonly [RegExp, string][] = [
+const SNAPSHOT_GROVE_LIVE_LABEL_CONTAINS: readonly [RegExp, string][] = [
   [/\bjackie\b/i, "jackie"],
   [/\brosalyn\b|\brosalie\b/i, "rosalyn"],
   [/\btaye\b/i, "taye"],
   [/\bnia\b|\bnina\b/i, "guild_clerk_nia"],
 ];
 
-function normalizeSnapshotGroveLiveLabelV103(value: string | undefined) {
+function normalizeSnapshotGroveLiveLabel(value: string | undefined) {
   return (value ?? "")
     .replace(/<[^>]*>/g, " ")
     .replace(/[^a-z0-9]+/gi, " ")
@@ -130,20 +130,20 @@ function normalizeSnapshotGroveLiveLabelV103(value: string | undefined) {
     .toLowerCase();
 }
 
-export function snapshotGroveNpcIdForDialogLabelV103(input: {
+export function snapshotGroveNpcIdForDialogLabel(input: {
   label?: string;
   entityDescriptionText?: string;
   defaultDialog?: string;
 }) {
-  const label = normalizeSnapshotGroveLiveLabelV103(input.label);
-  const exact = SNAPSHOT_GROVE_LIVE_LABEL_TO_PROFILE_ID_V103[label];
+  const label = normalizeSnapshotGroveLiveLabel(input.label);
+  const exact = SNAPSHOT_GROVE_LIVE_LABEL_TO_PROFILE_ID[label];
   if (exact) {
     return exact;
   }
   const text = [input.label, input.entityDescriptionText, input.defaultDialog]
     .filter(Boolean)
     .join(" ");
-  for (const [pattern, npcId] of SNAPSHOT_GROVE_LIVE_LABEL_CONTAINS_V103) {
+  for (const [pattern, npcId] of SNAPSHOT_GROVE_LIVE_LABEL_CONTAINS) {
     if (pattern.test(text)) {
       return npcId;
     }
@@ -151,7 +151,7 @@ export function snapshotGroveNpcIdForDialogLabelV103(input: {
   return undefined;
 }
 
-function dedupeKnownSnapshotGroveQuestIdsV100(value: unknown): string[] {
+function dedupeKnownSnapshotGroveQuestIds(value: unknown): string[] {
   if (!Array.isArray(value)) {
     return [];
   }
@@ -159,13 +159,13 @@ function dedupeKnownSnapshotGroveQuestIdsV100(value: unknown): string[] {
     ...new Set(
       value.filter(
         (item): item is string =>
-          typeof item === "string" && SNAPSHOT_GROVE_QUEST_ID_SET_V100.has(item)
+          typeof item === "string" && SNAPSHOT_GROVE_QUEST_ID_SET.has(item)
       )
     ),
   ];
 }
 
-interface SnapshotGroveQuestStateV75 {
+interface SnapshotGroveQuestState {
   acceptedQuestIds: string[];
   activeQuestId?: string;
   activeObjectiveIndex: number;
@@ -175,7 +175,7 @@ interface SnapshotGroveQuestStateV75 {
   updatedAt?: number;
 }
 
-const EMPTY_SNAPSHOT_GROVE_QUEST_STATE_V75: SnapshotGroveQuestStateV75 = {
+const EMPTY_SNAPSHOT_GROVE_QUEST_STATE: SnapshotGroveQuestState = {
   acceptedQuestIds: [],
   activeObjectiveIndex: 0,
   completedQuestIds: [],
@@ -183,32 +183,32 @@ const EMPTY_SNAPSHOT_GROVE_QUEST_STATE_V75: SnapshotGroveQuestStateV75 = {
   rewards: [],
 };
 
-function isBrowserV75() {
+function isBrowser() {
   return (
     typeof window !== "undefined" && typeof window.localStorage !== "undefined"
   );
 }
 
-function normalizeSnapshotGroveQuestStateV75(
-  parsed: Partial<SnapshotGroveQuestStateV75> | undefined
-): SnapshotGroveQuestStateV75 {
-  const acceptedQuestIds = dedupeKnownSnapshotGroveQuestIdsV100(
+function normalizeSnapshotGroveQuestState(
+  parsed: Partial<SnapshotGroveQuestState> | undefined
+): SnapshotGroveQuestState {
+  const acceptedQuestIds = dedupeKnownSnapshotGroveQuestIds(
     parsed?.acceptedQuestIds
   );
-  const completedQuestIds = dedupeKnownSnapshotGroveQuestIdsV100(
+  const completedQuestIds = dedupeKnownSnapshotGroveQuestIds(
     parsed?.completedQuestIds
   );
   const completedSet = new Set(completedQuestIds);
   const requestedActiveQuestId =
     typeof parsed?.activeQuestId === "string" &&
-    SNAPSHOT_GROVE_QUEST_ID_SET_V100.has(parsed.activeQuestId)
+    SNAPSHOT_GROVE_QUEST_ID_SET.has(parsed.activeQuestId)
       ? parsed.activeQuestId
       : undefined;
   const activeQuestId =
     requestedActiveQuestId && !completedSet.has(requestedActiveQuestId)
       ? requestedActiveQuestId
       : acceptedQuestIds.find((questId) => !completedSet.has(questId));
-  const activeQuest = questByIdV75(activeQuestId);
+  const activeQuest = questById(activeQuestId);
   const rawObjectiveIndex = Number.isFinite(parsed?.activeObjectiveIndex)
     ? Math.max(0, Number(parsed?.activeObjectiveIndex))
     : 0;
@@ -246,41 +246,41 @@ function normalizeSnapshotGroveQuestStateV75(
   };
 }
 
-export function readSnapshotGroveQuestStateV75(): SnapshotGroveQuestStateV75 {
-  if (!isBrowserV75()) {
-    return { ...EMPTY_SNAPSHOT_GROVE_QUEST_STATE_V75 };
+export function readSnapshotGroveQuestState(): SnapshotGroveQuestState {
+  if (!isBrowser()) {
+    return { ...EMPTY_SNAPSHOT_GROVE_QUEST_STATE };
   }
   try {
-    return normalizeSnapshotGroveQuestStateV75(
+    return normalizeSnapshotGroveQuestState(
       JSON.parse(
-        window.localStorage.getItem(SNAPSHOT_GROVE_QUEST_STATE_KEY_V75) ||
+        window.localStorage.getItem(SNAPSHOT_GROVE_QUEST_STATE_KEY) ||
           "null"
       ) || undefined
     );
   } catch {
-    return { ...EMPTY_SNAPSHOT_GROVE_QUEST_STATE_V75 };
+    return { ...EMPTY_SNAPSHOT_GROVE_QUEST_STATE };
   }
 }
 
-function writeSnapshotGroveQuestStateV75(state: SnapshotGroveQuestStateV75) {
-  if (!isBrowserV75()) {
+function writeSnapshotGroveQuestState(state: SnapshotGroveQuestState) {
+  if (!isBrowser()) {
     return;
   }
   const next = { ...state, updatedAt: Date.now() };
   window.localStorage.setItem(
-    SNAPSHOT_GROVE_QUEST_STATE_KEY_V75,
+    SNAPSHOT_GROVE_QUEST_STATE_KEY,
     JSON.stringify(next)
   );
-  window.dispatchEvent(new CustomEvent(SNAPSHOT_GROVE_QUEST_STATE_EVENT_V75));
+  window.dispatchEvent(new CustomEvent(SNAPSHOT_GROVE_QUEST_STATE_EVENT));
 }
 
-function readSnapshotGroveLikeabilityV75(): Record<string, number> {
-  if (!isBrowserV75()) {
+function readSnapshotGroveLikeability(): Record<string, number> {
+  if (!isBrowser()) {
     return {};
   }
   try {
     const parsed = JSON.parse(
-      window.localStorage.getItem(SNAPSHOT_GROVE_LIKEABILITY_KEY_V75) || "{}"
+      window.localStorage.getItem(SNAPSHOT_GROVE_LIKEABILITY_KEY) || "{}"
     );
     return parsed && typeof parsed === "object" ? parsed : {};
   } catch {
@@ -288,41 +288,41 @@ function readSnapshotGroveLikeabilityV75(): Record<string, number> {
   }
 }
 
-function recordSnapshotGroveLikeabilityV75(npcId: string, delta: number) {
-  if (!isBrowserV75()) {
+function recordSnapshotGroveLikeability(npcId: string, delta: number) {
+  if (!isBrowser()) {
     return;
   }
-  const current = readSnapshotGroveLikeabilityV75();
+  const current = readSnapshotGroveLikeability();
   current[npcId] = Math.max(
     -5,
     Math.min(10, Number(current[npcId] || 0) + delta)
   );
   window.localStorage.setItem(
-    SNAPSHOT_GROVE_LIKEABILITY_KEY_V75,
+    SNAPSHOT_GROVE_LIKEABILITY_KEY,
     JSON.stringify(current)
   );
 }
 
-function questByIdV75(id: string | undefined) {
-  return SNAPSHOT_GROVE_QUESTS_V75.find((quest) => quest.id === id);
+function questById(id: string | undefined) {
+  return SNAPSHOT_GROVE_QUESTS.find((quest) => quest.id === id);
 }
 
-// SNAPSHOT_GROVE_GRADUATION_CHAIN_V108:
+// SNAPSHOT_GROVE_GRADUATION_CHAIN:
 // The graduation tour (Jackie) and three road-neighbor intros (Alexis, Luis,
 // Ranger Jane) declare an `unlockedBy` predicate in the shared content. The
 // runtime checks it here so locked quests never show up in an NPC's offer
 // list and the journal can render them in a separate "Soon" group.
-function countCompletedFountainLessonsV108(
-  state: SnapshotGroveQuestStateV75
+function countCompletedFountainLessons(
+  state: SnapshotGroveQuestState
 ): number {
   return state.completedQuestIds.filter((id) =>
-    SNAPSHOT_GROVE_FOUNTAIN_TUTORIAL_QUEST_ID_SET_V100.has(id)
+    SNAPSHOT_GROVE_FOUNTAIN_TUTORIAL_QUEST_ID_SET.has(id)
   ).length;
 }
 
-export function isSnapshotGroveQuestUnlockedV108(
-  quest: SnapshotGroveQuestV75,
-  state: SnapshotGroveQuestStateV75
+export function isSnapshotGroveQuestUnlocked(
+  quest: SnapshotGroveQuest,
+  state: SnapshotGroveQuestState
 ): boolean {
   const prerequisite = quest.unlockedBy;
   if (!prerequisite) {
@@ -331,7 +331,7 @@ export function isSnapshotGroveQuestUnlockedV108(
   switch (prerequisite.kind) {
     case "fountain_completion_count":
       return (
-        countCompletedFountainLessonsV108(state) >=
+        countCompletedFountainLessons(state) >=
         prerequisite.minCompletedFountainLessons
       );
     case "quest_accepted":
@@ -346,11 +346,11 @@ export function isSnapshotGroveQuestUnlockedV108(
   }
 }
 
-function snapshotGroveQuestCategoryRankV108(
-  quest: SnapshotGroveQuestV75
+function snapshotGroveQuestCategoryRank(
+  quest: SnapshotGroveQuest
 ): number {
   // Lower number = earlier in the offer list.
-  if (SNAPSHOT_GROVE_FOUNTAIN_TUTORIAL_QUEST_ID_SET_V100.has(quest.id)) {
+  if (SNAPSHOT_GROVE_FOUNTAIN_TUTORIAL_QUEST_ID_SET.has(quest.id)) {
     return 0;
   }
   if (quest.category === "road_graduation") {
@@ -362,39 +362,39 @@ function snapshotGroveQuestCategoryRankV108(
   return 3;
 }
 
-function availableQuestsForNpcV101(
+function availableQuestsForNpc(
   npcId: string,
-  state: SnapshotGroveQuestStateV75
+  state: SnapshotGroveQuestState
 ) {
-  return SNAPSHOT_GROVE_QUESTS_V75.filter(
+  return SNAPSHOT_GROVE_QUESTS.filter(
     (quest) =>
       quest.giverNpcId === npcId &&
       !state.completedQuestIds.includes(quest.id) &&
       !state.acceptedQuestIds.includes(quest.id) &&
-      isSnapshotGroveQuestUnlockedV108(quest, state)
+      isSnapshotGroveQuestUnlocked(quest, state)
   ).sort(
     (a, b) =>
-      snapshotGroveQuestCategoryRankV108(a) -
-      snapshotGroveQuestCategoryRankV108(b)
+      snapshotGroveQuestCategoryRank(a) -
+      snapshotGroveQuestCategoryRank(b)
   );
 }
 
-function firstAvailableQuestForNpcV75(
+function firstAvailableQuestForNpc(
   npcId: string,
-  state: SnapshotGroveQuestStateV75
+  state: SnapshotGroveQuestState
 ) {
-  return availableQuestsForNpcV101(npcId, state)[0];
+  return availableQuestsForNpc(npcId, state)[0];
 }
 
-function activeQuestForNpcV75(
+function activeQuestForNpc(
   npcId: string,
-  state: SnapshotGroveQuestStateV75
+  state: SnapshotGroveQuestState
 ) {
-  const active = questByIdV75(state.activeQuestId);
+  const active = questById(state.activeQuestId);
   if (active?.giverNpcId === npcId) {
     return active;
   }
-  return SNAPSHOT_GROVE_QUESTS_V75.find(
+  return SNAPSHOT_GROVE_QUESTS.find(
     (quest) =>
       quest.giverNpcId === npcId &&
       state.acceptedQuestIds.includes(quest.id) &&
@@ -402,8 +402,8 @@ function activeQuestForNpcV75(
   );
 }
 
-function currentMarkerForQuestV75(
-  quest: SnapshotGroveQuestV75,
+function currentMarkerForQuest(
+  quest: SnapshotGroveQuest,
   objectiveIndex: number
 ) {
   if (!quest.markerIds.length) {
@@ -414,23 +414,23 @@ function currentMarkerForQuestV75(
     Math.min(quest.markerIds.length - 1, objectiveIndex)
   );
   return (
-    snapshotGroveLandmarkByIdV75(quest.markerIds[clamped]) ??
-    snapshotGroveLandmarkByIdV75(quest.markerIds[0])
+    snapshotGroveLandmarkById(quest.markerIds[clamped]) ??
+    snapshotGroveLandmarkById(quest.markerIds[0])
   );
 }
 
-function pinSnapshotGroveLandmarkV75(
+function pinSnapshotGroveLandmark(
   mapManager: {
     addNavigationAid: (aid: any, id?: number) => number;
     removeNavigationAid?: (id: number) => void;
   },
   position: Vec3,
-  navAidId: number = snapshotGroveStepNavAidIdV107(0),
+  navAidId: number = snapshotGroveStepNavAidId(0),
   autoremoveWhenNear = false
 ) {
   const markerPersistence = autoremoveWhenNear
-    ? SNAPSHOT_GROVE_ACTIVE_MARKER_AUTOREMOVE_V75
-    : SNAPSHOT_GROVE_QUEST_CONTROLLED_MARKER_V110;
+    ? SNAPSHOT_GROVE_ACTIVE_MARKER_AUTOREMOVE
+    : SNAPSHOT_GROVE_QUEST_CONTROLLED_MARKER;
   mapManager.removeNavigationAid?.(navAidId);
   return mapManager.addNavigationAid(
     {
@@ -442,28 +442,28 @@ function pinSnapshotGroveLandmarkV75(
   );
 }
 
-// SNAPSHOT_GROVE_QUEST_MARKER_VISIBILITY_V107:
+// SNAPSHOT_GROVE_QUEST_MARKER_VISIBILITY:
 // Pin every step marker for the active quest so the player sees the whole
 // lesson path. The active step's marker is added last so it sits on top of
 // any visually overlapping pins. Past-step markers are removed by upstream
-// logic when steps complete (see syncSnapshotGroveQuestMarkersV107).
-function pinAllSnapshotGroveQuestMarkersV107(
+// logic when steps complete (see syncSnapshotGroveQuestMarkers).
+function pinAllSnapshotGroveQuestMarkers(
   mapManager: {
     addNavigationAid: (aid: any, id?: number) => number;
     removeNavigationAid?: (id: number) => void;
   },
-  quest: SnapshotGroveQuestV75,
+  quest: SnapshotGroveQuest,
   activeObjectiveIndex: number
 ) {
   // Clear legacy and any stale step pins first so we never leak markers
   // from a previous quest into the current one.
-  mapManager.removeNavigationAid?.(SNAPSHOT_GROVE_NAV_AID_LEGACY_V75);
-  for (const id of snapshotGroveAllStepNavAidIdsV107()) {
+  mapManager.removeNavigationAid?.(SNAPSHOT_GROVE_NAV_AID_LEGACY);
+  for (const id of snapshotGroveAllStepNavAidIds()) {
     mapManager.removeNavigationAid?.(id);
   }
   const totalSteps = Math.min(
     quest.markerIds.length,
-    SNAPSHOT_GROVE_NAV_AID_MAX_STEPS_V107
+    SNAPSHOT_GROVE_NAV_AID_MAX_STEPS
   );
   const safeActiveIndex = Math.max(
     0,
@@ -478,58 +478,58 @@ function pinAllSnapshotGroveQuestMarkersV107(
     if (stepIndex === safeActiveIndex) {
       continue;
     }
-    const marker = snapshotGroveLandmarkByIdV75(quest.markerIds[stepIndex]);
+    const marker = snapshotGroveLandmarkById(quest.markerIds[stepIndex]);
     if (!marker) {
       continue;
     }
-    pinSnapshotGroveLandmarkV75(
+    pinSnapshotGroveLandmark(
       mapManager,
       marker.position,
-      snapshotGroveStepNavAidIdV107(stepIndex)
+      snapshotGroveStepNavAidId(stepIndex)
     );
   }
-  const activeMarker = snapshotGroveLandmarkByIdV75(
+  const activeMarker = snapshotGroveLandmarkById(
     quest.markerIds[safeActiveIndex]
   );
   if (activeMarker) {
-    pinSnapshotGroveLandmarkV75(
+    pinSnapshotGroveLandmark(
       mapManager,
       activeMarker.position,
-      snapshotGroveStepNavAidIdV107(safeActiveIndex),
+      snapshotGroveStepNavAidId(safeActiveIndex),
       true
     );
   }
   return safeActiveIndex;
 }
 
-function clearAllSnapshotGroveQuestMarkersV107(mapManager: {
+function clearAllSnapshotGroveQuestMarkers(mapManager: {
   removeNavigationAid?: (id: number) => void;
 }) {
-  mapManager.removeNavigationAid?.(SNAPSHOT_GROVE_NAV_AID_LEGACY_V75);
-  for (const id of snapshotGroveAllStepNavAidIdsV107()) {
+  mapManager.removeNavigationAid?.(SNAPSHOT_GROVE_NAV_AID_LEGACY);
+  for (const id of snapshotGroveAllStepNavAidIds()) {
     mapManager.removeNavigationAid?.(id);
   }
 }
 
-function syncSnapshotGroveQuestMarkersV107(
+function syncSnapshotGroveQuestMarkers(
   mapManager: {
     addNavigationAid: (aid: any, id?: number) => number;
     removeNavigationAid?: (id: number) => void;
   },
-  quest: SnapshotGroveQuestV75 | undefined,
+  quest: SnapshotGroveQuest | undefined,
   activeObjectiveIndex: number
 ) {
   if (!quest) {
-    clearAllSnapshotGroveQuestMarkersV107(mapManager);
+    clearAllSnapshotGroveQuestMarkers(mapManager);
     return;
   }
-  pinAllSnapshotGroveQuestMarkersV107(mapManager, quest, activeObjectiveIndex);
+  pinAllSnapshotGroveQuestMarkers(mapManager, quest, activeObjectiveIndex);
 }
 
-function grantSnapshotGroveAcceptedTutorialItemsV132(
-  quest: SnapshotGroveQuestV75
+function grantSnapshotGroveAcceptedTutorialItems(
+  quest: SnapshotGroveQuest
 ) {
-  const grants = snapshotGroveTutorialInventoryGrantsForQuestV130(quest);
+  const grants = snapshotGroveTutorialInventoryGrantsForQuest(quest);
   for (const grant of grants) {
     grantHarthmereTutorialInventoryItem(
       grant.itemId,
@@ -540,9 +540,9 @@ function grantSnapshotGroveAcceptedTutorialItemsV132(
   return grants;
 }
 
-function addSnapshotGroveObjectiveToastV132(
+function addSnapshotGroveObjectiveToast(
   resources: ReturnType<typeof useClientContext>["resources"] | undefined,
-  quest: SnapshotGroveQuestV75,
+  quest: SnapshotGroveQuest,
   objectiveIndex: number
 ) {
   if (!resources) return;
@@ -555,18 +555,18 @@ function addSnapshotGroveObjectiveToastV132(
   });
 }
 
-function acceptSnapshotGroveQuestV75(
-  quest: SnapshotGroveQuestV75,
+function acceptSnapshotGroveQuest(
+  quest: SnapshotGroveQuest,
   mapManager: any,
   resources?: ReturnType<typeof useClientContext>["resources"]
 ) {
-  const state = readSnapshotGroveQuestStateV75();
+  const state = readSnapshotGroveQuestState();
   const isFreshAcceptance =
     !state.acceptedQuestIds.includes(quest.id) &&
     !state.completedQuestIds.includes(quest.id);
   const startsByTalkingToGiver =
-    currentTriggerForQuestV92(quest, 0) === "talk_npc";
-  // SNAPSHOT_GROVE_INITIAL_MARKER_AT_GIVER_V140:
+    currentTriggerForQuest(quest, 0) === "talk_npc";
+  // SNAPSHOT_GROVE_INITIAL_MARKER_AT_GIVER:
   // Accepting a quest from the giver already satisfies a leading talk_npc
   // objective, so start the active step at the first real destination. Do
   // not skip non-talk objectives just because their marker data is wrong;
@@ -574,7 +574,7 @@ function acceptSnapshotGroveQuestV75(
   const shouldSkipFirstStep =
     startsByTalkingToGiver && quest.objectives.length > 1;
   const initialObjectiveIndex = shouldSkipFirstStep ? 1 : 0;
-  const next: SnapshotGroveQuestStateV75 = {
+  const next: SnapshotGroveQuestState = {
     ...state,
     acceptedQuestIds: [...new Set([...state.acceptedQuestIds, quest.id])],
     activeQuestId: quest.id,
@@ -589,20 +589,20 @@ function acceptSnapshotGroveQuestV75(
       : state.completedObjectiveIds,
   };
   if (isFreshAcceptance) {
-    grantSnapshotGroveAcceptedTutorialItemsV132(quest);
+    grantSnapshotGroveAcceptedTutorialItems(quest);
   }
-  writeSnapshotGroveQuestStateV75(next);
-  syncSnapshotGroveQuestMarkersV107(mapManager, quest, initialObjectiveIndex);
-  addSnapshotGroveObjectiveToastV132(resources, quest, initialObjectiveIndex);
+  writeSnapshotGroveQuestState(next);
+  syncSnapshotGroveQuestMarkers(mapManager, quest, initialObjectiveIndex);
+  addSnapshotGroveObjectiveToast(resources, quest, initialObjectiveIndex);
 }
 
-function advanceSnapshotGroveQuestV75(
-  quest: SnapshotGroveQuestV75,
+function advanceSnapshotGroveQuest(
+  quest: SnapshotGroveQuest,
   mapManager: any,
   reason: string,
   resources?: ReturnType<typeof useClientContext>["resources"]
 ) {
-  const state = readSnapshotGroveQuestStateV75();
+  const state = readSnapshotGroveQuestState();
   if (state.completedQuestIds.includes(quest.id) || !quest.objectives.length) {
     return;
   }
@@ -616,7 +616,7 @@ function advanceSnapshotGroveQuestV75(
   const objectiveId = `${quest.id}:${safeObjectiveIndex}:${reason}`;
   const nextIndex = safeObjectiveIndex + 1;
   const completedQuest = nextIndex >= quest.objectives.length;
-  const next: SnapshotGroveQuestStateV75 = {
+  const next: SnapshotGroveQuestState = {
     ...state,
     acceptedQuestIds: [...new Set([...state.acceptedQuestIds, quest.id])],
     activeQuestId: completedQuest ? undefined : quest.id,
@@ -631,23 +631,23 @@ function advanceSnapshotGroveQuestV75(
       ? [...new Set([...state.rewards, `${quest.title}: ${quest.reward}`])]
       : state.rewards,
   };
-  writeSnapshotGroveQuestStateV75(next);
+  writeSnapshotGroveQuestState(next);
   if (completedQuest) {
-    clearAllSnapshotGroveQuestMarkersV107(mapManager);
-    recordSnapshotGroveLikeabilityV75(quest.giverNpcId, 1);
+    clearAllSnapshotGroveQuestMarkers(mapManager);
+    recordSnapshotGroveLikeability(quest.giverNpcId, 1);
   } else {
     // Remove the marker for the step we just completed so past pins do not
     // clutter the map, and refresh the remaining future + active markers.
     mapManager.removeNavigationAid?.(
-      snapshotGroveStepNavAidIdV107(safeObjectiveIndex)
+      snapshotGroveStepNavAidId(safeObjectiveIndex)
     );
-    syncSnapshotGroveQuestMarkersV107(mapManager, quest, nextIndex);
-    addSnapshotGroveObjectiveToastV132(resources, quest, nextIndex);
+    syncSnapshotGroveQuestMarkers(mapManager, quest, nextIndex);
+    addSnapshotGroveObjectiveToast(resources, quest, nextIndex);
   }
 }
 
-function currentTriggerForQuestV92(
-  quest: SnapshotGroveQuestV75,
+function currentTriggerForQuest(
+  quest: SnapshotGroveQuest,
   objectiveIndex: number
 ) {
   if (!quest.triggers.length) {
@@ -658,10 +658,10 @@ function currentTriggerForQuestV92(
   ];
 }
 
-const SNAPSHOT_GROVE_CONTEXTUAL_PRACTICE_TRIGGERS_V106 =
-  SNAPSHOT_GROVE_CONTEXTUAL_PRACTICE_TRIGGER_KIND_SET_V130;
+const SNAPSHOT_GROVE_CONTEXTUAL_PRACTICE_TRIGGERS =
+  SNAPSHOT_GROVE_CONTEXTUAL_PRACTICE_TRIGGER_KIND_SET;
 
-function snapshotGroveNpcIdFromTalkEventV106(event: GardenHoseEvent) {
+function snapshotGroveNpcIdFromTalkEvent(event: GardenHoseEvent) {
   if ((event as any).kind !== "talk_npc") {
     return undefined;
   }
@@ -669,10 +669,10 @@ function snapshotGroveNpcIdFromTalkEventV106(event: GardenHoseEvent) {
   if (npcId === JACKIE_ID) {
     return "jackie";
   }
-  return npcId ? snapshotGroveNpcIdFromEntityIdV75(npcId) : undefined;
+  return npcId ? snapshotGroveNpcIdFromEntityId(npcId) : undefined;
 }
 
-function expectedOpenTabForObjectiveV106(objective: string | undefined) {
+function expectedOpenTabForObjective(objective: string | undefined) {
   const text = (objective ?? "").toLowerCase();
   if (text.includes("map") || text.includes("marker")) {
     return "map";
@@ -695,7 +695,7 @@ function expectedOpenTabForObjectiveV106(objective: string | undefined) {
   ) {
     return "inbox";
   }
-  // SNAPSHOT_GROVE_TUTOR_HIGHLIGHTS_V109:
+  // SNAPSHOT_GROVE_TUTOR_HIGHLIGHTS:
   // The "Words Find the Right Ear" lesson opens the chat panel from the HUD;
   // matching "chat" / "channel" / "whisper" routes the highlight to the new
   // CHAT nav slot so the player sees exactly which button to press.
@@ -722,51 +722,51 @@ function expectedOpenTabForObjectiveV106(objective: string | undefined) {
   return undefined;
 }
 
-function snapshotGroveMarkerIdForWorldObjectV1(
-  detail: HarthmereWorldObjectInteractionEventDetailV1
+function snapshotGroveMarkerIdForWorldObject(
+  detail: HarthmereWorldObjectInteractionEventDetail
 ) {
-  const label = normalizeSnapshotGroveLiveLabelV103(
+  const label = normalizeSnapshotGroveLiveLabel(
     typeof detail.label === "string" ? detail.label : undefined
   );
   if (!label) {
     return undefined;
   }
-  return SNAPSHOT_GROVE_LANDMARKS_V75.find((marker) => {
-    const markerLabel = normalizeSnapshotGroveLiveLabelV103(marker.label);
-    const markerId = normalizeSnapshotGroveLiveLabelV103(marker.id);
+  return SNAPSHOT_GROVE_LANDMARKS.find((marker) => {
+    const markerLabel = normalizeSnapshotGroveLiveLabel(marker.label);
+    const markerId = normalizeSnapshotGroveLiveLabel(marker.id);
     return label === markerLabel || label === markerId;
   })?.id;
 }
 
-function snapshotGroveWorldObjectActionMatchesMarkerV1(
-  detail: HarthmereWorldObjectInteractionEventDetailV1,
-  marker: ReturnType<typeof currentMarkerForQuestV75> | undefined
+function snapshotGroveWorldObjectActionMatchesMarker(
+  detail: HarthmereWorldObjectInteractionEventDetail,
+  marker: ReturnType<typeof currentMarkerForQuest> | undefined
 ) {
   if (!marker) {
     return false;
   }
-  const eventMarkerId = snapshotGroveMarkerIdForWorldObjectV1(detail);
+  const eventMarkerId = snapshotGroveMarkerIdForWorldObject(detail);
   if (eventMarkerId) {
     return eventMarkerId === marker.id;
   }
-  const label = normalizeSnapshotGroveLiveLabelV103(
+  const label = normalizeSnapshotGroveLiveLabel(
     typeof detail.label === "string" ? detail.label : undefined
   );
   return Boolean(
-    label && label === normalizeSnapshotGroveLiveLabelV103(marker.label)
+    label && label === normalizeSnapshotGroveLiveLabel(marker.label)
   );
 }
 
-function snapshotGroveEventFromWorldObjectInteractionV1(
-  detail: HarthmereWorldObjectInteractionEventDetailV1,
-  quest: SnapshotGroveQuestV75,
+function snapshotGroveEventFromWorldObjectInteraction(
+  detail: HarthmereWorldObjectInteractionEventDetail,
+  quest: SnapshotGroveQuest,
   objectiveIndex: number
 ): GardenHoseEvent | undefined {
-  const trigger = currentTriggerForQuestV92(quest, objectiveIndex);
-  const marker = currentMarkerForQuestV75(quest, objectiveIndex);
+  const trigger = currentTriggerForQuest(quest, objectiveIndex);
+  const marker = currentMarkerForQuest(quest, objectiveIndex);
   if (
     !trigger ||
-    !snapshotGroveWorldObjectActionMatchesMarkerV1(detail, marker)
+    !snapshotGroveWorldObjectActionMatchesMarker(detail, marker)
   ) {
     return undefined;
   }
@@ -816,7 +816,7 @@ function snapshotGroveEventFromWorldObjectInteractionV1(
         isWorldUse ||
         kind === "open_container" ||
         (kind === "gather" &&
-          isSnapshotGroveWorldObjectPickupTriggerV1(
+          isSnapshotGroveWorldObjectPickupTrigger(
             quest,
             objectiveIndex,
             trigger
@@ -830,7 +830,7 @@ function snapshotGroveEventFromWorldObjectInteractionV1(
         return {
           ...base,
           kind: "open_tab",
-          tab: expectedOpenTabForObjectiveV106(objective),
+          tab: expectedOpenTabForObjective(objective),
         } as any;
       }
       return undefined;
@@ -867,28 +867,28 @@ function snapshotGroveEventFromWorldObjectInteractionV1(
   }
 }
 
-type SnapshotGrovePracticeItemV110 = {
+type SnapshotGrovePracticeItem = {
   itemId: string;
   quantity: number;
   label: string;
 };
 
-let snapshotGroveSuppressInventoryAdvanceDepthV1 = 0;
+let snapshotGroveSuppressInventoryAdvanceDepth = 0;
 
-function withSnapshotGroveInventoryAdvanceSuppressedV1<T>(fn: () => T): T {
-  snapshotGroveSuppressInventoryAdvanceDepthV1 += 1;
+function withSnapshotGroveInventoryAdvanceSuppressed<T>(fn: () => T): T {
+  snapshotGroveSuppressInventoryAdvanceDepth += 1;
   try {
     return fn();
   } finally {
-    snapshotGroveSuppressInventoryAdvanceDepthV1 = Math.max(
+    snapshotGroveSuppressInventoryAdvanceDepth = Math.max(
       0,
-      snapshotGroveSuppressInventoryAdvanceDepthV1 - 1
+      snapshotGroveSuppressInventoryAdvanceDepth - 1
     );
   }
 }
 
-function snapshotGroveObjectiveTextV110(
-  quest: SnapshotGroveQuestV75,
+function snapshotGroveObjectiveText(
+  quest: SnapshotGroveQuest,
   objectiveIndex: number
 ) {
   return (
@@ -898,11 +898,11 @@ function snapshotGroveObjectiveTextV110(
   );
 }
 
-function snapshotGrovePracticeItemForObjectiveV110(
-  quest: SnapshotGroveQuestV75,
+function snapshotGrovePracticeItemForObjective(
+  quest: SnapshotGroveQuest,
   objectiveIndex: number
-): SnapshotGrovePracticeItemV110 | undefined {
-  const text = snapshotGroveObjectiveTextV110(
+): SnapshotGrovePracticeItem | undefined {
+  const text = snapshotGroveObjectiveText(
     quest,
     objectiveIndex
   ).toLowerCase();
@@ -990,25 +990,25 @@ function snapshotGrovePracticeItemForObjectiveV110(
   return undefined;
 }
 
-export function snapshotGrovePracticeItemForObjectiveForTestV110(
-  quest: SnapshotGroveQuestV75,
+export function snapshotGrovePracticeItemForObjectiveForTest(
+  quest: SnapshotGroveQuest,
   objectiveIndex: number
 ) {
-  return snapshotGrovePracticeItemForObjectiveV110(quest, objectiveIndex);
+  return snapshotGrovePracticeItemForObjective(quest, objectiveIndex);
 }
 
-function grantSnapshotGrovePracticeItemV110(
-  quest: SnapshotGroveQuestV75,
+function grantSnapshotGrovePracticeItem(
+  quest: SnapshotGroveQuest,
   objectiveIndex: number,
   trigger: string | undefined
 ) {
   if (
     !trigger ||
-    !SNAPSHOT_GROVE_CONTEXTUAL_PRACTICE_TRIGGERS_V106.has(trigger as any)
+    !SNAPSHOT_GROVE_CONTEXTUAL_PRACTICE_TRIGGERS.has(trigger as any)
   ) {
     return undefined;
   }
-  const item = snapshotGrovePracticeItemForObjectiveV110(quest, objectiveIndex);
+  const item = snapshotGrovePracticeItemForObjective(quest, objectiveIndex);
   if (!item) {
     return undefined;
   }
@@ -1020,8 +1020,8 @@ function grantSnapshotGrovePracticeItemV110(
   return item;
 }
 
-function isSnapshotGroveWorldObjectPickupTriggerV1(
-  quest: SnapshotGroveQuestV75,
+function isSnapshotGroveWorldObjectPickupTrigger(
+  quest: SnapshotGroveQuest,
   objectiveIndex: number,
   trigger: string | undefined
 ) {
@@ -1032,21 +1032,21 @@ function isSnapshotGroveWorldObjectPickupTriggerV1(
     return false;
   }
   return /\b(take|pick up|collect|gather|retrieve|recover|dig)\b/i.test(
-    snapshotGroveObjectiveTextV110(quest, objectiveIndex)
+    snapshotGroveObjectiveText(quest, objectiveIndex)
   );
 }
 
-function grantSnapshotGroveWorldObjectPickupItemV1(
-  quest: SnapshotGroveQuestV75,
+function grantSnapshotGroveWorldObjectPickupItem(
+  quest: SnapshotGroveQuest,
   objectiveIndex: number,
   trigger: string | undefined
 ) {
   if (
-    !isSnapshotGroveWorldObjectPickupTriggerV1(quest, objectiveIndex, trigger)
+    !isSnapshotGroveWorldObjectPickupTrigger(quest, objectiveIndex, trigger)
   ) {
     return undefined;
   }
-  const item = snapshotGrovePracticeItemForObjectiveV110(quest, objectiveIndex);
+  const item = snapshotGrovePracticeItemForObjective(quest, objectiveIndex);
   if (!item) {
     return undefined;
   }
@@ -1058,27 +1058,27 @@ function grantSnapshotGroveWorldObjectPickupItemV1(
   return item;
 }
 
-export function grantSnapshotGroveWorldObjectPickupItemForTestV1(
-  quest: SnapshotGroveQuestV75,
+export function grantSnapshotGroveWorldObjectPickupItemForTest(
+  quest: SnapshotGroveQuest,
   objectiveIndex: number,
   trigger: string | undefined
 ) {
-  return withSnapshotGroveInventoryAdvanceSuppressedV1(() =>
-    grantSnapshotGroveWorldObjectPickupItemV1(quest, objectiveIndex, trigger)
+  return withSnapshotGroveInventoryAdvanceSuppressed(() =>
+    grantSnapshotGroveWorldObjectPickupItem(quest, objectiveIndex, trigger)
   );
 }
 
-// SNAPSHOT_GROVE_TUTOR_HIGHLIGHTS_V109:
+// SNAPSHOT_GROVE_TUTOR_HIGHLIGHTS:
 // HUD highlight chips like "BAG", "MAP", "CHAT" are abstract — the player
 // sees an icon row at the bottom of the screen with labels Bag/Craft/Map/
 // Quests/Tasks/Mail/Notif/Codex/Settings/Chat/Revive. This mapping turns
 // the abstract chip set into the concrete NavSlot labels that should pulse
 // and show an arrow. Returning [] disables the bottom-bar highlight (e.g.
 // for triggers like near_location or combat that are not HUD-button-driven).
-export const SNAPSHOT_GROVE_TUTOR_HIGHLIGHT_EVENT_V109 =
-  "biomes:snapshot-grove-tutor-hud-highlights-v109";
+export const SNAPSHOT_GROVE_TUTOR_HIGHLIGHT_EVENT =
+  "biomes:snapshot-grove-tutor-hud-highlights";
 
-export function snapshotGroveTutorNavLabelsForHighlightsV109(
+export function snapshotGroveTutorNavLabelsForHighlights(
   highlights: string[]
 ): string[] {
   const labels = new Set<string>();
@@ -1151,18 +1151,18 @@ export function snapshotGroveTutorNavLabelsForHighlightsV109(
   return [...labels];
 }
 
-function broadcastSnapshotGroveTutorHudLabelsV109(
+function broadcastSnapshotGroveTutorHudLabels(
   labels: string[],
   chips: string[] = []
 ) {
   if (typeof window === "undefined") return;
   try {
     window.dispatchEvent(
-      new CustomEvent(SNAPSHOT_GROVE_TUTOR_HIGHLIGHT_EVENT_V109, {
+      new CustomEvent(SNAPSHOT_GROVE_TUTOR_HIGHLIGHT_EVENT, {
         detail: {
           labels,
           chips,
-          version: "snapshot-grove-black-menu-highlight-v111",
+          version: "snapshot-grove-black-menu-highlight",
         },
       })
     );
@@ -1171,15 +1171,15 @@ function broadcastSnapshotGroveTutorHudLabelsV109(
   }
 }
 
-function isSnapshotGroveContextualPracticeEventV106(
+function isSnapshotGroveContextualPracticeEvent(
   event: GardenHoseEvent,
-  quest: SnapshotGroveQuestV75,
+  quest: SnapshotGroveQuest,
   objectiveIndex: number,
   trigger: string | undefined
 ) {
   if (
     !trigger ||
-    !SNAPSHOT_GROVE_CONTEXTUAL_PRACTICE_TRIGGERS_V106.has(trigger as any)
+    !SNAPSHOT_GROVE_CONTEXTUAL_PRACTICE_TRIGGERS.has(trigger as any)
   ) {
     return false;
   }
@@ -1187,7 +1187,7 @@ function isSnapshotGroveContextualPracticeEventV106(
   if (detail.kind !== "snapshot_grove_practice_action") {
     return false;
   }
-  const marker = currentMarkerForQuestV75(quest, objectiveIndex);
+  const marker = currentMarkerForQuest(quest, objectiveIndex);
   return (
     detail.questId === quest.id &&
     detail.objectiveIndex === objectiveIndex &&
@@ -1196,7 +1196,7 @@ function isSnapshotGroveContextualPracticeEventV106(
   );
 }
 
-export interface SnapshotGroveQuestEventValidationV132 {
+export interface SnapshotGroveQuestEventValidation {
   ok: boolean;
   reason?:
     | "quest_id_mismatch"
@@ -1205,12 +1205,12 @@ export interface SnapshotGroveQuestEventValidationV132 {
     | "marker_id_mismatch";
 }
 
-export function validateSnapshotGroveQuestEventContextV132(
+export function validateSnapshotGroveQuestEventContext(
   event: GardenHoseEvent,
-  quest: SnapshotGroveQuestV75,
+  quest: SnapshotGroveQuest,
   objectiveIndex: number,
-  trigger: string | undefined = currentTriggerForQuestV92(quest, objectiveIndex)
-): SnapshotGroveQuestEventValidationV132 {
+  trigger: string | undefined = currentTriggerForQuest(quest, objectiveIndex)
+): SnapshotGroveQuestEventValidation {
   const detail = event as any;
   if (typeof detail.questId === "string" && detail.questId !== quest.id) {
     return { ok: false, reason: "quest_id_mismatch" };
@@ -1230,7 +1230,7 @@ export function validateSnapshotGroveQuestEventContextV132(
     return { ok: false, reason: "trigger_mismatch" };
   }
 
-  const marker = currentMarkerForQuestV75(quest, objectiveIndex);
+  const marker = currentMarkerForQuest(quest, objectiveIndex);
   const eventMarkerId =
     typeof detail.markerId === "string"
       ? detail.markerId
@@ -1243,17 +1243,17 @@ export function validateSnapshotGroveQuestEventContextV132(
   return { ok: true };
 }
 
-function doesEventMatchSnapshotGroveTriggerV92(
+function doesEventMatchSnapshotGroveTrigger(
   event: GardenHoseEvent,
-  quest: SnapshotGroveQuestV75,
+  quest: SnapshotGroveQuest,
   objectiveIndex: number
 ) {
-  const trigger = currentTriggerForQuestV92(quest, objectiveIndex);
+  const trigger = currentTriggerForQuest(quest, objectiveIndex);
   if (!trigger) {
     return false;
   }
   if (
-    isSnapshotGroveContextualPracticeEventV106(
+    isSnapshotGroveContextualPracticeEvent(
       event,
       quest,
       objectiveIndex,
@@ -1263,7 +1263,7 @@ function doesEventMatchSnapshotGroveTriggerV92(
     return true;
   }
   if (
-    !validateSnapshotGroveQuestEventContextV132(
+    !validateSnapshotGroveQuestEventContext(
       event,
       quest,
       objectiveIndex,
@@ -1278,10 +1278,10 @@ function doesEventMatchSnapshotGroveTriggerV92(
     quest.objectives[
       Math.max(0, Math.min(quest.objectives.length - 1, objectiveIndex))
     ];
-  const marker = currentMarkerForQuestV75(quest, objectiveIndex);
+  const marker = currentMarkerForQuest(quest, objectiveIndex);
   switch (trigger) {
     case "talk_npc": {
-      const actualNpcId = snapshotGroveNpcIdFromTalkEventV106(event);
+      const actualNpcId = snapshotGroveNpcIdFromTalkEvent(event);
       const expectedNpcId = marker?.npcId ?? quest.giverNpcId;
       return Boolean(
         actualNpcId && expectedNpcId && actualNpcId === expectedNpcId
@@ -1309,7 +1309,7 @@ function doesEventMatchSnapshotGroveTriggerV92(
       if (kind !== "open_tab") {
         return false;
       }
-      const expectedTab = expectedOpenTabForObjectiveV106(objective);
+      const expectedTab = expectedOpenTabForObjective(objective);
       return !expectedTab || (event as any).tab === expectedTab;
     }
     case "interact":
@@ -1346,7 +1346,7 @@ function doesEventMatchSnapshotGroveTriggerV92(
       );
     case "item_use":
       if (kind === "item_use" || kind === "harthmere_local_dev_item_use") {
-        return snapshotGroveItemUseEventMatchesObjectiveV130(
+        return snapshotGroveItemUseEventMatchesObjective(
           event as any,
           quest,
           objectiveIndex
@@ -1374,7 +1374,7 @@ function doesEventMatchSnapshotGroveTriggerV92(
   }
 }
 
-function actionNameForTriggerV92(trigger: string | undefined) {
+function actionNameForTrigger(trigger: string | undefined) {
   switch (trigger) {
     case "choice":
       return "Choose an answer";
@@ -1419,7 +1419,7 @@ function actionNameForTriggerV92(trigger: string | undefined) {
   }
 }
 
-function groveHudHintForTriggerV100(trigger: string | undefined) {
+function groveHudHintForTrigger(trigger: string | undefined) {
   switch (trigger) {
     case "open_tab":
       return "Open the highlighted HUD panel or use the matching hotkey.";
@@ -1451,17 +1451,17 @@ function groveHudHintForTriggerV100(trigger: string | undefined) {
   }
 }
 
-function groveQuestStepCopyV93(
-  quest: SnapshotGroveQuestV75,
+function groveQuestStepCopy(
+  quest: SnapshotGroveQuest,
   objectiveIndex: number
 ) {
   const clamped = Math.max(
     0,
     Math.min(quest.objectives.length - 1, objectiveIndex)
   );
-  const marker = currentMarkerForQuestV75(quest, clamped);
-  const trigger = currentTriggerForQuestV92(quest, clamped);
-  const action = actionNameForTriggerV92(trigger);
+  const marker = currentMarkerForQuest(quest, clamped);
+  const trigger = currentTriggerForQuest(quest, clamped);
+  const action = actionNameForTrigger(trigger);
   return {
     progress: `${clamped + 1}/${quest.objectives.length}: ${
       quest.objectives[clamped]
@@ -1470,11 +1470,11 @@ function groveQuestStepCopyV93(
       ? `Next stop: ${marker.label}.`
       : "Next stop: follow the active map marker.",
     action,
-    hudHint: groveHudHintForTriggerV100(trigger),
+    hudHint: groveHudHintForTrigger(trigger),
   };
 }
 
-function groveHudHighlightsForTriggerV106(
+function groveHudHighlightsForTrigger(
   trigger: string | undefined,
   objective: string | undefined
 ) {
@@ -1484,7 +1484,7 @@ function groveHudHighlightsForTriggerV106(
     case "open_tab":
       highlights.add("HUD");
       highlights.add(
-        (expectedOpenTabForObjectiveV106(objective) ?? "panel").toUpperCase()
+        (expectedOpenTabForObjective(objective) ?? "panel").toUpperCase()
       );
       break;
     case "inventory_change":
@@ -1534,7 +1534,7 @@ function groveHudHighlightsForTriggerV106(
     highlights.add("JOURNAL");
   if (text.includes("mail") || text.includes("storage"))
     highlights.add("INBOX");
-  // SNAPSHOT_GROVE_TUTOR_HIGHLIGHTS_V109:
+  // SNAPSHOT_GROVE_TUTOR_HIGHLIGHTS:
   if (
     text.includes("chat") ||
     text.includes("channel") ||
@@ -1555,16 +1555,16 @@ function groveHudHighlightsForTriggerV106(
   return [...highlights].slice(0, 6);
 }
 
-function needsSnapshotGroveContextualPracticeButtonV106(
+function needsSnapshotGroveContextualPracticeButton(
   trigger: string | undefined
 ) {
   return Boolean(
     trigger &&
-      SNAPSHOT_GROVE_CONTEXTUAL_PRACTICE_TRIGGERS_V106.has(trigger as any)
+      SNAPSHOT_GROVE_CONTEXTUAL_PRACTICE_TRIGGERS.has(trigger as any)
   );
 }
 
-function snapshotGrovePracticeButtonLabelV106(trigger: string | undefined) {
+function snapshotGrovePracticeButtonLabel(trigger: string | undefined) {
   switch (trigger) {
     case "choice":
       return "Pick practice answer";
@@ -1593,74 +1593,74 @@ function snapshotGrovePracticeButtonLabelV106(trigger: string | undefined) {
   }
 }
 
-function doesEventAdvanceQuestV75(
+function doesEventAdvanceQuest(
   event: GardenHoseEvent,
-  quest: SnapshotGroveQuestV75,
+  quest: SnapshotGroveQuest,
   objectiveIndex: number
 ) {
-  return doesEventMatchSnapshotGroveTriggerV92(event, quest, objectiveIndex);
+  return doesEventMatchSnapshotGroveTrigger(event, quest, objectiveIndex);
 }
 
-export function doesSnapshotGroveEventAdvanceQuestForTestV132(
+export function doesSnapshotGroveEventAdvanceQuestForTest(
   event: GardenHoseEvent,
-  quest: SnapshotGroveQuestV75,
+  quest: SnapshotGroveQuest,
   objectiveIndex: number
 ) {
-  return doesEventAdvanceQuestV75(event, quest, objectiveIndex);
+  return doesEventAdvanceQuest(event, quest, objectiveIndex);
 }
 
-export function snapshotGroveQuestEventFromWorldObjectInteractionForTestV1(
-  detail: HarthmereWorldObjectInteractionEventDetailV1,
-  quest: SnapshotGroveQuestV75,
+export function snapshotGroveQuestEventFromWorldObjectInteractionForTest(
+  detail: HarthmereWorldObjectInteractionEventDetail,
+  quest: SnapshotGroveQuest,
   objectiveIndex: number
 ) {
-  return snapshotGroveEventFromWorldObjectInteractionV1(
+  return snapshotGroveEventFromWorldObjectInteraction(
     detail,
     quest,
     objectiveIndex
   );
 }
 
-function useSnapshotGroveQuestStateV75() {
-  const [state, setState] = useState<SnapshotGroveQuestStateV75>(() =>
-    readSnapshotGroveQuestStateV75()
+function useSnapshotGroveQuestState() {
+  const [state, setState] = useState<SnapshotGroveQuestState>(() =>
+    readSnapshotGroveQuestState()
   );
   useEffect(() => {
-    const refresh = () => setState(readSnapshotGroveQuestStateV75());
+    const refresh = () => setState(readSnapshotGroveQuestState());
     const interval = window.setInterval(refresh, 500);
     window.addEventListener("storage", refresh);
-    window.addEventListener(SNAPSHOT_GROVE_QUEST_STATE_EVENT_V75, refresh);
+    window.addEventListener(SNAPSHOT_GROVE_QUEST_STATE_EVENT, refresh);
     return () => {
       window.clearInterval(interval);
       window.removeEventListener("storage", refresh);
-      window.removeEventListener(SNAPSHOT_GROVE_QUEST_STATE_EVENT_V75, refresh);
+      window.removeEventListener(SNAPSHOT_GROVE_QUEST_STATE_EVENT, refresh);
     };
   }, []);
   return state;
 }
 
-function npcForEntityV75(
+function npcForEntity(
   entityId: BiomesId,
   labelText?: string,
   entityDescriptionText?: string,
   defaultDialog?: string
-): SnapshotGroveNpcV75 | undefined {
+): SnapshotGroveNpc | undefined {
   if (entityId === JACKIE_ID) {
-    return SNAPSHOT_GROVE_NPCS_V75.find((npc) => npc.id === "jackie");
+    return SNAPSHOT_GROVE_NPCS.find((npc) => npc.id === "jackie");
   }
-  const seededId = snapshotGroveNpcIdFromEntityIdV75(entityId);
-  const labelMappedId = snapshotGroveNpcIdForDialogLabelV103({
+  const seededId = snapshotGroveNpcIdFromEntityId(entityId);
+  const labelMappedId = snapshotGroveNpcIdForDialogLabel({
     label: labelText,
     entityDescriptionText,
     defaultDialog,
   });
-  return SNAPSHOT_GROVE_NPCS_V75.find(
+  return SNAPSHOT_GROVE_NPCS.find(
     (npc) => npc.id === (seededId ?? labelMappedId)
   );
 }
 
-function npcLineForLikeabilityV75(npc: SnapshotGroveNpcV75) {
-  const likeability = readSnapshotGroveLikeabilityV75()[npc.id] || 0;
+function npcLineForLikeability(npc: SnapshotGroveNpc) {
+  const likeability = readSnapshotGroveLikeability()[npc.id] || 0;
   if (likeability >= 2 && npc.extraLines[1]) {
     return npc.extraLines[1];
   }
@@ -1670,10 +1670,10 @@ function npcLineForLikeabilityV75(npc: SnapshotGroveNpcV75) {
   return npc.line;
 }
 
-function npcQuestDialogueCopyV100(
-  npc: SnapshotGroveNpcV75,
-  quest: SnapshotGroveQuestV75,
-  state: SnapshotGroveQuestStateV75,
+function npcQuestDialogueCopy(
+  npc: SnapshotGroveNpc,
+  quest: SnapshotGroveQuest,
+  state: SnapshotGroveQuestState,
   objectiveIndex: number
 ) {
   const firstName = npc.displayName.split(",")[0].trim();
@@ -1693,10 +1693,10 @@ function npcQuestDialogueCopyV100(
     0,
     Math.min(quest.objectives.length - 1, objectiveIndex)
   );
-  const marker = currentMarkerForQuestV75(quest, safeIndex);
+  const marker = currentMarkerForQuest(quest, safeIndex);
   const destination = marker ? marker.label : "your next pinned stop";
   const objectiveSentence = quest.objectives[safeIndex];
-  // SNAPSHOT_GROVE_DIALOGUE_SPACING_V109:
+  // SNAPSHOT_GROVE_DIALOGUE_SPACING:
   // Each chunk has to be a separate paragraph so unslugNpcDescription splits
   // them into independent dialog steps. Joining with {break} produces real
   // sentence breaks; without it the parser collapses everything into one run
@@ -1711,8 +1711,8 @@ function npcQuestDialogueCopyV100(
   ].join("{break}");
 }
 
-function groveBankerProgressiveQuestionActionsV1(
-  npc: SnapshotGroveNpcV75
+function groveBankerProgressiveQuestionActions(
+  npc: SnapshotGroveNpc
 ): TalkDialogStepAction[] {
   if (npc.id !== "grove_banker_merl") {
     return [];
@@ -1725,21 +1725,21 @@ function groveBankerProgressiveQuestionActionsV1(
         "Banking basics: personal vault, account vault, and material storage.",
       followUpText:
         "I keep three ledger columns for this. Your personal vault holds ordinary items. Your account vault is for goods you want shared across your own characters. Material storage is the small, plain shelf for resources like wood, stone, ore, herbs, and other crafting supplies. None of those are pretend balances; the server ledger decides what exists.",
-      onPerformed: () => recordSnapshotGroveLikeabilityV75(npc.id, 1),
+      onPerformed: () => recordSnapshotGroveLikeability(npc.id, 1),
     },
     {
       name: "Why is my backpack limited?",
       tooltip: "Explains carry weight and why homes and shops matter.",
       followUpText:
         "A backpack is for travel, not hoarding. Heavy loads slow the town economy because everyone would carry a warehouse on their back. Store long-term goods in homes, shops, workshops, or managed vaults, then carry only what the road actually needs.",
-      onPerformed: () => recordSnapshotGroveLikeabilityV75(npc.id, 1),
+      onPerformed: () => recordSnapshotGroveLikeability(npc.id, 1),
     },
     {
       name: "How do loans work?",
       tooltip: "Explains principal, daily interest, and due dates.",
       followUpText:
         "A loan gives you gold now and a due date later. Interest grows by the day, not by vague story time. Pay early if you can. Paying late means the same principal now drags extra interest behind it.",
-      onPerformed: () => recordSnapshotGroveLikeabilityV75(npc.id, 1),
+      onPerformed: () => recordSnapshotGroveLikeability(npc.id, 1),
     },
     {
       name: "What happens if I do not repay?",
@@ -1747,12 +1747,12 @@ function groveBankerProgressiveQuestionActionsV1(
       tooltip: "Explains default consequences before the player borrows.",
       followUpText:
         "I close the ledger halfway for this part. If a loan defaults, the bank marks a credit hold, records a reputation penalty, applies a default fee, and keeps late interest moving until the debt is cleared. You can still repay, but the town remembers that you made the ledger chase you.",
-      onPerformed: () => recordSnapshotGroveLikeabilityV75(npc.id, 1),
+      onPerformed: () => recordSnapshotGroveLikeability(npc.id, 1),
     },
   ];
 }
 
-export function useSnapshotGroveNpcDialogV75(
+export function useSnapshotGroveNpcDialog(
   talkingToNPCId: BiomesId,
   defaultDialog: string
 ):
@@ -1767,10 +1767,10 @@ export function useSnapshotGroveNpcDialogV75(
     ["/ecs/c/label", talkingToNPCId],
     ["/ecs/c/entity_description", talkingToNPCId]
   );
-  const state = useSnapshotGroveQuestStateV75();
+  const state = useSnapshotGroveQuestState();
 
   return useMemo(() => {
-    const npc = npcForEntityV75(
+    const npc = npcForEntity(
       talkingToNPCId,
       label?.text,
       entityDescription?.text,
@@ -1779,14 +1779,14 @@ export function useSnapshotGroveNpcDialogV75(
     if (!npc) {
       return undefined;
     }
-    const activeQuest = activeQuestForNpcV75(npc.id, state);
-    const availableQuests = availableQuestsForNpcV101(npc.id, state);
+    const activeQuest = activeQuestForNpc(npc.id, state);
+    const availableQuests = availableQuestsForNpc(npc.id, state);
     const availableQuest = availableQuests[0];
     const quest = activeQuest ?? availableQuest;
     const objectiveIndex =
       quest?.id === state.activeQuestId ? state.activeObjectiveIndex : 0;
     const marker = quest
-      ? currentMarkerForQuestV75(quest, objectiveIndex)
+      ? currentMarkerForQuest(quest, objectiveIndex)
       : undefined;
     const actions: TalkDialogStepAction[] = [];
 
@@ -1797,7 +1797,7 @@ export function useSnapshotGroveNpcDialogV75(
           type: actions.length === 0 ? "primary" : "normal",
           tooltip: option.hook,
           onPerformed: () =>
-            acceptSnapshotGroveQuestV75(option, mapManager, resources),
+            acceptSnapshotGroveQuest(option, mapManager, resources),
         });
       }
     } else if (quest && !state.completedQuestIds.includes(quest.id)) {
@@ -1811,29 +1811,29 @@ export function useSnapshotGroveNpcDialogV75(
         type: "normal",
         tooltip: marker.label,
         onPerformed: () =>
-          pinSnapshotGroveLandmarkV75(
+          pinSnapshotGroveLandmark(
             mapManager,
             marker.position,
-            snapshotGroveStepNavAidIdV107(objectiveIndex)
+            snapshotGroveStepNavAidId(objectiveIndex)
           ),
       });
     }
 
-    actions.push(...groveBankerProgressiveQuestionActionsV1(npc));
+    actions.push(...groveBankerProgressiveQuestionActions(npc));
 
-    const line = npcLineForLikeabilityV75(npc);
+    const line = npcLineForLikeability(npc);
     const questCopy =
       !activeQuest && availableQuests.length > 1
         ? `<text>I have a few short lessons set aside if you have a quiet minute. Pick whichever feels useful first.</text>`
         : quest
-        ? npcQuestDialogueCopyV100(npc, quest, state, objectiveIndex)
+        ? npcQuestDialogueCopy(npc, quest, state, objectiveIndex)
         : `<text>${defaultDialog || npc.shortDescription}</text>`;
 
     return {
-      id: `${SNAPSHOT_GROVE_BIBLE_RUNTIME_VERSION_V75}-${npc.id}-${
+      id: `${SNAPSHOT_GROVE_BIBLE_RUNTIME_VERSION}-${npc.id}-${
         quest?.id ?? "bark"
       }-${objectiveIndex}`,
-      // SNAPSHOT_GROVE_DIALOGUE_SPACING_V109:
+      // SNAPSHOT_GROVE_DIALOGUE_SPACING:
       // The bark line and the quest copy have to be different dialog steps;
       // joining with {break} keeps them as separate paragraphs instead of
       // collapsing into one run-on screen.
@@ -1851,24 +1851,24 @@ export function useSnapshotGroveNpcDialogV75(
   ]);
 }
 
-export const SnapshotGroveBibleRuntimeControllerV75: React.FunctionComponent<{}> =
+export const SnapshotGroveBibleRuntimeController: React.FunctionComponent<{}> =
   () => {
     const { gardenHose, mapManager, reactResources, resources } =
       useClientContext();
     const localPlayer = reactResources.use("/scene/local_player");
-    const state = useSnapshotGroveQuestStateV75();
+    const state = useSnapshotGroveQuestState();
 
     useEffect(() => {
       const handler = (event: GardenHoseEvent) => {
-        const current = readSnapshotGroveQuestStateV75();
-        const quest = questByIdV75(current.activeQuestId);
+        const current = readSnapshotGroveQuestState();
+        const quest = questById(current.activeQuestId);
         if (!quest || current.completedQuestIds.includes(quest.id)) {
           return;
         }
         if (
-          doesEventAdvanceQuestV75(event, quest, current.activeObjectiveIndex)
+          doesEventAdvanceQuest(event, quest, current.activeObjectiveIndex)
         ) {
-          advanceSnapshotGroveQuestV75(
+          advanceSnapshotGroveQuest(
             quest,
             mapManager,
             (event as any).kind || "event",
@@ -1885,19 +1885,19 @@ export const SnapshotGroveBibleRuntimeControllerV75: React.FunctionComponent<{}>
         return;
       }
       const handler = () => {
-        if (snapshotGroveSuppressInventoryAdvanceDepthV1 > 0) {
+        if (snapshotGroveSuppressInventoryAdvanceDepth > 0) {
           return;
         }
-        const current = readSnapshotGroveQuestStateV75();
-        const quest = questByIdV75(current.activeQuestId);
+        const current = readSnapshotGroveQuestState();
+        const quest = questById(current.activeQuestId);
         if (!quest || current.completedQuestIds.includes(quest.id)) {
           return;
         }
         const event = { kind: "inventory_change" } as GardenHoseEvent;
         if (
-          doesEventAdvanceQuestV75(event, quest, current.activeObjectiveIndex)
+          doesEventAdvanceQuest(event, quest, current.activeObjectiveIndex)
         ) {
-          advanceSnapshotGroveQuestV75(
+          advanceSnapshotGroveQuest(
             quest,
             mapManager,
             "local inventory changed",
@@ -1915,35 +1915,35 @@ export const SnapshotGroveBibleRuntimeControllerV75: React.FunctionComponent<{}>
         return;
       }
       const handler = (browserEvent: Event) => {
-        const current = readSnapshotGroveQuestStateV75();
-        const quest = questByIdV75(current.activeQuestId);
+        const current = readSnapshotGroveQuestState();
+        const quest = questById(current.activeQuestId);
         if (!quest || current.completedQuestIds.includes(quest.id)) {
           return;
         }
         const detail = (
-          browserEvent as CustomEvent<HarthmereWorldObjectInteractionEventDetailV1>
+          browserEvent as CustomEvent<HarthmereWorldObjectInteractionEventDetail>
         ).detail;
         if (!detail) {
           return;
         }
-        const event = snapshotGroveEventFromWorldObjectInteractionV1(
+        const event = snapshotGroveEventFromWorldObjectInteraction(
           detail,
           quest,
           current.activeObjectiveIndex
         );
         if (
           event &&
-          doesEventAdvanceQuestV75(event, quest, current.activeObjectiveIndex)
+          doesEventAdvanceQuest(event, quest, current.activeObjectiveIndex)
         ) {
           const grantedPracticeItem =
-            withSnapshotGroveInventoryAdvanceSuppressedV1(() =>
-              grantSnapshotGroveWorldObjectPickupItemV1(
+            withSnapshotGroveInventoryAdvanceSuppressed(() =>
+              grantSnapshotGroveWorldObjectPickupItem(
                 quest,
                 current.activeObjectiveIndex,
                 (event as any).trigger
               )
             );
-          advanceSnapshotGroveQuestV75(
+          advanceSnapshotGroveQuest(
             quest,
             mapManager,
             grantedPracticeItem
@@ -1956,12 +1956,12 @@ export const SnapshotGroveBibleRuntimeControllerV75: React.FunctionComponent<{}>
         }
       };
       window.addEventListener(
-        HARTHMERE_WORLD_OBJECT_INTERACTION_EVENT_V1,
+        HARTHMERE_WORLD_OBJECT_INTERACTION_EVENT,
         handler
       );
       return () =>
         window.removeEventListener(
-          HARTHMERE_WORLD_OBJECT_INTERACTION_EVENT_V1,
+          HARTHMERE_WORLD_OBJECT_INTERACTION_EVENT,
           handler
         );
     }, [mapManager, resources]);
@@ -1971,8 +1971,8 @@ export const SnapshotGroveBibleRuntimeControllerV75: React.FunctionComponent<{}>
         return;
       }
       const handler = (browserEvent: Event) => {
-        const current = readSnapshotGroveQuestStateV75();
-        const quest = questByIdV75(current.activeQuestId);
+        const current = readSnapshotGroveQuestState();
+        const quest = questById(current.activeQuestId);
         if (!quest || current.completedQuestIds.includes(quest.id)) {
           return;
         }
@@ -1983,9 +1983,9 @@ export const SnapshotGroveBibleRuntimeControllerV75: React.FunctionComponent<{}>
           ...detail,
         } as unknown as GardenHoseEvent;
         if (
-          doesEventAdvanceQuestV75(event, quest, current.activeObjectiveIndex)
+          doesEventAdvanceQuest(event, quest, current.activeObjectiveIndex)
         ) {
-          advanceSnapshotGroveQuestV75(
+          advanceSnapshotGroveQuest(
             quest,
             mapManager,
             String((event as any).itemId ?? "item_use"),
@@ -1993,27 +1993,27 @@ export const SnapshotGroveBibleRuntimeControllerV75: React.FunctionComponent<{}>
           );
         }
       };
-      window.addEventListener(HARTHMERE_LOCAL_DEV_ITEM_USE_EVENT_V130, handler);
+      window.addEventListener(HARTHMERE_LOCAL_DEV_ITEM_USE_EVENT, handler);
       return () =>
         window.removeEventListener(
-          HARTHMERE_LOCAL_DEV_ITEM_USE_EVENT_V130,
+          HARTHMERE_LOCAL_DEV_ITEM_USE_EVENT,
           handler
         );
     }, [mapManager, resources]);
 
     useEffect(() => {
-      const quest = questByIdV75(state.activeQuestId);
+      const quest = questById(state.activeQuestId);
       if (!quest || state.completedQuestIds.includes(quest.id)) {
         return;
       }
-      const trigger = currentTriggerForQuestV92(
+      const trigger = currentTriggerForQuest(
         quest,
         state.activeObjectiveIndex
       );
       if (trigger !== "near_location") {
         return;
       }
-      const marker = currentMarkerForQuestV75(
+      const marker = currentMarkerForQuest(
         quest,
         state.activeObjectiveIndex
       );
@@ -2026,7 +2026,7 @@ export const SnapshotGroveBibleRuntimeControllerV75: React.FunctionComponent<{}>
         marker.position[2] - playerPos[2]
       );
       if (distance <= 8) {
-        advanceSnapshotGroveQuestV75(
+        advanceSnapshotGroveQuest(
           quest,
           mapManager,
           "arrived_at_marker",
@@ -2043,32 +2043,32 @@ export const SnapshotGroveBibleRuntimeControllerV75: React.FunctionComponent<{}>
     ]);
 
     useEffect(() => {
-      const quest = questByIdV75(state.activeQuestId);
-      syncSnapshotGroveQuestMarkersV107(
+      const quest = questById(state.activeQuestId);
+      syncSnapshotGroveQuestMarkers(
         mapManager,
         quest,
         state.activeObjectiveIndex
       );
     }, [mapManager, state.activeObjectiveIndex, state.activeQuestId]);
 
-    // SNAPSHOT_GROVE_TUTOR_HIGHLIGHTS_V109:
+    // SNAPSHOT_GROVE_TUTOR_HIGHLIGHTS:
     // Broadcast the bottom-bar nav labels that should pulse for the current
     // tutorial step. Empty array means "no highlight". The HUD listens via
-    // useTutorHighlightedNavLabelsV109 and decorates each NavSlot accordingly.
+    // useTutorHighlightedNavLabels and decorates each NavSlot accordingly.
     useEffect(() => {
-      const quest = questByIdV75(state.activeQuestId);
+      const quest = questById(state.activeQuestId);
       if (!quest || state.completedQuestIds.includes(quest.id)) {
-        broadcastSnapshotGroveTutorHudLabelsV109([]);
+        broadcastSnapshotGroveTutorHudLabels([]);
         return;
       }
-      const trigger = currentTriggerForQuestV92(
+      const trigger = currentTriggerForQuest(
         quest,
         state.activeObjectiveIndex
       );
       const objective = quest.objectives[state.activeObjectiveIndex];
-      const chips = groveHudHighlightsForTriggerV106(trigger, objective);
-      const labels = snapshotGroveTutorNavLabelsForHighlightsV109(chips);
-      broadcastSnapshotGroveTutorHudLabelsV109(labels, chips);
+      const chips = groveHudHighlightsForTrigger(trigger, objective);
+      const labels = snapshotGroveTutorNavLabelsForHighlights(chips);
+      broadcastSnapshotGroveTutorHudLabels(labels, chips);
     }, [
       state.activeObjectiveIndex,
       state.activeQuestId,
@@ -2080,35 +2080,35 @@ export const SnapshotGroveBibleRuntimeControllerV75: React.FunctionComponent<{}>
         return;
       }
       const win = window as typeof window & {
-        __snapshotGroveV75?: unknown;
+        __snapshotGrove?: unknown;
       };
-      win.__snapshotGroveV75 = {
-        version: SNAPSHOT_GROVE_BIBLE_CONTENT_VERSION_V75,
-        quests: SNAPSHOT_GROVE_QUESTS_V75,
-        npcs: SNAPSHOT_GROVE_NPCS_V75,
-        landmarks: SNAPSHOT_GROVE_LANDMARKS_V75,
-        readState: readSnapshotGroveQuestStateV75,
+      win.__snapshotGrove = {
+        version: SNAPSHOT_GROVE_BIBLE_CONTENT_VERSION,
+        quests: SNAPSHOT_GROVE_QUESTS,
+        npcs: SNAPSHOT_GROVE_NPCS,
+        landmarks: SNAPSHOT_GROVE_LANDMARKS,
+        readState: readSnapshotGroveQuestState,
         reset: () => {
-          window.localStorage.removeItem(SNAPSHOT_GROVE_QUEST_STATE_KEY_V75);
-          window.localStorage.removeItem(SNAPSHOT_GROVE_LIKEABILITY_KEY_V75);
+          window.localStorage.removeItem(SNAPSHOT_GROVE_QUEST_STATE_KEY);
+          window.localStorage.removeItem(SNAPSHOT_GROVE_LIKEABILITY_KEY);
           window.dispatchEvent(
-            new CustomEvent(SNAPSHOT_GROVE_QUEST_STATE_EVENT_V75)
+            new CustomEvent(SNAPSHOT_GROVE_QUEST_STATE_EVENT)
           );
         },
         dumpGrounding: () =>
-          SNAPSHOT_GROVE_NPCS_V75.map((npc) => {
-            const livePosition = snapshotGroveGroundedPositionV75(
+          SNAPSHOT_GROVE_NPCS.map((npc) => {
+            const livePosition = snapshotGroveGroundedPosition(
               npc.authoredPosition
             );
             return {
               id: npc.id,
               name: npc.displayName,
               seededEntityId: npc.seedServerNpc
-                ? snapshotGroveNpcEntityIdV75(npc)
+                ? snapshotGroveNpcEntityId(npc)
                 : JACKIE_ID,
               authoredPosition: npc.authoredPosition,
               livePosition,
-              grounded: livePosition[1] === SNAPSHOT_GROVE_LIVE_NPC_FEET_Y_V83,
+              grounded: livePosition[1] === SNAPSHOT_GROVE_LIVE_NPC_FEET_Y,
             };
           }),
       };
@@ -2117,20 +2117,20 @@ export const SnapshotGroveBibleRuntimeControllerV75: React.FunctionComponent<{}>
     return null;
   };
 
-export const SnapshotGroveMapHUDV75: React.FunctionComponent<{}> = () => {
+export const SnapshotGroveMapHUD: React.FunctionComponent<{}> = () => {
   const { gardenHose, reactResources, mapManager } = useClientContext();
   const localPlayer = reactResources.use("/scene/local_player");
-  const state = useSnapshotGroveQuestStateV75();
-  const activeQuest = questByIdV75(state.activeQuestId);
-  const nextFountainLesson = SNAPSHOT_GROVE_QUESTS_V75.find(
+  const state = useSnapshotGroveQuestState();
+  const activeQuest = questById(state.activeQuestId);
+  const nextFountainLesson = SNAPSHOT_GROVE_QUESTS.find(
     (item) =>
-      SNAPSHOT_GROVE_FOUNTAIN_TUTORIAL_QUEST_ID_SET_V100.has(item.id) &&
+      SNAPSHOT_GROVE_FOUNTAIN_TUTORIAL_QUEST_ID_SET.has(item.id) &&
       !state.completedQuestIds.includes(item.id)
   );
   const quest =
     activeQuest ??
     nextFountainLesson ??
-    SNAPSHOT_GROVE_QUESTS_V75.find(
+    SNAPSHOT_GROVE_QUESTS.find(
       (item) => !state.completedQuestIds.includes(item.id)
     );
   if (!quest) {
@@ -2138,7 +2138,7 @@ export const SnapshotGroveMapHUDV75: React.FunctionComponent<{}> = () => {
   }
   const objectiveIndex =
     state.activeQuestId === quest.id ? state.activeObjectiveIndex : 0;
-  const marker = currentMarkerForQuestV75(quest, objectiveIndex);
+  const marker = currentMarkerForQuest(quest, objectiveIndex);
   const playerPos = localPlayer.player.position as Vec3;
   const distance = marker
     ? Math.round(
@@ -2156,25 +2156,25 @@ export const SnapshotGroveMapHUDV75: React.FunctionComponent<{}> = () => {
     : state.acceptedQuestIds.includes(quest.id)
     ? "In progress"
     : "Available";
-  const step = groveQuestStepCopyV93(quest, objectiveIndex);
-  const currentTrigger = currentTriggerForQuestV92(quest, objectiveIndex);
+  const step = groveQuestStepCopy(quest, objectiveIndex);
+  const currentTrigger = currentTriggerForQuest(quest, objectiveIndex);
   const currentObjective =
     quest.objectives[
       Math.max(0, Math.min(quest.objectives.length - 1, objectiveIndex))
     ];
-  const highlightedHudItems = groveHudHighlightsForTriggerV106(
+  const highlightedHudItems = groveHudHighlightsForTrigger(
     currentTrigger,
     currentObjective
   );
   const showPracticeButton =
     state.acceptedQuestIds.includes(quest.id) &&
-    needsSnapshotGroveContextualPracticeButtonV106(currentTrigger);
+    needsSnapshotGroveContextualPracticeButton(currentTrigger);
   const practiceIsInRange = !marker || distance === undefined || distance <= 10;
-  const giver = SNAPSHOT_GROVE_NPCS_V75.find(
+  const giver = SNAPSHOT_GROVE_NPCS.find(
     (npc) => npc.id === quest.giverNpcId
   );
   const isFountainLesson =
-    SNAPSHOT_GROVE_FOUNTAIN_TUTORIAL_QUEST_ID_SET_V100.has(quest.id);
+    SNAPSHOT_GROVE_FOUNTAIN_TUTORIAL_QUEST_ID_SET.has(quest.id);
   return (
     <div className="rounded-2xl border-lime-100/25 w-full max-w-sm border bg-black/70 p-3 text-white shadow-2xl backdrop-blur-md sm:max-w-md">
       <div className="flex items-start justify-between gap-2">
@@ -2237,7 +2237,7 @@ export const SnapshotGroveMapHUDV75: React.FunctionComponent<{}> = () => {
           </div>
           <div className="space-y-1">
             {quest.markerIds.map((markerId, stepIndex) => {
-              const stepMarker = snapshotGroveLandmarkByIdV75(markerId);
+              const stepMarker = snapshotGroveLandmarkById(markerId);
               const isActiveStep = stepIndex === objectiveIndex;
               const isPastStep = stepIndex < objectiveIndex;
               return (
@@ -2251,10 +2251,10 @@ export const SnapshotGroveMapHUDV75: React.FunctionComponent<{}> = () => {
                   }
                   onClick={() => {
                     if (stepMarker) {
-                      pinSnapshotGroveLandmarkV75(
+                      pinSnapshotGroveLandmark(
                         mapManager,
                         stepMarker.position,
-                        snapshotGroveStepNavAidIdV107(stepIndex)
+                        snapshotGroveStepNavAidId(stepIndex)
                       );
                     }
                   }}
@@ -2311,10 +2311,10 @@ export const SnapshotGroveMapHUDV75: React.FunctionComponent<{}> = () => {
           </div>
         )}
       {showPracticeButton &&
-        snapshotGrovePracticeItemForObjectiveV110(quest, objectiveIndex) && (
+        snapshotGrovePracticeItemForObjective(quest, objectiveIndex) && (
           <div className="rounded-lg border-sky-200/25 bg-sky-300/10 text-sky-50 mt-2 border px-2 py-1 text-[11px] font-semibold">
             {`Marked pickup: ${
-              snapshotGrovePracticeItemForObjectiveV110(quest, objectiveIndex)
+              snapshotGrovePracticeItemForObjective(quest, objectiveIndex)
                 ?.label
             }. It is counted in your bag/material storage when you pick it up.`}
           </div>
@@ -2331,7 +2331,7 @@ export const SnapshotGroveMapHUDV75: React.FunctionComponent<{}> = () => {
             if (!practiceIsInRange || !currentTrigger) {
               return;
             }
-            const grantedPracticeItem = grantSnapshotGrovePracticeItemV110(
+            const grantedPracticeItem = grantSnapshotGrovePracticeItem(
               quest,
               objectiveIndex,
               currentTrigger
@@ -2347,7 +2347,7 @@ export const SnapshotGroveMapHUDV75: React.FunctionComponent<{}> = () => {
           }}
         >
           {practiceIsInRange
-            ? snapshotGrovePracticeButtonLabelV106(currentTrigger)
+            ? snapshotGrovePracticeButtonLabel(currentTrigger)
             : `Walk to ${marker?.label ?? "the marker"} first`}
         </button>
       )}
@@ -2355,10 +2355,10 @@ export const SnapshotGroveMapHUDV75: React.FunctionComponent<{}> = () => {
         <button
           className="rounded-lg bg-lime-300/20 text-lime-100 hover:bg-lime-300/30 mt-2 px-2.5 py-1 text-[11px] font-bold"
           onClick={() =>
-            pinSnapshotGroveLandmarkV75(
+            pinSnapshotGroveLandmark(
               mapManager,
               marker.position,
-              snapshotGroveStepNavAidIdV107(objectiveIndex)
+              snapshotGroveStepNavAidId(objectiveIndex)
             )
           }
         >
@@ -2369,27 +2369,27 @@ export const SnapshotGroveMapHUDV75: React.FunctionComponent<{}> = () => {
   );
 };
 
-export const SnapshotGroveJournalPanelV75: React.FunctionComponent<{}> = () => {
-  const state = useSnapshotGroveQuestStateV75();
-  const activeQuest = questByIdV75(state.activeQuestId);
-  const fountainLessons = SNAPSHOT_GROVE_QUESTS_V75.filter((quest) =>
-    SNAPSHOT_GROVE_FOUNTAIN_TUTORIAL_QUEST_ID_SET_V100.has(quest.id)
+export const SnapshotGroveJournalPanel: React.FunctionComponent<{}> = () => {
+  const state = useSnapshotGroveQuestState();
+  const activeQuest = questById(state.activeQuestId);
+  const fountainLessons = SNAPSHOT_GROVE_QUESTS.filter((quest) =>
+    SNAPSHOT_GROVE_FOUNTAIN_TUTORIAL_QUEST_ID_SET.has(quest.id)
   );
-  const roadGraduation = SNAPSHOT_GROVE_QUESTS_V75.filter(
+  const roadGraduation = SNAPSHOT_GROVE_QUESTS.filter(
     (quest) => quest.category === "road_graduation"
   );
-  const roadNeighbors = SNAPSHOT_GROVE_QUESTS_V75.filter(
+  const roadNeighbors = SNAPSHOT_GROVE_QUESTS.filter(
     (quest) => quest.category === "road_neighbor"
   );
-  const roadStories = SNAPSHOT_GROVE_QUESTS_V75.filter(
+  const roadStories = SNAPSHOT_GROVE_QUESTS.filter(
     (quest) =>
-      !SNAPSHOT_GROVE_FOUNTAIN_TUTORIAL_QUEST_ID_SET_V100.has(quest.id) &&
+      !SNAPSHOT_GROVE_FOUNTAIN_TUTORIAL_QUEST_ID_SET.has(quest.id) &&
       quest.category !== "road_graduation" &&
       quest.category !== "road_neighbor"
   );
-  const fountainCompletedCount = countCompletedFountainLessonsV108(state);
-  const renderQuestRow = (quest: SnapshotGroveQuestV75) => {
-    const isUnlocked = isSnapshotGroveQuestUnlockedV108(quest, state);
+  const fountainCompletedCount = countCompletedFountainLessons(state);
+  const renderQuestRow = (quest: SnapshotGroveQuest) => {
+    const isUnlocked = isSnapshotGroveQuestUnlocked(quest, state);
     const status = state.completedQuestIds.includes(quest.id)
       ? "done"
       : state.acceptedQuestIds.includes(quest.id)
@@ -2397,7 +2397,7 @@ export const SnapshotGroveJournalPanelV75: React.FunctionComponent<{}> = () => {
       : isUnlocked
       ? "open"
       : "soon";
-    const giver = SNAPSHOT_GROVE_NPCS_V75.find(
+    const giver = SNAPSHOT_GROVE_NPCS.find(
       (npc) => npc.id === quest.giverNpcId
     );
     const lockHint =
@@ -2406,12 +2406,12 @@ export const SnapshotGroveJournalPanelV75: React.FunctionComponent<{}> = () => {
           ? `Unlocks after ${quest.unlockedBy.minCompletedFountainLessons} fountain lessons (${fountainCompletedCount}/${quest.unlockedBy.minCompletedFountainLessons}).`
           : quest.unlockedBy.kind === "quest_accepted"
           ? `Unlocks once you accept ${
-              SNAPSHOT_GROVE_QUESTS_V75.find(
+              SNAPSHOT_GROVE_QUESTS.find(
                 (q) => q.id === (quest.unlockedBy as any).questId
               )?.title ?? "the prerequisite lesson"
             }.`
           : `Unlocks once you finish ${
-              SNAPSHOT_GROVE_QUESTS_V75.find(
+              SNAPSHOT_GROVE_QUESTS.find(
                 (q) => q.id === (quest.unlockedBy as any).questId
               )?.title ?? "the prerequisite lesson"
             }.`
@@ -2459,13 +2459,13 @@ export const SnapshotGroveJournalPanelV75: React.FunctionComponent<{}> = () => {
           </div>
           <div>
             {
-              groveQuestStepCopyV93(activeQuest, state.activeObjectiveIndex)
+              groveQuestStepCopy(activeQuest, state.activeObjectiveIndex)
                 .progress
             }
           </div>
           <div className="mt-1 text-[11px] text-white/60">
             {
-              groveQuestStepCopyV93(activeQuest, state.activeObjectiveIndex)
+              groveQuestStepCopy(activeQuest, state.activeObjectiveIndex)
                 .target
             }
           </div>
@@ -2521,34 +2521,34 @@ export const SnapshotGroveJournalPanelV75: React.FunctionComponent<{}> = () => {
   );
 };
 
-// SNAPSHOT_GROVE_TUTOR_CHAT_PANEL_V109:
+// SNAPSHOT_GROVE_TUTOR_CHAT_PANEL:
 // Lightweight in-game chat compose panel with four channel tabs (Say,
-// Whisper, Party, Trade). Opens via openSnapshotGroveTutorChatPanelV109(),
+// Whisper, Party, Trade). Opens via openSnapshotGroveTutorChatPanel(),
 // which the new Chat NavSlot button in HarthmereUnifiedHUD calls. When the
 // panel opens, it publishes an open_tab GardenHose event with tab="chat",
 // which the "Open the chat panel from the HUD" objective of the
-// fountain_chat_channels lesson is gated on. Harthmere world chat v152 sends
+// fountain_chat_channels lesson is gated on. Harthmere world chat current sends
 // these messages through the real ChatIo backend while still firing the
 // tutorial practice event, so the panel is no longer a fake local-only chat.
 
-const SNAPSHOT_GROVE_TUTOR_CHAT_OPEN_EVENT_V109 =
-  "biomes:snapshot-grove-tutor-chat-panel-open-v109";
+const SNAPSHOT_GROVE_TUTOR_CHAT_OPEN_EVENT =
+  "biomes:snapshot-grove-tutor-chat-panel-open";
 
-export function openSnapshotGroveTutorChatPanelV109() {
+export function openSnapshotGroveTutorChatPanel() {
   if (typeof window === "undefined") return;
   try {
     window.dispatchEvent(
-      new CustomEvent(SNAPSHOT_GROVE_TUTOR_CHAT_OPEN_EVENT_V109)
+      new CustomEvent(SNAPSHOT_GROVE_TUTOR_CHAT_OPEN_EVENT)
     );
   } catch {
     // No-op in non-browser test contexts.
   }
 }
 
-type SnapshotGroveTutorChatChannelV109 = "say" | "whisper" | "party" | "trade";
+type SnapshotGroveTutorChatChannel = "say" | "whisper" | "party" | "trade";
 
-const SNAPSHOT_GROVE_TUTOR_CHAT_CHANNELS_V109: Array<{
-  id: SnapshotGroveTutorChatChannelV109;
+const SNAPSHOT_GROVE_TUTOR_CHAT_CHANNELS: Array<{
+  id: SnapshotGroveTutorChatChannel;
   label: string;
   blurb: string;
   placeholder: string;
@@ -2583,14 +2583,14 @@ const SNAPSHOT_GROVE_TUTOR_CHAT_CHANNELS_V109: Array<{
   },
 ];
 
-export const SnapshotGroveTutorChatPanelV109: React.FunctionComponent<{}> =
+export const SnapshotGroveTutorChatPanel: React.FunctionComponent<{}> =
   () => {
     const { chatIo, gardenHose, mailman, reactResources, resources } =
       useClientContext();
-    const state = useSnapshotGroveQuestStateV75();
+    const state = useSnapshotGroveQuestState();
     const [open, setOpen] = useState(false);
     const [channel, setChannel] =
-      useState<SnapshotGroveTutorChatChannelV109>("say");
+      useState<SnapshotGroveTutorChatChannel>("say");
     const [draft, setDraft] = useState("");
 
     useEffect(() => {
@@ -2599,12 +2599,12 @@ export const SnapshotGroveTutorChatPanelV109: React.FunctionComponent<{}> =
         setOpen(true);
       };
       window.addEventListener(
-        SNAPSHOT_GROVE_TUTOR_CHAT_OPEN_EVENT_V109,
+        SNAPSHOT_GROVE_TUTOR_CHAT_OPEN_EVENT,
         openHandler
       );
       return () =>
         window.removeEventListener(
-          SNAPSHOT_GROVE_TUTOR_CHAT_OPEN_EVENT_V109,
+          SNAPSHOT_GROVE_TUTOR_CHAT_OPEN_EVENT,
           openHandler
         );
     }, []);
@@ -2636,7 +2636,7 @@ export const SnapshotGroveTutorChatPanelV109: React.FunctionComponent<{}> =
 
     if (!open) return null;
 
-    const activeChannel = SNAPSHOT_GROVE_TUTOR_CHAT_CHANNELS_V109.find(
+    const activeChannel = SNAPSHOT_GROVE_TUTOR_CHAT_CHANNELS.find(
       (c) => c.id === channel
     )!;
 
@@ -2668,13 +2668,13 @@ export const SnapshotGroveTutorChatPanelV109: React.FunctionComponent<{}> =
         );
       }
 
-      const quest = questByIdV75(state.activeQuestId);
+      const quest = questById(state.activeQuestId);
       if (quest && !state.completedQuestIds.includes(quest.id)) {
-        const trigger = currentTriggerForQuestV92(
+        const trigger = currentTriggerForQuest(
           quest,
           state.activeObjectiveIndex
         );
-        const marker = currentMarkerForQuestV75(
+        const marker = currentMarkerForQuest(
           quest,
           state.activeObjectiveIndex
         );
@@ -2699,7 +2699,7 @@ export const SnapshotGroveTutorChatPanelV109: React.FunctionComponent<{}> =
         className="rounded-2xl border-amber-200/30 bg-stone-950/95 pointer-events-auto fixed inset-x-2 bottom-[12rem] z-40 mx-auto max-w-md border p-3 text-white shadow-[0_8px_32px_rgba(0,0,0,0.6)] backdrop-blur-md sm:bottom-[12.5rem] md:max-w-lg"
         role="dialog"
         aria-label="Tutorial chat panel"
-        data-snapshot-grove-tutor-chat-panel-v109="open"
+        data-snapshot-grove-tutor-chat-panel="open"
       >
         <div className="flex items-center justify-between gap-3">
           <div>
@@ -2723,18 +2723,18 @@ export const SnapshotGroveTutorChatPanelV109: React.FunctionComponent<{}> =
           aria-label="Chat channel"
           onKeyDown={(e) => {
             if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
-            const idx = SNAPSHOT_GROVE_TUTOR_CHAT_CHANNELS_V109.findIndex(
+            const idx = SNAPSHOT_GROVE_TUTOR_CHAT_CHANNELS.findIndex(
               (c) => c.id === channel
             );
             const delta = e.key === "ArrowRight" ? 1 : -1;
             const next =
-              (idx + delta + SNAPSHOT_GROVE_TUTOR_CHAT_CHANNELS_V109.length) %
-              SNAPSHOT_GROVE_TUTOR_CHAT_CHANNELS_V109.length;
-            setChannel(SNAPSHOT_GROVE_TUTOR_CHAT_CHANNELS_V109[next].id);
+              (idx + delta + SNAPSHOT_GROVE_TUTOR_CHAT_CHANNELS.length) %
+              SNAPSHOT_GROVE_TUTOR_CHAT_CHANNELS.length;
+            setChannel(SNAPSHOT_GROVE_TUTOR_CHAT_CHANNELS[next].id);
             e.preventDefault();
           }}
         >
-          {SNAPSHOT_GROVE_TUTOR_CHAT_CHANNELS_V109.map((c) => {
+          {SNAPSHOT_GROVE_TUTOR_CHAT_CHANNELS.map((c) => {
             const active = c.id === channel;
             return (
               <button

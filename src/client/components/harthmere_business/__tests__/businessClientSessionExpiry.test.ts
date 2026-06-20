@@ -1,6 +1,6 @@
 /// <reference types="mocha" />
 
-// HARTHMERE_BUSINESS_CLIENT_SESSION_EXPIRY_GUARD_V1
+// HARTHMERE_BUSINESS_CLIENT_SESSION_EXPIRY_GUARD
 //
 // Regression coverage for the "mini-game just spins on the current customer"
 // bug. The economy snapshot the server ships keeps customer sessions verbatim,
@@ -13,7 +13,7 @@
 // Layers exercised here:
 //   - frontend: the pure client selectors + the live adapter's submit recovery.
 //   - SSR boundary: the authoritative -> client economy snapshot round-trip
-//     (createHarthmereProductionEconomyClientSnapshotV1) preserves expiresAtMs so
+//     (createHarthmereProductionEconomyClientSnapshot) preserves expiresAtMs so
 //     the client time check can run.
 
 import assert from "assert";
@@ -21,25 +21,25 @@ import * as React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { HarthmereBusinessInterfacePanel } from "../HarthmereBusinessInterfacePanel";
 import {
-  activeHarthmereBusinessClientCustomerSessionV1,
-  createHarthmereBusinessInterfaceAdapterV1,
-  getHarthmereBusinessCustomerMiniGameV1,
-  type HarthmereBusinessEconomySnapshotV1,
+  activeHarthmereBusinessClientCustomerSession,
+  createHarthmereBusinessInterfaceAdapter,
+  getHarthmereBusinessCustomerMiniGame,
+  type HarthmereBusinessEconomySnapshot,
 } from "@/client/components/harthmere_business/businessInterfaceLiveAdapter";
 import {
-  createHarthmereProductionEconomyClientSnapshotV1,
-  defaultHarthmereProductionEconomyStateV1,
-  reduceHarthmereEconomyMutationV1,
-  type HarthmereEconomyMutationRequestV1,
-  type HarthmereProductionEconomyStateV1,
-} from "@/shared/harthmere/mmo_economy_authority_v1";
+  createHarthmereProductionEconomyClientSnapshot,
+  defaultHarthmereProductionEconomyState,
+  reduceHarthmereEconomyMutation,
+  type HarthmereEconomyMutationRequest,
+  type HarthmereProductionEconomyState,
+} from "@/shared/harthmere/mmo_economy_authority";
 
 const NOW_MS = 1_800_000_000_000;
 const BUSINESS_TYPE = "medical_doctor";
 
 function clinicSnapshot(
   sessionOverrides: Record<string, unknown> = {}
-): HarthmereBusinessEconomySnapshotV1 {
+): HarthmereBusinessEconomySnapshot {
   const businessId = "biz_clinic";
   const session = {
     sessionId: "session_1",
@@ -85,13 +85,13 @@ function clinicSnapshot(
     },
     regions: {},
     businessTypes: {},
-  } as unknown as HarthmereBusinessEconomySnapshotV1;
+  } as unknown as HarthmereBusinessEconomySnapshot;
 }
 
 describe("harthmere business client session expiry guard", function () {
   it("treats a live session as active", () => {
     const state = clinicSnapshot();
-    const active = activeHarthmereBusinessClientCustomerSessionV1(
+    const active = activeHarthmereBusinessClientCustomerSession(
       state,
       "biz_clinic",
       NOW_MS
@@ -101,7 +101,7 @@ describe("harthmere business client session expiry guard", function () {
 
   it("filters a stale session whose expiresAtMs has elapsed even if status is still active", () => {
     const state = clinicSnapshot({ expiresAtMs: NOW_MS - 1 });
-    const active = activeHarthmereBusinessClientCustomerSessionV1(
+    const active = activeHarthmereBusinessClientCustomerSession(
       state,
       "biz_clinic",
       NOW_MS
@@ -115,7 +115,7 @@ describe("harthmere business client session expiry guard", function () {
 
   it("does not surface a current customer for an expired session (keeps Start Shift usable)", () => {
     const state = clinicSnapshot({ expiresAtMs: NOW_MS - 1 });
-    const panel = getHarthmereBusinessCustomerMiniGameV1(
+    const panel = getHarthmereBusinessCustomerMiniGame(
       state,
       "biz_clinic",
       NOW_MS
@@ -126,7 +126,7 @@ describe("harthmere business client session expiry guard", function () {
 
   it("SSR-renders an expired active-looking session as ready to start, not stuck on a customer", () => {
     const state = clinicSnapshot({ expiresAtMs: 1 });
-    const adapter = createHarthmereBusinessInterfaceAdapterV1({
+    const adapter = createHarthmereBusinessInterfaceAdapter({
       state,
       hydrated: true,
       refresh: async () => state,
@@ -153,7 +153,7 @@ describe("harthmere business client session expiry guard", function () {
 
   it("surfaces the current customer for a live session", () => {
     const state = clinicSnapshot({ expiresAtMs: NOW_MS + 60_000 });
-    const panel = getHarthmereBusinessCustomerMiniGameV1(
+    const panel = getHarthmereBusinessCustomerMiniGame(
       state,
       "biz_clinic",
       NOW_MS
@@ -165,7 +165,7 @@ describe("harthmere business client session expiry guard", function () {
   it("re-syncs client state when a mutation is rejected so the UI can recover", async () => {
     let refreshes = 0;
     const live = clinicSnapshot({ expiresAtMs: NOW_MS + 60_000 });
-    const adapter = createHarthmereBusinessInterfaceAdapterV1({
+    const adapter = createHarthmereBusinessInterfaceAdapter({
       state: live,
       hydrated: true,
       setState: () => {},
@@ -195,13 +195,13 @@ describe("harthmere business client session expiry guard", function () {
   });
 
   it("SSR boundary: the authoritative->client economy snapshot preserves session expiry", () => {
-    let state: HarthmereProductionEconomyStateV1 =
-      defaultHarthmereProductionEconomyStateV1();
+    let state: HarthmereProductionEconomyState =
+      defaultHarthmereProductionEconomyState();
     const mutate = (
       operation: string,
-      payload: Partial<HarthmereEconomyMutationRequestV1> = {}
+      payload: Partial<HarthmereEconomyMutationRequest> = {}
     ) => {
-      const result = reduceHarthmereEconomyMutationV1(
+      const result = reduceHarthmereEconomyMutation(
         state,
         {
           requestId: `ssr-${operation}-${Math.random()}`,
@@ -209,7 +209,7 @@ describe("harthmere business client session expiry guard", function () {
           nowMs: NOW_MS,
           operation,
           ...payload,
-        } as HarthmereEconomyMutationRequestV1,
+        } as HarthmereEconomyMutationRequest,
         {
           actorGold: 50_000,
           actorInventoryItems: {},
@@ -223,28 +223,28 @@ describe("harthmere business client session expiry guard", function () {
     mutate("register_business", {
       businessType: BUSINESS_TYPE,
       name: "Greenlamp Clinic",
-    } as Partial<HarthmereEconomyMutationRequestV1>);
+    } as Partial<HarthmereEconomyMutationRequest>);
     const businessId = Object.keys(state.businesses)[0];
     mutate("issue_license", {
       businessId,
       licenseLevel: 2,
-    } as Partial<HarthmereEconomyMutationRequestV1>);
+    } as Partial<HarthmereEconomyMutationRequest>);
     mutate("open_business", {
       businessId,
       propertyId: `property_${businessId}`,
       townId: "harthmere_grove",
-    } as Partial<HarthmereEconomyMutationRequestV1>);
+    } as Partial<HarthmereEconomyMutationRequest>);
     mutate("start_business_customer_session", {
       businessId,
       count: 3,
-    } as Partial<HarthmereEconomyMutationRequestV1>);
+    } as Partial<HarthmereEconomyMutationRequest>);
 
     // Serialize exactly as the SSR/live_mode path ships state to the client.
     const clientSnapshot = JSON.parse(
       JSON.stringify(
-        createHarthmereProductionEconomyClientSnapshotV1(state, "ssr_owner")
+        createHarthmereProductionEconomyClientSnapshot(state, "ssr_owner")
       )
-    ) as HarthmereBusinessEconomySnapshotV1;
+    ) as HarthmereBusinessEconomySnapshot;
 
     const persistedSession = Object.values(
       clientSnapshot.businessSystems.customerSessions ?? {}
@@ -255,14 +255,14 @@ describe("harthmere business client session expiry guard", function () {
 
     // The client time check accepts it while live and rejects it once expired.
     assert.ok(
-      activeHarthmereBusinessClientCustomerSessionV1(
+      activeHarthmereBusinessClientCustomerSession(
         clientSnapshot,
         businessId,
         NOW_MS
       )
     );
     assert.equal(
-      activeHarthmereBusinessClientCustomerSessionV1(
+      activeHarthmereBusinessClientCustomerSession(
         clientSnapshot,
         businessId,
         (persistedSession!.expiresAtMs ?? NOW_MS) + 1

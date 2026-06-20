@@ -1,172 +1,172 @@
 import { harthmereUserScopedStorageKey } from "@/client/components/challenges/LocalDevHarthmereUserScope";
 import {
-  LIVE_ENTITY_ROBOT_DEFAULT_DRAIN_PER_HOUR_V1,
-  LIVE_ENTITY_ROBOT_DEFAULT_MAX_ENERGY_V1,
-  LIVE_ENTITY_ROBOT_ENERGY_PROTECTION_VERSION_V1,
-  canLiveEntityRobotMoveV1,
-  createLiveEntityRobotEnergyStateV1,
-  liveEntityRobotDefaultRobotIdForAreaV1,
-  liveEntityRobotEnergyDisplayV1,
-  liveEntityRobotProtectionAreaForPositionV1,
-  normalizeLiveEntityRobotEnergyStateV1,
-  rechargeLiveEntityRobotEnergyV1,
-  tickLiveEntityRobotEnergyV1,
-  type LiveEntityRobotEnergyDisplayV1,
-  type LiveEntityRobotEnergyStateV1,
-} from "@/shared/harthmere/live_entity_robot_energy_protection_v1";
+  LIVE_ENTITY_ROBOT_DEFAULT_DRAIN_PER_HOUR,
+  LIVE_ENTITY_ROBOT_DEFAULT_MAX_ENERGY,
+  LIVE_ENTITY_ROBOT_ENERGY_PROTECTION_VERSION,
+  canLiveEntityRobotMove,
+  createLiveEntityRobotEnergyState,
+  liveEntityRobotDefaultRobotIdForArea,
+  liveEntityRobotEnergyDisplay,
+  liveEntityRobotProtectionAreaForPosition,
+  normalizeLiveEntityRobotEnergyState,
+  rechargeLiveEntityRobotEnergy,
+  tickLiveEntityRobotEnergy,
+  type LiveEntityRobotEnergyDisplay,
+  type LiveEntityRobotEnergyState,
+} from "@/shared/harthmere/live_entity_robot_energy_protection";
 
-export const LIVE_ENTITY_ROBOT_ENERGY_STATE_KEY_V1 =
-  "biomes.localDev.liveEntityRobotEnergy.v1";
-export const LIVE_ENTITY_ROBOT_ENERGY_EVENT_V1 =
-  "biomes:live-entity-robot-energy-v1";
+export const LIVE_ENTITY_ROBOT_ENERGY_STATE_KEY =
+  "biomes.localDev.liveEntityRobotEnergy";
+export const LIVE_ENTITY_ROBOT_ENERGY_EVENT =
+  "biomes:live-entity-robot-energy";
 
-export function isLiveEntityRobotEnergyBrowserV1() {
+export function isLiveEntityRobotEnergyBrowser() {
   return (
     typeof window !== "undefined" && typeof window.localStorage !== "undefined"
   );
 }
 
-function storageKeyV1() {
+function storageKey() {
   return harthmereUserScopedStorageKey(
-    LIVE_ENTITY_ROBOT_ENERGY_STATE_KEY_V1
+    LIVE_ENTITY_ROBOT_ENERGY_STATE_KEY
   );
 }
 
-function dispatchRobotEnergyChangedV1() {
+function dispatchRobotEnergyChanged() {
   if (typeof window !== "undefined") {
-    window.dispatchEvent(new Event(LIVE_ENTITY_ROBOT_ENERGY_EVENT_V1));
+    window.dispatchEvent(new Event(LIVE_ENTITY_ROBOT_ENERGY_EVENT));
   }
 }
 
-function hasStoredLiveEntityRobotEnergyStateV1() {
-  if (!isLiveEntityRobotEnergyBrowserV1()) {
+function hasStoredLiveEntityRobotEnergyState() {
+  if (!isLiveEntityRobotEnergyBrowser()) {
     return false;
   }
-  return window.localStorage.getItem(storageKeyV1()) !== null;
+  return window.localStorage.getItem(storageKey()) !== null;
 }
 
-function finiteRobotNumberV1(value: unknown) {
+function finiteRobotNumber(value: unknown) {
   const numeric = Number(value);
   return Number.isFinite(numeric) ? numeric : undefined;
 }
 
-function robotComponentUpdatedAtMsV1(value: unknown) {
-  const raw = finiteRobotNumberV1(value);
+function robotComponentUpdatedAtMs(value: unknown) {
+  const raw = finiteRobotNumber(value);
   if (raw === undefined || raw <= 0) {
     return 0;
   }
   return raw < 10_000_000_000 ? raw * 1000 : raw;
 }
 
-function robotComponentEnergySnapshotV1(
+function robotComponentEnergySnapshot(
   robotComponent: unknown,
-  fallbackMaxEnergy = LIVE_ENTITY_ROBOT_DEFAULT_MAX_ENERGY_V1
+  fallbackMaxEnergy = LIVE_ENTITY_ROBOT_DEFAULT_MAX_ENERGY
 ) {
   if (!robotComponent || typeof robotComponent !== "object") {
     return undefined;
   }
   const record = robotComponent as Record<string, unknown>;
-  const energy = finiteRobotNumberV1(record.internal_battery_charge);
+  const energy = finiteRobotNumber(record.internal_battery_charge);
   if (energy === undefined) {
     return undefined;
   }
   const maxEnergy = Math.max(
     1,
-    finiteRobotNumberV1(record.internal_battery_capacity) ??
+    finiteRobotNumber(record.internal_battery_capacity) ??
       fallbackMaxEnergy
   );
   return {
     energy: Math.max(0, Math.min(maxEnergy, energy)),
     maxEnergy,
-    updatedAtMs: robotComponentUpdatedAtMsV1(record.last_update),
+    updatedAtMs: robotComponentUpdatedAtMs(record.last_update),
   };
 }
 
-export function readLiveEntityRobotEnergyStateV1(
+export function readLiveEntityRobotEnergyState(
   nowMs = Date.now()
-): LiveEntityRobotEnergyStateV1 {
-  if (!isLiveEntityRobotEnergyBrowserV1()) {
-    return createLiveEntityRobotEnergyStateV1(nowMs);
+): LiveEntityRobotEnergyState {
+  if (!isLiveEntityRobotEnergyBrowser()) {
+    return createLiveEntityRobotEnergyState(nowMs);
   }
   try {
-    const raw = window.localStorage.getItem(storageKeyV1());
-    return normalizeLiveEntityRobotEnergyStateV1(
+    const raw = window.localStorage.getItem(storageKey());
+    return normalizeLiveEntityRobotEnergyState(
       raw ? JSON.parse(raw) : undefined,
       nowMs
     );
   } catch {
-    return createLiveEntityRobotEnergyStateV1(nowMs);
+    return createLiveEntityRobotEnergyState(nowMs);
   }
 }
 
-export function writeLiveEntityRobotEnergyStateV1(
-  state: LiveEntityRobotEnergyStateV1
+export function writeLiveEntityRobotEnergyState(
+  state: LiveEntityRobotEnergyState
 ) {
-  if (!isLiveEntityRobotEnergyBrowserV1()) {
+  if (!isLiveEntityRobotEnergyBrowser()) {
     return;
   }
   window.localStorage.setItem(
-    storageKeyV1(),
+    storageKey(),
     JSON.stringify({
       ...state,
-      version: LIVE_ENTITY_ROBOT_ENERGY_PROTECTION_VERSION_V1,
+      version: LIVE_ENTITY_ROBOT_ENERGY_PROTECTION_VERSION,
     })
   );
-  dispatchRobotEnergyChangedV1();
+  dispatchRobotEnergyChanged();
 }
 
-export function readAndTickLiveEntityRobotEnergyStateV1(
+export function readAndTickLiveEntityRobotEnergyState(
   nowMs = Date.now()
-): LiveEntityRobotEnergyStateV1 {
-  const state = readLiveEntityRobotEnergyStateV1(nowMs);
+): LiveEntityRobotEnergyState {
+  const state = readLiveEntityRobotEnergyState(nowMs);
   const oldestTickAtMs = Math.min(
     ...Object.values(state.robots).map((robot) => robot.lastTickAtMs)
   );
   if (Number.isFinite(oldestTickAtMs) && nowMs - oldestTickAtMs < 5_000) {
     return state;
   }
-  const ticked = tickLiveEntityRobotEnergyV1(state, {
+  const ticked = tickLiveEntityRobotEnergy(state, {
     nowMs,
-    drainPerHour: LIVE_ENTITY_ROBOT_DEFAULT_DRAIN_PER_HOUR_V1,
+    drainPerHour: LIVE_ENTITY_ROBOT_DEFAULT_DRAIN_PER_HOUR,
   });
   if (ticked.changedRobotIds.length > 0) {
-    writeLiveEntityRobotEnergyStateV1(ticked.state);
+    writeLiveEntityRobotEnergyState(ticked.state);
   }
   return ticked.state;
 }
 
-export function localDevLiveEntityRobotIdForPositionV1(
+export function localDevLiveEntityRobotIdForPosition(
   position: readonly number[] | undefined
 ) {
-  const area = liveEntityRobotProtectionAreaForPositionV1(position);
-  return area ? liveEntityRobotDefaultRobotIdForAreaV1(area.areaId) : undefined;
+  const area = liveEntityRobotProtectionAreaForPosition(position);
+  return area ? liveEntityRobotDefaultRobotIdForArea(area.areaId) : undefined;
 }
 
-export function liveEntityRobotEnergyDisplayForPositionV1(
+export function liveEntityRobotEnergyDisplayForPosition(
   position: readonly number[] | undefined,
-  state = readAndTickLiveEntityRobotEnergyStateV1()
-): LiveEntityRobotEnergyDisplayV1 | undefined {
-  return liveEntityRobotEnergyDisplayV1(
+  state = readAndTickLiveEntityRobotEnergyState()
+): LiveEntityRobotEnergyDisplay | undefined {
+  return liveEntityRobotEnergyDisplay(
     state,
-    localDevLiveEntityRobotIdForPositionV1(position)
+    localDevLiveEntityRobotIdForPosition(position)
   );
 }
 
-export function liveEntityRobotEnergyStateWithComponentOverrideV1(input: {
-  state: LiveEntityRobotEnergyStateV1;
+export function liveEntityRobotEnergyStateWithComponentOverride(input: {
+  state: LiveEntityRobotEnergyState;
   position: readonly number[] | undefined;
   robotComponent: unknown;
   displayName?: string;
   nowMs?: number;
   hasStoredState?: boolean;
 }) {
-  const area = liveEntityRobotProtectionAreaForPositionV1(input.position);
+  const area = liveEntityRobotProtectionAreaForPosition(input.position);
   if (!area) {
     return input.state;
   }
-  const robotId = liveEntityRobotDefaultRobotIdForAreaV1(area.areaId);
+  const robotId = liveEntityRobotDefaultRobotIdForArea(area.areaId);
   const existing = input.state.robots[robotId];
-  const snapshot = robotComponentEnergySnapshotV1(
+  const snapshot = robotComponentEnergySnapshot(
     input.robotComponent,
     existing?.maxEnergy
   );
@@ -174,7 +174,7 @@ export function liveEntityRobotEnergyStateWithComponentOverrideV1(input: {
     return input.state;
   }
   const hasStoredState =
-    input.hasStoredState ?? hasStoredLiveEntityRobotEnergyStateV1();
+    input.hasStoredState ?? hasStoredLiveEntityRobotEnergyState();
   const sourceUpdatedAtMs = snapshot.updatedAtMs;
   const existingUpdatedAtMs = existing?.lastTickAtMs ?? 0;
   const shouldUseComponent =
@@ -183,7 +183,7 @@ export function liveEntityRobotEnergyStateWithComponentOverrideV1(input: {
   if (!shouldUseComponent) {
     return input.state;
   }
-  return normalizeLiveEntityRobotEnergyStateV1(
+  return normalizeLiveEntityRobotEnergyState(
     {
       ...input.state,
       robots: {
@@ -206,15 +206,15 @@ export function liveEntityRobotEnergyStateWithComponentOverrideV1(input: {
   );
 }
 
-export function syncLocalDevLiveEntityRobotEnergyFromComponentV1(input: {
+export function syncLocalDevLiveEntityRobotEnergyFromComponent(input: {
   position: readonly number[] | undefined;
   robotComponent: unknown;
   displayName?: string;
   nowMs?: number;
 }) {
   const nowMs = input.nowMs ?? Date.now();
-  const state = readAndTickLiveEntityRobotEnergyStateV1(nowMs);
-  const next = liveEntityRobotEnergyStateWithComponentOverrideV1({
+  const state = readAndTickLiveEntityRobotEnergyState(nowMs);
+  const next = liveEntityRobotEnergyStateWithComponentOverride({
     state,
     position: input.position,
     robotComponent: input.robotComponent,
@@ -222,52 +222,52 @@ export function syncLocalDevLiveEntityRobotEnergyFromComponentV1(input: {
     nowMs,
   });
   if (next !== state) {
-    writeLiveEntityRobotEnergyStateV1(next);
+    writeLiveEntityRobotEnergyState(next);
   }
   return next;
 }
 
-export function liveEntityRobotEnergyDisplayForEntityV1(
+export function liveEntityRobotEnergyDisplayForEntity(
   position: readonly number[] | undefined,
   robotComponent: unknown,
   displayName?: string,
-  state = readAndTickLiveEntityRobotEnergyStateV1()
-): LiveEntityRobotEnergyDisplayV1 | undefined {
-  const effectiveState = liveEntityRobotEnergyStateWithComponentOverrideV1({
+  state = readAndTickLiveEntityRobotEnergyState()
+): LiveEntityRobotEnergyDisplay | undefined {
+  const effectiveState = liveEntityRobotEnergyStateWithComponentOverride({
     state,
     position,
     robotComponent,
     displayName,
   });
-  return liveEntityRobotEnergyDisplayForPositionV1(position, effectiveState);
+  return liveEntityRobotEnergyDisplayForPosition(position, effectiveState);
 }
 
-export function canLocalDevLiveEntityRobotMoveForAreaV1(
+export function canLocalDevLiveEntityRobotMoveForArea(
   areaId: string | undefined,
-  state = readAndTickLiveEntityRobotEnergyStateV1()
+  state = readAndTickLiveEntityRobotEnergyState()
 ) {
-  return canLiveEntityRobotMoveV1(
+  return canLiveEntityRobotMove(
     state,
-    areaId ? liveEntityRobotDefaultRobotIdForAreaV1(areaId) : undefined
+    areaId ? liveEntityRobotDefaultRobotIdForArea(areaId) : undefined
   );
 }
 
-export function isLocalDevLiveEntityRobotProtectionAreaSafeForPositionV1(
+export function isLocalDevLiveEntityRobotProtectionAreaSafeForPosition(
   position: readonly number[] | undefined,
-  state = readAndTickLiveEntityRobotEnergyStateV1()
+  state = readAndTickLiveEntityRobotEnergyState()
 ) {
-  const area = liveEntityRobotProtectionAreaForPositionV1(position);
+  const area = liveEntityRobotProtectionAreaForPosition(position);
   return area ? state.areas[area.areaId]?.safeFromMuck === true : false;
 }
 
-export function rechargeLocalDevLiveEntityRobotForPositionV1(
+export function rechargeLocalDevLiveEntityRobotForPosition(
   position: readonly number[] | undefined,
   nowMs = Date.now()
 ) {
-  const state = readAndTickLiveEntityRobotEnergyStateV1(nowMs);
-  const area = liveEntityRobotProtectionAreaForPositionV1(position);
+  const state = readAndTickLiveEntityRobotEnergyState(nowMs);
+  const area = liveEntityRobotProtectionAreaForPosition(position);
   const robotId = area
-    ? liveEntityRobotDefaultRobotIdForAreaV1(area.areaId)
+    ? liveEntityRobotDefaultRobotIdForArea(area.areaId)
     : undefined;
   if (!area || !robotId) {
     return {
@@ -275,13 +275,13 @@ export function rechargeLocalDevLiveEntityRobotForPositionV1(
       warnings: ["live_entity_robot_rejected:known_area_required"],
     };
   }
-  const result = rechargeLiveEntityRobotEnergyV1(state, {
+  const result = rechargeLiveEntityRobotEnergy(state, {
     robotId,
     areaId: area.areaId,
     nowMs,
   });
   if (result.warnings.length === 0) {
-    writeLiveEntityRobotEnergyStateV1(result.state);
+    writeLiveEntityRobotEnergyState(result.state);
   }
   return result;
 }

@@ -21,15 +21,15 @@ export function assertHarthmereLocalDevEconomyNotProduction(
 }
 
 export const HARTHMERE_LOCAL_DEV_STATE_KEYS = {
-  inventory: "biomes.localDev.harthmere.inventoryState.v1",
-  economy: "biomes.localDev.harthmere.economyState.v1",
-  gathering: "biomes.localDev.harthmere.gatheringState.v1",
-  guild: "biomes.localDev.harthmere.guildState.v1",
-  building: "biomes.localDev.harthmere.buildingState.v1",
-  reputation: "biomes.localDev.harthmere.reputationState.v1",
-  vendorStock: "biomes.localDev.harthmere.vendorStockState.v1",
-  rapidActions: "biomes.localDev.harthmere.rapidEconomyActions.v1",
-  transactions: "biomes.localDev.harthmere.economyTransactions.v1",
+  inventory: "biomes.localDev.harthmere.inventoryState",
+  economy: "biomes.localDev.harthmere.economyState",
+  gathering: "biomes.localDev.harthmere.gatheringState",
+  guild: "biomes.localDev.harthmere.guildState",
+  building: "biomes.localDev.harthmere.buildingState",
+  reputation: "biomes.localDev.harthmere.reputationState",
+  vendorStock: "biomes.localDev.harthmere.vendorStockState",
+  rapidActions: "biomes.localDev.harthmere.rapidEconomyActions",
+  transactions: "biomes.localDev.harthmere.economyTransactions",
 } as const;
 
 export const HARTHMERE_ALLOWED_WALLET_CURRENCIES = [

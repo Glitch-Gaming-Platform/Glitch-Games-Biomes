@@ -16,12 +16,12 @@ export class BoundaryRenderer implements Renderer {
     // Compute the player distance to the boundary.
     const [x, y, z] = player.player.position;
     const distance = Math.min(
-      x - worldMetadata.aabb.v0[0],
-      y - worldMetadata.aabb.v0[1],
-      z - worldMetadata.aabb.v0[2],
-      worldMetadata.aabb.v1[0] - x,
-      worldMetadata.aabb.v1[1] - y,
-      worldMetadata.aabb.v1[2] - z
+      x - worldMetadata.aabb[0],
+      y - worldMetadata.aabb[1],
+      z - worldMetadata.aabb[2],
+      worldMetadata.aabb[0] - x,
+      worldMetadata.aabb[1] - y,
+      worldMetadata.aabb[2] - z
     );
     // Add the box to the scene if it's close.
     if (distance < 24) {

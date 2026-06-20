@@ -5,7 +5,7 @@ import type {
   HarthmereVec2,
 } from "@/client/components/challenges/LocalDevHarthmereNpcAiSystem";
 
-export const HARTHMERE_NPC_THIRD_PARTY_AI_VERSION = "third-party-ai-adapters-v1";
+export const HARTHMERE_NPC_THIRD_PARTY_AI_VERSION = "third-party-ai-adapters";
 
 export const HARTHMERE_NPC_THIRD_PARTY_AI_PACKAGES = {
   recastNavigation: "recast-navigation",

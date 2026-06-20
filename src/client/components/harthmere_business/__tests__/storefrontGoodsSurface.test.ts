@@ -3,12 +3,12 @@ import * as React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { HarthmereBusinessInterfacePanel } from "../HarthmereBusinessInterfacePanel";
 import {
-  createHarthmereBusinessInterfaceAdapterV1,
-  getHarthmereBusinessShopfrontV1,
-  normalizeHarthmereBusinessEconomySnapshotV1,
+  createHarthmereBusinessInterfaceAdapter,
+  getHarthmereBusinessShopfront,
+  normalizeHarthmereBusinessEconomySnapshot,
 } from "../businessInterfaceLiveAdapter";
-import { harthmereBusinessStorefrontTypesV1 } from "@/shared/harthmere/harthmere_business_storefront_goods_v1";
-import { HARTHMERE_RECIPE_BOOKS_V1 } from "@/shared/harthmere/harthmere_recipe_books_v1";
+import { harthmereBusinessStorefrontTypes } from "@/shared/harthmere/harthmere_business_storefront_goods";
+import { HARTHMERE_RECIPE_BOOKS } from "@/shared/harthmere/harthmere_recipe_books";
 
 function openBusiness(id: string, typeId: string) {
   return {
@@ -49,10 +49,10 @@ function openBusiness(id: string, typeId: string) {
 
 describe("business shopfront surfaces blocks, furnishings, and recipe books", () => {
   it("customer-mode storefrontGoods includes the 5 blocks, 4 furnishings, and 1 recipe book", () => {
-    const snapshot = normalizeHarthmereBusinessEconomySnapshotV1({
+    const snapshot = normalizeHarthmereBusinessEconomySnapshot({
       businesses: { biz_clinic: openBusiness("biz_clinic", "medical_doctor") },
     } as any);
-    const shop = getHarthmereBusinessShopfrontV1(
+    const shop = getHarthmereBusinessShopfront(
       snapshot,
       "biz_clinic",
       "customer"
@@ -72,8 +72,8 @@ describe("business shopfront surfaces blocks, furnishings, and recipe books", ()
   });
 
   it("resolves a Bikkie visual tile for every item in all 19 storefronts", () => {
-    for (const businessType of harthmereBusinessStorefrontTypesV1()) {
-      const snapshot = normalizeHarthmereBusinessEconomySnapshotV1({
+    for (const businessType of harthmereBusinessStorefrontTypes()) {
+      const snapshot = normalizeHarthmereBusinessEconomySnapshot({
         actorId: "customer_a",
         businesses: {
           [`biz_${businessType}`]: openBusiness(
@@ -82,7 +82,7 @@ describe("business shopfront surfaces blocks, furnishings, and recipe books", ()
           ),
         },
       } as any);
-      const shop = getHarthmereBusinessShopfrontV1(
+      const shop = getHarthmereBusinessShopfront(
         snapshot,
         `biz_${businessType}`,
         "customer"
@@ -105,13 +105,13 @@ describe("business shopfront surfaces blocks, furnishings, and recipe books", ()
   });
 
   it("renders storefront goods as shop cards instead of compact inventory slots", () => {
-    const snapshot = normalizeHarthmereBusinessEconomySnapshotV1({
+    const snapshot = normalizeHarthmereBusinessEconomySnapshot({
       actorId: "customer_a",
       businesses: {
         biz_refinery: openBusiness("biz_refinery", "exotic_matter_refinery"),
       },
     } as any);
-    const adapter = createHarthmereBusinessInterfaceAdapterV1({
+    const adapter = createHarthmereBusinessInterfaceAdapter({
       state: snapshot,
       hydrated: true,
       refresh: async () => snapshot,
@@ -166,17 +166,17 @@ describe("business shopfront surfaces blocks, furnishings, and recipe books", ()
   });
 
   it("marks a recipe book learned when the actor knows all recipes in it", () => {
-    const book = HARTHMERE_RECIPE_BOOKS_V1.find(
+    const book = HARTHMERE_RECIPE_BOOKS.find(
       (entry) => entry.businessType === "weapons_tools"
     )!;
-    const snapshot = normalizeHarthmereBusinessEconomySnapshotV1({
+    const snapshot = normalizeHarthmereBusinessEconomySnapshot({
       actorId: "customer_a",
       actorKnownRecipes: [...book.recipeIds],
       businesses: {
         biz_weapons: openBusiness("biz_weapons", "weapons_tools"),
       },
     } as any);
-    const shop = getHarthmereBusinessShopfrontV1(
+    const shop = getHarthmereBusinessShopfront(
       snapshot,
       "biz_weapons",
       "customer"
@@ -188,7 +188,7 @@ describe("business shopfront surfaces blocks, furnishings, and recipe books", ()
     assert.equal(recipeBook!.itemId, book.itemId);
     assert.equal(recipeBook!.learned, true);
 
-    const adapter = createHarthmereBusinessInterfaceAdapterV1({
+    const adapter = createHarthmereBusinessInterfaceAdapter({
       state: snapshot,
       hydrated: true,
       refresh: async () => snapshot,
@@ -213,11 +213,11 @@ describe("business shopfront surfaces blocks, furnishings, and recipe books", ()
         medicine: { itemId: "medicine", count: 5 },
       },
     };
-    const snapshot = normalizeHarthmereBusinessEconomySnapshotV1({
+    const snapshot = normalizeHarthmereBusinessEconomySnapshot({
       actorId: "customer_a",
       businesses: { biz_clinic: clinic },
     } as any);
-    const adapter = createHarthmereBusinessInterfaceAdapterV1({
+    const adapter = createHarthmereBusinessInterfaceAdapter({
       state: snapshot,
       hydrated: true,
       refresh: async () => snapshot,

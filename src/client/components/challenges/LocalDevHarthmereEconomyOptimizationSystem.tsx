@@ -1,7 +1,7 @@
 import React, { useMemo } from "react";
 
 /**
- * HARTHMERE_ECONOMY_SHEET_OPTIMIZATION_V1
+ * HARTHMERE_ECONOMY_SHEET_OPTIMIZATION
  *
  * Local-dev MMO economy optimization layer.
  *
@@ -25,15 +25,15 @@ import React, { useMemo } from "react";
  */
 
 export const HARTHMERE_ECONOMY_OPTIMIZATION_VERSION =
-  "harthmere-economy-sheet-optimization-v1" as const;
+  "harthmere-economy-sheet-optimization" as const;
 
 export const HARTHMERE_ECONOMY_OPTIMIZATION_LOCAL_STORAGE_KEYS = {
-  priceQuotes: "harthmere.economy.optimization.priceQuotes.v1",
-  healthSnapshots: "harthmere.economy.optimization.healthSnapshots.v1",
-  suspiciousActivity: "harthmere.economy.optimization.suspiciousActivity.v1",
-  marketHistory: "harthmere.economy.optimization.marketHistory.v1",
-  workOrders: "harthmere.economy.optimization.workOrders.v1",
-  playerShops: "harthmere.economy.optimization.playerShops.v1",
+  priceQuotes: "harthmere.economy.optimization.priceQuotes",
+  healthSnapshots: "harthmere.economy.optimization.healthSnapshots",
+  suspiciousActivity: "harthmere.economy.optimization.suspiciousActivity",
+  marketHistory: "harthmere.economy.optimization.marketHistory",
+  workOrders: "harthmere.economy.optimization.workOrders",
+  playerShops: "harthmere.economy.optimization.playerShops",
 } as const;
 
 export type HarthmereCurrencyScope =

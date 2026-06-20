@@ -78,7 +78,7 @@ export async function registerLogicReplica<C extends LogicServerContext>(
   }) as Replica<LogicMetaIndex & AskMetaIndex>;
 }
 
-const HARTHMERE_VISUAL_LITE_REPLICA_FILTER_V1: EntityFilter = {
+const HARTHMERE_VISUAL_LITE_REPLICA_FILTER: EntityFilter = {
   anyOf: [
     "label",
     "npc_metadata",
@@ -103,7 +103,7 @@ const HARTHMERE_VISUAL_LITE_REPLICA_FILTER_V1: EntityFilter = {
 
 function harthmereVisualLiteReplicaFilter(): EntityFilter | undefined {
   return process.env.HARTHMERE_VISUAL_LITE_REPLICA_FILTER === "1"
-    ? HARTHMERE_VISUAL_LITE_REPLICA_FILTER_V1
+    ? HARTHMERE_VISUAL_LITE_REPLICA_FILTER
     : undefined;
 }
 

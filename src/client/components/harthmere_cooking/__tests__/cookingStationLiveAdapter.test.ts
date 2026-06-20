@@ -1,24 +1,24 @@
 import assert from "assert";
 import {
-  createHarthmereCookVisibleRecipesV1,
-  createHarthmereCookingAdapterV1,
-  formatHarthmereCookItemNameV1,
-  formatHarthmereCookingPlayerErrorV1,
-  harthmereCookMaxCookableV1,
-  harthmereCookRecipeDetailV1,
-  isHarthmereCookingStationRecipeVisibleV1,
-  harthmereCookStationJobsV1,
-  playerMessageFromCookingWarningV1,
-  type HarthmereCookSnapshotV1,
+  createHarthmereCookVisibleRecipes,
+  createHarthmereCookingAdapter,
+  formatHarthmereCookItemName,
+  formatHarthmereCookingPlayerError,
+  harthmereCookMaxCookable,
+  harthmereCookRecipeDetail,
+  isHarthmereCookingStationRecipeVisible,
+  harthmereCookStationJobs,
+  playerMessageFromCookingWarning,
+  type HarthmereCookSnapshot,
 } from "../cookingStationLiveAdapter";
 import {
-  HARTHMERE_COOKING_RECIPES_V1,
-  scaleHarthmereCookDurationMsV1,
-} from "@/shared/harthmere/mmo_farming_food_stamina_v1";
+  HARTHMERE_COOKING_RECIPES,
+  scaleHarthmereCookDurationMs,
+} from "@/shared/harthmere/mmo_farming_food_stamina";
 
 describe("cookingStationLiveAdapter — recipe projection", () => {
   it("only lists recipes cookable at the opened station (kind + field recipes)", () => {
-    const recipes = createHarthmereCookVisibleRecipesV1(
+    const recipes = createHarthmereCookVisibleRecipes(
       { raw_meat: 3 },
       "campfire",
     );
@@ -27,10 +27,10 @@ describe("cookingStationLiveAdapter — recipe projection", () => {
     assert.ok(!ids.includes("worker_meal"), "campfire hides cookpot recipes");
     assert.ok(!ids.includes("berry_tart"), "campfire hides oven recipes");
     // Any station-less cooking recipe is cookable everywhere.
-    const fieldRecipe = Object.values(HARTHMERE_COOKING_RECIPES_V1).find(
+    const fieldRecipe = Object.values(HARTHMERE_COOKING_RECIPES).find(
       (r) =>
         r.stationKind === "field" &&
-        isHarthmereCookingStationRecipeVisibleV1(r),
+        isHarthmereCookingStationRecipeVisible(r),
     );
     if (fieldRecipe) {
       assert.ok(ids.includes(fieldRecipe.recipeId), "field recipes show anywhere");
@@ -38,7 +38,7 @@ describe("cookingStationLiveAdapter — recipe projection", () => {
   });
 
   it("hides seed and fertilizer recipes from cooking station lists", () => {
-    const recipes = createHarthmereCookVisibleRecipesV1({}, "campfire");
+    const recipes = createHarthmereCookVisibleRecipes({}, "campfire");
     assert.ok(recipes.length > 0);
     assert.equal(
       recipes.some((recipe) => recipe.recipe.recipeType === "seed"),
@@ -58,7 +58,7 @@ describe("cookingStationLiveAdapter — recipe projection", () => {
   });
 
   it("computes have-vs-need and canCook from inventory", () => {
-    const none = createHarthmereCookVisibleRecipesV1({}, "campfire").find(
+    const none = createHarthmereCookVisibleRecipes({}, "campfire").find(
       (r) => r.recipeId === "grilled_meat",
     );
     assert.ok(none);
@@ -66,7 +66,7 @@ describe("cookingStationLiveAdapter — recipe projection", () => {
     assert.ok(none!.missing.length > 0);
     assert.equal(none!.ingredients[0].enough, false);
 
-    const ready = createHarthmereCookVisibleRecipesV1(
+    const ready = createHarthmereCookVisibleRecipes(
       { raw_meat: 2 },
       "campfire",
     ).find((r) => r.recipeId === "grilled_meat");
@@ -77,21 +77,21 @@ describe("cookingStationLiveAdapter — recipe projection", () => {
   });
 
   it("caps maxCookable by ingredients and recipe batch limit", () => {
-    const recipe = HARTHMERE_COOKING_RECIPES_V1.grilled_meat;
-    assert.equal(harthmereCookMaxCookableV1(recipe, { raw_meat: 5 }), 5);
+    const recipe = HARTHMERE_COOKING_RECIPES.grilled_meat;
+    assert.equal(harthmereCookMaxCookable(recipe, { raw_meat: 5 }), 5);
     assert.equal(
-      harthmereCookMaxCookableV1(recipe, { raw_meat: 9999 }),
+      harthmereCookMaxCookable(recipe, { raw_meat: 9999 }),
       recipe.maxBatchCount,
     );
-    assert.equal(harthmereCookMaxCookableV1(recipe, {}), 0);
+    assert.equal(harthmereCookMaxCookable(recipe, {}), 0);
   });
 
   it("shortens unknown numeric item ids for player-facing ingredient names", () => {
-    assert.equal(formatHarthmereCookItemNameV1("1534621126189406"), "Ingredient 9406");
+    assert.equal(formatHarthmereCookItemName("1534621126189406"), "Ingredient 9406");
   });
 
   it("scales ingredient need and duration with batch count in the detail view", () => {
-    const detail = harthmereCookRecipeDetailV1(
+    const detail = harthmereCookRecipeDetail(
       "grilled_meat",
       { raw_meat: 5 },
       "campfire",
@@ -102,15 +102,15 @@ describe("cookingStationLiveAdapter — recipe projection", () => {
     assert.equal(detail!.outputCount, 3);
     assert.equal(
       detail!.durationMs,
-      scaleHarthmereCookDurationMsV1(
-        HARTHMERE_COOKING_RECIPES_V1.grilled_meat.cookTimeMs,
+      scaleHarthmereCookDurationMs(
+        HARTHMERE_COOKING_RECIPES.grilled_meat.cookTimeMs,
         3,
       ),
     );
   });
 
   it("projects station jobs from the snapshot", () => {
-    const snapshot: HarthmereCookSnapshotV1 = {
+    const snapshot: HarthmereCookSnapshot = {
       inventory: {},
       availableStationKinds: ["campfire"],
       updatedAtMs: 0,
@@ -134,33 +134,33 @@ describe("cookingStationLiveAdapter — recipe projection", () => {
         },
       ],
     };
-    assert.equal(harthmereCookStationJobsV1(snapshot, "s1").length, 1);
-    assert.equal(harthmereCookStationJobsV1(snapshot, "missing").length, 0);
+    assert.equal(harthmereCookStationJobs(snapshot, "s1").length, 1);
+    assert.equal(harthmereCookStationJobs(snapshot, "missing").length, 0);
   });
 });
 
 describe("cookingStationLiveAdapter — warnings", () => {
   it("maps cooking_rejected codes to player-facing messages", () => {
     assert.match(
-      playerMessageFromCookingWarningV1("cooking_rejected:queue_full"),
+      playerMessageFromCookingWarning("cooking_rejected:queue_full"),
       /queue is full/i,
     );
     assert.match(
-      playerMessageFromCookingWarningV1(
+      playerMessageFromCookingWarning(
         "cooking_rejected:carry_weight_limit_exceeded",
       ),
       /too heavy/i,
     );
     assert.match(
-      playerMessageFromCookingWarningV1("cooking_rejected:missing_input:fresh_carrot"),
+      playerMessageFromCookingWarning("cooking_rejected:missing_input:fresh_carrot"),
       /ingredients/i,
     );
     assert.match(
-      playerMessageFromCookingWarningV1("cooking_rejected:collect_only"),
+      playerMessageFromCookingWarning("cooking_rejected:collect_only"),
       /collect it/i,
     );
     assert.equal(
-      formatHarthmereCookingPlayerErrorV1([
+      formatHarthmereCookingPlayerError([
         "cooking_rejected:not_ready",
         "cooking_rejected:not_ready",
       ]),
@@ -173,7 +173,7 @@ describe("cookingStationLiveAdapter — submit envelopes", () => {
   function harness(submitResult: { ok: boolean; warnings?: string[] }) {
     const calls: Array<{ operation: string; payload: Record<string, unknown> }> =
       [];
-    const adapter = createHarthmereCookingAdapterV1({
+    const adapter = createHarthmereCookingAdapter({
       snapshot: {
         inventory: { raw_meat: 5 },
         stations: [],

@@ -1,13 +1,13 @@
 import assert from "assert";
 import {
-  readHarthmerePlayerAndSharedStateStringsV1,
-  readHarthmereRedisStringsV1,
+  readHarthmerePlayerAndSharedStateStrings,
+  readHarthmereRedisStrings,
 } from "@/server/harthmere/live_mode_state_read_helpers";
 
 describe("live_mode_state_read_helpers", () => {
   it("uses Redis MGET when available", async () => {
     const mgetCalls: string[][] = [];
-    const values = await readHarthmereRedisStringsV1(
+    const values = await readHarthmereRedisStrings(
       {
         get: async () => {
           throw new Error("get should not be called when mget exists");
@@ -26,7 +26,7 @@ describe("live_mode_state_read_helpers", () => {
 
   it("falls back to GET calls for simple test fakes", async () => {
     const getCalls: string[] = [];
-    const values = await readHarthmereRedisStringsV1(
+    const values = await readHarthmereRedisStrings(
       {
         get: async (key: string) => {
           getCalls.push(key);
@@ -41,7 +41,7 @@ describe("live_mode_state_read_helpers", () => {
   });
 
   it("returns named player/shared values", async () => {
-    const result = await readHarthmerePlayerAndSharedStateStringsV1(
+    const result = await readHarthmerePlayerAndSharedStateStrings(
       {
         get: async (key: string) => `value:${key}`,
       },
@@ -72,8 +72,8 @@ describe("live_mode_state_read_helpers", () => {
       },
     };
 
-    const first = readHarthmereRedisStringsV1(primary, ["player", "shared"]);
-    const second = readHarthmereRedisStringsV1(primary, ["player", "shared"]);
+    const first = readHarthmereRedisStrings(primary, ["player", "shared"]);
+    const second = readHarthmereRedisStrings(primary, ["player", "shared"]);
     release?.();
 
     assert.deepEqual(await Promise.all([first, second]), [
@@ -96,8 +96,8 @@ describe("live_mode_state_read_helpers", () => {
     };
 
     await Promise.all([
-      readHarthmereRedisStringsV1(primary, ["player"]),
-      readHarthmereRedisStringsV1(primary, ["player", "shared"]),
+      readHarthmereRedisStrings(primary, ["player"]),
+      readHarthmereRedisStrings(primary, ["player", "shared"]),
     ]);
 
     assert.deepEqual(mgetCalls, [["player"], ["player", "shared"]]);

@@ -1,23 +1,23 @@
-export const BIOMES_UI_DEFAULT_MICROPHONE_DEVICE_ID_V1 = "" as const;
+export const BIOMES_UI_DEFAULT_MICROPHONE_DEVICE_ID = "" as const;
 
-export interface BiomesUIMicrophoneDeviceOptionV1 {
+export interface BiomesUIMicrophoneDeviceOption {
   deviceId: string;
   label: string;
 }
 
-export interface BiomesUIMediaDeviceLikeV1 {
+export interface BiomesUIMediaDeviceLike {
   kind?: string;
   deviceId?: string;
   label?: string;
 }
 
-export function biomesUIMicrophoneOptionsFromDevicesV1(
-  devices: readonly BiomesUIMediaDeviceLikeV1[]
-): BiomesUIMicrophoneDeviceOptionV1[] {
+export function biomesUIMicrophoneOptionsFromDevices(
+  devices: readonly BiomesUIMediaDeviceLike[]
+): BiomesUIMicrophoneDeviceOption[] {
   const seen = new Set<string>();
-  const options: BiomesUIMicrophoneDeviceOptionV1[] = [
+  const options: BiomesUIMicrophoneDeviceOption[] = [
     {
-      deviceId: BIOMES_UI_DEFAULT_MICROPHONE_DEVICE_ID_V1,
+      deviceId: BIOMES_UI_DEFAULT_MICROPHONE_DEVICE_ID,
       label: "Browser Default",
     },
   ];
@@ -48,12 +48,12 @@ export function biomesUIMicrophoneOptionsFromDevicesV1(
   return options;
 }
 
-export function biomesUISelectedMicrophoneDeviceIdV1(input: {
+export function biomesUISelectedMicrophoneDeviceId(input: {
   selectedDeviceId: string | null | undefined;
-  options: readonly BiomesUIMicrophoneDeviceOptionV1[];
+  options: readonly BiomesUIMicrophoneDeviceOption[];
 }) {
   const selected = input.selectedDeviceId?.trim() ?? "";
   return input.options.some((option) => option.deviceId === selected)
     ? selected
-    : BIOMES_UI_DEFAULT_MICROPHONE_DEVICE_ID_V1;
+    : BIOMES_UI_DEFAULT_MICROPHONE_DEVICE_ID;
 }

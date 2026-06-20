@@ -1,10 +1,10 @@
 // @ts-nocheck
-// Harthmere gathering/building remainder systems v3.
+// Harthmere gathering/building remainder systems current.
 // Pure deterministic local-dev gameplay logic for rules that need a server later.
 // This file intentionally uses JavaScript-compatible TypeScript so the focused
 // CJS tests can execute the same implementation without a build step.
 
-export const HARTHMERE_REMAINDER_SYSTEM_VERSION = "gathering-building-remainder-v3";
+export const HARTHMERE_REMAINDER_SYSTEM_VERSION = "gathering-building-remainder";
 export const HARTHMERE_REAL_SERVER_BOUNDARY = "mock_authoritative_now_live_server_later";
 
 function clone(value) {

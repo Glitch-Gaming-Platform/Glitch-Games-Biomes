@@ -1,18 +1,18 @@
 import {
-  type AzureOpenAIMessageV1,
-  azureOpenAIConfigFromEnvV1,
-  createAzureOpenAIResponseTextV1,
+  type AzureOpenAIMessage,
+  azureOpenAIConfigFromEnv,
+  createAzureOpenAIResponseText,
 } from "@/server/shared/azure_openai";
 import { okOrAPIError } from "@/server/web/errors";
 import { biomesApiHandler } from "@/server/web/util/api_middleware";
 import type { ReadonlyEntity } from "@/shared/ecs/gen/entities";
 import {
-  harthmereFallbackNpcDialogTextV143,
-  harthmereFallbackNpcOptionsV143,
-} from "@/shared/harthmere/npc_dialog_fallback_v143";
-import { harthmereSpeechDeliveryPromptBriefV1 } from "@/shared/harthmere/npc_speech_delivery_v1";
-import { parseHarthmereAzureVoiceIdV1 } from "@/shared/harthmere/npc_voice_profiles_v1";
-import { snapshotLiveNpcLoreForDialogV79 } from "@/shared/harthmere/snapshot_live_npc_bible_v79";
+  harthmereFallbackNpcDialogText,
+  harthmereFallbackNpcOptions,
+} from "@/shared/harthmere/npc_dialog_fallback";
+import { harthmereSpeechDeliveryPromptBrief } from "@/shared/harthmere/npc_speech_delivery";
+import { parseHarthmereAzureVoiceId } from "@/shared/harthmere/npc_voice_profiles";
+import { snapshotLiveNpcLoreForDialog } from "@/shared/harthmere/snapshot_live_npc_bible";
 import type { BiomesId } from "@/shared/ids";
 import { zBiomesId } from "@/shared/ids";
 import { log } from "@/shared/logging";
@@ -76,7 +76,7 @@ function parseDialog(input: string): { buttons: string[]; dialog: string } {
   };
 }
 
-export function generatedChatSanitizeContextForPromptV1(
+export function generatedChatSanitizeContextForPrompt(
   rawContext: string | undefined
 ) {
   const trimmed = rawContext?.trim();
@@ -93,7 +93,7 @@ export function generatedChatSanitizeContextForPromptV1(
     .slice(0, 1800);
 }
 
-function generatedChatFallbackButtonsV1(input: {
+function generatedChatFallbackButtons(input: {
   questContext: string | undefined;
 }) {
   return input.questContext?.trim()
@@ -101,7 +101,7 @@ function generatedChatFallbackButtonsV1(input: {
     : ["Ask what they mean", "Ask what to do next", "Say goodbye"];
 }
 
-export function generatedChatNormalizeModelOutputForTestV1(input: {
+export function generatedChatNormalizeModelOutputForTest(input: {
   content: string;
   questContext?: string;
 }): { buttons: string[]; dialog: string } | undefined {
@@ -113,28 +113,28 @@ export function generatedChatNormalizeModelOutputForTestV1(input: {
     dialog,
     buttons: buttons.length
       ? buttons
-      : generatedChatFallbackButtonsV1({
+      : generatedChatFallbackButtons({
           questContext: input.questContext,
         }),
   };
 }
 
-function isGeneratedChatConversationMessageV1(
+function isGeneratedChatConversationMessage(
   message: unknown
-): message is GeneratedChatMessageV1 {
+): message is GeneratedChatMessage {
   return (
     typeof message === "object" &&
     message !== null &&
-    ((message as GeneratedChatMessageV1).role === "user" ||
-      (message as GeneratedChatMessageV1).role === "assistant") &&
-    typeof (message as GeneratedChatMessageV1).content === "string"
+    ((message as GeneratedChatMessage).role === "user" ||
+      (message as GeneratedChatMessage).role === "assistant") &&
+    typeof (message as GeneratedChatMessage).content === "string"
   );
 }
 
-function parseGeneratedChatMessageContextV1(
+function parseGeneratedChatMessageContext(
   messageContext: string | undefined,
   entityId: BiomesId
-): GeneratedChatMessageV1[] {
+): GeneratedChatMessage[] {
   if (!messageContext) {
     return [];
   }
@@ -146,40 +146,40 @@ function parseGeneratedChatMessageContextV1(
         Array.isArray(parsed?.messages)
       ? parsed.messages
       : [];
-    return messages.filter(isGeneratedChatConversationMessageV1).slice(-8);
+    return messages.filter(isGeneratedChatConversationMessage).slice(-8);
   } catch {
     return [];
   }
 }
 
-function serializeGeneratedChatMessageContextV1(input: {
+function serializeGeneratedChatMessageContext(input: {
   entityId: BiomesId;
-  messages: GeneratedChatMessageV1[];
+  messages: GeneratedChatMessage[];
 }) {
   return JSON.stringify({
-    kind: "generated_npc_chat_v1",
+    kind: "generated_npc_chat",
     entityId: input.entityId,
     messages: input.messages
-      .filter(isGeneratedChatConversationMessageV1)
+      .filter(isGeneratedChatConversationMessage)
       .slice(-8),
   });
 }
 
-export function generatedChatConversationMessagesFromContextForTestV1(
+export function generatedChatConversationMessagesFromContextForTest(
   messageContext: string | undefined,
   entityId: BiomesId
 ) {
-  return parseGeneratedChatMessageContextV1(messageContext, entityId);
+  return parseGeneratedChatMessageContext(messageContext, entityId);
 }
 
-export function generatedChatSerializeMessageContextForTestV1(input: {
+export function generatedChatSerializeMessageContextForTest(input: {
   entityId: BiomesId;
-  messages: GeneratedChatMessageV1[];
+  messages: GeneratedChatMessage[];
 }) {
-  return serializeGeneratedChatMessageContextV1(input);
+  return serializeGeneratedChatMessageContext(input);
 }
 
-export function generatedChatLikeabilityForOptionV1(input: string): number {
+export function generatedChatLikeabilityForOption(input: string): number {
   const normalized = input
     .replace(/<[^>]*>/g, " ")
     .replace(/[^\w\s'-]/g, " ")
@@ -212,7 +212,7 @@ export function generatedChatLikeabilityForOptionV1(input: string): number {
   return 1;
 }
 
-export function generatedChatPlayerNameForPromptV1(
+export function generatedChatPlayerNameForPrompt(
   rawName: string | undefined
 ) {
   const trimmed = rawName?.trim() ?? "";
@@ -229,7 +229,7 @@ export function generatedChatPlayerNameForPromptV1(
   return trimmed;
 }
 
-export function generatedChatConversationGuardrailPromptV1(input: {
+export function generatedChatConversationGuardrailPrompt(input: {
   hasUserResponse: boolean;
   hasMessageContext: boolean;
 }) {
@@ -245,20 +245,20 @@ export function generatedChatConversationGuardrailPromptV1(input: {
   ].join("\n");
 }
 
-export function generatedChatSpeechPerformanceBriefForTestV1(input: {
+export function generatedChatSpeechPerformanceBriefForTest(input: {
   npcName?: string;
   entityDescription?: string;
   voiceId?: string;
 }) {
-  const parsedVoice = parseHarthmereAzureVoiceIdV1(input.voiceId);
-  return harthmereSpeechDeliveryPromptBriefV1({
+  const parsedVoice = parseHarthmereAzureVoiceId(input.voiceId);
+  return harthmereSpeechDeliveryPromptBrief({
     actorKey: parsedVoice?.actorKey,
     text: `${input.npcName ?? ""} ${input.entityDescription ?? ""}`,
   });
 }
 
 function systemPromptForEntity(user: ReadonlyEntity, entity: ReadonlyEntity) {
-  const userName = generatedChatPlayerNameForPromptV1(user.label?.text);
+  const userName = generatedChatPlayerNameForPrompt(user.label?.text);
   const wearingStrs: string[] = [];
   user.wearing?.items.forEach((val) => {
     wearingStrs.push(val.displayName);
@@ -271,7 +271,7 @@ function systemPromptForEntity(user: ReadonlyEntity, entity: ReadonlyEntity) {
     creatorText = `Your creator described you as ${entity.entity_description.text}. `;
   }
   const npcName = entity.label?.text ?? "Unknown";
-  const toneBrief = generatedChatSpeechPerformanceBriefForTestV1({
+  const toneBrief = generatedChatSpeechPerformanceBriefForTest({
     npcName,
     entityDescription: entity.entity_description?.text,
     voiceId: entity.voice?.voice,
@@ -308,7 +308,7 @@ If this is the opening turn, you may briefly remark on concrete outfit or locati
 `.trim();
 }
 
-function questContextPromptV1(questContext: string | undefined) {
+function questContextPrompt(questContext: string | undefined) {
   const trimmed = questContext?.trim();
   if (!trimmed) {
     return undefined;
@@ -321,8 +321,8 @@ ${trimmed}
 `.trim();
 }
 
-function userContextPromptV1(userContext: string | undefined) {
-  const sanitized = generatedChatSanitizeContextForPromptV1(userContext);
+function userContextPrompt(userContext: string | undefined) {
+  const sanitized = generatedChatSanitizeContextForPrompt(userContext);
   if (!sanitized) {
     return undefined;
   }
@@ -333,9 +333,9 @@ ${sanitized}
 `.trim();
 }
 
-type GeneratedChatMessageV1 = AzureOpenAIMessageV1;
+type GeneratedChatMessage = AzureOpenAIMessage;
 
-function deterministicGeneratedChatFallbackV1(
+function deterministicGeneratedChatFallback(
   entityId: BiomesId,
   entity: ReadonlyEntity,
   userResponse: string | undefined,
@@ -343,13 +343,13 @@ function deterministicGeneratedChatFallbackV1(
 ): GeneratedChatResponse {
   const name = entity.label?.text ?? "Unknown";
   const description = entity.entity_description?.text;
-  const lore = snapshotLiveNpcLoreForDialogV79({
+  const lore = snapshotLiveNpcLoreForDialog({
     label: name,
     entityDescriptionText: description,
   });
 
   // Build options with likeability deltas.
-  // harthmereFallbackNpcOptionsV143 already provides likeability on each option
+  // harthmereFallbackNpcOptions already provides likeability on each option
   // (positive for praise, negative for mockery). Lore-path options get the same
   // structure: neutral ask (0), warm acknowledgement (+6), gentle challenge (−4).
   const options: Array<{
@@ -402,7 +402,7 @@ function deterministicGeneratedChatFallbackV1(
           },
         ];
       })()
-    : harthmereFallbackNpcOptionsV143({ name, description });
+    : harthmereFallbackNpcOptions({ name, description });
 
   const matchedOption = userResponse
     ? options.find((option) => option.name === userResponse)
@@ -410,7 +410,7 @@ function deterministicGeneratedChatFallbackV1(
   const message =
     matchedOption?.followUpText ??
     lore?.line ??
-    harthmereFallbackNpcDialogTextV143({ name, description });
+    harthmereFallbackNpcDialogText({ name, description });
 
   // Build a per-button preview map so the client can show consequence hints
   // (e.g. a red tint on destructive buttons) before the player commits.
@@ -418,11 +418,11 @@ function deterministicGeneratedChatFallbackV1(
     options.map((option) => [option.name, option.likeability])
   );
 
-  const previousContext = parseGeneratedChatMessageContextV1(
+  const previousContext = parseGeneratedChatMessageContext(
     messageContext,
     entityId
   );
-  const nextMessageContext: GeneratedChatMessageV1[] = [
+  const nextMessageContext: GeneratedChatMessage[] = [
     ...previousContext.slice(-6),
     ...(userResponse ? [{ role: "user" as const, content: userResponse }] : []),
     {
@@ -443,7 +443,7 @@ function deterministicGeneratedChatFallbackV1(
       // each button before the player commits (positive = friendly, negative = rude).
       buttonLikeability,
     },
-    messageContext: serializeGeneratedChatMessageContextV1({
+    messageContext: serializeGeneratedChatMessageContext({
       entityId,
       messages: nextMessageContext,
     }),
@@ -466,24 +466,24 @@ export default biomesApiHandler(
     okOrAPIError(user, "not_found", `User ${userId} not found!`);
     const materializedEntity = entity.materialize();
     const materializedUser = user.materialize();
-    const azureConfig = azureOpenAIConfigFromEnvV1();
+    const azureConfig = azureOpenAIConfigFromEnv();
     if (!azureConfig) {
-      return deterministicGeneratedChatFallbackV1(
+      return deterministicGeneratedChatFallback(
         entityId,
         materializedEntity,
         userResponse,
         messageContext
       );
     }
-    const userName = generatedChatPlayerNameForPromptV1(
+    const userName = generatedChatPlayerNameForPrompt(
       materializedUser.label?.text
     );
 
-    const previousConversation = parseGeneratedChatMessageContextV1(
+    const previousConversation = parseGeneratedChatMessageContext(
       messageContext,
       entityId
     );
-    const messages: GeneratedChatMessageV1[] = [
+    const messages: GeneratedChatMessage[] = [
       {
         role: "system",
         content: systemPromptForEntity(materializedUser, materializedEntity),
@@ -491,19 +491,19 @@ export default biomesApiHandler(
     ];
     messages.push({
       role: "system",
-      content: generatedChatConversationGuardrailPromptV1({
+      content: generatedChatConversationGuardrailPrompt({
         hasUserResponse: Boolean(userResponse),
         hasMessageContext: previousConversation.length > 0,
       }),
     });
-    const questPrompt = questContextPromptV1(questContext);
+    const questPrompt = questContextPrompt(questContext);
     if (questPrompt) {
       messages.push({
         role: "system",
         content: questPrompt,
       });
     }
-    const userPrompt = userContextPromptV1(userContext);
+    const userPrompt = userContextPrompt(userContext);
     if (userPrompt) {
       messages.push({
         role: "system",
@@ -524,7 +524,7 @@ export default biomesApiHandler(
     let nextMessageContent = "";
     try {
       nextMessageContent =
-        (await createAzureOpenAIResponseTextV1({
+        (await createAzureOpenAIResponseText({
           config: azureConfig,
           messages,
           maxOutputTokens: 700,
@@ -537,7 +537,7 @@ export default biomesApiHandler(
           entityId,
         }
       );
-      return deterministicGeneratedChatFallbackV1(
+      return deterministicGeneratedChatFallback(
         entityId,
         materializedEntity,
         userResponse,
@@ -545,12 +545,12 @@ export default biomesApiHandler(
       );
     }
 
-    const normalized = generatedChatNormalizeModelOutputForTestV1({
+    const normalized = generatedChatNormalizeModelOutputForTest({
       content: nextMessageContent,
       questContext,
     });
     if (!normalized) {
-      return deterministicGeneratedChatFallbackV1(
+      return deterministicGeneratedChatFallback(
         entityId,
         materializedEntity,
         userResponse,
@@ -558,7 +558,7 @@ export default biomesApiHandler(
       );
     }
     const { dialog, buttons } = normalized;
-    const nextMessageContext: GeneratedChatMessageV1[] = [
+    const nextMessageContext: GeneratedChatMessage[] = [
       ...previousConversation.slice(-6),
       ...(userResponse
         ? [
@@ -572,7 +572,7 @@ export default biomesApiHandler(
     const buttonLikeability: Record<string, number> = Object.fromEntries(
       buttons.map((button) => [
         button,
-        generatedChatLikeabilityForOptionV1(button),
+        generatedChatLikeabilityForOption(button),
       ])
     );
 
@@ -587,11 +587,11 @@ export default biomesApiHandler(
         buttons: buttons,
         terminated: false,
         likeabilityDelta: userResponse
-          ? generatedChatLikeabilityForOptionV1(userResponse)
+          ? generatedChatLikeabilityForOption(userResponse)
           : undefined,
         buttonLikeability,
       },
-      messageContext: serializeGeneratedChatMessageContextV1({
+      messageContext: serializeGeneratedChatMessageContext({
         entityId,
         messages: nextMessageContext,
       }),

@@ -130,7 +130,7 @@ function makeFallbackPlaceableMesh(
     group.position.fromArray(position.v);
   }
   setPlaceableOrientation(group, orientation?.v);
-  log.warn("PLACEABLE_MESH_FALLBACK_V1", {
+  log.warn("PLACEABLE_MESH_FALLBACK", {
     id,
     itemId: placeableComponent?.item_id,
     error,

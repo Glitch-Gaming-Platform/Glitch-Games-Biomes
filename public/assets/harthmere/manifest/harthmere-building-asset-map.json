@@ -1,5 +1,5 @@
 {
-  "contentPass": "harthmere-full-town-layout-asset-map-v5",
+  "contentPass": "harthmere-full-town-layout-asset-map",
   "rules": {
     "collision": "Server block layer owns terrain, walls, roads, doors, fences, and landmarks. Interior decoration must be visual-only.",
     "doorClearance": "Every building keeps a 3-block-wide door lane clear.",
@@ -301,7 +301,7 @@
       ]
     }
   },
-  "expansionContentPass": "harthmere-expansion-assets-v6",
-  "expansionSelectedAssets": "manifest/harthmere-expansion-selected-assets-v6.json",
+  "expansionContentPass": "harthmere-expansion-assets",
+  "expansionSelectedAssets": "manifest/harthmere-expansion-selected-assets.json",
   "expansionNote": "Expansion assets are imported and mapped for the next spacing/visual placement pass. Do not auto-load every FBX. Keep farm animals procedural/static until scale, facing, animation, and bounding boxes are validated."
 }

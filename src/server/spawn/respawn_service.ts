@@ -9,8 +9,8 @@ import type { WorldApi } from "@/server/shared/world/api";
 import { makeSpawnChangeToApply } from "@/server/spawn/spawn_npc";
 import { RepeatingAsyncTimer } from "@/shared/util/async";
 
-export const HARTHMERE_NPC_RESPAWN_SERVICE_VERSION_V37 =
-  "harthmere-npc-respawn-service-v37";
+export const HARTHMERE_NPC_RESPAWN_SERVICE_VERSION =
+  "harthmere-npc-respawn-service";
 
 type RespawnEntry = {
   typeId: BiomesId;

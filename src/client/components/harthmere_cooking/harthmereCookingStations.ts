@@ -1,21 +1,21 @@
-import type { HarthmereCookStationKindV1 } from "@/shared/harthmere/object_interaction_semantics_v1";
+import type { HarthmereCookStationKind } from "@/shared/harthmere/object_interaction_semantics";
 
 // Fired when the player presses the cook interaction (F) at a campfire / oven /
 // cookpot. The mounted cooking panel listens and opens the cooking interface for
 // the specific station. Mirrors the world-object container open pattern.
-export const HARTHMERE_COOKING_STATION_OPEN_EVENT_V1 =
-  "biomes:harthmere-cooking-station-open-v1";
+export const HARTHMERE_COOKING_STATION_OPEN_EVENT =
+  "biomes:harthmere-cooking-station-open";
 
-const HARTHMERE_COOKING_STATION_OPEN_REQUEST_KEY_V1 =
-  "biomes.localDev.harthmere.cookingStationOpenRequest.v1";
+const HARTHMERE_COOKING_STATION_OPEN_REQUEST_KEY =
+  "biomes.localDev.harthmere.cookingStationOpenRequest";
 
-export interface HarthmereCookingStationOpenRequestV1 {
+export interface HarthmereCookingStationOpenRequest {
   stationId: string;
-  stationKind: HarthmereCookStationKindV1;
+  stationKind: HarthmereCookStationKind;
   label?: string;
 }
 
-function isBrowserV1() {
+function isBrowser() {
   return (
     typeof window !== "undefined" && typeof window.localStorage !== "undefined"
   );
@@ -24,7 +24,7 @@ function isBrowserV1() {
 /** Builds a stable station id for the per-station cooking queue. A real ECS
  *  entity id is preferred; procedural landmarks (id 0 / missing) fall back to a
  *  normalized label so two same-named props do not collide with the rest. */
-export function harthmereCookingStationIdV1(
+export function harthmereCookingStationId(
   entityId: unknown,
   label?: string | null
 ): string {
@@ -41,45 +41,45 @@ export function harthmereCookingStationIdV1(
 }
 
 /** Opens the cooking panel for a station (campfire / cookpot / oven). */
-export function openHarthmereCookingStationV1(input: {
+export function openHarthmereCookingStation(input: {
   stationId: string;
-  stationKind: HarthmereCookStationKindV1;
+  stationKind: HarthmereCookStationKind;
   label?: string | null;
   entityId?: unknown;
 }) {
   const displayLabel = input.label?.trim() || "Cooking Station";
-  const request: HarthmereCookingStationOpenRequestV1 = {
+  const request: HarthmereCookingStationOpenRequest = {
     stationId: input.stationId,
     stationKind: input.stationKind,
     label: displayLabel,
   };
-  if (isBrowserV1()) {
+  if (isBrowser()) {
     window.localStorage.setItem(
-      HARTHMERE_COOKING_STATION_OPEN_REQUEST_KEY_V1,
+      HARTHMERE_COOKING_STATION_OPEN_REQUEST_KEY,
       JSON.stringify(request)
     );
     window.dispatchEvent(
-      new CustomEvent(HARTHMERE_COOKING_STATION_OPEN_EVENT_V1, {
+      new CustomEvent(HARTHMERE_COOKING_STATION_OPEN_EVENT, {
         detail: request,
       })
     );
   }
 }
 
-export function readHarthmereCookingStationOpenRequestV1():
-  | HarthmereCookingStationOpenRequestV1
+export function readHarthmereCookingStationOpenRequest():
+  | HarthmereCookingStationOpenRequest
   | undefined {
-  if (!isBrowserV1()) {
+  if (!isBrowser()) {
     return undefined;
   }
   try {
     const raw = window.localStorage.getItem(
-      HARTHMERE_COOKING_STATION_OPEN_REQUEST_KEY_V1
+      HARTHMERE_COOKING_STATION_OPEN_REQUEST_KEY
     );
     if (!raw) {
       return undefined;
     }
-    const parsed = JSON.parse(raw) as HarthmereCookingStationOpenRequestV1;
+    const parsed = JSON.parse(raw) as HarthmereCookingStationOpenRequest;
     if (!parsed?.stationId || !parsed?.stationKind) {
       return undefined;
     }
@@ -89,10 +89,10 @@ export function readHarthmereCookingStationOpenRequestV1():
   }
 }
 
-export function clearHarthmereCookingStationOpenRequestV1() {
-  if (isBrowserV1()) {
+export function clearHarthmereCookingStationOpenRequest() {
+  if (isBrowser()) {
     window.localStorage.removeItem(
-      HARTHMERE_COOKING_STATION_OPEN_REQUEST_KEY_V1
+      HARTHMERE_COOKING_STATION_OPEN_REQUEST_KEY
     );
   }
 }

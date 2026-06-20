@@ -20,7 +20,7 @@ import { registerServerTaskProcessor } from "@/server/shared/tasks/server_tasks/
 import { registerTwitchBot } from "@/server/shared/twitch/twitch";
 import { loadVoxeloo } from "@/server/shared/voxeloo";
 import { registerWorldApi } from "@/server/shared/world/register";
-import { startHarthmereLiveModeRobotEnergySchedulerV1 } from "@/server/harthmere/live_mode_robot_energy_scheduler_v1";
+import { startHarthmereLiveModeRobotEnergyScheduler } from "@/server/harthmere/live_mode_robot_energy_scheduler";
 import { registerApp } from "@/server/web/app";
 import { installGlitchSameOriginSyncWebSocketProxy } from "@/server/web/glitch_sync_ws_proxy";
 import { registerBigQueryClient } from "@/server/web/bigquery";
@@ -109,7 +109,7 @@ function installGlitchSameOriginOobProxy(context: WebServerContext) {
   }
   (context.app as any).__glitchSameOriginOobProxyInstalled = true;
 
-  // GLITCH_SAME_ORIGIN_OOB_PROXY_V118
+  // GLITCH_SAME_ORIGIN_OOB_PROXY
   // In the Glitch/Harthmere one-container runtime the browser is served from
   // the web process at /, while the OOB service normally lives in a separate
   // process. The production client uses same-origin /sync/oob so cookies are
@@ -117,7 +117,7 @@ function installGlitchSameOriginOobProxy(context: WebServerContext) {
   // Next.js serves its 404 page for /sync/oob and the client logs
   // "/sync/oob: Bad JSON" even though login and sync auth succeeded.
   new OobServer(context.sessionStore, context.app.http, context.worldApi);
-  log.info("GLITCH_SAME_ORIGIN_OOB_PROXY_V118 installed /sync/oob on web");
+  log.info("GLITCH_SAME_ORIGIN_OOB_PROXY installed /sync/oob on web");
 }
 
 async function registerAssetServer<C extends WebServerContext>(
@@ -143,7 +143,7 @@ async function registerAssetServer<C extends WebServerContext>(
     process.env.GLITCH_FORCE_LOCAL_ASSET_EXPORTS === "1"
   ) {
     log.info(
-      "GLITCH_PLAYER_MESH_LOCAL_EXPORTS_V121: enabling lazy local asset exports for generated meshes."
+      "GLITCH_PLAYER_MESH_LOCAL_EXPORTS: enabling lazy local asset exports for generated meshes."
     );
     return new LazyAssetExportsServer(createAssetServer);
   }
@@ -201,7 +201,7 @@ export async function webServerContext(signal?: AbortSignal) {
 
 void runServer("web", webServerContext, async (context) => {
   const harthmereRobotEnergyScheduler =
-    startHarthmereLiveModeRobotEnergySchedulerV1();
+    startHarthmereLiveModeRobotEnergyScheduler();
   installGlitchSameOriginOobProxy(context);
   installGlitchSameOriginSyncWebSocketProxy(context.app.http);
   await context.app.start(context);

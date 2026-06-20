@@ -9,7 +9,7 @@ const files = {
 };
 const checks = {
   combat: [
-    "harthmere-combat-debug-probe-v8",
+    "harthmere-combat-debug-probe",
     "debugHarthmereCombat",
     "combat.attack.start",
     "combat.attack.after_player",

@@ -1,12 +1,12 @@
 import type { SpeechStatusResponse } from "@/pages/api/voices/speech_status";
 
-export type NpcSpeechButtonStateV1 =
+export type NpcSpeechButtonState =
   | "idle"
   | "recording"
   | "transcribing"
   | "error";
 
-export function npcSpeechStatusActiveV1(
+export function npcSpeechStatusActive(
   status:
     | Pick<
         SpeechStatusResponse,
@@ -20,7 +20,7 @@ export function npcSpeechStatusActiveV1(
   );
 }
 
-export function browserSupportsNpcSpeechInputV1(input: {
+export function browserSupportsNpcSpeechInput(input: {
   navigator?: {
     mediaDevices?: {
       getUserMedia?: unknown;
@@ -37,14 +37,14 @@ export function browserSupportsNpcSpeechInputV1(input: {
   );
 }
 
-export function npcSpeechEmptyTranscriptMessageV1(reason: string | undefined) {
+export function npcSpeechEmptyTranscriptMessage(reason: string | undefined) {
   return reason?.trim() || "I couldn't catch that.";
 }
 
-export function npcSpeechButtonTooltipV1(input: {
+export function npcSpeechButtonTooltip(input: {
   error?: string;
   supported: boolean;
-  state: NpcSpeechButtonStateV1;
+  state: NpcSpeechButtonState;
 }) {
   if (input.error) {
     return input.error;
@@ -61,7 +61,7 @@ export function npcSpeechButtonTooltipV1(input: {
   return "Talk";
 }
 
-export function npcSpeechRecordingRemainingSecondsV1(input: {
+export function npcSpeechRecordingRemainingSeconds(input: {
   maxRecordingMs: number;
   remainingMs: number;
 }) {
@@ -71,7 +71,7 @@ export function npcSpeechRecordingRemainingSecondsV1(input: {
   return Math.max(0, Math.ceil(input.remainingMs / 1000));
 }
 
-export function npcSpeechRecordingTimeoutProgressV1(input: {
+export function npcSpeechRecordingTimeoutProgress(input: {
   maxRecordingMs: number;
   remainingMs: number;
 }) {

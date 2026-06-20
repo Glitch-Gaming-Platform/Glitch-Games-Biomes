@@ -4,8 +4,8 @@ import type { SimulatedNpc } from "@/shared/npc/simulated";
 import { getNpcWalkSpeed } from "@/shared/npc/bikkie";
 import { z } from "zod";
 
-export const HARTHMERE_NPC_PATROL_ROUTE_VERSION_V37 =
-  "harthmere-npc-patrol-route-v37";
+export const HARTHMERE_NPC_PATROL_ROUTE_VERSION =
+  "harthmere-npc-patrol-route";
 
 export const zPatrolComponent = z.object({
   patrol: z

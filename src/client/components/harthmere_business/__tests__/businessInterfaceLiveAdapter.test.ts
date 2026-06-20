@@ -12,56 +12,56 @@ import { chromium } from "playwright";
 import { HarthmereBusinessInteractionPrompt } from "../HarthmereBusinessInteractionPrompt";
 import { HarthmereBusinessInterfacePanel } from "../HarthmereBusinessInterfacePanel";
 import { HarthmereBusinessLiveContainer } from "../HarthmereBusinessLiveContainer";
-import { harthmereBusinessDynamicWorldBoardsV1 } from "../HarthmereBusinessWorldInteractionV1";
+import { harthmereBusinessDynamicWorldBoards } from "../HarthmereBusinessWorldInteraction";
 import {
-  beginPointerLockUnlockWhileOpenV1,
-  endPointerLockUnlockWhileOpenV1,
+  beginPointerLockUnlockWhileOpen,
+  endPointerLockUnlockWhileOpen,
 } from "@/client/components/contexts/pointerLockModalPolicy";
 import {
-  HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS_V1,
-  HARTHMERE_BUSINESS_OUTPOSTS_V1,
-  harthmereBusinessOutpostBusinessIdV1,
-} from "../../../../shared/harthmere/business_customer_simulator_v1";
+  HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS,
+  HARTHMERE_BUSINESS_OUTPOSTS,
+  harthmereBusinessOutpostBusinessId,
+} from "../../../../shared/harthmere/business_customer_simulator";
 import {
-  HARTHMERE_BUSINESS_SERVICE_ACTIONS_V1,
-  HARTHMERE_BUSINESS_TYPE_ORDER_V1,
-  HARTHMERE_BUSINESS_INVENTORY_LOOT_UPDATED_EVENT_V1,
-  canCustomerUseHarthmereBusinessV1,
-  createHarthmereBusinessInterfaceAdapterV1,
-  fetchHarthmereBusinessEconomyStateV1,
-  formatHarthmereBusinessPlayerWarningV1,
-  getHarthmereBusinessCompliancePanelV1,
-  getHarthmereBusinessCustomerMiniGameV1,
-  getHarthmereBusinessFieldServiceSpecV1,
-  getHarthmereBusinessFinancePanelV1,
-  getHarthmereBusinessEmpirePanelV1,
-  getHarthmereBusinessGrowthReportV1,
-  getHarthmereBusinessInteractionPromptV1,
-  getHarthmereBusinessOperationScreenV1,
-  getHarthmereBusinessServiceQuestsV1,
-  getHarthmereBusinessShopfrontV1,
-  getHarthmereBusinessStaffPanelV1,
-  getHarthmereContractBoardV1,
-  getHarthmereGuildBusinessPanelV1,
-  getHarthmereMarketplacePanelV1,
-  getHarthmereOwnerDashboardV1,
-  getHarthmereTownHallPanelV1,
-  requiresHarthmereFieldServiceQuestV1,
-  getHarthmereBusinessActorModeV1,
-  getHarthmereBusinessServiceActionsV1,
-  getHarthmereCustomerOrdersV1,
-  getHarthmereVisibleBusinessInventoryV1,
-  harthmereBusinessServicePriceGoldV1,
-  harthmereBusinessWorldContextPayloadV1,
-  isHarthmereBusinessInterfaceAvailableV1,
-  nearestHarthmereBusinessDashboardWorldContextV1,
-  normalizeHarthmereBusinessEconomySnapshotV1,
-  submitHarthmereBusinessEconomyMutationV1,
-  type HarthmereBusinessEconomySnapshotV1,
-  type HarthmereBusinessTypeIdV1,
+  HARTHMERE_BUSINESS_SERVICE_ACTIONS,
+  HARTHMERE_BUSINESS_TYPE_ORDER,
+  HARTHMERE_BUSINESS_INVENTORY_LOOT_UPDATED_EVENT,
+  canCustomerUseHarthmereBusiness,
+  createHarthmereBusinessInterfaceAdapter,
+  fetchHarthmereBusinessEconomyState,
+  formatHarthmereBusinessPlayerWarning,
+  getHarthmereBusinessCompliancePanel,
+  getHarthmereBusinessCustomerMiniGame,
+  getHarthmereBusinessFieldServiceSpec,
+  getHarthmereBusinessFinancePanel,
+  getHarthmereBusinessEmpirePanel,
+  getHarthmereBusinessGrowthReport,
+  getHarthmereBusinessInteractionPrompt,
+  getHarthmereBusinessOperationScreen,
+  getHarthmereBusinessServiceQuests,
+  getHarthmereBusinessShopfront,
+  getHarthmereBusinessStaffPanel,
+  getHarthmereContractBoard,
+  getHarthmereGuildBusinessPanel,
+  getHarthmereMarketplacePanel,
+  getHarthmereOwnerDashboard,
+  getHarthmereTownHallPanel,
+  requiresHarthmereFieldServiceQuest,
+  getHarthmereBusinessActorMode,
+  getHarthmereBusinessServiceActions,
+  getHarthmereCustomerOrders,
+  getHarthmereVisibleBusinessInventory,
+  harthmereBusinessServicePriceGold,
+  harthmereBusinessWorldContextPayload,
+  isHarthmereBusinessInterfaceAvailable,
+  nearestHarthmereBusinessDashboardWorldContext,
+  normalizeHarthmereBusinessEconomySnapshot,
+  submitHarthmereBusinessEconomyMutation,
+  type HarthmereBusinessEconomySnapshot,
+  type HarthmereBusinessTypeId,
 } from "../businessInterfaceLiveAdapter";
 
-function resolveRepoAliasForEsbuildV1(importPath: string) {
+function resolveRepoAliasForEsbuild(importPath: string) {
   const basePath = path.join(process.cwd(), "src", importPath.slice(2));
   for (const candidate of [
     basePath,
@@ -80,7 +80,7 @@ function resolveRepoAliasForEsbuildV1(importPath: string) {
   return basePath;
 }
 
-function visibleTextFromStaticMarkupV1(html: string) {
+function visibleTextFromStaticMarkup(html: string) {
   return html
     .replace(/<script[\s\S]*?<\/script>/gi, " ")
     .replace(/<style[\s\S]*?<\/style>/gi, " ")
@@ -93,7 +93,7 @@ function visibleTextFromStaticMarkupV1(html: string) {
     .trim();
 }
 
-function businessType(typeId: HarthmereBusinessTypeIdV1) {
+function businessType(typeId: HarthmereBusinessTypeId) {
   return {
     typeId,
     displayName: typeId.replace(/_/g, " "),
@@ -114,7 +114,7 @@ function businessType(typeId: HarthmereBusinessTypeIdV1) {
 
 function business(
   id: string,
-  typeId: HarthmereBusinessTypeIdV1,
+  typeId: HarthmereBusinessTypeId,
   ownerId = "player_a"
 ) {
   return {
@@ -160,9 +160,9 @@ function business(
   };
 }
 
-function sampleSnapshot(): HarthmereBusinessEconomySnapshotV1 {
+function sampleSnapshot(): HarthmereBusinessEconomySnapshot {
   const businessTypes = Object.fromEntries(
-    HARTHMERE_BUSINESS_TYPE_ORDER_V1.map((typeId) => [
+    HARTHMERE_BUSINESS_TYPE_ORDER.map((typeId) => [
       typeId,
       businessType(typeId),
     ])
@@ -178,7 +178,7 @@ function sampleSnapshot(): HarthmereBusinessEconomySnapshotV1 {
     ownerKind: "guild" as const,
     ownerId: "guild_1",
   };
-  return normalizeHarthmereBusinessEconomySnapshotV1({
+  return normalizeHarthmereBusinessEconomySnapshot({
     version: "test",
     actorId: "player_a",
     businessTypes,
@@ -305,7 +305,7 @@ describe("Harthmere in-world business interface live adapter", () => {
         json: async () => ({ ok: true, economyState: sampleSnapshot() }),
       };
     }) as any;
-    const state = await fetchHarthmereBusinessEconomyStateV1(fetchImpl);
+    const state = await fetchHarthmereBusinessEconomyState(fetchImpl);
     assert.equal(calls[0].url, "/api/harthmere/live_mode_economy_state");
     assert.equal(calls[0].init.method, "GET");
     assert.equal(calls[0].init.credentials, "same-origin");
@@ -324,7 +324,7 @@ describe("Harthmere in-world business interface live adapter", () => {
         json: async () => ({ ok: true, economyState: sampleSnapshot() }),
       };
     }) as any;
-    await submitHarthmereBusinessEconomyMutationV1(
+    await submitHarthmereBusinessEconomyMutation(
       "deposit_business_inventory",
       { businessId: "business_food", itemId: "worker_meal", count: 2 },
       { fetchImpl, requestId: "fixed_business_request" }
@@ -365,7 +365,7 @@ describe("Harthmere in-world business interface live adapter", () => {
       const state = sampleSnapshot();
       const inventoryLootState = { actor: { gold: 225 } };
       const playerStatusState = { health: 88 };
-      const adapter = createHarthmereBusinessInterfaceAdapterV1({
+      const adapter = createHarthmereBusinessInterfaceAdapter({
         state,
         hydrated: true,
         refresh: async () => state,
@@ -387,7 +387,7 @@ describe("Harthmere in-world business interface live adapter", () => {
       assert.equal(events.length, 1);
       assert.equal(
         events[0].type,
-        HARTHMERE_BUSINESS_INVENTORY_LOOT_UPDATED_EVENT_V1
+        HARTHMERE_BUSINESS_INVENTORY_LOOT_UPDATED_EVENT
       );
       assert.deepEqual(events[0].detail.inventoryLootState, inventoryLootState);
       assert.deepEqual(events[0].detail.playerStatusState, playerStatusState);
@@ -407,14 +407,14 @@ describe("Harthmere in-world business interface live adapter", () => {
       };
     }) as any;
 
-    for (const typeId of HARTHMERE_BUSINESS_TYPE_ORDER_V1) {
+    for (const typeId of HARTHMERE_BUSINESS_TYPE_ORDER) {
       const businessId = `matrix_${typeId}`;
-      await submitHarthmereBusinessEconomyMutationV1(
+      await submitHarthmereBusinessEconomyMutation(
         "start_business_customer_session",
         { businessId, count: 1 },
         { fetchImpl, requestId: `start_${typeId}` }
       );
-      await submitHarthmereBusinessEconomyMutationV1(
+      await submitHarthmereBusinessEconomyMutation(
         "serve_business_customer",
         {
           businessId,
@@ -426,7 +426,7 @@ describe("Harthmere in-world business interface live adapter", () => {
       );
     }
 
-    assert.equal(calls.length, HARTHMERE_BUSINESS_TYPE_ORDER_V1.length * 2);
+    assert.equal(calls.length, HARTHMERE_BUSINESS_TYPE_ORDER.length * 2);
     for (const { url, init } of calls) {
       assert.equal(url, "/api/harthmere/live_mode");
       const envelope = JSON.parse(init.body);
@@ -454,7 +454,7 @@ describe("Harthmere in-world business interface live adapter", () => {
     })) as any;
     await assert.rejects(
       () =>
-        submitHarthmereBusinessEconomyMutationV1(
+        submitHarthmereBusinessEconomyMutation(
           "withdraw_business_inventory",
           { businessId: "business_food", itemId: "worker_meal", count: 1 },
           { fetchImpl, requestId: "fixed" }
@@ -466,15 +466,15 @@ describe("Harthmere in-world business interface live adapter", () => {
   it("only exposes the interface while the world says the player is inside a real business", () => {
     const state = sampleSnapshot();
     assert.equal(
-      isHarthmereBusinessInterfaceAvailableV1(state, undefined),
+      isHarthmereBusinessInterfaceAvailable(state, undefined),
       false
     );
     assert.equal(
-      isHarthmereBusinessInterfaceAvailableV1(state, "missing_business"),
+      isHarthmereBusinessInterfaceAvailable(state, "missing_business"),
       false
     );
     assert.equal(
-      isHarthmereBusinessInterfaceAvailableV1(state, "business_food"),
+      isHarthmereBusinessInterfaceAvailable(state, "business_food"),
       true
     );
   });
@@ -483,36 +483,36 @@ describe("Harthmere in-world business interface live adapter", () => {
     const state = sampleSnapshot();
     state.businesses.business_clinic.status = "paused";
     assert.equal(
-      canCustomerUseHarthmereBusinessV1(state.businesses.business_clinic),
+      canCustomerUseHarthmereBusiness(state.businesses.business_clinic),
       false
     );
     assert.equal(
-      isHarthmereBusinessInterfaceAvailableV1(state, "business_clinic"),
+      isHarthmereBusinessInterfaceAvailable(state, "business_clinic"),
       false
     );
     assert.equal(
-      getHarthmereBusinessInteractionPromptV1(state, {
+      getHarthmereBusinessInteractionPrompt(state, {
         insideBusiness: true,
         nearbyBusinessId: "business_clinic",
       }).visible,
       false
     );
     assert.equal(
-      getHarthmereBusinessOperationScreenV1(state, "business_clinic")
+      getHarthmereBusinessOperationScreen(state, "business_clinic")
         .customerActions.length,
       0
     );
 
     state.businesses.business_food.status = "draft";
     assert.equal(
-      isHarthmereBusinessInterfaceAvailableV1(state, "business_food"),
+      isHarthmereBusinessInterfaceAvailable(state, "business_food"),
       true
     );
     assert.ok(
-      getHarthmereBusinessOperationScreenV1(state, "business_food").ownerActions
+      getHarthmereBusinessOperationScreen(state, "business_food").ownerActions
         .length > 0
     );
-    const adapter = createHarthmereBusinessInterfaceAdapterV1({
+    const adapter = createHarthmereBusinessInterfaceAdapter({
       state,
       hydrated: true,
       refresh: async () => state,
@@ -528,22 +528,22 @@ describe("Harthmere in-world business interface live adapter", () => {
   it("derives owner mode for owned and permission-scoped businesses and customer mode for other businesses", () => {
     const state = sampleSnapshot();
     assert.equal(
-      getHarthmereBusinessActorModeV1(state, "business_food"),
+      getHarthmereBusinessActorMode(state, "business_food"),
       "owner"
     );
     assert.equal(
-      getHarthmereBusinessActorModeV1(state, "business_guild_forge"),
+      getHarthmereBusinessActorMode(state, "business_guild_forge"),
       "owner"
     );
     assert.equal(
-      getHarthmereBusinessActorModeV1(state, "business_clinic"),
+      getHarthmereBusinessActorMode(state, "business_clinic"),
       "customer"
     );
   });
 
   it("normalizes dashboard data for money, todos, visible inventory, employees, and customer order status", () => {
     const state = sampleSnapshot();
-    const inventory = getHarthmereVisibleBusinessInventoryV1(
+    const inventory = getHarthmereVisibleBusinessInventory(
       state,
       "business_food"
     );
@@ -551,13 +551,13 @@ describe("Harthmere in-world business interface live adapter", () => {
       inventory.find((item) => item.itemId === "worker_meal")?.priceGold,
       30
     );
-    const customerOrders = getHarthmereCustomerOrdersV1(
+    const customerOrders = getHarthmereCustomerOrders(
       state,
       "business_clinic"
     );
     assert.equal(customerOrders[0].contractId, "contract_customer_open");
 
-    const adapter = createHarthmereBusinessInterfaceAdapterV1({
+    const adapter = createHarthmereBusinessInterfaceAdapter({
       state,
       hydrated: true,
       refresh: async () => state,
@@ -635,7 +635,7 @@ describe("Harthmere in-world business interface live adapter", () => {
       },
     };
 
-    const miniGame = getHarthmereBusinessCustomerMiniGameV1(
+    const miniGame = getHarthmereBusinessCustomerMiniGame(
       state,
       "business_food"
     );
@@ -670,7 +670,7 @@ describe("Harthmere in-world business interface live adapter", () => {
       )
     );
 
-    const adapter = createHarthmereBusinessInterfaceAdapterV1({
+    const adapter = createHarthmereBusinessInterfaceAdapter({
       state,
       hydrated: true,
       refresh: async () => state,
@@ -701,7 +701,7 @@ describe("Harthmere in-world business interface live adapter", () => {
     const state = sampleSnapshot();
     state.businesses.business_food.balanceGold = 2_000;
     const outpost = Object.values(
-      HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS_V1
+      HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS
     ).find((record) => record.businessType === "food_service_restaurant")!;
     state.businessSystems.customerStats = {
       business_food: {
@@ -783,7 +783,7 @@ describe("Harthmere in-world business interface live adapter", () => {
         createdAtMs: 1,
       },
     };
-    const panel = getHarthmereBusinessEmpirePanelV1(state, "business_food");
+    const panel = getHarthmereBusinessEmpirePanel(state, "business_food");
     assert.equal(panel.openBranchEligible, true);
     assert.equal(panel.branches.length, 1);
     assert.equal(panel.dashboards.length, 1);
@@ -792,7 +792,7 @@ describe("Harthmere in-world business interface live adapter", () => {
     assert.equal(panel.dailyRevenueGold, 180);
     assert.equal(panel.dailyUpkeepGold, 83);
 
-    const adapter = createHarthmereBusinessInterfaceAdapterV1({
+    const adapter = createHarthmereBusinessInterfaceAdapter({
       state,
       hydrated: true,
       refresh: async () => state,
@@ -822,7 +822,7 @@ describe("Harthmere in-world business interface live adapter", () => {
       payload: Record<string, unknown>;
     }> = [];
     const state = sampleSnapshot();
-    const adapter = createHarthmereBusinessInterfaceAdapterV1({
+    const adapter = createHarthmereBusinessInterfaceAdapter({
       state,
       hydrated: true,
       refresh: async () => state,
@@ -1027,7 +1027,7 @@ describe("Harthmere in-world business interface live adapter", () => {
       payload: Record<string, unknown>;
     }> = [];
     const state = sampleSnapshot();
-    const adapter = createHarthmereBusinessInterfaceAdapterV1({
+    const adapter = createHarthmereBusinessInterfaceAdapter({
       state,
       hydrated: true,
       refresh: async () => state,
@@ -1067,7 +1067,7 @@ describe("Harthmere in-world business interface live adapter", () => {
       "exploration_guide",
       "player_b"
     ) as any;
-    const customerActions = getHarthmereBusinessServiceActionsV1(
+    const customerActions = getHarthmereBusinessServiceActions(
       "exploration_guide",
       "customer"
     );
@@ -1079,7 +1079,7 @@ describe("Harthmere in-world business interface live adapter", () => {
       customerActions.some((action) => action.actionId === "book_expedition"),
       true
     );
-    const adapter = createHarthmereBusinessInterfaceAdapterV1({
+    const adapter = createHarthmereBusinessInterfaceAdapter({
       state,
       hydrated: true,
       refresh: async () => state,
@@ -1110,7 +1110,7 @@ describe("Harthmere in-world business interface live adapter", () => {
       payload: Record<string, unknown>;
     }> = [];
     const state = sampleSnapshot();
-    const adapter = createHarthmereBusinessInterfaceAdapterV1({
+    const adapter = createHarthmereBusinessInterfaceAdapter({
       state,
       hydrated: true,
       refresh: async () => state,
@@ -1141,9 +1141,9 @@ describe("Harthmere in-world business interface live adapter", () => {
   });
 
   it("defines owner and customer service actions for every production business type", () => {
-    assert.equal(HARTHMERE_BUSINESS_TYPE_ORDER_V1.length, 19);
-    for (const typeId of HARTHMERE_BUSINESS_TYPE_ORDER_V1) {
-      const actions = HARTHMERE_BUSINESS_SERVICE_ACTIONS_V1[typeId];
+    assert.equal(HARTHMERE_BUSINESS_TYPE_ORDER.length, 19);
+    for (const typeId of HARTHMERE_BUSINESS_TYPE_ORDER) {
+      const actions = HARTHMERE_BUSINESS_SERVICE_ACTIONS[typeId];
       assert.ok(
         actions?.length >= 2,
         `${typeId} should have several interface actions`
@@ -1166,7 +1166,7 @@ describe("Harthmere in-world business interface live adapter", () => {
         assert.ok(action.label);
         if (action.audience === "customer" || action.audience === "both") {
           assert.ok(
-            harthmereBusinessServicePriceGoldV1(action) > 0,
+            harthmereBusinessServicePriceGold(action) > 0,
             `${typeId}:${action.actionId} should have a customer service price`
           );
         }
@@ -1179,7 +1179,7 @@ describe("Harthmere in-world business interface live adapter", () => {
   it("executes representative business-specific owner actions through the backend operation registry", async () => {
     const state = sampleSnapshot();
     const operations: string[] = [];
-    const adapter = createHarthmereBusinessInterfaceAdapterV1({
+    const adapter = createHarthmereBusinessInterfaceAdapter({
       state,
       hydrated: true,
       refresh: async () => state,
@@ -1198,15 +1198,15 @@ describe("Harthmere in-world business interface live adapter", () => {
   });
 });
 
-describe("Harthmere in-world business interface v2 screens", () => {
+describe("Harthmere in-world business interface current screens", () => {
   it("builds world interaction prompts only while the player is inside a real business", () => {
     const state = sampleSnapshot();
-    const missing = getHarthmereBusinessInteractionPromptV1(state, {
+    const missing = getHarthmereBusinessInteractionPrompt(state, {
       insideBusiness: false,
       nearbyBusinessId: "business_food",
     });
     assert.equal(missing.visible, false);
-    const ownerPrompt = getHarthmereBusinessInteractionPromptV1(state, {
+    const ownerPrompt = getHarthmereBusinessInteractionPrompt(state, {
       insideBusiness: true,
       nearbyBusinessId: "business_food",
       interactionKeyLabel: "E",
@@ -1215,7 +1215,7 @@ describe("Harthmere in-world business interface v2 screens", () => {
     assert.equal(ownerPrompt.mode, "owner");
     assert.match(ownerPrompt.label, /Press E to open .* Business Board/);
     assert.match(ownerPrompt.helper, /Manage clients/);
-    const customerPrompt = getHarthmereBusinessInteractionPromptV1(state, {
+    const customerPrompt = getHarthmereBusinessInteractionPrompt(state, {
       insideBusiness: true,
       nearbyBusinessId: "business_clinic",
       interactionKeyLabel: "F",
@@ -1228,11 +1228,11 @@ describe("Harthmere in-world business interface v2 screens", () => {
   it("resolves canonical outpost dashboard coordinates to the matching business prompt", () => {
     const state = sampleSnapshot();
     const outpost =
-      HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS_V1.outpost_restaurant_redpot;
-    const outpostMetadata = HARTHMERE_BUSINESS_OUTPOSTS_V1.find(
+      HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS.outpost_restaurant_redpot;
+    const outpostMetadata = HARTHMERE_BUSINESS_OUTPOSTS.find(
       (entry) => entry.outpostId === outpost.outpostId
     )!;
-    const businessId = harthmereBusinessOutpostBusinessIdV1(outpost.outpostId);
+    const businessId = harthmereBusinessOutpostBusinessId(outpost.outpostId);
     state.businesses[businessId] = {
       ...business(businessId, outpost.businessType, outpostMetadata.ownerNpcId),
       ownerKind: "npc",
@@ -1243,7 +1243,7 @@ describe("Harthmere in-world business interface v2 screens", () => {
       ...state.businessSystems.outpostBuildings,
       [outpost.outpostId]: outpost,
     };
-    const context = nearestHarthmereBusinessDashboardWorldContextV1(
+    const context = nearestHarthmereBusinessDashboardWorldContext(
       state,
       outpost.dashboardAccessPoint.position,
       6
@@ -1257,11 +1257,11 @@ describe("Harthmere in-world business interface v2 screens", () => {
       outpost.dashboardAccessPoint.markerId
     );
     assert.deepEqual(
-      harthmereBusinessWorldContextPayloadV1(context)
+      harthmereBusinessWorldContextPayload(context)
         .businessInteractionPosition,
       outpost.dashboardAccessPoint.position
     );
-    const prompt = getHarthmereBusinessInteractionPromptV1(state, context);
+    const prompt = getHarthmereBusinessInteractionPrompt(state, context);
     assert.equal(prompt.visible, true);
     assert.match(prompt.label, /Press F to open .* Business Board/);
   });
@@ -1270,13 +1270,13 @@ describe("Harthmere in-world business interface v2 screens", () => {
     const state = sampleSnapshot();
     const outpost = JSON.parse(
       JSON.stringify(
-        HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS_V1.outpost_restaurant_redpot
+        HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS.outpost_restaurant_redpot
       )
     );
-    const outpostMetadata = HARTHMERE_BUSINESS_OUTPOSTS_V1.find(
+    const outpostMetadata = HARTHMERE_BUSINESS_OUTPOSTS.find(
       (entry) => entry.outpostId === outpost.outpostId
     )!;
-    const businessId = harthmereBusinessOutpostBusinessIdV1(outpost.outpostId);
+    const businessId = harthmereBusinessOutpostBusinessId(outpost.outpostId);
     const originalEditCount = outpost.materializationPlan.edits.length;
     outpost.materializationPlan = {
       ...outpost.materializationPlan,
@@ -1312,7 +1312,7 @@ describe("Harthmere in-world business interface v2 screens", () => {
       [outpost.outpostId]: outpost,
     };
 
-    const context = nearestHarthmereBusinessDashboardWorldContextV1(
+    const context = nearestHarthmereBusinessDashboardWorldContext(
       state,
       outpost.dashboardAccessPoint.position,
       6
@@ -1320,7 +1320,7 @@ describe("Harthmere in-world business interface v2 screens", () => {
     assert.equal(context.insideBusiness, true);
     assert.equal(context.nearbyBusinessId, businessId);
 
-    const panel = getHarthmereBusinessEmpirePanelV1(state, businessId);
+    const panel = getHarthmereBusinessEmpirePanel(state, businessId);
     assert.equal(panel.outpostBuildings.length, 1);
     assert.equal(
       (panel.outpostBuildings[0] as any).materializationPlan.editCount,
@@ -1330,7 +1330,7 @@ describe("Harthmere in-world business interface v2 screens", () => {
   });
 
   it("resolves player-owned business owner markers into dynamic in-world access boards", () => {
-    const boards = harthmereBusinessDynamicWorldBoardsV1({
+    const boards = harthmereBusinessDynamicWorldBoards({
       "business_player_shop:owner-npc": {
         markerId: "business_player_shop:owner-npc",
         plotId: "grove_crossroads_shop_lot",
@@ -1374,7 +1374,7 @@ describe("Harthmere in-world business interface v2 screens", () => {
 
   it("renders the business prompt and panel as an obvious in-business UI with keyboard and pointer affordances", () => {
     const state = sampleSnapshot();
-    const adapter = createHarthmereBusinessInterfaceAdapterV1({
+    const adapter = createHarthmereBusinessInterfaceAdapter({
       state,
       hydrated: true,
       refresh: async () => state,
@@ -1479,7 +1479,7 @@ describe("Harthmere in-world business interface v2 screens", () => {
 
   it("hides the world F business prompt while another UI owns input", () => {
     const state = sampleSnapshot();
-    beginPointerLockUnlockWhileOpenV1();
+    beginPointerLockUnlockWhileOpen();
     try {
       const html = renderToStaticMarkup(
         React.createElement(HarthmereBusinessLiveContainer, {
@@ -1499,13 +1499,13 @@ describe("Harthmere in-world business interface v2 screens", () => {
       );
       assert.equal(html.includes("Press F to open"), false);
     } finally {
-      endPointerLockUnlockWhileOpenV1();
+      endPointerLockUnlockWhileOpen();
     }
   });
 
   it("renders the customer mini-game as an accessible customer tab", () => {
     const state = sampleSnapshot();
-    const adapter = createHarthmereBusinessInterfaceAdapterV1({
+    const adapter = createHarthmereBusinessInterfaceAdapter({
       state,
       hydrated: true,
       refresh: async () => state,
@@ -1526,7 +1526,7 @@ describe("Harthmere in-world business interface v2 screens", () => {
 
   it("SSR-renders a startable customer minigame tab for every production business type", () => {
     const state = sampleSnapshot();
-    for (const typeId of HARTHMERE_BUSINESS_TYPE_ORDER_V1) {
+    for (const typeId of HARTHMERE_BUSINESS_TYPE_ORDER) {
       const businessId = `customer_ui_${typeId}`;
       state.businesses[businessId] = business(
         businessId,
@@ -1534,16 +1534,16 @@ describe("Harthmere in-world business interface v2 screens", () => {
         "player_b"
       ) as any;
     }
-    const adapter = createHarthmereBusinessInterfaceAdapterV1({
+    const adapter = createHarthmereBusinessInterfaceAdapter({
       state,
       hydrated: true,
       refresh: async () => state,
       submit: async () => ({ ok: true, economyState: state }),
     });
 
-    for (const typeId of HARTHMERE_BUSINESS_TYPE_ORDER_V1) {
+    for (const typeId of HARTHMERE_BUSINESS_TYPE_ORDER) {
       const businessId = `customer_ui_${typeId}`;
-      const miniGame = getHarthmereBusinessCustomerMiniGameV1(
+      const miniGame = getHarthmereBusinessCustomerMiniGame(
         state,
         businessId
       );
@@ -1577,7 +1577,7 @@ describe("Harthmere in-world business interface v2 screens", () => {
         html.includes("Service Board") && html.includes("Current Customer"),
         `${typeId} should render the minigame work surfaces`
       );
-      const visibleText = visibleTextFromStaticMarkupV1(html);
+      const visibleText = visibleTextFromStaticMarkup(html);
       assert.equal(
         /[a-z]+_[a-z]+/.test(visibleText),
         false,
@@ -1593,7 +1593,7 @@ describe("Harthmere in-world business interface v2 screens", () => {
 
   it("renders the overhauled arena, onboarding, queue, and reference surfaces for every business type", () => {
     const state = sampleSnapshot();
-    for (const typeId of HARTHMERE_BUSINESS_TYPE_ORDER_V1) {
+    for (const typeId of HARTHMERE_BUSINESS_TYPE_ORDER) {
       const businessId = `arena_ui_${typeId}`;
       state.businesses[businessId] = business(
         businessId,
@@ -1601,15 +1601,15 @@ describe("Harthmere in-world business interface v2 screens", () => {
         "player_b"
       ) as any;
     }
-    const adapter = createHarthmereBusinessInterfaceAdapterV1({
+    const adapter = createHarthmereBusinessInterfaceAdapter({
       state,
       hydrated: true,
       refresh: async () => state,
       submit: async () => ({ ok: true, economyState: state }),
     });
-    for (const typeId of HARTHMERE_BUSINESS_TYPE_ORDER_V1) {
+    for (const typeId of HARTHMERE_BUSINESS_TYPE_ORDER) {
       const businessId = `arena_ui_${typeId}`;
-      const miniGame = getHarthmereBusinessCustomerMiniGameV1(
+      const miniGame = getHarthmereBusinessCustomerMiniGame(
         state,
         businessId
       );
@@ -1646,7 +1646,7 @@ describe("Harthmere in-world business interface v2 screens", () => {
       }
       // Idle arena (no live session) must keep the visible text free of
       // snake_case / camelCase identifiers introduced by the overhaul.
-      const visibleText = visibleTextFromStaticMarkupV1(html);
+      const visibleText = visibleTextFromStaticMarkup(html);
       // Onboarding copy is sourced from the spec, not invented per business.
       // (Check against unescaped visible text so apostrophes/ampersands match.)
       assert.ok(
@@ -1710,7 +1710,7 @@ describe("Harthmere in-world business interface v2 screens", () => {
         notes: ["Jessa Mint walked from queue to counter."],
       },
     };
-    const adapter = createHarthmereBusinessInterfaceAdapterV1({
+    const adapter = createHarthmereBusinessInterfaceAdapter({
       state,
       hydrated: true,
       refresh: async () => state,
@@ -1778,7 +1778,7 @@ describe("Harthmere in-world business interface v2 screens", () => {
         notes: [],
       },
     };
-    const adapter = createHarthmereBusinessInterfaceAdapterV1({
+    const adapter = createHarthmereBusinessInterfaceAdapter({
       state,
       hydrated: true,
       refresh: async () => state,
@@ -1814,7 +1814,7 @@ describe("Harthmere in-world business interface v2 screens", () => {
       )
       .replace(/\\/g, "/");
     const initialState = sampleSnapshot();
-    const initialAdapter = createHarthmereBusinessInterfaceAdapterV1({
+    const initialAdapter = createHarthmereBusinessInterfaceAdapter({
       state: initialState,
       hydrated: true,
       refresh: async () => initialState,
@@ -1869,7 +1869,7 @@ describe("Harthmere in-world business interface v2 screens", () => {
         notes: [],
       },
     } as any;
-    const activeAdapter = createHarthmereBusinessInterfaceAdapterV1({
+    const activeAdapter = createHarthmereBusinessInterfaceAdapter({
       state: activeState,
       hydrated: true,
       refresh: async () => activeState,
@@ -1969,14 +1969,14 @@ describe("Harthmere in-world business interface v2 screens", () => {
           name: "business-panel-browser-stubs",
           setup(pluginBuild) {
             pluginBuild.onResolve(
-              { filter: /business_customer_simulator_v1$/ },
+              { filter: /business_customer_simulator$/ },
               () => ({
                 path: "business-customer-simulator",
                 namespace: "business-panel-test",
               })
             );
             pluginBuild.onResolve({ filter: /^@\// }, (args) => ({
-              path: resolveRepoAliasForEsbuildV1(args.path),
+              path: resolveRepoAliasForEsbuild(args.path),
             }));
             pluginBuild.onResolve({ filter: /PointerLockContext$/ }, () => ({
               path: "pointer-lock-context",
@@ -1990,7 +1990,7 @@ describe("Harthmere in-world business interface v2 screens", () => {
               })
             );
             pluginBuild.onResolve(
-              { filter: /harthmereBikkieVisualRenderingV1$/ },
+              { filter: /harthmereBikkieVisualRendering$/ },
               () => ({
                 path: "bikkie-visual-rendering",
                 namespace: "business-panel-test",
@@ -2021,8 +2021,8 @@ describe("Harthmere in-world business interface v2 screens", () => {
               },
               () => ({
                 contents: [
-                  "export function openPointerLockUnlockWhileOpenV1() {}",
-                  "export function closePointerLockUnlockWhileOpenV1() {}",
+                  "export function openPointerLockUnlockWhileOpen() {}",
+                  "export function closePointerLockUnlockWhileOpen() {}",
                 ].join("\n"),
                 loader: "js",
               })
@@ -2034,10 +2034,10 @@ describe("Harthmere in-world business interface v2 screens", () => {
               },
               () => ({
                 contents: [
-                  "export const harthmereBikkieVisualGlyphStyleV1 = {};",
-                  "export const harthmereBikkieVisualImageStyleV1 = {};",
-                  "export function harthmereBikkieVisualImageUrlV1() { return undefined; }",
-                  "export function harthmereBikkieVisualTileStyleV1() { return {}; }",
+                  "export const harthmereBikkieVisualGlyphStyle = {};",
+                  "export const harthmereBikkieVisualImageStyle = {};",
+                  "export function harthmereBikkieVisualImageUrl() { return undefined; }",
+                  "export function harthmereBikkieVisualTileStyle() { return {}; }",
                 ].join("\n"),
                 loader: "js",
               })
@@ -2049,7 +2049,7 @@ describe("Harthmere in-world business interface v2 screens", () => {
               },
               () => ({
                 contents:
-                  "export function createHarthmereBusinessMiniGameDecisionForOfferV1(offer) { return { actionId: offer?.actionId ?? 'test_action' }; }",
+                  "export function createHarthmereBusinessMiniGameDecisionForOffer(offer) { return { actionId: offer?.actionId ?? 'test_action' }; }",
                 loader: "js",
               })
             );
@@ -2060,7 +2060,7 @@ describe("Harthmere in-world business interface v2 screens", () => {
               },
               () => ({
                 contents:
-                  "export function formatHarthmereBusinessPlayerWarningV1(value) { return String(value ?? '').replace(/[_:-]+/g, ' '); }",
+                  "export function formatHarthmereBusinessPlayerWarning(value) { return String(value ?? '').replace(/[_:-]+/g, ' '); }",
                 loader: "js",
               })
             );
@@ -2135,16 +2135,16 @@ describe("Harthmere in-world business interface v2 screens", () => {
 
   it("formats backend warnings into player-facing text without snake case or camel case", () => {
     const messages = [
-      formatHarthmereBusinessPlayerWarningV1(
+      formatHarthmereBusinessPlayerWarning(
         "economy_rejected:business_item_required:worker_meal"
       ),
-      formatHarthmereBusinessPlayerWarningV1(
+      formatHarthmereBusinessPlayerWarning(
         "economy_rejected:business_branch_requires_tier_3"
       ),
-      formatHarthmereBusinessPlayerWarningV1(
+      formatHarthmereBusinessPlayerWarning(
         "economy_warning:employee_morale_failure:rest_required"
       ),
-      formatHarthmereBusinessPlayerWarningV1(
+      formatHarthmereBusinessPlayerWarning(
         "jobs_board_rejected:unknown_requirement_item:repair_part"
       ),
     ];
@@ -2190,26 +2190,26 @@ describe("Harthmere in-world business interface v2 screens", () => {
       employeePath: [{ x: 1, y: 1 }],
       createdAtMs: 2,
     } as any;
-    const dashboard = getHarthmereOwnerDashboardV1(state, "business_food");
+    const dashboard = getHarthmereOwnerDashboard(state, "business_food");
     assert.equal(dashboard.metrics.length, 4);
     assert.ok(dashboard.todos.some((todo) => todo.id === "active_orders"));
-    const shopfront = getHarthmereBusinessShopfrontV1(state, "business_food");
+    const shopfront = getHarthmereBusinessShopfront(state, "business_food");
     assert.equal(
       shopfront.inventory.find((item) => item.itemId === "worker_meal")
         ?.priceGold,
       30
     );
-    const board = getHarthmereContractBoardV1(state, "business_food");
+    const board = getHarthmereContractBoard(state, "business_food");
     assert.equal(board.open[0].contractId, "contract_1");
     assert.equal(board.active[0].contractId, "contract_2");
-    const finance = getHarthmereBusinessFinancePanelV1(state, "business_food");
+    const finance = getHarthmereBusinessFinancePanel(state, "business_food");
     assert.equal(finance.summary.bankBalanceGold, 900);
-    const staff = getHarthmereBusinessStaffPanelV1(state, "business_food");
+    const staff = getHarthmereBusinessStaffPanel(state, "business_food");
     assert.equal(staff.payrollDueGold, 12);
     assert.equal(staff.canHire, true);
     assert.equal(staff.candidates[0].candidateId, "candidate_1");
     assert.equal(staff.recentTaskRuns[0].taskRunId, "task_1");
-    const compliance = getHarthmereBusinessCompliancePanelV1(
+    const compliance = getHarthmereBusinessCompliancePanel(
       state,
       "business_food"
     );
@@ -2220,7 +2220,7 @@ describe("Harthmere in-world business interface v2 screens", () => {
   it("renders owner open controls and customer buy controls in the business panel", () => {
     const ownerState = sampleSnapshot();
     ownerState.businesses.business_food.status = "draft";
-    const ownerAdapter = createHarthmereBusinessInterfaceAdapterV1({
+    const ownerAdapter = createHarthmereBusinessInterfaceAdapter({
       state: ownerState,
       hydrated: true,
       refresh: async () => ownerState,
@@ -2248,7 +2248,7 @@ describe("Harthmere in-world business interface v2 screens", () => {
     assert.ok(staffHtml.includes("Fire"));
 
     const customerState = sampleSnapshot();
-    const customerAdapter = createHarthmereBusinessInterfaceAdapterV1({
+    const customerAdapter = createHarthmereBusinessInterfaceAdapter({
       state: customerState,
       hydrated: true,
       refresh: async () => customerState,
@@ -2297,10 +2297,10 @@ describe("Harthmere in-world business interface v2 screens", () => {
 
   it("builds tailored operation screens for every business type without dummy runtime records", () => {
     const state = sampleSnapshot();
-    for (const typeId of HARTHMERE_BUSINESS_TYPE_ORDER_V1) {
+    for (const typeId of HARTHMERE_BUSINESS_TYPE_ORDER) {
       const id = `screen_${typeId}`;
       state.businesses[id] = business(id, typeId, "player_a") as any;
-      const screen = getHarthmereBusinessOperationScreenV1(state, id);
+      const screen = getHarthmereBusinessOperationScreen(state, id);
       assert.equal(screen.typeId, typeId);
       assert.ok(
         screen.ownerActions.length > 0,
@@ -2311,7 +2311,7 @@ describe("Harthmere in-world business interface v2 screens", () => {
         `${typeId} should expose customer actions`
       );
       assert.ok(Object.keys(screen.systemRecords).includes("serviceQuests"));
-      const miniGame = getHarthmereBusinessCustomerMiniGameV1(state, id);
+      const miniGame = getHarthmereBusinessCustomerMiniGame(state, id);
       assert.equal(miniGame.typeId, typeId);
       assert.ok(
         miniGame.offers.length >= 3,
@@ -2325,7 +2325,7 @@ describe("Harthmere in-world business interface v2 screens", () => {
         miniGame.progressPath.length >= 4,
         `${typeId} should expose a scale path`
       );
-      const report = getHarthmereBusinessGrowthReportV1(state, id);
+      const report = getHarthmereBusinessGrowthReport(state, id);
       assert.equal(report.typeId, typeId);
       assert.ok(
         report.bottleneck.length > 10,
@@ -2341,7 +2341,7 @@ describe("Harthmere in-world business interface v2 screens", () => {
 
   it("renders PDF-aligned daily report, bottleneck, and customer-specific overview copy", () => {
     const state = sampleSnapshot();
-    const adapter = createHarthmereBusinessInterfaceAdapterV1({
+    const adapter = createHarthmereBusinessInterfaceAdapter({
       state,
       hydrated: true,
       refresh: async () => state,
@@ -2403,19 +2403,19 @@ describe("Harthmere in-world business interface v2 screens", () => {
       unitPriceGold: 30,
       status: "open",
     } as any;
-    const townHall = getHarthmereTownHallPanelV1(state);
+    const townHall = getHarthmereTownHallPanel(state);
     assert.equal(townHall.towns.length, 1);
-    const market = getHarthmereMarketplacePanelV1(state);
+    const market = getHarthmereMarketplacePanel(state);
     assert.equal(market.openOrders[0].orderId, "order_1");
     assert.equal(market.regionalPrices.worker_meal, 20);
-    const guild = getHarthmereGuildBusinessPanelV1(state, "guild_1");
+    const guild = getHarthmereGuildBusinessPanel(state, "guild_1");
     assert.equal(guild.guildBusinesses[0].businessId, "business_guild_forge");
     assert.deepEqual(guild.permissions.business_guild_forge, [
       "accountant",
       "inventory_manager",
     ]);
 
-    const adapter = createHarthmereBusinessInterfaceAdapterV1({
+    const adapter = createHarthmereBusinessInterfaceAdapter({
       state,
       hydrated: true,
       refresh: async () => state,
@@ -2437,12 +2437,12 @@ describe("Harthmere in-world business interface v2 screens", () => {
 
   it("marks field-service customer orders so accepting them can create map and quest-board todos", async () => {
     const state = sampleSnapshot();
-    const action = getHarthmereBusinessServiceActionsV1(
+    const action = getHarthmereBusinessServiceActions(
       "medical_doctor",
       "customer"
     ).find((entry) => entry.actionId === "request_care")!;
-    assert.equal(requiresHarthmereFieldServiceQuestV1(action), true);
-    const spec = getHarthmereBusinessFieldServiceSpecV1(
+    assert.equal(requiresHarthmereFieldServiceQuest(action), true);
+    const spec = getHarthmereBusinessFieldServiceSpec(
       state.businesses.business_clinic,
       action,
       { targetId: "patient_home_1" }
@@ -2454,7 +2454,7 @@ describe("Harthmere in-world business interface v2 screens", () => {
       operation: string;
       payload: Record<string, unknown>;
     }> = [];
-    const adapter = createHarthmereBusinessInterfaceAdapterV1({
+    const adapter = createHarthmereBusinessInterfaceAdapter({
       state,
       hydrated: true,
       refresh: async () => state,
@@ -2502,10 +2502,10 @@ describe("Harthmere in-world business interface v2 screens", () => {
         dueAtMs: 999,
       },
     };
-    const quests = getHarthmereBusinessServiceQuestsV1(state, "business_food");
+    const quests = getHarthmereBusinessServiceQuests(state, "business_food");
     assert.equal(quests.length, 1);
     assert.equal(quests[0].mapMarkerId, "inn_room_2");
-    const adapter = createHarthmereBusinessInterfaceAdapterV1({
+    const adapter = createHarthmereBusinessInterfaceAdapter({
       state,
       hydrated: true,
       refresh: async () => state,
@@ -2527,14 +2527,14 @@ describe("Harthmere in-world business interface v2 screens", () => {
 describe("Harthmere business interface backend quest handoff", () => {
   it("creates a backend service quest when a field-service contract is accepted", function () {
     this.timeout(20_000);
-    const authority = require("../../../../shared/harthmere/mmo_economy_authority_v1");
-    let economy = authority.defaultHarthmereProductionEconomyStateV1();
+    const authority = require("../../../../shared/harthmere/mmo_economy_authority");
+    let economy = authority.defaultHarthmereProductionEconomyState();
     const context = {
       actorGold: 5000,
       actorInventoryItems: {},
       allowNpcAdministration: true,
     };
-    let result = authority.reduceHarthmereEconomyMutationV1(
+    let result = authority.reduceHarthmereEconomyMutation(
       economy,
       {
         requestId: "register_repair_business",
@@ -2552,7 +2552,7 @@ describe("Harthmere business interface backend quest handoff", () => {
     );
     economy = result.economy;
     const businessId = Object.keys(economy.businesses)[0];
-    result = authority.reduceHarthmereEconomyMutationV1(
+    result = authority.reduceHarthmereEconomyMutation(
       economy,
       {
         requestId: "issue_repair_license",
@@ -2566,7 +2566,7 @@ describe("Harthmere business interface backend quest handoff", () => {
       context
     );
     economy = result.economy;
-    result = authority.reduceHarthmereEconomyMutationV1(
+    result = authority.reduceHarthmereEconomyMutation(
       economy,
       {
         requestId: "open_repair_business",
@@ -2580,7 +2580,7 @@ describe("Harthmere business interface backend quest handoff", () => {
       context
     );
     economy = result.economy;
-    result = authority.reduceHarthmereEconomyMutationV1(
+    result = authority.reduceHarthmereEconomyMutation(
       economy,
       {
         requestId: "create_repair_order",
@@ -2610,7 +2610,7 @@ describe("Harthmere business interface backend quest handoff", () => {
     );
     economy = result.economy;
     const contractId = Object.keys(economy.contracts)[0];
-    result = authority.reduceHarthmereEconomyMutationV1(
+    result = authority.reduceHarthmereEconomyMutation(
       economy,
       {
         requestId: "accept_repair_order",

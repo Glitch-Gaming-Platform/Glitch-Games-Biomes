@@ -1,18 +1,18 @@
 import { DialogButton } from "@/client/components/system/DialogButton";
 import { Tooltipped } from "@/client/components/system/Tooltipped";
 import {
-  blobToBase64V1,
-  startAzureSpeechWavRecorderV1,
-  type AzureSpeechWavRecorderV1,
+  blobToBase64,
+  startAzureSpeechWavRecorder,
+  type AzureSpeechWavRecorder,
 } from "@/client/components/system/speechCapture";
 import {
-  browserSupportsNpcSpeechInputV1,
-  npcSpeechButtonTooltipV1,
-  npcSpeechEmptyTranscriptMessageV1,
-  npcSpeechRecordingRemainingSecondsV1,
-  npcSpeechRecordingTimeoutProgressV1,
-  npcSpeechStatusActiveV1,
-  type NpcSpeechButtonStateV1,
+  browserSupportsNpcSpeechInput,
+  npcSpeechButtonTooltip,
+  npcSpeechEmptyTranscriptMessage,
+  npcSpeechRecordingRemainingSeconds,
+  npcSpeechRecordingTimeoutProgress,
+  npcSpeechStatusActive,
+  type NpcSpeechButtonState,
 } from "@/client/components/system/npcSpeechInputState";
 import type {
   SpeechToTextRequest,
@@ -35,28 +35,28 @@ import React, {
   useState,
 } from "react";
 
-export const NPC_SPEECH_STOP_RECORDING_EVENT_V1 =
-  "biomes:npc-speech-stop-recording-v1";
-export const NPC_SPEECH_MAX_RECORDING_MS_V1 = 15_000;
+export const NPC_SPEECH_STOP_RECORDING_EVENT =
+  "biomes:npc-speech-stop-recording";
+export const NPC_SPEECH_MAX_RECORDING_MS = 15_000;
 
 export const NpcSpeechInputButton: React.FunctionComponent<{
   disabled?: boolean;
   language?: string;
   maxRecordingMs?: number;
-  onStateChange?: (state: NpcSpeechButtonStateV1) => void;
+  onStateChange?: (state: NpcSpeechButtonState) => void;
   onTranscript: (text: string) => unknown;
 }> = ({
   disabled,
   language,
-  maxRecordingMs = NPC_SPEECH_MAX_RECORDING_MS_V1,
+  maxRecordingMs = NPC_SPEECH_MAX_RECORDING_MS,
   onStateChange,
   onTranscript,
 }) => {
-  const recorderRef = useRef<AzureSpeechWavRecorderV1 | undefined>();
+  const recorderRef = useRef<AzureSpeechWavRecorder | undefined>();
   const recordingTimeoutRef = useRef<number | undefined>();
   const recordingStartedAtRef = useRef<number | undefined>();
-  const stateRef = useRef<NpcSpeechButtonStateV1>("idle");
-  const [state, setState] = useState<NpcSpeechButtonStateV1>("idle");
+  const stateRef = useRef<NpcSpeechButtonState>("idle");
+  const [state, setState] = useState<NpcSpeechButtonState>("idle");
   const [error, setError] = useState<string | undefined>();
   const [remainingRecordingMs, setRemainingRecordingMs] =
     useState(maxRecordingMs);
@@ -68,7 +68,7 @@ export const NpcSpeechInputButton: React.FunctionComponent<{
 
   const supported = useMemo(
     () =>
-      browserSupportsNpcSpeechInputV1({
+      browserSupportsNpcSpeechInput({
         navigator: typeof navigator !== "undefined" ? navigator : undefined,
         window: typeof window !== "undefined" ? window : undefined,
       }),
@@ -87,7 +87,7 @@ export const NpcSpeechInputButton: React.FunctionComponent<{
     })
       .then((status) => {
         if (!disposed) {
-          setSpeechActive(npcSpeechStatusActiveV1(status));
+          setSpeechActive(npcSpeechStatusActive(status));
         }
       })
       .catch((error) => {
@@ -149,7 +149,7 @@ export const NpcSpeechInputButton: React.FunctionComponent<{
     setState("transcribing");
     try {
       const recording = await recorder.stop();
-      const audioBase64 = await blobToBase64V1(recording.blob);
+      const audioBase64 = await blobToBase64(recording.blob);
       const res = await jsonPost<SpeechToTextResponse, SpeechToTextRequest>(
         "/api/voices/speech_to_text",
         {
@@ -162,7 +162,7 @@ export const NpcSpeechInputButton: React.FunctionComponent<{
       const text = res.text.trim();
       if (!text) {
         setState("error");
-        setError(npcSpeechEmptyTranscriptMessageV1(res.unavailableReason));
+        setError(npcSpeechEmptyTranscriptMessage(res.unavailableReason));
         return;
       }
       setState("idle");
@@ -181,12 +181,12 @@ export const NpcSpeechInputButton: React.FunctionComponent<{
       }
     };
     window.addEventListener(
-      NPC_SPEECH_STOP_RECORDING_EVENT_V1,
+      NPC_SPEECH_STOP_RECORDING_EVENT,
       onStopRecording
     );
     return () => {
       window.removeEventListener(
-        NPC_SPEECH_STOP_RECORDING_EVENT_V1,
+        NPC_SPEECH_STOP_RECORDING_EVENT,
         onStopRecording
       );
     };
@@ -213,7 +213,7 @@ export const NpcSpeechInputButton: React.FunctionComponent<{
         return;
       }
       setError(undefined);
-      recorderRef.current = await startAzureSpeechWavRecorderV1({
+      recorderRef.current = await startAzureSpeechWavRecorder({
         deviceId: microphoneDeviceId || undefined,
       });
       recordingStartedAtRef.current = Date.now();
@@ -250,14 +250,14 @@ export const NpcSpeechInputButton: React.FunctionComponent<{
     );
   const remainingSeconds =
     state === "recording"
-      ? npcSpeechRecordingRemainingSecondsV1({
+      ? npcSpeechRecordingRemainingSeconds({
           maxRecordingMs,
           remainingMs: remainingRecordingMs,
         })
       : undefined;
   const timeoutProgress =
     state === "recording"
-      ? npcSpeechRecordingTimeoutProgressV1({
+      ? npcSpeechRecordingTimeoutProgress({
           maxRecordingMs,
           remainingMs: remainingRecordingMs,
         })
@@ -273,17 +273,17 @@ export const NpcSpeechInputButton: React.FunctionComponent<{
   return (
     <Tooltipped
       wrapperExtraClass="mx-auto"
-      tooltip={npcSpeechButtonTooltipV1({
+      tooltip={npcSpeechButtonTooltip({
         error,
         supported,
         state,
       })}
     >
       <span
-        data-npc-speech-input-button-v1={state}
-        data-npc-speech-input-active-v1={speechActive ? "true" : "false"}
-        data-npc-speech-input-remaining-seconds-v1={remainingSeconds}
-        data-npc-speech-input-timeout-progress-v1={timeoutProgress.toFixed(2)}
+        data-npc-speech-input-button={state}
+        data-npc-speech-input-active={speechActive ? "true" : "false"}
+        data-npc-speech-input-remaining-seconds={remainingSeconds}
+        data-npc-speech-input-timeout-progress={timeoutProgress.toFixed(2)}
       >
         <DialogButton
           size="small"

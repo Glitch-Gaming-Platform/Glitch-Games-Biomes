@@ -28,7 +28,7 @@ export function buffExpirationTime(buff: Buff) {
   return buff.start_time + buffDuration(buff);
 }
 
-// GLITCH_SNAPSHOT_BUFF_TYPE_COMPAT_V1:
+// GLITCH_SNAPSHOT_BUFF_TYPE_COMPAT:
 // Snapshot data can contain legacy active buff item ids whose biscuit exists but
 // no longer carries the newer Glitch `buffType` field. The HUD/render loop must
 // not crash on those old buffs. Keep the hard item lookup for real missing item
@@ -42,7 +42,7 @@ function warnUnknownSnapshotBuffType(buff: Buff) {
   }
   unknownSnapshotBuffTypeWarnings.add(buff.item_id);
   const item = anItem(buff.item_id);
-  log.warn("GLITCH_SNAPSHOT_BUFF_TYPE_COMPAT_V1 unknown buff type fallback", {
+  log.warn("GLITCH_SNAPSHOT_BUFF_TYPE_COMPAT unknown buff type fallback", {
     buffItemId: buff.item_id,
     fromId: buff.from_id,
     displayName: item.displayName,

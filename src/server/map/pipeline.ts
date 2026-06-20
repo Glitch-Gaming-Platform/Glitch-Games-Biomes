@@ -125,7 +125,7 @@ export class MapPipeline {
         if (change.kind === "update" && this.affectsMap(change.entity)) {
           const entity = this.replica.table.get(change.entity.id);
           if (Entity.has(entity, "box", "shard_seed")) {
-            this.changes.add(entity.box.v0);
+            this.changes.add(entity.box);
           }
         }
       }

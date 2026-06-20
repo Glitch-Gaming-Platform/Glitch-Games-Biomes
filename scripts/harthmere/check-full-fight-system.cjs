@@ -5,7 +5,7 @@ const root = process.argv[2] || process.cwd();
 const combat = path.join(root, "src/client/components/challenges/LocalDevHarthmereCombat.tsx");
 const text = fs.readFileSync(combat, "utf8");
 const checks = [
-  ["ruleset revision", text.includes('"harthmere-full-fight-system-v1"')],
+  ["ruleset revision", text.includes('"harthmere-full-fight-system"')],
   ["contact hit resolver", text.includes("function rollHarthmereContactHitResult(")],
   ["melee contact avoids miss/dodge", /deliberately never returns miss\/dodge\/parry/.test(text)],
   ["applyAttack accepts forcedHitResult", /forcedHitResult\?: HitResult/.test(text)],

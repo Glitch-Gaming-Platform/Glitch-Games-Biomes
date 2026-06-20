@@ -14,7 +14,7 @@ function check(name, condition) {
   if (!condition) ok = false;
 }
 
-check("fix marker exists", text.includes("harthmere-fix-bad-inline-const-v1"));
+check("fix marker exists", text.includes("harthmere-fix-bad-inline-const"));
 check("no invalid const after attackerOffset/targetOffset", !/attackerOffset,\s*\n\s*targetOffset,\s*\n\s*\/\/\s*harthmere-no-spark-basic-event-marker\s*\n\s*const\s+harthmerePhysicalAttack/.test(text));
 check("no harthmereEventAttackerClipPriority reference remains", !text.includes("harthmereEventAttackerClipPriority"));
 check("no harthmerePhysicalAttack reference remains", !/[^A-Z_]harthmerePhysicalAttack/.test(text));

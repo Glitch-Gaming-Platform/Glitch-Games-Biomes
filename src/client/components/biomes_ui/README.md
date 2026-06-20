@@ -102,7 +102,7 @@ correct cues via `cuesForStep(target, trigger)`. For example, the
 
 The mapping lives in `tutorial/tutorialMissionMap.ts` and is verified
 end-to-end by `scripts/harthmere/check-biomes-ui-tutorial-runtime.cjs`
-against the live `SNAPSHOT_MISSIONS_V71` definitions.
+against the live `SNAPSHOT_MISSIONS` definitions.
 
 ## Keyboard navigation
 
@@ -127,7 +127,7 @@ import { TutorialDirector } from "@/client/components/biomes_ui/tutorial/Tutoria
 
 function YourHUD() {
   const [activeTab, setActiveTab] = useState<TabKey | null>(null);
-  const missionState = useSnapshotMissionStateV71();
+  const missionState = useSnapshotMissionState();
   const currentStep = pickCurrentStep(missionState); // see TutorialDirector.tsx
 
   return (
@@ -196,13 +196,13 @@ when a quest, jobs-board marker, business marker, or helper landmark has a
 world position. The map tab should receive the same resolved
 `recommendedPosition` used by the HUD/minimap, active destination/quest pointer,
 server authority, and 3D marker. See
-`docs/harthmere/HARTHMERE_PRODUCTION_TERRAIN_PLACEMENT_MAP_V1.md` for the
+`docs/harthmere/HARTHMERE_PRODUCTION_TERRAIN_PLACEMENT_MAP.md` for the
 regeneration command and resolver APIs.
 
 Harthmere player-owned business outposts are map markers too. Their
 canonical marker data comes from the backend-generated business outpost
-records in `business_customer_simulator_v1.ts`, not from hand-placed
-client map percentages. `harthmereBusinessMapMarkersV1.ts` adapts those
+records in `business_customer_simulator.ts`, not from hand-placed
+client map percentages. `harthmereBusinessMapMarkers.ts` adapts those
 records into BiomesUI map landmarks with `kind: "business"`, stable
 world positions at the public entrance, player-facing labels, and
 descriptions that tell the player to go inside for service or shifts.
@@ -226,12 +226,12 @@ The canonical marker should point to the public entrance or approach path,
 not the center of a wall, roof, or decorative helper prop.
 
 The HUD minimap is a separate surface from the BiomesUI map. It uses
-`harthmere_business_minimap_pins_v1.ts` to project nearby business
+`harthmere_business_minimap_pins.ts` to project nearby business
 outposts from the same canonical marker source, nearest-first with a
 small pin budget so clustered districts stay readable. Edge-clipped
 business pins remain visible on the minimap edge instead of disappearing.
-Coverage lives in `mapAdapterV141.test.ts` and
-`harthmere_business_minimap_pins_v1.test.ts`; keep those tests updated
+Coverage lives in `mapAdapter.test.ts` and
+`harthmere_business_minimap_pins.test.ts`; keep those tests updated
 when adding, moving, hiding, or renaming business outposts.
 
 ## Mobile

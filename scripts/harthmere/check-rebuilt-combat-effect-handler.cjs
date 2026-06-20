@@ -14,7 +14,7 @@ function check(label, condition) {
   if (!condition) ok = false;
 }
 
-const handlerStart = renderer.indexOf("harthmere-rebuilt-combat-effect-handler-v1");
+const handlerStart = renderer.indexOf("harthmere-rebuilt-combat-effect-handler");
 const handlerEnd = renderer.indexOf("\n  private registerCombatLife(", handlerStart);
 const handler = handlerStart >= 0 && handlerEnd > handlerStart ? renderer.slice(handlerStart, handlerEnd) : "";
 

@@ -1,37 +1,37 @@
-export interface HarthmereRedisReadPrimaryV1 {
+export interface HarthmereRedisReadPrimary {
   get: (key: string) => Promise<string | null>;
   mget?: (...keys: string[]) => Promise<Array<string | null>>;
 }
 
-const globalForHarthmereLiveModeReadInflightV1 =
+const globalForHarthmereLiveModeReadInflight =
   globalThis as typeof globalThis & {
-    __harthmereLiveModeReadInflightV1?: Map<
+    __harthmereLiveModeReadInflight?: Map<
       string,
       Promise<Array<string | null>>
     >;
   };
 
-function harthmereLiveModeReadInflightV1() {
-  return (globalForHarthmereLiveModeReadInflightV1.__harthmereLiveModeReadInflightV1 ??=
+function harthmereLiveModeReadInflight() {
+  return (globalForHarthmereLiveModeReadInflight.__harthmereLiveModeReadInflight ??=
     new Map());
 }
 
-export function harthmereLiveModeReadInflightKeyV1(keys: readonly string[]) {
+export function harthmereLiveModeReadInflightKey(keys: readonly string[]) {
   return keys.join("\u0000");
 }
 
-export async function readHarthmereRedisStringsV1(
-  primary: HarthmereRedisReadPrimaryV1,
+export async function readHarthmereRedisStrings(
+  primary: HarthmereRedisReadPrimary,
   keys: readonly string[]
 ): Promise<Array<string | null>> {
   if (keys.length === 0) return [];
-  const inflight = harthmereLiveModeReadInflightV1();
-  const inflightKey = harthmereLiveModeReadInflightKeyV1(keys);
+  const inflight = harthmereLiveModeReadInflight();
+  const inflightKey = harthmereLiveModeReadInflightKey(keys);
   const existing = inflight.get(inflightKey);
   if (existing) {
     return existing;
   }
-  const readPromise = readHarthmereRedisStringsUncachedV1(primary, keys);
+  const readPromise = readHarthmereRedisStringsUncached(primary, keys);
   inflight.set(inflightKey, readPromise);
   try {
     return await readPromise;
@@ -42,8 +42,8 @@ export async function readHarthmereRedisStringsV1(
   }
 }
 
-async function readHarthmereRedisStringsUncachedV1(
-  primary: HarthmereRedisReadPrimaryV1,
+async function readHarthmereRedisStringsUncached(
+  primary: HarthmereRedisReadPrimary,
   keys: readonly string[]
 ): Promise<Array<string | null>> {
   if (typeof primary.mget === "function") {
@@ -56,12 +56,12 @@ async function readHarthmereRedisStringsUncachedV1(
   return Promise.all(keys.map((key) => primary.get(key)));
 }
 
-export async function readHarthmerePlayerAndSharedStateStringsV1(
-  primary: HarthmereRedisReadPrimaryV1,
+export async function readHarthmerePlayerAndSharedStateStrings(
+  primary: HarthmereRedisReadPrimary,
   playerStateKey: string,
   sharedStateKey: string
 ) {
-  const [rawState, rawSharedState] = await readHarthmereRedisStringsV1(
+  const [rawState, rawSharedState] = await readHarthmereRedisStrings(
     primary,
     [playerStateKey, sharedStateKey]
   );

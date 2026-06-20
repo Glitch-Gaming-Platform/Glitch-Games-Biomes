@@ -69,7 +69,7 @@ function tensorCompleted(
   box: ReadonlyBox
 ) {
   for (const { tensorPos, tensorEntry } of scanGroupTensor(tensor)) {
-    const worldPos = add(tensorPos, box.v0);
+    const worldPos = add(tensorPos, box);
     const shardId = Shards.voxelShard(...worldPos);
     const blockPos = Shards.blockPos(...worldPos);
     const editsBlock = resources.get("/terrain/volume", shardId);
@@ -126,7 +126,7 @@ export function isBlueprintEmpty(
   }
 
   for (const { tensorPos } of scanGroupTensor(data.tensor)) {
-    const worldPos = add(tensorPos, data.box.v0);
+    const worldPos = add(tensorPos, data.box);
     if (isTerrainAtPosition(resources, worldPos)) {
       return false;
     }
@@ -285,7 +285,7 @@ export function getCursorBlueprintVoxel(
     if (pos[1] !== blueprint.activeLayer) {
       return;
     }
-    const worldPos = add(pos, data.box.v0);
+    const worldPos = add(pos, data.box);
     const aabb: AABB = [worldPos, add(worldPos, [1, 1, 1])];
     const intersection = intersectRayAabb(from, dir, aabb);
     if (!intersection) {
@@ -357,7 +357,7 @@ export function doCreateCraftingStation(
   if (tweaks.building.eagerBlocks) {
     // Clear eager blocks.
     if (data) {
-      for (const shardId of Shards.shardsForAABB(data.box.v0, data.box.v1)) {
+      for (const shardId of Shards.shardsForAABB(data.box, data.box)) {
         resources.update("/terrain/eager_edits", shardId, (val) => {
           val.edits = [];
           return val;

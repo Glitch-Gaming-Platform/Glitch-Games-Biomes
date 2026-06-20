@@ -13,7 +13,7 @@ export class LazySpatialIndex extends BaseSpatialIndex {
     const id = change.entity.id;
     if (change.entity.box()) {
       const box = change.entity.box()!;
-      this.updateVolume(id, [box.v0, box.v1]);
+      this.updateVolume(id, [box, box]);
     } else if (change.entity.position()) {
       this.updatePosition(id, change.entity.position()!.v);
     }

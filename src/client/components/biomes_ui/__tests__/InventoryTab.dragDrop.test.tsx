@@ -4,15 +4,15 @@ import assert from "assert";
 import * as React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import {
-  BIOMES_INVENTORY_DRAG_MIME_V1,
-  BIOMES_INVENTORY_HOTBAR_SLOT_COUNT_V1,
+  BIOMES_INVENTORY_DRAG_MIME,
+  BIOMES_INVENTORY_HOTBAR_SLOT_COUNT,
   InventoryTab,
-  canMoveInventoryItemToHotbarV1,
-  parseInventoryDragRefV1,
-  readInventoryDragRefFromTransferV1,
-  resolveInventoryHotbarDropV1,
-  serializeInventoryDragRefV1,
-  writeInventoryDragRefToTransferV1,
+  canMoveInventoryItemToHotbar,
+  parseInventoryDragRef,
+  readInventoryDragRefFromTransfer,
+  resolveInventoryHotbarDrop,
+  serializeInventoryDragRef,
+  writeInventoryDragRefToTransfer,
 } from "../tabs/InventoryTab";
 
 class FakeDataTransfer {
@@ -34,26 +34,26 @@ describe("Biomes UI inventory hotbar drag and drop", () => {
     const transfer = new FakeDataTransfer();
     const ref = { kind: "item" as const, idx: 7, key: "harthmere:abc" };
 
-    writeInventoryDragRefToTransferV1(transfer, ref);
+    writeInventoryDragRefToTransfer(transfer, ref);
 
     assert.equal(transfer.effectAllowed, "move");
     assert.equal(
-      transfer.getData(BIOMES_INVENTORY_DRAG_MIME_V1),
-      serializeInventoryDragRefV1(ref)
+      transfer.getData(BIOMES_INVENTORY_DRAG_MIME),
+      serializeInventoryDragRef(ref)
     );
-    assert.deepEqual(readInventoryDragRefFromTransferV1(transfer), ref);
+    assert.deepEqual(readInventoryDragRefFromTransfer(transfer), ref);
     assert.deepEqual(
-      parseInventoryDragRefV1(
-        `biomes-inventory-ref:${serializeInventoryDragRefV1(ref)}`
+      parseInventoryDragRef(
+        `biomes-inventory-ref:${serializeInventoryDragRef(ref)}`
       ),
       ref
     );
   });
 
   it("only resolves movable backpack or hotbar refs into hotbar slots", () => {
-    assert.equal(canMoveInventoryItemToHotbarV1(null), false);
+    assert.equal(canMoveInventoryItemToHotbar(null), false);
     assert.equal(
-      canMoveInventoryItemToHotbarV1({
+      canMoveInventoryItemToHotbar({
         id: "gold",
         label: "Gold",
         icon: "◉",
@@ -62,7 +62,7 @@ describe("Biomes UI inventory hotbar drag and drop", () => {
       false
     );
     assert.equal(
-      canMoveInventoryItemToHotbarV1({
+      canMoveInventoryItemToHotbar({
         id: "rough_stone",
         label: "Rough Stone",
         icon: "□",
@@ -71,7 +71,7 @@ describe("Biomes UI inventory hotbar drag and drop", () => {
       true
     );
     assert.equal(
-      canMoveInventoryItemToHotbarV1({
+      canMoveInventoryItemToHotbar({
         id: "tutorial_apron",
         label: "Tutorial Apron",
         icon: "🥼",
@@ -81,7 +81,7 @@ describe("Biomes UI inventory hotbar drag and drop", () => {
       false
     );
     assert.equal(
-      canMoveInventoryItemToHotbarV1({
+      canMoveInventoryItemToHotbar({
         id: "muckwad",
         label: "Muckwad",
         icon: "◼",
@@ -90,42 +90,42 @@ describe("Biomes UI inventory hotbar drag and drop", () => {
       true
     );
     assert.deepEqual(
-      resolveInventoryHotbarDropV1({ kind: "item", idx: 2 }, 4),
+      resolveInventoryHotbarDrop({ kind: "item", idx: 2 }, 4),
       {
         src: { kind: "item", idx: 2 },
         dst: { kind: "hotbar", idx: 4 },
       }
     );
     assert.deepEqual(
-      resolveInventoryHotbarDropV1({ kind: "hotbar", idx: 2 }, 4),
+      resolveInventoryHotbarDrop({ kind: "hotbar", idx: 2 }, 4),
       {
         src: { kind: "hotbar", idx: 2 },
         dst: { kind: "hotbar", idx: 4 },
       }
     );
     assert.deepEqual(
-      resolveInventoryHotbarDropV1({ kind: "material", key: "rough_stone" }, 3),
+      resolveInventoryHotbarDrop({ kind: "material", key: "rough_stone" }, 3),
       {
         src: { kind: "material", key: "rough_stone" },
         dst: { kind: "hotbar", idx: 3 },
       }
     );
     assert.equal(
-      resolveInventoryHotbarDropV1({ kind: "hotbar", idx: 4 }, 4),
+      resolveInventoryHotbarDrop({ kind: "hotbar", idx: 4 }, 4),
       undefined
     );
     assert.equal(
-      resolveInventoryHotbarDropV1({ kind: "wearable", key: "chest" }, 0),
+      resolveInventoryHotbarDrop({ kind: "wearable", key: "chest" }, 0),
       undefined
     );
     assert.equal(
-      resolveInventoryHotbarDropV1({ kind: "item", idx: 2 }, -1),
+      resolveInventoryHotbarDrop({ kind: "item", idx: 2 }, -1),
       undefined
     );
     assert.equal(
-      resolveInventoryHotbarDropV1(
+      resolveInventoryHotbarDrop(
         { kind: "item", idx: 2 },
-        BIOMES_INVENTORY_HOTBAR_SLOT_COUNT_V1
+        BIOMES_INVENTORY_HOTBAR_SLOT_COUNT
       ),
       undefined
     );
@@ -180,7 +180,7 @@ describe("Biomes UI inventory hotbar drag and drop", () => {
                 source: "hotbar",
               },
               ...Array.from(
-                { length: BIOMES_INVENTORY_HOTBAR_SLOT_COUNT_V1 - 1 },
+                { length: BIOMES_INVENTORY_HOTBAR_SLOT_COUNT - 1 },
                 () => null
               ),
             ],

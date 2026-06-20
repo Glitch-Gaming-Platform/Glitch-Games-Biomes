@@ -32,7 +32,7 @@ function redisErrorMessage(error: unknown): string {
   return String((error as { message?: unknown })?.message ?? error);
 }
 
-export function isRedisNoGroupErrorV1(error: unknown): boolean {
+export function isRedisNoGroupError(error: unknown): boolean {
   return redisErrorMessage(error).toLowerCase().includes("nogroup");
 }
 
@@ -260,7 +260,7 @@ export class RedisFirehoseSubscription {
     error: unknown,
     reason: string
   ): Promise<boolean> {
-    if (!isRedisNoGroupErrorV1(error)) {
+    if (!isRedisNoGroupError(error)) {
       return false;
     }
     await createRedisFirehoseConsumerGroup(this.redis, this.group, reason);

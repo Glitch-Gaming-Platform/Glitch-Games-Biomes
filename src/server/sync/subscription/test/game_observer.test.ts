@@ -21,7 +21,7 @@ import { Iced } from "@/shared/ecs/gen/components";
 import type { Entity } from "@/shared/ecs/gen/entities";
 import { WorldMetadataId } from "@/shared/ecs/ids";
 import type { VersionMap } from "@/shared/ecs/version";
-import { SNAPSHOT_GROVE_NPCS_V75 } from "@/shared/harthmere/snapshot_grove_content_v75";
+import { SNAPSHOT_GROVE_NPCS } from "@/shared/harthmere/snapshot_grove_content";
 import type { BiomesId } from "@/shared/ids";
 import { yieldToOthers } from "@/shared/util/async";
 import assert from "assert";
@@ -528,7 +528,7 @@ describe("Observer tests", () => {
   });
 
   it("eager local-dev bootstrap tracks every seeded Grove NPC", () => {
-    const seededGroveNpcCount = SNAPSHOT_GROVE_NPCS_V75.filter(
+    const seededGroveNpcCount = SNAPSHOT_GROVE_NPCS.filter(
       (npc) => npc.seedServerNpc
     ).length;
     const counts = localDevStarterWorldBootstrapCountsForTest();

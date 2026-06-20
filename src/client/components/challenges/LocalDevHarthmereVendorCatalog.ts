@@ -446,7 +446,7 @@ export function isHarthmereVendorOffset(offset: number) {
 
 
 export const HARTHMERE_VENDOR_STOCK_STATE_KEY =
-  "biomes.localDev.harthmere.vendorStockState.v1";
+  "biomes.localDev.harthmere.vendorStockState";
 
 interface HarthmereVendorRuntimeState {
   version: 1;

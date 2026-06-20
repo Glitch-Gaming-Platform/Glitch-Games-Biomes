@@ -2,23 +2,23 @@ import * as React from "react";
 import { HarthmereHomeConsolePanel } from "./HarthmereHomeConsolePanel";
 import { HarthmereHomeConsolePrompt } from "./HarthmereHomeConsolePrompt";
 import {
-  createHarthmereHomeConsoleAdapterV1,
-  fetchHarthmereHomeConsoleBuildingStateV1,
-  nearestHarthmereHomeConsoleWorldContextV1,
-  submitHarthmereHomeDecorationMutationV1,
-  type HarthmereHomeConsoleClientSnapshotV1,
-  type HarthmereHomeConsoleSubmitPayloadV1,
-  type HarthmereHomeConsoleWorldContextV1,
-  type HarthmereHomeConsoleWorldPointV1,
+  createHarthmereHomeConsoleAdapter,
+  fetchHarthmereHomeConsoleBuildingState,
+  nearestHarthmereHomeConsoleWorldContext,
+  submitHarthmereHomeDecorationMutation,
+  type HarthmereHomeConsoleClientSnapshot,
+  type HarthmereHomeConsoleSubmitPayload,
+  type HarthmereHomeConsoleWorldContext,
+  type HarthmereHomeConsoleWorldPoint,
 } from "./homeConsoleLiveAdapter";
 
 export interface HarthmereHomeConsoleLiveContainerProps {
   open?: boolean;
   onOpen?: () => void;
   onClose?: () => void;
-  playerPosition?: HarthmereHomeConsoleWorldPointV1;
-  worldContext?: HarthmereHomeConsoleWorldContextV1;
-  initialState?: Partial<HarthmereHomeConsoleClientSnapshotV1>;
+  playerPosition?: HarthmereHomeConsoleWorldPoint;
+  worldContext?: HarthmereHomeConsoleWorldContext;
+  initialState?: Partial<HarthmereHomeConsoleClientSnapshot>;
 }
 
 export function HarthmereHomeConsoleLiveContainer({
@@ -30,10 +30,10 @@ export function HarthmereHomeConsoleLiveContainer({
   initialState,
 }: HarthmereHomeConsoleLiveContainerProps) {
   const [state, setState] = React.useState<
-    HarthmereHomeConsoleClientSnapshotV1 | undefined
+    HarthmereHomeConsoleClientSnapshot | undefined
   >(() =>
     initialState
-      ? createHarthmereHomeConsoleAdapterV1({ state: initialState }).getSnapshot()
+      ? createHarthmereHomeConsoleAdapter({ state: initialState }).getSnapshot()
       : undefined
   );
   const [loading, setLoading] = React.useState(!initialState);
@@ -43,7 +43,7 @@ export function HarthmereHomeConsoleLiveContainer({
     setLoading(true);
     setError(undefined);
     try {
-      const next = await fetchHarthmereHomeConsoleBuildingStateV1();
+      const next = await fetchHarthmereHomeConsoleBuildingState();
       setState(next);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -66,16 +66,16 @@ export function HarthmereHomeConsoleLiveContainer({
   const context = React.useMemo(
     () =>
       worldContext ??
-      nearestHarthmereHomeConsoleWorldContextV1(state, playerPosition, 5),
+      nearestHarthmereHomeConsoleWorldContext(state, playerPosition, 5),
     [playerPosition, state, worldContext]
   );
 
   const submit = React.useCallback(
-    async (payload: HarthmereHomeConsoleSubmitPayloadV1) => {
-      const result = await submitHarthmereHomeDecorationMutationV1(payload);
+    async (payload: HarthmereHomeConsoleSubmitPayload) => {
+      const result = await submitHarthmereHomeDecorationMutation(payload);
       if (result.buildingState) {
         setState(
-          createHarthmereHomeConsoleAdapterV1({
+          createHarthmereHomeConsoleAdapter({
             state: result.buildingState,
           }).getSnapshot()
         );
@@ -87,7 +87,7 @@ export function HarthmereHomeConsoleLiveContainer({
 
   const adapter = React.useMemo(
     () =>
-      createHarthmereHomeConsoleAdapterV1({
+      createHarthmereHomeConsoleAdapter({
         state,
         context,
         hydrated: !loading,

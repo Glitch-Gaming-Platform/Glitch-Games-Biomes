@@ -13,7 +13,7 @@ import {
   dailyTodoProgressForTest,
   dailyTodoTasksFromCareSnapshotForTest,
 } from "../adapters/dailyTodoAdapter";
-import { harthmereDailyTaskXpRewardV1 } from "@/shared/harthmere/mmo_care_loops_v1";
+import { harthmereDailyTaskXpReward } from "@/shared/harthmere/mmo_care_loops";
 import { mergeInventoryAndHotbarForBiomesBackpackForTest } from "../adapters/inventoryAdapterHelpers";
 import { readableMapMarkerLabelForTest } from "../adapters/mapMarkerLabels";
 import {
@@ -53,33 +53,33 @@ import {
   formatBiomesLevelForVitalsForTest,
 } from "../BiomesUIVitalsPanel";
 import {
-  biomesInventoryItemIconV1,
-  humanizeBiomesInventoryItemIdV1,
+  biomesInventoryItemIcon,
+  humanizeBiomesInventoryItemId,
 } from "../adapters/inventoryItemPresentation";
 import {
   buildFarmingFoodInterfaceModelForTest,
-  farmingFoodQuickActionForKeyV1,
+  farmingFoodQuickActionForKey,
 } from "../adapters/farmingFoodInterfaceAdapter";
 import {
-  biomesUIPlayerStatusEndpointV146,
+  biomesUIPlayerStatusEndpoint,
   biomesUIPlayerStatusGameplayActiveForTest,
   biomesUIVitalsCombatResourceDisplayForTest,
   biomesUIVitalsDisplayFromLiveStatusForTest,
   formatBiomesResourceLabelForVitalsForTest,
 } from "../adapters/playerStatusAdapter";
-import { shouldHydrateBiomesUILiveStateForTabV1 } from "../adapters/liveStateHydrationPolicy";
+import { shouldHydrateBiomesUILiveStateForTab } from "../adapters/liveStateHydrationPolicy";
 import {
   biomesUIActiveMapPinNavigationAidKindForTest,
   biomesUIActiveMapPinNavigationAidSpecForTest,
 } from "../adapters/mapPinnedDestination";
 import {
-  buildingSystemBlueprintByIdV1,
-  buildingSystemPlotByIdV1,
-  createBuildingSystemDoorLockV1,
-  createBuildingSystemHomeConsoleMarkerV1,
-  createBuildingSystemPropertyRecordV1,
-  createBuildingSystemStorageContainerV1,
-} from "@/shared/harthmere/building_system_v1";
+  buildingSystemBlueprintById,
+  buildingSystemPlotById,
+  createBuildingSystemDoorLock,
+  createBuildingSystemHomeConsoleMarker,
+  createBuildingSystemPropertyRecord,
+  createBuildingSystemStorageContainer,
+} from "@/shared/harthmere/building_system";
 
 const FORBIDDEN_PLAYER_COPY = [
   "backend",
@@ -124,45 +124,45 @@ describe("Biomes UI progression tabs", () => {
       "progression",
       "daily",
     ] as const) {
-      assert.equal(shouldHydrateBiomesUILiveStateForTabV1(key, null), false);
+      assert.equal(shouldHydrateBiomesUILiveStateForTab(key, null), false);
     }
     assert.equal(
-      shouldHydrateBiomesUILiveStateForTabV1("banking", "banking"),
+      shouldHydrateBiomesUILiveStateForTab("banking", "banking"),
       true
     );
     assert.equal(
-      shouldHydrateBiomesUILiveStateForTabV1("guild", "guilds"),
+      shouldHydrateBiomesUILiveStateForTab("guild", "guilds"),
       true
     );
     assert.equal(
-      shouldHydrateBiomesUILiveStateForTabV1("building", "land"),
+      shouldHydrateBiomesUILiveStateForTab("building", "land"),
       true
     );
     assert.equal(
-      shouldHydrateBiomesUILiveStateForTabV1("inventoryLoot", "inventory"),
+      shouldHydrateBiomesUILiveStateForTab("inventoryLoot", "inventory"),
       true
     );
     assert.equal(
-      shouldHydrateBiomesUILiveStateForTabV1("inventoryLoot", "loot"),
+      shouldHydrateBiomesUILiveStateForTab("inventoryLoot", "loot"),
       true
     );
     assert.equal(
-      shouldHydrateBiomesUILiveStateForTabV1("progression", "abilities"),
+      shouldHydrateBiomesUILiveStateForTab("progression", "abilities"),
       true
     );
     assert.equal(
-      shouldHydrateBiomesUILiveStateForTabV1("daily", "daily"),
+      shouldHydrateBiomesUILiveStateForTab("daily", "daily"),
       true
     );
     assert.equal(
-      shouldHydrateBiomesUILiveStateForTabV1("farmingFood", null),
+      shouldHydrateBiomesUILiveStateForTab("farmingFood", null),
       true
     );
     assert.equal(
-      shouldHydrateBiomesUILiveStateForTabV1("jobsBoard", null),
+      shouldHydrateBiomesUILiveStateForTab("jobsBoard", null),
       true
     );
-    assert.equal(shouldHydrateBiomesUILiveStateForTabV1("quest", null), true);
+    assert.equal(shouldHydrateBiomesUILiveStateForTab("quest", null), true);
   });
 
   it("opens with the daily checklist first", () => {
@@ -202,7 +202,7 @@ describe("Biomes UI progression tabs", () => {
     assert.ok(html.includes("Read the jobs board"));
     assert.ok(html.includes("200 gold"));
     assert.ok(
-      html.includes(`${harthmereDailyTaskXpRewardV1({ actorLevel: 1 })} XP`)
+      html.includes(`${harthmereDailyTaskXpReward({ actorLevel: 1 })} XP`)
     );
     assert.ok(html.includes("Done today"));
     assert.ok(html.includes("Claim reward"));
@@ -232,16 +232,16 @@ describe("Biomes UI progression tabs", () => {
 
   it("uses player-facing item names and icons for food and seeds", () => {
     assert.equal(
-      humanizeBiomesInventoryItemIdV1("seed_carrot", "seed_carrot"),
+      humanizeBiomesInventoryItemId("seed_carrot", "seed_carrot"),
       "Carrot Seed"
     );
     assert.ok(
-      biomesInventoryItemIconV1("seed_carrot").includes(
+      biomesInventoryItemIcon("seed_carrot").includes(
         "/buckets/biomes-static/asset_data/icons/items/seed_carrot"
       )
     );
     assert.equal(
-      humanizeBiomesInventoryItemIdV1("road_ration", "road_ration"),
+      humanizeBiomesInventoryItemId("road_ration", "road_ration"),
       "Road Ration"
     );
   });
@@ -453,13 +453,13 @@ describe("Biomes UI progression tabs", () => {
 
   it("passes the embedded Glitch install id to player status reads", () => {
     assert.equal(
-      biomesUIPlayerStatusEndpointV146(
+      biomesUIPlayerStatusEndpoint(
         "?install_id=5689c070-ac47-4333-9a12-76c10749cd78"
       ),
       "/api/harthmere/live_mode_player_status_state?install_id=5689c070-ac47-4333-9a12-76c10749cd78"
     );
     assert.equal(
-      biomesUIPlayerStatusEndpointV146("?installId=install with spaces"),
+      biomesUIPlayerStatusEndpoint("?installId=install with spaces"),
       "/api/harthmere/live_mode_player_status_state?install_id=install%20with%20spaces"
     );
   });
@@ -889,10 +889,10 @@ describe("Biomes UI progression tabs", () => {
     });
 
     assert.equal(
-      farmingFoodQuickActionForKeyV1(model, "KeyF")?.id,
+      farmingFoodQuickActionForKey(model, "KeyF")?.id,
       "harvest_plot"
     );
-    assert.deepEqual(farmingFoodQuickActionForKeyV1(model, "KeyF")?.payload, {
+    assert.deepEqual(farmingFoodQuickActionForKey(model, "KeyF")?.payload, {
       plotId: "farm_plot_001",
     });
     assert.deepEqual(
@@ -900,11 +900,11 @@ describe("Biomes UI progression tabs", () => {
       { plotId: "farm_plot_001" }
     );
     assert.equal(
-      farmingFoodQuickActionForKeyV1(model, "KeyR")?.id,
+      farmingFoodQuickActionForKey(model, "KeyR")?.id,
       "eat_best_food"
     );
     assert.equal(
-      farmingFoodQuickActionForKeyV1(model, "KeyT")?.id,
+      farmingFoodQuickActionForKey(model, "KeyT")?.id,
       "cook_raw_meat"
     );
   });
@@ -922,7 +922,7 @@ describe("Biomes UI progression tabs", () => {
     );
     assert.equal(workerMeal?.disabled, true);
     assert.equal(workerMeal?.blockedReason, "Needs cookpot.");
-    assert.equal(farmingFoodQuickActionForKeyV1(fieldOnly, "KeyT"), undefined);
+    assert.equal(farmingFoodQuickActionForKey(fieldOnly, "KeyT"), undefined);
 
     const cookpot = buildFarmingFoodInterfaceModelForTest({
       inventory: {
@@ -931,7 +931,7 @@ describe("Biomes UI progression tabs", () => {
       },
       availableCookingStations: ["cookpot"],
     });
-    const cookAction = farmingFoodQuickActionForKeyV1(cookpot, "KeyT");
+    const cookAction = farmingFoodQuickActionForKey(cookpot, "KeyT");
     assert.equal(cookAction?.id, "cook_worker_meal");
     assert.deepEqual(cookAction?.payload, {
       recipeId: "worker_meal",
@@ -949,7 +949,7 @@ describe("Biomes UI progression tabs", () => {
       },
       false
     );
-    assert.equal(farmingFoodQuickActionForKeyV1(unhydrated, "KeyF"), undefined);
+    assert.equal(farmingFoodQuickActionForKey(unhydrated, "KeyF"), undefined);
 
     const empty = buildFarmingFoodInterfaceModelForTest({
       stamina: 12,
@@ -960,9 +960,9 @@ describe("Biomes UI progression tabs", () => {
       wildlife: [],
       updatedAtMs: 1_000,
     });
-    assert.equal(farmingFoodQuickActionForKeyV1(empty, "KeyF"), undefined);
-    assert.equal(farmingFoodQuickActionForKeyV1(empty, "KeyR"), undefined);
-    assert.equal(farmingFoodQuickActionForKeyV1(empty, "KeyT"), undefined);
+    assert.equal(farmingFoodQuickActionForKey(empty, "KeyF"), undefined);
+    assert.equal(farmingFoodQuickActionForKey(empty, "KeyR"), undefined);
+    assert.equal(farmingFoodQuickActionForKey(empty, "KeyT"), undefined);
   });
 
   it("disables destructive actions for protected inventory items", () => {
@@ -1070,30 +1070,30 @@ describe("Biomes UI progression tabs", () => {
 
   it("shows completed building access points as player-facing UI", () => {
     const nowMs = 1_800_000_000_000;
-    const plot = buildingSystemPlotByIdV1("grove_muckstead_cottage_lot")!;
-    const blueprint = buildingSystemBlueprintByIdV1(
+    const plot = buildingSystemPlotById("grove_muckstead_cottage_lot")!;
+    const blueprint = buildingSystemBlueprintById(
       "grove_voxel_cottage_tier_1"
     )!;
-    const property = createBuildingSystemPropertyRecordV1({
+    const property = createBuildingSystemPropertyRecord({
       propertyId: "property_grove_muckstead_cottage_lot",
       ownerId: "player",
       plot,
       blueprint,
       nowMs,
     });
-    const storage = createBuildingSystemStorageContainerV1({
+    const storage = createBuildingSystemStorageContainer({
       property,
       plot,
       blueprint,
       nowMs,
     });
-    const door = createBuildingSystemDoorLockV1({
+    const door = createBuildingSystemDoorLock({
       property,
       plot,
       blueprint,
       nowMs,
     });
-    const consoleMarker = createBuildingSystemHomeConsoleMarkerV1({
+    const consoleMarker = createBuildingSystemHomeConsoleMarker({
       property,
       plot,
       blueprint,

@@ -2,7 +2,7 @@ import {
   HARTHMERE_MISSION_EVENTS_KEY,
   QUESTS,
   QUEST_TARGETS,
-  getHarthmereQuestTargetWorldPosV71,
+  getHarthmereQuestTargetWorldPos,
   readHarthmereQuestState,
   writeHarthmereQuestState,
   type HarthmereQuestDefinition,
@@ -58,7 +58,7 @@ type TrackedMission = {
 };
 
 const HARTHMERE_TRACKED_MISSIONS_KEY =
-  "biomes.localDev.harthmere.trackedMissions.v1";
+  "biomes.localDev.harthmere.trackedMissions";
 
 function isBrowser() {
   return (
@@ -239,7 +239,7 @@ function questStatus(
   return "Available";
 }
 
-function missionTargetOffsetForStatusV91(
+function missionTargetOffsetForStatus(
   quest: HarthmereQuestDefinition,
   status: MissionStatus,
   step: HarthmereQuestStep | undefined,
@@ -272,9 +272,9 @@ function buildMission(
   const rawStepIndex = state.active[quest.id];
   const stepIndex = rawStepIndex ?? 0;
   const step = quest.steps[stepIndex] ?? quest.steps[0];
-  const targetOffset = missionTargetOffsetForStatusV91(quest, status, step);
+  const targetOffset = missionTargetOffsetForStatus(quest, status, step);
   const target = QUEST_TARGETS[targetOffset] ?? QUEST_TARGETS[41];
-  const targetPos = getHarthmereQuestTargetWorldPosV71(target);
+  const targetPos = getHarthmereQuestTargetWorldPos(target);
   const dx = targetPos[0] - playerPos[0];
   const dz = targetPos[2] - playerPos[2];
   const distance = Math.round(Math.hypot(dx, dz));
@@ -360,7 +360,7 @@ function useMissions() {
   const { state, events, trackedIds } = useMissionState();
   const playerPos = localPlayer.player.position as [number, number, number];
 
-  // HARTHMERE_PERF_AND_PLACEMENT_V94 — auto-untrack on completion.
+  // HARTHMERE_PERF_AND_PLACEMENT — auto-untrack on completion.
   // The latest audits showed completed missions lingering in the tracked list
   // and the "available board" because nothing cleared them. The marker stayed
   // even though the quest was over. Untrack any tracked mission that has moved
@@ -400,7 +400,7 @@ function useMissions() {
     const untracked = active
       .filter((mission) => !trackedIds.includes(mission.quest.id))
       .sort((a, b) => a.distance - b.distance);
-    // v94: also exclude quests that are in progress OR completed from the
+    // current: also exclude quests that are in progress OR completed from the
     // nearby list. The audit showed the same quest appearing twice (once on
     // the available board, once in progress) and players had no way to know
     // which marker was active. The nearby list is for *new* work only.

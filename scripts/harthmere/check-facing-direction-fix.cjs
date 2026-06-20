@@ -15,7 +15,7 @@ const checks = [
   ["B binding is still KeyB", /basic:\s*"KeyB"/.test(files.multi)],
   ["N binding is still KeyN", /heavy:\s*"KeyN"/.test(files.multi)],
   ["L binding is still KeyL", /spark:\s*"KeyL"/.test(files.multi)],
-  ["Forward runtime samples live local-player facing", /harthmere-facing-runtime-v3/.test(files.combat) && /setInterval\(writeSnapshot, 50\)/.test(files.combat)],
+  ["Forward runtime samples live local-player facing", /harthmere-facing-runtime/.test(files.combat) && /setInterval\(writeSnapshot, 50\)/.test(files.combat)],
   ["Body-facing vector uses visible model yaw", /harthmereBodyForwardFromYaw/.test(files.combat) && /Math\.sin\(yaw\), Math\.cos\(yaw\)/.test(files.combat)],
   ["ViewDir vector is kept as opposite debug vector", /harthmereViewForwardFromYaw/.test(files.combat) && /-Math\.sin\(yaw\), -Math\.cos\(yaw\)/.test(files.combat)],
   ["Forward arc prefers bodyForward", /normalizeHarthmereForward2\(runtime\?\.bodyForward\)[\s\S]{0,140}normalizeHarthmereForward2\(runtime\?\.forward\)/.test(files.combat)],

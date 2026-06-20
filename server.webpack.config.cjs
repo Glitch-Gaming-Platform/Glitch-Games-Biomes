@@ -11,7 +11,7 @@ const SERVERS = [
   "backup",
   "bob",
   "chat",
-  ["gaia-v2", "server/gaia_v2/main.ts"],
+  ["gaia", "server/gaia/main.ts"],
   "gizmo",
   "logic",
   "map",

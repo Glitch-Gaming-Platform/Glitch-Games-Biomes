@@ -45,7 +45,7 @@ export function normalizeAvatarHairId(
 // Build the pair of ECS events that fully alter the player's appearance. The
 // server handlers (appearanceChangeEventHandler / hairTransplantEventHandler)
 // consume these to update the AppearanceComponent and the hair wearable slot.
-export function buildAvatarMutationEventsV1(
+export function buildAvatarMutationEvents(
   userId: BiomesId,
   selection: AvatarEditorSelection
 ): AvatarMutationEvents {
@@ -73,7 +73,7 @@ export function buildAvatarMutationEventsV1(
 
 // Whether the desired selection differs from the player's current appearance.
 // Used to enable/disable the Save button so we don't publish no-op events.
-export function avatarSelectionChangedV1(
+export function avatarSelectionChanged(
   current: AvatarEditorSelection,
   next: AvatarEditorSelection
 ): boolean {

@@ -1,4 +1,4 @@
-// SNAPSHOT_PRODUCTION_PROGRESS_API_V77
+// SNAPSHOT_PRODUCTION_PROGRESS_API
 // Dual-mode snapshot progress endpoint. Local dev gets deterministic in-memory
 // server state. Production can forward the exact same mutation contract to a
 // durable Glitch backend by setting GLITCH_SNAPSHOT_PROGRESS_BACKEND_URL.
@@ -24,12 +24,12 @@ type StoreRecord = {
 };
 
 const globalForSnapshotProgress = globalThis as typeof globalThis & {
-  __snapshotProgressStoreV77?: Map<string, StoreRecord>;
+  __snapshotProgressStore?: Map<string, StoreRecord>;
 };
 
 const store =
-  globalForSnapshotProgress.__snapshotProgressStoreV77 ??
-  (globalForSnapshotProgress.__snapshotProgressStoreV77 = new Map<string, StoreRecord>());
+  globalForSnapshotProgress.__snapshotProgressStore ??
+  (globalForSnapshotProgress.__snapshotProgressStore = new Map<string, StoreRecord>());
 
 function envString(name: string) {
   const value = process.env[name];
@@ -126,8 +126,8 @@ function mergeState(oldState: JsonMap = {}, incoming: JsonMap = {}, mutations: J
   return {
     ...oldState,
     ...incoming,
-    version: "snapshot-production-port-v77",
-    v76Version: "snapshot-complete-port-v76",
+    version: "snapshot-production-port",
+    v76Version: "snapshot-complete-port",
     acceptedMissionIds: unique([...asArray(oldState.acceptedMissionIds), ...asArray(incoming.acceptedMissionIds)]),
     activeMissionId: incoming.activeMissionId ?? oldState.activeMissionId,
     activeStepIndex: Math.max(Number(oldState.activeStepIndex ?? 0), Number(incoming.activeStepIndex ?? 0)),
@@ -233,8 +233,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       durable: false,
       identity,
       state: existing?.state ?? {
-        version: "snapshot-production-port-v77",
-        v76Version: "snapshot-complete-port-v76",
+        version: "snapshot-production-port",
+        v76Version: "snapshot-complete-port",
         acceptedMissionIds: [],
         activeStepIndex: 0,
         completedMissionIds: [],

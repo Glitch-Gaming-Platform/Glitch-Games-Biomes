@@ -1,5 +1,5 @@
 /// <reference types="mocha" />
-import { isHarthmereCombatCreatureNpcTypeV1 } from "@/client/components/challenges/dialogueObjectSemantics";
+import { isHarthmereCombatCreatureNpcType } from "@/client/components/challenges/dialogueObjectSemantics";
 import {
   applyHarthmereDrowningDamageFromSystem,
   applyHarthmereFallDamageFromSystem,
@@ -8,14 +8,14 @@ import {
 } from "@/client/components/challenges/LocalDevHarthmereCombat";
 import { setHarthmereLocalDevUserScope } from "@/client/components/challenges/LocalDevHarthmereUserScope";
 import {
-  harthmereLiveModeCombatTargetIdForSeedV1,
-  shouldBypassHarthmereKeyboardDrawGateForMousePrimaryAttackV1,
-  shouldEngageHarthmereMousePrimaryAttackV1,
+  harthmereLiveModeCombatTargetIdForSeed,
+  shouldBypassHarthmereKeyboardDrawGateForMousePrimaryAttack,
+  shouldEngageHarthmereMousePrimaryAttack,
 } from "@/client/components/challenges/harthmereMousePrimaryAttackRules";
-import { fallDamageForBlocksV1 } from "@/shared/game/fall_damage_v1";
-import { harthmerePvpPlayersInArcV1 } from "@/client/components/challenges/harthmerePvpHitRules";
+import { fallDamageForBlocks } from "@/shared/game/fall_damage";
+import { harthmerePvpPlayersInArc } from "@/client/components/challenges/harthmerePvpHitRules";
 import { BikkieIds } from "@/shared/bikkie/ids";
-import { HARTHMERE_VOXEL_INTERACTION_ATTACK_REACH_UNITS_V1 } from "@/shared/harthmere/combat_reach_v1";
+import { HARTHMERE_VOXEL_INTERACTION_ATTACK_REACH_UNITS } from "@/shared/harthmere/combat_reach";
 import type { BiomesId } from "@/shared/ids";
 import assert from "assert";
 
@@ -84,23 +84,23 @@ describe("harthmere left-mouse primary attack routing", () => {
   };
 
   it("engages on a left click in play with a target nearby", () => {
-    assert.equal(shouldEngageHarthmereMousePrimaryAttackV1(engaged), true);
+    assert.equal(shouldEngageHarthmereMousePrimaryAttack(engaged), true);
   });
 
   it("ignores non-left buttons (right/middle break placement/camera, never attack)", () => {
     assert.equal(
-      shouldEngageHarthmereMousePrimaryAttackV1({ ...engaged, button: 2 }),
+      shouldEngageHarthmereMousePrimaryAttack({ ...engaged, button: 2 }),
       false
     );
     assert.equal(
-      shouldEngageHarthmereMousePrimaryAttackV1({ ...engaged, button: 1 }),
+      shouldEngageHarthmereMousePrimaryAttack({ ...engaged, button: 1 }),
       false
     );
   });
 
   it("does not attack when the pointer is unlocked (player is in HUD/menus)", () => {
     assert.equal(
-      shouldEngageHarthmereMousePrimaryAttackV1({
+      shouldEngageHarthmereMousePrimaryAttack({
         ...engaged,
         pointerLocked: false,
       }),
@@ -110,7 +110,7 @@ describe("harthmere left-mouse primary attack routing", () => {
 
   it("engages on a game-canvas click even when pointer lock is unavailable in an embed", () => {
     assert.equal(
-      shouldEngageHarthmereMousePrimaryAttackV1({
+      shouldEngageHarthmereMousePrimaryAttack({
         ...engaged,
         pointerLocked: false,
         gameplayCanvasTarget: true,
@@ -121,7 +121,7 @@ describe("harthmere left-mouse primary attack routing", () => {
 
   it("does not attack when the click originated in a text field", () => {
     assert.equal(
-      shouldEngageHarthmereMousePrimaryAttackV1({
+      shouldEngageHarthmereMousePrimaryAttack({
         ...engaged,
         typingTarget: true,
       }),
@@ -131,7 +131,7 @@ describe("harthmere left-mouse primary attack routing", () => {
 
   it("does not engage combat when nothing attackable is in range (pure mining/building click)", () => {
     assert.equal(
-      shouldEngageHarthmereMousePrimaryAttackV1({
+      shouldEngageHarthmereMousePrimaryAttack({
         ...engaged,
         hasAttackableTargetNearby: false,
       }),
@@ -141,7 +141,7 @@ describe("harthmere left-mouse primary attack routing", () => {
 
   it("does not let keyboard-only weapon draw state swallow a mouse attack", () => {
     assert.equal(
-      shouldBypassHarthmereKeyboardDrawGateForMousePrimaryAttackV1({
+      shouldBypassHarthmereKeyboardDrawGateForMousePrimaryAttack({
         source: "mouse_primary",
         hasPhysicalWeapon: true,
         weaponDrawn: false,
@@ -149,7 +149,7 @@ describe("harthmere left-mouse primary attack routing", () => {
       true
     );
     assert.equal(
-      shouldBypassHarthmereKeyboardDrawGateForMousePrimaryAttackV1({
+      shouldBypassHarthmereKeyboardDrawGateForMousePrimaryAttack({
         source: "keyboard_hotkey",
         hasPhysicalWeapon: true,
         weaponDrawn: false,
@@ -160,14 +160,14 @@ describe("harthmere left-mouse primary attack routing", () => {
 
   it("maps production seeded live entities to the combat target id the live backend owns", () => {
     assert.equal(
-      harthmereLiveModeCombatTargetIdForSeedV1({
+      harthmereLiveModeCombatTargetIdForSeed({
         seedId: "old-wood-mucker-8",
         idOffset: 1308,
       }),
       "server-muck-combat:old-wood-mucker-8:1308"
     );
     assert.equal(
-      harthmereLiveModeCombatTargetIdForSeedV1({
+      harthmereLiveModeCombatTargetIdForSeed({
         seedId: "",
         idOffset: 1308,
       }),
@@ -192,7 +192,7 @@ describe("harthmere visible player fall damage", () => {
     const expectedDamage = Math.max(
       1,
       Math.round(
-        (fallDamageForBlocksV1(fallBlocks) * Math.max(1, before.maxHp)) / 100
+        (fallDamageForBlocks(fallBlocks) * Math.max(1, before.maxHp)) / 100
       )
     );
 
@@ -251,31 +251,31 @@ describe("harthmere player-vs-player mouse swing reach", () => {
     const targetId = 42 as BiomesId;
     const cosHalfAngle = Math.cos((135 * Math.PI) / 360);
     assert.deepStrictEqual(
-      harthmerePvpPlayersInArcV1({
+      harthmerePvpPlayersInArc({
         origin: [0, 0],
         forward: [1, 0],
         players: [
           {
             id: targetId,
-            pos: [HARTHMERE_VOXEL_INTERACTION_ATTACK_REACH_UNITS_V1, 0],
+            pos: [HARTHMERE_VOXEL_INTERACTION_ATTACK_REACH_UNITS, 0],
           },
         ],
-        range: HARTHMERE_VOXEL_INTERACTION_ATTACK_REACH_UNITS_V1,
+        range: HARTHMERE_VOXEL_INTERACTION_ATTACK_REACH_UNITS,
         cosHalfAngle,
       }),
       [targetId]
     );
     assert.deepStrictEqual(
-      harthmerePvpPlayersInArcV1({
+      harthmerePvpPlayersInArc({
         origin: [0, 0],
         forward: [1, 0],
         players: [
           {
             id: targetId,
-            pos: [HARTHMERE_VOXEL_INTERACTION_ATTACK_REACH_UNITS_V1 + 0.01, 0],
+            pos: [HARTHMERE_VOXEL_INTERACTION_ATTACK_REACH_UNITS + 0.01, 0],
           },
         ],
-        range: HARTHMERE_VOXEL_INTERACTION_ATTACK_REACH_UNITS_V1,
+        range: HARTHMERE_VOXEL_INTERACTION_ATTACK_REACH_UNITS,
         cosHalfAngle,
       }),
       []
@@ -285,19 +285,19 @@ describe("harthmere player-vs-player mouse swing reach", () => {
 
 describe("harthmere combat-creature talk gate", () => {
   it("classifies muckers/hexers/wildlife (shared dMucker type) as non-talkable creatures", () => {
-    assert.equal(isHarthmereCombatCreatureNpcTypeV1(BikkieIds.dMucker), true);
+    assert.equal(isHarthmereCombatCreatureNpcType(BikkieIds.dMucker), true);
   });
 
   it("does not classify other NPC types as combat creatures", () => {
     // An arbitrary non-dMucker npc type id stays talkable.
     assert.equal(
-      isHarthmereCombatCreatureNpcTypeV1(123456789 as BiomesId),
+      isHarthmereCombatCreatureNpcType(123456789 as BiomesId),
       false
     );
   });
 
   it("treats missing npc type as not-a-creature (so genuine NPCs are never suppressed)", () => {
-    assert.equal(isHarthmereCombatCreatureNpcTypeV1(undefined), false);
-    assert.equal(isHarthmereCombatCreatureNpcTypeV1(null), false);
+    assert.equal(isHarthmereCombatCreatureNpcType(undefined), false);
+    assert.equal(isHarthmereCombatCreatureNpcType(null), false);
   });
 });

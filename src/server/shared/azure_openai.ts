@@ -1,18 +1,18 @@
-export interface AzureOpenAIConfigV1 {
+export interface AzureOpenAIConfig {
   endpoint: string;
   apiKey: string;
   apiVersion: string;
   deployment: string;
 }
 
-export interface AzureOpenAIMessageV1 {
+export interface AzureOpenAIMessage {
   role: "system" | "user" | "assistant";
   content: string;
 }
 
-export function azureOpenAIConfigFromEnvV1(
+export function azureOpenAIConfigFromEnv(
   env: Record<string, string | undefined> = process.env
-): AzureOpenAIConfigV1 | undefined {
+): AzureOpenAIConfig | undefined {
   const endpoint = (env.AZURE_OPENAI_ENDPOINT ?? "").trim();
   const apiKey = (
     env.AZURE_OPENAI_API_KEY ??
@@ -37,7 +37,7 @@ export function azureOpenAIConfigFromEnvV1(
   };
 }
 
-function azureOpenAIResponsesUrlV1(config: AzureOpenAIConfigV1) {
+function azureOpenAIResponsesUrl(config: AzureOpenAIConfig) {
   const endpoint = config.endpoint.replace(/\/+$/, "");
   if (endpoint.includes("/openai/responses")) {
     const url = new URL(endpoint);
@@ -51,7 +51,7 @@ function azureOpenAIResponsesUrlV1(config: AzureOpenAIConfigV1) {
   return url.toString();
 }
 
-async function responseErrorTextV1(response: Response) {
+async function responseErrorText(response: Response) {
   try {
     return (await response.text()).slice(0, 1000);
   } catch {
@@ -59,7 +59,7 @@ async function responseErrorTextV1(response: Response) {
   }
 }
 
-function outputTextFromResponsesPayloadV1(payload: any): string {
+function outputTextFromResponsesPayload(payload: any): string {
   if (typeof payload?.output_text === "string") {
     return payload.output_text;
   }
@@ -76,12 +76,12 @@ function outputTextFromResponsesPayloadV1(payload: any): string {
   return fragments.join("\n").trim();
 }
 
-export async function createAzureOpenAIResponseTextV1(input: {
-  messages: AzureOpenAIMessageV1[];
+export async function createAzureOpenAIResponseText(input: {
+  messages: AzureOpenAIMessage[];
   maxOutputTokens?: number;
-  config?: AzureOpenAIConfigV1;
+  config?: AzureOpenAIConfig;
 }): Promise<string | undefined> {
-  const config = input.config ?? azureOpenAIConfigFromEnvV1();
+  const config = input.config ?? azureOpenAIConfigFromEnv();
   if (!config) {
     return undefined;
   }
@@ -95,7 +95,7 @@ export async function createAzureOpenAIResponseTextV1(input: {
       role: message.role,
       content: message.content,
     }));
-  const response = await fetch(azureOpenAIResponsesUrlV1(config), {
+  const response = await fetch(azureOpenAIResponsesUrl(config), {
     method: "POST",
     headers: {
       "api-key": config.apiKey,
@@ -112,8 +112,8 @@ export async function createAzureOpenAIResponseTextV1(input: {
     throw new Error(
       `Azure OpenAI Responses API failed: ${
         response.status
-      } ${await responseErrorTextV1(response)}`
+      } ${await responseErrorText(response)}`
     );
   }
-  return outputTextFromResponsesPayloadV1(await response.json());
+  return outputTextFromResponsesPayload(await response.json());
 }

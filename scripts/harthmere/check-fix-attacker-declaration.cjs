@@ -14,7 +14,7 @@ function check(label, condition) {
   if (!condition) ok = false;
 }
 
-const marker = text.indexOf("harthmere-fix-attacker-declaration-v1");
+const marker = text.indexOf("harthmere-fix-attacker-declaration");
 const attackerDecl = text.indexOf("const attacker =", marker);
 const attackerMatch = text.indexOf('debugHarthmereRenderer("renderer.combat_event.attacker_match"', marker);
 const pulse = text.indexOf('this.startCombatPulse(attacker, "attack"', marker);
@@ -25,7 +25,7 @@ check("const attacker appears after marker", attackerDecl > marker);
 check("attacker debug appears after const attacker", attackerMatch > attackerDecl);
 check("attacker pulse appears after const attacker", pulse > attackerDecl);
 check("no this.debugHarthmereRenderer calls remain", !text.includes("this.debugHarthmereRenderer("));
-check("robust physical sanitize remains", text.includes("harthmere-robust-physical-combat-sanitize-v2"));
+check("robust physical sanitize remains", text.includes("harthmere-robust-physical-combat-sanitize"));
 check("physical marker still set", text.includes("detailAny.harthmereNoSparkBasic = true"));
 
 console.log("");

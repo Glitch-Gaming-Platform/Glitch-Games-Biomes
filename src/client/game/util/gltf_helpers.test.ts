@@ -1,23 +1,23 @@
 import assert from "assert";
 import {
-  coalescedPlayerMeshGltfArrayBufferFetchV1,
-  shouldCoalescePlayerMeshGltfFetchV1,
-} from "@/client/game/util/gltf_fetch_coalescing_v1";
+  coalescedPlayerMeshGltfArrayBufferFetch,
+  shouldCoalescePlayerMeshGltfFetch,
+} from "@/client/game/util/gltf_fetch_coalescing";
 
 describe("gltf_helpers player mesh fetch coalescing", () => {
   it("recognizes same-origin and absolute player mesh URLs", () => {
     assert.equal(
-      shouldCoalescePlayerMeshGltfFetchV1("/api/assets/player_mesh.glb?top=1"),
+      shouldCoalescePlayerMeshGltfFetch("/api/assets/player_mesh.glb?top=1"),
       true
     );
     assert.equal(
-      shouldCoalescePlayerMeshGltfFetchV1(
+      shouldCoalescePlayerMeshGltfFetch(
         "https://www.glitch.fun/api/assets/player_mesh.glb?top=1"
       ),
       true
     );
     assert.equal(
-      shouldCoalescePlayerMeshGltfFetchV1("/assets/other.glb"),
+      shouldCoalescePlayerMeshGltfFetch("/assets/other.glb"),
       false
     );
   });
@@ -34,11 +34,11 @@ describe("gltf_helpers player mesh fetch coalescing", () => {
       return new Uint8Array([1, 2, 3]).buffer;
     };
 
-    const first = coalescedPlayerMeshGltfArrayBufferFetchV1(
+    const first = coalescedPlayerMeshGltfArrayBufferFetch(
       "/api/assets/player_mesh.glb?sc=skin_color_0",
       fetchArrayBuffer
     );
-    const second = coalescedPlayerMeshGltfArrayBufferFetchV1(
+    const second = coalescedPlayerMeshGltfArrayBufferFetch(
       "/api/assets/player_mesh.glb?sc=skin_color_0",
       fetchArrayBuffer
     );

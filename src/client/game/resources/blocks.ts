@@ -234,7 +234,7 @@ async function genBlockMesh(
         voxeloo.toOcclusionTensor(
           isomorphisms.cpp,
           shapeIndex,
-          shard.box.v0,
+          shard.box,
           (shard) => isomorphismLoader(shard)?.cpp
         )
       );
@@ -260,7 +260,7 @@ async function genBlockMesh(
               await worker.genBlockMesh({
                 encodedIsomorpisms: isomorphisms.save(),
                 encodedOcclusions: occlusions.save(),
-                v0: shard.box.v0,
+                v0: shard.box,
               })
             ).geometry;
           } else {
@@ -268,7 +268,7 @@ async function genBlockMesh(
               isomorphisms.cpp,
               occlusions.cpp,
               shapeIndex,
-              shard.box.v0
+              shard.box
             );
           }
         }
@@ -299,7 +299,7 @@ async function genBlockMesh(
       const lbuf = timeCode("blocks:toBlockLightBuffer", () => {
         return voxeloo.toBlockLightingBuffer(
           surface,
-          shard.box.v0,
+          shard.box,
           (shard) => isomorphismLoader(shard)?.cpp,
           (shard) => skyOcclusionLoader(shard)?.cpp,
           (shard) => irradianceLoader(shard)?.cpp

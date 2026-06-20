@@ -1,14 +1,14 @@
 import {
-  avatarSelectionChangedV1,
-  buildAvatarMutationEventsV1,
+  avatarSelectionChanged,
+  buildAvatarMutationEvents,
   normalizeAvatarHairId,
 } from "@/client/components/biomes_ui/avatarEditorMutations";
 import {
   BIOMES_UI_AVATAR_OPTION_KINDS,
-  applyAvatarEditorOptionChangeV1,
-  avatarEditorOptionSummaryForTestV1,
-  buildAvatarPreviewWearableOverridesV1,
-  itemForAvatarHairIdV1,
+  applyAvatarEditorOptionChange,
+  avatarEditorOptionSummaryForTest,
+  buildAvatarPreviewWearableOverrides,
+  itemForAvatarHairId,
 } from "@/client/components/biomes_ui/avatarEditorOptions";
 import { BikkieRuntime } from "@/shared/bikkie/active";
 import { BikkieIds } from "@/shared/bikkie/ids";
@@ -82,7 +82,7 @@ describe("BiomesUI avatar editor mutations", () => {
   });
 
   it("exposes the same five character-design option groups as the wake-up builder", () => {
-    const summaries = avatarEditorOptionSummaryForTestV1();
+    const summaries = avatarEditorOptionSummaryForTest();
 
     assert.deepEqual(
       summaries.map((entry) => entry.kind),
@@ -104,28 +104,28 @@ describe("BiomesUI avatar editor mutations", () => {
     const current = { appearance: baseAppearance(), hairId: HAIR_ID };
 
     assert.deepEqual(
-      applyAvatarEditorOptionChangeV1(current, {
+      applyAvatarEditorOptionChange(current, {
         kind: "head",
         id: NEXT_HEAD_ID,
       }).appearance,
       { ...baseAppearance(), head_id: NEXT_HEAD_ID }
     );
     assert.deepEqual(
-      applyAvatarEditorOptionChangeV1(current, {
+      applyAvatarEditorOptionChange(current, {
         kind: "skin",
         id: "skin_color_9",
       }).appearance,
       { ...baseAppearance(), skin_color_id: "skin_color_9" }
     );
     assert.deepEqual(
-      applyAvatarEditorOptionChangeV1(current, {
+      applyAvatarEditorOptionChange(current, {
         kind: "eyes",
         id: "eye_color_9",
       }).appearance,
       { ...baseAppearance(), eye_color_id: "eye_color_9" }
     );
     assert.deepEqual(
-      applyAvatarEditorOptionChangeV1(current, {
+      applyAvatarEditorOptionChange(current, {
         kind: "hairColor",
         id: "hair_color_9",
       }).appearance,
@@ -133,14 +133,14 @@ describe("BiomesUI avatar editor mutations", () => {
     );
 
     assert.equal(
-      applyAvatarEditorOptionChangeV1(current, {
+      applyAvatarEditorOptionChange(current, {
         kind: "hairStyle",
         id: NEXT_HAIR_ID,
       }).hairId,
       NEXT_HAIR_ID
     );
     assert.equal(
-      applyAvatarEditorOptionChangeV1(current, {
+      applyAvatarEditorOptionChange(current, {
         kind: "hairStyle",
         id: INVALID_BIOMES_ID as BiomesId,
       }).hairId,
@@ -153,16 +153,16 @@ describe("BiomesUI avatar editor mutations", () => {
     const nextHair = anItem(NEXT_HAIR_ID);
     const wearing = new Map([[BikkieIds.hair, currentHair]]);
 
-    const withNewHair = buildAvatarPreviewWearableOverridesV1(
+    const withNewHair = buildAvatarPreviewWearableOverrides(
       wearing,
       nextHair
     );
     assert.equal(withNewHair.get(BikkieIds.hair)?.id, NEXT_HAIR_ID);
 
-    const bald = buildAvatarPreviewWearableOverridesV1(wearing, undefined);
+    const bald = buildAvatarPreviewWearableOverrides(wearing, undefined);
     assert.equal(bald.get(BikkieIds.hair), undefined);
     assert.equal(
-      itemForAvatarHairIdV1(INVALID_BIOMES_ID as BiomesId),
+      itemForAvatarHairId(INVALID_BIOMES_ID as BiomesId),
       undefined
     );
   });
@@ -175,7 +175,7 @@ describe("BiomesUI avatar editor mutations", () => {
       head_id: HEAD_ID,
     };
 
-    const { appearanceEvent } = buildAvatarMutationEventsV1(USER_ID, {
+    const { appearanceEvent } = buildAvatarMutationEvents(USER_ID, {
       appearance,
       hairId: HAIR_ID,
     });
@@ -189,7 +189,7 @@ describe("BiomesUI avatar editor mutations", () => {
   });
 
   it("builds a HairTransplantEvent for the selected hair style", () => {
-    const { hairEvent } = buildAvatarMutationEventsV1(USER_ID, {
+    const { hairEvent } = buildAvatarMutationEvents(USER_ID, {
       appearance: baseAppearance(),
       hairId: HAIR_ID,
     });
@@ -204,7 +204,7 @@ describe("BiomesUI avatar editor mutations", () => {
     assert.equal(normalizeAvatarHairId(INVALID_BIOMES_ID), undefined);
     assert.equal(normalizeAvatarHairId(HAIR_ID), HAIR_ID);
 
-    const { hairEvent } = buildAvatarMutationEventsV1(USER_ID, {
+    const { hairEvent } = buildAvatarMutationEvents(USER_ID, {
       appearance: baseAppearance(),
       hairId: INVALID_BIOMES_ID as BiomesId,
     });
@@ -216,7 +216,7 @@ describe("BiomesUI avatar editor mutations", () => {
 
     // Identical selection => no change.
     assert.equal(
-      avatarSelectionChangedV1(current, {
+      avatarSelectionChanged(current, {
         appearance: baseAppearance(),
         hairId: HAIR_ID,
       }),
@@ -225,7 +225,7 @@ describe("BiomesUI avatar editor mutations", () => {
 
     // Skin color.
     assert.equal(
-      avatarSelectionChangedV1(current, {
+      avatarSelectionChanged(current, {
         appearance: { ...baseAppearance(), skin_color_id: "skin_color_9" },
         hairId: HAIR_ID,
       }),
@@ -234,7 +234,7 @@ describe("BiomesUI avatar editor mutations", () => {
 
     // Eye color.
     assert.equal(
-      avatarSelectionChangedV1(current, {
+      avatarSelectionChanged(current, {
         appearance: { ...baseAppearance(), eye_color_id: "eye_color_9" },
         hairId: HAIR_ID,
       }),
@@ -243,7 +243,7 @@ describe("BiomesUI avatar editor mutations", () => {
 
     // Hair color.
     assert.equal(
-      avatarSelectionChangedV1(current, {
+      avatarSelectionChanged(current, {
         appearance: { ...baseAppearance(), hair_color_id: "hair_color_9" },
         hairId: HAIR_ID,
       }),
@@ -252,7 +252,7 @@ describe("BiomesUI avatar editor mutations", () => {
 
     // Head shape.
     assert.equal(
-      avatarSelectionChangedV1(current, {
+      avatarSelectionChanged(current, {
         appearance: { ...baseAppearance(), head_id: generateTestId() },
         hairId: HAIR_ID,
       }),
@@ -261,7 +261,7 @@ describe("BiomesUI avatar editor mutations", () => {
 
     // Hair style (wearable).
     assert.equal(
-      avatarSelectionChangedV1(current, {
+      avatarSelectionChanged(current, {
         appearance: baseAppearance(),
         hairId: undefined,
       }),

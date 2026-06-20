@@ -1,12 +1,12 @@
 import * as React from "react";
 import { useEffect, useRef } from "react";
 import {
-  closePointerLockUnlockWhileOpenV1,
-  openPointerLockUnlockWhileOpenV1,
-  type PointerLockUnlockWhileOpenReturnRefV1,
+  closePointerLockUnlockWhileOpen,
+  openPointerLockUnlockWhileOpen,
+  type PointerLockUnlockWhileOpenReturnRef,
 } from "@/client/components/contexts/pointerLockModalPolicy";
 import { usePointerLockManager } from "@/client/components/contexts/PointerLockContext";
-import { emitHarthmereGlitchBehaviorEventV138 } from "@/client/game/glitch/harthmere_glitch_behavior_events";
+import { emitHarthmereGlitchBehaviorEvent } from "@/client/game/glitch/harthmere_glitch_behavior_events";
 import { installBiomesUITheme } from "./theme/biomesUITheme";
 import { BiomesNav } from "./nav/BiomesNav";
 import { BiomesHotbar } from "./hotbar/BiomesHotbar";
@@ -22,8 +22,8 @@ import { BiomesUIOpenPrompt } from "./BiomesUIOpenPrompt";
 import { CurrentQuestObjectiveHUD } from "./CurrentQuestObjectiveHUD";
 import { QuestInviteHUD } from "./quest_invites/QuestInviteHUD";
 import {
-  type BiomesHUDVisibilitySnapshotV1,
-  useBiomesHUDVisibilitySnapshotV1,
+  type BiomesHUDVisibilitySnapshot,
+  useBiomesHUDVisibilitySnapshot,
 } from "./hudVisibilitySettings";
 
 import { DailyTodoTab } from "./tabs/DailyTodoTab";
@@ -54,7 +54,7 @@ export interface BiomesUIProps {
   shortcutOverrides?: TabShortcut[];
   adapters?: BiomesUIAdapters;
   paneMode?: "overlay" | "compact";
-  hudVisibilityOverride?: Partial<BiomesHUDVisibilitySnapshotV1>;
+  hudVisibilityOverride?: Partial<BiomesHUDVisibilitySnapshot>;
 }
 
 export interface BiomesUIAdapters {
@@ -95,11 +95,11 @@ export const BiomesUI: React.FunctionComponent<BiomesUIProps> = ({
   hudVisibilityOverride,
 }) => {
   const pointerLockManager = usePointerLockManager();
-  const shouldReturnPointerLock = useRef<PointerLockUnlockWhileOpenReturnRefV1>(
+  const shouldReturnPointerLock = useRef<PointerLockUnlockWhileOpenReturnRef>(
     { current: false }
   );
   const shortcuts = shortcutOverrides ?? DEFAULT_TAB_SHORTCUTS;
-  const hudVisibility = useBiomesHUDVisibilitySnapshotV1(hudVisibilityOverride);
+  const hudVisibility = useBiomesHUDVisibilitySnapshot(hudVisibilityOverride);
 
   useEffect(() => {
     installBiomesUITheme();
@@ -113,7 +113,7 @@ export const BiomesUI: React.FunctionComponent<BiomesUIProps> = ({
     }
     const previous = previousActiveTabRef.current;
     previousActiveTabRef.current = activeTab;
-    emitHarthmereGlitchBehaviorEventV138(
+    emitHarthmereGlitchBehaviorEvent(
       "biomes_ui",
       activeTab ? "open_tab" : "close",
       { tab: activeTab ?? previous ?? "none", previous_tab: previous ?? "none" }
@@ -122,18 +122,18 @@ export const BiomesUI: React.FunctionComponent<BiomesUIProps> = ({
 
   useEffect(() => {
     if (activeTab === null || paneMode !== "overlay") {
-      closePointerLockUnlockWhileOpenV1(
+      closePointerLockUnlockWhileOpen(
         pointerLockManager,
         shouldReturnPointerLock.current
       );
       return;
     }
-    openPointerLockUnlockWhileOpenV1(
+    openPointerLockUnlockWhileOpen(
       pointerLockManager,
       shouldReturnPointerLock.current
     );
     return () => {
-      closePointerLockUnlockWhileOpenV1(
+      closePointerLockUnlockWhileOpen(
         pointerLockManager,
         shouldReturnPointerLock.current
       );
@@ -269,7 +269,7 @@ export const BiomesUI: React.FunctionComponent<BiomesUIProps> = ({
               slots={hotbar.slots}
               selectedIndex={hotbar.selectedIndex}
               onSelect={(i) => {
-                emitHarthmereGlitchBehaviorEventV138("hotbar", "select_slot", {
+                emitHarthmereGlitchBehaviorEvent("hotbar", "select_slot", {
                   slot: i + 1,
                 });
                 hotbar.onSelect(i);
@@ -277,7 +277,7 @@ export const BiomesUI: React.FunctionComponent<BiomesUIProps> = ({
               onUse={
                 hotbar.onUse
                   ? (i) => {
-                      emitHarthmereGlitchBehaviorEventV138(
+                      emitHarthmereGlitchBehaviorEvent(
                         "hotbar",
                         "use_slot",
                         {
@@ -291,7 +291,7 @@ export const BiomesUI: React.FunctionComponent<BiomesUIProps> = ({
               onDrop={
                 hotbar.onDrop
                   ? (i) => {
-                      emitHarthmereGlitchBehaviorEventV138(
+                      emitHarthmereGlitchBehaviorEvent(
                         "hotbar",
                         "drop_slot",
                         {

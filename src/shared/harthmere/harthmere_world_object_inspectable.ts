@@ -1,0 +1,157 @@
+// HARTHMERE_WORLD_OBJECT_INSPECTABLE
+//
+// Harthmere's interactable world props (crates, chests, boards, posts, stakes,
+// fences, tables, mirrors, dummies, rings, flags, carts, workbenches, ovens,
+// wells, gates, doors, ...) render as lightweight procedural beacons rather than
+// full ECS entities (see harthmere_quest_object_markers.ts). Because they
+// are not ECS entities, the cursor raycast never resolves them to an
+// `inspectable` overlay, so the player never sees the "F" interaction prompt.
+//
+// This module is the node-safe, proximity-based selector that mirrors the NPC
+// talk-radius fallback (getNearbyNpcTalkInspectableOverlay): given the
+// player's position/facing and a static list of labeled world-object
+// candidates, it returns the single best object the player is standing in front
+// of, together with the interaction the object's label resolves to. The client
+// overlay system uses the result to surface the same "F" prompt + action that
+// talking to an NPC or a jobs board already uses.
+//
+// It depends only on the object-interaction semantics (pure string logic) so it
+// can be unit-tested without the client renderer.
+
+import {
+  harthmereObjectInteractionForLabel,
+  isHarthmereContainerObjectLabel,
+  isHarthmereNonLivingObjectLabel,
+  type HarthmereObjectInteraction,
+} from "@/shared/harthmere/object_interaction_semantics";
+
+export const HARTHMERE_WORLD_OBJECT_INSPECTABLE_VERSION =
+  "harthmere-world-object-inspectable" as const;
+
+// Mirrors the NPC talk-radius tuning so objects and NPCs feel consistent.
+export const HARTHMERE_WORLD_OBJECT_INSPECT_RADIUS = 6.5;
+export const HARTHMERE_WORLD_OBJECT_INSPECT_CLOSE_RADIUS = 2.75;
+export const HARTHMERE_WORLD_OBJECT_INSPECT_MIN_VIEW_DOT = 0.15;
+
+export type HarthmereWorldObjectVec3 = readonly [number, number, number];
+
+export interface HarthmereWorldObjectCandidate {
+  id: string;
+  label: string;
+  position: HarthmereWorldObjectVec3;
+  entityDescription?: string;
+}
+
+export interface HarthmereWorldObjectInspectable {
+  id: string;
+  label: string;
+  entityDescription?: string;
+  position: HarthmereWorldObjectVec3;
+  interaction: HarthmereObjectInteraction;
+  isContainer: boolean;
+  score: number;
+}
+
+export interface SelectHarthmereWorldObjectInspectableInput {
+  playerPosition: HarthmereWorldObjectVec3;
+  facingView: HarthmereWorldObjectVec3;
+  candidates: readonly HarthmereWorldObjectCandidate[];
+  radius?: number;
+  closeRadius?: number;
+  minViewDot?: number;
+}
+
+// Returns true when the label/description names a non-living, interactable world
+// prop (and not a living NPC). This is the gate the client uses too, so the
+// prompt only appears for the objects authored in the semantics manifest.
+export function isHarthmereInspectableWorldObject(input: {
+  label?: string | null;
+  entityDescription?: string | null;
+}): boolean {
+  return isHarthmereNonLivingObjectLabel(input);
+}
+
+// Pure proximity + facing score. Lower is better. Returns undefined when the
+// object is out of range or behind the player's facing direction. Identical in
+// spirit to harthmereNpcTalkCandidateScoreForTest so object/NPC selection agree.
+export function harthmereWorldObjectCandidateScore(input: {
+  playerPosition: HarthmereWorldObjectVec3;
+  facingView: HarthmereWorldObjectVec3;
+  objectPosition: HarthmereWorldObjectVec3;
+  radius?: number;
+  closeRadius?: number;
+  minViewDot?: number;
+}): number | undefined {
+  const radius = input.radius ?? HARTHMERE_WORLD_OBJECT_INSPECT_RADIUS;
+  const closeRadius =
+    input.closeRadius ?? HARTHMERE_WORLD_OBJECT_INSPECT_CLOSE_RADIUS;
+  const minViewDot =
+    input.minViewDot ?? HARTHMERE_WORLD_OBJECT_INSPECT_MIN_VIEW_DOT;
+  const toObjX = input.objectPosition[0] - input.playerPosition[0];
+  const toObjZ = input.objectPosition[2] - input.playerPosition[2];
+  const horizontalDistance = Math.hypot(toObjX, toObjZ);
+  if (!Number.isFinite(horizontalDistance) || horizontalDistance > radius) {
+    return undefined;
+  }
+  const viewX = input.facingView[0];
+  const viewZ = input.facingView[2];
+  const viewLength = Math.hypot(viewX, viewZ);
+  if (!Number.isFinite(viewLength) || viewLength <= 1e-5) {
+    return undefined;
+  }
+  const toObjLength = Math.max(horizontalDistance, 1e-5);
+  const viewDot = (viewX * toObjX + viewZ * toObjZ) / (viewLength * toObjLength);
+  const requiredViewDot =
+    horizontalDistance <= closeRadius ? 0 : Math.max(0, minViewDot);
+  if (viewDot < requiredViewDot) {
+    return undefined;
+  }
+  // Prefer closer objects with a gentle bias toward what the player is looking
+  // at, so crowded Grove prop clusters don't flicker between neighbors.
+  return horizontalDistance - viewDot * 0.9;
+}
+
+export function selectNearestHarthmereWorldObjectInspectable(
+  input: SelectHarthmereWorldObjectInspectableInput
+): HarthmereWorldObjectInspectable | undefined {
+  let best: HarthmereWorldObjectInspectable | undefined;
+  for (const candidate of input.candidates) {
+    const labelInput = {
+      label: candidate.label,
+      entityDescription: candidate.entityDescription,
+    };
+    if (!isHarthmereInspectableWorldObject(labelInput)) {
+      continue;
+    }
+    const score = harthmereWorldObjectCandidateScore({
+      playerPosition: input.playerPosition,
+      facingView: input.facingView,
+      objectPosition: candidate.position,
+      radius: input.radius,
+      closeRadius: input.closeRadius,
+      minViewDot: input.minViewDot,
+    });
+    if (score === undefined) {
+      continue;
+    }
+    if (best && score >= best.score) {
+      continue;
+    }
+    const interaction =
+      harthmereObjectInteractionForLabel(labelInput) ?? {
+        kind: "inspect",
+        title: "Inspect",
+        toastVerb: "Inspected",
+      };
+    best = {
+      id: candidate.id,
+      label: candidate.label,
+      entityDescription: candidate.entityDescription,
+      position: candidate.position,
+      interaction,
+      isContainer: isHarthmereContainerObjectLabel(labelInput),
+      score,
+    };
+  }
+  return best;
+}

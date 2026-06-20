@@ -19,20 +19,20 @@ export type CollisionCallback = (
 ) => boolean | void;
 
 
-// SNAPSHOT_COLLISION_MISSING_AABB_COMPAT_V1:
+// SNAPSHOT_COLLISION_MISSING_AABB_COMPAT:
 // Snapshot/Glitch merged worlds can contain legacy entities that still carry a
 // collideable component but no longer have enough shape metadata for the newer
 // getAabbForEntity(..., { extentsType: "collidable" }) path. Collision is a
 // hot client path, so fail soft: skip that single bad entity, log it once in
 // development, and keep the player loop alive.
-const snapshotMissingCollisionAabbWarnedV1 = new Set<string>();
+const snapshotMissingCollisionAabbWarned = new Set<string>();
 
-function warnMissingCollisionAabbV1(entity: ReadonlyEntity) {
+function warnMissingCollisionAabb(entity: ReadonlyEntity) {
   const id = String(entity.id ?? "unknown");
-  if (snapshotMissingCollisionAabbWarnedV1.has(id)) {
+  if (snapshotMissingCollisionAabbWarned.has(id)) {
     return;
   }
-  snapshotMissingCollisionAabbWarnedV1.add(id);
+  snapshotMissingCollisionAabbWarned.add(id);
   if (process.env.NODE_ENV !== "production") {
     const summary = {
       id: entity.id,
@@ -47,7 +47,7 @@ function warnMissingCollisionAabbV1(entity: ReadonlyEntity) {
       label: entity.label?.text,
     };
     console.warn(
-      "[snapshot-collision-missing-aabb-v1] Skipping collidable entity without AABB",
+      "[snapshot-collision-missing-aabb] Skipping collidable entity without AABB",
       summary
     );
   }
@@ -96,7 +96,7 @@ export class CollisionHelper {
       if (isCollidable(entity)) {
         const entityAabb = getAabbForEntity(entity, { extentsType: "collidable" });
         if (!entityAabb) {
-          warnMissingCollisionAabbV1(entity);
+          warnMissingCollisionAabb(entity);
           continue;
         }
         fn(entityAabb, entity);
@@ -109,7 +109,7 @@ export class CollisionHelper {
     aabb: AABB,
     fn: CollisionCallback
   ) {
-    // HARTHMERE_POLISH_V1_WORLD_BOUNDS_FIX
+    // HARTHMERE_POLISH_WORLD_BOUNDS_FIX
     // Previous implementation created phantom collision boxes by shifting the
     // entire world AABB by its own size. That worked while the player was
     // _exactly_ adjacent to one wall, but at corners or after a long step
@@ -120,8 +120,8 @@ export class CollisionHelper {
     // Solid half-space walls fix this: each breached axis emits a giant
     // box that fills the entire outside region for that axis, regardless
     // of how far past the edge the entity is.
-    const v0 = worldMetadata.aabb.v0;
-    const v1 = worldMetadata.aabb.v1;
+    const v0 = worldMetadata.aabb;
+    const v1 = worldMetadata.aabb;
     const FAR = 1_000_000; // engineering "infinity" — larger than any world
     const wallNegX: AABB = [[-FAR, -FAR, -FAR], [v0[0], FAR, FAR]];
     const wallPosX: AABB = [[v1[0], -FAR, -FAR], [FAR, FAR, FAR]];

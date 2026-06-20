@@ -265,7 +265,7 @@ export function entityPositionOrBoxCenter<V extends ReadonlyVec3f | undefined>(
   }
 
   if (entity.box) {
-    return centerAABB([entity.box.v0, entity.box.v1]);
+    return centerAABB([entity.box, entity.box]);
   } else if (entity.position) {
     return entity.position.v;
   }

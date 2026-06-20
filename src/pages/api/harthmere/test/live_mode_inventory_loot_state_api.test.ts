@@ -1,16 +1,16 @@
 import assert from "assert";
-import { readHarthmereLiveModeInventoryLootStateForActorV1 } from "../live_mode_inventory_loot_state";
+import { readHarthmereLiveModeInventoryLootStateForActor } from "../live_mode_inventory_loot_state";
 import {
-  defaultHarthmereLiveModeBackendStateV1,
-  harthmereLiveModePlayerStateKeyV1,
-} from "@/shared/harthmere/live_mode_backend_v1";
+  defaultHarthmereLiveModeBackendState,
+  harthmereLiveModePlayerStateKey,
+} from "@/shared/harthmere/live_mode_backend";
 
 const ACTOR = "player_api_inventory_loot_001";
 const NOW_MS = 1_800_003_000_000;
 
 describe("live_mode_inventory_loot_state API route integration", () => {
   it("hydrates actor inventory, material storage, overflow, and equipment without overwriting state", async () => {
-    const state = defaultHarthmereLiveModeBackendStateV1(ACTOR, NOW_MS);
+    const state = defaultHarthmereLiveModeBackendState(ACTOR, NOW_MS);
     state.inventory.gold = 77;
     state.inventory.items.audit_ore = 5;
     state.inventory.bank.audit_ingot = 2;
@@ -33,13 +33,13 @@ describe("live_mode_inventory_loot_state API route integration", () => {
       },
     };
 
-    const snapshot = await readHarthmereLiveModeInventoryLootStateForActorV1({
+    const snapshot = await readHarthmereLiveModeInventoryLootStateForActor({
       redis,
       actorId: ACTOR,
       nowMs: NOW_MS,
     });
 
-    assert.deepEqual(reads, [harthmereLiveModePlayerStateKeyV1(ACTOR)]);
+    assert.deepEqual(reads, [harthmereLiveModePlayerStateKey(ACTOR)]);
     assert.equal((snapshot as any).actor.gold, 77);
     assert.equal((snapshot as any).actor.items.audit_ore, 5);
     assert.equal((snapshot as any).actor.bank.audit_ingot, 2);

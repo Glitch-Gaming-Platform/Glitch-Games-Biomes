@@ -2,20 +2,20 @@
 /// <reference types="node" />
 import assert from "assert";
 import {
-  createBiomesUIGuildsAdapterV1,
-  fetchBiomesUIGuildStateV1,
-  normalizeBiomesUIGuildSnapshotV1,
-  submitBiomesUIGuildMutationV1,
-  type BiomesUIGuildClientSnapshotV1,
-  type BiomesUIGuildLiveModeResponseV1,
-  type BiomesUIGuildMutationOperationV1,
-  type BiomesUIGuildMutationPayloadV1,
+  createBiomesUIGuildsAdapter,
+  fetchBiomesUIGuildState,
+  normalizeBiomesUIGuildSnapshot,
+  submitBiomesUIGuildMutation,
+  type BiomesUIGuildClientSnapshot,
+  type BiomesUIGuildLiveModeResponse,
+  type BiomesUIGuildMutationOperation,
+  type BiomesUIGuildMutationPayload,
 } from "../adapters/guildsLiveAdapter";
 
 describe("BiomesUI guild live adapter", () => {
-  function sampleSnapshot(): BiomesUIGuildClientSnapshotV1 {
+  function sampleSnapshot(): BiomesUIGuildClientSnapshot {
     const now = 1_800_000_000_000;
-    return normalizeBiomesUIGuildSnapshotV1({
+    return normalizeBiomesUIGuildSnapshot({
       actorId: "player_a",
       memberGuildId: "guild_iron_1",
       role: "leader",
@@ -194,7 +194,7 @@ describe("BiomesUI guild live adapter", () => {
       };
     }) as any;
 
-    const state = await fetchBiomesUIGuildStateV1(fetchImpl);
+    const state = await fetchBiomesUIGuildState(fetchImpl);
     assert.equal(calls[0].url, "/api/harthmere/live_mode_guild_state");
     assert.equal(calls[0].init.method, "GET");
     assert.equal(calls[0].init.credentials, "same-origin");
@@ -211,7 +211,7 @@ describe("BiomesUI guild live adapter", () => {
       };
     }) as any;
 
-    await submitBiomesUIGuildMutationV1(
+    await submitBiomesUIGuildMutation(
       "create_guild",
       { name: "Iron Lanterns", tag: "IRON", description: "Grove builders" },
       { fetchImpl, requestId: "fixed_request" },
@@ -236,15 +236,15 @@ describe("BiomesUI guild live adapter", () => {
     })) as any;
 
     await assert.rejects(
-      () => submitBiomesUIGuildMutationV1("kick_member", { guildId: "guild_iron_1", targetActorId: "player_b" }, { fetchImpl, requestId: "fixed_request" }),
+      () => submitBiomesUIGuildMutation("kick_member", { guildId: "guild_iron_1", targetActorId: "player_b" }, { fetchImpl, requestId: "fixed_request" }),
       /missing_permission:manage_members/,
     );
   });
 
   it("normalizes guild state for the BiomesUI tab and exposes roster, finder, ranks, bank, and permissions", () => {
     const snapshot = sampleSnapshot();
-    let saved: BiomesUIGuildClientSnapshotV1 | undefined = snapshot;
-    const adapter = createBiomesUIGuildsAdapterV1({
+    let saved: BiomesUIGuildClientSnapshot | undefined = snapshot;
+    const adapter = createBiomesUIGuildsAdapter({
       state: snapshot,
       hydrated: true,
       setState: (next) => { saved = next; },
@@ -266,16 +266,16 @@ describe("BiomesUI guild live adapter", () => {
   });
 
   it("maps BiomesUI tab actions to the exact guild backend operations", async () => {
-    const operations: Array<{ operation: BiomesUIGuildMutationOperationV1; payload: BiomesUIGuildMutationPayloadV1 }> = [];
-    let saved: BiomesUIGuildClientSnapshotV1 | undefined = sampleSnapshot();
+    const operations: Array<{ operation: BiomesUIGuildMutationOperation; payload: BiomesUIGuildMutationPayload }> = [];
+    let saved: BiomesUIGuildClientSnapshot | undefined = sampleSnapshot();
     const submit = async (
-      operation: BiomesUIGuildMutationOperationV1,
-      payload: BiomesUIGuildMutationPayloadV1 = {},
-    ): Promise<BiomesUIGuildLiveModeResponseV1> => {
+      operation: BiomesUIGuildMutationOperation,
+      payload: BiomesUIGuildMutationPayload = {},
+    ): Promise<BiomesUIGuildLiveModeResponse> => {
       operations.push({ operation, payload });
       return { ok: true, guildState: saved };
     };
-    const adapter = createBiomesUIGuildsAdapterV1({
+    const adapter = createBiomesUIGuildsAdapter({
       state: saved,
       hydrated: true,
       setState: (next) => { saved = next; },
@@ -350,11 +350,11 @@ describe("BiomesUI guild live adapter", () => {
     }) as any;
 
     await assert.rejects(
-      () => submitBiomesUIGuildMutationV1("collect_tax" as any, { guildId: "guild_iron_1", amountGold: 100 }, { fetchImpl }),
+      () => submitBiomesUIGuildMutation("collect_tax" as any, { guildId: "guild_iron_1", amountGold: 100 }, { fetchImpl }),
       /server_only_operation:collect_tax/,
     );
     await assert.rejects(
-      () => submitBiomesUIGuildMutationV1("add_xp" as any, { guildId: "guild_iron_1", xpDelta: 100 } as any, { fetchImpl }),
+      () => submitBiomesUIGuildMutation("add_xp" as any, { guildId: "guild_iron_1", xpDelta: 100 } as any, { fetchImpl }),
       /server_only_operation:add_xp/,
     );
   });

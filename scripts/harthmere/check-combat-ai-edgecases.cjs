@@ -9,7 +9,7 @@ const combat = fs.readFileSync(combatPath, "utf8");
 const renderer = fs.readFileSync(rendererPath, "utf8");
 
 const checks = [
-  ["revision bumped", /harthmere-combat-ai-edgecases-v2/.test(combat)],
+  ["revision bumped", /harthmere-combat-ai-edgecases/.test(combat)],
   ["forward arc logs nearest candidates", /forward_arc\.nearest/.test(combat) && /nearest: arc\.nearest/.test(combat)],
   ["forward arc uses live target positions", /harthmereForwardArcTargetPositions/.test(combat) && /readHarthmereRuntimeCombatActors/.test(combat)],
   ["forward arc has close-contact forgiveness", /closeBodyContact/.test(combat)],

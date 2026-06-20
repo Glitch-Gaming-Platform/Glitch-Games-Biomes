@@ -1,7 +1,7 @@
 import {
-  activeQuestVoiceContextForNpcV1,
-  playerVoiceContextForNpcChatV1,
-  questVoiceContextForStepBundleV1,
+  activeQuestVoiceContextForNpc,
+  playerVoiceContextForNpcChat,
+  questVoiceContextForStepBundle,
 } from "@/client/components/challenges/helpers";
 import assert from "assert";
 
@@ -38,7 +38,7 @@ describe("Harthmere NPC voice player context", () => {
       },
     };
 
-    const context = playerVoiceContextForNpcChatV1({
+    const context = playerVoiceContextForNpcChat({
       reactResources: resources as any,
       userId: 1 as any,
     });
@@ -59,7 +59,7 @@ describe("Harthmere NPC voice player context", () => {
       },
     };
 
-    const context = playerVoiceContextForNpcChatV1({
+    const context = playerVoiceContextForNpcChat({
       reactResources: resources as any,
       userId: 1 as any,
     });
@@ -100,7 +100,7 @@ describe("Harthmere NPC voice player context", () => {
       },
     };
 
-    const context = activeQuestVoiceContextForNpcV1([
+    const context = activeQuestVoiceContextForNpc([
       completed as any,
       available as any,
       active as any,
@@ -116,7 +116,7 @@ describe("Harthmere NPC voice player context", () => {
 
   it("omits quest voice context once the NPC quest is no longer active", () => {
     assert.equal(
-      activeQuestVoiceContextForNpcV1([
+      activeQuestVoiceContextForNpc([
         {
           questBundle: {
             state: "completed",
@@ -129,7 +129,7 @@ describe("Harthmere NPC voice player context", () => {
       undefined
     );
     assert.match(
-      questVoiceContextForStepBundleV1({
+      questVoiceContextForStepBundle({
         questBundle: {
           state: "available",
           biscuit: { displayName: "Future Quest" },

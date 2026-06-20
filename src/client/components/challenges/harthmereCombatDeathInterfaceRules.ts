@@ -1,4 +1,4 @@
-export const HARTHMERE_COMBAT_INTERFACE_KEY_COPY_V1 = {
+export const HARTHMERE_COMBAT_INTERFACE_KEY_COPY = {
   draw: "X",
   target: "Tab",
   basic: "B",
@@ -7,19 +7,19 @@ export const HARTHMERE_COMBAT_INTERFACE_KEY_COPY_V1 = {
   pvp: "P",
 } as const;
 
-export type HarthmereInterfacePvpModeV1 =
+export type HarthmereInterfacePvpMode =
   | "pve"
   | "duel"
   | "normal_pvp"
   | "hardcore_pvp";
 
-export interface HarthmereInterfaceCombatantSnapshotV1 {
+export interface HarthmereInterfaceCombatantSnapshot {
   hp?: number;
   maxHp?: number;
   combatState?: string;
 }
 
-export interface HarthmereMultiplayerInterfaceSnapshotV1 {
+export interface HarthmereMultiplayerInterfaceSnapshot {
   safeZone?: boolean;
   pvpFlag?: string;
   mode?: string;
@@ -28,17 +28,17 @@ export interface HarthmereMultiplayerInterfaceSnapshotV1 {
   currentTargetLabel?: string;
 }
 
-export interface HarthmereDeathInterfaceRecordSnapshotV1 {
+export interface HarthmereDeathInterfaceRecordSnapshot {
   killerType?: string;
   killerName?: string;
-  pvpMode?: HarthmereInterfacePvpModeV1;
+  pvpMode?: HarthmereInterfacePvpMode;
   inventoryDropPolicy?: string;
   availableRespawns?: string[];
 }
 
-export interface HarthmereDeathInterfaceSnapshotV1 {
+export interface HarthmereDeathInterfaceSnapshot {
   state?: string;
-  currentDeath?: HarthmereDeathInterfaceRecordSnapshotV1;
+  currentDeath?: HarthmereDeathInterfaceRecordSnapshot;
   protectionUntil?: number;
   resurrectionSicknessUntil?: number;
 }
@@ -65,8 +65,8 @@ function secondsUntil(deadline: number | undefined, atMs: number) {
   return Math.max(0, Math.ceil((deadline - atMs) / 1000));
 }
 
-export function getHarthmereCombatantActionBlockReasonV1(
-  combatant: HarthmereInterfaceCombatantSnapshotV1 | undefined,
+export function getHarthmereCombatantActionBlockReason(
+  combatant: HarthmereInterfaceCombatantSnapshot | undefined,
   atMs = Date.now(),
 ) {
   const state = String(combatant?.combatState ?? "idle");
@@ -80,13 +80,13 @@ export function getHarthmereCombatantActionBlockReasonV1(
   return undefined;
 }
 
-export function getHarthmereMultiplayerAttackDisabledReasonV1(
+export function getHarthmereMultiplayerAttackDisabledReason(
   attack: "basic" | "heavy" | "spark",
-  state: HarthmereMultiplayerInterfaceSnapshotV1,
-  combatant: HarthmereInterfaceCombatantSnapshotV1 | undefined,
+  state: HarthmereMultiplayerInterfaceSnapshot,
+  combatant: HarthmereInterfaceCombatantSnapshot | undefined,
   atMs = Date.now(),
 ) {
-  const combatantBlock = getHarthmereCombatantActionBlockReasonV1(
+  const combatantBlock = getHarthmereCombatantActionBlockReason(
     combatant,
     atMs,
   );
@@ -105,9 +105,9 @@ export function getHarthmereMultiplayerAttackDisabledReasonV1(
   return undefined;
 }
 
-export function inferHarthmereInterfacePvpModeV1(
-  state: HarthmereMultiplayerInterfaceSnapshotV1,
-): HarthmereInterfacePvpModeV1 {
+export function inferHarthmereInterfacePvpMode(
+  state: HarthmereMultiplayerInterfaceSnapshot,
+): HarthmereInterfacePvpMode {
   if (state.mode === "duel" || state.pvpFlag === "duel_flagged") {
     return "duel";
   }
@@ -128,8 +128,8 @@ export function inferHarthmereInterfacePvpModeV1(
   return "pve";
 }
 
-export function harthmerePvpRewardPolicySummaryV1(
-  mode: HarthmereInterfacePvpModeV1,
+export function harthmerePvpRewardPolicySummary(
+  mode: HarthmereInterfacePvpMode,
 ) {
   switch (mode) {
     case "duel":
@@ -144,17 +144,17 @@ export function harthmerePvpRewardPolicySummaryV1(
   }
 }
 
-export function describeHarthmereMultiplayerCombatInterfaceV1(
-  state: HarthmereMultiplayerInterfaceSnapshotV1,
-  combatant: HarthmereInterfaceCombatantSnapshotV1 | undefined,
+export function describeHarthmereMultiplayerCombatInterface(
+  state: HarthmereMultiplayerInterfaceSnapshot,
+  combatant: HarthmereInterfaceCombatantSnapshot | undefined,
   atMs = Date.now(),
 ) {
-  const pvpMode = inferHarthmereInterfacePvpModeV1(state);
+  const pvpMode = inferHarthmereInterfacePvpMode(state);
   const protectedSeconds = Math.max(
     secondsUntil(state.protectedUntil, atMs),
     state.pvpFlag === "spawn_protected" ? 1 : 0,
   );
-  const attackDisabledReason = getHarthmereMultiplayerAttackDisabledReasonV1(
+  const attackDisabledReason = getHarthmereMultiplayerAttackDisabledReason(
     "basic",
     state,
     combatant,
@@ -172,14 +172,14 @@ export function describeHarthmereMultiplayerCombatInterfaceV1(
       : pvpMode === "pve"
         ? "PvP off: NPC combat remains available."
         : "PvP active: combat follows consent, flag, contribution, and anti-abuse rules.",
-    rewardPolicySummary: harthmerePvpRewardPolicySummaryV1(pvpMode),
+    rewardPolicySummary: harthmerePvpRewardPolicySummary(pvpMode),
     pvpMode,
   };
 }
 
 function deathRecordMode(
-  record: HarthmereDeathInterfaceRecordSnapshotV1 | undefined,
-): HarthmereInterfacePvpModeV1 {
+  record: HarthmereDeathInterfaceRecordSnapshot | undefined,
+): HarthmereInterfacePvpMode {
   if (record?.pvpMode) {
     return record.pvpMode;
   }
@@ -195,17 +195,17 @@ function deathRecordMode(
   return "pve";
 }
 
-export function harthmereDeathPenaltySummaryV1(
-  record: HarthmereDeathInterfaceRecordSnapshotV1 | undefined,
+export function harthmereDeathPenaltySummary(
+  record: HarthmereDeathInterfaceRecordSnapshot | undefined,
 ) {
-  return harthmerePvpRewardPolicySummaryV1(deathRecordMode(record)).replace(
+  return harthmerePvpRewardPolicySummary(deathRecordMode(record)).replace(
     "PvE: normal combat credit, XP, loot, reputation, and economy rules apply.",
     "PvE death: safe respawn, short recovery sickness, durability recovery, and no permanent item loss in local-dev.",
   );
 }
 
-export function harthmereRespawnDisabledReasonV1(
-  death: HarthmereDeathInterfaceSnapshotV1,
+export function harthmereRespawnDisabledReason(
+  death: HarthmereDeathInterfaceSnapshot,
   respawnId: string,
 ) {
   if (!RESPAWNABLE_DEATH_STATES.has(String(death.state))) {
@@ -218,8 +218,8 @@ export function harthmereRespawnDisabledReasonV1(
   return undefined;
 }
 
-export function harthmereReviveDisabledReasonV1(
-  death: HarthmereDeathInterfaceSnapshotV1,
+export function harthmereReviveDisabledReason(
+  death: HarthmereDeathInterfaceSnapshot,
 ) {
   if (!["downed", "dead"].includes(String(death.state))) {
     return "Revive is only available while downed or dead.";
@@ -230,8 +230,8 @@ export function harthmereReviveDisabledReasonV1(
   return undefined;
 }
 
-export function harthmereReleaseDisabledReasonV1(
-  death: HarthmereDeathInterfaceSnapshotV1,
+export function harthmereReleaseDisabledReason(
+  death: HarthmereDeathInterfaceSnapshot,
 ) {
   if (death.state !== "downed") {
     return "Release is only available from the downed state.";
@@ -239,13 +239,13 @@ export function harthmereReleaseDisabledReasonV1(
   return undefined;
 }
 
-export function describeHarthmereDeathInterfaceV1(
-  death: HarthmereDeathInterfaceSnapshotV1,
+export function describeHarthmereDeathInterface(
+  death: HarthmereDeathInterfaceSnapshot,
 ) {
   return {
-    penaltySummary: harthmereDeathPenaltySummaryV1(death.currentDeath),
-    reviveDisabledReason: harthmereReviveDisabledReasonV1(death),
-    releaseDisabledReason: harthmereReleaseDisabledReasonV1(death),
+    penaltySummary: harthmereDeathPenaltySummary(death.currentDeath),
+    reviveDisabledReason: harthmereReviveDisabledReason(death),
+    releaseDisabledReason: harthmereReleaseDisabledReason(death),
     mode: deathRecordMode(death.currentDeath),
   };
 }

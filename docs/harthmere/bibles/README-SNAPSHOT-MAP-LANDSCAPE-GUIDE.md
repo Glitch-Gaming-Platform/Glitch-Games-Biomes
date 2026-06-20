@@ -109,8 +109,8 @@ pointers, and random spawn pools, the canonical placement layer is the
 generated production terrain placement map:
 
 ```text
-docs/harthmere/HARTHMERE_PRODUCTION_TERRAIN_PLACEMENT_MAP_V1.md
-src/shared/harthmere/production_terrain_placement_map_v1.ts
+docs/harthmere/HARTHMERE_PRODUCTION_TERRAIN_PLACEMENT_MAP.md
+src/shared/harthmere/production_terrain_placement_map.ts
 ```
 
 Do not place those systems from authored `y=0`, local-dev terrain height, or a
@@ -1009,7 +1009,7 @@ No route/quest/building/NPC remains at the old town coordinates.
 Add a script similar to:
 
 ```text
-scripts/harthmere/audit-snapshot-map-landscape-v1.cjs
+scripts/harthmere/audit-snapshot-map-landscape.cjs
 ```
 
 It should report:
@@ -1037,7 +1037,7 @@ safe/protected zone count and positions
 Add a script similar to:
 
 ```text
-scripts/harthmere/check-harthmere-map-landscape-offset-v1.cjs
+scripts/harthmere/check-harthmere-map-landscape-offset.cjs
 ```
 
 It should fail if:
@@ -1055,7 +1055,7 @@ It should fail if:
 Add a script similar to:
 
 ```text
-scripts/harthmere/check-harthmere-water-pipeline-v1.cjs
+scripts/harthmere/check-harthmere-water-pipeline.cjs
 ```
 
 It should verify:
@@ -1075,7 +1075,7 @@ client water mesh can be generated for the shard
 Add a script similar to:
 
 ```text
-scripts/harthmere/check-map-tile-generation-v1.cjs
+scripts/harthmere/check-map-tile-generation.cjs
 ```
 
 It should verify:
@@ -1094,7 +1094,7 @@ landmark API returns new town labels
 Add a script similar to:
 
 ```text
-scripts/harthmere/check-structural-terrain-buildings-v1.cjs
+scripts/harthmere/check-structural-terrain-buildings.cjs
 ```
 
 It should verify:

@@ -1,13 +1,13 @@
 import assert from "assert";
 import {
-  selectHarthmereDeathDropItemsV1,
-  validateHarthmereAbilityUseV1,
-  type HarthmerePlayerProgressionStateV1,
-} from "../complete_combat_progression_v1";
+  selectHarthmereDeathDropItems,
+  validateHarthmereAbilityUse,
+  type HarthmerePlayerProgressionState,
+} from "../complete_combat_progression";
 
 const NOW = 1_700_000_000_000;
 
-function state(overrides: Partial<HarthmerePlayerProgressionStateV1> = {}): HarthmerePlayerProgressionStateV1 {
+function state(overrides: Partial<HarthmerePlayerProgressionState> = {}): HarthmerePlayerProgressionState {
   return {
     playerId: "p1",
     classId: "warrior",
@@ -36,9 +36,9 @@ function state(overrides: Partial<HarthmerePlayerProgressionStateV1> = {}): Hart
   };
 }
 
-describe("complete_combat_progression_v1 rule oversight fixes", () => {
+describe("complete_combat_progression rule oversight fixes", () => {
   it("keeps the base ability validation path working", () => {
-    const result = validateHarthmereAbilityUseV1({
+    const result = validateHarthmereAbilityUse({
       state: state(),
       abilityId: "basic_strike",
       targetType: "enemy",
@@ -54,7 +54,7 @@ describe("complete_combat_progression_v1 rule oversight fixes", () => {
   });
 
   it("requires abilities to be known even when the class requirement matches", () => {
-    const result = validateHarthmereAbilityUseV1({
+    const result = validateHarthmereAbilityUse({
       state: state({
         classId: "mage",
         level: 10,
@@ -76,7 +76,7 @@ describe("complete_combat_progression_v1 rule oversight fixes", () => {
 
   it("blocks dead, downed, respawning, and teleporting actors from casting", () => {
     for (const combatState of ["dead", "downed", "respawning", "teleporting"] as const) {
-      const result = validateHarthmereAbilityUseV1({
+      const result = validateHarthmereAbilityUse({
         state: state({ combatState }),
         abilityId: "basic_strike",
         targetType: "enemy",
@@ -93,7 +93,7 @@ describe("complete_combat_progression_v1 rule oversight fixes", () => {
   });
 
   it("rejects target-type mismatches before range and damage resolution", () => {
-    const result = validateHarthmereAbilityUseV1({
+    const result = validateHarthmereAbilityUse({
       state: state(),
       abilityId: "basic_strike",
       targetType: "ally",
@@ -109,7 +109,7 @@ describe("complete_combat_progression_v1 rule oversight fixes", () => {
   });
 
   it("does not drop inventory outside hardcore PvP", () => {
-    const result = selectHarthmereDeathDropItemsV1({
+    const result = selectHarthmereDeathDropItems({
       mode: "pvp",
       candidates: [
         { itemId: "iron_ore", count: 5, category: "gathered_resource", binding: "none" },
@@ -122,7 +122,7 @@ describe("complete_combat_progression_v1 rule oversight fixes", () => {
   });
 
   it("drops only unbound trade goods and gathered resources in hardcore PvP", () => {
-    const result = selectHarthmereDeathDropItemsV1({
+    const result = selectHarthmereDeathDropItems({
       mode: "hardcore_pvp",
       candidates: [
         { itemId: "iron_ore", count: 5, category: "gathered_resource", binding: "none" },

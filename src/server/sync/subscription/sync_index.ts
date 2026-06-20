@@ -30,7 +30,7 @@ import type TypedEventEmitter from "typed-emitter";
 
 const POSITIONLESS_SHARD = "" as ShardId;
 
-const HARTHMERE_VISUAL_LITE_SYNC_FILTER_V1: EntityFilter = {
+const HARTHMERE_VISUAL_LITE_SYNC_FILTER: EntityFilter = {
   anyOf: [
     "label",
     "npc_metadata",
@@ -55,7 +55,7 @@ const HARTHMERE_VISUAL_LITE_SYNC_FILTER_V1: EntityFilter = {
 
 function syncIndexSubscriptionFilter(): EntityFilter {
   return process.env.HARTHMERE_VISUAL_LITE_REPLICA_FILTER === "1"
-    ? HARTHMERE_VISUAL_LITE_SYNC_FILTER_V1
+    ? HARTHMERE_VISUAL_LITE_SYNC_FILTER
     : { noneOf: ["iced"] };
 }
 

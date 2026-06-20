@@ -1,34 +1,34 @@
 import {
-  activeQuestVoiceContextForNpcV1,
+  activeQuestVoiceContextForNpc,
   defaultDialogForNpc,
-  playerVoiceContextForNpcChatV1,
+  playerVoiceContextForNpcChat,
   useRelevantStepsForEntity,
 } from "@/client/components/challenges/helpers";
 import {
-  isHarthmereCombatCreatureNpcTypeV1,
-  isHarthmereNonLivingDialogueObjectLabelV1,
+  isHarthmereCombatCreatureNpcType,
+  isHarthmereNonLivingDialogueObjectLabel,
 } from "@/client/components/challenges/dialogueObjectSemantics";
 import { TalkToNpc } from "@/client/components/challenges/TalkDialogModal";
 import {
-  contextForLiveEntityHelperQuestV1,
-  useLiveEntityHelperQuestDialogV1,
+  contextForLiveEntityHelperQuest,
+  useLiveEntityHelperQuestDialog,
 } from "@/client/components/challenges/LocalDevLiveEntityHelperQuests";
 import { useLocalDevHarthmereDialog } from "@/client/components/challenges/LocalDevHarthmereQuests";
-import { useSnapshotMissionDialogV71 } from "@/client/components/challenges/LocalDevSnapshotMissionBridge";
+import { useSnapshotMissionDialog } from "@/client/components/challenges/LocalDevSnapshotMissionBridge";
 import {
-  snapshotGroveNpcIdForDialogLabelV103,
-  useSnapshotGroveNpcDialogV75,
+  snapshotGroveNpcIdForDialogLabel,
+  useSnapshotGroveNpcDialog,
 } from "@/client/components/challenges/LocalDevSnapshotGroveBibleRuntime";
-import { useSnapshotLiveNpcLoreDialogV79 } from "@/client/components/challenges/LocalDevSnapshotLiveNpcLoreRuntimeV79";
+import { useSnapshotLiveNpcLoreDialog } from "@/client/components/challenges/LocalDevSnapshotLiveNpcLoreRuntime";
 import { applyHarthmereReputationChange } from "@/client/components/challenges/LocalDevHarthmereReputation";
-import { submitHarthmereDialogueLiveModeChoiceV1 } from "@/client/components/challenges/dialogueLiveModeReputation";
+import { submitHarthmereDialogueLiveModeChoice } from "@/client/components/challenges/dialogueLiveModeReputation";
 import {
-  harthmereFallbackNpcDialogTextV143,
-  harthmereFallbackNpcOptionsV143,
-  isHarthmerePlaceholderNpcDialogV143,
-} from "@/shared/harthmere/npc_dialog_fallback_v143";
-import { getLiveEntityHelperQuestForEntityV1 } from "@/shared/harthmere/live_entity_helper_quests_v1";
-import { snapshotLiveNpcLoreForDialogV79 } from "@/shared/harthmere/snapshot_live_npc_bible_v79";
+  harthmereFallbackNpcDialogText,
+  harthmereFallbackNpcOptions,
+  isHarthmerePlaceholderNpcDialog,
+} from "@/shared/harthmere/npc_dialog_fallback";
+import { getLiveEntityHelperQuestForEntity } from "@/shared/harthmere/live_entity_helper_quests";
+import { snapshotLiveNpcLoreForDialog } from "@/shared/harthmere/snapshot_live_npc_bible";
 import type { TalkDialogStepAction } from "@/client/components/challenges/TalkDialogModalStep";
 import { useClientContext } from "@/client/components/contexts/ClientContextReactContext";
 import type { ClientContextSubset } from "@/client/game/context";
@@ -71,7 +71,7 @@ export function useCanTalkToNpc(
     ["/ecs/c/player_status", entityId]
   );
   const iced = deps.reactResources.use("/ecs/c/iced", entityId);
-  // V148: parity with `canTalkToNpc` — read the biscuit so biscuit-only
+  // current: parity with `canTalkToNpc` — read the biscuit so biscuit-only
   // signals (isRobot, isPlayerLikeAppearance, npcDefaultDialog, isMount)
   // feed the helper-quest classifier the same way they feed the talk
   // gate. Without this, an entity that the talk overlay accepts via its
@@ -85,8 +85,8 @@ export function useCanTalkToNpc(
   } catch {
     relevantBiscuit = undefined;
   }
-  const liveEntityHelperQuest = getLiveEntityHelperQuestForEntityV1(
-    contextForLiveEntityHelperQuestV1({
+  const liveEntityHelperQuest = getLiveEntityHelperQuestForEntity(
+    contextForLiveEntityHelperQuest({
       entityId,
       label: label?.text,
       position: position?.v,
@@ -102,11 +102,11 @@ export function useCanTalkToNpc(
     })
   );
   // Muckers / hexers / huntable wildlife are combat creatures, never talkable.
-  if (isHarthmereCombatCreatureNpcTypeV1(npcMetadata?.type_id)) {
+  if (isHarthmereCombatCreatureNpcType(npcMetadata?.type_id)) {
     return false;
   }
   if (
-    isHarthmereNonLivingDialogueObjectLabelV1({
+    isHarthmereNonLivingDialogueObjectLabel({
       label: label?.text,
       entityDescription: entityDescription?.text,
     })
@@ -117,13 +117,13 @@ export function useCanTalkToNpc(
     canTalkToNpc(deps, entityId) ||
     Boolean(liveEntityHelperQuest) ||
     Boolean(
-      snapshotGroveNpcIdForDialogLabelV103({
+      snapshotGroveNpcIdForDialogLabel({
         label: label?.text,
         entityDescriptionText: entityDescription?.text,
       })
     ) ||
     Boolean(
-      snapshotLiveNpcLoreForDialogV79({
+      snapshotLiveNpcLoreForDialog({
         label: label?.text,
         entityDescriptionText: entityDescription?.text,
       })
@@ -155,11 +155,11 @@ export function canTalkToNpc(
   // Muckers / hexers / huntable wildlife are combat creatures, never talkable —
   // even though they carry an entity_description that the gate below would
   // otherwise accept as a "talk" signal.
-  if (isHarthmereCombatCreatureNpcTypeV1(entity?.npc_metadata?.type_id)) {
+  if (isHarthmereCombatCreatureNpcType(entity?.npc_metadata?.type_id)) {
     return false;
   }
   if (
-    isHarthmereNonLivingDialogueObjectLabelV1({
+    isHarthmereNonLivingDialogueObjectLabel({
       label: label?.text,
       entityDescription: entityDescription?.text,
     })
@@ -170,8 +170,8 @@ export function canTalkToNpc(
     typeof item?.npcDefaultDialog === "string" ||
     typeof npcType?.npcDefaultDialog === "string" ||
     Boolean(defaultDialog?.text);
-  const liveEntityHelperQuest = getLiveEntityHelperQuestForEntityV1(
-    contextForLiveEntityHelperQuestV1({
+  const liveEntityHelperQuest = getLiveEntityHelperQuestForEntity(
+    contextForLiveEntityHelperQuest({
       entityId,
       label: label?.text,
       position: entity?.position?.v,
@@ -201,7 +201,7 @@ export function canTalkToNpc(
   return false;
 }
 
-function liveEntityHelperConversationActionsV1(
+function liveEntityHelperConversationActions(
   displayName: string | undefined
 ): TalkDialogStepAction[] {
   const name = displayName?.trim() || "this traveler";
@@ -233,15 +233,15 @@ export const TalkToNpcDefaultDialog: React.FunctionComponent<{
     "/ecs/c/entity_description",
     talkingToNPCId
   )?.text;
-  const snapshotMissionDialog = useSnapshotMissionDialogV71(
+  const snapshotMissionDialog = useSnapshotMissionDialog(
     talkingToNPCId,
     initialDefaultDialog
   );
-  const snapshotGroveNpcDialog = useSnapshotGroveNpcDialogV75(
+  const snapshotGroveNpcDialog = useSnapshotGroveNpcDialog(
     talkingToNPCId,
     initialDefaultDialog
   );
-  const snapshotLiveNpcLoreDialog = useSnapshotLiveNpcLoreDialogV79(
+  const snapshotLiveNpcLoreDialog = useSnapshotLiveNpcLoreDialog(
     talkingToNPCId,
     initialDefaultDialog
   );
@@ -250,10 +250,10 @@ export const TalkToNpcDefaultDialog: React.FunctionComponent<{
     initialDefaultDialog
   );
   const liveEntityHelperDialog =
-    useLiveEntityHelperQuestDialogV1(talkingToNPCId);
+    useLiveEntityHelperQuestDialog(talkingToNPCId);
   const relevantQuestSteps = useRelevantStepsForEntity(talkingToNPCId);
   const [id, setId] = useState(0);
-  const fallbackDialogText = harthmereFallbackNpcDialogTextV143({
+  const fallbackDialogText = harthmereFallbackNpcDialogText({
     name: label,
     description: entityDescription ?? initialDefaultDialog,
   });
@@ -271,7 +271,7 @@ export const TalkToNpcDefaultDialog: React.FunctionComponent<{
         },
         personal: { likeability: likeabilityDelta },
       });
-      void submitHarthmereDialogueLiveModeChoiceV1({
+      void submitHarthmereDialogueLiveModeChoice({
         entityId: talkingToNPCId,
         label,
         message,
@@ -288,7 +288,7 @@ export const TalkToNpcDefaultDialog: React.FunctionComponent<{
     [label, talkingToNPCId]
   );
   const shouldUseFallbackDialog =
-    isHarthmerePlaceholderNpcDialogV143(initialDefaultDialog);
+    isHarthmerePlaceholderNpcDialog(initialDefaultDialog);
   const [currentDialog, setCurrentDialog] = useState(
     shouldUseFallbackDialog ? fallbackDialogText : initialDefaultDialog
   );
@@ -304,7 +304,7 @@ export const TalkToNpcDefaultDialog: React.FunctionComponent<{
     relevantBiscuit = undefined;
   }
   const makeFallbackActions = useCallback((): TalkDialogStepAction[] => {
-    return harthmereFallbackNpcOptionsV143({
+    return harthmereFallbackNpcOptions({
       name: label,
       description: entityDescription ?? currentDialog,
     }).map((option) => ({
@@ -389,7 +389,7 @@ export const TalkToNpcDefaultDialog: React.FunctionComponent<{
             messageContext: lastMessageContext.current,
             userResponse: message,
             questContext,
-            userContext: playerVoiceContextForNpcChatV1({
+            userContext: playerVoiceContextForNpcChat({
               reactResources,
               userId,
             }),
@@ -455,7 +455,7 @@ export const TalkToNpcDefaultDialog: React.FunctionComponent<{
   );
   const handleVoiceTranscript = useCallback(
     (text: string) => {
-      const questContext = activeQuestVoiceContextForNpcV1(relevantQuestSteps);
+      const questContext = activeQuestVoiceContextForNpc(relevantQuestSteps);
       lastVoiceQuestContext.current = questContext;
       setVoiceConversationActive(true);
       void respondWith(text, questContext);
@@ -478,7 +478,7 @@ export const TalkToNpcDefaultDialog: React.FunctionComponent<{
         buttonLayout="vertical"
         additionalActions={[
           ...liveEntityHelperDialog.actions,
-          ...liveEntityHelperConversationActionsV1(label),
+          ...liveEntityHelperConversationActions(label),
         ].map((e) => ({
           ...e,
           disabled: querying || e.disabled,
@@ -488,7 +488,7 @@ export const TalkToNpcDefaultDialog: React.FunctionComponent<{
     );
   }
 
-  // GROVE_FOUNTAIN_TUTORIALS_V101:
+  // GROVE_FOUNTAIN_TUTORIALS:
   // Grove bible/tutorial dialogue must win before the legacy Road Ahead bridge.
   // Otherwise Jackie always shows only the old bridge and the fountain lessons
   // assigned to Jackie/Rosalyn/Taye/Nia are technically present but invisible.

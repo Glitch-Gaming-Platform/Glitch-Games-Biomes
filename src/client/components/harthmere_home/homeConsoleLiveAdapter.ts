@@ -1,65 +1,65 @@
 import {
-  buildingSystemBlueprintByIdV1,
-  buildingSystemHomeConsoleMarkerIdV1,
-  buildingSystemPlotByIdV1,
-  createBuildingSystemHomeConsoleMarkerV1,
-  type BuildingSystemInWorldMarkerV1,
-  type BuildingSystemPropertyRecordV1,
-} from "@/shared/harthmere/building_system_v1";
+  buildingSystemBlueprintById,
+  buildingSystemHomeConsoleMarkerId,
+  buildingSystemPlotById,
+  createBuildingSystemHomeConsoleMarker,
+  type BuildingSystemInWorldMarker,
+  type BuildingSystemPropertyRecord,
+} from "@/shared/harthmere/building_system";
 import {
-  canAccessHarthmereHomeConsoleV1,
-  defaultHarthmereHomeDecorationStateV1,
-  getHarthmereHomeDecorationDefinitionV1,
-  listHarthmereHomeDecorationDefinitionsV1,
-  listHarthmereHomeDecorationGardenSeedsV1,
-  normalizeHarthmereHomeDecorationStateV1,
-  type HarthmereHomeConsoleAccessReasonV1,
-  type HarthmereHomeDecorationDefinitionV1,
-  type HarthmereHomeDecorationFunctionalEffectsV1,
-  type HarthmereHomeDecorationOperationV1,
-  type HarthmereHomeDecorationPositionV1,
-  type HarthmereHomeDecorationPropertySummaryV1,
-  type HarthmereHomeDecorationRecordV1,
-  type HarthmereHomeDecorationStateV1,
-} from "@/shared/harthmere/home_decoration_authority_v1";
+  canAccessHarthmereHomeConsole,
+  defaultHarthmereHomeDecorationState,
+  getHarthmereHomeDecorationDefinition,
+  listHarthmereHomeDecorationDefinitions,
+  listHarthmereHomeDecorationGardenSeeds,
+  normalizeHarthmereHomeDecorationState,
+  type HarthmereHomeConsoleAccessReason,
+  type HarthmereHomeDecorationDefinition,
+  type HarthmereHomeDecorationFunctionalEffects,
+  type HarthmereHomeDecorationOperation,
+  type HarthmereHomeDecorationPosition,
+  type HarthmereHomeDecorationPropertySummary,
+  type HarthmereHomeDecorationRecord,
+  type HarthmereHomeDecorationState,
+} from "@/shared/harthmere/home_decoration_authority";
 import {
-  harthmereResolveBikkieVisualV1,
-  type HarthmereResolvedBikkieVisualV1,
-} from "@/shared/harthmere/bikkie_visual_resolver_v1";
+  harthmereResolveBikkieVisual,
+  type HarthmereResolvedBikkieVisual,
+} from "@/shared/harthmere/bikkie_visual_resolver";
 import {
-  getHarthmereItemDefinitionV1,
-  type HarthmereItemDefinitionV1,
-} from "@/shared/harthmere/mmo_inventory_authority_v1";
-import { ensureHarthmereProductionCraftingCatalogueV1 } from "@/shared/harthmere/mmo_crafting_catalogue_v1";
-import { fetchHarthmereLiveWithTimeoutV1 } from "@/client/components/harthmere_live_fetch";
+  getHarthmereItemDefinition,
+  type HarthmereItemDefinition,
+} from "@/shared/harthmere/mmo_inventory_authority";
+import { ensureHarthmereProductionCraftingCatalogue } from "@/shared/harthmere/mmo_crafting_catalogue";
+import { fetchHarthmereLiveWithTimeout } from "@/client/components/harthmere_live_fetch";
 
-export interface HarthmereHomeConsoleClientSnapshotV1 {
+export interface HarthmereHomeConsoleClientSnapshot {
   actorId: string;
   gold: number;
   inventoryItems: Record<string, number>;
-  completedProperties: Record<string, BuildingSystemPropertyRecordV1>;
-  homeDecoration: HarthmereHomeDecorationStateV1;
-  inWorldMarkers: Record<string, BuildingSystemInWorldMarkerV1>;
+  completedProperties: Record<string, BuildingSystemPropertyRecord>;
+  homeDecoration: HarthmereHomeDecorationState;
+  inWorldMarkers: Record<string, BuildingSystemInWorldMarker>;
   nowMs: number;
 }
 
-export interface HarthmereHomeConsoleWorldContextV1 {
+export interface HarthmereHomeConsoleWorldContext {
   insideHome?: boolean;
   nearbyPropertyId?: string | null;
   nearbyConsoleId?: string | null;
   interactionKeyLabel?: string;
 }
 
-export interface HarthmereHomeConsoleWorldPointV1 {
+export interface HarthmereHomeConsoleWorldPoint {
   x: number;
   y?: number;
   z: number;
 }
 
-export interface HarthmereHomeConsoleVisibleDefinitionV1 {
-  definition: HarthmereHomeDecorationDefinitionV1;
-  item?: HarthmereItemDefinitionV1;
-  visual: HarthmereResolvedBikkieVisualV1;
+export interface HarthmereHomeConsoleVisibleDefinition {
+  definition: HarthmereHomeDecorationDefinition;
+  item?: HarthmereItemDefinition;
+  visual: HarthmereResolvedBikkieVisual;
   ownedCount: number;
   canPlace: boolean;
   missingReason?: string;
@@ -67,11 +67,11 @@ export interface HarthmereHomeConsoleVisibleDefinitionV1 {
   effectLabel: string;
 }
 
-export interface HarthmereHomeConsoleVisibleDecorationV1 {
-  record: HarthmereHomeDecorationRecordV1;
-  definition?: HarthmereHomeDecorationDefinitionV1;
-  item?: HarthmereItemDefinitionV1;
-  visual: HarthmereResolvedBikkieVisualV1;
+export interface HarthmereHomeConsoleVisibleDecoration {
+  record: HarthmereHomeDecorationRecord;
+  definition?: HarthmereHomeDecorationDefinition;
+  item?: HarthmereItemDefinition;
+  visual: HarthmereResolvedBikkieVisual;
   canUse: boolean;
   canMove: boolean;
   canRemove: boolean;
@@ -79,7 +79,7 @@ export interface HarthmereHomeConsoleVisibleDecorationV1 {
   gardenLabel?: string;
 }
 
-export interface HarthmereHomeConsoleVisibleSeedV1 {
+export interface HarthmereHomeConsoleVisibleSeed {
   seedItemId: string;
   cropItemId: string;
   cropCount: number;
@@ -89,19 +89,19 @@ export interface HarthmereHomeConsoleVisibleSeedV1 {
   canPlant: boolean;
 }
 
-export interface HarthmereHomeConsolePanelV1 {
+export interface HarthmereHomeConsolePanelModel {
   canAccess: boolean;
-  accessReason: HarthmereHomeConsoleAccessReasonV1;
-  property?: BuildingSystemPropertyRecordV1;
+  accessReason: HarthmereHomeConsoleAccessReason;
+  property?: BuildingSystemPropertyRecord;
   propertyDisplayName: string;
-  consoleMarker?: BuildingSystemInWorldMarkerV1;
-  summary: HarthmereHomeDecorationPropertySummaryV1;
-  placeable: HarthmereHomeConsoleVisibleDefinitionV1[];
-  placed: HarthmereHomeConsoleVisibleDecorationV1[];
-  seeds: HarthmereHomeConsoleVisibleSeedV1[];
+  consoleMarker?: BuildingSystemInWorldMarker;
+  summary: HarthmereHomeDecorationPropertySummary;
+  placeable: HarthmereHomeConsoleVisibleDefinition[];
+  placed: HarthmereHomeConsoleVisibleDecoration[];
+  seeds: HarthmereHomeConsoleVisibleSeed[];
 }
 
-export interface HarthmereHomeConsoleInteractionPromptV1 {
+export interface HarthmereHomeConsoleInteractionPrompt {
   visible: boolean;
   propertyId?: string;
   consoleId?: string;
@@ -110,36 +110,36 @@ export interface HarthmereHomeConsoleInteractionPromptV1 {
   keyLabel: string;
 }
 
-export interface HarthmereHomeConsoleSubmitPayloadV1 {
-  operation: HarthmereHomeDecorationOperationV1;
+export interface HarthmereHomeConsoleSubmitPayload {
+  operation: HarthmereHomeDecorationOperation;
   propertyId?: string;
   decorationId?: string;
   itemId?: string;
   seedItemId?: string;
-  position?: Partial<HarthmereHomeDecorationPositionV1>;
+  position?: Partial<HarthmereHomeDecorationPosition>;
   rotationDegrees?: number;
 }
 
-export interface HarthmereHomeConsoleAdapterV1 {
+export interface HarthmereHomeConsoleAdapter {
   isHydrated: () => boolean;
-  getSnapshot: () => HarthmereHomeConsoleClientSnapshotV1 | undefined;
-  isAvailable: (context?: HarthmereHomeConsoleWorldContextV1) => boolean;
+  getSnapshot: () => HarthmereHomeConsoleClientSnapshot | undefined;
+  isAvailable: (context?: HarthmereHomeConsoleWorldContext) => boolean;
   getPanel: (
-    context?: HarthmereHomeConsoleWorldContextV1
-  ) => HarthmereHomeConsolePanelV1;
+    context?: HarthmereHomeConsoleWorldContext
+  ) => HarthmereHomeConsolePanelModel;
   getInteractionPrompt: (
-    context: HarthmereHomeConsoleWorldContextV1
-  ) => HarthmereHomeConsoleInteractionPromptV1;
+    context: HarthmereHomeConsoleWorldContext
+  ) => HarthmereHomeConsoleInteractionPrompt;
   placeDecoration: (
     itemId: string,
     payload?: Omit<
-      HarthmereHomeConsoleSubmitPayloadV1,
+      HarthmereHomeConsoleSubmitPayload,
       "operation" | "itemId"
     >
   ) => Promise<void>;
   moveDecoration: (
     decorationId: string,
-    position: Partial<HarthmereHomeDecorationPositionV1>,
+    position: Partial<HarthmereHomeDecorationPosition>,
     rotationDegrees?: number
   ) => Promise<void>;
   removeDecoration: (decorationId: string) => Promise<void>;
@@ -149,19 +149,19 @@ export interface HarthmereHomeConsoleAdapterV1 {
   harvestGarden: (decorationId: string) => Promise<void>;
 }
 
-export interface CreateHarthmereHomeConsoleAdapterOptionsV1 {
-  state: Partial<HarthmereHomeConsoleClientSnapshotV1> | undefined;
-  context?: HarthmereHomeConsoleWorldContextV1;
+export interface CreateHarthmereHomeConsoleAdapterOptions {
+  state: Partial<HarthmereHomeConsoleClientSnapshot> | undefined;
+  context?: HarthmereHomeConsoleWorldContext;
   hydrated?: boolean;
-  setState?: (state: HarthmereHomeConsoleClientSnapshotV1 | undefined) => void;
-  submit?: (payload: HarthmereHomeConsoleSubmitPayloadV1) => Promise<{
+  setState?: (state: HarthmereHomeConsoleClientSnapshot | undefined) => void;
+  submit?: (payload: HarthmereHomeConsoleSubmitPayload) => Promise<{
     ok: boolean;
-    buildingState?: Partial<HarthmereHomeConsoleClientSnapshotV1>;
+    buildingState?: Partial<HarthmereHomeConsoleClientSnapshot>;
     warnings?: string[];
   }>;
 }
 
-export interface SubmitHarthmereHomeDecorationMutationOptionsV1 {
+export interface SubmitHarthmereHomeDecorationMutationOptions {
   fetchImpl?: (
     url: string,
     init: {
@@ -176,7 +176,7 @@ export interface SubmitHarthmereHomeDecorationMutationOptionsV1 {
   actorEntityVersion?: number;
 }
 
-const EMPTY_SUMMARY: HarthmereHomeDecorationPropertySummaryV1 = {
+const EMPTY_SUMMARY: HarthmereHomeDecorationPropertySummary = {
   propertyId: "",
   storageSlotsBonus: 0,
   comfort: 0,
@@ -191,9 +191,9 @@ const EMPTY_SUMMARY: HarthmereHomeDecorationPropertySummaryV1 = {
 };
 
 function cloneSummary(
-  summary: HarthmereHomeDecorationPropertySummaryV1 | undefined,
+  summary: HarthmereHomeDecorationPropertySummary | undefined,
   propertyId = ""
-): HarthmereHomeDecorationPropertySummaryV1 {
+): HarthmereHomeDecorationPropertySummary {
   return {
     ...EMPTY_SUMMARY,
     ...(summary ?? {}),
@@ -202,7 +202,7 @@ function cloneSummary(
   };
 }
 
-export function formatHarthmereHomeConsolePlayerLabelV1(
+export function formatHarthmereHomeConsolePlayerLabel(
   value: string | undefined
 ) {
   if (!value) return "";
@@ -217,7 +217,7 @@ export function formatHarthmereHomeConsolePlayerLabelV1(
 }
 
 function effectLabel(
-  effects: HarthmereHomeDecorationFunctionalEffectsV1
+  effects: HarthmereHomeDecorationFunctionalEffects
 ): string {
   const parts: string[] = [];
   if (effects.storageSlots) parts.push(`Storage +${effects.storageSlots}`);
@@ -232,16 +232,16 @@ function effectLabel(
   return parts.join(", ") || "Decor";
 }
 
-function footprintLabel(definition: HarthmereHomeDecorationDefinitionV1) {
+function footprintLabel(definition: HarthmereHomeDecorationDefinition) {
   const fp = definition.footprint;
   return `${fp.width}x${fp.depth}x${fp.height}`;
 }
 
 function definitionVisual(
-  definition: HarthmereHomeDecorationDefinitionV1,
-  item?: HarthmereItemDefinitionV1
+  definition: HarthmereHomeDecorationDefinition,
+  item?: HarthmereItemDefinition
 ) {
-  return harthmereResolveBikkieVisualV1({
+  return harthmereResolveBikkieVisual({
     id: definition.itemId,
     label: definition.displayName,
     kind: item?.category ?? definition.kind,
@@ -252,8 +252,8 @@ function definitionVisual(
 }
 
 function defaultPanel(
-  reason: HarthmereHomeConsoleAccessReasonV1
-): HarthmereHomeConsolePanelV1 {
+  reason: HarthmereHomeConsoleAccessReason
+): HarthmereHomeConsolePanelModel {
   return {
     canAccess: false,
     accessReason: reason,
@@ -266,7 +266,7 @@ function defaultPanel(
 }
 
 function homePropertiesForActor(
-  snapshot: HarthmereHomeConsoleClientSnapshotV1,
+  snapshot: HarthmereHomeConsoleClientSnapshot,
   actorId = snapshot.actorId
 ) {
   return Object.values(snapshot.completedProperties).filter(
@@ -280,10 +280,10 @@ function homePropertiesForActor(
 }
 
 function markerForProperty(
-  snapshot: HarthmereHomeConsoleClientSnapshotV1,
-  property: BuildingSystemPropertyRecordV1
-): BuildingSystemInWorldMarkerV1 | undefined {
-  const expectedId = buildingSystemHomeConsoleMarkerIdV1(property.propertyId);
+  snapshot: HarthmereHomeConsoleClientSnapshot,
+  property: BuildingSystemPropertyRecord
+): BuildingSystemInWorldMarker | undefined {
+  const expectedId = buildingSystemHomeConsoleMarkerId(property.propertyId);
   const existing =
     snapshot.inWorldMarkers[expectedId] ??
     Object.values(snapshot.inWorldMarkers).find(
@@ -291,10 +291,10 @@ function markerForProperty(
         marker.kind === "home_console" && marker.plotId === property.plotId
     );
   if (existing) return existing;
-  const plot = buildingSystemPlotByIdV1(property.plotId);
-  const blueprint = buildingSystemBlueprintByIdV1(property.blueprintId);
+  const plot = buildingSystemPlotById(property.plotId);
+  const blueprint = buildingSystemBlueprintById(property.blueprintId);
   if (!plot || !blueprint) return undefined;
-  return createBuildingSystemHomeConsoleMarkerV1({
+  return createBuildingSystemHomeConsoleMarker({
     property,
     plot,
     blueprint,
@@ -303,8 +303,8 @@ function markerForProperty(
 }
 
 function markerDistanceSq(
-  marker: BuildingSystemInWorldMarkerV1,
-  point: HarthmereHomeConsoleWorldPointV1
+  marker: BuildingSystemInWorldMarker,
+  point: HarthmereHomeConsoleWorldPoint
 ) {
   const dx = Number(marker.position[0]) - point.x;
   const dy = Number(marker.position[1]) - Number(point.y ?? marker.position[1]);
@@ -313,7 +313,7 @@ function markerDistanceSq(
 }
 
 function propertyForMarker(
-  snapshot: HarthmereHomeConsoleClientSnapshotV1,
+  snapshot: HarthmereHomeConsoleClientSnapshot,
   markerId: string
 ) {
   const marker = snapshot.inWorldMarkers[markerId];
@@ -324,8 +324,8 @@ function propertyForMarker(
 }
 
 function resolveProperty(
-  snapshot: HarthmereHomeConsoleClientSnapshotV1,
-  context: HarthmereHomeConsoleWorldContextV1
+  snapshot: HarthmereHomeConsoleClientSnapshot,
+  context: HarthmereHomeConsoleWorldContext
 ) {
   if (context.nearbyPropertyId) {
     return snapshot.completedProperties[context.nearbyPropertyId];
@@ -339,14 +339,14 @@ function resolveProperty(
 }
 
 function visibleDefinitions(
-  snapshot: HarthmereHomeConsoleClientSnapshotV1,
+  snapshot: HarthmereHomeConsoleClientSnapshot,
   canAccess: boolean
-): HarthmereHomeConsoleVisibleDefinitionV1[] {
-  ensureHarthmereProductionCraftingCatalogueV1();
-  return listHarthmereHomeDecorationDefinitionsV1()
+): HarthmereHomeConsoleVisibleDefinition[] {
+  ensureHarthmereProductionCraftingCatalogue();
+  return listHarthmereHomeDecorationDefinitions()
     .filter((definition) => definition.allowedPropertyUses.includes("home"))
     .map((definition) => {
-      const item = getHarthmereItemDefinitionV1(definition.itemId);
+      const item = getHarthmereItemDefinition(definition.itemId);
       const ownedCount = Math.max(0, snapshot.inventoryItems[definition.itemId] ?? 0);
       return {
         definition,
@@ -362,16 +362,16 @@ function visibleDefinitions(
 }
 
 function visibleSeeds(
-  snapshot: HarthmereHomeConsoleClientSnapshotV1,
+  snapshot: HarthmereHomeConsoleClientSnapshot,
   canAccess: boolean
-): HarthmereHomeConsoleVisibleSeedV1[] {
-  return listHarthmereHomeDecorationGardenSeedsV1().map((seed) => {
-    const item = getHarthmereItemDefinitionV1(seed.seedItemId);
+): HarthmereHomeConsoleVisibleSeed[] {
+  return listHarthmereHomeDecorationGardenSeeds().map((seed) => {
+    const item = getHarthmereItemDefinition(seed.seedItemId);
     const ownedCount = Math.max(0, snapshot.inventoryItems[seed.seedItemId] ?? 0);
     return {
       ...seed,
       displayName:
-        item?.displayName ?? formatHarthmereHomeConsolePlayerLabelV1(seed.seedItemId),
+        item?.displayName ?? formatHarthmereHomeConsolePlayerLabel(seed.seedItemId),
       ownedCount,
       canPlant: canAccess && ownedCount > 0,
     };
@@ -379,9 +379,9 @@ function visibleSeeds(
 }
 
 function gardenStatus(
-  record: HarthmereHomeDecorationRecordV1,
+  record: HarthmereHomeDecorationRecord,
   nowMs: number
-): HarthmereHomeConsoleVisibleDecorationV1["gardenStatus"] {
+): HarthmereHomeConsoleVisibleDecoration["gardenStatus"] {
   if (record.kind !== "garden") return "none";
   if (!record.garden) return "empty";
   return record.garden.readyAtMs && nowMs >= record.garden.readyAtMs
@@ -390,16 +390,16 @@ function gardenStatus(
 }
 
 function visiblePlaced(
-  snapshot: HarthmereHomeConsoleClientSnapshotV1,
-  property: BuildingSystemPropertyRecordV1,
+  snapshot: HarthmereHomeConsoleClientSnapshot,
+  property: BuildingSystemPropertyRecord,
   canAccess: boolean
-): HarthmereHomeConsoleVisibleDecorationV1[] {
+): HarthmereHomeConsoleVisibleDecoration[] {
   return Object.values(snapshot.homeDecoration.placed)
     .filter((record) => record.propertyId === property.propertyId)
     .sort((left, right) => left.installedAtMs - right.installedAtMs)
     .map((record) => {
-      const definition = getHarthmereHomeDecorationDefinitionV1(record.itemId);
-      const item = getHarthmereItemDefinitionV1(record.itemId);
+      const definition = getHarthmereHomeDecorationDefinition(record.itemId);
+      const item = getHarthmereItemDefinition(record.itemId);
       const status = gardenStatus(record, snapshot.nowMs);
       const garden = record.garden;
       return {
@@ -408,7 +408,7 @@ function visiblePlaced(
         item,
         visual: definition
           ? definitionVisual(definition, item)
-          : harthmereResolveBikkieVisualV1({
+          : harthmereResolveBikkieVisual({
               id: record.itemId,
               label: record.displayName,
               kind: record.kind,
@@ -418,58 +418,58 @@ function visiblePlaced(
         canRemove: canAccess,
         gardenStatus: status,
         gardenLabel: garden
-          ? `${formatHarthmereHomeConsolePlayerLabelV1(garden.cropItemId)} x${garden.cropCount}`
+          ? `${formatHarthmereHomeConsolePlayerLabel(garden.cropItemId)} x${garden.cropCount}`
           : undefined,
       };
     });
 }
 
-export function normalizeHarthmereHomeConsoleClientSnapshotV1(
-  input: Partial<HarthmereHomeConsoleClientSnapshotV1> | undefined
-): HarthmereHomeConsoleClientSnapshotV1 {
-  ensureHarthmereProductionCraftingCatalogueV1();
+export function normalizeHarthmereHomeConsoleClientSnapshot(
+  input: Partial<HarthmereHomeConsoleClientSnapshot> | undefined
+): HarthmereHomeConsoleClientSnapshot {
+  ensureHarthmereProductionCraftingCatalogue();
   return {
     actorId: input?.actorId ?? "",
     gold: Math.max(0, Math.trunc(Number(input?.gold ?? 0))),
     inventoryItems: { ...(input?.inventoryItems ?? {}) },
     completedProperties: { ...(input?.completedProperties ?? {}) },
-    homeDecoration: normalizeHarthmereHomeDecorationStateV1(
-      input?.homeDecoration ?? defaultHarthmereHomeDecorationStateV1()
+    homeDecoration: normalizeHarthmereHomeDecorationState(
+      input?.homeDecoration ?? defaultHarthmereHomeDecorationState()
     ),
     inWorldMarkers: { ...(input?.inWorldMarkers ?? {}) },
     nowMs: Math.max(0, Math.trunc(Number(input?.nowMs ?? Date.now()))),
   };
 }
 
-export function listHarthmereHomeConsoleMarkersV1(
-  snapshot: Partial<HarthmereHomeConsoleClientSnapshotV1> | undefined
+export function listHarthmereHomeConsoleMarkers(
+  snapshot: Partial<HarthmereHomeConsoleClientSnapshot> | undefined
 ) {
-  const normalized = normalizeHarthmereHomeConsoleClientSnapshotV1(snapshot);
+  const normalized = normalizeHarthmereHomeConsoleClientSnapshot(snapshot);
   return homePropertiesForActor(normalized)
     .map((property) => markerForProperty(normalized, property))
-    .filter((marker): marker is BuildingSystemInWorldMarkerV1 => !!marker);
+    .filter((marker): marker is BuildingSystemInWorldMarker => !!marker);
 }
 
-export function getHarthmereHomeConsolePanelV1(
-  snapshotInput: Partial<HarthmereHomeConsoleClientSnapshotV1> | undefined,
-  context: HarthmereHomeConsoleWorldContextV1 = {}
-): HarthmereHomeConsolePanelV1 {
+export function getHarthmereHomeConsolePanel(
+  snapshotInput: Partial<HarthmereHomeConsoleClientSnapshot> | undefined,
+  context: HarthmereHomeConsoleWorldContext = {}
+): HarthmereHomeConsolePanelModel {
   if (!snapshotInput) return defaultPanel("missing_property");
-  const snapshot = normalizeHarthmereHomeConsoleClientSnapshotV1(snapshotInput);
+  const snapshot = normalizeHarthmereHomeConsoleClientSnapshot(snapshotInput);
   const property = resolveProperty(snapshot, context);
   if (!property) {
     return defaultPanel(context.insideHome ? "missing_property" : "not_inside_home");
   }
   const marker = markerForProperty(snapshot, property);
-  const access = canAccessHarthmereHomeConsoleV1(property, {
+  const access = canAccessHarthmereHomeConsole(property, {
     actorId: snapshot.actorId,
     insideHome: context.insideHome,
     nearbyConsoleId: context.nearbyConsoleId ?? null,
     requireNearbyConsole: true,
   });
   const propertyDisplayName =
-    buildingSystemBlueprintByIdV1(property.blueprintId)?.displayName ??
-    formatHarthmereHomeConsolePlayerLabelV1(property.blueprintId) ??
+    buildingSystemBlueprintById(property.blueprintId)?.displayName ??
+    formatHarthmereHomeConsolePlayerLabel(property.blueprintId) ??
     "Home";
   if (!access.ok) {
     return {
@@ -495,11 +495,11 @@ export function getHarthmereHomeConsolePanelV1(
   };
 }
 
-export function getHarthmereHomeConsoleInteractionPromptV1(
-  snapshot: Partial<HarthmereHomeConsoleClientSnapshotV1> | undefined,
-  context: HarthmereHomeConsoleWorldContextV1
-): HarthmereHomeConsoleInteractionPromptV1 {
-  const panel = getHarthmereHomeConsolePanelV1(snapshot, context);
+export function getHarthmereHomeConsoleInteractionPrompt(
+  snapshot: Partial<HarthmereHomeConsoleClientSnapshot> | undefined,
+  context: HarthmereHomeConsoleWorldContext
+): HarthmereHomeConsoleInteractionPrompt {
+  const panel = getHarthmereHomeConsolePanel(snapshot, context);
   if (!panel.canAccess || !panel.property || !panel.consoleMarker) {
     return {
       visible: false,
@@ -522,18 +522,18 @@ export function getHarthmereHomeConsoleInteractionPromptV1(
   };
 }
 
-export function nearestHarthmereHomeConsoleWorldContextV1(
-  snapshotInput: Partial<HarthmereHomeConsoleClientSnapshotV1> | undefined,
-  playerPosition: HarthmereHomeConsoleWorldPointV1 | undefined,
+export function nearestHarthmereHomeConsoleWorldContext(
+  snapshotInput: Partial<HarthmereHomeConsoleClientSnapshot> | undefined,
+  playerPosition: HarthmereHomeConsoleWorldPoint | undefined,
   radius = 5
-): HarthmereHomeConsoleWorldContextV1 {
+): HarthmereHomeConsoleWorldContext {
   if (!snapshotInput || !playerPosition) {
     return { insideHome: false };
   }
-  const snapshot = normalizeHarthmereHomeConsoleClientSnapshotV1(snapshotInput);
-  const markers = listHarthmereHomeConsoleMarkersV1(snapshot);
+  const snapshot = normalizeHarthmereHomeConsoleClientSnapshot(snapshotInput);
+  const markers = listHarthmereHomeConsoleMarkers(snapshot);
   let best:
-    | { marker: BuildingSystemInWorldMarkerV1; distanceSq: number }
+    | { marker: BuildingSystemInWorldMarker; distanceSq: number }
     | undefined;
   for (const marker of markers) {
     const distanceSq = markerDistanceSq(marker, playerPosition);
@@ -554,10 +554,10 @@ export function nearestHarthmereHomeConsoleWorldContextV1(
   };
 }
 
-export async function fetchHarthmereHomeConsoleBuildingStateV1(
+export async function fetchHarthmereHomeConsoleBuildingState(
   fetchImpl: typeof fetch = fetch
 ) {
-  const response = await fetchHarthmereLiveWithTimeoutV1(
+  const response = await fetchHarthmereLiveWithTimeout(
     fetchImpl,
     "/api/harthmere/live_mode_building_state",
     {
@@ -568,7 +568,7 @@ export async function fetchHarthmereHomeConsoleBuildingStateV1(
   if (!response.ok) return undefined;
   const body = await response.json();
   return body?.buildingState
-    ? normalizeHarthmereHomeConsoleClientSnapshotV1(body.buildingState)
+    ? normalizeHarthmereHomeConsoleClientSnapshot(body.buildingState)
     : undefined;
 }
 
@@ -624,7 +624,7 @@ function playerMessageFromHomeConsoleWarning(warning: string) {
   }
 }
 
-export function formatHarthmereHomeConsolePlayerErrorV1(warnings?: string[]) {
+export function formatHarthmereHomeConsolePlayerError(warnings?: string[]) {
   const messages = [
     ...new Set(
       (warnings ?? [])
@@ -637,15 +637,15 @@ export function formatHarthmereHomeConsolePlayerErrorV1(warnings?: string[]) {
     : "The home console is unavailable right now.";
 }
 
-export async function submitHarthmereHomeDecorationMutationV1(
-  payload: HarthmereHomeConsoleSubmitPayloadV1,
-  options: SubmitHarthmereHomeDecorationMutationOptionsV1 = {}
+export async function submitHarthmereHomeDecorationMutation(
+  payload: HarthmereHomeConsoleSubmitPayload,
+  options: SubmitHarthmereHomeDecorationMutationOptions = {}
 ) {
   const fetchImpl = options.fetchImpl ?? fetch;
   const requestId =
     options.requestId ??
     `home_console_${Date.now()}_${Math.random().toString(36).slice(2)}`;
-  const response = await fetchHarthmereLiveWithTimeoutV1(
+  const response = await fetchHarthmereLiveWithTimeout(
     fetchImpl as typeof fetch,
     "/api/harthmere/live_mode",
     {
@@ -674,7 +674,7 @@ export async function submitHarthmereHomeDecorationMutationV1(
     String(warning).startsWith("home_decoration_rejected:")
   );
   if (rejected.length > 0) {
-    throw new Error(formatHarthmereHomeConsolePlayerErrorV1(rejected));
+    throw new Error(formatHarthmereHomeConsolePlayerError(rejected));
   }
   return {
     ok: body?.ok !== false,
@@ -683,38 +683,38 @@ export async function submitHarthmereHomeDecorationMutationV1(
   };
 }
 
-export function createHarthmereHomeConsoleAdapterV1({
+export function createHarthmereHomeConsoleAdapter({
   state,
   context = {},
   hydrated = true,
   setState,
   submit,
-}: CreateHarthmereHomeConsoleAdapterOptionsV1): HarthmereHomeConsoleAdapterV1 {
+}: CreateHarthmereHomeConsoleAdapterOptions): HarthmereHomeConsoleAdapter {
   let current = state
-    ? normalizeHarthmereHomeConsoleClientSnapshotV1(state)
+    ? normalizeHarthmereHomeConsoleClientSnapshot(state)
     : undefined;
   const updateState = (
-    buildingState: Partial<HarthmereHomeConsoleClientSnapshotV1> | undefined
+    buildingState: Partial<HarthmereHomeConsoleClientSnapshot> | undefined
   ) => {
     if (!buildingState) return;
-    current = normalizeHarthmereHomeConsoleClientSnapshotV1({
+    current = normalizeHarthmereHomeConsoleClientSnapshot({
       ...current,
       ...buildingState,
     });
     setState?.(current);
   };
-  const mutate = async (payload: HarthmereHomeConsoleSubmitPayloadV1) => {
+  const mutate = async (payload: HarthmereHomeConsoleSubmitPayload) => {
     if (!submit) return;
     const body = await submit(payload);
     if (!body.ok) {
-      throw new Error(formatHarthmereHomeConsolePlayerErrorV1(body.warnings));
+      throw new Error(formatHarthmereHomeConsolePlayerError(body.warnings));
     }
     updateState(body.buildingState);
   };
-  const propertyId = () => getHarthmereHomeConsolePanelV1(current, context).property?.propertyId;
+  const propertyId = () => getHarthmereHomeConsolePanel(current, context).property?.propertyId;
   const withProperty = (
-    payload: HarthmereHomeConsoleSubmitPayloadV1
-  ): HarthmereHomeConsoleSubmitPayloadV1 => ({
+    payload: HarthmereHomeConsoleSubmitPayload
+  ): HarthmereHomeConsoleSubmitPayload => ({
     ...payload,
     propertyId: payload.propertyId ?? propertyId(),
   });
@@ -722,11 +722,11 @@ export function createHarthmereHomeConsoleAdapterV1({
     isHydrated: () => hydrated,
     getSnapshot: () => current,
     isAvailable: (nextContext = context) =>
-      hydrated && getHarthmereHomeConsolePanelV1(current, nextContext).canAccess,
+      hydrated && getHarthmereHomeConsolePanel(current, nextContext).canAccess,
     getPanel: (nextContext = context) =>
-      getHarthmereHomeConsolePanelV1(current, nextContext),
+      getHarthmereHomeConsolePanel(current, nextContext),
     getInteractionPrompt: (nextContext) =>
-      getHarthmereHomeConsoleInteractionPromptV1(current, nextContext),
+      getHarthmereHomeConsoleInteractionPrompt(current, nextContext),
     placeDecoration: (itemId, payload = {}) =>
       mutate(withProperty({ ...payload, operation: "place_decoration", itemId })),
     moveDecoration: (decorationId, position, rotationDegrees) =>

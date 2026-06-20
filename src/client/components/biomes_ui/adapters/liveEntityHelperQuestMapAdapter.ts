@@ -1,35 +1,35 @@
 import {
-  LIVE_ENTITY_HELPER_QUEST_DEFINITIONS_V1,
-  liveEntityHelperQuestRewardSummaryV1,
-  liveEntityHelperQuestTargetMarkerForKindV1,
-  liveEntityHelperResolveQuestMarkerV1,
-  type LiveEntityHelperQuestKindV1,
-  type LiveEntityHelperQuestObjectiveBaselineV1,
-} from "@/shared/harthmere/live_entity_helper_quests_v1";
-import { resolveHarthmereProductionMarkerPositionV1 } from "@/shared/harthmere/production_terrain_placement_map_v1";
+  LIVE_ENTITY_HELPER_QUEST_DEFINITIONS,
+  liveEntityHelperQuestRewardSummary,
+  liveEntityHelperQuestTargetMarkerForKind,
+  liveEntityHelperResolveQuestMarker,
+  type LiveEntityHelperQuestKind,
+  type LiveEntityHelperQuestObjectiveBaseline,
+} from "@/shared/harthmere/live_entity_helper_quests";
+import { resolveHarthmereProductionMarkerPosition } from "@/shared/harthmere/production_terrain_placement_map";
 import type { Vec3 } from "@/shared/math/types";
 import type { MapTrackableQuest } from "../tabs/MapQuestsTab";
 
-export const BIOMES_UI_LIVE_ENTITY_HELPER_MARKER_SOURCE_V1 =
+export const BIOMES_UI_LIVE_ENTITY_HELPER_MARKER_SOURCE =
   "live_entity_helper_quest" as const;
 
-export interface BiomesUILiveEntityHelperQuestRecordV1 {
+export interface BiomesUILiveEntityHelperQuestRecord {
   questId: string;
-  kind: LiveEntityHelperQuestKindV1;
+  kind: LiveEntityHelperQuestKind;
   entityId: string;
   giverName: string;
   at?: number;
   giverPosition?: readonly number[];
   readyToTurnIn?: boolean;
-  objectiveBaseline?: LiveEntityHelperQuestObjectiveBaselineV1;
+  objectiveBaseline?: LiveEntityHelperQuestObjectiveBaseline;
 }
 
-export interface BiomesUILiveEntityHelperQuestStateV1 {
-  active: Record<string, BiomesUILiveEntityHelperQuestRecordV1>;
-  completed: Record<string, BiomesUILiveEntityHelperQuestRecordV1>;
+export interface BiomesUILiveEntityHelperQuestState {
+  active: Record<string, BiomesUILiveEntityHelperQuestRecord>;
+  completed: Record<string, BiomesUILiveEntityHelperQuestRecord>;
 }
 
-export interface BiomesUILiveEntityHelperQuestLandmarkV1 {
+export interface BiomesUILiveEntityHelperQuestLandmark {
   id: string;
   label: string;
   position: Vec3;
@@ -39,25 +39,25 @@ export interface BiomesUILiveEntityHelperQuestLandmarkV1 {
   visibleOnHudMap: true;
   active: true;
   description: string;
-  source: typeof BIOMES_UI_LIVE_ENTITY_HELPER_MARKER_SOURCE_V1;
-  questKind: LiveEntityHelperQuestKindV1;
+  source: typeof BIOMES_UI_LIVE_ENTITY_HELPER_MARKER_SOURCE;
+  questKind: LiveEntityHelperQuestKind;
 }
 
-function isLiveEntityHelperQuestKindV1(
+function isLiveEntityHelperQuestKind(
   value: unknown
-): value is LiveEntityHelperQuestKindV1 {
+): value is LiveEntityHelperQuestKind {
   return (
     value === "exotic_matter" || value === "food_water" || value === "hard_boss"
   );
 }
 
-function normalizeRecordV1(
+function normalizeRecord(
   questId: string,
   value: unknown
-): BiomesUILiveEntityHelperQuestRecordV1 | undefined {
+): BiomesUILiveEntityHelperQuestRecord | undefined {
   if (!value || typeof value !== "object") return undefined;
   const record = value as Record<string, unknown>;
-  if (!isLiveEntityHelperQuestKindV1(record.kind)) return undefined;
+  if (!isLiveEntityHelperQuestKind(record.kind)) return undefined;
   const gp = record.giverPosition;
   const giverPosition =
     Array.isArray(gp) &&
@@ -92,15 +92,15 @@ function normalizeRecordV1(
     ...(giverPosition ? { giverPosition } : {}),
     ...(record.readyToTurnIn === true ? { readyToTurnIn: true } : {}),
     ...(() => {
-      const baseline = normalizeObjectiveBaselineV1(record.objectiveBaseline);
+      const baseline = normalizeObjectiveBaseline(record.objectiveBaseline);
       return baseline ? { objectiveBaseline: baseline } : {};
     })(),
   };
 }
 
-function normalizeObjectiveBaselineV1(
+function normalizeObjectiveBaseline(
   value: unknown
-): LiveEntityHelperQuestObjectiveBaselineV1 | undefined {
+): LiveEntityHelperQuestObjectiveBaseline | undefined {
   if (!value || typeof value !== "object") return undefined;
   const raw = value as Record<string, unknown>;
   const inventory: Record<string, number> = {};
@@ -124,9 +124,9 @@ function normalizeObjectiveBaselineV1(
   };
 }
 
-export function normalizeLiveEntityHelperQuestStateForBiomesUIV1(
+export function normalizeLiveEntityHelperQuestStateForBiomesUI(
   raw: unknown
-): BiomesUILiveEntityHelperQuestStateV1 | undefined {
+): BiomesUILiveEntityHelperQuestState | undefined {
   if (!raw || typeof raw !== "object") return undefined;
   const active = (raw as any).active;
   const completed = (raw as any).completed;
@@ -134,9 +134,9 @@ export function normalizeLiveEntityHelperQuestStateForBiomesUIV1(
     if (!bucket || typeof bucket !== "object") return {};
     return Object.fromEntries(
       Object.entries(bucket)
-        .map(([questId, value]) => [questId, normalizeRecordV1(questId, value)])
+        .map(([questId, value]) => [questId, normalizeRecord(questId, value)])
         .filter(
-          (entry): entry is [string, BiomesUILiveEntityHelperQuestRecordV1] =>
+          (entry): entry is [string, BiomesUILiveEntityHelperQuestRecord] =>
             Boolean(entry[1])
         )
     );
@@ -147,27 +147,27 @@ export function normalizeLiveEntityHelperQuestStateForBiomesUIV1(
   };
 }
 
-function activeRecordsV1(raw: unknown) {
-  const state = normalizeLiveEntityHelperQuestStateForBiomesUIV1(raw);
+function activeRecords(raw: unknown) {
+  const state = normalizeLiveEntityHelperQuestStateForBiomesUI(raw);
   return Object.values(state?.active ?? {}).sort(
     (left, right) => (right.at ?? 0) - (left.at ?? 0)
   );
 }
 
-function areaLabelForKindV1(kind: LiveEntityHelperQuestKindV1) {
+function areaLabelForKind(kind: LiveEntityHelperQuestKind) {
   return (
-    liveEntityHelperQuestTargetMarkerForKindV1(kind)?.areaLabel ??
+    liveEntityHelperQuestTargetMarkerForKind(kind)?.areaLabel ??
     "Remote Biomes"
   );
 }
 
-function rewardForKindV1(kind: LiveEntityHelperQuestKindV1) {
-  return liveEntityHelperQuestRewardSummaryV1(
-    LIVE_ENTITY_HELPER_QUEST_DEFINITIONS_V1[kind].rewards
+function rewardForKind(kind: LiveEntityHelperQuestKind) {
+  return liveEntityHelperQuestRewardSummary(
+    LIVE_ENTITY_HELPER_QUEST_DEFINITIONS[kind].rewards
   );
 }
 
-export function liveEntityHelperAcceptedQuestLandmarksForBiomesUIV1(
+export function liveEntityHelperAcceptedQuestLandmarksForBiomesUI(
   raw: unknown,
   options?: {
     // Live override for "objective met". When omitted the stored
@@ -175,21 +175,21 @@ export function liveEntityHelperAcceptedQuestLandmarksForBiomesUIV1(
     // resolver so the marker flips home the moment the item is collected /
     // monster defeated, without waiting for a stored-flag write.
     isReadyToTurnIn?: (
-      record: BiomesUILiveEntityHelperQuestRecordV1
+      record: BiomesUILiveEntityHelperQuestRecord
     ) => boolean;
   }
-): BiomesUILiveEntityHelperQuestLandmarkV1[] {
+): BiomesUILiveEntityHelperQuestLandmark[] {
   const seenMarkerIds = new Set<string>();
-  return activeRecordsV1(raw).flatMap((record) => {
-    const marker = liveEntityHelperQuestTargetMarkerForKindV1(record.kind);
+  return activeRecords(raw).flatMap((record) => {
+    const marker = liveEntityHelperQuestTargetMarkerForKind(record.kind);
     if (!marker || seenMarkerIds.has(marker.id)) return [];
     seenMarkerIds.add(marker.id);
-    const definition = LIVE_ENTITY_HELPER_QUEST_DEFINITIONS_V1[record.kind];
+    const definition = LIVE_ENTITY_HELPER_QUEST_DEFINITIONS[record.kind];
     const readyToTurnIn =
       options?.isReadyToTurnIn?.(record) ?? Boolean(record.readyToTurnIn);
     // Point at the real target while the objective is open; flip to the giver
     // (return home to turn in) once it's met.
-    const resolved = liveEntityHelperResolveQuestMarkerV1({
+    const resolved = liveEntityHelperResolveQuestMarker({
       kind: record.kind,
       readyToTurnIn,
       giverPosition: record.giverPosition,
@@ -199,7 +199,7 @@ export function liveEntityHelperAcceptedQuestLandmarksForBiomesUIV1(
       {
         id: marker.id,
         label: resolved.label,
-        position: resolveHarthmereProductionMarkerPositionV1({
+        position: resolveHarthmereProductionMarkerPosition({
           markerId: resolved.id,
           fallback: resolved.position,
         }),
@@ -212,31 +212,31 @@ export function liveEntityHelperAcceptedQuestLandmarksForBiomesUIV1(
           resolved.phase === "return_to_giver"
             ? `Objective complete — return to ${record.giverName} to turn in.`
             : definition.activeText,
-        source: BIOMES_UI_LIVE_ENTITY_HELPER_MARKER_SOURCE_V1,
+        source: BIOMES_UI_LIVE_ENTITY_HELPER_MARKER_SOURCE,
         questKind: record.kind,
       },
     ];
   });
 }
 
-export function liveEntityHelperTrackableQuestsForBiomesUIV1(
+export function liveEntityHelperTrackableQuestsForBiomesUI(
   raw: unknown
 ): MapTrackableQuest[] {
-  const state = normalizeLiveEntityHelperQuestStateForBiomesUIV1(raw);
+  const state = normalizeLiveEntityHelperQuestStateForBiomesUI(raw);
   if (!state) return [];
   const activeIds = new Set(Object.keys(state.active));
   const active = Object.values(state.active)
     .sort((left, right) => (right.at ?? 0) - (left.at ?? 0))
     .map((record) => {
-      const definition = LIVE_ENTITY_HELPER_QUEST_DEFINITIONS_V1[record.kind];
-      const marker = liveEntityHelperQuestTargetMarkerForKindV1(record.kind);
+      const definition = LIVE_ENTITY_HELPER_QUEST_DEFINITIONS[record.kind];
+      const marker = liveEntityHelperQuestTargetMarkerForKind(record.kind);
       return {
         questId: record.questId,
         title: definition.title,
-        area: `${record.giverName} - ${areaLabelForKindV1(record.kind)}`,
+        area: `${record.giverName} - ${areaLabelForKind(record.kind)}`,
         status: "active" as const,
         firstMarkerId: marker?.id,
-        reward: rewardForKindV1(record.kind),
+        reward: rewardForKind(record.kind),
         kind: record.kind,
         kindLabel: "Helper Quest",
         objective: definition.activeText,
@@ -248,13 +248,13 @@ export function liveEntityHelperTrackableQuestsForBiomesUIV1(
     .filter((record) => !activeIds.has(record.questId))
     .sort((left, right) => (right.at ?? 0) - (left.at ?? 0))
     .map((record) => {
-      const definition = LIVE_ENTITY_HELPER_QUEST_DEFINITIONS_V1[record.kind];
+      const definition = LIVE_ENTITY_HELPER_QUEST_DEFINITIONS[record.kind];
       return {
         questId: record.questId,
         title: definition.title,
-        area: `${record.giverName} - ${areaLabelForKindV1(record.kind)}`,
+        area: `${record.giverName} - ${areaLabelForKind(record.kind)}`,
         status: "completed" as const,
-        reward: rewardForKindV1(record.kind),
+        reward: rewardForKind(record.kind),
         kind: record.kind,
         kindLabel: "Helper Quest",
         objective: definition.completionText,
@@ -265,9 +265,9 @@ export function liveEntityHelperTrackableQuestsForBiomesUIV1(
   return [...active, ...completed];
 }
 
-export function activeLiveEntityHelperMissionStepsForBiomesUIV1(raw: unknown) {
-  return activeRecordsV1(raw).map((record, index) => {
-    const definition = LIVE_ENTITY_HELPER_QUEST_DEFINITIONS_V1[record.kind];
+export function activeLiveEntityHelperMissionStepsForBiomesUI(raw: unknown) {
+  return activeRecords(raw).map((record, index) => {
+    const definition = LIVE_ENTITY_HELPER_QUEST_DEFINITIONS[record.kind];
     return {
       id: record.questId,
       title: `Helper quest ${index + 1}`,
@@ -277,11 +277,11 @@ export function activeLiveEntityHelperMissionStepsForBiomesUIV1(raw: unknown) {
   });
 }
 
-export function firstActiveLiveEntityHelperQuestTitleForBiomesUIV1(
+export function firstActiveLiveEntityHelperQuestTitleForBiomesUI(
   raw: unknown
 ) {
-  const record = activeRecordsV1(raw)[0];
+  const record = activeRecords(raw)[0];
   return record
-    ? LIVE_ENTITY_HELPER_QUEST_DEFINITIONS_V1[record.kind].title
+    ? LIVE_ENTITY_HELPER_QUEST_DEFINITIONS[record.kind].title
     : undefined;
 }

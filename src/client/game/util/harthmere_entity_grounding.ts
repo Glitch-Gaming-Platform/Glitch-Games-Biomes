@@ -1,10 +1,10 @@
 import { blockPos, voxelShard } from "@/shared/game/shard";
 import { blockIsEmptyInTensor } from "@/shared/game/terrain_helper";
 import {
-  findHarthmereGroundFeetYV1,
-  findHarthmereGroundFeetYWithStatusV1,
-  type HarthmereGroundResultV1,
-} from "@/shared/harthmere/harthmere_entity_grounding_v1";
+  findHarthmereGroundFeetY,
+  findHarthmereGroundFeetYWithStatus,
+  type HarthmereGroundResult,
+} from "@/shared/harthmere/harthmere_entity_grounding";
 import type { Vec3 } from "@/shared/math/types";
 
 // HARTHMERE_ENTITY_GROUNDING (client adapter)
@@ -18,7 +18,7 @@ import type { Vec3 } from "@/shared/math/types";
 // `deps` is typed loosely because both ClientResources and ClientResourceDeps
 // expose the same `get("/terrain/tensor"|"/water/tensor", shardId)` accessor.
 
-export function harthmereTerrainSupportsStandingV1(
+export function harthmereTerrainSupportsStanding(
   deps: { get: (path: any, shard: any) => any },
   x: number,
   y: number,
@@ -40,7 +40,7 @@ export function harthmereTerrainSupportsStandingV1(
 // Returns the grounded feet-Y for an entity at (x,z) anchored at `hintY`.
 // requireOpenSky = true keeps OUTDOOR entities out of caves; pass false for an
 // entity standing on a deliberately enclosed floor (e.g. a business owner).
-export function groundHarthmereLiveEntityFeetYV1(
+export function groundHarthmereLiveEntityFeetY(
   deps: { get: (path: any, shard: any) => any },
   x: number,
   z: number,
@@ -52,8 +52,8 @@ export function groundHarthmereLiveEntityFeetYV1(
   }
   const ix = Math.floor(x);
   const iz = Math.floor(z);
-  return findHarthmereGroundFeetYV1(
-    (sx, sy, sz) => harthmereTerrainSupportsStandingV1(deps, sx, sy, sz),
+  return findHarthmereGroundFeetY(
+    (sx, sy, sz) => harthmereTerrainSupportsStanding(deps, sx, sy, sz),
     ix,
     iz,
     { hintY: Math.round(hintY), requireOpenSky }
@@ -63,7 +63,7 @@ export function groundHarthmereLiveEntityFeetYV1(
 // True when the terrain shard covering (x,y,z) has streamed in. Used to tell
 // "no surface here" apart from "terrain not loaded yet" so callers can defer a
 // marker instead of leaving it at the unverified authored Y.
-export function harthmereTerrainColumnLoadedV1(
+export function harthmereTerrainColumnLoaded(
   deps: { get: (path: any, shard: any) => any },
   x: number,
   y: number,
@@ -77,7 +77,7 @@ export function harthmereTerrainColumnLoadedV1(
   }
 }
 
-// HARTHMERE_NPC_GROUNDED_FEET_RESOLVE_V151:
+// HARTHMERE_NPC_GROUNDED_FEET_RESOLVE:
 // Pure resolver shared by the moving-NPC grounding path (kill-target muck
 // monsters, the muck boss, wandering town NPCs). It applies the same
 // "defer until terrain is loaded" rule the static quest-object markers use, and
@@ -89,8 +89,8 @@ export function harthmereTerrainColumnLoadedV1(
 //
 // Returns the feetY to apply (undefined = keep the entity's authored/current Y)
 // and the cache value to retain for this column.
-export function resolveHarthmereNpcGroundedFeetYV1(
-  result: HarthmereGroundResultV1,
+export function resolveHarthmereNpcGroundedFeetY(
+  result: HarthmereGroundResult,
   cachedFeetY: number | undefined
 ): { feetY: number | undefined; cache: number | undefined } {
   if (result.status === "grounded" && result.feetY !== undefined) {
@@ -111,21 +111,21 @@ export function resolveHarthmereNpcGroundedFeetYV1(
 // not-loaded so a quest marker can be hidden (and retried) while its terrain is
 // still streaming, instead of being stamped at the flat authored Y where it
 // floats above or sinks below the real ground.
-export function groundHarthmereLiveEntityFeetYWithStatusV1(
+export function groundHarthmereLiveEntityFeetYWithStatus(
   deps: { get: (path: any, shard: any) => any },
   x: number,
   z: number,
   hintY: number,
   requireOpenSky: boolean
-): HarthmereGroundResultV1 {
+): HarthmereGroundResult {
   if (!Number.isFinite(x) || !Number.isFinite(z) || !Number.isFinite(hintY)) {
     return { status: "no-surface" };
   }
   const ix = Math.floor(x);
   const iz = Math.floor(z);
-  return findHarthmereGroundFeetYWithStatusV1(
-    (sx, sy, sz) => harthmereTerrainSupportsStandingV1(deps, sx, sy, sz),
-    (sx, sy, sz) => harthmereTerrainColumnLoadedV1(deps, sx, sy, sz),
+  return findHarthmereGroundFeetYWithStatus(
+    (sx, sy, sz) => harthmereTerrainSupportsStanding(deps, sx, sy, sz),
+    (sx, sy, sz) => harthmereTerrainColumnLoaded(deps, sx, sy, sz),
     ix,
     iz,
     { hintY: Math.round(hintY), requireOpenSky }
@@ -135,9 +135,9 @@ export function groundHarthmereLiveEntityFeetYWithStatusV1(
 // Generic alias: the keep-last-surface resolver is NOT npc-specific — items,
 // drops, the escort follower, and markers all use it so nothing ever floats or
 // buries. Prefer this name for non-npc callers.
-export const resolveHarthmereGroundedFeetYV1 = resolveHarthmereNpcGroundedFeetYV1;
+export const resolveHarthmereGroundedFeetY = resolveHarthmereNpcGroundedFeetY;
 
-// HARTHMERE_GROUNDED_FEET_WITH_MEMORY_V151:
+// HARTHMERE_GROUNDED_FEET_WITH_MEMORY:
 // THE single "ground any world-placed thing so it is always visible — never
 // floating, never buried" entrypoint. Used by NPCs (cows/sheep/hexes/muckers/
 // owners), dropped & quest items, gather/quest-object markers, and the escort
@@ -146,7 +146,7 @@ export const resolveHarthmereGroundedFeetYV1 = resolveHarthmereNpcGroundedFeetYV
 // that already settled on the real surface does not pop to the authored Y while
 // its terrain shard streams. Returns the feet-Y to apply, or undefined to keep
 // the caller's authored/current Y (terrain genuinely unknown).
-export function harthmereGroundedFeetYWithMemoryV1(
+export function harthmereGroundedFeetYWithMemory(
   deps: { get: (path: any, shard: any) => any },
   cache: Map<string, number>,
   x: number,
@@ -158,14 +158,14 @@ export function harthmereGroundedFeetYWithMemoryV1(
     return undefined;
   }
   const key = `${Math.floor(x)}|${Math.floor(z)}|${requireOpenSky ? 1 : 0}`;
-  const status = groundHarthmereLiveEntityFeetYWithStatusV1(
+  const status = groundHarthmereLiveEntityFeetYWithStatus(
     deps,
     x,
     z,
     hintY,
     requireOpenSky
   );
-  const { feetY, cache: nextCache } = resolveHarthmereGroundedFeetYV1(
+  const { feetY, cache: nextCache } = resolveHarthmereGroundedFeetY(
     status,
     cache.get(key)
   );

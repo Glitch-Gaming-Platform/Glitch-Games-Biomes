@@ -26,7 +26,7 @@ function disableGcloudSyncBootstrapForGlitchRuntime() {
   );
 }
 
-const GLITCH_NO_GCLOUD_SYNC_BOOTSTRAP_V1 = true;
+const GLITCH_NO_GCLOUD_SYNC_BOOTSTRAP = true;
 
 export async function determineEmployeeUserId(): Promise<BiomesId> {
   const account = await getGCloudAccount();
@@ -93,7 +93,7 @@ function determineBounds(changes: Map<BiomesId, Change>) {
     ) {
       continue;
     }
-    const changeAABB = [change.entity.box.v0, change.entity.box.v1] as AABB;
+    const changeAABB = [change.entity.box, change.entity.box] as AABB;
     if (aabb === undefined) {
       aabb = changeAABB;
     } else {

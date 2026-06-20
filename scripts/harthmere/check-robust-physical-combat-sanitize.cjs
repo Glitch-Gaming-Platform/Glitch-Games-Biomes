@@ -14,7 +14,7 @@ function check(label, condition) {
   if (!condition) ok = false;
 }
 
-check("robust sanitize version exists", text.includes("harthmere-robust-physical-combat-sanitize-v2"));
+check("robust sanitize version exists", text.includes("harthmere-robust-physical-combat-sanitize"));
 check("Training Dagger Strike can classify physical via dagger/strike", text.includes("dagger|strike|slash|swing"));
 check("physical clips can classify physical", text.includes("harthmereHasPhysicalClip"));
 check("explicit spark remains magic", text.includes("harthmereIsExplicitMagicAction"));

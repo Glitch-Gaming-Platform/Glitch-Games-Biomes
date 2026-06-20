@@ -799,8 +799,8 @@
   png/kenney/characters/Zombie/zombie_head.png
 
 4d0dc56d8aeb597d39d78af7601bdffa371f9e34707213807d99968761474037
-  _source/voxel_packs/itch_voxel_asset_pack/Village House Stuff/VILL_H_W_V3.vox
-  vox/props/itch_voxel_asset_pack/Village House Stuff/VILL_H_W_V3.vox
+  _source/voxel_packs/itch_voxel_asset_pack/Village House Stuff/VILL_H_W.vox
+  vox/props/itch_voxel_asset_pack/Village House Stuff/VILL_H_W.vox
 
 4d511d792b1e22d622d0705de31dbd4e175eb48c8e39cde80b67230095bde446
   _source/voxel_packs/voxel_graveyard/Assets/SM-0-Ground.png
@@ -1757,8 +1757,8 @@ c0a4c1fda23c8a0354bca95447f03d97601f6f8df022609426cf23223653f279
   vox/props/itch_voxel_asset_pack/Stone Wall And Ground/F_G12.vox
 
 c0bd8ba50803676e23af695bf050ac4d7cddeaf43a04cf43c978d747527a235a
-  _source/voxel_packs/itch_voxel_asset_pack/Village House Stuff/VILL_H_W_V4.vox
-  vox/props/itch_voxel_asset_pack/Village House Stuff/VILL_H_W_V4.vox
+  _source/voxel_packs/itch_voxel_asset_pack/Village House Stuff/VILL_H_W.vox
+  vox/props/itch_voxel_asset_pack/Village House Stuff/VILL_H_W.vox
 
 c19ecd1174046fbb013863f445e319bd8447520eaa27257a1dcd04bf5f54eae0
   _source/voxel_packs/itch_voxel_asset_pack/Village House Stuff/VILL_H_RD_W_L.vox
@@ -2009,8 +2009,8 @@ e53319b547c6172c72c299e21631fecf5434dc75c013b22538146badaf768d1f
   png/kenney/tiles/stone.png
 
 e56560f1e204fd1eb0066fd0aa5d0d66bef25ddd3399f589e9cf7eb724ca948f
-  _source/voxel_packs/itch_voxel_asset_pack/Village House Stuff/VILL_H_W_V4.5.vox
-  vox/props/itch_voxel_asset_pack/Village House Stuff/VILL_H_W_V4.5.vox
+  _source/voxel_packs/itch_voxel_asset_pack/Village House Stuff/VILL_H_W.5.vox
+  vox/props/itch_voxel_asset_pack/Village House Stuff/VILL_H_W.5.vox
 
 e57a7009f61e463de209d2abee62700bab07c43c488a328958e4590feda0d06b
   _source/voxel_packs/itch_voxel_asset_pack/Objects/torch long blue.png
@@ -2079,8 +2079,8 @@ ecc4d0e45e870e95e42fbb47b48104dd2c727a321b6b310715ecf8800c9ed148
   png/kenney/tiles/stone_snow.png
 
 ecd41b0605f99953b5c58a8240a07c612b6d470a38548102158e0e98c9ec66e1
-  _source/voxel_packs/itch_voxel_asset_pack/Village House Stuff/VILL_H_W_V1.vox
-  vox/props/itch_voxel_asset_pack/Village House Stuff/VILL_H_W_V1.vox
+  _source/voxel_packs/itch_voxel_asset_pack/Village House Stuff/VILL_H_W.vox
+  vox/props/itch_voxel_asset_pack/Village House Stuff/VILL_H_W.vox
 
 ed939e88c4451ce435b2df36bbd7c68ef687e271e552c63ea2e1532771cf8677
   _source/voxel_packs/kyrises_voxel_mines/voxel/lantern.vox
@@ -2175,8 +2175,8 @@ f91e5b4d3200d98a280b6cae50d98b464b106759143f5e37c4467a3dd7f5fc63
   png/kenney/tiles/stone_gold.png
 
 f9597e854f6233597d4cc4e36b13c12ee0fa8c9d203999de4d3ddf86e89cb963
-  _source/voxel_packs/itch_voxel_asset_pack/Village House Stuff/VILL_H_W_V2.vox
-  vox/props/itch_voxel_asset_pack/Village House Stuff/VILL_H_W_V2.vox
+  _source/voxel_packs/itch_voxel_asset_pack/Village House Stuff/VILL_H_W.vox
+  vox/props/itch_voxel_asset_pack/Village House Stuff/VILL_H_W.vox
 
 f96d65ebc5cf358bd8b4e59dd9e34dc15a78948e869d1dcd6f932c0b9a4becd7
   _source/voxel_packs/kyrises_voxel_mines/obj/stone-01/stone-01.obj

@@ -3,8 +3,8 @@ import type { BiomesId } from "@/shared/ids";
 import type { ReadonlyVec3 } from "@/shared/math/types";
 import { z } from "zod";
 
-export const HARTHMERE_NPC_SCHEDULE_VERSION_V37 =
-  "harthmere-npc-schedule-v37";
+export const HARTHMERE_NPC_SCHEDULE_VERSION =
+  "harthmere-npc-schedule";
 
 export const zNpcScheduleComponent = z.object({
   schedule: z

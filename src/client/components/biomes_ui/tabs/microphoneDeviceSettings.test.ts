@@ -1,12 +1,12 @@
 import {
-  biomesUIMicrophoneOptionsFromDevicesV1,
-  biomesUISelectedMicrophoneDeviceIdV1,
+  biomesUIMicrophoneOptionsFromDevices,
+  biomesUISelectedMicrophoneDeviceId,
 } from "@/client/components/biomes_ui/tabs/microphoneDeviceSettings";
 import assert from "assert";
 
 describe("BiomesUI microphone device settings", () => {
   it("builds a stable microphone list with browser default first", () => {
-    const options = biomesUIMicrophoneOptionsFromDevicesV1([
+    const options = biomesUIMicrophoneOptionsFromDevices([
       { kind: "videoinput", deviceId: "camera-1", label: "Camera" },
       { kind: "audioinput", deviceId: "default", label: "" },
       { kind: "audioinput", deviceId: "mic-1", label: "Studio Mic" },
@@ -24,26 +24,26 @@ describe("BiomesUI microphone device settings", () => {
   });
 
   it("falls back to browser default when a stored microphone is unavailable", () => {
-    const options = biomesUIMicrophoneOptionsFromDevicesV1([
+    const options = biomesUIMicrophoneOptionsFromDevices([
       { kind: "audioinput", deviceId: "mic-1", label: "Studio Mic" },
     ]);
 
     assert.equal(
-      biomesUISelectedMicrophoneDeviceIdV1({
+      biomesUISelectedMicrophoneDeviceId({
         selectedDeviceId: "mic-1",
         options,
       }),
       "mic-1"
     );
     assert.equal(
-      biomesUISelectedMicrophoneDeviceIdV1({
+      biomesUISelectedMicrophoneDeviceId({
         selectedDeviceId: "removed-mic",
         options,
       }),
       ""
     );
     assert.equal(
-      biomesUISelectedMicrophoneDeviceIdV1({
+      biomesUISelectedMicrophoneDeviceId({
         selectedDeviceId: undefined,
         options,
       }),

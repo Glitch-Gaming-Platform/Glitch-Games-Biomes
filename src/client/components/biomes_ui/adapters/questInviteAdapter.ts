@@ -1,14 +1,14 @@
 import type { MapTrackableQuest } from "../tabs/MapQuestsTab";
-import { fetchHarthmereLiveWithTimeoutV1 } from "@/client/components/harthmere_live_fetch";
-import { harthmereJobsBoardQuestMarkerRuntimePositionForIdV1 } from "@/shared/harthmere/jobs_board_quest_marker_positions_v1";
+import { fetchHarthmereLiveWithTimeout } from "@/client/components/harthmere_live_fetch";
+import { harthmereJobsBoardQuestMarkerRuntimePositionForId } from "@/shared/harthmere/jobs_board_quest_marker_positions";
 
-export const HARTHMERE_QUEST_INVITES_UPDATED_EVENT_V1 =
-  "harthmere:quest-invites-updated-v1";
+export const HARTHMERE_QUEST_INVITES_UPDATED_EVENT =
+  "harthmere:quest-invites-updated";
 
-export const BIOMES_UI_SHARED_QUEST_MARKER_SOURCE_V1 =
+export const BIOMES_UI_SHARED_QUEST_MARKER_SOURCE =
   "shared_quest_invite" as const;
 
-export interface HarthmereQuestInviteRecordForClientV1 {
+export interface HarthmereQuestInviteRecordForClient {
   inviteId: string;
   sharedQuestId: string;
   questId: string;
@@ -23,7 +23,7 @@ export interface HarthmereQuestInviteRecordForClientV1 {
   markerWorldPosition?: [number, number, number];
 }
 
-export interface HarthmereSharedQuestForClientV1 {
+export interface HarthmereSharedQuestForClient {
   sharedQuestId: string;
   questId: string;
   questTitle: string;
@@ -38,18 +38,18 @@ export interface HarthmereSharedQuestForClientV1 {
   markerWorldPosition?: [number, number, number];
 }
 
-export interface HarthmereQuestStateForClientV1 {
+export interface HarthmereQuestStateForClient {
   version: string;
   actorId?: string;
   active: Record<string, { stepId?: string; progress: number }>;
   completed: Record<string, number>;
-  pendingReceivedInvites: HarthmereQuestInviteRecordForClientV1[];
-  sentPendingInvites: HarthmereQuestInviteRecordForClientV1[];
-  sharedQuests: HarthmereSharedQuestForClientV1[];
+  pendingReceivedInvites: HarthmereQuestInviteRecordForClient[];
+  sentPendingInvites: HarthmereQuestInviteRecordForClient[];
+  sharedQuests: HarthmereSharedQuestForClient[];
   updatedAtMs?: number;
 }
 
-export interface HarthmereQuestInviteOptionV1 {
+export interface HarthmereQuestInviteOption {
   questId: string;
   title: string;
   area: string;
@@ -59,11 +59,11 @@ export interface HarthmereQuestInviteOptionV1 {
   markerWorldPosition?: [number, number, number];
 }
 
-export interface HarthmereQuestInviteAdapterV1 {
+export interface HarthmereQuestInviteAdapter {
   isHydrated: () => boolean;
-  getPendingInvites: () => HarthmereQuestInviteRecordForClientV1[];
-  getSentInvites: () => HarthmereQuestInviteRecordForClientV1[];
-  getSharedQuests: () => HarthmereSharedQuestForClientV1[];
+  getPendingInvites: () => HarthmereQuestInviteRecordForClient[];
+  getSentInvites: () => HarthmereQuestInviteRecordForClient[];
+  getSharedQuests: () => HarthmereSharedQuestForClient[];
   refresh: () => Promise<void>;
   acceptInvite: (inviteId: string) => Promise<void>;
   denyInvite: (inviteId: string) => Promise<void>;
@@ -94,7 +94,7 @@ function vec3(value: unknown): [number, number, number] | undefined {
 
 function normalizeInvite(
   raw: unknown
-): HarthmereQuestInviteRecordForClientV1 | undefined {
+): HarthmereQuestInviteRecordForClient | undefined {
   if (!raw || typeof raw !== "object") return undefined;
   const value = raw as any;
   const inviteId = maybeText(value.inviteId);
@@ -129,7 +129,7 @@ function normalizeInvite(
 
 function normalizeSharedQuest(
   raw: unknown
-): HarthmereSharedQuestForClientV1 | undefined {
+): HarthmereSharedQuestForClient | undefined {
   if (!raw || typeof raw !== "object") return undefined;
   const value = raw as any;
   const sharedQuestId = maybeText(value.sharedQuestId);
@@ -162,18 +162,18 @@ function normalizeSharedQuest(
   };
 }
 
-export function normalizeHarthmereQuestStateV1(
+export function normalizeHarthmereQuestState(
   raw: unknown
-): HarthmereQuestStateForClientV1 {
+): HarthmereQuestStateForClient {
   const value = raw && typeof raw === "object" ? (raw as any) : {};
   return {
-    version: text(value.version, "harthmere-live-mode-quest-state-v1"),
+    version: text(value.version, "harthmere-live-mode-quest-state"),
     actorId: maybeText(value.actorId),
     active:
       value.active &&
       typeof value.active === "object" &&
       !Array.isArray(value.active)
-        ? (value.active as HarthmereQuestStateForClientV1["active"])
+        ? (value.active as HarthmereQuestStateForClient["active"])
         : {},
     completed:
       value.completed &&
@@ -186,8 +186,8 @@ export function normalizeHarthmereQuestStateV1(
           .map(normalizeInvite)
           .filter(
             (
-              invite: HarthmereQuestInviteRecordForClientV1 | undefined
-            ): invite is HarthmereQuestInviteRecordForClientV1 =>
+              invite: HarthmereQuestInviteRecordForClient | undefined
+            ): invite is HarthmereQuestInviteRecordForClient =>
               Boolean(invite)
           )
       : [],
@@ -196,8 +196,8 @@ export function normalizeHarthmereQuestStateV1(
           .map(normalizeInvite)
           .filter(
             (
-              invite: HarthmereQuestInviteRecordForClientV1 | undefined
-            ): invite is HarthmereQuestInviteRecordForClientV1 =>
+              invite: HarthmereQuestInviteRecordForClient | undefined
+            ): invite is HarthmereQuestInviteRecordForClient =>
               Boolean(invite)
           )
       : [],
@@ -206,18 +206,18 @@ export function normalizeHarthmereQuestStateV1(
           .map(normalizeSharedQuest)
           .filter(
             (
-              quest: HarthmereSharedQuestForClientV1 | undefined
-            ): quest is HarthmereSharedQuestForClientV1 => Boolean(quest)
+              quest: HarthmereSharedQuestForClient | undefined
+            ): quest is HarthmereSharedQuestForClient => Boolean(quest)
           )
       : [],
     updatedAtMs: numberMs(value.updatedAtMs),
   };
 }
 
-export async function fetchHarthmereQuestStateV1(
+export async function fetchHarthmereQuestState(
   fetchImpl: typeof fetch = fetch
 ) {
-  const response = await fetchHarthmereLiveWithTimeoutV1(
+  const response = await fetchHarthmereLiveWithTimeout(
     fetchImpl,
     "/api/harthmere/live_mode_quest_state",
     {
@@ -227,10 +227,10 @@ export async function fetchHarthmereQuestStateV1(
   );
   if (!response.ok) return undefined;
   const body = await response.json();
-  return normalizeHarthmereQuestStateV1(body?.questState);
+  return normalizeHarthmereQuestState(body?.questState);
 }
 
-export async function submitHarthmereQuestInviteMutationV1(
+export async function submitHarthmereQuestInviteMutation(
   payload: Record<string, unknown>,
   fetchImpl: typeof fetch = fetch
 ) {
@@ -238,7 +238,7 @@ export async function submitHarthmereQuestInviteMutationV1(
   const requestId = `biomes_ui_${operation}_${Date.now()}_${Math.random()
     .toString(36)
     .slice(2)}`;
-  const response = await fetchHarthmereLiveWithTimeoutV1(
+  const response = await fetchHarthmereLiveWithTimeout(
     fetchImpl,
     "/api/harthmere/live_mode",
     {
@@ -271,7 +271,7 @@ export async function submitHarthmereQuestInviteMutationV1(
   }
   if (typeof window !== "undefined") {
     window.dispatchEvent(
-      new CustomEvent(HARTHMERE_QUEST_INVITES_UPDATED_EVENT_V1, {
+      new CustomEvent(HARTHMERE_QUEST_INVITES_UPDATED_EVENT, {
         detail: { questState: body?.questState },
       })
     );
@@ -279,21 +279,21 @@ export async function submitHarthmereQuestInviteMutationV1(
   return body;
 }
 
-export function createHarthmereQuestInviteAdapterV1(input: {
+export function createHarthmereQuestInviteAdapter(input: {
   questState: unknown;
   hydrated: boolean;
-  setQuestState?: (state: HarthmereQuestStateForClientV1 | undefined) => void;
+  setQuestState?: (state: HarthmereQuestStateForClient | undefined) => void;
   refresh: () => Promise<void>;
-}): HarthmereQuestInviteAdapterV1 {
-  const questState = normalizeHarthmereQuestStateV1(input.questState);
+}): HarthmereQuestInviteAdapter {
+  const questState = normalizeHarthmereQuestState(input.questState);
   const respond = async (inviteId: string, response: "accept" | "deny") => {
-    const body = await submitHarthmereQuestInviteMutationV1({
+    const body = await submitHarthmereQuestInviteMutation({
       operation: "respond_to_quest_invite",
       inviteId,
       response,
     });
     if (body?.questState) {
-      input.setQuestState?.(normalizeHarthmereQuestStateV1(body.questState));
+      input.setQuestState?.(normalizeHarthmereQuestState(body.questState));
     } else {
       await input.refresh();
     }
@@ -313,14 +313,14 @@ export function createHarthmereQuestInviteAdapterV1(input: {
 // server-supplied markerWorldPosition; otherwise fall back to looking up the
 // quest's firstMarkerId in the known jobs-board quest marker table, so an
 // accepted shared quest still gets an on-map landmark instead of vanishing.
-export function resolveSharedQuestMarkerPositionV1(quest: {
+export function resolveSharedQuestMarkerPosition(quest: {
   markerWorldPosition?: [number, number, number];
   firstMarkerId?: string;
 }): [number, number, number] | undefined {
   if (quest.markerWorldPosition) {
     return quest.markerWorldPosition;
   }
-  const resolved = harthmereJobsBoardQuestMarkerRuntimePositionForIdV1(
+  const resolved = harthmereJobsBoardQuestMarkerRuntimePositionForId(
     quest.firstMarkerId
   );
   return resolved
@@ -332,10 +332,10 @@ export function resolveSharedQuestMarkerPositionV1(quest: {
     : undefined;
 }
 
-export function sharedQuestAcceptedLandmarksForBiomesUIV1(raw: unknown) {
-  const state = normalizeHarthmereQuestStateV1(raw);
+export function sharedQuestAcceptedLandmarksForBiomesUI(raw: unknown) {
+  const state = normalizeHarthmereQuestState(raw);
   return state.sharedQuests.flatMap((quest) => {
-    const markerPosition = resolveSharedQuestMarkerPositionV1(quest);
+    const markerPosition = resolveSharedQuestMarkerPosition(quest);
     if (!markerPosition) return [];
     return [
       {
@@ -348,17 +348,17 @@ export function sharedQuestAcceptedLandmarksForBiomesUIV1(raw: unknown) {
         visibleOnHudMap: true as const,
         active: true as const,
         description: quest.objectiveText,
-        source: BIOMES_UI_SHARED_QUEST_MARKER_SOURCE_V1,
+        source: BIOMES_UI_SHARED_QUEST_MARKER_SOURCE,
         sharedQuestId: quest.sharedQuestId,
       },
     ];
   });
 }
 
-export function sharedQuestTrackableQuestsForBiomesUIV1(
+export function sharedQuestTrackableQuestsForBiomesUI(
   raw: unknown
 ): MapTrackableQuest[] {
-  const state = normalizeHarthmereQuestStateV1(raw);
+  const state = normalizeHarthmereQuestState(raw);
   return state.sharedQuests.map((quest) => ({
     questId: `shared_quest:${quest.sharedQuestId}`,
     title: quest.questTitle,
@@ -376,8 +376,8 @@ export function sharedQuestTrackableQuestsForBiomesUIV1(
   }));
 }
 
-export function activeSharedQuestMissionStepsForBiomesUIV1(raw: unknown) {
-  const state = normalizeHarthmereQuestStateV1(raw);
+export function activeSharedQuestMissionStepsForBiomesUI(raw: unknown) {
+  const state = normalizeHarthmereQuestState(raw);
   return state.sharedQuests.map((quest, index) => ({
     id: `shared_quest:${quest.sharedQuestId}`,
     title: `Shared quest ${index + 1}`,
@@ -386,13 +386,13 @@ export function activeSharedQuestMissionStepsForBiomesUIV1(raw: unknown) {
   }));
 }
 
-export function firstActiveSharedQuestTitleForBiomesUIV1(raw: unknown) {
-  return normalizeHarthmereQuestStateV1(raw).sharedQuests[0]?.questTitle;
+export function firstActiveSharedQuestTitleForBiomesUI(raw: unknown) {
+  return normalizeHarthmereQuestState(raw).sharedQuests[0]?.questTitle;
 }
 
-export function questInviteOptionsFromTrackableQuestsV1(
+export function questInviteOptionsFromTrackableQuests(
   quests: unknown[]
-): HarthmereQuestInviteOptionV1[] {
+): HarthmereQuestInviteOption[] {
   const seen = new Set<string>();
   return quests.flatMap((quest: any) => {
     const questId = maybeText(quest?.questId) ?? maybeText(quest?.id);

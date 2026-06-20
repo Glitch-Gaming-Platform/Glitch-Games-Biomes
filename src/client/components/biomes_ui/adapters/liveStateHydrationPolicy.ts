@@ -1,6 +1,6 @@
 import type { TabKey } from "../BiomesUITypes";
 
-export type BiomesUILiveStateHydrationKeyV1 =
+export type BiomesUILiveStateHydrationKey =
   | "banking"
   | "guild"
   | "building"
@@ -11,32 +11,32 @@ export type BiomesUILiveStateHydrationKeyV1 =
   | "jobsBoard"
   | "quest";
 
-function biomesUITabOpenV1(activeTab: TabKey | null, tabs: readonly TabKey[]) {
+function biomesUITabOpen(activeTab: TabKey | null, tabs: readonly TabKey[]) {
   return activeTab !== null && tabs.includes(activeTab);
 }
 
-export function shouldHydrateBiomesUILiveStateForTabV1(
-  stateKey: BiomesUILiveStateHydrationKeyV1,
+export function shouldHydrateBiomesUILiveStateForTab(
+  stateKey: BiomesUILiveStateHydrationKey,
   activeTab: TabKey | null
 ) {
   switch (stateKey) {
     case "banking":
-      return biomesUITabOpenV1(activeTab, ["banking"]);
+      return biomesUITabOpen(activeTab, ["banking"]);
     case "guild":
-      return biomesUITabOpenV1(activeTab, ["guilds"]);
+      return biomesUITabOpen(activeTab, ["guilds"]);
     case "building":
-      return biomesUITabOpenV1(activeTab, ["land"]);
+      return biomesUITabOpen(activeTab, ["land"]);
     case "inventoryLoot":
-      return biomesUITabOpenV1(activeTab, ["inventory", "loot"]);
+      return biomesUITabOpen(activeTab, ["inventory", "loot"]);
     case "progression":
-      return biomesUITabOpenV1(activeTab, [
+      return biomesUITabOpen(activeTab, [
         "abilities",
         "skills",
         "classes",
         "collections",
       ]);
     case "daily":
-      return biomesUITabOpenV1(activeTab, ["daily"]);
+      return biomesUITabOpen(activeTab, ["daily"]);
     case "farmingFood":
     case "jobsBoard":
     case "quest":

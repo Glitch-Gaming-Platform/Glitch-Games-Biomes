@@ -14,20 +14,20 @@ function check(label, condition) {
   if (!condition) ok = false;
 }
 
-const blockRe = /\/\/\s*harthmere-fix-attacker-declaration-v1\s*\n\s*const\s+attackerOffsetMatch\s*=\s*this\.findCombatLifeByOffset\(detail\.attackerOffset\);\s*\n\s*const\s+attacker\s*=/g;
+const blockRe = /\/\/\s*harthmere-fix-attacker-declaration\s*\n\s*const\s+attackerOffsetMatch\s*=\s*this\.findCombatLifeByOffset\(detail\.attackerOffset\);\s*\n\s*const\s+attacker\s*=/g;
 const blocks = [...text.matchAll(blockRe)];
 
-const fixMarker = text.indexOf("harthmere-fix-attacker-declaration-v1");
+const fixMarker = text.indexOf("harthmere-fix-attacker-declaration");
 const decl = text.indexOf("const attacker =", fixMarker);
 const debug = text.indexOf('debugHarthmereRenderer("renderer.combat_event.attacker_match"', fixMarker);
 const pulse = text.indexOf('this.startCombatPulse(attacker, "attack"', fixMarker);
 
-check("de-dupe marker exists", text.includes("harthmere-dedupe-attacker-declaration-v1"));
+check("de-dupe marker exists", text.includes("harthmere-dedupe-attacker-declaration"));
 check("exactly one attacker declaration block exists", blocks.length === 1);
 check("attacker declaration appears before attacker debug", decl >= 0 && debug > decl);
 check("attacker declaration appears before attacker pulse", decl >= 0 && pulse > decl);
 check("no this.debugHarthmereRenderer calls remain", !text.includes("this.debugHarthmereRenderer("));
-check("robust physical sanitizer remains", text.includes("harthmere-robust-physical-combat-sanitize-v2"));
+check("robust physical sanitizer remains", text.includes("harthmere-robust-physical-combat-sanitize"));
 check("physical no-spark marker remains", text.includes("detailAny.harthmereNoSparkBasic = true"));
 
 console.log("");

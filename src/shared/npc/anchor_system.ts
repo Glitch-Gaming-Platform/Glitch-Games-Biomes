@@ -2,8 +2,8 @@ import type { BiomesId } from "@/shared/ids";
 import { distSq } from "@/shared/math/linear";
 import type { ReadonlyVec3 } from "@/shared/math/types";
 
-export const HARTHMERE_NPC_ANCHOR_SYSTEM_VERSION_V37 =
-  "harthmere-npc-anchor-system-v37";
+export const HARTHMERE_NPC_ANCHOR_SYSTEM_VERSION =
+  "harthmere-npc-anchor-system";
 
 export type HarthmereNpcAnchorType =
   | "stand" | "sit" | "sleep" | "work" | "shop_counter" | "guard_post"

@@ -1,64 +1,64 @@
-// HARTHMERE_OBJECT_CONTAINER_UI_V199:
+// HARTHMERE_OBJECT_CONTAINER_UI:
 // A take/store interface for world-object containers (chests, crates, boxes,
 // bags, toolbags, ...). Mirrors the vendor/store panel chrome so containers
 // "act like an inventory": the left column is the container's contents, the
 // right column is the player's loose items. Containers persist their contents in
 // localStorage, so what you leave behind stays.
 //
-// Three ways to move items (HARTHMERE_CONTAINER_DRAG_AND_KEYBOARD_V1):
+// Three ways to move items (HARTHMERE_CONTAINER_DRAG_AND_KEYBOARD):
 //  - drag an item from one column and drop it on the OTHER column,
 //  - arrow keys move a focus cursor; Enter/Return moves the focused item across,
 //  - the Take / Take All / Store buttons (precise single-unit / bulk actions).
 // Drag and Enter move the WHOLE stack; the buttons keep their granular behavior.
 //
 // Only labels classified as containers route here (see
-// object_interaction_semantics_v1 + isHarthmereContainerObjectLabelV1).
+// object_interaction_semantics + isHarthmereContainerObjectLabel).
 import {
-  getHarthmereItemDisplayV1,
+  getHarthmereItemDisplay,
   useHarthmereInventoryState,
 } from "@/client/components/challenges/LocalDevHarthmereInventorySystem";
 import {
-  clearHarthmereContainerOpenRequestV1,
-  HARTHMERE_OBJECT_CONTAINER_CHANGED_EVENT_V1,
-  HARTHMERE_OBJECT_CONTAINER_OPEN_EVENT_V1,
-  putIntoHarthmereContainerV1,
-  readHarthmereContainerOpenRequestV1,
-  readHarthmereContainerV1,
-  takeAllFromHarthmereContainerV1,
-  takeFromHarthmereContainerV1,
-  type HarthmereObjectContainerOpenRequestV1,
-  type HarthmereObjectContainerRecordV1,
+  clearHarthmereContainerOpenRequest,
+  HARTHMERE_OBJECT_CONTAINER_CHANGED_EVENT,
+  HARTHMERE_OBJECT_CONTAINER_OPEN_EVENT,
+  putIntoHarthmereContainer,
+  readHarthmereContainerOpenRequest,
+  readHarthmereContainer,
+  takeAllFromHarthmereContainer,
+  takeFromHarthmereContainer,
+  type HarthmereObjectContainerOpenRequest,
+  type HarthmereObjectContainerRecord,
 } from "@/client/components/challenges/harthmereObjectContainers";
 import {
-  clampHarthmereContainerFocusV1,
-  HARTHMERE_CONTAINER_DRAG_MIME_V1,
-  moveHarthmereContainerFocusV1,
-  parseHarthmereContainerDragPayloadV1,
-  resolveHarthmereContainerTransferV1,
-  serializeHarthmereContainerDragPayloadV1,
-  type HarthmereContainerArrowKeyV1,
-  type HarthmereContainerFocusV1,
-  type HarthmereContainerSideV1,
-} from "@/client/components/challenges/harthmereContainerTransferInteractionV1";
+  clampHarthmereContainerFocus,
+  HARTHMERE_CONTAINER_DRAG_MIME,
+  moveHarthmereContainerFocus,
+  parseHarthmereContainerDragPayload,
+  resolveHarthmereContainerTransfer,
+  serializeHarthmereContainerDragPayload,
+  type HarthmereContainerArrowKey,
+  type HarthmereContainerFocus,
+  type HarthmereContainerSide,
+} from "@/client/components/challenges/harthmereContainerTransferInteraction";
 import { usePointerLockManager } from "@/client/components/contexts/PointerLockContext";
 import {
-  closePointerLockUnlockWhileOpenV1,
-  openPointerLockUnlockWhileOpenV1,
-  type PointerLockUnlockWhileOpenReturnRefV1,
+  closePointerLockUnlockWhileOpen,
+  openPointerLockUnlockWhileOpen,
+  type PointerLockUnlockWhileOpenReturnRef,
 } from "@/client/components/contexts/pointerLockModalPolicy";
 import { installBiomesUITheme } from "@/client/components/biomes_ui/theme/biomesUITheme";
 import * as React from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
-interface TransferItemV1 {
+interface TransferItem {
   itemId: string;
   quantity: number;
   rowKey: string;
   subtitle: string;
 }
 
-const ARROW_KEYS_V1: HarthmereContainerArrowKeyV1[] = [
+const ARROW_KEYS: HarthmereContainerArrowKey[] = [
   "ArrowUp",
   "ArrowDown",
   "ArrowLeft",
@@ -66,19 +66,19 @@ const ARROW_KEYS_V1: HarthmereContainerArrowKeyV1[] = [
 ];
 
 function ContainerItemIcon({ itemId }: { itemId: string }) {
-  const def = getHarthmereItemDisplayV1(itemId);
+  const def = getHarthmereItemDisplay(itemId);
   return (
     <div className="biomes-ui-container-row__icon">{def?.icon ?? "?"}</div>
   );
 }
 
-function dragStartPropsV1(side: HarthmereContainerSideV1, itemId: string) {
+function dragStartProps(side: HarthmereContainerSide, itemId: string) {
   return {
     draggable: true,
     onDragStart: (event: React.DragEvent) => {
-      const text = serializeHarthmereContainerDragPayloadV1({ side, itemId });
+      const text = serializeHarthmereContainerDragPayload({ side, itemId });
       try {
-        event.dataTransfer.setData(HARTHMERE_CONTAINER_DRAG_MIME_V1, text);
+        event.dataTransfer.setData(HARTHMERE_CONTAINER_DRAG_MIME, text);
         event.dataTransfer.setData("text/plain", text);
         event.dataTransfer.effectAllowed = "move";
       } catch {
@@ -90,7 +90,7 @@ function dragStartPropsV1(side: HarthmereContainerSideV1, itemId: string) {
 
 // A single draggable / focusable item row. Buttons are passed as children so the
 // container side (Take / All) and inventory side (Store) keep their own actions.
-function TransferRowV1({
+function TransferRow({
   side,
   itemId,
   quantity,
@@ -98,17 +98,17 @@ function TransferRowV1({
   focused,
   children,
 }: {
-  side: HarthmereContainerSideV1;
+  side: HarthmereContainerSide;
   itemId: string;
   quantity: number;
   subtitle?: string;
   focused: boolean;
   children?: React.ReactNode;
 }) {
-  const def = getHarthmereItemDisplayV1(itemId);
+  const def = getHarthmereItemDisplay(itemId);
   return (
     <div
-      {...dragStartPropsV1(side, itemId)}
+      {...dragStartProps(side, itemId)}
       aria-selected={focused}
       data-container-side={side}
       data-item-id={itemId}
@@ -133,26 +133,26 @@ function TransferRowV1({
 
 function useContainerRecord(
   key: string | undefined
-): HarthmereObjectContainerRecordV1 | undefined {
+): HarthmereObjectContainerRecord | undefined {
   const [record, setRecord] = useState<
-    HarthmereObjectContainerRecordV1 | undefined
-  >(() => (key ? readHarthmereContainerV1(key) : undefined));
+    HarthmereObjectContainerRecord | undefined
+  >(() => (key ? readHarthmereContainer(key) : undefined));
 
   useEffect(() => {
     if (!key) {
       setRecord(undefined);
       return;
     }
-    const refresh = () => setRecord(readHarthmereContainerV1(key));
+    const refresh = () => setRecord(readHarthmereContainer(key));
     refresh();
     window.addEventListener(
-      HARTHMERE_OBJECT_CONTAINER_CHANGED_EVENT_V1,
+      HARTHMERE_OBJECT_CONTAINER_CHANGED_EVENT,
       refresh
     );
     window.addEventListener("storage", refresh);
     return () => {
       window.removeEventListener(
-        HARTHMERE_OBJECT_CONTAINER_CHANGED_EVENT_V1,
+        HARTHMERE_OBJECT_CONTAINER_CHANGED_EVENT,
         refresh
       );
       window.removeEventListener("storage", refresh);
@@ -165,26 +165,26 @@ function useContainerRecord(
 export const HarthmereObjectContainerPanel: React.FunctionComponent<{}> =
   () => {
     const [request, setRequest] = useState<
-      HarthmereObjectContainerOpenRequestV1 | undefined
+      HarthmereObjectContainerOpenRequest | undefined
     >(undefined);
     const inventory = useHarthmereInventoryState();
     const record = useContainerRecord(request?.key);
     const pointerLockManager = usePointerLockManager();
     const shouldReturnPointerLock =
-      useRef<PointerLockUnlockWhileOpenReturnRefV1>({ current: false });
+      useRef<PointerLockUnlockWhileOpenReturnRef>({ current: false });
 
-    const [focus, setFocus] = useState<HarthmereContainerFocusV1 | undefined>(
+    const [focus, setFocus] = useState<HarthmereContainerFocus | undefined>(
       undefined
     );
     const [dragOverSide, setDragOverSide] = useState<
-      HarthmereContainerSideV1 | undefined
+      HarthmereContainerSide | undefined
     >(undefined);
 
     useEffect(() => {
       installBiomesUITheme();
     }, []);
 
-    // HARTHMERE_OBJECT_CONTAINER_UI_V199: release the mouse while the panel is open
+    // HARTHMERE_OBJECT_CONTAINER_UI: release the mouse while the panel is open
     // (and re-lock on close) exactly like the jobs-board / crafting / shop panels.
     // Without this the pointer stays locked to the camera, so the cursor never
     // appears and the player cannot click / drag — which is what made the
@@ -193,12 +193,12 @@ export const HarthmereObjectContainerPanel: React.FunctionComponent<{}> =
       if (!request) {
         return;
       }
-      openPointerLockUnlockWhileOpenV1(
+      openPointerLockUnlockWhileOpen(
         pointerLockManager,
         shouldReturnPointerLock.current
       );
       return () => {
-        closePointerLockUnlockWhileOpenV1(
+        closePointerLockUnlockWhileOpen(
           pointerLockManager,
           shouldReturnPointerLock.current
         );
@@ -209,8 +209,8 @@ export const HarthmereObjectContainerPanel: React.FunctionComponent<{}> =
       if (typeof window === "undefined") {
         return;
       }
-      const openRequest = (detail?: HarthmereObjectContainerOpenRequestV1) => {
-        const pending = detail ?? readHarthmereContainerOpenRequestV1();
+      const openRequest = (detail?: HarthmereObjectContainerOpenRequest) => {
+        const pending = detail ?? readHarthmereContainerOpenRequest();
         if (!pending) {
           return;
         }
@@ -219,26 +219,26 @@ export const HarthmereObjectContainerPanel: React.FunctionComponent<{}> =
       };
       const handler = (event: Event) => {
         openRequest(
-          (event as CustomEvent<HarthmereObjectContainerOpenRequestV1>).detail
+          (event as CustomEvent<HarthmereObjectContainerOpenRequest>).detail
         );
       };
       const storageHandler = (event: StorageEvent) => {
         if (
           event.key ===
-          "biomes.localDev.harthmere.objectContainerOpenRequest.v1"
+          "biomes.localDev.harthmere.objectContainerOpenRequest"
         ) {
           openRequest();
         }
       };
-      clearHarthmereContainerOpenRequestV1();
+      clearHarthmereContainerOpenRequest();
       window.addEventListener(
-        HARTHMERE_OBJECT_CONTAINER_OPEN_EVENT_V1,
+        HARTHMERE_OBJECT_CONTAINER_OPEN_EVENT,
         handler
       );
       window.addEventListener("storage", storageHandler);
       return () => {
         window.removeEventListener(
-          HARTHMERE_OBJECT_CONTAINER_OPEN_EVENT_V1,
+          HARTHMERE_OBJECT_CONTAINER_OPEN_EVENT,
           handler
         );
         window.removeEventListener("storage", storageHandler);
@@ -246,7 +246,7 @@ export const HarthmereObjectContainerPanel: React.FunctionComponent<{}> =
     }, []);
 
     const closePanel = useCallback(() => {
-      clearHarthmereContainerOpenRequestV1();
+      clearHarthmereContainerOpenRequest();
       setRequest(undefined);
       setFocus(undefined);
     }, []);
@@ -255,16 +255,16 @@ export const HarthmereObjectContainerPanel: React.FunctionComponent<{}> =
     // materials. Quest-pouch items, keys, wallet, and equipped gear are
     // intentionally protected from accidental storage (they drive quests/combat).
     const storableBackpack = (inventory.backpack.items ?? []).filter((item) =>
-      getHarthmereItemDisplayV1(item.itemId)
+      getHarthmereItemDisplay(item.itemId)
     );
     const storableMaterials = Object.entries(inventory.materialStorage ?? {})
       .filter(([, qty]) => qty > 0)
       .map(([itemId, qty]) => ({ itemId, quantity: qty }));
 
     const containerItems = record?.items ?? [];
-    const inventoryList: TransferItemV1[] = [
+    const inventoryList: TransferItem[] = [
       ...storableBackpack.map((item) => {
-        const def = getHarthmereItemDisplayV1(item.itemId);
+        const def = getHarthmereItemDisplay(item.itemId);
         return {
           itemId: item.itemId,
           quantity: item.quantity,
@@ -284,14 +284,14 @@ export const HarthmereObjectContainerPanel: React.FunctionComponent<{}> =
       containerCount: containerItems.length,
       inventoryCount: inventoryList.length,
     };
-    const displayFocus = clampHarthmereContainerFocusV1(focus, counts);
+    const displayFocus = clampHarthmereContainerFocus(focus, counts);
 
     const containerKey = request?.key;
 
     const takeWholeStack = useCallback(
       (itemId: string, quantity: number) => {
         if (containerKey) {
-          takeFromHarthmereContainerV1(containerKey, itemId, quantity);
+          takeFromHarthmereContainer(containerKey, itemId, quantity);
         }
       },
       [containerKey]
@@ -299,7 +299,7 @@ export const HarthmereObjectContainerPanel: React.FunctionComponent<{}> =
     const storeWholeStack = useCallback(
       (itemId: string, quantity: number) => {
         if (containerKey) {
-          putIntoHarthmereContainerV1(containerKey, itemId, quantity);
+          putIntoHarthmereContainer(containerKey, itemId, quantity);
         }
       },
       [containerKey]
@@ -310,11 +310,11 @@ export const HarthmereObjectContainerPanel: React.FunctionComponent<{}> =
     // stack moves; a stale id resolves to a 0-effect take/store (no crash).
     const executeTransfer = useCallback(
       (
-        sourceSide: HarthmereContainerSideV1,
-        targetSide: HarthmereContainerSideV1,
+        sourceSide: HarthmereContainerSide,
+        targetSide: HarthmereContainerSide,
         itemId: string
       ) => {
-        const action = resolveHarthmereContainerTransferV1(
+        const action = resolveHarthmereContainerTransfer(
           sourceSide,
           targetSide
         );
@@ -332,9 +332,9 @@ export const HarthmereObjectContainerPanel: React.FunctionComponent<{}> =
     // Keep a fresh snapshot for the window keydown handler (registered once while
     // open) so arrow/Enter never act on stale lists after a transfer.
     const interactionRef = useRef<{
-      focus: HarthmereContainerFocusV1 | undefined;
+      focus: HarthmereContainerFocus | undefined;
       containerItems: { itemId: string; quantity: number }[];
-      inventoryList: TransferItemV1[];
+      inventoryList: TransferItem[];
     }>({ focus, containerItems, inventoryList });
     interactionRef.current = { focus, containerItems, inventoryList };
 
@@ -354,14 +354,14 @@ export const HarthmereObjectContainerPanel: React.FunctionComponent<{}> =
           containerCount: cur.containerItems.length,
           inventoryCount: cur.inventoryList.length,
         };
-        if ((ARROW_KEYS_V1 as string[]).includes(event.key)) {
+        if ((ARROW_KEYS as string[]).includes(event.key)) {
           event.preventDefault();
           event.stopPropagation();
           event.stopImmediatePropagation();
           setFocus((prev) =>
-            moveHarthmereContainerFocusV1(
+            moveHarthmereContainerFocus(
               prev,
-              event.key as HarthmereContainerArrowKeyV1,
+              event.key as HarthmereContainerArrowKey,
               liveCounts
             )
           );
@@ -374,7 +374,7 @@ export const HarthmereObjectContainerPanel: React.FunctionComponent<{}> =
           event.preventDefault();
           event.stopPropagation();
           event.stopImmediatePropagation();
-          const f = clampHarthmereContainerFocusV1(cur.focus, liveCounts);
+          const f = clampHarthmereContainerFocus(cur.focus, liveCounts);
           if (!f) {
             return;
           }
@@ -399,7 +399,7 @@ export const HarthmereObjectContainerPanel: React.FunctionComponent<{}> =
       return null;
     }
 
-    const dropZoneProps = (targetSide: HarthmereContainerSideV1) => ({
+    const dropZoneProps = (targetSide: HarthmereContainerSide) => ({
       onDragEnter: (event: React.DragEvent) => {
         event.preventDefault();
         setDragOverSide(targetSide);
@@ -413,9 +413,9 @@ export const HarthmereObjectContainerPanel: React.FunctionComponent<{}> =
         event.preventDefault();
         setDragOverSide(undefined);
         const text =
-          event.dataTransfer.getData(HARTHMERE_CONTAINER_DRAG_MIME_V1) ||
+          event.dataTransfer.getData(HARTHMERE_CONTAINER_DRAG_MIME) ||
           event.dataTransfer.getData("text/plain");
-        const payload = parseHarthmereContainerDragPayloadV1(text);
+        const payload = parseHarthmereContainerDragPayload(text);
         if (!payload) {
           return;
         }
@@ -423,7 +423,7 @@ export const HarthmereObjectContainerPanel: React.FunctionComponent<{}> =
       },
     });
 
-    const columnDragClass = (side: HarthmereContainerSideV1) =>
+    const columnDragClass = (side: HarthmereContainerSide) =>
       dragOverSide === side ? "biomes-ui-container-list--drag-over" : "";
 
     const panel = (
@@ -476,7 +476,7 @@ export const HarthmereObjectContainerPanel: React.FunctionComponent<{}> =
                   type="button"
                   className="biomes-ui-action-button"
                   disabled={!containerItems.length}
-                  onClick={() => takeAllFromHarthmereContainerV1(request.key)}
+                  onClick={() => takeAllFromHarthmereContainer(request.key)}
                 >
                   Take All
                 </button>
@@ -489,13 +489,13 @@ export const HarthmereObjectContainerPanel: React.FunctionComponent<{}> =
               >
                 {containerItems.length ? (
                   containerItems.map((slot, index) => (
-                    <TransferRowV1
+                    <TransferRow
                       key={slot.itemId}
                       side="container"
                       itemId={slot.itemId}
                       quantity={slot.quantity}
                       subtitle={(() => {
-                        const def = getHarthmereItemDisplayV1(slot.itemId);
+                        const def = getHarthmereItemDisplay(slot.itemId);
                         return def
                           ? `${def.category} · ${def.quality}`
                           : undefined;
@@ -509,7 +509,7 @@ export const HarthmereObjectContainerPanel: React.FunctionComponent<{}> =
                         type="button"
                         className="biomes-ui-action-button"
                         onClick={() =>
-                          takeFromHarthmereContainerV1(
+                          takeFromHarthmereContainer(
                             request.key,
                             slot.itemId,
                             1
@@ -523,7 +523,7 @@ export const HarthmereObjectContainerPanel: React.FunctionComponent<{}> =
                           type="button"
                           className="biomes-ui-action-button"
                           onClick={() =>
-                            takeFromHarthmereContainerV1(
+                            takeFromHarthmereContainer(
                               request.key,
                               slot.itemId,
                               slot.quantity
@@ -533,7 +533,7 @@ export const HarthmereObjectContainerPanel: React.FunctionComponent<{}> =
                           All
                         </button>
                       )}
-                    </TransferRowV1>
+                    </TransferRow>
                   ))
                 ) : (
                   <div className="biomes-ui-container-empty">
@@ -558,7 +558,7 @@ export const HarthmereObjectContainerPanel: React.FunctionComponent<{}> =
               >
                 {inventoryList.length ? (
                   inventoryList.map((item, index) => (
-                    <TransferRowV1
+                    <TransferRow
                       key={item.rowKey}
                       side="inventory"
                       itemId={item.itemId}
@@ -573,7 +573,7 @@ export const HarthmereObjectContainerPanel: React.FunctionComponent<{}> =
                         type="button"
                         className="biomes-ui-action-button"
                         onClick={() =>
-                          putIntoHarthmereContainerV1(
+                          putIntoHarthmereContainer(
                             request.key,
                             item.itemId,
                             1
@@ -587,7 +587,7 @@ export const HarthmereObjectContainerPanel: React.FunctionComponent<{}> =
                           type="button"
                           className="biomes-ui-action-button"
                           onClick={() =>
-                            putIntoHarthmereContainerV1(
+                            putIntoHarthmereContainer(
                               request.key,
                               item.itemId,
                               item.quantity
@@ -597,7 +597,7 @@ export const HarthmereObjectContainerPanel: React.FunctionComponent<{}> =
                           All
                         </button>
                       )}
-                    </TransferRowV1>
+                    </TransferRow>
                   ))
                 ) : (
                   <div className="biomes-ui-container-empty">

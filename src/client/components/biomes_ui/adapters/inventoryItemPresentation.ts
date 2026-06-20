@@ -1,18 +1,18 @@
 import {
-  HARTHMERE_BIKKIE_ITEM_METADATA_BY_ID_V1,
-  HARTHMERE_FOOD_DEFINITIONS_V1,
-  HARTHMERE_SEED_DEFINITIONS_V1,
-  harthmereFarmingFoodItemDisplayNameV1,
-} from "@/shared/harthmere/mmo_farming_food_stamina_v1";
-import { harthmereResolveBikkieVisualV1 } from "@/shared/harthmere/bikkie_visual_resolver_v1";
-import type { HarthmereBikkieItemMetadataV1 } from "@/shared/harthmere/mmo_bikkie_farming_food_catalog_v1";
+  HARTHMERE_BIKKIE_ITEM_METADATA_BY_ID,
+  HARTHMERE_FOOD_DEFINITIONS,
+  HARTHMERE_SEED_DEFINITIONS,
+  harthmereFarmingFoodItemDisplayName,
+} from "@/shared/harthmere/mmo_farming_food_stamina";
+import { harthmereResolveBikkieVisual } from "@/shared/harthmere/bikkie_visual_resolver";
+import type { HarthmereBikkieItemMetadata } from "@/shared/harthmere/mmo_bikkie_farming_food_catalog";
 import { resolveAssetUrlUntyped } from "@/galois/interface/asset_paths";
 
-export function humanizeBiomesInventoryItemIdV1(
+export function humanizeBiomesInventoryItemId(
   itemId: string,
   fallback: string
 ): string {
-  const knownName = harthmereFarmingFoodItemDisplayNameV1(itemId);
+  const knownName = harthmereFarmingFoodItemDisplayName(itemId);
   if (knownName) return knownName;
   if (!itemId) return fallback;
   const parts = itemId.split("/").filter(Boolean);
@@ -27,9 +27,9 @@ export function humanizeBiomesInventoryItemIdV1(
   return readable || fallback;
 }
 
-const LOCAL_BIKKIE_VISUAL_ALIASES_V1: Record<
+const LOCAL_BIKKIE_VISUAL_ALIASES: Record<
   string,
-  HarthmereBikkieItemMetadataV1
+  HarthmereBikkieItemMetadata
 > = {
   seed_carrot: {
     bikkieId: "4537020877769703",
@@ -80,17 +80,17 @@ const LOCAL_BIKKIE_VISUAL_ALIASES_V1: Record<
   },
 };
 
-function bikkieInventoryMetadataForItemV1(itemId: string) {
+function bikkieInventoryMetadataForItem(itemId: string) {
   return (
-    HARTHMERE_BIKKIE_ITEM_METADATA_BY_ID_V1[itemId] ??
-    LOCAL_BIKKIE_VISUAL_ALIASES_V1[itemId]
+    HARTHMERE_BIKKIE_ITEM_METADATA_BY_ID[itemId] ??
+    LOCAL_BIKKIE_VISUAL_ALIASES[itemId]
   );
 }
 
-export function biomesInventoryItemVisualV1(itemId: string) {
-  const metadata = bikkieInventoryMetadataForItemV1(itemId);
+export function biomesInventoryItemVisual(itemId: string) {
+  const metadata = bikkieInventoryMetadataForItem(itemId);
   if (!metadata) return undefined;
-  return harthmereResolveBikkieVisualV1({
+  return harthmereResolveBikkieVisual({
     id: itemId,
     bikkieId: metadata.bikkieId,
     label: metadata.displayName,
@@ -100,20 +100,20 @@ export function biomesInventoryItemVisualV1(itemId: string) {
   });
 }
 
-export function biomesInventoryItemIconV1(itemId: string): string {
-  const visual = biomesInventoryItemVisualV1(itemId);
+export function biomesInventoryItemIcon(itemId: string): string {
+  const visual = biomesInventoryItemVisual(itemId);
   const imageUrl = visual?.iconAssetPath
     ? resolveAssetUrlUntyped(visual.iconAssetPath)
     : undefined;
   if (imageUrl) return imageUrl;
   if (visual?.glyph) return visual.glyph;
   if (itemId === "seed_muckroot") return "MR";
-  const seed = HARTHMERE_SEED_DEFINITIONS_V1[itemId];
+  const seed = HARTHMERE_SEED_DEFINITIONS[itemId];
   if (seed?.displayName.toLowerCase().includes("corn")) return "CS";
   if (seed?.displayName.toLowerCase().includes("wheat")) return "WS";
   if (seed?.displayName.toLowerCase().includes("carrot")) return "CS";
   if (seed) return "SE";
-  const food = HARTHMERE_FOOD_DEFINITIONS_V1[itemId];
+  const food = HARTHMERE_FOOD_DEFINITIONS[itemId];
   if (!food) return "◼";
   const foodName = food.displayName.toLowerCase();
   if (food.source === "animal" || food.source === "hunt") return "ME";

@@ -86,7 +86,7 @@ function isGlitchNonGcpRuntime() {
 }
 
 function glitchRuntimeSecretSeed() {
-  // GLITCH_RUNTIME_SHARED_AUTH_SECRET_V117
+  // GLITCH_RUNTIME_SHARED_AUTH_SECRET
   // All Biomes services inside the single Glitch container are separate Node
   // processes. Stateless auth sessions must therefore be signed with the same
   // deterministic secret in web, sync, oob, and logic. Prefer an explicit

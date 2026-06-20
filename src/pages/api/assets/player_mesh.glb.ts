@@ -32,21 +32,21 @@ export interface CachedPlayerMesh {
   assetExportVersion: number;
 }
 
-type PlayerMeshRuntimeStateV1 = {
+type PlayerMeshRuntimeState = {
   activeComputes: number;
   waitingComputes: number;
   computeWaiters: (() => void)[];
   inflightComputes: Map<string, Promise<CachedPlayerMesh>>;
 };
 
-const globalForPlayerMeshRuntimeV1 = globalThis as typeof globalThis & {
-  __playerMeshRuntimeStateV1?: PlayerMeshRuntimeStateV1;
+const globalForPlayerMeshRuntime = globalThis as typeof globalThis & {
+  __playerMeshRuntimeState?: PlayerMeshRuntimeState;
 };
 
-function playerMeshRuntimeStateV1() {
+function playerMeshRuntimeState() {
   return (
-    globalForPlayerMeshRuntimeV1.__playerMeshRuntimeStateV1 ??
-    (globalForPlayerMeshRuntimeV1.__playerMeshRuntimeStateV1 = {
+    globalForPlayerMeshRuntime.__playerMeshRuntimeState ??
+    (globalForPlayerMeshRuntime.__playerMeshRuntimeState = {
       activeComputes: 0,
       waitingComputes: 0,
       computeWaiters: [] as (() => void)[],
@@ -55,14 +55,14 @@ function playerMeshRuntimeStateV1() {
   );
 }
 
-function playerMeshMaxActiveComputesV1() {
+function playerMeshMaxActiveComputes() {
   const value = Number(process.env.PLAYER_MESH_MAX_ACTIVE_COMPUTES);
   return Number.isFinite(value) && value >= 1
     ? Math.floor(value)
     : DEFAULT_PLAYER_MESH_MAX_ACTIVE_COMPUTES;
 }
 
-function playerMeshWarmupMaxActiveComputesV1() {
+function playerMeshWarmupMaxActiveComputes() {
   const value = Number(process.env.PLAYER_MESH_WARMUP_MAX_ACTIVE_COMPUTES);
   return Number.isFinite(value) && value >= 0
     ? Math.floor(value)
@@ -101,18 +101,18 @@ export default biomesApiHandler(
     if (playerMeshParse.kind === "UrlParseError") {
       throw new APIError("invalid_request", "Could not parse URL.");
     }
-    const cacheKey = playerMeshSemanticCacheKeyV1(playerMeshParse);
+    const cacheKey = playerMeshSemanticCacheKey(playerMeshParse);
     const [cached] = await context.serverCache.get("player-mesh", cacheKey);
-    const warmupRequest = isPlayerMeshWarmupRequestV1(
+    const warmupRequest = isPlayerMeshWarmupRequest(
       unsafeRequest.headers["user-agent"]
     );
-    const activeComputes = playerMeshRuntimeStateV1().activeComputes;
+    const activeComputes = playerMeshRuntimeState().activeComputes;
     if (
-      shouldSkipPlayerMeshWarmupV1({
+      shouldSkipPlayerMeshWarmup({
         isWarmup: warmupRequest,
         hasCached: Boolean(cached),
         activeComputes,
-        maxActiveComputes: playerMeshWarmupMaxActiveComputesV1(),
+        maxActiveComputes: playerMeshWarmupMaxActiveComputes(),
       })
     ) {
       log.info("Skipping player mesh warmup under compute load", {
@@ -156,14 +156,14 @@ async function fetchOrComputeMesh(
   playerMeshParse: SlotToWearableMapResults,
   cached: CachedPlayerMesh | null
 ) {
-  const state = playerMeshRuntimeStateV1();
+  const state = playerMeshRuntimeState();
   const generateNewMesh = async () => {
     const timer = new Timer();
-    const releaseComputeSlot = await acquirePlayerMeshComputeSlotV1({
+    const releaseComputeSlot = await acquirePlayerMeshComputeSlot({
       url,
       cacheKey,
     });
-    const state = playerMeshRuntimeStateV1();
+    const state = playerMeshRuntimeState();
     log.info("Started generating player mesh asset", {
       url,
       cacheKey,
@@ -182,7 +182,7 @@ async function fetchOrComputeMesh(
     }
   };
   const computeOnce = (): Promise<CachedPlayerMesh> =>
-    getOrStartPlayerMeshComputeV1(cacheKey, generateNewMesh);
+    getOrStartPlayerMeshCompute(cacheKey, generateNewMesh);
 
   if (!cached) {
     return context.serverCache.getOrCompute(
@@ -194,7 +194,7 @@ async function fetchOrComputeMesh(
   }
 
   if (
-    shouldRefreshPlayerMeshCacheV1({
+    shouldRefreshPlayerMeshCache({
       cached,
       nowMs: Date.now(),
       assetExportVersion: ASSET_EXPORTS_SERVER_VERSION,
@@ -211,7 +211,7 @@ async function fetchOrComputeMesh(
   return cached;
 }
 
-export function shouldRefreshPlayerMeshCacheV1({
+export function shouldRefreshPlayerMeshCache({
   cached,
   nowMs,
   assetExportVersion,
@@ -228,11 +228,11 @@ export function shouldRefreshPlayerMeshCacheV1({
   );
 }
 
-function getOrStartPlayerMeshComputeV1(
+function getOrStartPlayerMeshCompute(
   cacheKey: string,
   generateNewMesh: () => Promise<CachedPlayerMesh>
 ) {
-  const state = playerMeshRuntimeStateV1();
+  const state = playerMeshRuntimeState();
   const existing = state.inflightComputes.get(cacheKey);
   if (existing) {
     log.info("Joining in-flight player mesh compute", {
@@ -249,17 +249,17 @@ function getOrStartPlayerMeshComputeV1(
   return started;
 }
 
-async function acquirePlayerMeshComputeSlotV1({
+async function acquirePlayerMeshComputeSlot({
   url,
   cacheKey,
 }: {
   url: string;
   cacheKey: string;
 }) {
-  const state = playerMeshRuntimeStateV1();
-  const maxActiveComputes = playerMeshMaxActiveComputesV1();
+  const state = playerMeshRuntimeState();
+  const maxActiveComputes = playerMeshMaxActiveComputes();
   if (
-    shouldQueuePlayerMeshComputeV1({
+    shouldQueuePlayerMeshCompute({
       activeComputes: state.activeComputes,
       maxActiveComputes,
     })
@@ -295,14 +295,14 @@ async function acquirePlayerMeshComputeSlotV1({
   };
 }
 
-export function isPlayerMeshWarmupRequestV1(
+export function isPlayerMeshWarmupRequest(
   userAgent: string | string[] | undefined
 ) {
   const value = Array.isArray(userAgent) ? userAgent.join(" ") : userAgent;
   return typeof value === "string" && value.includes("Biomes Warmup");
 }
 
-export function shouldSkipPlayerMeshWarmupV1({
+export function shouldSkipPlayerMeshWarmup({
   isWarmup,
   hasCached,
   activeComputes,
@@ -316,7 +316,7 @@ export function shouldSkipPlayerMeshWarmupV1({
   return isWarmup && !hasCached && activeComputes >= maxActiveComputes;
 }
 
-export function shouldQueuePlayerMeshComputeV1({
+export function shouldQueuePlayerMeshCompute({
   activeComputes,
   maxActiveComputes,
 }: {
@@ -326,11 +326,11 @@ export function shouldQueuePlayerMeshComputeV1({
   return activeComputes >= Math.max(1, maxActiveComputes);
 }
 
-export function playerMeshSemanticCacheKeyV1(
+export function playerMeshSemanticCacheKey(
   playerMeshParse: SlotToWearableMapResults
 ) {
   const normalizedWearables = applyWearableAppearanceFilters(
-    withDefaultStarterWearablesV182(playerMeshParse.map)
+    withDefaultStarterWearables(playerMeshParse.map)
   );
   const wearables = [...normalizedWearables.entries()]
     .sort(([left], [right]) => left.localeCompare(right))
@@ -350,11 +350,11 @@ export function playerMeshSemanticCacheKeyV1(
   ].join(";");
 }
 
-// HARTHMERE_GENERATED_MESH_DEFAULT_WEARABLES_V182:
+// HARTHMERE_GENERATED_MESH_DEFAULT_WEARABLES:
 // Server-side mirror of the client URL defaulting. This protects direct mesh
 // requests and old clients from returning a bare base_model.vox GLB with the
 // bright white default underclothes.
-function withDefaultStarterWearablesV182(
+function withDefaultStarterWearables(
   slotToWearableMap: SlotToWearableMap
 ): SlotToWearableMap {
   const outMap: SlotToWearableMap = new Map(slotToWearableMap);
@@ -380,7 +380,7 @@ async function computePlayerMesh(
   }: SlotToWearableMapResults
 ): Promise<CachedPlayerMesh> {
   const filteredWearableMap = applyWearableAppearanceFilters(
-    withDefaultStarterWearablesV182(slotToWearableMap)
+    withDefaultStarterWearables(slotToWearableMap)
   );
 
   const assetData = await assetExportsServer.build(

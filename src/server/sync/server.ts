@@ -26,7 +26,7 @@ export class SyncServer {
   }
 
   async start() {
-    console.log("GLITCH_SYNC_SERVER_TRACE_V95 start enter", {
+    console.log("GLITCH_SYNC_SERVER_TRACE start enter", {
       host: process.env.HOST,
       basePort: process.env.BASE_PORT,
       rpcPort: process.env.RPC_PORT,
@@ -40,9 +40,9 @@ export class SyncServer {
     // TODO: Cleanup hardcoding.
     // Is a large change now as things assume a service can only have a singular
     // port, sync actually has two.
-    console.log("GLITCH_SYNC_SERVER_TRACE_V95 before rpcServer.start", HostPort.rpcPort);
+    console.log("GLITCH_SYNC_SERVER_TRACE before rpcServer.start", HostPort.rpcPort);
     await this.rpcServer.start(HostPort.rpcPort);
-    console.log("GLITCH_SYNC_SERVER_TRACE_V95 after rpcServer.start", HostPort.rpcPort);
+    console.log("GLITCH_SYNC_SERVER_TRACE after rpcServer.start", HostPort.rpcPort);
   }
 
   async dump() {
@@ -73,13 +73,13 @@ async function glitchTraceGet<C>(
   key: string
 ): Promise<any> {
   const start = Date.now();
-  console.log("GLITCH_SYNC_REGISTER_SERVER_TRACE_V96 get:start", key);
+  console.log("GLITCH_SYNC_REGISTER_SERVER_TRACE get:start", key);
   try {
     const value = await loader.get(key as any);
-    console.log("GLITCH_SYNC_REGISTER_SERVER_TRACE_V96 get:done", key, `${Date.now() - start}ms`);
+    console.log("GLITCH_SYNC_REGISTER_SERVER_TRACE get:done", key, `${Date.now() - start}ms`);
     return value;
   } catch (error) {
-    console.error("GLITCH_SYNC_REGISTER_SERVER_TRACE_V96 get:error", key, error);
+    console.error("GLITCH_SYNC_REGISTER_SERVER_TRACE get:error", key, error);
     throw error;
   }
 }
@@ -87,14 +87,14 @@ async function glitchTraceGet<C>(
 export async function registerSyncServer<C extends SyncServerContext>(
   loader: RegistryLoader<C>
 ) {
-  console.log("GLITCH_SYNC_REGISTER_SERVER_TRACE_V96 registerSyncServer:start");
+  console.log("GLITCH_SYNC_REGISTER_SERVER_TRACE registerSyncServer:start");
   const syncIndex = await glitchTraceGet(loader, "syncIndex");
   const syncService = await glitchTraceGet(loader, "syncService");
   const wsRpcServer = await glitchTraceGet(loader, "wsRpcServer");
   const rpcServer = await glitchTraceGet(loader, "rpcServer");
   const clients = await glitchTraceGet(loader, "clients");
-  console.log("GLITCH_SYNC_REGISTER_SERVER_TRACE_V96 registerSyncServer:construct");
-  console.log("GLITCH_SYNC_REGISTER_SERVER_TRACE_V97 before new SyncServer");
+  console.log("GLITCH_SYNC_REGISTER_SERVER_TRACE registerSyncServer:construct");
+  console.log("GLITCH_SYNC_REGISTER_SERVER_TRACE before new SyncServer");
   const server = new SyncServer(
     syncIndex,
     syncService,
@@ -102,6 +102,6 @@ export async function registerSyncServer<C extends SyncServerContext>(
     rpcServer,
     clients
   );
-  console.log("GLITCH_SYNC_REGISTER_SERVER_TRACE_V97 after new SyncServer");
+  console.log("GLITCH_SYNC_REGISTER_SERVER_TRACE after new SyncServer");
   return server;
 }

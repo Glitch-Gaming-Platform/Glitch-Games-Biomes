@@ -29,7 +29,7 @@ export default biomesApiHandler(
       ? (await fetchUserBundles(db, user))[0]
       : undefined;
 
-    // GLITCH_SELF_PROFILE_MEMORY_DB_FALLBACK_V1:
+    // GLITCH_SELF_PROFILE_MEMORY_DB_FALLBACK:
     // In the Glitch/Harthmere runtime, social storage is forced to in-memory
     // (server_config chooses "memory" whenever GCP/Firestore is disabled), so an
     // authed player has no persisted "users" document and findByUID returns

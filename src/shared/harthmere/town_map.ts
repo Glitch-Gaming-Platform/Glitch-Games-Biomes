@@ -1,6 +1,6 @@
-// HARTHMERE_TOWN_MAP_UI_DISCOVERY_FILTERS_V1
+// HARTHMERE_TOWN_MAP_UI_DISCOVERY_FILTERS
 // Static town-map contract used by local-dev tests and future UI wiring.
-export const HARTHMERE_TOWN_MAP_FILTERS_V1 = [
+export const HARTHMERE_TOWN_MAP_FILTERS = [
   "all",
   "quests",
   "shops",
@@ -14,7 +14,7 @@ export const HARTHMERE_TOWN_MAP_FILTERS_V1 = [
   "criminal",
 ] as const;
 
-export const HARTHMERE_TOWN_MAP_PRESENTATION_V1 = {
+export const HARTHMERE_TOWN_MAP_PRESENTATION = {
   hiddenLocations: {
     visibility: "hidden until discovered by rumor, perception, quest unlock, or exploration discovery",
   },
@@ -32,11 +32,11 @@ export const HARTHMERE_TOWN_MAP_PRESENTATION_V1 = {
 } as const;
 
 
-// HARTHMERE_CONNECTED_MAP_PRESENTATION_V66
+// HARTHMERE_CONNECTED_MAP_PRESENTATION
 // UI/map contract for showing Harthmere as a connected settlement on the same
 // implemented snapshot map, not as a hidden debug town.
-export const HARTHMERE_CONNECTED_MAP_PRESENTATION_V66 = {
-  version: "harthmere-connected-map-presentation-v66",
+export const HARTHMERE_CONNECTED_MAP_PRESENTATION = {
+  version: "harthmere-connected-map-presentation",
   mapIcon: "road",
   label: "Road to Harthmere",
   authoredRoad: [[128, -209], [392, -209]],

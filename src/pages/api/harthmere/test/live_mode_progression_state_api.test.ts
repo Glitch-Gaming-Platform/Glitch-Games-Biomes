@@ -1,19 +1,19 @@
 import assert from "assert";
 import {
-  readHarthmereLiveModeProgressionStateForActorV1,
+  readHarthmereLiveModeProgressionStateForActor,
 } from "../live_mode_progression_state";
 import {
-  defaultHarthmereLiveModeBackendStateV1,
-  harthmereLiveModePlayerStateKeyV1,
-  harthmereLiveModeSharedWorldStateKeyV1,
-} from "@/shared/harthmere/live_mode_backend_v1";
+  defaultHarthmereLiveModeBackendState,
+  harthmereLiveModePlayerStateKey,
+  harthmereLiveModeSharedWorldStateKey,
+} from "@/shared/harthmere/live_mode_backend";
 
 const ACTOR = "player_api_progression_001";
 const NOW_MS = 1_700_200_000_000;
 
 describe("live_mode_progression_state API route integration", () => {
   it("reads Redis state and returns the progression snapshot for the actor", async () => {
-    const backend = defaultHarthmereLiveModeBackendStateV1(ACTOR, NOW_MS);
+    const backend = defaultHarthmereLiveModeBackendState(ACTOR, NOW_MS);
     backend.classMagic.classId = "bard";
     backend.classMagic.specializationId = "maestro";
     backend.classMagic.skills.performance = { xp: 120, level: 2 };
@@ -28,15 +28,15 @@ describe("live_mode_progression_state API route integration", () => {
       },
     };
 
-    const snapshot = await readHarthmereLiveModeProgressionStateForActorV1({
+    const snapshot = await readHarthmereLiveModeProgressionStateForActor({
       redis,
       actorId: ACTOR,
       nowMs: NOW_MS,
     });
 
     assert.deepEqual(calls, [
-      harthmereLiveModePlayerStateKeyV1(ACTOR),
-      harthmereLiveModeSharedWorldStateKeyV1(),
+      harthmereLiveModePlayerStateKey(ACTOR),
+      harthmereLiveModeSharedWorldStateKey(),
     ]);
     assert.equal(snapshot.actorId, ACTOR);
     assert.equal(snapshot.currentClassId, "bard");
@@ -47,7 +47,7 @@ describe("live_mode_progression_state API route integration", () => {
   });
 
   it("uses one Redis MGET for actor and shared progression state when available", async () => {
-    const backend = defaultHarthmereLiveModeBackendStateV1(ACTOR, NOW_MS);
+    const backend = defaultHarthmereLiveModeBackendState(ACTOR, NOW_MS);
     backend.classMagic.classId = "mage";
     const mgetCalls: string[][] = [];
     const getCalls: string[] = [];
@@ -60,7 +60,7 @@ describe("live_mode_progression_state API route integration", () => {
         mget: async (...keys: string[]) => {
           mgetCalls.push(keys);
           return keys.map((key) =>
-            key === harthmereLiveModePlayerStateKeyV1(ACTOR)
+            key === harthmereLiveModePlayerStateKey(ACTOR)
               ? JSON.stringify(backend)
               : null
           );
@@ -68,15 +68,15 @@ describe("live_mode_progression_state API route integration", () => {
       },
     };
 
-    const snapshot = await readHarthmereLiveModeProgressionStateForActorV1({
+    const snapshot = await readHarthmereLiveModeProgressionStateForActor({
       redis,
       actorId: ACTOR,
       nowMs: NOW_MS,
     });
 
     assert.deepEqual(mgetCalls, [[
-      harthmereLiveModePlayerStateKeyV1(ACTOR),
-      harthmereLiveModeSharedWorldStateKeyV1(),
+      harthmereLiveModePlayerStateKey(ACTOR),
+      harthmereLiveModeSharedWorldStateKey(),
     ]]);
     assert.deepEqual(getCalls, []);
     assert.equal(snapshot.actorId, ACTOR);
@@ -85,7 +85,7 @@ describe("live_mode_progression_state API route integration", () => {
 
   it("returns default progression state when Redis has no actor state", async () => {
     const redis = { primary: { get: async () => null } };
-    const snapshot = await readHarthmereLiveModeProgressionStateForActorV1({
+    const snapshot = await readHarthmereLiveModeProgressionStateForActor({
       redis,
       actorId: ACTOR,
       nowMs: NOW_MS,

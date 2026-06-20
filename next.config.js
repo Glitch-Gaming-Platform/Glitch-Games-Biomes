@@ -23,7 +23,7 @@ const withPWA =
 
 module.exports = withBundleAnalyzer(
   withPWA({
-    // GLITCH_REMOVE_STATIC_BIOMES_GG_V193:
+    // GLITCH_REMOVE_STATIC_BIOMES_GG:
     // Never emit external CDN asset URLs. In production-mode local
     // boots, Next.js bakes assetPrefix into the generated HTML; pointing it at
     // the legacy CDN breaks localhost when that cert/domain is invalid. Use the
@@ -44,7 +44,7 @@ module.exports = withBundleAnalyzer(
       ];
     },
 
-    // HARTHMERE_POLISH_V1_CACHE_HEADERS
+    // HARTHMERE_POLISH_CACHE_HEADERS
     // Stops the browser from re-requesting the same HUD PNGs every 30 seconds
     // (one full RTT each on every poll) and stops the per-player GLTF body
     // variant requests from missing the cache because of a long query string.
@@ -76,7 +76,7 @@ module.exports = withBundleAnalyzer(
         {
           source: "/buckets/:bucket/:path*",
           headers: [
-            // GLITCH_LOCAL_BUCKET_ASSET_PROXY_V146: hash bucket assets are
+            // GLITCH_LOCAL_BUCKET_ASSET_PROXY: hash bucket assets are
             // fingerprinted by content and can be safely cached hard. The web
             // server still falls back to the public bucket if the packaged local
             // public/buckets copy is missing.
@@ -122,13 +122,13 @@ module.exports = withBundleAnalyzer(
         // an issue in nextjs when building for prod.
         config.output.webassemblyModuleFilename = "chunks/[modulehash].wasm";
         config.plugins.push(new WasmChunksFixPlugin());
-        // GLITCH_NEXT_PAGES_MANIFEST_REPAIR_V1:
+        // GLITCH_NEXT_PAGES_MANIFEST_REPAIR:
         // With next-pwa + asyncWebAssembly, the production server compile can
         // emit every page file to .next/server/pages but write an incomplete
         // .next/server/pages-manifest.json. Next's own "Collecting page data"
         // step then throws `PageNotFoundError: Cannot find module for page`
         // (e.g. /admin/blocks) and the build aborts BEFORE the post-build
-        // repair script (scripts/glitch/repair-next-pages-manifest-v1.cjs) can
+        // repair script (scripts/glitch/repair-next-pages-manifest.cjs) can
         // run. Rebuilding the manifest from the emitted page files in afterEmit
         // guarantees it is complete before page-data collection runs.
         config.plugins.push(new NextPagesManifestRepairPlugin(__dirname));
@@ -241,11 +241,11 @@ class WasmChunksFixPlugin {
   }
 }
 
-// GLITCH_NEXT_PAGES_MANIFEST_REPAIR_V1:
+// GLITCH_NEXT_PAGES_MANIFEST_REPAIR:
 // Rebuilds .next/server/pages-manifest.json from the page files that were
 // actually emitted, so Next's internal "Collecting page data" step never trips
 // over a manifest that next-pwa/webpack left incomplete. The route -> file
-// mapping mirrors scripts/glitch/repair-next-pages-manifest-v1.cjs exactly.
+// mapping mirrors scripts/glitch/repair-next-pages-manifest.cjs exactly.
 class NextPagesManifestRepairPlugin {
   constructor(root) {
     this.root = root;

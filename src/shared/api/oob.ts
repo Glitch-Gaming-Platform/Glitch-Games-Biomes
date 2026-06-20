@@ -25,7 +25,7 @@ export interface OobFetcher {
   fetch(ids: BiomesId[]): Promise<OobVersionAndEntity[]>;
 }
 
-export interface RemoteOobFetchUrlOptionsV1 {
+export interface RemoteOobFetchUrlOptions {
   hostname: string;
   nodeEnv: string | undefined;
   oobPort: string | undefined;
@@ -47,8 +47,8 @@ function truthyEnv(value: string | undefined) {
   );
 }
 
-export function useSameOriginOobFetchV1(
-  options: RemoteOobFetchUrlOptionsV1
+export function useSameOriginOobFetch(
+  options: RemoteOobFetchUrlOptions
 ) {
   return (
     options.nodeEnv === "production" ||
@@ -62,13 +62,13 @@ export function useSameOriginOobFetchV1(
   );
 }
 
-export function resolveRemoteOobFetchUrlV1(
-  options: RemoteOobFetchUrlOptionsV1
+export function resolveRemoteOobFetchUrl(
+  options: RemoteOobFetchUrlOptions
 ) {
   if (options.nodeEnv === "production") {
     return "/sync/oob";
   }
-  if (useSameOriginOobFetchV1(options)) {
+  if (useSameOriginOobFetch(options)) {
     return `/sync/oob?u=${options.userId}`;
   }
   return `http://${options.hostname}:${options.oobPort}/sync/oob?u=${options.userId}`;
@@ -78,7 +78,7 @@ export class RemoteOobFetcher implements OobFetcher {
   private readonly url: string;
 
   constructor(userId: BiomesId) {
-    this.url = resolveRemoteOobFetchUrlV1({
+    this.url = resolveRemoteOobFetchUrl({
       hostname: window.location.hostname,
       nodeEnv: process.env.NODE_ENV,
       oobPort: process.env.OOB_PORT,

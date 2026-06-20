@@ -1,4 +1,4 @@
-// HARTHMERE_PVP_DAMAGE_V1
+// HARTHMERE_PVP_DAMAGE
 // Pure, DOM-free decision logic for player-vs-player melee in the Harthmere mod.
 //
 // Design: vanilla Biomes already has a complete, server-authoritative networked
@@ -7,13 +7,13 @@
 // left-mouse swing reuses that path: it picks the other players inside the swing
 // arc here, and the caller fires UpdatePlayerHealthEvent for each. The victim's
 // client then mirrors the authoritative ECS-health drop back onto the Harthmere
-// HUD (which renders a separate localStorage HP) via harthmereIncomingExternalAttackV1.
+// HUD (which renders a separate localStorage HP) via harthmereIncomingExternalAttack.
 //
 // All geometry/threshold logic lives here so every branch is unit-tested without
 // a renderer, ECS table, or network.
 import type { BiomesId } from "@/shared/ids";
 
-export interface HarthmerePvpCandidatePlayerV1 {
+export interface HarthmerePvpCandidatePlayer {
   id: BiomesId;
   // World X/Z (the swing is resolved on the ground plane, like the NPC arc).
   pos: [number, number];
@@ -31,10 +31,10 @@ function normalize2(v: [number, number]): [number, number] | undefined {
 // inside the arc (facing cone) or in close body contact. Mirrors the NPC arc's
 // acceptance shape so a swing that hits a creature also hits a player standing in
 // the same spot. Generous-but-bounded so it never silently drops a fair hit.
-export function harthmerePvpPlayersInArcV1(input: {
+export function harthmerePvpPlayersInArc(input: {
   origin: [number, number];
   forward: [number, number];
-  players: ReadonlyArray<HarthmerePvpCandidatePlayerV1>;
+  players: ReadonlyArray<HarthmerePvpCandidatePlayer>;
   range: number;
   cosHalfAngle: number;
   closeContactRadius?: number;
@@ -67,7 +67,7 @@ export function harthmerePvpPlayersInArcV1(input: {
 // Damage a player's basic Harthmere swing deals to another player. Derived from
 // the attacker's combat attack stat, clamped so an un-statted player still lands
 // a meaningful hit and a high-attack player can't one-shot.
-export function harthmerePvpBasicDamageV1(attackPoints: number): number {
+export function harthmerePvpBasicDamage(attackPoints: number): number {
   const base = Number.isFinite(attackPoints) ? Math.max(0, attackPoints) : 0;
   return Math.round(Math.min(120, Math.max(10, 10 + base * 0.45)));
 }
@@ -76,7 +76,7 @@ export function harthmerePvpBasicDamageV1(attackPoints: number): number {
 // reflects a NEW external attack (by another player) that we should mirror onto
 // the Harthmere HUD. Returns the damage to apply, or undefined to ignore (our own
 // hits, non-attack damage, stale/already-processed events, non-decreasing hp).
-export function harthmereIncomingExternalAttackV1(input: {
+export function harthmereIncomingExternalAttack(input: {
   localPlayerId: BiomesId;
   damageSourceKind: string | undefined;
   attacker: BiomesId | undefined;

@@ -1,4 +1,4 @@
-// HARTHMERE_GATHERING_NODE_WORLD_INTERACTION_V1:
+// HARTHMERE_GATHERING_NODE_WORLD_INTERACTION:
 // Locks in the in-world harvest loop the F-prompt drives:
 //  - a node is only offered when the player is within interaction range,
 //  - harvesting is gated on the required tool (the screenshot's "requires the
@@ -35,11 +35,11 @@ const windowMock = {
 (globalThis as unknown as { window: unknown }).window = windowMock;
 
 import { grantHarthmereItem } from "@/client/components/challenges/LocalDevHarthmereInventorySystem";
-import { harthmereInventoryCountByItemIdV141 } from "@/client/components/challenges/LocalDevHarthmereInventorySystem";
+import { harthmereInventoryCountByItemId } from "@/client/components/challenges/LocalDevHarthmereInventorySystem";
 import {
-  HARTHMERE_GATHERING_NODE_WORLD_TARGETS_V1,
-  harthmereGatheringNodeIdForObjectLabelV1,
-  nearestHarthmereGatheringNodePromptV1,
+  HARTHMERE_GATHERING_NODE_WORLD_TARGETS,
+  harthmereGatheringNodeIdForObjectLabel,
+  nearestHarthmereGatheringNodePrompt,
   performHarthmereGather,
   readHarthmereGatheringState,
   writeHarthmereGatheringState,
@@ -49,7 +49,7 @@ import {
 const IRON_VEIN_ID = "harthmere_north_iron_vein";
 
 function ironVein() {
-  const target = HARTHMERE_GATHERING_NODE_WORLD_TARGETS_V1.find(
+  const target = HARTHMERE_GATHERING_NODE_WORLD_TARGETS.find(
     (t) => t.id === IRON_VEIN_ID
   );
   assert(target, "expected the iron vein node target to exist");
@@ -68,12 +68,12 @@ describe("harthmere gathering node world interaction", () => {
   it("offers the nearest node only inside interaction range", () => {
     const node = ironVein();
     const [x, y, z] = node.position;
-    const onTop = nearestHarthmereGatheringNodePromptV1({ x, y, z });
+    const onTop = nearestHarthmereGatheringNodePrompt({ x, y, z });
     assert.equal(onTop?.id, IRON_VEIN_ID);
     assert.ok((onTop?.distance ?? Infinity) < 0.01);
 
     // Far away (1000 blocks east) → no prompt.
-    const farAway = nearestHarthmereGatheringNodePromptV1({
+    const farAway = nearestHarthmereGatheringNodePrompt({
       x: x + 1000,
       y,
       z,
@@ -83,24 +83,24 @@ describe("harthmere gathering node world interaction", () => {
 
   it("resolves the screenshot harvest labels to real gathering nodes", () => {
     assert.equal(
-      harthmereGatheringNodeIdForObjectLabelV1("Orchard Softwood Branches"),
+      harthmereGatheringNodeIdForObjectLabel("Orchard Softwood Branches"),
       "harthmere_orchard_softwood"
     );
     assert.equal(
-      harthmereGatheringNodeIdForObjectLabelV1("Boar Sounder Harvest"),
+      harthmereGatheringNodeIdForObjectLabel("Boar Sounder Harvest"),
       "boar_sounder_harvest"
     );
   });
 
   it("offers F prompts at the screenshot harvest node positions", () => {
-    const orchard = nearestHarthmereGatheringNodePromptV1({
+    const orchard = nearestHarthmereGatheringNodePrompt({
       x: 468,
       y: 53,
       z: -118,
     });
     assert.equal(orchard?.id, "harthmere_orchard_softwood");
 
-    const boar = nearestHarthmereGatheringNodePromptV1({
+    const boar = nearestHarthmereGatheringNodePrompt({
       x: 404,
       y: 53,
       z: -414,
@@ -118,7 +118,7 @@ describe("harthmere gathering node world interaction", () => {
     // pressing F felt like "nothing happened" before the prompt surfaced it.
     assert.match(result.message ?? "", /tool/i);
     // Nothing entered the inventory.
-    assert.equal(harthmereInventoryCountByItemIdV141("iron_ore"), 0);
+    assert.equal(harthmereInventoryCountByItemId("iron_ore"), 0);
   });
 
   it("grants the node yield into the inventory once the tool is held", () => {
@@ -128,8 +128,8 @@ describe("harthmere gathering node world interaction", () => {
     });
     assert.equal(result.ok, true);
     // baseYield guarantees at least 2 iron_ore and 1 rough_stone.
-    assert.ok(harthmereInventoryCountByItemIdV141("iron_ore") >= 2);
-    assert.ok(harthmereInventoryCountByItemIdV141("rough_stone") >= 1);
+    assert.ok(harthmereInventoryCountByItemId("iron_ore") >= 2);
+    assert.ok(harthmereInventoryCountByItemId("rough_stone") >= 1);
   });
 
   it("harvests the orchard softwood branches when the axe is held", () => {
@@ -138,8 +138,8 @@ describe("harthmere gathering node world interaction", () => {
       ignoreCooldown: true,
     });
     assert.equal(result.ok, true);
-    assert.ok(harthmereInventoryCountByItemIdV141("softwood_log") >= 2);
-    assert.ok(harthmereInventoryCountByItemIdV141("oak_branch") >= 1);
+    assert.ok(harthmereInventoryCountByItemId("softwood_log") >= 2);
+    assert.ok(harthmereInventoryCountByItemId("oak_branch") >= 1);
   });
 
   it("harvests the boar sounder once skinning requirements are met", () => {
@@ -157,8 +157,8 @@ describe("harthmere gathering node world interaction", () => {
       ignoreCooldown: true,
     });
     assert.equal(result.ok, true);
-    assert.ok(harthmereInventoryCountByItemIdV141("boar_hide") >= 1);
-    assert.ok(harthmereInventoryCountByItemIdV141("raw_meat") >= 1);
+    assert.ok(harthmereInventoryCountByItemId("boar_hide") >= 1);
+    assert.ok(harthmereInventoryCountByItemId("raw_meat") >= 1);
   });
 
   it("puts a freshly gathered node on cooldown (no infinite farming)", () => {

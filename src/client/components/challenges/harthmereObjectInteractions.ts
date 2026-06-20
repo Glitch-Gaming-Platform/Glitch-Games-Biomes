@@ -1,49 +1,49 @@
 import { addToast } from "@/client/components/toast/helpers";
 import {
-  type HarthmereDailyTaskActivityIdV1,
-  completeHarthmereDailyTaskSoonV1,
+  type HarthmereDailyTaskActivityId,
+  completeHarthmereDailyTaskSoon,
 } from "@/client/components/challenges/harthmereDailyTasks";
-import { isHarthmereRepairToolEquippedV151 } from "@/client/components/challenges/LocalDevHarthmereInventorySystem";
+import { isHarthmereRepairToolEquipped } from "@/client/components/challenges/LocalDevHarthmereInventorySystem";
 import {
-  harthmereCookingStationIdV1,
-  openHarthmereCookingStationV1,
+  harthmereCookingStationId,
+  openHarthmereCookingStation,
 } from "@/client/components/harthmere_cooking/harthmereCookingStations";
 import {
-  harthmereGatheringNodeIdForObjectLabelV1,
+  harthmereGatheringNodeIdForObjectLabel,
   performHarthmereGather,
 } from "@/client/components/challenges/LocalDevHarthmereGatheringSystem";
-import { dispatchHarthmereHudActionEventV96 } from "@/shared/harthmere/harthmere_hud_key_bindings_v96";
-import type { HarthmereObjectInteractionV1 } from "@/shared/harthmere/object_interaction_semantics_v1";
+import { dispatchHarthmereHudActionEvent } from "@/shared/harthmere/harthmere_hud_key_bindings";
+import type { HarthmereObjectInteraction } from "@/shared/harthmere/object_interaction_semantics";
 
-export const HARTHMERE_JOBS_BOARD_OPEN_EVENT_V141 =
-  "biomes:harthmere-jobs-board-open-v141" as const;
-export const HARTHMERE_WANTED_BOARD_OPEN_EVENT_V1 =
-  "biomes:harthmere-wanted-board-open-v1" as const;
+export const HARTHMERE_JOBS_BOARD_OPEN_EVENT =
+  "biomes:harthmere-jobs-board-open" as const;
+export const HARTHMERE_WANTED_BOARD_OPEN_EVENT =
+  "biomes:harthmere-wanted-board-open" as const;
 
-// HARTHMERE_REPAIR_PERFORMED_EVENT_V151: fired when the player interacts with a
+// HARTHMERE_REPAIR_PERFORMED_EVENT: fired when the player interacts with a
 // repair target. `repaired` is true only when a repair tool is equipped — that
 // is the signal the jobs-board completion flow uses to send usedToolAction and
 // (engine phase) to restore the broken structure's blocks.
-export const HARTHMERE_REPAIR_PERFORMED_EVENT_V151 =
-  "biomes:harthmere-repair-performed-v151" as const;
+export const HARTHMERE_REPAIR_PERFORMED_EVENT =
+  "biomes:harthmere-repair-performed" as const;
 
-export interface HarthmereRepairPerformedEventDetailV151 {
+export interface HarthmereRepairPerformedEventDetail {
   entityId?: unknown;
   label?: string | null;
   repaired: boolean;
 }
 
-export const HARTHMERE_WORLD_OBJECT_INTERACTION_EVENT_V1 =
-  "biomes:harthmere-world-object-interaction-v1" as const;
+export const HARTHMERE_WORLD_OBJECT_INTERACTION_EVENT =
+  "biomes:harthmere-world-object-interaction" as const;
 
-export interface HarthmereWorldObjectInteractionEventDetailV1 {
+export interface HarthmereWorldObjectInteractionEventDetail {
   entityId?: unknown;
   label?: string | null;
-  kind: HarthmereObjectInteractionV1["kind"];
+  kind: HarthmereObjectInteraction["kind"];
   title: string;
 }
 
-const HARTHMERE_READABLE_OBJECT_TEXT_V1 = new Map<string, string>(
+const HARTHMERE_READABLE_OBJECT_TEXT = new Map<string, string>(
   Object.entries({
     "billy's drop post":
       "Billy's drop post marks courier handoffs, parcel drops, and the next safe road check.",
@@ -60,34 +60,34 @@ const HARTHMERE_READABLE_OBJECT_TEXT_V1 = new Map<string, string>(
   })
 );
 
-function normalizedLabelV1(label?: string | null) {
+function normalizedLabel(label?: string | null) {
   return (label ?? "").trim().replace(/\s+/g, " ").toLowerCase();
 }
 
-export function harthmereReadableObjectTextForLabelV1(label?: string | null) {
-  return HARTHMERE_READABLE_OBJECT_TEXT_V1.get(normalizedLabelV1(label));
+export function harthmereReadableObjectTextForLabel(label?: string | null) {
+  return HARTHMERE_READABLE_OBJECT_TEXT.get(normalizedLabel(label));
 }
 
-export function harthmereObjectInteractionToastMessageV1(input: {
+export function harthmereObjectInteractionToastMessage(input: {
   label?: string | null;
-  interaction: HarthmereObjectInteractionV1;
+  interaction: HarthmereObjectInteraction;
 }) {
   const displayLabel = input.label?.trim() || "World object";
   if (input.interaction.kind === "read") {
     return (
-      harthmereReadableObjectTextForLabelV1(input.label) ??
+      harthmereReadableObjectTextForLabel(input.label) ??
       `Read ${displayLabel}.`
     );
   }
   return `${input.interaction.toastVerb} ${displayLabel}.`;
 }
 
-function dailyTasksForObjectInteractionV1(input: {
+function dailyTasksForObjectInteraction(input: {
   label?: string | null;
-  interaction: HarthmereObjectInteractionV1;
-}): HarthmereDailyTaskActivityIdV1[] {
+  interaction: HarthmereObjectInteraction;
+}): HarthmereDailyTaskActivityId[] {
   const label = (input.label ?? "").toLowerCase();
-  const tasks = new Set<HarthmereDailyTaskActivityIdV1>();
+  const tasks = new Set<HarthmereDailyTaskActivityId>();
   if (
     input.interaction.kind === "open_jobs_board" ||
     input.interaction.kind === "open_wanted_board"
@@ -114,34 +114,34 @@ function dailyTasksForObjectInteractionV1(input: {
   return [...tasks];
 }
 
-export function dispatchHarthmereWorldObjectInteractionEventV1(
-  detail: HarthmereWorldObjectInteractionEventDetailV1
+export function dispatchHarthmereWorldObjectInteractionEvent(
+  detail: HarthmereWorldObjectInteractionEventDetail
 ) {
   if (typeof window === "undefined") {
     return;
   }
   window.dispatchEvent(
-    new CustomEvent(HARTHMERE_WORLD_OBJECT_INTERACTION_EVENT_V1, {
+    new CustomEvent(HARTHMERE_WORLD_OBJECT_INTERACTION_EVENT, {
       detail,
     })
   );
 }
 
-export function performHarthmereObjectInteractionV1(input: {
+export function performHarthmereObjectInteraction(input: {
   label?: string | null;
   entityId: unknown;
-  interaction: HarthmereObjectInteractionV1;
+  interaction: HarthmereObjectInteraction;
   resources: Parameters<typeof addToast>[0];
   gardenHose: { publish: (event: { kind: "inspect_frame" }) => void };
 }) {
-  dispatchHarthmereWorldObjectInteractionEventV1({
+  dispatchHarthmereWorldObjectInteractionEvent({
     entityId: input.entityId,
     label: input.label,
     kind: input.interaction.kind,
     title: input.interaction.title,
   });
-  for (const activityId of dailyTasksForObjectInteractionV1(input)) {
-    completeHarthmereDailyTaskSoonV1(activityId);
+  for (const activityId of dailyTasksForObjectInteraction(input)) {
+    completeHarthmereDailyTaskSoon(activityId);
   }
 
   if (
@@ -150,8 +150,8 @@ export function performHarthmereObjectInteractionV1(input: {
   ) {
     const eventName =
       input.interaction.kind === "open_wanted_board"
-        ? HARTHMERE_WANTED_BOARD_OPEN_EVENT_V1
-        : HARTHMERE_JOBS_BOARD_OPEN_EVENT_V141;
+        ? HARTHMERE_WANTED_BOARD_OPEN_EVENT
+        : HARTHMERE_JOBS_BOARD_OPEN_EVENT;
     if (typeof window !== "undefined") {
       window.dispatchEvent(
         new CustomEvent(eventName, {
@@ -168,8 +168,8 @@ export function performHarthmereObjectInteractionV1(input: {
 
   if (input.interaction.kind === "cook") {
     const stationKind = input.interaction.stationKind ?? "campfire";
-    const stationId = harthmereCookingStationIdV1(input.entityId, input.label);
-    openHarthmereCookingStationV1({
+    const stationId = harthmereCookingStationId(input.entityId, input.label);
+    openHarthmereCookingStation({
       stationId,
       stationKind,
       label: input.label,
@@ -179,11 +179,11 @@ export function performHarthmereObjectInteractionV1(input: {
   }
 
   if (input.interaction.kind === "craft") {
-    dispatchHarthmereHudActionEventV96("crafting");
+    dispatchHarthmereHudActionEvent("crafting");
   }
 
   if (input.interaction.kind === "gather") {
-    const nodeId = harthmereGatheringNodeIdForObjectLabelV1(input.label);
+    const nodeId = harthmereGatheringNodeIdForObjectLabel(input.label);
     if (nodeId) {
       const result = performHarthmereGather(nodeId);
       addToast(input.resources, {
@@ -191,7 +191,7 @@ export function performHarthmereObjectInteractionV1(input: {
         id: `harthmere-gather:${nodeId}`,
         message:
           result.message ??
-          harthmereObjectInteractionToastMessageV1({
+          harthmereObjectInteractionToastMessage({
             label: input.label,
             interaction: input.interaction,
           }),
@@ -200,21 +200,21 @@ export function performHarthmereObjectInteractionV1(input: {
     }
   }
 
-  // HARTHMERE_REPAIR_TOOL_EQUIP_V151: a repair only happens with a repair tool
+  // HARTHMERE_REPAIR_TOOL_EQUIP: a repair only happens with a repair tool
   // EQUIPPED. With one, restore the structure (emit the repair-performed signal
   // the job flow consumes) and confirm; without one, direct the player to get
   // and equip a repair tool first instead of silently "repairing" nothing.
   if (input.interaction.kind === "repair") {
-    const repaired = isHarthmereRepairToolEquippedV151();
+    const repaired = isHarthmereRepairToolEquipped();
     const repairLabel = input.label?.trim() || "the structure";
     if (typeof window !== "undefined") {
       window.dispatchEvent(
-        new CustomEvent(HARTHMERE_REPAIR_PERFORMED_EVENT_V151, {
+        new CustomEvent(HARTHMERE_REPAIR_PERFORMED_EVENT, {
           detail: {
             entityId: input.entityId,
             label: input.label,
             repaired,
-          } satisfies HarthmereRepairPerformedEventDetailV151,
+          } satisfies HarthmereRepairPerformedEventDetail,
         })
       );
     }
@@ -231,7 +231,7 @@ export function performHarthmereObjectInteractionV1(input: {
   addToast(input.resources, {
     kind: "basic",
     id: `harthmere-world-object:${input.entityId}:${input.interaction.kind}`,
-    message: harthmereObjectInteractionToastMessageV1({
+    message: harthmereObjectInteractionToastMessage({
       label: input.label,
       interaction: input.interaction,
     }),

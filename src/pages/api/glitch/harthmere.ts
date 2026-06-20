@@ -14,17 +14,17 @@ import type { WebServerRequest } from "@/server/web/context";
 import { getUserOrCreateIfNotExists } from "@/server/web/db/users";
 import { BIOMES_GAME_NAME } from "@/shared/biomes/display_names";
 import {
-  harthmereLiveModeInstallGameUserLinkKeyV1,
-  harthmereLiveModeInstallLinkKeyV1,
-} from "@/shared/harthmere/live_mode_actor_identity_v1";
+  harthmereLiveModeInstallGameUserLinkKey,
+  harthmereLiveModeInstallLinkKey,
+} from "@/shared/harthmere/live_mode_actor_identity";
 import { parseBiomesId, type BiomesId } from "@/shared/ids";
 import { log } from "@/shared/logging";
 import { Timer } from "@/shared/metrics/timer";
 import {
-  harthmereCloudSaveForeignAuthCandidateIdsV1,
-  harthmereCloudSaveForeignAuthPrimaryIdV1,
-  harthmereHasStableGlitchAccountV1,
-} from "@/server/shared/glitch/harthmere_cloud_save_identity_v1";
+  harthmereCloudSaveForeignAuthCandidateIds,
+  harthmereCloudSaveForeignAuthPrimaryId,
+  harthmereHasStableGlitchAccount,
+} from "@/server/shared/glitch/harthmere_cloud_save_identity";
 export const config = {
   api: {
     bodyParser: {
@@ -42,9 +42,9 @@ const DEFAULT_GLITCH_API_TIMEOUT_MS = 10 * 1000;
 const DEFAULT_GLITCH_TELEMETRY_TIMEOUT_MS = 2500;
 const DEFAULT_GLITCH_API_SLOW_MS = 1500;
 const DEFAULT_HARTHMERE_ROUTE_SLOW_MS = 1500;
-const GLITCH_HARTHMERE_SESSION_REDIS_PREFIX_V1 = "glitch:harthmere:v1";
-const GLITCH_HARTHMERE_ASYNC_OUTBOX_KEY_V1 =
-  "glitch:harthmere:v1:async_api_outbox";
+const GLITCH_HARTHMERE_SESSION_REDIS_PREFIX = "glitch:harthmere:current";
+const GLITCH_HARTHMERE_ASYNC_OUTBOX_KEY =
+  "glitch:harthmere:current:async_api_outbox";
 
 export type JsonMap = Record<string, any>;
 type GlitchProxyResponse = {
@@ -54,7 +54,7 @@ type GlitchProxyResponse = {
   disabled?: boolean;
   reason?: string;
 };
-type QueuedGlitchApiCallV1 = {
+type QueuedGlitchApiCall = {
   path: string;
   method?: string;
   body?: unknown;
@@ -103,15 +103,15 @@ type HarthmereSessionStore = {
 };
 
 const globalForHarthmere = globalThis as typeof globalThis & {
-  __harthmereGlitchSessionStoreV70?: HarthmereSessionStore;
-  __harthmereGlitchSessionRedisV1?: ReturnType<typeof connectToRedis>;
-  __harthmereGlitchAsyncOutboxDrainV1?: boolean;
-  __harthmereGlitchTelemetryAuthBackoffUntilV1?: number;
+  __harthmereGlitchSessionStore?: HarthmereSessionStore;
+  __harthmereGlitchSessionRedis?: ReturnType<typeof connectToRedis>;
+  __harthmereGlitchAsyncOutboxDrain?: boolean;
+  __harthmereGlitchTelemetryAuthBackoffUntil?: number;
 };
 
 const sessionStore: HarthmereSessionStore =
-  globalForHarthmere.__harthmereGlitchSessionStoreV70 ??
-  (globalForHarthmere.__harthmereGlitchSessionStoreV70 = {
+  globalForHarthmere.__harthmereGlitchSessionStore ??
+  (globalForHarthmere.__harthmereGlitchSessionStore = {
     sessionsById: new Map<string, HarthmereServerSession>(),
     validationsByKey: new Map<string, HarthmereCachedValidation>(),
   });
@@ -120,8 +120,8 @@ const sessionStore: HarthmereSessionStore =
 // validation cache existed.
 sessionStore.validationsByKey ??= new Map<string, HarthmereCachedValidation>();
 
-function harthmereGlitchRedisV1() {
-  return (globalForHarthmere.__harthmereGlitchSessionRedisV1 ??=
+function harthmereGlitchRedis() {
+  return (globalForHarthmere.__harthmereGlitchSessionRedis ??=
     connectToRedis("firehose"));
 }
 
@@ -183,7 +183,7 @@ function harthmereRouteSlowMs() {
   );
 }
 
-export function shouldRunGlitchHarthmereOperationAsyncV1(
+export function shouldRunGlitchHarthmereOperationAsync(
   op: string,
   env = process.env
 ) {
@@ -198,7 +198,7 @@ export function shouldRunGlitchHarthmereOperationAsyncV1(
   ]).has(op);
 }
 
-export function shouldUseRedisHarthmereSessionStoreV1(env = process.env) {
+export function shouldUseRedisHarthmereSessionStore(env = process.env) {
   if (env.GLITCH_HARTHMERE_SESSION_STORE === "memory") {
     return false;
   }
@@ -213,28 +213,28 @@ function validationCacheKey(titleId: string, installId: string) {
   return `${titleId}:${installId}`;
 }
 
-function validationRedisKeyV1(cacheKey: string) {
-  return `${GLITCH_HARTHMERE_SESSION_REDIS_PREFIX_V1}:validation:${cacheKey}`;
+function validationRedisKey(cacheKey: string) {
+  return `${GLITCH_HARTHMERE_SESSION_REDIS_PREFIX}:validation:${cacheKey}`;
 }
 
-function sessionRedisKeyV1(serverSessionId: string) {
-  return `${GLITCH_HARTHMERE_SESSION_REDIS_PREFIX_V1}:session:${serverSessionId}`;
+function sessionRedisKey(serverSessionId: string) {
+  return `${GLITCH_HARTHMERE_SESSION_REDIS_PREFIX}:session:${serverSessionId}`;
 }
 
-function sessionUserIndexRedisKeyV1(titleId: string, gameUserId: string) {
+function sessionUserIndexRedisKey(titleId: string, gameUserId: string) {
   const digest = crypto
     .createHash("sha1")
     .update(`${titleId}:${gameUserId}`)
     .digest("hex");
-  return `${GLITCH_HARTHMERE_SESSION_REDIS_PREFIX_V1}:sessions_by_user:${digest}`;
+  return `${GLITCH_HARTHMERE_SESSION_REDIS_PREFIX}:sessions_by_user:${digest}`;
 }
 
-async function readJsonFromRedisV1<T>(key: string): Promise<T | undefined> {
-  if (!shouldUseRedisHarthmereSessionStoreV1()) {
+async function readJsonFromRedis<T>(key: string): Promise<T | undefined> {
+  if (!shouldUseRedisHarthmereSessionStore()) {
     return undefined;
   }
   try {
-    const redis = await harthmereGlitchRedisV1();
+    const redis = await harthmereGlitchRedis();
     const raw = await redis.primary.get(key);
     return raw ? (JSON.parse(raw) as T) : undefined;
   } catch (error) {
@@ -243,32 +243,32 @@ async function readJsonFromRedisV1<T>(key: string): Promise<T | undefined> {
   }
 }
 
-async function setJsonInRedisV1(
+async function setJsonInRedis(
   key: string,
   value: unknown,
   ttlSeconds: number
 ) {
-  if (!shouldUseRedisHarthmereSessionStoreV1()) {
+  if (!shouldUseRedisHarthmereSessionStore()) {
     return;
   }
   try {
-    const redis = await harthmereGlitchRedisV1();
+    const redis = await harthmereGlitchRedis();
     await redis.primary.set(key, JSON.stringify(value), "EX", ttlSeconds);
   } catch (error) {
     log.warn("GLITCH_HARTHMERE_REDIS_SESSION_WRITE_FAILED", { key, error });
   }
 }
 
-async function setStringInRedisV1(
+async function setStringInRedis(
   key: string,
   value: string,
   ttlSeconds?: number
 ) {
-  if (!shouldUseRedisHarthmereSessionStoreV1()) {
+  if (!shouldUseRedisHarthmereSessionStore()) {
     return;
   }
   try {
-    const redis = await harthmereGlitchRedisV1();
+    const redis = await harthmereGlitchRedis();
     if (ttlSeconds !== undefined) {
       await redis.primary.set(key, value, "EX", ttlSeconds);
     } else {
@@ -279,12 +279,12 @@ async function setStringInRedisV1(
   }
 }
 
-async function deleteRedisKeyV1(key: string) {
-  if (!shouldUseRedisHarthmereSessionStoreV1()) {
+async function deleteRedisKey(key: string) {
+  if (!shouldUseRedisHarthmereSessionStore()) {
     return;
   }
   try {
-    const redis = await harthmereGlitchRedisV1();
+    const redis = await harthmereGlitchRedis();
     await redis.primary.del(key);
   } catch (error) {
     log.warn("GLITCH_HARTHMERE_REDIS_SESSION_DELETE_FAILED", { key, error });
@@ -437,7 +437,7 @@ async function callGlitchApi(
       log.warn("GLITCH_API_CALL_SLOW_OR_ERROR", {
         label: options.label,
         method: options.method ?? "GET",
-        path: redactedGlitchApiPathForLogV1(path),
+        path: redactedGlitchApiPathForLog(path),
         status: response.status,
         ms,
         timeoutMs,
@@ -456,7 +456,7 @@ async function callGlitchApi(
     log.warn("GLITCH_API_CALL_FAILED", {
       label: options.label,
       method: options.method ?? "GET",
-      path: redactedGlitchApiPathForLogV1(path),
+      path: redactedGlitchApiPathForLog(path),
       status,
       ms,
       timeoutMs,
@@ -479,25 +479,25 @@ async function callGlitchApi(
   }
 }
 
-function kickGlitchAsyncOutboxDrainV1() {
-  if (globalForHarthmere.__harthmereGlitchAsyncOutboxDrainV1) {
+function kickGlitchAsyncOutboxDrain() {
+  if (globalForHarthmere.__harthmereGlitchAsyncOutboxDrain) {
     return;
   }
-  globalForHarthmere.__harthmereGlitchAsyncOutboxDrainV1 = true;
+  globalForHarthmere.__harthmereGlitchAsyncOutboxDrain = true;
   setImmediate(async () => {
     try {
-      await drainGlitchAsyncOutboxV1();
+      await drainGlitchAsyncOutbox();
     } finally {
-      globalForHarthmere.__harthmereGlitchAsyncOutboxDrainV1 = false;
+      globalForHarthmere.__harthmereGlitchAsyncOutboxDrain = false;
     }
   });
 }
 
-async function enqueueGlitchApiCallV1(
-  call: Omit<QueuedGlitchApiCallV1, "enqueuedAtMs">
+async function enqueueGlitchApiCall(
+  call: Omit<QueuedGlitchApiCall, "enqueuedAtMs">
 ) {
-  const telemetryBackoffMs = isBehaviorTelemetryCallV1(call)
-    ? behaviorTelemetryAuthBackoffRemainingMsV1()
+  const telemetryBackoffMs = isBehaviorTelemetryCall(call)
+    ? behaviorTelemetryAuthBackoffRemainingMs()
     : 0;
   if (telemetryBackoffMs > 0) {
     return {
@@ -508,7 +508,7 @@ async function enqueueGlitchApiCallV1(
       retry_after_ms: telemetryBackoffMs,
     };
   }
-  const queued: QueuedGlitchApiCallV1 = {
+  const queued: QueuedGlitchApiCall = {
     ...call,
     enqueuedAtMs: Date.now(),
   };
@@ -520,14 +520,14 @@ async function enqueueGlitchApiCallV1(
       reason: "missing_server_title_token",
     };
   }
-  if (shouldUseRedisHarthmereSessionStoreV1()) {
+  if (shouldUseRedisHarthmereSessionStore()) {
     try {
-      const redis = await harthmereGlitchRedisV1();
+      const redis = await harthmereGlitchRedis();
       await redis.primary.rpush(
-        GLITCH_HARTHMERE_ASYNC_OUTBOX_KEY_V1,
+        GLITCH_HARTHMERE_ASYNC_OUTBOX_KEY,
         JSON.stringify(queued)
       );
-      kickGlitchAsyncOutboxDrainV1();
+      kickGlitchAsyncOutboxDrain();
       return { ok: true, queued: true };
     } catch (error) {
       log.warn("GLITCH_HARTHMERE_ASYNC_OUTBOX_ENQUEUE_FAILED", {
@@ -544,19 +544,19 @@ async function enqueueGlitchApiCallV1(
       body: queued.body,
       timeoutMs: queued.timeoutMs,
     }).then((response) => {
-      if (isBehaviorTelemetryCallV1(queued)) {
-        noteBehaviorTelemetryAuthFailureV1(response.status);
+      if (isBehaviorTelemetryCall(queued)) {
+        noteBehaviorTelemetryAuthFailure(response.status);
       }
     });
   });
   return { ok: true, queued: false, background: true };
 }
 
-async function drainGlitchAsyncOutboxV1() {
-  if (!shouldUseRedisHarthmereSessionStoreV1()) {
+async function drainGlitchAsyncOutbox() {
+  if (!shouldUseRedisHarthmereSessionStore()) {
     return;
   }
-  const redis = await harthmereGlitchRedisV1();
+  const redis = await harthmereGlitchRedis();
   const maxPerDrain = Math.max(
     1,
     Math.trunc(
@@ -564,20 +564,20 @@ async function drainGlitchAsyncOutboxV1() {
     )
   );
   for (let i = 0; i < maxPerDrain; i += 1) {
-    const raw = await redis.primary.lpop(GLITCH_HARTHMERE_ASYNC_OUTBOX_KEY_V1);
+    const raw = await redis.primary.lpop(GLITCH_HARTHMERE_ASYNC_OUTBOX_KEY);
     if (!raw) {
       break;
     }
-    let queued: QueuedGlitchApiCallV1 | undefined;
+    let queued: QueuedGlitchApiCall | undefined;
     try {
-      queued = JSON.parse(raw) as QueuedGlitchApiCallV1;
+      queued = JSON.parse(raw) as QueuedGlitchApiCall;
     } catch (error) {
       log.warn("GLITCH_HARTHMERE_ASYNC_OUTBOX_BAD_ITEM", { error });
       continue;
     }
     if (
-      isBehaviorTelemetryCallV1(queued) &&
-      behaviorTelemetryAuthBackoffRemainingMsV1() > 0
+      isBehaviorTelemetryCall(queued) &&
+      behaviorTelemetryAuthBackoffRemainingMs() > 0
     ) {
       continue;
     }
@@ -587,13 +587,13 @@ async function drainGlitchAsyncOutboxV1() {
       body: queued.body,
       timeoutMs: queued.timeoutMs,
     });
-    if (isBehaviorTelemetryCallV1(queued)) {
-      noteBehaviorTelemetryAuthFailureV1(response.status);
+    if (isBehaviorTelemetryCall(queued)) {
+      noteBehaviorTelemetryAuthFailure(response.status);
     }
   }
 }
 
-export function redactedGlitchApiPathForLogV1(path: string) {
+export function redactedGlitchApiPathForLog(path: string) {
   return path
     .replace(
       /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi,
@@ -792,7 +792,7 @@ function normalizeIdentityFromValidateResponse(
   // name). Guests can play but never cloud-save.
   const guest =
     guestIdentity ||
-    !harthmereHasStableGlitchAccountV1({
+    !harthmereHasStableGlitchAccount({
       titleId,
       installId,
       glitchUserId,
@@ -854,7 +854,7 @@ async function createOrResumeInstallWithGlitch(titleId: string, body: JsonMap) {
         platform: body.platform ?? "web",
         device_type: body.device_type,
         operating_system: body.operating_system,
-        game_version: body.game_version ?? "harthmere-glitch-v143",
+        game_version: body.game_version ?? "harthmere-glitch",
         referral_source: body.referral_source ?? "other",
         first_party_cookie: body.first_party_cookie,
         advertising_id: body.advertising_id,
@@ -867,7 +867,7 @@ async function createOrResumeInstallWithGlitch(titleId: string, body: JsonMap) {
   return response;
 }
 
-async function getCachedValidationV1(cacheKey: string) {
+async function getCachedValidation(cacheKey: string) {
   const local = sessionStore.validationsByKey.get(cacheKey);
   if (local && local.expiresAtMs > Date.now()) {
     return local;
@@ -875,8 +875,8 @@ async function getCachedValidationV1(cacheKey: string) {
   if (local) {
     sessionStore.validationsByKey.delete(cacheKey);
   }
-  const redis = await readJsonFromRedisV1<HarthmereCachedValidation>(
-    validationRedisKeyV1(cacheKey)
+  const redis = await readJsonFromRedis<HarthmereCachedValidation>(
+    validationRedisKey(cacheKey)
   );
   if (redis && redis.expiresAtMs > Date.now()) {
     sessionStore.validationsByKey.set(cacheKey, redis);
@@ -885,27 +885,27 @@ async function getCachedValidationV1(cacheKey: string) {
   return undefined;
 }
 
-async function setCachedValidationV1(
+async function setCachedValidation(
   cacheKey: string,
   cached: HarthmereCachedValidation
 ) {
   sessionStore.validationsByKey.set(cacheKey, cached);
-  await setJsonInRedisV1(
-    validationRedisKeyV1(cacheKey),
+  await setJsonInRedis(
+    validationRedisKey(cacheKey),
     cached,
     Math.max(1, Math.ceil((cached.expiresAtMs - Date.now()) / 1000))
   );
 }
 
-async function deleteCachedValidationV1(cacheKey: string) {
+async function deleteCachedValidation(cacheKey: string) {
   sessionStore.validationsByKey.delete(cacheKey);
-  await deleteRedisKeyV1(validationRedisKeyV1(cacheKey));
+  await deleteRedisKey(validationRedisKey(cacheKey));
 }
 
 async function validateInstallWithGlitch(titleId: string, body: JsonMap) {
   const installId = installIdFromBody(body);
   const cacheKey = validationCacheKey(titleId, installId);
-  const cached = await getCachedValidationV1(cacheKey);
+  const cached = await getCachedValidation(cacheKey);
   if (cached) {
     return {
       response: { ok: true, json: validationJson(cached.identity) },
@@ -915,7 +915,7 @@ async function validateInstallWithGlitch(titleId: string, body: JsonMap) {
 
   if (allowLocalDevInstallIdentity(installId)) {
     const identity = makeLocalDevValidatedIdentity(titleId, installId);
-    await setCachedValidationV1(cacheKey, {
+    await setCachedValidation(cacheKey, {
       identity,
       expiresAtMs: Date.now() + validateCacheMs(),
     });
@@ -956,7 +956,7 @@ async function validateInstallWithGlitch(titleId: string, body: JsonMap) {
     return { response, identity: undefined };
   }
   if (!response.ok) {
-    await deleteCachedValidationV1(cacheKey);
+    await deleteCachedValidation(cacheKey);
     return { response, identity: undefined };
   }
 
@@ -966,7 +966,7 @@ async function validateInstallWithGlitch(titleId: string, body: JsonMap) {
     response.json
   );
   if (identity.valid) {
-    await setCachedValidationV1(cacheKey, {
+    await setCachedValidation(cacheKey, {
       identity,
       expiresAtMs: Date.now() + validateCacheMs(),
     });
@@ -978,13 +978,13 @@ async function validateInstallWithGlitch(titleId: string, body: JsonMap) {
   };
 }
 
-async function getSessionV1(serverSessionId: string) {
+async function getSession(serverSessionId: string) {
   const local = sessionStore.sessionsById.get(serverSessionId);
   if (local) {
     return local;
   }
-  const redis = await readJsonFromRedisV1<HarthmereServerSession>(
-    sessionRedisKeyV1(serverSessionId)
+  const redis = await readJsonFromRedis<HarthmereServerSession>(
+    sessionRedisKey(serverSessionId)
   );
   if (redis) {
     sessionStore.sessionsById.set(serverSessionId, redis);
@@ -992,18 +992,18 @@ async function getSessionV1(serverSessionId: string) {
   return redis;
 }
 
-async function setSessionV1(session: HarthmereServerSession) {
+async function setSession(session: HarthmereServerSession) {
   const ttlSeconds = Math.max(1, Math.ceil(sessionTtlMs() / 1000));
   sessionStore.sessionsById.set(session.serverSessionId, session);
-  await setJsonInRedisV1(
-    sessionRedisKeyV1(session.serverSessionId),
+  await setJsonInRedis(
+    sessionRedisKey(session.serverSessionId),
     session,
     ttlSeconds
   );
-  if (shouldUseRedisHarthmereSessionStoreV1()) {
+  if (shouldUseRedisHarthmereSessionStore()) {
     try {
-      const redis = await harthmereGlitchRedisV1();
-      const indexKey = sessionUserIndexRedisKeyV1(
+      const redis = await harthmereGlitchRedis();
+      const indexKey = sessionUserIndexRedisKey(
         session.titleId,
         session.gameUserId
       );
@@ -1023,12 +1023,12 @@ async function pruneExpiredSessions(now = Date.now()) {
   for (const [id, session] of sessionStore.sessionsById) {
     if (now - session.lastSeenAtMs > ttl) {
       sessionStore.sessionsById.delete(id);
-      await deleteRedisKeyV1(sessionRedisKeyV1(id));
+      await deleteRedisKey(sessionRedisKey(id));
     }
   }
 }
 
-async function sessionIdsForUserV1(session: HarthmereServerSession) {
+async function sessionIdsForUser(session: HarthmereServerSession) {
   const ids = new Set<string>();
   for (const candidate of sessionStore.sessionsById.values()) {
     if (
@@ -1038,11 +1038,11 @@ async function sessionIdsForUserV1(session: HarthmereServerSession) {
       ids.add(candidate.serverSessionId);
     }
   }
-  if (shouldUseRedisHarthmereSessionStoreV1()) {
+  if (shouldUseRedisHarthmereSessionStore()) {
     try {
-      const redis = await harthmereGlitchRedisV1();
+      const redis = await harthmereGlitchRedis();
       const redisIds = await redis.primary.smembers(
-        sessionUserIndexRedisKeyV1(session.titleId, session.gameUserId)
+        sessionUserIndexRedisKey(session.titleId, session.gameUserId)
       );
       for (const id of redisIds) ids.add(id);
     } catch (error) {
@@ -1059,8 +1059,8 @@ async function disconnectIdleSessionsForUser(current: HarthmereServerSession) {
   const now = Date.now();
   const idleMs = idleSessionMs();
   const disconnected: HarthmereServerSession[] = [];
-  for (const sessionId of await sessionIdsForUserV1(current)) {
-    const session = await getSessionV1(sessionId);
+  for (const sessionId of await sessionIdsForUser(current)) {
+    const session = await getSession(sessionId);
     if (!session) continue;
     if (session.serverSessionId === current.serverSessionId) continue;
     if (session.titleId !== current.titleId) continue;
@@ -1069,7 +1069,7 @@ async function disconnectIdleSessionsForUser(current: HarthmereServerSession) {
     if (now - session.lastSeenAtMs >= idleMs) {
       session.disconnectedAtMs = now;
       session.disconnectedReason = "new_login_replaced_idle_session";
-      await setSessionV1(session);
+      await setSession(session);
       disconnected.push(session);
     }
   }
@@ -1094,7 +1094,7 @@ async function claimServerSession(
     createdAtMs: now,
     lastSeenAtMs: now,
   };
-  await setSessionV1(session);
+  await setSession(session);
   const disconnected = await disconnectIdleSessionsForUser(session);
   return { session, disconnected };
 }
@@ -1121,7 +1121,7 @@ function makeSavePayload(snapshot: unknown) {
   };
 }
 
-function biomesUserIdFromDecodedSavePayloadV1(
+function biomesUserIdFromDecodedSavePayload(
   decodedPayload: unknown
 ): BiomesId | undefined {
   const raw = firstString(
@@ -1137,7 +1137,7 @@ function biomesUserIdFromDecodedSavePayloadV1(
   }
 }
 
-async function latestBiomesUserIdFromGlitchSaveV1(
+async function latestBiomesUserIdFromGlitchSave(
   identity: HarthmereValidatedIdentity
 ): Promise<BiomesId | undefined> {
   if (identity.guest || !identity.valid) {
@@ -1156,12 +1156,12 @@ async function latestBiomesUserIdFromGlitchSaveV1(
     const latest = collectionData(response.json)
       .map((save) => ({ ...save, decoded_payload: decodeSavePayload(save) }))
       .filter(
-        (save) => save?.decoded_payload?.version === "harthmere-glitch-save-v1"
+        (save) => save?.decoded_payload?.version === "harthmere-glitch-save"
       )
       .sort((a, b) => Number(b.version ?? 0) - Number(a.version ?? 0))[0];
-    return biomesUserIdFromDecodedSavePayloadV1(latest?.decoded_payload);
+    return biomesUserIdFromDecodedSavePayload(latest?.decoded_payload);
   } catch (error) {
-    log.warn("HARTHMERE_CLOUD_SAVE_BIOMES_USER_RECOVERY_FAILED_V1", {
+    log.warn("HARTHMERE_CLOUD_SAVE_BIOMES_USER_RECOVERY_FAILED", {
       error,
       installId: identity.installId,
       gameUserId: identity.gameUserId,
@@ -1170,20 +1170,20 @@ async function latestBiomesUserIdFromGlitchSaveV1(
   }
 }
 
-async function rememberStableGlitchLiveModeActorV1(
+async function rememberStableGlitchLiveModeActor(
   identity: HarthmereValidatedIdentity,
   biomesUserId?: BiomesId
 ) {
   if (!identity.installId || identity.guest || !identity.gameUserId) {
     return;
   }
-  await setStringInRedisV1(
-    harthmereLiveModeInstallGameUserLinkKeyV1(identity.installId),
+  await setStringInRedis(
+    harthmereLiveModeInstallGameUserLinkKey(identity.installId),
     identity.gameUserId
   );
   if (biomesUserId !== undefined) {
-    await setStringInRedisV1(
-      harthmereLiveModeInstallLinkKeyV1(identity.installId),
+    await setStringInRedis(
+      harthmereLiveModeInstallLinkKey(identity.installId),
       String(biomesUserId)
     );
   }
@@ -1218,7 +1218,7 @@ function normalizeBehaviorEventPayload(body: JsonMap, titleId: string) {
       new Date().toISOString(),
     metadata: {
       ...metadata,
-      source: metadata.source ?? "harthmere-biomes-v138",
+      source: metadata.source ?? "harthmere-biomes",
       title_id: titleId,
     },
   };
@@ -1244,7 +1244,7 @@ function normalizeBehaviorEventsPayload(body: JsonMap, titleId: string) {
           new Date().toISOString(),
         metadata: {
           ...metadata,
-          source: metadata.source ?? "harthmere-biomes-v138",
+          source: metadata.source ?? "harthmere-biomes",
           title_id: titleId,
         },
       };
@@ -1252,7 +1252,7 @@ function normalizeBehaviorEventsPayload(body: JsonMap, titleId: string) {
   return { events };
 }
 
-export function shouldFallbackBehaviorBulkStatusV138(
+export function shouldFallbackBehaviorBulkStatus(
   status: number | undefined
 ) {
   // 401/403 mean the server-side title token or account auth is wrong. Falling
@@ -1261,7 +1261,7 @@ export function shouldFallbackBehaviorBulkStatusV138(
   return status === 404 || status === 409;
 }
 
-export function shouldAcceptBehaviorTelemetryFailureV139(
+export function shouldAcceptBehaviorTelemetryFailure(
   status: number | undefined
 ) {
   // Behavioral telemetry is optional and already sent in the background. If the
@@ -1271,24 +1271,24 @@ export function shouldAcceptBehaviorTelemetryFailureV139(
   return status === 408 || status === 429 || (status ?? 0) >= 500;
 }
 
-function isBehaviorTelemetryCallV1(call: Pick<QueuedGlitchApiCallV1, "label">) {
+function isBehaviorTelemetryCall(call: Pick<QueuedGlitchApiCall, "label">) {
   return call.label === "recordEvent" || call.label === "recordEventsBulk";
 }
 
-function behaviorTelemetryAuthBackoffRemainingMsV1() {
+function behaviorTelemetryAuthBackoffRemainingMs() {
   const until =
-    globalForHarthmere.__harthmereGlitchTelemetryAuthBackoffUntilV1 ?? 0;
+    globalForHarthmere.__harthmereGlitchTelemetryAuthBackoffUntil ?? 0;
   return Math.max(0, until - Date.now());
 }
 
-function noteBehaviorTelemetryAuthFailureV1(status: number | undefined) {
+function noteBehaviorTelemetryAuthFailure(status: number | undefined) {
   if (status !== 401 && status !== 403) return;
-  globalForHarthmere.__harthmereGlitchTelemetryAuthBackoffUntilV1 =
+  globalForHarthmere.__harthmereGlitchTelemetryAuthBackoffUntil =
     Date.now() +
     envNumber("GLITCH_BEHAVIOR_TELEMETRY_AUTH_BACKOFF_MS", 5 * 60 * 1000);
 }
 
-async function recordBehaviorEventsIndividuallyV138(
+async function recordBehaviorEventsIndividually(
   titleId: string,
   events: JsonMap[]
 ) {
@@ -1336,21 +1336,21 @@ function stableBiomesUsername(identity: HarthmereValidatedIdentity) {
 function glitchForeignProfile(
   identity: HarthmereValidatedIdentity
 ): ForeignAccountProfile {
-  // HARTHMERE_CLOUD_SAVE_IDENTITY_V1: the link key MUST NOT depend on the
+  // HARTHMERE_CLOUD_SAVE_IDENTITY: the link key MUST NOT depend on the
   // volatile `gameUserId` (which flipped between `glitch:<uid>` and
   // `install:<id>` depending on whether the Glitch validate response happened
   // to carry a user id), because that minted a fresh biomes user — and thus a
   // fresh save scope — every session. The link is anchored ONLY to the stable
   // Glitch account; a guest (no account) has no durable link and must never
   // reach here.
-  const id = harthmereCloudSaveForeignAuthPrimaryIdV1({
+  const id = harthmereCloudSaveForeignAuthPrimaryId({
     titleId: identity.titleId,
     installId: identity.installId,
     glitchUserId: identity.glitchUserId,
     userName: identity.userName,
   });
   if (!id) {
-    throw new Error("HARTHMERE_GLITCH_PROFILE_REQUIRES_STABLE_ACCOUNT_V1");
+    throw new Error("HARTHMERE_GLITCH_PROFILE_REQUIRES_STABLE_ACCOUNT");
   }
   return {
     provider: "dev",
@@ -1392,7 +1392,7 @@ export async function createBiomesAuthForGlitchIdentity(
   // by Glitch itself (GUEST_NOT_ALLOWED) and skipped client-side.
   if (
     identity.guest ||
-    !harthmereHasStableGlitchAccountV1({
+    !harthmereHasStableGlitchAccount({
       titleId: identity.titleId,
       installId: identity.installId,
       glitchUserId: identity.glitchUserId,
@@ -1413,7 +1413,7 @@ export async function createBiomesAuthForGlitchIdentity(
         guestUser.username ?? username
       );
     } catch (error) {
-      log.warn("HARTHMERE_GLITCH_GUEST_PLAYER_BOOTSTRAP_FAILED_V1", {
+      log.warn("HARTHMERE_GLITCH_GUEST_PLAYER_BOOTSTRAP_FAILED", {
         error,
         userId: guestUser.id,
         installId: identity.installId,
@@ -1435,12 +1435,12 @@ export async function createBiomesAuthForGlitchIdentity(
   }
 
   const profile = glitchForeignProfile(identity);
-  // HARTHMERE_CLOUD_SAVE_IDENTITY_V1: resolve the SAME biomes user across
+  // HARTHMERE_CLOUD_SAVE_IDENTITY: resolve the SAME biomes user across
   // sessions even though the Glitch response is inconsistent about which
   // identifiers it returns. Try every key the link could legitimately live
   // under (newest-preference first), reuse the first that exists, and back-fill
   // the stable primary key so subsequent logins converge to one user.
-  const candidateIds = harthmereCloudSaveForeignAuthCandidateIdsV1({
+  const candidateIds = harthmereCloudSaveForeignAuthCandidateIds({
     titleId: identity.titleId,
     installId: identity.installId,
     glitchUserId: identity.glitchUserId,
@@ -1461,7 +1461,7 @@ export async function createBiomesAuthForGlitchIdentity(
         break;
       }
     } catch (error) {
-      log.warn("HARTHMERE_CLOUD_SAVE_LINK_LOOKUP_FAILED_V1", {
+      log.warn("HARTHMERE_CLOUD_SAVE_LINK_LOOKUP_FAILED", {
         error,
         candidateId,
         installId: identity.installId,
@@ -1470,7 +1470,7 @@ export async function createBiomesAuthForGlitchIdentity(
   }
   let recoveredBiomesUserId: BiomesId | undefined;
   if (!link) {
-    recoveredBiomesUserId = await latestBiomesUserIdFromGlitchSaveV1(identity);
+    recoveredBiomesUserId = await latestBiomesUserIdFromGlitchSave(identity);
     link = await connectForeignAuth(
       context.db,
       profile.provider,
@@ -1489,7 +1489,7 @@ export async function createBiomesAuthForGlitchIdentity(
         link.userId
       );
     } catch (error) {
-      log.warn("HARTHMERE_CLOUD_SAVE_LINK_BACKFILL_FAILED_V1", {
+      log.warn("HARTHMERE_CLOUD_SAVE_LINK_BACKFILL_FAILED", {
         error,
         matchedId,
         primaryId: profile.id,
@@ -1499,7 +1499,7 @@ export async function createBiomesAuthForGlitchIdentity(
   }
 
   if (!link) {
-    throw new Error("HARTHMERE_CLOUD_SAVE_LINK_UNRESOLVED_V1");
+    throw new Error("HARTHMERE_CLOUD_SAVE_LINK_UNRESOLVED");
   }
   const user = await getUserOrCreateIfNotExists(
     context.db,
@@ -1522,7 +1522,7 @@ export async function createBiomesAuthForGlitchIdentity(
 
   const session = await context.sessionStore.createSession(user.id);
   setAuthCookies(res, session, req);
-  await rememberStableGlitchLiveModeActorV1(identity, user.id);
+  await rememberStableGlitchLiveModeActor(identity, user.id);
 
   return { user, session, profile, guest: false };
 }
@@ -1612,7 +1612,7 @@ export default async function handler(
 
       const { user, session, profile, guest } =
         await createBiomesAuthForGlitchIdentity(req, res, identity);
-      // HARTHMERE_CLOUD_SAVE_IDENTITY_V1: the durable cloud game_user_id is the
+      // HARTHMERE_CLOUD_SAVE_IDENTITY: the durable cloud game_user_id is the
       // stable Glitch account user_id surfaced by normalizeIdentityFromValidateResponse
       // as identity.gameUserId (`glitch:<user_id>`), which validationJson returns.
       // biomes_user_id remains the internal biomes user resolved from that scope.
@@ -1650,7 +1650,7 @@ export default async function handler(
         res,
         identity
       );
-      // HARTHMERE_CLOUD_SAVE_IDENTITY_V1: scope the session and return the cloud
+      // HARTHMERE_CLOUD_SAVE_IDENTITY: scope the session and return the cloud
       // game_user_id off the stable Glitch account id (identity.gameUserId =
       // `glitch:<user_id>` from the validate response), the canonical user id for
       // the game. biomes_user_id is the internal biomes user resolved from it.
@@ -1690,7 +1690,7 @@ export default async function handler(
         });
       }
       await pruneExpiredSessions();
-      const session = await getSessionV1(serverSessionId);
+      const session = await getSession(serverSessionId);
       if (!session) {
         // The production Glitch iframe can survive a web worker/process restart
         // while this in-memory session map does not. Treat a missing in-memory
@@ -1714,7 +1714,7 @@ export default async function handler(
         });
       }
       session.lastSeenAtMs = Date.now();
-      await setSessionV1(session);
+      await setSession(session);
       return res
         .status(200)
         .json({ ok: true, revoked: false, server_session_id: serverSessionId });
@@ -1726,21 +1726,21 @@ export default async function handler(
         body.serverSessionId
       );
       if (serverSessionId) {
-        const session = await getSessionV1(serverSessionId);
+        const session = await getSession(serverSessionId);
         if (session && !session.disconnectedAtMs) {
           session.disconnectedAtMs = Date.now();
           session.disconnectedReason =
             firstString(body.reason) ?? "client_release";
-          await setSessionV1(session);
+          await setSession(session);
         }
       }
       return res.status(200).json({ ok: true });
     }
 
     if (op === "heartbeatInstall") {
-      if (shouldRunGlitchHarthmereOperationAsyncV1(op)) {
+      if (shouldRunGlitchHarthmereOperationAsync(op)) {
         const installId = installIdFromBody(body);
-        const queued = await enqueueGlitchApiCallV1({
+        const queued = await enqueueGlitchApiCall({
           path: `/titles/${encodeURIComponent(titleId)}/installs`,
           label: "createOrResumeInstall",
           method: "POST",
@@ -1754,7 +1754,7 @@ export default async function handler(
             platform: body.platform ?? "web",
             device_type: body.device_type,
             operating_system: body.operating_system,
-            game_version: body.game_version ?? "harthmere-glitch-v143",
+            game_version: body.game_version ?? "harthmere-glitch",
             referral_source: body.referral_source ?? "other",
             first_party_cookie: body.first_party_cookie,
             advertising_id: body.advertising_id,
@@ -1771,7 +1771,7 @@ export default async function handler(
           .status(200)
           .json({ ok: true, skipped: true, reason: response.reason });
       }
-      if (shouldAcceptBehaviorTelemetryFailureV139(response.status)) {
+      if (shouldAcceptBehaviorTelemetryFailure(response.status)) {
         return res.status(200).json({
           ok: true,
           dropped: true,
@@ -1823,15 +1823,15 @@ export default async function handler(
         metadata,
         device_id: body.device_id ?? body.install_id,
         platform: body.platform ?? "web",
-        game_version: body.game_version ?? "harthmere-glitch-v70",
+        game_version: body.game_version ?? "harthmere-glitch",
         last_played_at: new Date().toISOString(),
         play_duration_seconds: Math.max(
           0,
           Math.floor(Number(body.play_duration_seconds ?? 0))
         ),
       };
-      if (shouldRunGlitchHarthmereOperationAsyncV1(op)) {
-        const queued = await enqueueGlitchApiCallV1({
+      if (shouldRunGlitchHarthmereOperationAsync(op)) {
+        const queued = await enqueueGlitchApiCall({
           path: `/titles/${encodeURIComponent(
             titleId
           )}/installs/${encodeURIComponent(installId)}/saves`,
@@ -1859,8 +1859,8 @@ export default async function handler(
     if (op === "submitProgression") {
       const installId = installIdFromBody(body);
       const progressionPayload = normalizeProgressionPayload(body);
-      if (shouldRunGlitchHarthmereOperationAsyncV1(op)) {
-        const queued = await enqueueGlitchApiCallV1({
+      if (shouldRunGlitchHarthmereOperationAsync(op)) {
+        const queued = await enqueueGlitchApiCall({
           path: `/titles/${encodeURIComponent(
             titleId
           )}/installs/${encodeURIComponent(installId)}/submit`,
@@ -1887,8 +1887,8 @@ export default async function handler(
 
     if (op === "recordEvent") {
       const event = normalizeBehaviorEventPayload(body, titleId);
-      if (shouldRunGlitchHarthmereOperationAsyncV1(op)) {
-        const queued = await enqueueGlitchApiCallV1({
+      if (shouldRunGlitchHarthmereOperationAsync(op)) {
+        const queued = await enqueueGlitchApiCall({
           path: `/titles/${encodeURIComponent(titleId)}/events`,
           label: "recordEvent",
           method: "POST",
@@ -1923,8 +1923,8 @@ export default async function handler(
           .status(200)
           .json({ ok: true, skipped: true, reason: "empty_events" });
       }
-      if (shouldRunGlitchHarthmereOperationAsyncV1(op)) {
-        const queued = await enqueueGlitchApiCallV1({
+      if (shouldRunGlitchHarthmereOperationAsync(op)) {
+        const queued = await enqueueGlitchApiCall({
           path: `/titles/${encodeURIComponent(titleId)}/events/bulk`,
           label: "recordEventsBulk",
           method: "POST",
@@ -1949,9 +1949,9 @@ export default async function handler(
       }
       if (
         !response.ok &&
-        shouldFallbackBehaviorBulkStatusV138(response.status)
+        shouldFallbackBehaviorBulkStatus(response.status)
       ) {
-        const fallback = await recordBehaviorEventsIndividuallyV138(
+        const fallback = await recordBehaviorEventsIndividually(
           titleId,
           payload.events
         );
@@ -1968,7 +1968,7 @@ export default async function handler(
           .status(fallback.firstFailure?.status ?? response.status ?? 500)
           .json(fallback.firstFailure?.json ?? response.json ?? response);
       }
-      if (shouldAcceptBehaviorTelemetryFailureV139(response.status)) {
+      if (shouldAcceptBehaviorTelemetryFailure(response.status)) {
         return res.status(200).json({
           ok: true,
           dropped: true,
@@ -2055,14 +2055,14 @@ export default async function handler(
         op: op || "unknown",
         status: res.statusCode,
         ms,
-        requestBytes: approximateJsonBytesV1(body),
+        requestBytes: approximateJsonBytes(body),
         error: routeError,
       });
     }
   }
 }
 
-export function approximateJsonBytesV1(value: unknown) {
+export function approximateJsonBytes(value: unknown) {
   try {
     return Buffer.byteLength(JSON.stringify(value ?? {}), "utf8");
   } catch {

@@ -1,12 +1,12 @@
 import {
-  HARTHMERE_COOKING_RECIPES_V1,
-  HARTHMERE_FOOD_DEFINITIONS_V1,
-  HARTHMERE_SEED_DEFINITIONS_V1,
-  harthmereFarmingFoodItemDisplayNameV1,
-  isHarthmereLivestockFeedItemV1,
-} from "@/shared/harthmere/mmo_farming_food_stamina_v1";
+  HARTHMERE_COOKING_RECIPES,
+  HARTHMERE_FOOD_DEFINITIONS,
+  HARTHMERE_SEED_DEFINITIONS,
+  harthmereFarmingFoodItemDisplayName,
+  isHarthmereLivestockFeedItem,
+} from "@/shared/harthmere/mmo_farming_food_stamina";
 
-export type FarmingFoodActionKindV1 =
+export type FarmingFoodActionKind =
   | "eat_best_food"
   | "cook_raw_meat"
   | "cook_worker_meal"
@@ -22,8 +22,8 @@ export type FarmingFoodActionKindV1 =
   | "collect_livestock_product"
   | `cook_recipe:${string}`;
 
-export interface FarmingFoodInterfaceActionV1 {
-  id: FarmingFoodActionKindV1;
+export interface FarmingFoodInterfaceAction {
+  id: FarmingFoodActionKind;
   label: string;
   operation: string;
   payload: Record<string, unknown>;
@@ -31,7 +31,7 @@ export interface FarmingFoodInterfaceActionV1 {
   blockedReason?: string;
 }
 
-export interface FarmingFoodInterfaceModelV1 {
+export interface FarmingFoodInterfaceModel {
   hydrated: boolean;
   stamina: number;
   maxStamina: number;
@@ -39,19 +39,19 @@ export interface FarmingFoodInterfaceModelV1 {
   livestock: any[];
   wildlife: any[];
   inventory: Record<string, number>;
-  actions: FarmingFoodInterfaceActionV1[];
+  actions: FarmingFoodInterfaceAction[];
 }
 
-export type FarmingFoodQuickActionKeyV1 = "KeyF" | "KeyR" | "KeyT";
+export type FarmingFoodQuickActionKey = "KeyF" | "KeyR" | "KeyT";
 
-const COOKING_RECIPE_ACTION_IDS_V1: Record<string, FarmingFoodActionKindV1> = {
+const COOKING_RECIPE_ACTION_IDS: Record<string, FarmingFoodActionKind> = {
   grilled_meat: "cook_raw_meat",
   worker_meal: "cook_worker_meal",
   hearty_stew: "cook_hearty_stew",
   berry_tart: "cook_berry_tart",
 };
 
-const COOKING_ACTION_PRIORITY_V1: FarmingFoodActionKindV1[] = [
+const COOKING_ACTION_PRIORITY: FarmingFoodActionKind[] = [
   "cook_raw_meat",
   "cook_hearty_stew",
   "cook_berry_tart",
@@ -63,21 +63,21 @@ function count(snapshot: any, itemId: string) {
 }
 
 function bestFoodItemId(snapshot: any) {
-  return Object.keys(HARTHMERE_FOOD_DEFINITIONS_V1)
+  return Object.keys(HARTHMERE_FOOD_DEFINITIONS)
     .filter((itemId) => {
-      const food = HARTHMERE_FOOD_DEFINITIONS_V1[itemId];
+      const food = HARTHMERE_FOOD_DEFINITIONS[itemId];
       return count(snapshot, itemId) > 0 &&
         food.edible !== false &&
         food.staminaRestore > 0;
     })
     .sort((a, b) =>
-      HARTHMERE_FOOD_DEFINITIONS_V1[b].staminaRestore -
-      HARTHMERE_FOOD_DEFINITIONS_V1[a].staminaRestore
+      HARTHMERE_FOOD_DEFINITIONS[b].staminaRestore -
+      HARTHMERE_FOOD_DEFINITIONS[a].staminaRestore
     )[0];
 }
 
 function firstSeedItemId(snapshot: any) {
-  return Object.keys(HARTHMERE_SEED_DEFINITIONS_V1).find(
+  return Object.keys(HARTHMERE_SEED_DEFINITIONS).find(
     (itemId) => count(snapshot, itemId) > 0
   );
 }
@@ -107,7 +107,7 @@ function plotIdForFarmingAction(plot: any) {
 
 function firstFeedItemId(snapshot: any) {
   return Object.keys(snapshot?.inventory ?? {}).find(
-    (itemId) => count(snapshot, itemId) > 0 && isHarthmereLivestockFeedItemV1(itemId)
+    (itemId) => count(snapshot, itemId) > 0 && isHarthmereLivestockFeedItem(itemId)
   );
 }
 
@@ -119,7 +119,7 @@ function availableCookingStations(snapshot: any) {
 }
 
 function cookingIngredientName(itemId: string) {
-  return harthmereFarmingFoodItemDisplayNameV1(itemId) ??
+  return harthmereFarmingFoodItemDisplayName(itemId) ??
     itemId.replace(/_/g, " ");
 }
 
@@ -132,7 +132,7 @@ function missingCookingInput(snapshot: any, inputs: Record<string, number>) {
 export function buildFarmingFoodInterfaceModelForTest(
   snapshot: any,
   hydrated = true,
-): FarmingFoodInterfaceModelV1 {
+): FarmingFoodInterfaceModel {
   const safeSnapshot = snapshot ?? {};
   const plots = Array.isArray(safeSnapshot.plots) ? safeSnapshot.plots : [];
   const livestock = Array.isArray(safeSnapshot.livestock) ? safeSnapshot.livestock : [];
@@ -156,12 +156,12 @@ export function buildFarmingFoodInterfaceModelForTest(
     ? safeSnapshot.foodSpawns.find((spawn: any) => !spawn?.depletedAtMs)
     : undefined;
   const stations = availableCookingStations(safeSnapshot);
-  const cookingActions = Object.values(HARTHMERE_COOKING_RECIPES_V1)
-    .map((recipe): FarmingFoodInterfaceActionV1 => {
+  const cookingActions = Object.values(HARTHMERE_COOKING_RECIPES)
+    .map((recipe): FarmingFoodInterfaceAction => {
       const missingInput = missingCookingInput(safeSnapshot, recipe.inputs);
       const stationAvailable = recipe.stationKind === "field" || stations.has(recipe.stationKind);
-      const id = COOKING_RECIPE_ACTION_IDS_V1[recipe.recipeId] ??
-        (`cook_recipe:${recipe.recipeId}` as FarmingFoodActionKindV1);
+      const id = COOKING_RECIPE_ACTION_IDS[recipe.recipeId] ??
+        (`cook_recipe:${recipe.recipeId}` as FarmingFoodActionKind);
       return {
         id,
         label: `Cook ${recipe.displayName}`,
@@ -181,10 +181,10 @@ export function buildFarmingFoodInterfaceModelForTest(
       };
     });
 
-  const actions: FarmingFoodInterfaceActionV1[] = [
+  const actions: FarmingFoodInterfaceAction[] = [
     {
       id: "eat_best_food",
-      label: foodItemId ? `Eat ${HARTHMERE_FOOD_DEFINITIONS_V1[foodItemId].displayName}` : "Eat Food",
+      label: foodItemId ? `Eat ${HARTHMERE_FOOD_DEFINITIONS[foodItemId].displayName}` : "Eat Food",
       operation: "eat_food",
       payload: { itemId: foodItemId ?? "" },
       disabled: !foodItemId,
@@ -193,8 +193,8 @@ export function buildFarmingFoodInterfaceModelForTest(
     ...cookingActions,
     {
       id: "gather_seed",
-      label: seedSpawn?.seedItemId && HARTHMERE_SEED_DEFINITIONS_V1[seedSpawn.seedItemId]
-        ? `Gather ${HARTHMERE_SEED_DEFINITIONS_V1[seedSpawn.seedItemId].displayName}`
+      label: seedSpawn?.seedItemId && HARTHMERE_SEED_DEFINITIONS[seedSpawn.seedItemId]
+        ? `Gather ${HARTHMERE_SEED_DEFINITIONS[seedSpawn.seedItemId].displayName}`
         : "Gather Seed",
       operation: "gather_seed",
       payload: {
@@ -206,7 +206,7 @@ export function buildFarmingFoodInterfaceModelForTest(
     },
     {
       id: "plant_seed",
-      label: seedItemId ? `Plant ${HARTHMERE_SEED_DEFINITIONS_V1[seedItemId].displayName}` : "Plant Seed",
+      label: seedItemId ? `Plant ${HARTHMERE_SEED_DEFINITIONS[seedItemId].displayName}` : "Plant Seed",
       operation: "plant",
       payload: { plotId: nextPlotId(safeSnapshot), seedItemId: seedItemId ?? "" },
       disabled: !seedItemId,
@@ -288,7 +288,7 @@ export function buildFarmingFoodInterfaceModelForTest(
   };
 }
 
-const FIELD_ACTION_PRIORITY_V1: FarmingFoodActionKindV1[] = [
+const FIELD_ACTION_PRIORITY: FarmingFoodActionKind[] = [
   "harvest_plot",
   "forage_food",
   "collect_livestock_product",
@@ -300,27 +300,27 @@ const FIELD_ACTION_PRIORITY_V1: FarmingFoodActionKindV1[] = [
 ];
 
 function firstEnabledAction(
-  model: FarmingFoodInterfaceModelV1,
-  actionIds: FarmingFoodActionKindV1[],
+  model: FarmingFoodInterfaceModel,
+  actionIds: FarmingFoodActionKind[],
 ) {
   return actionIds
     .map((actionId) => model.actions.find((action) => action.id === actionId))
-    .find((action): action is FarmingFoodInterfaceActionV1 => !!action && !action.disabled);
+    .find((action): action is FarmingFoodInterfaceAction => !!action && !action.disabled);
 }
 
-export function farmingFoodQuickActionForKeyV1(
-  model: FarmingFoodInterfaceModelV1,
+export function farmingFoodQuickActionForKey(
+  model: FarmingFoodInterfaceModel,
   code: string,
-): FarmingFoodInterfaceActionV1 | undefined {
+): FarmingFoodInterfaceAction | undefined {
   if (!model.hydrated) return undefined;
   if (code === "KeyF") {
-    return firstEnabledAction(model, FIELD_ACTION_PRIORITY_V1);
+    return firstEnabledAction(model, FIELD_ACTION_PRIORITY);
   }
   if (code === "KeyR") {
     return firstEnabledAction(model, ["eat_best_food"]);
   }
   if (code === "KeyT") {
-    return firstEnabledAction(model, COOKING_ACTION_PRIORITY_V1) ??
+    return firstEnabledAction(model, COOKING_ACTION_PRIORITY) ??
       model.actions.find((action) => action.operation === "cook_food" && !action.disabled);
   }
   return undefined;

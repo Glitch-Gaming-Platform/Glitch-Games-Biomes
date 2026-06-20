@@ -2,26 +2,26 @@ import assert from "assert";
 import * as React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import {
-  HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1,
-  normalizeHarthmereJobsBoardSnapshotV1,
+  HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID,
+  normalizeHarthmereJobsBoardSnapshot,
 } from "@/client/components/harthmere_jobs_board/jobsBoardLiveAdapter";
 import {
   HarthmereWantedBoardPanel,
-  nextHarthmereWantedBoardGridIndexForKeyV1,
-  nextHarthmereWantedBoardTabForKeyV1,
+  nextHarthmereWantedBoardGridIndexForKey,
+  nextHarthmereWantedBoardTabForKey,
 } from "../HarthmereWantedBoardPanel";
-import { buildHarthmereWantedBoardViewV1 } from "../wantedBoardLiveAdapter";
+import { buildHarthmereWantedBoardView } from "../wantedBoardLiveAdapter";
 
 const NOW = 1_800_000_000_000;
 
 function viewFixture() {
-  const snapshot = normalizeHarthmereJobsBoardSnapshotV1({
-    version: "harthmere-jobs-board-authority-v1",
+  const snapshot = normalizeHarthmereJobsBoardSnapshot({
+    version: "harthmere-jobs-board-authority",
     actorId: "panel_actor",
-    defaultBoardId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1,
+    defaultBoardId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID,
     boards: {
-      [HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1]: {
-        boardId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1,
+      [HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID]: {
+        boardId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID,
         displayName: "Jobs Board",
         townId: "harthmere_grove",
         regionId: "harthmere_grove_region",
@@ -41,7 +41,7 @@ function viewFixture() {
     openJobs: [
       {
         jobId: "panel_bounty",
-        boardId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1,
+        boardId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID,
         issuerKind: "town",
         issuerId: "city_guard",
         title: "Elite Mucker Bounty",
@@ -79,7 +79,7 @@ function viewFixture() {
       recentCrimeRecords: [],
     },
   });
-  return buildHarthmereWantedBoardViewV1(snapshot, undefined, NOW);
+  return buildHarthmereWantedBoardView(snapshot, undefined, NOW);
 }
 
 describe("HarthmereWantedBoardPanel", () => {
@@ -102,15 +102,15 @@ describe("HarthmereWantedBoardPanel", () => {
 
   it("plans tab and grid keyboard movement without wrapping action focus unexpectedly", () => {
     assert.equal(
-      nextHarthmereWantedBoardTabForKeyV1("bounties", "ArrowRight"),
+      nextHarthmereWantedBoardTabForKey("bounties", "ArrowRight"),
       "mine"
     );
     assert.equal(
-      nextHarthmereWantedBoardTabForKeyV1("bounties", "ArrowLeft"),
+      nextHarthmereWantedBoardTabForKey("bounties", "ArrowLeft"),
       "law"
     );
     assert.equal(
-      nextHarthmereWantedBoardGridIndexForKeyV1({
+      nextHarthmereWantedBoardGridIndexForKey({
         key: "ArrowDown",
         currentIndex: 0,
         itemCount: 5,
@@ -119,7 +119,7 @@ describe("HarthmereWantedBoardPanel", () => {
       2
     );
     assert.equal(
-      nextHarthmereWantedBoardGridIndexForKeyV1({
+      nextHarthmereWantedBoardGridIndexForKey({
         key: "End",
         currentIndex: 1,
         itemCount: 5,

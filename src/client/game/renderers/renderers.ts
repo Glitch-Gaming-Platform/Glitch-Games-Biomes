@@ -9,11 +9,11 @@ import { makeDropsRenderer } from "@/client/game/renderers/drops";
 import { makeForbiddenEditsRenderer } from "@/client/game/renderers/forbidden_edits";
 import { GroupsRenderer } from "@/client/game/renderers/groups";
 import { makeHarthmereRuntimeAssetsRenderer } from "@/client/game/renderers/local_dev/harthmere_assets";
-import { makeHarthmereBusinessBoardMarkerRendererV1 } from "@/client/game/renderers/local_dev/harthmere_business_board_marker_v1";
-import { makeHarthmereBusinessOutpostBuildingsRendererV1 } from "@/client/game/renderers/local_dev/harthmere_business_outpost_buildings_v1";
-import { makeHarthmereJobsBoardMarkerRendererV144 } from "@/client/game/renderers/local_dev/harthmere_jobs_board_marker_v144";
-import { makeHarthmereQuestObjectMarkersRendererV145 } from "@/client/game/renderers/local_dev/harthmere_quest_object_markers_v145";
-import { makeHarthmereGatheringNodeMarkersRendererV1 } from "@/client/game/renderers/local_dev/harthmere_gathering_node_markers_v1";
+import { makeHarthmereBusinessBoardMarkerRenderer } from "@/client/game/renderers/local_dev/harthmere_business_board_marker";
+import { makeHarthmereBusinessOutpostBuildingsRenderer } from "@/client/game/renderers/local_dev/harthmere_business_outpost_buildings";
+import { makeHarthmereJobsBoardMarkerRenderer } from "@/client/game/renderers/local_dev/harthmere_jobs_board_marker";
+import { makeHarthmereQuestObjectMarkersRenderer } from "@/client/game/renderers/local_dev/harthmere_quest_object_markers";
+import { makeHarthmereGatheringNodeMarkersRenderer } from "@/client/game/renderers/local_dev/harthmere_gathering_node_markers";
 import { makeMuckRenderer } from "@/client/game/renderers/muck";
 import { makeNpcsRenderer } from "@/client/game/renderers/npcs";
 import { makeParticlesRenderer } from "@/client/game/renderers/particles";
@@ -77,21 +77,21 @@ export async function buildRenderers(loader: RegistryLoader<ClientContext>) {
     makeNpcsRenderer(clientConfig, table, resources),
     makePlaceablesRenderer(clientConfig, audioManager, table, resources),
     makeHarthmereRuntimeAssetsRenderer(),
-    makeHarthmereBusinessOutpostBuildingsRendererV1(),
-    makeHarthmereBusinessBoardMarkerRendererV1(),
-    // HARTHMERE_JOBS_BOARD_PROCEDURAL_MARKER_V144: bulletproof procedural
+    makeHarthmereBusinessOutpostBuildingsRenderer(),
+    makeHarthmereBusinessBoardMarkerRenderer(),
+    // HARTHMERE_JOBS_BOARD_PROCEDURAL_MARKER: bulletproof procedural
     // kiosks for the two Harthmere jobs boards. Runs alongside the OBJ-based
     // assets above; if the snapshot policy filters the OBJ kiosk out, this
     // dedicated renderer still draws a big visible board the player can find.
-    makeHarthmereJobsBoardMarkerRendererV144(),
-    // HARTHMERE_QUEST_OBJECT_MARKERS_V145: small procedural stand-ins for
+    makeHarthmereJobsBoardMarkerRenderer(),
+    // HARTHMERE_QUEST_OBJECT_MARKERS: small procedural stand-ins for
     // quest-linked Grove props so map objectives do not point at invisible
     // filtered/asset-dependent objects.
-    makeHarthmereQuestObjectMarkersRendererV145(resources),
-    // HARTHMERE_GATHERING_NODE_MARKERS_V1: visible, terrain-grounded resource
+    makeHarthmereQuestObjectMarkersRenderer(resources),
+    // HARTHMERE_GATHERING_NODE_MARKERS: visible, terrain-grounded resource
     // nodes at every gathering position so harvest targets exist in the world
     // (with an F-prompt) instead of only inside the HUD menu.
-    makeHarthmereGatheringNodeMarkersRendererV1(resources),
+    makeHarthmereGatheringNodeMarkersRenderer(resources),
     new BoundaryRenderer(resources),
     makeBeamRenderer(mapManager, resources),
     new AudioRenderer(resources, audioManager),

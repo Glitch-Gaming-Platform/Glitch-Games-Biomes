@@ -9,16 +9,16 @@ import type { DialogButtonType } from "@/client/components/system/DialogButton";
 import { DialogButton } from "@/client/components/system/DialogButton";
 import {
   NpcSpeechInputButton,
-  NPC_SPEECH_STOP_RECORDING_EVENT_V1,
+  NPC_SPEECH_STOP_RECORDING_EVENT,
 } from "@/client/components/system/NpcSpeechInputButton";
-import type { NpcSpeechButtonStateV1 } from "@/client/components/system/npcSpeechInputState";
+import type { NpcSpeechButtonState } from "@/client/components/system/npcSpeechInputState";
 import { Tooltipped } from "@/client/components/system/Tooltipped";
 import { VoiceChat } from "@/client/components/system/VoiceChat";
 import { selectHarthmereCombatTarget } from "@/client/components/challenges/LocalDevHarthmereMultiplayerCombatSystem";
 import {
-  talkDialogAdvanceDecisionForTestV1,
-  talkDialogHasChoiceActionsForTestV1,
-  talkDialogShouldShowVoiceInputForTestV1,
+  talkDialogAdvanceDecisionForTest,
+  talkDialogHasChoiceActionsForTest,
+  talkDialogShouldShowVoiceInputForTest,
 } from "@/client/components/challenges/talkDialogModalFlow";
 import { cleanListener } from "@/client/util/helpers";
 import { useEffectAsync } from "@/client/util/hooks";
@@ -26,9 +26,9 @@ import { useTypedStorageItem } from "@/client/util/typed_local_storage";
 
 import type { Voice } from "@/shared/ecs/gen/components";
 import {
-  harthmereAzureVoiceIdOrFallbackV1,
-  harthmereVoiceProfileForActorV1,
-} from "@/shared/harthmere/npc_voice_profiles_v1";
+  harthmereAzureVoiceIdOrFallback,
+  harthmereVoiceProfileForActor,
+} from "@/shared/harthmere/npc_voice_profiles";
 import type { BiomesId } from "@/shared/ids";
 import { relevantBiscuitForEntityId } from "@/shared/npc/bikkie";
 import { AnimatePresence, motion } from "framer-motion";
@@ -69,11 +69,11 @@ const HARTHMERE_VENDOR_TRADE_CLOSE_TALK_EVENT =
 
 export type ButtonLayout = "horizontal-rectangle" | "vertical";
 
-export function resolveTalkDialogAzureVoiceForTestV1(input: {
+export function resolveTalkDialogAzureVoiceForTest(input: {
   voiceComponent?: Voice;
   fallbackVoice: Voice;
 }) {
-  const voice = harthmereAzureVoiceIdOrFallbackV1({
+  const voice = harthmereAzureVoiceIdOrFallback({
     voiceId: input.voiceComponent?.voice,
     fallbackVoiceId: input.fallbackVoice.voice,
   });
@@ -173,7 +173,7 @@ export const GenericTalkDialogModalStep: React.FunctionComponent<
   const [shouldFinishTyping, setShouldFinishTyping] = useState(false);
   const [actionFollowUp, setActionFollowUp] = useState<TalkDialogInfo>();
   const [voiceInputState, setVoiceInputState] =
-    useState<NpcSpeechButtonStateV1>("idle");
+    useState<NpcSpeechButtonState>("idle");
   const [microphoneInputEnabled] = useTypedStorageItem(
     "settings.voice.microphoneInputEnabled",
     true
@@ -184,14 +184,14 @@ export const GenericTalkDialogModalStep: React.FunctionComponent<
     ["/ecs/c/entity_description", entityId]
   );
   const fallbackVoice: Voice = {
-    voice: harthmereVoiceProfileForActorV1({
+    voice: harthmereVoiceProfileForActor({
       source: "runtime_entity",
       entityId,
       displayName: title,
       background: entityDescription?.text,
     }).voiceParameterId,
   };
-  const voice = resolveTalkDialogAzureVoiceForTestV1({
+  const voice = resolveTalkDialogAzureVoiceForTest({
     voiceComponent,
     fallbackVoice,
   });
@@ -206,7 +206,7 @@ export const GenericTalkDialogModalStep: React.FunctionComponent<
     }
   }, [entityId, title]);
 
-  const hasChoiceActions = talkDialogHasChoiceActionsForTestV1(
+  const hasChoiceActions = talkDialogHasChoiceActionsForTest(
     currentDialog?.actions
   );
 
@@ -237,7 +237,7 @@ export const GenericTalkDialogModalStep: React.FunctionComponent<
     setShouldFinishTyping(false);
   }, [setTypingComplete, setBeginTyping, dialogIndex, actionFollowUp]);
 
-  // HARTHMERE_DIALOG_NO_DOUBLE_TEXT_V141:
+  // HARTHMERE_DIALOG_NO_DOUBLE_TEXT:
   // Reset dialog position ONLY when this is truly a new conversation (a new
   // NPC entity). Previously this depended on `id`, which changed every time
   // the parent re-memoized after an action click (state update → new id →
@@ -278,7 +278,7 @@ export const GenericTalkDialogModalStep: React.FunctionComponent<
 
   useEffect(() => {
     const advance = () => {
-      const decision = talkDialogAdvanceDecisionForTestV1({
+      const decision = talkDialogAdvanceDecisionForTest({
         typingComplete,
         hasChoiceActions,
         voiceInputState,
@@ -286,11 +286,11 @@ export const GenericTalkDialogModalStep: React.FunctionComponent<
       if (decision === "finish_typing") {
         finishTyping();
       } else if (decision === "stop_recording") {
-        window.dispatchEvent(new Event(NPC_SPEECH_STOP_RECORDING_EVENT_V1));
+        window.dispatchEvent(new Event(NPC_SPEECH_STOP_RECORDING_EVENT));
       } else if (decision === "go_next") {
         goNext();
       } else if (voiceInput && hasChoiceActions) {
-        window.dispatchEvent(new Event(NPC_SPEECH_STOP_RECORDING_EVENT_V1));
+        window.dispatchEvent(new Event(NPC_SPEECH_STOP_RECORDING_EVENT));
       }
     };
     return cleanListener(window, {
@@ -340,7 +340,7 @@ export const GenericTalkDialogModalStep: React.FunctionComponent<
   }
 
   const actions: TalkDialogStepAction[] = currentDialog.actions ?? [];
-  const showVoiceInput = talkDialogShouldShowVoiceInputForTestV1({
+  const showVoiceInput = talkDialogShouldShowVoiceInputForTest({
     hasVoiceInput: Boolean(voiceInput),
     microphoneInputEnabled,
     actionCount: actions.length,

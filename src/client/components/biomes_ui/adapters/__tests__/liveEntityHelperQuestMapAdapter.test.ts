@@ -2,15 +2,15 @@
 
 import assert from "assert";
 import {
-  activeLiveEntityHelperMissionStepsForBiomesUIV1,
-  liveEntityHelperAcceptedQuestLandmarksForBiomesUIV1,
-  liveEntityHelperTrackableQuestsForBiomesUIV1,
+  activeLiveEntityHelperMissionStepsForBiomesUI,
+  liveEntityHelperAcceptedQuestLandmarksForBiomesUI,
+  liveEntityHelperTrackableQuestsForBiomesUI,
 } from "../liveEntityHelperQuestMapAdapter";
 import {
-  LIVE_ENTITY_HELPER_QUEST_ACTIVE_TARGETS_V1,
-  LIVE_ENTITY_HELPER_QUEST_DEFINITIONS_V1,
-  liveEntityHelperQuestTargetMarkerForKindV1,
-} from "@/shared/harthmere/live_entity_helper_quests_v1";
+  LIVE_ENTITY_HELPER_QUEST_ACTIVE_TARGETS,
+  LIVE_ENTITY_HELPER_QUEST_DEFINITIONS,
+  liveEntityHelperQuestTargetMarkerForKind,
+} from "@/shared/harthmere/live_entity_helper_quests";
 
 const NOW_MS = 1_700_600_000_000;
 
@@ -32,11 +32,11 @@ function helperState() {
 describe("BiomesUI live-entity helper quest map adapter", () => {
   it("projects accepted helper quests into the quest list, mission steps, and active map markers", () => {
     const state = helperState();
-    const marker = liveEntityHelperQuestTargetMarkerForKindV1("food_water");
+    const marker = liveEntityHelperQuestTargetMarkerForKind("food_water");
     assert.ok(marker, "fixture marker should resolve");
 
     const landmarks =
-      liveEntityHelperAcceptedQuestLandmarksForBiomesUIV1(state);
+      liveEntityHelperAcceptedQuestLandmarksForBiomesUI(state);
     assert.equal(landmarks.length, 1);
     assert.equal(landmarks[0].id, marker!.id);
     assert.equal(landmarks[0].active, true);
@@ -44,10 +44,10 @@ describe("BiomesUI live-entity helper quest map adapter", () => {
     assert.deepEqual(landmarks[0].position, marker!.position);
     assert.equal(
       landmarks[0].description,
-      LIVE_ENTITY_HELPER_QUEST_DEFINITIONS_V1.food_water.activeText
+      LIVE_ENTITY_HELPER_QUEST_DEFINITIONS.food_water.activeText
     );
 
-    const quests = liveEntityHelperTrackableQuestsForBiomesUIV1(state);
+    const quests = liveEntityHelperTrackableQuestsForBiomesUI(state);
     assert.deepEqual(quests, [
       {
         questId: "live-helper:boba:food_water",
@@ -59,16 +59,16 @@ describe("BiomesUI live-entity helper quest map adapter", () => {
         kind: "food_water",
         kindLabel: "Helper Quest",
         objective:
-          LIVE_ENTITY_HELPER_QUEST_DEFINITIONS_V1.food_water.activeText,
+          LIVE_ENTITY_HELPER_QUEST_DEFINITIONS.food_water.activeText,
         objectives: [
-          LIVE_ENTITY_HELPER_QUEST_DEFINITIONS_V1.food_water.activeText,
+          LIVE_ENTITY_HELPER_QUEST_DEFINITIONS.food_water.activeText,
         ],
         description:
-          LIVE_ENTITY_HELPER_QUEST_DEFINITIONS_V1.food_water.offerText,
+          LIVE_ENTITY_HELPER_QUEST_DEFINITIONS.food_water.offerText,
       },
     ]);
 
-    const steps = activeLiveEntityHelperMissionStepsForBiomesUIV1(state);
+    const steps = activeLiveEntityHelperMissionStepsForBiomesUI(state);
     assert.equal(steps.length, 1);
     assert.equal(steps[0].id, "live-helper:boba:food_water");
     assert.equal(steps[0].done, false);
@@ -106,14 +106,14 @@ describe("BiomesUI live-entity helper quest map adapter", () => {
     };
 
     assert.equal(
-      liveEntityHelperAcceptedQuestLandmarksForBiomesUIV1(state).length,
+      liveEntityHelperAcceptedQuestLandmarksForBiomesUI(state).length,
       0
     );
     assert.equal(
-      activeLiveEntityHelperMissionStepsForBiomesUIV1(state).length,
+      activeLiveEntityHelperMissionStepsForBiomesUI(state).length,
       0
     );
-    const quests = liveEntityHelperTrackableQuestsForBiomesUIV1(state);
+    const quests = liveEntityHelperTrackableQuestsForBiomesUI(state);
     assert.equal(quests.length, 1);
     assert.equal(quests[0].status, "completed");
     assert.equal(quests[0].firstMarkerId, undefined);
@@ -135,11 +135,11 @@ describe("BiomesUI live-entity helper quest map adapter", () => {
         completed: {},
       };
       const landmarks =
-        liveEntityHelperAcceptedQuestLandmarksForBiomesUIV1(state);
+        liveEntityHelperAcceptedQuestLandmarksForBiomesUI(state);
       assert.equal(landmarks.length, 1, `${kind} produces a marker`);
       assert.deepEqual(
         landmarks[0].position,
-        [...LIVE_ENTITY_HELPER_QUEST_ACTIVE_TARGETS_V1[kind].position],
+        [...LIVE_ENTITY_HELPER_QUEST_ACTIVE_TARGETS[kind].position],
         `${kind} marker points at its real target site`
       );
       assert.equal(
@@ -166,7 +166,7 @@ describe("BiomesUI live-entity helper quest map adapter", () => {
       },
       completed: {},
     };
-    const landmarks = liveEntityHelperAcceptedQuestLandmarksForBiomesUIV1(state);
+    const landmarks = liveEntityHelperAcceptedQuestLandmarksForBiomesUI(state);
     assert.equal(landmarks.length, 1);
     assert.deepEqual(landmarks[0].position, [496, 70, -126]);
     assert.equal(landmarks[0].label, "Return to Jackie");
@@ -189,15 +189,15 @@ describe("BiomesUI live-entity helper quest map adapter", () => {
       completed: {},
     };
     // Objective NOT met -> stays on target.
-    const onTarget = liveEntityHelperAcceptedQuestLandmarksForBiomesUIV1(state, {
+    const onTarget = liveEntityHelperAcceptedQuestLandmarksForBiomesUI(state, {
       isReadyToTurnIn: () => false,
     });
     assert.deepEqual(
       onTarget[0].position,
-      [...LIVE_ENTITY_HELPER_QUEST_ACTIVE_TARGETS_V1.hard_boss.position]
+      [...LIVE_ENTITY_HELPER_QUEST_ACTIVE_TARGETS.hard_boss.position]
     );
     // Objective met -> flips to giver even though the stored flag is false.
-    const home = liveEntityHelperAcceptedQuestLandmarksForBiomesUIV1(state, {
+    const home = liveEntityHelperAcceptedQuestLandmarksForBiomesUI(state, {
       isReadyToTurnIn: () => true,
     });
     assert.deepEqual(home[0].position, [10, 64, 20]);
@@ -215,9 +215,9 @@ describe("BiomesUI live-entity helper quest map adapter", () => {
     };
 
     assert.equal(
-      liveEntityHelperAcceptedQuestLandmarksForBiomesUIV1(state).length,
+      liveEntityHelperAcceptedQuestLandmarksForBiomesUI(state).length,
       1
     );
-    assert.equal(liveEntityHelperTrackableQuestsForBiomesUIV1(state).length, 2);
+    assert.equal(liveEntityHelperTrackableQuestsForBiomesUI(state).length, 2);
   });
 });

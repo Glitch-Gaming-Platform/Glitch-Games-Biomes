@@ -1,19 +1,19 @@
 import { connectToRedis } from "@/server/shared/redis/connection";
 import { biomesApiHandler } from "@/server/web/util/api_middleware";
-import { readHarthmereRedisStringsV1 } from "@/server/harthmere/live_mode_state_read_helpers";
-import { resolveHarthmereLiveModeActorIdV1 } from "@/server/harthmere/live_mode_actor_resolution_v1";
+import { readHarthmereRedisStrings } from "@/server/harthmere/live_mode_state_read_helpers";
+import { resolveHarthmereLiveModeActorId } from "@/server/harthmere/live_mode_actor_resolution";
 import {
-  createHarthmereLiveModePlayerStatusClientSnapshotV1,
-  harthmereLiveModePlayerStateKeyV1,
-  parseHarthmereLiveModeBackendStateV1,
-  repairHarthmereStatusReadStaminaDeathV1,
-  tickHarthmereLiveModeStaminaForGameplayV1,
-} from "@/shared/harthmere/live_mode_backend_v1";
+  createHarthmereLiveModePlayerStatusClientSnapshot,
+  harthmereLiveModePlayerStateKey,
+  parseHarthmereLiveModeBackendState,
+  repairHarthmereStatusReadStaminaDeath,
+  tickHarthmereLiveModeStaminaForGameplay,
+} from "@/shared/harthmere/live_mode_backend";
 import { z } from "zod";
 
 const zJsonRecord = z.record(z.unknown());
-const DEFAULT_PLAYER_STATUS_STAMINA_WRITE_THROTTLE_MS_V1 = 5_000;
-const DEFAULT_PLAYER_STATUS_STAMINA_MEANINGFUL_DELTA_V1 = 1;
+const DEFAULT_PLAYER_STATUS_STAMINA_WRITE_THROTTLE_MS = 5_000;
+const DEFAULT_PLAYER_STATUS_STAMINA_MEANINGFUL_DELTA = 1;
 
 export const zHarthmereLiveModePlayerStatusStateResponse = z.object({
   ok: z.boolean(),
@@ -22,42 +22,42 @@ export const zHarthmereLiveModePlayerStatusStateResponse = z.object({
 
 const globalForHarthmereLiveModePlayerStatusState =
   globalThis as typeof globalThis & {
-    __harthmereLiveModePlayerStatusStateRedisV1?: ReturnType<
+    __harthmereLiveModePlayerStatusStateRedis?: ReturnType<
       typeof connectToRedis
     >;
   };
 
-function liveModePlayerStatusStateRedisV1() {
-  return (globalForHarthmereLiveModePlayerStatusState.__harthmereLiveModePlayerStatusStateRedisV1 ??=
+function liveModePlayerStatusStateRedis() {
+  return (globalForHarthmereLiveModePlayerStatusState.__harthmereLiveModePlayerStatusStateRedis ??=
     connectToRedis("firehose"));
 }
 
-function firstPlayerStatusReadStringV146(value: unknown) {
+function firstPlayerStatusReadString(value: unknown) {
   const candidate = Array.isArray(value) ? value[0] : value;
   return typeof candidate === "string" && candidate.trim()
     ? candidate.trim()
     : undefined;
 }
 
-function playerStatusStaminaWriteThrottleMsV1() {
+function playerStatusStaminaWriteThrottleMs() {
   const raw = Number(
     process.env.HARTHMERE_PLAYER_STATUS_STAMINA_WRITE_THROTTLE_MS
   );
   return Number.isFinite(raw) && raw >= 0
     ? Math.trunc(raw)
-    : DEFAULT_PLAYER_STATUS_STAMINA_WRITE_THROTTLE_MS_V1;
+    : DEFAULT_PLAYER_STATUS_STAMINA_WRITE_THROTTLE_MS;
 }
 
-function playerStatusStaminaMeaningfulDeltaV1() {
+function playerStatusStaminaMeaningfulDelta() {
   const raw = Number(
     process.env.HARTHMERE_PLAYER_STATUS_STAMINA_MEANINGFUL_DELTA
   );
   return Number.isFinite(raw) && raw >= 0
     ? raw
-    : DEFAULT_PLAYER_STATUS_STAMINA_MEANINGFUL_DELTA_V1;
+    : DEFAULT_PLAYER_STATUS_STAMINA_MEANINGFUL_DELTA;
 }
 
-export function shouldPersistHarthmerePlayerStatusStaminaTickV1(input: {
+export function shouldPersistHarthmerePlayerStatusStaminaTick(input: {
   changed: boolean;
   deathTriggered: boolean;
   previousDeadFromStaminaAtMs?: number;
@@ -81,7 +81,7 @@ export function shouldPersistHarthmerePlayerStatusStaminaTickV1(input: {
   }
   if (
     Math.abs(input.previousStamina - input.nextStamina) >=
-    (input.meaningfulDelta ?? DEFAULT_PLAYER_STATUS_STAMINA_MEANINGFUL_DELTA_V1)
+    (input.meaningfulDelta ?? DEFAULT_PLAYER_STATUS_STAMINA_MEANINGFUL_DELTA)
   ) {
     return true;
   }
@@ -91,11 +91,11 @@ export function shouldPersistHarthmerePlayerStatusStaminaTickV1(input: {
   }
   return (
     input.nowMs - previousUpdatedAtMs >=
-    (input.throttleMs ?? DEFAULT_PLAYER_STATUS_STAMINA_WRITE_THROTTLE_MS_V1)
+    (input.throttleMs ?? DEFAULT_PLAYER_STATUS_STAMINA_WRITE_THROTTLE_MS)
   );
 }
 
-export async function readHarthmereLiveModePlayerStatusStateForActorV1(input: {
+export async function readHarthmereLiveModePlayerStatusStateForActor(input: {
   redis: {
     primary: {
       get: (key: string) => Promise<string | null>;
@@ -115,11 +115,11 @@ export async function readHarthmereLiveModePlayerStatusStateForActorV1(input: {
   staminaWriteThrottleMs?: number;
   staminaMeaningfulDelta?: number;
 }) {
-  const stateKey = harthmereLiveModePlayerStateKeyV1(input.actorId);
-  const [rawState] = await readHarthmereRedisStringsV1(input.redis.primary, [
+  const stateKey = harthmereLiveModePlayerStateKey(input.actorId);
+  const [rawState] = await readHarthmereRedisStrings(input.redis.primary, [
     stateKey,
   ]);
-  const state = parseHarthmereLiveModeBackendStateV1(
+  const state = parseHarthmereLiveModeBackendState(
     rawState,
     input.actorId,
     input.nowMs
@@ -131,10 +131,10 @@ export async function readHarthmereLiveModePlayerStatusStateForActorV1(input: {
   )
     ? Number(state.combat.deadFromStaminaAtMs)
     : undefined;
-  const statusReadRepair = repairHarthmereStatusReadStaminaDeathV1(state, {
+  const statusReadRepair = repairHarthmereStatusReadStaminaDeath(state, {
     nowMs: input.nowMs,
   });
-  const staminaTick = tickHarthmereLiveModeStaminaForGameplayV1(state, {
+  const staminaTick = tickHarthmereLiveModeStaminaForGameplay(state, {
     nowMs: input.nowMs,
     gameplayActive: input.gameplayActive === true,
     allowDeathFromStamina: false,
@@ -146,7 +146,7 @@ export async function readHarthmereLiveModePlayerStatusStateForActorV1(input: {
     ? Number(state.combat.deadFromStaminaAtMs)
     : undefined;
   if (
-    shouldPersistHarthmerePlayerStatusStaminaTickV1({
+    shouldPersistHarthmerePlayerStatusStaminaTick({
       changed: staminaTick.changed || statusReadRepair.changed,
       deathTriggered: staminaTick.deathTriggered,
       previousDeadFromStaminaAtMs,
@@ -156,9 +156,9 @@ export async function readHarthmereLiveModePlayerStatusStateForActorV1(input: {
       previousUpdatedAtMs,
       nowMs: input.nowMs,
       throttleMs:
-        input.staminaWriteThrottleMs ?? playerStatusStaminaWriteThrottleMsV1(),
+        input.staminaWriteThrottleMs ?? playerStatusStaminaWriteThrottleMs(),
       meaningfulDelta:
-        input.staminaMeaningfulDelta ?? playerStatusStaminaMeaningfulDeltaV1(),
+        input.staminaMeaningfulDelta ?? playerStatusStaminaMeaningfulDelta(),
     }) &&
     input.redis.primary.set
   ) {
@@ -169,7 +169,7 @@ export async function readHarthmereLiveModePlayerStatusStateForActorV1(input: {
       await input.redis.primary.watch?.(stateKey);
       try {
         const latestRawState = await input.redis.primary.get(stateKey);
-        const latestState = parseHarthmereLiveModeBackendStateV1(
+        const latestState = parseHarthmereLiveModeBackendState(
           latestRawState,
           input.actorId,
           input.nowMs
@@ -183,13 +183,13 @@ export async function readHarthmereLiveModePlayerStatusStateForActorV1(input: {
         )
           ? Number(latestState.combat.deadFromStaminaAtMs)
           : undefined;
-        const latestStatusReadRepair = repairHarthmereStatusReadStaminaDeathV1(
+        const latestStatusReadRepair = repairHarthmereStatusReadStaminaDeath(
           latestState,
           {
             nowMs: input.nowMs,
           }
         );
-        const latestStaminaTick = tickHarthmereLiveModeStaminaForGameplayV1(
+        const latestStaminaTick = tickHarthmereLiveModeStaminaForGameplay(
           latestState,
           {
             nowMs: input.nowMs,
@@ -206,7 +206,7 @@ export async function readHarthmereLiveModePlayerStatusStateForActorV1(input: {
           ? Number(latestState.combat.deadFromStaminaAtMs)
           : undefined;
         if (
-          shouldPersistHarthmerePlayerStatusStaminaTickV1({
+          shouldPersistHarthmerePlayerStatusStaminaTick({
             changed:
               latestStaminaTick.changed || latestStatusReadRepair.changed,
             deathTriggered: latestStaminaTick.deathTriggered,
@@ -218,10 +218,10 @@ export async function readHarthmereLiveModePlayerStatusStateForActorV1(input: {
             nowMs: input.nowMs,
             throttleMs:
               input.staminaWriteThrottleMs ??
-              playerStatusStaminaWriteThrottleMsV1(),
+              playerStatusStaminaWriteThrottleMs(),
             meaningfulDelta:
               input.staminaMeaningfulDelta ??
-              playerStatusStaminaMeaningfulDeltaV1(),
+              playerStatusStaminaMeaningfulDelta(),
           })
         ) {
           latestState.updatedAtMs = input.nowMs;
@@ -240,17 +240,17 @@ export async function readHarthmereLiveModePlayerStatusStateForActorV1(input: {
       await input.redis.primary.set(stateKey, JSON.stringify(state));
     }
   }
-  return createHarthmereLiveModePlayerStatusClientSnapshotV1(state);
+  return createHarthmereLiveModePlayerStatusClientSnapshot(state);
 }
 
-function playerStatusGameplayActiveV146(input: {
+function playerStatusGameplayActive(input: {
   unsafeRequest: { query?: Record<string, unknown> };
 }) {
   const raw =
-    firstPlayerStatusReadStringV146(
+    firstPlayerStatusReadString(
       input.unsafeRequest.query?.gameplay_active
     ) ??
-    firstPlayerStatusReadStringV146(input.unsafeRequest.query?.gameplayActive);
+    firstPlayerStatusReadString(input.unsafeRequest.query?.gameplayActive);
   return /^(1|true|yes)$/i.test(raw ?? "");
 }
 
@@ -261,20 +261,20 @@ export default biomesApiHandler(
     response: zHarthmereLiveModePlayerStatusStateResponse,
   },
   async ({ auth, unsafeRequest }) => {
-    const redis = await liveModePlayerStatusStateRedisV1();
-    const actorId = await resolveHarthmereLiveModeActorIdV1(
+    const redis = await liveModePlayerStatusStateRedis();
+    const actorId = await resolveHarthmereLiveModeActorId(
       redis,
       { auth, unsafeRequest },
       "anonymous:player-status-reader"
     );
     return {
       ok: true,
-      playerStatusState: await readHarthmereLiveModePlayerStatusStateForActorV1(
+      playerStatusState: await readHarthmereLiveModePlayerStatusStateForActor(
         {
           redis,
           actorId,
           nowMs: Date.now(),
-          gameplayActive: playerStatusGameplayActiveV146({ unsafeRequest }),
+          gameplayActive: playerStatusGameplayActive({ unsafeRequest }),
         }
       ),
     };

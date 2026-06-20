@@ -33,7 +33,7 @@ export function sharedServerContext<C extends SharedServerContext>(
   builder: RegistryBuilder<C>
 ) {
   console.log(
-    "GLITCH_STARTUP_TRACE_V2 sharedServerContext:install:enter pid=" +
+    "GLITCH_STARTUP_TRACE sharedServerContext:install:enter pid=" +
       process.pid
   );
   return builder
@@ -41,20 +41,20 @@ export function sharedServerContext<C extends SharedServerContext>(
       "bikkieNotifiers",
       async () => {
         console.log(
-          "GLITCH_STARTUP_TRACE_V2 bikkieNotifiers:factory:enter"
+          "GLITCH_STARTUP_TRACE bikkieNotifiers:factory:enter"
         );
         const notifiers = new BikkieNotifiers(
           createDistributedNotifier("bikkie-baking-needed"),
           createDistributedNotifier("bikkie")
         );
         console.log(
-          "GLITCH_STARTUP_TRACE_V2 bikkieNotifiers:factory:done"
+          "GLITCH_STARTUP_TRACE bikkieNotifiers:factory:done"
         );
         return notifiers;
       }
     )
     .bind("bikkieRefresher", registerBikkieRefresher)
-    // GLITCH_BIKKIE_REFRESHER_LAZY_V1:
+    // GLITCH_BIKKIE_REFRESHER_LAZY:
     // We deliberately do NOT call `.loadEarly("bikkieRefresher")` here.
     // The original early-load forced `sharedServerContext` to fully
     // resolve `bikkieRefresher` before *any* user-bound service factory

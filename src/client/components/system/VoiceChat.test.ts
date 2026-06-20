@@ -1,91 +1,91 @@
 import {
-  clearVoiceChatAudioElementForTestV1,
-  clearRecentVoiceLinesForTestV1,
-  RECENT_VOICE_LINE_TTL_MS_FOR_TEST_V1,
-  shouldApplyVoiceChatAudioResultForTestV1,
-  shouldRequestVoiceChatAudioForTestV1,
-  shouldPlayVoiceLineForTestV1,
-  voiceLineSuppressionKeyForTestV1,
+  clearVoiceChatAudioElementForTest,
+  clearRecentVoiceLinesForTest,
+  RECENT_VOICE_LINE_TTL_MS_FOR_TEST,
+  shouldApplyVoiceChatAudioResultForTest,
+  shouldRequestVoiceChatAudioForTest,
+  shouldPlayVoiceLineForTest,
+  voiceLineSuppressionKeyForTest,
 } from "@/client/components/system/VoiceChat";
 import assert from "assert";
 
 describe("NPC voice playback", () => {
   beforeEach(() => {
-    clearRecentVoiceLinesForTestV1();
+    clearRecentVoiceLinesForTest();
   });
 
   it("suppresses immediate duplicate voice lines", () => {
-    assert.equal(shouldPlayVoiceLineForTestV1("npc:line", 1000), true);
-    assert.equal(shouldPlayVoiceLineForTestV1("npc:line", 1500), false);
-    assert.equal(shouldPlayVoiceLineForTestV1("npc:other", 1500), true);
+    assert.equal(shouldPlayVoiceLineForTest("npc:line", 1000), true);
+    assert.equal(shouldPlayVoiceLineForTest("npc:line", 1500), false);
+    assert.equal(shouldPlayVoiceLineForTest("npc:other", 1500), true);
   });
 
   it("allows the same line after the repeat window expires", () => {
-    assert.equal(shouldPlayVoiceLineForTestV1("npc:line", 1000), true);
+    assert.equal(shouldPlayVoiceLineForTest("npc:line", 1000), true);
     assert.equal(
-      shouldPlayVoiceLineForTestV1(
+      shouldPlayVoiceLineForTest(
         "npc:line",
-        1000 + RECENT_VOICE_LINE_TTL_MS_FOR_TEST_V1 + 1
+        1000 + RECENT_VOICE_LINE_TTL_MS_FOR_TEST + 1
       ),
       true
     );
   });
 
   it("deduplicates the same spoken line even when the dialog playback id changes", () => {
-    const keyFromFirstRender = voiceLineSuppressionKeyForTestV1({
+    const keyFromFirstRender = voiceLineSuppressionKeyForTest({
       text: "  Same line,   same voice. ",
-      voice: "azure-speech-v1|voice=en-US-BrandonNeural",
+      voice: "azure-speech|voice=en-US-BrandonNeural",
       language: "en-US",
     });
-    const keyFromSecondRender = voiceLineSuppressionKeyForTestV1({
+    const keyFromSecondRender = voiceLineSuppressionKeyForTest({
       text: "Same line, same voice.",
-      voice: "azure-speech-v1|voice=en-US-BrandonNeural",
+      voice: "azure-speech|voice=en-US-BrandonNeural",
       language: "en-US",
     });
 
     assert.equal(keyFromFirstRender, keyFromSecondRender);
-    assert.equal(shouldPlayVoiceLineForTestV1(keyFromFirstRender, 1000), true);
+    assert.equal(shouldPlayVoiceLineForTest(keyFromFirstRender, 1000), true);
     assert.equal(
-      shouldPlayVoiceLineForTestV1(keyFromSecondRender, 3000),
+      shouldPlayVoiceLineForTest(keyFromSecondRender, 3000),
       false
     );
   });
 
   it("does not suppress the same words when voice or language changes", () => {
-    const avaEnglish = voiceLineSuppressionKeyForTestV1({
+    const avaEnglish = voiceLineSuppressionKeyForTest({
       text: "Meet me by the board.",
-      voice: "azure-speech-v1|voice=en-US-AvaNeural",
+      voice: "azure-speech|voice=en-US-AvaNeural",
       language: "en-US",
     });
-    const avaFrench = voiceLineSuppressionKeyForTestV1({
+    const avaFrench = voiceLineSuppressionKeyForTest({
       text: "Meet me by the board.",
-      voice: "azure-speech-v1|voice=en-US-AvaNeural",
+      voice: "azure-speech|voice=en-US-AvaNeural",
       language: "fr-FR",
     });
-    const brianEnglish = voiceLineSuppressionKeyForTestV1({
+    const brianEnglish = voiceLineSuppressionKeyForTest({
       text: "Meet me by the board.",
-      voice: "azure-speech-v1|voice=en-US-BrianNeural",
+      voice: "azure-speech|voice=en-US-BrianNeural",
       language: "en-US",
     });
 
-    assert.equal(shouldPlayVoiceLineForTestV1(avaEnglish, 1000), true);
-    assert.equal(shouldPlayVoiceLineForTestV1(avaFrench, 1500), true);
-    assert.equal(shouldPlayVoiceLineForTestV1(brianEnglish, 2000), true);
+    assert.equal(shouldPlayVoiceLineForTest(avaEnglish, 1000), true);
+    assert.equal(shouldPlayVoiceLineForTest(avaFrench, 1500), true);
+    assert.equal(shouldPlayVoiceLineForTest(brianEnglish, 2000), true);
   });
 
   it("expires old voice-line entries while checking new lines", () => {
-    assert.equal(shouldPlayVoiceLineForTestV1("old-line", 1000), true);
+    assert.equal(shouldPlayVoiceLineForTest("old-line", 1000), true);
     assert.equal(
-      shouldPlayVoiceLineForTestV1(
+      shouldPlayVoiceLineForTest(
         "new-line",
-        1000 + RECENT_VOICE_LINE_TTL_MS_FOR_TEST_V1 + 1
+        1000 + RECENT_VOICE_LINE_TTL_MS_FOR_TEST + 1
       ),
       true
     );
     assert.equal(
-      shouldPlayVoiceLineForTestV1(
+      shouldPlayVoiceLineForTest(
         "old-line",
-        1000 + RECENT_VOICE_LINE_TTL_MS_FOR_TEST_V1 + 2
+        1000 + RECENT_VOICE_LINE_TTL_MS_FOR_TEST + 2
       ),
       true
     );
@@ -99,33 +99,33 @@ describe("NPC voice playback", () => {
       load: () => calls.push("load"),
     } as unknown as HTMLAudioElement;
 
-    clearVoiceChatAudioElementForTestV1(audio);
+    clearVoiceChatAudioElementForTest(audio);
 
     assert.deepEqual(calls, ["pause", "remove:src", "load"]);
   });
 
   it("does not request NPC speech audio when the player turns NPC speech off", () => {
     assert.equal(
-      shouldRequestVoiceChatAudioForTestV1({
+      shouldRequestVoiceChatAudioForTest({
         npcSpeechEnabled: true,
         text: "Hello",
-        voice: "azure-speech-v1|voice=en-US-AvaNeural",
+        voice: "azure-speech|voice=en-US-AvaNeural",
       }),
       true
     );
     assert.equal(
-      shouldRequestVoiceChatAudioForTestV1({
+      shouldRequestVoiceChatAudioForTest({
         npcSpeechEnabled: false,
         text: "Hello",
-        voice: "azure-speech-v1|voice=en-US-AvaNeural",
+        voice: "azure-speech|voice=en-US-AvaNeural",
       }),
       false
     );
     assert.equal(
-      shouldRequestVoiceChatAudioForTestV1({
+      shouldRequestVoiceChatAudioForTest({
         npcSpeechEnabled: true,
         text: "",
-        voice: "azure-speech-v1|voice=en-US-AvaNeural",
+        voice: "azure-speech|voice=en-US-AvaNeural",
       }),
       false
     );
@@ -143,30 +143,30 @@ describe("NPC voice playback", () => {
       currentAudioSrc: "",
     };
 
-    assert.equal(shouldApplyVoiceChatAudioResultForTestV1(base), true);
+    assert.equal(shouldApplyVoiceChatAudioResultForTest(base), true);
     assert.equal(
-      shouldApplyVoiceChatAudioResultForTestV1({
+      shouldApplyVoiceChatAudioResultForTest({
         ...base,
         cancelled: true,
       }),
       false
     );
     assert.equal(
-      shouldApplyVoiceChatAudioResultForTestV1({
+      shouldApplyVoiceChatAudioResultForTest({
         ...base,
         audioStillMounted: false,
       }),
       false
     );
     assert.equal(
-      shouldApplyVoiceChatAudioResultForTestV1({
+      shouldApplyVoiceChatAudioResultForTest({
         ...base,
         latestText: "Another line.",
       }),
       false
     );
     assert.equal(
-      shouldApplyVoiceChatAudioResultForTestV1({
+      shouldApplyVoiceChatAudioResultForTest({
         ...base,
         latestRequestKey: "",
       }),

@@ -1,8 +1,8 @@
 import * as React from "react";
-import type { DailyTodoAdapterV1, DailyTodoItemV1 } from "../adapters/dailyTodoAdapter";
+import type { DailyTodoAdapter, DailyTodoItem } from "../adapters/dailyTodoAdapter";
 import { dailyTodoProgressForTest } from "../adapters/dailyTodoAdapter";
 
-function RewardPills({ task }: { task: DailyTodoItemV1 }) {
+function RewardPills({ task }: { task: DailyTodoItem }) {
   const rewards: string[] = [];
   if (task.reward.gold) rewards.push(`${task.reward.gold} gold`);
   if (task.reward.xp) rewards.push(`${task.reward.xp} XP`);
@@ -32,7 +32,7 @@ function RewardPills({ task }: { task: DailyTodoItemV1 }) {
 }
 
 export const DailyTodoTab: React.FunctionComponent<{
-  adapter?: DailyTodoAdapterV1;
+  adapter?: DailyTodoAdapter;
 }> = ({ adapter }) => {
   if (!adapter || !adapter.isHydrated()) {
     return (

@@ -13,7 +13,7 @@ import { getAabbForEntity } from "@/shared/game/entity_sizes";
 import type { EntityHit } from "@/shared/game/spatial";
 import { isPlayer } from "@/shared/game/players";
 import type { BiomesId } from "@/shared/ids";
-import { isHarthmereNonLivingObjectLabelV1 } from "@/shared/harthmere/object_interaction_semantics_v1";
+import { isHarthmereNonLivingObjectLabel } from "@/shared/harthmere/object_interaction_semantics";
 import {
   add,
   frustumBoundingSphere,
@@ -61,7 +61,7 @@ function isAttackableLiveEntityWithoutNpcMetadata(x: ReadonlyEntity): boolean {
     record.placeable_component ||
     record.blueprint_component ||
     record.protection ||
-    isHarthmereNonLivingObjectLabelV1({ label })
+    isHarthmereNonLivingObjectLabel({ label })
   ) {
     return false;
   }
@@ -104,7 +104,7 @@ export function canAttackFilter(
     return harthmereLiveAttackable;
   }
 
-  // SNAPSHOT_NPC_ATTACK_FILTER_COMPAT_V1:
+  // SNAPSHOT_NPC_ATTACK_FILTER_COMPAT:
   // Snapshot imports can contain legacy NPC metadata whose type item is present
   // but does not satisfy the newer Glitch NPC schema. Cursor hit-testing runs
   // every frame, so invalid/legacy NPC types must fail soft instead of throwing.
@@ -112,7 +112,7 @@ export function canAttackFilter(
   if (!npcType) {
     return harthmereLiveAttackable;
   }
-  // HARTHMERE_LIVE_NPC_ATTACKABLE_OVERRIDE_V1:
+  // HARTHMERE_LIVE_NPC_ATTACKABLE_OVERRIDE:
   // The Harthmere live creatures are seeded as real NPCs but reuse legacy NPC
   // types like dMucker/biomesRobot whose Bikkie behavior has
   // damageable.attackable=false. If we return that false directly, the cursor
@@ -125,7 +125,7 @@ export function canAttackFilter(
     : harthmereLiveAttackable;
 }
 
-// HARTHMERE_VOXEL_REACH_ATTACK_V1:
+// HARTHMERE_VOXEL_REACH_ATTACK:
 // Pure decision for whether the entity currently under the crosshair should be
 // added to the melee attack set. The narrow melee cone
 // (combat.meleeAttackRegion.far) only catches point-blank targets, but a left
@@ -134,7 +134,7 @@ export function canAttackFilter(
 // voxel reach is what makes "the same swing that breaks the block also hits the
 // creature it's aimed at" true. Extracted as a pure function so the reach/dedup/
 // self-hit branches can be unit-tested without a DOM, table, or renderer.
-export function shouldAddCrosshairMeleeTargetV1(input: {
+export function shouldAddCrosshairMeleeTarget(input: {
   hasEntityHit: boolean;
   distance: number;
   reach: number;
@@ -155,7 +155,7 @@ export function shouldAddCrosshairMeleeTargetV1(input: {
   return !input.alreadyIncludedIds.includes(input.targetId);
 }
 
-export function traceNpcMetadataCursorHitsV1(
+export function traceNpcMetadataCursorHits(
   table: ClientTable,
   from: ReadonlyVec3,
   dir: ReadonlyVec3,

@@ -106,7 +106,7 @@ const K8_HFC_REDIS: RedisConnectionSpec = {
   options: BASE_REDIS_OPTIONS,
 };
 
-// GLITCH_REDIS_HOST_FALLBACK_V1:
+// GLITCH_REDIS_HOST_FALLBACK:
 // Accept the conventional `REDIS_HOST` / `REDIS_PORT` env names in addition
 // to the Glitch-prefixed and Biomes-legacy ones. The Container Apps
 // deployment sets `REDIS_HOST=10.0.0.12` on the container's env (which the
@@ -130,11 +130,11 @@ const LOCAL_REDIS_PORT = process.env.GLITCH_REDIS_PORT
   ? parseInt(process.env.REDIS_PORT, 10)
   : 6379;
 
-// GLITCH_REDIS_HOST_FALLBACK_V1: log the resolved Redis target once at
+// GLITCH_REDIS_HOST_FALLBACK: log the resolved Redis target once at
 // module load so the actually-used host:port is visible in every service's
 // log without needing NODE_DEBUG=net.
 console.log(
-  "GLITCH_STARTUP_TRACE_V2 redis-connection:resolved" +
+  "GLITCH_STARTUP_TRACE redis-connection:resolved" +
     ` host=${LOCAL_REDIS_HOST} port=${LOCAL_REDIS_PORT}` +
     ` GLITCH_REDIS_HOST=${process.env.GLITCH_REDIS_HOST ?? "<unset>"}` +
     ` LOCAL_REDIS_HOST=${process.env.LOCAL_REDIS_HOST ?? "<unset>"}` +
@@ -274,7 +274,7 @@ async function openConnection(
     const allowConfiguredNonK8Redis =
       !!process.env.GLITCH_REDIS_HOST ||
       !!process.env.LOCAL_REDIS_HOST ||
-      // GLITCH_REDIS_HOST_FALLBACK_V1: treat conventional REDIS_HOST as
+      // GLITCH_REDIS_HOST_FALLBACK: treat conventional REDIS_HOST as
       // an opt-in signal for non-K8 Redis too, matching LOCAL_REDIS_HOST.
       !!process.env.REDIS_HOST ||
       process.env.ALLOW_NON_K8_REDIS === "1";
@@ -453,7 +453,7 @@ export async function connectToRedis(
       : purpose;
   const purposeLabel = typeof purpose === "string" ? purpose : "<schema>";
   console.log(
-    `GLITCH_STARTUP_TRACE_V2 connectToRedis:enter purpose=${purposeLabel} db=${schema.db}`
+    `GLITCH_STARTUP_TRACE connectToRedis:enter purpose=${purposeLabel} db=${schema.db}`
   );
   const tConnect = Date.now();
   const options = { db: schema.db };
@@ -467,11 +467,11 @@ export async function connectToRedis(
     redis = new BiomesRedis(await openConnection(schema.conn, options));
   }
   console.log(
-    `GLITCH_STARTUP_TRACE_V2 connectToRedis:opened purpose=${purposeLabel} elapsedMs=${Date.now() - tConnect}`
+    `GLITCH_STARTUP_TRACE connectToRedis:opened purpose=${purposeLabel} elapsedMs=${Date.now() - tConnect}`
   );
   await redis.ping();
   console.log(
-    `GLITCH_STARTUP_TRACE_V2 connectToRedis:pinged purpose=${purposeLabel} totalMs=${Date.now() - tConnect}`
+    `GLITCH_STARTUP_TRACE connectToRedis:pinged purpose=${purposeLabel} totalMs=${Date.now() - tConnect}`
   );
   return redis;
 }

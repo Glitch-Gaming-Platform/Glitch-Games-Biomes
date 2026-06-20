@@ -4,11 +4,11 @@ import * as React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { HarthmereBusinessInterfacePanel } from "@/client/components/harthmere_business/HarthmereBusinessInterfacePanel";
 import {
-  HARTHMERE_BUSINESS_TYPE_ORDER_V1,
-  createHarthmereBusinessInterfaceAdapterV1,
-  normalizeHarthmereBusinessEconomySnapshotV1,
-  type HarthmereBusinessEconomySnapshotV1,
-  type HarthmereBusinessTypeIdV1,
+  HARTHMERE_BUSINESS_TYPE_ORDER,
+  createHarthmereBusinessInterfaceAdapter,
+  normalizeHarthmereBusinessEconomySnapshot,
+  type HarthmereBusinessEconomySnapshot,
+  type HarthmereBusinessTypeId,
 } from "@/client/components/harthmere_business/businessInterfaceLiveAdapter";
 import { DailyTodoTab } from "../tabs/DailyTodoTab";
 import { GuildsTab } from "../tabs/GuildsTab";
@@ -59,7 +59,7 @@ function assertPlayerFacing(html: string) {
   }
 }
 
-function businessType(typeId: HarthmereBusinessTypeIdV1) {
+function businessType(typeId: HarthmereBusinessTypeId) {
   return {
     typeId,
     displayName: typeId.replace(/_/g, " "),
@@ -80,7 +80,7 @@ function businessType(typeId: HarthmereBusinessTypeIdV1) {
 
 function business(
   businessId: string,
-  typeId: HarthmereBusinessTypeIdV1,
+  typeId: HarthmereBusinessTypeId,
   ownerId = "systems_surface_player"
 ) {
   return {
@@ -122,16 +122,16 @@ function business(
   };
 }
 
-function businessSnapshot(): HarthmereBusinessEconomySnapshotV1 {
+function businessSnapshot(): HarthmereBusinessEconomySnapshot {
   const businessTypes = Object.fromEntries(
-    HARTHMERE_BUSINESS_TYPE_ORDER_V1.map((typeId) => [
+    HARTHMERE_BUSINESS_TYPE_ORDER.map((typeId) => [
       typeId,
       businessType(typeId),
     ])
   );
   const owned = business("business_food", "food_service_restaurant");
   const clinic = business("business_clinic", "medical_doctor", "other_player");
-  return normalizeHarthmereBusinessEconomySnapshotV1({
+  return normalizeHarthmereBusinessEconomySnapshot({
     version: "systems-surface-test",
     actorId: "systems_surface_player",
     businessTypes,
@@ -437,7 +437,7 @@ describe("live mode systems frontend and SSR surfaces", () => {
 
   it("SSR-renders business, auction/market, and active quest guidance surfaces", () => {
     const snapshot = businessSnapshot();
-    const adapter = createHarthmereBusinessInterfaceAdapterV1({
+    const adapter = createHarthmereBusinessInterfaceAdapter({
       state: snapshot,
       hydrated: true,
       refresh: async () => snapshot,

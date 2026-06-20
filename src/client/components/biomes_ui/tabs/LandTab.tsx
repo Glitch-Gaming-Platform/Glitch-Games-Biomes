@@ -7,33 +7,33 @@
 // remain authoritative.
 
 import {
-  BUILDING_SYSTEM_BLUEPRINTS_V1,
-  BUILDING_SYSTEM_BUSINESS_TYPES_V1,
-  BUILDING_SYSTEM_GROVE_STEWARD_NPC_V1,
-  BUILDING_SYSTEM_MIRA_INTRO_QUEST_V1,
-  BUILDING_SYSTEM_PLOTS_V1,
-  BUILDING_SYSTEM_STAGE_ORDER_V1,
-  buildingSystemHomeConsoleMarkerIdV1,
-  buildingSystemMaterialRequirementLinesV1,
-  createBuildingSystemPlacementPreviewV1,
-  type BuildingSystemBlueprintDefinitionV1,
-  type BuildingSystemBusinessRecordV1,
-  type BuildingSystemDoorLockRecordV1,
-  type BuildingSystemInWorldMarkerV1,
-  type BuildingSystemPlotDefinitionV1,
-  type BuildingSystemProjectRecordV1,
-  type BuildingSystemPropertyRecordV1,
-  type BuildingSystemStorageContainerRecordV1,
-  type BuildingSystemStageV1,
-} from "@/shared/harthmere/building_system_v1";
+  BUILDING_SYSTEM_BLUEPRINTS,
+  BUILDING_SYSTEM_BUSINESS_TYPES,
+  BUILDING_SYSTEM_GROVE_STEWARD_NPC,
+  BUILDING_SYSTEM_MIRA_INTRO_QUEST,
+  BUILDING_SYSTEM_PLOTS,
+  BUILDING_SYSTEM_STAGE_ORDER,
+  buildingSystemHomeConsoleMarkerId,
+  buildingSystemMaterialRequirementLines,
+  createBuildingSystemPlacementPreview,
+  type BuildingSystemBlueprintDefinition,
+  type BuildingSystemBusinessRecord,
+  type BuildingSystemDoorLockRecord,
+  type BuildingSystemInWorldMarker,
+  type BuildingSystemPlotDefinition,
+  type BuildingSystemProjectRecord,
+  type BuildingSystemPropertyRecord,
+  type BuildingSystemStorageContainerRecord,
+  type BuildingSystemStage,
+} from "@/shared/harthmere/building_system";
 import * as React from "react";
-import { defaultHarthmereLiveFetchV1 } from "@/client/components/harthmere_live_fetch";
-import { requestBiomesUILocateOnMapV1 } from "@/client/components/biomes_ui/adapters/mapPinnedDestination";
+import { defaultHarthmereLiveFetch } from "@/client/components/harthmere_live_fetch";
+import { requestBiomesUILocateOnMap } from "@/client/components/biomes_ui/adapters/mapPinnedDestination";
 import {
-  landTabPlotCategoryV1,
-  landTabPlotCenterV1,
-  type LandTabPlotCategoryV1,
-} from "@/client/components/biomes_ui/tabs/landTabPlotCategoryV1";
+  landTabPlotCategory,
+  landTabPlotCenter,
+  type LandTabPlotCategory,
+} from "@/client/components/biomes_ui/tabs/landTabPlotCategory";
 import { Highlightable } from "../highlight/HighlightOverlay";
 import { RovingGrid } from "../nav/RovingGrid";
 import { biomesPlayerList, biomesPlayerSentence, biomesPlayerTitle } from "../playerFacingText";
@@ -75,8 +75,8 @@ type BuildingUiStep =
 
 interface BuildingSystemLandAdapter {
   isHydrated?: () => boolean;
-  getPlots?: () => BuildingSystemPlotDefinitionV1[];
-  getBlueprints?: () => BuildingSystemBlueprintDefinitionV1[];
+  getPlots?: () => BuildingSystemPlotDefinition[];
+  getBlueprints?: () => BuildingSystemBlueprintDefinition[];
   getOwnedPlotIds?: () => string[];
   getPlacedStructureIds?: () => string[];
   getBuildingState?: () => unknown;
@@ -141,7 +141,7 @@ const UI_STEPS: Array<{
   },
 ];
 
-const STAGE_ORDER: BuildingSystemStageV1[] = [...BUILDING_SYSTEM_STAGE_ORDER_V1];
+const STAGE_ORDER: BuildingSystemStage[] = [...BUILDING_SYSTEM_STAGE_ORDER];
 
 const BUILDING_ACTION_LABELS: Record<BuildingSystemAction, string> = {
   read_state: "checking your land",
@@ -171,22 +171,22 @@ const BUILDING_ACTION_LABELS: Record<BuildingSystemAction, string> = {
   collect_business_revenue: "collecting earnings",
 };
 
-interface BuildingSystemClientStateV3 {
+interface BuildingSystemClientState {
   gold: number;
   inventoryItems: Record<string, number>;
   ownedPlotIds: string[];
   safeZones: Record<string, { safeFromMuck: boolean; activatedAtMs: number; area: string }>;
-  activeProjects: Record<string, BuildingSystemProjectRecordV1>;
+  activeProjects: Record<string, BuildingSystemProjectRecord>;
   placedStructureIds: string[];
-  completedProperties: Record<string, BuildingSystemPropertyRecordV1>;
+  completedProperties: Record<string, BuildingSystemPropertyRecord>;
   buildingProgress: Record<string, number>;
-  inWorldMarkers: Record<string, BuildingSystemInWorldMarkerV1>;
-  storageContainers: Record<string, BuildingSystemStorageContainerRecordV1>;
-  doorLocks: Record<string, BuildingSystemDoorLockRecordV1>;
-  businesses: Record<string, BuildingSystemBusinessRecordV1>;
+  inWorldMarkers: Record<string, BuildingSystemInWorldMarker>;
+  storageContainers: Record<string, BuildingSystemStorageContainerRecord>;
+  doorLocks: Record<string, BuildingSystemDoorLockRecord>;
+  businesses: Record<string, BuildingSystemBusinessRecord>;
 }
 
-const EMPTY_BUILDING_CLIENT_STATE: BuildingSystemClientStateV3 = {
+const EMPTY_BUILDING_CLIENT_STATE: BuildingSystemClientState = {
   gold: 0,
   inventoryItems: {},
   ownedPlotIds: [],
@@ -201,7 +201,7 @@ const EMPTY_BUILDING_CLIENT_STATE: BuildingSystemClientStateV3 = {
   businesses: {},
 };
 
-function normalizeBuildingClientState(input: unknown): BuildingSystemClientStateV3 {
+function normalizeBuildingClientState(input: unknown): BuildingSystemClientState {
   const raw = typeof input === "object" && input !== null ? (input as any) : {};
   return {
     gold: Number.isFinite(Number(raw.gold)) ? Number(raw.gold) : 0,
@@ -243,7 +243,7 @@ function normalizeBuildingClientState(input: unknown): BuildingSystemClientState
 }
 
 function activeProjectForPlot(
-  state: BuildingSystemClientStateV3,
+  state: BuildingSystemClientState,
   plotId: string | undefined
 ) {
   if (!plotId) return undefined;
@@ -256,7 +256,7 @@ function propertyIdForPlot(plotId: string) {
   return `property_${plotId}`;
 }
 
-function stageLabel(stage: BuildingSystemStageV1): string {
+function stageLabel(stage: BuildingSystemStage): string {
   return biomesPlayerTitle(stage);
 }
 
@@ -293,11 +293,11 @@ function placementNoteLabel(note: string): string {
 }
 
 function formatMaterials(
-  blueprint: BuildingSystemBlueprintDefinitionV1,
-  stage: BuildingSystemStageV1,
-  project?: BuildingSystemProjectRecordV1
+  blueprint: BuildingSystemBlueprintDefinition,
+  stage: BuildingSystemStage,
+  project?: BuildingSystemProjectRecord
 ): string {
-  const lines = buildingSystemMaterialRequirementLinesV1({
+  const lines = buildingSystemMaterialRequirementLines({
     blueprint,
     stage,
     contributed: project?.stageProgress[stage]?.materials,
@@ -326,7 +326,7 @@ async function submitBuildingActionThroughLiveModeRoute(
     return { ok: false, errors: ["fetch_unavailable"] };
   }
   if (action === "read_state") {
-    const response = await defaultHarthmereLiveFetchV1(
+    const response = await defaultHarthmereLiveFetch(
       "/api/harthmere/live_mode_building_state",
       {
         method: "GET",
@@ -343,7 +343,7 @@ async function submitBuildingActionThroughLiveModeRoute(
   const requestId = `biomes_ui_building_${action}_${Date.now()}_${Math.random()
     .toString(36)
     .slice(2)}`;
-  const response = await defaultHarthmereLiveFetchV1("/api/harthmere/live_mode", {
+  const response = await defaultHarthmereLiveFetch("/api/harthmere/live_mode", {
     method: "POST",
     credentials: "same-origin",
     headers: { "Content-Type": "application/json" },
@@ -366,7 +366,7 @@ async function submitBuildingActionThroughLiveModeRoute(
 
 function useBuildingSystemBackend(
   adapter: BuildingSystemLandAdapter | undefined,
-  onBuildingState: (state: BuildingSystemClientStateV3) => void
+  onBuildingState: (state: BuildingSystemClientState) => void
 ) {
   const [pendingAction, setPendingAction] = React.useState<BuildingSystemAction | null>(null);
   const [lastResponse, setLastResponse] = React.useState<string>("Ready to build.");
@@ -408,8 +408,8 @@ function useBuildingSystemBackend(
 }
 
 function blueprintForPlot(
-  plot: BuildingSystemPlotDefinitionV1 | undefined,
-  blueprints: BuildingSystemBlueprintDefinitionV1[],
+  plot: BuildingSystemPlotDefinition | undefined,
+  blueprints: BuildingSystemBlueprintDefinition[],
   selectedBlueprintId: string | undefined
 ) {
   if (!plot) return undefined;
@@ -433,7 +433,7 @@ function gridRows<T>(items: T[], columns: number): T[][] {
   return rows;
 }
 
-function markerPositionHint(marker: BuildingSystemInWorldMarkerV1 | undefined) {
+function markerPositionHint(marker: BuildingSystemInWorldMarker | undefined) {
   if (!marker) return "Finishes with the building utilities.";
   if (marker.kind === "door_lock") return "At the front entrance.";
   if (marker.kind === "storage_container") return "Inside near the entry wall.";
@@ -443,9 +443,9 @@ function markerPositionHint(marker: BuildingSystemInWorldMarkerV1 | undefined) {
 }
 
 function markerForPropertyAccessPoint(
-  markers: Record<string, BuildingSystemInWorldMarkerV1>,
-  property: BuildingSystemPropertyRecordV1 | undefined,
-  kind: BuildingSystemInWorldMarkerV1["kind"]
+  markers: Record<string, BuildingSystemInWorldMarker>,
+  property: BuildingSystemPropertyRecord | undefined,
+  kind: BuildingSystemInWorldMarker["kind"]
 ) {
   if (!property) return undefined;
   const markerId =
@@ -454,7 +454,7 @@ function markerForPropertyAccessPoint(
       : kind === "door_lock"
         ? property.doorLockId
         : kind === "home_console"
-          ? buildingSystemHomeConsoleMarkerIdV1(property.propertyId)
+          ? buildingSystemHomeConsoleMarkerId(property.propertyId)
           : kind === "business_marker"
             ? `${property.businessId ?? `business_${property.propertyId}`}:marker`
             : undefined;
@@ -470,14 +470,14 @@ export const LandTab: React.FunctionComponent<{
   adapter?: BuildingSystemLandAdapter;
   initialStep?: BuildingUiStep;
 }> = ({ adapter, initialStep = "steward" }) => {
-  const plots = adapter?.getPlots?.() ?? BUILDING_SYSTEM_PLOTS_V1;
-  const blueprints = adapter?.getBlueprints?.() ?? BUILDING_SYSTEM_BLUEPRINTS_V1;
+  const plots = adapter?.getPlots?.() ?? BUILDING_SYSTEM_PLOTS;
+  const blueprints = adapter?.getBlueprints?.() ?? BUILDING_SYSTEM_BLUEPRINTS;
   const [step, setStep] = React.useState<BuildingUiStep>(initialStep);
   // Homes vs Business sub-tabs: the whole flow operates on the plots in the
   // active category.
-  const [category, setCategory] = React.useState<LandTabPlotCategoryV1>("homes");
+  const [category, setCategory] = React.useState<LandTabPlotCategory>("homes");
   const categoryPlots = React.useMemo(
-    () => plots.filter((plot) => landTabPlotCategoryV1(plot.plotType) === category),
+    () => plots.filter((plot) => landTabPlotCategory(plot.plotType) === category),
     [plots, category]
   );
   const [selectedPlotId, setSelectedPlotId] = React.useState<string>(
@@ -486,7 +486,7 @@ export const LandTab: React.FunctionComponent<{
   const [selectedBlueprintId, setSelectedBlueprintId] = React.useState<string>(
     plots[0]?.allowedBlueprintIds[0] ?? blueprints[0]?.blueprintId ?? ""
   );
-  const [serverState, setServerState] = React.useState<BuildingSystemClientStateV3>(() => {
+  const [serverState, setServerState] = React.useState<BuildingSystemClientState>(() => {
     const hydrated = normalizeBuildingClientState(adapter?.getBuildingState?.());
     return {
       ...EMPTY_BUILDING_CLIENT_STATE,
@@ -548,8 +548,8 @@ export const LandTab: React.FunctionComponent<{
 
   const talkToMira = React.useCallback(async () => {
     const response = await submit("talk_to_steward", {
-      npcId: BUILDING_SYSTEM_GROVE_STEWARD_NPC_V1.id,
-      questId: BUILDING_SYSTEM_MIRA_INTRO_QUEST_V1.questId,
+      npcId: BUILDING_SYSTEM_GROVE_STEWARD_NPC.id,
+      questId: BUILDING_SYSTEM_MIRA_INTRO_QUEST.questId,
     });
     if (!responseRejected(response)) {
       setStep("plots");
@@ -653,7 +653,7 @@ export const LandTab: React.FunctionComponent<{
   }, [runPropertyAction]);
 
   const selectPlot = React.useCallback(
-    (plot: BuildingSystemPlotDefinitionV1) => {
+    (plot: BuildingSystemPlotDefinition) => {
       setSelectedPlotId(plot.plotId);
       setSelectedBlueprintId(plot.allowedBlueprintIds[0] ?? "");
     },
@@ -664,12 +664,12 @@ export const LandTab: React.FunctionComponent<{
   // pin (+ minimap navigation aid) so the player can walk to it; the world hint
   // beam appears as they get close.
   const locatePlotOnMap = React.useCallback(
-    (plot: BuildingSystemPlotDefinitionV1) => {
-      requestBiomesUILocateOnMapV1({
+    (plot: BuildingSystemPlotDefinition) => {
+      requestBiomesUILocateOnMap({
         markerId: `plot_for_sale:${plot.plotId}`,
         label: plot.displayName,
         kind: "property",
-        worldPosition: landTabPlotCenterV1(plot),
+        worldPosition: landTabPlotCenter(plot),
         setAtMs: Date.now(),
       });
     },
@@ -683,8 +683,8 @@ export const LandTab: React.FunctionComponent<{
           <div className="biomes-building-eyebrow">Grove Building System</div>
           <h3 className="biomes-building-title">Claim frontier land. Build with real voxels.</h3>
           <p className="biomes-building-copy">
-            Talk to {BUILDING_SYSTEM_GROVE_STEWARD_NPC_V1.displayName} to complete the
-            {" "}{BUILDING_SYSTEM_MIRA_INTRO_QUEST_V1.displayName} intro quest, then pick the
+            Talk to {BUILDING_SYSTEM_GROVE_STEWARD_NPC.displayName} to complete the
+            {" "}{BUILDING_SYSTEM_MIRA_INTRO_QUEST.displayName} intro quest, then pick the
             Homes or Businesses tab to claim a plot in its designated frontier area,
             choose a blueprint, bring the needed materials, and manage access,
             taxes, upgrades, repairs, storage, and sale.
@@ -898,13 +898,13 @@ const StewardPanel: React.FunctionComponent<{
   <section className="biomes-building-card" aria-label="Grove land steward">
     <div className="biomes-building-eyebrow">NPC / Board</div>
     <h3 className="biomes-building-card-title">
-      {BUILDING_SYSTEM_GROVE_STEWARD_NPC_V1.displayName}
+      {BUILDING_SYSTEM_GROVE_STEWARD_NPC.displayName}
     </h3>
     <p className="biomes-building-quote">
-      “{BUILDING_SYSTEM_GROVE_STEWARD_NPC_V1.line}”
+      “{BUILDING_SYSTEM_GROVE_STEWARD_NPC.line}”
     </p>
     <div className="biomes-building-callout" aria-label="Business economy types">
-      <CardTitle title="Business economy" meta={`${BUILDING_SYSTEM_BUSINESS_TYPES_V1.length} types`} />
+      <CardTitle title="Business economy" meta={`${BUILDING_SYSTEM_BUSINESS_TYPES.length} types`} />
       <p>Businesses use license level, inventory, contracts, upkeep, service radius, reputation, customer satisfaction, revenue balance, and taxes.</p>
     </div>
     <div className="biomes-building-actions">
@@ -921,14 +921,14 @@ const StewardPanel: React.FunctionComponent<{
 );
 
 const PlotsPanel: React.FunctionComponent<{
-  category: LandTabPlotCategoryV1;
-  plots: BuildingSystemPlotDefinitionV1[];
+  category: LandTabPlotCategory;
+  plots: BuildingSystemPlotDefinition[];
   ownedPlotIds: string[];
-  safeZones: BuildingSystemClientStateV3["safeZones"];
+  safeZones: BuildingSystemClientState["safeZones"];
   selectedPlotId?: string;
-  onSelect: (plot: BuildingSystemPlotDefinitionV1) => void;
+  onSelect: (plot: BuildingSystemPlotDefinition) => void;
   onClaim: () => void;
-  onLocate: (plot: BuildingSystemPlotDefinitionV1) => void;
+  onLocate: (plot: BuildingSystemPlotDefinition) => void;
   pending: boolean;
 }> = ({
   category,
@@ -966,7 +966,7 @@ const PlotsPanel: React.FunctionComponent<{
           onActivate={(_row, _col, plot) => onSelect(plot)}
           className="biomes-building-grid"
           renderCell={(plot, { focused }, cell) => {
-            const center = landTabPlotCenterV1(plot);
+            const center = landTabPlotCenter(plot);
             const ownedPlot = ownedPlotIds.includes(plot.plotId);
             return (
               <Highlightable
@@ -1042,10 +1042,10 @@ const PlotsPanel: React.FunctionComponent<{
 };
 
 const BlueprintPanel: React.FunctionComponent<{
-  plot: BuildingSystemPlotDefinitionV1;
-  blueprints: BuildingSystemBlueprintDefinitionV1[];
+  plot: BuildingSystemPlotDefinition;
+  blueprints: BuildingSystemBlueprintDefinition[];
   selectedBlueprintId?: string;
-  onSelect: (blueprint: BuildingSystemBlueprintDefinitionV1) => void;
+  onSelect: (blueprint: BuildingSystemBlueprintDefinition) => void;
   onStart: () => void;
   onPreview: () => void;
   owned: boolean;
@@ -1121,12 +1121,12 @@ const BlueprintPanel: React.FunctionComponent<{
 );
 
 const GhostPreviewPanel: React.FunctionComponent<{
-  plot: BuildingSystemPlotDefinitionV1;
-  blueprint?: BuildingSystemBlueprintDefinitionV1;
+  plot: BuildingSystemPlotDefinition;
+  blueprint?: BuildingSystemBlueprintDefinition;
   owned: boolean;
 }> = ({ plot, blueprint, owned }) => {
   if (!blueprint) return null;
-  const preview = createBuildingSystemPlacementPreviewV1({ plot, blueprint, owned });
+  const preview = createBuildingSystemPlacementPreview({ plot, blueprint, owned });
   const guide = preview.guideConstruction;
   return (
     <div className="biomes-building-card" aria-label="Blueprint placement ghost preview">
@@ -1157,12 +1157,12 @@ const GhostPreviewPanel: React.FunctionComponent<{
 };
 
 const ConstructionPanel: React.FunctionComponent<{
-  plot: BuildingSystemPlotDefinitionV1;
-  blueprint: BuildingSystemBlueprintDefinitionV1;
+  plot: BuildingSystemPlotDefinition;
+  blueprint: BuildingSystemBlueprintDefinition;
   owned: boolean;
   placed: boolean;
-  stage: BuildingSystemStageV1;
-  project?: BuildingSystemProjectRecordV1;
+  stage: BuildingSystemStage;
+  project?: BuildingSystemProjectRecord;
   onStart: () => void;
   onContribute: () => void;
   pending: boolean;
@@ -1221,12 +1221,12 @@ const ConstructionPanel: React.FunctionComponent<{
 };
 
 const PropertyPanel: React.FunctionComponent<{
-  plot: BuildingSystemPlotDefinitionV1;
-  blueprint: BuildingSystemBlueprintDefinitionV1;
-  property?: BuildingSystemPropertyRecordV1;
+  plot: BuildingSystemPlotDefinition;
+  blueprint: BuildingSystemBlueprintDefinition;
+  property?: BuildingSystemPropertyRecord;
   owned: boolean;
   placed: boolean;
-  stage: BuildingSystemStageV1;
+  stage: BuildingSystemStage;
   terraformed: boolean;
   onManage: () => void;
   onTerraform: () => void;
@@ -1241,10 +1241,10 @@ const PropertyPanel: React.FunctionComponent<{
   onStartBusiness: () => void;
   onRunBusinessCycle: () => void;
   onCollectBusinessRevenue: () => void;
-  storageContainers: Record<string, BuildingSystemStorageContainerRecordV1>;
-  doorLocks: Record<string, BuildingSystemDoorLockRecordV1>;
-  inWorldMarkers: Record<string, BuildingSystemInWorldMarkerV1>;
-  businesses: Record<string, BuildingSystemBusinessRecordV1>;
+  storageContainers: Record<string, BuildingSystemStorageContainerRecord>;
+  doorLocks: Record<string, BuildingSystemDoorLockRecord>;
+  inWorldMarkers: Record<string, BuildingSystemInWorldMarker>;
+  businesses: Record<string, BuildingSystemBusinessRecord>;
   pending: boolean;
   terraformPending: boolean;
 }> = ({
@@ -1428,12 +1428,12 @@ const PropertyPanel: React.FunctionComponent<{
 };
 
 const SelectedPlotSummary: React.FunctionComponent<{
-  plot: BuildingSystemPlotDefinitionV1;
-  blueprint: BuildingSystemBlueprintDefinitionV1;
+  plot: BuildingSystemPlotDefinition;
+  blueprint: BuildingSystemBlueprintDefinition;
   owned: boolean;
   placed: boolean;
   terraformed: boolean;
-  stage: BuildingSystemStageV1;
+  stage: BuildingSystemStage;
 }> = ({ plot, blueprint, owned, placed, terraformed, stage }) => (
   <div className="biomes-building-card biomes-building-summary">
     <div className="biomes-building-eyebrow">Selected</div>

@@ -1,4 +1,4 @@
-export function nextBiomesProfileFocusIndexForKeyV1({
+export function nextBiomesProfileFocusIndexForKey({
   key,
   currentIndex,
   itemCount,

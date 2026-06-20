@@ -15,7 +15,7 @@ import type { TalkDialogStepAction } from "@/client/components/challenges/TalkDi
 import { useEffect, useMemo, useState } from "react";
 
 const HARTHMERE_CLASS_STATE_KEY =
-  "biomes.localDev.harthmere.classSkillState.v1";
+  "biomes.localDev.harthmere.classSkillState";
 const HARTHMERE_CLASS_EVENT = "biomes:harthmere-class-skill-changed";
 
 const SKILL_TITLES = [

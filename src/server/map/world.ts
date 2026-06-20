@@ -25,7 +25,7 @@ export class WorldHelperImpl implements WorldHelper {
       for (const entity of this.replica.table.scan(
         TerrainShardSelector.query.all()
       )) {
-        const shardAABB: AABB = [[...entity.box.v0], [...entity.box.v1]];
+        const shardAABB: AABB = [[...entity.box], [...entity.box]];
         this.worldAABB = this.worldAABB
           ? unionAABB(this.worldAABB, shardAABB)
           : shardAABB;

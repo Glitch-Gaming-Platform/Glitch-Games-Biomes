@@ -35,14 +35,14 @@ import * as React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { MathUtils, Spherical, Vector3 } from "three";
 import {
-  avatarSelectionChangedV1,
-  buildAvatarMutationEventsV1,
+  avatarSelectionChanged,
+  buildAvatarMutationEvents,
 } from "./avatarEditorMutations";
 import {
-  avatarEditorHairStyleIdsV1,
-  avatarEditorHeadIdsV1,
-  buildAvatarPreviewWearableOverridesV1,
-  itemForAvatarHairIdV1,
+  avatarEditorHairStyleIds,
+  avatarEditorHeadIds,
+  buildAvatarPreviewWearableOverrides,
+  itemForAvatarHairId,
 } from "./avatarEditorOptions";
 
 const titleStyle: React.CSSProperties = {
@@ -89,7 +89,7 @@ export const BiomesUIAvatarEditor: React.FunctionComponent<{}> = () => {
   // with the in-editor selection so the 3D model reflects unsaved changes.
   const wearableOverrides = useMemo(
     () =>
-      buildAvatarPreviewWearableOverridesV1(
+      buildAvatarPreviewWearableOverrides(
         ownedItems.wearing?.items,
         previewHair
       ),
@@ -113,7 +113,7 @@ export const BiomesUIAvatarEditor: React.FunctionComponent<{}> = () => {
     initialized &&
     !!previewAppearance &&
     !!appearanceComponent?.appearance &&
-    avatarSelectionChangedV1(
+    avatarSelectionChanged(
       { appearance: appearanceComponent.appearance, hairId: wearingHair?.id },
       { appearance: previewAppearance, hairId: previewHair?.id }
     );
@@ -124,7 +124,7 @@ export const BiomesUIAvatarEditor: React.FunctionComponent<{}> = () => {
     }
     setSaving(true);
     try {
-      const { appearanceEvent, hairEvent } = buildAvatarMutationEventsV1(
+      const { appearanceEvent, hairEvent } = buildAvatarMutationEvents(
         userId,
         { appearance: previewAppearance, hairId: previewHair?.id }
       );
@@ -264,7 +264,7 @@ export const BiomesUIAvatarEditor: React.FunctionComponent<{}> = () => {
             <AvatarHairStyleRow
               selectedId={previewHair?.id ?? INVALID_BIOMES_ID}
               onSelect={(id) => {
-                setPreviewHair(itemForAvatarHairIdV1(id));
+                setPreviewHair(itemForAvatarHairId(id));
               }}
             />
 
@@ -364,7 +364,7 @@ const AvatarHairStyleRow: React.FunctionComponent<{
   selectedId: BiomesId;
   onSelect: (id: BiomesId) => void;
 }> = ({ selectedId, onSelect }) => {
-  const hairIds = useMemo(() => avatarEditorHairStyleIdsV1(), []);
+  const hairIds = useMemo(() => avatarEditorHairStyleIds(), []);
   return (
     <AvatarOptionRow
       kind="hairStyle"
@@ -388,7 +388,7 @@ const AvatarHairStyleRow: React.FunctionComponent<{
         </button>
         {hairIds.map((id) => {
           const selected = selectedId === id;
-          const item = itemForAvatarHairIdV1(id);
+          const item = itemForAvatarHairId(id);
           const label = hairStyleLabel(id);
           return (
             <button
@@ -427,7 +427,7 @@ const AvatarHeadShapeRow: React.FunctionComponent<{
   previewAppearance: ReadonlyAppearance;
   onSelect: (id: BiomesId) => void;
 }> = ({ selectedId, previewAppearance, onSelect }) => {
-  const headIds = useMemo(() => avatarEditorHeadIdsV1(), []);
+  const headIds = useMemo(() => avatarEditorHeadIds(), []);
   return (
     <AvatarOptionRow
       kind="head"
@@ -486,7 +486,7 @@ function hairStyleLabel(id: BiomesId | undefined): string {
   if (!id || id === INVALID_BIOMES_ID) {
     return "Bald";
   }
-  const item = itemForAvatarHairIdV1(id);
+  const item = itemForAvatarHairId(id);
   return item?.displayName ?? humanizeAvatarOptionId(item?.name ?? id);
 }
 

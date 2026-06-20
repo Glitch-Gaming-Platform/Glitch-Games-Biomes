@@ -1,28 +1,28 @@
 import {
-  buildAzureSpeechSsmlV1,
-  parseHarthmereAzureVoiceIdV1,
-} from "@/shared/harthmere/npc_voice_profiles_v1";
+  buildAzureSpeechSsml,
+  parseHarthmereAzureVoiceId,
+} from "@/shared/harthmere/npc_voice_profiles";
 
-export interface AzureSpeechConfigV1 {
+export interface AzureSpeechConfig {
   key: string;
   region: string;
 }
 
-export interface AzureSpeechSynthesisResultV1 {
+export interface AzureSpeechSynthesisResult {
   audio: Buffer;
   contentType: string;
 }
 
-export interface AzureSpeechVoiceListEntryV1 {
+export interface AzureSpeechVoiceListEntry {
   Name?: string;
   ShortName?: string;
   Gender?: string;
   Locale?: string;
 }
 
-export function azureSpeechConfigFromEnvV1(
+export function azureSpeechConfigFromEnv(
   env: Record<string, string | undefined> = process.env
-): AzureSpeechConfigV1 | undefined {
+): AzureSpeechConfig | undefined {
   const key = (
     env.AZURE_SPEECH_KEY ??
     env.AZURE_AI_SPEECH_KEY ??
@@ -41,16 +41,16 @@ export function azureSpeechConfigFromEnvV1(
   return { key, region };
 }
 
-function azureSpeechTtsEndpointV1(config: AzureSpeechConfigV1) {
+function azureSpeechTtsEndpoint(config: AzureSpeechConfig) {
   return `https://${config.region}.tts.speech.microsoft.com/cognitiveservices/v1`;
 }
 
-function azureSpeechVoicesEndpointV1(config: AzureSpeechConfigV1) {
+function azureSpeechVoicesEndpoint(config: AzureSpeechConfig) {
   return `https://${config.region}.tts.speech.microsoft.com/cognitiveservices/voices/list`;
 }
 
-function azureSpeechSttEndpointV1(
-  config: AzureSpeechConfigV1,
+function azureSpeechSttEndpoint(
+  config: AzureSpeechConfig,
   language: string
 ) {
   const url = new URL(
@@ -60,7 +60,7 @@ function azureSpeechSttEndpointV1(
   return url.toString();
 }
 
-async function errorTextV1(response: Response) {
+async function errorText(response: Response) {
   try {
     return (await response.text()).slice(0, 1000);
   } catch {
@@ -68,40 +68,40 @@ async function errorTextV1(response: Response) {
   }
 }
 
-export async function listAzureSpeechVoicesV1(input?: {
-  config?: AzureSpeechConfigV1;
-}): Promise<AzureSpeechVoiceListEntryV1[] | undefined> {
-  const config = input?.config ?? azureSpeechConfigFromEnvV1();
+export async function listAzureSpeechVoices(input?: {
+  config?: AzureSpeechConfig;
+}): Promise<AzureSpeechVoiceListEntry[] | undefined> {
+  const config = input?.config ?? azureSpeechConfigFromEnv();
   if (!config) {
     return undefined;
   }
-  const response = await fetch(azureSpeechVoicesEndpointV1(config), {
+  const response = await fetch(azureSpeechVoicesEndpoint(config), {
     headers: {
       "Ocp-Apim-Subscription-Key": config.key,
     },
   });
   if (!response.ok) {
     throw new Error(
-      `Azure Speech voices list failed: ${response.status} ${await errorTextV1(
+      `Azure Speech voices list failed: ${response.status} ${await errorText(
         response
       )}`
     );
   }
-  return (await response.json()) as AzureSpeechVoiceListEntryV1[];
+  return (await response.json()) as AzureSpeechVoiceListEntry[];
 }
 
-export async function synthesizeAzureSpeechV1(input: {
+export async function synthesizeAzureSpeech(input: {
   text: string;
   voice: string;
   language?: string;
-  config?: AzureSpeechConfigV1;
-}): Promise<AzureSpeechSynthesisResultV1 | undefined> {
-  const config = input.config ?? azureSpeechConfigFromEnvV1();
-  const parsedVoice = parseHarthmereAzureVoiceIdV1(input.voice);
+  config?: AzureSpeechConfig;
+}): Promise<AzureSpeechSynthesisResult | undefined> {
+  const config = input.config ?? azureSpeechConfigFromEnv();
+  const parsedVoice = parseHarthmereAzureVoiceId(input.voice);
   if (!config || !parsedVoice || !input.text.trim()) {
     return undefined;
   }
-  const ssml = buildAzureSpeechSsmlV1({
+  const ssml = buildAzureSpeechSsml({
     text: input.text,
     voice: parsedVoice,
     language: input.language,
@@ -109,19 +109,19 @@ export async function synthesizeAzureSpeechV1(input: {
   if (!ssml.trim()) {
     return undefined;
   }
-  const response = await fetch(azureSpeechTtsEndpointV1(config), {
+  const response = await fetch(azureSpeechTtsEndpoint(config), {
     method: "POST",
     headers: {
       "Content-Type": "application/ssml+xml",
       "Ocp-Apim-Subscription-Key": config.key,
       "X-Microsoft-OutputFormat": "audio-48khz-192kbitrate-mono-mp3",
-      "User-Agent": "biomes-harthmere-azure-speech-v1",
+      "User-Agent": "biomes-harthmere-azure-speech",
     },
     body: ssml,
   });
   if (!response.ok) {
     throw new Error(
-      `Azure Speech synthesis failed: ${response.status} ${await errorTextV1(
+      `Azure Speech synthesis failed: ${response.status} ${await errorText(
         response
       )}`
     );
@@ -132,13 +132,13 @@ export async function synthesizeAzureSpeechV1(input: {
   };
 }
 
-export async function transcribeAzureSpeechV1(input: {
+export async function transcribeAzureSpeech(input: {
   audio: Buffer;
   mimeType?: string;
   language?: string;
-  config?: AzureSpeechConfigV1;
+  config?: AzureSpeechConfig;
 }): Promise<string | undefined> {
-  const config = input.config ?? azureSpeechConfigFromEnvV1();
+  const config = input.config ?? azureSpeechConfigFromEnv();
   if (!config || input.audio.length === 0) {
     return undefined;
   }
@@ -149,7 +149,7 @@ export async function transcribeAzureSpeechV1(input: {
     );
   }
   const response = await fetch(
-    azureSpeechSttEndpointV1(config, input.language ?? "en-US"),
+    azureSpeechSttEndpoint(config, input.language ?? "en-US"),
     {
       method: "POST",
       headers: {
@@ -162,7 +162,7 @@ export async function transcribeAzureSpeechV1(input: {
   );
   if (!response.ok) {
     throw new Error(
-      `Azure Speech recognition failed: ${response.status} ${await errorTextV1(
+      `Azure Speech recognition failed: ${response.status} ${await errorText(
         response
       )}`
     );

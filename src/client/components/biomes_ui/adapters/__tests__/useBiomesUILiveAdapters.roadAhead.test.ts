@@ -8,7 +8,7 @@ const localStorageValues = new Map<string, string>();
 
 function installWindowShim() {
   globalAny.window = {
-    __snapshotGroveV75: undefined,
+    __snapshotGrove: undefined,
     addEventListener: () => {},
     removeEventListener: () => {},
     dispatchEvent: () => true,
@@ -130,7 +130,7 @@ const ROAD_AHEAD_STEP_IDS = [
 ];
 
 function installFixture() {
-  globalAny.window.__snapshotGroveV75 = {
+  globalAny.window.__snapshotGrove = {
     version: "test",
     quests: [],
     landmarks: FIXTURE_LANDMARKS,
@@ -144,7 +144,7 @@ function installFixture() {
 
 function writeRoadAheadState(currentStepIndex: number) {
   globalAny.window.localStorage.setItem(
-    "biomes.localDev.snapshotMissionState.v73",
+    "biomes.localDev.snapshotMissionState",
     JSON.stringify({
       accepted: true,
       active: { snapshot_road_ahead_full_chain: currentStepIndex },

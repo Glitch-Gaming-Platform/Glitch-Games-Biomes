@@ -1,4 +1,4 @@
-import { TerrainMutator } from "@/server/gaia_v2/terrain/mutator";
+import { TerrainMutator } from "@/server/gaia/terrain/mutator";
 import { loadVoxeloo } from "@/server/shared/voxeloo";
 import { terrainDyeable } from "@/shared/asset_defs/quirk_helpers";
 import { getTerrainID } from "@/shared/asset_defs/terrain";

@@ -352,9 +352,9 @@ export const MiniPhoneGroupDetailPage: React.FunctionComponent<{
               object={mesh.three}
               ref={objectPreviewRef}
               controlTarget={
-                mesh.box.v0 && mesh.box.v1
+                mesh.box && mesh.box
                   ? new THREE.Vector3(
-                      ...scale(0.5, sub(mesh.box.v1, mesh.box.v0))
+                      ...scale(0.5, sub(mesh.box, mesh.box))
                     )
                   : undefined
               }

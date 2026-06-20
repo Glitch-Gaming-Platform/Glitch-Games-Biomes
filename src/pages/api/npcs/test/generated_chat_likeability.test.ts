@@ -3,33 +3,33 @@
 
 import assert from "assert";
 import {
-  generatedChatConversationMessagesFromContextForTestV1,
-  generatedChatConversationGuardrailPromptV1,
-  generatedChatLikeabilityForOptionV1,
-  generatedChatNormalizeModelOutputForTestV1,
-  generatedChatPlayerNameForPromptV1,
-  generatedChatSanitizeContextForPromptV1,
-  generatedChatSerializeMessageContextForTestV1,
-  generatedChatSpeechPerformanceBriefForTestV1,
+  generatedChatConversationMessagesFromContextForTest,
+  generatedChatConversationGuardrailPrompt,
+  generatedChatLikeabilityForOption,
+  generatedChatNormalizeModelOutputForTest,
+  generatedChatPlayerNameForPrompt,
+  generatedChatSanitizeContextForPrompt,
+  generatedChatSerializeMessageContextForTest,
+  generatedChatSpeechPerformanceBriefForTest,
 } from "@/pages/api/npcs/generated_chat";
-import { harthmereFallbackNpcOptionsV143 } from "@/shared/harthmere/npc_dialog_fallback_v143";
+import { harthmereFallbackNpcOptions } from "@/shared/harthmere/npc_dialog_fallback";
 
 describe("generated NPC chat likeability classification", () => {
   it("marks friendly, neutral, and rude generated options with HUD-ready deltas", () => {
     assert.equal(
-      generatedChatLikeabilityForOptionV1("Compliment Ruthe's steady eye"),
+      generatedChatLikeabilityForOption("Compliment Ruthe's steady eye"),
       6
     );
     assert.equal(
-      generatedChatLikeabilityForOptionV1("Ask about this place"),
+      generatedChatLikeabilityForOption("Ask about this place"),
       0
     );
-    assert.equal(generatedChatLikeabilityForOptionV1("Call Ruthe useless"), -8);
-    assert.equal(generatedChatLikeabilityForOptionV1("Close"), 0);
+    assert.equal(generatedChatLikeabilityForOption("Call Ruthe useless"), -8);
+    assert.equal(generatedChatLikeabilityForOption("Close"), 0);
   });
 
   it("keeps authored fallback ask options neutral", () => {
-    const ask = harthmereFallbackNpcOptionsV143({
+    const ask = harthmereFallbackNpcOptions({
       name: "Ruthe",
       description: "Harthmere lookout",
     }).find((option) => option.name === "Ask about this place");
@@ -39,20 +39,20 @@ describe("generated NPC chat likeability classification", () => {
 
   it("keeps ugly account ids out of spoken NPC prompt names", () => {
     assert.equal(
-      generatedChatPlayerNameForPromptV1("Glitch2a0103314f7be0"),
+      generatedChatPlayerNameForPrompt("Glitch2a0103314f7be0"),
       "traveler"
     );
     assert.equal(
-      generatedChatPlayerNameForPromptV1(
+      generatedChatPlayerNameForPrompt(
         "2a010331-4f54-460f-bdaf-d9afe0587be0"
       ),
       "traveler"
     );
-    assert.equal(generatedChatPlayerNameForPromptV1("Devin"), "Devin");
+    assert.equal(generatedChatPlayerNameForPrompt("Devin"), "Devin");
   });
 
   it("guards voice conversations against repeated opening monologues", () => {
-    const prompt = generatedChatConversationGuardrailPromptV1({
+    const prompt = generatedChatConversationGuardrailPrompt({
       hasUserResponse: true,
       hasMessageContext: true,
     });
@@ -64,26 +64,26 @@ describe("generated NPC chat likeability classification", () => {
 
   it("adds NPC-specific speech performance guidance to generated chat prompts", () => {
     assert.match(
-      generatedChatSpeechPerformanceBriefForTestV1({
+      generatedChatSpeechPerformanceBriefForTest({
         npcName: "Jackie",
         voiceId:
-          "azure-speech-v1|voice=en-US-LunaNeural|style=conversation|rate=-3%25|pitch=%2B1%25|actor=snapshot_grove_v75%3Ajackie%3A8810000000019301%3Ajackie",
+          "azure-speech|voice=en-US-LunaNeural|style=conversation|rate=-3%25|pitch=%2B1%25|actor=snapshot_grove%3Ajackie%3A8810000000019301%3Ajackie",
       }),
       /Tone: warm_practical.*road markers/
     );
     assert.match(
-      generatedChatSpeechPerformanceBriefForTestV1({
+      generatedChatSpeechPerformanceBriefForTest({
         npcName: "Doc",
         entityDescription: "Field medic and muck researcher.",
         voiceId:
-          "azure-speech-v1|voice=en-US-DavisNeural|style=chat|rate=-2%25|pitch=%2B0%25|actor=snapshot_grove_v75%3Adoc%3A8810000000019309%3Adoc",
+          "azure-speech|voice=en-US-DavisNeural|style=chat|rate=-2%25|pitch=%2B0%25|actor=snapshot_grove%3Adoc%3A8810000000019309%3Adoc",
       }),
       /Tone: clinical_blunt.*samples/
     );
   });
 
   it("keeps raw account ids out of current player context", () => {
-    const sanitized = generatedChatSanitizeContextForPromptV1(
+    const sanitized = generatedChatSanitizeContextForPrompt(
       [
         "Current player context:",
         "- Player: Glitch2a0103314f7be0.",
@@ -100,7 +100,7 @@ describe("generated NPC chat likeability classification", () => {
   });
 
   it("uses natural model dialog even when the model forgets button tags", () => {
-    const parsed = generatedChatNormalizeModelOutputForTestV1({
+    const parsed = generatedChatNormalizeModelOutputForTest({
       content:
         "I hear you. The east fence is still our worry, so keep your eyes on the broken posts.",
       questContext: "Quest: Repair the Safe-Zone Fence",
@@ -118,7 +118,7 @@ describe("generated NPC chat likeability classification", () => {
   });
 
   it("keeps model-provided buttons and strips speech markup from dialog text", () => {
-    const parsed = generatedChatNormalizeModelOutputForTestV1({
+    const parsed = generatedChatNormalizeModelOutputForTest({
       content: [
         "<text>Meet me by the fence after sundown.</text>",
         "<button>Ask why sundown matters</button>",
@@ -133,7 +133,7 @@ describe("generated NPC chat likeability classification", () => {
   });
 
   it("uses non-quest fallback buttons when generated chat has no active quest context", () => {
-    const parsed = generatedChatNormalizeModelOutputForTestV1({
+    const parsed = generatedChatNormalizeModelOutputForTest({
       content: "I heard you, but I need a clearer question.",
     });
 
@@ -146,7 +146,7 @@ describe("generated NPC chat likeability classification", () => {
 
   it("rejects empty generated chat output instead of speaking a blank line", () => {
     assert.equal(
-      generatedChatNormalizeModelOutputForTestV1({
+      generatedChatNormalizeModelOutputForTest({
         content: "   <text>   </text>   ",
       }),
       undefined
@@ -154,7 +154,7 @@ describe("generated NPC chat likeability classification", () => {
   });
 
   it("stores only same-NPC user and assistant conversation turns", () => {
-    const context = generatedChatSerializeMessageContextForTestV1({
+    const context = generatedChatSerializeMessageContextForTest({
       entityId: 123 as any,
       messages: [
         { role: "system", content: "Old NPC identity" },
@@ -164,7 +164,7 @@ describe("generated NPC chat likeability classification", () => {
     });
 
     assert.deepEqual(
-      generatedChatConversationMessagesFromContextForTestV1(
+      generatedChatConversationMessagesFromContextForTest(
         context,
         123 as any
       ),
@@ -174,7 +174,7 @@ describe("generated NPC chat likeability classification", () => {
       ]
     );
     assert.deepEqual(
-      generatedChatConversationMessagesFromContextForTestV1(
+      generatedChatConversationMessagesFromContextForTest(
         context,
         999 as any
       ),
@@ -190,7 +190,7 @@ describe("generated NPC chat likeability classification", () => {
     ]);
 
     assert.deepEqual(
-      generatedChatConversationMessagesFromContextForTestV1(
+      generatedChatConversationMessagesFromContextForTest(
         legacyContext,
         777 as any
       ),
@@ -202,7 +202,7 @@ describe("generated NPC chat likeability classification", () => {
   });
 
   it("limits saved voice conversation history to the latest eight turns", () => {
-    const context = generatedChatSerializeMessageContextForTestV1({
+    const context = generatedChatSerializeMessageContextForTest({
       entityId: 123 as any,
       messages: Array.from({ length: 12 }, (_, index) => ({
         role: index % 2 === 0 ? ("user" as const) : ("assistant" as const),
@@ -211,7 +211,7 @@ describe("generated NPC chat likeability classification", () => {
     });
 
     assert.deepEqual(
-      generatedChatConversationMessagesFromContextForTestV1(
+      generatedChatConversationMessagesFromContextForTest(
         context,
         123 as any
       ).map((message) => message.content),

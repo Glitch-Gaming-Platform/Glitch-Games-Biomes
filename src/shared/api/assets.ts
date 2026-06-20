@@ -32,36 +32,36 @@ export type WearableAssignment = [
   PaletteOption<"color_palettes/item_primary_colors"> | undefined
 ][];
 
-// HARTHMERE_GENERATED_MESH_DEFAULT_WEARABLES_V182:
+// HARTHMERE_GENERATED_MESH_DEFAULT_WEARABLES:
 // A bare generated player mesh uses the upstream base_model.vox. That base
 // mesh has bright white default clothing/underlayer geometry, which looked
 // like the old white-shell bug in production. Keep generated player meshes
 // clothed even when a guest/install account has no Wearing component yet, and
 // pair this with the asset export version bump above so old white cached GLBs
 // are not reused by the browser/CDN.
-export const HARTHMERE_GENERATED_MESH_DEFAULT_WEARABLES_VERSION_V182 =
-  "harthmere-generated-mesh-default-wearables-v182";
+export const HARTHMERE_GENERATED_MESH_DEFAULT_WEARABLES_VERSION =
+  "harthmere-generated-mesh-default-wearables";
 
-function playerMeshWearableAssignmentHasSlotV182(
+function playerMeshWearableAssignmentHasSlot(
   wearables: WearableAssignment,
   slot: BiomesId
 ): boolean {
   return wearables.some(([type]) => type === slot);
 }
 
-export function ensurePlayerMeshDefaultWearablesV182(
+export function ensurePlayerMeshDefaultWearables(
   wearables: WearableAssignment
 ): WearableAssignment {
   const withDefaults: WearableAssignment = [...wearables];
-  if (!playerMeshWearableAssignmentHasSlotV182(withDefaults, BikkieIds.top)) {
+  if (!playerMeshWearableAssignmentHasSlot(withDefaults, BikkieIds.top)) {
     withDefaults.push([BikkieIds.top, BikkieIds.muckyTop, undefined]);
   }
   if (
-    !playerMeshWearableAssignmentHasSlotV182(withDefaults, BikkieIds.bottoms)
+    !playerMeshWearableAssignmentHasSlot(withDefaults, BikkieIds.bottoms)
   ) {
     withDefaults.push([BikkieIds.bottoms, BikkieIds.muckySkirt, undefined]);
   }
-  if (!playerMeshWearableAssignmentHasSlotV182(withDefaults, BikkieIds.feet)) {
+  if (!playerMeshWearableAssignmentHasSlot(withDefaults, BikkieIds.feet)) {
     withDefaults.push([BikkieIds.feet, BikkieIds.boots, undefined]);
   }
   return withDefaults;
@@ -73,7 +73,7 @@ export function makePlayerMeshQueryString(
   eyeColorId?: PaletteOption<"color_palettes/eye_colors">,
   hairColorId?: PaletteOption<"color_palettes/hair_colors">
 ): string {
-  const queryParams = ensurePlayerMeshDefaultWearablesV182(wearables).map(
+  const queryParams = ensurePlayerMeshDefaultWearables(wearables).map(
     ([type, id, dye]) => [`${type}`, `${id}${dye ? `,${dye}` : ""}`]
   );
 

@@ -1,9 +1,9 @@
 import { useClientContext } from "@/client/components/contexts/ClientContextReactContext";
-import { defaultHarthmereLiveFetchV1 } from "@/client/components/harthmere_live_fetch";
+import { defaultHarthmereLiveFetch } from "@/client/components/harthmere_live_fetch";
 import {
   HARTHMERE_INVENTORY_EVENT,
-  getHarthmereItemDisplayV1,
-  harthmereJobToolOwnedStateV151,
+  getHarthmereItemDisplay,
+  harthmereJobToolOwnedState,
   performHarthmereHotbarAssignForBiomesUI,
   performHarthmereHotbarClearForBiomesUI,
   performHarthmereHotbarSlotMoveForBiomesUI,
@@ -15,35 +15,35 @@ import {
   type HarthmereItemInstance,
 } from "@/client/components/challenges/LocalDevHarthmereInventorySystem";
 import {
-  HARTHMERE_DAILY_TASK_COMPLETED_EVENT_V1,
-  completeHarthmereDailyTaskSoonV1,
+  HARTHMERE_DAILY_TASK_COMPLETED_EVENT,
+  completeHarthmereDailyTaskSoon,
 } from "@/client/components/challenges/harthmereDailyTasks";
 import {
-  harthmereCookingStationIdV1,
-  openHarthmereCookingStationV1,
+  harthmereCookingStationId,
+  openHarthmereCookingStation,
 } from "@/client/components/harthmere_cooking/harthmereCookingStations";
 import {
-  SNAPSHOT_MISSION_STATE_EVENT_V71,
-  firstActiveSnapshotRoadAheadQuestTitleForBiomesUIV73,
-  recordSnapshotRoadAheadChallengeStepForBiomesUIV73,
-  readSnapshotMissionStateV71,
-  recordSnapshotRoadAheadEquippedGearSlotForBiomesUIV73,
-  snapshotRoadAheadChallengeStepHintsFromActiveNuxesForBiomesUIV73,
-  snapshotRoadAheadMissionStepsForBiomesUIV73,
-  snapshotRoadAheadTrackableQuestsForBiomesUIV73,
+  SNAPSHOT_MISSION_STATE_EVENT,
+  firstActiveSnapshotRoadAheadQuestTitleForBiomesUI,
+  recordSnapshotRoadAheadChallengeStepForBiomesUI,
+  readSnapshotMissionState,
+  recordSnapshotRoadAheadEquippedGearSlotForBiomesUI,
+  snapshotRoadAheadChallengeStepHintsFromActiveNuxesForBiomesUI,
+  snapshotRoadAheadMissionStepsForBiomesUI,
+  snapshotRoadAheadTrackableQuestsForBiomesUI,
 } from "@/client/components/challenges/LocalDevSnapshotMissionBridge";
 import {
-  BUILDING_SYSTEM_BLUEPRINTS_V1,
-  BUILDING_SYSTEM_GROVE_STEWARD_NPC_V1,
-  BUILDING_SYSTEM_PLOTS_V1,
-} from "@/shared/harthmere/building_system_v1";
+  BUILDING_SYSTEM_BLUEPRINTS,
+  BUILDING_SYSTEM_GROVE_STEWARD_NPC,
+  BUILDING_SYSTEM_PLOTS,
+} from "@/shared/harthmere/building_system";
 import { usePointerLockManager } from "@/client/components/contexts/PointerLockContext";
 import { iconUrl } from "@/client/components/inventory/icons";
 import {
   destroyInventoryItem,
   throwInventoryItem,
 } from "@/client/game/helpers/inventory";
-import { publishHarthmereLiveEntityCombatMotionToRendererV1 } from "@/client/game/resources/harthmere_live_entity_motion_bridge_v1";
+import { publishHarthmereLiveEntityCombatMotionToRenderer } from "@/client/game/resources/harthmere_live_entity_motion_bridge";
 import type { GameModal } from "@/client/game/resources/game_modal";
 import {
   InventoryChangeSelectionEvent,
@@ -55,8 +55,8 @@ import {
 import type { OwnedItemReference } from "@/shared/ecs/gen/types";
 import { fireAndForget } from "@/shared/util/async";
 import {
-  createBiomesUIGuildsAdapterV1,
-  fetchBiomesUIGuildStateV1,
+  createBiomesUIGuildsAdapter,
+  fetchBiomesUIGuildState,
 } from "./guildsLiveAdapter";
 import * as React from "react";
 import type { BiomesUIAdapters } from "../BiomesUI";
@@ -84,79 +84,79 @@ import {
 } from "../tutorial/tutorialMissionMap";
 import { abilityVisibleInBiomesLibraryForTest } from "./abilityLibraryVisibility";
 import { mergeInventoryAndHotbarForBiomesBackpackForTest } from "./inventoryAdapterHelpers";
-import { shouldHydrateBiomesUILiveStateForTabV1 } from "./liveStateHydrationPolicy";
+import { shouldHydrateBiomesUILiveStateForTab } from "./liveStateHydrationPolicy";
 import { readableMapMarkerLabelForTest } from "./mapMarkerLabels";
 import {
   activeBiomesUIMapPinFromMarkerForTest,
-  readActiveBiomesUIMapPinV142,
-  writeActiveBiomesUIMapPinV142,
+  readActiveBiomesUIMapPin,
+  writeActiveBiomesUIMapPin,
 } from "./mapPinnedDestination";
 import {
-  readBiomesUIMainQuestSelectionV1,
-  setBiomesUIMainQuestFromTrackableQuestV1,
-  writeBiomesUIMainQuestSelectionV1,
+  readBiomesUIMainQuestSelection,
+  setBiomesUIMainQuestFromTrackableQuest,
+  writeBiomesUIMainQuestSelection,
 } from "./mainQuestSelection";
-import { appendHarthmereBusinessOutpostMapLandmarksV1 } from "./harthmereBusinessMapMarkersV1";
+import { appendHarthmereBusinessOutpostMapLandmarks } from "./harthmereBusinessMapMarkers";
 import {
-  activeJobsBoardMissionStepsForBiomesUIV1,
-  firstActiveJobsBoardQuestTitleForBiomesUIV1,
-  jobsBoardAcceptedJobLandmarksForBiomesUIV1,
-  jobsBoardToolSourceLandmarksForBiomesUIV1,
-  jobsBoardTrackableQuestsForBiomesUIV1,
-  shouldClearStaleJobsBoardPinV151,
+  activeJobsBoardMissionStepsForBiomesUI,
+  firstActiveJobsBoardQuestTitleForBiomesUI,
+  jobsBoardAcceptedJobLandmarksForBiomesUI,
+  jobsBoardToolSourceLandmarksForBiomesUI,
+  jobsBoardTrackableQuestsForBiomesUI,
+  shouldClearStaleJobsBoardPin,
 } from "./jobsBoardQuestMapAdapter";
 import {
-  BIOMES_UI_LIVE_ENTITY_HELPER_MARKER_SOURCE_V1,
-  activeLiveEntityHelperMissionStepsForBiomesUIV1,
-  firstActiveLiveEntityHelperQuestTitleForBiomesUIV1,
-  liveEntityHelperAcceptedQuestLandmarksForBiomesUIV1,
-  liveEntityHelperTrackableQuestsForBiomesUIV1,
+  BIOMES_UI_LIVE_ENTITY_HELPER_MARKER_SOURCE,
+  activeLiveEntityHelperMissionStepsForBiomesUI,
+  firstActiveLiveEntityHelperQuestTitleForBiomesUI,
+  liveEntityHelperAcceptedQuestLandmarksForBiomesUI,
+  liveEntityHelperTrackableQuestsForBiomesUI,
 } from "./liveEntityHelperQuestMapAdapter";
 import {
-  fetchHarthmereJobsBoardStateV1,
-  HARTHMERE_JOBS_BOARD_STATE_UPDATED_EVENT_V1,
-  normalizeHarthmereJobsBoardSnapshotV1,
+  fetchHarthmereJobsBoardState,
+  HARTHMERE_JOBS_BOARD_STATE_UPDATED_EVENT,
+  normalizeHarthmereJobsBoardSnapshot,
 } from "../../harthmere_jobs_board/jobsBoardLiveAdapter";
 import {
-  BIOMES_UI_SHARED_QUEST_MARKER_SOURCE_V1,
-  createHarthmereQuestInviteAdapterV1,
-  fetchHarthmereQuestStateV1,
-  HARTHMERE_QUEST_INVITES_UPDATED_EVENT_V1,
-  normalizeHarthmereQuestStateV1,
+  BIOMES_UI_SHARED_QUEST_MARKER_SOURCE,
+  createHarthmereQuestInviteAdapter,
+  fetchHarthmereQuestState,
+  HARTHMERE_QUEST_INVITES_UPDATED_EVENT,
+  normalizeHarthmereQuestState,
 } from "./questInviteAdapter";
 import {
-  LIVE_ENTITY_HELPER_QUEST_EVENT_V1,
-  readLiveEntityHelperQuestStateV1,
+  LIVE_ENTITY_HELPER_QUEST_EVENT,
+  readLiveEntityHelperQuestState,
 } from "@/client/components/challenges/LocalDevLiveEntityHelperQuestState";
-import { liveEntityHelperQuestRecordReadyToTurnInV1 } from "@/client/components/challenges/LocalDevLiveEntityHelperQuests";
-import { LIVE_ENTITY_HELPER_LIVE_MODE_RESPONSE_EVENT_V1 } from "@/client/components/challenges/liveEntityHelperQuestLiveAdapter";
+import { liveEntityHelperQuestRecordReadyToTurnIn } from "@/client/components/challenges/LocalDevLiveEntityHelperQuests";
+import { LIVE_ENTITY_HELPER_LIVE_MODE_RESPONSE_EVENT } from "@/client/components/challenges/liveEntityHelperQuestLiveAdapter";
 import {
   dailyTodoProgressForTest,
   dailyTodoTasksFromCareSnapshotForTest,
 } from "./dailyTodoAdapter";
 import {
-  biomesInventoryItemIconV1,
-  humanizeBiomesInventoryItemIdV1,
+  biomesInventoryItemIcon,
+  humanizeBiomesInventoryItemId,
 } from "./inventoryItemPresentation";
 import { BIOMES_UI_PLAYER_STATUS_UPDATED_EVENT } from "./playerStatusAdapter";
 import {
-  HARTHMERE_FOOD_DEFINITIONS_V1,
-  HARTHMERE_SEED_DEFINITIONS_V1,
-} from "@/shared/harthmere/mmo_farming_food_stamina_v1";
-import { HARTHMERE_MEDICAL_ITEM_DEFINITIONS_V1 } from "@/shared/harthmere/mmo_medical_health_v1";
-import { HARTHMERE_LOCAL_DEV_ITEM_USE_EVENT_V130 } from "@/shared/harthmere/snapshot_grove_trigger_contract_v130";
+  HARTHMERE_FOOD_DEFINITIONS,
+  HARTHMERE_SEED_DEFINITIONS,
+} from "@/shared/harthmere/mmo_farming_food_stamina";
+import { HARTHMERE_MEDICAL_ITEM_DEFINITIONS } from "@/shared/harthmere/mmo_medical_health";
+import { HARTHMERE_LOCAL_DEV_ITEM_USE_EVENT } from "@/shared/harthmere/snapshot_grove_trigger_contract";
 import {
   buildFarmingFoodInterfaceModelForTest,
-  farmingFoodQuickActionForKeyV1,
-  type FarmingFoodInterfaceActionV1,
+  farmingFoodQuickActionForKey,
+  type FarmingFoodInterfaceAction,
 } from "./farmingFoodInterfaceAdapter";
 import { buildBiomesUIMapAdapter } from "./mapLiveAdapter";
 import {
-  HARTHMERE_PROPERTY_BUILDING_STATE_EVENT_V1,
-  HARTHMERE_PROPERTY_MARKER_SOURCE_V1,
-  type HarthmerePropertyMapBuildingStateV1,
-} from "./propertyMapMarkersV1";
-import { HARTHMERE_BUSINESS_INVENTORY_LOOT_UPDATED_EVENT_V1 } from "@/client/components/harthmere_business/businessInterfaceLiveAdapter";
+  HARTHMERE_PROPERTY_BUILDING_STATE_EVENT,
+  HARTHMERE_PROPERTY_MARKER_SOURCE,
+  type HarthmerePropertyMapBuildingState,
+} from "./propertyMapMarkers";
+import { HARTHMERE_BUSINESS_INVENTORY_LOOT_UPDATED_EVENT } from "@/client/components/harthmere_business/businessInterfaceLiveAdapter";
 
 export const BIOMES_UI_OPEN_TAB_EVENT = "biomes-ui-open-tab";
 
@@ -178,12 +178,12 @@ const BIOMES_UI_KEY_TO_TAB: Record<string, TabKey> = {
   Comma: "options",
 };
 
-function hasActiveHarthmereGatheringNodePromptV1() {
+function hasActiveHarthmereGatheringNodePrompt() {
   return (
     typeof document !== "undefined" &&
     Boolean(
       document.querySelector(
-        '[data-harthmere-gathering-node-world-prompt-v1="active"]'
+        '[data-harthmere-gathering-node-world-prompt="active"]'
       )
     )
   );
@@ -205,10 +205,10 @@ const BIOMES_UI_TAB_TO_GARDEN_HOSE_TABS: Partial<Record<TabKey, string[]>> = {
   options: ["settings"],
 };
 
-const HARTHMERE_BIOMES_UI_LOCAL_ITEM_REF_PREFIX_V132 = "harthmere:";
-const HARTHMERE_BIOMES_UI_LOCAL_EQUIPMENT_REF_PREFIX_V132 =
+const HARTHMERE_BIOMES_UI_LOCAL_ITEM_REF_PREFIX = "harthmere:";
+const HARTHMERE_BIOMES_UI_LOCAL_EQUIPMENT_REF_PREFIX =
   "harthmere_equipment:";
-const HARTHMERE_QUEST_INVITE_POLL_INTERVAL_MS_V1 = 30_000;
+const HARTHMERE_QUEST_INVITE_POLL_INTERVAL_MS = 30_000;
 
 function isTypingInInput(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;
@@ -234,9 +234,9 @@ function countToNumber(count: unknown): number | undefined {
 }
 
 function humanizeRealItemId(itemId: string, fallback: string): string {
-  const harthmereDisplay = getHarthmereItemDisplayV1(itemId);
+  const harthmereDisplay = getHarthmereItemDisplay(itemId);
   if (harthmereDisplay?.name) return harthmereDisplay.name;
-  return humanizeBiomesInventoryItemIdV1(itemId, fallback);
+  return humanizeBiomesInventoryItemId(itemId, fallback);
 }
 
 function rawItemIdFromSlot(slot: any): string | undefined {
@@ -261,7 +261,7 @@ function readableItemName(slot: any, fallback: string): string {
   const item = slot?.item ?? slot;
   const itemId = rawItemIdFromSlot(slot);
   if (itemId) {
-    const harthmereDisplay = getHarthmereItemDisplayV1(itemId);
+    const harthmereDisplay = getHarthmereItemDisplay(itemId);
     if (harthmereDisplay?.name) return harthmereDisplay.name;
   }
   const explicit =
@@ -287,14 +287,14 @@ function slotToUiItem(slot: any, fallback: string): HotbarSlotItem | null {
   if (!slot || !slot.item) return null;
   const item = slot.item;
   const itemId = rawItemIdFromSlot(slot) ?? fallback;
-  const harthmereDisplay = getHarthmereItemDisplayV1(itemId);
+  const harthmereDisplay = getHarthmereItemDisplay(itemId);
   let icon = harthmereDisplay?.icon ?? "◼";
   if (!harthmereDisplay) {
     try {
-      icon = iconUrl(item) ?? biomesInventoryItemIconV1(itemId) ?? icon;
+      icon = iconUrl(item) ?? biomesInventoryItemIcon(itemId) ?? icon;
     } catch {
       icon =
-        item?.action === "photo" ? "📷" : biomesInventoryItemIconV1(itemId);
+        item?.action === "photo" ? "📷" : biomesInventoryItemIcon(itemId);
     }
   }
   return {
@@ -308,9 +308,9 @@ function slotToUiItem(slot: any, fallback: string): HotbarSlotItem | null {
 
 function inferInventoryCategory(item: any): string {
   const itemId = String(item?.id ?? item?.itemId ?? "").toLowerCase();
-  if (HARTHMERE_FOOD_DEFINITIONS_V1[itemId]) return "consumables";
-  if (HARTHMERE_MEDICAL_ITEM_DEFINITIONS_V1[itemId]) return "consumables";
-  if (HARTHMERE_SEED_DEFINITIONS_V1[itemId]) return "materials";
+  if (HARTHMERE_FOOD_DEFINITIONS[itemId]) return "consumables";
+  if (HARTHMERE_MEDICAL_ITEM_DEFINITIONS[itemId]) return "consumables";
+  if (HARTHMERE_SEED_DEFINITIONS[itemId]) return "materials";
   if (itemId === "raw_meat") return "materials";
   const raw = String(
     item?.category ??
@@ -339,7 +339,7 @@ function inferInventoryCategory(item: any): string {
   return raw;
 }
 
-function dispatchBiomesUITutorialItemUseV132(
+function dispatchBiomesUITutorialItemUse(
   item: {
     id?: string;
     itemId?: string;
@@ -356,7 +356,7 @@ function dispatchBiomesUITutorialItemUseV132(
   const itemId = String(item.itemId ?? item.id ?? "");
   if (!itemId) return;
   window.dispatchEvent(
-    new CustomEvent(HARTHMERE_LOCAL_DEV_ITEM_USE_EVENT_V130, {
+    new CustomEvent(HARTHMERE_LOCAL_DEV_ITEM_USE_EVENT, {
       detail: {
         itemId,
         itemName:
@@ -371,39 +371,39 @@ function dispatchBiomesUITutorialItemUseV132(
   );
 }
 
-function isLocalHarthmereItemRefV132(ref: InventoryUiRef) {
+function isLocalHarthmereItemRef(ref: InventoryUiRef) {
   return (
     ref.kind === "item" &&
     typeof ref.key === "string" &&
-    ref.key.startsWith(HARTHMERE_BIOMES_UI_LOCAL_ITEM_REF_PREFIX_V132)
+    ref.key.startsWith(HARTHMERE_BIOMES_UI_LOCAL_ITEM_REF_PREFIX)
   );
 }
 
-function isLocalHarthmereEquipmentRefV132(ref: InventoryUiRef) {
+function isLocalHarthmereEquipmentRef(ref: InventoryUiRef) {
   return (
     ref.kind === "wearable" &&
     typeof ref.key === "string" &&
-    ref.key.startsWith(HARTHMERE_BIOMES_UI_LOCAL_EQUIPMENT_REF_PREFIX_V132)
+    ref.key.startsWith(HARTHMERE_BIOMES_UI_LOCAL_EQUIPMENT_REF_PREFIX)
   );
 }
 
-function localHarthmereInstanceIdFromRefV132(ref: InventoryUiRef) {
-  return isLocalHarthmereItemRefV132(ref)
+function localHarthmereInstanceIdFromRef(ref: InventoryUiRef) {
+  return isLocalHarthmereItemRef(ref)
     ? String(ref.key).slice(
-        HARTHMERE_BIOMES_UI_LOCAL_ITEM_REF_PREFIX_V132.length
+        HARTHMERE_BIOMES_UI_LOCAL_ITEM_REF_PREFIX.length
       )
     : undefined;
 }
 
-function localHarthmereEquipmentSlotFromRefV132(ref: InventoryUiRef) {
-  return isLocalHarthmereEquipmentRefV132(ref)
+function localHarthmereEquipmentSlotFromRef(ref: InventoryUiRef) {
+  return isLocalHarthmereEquipmentRef(ref)
     ? String(ref.key).slice(
-        HARTHMERE_BIOMES_UI_LOCAL_EQUIPMENT_REF_PREFIX_V132.length
+        HARTHMERE_BIOMES_UI_LOCAL_EQUIPMENT_REF_PREFIX.length
       )
     : undefined;
 }
 
-function harthmereDisplayCategoryForBiomesUIV132(
+function harthmereDisplayCategoryForBiomesUI(
   category: string | undefined,
   equipSlot?: string
 ): string {
@@ -431,22 +431,22 @@ function harthmereDisplayCategoryForBiomesUIV132(
   return normalized || "item";
 }
 
-function localHarthmereBackpackItemToUiItemV132(
+function localHarthmereBackpackItemToUiItem(
   item: HarthmereItemInstance,
   index: number
 ): InventoryUiItem {
   const itemId = String(item.itemId);
-  const display = getHarthmereItemDisplayV1(itemId);
+  const display = getHarthmereItemDisplay(itemId);
   const equipSlot =
     display?.slot ?? inferEquipSlot({ id: itemId, name: itemId });
-  const category = harthmereDisplayCategoryForBiomesUIV132(
+  const category = harthmereDisplayCategoryForBiomesUI(
     display?.category,
     equipSlot
   );
   return {
     id: itemId,
     label: display?.name ?? humanizeRealItemId(itemId, itemId),
-    icon: display?.icon ?? biomesInventoryItemIconV1(itemId),
+    icon: display?.icon ?? biomesInventoryItemIcon(itemId),
     count: Math.max(1, Number(item.quantity ?? 1) || 1),
     quality: item.bound ? "quest" : "common",
     category,
@@ -454,7 +454,7 @@ function localHarthmereBackpackItemToUiItemV132(
     ref: {
       kind: "item",
       idx: index,
-      key: `${HARTHMERE_BIOMES_UI_LOCAL_ITEM_REF_PREFIX_V132}${item.instanceId}`,
+      key: `${HARTHMERE_BIOMES_UI_LOCAL_ITEM_REF_PREFIX}${item.instanceId}`,
     },
     source: "backpack",
     storageLocation: "backpack",
@@ -469,21 +469,21 @@ function localHarthmereBackpackItemToUiItemV132(
   };
 }
 
-function localHarthmereHotbarItemToUiItemV132(
+function localHarthmereHotbarItemToUiItem(
   itemId: string,
   index: number
 ): InventoryUiItem | null {
-  const display = getHarthmereItemDisplayV1(itemId);
+  const display = getHarthmereItemDisplay(itemId);
   if (!display) return null;
   const equipSlot =
     display.slot ?? inferEquipSlot({ id: itemId, name: itemId });
   return {
     id: itemId,
     label: display.name,
-    icon: display.icon ?? biomesInventoryItemIconV1(itemId),
+    icon: display.icon ?? biomesInventoryItemIcon(itemId),
     count: 1,
     quality: "common",
-    category: harthmereDisplayCategoryForBiomesUIV132(
+    category: harthmereDisplayCategoryForBiomesUI(
       display.category,
       equipSlot
     ),
@@ -506,20 +506,20 @@ function localHarthmereHotbarItemToUiItemV132(
   };
 }
 
-function localHarthmereEquipmentItemToUiItemV132(
+function localHarthmereEquipmentItemToUiItem(
   item: HarthmereItemInstance,
   slot: string
 ): InventoryUiItem {
   const itemId = String(item.itemId);
-  const display = getHarthmereItemDisplayV1(itemId);
+  const display = getHarthmereItemDisplay(itemId);
   const equipSlot = display?.slot ?? item.equipmentSlot ?? slot;
   return {
     id: itemId,
     label: display?.name ?? humanizeRealItemId(itemId, itemId),
-    icon: display?.icon ?? biomesInventoryItemIconV1(itemId),
+    icon: display?.icon ?? biomesInventoryItemIcon(itemId),
     count: 1,
     quality: item.bound ? "quest" : "common",
-    category: harthmereDisplayCategoryForBiomesUIV132(
+    category: harthmereDisplayCategoryForBiomesUI(
       display?.category,
       equipSlot
     ),
@@ -527,7 +527,7 @@ function localHarthmereEquipmentItemToUiItemV132(
     equipSlot,
     ref: {
       kind: "wearable",
-      key: `${HARTHMERE_BIOMES_UI_LOCAL_EQUIPMENT_REF_PREFIX_V132}${slot}`,
+      key: `${HARTHMERE_BIOMES_UI_LOCAL_EQUIPMENT_REF_PREFIX}${slot}`,
     },
     source: "equipment",
     storageLocation: "equipment",
@@ -540,11 +540,11 @@ function localHarthmereEquipmentItemToUiItemV132(
   };
 }
 
-function isLocalHarthmereConsumableUseItemV132(itemId: string) {
+function isLocalHarthmereConsumableUseItem(itemId: string) {
   return (
-    getHarthmereItemDisplayV1(itemId)?.canUse === true ||
-    !!HARTHMERE_FOOD_DEFINITIONS_V1[itemId] ||
-    !!HARTHMERE_MEDICAL_ITEM_DEFINITIONS_V1[itemId]
+    getHarthmereItemDisplay(itemId)?.canUse === true ||
+    !!HARTHMERE_FOOD_DEFINITIONS[itemId] ||
+    !!HARTHMERE_MEDICAL_ITEM_DEFINITIONS[itemId]
   );
 }
 
@@ -646,7 +646,7 @@ function dictionaryToVaultItems(
     .map(([itemId, count]) => ({
       id: itemId,
       name: humanizeRealItemId(itemId, itemId),
-      icon: biomesInventoryItemIconV1(itemId),
+      icon: biomesInventoryItemIcon(itemId),
       quantity: Number(count) || 0,
     }));
 }
@@ -660,10 +660,10 @@ function slotToInventoryUiItem(
   const base = slotToUiItem(slot, fallback);
   if (!base || !slot?.item) return null;
   const item = slot.item;
-  const display = getHarthmereItemDisplayV1(base.id);
+  const display = getHarthmereItemDisplay(base.id);
   const equipSlot = display?.slot ?? inferEquipSlot(item);
   const category = display
-    ? harthmereDisplayCategoryForBiomesUIV132(display.category, equipSlot)
+    ? harthmereDisplayCategoryForBiomesUI(display.category, equipSlot)
     : inferInventoryCategory(item);
   return {
     id: base.id,
@@ -747,7 +747,7 @@ function normalizeContainer(container: unknown): any[] {
 
 function readSnapshotGroveApi(): any | undefined {
   if (typeof window === "undefined") return undefined;
-  return (window as any).__snapshotGroveV75;
+  return (window as any).__snapshotGrove;
 }
 
 function normalizeMarkerId(markerId: string): string {
@@ -885,9 +885,9 @@ function deriveSnapshotTutorialStep(): CurrentStep | null {
   };
 }
 
-function dispatchLiveModePlayerStatusFromBodyV1(body: any) {
+function dispatchLiveModePlayerStatusFromBody(body: any) {
   if (typeof window === "undefined") return;
-  publishLiveModeCombatMotionFromBodyV1(body);
+  publishLiveModeCombatMotionFromBody(body);
   if (!body?.playerStatusState) return;
   window.dispatchEvent(
     new CustomEvent(BIOMES_UI_PLAYER_STATUS_UPDATED_EVENT, {
@@ -896,9 +896,9 @@ function dispatchLiveModePlayerStatusFromBodyV1(body: any) {
   );
 }
 
-function publishLiveModeCombatMotionFromBodyV1(body: any) {
+function publishLiveModeCombatMotionFromBody(body: any) {
   if (body?.combatState) {
-    publishHarthmereLiveEntityCombatMotionToRendererV1(body.combatState);
+    publishHarthmereLiveEntityCombatMotionToRenderer(body.combatState);
   }
 }
 
@@ -909,7 +909,7 @@ async function submitBuildingSystemLiveModeAction(
   const requestId = `biomes_ui_building_${action}_${Date.now()}_${Math.random()
     .toString(36)
     .slice(2)}`;
-  const response = await defaultHarthmereLiveFetchV1(
+  const response = await defaultHarthmereLiveFetch(
     "/api/harthmere/live_mode",
     {
       method: "POST",
@@ -933,26 +933,26 @@ async function submitBuildingSystemLiveModeAction(
   return response.json();
 }
 
-function dispatchHarthmereBuildingStateUpdateV1(
-  buildingState: HarthmerePropertyMapBuildingStateV1 | undefined
+function dispatchHarthmereBuildingStateUpdate(
+  buildingState: HarthmerePropertyMapBuildingState | undefined
 ) {
   if (typeof window === "undefined" || !buildingState) return;
   window.dispatchEvent(
-    new CustomEvent(HARTHMERE_PROPERTY_BUILDING_STATE_EVENT_V1, {
+    new CustomEvent(HARTHMERE_PROPERTY_BUILDING_STATE_EVENT, {
       detail: { buildingState },
     })
   );
 }
 
-async function fetchBuildingSystemStateV1(): Promise<
-  HarthmerePropertyMapBuildingStateV1 | undefined
+async function fetchBuildingSystemState(): Promise<
+  HarthmerePropertyMapBuildingState | undefined
 > {
   const body = await submitBuildingSystemLiveModeAction("read_state", {});
   return body?.buildingState;
 }
 
-async function fetchBankingStateV1(): Promise<any | undefined> {
-  const response = await defaultHarthmereLiveFetchV1(
+async function fetchBankingState(): Promise<any | undefined> {
+  const response = await defaultHarthmereLiveFetch(
     "/api/harthmere/live_mode_bank_state",
     {
       method: "GET",
@@ -964,8 +964,8 @@ async function fetchBankingStateV1(): Promise<any | undefined> {
   return body?.bankingState;
 }
 
-async function fetchInventoryLootStateV135(): Promise<any | undefined> {
-  const response = await defaultHarthmereLiveFetchV1(
+async function fetchInventoryLootState(): Promise<any | undefined> {
+  const response = await defaultHarthmereLiveFetch(
     "/api/harthmere/live_mode_inventory_loot_state",
     {
       method: "GET",
@@ -977,8 +977,8 @@ async function fetchInventoryLootStateV135(): Promise<any | undefined> {
   return body?.inventoryLootState;
 }
 
-async function fetchProgressionStateV1(): Promise<any | undefined> {
-  const response = await defaultHarthmereLiveFetchV1(
+async function fetchProgressionState(): Promise<any | undefined> {
+  const response = await defaultHarthmereLiveFetch(
     "/api/harthmere/live_mode_progression_state",
     {
       method: "GET",
@@ -990,8 +990,8 @@ async function fetchProgressionStateV1(): Promise<any | undefined> {
   return body?.progressionState;
 }
 
-async function fetchDailyStateV1(): Promise<any | undefined> {
-  const response = await defaultHarthmereLiveFetchV1(
+async function fetchDailyState(): Promise<any | undefined> {
+  const response = await defaultHarthmereLiveFetch(
     "/api/harthmere/live_mode_daily_state",
     {
       method: "GET",
@@ -1003,8 +1003,8 @@ async function fetchDailyStateV1(): Promise<any | undefined> {
   return body?.dailyState;
 }
 
-async function fetchFarmingFoodStateV1(): Promise<any | undefined> {
-  const response = await defaultHarthmereLiveFetchV1(
+async function fetchFarmingFoodState(): Promise<any | undefined> {
+  const response = await defaultHarthmereLiveFetch(
     "/api/harthmere/live_mode_farming_food_state",
     {
       method: "GET",
@@ -1016,15 +1016,15 @@ async function fetchFarmingFoodStateV1(): Promise<any | undefined> {
   return body?.farmingFoodState;
 }
 
-function isLiveUsableBackpackItemV1(itemId: string) {
+function isLiveUsableBackpackItem(itemId: string) {
   return (
-    !!HARTHMERE_FOOD_DEFINITIONS_V1[itemId] ||
-    !!HARTHMERE_MEDICAL_ITEM_DEFINITIONS_V1[itemId] ||
+    !!HARTHMERE_FOOD_DEFINITIONS[itemId] ||
+    !!HARTHMERE_MEDICAL_ITEM_DEFINITIONS[itemId] ||
     itemId === "raw_meat"
   );
 }
 
-function stackRecordToInventoryUiItemsV135(
+function stackRecordToInventoryUiItems(
   items: Record<string, number> | undefined,
   source: InventoryContainerKey,
   refKind: "item" | "hotbar" | "wearable" | "material" = "item",
@@ -1042,16 +1042,16 @@ function stackRecordToInventoryUiItemsV135(
   return Object.entries(items ?? {})
     .filter(([, count]) => Number(count) > 0)
     .map(([itemId, count], index) => {
-      const display = getHarthmereItemDisplayV1(itemId);
+      const display = getHarthmereItemDisplay(itemId);
       const equipSlot =
         display?.slot ?? inferEquipSlot({ id: itemId, name: itemId });
       const category = display
-        ? harthmereDisplayCategoryForBiomesUIV132(display.category, equipSlot)
+        ? harthmereDisplayCategoryForBiomesUI(display.category, equipSlot)
         : inferInventoryCategory({ id: itemId });
       return {
         id: itemId,
         label: display?.name ?? humanizeRealItemId(itemId, itemId),
-        icon: display?.icon ?? biomesInventoryItemIconV1(itemId),
+        icon: display?.icon ?? biomesInventoryItemIcon(itemId),
         count: Number(count) || 0,
         quality: "common" as InventoryUiItem["quality"],
         category,
@@ -1068,7 +1068,7 @@ function stackRecordToInventoryUiItemsV135(
         canUse:
           options.canUse ??
           display?.canUse ??
-          isLiveUsableBackpackItemV1(itemId),
+          isLiveUsableBackpackItem(itemId),
         canEquip: options.canEquip ?? display?.canEquip ?? Boolean(equipSlot),
         canMove: options.canMove ?? false,
         canSplit: options.canSplit ?? false,
@@ -1076,14 +1076,14 @@ function stackRecordToInventoryUiItemsV135(
         canDestroy: options.canDestroy ?? false,
         protectedReason:
           options.protectedReason ??
-          (isLiveUsableBackpackItemV1(itemId) || equipSlot
+          (isLiveUsableBackpackItem(itemId) || equipSlot
             ? undefined
             : "This item uses protected inventory handling."),
       };
     });
 }
 
-function mergeInventoryStackRecordsV1(
+function mergeInventoryStackRecords(
   ...records: Array<Record<string, number> | undefined>
 ): Record<string, number> | undefined {
   const merged: Record<string, number> = {};
@@ -1099,7 +1099,7 @@ function mergeInventoryStackRecordsV1(
   return Object.keys(merged).length > 0 ? merged : undefined;
 }
 
-function instanceRecordToInventoryUiItemsV135(
+function instanceRecordToInventoryUiItems(
   instanceIds: string[] | undefined,
   instances: Record<string, any> | undefined,
   indexOffset = 0
@@ -1111,7 +1111,7 @@ function instanceRecordToInventoryUiItemsV135(
     }
     const itemId = String(instance.itemId ?? instanceId);
     const count = Math.max(1, Math.trunc(Number(instance.quantity ?? 1) || 1));
-    const display = getHarthmereItemDisplayV1(itemId);
+    const display = getHarthmereItemDisplay(itemId);
     const equipSlot =
       display?.slot ??
       inferEquipSlot({
@@ -1126,13 +1126,13 @@ function instanceRecordToInventoryUiItemsV135(
         label: display?.name ?? humanizeRealItemId(itemId, itemId),
         icon:
           display?.icon ??
-          (biomesInventoryItemIconV1(itemId) === "◼"
+          (biomesInventoryItemIcon(itemId) === "◼"
             ? "◈"
-            : biomesInventoryItemIconV1(itemId)),
+            : biomesInventoryItemIcon(itemId)),
         count,
         quality: "common" as InventoryUiItem["quality"],
         category: display
-          ? harthmereDisplayCategoryForBiomesUIV132(display.category, equipSlot)
+          ? harthmereDisplayCategoryForBiomesUI(display.category, equipSlot)
           : inferInventoryCategory({
               id: itemId,
               category: instance.category,
@@ -1184,7 +1184,7 @@ function instanceRecordToInventoryUiItemsV135(
   });
 }
 
-function lootLedgerEntryToUiV135(
+function lootLedgerEntryToUi(
   entry: any,
   index: number,
   instances?: Record<string, any>
@@ -1196,7 +1196,7 @@ function lootLedgerEntryToUiV135(
     entry?.itemId ?? instance?.itemId ?? entry?.instanceId ?? `loot_${index}`
   );
   const at = Number(entry?.atMs ?? entry?.at ?? 0);
-  const status = lootRouteStatusV135(entry);
+  const status = lootRouteStatus(entry);
   return {
     id: String(entry?.id ?? `${itemId}_${index}`),
     itemName: humanizeRealItemId(itemId, itemId),
@@ -1209,11 +1209,11 @@ function lootLedgerEntryToUiV135(
     quality: String(entry?.quality ?? "common"),
     at: at > 0 ? new Date(at).toLocaleTimeString() : "recent",
     status,
-    route: lootRouteLabelV135(status),
+    route: lootRouteLabel(status),
   };
 }
 
-function lootDropsToUiV135(
+function lootDropsToUi(
   drops: any[] | undefined,
   instances?: Record<string, any>
 ) {
@@ -1276,7 +1276,7 @@ function lootDropsToUiV135(
   });
 }
 
-function lootRouteStatusV135(
+function lootRouteStatus(
   entry: any
 ): "claimed" | "wallet" | "material_storage" | "overflow" | "guild_vault" {
   const kind = String(entry?.kind ?? entry?.route ?? "").toLowerCase();
@@ -1289,7 +1289,7 @@ function lootRouteStatusV135(
   return "claimed";
 }
 
-function lootRouteLabelV135(status: string): string {
+function lootRouteLabel(status: string): string {
   if (status === "wallet") return "Wallet";
   if (status === "material_storage") return "Material Storage";
   if (status === "overflow") return "Overflow";
@@ -1304,7 +1304,7 @@ async function submitBankingLiveModeAction(
   const requestId = `biomes_ui_bank_${operation}_${Date.now()}_${Math.random()
     .toString(36)
     .slice(2)}`;
-  const response = await defaultHarthmereLiveFetchV1(
+  const response = await defaultHarthmereLiveFetch(
     "/api/harthmere/live_mode",
     {
       method: "POST",
@@ -1344,7 +1344,7 @@ async function submitProgressionLiveModeAction(
   const requestId = `biomes_ui_progression_${actionKind}_${Date.now()}_${Math.random()
     .toString(36)
     .slice(2)}`;
-  const response = await defaultHarthmereLiveFetchV1(
+  const response = await defaultHarthmereLiveFetch(
     "/api/harthmere/live_mode",
     {
       method: "POST",
@@ -1377,7 +1377,7 @@ async function submitDailyLiveModeAction(activityId: string): Promise<any> {
   const requestId = `biomes_ui_daily_${activityId}_${Date.now()}_${Math.random()
     .toString(36)
     .slice(2)}`;
-  const response = await defaultHarthmereLiveFetchV1(
+  const response = await defaultHarthmereLiveFetch(
     "/api/harthmere/live_mode",
     {
       method: "POST",
@@ -1416,7 +1416,7 @@ async function submitFarmingFoodLiveModeAction(
   const requestId = `biomes_ui_farming_food_${operation}_${Date.now()}_${Math.random()
     .toString(36)
     .slice(2)}`;
-  const response = await defaultHarthmereLiveFetchV1(
+  const response = await defaultHarthmereLiveFetch(
     "/api/harthmere/live_mode",
     {
       method: "POST",
@@ -1443,10 +1443,10 @@ async function submitFarmingFoodLiveModeAction(
     );
   }
   if (operation === "eat_food") {
-    completeHarthmereDailyTaskSoonV1("eat_meal");
+    completeHarthmereDailyTaskSoon("eat_meal");
   }
   if (["gather_seed", "plant", "water", "harvest"].includes(operation)) {
-    completeHarthmereDailyTaskSoonV1("garden_care");
+    completeHarthmereDailyTaskSoon("garden_care");
   }
   return body;
 }
@@ -1458,7 +1458,7 @@ async function submitMedicalLiveModeAction(
   const requestId = `biomes_ui_medical_${operation}_${Date.now()}_${Math.random()
     .toString(36)
     .slice(2)}`;
-  const response = await defaultHarthmereLiveFetchV1(
+  const response = await defaultHarthmereLiveFetch(
     "/api/harthmere/live_mode",
     {
       method: "POST",
@@ -1494,7 +1494,7 @@ async function submitEquipmentLiveModeAction(
   const requestId = `biomes_ui_equipment_${slot}_${Date.now()}_${Math.random()
     .toString(36)
     .slice(2)}`;
-  const response = await defaultHarthmereLiveFetchV1(
+  const response = await defaultHarthmereLiveFetch(
     "/api/harthmere/live_mode",
     {
       method: "POST",
@@ -1535,7 +1535,7 @@ async function submitInventoryItemLiveModeAction(
   const requestId = `biomes_ui_inventory_${operation}_${Date.now()}_${Math.random()
     .toString(36)
     .slice(2)}`;
-  const response = await defaultHarthmereLiveFetchV1(
+  const response = await defaultHarthmereLiveFetch(
     "/api/harthmere/live_mode",
     {
       method: "POST",
@@ -1568,7 +1568,7 @@ async function submitInventoryItemLiveModeAction(
 // Building System UI state is hydrated from /api/harthmere/live_mode via
 // the read_state action. Do not use browser storage as a source of ownership truth.
 
-// BIOMES_UI_MAP_ADAPTER_V141:
+// BIOMES_UI_MAP_ADAPTER:
 // Live map adapter feeds the upgraded MapQuestsTab with everything the
 // player should see: their own position (from /scene/local_player), Grove
 // landmarks, Harthmere business outposts, Jobs Board, all known NPCs, the
@@ -1717,25 +1717,25 @@ export function buildBiomesUIMapAdapterForTest(
     const kind = String(landmark?.kind ?? "").toLowerCase();
     return kind === "business" ||
       kind === "property" ||
-      landmark?.source === HARTHMERE_PROPERTY_MARKER_SOURCE_V1 ||
-      landmark?.source === BIOMES_UI_LIVE_ENTITY_HELPER_MARKER_SOURCE_V1 ||
-      landmark?.source === BIOMES_UI_SHARED_QUEST_MARKER_SOURCE_V1
+      landmark?.source === HARTHMERE_PROPERTY_MARKER_SOURCE ||
+      landmark?.source === BIOMES_UI_LIVE_ENTITY_HELPER_MARKER_SOURCE ||
+      landmark?.source === BIOMES_UI_SHARED_QUEST_MARKER_SOURCE
       ? id
       : normalizeMarkerId(id);
   };
   const MapLandmarks = () => {
     const api = readSnapshotGroveApi();
-    const liveEntityHelperState = readLiveEntityHelperQuestStateV1();
-    return appendHarthmereBusinessOutpostMapLandmarksV1([
+    const liveEntityHelperState = readLiveEntityHelperQuestState();
+    return appendHarthmereBusinessOutpostMapLandmarks([
       ...(Array.isArray(api?.landmarks) ? api.landmarks : []),
-      ...jobsBoardAcceptedJobLandmarksForBiomesUIV1(jobsBoardState),
-      ...jobsBoardToolSourceLandmarksForBiomesUIV1(
+      ...jobsBoardAcceptedJobLandmarksForBiomesUI(jobsBoardState),
+      ...jobsBoardToolSourceLandmarksForBiomesUI(
         jobsBoardState,
-        harthmereJobToolOwnedStateV151()
+        harthmereJobToolOwnedState()
       ),
-      ...liveEntityHelperAcceptedQuestLandmarksForBiomesUIV1(
+      ...liveEntityHelperAcceptedQuestLandmarksForBiomesUI(
         liveEntityHelperState,
-        { isReadyToTurnIn: liveEntityHelperQuestRecordReadyToTurnInV1 }
+        { isReadyToTurnIn: liveEntityHelperQuestRecordReadyToTurnIn }
       ),
     ]);
   };
@@ -1776,8 +1776,8 @@ export function buildBiomesUIMapAdapterForTest(
       const quests = Array.isArray(api?.quests) ? api.quests : [];
       const landmarks = MapLandmarks();
       const activeQuest = ActiveSnapshotQuest(quests, state);
-      const roadAheadQuest = snapshotRoadAheadTrackableQuestsForBiomesUIV73(
-        readSnapshotMissionStateV71()
+      const roadAheadQuest = snapshotRoadAheadTrackableQuestsForBiomesUI(
+        readSnapshotMissionState()
       )[0];
       const activeRoadAheadMarkerId =
         roadAheadQuest?.status === "active"
@@ -1818,7 +1818,7 @@ export function buildBiomesUIMapAdapterForTest(
           landmark?.active === true && kind === "objective";
         const isLiveEntityHelperMarker =
           landmark?.active === true &&
-          landmark?.source === BIOMES_UI_LIVE_ENTITY_HELPER_MARKER_SOURCE_V1;
+          landmark?.source === BIOMES_UI_LIVE_ENTITY_HELPER_MARKER_SOURCE;
         const isActiveQuestMarker =
           isCurrentObjective ||
           isRoadAheadObjective ||
@@ -1863,7 +1863,7 @@ export function buildBiomesUIMapAdapterForTest(
       if (!result.some((marker) => marker.id === "mira_grove_land_steward")) {
         result.push({
           id: "mira_grove_land_steward",
-          label: BUILDING_SYSTEM_GROVE_STEWARD_NPC_V1.displayName,
+          label: BUILDING_SYSTEM_GROVE_STEWARD_NPC.displayName,
           x: 0.66,
           y: 0.52,
           kind: "store" as const,
@@ -1876,14 +1876,14 @@ export function buildBiomesUIMapAdapterForTest(
       const state = api?.readState?.();
       const quests = Array.isArray(api?.quests) ? api.quests : [];
       const activeQuest = ActiveSnapshotQuest(quests, state);
-      const liveEntityHelperState = readLiveEntityHelperQuestStateV1();
+      const liveEntityHelperState = readLiveEntityHelperQuestState();
       return String(
         activeQuest?.title ??
-          firstActiveJobsBoardQuestTitleForBiomesUIV1(jobsBoardState) ??
-          firstActiveSnapshotRoadAheadQuestTitleForBiomesUIV73(
-            readSnapshotMissionStateV71()
+          firstActiveJobsBoardQuestTitleForBiomesUI(jobsBoardState) ??
+          firstActiveSnapshotRoadAheadQuestTitleForBiomesUI(
+            readSnapshotMissionState()
           ) ??
-          firstActiveLiveEntityHelperQuestTitleForBiomesUIV1(
+          firstActiveLiveEntityHelperQuestTitleForBiomesUI(
             liveEntityHelperState
           ) ??
           "Current Mission"
@@ -1900,16 +1900,16 @@ export function buildBiomesUIMapAdapterForTest(
         : [];
       if (!activeQuest) {
         const jobsBoardSteps =
-          activeJobsBoardMissionStepsForBiomesUIV1(jobsBoardState);
-        const roadAheadSteps = snapshotRoadAheadMissionStepsForBiomesUIV73(
-          readSnapshotMissionStateV71()
+          activeJobsBoardMissionStepsForBiomesUI(jobsBoardState);
+        const roadAheadSteps = snapshotRoadAheadMissionStepsForBiomesUI(
+          readSnapshotMissionState()
         );
         return jobsBoardSteps.length
           ? jobsBoardSteps
           : roadAheadSteps.length
           ? roadAheadSteps
-          : activeLiveEntityHelperMissionStepsForBiomesUIV1(
-              readLiveEntityHelperQuestStateV1()
+          : activeLiveEntityHelperMissionStepsForBiomesUI(
+              readLiveEntityHelperQuestState()
             );
       }
       return objectives.map((objective: string, index: number) => ({
@@ -1924,7 +1924,7 @@ export function buildBiomesUIMapAdapterForTest(
         done: index < objectiveIndex,
       }));
     },
-    // BIOMES_UI_MAP_TAB_QUESTS_V141:
+    // BIOMES_UI_MAP_TAB_QUESTS:
     // Power the new clickable quest list on the side panel. Each entry is a
     // landmark or marker the player can pin/jump to without touching the
     // world map.
@@ -1988,30 +1988,30 @@ export function buildBiomesUIMapAdapterForTest(
           };
         });
       return [
-        ...jobsBoardTrackableQuestsForBiomesUIV1(
+        ...jobsBoardTrackableQuestsForBiomesUI(
           jobsBoardState,
           Date.now(),
-          harthmereJobToolOwnedStateV151()
+          harthmereJobToolOwnedState()
         ),
-        ...snapshotRoadAheadTrackableQuestsForBiomesUIV73(
-          readSnapshotMissionStateV71()
+        ...snapshotRoadAheadTrackableQuestsForBiomesUI(
+          readSnapshotMissionState()
         ),
-        ...liveEntityHelperTrackableQuestsForBiomesUIV1(
-          readLiveEntityHelperQuestStateV1()
+        ...liveEntityHelperTrackableQuestsForBiomesUI(
+          readLiveEntityHelperQuestState()
         ),
         ...authoredQuests,
       ];
     },
-    getMainQuestSelection: () => readBiomesUIMainQuestSelectionV1(),
+    getMainQuestSelection: () => readBiomesUIMainQuestSelection(),
     setMainQuest: (quest: any) =>
-      setBiomesUIMainQuestFromTrackableQuestV1(quest),
-    clearMainQuest: () => writeBiomesUIMainQuestSelectionV1(undefined),
-    getActiveMapPin: () => readActiveBiomesUIMapPinV142(),
+      setBiomesUIMainQuestFromTrackableQuest(quest),
+    clearMainQuest: () => writeBiomesUIMainQuestSelection(undefined),
+    getActiveMapPin: () => readActiveBiomesUIMapPin(),
     setActiveMapPin: (marker: any) => {
       const pin = activeBiomesUIMapPinFromMarkerForTest(marker);
-      if (pin) writeActiveBiomesUIMapPinV142(pin);
+      if (pin) writeActiveBiomesUIMapPin(pin);
     },
-    clearActiveMapPin: () => writeActiveBiomesUIMapPinV142(undefined),
+    clearActiveMapPin: () => writeActiveBiomesUIMapPin(undefined),
   };
 }
 
@@ -2027,15 +2027,15 @@ export function dispatchBiomesUIOpenTab(tab: TabKey, source = "legacy"): void {
 // Persisted tab-shortcut overrides (rebindable in the Options tab). Stored as a
 // sparse { tab: key } map layered over DEFAULT_TAB_SHORTCUTS so new default tabs
 // keep working and only user-changed keys are saved.
-const BIOMES_UI_TAB_SHORTCUTS_STORAGE_KEY_V1 = "biomes.ui.tabShortcuts.v1";
+const BIOMES_UI_TAB_SHORTCUTS_STORAGE_KEY = "biomes.ui.tabShortcuts";
 
-function readPersistedTabShortcutsV1(): TabShortcut[] {
+function readPersistedTabShortcuts(): TabShortcut[] {
   if (typeof window === "undefined") {
     return DEFAULT_TAB_SHORTCUTS;
   }
   try {
     const raw = window.localStorage.getItem(
-      BIOMES_UI_TAB_SHORTCUTS_STORAGE_KEY_V1
+      BIOMES_UI_TAB_SHORTCUTS_STORAGE_KEY
     );
     if (!raw) {
       return DEFAULT_TAB_SHORTCUTS;
@@ -2052,18 +2052,18 @@ function readPersistedTabShortcutsV1(): TabShortcut[] {
   }
 }
 
-function persistTabShortcutV1(tab: string, key: string): void {
+function persistTabShortcut(tab: string, key: string): void {
   if (typeof window === "undefined") {
     return;
   }
   try {
     const raw = window.localStorage.getItem(
-      BIOMES_UI_TAB_SHORTCUTS_STORAGE_KEY_V1
+      BIOMES_UI_TAB_SHORTCUTS_STORAGE_KEY
     );
     const overrides = raw ? (JSON.parse(raw) as Record<string, string>) : {};
     overrides[tab] = key.toLowerCase();
     window.localStorage.setItem(
-      BIOMES_UI_TAB_SHORTCUTS_STORAGE_KEY_V1,
+      BIOMES_UI_TAB_SHORTCUTS_STORAGE_KEY,
       JSON.stringify(overrides)
     );
   } catch {}
@@ -2105,7 +2105,7 @@ export function useBiomesUILiveAdapters({
   const roadAheadChallengeStepHints = React.useMemo(
     () => [
       ...(resources.cached("/challenges/active_leaves") ?? []),
-      ...snapshotRoadAheadChallengeStepHintsFromActiveNuxesForBiomesUIV73(
+      ...snapshotRoadAheadChallengeStepHintsFromActiveNuxesForBiomesUI(
         activeNuxes
       ),
     ],
@@ -2116,10 +2116,10 @@ export function useBiomesUILiveAdapters({
   // Tab-shortcut rebindings from the Options tab, persisted to localStorage and
   // fed back to BiomesUI as shortcutOverrides so the rebinds actually open tabs.
   const [tabShortcuts, setTabShortcuts] = React.useState<TabShortcut[]>(() =>
-    readPersistedTabShortcutsV1()
+    readPersistedTabShortcuts()
   );
   const setTabShortcut = React.useCallback((tab: string, key: string) => {
-    persistTabShortcutV1(tab, key);
+    persistTabShortcut(tab, key);
     setTabShortcuts((prev) =>
       prev.map((shortcut) =>
         shortcut.tab === tab
@@ -2137,7 +2137,7 @@ export function useBiomesUILiveAdapters({
   );
   const [guildHydrated, setGuildHydrated] = React.useState(false);
   const [buildingState, setBuildingState] = React.useState<
-    HarthmerePropertyMapBuildingStateV1 | undefined
+    HarthmerePropertyMapBuildingState | undefined
   >(undefined);
   const [buildingHydrated, setBuildingHydrated] = React.useState(false);
   const [inventoryLootState, setInventoryLootState] = React.useState<
@@ -2172,27 +2172,27 @@ export function useBiomesUILiveAdapters({
     const bump = () => setSnapshotRevision((value) => value + 1);
     window.addEventListener("storage", bump);
     window.addEventListener(
-      "biomes:local-dev-snapshot-grove-quest-state-v75",
+      "biomes:local-dev-snapshot-grove-quest-state",
       bump
     );
     window.addEventListener(
-      "biomes:snapshot-grove-tutor-hud-highlights-v109",
+      "biomes:snapshot-grove-tutor-hud-highlights",
       bump
     );
-    window.addEventListener(SNAPSHOT_MISSION_STATE_EVENT_V71, bump);
-    window.addEventListener(LIVE_ENTITY_HELPER_QUEST_EVENT_V1, bump);
+    window.addEventListener(SNAPSHOT_MISSION_STATE_EVENT, bump);
+    window.addEventListener(LIVE_ENTITY_HELPER_QUEST_EVENT, bump);
     return () => {
       window.removeEventListener("storage", bump);
       window.removeEventListener(
-        "biomes:local-dev-snapshot-grove-quest-state-v75",
+        "biomes:local-dev-snapshot-grove-quest-state",
         bump
       );
       window.removeEventListener(
-        "biomes:snapshot-grove-tutor-hud-highlights-v109",
+        "biomes:snapshot-grove-tutor-hud-highlights",
         bump
       );
-      window.removeEventListener(SNAPSHOT_MISSION_STATE_EVENT_V71, bump);
-      window.removeEventListener(LIVE_ENTITY_HELPER_QUEST_EVENT_V1, bump);
+      window.removeEventListener(SNAPSHOT_MISSION_STATE_EVENT, bump);
+      window.removeEventListener(LIVE_ENTITY_HELPER_QUEST_EVENT, bump);
     };
   }, []);
 
@@ -2209,7 +2209,7 @@ export function useBiomesUILiveAdapters({
 
   const refreshBankingState = React.useCallback(async () => {
     try {
-      const nextState = await fetchBankingStateV1();
+      const nextState = await fetchBankingState();
       setBankingState(nextState);
     } catch {
       setBankingState(undefined);
@@ -2220,13 +2220,13 @@ export function useBiomesUILiveAdapters({
 
   React.useEffect(() => {
     if (typeof window === "undefined") return;
-    if (!shouldHydrateBiomesUILiveStateForTabV1("banking", activeTab)) return;
+    if (!shouldHydrateBiomesUILiveStateForTab("banking", activeTab)) return;
     void refreshBankingState();
   }, [activeTab, refreshBankingState]);
 
   const refreshGuildState = React.useCallback(async () => {
     try {
-      const nextState = await fetchBiomesUIGuildStateV1();
+      const nextState = await fetchBiomesUIGuildState();
       setGuildState(nextState);
     } catch {
       setGuildState(undefined);
@@ -2237,15 +2237,15 @@ export function useBiomesUILiveAdapters({
 
   React.useEffect(() => {
     if (typeof window === "undefined") return;
-    if (!shouldHydrateBiomesUILiveStateForTabV1("guild", activeTab)) return;
+    if (!shouldHydrateBiomesUILiveStateForTab("guild", activeTab)) return;
     void refreshGuildState();
   }, [activeTab, refreshGuildState]);
 
   const refreshBuildingState = React.useCallback(async () => {
     try {
-      const nextState = await fetchBuildingSystemStateV1();
+      const nextState = await fetchBuildingSystemState();
       setBuildingState(nextState);
-      dispatchHarthmereBuildingStateUpdateV1(nextState);
+      dispatchHarthmereBuildingStateUpdate(nextState);
     } catch {
       setBuildingState(undefined);
     } finally {
@@ -2255,7 +2255,7 @@ export function useBiomesUILiveAdapters({
 
   React.useEffect(() => {
     if (typeof window === "undefined") return;
-    if (!shouldHydrateBiomesUILiveStateForTabV1("building", activeTab)) return;
+    if (!shouldHydrateBiomesUILiveStateForTab("building", activeTab)) return;
     void refreshBuildingState();
   }, [activeTab, refreshBuildingState]);
 
@@ -2264,7 +2264,7 @@ export function useBiomesUILiveAdapters({
       const body = await submitBuildingSystemLiveModeAction(action, payload);
       if (body?.buildingState) {
         setBuildingState(body.buildingState);
-        dispatchHarthmereBuildingStateUpdateV1(body.buildingState);
+        dispatchHarthmereBuildingStateUpdate(body.buildingState);
       } else if (action !== "read_state") {
         void refreshBuildingState();
       }
@@ -2275,7 +2275,7 @@ export function useBiomesUILiveAdapters({
 
   const refreshInventoryLootState = React.useCallback(async () => {
     try {
-      const nextState = await fetchInventoryLootStateV135();
+      const nextState = await fetchInventoryLootState();
       setInventoryLootState(nextState);
     } catch {
       setInventoryLootState(undefined);
@@ -2286,7 +2286,7 @@ export function useBiomesUILiveAdapters({
 
   React.useEffect(() => {
     if (typeof window === "undefined") return;
-    if (!shouldHydrateBiomesUILiveStateForTabV1("inventoryLoot", activeTab)) {
+    if (!shouldHydrateBiomesUILiveStateForTab("inventoryLoot", activeTab)) {
       return;
     }
     void refreshInventoryLootState();
@@ -2294,7 +2294,7 @@ export function useBiomesUILiveAdapters({
 
   const refreshProgressionState = React.useCallback(async () => {
     try {
-      const nextState = await fetchProgressionStateV1();
+      const nextState = await fetchProgressionState();
       setProgressionState(nextState);
     } catch {
       setProgressionState(undefined);
@@ -2305,14 +2305,14 @@ export function useBiomesUILiveAdapters({
 
   React.useEffect(() => {
     if (typeof window === "undefined") return;
-    if (!shouldHydrateBiomesUILiveStateForTabV1("progression", activeTab))
+    if (!shouldHydrateBiomesUILiveStateForTab("progression", activeTab))
       return;
     void refreshProgressionState();
   }, [activeTab, refreshProgressionState]);
 
   const refreshDailyState = React.useCallback(async () => {
     try {
-      const nextState = await fetchDailyStateV1();
+      const nextState = await fetchDailyState();
       setDailyState(nextState);
     } catch {
       setDailyState(undefined);
@@ -2341,12 +2341,12 @@ export function useBiomesUILiveAdapters({
           );
         }
       }
-      dispatchLiveModePlayerStatusFromBodyV1(body);
+      dispatchLiveModePlayerStatusFromBody(body);
     };
-    window.addEventListener(HARTHMERE_DAILY_TASK_COMPLETED_EVENT_V1, handler);
+    window.addEventListener(HARTHMERE_DAILY_TASK_COMPLETED_EVENT, handler);
     return () =>
       window.removeEventListener(
-        HARTHMERE_DAILY_TASK_COMPLETED_EVENT_V1,
+        HARTHMERE_DAILY_TASK_COMPLETED_EVENT,
         handler
       );
   }, [refreshDailyState]);
@@ -2372,15 +2372,15 @@ export function useBiomesUILiveAdapters({
       } else {
         void refreshInventoryLootState();
       }
-      dispatchLiveModePlayerStatusFromBodyV1(body);
+      dispatchLiveModePlayerStatusFromBody(body);
     };
     window.addEventListener(
-      HARTHMERE_BUSINESS_INVENTORY_LOOT_UPDATED_EVENT_V1,
+      HARTHMERE_BUSINESS_INVENTORY_LOOT_UPDATED_EVENT,
       handler
     );
     return () =>
       window.removeEventListener(
-        HARTHMERE_BUSINESS_INVENTORY_LOOT_UPDATED_EVENT_V1,
+        HARTHMERE_BUSINESS_INVENTORY_LOOT_UPDATED_EVENT,
         handler
       );
   }, [refreshInventoryLootState]);
@@ -2388,19 +2388,19 @@ export function useBiomesUILiveAdapters({
   React.useEffect(() => {
     const handler = (event: any) => {
       if (event?.kind === "destroy") {
-        completeHarthmereDailyTaskSoonV1("forage_walk");
+        completeHarthmereDailyTaskSoon("forage_walk");
       }
       if (event?.kind === "place_voxel") {
-        completeHarthmereDailyTaskSoonV1("home_care");
+        completeHarthmereDailyTaskSoon("home_care");
       }
       if (event?.kind === "challenge_step_complete") {
-        completeHarthmereDailyTaskSoonV1("main_quest");
+        completeHarthmereDailyTaskSoon("main_quest");
       }
       if (
         event?.kind === "challenge_step_begin" ||
         event?.kind === "challenge_step_complete"
       ) {
-        const recorded = recordSnapshotRoadAheadChallengeStepForBiomesUIV73(
+        const recorded = recordSnapshotRoadAheadChallengeStepForBiomesUI(
           event.stepId,
           event.kind === "challenge_step_begin" ? "begin" : "complete"
         );
@@ -2415,13 +2415,13 @@ export function useBiomesUILiveAdapters({
 
   React.useEffect(() => {
     if (typeof window === "undefined") return;
-    if (!shouldHydrateBiomesUILiveStateForTabV1("daily", activeTab)) return;
+    if (!shouldHydrateBiomesUILiveStateForTab("daily", activeTab)) return;
     void refreshDailyState();
   }, [activeTab, refreshDailyState]);
 
   const refreshFarmingFoodState = React.useCallback(async () => {
     try {
-      const nextState = await fetchFarmingFoodStateV1();
+      const nextState = await fetchFarmingFoodState();
       setFarmingFoodState(nextState);
     } catch {
       setFarmingFoodState(undefined);
@@ -2437,7 +2437,7 @@ export function useBiomesUILiveAdapters({
 
   const refreshJobsBoardState = React.useCallback(async () => {
     try {
-      setJobsBoardState(await fetchHarthmereJobsBoardStateV1());
+      setJobsBoardState(await fetchHarthmereJobsBoardState());
     } catch {
       setJobsBoardState(undefined);
     }
@@ -2451,17 +2451,17 @@ export function useBiomesUILiveAdapters({
   React.useEffect(() => {
     if (typeof window === "undefined") return;
     const landmarks =
-      jobsBoardAcceptedJobLandmarksForBiomesUIV1(jobsBoardState);
-    const existing = readActiveBiomesUIMapPinV142();
+      jobsBoardAcceptedJobLandmarksForBiomesUI(jobsBoardState);
+    const existing = readActiveBiomesUIMapPin();
     // Drop a jobs-board pin whose job is no longer active (completed/abandoned)
     // so it stops driving the HUD aid and suppressing other quest beacons.
     if (
-      shouldClearStaleJobsBoardPinV151({
+      shouldClearStaleJobsBoardPin({
         activePinMarkerId: existing?.markerId,
         activeJobsBoardMarkerIds: landmarks.map((landmark) => landmark.id),
       })
     ) {
-      writeActiveBiomesUIMapPinV142(undefined);
+      writeActiveBiomesUIMapPin(undefined);
       return;
     }
     const landmark = landmarks[0];
@@ -2480,7 +2480,7 @@ export function useBiomesUILiveAdapters({
       description: landmark.description,
     });
     if (pin) {
-      writeActiveBiomesUIMapPinV142(pin);
+      writeActiveBiomesUIMapPin(pin);
     }
   }, [jobsBoardState]);
 
@@ -2488,7 +2488,7 @@ export function useBiomesUILiveAdapters({
     if (questStateRefreshInFlightRef.current) return;
     questStateRefreshInFlightRef.current = true;
     try {
-      setQuestState(await fetchHarthmereQuestStateV1());
+      setQuestState(await fetchHarthmereQuestState());
     } catch {
       setQuestState(undefined);
     } finally {
@@ -2513,7 +2513,7 @@ export function useBiomesUILiveAdapters({
     };
     const intervalId = window.setInterval(
       refreshIfVisible,
-      HARTHMERE_QUEST_INVITE_POLL_INTERVAL_MS_V1
+      HARTHMERE_QUEST_INVITE_POLL_INTERVAL_MS
     );
     window.addEventListener("focus", refreshIfVisible);
     document.addEventListener("visibilitychange", refreshIfVisible);
@@ -2529,15 +2529,15 @@ export function useBiomesUILiveAdapters({
     const handler = (event: Event) => {
       const detail = (event as CustomEvent<{ questState?: unknown }>).detail;
       if (detail?.questState) {
-        setQuestState(normalizeHarthmereQuestStateV1(detail.questState));
+        setQuestState(normalizeHarthmereQuestState(detail.questState));
       } else {
         void refreshQuestState();
       }
     };
-    window.addEventListener(HARTHMERE_QUEST_INVITES_UPDATED_EVENT_V1, handler);
+    window.addEventListener(HARTHMERE_QUEST_INVITES_UPDATED_EVENT, handler);
     return () =>
       window.removeEventListener(
-        HARTHMERE_QUEST_INVITES_UPDATED_EVENT_V1,
+        HARTHMERE_QUEST_INVITES_UPDATED_EVENT,
         handler
       );
   }, [refreshQuestState]);
@@ -2549,19 +2549,19 @@ export function useBiomesUILiveAdapters({
         .detail;
       if (detail?.jobsBoardState) {
         setJobsBoardState(
-          normalizeHarthmereJobsBoardSnapshotV1(detail.jobsBoardState)
+          normalizeHarthmereJobsBoardSnapshot(detail.jobsBoardState)
         );
       } else {
         void refreshJobsBoardState();
       }
     };
     window.addEventListener(
-      HARTHMERE_JOBS_BOARD_STATE_UPDATED_EVENT_V1,
+      HARTHMERE_JOBS_BOARD_STATE_UPDATED_EVENT,
       handler
     );
     return () =>
       window.removeEventListener(
-        HARTHMERE_JOBS_BOARD_STATE_UPDATED_EVENT_V1,
+        HARTHMERE_JOBS_BOARD_STATE_UPDATED_EVENT,
         handler
       );
   }, [refreshJobsBoardState]);
@@ -2578,7 +2578,7 @@ export function useBiomesUILiveAdapters({
       } else {
         await refreshFarmingFoodState();
       }
-      dispatchLiveModePlayerStatusFromBodyV1(body);
+      dispatchLiveModePlayerStatusFromBody(body);
     },
     [refreshFarmingFoodState, refreshInventoryLootState]
   );
@@ -2591,12 +2591,12 @@ export function useBiomesUILiveAdapters({
       setSnapshotRevision((value) => value + 1);
     };
     window.addEventListener(
-      LIVE_ENTITY_HELPER_LIVE_MODE_RESPONSE_EVENT_V1,
+      LIVE_ENTITY_HELPER_LIVE_MODE_RESPONSE_EVENT,
       handler
     );
     return () =>
       window.removeEventListener(
-        LIVE_ENTITY_HELPER_LIVE_MODE_RESPONSE_EVENT_V1,
+        LIVE_ENTITY_HELPER_LIVE_MODE_RESPONSE_EVENT,
         handler
       );
   }, [applyLiveModeInventoryResponse]);
@@ -2684,14 +2684,14 @@ export function useBiomesUILiveAdapters({
       ) {
         return;
       }
-      if (event.code === "KeyF" && hasActiveHarthmereGatheringNodePromptV1()) {
+      if (event.code === "KeyF" && hasActiveHarthmereGatheringNodePrompt()) {
         return;
       }
       const model = buildFarmingFoodInterfaceModelForTest(
         farmingFoodState,
         farmingFoodHydrated
       );
-      const action = farmingFoodQuickActionForKeyV1(model, event.code);
+      const action = farmingFoodQuickActionForKey(model, event.code);
       if (!action || action.disabled) return;
       event.preventDefault();
       event.stopPropagation();
@@ -2775,7 +2775,7 @@ export function useBiomesUILiveAdapters({
     const slots = Array.from({ length: 9 }, (_unused, index) => {
       const localItemId = localHotbarItemIds[index];
       if (localItemId) {
-        const localItem = localHarthmereHotbarItemToUiItemV132(
+        const localItem = localHarthmereHotbarItemToUiItem(
           localItemId,
           index
         );
@@ -2801,7 +2801,7 @@ export function useBiomesUILiveAdapters({
             readHarthmereInventoryState().backpack.items.find(
               (item) =>
                 item.itemId === localItemId &&
-                isLocalHarthmereConsumableUseItemV132(localItemId)
+                isLocalHarthmereConsumableUseItem(localItemId)
             );
           if (localBackpackItem) {
             performHarthmereBackpackItemUseForBiomesUI(
@@ -2809,7 +2809,7 @@ export function useBiomesUILiveAdapters({
               localBackpackItem.itemId
             );
           } else {
-            dispatchBiomesUITutorialItemUseV132(
+            dispatchBiomesUITutorialItemUse(
               {
                 itemId: localItemId,
                 itemName: humanizeRealItemId(localItemId, localItemId),
@@ -2829,7 +2829,7 @@ export function useBiomesUILiveAdapters({
           readHarthmereInventoryState().backpack.items.find(
             (item) =>
               item.itemId === itemId &&
-              isLocalHarthmereConsumableUseItemV132(itemId)
+              isLocalHarthmereConsumableUseItem(itemId)
           );
         if (localBackpackItem) {
           performHarthmereBackpackItemUseForBiomesUI(
@@ -2838,7 +2838,7 @@ export function useBiomesUILiveAdapters({
           );
           return;
         }
-        if (HARTHMERE_FOOD_DEFINITIONS_V1[itemId]) {
+        if (HARTHMERE_FOOD_DEFINITIONS[itemId]) {
           fireAndForget(
             submitFarmingFoodLiveModeAction("eat_food", { itemId })
               .then(applyLiveModeInventoryResponse)
@@ -2855,7 +2855,7 @@ export function useBiomesUILiveAdapters({
               .then(applyLiveModeInventoryResponse)
               .catch(() => refreshInventoryLootState())
           );
-        } else if (HARTHMERE_MEDICAL_ITEM_DEFINITIONS_V1[itemId]) {
+        } else if (HARTHMERE_MEDICAL_ITEM_DEFINITIONS[itemId]) {
           fireAndForget(
             submitMedicalLiveModeAction("use_medical_item", { itemId })
               .then(applyLiveModeInventoryResponse)
@@ -2900,7 +2900,7 @@ export function useBiomesUILiveAdapters({
     );
     const currencyItems = normalizeContainer(inventory?.currencies);
     const equipmentItems = normalizeAssignment(wearing?.items);
-    // BIOMES_UI_MAP_ADAPTER_V141:
+    // BIOMES_UI_MAP_ADAPTER:
     // Read the player's current position from the live ECS scene so the map
     // marker actually follows them. The position is rounded later for the
     // marker tooltip; here we keep full precision for accurate normalization.
@@ -2936,11 +2936,11 @@ export function useBiomesUILiveAdapters({
     };
 
     const backendActor = inventoryLootState?.actor;
-    const liveBackpackStackItems = stackRecordToInventoryUiItemsV135(
+    const liveBackpackStackItems = stackRecordToInventoryUiItems(
       backendActor?.items,
       "backpack"
     );
-    const liveBackpackInstanceItems = instanceRecordToInventoryUiItemsV135(
+    const liveBackpackInstanceItems = instanceRecordToInventoryUiItems(
       backendActor?.instanceIds,
       inventoryLootState?.itemInstances,
       liveBackpackStackItems.length
@@ -2960,14 +2960,14 @@ export function useBiomesUILiveAdapters({
     const ecsBackpackUiItems = backpackItems.map((slot: any, index: number) => {
       const itemId = rawItemIdFromSlot(slot);
       const localMatch =
-        itemId && getHarthmereItemDisplayV1(itemId)
+        itemId && getHarthmereItemDisplay(itemId)
           ? (localBackpackItemsByItemId.get(itemId) ?? []).find(
               (item) => !consumedLocalBackpackInstanceIds.has(item.instanceId)
             )
           : undefined;
       if (localMatch) {
         consumedLocalBackpackInstanceIds.add(localMatch.instanceId);
-        return localHarthmereBackpackItemToUiItemV132(localMatch, index);
+        return localHarthmereBackpackItemToUiItem(localMatch, index);
       }
       return slotToInventoryUiItem(
         slot,
@@ -2983,7 +2983,7 @@ export function useBiomesUILiveAdapters({
     const localDevBackpackItems = localHarthmereInventoryState.backpack.items
       .filter((item) => !consumedLocalBackpackInstanceIds.has(item.instanceId))
       .map((item, index) =>
-        localHarthmereBackpackItemToUiItemV132(
+        localHarthmereBackpackItemToUiItem(
           item,
           baseBackpackUiItems.length + index
         )
@@ -3003,13 +3003,13 @@ export function useBiomesUILiveAdapters({
           !("maxSlots" in materialStorageSnapshot)
         ? materialStorageSnapshot
         : undefined;
-    const combinedMaterialStorageItems = mergeInventoryStackRecordsV1(
+    const combinedMaterialStorageItems = mergeInventoryStackRecords(
       materialStorageItems as Record<string, number> | undefined,
       localHarthmereInventoryState.materialStorage
     ) ?? {};
 
     const liveItemForRef = (ref: InventoryUiRef): InventoryUiItem | null => {
-      if (ref.kind !== "item" || isLocalHarthmereItemRefV132(ref)) return null;
+      if (ref.kind !== "item" || isLocalHarthmereItemRef(ref)) return null;
       const index = Number(ref.idx ?? -1);
       if (!Number.isInteger(index) || index < 0) return null;
       return (
@@ -3021,7 +3021,7 @@ export function useBiomesUILiveAdapters({
       );
     };
     const liveItemIdForRef = (ref: InventoryUiRef): string | undefined => {
-      if (ref.kind !== "item" || isLocalHarthmereItemRefV132(ref)) {
+      if (ref.kind !== "item" || isLocalHarthmereItemRef(ref)) {
         return undefined;
       }
       const index = Number(ref.idx ?? -1);
@@ -3040,7 +3040,7 @@ export function useBiomesUILiveAdapters({
     const localHarthmereItemForRef = (
       ref: InventoryUiRef
     ): HarthmereItemInstance | undefined => {
-      const instanceId = localHarthmereInstanceIdFromRefV132(ref);
+      const instanceId = localHarthmereInstanceIdFromRef(ref);
       if (!instanceId) return undefined;
       return localHarthmereInventoryState.backpack.items.find(
         (item) => item.instanceId === instanceId
@@ -3055,7 +3055,7 @@ export function useBiomesUILiveAdapters({
     };
     const localHarthmereEquipmentSlotForRef = (
       ref: InventoryUiRef
-    ): string | undefined => localHarthmereEquipmentSlotFromRefV132(ref);
+    ): string | undefined => localHarthmereEquipmentSlotFromRef(ref);
     const equipmentItemForWearableRef = (
       ref: InventoryUiRef
     ): InventoryUiItem | null => {
@@ -3067,7 +3067,7 @@ export function useBiomesUILiveAdapters({
         ];
         return item
           ? {
-              ...localHarthmereEquipmentItemToUiItemV132(item, localSlot),
+              ...localHarthmereEquipmentItemToUiItem(item, localSlot),
               canUnequip: true,
             }
           : null;
@@ -3076,7 +3076,7 @@ export function useBiomesUILiveAdapters({
       if (!slot) return null;
       const backendItemId = (backendActor?.equipment as any)?.[slot];
       if (backendItemId) {
-        const item = stackRecordToInventoryUiItemsV135(
+        const item = stackRecordToInventoryUiItems(
           { [String(backendItemId)]: 1 },
           "equipment",
           "wearable",
@@ -3110,7 +3110,7 @@ export function useBiomesUILiveAdapters({
 
     const inventoryAdapter = {
       getBackpack: () => {
-        const materialStorageUiItems = stackRecordToInventoryUiItemsV135(
+        const materialStorageUiItems = stackRecordToInventoryUiItems(
           combinedMaterialStorageItems,
           "material_storage",
           "material",
@@ -3133,7 +3133,7 @@ export function useBiomesUILiveAdapters({
             return {
               id: `${itemId}_${index}`,
               label: humanizeRealItemId(itemId, itemId),
-              icon: biomesInventoryItemIconV1(itemId),
+              icon: biomesInventoryItemIcon(itemId),
               count: Number(entry?.count ?? 1),
               quality: "common",
               category: inferInventoryCategory({ id: itemId }),
@@ -3198,7 +3198,7 @@ export function useBiomesUILiveAdapters({
       getHotbar: () => ({
         items: Array.from({ length: 9 }, (_unused, index) =>
           localHarthmereInventoryState.hotbar[`slot_${index + 1}`]
-            ? localHarthmereHotbarItemToUiItemV132(
+            ? localHarthmereHotbarItemToUiItem(
                 String(
                   localHarthmereInventoryState.hotbar[`slot_${index + 1}`]
                 ),
@@ -3224,10 +3224,10 @@ export function useBiomesUILiveAdapters({
                   label: key.replace(/_/g, " "),
                   ref: {
                     kind: "wearable" as const,
-                    key: `${HARTHMERE_BIOMES_UI_LOCAL_EQUIPMENT_REF_PREFIX_V132}${key}`,
+                    key: `${HARTHMERE_BIOMES_UI_LOCAL_EQUIPMENT_REF_PREFIX}${key}`,
                   },
                   item: {
-                    ...localHarthmereEquipmentItemToUiItemV132(item, key),
+                    ...localHarthmereEquipmentItemToUiItem(item, key),
                     canUnequip: true,
                   },
                 },
@@ -3254,7 +3254,7 @@ export function useBiomesUILiveAdapters({
           label: key.replace(/_/g, " "),
           ref: { kind: "wearable" as const, key },
           item: (() => {
-            const item = stackRecordToInventoryUiItemsV135(
+            const item = stackRecordToInventoryUiItems(
               { [String(itemId)]: 1 },
               "equipment",
               "wearable",
@@ -3358,13 +3358,13 @@ export function useBiomesUILiveAdapters({
         const localHarthmereItem = localHarthmereItemForRef(ref);
         if (localHarthmereItem) {
           const itemId = localHarthmereItem.itemId;
-          if (isLocalHarthmereConsumableUseItemV132(itemId)) {
+          if (isLocalHarthmereConsumableUseItem(itemId)) {
             performHarthmereBackpackItemUseForBiomesUI(
               localHarthmereItem.instanceId,
               itemId
             );
           } else {
-            dispatchBiomesUITutorialItemUseV132(
+            dispatchBiomesUITutorialItemUse(
               {
                 itemId,
                 itemName: humanizeRealItemId(itemId, itemId),
@@ -3377,12 +3377,12 @@ export function useBiomesUILiveAdapters({
           return;
         }
         const liveItem = liveItemForRef(ref);
-        if (liveItem?.id && HARTHMERE_FOOD_DEFINITIONS_V1[liveItem.id]) {
+        if (liveItem?.id && HARTHMERE_FOOD_DEFINITIONS[liveItem.id]) {
           fireAndForget(
             submitFarmingFoodLiveModeAction("eat_food", { itemId: liveItem.id })
               .then(async (body) => {
                 await applyLiveModeInventoryResponse(body);
-                dispatchBiomesUITutorialItemUseV132(
+                dispatchBiomesUITutorialItemUse(
                   {
                     id: liveItem.id,
                     label: liveItem.label,
@@ -3411,7 +3411,7 @@ export function useBiomesUILiveAdapters({
         }
         if (
           liveItem?.id &&
-          HARTHMERE_MEDICAL_ITEM_DEFINITIONS_V1[liveItem.id]
+          HARTHMERE_MEDICAL_ITEM_DEFINITIONS[liveItem.id]
         ) {
           fireAndForget(
             submitMedicalLiveModeAction("use_medical_item", {
@@ -3419,7 +3419,7 @@ export function useBiomesUILiveAdapters({
             })
               .then(async (body) => {
                 await applyLiveModeInventoryResponse(body);
-                dispatchBiomesUITutorialItemUseV132(
+                dispatchBiomesUITutorialItemUse(
                   {
                     id: liveItem.id,
                     label: liveItem.label,
@@ -3449,7 +3449,7 @@ export function useBiomesUILiveAdapters({
           farmingFoodState,
           farmingFoodHydrated
         ),
-      performFarmingFoodAction: (action: FarmingFoodInterfaceActionV1) => {
+      performFarmingFoodAction: (action: FarmingFoodInterfaceAction) => {
         if (action.disabled) return;
         // Cooking is now timer-based and station-bound: redirect the legacy
         // quick-cook buttons to the new cooking station panel (keyed by the
@@ -3459,8 +3459,8 @@ export function useBiomesUILiveAdapters({
             "campfire") as "campfire" | "cookpot" | "oven";
           const label =
             stationKind.charAt(0).toUpperCase() + stationKind.slice(1);
-          openHarthmereCookingStationV1({
-            stationId: harthmereCookingStationIdV1(undefined, stationKind),
+          openHarthmereCookingStation({
+            stationId: harthmereCookingStationId(undefined, stationKind),
             stationKind,
             label,
           });
@@ -3486,8 +3486,8 @@ export function useBiomesUILiveAdapters({
             localHarthmereItem.instanceId,
             localHarthmereItem.itemId
           );
-          recordSnapshotRoadAheadEquippedGearSlotForBiomesUIV73(key);
-          dispatchBiomesUITutorialItemUseV132(
+          recordSnapshotRoadAheadEquippedGearSlotForBiomesUI(key);
+          dispatchBiomesUITutorialItemUse(
             {
               itemId: localHarthmereItem.itemId,
               itemName: humanizeRealItemId(
@@ -3512,7 +3512,7 @@ export function useBiomesUILiveAdapters({
           fireAndForget(
             submitEquipmentLiveModeAction(liveItemId, key)
               .then((body) => {
-                recordSnapshotRoadAheadEquippedGearSlotForBiomesUIV73(key);
+                recordSnapshotRoadAheadEquippedGearSlotForBiomesUI(key);
                 return applyLiveModeInventoryResponse(body);
               })
               .catch(() => refreshInventoryLootState())
@@ -3724,7 +3724,7 @@ export function useBiomesUILiveAdapters({
         ),
       }));
 
-    const guildAdapter = createBiomesUIGuildsAdapterV1({
+    const guildAdapter = createBiomesUIGuildsAdapter({
       state: guildState,
       hydrated: guildHydrated,
       setState: setGuildState,
@@ -3733,7 +3733,7 @@ export function useBiomesUILiveAdapters({
       guildHallCandidates: [],
     });
     const liveQuestState = questState ?? progressionState?.questState;
-    const questInvitesAdapter = createHarthmereQuestInviteAdapterV1({
+    const questInvitesAdapter = createHarthmereQuestInviteAdapter({
       questState: liveQuestState,
       hydrated: questStateHydrated || progressionHydrated,
       setQuestState,
@@ -3821,7 +3821,7 @@ export function useBiomesUILiveAdapters({
         const ledger = Array.isArray(inventoryLootState?.recentLootLedger)
           ? inventoryLootState.recentLootLedger.map(
               (entry: any, index: number) =>
-                lootLedgerEntryToUiV135(
+                lootLedgerEntryToUi(
                   entry,
                   index,
                   inventoryLootState?.itemInstances
@@ -3831,7 +3831,7 @@ export function useBiomesUILiveAdapters({
         return ledger.slice(-30).reverse();
       },
       getAvailable: () =>
-        lootDropsToUiV135(
+        lootDropsToUi(
           inventoryLootState?.availableLootDrops,
           inventoryLootState?.itemInstances
         ),
@@ -3855,7 +3855,7 @@ export function useBiomesUILiveAdapters({
           "trainer",
           { classId }
         );
-        dispatchLiveModePlayerStatusFromBodyV1(body);
+        dispatchLiveModePlayerStatusFromBody(body);
         await refreshProgressionState();
       },
       chooseSpecialization: async (specializationId: string) => {
@@ -3864,7 +3864,7 @@ export function useBiomesUILiveAdapters({
           "trainer",
           { specializationId }
         );
-        dispatchLiveModePlayerStatusFromBodyV1(body);
+        dispatchLiveModePlayerStatusFromBody(body);
         await refreshProgressionState();
       },
       learnAbility: async (abilityId: string) => {
@@ -3873,7 +3873,7 @@ export function useBiomesUILiveAdapters({
           "trainer",
           { abilityId }
         );
-        dispatchLiveModePlayerStatusFromBodyV1(body);
+        dispatchLiveModePlayerStatusFromBody(body);
         await refreshProgressionState();
       },
       assignAbility: async (slot: number, abilityId: string) => {
@@ -3882,7 +3882,7 @@ export function useBiomesUILiveAdapters({
           "loadout",
           { slot: `slot_${slot}`, abilityId }
         );
-        dispatchLiveModePlayerStatusFromBodyV1(body);
+        dispatchLiveModePlayerStatusFromBody(body);
         await refreshProgressionState();
       },
       discoverCollectible: async (collectibleId: string) => {
@@ -3891,7 +3891,7 @@ export function useBiomesUILiveAdapters({
           "quest",
           { collectibleId }
         );
-        dispatchLiveModePlayerStatusFromBodyV1(body);
+        dispatchLiveModePlayerStatusFromBody(body);
         await refreshProgressionState();
       },
     };
@@ -3927,7 +3927,7 @@ export function useBiomesUILiveAdapters({
           } else {
             await refreshInventoryLootState();
           }
-          dispatchLiveModePlayerStatusFromBodyV1(body);
+          dispatchLiveModePlayerStatusFromBody(body);
         },
       },
       inventory: inventoryAdapter,
@@ -4077,68 +4077,68 @@ export function useBiomesUILiveAdapters({
             itemId,
             count,
           });
-          setBankingState(body?.bankingState ?? (await fetchBankingStateV1()));
+          setBankingState(body?.bankingState ?? (await fetchBankingState()));
         },
         withdraw: async (itemId: string, count: number) => {
           const body = await submitBankingLiveModeAction("withdraw", {
             itemId,
             count,
           });
-          setBankingState(body?.bankingState ?? (await fetchBankingStateV1()));
+          setBankingState(body?.bankingState ?? (await fetchBankingState()));
         },
         depositAccount: async (itemId: string, count: number) => {
           const body = await submitBankingLiveModeAction("account_deposit", {
             itemId,
             count,
           });
-          setBankingState(body?.bankingState ?? (await fetchBankingStateV1()));
+          setBankingState(body?.bankingState ?? (await fetchBankingState()));
         },
         withdrawAccount: async (itemId: string, count: number) => {
           const body = await submitBankingLiveModeAction("account_withdraw", {
             itemId,
             count,
           });
-          setBankingState(body?.bankingState ?? (await fetchBankingStateV1()));
+          setBankingState(body?.bankingState ?? (await fetchBankingState()));
         },
         depositMaterial: async (itemId: string, count: number) => {
           const body = await submitBankingLiveModeAction("material_deposit", {
             itemId,
             count,
           });
-          setBankingState(body?.bankingState ?? (await fetchBankingStateV1()));
+          setBankingState(body?.bankingState ?? (await fetchBankingState()));
         },
         withdrawMaterial: async (itemId: string, count: number) => {
           const body = await submitBankingLiveModeAction("material_withdraw", {
             itemId,
             count,
           });
-          setBankingState(body?.bankingState ?? (await fetchBankingStateV1()));
+          setBankingState(body?.bankingState ?? (await fetchBankingState()));
         },
         upgradeSlots: async (kind: "personal" | "account" | "materials") => {
           const body = await submitBankingLiveModeAction("upgrade_slots", {
             vaultKind: kind,
           });
-          setBankingState(body?.bankingState ?? (await fetchBankingStateV1()));
+          setBankingState(body?.bankingState ?? (await fetchBankingState()));
         },
         takeLoan: async (amount: number, days: number) => {
           const body = await submitBankingLiveModeAction("take_loan", {
             amount,
             days,
           });
-          setBankingState(body?.bankingState ?? (await fetchBankingStateV1()));
+          setBankingState(body?.bankingState ?? (await fetchBankingState()));
         },
         repayLoan: async (loanId: string | undefined, amount: number) => {
           const body = await submitBankingLiveModeAction("repay_loan", {
             loanId,
             amount,
           });
-          setBankingState(body?.bankingState ?? (await fetchBankingStateV1()));
+          setBankingState(body?.bankingState ?? (await fetchBankingState()));
         },
       },
       land: {
         isHydrated: () => buildingHydrated,
-        getPlots: () => BUILDING_SYSTEM_PLOTS_V1,
-        getBlueprints: () => BUILDING_SYSTEM_BLUEPRINTS_V1,
+        getPlots: () => BUILDING_SYSTEM_PLOTS,
+        getBlueprints: () => BUILDING_SYSTEM_BLUEPRINTS,
         getOwnedPlotIds: () => {
           const ownedPlotIds = buildingState?.ownedPlotIds;
           return Array.isArray(ownedPlotIds)

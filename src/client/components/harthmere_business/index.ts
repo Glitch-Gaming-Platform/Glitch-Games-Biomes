@@ -3,4 +3,4 @@ export * from "./useHarthmereBusinessInterface";
 export * from "./HarthmereBusinessInterfacePanel";
 export * from "./HarthmereBusinessInteractionPrompt";
 export * from "./HarthmereBusinessLiveContainer";
-export * from "./HarthmereBusinessWorldInteractionV1";
+export * from "./HarthmereBusinessWorldInteraction";

@@ -8,72 +8,72 @@
  * backend and all writes are posted through request_economy_mutation.
  */
 
-import { harthmereBusinessToolForTypeV151 } from "@/shared/harthmere/harthmere_business_tool_shop_v151";
-import { harthmereBusinessStorefrontListingsForTypeV1 } from "@/shared/harthmere/harthmere_business_storefront_goods_v1";
+import { harthmereBusinessToolForType } from "@/shared/harthmere/harthmere_business_tool_shop";
+import { harthmereBusinessStorefrontListingsForType } from "@/shared/harthmere/harthmere_business_storefront_goods";
 import {
-  harthmereResolveBikkieVisualV1,
-  type HarthmereResolvedBikkieVisualV1,
-} from "@/shared/harthmere/bikkie_visual_resolver_v1";
-import { getHarthmereItemDefinitionV1 } from "@/shared/harthmere/mmo_inventory_authority_v1";
+  harthmereResolveBikkieVisual,
+  type HarthmereResolvedBikkieVisual,
+} from "@/shared/harthmere/bikkie_visual_resolver";
+import { getHarthmereItemDefinition } from "@/shared/harthmere/mmo_inventory_authority";
 import {
-  HARTHMERE_FOOD_DEFINITIONS_V1,
-  HARTHMERE_SEED_DEFINITIONS_V1,
-} from "@/shared/harthmere/mmo_farming_food_stamina_v1";
-import { HARTHMERE_MEDICAL_ITEM_DEFINITIONS_V1 } from "@/shared/harthmere/mmo_medical_health_v1";
+  HARTHMERE_FOOD_DEFINITIONS,
+  HARTHMERE_SEED_DEFINITIONS,
+} from "@/shared/harthmere/mmo_farming_food_stamina";
+import { HARTHMERE_MEDICAL_ITEM_DEFINITIONS } from "@/shared/harthmere/mmo_medical_health";
 import {
-  HARTHMERE_BUSINESS_CUSTOMER_NPCS_V1,
-  harthmereBusinessOutpostBusinessIdV1,
-  activeHarthmereBusinessCustomerTicketV1,
-  findHarthmereBusinessCustomerNpcV1,
-  getHarthmereBusinessBikkieGraphicsV1,
-  getHarthmereBusinessMiniGameDefinitionV1,
-  normalizeHarthmereBusinessCustomerStatsV1,
-  type HarthmereBusinessMiniGameDecisionV1,
-  type HarthmereBusinessBikkieGraphicV1,
-  type HarthmereBusinessCustomerNpcV1,
-  type HarthmereBusinessCustomerSessionV1,
-  type HarthmereBusinessCustomerStatsV1,
-  type HarthmereBusinessCustomerTicketV1,
-  type HarthmereBusinessMiniGameDefinitionV1,
-  type HarthmereBusinessOutpostProceduralBuildingRecordV1,
-  type HarthmereBusinessServiceOfferV1,
-} from "../../../shared/harthmere/business_customer_simulator_v1";
+  HARTHMERE_BUSINESS_CUSTOMER_NPCS,
+  harthmereBusinessOutpostBusinessId,
+  activeHarthmereBusinessCustomerTicket,
+  findHarthmereBusinessCustomerNpc,
+  getHarthmereBusinessBikkieGraphics,
+  getHarthmereBusinessMiniGameDefinition,
+  normalizeHarthmereBusinessCustomerStats,
+  type HarthmereBusinessMiniGameDecision,
+  type HarthmereBusinessBikkieGraphic,
+  type HarthmereBusinessCustomerNpc,
+  type HarthmereBusinessCustomerSession,
+  type HarthmereBusinessCustomerStats,
+  type HarthmereBusinessCustomerTicket,
+  type HarthmereBusinessMiniGameDefinition,
+  type HarthmereBusinessOutpostProceduralBuildingRecord,
+  type HarthmereBusinessServiceOffer,
+} from "../../../shared/harthmere/business_customer_simulator";
 import {
-  businessCheckInStatusV1,
-  initBusinessDailyCheckInStateV1,
-  type BusinessCheckInStatusV1,
-  type BusinessDailyCheckInStateV1,
-} from "@/shared/harthmere/business_daily_checkin_v1";
-import { harthmereDayIndexV1 } from "@/client/components/harthmere_business/businessDailyCheckInClientV1";
+  businessCheckInStatus,
+  initBusinessDailyCheckInState,
+  type BusinessCheckInStatus,
+  type BusinessDailyCheckInState,
+} from "@/shared/harthmere/business_daily_checkin";
+import { harthmereDayIndex } from "@/client/components/harthmere_business/businessDailyCheckInClient";
 import type {
-  HarthmereBusinessEmployeeAssignableTaskIdV1,
-  HarthmereBusinessEmployeeCandidateV1,
-  HarthmereBusinessEmployeeTaskRunV1,
-} from "../../../shared/harthmere/business_employee_ai_v1";
-import { fetchHarthmereLiveWithTimeoutV1 } from "@/client/components/harthmere_live_fetch";
+  HarthmereBusinessEmployeeAssignableTaskId,
+  HarthmereBusinessEmployeeCandidate,
+  HarthmereBusinessEmployeeTaskRun,
+} from "../../../shared/harthmere/business_employee_ai";
+import { fetchHarthmereLiveWithTimeout } from "@/client/components/harthmere_live_fetch";
 
-export const HARTHMERE_BUSINESS_INVENTORY_LOOT_UPDATED_EVENT_V1 =
-  "biomes:harthmere-business-inventory-loot-updated-v1";
+export const HARTHMERE_BUSINESS_INVENTORY_LOOT_UPDATED_EVENT =
+  "biomes:harthmere-business-inventory-loot-updated";
 
 export type {
-  HarthmereBusinessBikkieGraphicV1,
-  HarthmereBusinessCustomerNpcV1,
-  HarthmereBusinessCustomerSessionV1,
-  HarthmereBusinessCustomerStatsV1,
-  HarthmereBusinessCustomerTicketV1,
-  HarthmereBusinessMiniGameDefinitionV1,
-  HarthmereBusinessMiniGameDecisionV1,
-  HarthmereBusinessOutpostProceduralBuildingRecordV1,
-  HarthmereBusinessServiceOfferV1,
-} from "../../../shared/harthmere/business_customer_simulator_v1";
+  HarthmereBusinessBikkieGraphic,
+  HarthmereBusinessCustomerNpc,
+  HarthmereBusinessCustomerSession,
+  HarthmereBusinessCustomerStats,
+  HarthmereBusinessCustomerTicket,
+  HarthmereBusinessMiniGameDefinition,
+  HarthmereBusinessMiniGameDecision,
+  HarthmereBusinessOutpostProceduralBuildingRecord,
+  HarthmereBusinessServiceOffer,
+} from "../../../shared/harthmere/business_customer_simulator";
 export type {
-  HarthmereBusinessEmployeeAssignableTaskIdV1,
-  HarthmereBusinessEmployeeCandidateV1,
-  HarthmereBusinessEmployeeTaskRunV1,
-} from "../../../shared/harthmere/business_employee_ai_v1";
+  HarthmereBusinessEmployeeAssignableTaskId,
+  HarthmereBusinessEmployeeCandidate,
+  HarthmereBusinessEmployeeTaskRun,
+} from "../../../shared/harthmere/business_employee_ai";
 
-export type HarthmereBusinessActorModeV1 = "owner" | "customer";
-export type HarthmereBusinessPanelTabV1 =
+export type HarthmereBusinessActorMode = "owner" | "customer";
+export type HarthmereBusinessPanelTab =
   | "overview"
   | "orders"
   | "money"
@@ -82,7 +82,7 @@ export type HarthmereBusinessPanelTabV1 =
   | "services"
   | "status";
 
-export type HarthmereBusinessTypeIdV1 =
+export type HarthmereBusinessTypeId =
   | "exotic_matter_refinery"
   | "biome_maintenance_repair"
   | "biome_design_studio"
@@ -103,8 +103,8 @@ export type HarthmereBusinessTypeIdV1 =
   | "courier"
   | "hospitality_inn_hotel_shelter";
 
-export interface HarthmereBusinessTypeDefinitionV1 {
-  typeId: HarthmereBusinessTypeIdV1;
+export interface HarthmereBusinessTypeDefinition {
+  typeId: HarthmereBusinessTypeId;
   displayName: string;
   category: string;
   startCostGold: number;
@@ -120,7 +120,7 @@ export interface HarthmereBusinessTypeDefinitionV1 {
   civicImportance: number;
 }
 
-export interface HarthmereBusinessInventoryStackV1 {
+export interface HarthmereBusinessInventoryStack {
   itemId: string;
   count: number;
   expiresAtMs?: number;
@@ -128,11 +128,11 @@ export interface HarthmereBusinessInventoryStackV1 {
   contaminated?: boolean;
 }
 
-export interface HarthmereBusinessRecordV1 {
+export interface HarthmereBusinessRecord {
   businessId: string;
   ownerKind: "player" | "npc" | "guild" | "town";
   ownerId: string;
-  typeId: HarthmereBusinessTypeIdV1;
+  typeId: HarthmereBusinessTypeId;
   name: string;
   status: "draft" | "open" | "paused" | "suspended" | "bankrupt" | "closed";
   licenseClass: string;
@@ -140,7 +140,7 @@ export interface HarthmereBusinessRecordV1 {
   propertyId?: string;
   townId?: string;
   regionId: string;
-  inventory: Record<string, HarthmereBusinessInventoryStackV1>;
+  inventory: Record<string, HarthmereBusinessInventoryStack>;
   storageMaxSlots: number;
   employees: string[];
   activeContracts: string[];
@@ -162,17 +162,17 @@ export interface HarthmereBusinessRecordV1 {
   updatedAtMs: number;
   flags: Record<string, boolean>;
   // Owner daily check-in state (streak / made / lost). Provided by the backend.
-  dailyCheckIn?: BusinessDailyCheckInStateV1;
+  dailyCheckIn?: BusinessDailyCheckInState;
 }
 
-export interface HarthmereBusinessContractV1 {
+export interface HarthmereBusinessContract {
   contractId: string;
   issuerKind: string;
   issuerId: string;
   townId?: string;
   regionId: string;
   title: string;
-  businessType?: HarthmereBusinessTypeIdV1;
+  businessType?: HarthmereBusinessTypeId;
   requirements: Array<{
     itemId?: string;
     count?: number;
@@ -192,7 +192,7 @@ export interface HarthmereBusinessContractV1 {
   logs: string[];
 }
 
-export interface HarthmereBusinessEmployeeV1 {
+export interface HarthmereBusinessEmployee {
   employeeId: string;
   businessId: string;
   actorId?: string;
@@ -208,7 +208,7 @@ export interface HarthmereBusinessEmployeeV1 {
   injuredUntilMs?: number;
 }
 
-export interface HarthmereBusinessBankAccountV1 {
+export interface HarthmereBusinessBankAccount {
   accountId: string;
   businessId: string;
   ownerKind: string;
@@ -226,17 +226,17 @@ export interface HarthmereBusinessBankAccountV1 {
   }>;
 }
 
-export type HarthmereBusinessAutomationRoleV1 =
+export type HarthmereBusinessAutomationRole =
   | "front_counter"
   | "branch_manager"
   | "courier_dispatch"
   | "purchasing_manager"
   | "quality_inspector";
 
-export interface HarthmereBusinessBranchV1 {
+export interface HarthmereBusinessBranch {
   branchId: string;
   parentBusinessId: string;
-  businessType: HarthmereBusinessTypeIdV1;
+  businessType: HarthmereBusinessTypeId;
   outpostId: string;
   outpostBuildingId: string;
   townId: string;
@@ -261,7 +261,7 @@ export interface HarthmereBusinessBranchV1 {
   branchNotes?: string[];
 }
 
-export interface HarthmereBusinessBranchDashboardV1 {
+export interface HarthmereBusinessBranchDashboard {
   dashboardId: string;
   branchId: string;
   parentBusinessId: string;
@@ -276,11 +276,11 @@ export interface HarthmereBusinessBranchDashboardV1 {
   recommendedActions: string[];
 }
 
-export interface HarthmereBusinessAutomationV1 {
+export interface HarthmereBusinessAutomation {
   automationId: string;
   businessId: string;
   branchId?: string;
-  role: HarthmereBusinessAutomationRoleV1;
+  role: HarthmereBusinessAutomationRole;
   level: number;
   assignedEmployeeId?: string;
   active: boolean;
@@ -292,9 +292,9 @@ export interface HarthmereBusinessAutomationV1 {
   lastRunAtMs?: number;
 }
 
-export interface HarthmereBusinessSystemsSnapshotV1 {
+export interface HarthmereBusinessSystemsSnapshot {
   permissions: Record<string, Record<string, string[]>>;
-  bankAccounts: Record<string, HarthmereBusinessBankAccountV1>;
+  bankAccounts: Record<string, HarthmereBusinessBankAccount>;
   propertyIntegrations: Record<string, any>;
   biomeAnchors: Record<string, any>;
   threats: Record<string, any>;
@@ -311,35 +311,35 @@ export interface HarthmereBusinessSystemsSnapshotV1 {
   menuByBusiness: Record<string, string[]>;
   unstableMagicItems: Record<string, any>;
   serviceQuests: Record<string, any>;
-  customerSessions: Record<string, HarthmereBusinessCustomerSessionV1>;
-  customerStats: Record<string, HarthmereBusinessCustomerStatsV1>;
+  customerSessions: Record<string, HarthmereBusinessCustomerSession>;
+  customerStats: Record<string, HarthmereBusinessCustomerStats>;
   outpostBuildings: Record<
     string,
-    HarthmereBusinessOutpostProceduralBuildingRecordV1
+    HarthmereBusinessOutpostProceduralBuildingRecord
   >;
-  empireBranches: Record<string, HarthmereBusinessBranchV1>;
-  branchDashboards: Record<string, HarthmereBusinessBranchDashboardV1>;
-  automationAssignments: Record<string, HarthmereBusinessAutomationV1>;
-  employeeCandidates: Record<string, HarthmereBusinessEmployeeCandidateV1>;
-  employeeTaskRuns: Record<string, HarthmereBusinessEmployeeTaskRunV1>;
+  empireBranches: Record<string, HarthmereBusinessBranch>;
+  branchDashboards: Record<string, HarthmereBusinessBranchDashboard>;
+  automationAssignments: Record<string, HarthmereBusinessAutomation>;
+  employeeCandidates: Record<string, HarthmereBusinessEmployeeCandidate>;
+  employeeTaskRuns: Record<string, HarthmereBusinessEmployeeTaskRun>;
   balanceReports: string[];
 }
 
-export interface HarthmereBusinessEconomySnapshotV1 {
+export interface HarthmereBusinessEconomySnapshot {
   version?: string;
   actorId: string;
   actorKnownRecipes?: string[];
   businessTypes: Record<
-    HarthmereBusinessTypeIdV1,
-    HarthmereBusinessTypeDefinitionV1
+    HarthmereBusinessTypeId,
+    HarthmereBusinessTypeDefinition
   >;
   recipeCatalog?: Record<string, any>;
-  businesses: Record<string, HarthmereBusinessRecordV1>;
-  myBusinesses: HarthmereBusinessRecordV1[];
-  openContracts: HarthmereBusinessContractV1[];
-  activeContracts: HarthmereBusinessContractV1[];
-  customerContracts?: HarthmereBusinessContractV1[];
-  employees: Record<string, HarthmereBusinessEmployeeV1>;
+  businesses: Record<string, HarthmereBusinessRecord>;
+  myBusinesses: HarthmereBusinessRecord[];
+  openContracts: HarthmereBusinessContract[];
+  activeContracts: HarthmereBusinessContract[];
+  customerContracts?: HarthmereBusinessContract[];
+  employees: Record<string, HarthmereBusinessEmployee>;
   loans: Record<string, any>;
   insurancePolicies: Record<string, any>;
   tradeRoutes: Record<string, any>;
@@ -347,7 +347,7 @@ export interface HarthmereBusinessEconomySnapshotV1 {
   marketOrders: Record<string, any>;
   towns: Record<string, any>;
   regions: Record<string, any>;
-  businessSystems: Partial<HarthmereBusinessSystemsSnapshotV1>;
+  businessSystems: Partial<HarthmereBusinessSystemsSnapshot>;
   balanceWarnings: string[];
   ledger: Array<{
     id: string;
@@ -360,16 +360,16 @@ export interface HarthmereBusinessEconomySnapshotV1 {
   }>;
 }
 
-export interface HarthmereBusinessInterfaceResponseV1 {
+export interface HarthmereBusinessInterfaceResponse {
   ok?: boolean;
-  economyState?: HarthmereBusinessEconomySnapshotV1;
+  economyState?: HarthmereBusinessEconomySnapshot;
   inventoryLootState?: unknown;
   playerStatusState?: unknown;
   backendMutation?: { warnings?: string[] };
 }
 
-function dispatchHarthmereBusinessInventoryLootUpdatedV1(
-  response: HarthmereBusinessInterfaceResponseV1 | undefined
+function dispatchHarthmereBusinessInventoryLootUpdated(
+  response: HarthmereBusinessInterfaceResponse | undefined
 ) {
   if (
     typeof window === "undefined" ||
@@ -379,7 +379,7 @@ function dispatchHarthmereBusinessInventoryLootUpdatedV1(
     return;
   }
   window.dispatchEvent(
-    new CustomEvent(HARTHMERE_BUSINESS_INVENTORY_LOOT_UPDATED_EVENT_V1, {
+    new CustomEvent(HARTHMERE_BUSINESS_INVENTORY_LOOT_UPDATED_EVENT, {
       detail: {
         body: response,
         inventoryLootState: response.inventoryLootState,
@@ -389,7 +389,7 @@ function dispatchHarthmereBusinessInventoryLootUpdatedV1(
   );
 }
 
-export interface HarthmereBusinessVisibleInventoryItemV1 {
+export interface HarthmereBusinessVisibleInventoryItem {
   itemId: string;
   displayName?: string;
   count: number;
@@ -397,10 +397,10 @@ export interface HarthmereBusinessVisibleInventoryItemV1 {
   condition?: number;
   expiresAtMs?: number;
   contaminated?: boolean;
-  visual?: HarthmereResolvedBikkieVisualV1;
+  visual?: HarthmereResolvedBikkieVisual;
 }
 
-export interface HarthmereBusinessMoneySummaryV1 {
+export interface HarthmereBusinessMoneySummary {
   balanceGold: number;
   bankBalanceGold: number;
   debtGold: number;
@@ -410,14 +410,14 @@ export interface HarthmereBusinessMoneySummaryV1 {
   salesTaxRate: number;
 }
 
-export interface HarthmereBusinessTodoV1 {
+export interface HarthmereBusinessTodo {
   id: string;
   severity: "info" | "warning" | "danger";
   label: string;
   description: string;
 }
 
-export interface HarthmereBusinessServiceActionV1 {
+export interface HarthmereBusinessServiceAction {
   actionId: string;
   label: string;
   description: string;
@@ -432,7 +432,7 @@ export interface HarthmereBusinessServiceActionV1 {
   defaultTargetId?: string;
 }
 
-export const HARTHMERE_BUSINESS_TYPE_ORDER_V1: HarthmereBusinessTypeIdV1[] = [
+export const HARTHMERE_BUSINESS_TYPE_ORDER: HarthmereBusinessTypeId[] = [
   "exotic_matter_refinery",
   "biome_maintenance_repair",
   "biome_design_studio",
@@ -454,9 +454,9 @@ export const HARTHMERE_BUSINESS_TYPE_ORDER_V1: HarthmereBusinessTypeIdV1[] = [
   "hospitality_inn_hotel_shelter",
 ];
 
-export const HARTHMERE_BUSINESS_SERVICE_ACTIONS_V1: Record<
-  HarthmereBusinessTypeIdV1,
-  HarthmereBusinessServiceActionV1[]
+export const HARTHMERE_BUSINESS_SERVICE_ACTIONS: Record<
+  HarthmereBusinessTypeId,
+  HarthmereBusinessServiceAction[]
 > = {
   exotic_matter_refinery: [
     {
@@ -952,7 +952,7 @@ function titleCaseBusinessText(value: string) {
     .replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
-export function formatHarthmereBusinessPlayerWarningV1(
+export function formatHarthmereBusinessPlayerWarning(
   rawWarning: string | undefined
 ): string {
   const warning = String(rawWarning ?? "").trim();
@@ -993,7 +993,7 @@ export function formatHarthmereBusinessPlayerWarningV1(
   return titleCaseBusinessText(cleaned);
 }
 
-function normalizeSystems(raw: unknown): HarthmereBusinessSystemsSnapshotV1 {
+function normalizeSystems(raw: unknown): HarthmereBusinessSystemsSnapshot {
   const r = jsonRecord(raw);
   return {
     permissions: jsonRecord(r.permissions) as any,
@@ -1018,7 +1018,7 @@ function normalizeSystems(raw: unknown): HarthmereBusinessSystemsSnapshotV1 {
     customerStats: Object.fromEntries(
       Object.entries(jsonRecord(r.customerStats)).map(([businessId, stats]) => [
         businessId,
-        normalizeHarthmereBusinessCustomerStatsV1(stats, businessId),
+        normalizeHarthmereBusinessCustomerStats(stats, businessId),
       ])
     ) as any,
     outpostBuildings: jsonRecord(r.outpostBuildings) as any,
@@ -1031,13 +1031,13 @@ function normalizeSystems(raw: unknown): HarthmereBusinessSystemsSnapshotV1 {
   };
 }
 
-export function normalizeHarthmereBusinessEconomySnapshotV1(
+export function normalizeHarthmereBusinessEconomySnapshot(
   raw: any
-): HarthmereBusinessEconomySnapshotV1 {
+): HarthmereBusinessEconomySnapshot {
   const snapshot = jsonRecord(raw);
   const businesses = jsonRecord(snapshot.businesses) as Record<
     string,
-    HarthmereBusinessRecordV1
+    HarthmereBusinessRecord
   >;
   const actorId = String(snapshot.actorId ?? "");
   const myBusinesses = Array.isArray(snapshot.myBusinesses)
@@ -1084,10 +1084,10 @@ export function normalizeHarthmereBusinessEconomySnapshotV1(
   };
 }
 
-export async function fetchHarthmereBusinessEconomyStateV1(
+export async function fetchHarthmereBusinessEconomyState(
   fetchImpl: typeof fetch = fetch
-): Promise<HarthmereBusinessEconomySnapshotV1> {
-  const response = await fetchHarthmereLiveWithTimeoutV1(
+): Promise<HarthmereBusinessEconomySnapshot> {
+  const response = await fetchHarthmereLiveWithTimeout(
     fetchImpl,
     "/api/harthmere/live_mode_economy_state",
     {
@@ -1099,10 +1099,10 @@ export async function fetchHarthmereBusinessEconomyStateV1(
   if (!response.ok)
     throw new Error(`business_economy_state_http_${response.status}`);
   const body = await response.json();
-  return normalizeHarthmereBusinessEconomySnapshotV1(body.economyState ?? body);
+  return normalizeHarthmereBusinessEconomySnapshot(body.economyState ?? body);
 }
 
-export async function submitHarthmereBusinessEconomyMutationV1(
+export async function submitHarthmereBusinessEconomyMutation(
   operation: string,
   payload: Record<string, unknown>,
   options: {
@@ -1110,12 +1110,12 @@ export async function submitHarthmereBusinessEconomyMutationV1(
     requestId?: string;
     zoneId?: string;
   } = {}
-): Promise<HarthmereBusinessInterfaceResponseV1> {
+): Promise<HarthmereBusinessInterfaceResponse> {
   const requestId =
     options.requestId ??
     `business_ui_${Date.now()}_${Math.random().toString(36).slice(2)}`;
   const fetchImpl = options.fetchImpl ?? fetch;
-  const response = await fetchHarthmereLiveWithTimeoutV1(
+  const response = await fetchHarthmereLiveWithTimeout(
     fetchImpl,
     "/api/harthmere/live_mode",
     {
@@ -1151,21 +1151,21 @@ export async function submitHarthmereBusinessEconomyMutationV1(
   return body;
 }
 
-export function isHarthmereBusinessInterfaceAvailableV1(
-  state: HarthmereBusinessEconomySnapshotV1 | undefined,
+export function isHarthmereBusinessInterfaceAvailable(
+  state: HarthmereBusinessEconomySnapshot | undefined,
   nearbyBusinessId?: string | null
 ): boolean {
   if (!state || !nearbyBusinessId) return false;
   const business = state.businesses[nearbyBusinessId];
   if (!business) return false;
-  const mode = getHarthmereBusinessActorModeV1(state, nearbyBusinessId);
-  return mode === "owner" || canCustomerUseHarthmereBusinessV1(business);
+  const mode = getHarthmereBusinessActorMode(state, nearbyBusinessId);
+  return mode === "owner" || canCustomerUseHarthmereBusiness(business);
 }
 
-export function getHarthmereBusinessActorModeV1(
-  state: HarthmereBusinessEconomySnapshotV1,
+export function getHarthmereBusinessActorMode(
+  state: HarthmereBusinessEconomySnapshot,
   businessId: string
-): HarthmereBusinessActorModeV1 {
+): HarthmereBusinessActorMode {
   const business = state.businesses[businessId];
   const permissions =
     (state.businessSystems.permissions ?? {})[businessId]?.[state.actorId] ??
@@ -1178,60 +1178,60 @@ export function getHarthmereBusinessActorModeV1(
   return "customer";
 }
 
-export function canCustomerUseHarthmereBusinessV1(
-  business: HarthmereBusinessRecordV1 | undefined
+export function canCustomerUseHarthmereBusiness(
+  business: HarthmereBusinessRecord | undefined
 ): boolean {
   return business?.status === "open";
 }
 
-function harthmereBusinessItemDisplayNameV1(
+function harthmereBusinessItemDisplayName(
   itemId: string,
   fallback?: string
 ): string {
   return (
-    getHarthmereItemDefinitionV1(itemId)?.displayName ??
-    HARTHMERE_FOOD_DEFINITIONS_V1[itemId]?.displayName ??
-    HARTHMERE_SEED_DEFINITIONS_V1[itemId]?.displayName ??
-    HARTHMERE_MEDICAL_ITEM_DEFINITIONS_V1[itemId]?.displayName ??
+    getHarthmereItemDefinition(itemId)?.displayName ??
+    HARTHMERE_FOOD_DEFINITIONS[itemId]?.displayName ??
+    HARTHMERE_SEED_DEFINITIONS[itemId]?.displayName ??
+    HARTHMERE_MEDICAL_ITEM_DEFINITIONS[itemId]?.displayName ??
     fallback ??
     itemId
   );
 }
 
-function harthmereBusinessItemKindHintV1(
+function harthmereBusinessItemKindHint(
   itemId: string,
   fallback?: string
 ): string | undefined {
-  if (getHarthmereItemDefinitionV1(itemId)?.category) {
-    return getHarthmereItemDefinitionV1(itemId)?.category;
+  if (getHarthmereItemDefinition(itemId)?.category) {
+    return getHarthmereItemDefinition(itemId)?.category;
   }
-  if (HARTHMERE_FOOD_DEFINITIONS_V1[itemId]) return "food";
-  if (HARTHMERE_SEED_DEFINITIONS_V1[itemId]) return "seed";
-  if (HARTHMERE_MEDICAL_ITEM_DEFINITIONS_V1[itemId]) return "medical utility";
+  if (HARTHMERE_FOOD_DEFINITIONS[itemId]) return "food";
+  if (HARTHMERE_SEED_DEFINITIONS[itemId]) return "seed";
+  if (HARTHMERE_MEDICAL_ITEM_DEFINITIONS[itemId]) return "medical utility";
   return fallback;
 }
 
-export function getHarthmereBusinessItemVisualV1(
+export function getHarthmereBusinessItemVisual(
   itemId: string,
   fallbackLabel?: string,
   kindHint?: string
-): HarthmereResolvedBikkieVisualV1 | undefined {
-  const definition = getHarthmereItemDefinitionV1(itemId);
-  const displayName = harthmereBusinessItemDisplayNameV1(itemId, fallbackLabel);
+): HarthmereResolvedBikkieVisual | undefined {
+  const definition = getHarthmereItemDefinition(itemId);
+  const displayName = harthmereBusinessItemDisplayName(itemId, fallbackLabel);
   if (!definition && !displayName) return undefined;
-  return harthmereResolveBikkieVisualV1({
+  return harthmereResolveBikkieVisual({
     id: itemId,
     label: displayName,
     kind:
-      definition?.category ?? harthmereBusinessItemKindHintV1(itemId, kindHint),
+      definition?.category ?? harthmereBusinessItemKindHint(itemId, kindHint),
     description: definition?.description,
     objectMetadata: definition?.objectMetadata,
   });
 }
 
 function itemPrice(
-  state: HarthmereBusinessEconomySnapshotV1,
-  business: HarthmereBusinessRecordV1,
+  state: HarthmereBusinessEconomySnapshot,
+  business: HarthmereBusinessRecord,
   itemId: string
 ): number {
   const region = business.regionId
@@ -1242,8 +1242,8 @@ function itemPrice(
   return Math.max(1, Math.round(base * modifier));
 }
 
-export function harthmereBusinessServicePriceGoldV1(
-  action: HarthmereBusinessServiceActionV1
+export function harthmereBusinessServicePriceGold(
+  action: HarthmereBusinessServiceAction
 ): number {
   const explicit = Number(action.priceGold);
   if (Number.isFinite(explicit) && explicit > 0) {
@@ -1260,38 +1260,38 @@ export function harthmereBusinessServicePriceGoldV1(
   return 15;
 }
 
-export function getHarthmereVisibleBusinessInventoryV1(
-  state: HarthmereBusinessEconomySnapshotV1,
+export function getHarthmereVisibleBusinessInventory(
+  state: HarthmereBusinessEconomySnapshot,
   businessId: string
-): HarthmereBusinessVisibleInventoryItemV1[] {
+): HarthmereBusinessVisibleInventoryItem[] {
   const business = state.businesses[businessId];
   if (!business) return [];
   return Object.values(business.inventory ?? {})
     .filter((stack) => stack.count > 0)
     .map((stack) => ({
       ...stack,
-      displayName: harthmereBusinessItemDisplayNameV1(stack.itemId),
+      displayName: harthmereBusinessItemDisplayName(stack.itemId),
       priceGold: itemPrice(state, business, stack.itemId),
-      visual: getHarthmereBusinessItemVisualV1(stack.itemId),
+      visual: getHarthmereBusinessItemVisual(stack.itemId),
     }))
     .sort((a, b) => a.itemId.localeCompare(b.itemId));
 }
 
-export function getHarthmereBusinessBankAccountV1(
-  state: HarthmereBusinessEconomySnapshotV1,
+export function getHarthmereBusinessBankAccount(
+  state: HarthmereBusinessEconomySnapshot,
   businessId: string
-): HarthmereBusinessBankAccountV1 | undefined {
+): HarthmereBusinessBankAccount | undefined {
   return Object.values(state.businessSystems.bankAccounts ?? {}).find(
     (account) => account.businessId === businessId
   );
 }
 
-export function getHarthmereBusinessMoneySummaryV1(
-  state: HarthmereBusinessEconomySnapshotV1,
+export function getHarthmereBusinessMoneySummary(
+  state: HarthmereBusinessEconomySnapshot,
   businessId: string
-): HarthmereBusinessMoneySummaryV1 {
+): HarthmereBusinessMoneySummary {
   const business = state.businesses[businessId];
-  const bank = getHarthmereBusinessBankAccountV1(state, businessId);
+  const bank = getHarthmereBusinessBankAccount(state, businessId);
   return {
     balanceGold: business?.balanceGold ?? 0,
     bankBalanceGold: bank?.balanceGold ?? 0,
@@ -1303,10 +1303,10 @@ export function getHarthmereBusinessMoneySummaryV1(
   };
 }
 
-export function getHarthmereBusinessContractsV1(
-  state: HarthmereBusinessEconomySnapshotV1,
+export function getHarthmereBusinessContracts(
+  state: HarthmereBusinessEconomySnapshot,
   businessId: string
-): HarthmereBusinessContractV1[] {
+): HarthmereBusinessContract[] {
   const fromOpen = state.openContracts.filter(
     (contract) =>
       contract.acceptedByBusinessId === businessId ||
@@ -1323,10 +1323,10 @@ export function getHarthmereBusinessContractsV1(
   });
 }
 
-export function getHarthmereCustomerOrdersV1(
-  state: HarthmereBusinessEconomySnapshotV1,
+export function getHarthmereCustomerOrders(
+  state: HarthmereBusinessEconomySnapshot,
   businessId: string
-): HarthmereBusinessContractV1[] {
+): HarthmereBusinessContract[] {
   const businessType = state.businesses[businessId]?.typeId;
   const all = [
     ...(state.customerContracts ?? []),
@@ -1347,13 +1347,13 @@ export function getHarthmereCustomerOrdersV1(
   });
 }
 
-export function getHarthmereBusinessTodosV1(
-  state: HarthmereBusinessEconomySnapshotV1,
+export function getHarthmereBusinessTodos(
+  state: HarthmereBusinessEconomySnapshot,
   businessId: string
-): HarthmereBusinessTodoV1[] {
+): HarthmereBusinessTodo[] {
   const business = state.businesses[businessId];
   if (!business) return [];
-  const todos: HarthmereBusinessTodoV1[] = [];
+  const todos: HarthmereBusinessTodo[] = [];
   if (business.status !== "open")
     todos.push({
       id: "open_business",
@@ -1362,7 +1362,7 @@ export function getHarthmereBusinessTodosV1(
       description:
         "This business is not open yet. Add property, license, and open it before customers can use it.",
     });
-  if (!getHarthmereBusinessBankAccountV1(state, businessId))
+  if (!getHarthmereBusinessBankAccount(state, businessId))
     todos.push({
       id: "bank_account",
       severity: "info",
@@ -1396,7 +1396,7 @@ export function getHarthmereBusinessTodosV1(
       description: "Low safety can reduce customers and create emergency work.",
     });
   if (
-    getHarthmereBusinessContractsV1(state, businessId).some(
+    getHarthmereBusinessContracts(state, businessId).some(
       (contract) => contract.status === "active"
     )
   )
@@ -1410,22 +1410,22 @@ export function getHarthmereBusinessTodosV1(
   return todos;
 }
 
-export function getHarthmereBusinessServiceActionsV1(
-  typeId: HarthmereBusinessTypeIdV1,
-  mode: HarthmereBusinessActorModeV1
-): HarthmereBusinessServiceActionV1[] {
-  const actions = (HARTHMERE_BUSINESS_SERVICE_ACTIONS_V1[typeId] ?? []).filter(
+export function getHarthmereBusinessServiceActions(
+  typeId: HarthmereBusinessTypeId,
+  mode: HarthmereBusinessActorMode
+): HarthmereBusinessServiceAction[] {
+  const actions = (HARTHMERE_BUSINESS_SERVICE_ACTIONS[typeId] ?? []).filter(
     (action) => action.audience === mode || action.audience === "both"
   );
   return mode === "customer"
     ? actions.map((action) => ({
         ...action,
-        priceGold: harthmereBusinessServicePriceGoldV1(action),
+        priceGold: harthmereBusinessServicePriceGold(action),
       }))
     : actions;
 }
 
-export interface HarthmereBusinessWorldContextV1 {
+export interface HarthmereBusinessWorldContext {
   nearbyBusinessId?: string | null;
   insideBusiness?: boolean;
   insideTownHall?: boolean;
@@ -1434,20 +1434,20 @@ export interface HarthmereBusinessWorldContextV1 {
   interactionKeyLabel?: string;
   outpostId?: string;
   businessInteractionMarkerId?: string;
-  businessInteractionPosition?: HarthmereBusinessWorldPointV1;
+  businessInteractionPosition?: HarthmereBusinessWorldPoint;
 }
 
-export interface HarthmereBusinessWorldPointV1 {
+export interface HarthmereBusinessWorldPoint {
   x: number;
   y?: number;
   z: number;
 }
 
-export function nearestHarthmereBusinessDashboardWorldContextV1(
-  state: HarthmereBusinessEconomySnapshotV1 | undefined,
-  playerPosition: HarthmereBusinessWorldPointV1 | undefined,
+export function nearestHarthmereBusinessDashboardWorldContext(
+  state: HarthmereBusinessEconomySnapshot | undefined,
+  playerPosition: HarthmereBusinessWorldPoint | undefined,
   radius = 6
-): HarthmereBusinessWorldContextV1 {
+): HarthmereBusinessWorldContext {
   if (!state || !playerPosition) return {};
   let nearest:
     | {
@@ -1455,7 +1455,7 @@ export function nearestHarthmereBusinessDashboardWorldContextV1(
         outpostId: string;
         distance: number;
         markerId?: string;
-        point: HarthmereBusinessWorldPointV1;
+        point: HarthmereBusinessWorldPoint;
       }
     | undefined;
   for (const record of Object.values(
@@ -1471,7 +1471,7 @@ export function nearestHarthmereBusinessDashboardWorldContextV1(
     if (horizontal > radius || Math.abs(dy) > 5) continue;
     const distance = Math.hypot(dx, dy, dz);
     if (nearest && nearest.distance <= distance) continue;
-    const businessId = harthmereBusinessOutpostBusinessIdV1(record.outpostId);
+    const businessId = harthmereBusinessOutpostBusinessId(record.outpostId);
     if (!state.businesses[businessId]) continue;
     nearest = {
       businessId,
@@ -1492,8 +1492,8 @@ export function nearestHarthmereBusinessDashboardWorldContextV1(
   };
 }
 
-export function harthmereBusinessWorldContextPayloadV1(
-  context: HarthmereBusinessWorldContextV1 | undefined
+export function harthmereBusinessWorldContextPayload(
+  context: HarthmereBusinessWorldContext | undefined
 ): Record<string, unknown> {
   if (!context?.nearbyBusinessId) return {};
   const point = context.businessInteractionPosition;
@@ -1516,25 +1516,25 @@ export function harthmereBusinessWorldContextPayloadV1(
   };
 }
 
-export interface HarthmereBusinessInteractionPromptV1 {
+export interface HarthmereBusinessInteractionPromptModel {
   visible: boolean;
   businessId?: string;
-  mode?: HarthmereBusinessActorModeV1;
+  mode?: HarthmereBusinessActorMode;
   label: string;
   helper: string;
   keyLabel: string;
 }
 
-export interface HarthmereBusinessDashboardV1 {
+export interface HarthmereBusinessDashboard {
   title: string;
   metrics: Array<{ id: string; label: string; value: string; hint: string }>;
-  todos: HarthmereBusinessTodoV1[];
+  todos: HarthmereBusinessTodo[];
   criticalCount: number;
 }
 
-export interface HarthmereBusinessGrowthReportV1 {
+export interface HarthmereBusinessGrowthReport {
   businessId: string;
-  typeId: HarthmereBusinessTypeIdV1;
+  typeId: HarthmereBusinessTypeId;
   earnedToday: string;
   costsToday: string;
   completedToday: string;
@@ -1548,13 +1548,13 @@ export interface HarthmereBusinessGrowthReportV1 {
   rewardLayers: string[];
 }
 
-export interface HarthmereBusinessShopfrontV1 {
+export interface HarthmereBusinessShopfront {
   businessId: string;
   businessType?: string;
-  inventory: HarthmereBusinessVisibleInventoryItemV1[];
+  inventory: HarthmereBusinessVisibleInventoryItem[];
   acceptsCustomOrders: boolean;
   emptyLabel: string;
-  // HARTHMERE_BUSINESS_TOOL_SHOP_V151: the one tool this business sells to the
+  // HARTHMERE_BUSINESS_TOOL_SHOP: the one tool this business sells to the
   // player (each of the 19 businesses sells a distinct tool). The panel shows a
   // "Buy" button for it; the purchase deposits the tool into the player's
   // inventory so a tool-gated job's redirect leads to a real purchase.
@@ -1562,9 +1562,9 @@ export interface HarthmereBusinessShopfrontV1 {
     toolItemId: string;
     toolName: string;
     priceGold: number;
-    visual?: HarthmereResolvedBikkieVisualV1;
+    visual?: HarthmereResolvedBikkieVisual;
   };
-  // HARTHMERE_BUSINESS_STOREFRONT_GOODS_V1: the business's themed building
+  // HARTHMERE_BUSINESS_STOREFRONT_GOODS: the business's themed building
   // materials + interior furnishings (5 blocks + 4 interior items), in addition
   // to its normal inventory + tool. Unlimited supply — bought via the server
   // buy_storefront_good economy op (no business-inventory deduction).
@@ -1575,20 +1575,20 @@ export interface HarthmereBusinessShopfrontV1 {
     priceGold: number;
     recipeIds?: readonly string[];
     learned?: boolean;
-    visual?: HarthmereResolvedBikkieVisualV1;
+    visual?: HarthmereResolvedBikkieVisual;
   }>;
 }
 
-export interface HarthmereBusinessContractBoardV1 {
-  open: HarthmereBusinessContractV1[];
-  active: HarthmereBusinessContractV1[];
-  fulfilled: HarthmereBusinessContractV1[];
-  customer: HarthmereBusinessContractV1[];
+export interface HarthmereBusinessContractBoard {
+  open: HarthmereBusinessContract[];
+  active: HarthmereBusinessContract[];
+  fulfilled: HarthmereBusinessContract[];
+  customer: HarthmereBusinessContract[];
 }
 
-export interface HarthmereBusinessFinancePanelV1 {
-  summary: HarthmereBusinessMoneySummaryV1;
-  account?: HarthmereBusinessBankAccountV1;
+export interface HarthmereBusinessFinancePanel {
+  summary: HarthmereBusinessMoneySummary;
+  account?: HarthmereBusinessBankAccount;
   loans: any[];
   insurancePolicies: any[];
   audit: Array<{
@@ -1601,16 +1601,16 @@ export interface HarthmereBusinessFinancePanelV1 {
   }>;
 }
 
-export interface HarthmereBusinessStaffPanelV1 {
-  employees: HarthmereBusinessEmployeeV1[];
-  candidates: HarthmereBusinessEmployeeCandidateV1[];
-  recentTaskRuns: HarthmereBusinessEmployeeTaskRunV1[];
+export interface HarthmereBusinessStaffPanel {
+  employees: HarthmereBusinessEmployee[];
+  candidates: HarthmereBusinessEmployeeCandidate[];
+  recentTaskRuns: HarthmereBusinessEmployeeTaskRun[];
   canHire: boolean;
   payrollDueGold: number;
-  moraleWarnings: HarthmereBusinessEmployeeV1[];
+  moraleWarnings: HarthmereBusinessEmployee[];
 }
 
-export interface HarthmereBusinessCompliancePanelV1 {
+export interface HarthmereBusinessCompliancePanel {
   licenseClass: string;
   licenseLevel: number;
   requiredLicense?: string;
@@ -1620,26 +1620,26 @@ export interface HarthmereBusinessCompliancePanelV1 {
   warnings: string[];
 }
 
-export interface HarthmereBusinessOperationScreenV1 {
+export interface HarthmereBusinessOperationScreen {
   businessId: string;
-  typeId: HarthmereBusinessTypeIdV1;
+  typeId: HarthmereBusinessTypeId;
   title: string;
-  ownerActions: HarthmereBusinessServiceActionV1[];
-  customerActions: HarthmereBusinessServiceActionV1[];
+  ownerActions: HarthmereBusinessServiceAction[];
+  customerActions: HarthmereBusinessServiceAction[];
   systemRecords: Record<string, any[]>;
 }
 
-export interface HarthmereBusinessCustomerMiniGamePanelV1 {
+export interface HarthmereBusinessCustomerMiniGamePanel {
   businessId: string;
-  typeId: HarthmereBusinessTypeIdV1;
-  definition: HarthmereBusinessMiniGameDefinitionV1;
-  bikkieGraphics: readonly HarthmereBusinessBikkieGraphicV1[];
-  customerPool: readonly HarthmereBusinessCustomerNpcV1[];
-  stats: HarthmereBusinessCustomerStatsV1;
-  activeSession?: HarthmereBusinessCustomerSessionV1;
-  currentTicket?: HarthmereBusinessCustomerTicketV1;
-  currentNpc?: HarthmereBusinessCustomerNpcV1;
-  offers: readonly HarthmereBusinessServiceOfferV1[];
+  typeId: HarthmereBusinessTypeId;
+  definition: HarthmereBusinessMiniGameDefinition;
+  bikkieGraphics: readonly HarthmereBusinessBikkieGraphic[];
+  customerPool: readonly HarthmereBusinessCustomerNpc[];
+  stats: HarthmereBusinessCustomerStats;
+  activeSession?: HarthmereBusinessCustomerSession;
+  currentTicket?: HarthmereBusinessCustomerTicket;
+  currentNpc?: HarthmereBusinessCustomerNpc;
+  offers: readonly HarthmereBusinessServiceOffer[];
   progressPath: string[];
   dailyReturnTriggers: string[];
   challengeGrowth: string[];
@@ -1647,12 +1647,12 @@ export interface HarthmereBusinessCustomerMiniGamePanelV1 {
   gapsClosed: string[];
 }
 
-export interface HarthmereBusinessEmpirePanelV1 {
+export interface HarthmereBusinessEmpirePanel {
   businessId: string;
-  branches: HarthmereBusinessBranchV1[];
-  dashboards: HarthmereBusinessBranchDashboardV1[];
-  automations: HarthmereBusinessAutomationV1[];
-  outpostBuildings: HarthmereBusinessOutpostProceduralBuildingRecordV1[];
+  branches: HarthmereBusinessBranch[];
+  dashboards: HarthmereBusinessBranchDashboard[];
+  automations: HarthmereBusinessAutomation[];
+  outpostBuildings: HarthmereBusinessOutpostProceduralBuildingRecord[];
   dailyRevenueGold: number;
   dailyUpkeepGold: number;
   lifetimeProfitGold: number;
@@ -1660,25 +1660,25 @@ export interface HarthmereBusinessEmpirePanelV1 {
   warnings: string[];
 }
 
-export interface HarthmereBusinessTownHallPanelV1 {
+export interface HarthmereBusinessTownHallPanel {
   towns: any[];
-  publicContracts: HarthmereBusinessContractV1[];
-  townBusinesses: HarthmereBusinessRecordV1[];
+  publicContracts: HarthmereBusinessContract[];
+  townBusinesses: HarthmereBusinessRecord[];
 }
 
-export interface HarthmereBusinessMarketplacePanelV1 {
+export interface HarthmereBusinessMarketplacePanel {
   openOrders: any[];
   regionalPrices: Record<string, number>;
   marketWarnings: string[];
 }
 
-export interface HarthmereBusinessGuildPanelV1 {
-  guildBusinesses: HarthmereBusinessRecordV1[];
-  guildContracts: HarthmereBusinessContractV1[];
+export interface HarthmereBusinessGuildPanel {
+  guildBusinesses: HarthmereBusinessRecord[];
+  guildContracts: HarthmereBusinessContract[];
   permissions: Record<string, string[]>;
 }
 
-export interface HarthmereBusinessServiceQuestV1 {
+export interface HarthmereBusinessServiceQuest {
   questId: string;
   contractId: string;
   businessId: string;
@@ -1697,7 +1697,7 @@ export interface HarthmereBusinessServiceQuestV1 {
   dueAtMs: number;
 }
 
-const FIELD_SERVICE_ACTION_IDS_V1 = new Set([
+const FIELD_SERVICE_ACTION_IDS = new Set([
   "inspect_biome",
   "request_redesign",
   "hire_guard",
@@ -1712,7 +1712,7 @@ const FIELD_SERVICE_ACTION_IDS_V1 = new Set([
   "book_room",
 ]);
 
-const FIELD_SERVICE_NEEDS_V1 = new Set([
+const FIELD_SERVICE_NEEDS = new Set([
   "maintenance",
   "safety",
   "health",
@@ -1724,23 +1724,23 @@ const FIELD_SERVICE_NEEDS_V1 = new Set([
   "property_condition",
 ]);
 
-export function requiresHarthmereFieldServiceQuestV1(
-  action: HarthmereBusinessServiceActionV1
+export function requiresHarthmereFieldServiceQuest(
+  action: HarthmereBusinessServiceAction
 ): boolean {
   if (action.requiresWorldService === true) return true;
-  if (FIELD_SERVICE_ACTION_IDS_V1.has(action.actionId)) return true;
-  if (action.serviceNeed && FIELD_SERVICE_NEEDS_V1.has(action.serviceNeed))
+  if (FIELD_SERVICE_ACTION_IDS.has(action.actionId)) return true;
+  if (action.serviceNeed && FIELD_SERVICE_NEEDS.has(action.serviceNeed))
     return true;
   return false;
 }
 
-export function getHarthmereBusinessFieldServiceSpecV1(
-  business: HarthmereBusinessRecordV1,
-  action: HarthmereBusinessServiceActionV1,
+export function getHarthmereBusinessFieldServiceSpec(
+  business: HarthmereBusinessRecord,
+  action: HarthmereBusinessServiceAction,
   overrides: Record<string, unknown> = {}
 ) {
   if (
-    !requiresHarthmereFieldServiceQuestV1(action) &&
+    !requiresHarthmereFieldServiceQuest(action) &&
     overrides.fieldService !== true
   )
     return undefined;
@@ -1771,10 +1771,10 @@ export function getHarthmereBusinessFieldServiceSpecV1(
   };
 }
 
-export function getHarthmereBusinessInteractionPromptV1(
-  state: HarthmereBusinessEconomySnapshotV1 | undefined,
-  context: HarthmereBusinessWorldContextV1
-): HarthmereBusinessInteractionPromptV1 {
+export function getHarthmereBusinessInteractionPrompt(
+  state: HarthmereBusinessEconomySnapshot | undefined,
+  context: HarthmereBusinessWorldContext
+): HarthmereBusinessInteractionPromptModel {
   const keyLabel = context.interactionKeyLabel ?? "F";
   if (
     !state ||
@@ -1785,8 +1785,8 @@ export function getHarthmereBusinessInteractionPromptV1(
     return { visible: false, label: "", helper: "", keyLabel };
   }
   const business = state.businesses[context.nearbyBusinessId];
-  const mode = getHarthmereBusinessActorModeV1(state, business.businessId);
-  if (mode === "customer" && !canCustomerUseHarthmereBusinessV1(business))
+  const mode = getHarthmereBusinessActorMode(state, business.businessId);
+  if (mode === "customer" && !canCustomerUseHarthmereBusiness(business))
     return { visible: false, label: "", helper: "", keyLabel };
   return {
     visible: true,
@@ -1801,7 +1801,7 @@ export function getHarthmereBusinessInteractionPromptV1(
   };
 }
 
-function soonestContractLabel(contracts: HarthmereBusinessContractV1[]) {
+function soonestContractLabel(contracts: HarthmereBusinessContract[]) {
   const active = contracts
     .filter(
       (contract) => contract.status === "active" || contract.status === "open"
@@ -1813,7 +1813,7 @@ function soonestContractLabel(contracts: HarthmereBusinessContractV1[]) {
   ).toLocaleDateString()}.`;
 }
 
-function requiredStockLabel(definition: HarthmereBusinessMiniGameDefinitionV1) {
+function requiredStockLabel(definition: HarthmereBusinessMiniGameDefinition) {
   const requiredItems = Array.from(
     new Set(
       definition.offers.flatMap((offer) => Object.keys(offer.requiredItems))
@@ -1823,10 +1823,10 @@ function requiredStockLabel(definition: HarthmereBusinessMiniGameDefinitionV1) {
   return requiredItems.slice(0, 4).map(titleCaseBusinessText).join(", ");
 }
 
-// HARTHMERE_BUSINESS_CLIENT_SESSION_EXPIRY_GUARD_V1
+// HARTHMERE_BUSINESS_CLIENT_SESSION_EXPIRY_GUARD
 // The backend stamps each customer session with an `expiresAtMs` and only
 // treats a session as active when `status === "active" && expiresAtMs > now`
-// (see activeCustomerSessionForBusiness in mmo_economy_business_systems_v1.ts).
+// (see activeCustomerSessionForBusiness in mmo_economy_business_systems.ts).
 // The economy snapshot the server ships to the client keeps stale sessions
 // verbatim (status still "active" with an elapsed expiresAtMs) until the next
 // mutation flips them to "expired". If the client only checks `status` it will
@@ -1835,15 +1835,15 @@ function requiredStockLabel(definition: HarthmereBusinessMiniGameDefinitionV1) {
 // `economy_rejected:business_customer_session_not_active`, which looks like the
 // mini-game is stuck spinning on the current customer. Mirror the backend's
 // time check here so the UI matches authoritative state.
-export function activeHarthmereBusinessClientCustomerSessionV1(
-  state: HarthmereBusinessEconomySnapshotV1,
+export function activeHarthmereBusinessClientCustomerSession(
+  state: HarthmereBusinessEconomySnapshot,
   businessId: string,
   nowMs: number = Date.now()
-): HarthmereBusinessCustomerSessionV1 | undefined {
+): HarthmereBusinessCustomerSession | undefined {
   return Object.values(
     (state.businessSystems.customerSessions ?? {}) as Record<
       string,
-      HarthmereBusinessCustomerSessionV1
+      HarthmereBusinessCustomerSession
     >
   ).find(
     (session) =>
@@ -1853,22 +1853,22 @@ export function activeHarthmereBusinessClientCustomerSessionV1(
   );
 }
 
-export function getHarthmereBusinessGrowthReportV1(
-  state: HarthmereBusinessEconomySnapshotV1,
+export function getHarthmereBusinessGrowthReport(
+  state: HarthmereBusinessEconomySnapshot,
   businessId: string
-): HarthmereBusinessGrowthReportV1 {
+): HarthmereBusinessGrowthReport {
   const business = state.businesses[businessId];
   const typeId = business?.typeId ?? "general_trader";
-  const definition = getHarthmereBusinessMiniGameDefinitionV1(typeId);
-  const stats = normalizeHarthmereBusinessCustomerStatsV1(
+  const definition = getHarthmereBusinessMiniGameDefinition(typeId);
+  const stats = normalizeHarthmereBusinessCustomerStats(
     state.businessSystems.customerStats?.[businessId],
     businessId
   );
-  const contracts = getHarthmereBusinessContractsV1(state, businessId);
+  const contracts = getHarthmereBusinessContracts(state, businessId);
   const activeOrders = contracts.filter(
     (contract) => contract.status === "active"
   ).length;
-  const todos = getHarthmereBusinessTodosV1(state, businessId);
+  const todos = getHarthmereBusinessTodos(state, businessId);
   const blockers = todos.filter((todo) => todo.severity !== "info");
   const nextUpgrade =
     definition.scalePath[
@@ -1876,7 +1876,7 @@ export function getHarthmereBusinessGrowthReportV1(
     ] ??
     definition.scalePath[definition.scalePath.length - 1] ??
     "Keep improving service quality.";
-  const session = activeHarthmereBusinessClientCustomerSessionV1(
+  const session = activeHarthmereBusinessClientCustomerSession(
     state,
     businessId
   );
@@ -1941,14 +1941,14 @@ export function getHarthmereBusinessGrowthReportV1(
   };
 }
 
-export function getHarthmereOwnerDashboardV1(
-  state: HarthmereBusinessEconomySnapshotV1,
+export function getHarthmereOwnerDashboard(
+  state: HarthmereBusinessEconomySnapshot,
   businessId: string
-): HarthmereBusinessDashboardV1 {
+): HarthmereBusinessDashboard {
   const business = state.businesses[businessId];
-  const money = getHarthmereBusinessMoneySummaryV1(state, businessId);
-  const todos = getHarthmereBusinessTodosV1(state, businessId);
-  const activeOrders = getHarthmereBusinessContractsV1(
+  const money = getHarthmereBusinessMoneySummary(state, businessId);
+  const todos = getHarthmereBusinessTodos(state, businessId);
+  const activeOrders = getHarthmereBusinessContracts(
     state,
     businessId
   ).filter((contract) => contract.status === "active").length;
@@ -1989,15 +1989,15 @@ export function getHarthmereOwnerDashboardV1(
   };
 }
 
-export function getHarthmereBusinessShopfrontV1(
-  state: HarthmereBusinessEconomySnapshotV1,
+export function getHarthmereBusinessShopfront(
+  state: HarthmereBusinessEconomySnapshot,
   businessId: string,
-  mode: HarthmereBusinessActorModeV1 = "customer"
-): HarthmereBusinessShopfrontV1 {
+  mode: HarthmereBusinessActorMode = "customer"
+): HarthmereBusinessShopfront {
   const business = state.businesses[businessId];
   if (
     !business ||
-    (mode === "customer" && !canCustomerUseHarthmereBusinessV1(business))
+    (mode === "customer" && !canCustomerUseHarthmereBusiness(business))
   ) {
     return {
       businessId,
@@ -2006,21 +2006,21 @@ export function getHarthmereBusinessShopfrontV1(
       emptyLabel: "This business is not open to customers.",
     };
   }
-  const inventory = getHarthmereVisibleBusinessInventoryV1(state, businessId);
-  const toolListing = harthmereBusinessToolForTypeV151(business.typeId);
+  const inventory = getHarthmereVisibleBusinessInventory(state, businessId);
+  const toolListing = harthmereBusinessToolForType(business.typeId);
   return {
     businessId,
     businessType: business.typeId,
     inventory,
     acceptsCustomOrders:
-      mode === "customer" && canCustomerUseHarthmereBusinessV1(business),
+      mode === "customer" && canCustomerUseHarthmereBusiness(business),
     emptyLabel: inventory.length ? "" : "No public inventory is stocked yet.",
     toolForSale: toolListing
       ? {
           toolItemId: toolListing.toolItemId,
           toolName: toolListing.toolName,
           priceGold: toolListing.priceGold,
-          visual: getHarthmereBusinessItemVisualV1(
+          visual: getHarthmereBusinessItemVisual(
             toolListing.toolItemId,
             toolListing.toolName,
             "tool"
@@ -2029,10 +2029,10 @@ export function getHarthmereBusinessShopfrontV1(
       : undefined,
     storefrontGoods:
       mode === "customer"
-        ? harthmereBusinessStorefrontListingsForTypeV1(business.typeId).map(
+        ? harthmereBusinessStorefrontListingsForType(business.typeId).map(
             (listing) => ({
               itemId: listing.itemId,
-              displayName: harthmereBusinessItemDisplayNameV1(listing.itemId),
+              displayName: harthmereBusinessItemDisplayName(listing.itemId),
               kind: listing.kind,
               priceGold: listing.buyPrice,
               recipeIds: listing.recipeIds,
@@ -2042,7 +2042,7 @@ export function getHarthmereBusinessShopfrontV1(
                       (state.actorKnownRecipes ?? []).includes(recipeId)
                     )
                   : undefined,
-              visual: getHarthmereBusinessItemVisualV1(
+              visual: getHarthmereBusinessItemVisual(
                 listing.itemId,
                 undefined,
                 listing.kind === "block"
@@ -2057,11 +2057,11 @@ export function getHarthmereBusinessShopfrontV1(
   };
 }
 
-export function getHarthmereContractBoardV1(
-  state: HarthmereBusinessEconomySnapshotV1,
+export function getHarthmereContractBoard(
+  state: HarthmereBusinessEconomySnapshot,
   businessId: string
-): HarthmereBusinessContractBoardV1 {
-  const byId: Record<string, HarthmereBusinessContractV1> = {};
+): HarthmereBusinessContractBoard {
+  const byId: Record<string, HarthmereBusinessContract> = {};
   for (const contract of [
     ...(state.openContracts ?? []),
     ...(state.activeContracts ?? []),
@@ -2086,17 +2086,17 @@ export function getHarthmereContractBoardV1(
         contract.status === "fulfilled" &&
         contract.acceptedByBusinessId === businessId
     ),
-    customer: getHarthmereCustomerOrdersV1(state, businessId),
+    customer: getHarthmereCustomerOrders(state, businessId),
   };
 }
 
-export function getHarthmereBusinessFinancePanelV1(
-  state: HarthmereBusinessEconomySnapshotV1,
+export function getHarthmereBusinessFinancePanel(
+  state: HarthmereBusinessEconomySnapshot,
   businessId: string
-): HarthmereBusinessFinancePanelV1 {
-  const account = getHarthmereBusinessBankAccountV1(state, businessId);
+): HarthmereBusinessFinancePanel {
+  const account = getHarthmereBusinessBankAccount(state, businessId);
   return {
-    summary: getHarthmereBusinessMoneySummaryV1(state, businessId),
+    summary: getHarthmereBusinessMoneySummary(state, businessId),
     account,
     loans: Object.values(state.loans ?? {}).filter(
       (loan: any) => loan.businessId === businessId
@@ -2108,10 +2108,10 @@ export function getHarthmereBusinessFinancePanelV1(
   };
 }
 
-export function getHarthmereBusinessStaffPanelV1(
-  state: HarthmereBusinessEconomySnapshotV1,
+export function getHarthmereBusinessStaffPanel(
+  state: HarthmereBusinessEconomySnapshot,
   businessId: string
-): HarthmereBusinessStaffPanelV1 {
+): HarthmereBusinessStaffPanel {
   const employees = Object.values(state.employees ?? {}).filter(
     (employee) => employee.businessId === businessId
   );
@@ -2135,7 +2135,7 @@ export function getHarthmereBusinessStaffPanelV1(
     employees,
     candidates,
     recentTaskRuns,
-    canHire: getHarthmereBusinessActorModeV1(state, businessId) === "owner",
+    canHire: getHarthmereBusinessActorMode(state, businessId) === "owner",
     payrollDueGold: employees.reduce(
       (sum, employee) => sum + employee.wageGoldPerDay,
       0
@@ -2144,10 +2144,10 @@ export function getHarthmereBusinessStaffPanelV1(
   };
 }
 
-export function getHarthmereBusinessCompliancePanelV1(
-  state: HarthmereBusinessEconomySnapshotV1,
+export function getHarthmereBusinessCompliancePanel(
+  state: HarthmereBusinessEconomySnapshot,
   businessId: string
-): HarthmereBusinessCompliancePanelV1 {
+): HarthmereBusinessCompliancePanel {
   const business = state.businesses[businessId];
   const type = business ? state.businessTypes[business.typeId] : undefined;
   const warnings: string[] = [];
@@ -2183,10 +2183,10 @@ function recordsForBusiness(
   );
 }
 
-export function getHarthmereBusinessOperationScreenV1(
-  state: HarthmereBusinessEconomySnapshotV1,
+export function getHarthmereBusinessOperationScreen(
+  state: HarthmereBusinessEconomySnapshot,
   businessId: string
-): HarthmereBusinessOperationScreenV1 {
+): HarthmereBusinessOperationScreen {
   const business = state.businesses[businessId];
   const typeId = business?.typeId ?? "general_trader";
   const systems = state.businessSystems ?? {};
@@ -2194,9 +2194,9 @@ export function getHarthmereBusinessOperationScreenV1(
     businessId,
     typeId,
     title: state.businessTypes[typeId]?.displayName ?? typeId,
-    ownerActions: getHarthmereBusinessServiceActionsV1(typeId, "owner"),
-    customerActions: canCustomerUseHarthmereBusinessV1(business)
-      ? getHarthmereBusinessServiceActionsV1(typeId, "customer")
+    ownerActions: getHarthmereBusinessServiceActions(typeId, "owner"),
+    customerActions: canCustomerUseHarthmereBusiness(business)
+      ? getHarthmereBusinessServiceActions(typeId, "customer")
       : [],
     systemRecords: {
       anchors: recordsForBusiness(systems.biomeAnchors as any, businessId),
@@ -2222,22 +2222,22 @@ export function getHarthmereBusinessOperationScreenV1(
   };
 }
 
-export function getHarthmereBusinessCustomerMiniGameV1(
-  state: HarthmereBusinessEconomySnapshotV1,
+export function getHarthmereBusinessCustomerMiniGame(
+  state: HarthmereBusinessEconomySnapshot,
   businessId: string,
   nowMs: number = Date.now()
-): HarthmereBusinessCustomerMiniGamePanelV1 {
+): HarthmereBusinessCustomerMiniGamePanel {
   const business = state.businesses[businessId];
   const typeId = business?.typeId ?? "general_trader";
-  const definition = getHarthmereBusinessMiniGameDefinitionV1(typeId as any);
-  const activeSession = activeHarthmereBusinessClientCustomerSessionV1(
+  const definition = getHarthmereBusinessMiniGameDefinition(typeId as any);
+  const activeSession = activeHarthmereBusinessClientCustomerSession(
     state,
     businessId,
     nowMs
   );
-  const currentTicket = activeHarthmereBusinessCustomerTicketV1(activeSession);
-  const currentNpc = findHarthmereBusinessCustomerNpcV1(currentTicket?.npcId);
-  const stats = normalizeHarthmereBusinessCustomerStatsV1(
+  const currentTicket = activeHarthmereBusinessCustomerTicket(activeSession);
+  const currentNpc = findHarthmereBusinessCustomerNpc(currentTicket?.npcId);
+  const stats = normalizeHarthmereBusinessCustomerStats(
     state.businessSystems.customerStats?.[businessId],
     businessId
   );
@@ -2246,7 +2246,7 @@ export function getHarthmereBusinessCustomerMiniGameV1(
     typeId,
     definition,
     bikkieGraphics: definition.bikkieGraphics,
-    customerPool: HARTHMERE_BUSINESS_CUSTOMER_NPCS_V1.filter((npc) =>
+    customerPool: HARTHMERE_BUSINESS_CUSTOMER_NPCS.filter((npc) =>
       npc.businessPreferences.includes(typeId as any)
     ),
     stats,
@@ -2262,10 +2262,10 @@ export function getHarthmereBusinessCustomerMiniGameV1(
   };
 }
 
-export function getHarthmereBusinessEmpirePanelV1(
-  state: HarthmereBusinessEconomySnapshotV1,
+export function getHarthmereBusinessEmpirePanel(
+  state: HarthmereBusinessEconomySnapshot,
   businessId: string
-): HarthmereBusinessEmpirePanelV1 {
+): HarthmereBusinessEmpirePanel {
   const business = state.businesses[businessId];
   const typeId = business?.typeId ?? "general_trader";
   const branches = Object.values(
@@ -2280,7 +2280,7 @@ export function getHarthmereBusinessEmpirePanelV1(
   const outpostBuildings = Object.values(
     state.businessSystems.outpostBuildings ?? {}
   ).filter((building) => building.businessType === typeId);
-  const stats = normalizeHarthmereBusinessCustomerStatsV1(
+  const stats = normalizeHarthmereBusinessCustomerStats(
     state.businessSystems.customerStats?.[businessId],
     businessId
   );
@@ -2324,9 +2324,9 @@ export function getHarthmereBusinessEmpirePanelV1(
   };
 }
 
-export function getHarthmereTownHallPanelV1(
-  state: HarthmereBusinessEconomySnapshotV1
-): HarthmereBusinessTownHallPanelV1 {
+export function getHarthmereTownHallPanel(
+  state: HarthmereBusinessEconomySnapshot
+): HarthmereBusinessTownHallPanel {
   return {
     towns: Object.values(state.towns ?? {}),
     publicContracts: (state.openContracts ?? []).filter(
@@ -2338,9 +2338,9 @@ export function getHarthmereTownHallPanelV1(
   };
 }
 
-export function getHarthmereMarketplacePanelV1(
-  state: HarthmereBusinessEconomySnapshotV1
-): HarthmereBusinessMarketplacePanelV1 {
+export function getHarthmereMarketplacePanel(
+  state: HarthmereBusinessEconomySnapshot
+): HarthmereBusinessMarketplacePanel {
   const firstRegion = Object.values(state.regions ?? {})[0] as any;
   return {
     openOrders: Object.values(state.marketOrders ?? {}).filter(
@@ -2351,10 +2351,10 @@ export function getHarthmereMarketplacePanelV1(
   };
 }
 
-export function getHarthmereGuildBusinessPanelV1(
-  state: HarthmereBusinessEconomySnapshotV1,
+export function getHarthmereGuildBusinessPanel(
+  state: HarthmereBusinessEconomySnapshot,
   guildId?: string
-): HarthmereBusinessGuildPanelV1 {
+): HarthmereBusinessGuildPanel {
   const guildBusinesses = Object.values(state.businesses ?? {}).filter(
     (business) =>
       business.ownerKind === "guild" &&
@@ -2385,29 +2385,29 @@ export function getHarthmereGuildBusinessPanelV1(
   };
 }
 
-export function getHarthmereBusinessServiceQuestsV1(
-  state: HarthmereBusinessEconomySnapshotV1,
+export function getHarthmereBusinessServiceQuests(
+  state: HarthmereBusinessEconomySnapshot,
   businessId?: string
-): HarthmereBusinessServiceQuestV1[] {
+): HarthmereBusinessServiceQuest[] {
   return Object.values(
     ((state.businessSystems as any)?.serviceQuests ?? {}) as Record<
       string,
-      HarthmereBusinessServiceQuestV1
+      HarthmereBusinessServiceQuest
     >
   ).filter((quest) => !businessId || quest.businessId === businessId);
 }
 
 function serviceContractPayload(
-  state: HarthmereBusinessEconomySnapshotV1,
-  business: HarthmereBusinessRecordV1,
-  action: HarthmereBusinessServiceActionV1,
+  state: HarthmereBusinessEconomySnapshot,
+  business: HarthmereBusinessRecord,
+  action: HarthmereBusinessServiceAction,
   overrides: Record<string, unknown>
 ) {
   const priceGold = Number(
     overrides.priceGold ??
       overrides.amountGold ??
       overrides.rewardGold ??
-      harthmereBusinessServicePriceGoldV1(action)
+      harthmereBusinessServicePriceGold(action)
   );
   const rewardGold = priceGold;
   return {
@@ -2429,7 +2429,7 @@ function serviceContractPayload(
     requirements: overrides.requirements ?? [
       { serviceNeed: action.serviceNeed ?? "logistics", serviceUnits: 1 },
     ],
-    fieldService: getHarthmereBusinessFieldServiceSpecV1(
+    fieldService: getHarthmereBusinessFieldServiceSpec(
       business,
       action,
       overrides
@@ -2437,49 +2437,49 @@ function serviceContractPayload(
   };
 }
 
-export interface HarthmereBusinessInterfaceAdapterV1 {
+export interface HarthmereBusinessInterfaceAdapter {
   isHydrated(): boolean;
-  getState(): HarthmereBusinessEconomySnapshotV1 | undefined;
+  getState(): HarthmereBusinessEconomySnapshot | undefined;
   refresh(): Promise<void>;
   isAvailable(nearbyBusinessId?: string | null): boolean;
-  getMode(businessId: string): HarthmereBusinessActorModeV1;
-  getBusiness(businessId: string): HarthmereBusinessRecordV1 | undefined;
+  getMode(businessId: string): HarthmereBusinessActorMode;
+  getBusiness(businessId: string): HarthmereBusinessRecord | undefined;
   getBusinessType(
     businessId: string
-  ): HarthmereBusinessTypeDefinitionV1 | undefined;
+  ): HarthmereBusinessTypeDefinition | undefined;
   getBikkieGraphics(
     businessId: string
-  ): readonly HarthmereBusinessBikkieGraphicV1[];
-  getInventory(businessId: string): HarthmereBusinessVisibleInventoryItemV1[];
-  getMoneySummary(businessId: string): HarthmereBusinessMoneySummaryV1;
-  getEmployees(businessId: string): HarthmereBusinessEmployeeV1[];
-  getContracts(businessId: string): HarthmereBusinessContractV1[];
-  getCustomerOrders(businessId: string): HarthmereBusinessContractV1[];
-  getTodos(businessId: string): HarthmereBusinessTodoV1[];
+  ): readonly HarthmereBusinessBikkieGraphic[];
+  getInventory(businessId: string): HarthmereBusinessVisibleInventoryItem[];
+  getMoneySummary(businessId: string): HarthmereBusinessMoneySummary;
+  getEmployees(businessId: string): HarthmereBusinessEmployee[];
+  getContracts(businessId: string): HarthmereBusinessContract[];
+  getCustomerOrders(businessId: string): HarthmereBusinessContract[];
+  getTodos(businessId: string): HarthmereBusinessTodo[];
   getServiceActions(
     businessId: string,
-    mode?: HarthmereBusinessActorModeV1
-  ): HarthmereBusinessServiceActionV1[];
+    mode?: HarthmereBusinessActorMode
+  ): HarthmereBusinessServiceAction[];
   getInteractionPrompt(
-    context: HarthmereBusinessWorldContextV1
-  ): HarthmereBusinessInteractionPromptV1;
-  getOwnerDashboard(businessId: string): HarthmereBusinessDashboardV1;
-  getCheckInStatus(businessId: string): BusinessCheckInStatusV1 | undefined;
-  getGrowthReport(businessId: string): HarthmereBusinessGrowthReportV1;
-  getShopfront(businessId: string): HarthmereBusinessShopfrontV1;
-  getContractBoard(businessId: string): HarthmereBusinessContractBoardV1;
-  getFinancePanel(businessId: string): HarthmereBusinessFinancePanelV1;
-  getStaffPanel(businessId: string): HarthmereBusinessStaffPanelV1;
-  getCompliancePanel(businessId: string): HarthmereBusinessCompliancePanelV1;
-  getOperationScreen(businessId: string): HarthmereBusinessOperationScreenV1;
+    context: HarthmereBusinessWorldContext
+  ): HarthmereBusinessInteractionPromptModel;
+  getOwnerDashboard(businessId: string): HarthmereBusinessDashboard;
+  getCheckInStatus(businessId: string): BusinessCheckInStatus | undefined;
+  getGrowthReport(businessId: string): HarthmereBusinessGrowthReport;
+  getShopfront(businessId: string): HarthmereBusinessShopfront;
+  getContractBoard(businessId: string): HarthmereBusinessContractBoard;
+  getFinancePanel(businessId: string): HarthmereBusinessFinancePanel;
+  getStaffPanel(businessId: string): HarthmereBusinessStaffPanel;
+  getCompliancePanel(businessId: string): HarthmereBusinessCompliancePanel;
+  getOperationScreen(businessId: string): HarthmereBusinessOperationScreen;
   getCustomerMiniGame(
     businessId: string
-  ): HarthmereBusinessCustomerMiniGamePanelV1;
-  getEmpirePanel(businessId: string): HarthmereBusinessEmpirePanelV1;
-  getTownHallPanel(): HarthmereBusinessTownHallPanelV1;
-  getMarketplacePanel(): HarthmereBusinessMarketplacePanelV1;
-  getGuildBusinessPanel(guildId?: string): HarthmereBusinessGuildPanelV1;
-  getServiceQuests(businessId?: string): HarthmereBusinessServiceQuestV1[];
+  ): HarthmereBusinessCustomerMiniGamePanel;
+  getEmpirePanel(businessId: string): HarthmereBusinessEmpirePanel;
+  getTownHallPanel(): HarthmereBusinessTownHallPanel;
+  getMarketplacePanel(): HarthmereBusinessMarketplacePanel;
+  getGuildBusinessPanel(guildId?: string): HarthmereBusinessGuildPanel;
+  getServiceQuests(businessId?: string): HarthmereBusinessServiceQuest[];
   submitOperation(
     operation: string,
     payload: Record<string, unknown>
@@ -2528,7 +2528,7 @@ export interface HarthmereBusinessInterfaceAdapterV1 {
   promoteWorker(
     businessId: string,
     employeeId: string,
-    assignedTask?: HarthmereBusinessEmployeeAssignableTaskIdV1
+    assignedTask?: HarthmereBusinessEmployeeAssignableTaskId
   ): Promise<void>;
   payPayroll(businessId: string): Promise<void>;
   checkInDaily(businessId: string): Promise<void>;
@@ -2584,12 +2584,12 @@ export interface HarthmereBusinessInterfaceAdapterV1 {
     offerId: string,
     sessionId?: string,
     ticketId?: string,
-    minigameAction?: HarthmereBusinessMiniGameDecisionV1
+    minigameAction?: HarthmereBusinessMiniGameDecision
   ): Promise<void>;
   openBranch(businessId: string, outpostId?: string): Promise<void>;
   assignAutomation(
     businessId: string,
-    role: HarthmereBusinessAutomationRoleV1,
+    role: HarthmereBusinessAutomationRole,
     branchId?: string,
     employeeId?: string
   ): Promise<void>;
@@ -2613,18 +2613,18 @@ export interface HarthmereBusinessInterfaceAdapterV1 {
   settleEmpireDay(businessId: string, days?: number): Promise<void>;
 }
 
-export function createHarthmereBusinessInterfaceAdapterV1(options: {
-  state?: HarthmereBusinessEconomySnapshotV1;
+export function createHarthmereBusinessInterfaceAdapter(options: {
+  state?: HarthmereBusinessEconomySnapshot;
   hydrated?: boolean;
-  setState?: (next: HarthmereBusinessEconomySnapshotV1 | undefined) => void;
-  refresh?: () => Promise<HarthmereBusinessEconomySnapshotV1 | undefined>;
+  setState?: (next: HarthmereBusinessEconomySnapshot | undefined) => void;
+  refresh?: () => Promise<HarthmereBusinessEconomySnapshot | undefined>;
   submit?: (
     operation: string,
     payload: Record<string, unknown>
-  ) => Promise<HarthmereBusinessInterfaceResponseV1>;
-}): HarthmereBusinessInterfaceAdapterV1 {
+  ) => Promise<HarthmereBusinessInterfaceResponse>;
+}): HarthmereBusinessInterfaceAdapter {
   let current = options.state;
-  const setCurrent = (next: HarthmereBusinessEconomySnapshotV1 | undefined) => {
+  const setCurrent = (next: HarthmereBusinessEconomySnapshot | undefined) => {
     current = next;
     options.setState?.(next);
   };
@@ -2638,14 +2638,14 @@ export function createHarthmereBusinessInterfaceAdapterV1(options: {
   ) => {
     try {
       const response = await options.submit?.(operation, payload);
-      dispatchHarthmereBusinessInventoryLootUpdatedV1(response);
+      dispatchHarthmereBusinessInventoryLootUpdated(response);
       if (response?.economyState)
         setCurrent(
-          normalizeHarthmereBusinessEconomySnapshotV1(response.economyState)
+          normalizeHarthmereBusinessEconomySnapshot(response.economyState)
         );
       await refresh();
     } catch (error) {
-      // HARTHMERE_BUSINESS_CLIENT_SESSION_EXPIRY_GUARD_V1
+      // HARTHMERE_BUSINESS_CLIENT_SESSION_EXPIRY_GUARD
       // A rejected mutation (e.g. serving a customer whose session has expired
       // server-side) throws before we can apply the response, which would leave
       // the client showing the now-invalid session forever. Re-pull
@@ -2666,9 +2666,9 @@ export function createHarthmereBusinessInterfaceAdapterV1(options: {
     getState: () => current,
     refresh,
     isAvailable: (nearbyBusinessId) =>
-      isHarthmereBusinessInterfaceAvailableV1(current, nearbyBusinessId),
+      isHarthmereBusinessInterfaceAvailable(current, nearbyBusinessId),
     getMode: (businessId) =>
-      getHarthmereBusinessActorModeV1(requireState(), businessId),
+      getHarthmereBusinessActorMode(requireState(), businessId),
     getBusiness: (businessId) => current?.businesses[businessId],
     getBusinessType: (businessId) => {
       const state = requireState();
@@ -2679,40 +2679,40 @@ export function createHarthmereBusinessInterfaceAdapterV1(options: {
       const state = requireState();
       const business = state.businesses[businessId];
       return business
-        ? getHarthmereBusinessBikkieGraphicsV1(business.typeId as any)
+        ? getHarthmereBusinessBikkieGraphics(business.typeId as any)
         : [];
     },
     getInventory: (businessId) =>
-      getHarthmereVisibleBusinessInventoryV1(requireState(), businessId),
+      getHarthmereVisibleBusinessInventory(requireState(), businessId),
     getMoneySummary: (businessId) =>
-      getHarthmereBusinessMoneySummaryV1(requireState(), businessId),
+      getHarthmereBusinessMoneySummary(requireState(), businessId),
     getEmployees: (businessId) =>
       Object.values(requireState().employees).filter(
         (employee) => employee.businessId === businessId
       ),
     getContracts: (businessId) =>
-      getHarthmereBusinessContractsV1(requireState(), businessId),
+      getHarthmereBusinessContracts(requireState(), businessId),
     getCustomerOrders: (businessId) =>
-      getHarthmereCustomerOrdersV1(requireState(), businessId),
+      getHarthmereCustomerOrders(requireState(), businessId),
     getTodos: (businessId) =>
-      getHarthmereBusinessTodosV1(requireState(), businessId),
+      getHarthmereBusinessTodos(requireState(), businessId),
     getServiceActions: (businessId, mode) => {
       const state = requireState();
       const business = state.businesses[businessId];
       if (!business) return [];
       const actorMode =
-        mode ?? getHarthmereBusinessActorModeV1(state, businessId);
+        mode ?? getHarthmereBusinessActorMode(state, businessId);
       if (
         actorMode === "customer" &&
-        !canCustomerUseHarthmereBusinessV1(business)
+        !canCustomerUseHarthmereBusiness(business)
       )
         return [];
-      return getHarthmereBusinessServiceActionsV1(business.typeId, actorMode);
+      return getHarthmereBusinessServiceActions(business.typeId, actorMode);
     },
     getInteractionPrompt: (context) =>
-      getHarthmereBusinessInteractionPromptV1(requireState(), context),
+      getHarthmereBusinessInteractionPrompt(requireState(), context),
     getOwnerDashboard: (businessId) =>
-      getHarthmereOwnerDashboardV1(requireState(), businessId),
+      getHarthmereOwnerDashboard(requireState(), businessId),
     getCheckInStatus: (businessId) => {
       const business = requireState().businesses[businessId];
       if (!business) {
@@ -2721,42 +2721,42 @@ export function createHarthmereBusinessInterfaceAdapterV1(options: {
       // The "lost by not checking in" total is accumulated server-side from
       // actual reduced sales, so the client passes baseDailyRevenue 0 here — the
       // status surfaces the real made/lost totals + streak from the record.
-      return businessCheckInStatusV1(
-        business.dailyCheckIn ?? initBusinessDailyCheckInStateV1(),
-        harthmereDayIndexV1(Date.now()),
+      return businessCheckInStatus(
+        business.dailyCheckIn ?? initBusinessDailyCheckInState(),
+        harthmereDayIndex(Date.now()),
         0
       );
     },
     getGrowthReport: (businessId) =>
-      getHarthmereBusinessGrowthReportV1(requireState(), businessId),
+      getHarthmereBusinessGrowthReport(requireState(), businessId),
     getShopfront: (businessId) => {
       const state = requireState();
-      return getHarthmereBusinessShopfrontV1(
+      return getHarthmereBusinessShopfront(
         state,
         businessId,
-        getHarthmereBusinessActorModeV1(state, businessId)
+        getHarthmereBusinessActorMode(state, businessId)
       );
     },
     getContractBoard: (businessId) =>
-      getHarthmereContractBoardV1(requireState(), businessId),
+      getHarthmereContractBoard(requireState(), businessId),
     getFinancePanel: (businessId) =>
-      getHarthmereBusinessFinancePanelV1(requireState(), businessId),
+      getHarthmereBusinessFinancePanel(requireState(), businessId),
     getStaffPanel: (businessId) =>
-      getHarthmereBusinessStaffPanelV1(requireState(), businessId),
+      getHarthmereBusinessStaffPanel(requireState(), businessId),
     getCompliancePanel: (businessId) =>
-      getHarthmereBusinessCompliancePanelV1(requireState(), businessId),
+      getHarthmereBusinessCompliancePanel(requireState(), businessId),
     getOperationScreen: (businessId) =>
-      getHarthmereBusinessOperationScreenV1(requireState(), businessId),
+      getHarthmereBusinessOperationScreen(requireState(), businessId),
     getCustomerMiniGame: (businessId) =>
-      getHarthmereBusinessCustomerMiniGameV1(requireState(), businessId),
+      getHarthmereBusinessCustomerMiniGame(requireState(), businessId),
     getEmpirePanel: (businessId) =>
-      getHarthmereBusinessEmpirePanelV1(requireState(), businessId),
-    getTownHallPanel: () => getHarthmereTownHallPanelV1(requireState()),
-    getMarketplacePanel: () => getHarthmereMarketplacePanelV1(requireState()),
+      getHarthmereBusinessEmpirePanel(requireState(), businessId),
+    getTownHallPanel: () => getHarthmereTownHallPanel(requireState()),
+    getMarketplacePanel: () => getHarthmereMarketplacePanel(requireState()),
     getGuildBusinessPanel: (guildId) =>
-      getHarthmereGuildBusinessPanelV1(requireState(), guildId),
+      getHarthmereGuildBusinessPanel(requireState(), guildId),
     getServiceQuests: (businessId) =>
-      getHarthmereBusinessServiceQuestsV1(requireState(), businessId),
+      getHarthmereBusinessServiceQuests(requireState(), businessId),
     submitOperation: submit,
     createBankAccount: (businessId) =>
       submit("create_business_bank_account", { businessId }),
@@ -2835,14 +2835,14 @@ export function createHarthmereBusinessInterfaceAdapterV1(options: {
     purchaseShopItem: async (businessId, itemId, count) => {
       const business = requireState().businesses[businessId];
       if (!business) throw new Error("business_not_found");
-      if (!canCustomerUseHarthmereBusinessV1(business))
+      if (!canCustomerUseHarthmereBusiness(business))
         throw new Error("business_not_open");
       await submit("record_customer_sale", { businessId, itemId, count });
     },
     buyStorefrontGood: async (businessId, itemId, count) => {
       const business = requireState().businesses[businessId];
       if (!business) throw new Error("business_not_found");
-      if (!canCustomerUseHarthmereBusinessV1(business))
+      if (!canCustomerUseHarthmereBusiness(business))
         throw new Error("business_not_open");
       await submit("buy_storefront_good", { businessId, itemId, count });
     },
@@ -2850,7 +2850,7 @@ export function createHarthmereBusinessInterfaceAdapterV1(options: {
       const state = requireState();
       const business = state.businesses[businessId];
       if (!business) throw new Error("business_not_found");
-      const action = getHarthmereBusinessServiceActionsV1(
+      const action = getHarthmereBusinessServiceActions(
         business.typeId,
         "owner"
       ).find((entry) => entry.actionId === actionId);
@@ -2865,9 +2865,9 @@ export function createHarthmereBusinessInterfaceAdapterV1(options: {
       const state = requireState();
       const business = state.businesses[businessId];
       if (!business) throw new Error("business_not_found");
-      if (!canCustomerUseHarthmereBusinessV1(business))
+      if (!canCustomerUseHarthmereBusiness(business))
         throw new Error("business_not_open");
-      const action = getHarthmereBusinessServiceActionsV1(
+      const action = getHarthmereBusinessServiceActions(
         business.typeId,
         "customer"
       ).find((entry) => entry.actionId === actionId);
@@ -2883,7 +2883,7 @@ export function createHarthmereBusinessInterfaceAdapterV1(options: {
           overrides.priceGold ??
             overrides.amountGold ??
             action.priceGold ??
-            harthmereBusinessServicePriceGoldV1(action)
+            harthmereBusinessServicePriceGold(action)
         );
         await submit(action.operation, {
           businessId,

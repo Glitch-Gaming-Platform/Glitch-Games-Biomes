@@ -90,7 +90,7 @@ If you are intending to modify or add player-facing game interactions or logic, 
 - Maintains a copy of the world, subscribes directly to the World
 - Supports the subscription part of the current Game API
 
-## [Gaia](https://github.com/ill-inc/biomes-game/tree/main/src/server/gaia_v2)
+## [Gaia](https://github.com/ill-inc/biomes-game/tree/main/src/server/gaia)
 
 Gaia authoritively controls all "natural" game simulation in game:
 

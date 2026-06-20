@@ -1,25 +1,25 @@
 import {
-  HARTHMERE_DEFAULT_MAX_STAMINA_V1,
-  HARTHMERE_FARMING_FOOD_STAMINA_VERSION_V1,
-  defaultHarthmereFoodStaminaStateV1,
-  eatHarthmereFoodV1,
-  restoreHarthmereStaminaToFullV1,
-  tickHarthmereStaminaForGameplayV1,
-  type HarthmereFoodStaminaStateV1,
-} from "@/shared/harthmere/mmo_farming_food_stamina_v1";
+  HARTHMERE_DEFAULT_MAX_STAMINA,
+  HARTHMERE_FARMING_FOOD_STAMINA_VERSION,
+  defaultHarthmereFoodStaminaState,
+  eatHarthmereFood,
+  restoreHarthmereStaminaToFull,
+  tickHarthmereStaminaForGameplay,
+  type HarthmereFoodStaminaState,
+} from "@/shared/harthmere/mmo_farming_food_stamina";
 import { downHarthmerePlayerFromSystem } from "@/client/components/challenges/LocalDevHarthmereCombat";
 import { harthmereUserScopedStorageKey } from "@/client/components/challenges/LocalDevHarthmereUserScope";
 import React, { useEffect, useState } from "react";
 
 export const HARTHMERE_FOOD_STAMINA_STATE_KEY =
-  "biomes.localDev.harthmere.foodStaminaState.v1";
+  "biomes.localDev.harthmere.foodStaminaState";
 export const HARTHMERE_FOOD_STAMINA_EVENT =
   "biomes:harthmere-food-stamina-changed";
-export const HARTHMERE_WAKE_UP_ACTIVE_DATASET_KEY_V1 =
+export const HARTHMERE_WAKE_UP_ACTIVE_DATASET_KEY =
   "harthmereWakeUpActive" as const;
-const HARTHMERE_LOCAL_INVENTORY_STATE_KEY_FOR_STAMINA_V1 =
-  "biomes.localDev.harthmere.inventoryState.v1";
-const HARTHMERE_LOCAL_INVENTORY_EVENT_FOR_STAMINA_V1 =
+const HARTHMERE_LOCAL_INVENTORY_STATE_KEY_FOR_STAMINA =
+  "biomes.localDev.harthmere.inventoryState";
+const HARTHMERE_LOCAL_INVENTORY_EVENT_FOR_STAMINA =
   "biomes:harthmere-inventory-changed";
 
 function isBrowser() {
@@ -47,7 +47,7 @@ function addPositiveItemCount(
   items[key] = (items[key] ?? 0) + amount;
 }
 
-export function carriedHarthmereLocalInventoryForStaminaV1(
+export function carriedHarthmereLocalInventoryForStamina(
   raw: unknown
 ): Record<string, number> | undefined {
   if (!raw || typeof raw !== "object") {
@@ -70,14 +70,14 @@ export function carriedHarthmereLocalInventoryForStaminaV1(
   return items;
 }
 
-export function carriedHarthmereLocalInventoryFromStorageValuesForStaminaV1(
+export function carriedHarthmereLocalInventoryFromStorageValuesForStamina(
   scopedRaw: string | null | undefined,
   legacyRaw: string | null | undefined
 ): Record<string, number> | undefined {
   for (const raw of [scopedRaw, legacyRaw]) {
     if (!raw) continue;
     try {
-      const carried = carriedHarthmereLocalInventoryForStaminaV1(
+      const carried = carriedHarthmereLocalInventoryForStamina(
         JSON.parse(raw)
       );
       if (carried) return carried;
@@ -89,7 +89,7 @@ export function carriedHarthmereLocalInventoryFromStorageValuesForStaminaV1(
   return undefined;
 }
 
-function readCurrentCarriedInventoryForStaminaV1():
+function readCurrentCarriedInventoryForStamina():
   | Record<string, number>
   | undefined {
   if (!isBrowser()) {
@@ -98,13 +98,13 @@ function readCurrentCarriedInventoryForStaminaV1():
   try {
     const scopedRaw = window.localStorage.getItem(
       harthmereUserScopedStorageKey(
-        HARTHMERE_LOCAL_INVENTORY_STATE_KEY_FOR_STAMINA_V1
+        HARTHMERE_LOCAL_INVENTORY_STATE_KEY_FOR_STAMINA
       )
     );
     const legacyRaw = window.localStorage.getItem(
-      HARTHMERE_LOCAL_INVENTORY_STATE_KEY_FOR_STAMINA_V1
+      HARTHMERE_LOCAL_INVENTORY_STATE_KEY_FOR_STAMINA
     );
-    return carriedHarthmereLocalInventoryFromStorageValuesForStaminaV1(
+    return carriedHarthmereLocalInventoryFromStorageValuesForStamina(
       scopedRaw,
       legacyRaw
     );
@@ -114,18 +114,18 @@ function readCurrentCarriedInventoryForStaminaV1():
 }
 
 function normalizeFoodStaminaState(
-  raw: Partial<HarthmereFoodStaminaStateV1> | undefined
-): HarthmereFoodStaminaStateV1 {
+  raw: Partial<HarthmereFoodStaminaState> | undefined
+): HarthmereFoodStaminaState {
   const now = Date.now();
-  const fallback = defaultHarthmereFoodStaminaStateV1("local-player", now);
+  const fallback = defaultHarthmereFoodStaminaState("local-player", now);
   const maxStamina = Math.max(
     1,
-    Number(raw?.maxStamina ?? HARTHMERE_DEFAULT_MAX_STAMINA_V1)
+    Number(raw?.maxStamina ?? HARTHMERE_DEFAULT_MAX_STAMINA)
   );
   const savedStateVersion = raw?.stateVersion;
   const migratingFromOldFastDrain =
     raw !== undefined &&
-    savedStateVersion !== HARTHMERE_FARMING_FOOD_STAMINA_VERSION_V1;
+    savedStateVersion !== HARTHMERE_FARMING_FOOD_STAMINA_VERSION;
   const savedStamina = Math.max(
     0,
     Math.min(maxStamina, Number(raw?.stamina ?? fallback.stamina))
@@ -140,7 +140,7 @@ function normalizeFoodStaminaState(
     repairPlayableZeroStamina;
 
   return {
-    stateVersion: HARTHMERE_FARMING_FOOD_STAMINA_VERSION_V1,
+    stateVersion: HARTHMERE_FARMING_FOOD_STAMINA_VERSION,
     actorId: String(raw?.actorId ?? fallback.actorId),
     // Older local-dev saves used a much faster starvation pace. If one of
     // those saves had already hit zero, migrate it back to a playable bar
@@ -166,9 +166,9 @@ function normalizeFoodStaminaState(
 
 export const normalizeFoodStaminaStateForTest = normalizeFoodStaminaState;
 
-export function readHarthmereFoodStaminaState(): HarthmereFoodStaminaStateV1 {
+export function readHarthmereFoodStaminaState(): HarthmereFoodStaminaState {
   if (!isBrowser()) {
-    return defaultHarthmereFoodStaminaStateV1("local-player", Date.now());
+    return defaultHarthmereFoodStaminaState("local-player", Date.now());
   }
   try {
     const raw = window.localStorage.getItem(
@@ -176,12 +176,12 @@ export function readHarthmereFoodStaminaState(): HarthmereFoodStaminaStateV1 {
     );
     return normalizeFoodStaminaState(raw ? JSON.parse(raw) : undefined);
   } catch {
-    return defaultHarthmereFoodStaminaStateV1("local-player", Date.now());
+    return defaultHarthmereFoodStaminaState("local-player", Date.now());
   }
 }
 
 export function writeHarthmereFoodStaminaState(
-  state: HarthmereFoodStaminaStateV1
+  state: HarthmereFoodStaminaState
 ) {
   if (!isBrowser()) {
     return;
@@ -193,11 +193,11 @@ export function writeHarthmereFoodStaminaState(
   dispatchFoodStaminaEvent();
 }
 
-export function isHarthmereWakeUpScreenActiveV1() {
+export function isHarthmereWakeUpScreenActive() {
   return (
     isBrowser() &&
     document.documentElement.dataset[
-      HARTHMERE_WAKE_UP_ACTIVE_DATASET_KEY_V1
+      HARTHMERE_WAKE_UP_ACTIVE_DATASET_KEY
     ] === "true"
   );
 }
@@ -206,7 +206,7 @@ export function restoreHarthmereFoodStaminaToFullForRespawn(
   reason = "Restored stamina after respawn."
 ) {
   const before = readHarthmereFoodStaminaState();
-  const result = restoreHarthmereStaminaToFullV1(before, Date.now());
+  const result = restoreHarthmereStaminaToFull(before, Date.now());
   writeHarthmereFoodStaminaState(result.state);
   if (isBrowser()) {
     window.dispatchEvent(
@@ -234,7 +234,7 @@ export function useHarthmereFoodStaminaState() {
 
 export function eatHarthmereFoodForStamina(itemId: string) {
   const before = readHarthmereFoodStaminaState();
-  const result = eatHarthmereFoodV1(
+  const result = eatHarthmereFood(
     {
       ...before,
       inventory: {
@@ -261,15 +261,15 @@ export const HarthmereFoodStaminaRuntimeController: React.FunctionComponent<{}> 
         if (!isBrowser() || document.visibilityState !== "visible") {
           return false;
         }
-        if (isHarthmereWakeUpScreenActiveV1()) {
+        if (isHarthmereWakeUpScreenActive()) {
           return false;
         }
         return true;
       };
       const tick = () => {
         const before = readHarthmereFoodStaminaState();
-        const carriedInventory = readCurrentCarriedInventoryForStaminaV1();
-        const result = tickHarthmereStaminaForGameplayV1(
+        const carriedInventory = readCurrentCarriedInventoryForStamina();
+        const result = tickHarthmereStaminaForGameplay(
           carriedInventory
             ? { ...before, inventory: carriedInventory }
             : before,
@@ -286,7 +286,7 @@ export const HarthmereFoodStaminaRuntimeController: React.FunctionComponent<{}> 
       };
       const id = window.setInterval(tick, 15_000);
       window.addEventListener(
-        HARTHMERE_LOCAL_INVENTORY_EVENT_FOR_STAMINA_V1,
+        HARTHMERE_LOCAL_INVENTORY_EVENT_FOR_STAMINA,
         tick
       );
       window.addEventListener("storage", tick);
@@ -294,7 +294,7 @@ export const HarthmereFoodStaminaRuntimeController: React.FunctionComponent<{}> 
       return () => {
         window.clearInterval(id);
         window.removeEventListener(
-          HARTHMERE_LOCAL_INVENTORY_EVENT_FOR_STAMINA_V1,
+          HARTHMERE_LOCAL_INVENTORY_EVENT_FOR_STAMINA,
           tick
         );
         window.removeEventListener("storage", tick);

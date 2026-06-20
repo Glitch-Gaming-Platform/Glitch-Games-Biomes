@@ -1,46 +1,46 @@
 import {
-  HARTHMERE_CARE_DAILY_ACTIVITIES_V1,
-  HARTHMERE_DAILY_TASK_MIN_GOLD_V1,
-  harthmereDailyTaskXpRewardV1,
-} from "@/shared/harthmere/mmo_care_loops_v1";
+  HARTHMERE_CARE_DAILY_ACTIVITIES,
+  HARTHMERE_DAILY_TASK_MIN_GOLD,
+  harthmereDailyTaskXpReward,
+} from "@/shared/harthmere/mmo_care_loops";
 
-export interface DailyTodoRewardV1 {
+export interface DailyTodoReward {
   gold?: number;
   xp?: number;
   items?: Array<{ id: string; name: string; count: number }>;
   townCare?: string;
 }
 
-export interface DailyTodoItemV1 {
+export interface DailyTodoItem {
   id: string;
   activityId: string;
   title: string;
   description: string;
   category: "check_in" | "quest" | "community" | "harvest" | "home";
-  reward: DailyTodoRewardV1;
+  reward: DailyTodoReward;
   completed: boolean;
   claimed: boolean;
   claimable: boolean;
   actionLabel: string;
 }
 
-export interface DailyTodoAdapterV1 {
+export interface DailyTodoAdapter {
   isHydrated: () => boolean;
-  getTasks: () => DailyTodoItemV1[];
+  getTasks: () => DailyTodoItem[];
   getStreak?: () => number;
   getProgress?: () => { completed: number; total: number };
   claim: (activityId: string) => void | Promise<void>;
 }
 
-interface DailyTodoRuleV1 {
+interface DailyTodoRule {
   activityId: string;
   title: string;
   description: string;
-  category: DailyTodoItemV1["category"];
-  reward: DailyTodoRewardV1;
+  category: DailyTodoItem["category"];
+  reward: DailyTodoReward;
 }
 
-export const DAILY_TODO_RULES_V1: DailyTodoRuleV1[] = [
+export const DAILY_TODO_RULES: DailyTodoRule[] = [
   {
     activityId: "check_in",
     title: "Check in for the day",
@@ -107,45 +107,45 @@ export const DAILY_TODO_RULES_V1: DailyTodoRuleV1[] = [
   },
 ];
 
-export interface DailyTodoCareSnapshotV1 {
+export interface DailyTodoCareSnapshot {
   streak?: number;
   claimedToday?: Record<string, unknown>;
   completedToday?: Record<string, unknown>;
   skills?: Record<string, { xp?: number; level?: number }>;
 }
 
-function dailyTodoRewardForRuleV1(
-  rule: DailyTodoRuleV1,
-  snapshot: DailyTodoCareSnapshotV1 | undefined
-): DailyTodoRewardV1 {
-  const backendReward = HARTHMERE_CARE_DAILY_ACTIVITIES_V1[rule.activityId];
+function dailyTodoRewardForRule(
+  rule: DailyTodoRule,
+  snapshot: DailyTodoCareSnapshot | undefined
+): DailyTodoReward {
+  const backendReward = HARTHMERE_CARE_DAILY_ACTIVITIES[rule.activityId];
   const actorLevel = Number(snapshot?.skills?.care?.level ?? 1);
   return {
     ...rule.reward,
     gold: Math.max(
-      HARTHMERE_DAILY_TASK_MIN_GOLD_V1,
+      HARTHMERE_DAILY_TASK_MIN_GOLD,
       backendReward?.gold ?? rule.reward.gold ?? 0
     ),
     xp:
       backendReward?.xp ??
-      harthmereDailyTaskXpRewardV1({
+      harthmereDailyTaskXpReward({
         actorLevel: Number.isFinite(actorLevel) ? actorLevel : 1,
       }),
   };
 }
 
 export function dailyTodoTasksFromCareSnapshotForTest(
-  snapshot: DailyTodoCareSnapshotV1 | undefined
-): DailyTodoItemV1[] {
+  snapshot: DailyTodoCareSnapshot | undefined
+): DailyTodoItem[] {
   const claimed = snapshot?.claimedToday ?? {};
   const completed = snapshot?.completedToday ?? {};
-  return DAILY_TODO_RULES_V1.map((rule) => ({
+  return DAILY_TODO_RULES.map((rule) => ({
     id: `daily:${rule.activityId}`,
     activityId: rule.activityId,
     title: rule.title,
     description: rule.description,
     category: rule.category,
-    reward: dailyTodoRewardForRuleV1(rule, snapshot),
+    reward: dailyTodoRewardForRule(rule, snapshot),
     completed:
       rule.activityId === "check_in" ||
       Boolean(completed[rule.activityId]) ||
@@ -163,7 +163,7 @@ export function dailyTodoTasksFromCareSnapshotForTest(
   }));
 }
 
-export function dailyTodoProgressForTest(tasks: DailyTodoItemV1[]) {
+export function dailyTodoProgressForTest(tasks: DailyTodoItem[]) {
   const total = tasks.length;
   const completed = tasks.filter((task) => task.completed).length;
   return { completed, total };

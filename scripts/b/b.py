@@ -781,7 +781,7 @@ NEWTON = ServerSpec(
 GAIA = ServerSpec(
     color="green",
     name="gaia",
-    entrypoint="gaia_v2",
+    entrypoint="gaia",
     can_use=[BALANCER],
     port=choose_port(),
     deps=[SHIM, LOGIC],
@@ -919,7 +919,7 @@ TARGET_ALIASES = {
         "logic",
         "chat",
         "map",
-        "gaia_v2",
+        "gaia",
         "web",
         "trigger",
         "task",

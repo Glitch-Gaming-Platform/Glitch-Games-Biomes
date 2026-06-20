@@ -8,62 +8,62 @@ import { connectToRedis } from "@/server/shared/redis/connection";
 import { biomesApiHandler } from "@/server/web/util/api_middleware";
 import { log } from "@/shared/logging";
 import {
-  harthmereLiveModeLedgerStreamKeyV1,
-  harthmereLiveModePlayerStateKeyV1,
-  harthmereLiveModeSharedWorldStateKeyV1,
-  createHarthmereLiveModeBuildingClientSnapshotV1,
-  createHarthmereLiveModeBankingClientSnapshotV1,
-  createHarthmereLiveModeGuildClientSnapshotFromBackendV1,
-  createHarthmereInventoryLootClientSnapshotFromBackendV1,
-  createHarthmereLiveModePlayerStatusClientSnapshotV1,
-  createHarthmereProductionEconomyClientSnapshotFromBackendV1,
-  createHarthmereJobsBoardClientSnapshotFromBackendV1,
-  createHarthmereCareLoopClientSnapshotFromBackendV1,
-  createHarthmereLiveModeFarmingFoodClientSnapshotV1,
-  createHarthmereLiveEntityCombatClientSnapshotV1,
-  createHarthmereCraftingStationClientSnapshotFromBackendV1,
-  createHarthmereLiveModeQuestClientSnapshotV1,
-  createHarthmereLiveModeSharedWorldStateV1,
-  mergeHarthmereLiveModeSharedWorldStateIntoBackendV1,
-  parseHarthmereLiveModeBackendStateV1,
-  parseHarthmereLiveModeSharedWorldStateV1,
-  reduceHarthmereLiveModeBackendStateV1,
-  type HarthmereLiveModeBackendStateV1,
-} from "@/shared/harthmere/live_mode_backend_v1";
-import { buildHarthmereEscortCompanionNpcProposedChangesV151 } from "@/server/harthmere/escort_companion_npc_ecs_v151";
+  harthmereLiveModeLedgerStreamKey,
+  harthmereLiveModePlayerStateKey,
+  harthmereLiveModeSharedWorldStateKey,
+  createHarthmereLiveModeBuildingClientSnapshot,
+  createHarthmereLiveModeBankingClientSnapshot,
+  createHarthmereLiveModeGuildClientSnapshotFromBackend,
+  createHarthmereInventoryLootClientSnapshotFromBackend,
+  createHarthmereLiveModePlayerStatusClientSnapshot,
+  createHarthmereProductionEconomyClientSnapshotFromBackend,
+  createHarthmereJobsBoardClientSnapshotFromBackend,
+  createHarthmereCareLoopClientSnapshotFromBackend,
+  createHarthmereLiveModeFarmingFoodClientSnapshot,
+  createHarthmereLiveEntityCombatClientSnapshot,
+  createHarthmereCraftingStationClientSnapshotFromBackend,
+  createHarthmereLiveModeQuestClientSnapshot,
+  createHarthmereLiveModeSharedWorldState,
+  mergeHarthmereLiveModeSharedWorldStateIntoBackend,
+  parseHarthmereLiveModeBackendState,
+  parseHarthmereLiveModeSharedWorldState,
+  reduceHarthmereLiveModeBackendState,
+  type HarthmereLiveModeBackendState,
+} from "@/shared/harthmere/live_mode_backend";
+import { buildHarthmereEscortCompanionNpcProposedChanges } from "@/server/harthmere/escort_companion_npc_ecs";
 import {
-  groundedBuildingSystemMaterializationPlanV1,
-  type BuildingSystemAnyMaterializationPlanV1,
-} from "@/shared/harthmere/building_system_v1";
+  groundedBuildingSystemMaterializationPlan,
+  type BuildingSystemAnyMaterializationPlan,
+} from "@/shared/harthmere/building_system";
 import {
-  buildHarthmereLiveModePersistenceMutationPlanV1,
-  createHarthmereLiveModeEventV1,
-  createHarthmereLiveModeUiEventV1,
-  type HarthmereLiveModeActionKindV1,
-  type HarthmereLiveModeAnySubsystemV1,
-  type HarthmereLiveModeAuthorityEnvelopeV1,
-  type HarthmereLiveModeEventKindV1,
-  type HarthmereLiveModeUiEventKindV1,
-  validateHarthmereLiveModeAuthorityEnvelopeV1,
-} from "@/shared/harthmere/live_mode_readiness_v1";
-import { HARTHMERE_JOBS_BOARD_LOCATIONS_V1 } from "@/shared/harthmere/mmo_jobs_board_authority_v1";
+  buildHarthmereLiveModePersistenceMutationPlan,
+  createHarthmereLiveModeEvent,
+  createHarthmereLiveModeUiEvent,
+  type HarthmereLiveModeActionKind,
+  type HarthmereLiveModeAnySubsystem,
+  type HarthmereLiveModeAuthorityEnvelope,
+  type HarthmereLiveModeEventKind,
+  type HarthmereLiveModeUiEventKind,
+  validateHarthmereLiveModeAuthorityEnvelope,
+} from "@/shared/harthmere/live_mode_readiness";
+import { HARTHMERE_JOBS_BOARD_LOCATIONS } from "@/shared/harthmere/mmo_jobs_board_authority";
 import { EditEvent, PlaceGroupEvent } from "@/shared/ecs/gen/events";
 import { blockPos, voxelShard } from "@/shared/game/shard";
-import { shiftHarthmereAuthoredPositionToWorldV71 } from "@/shared/harthmere/coordinate_transform_v71";
+import { shiftHarthmereAuthoredPositionToWorld } from "@/shared/harthmere/coordinate_transform";
 import type { BiomesId } from "@/shared/ids";
 import type { Vec3 } from "@/shared/math/types";
 import { loadBlockWrapper, saveBlockWrapper } from "@/shared/wasm/biomes";
 import { z } from "zod";
-import { readHarthmerePlayerAndSharedStateStringsV1 } from "@/server/harthmere/live_mode_state_read_helpers";
-import { resolveHarthmereLiveModeActorIdV1 } from "@/server/harthmere/live_mode_actor_resolution_v1";
+import { readHarthmerePlayerAndSharedStateStrings } from "@/server/harthmere/live_mode_state_read_helpers";
+import { resolveHarthmereLiveModeActorId } from "@/server/harthmere/live_mode_actor_resolution";
 
-const HARTHMERE_LIVE_MODE_SERVER_ROUTE_V1 =
-  "HARTHMERE_LIVE_MODE_SERVER_ROUTE_V1" as const;
-const HARTHMERE_WORLD_MATERIALIZER_USER_ID_V1 = 8810000000099191 as BiomesId;
-const HARTHMERE_WORLD_MATERIALIZER_USERNAME_V1 = "HarthmereWorldMaterializer";
-export const HARTHMERE_BUILDING_MATERIALIZATION_ECS_PUBLISH_CHUNK_SIZE_V1 = 1000;
+const HARTHMERE_LIVE_MODE_SERVER_ROUTE =
+  "HARTHMERE_LIVE_MODE_SERVER_ROUTE" as const;
+const HARTHMERE_WORLD_MATERIALIZER_USER_ID = 8810000000099191 as BiomesId;
+const HARTHMERE_WORLD_MATERIALIZER_USERNAME = "HarthmereWorldMaterializer";
+export const HARTHMERE_BUILDING_MATERIALIZATION_ECS_PUBLISH_CHUNK_SIZE = 1000;
 
-const HARTHMERE_LIVE_MODE_ACTION_KINDS_V1 = [
+const HARTHMERE_LIVE_MODE_ACTION_KINDS = [
   "request_attack",
   "request_ability_cast",
   "request_equipment_change",
@@ -109,9 +109,9 @@ const HARTHMERE_LIVE_MODE_ACTION_KINDS_V1 = [
   "request_farming_action",
   "request_medical_action",
   "request_care_loop_action",
-] as const satisfies readonly HarthmereLiveModeActionKindV1[];
+] as const satisfies readonly HarthmereLiveModeActionKind[];
 
-const HARTHMERE_LIVE_MODE_SUBSYSTEMS_V1 = [
+const HARTHMERE_LIVE_MODE_SUBSYSTEMS = [
   "combat",
   "ability",
   "equipment",
@@ -151,14 +151,14 @@ const HARTHMERE_LIVE_MODE_SUBSYSTEMS_V1 = [
   "building",
   "care",
   "medical",
-] as const satisfies readonly HarthmereLiveModeAnySubsystemV1[];
+] as const satisfies readonly HarthmereLiveModeAnySubsystem[];
 
 const zJsonRecord = z.record(z.unknown());
 const zBuildingMaterializationPlansResponse = z
   .unknown()
   .array()
   .optional() as z.ZodType<
-  BuildingSystemAnyMaterializationPlanV1[] | undefined
+  BuildingSystemAnyMaterializationPlan[] | undefined
 >;
 const zHarthmereCareLoopClientSnapshotResponse = z.object({
   actorId: z.string(),
@@ -177,8 +177,8 @@ const zLiveModeRequest = z.object({
   requestId: z.string().min(1),
   idempotencyKey: z.string().min(1),
   targetId: z.string().optional(),
-  actionKind: z.enum(HARTHMERE_LIVE_MODE_ACTION_KINDS_V1),
-  subsystem: z.enum(HARTHMERE_LIVE_MODE_SUBSYSTEMS_V1),
+  actionKind: z.enum(HARTHMERE_LIVE_MODE_ACTION_KINDS),
+  subsystem: z.enum(HARTHMERE_LIVE_MODE_SUBSYSTEMS),
   clientSentAtMs: z.number().optional(),
   actorEntityVersion: z.number().default(1),
   targetEntityVersion: z.number().optional(),
@@ -200,7 +200,7 @@ const zLiveModeValidationResponse = z.object({
 
 const zLiveModeMutationPlanResponse = z.object({
   planId: z.string(),
-  actionKind: z.enum(HARTHMERE_LIVE_MODE_ACTION_KINDS_V1),
+  actionKind: z.enum(HARTHMERE_LIVE_MODE_ACTION_KINDS),
   idempotencyKey: z.string(),
   transactionScope: z.string(),
   requiredLocks: z.string().array(),
@@ -251,7 +251,7 @@ const zLiveModeBackendMutationResponse = z.object({
 
 const zLiveModeResponse = z.object({
   ok: z.boolean(),
-  version: z.literal(HARTHMERE_LIVE_MODE_SERVER_ROUTE_V1),
+  version: z.literal(HARTHMERE_LIVE_MODE_SERVER_ROUTE),
   actorId: z.string(),
   duplicate: z.boolean(),
   replayed: z.boolean(),
@@ -280,7 +280,7 @@ const zLiveModeResponse = z.object({
 
 type LiveModeResponse = z.infer<typeof zLiveModeResponse>;
 
-const HARTHMERE_LIVE_MODE_MUTATION_SNAPSHOT_KEYS_V1 = [
+const HARTHMERE_LIVE_MODE_MUTATION_SNAPSHOT_KEYS = [
   "buildingState",
   "bankingState",
   "guildState",
@@ -295,10 +295,10 @@ const HARTHMERE_LIVE_MODE_MUTATION_SNAPSHOT_KEYS_V1 = [
   "questState",
 ] as const;
 
-type HarthmereLiveModeMutationSnapshotKeyV1 =
-  (typeof HARTHMERE_LIVE_MODE_MUTATION_SNAPSHOT_KEYS_V1)[number];
+type HarthmereLiveModeMutationSnapshotKey =
+  (typeof HARTHMERE_LIVE_MODE_MUTATION_SNAPSHOT_KEYS)[number];
 
-const HARTHMERE_LIVE_MODE_RESPONSE_SNAPSHOT_FIELDS_V1 = [
+const HARTHMERE_LIVE_MODE_RESPONSE_SNAPSHOT_FIELDS = [
   "buildingState",
   "bankingState",
   "guildState",
@@ -311,16 +311,16 @@ const HARTHMERE_LIVE_MODE_RESPONSE_SNAPSHOT_FIELDS_V1 = [
   "combatState",
   "playerStatusState",
   "questState",
-] as const satisfies readonly HarthmereLiveModeMutationSnapshotKeyV1[];
+] as const satisfies readonly HarthmereLiveModeMutationSnapshotKey[];
 
-export function useFullHarthmereLiveModeMutationSnapshotsV1(
+export function useFullHarthmereLiveModeMutationSnapshots(
   env: NodeJS.ProcessEnv = process.env
 ) {
   return env.HARTHMERE_LIVE_MODE_FULL_MUTATION_SNAPSHOTS === "1";
 }
 
-function addLiveModeSnapshotForTouchedModelV1(
-  snapshots: Set<HarthmereLiveModeMutationSnapshotKeyV1>,
+function addLiveModeSnapshotForTouchedModel(
+  snapshots: Set<HarthmereLiveModeMutationSnapshotKey>,
   model: string
 ) {
   const lower = model.toLowerCase();
@@ -415,16 +415,16 @@ function addLiveModeSnapshotForTouchedModelV1(
   }
 }
 
-export function harthmereLiveModeMutationSnapshotKeysV1(input: {
+export function harthmereLiveModeMutationSnapshotKeys(input: {
   actionKind: string;
   subsystem: string;
   touchedModels: readonly string[];
 }) {
-  if (useFullHarthmereLiveModeMutationSnapshotsV1()) {
-    return [...HARTHMERE_LIVE_MODE_MUTATION_SNAPSHOT_KEYS_V1];
+  if (useFullHarthmereLiveModeMutationSnapshots()) {
+    return [...HARTHMERE_LIVE_MODE_MUTATION_SNAPSHOT_KEYS];
   }
 
-  const snapshots = new Set<HarthmereLiveModeMutationSnapshotKeyV1>();
+  const snapshots = new Set<HarthmereLiveModeMutationSnapshotKey>();
   switch (input.actionKind) {
     case "request_jobs_board_mutation":
       snapshots.add("jobsBoardState");
@@ -506,7 +506,7 @@ export function harthmereLiveModeMutationSnapshotKeysV1(input: {
   }
 
   for (const model of input.touchedModels) {
-    addLiveModeSnapshotForTouchedModelV1(snapshots, model);
+    addLiveModeSnapshotForTouchedModel(snapshots, model);
   }
 
   if (snapshots.size === 0) {
@@ -528,42 +528,42 @@ export function harthmereLiveModeMutationSnapshotKeysV1(input: {
 }
 
 const globalForHarthmereLiveMode = globalThis as typeof globalThis & {
-  __harthmereLiveModeRedisV1?: ReturnType<typeof connectToRedis>;
+  __harthmereLiveModeRedis?: ReturnType<typeof connectToRedis>;
 };
 
-function liveModeRedisV1() {
-  return (globalForHarthmereLiveMode.__harthmereLiveModeRedisV1 ??=
+function liveModeRedis() {
+  return (globalForHarthmereLiveMode.__harthmereLiveModeRedis ??=
     connectToRedis("firehose"));
 }
 
-function liveModeIdempotencyKeyV1(actorId: string, idempotencyKey: string) {
-  return `harthmere:live_mode:v1:idempotency:${actorId}:${idempotencyKey}`;
+function liveModeIdempotencyKey(actorId: string, idempotencyKey: string) {
+  return `harthmere:live_mode:current:idempotency:${actorId}:${idempotencyKey}`;
 }
 
-function slimHarthmereLiveModeIdempotencyResponseV1(
+function slimHarthmereLiveModeIdempotencyResponse(
   response: LiveModeResponse
 ): LiveModeResponse {
   const slim: LiveModeResponse = {
     ...response,
     snapshotMode: "changed",
     includedSnapshots: [],
-    invalidatedSnapshots: [...HARTHMERE_LIVE_MODE_MUTATION_SNAPSHOT_KEYS_V1],
+    invalidatedSnapshots: [...HARTHMERE_LIVE_MODE_MUTATION_SNAPSHOT_KEYS],
   };
-  for (const field of HARTHMERE_LIVE_MODE_RESPONSE_SNAPSHOT_FIELDS_V1) {
+  for (const field of HARTHMERE_LIVE_MODE_RESPONSE_SNAPSHOT_FIELDS) {
     delete slim[field];
   }
   return slim;
 }
 
-function liveModeEventStreamKeyV1() {
-  return "harthmere:live_mode:v1:events";
+function liveModeEventStreamKey() {
+  return "harthmere:live_mode:current:events";
 }
 
-function liveModeUiOutboxStreamKeyV1(actorId: string) {
-  return `harthmere:live_mode:v1:ui_outbox:${actorId}`;
+function liveModeUiOutboxStreamKey(actorId: string) {
+  return `harthmere:live_mode:current:ui_outbox:${actorId}`;
 }
 
-function applyRouteRecordDeltaV1(
+function applyRouteRecordDelta(
   record: Record<string, number>,
   itemId: string,
   delta: number
@@ -576,16 +576,16 @@ function applyRouteRecordDeltaV1(
   }
 }
 
-async function redisUnwatchIfSupportedV1(redisPrimary: any) {
+async function redisUnwatchIfSupported(redisPrimary: any) {
   if (typeof redisPrimary.unwatch === "function") {
     await redisPrimary.unwatch();
   }
 }
 
-function buildAuctionSellerSettlementV1(input: {
-  envelope: HarthmereLiveModeAuthorityEnvelopeV1;
-  beforeState: ReturnType<typeof parseHarthmereLiveModeBackendStateV1>;
-  afterState: ReturnType<typeof parseHarthmereLiveModeBackendStateV1>;
+function buildAuctionSellerSettlement(input: {
+  envelope: HarthmereLiveModeAuthorityEnvelope;
+  beforeState: ReturnType<typeof parseHarthmereLiveModeBackendState>;
+  afterState: ReturnType<typeof parseHarthmereLiveModeBackendState>;
 }) {
   if (input.envelope.actionKind !== "request_auction_settle") {
     return undefined;
@@ -614,18 +614,18 @@ function buildAuctionSellerSettlementV1(input: {
   };
 }
 
-function applyAuctionSellerSettlementV1(input: {
-  sellerState: ReturnType<typeof parseHarthmereLiveModeBackendStateV1>;
-  settlement: NonNullable<ReturnType<typeof buildAuctionSellerSettlementV1>>;
+function applyAuctionSellerSettlement(input: {
+  sellerState: ReturnType<typeof parseHarthmereLiveModeBackendState>;
+  settlement: NonNullable<ReturnType<typeof buildAuctionSellerSettlement>>;
   requestId: string;
   nowMs: number;
 }) {
-  applyRouteRecordDeltaV1(
+  applyRouteRecordDelta(
     input.sellerState.inventory.items,
     input.settlement.itemId,
     -input.settlement.count
   );
-  applyRouteRecordDeltaV1(
+  applyRouteRecordDelta(
     input.sellerState.inventory.escrow,
     input.settlement.itemId,
     -input.settlement.count
@@ -643,12 +643,12 @@ function applyAuctionSellerSettlementV1(input: {
   input.sellerState.updatedAtMs = input.nowMs;
 }
 
-function wire_network_requests_to_validateHarthmereLiveModeAuthorityEnvelopeV1(
+function wire_network_requests_to_validateHarthmereLiveModeAuthorityEnvelope(
   actorId: string,
   body: z.infer<typeof zLiveModeRequest>,
   serverActorPosition?: { x: number; y: number; z: number },
   serverTargetPosition?: { x: number; y: number; z: number }
-): HarthmereLiveModeAuthorityEnvelopeV1 {
+): HarthmereLiveModeAuthorityEnvelope {
   const now = Date.now();
   return {
     requestId: body.requestId,
@@ -675,7 +675,7 @@ function wire_network_requests_to_validateHarthmereLiveModeAuthorityEnvelopeV1(
   };
 }
 
-export async function readServerActorPositionForLiveModeV145(
+export async function readServerActorPositionForLiveMode(
   worldApi: WorldApi,
   userId: BiomesId
 ) {
@@ -693,7 +693,7 @@ export async function readServerActorPositionForLiveModeV145(
   }
 }
 
-function biomesIdFromLiveModeActorIdV1(value: unknown): BiomesId | undefined {
+function biomesIdFromLiveModeActorId(value: unknown): BiomesId | undefined {
   if (typeof value !== "string" && typeof value !== "number") return undefined;
   const numeric = Number(value);
   return Number.isSafeInteger(numeric) && numeric > 0
@@ -701,7 +701,7 @@ function biomesIdFromLiveModeActorIdV1(value: unknown): BiomesId | undefined {
     : undefined;
 }
 
-async function readServerTargetPositionForQuestInviteV1(
+async function readServerTargetPositionForQuestInvite(
   worldApi: WorldApi,
   body: z.infer<typeof zLiveModeRequest>
 ) {
@@ -711,35 +711,35 @@ async function readServerTargetPositionForQuestInviteV1(
   ) {
     return undefined;
   }
-  const inviteeUserId = biomesIdFromLiveModeActorIdV1(
+  const inviteeUserId = biomesIdFromLiveModeActorId(
     body.payload.inviteeActorId ?? body.targetId
   );
   return inviteeUserId !== undefined
-    ? readServerActorPositionForLiveModeV145(worldApi, inviteeUserId)
+    ? readServerActorPositionForLiveMode(worldApi, inviteeUserId)
     : undefined;
 }
 
-function firstLiveModeRequestStringV151(value: unknown) {
+function firstLiveModeRequestString(value: unknown) {
   const candidate = Array.isArray(value) ? value[0] : value;
   return typeof candidate === "string" && candidate.trim()
     ? candidate.trim()
     : undefined;
 }
 
-function liveModeInstallIdFromUnsafeRequestV151(unsafeRequest: {
+function liveModeInstallIdFromUnsafeRequest(unsafeRequest: {
   query?: Record<string, unknown>;
   headers?: Record<string, unknown>;
 }) {
   return (
-    firstLiveModeRequestStringV151(unsafeRequest.query?.install_id) ??
-    firstLiveModeRequestStringV151(unsafeRequest.query?.installId) ??
-    firstLiveModeRequestStringV151(
+    firstLiveModeRequestString(unsafeRequest.query?.install_id) ??
+    firstLiveModeRequestString(unsafeRequest.query?.installId) ??
+    firstLiveModeRequestString(
       unsafeRequest.headers?.["x-glitch-install-id"]
     )
   );
 }
 
-export function liveModeActorIdentityFromRequestV151(input: {
+export function liveModeActorIdentityFromRequest(input: {
   auth?: { userId?: unknown };
   unsafeRequest: {
     query?: Record<string, unknown>;
@@ -753,7 +753,7 @@ export function liveModeActorIdentityFromRequestV151(input: {
       installId: undefined,
     };
   }
-  const installId = liveModeInstallIdFromUnsafeRequestV151(input.unsafeRequest);
+  const installId = liveModeInstallIdFromUnsafeRequest(input.unsafeRequest);
   return installId
     ? {
         actorId: `install:${installId}`,
@@ -767,7 +767,7 @@ export function liveModeActorIdentityFromRequestV151(input: {
       };
 }
 
-function payloadStringV151(
+function payloadString(
   body: z.infer<typeof zLiveModeRequest>,
   key: string
 ) {
@@ -775,18 +775,18 @@ function payloadStringV151(
   return typeof value === "string" && value.trim() ? value.trim() : undefined;
 }
 
-export function jobsBoardPositionFromLiveModeBodyV151(
+export function jobsBoardPositionFromLiveModeBody(
   body: z.infer<typeof zLiveModeRequest>
 ) {
   if (body.actionKind !== "request_jobs_board_mutation") {
     return undefined;
   }
   const boardId =
-    payloadStringV151(body, "interactionTargetId") ??
-    payloadStringV151(body, "boardId") ??
+    payloadString(body, "interactionTargetId") ??
+    payloadString(body, "boardId") ??
     body.targetId;
   const board = boardId
-    ? HARTHMERE_JOBS_BOARD_LOCATIONS_V1[boardId]
+    ? HARTHMERE_JOBS_BOARD_LOCATIONS[boardId]
     : undefined;
   return board
     ? {
@@ -797,16 +797,16 @@ export function jobsBoardPositionFromLiveModeBodyV151(
     : undefined;
 }
 
-function liveModeNumberV1(value: unknown): number | undefined {
+function liveModeNumber(value: unknown): number | undefined {
   const numeric = Number(value);
   return Number.isFinite(numeric) ? numeric : undefined;
 }
 
-function liveModePositionFromUnknownV1(value: unknown) {
+function liveModePositionFromUnknown(value: unknown) {
   if (Array.isArray(value)) {
-    const x = liveModeNumberV1(value[0]);
-    const y = liveModeNumberV1(value[1]);
-    const z = liveModeNumberV1(value[2]);
+    const x = liveModeNumber(value[0]);
+    const y = liveModeNumber(value[1]);
+    const z = liveModeNumber(value[2]);
     return x === undefined || y === undefined || z === undefined
       ? undefined
       : { x, y, z };
@@ -815,15 +815,15 @@ function liveModePositionFromUnknownV1(value: unknown) {
     return undefined;
   }
   const record = value as Record<string, unknown>;
-  const x = liveModeNumberV1(record.x);
-  const y = liveModeNumberV1(record.y);
-  const z = liveModeNumberV1(record.z);
+  const x = liveModeNumber(record.x);
+  const y = liveModeNumber(record.y);
+  const z = liveModeNumber(record.z);
   return x === undefined || y === undefined || z === undefined
     ? undefined
     : { x, y, z };
 }
 
-export function combatActorPositionFromInstallLiveModeBodyV1(
+export function combatActorPositionFromInstallLiveModeBody(
   body: z.infer<typeof zLiveModeRequest>
 ) {
   if (
@@ -837,18 +837,18 @@ export function combatActorPositionFromInstallLiveModeBodyV1(
   }
   const claims = body.clientClaims ?? {};
   return (
-    liveModePositionFromUnknownV1(claims.runtimePosition) ??
-    liveModePositionFromUnknownV1(claims.actorPosition)
+    liveModePositionFromUnknown(claims.runtimePosition) ??
+    liveModePositionFromUnknown(claims.actorPosition)
   );
 }
 
 function route_real_attacks_abilities_xp_loot_death_respawn_through_shared_rules(
-  envelope: HarthmereLiveModeAuthorityEnvelopeV1,
+  envelope: HarthmereLiveModeAuthorityEnvelope,
   plan: NonNullable<LiveModeResponse["mutationPlan"]>
 ) {
   const events = plan.auditEventOutbox.map((kind) =>
-    createHarthmereLiveModeEventV1({
-      kind: kind as HarthmereLiveModeEventKindV1,
+    createHarthmereLiveModeEvent({
+      kind: kind as HarthmereLiveModeEventKind,
       envelope,
       payload: {
         authoritative: true,
@@ -857,8 +857,8 @@ function route_real_attacks_abilities_xp_loot_death_respawn_through_shared_rules
     })
   );
   const uiEvents = plan.uiEventOutbox.map((kind) =>
-    createHarthmereLiveModeUiEventV1({
-      kind: kind as HarthmereLiveModeUiEventKindV1,
+    createHarthmereLiveModeUiEvent({
+      kind: kind as HarthmereLiveModeUiEventKind,
       envelope,
       payload: {
         authoritative: true,
@@ -869,17 +869,17 @@ function route_real_attacks_abilities_xp_loot_death_respawn_through_shared_rules
   return { events, uiEvents };
 }
 
-async function publish_createHarthmereLiveModeEventV1_to_server_event_stream(
+async function publish_createHarthmereLiveModeEvent_to_server_event_stream(
   response: LiveModeResponse
 ) {
   if (!response.events.length) {
     return;
   }
-  const redis = await liveModeRedisV1();
+  const redis = await liveModeRedis();
   const tx = redis.primary.multi();
   for (const event of response.events) {
     tx.xadd(
-      liveModeEventStreamKeyV1(),
+      liveModeEventStreamKey(),
       "*",
       "requestId",
       event.requestId,
@@ -894,17 +894,17 @@ async function publish_createHarthmereLiveModeEventV1_to_server_event_stream(
   await tx.exec();
 }
 
-async function deliver_createHarthmereLiveModeUiEventV1_from_server_outbox(
+async function deliver_createHarthmereLiveModeUiEvent_from_server_outbox(
   response: LiveModeResponse
 ) {
   if (!response.uiEvents.length) {
     return;
   }
-  const redis = await liveModeRedisV1();
+  const redis = await liveModeRedis();
   const tx = redis.primary.multi();
   for (const uiEvent of response.uiEvents) {
     tx.xadd(
-      liveModeUiOutboxStreamKeyV1(uiEvent.playerId),
+      liveModeUiOutboxStreamKey(uiEvent.playerId),
       "*",
       "requestId",
       uiEvent.requestId,
@@ -919,18 +919,18 @@ async function deliver_createHarthmereLiveModeUiEventV1_from_server_outbox(
   await tx.exec();
 }
 
-async function flushHarthmereLiveModePostCommitOutboxV1(
+async function flushHarthmereLiveModePostCommitOutbox(
   response: LiveModeResponse
 ) {
   const startedAt = Date.now();
   try {
-    await publish_createHarthmereLiveModeEventV1_to_server_event_stream(
+    await publish_createHarthmereLiveModeEvent_to_server_event_stream(
       response
     );
-    await deliver_createHarthmereLiveModeUiEventV1_from_server_outbox(response);
+    await deliver_createHarthmereLiveModeUiEvent_from_server_outbox(response);
     const ms = Date.now() - startedAt;
     if (process.env.NODE_ENV === "production" && ms >= 500) {
-      log.warn("HARTHMERE_LIVE_MODE_POST_COMMIT_OUTBOX_SLOW_V1", {
+      log.warn("HARTHMERE_LIVE_MODE_POST_COMMIT_OUTBOX_SLOW", {
         requestId: response.events[0]?.requestId,
         actorId: response.actorId,
         eventCount: response.events.length,
@@ -939,7 +939,7 @@ async function flushHarthmereLiveModePostCommitOutboxV1(
       });
     }
   } catch (error) {
-    log.warn("HARTHMERE_LIVE_MODE_POST_COMMIT_OUTBOX_FAILED_V1", {
+    log.warn("HARTHMERE_LIVE_MODE_POST_COMMIT_OUTBOX_FAILED", {
       requestId: response.events[0]?.requestId,
       actorId: response.actorId,
       eventCount: response.events.length,
@@ -949,24 +949,24 @@ async function flushHarthmereLiveModePostCommitOutboxV1(
   }
 }
 
-function isHarthmereServerOutpostMaterializationPlanV1(
-  plan: BuildingSystemAnyMaterializationPlanV1
+function isHarthmereServerOutpostMaterializationPlan(
+  plan: BuildingSystemAnyMaterializationPlan
 ) {
   return false;
 }
 
-export function buildingSystemMaterializationWorldPositionForTestV1(
-  plan: BuildingSystemAnyMaterializationPlanV1,
+export function buildingSystemMaterializationWorldPositionForTest(
+  plan: BuildingSystemAnyMaterializationPlan,
   position: readonly [number, number, number]
 ): Vec3 {
   // Business outposts are authored from production/live coordinates captured
   // in-world, so do not apply the old local-dev Harthmere +512 town shift here.
-  return isHarthmereServerOutpostMaterializationPlanV1(plan)
-    ? shiftHarthmereAuthoredPositionToWorldV71(position)
+  return isHarthmereServerOutpostMaterializationPlan(plan)
+    ? shiftHarthmereAuthoredPositionToWorld(position)
     : [position[0], position[1], position[2]];
 }
 
-function terrainShardAabbForMaterializationPositionsV1(positions: Vec3[]) {
+function terrainShardAabbForMaterializationPositions(positions: Vec3[]) {
   const min: Vec3 = [Infinity, Infinity, Infinity];
   const max: Vec3 = [-Infinity, -Infinity, -Infinity];
   for (const position of positions) {
@@ -980,7 +980,7 @@ function terrainShardAabbForMaterializationPositionsV1(positions: Vec3[]) {
   return [min, max] as [Vec3, Vec3];
 }
 
-async function resolveTerrainEntityIdsForMaterializationV1(input: {
+async function resolveTerrainEntityIdsForMaterialization(input: {
   askApi?: Pick<AskApi, "scanForExport">;
   positions: Vec3[];
 }) {
@@ -997,7 +997,7 @@ async function resolveTerrainEntityIdsForMaterializationV1(input: {
   }
 
   const bestByShard = new Map<string, { id: BiomesId; version: number }>();
-  const aabb = terrainShardAabbForMaterializationPositionsV1(input.positions);
+  const aabb = terrainShardAabbForMaterializationPositions(input.positions);
   for await (const [version, entity] of input.askApi.scanForExport({ aabb })) {
     if (!entity.hasShardSeed?.() || !entity.hasBox?.()) {
       continue;
@@ -1033,11 +1033,11 @@ async function resolveTerrainEntityIdsForMaterializationV1(input: {
   };
 }
 
-export async function publishBuildingSystemMaterializationPlansToEcsV1(input: {
+export async function publishBuildingSystemMaterializationPlansToEcs(input: {
   logicApi: LogicApi;
   askApi?: Pick<AskApi, "scanForExport">;
   userId: BiomesId;
-  plans: BuildingSystemAnyMaterializationPlanV1[] | undefined;
+  plans: BuildingSystemAnyMaterializationPlan[] | undefined;
 }) {
   if (!input.plans?.length) {
     return {
@@ -1057,18 +1057,18 @@ export async function publishBuildingSystemMaterializationPlansToEcsV1(input: {
   let placeGroupEventCount = 0;
   const worldPositions = input.plans.flatMap((plan) =>
     plan.edits.map((edit) =>
-      buildingSystemMaterializationWorldPositionForTestV1(plan, edit.position)
+      buildingSystemMaterializationWorldPositionForTest(plan, edit.position)
     )
   );
-  const terrainResolution = await resolveTerrainEntityIdsForMaterializationV1({
+  const terrainResolution = await resolveTerrainEntityIdsForMaterialization({
     askApi: input.askApi,
     positions: worldPositions,
   });
 
   for (const plan of input.plans) {
-    const shiftsOutpost = isHarthmereServerOutpostMaterializationPlanV1(plan);
+    const shiftsOutpost = isHarthmereServerOutpostMaterializationPlan(plan);
     for (const edit of plan.edits) {
-      const position = buildingSystemMaterializationWorldPositionForTestV1(
+      const position = buildingSystemMaterializationWorldPositionForTest(
         plan,
         edit.position
       );
@@ -1121,12 +1121,12 @@ export async function publishBuildingSystemMaterializationPlansToEcsV1(input: {
   for (
     let offset = 0;
     offset < events.length;
-    offset += HARTHMERE_BUILDING_MATERIALIZATION_ECS_PUBLISH_CHUNK_SIZE_V1
+    offset += HARTHMERE_BUILDING_MATERIALIZATION_ECS_PUBLISH_CHUNK_SIZE
   ) {
     await input.logicApi.publish(
       ...events.slice(
         offset,
-        offset + HARTHMERE_BUILDING_MATERIALIZATION_ECS_PUBLISH_CHUNK_SIZE_V1
+        offset + HARTHMERE_BUILDING_MATERIALIZATION_ECS_PUBLISH_CHUNK_SIZE
       )
     );
     publishBatchCount += 1;
@@ -1143,7 +1143,7 @@ export async function publishBuildingSystemMaterializationPlansToEcsV1(input: {
   };
 }
 
-// HARTHMERE_BUILDING_TERRAIN_GROUNDING_V1 (server probe):
+// HARTHMERE_BUILDING_TERRAIN_GROUNDING (server probe):
 // Resolve the REAL surface under each player building / plot-claim plan and shift
 // the plan onto it, so a baked structure rests on the ground instead of the flat
 // authored plot Y — the same correctness the muckers/animals/markers get from the
@@ -1154,15 +1154,15 @@ export async function publishBuildingSystemMaterializationPlansToEcsV1(input: {
 // alone, and ANY failure (missing/unreadable column, no standable surface) falls
 // back to the unchanged plans, so the worst case is exactly today's behavior —
 // a structure is never buried or teleported, only ever corrected onto real ground.
-async function groundBuildingSystemPlansToRealTerrainV1(input: {
+async function groundBuildingSystemPlansToRealTerrain(input: {
   worldApi: WorldApi;
   askApi?: Pick<AskApi, "scanForExport">;
-  plans: BuildingSystemAnyMaterializationPlanV1[];
-}): Promise<BuildingSystemAnyMaterializationPlanV1[]> {
+  plans: BuildingSystemAnyMaterializationPlan[];
+}): Promise<BuildingSystemAnyMaterializationPlan[]> {
   const SCAN = 24;
   const groundablePlans = input.plans.filter(
     (plan) =>
-      !isHarthmereServerOutpostMaterializationPlanV1(plan) && plan.edits.length
+      !isHarthmereServerOutpostMaterializationPlan(plan) && plan.edits.length
   );
   if (!groundablePlans.length) {
     return input.plans;
@@ -1191,7 +1191,7 @@ async function groundBuildingSystemPlansToRealTerrainV1(input: {
         probePositions.push([columnX, y, columnZ]);
       }
     }
-    const terrainResolution = await resolveTerrainEntityIdsForMaterializationV1(
+    const terrainResolution = await resolveTerrainEntityIdsForMaterialization(
       {
         askApi: input.askApi,
         positions: probePositions,
@@ -1229,9 +1229,9 @@ async function groundBuildingSystemPlansToRealTerrainV1(input: {
         }
       };
       return input.plans.map((plan) =>
-        isHarthmereServerOutpostMaterializationPlanV1(plan)
+        isHarthmereServerOutpostMaterializationPlan(plan)
           ? plan
-          : groundedBuildingSystemMaterializationPlanV1(plan, isSolid, {
+          : groundedBuildingSystemMaterializationPlan(plan, isSolid, {
               maxScan: SCAN,
             })
       );
@@ -1245,12 +1245,12 @@ async function groundBuildingSystemPlansToRealTerrainV1(input: {
   }
 }
 
-export async function materializeBuildingSystemMaterializationPlansToTerrainV1(input: {
+export async function materializeBuildingSystemMaterializationPlansToTerrain(input: {
   worldApi: WorldApi;
   logicApi?: LogicApi;
   askApi?: Pick<AskApi, "scanForExport">;
   userId: BiomesId;
-  plans: BuildingSystemAnyMaterializationPlanV1[] | undefined;
+  plans: BuildingSystemAnyMaterializationPlan[] | undefined;
 }) {
   if (!input.plans?.length) {
     return {
@@ -1267,9 +1267,9 @@ export async function materializeBuildingSystemMaterializationPlansToTerrainV1(i
 
   // Ground each plan onto the REAL surface before baking, so a building/marker
   // rests on the terrain instead of the flat authored plot Y (see
-  // groundBuildingSystemPlansToRealTerrainV1). Best-effort: failure returns the
+  // groundBuildingSystemPlansToRealTerrain). Best-effort: failure returns the
   // authored-Y plans unchanged.
-  const plans = await groundBuildingSystemPlansToRealTerrainV1({
+  const plans = await groundBuildingSystemPlansToRealTerrain({
     worldApi: input.worldApi,
     askApi: input.askApi,
     plans: input.plans,
@@ -1277,10 +1277,10 @@ export async function materializeBuildingSystemMaterializationPlansToTerrainV1(i
 
   const worldPositions = plans.flatMap((plan) =>
     plan.edits.map((edit) =>
-      buildingSystemMaterializationWorldPositionForTestV1(plan, edit.position)
+      buildingSystemMaterializationWorldPositionForTest(plan, edit.position)
     )
   );
-  const terrainResolution = await resolveTerrainEntityIdsForMaterializationV1({
+  const terrainResolution = await resolveTerrainEntityIdsForMaterialization({
     askApi: input.askApi,
     positions: worldPositions,
   });
@@ -1298,9 +1298,9 @@ export async function materializeBuildingSystemMaterializationPlansToTerrainV1(i
   let shiftedOutpostEditEventCount = 0;
   const placeGroupEvents: GameEvent[] = [];
   for (const plan of plans) {
-    const shiftedOutpost = isHarthmereServerOutpostMaterializationPlanV1(plan);
+    const shiftedOutpost = isHarthmereServerOutpostMaterializationPlan(plan);
     for (const edit of plan.edits) {
-      const position = buildingSystemMaterializationWorldPositionForTestV1(
+      const position = buildingSystemMaterializationWorldPositionForTest(
         plan,
         edit.position
       );
@@ -1383,12 +1383,12 @@ export async function materializeBuildingSystemMaterializationPlansToTerrainV1(i
     for (
       let offset = 0;
       offset < placeGroupEvents.length;
-      offset += HARTHMERE_BUILDING_MATERIALIZATION_ECS_PUBLISH_CHUNK_SIZE_V1
+      offset += HARTHMERE_BUILDING_MATERIALIZATION_ECS_PUBLISH_CHUNK_SIZE
     ) {
       await input.logicApi.publish(
         ...placeGroupEvents.slice(
           offset,
-          offset + HARTHMERE_BUILDING_MATERIALIZATION_ECS_PUBLISH_CHUNK_SIZE_V1
+          offset + HARTHMERE_BUILDING_MATERIALIZATION_ECS_PUBLISH_CHUNK_SIZE
         )
       );
       publishBatchCount += 1;
@@ -1407,8 +1407,8 @@ export async function materializeBuildingSystemMaterializationPlansToTerrainV1(i
   };
 }
 
-export function harthmereEscortCompanionsFromBackendStateV151(
-  state: HarthmereLiveModeBackendStateV1
+export function harthmereEscortCompanionsFromBackendState(
+  state: HarthmereLiveModeBackendState
 ) {
   return Object.values(state.jobsBoard.postings)
     .map((job) => job.escortCompanion)
@@ -1417,18 +1417,18 @@ export function harthmereEscortCompanionsFromBackendStateV151(
     );
 }
 
-export async function materializeHarthmereEscortCompanionsToEcsV151(input: {
+export async function materializeHarthmereEscortCompanionsToEcs(input: {
   worldApi: WorldApi;
-  state: HarthmereLiveModeBackendStateV1;
+  state: HarthmereLiveModeBackendState;
   nowSeconds: number;
 }) {
-  const companions = harthmereEscortCompanionsFromBackendStateV151(input.state);
+  const companions = harthmereEscortCompanionsFromBackendState(input.state);
   if (!companions.length) {
     return { changeCount: 0, outcome: "success" as const };
   }
   const ids = companions.map((companion) => companion.entityId);
   const existing = new Set(await input.worldApi.has(ids));
-  const changes = buildHarthmereEscortCompanionNpcProposedChangesV151({
+  const changes = buildHarthmereEscortCompanionNpcProposedChanges({
     companions,
     existingIds: existing,
     nowSeconds: input.nowSeconds,
@@ -1440,21 +1440,21 @@ export async function materializeHarthmereEscortCompanionsToEcsV151(input: {
   return { changeCount: changes.length, outcome: applied.outcome };
 }
 
-export async function ensureHarthmereWorldMaterializerPlayerExistsV1(
+export async function ensureHarthmereWorldMaterializerPlayerExists(
   worldApi: WorldApi
 ) {
   const editor = worldApi.edit();
   await ensurePlayerExists(
     editor,
-    HARTHMERE_WORLD_MATERIALIZER_USER_ID_V1,
-    HARTHMERE_WORLD_MATERIALIZER_USERNAME_V1,
+    HARTHMERE_WORLD_MATERIALIZER_USER_ID,
+    HARTHMERE_WORLD_MATERIALIZER_USERNAME,
     true
   );
   await editor.commit();
 }
 
-export async function persistHarthmereLiveModeResponseV1(
-  envelope: HarthmereLiveModeAuthorityEnvelopeV1,
+export async function persistHarthmereLiveModeResponse(
+  envelope: HarthmereLiveModeAuthorityEnvelope,
   response: LiveModeResponse,
   deps: {
     askApi?: Pick<AskApi, "scanForExport">;
@@ -1465,13 +1465,13 @@ export async function persistHarthmereLiveModeResponseV1(
 ): Promise<LiveModeResponse> {
   const persistStartedAt = Date.now();
   let lastAttemptTimings: Record<string, number> | undefined;
-  const key = liveModeIdempotencyKeyV1(
+  const key = liveModeIdempotencyKey(
     response.actorId,
     response.mutationPlan?.idempotencyKey ?? "invalid"
   );
-  const redis = await liveModeRedisV1();
-  const playerStateKey = harthmereLiveModePlayerStateKeyV1(response.actorId);
-  const sharedWorldStateKey = harthmereLiveModeSharedWorldStateKeyV1();
+  const redis = await liveModeRedis();
+  const playerStateKey = harthmereLiveModePlayerStateKey(response.actorId);
+  const sharedWorldStateKey = harthmereLiveModeSharedWorldStateKey();
   const supportsWatch = typeof (redis.primary as any).watch === "function";
   if (!supportsWatch) {
     throw new Error(
@@ -1508,7 +1508,7 @@ export async function persistHarthmereLiveModeResponseV1(
     const watchedPrevious = await redis.primary.get(key);
     mark("watched_idempotency_get_ms", stageStartedAt);
     if (watchedPrevious) {
-      await redisUnwatchIfSupportedV1(redis.primary);
+      await redisUnwatchIfSupported(redis.primary);
       return {
         ...(JSON.parse(watchedPrevious) as LiveModeResponse),
         duplicate: true,
@@ -1518,42 +1518,42 @@ export async function persistHarthmereLiveModeResponseV1(
 
     stageStartedAt = Date.now();
     let { rawState, rawSharedState } =
-      await readHarthmerePlayerAndSharedStateStringsV1(
+      await readHarthmerePlayerAndSharedStateStrings(
         redis.primary,
         playerStateKey,
         sharedWorldStateKey
       );
     mark("state_get_ms", stageStartedAt);
     stageStartedAt = Date.now();
-    let currentState = parseHarthmereLiveModeBackendStateV1(
+    let currentState = parseHarthmereLiveModeBackendState(
       rawState,
       response.actorId,
       now
     );
-    mergeHarthmereLiveModeSharedWorldStateIntoBackendV1(
+    mergeHarthmereLiveModeSharedWorldStateIntoBackend(
       currentState,
-      parseHarthmereLiveModeSharedWorldStateV1(rawSharedState, now),
+      parseHarthmereLiveModeSharedWorldState(rawSharedState, now),
       now
     );
     mark("state_parse_merge_ms", stageStartedAt);
     stageStartedAt = Date.now();
-    let reduced = reduceHarthmereLiveModeBackendStateV1(
+    let reduced = reduceHarthmereLiveModeBackendState(
       currentState,
       envelope,
       now
     );
     mark("reduce_ms", stageStartedAt);
-    let settlement = buildAuctionSellerSettlementV1({
+    let settlement = buildAuctionSellerSettlement({
       envelope,
       beforeState: currentState,
       afterState: reduced.state,
     });
     let sellerStateKey = settlement
-      ? harthmereLiveModePlayerStateKeyV1(settlement.sellerId)
+      ? harthmereLiveModePlayerStateKey(settlement.sellerId)
       : undefined;
 
     if (sellerStateKey && supportsWatch) {
-      await redisUnwatchIfSupportedV1(redis.primary);
+      await redisUnwatchIfSupported(redis.primary);
       await (redis.primary as any).watch(
         key,
         playerStateKey,
@@ -1562,7 +1562,7 @@ export async function persistHarthmereLiveModeResponseV1(
       );
       const secondPrevious = await redis.primary.get(key);
       if (secondPrevious) {
-        await redisUnwatchIfSupportedV1(redis.primary);
+        await redisUnwatchIfSupported(redis.primary);
         return {
           ...(JSON.parse(secondPrevious) as LiveModeResponse),
           duplicate: true,
@@ -1571,53 +1571,53 @@ export async function persistHarthmereLiveModeResponseV1(
       }
       stageStartedAt = Date.now();
       ({ rawState, rawSharedState } =
-        await readHarthmerePlayerAndSharedStateStringsV1(
+        await readHarthmerePlayerAndSharedStateStrings(
           redis.primary,
           playerStateKey,
           sharedWorldStateKey
         ));
       mark("seller_state_get_ms", stageStartedAt);
       stageStartedAt = Date.now();
-      currentState = parseHarthmereLiveModeBackendStateV1(
+      currentState = parseHarthmereLiveModeBackendState(
         rawState,
         response.actorId,
         now
       );
-      mergeHarthmereLiveModeSharedWorldStateIntoBackendV1(
+      mergeHarthmereLiveModeSharedWorldStateIntoBackend(
         currentState,
-        parseHarthmereLiveModeSharedWorldStateV1(rawSharedState, now),
+        parseHarthmereLiveModeSharedWorldState(rawSharedState, now),
         now
       );
       mark("seller_state_parse_merge_ms", stageStartedAt);
       stageStartedAt = Date.now();
-      reduced = reduceHarthmereLiveModeBackendStateV1(
+      reduced = reduceHarthmereLiveModeBackendState(
         currentState,
         envelope,
         now
       );
       mark("seller_reduce_ms", stageStartedAt);
-      settlement = buildAuctionSellerSettlementV1({
+      settlement = buildAuctionSellerSettlement({
         envelope,
         beforeState: currentState,
         afterState: reduced.state,
       });
       sellerStateKey = settlement
-        ? harthmereLiveModePlayerStateKeyV1(settlement.sellerId)
+        ? harthmereLiveModePlayerStateKey(settlement.sellerId)
         : undefined;
     }
 
     let sellerState:
-      | ReturnType<typeof parseHarthmereLiveModeBackendStateV1>
+      | ReturnType<typeof parseHarthmereLiveModeBackendState>
       | undefined;
     if (settlement && sellerStateKey) {
       stageStartedAt = Date.now();
       const rawSellerState = await redis.primary.get(sellerStateKey);
-      sellerState = parseHarthmereLiveModeBackendStateV1(
+      sellerState = parseHarthmereLiveModeBackendState(
         rawSellerState,
         settlement.sellerId,
         now
       );
-      applyAuctionSellerSettlementV1({
+      applyAuctionSellerSettlement({
         sellerState,
         settlement,
         requestId: envelope.requestId,
@@ -1640,7 +1640,7 @@ export async function persistHarthmereLiveModeResponseV1(
         ? envelope.payload.stationType
         : undefined;
 
-    const includedSnapshots = harthmereLiveModeMutationSnapshotKeysV1({
+    const includedSnapshots = harthmereLiveModeMutationSnapshotKeys({
       actionKind: reduced.summary.actionKind,
       subsystem: reduced.summary.subsystem,
       touchedModels: reduced.summary.touchedModels,
@@ -1649,12 +1649,12 @@ export async function persistHarthmereLiveModeResponseV1(
     const persistedResponse: LiveModeResponse = {
       ...response,
       backendMutation: reduced.summary,
-      snapshotMode: useFullHarthmereLiveModeMutationSnapshotsV1()
+      snapshotMode: useFullHarthmereLiveModeMutationSnapshots()
         ? "full"
         : "changed",
       includedSnapshots,
       invalidatedSnapshots:
-        HARTHMERE_LIVE_MODE_MUTATION_SNAPSHOT_KEYS_V1.filter(
+        HARTHMERE_LIVE_MODE_MUTATION_SNAPSHOT_KEYS.filter(
           (key) => !includedSnapshotSet.has(key)
         ),
     };
@@ -1662,37 +1662,37 @@ export async function persistHarthmereLiveModeResponseV1(
     stageStartedAt = Date.now();
     if (includedSnapshotSet.has("buildingState")) {
       persistedResponse.buildingState =
-        createHarthmereLiveModeBuildingClientSnapshotV1(reduced.state);
+        createHarthmereLiveModeBuildingClientSnapshot(reduced.state);
     }
     if (includedSnapshotSet.has("bankingState")) {
       persistedResponse.bankingState =
-        createHarthmereLiveModeBankingClientSnapshotV1(reduced.state);
+        createHarthmereLiveModeBankingClientSnapshot(reduced.state);
     }
     if (includedSnapshotSet.has("guildState")) {
       persistedResponse.guildState =
-        createHarthmereLiveModeGuildClientSnapshotFromBackendV1(reduced.state);
+        createHarthmereLiveModeGuildClientSnapshotFromBackend(reduced.state);
     }
     if (includedSnapshotSet.has("economyState")) {
       persistedResponse.economyState =
-        createHarthmereProductionEconomyClientSnapshotFromBackendV1(
+        createHarthmereProductionEconomyClientSnapshotFromBackend(
           reduced.state
         );
     }
     if (includedSnapshotSet.has("jobsBoardState")) {
       persistedResponse.jobsBoardState =
-        createHarthmereJobsBoardClientSnapshotFromBackendV1(reduced.state);
+        createHarthmereJobsBoardClientSnapshotFromBackend(reduced.state);
     }
     if (includedSnapshotSet.has("dailyState")) {
       persistedResponse.dailyState =
-        createHarthmereCareLoopClientSnapshotFromBackendV1(reduced.state, now);
+        createHarthmereCareLoopClientSnapshotFromBackend(reduced.state, now);
     }
     if (includedSnapshotSet.has("farmingFoodState")) {
       persistedResponse.farmingFoodState =
-        createHarthmereLiveModeFarmingFoodClientSnapshotV1(reduced.state);
+        createHarthmereLiveModeFarmingFoodClientSnapshot(reduced.state);
     }
     if (includedSnapshotSet.has("craftingState")) {
       persistedResponse.craftingState =
-        createHarthmereCraftingStationClientSnapshotFromBackendV1(
+        createHarthmereCraftingStationClientSnapshotFromBackend(
           reduced.state,
           requestedCraftingStationId,
           requestedCraftingStationType,
@@ -1701,19 +1701,19 @@ export async function persistHarthmereLiveModeResponseV1(
     }
     if (includedSnapshotSet.has("inventoryLootState")) {
       persistedResponse.inventoryLootState =
-        createHarthmereInventoryLootClientSnapshotFromBackendV1(reduced.state);
+        createHarthmereInventoryLootClientSnapshotFromBackend(reduced.state);
     }
     if (includedSnapshotSet.has("combatState")) {
       persistedResponse.combatState =
-        createHarthmereLiveEntityCombatClientSnapshotV1(reduced.state);
+        createHarthmereLiveEntityCombatClientSnapshot(reduced.state);
     }
     if (includedSnapshotSet.has("playerStatusState")) {
       persistedResponse.playerStatusState =
-        createHarthmereLiveModePlayerStatusClientSnapshotV1(reduced.state);
+        createHarthmereLiveModePlayerStatusClientSnapshot(reduced.state);
     }
     if (includedSnapshotSet.has("questState")) {
       persistedResponse.questState =
-        createHarthmereLiveModeQuestClientSnapshotV1(reduced.state);
+        createHarthmereLiveModeQuestClientSnapshot(reduced.state);
     }
     mark("snapshots_ms", stageStartedAt);
 
@@ -1723,14 +1723,14 @@ export async function persistHarthmereLiveModeResponseV1(
     tx.set(
       sharedWorldStateKey,
       JSON.stringify(
-        createHarthmereLiveModeSharedWorldStateV1(reduced.state, now)
+        createHarthmereLiveModeSharedWorldState(reduced.state, now)
       )
     );
     if (sellerStateKey && sellerState) {
       tx.set(sellerStateKey, JSON.stringify(sellerState));
     }
     tx.xadd(
-      harthmereLiveModeLedgerStreamKeyV1(response.actorId),
+      harthmereLiveModeLedgerStreamKey(response.actorId),
       "*",
       "requestId",
       persistedResponse.events[0]?.requestId ??
@@ -1746,7 +1746,7 @@ export async function persistHarthmereLiveModeResponseV1(
     tx.set(
       key,
       JSON.stringify(
-        slimHarthmereLiveModeIdempotencyResponseV1(persistedResponse)
+        slimHarthmereLiveModeIdempotencyResponse(persistedResponse)
       ),
       "EX",
       24 * 60 * 60,
@@ -1763,11 +1763,11 @@ export async function persistHarthmereLiveModeResponseV1(
     if (reduced.summary.buildingMaterializationPlans?.length) {
       stageStartedAt = Date.now();
       const materializerUserId =
-        deps.userId ?? HARTHMERE_WORLD_MATERIALIZER_USER_ID_V1;
+        deps.userId ?? HARTHMERE_WORLD_MATERIALIZER_USER_ID;
       try {
         if (deps.userId === undefined) {
           if (deps.worldApi) {
-            await ensureHarthmereWorldMaterializerPlayerExistsV1(deps.worldApi);
+            await ensureHarthmereWorldMaterializerPlayerExists(deps.worldApi);
             persistedResponse.backendMutation?.warnings.push(
               "building_materializer_player_ensured"
             );
@@ -1779,14 +1779,14 @@ export async function persistHarthmereLiveModeResponseV1(
         }
         const materializationCounts =
           deps.worldApi && deps.askApi
-            ? await materializeBuildingSystemMaterializationPlansToTerrainV1({
+            ? await materializeBuildingSystemMaterializationPlansToTerrain({
                 askApi: deps.askApi,
                 logicApi: deps.logicApi,
                 userId: materializerUserId,
                 worldApi: deps.worldApi,
                 plans: reduced.summary.buildingMaterializationPlans,
               })
-            : await publishBuildingSystemMaterializationPlansToEcsV1({
+            : await publishBuildingSystemMaterializationPlansToEcs({
                 askApi: deps.askApi,
                 logicApi: deps.logicApi,
                 userId: materializerUserId,
@@ -1825,7 +1825,7 @@ export async function persistHarthmereLiveModeResponseV1(
       await redis.primary.set(
         key,
         JSON.stringify(
-          slimHarthmereLiveModeIdempotencyResponseV1(persistedResponse)
+          slimHarthmereLiveModeIdempotencyResponse(persistedResponse)
         ),
         "EX",
         24 * 60 * 60
@@ -1846,7 +1846,7 @@ export async function persistHarthmereLiveModeResponseV1(
           );
         } else {
           const materialized =
-            await materializeHarthmereEscortCompanionsToEcsV151({
+            await materializeHarthmereEscortCompanionsToEcs({
               worldApi: deps.worldApi,
               state: reduced.state,
               nowSeconds: Math.floor(now / 1000),
@@ -1865,7 +1865,7 @@ export async function persistHarthmereLiveModeResponseV1(
       await redis.primary.set(
         key,
         JSON.stringify(
-          slimHarthmereLiveModeIdempotencyResponseV1(persistedResponse)
+          slimHarthmereLiveModeIdempotencyResponse(persistedResponse)
         ),
         "EX",
         24 * 60 * 60
@@ -1875,7 +1875,7 @@ export async function persistHarthmereLiveModeResponseV1(
 
     const persistMs = Date.now() - persistStartedAt;
     if (process.env.NODE_ENV === "production" && persistMs >= 1000) {
-      log.warn("HARTHMERE_LIVE_MODE_PERSIST_SLOW_V1", {
+      log.warn("HARTHMERE_LIVE_MODE_PERSIST_SLOW", {
         requestId: envelope.requestId,
         actorId: response.actorId,
         actionKind: envelope.actionKind,
@@ -1888,11 +1888,11 @@ export async function persistHarthmereLiveModeResponseV1(
         uiEventCount: persistedResponse.uiEvents.length,
       });
     }
-    void flushHarthmereLiveModePostCommitOutboxV1(persistedResponse);
+    void flushHarthmereLiveModePostCommitOutbox(persistedResponse);
     return persistedResponse;
   }
 
-  log.warn("HARTHMERE_LIVE_MODE_PERSIST_CONFLICTED_V1", {
+  log.warn("HARTHMERE_LIVE_MODE_PERSIST_CONFLICTED", {
     requestId: envelope.requestId,
     actorId: response.actorId,
     actionKind: envelope.actionKind,
@@ -1917,7 +1917,7 @@ export default biomesApiHandler(
     body,
     unsafeRequest,
   }) => {
-    const actorIdentity = liveModeActorIdentityFromRequestV151({
+    const actorIdentity = liveModeActorIdentityFromRequest({
       auth,
       unsafeRequest,
     });
@@ -1927,7 +1927,7 @@ export default biomesApiHandler(
     ) {
       return {
         ok: false,
-        version: HARTHMERE_LIVE_MODE_SERVER_ROUTE_V1,
+        version: HARTHMERE_LIVE_MODE_SERVER_ROUTE,
         actorId: actorIdentity.actorId,
         duplicate: false,
         replayed: false,
@@ -1945,35 +1945,35 @@ export default biomesApiHandler(
     // Heal the install/user split on writes too: converge an install-only write
     // onto the linked user key and record the install->user link on the first
     // authed write, so actions never strand progress under a second key.
-    const actorId = await resolveHarthmereLiveModeActorIdV1(
-      await liveModeRedisV1(),
+    const actorId = await resolveHarthmereLiveModeActorId(
+      await liveModeRedis(),
       { auth, unsafeRequest },
       actorIdentity.actorId
     );
     const serverActorPosition =
       actorIdentity.userId !== undefined
-        ? await readServerActorPositionForLiveModeV145(
+        ? await readServerActorPositionForLiveMode(
             worldApi,
             actorIdentity.userId
           )
-        : combatActorPositionFromInstallLiveModeBodyV1(body) ??
-          jobsBoardPositionFromLiveModeBodyV151(body);
-    const serverTargetPosition = await readServerTargetPositionForQuestInviteV1(
+        : combatActorPositionFromInstallLiveModeBody(body) ??
+          jobsBoardPositionFromLiveModeBody(body);
+    const serverTargetPosition = await readServerTargetPositionForQuestInvite(
       worldApi,
       body
     );
     const envelope =
-      wire_network_requests_to_validateHarthmereLiveModeAuthorityEnvelopeV1(
+      wire_network_requests_to_validateHarthmereLiveModeAuthorityEnvelope(
         actorId,
         body,
         serverActorPosition,
         serverTargetPosition
       );
-    const validation = validateHarthmereLiveModeAuthorityEnvelopeV1(envelope);
+    const validation = validateHarthmereLiveModeAuthorityEnvelope(envelope);
     if (!validation.ok) {
       return {
         ok: false,
-        version: HARTHMERE_LIVE_MODE_SERVER_ROUTE_V1,
+        version: HARTHMERE_LIVE_MODE_SERVER_ROUTE,
         actorId,
         duplicate: false,
         replayed: false,
@@ -1985,17 +1985,17 @@ export default biomesApiHandler(
     }
 
     const mutationPlan =
-      buildHarthmereLiveModePersistenceMutationPlanV1(envelope);
+      buildHarthmereLiveModePersistenceMutationPlan(envelope);
     const routed =
       route_real_attacks_abilities_xp_loot_death_respawn_through_shared_rules(
         envelope,
         mutationPlan
       );
-    return persistHarthmereLiveModeResponseV1(
+    return persistHarthmereLiveModeResponse(
       envelope,
       {
         ok: true,
-        version: HARTHMERE_LIVE_MODE_SERVER_ROUTE_V1,
+        version: HARTHMERE_LIVE_MODE_SERVER_ROUTE,
         actorId,
         duplicate: false,
         replayed: false,

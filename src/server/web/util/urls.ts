@@ -83,7 +83,7 @@ export function userPublicPermalink(id: BiomesId, username?: string) {
 }
 
 export function avatarPlaceholderURL() {
-  // GLITCH_REMOVE_STATIC_BIOMES_GG_V193: keep the placeholder same-origin.
+  // GLITCH_REMOVE_STATIC_BIOMES_GG: keep the placeholder same-origin.
   return "/hud/avatar-placeholder.png";
 }
 

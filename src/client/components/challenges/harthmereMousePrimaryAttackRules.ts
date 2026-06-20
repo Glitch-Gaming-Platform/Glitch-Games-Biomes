@@ -1,5 +1,5 @@
-// HARTHMERE_MOUSE_PRIMARY_ATTACK_V1
-import { harthmereServerMuckCombatTargetIdForSeedV1 } from "@/shared/harthmere/visible_combat_target_v1";
+// HARTHMERE_MOUSE_PRIMARY_ATTACK
+import { harthmereServerMuckCombatTargetIdForSeed } from "@/shared/harthmere/visible_combat_target";
 
 // Pure decision rule for whether a raw left mouse-down should resolve a Harthmere
 // basic attack. The left mouse button is shared with voxel-block breaking and
@@ -11,7 +11,7 @@ import { harthmereServerMuckCombatTargetIdForSeedV1 } from "@/shared/harthmere/v
 //   - there is actually an attackable target within striking distance.
 // Extracted into its own module (no React/renderer imports) so every branch can
 // be unit-tested without a DOM, per the repo's pure-function test convention.
-export function shouldEngageHarthmereMousePrimaryAttackV1(input: {
+export function shouldEngageHarthmereMousePrimaryAttack(input: {
   button: number;
   pointerLocked: boolean;
   gameplayCanvasTarget?: boolean;
@@ -29,7 +29,7 @@ export function shouldEngageHarthmereMousePrimaryAttackV1(input: {
 // Left mouse is the voxel-break / native attack action. It must resolve like
 // the original cursor attack path, not like the keyboard B/H hotkeys where the
 // first press can be consumed by weapon draw state.
-export function shouldBypassHarthmereKeyboardDrawGateForMousePrimaryAttackV1(input: {
+export function shouldBypassHarthmereKeyboardDrawGateForMousePrimaryAttack(input: {
   source: "mouse_primary" | "keyboard_hotkey";
   hasPhysicalWeapon: boolean;
   weaponDrawn: boolean;
@@ -41,9 +41,9 @@ export function shouldBypassHarthmereKeyboardDrawGateForMousePrimaryAttackV1(inp
   );
 }
 
-export function harthmereLiveModeCombatTargetIdForSeedV1(input: {
+export function harthmereLiveModeCombatTargetIdForSeed(input: {
   seedId: string;
   idOffset: number;
 }): string | undefined {
-  return harthmereServerMuckCombatTargetIdForSeedV1(input);
+  return harthmereServerMuckCombatTargetIdForSeed(input);
 }

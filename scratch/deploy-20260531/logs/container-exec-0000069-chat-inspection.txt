@@ -1,4 +1,0 @@
-INFO: Connecting to the container 'biomes-node-vnet'...
-INFO: Successfully connected to container: 'biomes-node-vnet'. [ Revision: 'biomes-node-vnet--0000069', Replica: 'biomes-node-vnet--0000069-76dd6ff594-4jwtw'].
-echo: 1: Syntax error: Unterminated quoted string
-ERROR: {"Error":{"Code":"ClusterExecFailure","Message":"Cluster exec API returns error: command terminated with non-zero exit code: error executing command [sh -c \u0027date; echo READY; (curl -sS -m 3 -D - http://127.0.0.1:3301/ready || true); echo DUMP; (curl -sS -m 3 http://127.0.0.1:3301/dump || true); echo METRICS; (curl -sS -m 3 http://127.0.0.1:3301/metrics | grep -E biomes_init_state|chat_|up | head -n 80 || true); echo PS; ps -ef | grep -E dist/(chat|web|sync|logic|sidefx|shim|bikkie|ask|oob)\\.js|run-glitch | grep -v grep\u0027], exit code 2, code: 0.","Details":null,"Target":null,"AdditionalInfo":null,"TraceId":null}}

@@ -116,17 +116,17 @@ const LOCAL_DEV_STARTER_TOWN_START_POSITIONS: Readonly<
   ],
 ];
 
-// HARTHMERE_EXTRA_TOWN_PLAYER_START_OFFSET_V1:
-const HARTHMERE_EXTRA_TOWN_PLAYER_START_OFFSET_X_V1 = Number.parseInt(
+// HARTHMERE_EXTRA_TOWN_PLAYER_START_OFFSET:
+const HARTHMERE_EXTRA_TOWN_PLAYER_START_OFFSET_X = Number.parseInt(
   process.env.BIOMES_HARTHMERE_EXTRA_TOWN_OFFSET_X ?? "512",
   10
 );
-const HARTHMERE_EXTRA_TOWN_PLAYER_START_OFFSET_Z_V1 = Number.parseInt(
+const HARTHMERE_EXTRA_TOWN_PLAYER_START_OFFSET_Z = Number.parseInt(
   process.env.BIOMES_HARTHMERE_EXTRA_TOWN_OFFSET_Z ?? "0",
   10
 );
-function shouldOffsetLocalDevStarterTownSpawnV1() {
-  // HARTHMERE_GROVE_SEPARATION_PLAYER_SPAWN_V72:
+function shouldOffsetLocalDevStarterTownSpawn() {
+  // HARTHMERE_GROVE_SEPARATION_PLAYER_SPAWN:
   // Keep player spawn/rescue aligned with the server terrain shift.
   if (
     process.env.BIOMES_DISABLE_HARTHMERE_EXTRA_TOWN_OFFSET === "1" ||
@@ -139,24 +139,24 @@ function shouldOffsetLocalDevStarterTownSpawnV1() {
     process.env.BIOMES_FORCE_LOCAL_DEV_TOWN === "1"
   );
 }
-function offsetLocalDevStarterTownSpawnV1(
+function offsetLocalDevStarterTownSpawn(
   point: ReadonlyOrientedPoint
 ): ReadonlyOrientedPoint {
-  if (!shouldOffsetLocalDevStarterTownSpawnV1()) {
+  if (!shouldOffsetLocalDevStarterTownSpawn()) {
     return point;
   }
   return [
     [
-      point[0][0] + HARTHMERE_EXTRA_TOWN_PLAYER_START_OFFSET_X_V1,
+      point[0][0] + HARTHMERE_EXTRA_TOWN_PLAYER_START_OFFSET_X,
       point[0][1],
-      point[0][2] + HARTHMERE_EXTRA_TOWN_PLAYER_START_OFFSET_Z_V1,
+      point[0][2] + HARTHMERE_EXTRA_TOWN_PLAYER_START_OFFSET_Z,
     ],
     point[1],
   ];
 }
 
 
-function configuredGlitchPlayerStartPositionV146(): ReadonlyOrientedPoint | undefined {
+function configuredGlitchPlayerStartPosition(): ReadonlyOrientedPoint | undefined {
   const raw = process.env.BIOMES_PLAYER_START_POSITION;
   if (!raw) {
     return undefined;
@@ -171,10 +171,10 @@ function configuredGlitchPlayerStartPositionV146(): ReadonlyOrientedPoint | unde
   return [[parts[0], parts[1], parts[2]], [0.02, 3.15]];
 }
 
-let warnedInvalidHarthmereStartModeV86 = false;
+let warnedInvalidHarthmereStartMode = false;
 
 function shouldUseLocalDevStarterTownSpawn() {
-  // HARTHMERE_START_MODE_GUARD_V86:
+  // HARTHMERE_START_MODE_GUARD:
   // BIOMES_START_IN_HARTHMERE is only meaningful when a Harthmere town is
   // actually being created or forced. If Harthmere startup is requested while
   // the town itself is disabled, keep the player in the snapshot/Grove layer.
@@ -195,8 +195,8 @@ function shouldUseLocalDevStarterTownSpawn() {
   ) {
     return true;
   }
-  if (!warnedInvalidHarthmereStartModeV86) {
-    warnedInvalidHarthmereStartModeV86 = true;
+  if (!warnedInvalidHarthmereStartMode) {
+    warnedInvalidHarthmereStartMode = true;
     log.warn(
       "BIOMES_START_IN_HARTHMERE=1 was ignored because no Harthmere town mode is enabled. " +
         "Use BIOMES_ENABLE_HARTHMERE_EXTRA_TOWN=1 with terrain enabled, " +
@@ -226,7 +226,7 @@ function isSparseGlitchDefaultPosition(position: ReadonlyVec3) {
   return position[0] === 0 && position[2] === 0 && position[1] <= 0;
 }
 
-function isInsideAuthoredSnapshotGroveStartAreaV86(position: ReadonlyVec3) {
+function isInsideAuthoredSnapshotGroveStartArea(position: ReadonlyVec3) {
   // The converted snapshot/Grove courtyard/start area. If an existing player
   // was already persisted here, a later Harthmere-start boot would otherwise
   // keep reusing that old location forever.
@@ -238,7 +238,7 @@ function isInsideAuthoredSnapshotGroveStartAreaV86(position: ReadonlyVec3) {
   );
 }
 
-function shouldMoveExistingSnapshotPlayerToHarthmereStartV86(
+function shouldMoveExistingSnapshotPlayerToHarthmereStart(
   position: ReadonlyVec3
 ) {
   // Existing players are persisted in Redis, so choosePlayerStartPosition()
@@ -248,19 +248,19 @@ function shouldMoveExistingSnapshotPlayerToHarthmereStartV86(
   // the wilds.
   return (
     shouldUseLocalDevStarterTownSpawn() &&
-    shouldOffsetLocalDevStarterTownSpawnV1() &&
+    shouldOffsetLocalDevStarterTownSpawn() &&
     process.env.BIOMES_KEEP_EXISTING_PLAYER_POSITION !== "1" &&
-    isInsideAuthoredSnapshotGroveStartAreaV86(position)
+    isInsideAuthoredSnapshotGroveStartArea(position)
   );
 }
 
 function choosePlayerStartPosition(): ReadonlyOrientedPoint {
-  const configuredStart = configuredGlitchPlayerStartPositionV146();
+  const configuredStart = configuredGlitchPlayerStartPosition();
   if (configuredStart) {
     return configuredStart;
   }
   if (shouldUseLocalDevStarterTownSpawn()) {
-    return offsetLocalDevStarterTownSpawnV1(
+    return offsetLocalDevStarterTownSpawn(
       sample(LOCAL_DEV_STARTER_TOWN_START_POSITIONS)!
     );
   }
@@ -268,11 +268,11 @@ function choosePlayerStartPosition(): ReadonlyOrientedPoint {
 }
 
 function isInsideLocalDevStarterTown(position: ReadonlyVec3) {
-  const offsetX = shouldOffsetLocalDevStarterTownSpawnV1()
-    ? HARTHMERE_EXTRA_TOWN_PLAYER_START_OFFSET_X_V1
+  const offsetX = shouldOffsetLocalDevStarterTownSpawn()
+    ? HARTHMERE_EXTRA_TOWN_PLAYER_START_OFFSET_X
     : 0;
-  const offsetZ = shouldOffsetLocalDevStarterTownSpawnV1()
-    ? HARTHMERE_EXTRA_TOWN_PLAYER_START_OFFSET_Z_V1
+  const offsetZ = shouldOffsetLocalDevStarterTownSpawn()
+    ? HARTHMERE_EXTRA_TOWN_PLAYER_START_OFFSET_Z
     : 0;
   return (
     position[0] >= 352 + offsetX &&
@@ -306,11 +306,11 @@ function localDevWildsEdgeRescuePosition(
   if (!shouldUseLocalDevStarterTownSpawn()) {
     return;
   }
-  const offsetX = shouldOffsetLocalDevStarterTownSpawnV1()
-    ? HARTHMERE_EXTRA_TOWN_PLAYER_START_OFFSET_X_V1
+  const offsetX = shouldOffsetLocalDevStarterTownSpawn()
+    ? HARTHMERE_EXTRA_TOWN_PLAYER_START_OFFSET_X
     : 0;
-  const offsetZ = shouldOffsetLocalDevStarterTownSpawnV1()
-    ? HARTHMERE_EXTRA_TOWN_PLAYER_START_OFFSET_Z_V1
+  const offsetZ = shouldOffsetLocalDevStarterTownSpawn()
+    ? HARTHMERE_EXTRA_TOWN_PLAYER_START_OFFSET_Z
     : 0;
   const { minY, maxY } = LOCAL_DEV_WILDS_EDGE_RESCUE_BOUNDS;
   const minX = LOCAL_DEV_WILDS_EDGE_RESCUE_BOUNDS.minX + offsetX;
@@ -586,8 +586,8 @@ export function ensurePlayerHasReasonablePosition(
   }
 
   const bounds: ReadonlyAABB = [
-    world.worldMetadata()!.aabb.v0,
-    world.worldMetadata()!.aabb.v1,
+    world.worldMetadata()!.aabb,
+    world.worldMetadata()!.aabb,
   ];
   if (
     shouldTreatWorldBoundsAsSparseGlitchRuntime() &&
@@ -609,7 +609,7 @@ export function ensurePlayerHasReasonablePosition(
     return;
   }
 
-  if (shouldMoveExistingSnapshotPlayerToHarthmereStartV86(position)) {
+  if (shouldMoveExistingSnapshotPlayerToHarthmereStart(position)) {
     log.warn(
       `Player ${player.id} was persisted in the Grove while Harthmere start is enabled, moving to Harthmere`,
       {

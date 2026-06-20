@@ -5,8 +5,8 @@ import {
 import { TalkDialogModalStep } from "@/client/components/challenges/TalkDialogModalStep";
 import type { QuestStepBundle } from "@/client/components/challenges/helpers";
 import {
-  activeQuestVoiceContextForNpcV1,
-  playerVoiceContextForNpcChatV1,
+  activeQuestVoiceContextForNpc,
+  playerVoiceContextForNpcChat,
   useRelevantStepsForEntity,
 } from "@/client/components/challenges/helpers";
 import { useClientContext } from "@/client/components/contexts/ClientContextReactContext";
@@ -59,8 +59,8 @@ export const TalkToNPCMultiQuestSelector: React.FunctionComponent<{
           entityId: npcId,
           messageContext: voiceMessageContext.current,
           userResponse: message,
-          questContext: activeQuestVoiceContextForNpcV1(relevantSteps),
-          userContext: playerVoiceContextForNpcChatV1({
+          questContext: activeQuestVoiceContextForNpc(relevantSteps),
+          userContext: playerVoiceContextForNpcChat({
             reactResources,
             userId,
           }),

@@ -17,7 +17,7 @@ function nearbyAabbShards(
     aabb = growAABB(aabb, grow);
   }
   return Array.from(shardsForAABB(...aabb)).filter((shard) =>
-    containsAABB([metadata.aabb.v0, metadata.aabb.v1], shardCenter(shard))
+    containsAABB([metadata.aabb, metadata.aabb], shardCenter(shard))
   );
 }
 

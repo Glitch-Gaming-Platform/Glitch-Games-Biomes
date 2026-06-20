@@ -7,48 +7,48 @@ import {
   useHarthmereCombatState,
 } from "@/client/components/challenges/LocalDevHarthmereCombat";
 import {
-  describeHarthmereDeathInterfaceV1,
-  harthmereRespawnDisabledReasonV1,
+  describeHarthmereDeathInterface,
+  harthmereRespawnDisabledReason,
 } from "@/client/components/challenges/harthmereCombatDeathInterfaceRules";
 import {
-  isHarthmereWakeUpScreenActiveV1,
+  isHarthmereWakeUpScreenActive,
   restoreHarthmereFoodStaminaToFullForRespawn,
 } from "@/client/components/challenges/LocalDevHarthmereFoodStaminaSystem";
 import { harthmereUserScopedStorageKey } from "@/client/components/challenges/LocalDevHarthmereUserScope";
 import {
   BIOMES_UI_PLAYER_STATUS_UPDATED_EVENT,
-  type BiomesUIPlayerStatusSnapshotV1,
-  useBiomesUIPlayerStatusStateV1,
+  type BiomesUIPlayerStatusSnapshot,
+  useBiomesUIPlayerStatusState,
 } from "@/client/components/biomes_ui/adapters/playerStatusAdapter";
-import { defaultHarthmereLiveFetchV1 } from "@/client/components/harthmere_live_fetch";
+import { defaultHarthmereLiveFetch } from "@/client/components/harthmere_live_fetch";
 import { fireAndForget } from "@/shared/util/async";
 import React, { useEffect, useMemo, useState } from "react";
 
 export const HARTHMERE_DEATH_STATE_KEY =
-  "biomes.localDev.harthmere.deathState.v1";
+  "biomes.localDev.harthmere.deathState";
 export const HARTHMERE_DEATH_EVENT = "biomes:harthmere-death-changed";
-export const HARTHMERE_DEATH_MOVEMENT_LOCK_VERSION_V135 =
-  "harthmere-death-movement-lock-v135" as const;
-export const HARTHMERE_PLAYER_DEATH_POSE_EVENT_V135 =
-  "biomes:harthmere-player-death-pose-v135" as const;
+export const HARTHMERE_DEATH_MOVEMENT_LOCK_VERSION =
+  "harthmere-death-movement-lock" as const;
+export const HARTHMERE_PLAYER_DEATH_POSE_EVENT =
+  "biomes:harthmere-player-death-pose" as const;
 
-export const HARTHMERE_DEATH_SCREEN_VERSION_V139 =
-  "harthmere-death-screen-grove-respawn-v139" as const;
-export const HARTHMERE_GROVE_RESPAWN_TELEPORT_TARGET_V139 = {
+export const HARTHMERE_DEATH_SCREEN_VERSION =
+  "harthmere-death-screen-grove-respawn" as const;
+export const HARTHMERE_GROVE_RESPAWN_TELEPORT_TARGET = {
   x: 496,
   y: 70,
   z: -126,
   label: "The Grove",
-  reason: "harthmere_death_respawn_to_grove_v139",
+  reason: "harthmere_death_respawn_to_grove",
 } as const;
-export const HARTHMERE_GROVE_RESPAWN_TELEPORT_STORAGE_KEY_V139 =
+export const HARTHMERE_GROVE_RESPAWN_TELEPORT_STORAGE_KEY =
   "biomes.localDev.harthmere.teleportTarget" as const;
 
-interface HarthmereGroveTeleportResultV139 {
+interface HarthmereGroveTeleportResult {
   ok: boolean;
   teleported: boolean;
   stored: boolean;
-  target: typeof HARTHMERE_GROVE_RESPAWN_TELEPORT_TARGET_V139;
+  target: typeof HARTHMERE_GROVE_RESPAWN_TELEPORT_TARGET;
   source: string;
   error?: string;
 }
@@ -266,8 +266,8 @@ export function clearHarthmereDeathState(detail = "Death state cleared.") {
   );
 }
 
-export function requestHarthmereGroveRespawnTeleportV139(): HarthmereGroveTeleportResultV139 {
-  const target = HARTHMERE_GROVE_RESPAWN_TELEPORT_TARGET_V139;
+export function requestHarthmereGroveRespawnTeleport(): HarthmereGroveTeleportResult {
+  const target = HARTHMERE_GROVE_RESPAWN_TELEPORT_TARGET;
   if (!isBrowser()) {
     return {
       ok: false,
@@ -305,7 +305,7 @@ export function requestHarthmereGroveRespawnTeleportV139(): HarthmereGroveTelepo
 
   try {
     window.localStorage.setItem(
-      HARTHMERE_GROVE_RESPAWN_TELEPORT_STORAGE_KEY_V139,
+      HARTHMERE_GROVE_RESPAWN_TELEPORT_STORAGE_KEY,
       JSON.stringify(target)
     );
     return {
@@ -327,11 +327,11 @@ export function requestHarthmereGroveRespawnTeleportV139(): HarthmereGroveTelepo
   }
 }
 
-async function submitHarthmereLiveModeGroveRespawnV139() {
+async function submitHarthmereLiveModeGroveRespawn() {
   const requestId = `harthmere_grove_respawn_${Date.now()}_${Math.random()
     .toString(36)
     .slice(2)}`;
-  const response = await defaultHarthmereLiveFetchV1(
+  const response = await defaultHarthmereLiveFetch(
     "/api/harthmere/live_mode",
     {
       method: "POST",
@@ -364,11 +364,11 @@ async function submitHarthmereLiveModeGroveRespawnV139() {
   return body;
 }
 
-export function respawnHarthmerePlayerAtGroveV139(
+export function respawnHarthmerePlayerAtGrove(
   deathStateOverride?: HarthmereDeathState
 ) {
   const state = deathStateOverride ?? readHarthmereDeathState();
-  const blockedReason = harthmereRespawnDisabledReasonV1(state, "the_grove");
+  const blockedReason = harthmereRespawnDisabledReason(state, "the_grove");
   if (blockedReason) {
     writeHarthmereDeathState(
       appendDeathLog(state, "Respawn Blocked", blockedReason)
@@ -377,14 +377,14 @@ export function respawnHarthmerePlayerAtGroveV139(
       ok: false,
       teleported: false,
       stored: false,
-      target: HARTHMERE_GROVE_RESPAWN_TELEPORT_TARGET_V139,
+      target: HARTHMERE_GROVE_RESPAWN_TELEPORT_TARGET,
       source: "respawn_rules_blocked",
       error: blockedReason,
     };
   }
-  const teleportResult = requestHarthmereGroveRespawnTeleportV139();
+  const teleportResult = requestHarthmereGroveRespawnTeleport();
   fireAndForget(
-    submitHarthmereLiveModeGroveRespawnV139().catch((error) => {
+    submitHarthmereLiveModeGroveRespawn().catch((error) => {
       writeHarthmereDeathState(
         appendDeathLog(
           readHarthmereDeathState(),
@@ -422,7 +422,7 @@ export function useHarthmereDeathState() {
   return state;
 }
 
-const HARTHMERE_DEATH_LOCKED_STATES_V135: ReadonlySet<HarthmereDeathStateName> =
+const HARTHMERE_DEATH_LOCKED_STATES: ReadonlySet<HarthmereDeathStateName> =
   new Set([
     "downed",
     "dead",
@@ -433,7 +433,7 @@ const HARTHMERE_DEATH_LOCKED_STATES_V135: ReadonlySet<HarthmereDeathStateName> =
     "unconscious",
   ]);
 
-const HARTHMERE_DEATH_MOVEMENT_KEYS_V135 = new Set([
+const HARTHMERE_DEATH_MOVEMENT_KEYS = new Set([
   "KeyW",
   "KeyA",
   "KeyS",
@@ -450,8 +450,8 @@ const HARTHMERE_DEATH_MOVEMENT_KEYS_V135 = new Set([
   "Mouse0",
 ]);
 
-export function harthmereLivePlayerDeathSyncSummaryForTestV1(
-  status: BiomesUIPlayerStatusSnapshotV1 | undefined
+export function harthmereLivePlayerDeathSyncSummaryForTest(
+  status: BiomesUIPlayerStatusSnapshot | undefined
 ) {
   const rawHp = Number(status?.combat?.hp);
   const liveHp = Number.isFinite(rawHp) ? rawHp : undefined;
@@ -477,7 +477,7 @@ export function harthmereLivePlayerDeathSyncSummaryForTestV1(
   };
 }
 
-const HARTHMERE_EFFECTIVE_DEATH_STATES_V140 = new Set([
+const HARTHMERE_EFFECTIVE_DEATH_STATES = new Set([
   "downed",
   "dead",
   "respawning",
@@ -486,14 +486,14 @@ const HARTHMERE_EFFECTIVE_DEATH_STATES_V140 = new Set([
   "unconscious",
 ]);
 
-const HARTHMERE_EFFECTIVE_DEATH_RESPAWNS_V140 = [
+const HARTHMERE_EFFECTIVE_DEATH_RESPAWNS = [
   "the_grove",
   "temple_green",
   "north_gate",
   "player_house",
 ];
 
-export interface HarthmereEffectiveDeathInputV140 {
+export interface HarthmereEffectiveDeathInput {
   death: HarthmereDeathState;
   combatHp?: number;
   combatMaxHp?: number;
@@ -508,7 +508,7 @@ function finiteNumberOrUndefined(value: unknown) {
   return Number.isFinite(numeric) ? numeric : undefined;
 }
 
-export function effectiveHarthmereDeathStateForRespawnV140({
+export function effectiveHarthmereDeathStateForRespawn({
   death,
   combatHp,
   combatMaxHp,
@@ -516,8 +516,8 @@ export function effectiveHarthmereDeathStateForRespawnV140({
   liveHp,
   liveDeathState,
   nowMs,
-}: HarthmereEffectiveDeathInputV140): HarthmereDeathState {
-  if (HARTHMERE_DEATH_LOCKED_STATES_V135.has(death.state)) {
+}: HarthmereEffectiveDeathInput): HarthmereDeathState {
+  if (HARTHMERE_DEATH_LOCKED_STATES.has(death.state)) {
     return death;
   }
 
@@ -533,8 +533,8 @@ export function effectiveHarthmereDeathStateForRespawnV140({
     (localHp !== undefined && localHp <= 0) ||
     (remoteHp !== undefined && remoteHp <= 0);
   const deadState =
-    HARTHMERE_EFFECTIVE_DEATH_STATES_V140.has(normalizedCombatState) ||
-    HARTHMERE_EFFECTIVE_DEATH_STATES_V140.has(normalizedLiveDeathState);
+    HARTHMERE_EFFECTIVE_DEATH_STATES.has(normalizedCombatState) ||
+    HARTHMERE_EFFECTIVE_DEATH_STATES.has(normalizedLiveDeathState);
 
   if (!zeroHp && !deadState) {
     return death;
@@ -572,7 +572,7 @@ export function effectiveHarthmereDeathStateForRespawnV140({
       durabilityLossPercent: 0,
       xpDebt: 0,
       corpsePosition: [496, 70, -126],
-      availableRespawns: HARTHMERE_EFFECTIVE_DEATH_RESPAWNS_V140,
+      availableRespawns: HARTHMERE_EFFECTIVE_DEATH_RESPAWNS,
       createdAt: now,
     } satisfies HarthmereDeathRecord);
 
@@ -589,15 +589,15 @@ export function effectiveHarthmereDeathStateForRespawnV140({
   };
 }
 
-function shouldLockHarthmereDeathMovementV135(
+function shouldLockHarthmereDeathMovement(
   death: HarthmereDeathState,
   combat: ReturnType<typeof useHarthmereCombatState>
 ) {
-  if (isHarthmereWakeUpScreenActiveV1()) {
+  if (isHarthmereWakeUpScreenActive()) {
     return false;
   }
   return (
-    HARTHMERE_DEATH_LOCKED_STATES_V135.has(death.state) ||
+    HARTHMERE_DEATH_LOCKED_STATES.has(death.state) ||
     Number(combat.player.hp) <= 0 ||
     ["downed", "dead", "respawning"].includes(
       String(combat.player.combatState ?? "")
@@ -605,22 +605,22 @@ function shouldLockHarthmereDeathMovementV135(
   );
 }
 
-function dispatchHarthmerePlayerDeathPoseV135(active: boolean, state: string) {
+function dispatchHarthmerePlayerDeathPose(active: boolean, state: string) {
   if (!isBrowser()) {
     return;
   }
   if (active) {
     document.documentElement.dataset.harthmereDeathMovementLocked =
-      HARTHMERE_DEATH_MOVEMENT_LOCK_VERSION_V135;
+      HARTHMERE_DEATH_MOVEMENT_LOCK_VERSION;
   } else {
     delete document.documentElement.dataset.harthmereDeathMovementLocked;
   }
   window.dispatchEvent(
-    new CustomEvent(HARTHMERE_PLAYER_DEATH_POSE_EVENT_V135, {
+    new CustomEvent(HARTHMERE_PLAYER_DEATH_POSE_EVENT, {
       detail: {
         active,
         state,
-        version: HARTHMERE_DEATH_MOVEMENT_LOCK_VERSION_V135,
+        version: HARTHMERE_DEATH_MOVEMENT_LOCK_VERSION,
       },
     })
   );
@@ -705,11 +705,11 @@ export const HarthmereDeathRuntimeController: React.FunctionComponent<{}> =
   () => {
     const death = useHarthmereDeathState();
     const combat = useHarthmereCombatState();
-    const liveStatus = useBiomesUIPlayerStatusStateV1();
+    const liveStatus = useBiomesUIPlayerStatusState();
 
     const syncLivePlayerStatusToDeath = React.useCallback(
-      (status: BiomesUIPlayerStatusSnapshotV1 | undefined) => {
-        const live = harthmereLivePlayerDeathSyncSummaryForTestV1(status);
+      (status: BiomesUIPlayerStatusSnapshot | undefined) => {
+        const live = harthmereLivePlayerDeathSyncSummaryForTest(status);
         if (live.alive) {
           const latest = readHarthmereDeathState();
           const localCombatDead =
@@ -718,7 +718,7 @@ export const HarthmereDeathRuntimeController: React.FunctionComponent<{}> =
               String(combat.player.combatState ?? "")
             );
           if (
-            HARTHMERE_DEATH_LOCKED_STATES_V135.has(latest.state) ||
+            HARTHMERE_DEATH_LOCKED_STATES.has(latest.state) ||
             localCombatDead
           ) {
             clearHarthmereDeathState(
@@ -727,7 +727,7 @@ export const HarthmereDeathRuntimeController: React.FunctionComponent<{}> =
             if (localCombatDead) {
               reviveHarthmerePlayer("Live player status");
             }
-            dispatchHarthmerePlayerDeathPoseV135(false, "alive");
+            dispatchHarthmerePlayerDeathPose(false, "alive");
           }
           return;
         }
@@ -735,7 +735,7 @@ export const HarthmereDeathRuntimeController: React.FunctionComponent<{}> =
           return;
         }
         const latest = readHarthmereDeathState();
-        if (HARTHMERE_DEATH_LOCKED_STATES_V135.has(latest.state)) {
+        if (HARTHMERE_DEATH_LOCKED_STATES.has(latest.state)) {
           return;
         }
         downHarthmerePlayerFromSystem({
@@ -759,7 +759,7 @@ export const HarthmereDeathRuntimeController: React.FunctionComponent<{}> =
         return;
       }
       const onLivePlayerStatus = (event: Event) => {
-        const status = (event as CustomEvent<BiomesUIPlayerStatusSnapshotV1>)
+        const status = (event as CustomEvent<BiomesUIPlayerStatusSnapshot>)
           .detail;
         syncLivePlayerStatusToDeath(status);
       };
@@ -787,8 +787,8 @@ export const HarthmereDeathRuntimeController: React.FunctionComponent<{}> =
           ["downed", "dead"].includes(String(combat.player.combatState ?? ""));
         if (
           combatDead &&
-          !HARTHMERE_DEATH_LOCKED_STATES_V135.has(latest.state) &&
-          !isHarthmereWakeUpScreenActiveV1()
+          !HARTHMERE_DEATH_LOCKED_STATES.has(latest.state) &&
+          !isHarthmereWakeUpScreenActive()
         ) {
           downHarthmerePlayerFromSystem({
             cause: "HP reached zero",
@@ -844,8 +844,8 @@ export const HarthmereDeathRuntimeController: React.FunctionComponent<{}> =
       if (typeof window === "undefined") {
         return;
       }
-      const locked = shouldLockHarthmereDeathMovementV135(death, combat);
-      dispatchHarthmerePlayerDeathPoseV135(locked, death.state);
+      const locked = shouldLockHarthmereDeathMovement(death, combat);
+      dispatchHarthmerePlayerDeathPose(locked, death.state);
 
       if (!locked) {
         delete document.documentElement.dataset.harthmereDeathMovementLocked;
@@ -857,7 +857,7 @@ export const HarthmereDeathRuntimeController: React.FunctionComponent<{}> =
       } catch {}
 
       const preventMovement = (event: KeyboardEvent) => {
-        if (!HARTHMERE_DEATH_MOVEMENT_KEYS_V135.has(event.code)) {
+        if (!HARTHMERE_DEATH_MOVEMENT_KEYS.has(event.code)) {
           return;
         }
         event.preventDefault();
@@ -889,20 +889,20 @@ export const HarthmereDeathRuntimeController: React.FunctionComponent<{}> =
         window.removeEventListener("mousedown", preventPointerMovement, true);
         window.removeEventListener("mouseup", preventPointerMovement, true);
         window.removeEventListener("click", preventPointerMovement, true);
-        dispatchHarthmerePlayerDeathPoseV135(false, "alive");
+        dispatchHarthmerePlayerDeathPose(false, "alive");
       };
     }, [combat.player.combatState, combat.player.hp, death.state]);
 
     return null;
   };
 
-export const HarthmereDeathScreenOverlayV139: React.FunctionComponent<{}> =
+export const HarthmereDeathScreenOverlay: React.FunctionComponent<{}> =
   () => {
     const death = useHarthmereDeathState();
     const combat = useHarthmereCombatState();
-    const liveStatus = useBiomesUIPlayerStatusStateV1();
-    const live = harthmereLivePlayerDeathSyncSummaryForTestV1(liveStatus);
-    const effectiveDeath = effectiveHarthmereDeathStateForRespawnV140({
+    const liveStatus = useBiomesUIPlayerStatusState();
+    const live = harthmereLivePlayerDeathSyncSummaryForTest(liveStatus);
+    const effectiveDeath = effectiveHarthmereDeathStateForRespawn({
       death,
       combatHp: combat.player.hp,
       combatMaxHp: combat.player.maxHp,
@@ -911,11 +911,11 @@ export const HarthmereDeathScreenOverlayV139: React.FunctionComponent<{}> =
       liveDeathState: live.deathState,
     });
     const downedSeconds = secondsRemaining(effectiveDeath.downedUntil);
-    if (isHarthmereWakeUpScreenActiveV1()) {
+    if (isHarthmereWakeUpScreenActive()) {
       return <></>;
     }
     const active =
-      HARTHMERE_DEATH_LOCKED_STATES_V135.has(effectiveDeath.state) ||
+      HARTHMERE_DEATH_LOCKED_STATES.has(effectiveDeath.state) ||
       effectiveDeath !== death;
 
     if (!active) {
@@ -930,7 +930,7 @@ export const HarthmereDeathScreenOverlayV139: React.FunctionComponent<{}> =
     const consequence = effectiveDeath.currentDeath?.killerName
       ? `and were claimed by ${effectiveDeath.currentDeath.killerName}`
       : "and need to return to safety";
-    const groveRespawnBlock = harthmereRespawnDisabledReasonV1(
+    const groveRespawnBlock = harthmereRespawnDisabledReason(
       effectiveDeath,
       "the_grove"
     );
@@ -939,7 +939,7 @@ export const HarthmereDeathScreenOverlayV139: React.FunctionComponent<{}> =
       <div
         className="bg-black/45 pointer-events-none fixed inset-0 z-[70] flex items-center justify-center text-white"
         data-harthmere-death-screen-version={
-          HARTHMERE_DEATH_SCREEN_VERSION_V139
+          HARTHMERE_DEATH_SCREEN_VERSION
         }
         style={{
           textShadow: "0 2px 5px rgba(0,0,0,0.95)",
@@ -961,9 +961,9 @@ export const HarthmereDeathScreenOverlayV139: React.FunctionComponent<{}> =
           <div className="mt-4 flex flex-col items-center justify-center gap-2">
             <button
               className="rounded-lg border-violet-200/80 text-base disabled:opacity-45 min-w-[19rem] border-2 bg-[#6f3cff] px-5 py-3 font-black text-white shadow-[0_3px_0_rgba(0,0,0,0.55),0_0_22px_rgba(111,60,255,0.65)] outline outline-1 outline-black/60 hover:bg-[#8357ff] focus-visible:ring-2 focus-visible:ring-white disabled:cursor-not-allowed"
-              data-harthmere-death-respawn-grove-v139="true"
+              data-harthmere-death-respawn-grove="true"
               disabled={Boolean(groveRespawnBlock)}
-              onClick={() => respawnHarthmerePlayerAtGroveV139(effectiveDeath)}
+              onClick={() => respawnHarthmerePlayerAtGrove(effectiveDeath)}
               title={groveRespawnBlock}
             >
               Resurrect at The Grove Safe Point
@@ -984,7 +984,7 @@ export const HarthmereDeathMenuPanel: React.FunctionComponent<{}> = () => {
   const protection = protectionLabel(death);
   const sickness = sicknessLabel(death);
   const damageSummary = death.currentDeath?.damageSummary ?? [];
-  const interfaceRules = describeHarthmereDeathInterfaceV1(death);
+  const interfaceRules = describeHarthmereDeathInterface(death);
 
   const respawnChoices = useMemo(() => Object.entries(RESPAWN_POINTS), []);
 
@@ -1103,7 +1103,7 @@ export const HarthmereDeathMenuPanel: React.FunctionComponent<{}> = () => {
           Respawn Options
         </div>
         {respawnChoices.map(([id, point]) => {
-          const respawnBlock = harthmereRespawnDisabledReasonV1(death, id);
+          const respawnBlock = harthmereRespawnDisabledReason(death, id);
           return (
             <div
               key={id}
@@ -1125,7 +1125,7 @@ export const HarthmereDeathMenuPanel: React.FunctionComponent<{}> = () => {
                 disabled={Boolean(respawnBlock)}
                 onClick={() =>
                   id === "the_grove"
-                    ? respawnHarthmerePlayerAtGroveV139()
+                    ? respawnHarthmerePlayerAtGrove()
                     : (() => {
                         respawnHarthmerePlayer(id);
                         restoreHarthmereFoodStaminaToFullForRespawn(

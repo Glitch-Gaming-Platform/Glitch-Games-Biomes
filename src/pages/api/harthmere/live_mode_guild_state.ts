@@ -1,15 +1,15 @@
 import { connectToRedis } from "@/server/shared/redis/connection";
 import { biomesApiHandler } from "@/server/web/util/api_middleware";
 import {
-  createHarthmereLiveModeGuildClientSnapshotFromBackendV1,
-  harthmereLiveModePlayerStateKeyV1,
-  harthmereLiveModeSharedWorldStateKeyV1,
-  mergeHarthmereLiveModeSharedWorldStateIntoBackendV1,
-  parseHarthmereLiveModeBackendStateV1,
-  parseHarthmereLiveModeSharedWorldStateV1,
-} from "@/shared/harthmere/live_mode_backend_v1";
+  createHarthmereLiveModeGuildClientSnapshotFromBackend,
+  harthmereLiveModePlayerStateKey,
+  harthmereLiveModeSharedWorldStateKey,
+  mergeHarthmereLiveModeSharedWorldStateIntoBackend,
+  parseHarthmereLiveModeBackendState,
+  parseHarthmereLiveModeSharedWorldState,
+} from "@/shared/harthmere/live_mode_backend";
 import { z } from "zod";
-import { readHarthmerePlayerAndSharedStateStringsV1 } from "@/server/harthmere/live_mode_state_read_helpers";
+import { readHarthmerePlayerAndSharedStateStrings } from "@/server/harthmere/live_mode_state_read_helpers";
 
 const zJsonRecord = z.record(z.unknown());
 
@@ -19,15 +19,15 @@ export const zHarthmereLiveModeGuildStateResponse = z.object({
 });
 
 const globalForHarthmereLiveModeGuildState = globalThis as typeof globalThis & {
-  __harthmereLiveModeGuildStateRedisV1?: ReturnType<typeof connectToRedis>;
+  __harthmereLiveModeGuildStateRedis?: ReturnType<typeof connectToRedis>;
 };
 
-function liveModeGuildStateRedisV1() {
-  return (globalForHarthmereLiveModeGuildState.__harthmereLiveModeGuildStateRedisV1 ??=
+function liveModeGuildStateRedis() {
+  return (globalForHarthmereLiveModeGuildState.__harthmereLiveModeGuildStateRedis ??=
     connectToRedis("firehose"));
 }
 
-export async function readHarthmereLiveModeGuildStateForActorV1(input: {
+export async function readHarthmereLiveModeGuildStateForActor(input: {
   redis: {
     primary: {
       get: (key: string) => Promise<string | null>;
@@ -38,19 +38,19 @@ export async function readHarthmereLiveModeGuildStateForActorV1(input: {
   nowMs: number;
 }) {
   const { rawState, rawSharedState } =
-    await readHarthmerePlayerAndSharedStateStringsV1(
+    await readHarthmerePlayerAndSharedStateStrings(
       input.redis.primary,
-      harthmereLiveModePlayerStateKeyV1(input.actorId),
-      harthmereLiveModeSharedWorldStateKeyV1()
+      harthmereLiveModePlayerStateKey(input.actorId),
+      harthmereLiveModeSharedWorldStateKey()
     );
-  const state = parseHarthmereLiveModeBackendStateV1(rawState, input.actorId, input.nowMs);
-  mergeHarthmereLiveModeSharedWorldStateIntoBackendV1(
+  const state = parseHarthmereLiveModeBackendState(rawState, input.actorId, input.nowMs);
+  mergeHarthmereLiveModeSharedWorldStateIntoBackend(
     state,
-    parseHarthmereLiveModeSharedWorldStateV1(rawSharedState, input.nowMs),
+    parseHarthmereLiveModeSharedWorldState(rawSharedState, input.nowMs),
     input.nowMs
   );
   state.updatedAtMs = input.nowMs;
-  return createHarthmereLiveModeGuildClientSnapshotFromBackendV1(state);
+  return createHarthmereLiveModeGuildClientSnapshotFromBackend(state);
 }
 
 export default biomesApiHandler(
@@ -61,11 +61,11 @@ export default biomesApiHandler(
   },
   async ({ auth: { userId } }) => {
     const actorId = String(userId);
-    const redis = await liveModeGuildStateRedisV1();
+    const redis = await liveModeGuildStateRedis();
     const nowMs = Date.now();
     return {
       ok: true,
-      guildState: await readHarthmereLiveModeGuildStateForActorV1({ redis, actorId, nowMs }),
+      guildState: await readHarthmereLiveModeGuildStateForActor({ redis, actorId, nowMs }),
     };
   }
 );

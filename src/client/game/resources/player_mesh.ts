@@ -14,7 +14,7 @@ import type {
 import {
   gltfToThree,
   loadGltf,
-  loadGltfWithCoalescedNetworkFetchV1,
+  loadGltfWithCoalescedNetworkFetch,
 } from "@/client/game/util/gltf_helpers";
 import {
   blockPlaceParticleTexture,
@@ -58,12 +58,12 @@ import {
   type HarthmereVoxelFaceConfig,
 } from "@/shared/harthmere/voxel_faces";
 import {
-  harthmereBikkieWearableSlotsFromAssignmentV1,
-  harthmereBikkieWearablesUseGeneratedBodyV1,
-  harthmereBikkieWearablesUseGeneratedHeadV1,
-  harthmereClothingSlotsHiddenByBikkieWearablesV1,
-  harthmereLocalEquipmentBikkieWearablesV1,
-} from "@/shared/harthmere/harthmere_bikkie_wearables_v1";
+  harthmereBikkieWearableSlotsFromAssignment,
+  harthmereBikkieWearablesUseGeneratedBody,
+  harthmereBikkieWearablesUseGeneratedHead,
+  harthmereClothingSlotsHiddenByBikkieWearables,
+  harthmereLocalEquipmentBikkieWearables,
+} from "@/shared/harthmere/harthmere_bikkie_wearables";
 import { BikkieIds } from "@/shared/bikkie/ids";
 import type { Disposable } from "@/shared/disposable";
 import { makeDisposable } from "@/shared/disposable";
@@ -104,14 +104,14 @@ const HARTHMERE_PLAYER_BODY_VARIANT_BASE_URL =
   "/assets/harthmere/gltf/characters/player_body_variants";
 const HARTHMERE_PLAYER_BODY_VARIANT_SCALE = 0.68;
 
-// GLITCH_STATIC_PLAYER_MESH_VARIANT_V122 was removed from the runtime path.
-// V164 keeps the legacy URL prefix only so already-cached static variant URLs can
+// GLITCH_STATIC_PLAYER_MESH_VARIANT was removed from the runtime path.
+// current keeps the legacy URL prefix only so already-cached static variant URLs can
 // be detected and normalized; no environment switch can route players away from
 // /api/assets/player_mesh.glb anymore.
 const HARTHMERE_PLAYER_FACE_BODY_VISUAL_REFINEMENT_VERSION =
-  "harthmere-face-body-visual-refinement-v11";
+  "harthmere-face-body-visual-refinement";
 const HARTHMERE_PLAYER_MODULAR_CLOTHING_RUNTIME_VERSION =
-  "harthmere-modular-clothing-runtime-v16-polished-threejs-catalog";
+  "harthmere-modular-clothing-runtime-polished-threejs-catalog";
 const HARTHMERE_PLAYER_CLOTHING_RENDER_MODE_STORAGE_KEY =
   "biomes.localDev.harthmere.clothingRenderer";
 
@@ -176,8 +176,8 @@ function playerMeshUrlForId(
   wearables?: ReadonlyItemAssignment,
   appearance?: ReadonlyAppearance
 ) {
-  // HARTHMERE_PLAYER_GLB_URL_PARITY_V137:
-  // Reverts the V122 static-variant detour. The Glitch snapshot deploy sets
+  // HARTHMERE_PLAYER_GLB_URL_PARITY:
+  // Reverts the current static-variant detour. The Glitch snapshot deploy sets
   // GLITCH_ENABLE_SNAPSHOT_ASSET_SERVER=1 (scripts/b/data_snapshot.py:481),
   // which makes /api/assets/player_mesh.glb compute the player mesh locally —
   // the same wearable voxel mesh path the Grove player-like NPCs use through
@@ -226,7 +226,7 @@ async function makePlayerMesh(
 ) {
   const wearing = deps.get("/ecs/c/wearing", id);
   const appearance = deps.get("/ecs/c/appearance_component", id);
-  const cosmetics = harthmereLiveHumanMeshCosmeticsV1(
+  const cosmetics = harthmereLiveHumanMeshCosmetics(
     id,
     wearing?.items,
     appearance?.appearance,
@@ -241,7 +241,7 @@ async function makePlayerMesh(
     id
   );
   if (cosmetics.usedFallback) {
-    mesh.three.userData.harthmereLiveHumanCosmeticsFallbackV1 =
+    mesh.three.userData.harthmereLiveHumanCosmeticsFallback =
       cosmetics.userData;
   }
   return mesh;
@@ -268,7 +268,7 @@ async function updatePlayerMesh(
   const { id } = resolvedPromise;
   const wearing = deps.get("/ecs/c/wearing", id);
   const appearance = deps.get("/ecs/c/appearance_component", id);
-  const cosmetics = harthmereLiveHumanMeshCosmeticsV1(
+  const cosmetics = harthmereLiveHumanMeshCosmetics(
     id,
     wearing?.items,
     appearance?.appearance,
@@ -295,7 +295,7 @@ async function updatePlayerMesh(
       id
     );
     if (cosmetics.usedFallback) {
-      ret.three.userData.harthmereLiveHumanCosmeticsFallbackV1 =
+      ret.three.userData.harthmereLiveHumanCosmeticsFallback =
         cosmetics.userData;
     }
     Object.assign(resolvedPromise, ret);
@@ -385,10 +385,10 @@ class ItemAttachment {
   }
 }
 
-const HARTHMERE_GROVE_INSPIRED_AVATAR_POLISH_VERSION_V100 =
-  "harthmere-grove-inspired-avatar-polish-v100";
+const HARTHMERE_GROVE_INSPIRED_AVATAR_POLISH_VERSION =
+  "harthmere-grove-inspired-avatar-polish";
 
-// HARTHMERE_PLAYER_NPC_PARITY_MINIMAL_AVATAR_V183:
+// HARTHMERE_PLAYER_NPC_PARITY_MINIMAL_AVATAR:
 // Production player avatars were carrying too many player-only overlay passes
 // compared with the Harthmere NPCs, and those extra shells made the white
 // avatar issue hard to distinguish from real generated mesh output. Keep the
@@ -397,19 +397,19 @@ const HARTHMERE_GROVE_INSPIRED_AVATAR_POLISH_VERSION_V100 =
 // proxy, unique trinkets, scabbard/shield/quiver/staff polish, and expression
 // bridge. This intentionally brings players down to NPC-level visual weight
 // while leaving the weapon system intact.
-const HARTHMERE_PLAYER_NPC_PARITY_MINIMAL_AVATAR_VERSION_V183 =
-  "harthmere-player-npc-parity-minimal-avatar-v183";
+const HARTHMERE_PLAYER_NPC_PARITY_MINIMAL_AVATAR_VERSION =
+  "harthmere-player-npc-parity-minimal-avatar";
 
-function shouldUseHarthmerePlayerNpcParityMinimalAvatarV183() {
+function shouldUseHarthmerePlayerNpcParityMinimalAvatar() {
   return true;
 }
 
-const HARTHMERE_PLAYER_DEATH_POSE_EVENT_V135 =
-  "biomes:harthmere-player-death-pose-v135" as const;
-const HARTHMERE_PLAYER_DEATH_POSE_VERSION_V135 =
-  "harthmere-player-death-pose-v135" as const;
+const HARTHMERE_PLAYER_DEATH_POSE_EVENT =
+  "biomes:harthmere-player-death-pose" as const;
+const HARTHMERE_PLAYER_DEATH_POSE_VERSION =
+  "harthmere-player-death-pose" as const;
 
-function installHarthmerePlayerDeathPoseBridgeV135(
+function installHarthmerePlayerDeathPoseBridge(
   root: THREE.Object3D
 ): (() => void) | undefined {
   if (typeof window === "undefined") {
@@ -429,7 +429,7 @@ function installHarthmerePlayerDeathPoseBridgeV135(
     }
     active = nextActive;
     root.userData.harthmerePlayerDeathPoseVersion =
-      HARTHMERE_PLAYER_DEATH_POSE_VERSION_V135;
+      HARTHMERE_PLAYER_DEATH_POSE_VERSION;
     root.userData.harthmerePlayerDeathPoseActive = active;
     if (active) {
       // A readable voxel/MMO death pose: collapse the local visual body onto
@@ -458,17 +458,17 @@ function installHarthmerePlayerDeathPoseBridgeV135(
     applyPose(Boolean(detail?.active));
   };
 
-  window.addEventListener(HARTHMERE_PLAYER_DEATH_POSE_EVENT_V135, handler);
+  window.addEventListener(HARTHMERE_PLAYER_DEATH_POSE_EVENT, handler);
   applyPose(
     document.documentElement.dataset.harthmereDeathMovementLocked !== undefined
   );
   return () => {
-    window.removeEventListener(HARTHMERE_PLAYER_DEATH_POSE_EVENT_V135, handler);
+    window.removeEventListener(HARTHMERE_PLAYER_DEATH_POSE_EVENT, handler);
     applyPose(false);
   };
 }
 
-function installHarthmereGroveInspiredAvatarPolishV100(
+function installHarthmereGroveInspiredAvatarPolish(
   root: THREE.Object3D,
   appearance: HarthmereCharacterAppearance
 ) {
@@ -477,7 +477,7 @@ function installHarthmereGroveInspiredAvatarPolishV100(
   // animation code able to key off the same Grove-inspired aesthetic without
   // inventing another source of truth.
   root.userData.harthmereGroveInspiredAvatarPolishVersion =
-    HARTHMERE_GROVE_INSPIRED_AVATAR_POLISH_VERSION_V100;
+    HARTHMERE_GROVE_INSPIRED_AVATAR_POLISH_VERSION;
   root.userData.harthmereLocomotionStyle = {
     idle: "soft-alert",
     walk:
@@ -520,16 +520,16 @@ async function makeAnimatedMesh(
       localDevHarthmereAppearance.forwardAxis;
   }
   const bikkieWearableSlots =
-    harthmereBikkieWearableSlotsFromAssignmentV1(wearables);
+    harthmereBikkieWearableSlotsFromAssignment(wearables);
 
-  if (shouldUseHarthmerePlayerNpcParityMinimalAvatarV183()) {
+  if (shouldUseHarthmerePlayerNpcParityMinimalAvatar()) {
     if (isHarthmereVariantMesh) {
       // Still hide the built-in variant head if this local-dev-only path is
       // ever selected, but do not add replacement player-only shells.
       hideHarthmereVariantBuiltInHead(playerAnimatedMesh.three);
     }
     playerAnimatedMesh.three.userData.harthmerePlayerNpcParityMinimalAvatarVersion =
-      HARTHMERE_PLAYER_NPC_PARITY_MINIMAL_AVATAR_VERSION_V183;
+      HARTHMERE_PLAYER_NPC_PARITY_MINIMAL_AVATAR_VERSION;
     playerAnimatedMesh.three.userData.harthmerePlayerNpcParityMinimalAvatarPolicy =
       {
         source: "player_mesh.ts",
@@ -552,7 +552,7 @@ async function makeAnimatedMesh(
       playerAnimatedMesh.threeWeaponAttachment
     );
     const disposeDeathPoseBridge = !frustumCulling
-      ? installHarthmerePlayerDeathPoseBridgeV135(playerAnimatedMesh.three)
+      ? installHarthmerePlayerDeathPoseBridge(playerAnimatedMesh.three)
       : undefined;
 
     return makeDisposable(
@@ -578,7 +578,7 @@ async function makeAnimatedMesh(
         loadHarthmerePlayerAppearanceConfig(id).body,
       HARTHMERE_PLAYER_BODY_VARIANT_SCALE
     );
-    // HARTHMERE_PLAYER_VOXEL_CONSTRUCTION_V110:
+    // HARTHMERE_PLAYER_VOXEL_CONSTRUCTION:
     // The Harthmere variant GLTF path used to keep the player on a flatter
     // imported body while Grove NPCs used rich voxel construction. Overlay the
     // same local-dev voxel body shell here, but do not re-run body scaling —
@@ -586,21 +586,21 @@ async function makeAnimatedMesh(
     addLocalDevPlayerBodyShellToObject(playerAnimatedMesh.three, id, {
       applyInnerBodyConfig: false,
       useGeneratedBikkieWearableBody:
-        harthmereBikkieWearablesUseGeneratedBodyV1(bikkieWearableSlots),
+        harthmereBikkieWearablesUseGeneratedBody(bikkieWearableSlots),
       bikkieWearableSlots,
     });
     playerAnimatedMesh.three.userData.harthmerePlayerVoxelConstructionVersion =
-      "harthmere-player-voxel-construction-v110";
+      "harthmere-player-voxel-construction";
   } else {
     addLocalDevPlayerBodyShellToObject(playerAnimatedMesh.three, id, {
       useGeneratedBikkieWearableBody:
-        harthmereBikkieWearablesUseGeneratedBodyV1(bikkieWearableSlots),
+        harthmereBikkieWearablesUseGeneratedBody(bikkieWearableSlots),
       bikkieWearableSlots,
     });
   }
-  if (harthmereBikkieWearablesUseGeneratedHeadV1(bikkieWearableSlots)) {
+  if (harthmereBikkieWearablesUseGeneratedHead(bikkieWearableSlots)) {
     removeLocalDevPlayerFaceOverlays(playerAnimatedMesh.three);
-    playerAnimatedMesh.three.userData.harthmereGeneratedHeadWearableSlotsV1 = [
+    playerAnimatedMesh.three.userData.harthmereGeneratedHeadWearableSlots = [
       ...bikkieWearableSlots,
     ];
   } else {
@@ -611,10 +611,10 @@ async function makeAnimatedMesh(
     localDevHarthmereAppearance ?? loadHarthmerePlayerAppearanceConfig(id),
     {
       hiddenClothingSlots:
-        harthmereClothingSlotsHiddenByBikkieWearablesV1(bikkieWearableSlots),
+        harthmereClothingSlotsHiddenByBikkieWearables(bikkieWearableSlots),
     }
   );
-  // HARTHMERE_PLAYER_GROVE_PARITY_POLISH_V103: bring the player avatar up to
+  // HARTHMERE_PLAYER_GROVE_PARITY_POLISH: bring the player avatar up to
   // the visual richness of the Grove voxel NPCs. The body/face/clothing
   // passes above handle silhouette, face, and outfit; these two passes layer
   // the same role-flavored unique accents and bone-attached equipment polish
@@ -645,7 +645,7 @@ async function makeAnimatedMesh(
   );
   const disposeSwordSheathBridge =
     installHarthmerePlayerSwordSheathVisibilityBridge(playerAnimatedMesh.three);
-  installHarthmereGroveInspiredAvatarPolishV100(
+  installHarthmereGroveInspiredAvatarPolish(
     playerAnimatedMesh.three,
     localDevHarthmereAppearance ?? loadHarthmerePlayerAppearanceConfig(id)
   );
@@ -654,7 +654,7 @@ async function makeAnimatedMesh(
     id
   );
 
-  // HARTHMERE_PLAYER_AVATAR_BASE_PASS_MATERIALS_V153: after all Harthmere
+  // HARTHMERE_PLAYER_AVATAR_BASE_PASS_MATERIALS: after all Harthmere
   // avatar polish, clothing, and equipment pieces are attached, guarantee the
   // entire player root uses base-pass-compatible materials. This keeps the
   // renderer from seeing a mixed base+three avatar and prevents the MRT missing
@@ -665,7 +665,7 @@ async function makeAnimatedMesh(
     playerAnimatedMesh.threeWeaponAttachment
   );
   const disposeDeathPoseBridge = !frustumCulling
-    ? installHarthmerePlayerDeathPoseBridgeV135(playerAnimatedMesh.three)
+    ? installHarthmerePlayerDeathPoseBridge(playerAnimatedMesh.three)
     : undefined;
 
   return makeDisposable(
@@ -947,7 +947,7 @@ function harthmereColorToBasePassTuple(
 }
 
 function localDevBoltHeadMaterial(color: number) {
-  // HARTHMERE_PLAYER_AVATAR_BASE_PASS_MATERIALS_V153
+  // HARTHMERE_PLAYER_AVATAR_BASE_PASS_MATERIALS
   // Do not use MeshToonMaterial for player voxel shells. The player root also
   // contains skinned BasePassMaterial geometry, so the whole avatar must render
   // through SceneBasePass / MRT. Three.js stock materials do not write the base
@@ -966,7 +966,7 @@ function localDevBoltHeadMaterial(color: number) {
   material.userData.harthmereThirdPartyVisualPolish =
     "three-rounded-box-geometry+biomes-base-pass-basic-material";
   material.userData.harthmerePlayerAvatarBasePassMaterialsVersion =
-    "harthmere-player-avatar-base-pass-materials-v153";
+    "harthmere-player-avatar-base-pass-materials";
   return material;
 }
 
@@ -1004,13 +1004,13 @@ function makeHarthmereNonSkinnedBasePassMaterialFromMaterial(
     useMap: !!map,
     vertexColors: harthmereMaterialUsesVertexColors(material),
   });
-  next.name = `${material.name || "harthmere-player-material"}-base-pass-v153`;
+  next.name = `${material.name || "harthmere-player-material"}-base-pass`;
   next.side = material.side;
   next.transparent = false;
   next.userData = {
     ...material.userData,
     harthmerePlayerAvatarBasePassMaterialsVersion:
-      "harthmere-player-avatar-base-pass-materials-v153",
+      "harthmere-player-avatar-base-pass-materials",
     harthmereConvertedFromThreeMaterialType:
       (material as THREE.Material & { type?: string }).type ??
       material.constructor.name,
@@ -1029,12 +1029,12 @@ function coerceHarthmerePlayerMaterialToBasePass(
     const next = clonePlayerSkinnedMaterial();
     next.name = `${
       material.name || "harthmere-player-skinned-material"
-    }-skinned-base-pass-v153`;
+    }-skinned-base-pass`;
     next.side = material.side;
     next.userData = {
       ...material.userData,
       harthmerePlayerAvatarBasePassMaterialsVersion:
-        "harthmere-player-avatar-base-pass-materials-v153",
+        "harthmere-player-avatar-base-pass-materials",
       harthmereConvertedFromThreeMaterialType:
         (material as THREE.Material & { type?: string }).type ??
         material.constructor.name,
@@ -1072,7 +1072,7 @@ function coerceHarthmerePlayerObjectMaterialsToBasePass(root: THREE.Object3D) {
     }
   });
   root.userData.harthmerePlayerAvatarBasePassMaterialsVersion =
-    "harthmere-player-avatar-base-pass-materials-v153";
+    "harthmere-player-avatar-base-pass-materials";
   root.userData.harthmerePlayerAvatarBasePassMaterialsConverted = converted;
 }
 
@@ -2204,7 +2204,7 @@ function fitHarthmerePlayerClothingObjectToBody(
   const safeScale = Math.max(0.05, Math.min(20, scale));
   object.scale.multiplyScalar(safeScale);
   object.userData.harthmereClothingBodyFitVersion =
-    "harthmere-clothing-body-fit-v16-polished-threejs-catalog";
+    "harthmere-clothing-body-fit-polished-threejs-catalog";
   object.userData.harthmereClothingBodyFitTarget = target.toArray();
 }
 
@@ -2220,7 +2220,7 @@ function addHarthmerePlayerProceduralClothingProxy(
   const name = `harthmere-player-clothing-${slot}-${item.id}`;
   const variant = item.threeJsVariant ?? item.id;
   group.userData.harthmereThreeJsClothingRenderer =
-    "harthmere-threejs-clothing-v16-polished-catalog-body-fit";
+    "harthmere-threejs-clothing-polished-catalog-body-fit";
   group.userData.harthmereClothingBodyFitMetrics = metrics;
   group.userData.harthmereThreeJsClothingVariant = variant;
   group.userData.harthmereClothingAnchorKind = anchorKind;
@@ -3160,7 +3160,7 @@ async function addHarthmerePlayerModularClothingRuntime(
   root.userData.harthmereBodyFittedClothingSlots = fittedSlots;
   root.userData.harthmereGltfClothingSlots = gltfSlots;
   root.userData.harthmereThreeJsClothingSlots = threeJsSlots;
-  root.userData.harthmereBikkieWearableSkippedClothingSlotsV1 = skippedSlots;
+  root.userData.harthmereBikkieWearableSkippedClothingSlots = skippedSlots;
   root.userData.harthmereClothingFitMetrics = metrics;
   root.userData.harthmereHiddenBodyZones = [...hiddenZones];
 }
@@ -3242,7 +3242,7 @@ function addLocalDevPlayerVoxelFaceParts(
     face.skinShadow
   );
 
-  // V11: side-specific head sculpting. This keeps the Bolt voxel style while
+  // current: side-specific head sculpting. This keeps the Bolt voxel style while
   // making each side of the head read differently from gameplay camera angles.
   addBox(
     "local-dev-bolt-left-side-plane-asym",
@@ -4241,13 +4241,13 @@ function addLocalDevPlayerEquipmentPolish(
   }
 }
 
-// HARTHMERE_PLAYER_GROVE_PARITY_POLISH_V103:
+// HARTHMERE_PLAYER_GROVE_PARITY_POLISH:
 // Adds the same role-flavored cosmetic accents that NPCs receive in
 // addLocalDevNpcUniqueEnhancementDetails (shoulder cloak, chest patch, side
 // pouch, optional bandolier, role-specific accent), and the same bone-attached
 // equipment polish (hip sheath/cap, back quiver, off-hand shield, hand staff)
 // that previously only ran on the non-variant body-shell path. Together with
-// the existing v11 face refinement and v16 modular clothing runtime, this
+// the existing current face refinement and current modular clothing runtime, this
 // brings the player avatar to the same visual richness as the Grove NPCs in
 // the snapshot screenshots.
 //
@@ -4255,21 +4255,21 @@ function addLocalDevPlayerEquipmentPolish(
 // tagged in userData so the sword-visibility bridge below can toggle the hip
 // scabbard in sync with the sword draw/sheathe state without coupling to the
 // runtime sword renderer in harthmere_assets.ts.
-export const HARTHMERE_PLAYER_GROVE_PARITY_POLISH_VERSION_V103 =
-  "harthmere-player-grove-parity-polish-v103";
+export const HARTHMERE_PLAYER_GROVE_PARITY_POLISH_VERSION =
+  "harthmere-player-grove-parity-polish";
 
-export const HARTHMERE_PLAYER_AVATAR_FULL_POLISH_VERSION_V104 =
-  "harthmere-player-avatar-full-polish-v104";
+export const HARTHMERE_PLAYER_AVATAR_FULL_POLISH_VERSION =
+  "harthmere-player-avatar-full-polish";
 
-const HARTHMERE_PLAYER_GROVE_PARITY_POLISH_ROOT_NAMES_V104 = new Set([
-  "harthmere-player-unique-enhancement-v103",
-  "harthmere-player-bone-attached-equipment-v103",
-  "harthmere-player-hip-scabbard-wrap-v103",
-  "harthmere-player-shield-wrap-v103",
-  "harthmere-player-quiver-wrap-v103",
-  "harthmere-player-staff-wrap-v103",
-  "harthmere-player-avatar-face-polish-v104",
-  "harthmere-player-avatar-body-polish-v104",
+const HARTHMERE_PLAYER_GROVE_PARITY_POLISH_ROOT_NAMES = new Set([
+  "harthmere-player-unique-enhancement",
+  "harthmere-player-bone-attached-equipment",
+  "harthmere-player-hip-scabbard-wrap",
+  "harthmere-player-shield-wrap",
+  "harthmere-player-quiver-wrap",
+  "harthmere-player-staff-wrap",
+  "harthmere-player-avatar-face-polish",
+  "harthmere-player-avatar-body-polish",
 ]);
 
 function removeHarthmerePlayerGroveParityPolish(root: THREE.Object3D): void {
@@ -4279,12 +4279,12 @@ function removeHarthmerePlayerGroveParityPolish(root: THREE.Object3D): void {
       return;
     }
     if (
-      HARTHMERE_PLAYER_GROVE_PARITY_POLISH_ROOT_NAMES_V104.has(object.name) ||
+      HARTHMERE_PLAYER_GROVE_PARITY_POLISH_ROOT_NAMES.has(object.name) ||
       object.userData?.harthmereHipScabbard === true ||
       object.userData?.harthmerePlayerGroveParityPolishVersion ===
-        HARTHMERE_PLAYER_GROVE_PARITY_POLISH_VERSION_V103 ||
+        HARTHMERE_PLAYER_GROVE_PARITY_POLISH_VERSION ||
       object.userData?.harthmerePlayerAvatarFullPolishVersion ===
-        HARTHMERE_PLAYER_AVATAR_FULL_POLISH_VERSION_V104
+        HARTHMERE_PLAYER_AVATAR_FULL_POLISH_VERSION
     ) {
       removals.push(object);
     }
@@ -4303,9 +4303,9 @@ function tagHarthmerePlayerAvatarFullPolish(
   object: THREE.Object3D
 ): THREE.Object3D {
   object.userData.harthmerePlayerGroveParityPolishVersion =
-    HARTHMERE_PLAYER_GROVE_PARITY_POLISH_VERSION_V103;
+    HARTHMERE_PLAYER_GROVE_PARITY_POLISH_VERSION;
   object.userData.harthmerePlayerAvatarFullPolishVersion =
-    HARTHMERE_PLAYER_AVATAR_FULL_POLISH_VERSION_V104;
+    HARTHMERE_PLAYER_AVATAR_FULL_POLISH_VERSION;
   return object;
 }
 
@@ -4326,13 +4326,13 @@ function addHarthmerePlayerUniqueEnhancementDetails(
     return;
   }
   // Remove any previous pass so hot reloads / mesh refreshes do not stack
-  // bone-attached details. V103 only removed the named marker group; the actual
+  // bone-attached details. current only removed the named marker group; the actual
   // scabbard, shield, quiver, and staff wrappers live on individual bones.
   removeHarthmerePlayerGroveParityPolish(root);
 
   const torsoAnchor = harthmerePlayerClothingAnchor(root, "torso");
   const group = new THREE.Group();
-  group.name = "harthmere-player-unique-enhancement-v103";
+  group.name = "harthmere-player-unique-enhancement";
   tagHarthmerePlayerAvatarFullPolish(group);
   torsoAnchor.add(group);
 
@@ -4351,18 +4351,18 @@ function addHarthmerePlayerUniqueEnhancementDetails(
   // the spine through animation because they ride on a torso-bone child.
   // Shoulder cloak/sash drapes from one shoulder to the opposite hip.
   const shoulderCloak = localDevBoltHeadBox(
-    "harthmere-player-unique-shoulder-cloak-v103",
+    "harthmere-player-unique-shoulder-cloak",
     [0.14, 0.28 + ((seed >>> 4) % 4) * 0.025, 0.05],
     [side * (metrics.shoulderWidth / 2 - 0.04), 0.02, 0.11],
     (seed >>> 9) % 3 === 0 ? accent : trim
   );
   shoulderCloak.userData.harthmerePlayerGroveParityPolishVersion =
-    HARTHMERE_PLAYER_GROVE_PARITY_POLISH_VERSION_V103;
+    HARTHMERE_PLAYER_GROVE_PARITY_POLISH_VERSION;
   group.add(shoulderCloak);
 
   // Chest patch / faction mark on opposite side.
   const chestPatch = localDevBoltHeadBox(
-    "harthmere-player-unique-chest-patch-v103",
+    "harthmere-player-unique-chest-patch",
     [0.075 + ((seed >>> 12) % 2) * 0.025, 0.095, 0.022],
     [opposite * 0.1, 0.06, -0.135],
     (seed >>> 15) % 2 === 0 ? accent : palette.dark
@@ -4372,7 +4372,7 @@ function addHarthmerePlayerUniqueEnhancementDetails(
   // Side pouch on opposite hip - skinned/parented to torso here so it
   // remains roughly stable over the GLTF rig.
   const pouch = localDevBoltHeadBox(
-    "harthmere-player-unique-pouch-v103",
+    "harthmere-player-unique-pouch",
     [0.095, 0.13, 0.075],
     [opposite * (metrics.torsoWidth / 2 + 0.05), -0.18, 0.085],
     leather
@@ -4383,7 +4383,7 @@ function addHarthmerePlayerUniqueEnhancementDetails(
   // variety without making every player look loaded down.
   if (((seed >>> 18) & 1) === 1) {
     const bandolier = localDevBoltHeadBox(
-      "harthmere-player-unique-bandolier-v103",
+      "harthmere-player-unique-bandolier",
       [0.045, metrics.torsoHeight + 0.1, 0.04],
       [side * 0.045, 0, -0.13],
       leather
@@ -4396,7 +4396,7 @@ function addHarthmerePlayerUniqueEnhancementDetails(
   if (appearance.role === "guard") {
     group.add(
       localDevBoltHeadBox(
-        "harthmere-player-unique-guard-medal-v103",
+        "harthmere-player-unique-guard-medal",
         [0.05, 0.065, 0.022],
         [side * 0.085, 0.15, -0.15],
         metal
@@ -4405,7 +4405,7 @@ function addHarthmerePlayerUniqueEnhancementDetails(
   } else if (appearance.role === "merchant") {
     group.add(
       localDevBoltHeadBox(
-        "harthmere-player-unique-ledger-roll-v103",
+        "harthmere-player-unique-ledger-roll",
         [0.14, 0.075, 0.06],
         [side * (metrics.torsoWidth / 2 + 0.085), -0.05, 0.095],
         0xd8c49a
@@ -4414,7 +4414,7 @@ function addHarthmerePlayerUniqueEnhancementDetails(
   } else if (appearance.role === "farmer") {
     group.add(
       localDevBoltHeadBox(
-        "harthmere-player-unique-rope-coil-v103",
+        "harthmere-player-unique-rope-coil",
         [0.12, 0.12, 0.04],
         [side * (metrics.torsoWidth / 2 + 0.065), -0.14, 0.095],
         0xb99655
@@ -4423,7 +4423,7 @@ function addHarthmerePlayerUniqueEnhancementDetails(
   } else if (appearance.role === "bandit" || appearance.role === "hostile") {
     group.add(
       localDevBoltHeadBox(
-        "harthmere-player-unique-red-sash-knot-v103",
+        "harthmere-player-unique-red-sash-knot",
         [0.085, 0.085, 0.045],
         [side * 0.14, -0.19, -0.14],
         0x8b2f2d
@@ -4432,7 +4432,7 @@ function addHarthmerePlayerUniqueEnhancementDetails(
   } else if (appearance.role === "clergy") {
     group.add(
       localDevBoltHeadBox(
-        "harthmere-player-unique-prayer-cord-v103",
+        "harthmere-player-unique-prayer-cord",
         [0.03, 0.22, 0.025],
         [opposite * 0.06, -0.04, -0.14],
         0xd6b56a
@@ -4441,7 +4441,7 @@ function addHarthmerePlayerUniqueEnhancementDetails(
   } else if (appearance.role === "hunter") {
     group.add(
       localDevBoltHeadBox(
-        "harthmere-player-unique-fang-charm-v103",
+        "harthmere-player-unique-fang-charm",
         [0.045, 0.05, 0.02],
         [side * 0.07, 0.13, -0.14],
         0xf0e6d2
@@ -4450,7 +4450,7 @@ function addHarthmerePlayerUniqueEnhancementDetails(
   }
 
   root.userData.harthmerePlayerGroveParityPolishVersion =
-    HARTHMERE_PLAYER_GROVE_PARITY_POLISH_VERSION_V103;
+    HARTHMERE_PLAYER_GROVE_PARITY_POLISH_VERSION;
 }
 
 function addHarthmerePlayerBoneAttachedEquipmentPolish(
@@ -4472,7 +4472,7 @@ function addHarthmerePlayerBoneAttachedEquipmentPolish(
   const rightHandAnchor = harthmerePlayerClothingAnchor(root, "rightHand");
 
   const equipmentGroup = new THREE.Group();
-  equipmentGroup.name = "harthmere-player-bone-attached-equipment-v103";
+  equipmentGroup.name = "harthmere-player-bone-attached-equipment";
   tagHarthmerePlayerAvatarFullPolish(equipmentGroup);
   // Marker/audit group only. The actual equipment wrappers attach to hip / hand
   // / spine bones so they follow animation. Cleanup is handled by the shared
@@ -4485,7 +4485,7 @@ function addHarthmerePlayerBoneAttachedEquipmentPolish(
     // so the sword draw/sheathe visibility bridge below can toggle it without
     // having to know the exact name.
     const scabbardWrap = new THREE.Group();
-    scabbardWrap.name = "harthmere-player-hip-scabbard-wrap-v103";
+    scabbardWrap.name = "harthmere-player-hip-scabbard-wrap";
     scabbardWrap.userData.harthmereHipScabbard = true;
     tagHarthmerePlayerAvatarFullPolish(scabbardWrap);
     hipAnchor.add(scabbardWrap);
@@ -4494,7 +4494,7 @@ function addHarthmerePlayerBoneAttachedEquipmentPolish(
     // Push the scabbard out to the right side and slightly forward so it
     // reads as worn rather than embedded in the body.
     const scabbard = localDevBoltHeadBox(
-      "harthmere-player-hip-scabbard-v103",
+      "harthmere-player-hip-scabbard",
       [0.055, 0.42, 0.075],
       [metrics.torsoWidth / 2 + 0.08, -0.06, 0.07],
       darkLeather
@@ -4503,7 +4503,7 @@ function addHarthmerePlayerBoneAttachedEquipmentPolish(
     scabbardWrap.add(scabbard);
     scabbardWrap.add(
       localDevBoltHeadBox(
-        "harthmere-player-hip-scabbard-cap-v103",
+        "harthmere-player-hip-scabbard-cap",
         [0.07, 0.035, 0.085],
         [metrics.torsoWidth / 2 + 0.035, 0.12, 0.07],
         metal
@@ -4511,7 +4511,7 @@ function addHarthmerePlayerBoneAttachedEquipmentPolish(
     );
     scabbardWrap.add(
       localDevBoltHeadBox(
-        "harthmere-player-hip-scabbard-tip-v103",
+        "harthmere-player-hip-scabbard-tip",
         [0.05, 0.04, 0.05],
         [metrics.torsoWidth / 2 + 0.16, -0.18, 0.07],
         metal
@@ -4523,12 +4523,12 @@ function addHarthmerePlayerBoneAttachedEquipmentPolish(
     // Off-hand shield rides on the left forearm/hand bone so it follows
     // the arm through walk/run/block animations.
     const shieldWrap = new THREE.Group();
-    shieldWrap.name = "harthmere-player-shield-wrap-v103";
+    shieldWrap.name = "harthmere-player-shield-wrap";
     tagHarthmerePlayerAvatarFullPolish(shieldWrap);
     leftHandAnchor.add(shieldWrap);
     shieldWrap.add(
       localDevBoltHeadBox(
-        "harthmere-player-shield-face-v103",
+        "harthmere-player-shield-face",
         [0.18, 0.26, 0.055],
         [0, 0, -0.06],
         metal
@@ -4536,7 +4536,7 @@ function addHarthmerePlayerBoneAttachedEquipmentPolish(
     );
     shieldWrap.add(
       localDevBoltHeadBox(
-        "harthmere-player-shield-boss-v103",
+        "harthmere-player-shield-boss",
         [0.075, 0.075, 0.065],
         [0, 0, -0.105],
         0xd6a632
@@ -4550,11 +4550,11 @@ function addHarthmerePlayerBoneAttachedEquipmentPolish(
   ) {
     // Back quiver attached to the spine bone, slight tilt for readability.
     const quiverWrap = new THREE.Group();
-    quiverWrap.name = "harthmere-player-quiver-wrap-v103";
+    quiverWrap.name = "harthmere-player-quiver-wrap";
     tagHarthmerePlayerAvatarFullPolish(quiverWrap);
     torsoAnchor.add(quiverWrap);
     const quiver = localDevBoltHeadBox(
-      "harthmere-player-quiver-v103",
+      "harthmere-player-quiver",
       [0.12, 0.42, 0.09],
       [metrics.torsoWidth / 2 + 0.05, 0.05, 0.18],
       leather
@@ -4563,7 +4563,7 @@ function addHarthmerePlayerBoneAttachedEquipmentPolish(
     quiverWrap.add(quiver);
     quiverWrap.add(
       localDevBoltHeadBox(
-        "harthmere-player-quiver-fletching-v103",
+        "harthmere-player-quiver-fletching",
         [0.14, 0.06, 0.1],
         [metrics.torsoWidth / 2, 0.27, 0.2],
         0xf0e6d2
@@ -4574,11 +4574,11 @@ function addHarthmerePlayerBoneAttachedEquipmentPolish(
   if (/staff|wand/i.test(equipment.mainHand ?? "")) {
     // Staff rides on the right-hand bone so it tracks attack animations.
     const staffWrap = new THREE.Group();
-    staffWrap.name = "harthmere-player-staff-wrap-v103";
+    staffWrap.name = "harthmere-player-staff-wrap";
     tagHarthmerePlayerAvatarFullPolish(staffWrap);
     rightHandAnchor.add(staffWrap);
     const staff = localDevBoltHeadBox(
-      "harthmere-player-staff-v103",
+      "harthmere-player-staff",
       [0.035, 0.78, 0.035],
       [0.04, 0.32, -0.04],
       leather
@@ -4587,7 +4587,7 @@ function addHarthmerePlayerBoneAttachedEquipmentPolish(
     staffWrap.add(staff);
     staffWrap.add(
       localDevBoltHeadBox(
-        "harthmere-player-staff-cap-v103",
+        "harthmere-player-staff-cap",
         [0.07, 0.07, 0.07],
         [0.04, 0.7, -0.04],
         0x6f5ca8
@@ -4611,11 +4611,11 @@ function addHarthmerePlayerAvatarFullPolishDetails(
   const faceRoot = root.getObjectByName("local-dev-bolt-head-shell");
   if (faceRoot) {
     const existing = faceRoot.getObjectByName(
-      "harthmere-player-avatar-face-polish-v104"
+      "harthmere-player-avatar-face-polish"
     );
     existing?.parent?.remove(existing);
     const faceGroup = new THREE.Group();
-    faceGroup.name = "harthmere-player-avatar-face-polish-v104";
+    faceGroup.name = "harthmere-player-avatar-face-polish";
     tagHarthmerePlayerAvatarFullPolish(faceGroup);
 
     const leftEye = faceRoot.getObjectByName("local-dev-bolt-left-eye");
@@ -4625,7 +4625,7 @@ function addHarthmerePlayerAvatarFullPolishDetails(
       faceGroup.add(
         tagHarthmerePlayerAvatarFullPolish(
           localDevBoltHeadBox(
-            "harthmere-player-left-eye-glint-v104",
+            "harthmere-player-left-eye-glint",
             [0.018, 0.018, 0.012],
             [
               leftEye.position.x + 0.018,
@@ -4637,7 +4637,7 @@ function addHarthmerePlayerAvatarFullPolishDetails(
         ),
         tagHarthmerePlayerAvatarFullPolish(
           localDevBoltHeadBox(
-            "harthmere-player-right-eye-glint-v104",
+            "harthmere-player-right-eye-glint",
             [0.018, 0.018, 0.012],
             [
               rightEye.position.x + 0.018,
@@ -4659,7 +4659,7 @@ function addHarthmerePlayerAvatarFullPolishDetails(
       faceGroup.add(
         tagHarthmerePlayerAvatarFullPolish(
           localDevBoltHeadBox(
-            "harthmere-player-left-ear-v104",
+            "harthmere-player-left-ear",
             [0.04, 0.09, 0.035],
             [-metrics.headWidth / 2 - 0.03, headY - 0.01, headZ + 0.015],
             skinHighlight
@@ -4667,7 +4667,7 @@ function addHarthmerePlayerAvatarFullPolishDetails(
         ),
         tagHarthmerePlayerAvatarFullPolish(
           localDevBoltHeadBox(
-            "harthmere-player-right-ear-v104",
+            "harthmere-player-right-ear",
             [0.04, 0.09, 0.035],
             [metrics.headWidth / 2 + 0.03, headY - 0.01, headZ + 0.015],
             skinHighlight
@@ -4680,18 +4680,18 @@ function addHarthmerePlayerAvatarFullPolishDetails(
 
   const torsoAnchor = harthmerePlayerClothingAnchor(root, "torso");
   const existingBody = torsoAnchor.getObjectByName(
-    "harthmere-player-avatar-body-polish-v104"
+    "harthmere-player-avatar-body-polish"
   );
   existingBody?.parent?.remove(existingBody);
   const bodyGroup = new THREE.Group();
-  bodyGroup.name = "harthmere-player-avatar-body-polish-v104";
+  bodyGroup.name = "harthmere-player-avatar-body-polish";
   tagHarthmerePlayerAvatarFullPolish(bodyGroup);
 
   const buckleColor = appearance.role === "guard" ? palette.metal : 0xd6a632;
   bodyGroup.add(
     tagHarthmerePlayerAvatarFullPolish(
       localDevBoltHeadBox(
-        "harthmere-player-front-seam-v104",
+        "harthmere-player-front-seam",
         [0.03, Math.max(0.28, metrics.torsoHeight * 0.58), 0.018],
         [0, -0.02, -0.155],
         palette.dark
@@ -4699,7 +4699,7 @@ function addHarthmerePlayerAvatarFullPolishDetails(
     ),
     tagHarthmerePlayerAvatarFullPolish(
       localDevBoltHeadBox(
-        "harthmere-player-belt-buckle-v104",
+        "harthmere-player-belt-buckle",
         [0.075, 0.055, 0.028],
         [0, -metrics.torsoHeight / 2 + 0.08, -0.17],
         buckleColor
@@ -4707,7 +4707,7 @@ function addHarthmerePlayerAvatarFullPolishDetails(
     ),
     tagHarthmerePlayerAvatarFullPolish(
       localDevBoltHeadBox(
-        "harthmere-player-left-shoulder-highlight-v104",
+        "harthmere-player-left-shoulder-highlight",
         [0.11, 0.04, 0.022],
         [-metrics.shoulderWidth / 2 + 0.09, 0.17, -0.16],
         palette.trim
@@ -4715,7 +4715,7 @@ function addHarthmerePlayerAvatarFullPolishDetails(
     ),
     tagHarthmerePlayerAvatarFullPolish(
       localDevBoltHeadBox(
-        "harthmere-player-right-shoulder-highlight-v104",
+        "harthmere-player-right-shoulder-highlight",
         [0.11, 0.04, 0.022],
         [metrics.shoulderWidth / 2 - 0.09, 0.17, -0.16],
         palette.trim
@@ -4725,7 +4725,7 @@ function addHarthmerePlayerAvatarFullPolishDetails(
 
   if (((seed >>> 20) & 1) === 1) {
     const charm = localDevBoltHeadBox(
-      "harthmere-player-small-belt-charm-v104",
+      "harthmere-player-small-belt-charm",
       [0.04, 0.08, 0.026],
       [
         metrics.torsoWidth / 2 + 0.045,
@@ -4740,7 +4740,7 @@ function addHarthmerePlayerAvatarFullPolishDetails(
 
   torsoAnchor.add(bodyGroup);
   root.userData.harthmerePlayerAvatarFullPolish = {
-    version: HARTHMERE_PLAYER_AVATAR_FULL_POLISH_VERSION_V104,
+    version: HARTHMERE_PLAYER_AVATAR_FULL_POLISH_VERSION,
     source: "player_mesh.ts",
     includesFaceMicroDetails: Boolean(faceRoot),
     includesBodyMicroDetails: true,
@@ -4748,7 +4748,7 @@ function addHarthmerePlayerAvatarFullPolishDetails(
   };
 }
 
-// HARTHMERE_PLAYER_SWORD_SHEATH_VISIBILITY_BRIDGE_V103:
+// HARTHMERE_PLAYER_SWORD_SHEATH_VISIBILITY_BRIDGE:
 // The runtime sword renderer in harthmere_assets.ts interpolates the player's
 // sword between the hip-sheathe anchor and the hand anchor every frame, and
 // dispatches the "biomes:harthmere-player-sword-visual" custom event whenever
@@ -5068,10 +5068,10 @@ function addLocalDevPlayerBodyShellToObject(
   }
 
   if (options.useGeneratedBikkieWearableBody) {
-    root.userData.harthmereGeneratedBodyWearableSlotsV1 = [
+    root.userData.harthmereGeneratedBodyWearableSlots = [
       ...(options.bikkieWearableSlots ?? []),
     ];
-    root.userData.harthmerePlayerBodyShellSkippedForBikkieWearablesV1 = true;
+    root.userData.harthmerePlayerBodyShellSkippedForBikkieWearables = true;
     return;
   }
 
@@ -5378,7 +5378,7 @@ export function setFrustumCulling(gltf: GLTF, frustumCulling: boolean) {
 
 async function genFetchPlayerMeshGLTF(deps: ClientResourceDeps, url: string) {
   const isHarthmereVariantMesh = isHarthmerePlayerBodyVariantUrl(url);
-  const mesh = await loadGltfWithCoalescedNetworkFetchV1(url);
+  const mesh = await loadGltfWithCoalescedNetworkFetch(url);
   const hash = url;
 
   if (isHarthmereVariantMesh) {
@@ -5486,18 +5486,18 @@ export async function makePlayerLikeAppearanceMesh(
   return mesh;
 }
 
-// SNAPSHOT_RICH_NPC_APPEARANCE_V69:
+// SNAPSHOT_RICH_NPC_APPEARANCE:
 // Snapshot NPCs were meant to use the upstream player-like wearable mesh
 // generator: /api/assets/player_mesh.glb?top=...&bottoms=...&sc=...&ec=...&hc=...
 // Actual players and snapshot town/merchant NPCs should both use that endpoint
 // so Bikkie wearables, head_id, skin, hair, and eye palettes render like the
 // original voxel player assets instead of Harthmere-only NPC/body variants.
-const SNAPSHOT_RICH_NPC_APPEARANCE_VERSION_V69 =
-  "snapshot-rich-npc-appearance-v69";
-const HARTHMERE_LOCAL_INVENTORY_STATE_KEY_V1 =
-  "biomes.localDev.harthmere.inventoryState.v1";
+const SNAPSHOT_RICH_NPC_APPEARANCE_VERSION =
+  "snapshot-rich-npc-appearance";
+const HARTHMERE_LOCAL_INVENTORY_STATE_KEY =
+  "biomes.localDev.harthmere.inventoryState";
 
-function snapshotRichNpcPickV69<T>(
+function snapshotRichNpcPick<T>(
   items: readonly T[],
   id: BiomesId,
   salt: number
@@ -5507,7 +5507,7 @@ function snapshotRichNpcPickV69<T>(
   return items[Math.floor(value) % items.length]!;
 }
 
-function snapshotRichNpcHasUsefulAppearanceV69(
+function snapshotRichNpcHasUsefulAppearance(
   appearance?: ReadonlyAppearance
 ): boolean {
   return !!(
@@ -5518,17 +5518,17 @@ function snapshotRichNpcHasUsefulAppearanceV69(
   );
 }
 
-function snapshotRichNpcHasUsefulWearablesV69(
+function snapshotRichNpcHasUsefulWearables(
   wearables?: ReadonlyItemAssignment
 ): boolean {
   return !!wearables && Array.from(wearables.values()).some(Boolean);
 }
 
-function snapshotRichNpcFallbackAppearanceV69(
+function snapshotRichNpcFallbackAppearance(
   id: BiomesId
 ): ReadonlyAppearance {
   return {
-    skin_color_id: snapshotRichNpcPickV69(
+    skin_color_id: snapshotRichNpcPick(
       [
         "skin_color_0",
         "skin_color_1",
@@ -5546,7 +5546,7 @@ function snapshotRichNpcFallbackAppearanceV69(
       id,
       1
     ),
-    eye_color_id: snapshotRichNpcPickV69(
+    eye_color_id: snapshotRichNpcPick(
       [
         "eye_color_0",
         "eye_color_1",
@@ -5557,7 +5557,7 @@ function snapshotRichNpcFallbackAppearanceV69(
       id,
       2
     ),
-    hair_color_id: snapshotRichNpcPickV69(
+    hair_color_id: snapshotRichNpcPick(
       [
         "hair_color_0",
         "hair_color_1",
@@ -5576,33 +5576,33 @@ function snapshotRichNpcFallbackAppearanceV69(
   };
 }
 
-const SNAPSHOT_RICH_NPC_FALLBACK_HAIR_ITEMS_V69 = [
+const SNAPSHOT_RICH_NPC_FALLBACK_HAIR_ITEMS = [
   1534621126189652, 1534621126189649, 4537020877769664, 1534621126189628,
   4537020877769985, 7539420629350273, 1534621126189616, 7539420629350306,
   1534621126189781,
 ] as unknown as readonly BiomesId[];
 
-const SNAPSHOT_RICH_NPC_FALLBACK_FACE_ITEMS_V69 = [
+const SNAPSHOT_RICH_NPC_FALLBACK_FACE_ITEMS = [
   1534621126189721, 4537020877769619, 1253469164164001, 4537020877770051,
   1534621126189763, 7539420629350378, 1534621126189766, 7539420629350423,
 ] as unknown as readonly BiomesId[];
 
-const SNAPSHOT_RICH_NPC_FALLBACK_EAR_ITEMS_V69 = [
+const SNAPSHOT_RICH_NPC_FALLBACK_EAR_ITEMS = [
   4537020877769946, 6972293019634374, 7539420629350408, 1534621126189604,
   4537020877770078, 1534621126189751,
 ] as unknown as readonly BiomesId[];
 
-const SNAPSHOT_RICH_NPC_FALLBACK_NECK_ITEMS_V69 = [
+const SNAPSHOT_RICH_NPC_FALLBACK_NECK_ITEMS = [
   7539420629350393, 4537020877769610, 8863177783996661, 7539420629349940,
   4537020877769613,
 ] as unknown as readonly BiomesId[];
 
-const SNAPSHOT_RICH_NPC_FALLBACK_HAND_ITEMS_V69 = [
+const SNAPSHOT_RICH_NPC_FALLBACK_HAND_ITEMS = [
   4005037263305075, 7539420629350390, 7539420629349934, 4537020877769607,
   1534621126189724,
 ] as unknown as readonly BiomesId[];
 
-function snapshotRichNpcFallbackWearablesV69(
+function snapshotRichNpcFallbackWearables(
   id: BiomesId
 ): ReadonlyItemAssignment {
   const items = new Map<BiomesId, Item>();
@@ -5611,7 +5611,7 @@ function snapshotRichNpcFallbackWearablesV69(
       items.set(slot, anItem(itemId));
     } catch (error) {
       log.warn(
-        "SNAPSHOT_RICH_NPC_APPEARANCE_V69 could not resolve fallback wearable",
+        "SNAPSHOT_RICH_NPC_APPEARANCE could not resolve fallback wearable",
         {
           slot,
           itemId,
@@ -5623,7 +5623,7 @@ function snapshotRichNpcFallbackWearablesV69(
 
   add(
     BikkieIds.top,
-    snapshotRichNpcPickV69(
+    snapshotRichNpcPick(
       [
         BikkieIds.tatteredTop,
         BikkieIds.grassyTop,
@@ -5636,7 +5636,7 @@ function snapshotRichNpcFallbackWearablesV69(
   );
   add(
     BikkieIds.bottoms,
-    snapshotRichNpcPickV69(
+    snapshotRichNpcPick(
       [
         BikkieIds.tatteredSkirt,
         BikkieIds.grassyBottom,
@@ -5650,26 +5650,26 @@ function snapshotRichNpcFallbackWearablesV69(
   add(BikkieIds.feet, BikkieIds.boots);
   add(
     BikkieIds.hair,
-    snapshotRichNpcPickV69(SNAPSHOT_RICH_NPC_FALLBACK_HAIR_ITEMS_V69, id, 8)
+    snapshotRichNpcPick(SNAPSHOT_RICH_NPC_FALLBACK_HAIR_ITEMS, id, 8)
   );
   add(
     BikkieIds.face,
-    snapshotRichNpcPickV69(SNAPSHOT_RICH_NPC_FALLBACK_FACE_ITEMS_V69, id, 9)
+    snapshotRichNpcPick(SNAPSHOT_RICH_NPC_FALLBACK_FACE_ITEMS, id, 9)
   );
   add(
     BikkieIds.ears,
-    snapshotRichNpcPickV69(SNAPSHOT_RICH_NPC_FALLBACK_EAR_ITEMS_V69, id, 10)
+    snapshotRichNpcPick(SNAPSHOT_RICH_NPC_FALLBACK_EAR_ITEMS, id, 10)
   );
   add(
     BikkieIds.neck,
-    snapshotRichNpcPickV69(SNAPSHOT_RICH_NPC_FALLBACK_NECK_ITEMS_V69, id, 11)
+    snapshotRichNpcPick(SNAPSHOT_RICH_NPC_FALLBACK_NECK_ITEMS, id, 11)
   );
   add(
     BikkieIds.hands,
-    snapshotRichNpcPickV69(SNAPSHOT_RICH_NPC_FALLBACK_HAND_ITEMS_V69, id, 12)
+    snapshotRichNpcPick(SNAPSHOT_RICH_NPC_FALLBACK_HAND_ITEMS, id, 12)
   );
 
-  const hat = snapshotRichNpcPickV69(
+  const hat = snapshotRichNpcPick(
     [
       undefined,
       BikkieIds.flowerCrown,
@@ -5683,7 +5683,7 @@ function snapshotRichNpcFallbackWearablesV69(
     add(BikkieIds.hat, hat);
   }
 
-  const outerwear = snapshotRichNpcPickV69(
+  const outerwear = snapshotRichNpcPick(
     [undefined, undefined, BikkieIds.poncho],
     id,
     7
@@ -5695,7 +5695,7 @@ function snapshotRichNpcFallbackWearablesV69(
   return items;
 }
 
-function harthmereLocalPlayerBikkieWearablesV1():
+function harthmereLocalPlayerBikkieWearables():
   | ReadonlyItemAssignment
   | undefined {
   const storage =
@@ -5704,14 +5704,14 @@ function harthmereLocalPlayerBikkieWearablesV1():
     return undefined;
   }
   try {
-    const raw = storage.getItem(HARTHMERE_LOCAL_INVENTORY_STATE_KEY_V1);
+    const raw = storage.getItem(HARTHMERE_LOCAL_INVENTORY_STATE_KEY);
     if (!raw) {
       return undefined;
     }
     const state = JSON.parse(raw) as {
       equipment?: Record<string, { itemId?: string } | undefined>;
     };
-    const mapped = harthmereLocalEquipmentBikkieWearablesV1(state.equipment);
+    const mapped = harthmereLocalEquipmentBikkieWearables(state.equipment);
     if (mapped.length === 0) {
       return undefined;
     }
@@ -5733,7 +5733,7 @@ function harthmereLocalPlayerBikkieWearablesV1():
   }
 }
 
-function mergeWearableAssignmentsV1(
+function mergeWearableAssignments(
   base: ReadonlyItemAssignment | undefined,
   overlay: ReadonlyItemAssignment | undefined
 ): ReadonlyItemAssignment | undefined {
@@ -5750,33 +5750,33 @@ function mergeWearableAssignmentsV1(
   return merged;
 }
 
-const HARTHMERE_LIVE_HUMAN_COSMETICS_FALLBACK_VERSION_V1 =
-  "harthmere-live-human-cosmetics-fallback-v1";
+const HARTHMERE_LIVE_HUMAN_COSMETICS_FALLBACK_VERSION =
+  "harthmere-live-human-cosmetics-fallback";
 
-function harthmereLiveHumanMeshCosmeticsV1(
+function harthmereLiveHumanMeshCosmetics(
   id: BiomesId,
   wearables?: ReadonlyItemAssignment,
   appearance?: ReadonlyAppearance,
   options: { includeLocalHarthmereWearables?: boolean } = {}
 ) {
-  const hasWearables = snapshotRichNpcHasUsefulWearablesV69(wearables);
-  const hasAppearance = snapshotRichNpcHasUsefulAppearanceV69(appearance);
+  const hasWearables = snapshotRichNpcHasUsefulWearables(wearables);
+  const hasAppearance = snapshotRichNpcHasUsefulAppearance(appearance);
   const usedWearablesFallback = !hasWearables;
   const usedAppearanceFallback = !hasAppearance;
   const localWearables = options.includeLocalHarthmereWearables
-    ? harthmereLocalPlayerBikkieWearablesV1()
+    ? harthmereLocalPlayerBikkieWearables()
     : undefined;
   const baseWearables = hasWearables
     ? wearables
-    : snapshotRichNpcFallbackWearablesV69(id);
+    : snapshotRichNpcFallbackWearables(id);
   return {
-    wearables: mergeWearableAssignmentsV1(baseWearables, localWearables),
+    wearables: mergeWearableAssignments(baseWearables, localWearables),
     appearance: hasAppearance
       ? appearance
-      : snapshotRichNpcFallbackAppearanceV69(id),
+      : snapshotRichNpcFallbackAppearance(id),
     usedFallback: usedWearablesFallback || usedAppearanceFallback,
     userData: {
-      version: HARTHMERE_LIVE_HUMAN_COSMETICS_FALLBACK_VERSION_V1,
+      version: HARTHMERE_LIVE_HUMAN_COSMETICS_FALLBACK_VERSION,
       usedWearablesFallback,
       usedAppearanceFallback,
       usedLocalHarthmereWearables: Boolean(localWearables?.size),
@@ -5790,34 +5790,34 @@ export async function makeSnapshotPlayerLikeAppearanceMesh(
 ): Promise<GLTF> {
   const wearing = deps.get("/ecs/c/wearing", id);
   const appearance = deps.get("/ecs/c/appearance_component", id);
-  const wearables = snapshotRichNpcHasUsefulWearablesV69(wearing?.items)
+  const wearables = snapshotRichNpcHasUsefulWearables(wearing?.items)
     ? wearing?.items
-    : snapshotRichNpcFallbackWearablesV69(id);
-  const finalAppearance = snapshotRichNpcHasUsefulAppearanceV69(
+    : snapshotRichNpcFallbackWearables(id);
+  const finalAppearance = snapshotRichNpcHasUsefulAppearance(
     appearance?.appearance
   )
     ? appearance?.appearance
-    : snapshotRichNpcFallbackAppearanceV69(id);
+    : snapshotRichNpcFallbackAppearance(id);
 
   const { mesh, url } = await fetchPlayerMeshGLTF(
     deps,
     wearables,
     finalAppearance,
     // Undefined id is retained as a defensive bypass for older static-variant
-    // branches. V137 makes playerMeshUrlForId use the same URL for real players
+    // branches. current makes playerMeshUrlForId use the same URL for real players
     // too, but snapshot NPCs should never depend on Harthmere body variants.
     undefined
   );
   mesh.scene.userData.snapshotRichNpcAppearanceVersion =
-    SNAPSHOT_RICH_NPC_APPEARANCE_VERSION_V69;
+    SNAPSHOT_RICH_NPC_APPEARANCE_VERSION;
   mesh.scene.userData.snapshotRichNpcAppearanceUrl = url;
-  // HARTHMERE_NPC_BASE_PASS_PARITY_V197:
+  // HARTHMERE_NPC_BASE_PASS_PARITY:
   // Player-like NPCs (Snapshot Grove humans like Billy/Jackie, business owners,
   // sentinels) render through the same generated avatar mesh as real players,
   // but were returned WITHOUT the base-pass material coercion that real players
   // always run (see makePlayerMesh / loadPlayerAnimatedMesh). Scene routing
-  // (chooseMixedSceneFallbackV155) only sends a root to SceneBasePass when it
-  // carries the "harthmere-player-avatar-base-pass-materials-v153" marker this
+  // (chooseMixedSceneFallback) only sends a root to SceneBasePass when it
+  // carries the "harthmere-player-avatar-base-pass-materials" marker this
   // coercion stamps. Without it the avatar body was routed to the secondary
   // "three" pass where its base-pass materials do not draw — leaving NPCs as
   // invisible floating nameplates. Coerce here so NPC avatars render identically

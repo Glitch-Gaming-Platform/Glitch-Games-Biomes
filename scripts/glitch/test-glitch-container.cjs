@@ -183,7 +183,7 @@ async function main() {
 
   if (runFullFeatureTests) {
     const saveSnapshot = {
-      version: "docker-smoke-save-v1",
+      version: "docker-smoke-save",
       savedAt: new Date().toISOString(),
       identity: {
         username: identityB.username,

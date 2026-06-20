@@ -1,7 +1,7 @@
 import * as React from "react";
-import type { HarthmereQuestInviteAdapterV1 } from "../adapters/questInviteAdapter";
+import type { HarthmereQuestInviteAdapter } from "../adapters/questInviteAdapter";
 
-const QUEST_INVITE_HOTKEY_CODE_V1 = "KeyJ";
+const QUEST_INVITE_HOTKEY_CODE = "KeyJ";
 
 function isTypingInInput(): boolean {
   if (typeof document === "undefined") return false;
@@ -17,7 +17,7 @@ function isTypingInInput(): boolean {
 }
 
 export const QuestInviteHUD: React.FunctionComponent<{
-  adapter?: HarthmereQuestInviteAdapterV1;
+  adapter?: HarthmereQuestInviteAdapter;
 }> = ({ adapter }) => {
   const [open, setOpen] = React.useState(false);
   const [busyInviteId, setBusyInviteId] = React.useState<string | null>(null);
@@ -27,7 +27,7 @@ export const QuestInviteHUD: React.FunctionComponent<{
   React.useEffect(() => {
     if (!adapter || invites.length === 0) return;
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.code !== QUEST_INVITE_HOTKEY_CODE_V1 || isTypingInInput()) {
+      if (event.code !== QUEST_INVITE_HOTKEY_CODE || isTypingInInput()) {
         return;
       }
       event.preventDefault();
@@ -68,12 +68,12 @@ export const QuestInviteHUD: React.FunctionComponent<{
     <>
       <style>
         {`
-          @keyframes biomesQuestInviteBlinkV1 {
+          @keyframes biomesQuestInviteBlink {
             0%, 100% { transform: translateY(0) scale(1); filter: brightness(1); }
             35% { transform: translateY(-7px) scale(1.035); filter: brightness(1.45); }
             65% { transform: translateY(2px) scale(0.99); filter: brightness(1.15); }
           }
-          @keyframes biomesQuestInvitePulseV1 {
+          @keyframes biomesQuestInvitePulse {
             0%, 100% { box-shadow: 0 0 0 0 rgba(106, 214, 255, 0.35), 0 8px 24px rgba(0, 0, 0, 0.45); }
             50% { box-shadow: 0 0 0 6px rgba(106, 214, 255, 0.02), 0 12px 32px rgba(0, 0, 0, 0.58); }
           }
@@ -100,7 +100,7 @@ export const QuestInviteHUD: React.FunctionComponent<{
           textTransform: "uppercase",
           cursor: "pointer",
           animation:
-            "biomesQuestInviteBlinkV1 900ms ease-in-out infinite, biomesQuestInvitePulseV1 1200ms ease-in-out infinite",
+            "biomesQuestInviteBlink 900ms ease-in-out infinite, biomesQuestInvitePulse 1200ms ease-in-out infinite",
         }}
       >
         <strong style={{ fontSize: 12, letterSpacing: "0.08em" }}>

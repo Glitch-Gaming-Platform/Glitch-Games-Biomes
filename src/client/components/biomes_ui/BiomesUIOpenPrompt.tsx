@@ -1,5 +1,5 @@
 import { useBiomesUIReplaceLegacyFlag } from "@/client/components/biomes_ui/BiomesUIFlags";
-import { usePointerLockUnlockWhileOpenActiveV1 } from "@/client/components/contexts/usePointerLockUnlockWhileOpenActiveV1";
+import { usePointerLockUnlockWhileOpenActive } from "@/client/components/contexts/usePointerLockUnlockWhileOpenActive";
 import React from "react";
 import {
   BIOMES_UI_OPEN_MENU_SHORTCUT,
@@ -8,7 +8,7 @@ import {
 import { Highlightable } from "./highlight/HighlightOverlay";
 import { UI_IDS } from "./uniqueIds";
 
-export const BIOMES_UI_NON_GAMEPLAY_SCREEN_SELECTORS_V137 = [
+export const BIOMES_UI_NON_GAMEPLAY_SCREEN_SELECTORS = [
   ".loading-wrapper",
   ".wake-up-container",
   ".harthmere-wakeup-character-builder",
@@ -18,37 +18,37 @@ export const BIOMES_UI_NON_GAMEPLAY_SCREEN_SELECTORS_V137 = [
   "[data-ui-id='enter_world.screen']",
 ] as const;
 
-type BiomesUINonGameplayRootV137 = Pick<ParentNode, "querySelector">;
-type BiomesUINonGameplayStyleReaderV137 = (
+type BiomesUINonGameplayRoot = Pick<ParentNode, "querySelector">;
+type BiomesUINonGameplayStyleReader = (
   element: Element
 ) => Pick<CSSStyleDeclaration, "display" | "visibility">;
 
-function defaultBiomesUINonGameplayRootV137():
-  | BiomesUINonGameplayRootV137
+function defaultBiomesUINonGameplayRoot():
+  | BiomesUINonGameplayRoot
   | undefined {
   return typeof document === "undefined" ? undefined : document;
 }
 
-function defaultBiomesUINonGameplayStyleReaderV137():
-  | BiomesUINonGameplayStyleReaderV137
+function defaultBiomesUINonGameplayStyleReader():
+  | BiomesUINonGameplayStyleReader
   | undefined {
   return typeof window === "undefined"
     ? undefined
     : (element) => window.getComputedStyle(element);
 }
 
-export function biomesUIIsNonGameplayScreenVisibleV137(
+export function biomesUIIsNonGameplayScreenVisible(
   root:
-    | BiomesUINonGameplayRootV137
-    | undefined = defaultBiomesUINonGameplayRootV137(),
+    | BiomesUINonGameplayRoot
+    | undefined = defaultBiomesUINonGameplayRoot(),
   readStyle:
-    | BiomesUINonGameplayStyleReaderV137
-    | undefined = defaultBiomesUINonGameplayStyleReaderV137()
+    | BiomesUINonGameplayStyleReader
+    | undefined = defaultBiomesUINonGameplayStyleReader()
 ) {
   if (!root || !readStyle) {
     return false;
   }
-  return BIOMES_UI_NON_GAMEPLAY_SCREEN_SELECTORS_V137.some((selector) => {
+  return BIOMES_UI_NON_GAMEPLAY_SCREEN_SELECTORS.some((selector) => {
     const element = root.querySelector(selector);
     if (!element) {
       return false;
@@ -64,11 +64,11 @@ export function biomesUIIsNonGameplayScreenVisibleV137(
   });
 }
 
-function useBiomesUINonGameplayScreenVisibleV137() {
+function useBiomesUINonGameplayScreenVisible() {
   const [visible, setVisible] = React.useState(false);
 
   React.useEffect(() => {
-    const update = () => setVisible(biomesUIIsNonGameplayScreenVisibleV137());
+    const update = () => setVisible(biomesUIIsNonGameplayScreenVisible());
     update();
 
     const observer = new MutationObserver(update);
@@ -93,8 +93,8 @@ export const BiomesUIOpenPrompt: React.FunctionComponent<{
   isOpen?: boolean;
 }> = ({ isOpen = false }) => {
   const replaceLegacy = useBiomesUIReplaceLegacyFlag();
-  const nonGameplayScreenVisible = useBiomesUINonGameplayScreenVisibleV137();
-  const uiOpen = usePointerLockUnlockWhileOpenActiveV1();
+  const nonGameplayScreenVisible = useBiomesUINonGameplayScreenVisible();
+  const uiOpen = usePointerLockUnlockWhileOpenActive();
 
   if (!replaceLegacy || isOpen || uiOpen || nonGameplayScreenVisible) {
     return null;

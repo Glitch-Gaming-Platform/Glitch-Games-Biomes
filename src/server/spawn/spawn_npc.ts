@@ -80,7 +80,7 @@ export function npcEntity(
     size: Size.create({ v: getNpcSize(npcType) }),
     npc_metadata: NpcMetadata.create({
       type_id: npc.typeId,
-      // HARTHMERE_NPC_SPAWN_SPREAD_V2_INSTALL_MARKER
+      // HARTHMERE_NPC_SPAWN_SPREAD_INSTALL_MARKER
         // Deterministic jitter so multiple NPCs spawning at the same
         // anchor (e.g. district hub) spread across a small radius
         // instead of stacking on top of each other.

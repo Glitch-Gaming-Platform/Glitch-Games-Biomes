@@ -1,21 +1,21 @@
 import {
-  talkDialogAdvanceDecisionForTestV1,
-  talkDialogHasChoiceActionsForTestV1,
-  talkDialogShouldShowVoiceInputForTestV1,
-  talkDialogVoiceInputBlocksAdvanceForTestV1,
+  talkDialogAdvanceDecisionForTest,
+  talkDialogHasChoiceActionsForTest,
+  talkDialogShouldShowVoiceInputForTest,
+  talkDialogVoiceInputBlocksAdvanceForTest,
 } from "@/client/components/challenges/talkDialogModalFlow";
 import assert from "assert";
 
 describe("TalkDialogModalStep conversation flow guards", () => {
   it("does not count the optional mic button as a blocking dialogue choice", () => {
-    assert.equal(talkDialogHasChoiceActionsForTestV1(undefined), false);
-    assert.equal(talkDialogHasChoiceActionsForTestV1([]), false);
-    assert.equal(talkDialogHasChoiceActionsForTestV1([{}]), true);
+    assert.equal(talkDialogHasChoiceActionsForTest(undefined), false);
+    assert.equal(talkDialogHasChoiceActionsForTest([]), false);
+    assert.equal(talkDialogHasChoiceActionsForTest([{}]), true);
   });
 
   it("allows click/key advance when the mic is idle and no choices are visible", () => {
     assert.equal(
-      talkDialogAdvanceDecisionForTestV1({
+      talkDialogAdvanceDecisionForTest({
         typingComplete: false,
         hasChoiceActions: false,
         voiceInputState: "idle",
@@ -23,7 +23,7 @@ describe("TalkDialogModalStep conversation flow guards", () => {
       "finish_typing"
     );
     assert.equal(
-      talkDialogAdvanceDecisionForTestV1({
+      talkDialogAdvanceDecisionForTest({
         typingComplete: true,
         hasChoiceActions: false,
         voiceInputState: "idle",
@@ -34,7 +34,7 @@ describe("TalkDialogModalStep conversation flow guards", () => {
 
   it("keeps real dialogue choices from being bypassed by page clicks", () => {
     assert.equal(
-      talkDialogAdvanceDecisionForTestV1({
+      talkDialogAdvanceDecisionForTest({
         typingComplete: true,
         hasChoiceActions: true,
         voiceInputState: "idle",
@@ -45,23 +45,23 @@ describe("TalkDialogModalStep conversation flow guards", () => {
 
   it("stops recording on page click without advancing and blocks while transcribing", () => {
     assert.equal(
-      talkDialogVoiceInputBlocksAdvanceForTestV1({
+      talkDialogVoiceInputBlocksAdvanceForTest({
         voiceInputState: "recording",
       }),
       true
     );
     assert.equal(
-      talkDialogVoiceInputBlocksAdvanceForTestV1({
+      talkDialogVoiceInputBlocksAdvanceForTest({
         voiceInputState: "transcribing",
       }),
       true
     );
     assert.equal(
-      talkDialogVoiceInputBlocksAdvanceForTestV1({ voiceInputState: "idle" }),
+      talkDialogVoiceInputBlocksAdvanceForTest({ voiceInputState: "idle" }),
       false
     );
     assert.equal(
-      talkDialogAdvanceDecisionForTestV1({
+      talkDialogAdvanceDecisionForTest({
         typingComplete: true,
         hasChoiceActions: false,
         voiceInputState: "recording",
@@ -69,7 +69,7 @@ describe("TalkDialogModalStep conversation flow guards", () => {
       "stop_recording"
     );
     assert.equal(
-      talkDialogAdvanceDecisionForTestV1({
+      talkDialogAdvanceDecisionForTest({
         typingComplete: true,
         hasChoiceActions: false,
         voiceInputState: "transcribing",
@@ -132,7 +132,7 @@ describe("TalkDialogModalStep conversation flow guards", () => {
 
     for (const testCase of cases) {
       assert.equal(
-        talkDialogAdvanceDecisionForTestV1(testCase),
+        talkDialogAdvanceDecisionForTest(testCase),
         testCase.expected
       );
     }
@@ -140,7 +140,7 @@ describe("TalkDialogModalStep conversation flow guards", () => {
 
   it("shows the mic only when voice input is present, enabled, and choices are visible", () => {
     assert.equal(
-      talkDialogShouldShowVoiceInputForTestV1({
+      talkDialogShouldShowVoiceInputForTest({
         hasVoiceInput: true,
         microphoneInputEnabled: true,
         actionCount: 1,
@@ -148,7 +148,7 @@ describe("TalkDialogModalStep conversation flow guards", () => {
       true
     );
     assert.equal(
-      talkDialogShouldShowVoiceInputForTestV1({
+      talkDialogShouldShowVoiceInputForTest({
         hasVoiceInput: false,
         microphoneInputEnabled: true,
         actionCount: 1,
@@ -156,7 +156,7 @@ describe("TalkDialogModalStep conversation flow guards", () => {
       false
     );
     assert.equal(
-      talkDialogShouldShowVoiceInputForTestV1({
+      talkDialogShouldShowVoiceInputForTest({
         hasVoiceInput: true,
         microphoneInputEnabled: false,
         actionCount: 1,
@@ -164,7 +164,7 @@ describe("TalkDialogModalStep conversation flow guards", () => {
       false
     );
     assert.equal(
-      talkDialogShouldShowVoiceInputForTestV1({
+      talkDialogShouldShowVoiceInputForTest({
         hasVoiceInput: true,
         microphoneInputEnabled: true,
         actionCount: 0,

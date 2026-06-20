@@ -1,16 +1,16 @@
 import * as React from "react";
-import { usePointerLockUnlockWhileOpenActiveV1 } from "@/client/components/contexts/usePointerLockUnlockWhileOpenActiveV1";
+import { usePointerLockUnlockWhileOpenActive } from "@/client/components/contexts/usePointerLockUnlockWhileOpenActive";
 import { HarthmereBusinessInterfacePanel } from "./HarthmereBusinessInterfacePanel";
 import { HarthmereBusinessInteractionPrompt } from "./HarthmereBusinessInteractionPrompt";
 import {
-  createHarthmereBusinessInterfaceAdapterV1,
-  fetchHarthmereBusinessEconomyStateV1,
-  harthmereBusinessWorldContextPayloadV1,
-  nearestHarthmereBusinessDashboardWorldContextV1,
-  submitHarthmereBusinessEconomyMutationV1,
-  type HarthmereBusinessEconomySnapshotV1,
-  type HarthmereBusinessWorldContextV1,
-  type HarthmereBusinessWorldPointV1,
+  createHarthmereBusinessInterfaceAdapter,
+  fetchHarthmereBusinessEconomyState,
+  harthmereBusinessWorldContextPayload,
+  nearestHarthmereBusinessDashboardWorldContext,
+  submitHarthmereBusinessEconomyMutation,
+  type HarthmereBusinessEconomySnapshot,
+  type HarthmereBusinessWorldContext,
+  type HarthmereBusinessWorldPoint,
 } from "./businessInterfaceLiveAdapter";
 
 export interface HarthmereBusinessLiveContainerProps {
@@ -18,26 +18,26 @@ export interface HarthmereBusinessLiveContainerProps {
   onOpen?: () => void;
   onClose?: () => void;
   showPrompt?: boolean;
-  playerPosition?: HarthmereBusinessWorldPointV1;
-  worldContext?: HarthmereBusinessWorldContextV1;
-  initialState?: HarthmereBusinessEconomySnapshotV1;
+  playerPosition?: HarthmereBusinessWorldPoint;
+  worldContext?: HarthmereBusinessWorldContext;
+  initialState?: HarthmereBusinessEconomySnapshot;
 }
 
-// HARTHMERE_BUSINESS_NO_REMOUNT_ON_ACTION_V1
+// HARTHMERE_BUSINESS_NO_REMOUNT_ON_ACTION
 // Pure model of how a single refresh() should drive the blocking `loading`
 // flag. Only the very first hydration shows the loading board; every
 // post-mutation refresh (after each serve / owner action) must be silent so the
 // adapter stays hydrated, the interaction prompt stays visible, and the open
 // panel is never torn down and rebuilt between clicks.
-export interface HarthmereBusinessRefreshLoadingPlanV1 {
+export interface HarthmereBusinessRefreshLoadingPlan {
   showLoadingAtStart: boolean;
   clearLoadingWhenSettled: boolean;
   hasLoadedAfter: boolean;
 }
 
-export function planHarthmereBusinessRefreshLoadingV1(
+export function planHarthmereBusinessRefreshLoading(
   hasLoadedBefore: boolean
-): HarthmereBusinessRefreshLoadingPlanV1 {
+): HarthmereBusinessRefreshLoadingPlan {
   const isInitialLoad = !hasLoadedBefore;
   return {
     showLoadingAtStart: isInitialLoad,
@@ -46,7 +46,7 @@ export function planHarthmereBusinessRefreshLoadingV1(
   };
 }
 
-function isTypingInBusinessInputV1(target: EventTarget | null) {
+function isTypingInBusinessInput(target: EventTarget | null) {
   const element = target as HTMLElement | null;
   const tagName = element?.tagName?.toLowerCase();
   return (
@@ -67,12 +67,12 @@ export function HarthmereBusinessLiveContainer({
   initialState,
 }: HarthmereBusinessLiveContainerProps) {
   const [state, setState] = React.useState<
-    HarthmereBusinessEconomySnapshotV1 | undefined
+    HarthmereBusinessEconomySnapshot | undefined
   >(initialState);
   const [loading, setLoading] = React.useState(!initialState);
   const [error, setError] = React.useState<string | undefined>();
-  const anyUiOpen = usePointerLockUnlockWhileOpenActiveV1();
-  // HARTHMERE_BUSINESS_NO_REMOUNT_ON_ACTION_V1
+  const anyUiOpen = usePointerLockUnlockWhileOpenActive();
+  // HARTHMERE_BUSINESS_NO_REMOUNT_ON_ACTION
   // Only the very first hydration should flip the blocking `loading` flag.
   // Post-mutation refreshes (fired after every serve / owner action) must be
   // silent: toggling `loading` un-hydrates the adapter, which transiently hides
@@ -82,11 +82,11 @@ export function HarthmereBusinessLiveContainer({
   const hasLoadedRef = React.useRef<boolean>(Boolean(initialState));
 
   const refresh = React.useCallback(async () => {
-    const plan = planHarthmereBusinessRefreshLoadingV1(hasLoadedRef.current);
+    const plan = planHarthmereBusinessRefreshLoading(hasLoadedRef.current);
     if (plan.showLoadingAtStart) setLoading(true);
     setError(undefined);
     try {
-      const next = await fetchHarthmereBusinessEconomyStateV1();
+      const next = await fetchHarthmereBusinessEconomyState();
       hasLoadedRef.current = plan.hasLoadedAfter;
       setState(next);
       return next;
@@ -105,7 +105,7 @@ export function HarthmereBusinessLiveContainer({
   const context = React.useMemo(() => {
     const next =
       worldContext ??
-      nearestHarthmereBusinessDashboardWorldContextV1(state, playerPosition, 9);
+      nearestHarthmereBusinessDashboardWorldContext(state, playerPosition, 9);
     return next.nearbyBusinessId
       ? {
           ...next,
@@ -116,14 +116,14 @@ export function HarthmereBusinessLiveContainer({
 
   const adapter = React.useMemo(
     () =>
-      createHarthmereBusinessInterfaceAdapterV1({
+      createHarthmereBusinessInterfaceAdapter({
         state,
         hydrated: !loading,
         setState,
         refresh,
         submit: (operation, payload) =>
-          submitHarthmereBusinessEconomyMutationV1(operation, {
-            ...harthmereBusinessWorldContextPayloadV1(context),
+          submitHarthmereBusinessEconomyMutation(operation, {
+            ...harthmereBusinessWorldContextPayload(context),
             ...payload,
           }),
       }),
@@ -159,7 +159,7 @@ export function HarthmereBusinessLiveContainer({
         event.metaKey ||
         event.ctrlKey ||
         event.altKey ||
-        isTypingInBusinessInputV1(event.target)
+        isTypingInBusinessInput(event.target)
       ) {
         return;
       }

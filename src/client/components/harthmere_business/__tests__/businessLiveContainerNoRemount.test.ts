@@ -1,23 +1,23 @@
 /// <reference types="mocha" />
 import assert from "assert";
 import { readFileSync } from "fs";
-import { planHarthmereBusinessRefreshLoadingV1 } from "../HarthmereBusinessLiveContainer";
+import { planHarthmereBusinessRefreshLoading } from "../HarthmereBusinessLiveContainer";
 
-// HARTHMERE_BUSINESS_NO_REMOUNT_ON_ACTION_V1
+// HARTHMERE_BUSINESS_NO_REMOUNT_ON_ACTION
 // Locks the invariant behind the bug where clicking a mini-game answer made the
 // whole BusinessUI collapse to the board and re-open: every refresh fired after
 // the first hydration must be silent (never flips the blocking `loading` flag),
 // so the panel stays mounted and animates in place instead of remounting.
 describe("Harthmere business live container refresh loading plan", () => {
   it("shows the blocking loading board only on the very first hydration", () => {
-    const initial = planHarthmereBusinessRefreshLoadingV1(false);
+    const initial = planHarthmereBusinessRefreshLoading(false);
     assert.strictEqual(initial.showLoadingAtStart, true);
     assert.strictEqual(initial.clearLoadingWhenSettled, true);
     assert.strictEqual(initial.hasLoadedAfter, true);
   });
 
   it("keeps post-mutation refreshes silent so the panel never remounts", () => {
-    const afterLoaded = planHarthmereBusinessRefreshLoadingV1(true);
+    const afterLoaded = planHarthmereBusinessRefreshLoading(true);
     assert.strictEqual(
       afterLoaded.showLoadingAtStart,
       false,
@@ -37,7 +37,7 @@ describe("Harthmere business live container refresh loading plan", () => {
     // Simulate the real lifecycle: one initial hydration followed by several
     // serve/answer mutations that each trigger a background refresh.
     for (let i = 0; i < 5; i++) {
-      const plan = planHarthmereBusinessRefreshLoadingV1(hasLoaded);
+      const plan = planHarthmereBusinessRefreshLoading(hasLoaded);
       loadingEvents.push(plan.showLoadingAtStart);
       hasLoaded = plan.hasLoadedAfter;
     }

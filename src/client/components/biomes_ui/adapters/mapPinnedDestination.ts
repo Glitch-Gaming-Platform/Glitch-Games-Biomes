@@ -1,20 +1,20 @@
 import type { NavigationAidKind, NavigationAidSpec } from "@/client/game/helpers/navigation_aids";
-import { resolveHarthmereProductionMarkerPositionV1 } from "@/shared/harthmere/production_terrain_placement_map_v1";
+import { resolveHarthmereProductionMarkerPosition } from "@/shared/harthmere/production_terrain_placement_map";
 
-export const BIOMES_UI_ACTIVE_MAP_PIN_STORAGE_KEY_V142 = "biomes_ui_active_map_pin_v142";
-export const BIOMES_UI_ACTIVE_MAP_PIN_EVENT_V142 = "biomes-ui-active-map-pin-v142";
-export const BIOMES_UI_ACTIVE_MAP_PIN_NAV_AID_ID_V147 = 14_200_147;
+export const BIOMES_UI_ACTIVE_MAP_PIN_STORAGE_KEY = "biomes_ui_active_map_pin";
+export const BIOMES_UI_ACTIVE_MAP_PIN_EVENT = "biomes-ui-active-map-pin";
+export const BIOMES_UI_ACTIVE_MAP_PIN_NAV_AID_ID = 14_200_147;
 
-// BIOMES_UI_LOCATE_ON_MAP_V1:
+// BIOMES_UI_LOCATE_ON_MAP:
 // "Locate on map" should do more than drop a pin — it should open the Map tab
 // and center the map on the target. This event carries that intent: BiomesUIMount
 // switches to the Map tab, and the Map tab centers on the pin. A short recency
 // window lets the Map tab center even if it mounts just after the event fired
 // (the tab-switch and the listener attach are not perfectly ordered).
-export const BIOMES_UI_LOCATE_ON_MAP_EVENT_V1 = "biomes-ui-locate-on-map-v1";
-export const BIOMES_UI_LOCATE_ON_MAP_RECENCY_MS_V1 = 12_000;
+export const BIOMES_UI_LOCATE_ON_MAP_EVENT = "biomes-ui-locate-on-map";
+export const BIOMES_UI_LOCATE_ON_MAP_RECENCY_MS = 12_000;
 
-export interface BiomesUIActiveMapPinV142 {
+export interface BiomesUIActiveMapPin {
   markerId: string;
   label: string;
   kind: string;
@@ -23,7 +23,7 @@ export interface BiomesUIActiveMapPinV142 {
   setAtMs: number;
 }
 
-export interface BiomesUIMapPinSourceMarkerV142 {
+export interface BiomesUIMapPinSourceMarker {
   id: string;
   label: string;
   kind: string;
@@ -31,7 +31,7 @@ export interface BiomesUIMapPinSourceMarkerV142 {
   description?: string;
 }
 
-function finiteWorldPosition(position: BiomesUIMapPinSourceMarkerV142["worldPosition"]): [number, number, number] | undefined {
+function finiteWorldPosition(position: BiomesUIMapPinSourceMarker["worldPosition"]): [number, number, number] | undefined {
   if (!Array.isArray(position) || position.length < 3) {
     return undefined;
   }
@@ -52,7 +52,7 @@ export function biomesUIActiveMapPinNavigationAidKindForTest(
   return "map_pin";
 }
 
-export function biomesUIActiveMapPinNavigationAidSpecForTest(pin: BiomesUIActiveMapPinV142 | undefined): NavigationAidSpec | undefined {
+export function biomesUIActiveMapPinNavigationAidSpecForTest(pin: BiomesUIActiveMapPin | undefined): NavigationAidSpec | undefined {
   const worldPosition = finiteWorldPosition(pin?.worldPosition);
   if (!pin || !worldPosition) {
     return undefined;
@@ -67,14 +67,14 @@ export function biomesUIActiveMapPinNavigationAidSpecForTest(pin: BiomesUIActive
   };
 }
 
-export function activeBiomesUIMapPinFromMarkerForTest(marker: BiomesUIMapPinSourceMarkerV142, nowMs = Date.now()): BiomesUIActiveMapPinV142 | undefined {
+export function activeBiomesUIMapPinFromMarkerForTest(marker: BiomesUIMapPinSourceMarker, nowMs = Date.now()): BiomesUIActiveMapPin | undefined {
   const worldPosition = finiteWorldPosition(marker.worldPosition);
   const markerId = String(marker.id ?? "").trim();
   const label = String(marker.label ?? "").trim();
   if (!markerId || !label || !worldPosition) {
     return undefined;
   }
-  const resolvedWorldPosition = resolveHarthmereProductionMarkerPositionV1({
+  const resolvedWorldPosition = resolveHarthmereProductionMarkerPosition({
     markerId,
     fallback: worldPosition,
   }) as [number, number, number];
@@ -95,7 +95,7 @@ export function activeBiomesUIMapPinFromMarkerForTest(marker: BiomesUIMapPinSour
 // only when the destination is gone from a POPULATED landmark set. An empty set
 // means the map data has not hydrated yet, so we never clear in that case
 // (which would wrongly nuke a still-valid pin during loading).
-export function shouldClearStaleActiveMapPinV1(input: {
+export function shouldClearStaleActiveMapPin(input: {
   pin: { markerId: string } | undefined;
   visibleMarkerIds: readonly string[];
 }): boolean {
@@ -108,10 +108,10 @@ export function shouldClearStaleActiveMapPinV1(input: {
   return !input.visibleMarkerIds.includes(input.pin.markerId);
 }
 
-function parseActiveBiomesUIMapPin(value: string | null): BiomesUIActiveMapPinV142 | undefined {
+function parseActiveBiomesUIMapPin(value: string | null): BiomesUIActiveMapPin | undefined {
   if (!value) return undefined;
   try {
-    const parsed = JSON.parse(value) as BiomesUIActiveMapPinV142;
+    const parsed = JSON.parse(value) as BiomesUIActiveMapPin;
     return activeBiomesUIMapPinFromMarkerForTest(
       {
         id: parsed.markerId,
@@ -127,37 +127,37 @@ function parseActiveBiomesUIMapPin(value: string | null): BiomesUIActiveMapPinV1
   }
 }
 
-export function readActiveBiomesUIMapPinV142(): BiomesUIActiveMapPinV142 | undefined {
+export function readActiveBiomesUIMapPin(): BiomesUIActiveMapPin | undefined {
   if (typeof window === "undefined") return undefined;
   try {
-    return parseActiveBiomesUIMapPin(window.localStorage?.getItem(BIOMES_UI_ACTIVE_MAP_PIN_STORAGE_KEY_V142) ?? null);
+    return parseActiveBiomesUIMapPin(window.localStorage?.getItem(BIOMES_UI_ACTIVE_MAP_PIN_STORAGE_KEY) ?? null);
   } catch {
     return undefined;
   }
 }
 
-export function writeActiveBiomesUIMapPinV142(pin: BiomesUIActiveMapPinV142 | undefined): void {
+export function writeActiveBiomesUIMapPin(pin: BiomesUIActiveMapPin | undefined): void {
   if (typeof window === "undefined") return;
   try {
     if (pin) {
-      window.localStorage?.setItem(BIOMES_UI_ACTIVE_MAP_PIN_STORAGE_KEY_V142, JSON.stringify(pin));
+      window.localStorage?.setItem(BIOMES_UI_ACTIVE_MAP_PIN_STORAGE_KEY, JSON.stringify(pin));
     } else {
-      window.localStorage?.removeItem(BIOMES_UI_ACTIVE_MAP_PIN_STORAGE_KEY_V142);
+      window.localStorage?.removeItem(BIOMES_UI_ACTIVE_MAP_PIN_STORAGE_KEY);
     }
   } catch {
     // The map still updates in-memory when storage is unavailable.
   }
-  window.dispatchEvent(new CustomEvent(BIOMES_UI_ACTIVE_MAP_PIN_EVENT_V142, { detail: pin }));
+  window.dispatchEvent(new CustomEvent(BIOMES_UI_ACTIVE_MAP_PIN_EVENT, { detail: pin }));
 }
 
-// BIOMES_UI_LOCATE_ON_MAP_V1:
+// BIOMES_UI_LOCATE_ON_MAP:
 // "Locate on map" entry point. Persists the destination pin (so the nav aid /
 // minimap arrow appear as before) AND asks the UI to open the Map tab and center
 // on it. Used by the Land/Property panels' "Locate on map" buttons.
-export function requestBiomesUILocateOnMapV1(pin: BiomesUIActiveMapPinV142): void {
-  writeActiveBiomesUIMapPinV142(pin);
+export function requestBiomesUILocateOnMap(pin: BiomesUIActiveMapPin): void {
+  writeActiveBiomesUIMapPin(pin);
   if (typeof window === "undefined") return;
   window.dispatchEvent(
-    new CustomEvent(BIOMES_UI_LOCATE_ON_MAP_EVENT_V1, { detail: pin })
+    new CustomEvent(BIOMES_UI_LOCATE_ON_MAP_EVENT, { detail: pin })
   );
 }

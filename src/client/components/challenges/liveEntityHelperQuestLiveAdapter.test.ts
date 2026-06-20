@@ -2,25 +2,25 @@
 
 import assert from "assert";
 import {
-  harthmereLiveEntityHelperLiveModeHeadersV1,
-  harthmereLiveEntityHelperLiveModeUrlV1,
-  isLiveEntityHelperLiveModeRejectionErrorV1,
-  liveEntityHelperLiveSnapshotFromResponseV1,
-  liveEntityHelperQuestPayloadForLiveModeV1,
-  readLiveEntityHelperQuestLiveModeStateV1,
-  submitLiveEntityRobotRechargeMutationV1,
-  submitLiveEntityHelperQuestMutationV1,
+  harthmereLiveEntityHelperLiveModeHeaders,
+  harthmereLiveEntityHelperLiveModeUrl,
+  isLiveEntityHelperLiveModeRejectionError,
+  liveEntityHelperLiveSnapshotFromResponse,
+  liveEntityHelperQuestPayloadForLiveMode,
+  readLiveEntityHelperQuestLiveModeState,
+  submitLiveEntityRobotRechargeMutation,
+  submitLiveEntityHelperQuestMutation,
 } from "./liveEntityHelperQuestLiveAdapter";
 import {
-  LIVE_ENTITY_HELPER_QUEST_DEFINITIONS_V1,
-  liveEntityHelperQuestIdV1,
-  type LiveEntityHelperQuestInstanceV1,
-} from "@/shared/harthmere/live_entity_helper_quests_v1";
+  LIVE_ENTITY_HELPER_QUEST_DEFINITIONS,
+  liveEntityHelperQuestId,
+  type LiveEntityHelperQuestInstance,
+} from "@/shared/harthmere/live_entity_helper_quests";
 
-function quest(): LiveEntityHelperQuestInstanceV1 {
+function quest(): LiveEntityHelperQuestInstance {
   return {
-    ...LIVE_ENTITY_HELPER_QUEST_DEFINITIONS_V1.food_water,
-    questId: liveEntityHelperQuestIdV1("boba", "food_water"),
+    ...LIVE_ENTITY_HELPER_QUEST_DEFINITIONS.food_water,
+    questId: liveEntityHelperQuestId("boba", "food_water"),
     entityId: "boba",
     giverName: "Boba :)",
   };
@@ -39,17 +39,17 @@ describe("live-entity helper live-mode adapter", () => {
   it("carries Glitch install identity through URL and headers", () => {
     const search = "?install_id=25f687dd-9ebe-4c31-8810-719ddfafe66b";
     assert.equal(
-      harthmereLiveEntityHelperLiveModeUrlV1(search),
+      harthmereLiveEntityHelperLiveModeUrl(search),
       "/api/harthmere/live_mode?install_id=25f687dd-9ebe-4c31-8810-719ddfafe66b"
     );
     assert.equal(
-      harthmereLiveEntityHelperLiveModeHeadersV1(search)["X-Glitch-Install-Id"],
+      harthmereLiveEntityHelperLiveModeHeaders(search)["X-Glitch-Install-Id"],
       "25f687dd-9ebe-4c31-8810-719ddfafe66b"
     );
   });
 
   it("builds a server-verifiable quest payload from the same entity context as the dialog", () => {
-    const payload = liveEntityHelperQuestPayloadForLiveModeV1(
+    const payload = liveEntityHelperQuestPayloadForLiveMode(
       quest(),
       context,
       "live_entity_helper_accept"
@@ -101,7 +101,7 @@ describe("live-entity helper live-mode adapter", () => {
       } as any;
     };
 
-    const snapshot = await submitLiveEntityHelperQuestMutationV1(
+    const snapshot = await submitLiveEntityHelperQuestMutation(
       "live_entity_helper_accept",
       quest(),
       context,
@@ -158,7 +158,7 @@ describe("live-entity helper live-mode adapter", () => {
       } as any;
     };
 
-    const snapshot = await submitLiveEntityHelperQuestMutationV1(
+    const snapshot = await submitLiveEntityHelperQuestMutation(
       "live_entity_helper_complete",
       quest(),
       context,
@@ -197,14 +197,14 @@ describe("live-entity helper live-mode adapter", () => {
         }),
       } as any;
     };
-    const bossQuest: LiveEntityHelperQuestInstanceV1 = {
-      ...LIVE_ENTITY_HELPER_QUEST_DEFINITIONS_V1.hard_boss,
-      questId: liveEntityHelperQuestIdV1("boba", "hard_boss"),
+    const bossQuest: LiveEntityHelperQuestInstance = {
+      ...LIVE_ENTITY_HELPER_QUEST_DEFINITIONS.hard_boss,
+      questId: liveEntityHelperQuestId("boba", "hard_boss"),
       entityId: "boba",
       giverName: "Boba :)",
     };
 
-    await submitLiveEntityHelperQuestMutationV1(
+    await submitLiveEntityHelperQuestMutation(
       "live_entity_helper_record_boss_defeat",
       bossQuest,
       context,
@@ -242,7 +242,7 @@ describe("live-entity helper live-mode adapter", () => {
       } as any;
     };
 
-    await submitLiveEntityRobotRechargeMutationV1(
+    await submitLiveEntityRobotRechargeMutation(
       {
         entityId: "west-breach-sentinel",
         label: "West Muck Breach Sentinel",
@@ -273,14 +273,14 @@ describe("live-entity helper live-mode adapter", () => {
 
     await assert.rejects(
       () =>
-        submitLiveEntityHelperQuestMutationV1(
+        submitLiveEntityHelperQuestMutation(
           "live_entity_helper_accept",
           quest(),
           context,
           { fetchImpl: fetchImpl as any, requestId: "reject-boba" }
         ),
       (error) =>
-        isLiveEntityHelperLiveModeRejectionErrorV1(error) &&
+        isLiveEntityHelperLiveModeRejectionError(error) &&
         error.warnings.includes("live_entity_helper_rejected:ineligible_entity")
     );
   });
@@ -299,7 +299,7 @@ describe("live-entity helper live-mode adapter", () => {
       } as any;
     };
 
-    await readLiveEntityHelperQuestLiveModeStateV1({
+    await readLiveEntityHelperQuestLiveModeState({
       fetchImpl: fetchImpl as any,
       requestId: "read-state",
     });
@@ -308,7 +308,7 @@ describe("live-entity helper live-mode adapter", () => {
   });
 
   it("normalizes live-mode response snapshots without leaking backend item ids", () => {
-    const snapshot = liveEntityHelperLiveSnapshotFromResponseV1({
+    const snapshot = liveEntityHelperLiveSnapshotFromResponse({
       backendMutation: { warnings: [] },
       inventoryLootState: {
         actor: { items: { minor_healing_salve: 2, repair_voucher: 1 } },

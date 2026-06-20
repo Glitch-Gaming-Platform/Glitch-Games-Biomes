@@ -124,19 +124,19 @@ export interface AttackInteraction {
   tool: Item | undefined;
 }
 
-// Harthmere v189 native-NPC attack bridge.
+// Harthmere current native-NPC attack bridge.
 // The normal Biomes interaction pipeline can visibly hit ECS NPCs and publish
 // UpdateNpcHealthEvent, but Harthmere's local-dev combat/retaliation state lives
 // in LocalDevHarthmereCombat. Emit a small browser event when native contact is
 // already proven so the Harthmere resolver can apply local HP damage and wake the
 // NPC retaliation brain. Keep this dependency one-way to avoid importing React
 // challenge code into generic interact helpers.
-const HARTHMERE_NATIVE_NPC_ATTACK_DAMAGE_BRIDGE_V189 =
-  "harthmere-native-npc-attack-damage-bridge-v189";
-const HARTHMERE_NATIVE_NPC_ATTACK_CONTACT_EVENT_V189 =
-  "biomes:harthmere-native-npc-attack-contact-v189";
+const HARTHMERE_NATIVE_NPC_ATTACK_DAMAGE_BRIDGE =
+  "harthmere-native-npc-attack-damage-bridge";
+const HARTHMERE_NATIVE_NPC_ATTACK_CONTACT_EVENT =
+  "biomes:harthmere-native-npc-attack-contact";
 
-function emitHarthmereNativeNpcAttackContactV189({
+function emitHarthmereNativeNpcAttackContact({
   attackedEntities,
   tool,
 }: Pick<AttackInteraction, "attackedEntities" | "tool">) {
@@ -189,7 +189,7 @@ function emitHarthmereNativeNpcAttackContactV189({
 
   const toolRecord = (tool ?? {}) as Record<string, unknown>;
   const detail = {
-    version: HARTHMERE_NATIVE_NPC_ATTACK_DAMAGE_BRIDGE_V189,
+    version: HARTHMERE_NATIVE_NPC_ATTACK_DAMAGE_BRIDGE,
     source: "client.game.interact.helpers.handleAttackInteraction",
     attack: "basic",
     at: Date.now(),
@@ -201,21 +201,21 @@ function emitHarthmereNativeNpcAttackContactV189({
   };
 
   window.dispatchEvent(
-    new CustomEvent(HARTHMERE_NATIVE_NPC_ATTACK_CONTACT_EVENT_V189, {
+    new CustomEvent(HARTHMERE_NATIVE_NPC_ATTACK_CONTACT_EVENT, {
       detail,
     }),
   );
 
   const win = window as typeof window & {
-    __harthmereNativeNpcAttackContactDebugV189?: unknown[];
-    __harthmereNativeNpcAttackContactLastAtV189?: number;
-    __harthmereNativeNpcAttackContactLastHitsV189?: typeof hits;
+    __harthmereNativeNpcAttackContactDebug?: unknown[];
+    __harthmereNativeNpcAttackContactLastAt?: number;
+    __harthmereNativeNpcAttackContactLastHits?: typeof hits;
   };
-  win.__harthmereNativeNpcAttackContactLastAtV189 = detail.at;
-  win.__harthmereNativeNpcAttackContactLastHitsV189 = hits;
-  win.__harthmereNativeNpcAttackContactDebugV189 = [
+  win.__harthmereNativeNpcAttackContactLastAt = detail.at;
+  win.__harthmereNativeNpcAttackContactLastHits = hits;
+  win.__harthmereNativeNpcAttackContactDebug = [
     detail,
-    ...(win.__harthmereNativeNpcAttackContactDebugV189 ?? []),
+    ...(win.__harthmereNativeNpcAttackContactDebug ?? []),
   ].slice(0, 80);
 }
 
@@ -240,7 +240,7 @@ export function handleAttackInteraction(
     );
   }
 
-  emitHarthmereNativeNpcAttackContactV189({ attackedEntities, tool });
+  emitHarthmereNativeNpcAttackContact({ attackedEntities, tool });
 
   const playerDamageBuff =
     deps.resources.get("/player/modifiers").attackDamage.increase;

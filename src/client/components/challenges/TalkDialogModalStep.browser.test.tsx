@@ -255,10 +255,10 @@ describe("TalkDialogModalStep rendered voice conversation flow", () => {
                 `,
               ],
               [
-                "@/shared/harthmere/npc_voice_profiles_v1",
+                "@/shared/harthmere/npc_voice_profiles",
                 `
-                  export const harthmereAzureVoiceIdOrFallbackV1 = ({ voiceId, fallbackVoiceId }) => voiceId || fallbackVoiceId;
-                  export const harthmereVoiceProfileForActorV1 = () => ({ voiceParameterId: "azure-speech-v1|voice=en-US-AvaNeural" });
+                  export const harthmereAzureVoiceIdOrFallback = ({ voiceId, fallbackVoiceId }) => voiceId || fallbackVoiceId;
+                  export const harthmereVoiceProfileForActor = () => ({ voiceParameterId: "azure-speech|voice=en-US-AvaNeural" });
                 `,
               ],
               [
@@ -270,8 +270,8 @@ describe("TalkDialogModalStep rendered voice conversation flow", () => {
               [
                 "@/client/components/system/speechCapture",
                 `
-                  export const blobToBase64V1 = async () => "ZmFrZQ==";
-                  export const startAzureSpeechWavRecorderV1 = async () => {
+                  export const blobToBase64 = async () => "ZmFrZQ==";
+                  export const startAzureSpeechWavRecorder = async () => {
                     window.__recorderStarts += 1;
                     if (window.__recorderMode === "reject") {
                       throw new Error("microphone permission denied");
@@ -410,7 +410,7 @@ describe("TalkDialogModalStep rendered voice conversation flow", () => {
         ["First line.", "Second line."]
       );
       assert.equal(
-        await page.locator("[data-npc-speech-input-button-v1]").count(),
+        await page.locator("[data-npc-speech-input-button]").count(),
         0,
         "mic should stay hidden until the options stage, not every continuation line"
       );
@@ -426,23 +426,23 @@ describe("TalkDialogModalStep rendered voice conversation flow", () => {
       );
 
       await page
-        .locator("[data-npc-speech-input-button-v1='idle'] button")
+        .locator("[data-npc-speech-input-button='idle'] button")
         .click();
       await page
-        .locator("[data-npc-speech-input-button-v1='recording']")
+        .locator("[data-npc-speech-input-button='recording']")
         .waitFor({ timeout: 10_000 });
       assert.equal(
         await page
-          .locator("[data-npc-speech-input-button-v1='recording']")
-          .getAttribute("data-npc-speech-input-remaining-seconds-v1"),
+          .locator("[data-npc-speech-input-button='recording']")
+          .getAttribute("data-npc-speech-input-remaining-seconds"),
         "1",
         "recording mic should show a countdown while the timeout is active"
       );
       await page.waitForFunction(() => {
         const value = Number(
           document
-            .querySelector("[data-npc-speech-input-button-v1='recording']")
-            ?.getAttribute("data-npc-speech-input-timeout-progress-v1") ?? "0"
+            .querySelector("[data-npc-speech-input-button='recording']")
+            ?.getAttribute("data-npc-speech-input-timeout-progress") ?? "0"
         );
         return value > 0;
       });
@@ -491,7 +491,7 @@ describe("TalkDialogModalStep rendered voice conversation flow", () => {
         "each rendered voice scene should play exactly once"
       );
       await page
-        .locator("[data-npc-speech-input-button-v1='idle']")
+        .locator("[data-npc-speech-input-button='idle']")
         .waitFor({ timeout: 10_000 });
       assert.equal(
         await page.evaluate(() => window.__closedCount),
@@ -503,14 +503,14 @@ describe("TalkDialogModalStep rendered voice conversation flow", () => {
         window.__speechToTextMode = "empty";
       });
       await page
-        .locator("[data-npc-speech-input-button-v1='idle'] button")
+        .locator("[data-npc-speech-input-button='idle'] button")
         .click();
       await page
-        .locator("[data-npc-speech-input-button-v1='recording']")
+        .locator("[data-npc-speech-input-button='recording']")
         .waitFor({ timeout: 10_000 });
       await page.mouse.click(450, 300);
       await page
-        .locator("[data-npc-speech-input-button-v1='error']")
+        .locator("[data-npc-speech-input-button='error']")
         .waitFor({ timeout: 10_000 });
       assert.deepEqual(await page.evaluate(() => window.__transcripts), [
         "hello Jackie",
@@ -536,14 +536,14 @@ describe("TalkDialogModalStep rendered voice conversation flow", () => {
         window.__speechToTextMode = "reject";
       });
       await page
-        .locator("[data-npc-speech-input-button-v1='error'] button")
+        .locator("[data-npc-speech-input-button='error'] button")
         .click();
       await page
-        .locator("[data-npc-speech-input-button-v1='recording']")
+        .locator("[data-npc-speech-input-button='recording']")
         .waitFor({ timeout: 10_000 });
       await page.mouse.click(450, 300);
       await page
-        .locator("[data-npc-speech-input-button-v1='error']")
+        .locator("[data-npc-speech-input-button='error']")
         .waitFor({ timeout: 10_000 });
       assert.equal(
         await page.evaluate(() => window.__ttsRequests.length),
@@ -569,14 +569,14 @@ describe("TalkDialogModalStep rendered voice conversation flow", () => {
         window.__recorderMode = "reject";
       });
       await page
-        .locator("[data-npc-speech-input-button-v1='error'] button")
+        .locator("[data-npc-speech-input-button='error'] button")
         .click();
       await page.waitForFunction(
         (starts) => window.__recorderStarts === starts + 1,
         recorderStartsBeforePermissionDenial
       );
       await page
-        .locator("[data-npc-speech-input-button-v1='error']")
+        .locator("[data-npc-speech-input-button='error']")
         .waitFor({ timeout: 10_000 });
       assert.equal(
         await page.evaluate(() => window.__ttsRequests.length),
@@ -600,10 +600,10 @@ describe("TalkDialogModalStep rendered voice conversation flow", () => {
         window.__speechToTextMode = "success";
       });
       await page
-        .locator("[data-npc-speech-input-button-v1='error'] button")
+        .locator("[data-npc-speech-input-button='error'] button")
         .click();
       await page
-        .locator("[data-npc-speech-input-button-v1='recording']")
+        .locator("[data-npc-speech-input-button='recording']")
         .waitFor({ timeout: 10_000 });
       await page.waitForFunction(() => window.__transcripts.length === 2, {
         timeout: 10_000,

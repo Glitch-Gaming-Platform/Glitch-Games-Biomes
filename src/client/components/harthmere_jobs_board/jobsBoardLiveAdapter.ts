@@ -1,56 +1,56 @@
 import {
-  HARTHMERE_BUSINESS_OUTPOSTS_V1,
-  harthmereBusinessOutpostJobsBoardPositionV1,
-} from "../../../shared/harthmere/business_customer_simulator_v1";
-import { formatHarthmereJobTimeRemainingV151 } from "../../../shared/harthmere/mmo_jobs_board_authority_v1";
-import { completeHarthmereDailyTaskV1 } from "@/client/components/challenges/harthmereDailyTasks";
-import { fetchHarthmereLiveWithTimeoutV1 } from "@/client/components/harthmere_live_fetch";
+  HARTHMERE_BUSINESS_OUTPOSTS,
+  harthmereBusinessOutpostJobsBoardPosition,
+} from "../../../shared/harthmere/business_customer_simulator";
+import { formatHarthmereJobTimeRemaining } from "../../../shared/harthmere/mmo_jobs_board_authority";
+import { completeHarthmereDailyTask } from "@/client/components/challenges/harthmereDailyTasks";
+import { fetchHarthmereLiveWithTimeout } from "@/client/components/harthmere_live_fetch";
 
-export const HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1 =
+export const HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID =
   "harthmere_grove_market_jobs_board" as const;
-export const HARTHMERE_JOBS_BOARD_GROVE_MARKET_MARKER_ID_V1 =
+export const HARTHMERE_JOBS_BOARD_GROVE_MARKET_MARKER_ID =
   "harthmere_market_posting_board" as const;
-export const HARTHMERE_JOBS_BOARD_INTERACTION_RADIUS_V145 = 3.25;
-export const HARTHMERE_JOBS_BOARD_STATE_UPDATED_EVENT_V1 =
-  "biomes:harthmere-jobs-board-state-updated-v1" as const;
+export const HARTHMERE_JOBS_BOARD_INTERACTION_RADIUS = 3.25;
+export const HARTHMERE_JOBS_BOARD_STATE_UPDATED_EVENT =
+  "biomes:harthmere-jobs-board-state-updated" as const;
 
-const HARTHMERE_BUSINESS_OUTPOST_PHYSICAL_JOB_BOARDS_V1 =
-  HARTHMERE_BUSINESS_OUTPOSTS_V1.map((outpost) => {
-    const position = harthmereBusinessOutpostJobsBoardPositionV1(outpost);
+const HARTHMERE_BUSINESS_OUTPOST_PHYSICAL_JOB_BOARDS =
+  HARTHMERE_BUSINESS_OUTPOSTS.map((outpost) => {
+    const position = harthmereBusinessOutpostJobsBoardPosition(outpost);
     return {
       boardId: `${outpost.outpostId}_jobs_board`,
       displayName: `${outpost.displayName} Jobs Board`,
       position,
-      radius: HARTHMERE_JOBS_BOARD_INTERACTION_RADIUS_V145,
+      radius: HARTHMERE_JOBS_BOARD_INTERACTION_RADIUS,
     };
   });
 
-export const HARTHMERE_JOBS_BOARD_PHYSICAL_BOARDS_V141 = [
+export const HARTHMERE_JOBS_BOARD_PHYSICAL_BOARDS = [
   {
-    boardId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1,
+    boardId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID,
     displayName: "Jobs Board",
     position: { x: 501.99486179104775, y: 70, z: -132.00350672753194 },
-    radius: HARTHMERE_JOBS_BOARD_INTERACTION_RADIUS_V145,
+    radius: HARTHMERE_JOBS_BOARD_INTERACTION_RADIUS,
   },
   {
     boardId: "harthmere_town_market_jobs_board",
     displayName: "Harthmere Jobs Board",
     position: { x: 1046, y: 65, z: -202 },
-    radius: HARTHMERE_JOBS_BOARD_INTERACTION_RADIUS_V145,
+    radius: HARTHMERE_JOBS_BOARD_INTERACTION_RADIUS,
   },
-  ...HARTHMERE_BUSINESS_OUTPOST_PHYSICAL_JOB_BOARDS_V1,
+  ...HARTHMERE_BUSINESS_OUTPOST_PHYSICAL_JOB_BOARDS,
 ] as const;
 
-export type HarthmereJobsBoardPointV146 = { x: number; y?: number; z: number };
+export type HarthmereJobsBoardPoint = { x: number; y?: number; z: number };
 
-export function normalizeHarthmereJobsBoardPointV146(
+export function normalizeHarthmereJobsBoardPoint(
   value: unknown
-): HarthmereJobsBoardPointV146 | undefined {
+): HarthmereJobsBoardPoint | undefined {
   const parse = (
     xValue: unknown,
     yValue: unknown,
     zValue: unknown
-  ): HarthmereJobsBoardPointV146 | undefined => {
+  ): HarthmereJobsBoardPoint | undefined => {
     const x = Number(xValue);
     const y = Number(yValue);
     const z = Number(zValue);
@@ -68,20 +68,20 @@ export function normalizeHarthmereJobsBoardPointV146(
   }
   const record = value as Record<string, unknown>;
   if (Array.isArray(record.v)) {
-    return normalizeHarthmereJobsBoardPointV146(record.v);
+    return normalizeHarthmereJobsBoardPoint(record.v);
   }
   return parse(record.x, record.y, record.z);
 }
 
-export function nearestHarthmereJobsBoardPhysicalPromptV141(
-  playerPosition: HarthmereJobsBoardPointV146 | undefined
+export function nearestHarthmereJobsBoardPhysicalPrompt(
+  playerPosition: HarthmereJobsBoardPoint | undefined
 ) {
   if (!playerPosition) return undefined;
   let best:
-    | (typeof HARTHMERE_JOBS_BOARD_PHYSICAL_BOARDS_V141)[number]
+    | (typeof HARTHMERE_JOBS_BOARD_PHYSICAL_BOARDS)[number]
     | undefined;
   let bestDistance = Infinity;
-  for (const board of HARTHMERE_JOBS_BOARD_PHYSICAL_BOARDS_V141) {
+  for (const board of HARTHMERE_JOBS_BOARD_PHYSICAL_BOARDS) {
     const distance = Math.hypot(
       board.position.x - playerPosition.x,
       board.position.z - playerPosition.z
@@ -94,7 +94,7 @@ export function nearestHarthmereJobsBoardPhysicalPromptV141(
   return best ? { ...best, distance: bestDistance } : undefined;
 }
 
-export type HarthmereJobsBoardJobKindV1 =
+export type HarthmereJobsBoardJobKind =
   | "gather"
   | "delivery"
   | "repair"
@@ -108,7 +108,7 @@ export type HarthmereJobsBoardJobKindV1 =
   | "security"
   | "service";
 
-export type HarthmereJobsBoardStatusV1 =
+export type HarthmereJobsBoardStatus =
   | "open"
   | "active"
   | "completed"
@@ -116,14 +116,14 @@ export type HarthmereJobsBoardStatusV1 =
   | "cancelled"
   | "expired";
 
-export interface HarthmereJobsBoardPostingV1 {
+export interface HarthmereJobsBoardPosting {
   jobId: string;
   boardId: string;
   issuerKind: "player" | "business" | "guild" | "town" | "npc";
   issuerId: string;
   title: string;
   description: string;
-  kind: HarthmereJobsBoardJobKindV1;
+  kind: HarthmereJobsBoardJobKind;
   requirements: Array<{
     itemId?: string;
     count?: number;
@@ -139,7 +139,7 @@ export interface HarthmereJobsBoardPostingV1 {
   rewardItems?: Array<{ itemId: string; count: number }>;
   escrowItems?: Record<string, number>;
   rewardCollectibleIds?: string[];
-  status: HarthmereJobsBoardStatusV1;
+  status: HarthmereJobsBoardStatus;
   townId: string;
   regionId: string;
   createdAtMs: number;
@@ -153,7 +153,7 @@ export interface HarthmereJobsBoardPostingV1 {
   logs: string[];
 }
 
-export interface HarthmereJobsBoardTodoV1 {
+export interface HarthmereJobsBoardTodo {
   todoId: string;
   jobId: string;
   actorId: string;
@@ -161,7 +161,7 @@ export interface HarthmereJobsBoardTodoV1 {
   title: string;
   todoText: string;
   status: "active" | "completed" | "failed" | "cancelled" | "expired";
-  kind: HarthmereJobsBoardJobKindV1;
+  kind: HarthmereJobsBoardJobKind;
   mapMarkerId?: string;
   targetId?: string;
   townId: string;
@@ -171,7 +171,7 @@ export interface HarthmereJobsBoardTodoV1 {
   questBoardTodo: true;
 }
 
-export interface HarthmereJobsBoardRecordV1 {
+export interface HarthmereJobsBoardRecord {
   boardId: string;
   displayName: string;
   townId: string;
@@ -186,11 +186,11 @@ export interface HarthmereJobsBoardRecordV1 {
     landmarkId: string;
     voxelAssetHint?: string;
   };
-  acceptedKinds: HarthmereJobsBoardJobKindV1[];
+  acceptedKinds: HarthmereJobsBoardJobKind[];
   requiresPhysicalInteraction: true;
 }
 
-export interface HarthmereJobsBoardLawCrimeRecordV1 {
+export interface HarthmereJobsBoardLawCrimeRecord {
   id: string;
   actorId: string;
   kind: string;
@@ -213,7 +213,7 @@ export interface HarthmereJobsBoardLawCrimeRecordV1 {
   createdAtMs: number;
 }
 
-export interface HarthmereJobsBoardLawSummaryV1 {
+export interface HarthmereJobsBoardLawSummary {
   version: string;
   actorId: string;
   standing: {
@@ -225,24 +225,24 @@ export interface HarthmereJobsBoardLawSummaryV1 {
   };
   fines: Record<string, number>;
   flags: Record<string, boolean>;
-  activeBounties: HarthmereJobsBoardLawCrimeRecordV1[];
-  myActiveBounties: HarthmereJobsBoardLawCrimeRecordV1[];
+  activeBounties: HarthmereJobsBoardLawCrimeRecord[];
+  myActiveBounties: HarthmereJobsBoardLawCrimeRecord[];
   totalBountyGold: number;
   myTotalBountyGold: number;
-  recentCrimeRecords: HarthmereJobsBoardLawCrimeRecordV1[];
+  recentCrimeRecords: HarthmereJobsBoardLawCrimeRecord[];
   updatedAtMs?: number;
 }
 
-export interface HarthmereJobsBoardSnapshotV1 {
+export interface HarthmereJobsBoardSnapshot {
   version: string;
   actorId: string;
-  boards: Record<string, HarthmereJobsBoardRecordV1>;
+  boards: Record<string, HarthmereJobsBoardRecord>;
   defaultBoardId: string;
-  openJobs: HarthmereJobsBoardPostingV1[];
-  activeJobs: HarthmereJobsBoardPostingV1[];
-  myPostedJobs: HarthmereJobsBoardPostingV1[];
-  myAcceptedJobs: HarthmereJobsBoardPostingV1[];
-  myTodos: HarthmereJobsBoardTodoV1[];
+  openJobs: HarthmereJobsBoardPosting[];
+  activeJobs: HarthmereJobsBoardPosting[];
+  myPostedJobs: HarthmereJobsBoardPosting[];
+  myAcceptedJobs: HarthmereJobsBoardPosting[];
+  myTodos: HarthmereJobsBoardTodo[];
   audit: unknown[];
   cooldown: {
     lastPostAtMs?: number;
@@ -266,22 +266,22 @@ export interface HarthmereJobsBoardSnapshotV1 {
     balanceGold: number;
     inventory?: Record<string, { itemId: string; count: number }>;
   }>;
-  lawSummary?: HarthmereJobsBoardLawSummaryV1;
+  lawSummary?: HarthmereJobsBoardLawSummary;
 }
 
-function safeWholeV1(value: unknown, fallback = 0) {
+function safeWhole(value: unknown, fallback = 0) {
   const numeric = Number(value);
   return Number.isFinite(numeric) ? Math.max(0, Math.trunc(numeric)) : fallback;
 }
 
-function safeSignedNumberV1(value: unknown, fallback = 0) {
+function safeSignedNumber(value: unknown, fallback = 0) {
   const numeric = Number(value);
   return Number.isFinite(numeric) ? numeric : fallback;
 }
 
-function normalizeHarthmereJobsBoardLawCrimeRecordV1(
+function normalizeHarthmereJobsBoardLawCrimeRecord(
   raw: any
-): HarthmereJobsBoardLawCrimeRecordV1 {
+): HarthmereJobsBoardLawCrimeRecord {
   return {
     id: String(raw?.id ?? ""),
     actorId: String(raw?.actorId ?? ""),
@@ -299,39 +299,39 @@ function normalizeHarthmereJobsBoardLawCrimeRecordV1(
       raw?.resourceNodeId === undefined
         ? undefined
         : String(raw.resourceNodeId),
-    severity: safeWholeV1(raw?.severity),
-    valueGold: safeWholeV1(raw?.valueGold),
+    severity: safeWhole(raw?.severity),
+    valueGold: safeWhole(raw?.valueGold),
     witnessLevel:
       raw?.witnessLevel === undefined ? undefined : String(raw.witnessLevel),
-    witnesses: safeWholeV1(raw?.witnesses),
+    witnesses: safeWhole(raw?.witnesses),
     detected: Boolean(raw?.detected),
     response: String(raw?.response ?? ""),
-    fineGold: safeWholeV1(raw?.fineGold),
-    bountyGold: safeWholeV1(raw?.bountyGold),
+    fineGold: safeWhole(raw?.fineGold),
+    bountyGold: safeWhole(raw?.bountyGold),
     status: String(raw?.status ?? "recorded"),
-    evidenceExpiresAtMs: safeWholeV1(raw?.evidenceExpiresAtMs),
-    createdAtMs: safeWholeV1(raw?.createdAtMs),
+    evidenceExpiresAtMs: safeWhole(raw?.evidenceExpiresAtMs),
+    createdAtMs: safeWhole(raw?.createdAtMs),
   };
 }
 
-function normalizeHarthmereJobsBoardLawSummaryV1(
+function normalizeHarthmereJobsBoardLawSummary(
   raw: any
-): HarthmereJobsBoardLawSummaryV1 | undefined {
+): HarthmereJobsBoardLawSummary | undefined {
   if (!raw || typeof raw !== "object") return undefined;
   const standing = raw.standing ?? {};
   return {
-    version: String(raw.version ?? "harthmere-jobs-board-law-summary-v1"),
+    version: String(raw.version ?? "harthmere-jobs-board-law-summary"),
     actorId: String(raw.actorId ?? ""),
     standing: {
       scopeId:
         standing.scopeId === undefined ? undefined : String(standing.scopeId),
-      likeability: Math.round(safeSignedNumberV1(standing.likeability)),
-      legal: Math.round(safeSignedNumberV1(standing.legal)),
-      notoriety: Math.round(safeSignedNumberV1(standing.notoriety)),
+      likeability: Math.round(safeSignedNumber(standing.likeability)),
+      legal: Math.round(safeSignedNumber(standing.legal)),
+      notoriety: Math.round(safeSignedNumber(standing.notoriety)),
       notorietyFloor:
         standing.notorietyFloor === undefined
           ? undefined
-          : Math.round(safeSignedNumberV1(standing.notorietyFloor)),
+          : Math.round(safeSignedNumber(standing.notorietyFloor)),
     },
     fines:
       raw.fines && typeof raw.fines === "object"
@@ -339,7 +339,7 @@ function normalizeHarthmereJobsBoardLawSummaryV1(
             Object.entries(raw.fines)
               .map(
                 ([factionId, value]) =>
-                  [factionId, safeWholeV1(value)] as [string, number]
+                  [factionId, safeWhole(value)] as [string, number]
               )
               .filter(([, value]) => value > 0)
           )
@@ -354,29 +354,29 @@ function normalizeHarthmereJobsBoardLawSummaryV1(
           )
         : {},
     activeBounties: Array.isArray(raw.activeBounties)
-      ? raw.activeBounties.map(normalizeHarthmereJobsBoardLawCrimeRecordV1)
+      ? raw.activeBounties.map(normalizeHarthmereJobsBoardLawCrimeRecord)
       : [],
     myActiveBounties: Array.isArray(raw.myActiveBounties)
-      ? raw.myActiveBounties.map(normalizeHarthmereJobsBoardLawCrimeRecordV1)
+      ? raw.myActiveBounties.map(normalizeHarthmereJobsBoardLawCrimeRecord)
       : [],
-    totalBountyGold: safeWholeV1(raw.totalBountyGold),
-    myTotalBountyGold: safeWholeV1(raw.myTotalBountyGold),
+    totalBountyGold: safeWhole(raw.totalBountyGold),
+    myTotalBountyGold: safeWhole(raw.myTotalBountyGold),
     recentCrimeRecords: Array.isArray(raw.recentCrimeRecords)
-      ? raw.recentCrimeRecords.map(normalizeHarthmereJobsBoardLawCrimeRecordV1)
+      ? raw.recentCrimeRecords.map(normalizeHarthmereJobsBoardLawCrimeRecord)
       : [],
     updatedAtMs:
-      raw.updatedAtMs === undefined ? undefined : safeWholeV1(raw.updatedAtMs),
+      raw.updatedAtMs === undefined ? undefined : safeWhole(raw.updatedAtMs),
   };
 }
 
-export interface HarthmereJobsBoardWorldContextV1 {
+export interface HarthmereJobsBoardWorldContext {
   nearbyBoardId?: string;
   interactionTargetId?: string;
   playerPosition?: { x: number; y: number; z: number };
 }
 
-export const HARTHMERE_JOBS_BOARD_JOB_KIND_LABELS_V1: Record<
-  HarthmereJobsBoardJobKindV1,
+export const HARTHMERE_JOBS_BOARD_JOB_KIND_LABELS: Record<
+  HarthmereJobsBoardJobKind,
   string
 > = {
   gather: "Gather",
@@ -393,15 +393,15 @@ export const HARTHMERE_JOBS_BOARD_JOB_KIND_LABELS_V1: Record<
   service: "Service",
 };
 
-export function normalizeHarthmereJobsBoardSnapshotV1(
+export function normalizeHarthmereJobsBoardSnapshot(
   raw: any
-): HarthmereJobsBoardSnapshotV1 {
+): HarthmereJobsBoardSnapshot {
   return {
-    version: String(raw?.version ?? "harthmere-jobs-board-authority-v1"),
+    version: String(raw?.version ?? "harthmere-jobs-board-authority"),
     actorId: String(raw?.actorId ?? ""),
     boards: { ...(raw?.boards ?? {}) },
     defaultBoardId: String(
-      raw?.defaultBoardId ?? HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1
+      raw?.defaultBoardId ?? HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID
     ),
     openJobs: Array.isArray(raw?.openJobs) ? raw.openJobs : [],
     activeJobs: Array.isArray(raw?.activeJobs) ? raw.activeJobs : [],
@@ -433,27 +433,27 @@ export function normalizeHarthmereJobsBoardSnapshotV1(
         ? { ...raw.discoveredCollectibles }
         : undefined,
     myBusinesses: Array.isArray(raw?.myBusinesses) ? raw.myBusinesses : [],
-    lawSummary: normalizeHarthmereJobsBoardLawSummaryV1(raw?.lawSummary),
+    lawSummary: normalizeHarthmereJobsBoardLawSummary(raw?.lawSummary),
   };
 }
 
-export function dispatchHarthmereJobsBoardStateUpdatedV1(
-  snapshot: HarthmereJobsBoardSnapshotV1
+export function dispatchHarthmereJobsBoardStateUpdated(
+  snapshot: HarthmereJobsBoardSnapshot
 ) {
   if (typeof window === "undefined") return;
   window.dispatchEvent(
-    new CustomEvent(HARTHMERE_JOBS_BOARD_STATE_UPDATED_EVENT_V1, {
+    new CustomEvent(HARTHMERE_JOBS_BOARD_STATE_UPDATED_EVENT, {
       detail: { jobsBoardState: snapshot },
     })
   );
 }
 
-export function displayNameForHarthmereJobsBoardV145(
-  board: Pick<HarthmereJobsBoardRecordV1, "boardId" | "displayName"> | undefined
+export function displayNameForHarthmereJobsBoard(
+  board: Pick<HarthmereJobsBoardRecord, "boardId" | "displayName"> | undefined
 ) {
   if (!board) return "Jobs Board";
   if (
-    board.boardId === HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1 ||
+    board.boardId === HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID ||
     /^harthmere grove jobs board$/i.test(board.displayName) ||
     /^grove jobs board$/i.test(board.displayName)
   ) {
@@ -462,23 +462,23 @@ export function displayNameForHarthmereJobsBoardV145(
   return board.displayName;
 }
 
-export function isHarthmereJobsBoardAvailableV1(
-  snapshot: HarthmereJobsBoardSnapshotV1,
-  world: HarthmereJobsBoardWorldContextV1
+export function isHarthmereJobsBoardAvailable(
+  snapshot: HarthmereJobsBoardSnapshot,
+  world: HarthmereJobsBoardWorldContext
 ) {
-  const boardId = nearestPhysicalHarthmereJobsBoardIdV141(snapshot, world);
+  const boardId = nearestPhysicalHarthmereJobsBoardId(snapshot, world);
   return !!boardId && !!snapshot.boards[boardId];
 }
 
-// HARTHMERE_JOBS_BOARD_PROXIMITY_GATE_V141:
+// HARTHMERE_JOBS_BOARD_PROXIMITY_GATE:
 // Return the boardId the player is physically near, or undefined if none.
 // "Near" means: explicit `nearbyBoardId` set, OR `playerPosition` within the
 // board's `location.radius`. Used by the UI to gate panel-open requests so
 // players can only browse jobs from the physical board, not from anywhere
 // in BiomesUI.
-export function nearestPhysicalHarthmereJobsBoardIdV141(
-  snapshot: HarthmereJobsBoardSnapshotV1 | undefined,
-  world: HarthmereJobsBoardWorldContextV1
+export function nearestPhysicalHarthmereJobsBoardId(
+  snapshot: HarthmereJobsBoardSnapshot | undefined,
+  world: HarthmereJobsBoardWorldContext
 ): string | undefined {
   if (!snapshot) return undefined;
   if (world.nearbyBoardId && snapshot.boards[world.nearbyBoardId]) {
@@ -503,7 +503,7 @@ export function nearestPhysicalHarthmereJobsBoardIdV141(
   return bestId;
 }
 
-export interface HarthmereJobsBoardWayfindingHintV141 {
+export interface HarthmereJobsBoardWayfindingHint {
   boardId: string;
   displayName: string;
   district: string;
@@ -511,20 +511,20 @@ export interface HarthmereJobsBoardWayfindingHintV141 {
   approxDistanceMeters: number;
 }
 
-// HARTHMERE_JOBS_BOARD_PROXIMITY_GATE_V141:
+// HARTHMERE_JOBS_BOARD_PROXIMITY_GATE:
 // When the player tries to open the panel from far away, give them a list of
 // the boards sorted by distance so the UI can say "Go to the Grove Jobs
 // Board, 240m north" instead of just refusing.
-export function listHarthmereJobsBoardWayfindingHintsV141(
-  snapshot: HarthmereJobsBoardSnapshotV1 | undefined,
-  world: HarthmereJobsBoardWorldContextV1
-): HarthmereJobsBoardWayfindingHintV141[] {
+export function listHarthmereJobsBoardWayfindingHints(
+  snapshot: HarthmereJobsBoardSnapshot | undefined,
+  world: HarthmereJobsBoardWorldContext
+): HarthmereJobsBoardWayfindingHint[] {
   if (!snapshot) return [];
   const player = world.playerPosition;
   return Object.values(snapshot.boards)
     .map((board) => ({
       boardId: board.boardId,
-      displayName: displayNameForHarthmereJobsBoardV145(board),
+      displayName: displayNameForHarthmereJobsBoard(board),
       district: board.location.district,
       position: {
         x: board.location.x,
@@ -540,16 +540,16 @@ export function listHarthmereJobsBoardWayfindingHintsV141(
     .sort((a, b) => a.approxDistanceMeters - b.approxDistanceMeters);
 }
 
-export function getHarthmereJobsBoardPromptV1(
-  snapshot: HarthmereJobsBoardSnapshotV1,
-  world: HarthmereJobsBoardWorldContextV1
+export function getHarthmereJobsBoardPrompt(
+  snapshot: HarthmereJobsBoardSnapshot,
+  world: HarthmereJobsBoardWorldContext
 ) {
-  const boardId = nearestPhysicalHarthmereJobsBoardIdV141(snapshot, world);
+  const boardId = nearestPhysicalHarthmereJobsBoardId(snapshot, world);
   if (!boardId || !snapshot.boards[boardId]) return undefined;
   const board = snapshot.boards[boardId];
   return {
     boardId,
-    title: displayNameForHarthmereJobsBoardV145(board),
+    title: displayNameForHarthmereJobsBoard(board),
     subtitle: "Press E to post work, accept jobs, and turn in completed tasks.",
     actionLabel: "Open Jobs Board",
     key: "E",
@@ -557,8 +557,8 @@ export function getHarthmereJobsBoardPromptV1(
   };
 }
 
-export function getHarthmereJobsBoardTabsV1(
-  snapshot: HarthmereJobsBoardSnapshotV1
+export function getHarthmereJobsBoardTabs(
+  snapshot: HarthmereJobsBoardSnapshot
 ) {
   return [
     { id: "available", label: "Available", count: snapshot.openJobs.length },
@@ -569,8 +569,8 @@ export function getHarthmereJobsBoardTabsV1(
   ];
 }
 
-export function getHarthmereAvailableJobsPanelV1(
-  snapshot: HarthmereJobsBoardSnapshotV1,
+export function getHarthmereAvailableJobsPanel(
+  snapshot: HarthmereJobsBoardSnapshot,
   boardId = snapshot.defaultBoardId,
   nowMs = Date.now()
 ) {
@@ -582,10 +582,10 @@ export function getHarthmereAvailableJobsPanelV1(
     .map((job) => ({
       jobId: job.jobId,
       title: job.title,
-      kindLabel: HARTHMERE_JOBS_BOARD_JOB_KIND_LABELS_V1[job.kind],
+      kindLabel: HARTHMERE_JOBS_BOARD_JOB_KIND_LABELS[job.kind],
       rewardGold: job.rewardGold,
       deadlineAtMs: job.deadlineAtMs,
-      timeRemaining: formatHarthmereJobTimeRemainingV151(
+      timeRemaining: formatHarthmereJobTimeRemaining(
         job.deadlineAtMs,
         nowMs
       ),
@@ -598,8 +598,8 @@ export function getHarthmereAvailableJobsPanelV1(
     }));
 }
 
-export function getHarthmereMyJobsPanelV1(
-  snapshot: HarthmereJobsBoardSnapshotV1,
+export function getHarthmereMyJobsPanel(
+  snapshot: HarthmereJobsBoardSnapshot,
   nowMs = Date.now()
 ) {
   return snapshot.myAcceptedJobs.map((job) => {
@@ -610,7 +610,7 @@ export function getHarthmereMyJobsPanelV1(
       status: job.status,
       rewardGold: job.rewardGold,
       deadlineAtMs: job.deadlineAtMs,
-      timeRemaining: formatHarthmereJobTimeRemainingV151(
+      timeRemaining: formatHarthmereJobTimeRemaining(
         job.deadlineAtMs,
         nowMs
       ),
@@ -629,8 +629,8 @@ export function getHarthmereMyJobsPanelV1(
   });
 }
 
-export function getHarthmerePostedJobsPanelV1(
-  snapshot: HarthmereJobsBoardSnapshotV1
+export function getHarthmerePostedJobsPanel(
+  snapshot: HarthmereJobsBoardSnapshot
 ) {
   return snapshot.myPostedJobs.map((job) => ({
     jobId: job.jobId,
@@ -643,8 +643,8 @@ export function getHarthmerePostedJobsPanelV1(
   }));
 }
 
-export function getHarthmereJobsBoardSafetyPanelV1(
-  snapshot: HarthmereJobsBoardSnapshotV1
+export function getHarthmereJobsBoardSafetyPanel(
+  snapshot: HarthmereJobsBoardSnapshot
 ) {
   return {
     abuseScore: snapshot.cooldown.abuseScore,
@@ -662,7 +662,7 @@ export function getHarthmereJobsBoardSafetyPanelV1(
   };
 }
 
-export function harthmereJobsBoardStateUrlV146(search?: string) {
+export function harthmereJobsBoardStateUrl(search?: string) {
   const rawSearch =
     search ?? (typeof window !== "undefined" ? window.location.search : "");
   const params = new URLSearchParams(rawSearch);
@@ -673,7 +673,7 @@ export function harthmereJobsBoardStateUrlV146(search?: string) {
     : endpoint;
 }
 
-export function harthmereJobsBoardMutationUrlV151(search?: string) {
+export function harthmereJobsBoardMutationUrl(search?: string) {
   const rawSearch =
     search ?? (typeof window !== "undefined" ? window.location.search : "");
   const params = new URLSearchParams(rawSearch);
@@ -684,7 +684,7 @@ export function harthmereJobsBoardMutationUrlV151(search?: string) {
     : endpoint;
 }
 
-function harthmereJobsBoardMutationHeadersV151(search?: string) {
+function harthmereJobsBoardMutationHeaders(search?: string) {
   const rawSearch =
     search ?? (typeof window !== "undefined" ? window.location.search : "");
   const params = new URLSearchParams(rawSearch);
@@ -698,12 +698,12 @@ function harthmereJobsBoardMutationHeadersV151(search?: string) {
   return headers;
 }
 
-export async function fetchHarthmereJobsBoardStateV1(
+export async function fetchHarthmereJobsBoardState(
   fetchImpl: typeof fetch = fetch
 ) {
-  const response = await fetchHarthmereLiveWithTimeoutV1(
+  const response = await fetchHarthmereLiveWithTimeout(
     fetchImpl,
-    harthmereJobsBoardStateUrlV146(),
+    harthmereJobsBoardStateUrl(),
     {
       method: "GET",
       credentials: "same-origin",
@@ -713,12 +713,12 @@ export async function fetchHarthmereJobsBoardStateV1(
     throw new Error(`Jobs board state request failed: ${response.status}`);
   const json = await response.json();
   if (!json?.ok) throw new Error("Jobs board state request was rejected");
-  const snapshot = normalizeHarthmereJobsBoardSnapshotV1(json.jobsBoardState);
-  dispatchHarthmereJobsBoardStateUpdatedV1(snapshot);
+  const snapshot = normalizeHarthmereJobsBoardSnapshot(json.jobsBoardState);
+  dispatchHarthmereJobsBoardStateUpdated(snapshot);
   return snapshot;
 }
 
-export async function submitHarthmereJobsBoardMutationV1(
+export async function submitHarthmereJobsBoardMutation(
   operation: string,
   payload: Record<string, unknown>,
   options: {
@@ -734,7 +734,7 @@ export async function submitHarthmereJobsBoardMutationV1(
     `jobs_board_${Date.now()}_${Math.random().toString(36).slice(2)}`;
   const boardId =
     options.boardId ??
-    String(payload.boardId ?? HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1);
+    String(payload.boardId ?? HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID);
   const body = {
     requestId,
     idempotencyKey: requestId,
@@ -751,13 +751,13 @@ export async function submitHarthmereJobsBoardMutationV1(
       operation,
     },
   };
-  const response = await fetchHarthmereLiveWithTimeoutV1(
+  const response = await fetchHarthmereLiveWithTimeout(
     fetchImpl,
-    harthmereJobsBoardMutationUrlV151(options.locationSearch),
+    harthmereJobsBoardMutationUrl(options.locationSearch),
     {
       method: "POST",
       credentials: "same-origin",
-      headers: harthmereJobsBoardMutationHeadersV151(options.locationSearch),
+      headers: harthmereJobsBoardMutationHeaders(options.locationSearch),
       body: JSON.stringify(body),
     }
   );
@@ -779,21 +779,21 @@ export async function submitHarthmereJobsBoardMutationV1(
     warning.startsWith("jobs_board_rejected:")
   );
   if (rejected) throw new Error(rejected);
-  const snapshot = normalizeHarthmereJobsBoardSnapshotV1(
+  const snapshot = normalizeHarthmereJobsBoardSnapshot(
     json.jobsBoardState ?? json.economyState?.jobsBoardState ?? {}
   );
-  dispatchHarthmereJobsBoardStateUpdatedV1(snapshot);
+  dispatchHarthmereJobsBoardStateUpdated(snapshot);
   return snapshot;
 }
 
-export async function submitHarthmereDailyTaskCompletedV1(
+export async function submitHarthmereDailyTaskCompleted(
   activityId: string,
   options: { fetchImpl?: typeof fetch; requestId?: string } = {}
 ) {
-  return completeHarthmereDailyTaskV1(activityId as any, options);
+  return completeHarthmereDailyTask(activityId as any, options);
 }
 
-export function buildHarthmereJobsBoardPostPayloadV1(input: {
+export function buildHarthmereJobsBoardPostPayload(input: {
   templateId?: string;
   boardId?: string;
   issuerKind?: "player" | "business" | "guild" | "town" | "npc";
@@ -801,8 +801,8 @@ export function buildHarthmereJobsBoardPostPayloadV1(input: {
   businessId?: string;
   title: string;
   description: string;
-  kind: HarthmereJobsBoardJobKindV1;
-  requirements: HarthmereJobsBoardPostingV1["requirements"];
+  kind: HarthmereJobsBoardJobKind;
+  requirements: HarthmereJobsBoardPosting["requirements"];
   rewardGold: number;
   rewardItems?: Array<{ itemId: string; count: number }>;
   rewardCollectibleIds?: string[];
@@ -812,7 +812,7 @@ export function buildHarthmereJobsBoardPostPayloadV1(input: {
   targetId?: string;
 }) {
   return {
-    boardId: input.boardId ?? HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1,
+    boardId: input.boardId ?? HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID,
     templateId: input.templateId,
     issuerKind: input.issuerKind ?? (input.businessId ? "business" : "player"),
     issuerId: input.issuerId,
@@ -831,14 +831,14 @@ export function buildHarthmereJobsBoardPostPayloadV1(input: {
   };
 }
 
-// HARTHMERE_JOBS_BOARD_COMPLETION_WIRING_V1
+// HARTHMERE_JOBS_BOARD_COMPLETION_WIRING
 // Completing a job is TWO server steps: `complete_job_quest` validates the work
 // (the server consumes required items / checks the target) and marks the todo
 // completed, then `complete_job` pays out the escrow. The client previously only
 // ever sent `complete_job`, which the reducer rejects until the todo is
 // `completed` -- so no job could ever be completed or paid. This plans the
 // ordered steps to send based on the current todo status.
-export function planHarthmereJobsBoardCompletionStepsV1(
+export function planHarthmereJobsBoardCompletionSteps(
   todoStatus: string | undefined
 ): Array<"complete_job_quest" | "complete_job"> {
   return todoStatus === "completed"
@@ -846,34 +846,34 @@ export function planHarthmereJobsBoardCompletionStepsV1(
     : ["complete_job_quest", "complete_job"];
 }
 
-export function createHarthmereJobsBoardAdapterV1(
+export function createHarthmereJobsBoardAdapter(
   fetchImpl: typeof fetch = fetch
 ) {
   return {
-    fetchState: () => fetchHarthmereJobsBoardStateV1(fetchImpl),
+    fetchState: () => fetchHarthmereJobsBoardState(fetchImpl),
     completeDailyTask: (activityId: string, requestId?: string) =>
-      submitHarthmereDailyTaskCompletedV1(activityId, { fetchImpl, requestId }),
+      submitHarthmereDailyTaskCompleted(activityId, { fetchImpl, requestId }),
     postJob: (payload: Record<string, unknown>, requestId?: string) =>
-      submitHarthmereJobsBoardMutationV1("create_job_posting", payload, {
+      submitHarthmereJobsBoardMutation("create_job_posting", payload, {
         fetchImpl,
         requestId,
       }),
     acceptJob: (
       jobId: string,
-      boardId: string = HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1,
+      boardId: string = HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID,
       requestId?: string
     ) =>
-      submitHarthmereJobsBoardMutationV1(
+      submitHarthmereJobsBoardMutation(
         "accept_job",
         { jobId, boardId },
         { fetchImpl, requestId, boardId }
       ),
     completeJob: (
       jobId: string,
-      boardId: string = HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1,
+      boardId: string = HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID,
       requestId?: string
     ) =>
-      submitHarthmereJobsBoardMutationV1(
+      submitHarthmereJobsBoardMutation(
         "complete_job",
         { jobId, boardId },
         { fetchImpl, requestId, boardId }
@@ -882,7 +882,7 @@ export function createHarthmereJobsBoardAdapterV1(
     // required items). Use before completeJob when the todo is not yet done.
     completeJobQuest: (
       jobId: string,
-      boardId: string = HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1,
+      boardId: string = HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID,
       evidence: {
         questTodoId?: string;
         completedTargetId?: string;
@@ -890,7 +890,7 @@ export function createHarthmereJobsBoardAdapterV1(
       } = {},
       requestId?: string
     ) =>
-      submitHarthmereJobsBoardMutationV1(
+      submitHarthmereJobsBoardMutation(
         "complete_job_quest",
         { jobId, boardId, ...evidence },
         { fetchImpl, requestId, boardId }
@@ -900,21 +900,21 @@ export function createHarthmereJobsBoardAdapterV1(
     // completed. Throws (without paying) if verification is rejected.
     completeJobFully: async (
       jobId: string,
-      boardId: string = HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1,
+      boardId: string = HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID,
       options: {
         todoStatus?: string;
         questTodoId?: string;
         completedTargetId?: string;
         completionItemDeltas?: Record<string, number>;
-        // HARTHMERE_REPAIR_TOOL_COMPLETION_V151: the tool action the player used
+        // HARTHMERE_REPAIR_TOOL_COMPLETION: the tool action the player used
         // to do the work (e.g. "repair"), set only when the matching tool was
         // equipped. The server rejects completion of a tool-gated requirement
         // unless this matches.
         usedToolAction?: string;
       } = {}
     ) => {
-      const steps = planHarthmereJobsBoardCompletionStepsV1(options.todoStatus);
-      let snapshot: HarthmereJobsBoardSnapshotV1 | undefined;
+      const steps = planHarthmereJobsBoardCompletionSteps(options.todoStatus);
+      let snapshot: HarthmereJobsBoardSnapshot | undefined;
       for (const step of steps) {
         const payload: Record<string, unknown> = { jobId, boardId };
         if (step === "complete_job_quest") {
@@ -929,13 +929,13 @@ export function createHarthmereJobsBoardAdapterV1(
             payload.usedToolAction = options.usedToolAction;
           }
         }
-        snapshot = await submitHarthmereJobsBoardMutationV1(step, payload, {
+        snapshot = await submitHarthmereJobsBoardMutation(step, payload, {
           fetchImpl,
           boardId,
         });
       }
       if (!snapshot) {
-        // planHarthmereJobsBoardCompletionStepsV1 always returns >=1 step, so
+        // planHarthmereJobsBoardCompletionSteps always returns >=1 step, so
         // this is unreachable; it narrows the type and guards future changes.
         throw new Error("jobs_board_no_completion_step");
       }
@@ -943,10 +943,10 @@ export function createHarthmereJobsBoardAdapterV1(
     },
     cancelJob: (
       jobId: string,
-      boardId: string = HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1,
+      boardId: string = HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID,
       requestId?: string
     ) =>
-      submitHarthmereJobsBoardMutationV1(
+      submitHarthmereJobsBoardMutation(
         "cancel_job",
         { jobId, boardId },
         { fetchImpl, requestId, boardId }

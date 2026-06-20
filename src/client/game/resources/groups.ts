@@ -420,7 +420,7 @@ export async function groupMesh(
       const mesh = await placeableMesh(deps, placeable.id);
       const [newMaterials, _oldMaterials] = cloneMaterials(mesh);
       materials.push(...newMaterials);
-      const pos = sub(placeable.position, groupData.box.v0);
+      const pos = sub(placeable.position, groupData.box);
       mesh.position.fromArray(pos);
       mesh.rotation.y = Math.PI / 2 + placeable.orientation[1];
       ret.add(mesh);
@@ -531,7 +531,7 @@ function genGroupBoxesMesh(deps: ClientResourceDeps, groupId: BiomesId) {
   }
 
   const geometry = new THREE.BufferGeometry();
-  const vertices = boxEdgeVertices(box.v0, box.v1);
+  const vertices = boxEdgeVertices(box, box);
   geometry.setAttribute(
     "position",
     new THREE.BufferAttribute(new Float32Array(vertices), 3)
@@ -557,7 +557,7 @@ function highlightMesh(
   return using(new voxeloo.SparseMap_U32(), (map) => {
     groupData.tensor.scan((pos, val) => {
       if (!isEmptyGroupEntry(val)) {
-        const worldPos = add(pos, groupData.box.v0);
+        const worldPos = add(pos, groupData.box);
         map.set(...worldPos, 1);
       }
     });
@@ -662,7 +662,7 @@ async function genGroupDestructionMesh(
   ret.add(blockMesh);
   ret.add(glassMesh);
   ret.add(floraMesh);
-  ret.position.set(...groupData.box.v0);
+  ret.position.set(...groupData.box);
 
   return makeDisposable<GroupMesh>(
     {

@@ -19,7 +19,7 @@ The landing page at `http://localhost:3000/` is not the game runtime.
 Find the actual runtime URL:
 
 ```bash
-node scripts/harthmere/find-harthmere-live-runtime-url-v1.cjs \
+node scripts/harthmere/find-harthmere-live-runtime-url.cjs \
   /Users/devindixon/Development/biomes-game
 ```
 
@@ -62,7 +62,7 @@ Use this to test the dungeon staging directly.
 
 ```bash
 HARTHMERE_E2E_URL="http://localhost:3000/at/Joe" \
-node scripts/harthmere/test-harthmere-live-browser-regression-suite-v1.cjs \
+node scripts/harthmere/test-harthmere-live-browser-regression-suite.cjs \
   /Users/devindixon/Development/biomes-game
 ```
 

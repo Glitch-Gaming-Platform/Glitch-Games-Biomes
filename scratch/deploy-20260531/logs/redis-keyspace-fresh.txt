@@ -1,4 +1,0 @@
-# Keyspace
-db0:keys=335287,expires=12,avg_ttl=69425900
-db3:keys=1724,expires=0,avg_ttl=0
-db4:keys=9,expires=0,avg_ttl=0

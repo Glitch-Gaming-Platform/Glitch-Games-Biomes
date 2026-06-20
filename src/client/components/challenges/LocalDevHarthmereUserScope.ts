@@ -1,10 +1,10 @@
 import type { BiomesId } from "@/shared/ids";
 
 const HARTHMERE_ACTIVE_USER_SCOPE_KEY =
-  "biomes.localDev.harthmere.activeUserScope.v1";
+  "biomes.localDev.harthmere.activeUserScope";
 const HARTHMERE_ANONYMOUS_SCOPE = "anonymous";
 const HARTHMERE_ANONYMOUS_SESSION_SCOPE_KEY =
-  "biomes.localDev.harthmere.anonymousSessionScope.v1";
+  "biomes.localDev.harthmere.anonymousSessionScope";
 
 function isBrowser() {
   return (

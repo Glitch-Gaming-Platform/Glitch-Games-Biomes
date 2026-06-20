@@ -1,14 +1,14 @@
 import {
-  azureSpeechConfigFromEnvV1,
-  listAzureSpeechVoicesV1,
-  synthesizeAzureSpeechV1,
-  transcribeAzureSpeechV1,
+  azureSpeechConfigFromEnv,
+  listAzureSpeechVoices,
+  synthesizeAzureSpeech,
+  transcribeAzureSpeech,
 } from "@/server/shared/azure_speech";
 import assert from "assert";
 
 const ORIGINAL_FETCH = globalThis.fetch;
 
-function mockFetchV1(
+function mockFetch(
   handler: (url: string, init?: RequestInit) => Promise<Response> | Response
 ) {
   (globalThis as any).fetch = (
@@ -23,15 +23,15 @@ describe("Azure Speech helpers", () => {
   });
 
   it("treats Azure Speech env vars as optional", () => {
-    assert.equal(azureSpeechConfigFromEnvV1({}), undefined);
+    assert.equal(azureSpeechConfigFromEnv({}), undefined);
     assert.equal(
-      azureSpeechConfigFromEnvV1({
+      azureSpeechConfigFromEnv({
         AZURE_SPEECH_KEY: "key",
       }),
       undefined
     );
     assert.deepEqual(
-      azureSpeechConfigFromEnvV1({
+      azureSpeechConfigFromEnv({
         AZURE_SPEECH_KEY: "key",
         AZURE_SPEECH_REGION: "eastus2",
       }),
@@ -41,7 +41,7 @@ describe("Azure Speech helpers", () => {
       }
     );
     assert.deepEqual(
-      azureSpeechConfigFromEnvV1({
+      azureSpeechConfigFromEnv({
         AZURE_AI_SPEECH_KEY: "key",
         AZURE_AI_SPEECH_REGION: "westus",
       }),
@@ -54,13 +54,13 @@ describe("Azure Speech helpers", () => {
 
   it("does not call Azure when synthesis config, text, or voice is missing", async () => {
     let called = false;
-    mockFetchV1(() => {
+    mockFetch(() => {
       called = true;
       return new Response();
     });
 
     assert.equal(
-      await synthesizeAzureSpeechV1({
+      await synthesizeAzureSpeech({
         text: "",
         voice: "en-US-AvaNeural",
         config: { key: "key", region: "eastus2" },
@@ -68,7 +68,7 @@ describe("Azure Speech helpers", () => {
       undefined
     );
     assert.equal(
-      await synthesizeAzureSpeechV1({
+      await synthesizeAzureSpeech({
         text: "Hello",
         voice: "not-an-azure-voice",
         config: { key: "key", region: "eastus2" },
@@ -81,7 +81,7 @@ describe("Azure Speech helpers", () => {
   it("posts escaped SSML to the Azure text-to-speech endpoint", async () => {
     let capturedUrl = "";
     let capturedInit: RequestInit | undefined;
-    mockFetchV1((url, init) => {
+    mockFetch((url, init) => {
       capturedUrl = url;
       capturedInit = init;
       return new Response(Buffer.from("mp3-bytes"), {
@@ -90,7 +90,7 @@ describe("Azure Speech helpers", () => {
       });
     });
 
-    const result = await synthesizeAzureSpeechV1({
+    const result = await synthesizeAzureSpeech({
       text: 'Hello friend & "traveler".',
       voice: "en-US-AvaNeural",
       language: "en-US",
@@ -119,7 +119,7 @@ describe("Azure Speech helpers", () => {
 
   it("posts expressive Azure SSML when the voice id carries a speaking style", async () => {
     let capturedBody = "";
-    mockFetchV1((_url, init) => {
+    mockFetch((_url, init) => {
       capturedBody = String(init?.body ?? "");
       return new Response(Buffer.from("mp3-bytes"), {
         status: 200,
@@ -127,10 +127,10 @@ describe("Azure Speech helpers", () => {
       });
     });
 
-    await synthesizeAzureSpeechV1({
+    await synthesizeAzureSpeech({
       text: "Keep your voice low. The board has fresh work.",
       voice:
-        "azure-speech-v1|voice=en-US-LunaNeural|style=conversation|styleDegree=0.95|rate=-3%25|pitch=%2B1%25|volume=default|break=150|actor=test",
+        "azure-speech|voice=en-US-LunaNeural|style=conversation|styleDegree=0.95|rate=-3%25|pitch=%2B1%25|volume=default|break=150|actor=test",
       language: "en-US",
       config: { key: "speech-key", region: "eastus2" },
     });
@@ -145,11 +145,11 @@ describe("Azure Speech helpers", () => {
   });
 
   it("throws with Azure text when text-to-speech fails", async () => {
-    mockFetchV1(() => new Response("bad voice", { status: 400 }));
+    mockFetch(() => new Response("bad voice", { status: 400 }));
 
     await assert.rejects(
       () =>
-        synthesizeAzureSpeechV1({
+        synthesizeAzureSpeech({
           text: "Hello",
           voice: "en-US-AvaNeural",
           config: { key: "key", region: "eastus2" },
@@ -160,13 +160,13 @@ describe("Azure Speech helpers", () => {
 
   it("does not call Azure for empty transcription audio", async () => {
     let called = false;
-    mockFetchV1(() => {
+    mockFetch(() => {
       called = true;
       return new Response();
     });
 
     assert.equal(
-      await transcribeAzureSpeechV1({
+      await transcribeAzureSpeech({
         audio: Buffer.alloc(0),
         mimeType: "audio/wav",
         config: { key: "key", region: "eastus2" },
@@ -178,14 +178,14 @@ describe("Azure Speech helpers", () => {
 
   it("rejects non-WAV speech input before calling Azure", async () => {
     let called = false;
-    mockFetchV1(() => {
+    mockFetch(() => {
       called = true;
       return new Response();
     });
 
     await assert.rejects(
       () =>
-        transcribeAzureSpeechV1({
+        transcribeAzureSpeech({
           audio: Buffer.from("not-wav"),
           mimeType: "audio/webm",
           config: { key: "key", region: "eastus2" },
@@ -198,7 +198,7 @@ describe("Azure Speech helpers", () => {
   it("posts WAV audio to Azure speech-to-text with the requested language", async () => {
     let capturedUrl = "";
     let capturedInit: RequestInit | undefined;
-    mockFetchV1((url, init) => {
+    mockFetch((url, init) => {
       capturedUrl = url;
       capturedInit = init;
       return Response.json({
@@ -207,7 +207,7 @@ describe("Azure Speech helpers", () => {
       });
     });
 
-    const text = await transcribeAzureSpeechV1({
+    const text = await transcribeAzureSpeech({
       audio: Buffer.from("wav"),
       mimeType: "audio/wav",
       language: "fr-FR",
@@ -229,7 +229,7 @@ describe("Azure Speech helpers", () => {
   });
 
   it("returns an empty transcript for recognized non-success statuses", async () => {
-    mockFetchV1(() =>
+    mockFetch(() =>
       Response.json({
         RecognitionStatus: "NoMatch",
         DisplayText: "ignored",
@@ -237,7 +237,7 @@ describe("Azure Speech helpers", () => {
     );
 
     assert.equal(
-      await transcribeAzureSpeechV1({
+      await transcribeAzureSpeech({
         audio: Buffer.from("wav"),
         mimeType: "audio/wav",
         config: { key: "key", region: "eastus2" },
@@ -247,11 +247,11 @@ describe("Azure Speech helpers", () => {
   });
 
   it("throws with Azure text when speech-to-text fails", async () => {
-    mockFetchV1(() => new Response("bad audio", { status: 415 }));
+    mockFetch(() => new Response("bad audio", { status: 415 }));
 
     await assert.rejects(
       () =>
-        transcribeAzureSpeechV1({
+        transcribeAzureSpeech({
           audio: Buffer.from("wav"),
           mimeType: "audio/wav",
           config: { key: "key", region: "eastus2" },
@@ -261,7 +261,7 @@ describe("Azure Speech helpers", () => {
   });
 
   it("lists Azure voices and surfaces list failures", async () => {
-    mockFetchV1((url, init) => {
+    mockFetch((url, init) => {
       assert.equal(
         url,
         "https://eastus2.tts.speech.microsoft.com/cognitiveservices/voices/list"
@@ -281,7 +281,7 @@ describe("Azure Speech helpers", () => {
     });
 
     assert.deepEqual(
-      await listAzureSpeechVoicesV1({
+      await listAzureSpeechVoices({
         config: { key: "speech-key", region: "eastus2" },
       }),
       [
@@ -294,10 +294,10 @@ describe("Azure Speech helpers", () => {
       ]
     );
 
-    mockFetchV1(() => new Response("no quota", { status: 429 }));
+    mockFetch(() => new Response("no quota", { status: 429 }));
     await assert.rejects(
       () =>
-        listAzureSpeechVoicesV1({
+        listAzureSpeechVoices({
           config: { key: "speech-key", region: "eastus2" },
         }),
       /Azure Speech voices list failed: 429 no quota/

@@ -1,8 +1,8 @@
 import type { BiomesId } from "@/shared/ids";
 import { z } from "zod";
 
-export const HARTHMERE_NPC_THREAT_TABLE_VERSION_V37 =
-  "harthmere-npc-threat-table-v37";
+export const HARTHMERE_NPC_THREAT_TABLE_VERSION =
+  "harthmere-npc-threat-table";
 
 export const zThreatTableComponent = z.object({
   threat: z

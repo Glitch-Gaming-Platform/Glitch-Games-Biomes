@@ -149,7 +149,7 @@ export class GroupsRenderer implements Renderer {
       if (!mesh) {
         continue;
       }
-      mesh.three.position.set(...mesh.box.v0);
+      mesh.three.position.set(...mesh.box);
       addToScenes(scenes, mesh.three);
     }
   }

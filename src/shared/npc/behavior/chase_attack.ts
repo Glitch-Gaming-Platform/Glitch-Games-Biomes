@@ -314,7 +314,7 @@ export function chaseAttackTargetTick(
     // We haven't started an attack, but we can attack, so attack.
     const attackTime = now;
     npc.mutableState().chaseAttack!.attackTime = attackTime;
-    // HARTHMERE_NPC_ATTACK_ANIM_PULSE_V2_INSTALL_MARKER
+    // HARTHMERE_NPC_ATTACK_ANIM_PULSE_INSTALL_MARKER
     // Re-pulse the emote window so the renderer's Attack clip
     // (fileAnimationName: "Attack") triggers visibly each strike.
     const __animPulseEmote = {
@@ -476,13 +476,13 @@ export function getNearestPlayer(
   return nearest;
 }
 
-// HARTHMERE_NPC_RETALIATION_MEMORY_V1:
+// HARTHMERE_NPC_RETALIATION_MEMORY:
 // How long an NPC remembers it was attacked and is willing to retaliate. Once
 // they actually enter a chase attack they will continue it until they lose
 // their target by distance/death/peace.
 export const ATTACK_MEMORY_SECONDS = 30;
 
-// HARTHMERE_NPC_RETALIATION_SAFE_ZONE_V1:
+// HARTHMERE_NPC_RETALIATION_SAFE_ZONE:
 // Returns the entity id of the last attacker if the NPC was hit by a player
 // recently enough to retaliate, AND that attacker is still close enough to
 // chase. This is shared logic between the proximity and onlyIfAttacked aggro
@@ -640,7 +640,7 @@ export function updateAttackTarget(
   const usesNightMuckerHexAggro = isMuckerOrHexerNpcForNightAggro(npc);
   const isNight = isNightForNpcAggro(secondsSinceEpoch());
 
-  // HARTHMERE_NPC_RETALIATION_SAFE_ZONE_V1:
+  // HARTHMERE_NPC_RETALIATION_SAFE_ZONE:
   // Independent of the aggro trigger kind, if the NPC was just attacked by a
   // player it must be allowed to retaliate. Previously, hostile NPCs that used
   // proximity-based aggro became completely non-responsive when they happened
@@ -671,7 +671,7 @@ export function updateAttackTarget(
     targetId = recentAttackerId ?? targetId;
   } else {
     if (recentAttackerId) {
-      // HARTHMERE_NPC_RETALIATION_PROXIMITY_PRIORITY_V1:
+      // HARTHMERE_NPC_RETALIATION_PROXIMITY_PRIORITY:
       // A specific attacker outranks a generic proximity scan — players who
       // commit to a fight should not get ignored in favor of a stranger
       // wandering into aggro range.

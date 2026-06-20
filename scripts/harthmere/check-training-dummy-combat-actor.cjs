@@ -13,11 +13,11 @@ function check(label, condition) {
   if (!condition) ok = false;
 }
 
-check("training dummy marker exists", text.includes("harthmere-training-dummy-combat-actor-v1"));
+check("training dummy marker exists", text.includes("harthmere-training-dummy-combat-actor"));
 check("training dummy label exists", text.includes('"Guard Yard Training Dummy"'));
 check("training dummy has combat offset 9001", /"Guard Yard Training Dummy"[\s\S]*?,\s*9001\s*\)/.test(text));
 check("uses animated townsperson_guard GLTF asset", text.includes('A("townsperson_guard"'));
-check("rebuilt combat effect handler still exists", text.includes("harthmere-rebuilt-combat-effect-handler-v1"));
+check("rebuilt combat effect handler still exists", text.includes("harthmere-rebuilt-combat-effect-handler"));
 check("physical effect route debug still exists", text.includes("renderer.combat_event.effect_route"));
 
 const duplicate9001 = [...text.matchAll(/,\s*9001\s*\)/g)].length;

@@ -1,4 +1,4 @@
-// HARTHMERE_COMBAT_AI_TESTS_V1:
+// HARTHMERE_COMBAT_AI_TESTS:
 // Self-contained combat-system test suite. Designed to run without the full
 // server bootstrap so we can verify the AI retaliation, threat-table, and
 // projectile/swing collateral logic in isolation.

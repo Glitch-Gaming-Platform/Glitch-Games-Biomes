@@ -1,9 +1,9 @@
 // OptionsTab — avatar editor, graphics, audio, controls (incl. tab shortcut
 // remapping), accessibility.
 import {
-  type BiomesHUDVisibilityIdV1,
-  useBiomesHUDVisibilitySnapshotV1,
-  useBiomesHUDVisibilitySettingV1,
+  type BiomesHUDVisibilityId,
+  useBiomesHUDVisibilitySnapshot,
+  useBiomesHUDVisibilitySetting,
 } from "@/client/components/biomes_ui/hudVisibilitySettings";
 import { useTypedStorageItem } from "@/client/util/typed_local_storage";
 import dynamic from "next/dynamic";
@@ -11,10 +11,10 @@ import * as React from "react";
 import { DEFAULT_TAB_SHORTCUTS } from "../shortcuts/BiomesShortcuts";
 import type { TabShortcut } from "../shortcuts/BiomesShortcuts";
 import {
-  biomesUIMicrophoneOptionsFromDevicesV1,
-  biomesUISelectedMicrophoneDeviceIdV1,
+  biomesUIMicrophoneOptionsFromDevices,
+  biomesUISelectedMicrophoneDeviceId,
 } from "./microphoneDeviceSettings";
-import type { BiomesUIMicrophoneDeviceOptionV1 } from "./microphoneDeviceSettings";
+import type { BiomesUIMicrophoneDeviceOption } from "./microphoneDeviceSettings";
 import { OptionsControlsSurfaceForTest } from "./OptionsControlsSurface";
 
 interface OptionsAdapter {
@@ -76,22 +76,22 @@ export const OptionsTab: React.FunctionComponent<{
     ""
   );
   const [microphoneDevices, setMicrophoneDevices] = React.useState<
-    BiomesUIMicrophoneDeviceOptionV1[]
-  >(() => biomesUIMicrophoneOptionsFromDevicesV1([]));
+    BiomesUIMicrophoneDeviceOption[]
+  >(() => biomesUIMicrophoneOptionsFromDevices([]));
   const [microphoneRefreshState, setMicrophoneRefreshState] = React.useState<
     "idle" | "loading" | "unavailable"
   >("idle");
-  const hudVisibility = useBiomesHUDVisibilitySnapshotV1();
+  const hudVisibility = useBiomesHUDVisibilitySnapshot();
   const [, setObjectivesVisible] =
-    useBiomesHUDVisibilitySettingV1("objectives");
-  const [, setMiniMapVisible] = useBiomesHUDVisibilitySettingV1("miniMap");
+    useBiomesHUDVisibilitySetting("objectives");
+  const [, setMiniMapVisible] = useBiomesHUDVisibilitySetting("miniMap");
   const [, setHelpButtonsVisible] =
-    useBiomesHUDVisibilitySettingV1("helpButtons");
-  const [, setHotbarVisible] = useBiomesHUDVisibilitySettingV1("hotbar");
-  const [, setVitalsVisible] = useBiomesHUDVisibilitySettingV1("vitals");
-  const [, setActionBarVisible] = useBiomesHUDVisibilitySettingV1("actionBar");
+    useBiomesHUDVisibilitySetting("helpButtons");
+  const [, setHotbarVisible] = useBiomesHUDVisibilitySetting("hotbar");
+  const [, setVitalsVisible] = useBiomesHUDVisibilitySetting("vitals");
+  const [, setActionBarVisible] = useBiomesHUDVisibilitySetting("actionBar");
   const setHudVisibility = React.useCallback(
-    (id: BiomesHUDVisibilityIdV1, visible: boolean) => {
+    (id: BiomesHUDVisibilityId, visible: boolean) => {
       switch (id) {
         case "objectives":
           setObjectivesVisible(visible);
@@ -147,7 +147,7 @@ export const OptionsTab: React.FunctionComponent<{
         typeof navigator !== "undefined" ? navigator.mediaDevices : undefined;
       if (!mediaDevices?.enumerateDevices) {
         setMicrophoneRefreshState("unavailable");
-        setMicrophoneDevices(biomesUIMicrophoneOptionsFromDevicesV1([]));
+        setMicrophoneDevices(biomesUIMicrophoneOptionsFromDevices([]));
         return;
       }
 
@@ -158,11 +158,11 @@ export const OptionsTab: React.FunctionComponent<{
           stream = await mediaDevices.getUserMedia({ audio: true });
         }
         const devices = await mediaDevices.enumerateDevices();
-        setMicrophoneDevices(biomesUIMicrophoneOptionsFromDevicesV1(devices));
+        setMicrophoneDevices(biomesUIMicrophoneOptionsFromDevices(devices));
         setMicrophoneRefreshState("idle");
       } catch {
         setMicrophoneRefreshState("unavailable");
-        setMicrophoneDevices(biomesUIMicrophoneOptionsFromDevicesV1([]));
+        setMicrophoneDevices(biomesUIMicrophoneOptionsFromDevices([]));
       } finally {
         stream?.getTracks().forEach((track) => track.stop());
       }
@@ -193,7 +193,7 @@ export const OptionsTab: React.FunctionComponent<{
         microphoneInputEnabled={microphoneInputEnabled}
         onMicrophoneInputEnabledChange={setMicrophoneInputEnabled}
         microphoneDevices={microphoneDevices}
-        selectedMicrophoneDeviceId={biomesUISelectedMicrophoneDeviceIdV1({
+        selectedMicrophoneDeviceId={biomesUISelectedMicrophoneDeviceId({
           selectedDeviceId: microphoneDeviceId,
           options: microphoneDevices,
         })}

@@ -7,7 +7,7 @@ import { HfcWorldApi } from "@/server/shared/world/hfc/hfc";
 import { HybridWorldApi } from "@/server/shared/world/hfc/hybrid";
 import { RedisWorld } from "@/server/shared/world/redis";
 import { ShimWorldApi } from "@/server/shared/world/shim/api";
-// GLITCH_WORLD_API_TCP_PREPROBE_V2: needed for the shim-mode TCP pre-probe below.
+// GLITCH_WORLD_API_TCP_PREPROBE: needed for the shim-mode TCP pre-probe below.
 import { HostPort } from "@/server/shared/ports";
 import { log } from "@/shared/logging";
 import { RegistryLoader } from "@/shared/registry";
@@ -32,13 +32,13 @@ export function registerWorldApi<
   );
   return async (loader) => {
     console.log(
-      "GLITCH_STARTUP_TRACE_V2 registerWorldApi:enter pid=" + process.pid
+      "GLITCH_STARTUP_TRACE registerWorldApi:enter pid=" + process.pid
     );
     const config = await loader.get("config");
     console.log(
-      `GLITCH_STARTUP_TRACE_V2 registerWorldApi:got-config mode=${config.worldApiMode}`
+      `GLITCH_STARTUP_TRACE registerWorldApi:got-config mode=${config.worldApiMode}`
     );
-    // GLITCH_WORLD_API_TCP_PREPROBE_V2:
+    // GLITCH_WORLD_API_TCP_PREPROBE:
     // For shim mode, the gRPC client to 127.0.0.1:<shim rpc port> can be
     // constructed BEFORE shim's RPC port is open (oob/sync/logic frequently
     // start ~250-450ms before shim binds). In that window the gRPC channel
@@ -86,7 +86,7 @@ export function registerWorldApi<
         }
       }
       console.log(
-        "GLITCH_STARTUP_TRACE_V2 registerWorldApi:shim-tcp-preprobe" +
+        "GLITCH_STARTUP_TRACE registerWorldApi:shim-tcp-preprobe" +
           ` host=${target.host} port=${target.rpcPort}` +
           ` ready=${tcpReady} elapsedMs=${Date.now() - tcpProbeStart}`
       );
@@ -96,7 +96,7 @@ export function registerWorldApi<
         ? new RedisWorld(await connectToRedisWithLua("ecs"))
         : new ShimWorldApi();
     console.log(
-      `GLITCH_STARTUP_TRACE_V2 registerWorldApi:client-constructed kind=${client.constructor.name}`
+      `GLITCH_STARTUP_TRACE registerWorldApi:client-constructed kind=${client.constructor.name}`
     );
     if (config.worldApiMode === "hfc-hybrid") {
       client = new HybridWorldApi(
@@ -104,11 +104,11 @@ export function registerWorldApi<
         new HfcWorldApi(await connectToRedis("ecs-hfc"))
       );
       console.log(
-        "GLITCH_STARTUP_TRACE_V2 registerWorldApi:wrapped-as-hfc-hybrid"
+        "GLITCH_STARTUP_TRACE registerWorldApi:wrapped-as-hfc-hybrid"
       );
     }
     if (!CONFIG.disableGame) {
-      // GLITCH_WORLD_API_WAIT_HEALTHY_FIX_V1:
+      // GLITCH_WORLD_API_WAIT_HEALTHY_FIX:
       // In shim mode the worldApi client is local to the same container, so
       // it should come up within seconds — but `waitForHealthy(Infinity)`
       // blocks the registry build, and the call site here is reached from
@@ -124,18 +124,18 @@ export function registerWorldApi<
       const waitTimeoutMs =
         config.worldApiMode === "shim" ? 60_000 : Infinity;
       console.log(
-        "GLITCH_STARTUP_TRACE_V2 registerWorldApi:before-waitForHealthy" +
+        "GLITCH_STARTUP_TRACE registerWorldApi:before-waitForHealthy" +
           ` mode=${config.worldApiMode} timeoutMs=${waitTimeoutMs}`
       );
       const waitStart = Date.now();
       const healthy = await client.waitForHealthy(waitTimeoutMs, signal);
       console.log(
-        "GLITCH_STARTUP_TRACE_V2 registerWorldApi:after-waitForHealthy" +
+        "GLITCH_STARTUP_TRACE registerWorldApi:after-waitForHealthy" +
           ` healthy=${healthy} elapsedMs=${Date.now() - waitStart}`
       );
       if (!healthy) {
         log.warn("World is not healthy on startup");
-        // GLITCH_WORLD_API_WAIT_HEALTHY_FIX_V1: only fail-fast in production
+        // GLITCH_WORLD_API_WAIT_HEALTHY_FIX: only fail-fast in production
         // when not using shim mode. Shim mode is expected to be best-effort
         // co-located; the gRPC client will keep trying in background.
         if (
@@ -147,7 +147,7 @@ export function registerWorldApi<
         }
       }
     }
-    console.log("GLITCH_STARTUP_TRACE_V2 registerWorldApi:done");
+    console.log("GLITCH_STARTUP_TRACE registerWorldApi:done");
     return client;
   };
 }

@@ -17,9 +17,9 @@ import {
 export const HARTHMERE_NPC_AI_SYSTEM_VERSION = 1;
 
 export const HARTHMERE_NPC_AI_LOCAL_STORAGE_KEYS = {
-  memory: "biomes.localDev.harthmere.npcAi.memory.v1",
-  decisionLog: "biomes.localDev.harthmere.npcAi.decisionLog.v1",
-  debug: "biomes.localDev.harthmere.npcAi.debug.v1",
+  memory: "biomes.localDev.harthmere.npcAi.memory",
+  decisionLog: "biomes.localDev.harthmere.npcAi.decisionLog",
+  debug: "biomes.localDev.harthmere.npcAi.debug",
 } as const;
 
 export type HarthmereThirdPartyAiProvider = "recast-navigation" | "yuka" | "behavior3js" | "custom_fallback";

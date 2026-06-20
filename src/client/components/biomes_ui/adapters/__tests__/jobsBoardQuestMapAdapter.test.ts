@@ -1,36 +1,36 @@
 /// <reference types="mocha" />
 import assert from "assert";
 import {
-  jobsBoardAcceptedJobLandmarksForBiomesUIV1,
-  jobsBoardToolSourceLandmarksForBiomesUIV1,
-  jobsBoardTrackableQuestsForBiomesUIV1,
-  activeJobsBoardMissionStepsForBiomesUIV1,
-  firstActiveJobsBoardLandmarkForBiomesUIV1,
-  shouldClearStaleJobsBoardPinV151,
-  BIOMES_UI_JOBS_BOARD_TOOL_SOURCE_MARKER_SOURCE_V1,
+  jobsBoardAcceptedJobLandmarksForBiomesUI,
+  jobsBoardToolSourceLandmarksForBiomesUI,
+  jobsBoardTrackableQuestsForBiomesUI,
+  activeJobsBoardMissionStepsForBiomesUI,
+  firstActiveJobsBoardLandmarkForBiomesUI,
+  shouldClearStaleJobsBoardPin,
+  BIOMES_UI_JOBS_BOARD_TOOL_SOURCE_MARKER_SOURCE,
 } from "../jobsBoardQuestMapAdapter";
-import { harthmereJobsBoardQuestMarkerPositionForIdV1 } from "@/shared/harthmere/jobs_board_quest_marker_positions_v1";
-import { HARTHMERE_TOOL_SOURCES_V151 } from "@/shared/harthmere/harthmere_job_objective_v151";
+import { harthmereJobsBoardQuestMarkerPositionForId } from "@/shared/harthmere/jobs_board_quest_marker_positions";
+import { HARTHMERE_TOOL_SOURCES } from "@/shared/harthmere/harthmere_job_objective";
 import {
-  HARTHMERE_JOBS_BOARD_ELITE_MUCKER_BOUNTY_MARKER_ID_V1,
-  HARTHMERE_JOBS_BOARD_ELITE_MUCKER_BOUNTY_TARGET_ID_V1,
-} from "@/shared/harthmere/jobs_board_muck_bounty_targets_v1";
-import { muckMonsterAreaForPositionV1 } from "@/shared/harthmere/muck_monster_aggression_ai_v1";
+  HARTHMERE_JOBS_BOARD_ELITE_MUCKER_BOUNTY_MARKER_ID,
+  HARTHMERE_JOBS_BOARD_ELITE_MUCKER_BOUNTY_TARGET_ID,
+} from "@/shared/harthmere/jobs_board_muck_bounty_targets";
+import { muckMonsterAreaForPosition } from "@/shared/harthmere/muck_monster_aggression_ai";
 import {
-  HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1,
-  HARTHMERE_JOBS_BOARD_INTERACTION_RADIUS_V145,
+  HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID,
+  HARTHMERE_JOBS_BOARD_INTERACTION_RADIUS,
 } from "@/client/components/harthmere_jobs_board/jobsBoardLiveAdapter";
 
 const NOW_MS = 1_700_500_000_000;
 
 function acceptedJobsBoardSnapshot() {
   return {
-    version: "harthmere-jobs-board-authority-v1",
+    version: "harthmere-jobs-board-authority",
     actorId: "player_jobs_map_001",
-    defaultBoardId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1,
+    defaultBoardId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID,
     boards: {
-      [HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1]: {
-        boardId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1,
+      [HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID]: {
+        boardId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID,
         displayName: "Jobs Board",
         townId: "harthmere_grove",
         regionId: "harthmere_grove_region",
@@ -39,7 +39,7 @@ function acceptedJobsBoardSnapshot() {
           x: 501.99486179104775,
           y: 70,
           z: -132.00350672753194,
-          radius: HARTHMERE_JOBS_BOARD_INTERACTION_RADIUS_V145,
+          radius: HARTHMERE_JOBS_BOARD_INTERACTION_RADIUS,
           district: "The Grove",
           landmarkId: "harthmere_market_posting_board",
         },
@@ -53,7 +53,7 @@ function acceptedJobsBoardSnapshot() {
     myAcceptedJobs: [
       {
         jobId: "job_muck_hunt",
-        boardId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1,
+        boardId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID,
         issuerKind: "town",
         issuerId: "harthmere_grove",
         title: "Clear the Muckwad Patch",
@@ -61,9 +61,9 @@ function acceptedJobsBoardSnapshot() {
         kind: "hunt",
         requirements: [
           {
-            targetId: HARTHMERE_JOBS_BOARD_ELITE_MUCKER_BOUNTY_TARGET_ID_V1,
+            targetId: HARTHMERE_JOBS_BOARD_ELITE_MUCKER_BOUNTY_TARGET_ID,
             targetName: "Elite Mucker",
-            mapMarkerId: HARTHMERE_JOBS_BOARD_ELITE_MUCKER_BOUNTY_MARKER_ID_V1,
+            mapMarkerId: HARTHMERE_JOBS_BOARD_ELITE_MUCKER_BOUNTY_MARKER_ID,
           },
         ],
         rewardGold: 1200,
@@ -75,8 +75,8 @@ function acceptedJobsBoardSnapshot() {
         deadlineAtMs: NOW_MS + 86_400_000,
         acceptedByActorId: "player_jobs_map_001",
         requiresFieldWork: true,
-        mapMarkerId: HARTHMERE_JOBS_BOARD_ELITE_MUCKER_BOUNTY_MARKER_ID_V1,
-        targetId: HARTHMERE_JOBS_BOARD_ELITE_MUCKER_BOUNTY_TARGET_ID_V1,
+        mapMarkerId: HARTHMERE_JOBS_BOARD_ELITE_MUCKER_BOUNTY_MARKER_ID,
+        targetId: HARTHMERE_JOBS_BOARD_ELITE_MUCKER_BOUNTY_TARGET_ID,
         abuseFlags: [],
         logs: [],
       },
@@ -86,13 +86,13 @@ function acceptedJobsBoardSnapshot() {
         todoId: "harthmere_job_todo_7",
         jobId: "job_muck_hunt",
         actorId: "player_jobs_map_001",
-        boardId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1,
+        boardId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID,
         title: "Clear the Muckwad Patch",
         todoText: "Go to the marked location and complete: Clear the Muckwad Patch",
         status: "active",
         kind: "hunt",
-        mapMarkerId: HARTHMERE_JOBS_BOARD_ELITE_MUCKER_BOUNTY_MARKER_ID_V1,
-        targetId: HARTHMERE_JOBS_BOARD_ELITE_MUCKER_BOUNTY_TARGET_ID_V1,
+        mapMarkerId: HARTHMERE_JOBS_BOARD_ELITE_MUCKER_BOUNTY_MARKER_ID,
+        targetId: HARTHMERE_JOBS_BOARD_ELITE_MUCKER_BOUNTY_TARGET_ID,
         townId: "harthmere_grove",
         regionId: "harthmere_grove_region",
         createdAtMs: NOW_MS,
@@ -115,31 +115,31 @@ function acceptedJobsBoardSnapshot() {
 describe("BiomesUI jobs board quest map adapter", () => {
   it("turns accepted jobs board todos into active quest entries and target map markers", () => {
     const snapshot = acceptedJobsBoardSnapshot();
-    const target = harthmereJobsBoardQuestMarkerPositionForIdV1(
-      HARTHMERE_JOBS_BOARD_ELITE_MUCKER_BOUNTY_MARKER_ID_V1
+    const target = harthmereJobsBoardQuestMarkerPositionForId(
+      HARTHMERE_JOBS_BOARD_ELITE_MUCKER_BOUNTY_MARKER_ID
     );
     assert.ok(target, "fixture marker should resolve through the shared marker registry");
 
-    const landmarks = jobsBoardAcceptedJobLandmarksForBiomesUIV1(snapshot);
+    const landmarks = jobsBoardAcceptedJobLandmarksForBiomesUI(snapshot);
     assert.equal(landmarks.length, 1);
-    assert.deepEqual(firstActiveJobsBoardLandmarkForBiomesUIV1(snapshot), landmarks[0]);
+    assert.deepEqual(firstActiveJobsBoardLandmarkForBiomesUI(snapshot), landmarks[0]);
     assert.equal(landmarks[0].id, "jobs_board_marker:harthmere_job_todo_7");
     assert.equal(landmarks[0].kind, "objective");
     assert.equal(landmarks[0].active, true);
     assert.equal(
       landmarks[0].mapMarkerId,
-      HARTHMERE_JOBS_BOARD_ELITE_MUCKER_BOUNTY_MARKER_ID_V1
+      HARTHMERE_JOBS_BOARD_ELITE_MUCKER_BOUNTY_MARKER_ID
     );
     assert.deepEqual(landmarks[0].position, target!.position);
     assert.ok(
-      muckMonsterAreaForPositionV1(landmarks[0].position, 1.5),
+      muckMonsterAreaForPosition(landmarks[0].position, 1.5),
       "accepted bounty map marker must be inside authored Muck territory"
     );
 
     // Give the accepted todo a known accept-window deadline + a fixed nowMs so the
     // countdown label (jobs are timed) is deterministic.
     (snapshot.myTodos[0] as any).dueAtMs = 1000 + 2 * 60 * 60 * 1000; // 2h after now
-    const quests = jobsBoardTrackableQuestsForBiomesUIV1(snapshot, 1000);
+    const quests = jobsBoardTrackableQuestsForBiomesUI(snapshot, 1000);
     assert.deepEqual(quests, [
       {
         questId: "jobs_board:harthmere_job_todo_7",
@@ -162,7 +162,7 @@ describe("BiomesUI jobs board quest map adapter", () => {
       },
     ]);
 
-    const steps = activeJobsBoardMissionStepsForBiomesUIV1(snapshot);
+    const steps = activeJobsBoardMissionStepsForBiomesUI(snapshot);
     assert.equal(steps.length, 1);
     assert.equal(steps[0].id, "jobs_board:harthmere_job_todo_7");
     assert.equal(steps[0].done, false);
@@ -178,12 +178,12 @@ describe("BiomesUI jobs board quest map adapter", () => {
     ] as any;
 
     // No active todos -> no map markers (failed/completed/cancelled never show).
-    const landmarks = jobsBoardAcceptedJobLandmarksForBiomesUIV1(snapshot);
+    const landmarks = jobsBoardAcceptedJobLandmarksForBiomesUI(snapshot);
     assert.equal(landmarks.length, 0);
 
     // The tracker surfaces completed AND failed (so the player sees the outcome);
     // cancelled is dropped.
-    const quests = jobsBoardTrackableQuestsForBiomesUIV1(snapshot);
+    const quests = jobsBoardTrackableQuestsForBiomesUI(snapshot);
     assert.deepEqual(quests.map((quest) => [quest.questId, quest.status]), [
       ["jobs_board:completed_todo", "completed"],
       ["jobs_board:failed_todo", "failed"],
@@ -219,11 +219,11 @@ function repairJobSnapshot() {
 describe("BiomesUI jobs board tool-source guidance", () => {
   it("points a tool-requiring job at the vendor when the tool is NOT equipped", () => {
     const snapshot = repairJobSnapshot();
-    const vendorMarkerId = HARTHMERE_TOOL_SOURCES_V151.repair.vendorMarkerId;
-    const vendor = harthmereJobsBoardQuestMarkerPositionForIdV1(vendorMarkerId);
+    const vendorMarkerId = HARTHMERE_TOOL_SOURCES.repair.vendorMarkerId;
+    const vendor = harthmereJobsBoardQuestMarkerPositionForId(vendorMarkerId);
     assert.ok(vendor, "repair vendor must resolve through the shared registry");
 
-    const landmarks = jobsBoardToolSourceLandmarksForBiomesUIV1(snapshot, {
+    const landmarks = jobsBoardToolSourceLandmarksForBiomesUI(snapshot, {
       repairToolOwned: false,
       cleanupToolOwned: false,
     });
@@ -231,20 +231,20 @@ describe("BiomesUI jobs board tool-source guidance", () => {
     assert.equal(landmarks[0].id, "jobs_board_tool_source:repair_todo_1");
     assert.equal(
       landmarks[0].source,
-      BIOMES_UI_JOBS_BOARD_TOOL_SOURCE_MARKER_SOURCE_V1
+      BIOMES_UI_JOBS_BOARD_TOOL_SOURCE_MARKER_SOURCE
     );
     assert.equal(landmarks[0].mapMarkerId, vendorMarkerId);
     assert.deepEqual(landmarks[0].position, vendor!.position);
     assert.equal(landmarks[0].visibleOnWorldMap, true);
     assert.equal(landmarks[0].visibleOnHudMap, true);
     assert.ok(
-      landmarks[0].label.includes(HARTHMERE_TOOL_SOURCES_V151.repair.toolName)
+      landmarks[0].label.includes(HARTHMERE_TOOL_SOURCES.repair.toolName)
     );
   });
 
   it("shows NO tool-source pin once the player owns the tool", () => {
     const snapshot = repairJobSnapshot();
-    const landmarks = jobsBoardToolSourceLandmarksForBiomesUIV1(snapshot, {
+    const landmarks = jobsBoardToolSourceLandmarksForBiomesUI(snapshot, {
       repairToolOwned: true,
       cleanupToolOwned: true,
     });
@@ -254,12 +254,12 @@ describe("BiomesUI jobs board tool-source guidance", () => {
   it("shows NO tool-source pin when ownership is unknown (no false positives)", () => {
     const snapshot = repairJobSnapshot();
     // No options passed -> unknown equip state -> we must not nag the player.
-    assert.equal(jobsBoardToolSourceLandmarksForBiomesUIV1(snapshot).length, 0);
+    assert.equal(jobsBoardToolSourceLandmarksForBiomesUI(snapshot).length, 0);
   });
 
   it("never emits a tool-source pin for a job kind that needs no tool", () => {
     const snapshot = acceptedJobsBoardSnapshot(); // a hunt
-    const landmarks = jobsBoardToolSourceLandmarksForBiomesUIV1(snapshot, {
+    const landmarks = jobsBoardToolSourceLandmarksForBiomesUI(snapshot, {
       repairToolOwned: false,
       cleanupToolOwned: false,
     });
@@ -268,7 +268,7 @@ describe("BiomesUI jobs board tool-source guidance", () => {
 
   it("attaches a tool-source detail to the trackable quest when the tool is missing", () => {
     const snapshot = repairJobSnapshot();
-    const [quest] = jobsBoardTrackableQuestsForBiomesUIV1(snapshot, 1000, {
+    const [quest] = jobsBoardTrackableQuestsForBiomesUI(snapshot, 1000, {
       repairToolOwned: false,
       cleanupToolOwned: false,
     });
@@ -276,13 +276,13 @@ describe("BiomesUI jobs board tool-source guidance", () => {
     assert.equal(quest.toolSource!.action, "repair");
     assert.equal(
       quest.toolSource!.vendorMarkerId,
-      HARTHMERE_TOOL_SOURCES_V151.repair.vendorMarkerId
+      HARTHMERE_TOOL_SOURCES.repair.vendorMarkerId
     );
     assert.equal(quest.kind, "repair");
     assert.equal(quest.kindLabel, "Repair");
     assert.ok(quest.toolSource!.hint.length > 0);
 
-    const equipped = jobsBoardTrackableQuestsForBiomesUIV1(snapshot, 1000, {
+    const equipped = jobsBoardTrackableQuestsForBiomesUI(snapshot, 1000, {
       repairToolOwned: true,
       cleanupToolOwned: true,
     });
@@ -290,10 +290,10 @@ describe("BiomesUI jobs board tool-source guidance", () => {
   });
 });
 
-describe("shouldClearStaleJobsBoardPinV151", () => {
+describe("shouldClearStaleJobsBoardPin", () => {
   it("clears a jobs-board pin whose job is no longer active", () => {
     assert.equal(
-      shouldClearStaleJobsBoardPinV151({
+      shouldClearStaleJobsBoardPin({
         activePinMarkerId: "jobs_board_marker:done-todo",
         activeJobsBoardMarkerIds: ["jobs_board_marker:other-todo"],
       }),
@@ -303,7 +303,7 @@ describe("shouldClearStaleJobsBoardPinV151", () => {
 
   it("keeps a jobs-board pin that is still active", () => {
     assert.equal(
-      shouldClearStaleJobsBoardPinV151({
+      shouldClearStaleJobsBoardPin({
         activePinMarkerId: "jobs_board_marker:todo-1",
         activeJobsBoardMarkerIds: ["jobs_board_marker:todo-1"],
       }),
@@ -313,7 +313,7 @@ describe("shouldClearStaleJobsBoardPinV151", () => {
 
   it("never clears a non-jobs-board pin (e.g. a located vendor/property)", () => {
     assert.equal(
-      shouldClearStaleJobsBoardPinV151({
+      shouldClearStaleJobsBoardPin({
         activePinMarkerId: "vendor_marker:smith",
         activeJobsBoardMarkerIds: [],
       }),
@@ -323,7 +323,7 @@ describe("shouldClearStaleJobsBoardPinV151", () => {
 
   it("does nothing when there is no active pin", () => {
     assert.equal(
-      shouldClearStaleJobsBoardPinV151({
+      shouldClearStaleJobsBoardPin({
         activePinMarkerId: undefined,
         activeJobsBoardMarkerIds: [],
       }),

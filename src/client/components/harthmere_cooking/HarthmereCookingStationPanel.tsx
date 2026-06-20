@@ -1,4 +1,4 @@
-// HARTHMERE_COOKING_STATION_UI_V1: the timer-based cooking interface. Opens when
+// HARTHMERE_COOKING_STATION_UI: the timer-based cooking interface. Opens when
 // the player presses F at a campfire / oven / cookpot (see harthmereCookingStations
 // + the "cook" object interaction). Mirrors the BiomesUI / Business / Crafting
 // panels: biomes-ui-panel chrome, RovingGrid keyboard nav, mouse + keyboard, and
@@ -7,36 +7,36 @@
 
 import { usePointerLockManager } from "@/client/components/contexts/PointerLockContext";
 import {
-  closePointerLockUnlockWhileOpenV1,
-  openPointerLockUnlockWhileOpenV1,
-  type PointerLockUnlockWhileOpenReturnRefV1,
+  closePointerLockUnlockWhileOpen,
+  openPointerLockUnlockWhileOpen,
+  type PointerLockUnlockWhileOpenReturnRef,
 } from "@/client/components/contexts/pointerLockModalPolicy";
 import {
-  createHarthmereCookingAdapterV1,
-  type HarthmereCookJobClientV1,
-  type HarthmereCookSnapshotV1,
-  type HarthmereCookVisibleRecipeV1,
+  createHarthmereCookingAdapter,
+  type HarthmereCookJobClient,
+  type HarthmereCookSnapshot,
+  type HarthmereCookVisibleRecipe,
 } from "@/client/components/harthmere_cooking/cookingStationLiveAdapter";
 import {
-  clearHarthmereCookingStationOpenRequestV1,
-  HARTHMERE_COOKING_STATION_OPEN_EVENT_V1,
-  readHarthmereCookingStationOpenRequestV1,
-  type HarthmereCookingStationOpenRequestV1,
+  clearHarthmereCookingStationOpenRequest,
+  HARTHMERE_COOKING_STATION_OPEN_EVENT,
+  readHarthmereCookingStationOpenRequest,
+  type HarthmereCookingStationOpenRequest,
 } from "@/client/components/harthmere_cooking/harthmereCookingStations";
-import { defaultHarthmereLiveFetchV1 } from "@/client/components/harthmere_live_fetch";
+import { defaultHarthmereLiveFetch } from "@/client/components/harthmere_live_fetch";
 import { RovingGrid } from "@/client/components/biomes_ui/nav/RovingGrid";
 import { installBiomesUITheme } from "@/client/components/biomes_ui/theme/biomesUITheme";
 import * as React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
-const COOKING_OPEN_REQUEST_STORAGE_KEY_V1 =
-  "biomes.localDev.harthmere.cookingStationOpenRequest.v1";
-const COOKING_POLL_INTERVAL_MS_V1 = 1000;
+const COOKING_OPEN_REQUEST_STORAGE_KEY =
+  "biomes.localDev.harthmere.cookingStationOpenRequest";
+const COOKING_POLL_INTERVAL_MS = 1000;
 
-function toCookSnapshotV1(
+function toCookSnapshot(
   farmingFoodState: any
-): HarthmereCookSnapshotV1 | undefined {
+): HarthmereCookSnapshot | undefined {
   if (!farmingFoodState) {
     return undefined;
   }
@@ -54,10 +54,10 @@ function toCookSnapshotV1(
   };
 }
 
-async function fetchCookingStateV1(): Promise<
-  HarthmereCookSnapshotV1 | undefined
+async function fetchCookingState(): Promise<
+  HarthmereCookSnapshot | undefined
 > {
-  const response = await defaultHarthmereLiveFetchV1(
+  const response = await defaultHarthmereLiveFetch(
     "/api/harthmere/live_mode_farming_food_state",
     { method: "GET", credentials: "same-origin" }
   );
@@ -65,10 +65,10 @@ async function fetchCookingStateV1(): Promise<
     return undefined;
   }
   const body = await response.json();
-  return toCookSnapshotV1(body?.farmingFoodState);
+  return toCookSnapshot(body?.farmingFoodState);
 }
 
-async function submitCookingActionV1(
+async function submitCookingAction(
   operation: "cook_enqueue" | "cook_collect" | "cook_cancel",
   payload: Record<string, unknown>
 ): Promise<{
@@ -79,7 +79,7 @@ async function submitCookingActionV1(
   const requestId = `biomes_ui_cooking_${operation}_${Date.now()}_${Math.random()
     .toString(36)
     .slice(2)}`;
-  const response = await defaultHarthmereLiveFetchV1(
+  const response = await defaultHarthmereLiveFetch(
     "/api/harthmere/live_mode",
     {
       method: "POST",
@@ -132,7 +132,7 @@ const sectionTitleStyle: React.CSSProperties = {
 function StatusBadge({
   status,
 }: {
-  status: HarthmereCookJobClientV1["status"];
+  status: HarthmereCookJobClient["status"];
 }) {
   const label =
     status === "ready" ? "Ready" : status === "cooking" ? "Cooking" : "Queued";
@@ -149,7 +149,7 @@ function StatusBadge({
   );
 }
 
-function stationKindLabelV1(stationKind: string): string {
+function stationKindLabel(stationKind: string): string {
   return stationKind
     .replace(/[_-]+/g, " ")
     .replace(/\s+/g, " ")
@@ -157,7 +157,7 @@ function stationKindLabelV1(stationKind: string): string {
     .replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
-function formatCookingSecondsV1(ms: number): string {
+function formatCookingSeconds(ms: number): string {
   const seconds = Math.max(0, Math.ceil(ms / 1000));
   if (seconds < 60) {
     return `${seconds}s`;
@@ -167,12 +167,12 @@ function formatCookingSecondsV1(ms: number): string {
   return rest ? `${minutes}m ${rest}s` : `${minutes}m`;
 }
 
-function pluralizeV1(count: number, singular: string, plural = `${singular}s`) {
+function pluralize(count: number, singular: string, plural = `${singular}s`) {
   return `${count} ${count === 1 ? singular : plural}`;
 }
 
-function recipeIngredientPreviewV1(
-  recipe: HarthmereCookVisibleRecipeV1
+function recipeIngredientPreview(
+  recipe: HarthmereCookVisibleRecipe
 ): string {
   const names = recipe.ingredients.map((line) => line.name).filter(Boolean);
   if (names.length === 0) {
@@ -182,20 +182,20 @@ function recipeIngredientPreviewV1(
   return names.length > 2 ? `${first} +${names.length - 2}` : first;
 }
 
-function recipeAvailabilityLabelV1(
-  recipe: HarthmereCookVisibleRecipeV1
+function recipeAvailabilityLabel(
+  recipe: HarthmereCookVisibleRecipe
 ): string {
   if (recipe.canCook) {
     return "Ready";
   }
-  return `Missing ${pluralizeV1(recipe.missing.length, "ingredient")}`;
+  return `Missing ${pluralize(recipe.missing.length, "ingredient")}`;
 }
 
-export interface HarthmereCookingStationSurfacePropsV1 {
-  request: Pick<HarthmereCookingStationOpenRequestV1, "label" | "stationKind">;
-  recipes: HarthmereCookVisibleRecipeV1[];
-  jobs: HarthmereCookJobClientV1[];
-  detail?: HarthmereCookVisibleRecipeV1;
+export interface HarthmereCookingStationSurfaceProps {
+  request: Pick<HarthmereCookingStationOpenRequest, "label" | "stationKind">;
+  recipes: HarthmereCookVisibleRecipe[];
+  jobs: HarthmereCookJobClient[];
+  detail?: HarthmereCookVisibleRecipe;
   selectedRecipeId?: string;
   count: number;
   maxCookable: number;
@@ -214,7 +214,7 @@ export interface HarthmereCookingStationSurfacePropsV1 {
 }
 
 export const HarthmereCookingStationSurfaceForTest: React.FunctionComponent<
-  HarthmereCookingStationSurfacePropsV1
+  HarthmereCookingStationSurfaceProps
 > = ({
   request,
   recipes,
@@ -240,7 +240,7 @@ export const HarthmereCookingStationSurfaceForTest: React.FunctionComponent<
     role="dialog"
     aria-label={`${request.label ?? "Cooking"} cooking interface`}
     data-harthmere-cooking-interface="true"
-    data-harthmere-cooking-surface="refined-v2"
+    data-harthmere-cooking-surface="refined"
     data-pointer-lock-policy="unlock-while-open"
     data-mouse-policy="show-while-open"
     className="biomes-ui-panel"
@@ -266,11 +266,11 @@ export const HarthmereCookingStationSurfaceForTest: React.FunctionComponent<
         <h2 style={panelTitleStyle}>{request.label ?? "Cooking Station"}</h2>
         <div style={stationMetaStyle}>
           <span style={stationPillStyle}>
-            {stationKindLabelV1(request.stationKind)}
+            {stationKindLabel(request.stationKind)}
           </span>
-          <span>{pluralizeV1(recipes.length, "recipe")}</span>
+          <span>{pluralize(recipes.length, "recipe")}</span>
           <span>
-            {pluralizeV1(jobs.length, "queued dish", "queued dishes")}
+            {pluralize(jobs.length, "queued dish", "queued dishes")}
           </span>
         </div>
       </div>
@@ -305,7 +305,7 @@ export const HarthmereCookingStationSurfaceForTest: React.FunctionComponent<
               : "Loading recipes..."}
           </p>
         ) : (
-          <RovingGrid<HarthmereCookVisibleRecipeV1>
+          <RovingGrid<HarthmereCookVisibleRecipe>
             ariaLabel="Cooking recipes"
             items={recipes.map((recipe) => [recipe])}
             onActivate={(_row, _col, recipe) => {
@@ -334,15 +334,15 @@ export const HarthmereCookingStationSurfaceForTest: React.FunctionComponent<
                       {recipe.displayName}
                     </strong>
                     <span style={recipeStatusStyle(recipe.canCook)}>
-                      {recipeAvailabilityLabelV1(recipe)}
+                      {recipeAvailabilityLabel(recipe)}
                     </span>
                   </span>
                   <span style={recipeMetaStyle}>
                     Makes {recipe.outputCount} {recipe.outputName} ·{" "}
-                    {formatCookingSecondsV1(recipe.durationMs)}
+                    {formatCookingSeconds(recipe.durationMs)}
                   </span>
                   <span style={recipeMetaStyle}>
-                    {recipeIngredientPreviewV1(recipe)}
+                    {recipeIngredientPreview(recipe)}
                   </span>
                 </button>
               );
@@ -363,7 +363,7 @@ export const HarthmereCookingStationSurfaceForTest: React.FunctionComponent<
                   <h3 style={detailTitleStyle}>{detail.displayName}</h3>
                   <p style={detailSubtitleStyle}>
                     Makes {detail.outputCount} {detail.outputName} ·{" "}
-                    {formatCookingSecondsV1(detail.durationMs)}
+                    {formatCookingSeconds(detail.durationMs)}
                   </p>
                 </div>
               </div>
@@ -860,16 +860,16 @@ const jobFooterStyle: React.CSSProperties = {
 
 export const HarthmereCookingStationPanel: React.FunctionComponent = () => {
   const pointerLockManager = usePointerLockManager();
-  const shouldReturnPointerLock = useRef<PointerLockUnlockWhileOpenReturnRefV1>(
+  const shouldReturnPointerLock = useRef<PointerLockUnlockWhileOpenReturnRef>(
     {
       current: false,
     }
   );
 
   const [request, setRequest] = useState<
-    HarthmereCookingStationOpenRequestV1 | undefined
+    HarthmereCookingStationOpenRequest | undefined
   >(undefined);
-  const [snapshot, setSnapshot] = useState<HarthmereCookSnapshotV1 | undefined>(
+  const [snapshot, setSnapshot] = useState<HarthmereCookSnapshot | undefined>(
     undefined
   );
   const [hydrated, setHydrated] = useState(false);
@@ -890,8 +890,8 @@ export const HarthmereCookingStationPanel: React.FunctionComponent = () => {
     if (typeof window === "undefined") {
       return;
     }
-    const openRequest = (detail?: HarthmereCookingStationOpenRequestV1) => {
-      const pending = detail ?? readHarthmereCookingStationOpenRequestV1();
+    const openRequest = (detail?: HarthmereCookingStationOpenRequest) => {
+      const pending = detail ?? readHarthmereCookingStationOpenRequest();
       if (!pending) {
         return;
       }
@@ -902,19 +902,19 @@ export const HarthmereCookingStationPanel: React.FunctionComponent = () => {
     };
     const handler = (event: Event) =>
       openRequest(
-        (event as CustomEvent<HarthmereCookingStationOpenRequestV1>).detail
+        (event as CustomEvent<HarthmereCookingStationOpenRequest>).detail
       );
     const storageHandler = (event: StorageEvent) => {
-      if (event.key === COOKING_OPEN_REQUEST_STORAGE_KEY_V1) {
+      if (event.key === COOKING_OPEN_REQUEST_STORAGE_KEY) {
         openRequest();
       }
     };
     openRequest();
-    window.addEventListener(HARTHMERE_COOKING_STATION_OPEN_EVENT_V1, handler);
+    window.addEventListener(HARTHMERE_COOKING_STATION_OPEN_EVENT, handler);
     window.addEventListener("storage", storageHandler);
     return () => {
       window.removeEventListener(
-        HARTHMERE_COOKING_STATION_OPEN_EVENT_V1,
+        HARTHMERE_COOKING_STATION_OPEN_EVENT,
         handler
       );
       window.removeEventListener("storage", storageHandler);
@@ -926,12 +926,12 @@ export const HarthmereCookingStationPanel: React.FunctionComponent = () => {
     if (!request) {
       return;
     }
-    openPointerLockUnlockWhileOpenV1(
+    openPointerLockUnlockWhileOpen(
       pointerLockManager,
       shouldReturnPointerLock.current
     );
     return () => {
-      closePointerLockUnlockWhileOpenV1(
+      closePointerLockUnlockWhileOpen(
         pointerLockManager,
         shouldReturnPointerLock.current
       );
@@ -940,7 +940,7 @@ export const HarthmereCookingStationPanel: React.FunctionComponent = () => {
 
   const refresh = useCallback(async () => {
     try {
-      const next = await fetchCookingStateV1();
+      const next = await fetchCookingState();
       setSnapshot(next);
     } catch {
       setSnapshot(undefined);
@@ -957,13 +957,13 @@ export const HarthmereCookingStationPanel: React.FunctionComponent = () => {
     void refresh();
     const interval = setInterval(
       () => void refresh(),
-      COOKING_POLL_INTERVAL_MS_V1
+      COOKING_POLL_INTERVAL_MS
     );
     return () => clearInterval(interval);
   }, [request, refresh]);
 
   const closePanel = useCallback(() => {
-    clearHarthmereCookingStationOpenRequestV1();
+    clearHarthmereCookingStationOpenRequest();
     setRequest(undefined);
     setError(undefined);
   }, []);
@@ -986,16 +986,16 @@ export const HarthmereCookingStationPanel: React.FunctionComponent = () => {
   const adapter = useMemo(
     () =>
       request
-        ? createHarthmereCookingAdapterV1({
+        ? createHarthmereCookingAdapter({
             snapshot,
             hydrated,
             stationId: request.stationId,
             stationKind: request.stationKind,
             label: request.label,
             submit: async (operation, payload) => {
-              const result = await submitCookingActionV1(operation, payload);
+              const result = await submitCookingAction(operation, payload);
               if (result.farmingFoodState) {
-                setSnapshot(toCookSnapshotV1(result.farmingFoodState));
+                setSnapshot(toCookSnapshot(result.farmingFoodState));
               }
               return { ok: result.ok, warnings: result.warnings };
             },

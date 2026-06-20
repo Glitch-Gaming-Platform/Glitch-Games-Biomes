@@ -1,9 +1,9 @@
-// HARTHMERE_TOWN_ROUTE_GRAPH_V1
+// HARTHMERE_TOWN_ROUTE_GRAPH
 // Static route graph contract. Runtime route following can consume these anchors later;
 // tests use this file to ensure town NPC movement is not hand-waved.
-export const HARTHMERE_TOWN_ROUTE_GRAPH_VERSION_V1 = "harthmere-town-route-graph-v1";
+export const HARTHMERE_TOWN_ROUTE_GRAPH_VERSION = "harthmere-town-route-graph";
 
-export const HARTHMERE_TOWN_ROUTE_DISTRICTS_V1 = [
+export const HARTHMERE_TOWN_ROUTE_DISTRICTS = [
   "north_gate",
   "market_square",
   "player_services",
@@ -17,7 +17,7 @@ export const HARTHMERE_TOWN_ROUTE_DISTRICTS_V1 = [
   "mudden_ward",
 ] as const;
 
-export const HARTHMERE_TOWN_ROLE_ROUTES_V1 = {
+export const HARTHMERE_TOWN_ROLE_ROUTES = {
   guardPatrolRoute: "guard patrol route loop covers north_gate guard_yard noble_rise market_square",
   marketRoute: "market route loop covers market_square player_services copper_kettle",
   clergyRoute: "clergy route loop covers temple_green old_well_underways",
@@ -25,20 +25,19 @@ export const HARTHMERE_TOWN_ROLE_ROUTES_V1 = {
   muddenRoute: "mudden route loop covers mudden_ward old_well_underways market_square",
 } as const;
 
-export const HARTHMERE_TOWN_ROUTE_SAFETY_V1 = {
+export const HARTHMERE_TOWN_ROUTE_SAFETY = {
   fallback: "fallback safeAnchor unstuck nearest valid anchor if an invalid route is found",
   validation: "validate route graph by collision blocker obstacle sweep navmesh avoid checks before enabling patrol loops",
 } as const;
 
 
-// HARTHMERE_TOWN_ROUTE_GRAPH_V48
+// HARTHMERE_TOWN_ROUTE_ANCHORS
 // Concrete patrol/service route anchors used by the local-dev renderer to keep
 // NPCs dispersed instead of stacked in one crowd blob.
-export const HARTHMERE_TOWN_ROUTE_GRAPH_VERSION_V48 = "harthmere-town-route-graph-npc-dispersal-v48";
-export const HARTHMERE_TOWN_ROUTE_GRAPH_NAVIGATION_VERSION_V150 = "harthmere-town-route-graph-road-safe-v150";
+export const HARTHMERE_TOWN_ROUTE_GRAPH_NAVIGATION_VERSION = "harthmere-town-route-graph-road-safe";
 
-export const HARTHMERE_TOWN_ROUTE_ANCHORS_V48 = {
-  // V150 road-safe patrol/service loops. Runtime tests sweep these against
+export const HARTHMERE_TOWN_ROUTE_ANCHORS = {
+  // current road-safe patrol/service loops. Runtime tests sweep these against
   // hard blockers before deploy so NPCs do not cut through buildings/walls.
   north_gate: [[486, -282], [486, -252], [486, -222], [486, -207], [486, -222], [486, -252]],
   guard_yard: [[486, -207], [490, -225], [500, -242], [500, -255], [509, -255], [500, -255], [500, -242], [490, -225]],
@@ -53,7 +52,7 @@ export const HARTHMERE_TOWN_ROUTE_ANCHORS_V48 = {
   residential: [[486, -282], [486, -252], [486, -222], [486, -207]],
 } as const;
 
-export const HARTHMERE_TOWN_NPC_DENSITY_LIMITS_V48 = {
+export const HARTHMERE_TOWN_NPC_DENSITY_LIMITS = {
   maxActorsWithin12m: 7,
   maxActorsWithin20m: 16,
   maxActorsWithin30m: 20,
@@ -61,12 +60,12 @@ export const HARTHMERE_TOWN_NPC_DENSITY_LIMITS_V48 = {
 } as const;
 
 
-// HARTHMERE_CONNECTED_MAP_ROUTE_ANCHORS_V66
+// HARTHMERE_CONNECTED_MAP_ROUTE_ANCHORS
 // Authored anchors are shifted by the runtime/server extra-town offset. With the
 // default +512 x offset this becomes a real road from snapshot edge x=640 to
 // Harthmere west gate x=904.
-export const HARTHMERE_CONNECTED_MAP_ROUTE_ANCHORS_V66 = {
-  version: "harthmere-connected-map-route-anchors-v66",
+export const HARTHMERE_CONNECTED_MAP_ROUTE_ANCHORS = {
+  version: "harthmere-connected-map-route-anchors",
   authoredSnapshotEdgeRoad: [[128, -209], [192, -209], [280, -209], [392, -209]],
   shiftedDefaultSnapshotEdgeRoad: [[640, -209], [704, -209], [792, -209], [904, -209]],
   safetyGradient: ["snapshot_edge_sign", "lamp_and_banner_lane", "traveler_shrine", "offroad_bandit_scout", "west_gate_lamp"],

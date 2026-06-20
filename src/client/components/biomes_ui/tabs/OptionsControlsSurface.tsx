@@ -1,16 +1,16 @@
 import {
-  BIOMES_HUD_VISIBILITY_OPTIONS_V1,
-  type BiomesHUDVisibilityIdV1,
-  type BiomesHUDVisibilitySnapshotV1,
+  BIOMES_HUD_VISIBILITY_OPTIONS,
+  type BiomesHUDVisibilityId,
+  type BiomesHUDVisibilitySnapshot,
 } from "@/client/components/biomes_ui/hudVisibilitySettings";
 import type { GraphicsQuality } from "@/client/util/typed_local_storage";
 import * as React from "react";
 import type { TabShortcut } from "../shortcuts/BiomesShortcuts";
 import {
-  BIOMES_UI_DEFAULT_MICROPHONE_DEVICE_ID_V1,
-  biomesUIMicrophoneOptionsFromDevicesV1,
-  biomesUISelectedMicrophoneDeviceIdV1,
-  type BiomesUIMicrophoneDeviceOptionV1,
+  BIOMES_UI_DEFAULT_MICROPHONE_DEVICE_ID,
+  biomesUIMicrophoneOptionsFromDevices,
+  biomesUISelectedMicrophoneDeviceId,
+  type BiomesUIMicrophoneDeviceOption,
 } from "./microphoneDeviceSettings";
 
 const GRAPHICS_QUALITY_OPTIONS: readonly {
@@ -24,7 +24,7 @@ const GRAPHICS_QUALITY_OPTIONS: readonly {
   { value: "safeMode", label: "Safe Mode" },
 ];
 
-interface OptionsControlsSurfacePropsV1 {
+interface OptionsControlsSurfaceProps {
   showPerformanceHUD: boolean;
   onShowPerformanceHUDChange?: (next: boolean) => void;
   graphicsQuality: GraphicsQuality;
@@ -39,14 +39,14 @@ interface OptionsControlsSurfacePropsV1 {
   onNpcSpeechEnabledChange?: (next: boolean) => void;
   microphoneInputEnabled?: boolean;
   onMicrophoneInputEnabledChange?: (next: boolean) => void;
-  microphoneDevices?: readonly BiomesUIMicrophoneDeviceOptionV1[];
+  microphoneDevices?: readonly BiomesUIMicrophoneDeviceOption[];
   selectedMicrophoneDeviceId?: string;
   microphoneRefreshState?: "idle" | "loading" | "unavailable";
   onMicrophoneDeviceChange?: (deviceId: string) => void;
   onRefreshMicrophoneDevices?: () => void;
-  hudVisibility: BiomesHUDVisibilitySnapshotV1;
+  hudVisibility: BiomesHUDVisibilitySnapshot;
   onHudVisibilityChange?: (
-    id: BiomesHUDVisibilityIdV1,
+    id: BiomesHUDVisibilityId,
     visible: boolean
   ) => void;
   shortcuts: TabShortcut[];
@@ -55,7 +55,7 @@ interface OptionsControlsSurfacePropsV1 {
 }
 
 export const OptionsControlsSurfaceForTest: React.FunctionComponent<
-  OptionsControlsSurfacePropsV1
+  OptionsControlsSurfaceProps
 > = ({
   showPerformanceHUD,
   onShowPerformanceHUDChange,
@@ -71,8 +71,8 @@ export const OptionsControlsSurfaceForTest: React.FunctionComponent<
   onNpcSpeechEnabledChange,
   microphoneInputEnabled = true,
   onMicrophoneInputEnabledChange,
-  microphoneDevices = biomesUIMicrophoneOptionsFromDevicesV1([]),
-  selectedMicrophoneDeviceId = BIOMES_UI_DEFAULT_MICROPHONE_DEVICE_ID_V1,
+  microphoneDevices = biomesUIMicrophoneOptionsFromDevices([]),
+  selectedMicrophoneDeviceId = BIOMES_UI_DEFAULT_MICROPHONE_DEVICE_ID,
   microphoneRefreshState = "idle",
   onMicrophoneDeviceChange,
   onRefreshMicrophoneDevices,
@@ -82,7 +82,7 @@ export const OptionsControlsSurfaceForTest: React.FunctionComponent<
   recordingFor = null,
   onStartRecordingShortcut,
 }) => {
-  const selectedMicrophoneValue = biomesUISelectedMicrophoneDeviceIdV1({
+  const selectedMicrophoneValue = biomesUISelectedMicrophoneDeviceId({
     selectedDeviceId: selectedMicrophoneDeviceId,
     options: microphoneDevices,
   });
@@ -201,7 +201,7 @@ export const OptionsControlsSurfaceForTest: React.FunctionComponent<
       <section aria-label="HUD visibility settings">
         <h3 style={titleStyle}>HUD</h3>
         <div style={{ display: "grid", gap: 2 }}>
-          {BIOMES_HUD_VISIBILITY_OPTIONS_V1.map((option) => (
+          {BIOMES_HUD_VISIBILITY_OPTIONS.map((option) => (
             <Row key={option.id} label={option.label}>
               <input
                 type="checkbox"

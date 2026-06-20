@@ -461,7 +461,7 @@ export class ShimLeaderboard implements LeaderboardApi {
 }
 
 export class ShimWorldApi extends WorldApi {
-  // GLITCH_SHIM_WORLD_API_SELF_HEAL_V2:
+  // GLITCH_SHIM_WORLD_API_SELF_HEAL:
   // `client` is no longer `readonly`. When `healthy()` fails (e.g. shim's
   // RPC port wasn't yet open at the time this client was constructed and
   // the channel is now stuck in TRANSIENT_FAILURE), we close it and rebuild
@@ -500,7 +500,7 @@ export class ShimWorldApi extends WorldApi {
   }
 
   async healthy(): Promise<boolean> {
-    // GLITCH_SHIM_WORLD_API_SELF_HEAL_V2:
+    // GLITCH_SHIM_WORLD_API_SELF_HEAL:
     // Race the underlying ping against a hard 2s deadline. `client.ping()`
     // can block far longer than that when the gRPC channel is in
     // TRANSIENT_FAILURE backoff (15-30s+). If the deadline expires, close

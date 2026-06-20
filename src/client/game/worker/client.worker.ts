@@ -38,7 +38,7 @@ export class ClientWorkerImpl implements ClientWorkerService {
             isomorpisms.cpp,
             occlusions.cpp,
             shapeIndex,
-            request.v0
+            request
           );
         }
       ),

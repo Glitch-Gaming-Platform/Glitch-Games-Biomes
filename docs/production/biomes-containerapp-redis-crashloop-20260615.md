@@ -82,7 +82,7 @@ Run the live private Redis guardrail check with:
 
 ```bash
 HARTHMERE_SKIP_WORLD_SYNC_RECONCILIATION=1 \
-scripts/glitch/deploy-production-local-redis-smoke-v1.sh --redis-health-check-only
+scripts/glitch/deploy-production-local-redis-smoke.sh --redis-health-check-only
 ```
 
 ## Rules Going Forward
@@ -95,7 +95,7 @@ scripts/glitch/deploy-production-local-redis-smoke-v1.sh --redis-health-check-on
 
 ```bash
 PROD_REDIS_RECONCILE_HOST=10.0.0.12 \
-scripts/glitch/deploy-production-local-redis-smoke-v1.sh --push
+scripts/glitch/deploy-production-local-redis-smoke.sh --push
 ```
 
 - If an emergency app-only deploy or Redis restore skipped world reconciliation,
@@ -104,17 +104,17 @@ scripts/glitch/deploy-production-local-redis-smoke-v1.sh --push
   from the VM:
 
 ```bash
-# Repeat for every id from HARTHMERE_BUSINESS_OUTPOSTS_V1. Production deploys
+# Repeat for every id from HARTHMERE_BUSINESS_OUTPOSTS. Production deploys
 # do this automatically; this manual shape is for emergency repair only.
 az containerapp exec \
   --resource-group openai-resource-group \
   --name biomes-node-vnet \
-  --command "env APPLY=1 IS_SERVER=1 REDIS_HOST=10.0.0.12 GLITCH_REDIS_HOST=10.0.0.12 LOCAL_REDIS_HOST=10.0.0.12 REDIS_PORT=6379 GLITCH_REDIS_PORT=6379 SCAN_COUNT=5000 APPLY_SHARD_BATCH_SIZE=2 OUTPOST_ID=outpost_clinic_greenlamp node scripts/harthmere/materialize-business-outposts-redis-v1.cjs"
+  --command "env APPLY=1 IS_SERVER=1 REDIS_HOST=10.0.0.12 GLITCH_REDIS_HOST=10.0.0.12 LOCAL_REDIS_HOST=10.0.0.12 REDIS_PORT=6379 GLITCH_REDIS_PORT=6379 SCAN_COUNT=5000 APPLY_SHARD_BATCH_SIZE=2 OUTPOST_ID=outpost_clinic_greenlamp node scripts/harthmere/materialize-business-outposts-redis.cjs"
 
 az containerapp exec \
   --resource-group openai-resource-group \
   --name biomes-node-vnet \
-  --command "env APPLY=1 IS_SERVER=1 REDIS_HOST=10.0.0.12 GLITCH_REDIS_HOST=10.0.0.12 LOCAL_REDIS_HOST=10.0.0.12 REDIS_PORT=6379 GLITCH_REDIS_PORT=6379 node scripts/harthmere/reconcile-production-world-sync-v1.cjs"
+  --command "env APPLY=1 IS_SERVER=1 REDIS_HOST=10.0.0.12 GLITCH_REDIS_HOST=10.0.0.12 LOCAL_REDIS_HOST=10.0.0.12 REDIS_PORT=6379 GLITCH_REDIS_PORT=6379 node scripts/harthmere/reconcile-production-world-sync.cjs"
 
 az vm run-command invoke \
   --resource-group openai-resource-group \
@@ -127,5 +127,5 @@ az vm run-command invoke \
 
 ```bash
 HARTHMERE_SKIP_WORLD_SYNC_RECONCILIATION=1 \
-scripts/glitch/deploy-production-local-redis-smoke-v1.sh --push
+scripts/glitch/deploy-production-local-redis-smoke.sh --push
 ```

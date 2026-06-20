@@ -37,10 +37,10 @@ export const PannableMapAdminRobotMarkers: React.FunctionComponent<{}> =
 
     const SNAP_TO_GRID = 32;
     const worldMetadata = reactResources.get("/ecs/metadata");
-    const v0 = worldMetadata.aabb.v0.map(
+    const v0 = worldMetadata.aabb.map(
       (v) => Math.floor(v / SNAP_TO_GRID) * SNAP_TO_GRID
     );
-    const v1 = worldMetadata.aabb.v1.map(
+    const v1 = worldMetadata.aabb.map(
       (v) => Math.ceil(v / SNAP_TO_GRID) * SNAP_TO_GRID
     );
 

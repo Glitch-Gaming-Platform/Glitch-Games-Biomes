@@ -7,8 +7,8 @@
 //   3. Extended without touching the runtime — just add a row here when
 //      a new mission step lands.
 
-import { SNAPSHOT_GROVE_QUESTS_V75 } from "@/shared/harthmere/snapshot_grove_content_v75";
-import { snapshotGroveObjectiveCompletionFixtureV112 } from "@/shared/harthmere/snapshot_grove_trigger_contract_v112";
+import { SNAPSHOT_GROVE_QUESTS } from "@/shared/harthmere/snapshot_grove_content";
+import { snapshotGroveObjectiveCompletionFixture } from "@/shared/harthmere/snapshot_grove_trigger_contract";
 import { UI_IDS } from "../uniqueIds";
 
 export type StepTarget =
@@ -168,7 +168,7 @@ function authoredTutorialInventoryItemIdForStep(
   text: string,
 ): string | undefined {
   const quest = input.questId
-    ? SNAPSHOT_GROVE_QUESTS_V75.find((entry) => entry.id === input.questId)
+    ? SNAPSHOT_GROVE_QUESTS.find((entry) => entry.id === input.questId)
     : undefined;
   if (quest) {
     const explicitIndex = Number(input.objectiveIndex);
@@ -176,7 +176,7 @@ function authoredTutorialInventoryItemIdForStep(
       ? Math.max(0, Math.floor(explicitIndex))
       : quest.objectives.findIndex((objective) => objective === input.objective);
     if (objectiveIndex >= 0) {
-      const fixture = snapshotGroveObjectiveCompletionFixtureV112(
+      const fixture = snapshotGroveObjectiveCompletionFixture(
         quest,
         objectiveIndex,
       );

@@ -71,7 +71,7 @@ export class ClientLoader {
     private readonly userId: BiomesId,
     private onProgressUpdate: (progress?: LoadProgress) => void,
     private configOptions?: InitConfigOptions,
-    // HARTHMERE_CLIENT_CONTEXT_RENDER_UNBLOCK_V126
+    // HARTHMERE_CLIENT_CONTEXT_RENDER_UNBLOCK
     // The final loading stage waits for rendererController.renderedFrames, but
     // frames can only advance after Game mounts BiomesView and the canvas calls
     // rendererController.attach(canvas). Expose the context immediately after

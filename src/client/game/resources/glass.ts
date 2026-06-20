@@ -229,7 +229,7 @@ async function genGlassMesh(
         tensor.cpp,
         dye.cpp,
         shapeIndex,
-        shard.box.v0,
+        shard.box,
         isomorphismLoader,
         (shard) => glassLoader(shard)?.cpp,
         (shard) => dyeLoader(shard)?.cpp
@@ -247,7 +247,7 @@ async function genGlassMesh(
           isomorphisms,
           occlusions,
           shapeIndex,
-          shard.box.v0
+          shard.box
         );
       });
 
@@ -276,7 +276,7 @@ async function genGlassMesh(
       const lbuf = timeCode("glass:toBlockLightBuffer", () => {
         return voxeloo.toBlockLightingBuffer(
           tensor.cpp,
-          shard.box.v0,
+          shard.box,
           isomorphismLoader,
           (shard) => skyOcclusionLoader(shard)?.cpp,
           (shard) => irradianceLoader(shard)?.cpp

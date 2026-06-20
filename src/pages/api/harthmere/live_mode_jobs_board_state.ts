@@ -1,22 +1,22 @@
 import { connectToRedis } from "@/server/shared/redis/connection";
 import { biomesApiHandler } from "@/server/web/util/api_middleware";
 import {
-  createHarthmereLiveModeSharedWorldStateV1,
-  createHarthmereJobsBoardClientSnapshotFromBackendV1,
-  harthmereLiveModePlayerStateKeyV1,
-  harthmereLiveModeSharedWorldStateKeyV1,
-  mergeHarthmereLiveModeSharedWorldStateIntoBackendV1,
-  parseHarthmereLiveModeBackendStateV1,
-  parseHarthmereLiveModeSharedWorldStateV1,
-} from "@/shared/harthmere/live_mode_backend_v1";
+  createHarthmereLiveModeSharedWorldState,
+  createHarthmereJobsBoardClientSnapshotFromBackend,
+  harthmereLiveModePlayerStateKey,
+  harthmereLiveModeSharedWorldStateKey,
+  mergeHarthmereLiveModeSharedWorldStateIntoBackend,
+  parseHarthmereLiveModeBackendState,
+  parseHarthmereLiveModeSharedWorldState,
+} from "@/shared/harthmere/live_mode_backend";
 import {
-  HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1,
-  HARTHMERE_JOBS_BOARD_HARTHMERE_BOARD_ID_V141,
-  reduceHarthmereJobsBoardMutationV1,
-} from "@/shared/harthmere/mmo_jobs_board_authority_v1";
+  HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID,
+  HARTHMERE_JOBS_BOARD_HARTHMERE_BOARD_ID,
+  reduceHarthmereJobsBoardMutation,
+} from "@/shared/harthmere/mmo_jobs_board_authority";
 import { z } from "zod";
-import { readHarthmerePlayerAndSharedStateStringsV1 } from "@/server/harthmere/live_mode_state_read_helpers";
-import { resolveHarthmereLiveModeActorIdV1 } from "@/server/harthmere/live_mode_actor_resolution_v1";
+import { readHarthmerePlayerAndSharedStateStrings } from "@/server/harthmere/live_mode_state_read_helpers";
+import { resolveHarthmereLiveModeActorId } from "@/server/harthmere/live_mode_actor_resolution";
 
 const zJsonRecord = z.record(z.unknown());
 
@@ -26,15 +26,15 @@ export const zHarthmereLiveModeJobsBoardStateResponse = z.object({
 });
 
 const globalForHarthmereLiveModeJobsBoardState = globalThis as typeof globalThis & {
-  __harthmereLiveModeJobsBoardStateRedisV1?: ReturnType<typeof connectToRedis>;
+  __harthmereLiveModeJobsBoardStateRedis?: ReturnType<typeof connectToRedis>;
 };
 
-function liveModeJobsBoardStateRedisV1() {
-  return (globalForHarthmereLiveModeJobsBoardState.__harthmereLiveModeJobsBoardStateRedisV1 ??=
+function liveModeJobsBoardStateRedis() {
+  return (globalForHarthmereLiveModeJobsBoardState.__harthmereLiveModeJobsBoardStateRedis ??=
     connectToRedis("firehose"));
 }
 
-export async function readHarthmereLiveModeJobsBoardStateForActorV1(input: {
+export async function readHarthmereLiveModeJobsBoardStateForActor(input: {
   redis: {
     primary: {
       get: (key: string) => Promise<string | null>;
@@ -46,27 +46,27 @@ export async function readHarthmereLiveModeJobsBoardStateForActorV1(input: {
   nowMs: number;
   persistReadSideEffects?: boolean;
 }) {
-  const stateKey = harthmereLiveModePlayerStateKeyV1(input.actorId);
-  const sharedStateKey = harthmereLiveModeSharedWorldStateKeyV1();
+  const stateKey = harthmereLiveModePlayerStateKey(input.actorId);
+  const sharedStateKey = harthmereLiveModeSharedWorldStateKey();
   const { rawState, rawSharedState } =
-    await readHarthmerePlayerAndSharedStateStringsV1(
+    await readHarthmerePlayerAndSharedStateStrings(
       input.redis.primary,
       stateKey,
       sharedStateKey
     );
-  const state = parseHarthmereLiveModeBackendStateV1(rawState, input.actorId, input.nowMs);
-  mergeHarthmereLiveModeSharedWorldStateIntoBackendV1(
+  const state = parseHarthmereLiveModeBackendState(rawState, input.actorId, input.nowMs);
+  mergeHarthmereLiveModeSharedWorldStateIntoBackend(
     state,
-    parseHarthmereLiveModeSharedWorldStateV1(rawSharedState, input.nowMs),
+    parseHarthmereLiveModeSharedWorldState(rawSharedState, input.nowMs),
     input.nowMs
   );
   state.updatedAtMs = input.nowMs;
   let changed = false;
   for (const boardId of [
-    HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1,
-    HARTHMERE_JOBS_BOARD_HARTHMERE_BOARD_ID_V141,
+    HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID,
+    HARTHMERE_JOBS_BOARD_HARTHMERE_BOARD_ID,
   ]) {
-    const result = reduceHarthmereJobsBoardMutationV1(
+    const result = reduceHarthmereJobsBoardMutation(
       state.jobsBoard,
       {
         requestId: `jobs_board_read_seed:${boardId}:${input.nowMs}`,
@@ -92,10 +92,10 @@ export async function readHarthmereLiveModeJobsBoardStateForActorV1(input: {
   if (changed && input.persistReadSideEffects && input.redis.primary.set) {
     await input.redis.primary.set(
       sharedStateKey,
-      JSON.stringify(createHarthmereLiveModeSharedWorldStateV1(state, input.nowMs))
+      JSON.stringify(createHarthmereLiveModeSharedWorldState(state, input.nowMs))
     );
   }
-  return createHarthmereJobsBoardClientSnapshotFromBackendV1(state);
+  return createHarthmereJobsBoardClientSnapshotFromBackend(state);
 }
 
 export default biomesApiHandler(
@@ -105,8 +105,8 @@ export default biomesApiHandler(
     response: zHarthmereLiveModeJobsBoardStateResponse,
   },
   async ({ auth, unsafeRequest }) => {
-    const redis = await liveModeJobsBoardStateRedisV1();
-    const actorId = await resolveHarthmereLiveModeActorIdV1(
+    const redis = await liveModeJobsBoardStateRedis();
+    const actorId = await resolveHarthmereLiveModeActorId(
       redis,
       { auth, unsafeRequest },
       "anonymous:jobs-board-reader"
@@ -114,7 +114,7 @@ export default biomesApiHandler(
     const nowMs = Date.now();
     return {
       ok: true,
-      jobsBoardState: await readHarthmereLiveModeJobsBoardStateForActorV1({ redis, actorId, nowMs }),
+      jobsBoardState: await readHarthmereLiveModeJobsBoardStateForActor({ redis, actorId, nowMs }),
     };
   }
 );

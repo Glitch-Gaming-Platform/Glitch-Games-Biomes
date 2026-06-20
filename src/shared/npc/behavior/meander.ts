@@ -5,7 +5,7 @@ import { normalizeAngle } from "@/shared/math/angles";
 import { add, dist, lengthSq, normalizev, pitchAndYaw, sub, yaw } from "@/shared/math/linear";
 import type { ReadonlyVec3, Vec3 } from "@/shared/math/types";
 import { zVec3f } from "@/shared/math/types";
-import { harthmereClampMeanderDestinationToMuckAreaV1 } from "@/shared/harthmere/harthmere_muck_monster_containment_v1";
+import { harthmereClampMeanderDestinationToMuckArea } from "@/shared/harthmere/harthmere_muck_monster_containment";
 import { isSafeZone } from "@/shared/npc/behavior/common";
 import {
   AStarPathfinder,
@@ -41,7 +41,7 @@ function randomInRange(range: [number, number]) {
 // will return home.
 const RETURN_APPROX_ANGLE_RANGE = Math.PI / 2;
 
-// HARTHMERE_NPC_HOSTILE_IDLE_WANDER_V1:
+// HARTHMERE_NPC_HOSTILE_IDLE_WANDER:
 // Default wander envelope used when an NPC has no authored `meander` block. The
 // hostile-idle fallback in `npcTickLogic` makes Mucklings/Hexers wander around
 // their spawn even though their biscuit only declares chaseAttack.
@@ -98,10 +98,10 @@ export function meanderTick(
     shouldReturnHome
   ) {
     state.nextRotateSecs = newRotateTime();
-    // HARTHMERE_MUCK_MONSTER_CONTAINMENT_V1: keep muck monsters from wandering
+    // HARTHMERE_MUCK_MONSTER_CONTAINMENT: keep muck monsters from wandering
     // out of their muck area. This is a no-op for NPCs whose home is not inside
     // a muck zone (i.e. every town/villager NPC).
-    state.destination = harthmereClampMeanderDestinationToMuckAreaV1(
+    state.destination = harthmereClampMeanderDestinationToMuckArea(
       stayNearPoint,
       chooseMeanderDestination(
         npc.position,

@@ -145,7 +145,7 @@ async function genFloraMesh(
         growth.cpp,
         muck.cpp,
         index,
-        shard.box.v0
+        shard.box
       );
     });
 
@@ -156,7 +156,7 @@ async function genFloraMesh(
     const lightBuffer = timeCode("florae:toLightBuffer", () => {
       return voxeloo.toFloraLightingBuffer(
         tensor.cpp,
-        shard.box.v0,
+        shard.box,
         (shard) => isomorphismLoader(shard)?.cpp,
         (shard) => skyOcclusionLoader(shard)?.cpp,
         (shard) => irradianceLoader(shard)?.cpp

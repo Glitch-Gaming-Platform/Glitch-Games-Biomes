@@ -49,13 +49,13 @@ function localDevHumanNpcType(id: BiomesId): Item {
 }
 
 
-// SNAPSHOT_LEGACY_NPC_TYPE_COMPAT_V1:
+// SNAPSHOT_LEGACY_NPC_TYPE_COMPAT:
 // The imported 2026-05-16 snapshot contains NPC item records that are valid
 // enough to render/simulate, but some fail the newer Glitch NPC schema check.
 // Do not let client cursor/combat systems crash just because a legacy NPC type
 // is missing a newer optional schema field. Preserve the item when possible and
 // add safe defaults for the fields the current runtime expects.
-function isSnapshotLegacyNpcLikeItemV1(biscuit: Item | undefined): boolean {
+function isSnapshotLegacyNpcLikeItem(biscuit: Item | undefined): boolean {
   if (!biscuit) {
     return false;
   }
@@ -81,7 +81,7 @@ function isSnapshotLegacyNpcLikeItemV1(biscuit: Item | undefined): boolean {
   );
 }
 
-function snapshotLegacyNpcTypeV1(id: BiomesId, biscuit: Item): Item {
+function snapshotLegacyNpcType(id: BiomesId, biscuit: Item): Item {
   const fallback = localDevHumanNpcType(id) as unknown as Record<string, unknown>;
   const candidate = biscuit as unknown as Record<string, unknown>;
   const fallbackBehavior = (fallback.behavior ?? {}) as Record<string, unknown>;
@@ -108,7 +108,7 @@ function snapshotLegacyNpcTypeV1(id: BiomesId, biscuit: Item): Item {
         ? candidate.rotateSpeed
         : fallback.rotateSpeed,
     behavior: (() => {
-      // SNAPSHOT_LEGACY_NPC_BEHAVIOR_DEEP_MERGE_V3:
+      // SNAPSHOT_LEGACY_NPC_BEHAVIOR_DEEP_MERGE:
       // Shallow-merging behaviors is wrong for the `damageable` sub-object.
       // The human-NPC fallback has damageable: { maxHp: 20, attackable: false }
       // so that townspeople cannot be attacked. If a snapshot NPC type (e.g.
@@ -142,7 +142,7 @@ function snapshotLegacyNpcTypeV1(id: BiomesId, biscuit: Item): Item {
   } as unknown as Item;
 }
 
-function idToNpcTypeInternalV1(id: BiomesId, soft: boolean) {
+function idToNpcTypeInternal(id: BiomesId, soft: boolean) {
   if (isLocalDevHumanNpcTypeId(id)) {
     return localDevHumanNpcType(id);
   }
@@ -150,8 +150,8 @@ function idToNpcTypeInternalV1(id: BiomesId, soft: boolean) {
   if (bikkie.schema.npcs.types.check(biscuit)) {
     return biscuit;
   }
-  if (isSnapshotLegacyNpcLikeItemV1(biscuit)) {
-    return snapshotLegacyNpcTypeV1(id, biscuit);
+  if (isSnapshotLegacyNpcLikeItem(biscuit)) {
+    return snapshotLegacyNpcType(id, biscuit);
   }
   if (soft) {
     return undefined;
@@ -177,20 +177,20 @@ export function getRunSpeedByNpcType(npcType: NpcType): number {
 }
 
 export function isNpcTypeId(maybeId: BiomesId): maybeId is BiomesId {
-  return idToNpcTypeInternalV1(maybeId, true) !== undefined;
+  return idToNpcTypeInternal(maybeId, true) !== undefined;
 }
 
-// idToNpcTypeInternalV1(id, false) calls ok(...) which throws on missing/invalid
+// idToNpcTypeInternal(id, false) calls ok(...) which throws on missing/invalid
 // biscuit, so the soft=false path never actually returns undefined. Narrow the
 // type for TS so callers don't have to litter ! / ?. everywhere.
 export function idToNpcType(id: BiomesId): Item {
-  return idToNpcTypeInternalV1(id, false) as Item;
+  return idToNpcTypeInternal(id, false) as Item;
 }
 
 export type NpcType = ReturnType<typeof idToNpcType>;
 
 export function maybeIdToNpcType(id: BiomesId): NpcType | undefined {
-  return idToNpcTypeInternalV1(id, true) as NpcType | undefined;
+  return idToNpcTypeInternal(id, true) as NpcType | undefined;
 }
 
 // Defensive defaults used by local-dev/Harthmere NPCs and by older biscuits that
@@ -282,7 +282,7 @@ export function npcGlobals() {
   }
 
   if (useLocalRuntimeNpcGlobalsFallback()) {
-    // GLITCH_PROD_LOCAL_PARITY_V1: production-local parity fallback. Local/Harthmere runtimes
+    // GLITCH_PROD_LOCAL_PARITY: production-local parity fallback. Local/Harthmere runtimes
     // should not crash the render loop if the local bikkie tray is missing
     // the npcGlobals biscuit during boot or snapshot restoration.
     return {

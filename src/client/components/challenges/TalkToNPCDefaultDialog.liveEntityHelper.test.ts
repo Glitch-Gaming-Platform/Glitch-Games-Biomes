@@ -3,35 +3,35 @@
 
 import assert from "assert";
 import {
-  HARTHMERE_DIALOGUE_LIVE_MODE_RESPONSE_EVENT_V1,
-  harthmereDialogueLiveModeHeadersV1,
-  harthmereDialogueLiveModeMutationsForChoiceV1,
-  harthmereDialogueLiveModeUrlV1,
-  submitHarthmereDialogueLiveModeChoiceV1,
+  HARTHMERE_DIALOGUE_LIVE_MODE_RESPONSE_EVENT,
+  harthmereDialogueLiveModeHeaders,
+  harthmereDialogueLiveModeMutationsForChoice,
+  harthmereDialogueLiveModeUrl,
+  submitHarthmereDialogueLiveModeChoice,
 } from "@/client/components/challenges/dialogueLiveModeReputation";
-import { isHarthmereNonLivingDialogueObjectLabelV1 } from "@/client/components/challenges/dialogueObjectSemantics";
-import { harthmereContainerLootForLabelV1 } from "@/client/components/challenges/harthmereObjectContainers";
-import { harthmereReadableObjectTextForLabelV1 } from "@/client/components/challenges/harthmereObjectInteractions";
-import { contextForLiveEntityHelperQuestV1 } from "@/client/components/challenges/LocalDevLiveEntityHelperQuests";
+import { isHarthmereNonLivingDialogueObjectLabel } from "@/client/components/challenges/dialogueObjectSemantics";
+import { harthmereContainerLootForLabel } from "@/client/components/challenges/harthmereObjectContainers";
+import { harthmereReadableObjectTextForLabel } from "@/client/components/challenges/harthmereObjectInteractions";
+import { contextForLiveEntityHelperQuest } from "@/client/components/challenges/LocalDevLiveEntityHelperQuests";
 import { BIOMES_UI_PLAYER_STATUS_UPDATED_EVENT } from "@/client/components/biomes_ui/adapters/playerStatusAdapter";
-import { getLiveEntityHelperQuestForEntityV1 } from "@/shared/harthmere/live_entity_helper_quests_v1";
-import { GROVE_ECONOMY_STARTER_LANDMARKS_V1 } from "@/shared/harthmere/grove_economy_starter_v1";
+import { getLiveEntityHelperQuestForEntity } from "@/shared/harthmere/live_entity_helper_quests";
+import { GROVE_ECONOMY_STARTER_LANDMARKS } from "@/shared/harthmere/grove_economy_starter";
 import {
-  SNAPSHOT_GROVE_LANDMARKS_V75,
-  SNAPSHOT_GROVE_NPCS_V75,
-} from "@/shared/harthmere/snapshot_grove_content_v75";
+  SNAPSHOT_GROVE_LANDMARKS,
+  SNAPSHOT_GROVE_NPCS,
+} from "@/shared/harthmere/snapshot_grove_content";
 import {
-  harthmereObjectInteractionForLabelV1,
-  isHarthmereContainerObjectLabelV1,
-  isHarthmereNonLivingObjectLabelV1,
-} from "@/shared/harthmere/object_interaction_semantics_v1";
+  harthmereObjectInteractionForLabel,
+  isHarthmereContainerObjectLabel,
+  isHarthmereNonLivingObjectLabel,
+} from "@/shared/harthmere/object_interaction_semantics";
 import type { BiomesId } from "@/shared/ids";
 
 describe("live-entity helper dialog context", () => {
   it("treats default-dialog live entities as helper eligible without NPC metadata", () => {
     const entityId = 232_054_506 as BiomesId;
 
-    const context = contextForLiveEntityHelperQuestV1({
+    const context = contextForLiveEntityHelperQuest({
       entityId,
       label: "Frogberry",
       position: [232, 54, -506],
@@ -39,7 +39,7 @@ describe("live-entity helper dialog context", () => {
     });
 
     assert.equal(context.hasTalkableDialog, true);
-    assert.ok(getLiveEntityHelperQuestForEntityV1(context));
+    assert.ok(getLiveEntityHelperQuestForEntity(context));
   });
 
   it("keeps containers and road objects out of NPC dialogue", () => {
@@ -64,12 +64,12 @@ describe("live-entity helper dialog context", () => {
 
     for (const objectLabel of objectLabels) {
       assert.equal(
-        isHarthmereNonLivingDialogueObjectLabelV1(objectLabel),
+        isHarthmereNonLivingDialogueObjectLabel(objectLabel),
         true
       );
       assert.equal(
-        getLiveEntityHelperQuestForEntityV1(
-          contextForLiveEntityHelperQuestV1({
+        getLiveEntityHelperQuestForEntity(
+          contextForLiveEntityHelperQuest({
             entityId: 9001 as BiomesId,
             label: objectLabel.label,
             position: [100, 54, 100],
@@ -81,7 +81,7 @@ describe("live-entity helper dialog context", () => {
     }
 
     assert.equal(
-      isHarthmereNonLivingDialogueObjectLabelV1({
+      isHarthmereNonLivingDialogueObjectLabel({
         label: "Billy Rhodes",
         entityDescription: "Runner, errand scout, and missing road-hand.",
       }),
@@ -92,8 +92,8 @@ describe("live-entity helper dialog context", () => {
     // ECS quest_giver component. A quest giver must NOT also hand out a generic
     // helper quest, regardless of where he wanders.
     assert.equal(
-      getLiveEntityHelperQuestForEntityV1(
-        contextForLiveEntityHelperQuestV1({
+      getLiveEntityHelperQuestForEntity(
+        contextForLiveEntityHelperQuest({
           entityId: 9002 as BiomesId,
           label: "Billy Rhodes",
           position: [100, 54, 100],
@@ -106,8 +106,8 @@ describe("live-entity helper dialog context", () => {
     // The SAME living entity without authored quest content (no quest_giver) is
     // an anonymous wilds local and stays eligible for a helper quest.
     assert.ok(
-      getLiveEntityHelperQuestForEntityV1(
-        contextForLiveEntityHelperQuestV1({
+      getLiveEntityHelperQuestForEntity(
+        contextForLiveEntityHelperQuest({
           entityId: 9002 as BiomesId,
           label: "Wandering Stranger",
           position: [100, 54, 100],
@@ -116,7 +116,7 @@ describe("live-entity helper dialog context", () => {
       )
     );
     assert.equal(
-      isHarthmereNonLivingDialogueObjectLabelV1({
+      isHarthmereNonLivingDialogueObjectLabel({
         label: "Mucked Robot",
         entityDescription: "A living service robot with dialogue.",
       }),
@@ -125,13 +125,13 @@ describe("live-entity helper dialog context", () => {
   });
 
   it("keeps Harthmere containers loot-routable through real inventory item ids", () => {
-    assert.deepEqual(harthmereContainerLootForLabelV1("Billy's Toolbag"), [
+    assert.deepEqual(harthmereContainerLootForLabel("Billy's Toolbag"), [
       { itemId: "woodcutters_axe", quantity: 1 },
       { itemId: "rough_stone", quantity: 3 },
       { itemId: "scrap_metal", quantity: 2 },
     ]);
     assert.deepEqual(
-      harthmereContainerLootForLabelV1("Chest The Grove Underwater Main"),
+      harthmereContainerLootForLabel("Chest The Grove Underwater Main"),
       [
         { itemId: "clean_water", quantity: 3 },
         { itemId: "river_trout", quantity: 2 },
@@ -140,8 +140,8 @@ describe("live-entity helper dialog context", () => {
     // The Road Ahead "Gear Up" step requires equipping BOTH clothing slots
     // (a top in the chest slot AND bottoms in the legs slot), so the Clothing
     // Crate must contain both halves. baker_apron => chest, field_trousers =>
-    // legs. See hasRequiredClothingV73 in LocalDevSnapshotMissionBridge.
-    assert.deepEqual(harthmereContainerLootForLabelV1("Clothing Crate"), [
+    // legs. See hasRequiredClothing in LocalDevSnapshotMissionBridge.
+    assert.deepEqual(harthmereContainerLootForLabel("Clothing Crate"), [
       { itemId: "baker_apron", quantity: 1 },
       { itemId: "field_trousers", quantity: 1 },
       { itemId: "cloth_scrap", quantity: 4 },
@@ -150,14 +150,14 @@ describe("live-entity helper dialog context", () => {
 
   it("classifies every authored Grove world-object landmark as non-living", () => {
     const livingLabels = new Set(
-      SNAPSHOT_GROVE_NPCS_V75.map((npc) => npc.displayName)
+      SNAPSHOT_GROVE_NPCS.map((npc) => npc.displayName)
     );
     const nonObjectLabels = new Set([
       "The Grove",
       "Road to Harthmere",
       "Harthmere Bridge Center",
     ]);
-    const worldObjectLabels = SNAPSHOT_GROVE_LANDMARKS_V75.filter(
+    const worldObjectLabels = SNAPSHOT_GROVE_LANDMARKS.filter(
       (landmark) =>
         landmark.kind !== "npc" &&
         landmark.kind !== "danger" &&
@@ -168,13 +168,13 @@ describe("live-entity helper dialog context", () => {
     assert.ok(worldObjectLabels.length > 30);
     for (const label of worldObjectLabels) {
       assert.equal(
-        isHarthmereNonLivingObjectLabelV1({ label }),
+        isHarthmereNonLivingObjectLabel({ label }),
         true,
         `${label} should be a non-living world object`
       );
       assert.equal(
-        getLiveEntityHelperQuestForEntityV1(
-          contextForLiveEntityHelperQuestV1({
+        getLiveEntityHelperQuestForEntity(
+          contextForLiveEntityHelperQuest({
             entityId: 9100 as BiomesId,
             label,
             position: [100, 54, 100],
@@ -199,7 +199,7 @@ describe("live-entity helper dialog context", () => {
       "Kit's Mailbag Stand",
     ]) {
       assert.equal(
-        isHarthmereContainerObjectLabelV1({ label }),
+        isHarthmereContainerObjectLabel({ label }),
         true,
         `${label} should open through the container path`
       );
@@ -208,7 +208,7 @@ describe("live-entity helper dialog context", () => {
 
   it("maps every authored Grove world object to its intended F-key action", () => {
     const livingLabels = new Set(
-      SNAPSHOT_GROVE_NPCS_V75.map((npc) => npc.displayName)
+      SNAPSHOT_GROVE_NPCS.map((npc) => npc.displayName)
     );
     const nonObjectLabels = new Set([
       "The Grove",
@@ -216,8 +216,8 @@ describe("live-entity helper dialog context", () => {
       "Harthmere Bridge Center",
     ]);
     const labels = [
-      ...SNAPSHOT_GROVE_LANDMARKS_V75,
-      ...GROVE_ECONOMY_STARTER_LANDMARKS_V1,
+      ...SNAPSHOT_GROVE_LANDMARKS,
+      ...GROVE_ECONOMY_STARTER_LANDMARKS,
     ]
       .filter(
         (landmark) =>
@@ -287,20 +287,20 @@ describe("live-entity helper dialog context", () => {
 
     assert.deepEqual(uniqueLabels, Object.keys(expected).sort());
     for (const [label, [kind, title]] of Object.entries(expected)) {
-      const action = harthmereObjectInteractionForLabelV1({ label });
+      const action = harthmereObjectInteractionForLabel({ label });
       assert.equal(action?.kind, kind, `${label} action kind`);
       assert.equal(action?.title, title, `${label} action title`);
     }
     assert.equal(
-      harthmereObjectInteractionForLabelV1({ label: "Town Door" })?.title,
+      harthmereObjectInteractionForLabel({ label: "Town Door" })?.title,
       "Open Door"
     );
     assert.equal(
-      harthmereObjectInteractionForLabelV1({ label: "North Gate" })?.title,
+      harthmereObjectInteractionForLabel({ label: "North Gate" })?.title,
       "Open Gate"
     );
-    assert.ok(harthmereReadableObjectTextForLabelV1("Old Grove Road Post"));
-    assert.ok(harthmereReadableObjectTextForLabelV1("Fountain Lesson Board"));
+    assert.ok(harthmereReadableObjectTextForLabel("Old Grove Road Post"));
+    assert.ok(harthmereReadableObjectTextForLabel("Fountain Lesson Board"));
   });
 });
 
@@ -312,11 +312,11 @@ describe("NPC dialogue live-mode reputation bridge", () => {
 
   it("keeps Glitch install identity on dialogue reputation requests", () => {
     assert.equal(
-      harthmereDialogueLiveModeUrlV1("?install_id=install with spaces"),
+      harthmereDialogueLiveModeUrl("?install_id=install with spaces"),
       "/api/harthmere/live_mode?install_id=install%20with%20spaces"
     );
     assert.equal(
-      harthmereDialogueLiveModeHeadersV1("?installId=install-123")[
+      harthmereDialogueLiveModeHeaders("?installId=install-123")[
         "X-Glitch-Install-Id"
       ],
       "install-123"
@@ -325,7 +325,7 @@ describe("NPC dialogue live-mode reputation bridge", () => {
 
   it("splits option impact into personal NPC standing and visible world HUD standing", () => {
     assert.deepEqual(
-      harthmereDialogueLiveModeMutationsForChoiceV1({
+      harthmereDialogueLiveModeMutationsForChoice({
         entityId: 123,
         message: "Ask about this place",
         likeabilityDelta: 0,
@@ -333,7 +333,7 @@ describe("NPC dialogue live-mode reputation bridge", () => {
       []
     );
 
-    const positive = harthmereDialogueLiveModeMutationsForChoiceV1({
+    const positive = harthmereDialogueLiveModeMutationsForChoice({
       entityId: 123,
       label: "Ruthe",
       message: "Compliment Ruthe's steady eye",
@@ -347,7 +347,7 @@ describe("NPC dialogue live-mode reputation bridge", () => {
     assert.equal(positive[1].legalDelta, 0);
     assert.equal(positive[1].notorietyDelta, 0);
 
-    const negative = harthmereDialogueLiveModeMutationsForChoiceV1({
+    const negative = harthmereDialogueLiveModeMutationsForChoice({
       entityId: 123,
       message: "Call Ruthe useless",
       likeabilityDelta: -8,
@@ -389,7 +389,7 @@ describe("NPC dialogue live-mode reputation bridge", () => {
       };
     }) as any;
 
-    await submitHarthmereDialogueLiveModeChoiceV1(
+    await submitHarthmereDialogueLiveModeChoice(
       {
         entityId: 456,
         label: "Ruthe",
@@ -410,7 +410,7 @@ describe("NPC dialogue live-mode reputation bridge", () => {
     assert.equal(calls[1].body.payload.factionId, "harthmere");
     assert.ok(
       dispatched.some(
-        (event) => event.type === HARTHMERE_DIALOGUE_LIVE_MODE_RESPONSE_EVENT_V1
+        (event) => event.type === HARTHMERE_DIALOGUE_LIVE_MODE_RESPONSE_EVENT
       )
     );
     const playerStatusEvents = dispatched.filter(

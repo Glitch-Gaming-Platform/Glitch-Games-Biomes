@@ -15,7 +15,7 @@ import {
 import { applyHarthmereReputationChange } from "@/client/components/challenges/LocalDevHarthmereReputation";
 import React, { useEffect, useMemo, useState } from "react";
 
-const HARTHMERE_GUILD_STATE_KEY = "biomes.localDev.harthmere.guildState.v1";
+const HARTHMERE_GUILD_STATE_KEY = "biomes.localDev.harthmere.guildState";
 const HARTHMERE_GUILD_EVENT = "biomes:harthmere-guild-changed";
 
 type GuildType =

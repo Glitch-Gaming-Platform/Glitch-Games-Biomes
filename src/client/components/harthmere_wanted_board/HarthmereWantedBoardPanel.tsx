@@ -1,19 +1,19 @@
 import * as React from "react";
 import {
-  buildHarthmereWantedBoardViewV1,
-  type HarthmereWantedBoardNoticeV1,
-  type HarthmereWantedBoardViewV1,
+  buildHarthmereWantedBoardView,
+  type HarthmereWantedBoardNotice,
+  type HarthmereWantedBoardView,
 } from "./wantedBoardLiveAdapter";
-import { installHarthmereWantedBoardStylesV1 } from "./HarthmereWantedBoardStylesV1";
-import type { HarthmereJobsBoardSnapshotV1 } from "@/client/components/harthmere_jobs_board/jobsBoardLiveAdapter";
+import { installHarthmereWantedBoardStyles } from "./HarthmereWantedBoardStyles";
+import type { HarthmereJobsBoardSnapshot } from "@/client/components/harthmere_jobs_board/jobsBoardLiveAdapter";
 
 const TABS = ["bounties", "mine", "warrants", "watchlist", "law"] as const;
-type WantedBoardTabV1 = (typeof TABS)[number];
+type WantedBoardTab = (typeof TABS)[number];
 
-export function nextHarthmereWantedBoardTabForKeyV1(
-  tab: WantedBoardTabV1,
+export function nextHarthmereWantedBoardTabForKey(
+  tab: WantedBoardTab,
   key: string
-): WantedBoardTabV1 {
+): WantedBoardTab {
   const index = TABS.indexOf(tab);
   if (key === "Home") return TABS[0];
   if (key === "End") return TABS[TABS.length - 1];
@@ -29,7 +29,7 @@ export function nextHarthmereWantedBoardTabForKeyV1(
   return TABS[(index + delta + TABS.length) % TABS.length];
 }
 
-export function nextHarthmereWantedBoardGridIndexForKeyV1(input: {
+export function nextHarthmereWantedBoardGridIndexForKey(input: {
   key: string;
   currentIndex: number;
   itemCount: number;
@@ -60,7 +60,7 @@ export function nextHarthmereWantedBoardGridIndexForKeyV1(input: {
   }
 }
 
-function tabLabelV1(tab: WantedBoardTabV1, view: HarthmereWantedBoardViewV1) {
+function tabLabel(tab: WantedBoardTab, view: HarthmereWantedBoardView) {
   switch (tab) {
     case "bounties":
       return `Bounties ${view.totals.open}`;
@@ -75,9 +75,9 @@ function tabLabelV1(tab: WantedBoardTabV1, view: HarthmereWantedBoardViewV1) {
   }
 }
 
-function noticesForTabV1(
-  tab: WantedBoardTabV1,
-  view: HarthmereWantedBoardViewV1
+function noticesForTab(
+  tab: WantedBoardTab,
+  view: HarthmereWantedBoardView
 ) {
   switch (tab) {
     case "bounties":
@@ -93,7 +93,7 @@ function noticesForTabV1(
   }
 }
 
-function emptyTextForTabV1(tab: WantedBoardTabV1) {
+function emptyTextForTab(tab: WantedBoardTab) {
   switch (tab) {
     case "bounties":
       return "No active bounty jobs are posted right now.";
@@ -108,7 +108,7 @@ function emptyTextForTabV1(tab: WantedBoardTabV1) {
   }
 }
 
-function noticeActionLabelV1(notice: HarthmereWantedBoardNoticeV1) {
+function noticeActionLabel(notice: HarthmereWantedBoardNotice) {
   if (notice.canAccept) return "Accept Bounty";
   if (notice.canComplete) return "Turn In Bounty";
   if (notice.canClear) return "Clear My Bounty";
@@ -122,7 +122,7 @@ function HarthmereWantedNoticeCard({
   onCompleteJob,
   onClearBounty,
 }: {
-  notice: HarthmereWantedBoardNoticeV1;
+  notice: HarthmereWantedBoardNotice;
   pending?: boolean;
   onAcceptJob?: (jobId: string, boardId?: string) => void | Promise<void>;
   onCompleteJob?: (jobId: string, boardId?: string) => void | Promise<void>;
@@ -172,13 +172,13 @@ function HarthmereWantedNoticeCard({
           }
         }}
       >
-        {pending ? "Working..." : noticeActionLabelV1(notice)}
+        {pending ? "Working..." : noticeActionLabel(notice)}
       </button>
     </article>
   );
 }
 
-function HarthmereWantedLawPanel({ view }: { view: HarthmereWantedBoardViewV1 }) {
+function HarthmereWantedLawPanel({ view }: { view: HarthmereWantedBoardView }) {
   const law = view.law;
   return (
     <div className="harthmere-wanted-board__law">
@@ -226,9 +226,9 @@ export function HarthmereWantedBoardPanel({
   onClearBounty,
   onClose,
 }: {
-  snapshot?: HarthmereJobsBoardSnapshotV1;
+  snapshot?: HarthmereJobsBoardSnapshot;
   boardId?: string;
-  view?: HarthmereWantedBoardViewV1;
+  view?: HarthmereWantedBoardView;
   statusLine?: string;
   statusState?: "info" | "error";
   pendingActionId?: string;
@@ -237,14 +237,14 @@ export function HarthmereWantedBoardPanel({
   onClearBounty?: (factionId?: string) => void | Promise<void>;
   onClose?: () => void;
 }) {
-  const [tab, setTab] = React.useState<WantedBoardTabV1>("bounties");
+  const [tab, setTab] = React.useState<WantedBoardTab>("bounties");
   const panelRef = React.useRef<HTMLElement | null>(null);
   const tabRefs = React.useRef<
-    Partial<Record<WantedBoardTabV1, HTMLButtonElement | null>>
+    Partial<Record<WantedBoardTab, HTMLButtonElement | null>>
   >({});
   const view =
     explicitView ??
-    (snapshot ? buildHarthmereWantedBoardViewV1(snapshot, boardId) : undefined);
+    (snapshot ? buildHarthmereWantedBoardView(snapshot, boardId) : undefined);
   const focusableSelector = [
     "button:not(:disabled)",
     "input:not(:disabled)",
@@ -257,7 +257,7 @@ export function HarthmereWantedBoardPanel({
     "[data-harthmere-wanted-board-action='true']:not(:disabled)";
 
   React.useEffect(() => {
-    installHarthmereWantedBoardStylesV1();
+    installHarthmereWantedBoardStyles();
   }, []);
 
   React.useEffect(() => {
@@ -284,7 +284,7 @@ export function HarthmereWantedBoardPanel({
   }, [actionSelector]);
 
   const switchTab = React.useCallback(
-    (nextTab: WantedBoardTabV1, focus: "tab" | "action" = "tab") => {
+    (nextTab: WantedBoardTab, focus: "tab" | "action" = "tab") => {
       setTab(nextTab);
       requestAnimationFrame(() => {
         if (focus === "action") {
@@ -338,14 +338,14 @@ export function HarthmereWantedBoardPanel({
       }
       if (event.key === "PageDown" || event.key === "PageUp") {
         event.preventDefault();
-        switchTab(nextHarthmereWantedBoardTabForKeyV1(tab, event.key), "action");
+        switchTab(nextHarthmereWantedBoardTabForKey(tab, event.key), "action");
       }
     },
     [focusableElements, onClose, switchTab, tab]
   );
 
   const handleTabKeyDown = React.useCallback(
-    (event: React.KeyboardEvent<HTMLButtonElement>, itemTab: WantedBoardTabV1) => {
+    (event: React.KeyboardEvent<HTMLButtonElement>, itemTab: WantedBoardTab) => {
       if (
         event.key === "ArrowRight" ||
         event.key === "ArrowLeft" ||
@@ -356,7 +356,7 @@ export function HarthmereWantedBoardPanel({
       ) {
         event.preventDefault();
         event.stopPropagation();
-        switchTab(nextHarthmereWantedBoardTabForKeyV1(itemTab, event.key));
+        switchTab(nextHarthmereWantedBoardTabForKey(itemTab, event.key));
       }
       if (event.key === "ArrowDown") {
         event.preventDefault();
@@ -385,7 +385,7 @@ export function HarthmereWantedBoardPanel({
       if (currentIndex < 0) return;
       event.preventDefault();
       const columns = window.innerWidth >= 1080 ? 3 : window.innerWidth >= 760 ? 2 : 1;
-      const nextIndex = nextHarthmereWantedBoardGridIndexForKeyV1({
+      const nextIndex = nextHarthmereWantedBoardGridIndexForKey({
         key: event.key,
         currentIndex,
         itemCount: buttons.length,
@@ -421,7 +421,7 @@ export function HarthmereWantedBoardPanel({
     );
   }
 
-  const notices = noticesForTabV1(tab, view);
+  const notices = noticesForTab(tab, view);
 
   return (
     <div
@@ -488,7 +488,7 @@ export function HarthmereWantedBoardPanel({
               onClick={() => switchTab(item)}
               onKeyDown={(event) => handleTabKeyDown(event, item)}
             >
-              {tabLabelV1(item, view)}
+              {tabLabel(item, view)}
             </button>
           ))}
         </nav>
@@ -504,7 +504,7 @@ export function HarthmereWantedBoardPanel({
             <div className="harthmere-wanted-board__grid" onKeyDown={handleGridKeyDown}>
               {notices.length === 0 ? (
                 <div className="harthmere-wanted-board__empty">
-                  {emptyTextForTabV1(tab)}
+                  {emptyTextForTab(tab)}
                 </div>
               ) : (
                 notices.map((notice) => (

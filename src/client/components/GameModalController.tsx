@@ -5,10 +5,10 @@ import { TalkToNPCScreen } from "@/client/components/challenges/TalkToNPCScreen"
 import { useClientContext } from "@/client/components/contexts/ClientContextReactContext";
 import { usePointerLockManager } from "@/client/components/contexts/PointerLockContext";
 import {
-  beginPointerLockUnlockWhileOpenV1,
-  endPointerLockUnlockWhileOpenV1,
-  hasPointerLockUnlockWhileOpenSurfaceV1,
-  isPointerLockUnlockWhileOpenActiveV1,
+  beginPointerLockUnlockWhileOpen,
+  endPointerLockUnlockWhileOpen,
+  hasPointerLockUnlockWhileOpenSurface,
+  isPointerLockUnlockWhileOpenActive,
 } from "@/client/components/contexts/pointerLockModalPolicy";
 import { useInventoryDraggerContext } from "@/client/components/inventory/InventoryDragger";
 import { TreasureRevealModal } from "@/client/components/inventory/TreasureRevealModal";
@@ -60,14 +60,14 @@ export function GameModalController() {
   useEffect(() => {
     if (gameModal.kind !== "empty") {
       if (!modalPolicyActive.current) {
-        beginPointerLockUnlockWhileOpenV1();
+        beginPointerLockUnlockWhileOpen();
         modalPolicyActive.current = true;
       }
       pointerLockManager.unlock();
       lastModal.current = { ...gameModal };
     } else {
       if (modalPolicyActive.current) {
-        endPointerLockUnlockWhileOpenV1();
+        endPointerLockUnlockWhileOpen();
         modalPolicyActive.current = false;
       }
       if (lastModal.current.onClose) {
@@ -93,7 +93,7 @@ export function GameModalController() {
   useEffect(() => {
     return () => {
       if (modalPolicyActive.current) {
-        endPointerLockUnlockWhileOpenV1();
+        endPointerLockUnlockWhileOpen();
         modalPolicyActive.current = false;
       }
     };
@@ -160,8 +160,8 @@ export function GameModalController() {
         if (
           !pointerLockManager.isLocked() &&
           !pointerLockManager.isEntering &&
-          !isPointerLockUnlockWhileOpenActiveV1() &&
-          !hasPointerLockUnlockWhileOpenSurfaceV1() &&
+          !isPointerLockUnlockWhileOpenActive() &&
+          !hasPointerLockUnlockWhileOpenSurface() &&
           gameModal.kind === "empty" &&
           document.visibilityState === "visible" &&
           performance.now() - lastVisibilityTime.current > 200 &&

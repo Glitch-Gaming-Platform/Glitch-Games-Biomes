@@ -1,11 +1,11 @@
 import { connectToRedis } from "@/server/shared/redis/connection";
 import { biomesApiHandler } from "@/server/web/util/api_middleware";
-import { readHarthmereRedisStringsV1 } from "@/server/harthmere/live_mode_state_read_helpers";
+import { readHarthmereRedisStrings } from "@/server/harthmere/live_mode_state_read_helpers";
 import {
-  createHarthmereCareLoopClientSnapshotFromBackendV1,
-  harthmereLiveModePlayerStateKeyV1,
-  parseHarthmereLiveModeBackendStateV1,
-} from "@/shared/harthmere/live_mode_backend_v1";
+  createHarthmereCareLoopClientSnapshotFromBackend,
+  harthmereLiveModePlayerStateKey,
+  parseHarthmereLiveModeBackendState,
+} from "@/shared/harthmere/live_mode_backend";
 import { z } from "zod";
 
 const zHarthmereCareLoopClientSnapshotResponse = z.object({
@@ -27,15 +27,15 @@ export const zHarthmereLiveModeDailyStateResponse = z.object({
 });
 
 const globalForHarthmereLiveModeDailyState = globalThis as typeof globalThis & {
-  __harthmereLiveModeDailyStateRedisV1?: ReturnType<typeof connectToRedis>;
+  __harthmereLiveModeDailyStateRedis?: ReturnType<typeof connectToRedis>;
 };
 
-function liveModeDailyStateRedisV1() {
-  return (globalForHarthmereLiveModeDailyState.__harthmereLiveModeDailyStateRedisV1 ??=
+function liveModeDailyStateRedis() {
+  return (globalForHarthmereLiveModeDailyState.__harthmereLiveModeDailyStateRedis ??=
     connectToRedis("firehose"));
 }
 
-export async function readHarthmereLiveModeDailyStateForActorV1(input: {
+export async function readHarthmereLiveModeDailyStateForActor(input: {
   redis: {
     primary: {
       get: (key: string) => Promise<string | null>;
@@ -45,16 +45,16 @@ export async function readHarthmereLiveModeDailyStateForActorV1(input: {
   actorId: string;
   nowMs: number;
 }) {
-  const [rawState] = await readHarthmereRedisStringsV1(input.redis.primary, [
-    harthmereLiveModePlayerStateKeyV1(input.actorId),
+  const [rawState] = await readHarthmereRedisStrings(input.redis.primary, [
+    harthmereLiveModePlayerStateKey(input.actorId),
   ]);
-  const state = parseHarthmereLiveModeBackendStateV1(
+  const state = parseHarthmereLiveModeBackendState(
     rawState,
     input.actorId,
     input.nowMs
   );
   state.updatedAtMs = input.nowMs;
-  return createHarthmereCareLoopClientSnapshotFromBackendV1(state, input.nowMs);
+  return createHarthmereCareLoopClientSnapshotFromBackend(state, input.nowMs);
 }
 
 export default biomesApiHandler(
@@ -65,11 +65,11 @@ export default biomesApiHandler(
   },
   async ({ auth: { userId } }) => {
     const actorId = String(userId);
-    const redis = await liveModeDailyStateRedisV1();
+    const redis = await liveModeDailyStateRedis();
     const nowMs = Date.now();
     return {
       ok: true,
-      dailyState: await readHarthmereLiveModeDailyStateForActorV1({
+      dailyState: await readHarthmereLiveModeDailyStateForActor({
         redis,
         actorId,
         nowMs,

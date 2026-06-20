@@ -1,19 +1,19 @@
 import assert from "assert";
 import {
-  readHarthmereLiveModePlayerStatusStateForActorV1,
-  shouldPersistHarthmerePlayerStatusStaminaTickV1,
+  readHarthmereLiveModePlayerStatusStateForActor,
+  shouldPersistHarthmerePlayerStatusStaminaTick,
 } from "../live_mode_player_status_state";
 import {
-  defaultHarthmereLiveModeBackendStateV1,
-  harthmereLiveModePlayerStateKeyV1,
-} from "@/shared/harthmere/live_mode_backend_v1";
+  defaultHarthmereLiveModeBackendState,
+  harthmereLiveModePlayerStateKey,
+} from "@/shared/harthmere/live_mode_backend";
 
 const ACTOR = "player_api_status_001";
 const NOW_MS = 1_700_200_000_000;
 
 describe("live_mode_player_status_state API route integration", () => {
   it("returns live health, primary resource, level, gold, and standing", async () => {
-    const backend = defaultHarthmereLiveModeBackendStateV1(ACTOR, NOW_MS);
+    const backend = defaultHarthmereLiveModeBackendState(ACTOR, NOW_MS);
     backend.classMagic.classId = "mage";
     backend.classMagic.skills.character_level = { xp: 1250, level: 1 };
     backend.combat.hp = 44;
@@ -37,13 +37,13 @@ describe("live_mode_player_status_state API route integration", () => {
       },
     };
 
-    const snapshot = await readHarthmereLiveModePlayerStatusStateForActorV1({
+    const snapshot = await readHarthmereLiveModePlayerStatusStateForActor({
       redis,
       actorId: ACTOR,
       nowMs: NOW_MS,
     });
 
-    assert.deepEqual(calls, [harthmereLiveModePlayerStateKeyV1(ACTOR)]);
+    assert.deepEqual(calls, [harthmereLiveModePlayerStateKey(ACTOR)]);
     assert.equal(snapshot.actorId, ACTOR);
     assert.equal(snapshot.classId, "mage");
     assert.equal(snapshot.level, 2);
@@ -64,7 +64,7 @@ describe("live_mode_player_status_state API route integration", () => {
 
   it("returns a playable default status when Redis has no actor state", async () => {
     const redis = { primary: { get: async () => null } };
-    const snapshot = await readHarthmereLiveModePlayerStatusStateForActorV1({
+    const snapshot = await readHarthmereLiveModePlayerStatusStateForActor({
       redis,
       actorId: ACTOR,
       nowMs: NOW_MS,
@@ -78,7 +78,7 @@ describe("live_mode_player_status_state API route integration", () => {
   });
 
   it("persists survival stamina drain only when gameplay is active", async () => {
-    const backend = defaultHarthmereLiveModeBackendStateV1(ACTOR, NOW_MS);
+    const backend = defaultHarthmereLiveModeBackendState(ACTOR, NOW_MS);
     backend.combat.resources.stamina = 108;
     backend.combat.maxResources.stamina = 108;
     backend.combat.lastStaminaTickMs = NOW_MS - 60 * 60 * 1000;
@@ -92,7 +92,7 @@ describe("live_mode_player_status_state API route integration", () => {
       },
     };
 
-    const snapshot = await readHarthmereLiveModePlayerStatusStateForActorV1({
+    const snapshot = await readHarthmereLiveModePlayerStatusStateForActor({
       redis,
       actorId: ACTOR,
       nowMs: NOW_MS,
@@ -107,7 +107,7 @@ describe("live_mode_player_status_state API route integration", () => {
   });
 
   it("counts material storage weight when applying stamina encumbrance", async () => {
-    const backend = defaultHarthmereLiveModeBackendStateV1(ACTOR, NOW_MS);
+    const backend = defaultHarthmereLiveModeBackendState(ACTOR, NOW_MS);
     backend.combat.resources.stamina = 108;
     backend.combat.maxResources.stamina = 108;
     backend.combat.lastStaminaTickMs = NOW_MS - 60 * 60 * 1000;
@@ -122,7 +122,7 @@ describe("live_mode_player_status_state API route integration", () => {
       },
     };
 
-    const snapshot = await readHarthmereLiveModePlayerStatusStateForActorV1({
+    const snapshot = await readHarthmereLiveModePlayerStatusStateForActor({
       redis,
       actorId: ACTOR,
       nowMs: NOW_MS,
@@ -143,19 +143,19 @@ describe("live_mode_player_status_state API route integration", () => {
   });
 
   it("persists stamina ticks with WATCH so polling does not overwrite newer actor state", async () => {
-    const staleBackend = defaultHarthmereLiveModeBackendStateV1(ACTOR, NOW_MS);
+    const staleBackend = defaultHarthmereLiveModeBackendState(ACTOR, NOW_MS);
     staleBackend.inventory.gold = 1;
     staleBackend.combat.resources.stamina = 108;
     staleBackend.combat.maxResources.stamina = 108;
     staleBackend.combat.lastStaminaTickMs = NOW_MS - 60 * 60 * 1000;
 
-    const latestBackend = defaultHarthmereLiveModeBackendStateV1(ACTOR, NOW_MS);
+    const latestBackend = defaultHarthmereLiveModeBackendState(ACTOR, NOW_MS);
     latestBackend.inventory.gold = 99;
     latestBackend.combat.resources.stamina = 108;
     latestBackend.combat.maxResources.stamina = 108;
     latestBackend.combat.lastStaminaTickMs = NOW_MS - 60 * 60 * 1000;
 
-    const stateKey = harthmereLiveModePlayerStateKeyV1(ACTOR);
+    const stateKey = harthmereLiveModePlayerStateKey(ACTOR);
     const watched: string[][] = [];
     const reads = [JSON.stringify(staleBackend), JSON.stringify(latestBackend)];
     let stored = "";
@@ -178,7 +178,7 @@ describe("live_mode_player_status_state API route integration", () => {
       },
     };
 
-    await readHarthmereLiveModePlayerStatusStateForActorV1({
+    await readHarthmereLiveModePlayerStatusStateForActor({
       redis,
       actorId: ACTOR,
       nowMs: NOW_MS,
@@ -192,7 +192,7 @@ describe("live_mode_player_status_state API route integration", () => {
   });
 
   it("uses a four-hour stamina clock for custom max stamina pools", async () => {
-    const backend = defaultHarthmereLiveModeBackendStateV1(ACTOR, NOW_MS);
+    const backend = defaultHarthmereLiveModeBackendState(ACTOR, NOW_MS);
     backend.combat.resources.stamina = 200;
     backend.combat.maxResources.stamina = 200;
     backend.combat.lastStaminaTickMs = NOW_MS - 60 * 60 * 1000;
@@ -206,7 +206,7 @@ describe("live_mode_player_status_state API route integration", () => {
       },
     };
 
-    const snapshot = await readHarthmereLiveModePlayerStatusStateForActorV1({
+    const snapshot = await readHarthmereLiveModePlayerStatusStateForActor({
       redis,
       actorId: ACTOR,
       nowMs: NOW_MS,
@@ -221,7 +221,7 @@ describe("live_mode_player_status_state API route integration", () => {
   });
 
   it("does not mark live player status dead when active status polling drains stamina to zero", async () => {
-    const backend = defaultHarthmereLiveModeBackendStateV1(ACTOR, NOW_MS);
+    const backend = defaultHarthmereLiveModeBackendState(ACTOR, NOW_MS);
     backend.combat.hp = 80;
     backend.combat.resources.stamina = 1;
     backend.combat.maxResources.stamina = 100;
@@ -236,7 +236,7 @@ describe("live_mode_player_status_state API route integration", () => {
       },
     };
 
-    const snapshot = await readHarthmereLiveModePlayerStatusStateForActorV1({
+    const snapshot = await readHarthmereLiveModePlayerStatusStateForActor({
       redis,
       actorId: ACTOR,
       nowMs: NOW_MS,
@@ -254,7 +254,7 @@ describe("live_mode_player_status_state API route integration", () => {
   });
 
   it("repairs stale stamina deaths created by older status polling", async () => {
-    const backend = defaultHarthmereLiveModeBackendStateV1(ACTOR, NOW_MS);
+    const backend = defaultHarthmereLiveModeBackendState(ACTOR, NOW_MS);
     const deadAtMs = NOW_MS - 60_000;
     backend.combat.hp = 0;
     backend.combat.maxHp = 100;
@@ -280,7 +280,7 @@ describe("live_mode_player_status_state API route integration", () => {
       },
     };
 
-    const snapshot = await readHarthmereLiveModePlayerStatusStateForActorV1({
+    const snapshot = await readHarthmereLiveModePlayerStatusStateForActor({
       redis,
       actorId: ACTOR,
       nowMs: NOW_MS,
@@ -304,7 +304,7 @@ describe("live_mode_player_status_state API route integration", () => {
   });
 
   it("does not revive non-stamina deaths during status polling", async () => {
-    const backend = defaultHarthmereLiveModeBackendStateV1(ACTOR, NOW_MS);
+    const backend = defaultHarthmereLiveModeBackendState(ACTOR, NOW_MS);
     const deadAtMs = NOW_MS - 60_000;
     backend.combat.hp = 0;
     backend.combat.maxHp = 100;
@@ -327,7 +327,7 @@ describe("live_mode_player_status_state API route integration", () => {
       },
     };
 
-    const snapshot = await readHarthmereLiveModePlayerStatusStateForActorV1({
+    const snapshot = await readHarthmereLiveModePlayerStatusStateForActor({
       redis,
       actorId: ACTOR,
       nowMs: NOW_MS,
@@ -343,7 +343,7 @@ describe("live_mode_player_status_state API route integration", () => {
 
   it("throttles tiny stamina polling writes without hiding death transitions", () => {
     assert.equal(
-      shouldPersistHarthmerePlayerStatusStaminaTickV1({
+      shouldPersistHarthmerePlayerStatusStaminaTick({
         changed: true,
         deathTriggered: false,
         previousStamina: 100,
@@ -356,7 +356,7 @@ describe("live_mode_player_status_state API route integration", () => {
       false
     );
     assert.equal(
-      shouldPersistHarthmerePlayerStatusStaminaTickV1({
+      shouldPersistHarthmerePlayerStatusStaminaTick({
         changed: true,
         deathTriggered: false,
         previousStamina: 100,
@@ -369,7 +369,7 @@ describe("live_mode_player_status_state API route integration", () => {
       true
     );
     assert.equal(
-      shouldPersistHarthmerePlayerStatusStaminaTickV1({
+      shouldPersistHarthmerePlayerStatusStaminaTick({
         changed: true,
         deathTriggered: true,
         previousStamina: 1,

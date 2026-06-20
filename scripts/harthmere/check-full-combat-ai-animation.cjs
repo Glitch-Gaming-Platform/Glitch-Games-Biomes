@@ -18,7 +18,7 @@ const combat = fs.readFileSync(files.combat, "utf8");
 const renderer = fs.readFileSync(files.renderer, "utf8");
 const hud = fs.readFileSync(files.hud, "utf8");
 const checks = [
-  ["combat revision bumped", /harthmere-full-combat-ai-animation-v1/.test(combat)],
+  ["combat revision bumped", /harthmere-full-combat-ai-animation/.test(combat)],
   ["combat reads renderer actor positions", /readHarthmereRuntimeCombatActors/.test(combat)],
   ["combat merges dynamic forward-arc positions", /harthmereForwardArcTargetPositions/.test(combat) && /const targetPositions = harthmereForwardArcTargetPositions\(\)/.test(combat)],
   ["combat infers stats for runtime actors", /statsForRuntimeCombatActor/.test(combat) && /runtimeActorCombatBehavior/.test(combat)],

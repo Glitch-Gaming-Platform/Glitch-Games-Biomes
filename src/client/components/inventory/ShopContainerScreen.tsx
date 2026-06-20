@@ -13,15 +13,15 @@ import { useInventoryDraggerContext } from "@/client/components/inventory/Invent
 import { InventoryOverrideContextProvider } from "@/client/components/inventory/InventoryOverrideContext";
 import { NormalSlotWithTooltip } from "@/client/components/inventory/NormalSlotWithTooltip";
 import {
-  buildShopListingEventV1,
-  buildShopPurchaseEventV1,
-  cannotBuyFromBiomesUIShopReasonV1,
-  chunkShopSlotIndexesForRovingGridV1,
-  firstFilledShopSlotIndexV1,
+  buildShopListingEvent,
+  buildShopPurchaseEvent,
+  cannotBuyFromBiomesUIShopReason,
+  chunkShopSlotIndexesForRovingGrid,
+  firstFilledShopSlotIndex,
   MAX_BIOMES_UI_ADMIN_SHOP_PURCHASE_COUNT,
-  normalizeShopListingPriceGoldV1,
-  normalizeShopPurchaseCountV1,
-  selectedShopSlotOrFirstAvailableV1,
+  normalizeShopListingPriceGold,
+  normalizeShopPurchaseCount,
+  selectedShopSlotOrFirstAvailable,
 } from "@/client/components/inventory/shopBiomesUIModel";
 import type { OpenContainer } from "@/client/components/inventory/types";
 import { CurrencyWithGlyph } from "@/client/components/system/CurrencyWithGlyph";
@@ -80,16 +80,16 @@ export const ShopContainerLeftPaneContent: React.FunctionComponent<
   const itemCols = anItem(openContainer.itemId).numCols || 1;
   const numCols = Math.max(1, Math.min(4, itemCols));
   const slotRows = useMemo(
-    () => chunkShopSlotIndexesForRovingGridV1(numItems, numCols),
+    () => chunkShopSlotIndexesForRovingGrid(numItems, numCols),
     [numItems, numCols]
   );
   const clientSideContainer = useClientSideContainer(numItems);
   const clientFilledSlots = compact(clientSideContainer.slots).length;
   const selectedListingSlot =
-    selectedShopSlotOrFirstAvailableV1(
+    selectedShopSlotOrFirstAvailable(
       clientSideContainer.slots,
       selectedListingSlotIdx
-    ) ?? firstFilledShopSlotIndexV1(clientSideContainer.slots);
+    ) ?? firstFilledShopSlotIndex(clientSideContainer.slots);
   const stagedItem =
     selectedListingSlot >= 0
       ? clientSideContainer.slots[selectedListingSlot]
@@ -97,7 +97,7 @@ export const ShopContainerLeftPaneContent: React.FunctionComponent<
   const selectedForPurchase = wantToBuy
     ? containerInventory?.items[wantToBuy.containerSlotIdx]
     : undefined;
-  const normalizedPurchaseCount = normalizeShopPurchaseCountV1(
+  const normalizedPurchaseCount = normalizeShopPurchaseCount(
     purchaseCount,
     isAdminShop
   );
@@ -109,7 +109,7 @@ export const ShopContainerLeftPaneContent: React.FunctionComponent<
     : 0n;
   const canAfford =
     Boolean(inventory) && walletGold >= BigInt(Math.max(0, costOfPurchase));
-  const cannotBuyReason = cannotBuyFromBiomesUIShopReasonV1({
+  const cannotBuyReason = cannotBuyFromBiomesUIShopReason({
     hasSelection: Boolean(wantToBuy),
     itemAvailable: Boolean(selectedForPurchase),
     hasInventory: Boolean(inventory),
@@ -119,7 +119,7 @@ export const ShopContainerLeftPaneContent: React.FunctionComponent<
 
   useEffect(() => {
     setPurchaseCount((current) =>
-      normalizeShopPurchaseCountV1(current, isAdminShop)
+      normalizeShopPurchaseCount(current, isAdminShop)
     );
   }, [isAdminShop]);
 
@@ -127,7 +127,7 @@ export const ShopContainerLeftPaneContent: React.FunctionComponent<
     if (!containerInventory || mode !== "buy") {
       return;
     }
-    const nextSlot = selectedShopSlotOrFirstAvailableV1(
+    const nextSlot = selectedShopSlotOrFirstAvailable(
       containerInventory.items,
       wantToBuy?.containerSlotIdx
     );
@@ -177,7 +177,7 @@ export const ShopContainerLeftPaneContent: React.FunctionComponent<
     (item: ClientSideContainerItem, priceGold: number, slotIdx: number) => {
       fireAndForget(
         events.publish(
-          buildShopListingEventV1({
+          buildShopListingEvent({
             containerId: openContainer.containerId,
             src: item.refSlot,
             sellerId: userId,
@@ -203,7 +203,7 @@ export const ShopContainerLeftPaneContent: React.FunctionComponent<
 
       fireAndForget(
         events.publish(
-          buildShopPurchaseEventV1({
+          buildShopPurchaseEvent({
             containerId: openContainer.containerId,
             purchaserId: userId,
             sellerId: containerItem.seller_id,
@@ -364,7 +364,7 @@ export const ShopContainerLeftPaneContent: React.FunctionComponent<
                 mode === "place_into"
                   ? 0
                   : wantToBuy?.containerSlotIdx ??
-                    firstFilledShopSlotIndexV1(containerInventory.items);
+                    firstFilledShopSlotIndex(containerInventory.items);
               const label =
                 displayItem?.item.displayName ??
                 (mode === "place_into"
@@ -444,7 +444,7 @@ export const ShopContainerLeftPaneContent: React.FunctionComponent<
             slotIdx={selectedListingSlot}
             listingPriceGold={listingPriceGold}
             onListingPriceGoldChange={(next) =>
-              setListingPriceGold(normalizeShopListingPriceGoldV1(next))
+              setListingPriceGold(normalizeShopListingPriceGold(next))
             }
             onListForSale={(item, slotIdx) =>
               handleListForSale(item, listingPriceGold, slotIdx)

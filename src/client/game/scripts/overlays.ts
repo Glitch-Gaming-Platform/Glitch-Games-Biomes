@@ -4,7 +4,7 @@ import type { AuthManager } from "@/client/game/context_managers/auth_manager";
 import type { MapManager } from "@/client/game/context_managers/map_manager";
 import type { ClientTable } from "@/client/game/game";
 import { plantExperimentalAt } from "@/client/game/helpers/farming";
-import { BIOMES_UI_ACTIVE_MAP_PIN_NAV_AID_ID_V147 } from "@/client/components/biomes_ui/adapters/mapPinnedDestination";
+import { BIOMES_UI_ACTIVE_MAP_PIN_NAV_AID_ID } from "@/client/components/biomes_ui/adapters/mapPinnedDestination";
 import {
   accurateNavigationAidPosition,
   navigationAidShowsPrecisionOverlay,
@@ -60,27 +60,27 @@ import {
 } from "@/shared/math/linear";
 import { clamp } from "@/shared/math/math";
 import type { AABB, ReadonlyVec3, Vec3 } from "@/shared/math/types";
-import { isHarthmereCombatCreatureNpcTypeV1 } from "@/client/components/challenges/dialogueObjectSemantics";
+import { isHarthmereCombatCreatureNpcType } from "@/client/components/challenges/dialogueObjectSemantics";
 import { getNpcBehavior, idToNpcType, isNpcTypeId } from "@/shared/npc/bikkie";
 import { displayUsername } from "@/shared/util/helpers";
 import type { VoxelooModule } from "@/shared/wasm/types";
-import { SNAPSHOT_LIVE_NPC_GROUNDING_VERSION_V78, snapshotGroundLiveNpcPositionV78 } from "@/shared/harthmere/snapshot_live_debug_v78";
+import { SNAPSHOT_LIVE_NPC_GROUNDING_VERSION, snapshotGroundLiveNpcPosition } from "@/shared/harthmere/snapshot_live_debug";
 import {
-  SNAPSHOT_GROVE_LANDMARKS_V75,
-  type SnapshotGroveLandmarkV75,
-} from "@/shared/harthmere/snapshot_grove_content_v75";
-import { GROVE_ECONOMY_STARTER_LANDMARKS_V1 } from "@/shared/harthmere/grove_economy_starter_v1";
+  SNAPSHOT_GROVE_LANDMARKS,
+  type SnapshotGroveLandmark,
+} from "@/shared/harthmere/snapshot_grove_content";
+import { GROVE_ECONOMY_STARTER_LANDMARKS } from "@/shared/harthmere/grove_economy_starter";
 import {
-  isHarthmereInspectableWorldObjectV1,
-  selectNearestHarthmereWorldObjectInspectableV1,
-  type HarthmereWorldObjectCandidateV1,
-} from "@/shared/harthmere/harthmere_world_object_inspectable_v1";
+  isHarthmereInspectableWorldObject,
+  selectNearestHarthmereWorldObjectInspectable,
+  type HarthmereWorldObjectCandidate,
+} from "@/shared/harthmere/harthmere_world_object_inspectable";
 import {
-  HARTHMERE_CRAFTING_TABLE_PROMPT_RADIUS_V1,
-  selectNearestHarthmereCraftingTableV1,
-  type HarthmereCraftingTableCandidateV1,
-} from "@/shared/harthmere/harthmere_crafting_table_proximity_v1";
-import { isHarthmerePlacedCookStationItemV1 } from "@/client/components/overlays/inspected/placeables/craftingStationCookRoutingV1";
+  HARTHMERE_CRAFTING_TABLE_PROMPT_RADIUS,
+  selectNearestHarthmereCraftingTable,
+  type HarthmereCraftingTableCandidate,
+} from "@/shared/harthmere/harthmere_crafting_table_proximity";
+import { isHarthmerePlacedCookStationItem } from "@/client/components/overlays/inspected/placeables/craftingStationCookRouting";
 import { ok } from "assert";
 import { isEqual } from "lodash";
 import { Vector3 } from "three";
@@ -88,16 +88,16 @@ import { Vector3 } from "three";
 const PLAYER_PROJECTION_OFFSET: Vec3 = [0, 0.35, 0];
 
 
-// SNAPSHOT_OVERLAY_ENTITY_SIZE_COMPAT_VERSION_V68
+// SNAPSHOT_OVERLAY_ENTITY_SIZE_COMPAT_VERSION
 // Legacy snapshot quest-giver / NPC-like entities can have a position and label
 // but no size component that the newer Glitch overlay code can resolve. The
 // name overlay should never crash the render loop. Use a conservative human
 // overlay height and log once so the bad entity can still be audited later.
-const SNAPSHOT_OVERLAY_ENTITY_SIZE_COMPAT_VERSION_V68 =
-  "snapshot-overlay-entity-size-compat-v68";
-const snapshotOverlayMissingSizeLoggedV68 = new Set<BiomesId>();
+const SNAPSHOT_OVERLAY_ENTITY_SIZE_COMPAT_VERSION =
+  "snapshot-overlay-entity-size-compat";
+const snapshotOverlayMissingSizeLogged = new Set<BiomesId>();
 
-function getOverlayEntitySizeCompatV68(entity: ReadonlyEntity): ReadonlyVec3 {
+function getOverlayEntitySizeCompat(entity: ReadonlyEntity): ReadonlyVec3 {
   const resolved = getSizeForEntity(entity);
   if (resolved) {
     return resolved;
@@ -106,14 +106,14 @@ function getOverlayEntitySizeCompatV68(entity: ReadonlyEntity): ReadonlyVec3 {
   if (directSize) {
     return directSize;
   }
-  if (!snapshotOverlayMissingSizeLoggedV68.has(entity.id)) {
-    snapshotOverlayMissingSizeLoggedV68.add(entity.id);
-    log.warn("SNAPSHOT_OVERLAY_ENTITY_SIZE_COMPAT_V68 missing entity size; using human overlay fallback", {
+  if (!snapshotOverlayMissingSizeLogged.has(entity.id)) {
+    snapshotOverlayMissingSizeLogged.add(entity.id);
+    log.warn("SNAPSHOT_OVERLAY_ENTITY_SIZE_COMPAT missing entity size; using human overlay fallback", {
       entityId: entity.id,
       label: entity.label?.text,
       hasNpcMetadata: Boolean(entity.npc_metadata),
       hasQuestGiver: Boolean(entity.quest_giver),
-      version: SNAPSHOT_OVERLAY_ENTITY_SIZE_COMPAT_VERSION_V68,
+      version: SNAPSHOT_OVERLAY_ENTITY_SIZE_COMPAT_VERSION,
     });
   }
   return [1, 2, 1];
@@ -171,15 +171,15 @@ const OVERLAY_TEXT_TIME_MS = 5300; // Add 300 miliseconds for fade out (beginHid
 
 const MAX_PLAYER_OVERLAY_DIST = 20;
 const MAX_NPC_OVERLAY_DIST = 15;
-// HARTHMERE_NPC_TALK_RADIUS_TIGHTEN_V197:
+// HARTHMERE_NPC_TALK_RADIUS_TIGHTEN:
 // The 8.5m talk radius let players talk to NPCs who were clearly not next to
 // them (and, combined with the full-hemisphere fallback, made the talk prompt
 // pop for distant townsfolk). Tighten to a near-conversational range so the
 // "Talk" prompt only shows for an NPC the player is actually standing by.
-export const HARTHMERE_NPC_TALK_INSPECT_RADIUS_V139 = 4.5;
-export const HARTHMERE_NPC_TALK_FALLBACK_RADIUS_V140 = 4.5;
-export const HARTHMERE_NPC_TALK_FALLBACK_CLOSE_RADIUS_V140 = 2.75;
-export const HARTHMERE_NPC_TALK_FALLBACK_MIN_VIEW_DOT_V140 = 0;
+export const HARTHMERE_NPC_TALK_INSPECT_RADIUS = 4.5;
+export const HARTHMERE_NPC_TALK_FALLBACK_RADIUS = 4.5;
+export const HARTHMERE_NPC_TALK_FALLBACK_CLOSE_RADIUS = 2.75;
+export const HARTHMERE_NPC_TALK_FALLBACK_MIN_VIEW_DOT = 0;
 
 export function harthmereNpcTalkCandidateScoreForTest(input: {
   playerPosition: ReadonlyVec3;
@@ -189,11 +189,11 @@ export function harthmereNpcTalkCandidateScoreForTest(input: {
   closeRadius?: number;
   minViewDot?: number;
 }): number | undefined {
-  const radius = input.radius ?? HARTHMERE_NPC_TALK_FALLBACK_RADIUS_V140;
+  const radius = input.radius ?? HARTHMERE_NPC_TALK_FALLBACK_RADIUS;
   const closeRadius =
-    input.closeRadius ?? HARTHMERE_NPC_TALK_FALLBACK_CLOSE_RADIUS_V140;
+    input.closeRadius ?? HARTHMERE_NPC_TALK_FALLBACK_CLOSE_RADIUS;
   const minViewDot =
-    input.minViewDot ?? HARTHMERE_NPC_TALK_FALLBACK_MIN_VIEW_DOT_V140;
+    input.minViewDot ?? HARTHMERE_NPC_TALK_FALLBACK_MIN_VIEW_DOT;
   const toNpcX = input.npcPosition[0] - input.playerPosition[0];
   const toNpcZ = input.npcPosition[2] - input.playerPosition[2];
   const horizontalDistance = Math.hypot(toNpcX, toNpcZ);
@@ -221,37 +221,37 @@ export function harthmereNpcTalkCandidateScoreForTest(input: {
   return horizontalDistance - viewDot * 0.9;
 }
 
-// HARTHMERE_WORLD_OBJECT_INSPECT_CANDIDATES_V1
+// HARTHMERE_WORLD_OBJECT_INSPECT_CANDIDATES
 // The interactable Grove props (crates, boards, posts, doors, ...) render as
 // procedural beacons rather than ECS entities, so the cursor raycast never
 // produces an inspectable overlay for them. We resolve them by proximity from
 // the same static landmark tables the renderer draws, filtered to the labels
 // the object-interaction semantics recognize as non-living props.
-let harthmereWorldObjectCandidateCacheV1:
-  | HarthmereWorldObjectCandidateV1[]
+let harthmereWorldObjectCandidateCache:
+  | HarthmereWorldObjectCandidate[]
   | undefined;
 
 // Radius used to gather live ECS world-object candidates from the spatial table.
 // Slightly larger than the selector's own accept radius (6.5m) so the faced-cone
-// scoring in selectNearestHarthmereWorldObjectInspectableV1 still does the final
+// scoring in selectNearestHarthmereWorldObjectInspectable still does the final
 // gating; we just want every nearby labeled object in the candidate set.
-const HARTHMERE_WORLD_OBJECT_INSPECT_TABLE_SCAN_RADIUS_V1 = 8;
+const HARTHMERE_WORLD_OBJECT_INSPECT_TABLE_SCAN_RADIUS = 8;
 
-function harthmereWorldObjectInspectCandidatesV1(): HarthmereWorldObjectCandidateV1[] {
-  if (harthmereWorldObjectCandidateCacheV1) {
-    return harthmereWorldObjectCandidateCacheV1;
+function harthmereWorldObjectInspectCandidates(): HarthmereWorldObjectCandidate[] {
+  if (harthmereWorldObjectCandidateCache) {
+    return harthmereWorldObjectCandidateCache;
   }
   const seen = new Set<string>();
-  const candidates: HarthmereWorldObjectCandidateV1[] = [];
-  const landmarks: SnapshotGroveLandmarkV75[] = [
-    ...SNAPSHOT_GROVE_LANDMARKS_V75,
-    ...GROVE_ECONOMY_STARTER_LANDMARKS_V1,
+  const candidates: HarthmereWorldObjectCandidate[] = [];
+  const landmarks: SnapshotGroveLandmark[] = [
+    ...SNAPSHOT_GROVE_LANDMARKS,
+    ...GROVE_ECONOMY_STARTER_LANDMARKS,
   ];
   for (const landmark of landmarks) {
     if (landmark.kind === "npc" || seen.has(landmark.id)) {
       continue;
     }
-    if (!isHarthmereInspectableWorldObjectV1({ label: landmark.label })) {
+    if (!isHarthmereInspectableWorldObject({ label: landmark.label })) {
       continue;
     }
     seen.add(landmark.id);
@@ -265,18 +265,18 @@ function harthmereWorldObjectInspectCandidatesV1(): HarthmereWorldObjectCandidat
       ],
     });
   }
-  harthmereWorldObjectCandidateCacheV1 = candidates;
+  harthmereWorldObjectCandidateCache = candidates;
   return candidates;
 }
 
-const HARTHMERE_ECS_NPC_COMBAT_REGISTRY_V188 =
-  "harthmere-ecs-npc-combat-registry-v188";
+const HARTHMERE_ECS_NPC_COMBAT_REGISTRY =
+  "harthmere-ecs-npc-combat-registry";
 const HARTHMERE_ECS_NPC_COMBAT_REGISTRY_SCAN_RADIUS = Math.max(
   64,
   MAX_NPC_OVERLAY_DIST * 4
 );
 
-type HarthmereEcsNpcCombatRegistryBehaviorV188 =
+type HarthmereEcsNpcCombatRegistryBehavior =
   | "hostile"
   | "defensive"
   | "guard"
@@ -285,13 +285,13 @@ type HarthmereEcsNpcCombatRegistryBehaviorV188 =
   | "training_dummy"
   | "quest_anchor";
 
-type HarthmereEcsNpcCombatRegistrySpeciesV188 =
+type HarthmereEcsNpcCombatRegistrySpecies =
   | "human"
   | "animal"
   | "undead"
   | "construct";
 
-type HarthmereEcsNpcCombatRegistrySocialRoleV188 =
+type HarthmereEcsNpcCombatRegistrySocialRole =
   | "hostile"
   | "wildlife"
   | "guard"
@@ -299,7 +299,7 @@ type HarthmereEcsNpcCombatRegistrySocialRoleV188 =
   | "civilian"
   | "training";
 
-type HarthmereEcsNpcCombatActorRegistryEntryV188 = {
+type HarthmereEcsNpcCombatActorRegistryEntry = {
   offset: number;
   entityId: number;
   npcTypeId: number;
@@ -309,17 +309,17 @@ type HarthmereEcsNpcCombatActorRegistryEntryV188 = {
   pos: [number, number];
   world: Vec3;
   radius: number;
-  species: HarthmereEcsNpcCombatRegistrySpeciesV188;
-  behavior: HarthmereEcsNpcCombatRegistryBehaviorV188;
-  socialRole: HarthmereEcsNpcCombatRegistrySocialRoleV188;
+  species: HarthmereEcsNpcCombatRegistrySpecies;
+  behavior: HarthmereEcsNpcCombatRegistryBehavior;
+  socialRole: HarthmereEcsNpcCombatRegistrySocialRole;
   attackable: boolean;
   health?: { hp: number; maxHp: number };
   at: number;
-  source: "ecs_npc_combat_registry_v188";
+  source: "ecs_npc_combat_registry";
 };
 
-type HarthmereEcsNpcCombatRegistryAuditV188 = {
-  version: typeof HARTHMERE_ECS_NPC_COMBAT_REGISTRY_V188;
+type HarthmereEcsNpcCombatRegistryAudit = {
+  version: typeof HARTHMERE_ECS_NPC_COMBAT_REGISTRY;
   scanRadius: number;
   expectedNpcCount: number;
   registeredNpcCount: number;
@@ -330,9 +330,9 @@ type HarthmereEcsNpcCombatRegistryAuditV188 = {
   labels: Array<{
     offset: number;
     label: string;
-    behavior: HarthmereEcsNpcCombatRegistryBehaviorV188;
-    species: HarthmereEcsNpcCombatRegistrySpeciesV188;
-    socialRole: HarthmereEcsNpcCombatRegistrySocialRoleV188;
+    behavior: HarthmereEcsNpcCombatRegistryBehavior;
+    species: HarthmereEcsNpcCombatRegistrySpecies;
+    socialRole: HarthmereEcsNpcCombatRegistrySocialRole;
     attackable: boolean;
     hp?: number;
     maxHp?: number;
@@ -341,7 +341,7 @@ type HarthmereEcsNpcCombatRegistryAuditV188 = {
 };
 
 // Seedy Muckling / Seedling Mucker / Muckernot / Hexer must classify as hostile.
-function harthmereEcsNpcCombatRegistryTextV188(
+function harthmereEcsNpcCombatRegistryText(
   label: string | undefined,
   displayName: string | undefined,
   typeId: unknown
@@ -349,9 +349,9 @@ function harthmereEcsNpcCombatRegistryTextV188(
   return `${label ?? ""} ${displayName ?? ""} ${String(typeId ?? "")}`.toLowerCase();
 }
 
-function harthmereEcsNpcCombatRegistrySpeciesFromTextV188(
+function harthmereEcsNpcCombatRegistrySpeciesFromText(
   text: string
-): HarthmereEcsNpcCombatRegistrySpeciesV188 {
+): HarthmereEcsNpcCombatRegistrySpecies {
   if (/undead|zombie|corpse|gravewood|drowned|dead/.test(text)) {
     return "undead";
   }
@@ -361,10 +361,10 @@ function harthmereEcsNpcCombatRegistrySpeciesFromTextV188(
   return "human";
 }
 
-function harthmereEcsNpcCombatRegistryBehaviorFromTextV188(
+function harthmereEcsNpcCombatRegistryBehaviorFromText(
   text: string,
   attackable: boolean
-): HarthmereEcsNpcCombatRegistryBehaviorV188 {
+): HarthmereEcsNpcCombatRegistryBehavior {
   if (!attackable) {
     return "passive";
   }
@@ -383,10 +383,10 @@ function harthmereEcsNpcCombatRegistryBehaviorFromTextV188(
   return "defensive";
 }
 
-function harthmereEcsNpcCombatRegistrySocialRoleFromBehaviorV188(
-  behavior: HarthmereEcsNpcCombatRegistryBehaviorV188,
-  species: HarthmereEcsNpcCombatRegistrySpeciesV188
-): HarthmereEcsNpcCombatRegistrySocialRoleV188 {
+function harthmereEcsNpcCombatRegistrySocialRoleFromBehavior(
+  behavior: HarthmereEcsNpcCombatRegistryBehavior,
+  species: HarthmereEcsNpcCombatRegistrySpecies
+): HarthmereEcsNpcCombatRegistrySocialRole {
   if (behavior === "training_dummy") {
     return "training";
   }
@@ -405,9 +405,9 @@ function harthmereEcsNpcCombatRegistrySocialRoleFromBehaviorV188(
   return "civilian";
 }
 
-function publishHarthmereEcsNpcCombatRegistryV188(
-  actors: Record<string, HarthmereEcsNpcCombatActorRegistryEntryV188>,
-  audit: HarthmereEcsNpcCombatRegistryAuditV188
+function publishHarthmereEcsNpcCombatRegistry(
+  actors: Record<string, HarthmereEcsNpcCombatActorRegistryEntry>,
+  audit: HarthmereEcsNpcCombatRegistryAudit
 ) {
   if (typeof window === "undefined") {
     return;
@@ -415,17 +415,17 @@ function publishHarthmereEcsNpcCombatRegistryV188(
   const win = window as typeof window & {
     __harthmereEcsNpcCombatActorPositions?: Record<string, unknown>;
     __harthmereEcsNpcCombatActorBridgeAudit?: Record<string, unknown>;
-    __harthmereEcsNpcCombatRegistrationAuditV188?: Record<string, unknown>;
+    __harthmereEcsNpcCombatRegistrationAudit?: Record<string, unknown>;
   };
   win.__harthmereEcsNpcCombatActorPositions = actors;
   win.__harthmereEcsNpcCombatActorBridgeAudit = audit;
-  win.__harthmereEcsNpcCombatRegistrationAuditV188 = audit;
+  win.__harthmereEcsNpcCombatRegistrationAudit = audit;
 }
 
 export const MAX_MINIGAME_OVERLAY_DIST = 50;
 
-const HARTHMERE_ECS_NPC_RETALIATION_BRIDGE_V187 =
-  "harthmere-ecs-npc-retaliation-bridge-v187";
+const HARTHMERE_ECS_NPC_RETALIATION_BRIDGE =
+  "harthmere-ecs-npc-retaliation-bridge";
 
 type HarthmereEcsNpcCombatBridgeBehavior =
   | "hostile"
@@ -466,7 +466,7 @@ type HarthmereEcsNpcCombatActorBridgeEntry = {
   attackable: boolean;
   health?: { hp: number; maxHp?: number };
   at: number;
-  source: "ecs_npc_overlay_bridge_v187";
+  source: "ecs_npc_overlay_bridge";
 };
 
 function harthmereEcsNpcCombatBridgeText(
@@ -533,7 +533,7 @@ function harthmereEcsNpcCombatSocialRoleFromBehavior(
   return "civilian";
 }
 
-function publishHarthmereEcsNpcCombatActorSnapshotV187(
+function publishHarthmereEcsNpcCombatActorSnapshot(
   actors: Record<string, HarthmereEcsNpcCombatActorBridgeEntry>
 ) {
   if (typeof window === "undefined") {
@@ -545,7 +545,7 @@ function publishHarthmereEcsNpcCombatActorSnapshotV187(
   };
   win.__harthmereEcsNpcCombatActorPositions = actors;
   win.__harthmereEcsNpcCombatActorBridgeAudit = {
-    version: HARTHMERE_ECS_NPC_RETALIATION_BRIDGE_V187,
+    version: HARTHMERE_ECS_NPC_RETALIATION_BRIDGE,
     count: Object.keys(actors).length,
     labels: Object.values(actors)
       .slice(0, 24)
@@ -761,9 +761,9 @@ export class OverlayScript implements Script {
   }
 
 
-  private publishHarthmereEcsNpcCombatRegistryV188() {
+  private publishHarthmereEcsNpcCombatRegistry() {
     const localPlayer = this.resources.get("/scene/local_player");
-    const actors: Record<string, HarthmereEcsNpcCombatActorRegistryEntryV188> = {};
+    const actors: Record<string, HarthmereEcsNpcCombatActorRegistryEntry> = {};
     const seenNpcEntityIds: number[] = [];
     const missingNpcEntityIds: number[] = [];
     const invalidNpcTypeEntityIds: number[] = [];
@@ -792,15 +792,15 @@ export class OverlayScript implements Script {
       const npc = this.resources.cached("/scene/npc/render_state", entity.id);
       const rawNpcPos = motionOverrides?.position ?? npc?.smoothedPosition() ?? entity.position?.v;
       const npcPos = rawNpcPos
-        ? snapshotGroundLiveNpcPositionV78(rawNpcPos, entity.label?.text)
+        ? snapshotGroundLiveNpcPosition(rawNpcPos, entity.label?.text)
         : undefined;
-      void SNAPSHOT_LIVE_NPC_GROUNDING_VERSION_V78;
+      void SNAPSHOT_LIVE_NPC_GROUNDING_VERSION;
       if (!npcPos) {
         missingNpcEntityIds.push(Number(entity.id));
         continue;
       }
 
-      const npcSize = entity.size?.v ?? getOverlayEntitySizeCompatV68(entity);
+      const npcSize = entity.size?.v ?? getOverlayEntitySizeCompat(entity);
       const npcName = entity.label?.text ?? npcType.displayName;
       const hp = Number(entity.health?.hp);
       const maxHp = Number(entity.health?.maxHp);
@@ -809,17 +809,17 @@ export class OverlayScript implements Script {
         deadNpcEntityIds.push(Number(entity.id));
       }
       const attackable = alive;
-      const bridgeText = harthmereEcsNpcCombatRegistryTextV188(
+      const bridgeText = harthmereEcsNpcCombatRegistryText(
         npcName,
         npcType.displayName,
         entity.npc_metadata.type_id
       );
-      const species = harthmereEcsNpcCombatRegistrySpeciesFromTextV188(bridgeText);
-      const behavior = harthmereEcsNpcCombatRegistryBehaviorFromTextV188(
+      const species = harthmereEcsNpcCombatRegistrySpeciesFromText(bridgeText);
+      const behavior = harthmereEcsNpcCombatRegistryBehaviorFromText(
         bridgeText,
         attackable
       );
-      const socialRole = harthmereEcsNpcCombatRegistrySocialRoleFromBehaviorV188(
+      const socialRole = harthmereEcsNpcCombatRegistrySocialRoleFromBehavior(
         behavior,
         species
       );
@@ -844,13 +844,13 @@ export class OverlayScript implements Script {
           ? { hp, maxHp: Number.isFinite(maxHp) ? maxHp : hp }
           : undefined,
         at: now,
-        source: "ecs_npc_combat_registry_v188",
+        source: "ecs_npc_combat_registry",
       };
     }
 
     const actorOffsets = Object.keys(actors).map(Number);
-    publishHarthmereEcsNpcCombatRegistryV188(actors, {
-      version: HARTHMERE_ECS_NPC_COMBAT_REGISTRY_V188,
+    publishHarthmereEcsNpcCombatRegistry(actors, {
+      version: HARTHMERE_ECS_NPC_COMBAT_REGISTRY,
       scanRadius: HARTHMERE_ECS_NPC_COMBAT_REGISTRY_SCAN_RADIUS,
       expectedNpcCount: seenNpcEntityIds.length,
       registeredNpcCount: actorOffsets.length,
@@ -877,7 +877,7 @@ export class OverlayScript implements Script {
   applyNpcNameOverlays(overlayMap: OverlayMap, projectionMap: ProjectionMap) {
     const camera = this.resources.get("/scene/camera");
     const localPlayer = this.resources.get("/scene/local_player");
-    const ecsNpcCombatActorBridgeV187: Record<string, HarthmereEcsNpcCombatActorBridgeEntry> = {};
+    const ecsNpcCombatActorBridge: Record<string, HarthmereEcsNpcCombatActorBridgeEntry> = {};
 
     for (const entity of this.table.scan(
       NpcMetadataSelector.query.spatial.inSphere({
@@ -917,7 +917,7 @@ export class OverlayScript implements Script {
           ? becomeTheNPC
           : undefined;
       const npcPos = motionOverrides?.position ?? npc.smoothedPosition();
-      const npcSize = entity.size?.v ?? getOverlayEntitySizeCompatV68(entity);
+      const npcSize = entity.size?.v ?? getOverlayEntitySizeCompat(entity);
       const npcName = entity.label?.text ?? npcType.displayName;
       const attackable = Boolean(
         getNpcBehavior(npcType).damageable?.attackable &&
@@ -934,7 +934,7 @@ export class OverlayScript implements Script {
         bridgeText,
         attackable
       );
-      ecsNpcCombatActorBridgeV187[String(entity.id)] = {
+      ecsNpcCombatActorBridge[String(entity.id)] = {
         offset: Number(entity.id),
         entityId: Number(entity.id),
         npcTypeId: Number(entity.npc_metadata.type_id),
@@ -957,7 +957,7 @@ export class OverlayScript implements Script {
           ? { hp: entity.health.hp, maxHp: entity.health.maxHp }
           : undefined,
         at: Date.now(),
-        source: "ecs_npc_overlay_bridge_v187",
+        source: "ecs_npc_overlay_bridge",
       };
 
       const namePos: Vec3 = add(
@@ -995,7 +995,7 @@ export class OverlayScript implements Script {
         npcType,
       });
     }
-    publishHarthmereEcsNpcCombatActorSnapshotV187(ecsNpcCombatActorBridgeV187);
+    publishHarthmereEcsNpcCombatActorSnapshot(ecsNpcCombatActorBridge);
   }
 
   applyMinigameElementOverlays(
@@ -1110,17 +1110,17 @@ export class OverlayScript implements Script {
     const camera = this.resources.get("/scene/camera");
 
     const rawNpcPos = entity.position?.v;
-    const npcPos = rawNpcPos ? snapshotGroundLiveNpcPositionV78(rawNpcPos, entity.label?.text) : undefined;
-    void SNAPSHOT_LIVE_NPC_GROUNDING_VERSION_V78;
+    const npcPos = rawNpcPos ? snapshotGroundLiveNpcPosition(rawNpcPos, entity.label?.text) : undefined;
+    void SNAPSHOT_LIVE_NPC_GROUNDING_VERSION;
     if (!npcPos) {
-      log.warn("SNAPSHOT_OVERLAY_ENTITY_SIZE_COMPAT_V68 missing entity position; skipping overlay", {
+      log.warn("SNAPSHOT_OVERLAY_ENTITY_SIZE_COMPAT missing entity position; skipping overlay", {
         entityId: entity.id,
         label: entity.label?.text,
-        version: SNAPSHOT_OVERLAY_ENTITY_SIZE_COMPAT_VERSION_V68,
+        version: SNAPSHOT_OVERLAY_ENTITY_SIZE_COMPAT_VERSION,
       });
       return;
     }
-    const npcSize = getOverlayEntitySizeCompatV68(entity);
+    const npcSize = getOverlayEntitySizeCompat(entity);
 
     const namePos: Vec3 = add(
       [npcPos[0], npcPos[1] + npcSize[1], npcPos[2]],
@@ -1168,13 +1168,13 @@ export class OverlayScript implements Script {
     if (hit?.kind === "entity") {
       const entity = hit.entity;
       const maxInspectDistance = entity.npc_metadata
-        ? Math.max(changeRadius(this.resources), HARTHMERE_NPC_TALK_INSPECT_RADIUS_V139)
+        ? Math.max(changeRadius(this.resources), HARTHMERE_NPC_TALK_INSPECT_RADIUS)
         : changeRadius(this.resources);
       if (hit.distance > maxInspectDistance) {
         return (
-          this.getNearbyHarthmereObjectInspectableOverlayV1() ??
-          this.getNearbyHarthmerePlaceableCraftingStationOverlayV1() ??
-          this.getNearbyNpcTalkInspectableOverlayV140()
+          this.getNearbyHarthmereObjectInspectableOverlay() ??
+          this.getNearbyHarthmerePlaceableCraftingStationOverlay() ??
+          this.getNearbyNpcTalkInspectableOverlay()
         );
       }
       ok(entity.position);
@@ -1192,7 +1192,7 @@ export class OverlayScript implements Script {
         };
       } else if (
         entity.npc_metadata &&
-        !this.isHarthmereWorldObjectEntityV1(entity)
+        !this.isHarthmereWorldObjectEntity(entity)
       ) {
         // Real, living NPC. Objects that happen to be bridged as `npc_metadata`
         // voxel props (their label names a crate/chest/board/...) are excluded
@@ -1209,7 +1209,7 @@ export class OverlayScript implements Script {
       } else if (
         entity.placeable_component &&
         entity.placed_by &&
-        !this.isAuthoredHarthmereWorldObjectPlaceableV1(entity)
+        !this.isAuthoredHarthmereWorldObjectPlaceable(entity)
       ) {
         // Player-placed placeable: keep the rich, item-type-specific overlay
         // (container / door / sign / crafting station / ...). Authored Harthmere
@@ -1217,7 +1217,7 @@ export class OverlayScript implements Script {
         // ... and that carries a quest_giver) are intentionally excluded here so
         // they fall through to the world-object prompt below — their placeable
         // item (a picture frame) otherwise routes to a frame overlay with no
-        // usable engagement. See isAuthoredHarthmereWorldObjectPlaceableV1.
+        // usable engagement. See isAuthoredHarthmereWorldObjectPlaceable.
         return {
           kind: "placeable",
           key: `inspect:placeable:${entity.id}`,
@@ -1226,7 +1226,7 @@ export class OverlayScript implements Script {
           placerId: entity.placed_by.id,
         };
       }
-      // HARTHMERE_WORLD_OBJECT_DIRECT_HIT_PROMPT_V198:
+      // HARTHMERE_WORLD_OBJECT_DIRECT_HIT_PROMPT:
       // The cursor ray is directly on an entity we already hold in hand. If its
       // label/description marks it a non-living world object (a seeded chest /
       // crate / bin / board / ... that has a `label` but no `placed_by`, so the
@@ -1235,11 +1235,11 @@ export class OverlayScript implements Script {
       // chest -> Open Container" work without the object having to be listed in
       // any static landmark table.
       const directObjectOverlay =
-        this.harthmereWorldObjectOverlayForEntityV1(entity);
+        this.harthmereWorldObjectOverlayForEntity(entity);
       if (directObjectOverlay) {
         return directObjectOverlay;
       }
-      // HARTHMERE_WORLD_OBJECT_PROMPT_PRIORITY_V197:
+      // HARTHMERE_WORLD_OBJECT_PROMPT_PRIORITY:
       // Prefer the world-object (crate/chest/bag) prompt over the NPC-talk
       // fallback. The NPC fallback is greedy (8.5m, full forward hemisphere, no
       // facing gate), so any townsfolk standing near a prop would otherwise
@@ -1248,27 +1248,27 @@ export class OverlayScript implements Script {
       // (minViewDot 0.15, 6.5m), so it only wins when the player is genuinely
       // looking at the prop; otherwise the NPC-talk prompt still shows.
       return (
-        this.getNearbyHarthmereObjectInspectableOverlayV1() ??
-        this.getNearbyHarthmerePlaceableCraftingStationOverlayV1() ??
-        this.getNearbyNpcTalkInspectableOverlayV140()
+        this.getNearbyHarthmereObjectInspectableOverlay() ??
+        this.getNearbyHarthmerePlaceableCraftingStationOverlay() ??
+        this.getNearbyNpcTalkInspectableOverlay()
       );
     }
 
-    // HARTHMERE_WORLD_OBJECT_PROMPT_PRIORITY_V197: object before NPC fallback
+    // HARTHMERE_WORLD_OBJECT_PROMPT_PRIORITY: object before NPC fallback
     // (see rationale above).
     const nearbyHarthmereObjectOverlay =
-      this.getNearbyHarthmereObjectInspectableOverlayV1();
+      this.getNearbyHarthmereObjectInspectableOverlay();
     if (nearbyHarthmereObjectOverlay) {
       return nearbyHarthmereObjectOverlay;
     }
 
     const nearbyHarthmereCraftingStationOverlay =
-      this.getNearbyHarthmerePlaceableCraftingStationOverlayV1();
+      this.getNearbyHarthmerePlaceableCraftingStationOverlay();
     if (nearbyHarthmereCraftingStationOverlay) {
       return nearbyHarthmereCraftingStationOverlay;
     }
 
-    const nearbyNpcTalkOverlay = this.getNearbyNpcTalkInspectableOverlayV140();
+    const nearbyNpcTalkOverlay = this.getNearbyNpcTalkInspectableOverlay();
     if (nearbyNpcTalkOverlay) {
       return nearbyNpcTalkOverlay;
     }
@@ -1306,13 +1306,13 @@ export class OverlayScript implements Script {
     }
   }
 
-  // HARTHMERE_WORLD_OBJECT_INSPECT_OVERLAY_V1
+  // HARTHMERE_WORLD_OBJECT_INSPECT_OVERLAY
   // Returns true when an ECS entity's label/description marks it a non-living,
   // interactable world prop (crate / chest / board / cookpot / door / ...). This
   // is the same gate the object-interaction semantics use, so the prompt only
   // appears for objects the resolver knows how to act on.
-  private isHarthmereWorldObjectEntityV1(entity: ReadonlyEntity): boolean {
-    return isHarthmereInspectableWorldObjectV1({
+  private isHarthmereWorldObjectEntity(entity: ReadonlyEntity): boolean {
+    return isHarthmereInspectableWorldObject({
       label: entity.label?.text,
       entityDescription: entity.entity_description?.text,
     });
@@ -1323,7 +1323,7 @@ export class OverlayScript implements Script {
   // mailbox / media player). Those must keep their native overlay. Frames and
   // flagless placeables return false — they have no useful engagement of their
   // own, so an authored world-object label is allowed to drive the prompt.
-  private placeableItemHasOwnInteractiveOverlayV1(itemId: BiomesId): boolean {
+  private placeableItemHasOwnInteractiveOverlay(itemId: BiomesId): boolean {
     const item = anItem(itemId);
     return Boolean(
       item.isContainer ||
@@ -1338,7 +1338,7 @@ export class OverlayScript implements Script {
     );
   }
 
-  // HARTHMERE_AUTHORED_PLACEABLE_WORLD_OBJECT_V199:
+  // HARTHMERE_AUTHORED_PLACEABLE_WORLD_OBJECT:
   // The crates/chests/etc. players actually run into are NOT label-only seeded
   // entities — they are *placed placeables* (placeable_component + placed_by)
   // authored as picture frames that carry a quest_giver and a world-object
@@ -1352,16 +1352,16 @@ export class OverlayScript implements Script {
   //    and decor do not), and
   //  - the placeable item must have no interactive overlay of its own (so real
   //    player-placed containers/doors/signs keep their native overlay).
-  private isAuthoredHarthmereWorldObjectPlaceableV1(
+  private isAuthoredHarthmereWorldObjectPlaceable(
     entity: ReadonlyEntity
   ): boolean {
     if (!entity.placeable_component || !entity.quest_giver) {
       return false;
     }
-    if (!this.isHarthmereWorldObjectEntityV1(entity)) {
+    if (!this.isHarthmereWorldObjectEntity(entity)) {
       return false;
     }
-    return !this.placeableItemHasOwnInteractiveOverlayV1(
+    return !this.placeableItemHasOwnInteractiveOverlay(
       entity.placeable_component.item_id
     );
   }
@@ -1370,10 +1370,10 @@ export class OverlayScript implements Script {
   // when the cursor ray lands on a labeled world object that the rich placeable
   // branch did not handle (e.g. a seeded container with no `placed_by`). Carries
   // the real entityId so the interaction handlers can de-dupe per instance.
-  private harthmereWorldObjectOverlayForEntityV1(
+  private harthmereWorldObjectOverlayForEntity(
     entity: ReadonlyEntity
   ): InspectableOverlay | undefined {
-    if (!this.isHarthmereWorldObjectEntityV1(entity)) {
+    if (!this.isHarthmereWorldObjectEntity(entity)) {
       return undefined;
     }
     const label = entity.label?.text ?? "";
@@ -1396,13 +1396,13 @@ export class OverlayScript implements Script {
   // Player-placed placeables (`placed_by`) are intentionally skipped so their
   // richer aimed overlay still wins. `entityIdByCandidateId` lets the caller map
   // the selected candidate back to its real entityId.
-  private harthmereLiveWorldObjectInspectCandidatesV1(
+  private harthmereLiveWorldObjectInspectCandidates(
     playerPosition: ReadonlyVec3,
     entityIdByCandidateId: Map<string, BiomesId>
-  ): HarthmereWorldObjectCandidateV1[] {
-    const candidates: HarthmereWorldObjectCandidateV1[] = [];
+  ): HarthmereWorldObjectCandidate[] {
+    const candidates: HarthmereWorldObjectCandidate[] = [];
     const seen = new Set<BiomesId>();
-    const radius = HARTHMERE_WORLD_OBJECT_INSPECT_TABLE_SCAN_RADIUS_V1;
+    const radius = HARTHMERE_WORLD_OBJECT_INSPECT_TABLE_SCAN_RADIUS;
     const center = playerPosition;
     const consider = (entity: ReadonlyEntity) => {
       if (seen.has(entity.id)) {
@@ -1413,17 +1413,17 @@ export class OverlayScript implements Script {
       // Harthmere world props (frame/plain placeables with a quest_giver +
       // world-object label) are NOT skipped — they are exactly the seeded
       // crates/chests that need the prompt (see
-      // isAuthoredHarthmereWorldObjectPlaceableV1).
+      // isAuthoredHarthmereWorldObjectPlaceable).
       if (
         entity.player_behavior ||
         entity.robot_component ||
         (entity.placeable_component &&
           entity.placed_by &&
-          !this.isAuthoredHarthmereWorldObjectPlaceableV1(entity))
+          !this.isAuthoredHarthmereWorldObjectPlaceable(entity))
       ) {
         return;
       }
-      if (!this.isHarthmereWorldObjectEntityV1(entity)) {
+      if (!this.isHarthmereWorldObjectEntity(entity)) {
         return;
       }
       const pos = entity.position?.v;
@@ -1458,7 +1458,7 @@ export class OverlayScript implements Script {
     return candidates;
   }
 
-  // HARTHMERE_PLACEABLE_CRAFTING_STATION_FALLBACK_V1:
+  // HARTHMERE_PLACEABLE_CRAFTING_STATION_FALLBACK:
   // Crafting stations (including campfires / ovens / pots) already have the
   // correct native placeable overlay when the cursor ray hits them. In Harthmere's
   // third-person camera, though, standing at the station often does not mean the
@@ -1467,7 +1467,7 @@ export class OverlayScript implements Script {
   // `placeable` inspect overlay the raycast path would have produced, preserving
   // the existing crafting/cooking routing without changing signs, NPCs, boards, or
   // ordinary props.
-  private getNearbyHarthmerePlaceableCraftingStationOverlayV1():
+  private getNearbyHarthmerePlaceableCraftingStationOverlay():
     | InspectableOverlay
     | undefined {
     const localPlayer = this.resources.get("/scene/local_player");
@@ -1477,12 +1477,12 @@ export class OverlayScript implements Script {
       localPlayer.player.position[2],
     ];
     const entityByCandidateId = new Map<string, ReadonlyEntity>();
-    const candidates: HarthmereCraftingTableCandidateV1[] = [];
+    const candidates: HarthmereCraftingTableCandidate[] = [];
 
     for (const entity of this.table.scan(
       PlaceableSelector.query.spatial.inSphere({
         center: localPlayer.player.position,
-        radius: HARTHMERE_CRAFTING_TABLE_PROMPT_RADIUS_V1 + 0.5,
+        radius: HARTHMERE_CRAFTING_TABLE_PROMPT_RADIUS + 0.5,
       })
     )) {
       const placeable = entity.placeable_component;
@@ -1495,7 +1495,7 @@ export class OverlayScript implements Script {
       // (campfire / oven / cookpot / fire pit) both get the proximity "F" prompt
       // here. Cooking stations are not flagged isCraftingStation, so without the
       // cook predicate the player standing over a campfire would see no prompt.
-      const isCookStation = isHarthmerePlacedCookStationItemV1(item);
+      const isCookStation = isHarthmerePlacedCookStationItem(item);
       if (!item.isCraftingStation && !isCookStation) {
         continue;
       }
@@ -1509,7 +1509,7 @@ export class OverlayScript implements Script {
       });
     }
 
-    const selected = selectNearestHarthmereCraftingTableV1({
+    const selected = selectNearestHarthmereCraftingTable({
       playerPosition,
       facingView: viewDir([0, localPlayer.player.orientation[1]]) as [
         number,
@@ -1541,7 +1541,7 @@ export class OverlayScript implements Script {
   // world but aren't enumerated in source). CursorInspectionComponent then
   // resolves the authored interaction (open container, read, craft, repair, ...)
   // it already uses for placeables and NPCs.
-  private getNearbyHarthmereObjectInspectableOverlayV1():
+  private getNearbyHarthmereObjectInspectableOverlay():
     | InspectableOverlay
     | undefined {
     const localPlayer = this.resources.get("/scene/local_player");
@@ -1551,11 +1551,11 @@ export class OverlayScript implements Script {
       localPlayer.player.position[2],
     ];
     const entityIdByCandidateId = new Map<string, BiomesId>();
-    const liveCandidates = this.harthmereLiveWorldObjectInspectCandidatesV1(
+    const liveCandidates = this.harthmereLiveWorldObjectInspectCandidates(
       localPlayer.player.position,
       entityIdByCandidateId
     );
-    const selected = selectNearestHarthmereWorldObjectInspectableV1({
+    const selected = selectNearestHarthmereWorldObjectInspectable({
       playerPosition,
       facingView: viewDir([0, localPlayer.player.orientation[1]]) as [
         number,
@@ -1563,7 +1563,7 @@ export class OverlayScript implements Script {
         number
       ],
       candidates: [
-        ...harthmereWorldObjectInspectCandidatesV1(),
+        ...harthmereWorldObjectInspectCandidates(),
         ...liveCandidates,
       ],
     });
@@ -1586,7 +1586,7 @@ export class OverlayScript implements Script {
     };
   }
 
-  private getNearbyNpcTalkInspectableOverlayV140(): InspectableOverlay | undefined {
+  private getNearbyNpcTalkInspectableOverlay(): InspectableOverlay | undefined {
     const localPlayer = this.resources.get("/scene/local_player");
     const becomeTheNPC = this.resources.get("/scene/npc/become_npc");
     let best:
@@ -1596,7 +1596,7 @@ export class OverlayScript implements Script {
     for (const entity of this.table.scan(
       NpcMetadataSelector.query.spatial.inSphere({
         center: localPlayer.player.position,
-        radius: HARTHMERE_NPC_TALK_FALLBACK_RADIUS_V140,
+        radius: HARTHMERE_NPC_TALK_FALLBACK_RADIUS,
       })
     )) {
       if (!isNpcTypeId(entity.npc_metadata.type_id)) {
@@ -1605,7 +1605,7 @@ export class OverlayScript implements Script {
       // Muckers / hexers / huntable wildlife are combat creatures, not
       // conversational NPCs — never let them win the nearby-talk fallback (which
       // would otherwise shadow a real NPC standing next to them).
-      if (isHarthmereCombatCreatureNpcTypeV1(entity.npc_metadata.type_id)) {
+      if (isHarthmereCombatCreatureNpcType(entity.npc_metadata.type_id)) {
         continue;
       }
       if (entity.health?.hp !== undefined && entity.health.hp <= 0) {
@@ -1805,12 +1805,12 @@ export class OverlayScript implements Script {
     if (showNpcs) {
       this.applyNpcNameOverlays(overlayMap, projectionMap);
     } else {
-      publishHarthmereEcsNpcCombatActorSnapshotV187({});
+      publishHarthmereEcsNpcCombatActorSnapshot({});
     }
     this.applyQuestGiverNameOverlays(overlayMap, projectionMap);
     this.applyMinigameElementOverlays(overlayMap, projectionMap);
     this.applyRestoredPlaceableOverlay(overlayMap, projectionMap);
-    this.publishHarthmereEcsNpcCombatRegistryV188();
+    this.publishHarthmereEcsNpcCombatRegistry();
     const selection = this.resources.get("/hotbar/selection");
     if (selection?.kind !== "camera") {
       if (tweaks.bigNavigationAids) {
@@ -1822,7 +1822,7 @@ export class OverlayScript implements Script {
         this.applyNavigationAidOverlays(
           overlayMap,
           projectionMap,
-          BIOMES_UI_ACTIVE_MAP_PIN_NAV_AID_ID_V147
+          BIOMES_UI_ACTIVE_MAP_PIN_NAV_AID_ID
         );
       }
       // Show tutorial overlay over inspectable overlays

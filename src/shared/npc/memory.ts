@@ -1,7 +1,7 @@
 import type { BiomesId } from "@/shared/ids";
 import { z } from "zod";
 
-export const HARTHMERE_NPC_MEMORY_VERSION_V37 = "harthmere-npc-memory-v37";
+export const HARTHMERE_NPC_MEMORY_VERSION = "harthmere-npc-memory";
 const MAX_MEMORY_ENTRIES_PER_NPC = 50;
 
 export const zNpcMemoryComponent = z.object({

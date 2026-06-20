@@ -1,11 +1,11 @@
-import type { HarthmereCookStationKindV1 } from "@/shared/harthmere/object_interaction_semantics_v1";
+import type { HarthmereCookStationKind } from "@/shared/harthmere/object_interaction_semantics";
 import {
-  HARTHMERE_COOKING_RECIPES_V1,
-  harthmereFarmingFoodItemDisplayNameV1,
-  scaleHarthmereCookDurationMsV1,
-  type HarthmereCookingJobStatusV1,
-  type HarthmereCookingRecipeV1,
-} from "@/shared/harthmere/mmo_farming_food_stamina_v1";
+  HARTHMERE_COOKING_RECIPES,
+  harthmereFarmingFoodItemDisplayName,
+  scaleHarthmereCookDurationMs,
+  type HarthmereCookingJobStatus,
+  type HarthmereCookingRecipe,
+} from "@/shared/harthmere/mmo_farming_food_stamina";
 
 // Client-side projection + submit adapter for the timer-based cooking station
 // panel. Mirrors craftingStationLiveAdapter.ts: pure helpers compute the visible
@@ -13,33 +13,33 @@ import {
 // warning messages, while the adapter factory turns enqueue/collect/cancel into
 // backend submissions.
 
-export interface HarthmereCookJobClientV1 {
+export interface HarthmereCookJobClient {
   jobId: string;
   recipeId: string;
   displayName: string;
   count: number;
-  status: HarthmereCookingJobStatusV1;
+  status: HarthmereCookingJobStatus;
   startedAtMs: number;
   readyAtMs: number;
   progress: number;
   outputs: Record<string, number>;
 }
 
-export interface HarthmereCookStationClientV1 {
+export interface HarthmereCookStationClient {
   stationId: string;
-  stationKind: HarthmereCookStationKindV1 | string;
+  stationKind: HarthmereCookStationKind | string;
   label?: string;
-  jobs: HarthmereCookJobClientV1[];
+  jobs: HarthmereCookJobClient[];
 }
 
-export interface HarthmereCookSnapshotV1 {
+export interface HarthmereCookSnapshot {
   inventory: Record<string, number>;
-  stations: HarthmereCookStationClientV1[];
+  stations: HarthmereCookStationClient[];
   availableStationKinds: string[];
   updatedAtMs: number;
 }
 
-export interface HarthmereCookIngredientLineV1 {
+export interface HarthmereCookIngredientLine {
   itemId: string;
   name: string;
   need: number;
@@ -47,14 +47,14 @@ export interface HarthmereCookIngredientLineV1 {
   enough: boolean;
 }
 
-export interface HarthmereCookVisibleRecipeV1 {
-  recipe: HarthmereCookingRecipeV1;
+export interface HarthmereCookVisibleRecipe {
+  recipe: HarthmereCookingRecipe;
   recipeId: string;
   displayName: string;
   outputItemId: string;
   outputName: string;
   outputCount: number;
-  ingredients: HarthmereCookIngredientLineV1[];
+  ingredients: HarthmereCookIngredientLine[];
   outputs: Record<string, number>;
   stationOk: boolean;
   canCook: boolean;
@@ -63,8 +63,8 @@ export interface HarthmereCookVisibleRecipeV1 {
   durationMs: number;
 }
 
-export function formatHarthmereCookItemNameV1(itemId: string): string {
-  const name = harthmereFarmingFoodItemDisplayNameV1(itemId);
+export function formatHarthmereCookItemName(itemId: string): string {
+  const name = harthmereFarmingFoodItemDisplayName(itemId);
   if (name && name !== itemId) {
     return name;
   }
@@ -78,16 +78,16 @@ export function formatHarthmereCookItemNameV1(itemId: string): string {
     .replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
-export function isHarthmereCookingStationRecipeVisibleV1(
-  recipe: HarthmereCookingRecipeV1
+export function isHarthmereCookingStationRecipeVisible(
+  recipe: HarthmereCookingRecipe
 ): boolean {
   return !recipe.recipeType || recipe.recipeType === "cooking";
 }
 
 /** "field" recipes need no station and cook anywhere; otherwise the recipe's
  *  station kind must match the station the player opened. */
-export function harthmereCookRecipeStationOkV1(
-  recipe: HarthmereCookingRecipeV1,
+export function harthmereCookRecipeStationOk(
+  recipe: HarthmereCookingRecipe,
   stationKind: string
 ): boolean {
   return recipe.stationKind === "field" || recipe.stationKind === stationKind;
@@ -103,8 +103,8 @@ function countAvailable(
 /** Most batches cookable right now from the current inventory (ignores anything
  *  already reserved by queued jobs, since reservations are removed from the
  *  inventory the snapshot reports). Capped at the recipe's maxBatchCount. */
-export function harthmereCookMaxCookableV1(
-  recipe: HarthmereCookingRecipeV1,
+export function harthmereCookMaxCookable(
+  recipe: HarthmereCookingRecipe,
   inventory: Record<string, number>
 ): number {
   let max = recipe.maxBatchCount;
@@ -116,7 +116,7 @@ export function harthmereCookMaxCookableV1(
   return Math.max(0, max);
 }
 
-function primaryOutputV1(recipe: HarthmereCookingRecipeV1): {
+function primaryOutput(recipe: HarthmereCookingRecipe): {
   itemId: string;
   count: number;
 } {
@@ -124,94 +124,94 @@ function primaryOutputV1(recipe: HarthmereCookingRecipeV1): {
   return { itemId, count };
 }
 
-function visibleRecipeV1(
-  recipe: HarthmereCookingRecipeV1,
+function visibleRecipe(
+  recipe: HarthmereCookingRecipe,
   inventory: Record<string, number>,
   stationKind: string,
   count = 1
-): HarthmereCookVisibleRecipeV1 {
-  const stationOk = harthmereCookRecipeStationOkV1(recipe, stationKind);
+): HarthmereCookVisibleRecipe {
+  const stationOk = harthmereCookRecipeStationOk(recipe, stationKind);
   const missing: string[] = [];
   if (!stationOk) {
     missing.push("Station");
   }
-  const ingredients: HarthmereCookIngredientLineV1[] = Object.entries(
+  const ingredients: HarthmereCookIngredientLine[] = Object.entries(
     recipe.inputs
   ).map(([itemId, need]) => {
     const scaledNeed = need * Math.max(1, count);
     const have = countAvailable(inventory, itemId);
     const enough = have >= scaledNeed;
     if (!enough) {
-      missing.push(formatHarthmereCookItemNameV1(itemId));
+      missing.push(formatHarthmereCookItemName(itemId));
     }
     return {
       itemId,
-      name: formatHarthmereCookItemNameV1(itemId),
+      name: formatHarthmereCookItemName(itemId),
       need: scaledNeed,
       have,
       enough,
     };
   });
-  const output = primaryOutputV1(recipe);
+  const output = primaryOutput(recipe);
   return {
     recipe,
     recipeId: recipe.recipeId,
     displayName: recipe.displayName,
     outputItemId: output.itemId,
-    outputName: formatHarthmereCookItemNameV1(output.itemId),
+    outputName: formatHarthmereCookItemName(output.itemId),
     outputCount: output.count * Math.max(1, count),
     ingredients,
     outputs: recipe.outputs,
     stationOk,
     canCook: missing.length === 0,
     missing,
-    maxCookable: harthmereCookMaxCookableV1(recipe, inventory),
-    durationMs: scaleHarthmereCookDurationMsV1(recipe.cookTimeMs, count),
+    maxCookable: harthmereCookMaxCookable(recipe, inventory),
+    durationMs: scaleHarthmereCookDurationMs(recipe.cookTimeMs, count),
   };
 }
 
 /** Recipes cookable at the opened station (its kind + station-less field
  *  recipes), each with have-vs-need ingredient lines. */
-export function createHarthmereCookVisibleRecipesV1(
+export function createHarthmereCookVisibleRecipes(
   inventory: Record<string, number>,
   stationKind: string
-): HarthmereCookVisibleRecipeV1[] {
-  return Object.values(HARTHMERE_COOKING_RECIPES_V1)
+): HarthmereCookVisibleRecipe[] {
+  return Object.values(HARTHMERE_COOKING_RECIPES)
     .filter(
       (recipe) =>
-        isHarthmereCookingStationRecipeVisibleV1(recipe) &&
-        harthmereCookRecipeStationOkV1(recipe, stationKind)
+        isHarthmereCookingStationRecipeVisible(recipe) &&
+        harthmereCookRecipeStationOk(recipe, stationKind)
     )
-    .map((recipe) => visibleRecipeV1(recipe, inventory, stationKind))
+    .map((recipe) => visibleRecipe(recipe, inventory, stationKind))
     .sort((a, b) => a.displayName.localeCompare(b.displayName));
 }
 
 /** Detailed have-vs-need for a single recipe at a chosen batch count (drives the
  *  recipe-detail / ingredient-fill pane and the Cook button's enabled state). */
-export function harthmereCookRecipeDetailV1(
+export function harthmereCookRecipeDetail(
   recipeId: string,
   inventory: Record<string, number>,
   stationKind: string,
   count = 1
-): HarthmereCookVisibleRecipeV1 | undefined {
-  const recipe = HARTHMERE_COOKING_RECIPES_V1[recipeId];
+): HarthmereCookVisibleRecipe | undefined {
+  const recipe = HARTHMERE_COOKING_RECIPES[recipeId];
   if (!recipe) {
     return undefined;
   }
-  return visibleRecipeV1(recipe, inventory, stationKind, count);
+  return visibleRecipe(recipe, inventory, stationKind, count);
 }
 
-export function harthmereCookStationJobsV1(
-  snapshot: HarthmereCookSnapshotV1 | undefined,
+export function harthmereCookStationJobs(
+  snapshot: HarthmereCookSnapshot | undefined,
   stationId: string
-): HarthmereCookJobClientV1[] {
+): HarthmereCookJobClient[] {
   return (
     snapshot?.stations.find((station) => station.stationId === stationId)
       ?.jobs ?? []
   );
 }
 
-export function playerMessageFromCookingWarningV1(warning: string): string {
+export function playerMessageFromCookingWarning(warning: string): string {
   const code = warning.replace(/^cooking_rejected:/, "").split(":")[0];
   switch (code) {
     case "unknown_recipe":
@@ -242,14 +242,14 @@ export function playerMessageFromCookingWarningV1(warning: string): string {
   }
 }
 
-export function formatHarthmereCookingPlayerErrorV1(
+export function formatHarthmereCookingPlayerError(
   warnings?: string[]
 ): string {
   const messages = [
     ...new Set(
       (warnings ?? [])
         .filter((w) => typeof w === "string" && w.length > 0)
-        .map(playerMessageFromCookingWarningV1)
+        .map(playerMessageFromCookingWarning)
     ),
   ];
   return messages.length > 0
@@ -257,25 +257,25 @@ export function formatHarthmereCookingPlayerErrorV1(
     : "Cooking is unavailable right now.";
 }
 
-export interface HarthmereCookingAdapterV1 {
+export interface HarthmereCookingAdapter {
   isHydrated: () => boolean;
   getInventory: () => Record<string, number>;
-  getRecipes: () => HarthmereCookVisibleRecipeV1[];
+  getRecipes: () => HarthmereCookVisibleRecipe[];
   getRecipeDetail: (
     recipeId: string,
     count?: number
-  ) => HarthmereCookVisibleRecipeV1 | undefined;
-  getJobs: () => HarthmereCookJobClientV1[];
+  ) => HarthmereCookVisibleRecipe | undefined;
+  getJobs: () => HarthmereCookJobClient[];
   enqueueCook: (recipeId: string, count?: number) => Promise<void>;
   collectCook: (jobId: string) => Promise<void>;
   cancelCook: (jobId: string) => Promise<void>;
 }
 
-export interface CreateHarthmereCookingAdapterOptionsV1 {
-  snapshot: HarthmereCookSnapshotV1 | undefined;
+export interface CreateHarthmereCookingAdapterOptions {
+  snapshot: HarthmereCookSnapshot | undefined;
   hydrated?: boolean;
   stationId: string;
-  stationKind: HarthmereCookStationKindV1 | string;
+  stationKind: HarthmereCookStationKind | string;
   label?: string;
   submit?: (
     operation: "cook_enqueue" | "cook_collect" | "cook_cancel",
@@ -283,14 +283,14 @@ export interface CreateHarthmereCookingAdapterOptionsV1 {
   ) => Promise<{ ok: boolean; warnings?: string[] }>;
 }
 
-export function createHarthmereCookingAdapterV1({
+export function createHarthmereCookingAdapter({
   snapshot,
   hydrated = true,
   stationId,
   stationKind,
   label,
   submit,
-}: CreateHarthmereCookingAdapterOptionsV1): HarthmereCookingAdapterV1 {
+}: CreateHarthmereCookingAdapterOptions): HarthmereCookingAdapter {
   const inventory = snapshot?.inventory ?? {};
   const mutate = async (
     operation: "cook_enqueue" | "cook_collect" | "cook_cancel",
@@ -299,16 +299,16 @@ export function createHarthmereCookingAdapterV1({
     if (!submit) return;
     const body = await submit(operation, payload);
     if (!body.ok) {
-      throw new Error(formatHarthmereCookingPlayerErrorV1(body.warnings));
+      throw new Error(formatHarthmereCookingPlayerError(body.warnings));
     }
   };
   return {
     isHydrated: () => hydrated,
     getInventory: () => inventory,
-    getRecipes: () => createHarthmereCookVisibleRecipesV1(inventory, stationKind),
+    getRecipes: () => createHarthmereCookVisibleRecipes(inventory, stationKind),
     getRecipeDetail: (recipeId, count = 1) =>
-      harthmereCookRecipeDetailV1(recipeId, inventory, stationKind, count),
-    getJobs: () => harthmereCookStationJobsV1(snapshot, stationId),
+      harthmereCookRecipeDetail(recipeId, inventory, stationKind, count),
+    getJobs: () => harthmereCookStationJobs(snapshot, stationId),
     enqueueCook: (recipeId, count = 1) =>
       mutate("cook_enqueue", {
         stationId,

@@ -34,8 +34,8 @@ if (typeof (globalThis as any).Event === "undefined") {
 
 // Import AFTER the shim is installed so module-level reads see a browser-like env.
 import {
-  harthmereJobToolOwnedStateV151,
-  purchaseHarthmereBusinessToolV151,
+  harthmereJobToolOwnedState,
+  purchaseHarthmereBusinessTool,
   readHarthmereInventoryState,
   writeHarthmereInventoryState,
 } from "@/client/components/challenges/LocalDevHarthmereInventorySystem";
@@ -54,7 +54,7 @@ function ownsRepairMallet(): boolean {
   );
 }
 
-describe("purchaseHarthmereBusinessToolV151 — money out, tool in (real store)", () => {
+describe("purchaseHarthmereBusinessTool — money out, tool in (real store)", () => {
   beforeEach(() => {
     memoryStore.clear();
   });
@@ -62,21 +62,21 @@ describe("purchaseHarthmereBusinessToolV151 — money out, tool in (real store)"
   it("takes the player's gold and puts the tool in their inventory", () => {
     setGold(100);
     assert.equal(ownsRepairMallet(), false);
-    assert.equal(harthmereJobToolOwnedStateV151().repairToolOwned, false);
+    assert.equal(harthmereJobToolOwnedState().repairToolOwned, false);
 
-    const result = purchaseHarthmereBusinessToolV151("repair_maintenance_person");
+    const result = purchaseHarthmereBusinessTool("repair_maintenance_person");
     assert.equal(result.ok, true);
     assert.equal(result.toolItemId, "repair_mallet");
 
     // Repair Mallet costs 30 gold.
     assert.equal(readHarthmereInventoryState().wallet.gold, 70);
     assert.equal(ownsRepairMallet(), true);
-    assert.equal(harthmereJobToolOwnedStateV151().repairToolOwned, true);
+    assert.equal(harthmereJobToolOwnedState().repairToolOwned, true);
   });
 
   it("refuses and does NOT take gold when the player can't afford it", () => {
     setGold(5);
-    const result = purchaseHarthmereBusinessToolV151("repair_maintenance_person");
+    const result = purchaseHarthmereBusinessTool("repair_maintenance_person");
     assert.equal(result.ok, false);
     assert.equal(result.reason, "insufficient_gold");
 
@@ -96,10 +96,10 @@ describe("purchaseHarthmereBusinessToolV151 — money out, tool in (real store)"
 
   it("refuses a second purchase once the player already owns the tool (gold kept)", () => {
     setGold(100);
-    assert.equal(purchaseHarthmereBusinessToolV151("repair_maintenance_person").ok, true);
+    assert.equal(purchaseHarthmereBusinessTool("repair_maintenance_person").ok, true);
     assert.equal(readHarthmereInventoryState().wallet.gold, 70);
 
-    const second = purchaseHarthmereBusinessToolV151("repair_maintenance_person");
+    const second = purchaseHarthmereBusinessTool("repair_maintenance_person");
     assert.equal(second.ok, false);
     assert.equal(second.reason, "already_owned");
     // No double charge.
@@ -108,10 +108,10 @@ describe("purchaseHarthmereBusinessToolV151 — money out, tool in (real store)"
 
   it("sells the cleanup shop's Muck Rake the same way", () => {
     setGold(100);
-    const result = purchaseHarthmereBusinessToolV151("waste_sanitation_cleanup");
+    const result = purchaseHarthmereBusinessTool("waste_sanitation_cleanup");
     assert.equal(result.ok, true);
     assert.equal(result.toolItemId, "muck_rake");
     assert.equal(readHarthmereInventoryState().wallet.gold, 70);
-    assert.equal(harthmereJobToolOwnedStateV151().cleanupToolOwned, true);
+    assert.equal(harthmereJobToolOwnedState().cleanupToolOwned, true);
   });
 });

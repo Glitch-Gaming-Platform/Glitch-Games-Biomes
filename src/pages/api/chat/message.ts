@@ -12,7 +12,7 @@ import { z } from "zod";
 export const zSendMessageRequest = z.object({
   localTime: z.number(),
   volume: zMessageVolume,
-  // Harthmere world chat v152: the client may include its current position as
+  // Harthmere world chat current: the client may include its current position as
   // a fallback for spatial targeting. The server still overwrites this with
   // the authoritative ECS/world position when that value is available.
   position: z.tuple([z.number(), z.number(), z.number()]).optional(),

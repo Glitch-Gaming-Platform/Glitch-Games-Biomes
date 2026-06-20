@@ -18,11 +18,11 @@ import { allPlayerShardsLoaded } from "@/client/game/helpers/player_shards";
 import type { Player } from "@/client/game/resources/players";
 import type { ClientResources } from "@/client/game/resources/types";
 import type { Script } from "@/client/game/scripts/script_controller";
-import { clientFallDamageTickWithGraceV1 } from "@/client/game/util/fall_damage_client_v1";
+import { clientFallDamageTickWithGrace } from "@/client/game/util/fall_damage_client";
 import {
-  submitHarthmereDrowningDamageLiveModeV1,
-  submitHarthmereFallDamageLiveModeV1,
-} from "@/client/game/util/harthmere_live_environment_damage_v1";
+  submitHarthmereDrowningDamageLiveMode,
+  submitHarthmereFallDamageLiveMode,
+} from "@/client/game/util/harthmere_live_environment_damage";
 import { fixedConstantScalarTransition } from "@/client/game/util/transitions";
 import { respawn } from "@/client/game/util/warping";
 import { reportClientError } from "@/client/util/request_helpers";
@@ -44,9 +44,9 @@ import type { EmoteType, OptionalDamageSource } from "@/shared/ecs/gen/types";
 import type { CollisionCallback } from "@/shared/game/collision";
 import { CollisionHelper } from "@/shared/game/collision";
 import {
-  initFallTrackerV1,
-  type FallTrackerStateV1,
-} from "@/shared/game/fall_damage_v1";
+  initFallTracker,
+  type FallTrackerState,
+} from "@/shared/game/fall_damage";
 import { anItem } from "@/shared/game/item";
 import { getPlayerBuffs } from "@/shared/game/players";
 import { friendlyShardId, shardsForAABB } from "@/shared/game/shard";
@@ -123,17 +123,17 @@ const HARTHMERE_LOCAL_DEV_EDGE_SAFE_BOUNDS = {
 const HARTHMERE_LOCAL_DEV_EDGE_RESCUE_BUFFER = 36;
 
 const HARTHMERE_LOCAL_DEV_PLAYER_TOWN_COLLISION_VERSION =
-  "harthmere-player-town-collision-v1";
-const HARTHMERE_LOCAL_DEV_PLAYER_TOWN_COLLISION_DISABLED_BY_DEFAULT_V1 = true;
+  "harthmere-player-town-collision";
+const HARTHMERE_LOCAL_DEV_PLAYER_TOWN_COLLISION_DISABLED_BY_DEFAULT = true;
 const HARTHMERE_LOCAL_DEV_PLAYER_TOWN_COLLISION_Y_MIN = 50.5;
 const HARTHMERE_LOCAL_DEV_PLAYER_TOWN_COLLISION_Y_MAX = 78;
 const HARTHMERE_LOCAL_DEV_PLAYER_TOWN_COLLISION_PADDING = 0.18;
 
-const HARTHMERE_VERTICAL_TOWN_COLLISION_DISABLED_BY_DEFAULT_V2 =
-  "harthmere-vertical-town-collision-disabled-by-default-v2";
+const HARTHMERE_VERTICAL_TOWN_COLLISION_DISABLED_BY_DEFAULT =
+  "harthmere-vertical-town-collision-disabled-by-default";
 
 function shouldRunHarthmereLocalDevVerticalTownCollisionBridge(): boolean {
-  // HARTHMERE_DISABLE_VERTICAL_TOWN_COLLISION_BY_DEFAULT_V2
+  // HARTHMERE_DISABLE_VERTICAL_TOWN_COLLISION_BY_DEFAULT
   //
   // The old renderer-authored AABB bridge feeds tall prop/building boxes into
   // Biomes' vertical collision solver. That is the layer that can shove the
@@ -158,7 +158,7 @@ function shouldRunHarthmereLocalDevVerticalTownCollisionBridge(): boolean {
       ...(win.__harthmerePlayerTownCollisionStats ?? {}),
       version: HARTHMERE_LOCAL_DEV_PLAYER_TOWN_COLLISION_VERSION,
       verticalBridgeVersion:
-        HARTHMERE_VERTICAL_TOWN_COLLISION_DISABLED_BY_DEFAULT_V2,
+        HARTHMERE_VERTICAL_TOWN_COLLISION_DISABLED_BY_DEFAULT,
       enabled: false,
       verticalBridgeEnabled: false,
       reason:
@@ -313,7 +313,7 @@ function markHarthmereLocalDevTownCollisionDisabledByDefault() {
     ...(statsTarget.__harthmerePlayerTownCollisionStats ?? {}),
     version: HARTHMERE_LOCAL_DEV_PLAYER_TOWN_COLLISION_VERSION,
     disabledByDefaultVersion:
-      HARTHMERE_LOCAL_DEV_PLAYER_TOWN_COLLISION_DISABLED_BY_DEFAULT_V1,
+      HARTHMERE_LOCAL_DEV_PLAYER_TOWN_COLLISION_DISABLED_BY_DEFAULT,
     enabled: false,
     reason:
       "Disabled by default after vertical AABB solver push/floating issue. Set window.__harthmereEnablePlayerTownCollision = true only for targeted testing.",
@@ -406,9 +406,9 @@ function maybeClampLocalDevHarthmereEdgePosition(position: ReadonlyVec3): Vec3 {
 }
 
 const HARTHMERE_LOCAL_DEV_HORIZONTAL_PLAYER_TOWN_COLLISION_VERSION =
-  "harthmere-town-collision-profiles-v4";
-const HARTHMERE_PLAYER_TOWN_COLLISION_RUNTIME_BRIDGE_ENABLED_V1 =
-  "harthmere-player-town-collision-runtime-bridge-enabled-v1";
+  "harthmere-town-collision-profiles";
+const HARTHMERE_PLAYER_TOWN_COLLISION_RUNTIME_BRIDGE_ENABLED =
+  "harthmere-player-town-collision-runtime-bridge-enabled";
 const HARTHMERE_LOCAL_DEV_HORIZONTAL_PLAYER_TOWN_COLLISION_DEFAULT_RADIUS = 0.07;
 const HARTHMERE_LOCAL_DEV_HORIZONTAL_PLAYER_TOWN_COLLISION_MIN_RADIUS = 0.0;
 const HARTHMERE_LOCAL_DEV_HORIZONTAL_PLAYER_TOWN_COLLISION_MAX_RADIUS = 0.18;
@@ -416,11 +416,11 @@ const HARTHMERE_LOCAL_DEV_HORIZONTAL_PLAYER_TOWN_COLLISION_DEFAULT_PADDING = 0;
 const HARTHMERE_LOCAL_DEV_HORIZONTAL_PLAYER_TOWN_COLLISION_LOW_OBJECT_CLEARANCE = 0.18;
 const HARTHMERE_LOCAL_DEV_HORIZONTAL_PLAYER_TOWN_COLLISION_STEP_CLEARANCE = 0.2;
 const HARTHMERE_LOCAL_DEV_HORIZONTAL_PLAYER_TOWN_COLLISION_SWEEP_STEP = 0.08;
-const HARTHMERE_COLLISION_BROADPHASE_V1 = "harthmere-collision-broadphase-v1";
-const HARTHMERE_COLLISION_PERFORMANCE_BUDGET_V1 =
-  "harthmere-collision-performance-budget-v1";
-const HARTHMERE_COLLISION_RADIUS_VARIANTS_V1 =
-  "harthmere-collision-radius-variants-v1";
+const HARTHMERE_COLLISION_BROADPHASE = "harthmere-collision-broadphase";
+const HARTHMERE_COLLISION_PERFORMANCE_BUDGET =
+  "harthmere-collision-performance-budget";
+const HARTHMERE_COLLISION_RADIUS_VARIANTS_MARKER =
+  "harthmere-collision-radius-variants";
 const HARTHMERE_COLLISION_PERFORMANCE_MAX_CANDIDATES_PER_SAMPLE = 96;
 const HARTHMERE_COLLISION_PERFORMANCE_MAX_SWEEP_CHECKS = 160;
 const HARTHMERE_COLLISION_BROADPHASE_CELL_SIZE = 6;
@@ -502,8 +502,8 @@ type HarthmereLocalDevSweepResult = {
   samples: number;
 };
 
-const HARTHMERE_BROWSER_COLLISION_E2E_HELPERS_V2 =
-  "harthmere-browser-collision-e2e-helpers-v2";
+const HARTHMERE_BROWSER_COLLISION_E2E_HELPERS =
+  "harthmere-browser-collision-e2e-helpers";
 
 function harthmereLocalDevHorizontalObstacleText(
   obstacle: HarthmereLocalDevHorizontalTownObstacle
@@ -522,7 +522,7 @@ function harthmereLocalDevHorizontalObstacleText(
 function harthmereLocalDevHorizontalObstacleIsForcedSolidFixture(
   obstacle: HarthmereLocalDevHorizontalTownObstacle
 ): boolean {
-  // HARTHMERE_SOLID_LANDMARK_FIXTURE_COLLISION_V2
+  // HARTHMERE_SOLID_LANDMARK_FIXTURE_COLLISION
   // These are the exact imported visual fixtures reported in browser testing:
   // North Gate flag/lamp structures, Market Square fountain graphics, and
   // Temple/church imported boundary pieces. They are named like decoration,
@@ -593,7 +593,7 @@ function harthmereBrowserCollisionObstacleReport(
   };
 }
 
-function harthmereInstallBrowserCollisionE2EHelpersV2(): void {
+function harthmereInstallBrowserCollisionE2EHelpers(): void {
   if (typeof window === "undefined") {
     return;
   }
@@ -608,7 +608,7 @@ function harthmereInstallBrowserCollisionE2EHelpersV2(): void {
   win.__harthmereHorizontalPlayerTownCollisionStats = {
     ...previousStats,
     version: HARTHMERE_LOCAL_DEV_HORIZONTAL_PLAYER_TOWN_COLLISION_VERSION,
-    marker: HARTHMERE_BROWSER_COLLISION_E2E_HELPERS_V2,
+    marker: HARTHMERE_BROWSER_COLLISION_E2E_HELPERS,
     active: true,
     enabled: true,
     obstacleCount: obstacles.length,
@@ -669,7 +669,7 @@ function harthmereInstallBrowserCollisionE2EHelpersV2(): void {
       win.__harthmereHorizontalPlayerTownCollisionStats ?? {};
     win.__harthmereHorizontalPlayerTownCollisionStats = {
       ...currentStats,
-      marker: HARTHMERE_BROWSER_COLLISION_E2E_HELPERS_V2,
+      marker: HARTHMERE_BROWSER_COLLISION_E2E_HELPERS,
       obstacleCount: getHarthmereLocalDevHorizontalTownObstacles().length,
       candidateCount: Number(currentStats.candidateCount ?? 0) + results.length,
       sweepChecks: Number(currentStats.sweepChecks ?? 0) + results.length,
@@ -765,13 +765,13 @@ function harthmereInstallBrowserCollisionE2EHelpersV2(): void {
 
   win.__harthmereCollisionE2E = {
     ...(win.__harthmereCollisionE2E ?? {}),
-    version: HARTHMERE_BROWSER_COLLISION_E2E_HELPERS_V2,
+    version: HARTHMERE_BROWSER_COLLISION_E2E_HELPERS,
     runSolidFixtureMovementTest,
     runRadiusVariantCollisionCases,
   };
   win.__harthmereCollisionOverlayAudit = {
     ...(win.__harthmereCollisionOverlayAudit ?? {}),
-    version: HARTHMERE_BROWSER_COLLISION_E2E_HELPERS_V2,
+    version: HARTHMERE_BROWSER_COLLISION_E2E_HELPERS,
     captureSolidFixtureOverlayReport,
   };
   win.__harthmereTownAudit = {
@@ -783,7 +783,7 @@ function harthmereInstallBrowserCollisionE2EHelpersV2(): void {
 }
 
 if (typeof window !== "undefined") {
-  window.setTimeout(() => harthmereInstallBrowserCollisionE2EHelpersV2(), 0);
+  window.setTimeout(() => harthmereInstallBrowserCollisionE2EHelpers(), 0);
 }
 
 function getHarthmereLocalDevHorizontalTownObstacles(): readonly HarthmereLocalDevHorizontalTownObstacle[] {
@@ -887,9 +887,9 @@ function getHarthmereLocalDevHorizontalPlayerVerticalRange(
   };
 }
 
-const HARTHMERE_SOLID_LANDMARK_FIXTURE_PLAYER_COLLISION_V1 = true;
-const HARTHMERE_TOWN_SPACING_COLLISION_FIX_VERSION_V31 =
-  "harthmere-town-spacing-collision-solid-fixture-v31";
+const HARTHMERE_SOLID_LANDMARK_FIXTURE_PLAYER_COLLISION = true;
+const HARTHMERE_TOWN_SPACING_COLLISION_FIX_VERSION =
+  "harthmere-town-spacing-collision-solid-fixture";
 
 function isHarthmereLocalDevBuildingNavigationOpening(
   asset: string,
@@ -1223,7 +1223,7 @@ function getHarthmereLocalDevHorizontalBroadphaseCandidates(
   radius: number,
   obstacles: readonly HarthmereLocalDevHorizontalTownObstacle[]
 ): readonly HarthmereLocalDevHorizontalTownObstacle[] {
-  // HARTHMERE_COLLISION_BROADPHASE_V1
+  // HARTHMERE_COLLISION_BROADPHASE
   // Coarse broadphase. It deliberately over-includes by using the authored half
   // extents plus a full grid cell margin, so it avoids false negatives while
   // preventing every town obstacle from being swept every movement sample.
@@ -1387,7 +1387,7 @@ function markHarthmereLocalDevHorizontalTownCollisionStats(
     ...(target.__harthmereHorizontalPlayerTownCollisionStats ?? {}),
     version: HARTHMERE_LOCAL_DEV_HORIZONTAL_PLAYER_TOWN_COLLISION_VERSION,
     runtimeBridgeVersion:
-      HARTHMERE_PLAYER_TOWN_COLLISION_RUNTIME_BRIDGE_ENABLED_V1,
+      HARTHMERE_PLAYER_TOWN_COLLISION_RUNTIME_BRIDGE_ENABLED,
     at: Date.now(),
     ...stats,
   };
@@ -1599,7 +1599,7 @@ const BLOCK_DAMAGE_DEFAULT_DELAY_IN_TICKS = 1 * 60;
 
 // Fall constants
 // Impact velocity above which a landing plays the "hit the ground" sound. Fall
-// DAMAGE is now distance-based (see fall_damage_v1 + this.fallTracker), not
+// DAMAGE is now distance-based (see fall_damage + this.fallTracker), not
 // velocity-based, so the old impact-damage constants were removed.
 const FALL_SOUND_MIN_IMPACT = 10.0;
 
@@ -1626,7 +1626,7 @@ export class PlayerScript implements Script {
   hadReportedInVoid = false;
 
   // Throttles that implement delay-based health updates.
-  private fallTracker: FallTrackerStateV1 = initFallTrackerV1();
+  private fallTracker: FallTrackerState = initFallTracker();
   private shakeThrottle = new EventThrottle(DEFAULT_SHAKE_DELAY_MS);
   private urlRewriteThrottle = new EventThrottle(2000);
   private regenThrottle = new TickThrottle(REGEN_DELAY_IN_TICKS);
@@ -1709,7 +1709,7 @@ export class PlayerScript implements Script {
     return this.resources.get("/tweaks");
   }
 
-  intersect([v0, v1]: AABB, fn: CollisionCallback) {
+  intersect([boxMin, boxMax]: AABB, fn: CollisionCallback) {
     const ruleset = this.resources.get("/ruleset/current");
     const collisionFilter: CollisionCallback = (aabb, entity) => {
       if (
@@ -1724,7 +1724,7 @@ export class PlayerScript implements Script {
       (id) => this.resources.get("/physics/boxes", id),
       this.table,
       this.resources.get("/ecs/metadata"),
-      [v0, v1],
+      [boxMin, boxMax],
       collisionFilter
     );
 
@@ -1732,19 +1732,19 @@ export class PlayerScript implements Script {
     // Do NOT feed them into the vertical AABB collision solver by default:
     // that path can push the avatar upward and leave it stuck above town.
     //
-    // HARTHMERE_DISABLE_VERTICAL_TOWN_COLLISION_BY_DEFAULT_V2
+    // HARTHMERE_DISABLE_VERTICAL_TOWN_COLLISION_BY_DEFAULT
     // Normal anti-walk-through behavior is handled by the horizontal Harthmere
     // town collision sweep. Enable this legacy vertical bridge only for a
     // targeted debug session:
     //   window.__harthmereEnableVerticalPlayerTownCollision = true
     if (shouldRunHarthmereLocalDevVerticalTownCollisionBridge()) {
-      intersectLocalDevHarthmereTownCollision([v0, v1], fn);
+      intersectLocalDevHarthmereTownCollision([boxMin, boxMax], fn);
     } else {
       markHarthmereLocalDevTownCollisionDisabledByDefault();
     }
   }
 
-  // HARTHMERE_DUNGEON_TELEPORT_LIVE_PLAYER_HOOK_V1
+  // HARTHMERE_DUNGEON_TELEPORT_LIVE_PLAYER_HOOK
   // Local-dev test hook: console/dungeon tests must move the actual live player,
   // not only store localStorage metadata. Kept behind Harthmere local-dev globals.
   private installHarthmereDungeonTeleportLivePlayerHook(player: Player) {
@@ -1880,7 +1880,7 @@ export class PlayerScript implements Script {
         after,
         wrote,
         moved,
-        source: "HARTHMERE_DUNGEON_TELEPORT_LIVE_PLAYER_HOOK_V1",
+        source: "HARTHMERE_DUNGEON_TELEPORT_LIVE_PLAYER_HOOK",
       };
       win.__harthmereDungeonTeleportLastResult = result;
       return result;
@@ -1920,7 +1920,7 @@ export class PlayerScript implements Script {
 
     win.__harthmereLivePlayerDebug = {
       ...(win.__harthmereLivePlayerDebug ?? {}),
-      version: "harthmere-dungeon-teleport-live-player-hook-v1",
+      version: "harthmere-dungeon-teleport-live-player-hook",
       getPosition: readCurrentPosition,
       teleportTo,
       consumeStoredTeleportTarget,
@@ -2119,7 +2119,7 @@ export class PlayerScript implements Script {
         );
       }
       fireAndForget(
-        submitHarthmereDrowningDamageLiveModeV1(damage),
+        submitHarthmereDrowningDamageLiveMode(damage),
         "Error submitting Harthmere live drowning damage"
       );
     }
@@ -2536,8 +2536,8 @@ export class PlayerScript implements Script {
     // Distance-based fall damage: track the apex of the airborne arc and, on
     // landing, deal 10 damage per 5 feet (blocks) fallen over the first 5. A
     // normal jump falls short of the 5-foot threshold, so jumps never hurt.
-    // Replaces the old velocity-based impact damage. See fall_damage_v1.
-    const fall = clientFallDamageTickWithGraceV1(this.fallTracker, {
+    // Replaces the old velocity-based impact damage. See fall_damage.
+    const fall = clientFallDamageTickWithGrace(this.fallTracker, {
       onGround: landedThisTick,
       y: nextPosition[1],
       canTakeFallDamage: canTrackFallDamage,
@@ -2570,7 +2570,7 @@ export class PlayerScript implements Script {
         );
       }
       fireAndForget(
-        submitHarthmereFallDamageLiveModeV1(fall.fellBlocks),
+        submitHarthmereFallDamageLiveMode(fall.fellBlocks),
         "Error submitting Harthmere live fall damage"
       );
     }

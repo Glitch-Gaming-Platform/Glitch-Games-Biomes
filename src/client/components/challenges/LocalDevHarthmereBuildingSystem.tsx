@@ -28,17 +28,17 @@ import {
 } from "@/client/components/challenges/LocalDevHarthmereReputation";
 import type { TalkDialogStepAction } from "@/client/components/challenges/TalkDialogModalStep";
 import {
-  BUILDING_SYSTEM_BLUEPRINTS_V1,
-  BUILDING_SYSTEM_GROVE_STEWARD_NPC_V1,
-  BUILDING_SYSTEM_PLOTS_V1,
-  buildingSystemBlueprintByIdV1,
-  buildingSystemPlotByIdV1,
-  createBuildingSystemGuideConstructionMathV1,
-} from "@/shared/harthmere/building_system_v1";
+  BUILDING_SYSTEM_BLUEPRINTS,
+  BUILDING_SYSTEM_GROVE_STEWARD_NPC,
+  BUILDING_SYSTEM_PLOTS,
+  buildingSystemBlueprintById,
+  buildingSystemPlotById,
+  createBuildingSystemGuideConstructionMath,
+} from "@/shared/harthmere/building_system";
 import React, { useEffect, useMemo, useState } from "react";
 
 const HARTHMERE_BUILDING_STATE_KEY =
-  "biomes.localDev.harthmere.buildingState.v1";
+  "biomes.localDev.harthmere.buildingState";
 const HARTHMERE_BUILDING_EVENT = "biomes:harthmere-building-changed";
 
 type PlotType =
@@ -267,7 +267,7 @@ const BUILD_PLOTS: BuildPlotDefinition[] = [
     description:
       "A hidden squatter plot for outlaw testing. It is not a lawful public property and may draw guard attention later.",
   },
-  ...BUILDING_SYSTEM_PLOTS_V1.map((plot): BuildPlotDefinition => ({
+  ...BUILDING_SYSTEM_PLOTS.map((plot): BuildPlotDefinition => ({
     id: plot.plotId,
     name: plot.displayName,
     district: plot.district,
@@ -457,7 +457,7 @@ const BLUEPRINTS: BuildingBlueprintDefinition[] = [
     description:
       "A cramped outlaw shelter. Useful for testing illegal property, but it carries legal risk.",
   },
-  ...BUILDING_SYSTEM_BLUEPRINTS_V1.map((blueprint): BuildingBlueprintDefinition => ({
+  ...BUILDING_SYSTEM_BLUEPRINTS.map((blueprint): BuildingBlueprintDefinition => ({
     id: blueprint.blueprintId,
     name: blueprint.displayName,
     type: blueprint.plotType as PlotType,
@@ -1042,11 +1042,11 @@ function startConstruction(plotId: string, blueprintId: string) {
     );
     return;
   }
-  const sharedPlot = buildingSystemPlotByIdV1(plot.id);
-  const sharedBlueprint = buildingSystemBlueprintByIdV1(blueprint.id);
+  const sharedPlot = buildingSystemPlotById(plot.id);
+  const sharedBlueprint = buildingSystemBlueprintById(blueprint.id);
   const guideConstruction =
     sharedPlot && sharedBlueprint
-      ? createBuildingSystemGuideConstructionMathV1({
+      ? createBuildingSystemGuideConstructionMath({
           plot: sharedPlot,
           blueprint: sharedBlueprint,
         })
@@ -1644,7 +1644,7 @@ export function buildingActionsForHarthmereNpc(
   const actions: TalkDialogStepAction[] = [];
   const plotMap: Record<number, string[]> = {
     41: BUILD_PLOTS.map((plot) => plot.id),
-    [BUILDING_SYSTEM_GROVE_STEWARD_NPC_V1.idOffset]: BUILDING_SYSTEM_PLOTS_V1.map((plot) => plot.plotId),
+    [BUILDING_SYSTEM_GROVE_STEWARD_NPC.idOffset]: BUILDING_SYSTEM_PLOTS.map((plot) => plot.plotId),
     6: ["harthmere_cottage_lot_west", "harthmere_market_stall_slot"],
     10: ["harthmere_cottage_lot_west", "harthmere_craftsman_workshop_plot"],
     29: ["harthmere_craftsman_workshop_plot"],

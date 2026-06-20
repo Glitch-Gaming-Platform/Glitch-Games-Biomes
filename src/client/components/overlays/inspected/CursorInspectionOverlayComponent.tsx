@@ -1,6 +1,6 @@
 import { useCanTalkToNpc } from "@/client/components/challenges/TalkToNPCDefaultDialog";
-import { openHarthmereObjectContainerV1 } from "@/client/components/challenges/harthmereObjectContainers";
-import { performHarthmereObjectInteractionV1 } from "@/client/components/challenges/harthmereObjectInteractions";
+import { openHarthmereObjectContainer } from "@/client/components/challenges/harthmereObjectContainers";
+import { performHarthmereObjectInteraction } from "@/client/components/challenges/harthmereObjectInteractions";
 import { useClientContext } from "@/client/components/contexts/ClientContextReactContext";
 import { CURSOR_INSPECTION_SHORTCUT_KEYS_FOR_TEST } from "@/client/components/overlays/inspected/inspectionShortcutKeys";
 import { MaybeError } from "@/client/components/system/MaybeError";
@@ -9,10 +9,10 @@ import type { InspectableOverlay } from "@/client/game/resources/overlays";
 import type { GlobalKeyCode } from "@/client/game/util/keyboard";
 import { INVALID_BIOMES_ID } from "@/shared/ids";
 import {
-  harthmereObjectInteractionForLabelV1,
-  isHarthmereContainerObjectLabelV1,
-  isHarthmereNonLivingObjectLabelV1,
-} from "@/shared/harthmere/object_interaction_semantics_v1";
+  harthmereObjectInteractionForLabel,
+  isHarthmereContainerObjectLabel,
+  isHarthmereNonLivingObjectLabel,
+} from "@/shared/harthmere/object_interaction_semantics";
 import { relevantBiscuitForEntityId } from "@/shared/npc/bikkie";
 import type { PropsWithChildren } from "react";
 import { useMemo } from "react";
@@ -68,7 +68,7 @@ export const CursorInspectionComponent: React.FunctionComponent<
   const item = relevantBiscuitForEntityId(resources, overlay?.entityId);
   const inspectText =
     item && item.customInspectText ? item.customInspectText : "Talk";
-  // HARTHMERE_WORLD_OBJECT_INSPECT_OVERLAY_V1: procedural world props are not ECS
+  // HARTHMERE_WORLD_OBJECT_INSPECT_OVERLAY: procedural world props are not ECS
   // entities, so they carry their label/description inline on the overlay rather
   // than via `/ecs/c/label`. Prefer the inline values when present.
   const harthmereObjectLabel =
@@ -84,19 +84,19 @@ export const CursorInspectionComponent: React.FunctionComponent<
   const harthmereObjectInteractionEntityId = overlay?.entityId;
   const isHarthmereObjectContainer =
     overlay?.kind !== "placeable" &&
-    isHarthmereContainerObjectLabelV1({
+    isHarthmereContainerObjectLabel({
       label: harthmereObjectLabel,
       entityDescription: harthmereObjectDescription,
     });
   const isHarthmereWorldObject =
     overlay?.kind !== "placeable" &&
-    isHarthmereNonLivingObjectLabelV1({
+    isHarthmereNonLivingObjectLabel({
       label: harthmereObjectLabel,
       entityDescription: harthmereObjectDescription,
     });
   const harthmereObjectInteraction =
     overlay?.kind !== "placeable"
-      ? harthmereObjectInteractionForLabelV1({
+      ? harthmereObjectInteractionForLabel({
           label: harthmereObjectLabel,
           entityDescription: harthmereObjectDescription,
         })
@@ -134,7 +134,7 @@ export const CursorInspectionComponent: React.FunctionComponent<
       ret.unshift({
         title: harthmereObjectInteraction?.title ?? "Open Container",
         onKeyDown: () => {
-          openHarthmereObjectContainerV1({
+          openHarthmereObjectContainer({
             entityId: harthmereObjectInteractionEntityId ?? INVALID_BIOMES_ID,
             label: harthmereObjectLabel,
             resources,
@@ -151,7 +151,7 @@ export const CursorInspectionComponent: React.FunctionComponent<
       ret.unshift({
         title: harthmereObjectInteraction?.title ?? "Inspect",
         onKeyDown: () => {
-          performHarthmereObjectInteractionV1({
+          performHarthmereObjectInteraction({
             entityId: harthmereObjectInteractionEntityId ?? INVALID_BIOMES_ID,
             label: harthmereObjectLabel,
             interaction: harthmereObjectInteraction ?? {

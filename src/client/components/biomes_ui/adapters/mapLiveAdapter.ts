@@ -1,58 +1,58 @@
-import { readLiveEntityHelperQuestStateV1 } from "@/client/components/challenges/LocalDevLiveEntityHelperQuestState";
-import { liveEntityHelperQuestRecordReadyToTurnInV1 } from "@/client/components/challenges/LocalDevLiveEntityHelperQuests";
+import { readLiveEntityHelperQuestState } from "@/client/components/challenges/LocalDevLiveEntityHelperQuestState";
+import { liveEntityHelperQuestRecordReadyToTurnIn } from "@/client/components/challenges/LocalDevLiveEntityHelperQuests";
 import {
-  firstActiveSnapshotRoadAheadQuestTitleForBiomesUIV73,
-  readSnapshotMissionStateV71,
-  snapshotRoadAheadMissionStepsForBiomesUIV73,
-  snapshotRoadAheadTrackableQuestsForBiomesUIV73,
+  firstActiveSnapshotRoadAheadQuestTitleForBiomesUI,
+  readSnapshotMissionState,
+  snapshotRoadAheadMissionStepsForBiomesUI,
+  snapshotRoadAheadTrackableQuestsForBiomesUI,
 } from "@/client/components/challenges/LocalDevSnapshotMissionBridge";
-import { BUILDING_SYSTEM_GROVE_STEWARD_NPC_V1 } from "@/shared/harthmere/building_system_v1";
+import { BUILDING_SYSTEM_GROVE_STEWARD_NPC } from "@/shared/harthmere/building_system";
 import {
   activeBiomesUIMapPinFromMarkerForTest,
-  readActiveBiomesUIMapPinV142,
-  shouldClearStaleActiveMapPinV1,
-  writeActiveBiomesUIMapPinV142,
+  readActiveBiomesUIMapPin,
+  shouldClearStaleActiveMapPin,
+  writeActiveBiomesUIMapPin,
 } from "./mapPinnedDestination";
 import {
-  readBiomesUIMainQuestSelectionV1,
-  setBiomesUIMainQuestFromTrackableQuestV1,
-  writeBiomesUIMainQuestSelectionV1,
+  readBiomesUIMainQuestSelection,
+  setBiomesUIMainQuestFromTrackableQuest,
+  writeBiomesUIMainQuestSelection,
 } from "./mainQuestSelection";
-import { appendHarthmereBusinessOutpostMapLandmarksV1 } from "./harthmereBusinessMapMarkersV1";
+import { appendHarthmereBusinessOutpostMapLandmarks } from "./harthmereBusinessMapMarkers";
 import {
-  activeJobsBoardMissionStepsForBiomesUIV1,
-  firstActiveJobsBoardQuestTitleForBiomesUIV1,
-  jobsBoardAcceptedJobLandmarksForBiomesUIV1,
-  jobsBoardToolSourceLandmarksForBiomesUIV1,
-  jobsBoardTrackableQuestsForBiomesUIV1,
+  activeJobsBoardMissionStepsForBiomesUI,
+  firstActiveJobsBoardQuestTitleForBiomesUI,
+  jobsBoardAcceptedJobLandmarksForBiomesUI,
+  jobsBoardToolSourceLandmarksForBiomesUI,
+  jobsBoardTrackableQuestsForBiomesUI,
 } from "./jobsBoardQuestMapAdapter";
-import { harthmereJobToolOwnedStateV151 } from "@/client/components/challenges/LocalDevHarthmereInventorySystem";
+import { harthmereJobToolOwnedState } from "@/client/components/challenges/LocalDevHarthmereInventorySystem";
 import {
-  BIOMES_UI_LIVE_ENTITY_HELPER_MARKER_SOURCE_V1,
-  activeLiveEntityHelperMissionStepsForBiomesUIV1,
-  firstActiveLiveEntityHelperQuestTitleForBiomesUIV1,
-  liveEntityHelperAcceptedQuestLandmarksForBiomesUIV1,
-  liveEntityHelperTrackableQuestsForBiomesUIV1,
+  BIOMES_UI_LIVE_ENTITY_HELPER_MARKER_SOURCE,
+  activeLiveEntityHelperMissionStepsForBiomesUI,
+  firstActiveLiveEntityHelperQuestTitleForBiomesUI,
+  liveEntityHelperAcceptedQuestLandmarksForBiomesUI,
+  liveEntityHelperTrackableQuestsForBiomesUI,
 } from "./liveEntityHelperQuestMapAdapter";
 import {
-  BIOMES_UI_SHARED_QUEST_MARKER_SOURCE_V1,
-  activeSharedQuestMissionStepsForBiomesUIV1,
-  firstActiveSharedQuestTitleForBiomesUIV1,
-  sharedQuestAcceptedLandmarksForBiomesUIV1,
-  sharedQuestTrackableQuestsForBiomesUIV1,
+  BIOMES_UI_SHARED_QUEST_MARKER_SOURCE,
+  activeSharedQuestMissionStepsForBiomesUI,
+  firstActiveSharedQuestTitleForBiomesUI,
+  sharedQuestAcceptedLandmarksForBiomesUI,
+  sharedQuestTrackableQuestsForBiomesUI,
 } from "./questInviteAdapter";
 import { readableMapMarkerLabelForTest } from "./mapMarkerLabels";
-import { harthmereMapTerrainRegionsForBoundsV1 } from "./harthmereMapTerrainRegionsV1";
+import { harthmereMapTerrainRegionsForBounds } from "./harthmereMapTerrainRegions";
 import {
-  HARTHMERE_PROPERTY_MARKER_SOURCE_V1,
-  harthmerePropertyMapLandmarksFromBuildingStateV1,
-  harthmerePurchasablePlotMapLandmarksFromBuildingStateV1,
-  type HarthmerePropertyMapBuildingStateV1,
-} from "./propertyMapMarkersV1";
+  HARTHMERE_PROPERTY_MARKER_SOURCE,
+  harthmerePropertyMapLandmarksFromBuildingState,
+  harthmerePurchasablePlotMapLandmarksFromBuildingState,
+  type HarthmerePropertyMapBuildingState,
+} from "./propertyMapMarkers";
 
 function readSnapshotGroveApi(): any | undefined {
   if (typeof window === "undefined") return undefined;
-  return (window as any).__snapshotGroveV75;
+  return (window as any).__snapshotGrove;
 }
 
 function normalizeMarkerId(markerId: string): string {
@@ -148,7 +148,7 @@ export function buildBiomesUIMapAdapter(
   playerWorldPos?: [number, number, number],
   jobsBoardState?: unknown,
   liveQuestState?: unknown,
-  buildingState?: HarthmerePropertyMapBuildingStateV1,
+  buildingState?: HarthmerePropertyMapBuildingState,
   roadAheadChallengeStepHints?: Iterable<unknown>
 ) {
   const NormalizeWorldXZ = (
@@ -214,7 +214,7 @@ export function buildBiomesUIMapAdapter(
     if (kind === "objective") return "objective";
     if (
       kind === "property" ||
-      landmark?.source === HARTHMERE_PROPERTY_MARKER_SOURCE_V1
+      landmark?.source === HARTHMERE_PROPERTY_MARKER_SOURCE
     )
       return "property";
     if (kind === "quest") return "quest";
@@ -268,29 +268,29 @@ export function buildBiomesUIMapAdapter(
     const kind = String(landmark?.kind ?? "").toLowerCase();
     return kind === "business" ||
       kind === "property" ||
-      landmark?.source === HARTHMERE_PROPERTY_MARKER_SOURCE_V1 ||
-      landmark?.source === BIOMES_UI_LIVE_ENTITY_HELPER_MARKER_SOURCE_V1 ||
-      landmark?.source === BIOMES_UI_SHARED_QUEST_MARKER_SOURCE_V1
+      landmark?.source === HARTHMERE_PROPERTY_MARKER_SOURCE ||
+      landmark?.source === BIOMES_UI_LIVE_ENTITY_HELPER_MARKER_SOURCE ||
+      landmark?.source === BIOMES_UI_SHARED_QUEST_MARKER_SOURCE
       ? id
       : normalizeMarkerId(id);
   };
   const MapLandmarks = () => {
     const api = readSnapshotGroveApi();
-    const liveEntityHelperState = readLiveEntityHelperQuestStateV1();
-    const toolOwned = harthmereJobToolOwnedStateV151();
-    return appendHarthmereBusinessOutpostMapLandmarksV1([
+    const liveEntityHelperState = readLiveEntityHelperQuestState();
+    const toolOwned = harthmereJobToolOwnedState();
+    return appendHarthmereBusinessOutpostMapLandmarks([
       ...(Array.isArray(api?.landmarks) ? api.landmarks : []),
-      ...jobsBoardAcceptedJobLandmarksForBiomesUIV1(jobsBoardState),
-      ...jobsBoardToolSourceLandmarksForBiomesUIV1(jobsBoardState, toolOwned),
-      ...liveEntityHelperAcceptedQuestLandmarksForBiomesUIV1(
+      ...jobsBoardAcceptedJobLandmarksForBiomesUI(jobsBoardState),
+      ...jobsBoardToolSourceLandmarksForBiomesUI(jobsBoardState, toolOwned),
+      ...liveEntityHelperAcceptedQuestLandmarksForBiomesUI(
         liveEntityHelperState,
-        { isReadyToTurnIn: liveEntityHelperQuestRecordReadyToTurnInV1 }
+        { isReadyToTurnIn: liveEntityHelperQuestRecordReadyToTurnIn }
       ),
-      ...sharedQuestAcceptedLandmarksForBiomesUIV1(liveQuestState),
-      ...harthmerePropertyMapLandmarksFromBuildingStateV1(buildingState),
+      ...sharedQuestAcceptedLandmarksForBiomesUI(liveQuestState),
+      ...harthmerePropertyMapLandmarksFromBuildingState(buildingState),
       // Show unowned plots as "for sale" pins so players can find/preview a plot
       // (location, district, price) before buying.
-      ...harthmerePurchasablePlotMapLandmarksFromBuildingStateV1(buildingState),
+      ...harthmerePurchasablePlotMapLandmarksFromBuildingState(buildingState),
     ]);
   };
   return {
@@ -303,7 +303,7 @@ export function buildBiomesUIMapAdapter(
       void snapshotRevision;
       const landmarks = MapLandmarks();
       const bounds = ComputeBounds(VisibleMapLandmarks(landmarks));
-      return harthmereMapTerrainRegionsForBoundsV1(bounds);
+      return harthmereMapTerrainRegionsForBounds(bounds);
     },
     getPlayerMarker: () => {
       void snapshotRevision;
@@ -340,8 +340,8 @@ export function buildBiomesUIMapAdapter(
         state,
         liveQuestState
       );
-      const roadAheadQuest = snapshotRoadAheadTrackableQuestsForBiomesUIV73(
-        readSnapshotMissionStateV71(),
+      const roadAheadQuest = snapshotRoadAheadTrackableQuestsForBiomesUI(
+        readSnapshotMissionState(),
         roadAheadChallengeStepHints
       )[0];
       const activeRoadAheadMarkerId =
@@ -382,10 +382,10 @@ export function buildBiomesUIMapAdapter(
           landmark?.active === true && kind === "objective";
         const isLiveEntityHelperMarker =
           landmark?.active === true &&
-          landmark?.source === BIOMES_UI_LIVE_ENTITY_HELPER_MARKER_SOURCE_V1;
+          landmark?.source === BIOMES_UI_LIVE_ENTITY_HELPER_MARKER_SOURCE;
         const isSharedQuestMarker =
           landmark?.active === true &&
-          landmark?.source === BIOMES_UI_SHARED_QUEST_MARKER_SOURCE_V1;
+          landmark?.source === BIOMES_UI_SHARED_QUEST_MARKER_SOURCE;
         const isActiveQuestMarker =
           isCurrentObjective ||
           isRoadAheadObjective ||
@@ -433,7 +433,7 @@ export function buildBiomesUIMapAdapter(
       if (!result.some((marker) => marker.id === "mira_grove_land_steward")) {
         result.push({
           id: "mira_grove_land_steward",
-          label: BUILDING_SYSTEM_GROVE_STEWARD_NPC_V1.displayName,
+          label: BUILDING_SYSTEM_GROVE_STEWARD_NPC.displayName,
           x: 0.66,
           y: 0.52,
           kind: "store" as const,
@@ -450,18 +450,18 @@ export function buildBiomesUIMapAdapter(
         state,
         liveQuestState
       );
-      const liveEntityHelperState = readLiveEntityHelperQuestStateV1();
+      const liveEntityHelperState = readLiveEntityHelperQuestState();
       return String(
         activeQuest?.title ??
-          firstActiveJobsBoardQuestTitleForBiomesUIV1(jobsBoardState) ??
-          firstActiveSnapshotRoadAheadQuestTitleForBiomesUIV73(
-            readSnapshotMissionStateV71(),
+          firstActiveJobsBoardQuestTitleForBiomesUI(jobsBoardState) ??
+          firstActiveSnapshotRoadAheadQuestTitleForBiomesUI(
+            readSnapshotMissionState(),
             roadAheadChallengeStepHints
           ) ??
-          firstActiveLiveEntityHelperQuestTitleForBiomesUIV1(
+          firstActiveLiveEntityHelperQuestTitleForBiomesUI(
             liveEntityHelperState
           ) ??
-          firstActiveSharedQuestTitleForBiomesUIV1(liveQuestState) ??
+          firstActiveSharedQuestTitleForBiomesUI(liveQuestState) ??
           "Current Mission"
       );
     },
@@ -480,9 +480,9 @@ export function buildBiomesUIMapAdapter(
         : [];
       if (!activeQuest) {
         const jobsBoardSteps =
-          activeJobsBoardMissionStepsForBiomesUIV1(jobsBoardState);
-        const roadAheadSteps = snapshotRoadAheadMissionStepsForBiomesUIV73(
-          readSnapshotMissionStateV71(),
+          activeJobsBoardMissionStepsForBiomesUI(jobsBoardState);
+        const roadAheadSteps = snapshotRoadAheadMissionStepsForBiomesUI(
+          readSnapshotMissionState(),
           roadAheadChallengeStepHints
         );
         return jobsBoardSteps.length
@@ -490,10 +490,10 @@ export function buildBiomesUIMapAdapter(
           : roadAheadSteps.length
           ? roadAheadSteps
           : [
-              ...activeLiveEntityHelperMissionStepsForBiomesUIV1(
-                readLiveEntityHelperQuestStateV1()
+              ...activeLiveEntityHelperMissionStepsForBiomesUI(
+                readLiveEntityHelperQuestState()
               ),
-              ...activeSharedQuestMissionStepsForBiomesUIV1(liveQuestState),
+              ...activeSharedQuestMissionStepsForBiomesUI(liveQuestState),
             ];
       }
       return objectives.map((objective: string, index: number) => ({
@@ -578,28 +578,28 @@ export function buildBiomesUIMapAdapter(
           };
         });
       return [
-        ...jobsBoardTrackableQuestsForBiomesUIV1(
+        ...jobsBoardTrackableQuestsForBiomesUI(
           jobsBoardState,
           Date.now(),
-          harthmereJobToolOwnedStateV151()
+          harthmereJobToolOwnedState()
         ),
-        ...snapshotRoadAheadTrackableQuestsForBiomesUIV73(
-          readSnapshotMissionStateV71(),
+        ...snapshotRoadAheadTrackableQuestsForBiomesUI(
+          readSnapshotMissionState(),
           roadAheadChallengeStepHints
         ),
-        ...liveEntityHelperTrackableQuestsForBiomesUIV1(
-          readLiveEntityHelperQuestStateV1()
+        ...liveEntityHelperTrackableQuestsForBiomesUI(
+          readLiveEntityHelperQuestState()
         ),
-        ...sharedQuestTrackableQuestsForBiomesUIV1(liveQuestState),
+        ...sharedQuestTrackableQuestsForBiomesUI(liveQuestState),
         ...authoredQuests,
       ];
     },
-    getMainQuestSelection: () => readBiomesUIMainQuestSelectionV1(),
+    getMainQuestSelection: () => readBiomesUIMainQuestSelection(),
     setMainQuest: (quest: any) =>
-      setBiomesUIMainQuestFromTrackableQuestV1(quest),
-    clearMainQuest: () => writeBiomesUIMainQuestSelectionV1(undefined),
+      setBiomesUIMainQuestFromTrackableQuest(quest),
+    clearMainQuest: () => writeBiomesUIMainQuestSelection(undefined),
     getActiveMapPin: () => {
-      const pin = readActiveBiomesUIMapPinV142();
+      const pin = readActiveBiomesUIMapPin();
       if (!pin) {
         return undefined;
       }
@@ -610,17 +610,17 @@ export function buildBiomesUIMapAdapter(
       const visibleMarkerIds = MapLandmarks().map((landmark: any) =>
         String(landmark?.id ?? "")
       );
-      if (shouldClearStaleActiveMapPinV1({ pin, visibleMarkerIds })) {
-        writeActiveBiomesUIMapPinV142(undefined);
+      if (shouldClearStaleActiveMapPin({ pin, visibleMarkerIds })) {
+        writeActiveBiomesUIMapPin(undefined);
         return undefined;
       }
       return pin;
     },
     setActiveMapPin: (marker: any) => {
       const pin = activeBiomesUIMapPinFromMarkerForTest(marker);
-      if (pin) writeActiveBiomesUIMapPinV142(pin);
+      if (pin) writeActiveBiomesUIMapPin(pin);
     },
-    clearActiveMapPin: () => writeActiveBiomesUIMapPinV142(undefined),
+    clearActiveMapPin: () => writeActiveBiomesUIMapPin(undefined),
   };
 }
 

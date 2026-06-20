@@ -203,7 +203,7 @@ export class AskServiceImpl implements AskService {
             continue;
           }
         } else if (entity.box) {
-          if (!intersectsAABB(aabb, [entity.box.v0, entity.box.v1])) {
+          if (!intersectsAABB(aabb, [entity.box, entity.box])) {
             continue;
           }
         }

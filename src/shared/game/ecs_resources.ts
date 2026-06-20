@@ -39,7 +39,7 @@ type EcsResourcesBuilder = BiomesResourcesBuilder<EcsResourcePaths>;
 
 let loggedMissingWorldMetadataFallback = false;
 
-export function fallbackWorldMetadataV1(): ReadonlyWorldMetadata {
+export function fallbackWorldMetadata(): ReadonlyWorldMetadata {
   return WorldMetadata.create({
     aabb: {
       v0: [-2048, -256, -2048],
@@ -157,7 +157,7 @@ export function addTableResources<MI extends MetaIndex<MI>>(
           worldMetadataEntityFields: entity ? Object.keys(entity) : [],
         });
       }
-      return fallbackWorldMetadataV1();
+      return fallbackWorldMetadata();
     }
     return entity.world_metadata;
   });

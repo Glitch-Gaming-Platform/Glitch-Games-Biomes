@@ -1,4 +1,4 @@
-import { zSimulationName } from "@/server/gaia_v2/simulations/api";
+import { zSimulationName } from "@/server/gaia/simulations/api";
 import { BackgroundTaskController } from "@/shared/abort";
 import { zShardId } from "@/shared/game/shard";
 import { log } from "@/shared/logging";

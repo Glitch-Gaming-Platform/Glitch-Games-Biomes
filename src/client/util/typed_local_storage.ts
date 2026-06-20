@@ -166,7 +166,7 @@ export const changeEmitter =
 
 changeEmitter.setMaxListeners(100);
 
-function getBrowserLocalStorageV1(): Storage | undefined {
+function getBrowserLocalStorage(): Storage | undefined {
   try {
     return typeof localStorage !== "undefined" ? localStorage : undefined;
   } catch {
@@ -178,14 +178,14 @@ export function setTypedStorageItem<T extends keyof TypesafeLocalStorageSchema>(
   key: T,
   value: TypesafeLocalStorageSchema[T]
 ): void {
-  getBrowserLocalStorageV1()?.setItem(key, JSON.stringify(value));
+  getBrowserLocalStorage()?.setItem(key, JSON.stringify(value));
   (changeEmitter as EventEmitter).emit(`change:${key}`, value);
 }
 
 export function getTypedStorageItem<T extends keyof TypesafeLocalStorageSchema>(
   key: T
 ): TypesafeLocalStorageSchema[T] | null {
-  const val = getBrowserLocalStorageV1()?.getItem(key) ?? null;
+  const val = getBrowserLocalStorage()?.getItem(key) ?? null;
   const parsed = zTypesafeLocalStorageSchema.shape[key].safeParse(
     val !== null ? JSON.parse(val) : undefined
   );

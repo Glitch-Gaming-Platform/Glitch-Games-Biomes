@@ -1,6 +1,6 @@
-// harthmere-resource-gathering-hit-contract-v10
-export const HARTHMERE_RESOURCE_GATHERING_HIT_CONTRACT_V10 = {
-  version: "harthmere-resource-gathering-hit-contract-v10",
+// harthmere-resource-gathering-hit-contract
+export const HARTHMERE_RESOURCE_GATHERING_HIT_CONTRACT = {
+  version: "harthmere-resource-gathering-hit-contract",
   timing: {
     gatherHitUsesImpactFrame: true,
     impactMsMetadataRequired: true,
@@ -27,7 +27,7 @@ export const HARTHMERE_RESOURCE_GATHERING_HIT_CONTRACT_V10 = {
 } as const;
 
 import {
-  harthmereHasAttackableTargetNearPlayerV1,
+  harthmereHasAttackableTargetNearPlayer,
   performHarthmereCombatAttack,
   performHarthmereForwardArcAttack,
   readHarthmereCombatState,
@@ -37,19 +37,19 @@ import {
   type HarthmerePlayerAttackType,
 } from "@/client/components/challenges/LocalDevHarthmereCombat";
 import {
-  harthmereDialogueLiveModeHeadersV1,
-  harthmereDialogueLiveModeUrlV1,
+  harthmereDialogueLiveModeHeaders,
+  harthmereDialogueLiveModeUrl,
 } from "@/client/components/challenges/dialogueLiveModeReputation";
-import { isHarthmereLocalCombatSafeZonePositionV1 } from "@/client/components/challenges/localDevHarthmereCombatSafetyV1";
+import { isHarthmereLocalCombatSafeZonePosition } from "@/client/components/challenges/localDevHarthmereCombatSafety";
 import {
-  harthmerePvpBasicDamageV1,
-  harthmerePvpPlayersInArcV1,
-  type HarthmerePvpCandidatePlayerV1,
+  harthmerePvpBasicDamage,
+  harthmerePvpPlayersInArc,
+  type HarthmerePvpCandidatePlayer,
 } from "@/client/components/challenges/harthmerePvpHitRules";
 import { useClientContext } from "@/client/components/contexts/ClientContextReactContext";
-import { defaultHarthmereLiveFetchV1 } from "@/client/components/harthmere_live_fetch";
+import { defaultHarthmereLiveFetch } from "@/client/components/harthmere_live_fetch";
 import type { ClientContextSubset } from "@/client/game/context";
-import { publishHarthmereLiveEntityCombatMotionToRendererV1 } from "@/client/game/resources/harthmere_live_entity_motion_bridge_v1";
+import { publishHarthmereLiveEntityCombatMotionToRenderer } from "@/client/game/resources/harthmere_live_entity_motion_bridge";
 import { PlayerSelector } from "@/shared/ecs/gen/selectors";
 import { UpdatePlayerHealthEvent } from "@/shared/ecs/gen/events";
 import type { DamageSource } from "@/shared/ecs/gen/types";
@@ -59,51 +59,51 @@ import {
   writeHarthmereInventoryState,
 } from "@/client/components/challenges/LocalDevHarthmereInventorySystem";
 import {
-  describeHarthmereMultiplayerCombatInterfaceV1,
-  getHarthmereMultiplayerAttackDisabledReasonV1,
-  HARTHMERE_COMBAT_INTERFACE_KEY_COPY_V1,
+  describeHarthmereMultiplayerCombatInterface,
+  getHarthmereMultiplayerAttackDisabledReason,
+  HARTHMERE_COMBAT_INTERFACE_KEY_COPY,
 } from "@/client/components/challenges/harthmereCombatDeathInterfaceRules";
 import { getHarthmereLevelSummary } from "@/client/components/challenges/LocalDevHarthmereLevelingSystem";
 import {
-  harthmereLiveModeCombatTargetIdForSeedV1,
-  shouldBypassHarthmereKeyboardDrawGateForMousePrimaryAttackV1,
-  shouldEngageHarthmereMousePrimaryAttackV1,
+  harthmereLiveModeCombatTargetIdForSeed,
+  shouldBypassHarthmereKeyboardDrawGateForMousePrimaryAttack,
+  shouldEngageHarthmereMousePrimaryAttack,
 } from "@/client/components/challenges/harthmereMousePrimaryAttackRules";
 import {
-  harthmereCrosshairAimFromEventV1,
-  harthmereHasCrosshairCombatTargetV1,
-  pickHarthmereCrosshairCombatTargetV1,
-  readHarthmereCrosshairCombatActorsV1,
-  type HarthmereCrosshairAimV1,
-} from "@/client/components/challenges/harthmereCrosshairCombatTargetV1";
+  harthmereCrosshairAimFromEvent,
+  harthmereHasCrosshairCombatTarget,
+  pickHarthmereCrosshairCombatTarget,
+  readHarthmereCrosshairCombatActors,
+  type HarthmereCrosshairAim,
+} from "@/client/components/challenges/harthmereCrosshairCombatTarget";
 import { harthmereUserScopedStorageKey } from "@/client/components/challenges/LocalDevHarthmereUserScope";
-import { HARTHMERE_VOXEL_INTERACTION_ATTACK_REACH_UNITS_V1 } from "@/shared/harthmere/combat_reach_v1";
+import { HARTHMERE_VOXEL_INTERACTION_ATTACK_REACH_UNITS } from "@/shared/harthmere/combat_reach";
 import {
-  harthmereGroundedLivestockSeedsInTerritoryV1,
-  harthmereGroundedMuckMonsterSeedsInTerritoryV1,
-} from "@/shared/harthmere/live_entity_production_seed_v1";
+  harthmereGroundedLivestockSeedsInTerritory,
+  harthmereGroundedMuckMonsterSeedsInTerritory,
+} from "@/shared/harthmere/live_entity_production_seed";
 import React, { useEffect, useMemo, useState } from "react";
 
-const HARTHMERE_NO_SPARK_BASIC_ACTOR_MATCH_VERSION = "harthmere-no-spark-basic-actor-match-v11";
+const HARTHMERE_NO_SPARK_BASIC_ACTOR_MATCH_VERSION = "harthmere-no-spark-basic-actor-match";
 
 const HARTHMERE_MULTIPLAYER_COMBAT_STATE_KEY =
-  "biomes.localDev.harthmere.multiplayerCombatState.v1";
+  "biomes.localDev.harthmere.multiplayerCombatState";
 const HARTHMERE_MULTIPLAYER_COMBAT_EVENT =
   "biomes:harthmere-multiplayer-combat-changed";
 export const HARTHMERE_ATTACK_ANIMATION_EVENT =
   "biomes:harthmere-attack-animation";
 const HARTHMERE_MULTIPLAYER_RULESET_REVISION =
-  "harthmere-gltf-action-keymap-v10";
+  "harthmere-gltf-action-keymap";
 
-// harthmere-full-animation-runtime-v6
-const HARTHMERE_FULL_ANIMATION_REQUEST_EVENT_V6 =
-  "biomes:harthmere-animation-request-v6";
-function emitHarthmereFullAnimationRequestV6(detail: { family: string; action: string; phase?: string; itemId?: string; windupMs?: number; impactMs?: number; recoveryMs?: number; }) {
+// harthmere-full-animation-runtime
+const HARTHMERE_FULL_ANIMATION_REQUEST_EVENT =
+  "biomes:harthmere-animation-request";
+function emitHarthmereFullAnimationRequest(detail: { family: string; action: string; phase?: string; itemId?: string; windupMs?: number; impactMs?: number; recoveryMs?: number; }) {
   if (!isBrowser()) return;
-  window.dispatchEvent(new CustomEvent(HARTHMERE_FULL_ANIMATION_REQUEST_EVENT_V6, { detail }));
+  window.dispatchEvent(new CustomEvent(HARTHMERE_FULL_ANIMATION_REQUEST_EVENT, { detail }));
 }
 
-// harthmere-hard-router-bhl-safety-v12
+// harthmere-hard-router-bhl-safety
 export const HARTHMERE_COMBAT_KEY_BINDINGS = {
   draw: "KeyX",
   target: "Tab",
@@ -226,7 +226,7 @@ function isBrowser() {
 }
 
 
-function /* V101 audit: performHarthmereCombatAttack(targetOffset, attack) */
+function /* current audit: performHarthmereCombatAttack(targetOffset, attack) */
 debugHarthmereKeyCombat(stage: string, payload: Record<string, unknown>) {
   if (
     !isBrowser() ||
@@ -248,11 +248,11 @@ function now() {
 }
 
 
-// harthmere-sword-animation-polish-v3
+// harthmere-sword-animation-polish
 // Physical sword damage is resolved at the impact frame, not immediately when
 // the key goes down. These values also feed the renderer so visual and damage
 // timing stay testable from one contract.
-const HARTHMERE_SWORD_ATTACK_TIMINGS_V3 = {
+const HARTHMERE_SWORD_ATTACK_TIMINGS = {
   basic: { windupMs: 150, impactMs: 220, recoveryMs: 340 },
   heavy: { windupMs: 260, impactMs: 360, recoveryMs: 520 },
 } as const;
@@ -261,8 +261,8 @@ function harthmereSwordAttackTiming(
   attack: HarthmerePlayerAttackType | undefined,
 ) {
   return attack === "heavy"
-    ? HARTHMERE_SWORD_ATTACK_TIMINGS_V3.heavy
-    : HARTHMERE_SWORD_ATTACK_TIMINGS_V3.basic;
+    ? HARTHMERE_SWORD_ATTACK_TIMINGS.heavy
+    : HARTHMERE_SWORD_ATTACK_TIMINGS.basic;
 }
 
 function recordHarthmereSwordImpactTimingDebug(
@@ -287,7 +287,7 @@ function clamp(value: number, min: number, max: number) {
 
 
 
-// harthmere-all-weapon-animation-v4
+// harthmere-all-weapon-animation
 // Keep visual equipment events tied to the equipped inventory item. The renderer
 // maps these game item ids to generated equipment animation manifest ids.
 function harthmereEquippedWeaponVisualItemId() {
@@ -343,7 +343,7 @@ function event() {
   window.dispatchEvent(new CustomEvent(HARTHMERE_MULTIPLAYER_COMBAT_EVENT));
 }
 
-// HARTHMERE_PLAYER_SWING_VARIETY_V2_INSTALL_MARKER
+// HARTHMERE_PLAYER_SWING_VARIETY_INSTALL_MARKER
 // 8-family swing pool per the attack variation aesthetics doc: each call
 // picks a random shape so consecutive attacks don't all look identical.
 const __HM_SWING_VARIANTS = [
@@ -691,13 +691,13 @@ function afterHostileAction(
   };
 }
 
-// HARTHMERE_PVP_DAMAGE_V1
+// HARTHMERE_PVP_DAMAGE
 // Resolve the player-vs-player half of a left-mouse swing. Other players inside
 // the swing arc take real, server-authoritative damage via the vanilla
 // UpdatePlayerHealthEvent path (the same event the vanilla attack uses), so no
 // new networking is invented. Returns the number of players struck. PvP is
 // suppressed inside safe zones (town/Grove) and while the attacker is down.
-export function resolveHarthmerePvpMousePrimaryAttackV1(
+export function resolveHarthmerePvpMousePrimaryAttack(
   deps: ClientContextSubset<"events" | "table" | "resources" | "userId">
 ): number {
   if (!isBrowser()) {
@@ -709,7 +709,7 @@ export function resolveHarthmerePvpMousePrimaryAttackV1(
     return 0;
   }
   // No PvP in protected areas (town core / Grove respawn).
-  if (isHarthmereLocalCombatSafeZonePositionV1(position)) {
+  if (isHarthmereLocalCombatSafeZonePosition(position)) {
     return 0;
   }
   const combat = readHarthmereCombatState();
@@ -722,12 +722,12 @@ export function resolveHarthmerePvpMousePrimaryAttackV1(
 
   const localPlayer = deps.resources.get("/scene/local_player");
   const center = localPlayer.player.position;
-  const candidates: HarthmerePvpCandidatePlayerV1[] = [];
+  const candidates: HarthmerePvpCandidatePlayer[] = [];
   for (const entity of deps.table.scan(
     PlayerSelector.query.spatial.inSphere(
       {
         center,
-        radius: HARTHMERE_VOXEL_INTERACTION_ATTACK_REACH_UNITS_V1 + 1,
+        radius: HARTHMERE_VOXEL_INTERACTION_ATTACK_REACH_UNITS + 1,
       },
       { approx: true }
     )
@@ -755,18 +755,18 @@ export function resolveHarthmerePvpMousePrimaryAttackV1(
   // Match the NPC basic swing's reach/arc so a swing hits a player standing where
   // a creature would be hit.
   const cosHalfAngle = Math.cos((135 * Math.PI) / 360);
-  const hitIds = harthmerePvpPlayersInArcV1({
+  const hitIds = harthmerePvpPlayersInArc({
     origin,
     forward,
     players: candidates,
-    range: HARTHMERE_VOXEL_INTERACTION_ATTACK_REACH_UNITS_V1,
+    range: HARTHMERE_VOXEL_INTERACTION_ATTACK_REACH_UNITS,
     cosHalfAngle,
   });
   if (hitIds.length === 0) {
     return 0;
   }
 
-  const damage = harthmerePvpBasicDamageV1(combat.player.attackPoints);
+  const damage = harthmerePvpBasicDamage(combat.player.attackPoints);
   const byId = new Map(candidates.map((c) => [c.id, c]));
   for (const id of hitIds) {
     const target = byId.get(id);
@@ -796,40 +796,40 @@ export function resolveHarthmerePvpMousePrimaryAttackV1(
   return hitIds.length;
 }
 
-const HARTHMERE_MOUSE_LIVE_MODE_ATTACK_BRIDGE_VERSION_V1 =
-  "harthmere-mouse-live-mode-attack-bridge-v1";
-const HARTHMERE_LIVE_MODE_BASIC_ATTACK_ABILITY_ID_V1 = "basic_strike";
-const HARTHMERE_LIVE_MODE_MOUSE_ATTACK_ZONE_ID_V1 = "harthmere_wilderness";
+const HARTHMERE_MOUSE_LIVE_MODE_ATTACK_BRIDGE_VERSION =
+  "harthmere-mouse-live-mode-attack-bridge";
+const HARTHMERE_LIVE_MODE_BASIC_ATTACK_ABILITY_ID = "basic_strike";
+const HARTHMERE_LIVE_MODE_MOUSE_ATTACK_ZONE_ID = "harthmere_wilderness";
 
-const HARTHMERE_LIVE_MODE_TARGET_BY_ECS_ID_V1 = new Map<number, string>(
+const HARTHMERE_LIVE_MODE_TARGET_BY_ECS_ID = new Map<number, string>(
   [
-    ...harthmereGroundedMuckMonsterSeedsInTerritoryV1(),
-    ...harthmereGroundedLivestockSeedsInTerritoryV1(),
+    ...harthmereGroundedMuckMonsterSeedsInTerritory(),
+    ...harthmereGroundedLivestockSeedsInTerritory(),
   ].flatMap((seed) => {
-    const targetId = harthmereLiveModeCombatTargetIdForSeedV1(seed);
+    const targetId = harthmereLiveModeCombatTargetIdForSeed(seed);
     const entityId = Number(seed.entityId);
     return targetId && Number.isFinite(entityId) ? [[entityId, targetId]] : [];
   })
 );
 
-export function harthmereLiveModeCombatTargetIdForEcsEntityV1(
+export function harthmereLiveModeCombatTargetIdForEcsEntity(
   entityId: number | string | undefined
 ): string | undefined {
   const numeric = Number(entityId);
   return Number.isFinite(numeric)
-    ? HARTHMERE_LIVE_MODE_TARGET_BY_ECS_ID_V1.get(numeric)
+    ? HARTHMERE_LIVE_MODE_TARGET_BY_ECS_ID.get(numeric)
     : undefined;
 }
 
-type HarthmereNativeNpcAttackContactHitV189 = {
+type HarthmereNativeNpcAttackContactHit = {
   id?: number | string;
   entityId?: number | string;
   offset?: number | string;
   label?: string;
 };
 
-function harthmereMousePrimaryAttackOffsetsFromNativeHitsV1(
-  hits: ReadonlyArray<HarthmereNativeNpcAttackContactHitV189> | undefined
+function harthmereMousePrimaryAttackOffsetsFromNativeHits(
+  hits: ReadonlyArray<HarthmereNativeNpcAttackContactHit> | undefined
 ): number[] {
   if (!Array.isArray(hits)) {
     return [];
@@ -844,21 +844,21 @@ function harthmereMousePrimaryAttackOffsetsFromNativeHitsV1(
   return offsets;
 }
 
-function debugHarthmereMouseLiveModeAttackV1(entry: Record<string, unknown>) {
+function debugHarthmereMouseLiveModeAttack(entry: Record<string, unknown>) {
   if (!isBrowser()) {
     return;
   }
   const logged = {
     at: new Date().toISOString(),
-    version: HARTHMERE_MOUSE_LIVE_MODE_ATTACK_BRIDGE_VERSION_V1,
+    version: HARTHMERE_MOUSE_LIVE_MODE_ATTACK_BRIDGE_VERSION,
     ...entry,
   };
   const win = window as typeof window & {
-    __harthmereMouseLiveModeAttackDebugV1?: unknown[];
+    __harthmereMouseLiveModeAttackDebug?: unknown[];
   };
-  win.__harthmereMouseLiveModeAttackDebugV1 = [
+  win.__harthmereMouseLiveModeAttackDebug = [
     logged,
-    ...(win.__harthmereMouseLiveModeAttackDebugV1 ?? []),
+    ...(win.__harthmereMouseLiveModeAttackDebug ?? []),
   ].slice(0, 100);
   if (
     window.localStorage?.getItem("biomes.localDev.harthmere.combatDebug") ===
@@ -868,15 +868,15 @@ function debugHarthmereMouseLiveModeAttackV1(entry: Record<string, unknown>) {
   }
 }
 
-type HarthmereMousePrimaryLiveModeHitV1 = {
+type HarthmereMousePrimaryLiveModeHit = {
   offset: number;
   targetId?: string;
   targetPosition?: [number, number, number];
 };
 
-function normalizeHarthmereMouseLiveModeHitV1(
-  hit: number | HarthmereMousePrimaryLiveModeHitV1
-): HarthmereMousePrimaryLiveModeHitV1 | undefined {
+function normalizeHarthmereMouseLiveModeHit(
+  hit: number | HarthmereMousePrimaryLiveModeHit
+): HarthmereMousePrimaryLiveModeHit | undefined {
   if (typeof hit === "number") {
     return Number.isFinite(hit) ? { offset: hit } : undefined;
   }
@@ -894,8 +894,8 @@ function normalizeHarthmereMouseLiveModeHitV1(
   };
 }
 
-function submitHarthmereLiveModeMousePrimaryAttackV1(
-  hits: ReadonlyArray<number | HarthmereMousePrimaryLiveModeHitV1>,
+function submitHarthmereLiveModeMousePrimaryAttack(
+  hits: ReadonlyArray<number | HarthmereMousePrimaryLiveModeHit>,
   runtime: HarthmereForwardArcRuntimeSnapshot | undefined,
   source: "native_contact" | "forward_arc_fallback" | "crosshair_visible_actor"
 ) {
@@ -903,8 +903,8 @@ function submitHarthmereLiveModeMousePrimaryAttackV1(
     return;
   }
   const normalizedHits = hits
-    .map((hit) => normalizeHarthmereMouseLiveModeHitV1(hit))
-    .filter((hit): hit is HarthmereMousePrimaryLiveModeHitV1 => Boolean(hit));
+    .map((hit) => normalizeHarthmereMouseLiveModeHit(hit))
+    .filter((hit): hit is HarthmereMousePrimaryLiveModeHit => Boolean(hit));
   const requests = new Map<
     string,
     {
@@ -915,7 +915,7 @@ function submitHarthmereLiveModeMousePrimaryAttackV1(
   >();
   for (const hit of normalizedHits) {
     const targetId =
-      hit.targetId ?? harthmereLiveModeCombatTargetIdForEcsEntityV1(hit.offset);
+      hit.targetId ?? harthmereLiveModeCombatTargetIdForEcsEntity(hit.offset);
     if (!targetId) {
       continue;
     }
@@ -929,7 +929,7 @@ function submitHarthmereLiveModeMousePrimaryAttackV1(
     requests.set(targetId, request);
   }
   if (requests.size === 0) {
-    debugHarthmereMouseLiveModeAttackV1({
+    debugHarthmereMouseLiveModeAttack({
       type: "ignored",
       reason: "no_seeded_live_mode_target",
       source,
@@ -946,12 +946,12 @@ function submitHarthmereLiveModeMousePrimaryAttackV1(
       .slice(2)}`;
     fireAndForget(
       (async () => {
-        const response = await defaultHarthmereLiveFetchV1(
-          harthmereDialogueLiveModeUrlV1(window.location.search),
+        const response = await defaultHarthmereLiveFetch(
+          harthmereDialogueLiveModeUrl(window.location.search),
           {
             method: "POST",
             credentials: "same-origin",
-            headers: harthmereDialogueLiveModeHeadersV1(window.location.search),
+            headers: harthmereDialogueLiveModeHeaders(window.location.search),
             body: JSON.stringify({
               requestId,
               idempotencyKey: requestId,
@@ -959,9 +959,9 @@ function submitHarthmereLiveModeMousePrimaryAttackV1(
               actionKind: "request_attack",
               subsystem: "combat",
               actorEntityVersion: 1,
-              zoneId: HARTHMERE_LIVE_MODE_MOUSE_ATTACK_ZONE_ID_V1,
+              zoneId: HARTHMERE_LIVE_MODE_MOUSE_ATTACK_ZONE_ID,
               payload: {
-                abilityId: HARTHMERE_LIVE_MODE_BASIC_ATTACK_ABILITY_ID_V1,
+                abilityId: HARTHMERE_LIVE_MODE_BASIC_ATTACK_ABILITY_ID,
               },
               clientClaims: {
                 source,
@@ -975,9 +975,9 @@ function submitHarthmereLiveModeMousePrimaryAttackV1(
         );
         const body = await response.json().catch(() => undefined);
         if (body?.combatState) {
-          publishHarthmereLiveEntityCombatMotionToRendererV1(body.combatState);
+          publishHarthmereLiveEntityCombatMotionToRenderer(body.combatState);
         }
-        debugHarthmereMouseLiveModeAttackV1({
+        debugHarthmereMouseLiveModeAttack({
           type: response.ok ? "submitted" : "rejected",
           source,
           targetId,
@@ -988,7 +988,7 @@ function submitHarthmereLiveModeMousePrimaryAttackV1(
           errors: body?.validation?.errors,
         });
       })().catch((error) => {
-        debugHarthmereMouseLiveModeAttackV1({
+        debugHarthmereMouseLiveModeAttack({
           type: "error",
           source,
           targetId,
@@ -999,8 +999,8 @@ function submitHarthmereLiveModeMousePrimaryAttackV1(
   }
 }
 
-export function performHarthmereMousePrimaryAttackV1(
-  aim?: HarthmereCrosshairAimV1
+export function performHarthmereMousePrimaryAttack(
+  aim?: HarthmereCrosshairAim
 ) {
   let state = readHarthmereMultiplayerCombatState();
   const attack: Exclude<HarthmerePlayerAttackType, "spark"> = "basic";
@@ -1011,7 +1011,7 @@ export function performHarthmereMousePrimaryAttackV1(
   });
 
   const combat = readHarthmereCombatState();
-  const blockedReason = getHarthmereMultiplayerAttackDisabledReasonV1(
+  const blockedReason = getHarthmereMultiplayerAttackDisabledReason(
     attack,
     state,
     combat.player,
@@ -1034,7 +1034,7 @@ export function performHarthmereMousePrimaryAttackV1(
   const equippedWeaponItemId = equippedWeapon?.itemId;
   const hasPhysicalWeapon = Boolean(equippedWeaponItemId);
   const bypassedDrawGate =
-    shouldBypassHarthmereKeyboardDrawGateForMousePrimaryAttackV1({
+    shouldBypassHarthmereKeyboardDrawGateForMousePrimaryAttack({
       source: "mouse_primary",
       hasPhysicalWeapon,
       weaponDrawn: state.weaponDrawn,
@@ -1044,7 +1044,7 @@ export function performHarthmereMousePrimaryAttackV1(
     emitHarthmereWeaponVisualState("draw", true, attack, equippedWeaponItemId);
   }
 
-  emitHarthmereFullAnimationRequestV6({
+  emitHarthmereFullAnimationRequest({
     family: hasPhysicalWeapon ? "ranged" : "creature",
     action: hasPhysicalWeapon ? attack : "attack",
     phase: "start",
@@ -1061,7 +1061,7 @@ export function performHarthmereMousePrimaryAttackV1(
 
   const runtime = readHarthmereForwardArcRuntime();
 
-  // HARTHMERE_CROSSHAIR_COMBAT_TARGET_V1: prefer the creature actually under the
+  // HARTHMERE_CROSSHAIR_COMBAT_TARGET: prefer the creature actually under the
   // crosshair (camera-projected screen position published by the renderer) over
   // the forward-arc cone. The arc depends on the player body-forward/yaw/origin
   // runtime, which in the embed build is frequently missing or in the wrong
@@ -1069,14 +1069,14 @@ export function performHarthmereMousePrimaryAttackV1(
   // when you are aiming straight at a mucker. Screen targeting is the literal
   // "hit what you are pointing at" and works without that runtime.
   let arcResult: { hitOffsets: number[]; candidateOffsets: number[] };
-  const crosshairActors = readHarthmereCrosshairCombatActorsV1();
+  const crosshairActors = readHarthmereCrosshairCombatActors();
   const crosshairPick = aim
-    ? pickHarthmereCrosshairCombatTargetV1({
+    ? pickHarthmereCrosshairCombatTarget({
         actors: crosshairActors,
         aim,
         playerX: runtime?.position?.[0],
         playerZ: runtime?.position?.[2],
-        worldReach: HARTHMERE_VOXEL_INTERACTION_ATTACK_REACH_UNITS_V1,
+        worldReach: HARTHMERE_VOXEL_INTERACTION_ATTACK_REACH_UNITS,
       })
     : undefined;
 
@@ -1092,7 +1092,7 @@ export function performHarthmereMousePrimaryAttackV1(
       hitOffsets: [crosshairPick.offset],
       candidateOffsets: crosshairActors.map((actor) => actor.offset),
     };
-    submitHarthmereLiveModeMousePrimaryAttackV1(
+    submitHarthmereLiveModeMousePrimaryAttack(
       [
         {
           offset: crosshairPick.offset,
@@ -1105,7 +1105,7 @@ export function performHarthmereMousePrimaryAttackV1(
     );
   } else {
     arcResult = performHarthmereForwardArcAttack(attack, runtime);
-    submitHarthmereLiveModeMousePrimaryAttackV1(
+    submitHarthmereLiveModeMousePrimaryAttack(
       arcResult.hitOffsets,
       runtime,
       "forward_arc_fallback"
@@ -1142,7 +1142,7 @@ export function performHarthmereKeyedAttack(attack: HarthmerePlayerAttackType) {
   });
 
   const combat = readHarthmereCombatState();
-  const blockedReason = getHarthmereMultiplayerAttackDisabledReasonV1(
+  const blockedReason = getHarthmereMultiplayerAttackDisabledReason(
     attack,
     state,
     combat.player,
@@ -1229,13 +1229,13 @@ export function performHarthmereKeyedAttack(attack: HarthmerePlayerAttackType) {
       return;
     }
     state = { ...state, mana: Math.max(0, state.mana - 10) };
-    // harthmere-real-player-attack-gesture-v1: spark emits only after validation
-    emitHarthmereFullAnimationRequestV6({ family: "magic", action: attack, phase: "start" });
+    // harthmere-real-player-attack-gesture: spark emits only after validation
+    emitHarthmereFullAnimationRequest({ family: "magic", action: attack, phase: "start" });
     emitAttackAnimation(attack, { emptyHanded: true, weaponVisual: false });
     performHarthmereCombatAttack(Number(targetOffset), attack);
   } else {
-    // harthmere-real-player-attack-gesture-v1: physical emits only after validation
-    emitHarthmereFullAnimationRequestV6({
+    // harthmere-real-player-attack-gesture: physical emits only after validation
+    emitHarthmereFullAnimationRequest({
       family: hasPhysicalWeapon ? "ranged" : "creature",
       action: hasPhysicalWeapon ? attack : "attack",
       phase: "start",
@@ -1246,7 +1246,7 @@ export function performHarthmereKeyedAttack(attack: HarthmerePlayerAttackType) {
       emptyHanded: !hasPhysicalWeapon,
       weaponVisual: hasPhysicalWeapon,
     });
-    // harthmere-physical-weapon-visual-event-v2:
+    // harthmere-physical-weapon-visual-event:
     // B/H weapon attacks trigger visible equipment animation even when
     // combatDebug is disabled and even if the forward arc misses every target.
     if (hasPhysicalWeapon) {
@@ -1459,7 +1459,7 @@ export function useHarthmereCombatHotkeys() {
         );
       }
     };
-    // HARTHMERE_MOUSE_PRIMARY_ATTACK_V2:
+    // HARTHMERE_MOUSE_PRIMARY_ATTACK:
     // Creature/body hits are installed by the module-level hard mouse router so
     // they exist as soon as the combat module loads. This hook keeps the PvP
     // half because it needs the live ClientContext for authoritative events.
@@ -1472,7 +1472,7 @@ export function useHarthmereCombatHotkeys() {
       }
       // Other players — fire authoritative networked PvP damage for anyone in the
       // swing arc. Independent of the creature branch: one click can hit both.
-      resolveHarthmerePvpMousePrimaryAttackV1(clientContextRef.current);
+      resolveHarthmerePvpMousePrimaryAttack(clientContextRef.current);
     };
 
     window.addEventListener("keydown", handler, true);
@@ -1528,7 +1528,7 @@ export const HarthmereMultiplayerCombatHUD: React.FunctionComponent<{}> = () => 
   useHarthmereCombatHotkeys();
   const state = useHarthmereMultiplayerCombatState();
   const combat = readHarthmereCombatState();
-  const interfaceRules = describeHarthmereMultiplayerCombatInterfaceV1(
+  const interfaceRules = describeHarthmereMultiplayerCombatInterface(
     state,
     combat.player,
   );
@@ -1551,12 +1551,12 @@ export const HarthmereMultiplayerCombatHUD: React.FunctionComponent<{}> = () => 
             Multiplayer Fighting
           </div>
           <div className="text-xs text-white/75">
-            {HARTHMERE_COMBAT_INTERFACE_KEY_COPY_V1.draw} draw/sheathe ·{" "}
-            {HARTHMERE_COMBAT_INTERFACE_KEY_COPY_V1.target} target ·{" "}
-            {HARTHMERE_COMBAT_INTERFACE_KEY_COPY_V1.basic} attack ·{" "}
-            {HARTHMERE_COMBAT_INTERFACE_KEY_COPY_V1.heavy} heavy ·{" "}
-            {HARTHMERE_COMBAT_INTERFACE_KEY_COPY_V1.spark} Spark ·{" "}
-            {HARTHMERE_COMBAT_INTERFACE_KEY_COPY_V1.pvp} PvP
+            {HARTHMERE_COMBAT_INTERFACE_KEY_COPY.draw} draw/sheathe ·{" "}
+            {HARTHMERE_COMBAT_INTERFACE_KEY_COPY.target} target ·{" "}
+            {HARTHMERE_COMBAT_INTERFACE_KEY_COPY.basic} attack ·{" "}
+            {HARTHMERE_COMBAT_INTERFACE_KEY_COPY.heavy} heavy ·{" "}
+            {HARTHMERE_COMBAT_INTERFACE_KEY_COPY.spark} Spark ·{" "}
+            {HARTHMERE_COMBAT_INTERFACE_KEY_COPY.pvp} PvP
           </div>
         </div>
         <div className="rounded bg-orange-300/20 px-1.5 py-0.5 text-xs font-semibold text-orange-100">
@@ -1612,21 +1612,21 @@ function ActionButton({
 export const HarthmereMultiplayerCombatMenuPanel: React.FunctionComponent<{}> = () => {
   const state = useHarthmereMultiplayerCombatState();
   const combat = readHarthmereCombatState();
-  const interfaceRules = describeHarthmereMultiplayerCombatInterfaceV1(
+  const interfaceRules = describeHarthmereMultiplayerCombatInterface(
     state,
     combat.player,
   );
-  const basicBlock = getHarthmereMultiplayerAttackDisabledReasonV1(
+  const basicBlock = getHarthmereMultiplayerAttackDisabledReason(
     "basic",
     state,
     combat.player,
   );
-  const heavyBlock = getHarthmereMultiplayerAttackDisabledReasonV1(
+  const heavyBlock = getHarthmereMultiplayerAttackDisabledReason(
     "heavy",
     state,
     combat.player,
   );
-  const sparkBlock = getHarthmereMultiplayerAttackDisabledReasonV1(
+  const sparkBlock = getHarthmereMultiplayerAttackDisabledReason(
     "spark",
     state,
     combat.player,
@@ -1657,12 +1657,12 @@ export const HarthmereMultiplayerCombatMenuPanel: React.FunctionComponent<{}> = 
       <div className="mb-2 rounded border border-white/10 bg-white/5 p-2">
         <div className="mb-1 text-xs font-semibold text-white">Keyboard</div>
         <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-[11px] text-white/75">
-          <div><span className="font-semibold text-white">{HARTHMERE_COMBAT_INTERFACE_KEY_COPY_V1.draw}</span> draw / put away weapon</div>
-          <div><span className="font-semibold text-white">{HARTHMERE_COMBAT_INTERFACE_KEY_COPY_V1.target}</span> cycle target</div>
-          <div><span className="font-semibold text-white">{HARTHMERE_COMBAT_INTERFACE_KEY_COPY_V1.basic}</span> basic weapon attack</div>
-          <div><span className="font-semibold text-white">{HARTHMERE_COMBAT_INTERFACE_KEY_COPY_V1.heavy}</span> heavy weapon attack</div>
-          <div><span className="font-semibold text-white">{HARTHMERE_COMBAT_INTERFACE_KEY_COPY_V1.spark}</span> Spark magic attack</div>
-          <div><span className="font-semibold text-white">{HARTHMERE_COMBAT_INTERFACE_KEY_COPY_V1.pvp}</span> toggle voluntary PvP</div>
+          <div><span className="font-semibold text-white">{HARTHMERE_COMBAT_INTERFACE_KEY_COPY.draw}</span> draw / put away weapon</div>
+          <div><span className="font-semibold text-white">{HARTHMERE_COMBAT_INTERFACE_KEY_COPY.target}</span> cycle target</div>
+          <div><span className="font-semibold text-white">{HARTHMERE_COMBAT_INTERFACE_KEY_COPY.basic}</span> basic weapon attack</div>
+          <div><span className="font-semibold text-white">{HARTHMERE_COMBAT_INTERFACE_KEY_COPY.heavy}</span> heavy weapon attack</div>
+          <div><span className="font-semibold text-white">{HARTHMERE_COMBAT_INTERFACE_KEY_COPY.spark}</span> Spark magic attack</div>
+          <div><span className="font-semibold text-white">{HARTHMERE_COMBAT_INTERFACE_KEY_COPY.pvp}</span> toggle voluntary PvP</div>
         </div>
       </div>
 
@@ -1810,7 +1810,7 @@ export const HarthmereMultiplayerCombatMenuPanel: React.FunctionComponent<{}> = 
 // HUD/class/inventory panels can register their own capture listeners. The goal
 // is to make B/H/L deterministic and prevent older spell handlers from stealing
 // KeyB and routing it to Spark.
-const HARTHMERE_HARD_COMBAT_KEY_ROUTER_VERSION = "harthmere-hard-key-router-v12";
+const HARTHMERE_HARD_COMBAT_KEY_ROUTER_VERSION = "harthmere-hard-key-router";
 
 type HarthmereHardCombatKey = "basic" | "heavy" | "spark";
 
@@ -1944,7 +1944,7 @@ installHarthmereHardCombatKeyRouter();
 // route to Harthmere body combat even on debug/visual pages that do not mount the
 // full HUD hook. PvP remains in the hook because it needs live ClientContext.
 const HARTHMERE_HARD_COMBAT_MOUSE_ROUTER_VERSION =
-  "harthmere-hard-mouse-router-v3";
+  "harthmere-hard-mouse-router";
 
 function installHarthmereHardCombatMouseRouter() {
   if (typeof window === "undefined") {
@@ -1955,8 +1955,8 @@ function installHarthmereHardCombatMouseRouter() {
     __harthmereHardCombatMouseRouterVersion?: string;
     __harthmereHardCombatMouseRouterCleanup?: () => void;
     __harthmereHardCombatMouseRouterLog?: unknown[];
-    __harthmereNativeNpcAttackContactLastAtV189?: number;
-    __harthmereNativeNpcAttackContactLastHitsV189?: HarthmereNativeNpcAttackContactHitV189[];
+    __harthmereNativeNpcAttackContactLastAt?: number;
+    __harthmereNativeNpcAttackContactLastHits?: HarthmereNativeNpcAttackContactHit[];
     __harthmereHardCombatMouseRouter?: {
       version: string;
       log: () => unknown[];
@@ -1993,9 +1993,9 @@ function installHarthmereHardCombatMouseRouter() {
       pushLog({ type: "ignored", reason: "not_gameplay_mouse_target" });
       return;
     }
-    // HARTHMERE_CROSSHAIR_COMBAT_TARGET_V1: the aim point is viewport-centre
+    // HARTHMERE_CROSSHAIR_COMBAT_TARGET: the aim point is viewport-centre
     // under pointer lock, otherwise the exact pixel the player clicked.
-    const aim = harthmereCrosshairAimFromEventV1({
+    const aim = harthmereCrosshairAimFromEvent({
       pointerLocked,
       clientX: event.clientX,
       clientY: event.clientY,
@@ -2003,20 +2003,20 @@ function installHarthmereHardCombatMouseRouter() {
       viewportHeight: window.innerHeight,
     });
     const runtimeForGate = readHarthmereForwardArcRuntime();
-    const hasCrosshairTarget = harthmereHasCrosshairCombatTargetV1({
-      actors: readHarthmereCrosshairCombatActorsV1(),
+    const hasCrosshairTarget = harthmereHasCrosshairCombatTarget({
+      actors: readHarthmereCrosshairCombatActors(),
       aim,
       playerX: runtimeForGate?.position?.[0],
       playerZ: runtimeForGate?.position?.[2],
-      worldReach: HARTHMERE_VOXEL_INTERACTION_ATTACK_REACH_UNITS_V1,
+      worldReach: HARTHMERE_VOXEL_INTERACTION_ATTACK_REACH_UNITS,
     });
     // Engage if there is something under the crosshair OR within the legacy
     // proximity probe. The crosshair check does not need the player-origin
     // runtime, so it still engages when that snapshot is missing.
     const hasAttackableTargetNearby =
-      hasCrosshairTarget || harthmereHasAttackableTargetNearPlayerV1();
+      hasCrosshairTarget || harthmereHasAttackableTargetNearPlayer();
     if (
-      !shouldEngageHarthmereMousePrimaryAttackV1({
+      !shouldEngageHarthmereMousePrimaryAttack({
         button: event.button,
         pointerLocked,
         gameplayCanvasTarget,
@@ -2028,7 +2028,7 @@ function installHarthmereHardCombatMouseRouter() {
       return;
     }
     const nativeContactBefore = Number(
-      win.__harthmereNativeNpcAttackContactLastAtV189 ?? 0,
+      win.__harthmereNativeNpcAttackContactLastAt ?? 0,
     );
     pushLog({
       type: "mousedown",
@@ -2039,14 +2039,14 @@ function installHarthmereHardCombatMouseRouter() {
     });
     window.setTimeout(() => {
       const nativeContactAfter = Number(
-        win.__harthmereNativeNpcAttackContactLastAtV189 ?? 0,
+        win.__harthmereNativeNpcAttackContactLastAt ?? 0,
       );
       if (nativeContactAfter > nativeContactBefore) {
         const nativeHitOffsets =
-          harthmereMousePrimaryAttackOffsetsFromNativeHitsV1(
-            win.__harthmereNativeNpcAttackContactLastHitsV189,
+          harthmereMousePrimaryAttackOffsetsFromNativeHits(
+            win.__harthmereNativeNpcAttackContactLastHits,
           );
-        submitHarthmereLiveModeMousePrimaryAttackV1(
+        submitHarthmereLiveModeMousePrimaryAttack(
           nativeHitOffsets,
           readHarthmereForwardArcRuntime(),
           "native_contact",
@@ -2059,7 +2059,7 @@ function installHarthmereHardCombatMouseRouter() {
         });
         return;
       }
-      performHarthmereMousePrimaryAttackV1(aim);
+      performHarthmereMousePrimaryAttack(aim);
     }, 80);
   };
 
@@ -2083,15 +2083,15 @@ function installHarthmereHardCombatMouseRouter() {
 installHarthmereHardCombatMouseRouter();
 
 
-// v13 combat variation event marker
-const __HARTHMERE_ATTACK_VARIATION_EVENT_V13 = {
+// current combat variation event marker
+const __HARTHMERE_ATTACK_VARIATION_EVENT = {
   attackVariationId: true,
   attackVariationFamily: true,
 };
 
 
-// v17 combat variation payload markers.
-const __HARTHMERE_VARIATION_COMBAT_V17 = {
+// current combat variation payload markers.
+const __HARTHMERE_VARIATION_COMBAT = {
   attackVariationId: true,
   attackVariationFamily: true,
   attackVariationIndex: true,

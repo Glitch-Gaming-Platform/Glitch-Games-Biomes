@@ -1,16 +1,16 @@
 import { connectToRedis } from "@/server/shared/redis/connection";
 import { biomesApiHandler } from "@/server/web/util/api_middleware";
 import {
-  createHarthmereProductionEconomyClientSnapshotFromBackendV1,
-  harthmereLiveModePlayerStateKeyV1,
-  harthmereLiveModeSharedWorldStateKeyV1,
-  mergeHarthmereLiveModeSharedWorldStateIntoBackendV1,
-  parseHarthmereLiveModeBackendStateV1,
-  parseHarthmereLiveModeSharedWorldStateV1,
-} from "@/shared/harthmere/live_mode_backend_v1";
+  createHarthmereProductionEconomyClientSnapshotFromBackend,
+  harthmereLiveModePlayerStateKey,
+  harthmereLiveModeSharedWorldStateKey,
+  mergeHarthmereLiveModeSharedWorldStateIntoBackend,
+  parseHarthmereLiveModeBackendState,
+  parseHarthmereLiveModeSharedWorldState,
+} from "@/shared/harthmere/live_mode_backend";
 import { z } from "zod";
-import { readHarthmerePlayerAndSharedStateStringsV1 } from "@/server/harthmere/live_mode_state_read_helpers";
-import { resolveHarthmereLiveModeActorIdV1 } from "@/server/harthmere/live_mode_actor_resolution_v1";
+import { readHarthmerePlayerAndSharedStateStrings } from "@/server/harthmere/live_mode_state_read_helpers";
+import { resolveHarthmereLiveModeActorId } from "@/server/harthmere/live_mode_actor_resolution";
 
 const zJsonRecord = z.record(z.unknown());
 
@@ -20,15 +20,15 @@ export const zHarthmereLiveModeEconomyStateResponse = z.object({
 });
 
 const globalForHarthmereLiveModeEconomyState = globalThis as typeof globalThis & {
-  __harthmereLiveModeEconomyStateRedisV1?: ReturnType<typeof connectToRedis>;
+  __harthmereLiveModeEconomyStateRedis?: ReturnType<typeof connectToRedis>;
 };
 
-function liveModeEconomyStateRedisV1() {
-  return (globalForHarthmereLiveModeEconomyState.__harthmereLiveModeEconomyStateRedisV1 ??=
+function liveModeEconomyStateRedis() {
+  return (globalForHarthmereLiveModeEconomyState.__harthmereLiveModeEconomyStateRedis ??=
     connectToRedis("firehose"));
 }
 
-export async function readHarthmereLiveModeEconomyStateForActorV1(input: {
+export async function readHarthmereLiveModeEconomyStateForActor(input: {
   redis: {
     primary: {
       get: (key: string) => Promise<string | null>;
@@ -39,28 +39,28 @@ export async function readHarthmereLiveModeEconomyStateForActorV1(input: {
   nowMs: number;
 }) {
   const { rawState, rawSharedState } =
-    await readHarthmerePlayerAndSharedStateStringsV1(
+    await readHarthmerePlayerAndSharedStateStrings(
       input.redis.primary,
-      harthmereLiveModePlayerStateKeyV1(input.actorId),
-      harthmereLiveModeSharedWorldStateKeyV1()
+      harthmereLiveModePlayerStateKey(input.actorId),
+      harthmereLiveModeSharedWorldStateKey()
     );
-  const state = parseHarthmereLiveModeBackendStateV1(
+  const state = parseHarthmereLiveModeBackendState(
     rawState,
     input.actorId,
     input.nowMs
   );
-  mergeHarthmereLiveModeSharedWorldStateIntoBackendV1(
+  mergeHarthmereLiveModeSharedWorldStateIntoBackend(
     state,
-    parseHarthmereLiveModeSharedWorldStateV1(rawSharedState, input.nowMs),
+    parseHarthmereLiveModeSharedWorldState(rawSharedState, input.nowMs),
     input.nowMs
   );
   state.updatedAtMs = input.nowMs;
-  return createHarthmereProductionEconomyClientSnapshotFromBackendV1(state);
+  return createHarthmereProductionEconomyClientSnapshotFromBackend(state);
 }
 
 export default biomesApiHandler(
   {
-    // HARTHMERE_BUSINESS_ANONYMOUS_ACCESS_V1: the business interface (buying,
+    // HARTHMERE_BUSINESS_ANONYMOUS_ACCESS: the business interface (buying,
     // customer mini-games, browsing shops) must work for not-logged-in players
     // too. Like the other live_mode_*_state endpoints, resolve an install-scoped
     // actor when there is no user instead of returning 401, so anonymous players
@@ -70,8 +70,8 @@ export default biomesApiHandler(
     response: zHarthmereLiveModeEconomyStateResponse,
   },
   async ({ auth, unsafeRequest }) => {
-    const redis = await liveModeEconomyStateRedisV1();
-    const actorId = await resolveHarthmereLiveModeActorIdV1(
+    const redis = await liveModeEconomyStateRedis();
+    const actorId = await resolveHarthmereLiveModeActorId(
       redis,
       { auth, unsafeRequest },
       "anonymous:economy-reader"
@@ -79,7 +79,7 @@ export default biomesApiHandler(
     const nowMs = Date.now();
     return {
       ok: true,
-      economyState: await readHarthmereLiveModeEconomyStateForActorV1({
+      economyState: await readHarthmereLiveModeEconomyStateForActor({
         redis,
         actorId,
         nowMs,

@@ -1,12 +1,12 @@
 import { connectToRedis } from "@/server/shared/redis/connection";
 import { biomesApiHandler } from "@/server/web/util/api_middleware";
-import { readHarthmereRedisStringsV1 } from "@/server/harthmere/live_mode_state_read_helpers";
-import { resolveHarthmereLiveModeActorIdV1 } from "@/server/harthmere/live_mode_actor_resolution_v1";
+import { readHarthmereRedisStrings } from "@/server/harthmere/live_mode_state_read_helpers";
+import { resolveHarthmereLiveModeActorId } from "@/server/harthmere/live_mode_actor_resolution";
 import {
-  createHarthmereInventoryLootClientSnapshotFromBackendV1,
-  harthmereLiveModePlayerStateKeyV1,
-  parseHarthmereLiveModeBackendStateV1,
-} from "@/shared/harthmere/live_mode_backend_v1";
+  createHarthmereInventoryLootClientSnapshotFromBackend,
+  harthmereLiveModePlayerStateKey,
+  parseHarthmereLiveModeBackendState,
+} from "@/shared/harthmere/live_mode_backend";
 import { z } from "zod";
 
 const zJsonRecord = z.record(z.unknown());
@@ -18,38 +18,38 @@ export const zHarthmereLiveModeInventoryLootStateResponse = z.object({
 
 const globalForHarthmereLiveModeInventoryLootState =
   globalThis as typeof globalThis & {
-    __harthmereLiveModeInventoryLootStateRedisV1?: ReturnType<
+    __harthmereLiveModeInventoryLootStateRedis?: ReturnType<
       typeof connectToRedis
     >;
   };
 
-export interface HarthmereLiveModeInventoryLootStateRedisV1 {
+export interface HarthmereLiveModeInventoryLootStateRedis {
   primary: {
     get: (key: string) => Promise<string | null>;
     mget?: (...keys: string[]) => Promise<Array<string | null>>;
   };
 }
 
-function liveModeInventoryLootStateRedisV1() {
-  return (globalForHarthmereLiveModeInventoryLootState.__harthmereLiveModeInventoryLootStateRedisV1 ??=
+function liveModeInventoryLootStateRedis() {
+  return (globalForHarthmereLiveModeInventoryLootState.__harthmereLiveModeInventoryLootStateRedis ??=
     connectToRedis("firehose"));
 }
 
-export async function readHarthmereLiveModeInventoryLootStateForActorV1(input: {
-  redis: HarthmereLiveModeInventoryLootStateRedisV1;
+export async function readHarthmereLiveModeInventoryLootStateForActor(input: {
+  redis: HarthmereLiveModeInventoryLootStateRedis;
   actorId: string;
   nowMs: number;
 }) {
-  const [rawState] = await readHarthmereRedisStringsV1(input.redis.primary, [
-    harthmereLiveModePlayerStateKeyV1(input.actorId),
+  const [rawState] = await readHarthmereRedisStrings(input.redis.primary, [
+    harthmereLiveModePlayerStateKey(input.actorId),
   ]);
-  const state = parseHarthmereLiveModeBackendStateV1(
+  const state = parseHarthmereLiveModeBackendState(
     rawState,
     input.actorId,
     input.nowMs
   );
   state.updatedAtMs = input.nowMs;
-  return createHarthmereInventoryLootClientSnapshotFromBackendV1(state);
+  return createHarthmereInventoryLootClientSnapshotFromBackend(state);
 }
 
 export default biomesApiHandler(
@@ -62,8 +62,8 @@ export default biomesApiHandler(
     response: zHarthmereLiveModeInventoryLootStateResponse,
   },
   async ({ auth, unsafeRequest }) => {
-    const redis = await liveModeInventoryLootStateRedisV1();
-    const actorId = await resolveHarthmereLiveModeActorIdV1(
+    const redis = await liveModeInventoryLootStateRedis();
+    const actorId = await resolveHarthmereLiveModeActorId(
       redis,
       { auth, unsafeRequest },
       "anonymous:inventory-loot-reader"
@@ -71,7 +71,7 @@ export default biomesApiHandler(
     return {
       ok: true,
       inventoryLootState:
-        await readHarthmereLiveModeInventoryLootStateForActorV1({
+        await readHarthmereLiveModeInventoryLootStateForActor({
           redis,
           actorId,
           nowMs: Date.now(),

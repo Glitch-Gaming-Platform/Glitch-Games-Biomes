@@ -12,9 +12,9 @@ import {
   BiomesUIShopSection,
 } from "@/client/components/inventory/BiomesUIShopChrome";
 import {
-  buildNpcSellToEntityEventV1,
-  canSellItemToNpcBuyerV1,
-  chunkShopSlotIndexesForRovingGridV1,
+  buildNpcSellToEntityEvent,
+  canSellItemToNpcBuyer,
+  chunkShopSlotIndexesForRovingGrid,
 } from "@/client/components/inventory/shopBiomesUIModel";
 import { EntityProfilePic } from "@/client/components/social/EntityProfilePic";
 import { CurrencyWithGlyph } from "@/client/components/system/CurrencyWithGlyph";
@@ -50,7 +50,7 @@ const ItemBuyerLeftPaneContent: React.FunctionComponent<
   const numItems = 12;
   const numCols = 3;
   const slotRows = useMemo(
-    () => chunkShopSlotIndexesForRovingGridV1(numItems, numCols),
+    () => chunkShopSlotIndexesForRovingGrid(numItems, numCols),
     []
   );
   const clientSideContainer = useClientSideContainer(numItems);
@@ -72,7 +72,7 @@ const ItemBuyerLeftPaneContent: React.FunctionComponent<
   const filledSlotAssignment = useMemo<InventoryAssignmentPattern>(
     () =>
       clientSideContainer.slots.flatMap((e) => {
-        if (e && canSellItemToNpcBuyerV1(e.item, itemBuyer?.attribute_ids)) {
+        if (e && canSellItemToNpcBuyer(e.item, itemBuyer?.attribute_ids)) {
           return [[e.refSlot, e.item]] as Array<
             [OwnedItemReference, ItemAndCount]
           >;
@@ -106,7 +106,7 @@ const ItemBuyerLeftPaneContent: React.FunctionComponent<
       } else if (dragItem) {
         if (dragItem.kind === "inventory_drag") {
           const item = maybeGetSlotByRef(ownedItems, dragItem.slotReference);
-          if (item && canSellItemToNpcBuyerV1(item, itemBuyer?.attribute_ids)) {
+          if (item && canSellItemToNpcBuyer(item, itemBuyer?.attribute_ids)) {
             clientSideContainer.setSlotAtIndex(slotIdx, {
               refSlot: dragItem.slotReference,
               quantity: dragItem.quantity,
@@ -125,7 +125,7 @@ const ItemBuyerLeftPaneContent: React.FunctionComponent<
     }
     fireAndForget(
       events.publish(
-        buildNpcSellToEntityEventV1({
+        buildNpcSellToEntityEvent({
           buyerEntityId: entityId,
           sellerId: userId,
           src: [...filledSlotAssignment],
@@ -260,7 +260,7 @@ export const ItemBuyerScreen: React.FunctionComponent<
   const itemBuyer = reactResources.use("/ecs/c/item_buyer", entityId);
   const disableSlotPredicate = (item: ItemAndCount | undefined) => {
     return item
-      ? !canSellItemToNpcBuyerV1(item, itemBuyer?.attribute_ids)
+      ? !canSellItemToNpcBuyer(item, itemBuyer?.attribute_ids)
       : false;
   };
   return (
@@ -270,7 +270,7 @@ export const ItemBuyerScreen: React.FunctionComponent<
           tooltipFlairForItem(item): TooltipFlair[] {
             if (
               !isSellable(item.item) ||
-              !canSellItemToNpcBuyerV1(item, itemBuyer?.attribute_ids)
+              !canSellItemToNpcBuyer(item, itemBuyer?.attribute_ids)
             ) {
               return [];
             }

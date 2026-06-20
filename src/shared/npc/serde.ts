@@ -19,9 +19,9 @@ import { z } from "zod";
 // Keep the runtime parser fully composed, but deliberately break TypeScript's
 // deep generic inference chain. The v37 additions made this schema large enough
 // that a normal .merge(...).merge(...).default({}) export can hit TS2589.
-const zNpcStateBaseV42: any = z.object({});
+const zNpcStateBase: any = z.object({});
 
-export const zDeserializedNpcState = zNpcStateBaseV42
+export const zDeserializedNpcState = zNpcStateBase
   .merge(zRotateTargetComponent)
   .merge(zDrownComponent)
   .merge(zMeanderComponent)

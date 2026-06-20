@@ -1,7 +1,7 @@
 import { useClientContext } from "@/client/components/contexts/ClientContextReactContext";
 import { usePointerLockManager } from "@/client/components/contexts/PointerLockContext";
 import { useInventoryDraggerContext } from "@/client/components/inventory/InventoryDragger";
-import { shouldFocusAndLockForGameplayMovementKeyV1 } from "@/client/components/shortcutsHudMovementFocus";
+import { shouldFocusAndLockForGameplayMovementKey } from "@/client/components/shortcutsHudMovementFocus";
 import type { GameModal } from "@/client/game/resources/game_modal";
 import type { GlobalKeyCode } from "@/client/game/util/keyboard";
 import { cleanListener } from "@/client/util/helpers";
@@ -60,7 +60,7 @@ export const ShortcutsHUD: React.FunctionComponent<{}> = ({}) => {
             lastInputKeydown.current = performance.now();
           } else {
             if (
-              shouldFocusAndLockForGameplayMovementKeyV1({
+              shouldFocusAndLockForGameplayMovementKey({
                 code: lk,
                 modalKind: gameModal.kind,
                 inInputElement: inInputEl,

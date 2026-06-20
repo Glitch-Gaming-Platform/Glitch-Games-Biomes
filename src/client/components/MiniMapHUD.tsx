@@ -1,39 +1,39 @@
 import { useClientContext } from "@/client/components/contexts/ClientContextReactContext";
-import { defaultHarthmereLiveFetchV1 } from "@/client/components/harthmere_live_fetch";
+import { defaultHarthmereLiveFetch } from "@/client/components/harthmere_live_fetch";
 import { MiniMap, MiniMapContext } from "@/client/components/map/MiniMap";
 import { worldToMinimapClippedCanvasCoordinates } from "@/client/components/map/helpers";
-import { BIOMES_UI_ACTIVE_MINIMAP_PIN_STYLE_ID_V146, BIOMES_UI_ACTIVE_MINIMAP_PIN_ROOT_CLASS_V146, BIOMES_UI_ACTIVE_MINIMAP_PIN_Z_INDEX_V146, biomesUIActiveMiniMapPinClassNameV146, biomesUIActiveMiniMapPinCssV146, biomesUIActiveMiniMapPinHasFinitePositionV146, biomesUIActiveMiniMapPinLabelV146 } from "@/client/components/map/markers/biomes_ui_active_minimap_pin_v146";
+import { BIOMES_UI_ACTIVE_MINIMAP_PIN_STYLE_ID, BIOMES_UI_ACTIVE_MINIMAP_PIN_ROOT_CLASS, BIOMES_UI_ACTIVE_MINIMAP_PIN_Z_INDEX, biomesUIActiveMiniMapPinClassName, biomesUIActiveMiniMapPinCss, biomesUIActiveMiniMapPinHasFinitePosition, biomesUIActiveMiniMapPinLabel } from "@/client/components/map/markers/biomes_ui_active_minimap_pin";
 import { Tooltipped } from "@/client/components/system/Tooltipped";
 import { useAnimation } from "@/client/util/animation";
 import { useCurrentLandName } from "@/client/util/location_helpers";
-import { readSnapshotGroveQuestStateV75 } from "@/client/components/challenges/LocalDevSnapshotGroveBibleRuntime";
-import { BIOMES_UI_ACTIVE_MAP_PIN_EVENT_V142, BIOMES_UI_ACTIVE_MAP_PIN_NAV_AID_ID_V147, type BiomesUIActiveMapPinV142, biomesUIActiveMapPinNavigationAidSpecForTest, readActiveBiomesUIMapPinV142 } from "@/client/components/biomes_ui/adapters/mapPinnedDestination";
-import { SNAPSHOT_GROVE_QUESTS_V75, snapshotGroveLandmarkByIdV75 } from "@/shared/harthmere/snapshot_grove_content_v75";
-import { HARTHMERE_BUSINESS_MINIMAP_PIN_Z_INDEX_V1, harthmereBusinessMiniMapPinsForPlayerForTest, type HarthmereBusinessMiniMapPinV1 } from "@/client/components/map/markers/harthmere_business_minimap_pins_v1";
-import { HARTHMERE_PROPERTY_BUILDING_STATE_EVENT_V1, harthmerePropertyMiniMapPinsForBuildingStateForTest, type HarthmerePropertyMapBuildingStateV1 } from "@/client/components/biomes_ui/adapters/propertyMapMarkersV1";
-import { harthmereBusinessOutpostRuntimeOffsetForTestV1 } from "@/client/game/renderers/local_dev/harthmere_business_outpost_buildings_v1";
+import { readSnapshotGroveQuestState } from "@/client/components/challenges/LocalDevSnapshotGroveBibleRuntime";
+import { BIOMES_UI_ACTIVE_MAP_PIN_EVENT, BIOMES_UI_ACTIVE_MAP_PIN_NAV_AID_ID, type BiomesUIActiveMapPin, biomesUIActiveMapPinNavigationAidSpecForTest, readActiveBiomesUIMapPin } from "@/client/components/biomes_ui/adapters/mapPinnedDestination";
+import { SNAPSHOT_GROVE_QUESTS, snapshotGroveLandmarkById } from "@/shared/harthmere/snapshot_grove_content";
+import { HARTHMERE_BUSINESS_MINIMAP_PIN_Z_INDEX, harthmereBusinessMiniMapPinsForPlayerForTest, type HarthmereBusinessMiniMapPin } from "@/client/components/map/markers/harthmere_business_minimap_pins";
+import { HARTHMERE_PROPERTY_BUILDING_STATE_EVENT, harthmerePropertyMiniMapPinsForBuildingStateForTest, type HarthmerePropertyMapBuildingState } from "@/client/components/biomes_ui/adapters/propertyMapMarkers";
+import { harthmereBusinessOutpostRuntimeOffsetForTest } from "@/client/game/renderers/local_dev/harthmere_business_outpost_buildings";
 import {
-  harthmereObjectiveMiniMapPinsFromLandmarksV1,
-  type HarthmereObjectiveMiniMapPinV1,
-} from "@/client/components/map/markers/harthmere_objective_minimap_pins_v1";
+  harthmereObjectiveMiniMapPinsFromLandmarks,
+  type HarthmereObjectiveMiniMapPin,
+} from "@/client/components/map/markers/harthmere_objective_minimap_pins";
 import {
-  jobsBoardAcceptedJobLandmarksForBiomesUIV1,
-  jobsBoardToolSourceLandmarksForBiomesUIV1,
+  jobsBoardAcceptedJobLandmarksForBiomesUI,
+  jobsBoardToolSourceLandmarksForBiomesUI,
 } from "@/client/components/biomes_ui/adapters/jobsBoardQuestMapAdapter";
 import {
   HARTHMERE_INVENTORY_EVENT,
-  harthmereJobToolOwnedStateV151,
-  type HarthmereJobToolOwnedStateV151,
+  harthmereJobToolOwnedState,
+  type HarthmereJobToolOwnedState,
 } from "@/client/components/challenges/LocalDevHarthmereInventorySystem";
-import { liveEntityHelperAcceptedQuestLandmarksForBiomesUIV1 } from "@/client/components/biomes_ui/adapters/liveEntityHelperQuestMapAdapter";
-import { liveEntityHelperQuestRecordReadyToTurnInV1 } from "@/client/components/challenges/LocalDevLiveEntityHelperQuests";
+import { liveEntityHelperAcceptedQuestLandmarksForBiomesUI } from "@/client/components/biomes_ui/adapters/liveEntityHelperQuestMapAdapter";
+import { liveEntityHelperQuestRecordReadyToTurnIn } from "@/client/components/challenges/LocalDevLiveEntityHelperQuests";
 import {
-  fetchHarthmereJobsBoardStateV1,
-  HARTHMERE_JOBS_BOARD_STATE_UPDATED_EVENT_V1,
+  fetchHarthmereJobsBoardState,
+  HARTHMERE_JOBS_BOARD_STATE_UPDATED_EVENT,
 } from "@/client/components/harthmere_jobs_board/jobsBoardLiveAdapter";
 import {
-  LIVE_ENTITY_HELPER_QUEST_EVENT_V1,
-  readLiveEntityHelperQuestStateV1,
+  LIVE_ENTITY_HELPER_QUEST_EVENT,
+  readLiveEntityHelperQuestState,
 } from "@/client/components/challenges/LocalDevLiveEntityHelperQuestState";
 import { WorldMetadataId } from "@/shared/ecs/ids";
 import { yaw } from "@/shared/math/linear";
@@ -70,35 +70,35 @@ const LocationName: React.FunctionComponent<{}> = ({}) => {
   return <div className={`w-full max-w-full overflow-hidden text-ellipsis whitespace-nowrap text-center text-marge font-semibold`}>{landName ?? "The Muck"}</div>;
 };
 
-function isSnapshotGroveMapItemMarkerV111(markerId: string, objective: string | undefined) {
-  const marker = snapshotGroveLandmarkByIdV75(markerId);
+function isSnapshotGroveMapItemMarker(markerId: string, objective: string | undefined) {
+  const marker = snapshotGroveLandmarkById(markerId);
   const text = `${markerId} ${marker?.label ?? ""} ${objective ?? ""}`.toLowerCase();
   return marker?.kind === "resource" || /food|ration|item|sample|root|berry|berries|stick|stone|bolt|key|crate|satchel|basket|bin|bandage|salve|medicine|workbench|drop/.test(text);
 }
 
-function useSnapshotGroveMiniMapPinsV111() {
-  const [state, setState] = useState(() => readSnapshotGroveQuestStateV75());
+function useSnapshotGroveMiniMapPins() {
+  const [state, setState] = useState(() => readSnapshotGroveQuestState());
   useEffect(() => {
-    const refresh = () => setState(readSnapshotGroveQuestStateV75());
+    const refresh = () => setState(readSnapshotGroveQuestState());
     const interval = window.setInterval(refresh, 500);
     window.addEventListener("storage", refresh);
-    window.addEventListener("biomes:local-dev-snapshot-grove-quest-state-v75", refresh);
+    window.addEventListener("biomes:local-dev-snapshot-grove-quest-state", refresh);
     return () => {
       window.clearInterval(interval);
       window.removeEventListener("storage", refresh);
-      window.removeEventListener("biomes:local-dev-snapshot-grove-quest-state-v75", refresh);
+      window.removeEventListener("biomes:local-dev-snapshot-grove-quest-state", refresh);
     };
   }, []);
 
   return useMemo(() => {
-    const quest = SNAPSHOT_GROVE_QUESTS_V75.find((entry) => entry.id === state.activeQuestId);
+    const quest = SNAPSHOT_GROVE_QUESTS.find((entry) => entry.id === state.activeQuestId);
     if (!quest || state.completedQuestIds.includes(quest.id)) {
       return [];
     }
     const activeIndex = Math.max(0, Math.min(state.activeObjectiveIndex, quest.objectives.length - 1));
     return quest.markerIds
       .map((markerId, stepIndex) => {
-        const marker = snapshotGroveLandmarkByIdV75(markerId);
+        const marker = snapshotGroveLandmarkById(markerId);
         if (!marker) {
           return undefined;
         }
@@ -114,7 +114,7 @@ function useSnapshotGroveMiniMapPinsV111() {
           questTitle: quest.title,
           stepIndex,
           isActive,
-          isItem: isSnapshotGroveMapItemMarkerV111(marker.id, objective),
+          isItem: isSnapshotGroveMapItemMarker(marker.id, objective),
           label: marker.label,
           position: marker.position as Vec3,
           objective,
@@ -135,8 +135,8 @@ function useSnapshotGroveMiniMapPinsV111() {
   }, [state.activeObjectiveIndex, state.activeQuestId, state.completedQuestIds]);
 }
 
-const SnapshotGroveMiniMapPinV111: React.FunctionComponent<{
-  pin: ReturnType<typeof useSnapshotGroveMiniMapPinsV111>[number];
+const SnapshotGroveMiniMapPin: React.FunctionComponent<{
+  pin: ReturnType<typeof useSnapshotGroveMiniMapPins>[number];
 }> = ({ pin }) => {
   const { map, zoomRef } = useContext(MiniMapContext);
   const { reactResources } = useClientContext();
@@ -161,26 +161,26 @@ const SnapshotGroveMiniMapPinV111: React.FunctionComponent<{
   }
 
   return (
-    <div ref={ref} className="pointer-events-none absolute left-0 top-0 flex items-center justify-center" data-snapshot-grove-minimap-item-v111={pin.isItem ? "true" : "false"} data-snapshot-grove-minimap-active-v111={pin.isActive ? "true" : "false"} title={`${pin.questTitle}: ${pin.objective ?? pin.label}`} style={{ zIndex: pin.isActive ? 6 : 5, willChange: "transform" }}>
+    <div ref={ref} className="pointer-events-none absolute left-0 top-0 flex items-center justify-center" data-snapshot-grove-minimap-item={pin.isItem ? "true" : "false"} data-snapshot-grove-minimap-active={pin.isActive ? "true" : "false"} title={`${pin.questTitle}: ${pin.objective ?? pin.label}`} style={{ zIndex: pin.isActive ? 6 : 5, willChange: "transform" }}>
       <div className={pin.isActive ? "bg-lime-300 flex h-4 w-4 items-center justify-center rounded-full border border-white text-[9px] font-black text-black shadow-[0_0_12px_rgba(190,242,100,0.95)] [animation:snapshotGroveMiniMapPulseV111_0.95s_ease-in-out_infinite]" : pin.isItem ? "h-3.5 w-3.5 bg-amber-300 flex items-center justify-center rounded-full border border-white/80 text-[8px] font-black text-black shadow-[0_0_8px_rgba(252,211,77,0.75)]" : "bg-violet-300 flex h-3 w-3 items-center justify-center rounded-full border border-white/70 text-[8px] font-black text-black"}>{pin.isActive ? "!" : pin.isItem ? "I" : pin.stepIndex + 1}</div>
     </div>
   );
 };
 
-const SnapshotGroveMiniMapQuestMarkersV111: React.FunctionComponent<{}> = () => {
-  const pins = useSnapshotGroveMiniMapPinsV111();
+const SnapshotGroveMiniMapQuestMarkers: React.FunctionComponent<{}> = () => {
+  const pins = useSnapshotGroveMiniMapPins();
   useEffect(() => {
     if (typeof document === "undefined") {
       return;
     }
-    const id = "snapshot-grove-minimap-markers-v111";
+    const id = "snapshot-grove-minimap-markers";
     if (document.getElementById(id)) {
       return;
     }
     const style = document.createElement("style");
     style.id = id;
     style.textContent = `
-@keyframes snapshotGroveMiniMapPulseV111 {
+@keyframes snapshotGroveMiniMapPulse {
   0%, 100% { transform: scale(1); box-shadow: 0 0 9px rgba(190,242,100,0.7); }
   50% { transform: scale(1.28); box-shadow: 0 0 16px rgba(190,242,100,1); }
 }`;
@@ -192,25 +192,25 @@ const SnapshotGroveMiniMapQuestMarkersV111: React.FunctionComponent<{}> = () => 
   return (
     <>
       {pins.map((pin) => (
-        <SnapshotGroveMiniMapPinV111 key={pin.key} pin={pin} />
+        <SnapshotGroveMiniMapPin key={pin.key} pin={pin} />
       ))}
     </>
   );
 };
 
-function useHarthmereBusinessMiniMapPinsV1() {
+function useHarthmereBusinessMiniMapPins() {
   const { reactResources } = useClientContext();
   const localPlayer = reactResources.use("/scene/local_player");
   const rawPosition = localPlayer?.player?.position as Vec3 | undefined;
   // Business outpost markers are stored in production/world coordinates. The
   // offset helper only returns a non-zero value for legacy local captures.
-  const offset = harthmereBusinessOutpostRuntimeOffsetForTestV1();
+  const offset = harthmereBusinessOutpostRuntimeOffsetForTest();
   const position: Vec3 | undefined = rawPosition ? [rawPosition[0] - offset.x, rawPosition[1], rawPosition[2] - offset.z] : undefined;
   return useMemo(() => harthmereBusinessMiniMapPinsForPlayerForTest(position), [position?.[0], position?.[1], position?.[2]]);
 }
 
-const HarthmereBusinessMiniMapPinMarkerV1: React.FunctionComponent<{
-  pin: HarthmereBusinessMiniMapPinV1;
+const HarthmereBusinessMiniMapPinMarker: React.FunctionComponent<{
+  pin: HarthmereBusinessMiniMapPin;
 }> = ({ pin }) => {
   const { map, zoomRef } = useContext(MiniMapContext);
   const { reactResources } = useClientContext();
@@ -238,12 +238,12 @@ const HarthmereBusinessMiniMapPinMarkerV1: React.FunctionComponent<{
     <div
       ref={ref}
       className="pointer-events-none absolute left-0 top-0 flex items-center justify-center"
-      data-harthmere-business-minimap-pin-v1={pin.markerId}
-      data-harthmere-business-minimap-pin-clipped-v1={clipped ? "true" : "false"}
+      data-harthmere-business-minimap-pin={pin.markerId}
+      data-harthmere-business-minimap-pin-clipped={clipped ? "true" : "false"}
       title={`${pin.label} business outpost`}
       aria-label={`${pin.label} business outpost`}
       style={{
-        zIndex: HARTHMERE_BUSINESS_MINIMAP_PIN_Z_INDEX_V1,
+        zIndex: HARTHMERE_BUSINESS_MINIMAP_PIN_Z_INDEX,
         willChange: "transform",
       }}
     >
@@ -260,22 +260,22 @@ const HarthmereBusinessMiniMapPinMarkerV1: React.FunctionComponent<{
   );
 };
 
-const HarthmereBusinessMiniMapMarkersV1: React.FunctionComponent<{}> = () => {
-  const pins = useHarthmereBusinessMiniMapPinsV1();
+const HarthmereBusinessMiniMapMarkers: React.FunctionComponent<{}> = () => {
+  const pins = useHarthmereBusinessMiniMapPins();
   if (!pins.length) {
     return null;
   }
   return (
     <>
       {pins.map((pin) => (
-        <HarthmereBusinessMiniMapPinMarkerV1 key={pin.key} pin={pin} />
+        <HarthmereBusinessMiniMapPinMarker key={pin.key} pin={pin} />
       ))}
     </>
   );
 };
 
-async function fetchHarthmereBuildingStateForMiniMapV1(): Promise<HarthmerePropertyMapBuildingStateV1 | undefined> {
-  const response = await defaultHarthmereLiveFetchV1(
+async function fetchHarthmereBuildingStateForMiniMap(): Promise<HarthmerePropertyMapBuildingState | undefined> {
+  const response = await defaultHarthmereLiveFetch(
     "/api/harthmere/live_mode_building_state",
     {
       method: "GET",
@@ -287,13 +287,13 @@ async function fetchHarthmereBuildingStateForMiniMapV1(): Promise<HarthmerePrope
   return body?.buildingState;
 }
 
-function useHarthmerePropertyMiniMapPinsV1() {
-  const [buildingState, setBuildingState] = useState<HarthmerePropertyMapBuildingStateV1 | undefined>(undefined);
+function useHarthmerePropertyMiniMapPins() {
+  const [buildingState, setBuildingState] = useState<HarthmerePropertyMapBuildingState | undefined>(undefined);
   useEffect(() => {
     let cancelled = false;
     const refreshFromServer = async () => {
       try {
-        const nextState = await fetchHarthmereBuildingStateForMiniMapV1();
+        const nextState = await fetchHarthmereBuildingStateForMiniMap();
         if (!cancelled) setBuildingState(nextState);
       } catch {
         if (!cancelled) setBuildingState(undefined);
@@ -302,7 +302,7 @@ function useHarthmerePropertyMiniMapPinsV1() {
     const refreshFromEvent = (event: Event) => {
       const detail = (
         event as CustomEvent<{
-          buildingState?: HarthmerePropertyMapBuildingStateV1;
+          buildingState?: HarthmerePropertyMapBuildingState;
         }>
       ).detail;
       if (detail?.buildingState) {
@@ -313,17 +313,17 @@ function useHarthmerePropertyMiniMapPinsV1() {
     };
     void refreshFromServer();
     window.addEventListener("storage", refreshFromEvent);
-    window.addEventListener(HARTHMERE_PROPERTY_BUILDING_STATE_EVENT_V1, refreshFromEvent);
+    window.addEventListener(HARTHMERE_PROPERTY_BUILDING_STATE_EVENT, refreshFromEvent);
     return () => {
       cancelled = true;
       window.removeEventListener("storage", refreshFromEvent);
-      window.removeEventListener(HARTHMERE_PROPERTY_BUILDING_STATE_EVENT_V1, refreshFromEvent);
+      window.removeEventListener(HARTHMERE_PROPERTY_BUILDING_STATE_EVENT, refreshFromEvent);
     };
   }, []);
   return useMemo(() => harthmerePropertyMiniMapPinsForBuildingStateForTest(buildingState), [buildingState]);
 }
 
-const HarthmerePropertyMiniMapPinMarkerV1: React.FunctionComponent<{
+const HarthmerePropertyMiniMapPinMarker: React.FunctionComponent<{
   pin: ReturnType<typeof harthmerePropertyMiniMapPinsForBuildingStateForTest>[number];
 }> = ({ pin }) => {
   const { map, zoomRef } = useContext(MiniMapContext);
@@ -350,7 +350,7 @@ const HarthmerePropertyMiniMapPinMarkerV1: React.FunctionComponent<{
 
   const terraformed = pin.terrainState === "terraformed";
   return (
-    <div ref={ref} className="pointer-events-none absolute left-0 top-0 flex items-center justify-center" data-harthmere-property-minimap-pin-v1={pin.markerId} data-harthmere-property-minimap-pin-state-v1={pin.terrainState} title={`${pin.label} ${terraformed ? "terraformed property" : "muck property"}`} aria-label={`${pin.label} ${terraformed ? "terraformed property" : "muck property"}`} style={{ zIndex: 7, willChange: "transform" }}>
+    <div ref={ref} className="pointer-events-none absolute left-0 top-0 flex items-center justify-center" data-harthmere-property-minimap-pin={pin.markerId} data-harthmere-property-minimap-pin-state={pin.terrainState} title={`${pin.label} ${terraformed ? "terraformed property" : "muck property"}`} aria-label={`${pin.label} ${terraformed ? "terraformed property" : "muck property"}`} style={{ zIndex: 7, willChange: "transform" }}>
       <div
         className={`h-3.5 w-3.5 border-white/85 text-slate-950 flex items-center justify-center rounded-[3px] border text-[8px] font-black shadow-[0_0_8px_rgba(251,191,36,0.8)] ${terraformed ? "bg-emerald-300" : "bg-amber-300"}`}
         style={{
@@ -364,36 +364,36 @@ const HarthmerePropertyMiniMapPinMarkerV1: React.FunctionComponent<{
   );
 };
 
-const HarthmerePropertyMiniMapMarkersV1: React.FunctionComponent<{}> = () => {
-  const pins = useHarthmerePropertyMiniMapPinsV1();
+const HarthmerePropertyMiniMapMarkers: React.FunctionComponent<{}> = () => {
+  const pins = useHarthmerePropertyMiniMapPins();
   if (!pins.length) {
     return null;
   }
   return (
     <>
       {pins.map((pin) => (
-        <HarthmerePropertyMiniMapPinMarkerV1 key={pin.key} pin={pin} />
+        <HarthmerePropertyMiniMapPinMarker key={pin.key} pin={pin} />
       ))}
     </>
   );
 };
 
-function useBiomesUIActiveMiniMapPinV142() {
-  const [pin, setPin] = useState<BiomesUIActiveMapPinV142 | undefined>(() => readActiveBiomesUIMapPinV142());
+function useBiomesUIActiveMiniMapPin() {
+  const [pin, setPin] = useState<BiomesUIActiveMapPin | undefined>(() => readActiveBiomesUIMapPin());
   useEffect(() => {
-    const refresh = () => setPin(readActiveBiomesUIMapPinV142());
+    const refresh = () => setPin(readActiveBiomesUIMapPin());
     window.addEventListener("storage", refresh);
-    window.addEventListener(BIOMES_UI_ACTIVE_MAP_PIN_EVENT_V142, refresh);
+    window.addEventListener(BIOMES_UI_ACTIVE_MAP_PIN_EVENT, refresh);
     return () => {
       window.removeEventListener("storage", refresh);
-      window.removeEventListener(BIOMES_UI_ACTIVE_MAP_PIN_EVENT_V142, refresh);
+      window.removeEventListener(BIOMES_UI_ACTIVE_MAP_PIN_EVENT, refresh);
     };
   }, []);
   return pin;
 }
 
-const BiomesUIActiveMiniMapPinV142: React.FunctionComponent<{}> = () => {
-  const pin = useBiomesUIActiveMiniMapPinV142();
+const BiomesUIActiveMiniMapPin: React.FunctionComponent<{}> = () => {
+  const pin = useBiomesUIActiveMiniMapPin();
   const { map, zoomRef } = useContext(MiniMapContext);
   const { reactResources } = useClientContext();
   const ref = useRef<HTMLDivElement>(null);
@@ -401,16 +401,16 @@ const BiomesUIActiveMiniMapPinV142: React.FunctionComponent<{}> = () => {
 
   useEffect(() => {
     if (typeof document === "undefined") return;
-    const id = BIOMES_UI_ACTIVE_MINIMAP_PIN_STYLE_ID_V146;
+    const id = BIOMES_UI_ACTIVE_MINIMAP_PIN_STYLE_ID;
     if (document.getElementById(id)) return;
     const style = document.createElement("style");
     style.id = id;
-    style.textContent = biomesUIActiveMiniMapPinCssV146();
+    style.textContent = biomesUIActiveMiniMapPinCss();
     document.head.appendChild(style);
   }, []);
 
   useAnimation(() => {
-    if (!pin || !map || !ref.current || !biomesUIActiveMiniMapPinHasFinitePositionV146(pin.worldPosition)) {
+    if (!pin || !map || !ref.current || !biomesUIActiveMiniMapPinHasFinitePosition(pin.worldPosition)) {
       return;
     }
     const player = reactResources.get("/scene/local_player");
@@ -422,49 +422,49 @@ const BiomesUIActiveMiniMapPinV142: React.FunctionComponent<{}> = () => {
     setClipped(isClipped);
   });
 
-  if (!pin || !map || !biomesUIActiveMiniMapPinHasFinitePositionV146(pin.worldPosition)) {
+  if (!pin || !map || !biomesUIActiveMiniMapPinHasFinitePosition(pin.worldPosition)) {
     return null;
   }
-  const label = biomesUIActiveMiniMapPinLabelV146(pin.label);
+  const label = biomesUIActiveMiniMapPinLabel(pin.label);
 
   return (
     <div
       ref={ref}
       className="pointer-events-none absolute left-0 top-0 flex items-center justify-center"
-      data-biomes-ui-active-minimap-pin-v142={pin.markerId}
-      data-biomes-ui-active-minimap-pin-clipped-v146={clipped ? "true" : "false"}
+      data-biomes-ui-active-minimap-pin={pin.markerId}
+      data-biomes-ui-active-minimap-pin-clipped={clipped ? "true" : "false"}
       title={`Marked destination: ${label}`}
       aria-label={`Marked destination: ${label}`}
       style={{
-        zIndex: BIOMES_UI_ACTIVE_MINIMAP_PIN_Z_INDEX_V146,
+        zIndex: BIOMES_UI_ACTIVE_MINIMAP_PIN_Z_INDEX,
         willChange: "transform",
       }}
     >
-      <div className={biomesUIActiveMiniMapPinClassNameV146(clipped)} aria-hidden="true">
-        <span className={`${BIOMES_UI_ACTIVE_MINIMAP_PIN_ROOT_CLASS_V146}__halo`} />
-        <span className={`${BIOMES_UI_ACTIVE_MINIMAP_PIN_ROOT_CLASS_V146}__tail`} />
-        <span className={`${BIOMES_UI_ACTIVE_MINIMAP_PIN_ROOT_CLASS_V146}__core`}>
-          <span className={`${BIOMES_UI_ACTIVE_MINIMAP_PIN_ROOT_CLASS_V146}__dot`} />
+      <div className={biomesUIActiveMiniMapPinClassName(clipped)} aria-hidden="true">
+        <span className={`${BIOMES_UI_ACTIVE_MINIMAP_PIN_ROOT_CLASS}__halo`} />
+        <span className={`${BIOMES_UI_ACTIVE_MINIMAP_PIN_ROOT_CLASS}__tail`} />
+        <span className={`${BIOMES_UI_ACTIVE_MINIMAP_PIN_ROOT_CLASS}__core`}>
+          <span className={`${BIOMES_UI_ACTIVE_MINIMAP_PIN_ROOT_CLASS}__dot`} />
         </span>
       </div>
     </div>
   );
 };
 
-const BiomesUIActiveMapPinNavigationAidV147: React.FunctionComponent<{}> = () => {
-  const pin = useBiomesUIActiveMiniMapPinV142();
+const BiomesUIActiveMapPinNavigationAid: React.FunctionComponent<{}> = () => {
+  const pin = useBiomesUIActiveMiniMapPin();
   const { mapManager } = useClientContext();
   const positionKey = pin && Array.isArray(pin.worldPosition) ? pin.worldPosition.map((value) => String(value)).join("|") : "";
 
   useEffect(() => {
     const spec = biomesUIActiveMapPinNavigationAidSpecForTest(pin);
-    mapManager.removeNavigationAid(BIOMES_UI_ACTIVE_MAP_PIN_NAV_AID_ID_V147);
+    mapManager.removeNavigationAid(BIOMES_UI_ACTIVE_MAP_PIN_NAV_AID_ID);
     if (!spec) {
       return;
     }
-    mapManager.addNavigationAid(spec, BIOMES_UI_ACTIVE_MAP_PIN_NAV_AID_ID_V147);
+    mapManager.addNavigationAid(spec, BIOMES_UI_ACTIVE_MAP_PIN_NAV_AID_ID);
     return () => {
-      mapManager.removeNavigationAid(BIOMES_UI_ACTIVE_MAP_PIN_NAV_AID_ID_V147);
+      mapManager.removeNavigationAid(BIOMES_UI_ACTIVE_MAP_PIN_NAV_AID_ID);
     };
   }, [mapManager, pin?.markerId, pin?.kind, positionKey]);
 
@@ -474,17 +474,17 @@ const BiomesUIActiveMapPinNavigationAidV147: React.FunctionComponent<{}> = () =>
 // Minimap parity with the BiomesUI world map: accepted jobs-board jobs and
 // live-entity-helper quests now also pin on the minimap, so a player gets
 // passive guidance toward them without opening the full map.
-function useHarthmereObjectiveMiniMapPinsV1(): HarthmereObjectiveMiniMapPinV1[] {
+function useHarthmereObjectiveMiniMapPins(): HarthmereObjectiveMiniMapPin[] {
   const [jobsRaw, setJobsRaw] = useState<unknown>(undefined);
   const [helperState, setHelperState] = useState<unknown>(undefined);
-  const [toolOwned, setToolOwned] = useState<HarthmereJobToolOwnedStateV151>(
-    () => harthmereJobToolOwnedStateV151()
+  const [toolOwned, setToolOwned] = useState<HarthmereJobToolOwnedState>(
+    () => harthmereJobToolOwnedState()
   );
   useEffect(() => {
     let cancelled = false;
     const refreshJobsFromServer = async () => {
       try {
-        const snapshot = await fetchHarthmereJobsBoardStateV1();
+        const snapshot = await fetchHarthmereJobsBoardState();
         if (!cancelled) setJobsRaw(snapshot);
       } catch {
         // Leave the previous snapshot in place on a transient failure.
@@ -498,26 +498,26 @@ function useHarthmereObjectiveMiniMapPinsV1(): HarthmereObjectiveMiniMapPinV1[] 
         void refreshJobsFromServer();
       }
     };
-    const onHelper = () => setHelperState(readLiveEntityHelperQuestStateV1());
+    const onHelper = () => setHelperState(readLiveEntityHelperQuestState());
     // Acquiring (or losing) the repair or cleanup tool flips whether the
     // "buy the tool here" vendor pin should show, so refresh it on inventory
     // changes too.
-    const onInventory = () => setToolOwned(harthmereJobToolOwnedStateV151());
+    const onInventory = () => setToolOwned(harthmereJobToolOwnedState());
     void refreshJobsFromServer();
     onHelper();
     onInventory();
-    window.addEventListener(HARTHMERE_JOBS_BOARD_STATE_UPDATED_EVENT_V1, onJobs);
-    window.addEventListener(LIVE_ENTITY_HELPER_QUEST_EVENT_V1, onHelper);
+    window.addEventListener(HARTHMERE_JOBS_BOARD_STATE_UPDATED_EVENT, onJobs);
+    window.addEventListener(LIVE_ENTITY_HELPER_QUEST_EVENT, onHelper);
     window.addEventListener(HARTHMERE_INVENTORY_EVENT, onInventory);
     window.addEventListener("storage", onHelper);
     window.addEventListener("storage", onInventory);
     return () => {
       cancelled = true;
       window.removeEventListener(
-        HARTHMERE_JOBS_BOARD_STATE_UPDATED_EVENT_V1,
+        HARTHMERE_JOBS_BOARD_STATE_UPDATED_EVENT,
         onJobs
       );
-      window.removeEventListener(LIVE_ENTITY_HELPER_QUEST_EVENT_V1, onHelper);
+      window.removeEventListener(LIVE_ENTITY_HELPER_QUEST_EVENT, onHelper);
       window.removeEventListener(HARTHMERE_INVENTORY_EVENT, onInventory);
       window.removeEventListener("storage", onHelper);
       window.removeEventListener("storage", onInventory);
@@ -525,19 +525,19 @@ function useHarthmereObjectiveMiniMapPinsV1(): HarthmereObjectiveMiniMapPinV1[] 
   }, []);
   return useMemo(
     () =>
-      harthmereObjectiveMiniMapPinsFromLandmarksV1([
-        ...jobsBoardAcceptedJobLandmarksForBiomesUIV1(jobsRaw),
-        ...jobsBoardToolSourceLandmarksForBiomesUIV1(jobsRaw, toolOwned),
-        ...liveEntityHelperAcceptedQuestLandmarksForBiomesUIV1(helperState, {
-          isReadyToTurnIn: liveEntityHelperQuestRecordReadyToTurnInV1,
+      harthmereObjectiveMiniMapPinsFromLandmarks([
+        ...jobsBoardAcceptedJobLandmarksForBiomesUI(jobsRaw),
+        ...jobsBoardToolSourceLandmarksForBiomesUI(jobsRaw, toolOwned),
+        ...liveEntityHelperAcceptedQuestLandmarksForBiomesUI(helperState, {
+          isReadyToTurnIn: liveEntityHelperQuestRecordReadyToTurnIn,
         }),
       ]),
     [jobsRaw, helperState, toolOwned]
   );
 }
 
-const HarthmereObjectiveMiniMapPinMarkerV1: React.FunctionComponent<{
-  pin: HarthmereObjectiveMiniMapPinV1;
+const HarthmereObjectiveMiniMapPinMarker: React.FunctionComponent<{
+  pin: HarthmereObjectiveMiniMapPin;
 }> = ({ pin }) => {
   const { map, zoomRef } = useContext(MiniMapContext);
   const { reactResources } = useClientContext();
@@ -572,8 +572,8 @@ const HarthmereObjectiveMiniMapPinMarkerV1: React.FunctionComponent<{
     <div
       ref={ref}
       className="pointer-events-none absolute left-0 top-0 flex items-center justify-center"
-      data-harthmere-objective-minimap-pin-v1={pin.markerId}
-      data-harthmere-objective-minimap-pin-clipped-v1={clipped ? "true" : "false"}
+      data-harthmere-objective-minimap-pin={pin.markerId}
+      data-harthmere-objective-minimap-pin-clipped={clipped ? "true" : "false"}
       title={pin.label}
       aria-label={pin.label}
       style={{ zIndex: 8, willChange: "transform" }}
@@ -591,15 +591,15 @@ const HarthmereObjectiveMiniMapPinMarkerV1: React.FunctionComponent<{
   );
 };
 
-const HarthmereObjectiveMiniMapMarkersV1: React.FunctionComponent<{}> = () => {
-  const pins = useHarthmereObjectiveMiniMapPinsV1();
+const HarthmereObjectiveMiniMapMarkers: React.FunctionComponent<{}> = () => {
+  const pins = useHarthmereObjectiveMiniMapPins();
   if (!pins.length) {
     return null;
   }
   return (
     <>
       {pins.map((pin) => (
-        <HarthmereObjectiveMiniMapPinMarkerV1 key={pin.key} pin={pin} />
+        <HarthmereObjectiveMiniMapPinMarker key={pin.key} pin={pin} />
       ))}
     </>
   );
@@ -608,13 +608,13 @@ const HarthmereObjectiveMiniMapMarkersV1: React.FunctionComponent<{}> = () => {
 export const MiniMapHUD: React.FunctionComponent<{}> = ({}) => {
   return (
     <div className={`relative flex ${MINI_MAP_WIDTH} flex-col items-center gap-0.6 text-white text-shadow-bordered`}>
-      <BiomesUIActiveMapPinNavigationAidV147 />
+      <BiomesUIActiveMapPinNavigationAid />
       <MiniMap>
-        <SnapshotGroveMiniMapQuestMarkersV111 />
-        <HarthmereBusinessMiniMapMarkersV1 />
-        <HarthmerePropertyMiniMapMarkersV1 />
-        <HarthmereObjectiveMiniMapMarkersV1 />
-        <BiomesUIActiveMiniMapPinV142 />
+        <SnapshotGroveMiniMapQuestMarkers />
+        <HarthmereBusinessMiniMapMarkers />
+        <HarthmerePropertyMiniMapMarkers />
+        <HarthmereObjectiveMiniMapMarkers />
+        <BiomesUIActiveMiniMapPin />
       </MiniMap>
       <OnlinePlayers />
       <LocationName />

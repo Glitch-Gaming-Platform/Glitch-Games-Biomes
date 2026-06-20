@@ -8,7 +8,7 @@ import { secondsSinceEpoch } from "@/shared/ecs/config";
 import { motion, useMotionValue, useTransform } from "framer-motion";
 import React, { useEffect, useState } from "react";
 
-// HARTHMERE_BREATH_BAR_V1
+// HARTHMERE_BREATH_BAR
 // Underwater air meter. The legacy HotBar's breath bar is disabled in the
 // BiomesUI/Harthmere HUD (replaceLegacyBiomesUI defaults on), so the player had
 // no visible breath feedback. This bar appears near the bottom-center ONLY while

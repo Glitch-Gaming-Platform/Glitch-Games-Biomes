@@ -1,4 +1,4 @@
-// HARTHMERE_COMBAT_COLLATERAL_HITS_V1:
+// HARTHMERE_COMBAT_COLLATERAL_HITS:
 // Geometry helpers used by combat hit detection so that swings and projectiles
 // can hit *anyone* in their path, not just the cursor-targeted entity. This
 // implements the rule book guidance that AOE/projectile abilities must consider

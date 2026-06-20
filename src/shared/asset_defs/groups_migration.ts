@@ -1,6 +1,6 @@
 import { ok } from "assert";
 
-const TERRAIN_IDS_V0 = {
+const TERRAIN_IDS_LEGACY = {
   azalea_flower: 19,
   basalt: 48,
   basalt_brick: 105,
@@ -83,7 +83,7 @@ const TERRAIN_IDS_V0 = {
   wood_crate: 129,
 };
 
-const TERRAIN_IDS_V1 = {
+const TERRAIN_IDS_TRANSITIONAL = {
   azalea_flower: (1 << 24) + 5,
   basalt: 8,
   basalt_brick: 15,
@@ -166,7 +166,7 @@ const TERRAIN_IDS_V1 = {
   wood_crate: 39,
 };
 
-const TERRAIN_IDS_V2 = {
+const TERRAIN_IDS_CURRENT = {
   azalea_flower: (1 << 24) + 5,
   basalt: 8,
   basalt_brick: 15,
@@ -249,26 +249,26 @@ const TERRAIN_IDS_V2 = {
   wood_crate: 22,
 };
 
-type TerrainNameV0 = keyof typeof TERRAIN_IDS_V0;
-type TerrainNameV1 = keyof typeof TERRAIN_IDS_V1;
-type TerrainNameV2 = keyof typeof TERRAIN_IDS_V2;
+type TerrainNameLegacy = keyof typeof TERRAIN_IDS_LEGACY;
+type TerrainNameTransitional = keyof typeof TERRAIN_IDS_TRANSITIONAL;
+type TerrainNameCurrent = keyof typeof TERRAIN_IDS_CURRENT;
 
 const terrainNamesMap0 = new Map<number, string>();
-for (const [name, id] of Object.entries(TERRAIN_IDS_V0)) {
+for (const [name, id] of Object.entries(TERRAIN_IDS_LEGACY)) {
   terrainNamesMap0.set(id, name);
 }
 
 const terrainNamesMap1 = new Map<number, string>();
-for (const [name, id] of Object.entries(TERRAIN_IDS_V1)) {
+for (const [name, id] of Object.entries(TERRAIN_IDS_TRANSITIONAL)) {
   terrainNamesMap1.set(id, name);
 }
 
 const terrainNamesMap2 = new Map<number, string>();
-for (const [name, id] of Object.entries(TERRAIN_IDS_V2)) {
+for (const [name, id] of Object.entries(TERRAIN_IDS_CURRENT)) {
   terrainNamesMap2.set(id, name);
 }
 
-export function idsToNamesV0(ids: number[]) {
+export function idsToNamesLegacy(ids: number[]) {
   const ret = [];
   for (const id of ids) {
     ok(terrainNamesMap0.has(id));
@@ -277,7 +277,7 @@ export function idsToNamesV0(ids: number[]) {
   return ret;
 }
 
-export function idsToNamesV1(ids: number[]) {
+export function idsToNamesTransitional(ids: number[]) {
   const ret = [];
   for (const id of ids) {
     ok(terrainNamesMap1.has(id));
@@ -286,7 +286,7 @@ export function idsToNamesV1(ids: number[]) {
   return ret;
 }
 
-export function idsToNamesV2(ids: number[]) {
+export function idsToNamesCurrent(ids: number[]) {
   const ret = [];
   for (const id of ids) {
     ok(terrainNamesMap2.has(id));
@@ -295,30 +295,30 @@ export function idsToNamesV2(ids: number[]) {
   return ret;
 }
 
-export function remap0to1(ids: number[]) {
+export function remapLegacyToTransitional(ids: number[]) {
   const ret = [];
-  for (const id of idsToNamesV0(ids)) {
-    const out = TERRAIN_IDS_V1[id as TerrainNameV1];
+  for (const id of idsToNamesLegacy(ids)) {
+    const out = TERRAIN_IDS_TRANSITIONAL[id as TerrainNameTransitional];
     ok(out !== undefined);
     ret.push(out);
   }
   return ret;
 }
 
-export function remap1to2(ids: number[]) {
+export function remapTransitionalToCurrent(ids: number[]) {
   const ret = [];
-  for (const id of idsToNamesV1(ids)) {
-    const out = TERRAIN_IDS_V2[id as TerrainNameV2];
+  for (const id of idsToNamesTransitional(ids)) {
+    const out = TERRAIN_IDS_CURRENT[id as TerrainNameCurrent];
     ok(out !== undefined);
     ret.push(out);
   }
   return ret;
 }
 
-export function remap2to1(ids: number[]) {
+export function remapCurrentToTransitional(ids: number[]) {
   const ret = [];
-  for (const id of idsToNamesV2(ids)) {
-    const out = TERRAIN_IDS_V0[id as TerrainNameV0];
+  for (const id of idsToNamesCurrent(ids)) {
+    const out = TERRAIN_IDS_LEGACY[id as TerrainNameLegacy];
     ok(out !== undefined);
     ret.push(out);
   }

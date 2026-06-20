@@ -4,7 +4,7 @@ const root = process.argv[2] || process.cwd();
 const combatPath = path.join(root, "src/client/components/challenges/LocalDevHarthmereCombat.tsx");
 const text = fs.readFileSync(combatPath, "utf8");
 const checks = [
-  ["ruleset revision", '"harthmere-game-ai-state-machine-v1"'],
+  ["ruleset revision", '"harthmere-game-ai-state-machine"'],
   ["brain phase type", "type HarthmereNpcBrainPhase"],
   ["brain memory interface", "interface HarthmereNpcBrainMemory"],
   ["state has npcBrains", "npcBrains?: Record<string, HarthmereNpcBrainMemory>"],

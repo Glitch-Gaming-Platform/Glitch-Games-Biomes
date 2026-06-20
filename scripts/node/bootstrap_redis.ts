@@ -10,9 +10,9 @@ import {
 } from "@/server/shared/redis/connection";
 import { scriptInit } from "@/server/shared/script_init";
 import { RedisWorld } from "@/server/shared/world/redis";
-import { buildHarthmereGroveRaceMinigameSeedProposedChangesV1 } from "@/server/harthmere/grove_race_minigame_ecs_seed_v1";
-import { buildHarthmereLiveEntityProductionSeedProposedChangesV1 } from "@/server/harthmere/live_entity_ecs_seed_v1";
-import { buildHarthmereSnapshotGroveNpcSeedProposedChangesV1 } from "@/server/harthmere/snapshot_grove_npc_ecs_seed_v1";
+import { buildHarthmereGroveRaceMinigameSeedProposedChanges } from "@/server/harthmere/grove_race_minigame_ecs_seed";
+import { buildHarthmereLiveEntityProductionSeedProposedChanges } from "@/server/harthmere/live_entity_ecs_seed";
+import { buildHarthmereSnapshotGroveNpcSeedProposedChanges } from "@/server/harthmere/snapshot_grove_npc_ecs_seed";
 import { ProposedChange } from "@/shared/ecs/change";
 import { secondsSinceEpoch } from "@/shared/ecs/config";
 import type { BiomesId } from "@/shared/ids";
@@ -63,17 +63,17 @@ export async function bootstrapRedis(backupFile?: string) {
       .filter((id) => id !== undefined)
   );
   const liveEntitySeedChanges =
-    buildHarthmereLiveEntityProductionSeedProposedChangesV1({
+    buildHarthmereLiveEntityProductionSeedProposedChanges({
       nowSeconds: secondsSinceEpoch(),
       existingIds,
     });
   const groveRaceSeedChanges =
-    buildHarthmereGroveRaceMinigameSeedProposedChangesV1({
+    buildHarthmereGroveRaceMinigameSeedProposedChanges({
       nowSeconds: secondsSinceEpoch(),
       existingIds,
     });
   const snapshotGroveNpcSeedChanges =
-    buildHarthmereSnapshotGroveNpcSeedProposedChangesV1({
+    buildHarthmereSnapshotGroveNpcSeedProposedChanges({
       nowSeconds: secondsSinceEpoch(),
       existingIds,
     });

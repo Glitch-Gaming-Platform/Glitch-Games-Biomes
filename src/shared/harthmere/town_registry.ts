@@ -1,12 +1,12 @@
-import { HARTHMERE_PRODUCTION_POLISH_RENDER_BUDGETS_V1 } from "@/shared/harthmere/town_production_polish_v1";
+import { HARTHMERE_PRODUCTION_POLISH_RENDER_BUDGETS } from "@/shared/harthmere/town_production_polish";
 import {
-  HARTHMERE_UPLOADED_ASSET_DIMENSIONS_VERSION_V52,
-  harthmereUploadedAssetCollisionFootprintV52,
-} from "@/shared/harthmere/uploaded_asset_dimensions_v52";
+  HARTHMERE_UPLOADED_ASSET_DIMENSIONS_VERSION,
+  harthmereUploadedAssetCollisionFootprint,
+} from "@/shared/harthmere/uploaded_asset_dimensions";
 
-export const HARTHMERE_TOWN_REGISTRY_VERSION = "harthmere-town-registry-metadata-collision-lod-v1";
-export const HARTHMERE_TOWN_REGISTRY_ASSET_DIMENSIONS_COLLISION_VERSION_V52 = HARTHMERE_UPLOADED_ASSET_DIMENSIONS_VERSION_V52;
-export const HARTHMERE_TOWN_AUDIT_PATTERN_FIXES_VERSION = "harthmere-town-audit-pattern-fixes-v2";
+export const HARTHMERE_TOWN_REGISTRY_VERSION = "harthmere-town-registry-metadata-collision-lod";
+export const HARTHMERE_TOWN_REGISTRY_ASSET_DIMENSIONS_COLLISION_VERSION = HARTHMERE_UPLOADED_ASSET_DIMENSIONS_VERSION;
+export const HARTHMERE_TOWN_AUDIT_PATTERN_FIXES_VERSION = "harthmere-town-audit-pattern-fixes";
 
 export type HarthmereDistrictId =
   | "north_gate"
@@ -276,12 +276,12 @@ export const HARTHMERE_TOWN_DISTRICTS: Record<HarthmereDistrictId, HarthmereTown
 };
 
 
-// HARTHMERE_LORE_DESIGN_RULES_VERSION_V66
+// HARTHMERE_LORE_DESIGN_RULES_VERSION
 // Applied from the Harthmere town bible, Wilds bible, and Bellbound Dragon lore bible.
 // Keep these as code-visible contracts so future runtime/AI patches can audit the town
 // against the same design rules instead of adding random decorative clutter.
-export const HARTHMERE_LORE_DESIGN_RULES_VERSION_V66 = "harthmere-lore-design-rules-v66";
-export const HARTHMERE_LORE_DESIGN_RULES_V66 = [
+export const HARTHMERE_LORE_DESIGN_RULES_VERSION = "harthmere-lore-design-rules";
+export const HARTHMERE_LORE_DESIGN_RULES = [
   "Harthmere is safety; the Wilds are beautiful, useful, dangerous, and older than the town.",
   "Every road must be readable: packed surface, clear width, signposts, lamps or banners, and an obvious destination.",
   "Danger increases in rings: town core, gate road, farms/river work ring, ruins/wetlands/old woods.",
@@ -292,8 +292,8 @@ export const HARTHMERE_LORE_DESIGN_RULES_V66 = [
   "Resources outside town must feed back into town economy, quests, vendors, repairs, food, medicine, and rumors.",
 ] as const;
 
-export const HARTHMERE_CONNECTED_MAP_RULES_V66 = {
-  version: "harthmere-connected-map-rules-v66",
+export const HARTHMERE_CONNECTED_MAP_RULES = {
+  version: "harthmere-connected-map-rules",
   defaultOffset: { x: 512, z: 0, shardAligned: true, shardSize: 32 },
   authoredRoad: { from: [128, -209], to: [392, -209], shiftedDefaultFrom: [640, -209], shiftedDefaultTo: [904, -209] },
   purpose: "Connect the implemented snapshot edge into Harthmere's west road so the town is reachable, readable, and not hidden.",
@@ -318,12 +318,12 @@ const DISTRICT_ALIASES: Array<[RegExp, HarthmereDistrictId]> = [
 
 const TINY_ASSET_RE = /food_|coin|key|mug|cup|plate|spoon|knife|apple|carrot|bread|cheese|cake|bottle|vial|scroll|book_|bookstand|candle|candlestick|chalice|fish|fishbone|mushroom|note|cloth/i;
 const INTERIOR_ASSET_RE = /table|chair|stool|bench|bed|cabinet|bookcase|shelf|counter|barrel_holder|keg|chest|crate|box|workbench|anvil|rack|dummy|cage/i;
-const HARTHMERE_SOLID_UPLOADED_ASSET_COLLISION_VERSION_V1 = "harthmere-solid-uploaded-asset-collision-v1";
-const HARTHMERE_SOLID_LANDMARK_FIXTURE_COLLISION_VERSION_V1 = "harthmere-solid-landmark-fixture-collision-v1";
-const HARTHMERE_SOLID_LANDMARK_FIXTURE_PLAYER_BLOCKER_FAMILIES_V1 = "obj_flag_large obj_lamp_ground fountain_round_detail fountain_center blocksPlayer: true";
-const HARTHMERE_TOWN_SPACING_COLLISION_FIX_VERSION_V31 = "harthmere-town-spacing-collision-solid-fixture-v31";
+const HARTHMERE_SOLID_UPLOADED_ASSET_COLLISION_VERSION = "harthmere-solid-uploaded-asset-collision";
+const HARTHMERE_SOLID_LANDMARK_FIXTURE_COLLISION_VERSION = "harthmere-solid-landmark-fixture-collision";
+const HARTHMERE_SOLID_LANDMARK_FIXTURE_PLAYER_BLOCKER_FAMILIES = "obj_flag_large obj_lamp_ground fountain_round_detail fountain_center blocksPlayer: true";
+const HARTHMERE_TOWN_SPACING_COLLISION_FIX_VERSION = "harthmere-town-spacing-collision-solid-fixture";
 // Keep these family words and blocksPlayer: true on one line so static tests can prove common uploaded solid assets are player blockers.
-const HARTHMERE_SOLID_UPLOADED_ASSET_PLAYER_BLOCKER_FAMILIES_V31 = "table bench nightstand stand bed cabinet bookcase shelf workbench anvil dummy cage chest crate barrel keg fence hedge rock tree wagon banner flag sign window shrine monument pole standard mast temple blocksPlayer: true";
+const HARTHMERE_SOLID_UPLOADED_ASSET_PLAYER_BLOCKER_FAMILIES = "table bench nightstand stand bed cabinet bookcase shelf workbench anvil dummy cage chest crate barrel keg fence hedge rock tree wagon banner flag sign window shrine monument pole standard mast temple blocksPlayer: true";
 const SOLID_UPLOADED_ASSET_RE = /table|counter|desk|nightstand|stand|bench|bed|cabinet|bookcase|shelf|rack|workbench|anvil|dummy|cage|chest|crate|box|barrel|keg|fence|hedge|gate|door|pillar|column|altar|statue|coffin|rock|boulder|stone|tree|log|stump|minecart|cart|wagon|shovel|pickaxe|weapon|sword|shield|forge|barrier|crypt|church|chapel|temple|cathedral|shrine|monument|base|kiosk|bag|bucket|chain|bridge|tower|house|hut|cottage|warehouse|boat|ship|dock|ladder|market|window|banner|flag|sign|pole|mast|standard/i;
 const BUILDING_ASSET_RE = /arch_wall|obj_wall|roof|chimney|tower|church|chapel|temple|cathedral|shop|smithy|inn|tavern|cottage|hut|barracks|windmill|watermill|dock_plank|warehouse/i;
 const LANDMARK_ASSET_RE = /fountain|bell|sign|banner|statue|well|altar|hearth|stage|balcony/i;
@@ -396,7 +396,7 @@ export function inferHarthmereLodTier(input: {
   const label = `${input.asset} ${input.name ?? ""} ${input.district ?? ""}`;
   if (
     /north gate|gatehouse|old bridge|bridge|chapel of saint verena|chapel lantern|reeve hall|copper kettle inn|old well|market fountain|fountain|bellward|underways|watchtower|tower|gate/i.test(label) &&
-    !/block-built v44|solid stone\/ore house shell|floor deck|room .*resident|ceiling and floor slab/i.test(label)
+    !/block-built current|solid stone\/ore house shell|floor deck|room .*resident|ceiling and floor slab/i.test(label)
   ) {
     return "always";
   }
@@ -446,29 +446,29 @@ export function collisionFromHarthmerePlacement(input: {
   const scale = input.scale ?? 1;
   const kind = input.kind ?? inferHarthmerePlacementKind(input);
 
-  // HARTHMERE_WALKABLE_BRIDGE_COLLISION_V54
+  // HARTHMERE_WALKABLE_BRIDGE_COLLISION
   // Bridge decks are an approved road/checkpoint exception. They must be
   // walkable floor/road surfaces, while the parapets remain blocking rails.
-  if (/HARTHMERE_WALKABLE_BRIDGE_V54|HARTHMERE_WILDS_THORNBRIDGE_V54|walkable bridge deck|old bridge pedestrian lane|bridge crack inspection lane/i.test(label)) {
-    return { category: "none", blocksNpc: false, blocksPlayer: false, reason: "v54 walkable bridge deck is a road/floor surface, not an obstacle" }; // HARTHMERE_BRIDGE_LABEL_TDZ_FIX_V55
+  if (/HARTHMERE_WALKABLE_BRIDGE|HARTHMERE_WILDS_THORNBRIDGE|walkable bridge deck|old bridge pedestrian lane|bridge crack inspection lane/i.test(label)) {
+    return { category: "none", blocksNpc: false, blocksPlayer: false, reason: "current walkable bridge deck is a road/floor surface, not an obstacle" }; // HARTHMERE_BRIDGE_LABEL_TDZ_FIX
   }
-  if (/HARTHMERE_BRIDGE_PARAPET_V54|bridge parapet|parapet rail/i.test(label)) {
-    return { category: "playerBlocker", halfX: scaled(3.2, scale), halfZ: scaled(0.34, scale), padding: 0.12, blocksNpc: true, blocksPlayer: true, reason: "v54 bridge parapet blocks bridge edges while preserving the central walkable lane" };
+  if (/HARTHMERE_BRIDGE_PARAPET|bridge parapet|parapet rail/i.test(label)) {
+    return { category: "playerBlocker", halfX: scaled(3.2, scale), halfZ: scaled(0.34, scale), padding: 0.12, blocksNpc: true, blocksPlayer: true, reason: "bridge parapet blocks bridge edges while preserving the central walkable lane" };
   }
 
 
-  // HARTHMERE_LIVING_QUARTERS_PERFORMANCE_COMPLETE_VERSION_V56
+  // HARTHMERE_LIVING_QUARTERS_PERFORMANCE_COMPLETE_VERSION
   // Walkable building surfaces must not become invisible blockers. Solid
   // wall panels still block, but with a compact footprint instead of the old
   // broad arch_wall_* footprint that made interiors feel impassable.
-  if (/harthmere-living-quarters-performance-complete-v56.*(walkable|doorway clear|stair tread|upper landing|balcony deck|floor slab|ceiling)|harthmere-service-multi-story-completion-v56.*(walkable|doorway clear|stair tread|upper landing|deck)|block-built v43 solid stone\/ore (ground floor slab|ceiling slab)|block-built v43 interior stone\/ore stair block|v49 .*?(floor slab|ceiling and floor slab|stair tread|upper landing|balcony deck)|v50 .*?(floor slab|stair tread|upper landing|balcony deck)/i.test(label)) {
-    return { category: "none", blocksNpc: false, blocksPlayer: false, reason: "v56 walkable floors, stairs, decks, landings, and door clearances are surfaces, not invisible blockers" };
+  if (/harthmere-living-quarters-performance-complete.*(walkable|doorway clear|stair tread|upper landing|balcony deck|floor slab|ceiling)|harthmere-service-multi-story-completion.*(walkable|doorway clear|stair tread|upper landing|deck)|block-built current solid stone\/ore (ground floor slab|ceiling slab)|block-built current interior stone\/ore stair block|(?:floor slab|ceiling and floor slab|stair tread|upper landing|balcony deck)/i.test(label)) {
+    return { category: "none", blocksNpc: false, blocksPlayer: false, reason: "walkable floors, stairs, decks, landings, and door clearances are surfaces, not invisible blockers" };
   }
-  if (/harthmere-living-quarters-performance-complete-v56.*(solid performance apartment wall panel|upper room partition panel)|v56 solid performance apartment wall panel|v56 upper room partition panel|v49 interior partition wall|v50 solid voxel apartment wall ring/i.test(label)) {
-    return { category: "hard", halfX: scaled(0.62, scale), halfZ: scaled(0.46, scale), padding: 0.04, blocksNpc: true, blocksPlayer: true, reason: "v56 compact solid stone apartment wall panel blocks only its real footprint" };
+  if (/harthmere-living-quarters-performance-complete.*(solid performance apartment wall panel|upper room partition panel)|solid performance apartment wall panel|upper room partition panel|interior partition wall|solid voxel apartment wall ring/i.test(label)) {
+    return { category: "hard", halfX: scaled(0.62, scale), halfZ: scaled(0.46, scale), padding: 0.04, blocksNpc: true, blocksPlayer: true, reason: "compact solid stone apartment wall panel blocks only its real footprint" };
   }
-  if (/harthmere-living-quarters-performance-complete-v56.*balcony railing|harthmere-service-multi-story-completion-v56.*balcony railing/i.test(label)) {
-    return { category: "playerBlocker", halfX: scaled(0.85, scale), halfZ: scaled(0.18, scale), padding: 0.04, blocksNpc: true, blocksPlayer: true, reason: "v56 compact balcony rail blocks the edge without filling the room" };
+  if (/harthmere-living-quarters-performance-complete.*balcony railing|harthmere-service-multi-story-completion.*balcony railing/i.test(label)) {
+    return { category: "playerBlocker", halfX: scaled(0.85, scale), halfZ: scaled(0.18, scale), padding: 0.04, blocksNpc: true, blocksPlayer: true, reason: "compact balcony rail blocks the edge without filling the room" };
   }
 
 
@@ -509,16 +509,16 @@ export function collisionFromHarthmerePlacement(input: {
   if (asset === "arch_windmill" || asset === "arch_watermill") {
     return { category: "hard", halfX: scaled(5.2, scale), halfZ: scaled(5.2, scale), padding: 0.85, blocksNpc: true, blocksPlayer: true, reason: "large mill structure" };
   }
-  const uploadedMeasuredFootprintV52 = harthmereUploadedAssetCollisionFootprintV52(asset, scale);
-  if (uploadedMeasuredFootprintV52 && uploadedMeasuredFootprintV52.blocksPlayer && !uploadedMeasuredFootprintV52.passThrough) {
+  const uploadedMeasuredFootprint = harthmereUploadedAssetCollisionFootprint(asset, scale);
+  if (uploadedMeasuredFootprint && uploadedMeasuredFootprint.blocksPlayer && !uploadedMeasuredFootprint.passThrough) {
     return {
-      category: uploadedMeasuredFootprintV52.category,
-      halfX: uploadedMeasuredFootprintV52.halfX,
-      halfZ: uploadedMeasuredFootprintV52.halfZ,
-      padding: uploadedMeasuredFootprintV52.padding,
-      blocksNpc: uploadedMeasuredFootprintV52.blocksNpc,
-      blocksPlayer: uploadedMeasuredFootprintV52.blocksPlayer,
-      reason: "measured uploaded asset bounds " + HARTHMERE_TOWN_REGISTRY_ASSET_DIMENSIONS_COLLISION_VERSION_V52 + " role=" + uploadedMeasuredFootprintV52.role + " blocksPlayer: true",
+      category: uploadedMeasuredFootprint.category,
+      halfX: uploadedMeasuredFootprint.halfX,
+      halfZ: uploadedMeasuredFootprint.halfZ,
+      padding: uploadedMeasuredFootprint.padding,
+      blocksNpc: uploadedMeasuredFootprint.blocksNpc,
+      blocksPlayer: uploadedMeasuredFootprint.blocksPlayer,
+      reason: "measured uploaded asset bounds " + HARTHMERE_TOWN_REGISTRY_ASSET_DIMENSIONS_COLLISION_VERSION + " role=" + uploadedMeasuredFootprint.role + " blocksPlayer: true",
     };
   }
   if (/fountain/.test(asset)) {
@@ -635,15 +635,15 @@ export function shouldShowHarthmerePlacementAtDistanceSq(lodTier: HarthmereLodTi
     case "always":
       return true;
     case "district":
-      return distanceSq <= HARTHMERE_PRODUCTION_POLISH_RENDER_BUDGETS_V1.districtLodDistanceMeters * HARTHMERE_PRODUCTION_POLISH_RENDER_BUDGETS_V1.districtLodDistanceMeters;
+      return distanceSq <= HARTHMERE_PRODUCTION_POLISH_RENDER_BUDGETS.districtLodDistanceMeters * HARTHMERE_PRODUCTION_POLISH_RENDER_BUDGETS.districtLodDistanceMeters;
     case "near":
-      return distanceSq <= HARTHMERE_PRODUCTION_POLISH_RENDER_BUDGETS_V1.nearLodDistanceMeters * HARTHMERE_PRODUCTION_POLISH_RENDER_BUDGETS_V1.nearLodDistanceMeters;
+      return distanceSq <= HARTHMERE_PRODUCTION_POLISH_RENDER_BUDGETS.nearLodDistanceMeters * HARTHMERE_PRODUCTION_POLISH_RENDER_BUDGETS.nearLodDistanceMeters;
     case "interior":
-      return distanceSq <= HARTHMERE_PRODUCTION_POLISH_RENDER_BUDGETS_V1.interiorLodDistanceMeters * HARTHMERE_PRODUCTION_POLISH_RENDER_BUDGETS_V1.interiorLodDistanceMeters;
+      return distanceSq <= HARTHMERE_PRODUCTION_POLISH_RENDER_BUDGETS.interiorLodDistanceMeters * HARTHMERE_PRODUCTION_POLISH_RENDER_BUDGETS.interiorLodDistanceMeters;
     case "tiny":
-      return distanceSq <= HARTHMERE_PRODUCTION_POLISH_RENDER_BUDGETS_V1.tinyLodDistanceMeters * HARTHMERE_PRODUCTION_POLISH_RENDER_BUDGETS_V1.tinyLodDistanceMeters;
+      return distanceSq <= HARTHMERE_PRODUCTION_POLISH_RENDER_BUDGETS.tinyLodDistanceMeters * HARTHMERE_PRODUCTION_POLISH_RENDER_BUDGETS.tinyLodDistanceMeters;
     case "event":
-      return distanceSq <= HARTHMERE_PRODUCTION_POLISH_RENDER_BUDGETS_V1.eventLodDistanceMeters * HARTHMERE_PRODUCTION_POLISH_RENDER_BUDGETS_V1.eventLodDistanceMeters;
+      return distanceSq <= HARTHMERE_PRODUCTION_POLISH_RENDER_BUDGETS.eventLodDistanceMeters * HARTHMERE_PRODUCTION_POLISH_RENDER_BUDGETS.eventLodDistanceMeters;
     default:
       return true;
   }

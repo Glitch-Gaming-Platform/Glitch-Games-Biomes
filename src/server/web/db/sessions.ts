@@ -15,7 +15,7 @@ const SESSION_ID_LENGTH = 80;
 const SESSION_CACHE_TTL_SEC = 60 * 60; // 1 hour
 
 function useStatelessSessionsForGlitchRuntime() {
-  // GLITCH_RUNTIME_STATELESS_SESSIONS_V117
+  // GLITCH_RUNTIME_STATELESS_SESSIONS
   // The Glitch/Harthmere container runs web, sync, oob, and logic as separate
   // Node processes. A DB-backed session created by web is not visible to sync
   // when the stack is intentionally running without Firestore/GCP. Use the

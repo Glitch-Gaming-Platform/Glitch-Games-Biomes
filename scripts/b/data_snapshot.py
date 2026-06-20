@@ -274,7 +274,7 @@ def populate_redis(ctx):
             "Your Redis DB has been bootstrapped with older data, proceeding will reset it with new data."
         )
 
-    # SNAPSHOT_REDIS_FORCE_RESET_V1:
+    # SNAPSHOT_REDIS_FORCE_RESET:
     # Snapshot hash alone only proves the base backup was installed at some
     # point. It does not prove Redis is free of older local-dev/Harthmere overlay
     # entities. Use BIOMES_FORCE_SNAPSHOT_REDIS_RESET=1 with
@@ -575,8 +575,8 @@ class RedisServer(object):
         click.secho("redis-server shutdown.")
 
 
-# SNAPSHOT_RUNTIME_BRIDGE_V1:
-# SNAPSHOT_RUNTIME_BRIDGE_REPAIR_V2:
+# SNAPSHOT_RUNTIME_BRIDGE:
+# SNAPSHOT_RUNTIME_BRIDGE_REPAIR:
 # Glitch local runtime defaults collapse modes to memory/shim for standalone
 # Harthmere. Data-snapshot runs must use Redis because the snapshot backup is
 # loaded into Redis before services start. This block intentionally lives after
@@ -587,7 +587,7 @@ def _snapshot_setdefault_env(name: str, value: str):
 
 
 def _configure_snapshot_runtime_environment():
-    # GLITCH_REMOVE_STATIC_BIOMES_GG_V193:
+    # GLITCH_REMOVE_STATIC_BIOMES_GG:
     # Data-snapshot boots are local/offline Glitch runs. They must never build
     # or serve browser URLs that point at the legacy static CDN.
     _snapshot_setdefault_env("GLITCH_LOCAL_ASSETS", "1")
@@ -623,14 +623,14 @@ def _configure_snapshot_runtime_environment():
         os.environ.get("BIOMES_HARTHMERE_EXTRA_TOWN_OFFSET_Z", "0"),
     )
 
-    # SNAPSHOT_MERGE_RUNTIME_GATE_V1:
+    # SNAPSHOT_MERGE_RUNTIME_GATE:
     # Let the browser/client renderer know that this is a merged snapshot run.
     # In this mode, Harthmere runtime visuals must be hidden unless explicitly
     # enabled as the shifted extra town or forced legacy local-dev town.
     _snapshot_setdefault_env("BIOMES_SNAPSHOT_MERGE_MODE", "1")
     _snapshot_setdefault_env("NEXT_PUBLIC_BIOMES_SNAPSHOT_MERGE_MODE", "1")
 
-    # SNAPSHOT_RICH_NPC_APPEARANCE_V69:
+    # SNAPSHOT_RICH_NPC_APPEARANCE:
     # Restore upstream snapshot NPC clothing/faces by allowing the web service
     # to generate /api/assets/player_mesh.glb locally/lazily during snapshot runs.
     _snapshot_setdefault_env("GLITCH_ENABLE_SNAPSHOT_ASSET_SERVER", "1")

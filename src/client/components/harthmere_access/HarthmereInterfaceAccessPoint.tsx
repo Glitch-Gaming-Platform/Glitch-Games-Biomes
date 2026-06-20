@@ -1,12 +1,12 @@
 import * as React from "react";
 
-export type HarthmereInterfaceAccessPointKindV1 =
+export type HarthmereInterfaceAccessPointKind =
   | "business_owner"
   | "business_customer"
   | "home_owner";
 
-export interface HarthmereInterfaceAccessPointPropsV1 {
-  kind: HarthmereInterfaceAccessPointKindV1;
+export interface HarthmereInterfaceAccessPointProps {
+  kind: HarthmereInterfaceAccessPointKind;
   title: string;
   helper: string;
   keyLabel: string;
@@ -17,7 +17,7 @@ export interface HarthmereInterfaceAccessPointPropsV1 {
 }
 
 const KIND_ACCENT: Record<
-  HarthmereInterfaceAccessPointKindV1,
+  HarthmereInterfaceAccessPointKind,
   { edge: string; glow: string; fill: string; symbol: string }
 > = {
   business_owner: {
@@ -70,7 +70,7 @@ function accessIconBars(symbol: string) {
 }
 
 export const HarthmereInterfaceAccessPoint: React.FunctionComponent<
-  HarthmereInterfaceAccessPointPropsV1
+  HarthmereInterfaceAccessPointProps
 > = ({
   kind,
   title,

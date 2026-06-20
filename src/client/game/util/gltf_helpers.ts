@@ -3,9 +3,9 @@ import { Mesh } from "three";
 import type { GLTF } from "three/examples/jsm/loaders/GLTFLoader";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader";
 import {
-  coalescedPlayerMeshGltfArrayBufferFetchV1,
-  shouldCoalescePlayerMeshGltfFetchV1,
-} from "@/client/game/util/gltf_fetch_coalescing_v1";
+  coalescedPlayerMeshGltfArrayBufferFetch,
+  shouldCoalescePlayerMeshGltfFetch,
+} from "@/client/game/util/gltf_fetch_coalescing";
 
 const loader = new GLTFLoader();
 
@@ -13,7 +13,7 @@ export function loadGltf(url: string) {
   return loader.loadAsync(url);
 }
 
-async function defaultPlayerMeshGltfArrayBufferFetchV1(url: string) {
+async function defaultPlayerMeshGltfArrayBufferFetch(url: string) {
   const response = await fetch(url);
   if (!response.ok) {
     throw new Error(`Failed to load GLTF ${url}: ${response.status}`);
@@ -21,14 +21,14 @@ async function defaultPlayerMeshGltfArrayBufferFetchV1(url: string) {
   return response.arrayBuffer();
 }
 
-export async function loadGltfWithCoalescedNetworkFetchV1(url: string) {
-  if (!shouldCoalescePlayerMeshGltfFetchV1(url)) {
+export async function loadGltfWithCoalescedNetworkFetch(url: string) {
+  if (!shouldCoalescePlayerMeshGltfFetch(url)) {
     return loadGltf(url);
   }
 
-  const data = await coalescedPlayerMeshGltfArrayBufferFetchV1(
+  const data = await coalescedPlayerMeshGltfArrayBufferFetch(
     url,
-    defaultPlayerMeshGltfArrayBufferFetchV1
+    defaultPlayerMeshGltfArrayBufferFetch
   );
   return parseGltf(data.slice(0));
 }

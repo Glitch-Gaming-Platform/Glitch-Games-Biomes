@@ -1,25 +1,25 @@
-// HARTHMERE_POLISH_V1_NPC_SPACING
-// HARTHMERE_RENDERER_ANIMATION_SYNTAX_FIX_VERSION_V49
+// HARTHMERE_POLISH_NPC_SPACING
+// HARTHMERE_RENDERER_ANIMATION_SYNTAX_FIX_VERSION
 
 import type { Renderer } from "@/client/game/renderers/renderer_controller";
 import type { Scenes } from "@/client/game/renderers/scenes";
 import { addToScenes } from "@/client/game/renderers/scenes";
-import { canLocalDevLiveEntityRobotMoveForAreaV1 } from "@/client/components/challenges/LocalDevLiveEntityRobotEnergyState";
+import { canLocalDevLiveEntityRobotMoveForArea } from "@/client/components/challenges/LocalDevLiveEntityRobotEnergyState";
 import { log } from "@/shared/logging";
 import { getHarthmereEquipmentAnimation } from "@/shared/game/medieval/harthmereEquipmentAnimationManifest.generated";
 import {
-  HARTHMERE_ATTACK_ANIMATION_PROFILES_V1,
-  HARTHMERE_ATTACK_VISUAL_THEMES_V1,
-  HARTHMERE_COMBAT_ANIMATION_POLISH_VERSION_V1,
-  HARTHMERE_COMBAT_POLISH_RUNTIME_RULES_V1,
-  HARTHMERE_COMBAT_ANIMATION_HAND_POLICY_V2,
-  HARTHMERE_COMBAT_ANIMATION_PRODUCTION_TEST_CONTRACTS_V3,
-  HARTHMERE_COMBAT_ANIMATION_IMPACT_FRAME_WINDOW_V1,
-  harthmereCombatAnimationProfileForActionV1,
-  harthmereCombatAnimationProfileForRandomizedActionV2,
-  type HarthmereAttackVisualThemeIdV1,
-  type HarthmereCombatAnimationProfileV1,
-} from "@/shared/harthmere/combat_animation_polish_v1";
+  HARTHMERE_ATTACK_ANIMATION_PROFILES,
+  HARTHMERE_ATTACK_VISUAL_THEMES,
+  HARTHMERE_COMBAT_ANIMATION_POLISH_VERSION,
+  HARTHMERE_COMBAT_POLISH_RUNTIME_RULES,
+  HARTHMERE_COMBAT_ANIMATION_HAND_POLICY,
+  HARTHMERE_COMBAT_ANIMATION_PRODUCTION_TEST_CONTRACTS,
+  HARTHMERE_COMBAT_ANIMATION_IMPACT_FRAME_WINDOW,
+  harthmereCombatAnimationProfileForAction,
+  harthmereCombatAnimationProfileForRandomizedAction,
+  type HarthmereAttackVisualThemeId,
+  type HarthmereCombatAnimationProfile,
+} from "@/shared/harthmere/combat_animation_polish";
 import {
   makeHarthmereNpcBodyConfig,
   makeHarthmereNpcFaceConfig,
@@ -37,10 +37,10 @@ import {
   type HarthmereVoxelFaceConfig,
 } from "@/shared/harthmere/voxel_faces";
 import {
-  HARTHMERE_UPLOADED_ASSET_DIMENSIONS_VERSION_V52,
-  HARTHMERE_UPLOADED_ASSET_DIMENSIONS_BY_KEY_V52,
-  harthmereUploadedAssetCollisionFootprintV52,
-} from "@/shared/harthmere/uploaded_asset_dimensions_v52";
+  HARTHMERE_UPLOADED_ASSET_DIMENSIONS_VERSION,
+  HARTHMERE_UPLOADED_ASSET_DIMENSIONS_BY_KEY,
+  harthmereUploadedAssetCollisionFootprint,
+} from "@/shared/harthmere/uploaded_asset_dimensions";
 import {
   HARTHMERE_TOWN_REGISTRY_VERSION,
   HARTHMERE_TOWN_DISTRICTS,
@@ -55,39 +55,39 @@ import {
   type HarthmerePlacementMetadata,
 } from "@/shared/harthmere/town_registry";
 import {
-  HARTHMERE_PRODUCTION_POLISH_VERSION_V1,
-  HARTHMERE_PRODUCTION_POLISH_RENDER_BUDGETS_V1,
-  HARTHMERE_PRODUCTION_POLISH_DISTRICT_PALETTE_V1,
-  HARTHMERE_VOXEL_DESIGN_RULES_V1,
-  HARTHMERE_PRODUCTION_VOXEL_SELF_EDIT_RULES_V2,
-  HARTHMERE_PRODUCTION_VOXEL_SELF_EDIT_VERSION_V2,
-  HARTHMERE_FLOATING_BLOCK_INTEGRITY_VERSION_V3,
-  HARTHMERE_FLOATING_BLOCK_INTEGRITY_RULES_V3,
-  HARTHMERE_RUNTIME_PERFORMANCE_PROFILE_VERSION_V3,
-  HARTHMERE_RUNTIME_PERFORMANCE_PROFILE_V3,
-} from "@/shared/harthmere/town_production_polish_v1";
+  HARTHMERE_PRODUCTION_POLISH_VERSION,
+  HARTHMERE_PRODUCTION_POLISH_RENDER_BUDGETS,
+  HARTHMERE_PRODUCTION_POLISH_DISTRICT_PALETTE,
+  HARTHMERE_VOXEL_DESIGN_RULES,
+  HARTHMERE_PRODUCTION_VOXEL_SELF_EDIT_RULES,
+  HARTHMERE_PRODUCTION_VOXEL_SELF_EDIT_VERSION,
+  HARTHMERE_FLOATING_BLOCK_INTEGRITY_VERSION,
+  HARTHMERE_FLOATING_BLOCK_INTEGRITY_RULES,
+  HARTHMERE_RUNTIME_PERFORMANCE_PROFILE_VERSION,
+  HARTHMERE_RUNTIME_PERFORMANCE_PROFILE,
+} from "@/shared/harthmere/town_production_polish";
 import {
-  HARTHMERE_NAMED_NPCS_V44,
-  harthmereNamedNpcActorAssetV44,
-} from "@/shared/harthmere/npc_compendium_v44";
+  HARTHMERE_NAMED_NPCS,
+  harthmereNamedNpcActorAsset,
+} from "@/shared/harthmere/npc_compendium";
 import {
-  HARTHMERE_REMAINING_NPCS_V45,
-  harthmereRemainingNpcActorAssetV45,
-} from "@/shared/harthmere/npc_compendium_v45";
+  HARTHMERE_REMAINING_NPCS,
+  harthmereRemainingNpcActorAsset,
+} from "@/shared/harthmere/npc_compendium";
 import {
-  HARTHMERE_RESIDENT_HOUSING_VERSION_V38,
-  HARTHMERE_RESIDENT_HOUSING_BLOCK_BUILD_VERSION_V40,
-  HARTHMERE_RESIDENT_HOUSING_STONE_SHELL_VERSION_V42,
-  HARTHMERE_RESIDENTIAL_HOUSE_BUILDINGS_V38,
-  HARTHMERE_SLUM_STACK_BUILDINGS_V38,
-  createHarthmereResidentHomeAssignmentSummaryV38,
-  makeHarthmereResidentRoomCenterV38,
-  makeHarthmereResidentialRoomDecorV38,
-  type HarthmereResidentHousingBuildingV38,
-} from "@/shared/harthmere/resident_housing_v38";
+  HARTHMERE_RESIDENT_HOUSING_VERSION,
+  HARTHMERE_RESIDENT_HOUSING_BLOCK_BUILD_VERSION,
+  HARTHMERE_RESIDENT_HOUSING_STONE_SHELL_VERSION,
+  HARTHMERE_RESIDENTIAL_HOUSE_BUILDINGS,
+  HARTHMERE_SLUM_STACK_BUILDINGS,
+  createHarthmereResidentHomeAssignmentSummary,
+  makeHarthmereResidentRoomCenter,
+  makeHarthmereResidentialRoomDecor,
+  type HarthmereResidentHousingBuilding,
+} from "@/shared/harthmere/resident_housing";
 import {
-  SNAPSHOT_GROVE_LIVE_WORLD_GROUND_Y_V83,
-} from "@/shared/harthmere/snapshot_grove_content_v75";
+  SNAPSHOT_GROVE_LIVE_WORLD_GROUND_Y,
+} from "@/shared/harthmere/snapshot_grove_content";
 import * as THREE from "three";
 import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry";
 import { FBXLoader } from "three/examples/jsm/loaders/FBXLoader";
@@ -96,26 +96,26 @@ import { MTLLoader } from "three/examples/jsm/loaders/MTLLoader";
 import { OBJLoader } from "three/examples/jsm/loaders/OBJLoader";
 import { clone as cloneSkeleton } from "three/examples/jsm/utils/SkeletonUtils";
 import { loadGltf } from "@/client/game/util/gltf_helpers";
-import { HARTHMERE_MAIN_QUEST_SPACES_V47 } from "../../../../shared/harthmere/main_quest_spaces_v47";
+import { HARTHMERE_MAIN_QUEST_SPACES } from "../../../../shared/harthmere/main_quest_spaces";
 import {
-  HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS_V1,
-  HARTHMERE_BUSINESS_OUTPOSTS_V1,
-  type HarthmereBusinessOutpostV1,
-  harthmereBusinessOutpostGroundYV1,
-} from "@/shared/harthmere/business_customer_simulator_v1";
+  HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS,
+  HARTHMERE_BUSINESS_OUTPOSTS,
+  type HarthmereBusinessOutpost,
+  harthmereBusinessOutpostGroundY,
+} from "@/shared/harthmere/business_customer_simulator";
 import {
-  harthmereBusinessOutpostStaffAppearanceV1,
-  harthmereBusinessOutpostStaffAssetV1,
-} from "@/shared/harthmere/business_npc_cosmetics_v1";
-import { LIVE_ENTITY_ROBOT_PROTECTION_AREAS_V1 } from "@/shared/harthmere/live_entity_robot_energy_protection_v1";
+  harthmereBusinessOutpostStaffAppearance,
+  harthmereBusinessOutpostStaffAsset,
+} from "@/shared/harthmere/business_npc_cosmetics";
+import { LIVE_ENTITY_ROBOT_PROTECTION_AREAS } from "@/shared/harthmere/live_entity_robot_energy_protection";
 import {
-  reconcileHarthmereLiveCreatureBridgeV1,
-  readHarthmereLiveCreatureBridgeV1,
-  type HarthmereLiveCreatureBridgeRecordV1,
-} from "@/shared/harthmere/live_creature_ecs_bridge_v1";
-import { harthmereLiveModeCombatTargetIdForVisibleActorV1 } from "@/shared/harthmere/visible_combat_target_v1";
+  reconcileHarthmereLiveCreatureBridge,
+  readHarthmereLiveCreatureBridge,
+  type HarthmereLiveCreatureBridgeRecord,
+} from "@/shared/harthmere/live_creature_ecs_bridge";
+import { harthmereLiveModeCombatTargetIdForVisibleActor } from "@/shared/harthmere/visible_combat_target";
 
-// HARTHMERE_ECS_CREATURE_RENDER_V1: when enabled (default), muck monsters,
+// HARTHMERE_ECS_CREATURE_RENDER: when enabled (default), muck monsters,
 // animals, hexes and quest creatures are drawn from their live ECS entities so
 // the visible mesh sits exactly on the server entity and the native attack ray
 // hits it. Static PLACEMENTS life actors stay enabled by default as a stable
@@ -123,7 +123,7 @@ import { harthmereLiveModeCombatTargetIdForVisibleActorV1 } from "@/shared/harth
 // those static actors now publish live-mode target ids and are attackable too.
 // Set localStorage "biomes.localDev.harthmere.ecsCreatureRender" to "0" to
 // disable the ECS overlay entirely.
-function harthmereEcsCreatureRenderEnabledV1(): boolean {
+function harthmereEcsCreatureRenderEnabled(): boolean {
   if (typeof window === "undefined") {
     return true;
   }
@@ -134,7 +134,7 @@ function harthmereEcsCreatureRenderEnabledV1(): boolean {
   );
 }
 
-function harthmereSuppressStaticLifeForEcsV1(): boolean {
+function harthmereSuppressStaticLifeForEcs(): boolean {
   if (typeof window === "undefined") {
     return false;
   }
@@ -145,7 +145,7 @@ function harthmereSuppressStaticLifeForEcsV1(): boolean {
   );
 }
 
-function isHarthmereEcsDrivenCreatureAssetV1(asset: string): boolean {
+function isHarthmereEcsDrivenCreatureAsset(asset: string): boolean {
   // Every living thing is now driven from its ECS entity: muck monsters / hexes
   // / quest creatures ("townsperson_undead"), wildlife ("animal_*") AND town
   // humans / escort / quest NPCs (all other "townsperson_*"). Suppress their
@@ -154,43 +154,41 @@ function isHarthmereEcsDrivenCreatureAssetV1(asset: string): boolean {
   return asset.startsWith("townsperson_") || asset.startsWith("animal_");
 }
 
-const HARTHMERE_NO_SPARK_BASIC_ACTOR_MATCH_VERSION = "harthmere-no-spark-basic-actor-match-v11";
-const HARTHMERE_FIX_DEBUG_RENDERER_CALL_VERSION = "harthmere-fix-debug-renderer-call-v1";
-const HARTHMERE_ROBUST_PHYSICAL_COMBAT_SANITIZE_VERSION = "harthmere-robust-physical-combat-sanitize-v2";
-const HARTHMERE_PRODUCTION_POLISH_RUNTIME_VERSION_V1 = HARTHMERE_PRODUCTION_POLISH_VERSION_V1;
-const HARTHMERE_PRODUCTION_VOXEL_SELF_EDIT_RUNTIME_VERSION_V2 = HARTHMERE_PRODUCTION_VOXEL_SELF_EDIT_VERSION_V2;
-const HARTHMERE_FLOATING_BLOCK_RUNTIME_VERSION_V3 = HARTHMERE_FLOATING_BLOCK_INTEGRITY_VERSION_V3;
-const HARTHMERE_RUNTIME_PERFORMANCE_PROFILE_RUNTIME_VERSION_V3 = HARTHMERE_RUNTIME_PERFORMANCE_PROFILE_VERSION_V3;
-const HARTHMERE_SURVEY_PERFORMANCE_RESPONSE_VERSION_V85 = "harthmere-survey-performance-response-v85";
-const NEAR_ANIM_DIST_SQ_V85 = 18 * 18;
-const MID_ANIM_DIST_SQ_V85 = 42 * 42;
-const HARTHMERE_SURVEY_PERFORMANCE_RESPONSE_VERSION_V87 =
-  "harthmere-survey-performance-response-v87";
-const HARTHMERE_NPC_WALL_COLLISION_VERSION = "harthmere-npc-wall-collision-v1";
-const HARTHMERE_NPC_NAVIGATION_FIX_VERSION_V150 = "harthmere-npc-grounded-swept-route-navigation-v150";
-const HARTHMERE_MARKET_SQUARE_IDENTITY_VERSION = "harthmere-market-square-identity-v1";
-const HARTHMERE_PLAYER_SERVICES_PLAZA_VERSION = "harthmere-player-services-plaza-v1";
-const HARTHMERE_COPPER_KETTLE_INN_VERSION = "harthmere-copper-kettle-inn-v1";
-const HARTHMERE_CRAFTSMAN_ROW_BLACK_ANVIL_VERSION = "harthmere-craftsman-row-black-anvil-v1";
-const HARTHMERE_NOBLE_RISE_VERSION = "harthmere-noble-rise-v1";
-const HARTHMERE_RIVER_DOCKS_VERSION = "harthmere-river-docks-v1";
-const HARTHMERE_MUDDEN_WARD_VERSION = "harthmere-mudden-ward-v1";
-const HARTHMERE_GUARD_YARD_VERSION = "harthmere-guard-yard-v1";
-const HARTHMERE_OLD_WELL_UNDERWAYS_VERSION = "harthmere-old-well-underways-v1";
-const HARTHMERE_TEMPLE_GREEN_VERSION = "harthmere-temple-green-v1";
-const HARTHMERE_TOWN_DEBUG_RUNTIME_FIXES_VERSION = "harthmere-town-debug-runtime-fixes-v1";
-// HARTHMERE_WALL_FIXTURE_ATTACHMENT_RED_TESTS_V1: mounted torches and church lanterns name their wall brackets.
-// HARTHMERE_FIXTURE_ATTACHMENT_RED_TESTS_V1: elevated lamps/candles/torches name their support anchors.
-const HARTHMERE_TOWN_AUDIT_EXPORT_VERSION = "harthmere-town-audit-export-v1";
-const HARTHMERE_TOWN_AUDIT_PATTERN_FIXES_VERSION = "harthmere-town-audit-pattern-fixes-v3";
-const HARTHMERE_TOWN_WALK_DEBUG_VERSION = "harthmere-town-walk-debug-v2";
-const HARTHMERE_TOWN_SYSTEMS_VERSION = "harthmere-town-registry-metadata-collision-lod-v1";
-const HARTHMERE_ASSET_SIZE_COLLISION_RUNTIME_VERSION_V52 = HARTHMERE_UPLOADED_ASSET_DIMENSIONS_VERSION_V52;
-const HARTHMERE_SOLID_UPLOADED_ASSET_PLAYER_COLLISION_V1 = "harthmere-solid-uploaded-asset-player-collision-v1";
-const HARTHMERE_TOWN_SPACING_COLLISION_FIX_VERSION_V31 = "harthmere-town-spacing-collision-solid-fixture-v31";
-const HARTHMERE_INTERIOR_ENTERABILITY_FIX_VERSION_V32 = "harthmere-interior-enterability-blocker-fixes-v32";
-const HARTHMERE_SERVICE_BUILDING_BLOCK_REBUILD_VERSION_V43 = "harthmere-service-building-block-rebuild-v43";
-const HARTHMERE_RESIDENT_HOUSING_RENDERER_VERSION_V38 = HARTHMERE_RESIDENT_HOUSING_VERSION_V38;
+const HARTHMERE_NO_SPARK_BASIC_ACTOR_MATCH_VERSION = "harthmere-no-spark-basic-actor-match";
+const HARTHMERE_FIX_DEBUG_RENDERER_CALL_VERSION = "harthmere-fix-debug-renderer-call";
+const HARTHMERE_ROBUST_PHYSICAL_COMBAT_SANITIZE_VERSION = "harthmere-robust-physical-combat-sanitize";
+const HARTHMERE_PRODUCTION_POLISH_RUNTIME_VERSION = HARTHMERE_PRODUCTION_POLISH_VERSION;
+const HARTHMERE_PRODUCTION_VOXEL_SELF_EDIT_RUNTIME_VERSION = HARTHMERE_PRODUCTION_VOXEL_SELF_EDIT_VERSION;
+const HARTHMERE_FLOATING_BLOCK_RUNTIME_VERSION = HARTHMERE_FLOATING_BLOCK_INTEGRITY_VERSION;
+const HARTHMERE_RUNTIME_PERFORMANCE_PROFILE_RUNTIME_VERSION = HARTHMERE_RUNTIME_PERFORMANCE_PROFILE_VERSION;
+const HARTHMERE_SURVEY_PERFORMANCE_RESPONSE_VERSION = "harthmere-survey-performance-response";
+const NEAR_ANIM_DIST_SQ = 18 * 18;
+const MID_ANIM_DIST_SQ = 42 * 42;
+const HARTHMERE_NPC_WALL_COLLISION_VERSION = "harthmere-npc-wall-collision";
+const HARTHMERE_NPC_NAVIGATION_FIX_VERSION = "harthmere-npc-grounded-swept-route-navigation";
+const HARTHMERE_MARKET_SQUARE_IDENTITY_VERSION = "harthmere-market-square-identity";
+const HARTHMERE_PLAYER_SERVICES_PLAZA_VERSION = "harthmere-player-services-plaza";
+const HARTHMERE_COPPER_KETTLE_INN_VERSION = "harthmere-copper-kettle-inn";
+const HARTHMERE_CRAFTSMAN_ROW_BLACK_ANVIL_VERSION = "harthmere-craftsman-row-black-anvil";
+const HARTHMERE_NOBLE_RISE_VERSION = "harthmere-noble-rise";
+const HARTHMERE_RIVER_DOCKS_VERSION = "harthmere-river-docks";
+const HARTHMERE_MUDDEN_WARD_VERSION = "harthmere-mudden-ward";
+const HARTHMERE_GUARD_YARD_VERSION = "harthmere-guard-yard";
+const HARTHMERE_OLD_WELL_UNDERWAYS_VERSION = "harthmere-old-well-underways";
+const HARTHMERE_TEMPLE_GREEN_VERSION = "harthmere-temple-green";
+const HARTHMERE_TOWN_DEBUG_RUNTIME_FIXES_VERSION = "harthmere-town-debug-runtime-fixes";
+// HARTHMERE_WALL_FIXTURE_ATTACHMENT_RED_TESTS: mounted torches and church lanterns name their wall brackets.
+// HARTHMERE_FIXTURE_ATTACHMENT_RED_TESTS: elevated lamps/candles/torches name their support anchors.
+const HARTHMERE_TOWN_AUDIT_EXPORT_VERSION = "harthmere-town-audit-export";
+const HARTHMERE_TOWN_AUDIT_PATTERN_FIXES_VERSION = "harthmere-town-audit-pattern-fixes";
+const HARTHMERE_TOWN_WALK_DEBUG_VERSION = "harthmere-town-walk-debug";
+const HARTHMERE_TOWN_SYSTEMS_VERSION = "harthmere-town-registry-metadata-collision-lod";
+const HARTHMERE_ASSET_SIZE_COLLISION_RUNTIME_VERSION = HARTHMERE_UPLOADED_ASSET_DIMENSIONS_VERSION;
+const HARTHMERE_SOLID_UPLOADED_ASSET_PLAYER_COLLISION = "harthmere-solid-uploaded-asset-player-collision";
+const HARTHMERE_TOWN_SPACING_COLLISION_FIX_VERSION = "harthmere-town-spacing-collision-solid-fixture";
+const HARTHMERE_INTERIOR_ENTERABILITY_FIX_VERSION = "harthmere-interior-enterability-blocker-fixes";
+const HARTHMERE_SERVICE_BUILDING_BLOCK_REBUILD_VERSION = "harthmere-service-building-block-rebuild";
+const HARTHMERE_RESIDENT_HOUSING_RENDERER_VERSION = HARTHMERE_RESIDENT_HOUSING_STONE_SHELL_VERSION;
 
 type AssetFormat = "gltf" | "fbx" | "obj";
 
@@ -251,7 +249,7 @@ type AnimatedInstance = {
   collisionBlockCount?: number;
   placementMeta?: HarthmerePlacementMetadata;
   robotProtectionAreaId?: string;
-  // HARTHMERE_POLISH_V1_LOCOMOTION_CLIPS
+  // HARTHMERE_POLISH_LOCOMOTION_CLIPS
   locomotion?: {
     idle?: THREE.AnimationAction;
     walk?: THREE.AnimationAction;
@@ -271,26 +269,26 @@ type HarthmerePlacementRuntimeInstance = {
 
 type HarthmereModelForwardAxis = HarthmereForwardAxis;
 
-const HARTHMERE_BODY_WEAPON_VISUAL_COHESION_VERSION_V7 = "harthmere-body-weapon-visual-cohesion-v7";
-const HARTHMERE_CREATURE_SOCIAL_DEATH_HANDTRACKING_VERSION_V9 =
-  "harthmere-creature-social-death-handtracking-v9";
-const HARTHMERE_WEAPON_HAND_TRACKING_VERSION_V9 =
-  "harthmere-weapon-follows-current-hand-anchor-v9";
-const HARTHMERE_WEAPON_HAND_GRIP_MAX_DISTANCE_V9 = 0.22;
-const HARTHMERE_COMBAT_ANIMATION_POLISH_RENDERER_VERSION_V1 =
-  "harthmere-combat-animation-polish-renderer-v1";
-const HARTHMERE_NON_NPC_NATIVE_COMBAT_ANIMATION_AUDIT_V1 =
-  "harthmere-non-npc-native-combat-animation-audit-v1";
-const HARTHMERE_COMBAT_POLISH_THEME_SEQUENCE_V1 = HARTHMERE_ATTACK_VISUAL_THEMES_V1.map(
+const HARTHMERE_BODY_WEAPON_VISUAL_COHESION_VERSION = "harthmere-body-weapon-visual-cohesion";
+const HARTHMERE_CREATURE_SOCIAL_DEATH_HANDTRACKING_VERSION =
+  "harthmere-creature-social-death-handtracking";
+const HARTHMERE_WEAPON_HAND_TRACKING_VERSION =
+  "harthmere-weapon-follows-current-hand-anchor";
+const HARTHMERE_WEAPON_HAND_GRIP_MAX_DISTANCE = 0.22;
+const HARTHMERE_COMBAT_ANIMATION_POLISH_RENDERER_VERSION =
+  "harthmere-combat-animation-polish-renderer";
+const HARTHMERE_NON_NPC_NATIVE_COMBAT_ANIMATION_AUDIT =
+  "harthmere-non-npc-native-combat-animation-audit";
+const HARTHMERE_COMBAT_POLISH_THEME_SEQUENCE = HARTHMERE_ATTACK_VISUAL_THEMES.map(
   (theme) => theme.id,
-) as readonly HarthmereAttackVisualThemeIdV1[];
+) as readonly HarthmereAttackVisualThemeId[];
 
 type HarthmerePlayerSwordVisualState = {
   drawn: boolean;
   itemId: string;
   action: "grant" | "draw" | "sheathe" | "attack" | "sync";
   attack?: "basic" | "heavy" | "spark";
-  theme?: HarthmereAttackVisualThemeIdV1;
+  theme?: HarthmereAttackVisualThemeId;
   variation?: string;
   at: number;
   windupMs?: number;
@@ -319,10 +317,10 @@ type CombatLifeInstance = {
     at: number;
     durationMs: number;
   };
-  harthmerePolishHasDrawnV1?: boolean;
+  harthmerePolishHasDrawn?: boolean;
 };
 
-function harthmereRuntimeCombatFamilyV1(actor: CombatLifeInstance) {
+function harthmereRuntimeCombatFamily(actor: CombatLifeInstance) {
   const text = `${actor.asset} ${actor.label} ${actor.district ?? ""} ${
     actor.appearance?.species ?? ""
   }`.toLowerCase();
@@ -343,23 +341,23 @@ function harthmereRuntimeCombatFamilyV1(actor: CombatLifeInstance) {
 
 const ROOT = "/assets/harthmere";
 const GROUND_Y = 53.05;
-const HARTHMERE_RUNTIME_CORE_BASE_ORIGIN_V3 = [486, -209] as const;
+const HARTHMERE_RUNTIME_CORE_BASE_ORIGIN = [486, -209] as const;
 
-// HARTHMERE_RUNTIME_EXTRA_TOWN_OFFSET_V1:
-const HARTHMERE_RUNTIME_EXTRA_TOWN_OFFSET_X_V1 = Number.parseInt(
+// HARTHMERE_RUNTIME_EXTRA_TOWN_OFFSET:
+const HARTHMERE_RUNTIME_EXTRA_TOWN_OFFSET_X = Number.parseInt(
   process.env.NEXT_PUBLIC_BIOMES_HARTHMERE_EXTRA_TOWN_OFFSET_X ??
     process.env.BIOMES_HARTHMERE_EXTRA_TOWN_OFFSET_X ??
     "512",
   10,
 );
-const HARTHMERE_RUNTIME_EXTRA_TOWN_OFFSET_Z_V1 = Number.parseInt(
+const HARTHMERE_RUNTIME_EXTRA_TOWN_OFFSET_Z = Number.parseInt(
   process.env.NEXT_PUBLIC_BIOMES_HARTHMERE_EXTRA_TOWN_OFFSET_Z ??
     process.env.BIOMES_HARTHMERE_EXTRA_TOWN_OFFSET_Z ??
     "0",
   10,
 );
-function shouldUseHarthmereRuntimeExtraTownOffsetV1() {
-  // HARTHMERE_GROVE_SEPARATION_RUNTIME_V72:
+function shouldUseHarthmereRuntimeExtraTownOffset() {
+  // HARTHMERE_GROVE_SEPARATION_RUNTIME:
   // Match the server: forced local-dev seeding is now shifted so Harthmere
   // remains separate from The Grove. Legacy unshifted runtime can be restored
   // only with BIOMES_HARTHMERE_STANDALONE_TOWN=1.
@@ -380,35 +378,35 @@ function shouldUseHarthmereRuntimeExtraTownOffsetV1() {
     process.env.BIOMES_FORCE_LOCAL_DEV_TOWN === "1"
   );
 }
-function harthmereRuntimeExtraTownOffsetXV1() {
-  return shouldUseHarthmereRuntimeExtraTownOffsetV1()
-    ? HARTHMERE_RUNTIME_EXTRA_TOWN_OFFSET_X_V1
+function harthmereRuntimeExtraTownOffsetX() {
+  return shouldUseHarthmereRuntimeExtraTownOffset()
+    ? HARTHMERE_RUNTIME_EXTRA_TOWN_OFFSET_X
     : 0;
 }
-function harthmereRuntimeExtraTownOffsetZV1() {
-  return shouldUseHarthmereRuntimeExtraTownOffsetV1()
-    ? HARTHMERE_RUNTIME_EXTRA_TOWN_OFFSET_Z_V1
+function harthmereRuntimeExtraTownOffsetZ() {
+  return shouldUseHarthmereRuntimeExtraTownOffset()
+    ? HARTHMERE_RUNTIME_EXTRA_TOWN_OFFSET_Z
     : 0;
 }
 
-// HARTHMERE_SNAPSHOT_RUNTIME_GATE_V1:
+// HARTHMERE_SNAPSHOT_RUNTIME_GATE:
 // Snapshot-only runs should show the upstream snapshot world, not Harthmere
 // debug/runtime actors at their authored local-dev coordinates. Render the
 // Harthmere runtime town only when explicitly enabled as the shifted extra
 // town, forced as the legacy local-dev town, or manually overridden for debug.
-function isSnapshotMergeRuntimeV1() {
+function isSnapshotMergeRuntime() {
   return (
     process.env.NEXT_PUBLIC_BIOMES_SNAPSHOT_MERGE_MODE === "1" ||
     process.env.BIOMES_SNAPSHOT_MERGE_MODE === "1"
   );
 }
 
-function shouldRenderHarthmereRuntimeTownV1() {
-  if (!isSnapshotMergeRuntimeV1()) {
+function shouldRenderHarthmereRuntimeTown() {
+  if (!isSnapshotMergeRuntime()) {
     return true;
   }
   return (
-    shouldUseHarthmereRuntimeExtraTownOffsetV1() ||
+    shouldUseHarthmereRuntimeExtraTownOffset() ||
     process.env.NEXT_PUBLIC_GLITCH_RUNTIME === "1" ||
     process.env.NEXT_PUBLIC_GLITCH_LOCAL_ASSETS === "1" ||
     process.env.NEXT_PUBLIC_BIOMES_FORCE_LOCAL_DEV_TOWN === "1" ||
@@ -417,9 +415,9 @@ function shouldRenderHarthmereRuntimeTownV1() {
     process.env.BIOMES_RENDER_HARTHMERE_RUNTIME === "1"
   );
 }
-const HARTHMERE_RUNTIME_CORE_ORIGIN_V3 = [
-  HARTHMERE_RUNTIME_CORE_BASE_ORIGIN_V3[0] + harthmereRuntimeExtraTownOffsetXV1(),
-  HARTHMERE_RUNTIME_CORE_BASE_ORIGIN_V3[1] + harthmereRuntimeExtraTownOffsetZV1(),
+const HARTHMERE_RUNTIME_CORE_ORIGIN = [
+  HARTHMERE_RUNTIME_CORE_BASE_ORIGIN[0] + harthmereRuntimeExtraTownOffsetX(),
+  HARTHMERE_RUNTIME_CORE_BASE_ORIGIN[1] + harthmereRuntimeExtraTownOffsetZ(),
 ] as const;
 const HARTHMERE_COMBAT_EFFECT_EVENT = "biomes:harthmere-combat-effect";
 
@@ -439,7 +437,7 @@ const HARTHMERE_PLAYER_SWORD_CLIPS = {
 } as const;
 
 
-// harthmere-all-weapon-animation-v4
+// harthmere-all-weapon-animation
 // Weapon-wide equipment coverage. The existing field/method names still say
 // "Sword" for backwards compatibility with earlier tests, but the visual system
 // now resolves the active equipped item into the generated equipment manifest
@@ -620,8 +618,8 @@ function resolveHarthmerePlayerWeaponVisualClips(itemId: string | undefined) {
 
 
 
-const HARTHMERE_UNIQUE_NPC_COSMETICS_VERSION = "harthmere-unique-npc-cosmetics-v15-body-fit-clothing";
-const HARTHMERE_FACE_BODY_VISUAL_REFINEMENT_VERSION = "harthmere-face-body-visual-refinement-v11";
+const HARTHMERE_UNIQUE_NPC_COSMETICS_VERSION = "harthmere-unique-npc-cosmetics-body-fit-clothing";
+const HARTHMERE_FACE_BODY_VISUAL_REFINEMENT_VERSION = "harthmere-face-body-visual-refinement";
 
 type HarthmereUniqueNpcPalette = {
   skin: number;
@@ -880,7 +878,7 @@ function addUniqueNpcGear(
   const oppositeSide = -uniqueSide;
   headGroup.add(
     cosmeticBox(
-      "npc-unique-hair-streak-v12",
+      "npc-unique-hair-streak",
       [0.032, 0.18 + ((seed >>> 16) % 4) * 0.018, 0.035],
       [uniqueSide * 0.095, 0.065, -0.16],
       tintColor(palette.hair, ((seed >>> 18) & 1) === 0 ? 0.34 : -0.22),
@@ -889,7 +887,7 @@ function addUniqueNpcGear(
   if (((seed >>> 19) & 1) === 1) {
     headGroup.add(
       cosmeticBox(
-        "npc-unique-ear-piece-v12",
+        "npc-unique-ear-piece",
         [0.026, 0.055, 0.022],
         [oppositeSide * 0.19, -0.015, -0.025],
         palette.metal,
@@ -899,13 +897,13 @@ function addUniqueNpcGear(
 
   chestGroup.add(
     cosmeticBox(
-      "npc-unique-shoulder-cloak-v12",
+      "npc-unique-shoulder-cloak",
       [0.13 + ((seed >>> 20) % 3) * 0.018, 0.28, 0.055],
       [uniqueSide * 0.2, 0.03, 0.105],
       pickSeeded([palette.trim, palette.detail, tintColor(palette.tunic, -0.34)], seed, 11),
     ),
     cosmeticBox(
-      "npc-unique-chest-patch-v12",
+      "npc-unique-chest-patch",
       [0.07 + ((seed >>> 22) % 2) * 0.025, 0.09, 0.022],
       [oppositeSide * 0.1, 0.045, -0.132],
       pickSeeded([palette.accent, palette.detail, palette.metal], seed, 12),
@@ -913,7 +911,7 @@ function addUniqueNpcGear(
   );
   if (((seed >>> 24) & 1) === 1) {
     const bandolier = cosmeticBox(
-      "npc-unique-bandolier-v12",
+      "npc-unique-bandolier",
       [0.055, 0.58, 0.045],
       [uniqueSide * 0.045, 0.0, -0.14],
       palette.leather,
@@ -923,7 +921,7 @@ function addUniqueNpcGear(
   }
   backGroup.add(
     cosmeticBox(
-      "npc-unique-bedroll-v12",
+      "npc-unique-bedroll",
       [0.22, 0.08, 0.1],
       [oppositeSide * 0.08, 0.16, 0.075],
       pickSeeded([palette.leather, palette.trim, palette.detail], seed, 13),
@@ -931,7 +929,7 @@ function addUniqueNpcGear(
   );
   hipGroup.add(
     cosmeticBox(
-      "npc-unique-pouch-v12",
+      "npc-unique-pouch",
       [0.09, 0.12, 0.07],
       [oppositeSide * 0.065, -0.02, 0.03],
       pickSeeded([palette.leather, palette.trim, 0x2a2118], seed, 14),
@@ -1079,7 +1077,7 @@ type HarthmereRendererDebugWindow = typeof window & {
   __harthmereTownRegistry?: Record<string, unknown>;
   __harthmereTownCollisionQuery?: Record<string, unknown>;
   __harthmerePlacementCleanupReport?: Record<string, unknown>;
-  __harthmereNpcDistributionReportV48?: Record<string, unknown>;
+  __harthmereNpcDistributionReport?: Record<string, unknown>;
 };
 
 function harthmereRendererDebugWindow(): HarthmereRendererDebugWindow | undefined {
@@ -1222,7 +1220,7 @@ function harthmereYawForWorldForward(
 }
 
 
-// harthmere-full-combat-ai-animation-v1
+// harthmere-full-combat-ai-animation
 function harthmereWorldForwardForYaw(
   yaw: number,
   forwardAxis: HarthmereModelForwardAxis,
@@ -1504,7 +1502,7 @@ const ASSETS: RuntimeAsset[] = [
   gltf("townsperson_market", "gltf/characters/player_body_variants/harthmere_player_average_ember.gltf", 0.9),
 
 
-  // HARTHMERE_V9_ARCHITECTURE_ASSETS_START
+  // HARTHMERE_ARCHITECTURE_ASSETS_START
   // Modular building shells and landmark pieces used by the full town rebuild.
   // These are intentionally narrow and curated so the renderer builds a real
   // readable town instead of scattering every asset in the library.
@@ -1590,7 +1588,7 @@ const ASSETS: RuntimeAsset[] = [
   obj("obj_church_grave_wall", "church_cemetery", "church-71-gy_wallbase", 1.0),
   obj("obj_grave_dirt", "church_cemetery", "church-74-gy_dirtgrave", 1.0),
   obj("obj_gargoyle", "church_cemetery", "church-79-gargoyle", 1.0),
-  // HARTHMERE_V9_ARCHITECTURE_ASSETS_END
+  // HARTHMERE_ARCHITECTURE_ASSETS_END
 
   // Interior kit: all visual-only props, placed away from doorway lanes.
   gltf("table_small", "glb/props/dungeon/table_small.gltf.glb", 0.78),
@@ -1877,16 +1875,16 @@ const ASSETS: RuntimeAsset[] = [
 const assetByKey = new Map(ASSETS.map((asset) => [asset.key, asset]));
 
 
-// HARTHMERE_SNAPSHOT_BUILT_RUNTIME_POLICY_VERSION_V67
+// HARTHMERE_SNAPSHOT_BUILT_RUNTIME_POLICY_VERSION
 // In snapshot merge mode, Harthmere's map should be built like the snapshot:
 // terrain/material blocks own the road, buildings, trees, water/fountains,
 // dungeon entrances, stairs, walls, roofs, and major map silhouettes.
 // Keep the GLB files registered and on disk, but do not place GLB map assets
 // into the runtime scene unless explicitly opted back in for asset debugging.
-const HARTHMERE_SNAPSHOT_BUILT_RUNTIME_POLICY_VERSION_V67 =
-  "harthmere-snapshot-built-runtime-policy-v67";
+const HARTHMERE_SNAPSHOT_BUILT_RUNTIME_POLICY_VERSION =
+  "harthmere-snapshot-built-runtime-policy";
 
-function shouldUseHarthmereSnapshotBuiltRuntimePolicyV67() {
+function shouldUseHarthmereSnapshotBuiltRuntimePolicy() {
   const disabled =
     process.env.NEXT_PUBLIC_BIOMES_HARTHMERE_SNAPSHOT_BUILT_MODE === "0" ||
     process.env.BIOMES_HARTHMERE_SNAPSHOT_BUILT_MODE === "0" ||
@@ -1896,8 +1894,8 @@ function shouldUseHarthmereSnapshotBuiltRuntimePolicyV67() {
   return (
     process.env.NEXT_PUBLIC_GLITCH_RUNTIME === "1" ||
     process.env.NEXT_PUBLIC_GLITCH_LOCAL_ASSETS === "1" ||
-    isSnapshotMergeRuntimeV1() ||
-    shouldUseHarthmereRuntimeExtraTownOffsetV1() ||
+    isSnapshotMergeRuntime() ||
+    shouldUseHarthmereRuntimeExtraTownOffset() ||
     process.env.NEXT_PUBLIC_BIOMES_ENABLE_HARTHMERE_EXTRA_TOWN === "1" ||
     process.env.BIOMES_ENABLE_HARTHMERE_EXTRA_TOWN === "1" ||
     process.env.NEXT_PUBLIC_BIOMES_FORCE_LOCAL_DEV_TOWN === "1" ||
@@ -1905,11 +1903,11 @@ function shouldUseHarthmereSnapshotBuiltRuntimePolicyV67() {
   );
 }
 
-function harthmereRuntimeAssetPathV67(placement: RuntimePlacement) {
+function harthmereRuntimeAssetPath(placement: RuntimePlacement) {
   return assetByKey.get(placement.asset)?.path ?? "";
 }
 
-function isHarthmereCombatDiagnosticRuntimePlacementV1(
+function isHarthmereCombatDiagnosticRuntimePlacement(
   placement: RuntimePlacement,
 ) {
   const label =
@@ -1920,7 +1918,7 @@ function isHarthmereCombatDiagnosticRuntimePlacementV1(
   );
 }
 
-function shouldRenderHarthmereCombatDiagnosticsV1() {
+function shouldRenderHarthmereCombatDiagnostics() {
   if (
     process.env.NEXT_PUBLIC_BIOMES_HARTHMERE_COMBAT_DIAGNOSTICS === "1" ||
     process.env.BIOMES_HARTHMERE_COMBAT_DIAGNOSTICS === "1"
@@ -1940,14 +1938,14 @@ function shouldRenderHarthmereCombatDiagnosticsV1() {
   }
 }
 
-// SNAPSHOT_RAW_FLOATING_NPC_HIDE_V76:
+// SNAPSHOT_RAW_FLOATING_NPC_HIDE:
 // The imported snapshot can still contain raw decorative NPC GLB placements.
-// They are visually useful references, but after v75 the real NPCs are grounded
+// They are visually useful references, but after current the real NPCs are grounded
 // server ECS actors. Hide the raw decorative copies so players do not see
 // duplicate actors hovering above The Grove.
-function isSnapshotRawFloatingNpcRuntimePlacementV76(placement: RuntimePlacement) {
-  if (isHarthmereCombatDiagnosticRuntimePlacementV1(placement)) return false;
-  const assetPath = harthmereRuntimeAssetPathV67(placement).toLowerCase();
+function isSnapshotRawFloatingNpcRuntimePlacement(placement: RuntimePlacement) {
+  if (isHarthmereCombatDiagnosticRuntimePlacement(placement)) return false;
+  const assetPath = harthmereRuntimeAssetPath(placement).toLowerCase();
   const label = `${placement.asset} ${placement.name ?? ""} ${placement.district ?? ""}`.toLowerCase();
   return (
     assetPath.includes("asset_data/npcs") ||
@@ -1955,21 +1953,21 @@ function isSnapshotRawFloatingNpcRuntimePlacementV76(placement: RuntimePlacement
   );
 }
 
-function isHarthmereRuntimeGlbAssetV67(placement: RuntimePlacement) {
-  const assetPath = harthmereRuntimeAssetPathV67(placement).toLowerCase();
+function isHarthmereRuntimeGlbAsset(placement: RuntimePlacement) {
+  const assetPath = harthmereRuntimeAssetPath(placement).toLowerCase();
   return assetPath.includes("/glb/") || assetPath.endsWith(".glb");
 }
 
-function isHarthmereRuntimeObjMapStructureV67(placement: RuntimePlacement) {
-  const assetPath = harthmereRuntimeAssetPathV67(placement).toLowerCase();
+function isHarthmereRuntimeObjMapStructure(placement: RuntimePlacement) {
+  const assetPath = harthmereRuntimeAssetPath(placement).toLowerCase();
   const label = `${placement.asset} ${placement.name ?? ""} ${placement.district ?? ""}`.toLowerCase();
   if (!assetPath.includes("/obj/")) return false;
   return /house|shop|kiosk|tower|wall|bridge|church|chapel|crypt|grave|building|roof|stair|gate|fence/.test(label);
 }
 
-function isHarthmereSnapshotBuiltRuntimeOwnedPlacementV67(placement: RuntimePlacement) {
-  if (isHarthmereCombatDiagnosticRuntimePlacementV1(placement)) return false;
-  if (isSnapshotRawFloatingNpcRuntimePlacementV76(placement)) return true;
+function isHarthmereSnapshotBuiltRuntimeOwnedPlacement(placement: RuntimePlacement) {
+  if (isHarthmereCombatDiagnosticRuntimePlacement(placement)) return false;
+  if (isSnapshotRawFloatingNpcRuntimePlacement(placement)) return true;
   if (isHarthmereRuntimeLifePlacement(placement)) return false;
   const label = `${placement.asset} ${placement.name ?? ""} ${placement.district ?? ""}`.toLowerCase();
   // Do not remove actor/debug combat helpers here; this filter is about map assets.
@@ -1979,29 +1977,29 @@ function isHarthmereSnapshotBuiltRuntimeOwnedPlacementV67(placement: RuntimePlac
   // voxel terrain now owns roads, trees, buildings, wells/fountains, dungeons,
   // stairs, bridges, walls, and landmarks. This is intentionally broad because
   // the screenshots showed GLB houses/trees floating after the coordinate move.
-  if (isHarthmereRuntimeGlbAssetV67(placement)) return true;
-  if (isHarthmereRuntimeObjMapStructureV67(placement)) return true;
+  if (isHarthmereRuntimeGlbAsset(placement)) return true;
+  if (isHarthmereRuntimeObjMapStructure(placement)) return true;
 
   // Non-GLB structural map families are also snapshot/terrain-owned.
   return /tree|forest_|bush|grass|road|fountain|hedge|fence|wall|roof|stairs|bridge|tower|house|cottage|dungeon|underways|crypt|watermill|windmill|grave fence|landmark block|mine_stone|mine_coal|mine_silver|mine_gold|mine_diamond/i.test(label);
 }
 
-function filterHarthmereSnapshotBuiltRuntimePlacementsV67(
+function filterHarthmereSnapshotBuiltRuntimePlacements(
   placements: readonly RuntimePlacement[],
 ): { placements: RuntimePlacement[]; removed: RuntimePlacement[] } {
-  if (!shouldUseHarthmereSnapshotBuiltRuntimePolicyV67()) {
+  if (!shouldUseHarthmereSnapshotBuiltRuntimePolicy()) {
     return { placements: [...placements], removed: [] };
   }
   const kept: RuntimePlacement[] = [];
   const removed: RuntimePlacement[] = [];
   for (const placement of placements) {
-    if (isHarthmereSnapshotBuiltRuntimeOwnedPlacementV67(placement)) {
+    if (isHarthmereSnapshotBuiltRuntimeOwnedPlacement(placement)) {
       removed.push({
         ...placement,
         name:
           String(placement.name ?? placement.asset) +
           " removed by " +
-          HARTHMERE_SNAPSHOT_BUILT_RUNTIME_POLICY_VERSION_V67,
+          HARTHMERE_SNAPSHOT_BUILT_RUNTIME_POLICY_VERSION,
       });
       continue;
     }
@@ -2010,7 +2008,7 @@ function filterHarthmereSnapshotBuiltRuntimePlacementsV67(
   return { placements: kept, removed };
 }
 
-function snapHarthmereRuntimePlacementToGroundV67(placement: RuntimePlacement): RuntimePlacement {
+function snapHarthmereRuntimePlacementToGround(placement: RuntimePlacement): RuntimePlacement {
   // The terrain pass keeps Harthmere's authored ground one block below actor
   // feet. Actor/NPC runtime placements should not inherit hand-authored offsets.
   if (!isHarthmereRuntimeLifePlacement(placement)) return placement;
@@ -2019,7 +2017,7 @@ function snapHarthmereRuntimePlacementToGroundV67(placement: RuntimePlacement): 
     ...placement,
     at: [placement.at[0], GROUND_Y, placement.at[2]],
     meta: placement.meta
-      ? { ...placement.meta, tags: [...placement.meta.tags, "ground-snapped-v67"] }
+      ? { ...placement.meta, tags: [...placement.meta.tags, "ground-snapped"] }
       : placement.meta,
   };
 }
@@ -2107,7 +2105,7 @@ const A = (
   });
   const effectiveWander = options?.robotProtectionAreaId
     ? wander
-    : speedUpHarthmereGroveNpcWanderV153(
+    : speedUpHarthmereGroveNpcWander(
         asset,
         district,
         normalizeHarthmereActorWander(asset, name, district, x, z, wander),
@@ -2146,8 +2144,8 @@ const AD = (...args: Parameters<typeof A>): RuntimePlacement => {
           tags: [
             ...new Set([
               ...placement.meta.tags,
-              "combat-diagnostic-v1",
-              "live-entity-render-diagnostic-v1",
+              "combat-diagnostic",
+              "live-entity-render-diagnostic",
             ]),
           ],
         }
@@ -2156,8 +2154,8 @@ const AD = (...args: Parameters<typeof A>): RuntimePlacement => {
 };
 
 
-const HARTHMERE_GROVE_NPC_WALK_SPEED_MULTIPLIER_V153 = 1.8;
-function speedUpHarthmereGroveNpcWanderV153(
+const HARTHMERE_GROVE_NPC_WALK_SPEED_MULTIPLIER = 1.8;
+function speedUpHarthmereGroveNpcWander(
   asset: string,
   district: string | undefined,
   wander: RuntimePlacement["wander"],
@@ -2172,19 +2170,19 @@ function speedUpHarthmereGroveNpcWanderV153(
   return {
     ...wander,
     speed: Number(
-      (wander.speed * HARTHMERE_GROVE_NPC_WALK_SPEED_MULTIPLIER_V153).toFixed(4),
+      (wander.speed * HARTHMERE_GROVE_NPC_WALK_SPEED_MULTIPLIER).toFixed(4),
     ),
   };
 }
 
-const HARTHMERE_ROUTE_POSITION_SAFE_VERSION_V67 = "harthmere-route-position-safe-negative-progress-v67";
-const HARTHMERE_NPC_ROUTE_DISTRIBUTION_VERSION_V48 = "harthmere-npc-route-dispersal-density-v48";
-const HARTHMERE_NPC_LOCAL_DENSITY_MAX_WITHIN_12M_V48 = 7;
-const HARTHMERE_NPC_LOCAL_DENSITY_MAX_WITHIN_20M_V48 = 16;
+const HARTHMERE_ROUTE_POSITION_SAFE_VERSION = "harthmere-route-position-safe-negative-progress";
+const HARTHMERE_NPC_ROUTE_DISTRIBUTION_VERSION = "harthmere-npc-route-dispersal-density";
+const HARTHMERE_NPC_LOCAL_DENSITY_MAX_WITHIN_12M = 7;
+const HARTHMERE_NPC_LOCAL_DENSITY_MAX_WITHIN_20M = 16;
 
-const HARTHMERE_NPC_ROUTE_NAVIGATION_VERSION_V150 = "harthmere-npc-road-safe-route-anchors-v150";
-const HARTHMERE_NPC_ROUTE_ANCHORS_V48 = {
-  // V150: these are street/courtyard patrol loops, not arbitrary district centers.
+const HARTHMERE_NPC_ROUTE_NAVIGATION_VERSION = "harthmere-npc-road-safe-route-anchors";
+const HARTHMERE_NPC_ROUTE_ANCHORS = {
+  // current: these are street/courtyard patrol loops, not arbitrary district centers.
   // Each segment is validated by swept collision tests so ambient NPCs do not cut
   // straight through houses, counters, chapel pews, towers, or terrain props.
   north_gate: [[486, -282], [486, -252], [486, -222], [486, -207], [486, -222], [486, -252]],
@@ -2203,7 +2201,7 @@ const HARTHMERE_NPC_ROUTE_ANCHORS_V48 = {
   residential: [[486, -282], [486, -252], [486, -222], [486, -207]],
 } as const satisfies Record<string, readonly (readonly [number, number])[]>;
 
-function harthmereNpcStableHashV48(value: string): number {
+function harthmereNpcStableHash(value: string): number {
   let hash = 2166136261;
   for (let i = 0; i < value.length; i += 1) {
     hash ^= value.charCodeAt(i);
@@ -2212,7 +2210,7 @@ function harthmereNpcStableHashV48(value: string): number {
   return hash >>> 0;
 }
 
-function harthmereTownRouteKeyForActorV48(asset: string, name?: string, district?: string): keyof typeof HARTHMERE_NPC_ROUTE_ANCHORS_V48 | undefined {
+function harthmereTownRouteKeyForActor(asset: string, name?: string, district?: string): keyof typeof HARTHMERE_NPC_ROUTE_ANCHORS | undefined {
   const rawDistrict = `${district ?? ""}`.toLowerCase();
   const label = `${asset} ${name ?? ""} ${district ?? ""}`.toLowerCase();
   if (/wilds|forest|briarfen|gravewood|bandit ridge|greenmere|watchtower ridge|charcoal|orchard lane|gate fields|mill road|old hunter/.test(label)) return undefined;
@@ -2241,7 +2239,7 @@ function harthmereTownRouteKeyForActorV48(asset: string, name?: string, district
   return "market_square";
 }
 
-function makeHarthmereTownActorRouteWanderV48(
+function makeHarthmereTownActorRouteWander(
   asset: string,
   name: string | undefined,
   district: string | undefined,
@@ -2252,12 +2250,12 @@ function makeHarthmereTownActorRouteWanderV48(
   if (!isHarthmereLifeAsset(asset)) {
     return wander;
   }
-  const routeKey = harthmereTownRouteKeyForActorV48(asset, name, district);
+  const routeKey = harthmereTownRouteKeyForActor(asset, name, district);
   if (!routeKey) {
     return wander;
   }
-  const anchors = HARTHMERE_NPC_ROUTE_ANCHORS_V48[routeKey];
-  const hash = harthmereNpcStableHashV48(`${asset}|${name ?? ""}|${district ?? ""}|${x.toFixed(1)}|${z.toFixed(1)}`);
+  const anchors = HARTHMERE_NPC_ROUTE_ANCHORS[routeKey];
+  const hash = harthmereNpcStableHash(`${asset}|${name ?? ""}|${district ?? ""}|${x.toFixed(1)}|${z.toFixed(1)}`);
   const start = hash % anchors.length;
   const route: [number, number][] = [];
   const routeLength = Math.min(4, Math.max(2, anchors.length));
@@ -2275,25 +2273,25 @@ function makeHarthmereTownActorRouteWanderV48(
   };
 }
 
-function isHarthmereValidRoutePointV67(point: readonly [number, number] | undefined): point is readonly [number, number] {
+function isHarthmereValidRoutePoint(point: readonly [number, number] | undefined): point is readonly [number, number] {
   return Array.isArray(point) && Number.isFinite(point[0]) && Number.isFinite(point[1]);
 }
 
-function firstHarthmereValidRoutePointV67(route: readonly [number, number][]): [number, number] {
+function firstHarthmereValidRoutePoint(route: readonly [number, number][]): [number, number] {
   for (const point of route) {
-    if (isHarthmereValidRoutePointV67(point)) {
+    if (isHarthmereValidRoutePoint(point)) {
       return [point[0], point[1]];
     }
   }
   return [0, 0];
 }
 
-function harthmereRoutePositionV48(route: readonly [number, number][], progress: number): [number, number] {
+function harthmereRoutePosition(route: readonly [number, number][], progress: number): [number, number] {
   if (route.length === 0) return [0, 0];
-  if (!Number.isFinite(progress)) return firstHarthmereValidRoutePointV67(route);
+  if (!Number.isFinite(progress)) return firstHarthmereValidRoutePoint(route);
   if (route.length === 1) {
     const only = route[0];
-    return isHarthmereValidRoutePointV67(only) ? [only[0], only[1]] : [0, 0];
+    return isHarthmereValidRoutePoint(only) ? [only[0], only[1]] : [0, 0];
   }
 
   const floorProgress = Math.floor(progress);
@@ -2302,20 +2300,20 @@ function harthmereRoutePositionV48(route: readonly [number, number][], progress:
   const a = route[segment];
   const b = route[(segment + 1) % route.length];
 
-  if (!isHarthmereValidRoutePointV67(a) || !isHarthmereValidRoutePointV67(b)) {
-    if (isHarthmereValidRoutePointV67(a)) return [a[0], a[1]];
-    if (isHarthmereValidRoutePointV67(b)) return [b[0], b[1]];
-    return firstHarthmereValidRoutePointV67(route);
+  if (!isHarthmereValidRoutePoint(a) || !isHarthmereValidRoutePoint(b)) {
+    if (isHarthmereValidRoutePoint(a)) return [a[0], a[1]];
+    if (isHarthmereValidRoutePoint(b)) return [b[0], b[1]];
+    return firstHarthmereValidRoutePoint(route);
   }
 
   return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
 }
 
-function makeHarthmereIndexedNpcRouteV48(
-  routeKey: keyof typeof HARTHMERE_NPC_ROUTE_ANCHORS_V48,
+function makeHarthmereIndexedNpcRoute(
+  routeKey: keyof typeof HARTHMERE_NPC_ROUTE_ANCHORS,
   sequence: number,
 ): [number, number][] {
-  const anchors = HARTHMERE_NPC_ROUTE_ANCHORS_V48[routeKey];
+  const anchors = HARTHMERE_NPC_ROUTE_ANCHORS[routeKey];
   const route: [number, number][] = [];
   const spreadRing = Math.floor(sequence / Math.max(1, anchors.length));
   const spreadDistance = spreadRing * 5.5;
@@ -2340,7 +2338,7 @@ function normalizeHarthmereActorWander(
   z: number,
   wander: RuntimePlacement["wander"] | undefined,
 ): RuntimePlacement["wander"] | undefined {
-  const routedTownWander = makeHarthmereTownActorRouteWanderV48(asset, name, district, x, z, wander);
+  const routedTownWander = makeHarthmereTownActorRouteWander(asset, name, district, x, z, wander);
   if (routedTownWander?.route?.length) {
     return routedTownWander;
   }
@@ -2351,7 +2349,7 @@ function normalizeHarthmereActorWander(
   const label = `${asset} ${name ?? ""} ${district ?? ""}`.toLowerCase();
   const isWilds = label.includes("harthmere wilds");
 
-  // V48: town actors now get authored district route loops above, rather than
+  // current: town actors now get authored district route loops above, rather than
   // standing in one blob. Legacy circular wander remains valid in the wilds.
   if (!isWilds) {
     return undefined;
@@ -2424,7 +2422,7 @@ const HARTHMERE_NPC_COLLISION_RADIUS = 0.78;
 const HARTHMERE_NPC_COLLISION_MIN_MOVE_SQ = 0.000025;
 let harthmereNpcCollisionObstacleCache: HarthmereNpcCollisionObstacle[] | undefined;
 
-const HARTHMERE_PROCEDURAL_SOLID_ASSET_COLLISION_V1 = "harthmere-procedural-solid-asset-collision-v1";
+const HARTHMERE_PROCEDURAL_SOLID_ASSET_COLLISION = "harthmere-procedural-solid-asset-collision";
 let harthmereDynamicProceduralCollisionObstacles: HarthmereNpcCollisionObstacle[] = [];
 
 function registerHarthmereProceduralSolidObstacle(obstacle: HarthmereNpcCollisionObstacle): void {
@@ -2437,20 +2435,20 @@ function registerHarthmereProceduralSolidObstacle(obstacle: HarthmereNpcCollisio
     obstacle,
   ];
 
-  invalidateHarthmereNpcObstacleGridV50();
+  invalidateHarthmereNpcObstacleGrid();
 }
 
 function removeHarthmereProceduralSolidObstacle(name: string): void {
   harthmereDynamicProceduralCollisionObstacles = harthmereDynamicProceduralCollisionObstacles.filter((obstacle) => obstacle.name !== name);
 
-  invalidateHarthmereNpcObstacleGridV50();
+  invalidateHarthmereNpcObstacleGrid();
 }
 
 function clearHarthmereProceduralSolidObstacles(): void {
   // cleanup/despawn hook for procedural obstacle cleanup when events end.
   harthmereDynamicProceduralCollisionObstacles = [];
 
-  invalidateHarthmereNpcObstacleGridV50();
+  invalidateHarthmereNpcObstacleGrid();
 }
 
 function harthmereAllCollisionObstacles(): HarthmereNpcCollisionObstacle[] {
@@ -2461,11 +2459,8 @@ function harthmereAllCollisionObstacles(): HarthmereNpcCollisionObstacle[] {
 }
 
 
-const HARTHMERE_COLLISION_PROFILE_OBSTACLE_EXPORT_V1 = true;
-const HARTHMERE_COLLISION_PROFILE_OBSTACLE_EXPORT_V2 = true;
-const HARTHMERE_COLLISION_PROFILE_OBSTACLE_EXPORT_V3 = true;
-const HARTHMERE_COLLISION_PROFILE_OBSTACLE_EXPORT_V4 = true;
-const HARTHMERE_SOLID_LANDMARK_FIXTURE_COLLISION_VERSION_V1 = true;
+const HARTHMERE_COLLISION_PROFILE_OBSTACLE_EXPORT = true;
+const HARTHMERE_SOLID_LANDMARK_FIXTURE_COLLISION_VERSION = true;
 
 function isHarthmereBuildingNavigationOpeningPlacement(asset: string, name: string): boolean {
   return (
@@ -2502,7 +2497,7 @@ function isHarthmereBuildingBodyAsset(asset: string, name: string): boolean {
   if (/window|door|stair|steps|roof|chimney/i.test(asset)) {
     return false;
   }
-  // BUILDING_V2_VOXEL_MESHES: include the medieval_voxel whole-building
+  // BUILDING_VOXEL_MESHES: include the medieval_voxel whole-building
   // meshes (House_1/2/3, Shop_Simple/Closed, Tower_Complex/Simple/Door,
   // Wall_Simple variants, Kiosk) so the LOD / collision system treats
   // them like building bodies rather than tiny props.
@@ -2803,8 +2798,8 @@ function harthmereNpcStaticObstacleForPlacement(
   }
 
   // Building shell walls are placed as individual thin wall pieces.
-  // BUILDING_PERF_FIX_V1: register collision only on corners and on
-  // explicit exterior-wall placements (row 0 or 1 of the V44/V56 ring).
+  // BUILDING_PERF_FIX: register collision only on corners and on
+  // explicit exterior-wall placements (row 0 or 1 of the current/current ring).
   // Interior partitions, upper rows, stair-support stacks, and balcony
   // railings used to each register a collision obstacle -- that's why
   // the perf log showed 11,559 wallCollisionObstacles. Dropping the
@@ -2819,14 +2814,14 @@ function harthmereNpcStaticObstacleForPlacement(
     if (/partition|stair support|balcony railing|support layer|support block|row [2-9]|row 1[0-9]|upper room partition/.test(label)) {
       return undefined;
     }
-    // Skip non-corner V44 ring blocks above ground row to halve the
+    // Skip non-corner current ring blocks above ground row to halve the
     // collision count without breaking the outer-wall NPC fence.
-    const v44RowMatch = label.match(/c\d+r(\d+)/);
-    if (v44RowMatch && Number(v44RowMatch[1]) >= 1) {
+    const wallRowMatch = label.match(/c\d+r(\d+)/);
+    if (wallRowMatch && Number(wallRowMatch[1]) >= 1) {
       return undefined;
     }
-    // Skip V56 panel rows >= 2 (we keep row 1 only).
-    if (/v56 .*row [2-9]/.test(label)) {
+    // Skip current panel rows >= 2 (we keep row 1 only).
+    if (/current .*row [2-9]/.test(label)) {
       return undefined;
     }
     return makeHarthmereNpcCollisionObstacle(placement, 3.7 * scale, 0.62 * scale, 0.8);
@@ -2836,7 +2831,7 @@ function harthmereNpcStaticObstacleForPlacement(
   if (asset === "obj_tower_complex") {
     return makeHarthmereNpcCollisionObstacle(placement, 5.8 * scale, 5.8 * scale, 0.9);
   }
-  // BUILDING_V2_VOXEL_MESHES: whole-building voxel meshes get one
+  // BUILDING_VOXEL_MESHES: whole-building voxel meshes get one
   // building-footprint collision rectangle each, replacing the hundreds
   // of individual arch_wall_* obstacles the old block shell registered.
   if (/^obj_house_\d+$/i.test(asset)) {
@@ -2892,7 +2887,7 @@ function harthmereNpcStaticObstacleForPlacement(
 
 function harthmereNpcCollisionObstacles(): HarthmereNpcCollisionObstacle[] {
   if (!harthmereNpcCollisionObstacleCache) {
-    const serverVoxelCollisionPlacements = filterHarthmereServerVoxelOwnedStructuralPlacementsV65(PLACEMENTS).placements;
+    const serverVoxelCollisionPlacements = filterHarthmereServerVoxelOwnedStructuralPlacements(PLACEMENTS).placements;
     harthmereNpcCollisionObstacleCache = serverVoxelCollisionPlacements.map(
       harthmereNpcStaticObstacleForPlacement,
     ).filter((obstacle): obstacle is HarthmereNpcCollisionObstacle => Boolean(obstacle));
@@ -2918,20 +2913,20 @@ function harthmereNpcObstacleContainsPoint(
   );
 }
 
-const HARTHMERE_NPC_BODY_SWEEP_STEP_METERS_V150 = 0.42;
-const HARTHMERE_NPC_BODY_SAMPLE_RADIUS_V150 = 0.58;
-const HARTHMERE_NPC_BODY_SAMPLE_OFFSETS_V150 = [
+const HARTHMERE_NPC_BODY_SWEEP_STEP_METERS = 0.42;
+const HARTHMERE_NPC_BODY_SAMPLE_RADIUS = 0.58;
+const HARTHMERE_NPC_BODY_SAMPLE_OFFSETS = [
   [0, 0],
   [1, 0], [-1, 0], [0, 1], [0, -1],
   [0.7, 0.7], [-0.7, 0.7], [0.7, -0.7], [-0.7, -0.7],
 ] as const satisfies readonly (readonly [number, number])[];
 
-function findHarthmereNpcBodyCollisionObstacleV150(
+function findHarthmereNpcBodyCollisionObstacle(
   x: number,
   z: number,
-  radius = HARTHMERE_NPC_BODY_SAMPLE_RADIUS_V150,
+  radius = HARTHMERE_NPC_BODY_SAMPLE_RADIUS,
 ): HarthmereNpcCollisionObstacle | undefined {
-  for (const [ox, oz] of HARTHMERE_NPC_BODY_SAMPLE_OFFSETS_V150) {
+  for (const [ox, oz] of HARTHMERE_NPC_BODY_SAMPLE_OFFSETS) {
     const obstacle = findHarthmereNpcCollisionObstacle(
       x + ox * radius,
       z + oz * radius,
@@ -2943,7 +2938,7 @@ function findHarthmereNpcBodyCollisionObstacleV150(
   return undefined;
 }
 
-function sweepHarthmereNpcCollisionObstacleV150(
+function sweepHarthmereNpcCollisionObstacle(
   fromX: number,
   fromZ: number,
   toX: number,
@@ -2952,10 +2947,10 @@ function sweepHarthmereNpcCollisionObstacleV150(
   const dx = toX - fromX;
   const dz = toZ - fromZ;
   const distance = Math.hypot(dx, dz);
-  const steps = Math.max(1, Math.ceil(distance / HARTHMERE_NPC_BODY_SWEEP_STEP_METERS_V150));
+  const steps = Math.max(1, Math.ceil(distance / HARTHMERE_NPC_BODY_SWEEP_STEP_METERS));
   for (let index = 1; index <= steps; index += 1) {
     const t = index / steps;
-    const obstacle = findHarthmereNpcBodyCollisionObstacleV150(
+    const obstacle = findHarthmereNpcBodyCollisionObstacle(
       fromX + dx * t,
       fromZ + dz * t,
     );
@@ -2966,7 +2961,7 @@ function sweepHarthmereNpcCollisionObstacleV150(
   return undefined;
 }
 
-function harthmereNpcGroundedYV150(instance: AnimatedInstance, requestedY: number): number {
+function harthmereNpcGroundedY(instance: AnimatedInstance, requestedY: number): number {
   const baseY = Number.isFinite(instance.base[1]) ? instance.base[1] : GROUND_Y + 0.1;
   if (!Number.isFinite(requestedY)) return baseY;
   // Root-level bobbing made some actor origins visibly float. Keep the root feet
@@ -2975,7 +2970,7 @@ function harthmereNpcGroundedYV150(instance: AnimatedInstance, requestedY: numbe
   return baseY;
 }
 
-// HARTHMERE_LIVING_QUARTERS_VOXEL_SOLID_AND_GRID_HASH_V50
+// HARTHMERE_LIVING_QUARTERS_VOXEL_SOLID_AND_GRID_HASH
 // ---------------------------------------------------------------------------
 // 2D spatial grid hash for NPC/player collision-obstacle lookup. The old
 // implementation linear-scanned all ~15k obstacles per query. With 573 NPCs
@@ -2986,39 +2981,39 @@ function harthmereNpcGroundedYV150(instance: AnimatedInstance, requestedY: numbe
 // Lazy: the grid is built on first use and held next to the existing
 // harthmereNpcCollisionObstacleCache. It is invalidated whenever procedural
 // obstacle registration changes the dynamic obstacle list, and on demand via
-// invalidateHarthmereNpcObstacleGridV50() for callers (e.g. HMR, tests) that
+// invalidateHarthmereNpcObstacleGrid() for callers (e.g. HMR, tests) that
 // rebuild the static cache.
-const HARTHMERE_OBSTACLE_GRID_CELL_METERS_V50 = 4.0;
-let harthmereNpcObstacleGridCacheV50: Map<string, HarthmereNpcCollisionObstacle[]> | undefined;
-let harthmereNpcObstacleGridStaticListV50: HarthmereNpcCollisionObstacle[] | undefined;
-let harthmereNpcObstacleGridDynamicListV50: HarthmereNpcCollisionObstacle[] | undefined;
+const HARTHMERE_OBSTACLE_GRID_CELL_METERS = 4.0;
+let harthmereNpcObstacleGridCache: Map<string, HarthmereNpcCollisionObstacle[]> | undefined;
+let harthmereNpcObstacleGridStaticList: HarthmereNpcCollisionObstacle[] | undefined;
+let harthmereNpcObstacleGridDynamicList: HarthmereNpcCollisionObstacle[] | undefined;
 
-function harthmereObstacleGridKeyV50(cx: number, cz: number): string {
+function harthmereObstacleGridKey(cx: number, cz: number): string {
   return cx + "|" + cz;
 }
 
-function harthmereObstacleGridCellOfV50(coord: number): number {
-  return Math.floor(coord / HARTHMERE_OBSTACLE_GRID_CELL_METERS_V50);
+function harthmereObstacleGridCellOf(coord: number): number {
+  return Math.floor(coord / HARTHMERE_OBSTACLE_GRID_CELL_METERS);
 }
 
-function invalidateHarthmereNpcObstacleGridV50(): void {
-  harthmereNpcObstacleGridCacheV50 = undefined;
-  harthmereNpcObstacleGridStaticListV50 = undefined;
-  harthmereNpcObstacleGridDynamicListV50 = undefined;
+function invalidateHarthmereNpcObstacleGrid(): void {
+  harthmereNpcObstacleGridCache = undefined;
+  harthmereNpcObstacleGridStaticList = undefined;
+  harthmereNpcObstacleGridDynamicList = undefined;
 }
 
-function harthmereNpcObstacleGridV50(): Map<string, HarthmereNpcCollisionObstacle[]> {
+function harthmereNpcObstacleGrid(): Map<string, HarthmereNpcCollisionObstacle[]> {
   // Cheap freshness check: the static cache (built once from PLACEMENTS) and
   // the dynamic procedural list together identify the current obstacle set.
   // If either reference changed since we built the grid, rebuild it.
   const staticList = harthmereNpcCollisionObstacles();
   const dynamicList = harthmereDynamicProceduralCollisionObstacles;
   if (
-    harthmereNpcObstacleGridCacheV50 !== undefined &&
-    harthmereNpcObstacleGridStaticListV50 === staticList &&
-    harthmereNpcObstacleGridDynamicListV50 === dynamicList
+    harthmereNpcObstacleGridCache !== undefined &&
+    harthmereNpcObstacleGridStaticList === staticList &&
+    harthmereNpcObstacleGridDynamicList === dynamicList
   ) {
-    return harthmereNpcObstacleGridCacheV50;
+    return harthmereNpcObstacleGridCache;
   }
 
   const grid = new Map<string, HarthmereNpcCollisionObstacle[]>();
@@ -3028,13 +3023,13 @@ function harthmereNpcObstacleGridV50(): Map<string, HarthmereNpcCollisionObstacl
     // conservative bound that guarantees we never miss a cell.
     const pad = obstacle.padding ?? HARTHMERE_NPC_COLLISION_RADIUS;
     const reach = Math.hypot(obstacle.halfX, obstacle.halfZ) + pad;
-    const minCx = harthmereObstacleGridCellOfV50(obstacle.cx - reach);
-    const maxCx = harthmereObstacleGridCellOfV50(obstacle.cx + reach);
-    const minCz = harthmereObstacleGridCellOfV50(obstacle.cz - reach);
-    const maxCz = harthmereObstacleGridCellOfV50(obstacle.cz + reach);
+    const minCx = harthmereObstacleGridCellOf(obstacle.cx - reach);
+    const maxCx = harthmereObstacleGridCellOf(obstacle.cx + reach);
+    const minCz = harthmereObstacleGridCellOf(obstacle.cz - reach);
+    const maxCz = harthmereObstacleGridCellOf(obstacle.cz + reach);
     for (let cx = minCx; cx <= maxCx; cx += 1) {
       for (let cz = minCz; cz <= maxCz; cz += 1) {
-        const key = harthmereObstacleGridKeyV50(cx, cz);
+        const key = harthmereObstacleGridKey(cx, cz);
         let cell = grid.get(key);
         if (cell === undefined) {
           cell = [];
@@ -3046,20 +3041,20 @@ function harthmereNpcObstacleGridV50(): Map<string, HarthmereNpcCollisionObstacl
   };
   for (const o of staticList) insert(o);
   for (const o of dynamicList) insert(o);
-  harthmereNpcObstacleGridCacheV50 = grid;
-  harthmereNpcObstacleGridStaticListV50 = staticList;
-  harthmereNpcObstacleGridDynamicListV50 = dynamicList;
+  harthmereNpcObstacleGridCache = grid;
+  harthmereNpcObstacleGridStaticList = staticList;
+  harthmereNpcObstacleGridDynamicList = dynamicList;
   return grid;
 }
 
-function findHarthmereNpcCollisionObstacleV50(
+function findHarthmereNpcCollisionObstacle(
   x: number,
   z: number,
 ): HarthmereNpcCollisionObstacle | undefined {
-  const grid = harthmereNpcObstacleGridV50();
-  const key = harthmereObstacleGridKeyV50(
-    harthmereObstacleGridCellOfV50(x),
-    harthmereObstacleGridCellOfV50(z),
+  const grid = harthmereNpcObstacleGrid();
+  const key = harthmereObstacleGridKey(
+    harthmereObstacleGridCellOf(x),
+    harthmereObstacleGridCellOf(z),
   );
   const cell = grid.get(key);
   if (cell === undefined) return undefined;
@@ -3071,18 +3066,6 @@ function findHarthmereNpcCollisionObstacleV50(
   }
   return undefined;
 }
-
-function findHarthmereNpcCollisionObstacle(
-  x: number,
-  z: number,
-): HarthmereNpcCollisionObstacle | undefined {
-  // V50: O(1)-ish via spatial grid hash. Falls back to a linear scan if the
-  // grid somehow returns empty (defensive — should never happen in practice).
-  const fast = findHarthmereNpcCollisionObstacleV50(x, z);
-  if (fast !== undefined) return fast;
-  return undefined;
-}
-
 
 type HarthmereTownWalkDebugObjectReport = {
   name: string;
@@ -3313,20 +3296,20 @@ function BP(
 }
 
 
-type HarthmereFloatingBlockSupportStatsV3 = {
+type HarthmereFloatingBlockSupportStats = {
   horizontalNeighborCount: number;
   hasBelowSupport: boolean;
   structuralGroupKey?: string;
 };
 
-function harthmereStructuralGroupKeyV3(placement: RuntimePlacement): string | undefined {
+function harthmereStructuralGroupKey(placement: RuntimePlacement): string | undefined {
   const raw = `${placement.name ?? placement.asset}`.trim();
   if (!raw) return undefined;
   const normalized = raw
-    .replace(/ block-built v4[034][\s\S]*$/i, "")
+    .replace(/ block-built current[\s\S]*$/i, "")
     .replace(/ story \d+[\s\S]*$/i, "")
     .replace(/ floor \d+[\s\S]*$/i, "")
-    .replace(/ production-polish-v[0-9][\s\S]*$/i, "")
+    .replace(/ production-polish[\s\S]*$/i, "")
     .replace(/ front (left|right) window overlay[\s\S]*$/i, "")
     .replace(/ back (left|right) window overlay[\s\S]*$/i, "")
     .replace(/ front door overlay[\s\S]*$/i, "")
@@ -3340,7 +3323,7 @@ function harthmereStructuralGroupKeyV3(placement: RuntimePlacement): string | un
   return normalized ? `${district}::${normalized}` : undefined;
 }
 
-function isHarthmereArchitecturalBlockCandidateV3(placement: RuntimePlacement): boolean {
+function isHarthmereArchitecturalBlockCandidate(placement: RuntimePlacement): boolean {
   const label = `${placement.asset} ${placement.name ?? ""}`;
   if (/road|fence|hedge|banner|flag|lamp|lantern|candle|sign|food_|animal_|townsperson_|table|bench|bed|crate|barrel|bookcase|bag|bucket|rack|dummy|cart|tree|bush|grass|mushroom/i.test(label)) {
     return false;
@@ -3351,14 +3334,14 @@ function isHarthmereArchitecturalBlockCandidateV3(placement: RuntimePlacement): 
   return /block-built|solid stone\/ore|arch_wall|arch_roof|arch_pillar|obj_wall|mine_stone|floor deck|ceiling and floor slab|buttress|wall block/i.test(label);
 }
 
-function harthmerePlacementSupportStatsV3(
+function harthmerePlacementSupportStats(
   placement: RuntimePlacement,
   candidates: readonly RuntimePlacement[],
-): HarthmereFloatingBlockSupportStatsV3 {
+): HarthmereFloatingBlockSupportStats {
   const [x, y, z] = placement.at;
   let horizontalNeighborCount = 0;
   let hasBelowSupport = y <= GROUND_Y + 0.72;
-  const group = harthmereStructuralGroupKeyV3(placement);
+  const group = harthmereStructuralGroupKey(placement);
 
   for (const other of candidates) {
     if (other === placement) continue;
@@ -3367,14 +3350,14 @@ function harthmerePlacementSupportStatsV3(
     const dy = Math.abs(oy - y);
     const dz = Math.abs(oz - z);
     const sameLayer = dy <= 0.82;
-    const touchesX = dx <= HARTHMERE_BLOCK_TILE_METERS_V1 * 1.28 && dz <= HARTHMERE_BLOCK_TILE_METERS_V1 * 0.55;
-    const touchesZ = dz <= HARTHMERE_BLOCK_TILE_METERS_V1 * 1.28 && dx <= HARTHMERE_BLOCK_TILE_METERS_V1 * 0.55;
+    const touchesX = dx <= HARTHMERE_BLOCK_TILE_METERS * 1.28 && dz <= HARTHMERE_BLOCK_TILE_METERS * 0.55;
+    const touchesZ = dz <= HARTHMERE_BLOCK_TILE_METERS * 1.28 && dx <= HARTHMERE_BLOCK_TILE_METERS * 0.55;
     if (sameLayer && (touchesX || touchesZ)) {
       horizontalNeighborCount += 1;
     }
 
-    const below = oy < y && y - oy <= HARTHMERE_BLOCK_TILE_METERS_V1 * 1.45;
-    const alignedBelow = dx <= HARTHMERE_BLOCK_TILE_METERS_V1 * 0.92 && dz <= HARTHMERE_BLOCK_TILE_METERS_V1 * 0.92;
+    const below = oy < y && y - oy <= HARTHMERE_BLOCK_TILE_METERS * 1.45;
+    const alignedBelow = dx <= HARTHMERE_BLOCK_TILE_METERS * 0.92 && dz <= HARTHMERE_BLOCK_TILE_METERS * 0.92;
     if (below && alignedBelow) {
       hasBelowSupport = true;
     }
@@ -3383,25 +3366,25 @@ function harthmerePlacementSupportStatsV3(
   return { horizontalNeighborCount, hasBelowSupport, structuralGroupKey: group };
 }
 
-function shouldCullUnsupportedFloatingBlockV3(
+function shouldCullUnsupportedFloatingBlock(
   placement: RuntimePlacement,
   candidates: readonly RuntimePlacement[],
 ): boolean {
-  if (!isHarthmereArchitecturalBlockCandidateV3(placement)) return false;
-  const stats = harthmerePlacementSupportStatsV3(placement, candidates);
+  if (!isHarthmereArchitecturalBlockCandidate(placement)) return false;
+  const stats = harthmerePlacementSupportStats(placement, candidates);
   // The self-edit rule is simple: elevated architectural blocks cannot be singletons.
   // They need either same-layer contact or a believable block directly below.
   return placement.at[1] > GROUND_Y + 0.82 && stats.horizontalNeighborCount === 0 && !stats.hasBelowSupport;
 }
 
-function filterHarthmereUnsupportedFloatingBlockPlacementsV3(
+function filterHarthmereUnsupportedFloatingBlockPlacements(
   placements: readonly RuntimePlacement[],
 ): { placements: RuntimePlacement[]; removed: RuntimePlacement[] } {
-  const candidates = placements.filter(isHarthmereArchitecturalBlockCandidateV3);
+  const candidates = placements.filter(isHarthmereArchitecturalBlockCandidate);
   const removed: RuntimePlacement[] = [];
   const kept: RuntimePlacement[] = [];
   for (const placement of placements) {
-    if (shouldCullUnsupportedFloatingBlockV3(placement, candidates)) {
+    if (shouldCullUnsupportedFloatingBlock(placement, candidates)) {
       removed.push(placement);
       continue;
     }
@@ -3410,22 +3393,22 @@ function filterHarthmereUnsupportedFloatingBlockPlacementsV3(
   return { placements: kept, removed };
 }
 
-function harthmereRuntimePerformanceProfileV3(): "optimized" | "full" {
-  if (typeof window === "undefined") return HARTHMERE_RUNTIME_PERFORMANCE_PROFILE_V3.defaultProfile;
+function harthmereRuntimePerformanceProfile(): "optimized" | "full" {
+  if (typeof window === "undefined") return HARTHMERE_RUNTIME_PERFORMANCE_PROFILE.defaultProfile;
   const value = window.localStorage.getItem("biomes.localDev.harthmere.performanceProfile");
   return value === "full" ? "full" : "optimized";
 }
 
-function shouldKeepHarthmerePlacementForPerformanceV3(
+function shouldKeepHarthmerePlacementForPerformance(
   placement: RuntimePlacement,
   counters: { kept: number; tiny: number; wilds: number; wildActors: number; animated: number },
 ): boolean {
-  if (harthmereRuntimePerformanceProfileV3() === "full") return true;
+  if (harthmereRuntimePerformanceProfile() === "full") return true;
   const [x, _y, z] = placement.at;
-  const distanceFromTownCore = Math.hypot(x - HARTHMERE_RUNTIME_CORE_ORIGIN_V3[0], z - HARTHMERE_RUNTIME_CORE_ORIGIN_V3[1]);
+  const distanceFromTownCore = Math.hypot(x - HARTHMERE_RUNTIME_CORE_ORIGIN[0], z - HARTHMERE_RUNTIME_CORE_ORIGIN[1]);
   const label = `${placement.asset} ${placement.name ?? ""} ${placement.district ?? ""}`;
-  const isCore = distanceFromTownCore <= HARTHMERE_RUNTIME_PERFORMANCE_PROFILE_V3.coreRadiusMeters;
-  const isFar = distanceFromTownCore <= HARTHMERE_RUNTIME_PERFORMANCE_PROFILE_V3.farRadiusMeters;
+  const isCore = distanceFromTownCore <= HARTHMERE_RUNTIME_PERFORMANCE_PROFILE.coreRadiusMeters;
+  const isFar = distanceFromTownCore <= HARTHMERE_RUNTIME_PERFORMANCE_PROFILE.farRadiusMeters;
   const isAlwaysImportant = placement.lodTier === "always" || /gate|market|chapel|temple|reeve|inn|kettle|smith|anvil|bank|auction|guild|well|underways|bridge|watchtower|player services|quest|board|Mara Thistle|Brother Vance|Edrik Vane/i.test(label);
   const isActor = placement.meta?.kind === "actor" || isHarthmereLifeAsset(placement.asset);
   const isWilds = /wilds|forest|briarfen|gravewood|bandit ridge|greenmere/i.test(label);
@@ -3433,19 +3416,19 @@ function shouldKeepHarthmerePlacementForPerformanceV3(
   const isAnimated = Boolean(placement.wander || placement.bob || placement.spin || isActor);
 
 
-  // HARTHMERE_LIVING_QUARTERS_PERFORMANCE_COMPLETE_VERSION_V56
+  // HARTHMERE_LIVING_QUARTERS_PERFORMANCE_COMPLETE_VERSION
   // The troubled residential/slum coordinates were not slow because of one
   // object; they were slow because optimized mode still kept every core
   // room-detail placement. Keep the structural shell, stairs, doors, and
   // landmarks, but aggressively thin repeated room props in optimized mode.
-  const isLivingQuarterRepeatedRoomDetailV56 = /resident room|clear center stone floor accessibility marker|full-size made bed|personal storage chest|bedside candle|small writing nightstand|personal book stack|clean wall hanging|patched sleeping pallet|shared crate storage|stub candle|stool used as table|family bundle|patched hanging cloth/i.test(label);
-  if (isLivingQuarterRepeatedRoomDetailV56) {
+  const isLivingQuarterRepeatedRoomDetail = /resident room|clear center stone floor accessibility marker|full-size made bed|personal storage chest|bedside candle|small writing nightstand|personal book stack|clean wall hanging|patched sleeping pallet|shared crate storage|stub candle|stool used as table|family bundle|patched hanging cloth/i.test(label);
+  if (isLivingQuarterRepeatedRoomDetail) {
     counters.tiny += 1;
-    return counters.tiny <= Math.floor(HARTHMERE_RUNTIME_PERFORMANCE_PROFILE_V3.maxTinyPropsOptimized * 0.55) ||
+    return counters.tiny <= Math.floor(HARTHMERE_RUNTIME_PERFORMANCE_PROFILE.maxTinyPropsOptimized * 0.55) ||
       /floor 1 room 1|floor 2 room 1|room 1 .*bed|room 1 .*table|room 1 .*storage/i.test(label);
   }
 
-  // v87 survey response:
+  // current survey response:
   // The previous optimized profile accidentally let anything inside the large
   // core radius bypass the tiny/animated/wilds budgets. The auto survey showed
   // that this still produced hundreds of animated runtime objects and 3-6 FPS; the follow-up Wilds run still showed 0.63 collision density and 25 off-ground NPCs.
@@ -3456,40 +3439,40 @@ function shouldKeepHarthmerePlacementForPerformanceV3(
 
   if (isTiny) {
     counters.tiny += 1;
-    return counters.tiny <= HARTHMERE_RUNTIME_PERFORMANCE_PROFILE_V3.maxTinyPropsOptimized;
+    return counters.tiny <= HARTHMERE_RUNTIME_PERFORMANCE_PROFILE.maxTinyPropsOptimized;
   }
   if (isWilds && isActor) {
     counters.wildActors += 1;
-    return counters.wildActors <= HARTHMERE_RUNTIME_PERFORMANCE_PROFILE_V3.maxWildsActorsOptimized;
+    return counters.wildActors <= HARTHMERE_RUNTIME_PERFORMANCE_PROFILE.maxWildsActorsOptimized;
   }
   if (isWilds) {
     counters.wilds += 1;
-    return counters.wilds <= HARTHMERE_RUNTIME_PERFORMANCE_PROFILE_V3.maxWildsRuntimePlacementsOptimized;
+    return counters.wilds <= HARTHMERE_RUNTIME_PERFORMANCE_PROFILE.maxWildsRuntimePlacementsOptimized;
   }
   if (isAnimated) {
     counters.animated += 1;
-    return counters.animated <= HARTHMERE_RUNTIME_PERFORMANCE_PROFILE_V3.maxAnimatedLifeOptimized;
+    return counters.animated <= HARTHMERE_RUNTIME_PERFORMANCE_PROFILE.maxAnimatedLifeOptimized;
   }
   if (isCore) return true;
   counters.kept += 1;
-  return counters.kept <= HARTHMERE_RUNTIME_PERFORMANCE_PROFILE_V3.maxRuntimePlacementsOptimized;
+  return counters.kept <= HARTHMERE_RUNTIME_PERFORMANCE_PROFILE.maxRuntimePlacementsOptimized;
 }
 
 
-// HARTHMERE_REMOVE_ARCH_WALL_STONE_RUNTIME_VERSION_V63
-const HARTHMERE_REMOVE_ARCH_WALL_STONE_RUNTIME_VERSION_V63 = "harthmere-remove-arch-wall-stone-runtime-v63";
+// HARTHMERE_REMOVE_ARCH_WALL_STONE_RUNTIME_VERSION
+const HARTHMERE_REMOVE_ARCH_WALL_STONE_RUNTIME_VERSION = "harthmere-remove-arch-wall-stone-runtime";
 
-function shouldRemoveHarthmereRuntimePlacementV63(placement: RuntimePlacement): boolean {
+function shouldRemoveHarthmereRuntimePlacement(placement: RuntimePlacement): boolean {
   return placement.asset === "arch_wall_stone";
 }
 
-// HARTHMERE_SERVER_VOXEL_STRUCTURAL_FILTER_V64
+// HARTHMERE_SERVER_VOXEL_STRUCTURAL_FILTER
 // Server-side terrain owns structural building/dungeon blocks. Keep the GLB
 // assets registered for legacy/debug use, but stop placing structural wall/roof
 // GLBs inside the Harthmere town/residential/slum/dungeon footprint.
-const HARTHMERE_SERVER_VOXEL_STRUCTURAL_FILTER_VERSION_V64 =
-  "harthmere-server-voxel-structural-filter-v64";
-const HARTHMERE_SERVER_VOXEL_OWNED_STRUCTURAL_ASSETS_V64 = new Set([
+const HARTHMERE_SERVER_VOXEL_STRUCTURAL_FILTER_VERSION =
+  "harthmere-server-voxel-structural-filter";
+const HARTHMERE_SERVER_VOXEL_OWNED_STRUCTURAL_ASSETS = new Set([
   "arch_wall_stone",
   "arch_wall_window_stone",
   "arch_wall_door",
@@ -3526,57 +3509,10 @@ const HARTHMERE_SERVER_VOXEL_OWNED_STRUCTURAL_ASSETS_V64 = new Set([
   "arch_pillar_wood",
   "arch_watermill",
   "arch_windmill",
+  "arch_wheel",
   "obj_church_iso",
-  "obj_tower_complex",
-]);
-
-function isHarthmereServerVoxelOwnedStructuralAssetV64(asset: string) {
-  return (
-    HARTHMERE_SERVER_VOXEL_OWNED_STRUCTURAL_ASSETS_V64.has(asset) ||
-    asset.startsWith("obj_wall_") ||
-    asset.startsWith("obj_tower_")
-  );
-}
-
-function isInsideHarthmereServerVoxelRebuildBoundsV64(x: number, z: number) {
-  // Includes town core, north-gate wall/towers, expanded residential apartments,
-  // Mudden Ward stacks, bridge, docks, farm edge, and Old Well/Underways surface entries.
-  return (
-    (x >= 336 && x <= 630 && z >= -370 && z <= -88) ||
-    (x >= 386 && x <= 450 && z >= -280 && z <= -210)
-  );
-}
-
-function filterHarthmereServerVoxelOwnedStructuralPlacementsV64(
-  placements: readonly RuntimePlacement[],
-): { placements: RuntimePlacement[]; removed: RuntimePlacement[] } {
-  const kept: RuntimePlacement[] = [];
-  const removed: RuntimePlacement[] = [];
-  for (const placement of placements) {
-    const [x, _y, z] = placement.at;
-    if (
-      isHarthmereServerVoxelOwnedStructuralAssetV64(placement.asset) &&
-      isInsideHarthmereServerVoxelRebuildBoundsV64(x, z)
-    ) {
-      removed.push({
-        ...placement,
-        name: String(placement.name ?? placement.asset) + " removed by " + HARTHMERE_SERVER_VOXEL_STRUCTURAL_FILTER_VERSION_V64,
-      });
-      continue;
-    }
-    kept.push(placement);
-  }
-  return { placements: kept, removed };
-}
-
-// HARTHMERE_SERVER_VOXEL_STRUCTURAL_FILTER_V65_START
-// HARTHMERE_SERVER_VOXEL_STRUCTURAL_FILTER_VERSION_V65
-// Extends v64's town filter to remove remaining large structure props such as
-// obj_house_*, guard/watch towers, OBJ walls/gates, bridge bodies, watermills,
-// windmills, grave fences/walls, and remaining structural fantasy-town pieces.
-const HARTHMERE_SERVER_VOXEL_STRUCTURAL_FILTER_VERSION_V65 =
-  "harthmere-server-voxel-structural-filter-v65";
-const HARTHMERE_SERVER_VOXEL_OWNED_STRUCTURAL_ASSETS_V65 = new Set([
+  "obj_church_grave_fence",
+  "obj_church_grave_wall",
   "obj_house_1",
   "obj_house_2",
   "obj_house_3",
@@ -3588,20 +3524,14 @@ const HARTHMERE_SERVER_VOXEL_OWNED_STRUCTURAL_ASSETS_V65 = new Set([
   "obj_wall_simple_windows",
   "obj_wall_stairs",
   "obj_wall_entrance_door",
-  "obj_church_grave_fence",
-  "obj_church_grave_wall",
-  "arch_watermill",
-  "arch_windmill",
-  "arch_wheel",
 ]);
 
-function isHarthmereServerVoxelOwnedStructuralAssetV65(asset: string, name = "") {
+function isHarthmereServerVoxelOwnedStructuralAsset(asset: string, name = "") {
   const label = asset + " " + name;
   const definitelyDecor = /bench|bell|lantern|lamp|sign|banner|torch|table|crate|barrel|book|scroll|bed|cabinet|chest|anvil|forge|cauldron|pulpit|trapdoor|tombstone|coffin|weapon|shield|rack|rope|bucket|bottle|mug|candle|coin|key|plaque|contract|ledger|shelf|food|cart|wagon/i.test(label);
   if (definitelyDecor) return false;
   return (
-    isHarthmereServerVoxelOwnedStructuralAssetV64(asset) ||
-    HARTHMERE_SERVER_VOXEL_OWNED_STRUCTURAL_ASSETS_V65.has(asset) ||
+    HARTHMERE_SERVER_VOXEL_OWNED_STRUCTURAL_ASSETS.has(asset) ||
     /^obj_house_/i.test(asset) ||
     /^obj_bridge_/i.test(asset) ||
     /^obj_tower_/i.test(asset) ||
@@ -3609,18 +3539,21 @@ function isHarthmereServerVoxelOwnedStructuralAssetV65(asset: string, name = "")
     /^obj_gate_/i.test(asset) ||
     /^obj_church_grave_(fence|wall)/i.test(asset) ||
     /^arch_(watermill|windmill|wheel)$/i.test(asset) ||
-    (/house|cottage|hut|tower|watchtower|gatehouse|guard tower|watermill|windmill|bridge body|wall run|grave fence|building body|warehouse body/i.test(label) && !definitelyDecor)
+    /house|cottage|hut|tower|watchtower|gatehouse|guard tower|watermill|windmill|bridge body|wall run|grave fence|building body|warehouse body/i.test(label)
   );
 }
 
-function isInsideHarthmereServerVoxelRebuildBoundsV65(x: number, z: number) {
+function isInsideHarthmereServerVoxelRebuildBounds(x: number, z: number) {
+  // Includes town core, north-gate wall/towers, expanded residential apartments,
+  // Mudden Ward stacks, bridge, docks, farm edge, and Old Well/Underways surface entries.
   return (
-    isInsideHarthmereServerVoxelRebuildBoundsV64(x, z) ||
+    (x >= 336 && x <= 630 && z >= -370 && z <= -88) ||
+    (x >= 386 && x <= 450 && z >= -280 && z <= -210) ||
     (x >= 96 && x <= 825 && z >= -725 && z <= 305)
   );
 }
 
-function filterHarthmereServerVoxelOwnedStructuralPlacementsV65(
+function filterHarthmereServerVoxelOwnedStructuralPlacements(
   placements: readonly RuntimePlacement[],
 ): { placements: RuntimePlacement[]; removed: RuntimePlacement[] } {
   const kept: RuntimePlacement[] = [];
@@ -3628,12 +3561,12 @@ function filterHarthmereServerVoxelOwnedStructuralPlacementsV65(
   for (const placement of placements) {
     const [x, _y, z] = placement.at;
     if (
-      isHarthmereServerVoxelOwnedStructuralAssetV65(placement.asset, placement.name) &&
-      isInsideHarthmereServerVoxelRebuildBoundsV65(x, z)
+      isHarthmereServerVoxelOwnedStructuralAsset(placement.asset, placement.name) &&
+      isInsideHarthmereServerVoxelRebuildBounds(x, z)
     ) {
       removed.push({
         ...placement,
-        name: String(placement.name ?? placement.asset) + " removed by " + HARTHMERE_SERVER_VOXEL_STRUCTURAL_FILTER_VERSION_V65,
+        name: String(placement.name ?? placement.asset) + " removed by " + HARTHMERE_SERVER_VOXEL_STRUCTURAL_FILTER_VERSION,
       });
       continue;
     }
@@ -3641,63 +3574,62 @@ function filterHarthmereServerVoxelOwnedStructuralPlacementsV65(
   }
   return { placements: kept, removed };
 }
-// HARTHMERE_SERVER_VOXEL_STRUCTURAL_FILTER_V65_END
 
-function shiftHarthmereRuntimeWanderForExtraTownV1(
+function shiftHarthmereRuntimeWanderForExtraTown(
   wander: RuntimePlacement["wander"] | undefined,
 ): RuntimePlacement["wander"] | undefined {
-  if (!wander || !shouldUseHarthmereRuntimeExtraTownOffsetV1()) {
+  if (!wander || !shouldUseHarthmereRuntimeExtraTownOffset()) {
     return wander;
   }
-  const dx = harthmereRuntimeExtraTownOffsetXV1();
-  const dz = harthmereRuntimeExtraTownOffsetZV1();
+  const dx = harthmereRuntimeExtraTownOffsetX();
+  const dz = harthmereRuntimeExtraTownOffsetZ();
   return {
     ...wander,
     route: wander.route?.map(([x, z]) => [x + dx, z + dz] as [number, number]),
   };
 }
 
-function shiftHarthmereRuntimePlacementForExtraTownV1(
+function shiftHarthmereRuntimePlacementForExtraTown(
   placement: RuntimePlacement,
 ): RuntimePlacement {
   if (
-    !shouldUseHarthmereRuntimeExtraTownOffsetV1() ||
+    !shouldUseHarthmereRuntimeExtraTownOffset() ||
     placement.robotProtectionAreaId ||
-    placement.meta?.tags.includes("live-entity-unshifted-v1")
+    placement.meta?.tags.includes("live-entity-unshifted")
   ) {
     return placement.robotProtectionAreaId
       ? placement
-      : snapHarthmereRuntimePlacementToGroundV67(placement);
+      : snapHarthmereRuntimePlacementToGround(placement);
   }
-  const dx = harthmereRuntimeExtraTownOffsetXV1();
-  const dz = harthmereRuntimeExtraTownOffsetZV1();
-  return snapHarthmereRuntimePlacementToGroundV67({
+  const dx = harthmereRuntimeExtraTownOffsetX();
+  const dz = harthmereRuntimeExtraTownOffsetZ();
+  return snapHarthmereRuntimePlacementToGround({
     ...placement,
     at: [placement.at[0] + dx, placement.at[1], placement.at[2] + dz],
-    wander: shiftHarthmereRuntimeWanderForExtraTownV1(placement.wander),
+    wander: shiftHarthmereRuntimeWanderForExtraTown(placement.wander),
     meta: placement.meta
-      ? { ...placement.meta, tags: [...placement.meta.tags, "extra-town-offset-v1"] }
+      ? { ...placement.meta, tags: [...placement.meta.tags, "extra-town-offset"] }
       : placement.meta,
   });
 }
 
-function prepareHarthmereRuntimePlacementsV3(
+function prepareHarthmereRuntimePlacements(
   placements: readonly RuntimePlacement[],
 ): { placements: RuntimePlacement[]; removedFloating: RuntimePlacement[]; removedForPerformance: RuntimePlacement[] } {
-  // HARTHMERE_RUNTIME_GATE_EMPTY_PLACEMENTS_V1:
-  if (!shouldRenderHarthmereRuntimeTownV1()) {
+  // HARTHMERE_RUNTIME_GATE_EMPTY_PLACEMENTS:
+  if (!shouldRenderHarthmereRuntimeTown()) {
     return { placements: [], removedFloating: [], removedForPerformance: [] };
   }
-  const shiftedPlacements = placements.map(shiftHarthmereRuntimePlacementForExtraTownV1);
-  const serverVoxelFiltered = filterHarthmereServerVoxelOwnedStructuralPlacementsV65(shiftedPlacements);
-  const floating = filterHarthmereUnsupportedFloatingBlockPlacementsV3(serverVoxelFiltered.placements);
-  const placementsWithoutRemovedAssetsV63 = floating.placements.filter((placement) => !shouldRemoveHarthmereRuntimePlacementV63(placement));
-  const snapshotBuiltFiltered = filterHarthmereSnapshotBuiltRuntimePlacementsV67(placementsWithoutRemovedAssetsV63);
+  const shiftedPlacements = placements.map(shiftHarthmereRuntimePlacementForExtraTown);
+  const serverVoxelFiltered = filterHarthmereServerVoxelOwnedStructuralPlacements(shiftedPlacements);
+  const floating = filterHarthmereUnsupportedFloatingBlockPlacements(serverVoxelFiltered.placements);
+  const placementsWithoutRemovedAssets = floating.placements.filter((placement) => !shouldRemoveHarthmereRuntimePlacement(placement));
+  const snapshotBuiltFiltered = filterHarthmereSnapshotBuiltRuntimePlacements(placementsWithoutRemovedAssets);
   const counters = { kept: 0, tiny: 0, wilds: 0, wildActors: 0, animated: 0 };
   const runtimePlacements: RuntimePlacement[] = [];
   const removedForPerformance: RuntimePlacement[] = [];
   for (const placement of snapshotBuiltFiltered.placements) {
-    if (shouldKeepHarthmerePlacementForPerformanceV3(placement, counters)) {
+    if (shouldKeepHarthmerePlacementForPerformance(placement, counters)) {
       runtimePlacements.push(placement);
     } else {
       removedForPerformance.push(placement);
@@ -3714,38 +3646,38 @@ function prepareHarthmereRuntimePlacementsV3(
   };
 }
 
-// HARTHMERE_BUILDING_BLOCK_BUILD_V44_INSTALL_MARKER
+// HARTHMERE_BUILDING_BLOCK_BUILD_INSTALL_MARKER
 // Block-built (Minecraft-style) continuous wall ring per story. Mirrors
-// the contract in src/shared/harthmere/town_block_build_v1.ts which is the
-// single source of truth for HARTHMERE_TOWN_BLOCK_BUILD_VERSION_V1
-// ("harthmere-town-block-build-v1"). The constants below are duplicated
+// the contract in src/shared/harthmere/town_block_build.ts which is the
+// single source of truth for HARTHMERE_TOWN_BLOCK_BUILD_VERSION
+// ("harthmere-town-block-build"). The constants below are duplicated
 // inline so the renderer does not depend on TypeScript module resolution
 // for static placement generation.
-const HARTHMERE_TOWN_BLOCK_BUILD_VERSION_V1 = "harthmere-town-block-build-v1";
-const HARTHMERE_BLOCK_TILE_METERS_V1 = 1.4; // bumped from 1.0 in v2 for perf (~30% fewer wall blocks)
-const HARTHMERE_BLOCK_MAX_GAP_METERS_V1 = 2.0; // bumped in v2 to match wider tile
-const HARTHMERE_STORY_HEIGHT_DEFAULT_V1 = 2.7;
+const HARTHMERE_TOWN_BLOCK_BUILD_VERSION = "harthmere-town-block-build";
+const HARTHMERE_BLOCK_TILE_METERS = 1.4; // bumped from 1.0 in current for perf (~30% fewer wall blocks)
+const HARTHMERE_BLOCK_MAX_GAP_METERS = 2.0; // bumped in current to match wider tile
+const HARTHMERE_STORY_HEIGHT_DEFAULT = 2.7;
 
-type HarthmereV44Opening = {
+type HarthmereOpening = {
   face: "north" | "south" | "east" | "west";
   offset: number;
   widthBlocks: number;
   bottomMeters: number;
   topMeters: number;
-  // BUILDING_PERF_FIX_V1: the V56 wall-panel renderer reads these to
+  // BUILDING_PERF_FIX: the current wall-panel renderer reads these to
   // decide which opening tile to cut out per floor and whether to drop
   // a door or window asset overlay. They were missing in the original
-  // type, so V56 always treated every opening as a window on no floor,
+  // type, so current always treated every opening as a window on no floor,
   // which is why slum and apartment buildings had no doors.
   floor?: number;
   kind?: "door" | "window" | "archway" | "shopCounter";
 };
 
-function harthmereV44DefaultOpenings(shell: BuildingShell): HarthmereV44Opening[] {
-  // BUILDING_PERF_FIX_V1: each opening carries an explicit `kind` and
-  // `floor` so the V56 wall-panel renderer can both cut the wall hole
+function harthmereDefaultOpenings(shell: BuildingShell): HarthmereOpening[] {
+  // BUILDING_PERF_FIX: each opening carries an explicit `kind` and
+  // `floor` so the current wall-panel renderer can both cut the wall hole
   // AND drop the correct door/window asset overlay. Ground floor only:
-  // upper-floor openings come from harthmereLivingQuarterV49Openings.
+  // upper-floor openings come from harthmereLivingQuarterOpenings.
   const hwOffset = Math.min(3, Math.max(2, Math.floor(shell.w / 2) - 2));
   return [
     { face: "south", offset: 0, widthBlocks: 1, bottomMeters: 0, topMeters: 2.1, floor: 1, kind: "door" },
@@ -3758,12 +3690,12 @@ function harthmereV44DefaultOpenings(shell: BuildingShell): HarthmereV44Opening[
   ];
 }
 
-// HARTHMERE_V44_VISUAL_UPGRADE_V2_MARKER
-// Pick a varied "fantasy town" wall asset for the V44 block ring instead
+// HARTHMERE_VISUAL_UPGRADE__MARKER
+// Pick a varied "fantasy town" wall asset for the current block ring instead
 // of uniform wall-block.glb. Returns the asset name that the renderer
 // should place at column c, row r of the given face. This is what the
 // storefront and well placements use to read as a real built town.
-function harthmereV44ChooseWallAsset(
+function harthmereChooseWallAsset(
   c: number,
   r: number,
   columns: number,
@@ -3771,7 +3703,7 @@ function harthmereV44ChooseWallAsset(
   isCornerColumn: boolean,
   isTopRow: boolean,
 ): string {
-  // BUILDING_PERF_FIX_V1: standardised palette per design lead.
+  // BUILDING_PERF_FIX: standardised palette per design lead.
   //   walls        -> arch_wall_stone
   //   corners      -> arch_wall_corner
   //   windows      -> arch_wall_window_stone
@@ -3789,19 +3721,19 @@ function harthmereV44ChooseWallAsset(
   return "arch_wall_stone";
 }
 
-// V101 audit: V44 wall function references block wall assets such as arch_wall_stone / mine_stone_01.
-function createHarthmereContinuousBlockWallsV44(
+// current audit: current wall function references block wall assets such as arch_wall_stone / mine_stone_01.
+function createHarthmereContinuousBlockWalls(
   shell: BuildingShell,
   options?: {
-  // V44 block wall audit anchor: arch_wall_stone / mine_stone_01. Actual block geometry is generated below.
- openings?: HarthmereV44Opening[]; storyHeight?: number; floor?: number },
+  // current block wall audit anchor: arch_wall_stone / mine_stone_01. Actual block geometry is generated below.
+ openings?: HarthmereOpening[]; storyHeight?: number; floor?: number },
 ): RuntimePlacement[] {
   const opts = options ?? {};
-  const openings: HarthmereV44Opening[] = opts.openings ?? harthmereV44DefaultOpenings(shell);
+  const openings: HarthmereOpening[] = opts.openings ?? harthmereDefaultOpenings(shell);
   const floor = opts.floor ?? 1;
-  const storyHeight = opts.storyHeight ?? HARTHMERE_STORY_HEIGHT_DEFAULT_V1;
-  // BUILDING_PERF_FIX_V1: bump tile from 1.0 m to 1.6 m and grow the
-  // per-block scale to keep the wall flush. Cuts the V44 wall ring
+  const storyHeight = opts.storyHeight ?? HARTHMERE_STORY_HEIGHT_DEFAULT;
+  // BUILDING_PERF_FIX: bump tile from 1.0 m to 1.6 m and grow the
+  // per-block scale to keep the wall flush. Cuts the current wall ring
   // from ~63 to ~28 blocks on a 21x17 footprint without leaving gaps.
   const tile = 1.6;
   const floorBaseY = (floor - 1) * storyHeight;
@@ -3811,7 +3743,7 @@ function createHarthmereContinuousBlockWallsV44(
   const blockScale = (shell.scale ?? 0.95) * 1.55;
 
   const inOpening = (
-    face: HarthmereV44Opening["face"],
+    face: HarthmereOpening["face"],
     columnCenter: number,
     blockY: number,
     isCornerColumn: boolean,
@@ -3847,7 +3779,7 @@ function createHarthmereContinuousBlockWallsV44(
         const blockY = floorBaseY + r * tile;
         const isTopRow = r === rows - 1;
         if (inOpening(face, along, blockY, isCornerColumn)) continue;
-        const asset = harthmereV44ChooseWallAsset(c, r, columns, rows, isCornerColumn, isTopRow);
+        const asset = harthmereChooseWallAsset(c, r, columns, rows, isCornerColumn, isTopRow);
         placements.push(
           BP(
             asset,
@@ -3856,7 +3788,7 @@ function createHarthmereContinuousBlockWallsV44(
             zConst,
             rotAdd,
             blockScale,
-            "block-built v44 " + face + " wall block c" + c + "r" + r + " floor " + floor + " solid stone/ore wall ring corner=" + isCornerColumn,
+            "block-built current " + face + " wall block c" + c + "r" + r + " floor " + floor + " solid stone/ore wall ring corner=" + isCornerColumn,
             blockY,
           ),
         );
@@ -3879,7 +3811,7 @@ function createHarthmereContinuousBlockWallsV44(
         const blockY = floorBaseY + r * tile;
         const isTopRow = r === rows - 1;
         if (inOpening(face, along, blockY, isCornerColumn)) continue;
-        const asset = harthmereV44ChooseWallAsset(c, r, columns, rows, isCornerColumn, isTopRow);
+        const asset = harthmereChooseWallAsset(c, r, columns, rows, isCornerColumn, isTopRow);
         placements.push(
           BP(
             asset,
@@ -3888,7 +3820,7 @@ function createHarthmereContinuousBlockWallsV44(
             along,
             rotAdd,
             blockScale,
-            "block-built v44 " + face + " wall block c" + c + "r" + r + " floor " + floor + " solid stone/ore wall ring corner=" + isCornerColumn,
+            "block-built current " + face + " wall block c" + c + "r" + r + " floor " + floor + " solid stone/ore wall ring corner=" + isCornerColumn,
             blockY,
           ),
         );
@@ -3900,21 +3832,21 @@ function createHarthmereContinuousBlockWallsV44(
 }
 
 
-type HarthmereBuildingPolishContextV1 = {
-  v44Floor: number;
+type HarthmereBuildingPolishContext = {
+  wallFloor: number;
   storyHeight: number;
   roofY: number;
   isTopStory: boolean;
 };
 
-type HarthmereBuildingPolishAccentV1 = {
+type HarthmereBuildingPolishAccent = {
   banner: string;
   sign: string;
   clutter: string;
   trim: string;
 };
 
-function harthmereProductionPolishAccentV1(shell: BuildingShell): HarthmereBuildingPolishAccentV1 {
+function harthmereProductionPolishAccent(shell: BuildingShell): HarthmereBuildingPolishAccent {
   const label = `${shell.name} ${shell.district}`.toLowerCase();
   if (/chapel|temple|shrine|priest|saint|grave|cemetery/.test(label)) {
     return { banner: "banner_white", sign: "church_lantern", clutter: "candle_lit", trim: "arch_pillar_stone" };
@@ -3937,30 +3869,30 @@ function harthmereProductionPolishAccentV1(shell: BuildingShell): HarthmereBuild
   return { banner: shell.theme.banner ?? "banner_yellow", sign: "obj_sign_post", clutter: "crate_a", trim: shell.theme.corner ?? "arch_pillar_stone" };
 }
 
-function harthmereProductionPolishIsServiceOrLandmarkV2(shell: BuildingShell): boolean {
+function harthmereProductionPolishIsServiceOrLandmark(shell: BuildingShell): boolean {
   const label = `${shell.name} ${shell.district}`.toLowerCase();
   return /gate|gatehouse|toll|bridge|watchtower|tower|chapel|temple|shrine|cottage|market|mara|edrik|noble|estate|reeve|inn|kettle|smith|anvil|workshop|craft|dock|warehouse|bank|auction|guild|provision|bakery|apothecary|well|underways|player services/.test(label);
 }
 
-function harthmereProductionPolishIsMajorBannerBuildingV2(shell: BuildingShell): boolean {
+function harthmereProductionPolishIsMajorBannerBuilding(shell: BuildingShell): boolean {
   const label = `${shell.name} ${shell.district}`.toLowerCase();
   return /gatehouse|chapel|temple|market|inn|kettle|noble|estate|reeve|bank|auction|guild/.test(label);
 }
 
-function createHarthmereBuildingExteriorPolishV1(
+function createHarthmereBuildingExteriorPolish(
   shell: BuildingShell,
-  context: HarthmereBuildingPolishContextV1,
+  context: HarthmereBuildingPolishContext,
 ): RuntimePlacement[] {
-  const accents = harthmereProductionPolishAccentV1(shell);
+  const accents = harthmereProductionPolishAccent(shell);
   const hw = shell.w / 2;
   const hd = shell.d / 2;
-  const floorBaseY = (context.v44Floor - 1) * context.storyHeight;
-  const isGroundStory = context.v44Floor === 1;
-  const isServiceOrLandmark = harthmereProductionPolishIsServiceOrLandmarkV2(shell);
+  const floorBaseY = (context.wallFloor - 1) * context.storyHeight;
+  const isGroundStory = context.wallFloor === 1;
+  const isServiceOrLandmark = harthmereProductionPolishIsServiceOrLandmark(shell);
   const placements: RuntimePlacement[] = [];
 
   if (isGroundStory) {
-    // V2 voxel self-edit: keep about 70% of the facade clean. These are not
+    // current voxel self-edit: keep about 70% of the facade clean. These are not
     // decorative bumps; they read as structural corner supports under heavy
     // stone/roof mass, preserving a strong silhouette instead of voxel vomit.
     placements.push(
@@ -3971,7 +3903,7 @@ function createHarthmereBuildingExteriorPolishV1(
         hd * 0.9,
         0,
         0.5,
-        "production-polish-v2 functional protrusion structural support buttress clean readable silhouette west door-clearance-preserved",
+        "production-polish functional protrusion structural support buttress clean readable silhouette west door-clearance-preserved",
         floorBaseY + 0.05,
       ),
       BP(
@@ -3981,13 +3913,13 @@ function createHarthmereBuildingExteriorPolishV1(
         hd * 0.9,
         0,
         0.5,
-        "production-polish-v2 functional protrusion structural support buttress clean readable silhouette east door-clearance-preserved",
+        "production-polish functional protrusion structural support buttress clean readable silhouette east door-clearance-preserved",
         floorBaseY + 0.05,
       ),
     );
 
     if (isServiceOrLandmark) {
-      // V2 voxel self-edit: icon-first signage only on buildings that need to be
+      // current voxel self-edit: icon-first signage only on buildings that need to be
       // found. Do not scatter random barrels/crates on every wall just to fill space.
       placements.push(
         BP(
@@ -3997,7 +3929,7 @@ function createHarthmereBuildingExteriorPolishV1(
           hd + 0.76,
           0,
           0.31,
-          "production-polish-v2 service landmark accent icon first readable sign layered depth door-clearance-preserved",
+          "production-polish service landmark accent icon first readable sign layered depth door-clearance-preserved",
           floorBaseY + 0.12,
         ),
       );
@@ -4005,7 +3937,7 @@ function createHarthmereBuildingExteriorPolishV1(
   }
 
   if (context.isTopStory && isServiceOrLandmark && shell.w >= 9) {
-    // V2 voxel self-edit: one intentional roofline break on important buildings;
+    // current voxel self-edit: one intentional roofline break on important buildings;
     // no rows of noisy spikes, ledges, or random wall clusters.
     placements.push(
       BP(
@@ -4015,13 +3947,13 @@ function createHarthmereBuildingExteriorPolishV1(
         -hd * 0.08,
         0,
         0.32,
-        "production-polish-v2 intentional roofline break clean silhouette",
+        "production-polish intentional roofline break clean silhouette",
         context.roofY + 0.18,
       ),
     );
   }
 
-  if (isGroundStory && harthmereProductionPolishIsMajorBannerBuildingV2(shell)) {
+  if (isGroundStory && harthmereProductionPolishIsMajorBannerBuilding(shell)) {
     placements.push(
       BP(
         accents.banner,
@@ -4030,14 +3962,14 @@ function createHarthmereBuildingExteriorPolishV1(
         hd + 0.34,
         0,
         0.42,
-        "production-polish-v2 single district identity banner service landmark accent no visual noise",
+        "production-polish single district identity banner service landmark accent no visual noise",
         floorBaseY + Math.min(1.65, context.storyHeight * 0.62),
       ),
     );
   }
 
   // Hard cap: pretty does not mean busy. This enforces the no-voxel-vomit pass.
-  return placements.slice(0, HARTHMERE_PRODUCTION_POLISH_RENDER_BUDGETS_V1.maxExteriorAccentPlacementsPerBuilding);
+  return placements.slice(0, HARTHMERE_PRODUCTION_POLISH_RENDER_BUDGETS.maxExteriorAccentPlacementsPerBuilding);
 }
 
 
@@ -4051,19 +3983,19 @@ function createBuildingShell(shell: BuildingShell): RuntimePlacement[] {
   const t = shell.theme;
   const placements: RuntimePlacement[] = [];
 
-  // V44 block-built continuous wall ring. Replaces the legacy sparse panel
+  // current block-built continuous wall ring. Replaces the legacy sparse panel
   // pattern that produced the floating-beam look. Per
-  // HARTHMERE_TOWN_BLOCK_BUILD_VERSION_V1 / harthmere-town-block-build-v1.
-  const storyHeight = roofY && roofY > 0 ? Math.max(2.0, roofY) : HARTHMERE_STORY_HEIGHT_DEFAULT_V1;
-  const v44Floor = Math.max(1, Math.round((wallY / Math.max(0.1, storyHeight)) + 1));
+  // HARTHMERE_TOWN_BLOCK_BUILD_VERSION / harthmere-town-block-build.
+  const storyHeight = roofY && roofY > 0 ? Math.max(2.0, roofY) : HARTHMERE_STORY_HEIGHT_DEFAULT;
+  const wallFloor = Math.max(1, Math.round((wallY / Math.max(0.1, storyHeight)) + 1));
   const hwOffset = Math.min(3, Math.max(2, Math.floor(shell.w / 2) - 2));
   placements.push(
-    ...createHarthmereContinuousBlockWallsV44(shell, { storyHeight, floor: v44Floor }),
+    ...createHarthmereContinuousBlockWalls(shell, { storyHeight, floor: wallFloor }),
   );
 
   // Decorative GLTF overlays at the same opening tiles the block ring
   // skipped. Total BP() count stays small (<=12) so the no-floating-debris
-  // test is satisfied; the wall mass comes from V44.
+  // test is satisfied; the wall mass comes from current.
   placements.push(BP(t.door, shell, 0, hd, 0, scale, "front door overlay", wallY));
   placements.push(BP(t.window, shell, -hwOffset, hd, 0, scale, "front left window overlay", wallY + 1.1));
   placements.push(BP(t.window, shell, hwOffset, hd, 0, scale, "front right window overlay", wallY + 1.1));
@@ -4088,12 +4020,12 @@ function createBuildingShell(shell: BuildingShell): RuntimePlacement[] {
     placements.push(BP(t.stair, shell, 0, hd + 2.2, 0, scale * 0.75, "entry step", 0));
   }
 
-  // V2 voxel self-edit: do not double-banner every generic building.
-  // Important banners are placed by createHarthmereBuildingExteriorPolishV1.
+  // current voxel self-edit: do not double-banner every generic building.
+  // Important banners are placed by createHarthmereBuildingExteriorPolish.
 
   placements.push(
-    ...createHarthmereBuildingExteriorPolishV1(shell, {
-      v44Floor,
+    ...createHarthmereBuildingExteriorPolish(shell, {
+      wallFloor,
       storyHeight,
       roofY,
       isTopStory: t.roof !== "arch_roof_flat",
@@ -4104,7 +4036,7 @@ function createBuildingShell(shell: BuildingShell): RuntimePlacement[] {
 }
 
 
-type HarthmereServiceBuildingProfileV43 =
+type HarthmereServiceBuildingProfile =
   | "bakery"
   | "provision"
   | "player_services"
@@ -4122,19 +4054,19 @@ type HarthmereServiceBuildingProfileV43 =
   | "stable_office"
   | "chapel";
 
-type HarthmereBlockBuiltServiceBuildingV43 = Omit<BuildingShell, "theme"> & {
+type HarthmereBlockBuiltServiceBuilding = Omit<BuildingShell, "theme"> & {
   floors?: number;
-  profile: HarthmereServiceBuildingProfileV43;
+  profile: HarthmereServiceBuildingProfile;
   banner?: string;
   roof?: string;
   serviceClearance?: boolean;
 };
 
-const HARTHMERE_SERVICE_BLOCK_STAIR_MAX_RISE_V43 = 0.42;
-const HARTHMERE_SERVICE_BLOCK_STAIR_MIN_TREAD_V43 = 0.74;
+const HARTHMERE_SERVICE_BLOCK_STAIR_MAX_RISE = 0.42;
+const HARTHMERE_SERVICE_BLOCK_STAIR_MIN_TREAD = 0.74;
 
-function harthmereServiceStoneThemeV43(
-  building: HarthmereBlockBuiltServiceBuildingV43,
+function harthmereServiceStoneTheme(
+  building: HarthmereBlockBuiltServiceBuilding,
   floor: number,
   floors: number,
 ): BuildingTheme {
@@ -4157,12 +4089,12 @@ function harthmereServiceStoneThemeV43(
   };
 }
 
-function createHarthmereServiceFloorDeckBlocksV43(
-  building: HarthmereBlockBuiltServiceBuildingV43,
+function createHarthmereServiceFloorDeckBlocks(
+  building: HarthmereBlockBuiltServiceBuilding,
   floor: number,
 ): RuntimePlacement[] {
   const placements: RuntimePlacement[] = [];
-  const theme = harthmereServiceStoneThemeV43(building, floor, building.floors ?? 1);
+  const theme = harthmereServiceStoneTheme(building, floor, building.floors ?? 1);
   const storyHeight = building.profile === "chapel" ? 3.05 : 2.7;
   const slabScale = Math.max(0.58, (building.scale ?? 0.8) * 0.9);
   const offsets: [number, number][] = building.w >= 24
@@ -4178,7 +4110,7 @@ function createHarthmereServiceFloorDeckBlocksV43(
         dz,
         0,
         slabScale,
-        `block-built v43 solid stone/ore ground floor slab for ${building.profile} enclosed service building`,
+        `block-built current solid stone/ore ground floor slab for ${building.profile} enclosed service building`,
         0.02,
       ));
     }
@@ -4192,7 +4124,7 @@ function createHarthmereServiceFloorDeckBlocksV43(
       dz,
       0,
       slabScale,
-      `block-built v43 solid stone/ore ceiling slab floor ${floor} for ${building.profile} enclosed service building`,
+      `block-built current solid stone/ore ceiling slab floor ${floor} for ${building.profile} enclosed service building`,
       floor * storyHeight - 0.14,
     ));
   }
@@ -4200,11 +4132,11 @@ function createHarthmereServiceFloorDeckBlocksV43(
   return placements;
 }
 
-function createHarthmereServiceBlockStairRunV43(
-  building: HarthmereBlockBuiltServiceBuildingV43,
+function createHarthmereServiceBlockStairRun(
+  building: HarthmereBlockBuiltServiceBuilding,
   floor: number,
 ): RuntimePlacement[] {
-  // BUILDING_V2_VOXEL_MESHES: replace the stepCount * arch_wall_stone
+  // BUILDING_VOXEL_MESHES: replace the stepCount * arch_wall_stone
   // stair (which the user read as "massive blocks separate, no stairs")
   // with a single obj_wall_stairs voxel mesh per inter-floor transition.
   // One mesh, one draw call, one collision box -- and it actually looks
@@ -4213,7 +4145,7 @@ function createHarthmereServiceBlockStairRunV43(
   const baseY = (floor - 1) * storyHeight + 0.05;
   const shell: BuildingShell = {
     ...building,
-    theme: harthmereServiceStoneThemeV43(building, floor, building.floors ?? 1),
+    theme: harthmereServiceStoneTheme(building, floor, building.floors ?? 1),
     wallY: baseY,
   };
   // Position at the building interior, offset along the south face so it
@@ -4228,14 +4160,14 @@ function createHarthmereServiceBlockStairRunV43(
       building.d * 0.18,
       Math.PI / 2,
       stairScale,
-      `${building.name} BUILDING_V2_VOXEL_MESHES single voxel stair mesh floor ${floor} to ${floor + 1} walkable player npc accessible doorway clear not floating not separate blocks`,
+      `${building.name} BUILDING_VOXEL_MESHES single voxel stair mesh floor ${floor} to ${floor + 1} walkable player npc accessible doorway clear not floating not separate blocks`,
       baseY,
     ),
   ];
 }
 
-function createHarthmereServiceInteriorBuildoutV43(
-  building: HarthmereBlockBuiltServiceBuildingV43,
+function createHarthmereServiceInteriorBuildout(
+  building: HarthmereBlockBuiltServiceBuilding,
 ): RuntimePlacement[] {
   const placements: RuntimePlacement[] = [];
   const storyHeight = building.profile === "chapel" ? 3.05 : 2.7;
@@ -4257,7 +4189,7 @@ function createHarthmereServiceInteriorBuildoutV43(
       z,
       (building.rot ?? 0) + rotAdd,
       scale,
-      `${building.name} block-built v43 service interior ${label}`,
+      `${building.name} block-built current service interior ${label}`,
       building.district,
       floorY + (floor - 1) * storyHeight + yOffset,
     ));
@@ -4351,18 +4283,18 @@ function createHarthmereServiceInteriorBuildoutV43(
   return placements;
 }
 
-function createHarthmereBlockBuiltServiceBuildingV43(
-  building: HarthmereBlockBuiltServiceBuildingV43,
+function createHarthmereBlockBuiltServiceBuilding(
+  building: HarthmereBlockBuiltServiceBuilding,
 ): RuntimePlacement[] {
   const floors = Math.max(1, building.floors ?? 1);
   const placements: RuntimePlacement[] = [];
   const storyHeight = building.profile === "chapel" ? 3.05 : 2.7;
 
   for (let floor = 1; floor <= floors; floor += 1) {
-    const theme = harthmereServiceStoneThemeV43(building, floor, floors);
+    const theme = harthmereServiceStoneTheme(building, floor, floors);
     const shell: BuildingShell = {
       ...building,
-      name: `${building.name} block-built v43 story ${floor}`,
+      name: `${building.name} block-built current story ${floor}`,
       theme,
       wallY: (floor - 1) * storyHeight,
       roofY: floor === floors
@@ -4374,23 +4306,23 @@ function createHarthmereBlockBuiltServiceBuildingV43(
     placements.push(
       ...createBuildingShell(shell).map((placement) => ({
         ...placement,
-        name: `${placement.name} block-built v43 solid stone/ore structural wall enclosed service shell`,
+        name: `${placement.name} block-built current solid stone/ore structural wall enclosed service shell`,
       })),
-      ...createHarthmereServiceFloorDeckBlocksV43(building, floor),
+      ...createHarthmereServiceFloorDeckBlocks(building, floor),
     );
 
     if (floor < floors) {
-      placements.push(...createHarthmereServiceBlockStairRunV43(building, floor));
+      placements.push(...createHarthmereServiceBlockStairRun(building, floor));
     }
   }
 
-  placements.push(...createHarthmereServiceInteriorBuildoutV43(building));
+  placements.push(...createHarthmereServiceInteriorBuildout(building));
 
   if (floors > 1) {
-    placements.push(...createHarthmereServiceMultiStoryCompletionV56(building));
+    placements.push(...createHarthmereServiceMultiStoryCompletion(building));
   }
   if (floors === 1) {
-    return filterSingleStoryRoofExtrasV4(
+    return filterSingleStoryRoofExtras(
       placements,
       building.roofY ?? storyHeight - 0.12,
       building.name,
@@ -4399,8 +4331,8 @@ function createHarthmereBlockBuiltServiceBuildingV43(
   return placements;
 }
 
-function harthmereBusinessOutpostStaffWorkPointV1(outpost: HarthmereBusinessOutpostV1) {
-  const record = HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS_V1[outpost.outpostId];
+function harthmereBusinessOutpostStaffWorkPoint(outpost: HarthmereBusinessOutpost) {
+  const record = HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS[outpost.outpostId];
   if (record) {
     return {
       x: Math.min(
@@ -4425,19 +4357,19 @@ function harthmereBusinessOutpostStaffWorkPointV1(outpost: HarthmereBusinessOutp
 
 // Business outpost buildings are server-materialized procedural voxel buildings
 // (cobblestone walls, stone floor/roof, stone stairs, oak-log door frame).
-// The voxel plans live in HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS_V1 and
+// The voxel plans live in HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS and
 // are applied to the game world by the server via the live_mode_backend
 // "rebuild_business_outposts" / auto-revision path.
 // The building shell and business-board access object are pure procedural
 // renderers, not GLTF/OBJ placements. This function only places the owner NPC.
-function createHarthmereBusinessOutpostPlacementsV1(): RuntimePlacement[] {
+function createHarthmereBusinessOutpostPlacements(): RuntimePlacement[] {
   const placements: RuntimePlacement[] = [];
-  for (const outpost of HARTHMERE_BUSINESS_OUTPOSTS_V1) {
-    const workPoint = harthmereBusinessOutpostStaffWorkPointV1(outpost);
-    const groundY = harthmereBusinessOutpostGroundYV1(outpost);
+  for (const outpost of HARTHMERE_BUSINESS_OUTPOSTS) {
+    const workPoint = harthmereBusinessOutpostStaffWorkPoint(outpost);
+    const groundY = harthmereBusinessOutpostGroundY(outpost);
     placements.push(
       A(
-        harthmereBusinessOutpostStaffAssetV1(outpost),
+        harthmereBusinessOutpostStaffAsset(outpost),
         workPoint.x,
         workPoint.z,
         outpost.position.rot + Math.PI,
@@ -4446,7 +4378,7 @@ function createHarthmereBusinessOutpostPlacementsV1(): RuntimePlacement[] {
         outpost.district,
         { radius: 0.65, speed: 0.07, phase: outpost.outpostId.length * 0.17 },
         undefined,
-        { y: workPoint.y ?? groundY + 1, appearance: harthmereBusinessOutpostStaffAppearanceV1(outpost) },
+        { y: workPoint.y ?? groundY + 1, appearance: harthmereBusinessOutpostStaffAppearance(outpost) },
       ),
     );
     placements[placements.length - 1].lodTier = "always";
@@ -4496,7 +4428,7 @@ function wildsDistanceToSegment(
 
 function isNearWideWildsVisualRoad(x: number, z: number, width = 18) {
   const roads = [
-    // HARTHMERE_CONNECTED_MAP_ROAD_V66: visual road from snapshot edge into Harthmere.
+    // HARTHMERE_CONNECTED_MAP_ROAD: visual road from snapshot edge into Harthmere.
     [128, -209, 392, -209],
     [486, -292, 486, -930],
     [486, -112, 486, 560],
@@ -4516,12 +4448,12 @@ function isInsideWideWildsTownBuffer(x: number, z: number) {
 
 
 
-function harthmereHousingV38Theme(building: HarthmereResidentHousingBuildingV38): BuildingTheme {
+function harthmereHousingTheme(building: HarthmereResidentHousingBuilding): BuildingTheme {
   const banner = building.theme === "poor" ? "banner_brown" : "banner_green";
   const roof = building.style === "slum" ? "arch_roof_flat" : "arch_roof_high_gable";
   return {
     ...STONE_THEME,
-    // v43 building law: even poor/slum/residential buildings use solid
+    // current building law: even poor/slum/residential buildings use solid
     // stone/ore structural blocks. Poverty is shown through trim, clutter,
     // banners, roof profile, and interior props, not see-through wood shells.
     wall: "arch_wall_stone",
@@ -4534,41 +4466,39 @@ function harthmereHousingV38Theme(building: HarthmereResidentHousingBuildingV38)
   };
 }
 
-const HARTHMERE_RESIDENT_HOUSING_RENDERER_VERSION_V40 = HARTHMERE_RESIDENT_HOUSING_BLOCK_BUILD_VERSION_V40;
-const HARTHMERE_RESIDENT_HOUSING_RENDERER_VERSION_V42 = HARTHMERE_RESIDENT_HOUSING_STONE_SHELL_VERSION_V42;
-const HARTHMERE_RESIDENT_BLOCK_STAIR_MAX_RISE_V40 = 0.42;
-const HARTHMERE_RESIDENT_BLOCK_STAIR_MIN_TREAD_V40 = 0.74;
+const HARTHMERE_RESIDENT_BLOCK_STAIR_MAX_RISE = 0.42;
+const HARTHMERE_RESIDENT_BLOCK_STAIR_MIN_TREAD = 0.74;
 
-function harthmereResidentStoryHeightV40(building: HarthmereResidentHousingBuildingV38): number {
+function harthmereResidentStoryHeight(building: HarthmereResidentHousingBuilding): number {
   return building.style === "slum" ? 2.45 : 2.7;
 }
 
-function harthmereResidentWallScaleV40(building: HarthmereResidentHousingBuildingV38): number {
+function harthmereResidentWallScale(building: HarthmereResidentHousingBuilding): number {
   return building.style === "slum" ? 0.62 : 0.74;
 }
 
-function harthmereResidentFloorScaleV40(building: HarthmereResidentHousingBuildingV38): number {
+function harthmereResidentFloorScale(building: HarthmereResidentHousingBuilding): number {
   return building.style === "slum" ? 0.56 : 0.66;
 }
 
-function harthmereResidentWallBlockAssetV40(
-  _building: HarthmereResidentHousingBuildingV38,
+function harthmereResidentWallBlockAsset(
+  _building: HarthmereResidentHousingBuilding,
   index: number,
 ): string {
-  // v43 building law: residential and slum structures must be built from
+  // current building law: residential and slum structures must be built from
   // solid stone/ore block resources, not wood-only or broken see-through shells.
   // Use small ore variation sparingly as believable repair/patch blocks while
   // preserving collision and walkability.
   return index % 7 === 0 ? "mine_stone_01" : "arch_wall_stone";
 }
 
-function createHarthmereResidentFloorDeckBlocksV40(
-  building: HarthmereResidentHousingBuildingV38,
+function createHarthmereResidentFloorDeckBlocks(
+  building: HarthmereResidentHousingBuilding,
   floor: number,
 ): RuntimePlacement[] {
   const placements: RuntimePlacement[] = [];
-  const theme = harthmereHousingV38Theme(building);
-  const storyHeight = harthmereResidentStoryHeightV40(building);
+  const theme = harthmereHousingTheme(building);
+  const storyHeight = harthmereResidentStoryHeight(building);
   const ceilingY = floor * storyHeight - 0.14;
   const slabScale = building.style === "slum" ? 0.72 : 0.82;
   const offsets: [number, number][] = building.w >= 16
@@ -4591,12 +4521,12 @@ function createHarthmereResidentFloorDeckBlocksV40(
   return placements;
 }
 
-function createHarthmereResidentWallBlocksV40(
-  building: HarthmereResidentHousingBuildingV38,
+function createHarthmereResidentWallBlocks(
+  building: HarthmereResidentHousingBuilding,
   floor: number,
 ): RuntimePlacement[] {
-  const theme = harthmereHousingV38Theme(building);
-  const storyHeight = harthmereResidentStoryHeightV40(building);
+  const theme = harthmereHousingTheme(building);
+  const storyHeight = harthmereResidentStoryHeight(building);
   const isTop = floor === building.floors;
   const storyShell: BuildingShell = {
     name: `${building.name} story ${floor}`,
@@ -4625,16 +4555,16 @@ function createHarthmereResidentWallBlocksV40(
   }));
 }
 
-function createHarthmereBlockStairRunV40(
-  building: HarthmereResidentHousingBuildingV38,
+function createHarthmereBlockStairRun(
+  building: HarthmereResidentHousingBuilding,
   floor: number,
 ): RuntimePlacement[] {
   const placements: RuntimePlacement[] = [];
-  const theme = harthmereHousingV38Theme(building);
-  const storyHeight = harthmereResidentStoryHeightV40(building);
-  const stepCount = Math.ceil(storyHeight / HARTHMERE_RESIDENT_BLOCK_STAIR_MAX_RISE_V40);
+  const theme = harthmereHousingTheme(building);
+  const storyHeight = harthmereResidentStoryHeight(building);
+  const stepCount = Math.ceil(storyHeight / HARTHMERE_RESIDENT_BLOCK_STAIR_MAX_RISE);
   const rise = storyHeight / stepCount;
-  const tread = Math.max(HARTHMERE_RESIDENT_BLOCK_STAIR_MIN_TREAD_V40, building.style === "slum" ? 0.86 : 0.92);
+  const tread = Math.max(HARTHMERE_RESIDENT_BLOCK_STAIR_MIN_TREAD, building.style === "slum" ? 0.86 : 0.92);
   const baseY = (floor - 1) * storyHeight + 0.1;
   const startX = -building.w * 0.28;
   const startZ = building.d * 0.2;
@@ -4647,7 +4577,7 @@ function createHarthmereBlockStairRunV40(
         startZ - step * 0.42,
         Math.PI / 2,
         building.style === "slum" ? 0.4 : 0.44,
-        `floor ${floor} to ${floor + 1} interior stone block stair riser ${step + 1} of ${stepCount + 1} max rise ${HARTHMERE_RESIDENT_BLOCK_STAIR_MAX_RISE_V40} npc travel tread`,
+        `floor ${floor} to ${floor + 1} interior stone block stair riser ${step + 1} of ${stepCount + 1} max rise ${HARTHMERE_RESIDENT_BLOCK_STAIR_MAX_RISE} npc travel tread`,
         baseY + step * rise,
       ),
     );
@@ -4655,23 +4585,23 @@ function createHarthmereBlockStairRunV40(
   return placements;
 }
 
-function createHarthmereBlockBuiltHousingPlacementsV40(
-  building: HarthmereResidentHousingBuildingV38,
+function createHarthmereBlockBuiltHousingPlacements(
+  building: HarthmereResidentHousingBuilding,
 ): RuntimePlacement[] {
   const placements: RuntimePlacement[] = [];
   for (let floor = 1; floor <= building.floors; floor += 1) {
     placements.push(
-      ...createHarthmereResidentWallBlocksV40(building, floor),
-      ...createHarthmereResidentFloorDeckBlocksV40(building, floor),
+      ...createHarthmereResidentWallBlocks(building, floor),
+      ...createHarthmereResidentFloorDeckBlocks(building, floor),
     );
     if (floor < building.floors) {
-      placements.push(...createHarthmereBlockStairRunV40(building, floor));
+      placements.push(...createHarthmereBlockStairRun(building, floor));
     }
   }
   if (building.floors === 1) {
-    return filterSingleStoryRoofExtrasV4(
+    return filterSingleStoryRoofExtras(
       placements,
-      harthmereResidentStoryHeightV40(building) - 0.18,
+      harthmereResidentStoryHeight(building) - 0.18,
       building.name,
     );
   }
@@ -4679,15 +4609,15 @@ function createHarthmereBlockBuiltHousingPlacementsV40(
 }
 
 
-const HARTHMERE_LIVING_QUARTERS_REBUILD_RENDERER_VERSION_V48 = "harthmere-living-quarters-voxel-block-rebuild-v48";
-const HARTHMERE_LIVING_QUARTERS_STRUCTURAL_BLOCKS_V48 = ["mine_stone_01", "mine_stone_02", "arch_wall_stone"] as const;
+const HARTHMERE_LIVING_QUARTERS_REBUILD_RENDERER_VERSION = "harthmere-living-quarters-voxel-block-rebuild";
+const HARTHMERE_LIVING_QUARTERS_STRUCTURAL_BLOCKS = ["mine_stone_01", "mine_stone_02", "arch_wall_stone"] as const;
 
-function harthmereLivingQuarterBlockAssetV48(index: number): string {
-  return HARTHMERE_LIVING_QUARTERS_STRUCTURAL_BLOCKS_V48[index % HARTHMERE_LIVING_QUARTERS_STRUCTURAL_BLOCKS_V48.length];
+function harthmereLivingQuarterBlockAsset(index: number): string {
+  return HARTHMERE_LIVING_QUARTERS_STRUCTURAL_BLOCKS[index % HARTHMERE_LIVING_QUARTERS_STRUCTURAL_BLOCKS.length];
 }
 
-function createHarthmereLivingQuarterBlockShellV48(
-  building: HarthmereResidentHousingBuildingV38,
+function createHarthmereLivingQuarterBlockShell(
+  building: HarthmereResidentHousingBuilding,
 ): RuntimePlacement[] {
   const placements: RuntimePlacement[] = [];
   const storyHeight = building.style === "slum" ? 2.65 : 2.85;
@@ -4710,12 +4640,12 @@ function createHarthmereLivingQuarterBlockShellV48(
     placements.push(
       BP(
         asset,
-        { ...building, theme: harthmereHousingV38Theme(building) },
+        { ...building, theme: harthmereHousingTheme(building) },
         dx,
         dz,
         rotAdd,
         scale,
-        `${HARTHMERE_LIVING_QUARTERS_REBUILD_RENDERER_VERSION_V48} ${label}`,
+        `${HARTHMERE_LIVING_QUARTERS_REBUILD_RENDERER_VERSION} ${label}`,
         yOffset,
       ),
     );
@@ -4731,16 +4661,16 @@ function createHarthmereLivingQuarterBlockShellV48(
       for (const rowY of wallRows) {
         const isDoorGap = floor === 1 && rowY < 1.4 && Math.abs(dx) < tile * 0.58;
         if (!isDoorGap) {
-          pushBlock(harthmereLivingQuarterBlockAssetV48(blockIndex++), dx, hd, baseY + rowY, `south solid voxel wall block floor ${floor} column ${c}`);
+          pushBlock(harthmereLivingQuarterBlockAsset(blockIndex++), dx, hd, baseY + rowY, `south solid voxel wall block floor ${floor} column ${c}`);
         }
-        pushBlock(harthmereLivingQuarterBlockAssetV48(blockIndex++), dx, -hd, baseY + rowY, `north solid voxel wall block floor ${floor} column ${c}`, Math.PI);
+        pushBlock(harthmereLivingQuarterBlockAsset(blockIndex++), dx, -hd, baseY + rowY, `north solid voxel wall block floor ${floor} column ${c}`, Math.PI);
       }
     }
     for (let c = 1; c < zColumns - 1; c += 1) {
       const dz = -hd + c * (building.d / (zColumns - 1));
       for (const rowY of wallRows) {
-        pushBlock(harthmereLivingQuarterBlockAssetV48(blockIndex++), hw, dz, baseY + rowY, `east solid voxel wall block floor ${floor} column ${c}`, -Math.PI / 2);
-        pushBlock(harthmereLivingQuarterBlockAssetV48(blockIndex++), -hw, dz, baseY + rowY, `west solid voxel wall block floor ${floor} column ${c}`, Math.PI / 2);
+        pushBlock(harthmereLivingQuarterBlockAsset(blockIndex++), hw, dz, baseY + rowY, `east solid voxel wall block floor ${floor} column ${c}`, -Math.PI / 2);
+        pushBlock(harthmereLivingQuarterBlockAsset(blockIndex++), -hw, dz, baseY + rowY, `west solid voxel wall block floor ${floor} column ${c}`, Math.PI / 2);
       }
     }
 
@@ -4755,7 +4685,7 @@ function createHarthmereLivingQuarterBlockShellV48(
       pushBlock("arch_wall_door", 0, hd + 0.08, baseY + 0.08, `front oak door inserted into voxel wall floor ${floor}`, 0, building.style === "slum" ? 0.58 : 0.66);
     }
     if (floor < building.floors) {
-      const stepCount = Math.ceil(storyHeight / HARTHMERE_RESIDENT_BLOCK_STAIR_MAX_RISE_V40);
+      const stepCount = Math.ceil(storyHeight / HARTHMERE_RESIDENT_BLOCK_STAIR_MAX_RISE);
       const rise = storyHeight / stepCount;
       const tread = building.style === "slum" ? 0.92 : 1.02;
       const startX = building.stairDx;
@@ -4766,7 +4696,7 @@ function createHarthmereLivingQuarterBlockShellV48(
           startX + step * tread,
           startZ - step * 0.46,
           baseY + 0.1 + step * rise,
-          `accessible interior block stair floor ${floor} step ${step + 1} max-rise ${HARTHMERE_RESIDENT_BLOCK_STAIR_MAX_RISE_V40}`,
+          `accessible interior block stair floor ${floor} step ${step + 1} max-rise ${HARTHMERE_RESIDENT_BLOCK_STAIR_MAX_RISE}`,
           Math.PI / 2,
           building.style === "slum" ? 0.42 : 0.46,
         );
@@ -4778,12 +4708,12 @@ function createHarthmereLivingQuarterBlockShellV48(
   return placements;
 }
 
-// HARTHMERE_LIVING_QUARTERS_VOXEL_REBUILD_V49
+// HARTHMERE_LIVING_QUARTERS_VOXEL_REBUILD
 // ---------------------------------------------------------------------------
-// Living-quarters rebuild that supersedes V48. The V48 builder placed widely-
+// Living-quarters rebuild that supersedes current. The current builder placed widely-
 // spaced wall blocks at scale 0.52 with 2.2 m gaps between them — the player
-// could walk straight through every apartment wall. V49 uses the same proven
-// continuous 1 m stone-block ring (createHarthmereContinuousBlockWallsV44) the
+// could walk straight through every apartment wall. current uses the same proven
+// continuous 1 m stone-block ring (createHarthmereContinuousBlockWalls) the
 // Dawn Loaf Bakery uses, so the walls are flat, smooth, and solid.
 //
 // Per the design bible / MMO rules §11 (foundation → frame → walls → roof →
@@ -4792,33 +4722,33 @@ function createHarthmereLivingQuarterBlockShellV48(
 // from below — no floating beams.
 //
 // Existing building IDs (res_v38_home_01..10, slum_v38_stack_01..04) and the
-// per-room index layout from makeHarthmereResidentRoomCenterV38 are preserved
+// per-room index layout from makeHarthmereResidentRoomCenter are preserved
 // so NPC home assignments and resident-room decor placements stay attached.
-const HARTHMERE_LIVING_QUARTERS_VOXEL_REBUILD_RENDERER_VERSION_V49 =
-  "harthmere-living-quarters-voxel-block-rebuild-doors-balconies-v49";
+const HARTHMERE_LIVING_QUARTERS_VOXEL_REBUILD_RENDERER_VERSION =
+  "harthmere-living-quarters-voxel-block-rebuild-doors-balconies";
 
-function harthmereLivingQuarterV49StoryHeight(
-  b: HarthmereResidentHousingBuildingV38,
+function harthmereLivingQuarterStoryHeight(
+  b: HarthmereResidentHousingBuilding,
 ): number {
   return b.style === "slum" ? 2.7 : 2.85;
 }
 
-function harthmereLivingQuarterV49RoomColumns(
-  b: HarthmereResidentHousingBuildingV38,
+function harthmereLivingQuarterRoomColumns(
+  b: HarthmereResidentHousingBuilding,
 ): number {
-  // Mirror makeHarthmereResidentRoomCenterV38 so partition walls fall between
+  // Mirror makeHarthmereResidentRoomCenter so partition walls fall between
   // the existing room centers (which NPC decor placement relies on).
   return b.style === "slum" ? 2 : 3;
 }
 
-function harthmereLivingQuarterV49UsableWidth(
-  b: HarthmereResidentHousingBuildingV38,
+function harthmereLivingQuarterUsableWidth(
+  b: HarthmereResidentHousingBuilding,
 ): number {
   return b.w - (b.style === "slum" ? 5.2 : 5.8);
 }
 
-function harthmereLivingQuarterV49Theme(
-  b: HarthmereResidentHousingBuildingV38,
+function harthmereLivingQuarterTheme(
+  b: HarthmereResidentHousingBuilding,
 ): BuildingTheme {
   // Same stone family the bakery and other service buildings use.
   const banner = b.theme === "poor" ? "banner_brown" : "banner_green";
@@ -4835,13 +4765,13 @@ function harthmereLivingQuarterV49Theme(
   };
 }
 
-function harthmereLivingQuarterV49Shell(
-  b: HarthmereResidentHousingBuildingV38,
+function harthmereLivingQuarterShell(
+  b: HarthmereResidentHousingBuilding,
   floor: number,
 ): BuildingShell {
-  const storyHeight = harthmereLivingQuarterV49StoryHeight(b);
+  const storyHeight = harthmereLivingQuarterStoryHeight(b);
   return {
-    name: `${b.name} v49 story ${floor}`,
+    name: `${b.name} current story ${floor}`,
     district: b.district,
     x: b.x,
     z: b.z,
@@ -4851,19 +4781,19 @@ function harthmereLivingQuarterV49Shell(
     scale: b.style === "slum" ? 0.74 : 0.8,
     wallY: (floor - 1) * storyHeight,
     roofY: (floor - 1) * storyHeight + storyHeight - 0.12,
-    theme: harthmereLivingQuarterV49Theme(b),
+    theme: harthmereLivingQuarterTheme(b),
   };
 }
 
-function harthmereLivingQuarterV49Openings(
-  b: HarthmereResidentHousingBuildingV38,
+function harthmereLivingQuarterOpenings(
+  b: HarthmereResidentHousingBuilding,
   floor: number,
-): HarthmereV44Opening[] {
-  // BUILDING_PERF_FIX_V1: each opening explicitly carries `floor` and
-  // `kind` so the V56 wall-panel renderer cuts the wall hole AND drops
+): HarthmereOpening[] {
+  // BUILDING_PERF_FIX: each opening explicitly carries `floor` and
+  // `kind` so the current wall-panel renderer cuts the wall hole AND drops
   // the correct door / window asset (was: every opening became a window
-  // because both fields were undefined on the V44 type).
-  const openings: HarthmereV44Opening[] = [];
+  // because both fields were undefined on the current type).
+  const openings: HarthmereOpening[] = [];
   const hwOffset = Math.min(3, Math.max(2, Math.floor(b.w / 2) - 2));
 
   if (floor === 1) {
@@ -4878,8 +4808,8 @@ function harthmereLivingQuarterV49Openings(
 
   // Upper floors: one full-height balcony door per room column on the
   // south face, light windows on the other three faces.
-  const columns = harthmereLivingQuarterV49RoomColumns(b);
-  const usableW = harthmereLivingQuarterV49UsableWidth(b);
+  const columns = harthmereLivingQuarterRoomColumns(b);
+  const usableW = harthmereLivingQuarterUsableWidth(b);
   for (let col = 0; col < columns; col += 1) {
     const offset = -usableW / 2 + (col + 0.5) * (usableW / columns);
     openings.push({ face: "south", offset, widthBlocks: 1, bottomMeters: 0, topMeters: 2.1, floor, kind: "door" });
@@ -4891,13 +4821,13 @@ function harthmereLivingQuarterV49Openings(
   return openings;
 }
 
-function createHarthmereLivingQuarterV49ExteriorWalls(
-  b: HarthmereResidentHousingBuildingV38,
+function createHarthmereLivingQuarterExteriorWalls(
+  b: HarthmereResidentHousingBuilding,
   floor: number,
 ): RuntimePlacement[] {
-  // HARTHMERE_LIVING_QUARTERS_VOXEL_SOLID_AND_GRID_HASH_V50
+  // HARTHMERE_LIVING_QUARTERS_VOXEL_SOLID_AND_GRID_HASH
   // Direct 1 m solid stone-cube ring. We deliberately do NOT call
-  // createHarthmereContinuousBlockWallsV44 here, because V44 (a) multiplies
+  // createHarthmereContinuousBlockWalls here, because current (a) multiplies
   // block scale by ~0.95 (so at shell.scale=0.8 each 1 m mesh renders at
   // 0.76 m on a 1 m grid → 0.24 m of air between every block), and
   // (b) substitutes thin arch_pillar_stone (0.16 m wide) and arch_overhang
@@ -4907,9 +4837,9 @@ function createHarthmereLivingQuarterV49ExteriorWalls(
   // The fantasy_town wall-block.glb mesh is exactly 1.00 × 1.00 × 1.00 m at
   // scale 1.0 (verified from POSITION accessor min/max), so 1 m grid spacing
   // means adjacent blocks are flush — no air gaps, ever.
-  const shell = harthmereLivingQuarterV49Shell(b, floor);
-  const storyHeight = harthmereLivingQuarterV49StoryHeight(b);
-  const openings = harthmereLivingQuarterV49Openings(b, floor);
+  const shell = harthmereLivingQuarterShell(b, floor);
+  const storyHeight = harthmereLivingQuarterStoryHeight(b);
+  const openings = harthmereLivingQuarterOpenings(b, floor);
   const tile = 1.0;
   const rows = Math.max(2, Math.round(storyHeight / tile));
   const floorBaseY = (floor - 1) * storyHeight;
@@ -4964,7 +4894,7 @@ function createHarthmereLivingQuarterV49ExteriorWalls(
           dz,
           rotAdd,
           1.0,
-          `v50 solid voxel apartment wall ring ${face} floor ${floor} column ${c} row ${r} flush 1m stone cube no gaps`,
+          `current solid voxel apartment wall ring ${face} floor ${floor} column ${c} row ${r} flush 1m stone cube no gaps`,
           blockY,
         ));
       }
@@ -4979,13 +4909,13 @@ function createHarthmereLivingQuarterV49ExteriorWalls(
   return placements;
 }
 
-function createHarthmereLivingQuarterV49FloorAndCeiling(
-  b: HarthmereResidentHousingBuildingV38,
+function createHarthmereLivingQuarterFloorAndCeiling(
+  b: HarthmereResidentHousingBuilding,
   floor: number,
 ): RuntimePlacement[] {
-  const storyHeight = harthmereLivingQuarterV49StoryHeight(b);
+  const storyHeight = harthmereLivingQuarterStoryHeight(b);
   const baseY = (floor - 1) * storyHeight;
-  const shell = harthmereLivingQuarterV49Shell(b, floor);
+  const shell = harthmereLivingQuarterShell(b, floor);
   const slabScale = b.style === "slum" ? 0.76 : 0.86;
   const offsets: [number, number][] = b.w >= 18
     ? [[-b.w * 0.22, 0], [b.w * 0.22, 0]]
@@ -5000,7 +4930,7 @@ function createHarthmereLivingQuarterV49FloorAndCeiling(
         dz,
         0,
         slabScale,
-        `v49 walkable stone ground floor slab floor ${floor}`,
+        `current walkable stone ground floor slab floor ${floor}`,
         baseY - 0.06,
       ));
     }
@@ -5011,23 +4941,23 @@ function createHarthmereLivingQuarterV49FloorAndCeiling(
       dz,
       0,
       slabScale * 0.98,
-      `v49 stone ceiling and floor slab floor ${floor} reachable upper floor deck`,
+      `current stone ceiling and floor slab floor ${floor} reachable upper floor deck`,
       baseY + storyHeight - 0.16,
     ));
   }
   return placements;
 }
 
-function createHarthmereLivingQuarterV49DoorOverlays(
-  b: HarthmereResidentHousingBuildingV38,
+function createHarthmereLivingQuarterDoorOverlays(
+  b: HarthmereResidentHousingBuilding,
   floor: number,
 ): RuntimePlacement[] {
   // GLTF door / window prop overlays placed at the same opening tiles the
   // wall ring skipped. Names contain "front door" / "doorway clear" so the
   // player-collision system recognises them as walkable navigation openings.
   const placements: RuntimePlacement[] = [];
-  const shell = harthmereLivingQuarterV49Shell(b, floor);
-  const storyHeight = harthmereLivingQuarterV49StoryHeight(b);
+  const shell = harthmereLivingQuarterShell(b, floor);
+  const storyHeight = harthmereLivingQuarterStoryHeight(b);
   const baseY = (floor - 1) * storyHeight;
   const hd = b.d / 2;
   const hw = b.w / 2;
@@ -5043,20 +4973,20 @@ function createHarthmereLivingQuarterV49DoorOverlays(
       hd,
       0,
       doorScale,
-      `v49 front door overlay floor 1 main entrance doorway clear walkable opening`,
+      `current front door overlay floor 1 main entrance doorway clear walkable opening`,
       baseY + 0.04,
     ));
-    placements.push(BP("arch_wall_window_stone", shell, -hwOffset, hd, 0, windowScale, `v49 south left window overlay floor 1`, baseY + 1.05));
-    placements.push(BP("arch_wall_window_stone", shell, hwOffset, hd, 0, windowScale, `v49 south right window overlay floor 1`, baseY + 1.05));
-    placements.push(BP("arch_wall_window_stone", shell, 0, -hd, Math.PI, windowScale, `v49 north window overlay floor 1`, baseY + 1.05));
-    placements.push(BP("arch_wall_window_stone", shell, hw, 0, -Math.PI / 2, windowScale, `v49 east window overlay floor 1`, baseY + 1.05));
-    placements.push(BP("arch_wall_window_stone", shell, -hw, 0, Math.PI / 2, windowScale, `v49 west window overlay floor 1`, baseY + 1.05));
+    placements.push(BP("arch_wall_window_stone", shell, -hwOffset, hd, 0, windowScale, `current south left window overlay floor 1`, baseY + 1.05));
+    placements.push(BP("arch_wall_window_stone", shell, hwOffset, hd, 0, windowScale, `current south right window overlay floor 1`, baseY + 1.05));
+    placements.push(BP("arch_wall_window_stone", shell, 0, -hd, Math.PI, windowScale, `current north window overlay floor 1`, baseY + 1.05));
+    placements.push(BP("arch_wall_window_stone", shell, hw, 0, -Math.PI / 2, windowScale, `current east window overlay floor 1`, baseY + 1.05));
+    placements.push(BP("arch_wall_window_stone", shell, -hw, 0, Math.PI / 2, windowScale, `current west window overlay floor 1`, baseY + 1.05));
     return placements;
   }
 
   // Upper floors: one balcony-facing front door per room column.
-  const columns = harthmereLivingQuarterV49RoomColumns(b);
-  const usableW = harthmereLivingQuarterV49UsableWidth(b);
+  const columns = harthmereLivingQuarterRoomColumns(b);
+  const usableW = harthmereLivingQuarterUsableWidth(b);
   for (let col = 0; col < columns; col += 1) {
     const offset = -usableW / 2 + (col + 0.5) * (usableW / columns);
     placements.push(BP(
@@ -5066,19 +4996,19 @@ function createHarthmereLivingQuarterV49DoorOverlays(
       hd,
       0,
       doorScale,
-      `v49 front door overlay floor ${floor} room column ${col + 1} balcony entry doorway clear walkable opening`,
+      `current front door overlay floor ${floor} room column ${col + 1} balcony entry doorway clear walkable opening`,
       baseY + 0.04,
     ));
   }
-  placements.push(BP("arch_wall_window_stone", shell, -hwOffset, -hd, Math.PI, windowScale, `v49 north left window overlay floor ${floor}`, baseY + 1.05));
-  placements.push(BP("arch_wall_window_stone", shell, hwOffset, -hd, Math.PI, windowScale, `v49 north right window overlay floor ${floor}`, baseY + 1.05));
-  placements.push(BP("arch_wall_window_stone", shell, hw, 0, -Math.PI / 2, windowScale, `v49 east window overlay floor ${floor}`, baseY + 1.05));
-  placements.push(BP("arch_wall_window_stone", shell, -hw, 0, Math.PI / 2, windowScale, `v49 west window overlay floor ${floor}`, baseY + 1.05));
+  placements.push(BP("arch_wall_window_stone", shell, -hwOffset, -hd, Math.PI, windowScale, `current north left window overlay floor ${floor}`, baseY + 1.05));
+  placements.push(BP("arch_wall_window_stone", shell, hwOffset, -hd, Math.PI, windowScale, `current north right window overlay floor ${floor}`, baseY + 1.05));
+  placements.push(BP("arch_wall_window_stone", shell, hw, 0, -Math.PI / 2, windowScale, `current east window overlay floor ${floor}`, baseY + 1.05));
+  placements.push(BP("arch_wall_window_stone", shell, -hw, 0, Math.PI / 2, windowScale, `current west window overlay floor ${floor}`, baseY + 1.05));
   return placements;
 }
 
-function createHarthmereLivingQuarterV49Stair(
-  b: HarthmereResidentHousingBuildingV38,
+function createHarthmereLivingQuarterStair(
+  b: HarthmereResidentHousingBuilding,
   floor: number,
 ): RuntimePlacement[] {
   // Stacked solid-block voxel stair. Each step has a 1 m-wide stack of stone
@@ -5086,8 +5016,8 @@ function createHarthmereLivingQuarterV49Stair(
   // — no floating beams, no toothpick supports. The stair runs east along
   // the interior near the south wall so it lands on the upper-floor balcony.
   const placements: RuntimePlacement[] = [];
-  const shell = harthmereLivingQuarterV49Shell(b, floor);
-  const storyHeight = harthmereLivingQuarterV49StoryHeight(b);
+  const shell = harthmereLivingQuarterShell(b, floor);
+  const storyHeight = harthmereLivingQuarterStoryHeight(b);
   const baseY = (floor - 1) * storyHeight;
   const stepCount = Math.max(4, Math.ceil(storyHeight / 0.5));
   const rise = storyHeight / stepCount;
@@ -5113,7 +5043,7 @@ function createHarthmereLivingQuarterV49Stair(
         startZ,
         0,
         stairScale,
-        `v49 voxel stair support block floor ${floor} step ${step} support layer ${layer + 1} solid stacked stone no floating`,
+        `current voxel stair support block floor ${floor} step ${step} support layer ${layer + 1} solid stacked stone no floating`,
         layerY,
       ));
     }
@@ -5125,7 +5055,7 @@ function createHarthmereLivingQuarterV49Stair(
       startZ,
       0,
       stairScale,
-      `v49 voxel stair tread block floor ${floor} step ${step} of ${stepCount} solid stone block entry step walkable`,
+      `current voxel stair tread block floor ${floor} step ${step} of ${stepCount} solid stone block entry step walkable`,
       stepTopY - 0.4,
     ));
   }
@@ -5137,24 +5067,24 @@ function createHarthmereLivingQuarterV49Stair(
     startZ,
     0,
     stairScale * 1.3,
-    `v49 voxel stair upper landing slab floor ${floor + 1} entry step walkable doorway clear`,
+    `current voxel stair upper landing slab floor ${floor + 1} entry step walkable doorway clear`,
     baseY + storyHeight - 0.12,
   ));
 
   return placements;
 }
 
-function createHarthmereLivingQuarterV49Balcony(
-  b: HarthmereResidentHousingBuildingV38,
+function createHarthmereLivingQuarterBalcony(
+  b: HarthmereResidentHousingBuilding,
   floor: number,
 ): RuntimePlacement[] {
   // Exterior balcony deck on the south face of every upper floor. The deck
   // is a walkable strip with a stone railing along the outer edge. Each
-  // upper-floor room door (placed in createHarthmereLivingQuarterV49DoorOverlays)
+  // upper-floor room door (placed in createHarthmereLivingQuarterDoorOverlays)
   // opens onto this deck.
   const placements: RuntimePlacement[] = [];
-  const shell = harthmereLivingQuarterV49Shell(b, floor);
-  const storyHeight = harthmereLivingQuarterV49StoryHeight(b);
+  const shell = harthmereLivingQuarterShell(b, floor);
+  const storyHeight = harthmereLivingQuarterStoryHeight(b);
   const baseY = (floor - 1) * storyHeight;
   const hd = b.d / 2;
   const deckDepth = 2.4;
@@ -5171,7 +5101,7 @@ function createHarthmereLivingQuarterV49Balcony(
       deckCenterZ,
       0,
       deckScale,
-      `v49 balcony deck floor ${floor} walkable stone balcony walkway entry step opening passage doorway clear`,
+      `current balcony deck floor ${floor} walkable stone balcony walkway entry step opening passage doorway clear`,
       baseY - 0.04,
     ));
   }
@@ -5188,7 +5118,7 @@ function createHarthmereLivingQuarterV49Balcony(
       railOuterZ,
       0,
       railScale,
-      `v49 balcony railing post floor ${floor} column ${c + 1} stone railing fence rail`,
+      `current balcony railing post floor ${floor} column ${c + 1} stone railing fence rail`,
       baseY + 0.1,
     ));
   }
@@ -5196,8 +5126,8 @@ function createHarthmereLivingQuarterV49Balcony(
   return placements;
 }
 
-function createHarthmereLivingQuarterV49Partitions(
-  b: HarthmereResidentHousingBuildingV38,
+function createHarthmereLivingQuarterPartitions(
+  b: HarthmereResidentHousingBuilding,
   floor: number,
 ): RuntimePlacement[] {
   // Interior north-south partition walls dividing the floor into per-column
@@ -5208,11 +5138,11 @@ function createHarthmereLivingQuarterV49Partitions(
   // balcony door — matching the user spec: "3 walls, ceiling, floor, door."
   if (floor === 1) return [];
   const placements: RuntimePlacement[] = [];
-  const shell = harthmereLivingQuarterV49Shell(b, floor);
-  const storyHeight = harthmereLivingQuarterV49StoryHeight(b);
+  const shell = harthmereLivingQuarterShell(b, floor);
+  const storyHeight = harthmereLivingQuarterStoryHeight(b);
   const baseY = (floor - 1) * storyHeight;
-  const columns = harthmereLivingQuarterV49RoomColumns(b);
-  const usableW = harthmereLivingQuarterV49UsableWidth(b);
+  const columns = harthmereLivingQuarterRoomColumns(b);
+  const usableW = harthmereLivingQuarterUsableWidth(b);
   const partitionScale = b.style === "slum" ? 0.5 : 0.55;
   const hd = b.d / 2;
   const partitionDepth = b.d - 2.4;
@@ -5233,7 +5163,7 @@ function createHarthmereLivingQuarterV49Partitions(
           partitionZ,
           Math.PI / 2,
           partitionScale,
-          `v49 interior partition wall floor ${floor} column ${col} block ${i + 1} row ${r + 1} separates room suites solid stone`,
+          `current interior partition wall floor ${floor} column ${col} block ${i + 1} row ${r + 1} separates room suites solid stone`,
           baseY + r * 1.2,
         ));
       }
@@ -5242,60 +5172,36 @@ function createHarthmereLivingQuarterV49Partitions(
   return placements;
 }
 
-function createHarthmereLivingQuarterVoxelShellV49(
-  b: HarthmereResidentHousingBuildingV38,
+const HARTHMERE_LIVING_QUARTERS_PERFORMANCE_COMPLETE_VERSION = "harthmere-living-quarters-performance-complete";
+const HARTHMERE_SERVICE_MULTI_STORY_COMPLETION_VERSION = "harthmere-service-multi-story-completion";
+
+function createHarthmereLivingQuarterVoxelShell(
+  b: HarthmereResidentHousingBuilding,
 ): RuntimePlacement[] {
   const placements: RuntimePlacement[] = [];
-  const buildingScale = 0.8;
-
-  for (let floor = 1; floor <= b.floors; floor += 1) {
-    placements.push(
-      ...createHarthmereLivingQuarterV49ExteriorWalls(b, floor),
-      ...createHarthmereLivingQuarterV49FloorAndCeiling(b, floor),
-      ...createHarthmereLivingQuarterV49DoorOverlays(b, floor),
-      ...createHarthmereLivingQuarterV49Partitions(b, floor),
-    );
-    if (floor < b.floors) {
-      placements.push(...createHarthmereLivingQuarterV49Stair(b, floor));
-    }
-    if (floor > 1) {
-      placements.push(...createHarthmereLivingQuarterV49Balcony(b, floor));
-    }
-  }
-  return placements;
-}
-
-
-const HARTHMERE_LIVING_QUARTERS_PERFORMANCE_COMPLETE_VERSION_V56 = "harthmere-living-quarters-performance-complete-v56";
-const HARTHMERE_SERVICE_MULTI_STORY_COMPLETION_VERSION_V56 = "harthmere-service-multi-story-completion-v56";
-
-function createHarthmereLivingQuarterVoxelShellV56(
-  b: HarthmereResidentHousingBuildingV38,
-): RuntimePlacement[] {
-  const placements: RuntimePlacement[] = [];
-  // Mirrors createHarthmereLivingQuarterVoxelShellV49's working scale so the
-  // V56 performance-complete shell and the V49 doorway-clear shell render
+  // Mirrors createHarthmereLivingQuarterVoxelShell's working scale so the
+  // current performance-complete shell and the current doorway-clear shell render
   // residential/slum blocks at the same proportions.
   const buildingScale = 0.8;
-  const storyHeight = harthmereLivingQuarterV49StoryHeight(b);
+  const storyHeight = harthmereLivingQuarterStoryHeight(b);
   const hw = b.w / 2;
   const hd = b.d / 2;
-  // BUILDING_PERF_FIX_V1: stretch panels to cut placements ~30%.
+  // BUILDING_PERF_FIX: stretch panels to cut placements ~30%.
   // Scale grows in lockstep so adjacent panels still meet flush.
   const panelStep = b.style === "slum" ? 2.4 : 2.6;
   const panelScale = b.style === "slum" ? 1.92 : 2.10;
   const rowOffsets = [0.54, 1.78];
-  const theme = harthmereHousingV38Theme(b);
+  const theme = harthmereHousingTheme(b);
 
   const isInsideOpening = (
-    face: HarthmereV44Opening["face"],
+    face: HarthmereOpening["face"],
     floor: number,
     offsetAlongWall: number,
-    openings: readonly HarthmereV44Opening[],
+    openings: readonly HarthmereOpening[],
   ): boolean => {
-    // BUILDING_PERF_FIX_V1: tolerate openings missing `floor` (treat
+    // BUILDING_PERF_FIX: tolerate openings missing `floor` (treat
     // them as belonging to every floor) so any code path that hands us
-    // a V44-shaped opening list still gets door cutouts.
+    // a current-shaped opening list still gets door cutouts.
     return openings.some((opening) => (
       opening.face === face &&
       (opening.floor === undefined || opening.floor === floor) &&
@@ -5319,11 +5225,11 @@ function createHarthmereLivingQuarterVoxelShellV56(
   const pushWallPanels = (
     shell: BuildingShell,
     floor: number,
-    face: HarthmereV44Opening["face"],
+    face: HarthmereOpening["face"],
     length: number,
     fixed: number,
     rotAdd: number,
-    openings: readonly HarthmereV44Opening[],
+    openings: readonly HarthmereOpening[],
   ) => {
     const columns = Math.max(4, Math.ceil(length / panelStep) + 1);
     const start = -((columns - 1) * panelStep) / 2;
@@ -5334,7 +5240,7 @@ function createHarthmereLivingQuarterVoxelShellV56(
       }
       for (let row = 0; row < rowOffsets.length; row += 1) {
         const isCorner = column === 0 || column === columns - 1;
-        // BUILDING_PERF_FIX_V1: canonical palette only -- corners use
+        // BUILDING_PERF_FIX: canonical palette only -- corners use
         // arch_wall_corner, everything else arch_wall_stone. The
         // mine_stone_01 splash was producing checkerboard noise on
         // apartment exteriors per the design lead's audit.
@@ -5349,7 +5255,7 @@ function createHarthmereLivingQuarterVoxelShellV56(
           dz,
           rotAdd,
           isCorner ? panelScale * 0.78 : panelScale,
-          `${HARTHMERE_LIVING_QUARTERS_PERFORMANCE_COMPLETE_VERSION_V56} v56 solid performance apartment wall panel face ${face} floor ${floor} column ${column + 1} row ${row + 1} solid stone/ore block-built no see-through residential/slum shell`,
+          `${HARTHMERE_LIVING_QUARTERS_PERFORMANCE_COMPLETE_VERSION} current solid performance apartment wall panel face ${face} floor ${floor} column ${column + 1} row ${row + 1} solid stone/ore block-built no see-through residential/slum shell`,
           shell.wallY! + rowOffsets[row],
         );
       }
@@ -5358,12 +5264,12 @@ function createHarthmereLivingQuarterVoxelShellV56(
 
   for (let floor = 1; floor <= b.floors; floor += 1) {
     const shell = {
-      ...harthmereLivingQuarterV49Shell(b, floor),
+      ...harthmereLivingQuarterShell(b, floor),
       theme,
       scale: buildingScale,
     };
     const baseY = shell.wallY ?? (floor - 1) * storyHeight;
-    const openings = harthmereLivingQuarterV49Openings(b, floor);
+    const openings = harthmereLivingQuarterOpenings(b, floor);
 
     pushWallPanels(shell, floor, "north", b.w, -hd, Math.PI, openings);
     pushWallPanels(shell, floor, "south", b.w, hd, 0, openings);
@@ -5380,7 +5286,7 @@ function createHarthmereLivingQuarterVoxelShellV56(
           0,
           0,
           Math.max(0.62, buildingScale * 0.95),
-          `${HARTHMERE_LIVING_QUARTERS_PERFORMANCE_COMPLETE_VERSION_V56} v56 walkable ground floor slab doorway clear no invisible blocker solid stone/ore residential/slum floor`,
+          `${HARTHMERE_LIVING_QUARTERS_PERFORMANCE_COMPLETE_VERSION} current walkable ground floor slab doorway clear no invisible blocker solid stone/ore residential/slum floor`,
           baseY + 0.02,
         );
       }
@@ -5391,13 +5297,13 @@ function createHarthmereLivingQuarterVoxelShellV56(
         0,
         0,
         Math.max(0.64, buildingScale * 0.98),
-        `${HARTHMERE_LIVING_QUARTERS_PERFORMANCE_COMPLETE_VERSION_V56} v56 walkable upper floor slab and ceiling floor ${floor} doorway clear no invisible blocker solid stone/ore residential/slum ceiling`,
+        `${HARTHMERE_LIVING_QUARTERS_PERFORMANCE_COMPLETE_VERSION} current walkable upper floor slab and ceiling floor ${floor} doorway clear no invisible blocker solid stone/ore residential/slum ceiling`,
         baseY + storyHeight - 0.12,
       );
     }
 
     for (const opening of openings) {
-      // BUILDING_PERF_FIX_V1: only render an overlay on openings that
+      // BUILDING_PERF_FIX: only render an overlay on openings that
       // belong to this floor (or are floor-agnostic). Without this we
       // would drop every opening overlay onto every floor, which is
       // what produced the duplicate-window stacks the user noticed.
@@ -5419,13 +5325,13 @@ function createHarthmereLivingQuarterVoxelShellV56(
         dz,
         rotAdd,
         buildingScale * (kind === "door" ? 0.72 : 0.58),
-        `${HARTHMERE_LIVING_QUARTERS_PERFORMANCE_COMPLETE_VERSION_V56} v56 ${kind} overlay face ${opening.face} floor ${floor} doorway clear no invisible blocker residential/slum complete two-story access`,
+        `${HARTHMERE_LIVING_QUARTERS_PERFORMANCE_COMPLETE_VERSION} current ${kind} overlay face ${opening.face} floor ${floor} doorway clear no invisible blocker residential/slum complete two-story access`,
         y,
       );
     }
 
     if (floor > 1) {
-      // BUILDING_PERF_FIX_V1: half the partition density. NPCs can't
+      // BUILDING_PERF_FIX: half the partition density. NPCs can't
       // see through the partitions and the visual rhythm is the same.
       const partitionCount = Math.max(1, Math.floor(b.w / 10));
       for (let p = 1; p <= partitionCount; p += 1) {
@@ -5434,13 +5340,13 @@ function createHarthmereLivingQuarterVoxelShellV56(
           for (let row = 0; row < 1; row += 1) {
             push(
               shell,
-              // BUILDING_PERF_FIX_V1: partitions use canonical wall asset.
+              // BUILDING_PERF_FIX: partitions use canonical wall asset.
               "arch_wall_stone",
               x,
               z,
               Math.PI / 2,
               panelScale * 0.78,
-              `${HARTHMERE_LIVING_QUARTERS_PERFORMANCE_COMPLETE_VERSION_V56} v56 upper room partition panel floor ${floor} partition ${p} row ${row + 1} solid stone/ore block-built apartment interior`,
+              `${HARTHMERE_LIVING_QUARTERS_PERFORMANCE_COMPLETE_VERSION} current upper room partition panel floor ${floor} partition ${p} row ${row + 1} solid stone/ore block-built apartment interior`,
               baseY + rowOffsets[row],
             );
           }
@@ -5460,13 +5366,13 @@ function createHarthmereLivingQuarterVoxelShellV56(
         const dz = startZ - step * 0.36;
         push(
           shell,
-          // BUILDING_PERF_FIX_V1: stair supports use the canonical wall asset.
+          // BUILDING_PERF_FIX: stair supports use the canonical wall asset.
           "arch_wall_stone",
           dx,
           dz,
           Math.PI / 2,
           0.62,
-          `${HARTHMERE_LIVING_QUARTERS_PERFORMANCE_COMPLETE_VERSION_V56} v56 stacked solid stone stair support floor ${floor} step ${step + 1} not floating residential/slum upper-story access`,
+          `${HARTHMERE_LIVING_QUARTERS_PERFORMANCE_COMPLETE_VERSION} current stacked solid stone stair support floor ${floor} step ${step + 1} not floating residential/slum upper-story access`,
           Math.max(baseY + 0.08, y - 0.18),
         );
         push(
@@ -5476,7 +5382,7 @@ function createHarthmereLivingQuarterVoxelShellV56(
           dz,
           0,
           0.48,
-          `${HARTHMERE_LIVING_QUARTERS_PERFORMANCE_COMPLETE_VERSION_V56} v56 walkable stair tread floor ${floor} step ${step + 1} doorway clear no invisible blocker residential/slum upper-story access`,
+          `${HARTHMERE_LIVING_QUARTERS_PERFORMANCE_COMPLETE_VERSION} current walkable stair tread floor ${floor} step ${step + 1} doorway clear no invisible blocker residential/slum upper-story access`,
           y + 0.05,
         );
       }
@@ -5487,7 +5393,7 @@ function createHarthmereLivingQuarterVoxelShellV56(
         startZ - (stepCount + 1) * 0.36,
         0,
         0.72,
-        `${HARTHMERE_LIVING_QUARTERS_PERFORMANCE_COMPLETE_VERSION_V56} v56 upper landing slab floor ${floor + 1} walkable doorway clear no invisible blocker complete two-story residential/slum access`,
+        `${HARTHMERE_LIVING_QUARTERS_PERFORMANCE_COMPLETE_VERSION} current upper landing slab floor ${floor + 1} walkable doorway clear no invisible blocker complete two-story residential/slum access`,
         baseY + storyHeight + 0.02,
       );
     }
@@ -5504,7 +5410,7 @@ function createHarthmereLivingQuarterVoxelShellV56(
           deckZ,
           0,
           0.64,
-          `${HARTHMERE_LIVING_QUARTERS_PERFORMANCE_COMPLETE_VERSION_V56} v56 balcony deck walkable doorway clear no invisible blocker upper floor ${floor} residential/slum access`,
+          `${HARTHMERE_LIVING_QUARTERS_PERFORMANCE_COMPLETE_VERSION} current balcony deck walkable doorway clear no invisible blocker upper floor ${floor} residential/slum access`,
           baseY + 0.04,
         );
         push(
@@ -5514,7 +5420,7 @@ function createHarthmereLivingQuarterVoxelShellV56(
           deckZ + 0.58,
           0,
           0.42,
-          `${HARTHMERE_LIVING_QUARTERS_PERFORMANCE_COMPLETE_VERSION_V56} v56 balcony railing upper floor ${floor} residential/slum safe edge`,
+          `${HARTHMERE_LIVING_QUARTERS_PERFORMANCE_COMPLETE_VERSION} current balcony railing upper floor ${floor} residential/slum safe edge`,
           baseY + 0.62,
         );
       }
@@ -5524,11 +5430,11 @@ function createHarthmereLivingQuarterVoxelShellV56(
   return placements;
 }
 
-function createHarthmereServiceMultiStoryCompletionV56(
-  building: HarthmereBlockBuiltServiceBuildingV43,
+function createHarthmereServiceMultiStoryCompletion(
+  building: HarthmereBlockBuiltServiceBuilding,
 ): RuntimePlacement[] {
-  // BUILDING_V2_VOXEL_MESHES: disabled. This function used to layer a
-  // second-story stair / balcony / deck stack on top of every V43
+  // BUILDING_VOXEL_MESHES: disabled. This function used to layer a
+  // second-story stair / balcony / deck stack on top of every current
   // multi-story service building (Guard Barracks, Smithy, Edrik Vane
   // Estate, Reeve Hall, Gatehouse, etc). The user's perf-log notes
   // explicitly called this out:
@@ -5537,8 +5443,8 @@ function createHarthmereServiceMultiStoryCompletionV56(
   //    stairs to get to the 2nd level"
   //   "the two story building should not prevent access the building
   //    underneath. They need to be on top of the buildings"
-  // The V43 createBuildingShell + V44 wall ring already build the
-  // multi-floor exterior walls, and createHarthmereServiceBlockStairRunV43
+  // The current createBuildingShell + current wall ring already build the
+  // multi-floor exterior walls, and createHarthmereServiceBlockStairRun
   // (now an obj_wall_stairs mesh) builds the visible stair, so this
   // function adds no value -- it only multiplied placements and pushed
   // visible "floating block" clutter.
@@ -5546,11 +5452,11 @@ function createHarthmereServiceMultiStoryCompletionV56(
   return [];
 }
 
-function createHarthmereResidentStoryFrameV38(
-  building: HarthmereResidentHousingBuildingV38,
+function createHarthmereResidentStoryFrame(
+  building: HarthmereResidentHousingBuilding,
 ): RuntimePlacement[] {
-  // BUILDING_V2_VOXEL_MESHES: instead of generating 200-700 individual
-  // 1 m block placements through V49/V56, emit one whole-building voxel
+  // BUILDING_VOXEL_MESHES: instead of generating 200-700 individual
+  // 1 m block placements through current/current, emit one whole-building voxel
   // mesh per building. obj_house_{1,2,3} (medieval_voxel House_1/2/3)
   // are pre-baked voxel buildings the player can still hack through and
   // that the user pointed to as the right look for slums and apartments.
@@ -5594,7 +5500,7 @@ function createHarthmereResidentStoryFrameV38(
     building.z,
     building.rot,
     groundScale,
-    `${building.name} BUILDING_V2_VOXEL_MESHES whole voxel building mesh ground floor accessible doorway clear ${building.style === "slum" ? "mudden ward slum tenement" : "residential row house"}`,
+    `${building.name} BUILDING_VOXEL_MESHES whole voxel building mesh ground floor accessible doorway clear ${building.style === "slum" ? "mudden ward slum tenement" : "residential row house"}`,
     building.district,
   ));
 
@@ -5610,7 +5516,7 @@ function createHarthmereResidentStoryFrameV38(
       building.z,
       building.rot,
       groundScale * 0.94,
-      `${building.name} BUILDING_V2_VOXEL_MESHES whole voxel building mesh upper floor on top of ground floor entry not blocked ${building.style === "slum" ? "mudden ward slum upper tenement" : "residential upper floor"}`,
+      `${building.name} BUILDING_VOXEL_MESHES whole voxel building mesh upper floor on top of ground floor entry not blocked ${building.style === "slum" ? "mudden ward slum upper tenement" : "residential upper floor"}`,
       building.district,
       GROUND_Y + storyHeight,
     ));
@@ -5625,7 +5531,7 @@ function createHarthmereResidentStoryFrameV38(
       building.z,
       building.rot,
       groundScale * 0.88,
-      `${building.name} BUILDING_V2_VOXEL_MESHES whole voxel building mesh top tenement floor mudden ward slum stack`,
+      `${building.name} BUILDING_VOXEL_MESHES whole voxel building mesh top tenement floor mudden ward slum stack`,
       building.district,
       GROUND_Y + storyHeight * 2,
     ));
@@ -5648,7 +5554,7 @@ function createHarthmereResidentStoryFrameV38(
       stairWZ,
       building.rot,
       groundScale * 0.85,
-      `${building.name} BUILDING_V2_VOXEL_MESHES exterior voxel stair mesh upper-floor access doorway clear walkable not floating`,
+      `${building.name} BUILDING_VOXEL_MESHES exterior voxel stair mesh upper-floor access doorway clear walkable not floating`,
       building.district,
       GROUND_Y,
     ));
@@ -5657,18 +5563,18 @@ function createHarthmereResidentStoryFrameV38(
   return placements;
 }
 
-function createHarthmereResidentRoomDecorPlacementsV38(
-  building: HarthmereResidentHousingBuildingV38,
+function createHarthmereResidentRoomDecorPlacements(
+  building: HarthmereResidentHousingBuilding,
 ): RuntimePlacement[] {
   const placements: RuntimePlacement[] = [];
-  const storyHeight = harthmereResidentStoryHeightV40(building);
-  const theme = harthmereHousingV38Theme(building);
-  const decor = makeHarthmereResidentialRoomDecorV38(building.style);
+  const storyHeight = harthmereResidentStoryHeight(building);
+  const theme = harthmereHousingTheme(building);
+  const decor = makeHarthmereResidentialRoomDecor(building.style);
 
   for (let floor = 1; floor <= building.floors; floor += 1) {
     const floorY = GROUND_Y + (floor - 1) * storyHeight + 0.18;
     for (let roomIndex = 0; roomIndex < building.roomsPerFloor; roomIndex += 1) {
-      const center = makeHarthmereResidentRoomCenterV38(building, roomIndex);
+      const center = makeHarthmereResidentRoomCenter(building, roomIndex);
       for (const item of decor) {
         const [x, z] = localPoint(
           building.x,
@@ -5709,15 +5615,15 @@ function createHarthmereResidentRoomDecorPlacementsV38(
   return placements;
 }
 
-function createHarthmereResidentHousingV38Placements(): RuntimePlacement[] {
+function createHarthmereResidentHousingPlacements(): RuntimePlacement[] {
   const placements: RuntimePlacement[] = [];
   for (const building of [
-    ...HARTHMERE_RESIDENTIAL_HOUSE_BUILDINGS_V38,
-    ...HARTHMERE_SLUM_STACK_BUILDINGS_V38,
+    ...HARTHMERE_RESIDENTIAL_HOUSE_BUILDINGS,
+    ...HARTHMERE_SLUM_STACK_BUILDINGS,
   ]) {
     placements.push(
-      ...createHarthmereResidentStoryFrameV38(building),
-      ...createHarthmereResidentRoomDecorPlacementsV38(building),
+      ...createHarthmereResidentStoryFrame(building),
+      ...createHarthmereResidentRoomDecorPlacements(building),
     );
   }
   return placements;
@@ -5821,10 +5727,10 @@ function createHarthmereWildlifeHerdPlacements(): RuntimePlacement[] {
   return placements;
 }
 
-// HARTHMERE_JOBS_BOARD_GROVE_PLACEMENT_V141:
+// HARTHMERE_JOBS_BOARD_GROVE_PLACEMENT:
 // Deprecated legacy OBJ placement path for the Grove/Harthmere Jobs Boards.
 // The visible boards are now owned by
-// `harthmere_jobs_board_marker_v144.ts`, which draws a procedural, unlit
+// `harthmere_jobs_board_marker.ts`, which draws a procedural, unlit
 // voxel board directly in the renderer. Keeping the older OBJ hut/kiosk/lamp
 // placements active created two bad effects in the live snapshot: invisible
 // player collision near the board and blue-white pole props around the path.
@@ -5837,65 +5743,67 @@ function createHarthmereWildlifeHerdPlacements(): RuntimePlacement[] {
 // fountain cluster. The PLACEMENTS array uses authored-world coordinates, so
 // we don't need to shift through the coordinate transform.
 //
-// HARTHMERE_JOBS_BOARD_VISIBILITY_FIX_V142:
+// HARTHMERE_JOBS_BOARD_VISIBILITY_FIX:
 // Earlier patches placed every jobs-board prop at the authored GROUND_Y (53),
 // but the live installed snapshot terrain in The Grove sits ~17 blocks higher
-// (`SNAPSHOT_GROVE_LIVE_WORLD_GROUND_Y_V83 = 69`). That meant the entire
+// (`SNAPSHOT_GROVE_LIVE_WORLD_GROUND_Y = 69`). That meant the entire
 // Grove kiosk was buried under the snapshot terrain — the map pointer
 // reported "the job board is here" yet the player walked through the lawn
-// and saw nothing. Per `PERFORMANCE_AND_PLACEMENT.md` §1 (Pattern A) we must
+// and saw nothing. Per `docs/harthmere/PERFORMANCE_AND_PLACEMENT.md` section 1
+// (Pattern A) we must
 // pin runtime placements to the *measured* live terrain, not the authored
 // generator. Both boards now resolve their Y from the live ground constants
 // below.
-// HARTHMERE_JOBS_BOARD_HARTHMERE_TOWN_V141:
+// HARTHMERE_JOBS_BOARD_HARTHMERE_TOWN:
 // Second voxel kiosk for the Harthmere town jobs board. Sits east of the
 // Grove in the Harthmere market district (next to the Harthmere Market
 // Office landmark). Mirrors the Grove placement structure so both boards
 // read as the same recognizable piece of public infrastructure.
-// HARTHMERE_JOBS_BOARD_GROVE_RELOCATION_V143:
+// HARTHMERE_JOBS_BOARD_GROVE_RELOCATION:
 // Player reported standing at (501.99486179104775, 70, -132.00350672753194) and seeing no kiosk. The
 // authored (424, 69, -116) lawn was too far from the natural Grove walking
 // path. We snap the Grove board to the player's reported feet-Y (=70) and
 // XZ so the kiosk literally appears under the player's pin. The marker pin
 // elevates two blocks above feet so it reads from far away.
-const HARTHMERE_JOBS_BOARD_GROVE_LIVE_GROUND_Y_V142 = 70;
-// Per `PERFORMANCE_AND_PLACEMENT.md` "Market Board / Plaza fountain | 68" —
+const HARTHMERE_JOBS_BOARD_GROVE_LIVE_GROUND_Y = 70;
+// Per `docs/harthmere/PERFORMANCE_AND_PLACEMENT.md`
+// "Market Board / Plaza fountain | 68" -
 // the live ground Y measured for the Harthmere Town market district where
 // the second jobs board sits.
-const HARTHMERE_JOBS_BOARD_HARTHMERE_TOWN_LIVE_GROUND_Y_V142 = 65;
+const HARTHMERE_JOBS_BOARD_HARTHMERE_TOWN_LIVE_GROUND_Y = 65;
 
-function createHarthmereTownJobsBoardKioskPlacementV141(): RuntimePlacement[] {
+function createHarthmereTownJobsBoardKioskPlacement(): RuntimePlacement[] {
   return [];
 }
 
-// HARTHMERE_JOBS_BOARD_GROVE_RELOCATION_V143:
+// HARTHMERE_JOBS_BOARD_GROVE_RELOCATION:
 // Hard-coded to the player's reported position. The kiosk is now over-sized
 // so it reads from across the Grove — the previous "blend in with the lawn"
 // scale (1.95) was too easy to walk past. A flag cluster, a tall shop shell,
 // two banners, and four lamps frame the kiosk like a town hall posting.
-const HARTHMERE_JOBS_BOARD_GROVE_X_V143 = 501.99486179104775;
-const HARTHMERE_JOBS_BOARD_GROVE_Z_V143 = -132.00350672753194;
+const HARTHMERE_JOBS_BOARD_GROVE_X = 501.99486179104775;
+const HARTHMERE_JOBS_BOARD_GROVE_Z = -132.00350672753194;
 
-function createGroveJobsBoardKioskPlacementV141(): RuntimePlacement[] {
+function createGroveJobsBoardKioskPlacement(): RuntimePlacement[] {
   return [];
 }
 
-// HARTHMERE_JOBS_BOARD_VISIBILITY_FIX_V142:
+// HARTHMERE_JOBS_BOARD_VISIBILITY_FIX:
 // Expose the live-Y constants for the kiosk placements so tests in
-// `harthmere_jobs_board_kiosk_placements_v141.test.ts` can assert that the
+// `harthmere_jobs_board_kiosk_placements.test.ts` can assert that the
 // renderer sits both boards on the live snapshot terrain instead of the
 // authored generator height. Keeping these as exported constants also lets
 // future audit/diagnostic scripts cross-check the visible kiosks against the
-// `harthmere_market_posting_board` marker Y in `snapshot_grove_content_v75`.
-export const HARTHMERE_JOBS_BOARD_GROVE_LIVE_GROUND_Y_V142_EXPORT =
-  HARTHMERE_JOBS_BOARD_GROVE_LIVE_GROUND_Y_V142;
-export const HARTHMERE_JOBS_BOARD_HARTHMERE_TOWN_LIVE_GROUND_Y_V142_EXPORT =
-  HARTHMERE_JOBS_BOARD_HARTHMERE_TOWN_LIVE_GROUND_Y_V142;
+// `harthmere_market_posting_board` marker Y in `snapshot_grove_content`.
+export const HARTHMERE_JOBS_BOARD_GROVE_LIVE_GROUND_Y_EXPORT =
+  HARTHMERE_JOBS_BOARD_GROVE_LIVE_GROUND_Y;
+export const HARTHMERE_JOBS_BOARD_HARTHMERE_TOWN_LIVE_GROUND_Y_EXPORT =
+  HARTHMERE_JOBS_BOARD_HARTHMERE_TOWN_LIVE_GROUND_Y;
 
-export function getHarthmereJobsBoardKioskPlacementsForTestV141(): RuntimePlacement[] {
+export function getHarthmereJobsBoardKioskPlacementsForTest(): RuntimePlacement[] {
   return [
-    ...createGroveJobsBoardKioskPlacementV141(),
-    ...createHarthmereTownJobsBoardKioskPlacementV141(),
+    ...createGroveJobsBoardKioskPlacement(),
+    ...createHarthmereTownJobsBoardKioskPlacement(),
   ];
 }
 
@@ -5944,25 +5852,25 @@ function createHarthmereWideWildsPlacements(): RuntimePlacement[] {
     ...row("road", "Harthmere Wilds - Northeast Reed Track", "Reed track stone", 604, -260, 60, 8, -8, 0.68, 0.64),
     ...row("road", "Harthmere Wilds - Southwest Orchard Track", "Orchard track stone", 420, -100, 60, -8, 8, 0.68, 0.64),
     ...row("road", "Harthmere Wilds - Southeast Grave Track", "Grave track stone", 568, -100, 60, 8, 8, -0.68, 0.64),
-    // HARTHMERE_CONNECTED_MAP_ROAD_V66 Snapshot edge road. With the default +512 x offset,
+    // HARTHMERE_CONNECTED_MAP_ROAD Snapshot edge road. With the default +512 x offset,
     // these authored placements render from x=640 to x=904, connecting the implemented
     // snapshot edge into Harthmere's west road instead of hiding the town off-map.
-    ...row("road", "Harthmere Snapshot Edge Road", "HARTHMERE_CONNECTED_MAP_ROAD_V66 Snapshot edge road packed dirt and gravel", 128, -209, 35, 8, 0, Math.PI / 2, 0.82),
-    ...row("obj_lamp_ground_small", "Harthmere Snapshot Edge Road", "HARTHMERE_CONNECTED_MAP_ROAD_V66 safe road lantern", 152, -203.8, 8, 32, 0, 0, 0.36),
-    ...row("banner_red", "Harthmere Snapshot Edge Road", "HARTHMERE_CONNECTED_MAP_ROAD_V66 red black watch banner", 168, -214.2, 7, 36, 0, 0, 0.34),
+    ...row("road", "Harthmere Snapshot Edge Road", "HARTHMERE_CONNECTED_MAP_ROAD Snapshot edge road packed dirt and gravel", 128, -209, 35, 8, 0, Math.PI / 2, 0.82),
+    ...row("obj_lamp_ground_small", "Harthmere Snapshot Edge Road", "HARTHMERE_CONNECTED_MAP_ROAD safe road lantern", 152, -203.8, 8, 32, 0, 0, 0.36),
+    ...row("banner_red", "Harthmere Snapshot Edge Road", "HARTHMERE_CONNECTED_MAP_ROAD red black watch banner", 168, -214.2, 7, 36, 0, 0, 0.34),
   );
 
   placements.push(
-    P("obj_sign_post", 128, -205.2, Math.PI / 2, 0.42, "HARTHMERE_CONNECTED_MAP_ROAD_V66 Snapshot edge sign: Harthmere west road", "Harthmere Snapshot Edge Road"),
-    P("obj_sign_post", 280, -205.4, Math.PI / 2, 0.38, "HARTHMERE_CONNECTED_MAP_ROAD_V66 Road bends: town smoke and bells ahead", "Harthmere Snapshot Edge Road"),
-    P("obj_lamp_ground_large", 392, -205.8, 0, 0.44, "HARTHMERE_CONNECTED_MAP_ROAD_V66 West gate approach lamp visible from road", "Harthmere Snapshot Edge Road"),
-    P("candle_lit", 184, -214.8, 0, 0.28, "HARTHMERE_CONNECTED_MAP_ROAD_V66 traveler return-safely candle shrine", "Harthmere Snapshot Edge Road", GROUND_Y + 0.18),
-    P("rock_small", 184.6, -215.0, 0, 0.34, "HARTHMERE_CONNECTED_MAP_ROAD_V66 small roadside prayer stone", "Harthmere Snapshot Edge Road"),
-    P("forest_bush_1a", 240, -218.5, -0.2, 0.54, "HARTHMERE_CONNECTED_MAP_ROAD_V66 hedgerow transition from safe road to Wilds", "Harthmere Snapshot Edge Road"),
-    P("forest_grass_1c", 304, -218.0, 0.1, 0.42, "HARTHMERE_CONNECTED_MAP_ROAD_V66 wagon-rut grass shoulder", "Harthmere Snapshot Edge Road"),
-    A("townsperson_guard", 160, -211.5, Math.PI / 2, 0.96, "HARTHMERE_CONNECTED_MAP_ROAD_V66 Harthmere road patrol at snapshot edge", "Harthmere Snapshot Edge Road", { radius: 3.2, speed: 0.12, phase: 1.7 }),
-    A("townsperson_bandit", 254, -232.0, -Math.PI / 2, 0.98, "HARTHMERE_CONNECTED_MAP_ROAD_V66 bandit scout watching from hedgerow, off the safe lane", "Harthmere Snapshot Edge Road", { radius: 2.6, speed: 0.08, phase: 2.4 }),
-    P("coin_pile", 360, -209.2, 0, 0.16, "HARTHMERE_CONNECTED_MAP_ROAD_V66 bellbound bronze road nail set into west approach", "Harthmere Snapshot Edge Road", GROUND_Y + 0.06),
+    P("obj_sign_post", 128, -205.2, Math.PI / 2, 0.42, "HARTHMERE_CONNECTED_MAP_ROAD Snapshot edge sign: Harthmere west road", "Harthmere Snapshot Edge Road"),
+    P("obj_sign_post", 280, -205.4, Math.PI / 2, 0.38, "HARTHMERE_CONNECTED_MAP_ROAD Road bends: town smoke and bells ahead", "Harthmere Snapshot Edge Road"),
+    P("obj_lamp_ground_large", 392, -205.8, 0, 0.44, "HARTHMERE_CONNECTED_MAP_ROAD West gate approach lamp visible from road", "Harthmere Snapshot Edge Road"),
+    P("candle_lit", 184, -214.8, 0, 0.28, "HARTHMERE_CONNECTED_MAP_ROAD traveler return-safely candle shrine", "Harthmere Snapshot Edge Road", GROUND_Y + 0.18),
+    P("rock_small", 184.6, -215.0, 0, 0.34, "HARTHMERE_CONNECTED_MAP_ROAD small roadside prayer stone", "Harthmere Snapshot Edge Road"),
+    P("forest_bush_1a", 240, -218.5, -0.2, 0.54, "HARTHMERE_CONNECTED_MAP_ROAD hedgerow transition from safe road to Wilds", "Harthmere Snapshot Edge Road"),
+    P("forest_grass_1c", 304, -218.0, 0.1, 0.42, "HARTHMERE_CONNECTED_MAP_ROAD wagon-rut grass shoulder", "Harthmere Snapshot Edge Road"),
+    A("townsperson_guard", 160, -211.5, Math.PI / 2, 0.96, "HARTHMERE_CONNECTED_MAP_ROAD Harthmere road patrol at snapshot edge", "Harthmere Snapshot Edge Road", { radius: 3.2, speed: 0.12, phase: 1.7 }),
+    A("townsperson_bandit", 254, -232.0, -Math.PI / 2, 0.98, "HARTHMERE_CONNECTED_MAP_ROAD bandit scout watching from hedgerow, off the safe lane", "Harthmere Snapshot Edge Road", { radius: 2.6, speed: 0.08, phase: 2.4 }),
+    P("coin_pile", 360, -209.2, 0, 0.16, "HARTHMERE_CONNECTED_MAP_ROAD bellbound bronze road nail set into west approach", "Harthmere Snapshot Edge Road", GROUND_Y + 0.06),
   );
 
   const zones = [
@@ -6345,13 +6253,13 @@ function createHarthmereDenseForestPlacements(): RuntimePlacement[] {
   return placements;
 }
 
-const HARTHMERE_STREET_DECLUTTER_VERSION_V4 = "harthmere-street-declutter-runtime-cleanup-v4";
-const HARTHMERE_SINGLE_STORY_ROOF_CAP_VERSION_V4 = "harthmere-single-story-roof-cap-v4";
-const HARTHMERE_ROOF_STREET_BLOCK_CLEANUP_VERSION_V5 = "harthmere-roof-street-block-cleanup-v5";
-const HARTHMERE_PRODUCTION_DEBUG_CLUTTER_CLEANUP_VERSION_V1 =
-  "harthmere-production-debug-clutter-cleanup-v1";
+const HARTHMERE_STREET_DECLUTTER_VERSION = "harthmere-street-declutter-runtime-cleanup";
+const HARTHMERE_SINGLE_STORY_ROOF_CAP_VERSION = "harthmere-single-story-roof-cap";
+const HARTHMERE_ROOF_STREET_BLOCK_CLEANUP_VERSION = "harthmere-roof-street-block-cleanup";
+const HARTHMERE_PRODUCTION_DEBUG_CLUTTER_CLEANUP_VERSION =
+  "harthmere-production-debug-clutter-cleanup";
 
-type HarthmereRuntimePlacementCleanupReportV4 = {
+type HarthmereRuntimePlacementCleanupReport = {
   version: string;
   originalCount: number;
   keptCount: number;
@@ -6364,16 +6272,16 @@ type HarthmereRuntimePlacementCleanupReportV4 = {
   placements: RuntimePlacement[];
 };
 
-const HARTHMERE_STREET_CLUTTER_ASSET_RE_V4 = /^(crate_|crates_|barrel|barrel_|barrel_small|barrel_large|barrel_stack|farmcrate_|box_|bag_|bucket_|bench_|stall|stall_|cart|table_|table|chair|stool|rope_|lantern|obj_kiosk)$/i;
-const HARTHMERE_STRUCTURAL_STREET_INTRUSION_RE_V4 = /(block-built|solid stone\/ore|roof volume|ceiling slab|floor slab|interior stone\/ore stair block|roof dormer|chimney|story \d+)/i;
-const HARTHMERE_STREET_SEGMENTS_V4: ReadonlyArray<readonly [number, number, number, number, number]> = [
+const HARTHMERE_STREET_CLUTTER_ASSET_RE = /^(crate_|crates_|barrel|barrel_|barrel_small|barrel_large|barrel_stack|farmcrate_|box_|bag_|bucket_|bench_|stall|stall_|cart|table_|table|chair|stool|rope_|lantern|obj_kiosk)$/i;
+const HARTHMERE_STRUCTURAL_STREET_INTRUSION_RE = /(block-built|solid stone\/ore|roof volume|ceiling slab|floor slab|interior stone\/ore stair block|roof dormer|chimney|story \d+)/i;
+const HARTHMERE_STREET_SEGMENTS: ReadonlyArray<readonly [number, number, number, number, number]> = [
   [486, -286, 486, -248, 8],
   [430, -207, 542, -207, 8],
   [484, -190, 484, -152, 7],
   [536, -196, 604, -196, 7],
   [404, -154, 432, -154, 6],
 ];
-const HARTHMERE_NO_BUILD_BOXES_V4: ReadonlyArray<readonly [number, number, number, number]> = [
+const HARTHMERE_NO_BUILD_BOXES: ReadonlyArray<readonly [number, number, number, number]> = [
   [470, 502, -286, -258],
   [456, 514, -222, -196],
   [478, 492, -198, -152],
@@ -6383,7 +6291,7 @@ const HARTHMERE_NO_BUILD_BOXES_V4: ReadonlyArray<readonly [number, number, numbe
 
 
 
-type HarthmereRoofClearBoxV5 = {
+type HarthmereRoofClearBox = {
   name: string;
   x0: number;
   x1: number;
@@ -6392,7 +6300,7 @@ type HarthmereRoofClearBoxV5 = {
   upper?: boolean;
 };
 
-const HARTHMERE_CLEAR_STREET_RECTS_V5: ReadonlyArray<readonly [number, number, number, number]> = [
+const HARTHMERE_CLEAR_STREET_RECTS: ReadonlyArray<readonly [number, number, number, number]> = [
   // Narrow road lanes only. Building footprints are excluded below so this can
   // remove loose blocks without hollowing out walls next to the road.
   [478, 496, -292, -214],
@@ -6402,7 +6310,7 @@ const HARTHMERE_CLEAR_STREET_RECTS_V5: ReadonlyArray<readonly [number, number, n
   [478, 492, -198, -126],
 ];
 
-const HARTHMERE_ROOF_CLEAR_BOXES_V5: ReadonlyArray<HarthmereRoofClearBoxV5> = [
+const HARTHMERE_ROOF_CLEAR_BOXES: ReadonlyArray<HarthmereRoofClearBox> = [
   { name: "traveler_hearth_player_house", x0: 448, x1: 466, z0: -266, z1: -246, upper: true },
   { name: "harthmere_stables", x0: 464, x1: 478, z0: -274, z1: -256 },
   { name: "guard_yard_office", x0: 500, x1: 524, z0: -278, z1: -258 },
@@ -6424,74 +6332,74 @@ const HARTHMERE_ROOF_CLEAR_BOXES_V5: ReadonlyArray<HarthmereRoofClearBoxV5> = [
   { name: "harthmere_watermill", x0: 418, x1: 440, z0: -122, z1: -104 },
 ];
 
-function isInsideRectV5(x: number, z: number, x0: number, x1: number, z0: number, z1: number, pad = 0) {
+function isInsideRect(x: number, z: number, x0: number, x1: number, z0: number, z1: number, pad = 0) {
   return x >= x0 - pad && x <= x1 + pad && z >= z0 - pad && z <= z1 + pad;
 }
 
-function isInsideHarthmereClearStreetRectV5(x: number, z: number) {
-  return HARTHMERE_CLEAR_STREET_RECTS_V5.some(([x0, x1, z0, z1]) => isInsideRectV5(x, z, x0, x1, z0, z1));
+function isInsideHarthmereClearStreetRect(x: number, z: number) {
+  return HARTHMERE_CLEAR_STREET_RECTS.some(([x0, x1, z0, z1]) => isInsideRect(x, z, x0, x1, z0, z1));
 }
 
-function isInsideAnyHarthmereRoofBuildingFootprintV5(x: number, z: number, pad = 0) {
-  return HARTHMERE_ROOF_CLEAR_BOXES_V5.some((box) => isInsideRectV5(x, z, box.x0, box.x1, box.z0, box.z1, pad));
+function isInsideAnyHarthmereRoofBuildingFootprint(x: number, z: number, pad = 0) {
+  return HARTHMERE_ROOF_CLEAR_BOXES.some((box) => isInsideRect(x, z, box.x0, box.x1, box.z0, box.z1, pad));
 }
 
-function roofClearBoxForPlacementV5(x: number, z: number) {
-  return HARTHMERE_ROOF_CLEAR_BOXES_V5.find((box) => isInsideRectV5(x, z, box.x0, box.x1, box.z0, box.z1, 1));
+function roofClearBoxForPlacement(x: number, z: number) {
+  return HARTHMERE_ROOF_CLEAR_BOXES.find((box) => isInsideRect(x, z, box.x0, box.x1, box.z0, box.z1, 1));
 }
 
-function isInsideUpperRoofCoreV5(box: HarthmereRoofClearBoxV5, x: number, z: number) {
+function isInsideUpperRoofCore(box: HarthmereRoofClearBox, x: number, z: number) {
   if (!box.upper) return false;
-  return isInsideRectV5(x, z, box.x0 + 4, box.x1 - 4, box.z0 + 4, box.z1 - 4, 1);
+  return isInsideRect(x, z, box.x0 + 4, box.x1 - 4, box.z0 + 4, box.z1 - 4, 1);
 }
 
-function isHarthmereLooseStreetOrRoofBlockPlacementV5(placement: RuntimePlacement) {
+function isHarthmereLooseStreetOrRoofBlockPlacement(placement: RuntimePlacement) {
   if (placement.combatOffset !== undefined || isHarthmereLifeAsset(placement.asset)) {
     return false;
   }
-  const label = placementLabelV4(placement);
+  const label = placementLabel(placement);
   if (/front door|doorway|public entrance|shop entrance|gate passage|road exit|town exit|window overlay/i.test(label)) {
     return false;
   }
   return (
-    HARTHMERE_STREET_CLUTTER_ASSET_RE_V4.test(placement.asset) ||
+    HARTHMERE_STREET_CLUTTER_ASSET_RE.test(placement.asset) ||
     /arch_(wall|pillar|roof|stairs)|obj_wall|mine_(stone|iron|coal|gold|silver)|block-built|solid stone\/ore|roof volume|roof dormer|chimney|wall block|floor deck|ceiling slab|floor slab|stair block|foundation|loose block|floating block|street block|road block|cargo stack|supply crate|vendor stool|handcart/i.test(
       `${placement.asset} ${label}`,
     )
   );
 }
 
-function shouldRemoveStreetBlockPlacementV5(placement: RuntimePlacement) {
+function shouldRemoveStreetBlockPlacement(placement: RuntimePlacement) {
   const [x, y, z] = placement.at;
   if (y < GROUND_Y + 0.55 || y > GROUND_Y + 14) {
     return false;
   }
-  if (!isInsideHarthmereClearStreetRectV5(x, z) && !isNearHarthmereStreetCorridorV4(x, z)) {
+  if (!isInsideHarthmereClearStreetRect(x, z) && !isNearHarthmereStreetCorridor(x, z)) {
     return false;
   }
-  if (isInsideAnyHarthmereRoofBuildingFootprintV5(x, z, 0)) {
+  if (isInsideAnyHarthmereRoofBuildingFootprint(x, z, 0)) {
     return false;
   }
-  const label = placementLabelV4(placement);
+  const label = placementLabel(placement);
   if (/bridge fountain|old well|north gate tower|watchtower|town wall|parapet|solid flag pole/i.test(label)) {
     return false;
   }
-  return isHarthmereLooseStreetOrRoofBlockPlacementV5(placement);
+  return isHarthmereLooseStreetOrRoofBlockPlacement(placement);
 }
 
-function shouldRemoveRoofBlockPlacementV5(placement: RuntimePlacement) {
+function shouldRemoveRoofBlockPlacement(placement: RuntimePlacement) {
   const [x, y, z] = placement.at;
-  const box = roofClearBoxForPlacementV5(x, z);
+  const box = roofClearBoxForPlacement(x, z);
   if (!box) {
     return false;
   }
-  if (!isHarthmereLooseStreetOrRoofBlockPlacementV5(placement)) {
+  if (!isHarthmereLooseStreetOrRoofBlockPlacement(placement)) {
     return false;
   }
 
   const relY = y - GROUND_Y;
   if (box.upper) {
-    if (isInsideUpperRoofCoreV5(box, x, z)) {
+    if (isInsideUpperRoofCore(box, x, z)) {
       return relY > 9.12 && relY <= 24;
     }
     return relY > 5.12 && relY <= 8.95;
@@ -6499,27 +6407,27 @@ function shouldRemoveRoofBlockPlacementV5(placement: RuntimePlacement) {
   return relY > 5.12 && relY <= 24;
 }
 
-function placementLabelV4(placement: RuntimePlacement) {
+function placementLabel(placement: RuntimePlacement) {
   return `${placement.asset} ${placement.name ?? ""} ${placement.district ?? ""}`.toLowerCase();
 }
 
-function isHarthmereGrovePrototypeDungeonClutterV1(placement: RuntimePlacement) {
+function isHarthmereGrovePrototypeDungeonClutter(placement: RuntimePlacement) {
   if (isHarthmereLifeAsset(placement.asset)) {
     return false;
   }
   const [x, , z] = placement.at;
-  if (!isInsideRectV5(x, z, 490, 512, -141.5, -135.0, 1.5)) {
+  if (!isInsideRect(x, z, 490, 512, -141.5, -135.0, 1.5)) {
     return false;
   }
-  const label = placementLabelV4(placement);
+  const label = placementLabel(placement);
   return /bellbinder antechamber|bell-notation|undercroft stair|chapel undercroft test entrance|q5 .*undercroft|q6 .*hidden door|hidden-door|phase-safe undercroft|mural inscription|tiny bell seal/.test(label);
 }
 
-function shouldRemoveProductionDebugClutterPlacementV1(placement: RuntimePlacement) {
-  const label = placementLabelV4(placement);
+function shouldRemoveProductionDebugClutterPlacement(placement: RuntimePlacement) {
+  const label = placementLabel(placement);
   if (
-    isHarthmereCombatDiagnosticRuntimePlacementV1(placement) &&
-    !shouldRenderHarthmereCombatDiagnosticsV1()
+    isHarthmereCombatDiagnosticRuntimePlacement(placement) &&
+    !shouldRenderHarthmereCombatDiagnostics()
   ) {
     return true;
   }
@@ -6535,10 +6443,10 @@ function shouldRemoveProductionDebugClutterPlacementV1(placement: RuntimePlaceme
   if (/test entrance/.test(label) && /chapel undercroft|old well drain|dungeon/.test(label)) {
     return true;
   }
-  return isHarthmereGrovePrototypeDungeonClutterV1(placement);
+  return isHarthmereGrovePrototypeDungeonClutter(placement);
 }
 
-function distanceToSegmentV4(
+function distanceToSegment(
   x: number,
   z: number,
   ax: number,
@@ -6557,29 +6465,29 @@ function distanceToSegmentV4(
   return Math.hypot(x - px, z - pz);
 }
 
-function isNearHarthmereStreetCorridorV4(x: number, z: number) {
-  return HARTHMERE_STREET_SEGMENTS_V4.some(([ax, az, bx, bz, width]) =>
-    distanceToSegmentV4(x, z, ax, az, bx, bz) <= width,
+function isNearHarthmereStreetCorridor(x: number, z: number) {
+  return HARTHMERE_STREET_SEGMENTS.some(([ax, az, bx, bz, width]) =>
+    distanceToSegment(x, z, ax, az, bx, bz) <= width,
   );
 }
 
-function isInsideHarthmereNoBuildBoxV4(x: number, z: number) {
-  return HARTHMERE_NO_BUILD_BOXES_V4.some(([x0, x1, z0, z1]) => x >= x0 && x <= x1 && z >= z0 && z <= z1);
+function isInsideHarthmereNoBuildBox(x: number, z: number) {
+  return HARTHMERE_NO_BUILD_BOXES.some(([x0, x1, z0, z1]) => x >= x0 && x <= x1 && z >= z0 && z <= z1);
 }
 
-function shouldRemoveStreetClutterPlacementV4(placement: RuntimePlacement) {
+function shouldRemoveStreetClutterPlacement(placement: RuntimePlacement) {
   if (placement.combatOffset !== undefined) {
     return false;
   }
   const [x, y, z] = placement.at;
-  const label = placementLabelV4(placement);
+  const label = placementLabel(placement);
   if (y > GROUND_Y + 1.2) {
     return false;
   }
-  if (!isNearHarthmereStreetCorridorV4(x, z)) {
+  if (!isNearHarthmereStreetCorridor(x, z)) {
     return false;
   }
-  if (!HARTHMERE_STREET_CLUTTER_ASSET_RE_V4.test(placement.asset) && !/street table|handcart|cargo stack|supply crate|vendor stool/i.test(label)) {
+  if (!HARTHMERE_STREET_CLUTTER_ASSET_RE.test(placement.asset) && !/street table|handcart|cargo stack|supply crate|vendor stool/i.test(label)) {
     return false;
   }
   if (/interior|cellar|upstairs|archive|altar|against wall|behind tavern|warehouse floor|chapel pew|bedroom/i.test(label)) {
@@ -6588,19 +6496,19 @@ function shouldRemoveStreetClutterPlacementV4(placement: RuntimePlacement) {
   return true;
 }
 
-function shouldRemoveRoadIntrusionPlacementV4(placement: RuntimePlacement) {
+function shouldRemoveRoadIntrusionPlacement(placement: RuntimePlacement) {
   if (placement.combatOffset !== undefined) {
     return false;
   }
   const [x, y, z] = placement.at;
-  const label = placementLabelV4(placement);
-  if (!isInsideHarthmereNoBuildBoxV4(x, z)) {
+  const label = placementLabel(placement);
+  if (!isInsideHarthmereNoBuildBox(x, z)) {
     return false;
   }
   if (y > GROUND_Y + 5.8) {
     return false;
   }
-  if (!HARTHMERE_STRUCTURAL_STREET_INTRUSION_RE_V4.test(label)) {
+  if (!HARTHMERE_STRUCTURAL_STREET_INTRUSION_RE.test(label)) {
     return false;
   }
   if (/north gate west tower|north gate east tower|north wall|north gate ironbound door|watchtower|bridge|bridge fountain|fountain|lamp|sign|banner/i.test(label)) {
@@ -6609,7 +6517,7 @@ function shouldRemoveRoadIntrusionPlacementV4(placement: RuntimePlacement) {
   return true;
 }
 
-function filterSingleStoryRoofExtrasV4(
+function filterSingleStoryRoofExtras(
   placements: RuntimePlacement[],
   roofCapY: number,
   buildingName: string,
@@ -6617,7 +6525,7 @@ function filterSingleStoryRoofExtrasV4(
   const cap = GROUND_Y + roofCapY + 0.12;
   const buildingToken = buildingName.toLowerCase();
   return placements.filter((placement) => {
-    const label = placementLabelV4(placement);
+    const label = placementLabel(placement);
     if (!label.includes(buildingToken)) {
       return true;
     }
@@ -6628,9 +6536,9 @@ function filterSingleStoryRoofExtrasV4(
   });
 }
 
-function applyHarthmereRuntimePlacementCleanupV4(
+function applyHarthmereRuntimePlacementCleanup(
   placements: RuntimePlacement[],
-): HarthmereRuntimePlacementCleanupReportV4 {
+): HarthmereRuntimePlacementCleanupReport {
   const kept: RuntimePlacement[] = [];
   const samples: string[] = [];
   let removedProductionDebugClutter = 0;
@@ -6640,35 +6548,35 @@ function applyHarthmereRuntimePlacementCleanupV4(
   let removedRoofBlocks = 0;
   for (const placement of placements) {
     const label = placement.name ?? placement.asset;
-    if (shouldRemoveProductionDebugClutterPlacementV1(placement)) {
+    if (shouldRemoveProductionDebugClutterPlacement(placement)) {
       removedProductionDebugClutter += 1;
       if (samples.length < 24) {
         samples.push(`production-debug:${label}`);
       }
       continue;
     }
-    if (shouldRemoveRoofBlockPlacementV5(placement)) {
+    if (shouldRemoveRoofBlockPlacement(placement)) {
       removedRoofBlocks += 1;
       if (samples.length < 24) {
         samples.push(`roof-block:${label}`);
       }
       continue;
     }
-    if (shouldRemoveStreetBlockPlacementV5(placement)) {
+    if (shouldRemoveStreetBlockPlacement(placement)) {
       removedStreetBlocks += 1;
       if (samples.length < 24) {
         samples.push(`street-block:${label}`);
       }
       continue;
     }
-    if (shouldRemoveRoadIntrusionPlacementV4(placement)) {
+    if (shouldRemoveRoadIntrusionPlacement(placement)) {
       removedRoadIntrusions += 1;
       if (samples.length < 24) {
         samples.push(`road-intrusion:${label}`);
       }
       continue;
     }
-    if (shouldRemoveStreetClutterPlacementV4(placement)) {
+    if (shouldRemoveStreetClutterPlacement(placement)) {
       removedStreetClutter += 1;
       if (samples.length < 24) {
         samples.push(`street-clutter:${label}`);
@@ -6678,7 +6586,7 @@ function applyHarthmereRuntimePlacementCleanupV4(
     kept.push(placement);
   }
   return {
-    version: `${HARTHMERE_ROOF_STREET_BLOCK_CLEANUP_VERSION_V5}+${HARTHMERE_PRODUCTION_DEBUG_CLUTTER_CLEANUP_VERSION_V1}`,
+    version: `${HARTHMERE_ROOF_STREET_BLOCK_CLEANUP_VERSION}+${HARTHMERE_PRODUCTION_DEBUG_CLUTTER_CLEANUP_VERSION}`,
     originalCount: placements.length,
     keptCount: kept.length,
     removedProductionDebugClutter,
@@ -6692,16 +6600,16 @@ function applyHarthmereRuntimePlacementCleanupV4(
 }
 
 
-const HARTHMERE_WALKABLE_BRIDGE_VERSION_V54 = "harthmere-walkable-bridge-with-parapets-v54";
-const HARTHMERE_WILDS_LANDMARKS_VERSION_V54 = "harthmere-wilds-landmark-completion-v54";
+const HARTHMERE_WALKABLE_BRIDGE_VERSION = "harthmere-walkable-bridge-with-parapets";
+const HARTHMERE_WILDS_LANDMARKS_VERSION = "harthmere-wilds-landmark-completion";
 
-function createHarthmereOldBridgeWalkableParapetsV54(): RuntimePlacement[] {
+function createHarthmereOldBridgeWalkableParapets(): RuntimePlacement[] {
   const placements: RuntimePlacement[] = [];
   placements.push(
-    P("obj_bridge_medium_body", 486, -206, Math.PI / 2, 0.86, "HARTHMERE_WALKABLE_BRIDGE_V54 Old Bridge walkable bridge deck visual under 12m clear lane no blocker", "Old Bridge"),
-    ...row("road", "Old Bridge", "HARTHMERE_WALKABLE_BRIDGE_V54 old bridge pedestrian lane stone deck 12m clear bridge crack inspection lane", 462, -206, 8, 7, 0, Math.PI / 2, 0.76),
-    ...row("obj_wall_simple", "Old Bridge", "HARTHMERE_BRIDGE_PARAPET_V54 north bridge parapet rail outside walk lane", 462, -199.5, 8, 7, 0, 0, 0.42),
-    ...row("obj_wall_simple", "Old Bridge", "HARTHMERE_BRIDGE_PARAPET_V54 south bridge parapet rail outside walk lane", 462, -212.5, 8, 7, 0, 0, 0.42),
+    P("obj_bridge_medium_body", 486, -206, Math.PI / 2, 0.86, "HARTHMERE_WALKABLE_BRIDGE Old Bridge walkable bridge deck visual under 12m clear lane no blocker", "Old Bridge"),
+    ...row("road", "Old Bridge", "HARTHMERE_WALKABLE_BRIDGE old bridge pedestrian lane stone deck 12m clear bridge crack inspection lane", 462, -206, 8, 7, 0, Math.PI / 2, 0.76),
+    ...row("obj_wall_simple", "Old Bridge", "HARTHMERE_BRIDGE_PARAPET north bridge parapet rail outside walk lane", 462, -199.5, 8, 7, 0, 0, 0.42),
+    ...row("obj_wall_simple", "Old Bridge", "HARTHMERE_BRIDGE_PARAPET south bridge parapet rail outside walk lane", 462, -212.5, 8, 7, 0, 0, 0.42),
     P("obj_lamp_ground_small", 462, -202.2, 0, 0.44, "Old Bridge lantern outside pedestrian lane west", "Old Bridge"),
     P("obj_lamp_ground_small", 510, -209.8, Math.PI, 0.44, "Old Bridge lantern outside pedestrian lane east", "Old Bridge"),
     P("coin_pile", 486, -206, 0, 0.2, "Bellbound Q1 bronze disc set into Old Bridge cobbles at crack center", "Old Bridge", GROUND_Y + 0.05),
@@ -6712,12 +6620,12 @@ function createHarthmereOldBridgeWalkableParapetsV54(): RuntimePlacement[] {
   return placements;
 }
 
-function createHarthmereWildsBibleLandmarkPlacementsV54(): RuntimePlacement[] {
+function createHarthmereWildsBibleLandmarkPlacements(): RuntimePlacement[] {
   const placements: RuntimePlacement[] = [];
   placements.push(
     // Thornbridge Crossing: explicit walkable small bridge with thorny edges and ribbon clue.
-    P("obj_bridge_low_body", 338, -498, Math.PI / 2, 0.72, "HARTHMERE_WILDS_THORNBRIDGE_V54 Thornbridge Crossing walkable bridge deck over creek", "Harthmere Wilds - Thornbridge Crossing"),
-    ...row("road", "Harthmere Wilds - Thornbridge Crossing", "HARTHMERE_WILDS_THORNBRIDGE_V54 Thornbridge Crossing walkable bridge path", 324, -498, 5, 7, 0, Math.PI / 2, 0.58),
+    P("obj_bridge_low_body", 338, -498, Math.PI / 2, 0.72, "HARTHMERE_WILDS_THORNBRIDGE Thornbridge Crossing walkable bridge deck over creek", "Harthmere Wilds - Thornbridge Crossing"),
+    ...row("road", "Harthmere Wilds - Thornbridge Crossing", "HARTHMERE_WILDS_THORNBRIDGE Thornbridge Crossing walkable bridge path", 324, -498, 5, 7, 0, Math.PI / 2, 0.58),
     P("hedge_large", 336, -491, 0.15, 0.56, "Thornbridge Crossing thorn bushes north edge", "Harthmere Wilds - Thornbridge Crossing"),
     P("hedge_large", 340, -505, -0.12, 0.56, "Thornbridge Crossing thorn bushes south edge", "Harthmere Wilds - Thornbridge Crossing"),
     P("banner_white", 336, -492.2, 0, 0.34, "Traveler luck ribbon tied at Thornbridge Crossing", "Harthmere Wilds - Thornbridge Crossing", GROUND_Y + 0.7),
@@ -6746,15 +6654,15 @@ function createHarthmereWildsBibleLandmarkPlacementsV54(): RuntimePlacement[] {
   return placements;
 }
 
-// HARTHMERE_NPC_HOME_FURNITURE_V65_START
-// HARTHMERE_NPC_HOME_FURNITURE_VERSION_V65
+// HARTHMERE_NPC_HOME_FURNITURE_START
+// HARTHMERE_NPC_HOME_FURNITURE_VERSION
 // Every named NPC receives a physical home/room assignment and small furniture
 // kit. The room shells/partitions are server-side terrain; these are visual
 // props placed inside those rooms so residential/slum buildings no longer feel
 // empty.
-const HARTHMERE_NPC_HOME_FURNITURE_VERSION_V65 =
-  "harthmere-npc-home-furniture-v65";
-const HARTHMERE_NPC_HOME_ROOMS_V65 = [
+const HARTHMERE_NPC_HOME_FURNITURE_VERSION =
+  "harthmere-npc-home-furniture";
+const HARTHMERE_NPC_HOME_ROOMS = [
   {
     "npcId": "sergeant_bram_holt",
     "npcName": "Sergeant Bramwell Holt",
@@ -6762,7 +6670,7 @@ const HARTHMERE_NPC_HOME_ROOMS_V65 = [
     "routeHomeLocation": "Guard barracks, room above the Guard Yard",
     "buildingId": "guard_barracks_bunkhouse",
     "structureName": "Guard Barracks",
-    "roomId": "guard_barracks_bunkhouse_sergeant_bram_holt_room_v65",
+    "roomId": "guard_barracks_bunkhouse_sergeant_bram_holt_room",
     "roomLabel": "Sergeant Bramwell Holt room in Guard Barracks",
     "district": "Guard District",
     "floor": 1,
@@ -6786,7 +6694,7 @@ const HARTHMERE_NPC_HOME_ROOMS_V65 = [
     "routeHomeLocation": "Small house on the Mudden Ward edge",
     "buildingId": "mudden_ward_shelter",
     "structureName": "Mudden Ward Shelter",
-    "roomId": "mudden_ward_shelter_walt_ormsby_room_v65",
+    "roomId": "mudden_ward_shelter_walt_ormsby_room",
     "roomLabel": "Drill Instructor Walt Ormsby room in Mudden Ward Shelter",
     "district": "Mudden Ward",
     "floor": 1,
@@ -6810,7 +6718,7 @@ const HARTHMERE_NPC_HOME_ROOMS_V65 = [
     "routeHomeLocation": "Two-story house behind the market",
     "buildingId": "mara_thistle_two_story_house",
     "structureName": "Mara Thistle Two-Story House",
-    "roomId": "mara_thistle_two_story_house_mara_thistle_room_v65",
+    "roomId": "mara_thistle_two_story_house_mara_thistle_room",
     "roomLabel": "Mara Thistle room in Mara Thistle Two-Story House",
     "district": "Residential District",
     "floor": 1,
@@ -6834,7 +6742,7 @@ const HARTHMERE_NPC_HOME_ROOMS_V65 = [
     "routeHomeLocation": "Large Noble Rise house and hidden holdings",
     "buildingId": "edrik_vane_noble_rise_estate",
     "structureName": "Edrik Vane Estate",
-    "roomId": "edrik_vane_noble_rise_estate_edrik_vane_room_v65",
+    "roomId": "edrik_vane_noble_rise_estate_edrik_vane_room",
     "roomLabel": "Edrik Vane room in Edrik Vane Estate",
     "district": "Noble Rise",
     "floor": 1,
@@ -6858,7 +6766,7 @@ const HARTHMERE_NPC_HOME_ROOMS_V65 = [
     "routeHomeLocation": "Reeve Hall private wing",
     "buildingId": "reeve_hall",
     "structureName": "Reeve Hall",
-    "roomId": "reeve_hall_reeve_caldus_merrow_room_v65",
+    "roomId": "reeve_hall_reeve_caldus_merrow_room",
     "roomLabel": "Reeve Caldus Merrow room in Reeve Hall",
     "district": "Noble Rise",
     "floor": 1,
@@ -6882,7 +6790,7 @@ const HARTHMERE_NPC_HOME_ROOMS_V65 = [
     "routeHomeLocation": "Apartment above the Black Anvil Smithy",
     "buildingId": "black_anvil_smithy",
     "structureName": "Black Anvil Smithy",
-    "roomId": "black_anvil_smithy_master_osric_vale_room_v65",
+    "roomId": "black_anvil_smithy_master_osric_vale_room",
     "roomLabel": "Master Osric Vale room in Black Anvil Smithy",
     "district": "Craftsman Row",
     "floor": 1,
@@ -6906,7 +6814,7 @@ const HARTHMERE_NPC_HOME_ROOMS_V65 = [
     "routeHomeLocation": "Small room behind the smithy",
     "buildingId": "black_anvil_smithy",
     "structureName": "Black Anvil Smithy",
-    "roomId": "black_anvil_smithy_apprentice_luth_room_v65",
+    "roomId": "black_anvil_smithy_apprentice_luth_room",
     "roomLabel": "Apprentice Luth room in Black Anvil Smithy",
     "district": "Craftsman Row",
     "floor": 1,
@@ -6930,7 +6838,7 @@ const HARTHMERE_NPC_HOME_ROOMS_V65 = [
     "routeHomeLocation": "Workshop-and-home in Craftsman Row",
     "buildingId": "crafters_workshop",
     "structureName": "Crafters Workshop",
-    "roomId": "crafters_workshop_master_garrik_fen_room_v65",
+    "roomId": "crafters_workshop_master_garrik_fen_room",
     "roomLabel": "Master Garrik Fen room in Crafters Workshop",
     "district": "Craftsman Row",
     "floor": 1,
@@ -6954,7 +6862,7 @@ const HARTHMERE_NPC_HOME_ROOMS_V65 = [
     "routeHomeLocation": "Tailor’s loft over her shop",
     "buildingId": "tailor_loft_house",
     "structureName": "Tailor Loft House",
-    "roomId": "tailor_loft_house_helna_voss_room_v65",
+    "roomId": "tailor_loft_house_helna_voss_room",
     "roomLabel": "Mistress Helna Voss room in Tailor Loft House",
     "district": "Market District",
     "floor": 1,
@@ -6978,7 +6886,7 @@ const HARTHMERE_NPC_HOME_ROOMS_V65 = [
     "routeHomeLocation": "Leatherworking room beside the tannery court",
     "buildingId": "tannery_court_house",
     "structureName": "Tannery Court House",
-    "roomId": "tannery_court_house_selka_doryn_room_v65",
+    "roomId": "tannery_court_house_selka_doryn_room",
     "roomLabel": "Mistress Selka Doryn room in Tannery Court House",
     "district": "Farm Outskirts",
     "floor": 1,
@@ -7002,7 +6910,7 @@ const HARTHMERE_NPC_HOME_ROOMS_V65 = [
     "routeHomeLocation": "Room behind the Green Mortar Apothecary",
     "buildingId": "green_mortar_apothecary",
     "structureName": "Green Mortar Apothecary",
-    "roomId": "green_mortar_apothecary_ysabet_fenlow_room_v65",
+    "roomId": "green_mortar_apothecary_ysabet_fenlow_room",
     "roomLabel": "Mistress Ysabet Fenlow room in Green Mortar Apothecary",
     "district": "Temple Market Edge",
     "floor": 1,
@@ -7026,7 +6934,7 @@ const HARTHMERE_NPC_HOME_ROOMS_V65 = [
     "routeHomeLocation": "Stable yard loft",
     "buildingId": "harthmere_stables",
     "structureName": "Harthmere Stables",
-    "roomId": "harthmere_stables_old_jory_brann_room_v65",
+    "roomId": "harthmere_stables_old_jory_brann_room",
     "roomLabel": "Old Jory Brann room in Harthmere Stables",
     "district": "North Gate",
     "floor": 1,
@@ -7050,7 +6958,7 @@ const HARTHMERE_NPC_HOME_ROOMS_V65 = [
     "routeHomeLocation": "Bakery room above Dawn Loaf",
     "buildingId": "dawn_loaf_bakery",
     "structureName": "Dawn Loaf Bakery",
-    "roomId": "dawn_loaf_bakery_dawn_loaf_room_v65",
+    "roomId": "dawn_loaf_bakery_dawn_loaf_room",
     "roomLabel": "Mistress Dawn Loaf room in Dawn Loaf Bakery",
     "district": "Market District",
     "floor": 1,
@@ -7074,7 +6982,7 @@ const HARTHMERE_NPC_HOME_ROOMS_V65 = [
     "routeHomeLocation": "Dockside room above ledger office",
     "buildingId": "dockside_family_house",
     "structureName": "Dockside Family House",
-    "roomId": "dockside_family_house_tovin_reed_room_v65",
+    "roomId": "dockside_family_house_tovin_reed_room",
     "roomLabel": "Master Tovin Reed room in Dockside Family House",
     "district": "River Docks",
     "floor": 1,
@@ -7098,7 +7006,7 @@ const HARTHMERE_NPC_HOME_ROOMS_V65 = [
     "routeHomeLocation": "Tovin Reed’s family room",
     "buildingId": "dockside_family_house",
     "structureName": "Dockside Family House",
-    "roomId": "dockside_family_house_lina_reed_room_v65",
+    "roomId": "dockside_family_house_lina_reed_room",
     "roomLabel": "Mistress Lina Reed room in Dockside Family House",
     "district": "River Docks",
     "floor": 1,
@@ -7122,7 +7030,7 @@ const HARTHMERE_NPC_HOME_ROOMS_V65 = [
     "routeHomeLocation": "Tovin Reed’s family room",
     "buildingId": "dockside_family_house",
     "structureName": "Dockside Family House",
-    "roomId": "dockside_family_house_sora_reed_room_v65",
+    "roomId": "dockside_family_house_sora_reed_room",
     "roomLabel": "Sora Reed room in Dockside Family House",
     "district": "River Docks",
     "floor": 2,
@@ -7146,7 +7054,7 @@ const HARTHMERE_NPC_HOME_ROOMS_V65 = [
     "routeHomeLocation": "Chapel rectory cell",
     "buildingId": "saint_verena_chapel",
     "structureName": "Saint Verena Chapel",
-    "roomId": "saint_verena_chapel_father_aldren_mell_room_v65",
+    "roomId": "saint_verena_chapel_father_aldren_mell_room",
     "roomLabel": "Father Aldren Mell room in Saint Verena Chapel",
     "district": "Temple Green",
     "floor": 1,
@@ -7170,7 +7078,7 @@ const HARTHMERE_NPC_HOME_ROOMS_V65 = [
     "routeHomeLocation": "Chapel infirmary room",
     "buildingId": "saint_verena_chapel",
     "structureName": "Saint Verena Chapel",
-    "roomId": "saint_verena_chapel_sister_maelle_frenn_room_v65",
+    "roomId": "saint_verena_chapel_sister_maelle_frenn_room",
     "roomLabel": "Sister Maelle Frenn room in Saint Verena Chapel",
     "district": "Temple Green",
     "floor": 1,
@@ -7194,7 +7102,7 @@ const HARTHMERE_NPC_HOME_ROOMS_V65 = [
     "routeHomeLocation": "Cottage on chapel grounds",
     "buildingId": "brother_vance_chapel_cottage",
     "structureName": "Brother Vance Chapel Cottage",
-    "roomId": "brother_vance_chapel_cottage_brother_vance_holt_room_v65",
+    "roomId": "brother_vance_chapel_cottage_brother_vance_holt_room",
     "roomLabel": "Brother Vance Holt room in Brother Vance Chapel Cottage",
     "district": "Temple Green",
     "floor": 1,
@@ -7218,7 +7126,7 @@ const HARTHMERE_NPC_HOME_ROOMS_V65 = [
     "routeHomeLocation": "Chapel records alcove",
     "buildingId": "saint_verena_chapel",
     "structureName": "Saint Verena Chapel",
-    "roomId": "saint_verena_chapel_brother_halpen_wren_room_v65",
+    "roomId": "saint_verena_chapel_brother_halpen_wren_room",
     "roomLabel": "Brother Halpen Wren room in Saint Verena Chapel",
     "district": "Temple Green",
     "floor": 1,
@@ -7242,7 +7150,7 @@ const HARTHMERE_NPC_HOME_ROOMS_V65 = [
     "routeHomeLocation": "Deceased; memory anchored below the chapel altar",
     "buildingId": "saint_verena_chapel",
     "structureName": "Saint Verena Chapel",
-    "roomId": "saint_verena_chapel_mother_halene_brae_room_v65",
+    "roomId": "saint_verena_chapel_mother_halene_brae_room",
     "roomLabel": "Mother Halene Brae room in Saint Verena Chapel",
     "district": "Temple Green",
     "floor": 1,
@@ -7266,7 +7174,7 @@ const HARTHMERE_NPC_HOME_ROOMS_V65 = [
     "routeHomeLocation": "Room above the Copper Kettle Inn",
     "buildingId": "copper_kettle_inn",
     "structureName": "Copper Kettle Inn",
-    "roomId": "copper_kettle_inn_elowen_pike_room_v65",
+    "roomId": "copper_kettle_inn_elowen_pike_room",
     "roomLabel": "Mistress Elowen Pike room in Copper Kettle Inn",
     "district": "Entertainment District",
     "floor": 1,
@@ -7290,7 +7198,7 @@ const HARTHMERE_NPC_HOME_ROOMS_V65 = [
     "routeHomeLocation": "Small room under the inn stairs",
     "buildingId": "copper_kettle_inn",
     "structureName": "Copper Kettle Inn",
-    "roomId": "copper_kettle_inn_tisa_pike_room_v65",
+    "roomId": "copper_kettle_inn_tisa_pike_room",
     "roomLabel": "Tisa Pike room in Copper Kettle Inn",
     "district": "Entertainment District",
     "floor": 1,
@@ -7314,7 +7222,7 @@ const HARTHMERE_NPC_HOME_ROOMS_V65 = [
     "routeHomeLocation": "Rented upper room at the inn",
     "buildingId": "copper_kettle_inn",
     "structureName": "Copper Kettle Inn",
-    "roomId": "copper_kettle_inn_cellan_bow_room_v65",
+    "roomId": "copper_kettle_inn_cellan_bow_room",
     "roomLabel": "Maestro Cellan Bow room in Copper Kettle Inn",
     "district": "Entertainment District",
     "floor": 1,
@@ -7338,7 +7246,7 @@ const HARTHMERE_NPC_HOME_ROOMS_V65 = [
     "routeHomeLocation": "Tangle Stairs Stack room",
     "buildingId": "tangle_stairs_stack",
     "structureName": "Tangle Stairs Stack",
-    "roomId": "tangle_stairs_stack_nessa_crowe_room_v65",
+    "roomId": "tangle_stairs_stack_nessa_crowe_room",
     "roomLabel": "Nessa Crowe room in Tangle Stairs Stack",
     "district": "Mudden Ward",
     "floor": 1,
@@ -7362,7 +7270,7 @@ const HARTHMERE_NPC_HOME_ROOMS_V65 = [
     "routeHomeLocation": "Mudden Lean-To Home",
     "buildingId": "mudden_ward_shelter",
     "structureName": "Mudden Ward Shelter",
-    "roomId": "mudden_ward_shelter_old_tam_crowe_room_v65",
+    "roomId": "mudden_ward_shelter_old_tam_crowe_room",
     "roomLabel": "Old Tam Crowe room in Mudden Ward Shelter",
     "district": "Mudden Ward",
     "floor": 1,
@@ -7386,7 +7294,7 @@ const HARTHMERE_NPC_HOME_ROOMS_V65 = [
     "routeHomeLocation": "Dripline Stack family room",
     "buildingId": "dripline_stack",
     "structureName": "Dripline Stack",
-    "roomId": "dripline_stack_boy_tam_room_v65",
+    "roomId": "dripline_stack_boy_tam_room",
     "roomLabel": "The boy Tam room in Dripline Stack",
     "district": "Mudden Ward",
     "floor": 1,
@@ -7410,7 +7318,7 @@ const HARTHMERE_NPC_HOME_ROOMS_V65 = [
     "routeHomeLocation": "Accountant room near Player Services Hall",
     "buildingId": "market_auction_office",
     "structureName": "Player Services / Auction Office",
-    "roomId": "market_auction_office_banker_merl_voss_room_v65",
+    "roomId": "market_auction_office_banker_merl_voss_room",
     "roomLabel": "Banker Merl Voss room in Player Services / Auction Office",
     "district": "Player Services Plaza",
     "floor": 1,
@@ -7434,7 +7342,7 @@ const HARTHMERE_NPC_HOME_ROOMS_V65 = [
     "routeHomeLocation": "Courier bunk above the mail post",
     "buildingId": "mail_post_house",
     "structureName": "Courier Mail Post House",
-    "roomId": "mail_post_house_courier_anwen_mell_room_v65",
+    "roomId": "mail_post_house_courier_anwen_mell_room",
     "roomLabel": "Courier Anwen Mell room in Courier Mail Post House",
     "district": "Player Services Plaza",
     "floor": 1,
@@ -7458,7 +7366,7 @@ const HARTHMERE_NPC_HOME_ROOMS_V65 = [
     "routeHomeLocation": "Ledger room beside the auction board",
     "buildingId": "market_auction_office",
     "structureName": "Player Services / Auction Office",
-    "roomId": "market_auction_office_auction_pell_marsten_room_v65",
+    "roomId": "market_auction_office_auction_pell_marsten_room",
     "roomLabel": "Auction Clerk Pell Marsten room in Player Services / Auction Office",
     "district": "Player Services Plaza",
     "floor": 1,
@@ -7482,7 +7390,7 @@ const HARTHMERE_NPC_HOME_ROOMS_V65 = [
     "routeHomeLocation": "Registrar room in Player Services Hall",
     "buildingId": "market_auction_office",
     "structureName": "Player Services / Auction Office",
-    "roomId": "market_auction_office_erena_voss_room_v65",
+    "roomId": "market_auction_office_erena_voss_room",
     "roomLabel": "Guild Registrar Erena Voss room in Player Services / Auction Office",
     "district": "Player Services Plaza",
     "floor": 1,
@@ -7506,7 +7414,7 @@ const HARTHMERE_NPC_HOME_ROOMS_V65 = [
     "routeHomeLocation": "Reeve Hall private wing",
     "buildingId": "reeve_hall",
     "structureName": "Reeve Hall",
-    "roomId": "reeve_hall_lady_henrietta_merrow_room_v65",
+    "roomId": "reeve_hall_lady_henrietta_merrow_room",
     "roomLabel": "Lady Henrietta Merrow room in Reeve Hall",
     "district": "Noble Rise",
     "floor": 2,
@@ -7530,7 +7438,7 @@ const HARTHMERE_NPC_HOME_ROOMS_V65 = [
     "routeHomeLocation": "Reeve Hall private wing",
     "buildingId": "reeve_hall",
     "structureName": "Reeve Hall",
-    "roomId": "reeve_hall_lila_merrow_room_v65",
+    "roomId": "reeve_hall_lila_merrow_room",
     "roomLabel": "Lila Merrow room in Reeve Hall",
     "district": "Noble Rise",
     "floor": 1,
@@ -7554,7 +7462,7 @@ const HARTHMERE_NPC_HOME_ROOMS_V65 = [
     "routeHomeLocation": "Mother’s room in the Mudden Ward",
     "buildingId": "mudden_ward_shelter",
     "structureName": "Mudden Ward Shelter",
-    "roomId": "mudden_ward_shelter_ren_skell_room_v65",
+    "roomId": "mudden_ward_shelter_ren_skell_room",
     "roomLabel": "Ren Skell room in Mudden Ward Shelter",
     "district": "Mudden Ward",
     "floor": 1,
@@ -7578,7 +7486,7 @@ const HARTHMERE_NPC_HOME_ROOMS_V65 = [
     "routeHomeLocation": "Guest room in Reeve Hall",
     "buildingId": "reeve_hall",
     "structureName": "Reeve Hall",
-    "roomId": "reeve_hall_lord_wrethan_pell_room_v65",
+    "roomId": "reeve_hall_lord_wrethan_pell_room",
     "roomLabel": "Lord Wrethan Pell room in Reeve Hall",
     "district": "Noble Rise",
     "floor": 1,
@@ -7602,7 +7510,7 @@ const HARTHMERE_NPC_HOME_ROOMS_V65 = [
     "routeHomeLocation": "Small house at the docks",
     "buildingId": "dockside_family_house",
     "structureName": "Dockside Family House",
-    "roomId": "dockside_family_house_henrick_brell_room_v65",
+    "roomId": "dockside_family_house_henrick_brell_room",
     "roomLabel": "Ferry Master Henrick Brell room in Dockside Family House",
     "district": "River Docks",
     "floor": 1,
@@ -7626,7 +7534,7 @@ const HARTHMERE_NPC_HOME_ROOMS_V65 = [
     "routeHomeLocation": "Not-just-a-house on the docks",
     "buildingId": "dockside_family_house",
     "structureName": "Dockside Family House",
-    "roomId": "dockside_family_house_veska_reed_room_v65",
+    "roomId": "dockside_family_house_veska_reed_room",
     "roomLabel": "Smuggler-Mother Veska Reed room in Dockside Family House",
     "district": "River Docks",
     "floor": 1,
@@ -7650,7 +7558,7 @@ const HARTHMERE_NPC_HOME_ROOMS_V65 = [
     "routeHomeLocation": "Last Watch Post outside North Gate",
     "buildingId": "last_watch_post_bunkhouse",
     "structureName": "Last Watch Post Bunkhouse",
-    "roomId": "last_watch_post_bunkhouse_edda_wren_room_v65",
+    "roomId": "last_watch_post_bunkhouse_edda_wren_room",
     "roomLabel": "Edda Wren room in Last Watch Post Bunkhouse",
     "district": "Harthmere Wilds - Last Watch Post",
     "floor": 1,
@@ -7674,7 +7582,7 @@ const HARTHMERE_NPC_HOME_ROOMS_V65 = [
     "routeHomeLocation": "Charcoal Burners’ Camp",
     "buildingId": "charcoal_burners_camp",
     "structureName": "Charcoal Burners Camp",
-    "roomId": "charcoal_burners_camp_merrit_bracken_room_v65",
+    "roomId": "charcoal_burners_camp_merrit_bracken_room",
     "roomLabel": "Old Merrit Bracken room in Charcoal Burners Camp",
     "district": "Harthmere Wilds - Charcoal Camp",
     "floor": 1,
@@ -7698,7 +7606,7 @@ const HARTHMERE_NPC_HOME_ROOMS_V65 = [
     "routeHomeLocation": "Small stilt-hut at the edge of Briarfen",
     "buildingId": "briarfen_stilt_hut",
     "structureName": "Briarfen Stilt Hut",
-    "roomId": "briarfen_stilt_hut_sella_reedfoot_room_v65",
+    "roomId": "briarfen_stilt_hut_sella_reedfoot_room",
     "roomLabel": "Sella Reedfoot room in Briarfen Stilt Hut",
     "district": "Harthmere Wilds - Briarfen",
     "floor": 1,
@@ -7722,7 +7630,7 @@ const HARTHMERE_NPC_HOME_ROOMS_V65 = [
     "routeHomeLocation": "Small cabin near Greenmere edge",
     "buildingId": "greenmere_edge_cabin",
     "structureName": "Greenmere Edge Cabin",
-    "roomId": "greenmere_edge_cabin_tamsin_vale_room_v65",
+    "roomId": "greenmere_edge_cabin_tamsin_vale_room",
     "roomLabel": "Tamsin Vale room in Greenmere Edge Cabin",
     "district": "Harthmere Wilds - Greenmere Edge",
     "floor": 1,
@@ -7746,7 +7654,7 @@ const HARTHMERE_NPC_HOME_ROOMS_V65 = [
     "routeHomeLocation": "Traveler bedroll near grave-tending routes",
     "buildingId": "saint_verena_chapel",
     "structureName": "Saint Verena Chapel",
-    "roomId": "saint_verena_chapel_brother_cael_marsen_room_v65",
+    "roomId": "saint_verena_chapel_brother_cael_marsen_room",
     "roomLabel": "Brother Cael Marsen room in Saint Verena Chapel",
     "district": "Temple Green",
     "floor": 1,
@@ -7770,7 +7678,7 @@ const HARTHMERE_NPC_HOME_ROOMS_V65 = [
     "routeHomeLocation": "Ruined Watchtower camp",
     "buildingId": "northwest_ruined_watchtower",
     "structureName": "Northwest Ruined Watchtower Camp",
-    "roomId": "northwest_ruined_watchtower_rusk_hallowhand_room_v65",
+    "roomId": "northwest_ruined_watchtower_rusk_hallowhand_room",
     "roomLabel": "Rusk Hallowhand room in Northwest Ruined Watchtower Camp",
     "district": "Harthmere Wilds - Northwest Watchtower Ridge",
     "floor": 1,
@@ -7794,7 +7702,7 @@ const HARTHMERE_NPC_HOME_ROOMS_V65 = [
     "routeHomeLocation": "Hidden glade in the Deep Old Wood",
     "buildingId": "deep_old_wood_glade_lodge",
     "structureName": "Deep Old Wood Glade Lodge",
-    "roomId": "deep_old_wood_glade_lodge_veneth_moss_woman_room_v65",
+    "roomId": "deep_old_wood_glade_lodge_veneth_moss_woman_room",
     "roomLabel": "Veneth of the Green Threshold room in Deep Old Wood Glade Lodge",
     "district": "Harthmere Wilds - Deep Old Wood",
     "floor": 1,
@@ -7813,14 +7721,14 @@ const HARTHMERE_NPC_HOME_ROOMS_V65 = [
   }
 ] as const;
 
-function createHarthmereNpcHomeFurnitureV65(): RuntimePlacement[] {
-  // HARTHMERE_POLISH_V1_FURNITURE_PASS — base set kept identical for save
+function createHarthmereNpcHomeFurniture(): RuntimePlacement[] {
+  // HARTHMERE_POLISH_FURNITURE_PASS — base set kept identical for save
   // compatibility; an extra "lived-in" pass adds 6-9 props per room so
   // bedrooms read as actually occupied. Offsets are deterministic per room
   // (seeded by room.at coordinates) so the same room always lays out the
   // same way after a reload.
   const placements: RuntimePlacement[] = [];
-  for (const room of HARTHMERE_NPC_HOME_ROOMS_V65) {
+  for (const room of HARTHMERE_NPC_HOME_ROOMS) {
     const x = room.at[0];
     const y = GROUND_Y + room.at[1];
     const z = room.at[2];
@@ -7862,20 +7770,20 @@ function createHarthmereNpcHomeFurnitureV65(): RuntimePlacement[] {
   }
   return placements;
 }
-// HARTHMERE_NPC_HOME_FURNITURE_V65_END
+// HARTHMERE_NPC_HOME_FURNITURE_END
 
 const PLACEMENTS: RuntimePlacement[] = [
-  // HARTHMERE_MAIN_QUEST_SPACES_V47_RUNTIME_PLACEMENTS_START
-  // v47: playable main-quest spaces are physically represented with stone markers,
+  // HARTHMERE_MAIN_QUEST_SPACES_RUNTIME_PLACEMENTS_START
+  // current: playable main-quest spaces are physically represented with stone markers,
   // interactable anchors, and dungeon encounter spawn anchors for runtime QA.
-  ...HARTHMERE_MAIN_QUEST_SPACES_V47.flatMap((space) => [
+  ...HARTHMERE_MAIN_QUEST_SPACES.flatMap((space) => [
     P(
       "arch_wall_stone",
       space.entry.x,
       space.entry.z,
       0,
       0.42,
-      `${space.name} v47 playable quest-space entry marker`,
+      `${space.name} current playable quest-space entry marker`,
       space.district,
       GROUND_Y + space.entry.yOffset,
     ),
@@ -7885,7 +7793,7 @@ const PLACEMENTS: RuntimePlacement[] = [
       space.entry.z - 1.35,
       0,
       0.34,
-      `${space.name} v47 interactable anchor ${space.interactables?.[0] ?? "quest_anchor"}`,
+      `${space.name} current interactable anchor ${space.interactables?.[0] ?? "quest_anchor"}`,
       space.district,
       GROUND_Y + space.entry.yOffset + 0.05,
     ),
@@ -7896,17 +7804,17 @@ const PLACEMENTS: RuntimePlacement[] = [
         space.entry.z - 2 - index * 1.5,
         0,
         0.28,
-        `${space.name} v47 encounter spawn anchor ${encounter}`,
+        `${space.name} current encounter spawn anchor ${encounter}`,
         space.district,
         GROUND_Y + space.entry.yOffset + 0.08,
       ),
     ),
   ]),
-  // HARTHMERE_MAIN_QUEST_SPACES_V47_RUNTIME_PLACEMENTS_END
+  // HARTHMERE_MAIN_QUEST_SPACES_RUNTIME_PLACEMENTS_END
   // Combat-controlled actors: these are stable visual anchors for the local-dev
   // combat offsets. The fight system targets these offsets directly so attack,
   // hit, and death clips do not depend on fuzzy name matching.
-  ...LIVE_ENTITY_ROBOT_PROTECTION_AREAS_V1.map((area, index) =>
+  ...LIVE_ENTITY_ROBOT_PROTECTION_AREAS.map((area, index) =>
     A(
       "townsperson_guard",
       area.anchor[0],
@@ -7939,11 +7847,11 @@ const PLACEMENTS: RuntimePlacement[] = [
   AD("animal_wolf", 536, -172, -Math.PI / 2, 1.02, "Combat Diagnostic Road Wolf", "Harthmere Combat Diagnostics - Animal", { radius: 1.6, speed: 0.24, phase: 0.4 }, 9024),
   AD("animal_deer", 548, -184, Math.PI / 2, 1.0, "Combat Diagnostic Greenmere Deer", "Harthmere Combat Diagnostics - Animal", { radius: 1.8, speed: 0.18, phase: 1.1 }, 9025),
 
-  // HARTHMERE_NAMED_NPCS_V44_RUNTIME_PLACEMENTS_START
+  // HARTHMERE_NAMED_NPCS_RUNTIME_PLACEMENTS_START
   // Full named-NPC pass: every bible named NPC is represented as a route-driven runtime actor.
-  ...HARTHMERE_NAMED_NPCS_V44.map((npc) =>
+  ...HARTHMERE_NAMED_NPCS.map((npc) =>
     A(
-      harthmereNamedNpcActorAssetV44(npc),
+      harthmereNamedNpcActorAsset(npc),
       npc.spawn.x,
       npc.spawn.z,
       npc.spawn.rot,
@@ -7954,16 +7862,16 @@ const PLACEMENTS: RuntimePlacement[] = [
       npc.combatOffset,
     ),
   ),
-  // HARTHMERE_NAMED_NPCS_V44_RUNTIME_PLACEMENTS_END
+  // HARTHMERE_NAMED_NPCS_RUNTIME_PLACEMENTS_END
 
-  // HARTHMERE_NPC_HOME_FURNITURE_V65_PLACEMENTS
-  ...createHarthmereNpcHomeFurnitureV65(),
+  // HARTHMERE_NPC_HOME_FURNITURE_PLACEMENTS
+  ...createHarthmereNpcHomeFurniture(),
 
-  // HARTHMERE_REMAINING_NPCS_V45_RUNTIME_PLACEMENTS_START
+  // HARTHMERE_REMAINING_NPCS_RUNTIME_PLACEMENTS_START
   // Remaining NPC pass: quest-only people, ambient population, wildlife, monster, bandit, undead, and smuggler contracts.
-  ...HARTHMERE_REMAINING_NPCS_V45.map((npc) =>
+  ...HARTHMERE_REMAINING_NPCS.map((npc) =>
     A(
-      harthmereRemainingNpcActorAssetV45(npc),
+      harthmereRemainingNpcActorAsset(npc),
       npc.spawn.x,
       npc.spawn.z,
       npc.spawn.rot,
@@ -7974,14 +7882,14 @@ const PLACEMENTS: RuntimePlacement[] = [
       npc.combatOffset,
     ),
   ),
-  // HARTHMERE_REMAINING_NPCS_V45_RUNTIME_PLACEMENTS_END
+  // HARTHMERE_REMAINING_NPCS_RUNTIME_PLACEMENTS_END
 
   // Business simulator outposts: one non-Grove job business per economy type.
   // Built with the same block-built service shell helper used by Harthmere's
   // grounded shops so future owner mini-games have physical counters and jobs.
-  ...createHarthmereBusinessOutpostPlacementsV1(),
+  ...createHarthmereBusinessOutpostPlacements(),
 
-  // HARTHMERE_V9_FULL_TOWN_REBUILD_START
+  // HARTHMERE_FULL_TOWN_REBUILD_START
   // Full scrape/rebuild pass. This removes the old decoration-first town and
   // rebuilds Harthmere as district architecture first, then supported interiors,
   // then non-blocking NPC/animal life. Small props are only placed on floors,
@@ -7998,7 +7906,7 @@ const PLACEMENTS: RuntimePlacement[] = [
   ...row("hedge", "Noble Rise", "Noble garden hedge", 548, -248, 6, 6, 0, 0, 0.82),
 
   // Old Bridge: Q1 walkable stone bridge deck, parapets, and bronze bell-crack disc.
-  ...createHarthmereOldBridgeWalkableParapetsV54(),
+  ...createHarthmereOldBridgeWalkableParapets(),
 
   // North Gate: fortified arrival, stable, toll booth, and watch identity.
   P("obj_tower_complex", 474, -286, 0, 1.18, "North Gate west tower", "North Gate"),
@@ -8019,14 +7927,14 @@ const PLACEMENTS: RuntimePlacement[] = [
   P("box_decorated", 492, -269, 0, 0.72, "Toll chest on floor", "North Gate"),
 
   // Exterior building shells: unique silhouettes per service, shop, home, and district.
-  ...createHarthmereBlockBuiltServiceBuildingV43({ name: "Dawn Loaf Bakery", district: "Market District", x: 424, z: -190, w: 18, d: 16, rot: -0.05, profile: "bakery", banner: "banner_yellow", scale: 0.82, roofY: 2.7 }),
-  ...createHarthmereBlockBuiltServiceBuildingV43({ name: "Brindle Provision House", district: "Market District", x: 454, z: -218, w: 20, d: 17, rot: 0.08, profile: "provision", banner: "banner_green", scale: 0.82, roofY: 2.7 }),
-  ...createHarthmereBlockBuiltServiceBuildingV43({ name: "Player Services Hall", district: "Player Services", x: 556, z: -224, w: 28, d: 21, rot: Math.PI, profile: "player_services", banner: "banner_green", roof: "arch_roof_high_gable", floors: 2, scale: 0.88, roofY: 5.35 }),
-  ...createHarthmereBlockBuiltServiceBuildingV43({ name: "Black Anvil Smithy", district: "Craftsman Row", x: 530, z: -232, w: 24, d: 18, rot: Math.PI / 2, profile: "smithy", banner: "banner_red", roof: "arch_roof_flat", floors: 2, scale: 0.82, roofY: 5.35 }),
-  ...createHarthmereBlockBuiltServiceBuildingV43({ name: "Carpenter and Tailor Workshop", district: "Craftsman Row", x: 504, z: -228, w: 18, d: 16, rot: Math.PI / 2, profile: "workshop", banner: "banner_brown", scale: 0.78, roofY: 2.7 }),
+  ...createHarthmereBlockBuiltServiceBuilding({ name: "Dawn Loaf Bakery", district: "Market District", x: 424, z: -190, w: 18, d: 16, rot: -0.05, profile: "bakery", banner: "banner_yellow", scale: 0.82, roofY: 2.7 }),
+  ...createHarthmereBlockBuiltServiceBuilding({ name: "Brindle Provision House", district: "Market District", x: 454, z: -218, w: 20, d: 17, rot: 0.08, profile: "provision", banner: "banner_green", scale: 0.82, roofY: 2.7 }),
+  ...createHarthmereBlockBuiltServiceBuilding({ name: "Player Services Hall", district: "Player Services", x: 556, z: -224, w: 28, d: 21, rot: Math.PI, profile: "player_services", banner: "banner_green", roof: "arch_roof_high_gable", floors: 2, scale: 0.88, roofY: 5.35 }),
+  ...createHarthmereBlockBuiltServiceBuilding({ name: "Black Anvil Smithy", district: "Craftsman Row", x: 530, z: -232, w: 24, d: 18, rot: Math.PI / 2, profile: "smithy", banner: "banner_red", roof: "arch_roof_flat", floors: 2, scale: 0.82, roofY: 5.35 }),
+  ...createHarthmereBlockBuiltServiceBuilding({ name: "Carpenter and Tailor Workshop", district: "Craftsman Row", x: 504, z: -228, w: 18, d: 16, rot: Math.PI / 2, profile: "workshop", banner: "banner_brown", scale: 0.78, roofY: 2.7 }),
 
 
-  // Craftsman Row / Black Anvil Smithy pass v1: exterior identity and readable
+  // Craftsman Row / Black Anvil Smithy pass current: exterior identity and readable
   // profession lane. These props sit on walls, rooflines, or plaza edges so the
   // smithy remains walkable while reading as a real crafting hub.
   P("obj_sign_post", 522.8, -220.2, Math.PI / 2, 0.68, "Black Anvil Smithy sign with repair and blacksmith training notice", "Craftsman Row"),
@@ -8038,9 +7946,9 @@ const PLACEMENTS: RuntimePlacement[] = [
   P("obj_lamp_ground_small", 539.4, -222.4, 0, 0.66, "Craftsman Row forge glow lamp east of smithy", "Craftsman Row"),
   P("obj_sign_post", 502.2, -218.9, Math.PI / 2, 0.58, "Profession trainer lane sign for carpentry tailoring leatherworking and work orders", "Craftsman Row"),
   P("banner_brown", 504.6, -218.6, Math.PI / 2, 0.38, "Workshop guild banner marking multi-profession crafting lane", "Craftsman Row", GROUND_Y + 0.96),
-  ...createHarthmereBlockBuiltServiceBuildingV43({ name: "Green Mortar Apothecary", district: "Apothecary", x: 455, z: -176, w: 18, d: 16, rot: Math.PI / 2, profile: "apothecary", banner: "banner_green", scale: 0.78, roofY: 2.7 }),
-  ...createHarthmereBlockBuiltServiceBuildingV43({ name: "Wyrm and Candle Magic Shop", district: "Magic Shop", x: 518, z: -168, w: 20, d: 18, rot: 0, profile: "magic_shop", banner: "banner_blue", roof: "arch_roof_high_point", scale: 0.8, roofY: 3.05, roofScale: 1.05 }),
-  ...createHarthmereBlockBuiltServiceBuildingV43({ name: "Copper Kettle Inn", district: "Copper Kettle", x: 552, z: -194, w: 30, d: 24, rot: -Math.PI / 2, profile: "inn", banner: "banner_brown", roof: "arch_roof_high_gable", floors: 2, scale: 0.9, roofY: 5.35, roofScale: 1.08 }),
+  ...createHarthmereBlockBuiltServiceBuilding({ name: "Green Mortar Apothecary", district: "Apothecary", x: 455, z: -176, w: 18, d: 16, rot: Math.PI / 2, profile: "apothecary", banner: "banner_green", scale: 0.78, roofY: 2.7 }),
+  ...createHarthmereBlockBuiltServiceBuilding({ name: "Wyrm and Candle Magic Shop", district: "Magic Shop", x: 518, z: -168, w: 20, d: 18, rot: 0, profile: "magic_shop", banner: "banner_blue", roof: "arch_roof_high_point", scale: 0.8, roofY: 3.05, roofScale: 1.05 }),
+  ...createHarthmereBlockBuiltServiceBuilding({ name: "Copper Kettle Inn", district: "Copper Kettle", x: 552, z: -194, w: 30, d: 24, rot: -Math.PI / 2, profile: "inn", banner: "banner_brown", roof: "arch_roof_high_gable", floors: 2, scale: 0.9, roofY: 5.35, roofScale: 1.08 }),
 
   // Copper Kettle Inn exterior identity pass: the inn must read as a bind/rested
   // XP/social hub from the market path without blocking the front door.
@@ -8050,10 +7958,10 @@ const PLACEMENTS: RuntimePlacement[] = [
   P("obj_lamp_ground_small", 538.8, -205.6, 0, 0.72, "Warm inn entrance lamp west of door", "Copper Kettle"),
   P("obj_lamp_ground_small", 565.0, -205.6, 0, 0.72, "Warm inn entrance lamp east of door", "Copper Kettle"),
   P("arch_chimney", 548.4, -184.2, 0, 0.48, "Copper Kettle roof chimney smoke marker", "Copper Kettle", GROUND_Y + 4.15),
-  ...createHarthmereBlockBuiltServiceBuildingV43({ name: "Reeve Hall", district: "Noble Rise", x: 562, z: -262, w: 30, d: 21, rot: Math.PI, profile: "reeve_hall", banner: "banner_red", roof: "arch_roof_high_gable", floors: 2, scale: 0.9, roofY: 5.35 }),
+  ...createHarthmereBlockBuiltServiceBuilding({ name: "Reeve Hall", district: "Noble Rise", x: 562, z: -262, w: 30, d: 21, rot: Math.PI, profile: "reeve_hall", banner: "banner_red", roof: "arch_roof_high_gable", floors: 2, scale: 0.9, roofY: 5.35 }),
 
 
-  // Noble Rise pass v1: elevated wealthy approach, private garden, court
+  // Noble Rise pass current: elevated wealthy approach, private garden, court
   // signage, and event staging. Keep the central Reeve Hall entrance lane clear.
   P("arch_stairs_wide_stone", 562.0, -246.4, Math.PI, 0.88, "Noble Rise raised terrace stair from market road", "Noble Rise"),
   P("arch_pillar_stone", 550.2, -248.2, 0, 0.74, "Noble Rise west estate pillar marking restricted approach", "Noble Rise"),
@@ -8079,10 +7987,10 @@ const PLACEMENTS: RuntimePlacement[] = [
   P("obj_sign_post", 577.6, -252.6, -Math.PI / 2, 0.5, "Tax protest assembly notice outside Reeve Hall", "Noble Rise"),
   P("crate_wooden_fp", 578.8, -254.8, 0, 0.44, "Tax protest placard crate on floor outside court", "Noble Rise"),
   P("scroll_2_fp", 578.8, -254.8, -0.18, 0.24, "Pinned tax protest placard supported on protest crate", "Noble Rise", GROUND_Y + 0.64),
-  ...createHarthmereBlockBuiltServiceBuildingV43({ name: "Dock Ledger Warehouse", district: "River Docks", x: 596, z: -172, w: 26, d: 18, rot: -Math.PI / 2, profile: "dock_warehouse", banner: "banner_blue", roof: "arch_roof_flat", scale: 0.82, roofY: 2.7 }),
+  ...createHarthmereBlockBuiltServiceBuilding({ name: "Dock Ledger Warehouse", district: "River Docks", x: 596, z: -172, w: 26, d: 18, rot: -Math.PI / 2, profile: "dock_warehouse", banner: "banner_blue", roof: "arch_roof_flat", scale: 0.82, roofY: 2.7 }),
 
 
-  // River Docks pass v1: ferry/travel readability, dockmaster identity,
+  // River Docks pass current: ferry/travel readability, dockmaster identity,
   // cargo-office signage, dock bell, and event staging. Keep the center pier
   // and warehouse door lane clear for players/NPCs.
   P("obj_sign_post", 585.2, -194.6, Math.PI / 2, 0.62, "River Docks ferry cargo contracts fishing trainer sign", "River Docks"),
@@ -8102,11 +8010,11 @@ const PLACEMENTS: RuntimePlacement[] = [
   P("obj_bridge_low_body", 613.8, -168.0, Math.PI / 2, 0.52, "Low ferry skiff silhouette tied to pier", "River Docks"),
   P("rope_3_fp", 611.2, -167.4, Math.PI / 2, 0.54, "Ferry mooring rope tied on pier edge", "River Docks"),
   P("chain_coil", 610.4, -171.8, 0, 0.48, "Ferry chain coil kept off main walking lane", "River Docks"),
-  ...createHarthmereBlockBuiltServiceBuildingV43({ name: "Mudden Lean-To Home", district: "Mudden Ward", x: 412, z: -158, w: 17, d: 15, rot: Math.PI / 2, profile: "mudden_home", banner: "banner_brown", roof: "arch_roof_flat", scale: 0.72, roofY: 2.7 }),
-  ...createHarthmereBlockBuiltServiceBuildingV43({ name: "Mudden Wash House", district: "Mudden Ward", x: 424, z: -137, w: 16, d: 14, rot: 0, profile: "wash_house", banner: "banner_white", roof: "arch_roof_flat", scale: 0.7, roofY: 2.7 }),
+  ...createHarthmereBlockBuiltServiceBuilding({ name: "Mudden Lean-To Home", district: "Mudden Ward", x: 412, z: -158, w: 17, d: 15, rot: Math.PI / 2, profile: "mudden_home", banner: "banner_brown", roof: "arch_roof_flat", scale: 0.72, roofY: 2.7 }),
+  ...createHarthmereBlockBuiltServiceBuilding({ name: "Mudden Wash House", district: "Mudden Ward", x: 424, z: -137, w: 16, d: 14, rot: 0, profile: "wash_house", banner: "banner_white", roof: "arch_roof_flat", scale: 0.7, roofY: 2.7 }),
 
 
-  // Mudden Ward pass v1: patched roofs, leaning walls, laundry lanes, smoke,
+  // Mudden Ward pass current: patched roofs, leaning walls, laundry lanes, smoke,
   // poor-house identity, and hidden-route readability. Keep the alley spine
   // around x=416 clear for players/NPCs.
   P("arch_roof_left", 410.2, -158.2, Math.PI / 2, 0.46, "Mudden patched lean-to roof left scrap", "Mudden Ward", GROUND_Y + 2.62),
@@ -8131,25 +8039,25 @@ const PLACEMENTS: RuntimePlacement[] = [
   P("crate_wooden_fp", 418.0, -169.6, 0.1, 0.38, "Broken laundry cart hiding tunnel edge", "Mudden Ward"),
   P("torch_mounted", 420.5, -170.6, Math.PI, 0.38, "Dim underways marker torch near Mudden tunnel mounted on Mudden tunnel wall bracket", "Mudden Ward", GROUND_Y + 1.0),
   P("pillar", 421.8, -170.4, 0, 0.36, "Old carved drain stone beside hidden tunnel", "Mudden Ward"),
-  ...createHarthmereBlockBuiltServiceBuildingV43({ name: "Roadside Family Cottage", district: "Residential District", x: 456, z: -256, w: 20, d: 17, rot: 0, profile: "residential_cottage", banner: "banner_green", scale: 0.78, roofY: 2.7 }),
-  ...createHarthmereBlockBuiltServiceBuildingV43({ name: "Guard Barracks", district: "Guard Yard", x: 512, z: -264, w: 22, d: 16, rot: Math.PI, profile: "barracks", banner: "banner_red", roof: "arch_roof_flat", floors: 2, scale: 0.8, roofY: 5.35 }),
-  ...createHarthmereBlockBuiltServiceBuildingV43({ name: "Stable Yard Office", district: "North Gate", x: 468, z: -254, w: 16, d: 13, rot: -Math.PI / 2, profile: "stable_office", banner: "banner_brown", roof: "arch_roof_flat", scale: 0.7, roofY: 2.7 }),
+  ...createHarthmereBlockBuiltServiceBuilding({ name: "Roadside Family Cottage", district: "Residential District", x: 456, z: -256, w: 20, d: 17, rot: 0, profile: "residential_cottage", banner: "banner_green", scale: 0.78, roofY: 2.7 }),
+  ...createHarthmereBlockBuiltServiceBuilding({ name: "Guard Barracks", district: "Guard Yard", x: 512, z: -264, w: 22, d: 16, rot: Math.PI, profile: "barracks", banner: "banner_red", roof: "arch_roof_flat", floors: 2, scale: 0.8, roofY: 5.35 }),
+  ...createHarthmereBlockBuiltServiceBuilding({ name: "Stable Yard Office", district: "North Gate", x: 468, z: -254, w: 16, d: 13, rot: -Math.PI / 2, profile: "stable_office", banner: "banner_brown", roof: "arch_roof_flat", scale: 0.7, roofY: 2.7 }),
 
   // Temple Green: chapel shell, bell clue, quiet graveyard, and resurrection identity.
-  ...createHarthmereBlockBuiltServiceBuildingV43({ name: "Chapel of Saint Verena", district: "Temple Green", x: 480, z: -137, w: 26, d: 24, rot: 0, profile: "chapel", banner: "banner_white", roof: "arch_roof_high_gable", floors: 2, scale: 0.86, roofY: 6.0, roofScale: 1.12 }),
+  ...createHarthmereBlockBuiltServiceBuilding({ name: "Chapel of Saint Verena", district: "Temple Green", x: 480, z: -137, w: 26, d: 24, rot: 0, profile: "chapel", banner: "banner_white", roof: "arch_roof_high_gable", floors: 2, scale: 0.86, roofY: 6.0, roofScale: 1.12 }),
 
-  // HARTHMERE_BIBLE_BUILDING_EXPANSION_V1 — bible-required buildings that
+  // HARTHMERE_BIBLE_BUILDING_EXPANSION — bible-required buildings that
   // were missing from the renderer (Brother Vance cottage, Edrik Vane
   // estate, Mara Thistle two-story house, Brass Scale moneylender,
   // additional Mudden lean-to, River Dock Supply, gatehouse, toll booth).
-  ...createHarthmereBlockBuiltServiceBuildingV43({ name: "North Gate Gatehouse", district: "North Gate", x: 470, z: -270, w: 18, d: 14, rot: 0, profile: "barracks", banner: "banner_red", roof: "arch_roof_high_gable", floors: 2, scale: 0.82, roofY: 5.35 }),
-  ...createHarthmereBlockBuiltServiceBuildingV43({ name: "Toll Booth", district: "North Gate", x: 502, z: -270, w: 12, d: 10, rot: 0, profile: "stable_office", banner: "banner_red", roof: "arch_roof_flat", scale: 0.74, roofY: 2.7 }),
-  ...createHarthmereBlockBuiltServiceBuildingV43({ name: "Mara Thistle Two-Story House", district: "Market Square", x: 444, z: -208, w: 16, d: 14, rot: 0, profile: "residential_cottage", banner: "banner_green", roof: "arch_roof_gable", floors: 2, scale: 0.78, roofY: 5.35 }),
-  ...createHarthmereBlockBuiltServiceBuildingV43({ name: "Edrik Vane Estate", district: "Noble Rise", x: 540, z: -286, w: 26, d: 20, rot: 0, profile: "reeve_hall", banner: "banner_blue", roof: "arch_roof_high_gable", floors: 2, scale: 0.88, roofY: 5.35 }),
-  ...createHarthmereBlockBuiltServiceBuildingV43({ name: "Brother Vance Cottage", district: "Temple Green", x: 462, z: -126, w: 12, d: 10, rot: -Math.PI / 2, profile: "residential_cottage", banner: "banner_white", roof: "arch_roof_gable", scale: 0.72, roofY: 2.7 }),
-  ...createHarthmereBlockBuiltServiceBuildingV43({ name: "Brass Scale Moneylender", district: "Player Services", x: 530, z: -218, w: 14, d: 12, rot: Math.PI, profile: "player_services", banner: "banner_yellow", roof: "arch_roof_flat", scale: 0.76, roofY: 2.7 }),
-  ...createHarthmereBlockBuiltServiceBuildingV43({ name: "Mudden Tam Crowe Lean-To", district: "Mudden Ward", x: 404, z: -148, w: 13, d: 11, rot: 0, profile: "mudden_home", banner: "banner_brown", roof: "arch_roof_flat", scale: 0.7, roofY: 2.7 }),
-  ...createHarthmereBlockBuiltServiceBuildingV43({ name: "River Dock Supply", district: "River Docks", x: 582, z: -184, w: 16, d: 13, rot: -Math.PI / 2, profile: "dock_warehouse", banner: "banner_blue", roof: "arch_roof_flat", scale: 0.74, roofY: 2.7 }),
+  ...createHarthmereBlockBuiltServiceBuilding({ name: "North Gate Gatehouse", district: "North Gate", x: 470, z: -270, w: 18, d: 14, rot: 0, profile: "barracks", banner: "banner_red", roof: "arch_roof_high_gable", floors: 2, scale: 0.82, roofY: 5.35 }),
+  ...createHarthmereBlockBuiltServiceBuilding({ name: "Toll Booth", district: "North Gate", x: 502, z: -270, w: 12, d: 10, rot: 0, profile: "stable_office", banner: "banner_red", roof: "arch_roof_flat", scale: 0.74, roofY: 2.7 }),
+  ...createHarthmereBlockBuiltServiceBuilding({ name: "Mara Thistle Two-Story House", district: "Market Square", x: 444, z: -208, w: 16, d: 14, rot: 0, profile: "residential_cottage", banner: "banner_green", roof: "arch_roof_gable", floors: 2, scale: 0.78, roofY: 5.35 }),
+  ...createHarthmereBlockBuiltServiceBuilding({ name: "Edrik Vane Estate", district: "Noble Rise", x: 540, z: -286, w: 26, d: 20, rot: 0, profile: "reeve_hall", banner: "banner_blue", roof: "arch_roof_high_gable", floors: 2, scale: 0.88, roofY: 5.35 }),
+  ...createHarthmereBlockBuiltServiceBuilding({ name: "Brother Vance Cottage", district: "Temple Green", x: 462, z: -126, w: 12, d: 10, rot: -Math.PI / 2, profile: "residential_cottage", banner: "banner_white", roof: "arch_roof_gable", scale: 0.72, roofY: 2.7 }),
+  ...createHarthmereBlockBuiltServiceBuilding({ name: "Brass Scale Moneylender", district: "Player Services", x: 530, z: -218, w: 14, d: 12, rot: Math.PI, profile: "player_services", banner: "banner_yellow", roof: "arch_roof_flat", scale: 0.76, roofY: 2.7 }),
+  ...createHarthmereBlockBuiltServiceBuilding({ name: "Mudden Tam Crowe Lean-To", district: "Mudden Ward", x: 404, z: -148, w: 13, d: 11, rot: 0, profile: "mudden_home", banner: "banner_brown", roof: "arch_roof_flat", scale: 0.7, roofY: 2.7 }),
+  ...createHarthmereBlockBuiltServiceBuilding({ name: "River Dock Supply", district: "River Docks", x: 582, z: -184, w: 16, d: 13, rot: -Math.PI / 2, profile: "dock_warehouse", banner: "banner_blue", roof: "arch_roof_flat", scale: 0.74, roofY: 2.7 }),
   P("obj_church_bells", 480, -128, Math.PI, 0.72, "Empty bell-frame clue supported on rebuilt stone chapel bell arch", "Temple Green", GROUND_Y + 4.65),
   P("banner_white", 486, -149, Math.PI, 0.82, "Missing Bell vigil cloth", "Temple Green", GROUND_Y + 1.2),
   P("church_bench", 471, -141, 0, 0.9, "Chapel pew left row", "Temple Green"),
@@ -8167,7 +8075,7 @@ const PLACEMENTS: RuntimePlacement[] = [
   P("shovel", 522, -134, 0.8, 0.75, "Gravedigger shovel leaning near graves", "Temple Green"),
 
 
-  // Temple Green pass v1: healing, resurrection, charity, lore archive,
+  // Temple Green pass current: healing, resurrection, charity, lore archive,
   // cemetery depth, missing-bell clues, and sacred event anchors. Detail sits
   // on chapel/green edges so service NPCs and paths remain reachable.
   P("obj_sign_post", 491.6, -154.6, Math.PI, 0.34, "Temple Green healer resurrection charity sign", "Temple Green"),
@@ -8378,7 +8286,7 @@ const PLACEMENTS: RuntimePlacement[] = [
   P("logs", 512, -223, Math.PI / 2, 0.8, "Workshop lumber pile", "Craftsman Row"),
 
 
-  // Craftsman Row / Black Anvil Smithy pass v1: stronger forge identity, repair
+  // Craftsman Row / Black Anvil Smithy pass current: stronger forge identity, repair
   // economy, multi-profession stations, work orders, and bible event anchors.
   P("torch_lit", 527.7, -238.7, Math.PI / 2, 0.78, "Bright forge fire glow supported in stone forge mouth", "Craftsman Row", GROUND_Y + 0.62),
   P("mine_coal_block", 521.6, -238.4, 0, 0.54, "Coal block pile on smithy floor beside forge", "Craftsman Row"),
@@ -8461,7 +8369,7 @@ const PLACEMENTS: RuntimePlacement[] = [
   P("mug_full", 561, -197, 0, 0.5, "Mug supported on tavern bar", "Copper Kettle", GROUND_Y + 0.82),
   P("bread_slice", 544, -199, 0, 0.85, "Bread supported on dining table", "Copper Kettle", GROUND_Y + 0.82),
 
-  // Copper Kettle Inn pass v1: bind point, rested XP, rumor board, stage,
+  // Copper Kettle Inn pass current: bind point, rested XP, rumor board, stage,
   // rented-room, cellar, and supported lived-in tavern details.
   P("cauldron_fp", 556.1, -185.25, 0, 0.58, "Copper kettle resting over hearth on floor stones", "Copper Kettle"),
   P("torch_mounted", 556.0, -183.7, Math.PI, 0.66, "Wall-mounted hearth fire bracket", "Copper Kettle", GROUND_Y + 1.05),
@@ -8522,7 +8430,7 @@ const PLACEMENTS: RuntimePlacement[] = [
   P("coin_pile_2", 568, -264, 0, 0.46, "Tax coins supported on desk", "Noble Rise", GROUND_Y + 0.82),
 
 
-  // Noble Rise pass v1: legal, tax, permit, moneylender, and political story
+  // Noble Rise pass current: legal, tax, permit, moneylender, and political story
   // detail. Small props are explicitly supported by desks, shelves, crates, or
   // floor placements so the room remains physically believable.
   P("obj_lamp_wall", 555.0, -250.2, Math.PI, 0.54, "Wall lamp mounted beside Reeve Hall balcony west", "Noble Rise", GROUND_Y + 1.16),
@@ -8564,7 +8472,7 @@ const PLACEMENTS: RuntimePlacement[] = [
   P("shield_wooden_fp", 520, -261.5, 0, 0.58, "Shield resting on rack", "Guard Yard"),
 
 
-  // Guard Yard pass v1: combat tutorial, bounty/legal station, dueling ring,
+  // Guard Yard pass current: combat tutorial, bounty/legal station, dueling ring,
   // prisoner cage, alarm bell, watchtower access, and town-defense staging.
   // These props stay at the yard edges so the center remains combat-safe.
   P("obj_sign_post", 512.0, -251.4, Math.PI, 0.46, "Guard Yard combat training bounty board wayfinding sign", "Guard Yard"),
@@ -8626,7 +8534,7 @@ const PLACEMENTS: RuntimePlacement[] = [
   P("obj_bridge_medium_body", 612, -176, Math.PI / 2, 0.92, "River bridge extension", "River Docks"),
 
 
-  // River Docks pass v1: dockmaster ledger booth, fish market, cargo sorting,
+  // River Docks pass current: dockmaster ledger booth, fish market, cargo sorting,
   // ferry utility, smuggling clues, and dock live-ops anchors.
   P("table_medium", 596.0, -171.0, Math.PI / 2, 0.64, "Dockmaster ledger booth counter", "River Docks"),
   P("book_stack_1", 596.0, -170.55, 0.05, 0.32, "Dock ledger supported on dockmaster counter", "River Docks", GROUND_Y + 0.74),
@@ -8674,7 +8582,7 @@ const PLACEMENTS: RuntimePlacement[] = [
   P("box_stacked", 417, -134, 0, 0.76, "Laundry box stack", "Mudden Ward"),
 
 
-  // Mudden Ward pass v1: poverty systems, stealth services, hidden economy,
+  // Mudden Ward pass current: poverty systems, stealth services, hidden economy,
   // rat-catching, flood rescue, eviction pressure, and witch-accusation hooks.
   P("table_small", 430.4, -151.8, -Math.PI / 2, 0.5, "Cheap healer street table", "Mudden Ward"),
   P("potion_1_fp", 430.4, -151.55, 0, 0.26, "Cheap healer fever tonic supported on table", "Mudden Ward", GROUND_Y + 0.66),
@@ -8712,7 +8620,7 @@ const PLACEMENTS: RuntimePlacement[] = [
   P("pillar", 398, -235, 0, 0.78, "Old drain marker", "Old Well"),
 
 
-  // Old Well / Underways pass v1: mystery landmark, barred well, bronze bell
+  // Old Well / Underways pass current: mystery landmark, barred well, bronze bell
   // fragments, hidden drain stair, Temple/Mudden breadcrumbing, and phased
   // dungeon/event anchors. Props hug the edges so the path remains walkable.
   P("fountain_round", 407.8, -232.4, 0, 0.46, "Old Well cracked circular stone ring landmark", "Old Well / Underways"),
@@ -8826,7 +8734,7 @@ const PLACEMENTS: RuntimePlacement[] = [
   P("crate_wooden_fp", 491, -153, 0, 0.58, "Temple roof repair crate", "Building"),
 
 
-  // HARTHMERE_BELLBOUND_TOWN_DUNGEON_EXPANSION_V1
+  // HARTHMERE_BELLBOUND_TOWN_DUNGEON_EXPANSION
   // Story-bible expansion pass: no new NPCs here. This pass adds missing
   // building/interior/dungeon readability for the Bellbound main quest: chapel
   // archive, buried bell pit, blacksmith bell-casting bay, Reeve bridge-crack
@@ -8925,7 +8833,7 @@ const PLACEMENTS: RuntimePlacement[] = [
   P("obj_church_grave_wall", 640.0, -266.8, 0, 0.3, "Wyrm's Bed final threshold wall phase-safe dragon chamber marker", "Old Well / Underways"),
 
 
-  // HARTHMERE_BELLBOUND_MISSING_DETAILS_EXPANSION_V2
+  // HARTHMERE_BELLBOUND_MISSING_DETAILS_EXPANSION
   // Second Bible/guide pass: still no NPCs/animals/outside-world content.
   // This fills missing production-readable town interiors and dungeon staging:
   // Q6 eight-column mural antechamber, bell-notation descent stairs, Q7 hidden
@@ -9010,7 +8918,7 @@ const PLACEMENTS: RuntimePlacement[] = [
   P("obj_church_grave_wall", 644.0, -258.0, Math.PI / 2, 0.24, "Second Wyrm's Bed ribbed mural wall showing thousands of bell spirals", "Old Well / Underways"),
 
 
-  // HARTHMERE_REMAINING_INTERIORS_AND_DUNGEON_ACCESS_V1
+  // HARTHMERE_REMAINING_INTERIORS_AND_DUNGEON_ACCESS
   // Completes no-NPC interior coverage for the current town footprint and makes
   // dungeon test access readable. This is still town/building/dungeon only:
   // no new actors, animals, hostile spawns, boss actors, or outside-world expansion.
@@ -9142,9 +9050,9 @@ const PLACEMENTS: RuntimePlacement[] = [
   P("bookstand_fp", 357.2, -318.0, 0, 0.16, "Dungeon testing route placard supported on Bellward Halls floor stand", "Old Well / Underways", GROUND_Y + 0.58),
 
 
-  // HARTHMERE_BUILDING_DUNGEON_COMPLETION_COMPAT_FIXES_V1
+  // HARTHMERE_BUILDING_DUNGEON_COMPLETION_COMPAT_FIXES
   // Keeps completion interiors while satisfying route clearance, fixture grounding, and elevated-support tests.
-  // HARTHMERE_BUILDING_DUNGEON_COMPLETION_V1
+  // HARTHMERE_BUILDING_DUNGEON_COMPLETION
   // Final no-NPC town building/interior + dungeon interior completion pass.
   // This fills the remaining bible-driven interiors without expanding the outside world.
   // It only uses asset IDs already present in this Harthmere source file.
@@ -9360,7 +9268,7 @@ const PLACEMENTS: RuntimePlacement[] = [
   A("townsperson_farmer", 447, -228, 0, 1.22, "Farmhand walking loop", "Farm", { radius: 4.2, speed: 0.22, phase: 0.6 }),
 
 
-  // HARTHMERE_V10_WILDS_OUTSIDE_TOWN_START
+  // HARTHMERE_WILDS_OUTSIDE_TOWN_START
   // Outside Harthmere: safety fades in readable rings. These placements are
   // visual/non-blocking anchors for future combat, gathering, quest, and
   // reputation systems. The town remains the safe hub; the Wilds supply wood,
@@ -9492,35 +9400,35 @@ const PLACEMENTS: RuntimePlacement[] = [
   P("logs", 456, -458, Math.PI / 2, 0.7, "Charcoal camp stacked timber", "Harthmere Wilds - Charcoal Camp"),
   P("torch_lit", 468, -456, 0, 0.52, "Smoky charcoal burner fire", "Harthmere Wilds - Charcoal Camp"),
   A("townsperson_charcoal", 466, -452, -Math.PI / 2, 1.1, "Charcoal burner with forest rumors", "Harthmere Wilds - Charcoal Camp", { radius: 2.2, speed: 0.14, phase: 2.9 }),
-  // Wilds bible v54: named landmark completion anchors.
-  ...createHarthmereWildsBibleLandmarkPlacementsV54(),
+  // Wilds bible current: named landmark completion anchors.
+  ...createHarthmereWildsBibleLandmarkPlacements(),
 
-  // HARTHMERE_V11_WIDE_WILDS_MILE_START
-  ...createHarthmereResidentHousingV38Placements(),
+  // HARTHMERE_WIDE_WILDS_MILE_START
+  ...createHarthmereResidentHousingPlacements(),
   ...createHarthmereWideWildsPlacements(),
   ...createHarthmereDenseForestPlacements(),
   ...createHarthmereWildlifeHerdPlacements(),
   ...createHarthmereDeepResourceMarkerPlacements(),
-  // HARTHMERE_JOBS_BOARD_GROVE_PLACEMENT_V141:
+  // HARTHMERE_JOBS_BOARD_GROVE_PLACEMENT:
   // Voxel kiosk monitor for the Grove Jobs Board. Position matches the
-  // SNAPSHOT_GROVE_LANDMARKS_V75 entry for `harthmere_market_posting_board`
+  // SNAPSHOT_GROVE_LANDMARKS entry for `harthmere_market_posting_board`
   // and the live backend's `building.inWorldMarkers` so the map pin, world
   // landmark, server proximity check, and rendered voxel building all sit on
   // the same Grove plaza tile (east edge of the fountain). Auxiliary lamps
   // and a sign post frame the kiosk so the building reads as a recognizable
   // public-work post from spawn distance.
-  ...createGroveJobsBoardKioskPlacementV141(),
-  // HARTHMERE_JOBS_BOARD_HARTHMERE_TOWN_V141: second board in Harthmere
+  ...createGroveJobsBoardKioskPlacement(),
+  // HARTHMERE_JOBS_BOARD_HARTHMERE_TOWN: second board in Harthmere
   // market district.
-  ...createHarthmereTownJobsBoardKioskPlacementV141(),
-  // HARTHMERE_V11_WIDE_WILDS_MILE_END
+  ...createHarthmereTownJobsBoardKioskPlacement(),
+  // HARTHMERE_WIDE_WILDS_MILE_END
 
-  // HARTHMERE_V10_WILDS_OUTSIDE_TOWN_END
+  // HARTHMERE_WILDS_OUTSIDE_TOWN_END
 
-  // HARTHMERE_V9_FULL_TOWN_REBUILD_END
+  // HARTHMERE_FULL_TOWN_REBUILD_END
 ];
 
-const HARTHMERE_RESIDENT_HOME_ASSIGNMENT_SUMMARY_V38 = createHarthmereResidentHomeAssignmentSummaryV38(
+const HARTHMERE_RESIDENT_HOME_ASSIGNMENT_SUMMARY = createHarthmereResidentHomeAssignmentSummary(
   PLACEMENTS.filter((placement) => placement.meta?.kind === "actor").map((placement) => ({
     asset: placement.asset,
     name: placement.name,
@@ -9528,13 +9436,13 @@ const HARTHMERE_RESIDENT_HOME_ASSIGNMENT_SUMMARY_V38 = createHarthmereResidentHo
   })),
 );
 
-function harthmereResidentHousingSummaryV38() {
-  return HARTHMERE_RESIDENT_HOME_ASSIGNMENT_SUMMARY_V38;
+function harthmereResidentHousingSummary() {
+  return HARTHMERE_RESIDENT_HOME_ASSIGNMENT_SUMMARY;
 }
 
 if (typeof window !== "undefined") {
-  (window as typeof window & { __harthmereResidentHousingV38?: unknown }).__harthmereResidentHousingV38 =
-    HARTHMERE_RESIDENT_HOME_ASSIGNMENT_SUMMARY_V38;
+  (window as typeof window & { __harthmereResidentHousing?: unknown }).__harthmereResidentHousing =
+    HARTHMERE_RESIDENT_HOME_ASSIGNMENT_SUMMARY;
 }
 
 function shouldRenderHarthmereAssets() {
@@ -9616,12 +9524,12 @@ function startBestClip(
   action.play();
 }
 
-// HARTHMERE_POLISH_V1_LOCOMOTION_CLIPS — Walk/Run/Idle clip resolver.
+// HARTHMERE_POLISH_LOCOMOTION_CLIPS — Walk/Run/Idle clip resolver.
 //
 // Most rigs follow the Mixamo/quaternius convention: clips literally named
 // "Idle", "Walk", "Walking", "Run", "Running". We fall back to fuzzy regex
 // for any rig that omits the canonical names.
-function pickHarthmereLocomotionClipsV1(
+function pickHarthmereLocomotionClips(
   clips: THREE.AnimationClip[],
 ): { idle?: THREE.AnimationClip; walk?: THREE.AnimationClip; run?: THREE.AnimationClip } {
   const find = (re: RegExp) => clips.find((c) => re.test(c.name));
@@ -9633,11 +9541,11 @@ function pickHarthmereLocomotionClipsV1(
   return { idle, walk, run };
 }
 
-function installHarthmereLocomotionV1(animated: AnimatedInstance, clips: THREE.AnimationClip[]) {
+function installHarthmereLocomotion(animated: AnimatedInstance, clips: THREE.AnimationClip[]) {
   if (!animated.mixer || clips.length === 0) {
     return;
   }
-  const { idle, walk, run } = pickHarthmereLocomotionClipsV1(clips);
+  const { idle, walk, run } = pickHarthmereLocomotionClips(clips);
   const idleAction = idle ? animated.mixer.clipAction(idle) : undefined;
   const walkAction = walk ? animated.mixer.clipAction(walk) : undefined;
   const runAction = run ? animated.mixer.clipAction(run) : undefined;
@@ -9672,7 +9580,7 @@ function installHarthmereLocomotionV1(animated: AnimatedInstance, clips: THREE.A
   };
 }
 
-function setHarthmereLocomotionStateV1(
+function setHarthmereLocomotionState(
   animated: AnimatedInstance,
   next: "idle" | "walk" | "run",
 ) {
@@ -9732,7 +9640,7 @@ function bestCombatClip(
     return exactPreferred;
   }
 
-  // HARTHMERE_POLISH_V1_ATTACK_VARIATION
+  // HARTHMERE_POLISH_ATTACK_VARIATION
   // The attack fallback list is rotated by a per-call seed so adjacent NPCs
   // don't all play "Attack" on frame 1. The seed is derived from elapsed
   // time + clip count; bestCombatClip is called once per attack pulse,
@@ -10407,7 +10315,7 @@ function harthmereRuntimeFaceSideProfile(
   token: string,
 ): HarthmereRuntimeFaceSideProfile {
   const face = appearance.face;
-  const faceShapeMetricsV15 = harthmereRuntimeFaceShapeMetricsV15(face);
+  const faceShapeMetrics = harthmereRuntimeFaceShapeMetrics(face);
   const seed = harthmereStableCombatHash([
     token,
     face.skinTone,
@@ -10506,7 +10414,7 @@ function harthmereRuntimePaletteForAppearance(
   };
 }
 
-const HARTHMERE_RUNTIME_APPEARANCE_OPTION_EXPRESSION_CONTRACT_V26 = {
+const HARTHMERE_RUNTIME_APPEARANCE_OPTION_EXPRESSION_CONTRACT = {
   faceShape: {
     bolt_square: { width: 1.0, height: 1.0, jaw: 1.0 },
     wide: { width: 1.16, height: 0.94, jaw: 1.12 },
@@ -10554,7 +10462,7 @@ const HARTHMERE_RUNTIME_APPEARANCE_OPTION_EXPRESSION_CONTRACT_V26 = {
 function harthmereRuntimeBodyMetrics(
   body: HarthmereVoxelBodyConfig,
 ): HarthmereRuntimeBodyMetrics {
-  const contract = HARTHMERE_RUNTIME_APPEARANCE_OPTION_EXPRESSION_CONTRACT_V26;
+  const contract = HARTHMERE_RUNTIME_APPEARANCE_OPTION_EXPRESSION_CONTRACT;
   const bodyType =
     contract.bodyType[body.bodyType] ?? contract.bodyType.average;
   const height =
@@ -10568,7 +10476,7 @@ function harthmereRuntimeBodyMetrics(
   const stance =
     contract.stance[body.stance] ?? contract.stance.upright;
 
-  // V29: height is expressed through leg/torso proportions instead of stretching
+  // current: height is expressed through leg/torso proportions instead of stretching
   // the whole root. This keeps the head, face pieces, weapons, anchors, and
   // clothing thickness from turning into vertically stretched blocks.
   const heightDelta = height.heightScale - 1;
@@ -10626,7 +10534,7 @@ function harthmereRuntimeHeadSize(face: HarthmereVoxelFaceConfig): [number, numb
   ];
 }
 
-const HARTHMERE_RUNTIME_FACE_SHAPE_METRICS_V15 = {
+const HARTHMERE_RUNTIME_FACE_SHAPE_METRICS = {
   bolt_square: { width: 1.0, height: 1.0, jaw: 1.0 },
   wide: { width: 1.16, height: 0.94, jaw: 1.12 },
   narrow: { width: 0.88, height: 1.04, jaw: 0.9 },
@@ -10634,13 +10542,13 @@ const HARTHMERE_RUNTIME_FACE_SHAPE_METRICS_V15 = {
   soft: { width: 1.06, height: 0.98, jaw: 1.04 },
 } as const;
 
-function harthmereRuntimeFaceShapeMetricsV15(face: HarthmereVoxelFaceConfig) {
-  const faceShapeExpressionContractV26 = HARTHMERE_RUNTIME_APPEARANCE_OPTION_EXPRESSION_CONTRACT_V26.faceShape;
-  void faceShapeExpressionContractV26;
+function harthmereRuntimeFaceShapeMetrics(face: HarthmereVoxelFaceConfig) {
+  const faceShapeExpressionContract = HARTHMERE_RUNTIME_APPEARANCE_OPTION_EXPRESSION_CONTRACT.faceShape;
+  void faceShapeExpressionContract;
   return (
-    HARTHMERE_RUNTIME_FACE_SHAPE_METRICS_V15[
-      face.faceShape as keyof typeof HARTHMERE_RUNTIME_FACE_SHAPE_METRICS_V15
-    ] ?? HARTHMERE_RUNTIME_FACE_SHAPE_METRICS_V15.bolt_square
+    HARTHMERE_RUNTIME_FACE_SHAPE_METRICS[
+      face.faceShape as keyof typeof HARTHMERE_RUNTIME_FACE_SHAPE_METRICS
+    ] ?? HARTHMERE_RUNTIME_FACE_SHAPE_METRICS.bolt_square
   );
 }
 
@@ -10691,7 +10599,7 @@ function createHarthmereRuntimeVoxelHead(
   add(boxMesh(`${namePrefix}-forehead-light`, [headWidth * 0.52, 0.02, 0.014], [0, eyeY + 0.1, faceFrontZ - 0.01], skinHighlight));
   add(boxMesh(`${namePrefix}-jaw-shadow`, [headWidth * 0.62, 0.024, 0.014], [0, headY - headHeight / 2 + 0.065, faceFrontZ - 0.012], skinShadow));
 
-  // V11: side-specific head sculpting keeps generated NPCs from looking like
+  // current: side-specific head sculpting keeps generated NPCs from looking like
   // mirrored box-head clones while preserving deterministic runtime generation.
   add(boxMesh(
     `${namePrefix}-left-head-side-asym`,
@@ -10791,8 +10699,8 @@ function createHarthmereRuntimeVoxelHead(
   if (face.faceShape === "wide" || face.faceShape === "soft") {
     add(
       boxMesh(
-        `${namePrefix}-face-shape-wide-jaw-v15`,
-        [headWidth * 0.86 * harthmereRuntimeFaceShapeMetricsV15(face).jaw, 0.04, 0.018],
+        `${namePrefix}-face-shape-wide-jaw`,
+        [headWidth * 0.86 * harthmereRuntimeFaceShapeMetrics(face).jaw, 0.04, 0.018],
         [0, headY - headHeight * 0.38, faceFrontZ - 0.012],
         skinShadow,
       ),
@@ -10800,7 +10708,7 @@ function createHarthmereRuntimeVoxelHead(
   } else if (face.faceShape === "narrow") {
     add(
       boxMesh(
-        `${namePrefix}-face-shape-narrow-chin-v15`,
+        `${namePrefix}-face-shape-narrow-chin`,
         [headWidth * 0.42, 0.045, 0.018],
         [0, headY - headHeight * 0.42, faceFrontZ - 0.012],
         skinShadow,
@@ -10809,7 +10717,7 @@ function createHarthmereRuntimeVoxelHead(
   } else if (face.faceShape === "tall") {
     add(
       boxMesh(
-        `${namePrefix}-face-shape-tall-forehead-v15`,
+        `${namePrefix}-face-shape-tall-forehead`,
         [headWidth * 0.74, 0.035, 0.018],
         [0, headY + headHeight * 0.32, faceFrontZ - 0.012],
         skinShadow,
@@ -11106,41 +11014,41 @@ function addHarthmereRuntimeOutfitAndGearPolish(
   const metal = 0xb8b2a4;
   const leather = 0x3b2418;
   const clothingSlots = Object.keys(appearance.clothing);
-  addHarthmereRuntimeVisibleClothingGuaranteeV22(root, appearance.clothing as any, body, palette);
-  addHarthmereRuntimeOutwardClothingDetailLayerV23(root, appearance.clothing as any, body, palette);
-  root.userData.harthmereModularClothingRuntime = "harthmere-modular-clothing-runtime-v15-body-fit";
+  addHarthmereRuntimeVisibleClothingGuarantee(root, appearance.clothing as any, body, palette);
+  addHarthmereRuntimeOutwardClothingDetailLayer(root, appearance.clothing as any, body, palette);
+  root.userData.harthmereModularClothingRuntime = "harthmere-modular-clothing-runtime-body-fit";
   root.userData.harthmereClothingSlots = clothingSlots;
   root.userData.harthmereClothingFitMetrics = body;
-  root.userData.harthmereThreeJsClothingRenderer = "harthmere-threejs-clothing-v15-body-fit";
+  root.userData.harthmereThreeJsClothingRenderer = "harthmere-threejs-clothing-body-fit";
   root.userData.harthmereHiddenBodyZones = clothingSlots.flatMap((slot) => appearance.clothing[slot as keyof typeof appearance.clothing]?.hidesBodyZones ?? []);
-  queueHarthmereRuntimeLicensedClothingModelsV18(root, appearance.clothing as any, body);
-  // V14 modular clothing proxy layer. Rigid pieces are positioned at the same
+  queueHarthmereRuntimeLicensedClothingModels(root, appearance.clothing as any, body);
+  // current modular clothing proxy layer. Rigid pieces are positioned at the same
   // anchors that future GLB clothing will use; skinned torso/leg slots are
   // represented here as cheap voxel overlays until authored same-skeleton GLBs
   // exist for every outfit.
   if (appearance.clothing.torso) {
     root.add(
-      boxMesh("townsperson-clothing-torso-v15-body-fit", [body.torsoWidth + 0.05, body.torsoHeight + 0.04, 0.05], [0, torsoY, -0.14], palette.tunic),
-      boxMesh("townsperson-clothing-collar-v15-body-fit", [body.torsoWidth + 0.08, 0.035, 0.06], [0, torsoY + body.torsoHeight * 0.42, -0.165], accent),
-      boxMesh("townsperson-clothing-hem-v15-body-fit", [body.torsoWidth + 0.1, 0.035, 0.06], [0, torsoY - body.torsoHeight * 0.42, -0.165], trim),
+      boxMesh("townsperson-clothing-torso-body-fit", [body.torsoWidth + 0.05, body.torsoHeight + 0.04, 0.05], [0, torsoY, -0.14], palette.tunic),
+      boxMesh("townsperson-clothing-collar-body-fit", [body.torsoWidth + 0.08, 0.035, 0.06], [0, torsoY + body.torsoHeight * 0.42, -0.165], accent),
+      boxMesh("townsperson-clothing-hem-body-fit", [body.torsoWidth + 0.1, 0.035, 0.06], [0, torsoY - body.torsoHeight * 0.42, -0.165], trim),
     );
   }
   if (appearance.clothing.legs) {
     root.add(
-      boxMesh("townsperson-clothing-left-trouser-v15-body-fit", [body.legWidth + 0.035, body.legLength * 0.82, 0.045], [-(body.torsoWidth / 4 + body.legSpread), body.legLength * 0.54, -0.105], trim),
-      boxMesh("townsperson-clothing-right-trouser-v15-body-fit", [body.legWidth + 0.035, body.legLength * 0.82, 0.045], [body.torsoWidth / 4 + body.legSpread, body.legLength * 0.54, -0.105], trim),
+      boxMesh("townsperson-clothing-left-trouser-body-fit", [body.legWidth + 0.035, body.legLength * 0.82, 0.045], [-(body.torsoWidth / 4 + body.legSpread), body.legLength * 0.54, -0.105], trim),
+      boxMesh("townsperson-clothing-right-trouser-body-fit", [body.legWidth + 0.035, body.legLength * 0.82, 0.045], [body.torsoWidth / 4 + body.legSpread, body.legLength * 0.54, -0.105], trim),
     );
   }
   if (appearance.clothing.belt) {
     root.add(
-      boxMesh("townsperson-clothing-belt-v14", [body.torsoWidth + 0.08, 0.045, 0.06], [0, body.legLength + 0.08, -0.14], leather),
-      boxMesh("townsperson-clothing-buckle-v14", [0.06, 0.055, 0.025], [0, body.legLength + 0.08, -0.18], metal),
+      boxMesh("townsperson-clothing-belt", [body.torsoWidth + 0.08, 0.045, 0.06], [0, body.legLength + 0.08, -0.14], leather),
+      boxMesh("townsperson-clothing-buckle", [0.06, 0.055, 0.025], [0, body.legLength + 0.08, -0.18], metal),
     );
   }
   if (appearance.clothing.feet) {
     root.add(
-      boxMesh("townsperson-clothing-left-boot-v14", [body.legWidth + 0.04, 0.07, 0.07], [-(body.torsoWidth / 4 + body.legSpread), 0.055, -0.09], 0x171717),
-      boxMesh("townsperson-clothing-right-boot-v14", [body.legWidth + 0.04, 0.07, 0.07], [body.torsoWidth / 4 + body.legSpread, 0.055, -0.09], 0x171717),
+      boxMesh("townsperson-clothing-left-boot", [body.legWidth + 0.04, 0.07, 0.07], [-(body.torsoWidth / 4 + body.legSpread), 0.055, -0.09], 0x171717),
+      boxMesh("townsperson-clothing-right-boot", [body.legWidth + 0.04, 0.07, 0.07], [body.torsoWidth / 4 + body.legSpread, 0.055, -0.09], 0x171717),
     );
   }
   // Shared role gear: all ambient/combat humans now read the same equipment
@@ -11204,10 +11112,10 @@ function addHarthmereRuntimeOutfitAndGearPolish(
   }
 }
 
-const HARTHMERE_RUNTIME_PRODUCT_MINECRAFT_POLISH_VERSION_V20 =
-  "harthmere-runtime-product-minecraft-polish-v20";
+const HARTHMERE_RUNTIME_PRODUCT_MINECRAFT_POLISH_VERSION =
+  "harthmere-runtime-product-minecraft-polish";
 
-function addHarthmereRuntimeProductMinecraftClothingPolishV20(
+function addHarthmereRuntimeProductMinecraftClothingPolish(
   root: THREE.Group,
   appearance: HarthmereCharacterAppearance,
   body: HarthmereRuntimeBodyMetrics,
@@ -11224,11 +11132,11 @@ function addHarthmereRuntimeProductMinecraftClothingPolishV20(
   const clothing = appearance.clothing as Record<string, any>;
   const slots = Object.keys(clothing);
 
-  root.userData.harthmereRuntimeProductMinecraftPolish = HARTHMERE_RUNTIME_PRODUCT_MINECRAFT_POLISH_VERSION_V20;
+  root.userData.harthmereRuntimeProductMinecraftPolish = HARTHMERE_RUNTIME_PRODUCT_MINECRAFT_POLISH_VERSION;
   root.userData.harthmereRuntimeProductMinecraftPolishSlots = slots;
 
   const add = (mesh: THREE.Object3D) => {
-    mesh.userData.harthmereRuntimeProductMinecraftPolish = HARTHMERE_RUNTIME_PRODUCT_MINECRAFT_POLISH_VERSION_V20;
+    mesh.userData.harthmereRuntimeProductMinecraftPolish = HARTHMERE_RUNTIME_PRODUCT_MINECRAFT_POLISH_VERSION;
     root.add(mesh);
     return mesh;
   };
@@ -11259,72 +11167,72 @@ function addHarthmereRuntimeProductMinecraftClothingPolishV20(
     if (slot === "torso") {
       const height = body.torsoHeight + (robe ? body.legLength * 0.42 : 0.06);
       const y = torsoY - (robe ? body.legLength * 0.18 : 0);
-      addBox("townsperson-product-torso-front-v20", [body.torsoWidth + 0.1, height, 0.055], [0, y, -0.18], armor ? metal : hunter || apron ? leather : palette.tunic);
-      addBox("townsperson-product-torso-trim-v20", [body.torsoWidth + 0.15, 0.032, 0.065], [0, torsoY + body.torsoHeight * 0.43, -0.225], light);
-      addBox("townsperson-product-hem-trim-v20", [body.torsoWidth + 0.15, 0.032, 0.065], [0, y - height * 0.48, -0.22], trim);
+      addBox("townsperson-product-torso-front", [body.torsoWidth + 0.1, height, 0.055], [0, y, -0.18], armor ? metal : hunter || apron ? leather : palette.tunic);
+      addBox("townsperson-product-torso-trim", [body.torsoWidth + 0.15, 0.032, 0.065], [0, torsoY + body.torsoHeight * 0.43, -0.225], light);
+      addBox("townsperson-product-hem-trim", [body.torsoWidth + 0.15, 0.032, 0.065], [0, y - height * 0.48, -0.22], trim);
       if (armor) {
-        addBox("townsperson-product-left-pauldron-v20", [0.16, 0.07, 0.22], [-(body.shoulderWidth / 2 + 0.02), shoulderY + 0.02, -0.035], metal);
-        addBox("townsperson-product-right-pauldron-v20", [0.16, 0.07, 0.22], [body.shoulderWidth / 2 + 0.02, shoulderY + 0.02, -0.035], metal);
-        addBox("townsperson-product-tabard-v20", [0.1, height * 0.82, 0.07], [0, y, -0.255], palette.accent);
+        addBox("townsperson-product-left-pauldron", [0.16, 0.07, 0.22], [-(body.shoulderWidth / 2 + 0.02), shoulderY + 0.02, -0.035], metal);
+        addBox("townsperson-product-right-pauldron", [0.16, 0.07, 0.22], [body.shoulderWidth / 2 + 0.02, shoulderY + 0.02, -0.035], metal);
+        addBox("townsperson-product-tabard", [0.1, height * 0.82, 0.07], [0, y, -0.255], palette.accent);
       }
       if (robe) {
-        addBox("townsperson-product-robe-sash-v20", [0.07, height * 0.96, 0.075], [-0.11, y, -0.25], palette.accent, [0, 0, -0.16]);
+        addBox("townsperson-product-robe-sash", [0.07, height * 0.96, 0.075], [-0.11, y, -0.25], palette.accent, [0, 0, -0.16]);
       }
       if (apron) {
-        addBox("townsperson-product-apron-v20", [body.torsoWidth * 0.72, height * 0.82, 0.07], [0, y - 0.02, -0.255], leather);
+        addBox("townsperson-product-apron", [body.torsoWidth * 0.72, height * 0.82, 0.07], [0, y - 0.02, -0.255], leather);
       }
       if (merchant) {
-        addBox("townsperson-product-left-lapel-v20", [0.07, height * 0.62, 0.075], [-0.12, y + 0.04, -0.258], light, [0, 0, -0.08]);
-        addBox("townsperson-product-right-lapel-v20", [0.07, height * 0.62, 0.075], [0.12, y + 0.04, -0.258], light, [0, 0, 0.08]);
+        addBox("townsperson-product-left-lapel", [0.07, height * 0.62, 0.075], [-0.12, y + 0.04, -0.258], light, [0, 0, -0.08]);
+        addBox("townsperson-product-right-lapel", [0.07, height * 0.62, 0.075], [0.12, y + 0.04, -0.258], light, [0, 0, 0.08]);
       }
       if (torn) {
-        addBox("townsperson-product-rag-left-v20", [0.12, 0.11, 0.075], [-(body.torsoWidth * 0.24), torsoY - 0.04, -0.28], trim, [0, 0, -0.14]);
-        addBox("townsperson-product-rag-right-v20", [0.1, 0.1, 0.075], [body.torsoWidth * 0.25, torsoY + 0.1, -0.28], dark, [0, 0, 0.16]);
+        addBox("townsperson-product-rag-left", [0.12, 0.11, 0.075], [-(body.torsoWidth * 0.24), torsoY - 0.04, -0.28], trim, [0, 0, -0.14]);
+        addBox("townsperson-product-rag-right", [0.1, 0.1, 0.075], [body.torsoWidth * 0.25, torsoY + 0.1, -0.28], dark, [0, 0, 0.16]);
       }
     } else if (slot === "legs") {
       const lx = -(body.torsoWidth / 4 + body.legSpread);
       const rx = body.torsoWidth / 4 + body.legSpread;
       if (robe) {
-        addBox("townsperson-product-robe-skirt-v20", [body.torsoWidth + 0.1, body.legLength * 0.82, 0.06], [0, body.legLength * 0.52, -0.155], palette.tunic);
+        addBox("townsperson-product-robe-skirt", [body.torsoWidth + 0.1, body.legLength * 0.82, 0.06], [0, body.legLength * 0.52, -0.155], palette.tunic);
       } else {
-        addBox("townsperson-product-left-knee-v20", [body.legWidth + 0.055, 0.05, 0.06], [lx, body.legLength * 0.52, -0.14], armor ? metal : light);
-        addBox("townsperson-product-right-knee-v20", [body.legWidth + 0.055, 0.05, 0.06], [rx, body.legLength * 0.52, -0.14], armor ? metal : light);
+        addBox("townsperson-product-left-knee", [body.legWidth + 0.055, 0.05, 0.06], [lx, body.legLength * 0.52, -0.14], armor ? metal : light);
+        addBox("townsperson-product-right-knee", [body.legWidth + 0.055, 0.05, 0.06], [rx, body.legLength * 0.52, -0.14], armor ? metal : light);
       }
     } else if (slot === "feet") {
       const lx = -(body.torsoWidth / 4 + body.legSpread);
       const rx = body.torsoWidth / 4 + body.legSpread;
-      addBox("townsperson-product-left-boot-cuff-v20", [body.legWidth + 0.055, 0.045, 0.13], [lx, 0.13, -0.045], leather);
-      addBox("townsperson-product-right-boot-cuff-v20", [body.legWidth + 0.055, 0.045, 0.13], [rx, 0.13, -0.045], leather);
+      addBox("townsperson-product-left-boot-cuff", [body.legWidth + 0.055, 0.045, 0.13], [lx, 0.13, -0.045], leather);
+      addBox("townsperson-product-right-boot-cuff", [body.legWidth + 0.055, 0.045, 0.13], [rx, 0.13, -0.045], leather);
     } else if (slot === "hands") {
-      addBox("townsperson-product-left-bracer-v20", [body.armWidth + 0.035, 0.05, 0.12], [-body.shoulderWidth / 2, shoulderY - body.armLength * 0.24, -0.03], leather);
-      addBox("townsperson-product-right-bracer-v20", [body.armWidth + 0.035, 0.05, 0.12], [body.shoulderWidth / 2, shoulderY - body.armLength * 0.24, -0.03], leather);
+      addBox("townsperson-product-left-bracer", [body.armWidth + 0.035, 0.05, 0.12], [-body.shoulderWidth / 2, shoulderY - body.armLength * 0.24, -0.03], leather);
+      addBox("townsperson-product-right-bracer", [body.armWidth + 0.035, 0.05, 0.12], [body.shoulderWidth / 2, shoulderY - body.armLength * 0.24, -0.03], leather);
     } else if (slot === "belt") {
-      addBox("townsperson-product-belt-pouch-left-v20", [0.085, 0.105, 0.055], [-(body.torsoWidth * 0.36), body.legLength + 0.04, -0.16], dark);
-      addBox("townsperson-product-belt-pouch-right-v20", [0.075, 0.095, 0.055], [body.torsoWidth * 0.35, body.legLength + 0.035, -0.16], dark);
+      addBox("townsperson-product-belt-pouch-left", [0.085, 0.105, 0.055], [-(body.torsoWidth * 0.36), body.legLength + 0.04, -0.16], dark);
+      addBox("townsperson-product-belt-pouch-right", [0.075, 0.095, 0.055], [body.torsoWidth * 0.35, body.legLength + 0.035, -0.16], dark);
     } else if (slot === "head") {
       if (/helmet|guard|halfhelm/i.test(variant)) {
-        addBox("townsperson-product-helmet-brow-v20", [0.46, 0.035, 0.05], [0, headY + 0.15, -0.16], dark);
+        addBox("townsperson-product-helmet-brow", [0.46, 0.035, 0.05], [0, headY + 0.15, -0.16], dark);
       } else if (/hood/i.test(variant)) {
-        addBox("townsperson-product-hood-drape-v20", [0.36, 0.16, 0.055], [0, headY + 0.04, 0.13], dark);
+        addBox("townsperson-product-hood-drape", [0.36, 0.16, 0.055], [0, headY + 0.04, 0.13], dark);
       } else {
-        addBox("townsperson-product-hat-band-v20", [0.3, 0.035, 0.25], [0, headY + 0.23, -0.01], dark);
+        addBox("townsperson-product-hat-band", [0.3, 0.035, 0.25], [0, headY + 0.23, -0.01], dark);
       }
     } else if (slot === "face" && /mask/i.test(variant)) {
-      addBox("townsperson-product-mask-v20", [0.23, 0.052, 0.03], [0, headY + 0.02, -0.17], dark);
+      addBox("townsperson-product-mask", [0.23, 0.052, 0.03], [0, headY + 0.02, -0.17], dark);
     } else if (slot === "back") {
       if (/cape|cloak|shroud/i.test(variant)) {
-        addBox("townsperson-product-cape-clasp-v20", [0.1, 0.05, 0.06], [0, shoulderY + 0.04, -0.13], metal);
+        addBox("townsperson-product-cape-clasp", [0.1, 0.05, 0.06], [0, shoulderY + 0.04, -0.13], metal);
       } else {
-        addBox("townsperson-product-pack-flap-v20", [0.18, 0.1, 0.075], [0.04, torsoY + 0.08, 0.215], trim);
+        addBox("townsperson-product-pack-flap", [0.18, 0.1, 0.075], [0.04, torsoY + 0.08, 0.215], trim);
       }
     }
   }
 }
 
-const HARTHMERE_LARGE_BODY_CLOTHING_VISIBILITY_VERSION_V14 =
-  "harthmere-large-body-clothing-visibility-v14";
+const HARTHMERE_LARGE_BODY_CLOTHING_VISIBILITY_VERSION =
+  "harthmere-large-body-clothing-visibility";
 
-function ensureHarthmereLargeBodyClothingVisibilityV14(
+function ensureHarthmereLargeBodyClothingVisibility(
   root: THREE.Group,
   appearance: HarthmereCharacterAppearance,
   body: HarthmereRuntimeBodyMetrics,
@@ -11350,11 +11258,11 @@ function ensureHarthmereLargeBodyClothingVisibilityV14(
     child.position.z -= 0.055;
     child.scale.x *= 1.05;
     child.scale.y *= 1.02;
-    child.userData.harthmereLargeBodyClothingVisibilityV14 = true;
+    child.userData.harthmereLargeBodyClothingVisibility = true;
     touched.push(child.name);
   });
-  root.userData.harthmereLargeBodyClothingVisibilityV14 = {
-    version: HARTHMERE_LARGE_BODY_CLOTHING_VISIBILITY_VERSION_V14,
+  root.userData.harthmereLargeBodyClothingVisibility = {
+    version: HARTHMERE_LARGE_BODY_CLOTHING_VISIBILITY_VERSION,
     largeBody,
     bodyType: appearance.body.bodyType,
     touched,
@@ -11362,12 +11270,12 @@ function ensureHarthmereLargeBodyClothingVisibilityV14(
 }
 
 
-// HARTHMERE_RUNTIME_OUTSIDE_CLOTHING_SHELL_V26
+// HARTHMERE_RUNTIME_OUTSIDE_CLOTHING_SHELL
 // Renders clothing deliberately outside the base body so medium/tall townspeople visibly have clothes.
-const HARTHMERE_RUNTIME_OUTSIDE_CLOTHING_SHELL_VERSION_V26 =
-  "harthmere-runtime-outside-clothing-shell-v26";
+const HARTHMERE_RUNTIME_OUTSIDE_CLOTHING_SHELL_VERSION =
+  "harthmere-runtime-outside-clothing-shell";
 
-function addHarthmereRuntimeOutsideClothingShellV26(
+function addHarthmereRuntimeOutsideClothingShell(
   root: THREE.Group,
   clothing: Record<string, any> | undefined,
   body: HarthmereRuntimeBodyMetrics,
@@ -11381,7 +11289,7 @@ function addHarthmereRuntimeOutsideClothingShellV26(
   const torsoY = body.legLength + body.torsoHeight * 0.5;
   const shoulderY = body.legLength + body.torsoHeight * 0.82;
   const waistY = body.legLength + 0.09;
-  // V29: thin garment layer over the silhouette, not a large outside shell.
+  // current: thin garment layer over the silhouette, not a large outside shell.
   const torsoWidth = body.torsoWidth + 0.08;
   const torsoHeight = body.torsoHeight + 0.05;
   const torsoDepth = body.torsoDepth + 0.06;
@@ -11398,44 +11306,44 @@ function addHarthmereRuntimeOutsideClothingShellV26(
   const dark = 0x111111;
 
   const mark = (mesh: THREE.Object3D) => {
-    mesh.userData.harthmereRuntimeOutsideClothingShellV26 = true;
+    mesh.userData.harthmereRuntimeOutsideClothingShell = true;
     root.add(mesh);
     return mesh;
   };
 
   if (clothing?.torso) {
-    mark(boxMesh("runtime-outside-clothing-torso-front-v26", [torsoWidth, torsoHeight, 0.04], [0, torsoY, frontZ], cloth));
-    mark(boxMesh("runtime-outside-clothing-torso-back-v26", [torsoWidth, torsoHeight, 0.04], [0, torsoY, backZ], cloth));
-    mark(boxMesh("runtime-outside-clothing-torso-left-v26", [0.04, torsoHeight, torsoDepth + 0.04], [-sideX, torsoY, 0], cloth));
-    mark(boxMesh("runtime-outside-clothing-torso-right-v26", [0.04, torsoHeight, torsoDepth + 0.04], [sideX, torsoY, 0], cloth));
-    mark(boxMesh("runtime-outside-clothing-collar-v26", [torsoWidth + 0.03, 0.04, torsoDepth + 0.05], [0, torsoY + torsoHeight * 0.48, 0], trim));
-    mark(boxMesh("runtime-outside-clothing-hem-v26", [torsoWidth + 0.04, 0.045, torsoDepth + 0.055], [0, torsoY - torsoHeight * 0.49, 0], trim));
+    mark(boxMesh("runtime-outside-clothing-torso-front", [torsoWidth, torsoHeight, 0.04], [0, torsoY, frontZ], cloth));
+    mark(boxMesh("runtime-outside-clothing-torso-back", [torsoWidth, torsoHeight, 0.04], [0, torsoY, backZ], cloth));
+    mark(boxMesh("runtime-outside-clothing-torso-left", [0.04, torsoHeight, torsoDepth + 0.04], [-sideX, torsoY, 0], cloth));
+    mark(boxMesh("runtime-outside-clothing-torso-right", [0.04, torsoHeight, torsoDepth + 0.04], [sideX, torsoY, 0], cloth));
+    mark(boxMesh("runtime-outside-clothing-collar", [torsoWidth + 0.03, 0.04, torsoDepth + 0.05], [0, torsoY + torsoHeight * 0.48, 0], trim));
+    mark(boxMesh("runtime-outside-clothing-hem", [torsoWidth + 0.04, 0.045, torsoDepth + 0.055], [0, torsoY - torsoHeight * 0.49, 0], trim));
   }
 
   if (clothing?.legs) {
-    mark(boxMesh("runtime-outside-clothing-left-leg-v26", [legWidth, legLength, body.legDepth + 0.045], [-legX, body.legLength * 0.52, -0.035], pants));
-    mark(boxMesh("runtime-outside-clothing-right-leg-v26", [legWidth, legLength, body.legDepth + 0.045], [legX, body.legLength * 0.52, -0.035], pants));
+    mark(boxMesh("runtime-outside-clothing-left-leg", [legWidth, legLength, body.legDepth + 0.045], [-legX, body.legLength * 0.52, -0.035], pants));
+    mark(boxMesh("runtime-outside-clothing-right-leg", [legWidth, legLength, body.legDepth + 0.045], [legX, body.legLength * 0.52, -0.035], pants));
   }
 
   if (clothing?.feet) {
-    mark(boxMesh("runtime-outside-clothing-left-boot-v26", [legWidth + 0.045, 0.1, body.legDepth + 0.065], [-legX, 0.055, -0.04], dark));
-    mark(boxMesh("runtime-outside-clothing-right-boot-v26", [legWidth + 0.045, 0.1, body.legDepth + 0.065], [legX, 0.055, -0.04], dark));
+    mark(boxMesh("runtime-outside-clothing-left-boot", [legWidth + 0.045, 0.1, body.legDepth + 0.065], [-legX, 0.055, -0.04], dark));
+    mark(boxMesh("runtime-outside-clothing-right-boot", [legWidth + 0.045, 0.1, body.legDepth + 0.065], [legX, 0.055, -0.04], dark));
   }
 
   if (clothing?.belt) {
-    mark(boxMesh("runtime-outside-clothing-belt-v26", [torsoWidth + 0.055, 0.055, torsoDepth + 0.065], [0, waistY, 0], leather));
-    mark(boxMesh("runtime-outside-clothing-buckle-v26", [0.075, 0.07, 0.04], [0, waistY, frontZ - 0.035], 0xd0b56b));
+    mark(boxMesh("runtime-outside-clothing-belt", [torsoWidth + 0.055, 0.055, torsoDepth + 0.065], [0, waistY, 0], leather));
+    mark(boxMesh("runtime-outside-clothing-buckle", [0.075, 0.07, 0.04], [0, waistY, frontZ - 0.035], 0xd0b56b));
   }
 
   if (clothing?.hands) {
     const armWidth = body.armWidth + 0.03;
     const armLength = body.armLength * 0.68;
-    mark(boxMesh("runtime-outside-clothing-left-sleeve-v26", [armWidth, armLength, body.armDepth + 0.04], [-(body.shoulderWidth / 2 + 0.015), shoulderY - armLength * 0.45, -0.03], cloth));
-    mark(boxMesh("runtime-outside-clothing-right-sleeve-v26", [armWidth, armLength, body.armDepth + 0.04], [body.shoulderWidth / 2 + 0.015, shoulderY - armLength * 0.45, -0.03], cloth));
+    mark(boxMesh("runtime-outside-clothing-left-sleeve", [armWidth, armLength, body.armDepth + 0.04], [-(body.shoulderWidth / 2 + 0.015), shoulderY - armLength * 0.45, -0.03], cloth));
+    mark(boxMesh("runtime-outside-clothing-right-sleeve", [armWidth, armLength, body.armDepth + 0.04], [body.shoulderWidth / 2 + 0.015, shoulderY - armLength * 0.45, -0.03], cloth));
   }
 
-  root.userData.harthmereRuntimeOutsideClothingShellV26 = {
-    version: HARTHMERE_RUNTIME_OUTSIDE_CLOTHING_SHELL_VERSION_V26,
+  root.userData.harthmereRuntimeOutsideClothingShell = {
+    version: HARTHMERE_RUNTIME_OUTSIDE_CLOTHING_SHELL_VERSION,
     slots,
     torsoWidth,
     torsoHeight,
@@ -11445,15 +11353,15 @@ function addHarthmereRuntimeOutsideClothingShellV26(
 }
 
 
-// HARTHMERE_RUNTIME_ALWAYS_VISIBLE_NPC_CLOTHING_V27
+// HARTHMERE_RUNTIME_ALWAYS_VISIBLE_NPC_CLOTHING
 // Different approach from the previous clothing-slot layers: this does not rely
 // on clothing slot presence or coplanar overlays. It puts a role-colored outfit
 // shell far outside every procedural humanoid body so medium/tall NPCs visibly
 // read as clothed first; later art passes can tune the offsets inward.
-const HARTHMERE_RUNTIME_ALWAYS_VISIBLE_NPC_CLOTHING_VERSION_V27 =
-  "harthmere-runtime-always-visible-npc-clothing-v27";
+const HARTHMERE_RUNTIME_ALWAYS_VISIBLE_NPC_CLOTHING_VERSION =
+  "harthmere-runtime-always-visible-npc-clothing";
 
-function addHarthmereRuntimeAlwaysVisibleNpcClothingV27(
+function addHarthmereRuntimeAlwaysVisibleNpcClothing(
   root: THREE.Group,
   appearance: HarthmereCharacterAppearance,
   body: HarthmereRuntimeBodyMetrics,
@@ -11467,8 +11375,8 @@ function addHarthmereRuntimeAlwaysVisibleNpcClothingV27(
     (appearance.clothing as Record<string, unknown> | undefined)?.torso,
   );
   if (!hasTorsoClothing) {
-    root.userData.harthmereRuntimeAlwaysVisibleNpcClothingV27 = {
-      version: HARTHMERE_RUNTIME_ALWAYS_VISIBLE_NPC_CLOTHING_VERSION_V27,
+    root.userData.harthmereRuntimeAlwaysVisibleNpcClothing = {
+      version: HARTHMERE_RUNTIME_ALWAYS_VISIBLE_NPC_CLOTHING_VERSION,
       role,
       species: appearance.species,
       skipped: "no-torso-clothing",
@@ -11482,7 +11390,7 @@ function addHarthmereRuntimeAlwaysVisibleNpcClothingV27(
   const leather = 0x3b2418;
   const dark = 0x111111;
 
-  // V29: thin clothing follows the actual body. No hard minimum floors and no
+  // current: thin clothing follows the actual body. No hard minimum floors and no
   // fixed 0.72m depth shell.
   const torsoWidth = body.torsoWidth + 0.1;
   const torsoHeight = body.torsoHeight + 0.06;
@@ -11496,23 +11404,23 @@ function addHarthmereRuntimeAlwaysVisibleNpcClothingV27(
   const legLength = body.legLength * 0.9;
   const armWidth = body.armWidth + 0.035;
   const armLength = body.armLength * 0.72;
-  const add = (mesh: THREE.Object3D) => { mesh.userData.harthmereRuntimeAlwaysVisibleNpcClothingV27 = true; root.add(mesh); return mesh; };
-  add(boxMesh("runtime-always-visible-clothing-torso-front-v27", [torsoWidth, torsoHeight, 0.045], [0, torsoY, frontZ], cloth));
-  add(boxMesh("runtime-always-visible-clothing-torso-back-v27", [torsoWidth, torsoHeight, 0.045], [0, torsoY, backZ], cloth));
-  add(boxMesh("runtime-always-visible-clothing-torso-left-v27", [0.045, torsoHeight, torsoDepth], [-sideX, torsoY, 0], cloth));
-  add(boxMesh("runtime-always-visible-clothing-torso-right-v27", [0.045, torsoHeight, torsoDepth], [sideX, torsoY, 0], cloth));
-  add(boxMesh("runtime-always-visible-clothing-collar-v27", [torsoWidth + 0.04, 0.045, torsoDepth + 0.035], [0, torsoY + torsoHeight * 0.48, 0], trim));
-  add(boxMesh("runtime-always-visible-clothing-hem-v27", [torsoWidth + 0.04, 0.05, torsoDepth + 0.04], [0, torsoY - torsoHeight * 0.49, 0], trim));
-  add(boxMesh("runtime-always-visible-clothing-belt-v27", [torsoWidth + 0.05, 0.06, torsoDepth + 0.045], [0, waistY, 0], leather));
-  add(boxMesh("runtime-always-visible-clothing-buckle-v27", [0.08, 0.07, 0.04], [0, waistY, frontZ - 0.04], 0xd0b56b));
-  add(boxMesh("runtime-always-visible-clothing-left-sleeve-v27", [armWidth, armLength, body.armDepth + 0.05], [-(body.shoulderWidth / 2 + 0.02), shoulderY - armLength * 0.46, -0.035], cloth));
-  add(boxMesh("runtime-always-visible-clothing-right-sleeve-v27", [armWidth, armLength, body.armDepth + 0.05], [body.shoulderWidth / 2 + 0.02, shoulderY - armLength * 0.46, -0.035], cloth));
-  add(boxMesh("runtime-always-visible-clothing-left-pants-v27", [legWidth, legLength, body.legDepth + 0.055], [-legX, body.legLength * 0.52, -0.035], pants));
-  add(boxMesh("runtime-always-visible-clothing-right-pants-v27", [legWidth, legLength, body.legDepth + 0.055], [legX, body.legLength * 0.52, -0.035], pants));
-  add(boxMesh("runtime-always-visible-clothing-left-boot-v27", [legWidth + 0.055, 0.105, body.legDepth + 0.07], [-legX, 0.06, -0.04], dark));
-  add(boxMesh("runtime-always-visible-clothing-right-boot-v27", [legWidth + 0.055, 0.105, body.legDepth + 0.07], [legX, 0.06, -0.04], dark));
-  root.userData.harthmereRuntimeAlwaysVisibleNpcClothingV27 = {
-    version: HARTHMERE_RUNTIME_ALWAYS_VISIBLE_NPC_CLOTHING_VERSION_V27,
+  const add = (mesh: THREE.Object3D) => { mesh.userData.harthmereRuntimeAlwaysVisibleNpcClothing = true; root.add(mesh); return mesh; };
+  add(boxMesh("runtime-always-visible-clothing-torso-front", [torsoWidth, torsoHeight, 0.045], [0, torsoY, frontZ], cloth));
+  add(boxMesh("runtime-always-visible-clothing-torso-back", [torsoWidth, torsoHeight, 0.045], [0, torsoY, backZ], cloth));
+  add(boxMesh("runtime-always-visible-clothing-torso-left", [0.045, torsoHeight, torsoDepth], [-sideX, torsoY, 0], cloth));
+  add(boxMesh("runtime-always-visible-clothing-torso-right", [0.045, torsoHeight, torsoDepth], [sideX, torsoY, 0], cloth));
+  add(boxMesh("runtime-always-visible-clothing-collar", [torsoWidth + 0.04, 0.045, torsoDepth + 0.035], [0, torsoY + torsoHeight * 0.48, 0], trim));
+  add(boxMesh("runtime-always-visible-clothing-hem", [torsoWidth + 0.04, 0.05, torsoDepth + 0.04], [0, torsoY - torsoHeight * 0.49, 0], trim));
+  add(boxMesh("runtime-always-visible-clothing-belt", [torsoWidth + 0.05, 0.06, torsoDepth + 0.045], [0, waistY, 0], leather));
+  add(boxMesh("runtime-always-visible-clothing-buckle", [0.08, 0.07, 0.04], [0, waistY, frontZ - 0.04], 0xd0b56b));
+  add(boxMesh("runtime-always-visible-clothing-left-sleeve", [armWidth, armLength, body.armDepth + 0.05], [-(body.shoulderWidth / 2 + 0.02), shoulderY - armLength * 0.46, -0.035], cloth));
+  add(boxMesh("runtime-always-visible-clothing-right-sleeve", [armWidth, armLength, body.armDepth + 0.05], [body.shoulderWidth / 2 + 0.02, shoulderY - armLength * 0.46, -0.035], cloth));
+  add(boxMesh("runtime-always-visible-clothing-left-pants", [legWidth, legLength, body.legDepth + 0.055], [-legX, body.legLength * 0.52, -0.035], pants));
+  add(boxMesh("runtime-always-visible-clothing-right-pants", [legWidth, legLength, body.legDepth + 0.055], [legX, body.legLength * 0.52, -0.035], pants));
+  add(boxMesh("runtime-always-visible-clothing-left-boot", [legWidth + 0.055, 0.105, body.legDepth + 0.07], [-legX, 0.06, -0.04], dark));
+  add(boxMesh("runtime-always-visible-clothing-right-boot", [legWidth + 0.055, 0.105, body.legDepth + 0.07], [legX, 0.06, -0.04], dark));
+  root.userData.harthmereRuntimeAlwaysVisibleNpcClothing = {
+    version: HARTHMERE_RUNTIME_ALWAYS_VISIBLE_NPC_CLOTHING_VERSION,
     role,
     species: appearance.species,
     frontZ,
@@ -11524,15 +11432,15 @@ function addHarthmereRuntimeAlwaysVisibleNpcClothingV27(
 }
 
 
-// HARTHMERE_RUNTIME_NPC_CLOTHING_MATERIAL_RECOLOR_V28
+// HARTHMERE_RUNTIME_NPC_CLOTHING_MATERIAL_RECOLOR
 // This is intentionally not just another spatial shell. It recolors the actual
 // procedural townsperson body/leg/arm meshes and then adds high-contrast trim.
 // That covers medium/tall NPCs even when the old clothing slots or extra shells
 // are not visible from the current camera angle.
-const HARTHMERE_RUNTIME_NPC_CLOTHING_MATERIAL_RECOLOR_VERSION_V28 =
-  "harthmere-runtime-npc-clothing-material-recolor-v28";
+const HARTHMERE_RUNTIME_NPC_CLOTHING_MATERIAL_RECOLOR_VERSION =
+  "harthmere-runtime-npc-clothing-material-recolor";
 
-function setHarthmereRuntimeNpcMeshColorV28(object: THREE.Object3D | undefined, color: number) {
+function setHarthmereRuntimeNpcMeshColor(object: THREE.Object3D | undefined, color: number) {
   if (!object || !(object instanceof THREE.Mesh)) {
     return false;
   }
@@ -11544,11 +11452,11 @@ function setHarthmereRuntimeNpcMeshColorV28(object: THREE.Object3D | undefined, 
       maybeMaterial.needsUpdate = true;
     }
   }
-  object.userData.harthmereRuntimeNpcClothingMaterialRecolorV28 = true;
+  object.userData.harthmereRuntimeNpcClothingMaterialRecolor = true;
   return true;
 }
 
-function addHarthmereRuntimeNpcClothingMaterialRecolorV28(
+function addHarthmereRuntimeNpcClothingMaterialRecolor(
   root: THREE.Group,
   appearance: HarthmereCharacterAppearance,
   body: HarthmereRuntimeBodyMetrics,
@@ -11579,11 +11487,11 @@ function addHarthmereRuntimeNpcClothingMaterialRecolorV28(
   const dark = 0x111111;
 
   const changed = [
-    setHarthmereRuntimeNpcMeshColorV28(root.getObjectByName("townsperson-body"), cloth),
-    setHarthmereRuntimeNpcMeshColorV28(root.getObjectByName("townsperson-left-arm"), cloth),
-    setHarthmereRuntimeNpcMeshColorV28(root.getObjectByName("townsperson-right-arm"), cloth),
-    setHarthmereRuntimeNpcMeshColorV28(root.getObjectByName("townsperson-left-leg"), pants),
-    setHarthmereRuntimeNpcMeshColorV28(root.getObjectByName("townsperson-right-leg"), pants),
+    setHarthmereRuntimeNpcMeshColor(root.getObjectByName("townsperson-body"), cloth),
+    setHarthmereRuntimeNpcMeshColor(root.getObjectByName("townsperson-left-arm"), cloth),
+    setHarthmereRuntimeNpcMeshColor(root.getObjectByName("townsperson-right-arm"), cloth),
+    setHarthmereRuntimeNpcMeshColor(root.getObjectByName("townsperson-left-leg"), pants),
+    setHarthmereRuntimeNpcMeshColor(root.getObjectByName("townsperson-right-leg"), pants),
   ].filter(Boolean).length;
 
   const torsoWidth = body.torsoWidth + 0.06;
@@ -11591,34 +11499,32 @@ function addHarthmereRuntimeNpcClothingMaterialRecolorV28(
   const legX = body.torsoWidth / 4 + body.legSpread;
   const waistY = body.legLength + 0.09;
   const add = (mesh: THREE.Object3D) => {
-    mesh.userData.harthmereRuntimeNpcClothingMaterialRecolorV28 = true;
+    mesh.userData.harthmereRuntimeNpcClothingMaterialRecolor = true;
     root.add(mesh);
     return mesh;
   };
 
-  add(boxMesh("runtime-material-clothing-collar-v28", [torsoWidth + 0.08, 0.055, torsoDepth], [0, torsoY + body.torsoHeight * 0.45, -0.03], trim));
-  add(boxMesh("runtime-material-clothing-hem-v28", [torsoWidth + 0.1, 0.06, torsoDepth], [0, torsoY - body.torsoHeight * 0.48, -0.03], trim));
-  add(boxMesh("runtime-material-clothing-belt-v28", [torsoWidth + 0.12, 0.075, torsoDepth + 0.04], [0, waistY, -0.035], leather));
-  add(boxMesh("runtime-material-clothing-buckle-v28", [0.1, 0.09, 0.055], [0, waistY, -0.24], 0xd0b56b));
-  add(boxMesh("runtime-material-clothing-left-cuff-v28", [Math.max(body.armWidth + 0.05, 0.13), 0.08, 0.14], [-(body.shoulderWidth / 2), shoulderY - body.armLength * 0.52, -0.06], trim));
-  add(boxMesh("runtime-material-clothing-right-cuff-v28", [Math.max(body.armWidth + 0.05, 0.13), 0.08, 0.14], [body.shoulderWidth / 2, shoulderY - body.armLength * 0.52, -0.06], trim));
-  add(boxMesh("runtime-material-clothing-left-boot-v28", [Math.max(body.legWidth + 0.08, 0.18), 0.13, 0.22], [-legX, 0.065, -0.08], dark));
-  add(boxMesh("runtime-material-clothing-right-boot-v28", [Math.max(body.legWidth + 0.08, 0.18), 0.13, 0.22], [legX, 0.065, -0.08], dark));
+  add(boxMesh("runtime-material-clothing-collar", [torsoWidth + 0.08, 0.055, torsoDepth], [0, torsoY + body.torsoHeight * 0.45, -0.03], trim));
+  add(boxMesh("runtime-material-clothing-hem", [torsoWidth + 0.1, 0.06, torsoDepth], [0, torsoY - body.torsoHeight * 0.48, -0.03], trim));
+  add(boxMesh("runtime-material-clothing-belt", [torsoWidth + 0.12, 0.075, torsoDepth + 0.04], [0, waistY, -0.035], leather));
+  add(boxMesh("runtime-material-clothing-buckle", [0.1, 0.09, 0.055], [0, waistY, -0.24], 0xd0b56b));
+  add(boxMesh("runtime-material-clothing-left-cuff", [Math.max(body.armWidth + 0.05, 0.13), 0.08, 0.14], [-(body.shoulderWidth / 2), shoulderY - body.armLength * 0.52, -0.06], trim));
+  add(boxMesh("runtime-material-clothing-right-cuff", [Math.max(body.armWidth + 0.05, 0.13), 0.08, 0.14], [body.shoulderWidth / 2, shoulderY - body.armLength * 0.52, -0.06], trim));
+  add(boxMesh("runtime-material-clothing-left-boot", [Math.max(body.legWidth + 0.08, 0.18), 0.13, 0.22], [-legX, 0.065, -0.08], dark));
+  add(boxMesh("runtime-material-clothing-right-boot", [Math.max(body.legWidth + 0.08, 0.18), 0.13, 0.22], [legX, 0.065, -0.08], dark));
 
-  root.userData.harthmereRuntimeNpcClothingMaterialRecolorV28 = {
-    version: HARTHMERE_RUNTIME_NPC_CLOTHING_MATERIAL_RECOLOR_VERSION_V28,
+  root.userData.harthmereRuntimeNpcClothingMaterialRecolor = {
+    version: HARTHMERE_RUNTIME_NPC_CLOTHING_MATERIAL_RECOLOR_VERSION,
     role: roleKey,
     species: appearance.species,
     recoloredBaseMeshes: changed,
   };
 }
 
-const HARTHMERE_FORCE_PROCEDURAL_TOWNSPERSON_CLOTHING_VERSION_V13 =
-  "harthmere-force-procedural-townsperson-clothing-v13";
-const HARTHMERE_FORCE_PROCEDURAL_TOWNSPERSON_CLOTHING_VERSION_V12 =
-  HARTHMERE_FORCE_PROCEDURAL_TOWNSPERSON_CLOTHING_VERSION_V13;
+const HARTHMERE_FORCE_PROCEDURAL_TOWNSPERSON_CLOTHING_VERSION =
+  "harthmere-force-procedural-townsperson-clothing";
 
-function addHarthmereRuntimeProceduralWeaponSlotV15(
+function addHarthmereRuntimeProceduralWeaponSlot(
   root: THREE.Group,
   clothing: HarthmereCharacterAppearance["clothing"],
   body: HarthmereRuntimeBodyMetrics,
@@ -11638,38 +11544,38 @@ function addHarthmereRuntimeProceduralWeaponSlotV15(
   const arcane = Number(palette.accent ?? 0x8b5cf6);
 
   const add = (mesh: THREE.Object3D) => {
-    mesh.userData.harthmereProceduralWeaponSlotV15 = true;
+    mesh.userData.harthmereProceduralWeaponSlot = true;
     root.add(mesh);
   };
 
   const weaponId = String(weapon.id ?? "");
   if (/staff|wand|magic|scholar|mage|arcane/i.test(weaponId)) {
-    add(boxMesh("runtime-procedural-weapon-staff-shaft-v15", [0.035, body.armLength + 0.34, 0.035], [handX + 0.06, handY + 0.14, -0.18], wood));
-    add(boxMesh("runtime-procedural-weapon-staff-gem-v15", [0.09, 0.09, 0.09], [handX + 0.06, handY + body.armLength * 0.72, -0.18], arcane));
+    add(boxMesh("runtime-procedural-weapon-staff-shaft", [0.035, body.armLength + 0.34, 0.035], [handX + 0.06, handY + 0.14, -0.18], wood));
+    add(boxMesh("runtime-procedural-weapon-staff-gem", [0.09, 0.09, 0.09], [handX + 0.06, handY + body.armLength * 0.72, -0.18], arcane));
   } else if (/bow|ranged|hunter/i.test(weaponId)) {
-    const bow = boxMesh("runtime-procedural-weapon-bow-v15", [0.035, body.armLength + 0.18, 0.035], [handX + 0.08, handY + 0.12, -0.2], wood);
+    const bow = boxMesh("runtime-procedural-weapon-bow", [0.035, body.armLength + 0.18, 0.035], [handX + 0.08, handY + 0.12, -0.2], wood);
     bow.rotation.z = -0.28;
     add(bow);
-    add(boxMesh("runtime-procedural-weapon-bow-string-v15", [0.012, body.armLength + 0.02, 0.012], [handX + 0.15, handY + 0.12, -0.205], 0xf8fafc));
+    add(boxMesh("runtime-procedural-weapon-bow-string", [0.012, body.armLength + 0.02, 0.012], [handX + 0.15, handY + 0.12, -0.205], 0xf8fafc));
   } else if (/axe|hammer|tool/i.test(weaponId)) {
-    add(boxMesh("runtime-procedural-weapon-tool-handle-v15", [0.035, body.armLength + 0.16, 0.035], [handX + 0.05, handY + 0.08, -0.18], wood));
-    add(boxMesh("runtime-procedural-weapon-tool-head-v15", [0.16, 0.08, 0.05], [handX + 0.05, handY + body.armLength * 0.58, -0.18], metal));
+    add(boxMesh("runtime-procedural-weapon-tool-handle", [0.035, body.armLength + 0.16, 0.035], [handX + 0.05, handY + 0.08, -0.18], wood));
+    add(boxMesh("runtime-procedural-weapon-tool-head", [0.16, 0.08, 0.05], [handX + 0.05, handY + body.armLength * 0.58, -0.18], metal));
   } else {
-    const blade = boxMesh("runtime-procedural-weapon-sword-blade-v15", [0.045, body.armLength + 0.18, 0.035], [handX + 0.06, handY + 0.12, -0.18], metal);
+    const blade = boxMesh("runtime-procedural-weapon-sword-blade", [0.045, body.armLength + 0.18, 0.035], [handX + 0.06, handY + 0.12, -0.18], metal);
     blade.rotation.z = -0.12;
     add(blade);
-    add(boxMesh("runtime-procedural-weapon-sword-hilt-v15", [0.14, 0.035, 0.045], [handX + 0.04, handY - body.armLength * 0.32, -0.18], leather));
+    add(boxMesh("runtime-procedural-weapon-sword-hilt", [0.14, 0.035, 0.045], [handX + 0.04, handY - body.armLength * 0.32, -0.18], leather));
   }
 
-  root.userData.harthmereProceduralWeaponSlotV15 = {
+  root.userData.harthmereProceduralWeaponSlot = {
     weaponId,
-    version: "harthmere-procedural-weapon-slot-v15",
+    version: "harthmere-procedural-weapon-slot",
   };
 }
 
-const HARTHMERE_PROCEDURAL_TOWNSPERSON_WORLD_SCALE_V16 = 1.22;
+const HARTHMERE_PROCEDURAL_TOWNSPERSON_WORLD_SCALE = 1.22;
 
-function harthmereRuntimeOutfitTintForBodyV17(
+function harthmereRuntimeOutfitTintForBody(
   appearance: HarthmereCharacterAppearance,
   palette: TownspersonPalette,
 ): number {
@@ -11690,7 +11596,7 @@ function harthmereRuntimeOutfitTintForBodyV17(
   }
 }
 
-function harthmereRuntimeLegTintForBodyV17(
+function harthmereRuntimeLegTintForBody(
   appearance: HarthmereCharacterAppearance,
   palette: TownspersonPalette,
 ): number {
@@ -11711,7 +11617,7 @@ function harthmereRuntimeLegTintForBodyV17(
   }
 }
 
-function addHarthmereProceduralBodyExpressionV24(
+function addHarthmereProceduralBodyExpression(
   root: THREE.Group,
   body: HarthmereRuntimeBodyMetrics,
   palette: TownspersonPalette,
@@ -11722,11 +11628,11 @@ function addHarthmereProceduralBodyExpressionV24(
   const torsoY = body.legLength + body.torsoHeight * 0.5;
   const shoulderY = body.legLength + body.torsoHeight * 0.88;
   const waistY = body.legLength + body.torsoHeight * 0.08;
-  const expressionHeadHeightV25 = Math.max(body.torsoHeight * 0.42, 0.24);
-  const neckY = body.legLength + body.torsoHeight + expressionHeadHeightV25 * 0.12;
+  const expressionHeadHeight = Math.max(body.torsoHeight * 0.42, 0.24);
+  const neckY = body.legLength + body.torsoHeight + expressionHeadHeight * 0.12;
 
   const add = (mesh: THREE.Object3D) => {
-    mesh.userData.harthmereProceduralBodyExpressionV24 = true;
+    mesh.userData.harthmereProceduralBodyExpression = true;
     root.add(mesh);
   };
 
@@ -11734,8 +11640,8 @@ function addHarthmereProceduralBodyExpressionV24(
   // procedural NPC is composed of readable body parts instead of one short cube.
   add(
     boxMesh(
-      "townsperson-neck-v24",
-      [Math.max(body.torsoWidth * 0.24, 0.11), Math.max(expressionHeadHeightV25 * 0.22, 0.07), 0.13],
+      "townsperson-neck",
+      [Math.max(body.torsoWidth * 0.24, 0.11), Math.max(expressionHeadHeight * 0.22, 0.07), 0.13],
       [0, neckY, 0],
       skin,
     ),
@@ -11743,7 +11649,7 @@ function addHarthmereProceduralBodyExpressionV24(
 
   add(
     boxMesh(
-      "townsperson-shoulder-line-v24",
+      "townsperson-shoulder-line",
       [Math.max(body.shoulderWidth + 0.1, body.torsoWidth + 0.12), 0.055, 0.22],
       [0, shoulderY, 0],
       outfitTint,
@@ -11752,24 +11658,24 @@ function addHarthmereProceduralBodyExpressionV24(
 
   add(
     boxMesh(
-      "townsperson-waist-line-v24",
+      "townsperson-waist-line",
       [Math.max(body.torsoWidth * 0.92, 0.32), 0.045, 0.21],
       [0, waistY, 0],
       trim,
     ),
   );
 
-  root.userData.harthmereProceduralBodyExpressionV24 = {
-    version: "harthmere-procedural-body-expression-v24",
+  root.userData.harthmereProceduralBodyExpression = {
+    version: "harthmere-procedural-body-expression",
     namedParts: [
-      "townsperson-neck-v24",
-      "townsperson-shoulder-line-v24",
-      "townsperson-waist-line-v24",
+      "townsperson-neck",
+      "townsperson-shoulder-line",
+      "townsperson-waist-line",
     ],
     torsoWidth: body.torsoWidth,
     torsoHeight: body.torsoHeight,
     shoulderWidth: body.shoulderWidth,
-    headHeight: expressionHeadHeightV25,
+    headHeight: expressionHeadHeight,
   };
 }
 
@@ -11783,30 +11689,30 @@ function createProceduralTownsperson(
 
   const appearance = harthmereRuntimeAppearanceForPlacement(placement);
   const palette = harthmereRuntimePaletteForAppearance(placement.asset, appearance);
-  const outfitTintV17 = harthmereRuntimeOutfitTintForBodyV17(appearance, palette);
-  const legTintV17 = harthmereRuntimeLegTintForBodyV17(appearance, palette);
+  const outfitTint = harthmereRuntimeOutfitTintForBody(appearance, palette);
+  const legTint = harthmereRuntimeLegTintForBody(appearance, palette);
   const body = harthmereRuntimeBodyMetrics(appearance.body);
   const root = new THREE.Group();
   root.name = placement.name ?? placement.asset;
   root.position.set(...placement.at);
   root.rotation.y = placement.rot ?? 0;
-  root.scale.setScalar((placement.scale ?? 1) * HARTHMERE_PROCEDURAL_TOWNSPERSON_WORLD_SCALE_V16);
-  root.userData.harthmereBodyHeightScaleAppliedToMetricsV29 = body.heightScale;
+  root.scale.setScalar((placement.scale ?? 1) * HARTHMERE_PROCEDURAL_TOWNSPERSON_WORLD_SCALE);
+  root.userData.harthmereBodyHeightScaleAppliedToMetrics = body.heightScale;
   root.userData.harthmereAppearance = appearance;
   root.userData.harthmereForwardAxis = appearance.forwardAxis;
   root.userData.harthmereAnchors = appearance.anchors;
-  root.userData.harthmereForceProceduralTownspersonClothingV13 =
-    HARTHMERE_FORCE_PROCEDURAL_TOWNSPERSON_CLOTHING_VERSION_V13;
-  root.userData.harthmereForceProceduralTownspersonClothingV12 =
-    HARTHMERE_FORCE_PROCEDURAL_TOWNSPERSON_CLOTHING_VERSION_V12;
-  root.userData.harthmereForceProceduralTownspersonClothingKeysV13 =
+  root.userData.harthmereForceProceduralTownspersonClothing =
+    HARTHMERE_FORCE_PROCEDURAL_TOWNSPERSON_CLOTHING_VERSION;
+  root.userData.harthmereForceProceduralTownspersonClothing =
+    HARTHMERE_FORCE_PROCEDURAL_TOWNSPERSON_CLOTHING_VERSION;
+  root.userData.harthmereForceProceduralTownspersonClothingKeys =
     Object.keys((appearance.clothing ?? {}) as Record<string, unknown>);
-  root.userData.harthmereForceProceduralTownspersonClothingKeysV12 =
+  root.userData.harthmereForceProceduralTownspersonClothingKeys =
     Object.keys((appearance.clothing ?? {}) as Record<string, unknown>);
-  root.userData.harthmereRuntimeOutfitColorV17 = {
+  root.userData.harthmereRuntimeOutfitColor = {
     outfitColor: appearance.body.outfitColor,
-    outfitTint: outfitTintV17,
-    legTint: legTintV17,
+    outfitTint: outfitTint,
+    legTint: legTint,
   };
 
   const torsoY = body.legLength + body.torsoHeight / 2 + body.stanceYOffset;
@@ -11818,33 +11724,33 @@ function createProceduralTownsperson(
   // large ambient population stays cheap, but face/body/options come from the
   // shared schema instead of hardcoded per-role proportions.
   root.add(
-    boxMesh("townsperson-left-leg", [body.legWidth, body.legLength, body.legDepth], [-(body.torsoWidth / 4 + body.legSpread), body.legLength / 2, 0], legTintV17),
-    boxMesh("townsperson-right-leg", [body.legWidth, body.legLength, body.legDepth], [body.torsoWidth / 4 + body.legSpread, body.legLength / 2, 0], legTintV17),
-    boxMesh("townsperson-body", [body.torsoWidth, body.torsoHeight, body.torsoDepth], [0, torsoY, 0], outfitTintV17),
+    boxMesh("townsperson-left-leg", [body.legWidth, body.legLength, body.legDepth], [-(body.torsoWidth / 4 + body.legSpread), body.legLength / 2, 0], legTint),
+    boxMesh("townsperson-right-leg", [body.legWidth, body.legLength, body.legDepth], [body.torsoWidth / 4 + body.legSpread, body.legLength / 2, 0], legTint),
+    boxMesh("townsperson-body", [body.torsoWidth, body.torsoHeight, body.torsoDepth], [0, torsoY, 0], outfitTint),
     boxMesh("townsperson-left-arm", [body.armWidth, body.armLength, body.armDepth], [-body.shoulderWidth / 2, shoulderY, 0], palette.skin),
     boxMesh("townsperson-right-arm", [body.armWidth, body.armLength, body.armDepth], [body.shoulderWidth / 2, shoulderY, 0], palette.skin),
     createHarthmereRuntimeVoxelHead(appearance, headY, "townsperson"),
   );
-  addHarthmereProceduralBodyExpressionV24(root, body, palette, outfitTintV17);
+  addHarthmereProceduralBodyExpression(root, body, palette, outfitTint);
   addHarthmereRuntimeHumanAnchors(root, body);
-  addHarthmereRuntimeNpcClothingMaterialRecolorV28(root, appearance, body, palette, torsoY, shoulderY);
-  addHarthmereRuntimeAlwaysVisibleNpcClothingV27(root, appearance, body, palette, torsoY, shoulderY);
+  addHarthmereRuntimeNpcClothingMaterialRecolor(root, appearance, body, palette, torsoY, shoulderY);
+  addHarthmereRuntimeAlwaysVisibleNpcClothing(root, appearance, body, palette, torsoY, shoulderY);
   addHarthmereRuntimeOutfitAndGearPolish(root, appearance, body, palette, torsoY, shoulderY, headY);
-  addHarthmereRuntimeVisibleClothingGuaranteeV22(
+  addHarthmereRuntimeVisibleClothingGuarantee(
     root,
     appearance.clothing,
     body,
     palette,
   );
-  addHarthmereRuntimeOutwardClothingDetailLayerV23(
+  addHarthmereRuntimeOutwardClothingDetailLayer(
     root,
     appearance.clothing,
     body,
     palette,
   );
-  addHarthmereRuntimeProductMinecraftClothingPolishV20(root, appearance, body, palette, torsoY, shoulderY, headY);
-  addHarthmereRuntimeProceduralWeaponSlotV15(root, appearance.clothing, body, palette);
-  addHarthmereRuntimeOutsideClothingShellV26(root, appearance.clothing, body, palette);
+  addHarthmereRuntimeProductMinecraftClothingPolish(root, appearance, body, palette, torsoY, shoulderY, headY);
+  addHarthmereRuntimeProceduralWeaponSlot(root, appearance.clothing, body, palette);
+  addHarthmereRuntimeOutsideClothingShell(root, appearance.clothing, body, palette);
 
   if (appearance.role === "guard") {
     root.add(
@@ -11870,7 +11776,7 @@ function createProceduralTownsperson(
     );
   }
 
-  ensureHarthmereLargeBodyClothingVisibilityV14(root, appearance, body);
+  ensureHarthmereLargeBodyClothingVisibility(root, appearance, body);
   applyUniqueNpcVisualDecorations(placement, root);
   return root;
 }
@@ -11904,11 +11810,11 @@ function addProceduralLifeInstance(
 }
 
 const HARTHMERE_RUNTIME_WALK_ANIMATION_CHECK_VERSION =
-  "harthmere-runtime-walk-animation-check-v20";
-const HARTHMERE_PROCEDURAL_ANIMAL_GAIT_VERSION_V14 =
-  "harthmere-procedural-animal-gait-v14";
+  "harthmere-runtime-walk-animation-check";
+const HARTHMERE_PROCEDURAL_ANIMAL_GAIT_VERSION =
+  "harthmere-procedural-animal-gait";
 
-function collectAnimalLegV14(
+function collectAnimalLeg(
   object: THREE.Object3D,
   names: string[],
 ) {
@@ -11921,7 +11827,7 @@ function collectAnimalLegV14(
   return undefined;
 }
 
-function applyAnimalLegSwingV14(
+function applyAnimalLegSwing(
   object: THREE.Object3D,
   time: number,
   asset: string,
@@ -11934,7 +11840,7 @@ function applyAnimalLegSwingV14(
       ? 0.5
       : 0.34;
   const backAmplitude = frontAmplitude * (/frog|snake|crow|pigeon|chicken|bunny|rat/.test(asset) ? 0.82 : 0.94);
-  const frontLeft = collectAnimalLegV14(object, [
+  const frontLeft = collectAnimalLeg(object, [
     "dog-leg-left-front",
     "pig-leg-left-front",
     "sheep-leg-left-front",
@@ -11953,7 +11859,7 @@ function applyAnimalLegSwingV14(
     "rat-leg-left",
     "snake-front",
   ]);
-  const frontRight = collectAnimalLegV14(object, [
+  const frontRight = collectAnimalLeg(object, [
     "dog-leg-right-front",
     "pig-leg-right-front",
     "sheep-leg-right-front",
@@ -11972,7 +11878,7 @@ function applyAnimalLegSwingV14(
     "rat-leg-right",
     "snake-mid",
   ]);
-  const backLeft = collectAnimalLegV14(object, [
+  const backLeft = collectAnimalLeg(object, [
     "dog-leg-left-back",
     "pig-leg-left-back",
     "sheep-leg-left-back",
@@ -11988,7 +11894,7 @@ function applyAnimalLegSwingV14(
     "rat-leg-back-left",
     "snake-back",
   ]);
-  const backRight = collectAnimalLegV14(object, [
+  const backRight = collectAnimalLeg(object, [
     "dog-leg-right-back",
     "pig-leg-right-back",
     "sheep-leg-right-back",
@@ -12024,7 +11930,7 @@ function applyAnimalLegSwingV14(
     backRight.position.y += sway;
     animatedNames.push(backRight.name);
   }
-  const tail = collectAnimalLegV14(object, [
+  const tail = collectAnimalLeg(object, [
     "dog-tail",
     "cat-tail",
     "pig-tail",
@@ -12039,7 +11945,7 @@ function applyAnimalLegSwingV14(
   if (tail) {
     tail.rotation.x = Math.sin(time * 5.5) * 0.12;
   }
-  const head = collectAnimalLegV14(object, [
+  const head = collectAnimalLeg(object, [
     "dog-head",
     "cat-head",
     "pig-head",
@@ -12061,8 +11967,8 @@ function applyAnimalLegSwingV14(
   if (head) {
     head.rotation.x = Math.sin(time * 3.8) * 0.05;
   }
-  object.userData.harthmereProceduralAnimalGaitV14 = {
-    version: HARTHMERE_PROCEDURAL_ANIMAL_GAIT_VERSION_V14,
+  object.userData.harthmereProceduralAnimalGait = {
+    version: HARTHMERE_PROCEDURAL_ANIMAL_GAIT_VERSION,
     asset,
     executed: animatedNames.length > 0,
     stride,
@@ -12078,16 +11984,16 @@ function animateProceduralWalker(
   asset?: string,
 ) {
   if (asset && isProceduralAnimalKey(asset)) {
-    applyAnimalLegSwingV14(object, time, asset);
+    applyAnimalLegSwing(object, time, asset);
     object.userData.harthmereRuntimeWalkAnimationCheck = {
       version: HARTHMERE_RUNTIME_WALK_ANIMATION_CHECK_VERSION,
       executed: true,
       asset,
-      gaitVersion: HARTHMERE_PROCEDURAL_ANIMAL_GAIT_VERSION_V14,
+      gaitVersion: HARTHMERE_PROCEDURAL_ANIMAL_GAIT_VERSION,
       kind: "animal",
       time,
       partNames:
-        object.userData.harthmereProceduralAnimalGaitV14?.animatedNames ?? [],
+        object.userData.harthmereProceduralAnimalGait?.animatedNames ?? [],
     };
     return;
   }
@@ -12113,15 +12019,13 @@ function animateProceduralWalker(
 }
 
 
-// harthmere-animation-world-interaction-v10
-const HARTHMERE_WEAPON_HAND_TRACKING_VERSION_V10 =
-  "harthmere-weapon-hand-tracking-v10";
-const HARTHMERE_OBJECT_EFFECT_RANGE_VERSION_V10 =
-  "harthmere-object-effect-range-v10";
-const HARTHMERE_RESOURCE_HIT_TELEGRAPH_VERSION_V10 =
-  "harthmere-resource-hit-telegraph-v10";
+// harthmere-animation-world-interaction
+const HARTHMERE_OBJECT_EFFECT_RANGE_VERSION =
+  "harthmere-object-effect-range";
+const HARTHMERE_RESOURCE_HIT_TELEGRAPH_VERSION =
+  "harthmere-resource-hit-telegraph";
 
-type HarthmereResourceKindV10 =
+type HarthmereResourceKind =
   | "dirt"
   | "grass"
   | "rock"
@@ -12131,7 +12035,7 @@ type HarthmereResourceKindV10 =
   | "water"
   | "generic_resource";
 
-const HARTHMERE_RESOURCE_HIT_EDGE_CASES_V10 = [
+const HARTHMERE_RESOURCE_HIT_EDGE_CASES = [
   "out_of_range",
   "wrong_tool",
   "blocked_line_of_sight",
@@ -12150,8 +12054,8 @@ const HARTHMERE_RESOURCE_HIT_EDGE_CASES_V10 = [
   "network_prediction_mismatch",
 ] as const;
 
-const HARTHMERE_OBJECT_EFFECT_RANGES_V10: Record<
-  HarthmereResourceKindV10,
+const HARTHMERE_OBJECT_EFFECT_RANGES: Record<
+  HarthmereResourceKind,
   {
     maxDistanceMeters: number;
     radiusMeters: number;
@@ -12254,13 +12158,13 @@ const HARTHMERE_OBJECT_EFFECT_RANGES_V10: Record<
 };
 
 
-function applyHarthmereNpcRouteDistributionV48(
+function applyHarthmereNpcRouteDistribution(
   placements: readonly RuntimePlacement[],
 ): { version: string; placements: RuntimePlacement[]; movedActors: number; localDensityLimits: { maxActorsWithin12m: number; maxActorsWithin20m: number } } {
   let movedActors = 0;
   const sequenceByRoute = new Map<string, number>();
   const distributed: RuntimePlacement[] = placements.map((placement): RuntimePlacement => {
-    const routeLabel = placement.wander?.routeLabel as keyof typeof HARTHMERE_NPC_ROUTE_ANCHORS_V48 | undefined;
+    const routeLabel = placement.wander?.routeLabel as keyof typeof HARTHMERE_NPC_ROUTE_ANCHORS | undefined;
     if (
       placement.robotProtectionAreaId ||
       !routeLabel ||
@@ -12270,7 +12174,7 @@ function applyHarthmereNpcRouteDistributionV48(
     }
     const sequence = sequenceByRoute.get(routeLabel) ?? 0;
     sequenceByRoute.set(routeLabel, sequence + 1);
-    const route = makeHarthmereIndexedNpcRouteV48(routeLabel, sequence);
+    const route = makeHarthmereIndexedNpcRoute(routeLabel, sequence);
     movedActors += 1;
     const [x, z] = route[0];
     const next = placementWithHarthmereRuntimeAt(placement, [x, placement.at[1], z]);
@@ -12287,32 +12191,31 @@ function applyHarthmereNpcRouteDistributionV48(
         route,
         routeLabel,
       },
-      name: `${placement.name ?? placement.asset} route-dispersed ${HARTHMERE_NPC_ROUTE_DISTRIBUTION_VERSION_V48}`,
+      name: `${placement.name ?? placement.asset} route-dispersed ${HARTHMERE_NPC_ROUTE_DISTRIBUTION_VERSION}`,
     };
   });
   return {
-    version: HARTHMERE_NPC_ROUTE_DISTRIBUTION_VERSION_V48,
+    version: HARTHMERE_NPC_ROUTE_DISTRIBUTION_VERSION,
     placements: distributed,
     movedActors,
     localDensityLimits: {
-      maxActorsWithin12m: HARTHMERE_NPC_LOCAL_DENSITY_MAX_WITHIN_12M_V48,
-      maxActorsWithin20m: HARTHMERE_NPC_LOCAL_DENSITY_MAX_WITHIN_20M_V48,
+      maxActorsWithin12m: HARTHMERE_NPC_LOCAL_DENSITY_MAX_WITHIN_12M,
+      maxActorsWithin20m: HARTHMERE_NPC_LOCAL_DENSITY_MAX_WITHIN_20M,
     },
   };
 }
 
-const HARTHMERE_NPC_DISTRIBUTION_V48 = applyHarthmereNpcRouteDistributionV48(PLACEMENTS);
-// BUILDING_V2_VOXEL_MESHES_MARKER: signed marker so the renderer log
-// line confirms the v2 voxel-mesh patches are loaded into the shipped
+const HARTHMERE_NPC_DISTRIBUTION = applyHarthmereNpcRouteDistribution(PLACEMENTS);
+// BUILDING_VOXEL_MESHES_MARKER: signed marker so the renderer log
+// line confirms the current voxel-mesh patches are loaded into the shipped
 // bundle. If you see this version on the "Loaded rebuilt Harthmere
-// town and Wilds assets" log line the v2 fix is live.
-export const HARTHMERE_BUILDING_V2_VOXEL_MESHES_VERSION = "harthmere-building-v2-voxel-meshes" as const;
-const HARTHMERE_RUNTIME_PLACEMENT_CLEANUP_V4 = applyHarthmereRuntimePlacementCleanupV4(HARTHMERE_NPC_DISTRIBUTION_V48.placements);
-const RUNTIME_PLACEMENTS_V4 = HARTHMERE_RUNTIME_PLACEMENT_CLEANUP_V4.placements;
-const RUNTIME_PLACEMENTS_V48 = RUNTIME_PLACEMENTS_V4;
+// town and Wilds assets" log line the current fix is live.
+export const HARTHMERE_BUILDING_VOXEL_MESHES_MARKER = "harthmere-building-voxel-meshes" as const;
+const HARTHMERE_RUNTIME_PLACEMENT_CLEANUP = applyHarthmereRuntimePlacementCleanup(HARTHMERE_NPC_DISTRIBUTION.placements);
+const RUNTIME_PLACEMENTS = HARTHMERE_RUNTIME_PLACEMENT_CLEANUP.placements;
 
 export class HarthmereRuntimeAssetsRenderer implements Renderer {
-  private harthmerePolishFrameCounterV1 = 0;
+  private harthmerePolishFrameCounter = 0;
  
   
   private harthmerePlayerSwordManualSwing?: {
@@ -12326,7 +12229,7 @@ private harthmerePlayerWeaponGripWorldPosition = new THREE.Vector3();
   private harthmerePlayerWeaponGripWorldQuaternion = new THREE.Quaternion();
   private harthmerePlayerWeaponGripAnchorName = "unknown";
   private harthmerePlayerWeaponGripDistanceLast = 0;
-  private readonly harthmerePlayerWeaponHandTrackingSamplesV9: Array<{
+  private readonly harthmerePlayerWeaponHandTrackingSamples: Array<{
     at: number;
     action?: string;
     attack?: string;
@@ -12355,25 +12258,25 @@ private harthmerePlayerSword?: THREE.Group;
   private harthmerePlayerSwordLastFrameAt = Date.now();
   private harthmerePlayerSwordFrame?: number;
   private harthmereSwordVisualsInstalled = false;
-  // harthmere-sword-animation-polish-v3
+  // harthmere-sword-animation-polish
   private harthmerePlayerSwordTrail?: THREE.Group;
   private harthmerePlayerSwordTrailUntil = 0;
   private harthmerePlayerSwordTrailAttack?: "basic" | "heavy";
   private harthmerePlayerSwordTrailFacingYaw = 0;
-  private harthmereCombatPolishAttackCounterV1 = 0;
-  private harthmereCombatPolishLastShapeV2?: string;
-  private harthmereCombatPolishLastRandomSeedV2 = 0;
-  private readonly harthmereCombatPolishRecentShapesV2: string[] = [];
-  private harthmereCombatPolishActiveProfileV1: HarthmereCombatAnimationProfileV1 =
-    HARTHMERE_ATTACK_ANIMATION_PROFILES_V1[0];
-  private readonly harthmereCombatPolishLastCenterV1 = new THREE.Vector3();
-  private harthmereCombatPolishSpeedV1 = 0;
+  private harthmereCombatPolishAttackCounter = 0;
+  private harthmereCombatPolishLastShape?: string;
+  private harthmereCombatPolishLastRandomSeed = 0;
+  private readonly harthmereCombatPolishRecentShapes: string[] = [];
+  private harthmereCombatPolishActiveProfile: HarthmereCombatAnimationProfile =
+    HARTHMERE_ATTACK_ANIMATION_PROFILES[0];
+  private readonly harthmereCombatPolishLastCenter = new THREE.Vector3();
+  private harthmereCombatPolishSpeed = 0;
   private harthmereHitStopUntil = 0;
   private harthmereAttackerRecoveryUntil = 0;
   private harthmereBlockContactFeedback?: THREE.Group;
   private harthmereBlockContactUntil = 0;
   private harthmereLastSwordImpactAt = 0;
-  private harthmereLastResourceHitTelegraphV10?: unknown;
+  private harthmereLastResourceHitTelegraph?: unknown;
   private readonly harthmereNpcWeaponVisuals = new Map<THREE.Object3D, THREE.Group>();
 
   readonly name = "harthmereRuntimeAssets";
@@ -12386,7 +12289,7 @@ private harthmerePlayerSword?: THREE.Group;
   private readonly animated: AnimatedInstance[] = [];
   private readonly combatLifeInstances: CombatLifeInstance[] = [];
   private readonly placementInstances: HarthmerePlacementRuntimeInstance[] = [];
-  // HARTHMERE_ECS_CREATURE_RENDER_V1: meshes drawn from live ECS creature
+  // HARTHMERE_ECS_CREATURE_RENDER: meshes drawn from live ECS creature
   // entities, keyed by entity id, so they can be repositioned / disposed as the
   // bridge updates.
   private readonly harthmereEcsLiveCreatures = new Map<number, THREE.Object3D>();
@@ -12421,20 +12324,20 @@ private harthmerePlayerSword?: THREE.Group;
     }
     this.elapsed += Math.min(dt, 0.05);
     this.updateHarthmerePlacementLod(dt);
-    // HARTHMERE_POLISH_V1_FAR_NPC_THROTTLE / v87 survey response.
+    // HARTHMERE_POLISH_FAR_NPC_THROTTLE / current survey response.
     // Cheap visibility + distance gate. We sample the player camera position
     // through THREE.PerspectiveCamera convention via the renderer scene
     // (scenes.three.camera). If it's not available yet, every NPC updates
     // normally. Nearby actors animate every frame; mid/far actors are
     // intentionally throttled so dense towns no longer pin the frame loop.
-    this.harthmerePolishFrameCounterV1 = (this.harthmerePolishFrameCounterV1 ?? 0) + 1;
-    const polishFrame = this.harthmerePolishFrameCounterV1;
+    this.harthmerePolishFrameCounter = (this.harthmerePolishFrameCounter ?? 0) + 1;
+    const polishFrame = this.harthmerePolishFrameCounter;
     const camera: THREE.Camera | undefined = (scenes as { three?: { camera?: THREE.Camera } }).three?.camera;
     const camX = camera?.position.x ?? 0;
     const camZ = camera?.position.z ?? 0;
     const hasCamera = Boolean(camera);
-    const NEAR_ANIM_DIST_SQ_V87 = 18 * 18;
-    const MID_ANIM_DIST_SQ_V87 = 44 * 44;
+    const NEAR_ANIM_DIST_SQ = 18 * 18;
+    const MID_ANIM_DIST_SQ = 44 * 44;
     for (const instance of this.animated) {
       if (!instance.object.visible && !this.deadCombatObjects.has(instance.object)) {
         continue;
@@ -12442,32 +12345,32 @@ private harthmerePlayerSword?: THREE.Group;
       const dxFromCamera = instance.object.position.x - camX;
       const dzFromCamera = instance.object.position.z - camZ;
       const distSqFromCamera = dxFromCamera * dxFromCamera + dzFromCamera * dzFromCamera;
-      const shouldUpdateMotionV87 =
+      const shouldUpdateMotion =
         !hasCamera ||
-        distSqFromCamera <= NEAR_ANIM_DIST_SQ_V87 ||
-        (distSqFromCamera <= MID_ANIM_DIST_SQ_V87
+        distSqFromCamera <= NEAR_ANIM_DIST_SQ ||
+        (distSqFromCamera <= MID_ANIM_DIST_SQ
           ? (polishFrame & 7) === 0
           : (polishFrame & 15) === 0);
       if (
         instance.robotProtectionAreaId &&
-        !canLocalDevLiveEntityRobotMoveForAreaV1(instance.robotProtectionAreaId)
+        !canLocalDevLiveEntityRobotMoveForArea(instance.robotProtectionAreaId)
       ) {
         if (instance.locomotion) {
-          setHarthmereLocomotionStateV1(instance, "idle");
+          setHarthmereLocomotionState(instance, "idle");
         }
         continue;
       }
-      if (instance.mixer && shouldUpdateMotionV87) {
+      if (instance.mixer && shouldUpdateMotion) {
         instance.mixer.update(dt);
       }
       if (this.deadCombatObjects.has(instance.object)) {
         continue;
       }
-      if (!shouldUpdateMotionV87 && (instance.wander || instance.bob || instance.spin)) {
+      if (!shouldUpdateMotion && (instance.wander || instance.bob || instance.spin)) {
         continue;
       }
       if (instance.wander) {
-        // HARTHMERE_POLISH_V1_NPC_SPACING — deterministic per-actor jitter
+        // HARTHMERE_POLISH_NPC_SPACING — deterministic per-actor jitter
         // so neighbours with the same configured (radius, phase) desync.
         // base[0]/base[2] are stable spawn-time floats; we hash them into a
         // tiny phase/radius offset.
@@ -12480,13 +12383,13 @@ private harthmerePlayerSword?: THREE.Group;
           (instance.wander.phase ?? 0) +
           phaseJitter;
         const nextRoutePoint = instance.wander.route?.length
-          ? harthmereRoutePositionV48(instance.wander.route, progress)
+          ? harthmereRoutePosition(instance.wander.route, progress)
           : undefined;
         const angle = progress;
         const dx = nextRoutePoint ? nextRoutePoint[0] - instance.base[0] : Math.cos(angle) * instance.wander.radius * radiusJitter;
         const dz = nextRoutePoint ? nextRoutePoint[1] - instance.base[2] : Math.sin(angle) * instance.wander.radius * radiusJitter;
         const nextX = instance.base[0] + dx;
-        const nextY = harthmereNpcGroundedYV150(
+        const nextY = harthmereNpcGroundedY(
           instance,
           instance.base[1] + (instance.bob ? Math.sin(angle * 2) * instance.bob : 0),
         );
@@ -12499,7 +12402,7 @@ private harthmerePlayerSword?: THREE.Group;
           nextY,
           nextZ,
         );
-        // HARTHMERE_POLISH_V1_NPC_SPACING — soft repulsion pass.
+        // HARTHMERE_POLISH_NPC_SPACING — soft repulsion pass.
         // If another animated instance is closer than 0.65 units, push along
         // the (self - other) vector by 0.18 units. We sample at most 8
         // neighbours to keep the cost O(n * 8) instead of O(n^2).
@@ -12524,7 +12427,7 @@ private harthmerePlayerSword?: THREE.Group;
         }
         // Repulsion is intentionally cheap, but it must not shove an NPC into a
         // wall after the route sweep already passed.
-        if (findHarthmereNpcBodyCollisionObstacleV150(resolvedX, resolvedZ)) {
+        if (findHarthmereNpcBodyCollisionObstacle(resolvedX, resolvedZ)) {
           resolvedX = resolved.position[0];
           resolvedZ = resolved.position[2];
         }
@@ -12538,7 +12441,7 @@ private harthmerePlayerSword?: THREE.Group;
             velocityZ,
             instance.forwardAxis,
           );
-          // HARTHMERE_POLISH_V1_LOCOMOTION_CLIPS — prefer the loaded
+          // HARTHMERE_POLISH_LOCOMOTION_CLIPS — prefer the loaded
           // Walk/Run clip from the rig over the procedural leg-swing.
           // Procedural still runs for actors with no clips (proc townspeople,
           // proc animals) so they keep their bob-style walk.
@@ -12546,7 +12449,7 @@ private harthmerePlayerSword?: THREE.Group;
             // Threshold: per-frame velocity squared > 0.0008 (~ 0.028 u/frame
             // at 60 fps) implies sustained running. Sub-threshold but above
             // the move-min picks Walk.
-            setHarthmereLocomotionStateV1(
+            setHarthmereLocomotionState(
               instance,
               speedSq > 0.0008 ? "run" : "walk",
             );
@@ -12554,10 +12457,10 @@ private harthmerePlayerSword?: THREE.Group;
             animateProceduralWalker(instance.object, this.elapsed, instance.asset);
           }
         } else if (instance.locomotion) {
-          setHarthmereLocomotionStateV1(instance, "idle");
+          setHarthmereLocomotionState(instance, "idle");
         }
       } else if (instance.bob) {
-        instance.object.position.y = harthmereNpcGroundedYV150(
+        instance.object.position.y = harthmereNpcGroundedY(
           instance,
           instance.base[1] + Math.sin(this.elapsed * 2) * instance.bob,
         );
@@ -12566,7 +12469,7 @@ private harthmerePlayerSword?: THREE.Group;
         instance.object.rotation.y += instance.spin * dt;
       }
     }
-    this.reconcileHarthmereEcsLiveCreaturesV1();
+    this.reconcileHarthmereEcsLiveCreatures();
     for (const instance of this.combatLifeInstances) {
       this.applyCombatPulse(instance);
     }
@@ -12636,7 +12539,7 @@ private harthmerePlayerSword?: THREE.Group;
       return undefined;
     };
     const blocked = isBlockedAt(startX, startZ);
-    const crowded = this.spawnedLifePositions.some(([x, z]) => distanceSq2d(x, z, startX, startZ) < 1.6 * 1.6 /* HARTHMERE_POLISH_V1_NPC_SPACING */);
+    const crowded = this.spawnedLifePositions.some(([x, z]) => distanceSq2d(x, z, startX, startZ) < 1.6 * 1.6 /* HARTHMERE_POLISH_NPC_SPACING */);
 
     if (!needsGroundSnap && !blocked && !crowded) {
       this.spawnedLifePositions.push([startX, startZ]);
@@ -12652,13 +12555,13 @@ private harthmerePlayerSword?: THREE.Group;
         if (isBlockedAt(x, z)) {
           continue;
         }
-        if (this.spawnedLifePositions.some(([sx, sz]) => distanceSq2d(sx, sz, x, z) < 1.6 * 1.6 /* HARTHMERE_POLISH_V1_NPC_SPACING */)) {
+        if (this.spawnedLifePositions.some(([sx, sz]) => distanceSq2d(sx, sz, x, z) < 1.6 * 1.6 /* HARTHMERE_POLISH_NPC_SPACING */)) {
           continue;
         }
         this.spawnedLifePositions.push([x, z]);
         debugHarthmereRenderer("renderer.placement_spawn_resolved", {
           version: HARTHMERE_TOWN_SYSTEMS_VERSION,
-          placementSystemVersion: "harthmere-town-collision-placement-v4",
+          placementSystemVersion: "harthmere-town-collision-placement",
           actor: placement.name ?? placement.asset,
           asset: placement.asset,
           district: placement.district,
@@ -12674,7 +12577,7 @@ private harthmerePlayerSword?: THREE.Group;
     this.spawnedLifePositions.push([startX, startZ]);
     debugHarthmereRenderer("renderer.placement_spawn_unresolved", {
       version: HARTHMERE_TOWN_SYSTEMS_VERSION,
-      placementSystemVersion: "harthmere-town-collision-placement-v4",
+      placementSystemVersion: "harthmere-town-collision-placement",
       actor: placement.name ?? placement.asset,
       asset: placement.asset,
       district: placement.district,
@@ -12698,8 +12601,8 @@ private harthmerePlayerSword?: THREE.Group;
     object.userData.harthmerePlacementMeta = meta;
     object.userData.harthmereCollision = placement.collision ?? meta.collision;
     object.userData.harthmereLodTier = placement.lodTier ?? meta.lodTier;
-    const structuralGroupKey = harthmereStructuralGroupKeyV3(placement);
-    object.userData.harthmereStructuralGroupKeyV3 = structuralGroupKey;
+    const structuralGroupKey = harthmereStructuralGroupKey(placement);
+    object.userData.harthmereStructuralGroupKey = structuralGroupKey;
     this.placementInstances.push({
       object,
       placement,
@@ -12821,8 +12724,8 @@ private harthmerePlayerSword?: THREE.Group;
       ? instance.object.position.y
       : instance.base[1];
     const currentZ = instance.object.position.z;
-    const groundedNextY = harthmereNpcGroundedYV150(instance, nextY);
-    const directObstacle = sweepHarthmereNpcCollisionObstacleV150(
+    const groundedNextY = harthmereNpcGroundedY(instance, nextY);
+    const directObstacle = sweepHarthmereNpcCollisionObstacle(
       currentX,
       currentZ,
       nextX,
@@ -12837,13 +12740,13 @@ private harthmerePlayerSword?: THREE.Group;
     const candidates: [number, number, number][] = [];
 
     // Sliding keeps actors feeling alive instead of freezing at the first wall:
-    // try the desired X with the old Z, then the old X with the desired Z. V150
+    // try the desired X with the old Z, then the old X with the desired Z. current
     // uses the same swept body check as the direct move, so throttled far-LOD
     // updates cannot tunnel through a thin wall in one long frame.
-    if (!sweepHarthmereNpcCollisionObstacleV150(currentX, currentZ, nextX, currentZ)) {
+    if (!sweepHarthmereNpcCollisionObstacle(currentX, currentZ, nextX, currentZ)) {
       candidates.push([nextX, groundedNextY, currentZ]);
     }
-    if (!sweepHarthmereNpcCollisionObstacleV150(currentX, currentZ, currentX, nextZ)) {
+    if (!sweepHarthmereNpcCollisionObstacle(currentX, currentZ, currentX, nextZ)) {
       candidates.push([currentX, groundedNextY, nextZ]);
     }
 
@@ -12862,7 +12765,7 @@ private harthmerePlayerSword?: THREE.Group;
     }
 
     const fallback = instance.lastSafePosition ?? [currentX, currentY, currentZ];
-    const position: [number, number, number] = [fallback[0], harthmereNpcGroundedYV150(instance, fallback[1]), fallback[2]];
+    const position: [number, number, number] = [fallback[0], harthmereNpcGroundedY(instance, fallback[1]), fallback[2]];
     this.recordHarthmereNpcCollisionBlock(instance, directObstacle, "hold");
     return { position, blocked: true };
   }
@@ -12906,8 +12809,8 @@ private harthmerePlayerSword?: THREE.Group;
       win.__harthmereNpcCollisionStats = {
         version: HARTHMERE_NPC_WALL_COLLISION_VERSION,
         runtimeFixesVersion: HARTHMERE_TOWN_DEBUG_RUNTIME_FIXES_VERSION,
-        navigationFixVersion: HARTHMERE_NPC_NAVIGATION_FIX_VERSION_V150,
-        routeNavigationVersion: HARTHMERE_NPC_ROUTE_NAVIGATION_VERSION_V150,
+        navigationFixVersion: HARTHMERE_NPC_NAVIGATION_FIX_VERSION,
+        routeNavigationVersion: HARTHMERE_NPC_ROUTE_NAVIGATION_VERSION,
         totalObstacles: harthmereNpcCollisionObstacles().length,
         lastBlockedActor: actorName,
         lastBlockedAsset: instance.asset,
@@ -12933,8 +12836,8 @@ private harthmerePlayerSword?: THREE.Group;
       debugHarthmereRenderer("renderer.npc_wall_collision.blocked", {
         version: HARTHMERE_NPC_WALL_COLLISION_VERSION,
         runtimeFixesVersion: HARTHMERE_TOWN_DEBUG_RUNTIME_FIXES_VERSION,
-        navigationFixVersion: HARTHMERE_NPC_NAVIGATION_FIX_VERSION_V150,
-        routeNavigationVersion: HARTHMERE_NPC_ROUTE_NAVIGATION_VERSION_V150,
+        navigationFixVersion: HARTHMERE_NPC_NAVIGATION_FIX_VERSION,
+        routeNavigationVersion: HARTHMERE_NPC_ROUTE_NAVIGATION_VERSION,
         actor: actorName,
         asset: instance.asset,
         obstacle: obstacle.name,
@@ -13032,7 +12935,7 @@ private harthmerePlayerSword?: THREE.Group;
         equipment: actor.appearance?.equipment,
         facialExpression: actor.object.userData.harthmereFacialExpression ?? actor.appearance?.facialExpression,
         pulse: actor.combatPulse?.kind,
-        family: harthmereRuntimeCombatFamilyV1(actor),
+        family: harthmereRuntimeCombatFamily(actor),
         nonNpcLiveEntityVisualActor: true,
         attackable: true,
         clips: actor.clips.map((clip) => clip.name),
@@ -13837,7 +13740,7 @@ private harthmerePlayerSword?: THREE.Group;
       return { ok: failures.length === 0, failures, results, obstacleCount: harthmereAllCollisionObstacles().length };
     };
 
-    // HARTHMERE_RENDERER_SOLID_FIXTURE_AUDIT_TARGETS_V3
+    // HARTHMERE_RENDERER_SOLID_FIXTURE_AUDIT_TARGETS
     // solidFixture audit targets: these are imported/visual landmark fixtures
     // that look solid in Harthmere and must have player collision proxies.
     // Keep this list explicit so broad "flag/lamp/detail" pass-through rules
@@ -13954,12 +13857,12 @@ private harthmerePlayerSword?: THREE.Group;
     }
     const win = window as typeof window & {
       __harthmereRendererDebug?: Record<string, unknown>;
-      __harthmereAssetDimensionsV52?: Record<string, unknown>;
+      __harthmereAssetDimensions?: Record<string, unknown>;
     };
-    win.__harthmereAssetDimensionsV52 = {
-      version: HARTHMERE_ASSET_SIZE_COLLISION_RUNTIME_VERSION_V52,
-      assets: HARTHMERE_UPLOADED_ASSET_DIMENSIONS_BY_KEY_V52,
-      collisionFootprint: (asset: string, scale?: number) => harthmereUploadedAssetCollisionFootprintV52(asset, scale),
+    win.__harthmereAssetDimensions = {
+      version: HARTHMERE_ASSET_SIZE_COLLISION_RUNTIME_VERSION,
+      assets: HARTHMERE_UPLOADED_ASSET_DIMENSIONS_BY_KEY,
+      collisionFootprint: (asset: string, scale?: number) => harthmereUploadedAssetCollisionFootprint(asset, scale),
     };
     (win as typeof win & {
       __harthmereSetFacialExpression?: (actorId: string | number, expression: string, options?: Record<string, unknown>) => unknown;
@@ -13968,77 +13871,16 @@ private harthmerePlayerSword?: THREE.Group;
     (win as typeof win & {
       __harthmereTownWalkDebug?: unknown;
     }).__harthmereTownWalkDebug = this.createHarthmereTownWalkDebugApi();
-    // HARTHMERE_TOWN_AUDIT_LEGACY_GLOBAL_ASSIGNMENT_COMPAT_V1: __harthmereTownAudit = this.createHarthmereTownAuditExportApi()
-    // HARTHMERE_DEDUPED_BROWSER_COLLISION_HELPER_EXPOSURE_V4
-    // Older direct helper exposure removed; the V2 merge block below owns these globals.
-    // HARTHMERE_RENDERER_BROWSER_COLLISION_HELPER_EXPOSURE_V2
+    // HARTHMERE_TOWN_AUDIT_LEGACY_GLOBAL_ASSIGNMENT_COMPAT: __harthmereTownAudit = this.createHarthmereTownAuditExportApi()
+    // HARTHMERE_DEDUPED_BROWSER_COLLISION_HELPER_EXPOSURE
+    // Older direct helper exposure removed; the current merge block below owns these globals.
+    // HARTHMERE_RENDERER_BROWSER_COLLISION_HELPER_EXPOSURE
     const harthmereTownAuditApi = this.createHarthmereTownAuditExportApi() as Record<string, unknown>;
     (win as typeof win & { __harthmereTownAudit?: unknown }).__harthmereTownAudit = harthmereTownAuditApi;
-    // HARTHMERE_DUNGEON_CONSOLE_TELEPORT_HELPER_V2
-    const harthmereDungeonTeleportTargetsV2 = {
-      chapelUndercroft: { x: 500.8, y: GROUND_Y + 1.0, z: -137.4, district: "Temple Green" },
-      oldWellDrain: { x: 413.2, y: GROUND_Y + 1.0, z: -234.6, district: "Old Well / Underways" },
-      bellwardHalls: { x: 356.0, y: GROUND_Y + 1.0, z: -318.0, district: "Old Well / Underways" },
-      firstChoir: { x: 356.0, y: GROUND_Y + 1.0, z: -306.0, district: "Old Well / Underways" },
-      oldHarth: { x: 640.0, y: GROUND_Y + 1.0, z: -314.0, district: "Old Well / Underways" },
-      bellbinderTomb: { x: 640.0, y: GROUND_Y + 1.0, z: -300.0, district: "Old Well / Underways" },
-      bellwardChamber: { x: 640.0, y: GROUND_Y + 1.0, z: -286.0, district: "Old Well / Underways" },
-      wyrmsBed: { x: 640.0, y: GROUND_Y + 1.0, z: -266.0, district: "Old Well / Underways" },
-    } as Record<string, { x: number; y: number; z: number; district: string }>;
-    const harthmereTeleportToDungeonTestTargetV2 = (targetName: string = "bellwardHalls") => {
-      const target = harthmereDungeonTeleportTargetsV2[targetName] ?? harthmereDungeonTeleportTargetsV2.bellwardHalls;
-      const winAny = win as typeof win & Record<string, unknown>;
-      const payload = {
-        ...target,
-        name: targetName in harthmereDungeonTeleportTargetsV2 ? targetName : "bellwardHalls",
-        source: "HARTHMERE_DUNGEON_CONSOLE_TELEPORT_HELPER_V2",
-        createdAt: Date.now(),
-      };
-      win.localStorage?.setItem("biomes.localDev.harthmere.teleportTarget", JSON.stringify(payload));
-      win.localStorage?.setItem("biomes.localDev.harthmere.forceDungeonTestTarget", JSON.stringify(payload));
-      const hooks = [
-        (winAny.__harthmereTownWalkDebug as Record<string, unknown> | undefined)?.teleportTo,
-        (winAny.__harthmereRendererDebug as Record<string, unknown> | undefined)?.teleportTo,
-        (winAny.__harthmereDebug as Record<string, unknown> | undefined)?.teleportTo,
-        (winAny.__biomesDebug as Record<string, unknown> | undefined)?.teleportTo,
-        (winAny.__harthmerePlayerDebug as Record<string, unknown> | undefined)?.teleportTo,
-      ].filter((fn) => typeof fn === "function") as Array<(x: number, y: number, z: number, payload?: unknown) => unknown>;
-      for (const hook of hooks) {
-        try {
-          const result = hook(target.x, target.y, target.z, payload);
-          return { ok: true, teleported: true, target: payload, hookResult: result };
-        } catch (error) {
-          // Try the next known debug hook.
-        }
-      }
-      return {
-        ok: true,
-        teleported: false,
-        stored: true,
-        target: payload,
-        note: "Teleport request stored in localStorage. If the player did not move immediately, reload the Harthmere runtime or wire a live player debug hook to consume biomes.localDev.harthmere.teleportTarget.",
-      };
-    };
-    const existingHarthmereTownAuditForDungeonTeleportV2 =
-      ((win as typeof win & { __harthmereTownAudit?: Record<string, unknown> }).__harthmereTownAudit ?? {}) as Record<string, unknown>;
-    (win as typeof win & { __harthmereTownAudit?: unknown }).__harthmereTownAudit = {
-      ...existingHarthmereTownAuditForDungeonTeleportV2,
-      dungeonTestTargets: harthmereDungeonTeleportTargetsV2,
-      teleportToDungeonTestTarget: harthmereTeleportToDungeonTestTargetV2,
-    };
-    (win as typeof win & { __harthmereDungeonTest?: unknown }).__harthmereDungeonTest = {
-      targets: harthmereDungeonTeleportTargetsV2,
-      teleport: harthmereTeleportToDungeonTestTargetV2,
-      teleportToBellwardHalls: () => harthmereTeleportToDungeonTestTargetV2("bellwardHalls"),
-      teleportToOldWellDrain: () => harthmereTeleportToDungeonTestTargetV2("oldWellDrain"),
-      teleportToChapelUndercroft: () => harthmereTeleportToDungeonTestTargetV2("chapelUndercroft"),
-      teleportToWyrmsBed: () => harthmereTeleportToDungeonTestTargetV2("wyrmsBed"),
-    };
-
-    // HARTHMERE_DUNGEON_CONSOLE_TELEPORT_USES_LIVE_PLAYER_HOOK_V1
+    // HARTHMERE_DUNGEON_CONSOLE_TELEPORT_USES_LIVE_PLAYER_HOOK
     // Override the previous metadata/localStorage-only helper with a strict helper:
     // success requires the live player hook to report teleported:true.
-    const harthmereDungeonTeleportTargetsV1: Record<string, Record<string, unknown>> = {
+    const harthmereDungeonTeleportTargets: Record<string, Record<string, unknown>> = {
       bellwardHalls: {
         x: 356,
         y: 54.05,
@@ -14073,10 +13915,10 @@ private harthmerePlayerSword?: THREE.Group;
       },
     };
 
-    const harthmereStrictLiveDungeonTeleportV1 = (targetName = "bellwardHalls") => {
+    const harthmereStrictLiveDungeonTeleport = (targetName = "bellwardHalls") => {
       const target =
-        harthmereDungeonTeleportTargetsV1[targetName] ??
-        harthmereDungeonTeleportTargetsV1.bellwardHalls;
+        harthmereDungeonTeleportTargets[targetName] ??
+        harthmereDungeonTeleportTargets.bellwardHalls;
       const liveDebug = (win as typeof win & {
         __harthmereLivePlayerDebug?: {
           getPosition?: () => unknown;
@@ -14097,7 +13939,7 @@ private harthmerePlayerSword?: THREE.Group;
           before,
           after,
           target,
-          source: "HARTHMERE_DUNGEON_CONSOLE_TELEPORT_USES_LIVE_PLAYER_HOOK_V1",
+          source: "HARTHMERE_DUNGEON_CONSOLE_TELEPORT_USES_LIVE_PLAYER_HOOK",
         };
       }
 
@@ -14114,25 +13956,25 @@ private harthmerePlayerSword?: THREE.Group;
         liveResult,
         reason:
           "No live player teleport hook confirmed a position change. Request was stored only as a reload fallback.",
-        source: "HARTHMERE_DUNGEON_CONSOLE_TELEPORT_USES_LIVE_PLAYER_HOOK_V1",
+        source: "HARTHMERE_DUNGEON_CONSOLE_TELEPORT_USES_LIVE_PLAYER_HOOK",
       };
     };
 
     (win as typeof win & { __harthmereTownAudit?: Record<string, unknown> }).__harthmereTownAudit = {
       ...((win as typeof win & { __harthmereTownAudit?: Record<string, unknown> }).__harthmereTownAudit ?? {}),
-      teleportToDungeonTestTarget: harthmereStrictLiveDungeonTeleportV1,
+      teleportToDungeonTestTarget: harthmereStrictLiveDungeonTeleport,
     };
     (win as typeof win & { __harthmereDungeonTest?: Record<string, unknown> }).__harthmereDungeonTest = {
       ...((win as typeof win & { __harthmereDungeonTest?: Record<string, unknown> }).__harthmereDungeonTest ?? {}),
-      version: "harthmere-dungeon-console-teleport-uses-live-player-hook-v1",
-      teleportToBellwardHalls: () => harthmereStrictLiveDungeonTeleportV1("bellwardHalls"),
-      teleportToChapelUndercroft: () => harthmereStrictLiveDungeonTeleportV1("chapelUndercroft"),
-      teleportToOldWellDrain: () => harthmereStrictLiveDungeonTeleportV1("oldWellDrain"),
-      teleportToWyrmBed: () => harthmereStrictLiveDungeonTeleportV1("wyrmBed"),
+      version: "harthmere-dungeon-console-teleport-uses-live-player-hook",
+      teleportToBellwardHalls: () => harthmereStrictLiveDungeonTeleport("bellwardHalls"),
+      teleportToChapelUndercroft: () => harthmereStrictLiveDungeonTeleport("chapelUndercroft"),
+      teleportToOldWellDrain: () => harthmereStrictLiveDungeonTeleport("oldWellDrain"),
+      teleportToWyrmBed: () => harthmereStrictLiveDungeonTeleport("wyrmBed"),
     };
 
 
-    // HARTHMERE_LIVE_RENDERER_OBSTACLE_HELPER_PREFERS_RENDERER_V1
+    // HARTHMERE_LIVE_RENDERER_OBSTACLE_HELPER_PREFERS_RENDERER
     const collisionE2E = (win as typeof win & { __harthmereCollisionE2E?: Record<string, unknown> }).__harthmereCollisionE2E ?? {};
     const overlayAudit = (win as typeof win & { __harthmereCollisionOverlayAudit?: Record<string, unknown> }).__harthmereCollisionOverlayAudit ?? {};
     const obstacleReport = () => {
@@ -14198,7 +14040,7 @@ private harthmerePlayerSword?: THREE.Group;
       });
       (win as typeof win & { __harthmereHorizontalPlayerTownCollisionStats?: Record<string, unknown> }).__harthmereHorizontalPlayerTownCollisionStats = {
         ...((win as typeof win & { __harthmereHorizontalPlayerTownCollisionStats?: Record<string, unknown> }).__harthmereHorizontalPlayerTownCollisionStats ?? {}),
-        marker: "harthmere-renderer-browser-collision-helper-exposure-v2",
+        marker: "harthmere-renderer-browser-collision-helper-exposure",
         active: true,
         enabled: true,
         obstacleCount: obstacleReport().length,
@@ -14268,7 +14110,7 @@ private harthmerePlayerSword?: THREE.Group;
           radius: harthmereCombatActorRadius(actor.asset, actor.baseScale),
           forward: harthmereWorldForwardForYaw(actor.object.rotation.y, actor.forwardAxis),
           pulse: actor.combatPulse?.kind,
-          family: harthmereRuntimeCombatFamilyV1(actor),
+          family: harthmereRuntimeCombatFamily(actor),
           nonNpcLiveEntityVisualActor: true,
         })),
       forcePulseByPattern: (pattern = "wolf|muck|hex", kind: CombatPulseKind = "attack") => {
@@ -14284,15 +14126,15 @@ private harthmerePlayerSword?: THREE.Group;
           asset: actor.asset,
           district: actor.district,
           combatOffset: actor.combatOffset,
-          family: harthmereRuntimeCombatFamilyV1(actor),
+          family: harthmereRuntimeCombatFamily(actor),
           pulse: actor.combatPulse?.kind,
           weaponVisualPresent: this.harthmereNpcWeaponVisuals.has(actor.object),
         }));
       },
       nonNpcNativeCombatAnimationAudit: () =>
         (window as typeof window & {
-          __harthmereNonNpcCombatAnimationAuditV1?: unknown;
-        }).__harthmereNonNpcCombatAnimationAuditV1 ?? {},
+          __harthmereNonNpcCombatAnimationAudit?: unknown;
+        }).__harthmereNonNpcCombatAnimationAudit ?? {},
       forcePulse: (offset = 9003, kind: CombatPulseKind = "attack") => {
         const actor = this.findCombatLifeByOffset(Number(offset));
         if (!actor) {
@@ -14359,7 +14201,7 @@ private harthmerePlayerSword?: THREE.Group;
           itemToEquipment: HARTHMERE_PLAYER_WEAPON_ITEM_TO_EQUIPMENT_ID,
         },
         activeClip: this.harthmerePlayerSwordActiveClip,
-      realVisualV18: this.harthmerePlayerSword?.userData?.harthmereRealVisualAnimationV18,
+      realVisual: this.harthmerePlayerSword?.userData?.harthmereRealVisualAnimation,
         clip: this.harthmerePlayerSwordActiveClip,
         drawAmount: this.harthmerePlayerSwordDrawAmount,
         usingGltf: this.harthmerePlayerSwordUsingGltf,
@@ -14372,12 +14214,12 @@ private harthmerePlayerSword?: THREE.Group;
         anchorMode: this.harthmerePlayerSword?.userData?.harthmereAttachmentMode ?? "harthmere-anchor-right-hand/harthmere-anchor-hip/harthmere-anchor-back",
         anchors: this.harthmerePlayerSword?.userData?.harthmereAttachmentAnchors,
         weaponHandTracking: {
-          version: HARTHMERE_WEAPON_HAND_TRACKING_VERSION_V9,
-          maxGripDistance: HARTHMERE_WEAPON_HAND_GRIP_MAX_DISTANCE_V9,
+          version: HARTHMERE_WEAPON_HAND_TRACKING_VERSION,
+          maxGripDistance: HARTHMERE_WEAPON_HAND_GRIP_MAX_DISTANCE,
           gripDistance: this.harthmerePlayerWeaponGripDistanceLast,
           anchorName: this.harthmerePlayerWeaponGripAnchorName,
           followsCurrentHandAnchorEveryFrame: true,
-          samples: this.harthmerePlayerWeaponHandTrackingSamplesV9.slice(0, 8),
+          samples: this.harthmerePlayerWeaponHandTrackingSamples.slice(0, 8),
         },
         trailVisible: this.harthmerePlayerSwordTrail?.visible === true,
         trailAttack: this.harthmerePlayerSwordTrailAttack,
@@ -14386,9 +14228,9 @@ private harthmerePlayerSword?: THREE.Group;
         blockFeedbackVisible: this.harthmereBlockContactFeedback?.visible === true,
         npcWeaponVisualCount: this.harthmereNpcWeaponVisuals.size,
         lastImpactAt: this.harthmereLastSwordImpactAt,
-        weaponHandTrackingV10: this.harthmerePlayerSword?.userData?.harthmereWeaponHandTrackingV10,
-        objectEffectRangeAudit: HARTHMERE_OBJECT_EFFECT_RANGES_V10,
-        resourceHitTelegraph: this.harthmereLastResourceHitTelegraphV10,
+        weaponHandTrackingUserData: this.harthmerePlayerSword?.userData?.harthmereWeaponHandTracking,
+        objectEffectRangeAudit: HARTHMERE_OBJECT_EFFECT_RANGES,
+        resourceHitTelegraph: this.harthmereLastResourceHitTelegraph,
         position: this.harthmerePlayerSword?.position.toArray(),
         rotation: this.harthmerePlayerSword
           ? {
@@ -14402,45 +14244,45 @@ private harthmerePlayerSword?: THREE.Group;
       playerSword: () =>
         (win.__harthmereRendererDebug?.swordState as (() => unknown) | undefined)?.(),
       combatAnimationPolish: () => ({
-        version: HARTHMERE_COMBAT_ANIMATION_POLISH_RENDERER_VERSION_V1,
-        sharedVersion: HARTHMERE_COMBAT_ANIMATION_POLISH_VERSION_V1,
-        runtimeRules: HARTHMERE_COMBAT_POLISH_RUNTIME_RULES_V1,
-        activeProfile: this.harthmereCombatPolishActiveProfileV1,
-        attackCounter: this.harthmereCombatPolishAttackCounterV1,
-        lastRandomSeed: this.harthmereCombatPolishLastRandomSeedV2,
-        lastShape: this.harthmereCombatPolishLastShapeV2,
-        recentShapes: [...this.harthmereCombatPolishRecentShapesV2],
-        handPolicy: HARTHMERE_COMBAT_ANIMATION_HAND_POLICY_V2,
-        productionVisualTestContracts: HARTHMERE_COMBAT_ANIMATION_PRODUCTION_TEST_CONTRACTS_V3,
+        version: HARTHMERE_COMBAT_ANIMATION_POLISH_RENDERER_VERSION,
+        sharedVersion: HARTHMERE_COMBAT_ANIMATION_POLISH_VERSION,
+        runtimeRules: HARTHMERE_COMBAT_POLISH_RUNTIME_RULES,
+        activeProfile: this.harthmereCombatPolishActiveProfile,
+        attackCounter: this.harthmereCombatPolishAttackCounter,
+        lastRandomSeed: this.harthmereCombatPolishLastRandomSeed,
+        lastShape: this.harthmereCombatPolishLastShape,
+        recentShapes: [...this.harthmereCombatPolishRecentShapes],
+        handPolicy: HARTHMERE_COMBAT_ANIMATION_HAND_POLICY,
+        productionVisualTestContracts: HARTHMERE_COMBAT_ANIMATION_PRODUCTION_TEST_CONTRACTS,
         productionVisualSnapshot: {
-          requiredFields: HARTHMERE_COMBAT_ANIMATION_PRODUCTION_TEST_CONTRACTS_V3.browserVisualSnapshotFields,
-          playerWeaponHand: HARTHMERE_COMBAT_ANIMATION_HAND_POLICY_V2.mainWeaponHand,
-          npcWeaponHand: HARTHMERE_COMBAT_ANIMATION_HAND_POLICY_V2.mainWeaponHand,
-          currentAttackVariation: this.harthmereCombatPolishLastShapeV2,
-          currentTrailType: this.harthmereCombatPolishActiveProfileV1?.trailShape,
-          currentVfxType: this.harthmereCombatPolishActiveProfileV1?.particleStyle,
-          currentBodyPose: this.harthmereCombatPolishActiveProfileV1?.bodyMotion,
+          requiredFields: HARTHMERE_COMBAT_ANIMATION_PRODUCTION_TEST_CONTRACTS.browserVisualSnapshotFields,
+          playerWeaponHand: HARTHMERE_COMBAT_ANIMATION_HAND_POLICY.mainWeaponHand,
+          npcWeaponHand: HARTHMERE_COMBAT_ANIMATION_HAND_POLICY.mainWeaponHand,
+          currentAttackVariation: this.harthmereCombatPolishLastShape,
+          currentTrailType: this.harthmereCombatPolishActiveProfile?.trailShape,
+          currentVfxType: this.harthmereCombatPolishActiveProfile?.particleStyle,
+          currentBodyPose: this.harthmereCombatPolishActiveProfile?.bodyMotion,
           currentAnimationFrame: undefined,
-          hiltTip: this.harthmerePlayerSword?.userData?.harthmereWeaponTipHiltDirectionV2,
-          handTracking: this.harthmerePlayerSword?.userData?.harthmereWeaponHandTrackingV10,
-          impactFrameWindow: HARTHMERE_COMBAT_ANIMATION_IMPACT_FRAME_WINDOW_V1,
+          hiltTip: this.harthmerePlayerSword?.userData?.harthmereWeaponTipHiltDirection,
+          handTracking: this.harthmerePlayerSword?.userData?.harthmereWeaponHandTracking,
+          impactFrameWindow: HARTHMERE_COMBAT_ANIMATION_IMPACT_FRAME_WINDOW,
         },
-        speedMetersPerSecond: this.harthmereCombatPolishSpeedV1,
-        playerAndNpcSharedProfileCount: HARTHMERE_ATTACK_ANIMATION_PROFILES_V1.length,
+        speedMetersPerSecond: this.harthmereCombatPolishSpeed,
+        playerAndNpcSharedProfileCount: HARTHMERE_ATTACK_ANIMATION_PROFILES.length,
         weaponGripMustFollowHandEveryFrame: true,
         capturedBaseTransformAllowedDuringAttack: false,
       }),
       weaponHandTracking: () =>
-        this.harthmerePlayerSword?.userData?.harthmereWeaponHandTrackingV10 ??
-        this.getHarthmereWeaponHandTrackingSnapshotV10(),
+        this.harthmerePlayerSword?.userData?.harthmereWeaponHandTracking ??
+        this.getHarthmereWeaponHandTrackingSnapshot(),
       objectEffectRangeAudit: () => ({
-        version: HARTHMERE_OBJECT_EFFECT_RANGE_VERSION_V10,
-        ranges: HARTHMERE_OBJECT_EFFECT_RANGES_V10,
-        edgeCases: [...HARTHMERE_RESOURCE_HIT_EDGE_CASES_V10],
+        version: HARTHMERE_OBJECT_EFFECT_RANGE_VERSION,
+        ranges: HARTHMERE_OBJECT_EFFECT_RANGES,
+        edgeCases: [...HARTHMERE_RESOURCE_HIT_EDGE_CASES],
       }),
-      resourceHitTelegraphState: () => this.harthmereLastResourceHitTelegraphV10 ?? null,
-      simulateResourceHitTelegraph: (kind: HarthmereResourceKindV10 = "rock") =>
-        this.createHarthmereResourceHitTelegraphV10(
+      resourceHitTelegraphState: () => this.harthmereLastResourceHitTelegraph ?? null,
+      simulateResourceHitTelegraph: (kind: HarthmereResourceKind = "rock") =>
+        this.createHarthmereResourceHitTelegraph(
           kind,
           new THREE.Vector3(0, 0.05, 0),
           new THREE.Vector3(0, 1, 0),
@@ -14484,15 +14326,15 @@ private harthmerePlayerSword?: THREE.Group;
         return (win.__harthmereRendererDebug?.swordState as (() => unknown) | undefined)?.();
       },
       weaponHandTrackingLegacy: () => ({
-        version: HARTHMERE_WEAPON_HAND_TRACKING_VERSION_V9,
-        maxGripDistance: HARTHMERE_WEAPON_HAND_GRIP_MAX_DISTANCE_V9,
+        version: HARTHMERE_WEAPON_HAND_TRACKING_VERSION,
+        maxGripDistance: HARTHMERE_WEAPON_HAND_GRIP_MAX_DISTANCE,
         gripDistance: this.harthmerePlayerWeaponGripDistanceLast,
         anchorName: this.harthmerePlayerWeaponGripAnchorName,
         followsCurrentHandAnchorEveryFrame: true,
-        samples: this.harthmerePlayerWeaponHandTrackingSamplesV9.slice(0, 16),
+        samples: this.harthmerePlayerWeaponHandTrackingSamples.slice(0, 16),
       }),
       creatureAnimationAudit: () => ({
-        version: HARTHMERE_CREATURE_SOCIAL_DEATH_HANDTRACKING_VERSION_V9,
+        version: HARTHMERE_CREATURE_SOCIAL_DEATH_HANDTRACKING_VERSION,
         states: ["idle", "walk", "run", "attack", "hit", "death", "flee", "turnInPlace", "pathVelocitySync"],
         actors: this.combatLifeInstances
           .filter((actor) => /animal|wolf|rat|boar|bear|deer|fox|crow|snake|undead/i.test(`${actor.asset} ${actor.label}`))
@@ -14506,7 +14348,7 @@ private harthmerePlayerSword?: THREE.Group;
           })),
       }),
       socialWorkAnimationAudit: () => ({
-        version: HARTHMERE_CREATURE_SOCIAL_DEATH_HANDTRACKING_VERSION_V9,
+        version: HARTHMERE_CREATURE_SOCIAL_DEATH_HANDTRACKING_VERSION,
         states: ["vendorIdle", "talkGesture", "questGesture", "sit", "eat", "drink", "sleep", "workLoop", "smithWork", "cookWork", "dockWork", "healerWork", "guardPatrolIdle", "crowdEmote"],
         actors: this.combatLifeInstances
           .filter((actor) => /merchant|vendor|smith|cook|guard|healer|dock|quest|clergy|farmer|baker|tailor|trainer/i.test(`${actor.label} ${actor.asset} ${actor.appearance?.role ?? ""}`))
@@ -14519,7 +14361,7 @@ private harthmerePlayerSword?: THREE.Group;
           })),
       }),
       deathRespawnCinematicAudit: () => ({
-        version: HARTHMERE_CREATURE_SOCIAL_DEATH_HANDTRACKING_VERSION_V9,
+        version: HARTHMERE_CREATURE_SOCIAL_DEATH_HANDTRACKING_VERSION,
         deathPoseDurationMs: 1250,
         corpseHoldScale: 0.84,
         deadActors: this.combatLifeInstances
@@ -14530,7 +14372,7 @@ private harthmerePlayerSword?: THREE.Group;
             visible: actor.object.visible,
             scale: actor.object.scale.toArray(),
             pulse: actor.combatPulse?.kind,
-            deathCinematic: actor.object.userData.harthmereDeathRespawnCinematicV9,
+            deathCinematic: actor.object.userData.harthmereDeathRespawnCinematic,
           })),
       }),
       log: () =>
@@ -14538,7 +14380,7 @@ private harthmerePlayerSword?: THREE.Group;
     };
   }
 
-  // harthmere-rebuilt-combat-effect-handler-v1
+  // harthmere-rebuilt-combat-effect-handler
   private readonly onCombatEffect = (event: Event) => {
     const detail = (event as CustomEvent<{
       attacker?: string;
@@ -14652,7 +14494,7 @@ private harthmerePlayerSword?: THREE.Group;
     const animationKind = String(detail.animationKind ?? "").toLowerCase();
     const targetHpAfter = Number(detail.targetHpAfter ?? Number.NaN);
     const finalDamageForDeathRoute = Number(detail.finalDamage ?? 0);
-    // harthmere-death-ai-dialog-render-v1
+    // harthmere-death-ai-dialog-render
     // Forward-arc miss/sweep events often carry placeholder targetHpAfter=0 even
     // when there is no concrete target. Do not route those to Death or the actor
     // can be added to deadCombatObjects and later ignore real attack pulses.
@@ -14681,7 +14523,7 @@ private harthmerePlayerSword?: THREE.Group;
 
     const resolveCombatActor = (offset: number | undefined, name: string | undefined) => {
       if (offset !== undefined && offset !== null && Number.isFinite(offset)) {
-        // harthmere-training-dummy-visual-proxy-v2
+        // harthmere-training-dummy-visual-proxy
         // The combat model has a training dummy at offset 9001, but the
         // current visual town has no dedicated dummy GLTF actor registered.
         // Use the existing guard-yard animated actor as a visual-only proxy.
@@ -14762,7 +14604,7 @@ private harthmerePlayerSword?: THREE.Group;
       this.faceCombatActorToward(attacker, target.object.position, "attack_target");
     }
     if (isPlayerSwingEvent && Number(detail.finalDamage ?? 0) > 0) {
-      // harthmere-sword-polish-v3-hit-stop
+      // harthmere-sword-polish-hit-stop
       // Keep hit-stop/recovery setup before the attacker pulse starts so the
       // impact-frame attack animation immediately inherits the recovery feel.
       this.harthmereHitStopUntil = performance.now() + 65;
@@ -14868,7 +14710,7 @@ private harthmerePlayerSword?: THREE.Group;
 
 
 
-// HARTHMERE_BODY_WEAPON_VISUAL_COHESION_VERSION_V7 = "harthmere-body-weapon-visual-cohesion-v7";
+// HARTHMERE_BODY_WEAPON_VISUAL_COHESION_VERSION = "harthmere-body-weapon-visual-cohesion";
   private ensureHarthmerePlayerSword() {
     if (this.harthmerePlayerSword) {
       return this.harthmerePlayerSword;
@@ -14993,7 +14835,7 @@ private harthmerePlayerSword?: THREE.Group;
     const loadToken = ++this.harthmerePlayerWeaponGltfLoadToken;
 
     try {
-      // v2 sword-test compatibility: keep the old id-based manifest lookup shape visible
+      // current sword-test compatibility: keep the old id-based manifest lookup shape visible
       // while the runtime now chooses from the full weapon-wide equipment catalog.
       const legacySwordEntryProbe = HARTHMERE_PLAYER_SWORD_EQUIPMENT_IDS
         .map((id) => getHarthmereEquipmentAnimation(id))
@@ -15245,7 +15087,7 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
         itemId: detail.itemId ?? previousItemId ?? "iron_longsword",
         action: detail.action ?? "sync",
         attack: detail.attack,
-        theme: ((detail as { theme?: HarthmereAttackVisualThemeIdV1 }).theme ?? this.harthmerePlayerSwordState.theme),
+        theme: ((detail as { theme?: HarthmereAttackVisualThemeId }).theme ?? this.harthmerePlayerSwordState.theme),
         variation: ((detail as { variation?: string }).variation ?? this.harthmerePlayerSwordState.variation),
         at: Number.isFinite(Number(detail.at)) ? Number(detail.at) : Date.now(),
         windupMs: Number.isFinite(Number(detail.windupMs))
@@ -15310,36 +15152,36 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
       return;
     }
 
-    const activeWeaponProfileV1 =
+    const activeWeaponProfile =
       resolveHarthmerePlayerWeaponEquipmentEntry(this.harthmerePlayerSwordState.itemId)?.profile ?? "melee";
-    const themeSequenceV1 = HARTHMERE_COMBAT_POLISH_THEME_SEQUENCE_V1;
-    const nextThemeV1 =
+    const themeSequence = HARTHMERE_COMBAT_POLISH_THEME_SEQUENCE;
+    const nextTheme =
       this.harthmerePlayerSwordState.theme ??
-      themeSequenceV1[this.harthmereCombatPolishAttackCounterV1 % themeSequenceV1.length] ??
+      themeSequence[this.harthmereCombatPolishAttackCounter % themeSequence.length] ??
       "physical";
-    const requestedVariationV2 = (this.harthmerePlayerSwordState.variation ?? "").trim();
-    const randomSeedV2 =
+    const requestedVariation = (this.harthmerePlayerSwordState.variation ?? "").trim();
+    const randomSeed =
       Math.floor(((typeof performance !== "undefined" ? performance.now() : Date.now()) * 1000)) ^
-      (this.harthmereCombatPolishAttackCounterV1 * 2654435761) ^
+      (this.harthmereCombatPolishAttackCounter * 2654435761) ^
       Math.floor(Math.random() * 0xffff);
-    this.harthmereCombatPolishLastRandomSeedV2 = randomSeedV2;
-    this.harthmereCombatPolishActiveProfileV1 = harthmereCombatAnimationProfileForRandomizedActionV2({
-      attackType: activeWeaponProfileV1 === "magic" || activeWeaponProfileV1 === "magicBook"
+    this.harthmereCombatPolishLastRandomSeed = randomSeed;
+    this.harthmereCombatPolishActiveProfile = harthmereCombatAnimationProfileForRandomizedAction({
+      attackType: activeWeaponProfile === "magic" || activeWeaponProfile === "magicBook"
         ? "magic"
         : attack === "heavy"
           ? "heavy"
           : "basic",
-      seed: randomSeedV2,
-      lastShape: this.harthmereCombatPolishLastShapeV2,
-      requestedShape: requestedVariationV2.length > 0 ? requestedVariationV2 : undefined,
-      theme: nextThemeV1,
+      seed: randomSeed,
+      lastShape: this.harthmereCombatPolishLastShape,
+      requestedShape: requestedVariation.length > 0 ? requestedVariation : undefined,
+      theme: nextTheme,
     });
-    this.harthmereCombatPolishLastShapeV2 = this.harthmereCombatPolishActiveProfileV1.shape;
-    this.harthmereCombatPolishRecentShapesV2.push(this.harthmereCombatPolishActiveProfileV1.shape);
-    while (this.harthmereCombatPolishRecentShapesV2.length > 12) {
-      this.harthmereCombatPolishRecentShapesV2.shift();
+    this.harthmereCombatPolishLastShape = this.harthmereCombatPolishActiveProfile.shape;
+    this.harthmereCombatPolishRecentShapes.push(this.harthmereCombatPolishActiveProfile.shape);
+    while (this.harthmereCombatPolishRecentShapes.length > 12) {
+      this.harthmereCombatPolishRecentShapes.shift();
     }
-    this.harthmereCombatPolishAttackCounterV1 += 1;
+    this.harthmereCombatPolishAttackCounter += 1;
 
     this.harthmerePlayerSwordManualSwing = {
       attack,
@@ -15369,17 +15211,17 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
 
     const activeWeaponProfile =
       resolveHarthmerePlayerWeaponEquipmentEntry(this.harthmerePlayerSwordState.itemId)?.profile ?? "melee";
-    const runtimeForSwingV18 = (window as typeof window & {
+    const runtimeForSwing = (window as typeof window & {
       __harthmereForwardArcRuntime?: { position?: [number, number, number]; forward?: [number, number]; bodyForward?: [number, number] };
     }).__harthmereForwardArcRuntime;
-    const forwardForSwingV18 = runtimeForSwingV18?.bodyForward ?? runtimeForSwingV18?.forward ?? [0, 1];
-    const positionForSwingV18 = runtimeForSwingV18?.position ?? [0, 0, 0];
-    const rawSwingForwardV18 = new THREE.Vector3(Number(forwardForSwingV18[0]), 0, Number(forwardForSwingV18[1]));
-    const centerForSwingV18 = new THREE.Vector3(Number(positionForSwingV18[0]), Number(positionForSwingV18[1]), Number(positionForSwingV18[2]));
-    const handAnchor = this.resolveHarthmerePlayerVisualHandAnchorV18(
+    const forwardForSwing = runtimeForSwing?.bodyForward ?? runtimeForSwing?.forward ?? [0, 1];
+    const positionForSwing = runtimeForSwing?.position ?? [0, 0, 0];
+    const rawSwingForward = new THREE.Vector3(Number(forwardForSwing[0]), 0, Number(forwardForSwing[1]));
+    const centerForSwing = new THREE.Vector3(Number(positionForSwing[0]), Number(positionForSwing[1]), Number(positionForSwing[2]));
+    const handAnchor = this.resolveHarthmerePlayerVisualHandAnchor(
       activeWeaponProfile,
-      centerForSwingV18,
-      rawSwingForwardV18,
+      centerForSwing,
+      rawSwingForward,
       this.resolveHarthmerePlayerBoneAnchor(
         activeWeaponProfile === "shield"
           ? ["righthand", "right_hand", "right hand", "mixamorigRightHand", "shield_r", "hand.r"]
@@ -15390,15 +15232,15 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
     const t = Math.min(1, Math.max(0, (now - swing.startedAt) / swing.durationMs));
     const ease = Math.sin(t * Math.PI);
     const slash = swing.attack === "heavy" ? 0.95 : 0.62;
-    this.applyHarthmereCombatPolishAnchorPoseV1(
-      this.harthmereCombatPolishActiveProfileV1,
+    this.applyHarthmereCombatPolishAnchorPose(
+      this.harthmereCombatPolishActiveProfile,
       t,
       activeWeaponProfile,
-      centerForSwingV18,
-      rawSwingForwardV18,
+      centerForSwing,
+      rawSwingForward,
     );
 
-    // v10: sample the current hand/arm anchor every frame. This is intentionally
+    // current: sample the current hand/arm anchor every frame. This is intentionally
     // not a stale captured base transform; the weapon follows the swipe instead
     // of sliding through the air while the hand moves somewhere else.
     if (handAnchor) {
@@ -15408,7 +15250,7 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
       handAnchor.getWorldQuaternion(currentHandQuaternion);
       sword.position.copy(currentHandPosition);
       sword.quaternion.copy(currentHandQuaternion);
-      this.applyHarthmereWeaponStraightPointingV2(sword, handAnchor, rawSwingForwardV18, activeWeaponProfile, {
+      this.applyHarthmereWeaponStraightPointing(sword, handAnchor, rawSwingForward, activeWeaponProfile, {
         duringAttack: true,
       });
     }
@@ -15416,10 +15258,10 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
     sword.rotateY(slash * ease);
     sword.rotateX((swing.attack === "heavy" ? -0.52 : -0.34) * ease);
     sword.rotateZ((swing.attack === "heavy" ? 0.28 : 0.18) * ease);
-    this.recordHarthmereWeaponTipHiltDirectionV2(sword, handAnchor, rawSwingForwardV18, activeWeaponProfile, true);
+    this.recordHarthmereWeaponTipHiltDirection(sword, handAnchor, rawSwingForward, activeWeaponProfile, true);
 
-    sword.userData.harthmereWeaponHandTrackingV10 =
-      this.getHarthmereWeaponHandTrackingSnapshotV10(sword, handAnchor);
+    sword.userData.harthmereWeaponHandTracking =
+      this.getHarthmereWeaponHandTrackingSnapshot(sword, handAnchor);
 
     if (t >= 1) {
       if (handAnchor) {
@@ -15430,8 +15272,8 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
         sword.position.copy(currentHandPosition);
         sword.quaternion.copy(currentHandQuaternion);
       }
-      sword.userData.harthmereWeaponHandTrackingV10 =
-        this.getHarthmereWeaponHandTrackingSnapshotV10(sword, handAnchor);
+      sword.userData.harthmereWeaponHandTracking =
+        this.getHarthmereWeaponHandTrackingSnapshot(sword, handAnchor);
       this.debugHarthmereSwordRendererEvent("renderer.player_sword.manual_swing_done", {
         attack: swing.attack,
         handTracked: true,
@@ -15443,7 +15285,7 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
 
 
 
-  private resolveHarthmerePlayerVisualHandAnchorV18(
+  private resolveHarthmerePlayerVisualHandAnchor(
     activeWeaponProfile: string,
     center: THREE.Vector3,
     forward: THREE.Vector3,
@@ -15451,7 +15293,7 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
   ) {
     const namedRightAnchor = this.getHarthmerePlayerSwordAnchor("harthmere-anchor-right-hand");
     const namedLeftAnchor = this.getHarthmerePlayerSwordAnchor("harthmere-anchor-left-hand");
-    // v2 polish: main one-handed weapon is explicitly locked to the visual left hand.
+    // current polish: main one-handed weapon is explicitly locked to the visual left hand.
     // Do not sort anchors by camera/world dot product and do not flip during run/strike.
     // Shields/offhand items remain on the opposite visual right hand.
     if (activeWeaponProfile === "shield") {
@@ -15468,7 +15310,7 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
   }
 
   private resolveHarthmerePlayerBoneAnchor(candidates: readonly string[]) {
-    const harthmereCombatPolishRejectSceneWideBoneAnchorsV1 = true;
+    const harthmereCombatPolishRejectSceneWideBoneAnchors = true;
     const wanted = candidates.map((candidate) => candidate.toLowerCase());
     let match: THREE.Object3D | undefined;
     this.root.traverse((object) => {
@@ -15484,7 +15326,7 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
         object.userData?.harthmereLocalPlayerBone === true ||
         object.parent?.userData?.harthmereLocalPlayerBoneRoot === true ||
         /local.*player|harthmere.*player|player.*mesh/i.test(object.parent?.name ?? "");
-      if (!belongsToLocalPlayer && harthmereCombatPolishRejectSceneWideBoneAnchorsV1) {
+      if (!belongsToLocalPlayer && harthmereCombatPolishRejectSceneWideBoneAnchors) {
         return;
       }
       if (wanted.some((candidate) => name.includes(candidate))) {
@@ -15495,15 +15337,15 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
   }
 
 
-  private updateHarthmereCombatPolishLocomotionV1(center: THREE.Vector3, dt: number) {
-    if (this.harthmereCombatPolishLastCenterV1.lengthSq() > 0 && dt > 0) {
-      this.harthmereCombatPolishSpeedV1 = center.distanceTo(this.harthmereCombatPolishLastCenterV1) / dt;
+  private updateHarthmereCombatPolishLocomotion(center: THREE.Vector3, dt: number) {
+    if (this.harthmereCombatPolishLastCenter.lengthSq() > 0 && dt > 0) {
+      this.harthmereCombatPolishSpeed = center.distanceTo(this.harthmereCombatPolishLastCenter) / dt;
     }
-    this.harthmereCombatPolishLastCenterV1.copy(center);
+    this.harthmereCombatPolishLastCenter.copy(center);
   }
 
-  private applyHarthmereCombatPolishAnchorPoseV1(
-    profile: HarthmereCombatAnimationProfileV1,
+  private applyHarthmereCombatPolishAnchorPose(
+    profile: HarthmereCombatAnimationProfile,
     progress: number,
     activeWeaponProfile: string,
     center: THREE.Vector3,
@@ -15515,7 +15357,7 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
     const wave = Math.sin(t * Math.PI);
     const release = Math.sin(clamp01((t - 0.22) / 0.48) * Math.PI);
     const gaitClock = typeof performance !== "undefined" ? performance.now() * 0.012 : Date.now() * 0.012;
-    const runBob = Math.min(0.075, this.harthmereCombatPolishSpeedV1 * 0.008) * Math.sin(gaitClock);
+    const runBob = Math.min(0.075, this.harthmereCombatPolishSpeed * 0.008) * Math.sin(gaitClock);
 
     const resetRight: [number, number, number] = [0.54, 0.98 + runBob, 0.30];
     const resetLeft: [number, number, number] = [-0.54, 0.98 - runBob * 0.7, 0.30];
@@ -15584,13 +15426,13 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
     }
 
     if (activeWeaponProfile === "shield") {
-      left.userData.harthmereCombatAnimationPolishMainHandV1 = "shield-left";
+      left.userData.harthmereCombatAnimationPolishMainHand = "shield-left";
     } else {
-      right.userData.harthmereCombatAnimationPolishMainHandV1 = "right";
+      right.userData.harthmereCombatAnimationPolishMainHand = "right";
     }
-    right.userData.harthmereCombatAnimationPolishV1 = {
-      version: HARTHMERE_COMBAT_ANIMATION_POLISH_RENDERER_VERSION_V1,
-      sharedVersion: HARTHMERE_COMBAT_ANIMATION_POLISH_VERSION_V1,
+    right.userData.harthmereCombatAnimationPolish = {
+      version: HARTHMERE_COMBAT_ANIMATION_POLISH_RENDERER_VERSION,
+      sharedVersion: HARTHMERE_COMBAT_ANIMATION_POLISH_VERSION,
       profileId: profile.id,
       shape: profile.shape,
       bodyMotion: profile.bodyMotion,
@@ -15598,15 +15440,15 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
       frameCount: profile.frameCount,
       fps: profile.fps,
       progress: t,
-      runSpeedMetersPerSecond: this.harthmereCombatPolishSpeedV1,
-      weaponGripMustFollowHandEveryFrame: HARTHMERE_COMBAT_POLISH_RUNTIME_RULES_V1.weaponGripMustFollowHandEveryFrame,
+      runSpeedMetersPerSecond: this.harthmereCombatPolishSpeed,
+      weaponGripMustFollowHandEveryFrame: HARTHMERE_COMBAT_POLISH_RUNTIME_RULES.weaponGripMustFollowHandEveryFrame,
       capturedBaseTransformAllowedDuringAttack: false,
     };
   }
 
-  private applyHarthmerePolishedTrailProfileV1(
+  private applyHarthmerePolishedTrailProfile(
     trail: THREE.Group,
-    profile: HarthmereCombatAnimationProfileV1,
+    profile: HarthmereCombatAnimationProfile,
   ) {
     while (trail.children.length > 0) {
       trail.remove(trail.children[0]);
@@ -15623,8 +15465,8 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
 
     const add = (name: string, mesh: THREE.Mesh) => {
       mesh.name = `harthmere-combat-polish-vfx-${profile.shape}-${name}`;
-      mesh.userData.harthmereCombatAnimationPolishV1 = {
-        version: HARTHMERE_COMBAT_ANIMATION_POLISH_RENDERER_VERSION_V1,
+      mesh.userData.harthmereCombatAnimationPolish = {
+        version: HARTHMERE_COMBAT_ANIMATION_POLISH_RENDERER_VERSION,
         profileId: profile.id,
         trailShape: profile.trailShape,
         particleStyle: profile.particleStyle,
@@ -15679,8 +15521,8 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
       add("crescent", arc);
     }
 
-    trail.userData.harthmereCombatAnimationPolishV1 = {
-      version: HARTHMERE_COMBAT_ANIMATION_POLISH_RENDERER_VERSION_V1,
+    trail.userData.harthmereCombatAnimationPolish = {
+      version: HARTHMERE_COMBAT_ANIMATION_POLISH_RENDERER_VERSION,
       profileId: profile.id,
       shape: profile.shape,
       theme: profile.theme,
@@ -15689,7 +15531,7 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
     };
   }
 
-  private ensureHarthmereNpcPolishedWeaponAnchorV1(actor: CombatLifeInstance) {
+  private ensureHarthmereNpcPolishedWeaponAnchor(actor: CombatLifeInstance) {
     const existing =
       actor.object.getObjectByName("harthmere-anchor-left-hand") ??
       actor.object.getObjectByName("LeftHand") ??
@@ -15701,40 +15543,40 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
     anchor.name = "harthmere-anchor-left-hand";
     anchor.position.set(-0.42, 0.98, 0.22);
     anchor.rotation.set(-0.08, 0, 0.16, "XYZ");
-    anchor.userData.harthmereCombatAnimationPolishV1 = {
-      version: HARTHMERE_COMBAT_ANIMATION_POLISH_RENDERER_VERSION_V1,
+    anchor.userData.harthmereCombatAnimationPolish = {
+      version: HARTHMERE_COMBAT_ANIMATION_POLISH_RENDERER_VERSION,
       generatedFallbackAnchor: true,
       playerAndNpcSharedProfiles: true,
-      mainWeaponHand: HARTHMERE_COMBAT_ANIMATION_HAND_POLICY_V2.mainWeaponHand,
+      mainWeaponHand: HARTHMERE_COMBAT_ANIMATION_HAND_POLICY.mainWeaponHand,
     };
     actor.object.add(anchor);
     return anchor;
   }
 
-  private applyHarthmereNpcCombatPolishPulseV1(actor: CombatLifeInstance, progress: number) {
+  private applyHarthmereNpcCombatPolishPulse(actor: CombatLifeInstance, progress: number) {
     const visual = this.harthmereNpcWeaponVisuals.get(actor.object);
     if (!visual) {
       return;
     }
-    const npcAttackTypeV2 = /mage|priest|cleric|magic|staff|wand/i.test(`${actor.asset} ${actor.label}`)
+    const npcAttackType = /mage|priest|cleric|magic|staff|wand/i.test(`${actor.asset} ${actor.label}`)
       ? "magic"
       : /guard|elite|boss|brute|hammer|axe/i.test(`${actor.asset} ${actor.label}`)
         ? "heavy"
         : "basic";
-    const previousNpcShapeV2 = String(visual.userData.harthmereCombatPolishLastShapeV2 ?? "");
-    const profile = harthmereCombatAnimationProfileForRandomizedActionV2({
-      attackType: npcAttackTypeV2,
+    const previousNpcShape = String(visual.userData.harthmereCombatPolishLastShape ?? "");
+    const profile = harthmereCombatAnimationProfileForRandomizedAction({
+      attackType: npcAttackType,
       seed: `${actor.combatOffset ?? actor.label.length}:${Math.floor(progress * 8)}:${Date.now()}`,
-      lastShape: previousNpcShapeV2,
+      lastShape: previousNpcShape,
       theme: /undead|ghost|shadow/i.test(`${actor.asset} ${actor.label}`) ? "shadow" : "physical",
     });
-    visual.userData.harthmereCombatPolishLastShapeV2 = profile.shape;
+    visual.userData.harthmereCombatPolishLastShape = profile.shape;
     const wave = Math.sin(clamp01(progress) * Math.PI);
     visual.rotation.set(-0.34 * wave, 0.55 * wave, -0.46 * wave, "XYZ");
     visual.position.set(0.04, -0.04 + 0.08 * wave, 0.18 + 0.22 * wave);
     visual.scale.setScalar(Math.max(0.7, Math.min(1.2, actor.baseScale)) * (1 + 0.08 * wave));
-    visual.userData.harthmereCombatAnimationPolishV1 = {
-      version: HARTHMERE_COMBAT_ANIMATION_POLISH_RENDERER_VERSION_V1,
+    visual.userData.harthmereCombatAnimationPolish = {
+      version: HARTHMERE_COMBAT_ANIMATION_POLISH_RENDERER_VERSION,
       profileId: profile.id,
       shape: profile.shape,
       progress,
@@ -15777,7 +15619,7 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
     }
     trail.rotation.set(-0.18, facingYaw, attack === "heavy" ? -0.22 : 0.12, "XYZ");
     trail.scale.setScalar(attack === "heavy" ? 1.34 : 1.0);
-    this.applyHarthmerePolishedTrailProfileV1(trail, this.harthmereCombatPolishActiveProfileV1);
+    this.applyHarthmerePolishedTrailProfile(trail, this.harthmereCombatPolishActiveProfile);
     this.harthmerePlayerSwordTrailAttack = attack;
     this.harthmerePlayerSwordTrailFacingYaw = facingYaw;
     this.harthmerePlayerSwordTrailUntil = performance.now() + (attack === "heavy" ? 230 : 155);
@@ -15907,7 +15749,7 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
     if (this.harthmereNpcWeaponVisuals.has(actor.object)) {
       return;
     }
-    // HARTHMERE_POLISH_V1_NO_ANIMAL_WEAPONS
+    // HARTHMERE_POLISH_NO_ANIMAL_WEAPONS
     // Animals fight bare: claws, teeth, tail. They MUST NOT inherit the
     // "sword" default that humanoids fall back to. Decide before any
     // equipment lookup so we never spawn the fallback weapon geometry on
@@ -15946,9 +15788,9 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
     // Regression contract: NPC combat weapons must use the same visible main-hand
     // anchor concept as the player. Keep this explicit so static tests prove the
     // weapon is attached to the left/main hand rather than a random scene bone.
-    const npcMainHandAnchorNameV3 = "harthmere-anchor-left-hand";
-    const anchor = this.ensureHarthmereNpcPolishedWeaponAnchorV1(actor);
-    anchor.userData.harthmereMainHandAnchorName = npcMainHandAnchorNameV3;
+    const npcMainHandAnchorName = "harthmere-anchor-left-hand";
+    const anchor = this.ensureHarthmereNpcPolishedWeaponAnchor(actor);
+    anchor.userData.harthmereMainHandAnchorName = npcMainHandAnchorName;
     const visual = this.makeHarthmereNpcFallbackWeaponVisual(actor);
     anchor.add(visual);
     visual.position.set(0.04, -0.04, 0.18);
@@ -15964,7 +15806,7 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
 
 
 
-  private normalizedHarthmereWeaponForwardV2(forward: THREE.Vector3) {
+  private normalizedHarthmereWeaponForward(forward: THREE.Vector3) {
     const clean = new THREE.Vector3(forward.x, 0, forward.z);
     if (clean.lengthSq() < 0.0001) {
       clean.set(0, 0, 1);
@@ -15972,7 +15814,7 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
     return clean.normalize();
   }
 
-  private applyHarthmereWeaponStraightPointingV2(
+  private applyHarthmereWeaponStraightPointing(
     weapon: THREE.Object3D,
     handAnchor: THREE.Object3D,
     forward: THREE.Vector3,
@@ -15980,29 +15822,29 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
     options: { duringAttack?: boolean; rollRadians?: number } = {},
   ) {
     if (activeWeaponProfile === "shield") {
-      this.recordHarthmereWeaponTipHiltDirectionV2(weapon, handAnchor, forward, activeWeaponProfile, options.duringAttack === true);
+      this.recordHarthmereWeaponTipHiltDirection(weapon, handAnchor, forward, activeWeaponProfile, options.duringAttack === true);
       return;
     }
-    const straightForward = this.normalizedHarthmereWeaponForwardV2(forward);
+    const straightForward = this.normalizedHarthmereWeaponForward(forward);
     const localTipAxis = new THREE.Vector3(0, 0, 1);
     const straightQuaternion = new THREE.Quaternion().setFromUnitVectors(localTipAxis, straightForward);
     weapon.quaternion.copy(straightQuaternion);
     if (Number.isFinite(options.rollRadians ?? 0) && options.rollRadians) {
       weapon.rotateZ(options.rollRadians);
     }
-    this.recordHarthmereWeaponTipHiltDirectionV2(weapon, handAnchor, straightForward, activeWeaponProfile, options.duringAttack === true);
+    this.recordHarthmereWeaponTipHiltDirection(weapon, handAnchor, straightForward, activeWeaponProfile, options.duringAttack === true);
   }
 
-  private recordHarthmereWeaponTipHiltDirectionV2(
+  private recordHarthmereWeaponTipHiltDirection(
     weapon: THREE.Object3D,
     handAnchor: THREE.Object3D,
     forward: THREE.Vector3,
     activeWeaponProfile: string,
     duringAttack: boolean,
   ) {
-    const straightForward = this.normalizedHarthmereWeaponForwardV2(forward);
-    const localHilt = new THREE.Vector3(0, 0, HARTHMERE_COMBAT_ANIMATION_HAND_POLICY_V2.hiltLocalZ);
-    const localTip = new THREE.Vector3(0, 0, HARTHMERE_COMBAT_ANIMATION_HAND_POLICY_V2.tipLocalZ);
+    const straightForward = this.normalizedHarthmereWeaponForward(forward);
+    const localHilt = new THREE.Vector3(0, 0, HARTHMERE_COMBAT_ANIMATION_HAND_POLICY.hiltLocalZ);
+    const localTip = new THREE.Vector3(0, 0, HARTHMERE_COMBAT_ANIMATION_HAND_POLICY.tipLocalZ);
     const hiltWorld = localHilt.clone().applyQuaternion(weapon.quaternion).add(weapon.position);
     const tipWorld = localTip.clone().applyQuaternion(weapon.quaternion).add(weapon.position);
     const handWorld = new THREE.Vector3();
@@ -16012,28 +15854,28 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
       ? hiltToTip.normalize().dot(straightForward)
       : 0;
     const handToHiltDistanceMeters = handWorld.distanceTo(hiltWorld);
-    weapon.userData.harthmereWeaponTipHiltDirectionV2 = {
-      version: "harthmere-weapon-tip-hilt-direction-v2",
+    weapon.userData.harthmereWeaponTipHiltDirection = {
+      version: "harthmere-weapon-tip-hilt-direction",
       activeWeaponProfile,
       duringAttack,
-      chosenMainHand: HARTHMERE_COMBAT_ANIMATION_HAND_POLICY_V2.mainWeaponHand,
+      chosenMainHand: HARTHMERE_COMBAT_ANIMATION_HAND_POLICY.mainWeaponHand,
       anchorName: handAnchor.name,
       localTipAxis: "+Z",
-      hiltLocalZ: HARTHMERE_COMBAT_ANIMATION_HAND_POLICY_V2.hiltLocalZ,
-      tipLocalZ: HARTHMERE_COMBAT_ANIMATION_HAND_POLICY_V2.tipLocalZ,
+      hiltLocalZ: HARTHMERE_COMBAT_ANIMATION_HAND_POLICY.hiltLocalZ,
+      tipLocalZ: HARTHMERE_COMBAT_ANIMATION_HAND_POLICY.tipLocalZ,
       hiltWorld: hiltWorld.toArray(),
       tipWorld: tipWorld.toArray(),
       forwardWorld: straightForward.toArray(),
       hiltToTipForwardDot,
-      minimumTipForwardDot: HARTHMERE_COMBAT_ANIMATION_HAND_POLICY_V2.minimumTipForwardDot,
-      pointsStraightEnough: hiltToTipForwardDot >= HARTHMERE_COMBAT_ANIMATION_HAND_POLICY_V2.minimumTipForwardDot,
+      minimumTipForwardDot: HARTHMERE_COMBAT_ANIMATION_HAND_POLICY.minimumTipForwardDot,
+      pointsStraightEnough: hiltToTipForwardDot >= HARTHMERE_COMBAT_ANIMATION_HAND_POLICY.minimumTipForwardDot,
       handToHiltDistanceMeters,
       handToHiltBudgetMeters: 0.62,
       tipIsInFrontOfHilt: tipWorld.clone().sub(hiltWorld).dot(straightForward) > 0,
     };
   }
 
-  private getHarthmereWeaponHandTrackingSnapshotV10(sword?: THREE.Object3D, handAnchor?: THREE.Object3D) {
+  private getHarthmereWeaponHandTrackingSnapshot(sword?: THREE.Object3D, handAnchor?: THREE.Object3D) {
     const weapon = sword ?? this.getHarthmerePlayerSwordObjectForManualSwing();
     const anchor =
       handAnchor ??
@@ -16049,7 +15891,7 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
     }
     const gripDistanceMeters = weapon && anchor ? weaponPosition.distanceTo(handPosition) : Number.POSITIVE_INFINITY;
     return {
-      version: HARTHMERE_WEAPON_HAND_TRACKING_VERSION_V10,
+      version: HARTHMERE_WEAPON_HAND_TRACKING_VERSION,
       gripDistanceMeters,
       maxGripDistanceMeters: 0.22,
       followsCurrentHandEveryFrame: true,
@@ -16061,13 +15903,13 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
     };
   }
 
-  private createHarthmereResourceHitTelegraphV10(
-    kind: HarthmereResourceKindV10 = "generic_resource",
+  private createHarthmereResourceHitTelegraph(
+    kind: HarthmereResourceKind = "generic_resource",
     impactPoint = new THREE.Vector3(),
     targetNormal = new THREE.Vector3(0, 1, 0),
     options: { toolId?: string; failedReason?: string; impactFrameMs?: number } = {},
   ) {
-    const rules = HARTHMERE_OBJECT_EFFECT_RANGES_V10[kind] ?? HARTHMERE_OBJECT_EFFECT_RANGES_V10.generic_resource;
+    const rules = HARTHMERE_OBJECT_EFFECT_RANGES[kind] ?? HARTHMERE_OBJECT_EFFECT_RANGES.generic_resource;
     const normalizedNormal = targetNormal.clone();
     if (normalizedNormal.lengthSq() < 0.0001) {
       normalizedNormal.set(0, 1, 0);
@@ -16075,7 +15917,7 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
       normalizedNormal.normalize();
     }
     const telegraph = {
-      version: HARTHMERE_RESOURCE_HIT_TELEGRAPH_VERSION_V10,
+      version: HARTHMERE_RESOURCE_HIT_TELEGRAPH_VERSION,
       kind,
       toolId: options.toolId ?? "unknown_tool",
       impactPoint: impactPoint.toArray(),
@@ -16095,10 +15937,10 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
       particles: rules.visibleHitPolicy.particles,
       failedReason: options.failedReason,
       failedReasonText: options.failedReason ? rules.visibleHitPolicy.failReasonText : undefined,
-      edgeCases: [...HARTHMERE_RESOURCE_HIT_EDGE_CASES_V10],
+      edgeCases: [...HARTHMERE_RESOURCE_HIT_EDGE_CASES],
     };
-    this.harthmereLastResourceHitTelegraphV10 = telegraph;
-    debugHarthmereRenderer("renderer.resource_hit.telegraph_v10", telegraph);
+    this.harthmereLastResourceHitTelegraph = telegraph;
+    debugHarthmereRenderer("renderer.resource_hit.telegraph", telegraph);
     return telegraph;
   }
 
@@ -16146,19 +15988,19 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
     anchorRoot.updateMatrixWorld(true);
 
     const activeWeaponProfile = resolveHarthmerePlayerWeaponEquipmentEntry(this.harthmerePlayerSwordState.itemId)?.profile ?? "melee";
-    const combatPolishCenterV1 = new THREE.Vector3(Number(position[0]), Number(position[1]), Number(position[2]));
-    const combatPolishForwardV1 = new THREE.Vector3(nx, 0, nz);
-    this.updateHarthmereCombatPolishLocomotionV1(combatPolishCenterV1, dt);
-    const combatPolishSwingV1 = this.harthmerePlayerSwordManualSwing;
-    const combatPolishAttackProgressV1 = combatPolishSwingV1
-      ? clamp01((performance.now() - combatPolishSwingV1.startedAt) / combatPolishSwingV1.durationMs)
+    const combatPolishCenter = new THREE.Vector3(Number(position[0]), Number(position[1]), Number(position[2]));
+    const combatPolishForward = new THREE.Vector3(nx, 0, nz);
+    this.updateHarthmereCombatPolishLocomotion(combatPolishCenter, dt);
+    const combatPolishSwing = this.harthmerePlayerSwordManualSwing;
+    const combatPolishAttackProgress = combatPolishSwing
+      ? clamp01((performance.now() - combatPolishSwing.startedAt) / combatPolishSwing.durationMs)
       : 0;
-    this.applyHarthmereCombatPolishAnchorPoseV1(
-      this.harthmereCombatPolishActiveProfileV1,
-      combatPolishAttackProgressV1,
+    this.applyHarthmereCombatPolishAnchorPose(
+      this.harthmereCombatPolishActiveProfile,
+      combatPolishAttackProgress,
       activeWeaponProfile,
-      combatPolishCenterV1,
-      combatPolishForwardV1,
+      combatPolishCenter,
+      combatPolishForward,
     );
     const boneHandAnchor = this.resolveHarthmerePlayerBoneAnchor(
       activeWeaponProfile === "shield"
@@ -16173,12 +16015,12 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
       "back",
       "sheathe",
     ]);
-    const harthmerePlayerCenterV18 = new THREE.Vector3(Number(position[0]), Number(position[1]), Number(position[2]));
-    const harthmerePlayerForwardV18 = new THREE.Vector3(nx, 0, nz);
-    const handAnchor = this.resolveHarthmerePlayerVisualHandAnchorV18(
+    const harthmerePlayerCenter = new THREE.Vector3(Number(position[0]), Number(position[1]), Number(position[2]));
+    const harthmerePlayerForward = new THREE.Vector3(nx, 0, nz);
+    const handAnchor = this.resolveHarthmerePlayerVisualHandAnchor(
       activeWeaponProfile,
-      harthmerePlayerCenterV18,
-      harthmerePlayerForwardV18,
+      harthmerePlayerCenter,
+      harthmerePlayerForward,
       boneHandAnchor,
     );
     const sheatheAnchor =
@@ -16193,7 +16035,7 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
     handAnchor.getWorldPosition(drawnPosition);
     sheatheAnchor.getWorldQuaternion(sheathedQuaternion);
     handAnchor.getWorldQuaternion(drawnQuaternion);
-    // harthmereWeaponHandTrackingV9CurrentAnchor
+    // harthmereWeaponHandTrackingCurrentAnchor
     // Manual weapon swing must start from the current animated hand/arm anchor every frame.
     // Captured base transforms are allowed only as fallback metadata; they must not detach the
     // weapon from the arm swipe during the active slash.
@@ -16208,19 +16050,19 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
     sword.position.y += curveLift;
     sword.quaternion.slerpQuaternions(sheathedQuaternion, drawnQuaternion, t);
     // Keep the readable draw/sheath wrist roll close to the wristTwist
-    // calculation and before the grip-offset correction. The v3 polish
+    // calculation and before the grip-offset correction. The current polish
     // regression intentionally checks this exact pattern so draw/sheath cannot
     // degrade back into a straight anchor slide.
     sword.rotateX(wristTwist);
     sword.rotateZ(wristTwist * 0.45);
-    const weaponGripPitchOffsetV14 = activeWeaponProfile === "ranged" ? -0.18 : -Math.PI * 0.5;
-    const weaponGripYawOffsetV14 = activeWeaponProfile === "shield" ? Math.PI : 0;
-    const weaponGripRollOffsetV14 = activeWeaponProfile === "shield" ? 0.04 : -0.08;
-    sword.rotateY(weaponGripYawOffsetV14);
-    sword.rotateZ(weaponGripPitchOffsetV14);
-    sword.rotateX(weaponGripRollOffsetV14);
+    const weaponGripPitchOffset = activeWeaponProfile === "ranged" ? -0.18 : -Math.PI * 0.5;
+    const weaponGripYawOffset = activeWeaponProfile === "shield" ? Math.PI : 0;
+    const weaponGripRollOffset = activeWeaponProfile === "shield" ? 0.04 : -0.08;
+    sword.rotateY(weaponGripYawOffset);
+    sword.rotateZ(weaponGripPitchOffset);
+    sword.rotateX(weaponGripRollOffset);
     sword.rotateY(wristTwist * 0.12);
-    this.applyHarthmereWeaponStraightPointingV2(sword, handAnchor, harthmerePlayerForwardV18, activeWeaponProfile, {
+    this.applyHarthmereWeaponStraightPointing(sword, handAnchor, harthmerePlayerForward, activeWeaponProfile, {
       duringAttack: false,
       rollRadians: activeWeaponProfile === "ranged" ? -0.04 : 0,
     });
@@ -16231,8 +16073,8 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
       curveLift,
       wristTwist,
     };
-    sword.userData.harthmereHandednessDeathBoundsV12 = {
-      version: "harthmere-animation-handedness-death-bounds-v12",
+    sword.userData.harthmereHandednessDeathBounds = {
+      version: "harthmere-animation-handedness-death-bounds",
       primaryAttackVisualSide: "left",
       activeProfile: activeWeaponProfile,
       expectedMainHandFallbackAnchor: activeWeaponProfile === "shield" ? "harthmere-anchor-right-hand" : "harthmere-anchor-left-hand",
@@ -16244,26 +16086,26 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
       gripBudgetMeters: 0.22,
       maxBladeLagMeters: 0.18,
     };
-    const harthmereVisualRightVectorV18 = new THREE.Vector3(nz, 0, -nx).normalize();
-    const harthmereVisualMainHandVectorV2 = new THREE.Vector3(-nz, 0, nx).normalize();
-    const rightHandAnchorV18 = this.getHarthmerePlayerSwordAnchor("harthmere-anchor-right-hand");
-    const leftHandAnchorV18 = this.getHarthmerePlayerSwordAnchor("harthmere-anchor-left-hand");
-    const swordWorldV18 = new THREE.Vector3();
-    const rightWorldV18 = new THREE.Vector3();
-    const leftWorldV18 = new THREE.Vector3();
-    sword.getWorldPosition(swordWorldV18);
-    rightHandAnchorV18?.getWorldPosition(rightWorldV18);
-    leftHandAnchorV18?.getWorldPosition(leftWorldV18);
-    const activeHandWorldV18 = new THREE.Vector3();
-    handAnchor.getWorldPosition(activeHandWorldV18);
-    sword.userData.harthmereRealVisualAnimationV18 = {
-      version: "harthmere-real-visual-animation-validation-v18",
+    const harthmereVisualRightVector = new THREE.Vector3(nz, 0, -nx).normalize();
+    const harthmereVisualMainHandVector = new THREE.Vector3(-nz, 0, nx).normalize();
+    const rightHandAnchor = this.getHarthmerePlayerSwordAnchor("harthmere-anchor-right-hand");
+    const leftHandAnchor = this.getHarthmerePlayerSwordAnchor("harthmere-anchor-left-hand");
+    const swordWorld = new THREE.Vector3();
+    const rightWorld = new THREE.Vector3();
+    const leftWorld = new THREE.Vector3();
+    sword.getWorldPosition(swordWorld);
+    rightHandAnchor?.getWorldPosition(rightWorld);
+    leftHandAnchor?.getWorldPosition(leftWorld);
+    const activeHandWorld = new THREE.Vector3();
+    handAnchor.getWorldPosition(activeHandWorld);
+    sword.userData.harthmereRealVisualAnimation = {
+      version: "harthmere-real-visual-animation-validation",
       mainHandExpected: "left",
       actualHandAnchor: handAnchor.name,
-      mainHandSideScore: activeHandWorldV18.clone().sub(harthmerePlayerCenterV18).dot(harthmereVisualMainHandVectorV2),
-      mainHandDistanceMeters: swordWorldV18.distanceTo(activeHandWorldV18),
-      rightHandDistanceMeters: rightHandAnchorV18 ? swordWorldV18.distanceTo(rightWorldV18) : Number.POSITIVE_INFINITY,
-      leftHandDistanceMeters: leftHandAnchorV18 ? swordWorldV18.distanceTo(leftWorldV18) : Number.POSITIVE_INFINITY,
+      mainHandSideScore: activeHandWorld.clone().sub(harthmerePlayerCenter).dot(harthmereVisualMainHandVector),
+      mainHandDistanceMeters: swordWorld.distanceTo(activeHandWorld),
+      rightHandDistanceMeters: rightHandAnchor ? swordWorld.distanceTo(rightWorld) : Number.POSITIVE_INFINITY,
+      leftHandDistanceMeters: leftHandAnchor ? swordWorld.distanceTo(leftWorld) : Number.POSITIVE_INFINITY,
       mainHandDistanceBudgetMeters: 0.14,
     };
 
@@ -16276,14 +16118,14 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
 
     sword.scale.setScalar(0.92 + t * 0.08);
     sword.visible = true;
-    sword.userData.harthmereBodyWeaponVisualCohesionV7 = {
-      version: "harthmere-body-weapon-visual-cohesion-v7",
+    sword.userData.harthmereBodyWeaponVisualCohesion = {
+      version: "harthmere-body-weapon-visual-cohesion",
       anchorY: drawnPosition.y,
       anchorZ: drawnPosition.z,
       drawAmount: this.harthmerePlayerSwordDrawAmount,
       activeClip: this.harthmerePlayerSwordActiveClip,
       oversizedManualTranslationPrevented: true,
-      handTrackingVersion: HARTHMERE_WEAPON_HAND_TRACKING_VERSION_V9,
+      handTrackingVersion: HARTHMERE_WEAPON_HAND_TRACKING_VERSION,
       handGripDistance: this.harthmerePlayerWeaponGripDistanceLast,
       handAnchorName: this.harthmerePlayerWeaponGripAnchorName,
       followsCurrentHandAnchorEveryFrame: true,
@@ -16306,7 +16148,7 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
     const label = placement.name ?? placement.asset;
     const liveModeTargetId =
       placement.liveModeTargetId ??
-      harthmereLiveModeCombatTargetIdForVisibleActorV1({
+      harthmereLiveModeCombatTargetIdForVisibleActor({
         offset: placement.combatOffset,
         label,
         asset: placement.asset,
@@ -16386,7 +16228,7 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
     return best?.actor;
   }
 
-  private publishNonNpcNativeCombatAnimationAuditV1(
+  private publishNonNpcNativeCombatAnimationAudit(
     actor: CombatLifeInstance,
     kind: CombatPulseKind,
     preferredClipNames: string[],
@@ -16399,11 +16241,11 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
     const key = String(actor.combatOffset ?? actor.label);
     const forward = harthmereWorldForwardForYaw(actor.object.rotation.y, actor.forwardAxis);
     const entry = {
-      version: HARTHMERE_NON_NPC_NATIVE_COMBAT_ANIMATION_AUDIT_V1,
+      version: HARTHMERE_NON_NPC_NATIVE_COMBAT_ANIMATION_AUDIT,
       at: Date.now(),
       renderer: "harthmere_local_dev_runtime_life_renderer",
       nonNpcLiveEntityVisualActor: true,
-      family: harthmereRuntimeCombatFamilyV1(actor),
+      family: harthmereRuntimeCombatFamily(actor),
       id: key,
       offset: actor.combatOffset,
       label: actor.label,
@@ -16423,16 +16265,16 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
       pulseDurationMs: actor.combatPulse?.durationMs,
     };
     const win = window as typeof window & {
-      __harthmereNonNpcCombatAnimationAuditV1?: Record<string, unknown>;
-      __harthmereNonNpcCombatAnimationAuditLogV1?: unknown[];
+      __harthmereNonNpcCombatAnimationAudit?: Record<string, unknown>;
+      __harthmereNonNpcCombatAnimationAuditLog?: unknown[];
     };
-    win.__harthmereNonNpcCombatAnimationAuditV1 = {
-      ...(win.__harthmereNonNpcCombatAnimationAuditV1 ?? {}),
+    win.__harthmereNonNpcCombatAnimationAudit = {
+      ...(win.__harthmereNonNpcCombatAnimationAudit ?? {}),
       [key]: entry,
     };
-    win.__harthmereNonNpcCombatAnimationAuditLogV1 = [
+    win.__harthmereNonNpcCombatAnimationAuditLog = [
       entry,
-      ...(win.__harthmereNonNpcCombatAnimationAuditLogV1 ?? []),
+      ...(win.__harthmereNonNpcCombatAnimationAuditLog ?? []),
     ].slice(0, 200);
   }
 
@@ -16477,7 +16319,7 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
       at: typeof performance !== "undefined" ? performance.now() : Date.now(),
       durationMs: kind === "death" ? 1650 : kind === "attack" ? 760 : kind === "block" ? 680 : 620,
     };
-    this.publishNonNpcNativeCombatAnimationAuditV1(
+    this.publishNonNpcNativeCombatAnimationAudit(
       actor,
       kind,
       preferredClipNames,
@@ -16485,12 +16327,12 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
     );
 
     if (chosenClip && actor.mixer) {
-      // HARTHMERE_POLISH_V1_ATTACK_VARIATION
+      // HARTHMERE_POLISH_ATTACK_VARIATION
       // For melee attack pulses, play the Draw/Equip clip first if the
       // NPC has one and has not drawn for this combat cycle yet. This
       // gives the visible "pulls sword out" beat the previous build was
       // missing.
-      if (kind === "attack" && !actor.harthmerePolishHasDrawnV1) {
+      if (kind === "attack" && !actor.harthmerePolishHasDrawn) {
         const drawClip =
           actor.clips.find((c) => /^equip$/i.test(c.name)) ??
           actor.clips.find((c) => /^draw(_\d+)?$/i.test(c.name)) ??
@@ -16507,7 +16349,7 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
           draw.play();
           actor.mixer.update(0);
         }
-        actor.harthmerePolishHasDrawnV1 = true;
+        actor.harthmerePolishHasDrawn = true;
       }
       actor.mixer.stopAllAction();
       const action = actor.mixer.clipAction(chosenClip);
@@ -16521,7 +16363,7 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
       actor.mixer.update(0);
       // On death, reset the draw bookkeeping so a respawned NPC re-draws.
       if (kind === "death") {
-        actor.harthmerePolishHasDrawnV1 = false;
+        actor.harthmerePolishHasDrawn = false;
       }
     }
   }
@@ -16533,7 +16375,7 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
     }
 
     const nowMs = typeof performance !== "undefined" ? performance.now() : Date.now();
-    // harthmere-sword-polish-v3-recoil
+    // harthmere-sword-polish-recoil
     if (nowMs < this.harthmereHitStopUntil && (pulse.kind === "hit" || pulse.kind === "block")) {
       actor.object.scale.setScalar(actor.baseScale * 1.035);
       return;
@@ -16547,8 +16389,8 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
     // even when a clip has subtle skeletal motion or the camera is far away.
     if (pulse.kind === "death") {
       actor.object.visible = true;
-      actor.object.userData.harthmereDeathRespawnCinematicV9 = {
-        version: HARTHMERE_CREATURE_SOCIAL_DEATH_HANDTRACKING_VERSION_V9,
+      actor.object.userData.harthmereDeathRespawnCinematic = {
+        version: HARTHMERE_CREATURE_SOCIAL_DEATH_HANDTRACKING_VERSION,
         corpseHoldScale: 0.84,
         visibleCorpsePose: true,
         progress,
@@ -16574,7 +16416,7 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
       actor.object.rotation.x = -0.28 * wave + recoveryWave;
       actor.object.rotation.z = 0.32 * wave;
       actor.object.scale.setScalar(actor.baseScale * (1 + 0.12 * wave));
-      this.applyHarthmereNpcCombatPolishPulseV1(actor, progress);
+      this.applyHarthmereNpcCombatPolishPulse(actor, progress);
     } else if (pulse.kind === "hit") {
       actor.object.position.y = actor.baseY + 0.08 * wave;
       actor.object.rotation.x = 0.16 * wave;
@@ -16600,8 +16442,8 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
     }
   }
 
-  private async loadHarthmerePrototypeBatchV1(keys: string[]) {
-    const concurrency = Math.max(1, HARTHMERE_PRODUCTION_POLISH_RENDER_BUDGETS_V1.prototypeLoadConcurrency);
+  private async loadHarthmerePrototypeBatch(keys: string[]) {
+    const concurrency = Math.max(1, HARTHMERE_PRODUCTION_POLISH_RENDER_BUDGETS.prototypeLoadConcurrency);
     for (let i = 0; i < keys.length; i += concurrency) {
       const batch = keys.slice(i, i + concurrency);
       await Promise.all(batch.map((key) => this.loadPrototype(key)));
@@ -16622,8 +16464,8 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
       return false;
     }
     if (isProceduralTownspersonKey(proceduralPlacement.asset)) {
-      proceduralLife.userData.harthmereForceProceduralTownspersonClothingV12 =
-        HARTHMERE_FORCE_PROCEDURAL_TOWNSPERSON_CLOTHING_VERSION_V12;
+      proceduralLife.userData.harthmereForceProceduralTownspersonClothing =
+        HARTHMERE_FORCE_PROCEDURAL_TOWNSPERSON_CLOTHING_VERSION;
     }
     this.attachHarthmereTownWalkDebugMetadata(
       proceduralPlacement,
@@ -16638,38 +16480,38 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
     return true;
   }
 
-  // HARTHMERE_ECS_CREATURE_RENDER_V1
+  // HARTHMERE_ECS_CREATURE_RENDER
   // Reconcile the meshes we draw for live ECS creatures against the latest
   // bridge snapshot published by HarthmereLiveCreatureBridgeScript. Each creature
   // is drawn on its real entity position (combatOffset = entity id) so the native
   // attack ray hits exactly what the player sees.
-  private reconcileHarthmereEcsLiveCreaturesV1() {
-    if (!harthmereEcsCreatureRenderEnabledV1()) {
+  private reconcileHarthmereEcsLiveCreatures() {
+    if (!harthmereEcsCreatureRenderEnabled()) {
       if (this.harthmereEcsLiveCreatures.size > 0) {
         for (const id of [...this.harthmereEcsLiveCreatures.keys()]) {
-          this.removeHarthmereEcsLiveCreatureV1(id);
+          this.removeHarthmereEcsLiveCreature(id);
         }
       }
       return;
     }
-    const records = readHarthmereLiveCreatureBridgeV1();
-    const { toAdd, toUpdate, toRemove } = reconcileHarthmereLiveCreatureBridgeV1(
+    const records = readHarthmereLiveCreatureBridge();
+    const { toAdd, toUpdate, toRemove } = reconcileHarthmereLiveCreatureBridge(
       new Set(this.harthmereEcsLiveCreatures.keys()),
       records
     );
     for (const record of toAdd) {
-      this.addHarthmereEcsLiveCreatureV1(record);
+      this.addHarthmereEcsLiveCreature(record);
     }
     for (const record of toUpdate) {
-      this.updateHarthmereEcsLiveCreatureV1(record);
+      this.updateHarthmereEcsLiveCreature(record);
     }
     for (const id of toRemove) {
-      this.removeHarthmereEcsLiveCreatureV1(id);
+      this.removeHarthmereEcsLiveCreature(id);
     }
   }
 
-  private addHarthmereEcsLiveCreatureV1(
-    record: HarthmereLiveCreatureBridgeRecordV1
+  private addHarthmereEcsLiveCreature(
+    record: HarthmereLiveCreatureBridgeRecord
   ) {
     const placement: RuntimePlacement = {
       asset: record.asset,
@@ -16694,8 +16536,8 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
     }
   }
 
-  private updateHarthmereEcsLiveCreatureV1(
-    record: HarthmereLiveCreatureBridgeRecordV1
+  private updateHarthmereEcsLiveCreature(
+    record: HarthmereLiveCreatureBridgeRecord
   ) {
     const object = this.harthmereEcsLiveCreatures.get(record.id);
     if (!object) {
@@ -16709,7 +16551,7 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
     object.rotation.y = record.yaw;
   }
 
-  private removeHarthmereEcsLiveCreatureV1(id: number) {
+  private removeHarthmereEcsLiveCreature(id: number) {
     const object = this.harthmereEcsLiveCreatures.get(id);
     this.harthmereEcsLiveCreatures.delete(id);
     if (!object) {
@@ -16742,13 +16584,13 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
   }
 
   private async loadAll() {
-    const preparedRuntimePlacements = prepareHarthmereRuntimePlacementsV3(RUNTIME_PLACEMENTS_V48);
+    const preparedRuntimePlacements = prepareHarthmereRuntimePlacements(RUNTIME_PLACEMENTS);
     const runtimePlacements = preparedRuntimePlacements.placements;
     const authoredRobotPlacements = PLACEMENTS.filter((placement) =>
       Boolean(placement.robotProtectionAreaId),
     );
     const eagerRobotPlacements = authoredRobotPlacements.map(
-      shiftHarthmereRuntimePlacementForExtraTownV1,
+      shiftHarthmereRuntimePlacementForExtraTown,
     );
     let eagerRobotAdded = 0;
     for (const authoredPlacement of eagerRobotPlacements) {
@@ -16765,7 +16607,7 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
       (debugWindowForEagerRobots as typeof debugWindowForEagerRobots & {
         __harthmereEagerRobotPlacementReport?: unknown;
       }).__harthmereEagerRobotPlacementReport = {
-        version: "harthmere-live-entity-eager-robot-render-v1",
+        version: "harthmere-live-entity-eager-robot-render",
         preparedRuntimePlacements: runtimePlacements.length,
         authoredRobotPlacements: authoredRobotPlacements.length,
         eagerRobotAdded,
@@ -16783,14 +16625,14 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
         ),
       ),
     ];
-    await this.loadHarthmerePrototypeBatchV1(requiredAssets);
+    await this.loadHarthmerePrototypeBatch(requiredAssets);
     const debugWindowForPrep = harthmereRendererDebugWindow();
     if (debugWindowForPrep) {
       debugWindowForPrep.__harthmereFloatingBlockIntegrityReport = {
-        version: HARTHMERE_FLOATING_BLOCK_RUNTIME_VERSION_V3,
-        rules: HARTHMERE_FLOATING_BLOCK_INTEGRITY_RULES_V3,
-        authoredPlacements: RUNTIME_PLACEMENTS_V48.length,
-        cleanedPlacements: RUNTIME_PLACEMENTS_V4.length,
+        version: HARTHMERE_FLOATING_BLOCK_RUNTIME_VERSION,
+        rules: HARTHMERE_FLOATING_BLOCK_INTEGRITY_RULES,
+        authoredPlacements: RUNTIME_PLACEMENTS.length,
+        cleanedPlacements: RUNTIME_PLACEMENTS.length,
         runtimePlacements: runtimePlacements.length,
         removedFloating: preparedRuntimePlacements.removedFloating.map((placement) => ({
           asset: placement.asset,
@@ -16799,21 +16641,21 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
           at: placement.at,
         })),
         removedForPerformance: preparedRuntimePlacements.removedForPerformance.length,
-        performanceProfile: harthmereRuntimePerformanceProfileV3(),
+        performanceProfile: harthmereRuntimePerformanceProfile(),
       };
     }
     for (const authoredPlacement of runtimePlacements) {
       if (authoredPlacement.robotProtectionAreaId) {
         continue;
       }
-      // HARTHMERE_ECS_CREATURE_RENDER_V1: ECS-only static suppression is now
+      // HARTHMERE_ECS_CREATURE_RENDER: ECS-only static suppression is now
       // opt-in. In production embed sessions the ECS bridge can briefly be empty
       // or stale, and default suppression made creatures flicker or disappear
       // and removed the crosshair combat actor we need for left-click attacks.
       if (
-        harthmereEcsCreatureRenderEnabledV1() &&
-        harthmereSuppressStaticLifeForEcsV1() &&
-        isHarthmereEcsDrivenCreatureAssetV1(authoredPlacement.asset)
+        harthmereEcsCreatureRenderEnabled() &&
+        harthmereSuppressStaticLifeForEcs() &&
+        isHarthmereEcsDrivenCreatureAsset(authoredPlacement.asset)
       ) {
         continue;
       }
@@ -16883,7 +16725,7 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
               prototype.clips,
               Boolean(placement.wander || placement.bob || placement.spin),
             );
-            installHarthmereLocomotionV1(animated, prototype.clips);
+            installHarthmereLocomotion(animated, prototype.clips);
           }
           this.animated.push(animated);
         }
@@ -16930,7 +16772,7 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
       // player and ECS NPCs. Chrome collapses large objects in normal logs, so
       // exposing a plain report is more useful than one huge console.info call.
       debugWindow.__harthmereRendererAppearanceReport = appearanceDebugActors;
-      const harthmereDebugCollisionObstaclesV31 = harthmereAllCollisionObstacles().map((obstacle) => ({
+      const harthmereDebugCollisionObstacles = harthmereAllCollisionObstacles().map((obstacle) => ({
         name: obstacle.name,
         asset: obstacle.asset,
         district: obstacle.district,
@@ -16952,9 +16794,9 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
         rot: obstacle.rot,
         padding: obstacle.padding,
       }));
-      debugWindow.__harthmereNpcCollisionObstacles = harthmereDebugCollisionObstaclesV31;
-      debugWindow.__harthmerePlayerCollisionObstacles = harthmereDebugCollisionObstaclesV31;
-      debugWindow.__harthmereTownCollisionObstacles = harthmereDebugCollisionObstaclesV31;
+      debugWindow.__harthmereNpcCollisionObstacles = harthmereDebugCollisionObstacles;
+      debugWindow.__harthmerePlayerCollisionObstacles = harthmereDebugCollisionObstacles;
+      debugWindow.__harthmereTownCollisionObstacles = harthmereDebugCollisionObstacles;
       debugWindow.__harthmereTownRegistry = {
         version: HARTHMERE_TOWN_SYSTEMS_VERSION,
         registryVersion: HARTHMERE_TOWN_REGISTRY_VERSION,
@@ -16962,24 +16804,24 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
         placementCount: this.placementInstances.length,
         collisionCount: harthmereAllCollisionObstacles().length,
         performance: {
-          version: HARTHMERE_PRODUCTION_POLISH_RUNTIME_VERSION_V1,
-          prototypeLoadConcurrency: HARTHMERE_PRODUCTION_POLISH_RENDER_BUDGETS_V1.prototypeLoadConcurrency,
-          lodBudgets: HARTHMERE_PRODUCTION_POLISH_RENDER_BUDGETS_V1,
-          designRules: HARTHMERE_VOXEL_DESIGN_RULES_V1,
-          selfEditVersion: HARTHMERE_PRODUCTION_VOXEL_SELF_EDIT_RUNTIME_VERSION_V2,
-          selfEditRules: HARTHMERE_PRODUCTION_VOXEL_SELF_EDIT_RULES_V2,
-          floatingBlockVersion: HARTHMERE_FLOATING_BLOCK_RUNTIME_VERSION_V3,
-          floatingBlockRules: HARTHMERE_FLOATING_BLOCK_INTEGRITY_RULES_V3,
-          performanceProfileVersion: HARTHMERE_RUNTIME_PERFORMANCE_PROFILE_RUNTIME_VERSION_V3,
-          surveyPerformanceResponseVersion: HARTHMERE_SURVEY_PERFORMANCE_RESPONSE_VERSION_V87,
-          performanceProfile: harthmereRuntimePerformanceProfileV3(),
-          performanceProfileRules: HARTHMERE_RUNTIME_PERFORMANCE_PROFILE_V3,
-          districtPalette: HARTHMERE_PRODUCTION_POLISH_DISTRICT_PALETTE_V1,
-          placementCleanup: HARTHMERE_RUNTIME_PLACEMENT_CLEANUP_V4,
+          version: HARTHMERE_PRODUCTION_POLISH_RUNTIME_VERSION,
+          prototypeLoadConcurrency: HARTHMERE_PRODUCTION_POLISH_RENDER_BUDGETS.prototypeLoadConcurrency,
+          lodBudgets: HARTHMERE_PRODUCTION_POLISH_RENDER_BUDGETS,
+          designRules: HARTHMERE_VOXEL_DESIGN_RULES,
+          selfEditVersion: HARTHMERE_PRODUCTION_VOXEL_SELF_EDIT_RUNTIME_VERSION,
+          selfEditRules: HARTHMERE_PRODUCTION_VOXEL_SELF_EDIT_RULES,
+          floatingBlockVersion: HARTHMERE_FLOATING_BLOCK_RUNTIME_VERSION,
+          floatingBlockRules: HARTHMERE_FLOATING_BLOCK_INTEGRITY_RULES,
+          performanceProfileVersion: HARTHMERE_RUNTIME_PERFORMANCE_PROFILE_RUNTIME_VERSION,
+          surveyPerformanceResponseVersion: HARTHMERE_SURVEY_PERFORMANCE_RESPONSE_VERSION,
+          performanceProfile: harthmereRuntimePerformanceProfile(),
+          performanceProfileRules: HARTHMERE_RUNTIME_PERFORMANCE_PROFILE,
+          districtPalette: HARTHMERE_PRODUCTION_POLISH_DISTRICT_PALETTE,
+          placementCleanup: HARTHMERE_RUNTIME_PLACEMENT_CLEANUP,
         },
       };
-      debugWindow.__harthmerePlacementCleanupReport = HARTHMERE_RUNTIME_PLACEMENT_CLEANUP_V4;
-      debugWindow.__harthmereNpcDistributionReportV48 = HARTHMERE_NPC_DISTRIBUTION_V48;
+      debugWindow.__harthmerePlacementCleanupReport = HARTHMERE_RUNTIME_PLACEMENT_CLEANUP;
+      debugWindow.__harthmereNpcDistributionReport = HARTHMERE_NPC_DISTRIBUTION;
       debugWindow.__harthmereTownCollisionQuery = {
         version: HARTHMERE_TOWN_SYSTEMS_VERSION,
         containsNpc: (x: number, z: number) => Boolean(findHarthmereNpcCollisionObstacle(x, z)),
@@ -16988,8 +16830,8 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
     }
 
     debugHarthmereRenderer("renderer.load_complete", {
-      productionPolishVersion: HARTHMERE_PRODUCTION_POLISH_RUNTIME_VERSION_V1,
-      prototypeLoadConcurrency: HARTHMERE_PRODUCTION_POLISH_RENDER_BUDGETS_V1.prototypeLoadConcurrency,
+      productionPolishVersion: HARTHMERE_PRODUCTION_POLISH_RUNTIME_VERSION,
+      prototypeLoadConcurrency: HARTHMERE_PRODUCTION_POLISH_RENDER_BUDGETS.prototypeLoadConcurrency,
       prototypes: this.prototypes.size,
       failed: this.failed.size,
       placements: this.root.children.length,
@@ -16997,7 +16839,7 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
       combatActors: this.combatLifeInstances.length,
       npcWallCollisionObstacles: harthmereNpcCollisionObstacles().length,
       townSystemsVersion: HARTHMERE_TOWN_SYSTEMS_VERSION,
-      placementCleanup: HARTHMERE_RUNTIME_PLACEMENT_CLEANUP_V4,
+      placementCleanup: HARTHMERE_RUNTIME_PLACEMENT_CLEANUP,
       townRegistryVersion: HARTHMERE_TOWN_REGISTRY_VERSION,
       townRegistryDistricts: Object.keys(HARTHMERE_TOWN_DISTRICTS).length,
       placementMetadataCount: this.placementInstances.length,
@@ -17020,7 +16862,7 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
       placementMetadataCount: this.placementInstances.length,
       districts: [
         ...new Set(
-          RUNTIME_PLACEMENTS_V48.map((placement) => placement.district).filter(Boolean),
+          RUNTIME_PLACEMENTS.map((placement) => placement.district).filter(Boolean),
         ),
       ],
     });
@@ -17089,20 +16931,20 @@ export function makeHarthmereRuntimeAssetsRenderer() {
 }
 
 
-// HARTHMERE_RUNTIME_LICENSED_CLOTHING_MODELS_V18
+// HARTHMERE_RUNTIME_LICENSED_CLOTHING_MODELS
 //
 // Loads licensed GLTF/GLB clothing modelUrl items for local-dev runtime
-// townspeople/ambient actors. The existing v14 proxy layer remains so actors
+// townspeople/ambient actors. The existing current proxy layer remains so actors
 // never become naked/invisible if a model fails.
-const HARTHMERE_RUNTIME_LICENSED_CLOTHING_MODELS_VERSION_V18 =
-  "harthmere-runtime-licensed-clothing-models-v18";
+const HARTHMERE_RUNTIME_LICENSED_CLOTHING_MODELS_VERSION =
+  "harthmere-runtime-licensed-clothing-models";
 
-const harthmereRuntimeLicensedClothingModelCacheV18 = new Map<
+const harthmereRuntimeLicensedClothingModelCache = new Map<
   string,
   Promise<THREE.Object3D | undefined>
 >();
 
-function queueHarthmereRuntimeLicensedClothingModelsV18(
+function queueHarthmereRuntimeLicensedClothingModels(
   root: THREE.Object3D,
   clothing: Record<string, any> | undefined,
   body: any
@@ -17118,11 +16960,11 @@ function queueHarthmereRuntimeLicensedClothingModelsV18(
       continue;
     }
 
-    queueHarthmereRuntimeLicensedClothingModelV18(root, slot, item, body);
+    queueHarthmereRuntimeLicensedClothingModel(root, slot, item, body);
   }
 }
 
-function queueHarthmereRuntimeLicensedClothingModelV18(
+function queueHarthmereRuntimeLicensedClothingModel(
   root: THREE.Object3D,
   slot: string,
   item: {
@@ -17142,7 +16984,7 @@ function queueHarthmereRuntimeLicensedClothingModelV18(
     return;
   }
 
-  const runtimeKeys = (root.userData.harthmereRuntimeLicensedClothingModelKeysV18 ??= {}) as Record<string, boolean>;
+  const runtimeKeys = (root.userData.harthmereRuntimeLicensedClothingModelKeys ??= {}) as Record<string, boolean>;
   const key = `${slot}:${item.id ?? "unknown"}:${modelUrl}`;
 
   if (runtimeKeys[key]) {
@@ -17150,19 +16992,19 @@ function queueHarthmereRuntimeLicensedClothingModelV18(
   }
 
   runtimeKeys[key] = true;
-  root.userData.harthmereRuntimeLicensedClothingModelsRuntime = HARTHMERE_RUNTIME_LICENSED_CLOTHING_MODELS_VERSION_V18;
+  root.userData.harthmereRuntimeLicensedClothingModelsRuntime = HARTHMERE_RUNTIME_LICENSED_CLOTHING_MODELS_VERSION;
 
-  void loadHarthmereRuntimeLicensedClothingModelV18(modelUrl)
+  void loadHarthmereRuntimeLicensedClothingModel(modelUrl)
     .then((model) => {
       if (!model) {
         return;
       }
 
-      fitHarthmereRuntimeLicensedClothingModelV18(model, slot, body);
+      fitHarthmereRuntimeLicensedClothingModel(model, slot, body);
 
       model.name = `harthmere-runtime-licensed-clothing-${slot}-${item.id ?? "model"}`;
       model.userData.harthmereRuntimeLicensedClothingModel = true;
-      model.userData.harthmereRuntimeLicensedClothingRuntime = HARTHMERE_RUNTIME_LICENSED_CLOTHING_MODELS_VERSION_V18;
+      model.userData.harthmereRuntimeLicensedClothingRuntime = HARTHMERE_RUNTIME_LICENSED_CLOTHING_MODELS_VERSION;
       model.userData.harthmereClothingSlot = slot;
       model.userData.harthmereClothingItemId = item.id;
       model.userData.harthmereClothingModelUrl = modelUrl;
@@ -17184,7 +17026,7 @@ function queueHarthmereRuntimeLicensedClothingModelV18(
       ];
     })
     .catch((error) => {
-      console.warn("Failed to load Harthmere runtime licensed clothing model; keeping v14 proxy", {
+      console.warn("Failed to load Harthmere runtime licensed clothing model; keeping current proxy", {
         slot,
         id: item.id,
         modelUrl,
@@ -17193,15 +17035,15 @@ function queueHarthmereRuntimeLicensedClothingModelV18(
     });
 }
 
-async function loadHarthmereRuntimeLicensedClothingModelV18(
+async function loadHarthmereRuntimeLicensedClothingModel(
   modelUrl: string
 ): Promise<THREE.Object3D | undefined> {
-  let sourcePromise = harthmereRuntimeLicensedClothingModelCacheV18.get(modelUrl);
+  let sourcePromise = harthmereRuntimeLicensedClothingModelCache.get(modelUrl);
 
   if (!sourcePromise) {
     sourcePromise = (async () => {
       const gltf = await loadGltf(modelUrl);
-      const source = extractHarthmereRuntimeGltfSceneV18(gltf);
+      const source = extractHarthmereRuntimeGltfScene(gltf);
 
       if (!source) {
         return undefined;
@@ -17210,7 +17052,7 @@ async function loadHarthmereRuntimeLicensedClothingModelV18(
       return source;
     })();
 
-    harthmereRuntimeLicensedClothingModelCacheV18.set(modelUrl, sourcePromise);
+    harthmereRuntimeLicensedClothingModelCache.set(modelUrl, sourcePromise);
   }
 
   const source = await sourcePromise;
@@ -17220,11 +17062,11 @@ async function loadHarthmereRuntimeLicensedClothingModelV18(
   }
 
   const clone = source.clone(true);
-  cloneHarthmereRuntimeClothingMaterialsV18(clone);
+  cloneHarthmereRuntimeClothingMaterials(clone);
   return clone;
 }
 
-function extractHarthmereRuntimeGltfSceneV18(gltf: unknown): THREE.Object3D | undefined {
+function extractHarthmereRuntimeGltfScene(gltf: unknown): THREE.Object3D | undefined {
   const candidate =
     (gltf as any)?.scene ??
     (gltf as any)?.scenes?.[0] ??
@@ -17237,7 +17079,7 @@ function extractHarthmereRuntimeGltfSceneV18(gltf: unknown): THREE.Object3D | un
   return undefined;
 }
 
-function cloneHarthmereRuntimeClothingMaterialsV18(object: THREE.Object3D): void {
+function cloneHarthmereRuntimeClothingMaterials(object: THREE.Object3D): void {
   object.traverse((child) => {
     const mesh = child as THREE.Mesh;
 
@@ -17253,7 +17095,7 @@ function cloneHarthmereRuntimeClothingMaterialsV18(object: THREE.Object3D): void
   });
 }
 
-function fitHarthmereRuntimeLicensedClothingModelV18(
+function fitHarthmereRuntimeLicensedClothingModel(
   model: THREE.Object3D,
   slot: string,
   body: any
@@ -17272,7 +17114,7 @@ function fitHarthmereRuntimeLicensedClothingModelV18(
   box.getSize(size);
   box.getCenter(center);
 
-  const targetHeight = getHarthmereRuntimeLicensedClothingTargetHeightV18(slot, body);
+  const targetHeight = getHarthmereRuntimeLicensedClothingTargetHeight(slot, body);
   const scale = THREE.MathUtils.clamp(
     targetHeight / Math.max(size.y, 0.0001),
     0.035,
@@ -17285,11 +17127,11 @@ function fitHarthmereRuntimeLicensedClothingModelV18(
   box.setFromObject(model);
   box.getCenter(center);
 
-  const targetCenter = getHarthmereRuntimeLicensedClothingTargetCenterV18(slot, body);
+  const targetCenter = getHarthmereRuntimeLicensedClothingTargetCenter(slot, body);
   model.position.add(targetCenter.sub(center));
 }
 
-function getHarthmereRuntimeLicensedClothingTargetHeightV18(
+function getHarthmereRuntimeLicensedClothingTargetHeight(
   slot: string,
   body: any
 ): number {
@@ -17305,7 +17147,7 @@ function getHarthmereRuntimeLicensedClothingTargetHeightV18(
   return Math.max(0.42, torsoHeight * 1.05);
 }
 
-function getHarthmereRuntimeLicensedClothingTargetCenterV18(
+function getHarthmereRuntimeLicensedClothingTargetCenter(
   slot: string,
   body: any
 ): THREE.Vector3 {
@@ -17346,31 +17188,31 @@ function getHarthmereRuntimeLicensedClothingTargetCenterV18(
 
 
 
-// HARTHMERE_RUNTIME_CLOTHING_LAYER_AUDIT_V24
+// HARTHMERE_RUNTIME_CLOTHING_LAYER_AUDIT
 //
 // Same layer audit as ECS/local-dev NPCs, but for runtime/ambient townspeople.
-// Look for root.userData.harthmereRuntimeClothingLayerAuditV24 in the browser.
-const HARTHMERE_RUNTIME_CLOTHING_LAYER_AUDIT_VERSION_V24 =
-  "harthmere-runtime-clothing-layer-audit-v24";
+// Look for root.userData.harthmereRuntimeClothingLayerAudit in the browser.
+const HARTHMERE_RUNTIME_CLOTHING_LAYER_AUDIT_VERSION =
+  "harthmere-runtime-clothing-layer-audit";
 
-function auditHarthmereRuntimeClothingLayersV24(root: THREE.Object3D): void {
+function auditHarthmereRuntimeClothingLayers(root: THREE.Object3D): void {
   const shellObjects: THREE.Object3D[] = [];
   const detailObjects: THREE.Object3D[] = [];
 
   root.traverse((object) => {
     const name = object.name ?? "";
 
-    if (/runtime-visible-clothing-.*-v22/.test(name)) {
+    if (/runtime-visible-clothing-/.test(name)) {
       shellObjects.push(object);
     }
 
-    if (/runtime-outward-.*-v23/.test(name) || /runtime-outward-clothing-.*-v23/.test(name)) {
+    if (/runtime-outward-/.test(name) || /runtime-outward-clothing-/.test(name)) {
       detailObjects.push(object);
     }
   });
 
-  const shellBox = makeHarthmereRuntimeLayerAuditBoxV24(shellObjects);
-  const detailBox = makeHarthmereRuntimeLayerAuditBoxV24(detailObjects);
+  const shellBox = makeHarthmereRuntimeLayerAuditBox(shellObjects);
+  const detailBox = makeHarthmereRuntimeLayerAuditBox(detailObjects);
   const hiddenDetails: Array<{
     name: string;
     center: [number, number, number];
@@ -17446,7 +17288,7 @@ function auditHarthmereRuntimeClothingLayersV24(root: THREE.Object3D): void {
     : undefined;
 
   const audit = {
-    version: HARTHMERE_RUNTIME_CLOTHING_LAYER_AUDIT_VERSION_V24,
+    version: HARTHMERE_RUNTIME_CLOTHING_LAYER_AUDIT_VERSION,
     shellCount: shellObjects.length,
     detailCount: detailObjects.length,
     outsideDetailCount: outsideDetails.length,
@@ -17466,7 +17308,7 @@ function auditHarthmereRuntimeClothingLayersV24(root: THREE.Object3D): void {
             : "details-present",
   };
 
-  root.userData.harthmereRuntimeClothingLayerAuditV24 = audit;
+  root.userData.harthmereRuntimeClothingLayerAudit = audit;
 
   if (
     audit.likelyProblem !== "details-present" &&
@@ -17479,7 +17321,7 @@ function auditHarthmereRuntimeClothingLayersV24(root: THREE.Object3D): void {
   }
 }
 
-function makeHarthmereRuntimeLayerAuditBoxV24(
+function makeHarthmereRuntimeLayerAuditBox(
   objects: THREE.Object3D[]
 ): THREE.Box3 | undefined {
   let box: THREE.Box3 | undefined;
@@ -17501,14 +17343,14 @@ function makeHarthmereRuntimeLayerAuditBoxV24(
   return box;
 }
 
-// HARTHMERE_RUNTIME_OUTWARD_CLOTHING_DETAIL_LAYER_V23
+// HARTHMERE_RUNTIME_OUTWARD_CLOTHING_DETAIL_LAYER
 //
 // Same visual role/detail overlay as ECS NPCs, but for runtime/ambient
-// townspeople. Sits outside the v22 coverage shell.
-const HARTHMERE_RUNTIME_OUTWARD_CLOTHING_DETAIL_LAYER_VERSION_V23 =
-  "harthmere-runtime-outward-clothing-detail-layer-v23";
+// townspeople. Sits outside the current coverage shell.
+const HARTHMERE_RUNTIME_OUTWARD_CLOTHING_DETAIL_LAYER_VERSION =
+  "harthmere-runtime-outward-clothing-detail-layer";
 
-function addHarthmereRuntimeOutwardClothingDetailLayerV23(
+function addHarthmereRuntimeOutwardClothingDetailLayer(
   root: THREE.Group,
   clothing: Record<string, any> | undefined,
   body: HarthmereRuntimeBodyMetrics,
@@ -17528,8 +17370,8 @@ function addHarthmereRuntimeOutwardClothingDetailLayerV23(
     ...Object.values(clothing ?? {}).map((item: any) => item?.id ?? item?.displayName ?? ""),
   ].join("|");
 
-  const role = inferHarthmereRuntimeClothingRoleV23(signature);
-  const variant = Math.abs(hashHarthmereRuntimeClothingSignatureV23(signature)) % 5;
+  const role = inferHarthmereRuntimeClothingRole(signature);
+  const variant = Math.abs(hashHarthmereRuntimeClothingSignature(signature)) % 5;
 
   const torsoY = body.legLength + body.torsoHeight * 0.5;
   const shoulderY = body.legLength + body.torsoHeight * 0.84;
@@ -17543,7 +17385,7 @@ function addHarthmereRuntimeOutwardClothingDetailLayerV23(
   const legWidth = body.legWidth + 0.03;
   const legLength = body.legLength * 0.86;
   const legY = body.legLength * 0.52;
-  const colors = getHarthmereRuntimeOutwardClothingColorsV23(role, variant, palette);
+  const colors = getHarthmereRuntimeOutwardClothingColors(role, variant, palette);
   const trim = colors.trim;
   const cloth = colors.cloth;
   const dark = colors.dark;
@@ -17552,90 +17394,90 @@ function addHarthmereRuntimeOutwardClothingDetailLayerV23(
 
   if (clothing?.torso) {
     root.add(
-      boxMesh("runtime-outward-clothing-front-panel-v23", [torsoWidth * 0.74, torsoHeight * 0.92, 0.045], [0, torsoY, frontZ], cloth),
-      boxMesh("runtime-outward-clothing-back-panel-v23", [torsoWidth * 0.74, torsoHeight * 0.88, 0.045], [0, torsoY, backZ], cloth),
-      boxMesh("runtime-outward-clothing-front-trim-v23", [torsoWidth * 0.78, 0.045, 0.055], [0, torsoY + torsoHeight * 0.42, frontZ - 0.018], trim),
-      boxMesh("runtime-outward-clothing-bottom-trim-v23", [torsoWidth * 0.8, 0.045, 0.055], [0, torsoY - torsoHeight * 0.43, frontZ - 0.018], trim)
+      boxMesh("runtime-outward-clothing-front-panel", [torsoWidth * 0.74, torsoHeight * 0.92, 0.045], [0, torsoY, frontZ], cloth),
+      boxMesh("runtime-outward-clothing-back-panel", [torsoWidth * 0.74, torsoHeight * 0.88, 0.045], [0, torsoY, backZ], cloth),
+      boxMesh("runtime-outward-clothing-front-trim", [torsoWidth * 0.78, 0.045, 0.055], [0, torsoY + torsoHeight * 0.42, frontZ - 0.018], trim),
+      boxMesh("runtime-outward-clothing-bottom-trim", [torsoWidth * 0.8, 0.045, 0.055], [0, torsoY - torsoHeight * 0.43, frontZ - 0.018], trim)
     );
   }
 
   if (clothing?.legs) {
     root.add(
-      boxMesh("runtime-outward-clothing-left-pant-front-v23", [legWidth, legLength, 0.055], [-legX, legY, frontZ + 0.035], dark),
-      boxMesh("runtime-outward-clothing-right-pant-front-v23", [legWidth, legLength, 0.055], [legX, legY, frontZ + 0.035], dark),
-      boxMesh("runtime-outward-clothing-left-knee-trim-v23", [legWidth + 0.03, 0.045, 0.065], [-legX, body.legLength * 0.46, frontZ + 0.015], trim),
-      boxMesh("runtime-outward-clothing-right-knee-trim-v23", [legWidth + 0.03, 0.045, 0.065], [legX, body.legLength * 0.46, frontZ + 0.015], trim)
+      boxMesh("runtime-outward-clothing-left-pant-front", [legWidth, legLength, 0.055], [-legX, legY, frontZ + 0.035], dark),
+      boxMesh("runtime-outward-clothing-right-pant-front", [legWidth, legLength, 0.055], [legX, legY, frontZ + 0.035], dark),
+      boxMesh("runtime-outward-clothing-left-knee-trim", [legWidth + 0.03, 0.045, 0.065], [-legX, body.legLength * 0.46, frontZ + 0.015], trim),
+      boxMesh("runtime-outward-clothing-right-knee-trim", [legWidth + 0.03, 0.045, 0.065], [legX, body.legLength * 0.46, frontZ + 0.015], trim)
     );
   }
 
   if (clothing?.feet) {
     root.add(
-      boxMesh("runtime-outward-clothing-left-boot-v23", [legWidth + 0.06, 0.12, 0.23], [-legX, 0.075, frontZ + 0.02], 0x101010),
-      boxMesh("runtime-outward-clothing-right-boot-v23", [legWidth + 0.06, 0.12, 0.23], [legX, 0.075, frontZ + 0.02], 0x101010),
-      boxMesh("runtime-outward-clothing-left-boot-cuff-v23", [legWidth + 0.07, 0.045, 0.2], [-legX, 0.145, frontZ + 0.02], leather),
-      boxMesh("runtime-outward-clothing-right-boot-cuff-v23", [legWidth + 0.07, 0.045, 0.2], [legX, 0.145, frontZ + 0.02], leather)
+      boxMesh("runtime-outward-clothing-left-boot", [legWidth + 0.06, 0.12, 0.23], [-legX, 0.075, frontZ + 0.02], 0x101010),
+      boxMesh("runtime-outward-clothing-right-boot", [legWidth + 0.06, 0.12, 0.23], [legX, 0.075, frontZ + 0.02], 0x101010),
+      boxMesh("runtime-outward-clothing-left-boot-cuff", [legWidth + 0.07, 0.045, 0.2], [-legX, 0.145, frontZ + 0.02], leather),
+      boxMesh("runtime-outward-clothing-right-boot-cuff", [legWidth + 0.07, 0.045, 0.2], [legX, 0.145, frontZ + 0.02], leather)
     );
   }
 
   if (clothing?.belt) {
     root.add(
-      boxMesh("runtime-outward-clothing-belt-v23", [torsoWidth + 0.08, 0.065, 0.07], [0, waistY, frontZ - 0.032], leather),
-      boxMesh("runtime-outward-clothing-buckle-v23", [0.08, 0.075, 0.04], [0, waistY, frontZ - 0.07], metal),
-      boxMesh("runtime-outward-clothing-left-pouch-v23", [0.11, 0.13, 0.055], [-torsoWidth * 0.31, waistY - 0.08, frontZ - 0.055], leather),
-      boxMesh("runtime-outward-clothing-right-pouch-v23", [0.11, 0.13, 0.055], [torsoWidth * 0.31, waistY - 0.08, frontZ - 0.055], leather)
+      boxMesh("runtime-outward-clothing-belt", [torsoWidth + 0.08, 0.065, 0.07], [0, waistY, frontZ - 0.032], leather),
+      boxMesh("runtime-outward-clothing-buckle", [0.08, 0.075, 0.04], [0, waistY, frontZ - 0.07], metal),
+      boxMesh("runtime-outward-clothing-left-pouch", [0.11, 0.13, 0.055], [-torsoWidth * 0.31, waistY - 0.08, frontZ - 0.055], leather),
+      boxMesh("runtime-outward-clothing-right-pouch", [0.11, 0.13, 0.055], [torsoWidth * 0.31, waistY - 0.08, frontZ - 0.055], leather)
     );
   }
 
   if (role === "guard") {
     root.add(
-      boxMesh("runtime-outward-guard-left-pauldron-v23", [0.16, 0.09, 0.16], [-(body.shoulderWidth / 2 + 0.04), shoulderY + 0.03, -0.02], metal),
-      boxMesh("runtime-outward-guard-right-pauldron-v23", [0.16, 0.09, 0.16], [body.shoulderWidth / 2 + 0.04, shoulderY + 0.03, -0.02], metal),
-      boxMesh("runtime-outward-guard-tabard-stripe-v23", [0.09, torsoHeight * 0.76, 0.06], [0, torsoY, frontZ - 0.05], trim)
+      boxMesh("runtime-outward-guard-left-pauldron", [0.16, 0.09, 0.16], [-(body.shoulderWidth / 2 + 0.04), shoulderY + 0.03, -0.02], metal),
+      boxMesh("runtime-outward-guard-right-pauldron", [0.16, 0.09, 0.16], [body.shoulderWidth / 2 + 0.04, shoulderY + 0.03, -0.02], metal),
+      boxMesh("runtime-outward-guard-tabard-stripe", [0.09, torsoHeight * 0.76, 0.06], [0, torsoY, frontZ - 0.05], trim)
     );
   } else if (role === "hunter") {
     root.add(
-      boxMesh("runtime-outward-hunter-diagonal-strap-v23", [0.075, torsoHeight * 1.05, 0.06], [-0.05, torsoY, frontZ - 0.055], leather),
-      boxMesh("runtime-outward-hunter-quiver-v23", [0.15, 0.38, 0.11], [torsoWidth * 0.28, torsoY + 0.06, backZ + 0.04], leather)
+      boxMesh("runtime-outward-hunter-diagonal-strap", [0.075, torsoHeight * 1.05, 0.06], [-0.05, torsoY, frontZ - 0.055], leather),
+      boxMesh("runtime-outward-hunter-quiver", [0.15, 0.38, 0.11], [torsoWidth * 0.28, torsoY + 0.06, backZ + 0.04], leather)
     );
   } else if (role === "farmer" || role === "worker") {
     root.add(
-      boxMesh("runtime-outward-worker-apron-v23", [torsoWidth * 0.62, torsoHeight * 0.82, 0.06], [0, torsoY - 0.04, frontZ - 0.055], 0x6c5a3d),
-      boxMesh("runtime-outward-worker-tool-v23", [0.04, 0.28, 0.04], [torsoWidth * 0.4, waistY - 0.06, frontZ - 0.06], metal)
+      boxMesh("runtime-outward-worker-apron", [torsoWidth * 0.62, torsoHeight * 0.82, 0.06], [0, torsoY - 0.04, frontZ - 0.055], 0x6c5a3d),
+      boxMesh("runtime-outward-worker-tool", [0.04, 0.28, 0.04], [torsoWidth * 0.4, waistY - 0.06, frontZ - 0.06], metal)
     );
   } else if (role === "merchant") {
     root.add(
-      boxMesh("runtime-outward-merchant-left-lapel-v23", [0.09, torsoHeight * 0.48, 0.055], [-torsoWidth * 0.17, torsoY + 0.08, frontZ - 0.055], trim),
-      boxMesh("runtime-outward-merchant-right-lapel-v23", [0.09, torsoHeight * 0.48, 0.055], [torsoWidth * 0.17, torsoY + 0.08, frontZ - 0.055], trim),
-      boxMesh("runtime-outward-merchant-coin-pouch-v23", [0.12, 0.14, 0.06], [torsoWidth * 0.24, waistY - 0.1, frontZ - 0.07], 0xb8913f)
+      boxMesh("runtime-outward-merchant-left-lapel", [0.09, torsoHeight * 0.48, 0.055], [-torsoWidth * 0.17, torsoY + 0.08, frontZ - 0.055], trim),
+      boxMesh("runtime-outward-merchant-right-lapel", [0.09, torsoHeight * 0.48, 0.055], [torsoWidth * 0.17, torsoY + 0.08, frontZ - 0.055], trim),
+      boxMesh("runtime-outward-merchant-coin-pouch", [0.12, 0.14, 0.06], [torsoWidth * 0.24, waistY - 0.1, frontZ - 0.07], 0xb8913f)
     );
   } else if (role === "clergy" || String(role) === "scholar") {
     root.add(
-      boxMesh("runtime-outward-clergy-robe-center-v23", [0.085, torsoHeight * 0.96, 0.065], [0, torsoY - 0.02, frontZ - 0.06], trim)
+      boxMesh("runtime-outward-clergy-robe-center", [0.085, torsoHeight * 0.96, 0.065], [0, torsoY - 0.02, frontZ - 0.06], trim)
     );
   } else if (role === "bandit" || role === "hostile") {
     root.add(
-      boxMesh("runtime-outward-bandit-torn-sash-v23", [0.075, torsoHeight * 0.92, 0.06], [0.04, torsoY - 0.02, frontZ - 0.06], 0x7b2525)
+      boxMesh("runtime-outward-bandit-torn-sash", [0.075, torsoHeight * 0.92, 0.06], [0.04, torsoY - 0.02, frontZ - 0.06], 0x7b2525)
     );
   } else if (role === "undead") {
     root.add(
-      boxMesh("runtime-outward-undead-bandage-a-v23", [torsoWidth * 0.72, 0.055, 0.06], [0, torsoY + 0.17, frontZ - 0.06], 0xc8c1a6),
-      boxMesh("runtime-outward-undead-bandage-b-v23", [torsoWidth * 0.66, 0.055, 0.06], [0, torsoY - 0.1, frontZ - 0.06], 0xb7ae93)
+      boxMesh("runtime-outward-undead-bandage-a", [torsoWidth * 0.72, 0.055, 0.06], [0, torsoY + 0.17, frontZ - 0.06], 0xc8c1a6),
+      boxMesh("runtime-outward-undead-bandage-b", [torsoWidth * 0.66, 0.055, 0.06], [0, torsoY - 0.1, frontZ - 0.06], 0xb7ae93)
     );
   } else {
     const sashX = variant % 2 === 0 ? -0.09 : 0.09;
     root.add(
-      boxMesh("runtime-outward-civilian-sash-v23", [0.07, torsoHeight * 0.9, 0.055], [sashX, torsoY, frontZ - 0.055], trim),
-      boxMesh("runtime-outward-civilian-pocket-v23", [0.1, 0.1, 0.055], [-sashX * 2.4, waistY - 0.08, frontZ - 0.055], leather)
+      boxMesh("runtime-outward-civilian-sash", [0.07, torsoHeight * 0.9, 0.055], [sashX, torsoY, frontZ - 0.055], trim),
+      boxMesh("runtime-outward-civilian-pocket", [0.1, 0.1, 0.055], [-sashX * 2.4, waistY - 0.08, frontZ - 0.055], leather)
     );
   }
 
-  root.userData.harthmereRuntimeOutwardClothingDetailLayer = HARTHMERE_RUNTIME_OUTWARD_CLOTHING_DETAIL_LAYER_VERSION_V23;
+  root.userData.harthmereRuntimeOutwardClothingDetailLayer = HARTHMERE_RUNTIME_OUTWARD_CLOTHING_DETAIL_LAYER_VERSION;
   root.userData.harthmereRuntimeOutwardClothingDetailRole = role;
   root.userData.harthmereRuntimeOutwardClothingDetailVariant = variant;
-  auditHarthmereRuntimeClothingLayersV24(root);
+  auditHarthmereRuntimeClothingLayers(root);
 }
 
-function inferHarthmereRuntimeClothingRoleV23(signature: string): string {
+function inferHarthmereRuntimeClothingRole(signature: string): string {
   const value = signature.toLowerCase();
 
   if (value.includes("guard") || value.includes("armor") || value.includes("tabard")) return "guard";
@@ -17648,7 +17490,7 @@ function inferHarthmereRuntimeClothingRoleV23(signature: string): string {
   return "civilian";
 }
 
-function hashHarthmereRuntimeClothingSignatureV23(value: string): number {
+function hashHarthmereRuntimeClothingSignature(value: string): number {
   let hash = 2166136261;
 
   for (let i = 0; i < value.length; i += 1) {
@@ -17659,7 +17501,7 @@ function hashHarthmereRuntimeClothingSignatureV23(value: string): number {
   return hash | 0;
 }
 
-function getHarthmereRuntimeOutwardClothingColorsV23(
+function getHarthmereRuntimeOutwardClothingColors(
   role: string,
   variant: number,
   palette: TownspersonPalette
@@ -17696,15 +17538,15 @@ function getHarthmereRuntimeOutwardClothingColorsV23(
   };
 }
 
-// HARTHMERE_RUNTIME_TALL_NPC_CLOTHING_VISIBILITY_V22
+// HARTHMERE_RUNTIME_TALL_NPC_CLOTHING_VISIBILITY
 //
 // Runtime/ambient townspeople get the same full-coverage clothing shell as
 // ECS/local-dev NPCs. This prevents tall/proportioned ambient NPCs from looking
 // naked even when only generic clothing slots are present.
-const HARTHMERE_RUNTIME_TALL_NPC_CLOTHING_VISIBILITY_VERSION_V22 =
-  "harthmere-runtime-tall-npc-clothing-visibility-v22";
+const HARTHMERE_RUNTIME_TALL_NPC_CLOTHING_VISIBILITY_VERSION =
+  "harthmere-runtime-tall-npc-clothing-visibility";
 
-function addHarthmereRuntimeVisibleClothingGuaranteeV22(
+function addHarthmereRuntimeVisibleClothingGuarantee(
   root: THREE.Group,
   clothing: Record<string, any> | undefined,
   body: HarthmereRuntimeBodyMetrics,
@@ -17733,33 +17575,33 @@ function addHarthmereRuntimeVisibleClothingGuaranteeV22(
 
   if (clothing?.torso) {
     root.add(
-      boxMesh("runtime-visible-clothing-torso-front-v22", [torsoWidth, torsoHeight, 0.06], [0, torsoY, -(torsoDepth / 2 + 0.035)], cloth),
-      boxMesh("runtime-visible-clothing-torso-back-v22", [torsoWidth, torsoHeight, 0.06], [0, torsoY, torsoDepth / 2 + 0.035], cloth),
-      boxMesh("runtime-visible-clothing-torso-left-v22", [0.06, torsoHeight, torsoDepth + 0.09], [-(torsoWidth / 2), torsoY, 0], cloth),
-      boxMesh("runtime-visible-clothing-torso-right-v22", [0.06, torsoHeight, torsoDepth + 0.09], [torsoWidth / 2, torsoY, 0], cloth),
-      boxMesh("runtime-visible-clothing-collar-v22", [torsoWidth + 0.035, 0.04, torsoDepth + 0.11], [0, torsoY + torsoHeight * 0.48, -0.005], accent),
-      boxMesh("runtime-visible-clothing-hem-v22", [torsoWidth + 0.045, 0.045, torsoDepth + 0.12], [0, torsoY - torsoHeight * 0.49, -0.005], accent)
+      boxMesh("runtime-visible-clothing-torso-front", [torsoWidth, torsoHeight, 0.06], [0, torsoY, -(torsoDepth / 2 + 0.035)], cloth),
+      boxMesh("runtime-visible-clothing-torso-back", [torsoWidth, torsoHeight, 0.06], [0, torsoY, torsoDepth / 2 + 0.035], cloth),
+      boxMesh("runtime-visible-clothing-torso-left", [0.06, torsoHeight, torsoDepth + 0.09], [-(torsoWidth / 2), torsoY, 0], cloth),
+      boxMesh("runtime-visible-clothing-torso-right", [0.06, torsoHeight, torsoDepth + 0.09], [torsoWidth / 2, torsoY, 0], cloth),
+      boxMesh("runtime-visible-clothing-collar", [torsoWidth + 0.035, 0.04, torsoDepth + 0.11], [0, torsoY + torsoHeight * 0.48, -0.005], accent),
+      boxMesh("runtime-visible-clothing-hem", [torsoWidth + 0.045, 0.045, torsoDepth + 0.12], [0, torsoY - torsoHeight * 0.49, -0.005], accent)
     );
   }
 
   if (clothing?.legs) {
     root.add(
-      boxMesh("runtime-visible-clothing-left-leg-v22", [legWidth, legLength, 0.16], [-legX, legCenterY, -0.025], legCloth),
-      boxMesh("runtime-visible-clothing-right-leg-v22", [legWidth, legLength, 0.16], [legX, legCenterY, -0.025], legCloth)
+      boxMesh("runtime-visible-clothing-left-leg", [legWidth, legLength, 0.16], [-legX, legCenterY, -0.025], legCloth),
+      boxMesh("runtime-visible-clothing-right-leg", [legWidth, legLength, 0.16], [legX, legCenterY, -0.025], legCloth)
     );
   }
 
   if (clothing?.feet) {
     root.add(
-      boxMesh("runtime-visible-clothing-left-foot-v22", [legWidth + 0.04, 0.095, 0.2], [-legX, 0.055, -0.035], dark),
-      boxMesh("runtime-visible-clothing-right-foot-v22", [legWidth + 0.04, 0.095, 0.2], [legX, 0.055, -0.035], dark)
+      boxMesh("runtime-visible-clothing-left-foot", [legWidth + 0.04, 0.095, 0.2], [-legX, 0.055, -0.035], dark),
+      boxMesh("runtime-visible-clothing-right-foot", [legWidth + 0.04, 0.095, 0.2], [legX, 0.055, -0.035], dark)
     );
   }
 
   if (clothing?.belt) {
     root.add(
-      boxMesh("runtime-visible-clothing-belt-v22", [torsoWidth + 0.06, 0.06, torsoDepth + 0.14], [0, body.legLength + 0.09, -0.005], leather),
-      boxMesh("runtime-visible-clothing-buckle-v22", [0.075, 0.07, 0.035], [0, body.legLength + 0.09, -(torsoDepth / 2 + 0.08)], 0xb8b2a4)
+      boxMesh("runtime-visible-clothing-belt", [torsoWidth + 0.06, 0.06, torsoDepth + 0.14], [0, body.legLength + 0.09, -0.005], leather),
+      boxMesh("runtime-visible-clothing-buckle", [0.075, 0.07, 0.035], [0, body.legLength + 0.09, -(torsoDepth / 2 + 0.08)], 0xb8b2a4)
     );
   }
 
@@ -17768,12 +17610,12 @@ function addHarthmereRuntimeVisibleClothingGuaranteeV22(
     const armLength = body.armLength * 0.62;
 
     root.add(
-      boxMesh("runtime-visible-clothing-left-sleeve-v22", [armWidth + 0.045, armLength, 0.13], [-(body.shoulderWidth / 2 + 0.015), shoulderY - armLength * 0.48, -0.03], cloth),
-      boxMesh("runtime-visible-clothing-right-sleeve-v22", [armWidth + 0.045, armLength, 0.13], [body.shoulderWidth / 2 + 0.015, shoulderY - armLength * 0.48, -0.03], cloth)
+      boxMesh("runtime-visible-clothing-left-sleeve", [armWidth + 0.045, armLength, 0.13], [-(body.shoulderWidth / 2 + 0.015), shoulderY - armLength * 0.48, -0.03], cloth),
+      boxMesh("runtime-visible-clothing-right-sleeve", [armWidth + 0.045, armLength, 0.13], [body.shoulderWidth / 2 + 0.015, shoulderY - armLength * 0.48, -0.03], cloth)
     );
   }
 
-  root.userData.harthmereRuntimeTallNpcClothingVisibility = HARTHMERE_RUNTIME_TALL_NPC_CLOTHING_VISIBILITY_VERSION_V22;
+  root.userData.harthmereRuntimeTallNpcClothingVisibility = HARTHMERE_RUNTIME_TALL_NPC_CLOTHING_VISIBILITY_VERSION;
   root.userData.harthmereRuntimeTallNpcClothingVisibilitySlots = slots;
   root.userData.harthmereRuntimeTallNpcClothingVisibilityBody = {
     torsoWidth: body.torsoWidth,
@@ -17785,13 +17627,13 @@ function addHarthmereRuntimeVisibleClothingGuaranteeV22(
 }
 
 
-// harthmere-full-animation-runtime-v6
-const HARTHMERE_RENDERER_FULL_ANIMATION_RUNTIME_VERSION_V6 =
-  "harthmere-renderer-full-animation-runtime-v6";
-type HarthmereRendererAnimationFamilyV6 =
+// harthmere-full-animation-runtime
+const HARTHMERE_RENDERER_FULL_ANIMATION_RUNTIME_VERSION =
+  "harthmere-renderer-full-animation-runtime";
+type HarthmereRendererAnimationFamily =
   | "creature" | "mount" | "ranged" | "magic" | "shield" | "dodge" | "airborne"
   | "gathering" | "crafting" | "building" | "social" | "deathRespawn" | "boss" | "screenshot";
-const HARTHMERE_RENDERER_ANIMATION_DEBUG_POSES_V6: Record<HarthmereRendererAnimationFamilyV6, readonly string[]> = {
+const HARTHMERE_RENDERER_ANIMATION_DEBUG_POSES: Record<HarthmereRendererAnimationFamily, readonly string[]> = {
   creature: ["idle", "walk", "run", "attack", "hit", "death", "flee", "turnInPlace"],
   mount: ["mountIdle", "mountWalk", "mountRun", "mountStart", "mountStop", "mount", "dismount", "riderSeat"],
   ranged: ["equip", "aimDraw", "holdAim", "release", "reload", "quiverDraw", "projectileSpawn"],
@@ -17807,24 +17649,24 @@ const HARTHMERE_RENDERER_ANIMATION_DEBUG_POSES_V6: Record<HarthmereRendererAnima
   boss: ["telegraph", "phaseTransition", "areaAttack", "summon", "enrage", "wipeReset", "bossDeath"],
   screenshot: ["baselineCapture", "poseNorth", "poseEast", "poseSouth", "poseWest", "compareDebugState"],
 };
-function installHarthmereRendererFullAnimationDebugV6() {
+function installHarthmereRendererFullAnimationDebug() {
   if (typeof window === "undefined") return;
-  const win = window as typeof window & { __harthmereRendererAnimationRuntimeV6?: unknown };
-  win.__harthmereRendererAnimationRuntimeV6 = {
-    version: HARTHMERE_RENDERER_FULL_ANIMATION_RUNTIME_VERSION_V6,
-    poses: HARTHMERE_RENDERER_ANIMATION_DEBUG_POSES_V6,
+  const win = window as typeof window & { __harthmereRendererAnimationRuntime?: unknown };
+  win.__harthmereRendererAnimationRuntime = {
+    version: HARTHMERE_RENDERER_FULL_ANIMATION_RUNTIME_VERSION,
+    poses: HARTHMERE_RENDERER_ANIMATION_DEBUG_POSES,
     screenshotBaselines: ["creature_idle", "creature_attack", "mount_rider_idle", "ranged_aim", "ranged_release", "magic_channel", "magic_release", "shield_walk_guard", "shield_parry", "dodge_stagger", "jump_fall_land", "mine_impact", "woodcut_impact", "fish_cast", "craft_station", "build_repair", "vendor_talk", "npc_work_loop", "player_death", "respawn", "boss_telegraph", "boss_phase_transition", "facing_north", "facing_east", "facing_south", "facing_west"],
   };
 }
-installHarthmereRendererFullAnimationDebugV6();
+installHarthmereRendererFullAnimationDebug();
 
 
-/* HARTHMERE_LIVE_ANIMATION_SCENARIO_REGRESSION_VERSION_V11 */
-const HARTHMERE_LIVE_ANIMATION_SCENARIO_REGRESSION_VERSION_V11 =
-  "harthmere-live-animation-scenario-regression-v11";
+/* HARTHMERE_LIVE_ANIMATION_SCENARIO_REGRESSION_VERSION */
+const HARTHMERE_LIVE_ANIMATION_SCENARIO_REGRESSION_VERSION =
+  "harthmere-live-animation-scenario-regression";
 
-const HARTHMERE_LIVE_ANIMATION_SCENARIO_CONTRACT_V11 = {
-  version: HARTHMERE_LIVE_ANIMATION_SCENARIO_REGRESSION_VERSION_V11,
+const HARTHMERE_LIVE_ANIMATION_SCENARIO_CONTRACT = {
+  version: HARTHMERE_LIVE_ANIMATION_SCENARIO_REGRESSION_VERSION,
   sampleFrames: [0, 8, 15, 22, 30],
   gripBudgetMeters: 0.22,
   npcCorpseHoldMs: 4500,
@@ -17940,7 +17782,7 @@ const HARTHMERE_LIVE_ANIMATION_SCENARIO_CONTRACT_V11 = {
   ],
 };
 
-function installHarthmereLiveAnimationScenarioRegressionV11() {
+function installHarthmereLiveAnimationScenarioRegression() {
   const g = globalThis as any;
   const w = g.window ?? g;
   if (!w) return;
@@ -17962,20 +17804,20 @@ function installHarthmereLiveAnimationScenarioRegressionV11() {
   };
 
   const scenarioState = {
-    version: HARTHMERE_LIVE_ANIMATION_SCENARIO_REGRESSION_VERSION_V11,
+    version: HARTHMERE_LIVE_ANIMATION_SCENARIO_REGRESSION_VERSION,
     installedAt: now(),
-    contract: HARTHMERE_LIVE_ANIMATION_SCENARIO_CONTRACT_V11,
+    contract: HARTHMERE_LIVE_ANIMATION_SCENARIO_CONTRACT,
   };
 
   const api = {
-    version: HARTHMERE_LIVE_ANIMATION_SCENARIO_REGRESSION_VERSION_V11,
-    contract: () => HARTHMERE_LIVE_ANIMATION_SCENARIO_CONTRACT_V11,
+    version: HARTHMERE_LIVE_ANIMATION_SCENARIO_REGRESSION_VERSION,
+    contract: () => HARTHMERE_LIVE_ANIMATION_SCENARIO_CONTRACT,
     snapshot: () => ({
       ...scenarioState,
       time: now(),
       weaponHandTracking: safeCall("weaponHandTracking", {
-        gripBudgetMeters: HARTHMERE_LIVE_ANIMATION_SCENARIO_CONTRACT_V11.gripBudgetMeters,
-        sampleFrames: HARTHMERE_LIVE_ANIMATION_SCENARIO_CONTRACT_V11.sampleFrames,
+        gripBudgetMeters: HARTHMERE_LIVE_ANIMATION_SCENARIO_CONTRACT.gripBudgetMeters,
+        sampleFrames: HARTHMERE_LIVE_ANIMATION_SCENARIO_CONTRACT.sampleFrames,
       }),
       resourceHitTelegraph: safeCall("resourceHitTelegraphState"),
       objectEffectRange: safeCall("objectEffectRangeAudit"),
@@ -17988,7 +17830,7 @@ function installHarthmereLiveAnimationScenarioRegressionV11() {
       name,
       time: now(),
       contractScenario:
-        Object.values(HARTHMERE_LIVE_ANIMATION_SCENARIO_CONTRACT_V11)
+        Object.values(HARTHMERE_LIVE_ANIMATION_SCENARIO_CONTRACT)
           .flat?.()
           ?.includes?.(name) ?? false,
       weaponHandTracking: safeCall("weaponHandTracking"),
@@ -17999,60 +17841,60 @@ function installHarthmereLiveAnimationScenarioRegressionV11() {
       const tracking = safeCall("weaponHandTracking", {});
       return {
         ok: tracking.ok !== false,
-        budgetMeters: HARTHMERE_LIVE_ANIMATION_SCENARIO_CONTRACT_V11.gripBudgetMeters,
-        sampleFrames: HARTHMERE_LIVE_ANIMATION_SCENARIO_CONTRACT_V11.sampleFrames,
+        budgetMeters: HARTHMERE_LIVE_ANIMATION_SCENARIO_CONTRACT.gripBudgetMeters,
+        sampleFrames: HARTHMERE_LIVE_ANIMATION_SCENARIO_CONTRACT.sampleFrames,
         tracking,
       };
     },
     twoHandedProbe: () => ({
       ok: true,
-      scenarios: HARTHMERE_LIVE_ANIMATION_SCENARIO_CONTRACT_V11.twoHanded,
+      scenarios: HARTHMERE_LIVE_ANIMATION_SCENARIO_CONTRACT.twoHanded,
       requiresLeftHandParticipation: true,
       requiresRightHandGrip: true,
       maxGripSeparationMeters: 0.9,
     }),
     locomotionActionProbe: () => ({
       ok: true,
-      scenarios: HARTHMERE_LIVE_ANIMATION_SCENARIO_CONTRACT_V11.locomotionWhileActing,
+      scenarios: HARTHMERE_LIVE_ANIMATION_SCENARIO_CONTRACT.locomotionWhileActing,
       lowerBodyPreserved: true,
       upperBodyActionOverlay: true,
       noFootSlideRequired: true,
     }),
     npcInterruptionProbe: () => ({
       ok: true,
-      scenarios: HARTHMERE_LIVE_ANIMATION_SCENARIO_CONTRACT_V11.npcInterruption,
+      scenarios: HARTHMERE_LIVE_ANIMATION_SCENARIO_CONTRACT.npcInterruption,
       deathWinsOverAttack: true,
       weaponTrailClearsOnDeath: true,
-      corpseHoldMs: HARTHMERE_LIVE_ANIMATION_SCENARIO_CONTRACT_V11.npcCorpseHoldMs,
+      corpseHoldMs: HARTHMERE_LIVE_ANIMATION_SCENARIO_CONTRACT.npcCorpseHoldMs,
     }),
     playerDeathRespawnProbe: () => ({
       ok: true,
-      scenarios: HARTHMERE_LIVE_ANIMATION_SCENARIO_CONTRACT_V11.playerDeathRespawn,
+      scenarios: HARTHMERE_LIVE_ANIMATION_SCENARIO_CONTRACT.playerDeathRespawn,
       clearsPendingImpactTimer: true,
       clearsResourceHit: true,
       restoresWeaponStateOnRespawn: true,
-      playerDeathHoldMs: HARTHMERE_LIVE_ANIMATION_SCENARIO_CONTRACT_V11.playerDeathHoldMs,
+      playerDeathHoldMs: HARTHMERE_LIVE_ANIMATION_SCENARIO_CONTRACT.playerDeathHoldMs,
     }),
     resourceHitVisibilityProbe: (resourceType = "rock") => ({
       ok: true,
       resourceType,
-      scenarios: HARTHMERE_LIVE_ANIMATION_SCENARIO_CONTRACT_V11.resourceHitVisibility,
+      scenarios: HARTHMERE_LIVE_ANIMATION_SCENARIO_CONTRACT.resourceHitVisibility,
       requiresSurfaceReticle: true,
       requiresToolTipLine: true,
       requiresImpactParticlesAtHitPoint: true,
       requiresFailureReasonText: true,
-      reticleMaxSnapMeters: HARTHMERE_LIVE_ANIMATION_SCENARIO_CONTRACT_V11.maxReticleSnapMeters,
+      reticleMaxSnapMeters: HARTHMERE_LIVE_ANIMATION_SCENARIO_CONTRACT.maxReticleSnapMeters,
     }),
     multiplayerAnimationProbe: () => ({
       ok: true,
-      scenarios: HARTHMERE_LIVE_ANIMATION_SCENARIO_CONTRACT_V11.multiplayerAnimation,
+      scenarios: HARTHMERE_LIVE_ANIMATION_SCENARIO_CONTRACT.multiplayerAnimation,
       remoteWeaponMustFollowRemoteHand: true,
       lateJoinerMustSeeWeaponState: true,
-      maxPredictionSnapMeters: HARTHMERE_LIVE_ANIMATION_SCENARIO_CONTRACT_V11.maxWeaponSnapMeters,
+      maxPredictionSnapMeters: HARTHMERE_LIVE_ANIMATION_SCENARIO_CONTRACT.maxWeaponSnapMeters,
     }),
     performanceProbe: () => ({
       ok: true,
-      scenarios: HARTHMERE_LIVE_ANIMATION_SCENARIO_CONTRACT_V11.performance,
+      scenarios: HARTHMERE_LIVE_ANIMATION_SCENARIO_CONTRACT.performance,
       maxAnimatedNpcCrowd: 20,
       maxCombatActors: 15,
       requiresClipCacheReuse: true,
@@ -18060,7 +17902,7 @@ function installHarthmereLiveAnimationScenarioRegressionV11() {
     }),
     locationEffectProbe: () => ({
       ok: true,
-      scenarios: HARTHMERE_LIVE_ANIMATION_SCENARIO_CONTRACT_V11.locationEffects,
+      scenarios: HARTHMERE_LIVE_ANIMATION_SCENARIO_CONTRACT.locationEffects,
       hitPointMustBeInFrontOfBodyForward: true,
       resourceEffectOriginMustBeSurfaceHitPoint: true,
       corpseHoldLocationMustMatchDeathLocation: true,
@@ -18068,30 +17910,30 @@ function installHarthmereLiveAnimationScenarioRegressionV11() {
     }),
   };
 
-  w.__harthmereAnimationScenarioRegressionV11 = api;
-  w.__harthmereLiveAnimationScenarioRegressionV11 = api;
+  w.__harthmereAnimationScenarioRegression = api;
+  w.__harthmereLiveAnimationScenarioRegression = api;
 
   if (rendererDebug && typeof rendererDebug === "object") {
-    rendererDebug.liveAnimationScenarioRegressionV11 = () => api.snapshot();
-    rendererDebug.liveAnimationScenarioContractV11 = () =>
-      HARTHMERE_LIVE_ANIMATION_SCENARIO_CONTRACT_V11;
+    rendererDebug.liveAnimationScenarioRegression = () => api.snapshot();
+    rendererDebug.liveAnimationScenarioContract = () =>
+      HARTHMERE_LIVE_ANIMATION_SCENARIO_CONTRACT;
     w.__harthmereRendererDebug = rendererDebug;
   }
 }
 
 try {
-  installHarthmereLiveAnimationScenarioRegressionV11();
+  installHarthmereLiveAnimationScenarioRegression();
 } catch (error) {
   // Never let debug instrumentation break the renderer.
 }
 
 
-/* HARTHMERE_ANIMATION_HANDEDNESS_DEATH_BOUNDS_VERSION_V12 */
-const HARTHMERE_ANIMATION_HANDEDNESS_DEATH_BOUNDS_VERSION_V12 =
-  "harthmere-animation-handedness-death-bounds-v12";
+/* HARTHMERE_ANIMATION_HANDEDNESS_DEATH_BOUNDS_VERSION */
+const HARTHMERE_ANIMATION_HANDEDNESS_DEATH_BOUNDS_VERSION =
+  "harthmere-animation-handedness-death-bounds";
 
-const HARTHMERE_MAIN_HAND_VISUAL_CONTRACT_V12 = {
-  version: HARTHMERE_ANIMATION_HANDEDNESS_DEATH_BOUNDS_VERSION_V12,
+const HARTHMERE_MAIN_HAND_VISUAL_CONTRACT = {
+  version: HARTHMERE_ANIMATION_HANDEDNESS_DEATH_BOUNDS_VERSION,
   primaryAttackVisualSide: "left",
   primaryFallbackAnchor: "harthmere-anchor-left-hand",
   shieldFallbackAnchor: "harthmere-anchor-right-hand",
@@ -18100,8 +17942,8 @@ const HARTHMERE_MAIN_HAND_VISUAL_CONTRACT_V12 = {
   maxBladeLagMeters: 0.18,
 };
 
-const HARTHMERE_DEATH_ALL_ACTOR_CONTRACT_V12 = {
-  version: HARTHMERE_ANIMATION_HANDEDNESS_DEATH_BOUNDS_VERSION_V12,
+const HARTHMERE_DEATH_ALL_ACTOR_CONTRACT = {
+  version: HARTHMERE_ANIMATION_HANDEDNESS_DEATH_BOUNDS_VERSION,
   actorFamilies: [
     "player", "remote_player", "npc", "townsperson", "guard", "vendor", "hostile",
     "creature", "animal", "livestock", "wildlife", "boss", "training_dummy",
@@ -18118,8 +17960,8 @@ const HARTHMERE_DEATH_ALL_ACTOR_CONTRACT_V12 = {
   maxCorpseSinkMeters: 0.04,
 };
 
-const HARTHMERE_DEATH_BOUNDS_SPACING_CONTRACT_V12 = {
-  version: HARTHMERE_ANIMATION_HANDEDNESS_DEATH_BOUNDS_VERSION_V12,
+const HARTHMERE_DEATH_BOUNDS_SPACING_CONTRACT = {
+  version: HARTHMERE_ANIMATION_HANDEDNESS_DEATH_BOUNDS_VERSION,
   tests: [
     "death_at_flat_ground", "death_on_slope", "death_near_wall", "death_near_door",
     "death_near_water", "death_on_road", "death_inside_town_crowd", "death_near_service_route",
@@ -18130,8 +17972,8 @@ const HARTHMERE_DEATH_BOUNDS_SPACING_CONTRACT_V12 = {
   maxCorpseRadiusMeters: 1.8,
 };
 
-const HARTHMERE_WORLD_EFFECT_RANGE_VISIBILITY_CONTRACT_V12 = {
-  version: HARTHMERE_ANIMATION_HANDEDNESS_DEATH_BOUNDS_VERSION_V12,
+const HARTHMERE_WORLD_EFFECT_RANGE_VISIBILITY_CONTRACT = {
+  version: HARTHMERE_ANIMATION_HANDEDNESS_DEATH_BOUNDS_VERSION,
   objectFamilies: ["dirt", "grass", "rock", "ore", "tree", "crop", "water", "generic_resource"],
   requiredSignals: [
     "pre_hit_range_ring", "valid_target_reticle", "invalid_target_reticle",
@@ -18141,7 +17983,7 @@ const HARTHMERE_WORLD_EFFECT_RANGE_VISIBILITY_CONTRACT_V12 = {
   ],
 };
 
-function installHarthmereAnimationHandednessDeathBoundsV12() {
+function installHarthmereAnimationHandednessDeathBounds() {
   const g = globalThis as any;
   const w = g.window ?? g;
   if (!w) return;
@@ -18155,22 +17997,22 @@ function installHarthmereAnimationHandednessDeathBoundsV12() {
     }
   };
   const api = {
-    version: HARTHMERE_ANIMATION_HANDEDNESS_DEATH_BOUNDS_VERSION_V12,
+    version: HARTHMERE_ANIMATION_HANDEDNESS_DEATH_BOUNDS_VERSION,
     contracts: () => ({
-      mainHand: HARTHMERE_MAIN_HAND_VISUAL_CONTRACT_V12,
-      deathAllActors: HARTHMERE_DEATH_ALL_ACTOR_CONTRACT_V12,
-      deathBounds: HARTHMERE_DEATH_BOUNDS_SPACING_CONTRACT_V12,
-      worldEffects: HARTHMERE_WORLD_EFFECT_RANGE_VISIBILITY_CONTRACT_V12,
+      mainHand: HARTHMERE_MAIN_HAND_VISUAL_CONTRACT,
+      deathAllActors: HARTHMERE_DEATH_ALL_ACTOR_CONTRACT,
+      deathBounds: HARTHMERE_DEATH_BOUNDS_SPACING_CONTRACT,
+      worldEffects: HARTHMERE_WORLD_EFFECT_RANGE_VISIBILITY_CONTRACT,
     }),
     handednessProbe: () => ({
       ok: true,
-      ...HARTHMERE_MAIN_HAND_VISUAL_CONTRACT_V12,
+      ...HARTHMERE_MAIN_HAND_VISUAL_CONTRACT,
       swordState: readSwordState(),
       requirement: "main-hand weapon is on the visible attack-hand side; offhand shield is opposite",
     }),
     deathAllActorsProbe: () => ({
       ok: true,
-      ...HARTHMERE_DEATH_ALL_ACTOR_CONTRACT_V12,
+      ...HARTHMERE_DEATH_ALL_ACTOR_CONTRACT,
       deathStopsLocomotion: true,
       deathStopsWander: true,
       deathCancelsAttack: true,
@@ -18179,58 +18021,58 @@ function installHarthmereAnimationHandednessDeathBoundsV12() {
     }),
     deathBoundsProbe: () => ({
       ok: true,
-      ...HARTHMERE_DEATH_BOUNDS_SPACING_CONTRACT_V12,
+      ...HARTHMERE_DEATH_BOUNDS_SPACING_CONTRACT,
       corpseAboveGroundRequired: true,
       corpseInsideSolidRejected: true,
       serviceRouteSpacingChecked: true,
     }),
     worldEffectVisibilityProbe: () => ({
       ok: true,
-      ...HARTHMERE_WORLD_EFFECT_RANGE_VISIBILITY_CONTRACT_V12,
+      ...HARTHMERE_WORLD_EFFECT_RANGE_VISIBILITY_CONTRACT,
       hitPointMustBeObvious: true,
       invalidTargetMustExplainFailure: true,
     }),
   };
-  w.__harthmereAnimationHandednessDeathBoundsV12 = api;
+  w.__harthmereAnimationHandednessDeathBounds = api;
   if (rendererDebug && typeof rendererDebug === "object") {
-    rendererDebug.animationHandednessDeathBoundsV12 = () => api.contracts();
-    rendererDebug.handednessProbeV12 = () => api.handednessProbe();
-    rendererDebug.deathAllActorsProbeV12 = () => api.deathAllActorsProbe();
-    rendererDebug.deathBoundsProbeV12 = () => api.deathBoundsProbe();
-    rendererDebug.worldEffectVisibilityProbeV12 = () => api.worldEffectVisibilityProbe();
+    rendererDebug.animationHandednessDeathBounds = () => api.contracts();
+    rendererDebug.handednessProbe = () => api.handednessProbe();
+    rendererDebug.deathAllActorsProbe = () => api.deathAllActorsProbe();
+    rendererDebug.deathBoundsProbe = () => api.deathBoundsProbe();
+    rendererDebug.worldEffectVisibilityProbe = () => api.worldEffectVisibilityProbe();
     w.__harthmereRendererDebug = rendererDebug;
   }
 }
 
 try {
-  installHarthmereAnimationHandednessDeathBoundsV12();
+  installHarthmereAnimationHandednessDeathBounds();
 } catch (error) {
   // Debug instrumentation should never break rendering.
 }
 
 
 
-// v13 attack variation debug bridge
-export const HARTHMERE_ATTACK_VARIATION_VERSION_V13_RENDERER = "harthmere-attack-variation-v13";
+// current attack variation debug bridge
+export const HARTHMERE_ATTACK_VARIATION_VERSION_RENDERER = "harthmere-attack-variation";
 ;(globalThis as any).__harthmereRendererDebug = (globalThis as any).__harthmereRendererDebug || {};
 (globalThis as any).__harthmereRendererDebug.attackVariationAudit = () => ({
-  version: HARTHMERE_ATTACK_VARIATION_VERSION_V13_RENDERER,
+  version: HARTHMERE_ATTACK_VARIATION_VERSION_RENDERER,
   attackSide: "left",
   weaponYawBiasDeg: 0,
   weaponPitchBiasDeg: 0,
   locomotionAllowed: true,
   airAllowed: false,
 });
-// v13 variation metadata markers: attackSide, weaponYawBiasDeg, weaponPitchBiasDeg
+// current variation metadata markers: attackSide, weaponYawBiasDeg, weaponPitchBiasDeg
 
 
-// v17 right-hand anchor validation markers.
+// current right-hand anchor validation markers.
 ;(globalThis as any).__harthmereRendererDebug = (globalThis as any).__harthmereRendererDebug || {};
 (globalThis as any).__harthmereRendererDebug.weaponHandTracking = () => ({
-  version: "harthmere-attack-variation-polish-v17",
+  version: "harthmere-attack-variation-polish",
   mainHandExpected: "left",
   actualHandAnchor: "harthmere-anchor-left-hand",
   mainHandDistanceMeters: 0.0,
   mainHandDistanceBudgetMeters: 0.14,
-  attackVariationCycleMode: "deterministicRoundRobinV17",
+  attackVariationCycleMode: "deterministicRoundRobin",
 });

@@ -3,24 +3,24 @@
 // guild bank/treasury/tax, guild hall linking, and guild chat.
 
 import {
-  BUILDING_SYSTEM_BLUEPRINTS_V1,
-  BUILDING_SYSTEM_PLOTS_V1,
-} from "../../../../shared/harthmere/building_system_v1";
+  BUILDING_SYSTEM_BLUEPRINTS,
+  BUILDING_SYSTEM_PLOTS,
+} from "../../../../shared/harthmere/building_system";
 import {
-  HARTHMERE_GUILD_CREATION_FEE_GOLD_V1,
-  HARTHMERE_GUILD_CREATION_MIN_LEVEL_V1,
-  HARTHMERE_GUILD_MAX_DESCRIPTION_LENGTH_V1,
-  HARTHMERE_GUILD_MAX_NAME_LENGTH_V1,
-  HARTHMERE_GUILD_MAX_TAG_LENGTH_V1,
-  HARTHMERE_GUILD_MAX_TAX_RATE_V1,
-  type HarthmereGuildChatMessageV1,
-  type HarthmereGuildPermissionMapV1,
-  type HarthmereGuildPermissionV1,
-} from "../../../../shared/harthmere/mmo_guild_authority_v1";
+  HARTHMERE_GUILD_CREATION_FEE_GOLD,
+  HARTHMERE_GUILD_CREATION_MIN_LEVEL,
+  HARTHMERE_GUILD_MAX_DESCRIPTION_LENGTH,
+  HARTHMERE_GUILD_MAX_NAME_LENGTH,
+  HARTHMERE_GUILD_MAX_TAG_LENGTH,
+  HARTHMERE_GUILD_MAX_TAX_RATE,
+  type HarthmereGuildChatMessage,
+  type HarthmereGuildPermissionMap,
+  type HarthmereGuildPermission,
+} from "../../../../shared/harthmere/mmo_guild_authority";
 import type {
-  BiomesUIGuildDepositCandidateV1,
-  BiomesUIGuildHallCandidateV1,
-  BiomesUIGuildsAdapterV1,
+  BiomesUIGuildDepositCandidate,
+  BiomesUIGuildHallCandidate,
+  BiomesUIGuildsAdapter,
 } from "../adapters/guildsLiveAdapter";
 import * as React from "react";
 import { Highlightable } from "../highlight/HighlightOverlay";
@@ -43,7 +43,7 @@ interface LegacyRank {
   canKick: boolean;
   canEditBank: boolean;
 }
-interface GuildsAdapter extends Partial<BiomesUIGuildsAdapterV1> {
+interface GuildsAdapter extends Partial<BiomesUIGuildsAdapter> {
   getGuildName?: () => string;
   getRoster?: () => LegacyGuildMember[];
   getRanks?: () => LegacyRank[];
@@ -64,10 +64,10 @@ const EMPTY_GUILD: { roster: LegacyGuildMember[]; ranks: LegacyRank[]; bulletin:
   ],
 };
 
-const guildBlueprint = BUILDING_SYSTEM_BLUEPRINTS_V1.find(
+const guildBlueprint = BUILDING_SYSTEM_BLUEPRINTS.find(
   (blueprint: any) => blueprint?.buildingUse === "guild" || blueprint?.use === "guild" || /guild/i.test(String(blueprint?.displayName ?? blueprint?.blueprintId ?? "")),
 );
-const guildPlot = BUILDING_SYSTEM_PLOTS_V1.find(
+const guildPlot = BUILDING_SYSTEM_PLOTS.find(
   (plot: any) => Array.isArray(plot?.allowedBlueprintIds) && guildBlueprint?.blueprintId && plot.allowedBlueprintIds.includes(guildBlueprint.blueprintId),
 );
 
@@ -81,7 +81,7 @@ const GUILD_PANELS: Array<{ key: GuildPanel; label: string }> = [
   { key: "logs", label: "Logs" },
 ];
 
-const PERMISSION_OPTIONS: Array<{ key: HarthmereGuildPermissionV1; label: string }> = [
+const PERMISSION_OPTIONS: Array<{ key: HarthmereGuildPermission; label: string }> = [
   { key: "invite_members", label: "Invite" },
   { key: "manage_applications", label: "Applications" },
   { key: "manage_members", label: "Members" },
@@ -127,11 +127,11 @@ function shortDate(ms: number | undefined): string {
   }
 }
 
-function hasPermission(adapter: GuildsAdapter | undefined, permission: HarthmereGuildPermissionV1): boolean {
+function hasPermission(adapter: GuildsAdapter | undefined, permission: HarthmereGuildPermission): boolean {
   return adapter?.getSnapshot?.()?.permissions?.[permission] === true;
 }
 
-function permissionSummary(permissions: Partial<HarthmereGuildPermissionMapV1> | undefined): string {
+function permissionSummary(permissions: Partial<HarthmereGuildPermissionMap> | undefined): string {
   if (!permissions) return "No permissions";
   const labels = PERMISSION_OPTIONS.filter((entry) => permissions[entry.key]).map((entry) => entry.label);
   return labels.length ? labels.join(" · ") : "No permissions";
@@ -143,7 +143,7 @@ function bankItems(guild: any): Array<[string, number]> {
     .filter(([, count]) => Number.isFinite(count) && count > 0);
 }
 
-function recentChat(messages: HarthmereGuildChatMessageV1[] | undefined) {
+function recentChat(messages: HarthmereGuildChatMessage[] | undefined) {
   return [...(messages ?? [])]
     .filter((message) => !message.deletedAtMs)
     .slice(-20)
@@ -181,7 +181,7 @@ export const GuildsTab: React.FunctionComponent<{ adapter?: GuildsAdapter }> = (
   const [selectedRank, setSelectedRank] = React.useState("member");
   const [newRankName, setNewRankName] = React.useState("Quartermaster");
   const [newRankLimit, setNewRankLimit] = React.useState("250");
-  const [newRankPermissions, setNewRankPermissions] = React.useState<Partial<HarthmereGuildPermissionMapV1>>({
+  const [newRankPermissions, setNewRankPermissions] = React.useState<Partial<HarthmereGuildPermissionMap>>({
     invite_members: true,
     deposit_bank: true,
     withdraw_bank: true,
@@ -236,10 +236,10 @@ export const GuildsTab: React.FunctionComponent<{ adapter?: GuildsAdapter }> = (
   const canCreateGuild =
     !guild &&
     normalizedCreateName.length >= 3 &&
-    normalizedCreateName.length <= HARTHMERE_GUILD_MAX_NAME_LENGTH_V1 &&
+    normalizedCreateName.length <= HARTHMERE_GUILD_MAX_NAME_LENGTH &&
     normalizedCreateTag.length >= 2 &&
-    normalizedCreateTag.length <= HARTHMERE_GUILD_MAX_TAG_LENGTH_V1 &&
-    createDescription.length <= HARTHMERE_GUILD_MAX_DESCRIPTION_LENGTH_V1;
+    normalizedCreateTag.length <= HARTHMERE_GUILD_MAX_TAG_LENGTH &&
+    createDescription.length <= HARTHMERE_GUILD_MAX_DESCRIPTION_LENGTH;
   const bankCountValue = positiveWholeNumber(bankCount);
   const treasuryAmountValue = positiveWholeNumber(treasuryAmount);
   const newRankLimitValue = nonNegativeWholeNumber(newRankLimit);
@@ -346,9 +346,9 @@ export const GuildsTab: React.FunctionComponent<{ adapter?: GuildsAdapter }> = (
           <section>
             <h3 style={titleStyle}>Create Guild</h3>
             <div style={cardStyle}>
-              <p style={mutedTextStyle}>Level {HARTHMERE_GUILD_CREATION_MIN_LEVEL_V1} · Charter {gold(HARTHMERE_GUILD_CREATION_FEE_GOLD_V1)} · Name 3-{HARTHMERE_GUILD_MAX_NAME_LENGTH_V1} · Tag 2-{HARTHMERE_GUILD_MAX_TAG_LENGTH_V1}</p>
-              <label style={labelStyle}>Name<input value={createName} maxLength={HARTHMERE_GUILD_MAX_NAME_LENGTH_V1} onChange={(event) => setCreateName(event.currentTarget.value)} style={inputStyle} /></label>
-              <label style={labelStyle}>Tag<input value={createTag} maxLength={HARTHMERE_GUILD_MAX_TAG_LENGTH_V1} onChange={(event) => setCreateTag(event.currentTarget.value.replace(/[^a-z0-9]/gi, "").toUpperCase())} style={inputStyle} /></label>
+              <p style={mutedTextStyle}>Level {HARTHMERE_GUILD_CREATION_MIN_LEVEL} · Charter {gold(HARTHMERE_GUILD_CREATION_FEE_GOLD)} · Name 3-{HARTHMERE_GUILD_MAX_NAME_LENGTH} · Tag 2-{HARTHMERE_GUILD_MAX_TAG_LENGTH}</p>
+              <label style={labelStyle}>Name<input value={createName} maxLength={HARTHMERE_GUILD_MAX_NAME_LENGTH} onChange={(event) => setCreateName(event.currentTarget.value)} style={inputStyle} /></label>
+              <label style={labelStyle}>Tag<input value={createTag} maxLength={HARTHMERE_GUILD_MAX_TAG_LENGTH} onChange={(event) => setCreateTag(event.currentTarget.value.replace(/[^a-z0-9]/gi, "").toUpperCase())} style={inputStyle} /></label>
               <label style={labelStyle}>Type
                 <select value={createType} onChange={(event) => setCreateType(event.currentTarget.value)} style={inputStyle}>
                   <option value="adventuring">Adventuring</option>
@@ -367,7 +367,7 @@ export const GuildsTab: React.FunctionComponent<{ adapter?: GuildsAdapter }> = (
                   <option value="closed">Closed</option>
                 </select>
               </label>
-              <label style={labelStyle}>Description<textarea value={createDescription} maxLength={HARTHMERE_GUILD_MAX_DESCRIPTION_LENGTH_V1} onChange={(event) => setCreateDescription(event.currentTarget.value)} style={textAreaStyle} /></label>
+              <label style={labelStyle}>Description<textarea value={createDescription} maxLength={HARTHMERE_GUILD_MAX_DESCRIPTION_LENGTH} onChange={(event) => setCreateDescription(event.currentTarget.value)} style={textAreaStyle} /></label>
               <button type="button" className="biomes-ui-tab" disabled={!canCreateGuild} onClick={() => void runAction("Created guild", () => adapter?.createGuild?.({ name: normalizedCreateName, tag: normalizedCreateTag, description: createDescription, guildType: createType, recruitment: createRecruitment }))}>Create Guild</button>
             </div>
 
@@ -456,9 +456,9 @@ export const GuildsTab: React.FunctionComponent<{ adapter?: GuildsAdapter }> = (
 
             <h3 style={{ ...titleStyle, marginTop: 14 }}>Tax</h3>
             <div style={cardStyle}>
-              <p style={mutedTextStyle}>Max tax: {pct(HARTHMERE_GUILD_MAX_TAX_RATE_V1)}</p>
+              <p style={mutedTextStyle}>Max tax: {pct(HARTHMERE_GUILD_MAX_TAX_RATE)}</p>
               <label style={labelStyle}>Tax %<input value={taxPercent} inputMode="decimal" onChange={(event) => setTaxPercent(event.currentTarget.value)} style={inputStyle} /></label>
-              <button type="button" className="biomes-ui-tab" disabled={!hasPermission(adapter, "set_tax") || !Number.isFinite(taxRateValue) || taxRateValue < 0 || taxRateValue / 100 > HARTHMERE_GUILD_MAX_TAX_RATE_V1} onClick={() => void runAction("Updated guild tax", () => adapter?.setTaxRate?.(taxRateValue / 100))}>Set Tax</button>
+              <button type="button" className="biomes-ui-tab" disabled={!hasPermission(adapter, "set_tax") || !Number.isFinite(taxRateValue) || taxRateValue < 0 || taxRateValue / 100 > HARTHMERE_GUILD_MAX_TAX_RATE} onClick={() => void runAction("Updated guild tax", () => adapter?.setTaxRate?.(taxRateValue / 100))}>Set Tax</button>
             </div>
           </section>
         </div>
@@ -588,7 +588,7 @@ export const GuildsTab: React.FunctionComponent<{ adapter?: GuildsAdapter }> = (
                 <label style={labelStyle}>Property ID<input value={hallPropertyId} onChange={(event) => setHallPropertyId(event.currentTarget.value)} placeholder="property_grove_guild_plot" style={inputStyle} /></label>
               )}
               <button type="button" className="biomes-ui-tab" disabled={!hasPermission(adapter, "manage_guild_hall") || !hallPropertyId.trim()} onClick={() => {
-                const candidate = hallCandidates.find((entry) => entry.propertyId === hallPropertyId) ?? { propertyId: hallPropertyId.trim(), plotId: guildPlot?.plotId, blueprintId: guildBlueprint?.blueprintId, label: hallPropertyId.trim() } as BiomesUIGuildHallCandidateV1;
+                const candidate = hallCandidates.find((entry) => entry.propertyId === hallPropertyId) ?? { propertyId: hallPropertyId.trim(), plotId: guildPlot?.plotId, blueprintId: guildBlueprint?.blueprintId, label: hallPropertyId.trim() } as BiomesUIGuildHallCandidate;
                 void runAction("Linked guild hall", () => adapter?.linkGuildHall?.(candidate));
               }}>Link Hall</button>
             </div>

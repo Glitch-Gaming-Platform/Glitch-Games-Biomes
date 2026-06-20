@@ -10,13 +10,13 @@ The short version:
 
 Use backend/shared data as the source of truth for building layout and access records.
 
-- `src/shared/harthmere/building_system_v1.ts` owns player property plots, blueprints, voxel materialization, storage, doors, home console markers, and business counter markers.
-- `src/shared/harthmere/business_customer_simulator_v1.ts` owns business outpost records, customer pools, minigame business types, outpost reference coordinates, canonical business building metadata, cleanup plans, and rebuild materialization plans.
-- `src/shared/harthmere/business_npc_cosmetics_v1.ts` owns Grove-style procedural business staff/customer appearance data.
-- `src/shared/harthmere/live_mode_backend_v1.ts` owns live-mode placement, property persistence, physical access records, and proximity gates.
+- `src/shared/harthmere/building_system.ts` owns player property plots, blueprints, voxel materialization, storage, doors, home console markers, and business counter markers.
+- `src/shared/harthmere/business_customer_simulator.ts` owns business outpost records, customer pools, minigame business types, outpost reference coordinates, canonical business building metadata, cleanup plans, and rebuild materialization plans.
+- `src/shared/harthmere/business_npc_cosmetics.ts` owns Grove-style procedural business staff/customer appearance data.
+- `src/shared/harthmere/live_mode_backend.ts` owns live-mode placement, property persistence, physical access records, and proximity gates.
 - `src/client/components/biomes_ui/tabs/LandTab.tsx` owns the Building System UI.
 - `src/client/components/harthmere_home/*` owns the separate in-building Home Console UI.
-- `src/client/game/renderers/local_dev/harthmere_business_outpost_buildings_v1.ts` may render helper/access cues for local development, but it must not be the structural source of truth.
+- `src/client/game/renderers/local_dev/harthmere_business_outpost_buildings.ts` may render helper/access cues for local development, but it must not be the structural source of truth.
 
 Do not make structural buildings by stacking GLB/OBJ pieces in the renderer. Visual props may dress a building, but the building shell, access markers, and gameplay records must come from backend/shared building data.
 
@@ -244,7 +244,7 @@ Customer-only NPCs should remain session-only unless they are intended to become
 
 Business NPC cosmetics must follow the same visual family as Grove procedural NPCs:
 
-- Use `business_npc_cosmetics_v1.ts` for deterministic staff/customer character appearances.
+- Use `business_npc_cosmetics.ts` for deterministic staff/customer character appearances.
 - Use the `townsperson_*` procedural renderer family rather than Harthmere-specific mannequin or placeholder bodies.
 - Include face, body, hair, eyes, nose, skin tone, clothing, and at least one accessory or profession cue where appropriate.
 - Include required clothing slots: head, torso, legs, feet, and belt or equivalent outfit support.
@@ -321,13 +321,13 @@ Visual tests are valuable for final polish, but only run them when explicitly re
 
 Current focused test families for this contract include:
 
-- `src/shared/harthmere/test/business_customer_simulator_v1.test.ts`
-- `src/shared/harthmere/test/business_npc_cosmetics_v1.test.ts`
-- `src/shared/harthmere/test/live_mode_backend_v1.test.ts`
-- `src/shared/harthmere/test/mmo_economy_authority_v1.test.ts`
-- `src/client/game/renderers/local_dev/test/harthmere_business_outpost_buildings_v1.test.ts`
-- `src/client/components/biomes_ui/adapters/__tests__/mapAdapterV141.test.ts`
-- `src/client/components/map/markers/test/harthmere_business_minimap_pins_v1.test.ts`
+- `src/shared/harthmere/test/business_customer_simulator.test.ts`
+- `src/shared/harthmere/test/business_npc_cosmetics.test.ts`
+- `src/shared/harthmere/test/live_mode_backend.test.ts`
+- `src/shared/harthmere/test/mmo_economy_authority.test.ts`
+- `src/client/game/renderers/local_dev/test/harthmere_business_outpost_buildings.test.ts`
+- `src/client/components/biomes_ui/adapters/__tests__/mapAdapter.test.ts`
+- `src/client/components/map/markers/test/harthmere_business_minimap_pins.test.ts`
 
 ## Review checklist
 

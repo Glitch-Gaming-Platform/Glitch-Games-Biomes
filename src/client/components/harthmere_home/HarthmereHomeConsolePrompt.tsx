@@ -2,13 +2,13 @@ import * as React from "react";
 import { installBiomesUITheme } from "../biomes_ui/theme/biomesUITheme";
 import { HarthmereInterfaceAccessPoint } from "../harthmere_access/HarthmereInterfaceAccessPoint";
 import type {
-  HarthmereHomeConsoleAdapterV1,
-  HarthmereHomeConsoleWorldContextV1,
+  HarthmereHomeConsoleAdapter,
+  HarthmereHomeConsoleWorldContext,
 } from "./homeConsoleLiveAdapter";
 
 export interface HarthmereHomeConsolePromptProps {
-  adapter: HarthmereHomeConsoleAdapterV1;
-  context: HarthmereHomeConsoleWorldContextV1;
+  adapter: HarthmereHomeConsoleAdapter;
+  context: HarthmereHomeConsoleWorldContext;
   onInteract?: (propertyId: string) => void;
 }
 

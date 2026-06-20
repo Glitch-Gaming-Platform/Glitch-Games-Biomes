@@ -100,13 +100,13 @@
 }
 
 
-/* Harthmere character builder v13 balanced preview polish */
-.harthmere-wakeup-character-builder [data-harthmere-builder-layout="v13-balanced-preview"] {
+/* Harthmere character builder current balanced preview polish */
+.harthmere-wakeup-character-builder [data-harthmere-builder-layout="balanced-preview"] {
   --harthmere-builder-card: rgba(15, 23, 42, 0.74);
   --harthmere-builder-line: rgba(255, 255, 255, 0.12);
 }
 
-.harthmere-wakeup-character-builder [data-harthmere-builder-layout="v13-balanced-preview"] .avatar-viewer {
+.harthmere-wakeup-character-builder [data-harthmere-builder-layout="balanced-preview"] .avatar-viewer {
   min-height: 18rem;
   max-height: 23rem;
   border-radius: 1rem;
@@ -115,28 +115,28 @@
     linear-gradient(180deg, rgba(15, 23, 42, 0.5), rgba(2, 6, 23, 0.72));
 }
 
-.harthmere-wakeup-character-builder [data-harthmere-builder-layout="v13-balanced-preview"] .preview-container {
+.harthmere-wakeup-character-builder [data-harthmere-builder-layout="balanced-preview"] .preview-container {
   isolation: isolate;
 }
 
-.harthmere-wakeup-character-builder [data-harthmere-builder-layout="v13-balanced-preview"] button[data-harthmere-builder-value] {
+.harthmere-wakeup-character-builder [data-harthmere-builder-layout="balanced-preview"] button[data-harthmere-builder-value] {
   min-height: 1.95rem;
   line-height: 1.05;
 }
 
-.harthmere-wakeup-character-builder [data-harthmere-builder-layout="v13-balanced-preview"] section {
+.harthmere-wakeup-character-builder [data-harthmere-builder-layout="balanced-preview"] section {
   scrollbar-gutter: stable;
 }
 
 @media (max-height: 760px) {
-  .harthmere-wakeup-character-builder [data-harthmere-builder-layout="v13-balanced-preview"] .avatar-viewer {
+  .harthmere-wakeup-character-builder [data-harthmere-builder-layout="balanced-preview"] .avatar-viewer {
     min-height: 15.5rem;
     max-height: 19rem;
   }
 }
 
 
-/* Harthmere character builder v22 release readability patch.
+/* Harthmere character builder current release readability patch.
    These selectors deliberately override utility classes so selected/unselected
    states stay visible in production builds and visual QA screenshots. */
 .harthmere-wakeup-character-builder [data-harthmere-builder-full-body-preview="true"] {
@@ -172,10 +172,10 @@
 }
 
 
-/* Harthmere character builder v24 design-system correction.
+/* Harthmere character builder current design-system correction.
    Purpose: readable full-body preview, proper chip contrast, and predictable
    flex-wrap option layout for release screenshots. */
-.harthmere-wakeup-character-builder [data-harthmere-builder-preview-version="v24-svg-full-body-readable"] {
+.harthmere-wakeup-character-builder [data-harthmere-builder-preview-version="svg-full-body-readable"] {
   min-height: 28rem;
   background:
     radial-gradient(circle at 50% 18%, rgba(125, 211, 252, 0.2), rgba(99, 102, 241, 0.14) 38%, rgba(2, 6, 23, 0.9) 100%);
@@ -243,7 +243,7 @@
 }
 
 
-/* Harthmere character builder v6 — compact rows + readable selected chips + small real 3D preview */
+/* Harthmere character builder current — compact rows + readable selected chips + small real 3D preview */
 .harthmere-wakeup-character-builder .preview-container {
   display: flex !important;
   align-items: center !important;
@@ -330,7 +330,7 @@
 
 
 
-/* Harthmere character builder v7 — real scrollable controls + guaranteed tiny avatar preview */
+/* Harthmere character builder current — real scrollable controls + guaranteed tiny avatar preview */
 .harthmere-wakeup-character-builder [data-harthmere-builder-layout] { max-height: calc(100vh - 7.5rem) !important; min-height: min(42rem, calc(100vh - 7.5rem)) !important; overflow: hidden !important; align-items: stretch !important; }
 .harthmere-wakeup-character-builder .harthmere-builder-options-scroll { min-height: 0 !important; max-height: calc(100vh - 8.5rem) !important; overflow-y: auto !important; overflow-x: hidden !important; padding-right: 0.35rem !important; display: flex !important; flex-direction: column !important; gap: 1rem !important; scrollbar-gutter: stable !important; }
 .harthmere-wakeup-character-builder .harthmere-builder-options-scroll > section { min-height: auto !important; overflow: visible !important; flex: 0 0 auto !important; }
@@ -346,7 +346,7 @@
 
 
 
-/* Harthmere character builder v8 — actual game avatar in small frame + scrollable controls */
+/* Harthmere character builder current — actual game avatar in small frame + scrollable controls */
 .harthmere-wakeup-character-builder [data-harthmere-builder-layout] {
   max-height: calc(100vh - 7.5rem) !important;
   min-height: min(42rem, calc(100vh - 7.5rem)) !important;
@@ -453,7 +453,7 @@
 
 
 
-/* Harthmere builder v10 actual face preview.
+/* Harthmere builder current actual face preview.
    This replaces the hand-drawn mini face card with a real CharacterPreview
    camera focused on the avatar head, while keeping the card small. */
 .harthmere-wakeup-character-builder .harthmere-actual-face-preview-frame {

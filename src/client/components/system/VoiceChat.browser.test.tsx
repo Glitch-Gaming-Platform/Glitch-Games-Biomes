@@ -243,7 +243,7 @@ describe("VoiceChat browser playback cleanup", () => {
               {open ? (
                 <VoiceChat
                   text="Billy Rhodes should stop after close."
-                  voice="azure-speech-v1|voice=en-US-GuyNeural"
+                  voice="azure-speech|voice=en-US-GuyNeural"
                   language="en-US"
                   playbackKey="billy-rhodes:test"
                 />
@@ -289,7 +289,7 @@ describe("VoiceChat browser playback cleanup", () => {
               {open ? (
                 <VoiceChat
                   text="Billy Rhodes is already speaking."
-                  voice="azure-speech-v1|voice=en-US-GuyNeural"
+                  voice="azure-speech|voice=en-US-GuyNeural"
                   language="en-US"
                   playbackKey="billy-rhodes:active"
                 />
@@ -359,14 +359,14 @@ describe("VoiceChat browser playback cleanup", () => {
               {npc === "Billy" ? (
                 <VoiceChat
                   text="Billy's old line."
-                  voice="azure-speech-v1|voice=en-US-GuyNeural"
+                  voice="azure-speech|voice=en-US-GuyNeural"
                   language="en-US"
                   playbackKey="billy-rhodes:old"
                 />
               ) : (
                 <VoiceChat
                   text="Jackie's current line."
-                  voice="azure-speech-v1|voice=en-US-AvaNeural"
+                  voice="azure-speech|voice=en-US-AvaNeural"
                   language="en-US"
                   playbackKey="jackie:current"
                 />
@@ -410,7 +410,7 @@ describe("VoiceChat browser playback cleanup", () => {
           return (
             <VoiceChat
               text="Azure may fail but the dialogue should survive."
-              voice="azure-speech-v1|voice=en-US-GuyNeural"
+              voice="azure-speech|voice=en-US-GuyNeural"
               language="en-US"
               playbackKey="azure:failure"
             />
@@ -442,7 +442,7 @@ describe("VoiceChat browser playback cleanup", () => {
         return (
           <VoiceChat
             text="Same tab-isolated line."
-            voice="azure-speech-v1|voice=en-US-GuyNeural"
+            voice="azure-speech|voice=en-US-GuyNeural"
             language="en-US"
             playbackKey="same-npc:same-line"
           />

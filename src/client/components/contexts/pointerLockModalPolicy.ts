@@ -1,31 +1,31 @@
-export const POINTER_LOCK_UNLOCK_WHILE_OPEN_SELECTOR_V1 =
+export const POINTER_LOCK_UNLOCK_WHILE_OPEN_SELECTOR =
   '[data-pointer-lock-policy="unlock-while-open"]';
 
-let pointerLockUnlockWhileOpenDepthV1 = 0;
+let pointerLockUnlockWhileOpenDepth = 0;
 
-export interface PointerLockUnlockWhileOpenManagerV1 {
+export interface PointerLockUnlockWhileOpenManager {
   isLocked(): boolean;
   unlock(): void;
   focusAndLock(): void;
 }
 
-export interface PointerLockUnlockWhileOpenReturnRefV1 {
+export interface PointerLockUnlockWhileOpenReturnRef {
   current: boolean;
   policyActive?: boolean;
 }
 
-// HARTHMERE_UI_V147: a subscriber set so React surfaces (the EscGameMenu)
+// HARTHMERE_UI: a subscriber set so React surfaces (the EscGameMenu)
 // can hide themselves while an "unlock-while-open" panel is active. Without
 // this, opening the Jobs Board / Home / Business / Crafting panel would
 // surface the "Return to Game" overlay on top of the panel because the
 // pointer is intentionally unlocked.
-const pointerLockUnlockWhileOpenSubscribersV1 = new Set<() => void>();
+const pointerLockUnlockWhileOpenSubscribers = new Set<() => void>();
 
-function notifyPointerLockUnlockWhileOpenSubscribersV1() {
+function notifyPointerLockUnlockWhileOpenSubscribers() {
   // Iterate over a snapshot to avoid mutation-during-iteration if a subscriber
   // unsubscribes itself in response to the notification.
   for (const subscriber of Array.from(
-    pointerLockUnlockWhileOpenSubscribersV1
+    pointerLockUnlockWhileOpenSubscribers
   )) {
     try {
       subscriber();
@@ -33,37 +33,37 @@ function notifyPointerLockUnlockWhileOpenSubscribersV1() {
   }
 }
 
-export function subscribePointerLockUnlockWhileOpenV1(
+export function subscribePointerLockUnlockWhileOpen(
   subscriber: () => void
 ) {
-  pointerLockUnlockWhileOpenSubscribersV1.add(subscriber);
+  pointerLockUnlockWhileOpenSubscribers.add(subscriber);
   return () => {
-    pointerLockUnlockWhileOpenSubscribersV1.delete(subscriber);
+    pointerLockUnlockWhileOpenSubscribers.delete(subscriber);
   };
 }
 
-export function beginPointerLockUnlockWhileOpenV1() {
-  pointerLockUnlockWhileOpenDepthV1 += 1;
-  notifyPointerLockUnlockWhileOpenSubscribersV1();
+export function beginPointerLockUnlockWhileOpen() {
+  pointerLockUnlockWhileOpenDepth += 1;
+  notifyPointerLockUnlockWhileOpenSubscribers();
 }
 
-export function endPointerLockUnlockWhileOpenV1() {
-  const next = Math.max(0, pointerLockUnlockWhileOpenDepthV1 - 1);
-  if (next === pointerLockUnlockWhileOpenDepthV1) return;
-  pointerLockUnlockWhileOpenDepthV1 = next;
-  notifyPointerLockUnlockWhileOpenSubscribersV1();
+export function endPointerLockUnlockWhileOpen() {
+  const next = Math.max(0, pointerLockUnlockWhileOpenDepth - 1);
+  if (next === pointerLockUnlockWhileOpenDepth) return;
+  pointerLockUnlockWhileOpenDepth = next;
+  notifyPointerLockUnlockWhileOpenSubscribers();
 }
 
-export function isPointerLockUnlockWhileOpenActiveV1() {
-  return pointerLockUnlockWhileOpenDepthV1 > 0;
+export function isPointerLockUnlockWhileOpenActive() {
+  return pointerLockUnlockWhileOpenDepth > 0;
 }
 
-export function openPointerLockUnlockWhileOpenV1(
-  pointerLockManager: PointerLockUnlockWhileOpenManagerV1,
-  shouldReturnPointerLockRef: PointerLockUnlockWhileOpenReturnRefV1
+export function openPointerLockUnlockWhileOpen(
+  pointerLockManager: PointerLockUnlockWhileOpenManager,
+  shouldReturnPointerLockRef: PointerLockUnlockWhileOpenReturnRef
 ) {
   if (!shouldReturnPointerLockRef.policyActive) {
-    beginPointerLockUnlockWhileOpenV1();
+    beginPointerLockUnlockWhileOpen();
     shouldReturnPointerLockRef.policyActive = true;
     shouldReturnPointerLockRef.current = pointerLockManager.isLocked();
   } else {
@@ -73,12 +73,12 @@ export function openPointerLockUnlockWhileOpenV1(
   pointerLockManager.unlock();
 }
 
-export function closePointerLockUnlockWhileOpenV1(
-  pointerLockManager: PointerLockUnlockWhileOpenManagerV1,
-  shouldReturnPointerLockRef: PointerLockUnlockWhileOpenReturnRefV1
+export function closePointerLockUnlockWhileOpen(
+  pointerLockManager: PointerLockUnlockWhileOpenManager,
+  shouldReturnPointerLockRef: PointerLockUnlockWhileOpenReturnRef
 ) {
   if (shouldReturnPointerLockRef.policyActive) {
-    endPointerLockUnlockWhileOpenV1();
+    endPointerLockUnlockWhileOpen();
     shouldReturnPointerLockRef.policyActive = false;
   }
   if (!shouldReturnPointerLockRef.current) return;
@@ -86,11 +86,11 @@ export function closePointerLockUnlockWhileOpenV1(
   pointerLockManager.focusAndLock();
 }
 
-export function hasPointerLockUnlockWhileOpenSurfaceV1(
+export function hasPointerLockUnlockWhileOpenSurface(
   root: Pick<ParentNode, "querySelector"> | undefined =
     typeof document === "undefined" ? undefined : document
 ) {
   return Boolean(
-    root?.querySelector(POINTER_LOCK_UNLOCK_WHILE_OPEN_SELECTOR_V1)
+    root?.querySelector(POINTER_LOCK_UNLOCK_WHILE_OPEN_SELECTOR)
   );
 }

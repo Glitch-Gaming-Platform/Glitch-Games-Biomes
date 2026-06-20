@@ -360,7 +360,7 @@ export type HarthmereCharacterEquipment = Partial<
   Record<HarthmereEquipmentSlot, string>
 >;
 
-// V14 modular clothing/wearable schema. Equipment remains the combat-facing
+// current modular clothing/wearable schema. Equipment remains the combat-facing
 // hand/head/back item ids; clothing is the visual outfit layer that can later
 // resolve to GLB assets skinned to the same skeleton as the body.
 export const HARTHMERE_CLOTHING_SLOTS = [
@@ -388,12 +388,12 @@ export type HarthmereClothingItem = {
   modelUrl?: string;
   attachBone?: HarthmereAttachmentAnchorKey | string;
   bindMode?: HarthmereClothingBindMode;
-  // V15: rendering strategy is separate from bind mode. A robe can be a real
+  // current: rendering strategy is separate from bind mode. A robe can be a real
   // same-skeleton GLB in production, or a Three.js body-fitted fallback while
   // art is still being authored. The selected renderer is data-driven so the
   // game can display the version we actually like without changing saved slot ids.
   renderMode?: HarthmereClothingRenderMode;
-  // V15: body-fit means dimensions come from the same body customization values
+  // current: body-fit means dimensions come from the same body customization values
   // as the player/NPC body: body type, height, shoulders, arm length, leg length,
   // and stance. This prevents tiny clothes floating on broad/stocky/tall bodies.
   fitMode?: HarthmereClothingFitMode;
@@ -754,13 +754,13 @@ const HARTHMERE_BODY_MARKER_END = " -->";
 const HARTHMERE_APPEARANCE_MARKER = "<!-- harthmere:appearance:";
 const HARTHMERE_APPEARANCE_MARKER_END = " -->";
 const HARTHMERE_PLAYER_FACE_KEY_PREFIX =
-  "biomes.localDev.harthmere.playerFace.v2.user.";
+  "biomes.localDev.harthmere.playerFace.user.";
 const HARTHMERE_PLAYER_BODY_KEY_PREFIX =
-  "biomes.localDev.harthmere.playerBody.v2.user.";
+  "biomes.localDev.harthmere.playerBody.user.";
 const HARTHMERE_PLAYER_CLOTHING_KEY_PREFIX =
-  "biomes.localDev.harthmere.playerClothing.v1.user.";
+  "biomes.localDev.harthmere.playerClothing.user.";
 const HARTHMERE_PLAYER_BODY_LEGACY_KEY_PREFIXES = [
-  "biomes.localDev.harthmere.playerBody.v1.user.",
+  "biomes.localDev.harthmere.playerBody.user.",
 ] as const;
 
 function hashString(value: string) {
@@ -1233,9 +1233,9 @@ function harthmereClothingItem(
 }
 
 export const HARTHMERE_THREEJS_CLOTHING_CATALOG_VERSION =
-  "harthmere-threejs-clothing-catalog-v20-product-minecraft-polish";
+  "harthmere-threejs-clothing-catalog-product-minecraft-polish";
 export const HARTHMERE_PRODUCT_MINECRAFT_POLISH_VERSION =
-  "harthmere-product-minecraft-polish-v20";
+  "harthmere-product-minecraft-polish";
 
 export const HARTHMERE_THREEJS_CLOTHING_CATALOG: Record<
   string,
@@ -1781,9 +1781,9 @@ export type HarthmerePlayerClothingPreset = {
 
 export const HARTHMERE_PLAYER_STARTER_CLOTHING_PRESETS: readonly HarthmerePlayerClothingPreset[] =
   [
-    // HARTHMERE_STORY_BIBLE_APPEARANCE_V70 player presets.
+    // HARTHMERE_STORY_BIBLE_APPEARANCE player presets.
     {
-      id: "bellbound_traveler_v70",
+      id: "bellbound_traveler",
       label: "Bellbound Traveler",
       description:
         "Story-bible default: road-ready forest layers, belt, gloves, and bedroll for the Harthmere main quest.",
@@ -1798,7 +1798,7 @@ export const HARTHMERE_PLAYER_STARTER_CLOTHING_PRESETS: readonly HarthmerePlayer
       },
     },
     {
-      id: "bellbound_watch_v70",
+      id: "bellbound_watch",
       label: "Town Watch Ally",
       description:
         "Red-black Watch silhouette for players who want a guard, fighter, or civic defender read.",
@@ -1813,7 +1813,7 @@ export const HARTHMERE_PLAYER_STARTER_CLOTHING_PRESETS: readonly HarthmerePlayer
       },
     },
     {
-      id: "bellbound_chapel_v70",
+      id: "bellbound_chapel",
       label: "Chapel Initiate",
       description:
         "Verenine chapel robe and soft shoes for cleric, healer, scholar, or lore-heavy play.",
@@ -1827,7 +1827,7 @@ export const HARTHMERE_PLAYER_STARTER_CLOTHING_PRESETS: readonly HarthmerePlayer
       },
     },
     {
-      id: "bellbound_mudden_v70",
+      id: "bellbound_mudden",
       label: "Mudden Ward Survivor",
       description:
         "Patched, ash-toned layers for rogue, survivor, fence, or undercity starts.",
@@ -1920,9 +1920,9 @@ export const HARTHMERE_PLAYER_STARTER_CLOTHING_PRESETS: readonly HarthmerePlayer
         belt: harthmereThreeJsClothingItem("tool_belt"),
       },
     },
-    // SNAPSHOT_GROVE_PLAYER_BUILDER_UI_V77 actual first-login Grove presets.
+    // SNAPSHOT_GROVE_PLAYER_BUILDER_UI actual first-login Grove presets.
     {
-      id: "grove_wayfinder_v77",
+      id: "grove_wayfinder",
       label: "Grove Wayfinder",
       description:
         "Grove starter identity: Jackie-style road readiness with warm travel gear, pack, gloves, and practical boots.",
@@ -1937,7 +1937,7 @@ export const HARTHMERE_PLAYER_STARTER_CLOTHING_PRESETS: readonly HarthmerePlayer
       },
     },
     {
-      id: "lovely_locks_traveler_v77",
+      id: "lovely_locks_traveler",
       label: "Lovely Locks Traveler",
       description:
         "Alexis/Lovely Locks identity preset: polished, social-ready, and photo-friendly without losing road practicality.",
@@ -1951,7 +1951,7 @@ export const HARTHMERE_PLAYER_STARTER_CLOTHING_PRESETS: readonly HarthmerePlayer
       },
     },
     {
-      id: "mosslawn_scout_v77",
+      id: "mosslawn_scout",
       label: "Mosslawn Scout",
       description:
         "Ranger Jane/Mosslawn preset: muted trail gear, gloves, boots, and field pack for observation-first players.",
@@ -1966,7 +1966,7 @@ export const HARTHMERE_PLAYER_STARTER_CLOTHING_PRESETS: readonly HarthmerePlayer
       },
     },
     {
-      id: "shutter_cove_lenskeeper_v77",
+      id: "shutter_cove_lenskeeper",
       label: "Shutter Cove Lenskeeper",
       description:
         "Dimmi/Shutter Cove preset: camera-social explorer kit with blues, a satchel, and clean travel lines.",
@@ -1980,7 +1980,7 @@ export const HARTHMERE_PLAYER_STARTER_CLOTHING_PRESETS: readonly HarthmerePlayer
       },
     },
     {
-      id: "grove_storybook_runner_v100",
+      id: "grove_storybook_runner",
       label: "Grove Storybook Runner",
       description:
         "Hair-visible Grove silhouette with soft travel layers, clear boots, gloves, and a pack; made to feel closer to the named Grove NPCs.",
@@ -1994,7 +1994,7 @@ export const HARTHMERE_PLAYER_STARTER_CLOTHING_PRESETS: readonly HarthmerePlayer
       },
     },
     {
-      id: "grove_fountain_social_v100",
+      id: "grove_fountain_social",
       label: "Grove Fountain Social",
       description:
         "A cleaner social starter look that keeps the hair, face, and silhouette readable in the builder preview and around the fountain.",
@@ -2008,16 +2008,16 @@ export const HARTHMERE_PLAYER_STARTER_CLOTHING_PRESETS: readonly HarthmerePlayer
     },
   ];
 
-// HARTHMERE_STORY_BIBLE_APPEARANCE_V70:
+// HARTHMERE_STORY_BIBLE_APPEARANCE:
 // Applies the Harthmere Bellbound Dragon story/design bible to the local
 // Harthmere voxel actor renderer. Snapshot NPCs keep the upstream Bikkie
-// wearable mesh path from v69; Harthmere-specific NPCs and players now get
+// wearable mesh path from current; Harthmere-specific NPCs and players now get
 // richer role-based clothing, faces, body shape, equipment, and palette choices
 // instead of generic role buckets.
-export const HARTHMERE_STORY_BIBLE_APPEARANCE_VERSION_V70 =
-  "harthmere-story-bible-appearance-v70" as const;
+export const HARTHMERE_STORY_BIBLE_APPEARANCE_VERSION =
+  "harthmere-story-bible-appearance" as const;
 
-type HarthmereStoryBibleAppearanceProfileV70 = {
+type HarthmereStoryBibleAppearanceProfile = {
   role?: HarthmereCharacterRole;
   face?: Partial<HarthmereVoxelFaceConfig>;
   body?: Partial<HarthmereVoxelBodyConfig>;
@@ -2026,14 +2026,14 @@ type HarthmereStoryBibleAppearanceProfileV70 = {
   profileId: string;
 };
 
-function harthmereStoryBibleTextV70(input: {
+function harthmereStoryBibleText(input: {
   name?: string;
   roleHint?: string;
 }) {
   return `${input.name ?? ""} ${input.roleHint ?? ""}`.toLowerCase();
 }
 
-function harthmereStoryBiblePlayerDefaultClothingBaseV70(): HarthmereCharacterClothing {
+function harthmereStoryBiblePlayerDefaultClothingBase(): HarthmereCharacterClothing {
   return {
     head: harthmereThreeJsClothingItem("hunter_cap"),
     torso: harthmereThreeJsClothingItem("forest_tunic"),
@@ -2045,10 +2045,10 @@ function harthmereStoryBiblePlayerDefaultClothingBaseV70(): HarthmereCharacterCl
   };
 }
 
-export function harthmereStoryBiblePlayerDefaultClothingV70(
+export function harthmereStoryBiblePlayerDefaultClothing(
   body: HarthmereVoxelBodyConfig = DEFAULT_HARTHMERE_PLAYER_BODY
 ): HarthmereCharacterClothing {
-  const base = harthmereStoryBiblePlayerDefaultClothingBaseV70();
+  const base = harthmereStoryBiblePlayerDefaultClothingBase();
   if (body.outfitColor === "royal") {
     base.torso = harthmereThreeJsClothingItem("royal_tunic");
     base.legs = harthmereThreeJsClothingItem("royal_trousers");
@@ -2065,20 +2065,20 @@ export function harthmereStoryBiblePlayerDefaultClothingV70(
   return normalizeHarthmereClothing(base);
 }
 
-function harthmereStoryBibleAppearanceProfileForV70(input: {
+function harthmereStoryBibleAppearanceProfileFor(input: {
   id?: BiomesId | number | string;
   name?: string;
   roleHint?: string;
-}): HarthmereStoryBibleAppearanceProfileV70 | undefined {
-  const text = harthmereStoryBibleTextV70(input);
+}): HarthmereStoryBibleAppearanceProfile | undefined {
+  const text = harthmereStoryBibleText(input);
 
-  // SNAPSHOT_GROVE_FOUNTAIN_APPEARANCE_V104:
+  // SNAPSHOT_GROVE_FOUNTAIN_APPEARANCE:
   // Rosalyn and Nia are promoted Grove tutorial NPCs that do not have upstream
   // snapshot GLB files. Give them stable, Grove-specific appearances instead
   // of the generic teal mannequin look so they read as authored tutorial cast.
   if (/rosalyn/.test(text)) {
     return {
-      profileId: "snapshot_grove_rosalyn_fountain_steward_v104",
+      profileId: "snapshot_grove_rosalyn_fountain_steward",
       role: "merchant",
       face: {
         genderIdentity: "woman",
@@ -2118,7 +2118,7 @@ function harthmereStoryBibleAppearanceProfileForV70(input: {
 
   if (/nia|guild clerk|charter tutor|guild charter/.test(text)) {
     return {
-      profileId: "snapshot_grove_nia_guild_clerk_v104",
+      profileId: "snapshot_grove_nia_guild_clerk",
       role: "merchant",
       face: {
         genderIdentity: "woman",
@@ -2723,7 +2723,7 @@ function harthmereStoryBibleAppearanceProfileForV70(input: {
   return undefined;
 }
 
-function applyHarthmereStoryBibleAppearanceProfileV70(
+function applyHarthmereStoryBibleAppearanceProfile(
   input: {
     id?: BiomesId | number | string;
     name?: string;
@@ -2731,7 +2731,7 @@ function applyHarthmereStoryBibleAppearanceProfileV70(
   },
   appearance: HarthmereCharacterAppearance
 ): HarthmereCharacterAppearance {
-  const profile = harthmereStoryBibleAppearanceProfileForV70(input);
+  const profile = harthmereStoryBibleAppearanceProfileFor(input);
   if (!profile) {
     return appearance;
   }
@@ -2758,7 +2758,7 @@ function applyHarthmereStoryBibleAppearanceProfileV70(
       ...(appearance.equipment ?? {}),
       ...(profile.equipment ?? {}),
     },
-    source: `${appearance.source ?? "generated:npc"}:story-bible-v70:${
+    source: `${appearance.source ?? "generated:npc"}:story-bible:${
       profile.profileId
     }`,
   });
@@ -2773,7 +2773,7 @@ export function defaultHarthmereClothingForRole(
     return {};
   }
   if (role === "player") {
-    return harthmereStoryBiblePlayerDefaultClothingV70(body);
+    return harthmereStoryBiblePlayerDefaultClothing(body);
   }
   const basePalette = body.outfitColor;
   const common: HarthmereCharacterClothing = {
@@ -2871,7 +2871,7 @@ export function defaultHarthmereClothingForRole(
 }
 
 export const HARTHMERE_NPC_UNIQUE_CLOTHING_VERSION =
-  "harthmere-npc-unique-clothing-sets-v19";
+  "harthmere-npc-unique-clothing-sets";
 
 export type HarthmereNpcUniqueClothingInput = {
   id: BiomesId | number | string;
@@ -3675,7 +3675,7 @@ function defaultHarthmereEquipmentForRole(
  * on customized bodies than downloaded GLTFs until those GLTFs are authored
  * against the exact Harthmere skeleton and body proportions.
  */
-function harthmereEnsureProductMinecraftClothingSetV20(
+function harthmereEnsureProductMinecraftClothingSet(
   clothing: HarthmereCharacterClothing | undefined,
   input: HarthmereNpcUniqueClothingInput
 ): HarthmereCharacterClothing {
@@ -3880,7 +3880,7 @@ function harthmereEnsureProductMinecraftClothingSetV20(
   return base;
 }
 
-function makeHarthmereNpcAppearanceConfigBaseV21d(input: {
+function makeHarthmereNpcAppearanceConfigBase(input: {
   id: BiomesId | number;
   name: string;
   roleHint?: string;
@@ -3905,7 +3905,7 @@ function makeHarthmereNpcAppearanceConfigBaseV21d(input: {
       ...defaultHarthmereEquipmentForRole(role, species),
       ...(input.equipment ?? {}),
     },
-    clothing: harthmereEnsureProductMinecraftClothingSetV20(
+    clothing: harthmereEnsureProductMinecraftClothingSet(
       input.clothing ??
         makeHarthmereNpcUniqueClothingSet({
           id: input.id,
@@ -3928,14 +3928,14 @@ function makeHarthmereNpcAppearanceConfigBaseV21d(input: {
     ),
     source: input.source ?? "generated:npc",
   });
-  return applyHarthmereStoryBibleAppearanceProfileV70(input, baseAppearance);
+  return applyHarthmereStoryBibleAppearanceProfile(input, baseAppearance);
 }
 
-export const HARTHMERE_GROVE_INSPIRED_APPEARANCE_POLISH_VERSION_V100 =
-  "harthmere-grove-inspired-appearance-polish-v100" as const;
+export const HARTHMERE_GROVE_INSPIRED_APPEARANCE_POLISH_VERSION =
+  "harthmere-grove-inspired-appearance-polish" as const;
 
-// HARTHMERE_HAWTHERNE_BIBLE_POLISH_V101:
-// Extends the v100 Grove polish to cover the rest of the Hawtherne cast. The
+// HARTHMERE_HAWTHERNE_BIBLE_POLISH:
+// Extends the current Grove polish to cover the rest of the Hawtherne cast. The
 // canonical HarthmereCharacterRole enum only contains a small set, but the
 // Hawtherne bible defines many sub-archetypes (town guide, town crier, banker,
 // scholar, dockmaster, drill instructor, healer, baker, smith, child mascot,
@@ -3945,13 +3945,13 @@ export const HARTHMERE_GROVE_INSPIRED_APPEARANCE_POLISH_VERSION_V100 =
 // section 8 of Harthmere_Medieval_MMO_Town_Design_Bible_Complete.pdf
 // (e.g. "scarred jaw / red-black tabard / tired eyes", "rolled sleeves /
 // copper key ring", "burn scars / forge-lit silhouette").
-export const HARTHMERE_HAWTHERNE_BIBLE_POLISH_VERSION_V101 =
-  "harthmere-hawtherne-bible-polish-v101" as const;
+export const HARTHMERE_HAWTHERNE_BIBLE_POLISH_VERSION =
+  "harthmere-hawtherne-bible-polish" as const;
 
-export const HARTHMERE_GROVE_UNIQUE_NPC_POLISH_VERSION_V137 =
-  "harthmere-grove-unique-npc-polish-v137" as const;
+export const HARTHMERE_GROVE_UNIQUE_NPC_POLISH_VERSION =
+  "harthmere-grove-unique-npc-polish" as const;
 
-type HarthmereGroveUniqueNpcKeyV137 =
+type HarthmereGroveUniqueNpcKey =
   | "billy"
   | "doc"
   | "mucked_robot"
@@ -3968,7 +3968,7 @@ type HarthmereGroveUniqueNpcKeyV137 =
   | "rin_forager"
   | "sil_farmer";
 
-function harthmereGroveUniqueNpcKeyV137(name: string, roleHint?: string) {
+function harthmereGroveUniqueNpcKey(name: string, roleHint?: string) {
   const text = `${name} ${roleHint ?? ""}`.toLowerCase();
   if (/^billy\b/.test(text)) return "billy" as const;
   if (/^doc\b|doctor|field medic|muck researcher/.test(text))
@@ -3997,8 +3997,8 @@ function harthmereGroveUniqueNpcKeyV137(name: string, roleHint?: string) {
   return undefined;
 }
 
-function harthmereGroveUniqueNpcClothingV137(
-  key: HarthmereGroveUniqueNpcKeyV137
+function harthmereGroveUniqueNpcClothing(
+  key: HarthmereGroveUniqueNpcKey
 ): HarthmereCharacterClothing {
   switch (key) {
     case "billy":
@@ -4097,13 +4097,13 @@ function harthmereGroveUniqueNpcClothingV137(
   }
 }
 
-function harthmereApplyGroveUniqueNpcPolishV137(input: {
+function harthmereApplyGroveUniqueNpcPolish(input: {
   id: BiomesId | number;
   name: string;
   roleHint?: string;
   appearance: HarthmereCharacterAppearance;
 }): HarthmereCharacterAppearance {
-  const key = harthmereGroveUniqueNpcKeyV137(input.name, input.roleHint);
+  const key = harthmereGroveUniqueNpcKey(input.name, input.roleHint);
   if (!key) {
     return input.appearance;
   }
@@ -4484,14 +4484,14 @@ function harthmereApplyGroveUniqueNpcPolishV137(input: {
     role,
     face,
     body,
-    clothing: harthmereGroveUniqueNpcClothingV137(key),
+    clothing: harthmereGroveUniqueNpcClothing(key),
     source: `${
       input.appearance.source ?? "generated:npc"
-    };${HARTHMERE_GROVE_UNIQUE_NPC_POLISH_VERSION_V137};${key}`,
+    };${HARTHMERE_GROVE_UNIQUE_NPC_POLISH_VERSION};${key}`,
   });
 }
 
-function harthmereApplyGroveInspiredAppearancePolishV100(input: {
+function harthmereApplyGroveInspiredAppearancePolish(input: {
   id: BiomesId | number;
   name: string;
   roleHint?: string;
@@ -4504,7 +4504,7 @@ function harthmereApplyGroveInspiredAppearancePolishV100(input: {
   const seed = hashString(
     `${input.id}:${input.name}:${input.roleHint ?? ""}:${
       appearance.role
-    }:grove-polish-v100`
+    }:grove-polish`
   );
   const text = `${input.name} ${input.roleHint ?? ""}`.toLowerCase();
   const face: HarthmereVoxelFaceConfig = { ...appearance.face };
@@ -4516,7 +4516,7 @@ function harthmereApplyGroveInspiredAppearancePolishV100(input: {
     return appearance;
   }
 
-  // HAWTHERNE_BIBLE_POLISH_V101: Hawtherne sub-archetypes resolved by name/hint
+  // HAWTHERNE_BIBLE_POLISH: Hawtherne sub-archetypes resolved by name/hint
   // text take priority over the broad role buckets. This lets civilians like
   // "Town Crier Pell" and "Mira, Town Guide" pick up bible-faithful polish
   // instead of the bland default branch.
@@ -4837,10 +4837,10 @@ function harthmereApplyGroveInspiredAppearancePolishV100(input: {
     source: hawtherneArchetypeHandled
       ? `${
           appearance.source ?? "generated:npc"
-        };${HARTHMERE_GROVE_INSPIRED_APPEARANCE_POLISH_VERSION_V100};${HARTHMERE_HAWTHERNE_BIBLE_POLISH_VERSION_V101}`
+        };${HARTHMERE_GROVE_INSPIRED_APPEARANCE_POLISH_VERSION};${HARTHMERE_HAWTHERNE_BIBLE_POLISH_VERSION}`
       : `${
           appearance.source ?? "generated:npc"
-        };${HARTHMERE_GROVE_INSPIRED_APPEARANCE_POLISH_VERSION_V100}`,
+        };${HARTHMERE_GROVE_INSPIRED_APPEARANCE_POLISH_VERSION}`,
   });
 }
 
@@ -4855,8 +4855,8 @@ export function makeHarthmereNpcAppearanceConfig(input: {
   clothing?: HarthmereCharacterClothing;
   source?: string;
 }): HarthmereCharacterAppearance {
-  const appearance = makeHarthmereNpcAppearanceConfigBaseV21d(input);
-  const clothing = harthmereEnsureProductMinecraftClothingSetV20(
+  const appearance = makeHarthmereNpcAppearanceConfigBase(input);
+  const clothing = harthmereEnsureProductMinecraftClothingSet(
     appearance.clothing ?? input.clothing,
     {
       id: input.id,
@@ -4874,19 +4874,19 @@ export function makeHarthmereNpcAppearanceConfig(input: {
     clothing,
     source: appearance.source ?? input.source,
   });
-  const groveUnique = harthmereApplyGroveUniqueNpcPolishV137({
+  const groveUnique = harthmereApplyGroveUniqueNpcPolish({
     id: input.id,
     name: input.name,
     roleHint: input.roleHint,
     appearance: normalized,
   });
   if (
-    groveUnique.source?.includes(HARTHMERE_GROVE_UNIQUE_NPC_POLISH_VERSION_V137)
+    groveUnique.source?.includes(HARTHMERE_GROVE_UNIQUE_NPC_POLISH_VERSION)
   ) {
     return groveUnique;
   }
 
-  return harthmereApplyGroveInspiredAppearancePolishV100({
+  return harthmereApplyGroveInspiredAppearancePolish({
     id: input.id,
     name: input.name,
     roleHint: input.roleHint,
@@ -5085,7 +5085,7 @@ function dispatchHarthmereAppearanceStorageEvent(
 }
 
 const HARTHMERE_ANONYMOUS_CUSTOMIZATION_SESSION_KEY =
-  "biomes.localDev.harthmere.customizationAnonymousSession.v1";
+  "biomes.localDev.harthmere.customizationAnonymousSession";
 
 const HARTHMERE_PLAYER_CUSTOMIZATION_KEY_PREFIXES = [
   HARTHMERE_PLAYER_FACE_KEY_PREFIX,
@@ -5403,7 +5403,7 @@ export function loadHarthmerePlayerBodyConfig(
     }
     try {
       const normalized = normalizeHarthmereBodyConfig(JSON.parse(raw));
-      // Body storage moved from v1 to v2 when body got its own schema version.
+      // Body storage moved from current to current when body got its own schema version.
       // Preserve old saves by lazily copying a readable legacy value into the
       // current key without deleting the old key.
       if (key !== currentKey && !window.localStorage.getItem(currentKey)) {
@@ -5539,7 +5539,7 @@ export function saveHarthmerePlayerBodyConfig(
   });
 }
 
-// Harthmere licensed clothing asset manifest v15.
+// Harthmere licensed clothing asset manifest current.
 // This re-export keeps the generated asset manifest discoverable from the existing shared Harthmere appearance module.
 export {
   HARTHMERE_CLOTHING_ASSET_MANIFEST_VERSION,

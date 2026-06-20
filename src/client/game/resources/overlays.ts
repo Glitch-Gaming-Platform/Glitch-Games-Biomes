@@ -125,7 +125,7 @@ export interface PlantInspectOverlay {
   projection: ReadonlyVec3f;
 }
 
-// HARTHMERE_WORLD_OBJECT_INSPECT_OVERLAY_V1
+// HARTHMERE_WORLD_OBJECT_INSPECT_OVERLAY
 // Harthmere's interactable world props (crates, boards, posts, doors, ...) are
 // procedural beacons rather than ECS entities, so they carry their label and
 // description inline instead of being read from `/ecs/c/label` by entityId.

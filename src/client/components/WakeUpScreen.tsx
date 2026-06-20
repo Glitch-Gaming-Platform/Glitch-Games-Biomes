@@ -1,4 +1,4 @@
-import { emitHarthmereGlitchBehaviorEventV138 } from "@/client/game/glitch/harthmere_glitch_behavior_events";
+import { emitHarthmereGlitchBehaviorEvent } from "@/client/game/glitch/harthmere_glitch_behavior_events";
 import {
   HARTHMERE_GLITCH_IDENTITY_CHANGED_EVENT,
   getHarthmereGlitchUserName,
@@ -29,7 +29,7 @@ import type { ReadonlyAppearance } from "@/shared/ecs/gen/types";
 import { useClientContext } from "@/client/components/contexts/ClientContextReactContext";
 import { usePointerLockManager } from "@/client/components/contexts/PointerLockContext";
 import {
-  HARTHMERE_WAKE_UP_ACTIVE_DATASET_KEY_V1,
+  HARTHMERE_WAKE_UP_ACTIVE_DATASET_KEY,
   restoreHarthmereFoodStaminaToFullForRespawn,
 } from "@/client/components/challenges/LocalDevHarthmereFoodStaminaSystem";
 import { TalkToInput } from "@/client/components/modals/robot/TalkToRobotModal";
@@ -813,12 +813,12 @@ const HARTHMERE_BUILDER_GLITCH_SAVE_EVENT =
   "biomes:harthmere-builder-glitch-save" as const;
 
 const HARTHMERE_BUILDER_FEATURE_AUDIT_VERSION =
-  "harthmere-supported-voxel-builder-v182" as const;
+  "harthmere-supported-voxel-builder" as const;
 
-const HARTHMERE_GLITCH_CLOUD_SAVE_RESTORED_EVENT_V153 =
-  "biomes:harthmere-glitch-cloud-save-restored-v153" as const;
+const HARTHMERE_GLITCH_CLOUD_SAVE_RESTORED_EVENT =
+  "biomes:harthmere-glitch-cloud-save-restored" as const;
 
-type HarthmereCloudRestoreDetailV153 = {
+type HarthmereCloudRestoreDetail = {
   restoredKeyCount?: number;
   migratedKeyCount?: number;
   hasCharacterCustomization?: boolean;
@@ -890,7 +890,7 @@ function builderStoredInstallId() {
       window.localStorage.getItem("biomes.glitch.installId") ??
       window.localStorage.getItem("biomes.localDev.harthmere.installId") ??
       window.localStorage.getItem(
-        "biomes.localDev.harthmere.localInstallId.v1"
+        "biomes.localDev.harthmere.localInstallId"
       ) ??
       undefined
     );
@@ -1348,12 +1348,12 @@ const CharacterWakeupContent: React.FunctionComponent<{
     reloadFromStorage("mount");
     const onCloudRestore = () => reloadFromStorage("cloud-save");
     window.addEventListener(
-      HARTHMERE_GLITCH_CLOUD_SAVE_RESTORED_EVENT_V153,
+      HARTHMERE_GLITCH_CLOUD_SAVE_RESTORED_EVENT,
       onCloudRestore
     );
     return () => {
       window.removeEventListener(
-        HARTHMERE_GLITCH_CLOUD_SAVE_RESTORED_EVENT_V153,
+        HARTHMERE_GLITCH_CLOUD_SAVE_RESTORED_EVENT,
         onCloudRestore
       );
     };
@@ -1372,7 +1372,7 @@ const CharacterWakeupContent: React.FunctionComponent<{
   }, [userId, harthmereClothing, harthmereBody]);
 
   const startGame = () => {
-    emitHarthmereGlitchBehaviorEventV138("character_builder", "complete", {
+    emitHarthmereGlitchBehaviorEvent("character_builder", "complete", {
       face_shape: harthmereFace.faceShape,
       hair_style: harthmereFace.hairStyle,
       clothing_slots: Object.keys(harthmereClothing).length,
@@ -1429,7 +1429,7 @@ const CharacterWakeupContent: React.FunctionComponent<{
       return;
     }
 
-    emitHarthmereGlitchBehaviorEventV138("character_builder", "change_field", {
+    emitHarthmereGlitchBehaviorEvent("character_builder", "change_field", {
       field: result.canonicalField,
       target: result.target,
       value,
@@ -1489,7 +1489,7 @@ const CharacterWakeupContent: React.FunctionComponent<{
       }
       saveHarthmerePlayerClothingConfig(userId, next, harthmereBody);
       queueHarthmereBuilderGlitchSave("builder-clothing-slot");
-      emitHarthmereGlitchBehaviorEventV138(
+      emitHarthmereGlitchBehaviorEvent(
         "character_builder",
         "change_clothing",
         {
@@ -1522,7 +1522,7 @@ const CharacterWakeupContent: React.FunctionComponent<{
     setHarthmereClothing(next);
     saveHarthmerePlayerClothingConfig(userId, next, harthmereBody);
     queueHarthmereBuilderGlitchSave("builder-clothing-preset");
-    emitHarthmereGlitchBehaviorEventV138(
+    emitHarthmereGlitchBehaviorEvent(
       "character_builder",
       "apply_clothing_preset",
       {
@@ -1850,7 +1850,7 @@ const CharacterWakeupContent: React.FunctionComponent<{
         className="harthmere-wakeup-character-builder w-[min(92rem,97vw)] py-2"
       >
         <div
-          data-harthmere-builder-layout="v182-supported-voxel-features"
+          data-harthmere-builder-layout="supported-voxel-features"
           data-harthmere-builder-feature-version={
             HARTHMERE_BUILDER_FEATURE_AUDIT_VERSION
           }
@@ -2047,7 +2047,7 @@ const WakeUpContent: React.FunctionComponent<{ onWakeup: () => void }> = ({
   useEffect(() => {
     const onCloudRestore = (event: Event) => {
       if (cloudRestoreAutoWakeupRef.current) return;
-      const detail = (event as CustomEvent<HarthmereCloudRestoreDetailV153>)
+      const detail = (event as CustomEvent<HarthmereCloudRestoreDetail>)
         .detail;
       const hasRestoredCharacter =
         detail?.hasCharacterCustomization === true ||
@@ -2059,7 +2059,7 @@ const WakeUpContent: React.FunctionComponent<{ onWakeup: () => void }> = ({
         setNameEntry(glitchName);
       }
       cloudRestoreAutoWakeupRef.current = true;
-      emitHarthmereGlitchBehaviorEventV138(
+      emitHarthmereGlitchBehaviorEvent(
         "character_builder",
         "cloud_restore_auto_apply",
         {
@@ -2074,23 +2074,23 @@ const WakeUpContent: React.FunctionComponent<{ onWakeup: () => void }> = ({
     };
 
     window.addEventListener(
-      HARTHMERE_GLITCH_CLOUD_SAVE_RESTORED_EVENT_V153,
+      HARTHMERE_GLITCH_CLOUD_SAVE_RESTORED_EVENT,
       onCloudRestore
     );
     return () => {
       window.removeEventListener(
-        HARTHMERE_GLITCH_CLOUD_SAVE_RESTORED_EVENT_V153,
+        HARTHMERE_GLITCH_CLOUD_SAVE_RESTORED_EVENT,
         onCloudRestore
       );
     };
   }, [events, onWakeup, userId]);
 
   const doUsernameSave = async () => {
-    emitHarthmereGlitchBehaviorEventV138("onboarding_name", "submit", {
+    emitHarthmereGlitchBehaviorEvent("onboarding_name", "submit", {
       name_length: nameEntry.trim().length,
     });
     if (nameEntry === reactResources.get("/ecs/c/label", userId)?.text) {
-      emitHarthmereGlitchBehaviorEventV138("onboarding_name", "success", {
+      emitHarthmereGlitchBehaviorEvent("onboarding_name", "success", {
         unchanged: true,
       });
       setState("character");
@@ -2102,12 +2102,12 @@ const WakeUpContent: React.FunctionComponent<{ onWakeup: () => void }> = ({
       await saveUsername(nameEntry);
 
       fireAndForget(socialManager.userInfoBundle(userId, true)); // Bust cache
-      emitHarthmereGlitchBehaviorEventV138("onboarding_name", "success", {
+      emitHarthmereGlitchBehaviorEvent("onboarding_name", "success", {
         unchanged: false,
       });
       setState("character");
     } catch (error: any) {
-      emitHarthmereGlitchBehaviorEventV138("onboarding_name", "fail", {
+      emitHarthmereGlitchBehaviorEvent("onboarding_name", "fail", {
         error: error?.message ?? String(error),
       });
       setError(error);
@@ -2126,7 +2126,7 @@ const WakeUpContent: React.FunctionComponent<{ onWakeup: () => void }> = ({
         : state === "character"
         ? "character_builder"
         : "onboarding_wakeup";
-    emitHarthmereGlitchBehaviorEventV138(step, "screen_view", { state });
+    emitHarthmereGlitchBehaviorEvent(step, "screen_view", { state });
   }, [state]);
 
   const [showContinue, setShowContinue] = useState(false);
@@ -2139,7 +2139,7 @@ const WakeUpContent: React.FunctionComponent<{ onWakeup: () => void }> = ({
           role="button"
           tabIndex={0}
           onClick={() => {
-            emitHarthmereGlitchBehaviorEventV138(
+            emitHarthmereGlitchBehaviorEvent(
               "onboarding_intro",
               "click_continue"
             );
@@ -2150,7 +2150,7 @@ const WakeUpContent: React.FunctionComponent<{ onWakeup: () => void }> = ({
               return;
             }
             event.preventDefault();
-            emitHarthmereGlitchBehaviorEventV138(
+            emitHarthmereGlitchBehaviorEvent(
               "onboarding_intro",
               "keyboard_continue"
             );
@@ -2218,7 +2218,7 @@ const WakeUpContent: React.FunctionComponent<{ onWakeup: () => void }> = ({
           <div className="flex min-h-full items-start justify-center">
             <CharacterWakeupContent
               onComplete={() => {
-                emitHarthmereGlitchBehaviorEventV138(
+                emitHarthmereGlitchBehaviorEvent(
                   "character_builder",
                   "continue_to_wakeup"
                 );
@@ -2235,7 +2235,7 @@ const WakeUpContent: React.FunctionComponent<{ onWakeup: () => void }> = ({
           role="button"
           tabIndex={0}
           onClick={() => {
-            emitHarthmereGlitchBehaviorEventV138(
+            emitHarthmereGlitchBehaviorEvent(
               "onboarding_wakeup",
               "complete"
             );
@@ -2246,7 +2246,7 @@ const WakeUpContent: React.FunctionComponent<{ onWakeup: () => void }> = ({
               return;
             }
             event.preventDefault();
-            emitHarthmereGlitchBehaviorEventV138(
+            emitHarthmereGlitchBehaviorEvent(
               "onboarding_wakeup",
               "keyboard_complete"
             );
@@ -2262,7 +2262,7 @@ const WakeUpContent: React.FunctionComponent<{ onWakeup: () => void }> = ({
             style={{ opacity: showWakeupContinue ? 1 : 0 }}
             onClick={(event) => {
               event.stopPropagation();
-              emitHarthmereGlitchBehaviorEventV138(
+              emitHarthmereGlitchBehaviorEvent(
                 "onboarding_wakeup",
                 "complete"
               );
@@ -2289,15 +2289,15 @@ export const WakeUpScreen: React.FunctionComponent<{}> = ({}) => {
   useEffect(() => {
     if (!showScreen) {
       delete document.documentElement.dataset[
-        HARTHMERE_WAKE_UP_ACTIVE_DATASET_KEY_V1
+        HARTHMERE_WAKE_UP_ACTIVE_DATASET_KEY
       ];
       return;
     }
-    document.documentElement.dataset[HARTHMERE_WAKE_UP_ACTIVE_DATASET_KEY_V1] =
+    document.documentElement.dataset[HARTHMERE_WAKE_UP_ACTIVE_DATASET_KEY] =
       "true";
     return () => {
       delete document.documentElement.dataset[
-        HARTHMERE_WAKE_UP_ACTIVE_DATASET_KEY_V1
+        HARTHMERE_WAKE_UP_ACTIVE_DATASET_KEY
       ];
     };
   }, [showScreen]);

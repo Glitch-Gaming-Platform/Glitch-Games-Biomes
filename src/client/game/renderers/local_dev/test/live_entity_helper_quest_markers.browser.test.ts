@@ -29,8 +29,8 @@ describe("live entity helper quest marker browser flow", () => {
           )
           .replace(/\\/g, "/")}";
         import {
-          activeLiveEntityHelperQuestMarkerIdsV1,
-          writeLiveEntityHelperQuestStateV1,
+          activeLiveEntityHelperQuestMarkerIds,
+          writeLiveEntityHelperQuestState,
         } from "${path
           .join(
             process.cwd(),
@@ -38,32 +38,32 @@ describe("live entity helper quest marker browser flow", () => {
           )
           .replace(/\\/g, "/")}";
         import {
-          LIVE_ENTITY_HELPER_MUCK_BOSS_MARKER_ID_V1,
-          isLiveEntityHelperMuckBossSpawnMarkerV1,
-          liveEntityHelperQuestTargetMarkerForKindV1,
+          LIVE_ENTITY_HELPER_MUCK_BOSS_MARKER_ID,
+          isLiveEntityHelperMuckBossSpawnMarker,
+          liveEntityHelperQuestTargetMarkerForKind,
         } from "${path
           .join(
             process.cwd(),
-            "src/shared/harthmere/live_entity_helper_quests_v1.ts"
+            "src/shared/harthmere/live_entity_helper_quests.ts"
           )
           .replace(/\\/g, "/")}";
 
         setHarthmereLocalDevUserScope("browser-helper-marker-test");
 
         function sample() {
-          const activeIds = activeLiveEntityHelperQuestMarkerIdsV1();
-          const marker = liveEntityHelperQuestTargetMarkerForKindV1("hard_boss");
+          const activeIds = activeLiveEntityHelperQuestMarkerIds();
+          const marker = liveEntityHelperQuestTargetMarkerForKind("hard_boss");
           document.body.dataset.visible = String(
-            activeIds.has(LIVE_ENTITY_HELPER_MUCK_BOSS_MARKER_ID_V1)
+            activeIds.has(LIVE_ENTITY_HELPER_MUCK_BOSS_MARKER_ID)
           );
           document.body.dataset.inMuck = String(
-            isLiveEntityHelperMuckBossSpawnMarkerV1(marker)
+            isLiveEntityHelperMuckBossSpawnMarker(marker)
           );
           document.body.dataset.position = marker?.position.join(",");
         }
 
         document.getElementById("accept")!.addEventListener("click", () => {
-          writeLiveEntityHelperQuestStateV1({
+          writeLiveEntityHelperQuestState({
             active: {
               "live-helper:browser-hard-boss:hard_boss": {
                 questId: "live-helper:browser-hard-boss:hard_boss",
@@ -79,7 +79,7 @@ describe("live entity helper quest marker browser flow", () => {
         });
 
         document.getElementById("clear")!.addEventListener("click", () => {
-          writeLiveEntityHelperQuestStateV1({ active: {}, completed: {} });
+          writeLiveEntityHelperQuestState({ active: {}, completed: {} });
           sample();
         });
 

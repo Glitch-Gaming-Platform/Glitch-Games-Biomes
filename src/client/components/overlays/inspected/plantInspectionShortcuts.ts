@@ -1,4 +1,4 @@
-export function plantInspectionCanHarvestV1(
+export function plantInspectionCanHarvest(
   status: string | undefined,
   farmingKind: string | undefined
 ) {
@@ -15,7 +15,7 @@ export function plantInspectionShortcutTitlesForTest({
   destroyPermitted?: boolean;
 }) {
   const titles: string[] = [];
-  if (plantInspectionCanHarvestV1(status, farmingKind)) {
+  if (plantInspectionCanHarvest(status, farmingKind)) {
     titles.push("Harvest");
   }
   if (destroyPermitted) {

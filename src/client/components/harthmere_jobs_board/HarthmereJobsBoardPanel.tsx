@@ -1,34 +1,34 @@
 import * as React from "react";
 import { installBiomesUITheme } from "../biomes_ui/theme/biomesUITheme";
-import { installHarthmereJobsBoardStylesV141 } from "./HarthmereJobsBoardStylesV141";
+import { installHarthmereJobsBoardStyles } from "./HarthmereJobsBoardStyles";
 import {
-  HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1,
-  buildHarthmereJobsBoardPostPayloadV1,
-  displayNameForHarthmereJobsBoardV145,
-  getHarthmereAvailableJobsPanelV1,
-  getHarthmereJobsBoardSafetyPanelV1,
-  getHarthmereJobsBoardTabsV1,
-  getHarthmereMyJobsPanelV1,
-  getHarthmerePostedJobsPanelV1,
-  type HarthmereJobsBoardSnapshotV1,
+  HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID,
+  buildHarthmereJobsBoardPostPayload,
+  displayNameForHarthmereJobsBoard,
+  getHarthmereAvailableJobsPanel,
+  getHarthmereJobsBoardSafetyPanel,
+  getHarthmereJobsBoardTabs,
+  getHarthmereMyJobsPanel,
+  getHarthmerePostedJobsPanel,
+  type HarthmereJobsBoardSnapshot,
 } from "./jobsBoardLiveAdapter";
 import {
-  HARTHMERE_JOBS_BOARD_BUSINESS_TEMPLATES_V146,
-  harthmereJobsBoardBusinessTemplatesForTypeV146,
-  type HarthmereJobsBoardBusinessTemplateV146,
-} from "../../../shared/harthmere/jobs_board_business_templates_v146";
+  HARTHMERE_JOBS_BOARD_BUSINESS_TEMPLATES,
+  harthmereJobsBoardBusinessTemplatesForType,
+  type HarthmereJobsBoardBusinessTemplate,
+} from "../../../shared/harthmere/jobs_board_business_templates";
 
 const TABS = ["available", "accepted", "posted", "post", "safety"] as const;
 type TabId = typeof TABS[number];
 
-export function harthmereJobsBoardColumnCountForWidthV145(width: number) {
+export function harthmereJobsBoardColumnCountForWidth(width: number) {
   if (!Number.isFinite(width)) return 1;
   if (width >= 1024) return 3;
   if (width >= 720) return 2;
   return 1;
 }
 
-export function nextHarthmereJobsBoardGridIndexForKeyV145({
+export function nextHarthmereJobsBoardGridIndexForKey({
   key,
   currentIndex,
   itemCount,
@@ -60,7 +60,7 @@ export function nextHarthmereJobsBoardGridIndexForKeyV145({
   }
 }
 
-export function nextHarthmereJobsBoardTabForKeyV145(tab: TabId, key: string) {
+export function nextHarthmereJobsBoardTabForKey(tab: TabId, key: string) {
   const index = TABS.indexOf(tab);
   if (key === "Home") return TABS[0];
   if (key === "End") return TABS[TABS.length - 1];
@@ -71,7 +71,7 @@ export function nextHarthmereJobsBoardTabForKeyV145(tab: TabId, key: string) {
 
 export function HarthmereJobsBoardPanel({
   snapshot,
-  boardId = HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1,
+  boardId = HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID,
   onAcceptJob,
   onCompleteJob,
   onCancelJob,
@@ -79,7 +79,7 @@ export function HarthmereJobsBoardPanel({
   onClose,
   pendingActionId,
 }: {
-  snapshot: HarthmereJobsBoardSnapshotV1;
+  snapshot: HarthmereJobsBoardSnapshot;
   boardId?: string;
   onAcceptJob?: (jobId: string) => void | Promise<void>;
   onCompleteJob?: (jobId: string) => void | Promise<void>;
@@ -91,9 +91,9 @@ export function HarthmereJobsBoardPanel({
   const [tab, setTab] = React.useState<TabId>("available");
   const panelRef = React.useRef<HTMLElement | null>(null);
   const tabRefs = React.useRef<Partial<Record<TabId, HTMLButtonElement | null>>>({});
-  const tabs = getHarthmereJobsBoardTabsV1(snapshot);
+  const tabs = getHarthmereJobsBoardTabs(snapshot);
   const board = snapshot.boards[boardId];
-  const boardDisplayName = displayNameForHarthmereJobsBoardV145(board);
+  const boardDisplayName = displayNameForHarthmereJobsBoard(board);
   const actionSelector = "[data-harthmere-jobs-board-action='true']:not(:disabled)";
   const focusableSelector = [
     "button:not(:disabled)",
@@ -111,8 +111,8 @@ export function HarthmereJobsBoardPanel({
   const selectedBusiness = myBusinesses.find((business) => business.businessId === businessId);
   const postTemplates = React.useMemo(
     () => issuerMode === "business" && selectedBusiness
-      ? harthmereJobsBoardBusinessTemplatesForTypeV146(selectedBusiness.typeId as any)
-      : HARTHMERE_JOBS_BOARD_BUSINESS_TEMPLATES_V146,
+      ? harthmereJobsBoardBusinessTemplatesForType(selectedBusiness.typeId as any)
+      : HARTHMERE_JOBS_BOARD_BUSINESS_TEMPLATES,
     [issuerMode, selectedBusiness],
   );
   const [templateId, setTemplateId] = React.useState<string>(() => postTemplates[0]?.templateId ?? "");
@@ -139,12 +139,12 @@ export function HarthmereJobsBoardPanel({
     () => Object.keys(snapshot.discoveredCollectibles ?? {}).sort(),
     [snapshot.discoveredCollectibles],
   );
-  // HARTHMERE_JOBS_BOARD_STYLES_V141: Theme tokens first, then jobs-board
+  // HARTHMERE_JOBS_BOARD_STYLES: Theme tokens first, then jobs-board
   // overrides, so the panel inherits BiomesUI surfaces but layers its own
   // mobile-responsive grid on top.
   React.useEffect(() => {
     installBiomesUITheme();
-    installHarthmereJobsBoardStylesV141();
+    installHarthmereJobsBoardStyles();
   }, []);
   React.useEffect(() => {
     if (issuerMode === "business" && myBusinesses.length === 0) {
@@ -181,8 +181,8 @@ export function HarthmereJobsBoardPanel({
   React.useEffect(() => {
     if (!board) return;
     void import("../challenges/LocalDevHarthmereQuests").then(
-      ({ completeHarthmereJobsBoardReadQuestV140 }) => {
-        completeHarthmereJobsBoardReadQuestV140("jobs_board_panel_opened");
+      ({ completeHarthmereJobsBoardReadQuest }) => {
+        completeHarthmereJobsBoardReadQuest("jobs_board_panel_opened");
       },
     );
   }, [board, boardId]);
@@ -293,7 +293,7 @@ export function HarthmereJobsBoardPanel({
     if (event.key !== "PageDown" && event.key !== "PageUp") return;
     event.preventDefault();
     event.stopPropagation();
-    switchTab(nextHarthmereJobsBoardTabForKeyV145(tab, event.key), "action");
+    switchTab(nextHarthmereJobsBoardTabForKey(tab, event.key), "action");
   }, [focusableElements, onClose, switchTab, tab]);
 
   const handleTabKeyDown = React.useCallback((event: React.KeyboardEvent<HTMLButtonElement>, itemTab: TabId) => {
@@ -306,7 +306,7 @@ export function HarthmereJobsBoardPanel({
     if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
     event.preventDefault();
     event.stopPropagation();
-    switchTab(nextHarthmereJobsBoardTabForKeyV145(itemTab, event.key), "tab");
+    switchTab(nextHarthmereJobsBoardTabForKey(itemTab, event.key), "tab");
   }, [focusAction, switchTab]);
 
   const handleActionKeyDown = React.useCallback((event: React.KeyboardEvent<HTMLButtonElement>) => {
@@ -314,7 +314,7 @@ export function HarthmereJobsBoardPanel({
     const buttons = actionButtons();
     const currentIndex = buttons.indexOf(event.currentTarget);
     if (currentIndex < 0) return;
-    const columns = harthmereJobsBoardColumnCountForWidthV145(
+    const columns = harthmereJobsBoardColumnCountForWidth(
       typeof window === "undefined" ? 0 : window.innerWidth,
     );
     if (event.key === "ArrowUp" && currentIndex < columns) {
@@ -323,7 +323,7 @@ export function HarthmereJobsBoardPanel({
       focusActiveTab();
       return;
     }
-    const nextIndex = nextHarthmereJobsBoardGridIndexForKeyV145({
+    const nextIndex = nextHarthmereJobsBoardGridIndexForKey({
       key: event.key,
       currentIndex,
       itemCount: buttons.length,
@@ -334,7 +334,7 @@ export function HarthmereJobsBoardPanel({
     buttons[nextIndex]?.focus();
   }, [actionButtons, focusActiveTab]);
 
-  const selectTemplate = React.useCallback((template: HarthmereJobsBoardBusinessTemplateV146) => {
+  const selectTemplate = React.useCallback((template: HarthmereJobsBoardBusinessTemplate) => {
     setTemplateId(template.templateId);
     setPostTitle(template.title);
     setPostDescription(template.description);
@@ -373,7 +373,7 @@ export function HarthmereJobsBoardPanel({
   const submitJobPosting = React.useCallback((event?: React.FormEvent) => {
     event?.preventDefault();
     if (!selectedTemplate || !postFormValid || pendingActionId) return;
-    void onPostJob?.(buildHarthmereJobsBoardPostPayloadV1({
+    void onPostJob?.(buildHarthmereJobsBoardPostPayload({
       boardId,
       templateId: selectedTemplate.templateId,
       issuerKind: issuerMode,
@@ -432,10 +432,10 @@ export function HarthmereJobsBoardPanel({
       </div>
     );
   }
-  const available = getHarthmereAvailableJobsPanelV1(snapshot, boardId);
-  const accepted = getHarthmereMyJobsPanelV1(snapshot);
-  const posted = getHarthmerePostedJobsPanelV1(snapshot);
-  const safety = getHarthmereJobsBoardSafetyPanelV1(snapshot);
+  const available = getHarthmereAvailableJobsPanel(snapshot, boardId);
+  const accepted = getHarthmereMyJobsPanel(snapshot);
+  const posted = getHarthmerePostedJobsPanel(snapshot);
+  const safety = getHarthmereJobsBoardSafetyPanel(snapshot);
 
   return (
     <div className="harthmere-jobs-board__backdrop" role="dialog" aria-modal="true" onClick={(e) => {

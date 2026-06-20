@@ -1,22 +1,22 @@
 import type {
-  HarthmereGuildApplicationV1,
-  HarthmereGuildChatMessageV1,
-  HarthmereGuildInviteV1,
-  HarthmereGuildPermissionMapV1,
-  HarthmereGuildPermissionV1,
-  HarthmereGuildRecordV1,
-  HarthmereGuildRecruitmentStatusV1,
-  HarthmereGuildTypeV1,
-} from "../../../../shared/harthmere/mmo_guild_authority_v1";
-import { fetchHarthmereLiveWithTimeoutV1 } from "@/client/components/harthmere_live_fetch";
+  HarthmereGuildApplication,
+  HarthmereGuildChatMessage,
+  HarthmereGuildInvite,
+  HarthmereGuildPermissionMap,
+  HarthmereGuildPermission,
+  HarthmereGuildRecord,
+  HarthmereGuildRecruitmentStatus,
+  HarthmereGuildType,
+} from "../../../../shared/harthmere/mmo_guild_authority";
+import { fetchHarthmereLiveWithTimeout } from "@/client/components/harthmere_live_fetch";
 
-export interface BiomesUIGuildDirectoryEntryV1 {
+export interface BiomesUIGuildDirectoryEntry {
   guildId: string;
   name: string;
   tag: string;
   description: string;
-  type: HarthmereGuildTypeV1 | string;
-  recruitment: HarthmereGuildRecruitmentStatusV1 | string;
+  type: HarthmereGuildType | string;
+  recruitment: HarthmereGuildRecruitmentStatus | string;
   level: number;
   xp: number;
   memberCount: number;
@@ -24,18 +24,18 @@ export interface BiomesUIGuildDirectoryEntryV1 {
   hasGuildHall: boolean;
 }
 
-export interface BiomesUIGuildClientSnapshotV1 {
+export interface BiomesUIGuildClientSnapshot {
   actorId?: string;
   memberGuildId?: string;
   role?: string;
-  permissions: Partial<HarthmereGuildPermissionMapV1>;
-  guild?: HarthmereGuildRecordV1;
-  finder: BiomesUIGuildDirectoryEntryV1[];
-  pendingApplications: HarthmereGuildApplicationV1[];
-  pendingInvites: HarthmereGuildInviteV1[];
+  permissions: Partial<HarthmereGuildPermissionMap>;
+  guild?: HarthmereGuildRecord;
+  finder: BiomesUIGuildDirectoryEntry[];
+  pendingApplications: HarthmereGuildApplication[];
+  pendingInvites: HarthmereGuildInvite[];
 }
 
-export interface BiomesUIGuildDepositCandidateV1 {
+export interface BiomesUIGuildDepositCandidate {
   id: string;
   name: string;
   icon: string;
@@ -44,7 +44,7 @@ export interface BiomesUIGuildDepositCandidateV1 {
   estimatedGoldValue?: number;
 }
 
-export interface BiomesUIGuildHallCandidateV1 {
+export interface BiomesUIGuildHallCandidate {
   propertyId: string;
   plotId?: string;
   blueprintId?: string;
@@ -52,7 +52,7 @@ export interface BiomesUIGuildHallCandidateV1 {
   status?: string;
 }
 
-export type BiomesUIGuildMutationOperationV1 =
+export type BiomesUIGuildMutationOperation =
   | "find_guilds"
   | "create_guild"
   | "update_profile"
@@ -82,20 +82,20 @@ export type BiomesUIGuildMutationOperationV1 =
   | "mute_member"
   | "disband_guild";
 
-export interface BiomesUIGuildMutationPayloadV1 {
+export interface BiomesUIGuildMutationPayload {
   guildId?: string;
   name?: string;
   tag?: string;
   description?: string;
-  guildType?: HarthmereGuildTypeV1 | string;
-  recruitment?: HarthmereGuildRecruitmentStatusV1 | string;
+  guildType?: HarthmereGuildType | string;
+  recruitment?: HarthmereGuildRecruitmentStatus | string;
   targetActorId?: string;
   displayName?: string;
   applicationId?: string;
   inviteId?: string;
   rankId?: string;
   rankName?: string;
-  permissions?: Partial<HarthmereGuildPermissionMapV1>;
+  permissions?: Partial<HarthmereGuildPermissionMap>;
   dailyBankWithdrawLimitGoldValue?: number;
   itemId?: string;
   count?: number;
@@ -109,7 +109,7 @@ export interface BiomesUIGuildMutationPayloadV1 {
   reason?: string;
 }
 
-export interface BiomesUIGuildSubmitOptionsV1 {
+export interface BiomesUIGuildSubmitOptions {
   fetchImpl?: typeof fetch;
   requestId?: string;
   actorEntityVersion?: number;
@@ -118,9 +118,9 @@ export interface BiomesUIGuildSubmitOptionsV1 {
   randomSuffix?: string;
 }
 
-export interface BiomesUIGuildLiveModeResponseV1 {
+export interface BiomesUIGuildLiveModeResponse {
   ok?: boolean;
-  guildState?: BiomesUIGuildClientSnapshotV1;
+  guildState?: BiomesUIGuildClientSnapshot;
   backendMutation?: {
     warnings?: string[];
     touchedModels?: string[];
@@ -134,7 +134,7 @@ export interface BiomesUIGuildLiveModeResponseV1 {
   errors?: string[];
 }
 
-export function normalizeBiomesUIGuildSnapshotV1(input: unknown): BiomesUIGuildClientSnapshotV1 {
+export function normalizeBiomesUIGuildSnapshot(input: unknown): BiomesUIGuildClientSnapshot {
   const raw = typeof input === "object" && input !== null ? (input as any) : {};
   return {
     actorId: typeof raw.actorId === "string" ? raw.actorId : undefined,
@@ -156,8 +156,8 @@ export function normalizeBiomesUIGuildSnapshotV1(input: unknown): BiomesUIGuildC
   };
 }
 
-export async function fetchBiomesUIGuildStateV1(fetchImpl: typeof fetch = fetch): Promise<BiomesUIGuildClientSnapshotV1 | undefined> {
-  const response = await fetchHarthmereLiveWithTimeoutV1(
+export async function fetchBiomesUIGuildState(fetchImpl: typeof fetch = fetch): Promise<BiomesUIGuildClientSnapshot | undefined> {
+  const response = await fetchHarthmereLiveWithTimeout(
     fetchImpl,
     "/api/harthmere/live_mode_guild_state",
     {
@@ -167,17 +167,17 @@ export async function fetchBiomesUIGuildStateV1(fetchImpl: typeof fetch = fetch)
   );
   if (!response.ok) return undefined;
   const body = await response.json();
-  return normalizeBiomesUIGuildSnapshotV1(body?.guildState);
+  return normalizeBiomesUIGuildSnapshot(body?.guildState);
 }
 
-function buildGuildRequestIdV1(operation: string, options: BiomesUIGuildSubmitOptionsV1): string {
+function buildGuildRequestId(operation: string, options: BiomesUIGuildSubmitOptions): string {
   if (options.requestId) return options.requestId;
   const now = Number.isFinite(options.nowMs) ? Number(options.nowMs) : Date.now();
   const suffix = options.randomSuffix ?? Math.random().toString(36).slice(2);
   return `biomes_ui_guild_${operation}_${now}_${suffix}`;
 }
 
-function responseErrorMessageV1(operation: string, body: BiomesUIGuildLiveModeResponseV1 | undefined): string {
+function responseErrorMessage(operation: string, body: BiomesUIGuildLiveModeResponse | undefined): string {
   const validation = body?.validation?.errors;
   if (Array.isArray(validation) && validation.length > 0) return validation.join(",");
   const errors = body?.errors;
@@ -187,19 +187,19 @@ function responseErrorMessageV1(operation: string, body: BiomesUIGuildLiveModeRe
   return `guild_request_failed:${operation}`;
 }
 
-const SERVER_ONLY_GUILD_OPERATIONS_V1 = new Set<string>(["collect_tax", "add_xp"]);
+const SERVER_ONLY_GUILD_OPERATIONS = new Set<string>(["collect_tax", "add_xp"]);
 
-export async function submitBiomesUIGuildMutationV1(
-  operation: BiomesUIGuildMutationOperationV1,
-  payload: BiomesUIGuildMutationPayloadV1 = {},
-  options: BiomesUIGuildSubmitOptionsV1 = {},
-): Promise<BiomesUIGuildLiveModeResponseV1> {
-  if (SERVER_ONLY_GUILD_OPERATIONS_V1.has(String(operation))) {
+export async function submitBiomesUIGuildMutation(
+  operation: BiomesUIGuildMutationOperation,
+  payload: BiomesUIGuildMutationPayload = {},
+  options: BiomesUIGuildSubmitOptions = {},
+): Promise<BiomesUIGuildLiveModeResponse> {
+  if (SERVER_ONLY_GUILD_OPERATIONS.has(String(operation))) {
     throw new Error(`guild_request_rejected:server_only_operation:${operation}`);
   }
   const fetchImpl = options.fetchImpl ?? fetch;
-  const requestId = buildGuildRequestIdV1(operation, options);
-  const response = await fetchHarthmereLiveWithTimeoutV1(
+  const requestId = buildGuildRequestId(operation, options);
+  const response = await fetchHarthmereLiveWithTimeout(
     fetchImpl,
     "/api/harthmere/live_mode",
     {
@@ -221,9 +221,9 @@ export async function submitBiomesUIGuildMutationV1(
       }),
     }
   );
-  const body = (await response.json()) as BiomesUIGuildLiveModeResponseV1;
+  const body = (await response.json()) as BiomesUIGuildLiveModeResponse;
   if (!response.ok || body?.ok === false) {
-    throw new Error(responseErrorMessageV1(operation, body));
+    throw new Error(responseErrorMessage(operation, body));
   }
   const reducerWarnings = body?.backendMutation?.warnings ?? [];
   const rejection = reducerWarnings.find((warning) => String(warning).startsWith("guild_rejected:"));
@@ -231,14 +231,14 @@ export async function submitBiomesUIGuildMutationV1(
   return body;
 }
 
-export function hasBiomesUIGuildPermissionV1(
-  snapshot: BiomesUIGuildClientSnapshotV1 | undefined,
-  permission: HarthmereGuildPermissionV1,
+export function hasBiomesUIGuildPermission(
+  snapshot: BiomesUIGuildClientSnapshot | undefined,
+  permission: HarthmereGuildPermission,
 ): boolean {
   return snapshot?.permissions?.[permission] === true;
 }
 
-export function formatBiomesUIGuildDateV1(ms: number | undefined): string {
+export function formatBiomesUIGuildDate(ms: number | undefined): string {
   if (!Number.isFinite(Number(ms))) return "—";
   try {
     return new Date(Number(ms)).toLocaleDateString();
@@ -247,19 +247,19 @@ export function formatBiomesUIGuildDateV1(ms: number | undefined): string {
   }
 }
 
-export interface BiomesUIGuildsAdapterV1 {
+export interface BiomesUIGuildsAdapter {
   isHydrated: () => boolean;
-  getSnapshot: () => BiomesUIGuildClientSnapshotV1 | undefined;
+  getSnapshot: () => BiomesUIGuildClientSnapshot | undefined;
   refresh: () => Promise<void>;
   getGuildName: () => string;
   getRoster: () => Array<{ id: string; name: string; class: string; rank: string; online: boolean; lastSeen: string; contributionXp: number }>;
   getRanks: () => Array<{ id: string; name: string; canInvite: boolean; canKick: boolean; canEditBank: boolean }>;
   getBulletin: () => string;
-  getFinder: () => BiomesUIGuildDirectoryEntryV1[];
-  getPendingApplications: () => HarthmereGuildApplicationV1[];
-  getPendingInvites: () => HarthmereGuildInviteV1[];
-  getDepositCandidates: () => BiomesUIGuildDepositCandidateV1[];
-  getGuildHallCandidates: () => BiomesUIGuildHallCandidateV1[];
+  getFinder: () => BiomesUIGuildDirectoryEntry[];
+  getPendingApplications: () => HarthmereGuildApplication[];
+  getPendingInvites: () => HarthmereGuildInvite[];
+  getDepositCandidates: () => BiomesUIGuildDepositCandidate[];
+  getGuildHallCandidates: () => BiomesUIGuildHallCandidate[];
   createGuild: (input: { name: string; tag: string; description?: string; guildType?: string; recruitment?: string; displayName?: string }) => Promise<void>;
   updateProfile: (input: { description?: string; recruitment?: string; guildType?: string }) => Promise<void>;
   applyToGuild: (guildId: string, message?: string) => Promise<void>;
@@ -272,8 +272,8 @@ export interface BiomesUIGuildsAdapterV1 {
   kickMember: (targetActorId: string) => Promise<void>;
   leaveGuild: () => Promise<void>;
   transferLeadership: (targetActorId: string) => Promise<void>;
-  createRank: (rankName: string, permissions: Partial<HarthmereGuildPermissionMapV1>, dailyBankWithdrawLimitGoldValue?: number) => Promise<void>;
-  updateRank: (rankId: string, input: { rankName?: string; permissions?: Partial<HarthmereGuildPermissionMapV1>; dailyBankWithdrawLimitGoldValue?: number }) => Promise<void>;
+  createRank: (rankName: string, permissions: Partial<HarthmereGuildPermissionMap>, dailyBankWithdrawLimitGoldValue?: number) => Promise<void>;
+  updateRank: (rankId: string, input: { rankName?: string; permissions?: Partial<HarthmereGuildPermissionMap>; dailyBankWithdrawLimitGoldValue?: number }) => Promise<void>;
   deleteRank: (rankId: string) => Promise<void>;
   assignRank: (targetActorId: string, rankId: string) => Promise<void>;
   depositGuildBank: (itemId: string, count: number) => Promise<void>;
@@ -282,44 +282,44 @@ export interface BiomesUIGuildsAdapterV1 {
   withdrawTreasury: (amountGold: number, reason?: string) => Promise<void>;
   setTaxRate: (taxRate: number) => Promise<void>;
   upgradeGuildBankSlots: () => Promise<void>;
-  linkGuildHall: (candidate: BiomesUIGuildHallCandidateV1) => Promise<void>;
+  linkGuildHall: (candidate: BiomesUIGuildHallCandidate) => Promise<void>;
   sendChat: (message: string, channel?: "guild" | "officer") => Promise<void>;
   deleteChatMessage: (messageId: string) => Promise<void>;
   muteMember: (targetActorId: string, durationMs?: number) => Promise<void>;
   disbandGuild: () => Promise<void>;
 }
 
-export interface CreateBiomesUIGuildsAdapterOptionsV1 {
-  state: BiomesUIGuildClientSnapshotV1 | undefined;
+export interface CreateBiomesUIGuildsAdapterOptions {
+  state: BiomesUIGuildClientSnapshot | undefined;
   hydrated: boolean;
-  setState: (state: BiomesUIGuildClientSnapshotV1 | undefined) => void;
+  setState: (state: BiomesUIGuildClientSnapshot | undefined) => void;
   refresh: () => Promise<void>;
-  submit?: typeof submitBiomesUIGuildMutationV1;
-  inventoryDepositCandidates?: BiomesUIGuildDepositCandidateV1[];
-  guildHallCandidates?: BiomesUIGuildHallCandidateV1[];
+  submit?: typeof submitBiomesUIGuildMutation;
+  inventoryDepositCandidates?: BiomesUIGuildDepositCandidate[];
+  guildHallCandidates?: BiomesUIGuildHallCandidate[];
 }
 
-function memberRankNameV1(guild: HarthmereGuildRecordV1 | undefined, rankId: string | undefined): string {
+function memberRankName(guild: HarthmereGuildRecord | undefined, rankId: string | undefined): string {
   if (!guild || !rankId) return rankId ?? "—";
   return guild.ranks?.[rankId]?.name ?? rankId;
 }
 
-export function createBiomesUIGuildsAdapterV1({
+export function createBiomesUIGuildsAdapter({
   state,
   hydrated,
   setState,
   refresh,
-  submit = submitBiomesUIGuildMutationV1,
+  submit = submitBiomesUIGuildMutation,
   inventoryDepositCandidates = [],
   guildHallCandidates = [],
-}: CreateBiomesUIGuildsAdapterOptionsV1): BiomesUIGuildsAdapterV1 {
-  const snapshot = state ? normalizeBiomesUIGuildSnapshotV1(state) : undefined;
+}: CreateBiomesUIGuildsAdapterOptions): BiomesUIGuildsAdapter {
+  const snapshot = state ? normalizeBiomesUIGuildSnapshot(state) : undefined;
   const guild = snapshot?.guild;
   const activeGuildId = snapshot?.memberGuildId ?? guild?.guildId;
 
-  const mutate = async (operation: BiomesUIGuildMutationOperationV1, payload: BiomesUIGuildMutationPayloadV1 = {}) => {
+  const mutate = async (operation: BiomesUIGuildMutationOperation, payload: BiomesUIGuildMutationPayload = {}) => {
     const body = await submit(operation, payload);
-    if (body.guildState) setState(normalizeBiomesUIGuildSnapshotV1(body.guildState));
+    if (body.guildState) setState(normalizeBiomesUIGuildSnapshot(body.guildState));
     else await refresh();
   };
 
@@ -336,9 +336,9 @@ export function createBiomesUIGuildsAdapterV1({
           id: member.actorId,
           name: member.displayName ?? member.actorId,
           class: member.actorId === guild?.leaderActorId ? "Leader" : "Member",
-          rank: memberRankNameV1(guild, member.rankId),
+          rank: memberRankName(guild, member.rankId),
           online: Date.now() - Number(member.lastSeenAtMs ?? 0) < 10 * 60 * 1000,
-          lastSeen: formatBiomesUIGuildDateV1(member.lastSeenAtMs),
+          lastSeen: formatBiomesUIGuildDate(member.lastSeenAtMs),
           contributionXp: Math.max(0, Math.trunc(Number(member.contributionXp ?? 0))),
         })),
     getRanks: () =>
@@ -360,8 +360,8 @@ export function createBiomesUIGuildsAdapterV1({
     getPendingInvites: () => snapshot?.pendingInvites ?? [],
     getDepositCandidates: () => inventoryDepositCandidates,
     getGuildHallCandidates: () => guildHallCandidates,
-    createGuild: (input) => mutate("create_guild", input as BiomesUIGuildMutationPayloadV1),
-    updateProfile: (input) => mutate("update_profile", { guildId: activeGuildId, ...input } as BiomesUIGuildMutationPayloadV1),
+    createGuild: (input) => mutate("create_guild", input as BiomesUIGuildMutationPayload),
+    updateProfile: (input) => mutate("update_profile", { guildId: activeGuildId, ...input } as BiomesUIGuildMutationPayload),
     applyToGuild: (guildId, message) => mutate("apply_to_guild", { guildId, message }),
     cancelApplication: (guildId, applicationId) => mutate("cancel_application", { guildId, applicationId }),
     acceptApplication: (guildId, applicationId) => mutate("accept_application", { guildId, applicationId }),

@@ -1,17 +1,17 @@
 import * as React from "react";
-import { fetchHarthmereLiveWithTimeoutV1 } from "@/client/components/harthmere_live_fetch";
+import { fetchHarthmereLiveWithTimeout } from "@/client/components/harthmere_live_fetch";
 
 export const BIOMES_UI_PLAYER_STATUS_UPDATED_EVENT =
   "biomes:live-mode-player-status-updated";
 
-export interface BiomesUIStandingStatusV1 {
+export interface BiomesUIStandingStatus {
   likeability: number;
   legal: number;
   notoriety: number;
   notorietyFloor?: number;
 }
 
-export interface BiomesUIPlayerStatusSnapshotV1 {
+export interface BiomesUIPlayerStatusSnapshot {
   actorId?: string;
   classId?: string;
   className?: string;
@@ -28,11 +28,11 @@ export interface BiomesUIPlayerStatusSnapshotV1 {
     resources?: Record<string, number>;
     maxResources?: Record<string, number>;
   };
-  standing?: BiomesUIStandingStatusV1 & { scopeId?: string };
+  standing?: BiomesUIStandingStatus & { scopeId?: string };
   gold?: number;
 }
 
-export interface BiomesUIVitalsDisplayStateV1 {
+export interface BiomesUIVitalsDisplayState {
   hp: number;
   maxHp: number;
   combatState: string;
@@ -43,11 +43,11 @@ export interface BiomesUIVitalsDisplayStateV1 {
   level?: number;
   xpCurrent?: number;
   xpNext?: number;
-  standing?: BiomesUIStandingStatusV1;
+  standing?: BiomesUIStandingStatus;
   gold?: number;
 }
 
-export interface BiomesUIVitalsResourceDisplayStateV1 {
+export interface BiomesUIVitalsResourceDisplayState {
   resourceLabel: string;
   resourceValue: number;
   resourceMax: number;
@@ -62,44 +62,44 @@ function safeWhole(value: unknown, fallback = 0): number {
   return Math.max(0, Math.trunc(safeNumber(value, fallback)));
 }
 
-function normalizeCombatStateV1(value: unknown, fallback = "ready") {
+function normalizeCombatState(value: unknown, fallback = "ready") {
   const normalized = String(value || fallback || "ready")
     .trim()
     .toLowerCase();
   return normalized || fallback;
 }
 
-function isUrgentFallbackCombatStateV1(value: unknown) {
+function isUrgentFallbackCombatState(value: unknown) {
   return [
     "dead",
     "downed",
     "respawning",
     "protected_after_respawn",
     "in_combat",
-  ].includes(normalizeCombatStateV1(value));
+  ].includes(normalizeCombatState(value));
 }
 
-function shouldPreferFallbackCombatVitalsV1(
-  live: BiomesUIPlayerStatusSnapshotV1,
-  fallback: BiomesUIVitalsDisplayStateV1
+function shouldPreferFallbackCombatVitals(
+  live: BiomesUIPlayerStatusSnapshot,
+  fallback: BiomesUIVitalsDisplayState
 ) {
   if (!live.combat) return false;
   const liveHp = safeWhole(live.combat.hp, fallback.hp);
   const liveMaxHp = Math.max(1, safeWhole(live.combat.maxHp, fallback.maxHp));
-  const liveCombatState = normalizeCombatStateV1(
+  const liveCombatState = normalizeCombatState(
     live.combat.deathState,
     "alive"
   );
   const fallbackDamagedOrDown =
     fallback.hp < fallback.maxHp ||
     fallback.hp <= 0 ||
-    isUrgentFallbackCombatStateV1(fallback.combatState);
+    isUrgentFallbackCombatState(fallback.combatState);
   const liveLooksDefaultAlive =
     liveHp >= liveMaxHp && ["alive", "idle", "ready"].includes(liveCombatState);
   const fallbackIsDown =
     fallback.hp <= 0 ||
     ["dead", "downed", "respawning"].includes(
-      normalizeCombatStateV1(fallback.combatState)
+      normalizeCombatState(fallback.combatState)
     );
   const liveContradictsLocalDownState = fallbackIsDown && liveHp > fallback.hp;
   return (
@@ -122,9 +122,9 @@ export function formatBiomesResourceLabelForVitalsForTest(
 }
 
 export function biomesUIVitalsDisplayFromLiveStatusForTest(
-  live: BiomesUIPlayerStatusSnapshotV1 | undefined,
-  fallback: BiomesUIVitalsDisplayStateV1
-): BiomesUIVitalsDisplayStateV1 {
+  live: BiomesUIPlayerStatusSnapshot | undefined,
+  fallback: BiomesUIVitalsDisplayState
+): BiomesUIVitalsDisplayState {
   if (!live) return fallback;
   const resourceKind = live.combat?.primaryResource;
   const resourceLabel = formatBiomesResourceLabelForVitalsForTest(
@@ -133,7 +133,7 @@ export function biomesUIVitalsDisplayFromLiveStatusForTest(
   );
   const level = Math.max(1, safeWhole(live.level, fallback.level ?? 1));
   const className = String(live.className || "").trim();
-  const preferFallbackCombat = shouldPreferFallbackCombatVitalsV1(
+  const preferFallbackCombat = shouldPreferFallbackCombatVitals(
     live,
     fallback
   );
@@ -177,9 +177,9 @@ export function biomesUIVitalsDisplayFromLiveStatusForTest(
 }
 
 export function biomesUIVitalsCombatResourceDisplayForTest(
-  live: BiomesUIPlayerStatusSnapshotV1 | undefined,
-  fallback: BiomesUIVitalsResourceDisplayStateV1
-): BiomesUIVitalsResourceDisplayStateV1 {
+  live: BiomesUIPlayerStatusSnapshot | undefined,
+  fallback: BiomesUIVitalsResourceDisplayState
+): BiomesUIVitalsResourceDisplayState {
   const primaryResource = String(live?.combat?.primaryResource ?? "")
     .trim()
     .toLowerCase();
@@ -195,7 +195,7 @@ export function biomesUIVitalsCombatResourceDisplayForTest(
   };
 }
 
-export function biomesUIPlayerStatusEndpointV146(
+export function biomesUIPlayerStatusEndpoint(
   search?: string,
   options?: { gameplayActive?: boolean }
 ): string {
@@ -212,7 +212,7 @@ export function biomesUIPlayerStatusEndpointV146(
   );
 }
 
-function biomesUIPlayerStatusGameplayActiveV1() {
+function biomesUIPlayerStatusGameplayActive() {
   if (typeof document === "undefined") return false;
   if (document.visibilityState !== "visible") return false;
   if (document.documentElement.dataset.harthmereWakeUpActive === "true") {
@@ -221,21 +221,21 @@ function biomesUIPlayerStatusGameplayActiveV1() {
   return true;
 }
 
-function biomesUIPlayerStatusRefreshDelayMsV1() {
-  return biomesUIPlayerStatusGameplayActiveV1() ? 5_000 : 15_000;
+function biomesUIPlayerStatusRefreshDelayMs() {
+  return biomesUIPlayerStatusGameplayActive() ? 5_000 : 15_000;
 }
 
 export function biomesUIPlayerStatusGameplayActiveForTest() {
-  return biomesUIPlayerStatusGameplayActiveV1();
+  return biomesUIPlayerStatusGameplayActive();
 }
 
-export async function fetchBiomesUIPlayerStatusV1(
+export async function fetchBiomesUIPlayerStatus(
   fetchImpl: typeof fetch = fetch
-): Promise<BiomesUIPlayerStatusSnapshotV1 | undefined> {
-  const response = await fetchHarthmereLiveWithTimeoutV1(
+): Promise<BiomesUIPlayerStatusSnapshot | undefined> {
+  const response = await fetchHarthmereLiveWithTimeout(
     fetchImpl,
-    biomesUIPlayerStatusEndpointV146(undefined, {
-      gameplayActive: biomesUIPlayerStatusGameplayActiveV1(),
+    biomesUIPlayerStatusEndpoint(undefined, {
+      gameplayActive: biomesUIPlayerStatusGameplayActive(),
     }),
     {
       method: "GET",
@@ -247,9 +247,9 @@ export async function fetchBiomesUIPlayerStatusV1(
   return body?.playerStatusState;
 }
 
-export function useBiomesUIPlayerStatusStateV1() {
+export function useBiomesUIPlayerStatusState() {
   const [status, setStatus] = React.useState<
-    BiomesUIPlayerStatusSnapshotV1 | undefined
+    BiomesUIPlayerStatusSnapshot | undefined
   >(undefined);
 
   React.useEffect(() => {
@@ -261,14 +261,14 @@ export function useBiomesUIPlayerStatusStateV1() {
       if (cancelled) return;
       timer = window.setTimeout(
         refresh,
-        biomesUIPlayerStatusRefreshDelayMsV1()
+        biomesUIPlayerStatusRefreshDelayMs()
       );
     };
     const refresh = async () => {
       if (refreshInFlight) return;
       refreshInFlight = true;
       try {
-        const next = await fetchBiomesUIPlayerStatusV1();
+        const next = await fetchBiomesUIPlayerStatus();
         if (!cancelled) setStatus(next);
       } catch {
         if (!cancelled) setStatus(undefined);
@@ -278,7 +278,7 @@ export function useBiomesUIPlayerStatusStateV1() {
       }
     };
     const onStatus = (event: Event) => {
-      const next = (event as CustomEvent<BiomesUIPlayerStatusSnapshotV1>)
+      const next = (event as CustomEvent<BiomesUIPlayerStatusSnapshot>)
         .detail;
       if (next && typeof next === "object") {
         setStatus(next);

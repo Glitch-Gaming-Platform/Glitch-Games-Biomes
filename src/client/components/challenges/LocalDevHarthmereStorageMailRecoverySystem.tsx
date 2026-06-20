@@ -3,7 +3,7 @@ import type { HarthmereTradeableItem } from "@/client/components/challenges/Loca
 
 export const HARTHMERE_STORAGE_MAIL_RECOVERY_VERSION = 1;
 export const HARTHMERE_STORAGE_MAIL_RECOVERY_STATE_KEY =
-  "biomes.localDev.harthmere.storageMailRecoveryState.v1";
+  "biomes.localDev.harthmere.storageMailRecoveryState";
 export const HARTHMERE_STORAGE_MAIL_RECOVERY_CHANGED_EVENT =
   "biomes:harthmere-storage-mail-recovery-changed";
 export const HARTHMERE_HIGH_VALUE_STORAGE_LOG_THRESHOLD = 500;

@@ -1,11 +1,11 @@
 import assert from "assert";
 import {
-  describeHarthmereDeathInterfaceV1,
-  describeHarthmereMultiplayerCombatInterfaceV1,
-  getHarthmereCombatantActionBlockReasonV1,
-  getHarthmereMultiplayerAttackDisabledReasonV1,
-  HARTHMERE_COMBAT_INTERFACE_KEY_COPY_V1,
-  harthmereRespawnDisabledReasonV1,
+  describeHarthmereDeathInterface,
+  describeHarthmereMultiplayerCombatInterface,
+  getHarthmereCombatantActionBlockReason,
+  getHarthmereMultiplayerAttackDisabledReason,
+  HARTHMERE_COMBAT_INTERFACE_KEY_COPY,
+  harthmereRespawnDisabledReason,
 } from "./harthmereCombatDeathInterfaceRules";
 
 function assertReasonMatches(
@@ -19,9 +19,9 @@ describe("harthmere combat and death interface rules", () => {
   const now = 1_000_000;
 
   it("keeps combat key copy aligned with the installed H heavy-attack route", () => {
-    assert.equal(HARTHMERE_COMBAT_INTERFACE_KEY_COPY_V1.basic, "B");
-    assert.equal(HARTHMERE_COMBAT_INTERFACE_KEY_COPY_V1.heavy, "H");
-    assert.equal(HARTHMERE_COMBAT_INTERFACE_KEY_COPY_V1.spark, "L");
+    assert.equal(HARTHMERE_COMBAT_INTERFACE_KEY_COPY.basic, "B");
+    assert.equal(HARTHMERE_COMBAT_INTERFACE_KEY_COPY.heavy, "H");
+    assert.equal(HARTHMERE_COMBAT_INTERFACE_KEY_COPY.spark, "L");
   });
 
   it("allows the base PvE combat case while showing PvE reward policy", () => {
@@ -33,7 +33,7 @@ describe("harthmere combat and death interface rules", () => {
     };
     const player = { hp: 100, maxHp: 100, combatState: "idle" };
 
-    const rules = describeHarthmereMultiplayerCombatInterfaceV1(
+    const rules = describeHarthmereMultiplayerCombatInterface(
       state,
       player,
       now,
@@ -43,7 +43,7 @@ describe("harthmere combat and death interface rules", () => {
     assert.equal(rules.pvpMode, "pve");
     assert.match(rules.rewardPolicySummary, /normal combat credit/i);
     assert.equal(
-      getHarthmereMultiplayerAttackDisabledReasonV1(
+      getHarthmereMultiplayerAttackDisabledReason(
         "basic",
         state,
         player,
@@ -62,7 +62,7 @@ describe("harthmere combat and death interface rules", () => {
       "invulnerable",
     ]) {
       assertReasonMatches(
-        getHarthmereCombatantActionBlockReasonV1({
+        getHarthmereCombatantActionBlockReason({
           hp: combatState === "protected_after_respawn" ? 100 : 0,
           maxHp: 100,
           combatState,
@@ -81,7 +81,7 @@ describe("harthmere combat and death interface rules", () => {
     };
     const player = { hp: 100, maxHp: 100, combatState: "idle" };
 
-    const rules = describeHarthmereMultiplayerCombatInterfaceV1(
+    const rules = describeHarthmereMultiplayerCombatInterface(
       state,
       player,
       now,
@@ -94,7 +94,7 @@ describe("harthmere combat and death interface rules", () => {
   });
 
   it("blocks spawn-protected attacks and surfaces the protection edge case", () => {
-    const reason = getHarthmereMultiplayerAttackDisabledReasonV1(
+    const reason = getHarthmereMultiplayerAttackDisabledReason(
       "heavy",
       {
         pvpFlag: "spawn_protected",
@@ -108,7 +108,7 @@ describe("harthmere combat and death interface rules", () => {
   });
 
   it("describes duel and hardcore PvP reward/drop policy", () => {
-    const duel = describeHarthmereMultiplayerCombatInterfaceV1(
+    const duel = describeHarthmereMultiplayerCombatInterface(
       {
         mode: "duel",
         pvpFlag: "duel_flagged",
@@ -121,7 +121,7 @@ describe("harthmere combat and death interface rules", () => {
     assert.match(duel.rewardPolicySummary, /1 HP/i);
     assert.match(duel.rewardPolicySummary, /no item drop/i);
 
-    const hardcore = describeHarthmereMultiplayerCombatInterfaceV1(
+    const hardcore = describeHarthmereMultiplayerCombatInterface(
       {
         pvpFlag: "hardcore_pvp",
         currentTargetOffset: 9003,
@@ -144,28 +144,28 @@ describe("harthmere combat and death interface rules", () => {
     };
 
     assert.equal(
-      harthmereRespawnDisabledReasonV1(death, "the_grove"),
+      harthmereRespawnDisabledReason(death, "the_grove"),
       undefined,
     );
     assertReasonMatches(
-      harthmereRespawnDisabledReasonV1(death, "temple_green"),
+      harthmereRespawnDisabledReason(death, "temple_green"),
       /not available/i,
     );
   });
 
   it("disables revive, release, and respawn controls outside their valid states", () => {
-    const alive = describeHarthmereDeathInterfaceV1({ state: "alive" });
+    const alive = describeHarthmereDeathInterface({ state: "alive" });
 
     assertReasonMatches(alive.reviveDisabledReason, /downed or dead/i);
     assertReasonMatches(alive.releaseDisabledReason, /downed/i);
     assertReasonMatches(
-      harthmereRespawnDisabledReasonV1({ state: "alive" }, "the_grove"),
+      harthmereRespawnDisabledReason({ state: "alive" }, "the_grove"),
       /downed, dead, or ghosted/i,
     );
   });
 
   it("summarizes PvP death penalties and hardcore revive restrictions", () => {
-    const normalPvp = describeHarthmereDeathInterfaceV1({
+    const normalPvp = describeHarthmereDeathInterface({
       state: "dead",
       currentDeath: {
         killerType: "player",
@@ -176,7 +176,7 @@ describe("harthmere combat and death interface rules", () => {
     assert.match(normalPvp.penaltySummary, /no item drop/i);
     assert.equal(normalPvp.reviveDisabledReason, undefined);
 
-    const hardcore = describeHarthmereDeathInterfaceV1({
+    const hardcore = describeHarthmereDeathInterface({
       state: "dead",
       currentDeath: {
         killerType: "player",

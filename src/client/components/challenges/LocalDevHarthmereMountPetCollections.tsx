@@ -1,10 +1,10 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 
-export const HARTHMERE_MOUNT_PET_COLLECTION_VERSION = "harthmere-mount-pet-collection-v1";
+export const HARTHMERE_MOUNT_PET_COLLECTION_VERSION = "harthmere-mount-pet-collection";
 export const HARTHMERE_MOUNT_PET_LOCAL_STORAGE_KEYS = {
-  collection: "biomes.localDev.harthmere.mountPetCollection.v1",
-  recent: "biomes.localDev.harthmere.mountPetCollection.recent.v1",
+  collection: "biomes.localDev.harthmere.mountPetCollection",
+  recent: "biomes.localDev.harthmere.mountPetCollection.recent",
 };
 
 export type HarthmereCollectionBinding = "character_bound" | "account_bound" | "stable_bound";
@@ -391,7 +391,7 @@ export const HarthmereMountPetCollectionPanel: React.FunctionComponent<{}> = () 
   const mounts = useMemo(() => Object.values(HARTHMERE_MOUNT_DEFINITIONS), []);
   const pets = useMemo(() => Object.values(HARTHMERE_PET_DEFINITIONS), []);
   return (
-    <div className="space-y-2 rounded-xl border border-white/10 bg-white/5 p-3 text-xs" data-harthmere-mount-pet-panel="v1">
+    <div className="space-y-2 rounded-xl border border-white/10 bg-white/5 p-3 text-xs" data-harthmere-mount-pet-panel="current">
       <div className="text-sm font-bold text-amber-100">Mounts & Pets</div>
       <div className="grid gap-2 md:grid-cols-2">
         <div>

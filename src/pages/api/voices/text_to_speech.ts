@@ -1,6 +1,6 @@
 import {
-  azureSpeechConfigFromEnvV1,
-  synthesizeAzureSpeechV1,
+  azureSpeechConfigFromEnv,
+  synthesizeAzureSpeech,
 } from "@/server/shared/azure_speech";
 import { biomesApiHandler } from "@/server/web/util/api_middleware";
 import { log } from "@/shared/logging";
@@ -27,13 +27,13 @@ export default biomesApiHandler(
     response: zChatVoiceResponse,
   },
   async ({ body: { text, voice, language } }) => {
-    const config = azureSpeechConfigFromEnvV1();
+    const config = azureSpeechConfigFromEnv();
     if (!config) {
       return { url: "" };
     }
 
     try {
-      const result = await synthesizeAzureSpeechV1({
+      const result = await synthesizeAzureSpeech({
         config,
         text: text.trim(),
         voice,

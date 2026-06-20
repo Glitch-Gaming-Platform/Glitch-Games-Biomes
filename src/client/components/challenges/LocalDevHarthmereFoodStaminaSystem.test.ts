@@ -1,12 +1,12 @@
 import assert from "assert";
 import {
-  HARTHMERE_FARMING_FOOD_STAMINA_VERSION_V1,
-  defaultHarthmereFoodStaminaStateV1,
-  tickHarthmereStaminaForGameplayV1,
-} from "@/shared/harthmere/mmo_farming_food_stamina_v1";
+  HARTHMERE_FARMING_FOOD_STAMINA_VERSION,
+  defaultHarthmereFoodStaminaState,
+  tickHarthmereStaminaForGameplay,
+} from "@/shared/harthmere/mmo_farming_food_stamina";
 import {
-  carriedHarthmereLocalInventoryFromStorageValuesForStaminaV1,
-  carriedHarthmereLocalInventoryForStaminaV1,
+  carriedHarthmereLocalInventoryFromStorageValuesForStamina,
+  carriedHarthmereLocalInventoryForStamina,
   normalizeFoodStaminaStateForTest,
 } from "./LocalDevHarthmereFoodStaminaSystem";
 
@@ -25,7 +25,7 @@ describe("LocalDevHarthmereFoodStaminaSystem", () => {
       spawns: {},
     });
 
-    assert.equal(migrated.stateVersion, HARTHMERE_FARMING_FOOD_STAMINA_VERSION_V1);
+    assert.equal(migrated.stateVersion, HARTHMERE_FARMING_FOOD_STAMINA_VERSION);
     assert.equal(migrated.stamina, 100);
     assert.equal(migrated.deadFromStaminaAtMs, undefined);
     assert.equal(migrated.inventory.road_ration, 1);
@@ -34,7 +34,7 @@ describe("LocalDevHarthmereFoodStaminaSystem", () => {
 
   it("preserves current-version zero-stamina death state", () => {
     const migrated = normalizeFoodStaminaStateForTest({
-      stateVersion: HARTHMERE_FARMING_FOOD_STAMINA_VERSION_V1,
+      stateVersion: HARTHMERE_FARMING_FOOD_STAMINA_VERSION,
       actorId: "local-player",
       stamina: 0,
       maxStamina: 100,
@@ -52,7 +52,7 @@ describe("LocalDevHarthmereFoodStaminaSystem", () => {
 
   it("repairs current-version zero-stamina playable saves without a death marker", () => {
     const migrated = normalizeFoodStaminaStateForTest({
-      stateVersion: HARTHMERE_FARMING_FOOD_STAMINA_VERSION_V1,
+      stateVersion: HARTHMERE_FARMING_FOOD_STAMINA_VERSION,
       actorId: "local-player",
       stamina: 0,
       maxStamina: 100,
@@ -68,7 +68,7 @@ describe("LocalDevHarthmereFoodStaminaSystem", () => {
   });
 
   it("uses local carried inventory when applying overweight stamina drain", () => {
-    const carried = carriedHarthmereLocalInventoryForStaminaV1({
+    const carried = carriedHarthmereLocalInventoryForStamina({
       backpack: {
         items: [
           { itemId: "iron_longsword", quantity: 2 },
@@ -87,15 +87,15 @@ describe("LocalDevHarthmereFoodStaminaSystem", () => {
       iron_ore: 10,
     });
 
-    const baseline = defaultHarthmereFoodStaminaStateV1(
+    const baseline = defaultHarthmereFoodStaminaState(
       "local-player",
       NOW_MS
     );
-    const baselineTick = tickHarthmereStaminaForGameplayV1(baseline, {
+    const baselineTick = tickHarthmereStaminaForGameplay(baseline, {
       nowMs: NOW_MS + 60_000,
       gameplayActive: true,
     });
-    const overweightTick = tickHarthmereStaminaForGameplayV1(
+    const overweightTick = tickHarthmereStaminaForGameplay(
       {
         ...baseline,
         inventory: carried ?? baseline.inventory,
@@ -128,7 +128,7 @@ describe("LocalDevHarthmereFoodStaminaSystem", () => {
     });
 
     assert.deepEqual(
-      carriedHarthmereLocalInventoryFromStorageValuesForStaminaV1(
+      carriedHarthmereLocalInventoryFromStorageValuesForStamina(
         scoped,
         legacy
       ),
@@ -138,7 +138,7 @@ describe("LocalDevHarthmereFoodStaminaSystem", () => {
       }
     );
     assert.deepEqual(
-      carriedHarthmereLocalInventoryFromStorageValuesForStaminaV1(
+      carriedHarthmereLocalInventoryFromStorageValuesForStamina(
         "{not-json",
         legacy
       ),

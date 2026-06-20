@@ -34,10 +34,10 @@
     "generate:medieval-public-manifest": "node scripts/generate-medieval-public-manifest.mjs",
     "generate:medieval-all": "node scripts/generate-medieval-asset-manifest.mjs && node scripts/generate-medieval-public-manifest.mjs",
     "import:harthmere-voxel-assets": "python3 scripts/harthmere/import_voxel_asset_packs.py",
-    "harthmere:test:third-party-ai-deps": "node scripts/harthmere/test-harthmere-npc-ai-package-compat-v1.cjs && node scripts/harthmere/test-harthmere-npc-ai-dependency-install-command-v1.cjs && node scripts/harthmere/test-harthmere-npc-ai-adapter-runtime-safety-v1.cjs",
-    "harthmere:test:react18-deps": "node scripts/harthmere/test-harthmere-react18-dependency-compat-v2.cjs && node scripts/harthmere/test-harthmere-emoji-mart-v5-migration-v1.cjs && node scripts/harthmere/test-harthmere-react-json-view-migration-v1.cjs",
-    "harthmere:test:deps:mass-audit": "node scripts/harthmere/test-harthmere-npm-peer-mass-audit-v1.cjs && node scripts/harthmere/test-harthmere-npm-known-peer-conflicts-v1.cjs && node scripts/harthmere/test-harthmere-node20-package-compat-v1.cjs && node scripts/harthmere/test-harthmere-npm-install-strategy-v1.cjs",
-    "harthmere:test:hud-v96": "node scripts/harthmere/check-biomes-hud-key-bindings-v96.cjs ."
+    "harthmere:test:third-party-ai-deps": "node scripts/harthmere/test-harthmere-npc-ai-package-compat.cjs && node scripts/harthmere/test-harthmere-npc-ai-dependency-install-command.cjs && node scripts/harthmere/test-harthmere-npc-ai-adapter-runtime-safety.cjs",
+    "harthmere:test:react18-deps": "node scripts/harthmere/test-harthmere-react18-dependency-compat.cjs && node scripts/harthmere/test-harthmere-emoji-mart-migration.cjs && node scripts/harthmere/test-harthmere-react-json-view-migration.cjs",
+    "harthmere:test:deps:mass-audit": "node scripts/harthmere/test-harthmere-npm-peer-mass-audit.cjs && node scripts/harthmere/test-harthmere-npm-known-peer-conflicts.cjs && node scripts/harthmere/test-harthmere-node20-package-compat.cjs && node scripts/harthmere/test-harthmere-npm-install-strategy.cjs",
+    "harthmere:test:hud": "node scripts/harthmere/check-biomes-hud-key-bindings.cjs ."
   },
   "dependencies": {
     "@emoji-mart/data": "^1.2.1",

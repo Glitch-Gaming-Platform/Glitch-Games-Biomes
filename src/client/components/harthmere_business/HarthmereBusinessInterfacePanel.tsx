@@ -1,51 +1,51 @@
 import * as React from "react";
 import { usePointerLockManager } from "../contexts/PointerLockContext";
-import { purchaseHarthmereBusinessToolV151 } from "@/client/components/challenges/LocalDevHarthmereInventorySystem";
+import { purchaseHarthmereBusinessTool } from "@/client/components/challenges/LocalDevHarthmereInventorySystem";
 import {
-  closePointerLockUnlockWhileOpenV1,
-  openPointerLockUnlockWhileOpenV1,
-  type PointerLockUnlockWhileOpenReturnRefV1,
+  closePointerLockUnlockWhileOpen,
+  openPointerLockUnlockWhileOpen,
+  type PointerLockUnlockWhileOpenReturnRef,
 } from "../contexts/pointerLockModalPolicy";
 import { ClientContextReactContext } from "../contexts/ClientContextReactContext";
 import { installBiomesUITheme } from "../biomes_ui/theme/biomesUITheme";
 import { RovingGrid } from "../biomes_ui/nav/RovingGrid";
 import {
-  harthmereBikkieVisualGlyphStyleV1,
-  harthmereBikkieVisualImageStyleV1,
-  harthmereBikkieVisualImageUrlV1,
-  harthmereBikkieVisualTileStyleV1,
-} from "../biomes_ui/adapters/harthmereBikkieVisualRenderingV1";
-import type { HarthmereResolvedBikkieVisualV1 } from "@/shared/harthmere/bikkie_visual_resolver_v1";
-import { createHarthmereBusinessMiniGameDecisionForOfferV1 } from "@/shared/harthmere/business_customer_simulator_v1";
+  harthmereBikkieVisualGlyphStyle,
+  harthmereBikkieVisualImageStyle,
+  harthmereBikkieVisualImageUrl,
+  harthmereBikkieVisualTileStyle,
+} from "../biomes_ui/adapters/harthmereBikkieVisualRendering";
+import type { HarthmereResolvedBikkieVisual } from "@/shared/harthmere/bikkie_visual_resolver";
+import { createHarthmereBusinessMiniGameDecisionForOffer } from "@/shared/harthmere/business_customer_simulator";
 import type {
-  HarthmereBusinessActorModeV1,
-  HarthmereBusinessBikkieGraphicV1,
-  HarthmereBusinessContractV1,
-  HarthmereBusinessInterfaceAdapterV1,
-  HarthmereBusinessVisibleInventoryItemV1,
-  HarthmereBusinessWorldContextV1,
+  HarthmereBusinessActorMode,
+  HarthmereBusinessBikkieGraphic,
+  HarthmereBusinessContract,
+  HarthmereBusinessInterfaceAdapter,
+  HarthmereBusinessVisibleInventoryItem,
+  HarthmereBusinessWorldContext,
 } from "./businessInterfaceLiveAdapter";
 import {
-  formatHarthmereBusinessPlayerWarningV1,
-  harthmereBusinessServicePriceGoldV1,
+  formatHarthmereBusinessPlayerWarning,
+  harthmereBusinessServicePriceGold,
 } from "./businessInterfaceLiveAdapter";
-import { businessCheckInDisplayModelV1 } from "./businessDailyCheckInClientV1";
+import { businessCheckInDisplayModel } from "./businessDailyCheckInClient";
 import {
-  harthmereBusinessCustomerPlayerMeshAvatarV1,
-  type HarthmereBusinessCustomerPlayerMeshAvatarV1,
-} from "./businessMiniGameFacesV1";
-import { HARTHMERE_BUSINESS_TAB_LABELS_V1 } from "./harthmereBusinessTabsV1";
+  harthmereBusinessCustomerPlayerMeshAvatar,
+  type HarthmereBusinessCustomerPlayerMeshAvatar,
+} from "./businessMiniGameFaces";
+import { HARTHMERE_BUSINESS_TAB_LABELS } from "./harthmereBusinessTabs";
 import { MathUtils, Spherical, Vector3 } from "three";
 
-type CharacterPreviewModuleV1 = typeof import("../character/CharacterPreview");
+type CharacterPreviewModule = typeof import("../character/CharacterPreview");
 
 export interface HarthmereBusinessInterfacePanelProps {
-  adapter: HarthmereBusinessInterfaceAdapterV1;
+  adapter: HarthmereBusinessInterfaceAdapter;
   nearbyBusinessId?: string | null;
-  context?: HarthmereBusinessWorldContextV1;
+  context?: HarthmereBusinessWorldContext;
   onClose?: () => void;
   compact?: boolean;
-  initialTab?: HarthmereBusinessInterfacePanelTabV1;
+  initialTab?: HarthmereBusinessInterfacePanelTab;
 }
 
 type OwnerTab =
@@ -69,9 +69,9 @@ type CustomerTab =
   | "status"
   | "market";
 type PanelTab = OwnerTab | CustomerTab;
-export type HarthmereBusinessInterfacePanelTabV1 = PanelTab;
+export type HarthmereBusinessInterfacePanelTab = PanelTab;
 
-type HarthmereBusinessRenderProfileEntryV1 = {
+type HarthmereBusinessRenderProfileEntry = {
   atMs: number;
   label: string;
   kind: "derive" | "render" | "commit" | "longtask";
@@ -83,15 +83,15 @@ type HarthmereBusinessRenderProfileEntryV1 = {
 
 declare global {
   interface Window {
-    __HARTHMERE_BUSINESS_RENDER_PROFILE_V1__?: {
-      entries: HarthmereBusinessRenderProfileEntryV1[];
+    __HARTHMERE_BUSINESS_RENDER_PROFILE__?: {
+      entries: HarthmereBusinessRenderProfileEntry[];
       clear: () => void;
-      slowest: (limit?: number) => HarthmereBusinessRenderProfileEntryV1[];
+      slowest: (limit?: number) => HarthmereBusinessRenderProfileEntry[];
     };
   }
 }
 
-type ShopfrontMerchKindV1 =
+type ShopfrontMerchKind =
   | "tool"
   | "block"
   | "interior"
@@ -120,8 +120,8 @@ const CUSTOMER_TABS: CustomerTab[] = [
   "status",
   "market",
 ];
-// Labels live in a pure, unit-tested module (harthmereBusinessTabsV1).
-const TAB_LABELS: Record<string, string> = HARTHMERE_BUSINESS_TAB_LABELS_V1;
+// Labels live in a pure, unit-tested module (harthmereBusinessTabs).
+const TAB_LABELS: Record<string, string> = HARTHMERE_BUSINESS_TAB_LABELS;
 
 function displayLabel(value: string | undefined): string {
   if (!value) return "";
@@ -134,7 +134,7 @@ function displayLabel(value: string | undefined): string {
     .replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
-function playerFacingBusinessNameV1(
+function playerFacingBusinessName(
   name: string | undefined,
   fallbackTypeId: string
 ) {
@@ -167,30 +167,30 @@ function isTypingInInput(): boolean {
   return tag === "input" || tag === "textarea" || active.isContentEditable;
 }
 
-function installHarthmereBusinessPendingStylesV1() {
+function installHarthmereBusinessPendingStyles() {
   if (typeof document === "undefined") return;
-  if (document.getElementById("harthmere-business-pending-styles-v1")) return;
+  if (document.getElementById("harthmere-business-pending-styles")) return;
   const style = document.createElement("style");
-  style.id = "harthmere-business-pending-styles-v1";
+  style.id = "harthmere-business-pending-styles";
   style.textContent = [
-    "@keyframes harthmere-business-pending-spin-v1 { to { transform: rotate(360deg); } }",
-    "@keyframes harthmere-business-meter-v1 { 0% { transform: translateX(-100%); } 100% { transform: translateX(280%); } }",
-    "@keyframes harthmere-business-pulse-v1 { 0%, 100% { opacity: .58; transform: scale(.96); } 50% { opacity: 1; transform: scale(1.04); } }",
-    "@keyframes harthmere-business-toast-v1 { 0% { opacity: 0; transform: translateY(8px) scale(.98); } 100% { opacity: 1; transform: none; } }",
-    "@keyframes harthmere-business-urgent-v1 { 0%, 100% { opacity: 1; } 50% { opacity: .45; } }",
-    "@keyframes harthmere-business-rise-v1 { 0% { opacity: 0; transform: translateY(6px); } 100% { opacity: 1; transform: none; } }",
+    "@keyframes harthmere-business-pending-spin { to { transform: rotate(360deg); } }",
+    "@keyframes harthmere-business-meter { 0% { transform: translateX(-100%); } 100% { transform: translateX(280%); } }",
+    "@keyframes harthmere-business-pulse { 0%, 100% { opacity: .58; transform: scale(.96); } 50% { opacity: 1; transform: scale(1.04); } }",
+    "@keyframes harthmere-business-toast { 0% { opacity: 0; transform: translateY(8px) scale(.98); } 100% { opacity: 1; transform: none; } }",
+    "@keyframes harthmere-business-urgent { 0%, 100% { opacity: 1; } 50% { opacity: .45; } }",
+    "@keyframes harthmere-business-rise { 0% { opacity: 0; transform: translateY(6px); } 100% { opacity: 1; transform: none; } }",
     ".harthmere-business-customer-mesh-avatar, .harthmere-business-customer-mesh-avatar .three-object-preview-wrapper { width: 100%; height: 100%; min-height: 60px; overflow: hidden; }",
     ".harthmere-business-customer-mesh-avatar canvas { width: 100% !important; height: 100% !important; }",
   ].join("\n");
   document.head.appendChild(style);
 }
 
-function harthmereBusinessPerfNowV1() {
+function harthmereBusinessPerfNow() {
   return typeof performance !== "undefined" ? performance.now() : Date.now();
 }
 
-function harthmereBusinessPerfShouldLogV1(entry: {
-  kind: HarthmereBusinessRenderProfileEntryV1["kind"];
+function harthmereBusinessPerfShouldLog(entry: {
+  kind: HarthmereBusinessRenderProfileEntry["kind"];
   durationMs: number;
 }) {
   if (typeof window === "undefined") return false;
@@ -207,19 +207,19 @@ function harthmereBusinessPerfShouldLogV1(entry: {
   return entry.durationMs >= threshold;
 }
 
-function recordHarthmereBusinessRenderProfileV1(
-  entry: Omit<HarthmereBusinessRenderProfileEntryV1, "atMs">
+function recordHarthmereBusinessRenderProfile(
+  entry: Omit<HarthmereBusinessRenderProfileEntry, "atMs">
 ) {
   if (typeof window === "undefined") return;
   const profiler =
-    window.__HARTHMERE_BUSINESS_RENDER_PROFILE_V1__ ??
-    (window.__HARTHMERE_BUSINESS_RENDER_PROFILE_V1__ = {
+    window.__HARTHMERE_BUSINESS_RENDER_PROFILE__ ??
+    (window.__HARTHMERE_BUSINESS_RENDER_PROFILE__ = {
       entries: [],
       clear: () => {
-        window.__HARTHMERE_BUSINESS_RENDER_PROFILE_V1__?.entries.splice(0);
+        window.__HARTHMERE_BUSINESS_RENDER_PROFILE__?.entries.splice(0);
       },
       slowest: (limit = 20) =>
-        [...(window.__HARTHMERE_BUSINESS_RENDER_PROFILE_V1__?.entries ?? [])]
+        [...(window.__HARTHMERE_BUSINESS_RENDER_PROFILE__?.entries ?? [])]
           .sort((a, b) => b.durationMs - a.durationMs)
           .slice(0, limit),
     });
@@ -230,27 +230,27 @@ function recordHarthmereBusinessRenderProfileV1(
   };
   profiler.entries.push(fullEntry);
   if (profiler.entries.length > 300) profiler.entries.splice(0, 50);
-  if (harthmereBusinessPerfShouldLogV1(fullEntry)) {
+  if (harthmereBusinessPerfShouldLog(fullEntry)) {
     console.info("[HarthmereBusinessPerf]", fullEntry);
   }
 }
 
-function useMeasuredBusinessMemoV1<T>(
+function useMeasuredBusinessMemo<T>(
   label: string,
   factory: () => T,
   deps: React.DependencyList,
   details?: Omit<
-    HarthmereBusinessRenderProfileEntryV1,
+    HarthmereBusinessRenderProfileEntry,
     "atMs" | "durationMs" | "kind" | "label"
   >
 ): T {
   return React.useMemo(() => {
-    const start = harthmereBusinessPerfNowV1();
+    const start = harthmereBusinessPerfNow();
     const value = factory();
-    recordHarthmereBusinessRenderProfileV1({
+    recordHarthmereBusinessRenderProfile({
       kind: "derive",
       label,
-      durationMs: harthmereBusinessPerfNowV1() - start,
+      durationMs: harthmereBusinessPerfNow() - start,
       ...details,
     });
     return value;
@@ -258,7 +258,7 @@ function useMeasuredBusinessMemoV1<T>(
   }, deps);
 }
 
-function useHarthmereBusinessLongTaskObserverV1(
+function useHarthmereBusinessLongTaskObserver(
   enabled: boolean,
   businessId?: string | null,
   tab?: string
@@ -275,7 +275,7 @@ function useHarthmereBusinessLongTaskObserverV1(
     try {
       observer = new PerformanceObserver((list) => {
         for (const entry of list.getEntries()) {
-          recordHarthmereBusinessRenderProfileV1({
+          recordHarthmereBusinessRenderProfile({
             kind: "longtask",
             label: entry.name || "browser-long-task",
             durationMs: entry.duration,
@@ -302,7 +302,7 @@ function chunk<T>(items: readonly T[], size: number): T[][] {
   return rows.length ? rows : [[]];
 }
 
-const BUSINESS_BACKEND_MUTATION_METHODS_V1 = new Set<string>([
+const BUSINESS_BACKEND_MUTATION_METHODS = new Set<string>([
   "submitOperation",
   "createBankAccount",
   "transferPersonalToBusinessBank",
@@ -342,24 +342,24 @@ const BUSINESS_BACKEND_MUTATION_METHODS_V1 = new Set<string>([
   "settleEmpireDay",
 ]);
 
-const BUSINESS_BACKEND_REQUEST_SKIPPED_V1 = Symbol(
+const BUSINESS_BACKEND_REQUEST_SKIPPED = Symbol(
   "harthmere_business_backend_request_skipped"
 );
 
-function isBusinessBackendRequestSkippedV1(value: unknown): boolean {
-  return value === BUSINESS_BACKEND_REQUEST_SKIPPED_V1;
+function isBusinessBackendRequestSkipped(value: unknown): boolean {
+  return value === BUSINESS_BACKEND_REQUEST_SKIPPED;
 }
 
-const BusinessBackendPendingContextV1 = React.createContext(false);
+const BusinessBackendPendingContext = React.createContext(false);
 
-function useBusinessBackendPendingV1(): boolean {
-  return React.useContext(BusinessBackendPendingContextV1);
+function useBusinessBackendPending(): boolean {
+  return React.useContext(BusinessBackendPendingContext);
 }
 
-function usePendingBusinessAdapterV1(
-  adapter: HarthmereBusinessInterfaceAdapterV1
+function usePendingBusinessAdapter(
+  adapter: HarthmereBusinessInterfaceAdapter
 ): {
-  adapter: HarthmereBusinessInterfaceAdapterV1;
+  adapter: HarthmereBusinessInterfaceAdapter;
   pending: boolean;
 } {
   const [pendingCount, setPendingCount] = React.useState(0);
@@ -371,11 +371,11 @@ function usePendingBusinessAdapterV1(
           const value = Reflect.get(target, prop, receiver);
           if (typeof value !== "function") return value;
           return (...args: unknown[]) => {
-            if (!BUSINESS_BACKEND_MUTATION_METHODS_V1.has(String(prop))) {
+            if (!BUSINESS_BACKEND_MUTATION_METHODS.has(String(prop))) {
               return value.apply(target, args);
             }
             if (pendingRef.current) {
-              return Promise.resolve(BUSINESS_BACKEND_REQUEST_SKIPPED_V1);
+              return Promise.resolve(BUSINESS_BACKEND_REQUEST_SKIPPED);
             }
             pendingRef.current = true;
             setPendingCount((count) => count + 1);
@@ -396,23 +396,23 @@ function usePendingBusinessAdapterV1(
             }
           };
         },
-      }) as HarthmereBusinessInterfaceAdapterV1,
+      }) as HarthmereBusinessInterfaceAdapter,
     [adapter]
   );
   return { adapter: wrapped, pending: pendingCount > 0 };
 }
 
-const BikkieVisualTileForVisualV1: React.FunctionComponent<{
-  visual: HarthmereResolvedBikkieVisualV1;
+const BikkieVisualTileForVisual: React.FunctionComponent<{
+  visual: HarthmereResolvedBikkieVisual;
   size?: number;
   dataTestId?: string;
 }> = ({ visual, size, dataTestId }) => {
-  const imageUrl = harthmereBikkieVisualImageUrlV1(visual);
+  const imageUrl = harthmereBikkieVisualImageUrl(visual);
   return (
     <span
       aria-label={visual.ariaLabel}
       title={visual.metadataSummary}
-      style={harthmereBikkieVisualTileStyleV1(visual, size)}
+      style={harthmereBikkieVisualTileStyle(visual, size)}
       data-testid={dataTestId}
       data-bikkie-visual="true"
       data-visual-source={visual.source}
@@ -425,18 +425,18 @@ const BikkieVisualTileForVisualV1: React.FunctionComponent<{
           src={imageUrl}
           alt=""
           aria-hidden="true"
-          style={harthmereBikkieVisualImageStyleV1}
+          style={harthmereBikkieVisualImageStyle}
           data-bikkie-visual-img="true"
         />
       ) : null}
-      <span style={harthmereBikkieVisualGlyphStyleV1}>{visual.glyph}</span>
+      <span style={harthmereBikkieVisualGlyphStyle}>{visual.glyph}</span>
     </span>
   );
 };
 
 const BikkieVisualTile: React.FunctionComponent<{
-  graphic: HarthmereBusinessBikkieGraphicV1;
-}> = ({ graphic }) => <BikkieVisualTileForVisualV1 visual={graphic.visual} />;
+  graphic: HarthmereBusinessBikkieGraphic;
+}> = ({ graphic }) => <BikkieVisualTileForVisual visual={graphic.visual} />;
 
 export const HarthmereBusinessInterfacePanel: React.FunctionComponent<
   HarthmereBusinessInterfacePanelProps
@@ -450,9 +450,9 @@ export const HarthmereBusinessInterfacePanel: React.FunctionComponent<
 }) => {
   const pointerLockManager = usePointerLockManager();
   const shouldReturnPointerLock =
-    React.useRef<PointerLockUnlockWhileOpenReturnRefV1>({ current: false });
+    React.useRef<PointerLockUnlockWhileOpenReturnRef>({ current: false });
   const { adapter: businessAdapter, pending: backendPending } =
-    usePendingBusinessAdapterV1(adapter);
+    usePendingBusinessAdapter(adapter);
   const activeBusinessId =
     nearbyBusinessId ?? context?.nearbyBusinessId ?? null;
   const available =
@@ -461,7 +461,7 @@ export const HarthmereBusinessInterfacePanel: React.FunctionComponent<
   const business = activeBusinessId
     ? businessAdapter.getBusiness(activeBusinessId)
     : undefined;
-  const mode: HarthmereBusinessActorModeV1 =
+  const mode: HarthmereBusinessActorMode =
     business && activeBusinessId
       ? businessAdapter.getMode(activeBusinessId)
       : "customer";
@@ -472,16 +472,16 @@ export const HarthmereBusinessInterfacePanel: React.FunctionComponent<
 
   React.useEffect(() => {
     installBiomesUITheme();
-    installHarthmereBusinessPendingStylesV1();
+    installHarthmereBusinessPendingStyles();
   }, []);
   React.useEffect(() => {
     if (!available || compact) return;
-    openPointerLockUnlockWhileOpenV1(
+    openPointerLockUnlockWhileOpen(
       pointerLockManager,
       shouldReturnPointerLock.current
     );
     return () => {
-      closePointerLockUnlockWhileOpenV1(
+      closePointerLockUnlockWhileOpen(
         pointerLockManager,
         shouldReturnPointerLock.current
       );
@@ -508,7 +508,7 @@ export const HarthmereBusinessInterfacePanel: React.FunctionComponent<
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
   }, [activeTab, available, onClose, tabs.join("|")]);
-  useHarthmereBusinessLongTaskObserverV1(
+  useHarthmereBusinessLongTaskObserver(
     available,
     activeBusinessId,
     activeTab
@@ -522,7 +522,7 @@ export const HarthmereBusinessInterfacePanel: React.FunctionComponent<
       startTime: number,
       commitTime: number
     ) => {
-      recordHarthmereBusinessRenderProfileV1({
+      recordHarthmereBusinessRenderProfile({
         kind: "render",
         label: "active-pane",
         durationMs: actualDuration,
@@ -540,7 +540,7 @@ export const HarthmereBusinessInterfacePanel: React.FunctionComponent<
 
   if (!activeBusinessId || !available || !business) return null;
   const type = businessAdapter.getBusinessType(activeBusinessId);
-  const businessDisplayName = playerFacingBusinessNameV1(
+  const businessDisplayName = playerFacingBusinessName(
     business.name,
     business.typeId
   );
@@ -645,7 +645,7 @@ export const HarthmereBusinessInterfacePanel: React.FunctionComponent<
   }
 
   return (
-    <BusinessBackendPendingContextV1.Provider value={backendPending}>
+    <BusinessBackendPendingContext.Provider value={backendPending}>
       <div
         role="dialog"
         aria-label={`${businessDisplayName} business interface`}
@@ -738,12 +738,12 @@ export const HarthmereBusinessInterfacePanel: React.FunctionComponent<
           </div>
         ) : null}
       </div>
-    </BusinessBackendPendingContextV1.Provider>
+    </BusinessBackendPendingContext.Provider>
   );
 };
 
 const BikkieGraphicsStrip: React.FunctionComponent<{
-  graphics: readonly HarthmereBusinessBikkieGraphicV1[];
+  graphics: readonly HarthmereBusinessBikkieGraphic[];
 }> = ({ graphics }) => {
   const shown = graphics.slice(0, 5);
   const primary =
@@ -797,10 +797,10 @@ const BikkieGraphicsStrip: React.FunctionComponent<{
 };
 
 const OwnerDashboardPane: React.FunctionComponent<{
-  adapter: HarthmereBusinessInterfaceAdapterV1;
+  adapter: HarthmereBusinessInterfaceAdapter;
   businessId: string;
 }> = ({ adapter, businessId }) => {
-  const backendPending = useBusinessBackendPendingV1();
+  const backendPending = useBusinessBackendPending();
   const {
     dashboard,
     report,
@@ -810,7 +810,7 @@ const OwnerDashboardPane: React.FunctionComponent<{
     type,
     bikkieGraphics,
     checkIn,
-  } = useMeasuredBusinessMemoV1(
+  } = useMeasuredBusinessMemo(
     "owner-dashboard-derive",
     () => ({
       dashboard: adapter.getOwnerDashboard(businessId),
@@ -826,7 +826,7 @@ const OwnerDashboardPane: React.FunctionComponent<{
     { businessId, tab: "dashboard" }
   );
   const checkInDisplay = checkIn
-    ? businessCheckInDisplayModelV1(checkIn)
+    ? businessCheckInDisplayModel(checkIn)
     : undefined;
   const canOpen = Boolean(
     business?.propertyId &&
@@ -854,7 +854,7 @@ const OwnerDashboardPane: React.FunctionComponent<{
           data-business-backend-action="true"
           disabled={backendPending || Boolean(session)}
           onClick={() => void adapter.startCustomerSession(businessId)}
-          style={backendActionStyleV1(
+          style={backendActionStyle(
             session ? disabledButtonStyle : startShiftButtonStyle,
             backendPending
           )}
@@ -888,7 +888,7 @@ const OwnerDashboardPane: React.FunctionComponent<{
             data-business-backend-action="true"
             disabled={backendPending || checkInDisplay.checkedInToday}
             onClick={() => void adapter.checkInDaily(businessId)}
-            style={backendActionStyleV1(
+            style={backendActionStyle(
               checkInDisplay.checkedInToday
                 ? disabledButtonStyle
                 : startShiftButtonStyle,
@@ -960,7 +960,7 @@ const OwnerDashboardPane: React.FunctionComponent<{
                 business?.townId
               )
             }
-            style={backendActionStyleV1(
+            style={backendActionStyle(
               !canOpen ? disabledButtonStyle : undefined,
               backendPending
             )}
@@ -1000,11 +1000,11 @@ const OwnerDashboardPane: React.FunctionComponent<{
 };
 
 const CustomerMiniGamePane: React.FunctionComponent<{
-  adapter: HarthmereBusinessInterfaceAdapterV1;
+  adapter: HarthmereBusinessInterfaceAdapter;
   businessId: string;
 }> = ({ adapter, businessId }) => {
-  const backendPending = useBusinessBackendPendingV1();
-  const panel = useMeasuredBusinessMemoV1(
+  const backendPending = useBusinessBackendPending();
+  const panel = useMeasuredBusinessMemo(
     "customer-minigame-derive",
     () => adapter.getCustomerMiniGame(businessId),
     [adapter, businessId],
@@ -1014,7 +1014,7 @@ const CustomerMiniGamePane: React.FunctionComponent<{
   const ticket = panel.currentTicket;
   const [nowMs, setNowMs] = React.useState(() => Date.now());
   const [feedback, setFeedback] = React.useState<
-    MiniGameFeedbackV1 | undefined
+    MiniGameFeedback | undefined
   >();
   const feedbackSeq = React.useRef(0);
   React.useEffect(() => {
@@ -1058,7 +1058,7 @@ const CustomerMiniGamePane: React.FunctionComponent<{
     if (!ticket) {
       return undefined;
     }
-    return harthmereBusinessCustomerPlayerMeshAvatarV1({
+    return harthmereBusinessCustomerPlayerMeshAvatar({
       npcId: ticket.npcId,
       displayName: customerName,
       appearance: panel.currentNpc?.appearance,
@@ -1083,7 +1083,7 @@ const CustomerMiniGamePane: React.FunctionComponent<{
       .slice(0, 4);
   }, [session, ticket?.ticketId]);
   const pushFeedback = React.useCallback(
-    (kind: MiniGameFeedbackV1["kind"], message: string) => {
+    (kind: MiniGameFeedback["kind"], message: string) => {
       feedbackSeq.current += 1;
       setFeedback({ id: feedbackSeq.current, kind, message });
     },
@@ -1093,7 +1093,7 @@ const CustomerMiniGamePane: React.FunctionComponent<{
     (action: () => Promise<unknown>, successMessage?: string) => {
       void action()
         .then((result) => {
-          if (isBusinessBackendRequestSkippedV1(result)) return;
+          if (isBusinessBackendRequestSkipped(result)) return;
           if (successMessage) pushFeedback("success", successMessage);
         })
         .catch((error) => {
@@ -1112,7 +1112,7 @@ const CustomerMiniGamePane: React.FunctionComponent<{
           if (message.includes("economy_rejected:")) {
             pushFeedback(
               "error",
-              formatHarthmereBusinessPlayerWarningV1(message)
+              formatHarthmereBusinessPlayerWarning(message)
             );
             return;
           }
@@ -1212,7 +1212,7 @@ const CustomerMiniGamePane: React.FunctionComponent<{
               data-business-backend-action="true"
               disabled={backendPending}
               onClick={startShift}
-              style={backendActionStyleV1(
+              style={backendActionStyle(
                 startShiftButtonStyle,
                 backendPending
               )}
@@ -1228,7 +1228,7 @@ const CustomerMiniGamePane: React.FunctionComponent<{
               data-business-backend-action="true"
               disabled={backendPending}
               onClick={startShift}
-              style={backendActionStyleV1(
+              style={backendActionStyle(
                 startShiftButtonStyle,
                 backendPending
               )}
@@ -1320,7 +1320,7 @@ const CustomerMiniGamePane: React.FunctionComponent<{
                   style={{
                     ...patienceFillStyle,
                     width: `${Math.round(patienceRatio * 100)}%`,
-                    background: patienceColorV1(patienceRatio),
+                    background: patienceColor(patienceRatio),
                   }}
                 />
               </div>
@@ -1353,7 +1353,7 @@ const CustomerMiniGamePane: React.FunctionComponent<{
                         offer.offerId,
                         session?.sessionId,
                         ticket.ticketId,
-                        createHarthmereBusinessMiniGameDecisionForOfferV1(
+                        createHarthmereBusinessMiniGameDecisionForOffer(
                           panel.typeId as any,
                           offer.offerId
                         )
@@ -1377,7 +1377,7 @@ const CustomerMiniGamePane: React.FunctionComponent<{
                     }
                     disabled={backendPending}
                     aria-disabled={backendPending}
-                    style={backendActionStyleV1(
+                    style={backendActionStyle(
                       serviceButtonStyle,
                       backendPending
                     )}
@@ -1500,7 +1500,7 @@ const CustomerMiniGamePane: React.FunctionComponent<{
   );
 };
 
-type MiniGameFeedbackV1 = {
+type MiniGameFeedback = {
   id: number;
   kind: "success" | "error";
   message: string;
@@ -1528,12 +1528,12 @@ const StatChip: React.FunctionComponent<{
 );
 
 const CustomerPlayerMeshPortrait: React.FunctionComponent<{
-  avatar: HarthmereBusinessCustomerPlayerMeshAvatarV1;
+  avatar: HarthmereBusinessCustomerPlayerMeshAvatar;
   ticketId: string;
 }> = ({ avatar, ticketId }) => {
   const { clientContext } = React.useContext(ClientContextReactContext);
   const [previewModule, setPreviewModule] =
-    React.useState<CharacterPreviewModuleV1 | null>(null);
+    React.useState<CharacterPreviewModule | null>(null);
   const cameraPos = React.useMemo(
     () =>
       new Vector3().setFromSpherical(
@@ -1592,17 +1592,17 @@ const CustomerPlayerMeshPortrait: React.FunctionComponent<{
   );
 };
 
-function patienceColorV1(ratio: number): string {
+function patienceColor(ratio: number): string {
   if (ratio > 0.5) return "linear-gradient(90deg, #56c7ff, #92ffd7)";
   if (ratio > 0.25) return "linear-gradient(90deg, #ffd23f, #ff9f2f)";
   return "linear-gradient(90deg, #ff6b6b, #ff9f2f)";
 }
 
 const CustomerOverviewPane: React.FunctionComponent<{
-  adapter: HarthmereBusinessInterfaceAdapterV1;
+  adapter: HarthmereBusinessInterfaceAdapter;
   businessId: string;
 }> = ({ adapter, businessId }) => {
-  const { business, shop, miniGame } = useMeasuredBusinessMemoV1(
+  const { business, shop, miniGame } = useMeasuredBusinessMemo(
     "customer-overview-derive",
     () => ({
       business: adapter.getBusiness(businessId)!,
@@ -1657,11 +1657,11 @@ const CustomerOverviewPane: React.FunctionComponent<{
 };
 
 const ContractBoardPane: React.FunctionComponent<{
-  adapter: HarthmereBusinessInterfaceAdapterV1;
+  adapter: HarthmereBusinessInterfaceAdapter;
   businessId: string;
 }> = ({ adapter, businessId }) => {
-  const backendPending = useBusinessBackendPendingV1();
-  const board = useMeasuredBusinessMemoV1(
+  const backendPending = useBusinessBackendPending();
+  const board = useMeasuredBusinessMemo(
     "contract-board-derive",
     () => adapter.getContractBoard(businessId),
     [adapter, businessId],
@@ -1678,7 +1678,7 @@ const ContractBoardPane: React.FunctionComponent<{
             type="button"
             data-business-backend-action="true"
             disabled={backendPending}
-            style={backendActionStyleV1(undefined, backendPending)}
+            style={backendActionStyle(undefined, backendPending)}
             onClick={() =>
               void adapter.acceptContract(businessId, contract.contractId)
             }
@@ -1696,7 +1696,7 @@ const ContractBoardPane: React.FunctionComponent<{
             type="button"
             data-business-backend-action="true"
             disabled={backendPending}
-            style={backendActionStyleV1(undefined, backendPending)}
+            style={backendActionStyle(undefined, backendPending)}
             onClick={() =>
               void adapter.fulfillContract(businessId, contract.contractId)
             }
@@ -1712,8 +1712,8 @@ const ContractBoardPane: React.FunctionComponent<{
 
 const ContractList: React.FunctionComponent<{
   title: string;
-  contracts: HarthmereBusinessContractV1[];
-  renderAction?: (contract: HarthmereBusinessContractV1) => React.ReactNode;
+  contracts: HarthmereBusinessContract[];
+  renderAction?: (contract: HarthmereBusinessContract) => React.ReactNode;
 }> = ({ title, contracts, renderAction }) => (
   <section style={cardStyle}>
     <h3 style={sectionTitleStyle}>{title}</h3>
@@ -1737,12 +1737,12 @@ const ContractList: React.FunctionComponent<{
 );
 
 const ShopfrontPane: React.FunctionComponent<{
-  adapter: HarthmereBusinessInterfaceAdapterV1;
+  adapter: HarthmereBusinessInterfaceAdapter;
   businessId: string;
-  mode: HarthmereBusinessActorModeV1;
+  mode: HarthmereBusinessActorMode;
 }> = ({ adapter, businessId, mode }) => {
-  const backendPending = useBusinessBackendPendingV1();
-  const shop = useMeasuredBusinessMemoV1(
+  const backendPending = useBusinessBackendPending();
+  const shop = useMeasuredBusinessMemo(
     "shopfront-derive",
     () => adapter.getShopfront(businessId),
     [adapter, businessId],
@@ -1769,7 +1769,7 @@ const ShopfrontPane: React.FunctionComponent<{
   );
   const renderStorefrontGood = (
     good: (typeof storefrontGoods)[number],
-    merchKind: ShopfrontMerchKindV1
+    merchKind: ShopfrontMerchKind
   ) => {
     const itemLabel = good.displayName ?? displayLabel(good.itemId);
     const isRecipeBook = merchKind === "recipe_book";
@@ -1791,7 +1791,7 @@ const ShopfrontPane: React.FunctionComponent<{
           !isRecipeBook && parsedCount > 1 ? ` x${parsedCount}` : ""
         }`}
         disabled={disabled}
-        style={backendActionStyleV1(
+        style={backendActionStyle(
           shopfrontGoodButtonStyle(merchKind),
           disabled
         )}
@@ -1801,7 +1801,7 @@ const ShopfrontPane: React.FunctionComponent<{
       >
         <div style={shopfrontItemLeadStyle}>
           {good.visual ? (
-            <BikkieVisualTileForVisualV1
+            <BikkieVisualTileForVisual
               visual={good.visual}
               size={38}
               dataTestId={`biomes-business-storefront-good-icon-${good.itemId}`}
@@ -1811,7 +1811,7 @@ const ShopfrontPane: React.FunctionComponent<{
             <div style={shopItemHeaderStyle}>
               <strong style={shopItemNameStyle}>{itemLabel}</strong>
               <span style={shopfrontKindBadgeStyle(merchKind)}>
-                {shopfrontKindLabelV1(merchKind)}
+                {shopfrontKindLabel(merchKind)}
               </span>
             </div>
             <div style={shopItemMetaStyle}>
@@ -1859,7 +1859,7 @@ const ShopfrontPane: React.FunctionComponent<{
               type="button"
               data-business-backend-action="true"
               disabled={backendPending || !itemId}
-              style={backendActionStyleV1(
+              style={backendActionStyle(
                 !itemId ? disabledButtonStyle : undefined,
                 backendPending
               )}
@@ -1875,7 +1875,7 @@ const ShopfrontPane: React.FunctionComponent<{
               type="button"
               data-business-backend-action="true"
               disabled={backendPending || !itemId}
-              style={backendActionStyleV1(
+              style={backendActionStyle(
                 !itemId ? disabledButtonStyle : undefined,
                 backendPending
               )}
@@ -1907,7 +1907,7 @@ const ShopfrontPane: React.FunctionComponent<{
               type="button"
               data-business-backend-action="true"
               disabled={backendPending || !priceItemId}
-              style={backendActionStyleV1(
+              style={backendActionStyle(
                 !priceItemId ? disabledButtonStyle : undefined,
                 backendPending
               )}
@@ -1945,7 +1945,7 @@ const ShopfrontPane: React.FunctionComponent<{
           <div style={shopfrontToolListingStyle}>
             <div style={shopfrontItemLeadStyle}>
               {shop.toolForSale.visual ? (
-                <BikkieVisualTileForVisualV1
+                <BikkieVisualTileForVisual
                   visual={shop.toolForSale.visual}
                   size={38}
                   dataTestId="biomes-business-tool-for-sale-icon"
@@ -1970,9 +1970,9 @@ const ShopfrontPane: React.FunctionComponent<{
               data-business-backend-action="true"
               disabled={backendPending}
               onClick={() =>
-                purchaseHarthmereBusinessToolV151(shop.businessType)
+                purchaseHarthmereBusinessTool(shop.businessType)
               }
-              style={backendActionStyleV1(
+              style={backendActionStyle(
                 { ...buyActionTextStyle, width: "100%" },
                 backendPending
               )}
@@ -2061,7 +2061,7 @@ const ShopfrontPane: React.FunctionComponent<{
 };
 
 const ShopfrontMerchSection: React.FunctionComponent<{
-  kind: ShopfrontMerchKindV1;
+  kind: ShopfrontMerchKind;
   title: string;
   countLabel?: string;
   dataTestId?: string;
@@ -2082,12 +2082,12 @@ const ShopfrontMerchSection: React.FunctionComponent<{
 );
 
 const InventoryGrid: React.FunctionComponent<{
-  inventory: HarthmereBusinessVisibleInventoryItemV1[];
+  inventory: HarthmereBusinessVisibleInventoryItem[];
   emptyLabel: string;
   actionLabel?: string;
-  itemKind?: ShopfrontMerchKindV1;
+  itemKind?: ShopfrontMerchKind;
   purchaseCount?: number;
-  onActivate?: (item: HarthmereBusinessVisibleInventoryItemV1) => void;
+  onActivate?: (item: HarthmereBusinessVisibleInventoryItem) => void;
 }> = ({
   inventory,
   emptyLabel,
@@ -2096,7 +2096,7 @@ const InventoryGrid: React.FunctionComponent<{
   purchaseCount = 1,
   onActivate,
 }) => {
-  const backendPending = useBusinessBackendPendingV1();
+  const backendPending = useBusinessBackendPending();
   const inventoryRows = React.useMemo(() => chunk(inventory, 4), [inventory]);
   if (!inventory.length) return <p style={mutedTextStyle}>{emptyLabel}</p>;
   return (
@@ -2119,7 +2119,7 @@ const InventoryGrid: React.FunctionComponent<{
             className="biomes-ui-slot"
             data-business-backend-action={actionLabel ? "true" : undefined}
             disabled={Boolean(actionLabel && backendPending)}
-            style={backendActionStyleV1(
+            style={backendActionStyle(
               {
                 width: 150,
                 minHeight: actionLabel ? 112 : 96,
@@ -2141,7 +2141,7 @@ const InventoryGrid: React.FunctionComponent<{
             }
           >
             {item.visual ? (
-              <BikkieVisualTileForVisualV1
+              <BikkieVisualTileForVisual
                 visual={item.visual}
                 size={34}
                 dataTestId={`biomes-business-shop-stock-icon-${item.itemId}`}
@@ -2150,7 +2150,7 @@ const InventoryGrid: React.FunctionComponent<{
             <strong style={{ fontSize: 12 }}>{itemLabel}</strong>
             {actionLabel ? (
               <span style={shopfrontKindBadgeStyle(itemKind)}>
-                {shopfrontKindLabelV1(itemKind)}
+                {shopfrontKindLabel(itemKind)}
               </span>
             ) : null}
             <span style={mutedTextStyle}>
@@ -2174,11 +2174,11 @@ const InventoryGrid: React.FunctionComponent<{
 };
 
 const FinancePane: React.FunctionComponent<{
-  adapter: HarthmereBusinessInterfaceAdapterV1;
+  adapter: HarthmereBusinessInterfaceAdapter;
   businessId: string;
 }> = ({ adapter, businessId }) => {
-  const backendPending = useBusinessBackendPendingV1();
-  const panel = useMeasuredBusinessMemoV1(
+  const backendPending = useBusinessBackendPending();
+  const panel = useMeasuredBusinessMemo(
     "finance-derive",
     () => adapter.getFinancePanel(businessId),
     [adapter, businessId],
@@ -2222,7 +2222,7 @@ const FinancePane: React.FunctionComponent<{
             type="button"
             data-business-backend-action="true"
             disabled={backendPending}
-            style={backendActionStyleV1(undefined, backendPending)}
+            style={backendActionStyle(undefined, backendPending)}
             onClick={() => void adapter.createBankAccount(businessId)}
           >
             Create Account
@@ -2232,7 +2232,7 @@ const FinancePane: React.FunctionComponent<{
             type="button"
             data-business-backend-action="true"
             disabled={backendPending}
-            style={backendActionStyleV1(undefined, backendPending)}
+            style={backendActionStyle(undefined, backendPending)}
             onClick={() =>
               void adapter.transferPersonalToBusinessBank(
                 businessId,
@@ -2247,7 +2247,7 @@ const FinancePane: React.FunctionComponent<{
             type="button"
             data-business-backend-action="true"
             disabled={backendPending}
-            style={backendActionStyleV1(undefined, backendPending)}
+            style={backendActionStyle(undefined, backendPending)}
             onClick={() =>
               void adapter.transferBusinessToPersonalBank(
                 businessId,
@@ -2264,11 +2264,11 @@ const FinancePane: React.FunctionComponent<{
 };
 
 const StaffPane: React.FunctionComponent<{
-  adapter: HarthmereBusinessInterfaceAdapterV1;
+  adapter: HarthmereBusinessInterfaceAdapter;
   businessId: string;
 }> = ({ adapter, businessId }) => {
-  const backendPending = useBusinessBackendPendingV1();
-  const panel = useMeasuredBusinessMemoV1(
+  const backendPending = useBusinessBackendPending();
+  const panel = useMeasuredBusinessMemo(
     "staff-derive",
     () => adapter.getStaffPanel(businessId),
     [adapter, businessId],
@@ -2300,7 +2300,7 @@ const StaffPane: React.FunctionComponent<{
           type="button"
           data-business-backend-action="true"
           disabled={backendPending}
-          style={backendActionStyleV1(undefined, backendPending)}
+          style={backendActionStyle(undefined, backendPending)}
           onClick={() =>
             void adapter.hireWorker(
               businessId,
@@ -2316,7 +2316,7 @@ const StaffPane: React.FunctionComponent<{
           type="button"
           data-business-backend-action="true"
           disabled={backendPending}
-          style={backendActionStyleV1(undefined, backendPending)}
+          style={backendActionStyle(undefined, backendPending)}
           onClick={() => void adapter.payPayroll(businessId)}
         >
           Pay Payroll
@@ -2326,7 +2326,7 @@ const StaffPane: React.FunctionComponent<{
           type="button"
           data-business-backend-action="true"
           disabled={backendPending}
-          style={backendActionStyleV1(undefined, backendPending)}
+          style={backendActionStyle(undefined, backendPending)}
           onClick={() => void adapter.refreshEmployeeCandidates(businessId, 3)}
         >
           Find Help
@@ -2374,7 +2374,7 @@ const StaffPane: React.FunctionComponent<{
           type="button"
           data-business-backend-action="true"
           disabled={backendPending || !targetActorId}
-          style={backendActionStyleV1(
+          style={backendActionStyle(
             !targetActorId ? disabledButtonStyle : undefined,
             backendPending
           )}
@@ -2411,7 +2411,7 @@ const StaffPane: React.FunctionComponent<{
                 type="button"
                 data-business-backend-action="true"
                 disabled={backendPending}
-                style={backendActionStyleV1(undefined, backendPending)}
+                style={backendActionStyle(undefined, backendPending)}
                 onClick={() =>
                   void adapter.assignWorker(
                     businessId,
@@ -2427,7 +2427,7 @@ const StaffPane: React.FunctionComponent<{
                 type="button"
                 data-business-backend-action="true"
                 disabled={backendPending}
-                style={backendActionStyleV1(undefined, backendPending)}
+                style={backendActionStyle(undefined, backendPending)}
                 onClick={() =>
                   void adapter.runEmployeeTask(
                     businessId,
@@ -2443,7 +2443,7 @@ const StaffPane: React.FunctionComponent<{
                 type="button"
                 data-business-backend-action="true"
                 disabled={backendPending}
-                style={backendActionStyleV1(undefined, backendPending)}
+                style={backendActionStyle(undefined, backendPending)}
                 onClick={() =>
                   void adapter.trainWorker(businessId, employee.employeeId)
                 }
@@ -2455,7 +2455,7 @@ const StaffPane: React.FunctionComponent<{
                 type="button"
                 data-business-backend-action="true"
                 disabled={backendPending}
-                style={backendActionStyleV1(undefined, backendPending)}
+                style={backendActionStyle(undefined, backendPending)}
                 onClick={() =>
                   void adapter.promoteWorker(
                     businessId,
@@ -2471,7 +2471,7 @@ const StaffPane: React.FunctionComponent<{
                 type="button"
                 data-business-backend-action="true"
                 disabled={backendPending}
-                style={backendActionStyleV1(undefined, backendPending)}
+                style={backendActionStyle(undefined, backendPending)}
                 onClick={() =>
                   void adapter.fireWorker(businessId, employee.employeeId)
                 }
@@ -2508,7 +2508,7 @@ const StaffPane: React.FunctionComponent<{
                   type="button"
                   data-business-backend-action="true"
                   disabled={backendPending}
-                  style={backendActionStyleV1(undefined, backendPending)}
+                  style={backendActionStyle(undefined, backendPending)}
                   onClick={() =>
                     void adapter.interviewEmployeeCandidate(
                       businessId,
@@ -2524,7 +2524,7 @@ const StaffPane: React.FunctionComponent<{
                   type="button"
                   data-business-backend-action="true"
                   disabled={backendPending}
-                  style={backendActionStyleV1(undefined, backendPending)}
+                  style={backendActionStyle(undefined, backendPending)}
                   onClick={() =>
                     void adapter.negotiateEmployeeCandidate(
                       businessId,
@@ -2540,7 +2540,7 @@ const StaffPane: React.FunctionComponent<{
                   type="button"
                   data-business-backend-action="true"
                   disabled={backendPending}
-                  style={backendActionStyleV1(undefined, backendPending)}
+                  style={backendActionStyle(undefined, backendPending)}
                   onClick={() =>
                     void adapter.hireEmployeeCandidate(
                       businessId,
@@ -2576,11 +2576,11 @@ const StaffPane: React.FunctionComponent<{
 };
 
 const EmpirePane: React.FunctionComponent<{
-  adapter: HarthmereBusinessInterfaceAdapterV1;
+  adapter: HarthmereBusinessInterfaceAdapter;
   businessId: string;
 }> = ({ adapter, businessId }) => {
-  const backendPending = useBusinessBackendPendingV1();
-  const { panel, staff, shop } = useMeasuredBusinessMemoV1(
+  const backendPending = useBusinessBackendPending();
+  const { panel, staff, shop } = useMeasuredBusinessMemo(
     "empire-derive",
     () => ({
       panel: adapter.getEmpirePanel(businessId),
@@ -2634,7 +2634,7 @@ const EmpirePane: React.FunctionComponent<{
                 panel.outpostBuildings[0]?.outpostId
               )
             }
-            style={backendActionStyleV1(
+            style={backendActionStyle(
               !panel.openBranchEligible ? disabledButtonStyle : undefined,
               backendPending
             )}
@@ -2654,7 +2654,7 @@ const EmpirePane: React.FunctionComponent<{
                 firstBranch.branchId
               )
             }
-            style={backendActionStyleV1(
+            style={backendActionStyle(
               !firstBranch ? disabledButtonStyle : undefined,
               backendPending
             )}
@@ -2667,7 +2667,7 @@ const EmpirePane: React.FunctionComponent<{
             data-business-backend-action="true"
             disabled={backendPending || !panel.branches.length}
             onClick={() => void adapter.settleEmpireDay(businessId, 1)}
-            style={backendActionStyleV1(
+            style={backendActionStyle(
               !panel.branches.length ? disabledButtonStyle : undefined,
               backendPending
             )}
@@ -2690,7 +2690,7 @@ const EmpirePane: React.FunctionComponent<{
                 firstEmployee.employeeId
               )
             }
-            style={backendActionStyleV1(
+            style={backendActionStyle(
               !firstBranch || !firstEmployee ? disabledButtonStyle : undefined,
               backendPending
             )}
@@ -2712,7 +2712,7 @@ const EmpirePane: React.FunctionComponent<{
                   .map((employee) => employee.employeeId)
               )
             }
-            style={backendActionStyleV1(
+            style={backendActionStyle(
               !firstBranch || !staff.length ? disabledButtonStyle : undefined,
               backendPending
             )}
@@ -2728,7 +2728,7 @@ const EmpirePane: React.FunctionComponent<{
               firstBranch &&
               void adapter.closeBranch(businessId, firstBranch.branchId)
             }
-            style={backendActionStyleV1(
+            style={backendActionStyle(
               !firstBranch ? disabledButtonStyle : undefined,
               backendPending
             )}
@@ -2766,7 +2766,7 @@ const EmpirePane: React.FunctionComponent<{
                 Math.max(1, Number(routeCount) || 1)
               )
             }
-            style={backendActionStyleV1(
+            style={backendActionStyle(
               !firstBranch || !routeItemId ? disabledButtonStyle : undefined,
               backendPending
             )}
@@ -2777,7 +2777,7 @@ const EmpirePane: React.FunctionComponent<{
         {panel.warnings.length ? (
           panel.warnings.map((warning) => (
             <p key={warning} style={mutedTextStyle}>
-              {formatHarthmereBusinessPlayerWarningV1(warning)}
+              {formatHarthmereBusinessPlayerWarning(warning)}
             </p>
           ))
         ) : (
@@ -2863,10 +2863,10 @@ const EmpirePane: React.FunctionComponent<{
 };
 
 const CompliancePane: React.FunctionComponent<{
-  adapter: HarthmereBusinessInterfaceAdapterV1;
+  adapter: HarthmereBusinessInterfaceAdapter;
   businessId: string;
 }> = ({ adapter, businessId }) => {
-  const panel = useMeasuredBusinessMemoV1(
+  const panel = useMeasuredBusinessMemo(
     "compliance-derive",
     () => adapter.getCompliancePanel(businessId),
     [adapter, businessId],
@@ -2896,7 +2896,7 @@ const CompliancePane: React.FunctionComponent<{
         {panel.warnings.length ? (
           panel.warnings.map((warning) => (
             <p key={warning} style={mutedTextStyle}>
-              {formatHarthmereBusinessPlayerWarningV1(warning)}
+              {formatHarthmereBusinessPlayerWarning(warning)}
             </p>
           ))
         ) : (
@@ -2908,12 +2908,12 @@ const CompliancePane: React.FunctionComponent<{
 };
 
 const OperationsPane: React.FunctionComponent<{
-  adapter: HarthmereBusinessInterfaceAdapterV1;
+  adapter: HarthmereBusinessInterfaceAdapter;
   businessId: string;
-  mode: HarthmereBusinessActorModeV1;
+  mode: HarthmereBusinessActorMode;
 }> = ({ adapter, businessId, mode }) => {
-  const backendPending = useBusinessBackendPendingV1();
-  const screen = useMeasuredBusinessMemoV1(
+  const backendPending = useBusinessBackendPending();
+  const screen = useMeasuredBusinessMemo(
     "operations-derive",
     () => adapter.getOperationScreen(businessId),
     [adapter, businessId],
@@ -2941,14 +2941,14 @@ const OperationsPane: React.FunctionComponent<{
               void adapter.runServiceAction(businessId, action.actionId);
               return;
             }
-            const priceGold = harthmereBusinessServicePriceGoldV1(action);
+            const priceGold = harthmereBusinessServicePriceGold(action);
             void adapter.requestCustomerService(businessId, action.actionId, {
               amountGold: priceGold,
               priceGold,
             });
           }}
           renderCell={(action, _coords, cell) => {
-            const priceGold = harthmereBusinessServicePriceGoldV1(action);
+            const priceGold = harthmereBusinessServicePriceGold(action);
             const isCustomer = mode !== "owner";
             return (
               <button
@@ -2964,7 +2964,7 @@ const OperationsPane: React.FunctionComponent<{
                 }
                 disabled={backendPending}
                 aria-disabled={backendPending}
-                style={backendActionStyleV1(serviceButtonStyle, backendPending)}
+                style={backendActionStyle(serviceButtonStyle, backendPending)}
                 aria-label={
                   isCustomer
                     ? `Buy service: ${action.label}, ${priceGold} gold`
@@ -3007,10 +3007,10 @@ const OperationsPane: React.FunctionComponent<{
 };
 
 const CustomerStatusPane: React.FunctionComponent<{
-  adapter: HarthmereBusinessInterfaceAdapterV1;
+  adapter: HarthmereBusinessInterfaceAdapter;
   businessId: string;
 }> = ({ adapter, businessId }) => {
-  const { orders, business, miniGame } = useMeasuredBusinessMemoV1(
+  const { orders, business, miniGame } = useMeasuredBusinessMemo(
     "customer-status-derive",
     () => ({
       orders: adapter.getCustomerOrders(businessId),
@@ -3049,9 +3049,9 @@ const CustomerStatusPane: React.FunctionComponent<{
 };
 
 const TownHallPane: React.FunctionComponent<{
-  adapter: HarthmereBusinessInterfaceAdapterV1;
+  adapter: HarthmereBusinessInterfaceAdapter;
 }> = ({ adapter }) => {
-  const panel = useMeasuredBusinessMemoV1(
+  const panel = useMeasuredBusinessMemo(
     "town-hall-derive",
     () => adapter.getTownHallPanel(),
     [adapter],
@@ -3079,9 +3079,9 @@ const TownHallPane: React.FunctionComponent<{
 };
 
 const MarketplacePane: React.FunctionComponent<{
-  adapter: HarthmereBusinessInterfaceAdapterV1;
+  adapter: HarthmereBusinessInterfaceAdapter;
 }> = ({ adapter }) => {
-  const panel = useMeasuredBusinessMemoV1(
+  const panel = useMeasuredBusinessMemo(
     "marketplace-derive",
     () => adapter.getMarketplacePanel(),
     [adapter],
@@ -3110,10 +3110,10 @@ const MarketplacePane: React.FunctionComponent<{
 };
 
 const GuildBusinessPane: React.FunctionComponent<{
-  adapter: HarthmereBusinessInterfaceAdapterV1;
+  adapter: HarthmereBusinessInterfaceAdapter;
   guildId?: string;
 }> = ({ adapter, guildId }) => {
-  const panel = useMeasuredBusinessMemoV1(
+  const panel = useMeasuredBusinessMemo(
     "guild-business-derive",
     () => adapter.getGuildBusinessPanel(guildId),
     [adapter, guildId],
@@ -3319,18 +3319,18 @@ const disabledButtonStyle: React.CSSProperties = {
   opacity: 0.55,
   cursor: "not-allowed",
 };
-const pendingBackendActionStyleV1: React.CSSProperties = {
+const pendingBackendActionStyle: React.CSSProperties = {
   opacity: 0.45,
   filter: "grayscale(0.65)",
   cursor: "wait",
 };
 
-function backendActionStyleV1(
+function backendActionStyle(
   base: React.CSSProperties | undefined,
   pending: boolean
 ): React.CSSProperties | undefined {
   if (!pending) return base;
-  return { ...(base ?? {}), ...pendingBackendActionStyleV1 };
+  return { ...(base ?? {}), ...pendingBackendActionStyle };
 }
 
 const startShiftButtonStyle: React.CSSProperties = {
@@ -3416,8 +3416,8 @@ const shopfrontGoodsGridStyle: React.CSSProperties = {
   marginTop: 6,
   alignItems: "stretch",
 };
-const shopfrontMerchTonesV1: Record<
-  ShopfrontMerchKindV1,
+const shopfrontMerchTones: Record<
+  ShopfrontMerchKind,
   {
     label: string;
     accent: string;
@@ -3480,13 +3480,13 @@ const shopfrontMerchTonesV1: Record<
     badgeText: "#c8ffdf",
   },
 };
-function shopfrontKindLabelV1(kind: ShopfrontMerchKindV1): string {
-  return shopfrontMerchTonesV1[kind].label;
+function shopfrontKindLabel(kind: ShopfrontMerchKind): string {
+  return shopfrontMerchTones[kind].label;
 }
 function shopfrontSectionStyle(
-  kind: ShopfrontMerchKindV1
+  kind: ShopfrontMerchKind
 ): React.CSSProperties {
-  const tone = shopfrontMerchTonesV1[kind];
+  const tone = shopfrontMerchTones[kind];
   return {
     margin: "8px 0",
     padding: 10,
@@ -3504,9 +3504,9 @@ const shopfrontSectionHeaderStyle: React.CSSProperties = {
   minWidth: 0,
 };
 function shopfrontSectionTitleStyle(
-  kind: ShopfrontMerchKindV1
+  kind: ShopfrontMerchKind
 ): React.CSSProperties {
-  const tone = shopfrontMerchTonesV1[kind];
+  const tone = shopfrontMerchTones[kind];
   return {
     minWidth: 0,
     color: tone.badgeText,
@@ -3517,9 +3517,9 @@ function shopfrontSectionTitleStyle(
   };
 }
 function shopfrontSectionCountStyle(
-  kind: ShopfrontMerchKindV1
+  kind: ShopfrontMerchKind
 ): React.CSSProperties {
-  const tone = shopfrontMerchTonesV1[kind];
+  const tone = shopfrontMerchTones[kind];
   return {
     flex: "0 0 auto",
     padding: "2px 6px",
@@ -3535,9 +3535,9 @@ function shopfrontSectionCountStyle(
   };
 }
 function shopfrontItemSurfaceStyle(
-  kind: ShopfrontMerchKindV1
+  kind: ShopfrontMerchKind
 ): React.CSSProperties {
-  const tone = shopfrontMerchTonesV1[kind];
+  const tone = shopfrontMerchTones[kind];
   return {
     ...shopActionSlotStyle,
     display: "flex",
@@ -3561,7 +3561,7 @@ function shopfrontItemSurfaceStyle(
   };
 }
 function shopfrontGoodButtonStyle(
-  kind: ShopfrontMerchKindV1
+  kind: ShopfrontMerchKind
 ): React.CSSProperties {
   return {
     ...shopfrontItemSurfaceStyle(kind),
@@ -3572,7 +3572,7 @@ function shopfrontGoodButtonStyle(
   };
 }
 function shopfrontInventoryButtonStyle(
-  kind: ShopfrontMerchKindV1
+  kind: ShopfrontMerchKind
 ): React.CSSProperties {
   return {
     ...shopfrontItemSurfaceStyle(kind),
@@ -3618,9 +3618,9 @@ const shopItemMetaStyle: React.CSSProperties = {
   lineHeight: 1.35,
 };
 function shopfrontKindBadgeStyle(
-  kind: ShopfrontMerchKindV1
+  kind: ShopfrontMerchKind
 ): React.CSSProperties {
-  const tone = shopfrontMerchTonesV1[kind];
+  const tone = shopfrontMerchTones[kind];
   return {
     flex: "0 0 auto",
     padding: "2px 5px",
@@ -3692,7 +3692,7 @@ const progressSweepStyle: React.CSSProperties = {
   width: "35%",
   background:
     "linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.42), transparent)",
-  animation: "harthmere-business-meter-v1 1.35s linear infinite",
+  animation: "harthmere-business-meter 1.35s linear infinite",
 };
 const customerStageStyle: React.CSSProperties = {
   display: "grid",
@@ -3711,7 +3711,7 @@ const customerAvatarStyle: React.CSSProperties = {
   background:
     "radial-gradient(circle at 35% 30%, #fff477 0 16%, #ff9f2f 17% 38%, #56c7ff 39% 62%, #152342 63%)",
   boxShadow: "0 0 16px rgba(255, 210, 63, 0.46)",
-  animation: "harthmere-business-pulse-v1 1.25s ease-in-out infinite",
+  animation: "harthmere-business-pulse 1.25s ease-in-out infinite",
 };
 // --- Overhauled customer mini-game arena styles -----------------------------
 const arenaRootStyle: React.CSSProperties = {
@@ -3834,7 +3834,7 @@ const heroNoteStyle: React.CSSProperties = {
   borderLeft: "2px solid rgba(146, 255, 215, 0.5)",
   fontSize: 12,
   color: "var(--biomes-fg)",
-  animation: "harthmere-business-rise-v1 240ms ease-out",
+  animation: "harthmere-business-rise 240ms ease-out",
 };
 const summaryCardStyle: React.CSSProperties = {
   position: "relative",
@@ -3847,7 +3847,7 @@ const summaryCardStyle: React.CSSProperties = {
   background:
     "linear-gradient(135deg, rgba(24, 61, 58, 0.92), rgba(9, 23, 35, 0.96))",
   boxShadow: "0 0 22px rgba(55, 219, 164, 0.24)",
-  animation: "harthmere-business-rise-v1 280ms ease-out",
+  animation: "harthmere-business-rise 280ms ease-out",
 };
 const summaryTitleStyle: React.CSSProperties = {
   fontSize: 18,
@@ -3874,7 +3874,7 @@ const toastBaseStyle: React.CSSProperties = {
   borderRadius: 8,
   fontSize: 12,
   fontWeight: 700,
-  animation: "harthmere-business-toast-v1 240ms ease-out",
+  animation: "harthmere-business-toast 240ms ease-out",
 };
 const toastSuccessStyle: React.CSSProperties = {
   ...toastBaseStyle,
@@ -3942,7 +3942,7 @@ const customerCardStyle: React.CSSProperties = {
 };
 const customerSwapStyle: React.CSSProperties = {
   display: "block",
-  animation: "harthmere-business-rise-v1 260ms ease-out",
+  animation: "harthmere-business-rise 260ms ease-out",
 };
 const cardHeaderRowStyle: React.CSSProperties = {
   display: "flex",
@@ -3966,7 +3966,7 @@ function patienceBadgeStyle(ratio: number): React.CSSProperties {
       ? "linear-gradient(180deg, #ff9f2f, #ff6b6b)"
       : "linear-gradient(180deg, #92ffd7, #56c7ff)",
     animation: urgent
-      ? "harthmere-business-urgent-v1 0.8s ease-in-out infinite"
+      ? "harthmere-business-urgent 0.8s ease-in-out infinite"
       : undefined,
   };
 }
@@ -3988,8 +3988,8 @@ function customerPortraitFrameStyle(ratio: number): React.CSSProperties {
       ? "0 0 18px rgba(255, 107, 107, 0.6)"
       : "0 0 16px rgba(86, 199, 255, 0.46)",
     animation: urgent
-      ? "harthmere-business-urgent-v1 0.8s ease-in-out infinite"
-      : "harthmere-business-pulse-v1 1.6s ease-in-out infinite",
+      ? "harthmere-business-urgent 0.8s ease-in-out infinite"
+      : "harthmere-business-pulse 1.6s ease-in-out infinite",
   };
 }
 const customerMeshAvatarFallbackStyle: React.CSSProperties = {
@@ -4011,8 +4011,8 @@ function customerAvatarStateStyle(ratio: number): React.CSSProperties {
       ? "0 0 18px rgba(255, 107, 107, 0.6)"
       : "0 0 16px rgba(86, 199, 255, 0.46)",
     animation: urgent
-      ? "harthmere-business-urgent-v1 0.8s ease-in-out infinite"
-      : "harthmere-business-pulse-v1 1.6s ease-in-out infinite",
+      ? "harthmere-business-urgent 0.8s ease-in-out infinite"
+      : "harthmere-business-pulse 1.6s ease-in-out infinite",
   };
 }
 const patienceTrackStyle: React.CSSProperties = {
@@ -4214,5 +4214,5 @@ const businessPendingSpinnerStyle: React.CSSProperties = {
   border: "2px solid rgba(232, 244, 255, 0.28)",
   borderTopColor: "var(--biomes-fg)",
   borderRadius: 999,
-  animation: "harthmere-business-pending-spin-v1 780ms linear infinite",
+  animation: "harthmere-business-pending-spin 780ms linear infinite",
 };

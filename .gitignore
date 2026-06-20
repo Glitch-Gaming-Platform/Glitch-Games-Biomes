@@ -1,98 +1,102 @@
-__pycache__
-.cow
+### OS and editor noise
 .DS_Store
+**/.DS_Store
+**/desktop.ini
+*Zone.Identifier
+.ipynb_checkpoints/
+.cache/
+.vscode/.browse.c_cpp.db*
+
+### Local environment and secrets
 .env.local
-.cache
-.next
-.next-source-maps
-.venv
+biomes.config.local.yaml
+.venv/
+.cow
 .*.pid
-.b
-/build
+
+### Dependencies
+node_modules/
+*.egg-info
+
+### Build and generated output
+.b/
+/build/
 build.spec
-cmake_out
+cmake_out/
 dist/
 galois_package/
-node_modules
-public/hud/.DS_Store
-tsconfig.project.tsbuildinfo
-tsconfig.server.tsbuildinfo
-tsconfig.tsbuildinfo
+.next/
+.next-source-maps/
 v8_profiler_benchmarks_results/**
 yarn-error.log
-biomes.config.local.yaml
-.ipynb_checkpoints/
-*Zone.Identifier
+rust-project.json
 
-# "desktop.ini" files are an artifact of copying files from Google Drive.
-**/desktop.ini
+### TypeScript and compile databases
+*.tsbuildinfo
+/compile_commands.json
+src/gen/
+.ts_deps_mainbase
+/external
+/bazel-*
 
-# Blender stores backup files with the extension ".blend1"
-**/*.blend1
+### Python and tool caches
+__pycache__/
+**/__pycache__/
 
-# Output from if you run redis-server
+### Local data snapshots and Redis dumps
 dump.rdb
+snapshot_backup.json
+biomes_data_snapshot.tar.gz.hash.md5
+*.rdb
+*.tar.gz
 
-# Bucket mirrors
+### Bucket mirrors and generated asset data
+public/buckets/
 public/buckets/biomes-social
 public/buckets/biomes-static
 public/buckets/biomes-bikkie
-
-# This is pulled in from GCS when starting the web server.
 public/asset_data
 **/hashes.db
 
-# GitHub Actions may place a file containing permission credentials into the
-# checkout folder, and we'd like our `git status` checks to ignore it.
-gha-creds*
-
-# Compiled output of service worker.
+### Generated service worker output
 **/public/workbox-*.js
 **/public/sw.js
 **/public/sw.js.map
 **/public/worker-*.js
 **/public/worker-*.js.LICENSE.txt
 
-### Added by Hedron's Bazel Compile Commands Extractor: https://github.com/hedronvision/bazel-compile-commands-extractor
-# The external link: Differs on Windows vs macOS/Linux, so we can't check it in. The pattern needs to not have a trailing / because it's a symlink on macOS/Linux.
-/external
-# Bazel output symlinks: Same reasoning as /external. You need the * because people can change the name of the directory your repository is cloned into, changing the bazel-<workspace_name> symlink.
-/bazel-*
-# Compiled output -> don't check in
-/compile_commands.json
-# Directory where clangd puts its indexing work
-/.cache/
-
-
-# Python stuff
-*.egg-info
-
-# Rust generated language server support file.
-rust-project.json
-
-# Bazel-generated TypeScript dependencies.
-src/gen
-# The merge base with origin/main that we last generated ts dependencies for.
-.ts_deps_mainbase
-
-# Artifact created when Bob is deployed locally.
+### Local deployment/auth files
+gha-creds*
 BUILD_ID.bob
 
-# Biomes data snapshot installed files.
-snapshot_backup.json
-biomes_data_snapshot.tar.gz.hash.md5
-*.rdb
-
-.venv/
-node_modules/
-public/buckets/
-snapshot_backup.json
+### Local scratch, reports, and agent artifacts
+/artifacts/
+/scratch/
+/harthmere-debug-dumps/
+/.codex-artifacts/
 /tmp/
-*.tar.gz
-.DS_Store
-
-.harthmere-backups/
-
+scripts/harthmere/.artifacts/
 harthmere-auto-survey-*.json
-
 *.log
+
+### Patch/back-up leftovers
+/*.patch
+/apply_harthmere_*.sh
+*.bak
+*.bak-*
+*.orig
+*.before-*
+*.broken-before-*
+*.pre-*
+/.harthmere-backups/
+/.harthmere-patch-backups/
+/.harthmere_patch_backups/
+/.harthmere*backup*/
+/.harthmere_polish_pass_v1_markers
+/.snapshot-*backup*/
+
+### App-specific temporary files
+public/hud/.DS_Store
+
+### Blender backup files
+**/*.blend1

@@ -437,7 +437,7 @@ export class AnimationSystem<
 }
 
 
-// HARTHMERE_STATIC_FALLBACK_ANIMATION_TARGET_PRUNING_V152:
+// HARTHMERE_STATIC_FALLBACK_ANIMATION_TARGET_PRUNING:
 // Production Glitch can intentionally serve a packaged/static player mesh
 // fallback when the local wearable mesh generator is disabled or unavailable.
 // Those fallback GLTFs may not expose the original Biomes humanoid bone names

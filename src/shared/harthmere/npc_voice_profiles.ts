@@ -1,0 +1,832 @@
+// HARTHMERE_NPC_VOICE_PROFILES
+//
+// Azure-only voice casting for Harthmere NPCs and living entities. The
+// resulting `voiceParameterId` is safe to store in the ECS Voice component or a
+// static recording manifest. It is intentionally deterministic: the same actor
+// identity always resolves to the same Azure Speech voice and prosody.
+
+import { harthmereSpeechDeliveryForActor } from "@/shared/harthmere/npc_speech_delivery";
+
+export const HARTHMERE_NPC_VOICE_PROFILES_VERSION =
+  "harthmere-npc-voice-profiles" as const;
+
+export type HarthmereVoiceGender = "female" | "male" | "neutral";
+export type HarthmereVoiceActorKind =
+  | "humanoid"
+  | "robot"
+  | "creature"
+  | "animal"
+  | "undead";
+
+export interface HarthmereVoiceActorInput {
+  source: string;
+  id?: string;
+  entityId?: number | string;
+  displayName?: string;
+  name?: string;
+  role?: string;
+  kind?: string;
+  background?: string;
+  voiceStyle?: string;
+  sex?: string;
+  gender?: string;
+}
+
+export interface HarthmereNpcVoiceProfile {
+  version: typeof HARTHMERE_NPC_VOICE_PROFILES_VERSION;
+  actorKey: string;
+  displayName: string;
+  inferredGender: HarthmereVoiceGender;
+  actorKind: HarthmereVoiceActorKind;
+  azureVoiceName: string;
+  style?: string;
+  styleDegree?: string;
+  rate: string;
+  pitch: string;
+  volume: string;
+  sentenceBreakMs: number;
+  voiceParameterId: string;
+  assignmentRationale: string;
+}
+
+export interface ParsedHarthmereAzureVoice {
+  provider: "azure-speech";
+  voiceName: string;
+  style?: string;
+  styleDegree?: string;
+  role?: string;
+  rate: string;
+  pitch: string;
+  volume: string;
+  sentenceBreakMs: number;
+  actorKey?: string;
+}
+
+interface HarthmereAzureVoiceCandidate {
+  voiceName: string;
+  styles?: readonly string[];
+}
+
+const FEMALE_AZURE_VOICES = [
+  {
+    voiceName: "en-US-LunaNeural",
+    styles: ["conversation"],
+  },
+  {
+    voiceName: "en-US-AriaNeural",
+    styles: ["chat", "friendly", "empathetic", "hopeful", "cheerful"],
+  },
+  {
+    voiceName: "en-US-JennyNeural",
+    styles: ["chat", "friendly", "hopeful", "cheerful"],
+  },
+  {
+    voiceName: "en-US-SerenaMultilingualNeural",
+    styles: ["friendly", "empathetic", "serious", "relieved", "sad"],
+  },
+  {
+    voiceName: "en-US-PhoebeMultilingualNeural",
+    styles: ["empathetic", "serious", "sad"],
+  },
+  {
+    voiceName: "en-US-NancyMultilingualNeural",
+    styles: ["friendly", "relieved", "funny", "shy"],
+  },
+  {
+    voiceName: "en-US-JaneNeural",
+    styles: ["friendly", "hopeful", "cheerful", "sad"],
+  },
+  {
+    voiceName: "en-US-SaraNeural",
+    styles: ["friendly", "hopeful", "cheerful", "sad"],
+  },
+] as const satisfies readonly HarthmereAzureVoiceCandidate[];
+
+const MALE_AZURE_VOICES = [
+  {
+    voiceName: "en-US-KaiNeural",
+    styles: ["conversation"],
+  },
+  {
+    voiceName: "en-US-DavisNeural",
+    styles: ["chat", "friendly", "hopeful", "cheerful"],
+  },
+  {
+    voiceName: "en-US-GuyNeural",
+    styles: ["friendly", "hopeful", "cheerful", "sad"],
+  },
+  {
+    voiceName: "en-US-AndrewMultilingualNeural",
+    styles: ["empathetic", "relieved"],
+  },
+  {
+    voiceName: "en-US-DavisMultilingualNeural",
+    styles: ["empathetic", "relieved", "funny"],
+  },
+  {
+    voiceName: "en-US-DerekMultilingualNeural",
+    styles: ["empathetic", "relieved", "shy", "excited"],
+  },
+  {
+    voiceName: "en-US-TonyNeural",
+    styles: ["friendly", "hopeful", "cheerful", "sad"],
+  },
+  {
+    voiceName: "en-GB-RyanNeural",
+    styles: ["chat", "cheerful"],
+  },
+] as const satisfies readonly HarthmereAzureVoiceCandidate[];
+
+const NEUTRAL_AZURE_VOICES = [
+  {
+    voiceName: "en-US-OnyxTurboMultilingualNeural",
+  },
+  {
+    voiceName: "en-US-NovaTurboMultilingualNeural",
+  },
+  {
+    voiceName: "en-US-AlloyTurboMultilingualNeural",
+  },
+  {
+    voiceName: "en-US-FableTurboMultilingualNeural",
+  },
+  {
+    voiceName: "en-US-GuyNeural",
+    styles: ["whispering", "unfriendly", "sad"],
+  },
+  {
+    voiceName: "en-US-DavisNeural",
+    styles: ["whispering", "sad", "hopeful"],
+  },
+  {
+    voiceName: "en-US-AriaNeural",
+    styles: ["whispering", "empathetic", "sad"],
+  },
+] as const satisfies readonly HarthmereAzureVoiceCandidate[];
+
+export const HARTHMERE_AZURE_VOICE_NAMES = [
+  ...FEMALE_AZURE_VOICES.map((voice) => voice.voiceName),
+  ...MALE_AZURE_VOICES.map((voice) => voice.voiceName),
+  ...NEUTRAL_AZURE_VOICES.map((voice) => voice.voiceName),
+] as const;
+
+function normalizeVoiceText(text: string | undefined) {
+  return (text ?? "").trim().replace(/\s+/g, " ");
+}
+
+function signedPercent(value: number) {
+  return `${value >= 0 ? "+" : ""}${value}%`;
+}
+
+export function stableHarthmereVoiceHash(text: string): number {
+  let hash = 2166136261;
+  for (let i = 0; i < text.length; i++) {
+    hash ^= text.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return hash >>> 0;
+}
+
+function pickStable<T>(values: readonly T[], hash: number): T {
+  return values[hash % values.length];
+}
+
+function actorKeyForVoiceInput(input: HarthmereVoiceActorInput) {
+  return [input.source, input.id, input.entityId, input.displayName, input.name]
+    .filter((value) => value !== undefined && String(value).trim().length > 0)
+    .map((value) => String(value).trim().toLowerCase())
+    .join(":");
+}
+
+function displayNameForVoiceInput(input: HarthmereVoiceActorInput) {
+  return normalizeVoiceText(input.displayName ?? input.name) || "Unknown";
+}
+
+function inferActorKind(
+  input: HarthmereVoiceActorInput
+): HarthmereVoiceActorKind {
+  const text = [
+    input.kind,
+    input.role,
+    input.displayName,
+    input.name,
+    input.background,
+    input.voiceStyle,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+
+  if (/\b(robot|sentinel|automaton|construct)\b/.test(text)) {
+    return "robot";
+  }
+  if (/\b(cow|sheep|rabbit|livestock|animal|wildlife)\b/.test(text)) {
+    return "animal";
+  }
+  if (/\b(mucker|muckling|muckwad|hexer|monster|creature)\b/.test(text)) {
+    return "creature";
+  }
+  if (/\b(undead|ghost|wraith|grave|pale|skeleton)\b/.test(text)) {
+    return "undead";
+  }
+  return "humanoid";
+}
+
+function inferGender(
+  input: HarthmereVoiceActorInput,
+  actorKind: HarthmereVoiceActorKind
+): HarthmereVoiceGender {
+  if (actorKind !== "humanoid") {
+    return "neutral";
+  }
+
+  const explicit = `${input.sex ?? ""} ${input.gender ?? ""}`.toLowerCase();
+  if (/\b(f|female|woman|girl)\b/.test(explicit)) {
+    return "female";
+  }
+  if (/\b(m|male|man|boy)\b/.test(explicit)) {
+    return "male";
+  }
+
+  const text = [
+    input.displayName,
+    input.name,
+    input.role,
+    input.background,
+    input.voiceStyle,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+
+  if (
+    /\b(mother|daughter|sister|wife|widow|lady|madam|matron|aunt|girl|woman|her|she|priestess|forewoman|nurse|seamstress)\b/.test(
+      text
+    )
+  ) {
+    return "female";
+  }
+  if (
+    /\b(father|son|brother|husband|lord|sir|sergeant|captain|foreman|smith|boy|man|his|he|watchman|bargeman|ferryman)\b/.test(
+      text
+    )
+  ) {
+    return "male";
+  }
+
+  const firstName = displayNameForVoiceInput(input)
+    .split(/\s+/)[0]
+    .toLowerCase();
+  if (
+    [
+      "ada",
+      "avelina",
+      "bree",
+      "calla",
+      "coralie",
+      "elowen",
+      "greta",
+      "hana",
+      "helsa",
+      "iselle",
+      "iva",
+      "jane",
+      "jackie",
+      "lune",
+      "mara",
+      "mira",
+      "nia",
+      "odette",
+      "rinna",
+      "rosalyn",
+      "saff",
+      "sera",
+      "tamsin",
+      "veska",
+      "yenna",
+    ].includes(firstName)
+  ) {
+    return "female";
+  }
+  if (
+    [
+      "alen",
+      "bram",
+      "bramwell",
+      "bren",
+      "cael",
+      "carlo",
+      "corvin",
+      "doran",
+      "dov",
+      "eli",
+      "goran",
+      "gus",
+      "hadrin",
+      "harlo",
+      "marl",
+      "nilo",
+      "orren",
+      "osric",
+      "pell",
+      "rolf",
+      "selwyn",
+      "taye",
+    ].includes(firstName)
+  ) {
+    return "male";
+  }
+
+  return stableHarthmereVoiceHash(text) % 2 === 0 ? "female" : "male";
+}
+
+function voicePoolForProfile(
+  gender: HarthmereVoiceGender,
+  actorKind: HarthmereVoiceActorKind
+): readonly HarthmereAzureVoiceCandidate[] {
+  if (
+    actorKind === "robot" ||
+    actorKind === "creature" ||
+    actorKind === "animal"
+  ) {
+    return NEUTRAL_AZURE_VOICES;
+  }
+  if (gender === "female") {
+    return FEMALE_AZURE_VOICES;
+  }
+  if (gender === "male") {
+    return MALE_AZURE_VOICES;
+  }
+  return NEUTRAL_AZURE_VOICES;
+}
+
+function desiredStylesForActor(
+  input: HarthmereVoiceActorInput,
+  actorKind: HarthmereVoiceActorKind
+) {
+  const text = [
+    input.role,
+    input.kind,
+    input.displayName,
+    input.name,
+    input.background,
+    input.voiceStyle,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+
+  if (actorKind === "robot") {
+    return ["conversation", "chat", "friendly", "hopeful", "relieved"];
+  }
+  if (actorKind === "creature" || actorKind === "undead") {
+    return ["whispering", "sad", "unfriendly", "hopeful"];
+  }
+  if (actorKind === "animal") {
+    return ["friendly", "hopeful", "conversation", "chat"];
+  }
+  if (/\b(doctor|doc|healer|nurse|chapel|chaplain|priest|medic)\b/.test(text)) {
+    return ["empathetic", "relieved", "friendly", "conversation", "chat"];
+  }
+  if (/\b(guard|captain|sergeant|watch|law|clerk|warden)\b/.test(text)) {
+    return ["serious", "hopeful", "conversation", "chat", "friendly"];
+  }
+  if (
+    /\b(merchant|market|shop|vendor|owner|customer|inn|tavern|cook|baker)\b/.test(
+      text
+    )
+  ) {
+    return ["friendly", "conversation", "chat", "cheerful", "relieved"];
+  }
+  if (/\b(child|young|shy|quiet|soft|gentle)\b/.test(text)) {
+    return ["shy", "friendly", "empathetic", "conversation", "chat"];
+  }
+  if (/\b(sad|grief|widow|grave|mourn|lost|worry|afraid)\b/.test(text)) {
+    return ["empathetic", "sad", "hopeful", "relieved", "conversation"];
+  }
+  return ["conversation", "chat", "friendly", "empathetic", "hopeful"];
+}
+
+function styleForActor(input: {
+  candidate: HarthmereAzureVoiceCandidate;
+  actor: HarthmereVoiceActorInput;
+  actorKind: HarthmereVoiceActorKind;
+}) {
+  const styles = input.candidate.styles ?? [];
+  if (styles.length === 0) {
+    return undefined;
+  }
+  const desiredStyles = desiredStylesForActor(input.actor, input.actorKind);
+  return desiredStyles.find((style) => styles.includes(style)) ?? styles[0];
+}
+
+function styleDegreeForActor(
+  hash: number,
+  actorKind: HarthmereVoiceActorKind,
+  style: string | undefined
+) {
+  if (!style) {
+    return undefined;
+  }
+  const base =
+    actorKind === "creature" || actorKind === "undead"
+      ? 0.7
+      : actorKind === "robot"
+      ? 0.75
+      : 0.8;
+  const spread = ((hash >>> 18) % 6) * 0.05;
+  return (base + spread).toFixed(2);
+}
+
+function prosodyForActor(hash: number, actorKind: HarthmereVoiceActorKind) {
+  if (actorKind === "robot") {
+    return {
+      rate: signedPercent(-5 + (hash % 9)),
+      pitch: signedPercent(-3 + ((hash >>> 5) % 7)),
+      sentenceBreakMs: 100 + ((hash >>> 10) % 8) * 15,
+    };
+  }
+  if (actorKind === "creature" || actorKind === "undead") {
+    return {
+      rate: signedPercent(-14 + (hash % 8)),
+      pitch: signedPercent(-8 + ((hash >>> 5) % 6)),
+      sentenceBreakMs: 150 + ((hash >>> 10) % 10) * 20,
+    };
+  }
+  if (actorKind === "animal") {
+    return {
+      rate: signedPercent(-8 + (hash % 10)),
+      pitch: signedPercent(-4 + ((hash >>> 5) % 9)),
+      sentenceBreakMs: 120 + ((hash >>> 10) % 8) * 18,
+    };
+  }
+  return {
+    rate: signedPercent(-5 + (hash % 9)),
+    pitch: signedPercent(-3 + ((hash >>> 5) % 7)),
+    sentenceBreakMs: 110 + ((hash >>> 10) % 9) * 12,
+  };
+}
+
+export function buildHarthmereAzureVoiceParameterId(input: {
+  voiceName: string;
+  style?: string;
+  styleDegree?: string;
+  role?: string;
+  rate: string;
+  pitch: string;
+  volume?: string;
+  sentenceBreakMs?: number;
+  actorKey?: string;
+}) {
+  const parts = [
+    ["voice", input.voiceName],
+    ["style", input.style],
+    ["styleDegree", input.styleDegree],
+    ["role", input.role],
+    ["rate", input.rate],
+    ["pitch", input.pitch],
+    ["volume", input.volume ?? "default"],
+    ["break", String(input.sentenceBreakMs ?? 120)],
+  ].filter((part): part is [string, string] => Boolean(part[1]));
+  if (input.actorKey) {
+    parts.push(["actor", input.actorKey]);
+  }
+  return `azure-speech|${parts
+    .map(([key, value]) => `${key}=${encodeURIComponent(value)}`)
+    .join("|")}`;
+}
+
+export function parseHarthmereAzureVoiceId(
+  voiceId: string | undefined
+): ParsedHarthmereAzureVoice | undefined {
+  const trimmed = voiceId?.trim();
+  if (!trimmed) {
+    return undefined;
+  }
+  if (
+    /^[a-z]{2}-[A-Z]{2}-.+((Neural)|(MultilingualNeural)|(MAI-Voice-\d+))$/i.test(
+      trimmed
+    )
+  ) {
+    return {
+      provider: "azure-speech",
+      voiceName: trimmed,
+      rate: "+0%",
+      pitch: "+0%",
+      volume: "default",
+      sentenceBreakMs: 120,
+    };
+  }
+  if (!trimmed.startsWith("azure-speech|")) {
+    return undefined;
+  }
+  const values: Record<string, string> = {};
+  for (const part of trimmed.slice("azure-speech|".length).split("|")) {
+    const eq = part.indexOf("=");
+    if (eq < 0) {
+      continue;
+    }
+    values[part.slice(0, eq)] = decodeURIComponent(part.slice(eq + 1));
+  }
+  if (!values.voice) {
+    return undefined;
+  }
+  return {
+    provider: "azure-speech",
+    voiceName: values.voice,
+    style: values.style,
+    styleDegree: values.styleDegree,
+    role: values.role,
+    rate: values.rate ?? "+0%",
+    pitch: values.pitch ?? "+0%",
+    volume: values.volume ?? "default",
+    sentenceBreakMs: Number(values.break ?? 120),
+    ...(values.actor ? { actorKey: values.actor } : {}),
+  };
+}
+
+export function harthmereAzureVoiceIdOrFallback(input: {
+  voiceId?: string;
+  fallbackVoiceId: string;
+}) {
+  return input.voiceId && parseHarthmereAzureVoiceId(input.voiceId)
+    ? input.voiceId
+    : input.fallbackVoiceId;
+}
+
+export function harthmereVoiceProfileForActor(
+  input: HarthmereVoiceActorInput
+): HarthmereNpcVoiceProfile {
+  const actorKey =
+    actorKeyForVoiceInput(input) ||
+    `${input.source}:unknown:${displayNameForVoiceInput(
+      input
+    ).toLowerCase()}`;
+  const hash = stableHarthmereVoiceHash(
+    [actorKey, input.role, input.kind, input.background, input.voiceStyle]
+      .filter(Boolean)
+      .join("|")
+  );
+  const actorKind = inferActorKind(input);
+  const inferredGender = inferGender(input, actorKind);
+  const voicePool = voicePoolForProfile(inferredGender, actorKind);
+  const voiceCandidate = pickStable(voicePool, hash);
+  const azureVoiceName = voiceCandidate.voiceName;
+  const style = styleForActor({
+    candidate: voiceCandidate,
+    actor: input,
+    actorKind,
+  });
+  const styleDegree = styleDegreeForActor(hash, actorKind, style);
+  const prosody = prosodyForActor(hash, actorKind);
+  const displayName = displayNameForVoiceInput(input);
+  const voiceParameterId = buildHarthmereAzureVoiceParameterId({
+    voiceName: azureVoiceName,
+    style,
+    styleDegree,
+    rate: prosody.rate,
+    pitch: prosody.pitch,
+    volume: "default",
+    sentenceBreakMs: prosody.sentenceBreakMs,
+    actorKey,
+  });
+
+  return {
+    version: HARTHMERE_NPC_VOICE_PROFILES_VERSION,
+    actorKey,
+    displayName,
+    inferredGender,
+    actorKind,
+    azureVoiceName,
+    style,
+    styleDegree,
+    rate: prosody.rate,
+    pitch: prosody.pitch,
+    volume: "default",
+    sentenceBreakMs: prosody.sentenceBreakMs,
+    voiceParameterId,
+    assignmentRationale:
+      `${displayName} is treated as ${actorKind}; voice casting uses ` +
+      `${inferredGender} presentation when authored sex is not explicit.`,
+  };
+}
+
+export function stripHarthmereSpeechMarkup(text: string | undefined) {
+  return normalizeVoiceText(text)
+    .replace(/\{break\}/gi, ". ")
+    .replace(/<[^>]+>/g, "")
+    .replace(/\*\*/g, "")
+    .replace(/\*/g, "")
+    .replace(/[\u201c\u201d]/g, "")
+    .replace(/[\u2018\u2019]/g, "'")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+export function escapeSsml(text: string) {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&apos;");
+}
+
+function clampPercent(value: number, min: number, max: number) {
+  return Math.max(min, Math.min(max, value));
+}
+
+function percentNumber(value: string | undefined) {
+  const parsed = Number(String(value ?? "0").replace("%", ""));
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function withSignedPercentDelta(input: {
+  value: string;
+  delta: number;
+  min: number;
+  max: number;
+}) {
+  return signedPercent(
+    clampPercent(
+      Math.round(percentNumber(input.value) + input.delta),
+      input.min,
+      input.max
+    )
+  );
+}
+
+function styleDegreeWithDelta(
+  styleDegree: string | undefined,
+  delta: number | undefined
+) {
+  if (!styleDegree || !delta) {
+    return styleDegree;
+  }
+  const parsed = Number(styleDegree);
+  if (!Number.isFinite(parsed)) {
+    return styleDegree;
+  }
+  return Math.max(0.55, Math.min(1.12, parsed + delta)).toFixed(2);
+}
+
+function lineDeliveryDeltas(text: string) {
+  const clean = stripHarthmereSpeechMarkup(text).toLowerCase();
+  let rateDelta = 0;
+  let pitchDelta = 0;
+  let breakDeltaMs = 0;
+  if (/[!?]/.test(clean)) {
+    rateDelta += 1;
+    pitchDelta += 1;
+    breakDeltaMs -= 8;
+  }
+  if (
+    /\b(now|fast|quick|hurry|urgent|danger|muck|helix|guard|convoy|patrol|fix it|get me home)\b/.test(
+      clean
+    )
+  ) {
+    rateDelta += 2;
+    breakDeltaMs -= 14;
+  }
+  if (
+    /\.\.\.|just\.{0,3}|please|lost|afraid|won't|can't|quiet|home folded/.test(
+      clean
+    )
+  ) {
+    rateDelta -= 2;
+    pitchDelta -= 1;
+    breakDeltaMs += 22;
+  }
+  return { rateDelta, pitchDelta, breakDeltaMs };
+}
+
+function ssmlTextWithSentenceBreaks(input: {
+  text: string;
+  sentenceBreakMs: number;
+  phraseBreakRatio: number;
+  commaBreakRatio: number;
+  ellipsisBreakRatio: number;
+}) {
+  const clean = stripHarthmereSpeechMarkup(input.text);
+  if (!clean) {
+    return "";
+  }
+  const sentenceBreak = Math.max(0, input.sentenceBreakMs);
+  const phraseBreak = Math.max(
+    0,
+    Math.round(sentenceBreak * input.phraseBreakRatio)
+  );
+  const commaBreak = Math.max(
+    0,
+    Math.round(sentenceBreak * input.commaBreakRatio)
+  );
+  const ellipsisBreak = Math.max(
+    sentenceBreak,
+    Math.round(sentenceBreak * input.ellipsisBreakRatio)
+  );
+  const sentenceToken = "%%HARTHMERE_SENTENCE_BREAK%%";
+  const phraseToken = "%%HARTHMERE_PHRASE_BREAK%%";
+  const commaToken = "%%HARTHMERE_COMMA_BREAK%%";
+  const ellipsisToken = "%%HARTHMERE_ELLIPSIS_BREAK%%";
+  const marked = clean
+    .replace(/\.{3,}\s*/g, `...${ellipsisToken}`)
+    .replace(/([.!?])\s+/g, `$1${sentenceToken}`)
+    .replace(/([;:—–-])\s+/g, `$1${phraseToken}`)
+    .replace(/(,)\s+/g, `$1${commaToken}`);
+  return marked
+    .split(
+      new RegExp(
+        `(${sentenceToken}|${phraseToken}|${commaToken}|${ellipsisToken})`,
+        "g"
+      )
+    )
+    .map((part) => {
+      if (part === sentenceToken) {
+        return `<break time="${sentenceBreak}ms"/>`;
+      }
+      if (part === phraseToken) {
+        return `<break time="${phraseBreak}ms"/>`;
+      }
+      if (part === commaToken) {
+        return commaBreak > 0 ? `<break time="${commaBreak}ms"/>` : "";
+      }
+      if (part === ellipsisToken) {
+        return `<break time="${ellipsisBreak}ms"/>`;
+      }
+      return escapeSsml(part);
+    })
+    .join("");
+}
+
+export function buildAzureSpeechSsml(input: {
+  text: string;
+  voice: ParsedHarthmereAzureVoice;
+  language?: string;
+}) {
+  const locale = input.language?.trim() || "en-US";
+  const delivery = harthmereSpeechDeliveryForActor({
+    actorKey: input.voice.actorKey,
+    text: input.text,
+  });
+  const lineDeltas = lineDeliveryDeltas(input.text);
+  const sentenceBreakMs = Math.max(
+    45,
+    input.voice.sentenceBreakMs +
+      delivery.sentenceBreakDeltaMs +
+      lineDeltas.breakDeltaMs
+  );
+  const body = ssmlTextWithSentenceBreaks({
+    text: input.text,
+    sentenceBreakMs,
+    phraseBreakRatio: delivery.phraseBreakRatio,
+    commaBreakRatio: delivery.commaBreakRatio,
+    ellipsisBreakRatio: delivery.ellipsisBreakRatio,
+  });
+  if (!body) {
+    return "";
+  }
+  const rate = withSignedPercentDelta({
+    value: input.voice.rate,
+    delta: delivery.rateDelta + lineDeltas.rateDelta,
+    min: -16,
+    max: 10,
+  });
+  const pitch = withSignedPercentDelta({
+    value: input.voice.pitch,
+    delta: delivery.pitchDelta + lineDeltas.pitchDelta,
+    min: -10,
+    max: 8,
+  });
+  const volume = delivery.volume ?? input.voice.volume;
+  const styleDegree = styleDegreeWithDelta(
+    input.voice.styleDegree,
+    delivery.styleDegreeDelta
+  );
+  const prosody = [
+    `<prosody rate="${escapeSsml(rate)}" pitch="${escapeSsml(
+      pitch
+    )}" volume="${escapeSsml(volume)}">`,
+    body,
+    "</prosody>",
+  ].join("");
+  const voiceBody = input.voice.style
+    ? [
+        `<mstts:express-as style="${escapeSsml(input.voice.style)}"${
+          styleDegree ? ` styledegree="${escapeSsml(styleDegree)}"` : ""
+        }${
+          input.voice.role ? ` role="${escapeSsml(input.voice.role)}"` : ""
+        }>`,
+        prosody,
+        "</mstts:express-as>",
+      ].join("")
+    : prosody;
+  return [
+    `<speak version="1.0" xml:lang="${escapeSsml(
+      locale
+    )}" xmlns="http://www.w3.org/2001/10/synthesis" xmlns:mstts="https://www.w3.org/2001/mstts">`,
+    `<voice name="${escapeSsml(input.voice.voiceName)}">`,
+    voiceBody,
+    "</voice>",
+    "</speak>",
+  ].join("");
+}

@@ -1,46 +1,46 @@
 import * as React from "react";
 import { usePointerLockManager } from "../contexts/PointerLockContext";
 import {
-  closePointerLockUnlockWhileOpenV1,
-  openPointerLockUnlockWhileOpenV1,
-  type PointerLockUnlockWhileOpenReturnRefV1,
+  closePointerLockUnlockWhileOpen,
+  openPointerLockUnlockWhileOpen,
+  type PointerLockUnlockWhileOpenReturnRef,
 } from "../contexts/pointerLockModalPolicy";
 import { RovingGrid } from "../biomes_ui/nav/RovingGrid";
 import { installBiomesUITheme } from "../biomes_ui/theme/biomesUITheme";
 import {
-  harthmereBikkieVisualGlyphStyleV1,
-  harthmereBikkieVisualImageStyleV1,
-  harthmereBikkieVisualImageUrlV1,
-  harthmereBikkieVisualTileStyleV1,
-} from "../biomes_ui/adapters/harthmereBikkieVisualRenderingV1";
+  harthmereBikkieVisualGlyphStyle,
+  harthmereBikkieVisualImageStyle,
+  harthmereBikkieVisualImageUrl,
+  harthmereBikkieVisualTileStyle,
+} from "../biomes_ui/adapters/harthmereBikkieVisualRendering";
 import type {
-  HarthmereCraftingStationAdapterV1,
-  HarthmereCraftingVisibleRecipeV1,
+  HarthmereCraftingStationAdapter,
+  HarthmereCraftingVisibleRecipe,
 } from "./craftingStationLiveAdapter";
 import {
-  formatHarthmereCraftingRecipeNameV1,
-  formatHarthmereCraftingStationTypeLabelV1,
+  formatHarthmereCraftingRecipeName,
+  formatHarthmereCraftingStationTypeLabel,
 } from "./craftingStationLiveAdapter";
 
 export interface HarthmereCraftingStationPanelProps {
-  adapter: HarthmereCraftingStationAdapterV1;
+  adapter: HarthmereCraftingStationAdapter;
   onClose?: () => void;
   compact?: boolean;
-  initialTab?: HarthmereCraftingStationPanelTabV1;
+  initialTab?: HarthmereCraftingStationPanelTab;
 }
 
-export type HarthmereCraftingStationPanelTabV1 =
+export type HarthmereCraftingStationPanelTab =
   | "recipes"
   | "jobs"
   | "services";
 
-const TABS: HarthmereCraftingStationPanelTabV1[] = [
+const TABS: HarthmereCraftingStationPanelTab[] = [
   "recipes",
   "jobs",
   "services",
 ];
 
-const TAB_LABELS: Record<HarthmereCraftingStationPanelTabV1, string> = {
+const TAB_LABELS: Record<HarthmereCraftingStationPanelTab, string> = {
   recipes: "Recipes",
   jobs: "Jobs",
   services: "Services",
@@ -74,14 +74,14 @@ function pluralize(count: number, singular: string, plural: string) {
 }
 
 const CraftingOutputVisual: React.FunctionComponent<{
-  recipe: HarthmereCraftingVisibleRecipeV1;
+  recipe: HarthmereCraftingVisibleRecipe;
 }> = ({ recipe }) => {
-  const imageUrl = harthmereBikkieVisualImageUrlV1(recipe.outputVisual);
+  const imageUrl = harthmereBikkieVisualImageUrl(recipe.outputVisual);
   return (
     <span
       aria-label={recipe.outputVisual.ariaLabel}
       title={recipe.outputVisual.metadataSummary}
-      style={harthmereBikkieVisualTileStyleV1(recipe.outputVisual, 38)}
+      style={harthmereBikkieVisualTileStyle(recipe.outputVisual, 38)}
       data-harthmere-crafting-visual="true"
       data-visual-source={recipe.outputVisual.source}
       data-visual-kind={recipe.outputVisual.shape}
@@ -93,11 +93,11 @@ const CraftingOutputVisual: React.FunctionComponent<{
           src={imageUrl}
           alt=""
           aria-hidden="true"
-          style={harthmereBikkieVisualImageStyleV1}
+          style={harthmereBikkieVisualImageStyle}
           data-harthmere-crafting-visual-img="true"
         />
       ) : null}
-      <span style={harthmereBikkieVisualGlyphStyleV1}>
+      <span style={harthmereBikkieVisualGlyphStyle}>
         {recipe.outputVisual.glyph}
       </span>
     </span>
@@ -109,12 +109,12 @@ export const HarthmereCraftingStationPanel: React.FunctionComponent<
 > = ({ adapter, onClose, compact = false, initialTab = "recipes" }) => {
   const pointerLockManager = usePointerLockManager();
   const shouldReturnPointerLock =
-    React.useRef<PointerLockUnlockWhileOpenReturnRefV1>({ current: false });
+    React.useRef<PointerLockUnlockWhileOpenReturnRef>({ current: false });
   const snapshot = adapter.getSnapshot();
   const available = adapter.isHydrated() && !!snapshot;
   const recipes = adapter.getRecipes();
   const [activeTab, setActiveTab] =
-    React.useState<HarthmereCraftingStationPanelTabV1>(
+    React.useState<HarthmereCraftingStationPanelTab>(
       TABS.includes(initialTab) ? initialTab : "recipes"
     );
   const [busy, setBusy] = React.useState(false);
@@ -135,12 +135,12 @@ export const HarthmereCraftingStationPanel: React.FunctionComponent<
   React.useEffect(() => installBiomesUITheme(), []);
   React.useEffect(() => {
     if (!available || compact) return;
-    openPointerLockUnlockWhileOpenV1(
+    openPointerLockUnlockWhileOpen(
       pointerLockManager,
       shouldReturnPointerLock.current
     );
     return () => {
-      closePointerLockUnlockWhileOpenV1(
+      closePointerLockUnlockWhileOpen(
         pointerLockManager,
         shouldReturnPointerLock.current
       );
@@ -203,7 +203,7 @@ export const HarthmereCraftingStationPanel: React.FunctionComponent<
         <div>
           <h2 style={titleStyle}>{snapshot.stationName}</h2>
           <p style={mutedStyle}>
-            {formatHarthmereCraftingStationTypeLabelV1(snapshot.stationType)} ·{" "}
+            {formatHarthmereCraftingStationTypeLabel(snapshot.stationType)} ·{" "}
             {snapshot.gold} gold ·{" "}
             {pluralize(
               Object.keys(snapshot.materialStorage).length,
@@ -268,8 +268,8 @@ export const HarthmereCraftingStationPanel: React.FunctionComponent<
 };
 
 const RecipePane: React.FunctionComponent<{
-  recipes: HarthmereCraftingVisibleRecipeV1[];
-  adapter: HarthmereCraftingStationAdapterV1;
+  recipes: HarthmereCraftingVisibleRecipe[];
+  adapter: HarthmereCraftingStationAdapter;
   busy: boolean;
   onRunAction: (action: () => Promise<void>) => void;
 }> = ({ recipes, adapter, busy, onRunAction }) => {
@@ -334,9 +334,9 @@ const RecipePane: React.FunctionComponent<{
 
 const JobsPane: React.FunctionComponent<{
   snapshot: NonNullable<
-    ReturnType<HarthmereCraftingStationAdapterV1["getSnapshot"]>
+    ReturnType<HarthmereCraftingStationAdapter["getSnapshot"]>
   >;
-  adapter: HarthmereCraftingStationAdapterV1;
+  adapter: HarthmereCraftingStationAdapter;
   busy: boolean;
   onRunAction: (action: () => Promise<void>) => void;
 }> = ({ snapshot, adapter, busy, onRunAction }) => {
@@ -352,7 +352,7 @@ const JobsPane: React.FunctionComponent<{
           <div key={job.jobId} className="biomes-ui-card" style={jobRowStyle}>
             <div>
               <strong>
-                {formatHarthmereCraftingRecipeNameV1(job.recipeId)}
+                {formatHarthmereCraftingRecipeName(job.recipeId)}
               </strong>
               <p style={mutedStyle}>
                 {formatMs(job.readyAtMs - snapshot.nowMs)}
@@ -390,9 +390,9 @@ const JobsPane: React.FunctionComponent<{
 };
 
 const ServicesPane: React.FunctionComponent<{
-  recipes: HarthmereCraftingVisibleRecipeV1[];
+  recipes: HarthmereCraftingVisibleRecipe[];
   snapshot: NonNullable<
-    ReturnType<HarthmereCraftingStationAdapterV1["getSnapshot"]>
+    ReturnType<HarthmereCraftingStationAdapter["getSnapshot"]>
   >;
 }> = ({ recipes, snapshot }) => {
   const services = recipes.filter(

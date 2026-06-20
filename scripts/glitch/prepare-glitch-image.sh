@@ -56,12 +56,12 @@ MSG
   exit 1
 fi
 
-# HARTHMERE_PROD_ASSET_LOCAL_INDEX_V1
+# HARTHMERE_PROD_ASSET_LOCAL_INDEX
 # Build the hash-addressed symlink index from asset_data/ so the
 # /buckets/biomes-static/ proxy can serve all local assets without GCS.
 # This must run BEFORE next build so any asset manifest references are correct.
 echo "Building local bucket asset hash index..."
-node scripts/harthmere/index-local-static-bucket-assets-v1.cjs .
+node scripts/harthmere/index-local-static-bucket-assets.cjs .
 echo "Local asset hash index complete."
 
 rm -rf /tmp/fake-biomes-snapshot /tmp/biomes_data_snapshot.tar.gz

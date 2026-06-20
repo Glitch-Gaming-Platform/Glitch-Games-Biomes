@@ -1,7 +1,7 @@
 import assert from "assert";
 import {
-  BIOMES_UI_NON_GAMEPLAY_SCREEN_SELECTORS_V137,
-  biomesUIIsNonGameplayScreenVisibleV137,
+  BIOMES_UI_NON_GAMEPLAY_SCREEN_SELECTORS,
+  biomesUIIsNonGameplayScreenVisible,
 } from "../BiomesUIOpenPrompt";
 
 interface FakeElement extends Element {
@@ -39,7 +39,7 @@ function fakeElement({
 function fakeRoot(
   elementsBySelector: Partial<
     Record<
-      (typeof BIOMES_UI_NON_GAMEPLAY_SCREEN_SELECTORS_V137)[number],
+      (typeof BIOMES_UI_NON_GAMEPLAY_SCREEN_SELECTORS)[number],
       Element
     >
   >
@@ -47,7 +47,7 @@ function fakeRoot(
   return {
     querySelector: (selector: string) =>
       elementsBySelector[
-        selector as (typeof BIOMES_UI_NON_GAMEPLAY_SCREEN_SELECTORS_V137)[number]
+        selector as (typeof BIOMES_UI_NON_GAMEPLAY_SCREEN_SELECTORS)[number]
       ] ?? null,
   };
 }
@@ -59,11 +59,11 @@ function readFakeStyle(element: Element) {
 describe("BiomesUIOpenPrompt non-gameplay suppression", () => {
   it("treats the loading screen as a non-gameplay screen", () => {
     assert.ok(
-      BIOMES_UI_NON_GAMEPLAY_SCREEN_SELECTORS_V137.includes(".loading-wrapper")
+      BIOMES_UI_NON_GAMEPLAY_SCREEN_SELECTORS.includes(".loading-wrapper")
     );
 
     assert.equal(
-      biomesUIIsNonGameplayScreenVisibleV137(
+      biomesUIIsNonGameplayScreenVisible(
         fakeRoot({ ".loading-wrapper": fakeElement() }),
         readFakeStyle
       ),
@@ -73,12 +73,12 @@ describe("BiomesUIOpenPrompt non-gameplay suppression", () => {
 
   it("does not suppress the prompt when the loading wrapper is absent or hidden", () => {
     assert.equal(
-      biomesUIIsNonGameplayScreenVisibleV137(fakeRoot({}), readFakeStyle),
+      biomesUIIsNonGameplayScreenVisible(fakeRoot({}), readFakeStyle),
       false
     );
 
     assert.equal(
-      biomesUIIsNonGameplayScreenVisibleV137(
+      biomesUIIsNonGameplayScreenVisible(
         fakeRoot({ ".loading-wrapper": fakeElement({ display: "none" }) }),
         readFakeStyle
       ),
@@ -86,7 +86,7 @@ describe("BiomesUIOpenPrompt non-gameplay suppression", () => {
     );
 
     assert.equal(
-      biomesUIIsNonGameplayScreenVisibleV137(
+      biomesUIIsNonGameplayScreenVisible(
         fakeRoot({ ".loading-wrapper": fakeElement({ width: 0 }) }),
         readFakeStyle
       ),

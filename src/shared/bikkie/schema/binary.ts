@@ -103,7 +103,7 @@ export function staticUrlForAttribute(attribute: AnyBinaryAttribute): string {
   const prefix =
     process.env.BIKKIE_STATIC_PREFIX ||
     "/buckets/biomes-static/";
-  // GLITCH_REMOVE_STATIC_BIOMES_GG_V193: never fall back to the legacy
+  // GLITCH_REMOVE_STATIC_BIOMES_GG: never fall back to the legacy
   // static CDN. Bikkie binaries should be same-origin bucket assets.
   return `${prefix}${gcsPathForAttribute(attribute)}`;
 }

@@ -67,7 +67,7 @@ const FALLBACK_OBSERVER_START_POSITIONS: ReadonlyArray<readonly [Vec3, Vec2]> =
     [[-853, 71, 1171], [-0.274, 3.714]],
   ];
 
-function atPageServerConfigV1(): Required<AtPageConfig> {
+function atPageServerConfig(): Required<AtPageConfig> {
   const config = globalThis.CONFIG as AtPageConfig | undefined;
   return {
     disableGame: config?.disableGame ?? false,
@@ -287,7 +287,7 @@ async function ensureValidWorldCoordinates(
 }
 
 function defaultObserverMode() {
-  const config = atPageServerConfigV1();
+  const config = atPageServerConfig();
   const initial = config.observerStartPositions[0];
   const observerMode: ObserverMode = {
     kind: "rotate",
@@ -318,7 +318,7 @@ async function coordinateObserverForSlug(
   slug: string[]
 ): Promise<SlugObserverSpec> {
   let startOrientation: Vec2 = [
-    ...atPageServerConfigV1().observerStartPositions[0][1],
+    ...atPageServerConfig().observerStartPositions[0][1],
   ];
   const startCoordinates = slug.slice(0, 3).map((e) => parseFloat(e)) as Vec3;
   if (any(startCoordinates, isNaN)) {
@@ -518,7 +518,7 @@ async function entityObserverForSlug(
 export async function getServerSideProps(
   context: WebServerServerSidePropsContext
 ) {
-  const config = atPageServerConfigV1();
+  const config = atPageServerConfig();
   if (config.disableGame) {
     return {
       redirect: {
@@ -583,14 +583,14 @@ export async function getServerSideProps(
           installId: identity.installId,
           titleId: identity.titleId,
         };
-        log.info("HARTHMERE_SSR_INSTALL_AUTO_AUTH_V129", {
+        log.info("HARTHMERE_SSR_INSTALL_AUTO_AUTH", {
           installId: identity.installId,
           userId: user.id,
           gameUserId: identity.gameUserId,
           hasGlitchUserId: Boolean(identity.glitchUserId),
         });
       } catch (error) {
-        log.warn("HARTHMERE_SSR_INSTALL_AUTO_AUTH_FAILED_V129", {
+        log.warn("HARTHMERE_SSR_INSTALL_AUTO_AUTH_FAILED", {
           error,
           installId,
         });
@@ -600,7 +600,7 @@ export async function getServerSideProps(
 
   const userId = authedUserId ?? INVALID_BIOMES_ID;
 
-  // GLITCH_INSTALL_AUTH_GATE_V117
+  // GLITCH_INSTALL_AUTH_GATE
   // The install-id bootstrap runs in _app after the first /at render. Without
   // this server-side gate, the game starts as an anonymous/local player before
   // the autoLogin call sets BUID/BSID, causing sync to accept an anonymous

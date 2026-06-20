@@ -1,30 +1,30 @@
 import {
-  ensureHarthmereProductionCraftingCatalogueV1,
-  HARTHMERE_CRAFTING_STATIONS_V1,
-} from "@/shared/harthmere/mmo_crafting_catalogue_v1";
+  ensureHarthmereProductionCraftingCatalogue,
+  HARTHMERE_CRAFTING_STATIONS,
+} from "@/shared/harthmere/mmo_crafting_catalogue";
 import {
-  harthmereResolveBikkieVisualV1,
-  type HarthmereResolvedBikkieVisualV1,
-} from "@/shared/harthmere/bikkie_visual_resolver_v1";
+  harthmereResolveBikkieVisual,
+  type HarthmereResolvedBikkieVisual,
+} from "@/shared/harthmere/bikkie_visual_resolver";
 import {
-  getHarthmereCraftingToolV1,
-  getHarthmereCraftingStationV1,
-  getHarthmereItemDefinitionV1,
-  listHarthmereCraftingRecipesV1,
-  normalizeHarthmereCraftingStationIdV1,
-  type HarthmereCraftingOutcomeV1,
-  type HarthmereCraftingRecipeV1,
-} from "@/shared/harthmere/mmo_inventory_authority_v1";
+  getHarthmereCraftingTool,
+  getHarthmereCraftingStation,
+  getHarthmereItemDefinition,
+  listHarthmereCraftingRecipes,
+  normalizeHarthmereCraftingStationId,
+  type HarthmereCraftingOutcome,
+  type HarthmereCraftingRecipe,
+} from "@/shared/harthmere/mmo_inventory_authority";
 
-export interface HarthmereCraftingStationClientJobV1 {
+export interface HarthmereCraftingStationClientJob {
   jobId: string;
   recipeId: string;
   readyAtMs: number;
   status: string;
-  outcome?: HarthmereCraftingOutcomeV1;
+  outcome?: HarthmereCraftingOutcome;
 }
 
-export interface HarthmereCraftingStationClientSnapshotV1 {
+export interface HarthmereCraftingStationClientSnapshot {
   actorId: string;
   stationId?: string;
   stationType?: string;
@@ -34,13 +34,13 @@ export interface HarthmereCraftingStationClientSnapshotV1 {
   materialStorage: Record<string, number>;
   knownRecipes: string[];
   skills: Record<string, { level: number; xp?: number }>;
-  activeJobs: HarthmereCraftingStationClientJobV1[];
-  history: HarthmereCraftingStationClientJobV1[];
+  activeJobs: HarthmereCraftingStationClientJob[];
+  history: HarthmereCraftingStationClientJob[];
   nowMs: number;
 }
 
-export interface HarthmereCraftingVisibleRecipeV1 {
-  recipe: HarthmereCraftingRecipeV1;
+export interface HarthmereCraftingVisibleRecipe {
+  recipe: HarthmereCraftingRecipe;
   displayName: string;
   outputName: string;
   stationOk: boolean;
@@ -49,10 +49,10 @@ export interface HarthmereCraftingVisibleRecipeV1 {
   missing: string[];
   qualityLabel: string;
   workflowLabel: string;
-  outputVisual: HarthmereResolvedBikkieVisualV1;
+  outputVisual: HarthmereResolvedBikkieVisual;
 }
 
-export interface HarthmereCraftingStationSubmitPayloadV1 {
+export interface HarthmereCraftingStationSubmitPayload {
   recipeId?: string;
   count?: number;
   stationId?: string;
@@ -65,22 +65,22 @@ export interface HarthmereCraftingStationSubmitPayloadV1 {
   craftingJobId?: string;
 }
 
-export interface HarthmereCraftingStationAdapterV1 {
+export interface HarthmereCraftingStationAdapter {
   isHydrated: () => boolean;
-  getSnapshot: () => HarthmereCraftingStationClientSnapshotV1 | undefined;
-  getRecipes: () => HarthmereCraftingVisibleRecipeV1[];
+  getSnapshot: () => HarthmereCraftingStationClientSnapshot | undefined;
+  getRecipes: () => HarthmereCraftingVisibleRecipe[];
   // Full ingredient/output/tool/gold/quality breakdown for the detail pane.
   getRecipeDetail: (
     recipeId: string
-  ) => HarthmereCraftingRecipeDetailV1 | undefined;
+  ) => HarthmereCraftingRecipeDetail | undefined;
   craft: (
     recipeId: string,
-    payload?: Omit<HarthmereCraftingStationSubmitPayloadV1, "recipeId">
+    payload?: Omit<HarthmereCraftingStationSubmitPayload, "recipeId">
   ) => Promise<void>;
   startJob: (
     recipeId: string,
     payload?: Omit<
-      HarthmereCraftingStationSubmitPayloadV1,
+      HarthmereCraftingStationSubmitPayload,
       "recipeId" | "jobAction"
     >
   ) => Promise<void>;
@@ -88,27 +88,27 @@ export interface HarthmereCraftingStationAdapterV1 {
   cancelJob: (jobId: string) => Promise<void>;
 }
 
-export interface CreateHarthmereCraftingStationAdapterOptionsV1 {
-  state: HarthmereCraftingStationClientSnapshotV1 | undefined;
+export interface CreateHarthmereCraftingStationAdapterOptions {
+  state: HarthmereCraftingStationClientSnapshot | undefined;
   hydrated?: boolean;
   setState?: (
-    state: HarthmereCraftingStationClientSnapshotV1 | undefined
+    state: HarthmereCraftingStationClientSnapshot | undefined
   ) => void;
-  submit?: (payload: HarthmereCraftingStationSubmitPayloadV1) => Promise<{
+  submit?: (payload: HarthmereCraftingStationSubmitPayload) => Promise<{
     ok: boolean;
-    craftingState?: HarthmereCraftingStationClientSnapshotV1;
+    craftingState?: HarthmereCraftingStationClientSnapshot;
     warnings?: string[];
   }>;
 }
 
-type HarthmereCraftingStationClientSnapshotInputV1 = Partial<
-  Omit<HarthmereCraftingStationClientSnapshotV1, "stationId">
+type HarthmereCraftingStationClientSnapshotInput = Partial<
+  Omit<HarthmereCraftingStationClientSnapshot, "stationId">
 > & {
   stationId?: string | number;
 };
 
 function countAvailable(
-  snapshot: HarthmereCraftingStationClientSnapshotV1,
+  snapshot: HarthmereCraftingStationClientSnapshot,
   itemId: string
 ) {
   return (
@@ -118,18 +118,18 @@ function countAvailable(
 }
 
 function availableCraftingToolItemIds(
-  snapshot: HarthmereCraftingStationClientSnapshotV1
+  snapshot: HarthmereCraftingStationClientSnapshot
 ) {
   return Object.keys(snapshot.inventoryItems).filter(
     (itemId) =>
       (snapshot.inventoryItems[itemId] ?? 0) > 0 &&
-      Boolean(getHarthmereCraftingToolV1(itemId))
+      Boolean(getHarthmereCraftingTool(itemId))
   );
 }
 
 function recipeStationOk(
-  recipe: HarthmereCraftingRecipeV1,
-  snapshot: HarthmereCraftingStationClientSnapshotV1
+  recipe: HarthmereCraftingRecipe,
+  snapshot: HarthmereCraftingStationClientSnapshot
 ) {
   if (recipe.requiredStationId)
     return recipe.requiredStationId === snapshot.stationId;
@@ -138,7 +138,7 @@ function recipeStationOk(
   return true;
 }
 
-export function formatHarthmereCraftingPlayerLabelV1(
+export function formatHarthmereCraftingPlayerLabel(
   value: string | undefined
 ) {
   if (!value) return "";
@@ -151,8 +151,8 @@ export function formatHarthmereCraftingPlayerLabelV1(
     .replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
-export function formatHarthmereCraftingWorkflowLabelV1(
-  workflowKind: HarthmereCraftingRecipeV1["workflowKind"] | undefined
+export function formatHarthmereCraftingWorkflowLabel(
+  workflowKind: HarthmereCraftingRecipe["workflowKind"] | undefined
 ) {
   switch (workflowKind) {
     case "repair":
@@ -171,7 +171,7 @@ export function formatHarthmereCraftingWorkflowLabelV1(
   }
 }
 
-export function formatHarthmereCraftingStationTypeLabelV1(
+export function formatHarthmereCraftingStationTypeLabel(
   stationType: string | undefined
 ) {
   switch (stationType) {
@@ -185,23 +185,23 @@ export function formatHarthmereCraftingStationTypeLabelV1(
       return "Composting";
     default:
       return stationType
-        ? formatHarthmereCraftingPlayerLabelV1(stationType)
+        ? formatHarthmereCraftingPlayerLabel(stationType)
         : "Crafting";
   }
 }
 
-export function formatHarthmereCraftingRecipeNameV1(recipeId: string) {
-  ensureHarthmereProductionCraftingCatalogueV1();
-  const recipe = listHarthmereCraftingRecipesV1().find(
+export function formatHarthmereCraftingRecipeName(recipeId: string) {
+  ensureHarthmereProductionCraftingCatalogue();
+  const recipe = listHarthmereCraftingRecipes().find(
     (entry) => entry.recipeId === recipeId
   );
   if (recipe) {
     return (
-      getHarthmereItemDefinitionV1(recipe.outputItemId)?.displayName ??
-      formatHarthmereCraftingPlayerLabelV1(recipe.outputItemId)
+      getHarthmereItemDefinition(recipe.outputItemId)?.displayName ??
+      formatHarthmereCraftingPlayerLabel(recipe.outputItemId)
     );
   }
-  return formatHarthmereCraftingPlayerLabelV1(recipeId);
+  return formatHarthmereCraftingPlayerLabel(recipeId);
 }
 
 function playerMessageFromCraftingWarning(warning: string) {
@@ -266,7 +266,7 @@ function playerMessageFromCraftingWarning(warning: string) {
   }
 }
 
-export function formatHarthmereCraftingPlayerErrorV1(warnings?: string[]) {
+export function formatHarthmereCraftingPlayerError(warnings?: string[]) {
   const messages = [
     ...new Set(
       (warnings ?? [])
@@ -279,11 +279,11 @@ export function formatHarthmereCraftingPlayerErrorV1(warnings?: string[]) {
     : "Crafting is unavailable right now.";
 }
 
-export function createHarthmereCraftingVisibleRecipesV1(
-  snapshot: HarthmereCraftingStationClientSnapshotV1
-): HarthmereCraftingVisibleRecipeV1[] {
-  ensureHarthmereProductionCraftingCatalogueV1();
-  return listHarthmereCraftingRecipesV1()
+export function createHarthmereCraftingVisibleRecipes(
+  snapshot: HarthmereCraftingStationClientSnapshot
+): HarthmereCraftingVisibleRecipe[] {
+  ensureHarthmereProductionCraftingCatalogue();
+  return listHarthmereCraftingRecipes()
     .map((recipe) => {
       const missing: string[] = [];
       const stationOk = recipeStationOk(recipe, snapshot);
@@ -295,8 +295,8 @@ export function createHarthmereCraftingVisibleRecipesV1(
       for (const input of [...recipe.inputs, ...(recipe.fuelInputs ?? [])]) {
         if (countAvailable(snapshot, input.itemId) < input.count) {
           missing.push(
-            getHarthmereItemDefinitionV1(input.itemId)?.displayName ??
-              formatHarthmereCraftingPlayerLabelV1(input.itemId)
+            getHarthmereItemDefinition(input.itemId)?.displayName ??
+              formatHarthmereCraftingPlayerLabel(input.itemId)
           );
         }
       }
@@ -304,33 +304,33 @@ export function createHarthmereCraftingVisibleRecipesV1(
         const level = snapshot.skills[recipe.requiredSkillId]?.level ?? 0;
         if (level < (recipe.requiredSkillLevel ?? 1)) {
           missing.push(
-            formatHarthmereCraftingPlayerLabelV1(recipe.requiredSkillId)
+            formatHarthmereCraftingPlayerLabel(recipe.requiredSkillId)
           );
         }
       }
       for (const toolId of recipe.requiredToolIds ?? []) {
         if (!toolItemIds.includes(toolId)) {
           missing.push(
-            getHarthmereCraftingToolV1(toolId)?.displayName ??
-              formatHarthmereCraftingPlayerLabelV1(toolId)
+            getHarthmereCraftingTool(toolId)?.displayName ??
+              formatHarthmereCraftingPlayerLabel(toolId)
           );
         }
       }
       for (const action of recipe.requiredToolActions ?? []) {
         const hasActionTool = toolItemIds.some(
-          (itemId) => getHarthmereCraftingToolV1(itemId)?.action === action
+          (itemId) => getHarthmereCraftingTool(itemId)?.action === action
         );
         if (!hasActionTool) missing.push("Tool");
       }
-      const outputDefinition = getHarthmereItemDefinitionV1(
+      const outputDefinition = getHarthmereItemDefinition(
         recipe.outputItemId
       );
       const outputName =
         outputDefinition?.displayName ??
-        formatHarthmereCraftingPlayerLabelV1(recipe.outputItemId);
+        formatHarthmereCraftingPlayerLabel(recipe.outputItemId);
       return {
         recipe,
-        displayName: formatHarthmereCraftingPlayerLabelV1(recipe.recipeId),
+        displayName: formatHarthmereCraftingPlayerLabel(recipe.recipeId),
         outputName,
         stationOk,
         known,
@@ -340,10 +340,10 @@ export function createHarthmereCraftingVisibleRecipesV1(
           recipe.successChance !== undefined
             ? `${Math.round(recipe.successChance * 100)}%`
             : "Reliable",
-        workflowLabel: formatHarthmereCraftingWorkflowLabelV1(
+        workflowLabel: formatHarthmereCraftingWorkflowLabel(
           recipe.workflowKind
         ),
-        outputVisual: harthmereResolveBikkieVisualV1({
+        outputVisual: harthmereResolveBikkieVisual({
           id: recipe.outputItemId,
           label: outputName,
           kind: outputDefinition?.category,
@@ -355,13 +355,13 @@ export function createHarthmereCraftingVisibleRecipesV1(
     .filter((entry) => entry.known || entry.stationOk);
 }
 
-// HARTHMERE_CRAFTING_UI_PARITY_V151: the BiomesUI panel reaches feature parity
+// HARTHMERE_CRAFTING_UI_PARITY: the BiomesUI panel reaches feature parity
 // with the original crafting table through these pure helpers — recipe detail
 // breakdown, batch quantity, search/filter, alternative recipes, and the
 // handcraft/station partition. They reuse the same shared authority data the
 // gating already uses, so the new panel never diverges from the old table.
 
-export interface HarthmereCraftingIngredientLineV1 {
+export interface HarthmereCraftingIngredientLine {
   itemId: string;
   name: string;
   need: number;
@@ -370,13 +370,13 @@ export interface HarthmereCraftingIngredientLineV1 {
   kind: "input" | "fuel" | "reagent";
 }
 
-export interface HarthmereCraftingRecipeDetailV1 {
+export interface HarthmereCraftingRecipeDetail {
   recipeId: string;
   outputItemId: string;
   outputName: string;
   outputCount: number;
-  outputVisual: HarthmereResolvedBikkieVisualV1;
-  ingredients: HarthmereCraftingIngredientLineV1[];
+  outputVisual: HarthmereResolvedBikkieVisual;
+  ingredients: HarthmereCraftingIngredientLine[];
   goldCost: number;
   goldAffordable: boolean;
   requiredTools: Array<{ label: string; have: boolean }>;
@@ -395,9 +395,9 @@ export interface HarthmereCraftingRecipeDetailV1 {
 // Max units craftable right now given inventory inputs/fuel + gold. Returns 0 if
 // the recipe is not known or the station is wrong (can't craft any here), so the
 // batch selector never offers an amount that would be rejected.
-export function harthmereCraftingMaxCraftableV1(
-  recipe: HarthmereCraftingRecipeV1,
-  snapshot: HarthmereCraftingStationClientSnapshotV1
+export function harthmereCraftingMaxCraftable(
+  recipe: HarthmereCraftingRecipe,
+  snapshot: HarthmereCraftingStationClientSnapshot
 ): number {
   if (
     !snapshot.knownRecipes.includes(recipe.recipeId) ||
@@ -418,28 +418,28 @@ export function harthmereCraftingMaxCraftableV1(
   return Number.isFinite(max) ? Math.max(0, max) : 99;
 }
 
-export function harthmereCraftingRecipeDetailV1(
-  recipe: HarthmereCraftingRecipeV1,
-  snapshot: HarthmereCraftingStationClientSnapshotV1
-): HarthmereCraftingRecipeDetailV1 {
+export function harthmereCraftingRecipeDetail(
+  recipe: HarthmereCraftingRecipe,
+  snapshot: HarthmereCraftingStationClientSnapshot
+): HarthmereCraftingRecipeDetail {
   const line = (
     itemId: string,
     need: number,
-    kind: HarthmereCraftingIngredientLineV1["kind"]
-  ): HarthmereCraftingIngredientLineV1 => {
+    kind: HarthmereCraftingIngredientLine["kind"]
+  ): HarthmereCraftingIngredientLine => {
     const have = countAvailable(snapshot, itemId);
     return {
       itemId,
       name:
-        getHarthmereItemDefinitionV1(itemId)?.displayName ??
-        formatHarthmereCraftingPlayerLabelV1(itemId),
+        getHarthmereItemDefinition(itemId)?.displayName ??
+        formatHarthmereCraftingPlayerLabel(itemId),
       need,
       have,
       enough: have >= need,
       kind,
     };
   };
-  const ingredients: HarthmereCraftingIngredientLineV1[] = [
+  const ingredients: HarthmereCraftingIngredientLine[] = [
     ...recipe.inputs.map((i) => line(i.itemId, i.count, "input")),
     ...(recipe.fuelInputs ?? []).map((i) => line(i.itemId, i.count, "fuel")),
     ...(recipe.optionalReagents ?? []).map((i) => line(i.itemId, i.count, "reagent")),
@@ -448,21 +448,21 @@ export function harthmereCraftingRecipeDetailV1(
   const requiredTools = [
     ...(recipe.requiredToolIds ?? []).map((toolId) => ({
       label:
-        getHarthmereCraftingToolV1(toolId)?.displayName ??
-        formatHarthmereCraftingPlayerLabelV1(toolId),
+        getHarthmereCraftingTool(toolId)?.displayName ??
+        formatHarthmereCraftingPlayerLabel(toolId),
       have: toolItemIds.includes(toolId),
     })),
     ...(recipe.requiredToolActions ?? []).map((action) => ({
-      label: `${formatHarthmereCraftingPlayerLabelV1(action)} tool`,
+      label: `${formatHarthmereCraftingPlayerLabel(action)} tool`,
       have: toolItemIds.some(
-        (itemId) => getHarthmereCraftingToolV1(itemId)?.action === action
+        (itemId) => getHarthmereCraftingTool(itemId)?.action === action
       ),
     })),
   ];
-  const outputDefinition = getHarthmereItemDefinitionV1(recipe.outputItemId);
+  const outputDefinition = getHarthmereItemDefinition(recipe.outputItemId);
   const outputName =
     outputDefinition?.displayName ??
-    formatHarthmereCraftingPlayerLabelV1(recipe.outputItemId);
+    formatHarthmereCraftingPlayerLabel(recipe.outputItemId);
   const skillLevel = recipe.requiredSkillId
     ? snapshot.skills[recipe.requiredSkillId]?.level ?? 0
     : 0;
@@ -471,7 +471,7 @@ export function harthmereCraftingRecipeDetailV1(
     outputItemId: recipe.outputItemId,
     outputName,
     outputCount: recipe.outputCount,
-    outputVisual: harthmereResolveBikkieVisualV1({
+    outputVisual: harthmereResolveBikkieVisual({
       id: recipe.outputItemId,
       label: outputName,
       kind: outputDefinition?.category,
@@ -492,16 +492,16 @@ export function harthmereCraftingRecipeDetailV1(
       recipe.successChance !== undefined
         ? `${Math.round(recipe.successChance * 100)}%`
         : "Reliable",
-    workflowLabel: formatHarthmereCraftingWorkflowLabelV1(recipe.workflowKind),
-    maxCraftable: harthmereCraftingMaxCraftableV1(recipe, snapshot),
+    workflowLabel: formatHarthmereCraftingWorkflowLabel(recipe.workflowKind),
+    maxCraftable: harthmereCraftingMaxCraftable(recipe, snapshot),
   };
 }
 
 // Search/filter by recipe or output name (the old table's search bar).
-export function filterHarthmereCraftingRecipesV1(
-  recipes: HarthmereCraftingVisibleRecipeV1[],
+export function filterHarthmereCraftingRecipes(
+  recipes: HarthmereCraftingVisibleRecipe[],
   query: string
-): HarthmereCraftingVisibleRecipeV1[] {
+): HarthmereCraftingVisibleRecipe[] {
   const q = query.trim().toLowerCase();
   if (!q) return recipes;
   return recipes.filter(
@@ -514,20 +514,20 @@ export function filterHarthmereCraftingRecipesV1(
 
 // Alternative recipes that produce the same output item (the old table's
 // alternative-recipe selector).
-export function harthmereCraftingAlternativeRecipesV1(
-  recipes: HarthmereCraftingVisibleRecipeV1[],
+export function harthmereCraftingAlternativeRecipes(
+  recipes: HarthmereCraftingVisibleRecipe[],
   outputItemId: string
-): HarthmereCraftingVisibleRecipeV1[] {
+): HarthmereCraftingVisibleRecipe[] {
   return recipes.filter((entry) => entry.recipe.outputItemId === outputItemId);
 }
 
 // Handcraft (no required station) vs station-only recipes — the old table's
 // "Handcraft" / "All Recipes" segmented control.
-export function harthmereCraftingHandcraftPartitionV1(
-  recipes: HarthmereCraftingVisibleRecipeV1[]
-): { handcraft: HarthmereCraftingVisibleRecipeV1[]; station: HarthmereCraftingVisibleRecipeV1[] } {
-  const handcraft: HarthmereCraftingVisibleRecipeV1[] = [];
-  const station: HarthmereCraftingVisibleRecipeV1[] = [];
+export function harthmereCraftingHandcraftPartition(
+  recipes: HarthmereCraftingVisibleRecipe[]
+): { handcraft: HarthmereCraftingVisibleRecipe[]; station: HarthmereCraftingVisibleRecipe[] } {
+  const handcraft: HarthmereCraftingVisibleRecipe[] = [];
+  const station: HarthmereCraftingVisibleRecipe[] = [];
   for (const entry of recipes) {
     const needsStation = Boolean(
       entry.recipe.requiredStationId || entry.recipe.requiredStationType
@@ -537,14 +537,14 @@ export function harthmereCraftingHandcraftPartitionV1(
   return { handcraft, station };
 }
 
-export function normalizeHarthmereCraftingStationClientSnapshotV1(
-  input: HarthmereCraftingStationClientSnapshotInputV1 | undefined
-): HarthmereCraftingStationClientSnapshotV1 {
-  ensureHarthmereProductionCraftingCatalogueV1();
+export function normalizeHarthmereCraftingStationClientSnapshot(
+  input: HarthmereCraftingStationClientSnapshotInput | undefined
+): HarthmereCraftingStationClientSnapshot {
+  ensureHarthmereProductionCraftingCatalogue();
   const stationId =
-    normalizeHarthmereCraftingStationIdV1(input?.stationId) ??
-    HARTHMERE_CRAFTING_STATIONS_V1.workbench;
-  const station = getHarthmereCraftingStationV1(stationId);
+    normalizeHarthmereCraftingStationId(input?.stationId) ??
+    HARTHMERE_CRAFTING_STATIONS.workbench;
+  const station = getHarthmereCraftingStation(stationId);
   return {
     actorId: input?.actorId ?? "",
     stationId,
@@ -562,30 +562,30 @@ export function normalizeHarthmereCraftingStationClientSnapshotV1(
   };
 }
 
-export function createHarthmereCraftingStationAdapterV1({
+export function createHarthmereCraftingStationAdapter({
   state,
   hydrated = true,
   setState,
   submit,
-}: CreateHarthmereCraftingStationAdapterOptionsV1): HarthmereCraftingStationAdapterV1 {
+}: CreateHarthmereCraftingStationAdapterOptions): HarthmereCraftingStationAdapter {
   const snapshot = state
-    ? normalizeHarthmereCraftingStationClientSnapshotV1(state)
+    ? normalizeHarthmereCraftingStationClientSnapshot(state)
     : undefined;
-  const mutate = async (payload: HarthmereCraftingStationSubmitPayloadV1) => {
+  const mutate = async (payload: HarthmereCraftingStationSubmitPayload) => {
     if (!submit) return;
     const body = await submit(payload);
     if (!body.ok) {
-      throw new Error(formatHarthmereCraftingPlayerErrorV1(body.warnings));
+      throw new Error(formatHarthmereCraftingPlayerError(body.warnings));
     }
     if (body.craftingState) {
       setState?.(
-        normalizeHarthmereCraftingStationClientSnapshotV1(body.craftingState)
+        normalizeHarthmereCraftingStationClientSnapshot(body.craftingState)
       );
     }
   };
   const withStationDefaults = (
-    payload: HarthmereCraftingStationSubmitPayloadV1
-  ): HarthmereCraftingStationSubmitPayloadV1 => ({
+    payload: HarthmereCraftingStationSubmitPayload
+  ): HarthmereCraftingStationSubmitPayload => ({
     ...payload,
     stationId: payload.stationId ?? snapshot?.stationId,
     stationType: payload.stationType ?? snapshot?.stationType,
@@ -594,15 +594,15 @@ export function createHarthmereCraftingStationAdapterV1({
     isHydrated: () => hydrated,
     getSnapshot: () => snapshot,
     getRecipes: () =>
-      snapshot ? createHarthmereCraftingVisibleRecipesV1(snapshot) : [],
+      snapshot ? createHarthmereCraftingVisibleRecipes(snapshot) : [],
     getRecipeDetail: (recipeId) => {
       if (!snapshot) return undefined;
-      ensureHarthmereProductionCraftingCatalogueV1();
-      const recipe = listHarthmereCraftingRecipesV1().find(
+      ensureHarthmereProductionCraftingCatalogue();
+      const recipe = listHarthmereCraftingRecipes().find(
         (entry) => entry.recipeId === recipeId
       );
       return recipe
-        ? harthmereCraftingRecipeDetailV1(recipe, snapshot)
+        ? harthmereCraftingRecipeDetail(recipe, snapshot)
         : undefined;
     },
     craft: (recipeId, payload = {}) =>

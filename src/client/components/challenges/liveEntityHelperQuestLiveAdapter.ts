@@ -1,16 +1,16 @@
 import type {
-  LiveEntityHelperQuestEntityContextV1,
-  LiveEntityHelperQuestInstanceV1,
-} from "@/shared/harthmere/live_entity_helper_quests_v1";
+  LiveEntityHelperQuestEntityContext,
+  LiveEntityHelperQuestInstance,
+} from "@/shared/harthmere/live_entity_helper_quests";
 import {
-  liveEntityRobotDefaultRobotIdForAreaV1,
-  liveEntityRobotProtectionAreaForPositionV1,
-} from "@/shared/harthmere/live_entity_robot_energy_protection_v1";
+  liveEntityRobotDefaultRobotIdForArea,
+  liveEntityRobotProtectionAreaForPosition,
+} from "@/shared/harthmere/live_entity_robot_energy_protection";
 
-export const LIVE_ENTITY_HELPER_LIVE_MODE_RESPONSE_EVENT_V1 =
-  "biomes:live-entity-helper-live-mode-response-v1" as const;
+export const LIVE_ENTITY_HELPER_LIVE_MODE_RESPONSE_EVENT =
+  "biomes:live-entity-helper-live-mode-response" as const;
 
-export interface LiveEntityHelperQuestLiveSnapshotV1 {
+export interface LiveEntityHelperQuestLiveSnapshot {
   inventoryItems: Record<string, number>;
   quests: {
     active: Record<string, { stepId?: string; progress?: number }>;
@@ -20,32 +20,32 @@ export interface LiveEntityHelperQuestLiveSnapshotV1 {
   body?: any;
 }
 
-export class LiveEntityHelperLiveModeRejectionErrorV1 extends Error {
+export class LiveEntityHelperLiveModeRejectionError extends Error {
   readonly warnings: string[];
 
   constructor(warnings: string[]) {
     super(warnings.join(",") || "live_entity_helper_rejected");
-    this.name = "LiveEntityHelperLiveModeRejectionErrorV1";
+    this.name = "LiveEntityHelperLiveModeRejectionError";
     this.warnings = warnings;
   }
 }
 
-export function isLiveEntityHelperLiveModeRejectionErrorV1(
+export function isLiveEntityHelperLiveModeRejectionError(
   error: unknown
-): error is LiveEntityHelperLiveModeRejectionErrorV1 {
-  return error instanceof LiveEntityHelperLiveModeRejectionErrorV1;
+): error is LiveEntityHelperLiveModeRejectionError {
+  return error instanceof LiveEntityHelperLiveModeRejectionError;
 }
 
-function dispatchLiveEntityHelperLiveModeResponseV1(body: any) {
+function dispatchLiveEntityHelperLiveModeResponse(body: any) {
   if (typeof window === "undefined") return;
   window.dispatchEvent(
-    new CustomEvent(LIVE_ENTITY_HELPER_LIVE_MODE_RESPONSE_EVENT_V1, {
+    new CustomEvent(LIVE_ENTITY_HELPER_LIVE_MODE_RESPONSE_EVENT, {
       detail: body,
     })
   );
 }
 
-export function harthmereLiveEntityHelperLiveModeUrlV1(search?: string) {
+export function harthmereLiveEntityHelperLiveModeUrl(search?: string) {
   const rawSearch =
     search ??
     (typeof window !== "undefined" ? window.location?.search ?? "" : "");
@@ -57,7 +57,7 @@ export function harthmereLiveEntityHelperLiveModeUrlV1(search?: string) {
     : endpoint;
 }
 
-export function harthmereLiveEntityHelperLiveModeHeadersV1(search?: string) {
+export function harthmereLiveEntityHelperLiveModeHeaders(search?: string) {
   const rawSearch =
     search ??
     (typeof window !== "undefined" ? window.location?.search ?? "" : "");
@@ -73,14 +73,14 @@ export function harthmereLiveEntityHelperLiveModeHeadersV1(search?: string) {
   return headers;
 }
 
-function finiteCoordinateV1(value: unknown) {
+function finiteCoordinate(value: unknown) {
   const numeric = Number(value);
   return Number.isFinite(numeric) ? numeric : undefined;
 }
 
-export function liveEntityHelperQuestPayloadForLiveModeV1(
-  quest: LiveEntityHelperQuestInstanceV1,
-  context: LiveEntityHelperQuestEntityContextV1,
+export function liveEntityHelperQuestPayloadForLiveMode(
+  quest: LiveEntityHelperQuestInstance,
+  context: LiveEntityHelperQuestEntityContext,
   operation: string
 ) {
   const position = context.position ?? [];
@@ -90,9 +90,9 @@ export function liveEntityHelperQuestPayloadForLiveModeV1(
     questKind: quest.kind,
     entityId: quest.entityId,
     entityLabel: quest.giverName,
-    entityX: finiteCoordinateV1(position[0]),
-    entityY: finiteCoordinateV1(position[1]),
-    entityZ: finiteCoordinateV1(position[2]),
+    entityX: finiteCoordinate(position[0]),
+    entityY: finiteCoordinate(position[1]),
+    entityZ: finiteCoordinate(position[2]),
     hasRobotComponent: context.hasRobotComponent === true,
     hasAppearanceComponent: context.hasAppearanceComponent === true,
     hasNpcMetadata: context.hasNpcMetadata === true,
@@ -106,28 +106,28 @@ export function liveEntityHelperQuestPayloadForLiveModeV1(
   };
 }
 
-export function liveEntityRobotRechargePayloadForLiveModeV1(input: {
+export function liveEntityRobotRechargePayloadForLiveMode(input: {
   entityId: string | number;
   label?: string;
   position?: readonly number[];
 }) {
-  const area = liveEntityRobotProtectionAreaForPositionV1(input.position);
+  const area = liveEntityRobotProtectionAreaForPosition(input.position);
   const robotId = area
-    ? liveEntityRobotDefaultRobotIdForAreaV1(area.areaId)
+    ? liveEntityRobotDefaultRobotIdForArea(area.areaId)
     : String(input.entityId);
   return {
     operation: "live_entity_robot_energy_recharge",
     robotId,
     entityId: String(input.entityId),
     entityLabel: input.label,
-    entityX: finiteCoordinateV1(input.position?.[0]),
-    entityY: finiteCoordinateV1(input.position?.[1]),
-    entityZ: finiteCoordinateV1(input.position?.[2]),
+    entityX: finiteCoordinate(input.position?.[0]),
+    entityY: finiteCoordinate(input.position?.[1]),
+    entityZ: finiteCoordinate(input.position?.[2]),
     areaId: area?.areaId,
   };
 }
 
-function recordNumberMapV1(value: unknown): Record<string, number> {
+function recordNumberMap(value: unknown): Record<string, number> {
   if (!value || typeof value !== "object") return {};
   return Object.fromEntries(
     Object.entries(value as Record<string, unknown>)
@@ -136,10 +136,10 @@ function recordNumberMapV1(value: unknown): Record<string, number> {
   );
 }
 
-export function liveEntityHelperLiveSnapshotFromResponseV1(
+export function liveEntityHelperLiveSnapshotFromResponse(
   body: any
-): LiveEntityHelperQuestLiveSnapshotV1 {
-  const inventoryItems = recordNumberMapV1(
+): LiveEntityHelperQuestLiveSnapshot {
+  const inventoryItems = recordNumberMap(
     body?.inventoryLootState?.actor?.items ??
       body?.buildingState?.inventoryItems ??
       body?.inventoryItems
@@ -169,14 +169,14 @@ export function liveEntityHelperLiveSnapshotFromResponseV1(
   };
 }
 
-export function liveEntityHelperLiveSnapshotHasRejectionV1(
-  snapshot: LiveEntityHelperQuestLiveSnapshotV1,
+export function liveEntityHelperLiveSnapshotHasRejection(
+  snapshot: LiveEntityHelperQuestLiveSnapshot,
   prefix = "live_entity_helper_rejected:"
 ) {
   return snapshot.warnings.some((warning) => warning.startsWith(prefix));
 }
 
-async function submitLiveEntityHelperLiveModeActionV1(
+async function submitLiveEntityHelperLiveModeAction(
   payload: Record<string, unknown>,
   options: {
     fetchImpl?: typeof fetch;
@@ -190,11 +190,11 @@ async function submitLiveEntityHelperLiveModeActionV1(
     options.requestId ??
     `live_entity_helper_${Date.now()}_${Math.random().toString(36).slice(2)}`;
   const response = await fetchImpl(
-    harthmereLiveEntityHelperLiveModeUrlV1(options.locationSearch),
+    harthmereLiveEntityHelperLiveModeUrl(options.locationSearch),
     {
       method: "POST",
       credentials: "same-origin",
-      headers: harthmereLiveEntityHelperLiveModeHeadersV1(
+      headers: harthmereLiveEntityHelperLiveModeHeaders(
         options.locationSearch
       ),
       body: JSON.stringify({
@@ -213,8 +213,8 @@ async function submitLiveEntityHelperLiveModeActionV1(
     } as any
   );
   const body = await response.json();
-  const snapshot = liveEntityHelperLiveSnapshotFromResponseV1(body);
-  dispatchLiveEntityHelperLiveModeResponseV1(body);
+  const snapshot = liveEntityHelperLiveSnapshotFromResponse(body);
+  dispatchLiveEntityHelperLiveModeResponse(body);
   if (!response.ok || body?.ok === false) {
     throw new Error(
       body?.error ??
@@ -227,14 +227,14 @@ async function submitLiveEntityHelperLiveModeActionV1(
   return snapshot;
 }
 
-export async function readLiveEntityHelperQuestLiveModeStateV1(
+export async function readLiveEntityHelperQuestLiveModeState(
   options: {
     fetchImpl?: typeof fetch;
     requestId?: string;
     locationSearch?: string;
   } = {}
 ) {
-  return submitLiveEntityHelperLiveModeActionV1(
+  return submitLiveEntityHelperLiveModeAction(
     { operation: "live_entity_helper_read_state" },
     {
       ...options,
@@ -243,13 +243,13 @@ export async function readLiveEntityHelperQuestLiveModeStateV1(
   );
 }
 
-export async function submitLiveEntityHelperQuestMutationV1(
+export async function submitLiveEntityHelperQuestMutation(
   operation:
     | "live_entity_helper_accept"
     | "live_entity_helper_complete"
     | "live_entity_helper_record_boss_defeat",
-  quest: LiveEntityHelperQuestInstanceV1,
-  context: LiveEntityHelperQuestEntityContextV1,
+  quest: LiveEntityHelperQuestInstance,
+  context: LiveEntityHelperQuestEntityContext,
   options: {
     fetchImpl?: typeof fetch;
     requestId?: string;
@@ -257,9 +257,9 @@ export async function submitLiveEntityHelperQuestMutationV1(
     extraPayload?: Record<string, unknown>;
   } = {}
 ) {
-  const snapshot = await submitLiveEntityHelperLiveModeActionV1(
+  const snapshot = await submitLiveEntityHelperLiveModeAction(
     {
-      ...liveEntityHelperQuestPayloadForLiveModeV1(quest, context, operation),
+      ...liveEntityHelperQuestPayloadForLiveMode(quest, context, operation),
       ...(options.extraPayload ?? {}),
     },
     {
@@ -267,13 +267,13 @@ export async function submitLiveEntityHelperQuestMutationV1(
       targetId: quest.entityId,
     }
   );
-  if (liveEntityHelperLiveSnapshotHasRejectionV1(snapshot)) {
-    throw new LiveEntityHelperLiveModeRejectionErrorV1(snapshot.warnings);
+  if (liveEntityHelperLiveSnapshotHasRejection(snapshot)) {
+    throw new LiveEntityHelperLiveModeRejectionError(snapshot.warnings);
   }
   return snapshot;
 }
 
-export async function submitLiveEntityRobotRechargeMutationV1(
+export async function submitLiveEntityRobotRechargeMutation(
   input: {
     entityId: string | number;
     label?: string;
@@ -285,20 +285,20 @@ export async function submitLiveEntityRobotRechargeMutationV1(
     locationSearch?: string;
   } = {}
 ) {
-  const snapshot = await submitLiveEntityHelperLiveModeActionV1(
-    liveEntityRobotRechargePayloadForLiveModeV1(input),
+  const snapshot = await submitLiveEntityHelperLiveModeAction(
+    liveEntityRobotRechargePayloadForLiveMode(input),
     {
       ...options,
       targetId: String(input.entityId),
     }
   );
   if (
-    liveEntityHelperLiveSnapshotHasRejectionV1(
+    liveEntityHelperLiveSnapshotHasRejection(
       snapshot,
       "live_entity_robot_rejected:"
     )
   ) {
-    throw new LiveEntityHelperLiveModeRejectionErrorV1(snapshot.warnings);
+    throw new LiveEntityHelperLiveModeRejectionError(snapshot.warnings);
   }
   return snapshot;
 }

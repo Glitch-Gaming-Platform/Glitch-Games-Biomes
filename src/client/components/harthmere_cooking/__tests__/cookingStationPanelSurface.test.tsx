@@ -2,16 +2,16 @@ import assert from "assert";
 import * as React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import {
-  createHarthmereCookVisibleRecipesV1,
-  harthmereCookRecipeDetailV1,
+  createHarthmereCookVisibleRecipes,
+  harthmereCookRecipeDetail,
 } from "../cookingStationLiveAdapter";
 import { HarthmereCookingStationSurfaceForTest } from "../HarthmereCookingStationPanel";
 
 describe("HarthmereCookingStationPanel surface", () => {
   it("renders a structured, readable cooking station UI without farming recipes", () => {
     const inventory = { raw_meat: 2 };
-    const recipes = createHarthmereCookVisibleRecipesV1(inventory, "campfire");
-    const detail = harthmereCookRecipeDetailV1(
+    const recipes = createHarthmereCookVisibleRecipes(inventory, "campfire");
+    const detail = harthmereCookRecipeDetail(
       "grilled_meat",
       inventory,
       "campfire",
@@ -50,7 +50,7 @@ describe("HarthmereCookingStationPanel surface", () => {
       />
     );
 
-    assert.ok(html.includes('data-harthmere-cooking-surface="refined-v2"'));
+    assert.ok(html.includes('data-harthmere-cooking-surface="refined"'));
     assert.ok(html.includes('data-harthmere-cooking-recipes="true"'));
     assert.ok(html.includes('data-harthmere-cooking-detail="true"'));
     assert.ok(html.includes('data-harthmere-cooking-queue="true"'));

@@ -1,6 +1,6 @@
 import type { LoadProgress } from "@/client/game/load_progress";
 
-export function shouldAutoReloadForPartialTerrainRecoveryV1(input: {
+export function shouldAutoReloadForPartialTerrainRecovery(input: {
   progress: LoadProgress;
   staleProgress?: LoadProgress;
   alreadyReloaded?: boolean;

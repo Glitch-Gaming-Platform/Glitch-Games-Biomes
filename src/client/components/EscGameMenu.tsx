@@ -4,7 +4,7 @@ import {
   usePointerLockEnteringStatus,
   usePointerLockStatus,
 } from "@/client/components/contexts/PointerLockContext";
-import { usePointerLockUnlockWhileOpenActiveV1 } from "@/client/components/contexts/usePointerLockUnlockWhileOpenActiveV1";
+import { usePointerLockUnlockWhileOpenActive } from "@/client/components/contexts/usePointerLockUnlockWhileOpenActive";
 import { useCachedEntity } from "@/client/components/hooks/client_hooks";
 import { ReportFlow } from "@/client/components/social/ReportFlow";
 import { HarthmereSystemsMenuPanel } from "@/client/components/challenges/HarthmereUnifiedHUD";
@@ -28,13 +28,13 @@ export const EscGameMenu: React.FunctionComponent<{}> = React.memo(({}) => {
   const harthmereDeath = useHarthmereDeathState();
   const activeMinigame = reactResources.use("/ecs/c/playing_minigame", userId);
   const minigame = useCachedEntity(activeMinigame?.minigame_id);
-  // HARTHMERE_UI_V147: when a panel that intentionally releases pointer lock
+  // HARTHMERE_UI: when a panel that intentionally releases pointer lock
   // (Jobs Board, Home Console, Business Interface, Crafting Station) is
   // open, suppress the escape menu entirely so its "Return to Game" / "Give
   // Feedback" buttons don't appear on top of the panel. The panel owns the
   // mouse and keyboard while it's open; the player closes it with the panel
   // close button or Escape.
-  const unlockWhileOpenActive = usePointerLockUnlockWhileOpenActiveV1();
+  const unlockWhileOpenActive = usePointerLockUnlockWhileOpenActive();
 
   useEffect(() => {
     if (tweaks.confirmToCloseTab) {
@@ -67,7 +67,7 @@ export const EscGameMenu: React.FunctionComponent<{}> = React.memo(({}) => {
     return <></>;
   }
 
-  const harthmereDeathScreenActiveV139 = [
+  const harthmereDeathScreenActive = [
     "downed",
     "dead",
     "reviving",
@@ -77,11 +77,11 @@ export const EscGameMenu: React.FunctionComponent<{}> = React.memo(({}) => {
     "unconscious",
   ].includes(String(harthmereDeath.state));
 
-  if (harthmereDeathScreenActiveV139) {
+  if (harthmereDeathScreenActive) {
     return (
       <div
         className="esc-game-controls"
-        data-harthmere-esc-hidden-for-death-screen-v139="true"
+        data-harthmere-esc-hidden-for-death-screen="true"
       >
         {isCreatingReport && (
           <ReportFlow

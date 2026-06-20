@@ -7,16 +7,16 @@ import { countOf } from "@/shared/game/items";
 import type { Item } from "@/shared/game/item";
 import type { BiomesId } from "@/shared/ids";
 import {
-  buildNpcSellToEntityEventV1,
-  buildShopListingEventV1,
-  buildShopPurchaseEventV1,
-  canSellItemToNpcBuyerV1,
-  cannotBuyFromBiomesUIShopReasonV1,
-  chunkShopSlotIndexesForRovingGridV1,
+  buildNpcSellToEntityEvent,
+  buildShopListingEvent,
+  buildShopPurchaseEvent,
+  canSellItemToNpcBuyer,
+  cannotBuyFromBiomesUIShopReason,
+  chunkShopSlotIndexesForRovingGrid,
   MAX_BIOMES_UI_ADMIN_SHOP_PURCHASE_COUNT,
-  normalizeShopListingPriceGoldV1,
-  normalizeShopPurchaseCountV1,
-  selectedShopSlotOrFirstAvailableV1,
+  normalizeShopListingPriceGold,
+  normalizeShopPurchaseCount,
+  selectedShopSlotOrFirstAvailable,
 } from "../shopBiomesUIModel";
 
 const acceptedPickaxe = {
@@ -39,35 +39,35 @@ const testId = (value: number) => value as BiomesId;
 
 describe("BiomesUI shop model", () => {
   it("chunks shop slots for roving keyboard grids", () => {
-    assert.deepEqual(chunkShopSlotIndexesForRovingGridV1(7, 3), [
+    assert.deepEqual(chunkShopSlotIndexesForRovingGrid(7, 3), [
       [0, 1, 2],
       [3, 4, 5],
       [6],
     ]);
-    assert.deepEqual(chunkShopSlotIndexesForRovingGridV1(2, 0), [[0], [1]]);
+    assert.deepEqual(chunkShopSlotIndexesForRovingGrid(2, 0), [[0], [1]]);
   });
 
   it("normalizes purchase quantities and listing prices before backend events", () => {
-    assert.equal(normalizeShopPurchaseCountV1(9, false), 1);
+    assert.equal(normalizeShopPurchaseCount(9, false), 1);
     assert.equal(
-      normalizeShopPurchaseCountV1(99, true),
+      normalizeShopPurchaseCount(99, true),
       MAX_BIOMES_UI_ADMIN_SHOP_PURCHASE_COUNT
     );
-    assert.equal(normalizeShopPurchaseCountV1(Number.NaN, true), 1);
-    assert.equal(normalizeShopListingPriceGoldV1(-50), 1);
-    assert.equal(normalizeShopListingPriceGoldV1(12.9), 12);
+    assert.equal(normalizeShopPurchaseCount(Number.NaN, true), 1);
+    assert.equal(normalizeShopListingPriceGold(-50), 1);
+    assert.equal(normalizeShopListingPriceGold(12.9), 12);
   });
 
   it("keeps selected slots stable and falls back to the first available listing", () => {
     const slots = [undefined, "apple", undefined, "pear"];
-    assert.equal(selectedShopSlotOrFirstAvailableV1(slots, 3), 3);
-    assert.equal(selectedShopSlotOrFirstAvailableV1(slots, 2), 1);
-    assert.equal(selectedShopSlotOrFirstAvailableV1([undefined], 0), undefined);
+    assert.equal(selectedShopSlotOrFirstAvailable(slots, 3), 3);
+    assert.equal(selectedShopSlotOrFirstAvailable(slots, 2), 1);
+    assert.equal(selectedShopSlotOrFirstAvailable([undefined], 0), undefined);
   });
 
   it("reports player-facing buy blockers", () => {
     assert.equal(
-      cannotBuyFromBiomesUIShopReasonV1({
+      cannotBuyFromBiomesUIShopReason({
         hasSelection: false,
         itemAvailable: false,
         hasInventory: true,
@@ -77,7 +77,7 @@ describe("BiomesUI shop model", () => {
       "Choose an item first."
     );
     assert.equal(
-      cannotBuyFromBiomesUIShopReasonV1({
+      cannotBuyFromBiomesUIShopReason({
         hasSelection: true,
         itemAvailable: true,
         hasInventory: true,
@@ -87,7 +87,7 @@ describe("BiomesUI shop model", () => {
       "You don't have enough Bling."
     );
     assert.equal(
-      cannotBuyFromBiomesUIShopReasonV1({
+      cannotBuyFromBiomesUIShopReason({
         hasSelection: true,
         itemAvailable: true,
         hasInventory: false,
@@ -100,19 +100,19 @@ describe("BiomesUI shop model", () => {
 
   it("matches NPC buyer restrictions before staging a sale", () => {
     assert.equal(
-      canSellItemToNpcBuyerV1(countOf(acceptedPickaxe, 1n), [
+      canSellItemToNpcBuyer(countOf(acceptedPickaxe, 1n), [
         attribs.isPickaxe.id,
       ]),
       true
     );
     assert.equal(
-      canSellItemToNpcBuyerV1(countOf(acceptedPickaxe, 1n), [
+      canSellItemToNpcBuyer(countOf(acceptedPickaxe, 1n), [
         attribs.isFish.id,
       ]),
       false
     );
     assert.equal(
-      canSellItemToNpcBuyerV1(countOf(unsellablePickaxe, 1n), [
+      canSellItemToNpcBuyer(countOf(unsellablePickaxe, 1n), [
         attribs.isPickaxe.id,
       ]),
       false
@@ -120,7 +120,7 @@ describe("BiomesUI shop model", () => {
   });
 
   it("builds backend purchase, listing, and NPC sell events with clamped values", () => {
-    const purchase = buildShopPurchaseEventV1({
+    const purchase = buildShopPurchaseEvent({
       containerId: testId(1),
       purchaserId: testId(2),
       sellerId: testId(3),
@@ -132,7 +132,7 @@ describe("BiomesUI shop model", () => {
     assert.deepEqual(purchase.src, { kind: "item", idx: 4 });
     assert.equal(purchase.quantity, MAX_BIOMES_UI_ADMIN_SHOP_PURCHASE_COUNT);
 
-    const listing = buildShopListingEventV1({
+    const listing = buildShopListingEvent({
       containerId: testId(1),
       sellerId: testId(2),
       src: { kind: "item", idx: 0 },
@@ -145,7 +145,7 @@ describe("BiomesUI shop model", () => {
     assert.equal(listing.dst_price.item.id, BikkieIds.bling);
     assert.equal(listing.dst_price.count, 1n);
 
-    const sell = buildNpcSellToEntityEventV1({
+    const sell = buildNpcSellToEntityEvent({
       buyerEntityId: testId(8),
       sellerId: testId(9),
       src: [[{ kind: "item", idx: 0 }, countOf(acceptedPickaxe, 2n)]],
@@ -154,7 +154,7 @@ describe("BiomesUI shop model", () => {
     assert.equal(sell.purchaser_id, 8);
     assert.throws(
       () =>
-        buildNpcSellToEntityEventV1({
+        buildNpcSellToEntityEvent({
           buyerEntityId: testId(8),
           sellerId: testId(9),
           src: [],

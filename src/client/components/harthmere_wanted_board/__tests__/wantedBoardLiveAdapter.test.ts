@@ -1,26 +1,26 @@
 import assert from "assert";
 import {
-  HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1,
-  HARTHMERE_JOBS_BOARD_INTERACTION_RADIUS_V145,
-  normalizeHarthmereJobsBoardSnapshotV1,
-  type HarthmereJobsBoardSnapshotV1,
+  HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID,
+  HARTHMERE_JOBS_BOARD_INTERACTION_RADIUS,
+  normalizeHarthmereJobsBoardSnapshot,
+  type HarthmereJobsBoardSnapshot,
 } from "@/client/components/harthmere_jobs_board/jobsBoardLiveAdapter";
 import {
-  buildHarthmereWantedBoardViewV1,
-  isHarthmereWantedBoardJobV1,
-  submitHarthmereWantedBoardClearBountyV1,
+  buildHarthmereWantedBoardView,
+  isHarthmereWantedBoardJob,
+  submitHarthmereWantedBoardClearBounty,
 } from "../wantedBoardLiveAdapter";
 
 const NOW = 1_800_000_000_000;
 
-function sampleSnapshot(): HarthmereJobsBoardSnapshotV1 {
-  return normalizeHarthmereJobsBoardSnapshotV1({
-    version: "harthmere-jobs-board-authority-v1",
+function sampleSnapshot(): HarthmereJobsBoardSnapshot {
+  return normalizeHarthmereJobsBoardSnapshot({
+    version: "harthmere-jobs-board-authority",
     actorId: "player_wanted",
-    defaultBoardId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1,
+    defaultBoardId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID,
     boards: {
-      [HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1]: {
-        boardId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1,
+      [HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID]: {
+        boardId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID,
         displayName: "Jobs Board",
         townId: "harthmere_grove",
         regionId: "harthmere_grove_region",
@@ -29,7 +29,7 @@ function sampleSnapshot(): HarthmereJobsBoardSnapshotV1 {
           x: 501.99486179104775,
           y: 70,
           z: -132.00350672753194,
-          radius: HARTHMERE_JOBS_BOARD_INTERACTION_RADIUS_V145,
+          radius: HARTHMERE_JOBS_BOARD_INTERACTION_RADIUS,
           district: "The Grove",
           landmarkId: "harthmere_market_posting_board",
         },
@@ -40,7 +40,7 @@ function sampleSnapshot(): HarthmereJobsBoardSnapshotV1 {
     openJobs: [
       {
         jobId: "hunt_alpha",
-        boardId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1,
+        boardId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID,
         issuerKind: "town",
         issuerId: "city_guard",
         title: "Alpha Mucker Bounty",
@@ -68,7 +68,7 @@ function sampleSnapshot(): HarthmereJobsBoardSnapshotV1 {
       },
       {
         jobId: "repair_pump",
-        boardId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1,
+        boardId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID,
         issuerKind: "business",
         issuerId: "inn",
         title: "Repair Pump",
@@ -88,7 +88,7 @@ function sampleSnapshot(): HarthmereJobsBoardSnapshotV1 {
       },
       {
         jobId: "security_patrol",
-        boardId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1,
+        boardId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID,
         issuerKind: "town",
         issuerId: "city_guard",
         title: "Road Patrol",
@@ -111,7 +111,7 @@ function sampleSnapshot(): HarthmereJobsBoardSnapshotV1 {
     myAcceptedJobs: [
       {
         jobId: "my_hex",
-        boardId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1,
+        boardId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID,
         issuerKind: "town",
         issuerId: "city_guard",
         title: "Hex Wraith Bounty",
@@ -171,11 +171,11 @@ function sampleSnapshot(): HarthmereJobsBoardSnapshotV1 {
 describe("Harthmere wanted board live adapter", () => {
   it("filters live jobs into wanted notices and keeps ordinary work orders out", () => {
     const snapshot = sampleSnapshot();
-    assert.equal(isHarthmereWantedBoardJobV1(snapshot.openJobs[0]), true);
-    assert.equal(isHarthmereWantedBoardJobV1(snapshot.openJobs[1]), false);
-    assert.equal(isHarthmereWantedBoardJobV1(snapshot.openJobs[2]), true);
+    assert.equal(isHarthmereWantedBoardJob(snapshot.openJobs[0]), true);
+    assert.equal(isHarthmereWantedBoardJob(snapshot.openJobs[1]), false);
+    assert.equal(isHarthmereWantedBoardJob(snapshot.openJobs[2]), true);
 
-    const view = buildHarthmereWantedBoardViewV1(snapshot, undefined, NOW);
+    const view = buildHarthmereWantedBoardView(snapshot, undefined, NOW);
     assert.deepEqual(
       view.openNotices.map((notice) => notice.jobId).sort(),
       ["hunt_alpha", "security_patrol"]
@@ -188,7 +188,7 @@ describe("Harthmere wanted board live adapter", () => {
   });
 
   it("keeps Muck bounty targets as a watchlist only when no active posting covers them", () => {
-    const view = buildHarthmereWantedBoardViewV1(sampleSnapshot(), undefined, NOW);
+    const view = buildHarthmereWantedBoardView(sampleSnapshot(), undefined, NOW);
     assert.ok(
       !view.watchlistNotices.some(
         (notice) => notice.targetId === "muck_bounty_alpha_mucker"
@@ -213,7 +213,7 @@ describe("Harthmere wanted board live adapter", () => {
       };
     }) as any;
 
-    await submitHarthmereWantedBoardClearBountyV1({
+    await submitHarthmereWantedBoardClearBounty({
       factionId: "city_guard",
       fetchImpl,
       requestId: "clear_test",

@@ -17,7 +17,7 @@ function check(label, condition) {
   if (!condition) ok = false;
 }
 
-check("combat has forward arc marker", combat.includes("harthmere-forward-arc-melee-v2"));
+check("combat has forward arc marker", combat.includes("harthmere-forward-arc-melee"));
 check("combat exports performHarthmereForwardArcAttack", combat.includes("export function performHarthmereForwardArcAttack"));
 check("combat has target position registry", combat.includes("HARTHMERE_FORWARD_ARC_TARGET_POSITIONS"));
 check("combat has runtime hook", combat.includes("export function useHarthmereForwardArcRuntime") && combat.includes("__harthmereForwardArcRuntime"));

@@ -20,7 +20,7 @@ export const pickUpEventHandler = makeEventHandler("pickUpEvent", {
     item: q.id(event.item).with("grab_bag").optional(),
   }),
   apply: ({ player, item }, _event, context) => {
-    // BIOMES_PICKUP_MISSING_GRAB_BAG_QUIET_V89
+    // BIOMES_PICKUP_MISSING_GRAB_BAG_QUIET
     // Local snapshot/debug clients can fire repeated pickup attempts for stale
     // drop ids after the drop was already acquired or imported without a
     // grab_bag. Make the item optional and no-op here so the logic server does

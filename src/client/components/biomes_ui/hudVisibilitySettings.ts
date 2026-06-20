@@ -7,7 +7,7 @@ import {
 } from "@/client/util/typed_local_storage";
 import * as React from "react";
 
-export type BiomesHUDVisibilityIdV1 =
+export type BiomesHUDVisibilityId =
   | "objectives"
   | "miniMap"
   | "helpButtons"
@@ -15,7 +15,7 @@ export type BiomesHUDVisibilityIdV1 =
   | "vitals"
   | "actionBar";
 
-type BiomesHUDVisibilityStorageKeyV1 = Extract<
+type BiomesHUDVisibilityStorageKey = Extract<
   keyof TypesafeLocalStorageSchema,
   | "settings.hud.showObjectives"
   | "settings.hud.showMiniMap"
@@ -25,16 +25,16 @@ type BiomesHUDVisibilityStorageKeyV1 = Extract<
   | "settings.hud.showActionBar"
 >;
 
-export type BiomesHUDVisibilitySnapshotV1 = Record<
-  BiomesHUDVisibilityIdV1,
+export type BiomesHUDVisibilitySnapshot = Record<
+  BiomesHUDVisibilityId,
   boolean
 >;
 
-export const BIOMES_HUD_VISIBILITY_OPTIONS_V1: readonly {
-  id: BiomesHUDVisibilityIdV1;
+export const BIOMES_HUD_VISIBILITY_OPTIONS: readonly {
+  id: BiomesHUDVisibilityId;
   label: string;
   description: string;
-  storageKey: BiomesHUDVisibilityStorageKeyV1;
+  storageKey: BiomesHUDVisibilityStorageKey;
 }[] = [
   {
     id: "objectives",
@@ -74,11 +74,11 @@ export const BIOMES_HUD_VISIBILITY_OPTIONS_V1: readonly {
   },
 ];
 
-const HUD_VISIBILITY_BY_ID_V1 = new Map(
-  BIOMES_HUD_VISIBILITY_OPTIONS_V1.map((option) => [option.id, option])
+const HUD_VISIBILITY_BY_ID = new Map(
+  BIOMES_HUD_VISIBILITY_OPTIONS.map((option) => [option.id, option])
 );
 
-export function defaultBiomesHUDVisibilitySnapshotV1(): BiomesHUDVisibilitySnapshotV1 {
+export function defaultBiomesHUDVisibilitySnapshot(): BiomesHUDVisibilitySnapshot {
   return {
     objectives: true,
     miniMap: true,
@@ -90,64 +90,64 @@ export function defaultBiomesHUDVisibilitySnapshotV1(): BiomesHUDVisibilitySnaps
 }
 
 export function biomesHUDVisibilityStorageKeyForTest(
-  id: BiomesHUDVisibilityIdV1
-): BiomesHUDVisibilityStorageKeyV1 {
-  const option = HUD_VISIBILITY_BY_ID_V1.get(id);
+  id: BiomesHUDVisibilityId
+): BiomesHUDVisibilityStorageKey {
+  const option = HUD_VISIBILITY_BY_ID.get(id);
   if (!option) {
     throw new Error(`Unknown HUD visibility setting: ${id}`);
   }
   return option.storageKey;
 }
 
-export function readBiomesHUDVisibilitySettingV1(
-  id: BiomesHUDVisibilityIdV1
+export function readBiomesHUDVisibilitySetting(
+  id: BiomesHUDVisibilityId
 ): boolean {
   return getTypedStorageItem(biomesHUDVisibilityStorageKeyForTest(id)) ?? true;
 }
 
-export function setBiomesHUDVisibilitySettingV1(
-  id: BiomesHUDVisibilityIdV1,
+export function setBiomesHUDVisibilitySetting(
+  id: BiomesHUDVisibilityId,
   visible: boolean
 ) {
   setTypedStorageItem(biomesHUDVisibilityStorageKeyForTest(id), visible);
 }
 
 export function biomesHUDVisibilitySnapshotWithDefaultsForTest(
-  overrides: Partial<BiomesHUDVisibilitySnapshotV1> = {}
-): BiomesHUDVisibilitySnapshotV1 {
-  return { ...defaultBiomesHUDVisibilitySnapshotV1(), ...overrides };
+  overrides: Partial<BiomesHUDVisibilitySnapshot> = {}
+): BiomesHUDVisibilitySnapshot {
+  return { ...defaultBiomesHUDVisibilitySnapshot(), ...overrides };
 }
 
 export function shouldShowBiomesHUDElementForTest(
-  snapshot: Partial<BiomesHUDVisibilitySnapshotV1> | undefined,
-  id: BiomesHUDVisibilityIdV1
+  snapshot: Partial<BiomesHUDVisibilitySnapshot> | undefined,
+  id: BiomesHUDVisibilityId
 ): boolean {
   return snapshot?.[id] ?? true;
 }
 
 export function toggledBiomesHUDVisibilitySnapshotForTest(
-  snapshot: Partial<BiomesHUDVisibilitySnapshotV1> | undefined,
-  id: BiomesHUDVisibilityIdV1,
+  snapshot: Partial<BiomesHUDVisibilitySnapshot> | undefined,
+  id: BiomesHUDVisibilityId,
   visible: boolean
-): BiomesHUDVisibilitySnapshotV1 {
+): BiomesHUDVisibilitySnapshot {
   return {
-    ...defaultBiomesHUDVisibilitySnapshotV1(),
+    ...defaultBiomesHUDVisibilitySnapshot(),
     ...snapshot,
     [id]: visible,
   };
 }
 
-export function useBiomesHUDVisibilitySettingV1(
-  id: BiomesHUDVisibilityIdV1
+export function useBiomesHUDVisibilitySetting(
+  id: BiomesHUDVisibilityId
 ): [boolean, (visible: boolean) => void] {
   const storageKey = biomesHUDVisibilityStorageKeyForTest(id);
   const [visible, setVisibleState] = React.useState(() =>
-    readBiomesHUDVisibilitySettingV1(id)
+    readBiomesHUDVisibilitySetting(id)
   );
 
   React.useEffect(() => {
     const onChange = (next: boolean) => setVisibleState(next ?? true);
-    const refresh = () => setVisibleState(readBiomesHUDVisibilitySettingV1(id));
+    const refresh = () => setVisibleState(readBiomesHUDVisibilitySetting(id));
     addTypedStorageChangeListener(storageKey, onChange);
     if (typeof window !== "undefined") {
       window.addEventListener("storage", refresh);
@@ -162,7 +162,7 @@ export function useBiomesHUDVisibilitySettingV1(
 
   const setVisible = React.useCallback(
     (next: boolean) => {
-      setBiomesHUDVisibilitySettingV1(id, next);
+      setBiomesHUDVisibilitySetting(id, next);
       setVisibleState(next);
     },
     [id]
@@ -171,15 +171,15 @@ export function useBiomesHUDVisibilitySettingV1(
   return [visible, setVisible];
 }
 
-export function useBiomesHUDVisibilitySnapshotV1(
-  overrides: Partial<BiomesHUDVisibilitySnapshotV1> = {}
-): BiomesHUDVisibilitySnapshotV1 {
-  const [objectives] = useBiomesHUDVisibilitySettingV1("objectives");
-  const [miniMap] = useBiomesHUDVisibilitySettingV1("miniMap");
-  const [helpButtons] = useBiomesHUDVisibilitySettingV1("helpButtons");
-  const [hotbar] = useBiomesHUDVisibilitySettingV1("hotbar");
-  const [vitals] = useBiomesHUDVisibilitySettingV1("vitals");
-  const [actionBar] = useBiomesHUDVisibilitySettingV1("actionBar");
+export function useBiomesHUDVisibilitySnapshot(
+  overrides: Partial<BiomesHUDVisibilitySnapshot> = {}
+): BiomesHUDVisibilitySnapshot {
+  const [objectives] = useBiomesHUDVisibilitySetting("objectives");
+  const [miniMap] = useBiomesHUDVisibilitySetting("miniMap");
+  const [helpButtons] = useBiomesHUDVisibilitySetting("helpButtons");
+  const [hotbar] = useBiomesHUDVisibilitySetting("hotbar");
+  const [vitals] = useBiomesHUDVisibilitySetting("vitals");
+  const [actionBar] = useBiomesHUDVisibilitySetting("actionBar");
 
   return {
     objectives,

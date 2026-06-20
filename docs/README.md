@@ -6,7 +6,7 @@ For the confirmed left-click attack path for muckers, hexes, animals, sentinels,
 robots, bots, NPCs, and players, read:
 
 ```text
-docs/harthmere/HARTHMERE_NATIVE_CURSOR_ATTACK_TARGETING_V1.md
+docs/harthmere/HARTHMERE_NATIVE_CURSOR_ATTACK_TARGETING.md
 ```
 
 That guide documents why sentinels/robots worked, why real `dMucker`-based
@@ -19,7 +19,7 @@ For terrain-correct Harthmere quest items, monsters, NPCs, HUD targets,
 BiomesUI map pins, quest pointers, and random spawn pools, read:
 
 ```text
-docs/harthmere/HARTHMERE_PRODUCTION_TERRAIN_PLACEMENT_MAP_V1.md
+docs/harthmere/HARTHMERE_PRODUCTION_TERRAIN_PLACEMENT_MAP.md
 ```
 
 That guide documents the generated production terrain placement map, the
@@ -32,7 +32,7 @@ For Azure-only NPC voice casting, speech-to-text, text-to-speech, quota checks,
 static recording generation, and optional deployment configuration, read:
 
 ```text
-docs/harthmere/HARTHMERE_AZURE_VOICE_AND_SPEECH_V1.md
+docs/harthmere/HARTHMERE_AZURE_VOICE_AND_SPEECH.md
 ```
 
 That guide documents the verified Azure CLI checks, the optional environment

@@ -1,18 +1,18 @@
-export interface AzureSpeechWavRecordingV1 {
+export interface AzureSpeechWavRecording {
   blob: Blob;
   mimeType: "audio/wav";
 }
 
-export interface AzureSpeechWavRecorderV1 {
-  stop: () => Promise<AzureSpeechWavRecordingV1>;
+export interface AzureSpeechWavRecorder {
+  stop: () => Promise<AzureSpeechWavRecording>;
 }
 
-export interface AzureSpeechWavRecorderOptionsV1 {
+export interface AzureSpeechWavRecorderOptions {
   deviceId?: string;
 }
 
-export function azureSpeechAudioConstraintsV1(
-  input: AzureSpeechWavRecorderOptionsV1 = {}
+export function azureSpeechAudioConstraints(
+  input: AzureSpeechWavRecorderOptions = {}
 ): MediaTrackConstraints {
   const constraints: MediaTrackConstraints = {
     echoCancellation: true,
@@ -27,11 +27,11 @@ export function azureSpeechAudioConstraintsV1(
   return constraints;
 }
 
-function clampSampleV1(value: number) {
+function clampSample(value: number) {
   return Math.max(-1, Math.min(1, value));
 }
 
-export function encodePcm16WavV1(
+export function encodePcm16Wav(
   samples: Float32Array,
   sampleRate = 16000
 ): Uint8Array {
@@ -62,7 +62,7 @@ export function encodePcm16WavV1(
 
   let offset = 44;
   for (const sample of samples) {
-    const clamped = clampSampleV1(sample);
+    const clamped = clampSample(sample);
     view.setInt16(
       offset,
       clamped < 0 ? clamped * 0x8000 : clamped * 0x7fff,
@@ -74,7 +74,7 @@ export function encodePcm16WavV1(
   return new Uint8Array(buffer);
 }
 
-export function downsampleFloat32V1(
+export function downsampleFloat32(
   samples: Float32Array,
   sourceSampleRate: number,
   targetSampleRate = 16000
@@ -99,7 +99,7 @@ export function downsampleFloat32V1(
   return output;
 }
 
-function mergeAudioChunksV1(chunks: Float32Array[]) {
+function mergeAudioChunks(chunks: Float32Array[]) {
   const totalLength = chunks.reduce((total, chunk) => total + chunk.length, 0);
   const merged = new Float32Array(totalLength);
   let offset = 0;
@@ -110,7 +110,7 @@ function mergeAudioChunksV1(chunks: Float32Array[]) {
   return merged;
 }
 
-export async function blobToBase64V1(blob: Blob): Promise<string> {
+export async function blobToBase64(blob: Blob): Promise<string> {
   const buffer = await blob.arrayBuffer();
   const bytes = new Uint8Array(buffer);
   let binary = "";
@@ -120,11 +120,11 @@ export async function blobToBase64V1(blob: Blob): Promise<string> {
   return btoa(binary);
 }
 
-export async function startAzureSpeechWavRecorderV1(
-  input: AzureSpeechWavRecorderOptionsV1 = {}
-): Promise<AzureSpeechWavRecorderV1> {
+export async function startAzureSpeechWavRecorder(
+  input: AzureSpeechWavRecorderOptions = {}
+): Promise<AzureSpeechWavRecorder> {
   const stream = await navigator.mediaDevices.getUserMedia({
-    audio: azureSpeechAudioConstraintsV1(input),
+    audio: azureSpeechAudioConstraints(input),
   });
   const AudioContextConstructor =
     window.AudioContext ?? (window as any).webkitAudioContext;
@@ -157,12 +157,12 @@ export async function startAzureSpeechWavRecorderV1(
       gain.disconnect();
       stream.getTracks().forEach((track) => track.stop());
       await audioContext.close();
-      const downsampled = downsampleFloat32V1(
-        mergeAudioChunksV1(chunks),
+      const downsampled = downsampleFloat32(
+        mergeAudioChunks(chunks),
         audioContext.sampleRate,
         16000
       );
-      const wav = encodePcm16WavV1(downsampled, 16000);
+      const wav = encodePcm16Wav(downsampled, 16000);
       const wavBuffer = wav.buffer.slice(
         wav.byteOffset,
         wav.byteOffset + wav.byteLength

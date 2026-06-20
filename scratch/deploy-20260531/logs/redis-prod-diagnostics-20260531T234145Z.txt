@@ -1,4 +1,0 @@
-# Redis keyspace/info
-ERR syntax error
-# DB stream groups
-## db=0

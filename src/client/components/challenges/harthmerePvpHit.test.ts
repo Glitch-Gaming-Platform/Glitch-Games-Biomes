@@ -1,8 +1,8 @@
 /// <reference types="mocha" />
 import {
-  harthmereIncomingExternalAttackV1,
-  harthmerePvpBasicDamageV1,
-  harthmerePvpPlayersInArcV1,
+  harthmereIncomingExternalAttack,
+  harthmerePvpBasicDamage,
+  harthmerePvpPlayersInArc,
 } from "@/client/components/challenges/harthmerePvpHitRules";
 import type { BiomesId } from "@/shared/ids";
 import assert from "assert";
@@ -13,7 +13,7 @@ const LOCAL = 9000 as BiomesId;
 
 describe("harthmere PvP swing arc", () => {
   it("hits a player directly in front within range", () => {
-    const hits = harthmerePvpPlayersInArcV1({
+    const hits = harthmerePvpPlayersInArc({
       origin: [0, 0],
       forward: [0, -1],
       players: [{ id: A, pos: [0, -2] }],
@@ -24,7 +24,7 @@ describe("harthmere PvP swing arc", () => {
   });
 
   it("misses a player out of range", () => {
-    const hits = harthmerePvpPlayersInArcV1({
+    const hits = harthmerePvpPlayersInArc({
       origin: [0, 0],
       forward: [0, -1],
       players: [{ id: A, pos: [0, -10] }],
@@ -35,7 +35,7 @@ describe("harthmere PvP swing arc", () => {
   });
 
   it("misses a player behind the attacker (outside the arc, beyond contact)", () => {
-    const hits = harthmerePvpPlayersInArcV1({
+    const hits = harthmerePvpPlayersInArc({
       origin: [0, 0],
       forward: [0, -1],
       players: [{ id: A, pos: [0, 2.8] }],
@@ -46,7 +46,7 @@ describe("harthmere PvP swing arc", () => {
   });
 
   it("hits multiple players in the arc (area swing)", () => {
-    const hits = harthmerePvpPlayersInArcV1({
+    const hits = harthmerePvpPlayersInArc({
       origin: [0, 0],
       forward: [0, -1],
       players: [
@@ -62,14 +62,14 @@ describe("harthmere PvP swing arc", () => {
 
 describe("harthmere PvP damage", () => {
   it("scales with attack, with a floor and ceiling", () => {
-    assert.equal(harthmerePvpBasicDamageV1(0), 10);
-    assert.ok(harthmerePvpBasicDamageV1(100) > 10);
-    assert.equal(harthmerePvpBasicDamageV1(100000), 120);
+    assert.equal(harthmerePvpBasicDamage(0), 10);
+    assert.ok(harthmerePvpBasicDamage(100) > 10);
+    assert.equal(harthmerePvpBasicDamage(100000), 120);
   });
 
   it("treats invalid attack stats as the floor", () => {
-    assert.equal(harthmerePvpBasicDamageV1(NaN), 10);
-    assert.equal(harthmerePvpBasicDamageV1(-50), 10);
+    assert.equal(harthmerePvpBasicDamage(NaN), 10);
+    assert.equal(harthmerePvpBasicDamage(-50), 10);
   });
 });
 
@@ -84,7 +84,7 @@ describe("harthmere incoming PvP damage (victim side)", () => {
   };
 
   it("reflects a fresh external attack from another player", () => {
-    assert.deepEqual(harthmereIncomingExternalAttackV1(base), {
+    assert.deepEqual(harthmereIncomingExternalAttack(base), {
       damage: 25,
       attacker: A,
     });
@@ -92,28 +92,28 @@ describe("harthmere incoming PvP damage (victim side)", () => {
 
   it("ignores non-attack damage sources (fall/drown/etc.)", () => {
     assert.equal(
-      harthmereIncomingExternalAttackV1({ ...base, damageSourceKind: "fall" }),
+      harthmereIncomingExternalAttack({ ...base, damageSourceKind: "fall" }),
       undefined
     );
   });
 
   it("ignores self-inflicted damage", () => {
     assert.equal(
-      harthmereIncomingExternalAttackV1({ ...base, attacker: LOCAL }),
+      harthmereIncomingExternalAttack({ ...base, attacker: LOCAL }),
       undefined
     );
   });
 
   it("de-dupes an already-processed damage timestamp", () => {
     assert.equal(
-      harthmereIncomingExternalAttackV1({ ...base, alreadyProcessedTime: 500 }),
+      harthmereIncomingExternalAttack({ ...base, alreadyProcessedTime: 500 }),
       undefined
     );
   });
 
   it("processes a newer hit after a prior one", () => {
     assert.deepEqual(
-      harthmereIncomingExternalAttackV1({
+      harthmereIncomingExternalAttack({
         ...base,
         lastDamageTime: 800,
         alreadyProcessedTime: 500,
@@ -124,7 +124,7 @@ describe("harthmere incoming PvP damage (victim side)", () => {
 
   it("ignores zero/negative damage amounts", () => {
     assert.equal(
-      harthmereIncomingExternalAttackV1({ ...base, lastDamageAmount: 0 }),
+      harthmereIncomingExternalAttack({ ...base, lastDamageAmount: 0 }),
       undefined
     );
   });

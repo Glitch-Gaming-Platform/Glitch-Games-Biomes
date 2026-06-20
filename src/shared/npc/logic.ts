@@ -50,10 +50,10 @@ import type { Force, HitFn } from "@/shared/physics/types";
 import { toClimbableIndex } from "@/shared/physics/utils";
 import _ from "lodash";
 
-export const ATTACKED_NPC_RETALIATION_FALLBACK_V1 =
-  "ATTACKED_NPC_RETALIATION_FALLBACK_V1";
+export const ATTACKED_NPC_RETALIATION_FALLBACK =
+  "ATTACKED_NPC_RETALIATION_FALLBACK";
 
-const ATTACKED_NPC_RETALIATION_CHASE_ATTACK_PARAMS_V1: BehaviorChaseAttackParams =
+const ATTACKED_NPC_RETALIATION_CHASE_ATTACK_PARAMS: BehaviorChaseAttackParams =
   {
     aggroTrigger: { kind: "onlyIfAttacked" },
     disengageDistance: 24,
@@ -65,14 +65,14 @@ const ATTACKED_NPC_RETALIATION_CHASE_ATTACK_PARAMS_V1: BehaviorChaseAttackParams
     attackDamage: 10,
   };
 
-function effectiveChaseAttackParamsV1(
+function effectiveChaseAttackParams(
   npc: SimulatedNpc,
   behavior: ReturnType<typeof getNpcBehavior>
 ): BehaviorChaseAttackParams | undefined {
   const nightAggroChaseAttack = nightMuckerHexUnprovokedAggroParams(
     npc,
     behavior.chaseAttack,
-    ATTACKED_NPC_RETALIATION_CHASE_ATTACK_PARAMS_V1
+    ATTACKED_NPC_RETALIATION_CHASE_ATTACK_PARAMS
   );
   if (nightAggroChaseAttack) {
     return nightAggroChaseAttack;
@@ -82,16 +82,16 @@ function effectiveChaseAttackParamsV1(
     return behavior.chaseAttack;
   }
 
-  // ATTACKED_NPC_RETALIATION_FALLBACK_V1:
+  // ATTACKED_NPC_RETALIATION_FALLBACK:
   // Preserve authored proactive aggression for beasts/civilians that already
   // have chaseAttack. For older snapshot/imported NPC types that are attackable
   // but forgot that behavior, still let them fight back after a real player hit.
   //
-  // ATTACKED_NPC_RETALIATION_FALLBACK_V2 — condition fix:
+  // ATTACKED_NPC_RETALIATION_FALLBACK — condition fix:
   // The original check was `behavior.damageable?.attackable !== true`, which
   // treated `undefined` (i.e. not explicitly set) as non-attackable. This
   // blocked retaliation for all snapshot NPCs (Mucklings, Hexes, animals)
-  // whose biscuit data goes through snapshotLegacyNpcTypeV1: that path
+  // whose biscuit data goes through snapshotLegacyNpcType: that path
   // shallow-merges the human-NPC fallback which has attackable: false, so any
   // NPC whose biscuit doesn't explicitly set attackable inherits false.
   //
@@ -109,7 +109,7 @@ function effectiveChaseAttackParamsV1(
     return undefined;
   }
 
-  return ATTACKED_NPC_RETALIATION_CHASE_ATTACK_PARAMS_V1;
+  return ATTACKED_NPC_RETALIATION_CHASE_ATTACK_PARAMS;
 }
 
 // The single locomotion behavior an NPC runs this tick. Exactly one is chosen
@@ -196,7 +196,7 @@ export function npcTickLogic(
 
   if (
     !containsAABB(
-      [env.worldMetadata.aabb.v0, env.worldMetadata.aabb.v1],
+      [env.worldMetadata.aabb, env.worldMetadata.aabb],
       npc.position
     )
   ) {
@@ -208,7 +208,7 @@ export function npcTickLogic(
   // top of the tick so the rest of the AI logic can stay data-driven without
   // tripping strict-null checks.
   const behavior = getNpcBehavior(npc.type);
-  const chaseAttack = effectiveChaseAttackParamsV1(npc, behavior);
+  const chaseAttack = effectiveChaseAttackParams(npc, behavior);
 
   if (chaseAttack) {
     updateAttackTarget(env, npc, chaseAttack);
@@ -221,7 +221,7 @@ export function npcTickLogic(
 
   const fleeOutput = !chaseAttack ? fleeFromThreatTick(env, npc) : undefined;
 
-  // HARTHMERE_SCHEDULE_FOLLOW_LOGIC_V2_INSTALL_MARKER: an NPC with authored
+  // HARTHMERE_SCHEDULE_FOLLOW_LOGIC_INSTALL_MARKER: an NPC with authored
   // schedule entries should follow its route. This must take precedence over
   // the quest-giver "stay home" fallback, otherwise scheduled quest-givers
   // (most Harthmere town NPCs) stand still at spawn forever.
@@ -274,7 +274,7 @@ export function npcTickLogic(
       ).forwardSpeed;
       break;
     case "hostileIdleWander":
-      // HARTHMERE_NPC_HOSTILE_IDLE_WANDER_V1:
+      // HARTHMERE_NPC_HOSTILE_IDLE_WANDER:
       // Hostile NPCs that only declare chaseAttack (no meander, no socialize,
       // no schedule) used to stand perfectly still until aggroed. This made
       // Mucklings and Hexers feel like training dummies and broke the "muckers

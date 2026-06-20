@@ -1,11 +1,11 @@
 import * as React from "react";
 import { installBiomesUITheme } from "../biomes_ui/theme/biomesUITheme";
 import { HarthmereInterfaceAccessPoint } from "../harthmere_access/HarthmereInterfaceAccessPoint";
-import type { HarthmereBusinessInterfaceAdapterV1, HarthmereBusinessWorldContextV1 } from "./businessInterfaceLiveAdapter";
+import type { HarthmereBusinessInterfaceAdapter, HarthmereBusinessWorldContext } from "./businessInterfaceLiveAdapter";
 
 export interface HarthmereBusinessInteractionPromptProps {
-  adapter: HarthmereBusinessInterfaceAdapterV1;
-  context: HarthmereBusinessWorldContextV1;
+  adapter: HarthmereBusinessInterfaceAdapter;
+  context: HarthmereBusinessWorldContext;
   onInteract?: (businessId: string) => void;
 }
 

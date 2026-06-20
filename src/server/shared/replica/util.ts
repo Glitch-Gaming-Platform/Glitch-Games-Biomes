@@ -9,7 +9,7 @@ export function centerOfTerrain(table: VersionedTable<unknown>) {
     if (!entity.shard_seed || !entity.box) {
       continue;
     }
-    const center = centerAABB([entity.box.v0, entity.box.v1]);
+    const center = centerAABB([entity.box, entity.box]);
     sum[0] += center[0];
     sum[1] += center[1];
     sum[2] += center[2];

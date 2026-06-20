@@ -15,7 +15,7 @@ function check(label, condition) {
   if (!condition) ok = false;
 }
 
-check("fix marker exists", text.includes("harthmere-fix-debug-renderer-call-v1"));
+check("fix marker exists", text.includes("harthmere-fix-debug-renderer-call"));
 check("no this.debugHarthmereRenderer calls remain", !text.includes("this.debugHarthmereRenderer("));
 check("standalone debugHarthmereRenderer call exists", text.includes("debugHarthmereRenderer("));
 check("physical sanitize debug still present", text.includes("renderer.combat_event.physical_sanitize"));

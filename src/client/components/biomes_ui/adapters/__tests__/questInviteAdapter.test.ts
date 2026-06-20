@@ -2,19 +2,19 @@
 
 import assert from "assert";
 import {
-  activeSharedQuestMissionStepsForBiomesUIV1,
-  firstActiveSharedQuestTitleForBiomesUIV1,
-  normalizeHarthmereQuestStateV1,
-  questInviteOptionsFromTrackableQuestsV1,
-  sharedQuestAcceptedLandmarksForBiomesUIV1,
-  sharedQuestTrackableQuestsForBiomesUIV1,
+  activeSharedQuestMissionStepsForBiomesUI,
+  firstActiveSharedQuestTitleForBiomesUI,
+  normalizeHarthmereQuestState,
+  questInviteOptionsFromTrackableQuests,
+  sharedQuestAcceptedLandmarksForBiomesUI,
+  sharedQuestTrackableQuestsForBiomesUI,
 } from "../questInviteAdapter";
 
 const NOW_MS = 1_702_100_000_000;
 
 function questState() {
   return {
-    version: "harthmere-live-mode-quest-state-v1",
+    version: "harthmere-live-mode-quest-state",
     actorId: "player_one",
     active: {},
     completed: {},
@@ -54,7 +54,7 @@ function questState() {
 
 describe("BiomesUI quest invite adapter", () => {
   it("normalizes pending invites and shared quests", () => {
-    const state = normalizeHarthmereQuestStateV1(questState());
+    const state = normalizeHarthmereQuestState(questState());
     assert.equal(state.pendingReceivedInvites.length, 1);
     assert.equal(
       state.pendingReceivedInvites[0].questTitle,
@@ -69,14 +69,14 @@ describe("BiomesUI quest invite adapter", () => {
 
   it("projects accepted shared quests into map markers, quest list, and mission steps", () => {
     const state = questState();
-    const landmarks = sharedQuestAcceptedLandmarksForBiomesUIV1(state);
+    const landmarks = sharedQuestAcceptedLandmarksForBiomesUI(state);
     assert.equal(landmarks.length, 1);
     assert.equal(landmarks[0].id, "shared_quest_marker:shared_accepted");
     assert.equal(landmarks[0].kind, "objective");
     assert.equal(landmarks[0].active, true);
     assert.deepEqual(landmarks[0].position, [512, 70, -152]);
 
-    const quests = sharedQuestTrackableQuestsForBiomesUIV1(state);
+    const quests = sharedQuestTrackableQuestsForBiomesUI(state);
     assert.deepEqual(quests, [
       {
         questId: "shared_quest:shared_accepted",
@@ -93,17 +93,17 @@ describe("BiomesUI quest invite adapter", () => {
       },
     ]);
 
-    const steps = activeSharedQuestMissionStepsForBiomesUIV1(state);
+    const steps = activeSharedQuestMissionStepsForBiomesUI(state);
     assert.equal(steps.length, 1);
     assert.equal(steps[0].objective, "Clear the threat together.");
     assert.equal(
-      firstActiveSharedQuestTitleForBiomesUIV1(state),
+      firstActiveSharedQuestTitleForBiomesUI(state),
       "Clear the Muckwad Patch"
     );
   });
 
   it("builds invite options from only usable trackable quests and deduplicates them", () => {
-    const options = questInviteOptionsFromTrackableQuestsV1([
+    const options = questInviteOptionsFromTrackableQuests([
       {
         questId: "quest_a",
         title: "Quest A",

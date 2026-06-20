@@ -1,17 +1,17 @@
 import assert from "assert";
-import { readHarthmereLiveModeBankStateForActorV1 } from "../live_mode_bank_state";
+import { readHarthmereLiveModeBankStateForActor } from "../live_mode_bank_state";
 import {
-  defaultHarthmereLiveModeBackendStateV1,
-  harthmereLiveModePlayerStateKeyV1,
-  parseHarthmereLiveModeBackendStateV1,
-} from "@/shared/harthmere/live_mode_backend_v1";
+  defaultHarthmereLiveModeBackendState,
+  harthmereLiveModePlayerStateKey,
+  parseHarthmereLiveModeBackendState,
+} from "@/shared/harthmere/live_mode_backend";
 
 const ACTOR = "player_api_bank_001";
 const NOW_MS = 1_700_700_000_000;
 
 describe("live_mode_bank_state API route integration", () => {
   it("persists loan consequences with WATCH so reads do not overwrite newer actor state", async () => {
-    const staleState = defaultHarthmereLiveModeBackendStateV1(
+    const staleState = defaultHarthmereLiveModeBackendState(
       ACTOR,
       NOW_MS - 2 * 24 * 60 * 60 * 1000
     );
@@ -27,7 +27,7 @@ describe("live_mode_bank_state API route integration", () => {
       payments: [],
     } as any;
 
-    const latestState = defaultHarthmereLiveModeBackendStateV1(
+    const latestState = defaultHarthmereLiveModeBackendState(
       ACTOR,
       NOW_MS - 2 * 24 * 60 * 60 * 1000
     );
@@ -36,7 +36,7 @@ describe("live_mode_bank_state API route integration", () => {
       ...staleState.banking.loans.loan_1,
     };
 
-    const stateKey = harthmereLiveModePlayerStateKeyV1(ACTOR);
+    const stateKey = harthmereLiveModePlayerStateKey(ACTOR);
     const watched: string[][] = [];
     const reads = [JSON.stringify(staleState), JSON.stringify(latestState)];
     let stored = "";
@@ -59,13 +59,13 @@ describe("live_mode_bank_state API route integration", () => {
       },
     };
 
-    await readHarthmereLiveModeBankStateForActorV1({
+    await readHarthmereLiveModeBankStateForActor({
       redis,
       actorId: ACTOR,
       nowMs: NOW_MS,
     });
 
-    const persisted = parseHarthmereLiveModeBackendStateV1(
+    const persisted = parseHarthmereLiveModeBackendState(
       stored,
       ACTOR,
       NOW_MS

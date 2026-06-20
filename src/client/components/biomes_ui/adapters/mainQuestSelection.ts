@@ -1,11 +1,11 @@
 import type { MapTrackableQuest } from "../tabs/MapQuestsTab";
 
-export const BIOMES_UI_MAIN_QUEST_STORAGE_KEY_V1 =
-  "biomes_ui_main_quest_v1";
-export const BIOMES_UI_MAIN_QUEST_EVENT_V1 =
-  "biomes-ui-main-quest-v1";
+export const BIOMES_UI_MAIN_QUEST_STORAGE_KEY =
+  "biomes_ui_main_quest";
+export const BIOMES_UI_MAIN_QUEST_EVENT =
+  "biomes-ui-main-quest";
 
-export interface BiomesUIMainQuestSelectionV1 {
+export interface BiomesUIMainQuestSelection {
   questId: string;
   title: string;
   firstMarkerId?: string;
@@ -20,10 +20,10 @@ function cleanText(value: unknown): string | undefined {
 
 function parseMainQuestSelection(
   value: string | null
-): BiomesUIMainQuestSelectionV1 | undefined {
+): BiomesUIMainQuestSelection | undefined {
   if (!value) return undefined;
   try {
-    const parsed = JSON.parse(value) as Partial<BiomesUIMainQuestSelectionV1>;
+    const parsed = JSON.parse(value) as Partial<BiomesUIMainQuestSelection>;
     const questId = cleanText(parsed.questId);
     const title = cleanText(parsed.title);
     if (!questId || !title) return undefined;
@@ -44,7 +44,7 @@ function parseMainQuestSelection(
 export function biomesUIMainQuestSelectionFromQuestForTest(
   quest: MapTrackableQuest,
   nowMs = Date.now()
-): BiomesUIMainQuestSelectionV1 {
+): BiomesUIMainQuestSelection {
   return {
     questId: quest.questId,
     title: quest.title,
@@ -58,7 +58,7 @@ export function biomesUIMainQuestSelectionFromQuestForTest(
 
 export function mainQuestFromTrackableQuestsForTest(
   quests: MapTrackableQuest[],
-  selection: BiomesUIMainQuestSelectionV1 | undefined
+  selection: BiomesUIMainQuestSelection | undefined
 ): MapTrackableQuest | undefined {
   if (!selection) return undefined;
   const quest = quests.find((entry) => entry.questId === selection.questId);
@@ -68,42 +68,42 @@ export function mainQuestFromTrackableQuestsForTest(
   return quest;
 }
 
-export function readBiomesUIMainQuestSelectionV1(): BiomesUIMainQuestSelectionV1 | undefined {
+export function readBiomesUIMainQuestSelection(): BiomesUIMainQuestSelection | undefined {
   if (typeof window === "undefined") return undefined;
   try {
     return parseMainQuestSelection(
-      window.localStorage?.getItem(BIOMES_UI_MAIN_QUEST_STORAGE_KEY_V1) ?? null
+      window.localStorage?.getItem(BIOMES_UI_MAIN_QUEST_STORAGE_KEY) ?? null
     );
   } catch {
     return undefined;
   }
 }
 
-export function writeBiomesUIMainQuestSelectionV1(
-  selection: BiomesUIMainQuestSelectionV1 | undefined
+export function writeBiomesUIMainQuestSelection(
+  selection: BiomesUIMainQuestSelection | undefined
 ): void {
   if (typeof window === "undefined") return;
   try {
     if (selection) {
       window.localStorage?.setItem(
-        BIOMES_UI_MAIN_QUEST_STORAGE_KEY_V1,
+        BIOMES_UI_MAIN_QUEST_STORAGE_KEY,
         JSON.stringify(selection)
       );
     } else {
-      window.localStorage?.removeItem(BIOMES_UI_MAIN_QUEST_STORAGE_KEY_V1);
+      window.localStorage?.removeItem(BIOMES_UI_MAIN_QUEST_STORAGE_KEY);
     }
   } catch {
     // In-memory UI state still updates when localStorage is unavailable.
   }
   window.dispatchEvent(
-    new CustomEvent(BIOMES_UI_MAIN_QUEST_EVENT_V1, { detail: selection })
+    new CustomEvent(BIOMES_UI_MAIN_QUEST_EVENT, { detail: selection })
   );
 }
 
-export function setBiomesUIMainQuestFromTrackableQuestV1(
+export function setBiomesUIMainQuestFromTrackableQuest(
   quest: MapTrackableQuest
-): BiomesUIMainQuestSelectionV1 {
+): BiomesUIMainQuestSelection {
   const selection = biomesUIMainQuestSelectionFromQuestForTest(quest);
-  writeBiomesUIMainQuestSelectionV1(selection);
+  writeBiomesUIMainQuestSelection(selection);
   return selection;
 }

@@ -26,17 +26,17 @@ import type { Entity } from "@/shared/ecs/gen/entities";
 import type { SerializeForClient } from "@/shared/ecs/gen/json_serde";
 import { WorldMetadataId } from "@/shared/ecs/ids";
 import type { VersionMap } from "@/shared/ecs/version";
-import { fallbackWorldMetadataV1 } from "@/shared/game/ecs_resources";
+import { fallbackWorldMetadata } from "@/shared/game/ecs_resources";
 import { friendlyShardId } from "@/shared/game/shard";
 import type { BiomesId } from "@/shared/ids";
 import { INVALID_BIOMES_ID } from "@/shared/ids";
 import { log } from "@/shared/logging";
 import {
-  SNAPSHOT_GROVE_NPCS_V75,
-  snapshotGroveNpcEntityIdV75,
-} from "@/shared/harthmere/snapshot_grove_content_v75";
-import { HARTHMERE_LIVE_ENTITY_PRODUCTION_SEED_IDS_V1 } from "@/shared/harthmere/live_entity_production_seed_v1";
-import { HARTHMERE_GROVE_RACE_MINIGAME_SEED_IDS_V1 } from "@/shared/harthmere/grove_race_minigame_seed_v1";
+  SNAPSHOT_GROVE_NPCS,
+  snapshotGroveNpcEntityId,
+} from "@/shared/harthmere/snapshot_grove_content";
+import { HARTHMERE_LIVE_ENTITY_PRODUCTION_SEED_IDS } from "@/shared/harthmere/live_entity_production_seed";
+import { HARTHMERE_GROVE_RACE_MINIGAME_SEED_IDS } from "@/shared/harthmere/grove_race_minigame_seed";
 import { lengthSq, sub } from "@/shared/math/linear";
 import { createCounter } from "@/shared/metrics/metrics";
 import { mapSet } from "@/shared/util/collections";
@@ -139,7 +139,7 @@ function requiredForSyncTarget(syncTarget: SyncTarget): BiomesId | undefined {
 const LOCAL_DEV_TERRAIN_ID_BASE = 8_810_000_000_000_000 as BiomesId;
 const LOCAL_DEV_NPC_ID_BASE = 8_810_000_000_010_000 as BiomesId;
 
-// SNAPSHOT_GROVE_VISIBLE_NPCS_V81:
+// SNAPSHOT_GROVE_VISIBLE_NPCS:
 // The local-dev seed grew from the original tiny test scene to the full
 // Harthmere/Grove snapshot merge: 396 terrain shards plus production business
 // outpost shards, 70 Harthmere NPCs,
@@ -150,29 +150,29 @@ const LOCAL_DEV_NPC_ID_BASE = 8_810_000_000_010_000 as BiomesId;
 // so adding a seeded NPC cannot silently desync local-dev rendering.
 const LOCAL_DEV_TERRAIN_SHARD_COUNT = 539;
 const LOCAL_DEV_NPC_COUNT = 70;
-const SNAPSHOT_COMBAT_NPC_ID_OFFSETS_V81 = [9201, 9202, 9203];
+const SNAPSHOT_COMBAT_NPC_ID_OFFSETS = [9201, 9202, 9203];
 const LOCAL_DEV_NPC_IDS = Array.from(
   { length: LOCAL_DEV_NPC_COUNT },
   (_, offset) => (LOCAL_DEV_NPC_ID_BASE + offset + 1) as BiomesId
 );
-const SNAPSHOT_GROVE_NPC_IDS_V81 = SNAPSHOT_GROVE_NPCS_V75.filter(
+const SNAPSHOT_GROVE_NPC_IDS = SNAPSHOT_GROVE_NPCS.filter(
   (npc) => npc.seedServerNpc
-).map((npc) => snapshotGroveNpcEntityIdV75(npc));
-const LIVE_ENTITY_PRODUCTION_SEED_IDS_V1 = [
-  ...HARTHMERE_LIVE_ENTITY_PRODUCTION_SEED_IDS_V1,
+).map((npc) => snapshotGroveNpcEntityId(npc));
+const LIVE_ENTITY_PRODUCTION_SEED_IDS = [
+  ...HARTHMERE_LIVE_ENTITY_PRODUCTION_SEED_IDS,
 ];
-const GROVE_RACE_MINIGAME_SEED_IDS_V1 = [
-  ...HARTHMERE_GROVE_RACE_MINIGAME_SEED_IDS_V1,
+const GROVE_RACE_MINIGAME_SEED_IDS = [
+  ...HARTHMERE_GROVE_RACE_MINIGAME_SEED_IDS,
 ];
 
 export function localDevStarterWorldBootstrapCountsForTest() {
   return {
     terrainIds: LOCAL_DEV_TERRAIN_SHARD_COUNT,
     harthmereNpcIds: LOCAL_DEV_NPC_COUNT,
-    snapshotGroveNpcIds: SNAPSHOT_GROVE_NPC_IDS_V81.length,
-    snapshotCombatNpcIds: SNAPSHOT_COMBAT_NPC_IDS_V81.length,
-    liveEntityProductionSeedIds: LIVE_ENTITY_PRODUCTION_SEED_IDS_V1.length,
-    groveRaceMinigameSeedIds: GROVE_RACE_MINIGAME_SEED_IDS_V1.length,
+    snapshotGroveNpcIds: SNAPSHOT_GROVE_NPC_IDS.length,
+    snapshotCombatNpcIds: SNAPSHOT_COMBAT_NPC_IDS.length,
+    liveEntityProductionSeedIds: LIVE_ENTITY_PRODUCTION_SEED_IDS.length,
+    groveRaceMinigameSeedIds: GROVE_RACE_MINIGAME_SEED_IDS.length,
     expectedIds: localDevStarterWorldEntityIds().length,
   };
 }
@@ -182,9 +182,9 @@ export function localDevStarterWorldEntityIdsForTest() {
 }
 
 export function localDevStarterWorldSeededGroveNpcIdsForTest() {
-  return SNAPSHOT_GROVE_NPC_IDS_V81;
+  return SNAPSHOT_GROVE_NPC_IDS;
 }
-const SNAPSHOT_COMBAT_NPC_IDS_V81 = SNAPSHOT_COMBAT_NPC_ID_OFFSETS_V81.map(
+const SNAPSHOT_COMBAT_NPC_IDS = SNAPSHOT_COMBAT_NPC_ID_OFFSETS.map(
   (offset) => (LOCAL_DEV_NPC_ID_BASE + offset) as BiomesId
 );
 
@@ -195,10 +195,10 @@ function localDevStarterWorldEntityIds(): BiomesId[] {
       (_, offset) => (LOCAL_DEV_TERRAIN_ID_BASE + offset) as BiomesId
     ),
     ...LOCAL_DEV_NPC_IDS,
-    ...SNAPSHOT_GROVE_NPC_IDS_V81,
-    ...SNAPSHOT_COMBAT_NPC_IDS_V81,
-    ...LIVE_ENTITY_PRODUCTION_SEED_IDS_V1,
-    ...GROVE_RACE_MINIGAME_SEED_IDS_V1,
+    ...SNAPSHOT_GROVE_NPC_IDS,
+    ...SNAPSHOT_COMBAT_NPC_IDS,
+    ...LIVE_ENTITY_PRODUCTION_SEED_IDS,
+    ...GROVE_RACE_MINIGAME_SEED_IDS,
   ];
 }
 
@@ -278,7 +278,7 @@ export class Observer {
       id: WorldMetadataId,
       ...materializedMeta,
       world_metadata:
-        materializedMeta?.world_metadata ?? fallbackWorldMetadataV1(),
+        materializedMeta?.world_metadata ?? fallbackWorldMetadata(),
       synthetic_stats: SyntheticStats.create({
         online_players: this.context.syncIndex.playerCount,
       }),
@@ -387,10 +387,10 @@ export class Observer {
         expectedIds: localDevStarterWorldEntityIds().length,
         terrainIds: LOCAL_DEV_TERRAIN_SHARD_COUNT,
         harthmereNpcIds: LOCAL_DEV_NPC_COUNT,
-        snapshotGroveNpcIds: SNAPSHOT_GROVE_NPC_IDS_V81.length,
-        snapshotCombatNpcIds: SNAPSHOT_COMBAT_NPC_IDS_V81.length,
-        liveEntityProductionSeedIds: LIVE_ENTITY_PRODUCTION_SEED_IDS_V1.length,
-        groveRaceMinigameSeedIds: GROVE_RACE_MINIGAME_SEED_IDS_V1.length,
+        snapshotGroveNpcIds: SNAPSHOT_GROVE_NPC_IDS.length,
+        snapshotCombatNpcIds: SNAPSHOT_COMBAT_NPC_IDS.length,
+        liveEntityProductionSeedIds: LIVE_ENTITY_PRODUCTION_SEED_IDS.length,
+        groveRaceMinigameSeedIds: GROVE_RACE_MINIGAME_SEED_IDS.length,
       });
     }
 

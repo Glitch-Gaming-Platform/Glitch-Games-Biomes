@@ -5,11 +5,11 @@ import {
 } from "@/shared/api/assets";
 import assert from "assert";
 import {
-  isPlayerMeshWarmupRequestV1,
-  playerMeshSemanticCacheKeyV1,
-  shouldRefreshPlayerMeshCacheV1,
-  shouldQueuePlayerMeshComputeV1,
-  shouldSkipPlayerMeshWarmupV1,
+  isPlayerMeshWarmupRequest,
+  playerMeshSemanticCacheKey,
+  shouldRefreshPlayerMeshCache,
+  shouldQueuePlayerMeshCompute,
+  shouldSkipPlayerMeshWarmup,
 } from "../player_mesh.glb";
 
 describe("player mesh resource guards", () => {
@@ -29,8 +29,8 @@ describe("player mesh resource guards", () => {
       throw new Error("unreachable");
     }
     assert.equal(
-      playerMeshSemanticCacheKeyV1(bare),
-      playerMeshSemanticCacheKeyV1(explicit)
+      playerMeshSemanticCacheKey(bare),
+      playerMeshSemanticCacheKey(explicit)
     );
   });
 
@@ -48,14 +48,14 @@ describe("player mesh resource guards", () => {
   });
 
   it("detects warmup requests", () => {
-    assert.equal(isPlayerMeshWarmupRequestV1("Biomes Warmup"), true);
-    assert.equal(isPlayerMeshWarmupRequestV1(["Other", "Biomes Warmup"]), true);
-    assert.equal(isPlayerMeshWarmupRequestV1("Mozilla"), false);
+    assert.equal(isPlayerMeshWarmupRequest("Biomes Warmup"), true);
+    assert.equal(isPlayerMeshWarmupRequest(["Other", "Biomes Warmup"]), true);
+    assert.equal(isPlayerMeshWarmupRequest("Mozilla"), false);
   });
 
   it("skips only uncached warmup requests when generation is already busy", () => {
     assert.equal(
-      shouldSkipPlayerMeshWarmupV1({
+      shouldSkipPlayerMeshWarmup({
         isWarmup: true,
         hasCached: false,
         activeComputes: 1,
@@ -64,7 +64,7 @@ describe("player mesh resource guards", () => {
       true
     );
     assert.equal(
-      shouldSkipPlayerMeshWarmupV1({
+      shouldSkipPlayerMeshWarmup({
         isWarmup: true,
         hasCached: true,
         activeComputes: 1,
@@ -73,7 +73,7 @@ describe("player mesh resource guards", () => {
       false
     );
     assert.equal(
-      shouldSkipPlayerMeshWarmupV1({
+      shouldSkipPlayerMeshWarmup({
         isWarmup: false,
         hasCached: false,
         activeComputes: 1,
@@ -85,21 +85,21 @@ describe("player mesh resource guards", () => {
 
   it("queues uncached mesh generation once the active compute cap is reached", () => {
     assert.equal(
-      shouldQueuePlayerMeshComputeV1({
+      shouldQueuePlayerMeshCompute({
         activeComputes: 2,
         maxActiveComputes: 2,
       }),
       true
     );
     assert.equal(
-      shouldQueuePlayerMeshComputeV1({
+      shouldQueuePlayerMeshCompute({
         activeComputes: 1,
         maxActiveComputes: 2,
       }),
       false
     );
     assert.equal(
-      shouldQueuePlayerMeshComputeV1({
+      shouldQueuePlayerMeshCompute({
         activeComputes: 0,
         maxActiveComputes: 0,
       }),
@@ -113,7 +113,7 @@ describe("player mesh resource guards", () => {
       computedAt: 1000,
     };
     assert.equal(
-      shouldRefreshPlayerMeshCacheV1({
+      shouldRefreshPlayerMeshCache({
         cached,
         nowMs: 1500,
         assetExportVersion: 10,
@@ -122,7 +122,7 @@ describe("player mesh resource guards", () => {
       false
     );
     assert.equal(
-      shouldRefreshPlayerMeshCacheV1({
+      shouldRefreshPlayerMeshCache({
         cached,
         nowMs: 2501,
         assetExportVersion: 10,
@@ -131,7 +131,7 @@ describe("player mesh resource guards", () => {
       true
     );
     assert.equal(
-      shouldRefreshPlayerMeshCacheV1({
+      shouldRefreshPlayerMeshCache({
         cached,
         nowMs: 1500,
         assetExportVersion: 11,

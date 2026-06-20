@@ -10,7 +10,7 @@
 //        clicked Talk on an NPC, because a stale step_id from the React UI
 //        could be replayed against the server which would happily honour it.
 //
-// The Harthmere quest bible and the v47 quest runtime both require the same
+// The Harthmere quest bible and the current quest runtime both require the same
 // contract:
 //
 //   locked -> available -> active -> ready_to_complete -> completed

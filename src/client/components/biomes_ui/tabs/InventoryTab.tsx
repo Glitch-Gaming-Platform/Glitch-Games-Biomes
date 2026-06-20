@@ -11,8 +11,8 @@ import { RovingGrid } from "../nav/RovingGrid";
 import { biomesPlayerTitle } from "../playerFacingText";
 import { UI_IDS } from "../uniqueIds";
 import type {
-  FarmingFoodInterfaceActionV1,
-  FarmingFoodInterfaceModelV1,
+  FarmingFoodInterfaceAction,
+  FarmingFoodInterfaceModel,
 } from "../adapters/farmingFoodInterfaceAdapter";
 
 export type InventoryContainerKey =
@@ -90,7 +90,7 @@ interface InventoryAdapter {
     items: Array<InventoryUiItem | null>;
     selectedIndex: number;
   };
-  getFarmingFood?: () => FarmingFoodInterfaceModelV1 | undefined;
+  getFarmingFood?: () => FarmingFoodInterfaceModel | undefined;
   getSelectedItem?: () => InventoryUiItem | null;
   selectItem?: (ref: InventoryUiRef) => void;
   useItem?: (ref: InventoryUiRef) => void;
@@ -110,7 +110,7 @@ interface InventoryAdapter {
   dropItem?: (ref: InventoryUiRef, count?: number) => void;
   destroyItem?: (ref: InventoryUiRef, count?: number) => void;
   sortInventory?: () => void;
-  performFarmingFoodAction?: (action: FarmingFoodInterfaceActionV1) => void;
+  performFarmingFoodAction?: (action: FarmingFoodInterfaceAction) => void;
 }
 
 const EQUIPMENT_ORDER: Array<{
@@ -173,15 +173,15 @@ const FILTERS = [
 ] as const;
 type InventoryFilter = (typeof FILTERS)[number];
 
-export const BIOMES_INVENTORY_DRAG_MIME_V1 =
+export const BIOMES_INVENTORY_DRAG_MIME =
   "application/x-biomes-inventory-ref+json";
-export const BIOMES_INVENTORY_HOTBAR_SLOT_COUNT_V1 = 9;
-const BIOMES_INVENTORY_DRAG_TEXT_PREFIX_V1 = "biomes-inventory-ref:";
+export const BIOMES_INVENTORY_HOTBAR_SLOT_COUNT = 9;
+const BIOMES_INVENTORY_DRAG_TEXT_PREFIX = "biomes-inventory-ref:";
 
-type InventoryDragDataTransferV1 = Pick<DataTransfer, "getData" | "setData"> &
+type InventoryDragDataTransfer = Pick<DataTransfer, "getData" | "setData"> &
   Partial<Pick<DataTransfer, "effectAllowed" | "dropEffect">>;
 
-function normalizeInventoryDragRefV1(raw: unknown): InventoryUiRef | undefined {
+function normalizeInventoryDragRef(raw: unknown): InventoryUiRef | undefined {
   if (!raw || typeof raw !== "object") return undefined;
   const candidate = raw as Partial<InventoryUiRef>;
   if (candidate.kind === "item" || candidate.kind === "hotbar") {
@@ -211,7 +211,7 @@ function normalizeInventoryDragRefV1(raw: unknown): InventoryUiRef | undefined {
   return undefined;
 }
 
-export function serializeInventoryDragRefV1(ref: InventoryUiRef): string {
+export function serializeInventoryDragRef(ref: InventoryUiRef): string {
   return JSON.stringify({
     kind: ref.kind,
     idx: ref.idx,
@@ -219,60 +219,60 @@ export function serializeInventoryDragRefV1(ref: InventoryUiRef): string {
   });
 }
 
-export function parseInventoryDragRefV1(
+export function parseInventoryDragRef(
   payload: string | null | undefined
 ): InventoryUiRef | undefined {
   if (!payload) return undefined;
-  const text = payload.startsWith(BIOMES_INVENTORY_DRAG_TEXT_PREFIX_V1)
-    ? payload.slice(BIOMES_INVENTORY_DRAG_TEXT_PREFIX_V1.length)
+  const text = payload.startsWith(BIOMES_INVENTORY_DRAG_TEXT_PREFIX)
+    ? payload.slice(BIOMES_INVENTORY_DRAG_TEXT_PREFIX.length)
     : payload;
   try {
-    return normalizeInventoryDragRefV1(JSON.parse(text));
+    return normalizeInventoryDragRef(JSON.parse(text));
   } catch {
     return undefined;
   }
 }
 
-export function writeInventoryDragRefToTransferV1(
-  dataTransfer: InventoryDragDataTransferV1,
+export function writeInventoryDragRefToTransfer(
+  dataTransfer: InventoryDragDataTransfer,
   ref: InventoryUiRef
 ) {
-  const payload = serializeInventoryDragRefV1(ref);
-  dataTransfer.setData(BIOMES_INVENTORY_DRAG_MIME_V1, payload);
+  const payload = serializeInventoryDragRef(ref);
+  dataTransfer.setData(BIOMES_INVENTORY_DRAG_MIME, payload);
   dataTransfer.setData(
     "text/plain",
-    `${BIOMES_INVENTORY_DRAG_TEXT_PREFIX_V1}${payload}`
+    `${BIOMES_INVENTORY_DRAG_TEXT_PREFIX}${payload}`
   );
   dataTransfer.effectAllowed = "move";
 }
 
-export function readInventoryDragRefFromTransferV1(
+export function readInventoryDragRefFromTransfer(
   dataTransfer: Pick<DataTransfer, "getData">
 ): InventoryUiRef | undefined {
   return (
-    parseInventoryDragRefV1(
-      dataTransfer.getData(BIOMES_INVENTORY_DRAG_MIME_V1)
-    ) ?? parseInventoryDragRefV1(dataTransfer.getData("text/plain"))
+    parseInventoryDragRef(
+      dataTransfer.getData(BIOMES_INVENTORY_DRAG_MIME)
+    ) ?? parseInventoryDragRef(dataTransfer.getData("text/plain"))
   );
 }
 
-function canMoveInventoryRefToHotbarV1(ref: InventoryUiRef | undefined) {
+function canMoveInventoryRefToHotbar(ref: InventoryUiRef | undefined) {
   return (
     ref?.kind === "item" || ref?.kind === "hotbar" || ref?.kind === "material"
   );
 }
 
-export function canMoveInventoryItemToHotbarV1(
+export function canMoveInventoryItemToHotbar(
   item: InventoryUiItem | null | undefined
 ) {
   return (
     !!item?.ref &&
     item.canMove !== false &&
-    canMoveInventoryRefToHotbarV1(item.ref)
+    canMoveInventoryRefToHotbar(item.ref)
   );
 }
 
-export function resolveInventoryHotbarDropV1(
+export function resolveInventoryHotbarDrop(
   src: InventoryUiRef | null | undefined,
   hotbarIndex: number
 ): { src: InventoryUiRef; dst: InventoryUiRef } | undefined {
@@ -280,8 +280,8 @@ export function resolveInventoryHotbarDropV1(
     !src ||
     !Number.isInteger(hotbarIndex) ||
     hotbarIndex < 0 ||
-    hotbarIndex >= BIOMES_INVENTORY_HOTBAR_SLOT_COUNT_V1 ||
-    !canMoveInventoryRefToHotbarV1(src)
+    hotbarIndex >= BIOMES_INVENTORY_HOTBAR_SLOT_COUNT ||
+    !canMoveInventoryRefToHotbar(src)
   ) {
     return undefined;
   }
@@ -375,13 +375,13 @@ export const InventoryTab: React.FunctionComponent<{
     (event: React.DragEvent, item: InventoryUiItem | null) => {
       if (
         !adapter?.moveItem ||
-        !canMoveInventoryItemToHotbarV1(item) ||
+        !canMoveInventoryItemToHotbar(item) ||
         !item?.ref
       ) {
         event.preventDefault();
         return;
       }
-      writeInventoryDragRefToTransferV1(event.dataTransfer, item.ref);
+      writeInventoryDragRefToTransfer(event.dataTransfer, item.ref);
       setDraggedRef(item.ref);
     },
     [adapter]
@@ -395,8 +395,8 @@ export const InventoryTab: React.FunctionComponent<{
     (event: React.DragEvent, hotbarIndex: number) => {
       if (!adapter?.moveItem) return;
       const sourceRef =
-        draggedRef ?? readInventoryDragRefFromTransferV1(event.dataTransfer);
-      if (!resolveInventoryHotbarDropV1(sourceRef, hotbarIndex)) return;
+        draggedRef ?? readInventoryDragRefFromTransfer(event.dataTransfer);
+      if (!resolveInventoryHotbarDrop(sourceRef, hotbarIndex)) return;
       event.preventDefault();
       event.dataTransfer.dropEffect = "move";
     },
@@ -407,8 +407,8 @@ export const InventoryTab: React.FunctionComponent<{
     (event: React.DragEvent, hotbarIndex: number) => {
       if (!adapter?.moveItem) return;
       const sourceRef =
-        readInventoryDragRefFromTransferV1(event.dataTransfer) ?? draggedRef;
-      const move = resolveInventoryHotbarDropV1(sourceRef, hotbarIndex);
+        readInventoryDragRefFromTransfer(event.dataTransfer) ?? draggedRef;
+      const move = resolveInventoryHotbarDrop(sourceRef, hotbarIndex);
       setDraggedRef(null);
       if (!move) return;
       event.preventDefault();
@@ -586,7 +586,7 @@ export const InventoryTab: React.FunctionComponent<{
           items={cells}
           renderCell={(item, { focused }, cell) => {
             const canDragItem =
-              canMoveInventoryItemToHotbarV1(item) &&
+              canMoveInventoryItemToHotbar(item) &&
               Boolean(adapter?.moveItem);
             const slotButton = React.createElement(
               "button",
@@ -695,16 +695,16 @@ export const InventoryTab: React.FunctionComponent<{
           </h3>
           <div style={hotbarRowStyle}>
             {Array.from(
-              { length: BIOMES_INVENTORY_HOTBAR_SLOT_COUNT_V1 },
+              { length: BIOMES_INVENTORY_HOTBAR_SLOT_COUNT },
               (_unused, index) => {
                 const item = hotbar.items[index] ?? null;
                 const selected = index === hotbar.selectedIndex;
                 const canDragHotbarItem =
-                  canMoveInventoryItemToHotbarV1(item) &&
+                  canMoveInventoryItemToHotbar(item) &&
                   Boolean(adapter?.moveItem);
                 const hotbarDropActive = Boolean(
                   adapter?.moveItem &&
-                    resolveInventoryHotbarDropV1(draggedRef, index)
+                    resolveInventoryHotbarDrop(draggedRef, index)
                 );
                 return (
                   <button
@@ -1117,7 +1117,7 @@ const MaterialStorageShelf: React.FunctionComponent<{
       <div role="list" className="biomes-ui-inventory__material-shelf-list">
         {items.map((item) => {
           const draggable =
-            Boolean(canDrag) && canMoveInventoryItemToHotbarV1(item);
+            Boolean(canDrag) && canMoveInventoryItemToHotbar(item);
           return (
             <button
               key={`material-shelf-${item.id}`}
@@ -1200,8 +1200,8 @@ const CompactInventoryList: React.FunctionComponent<{
 );
 
 const FarmingFoodSection: React.FunctionComponent<{
-  model: FarmingFoodInterfaceModelV1;
-  onAction: (action: FarmingFoodInterfaceActionV1) => void;
+  model: FarmingFoodInterfaceModel;
+  onAction: (action: FarmingFoodInterfaceAction) => void;
 }> = ({ model, onAction }) => {
   const staminaPct = Math.max(
     0,

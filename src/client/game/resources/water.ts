@@ -127,7 +127,7 @@ async function genWaterMesh(
     const surfaceTensor = timeCode("water:toWaterSurface", () => {
       return voxeloo.toWaterSurface(
         tensor.cpp,
-        shard.box.v0,
+        shard.box,
         (shard) => waterLoader(shard)?.cpp
       );
     });
@@ -138,7 +138,7 @@ async function genWaterMesh(
         surfaceTensor,
         (shard) => isomorphismLoader(shard)?.cpp,
         (shard) => waterLoader(shard)?.cpp,
-        shard.box.v0
+        shard.box
       );
     });
 
@@ -148,7 +148,7 @@ async function genWaterMesh(
     const lightBuffer = timeCode("water:toLightBuffer", () => {
       return voxeloo.toWaterLightingBuffer(
         surfaceTensor,
-        shard.box.v0,
+        shard.box,
         (shard) => isomorphismLoader(shard)?.cpp,
         (shard) => skyOcclusionLoader(shard)?.cpp,
         (shard) => irradianceLoader(shard)?.cpp

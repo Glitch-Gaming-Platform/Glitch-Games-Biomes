@@ -22,7 +22,7 @@ function requireVisualTestAuthEnabled() {
 export const zHarthmereVisualTestAuthResponse = z.object({
   userId: zBiomesId,
   username: z.string().optional(),
-  mode: z.literal("harthmere_visual_test_auth_v1"),
+  mode: z.literal("harthmere_visual_test_auth"),
 });
 
 export type HarthmereVisualTestAuthResponse = z.infer<
@@ -74,7 +74,7 @@ export default biomesApiHandler(
     return {
       userId: user.id,
       username: user.username,
-      mode: "harthmere_visual_test_auth_v1" as const,
+      mode: "harthmere_visual_test_auth" as const,
     };
   }
 );

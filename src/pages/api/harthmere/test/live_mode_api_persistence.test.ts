@@ -1,43 +1,43 @@
 import assert from "assert";
 import {
-  HARTHMERE_BUILDING_MATERIALIZATION_ECS_PUBLISH_CHUNK_SIZE_V1,
-  buildingSystemMaterializationWorldPositionForTestV1,
-  combatActorPositionFromInstallLiveModeBodyV1,
-  harthmereLiveModeMutationSnapshotKeysV1,
-  jobsBoardPositionFromLiveModeBodyV151,
-  liveModeActorIdentityFromRequestV151,
-  materializeBuildingSystemMaterializationPlansToTerrainV1,
-  persistHarthmereLiveModeResponseV1,
-  publishBuildingSystemMaterializationPlansToEcsV1,
-  readServerActorPositionForLiveModeV145,
+  HARTHMERE_BUILDING_MATERIALIZATION_ECS_PUBLISH_CHUNK_SIZE,
+  buildingSystemMaterializationWorldPositionForTest,
+  combatActorPositionFromInstallLiveModeBody,
+  harthmereLiveModeMutationSnapshotKeys,
+  jobsBoardPositionFromLiveModeBody,
+  liveModeActorIdentityFromRequest,
+  materializeBuildingSystemMaterializationPlansToTerrain,
+  persistHarthmereLiveModeResponse,
+  publishBuildingSystemMaterializationPlansToEcs,
+  readServerActorPositionForLiveMode,
 } from "../live_mode";
 import { createEmptyTerrainShard } from "@/server/test/test_helpers";
 import { InMemoryWorld } from "@/server/shared/world/shim/in_memory_world";
 import { ShimWorldApi } from "@/server/shared/world/shim/api";
 import { loadVoxeloo } from "@/server/shared/voxeloo";
-import { HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1 } from "@/shared/harthmere/mmo_jobs_board_authority_v1";
-import { HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS_V1 } from "@/shared/harthmere/business_customer_simulator_v1";
+import { HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID } from "@/shared/harthmere/mmo_jobs_board_authority";
+import { HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS } from "@/shared/harthmere/business_customer_simulator";
 import { SHARD_DIM, blockPos, shardAlign } from "@/shared/game/shard";
 import {
-  createHarthmereLiveModeSharedWorldStateV1,
-  harthmereLiveModePlayerStateKeyV1,
-  harthmereLiveModeSharedWorldStateKeyV1,
-  parseHarthmereLiveModeBackendStateV1,
-  defaultHarthmereLiveModeBackendStateV1,
-  parseHarthmereLiveModeSharedWorldStateV1,
-} from "@/shared/harthmere/live_mode_backend_v1";
+  createHarthmereLiveModeSharedWorldState,
+  harthmereLiveModePlayerStateKey,
+  harthmereLiveModeSharedWorldStateKey,
+  parseHarthmereLiveModeBackendState,
+  defaultHarthmereLiveModeBackendState,
+  parseHarthmereLiveModeSharedWorldState,
+} from "@/shared/harthmere/live_mode_backend";
 import {
-  buildHarthmereLiveModePersistenceMutationPlanV1,
-  createHarthmereLiveModeEventV1,
-  createHarthmereLiveModeUiEventV1,
-  type HarthmereLiveModeAuthorityEnvelopeV1,
-} from "@/shared/harthmere/live_mode_readiness_v1";
+  buildHarthmereLiveModePersistenceMutationPlan,
+  createHarthmereLiveModeEvent,
+  createHarthmereLiveModeUiEvent,
+  type HarthmereLiveModeAuthorityEnvelope,
+} from "@/shared/harthmere/live_mode_readiness";
 import { loadBlockWrapper } from "@/shared/wasm/biomes";
 
 const ACTOR = "player_live_api_persist_001";
 const NOW_MS = 1_700_400_000_000;
 
-async function withFullLiveModeMutationSnapshotsForTestV1(
+async function withFullLiveModeMutationSnapshotsForTest(
   fn: () => Promise<void>
 ) {
   const previous = process.env.HARTHMERE_LIVE_MODE_FULL_MUTATION_SNAPSHOTS;
@@ -57,14 +57,18 @@ function fakeTerrainEntityForPosition(
   id: number,
   position: [number, number, number]
 ) {
-  const v0 = shardAlign(...position);
+  const shardOrigin = shardAlign(...position);
   return {
     id,
     hasShardSeed: () => true,
     hasBox: () => true,
     box: () => ({
-      v0,
-      v1: [v0[0] + SHARD_DIM, v0[1] + SHARD_DIM, v0[2] + SHARD_DIM],
+      v0: shardOrigin,
+      v1: [
+        shardOrigin[0] + SHARD_DIM,
+        shardOrigin[1] + SHARD_DIM,
+        shardOrigin[2] + SHARD_DIM,
+      ],
     }),
   };
 }
@@ -115,7 +119,7 @@ class FakeRedisPrimary {
   }
 }
 
-function envelope(): HarthmereLiveModeAuthorityEnvelopeV1 {
+function envelope(): HarthmereLiveModeAuthorityEnvelope {
   return {
     requestId: "live-api-persist-req-1",
     idempotencyKey: "live-api-persist-idem-1",
@@ -137,7 +141,7 @@ function envelope(): HarthmereLiveModeAuthorityEnvelopeV1 {
 }
 
 function addOpenProductionBusiness(
-  state: ReturnType<typeof defaultHarthmereLiveModeBackendStateV1>,
+  state: ReturnType<typeof defaultHarthmereLiveModeBackendState>,
   businessId: string
 ) {
   state.economy.production.businesses[businessId] = {
@@ -196,7 +200,7 @@ function addOpenProductionBusiness(
 describe("live_mode API Redis persistence", () => {
   it("uses Glitch install ids as live-mode actors when Biomes auth is absent", () => {
     assert.deepEqual(
-      liveModeActorIdentityFromRequestV151({
+      liveModeActorIdentityFromRequest({
         unsafeRequest: {
           query: { install_id: "install-abc" },
           headers: {},
@@ -209,7 +213,7 @@ describe("live_mode API Redis persistence", () => {
       }
     );
     assert.deepEqual(
-      liveModeActorIdentityFromRequestV151({
+      liveModeActorIdentityFromRequest({
         auth: { userId: 123 },
         unsafeRequest: {
           query: { install_id: "install-abc" },
@@ -223,7 +227,7 @@ describe("live_mode API Redis persistence", () => {
       }
     );
     assert.equal(
-      liveModeActorIdentityFromRequestV151({
+      liveModeActorIdentityFromRequest({
         unsafeRequest: {
           query: {},
           headers: { "x-glitch-install-id": "header-install" },
@@ -235,10 +239,10 @@ describe("live_mode API Redis persistence", () => {
 
   it("derives server-side jobs board proximity from known board ids only", () => {
     assert.deepEqual(
-      jobsBoardPositionFromLiveModeBodyV151({
+      jobsBoardPositionFromLiveModeBody({
         requestId: "jobs-board-pos",
         idempotencyKey: "jobs-board-pos",
-        targetId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1,
+        targetId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID,
         actionKind: "request_jobs_board_mutation",
         subsystem: "jobs",
         actorEntityVersion: 1,
@@ -246,13 +250,13 @@ describe("live_mode API Redis persistence", () => {
         zoneId: "harthmere_grove",
         payload: {
           operation: "accept_job",
-          boardId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1,
+          boardId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID,
         },
       } as any),
       { x: 501.99486179104775, y: 70, z: -132.00350672753194 }
     );
     assert.equal(
-      jobsBoardPositionFromLiveModeBodyV151({
+      jobsBoardPositionFromLiveModeBody({
         requestId: "unknown-board-pos",
         idempotencyKey: "unknown-board-pos",
         targetId: "unknown_board",
@@ -265,14 +269,14 @@ describe("live_mode API Redis persistence", () => {
       undefined
     );
     assert.equal(
-      jobsBoardPositionFromLiveModeBodyV151({
+      jobsBoardPositionFromLiveModeBody({
         requestId: "not-jobs",
         idempotencyKey: "not-jobs",
         actionKind: "request_inventory_mutation",
         subsystem: "inventory",
         actorEntityVersion: 1,
         zoneId: "harthmere_grove",
-        payload: { boardId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1 },
+        payload: { boardId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID },
       } as any),
       undefined
     );
@@ -280,7 +284,7 @@ describe("live_mode API Redis persistence", () => {
 
   it("derives install-only combat actor position only for attack requests", () => {
     assert.deepEqual(
-      combatActorPositionFromInstallLiveModeBodyV1({
+      combatActorPositionFromInstallLiveModeBody({
         requestId: "combat-pos",
         idempotencyKey: "combat-pos",
         targetId: "server-muck-combat:old-wood-mucker-8:1308",
@@ -294,7 +298,7 @@ describe("live_mode API Redis persistence", () => {
       { x: 496, y: 53, z: -126 }
     );
     assert.equal(
-      combatActorPositionFromInstallLiveModeBodyV1({
+      combatActorPositionFromInstallLiveModeBody({
         requestId: "combat-pos-bad",
         idempotencyKey: "combat-pos-bad",
         actionKind: "request_attack",
@@ -307,7 +311,7 @@ describe("live_mode API Redis persistence", () => {
       undefined
     );
     assert.equal(
-      combatActorPositionFromInstallLiveModeBodyV1({
+      combatActorPositionFromInstallLiveModeBody({
         requestId: "not-combat-pos",
         idempotencyKey: "not-combat-pos",
         actionKind: "request_inventory_mutation",
@@ -322,7 +326,7 @@ describe("live_mode API Redis persistence", () => {
   });
 
   it("reads the server-side actor position for jobs board proximity without trusting client claims", async () => {
-    const position = await readServerActorPositionForLiveModeV145(
+    const position = await readServerActorPositionForLiveMode(
       {
         get: async () => ({
           position: () => ({
@@ -338,7 +342,7 @@ describe("live_mode API Redis persistence", () => {
       z: -132.00350672753194,
     });
 
-    const missing = await readServerActorPositionForLiveModeV145(
+    const missing = await readServerActorPositionForLiveMode(
       {
         get: async () => ({
           position: () => ({ v: [Number.NaN, 70, -132.00350672753194] }),
@@ -351,7 +355,7 @@ describe("live_mode API Redis persistence", () => {
 
   it("keeps jobs-board mutation snapshots slim without cutting building snapshots from building actions", () => {
     assert.deepEqual(
-      harthmereLiveModeMutationSnapshotKeysV1({
+      harthmereLiveModeMutationSnapshotKeys({
         actionKind: "request_jobs_board_mutation",
         subsystem: "jobs",
         touchedModels: ["jobs_board_posting", "jobs_board_quest_todo"],
@@ -364,7 +368,7 @@ describe("live_mode API Redis persistence", () => {
       ]
     );
     assert.ok(
-      harthmereLiveModeMutationSnapshotKeysV1({
+      harthmereLiveModeMutationSnapshotKeys({
         actionKind: "request_property_building_mutation",
         subsystem: "building",
         touchedModels: ["building_state", "property"],
@@ -372,7 +376,7 @@ describe("live_mode API Redis persistence", () => {
       "building mutations must still return buildingState"
     );
     assert.deepEqual(
-      harthmereLiveModeMutationSnapshotKeysV1({
+      harthmereLiveModeMutationSnapshotKeys({
         actionKind: "request_boss_tick",
         subsystem: "boss_encounter",
         touchedModels: ["boss_encounter_state"],
@@ -383,17 +387,17 @@ describe("live_mode API Redis persistence", () => {
   });
 
   it("uses WATCH/MULTI and records idempotency only with the state mutation", async () =>
-    withFullLiveModeMutationSnapshotsForTestV1(async () => {
+    withFullLiveModeMutationSnapshotsForTest(async () => {
       const redisPrimary = new FakeRedisPrimary();
-      (globalThis as any).__harthmereLiveModeRedisV1 = {
+      (globalThis as any).__harthmereLiveModeRedis = {
         primary: redisPrimary,
       };
 
       const env = envelope();
-      const mutationPlan = buildHarthmereLiveModePersistenceMutationPlanV1(env);
+      const mutationPlan = buildHarthmereLiveModePersistenceMutationPlan(env);
       const response = {
         ok: true,
-        version: "HARTHMERE_LIVE_MODE_SERVER_ROUTE_V1" as const,
+        version: "HARTHMERE_LIVE_MODE_SERVER_ROUTE" as const,
         actorId: ACTOR,
         duplicate: false,
         replayed: false,
@@ -406,20 +410,20 @@ describe("live_mode API Redis persistence", () => {
         },
         mutationPlan,
         events: [
-          createHarthmereLiveModeEventV1({
+          createHarthmereLiveModeEvent({
             kind: "xp_reward_resolved",
             envelope: env,
           }),
         ],
         uiEvents: [
-          createHarthmereLiveModeUiEventV1({
+          createHarthmereLiveModeUiEvent({
             kind: "level_up_toast",
             envelope: env,
           }),
         ],
       };
 
-      const persisted = await persistHarthmereLiveModeResponseV1(
+      const persisted = await persistHarthmereLiveModeResponse(
         env,
         response,
         {
@@ -428,10 +432,10 @@ describe("live_mode API Redis persistence", () => {
         }
       );
 
-      const playerKey = harthmereLiveModePlayerStateKeyV1(ACTOR);
-      const sharedWorldKey = harthmereLiveModeSharedWorldStateKeyV1();
+      const playerKey = harthmereLiveModePlayerStateKey(ACTOR);
+      const sharedWorldKey = harthmereLiveModeSharedWorldStateKey();
       assert.deepEqual(redisPrimary.watched[0], [
-        "harthmere:live_mode:v1:idempotency:player_live_api_persist_001:live-api-persist-idem-1",
+        "harthmere:live_mode:current:idempotency:player_live_api_persist_001:live-api-persist-idem-1",
         playerKey,
         sharedWorldKey,
       ]);
@@ -447,7 +451,7 @@ describe("live_mode API Redis persistence", () => {
         false
       );
       const idempotencyKey =
-        "harthmere:live_mode:v1:idempotency:player_live_api_persist_001:live-api-persist-idem-1";
+        "harthmere:live_mode:current:idempotency:player_live_api_persist_001:live-api-persist-idem-1";
       const storedIdempotency = JSON.parse(
         redisPrimary.store.get(idempotencyKey) ?? "{}"
       );
@@ -485,14 +489,14 @@ describe("live_mode API Redis persistence", () => {
       );
 
       const rawState = redisPrimary.store.get(playerKey);
-      const state = parseHarthmereLiveModeBackendStateV1(
+      const state = parseHarthmereLiveModeBackendState(
         rawState,
         ACTOR,
         NOW_MS
       );
       assert.equal(state.classMagic.skills.combat?.xp, 100);
 
-      const replay = await persistHarthmereLiveModeResponseV1(env, response, {
+      const replay = await persistHarthmereLiveModeResponse(env, response, {
         logicApi: { publish: async () => {} } as any,
         userId: 1 as any,
       });
@@ -503,13 +507,13 @@ describe("live_mode API Redis persistence", () => {
     }));
 
   it("hydrates public economy from shared world state before reducing actor mutations", async () =>
-    withFullLiveModeMutationSnapshotsForTestV1(async () => {
+    withFullLiveModeMutationSnapshotsForTest(async () => {
       const redisPrimary = new FakeRedisPrimary();
-      (globalThis as any).__harthmereLiveModeRedisV1 = {
+      (globalThis as any).__harthmereLiveModeRedis = {
         primary: redisPrimary,
       };
 
-      const sharedSource = defaultHarthmereLiveModeBackendStateV1(
+      const sharedSource = defaultHarthmereLiveModeBackendState(
         "shared_actor",
         NOW_MS
       );
@@ -548,19 +552,19 @@ describe("live_mode API Redis persistence", () => {
         flags: {},
       } as any;
       redisPrimary.store.set(
-        harthmereLiveModeSharedWorldStateKeyV1(),
+        harthmereLiveModeSharedWorldStateKey(),
         JSON.stringify(
-          createHarthmereLiveModeSharedWorldStateV1(sharedSource, NOW_MS)
+          createHarthmereLiveModeSharedWorldState(sharedSource, NOW_MS)
         )
       );
 
       const env = envelope();
       env.requestId = "live-api-persist-req-shared";
       env.idempotencyKey = "live-api-persist-idem-shared";
-      const mutationPlan = buildHarthmereLiveModePersistenceMutationPlanV1(env);
+      const mutationPlan = buildHarthmereLiveModePersistenceMutationPlan(env);
       const response = {
         ok: true,
-        version: "HARTHMERE_LIVE_MODE_SERVER_ROUTE_V1" as const,
+        version: "HARTHMERE_LIVE_MODE_SERVER_ROUTE" as const,
         actorId: ACTOR,
         duplicate: false,
         replayed: false,
@@ -573,7 +577,7 @@ describe("live_mode API Redis persistence", () => {
         },
         mutationPlan,
         events: [
-          createHarthmereLiveModeEventV1({
+          createHarthmereLiveModeEvent({
             kind: "xp_reward_resolved",
             envelope: env,
           }),
@@ -581,7 +585,7 @@ describe("live_mode API Redis persistence", () => {
         uiEvents: [],
       };
 
-      const persisted = await persistHarthmereLiveModeResponseV1(
+      const persisted = await persistHarthmereLiveModeResponse(
         env,
         response,
         {
@@ -592,9 +596,9 @@ describe("live_mode API Redis persistence", () => {
 
       assert.ok((persisted.economyState as any).businesses.shared_shop);
       const rawActor = redisPrimary.store.get(
-        harthmereLiveModePlayerStateKeyV1(ACTOR)
+        harthmereLiveModePlayerStateKey(ACTOR)
       );
-      const actorState = parseHarthmereLiveModeBackendStateV1(
+      const actorState = parseHarthmereLiveModeBackendState(
         rawActor,
         ACTOR,
         NOW_MS
@@ -606,17 +610,17 @@ describe("live_mode API Redis persistence", () => {
     this.timeout(45_000);
 
     const redisPrimary = new FakeRedisPrimary();
-    (globalThis as any).__harthmereLiveModeRedisV1 = { primary: redisPrimary };
+    (globalThis as any).__harthmereLiveModeRedis = { primary: redisPrimary };
 
-    const actorState = defaultHarthmereLiveModeBackendStateV1(ACTOR, NOW_MS);
-    const sharedSource = defaultHarthmereLiveModeBackendStateV1(
+    const actorState = defaultHarthmereLiveModeBackendState(ACTOR, NOW_MS);
+    const sharedSource = defaultHarthmereLiveModeBackendState(
       "shared_board",
       NOW_MS
     );
     const deadlineAtMs = Date.now() + 86_400_000;
     sharedSource.jobsBoard.postings.job_accept_chain = {
       jobId: "job_accept_chain",
-      boardId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1,
+      boardId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID,
       issuerKind: "town",
       issuerId: "harthmere_grove",
       title: "Clear the Muckwad Patch",
@@ -648,26 +652,26 @@ describe("live_mode API Redis persistence", () => {
     } as any;
 
     redisPrimary.store.set(
-      harthmereLiveModePlayerStateKeyV1(ACTOR),
+      harthmereLiveModePlayerStateKey(ACTOR),
       JSON.stringify(actorState)
     );
     redisPrimary.store.set(
-      harthmereLiveModeSharedWorldStateKeyV1(),
+      harthmereLiveModeSharedWorldStateKey(),
       JSON.stringify(
-        createHarthmereLiveModeSharedWorldStateV1(sharedSource, NOW_MS)
+        createHarthmereLiveModeSharedWorldState(sharedSource, NOW_MS)
       )
     );
 
     const persistEnvelope = async (
-      requestEnv: HarthmereLiveModeAuthorityEnvelopeV1
+      requestEnv: HarthmereLiveModeAuthorityEnvelope
     ) => {
       const mutationPlan =
-        buildHarthmereLiveModePersistenceMutationPlanV1(requestEnv);
-      return persistHarthmereLiveModeResponseV1(
+        buildHarthmereLiveModePersistenceMutationPlan(requestEnv);
+      return persistHarthmereLiveModeResponse(
         requestEnv,
         {
           ok: true,
-          version: "HARTHMERE_LIVE_MODE_SERVER_ROUTE_V1" as const,
+          version: "HARTHMERE_LIVE_MODE_SERVER_ROUTE" as const,
           actorId: ACTOR,
           duplicate: false,
           replayed: false,
@@ -680,7 +684,7 @@ describe("live_mode API Redis persistence", () => {
           },
           mutationPlan,
           events: [
-            createHarthmereLiveModeEventV1({
+            createHarthmereLiveModeEvent({
               kind: "audit_log_appended",
               envelope: requestEnv,
             }),
@@ -700,7 +704,7 @@ describe("live_mode API Redis persistence", () => {
     env.actionKind = "request_jobs_board_mutation";
     env.subsystem = "jobs";
     env.source = "client_request";
-    env.targetId = HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1;
+    env.targetId = HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID;
     env.zoneId = "harthmere_grove";
     env.serverActorPosition = {
       x: 501.99486179104775,
@@ -709,7 +713,7 @@ describe("live_mode API Redis persistence", () => {
     };
     env.payload = {
       operation: "accept_job",
-      boardId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1,
+      boardId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID,
       jobId: "job_accept_chain",
     };
     const persisted = await persistEnvelope(env);
@@ -758,9 +762,9 @@ describe("live_mode API Redis persistence", () => {
     assert.equal(acceptReplay.buildingState, undefined);
 
     let rawActor = redisPrimary.store.get(
-      harthmereLiveModePlayerStateKeyV1(ACTOR)
+      harthmereLiveModePlayerStateKey(ACTOR)
     );
-    let persistedActorState = parseHarthmereLiveModeBackendStateV1(
+    let persistedActorState = parseHarthmereLiveModeBackendState(
       rawActor,
       ACTOR,
       NOW_MS
@@ -787,8 +791,8 @@ describe("live_mode API Redis persistence", () => {
     const questPersisted = await persistEnvelope(questEnv);
 
     assert.deepEqual(questPersisted.backendMutation?.warnings, []);
-    rawActor = redisPrimary.store.get(harthmereLiveModePlayerStateKeyV1(ACTOR));
-    persistedActorState = parseHarthmereLiveModeBackendStateV1(
+    rawActor = redisPrimary.store.get(harthmereLiveModePlayerStateKey(ACTOR));
+    persistedActorState = parseHarthmereLiveModeBackendState(
       rawActor,
       ACTOR,
       NOW_MS
@@ -816,7 +820,7 @@ describe("live_mode API Redis persistence", () => {
     turnInEnv.actionKind = "request_jobs_board_mutation";
     turnInEnv.subsystem = "jobs";
     turnInEnv.source = "client_request";
-    turnInEnv.targetId = HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1;
+    turnInEnv.targetId = HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID;
     turnInEnv.zoneId = "harthmere_grove";
     turnInEnv.serverActorPosition = {
       x: 501.99486179104775,
@@ -825,14 +829,14 @@ describe("live_mode API Redis persistence", () => {
     };
     turnInEnv.payload = {
       operation: "complete_job",
-      boardId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1,
+      boardId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID,
       jobId: "job_accept_chain",
     };
     const turnInPersisted = await persistEnvelope(turnInEnv);
 
     assert.deepEqual(turnInPersisted.backendMutation?.warnings, []);
-    rawActor = redisPrimary.store.get(harthmereLiveModePlayerStateKeyV1(ACTOR));
-    persistedActorState = parseHarthmereLiveModeBackendStateV1(
+    rawActor = redisPrimary.store.get(harthmereLiveModePlayerStateKey(ACTOR));
+    persistedActorState = parseHarthmereLiveModeBackendState(
       rawActor,
       ACTOR,
       NOW_MS
@@ -859,11 +863,11 @@ describe("live_mode API Redis persistence", () => {
 
   it("seeds missing auto jobs during accept so read-only board polling stays consistent", async () => {
     const redisPrimary = new FakeRedisPrimary();
-    (globalThis as any).__harthmereLiveModeRedisV1 = { primary: redisPrimary };
+    (globalThis as any).__harthmereLiveModeRedis = { primary: redisPrimary };
 
     redisPrimary.store.set(
-      harthmereLiveModePlayerStateKeyV1(ACTOR),
-      JSON.stringify(defaultHarthmereLiveModeBackendStateV1(ACTOR, NOW_MS))
+      harthmereLiveModePlayerStateKey(ACTOR),
+      JSON.stringify(defaultHarthmereLiveModeBackendState(ACTOR, NOW_MS))
     );
 
     const env = envelope();
@@ -872,7 +876,7 @@ describe("live_mode API Redis persistence", () => {
     env.actionKind = "request_jobs_board_mutation";
     env.subsystem = "jobs";
     env.source = "client_request";
-    env.targetId = HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1;
+    env.targetId = HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID;
     env.zoneId = "harthmere_grove";
     env.serverActorPosition = {
       x: 501.99486179104775,
@@ -881,16 +885,16 @@ describe("live_mode API Redis persistence", () => {
     };
     env.payload = {
       operation: "accept_job",
-      boardId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1,
+      boardId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID,
       jobId: "harthmere_auto_1",
     };
 
-    const mutationPlan = buildHarthmereLiveModePersistenceMutationPlanV1(env);
-    const persisted = await persistHarthmereLiveModeResponseV1(
+    const mutationPlan = buildHarthmereLiveModePersistenceMutationPlan(env);
+    const persisted = await persistHarthmereLiveModeResponse(
       env,
       {
         ok: true,
-        version: "HARTHMERE_LIVE_MODE_SERVER_ROUTE_V1" as const,
+        version: "HARTHMERE_LIVE_MODE_SERVER_ROUTE" as const,
         actorId: ACTOR,
         duplicate: false,
         replayed: false,
@@ -903,7 +907,7 @@ describe("live_mode API Redis persistence", () => {
         },
         mutationPlan,
         events: [
-          createHarthmereLiveModeEventV1({
+          createHarthmereLiveModeEvent({
             kind: "audit_log_appended",
             envelope: env,
           }),
@@ -924,9 +928,9 @@ describe("live_mode API Redis persistence", () => {
       "accept should persist and activate jobs that were seeded by a read-only board snapshot"
     );
     const rawActor = redisPrimary.store.get(
-      harthmereLiveModePlayerStateKeyV1(ACTOR)
+      harthmereLiveModePlayerStateKey(ACTOR)
     );
-    const persistedActorState = parseHarthmereLiveModeBackendStateV1(
+    const persistedActorState = parseHarthmereLiveModeBackendState(
       rawActor,
       ACTOR,
       NOW_MS
@@ -939,12 +943,12 @@ describe("live_mode API Redis persistence", () => {
 
   it("persists branch outpost voxel materialization and publishes ECS edits after commit", async () => {
     const redisPrimary = new FakeRedisPrimary();
-    (globalThis as any).__harthmereLiveModeRedisV1 = { primary: redisPrimary };
+    (globalThis as any).__harthmereLiveModeRedis = { primary: redisPrimary };
 
-    const startingState = defaultHarthmereLiveModeBackendStateV1(ACTOR, NOW_MS);
+    const startingState = defaultHarthmereLiveModeBackendState(ACTOR, NOW_MS);
     addOpenProductionBusiness(startingState, "business_branch_persist");
     redisPrimary.store.set(
-      harthmereLiveModePlayerStateKeyV1(ACTOR),
+      harthmereLiveModePlayerStateKey(ACTOR),
       JSON.stringify(startingState)
     );
 
@@ -960,10 +964,10 @@ describe("live_mode API Redis persistence", () => {
       businessId: "business_branch_persist",
       outpostId: "outpost_restaurant_redpot",
     };
-    const mutationPlan = buildHarthmereLiveModePersistenceMutationPlanV1(env);
+    const mutationPlan = buildHarthmereLiveModePersistenceMutationPlan(env);
     const response = {
       ok: true,
-      version: "HARTHMERE_LIVE_MODE_SERVER_ROUTE_V1" as const,
+      version: "HARTHMERE_LIVE_MODE_SERVER_ROUTE" as const,
       actorId: ACTOR,
       duplicate: false,
       replayed: false,
@@ -976,7 +980,7 @@ describe("live_mode API Redis persistence", () => {
       },
       mutationPlan,
       events: [
-        createHarthmereLiveModeEventV1({
+        createHarthmereLiveModeEvent({
           kind: "audit_log_appended",
           envelope: env,
         }),
@@ -985,7 +989,7 @@ describe("live_mode API Redis persistence", () => {
     };
     const publishedEvents: unknown[] = [];
     const publishedBatchSizes: number[] = [];
-    const persisted = await persistHarthmereLiveModeResponseV1(env, response, {
+    const persisted = await persistHarthmereLiveModeResponse(env, response, {
       logicApi: {
         publish: async (...events: unknown[]) => {
           publishedBatchSizes.push(events.length);
@@ -1020,14 +1024,14 @@ describe("live_mode API Redis persistence", () => {
     assert.ok(
       publishedBatchSizes.every(
         (size) =>
-          size <= HARTHMERE_BUILDING_MATERIALIZATION_ECS_PUBLISH_CHUNK_SIZE_V1
+          size <= HARTHMERE_BUILDING_MATERIALIZATION_ECS_PUBLISH_CHUNK_SIZE
       )
     );
 
     const rawActor = redisPrimary.store.get(
-      harthmereLiveModePlayerStateKeyV1(ACTOR)
+      harthmereLiveModePlayerStateKey(ACTOR)
     );
-    const actorState = parseHarthmereLiveModeBackendStateV1(
+    const actorState = parseHarthmereLiveModeBackendState(
       rawActor,
       ACTOR,
       NOW_MS
@@ -1041,8 +1045,8 @@ describe("live_mode API Redis persistence", () => {
         .outpost_restaurant_redpot_backend_materialization
     );
 
-    const shared = parseHarthmereLiveModeSharedWorldStateV1(
-      redisPrimary.store.get(harthmereLiveModeSharedWorldStateKeyV1()),
+    const shared = parseHarthmereLiveModeSharedWorldState(
+      redisPrimary.store.get(harthmereLiveModeSharedWorldStateKey()),
       NOW_MS
     );
     assert.ok(shared);
@@ -1054,12 +1058,12 @@ describe("live_mode API Redis persistence", () => {
 
   it("returns committed live-mode responses when post-commit materialization fails", async () => {
     const redisPrimary = new FakeRedisPrimary();
-    (globalThis as any).__harthmereLiveModeRedisV1 = { primary: redisPrimary };
+    (globalThis as any).__harthmereLiveModeRedis = { primary: redisPrimary };
 
-    const startingState = defaultHarthmereLiveModeBackendStateV1(ACTOR, NOW_MS);
+    const startingState = defaultHarthmereLiveModeBackendState(ACTOR, NOW_MS);
     addOpenProductionBusiness(startingState, "business_branch_deferred");
     redisPrimary.store.set(
-      harthmereLiveModePlayerStateKeyV1(ACTOR),
+      harthmereLiveModePlayerStateKey(ACTOR),
       JSON.stringify(startingState)
     );
 
@@ -1075,10 +1079,10 @@ describe("live_mode API Redis persistence", () => {
       businessId: "business_branch_deferred",
       outpostId: "outpost_restaurant_redpot",
     };
-    const mutationPlan = buildHarthmereLiveModePersistenceMutationPlanV1(env);
+    const mutationPlan = buildHarthmereLiveModePersistenceMutationPlan(env);
     const response = {
       ok: true,
-      version: "HARTHMERE_LIVE_MODE_SERVER_ROUTE_V1" as const,
+      version: "HARTHMERE_LIVE_MODE_SERVER_ROUTE" as const,
       actorId: ACTOR,
       duplicate: false,
       replayed: false,
@@ -1091,7 +1095,7 @@ describe("live_mode API Redis persistence", () => {
       },
       mutationPlan,
       events: [
-        createHarthmereLiveModeEventV1({
+        createHarthmereLiveModeEvent({
           kind: "audit_log_appended",
           envelope: env,
         }),
@@ -1099,7 +1103,7 @@ describe("live_mode API Redis persistence", () => {
       uiEvents: [],
     };
 
-    const persisted = await persistHarthmereLiveModeResponseV1(env, response, {
+    const persisted = await persistHarthmereLiveModeResponse(env, response, {
       logicApi: {
         publish: async () => {
           throw new Error("simulated ECS publish outage");
@@ -1117,8 +1121,8 @@ describe("live_mode API Redis persistence", () => {
         )
       )
     );
-    const actorState = parseHarthmereLiveModeBackendStateV1(
-      redisPrimary.store.get(harthmereLiveModePlayerStateKeyV1(ACTOR)),
+    const actorState = parseHarthmereLiveModeBackendState(
+      redisPrimary.store.get(harthmereLiveModePlayerStateKey(ACTOR)),
       ACTOR,
       NOW_MS
     );
@@ -1130,12 +1134,12 @@ describe("live_mode API Redis persistence", () => {
 
   it("keeps production-coordinate Harthmere outpost voxel edits and resolves real terrain entity ids", async () => {
     const plan =
-      HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS_V1
+      HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS
         .outpost_refinery_ashline.materializationPlan;
     const authoredPosition = plan.edits.find(
       (edit) => edit.label === "floor"
     )!.position;
-    const worldPosition = buildingSystemMaterializationWorldPositionForTestV1(
+    const worldPosition = buildingSystemMaterializationWorldPositionForTest(
       plan,
       authoredPosition
     );
@@ -1144,7 +1148,7 @@ describe("live_mode API Redis persistence", () => {
     assert.equal(worldPosition[2], authoredPosition[2]);
 
     const publishedEvents: any[] = [];
-    const counts = await publishBuildingSystemMaterializationPlansToEcsV1({
+    const counts = await publishBuildingSystemMaterializationPlansToEcs({
       askApi: {
         scanForExport: async function* () {
           yield [
@@ -1185,10 +1189,10 @@ describe("live_mode API Redis persistence", () => {
     const world = new InMemoryWorld();
     const worldApi = ShimWorldApi.createForWorld(world);
     const plan =
-      HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS_V1
+      HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS
         .outpost_refinery_ashline.materializationPlan;
     const floorEdit = plan.edits.find((edit) => edit.label === "floor")!;
-    const worldPosition = buildingSystemMaterializationWorldPositionForTestV1(
+    const worldPosition = buildingSystemMaterializationWorldPositionForTest(
       plan,
       floorEdit.position
     );
@@ -1210,14 +1214,14 @@ describe("live_mode API Redis persistence", () => {
     };
 
     const first =
-      await materializeBuildingSystemMaterializationPlansToTerrainV1({
+      await materializeBuildingSystemMaterializationPlansToTerrain({
         askApi,
         userId: 1 as any,
         worldApi,
         plans: [oneEditPlan],
       });
     const second =
-      await materializeBuildingSystemMaterializationPlansToTerrainV1({
+      await materializeBuildingSystemMaterializationPlansToTerrain({
         askApi,
         userId: 1 as any,
         worldApi,
@@ -1241,12 +1245,12 @@ describe("live_mode API Redis persistence", () => {
 
   it("publishes outpost voxel materialization for install actors without Biomes auth", async () => {
     const redisPrimary = new FakeRedisPrimary();
-    (globalThis as any).__harthmereLiveModeRedisV1 = { primary: redisPrimary };
+    (globalThis as any).__harthmereLiveModeRedis = { primary: redisPrimary };
 
-    const startingState = defaultHarthmereLiveModeBackendStateV1(ACTOR, NOW_MS);
+    const startingState = defaultHarthmereLiveModeBackendState(ACTOR, NOW_MS);
     addOpenProductionBusiness(startingState, "business_branch_install");
     redisPrimary.store.set(
-      harthmereLiveModePlayerStateKeyV1(ACTOR),
+      harthmereLiveModePlayerStateKey(ACTOR),
       JSON.stringify(startingState)
     );
 
@@ -1262,10 +1266,10 @@ describe("live_mode API Redis persistence", () => {
       businessId: "business_branch_install",
       outpostId: "outpost_restaurant_redpot",
     };
-    const mutationPlan = buildHarthmereLiveModePersistenceMutationPlanV1(env);
+    const mutationPlan = buildHarthmereLiveModePersistenceMutationPlan(env);
     const response = {
       ok: true,
-      version: "HARTHMERE_LIVE_MODE_SERVER_ROUTE_V1" as const,
+      version: "HARTHMERE_LIVE_MODE_SERVER_ROUTE" as const,
       actorId: ACTOR,
       duplicate: false,
       replayed: false,
@@ -1278,7 +1282,7 @@ describe("live_mode API Redis persistence", () => {
       },
       mutationPlan,
       events: [
-        createHarthmereLiveModeEventV1({
+        createHarthmereLiveModeEvent({
           kind: "audit_log_appended",
           envelope: env,
         }),
@@ -1287,7 +1291,7 @@ describe("live_mode API Redis persistence", () => {
     };
     const publishedEvents: unknown[] = [];
     const publishedBatchSizes: number[] = [];
-    const persisted = await persistHarthmereLiveModeResponseV1(env, response, {
+    const persisted = await persistHarthmereLiveModeResponse(env, response, {
       logicApi: {
         publish: async (...events: unknown[]) => {
           publishedBatchSizes.push(events.length);
@@ -1323,7 +1327,7 @@ describe("live_mode API Redis persistence", () => {
     assert.ok(
       publishedBatchSizes.every(
         (size) =>
-          size <= HARTHMERE_BUILDING_MATERIALIZATION_ECS_PUBLISH_CHUNK_SIZE_V1
+          size <= HARTHMERE_BUILDING_MATERIALIZATION_ECS_PUBLISH_CHUNK_SIZE
       )
     );
     assert.ok(

@@ -8,7 +8,7 @@ const GAMEPLAY_MOVEMENT_FOCUS_KEY_CODES = new Set([
   "ShiftRight",
 ]);
 
-export function shouldFocusAndLockForGameplayMovementKeyV1(input: {
+export function shouldFocusAndLockForGameplayMovementKey(input: {
   code: string;
   modalKind: string;
   inInputElement: boolean;

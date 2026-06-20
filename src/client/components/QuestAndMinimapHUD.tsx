@@ -2,14 +2,14 @@ import { MiniMapHUD } from "@/client/components/MiniMapHUD";
 import { RulesetToggleable } from "@/client/components/RulsetToggleable";
 import { BiomesUIMount } from "@/client/components/biomes_ui/BiomesUIMount";
 import { useBiomesUIReplaceLegacyFlag } from "@/client/components/biomes_ui/BiomesUIFlags";
-import { useBiomesHUDVisibilitySnapshotV1 } from "@/client/components/biomes_ui/hudVisibilitySettings";
+import { useBiomesHUDVisibilitySnapshot } from "@/client/components/biomes_ui/hudVisibilitySettings";
 import { HarthmereUnifiedHUD } from "@/client/components/challenges/HarthmereUnifiedHUD";
 import { QuestsHUD } from "@/client/components/challenges/QuestsHUD";
 import React from "react";
 
 export const QuestsAndMiniMapHUD: React.FunctionComponent<{}> = ({}) => {
   const replaceLegacy = useBiomesUIReplaceLegacyFlag();
-  const hudVisibility = useBiomesHUDVisibilitySnapshotV1();
+  const hudVisibility = useBiomesHUDVisibilitySnapshot();
 
   if (process.env.NODE_ENV !== "production") {
     return (

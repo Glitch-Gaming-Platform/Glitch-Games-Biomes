@@ -1,37 +1,37 @@
-// HARTHMERE_GLITCH_BEHAVIOR_EVENTS_V138
+// HARTHMERE_GLITCH_BEHAVIOR_EVENTS
 // Small client-only event bus for Glitch behavioral funnel telemetry.
 // The network sender lives in harthmere_glitch_bridge.ts so this helper can be
 // imported safely by UI/onboarding components without pulling in the full bridge.
 
-export const HARTHMERE_GLITCH_BEHAVIOR_EVENT_VERSION_V138 =
-  "harthmere-glitch-behavior-events-v138" as const;
+export const HARTHMERE_GLITCH_BEHAVIOR_EVENT_VERSION =
+  "harthmere-glitch-behavior-events" as const;
 
-export const HARTHMERE_GLITCH_BEHAVIOR_EVENT_NAME_V138 =
-  "biomes:harthmere-glitch-behavior-event-v138" as const;
+export const HARTHMERE_GLITCH_BEHAVIOR_EVENT_NAME =
+  "biomes:harthmere-glitch-behavior-event" as const;
 
-export type HarthmereGlitchBehaviorMetadataV138 = Record<string, unknown>;
+export type HarthmereGlitchBehaviorMetadata = Record<string, unknown>;
 
 declare global {
   interface Window {
-    __harthmereGlitchBehaviorBacklogV138?: HarthmereGlitchBehaviorEventV138[];
+    __harthmereGlitchBehaviorBacklog?: HarthmereGlitchBehaviorEvent[];
   }
 }
 
-export interface HarthmereGlitchBehaviorEventV138 {
-  version: typeof HARTHMERE_GLITCH_BEHAVIOR_EVENT_VERSION_V138;
+export interface HarthmereGlitchBehaviorEvent {
+  version: typeof HARTHMERE_GLITCH_BEHAVIOR_EVENT_VERSION;
   step_key: string;
   action_key: string;
-  metadata?: HarthmereGlitchBehaviorMetadataV138;
+  metadata?: HarthmereGlitchBehaviorMetadata;
   event_timestamp: string;
 }
 
-function isBrowserV138() {
+function isBrowser() {
   return (
     typeof window !== "undefined" && typeof window.dispatchEvent === "function"
   );
 }
 
-function cleanKeyV138(value: string | undefined, fallback: string) {
+function cleanKey(value: string | undefined, fallback: string) {
   const cleaned = (value ?? "")
     .trim()
     .toLowerCase()
@@ -41,15 +41,15 @@ function cleanKeyV138(value: string | undefined, fallback: string) {
   return cleaned || fallback;
 }
 
-function cleanMetadataV138(
-  metadata: HarthmereGlitchBehaviorMetadataV138 | undefined
-): HarthmereGlitchBehaviorMetadataV138 | undefined {
+function cleanMetadata(
+  metadata: HarthmereGlitchBehaviorMetadata | undefined
+): HarthmereGlitchBehaviorMetadata | undefined {
   if (!metadata || typeof metadata !== "object") {
     return undefined;
   }
-  const cleaned: HarthmereGlitchBehaviorMetadataV138 = {};
+  const cleaned: HarthmereGlitchBehaviorMetadata = {};
   for (const [key, value] of Object.entries(metadata).slice(0, 24)) {
-    const safeKey = cleanKeyV138(key, "field");
+    const safeKey = cleanKey(key, "field");
     if (value === undefined || typeof value === "function") {
       continue;
     }
@@ -83,40 +83,40 @@ function cleanMetadataV138(
   return Object.keys(cleaned).length ? cleaned : undefined;
 }
 
-export function makeHarthmereGlitchBehaviorEventV138(
+export function makeHarthmereGlitchBehaviorEvent(
   stepKey: string,
   actionKey = "event",
-  metadata?: HarthmereGlitchBehaviorMetadataV138
-): HarthmereGlitchBehaviorEventV138 {
+  metadata?: HarthmereGlitchBehaviorMetadata
+): HarthmereGlitchBehaviorEvent {
   return {
-    version: HARTHMERE_GLITCH_BEHAVIOR_EVENT_VERSION_V138,
-    step_key: cleanKeyV138(stepKey, "unknown_step"),
-    action_key: cleanKeyV138(actionKey, "event"),
-    metadata: cleanMetadataV138(metadata),
+    version: HARTHMERE_GLITCH_BEHAVIOR_EVENT_VERSION,
+    step_key: cleanKey(stepKey, "unknown_step"),
+    action_key: cleanKey(actionKey, "event"),
+    metadata: cleanMetadata(metadata),
     event_timestamp: new Date().toISOString(),
   };
 }
 
-export function emitHarthmereGlitchBehaviorEventV138(
+export function emitHarthmereGlitchBehaviorEvent(
   stepKey: string,
   actionKey = "event",
-  metadata?: HarthmereGlitchBehaviorMetadataV138
-): HarthmereGlitchBehaviorEventV138 | undefined {
-  const event = makeHarthmereGlitchBehaviorEventV138(
+  metadata?: HarthmereGlitchBehaviorMetadata
+): HarthmereGlitchBehaviorEvent | undefined {
+  const event = makeHarthmereGlitchBehaviorEvent(
     stepKey,
     actionKey,
     metadata
   );
-  if (!isBrowserV138()) {
+  if (!isBrowser()) {
     return event;
   }
   try {
-    window.__harthmereGlitchBehaviorBacklogV138 = [
-      ...(window.__harthmereGlitchBehaviorBacklogV138 ?? []),
+    window.__harthmereGlitchBehaviorBacklog = [
+      ...(window.__harthmereGlitchBehaviorBacklog ?? []),
       event,
     ].slice(-100);
     window.dispatchEvent(
-      new CustomEvent(HARTHMERE_GLITCH_BEHAVIOR_EVENT_NAME_V138, {
+      new CustomEvent(HARTHMERE_GLITCH_BEHAVIOR_EVENT_NAME, {
         detail: event,
       })
     );

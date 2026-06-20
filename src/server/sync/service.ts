@@ -47,7 +47,7 @@ import { decodeVersionMap, zEncodedVersionMap } from "@/shared/ecs/version";
 import type { WrappedEvent } from "@/shared/ecs/zod";
 import { WrappedChange } from "@/shared/ecs/zod";
 import { reportFunnelStage } from "@/shared/funnel";
-import { fallbackWorldMetadataV1 } from "@/shared/game/ecs_resources";
+import { fallbackWorldMetadata } from "@/shared/game/ecs_resources";
 import type { BiomesId } from "@/shared/ids";
 import { log } from "@/shared/logging";
 import { growAABB } from "@/shared/math/linear";
@@ -494,7 +494,7 @@ export class SyncService
                   id: WorldMetadataId,
                   world_metadata:
                     materializedMetadata?.world_metadata ??
-                    fallbackWorldMetadataV1(),
+                    fallbackWorldMetadata(),
                   synthetic_stats: SyntheticStats.create({
                     online_players: lastSentPlayers,
                   }),

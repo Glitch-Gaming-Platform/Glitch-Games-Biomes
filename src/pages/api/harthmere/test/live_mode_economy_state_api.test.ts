@@ -1,21 +1,21 @@
 import assert from "assert";
-import { readHarthmereLiveModeEconomyStateForActorV1 } from "../live_mode_economy_state";
+import { readHarthmereLiveModeEconomyStateForActor } from "../live_mode_economy_state";
 import {
-  createHarthmereLiveModeSharedWorldStateV1,
-  defaultHarthmereLiveModeBackendStateV1,
-  harthmereLiveModePlayerStateKeyV1,
-  harthmereLiveModeSharedWorldStateKeyV1,
-} from "@/shared/harthmere/live_mode_backend_v1";
-import { HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS_V1 } from "@/shared/harthmere/business_customer_simulator_v1";
-import { HARTHMERE_ECONOMY_BUSINESS_TYPES_V1 } from "@/shared/harthmere/mmo_economy_authority_v1";
+  createHarthmereLiveModeSharedWorldState,
+  defaultHarthmereLiveModeBackendState,
+  harthmereLiveModePlayerStateKey,
+  harthmereLiveModeSharedWorldStateKey,
+} from "@/shared/harthmere/live_mode_backend";
+import { HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS } from "@/shared/harthmere/business_customer_simulator";
+import { HARTHMERE_ECONOMY_BUSINESS_TYPES } from "@/shared/harthmere/mmo_economy_authority";
 
 const ACTOR = "player_api_economy_001";
 const NOW_MS = 1_700_300_000_000;
 
 describe("live_mode_economy_state API route integration", () => {
   it("reads Redis state and returns the production economy snapshot", async () => {
-    const backend = defaultHarthmereLiveModeBackendStateV1(ACTOR, NOW_MS);
-    const businessType = HARTHMERE_ECONOMY_BUSINESS_TYPES_V1.general_trader;
+    const backend = defaultHarthmereLiveModeBackendState(ACTOR, NOW_MS);
+    const businessType = HARTHMERE_ECONOMY_BUSINESS_TYPES.general_trader;
     backend.economy.production.businesses.api_shop = {
       businessId: "api_shop",
       ownerKind: "player",
@@ -53,29 +53,29 @@ describe("live_mode_economy_state API route integration", () => {
       primary: {
         get: async (key: string) => {
           calls.push(key);
-          return key === harthmereLiveModePlayerStateKeyV1(ACTOR)
+          return key === harthmereLiveModePlayerStateKey(ACTOR)
             ? JSON.stringify(backend)
             : null;
         },
       },
     };
 
-    const snapshot = await readHarthmereLiveModeEconomyStateForActorV1({
+    const snapshot = await readHarthmereLiveModeEconomyStateForActor({
       redis,
       actorId: ACTOR,
       nowMs: NOW_MS,
     });
 
     assert.deepEqual(calls, [
-      harthmereLiveModePlayerStateKeyV1(ACTOR),
-      harthmereLiveModeSharedWorldStateKeyV1(),
+      harthmereLiveModePlayerStateKey(ACTOR),
+      harthmereLiveModeSharedWorldStateKey(),
     ]);
     assert.equal(snapshot.actorId, ACTOR);
     assert.equal(snapshot.businesses.api_shop?.businessId, "api_shop");
   });
 
   it("uses one Redis MGET for actor and shared economy state when available", async () => {
-    const backend = defaultHarthmereLiveModeBackendStateV1(ACTOR, NOW_MS);
+    const backend = defaultHarthmereLiveModeBackendState(ACTOR, NOW_MS);
     const mgetCalls: string[][] = [];
     const getCalls: string[] = [];
     const redis = {
@@ -87,7 +87,7 @@ describe("live_mode_economy_state API route integration", () => {
         mget: async (...keys: string[]) => {
           mgetCalls.push(keys);
           return keys.map((key) =>
-            key === harthmereLiveModePlayerStateKeyV1(ACTOR)
+            key === harthmereLiveModePlayerStateKey(ACTOR)
               ? JSON.stringify(backend)
               : null
           );
@@ -95,28 +95,28 @@ describe("live_mode_economy_state API route integration", () => {
       },
     };
 
-    const snapshot = await readHarthmereLiveModeEconomyStateForActorV1({
+    const snapshot = await readHarthmereLiveModeEconomyStateForActor({
       redis,
       actorId: ACTOR,
       nowMs: NOW_MS,
     });
 
     assert.deepEqual(mgetCalls, [[
-      harthmereLiveModePlayerStateKeyV1(ACTOR),
-      harthmereLiveModeSharedWorldStateKeyV1(),
+      harthmereLiveModePlayerStateKey(ACTOR),
+      harthmereLiveModeSharedWorldStateKey(),
     ]]);
     assert.deepEqual(getCalls, []);
     assert.equal(snapshot.actorId, ACTOR);
   });
 
   it("omits server-only outpost voxel edits from the client economy snapshot", async () => {
-    const sharedBackend = defaultHarthmereLiveModeBackendStateV1(
+    const sharedBackend = defaultHarthmereLiveModeBackendState(
       "shared_economy",
       NOW_MS
     );
     const bulkyRecord = JSON.parse(
       JSON.stringify(
-        HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS_V1.outpost_restaurant_redpot
+        HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS.outpost_restaurant_redpot
       )
     );
     bulkyRecord.outpostId = "bulky_api_redpot_payload_guard";
@@ -141,12 +141,12 @@ describe("live_mode_economy_state API route integration", () => {
     const redis = {
       primary: {
         get: async (key: string) => {
-          if (key === harthmereLiveModePlayerStateKeyV1(ACTOR)) {
+          if (key === harthmereLiveModePlayerStateKey(ACTOR)) {
             return null;
           }
-          if (key === harthmereLiveModeSharedWorldStateKeyV1()) {
+          if (key === harthmereLiveModeSharedWorldStateKey()) {
             return JSON.stringify(
-              createHarthmereLiveModeSharedWorldStateV1(sharedBackend, NOW_MS)
+              createHarthmereLiveModeSharedWorldState(sharedBackend, NOW_MS)
             );
           }
           return null;
@@ -154,7 +154,7 @@ describe("live_mode_economy_state API route integration", () => {
       },
     };
 
-    const snapshot = await readHarthmereLiveModeEconomyStateForActorV1({
+    const snapshot = await readHarthmereLiveModeEconomyStateForActor({
       redis,
       actorId: ACTOR,
       nowMs: NOW_MS,
@@ -176,13 +176,13 @@ describe("live_mode_economy_state API route integration", () => {
   });
 
   it("reports legacy outpost validation issues without throwing", async () => {
-    const sharedBackend = defaultHarthmereLiveModeBackendStateV1(
+    const sharedBackend = defaultHarthmereLiveModeBackendState(
       "shared_economy",
       NOW_MS
     );
     const legacyRecord = JSON.parse(
       JSON.stringify(
-        HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS_V1.outpost_restaurant_redpot
+        HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS.outpost_restaurant_redpot
       )
     );
     legacyRecord.outpostId = "legacy_api_redpot_without_validation_arrays";
@@ -197,12 +197,12 @@ describe("live_mode_economy_state API route integration", () => {
     const redis = {
       primary: {
         get: async (key: string) => {
-          if (key === harthmereLiveModePlayerStateKeyV1(ACTOR)) {
+          if (key === harthmereLiveModePlayerStateKey(ACTOR)) {
             return null;
           }
-          if (key === harthmereLiveModeSharedWorldStateKeyV1()) {
+          if (key === harthmereLiveModeSharedWorldStateKey()) {
             return JSON.stringify(
-              createHarthmereLiveModeSharedWorldStateV1(sharedBackend, NOW_MS)
+              createHarthmereLiveModeSharedWorldState(sharedBackend, NOW_MS)
             );
           }
           return null;
@@ -210,7 +210,7 @@ describe("live_mode_economy_state API route integration", () => {
       },
     };
 
-    const snapshot = await readHarthmereLiveModeEconomyStateForActorV1({
+    const snapshot = await readHarthmereLiveModeEconomyStateForActor({
       redis,
       actorId: ACTOR,
       nowMs: NOW_MS,

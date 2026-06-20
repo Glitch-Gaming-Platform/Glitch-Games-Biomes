@@ -7,8 +7,8 @@ import type { Cursor } from "@/client/game/resources/cursor";
 import {
   attackableEntitiesInAttackRegion,
   canAttackFilter,
-  shouldAddCrosshairMeleeTargetV1,
-  traceNpcMetadataCursorHitsV1,
+  shouldAddCrosshairMeleeTarget,
+  traceNpcMetadataCursorHits,
 } from "@/client/game/resources/melee_attack_region";
 import type { ClientResources } from "@/client/game/resources/types";
 import type { Script } from "@/client/game/scripts/script_controller";
@@ -52,13 +52,13 @@ export class CursorScript implements Script {
       maxDistance,
       entityFilter: cursorEntityFilter,
     });
-    // HARTHMERE_NPC_METADATA_CURSOR_ATTACK_V1:
+    // HARTHMERE_NPC_METADATA_CURSOR_ATTACK:
     // Rendering can see NPCs through NpcMetadataSelector, while the generic
     // cursor ray only sees CollideableSelector entities. Snapshot/live Harthmere
     // creatures can therefore draw a body and still be invisible to attacks if
     // their ECS record lacks `collideable`. Add an attack-oriented metadata ray
     // pass so visible muckers/hexes/animals/NPCs with position+size can be hit.
-    const npcMetadataEntityHits = traceNpcMetadataCursorHitsV1(
+    const npcMetadataEntityHits = traceNpcMetadataCursorHits(
       this.table,
       source,
       direction,
@@ -155,7 +155,7 @@ export class CursorScript implements Script {
       player.id
     );
 
-    // HARTHMERE_VOXEL_REACH_ATTACK_V1:
+    // HARTHMERE_VOXEL_REACH_ATTACK:
     // The native melee cone (combat.meleeAttackRegion.far = 3.5) is far shorter
     // than the world-interaction voxel break/change reach
     // (building.changeRadius = 8.78). Because a left click is shared between
@@ -181,7 +181,7 @@ export class CursorScript implements Script {
       );
       const canAttack = canAttackFilter(ruleSet, aclAllowsPlayers, me, target);
       if (
-        shouldAddCrosshairMeleeTargetV1({
+        shouldAddCrosshairMeleeTarget({
           hasEntityHit: true,
           distance: entityHit.distance,
           reach,

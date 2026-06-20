@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 
 export const HARTHMERE_TRADE_AUCTION_SYSTEM_VERSION = 1;
 export const HARTHMERE_TRADE_AUCTION_LOCAL_STORAGE_KEY =
-  "biomes.localDev.harthmere.tradeAuctionState.v1";
+  "biomes.localDev.harthmere.tradeAuctionState";
 export const HARTHMERE_TRADE_AUCTION_CHANGED_EVENT =
   "biomes:harthmere-trade-auction-changed";
 

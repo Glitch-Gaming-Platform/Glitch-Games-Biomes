@@ -1,4 +1,4 @@
-import { FarmingGrowthPlantTicker } from "@/server/gaia_v2/simulations/farming/plant_growth_ticker";
+import { FarmingGrowthPlantTicker } from "@/server/gaia/simulations/farming/plant_growth_ticker";
 import { harvestPlantEventHandler } from "@/server/logic/events/handlers/farming";
 import { BikkieIds } from "@/shared/bikkie/ids";
 import { HarvestPlantEvent } from "@/shared/ecs/gen/events";

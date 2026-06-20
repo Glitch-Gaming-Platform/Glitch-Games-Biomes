@@ -17,7 +17,7 @@ import { makeDisposable } from "@/shared/disposable";
 import type { ItemAndCount } from "@/shared/ecs/gen/types";
 import type { BiomesId } from "@/shared/ids";
 import { MAX_ID } from "@/shared/ids";
-import { harthmereGroundedFeetYWithMemoryV1 } from "@/client/game/util/harthmere_entity_grounding";
+import { harthmereGroundedFeetYWithMemory } from "@/client/game/util/harthmere_entity_grounding";
 import { add } from "@/shared/math/linear";
 import type { Vec3 } from "@/shared/math/types";
 import type { RegistryLoader } from "@/shared/registry";
@@ -37,19 +37,19 @@ export interface DropResource {
 
 // Per-column last-grounded surface memory shared across all drops, so a dropped
 // item that settled on the real surface stays put while its shard streams.
-const harthmereDropGroundedFeetYCacheV151 = new Map<string, number>();
+const harthmereDropGroundedFeetYCache = new Map<string, number>();
 
 function makeDrop({}: ClientContext, deps: ClientResourceDeps, id: BiomesId) {
   const drop = deps.get("/ecs/entity", id);
   ok(drop && drop.position && drop.loose_item);
   const rawPos: Vec3 = [...drop.position.v];
-  // HARTHMERE_GROUNDED_FEET_WITH_MEMORY_V151: rest dropped / quest items on the
+  // HARTHMERE_GROUNDED_FEET_WITH_MEMORY: rest dropped / quest items on the
   // real terrain surface using the SAME shared grounder every NPC/marker uses —
   // tri-state (defer while terrain streams) + keep-last-surface — so items are
   // always visible and never float or bury, including during shard streaming.
-  const groundedFeetY = harthmereGroundedFeetYWithMemoryV1(
+  const groundedFeetY = harthmereGroundedFeetYWithMemory(
     deps,
-    harthmereDropGroundedFeetYCacheV151,
+    harthmereDropGroundedFeetYCache,
     rawPos[0],
     rawPos[2],
     rawPos[1],

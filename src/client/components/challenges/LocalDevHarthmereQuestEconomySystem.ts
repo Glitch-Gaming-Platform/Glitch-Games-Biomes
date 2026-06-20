@@ -2,9 +2,9 @@ import { applyHarthmereReputationChange } from "@/client/components/challenges/L
 
 export const HARTHMERE_QUEST_ECONOMY_SYSTEM_VERSION = 1;
 export const HARTHMERE_QUEST_ECONOMY_STATE_KEY =
-  "biomes.localDev.harthmere.questEconomyState.v1";
+  "biomes.localDev.harthmere.questEconomyState";
 export const HARTHMERE_ECONOMY_STATE_KEY_FOR_QUESTS =
-  "biomes.localDev.harthmere.economyState.v1";
+  "biomes.localDev.harthmere.economyState";
 export const HARTHMERE_QUEST_ECONOMY_EVENT =
   "biomes:harthmere-quest-economy-changed";
 

@@ -1,7 +1,7 @@
 import type { QuestStepBundle } from "@/client/components/challenges/helpers";
 import {
-  playerVoiceContextForNpcChatV1,
-  questVoiceContextForStepBundleV1,
+  playerVoiceContextForNpcChat,
+  questVoiceContextForStepBundle,
   unslugNpcDescription,
 } from "@/client/components/challenges/helpers";
 import { ItemBagDisplay } from "@/client/components/challenges/QuestViews";
@@ -179,7 +179,7 @@ export const TalkToNpcQuestView: React.FunctionComponent<{
     : [];
   const activeQuestContext =
     stepBundle.questBundle.state === "in_progress" && !stepBundle.stepCompleted
-      ? questVoiceContextForStepBundleV1(stepBundle)
+      ? questVoiceContextForStepBundle(stepBundle)
       : undefined;
   const handleVoiceTranscript = useCallback(
     async (message: string) => {
@@ -192,7 +192,7 @@ export const TalkToNpcQuestView: React.FunctionComponent<{
             messageContext: voiceMessageContext.current,
             userResponse: message,
             questContext: activeQuestContext,
-            userContext: playerVoiceContextForNpcChatV1({
+            userContext: playerVoiceContextForNpcChat({
               reactResources,
               userId,
             }),

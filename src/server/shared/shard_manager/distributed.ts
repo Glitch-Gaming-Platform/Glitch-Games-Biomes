@@ -1,4 +1,4 @@
-import { LOGGED_SM_SHARD } from "@/server/gaia_v2/queue";
+import { LOGGED_SM_SHARD } from "@/server/gaia/queue";
 import type { ServiceDiscoveryApi } from "@/server/shared/discovery/api";
 import { generateNonce } from "@/server/shared/nonce";
 import type { ShardManagerDomain } from "@/server/shared/shard_manager/api";

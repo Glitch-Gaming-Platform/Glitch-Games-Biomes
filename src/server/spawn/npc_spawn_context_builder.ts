@@ -131,7 +131,7 @@ export class NpcSpawnContextBuilder {
     // edges.
     const WORLD_BOUNDS_SHRINK_AMOUNT = SHARD_DIM * 1.5;
     const npcSpawnBounds = growAABB(
-      [metadata.aabb.v0, metadata.aabb.v1],
+      [metadata.aabb, metadata.aabb],
       -WORLD_BOUNDS_SHRINK_AMOUNT
     );
     const terrainColumnInBounds = (x: TerrainColumn) => {

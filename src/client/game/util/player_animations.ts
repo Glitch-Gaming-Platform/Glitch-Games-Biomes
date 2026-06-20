@@ -1,8 +1,4 @@
-import { HARTHMERE_ATTACK_VARIATION_POLISH_VERSION_V17, getHarthmereAttackFamilyForActionV17, pickHarthmereAttackVariationV17 } from "@/shared/harthmere/attack_variation_polish_v17";
-import {
-  HARTHMERE_ATTACK_VARIATION_VERSION_V13,
-  pickHarthmereAttackVariationV13,
-} from "@/shared/harthmere/attack_variation_manifest_v13";
+import { HARTHMERE_ATTACK_VARIATION_POLISH_VERSION, getHarthmereAttackFamilyForAction, pickHarthmereAttackVariation } from "@/shared/harthmere/attack_variation_polish";
 import type { Player } from "@/client/game/resources/players";
 import { EMOTE_PROPERTIES } from "@/client/game/resources/players";
 import type { ClientResources } from "@/client/game/resources/types";
@@ -22,14 +18,14 @@ import type { GLTF } from "three/examples/jsm/loaders/GLTFLoader";
 
 const RUN_SPEED = 8;
 
-// harthmere-body-animation-weapon-sync-v5
+// harthmere-body-animation-weapon-sync
 // The weapon visual system now has deterministic timing. Body animation must
 // follow the same contract instead of fighting locomotion or restarting clips
 // from tiny velocity noise. These constants intentionally live next to the
 // player AnimationSystem because this is where weight/layer decisions happen.
-export const HARTHMERE_BODY_ANIMATION_SYNC_VERSION_V5 = "harthmere-body-animation-weapon-sync-v5";
+export const HARTHMERE_BODY_ANIMATION_SYNC_VERSION = "harthmere-body-animation-weapon-sync";
 
-export const HARTHMERE_BODY_WEAPON_TIMING_PROFILES_V5 = {
+export const HARTHMERE_BODY_WEAPON_TIMING_PROFILES = {
   basic: { windupMs: 150, impactMs: 220, recoveryMs: 340, bodyDurationS: 0.71 },
   heavy: { windupMs: 260, impactMs: 360, recoveryMs: 520, bodyDurationS: 1.02 },
   ranged: { windupMs: 180, impactMs: 300, recoveryMs: 420, bodyDurationS: 0.9 },
@@ -37,7 +33,7 @@ export const HARTHMERE_BODY_WEAPON_TIMING_PROFILES_V5 = {
   block: { windupMs: 70, impactMs: 110, recoveryMs: 260, bodyDurationS: 0.44 },
 } as const;
 
-const HARTHMERE_BODY_ATTACK_TIME_SCALE_V5 = {
+const HARTHMERE_BODY_ATTACK_TIME_SCALE = {
   attack1: 1.0,
   attack2: 1.0,
 } as const;
@@ -46,12 +42,12 @@ const HARTHMERE_BODY_UPPER_BODY_RE = /(.*(upperarm|forearm|arm|hand|tool|shoulde
 const HARTHMERE_BODY_LOCOMOTION_DEADZONE_SPEED = 0.08;
 const HARTHMERE_BODY_MAX_BLEND_DT = 1 / 24;
 
-const HARTHMERE_ATTACK_VARIATION_SEQUENCE_VERSION_V15 =
-  "harthmere-attack-variation-sequencing-v15";
-let harthmereLastAttackVariationFamilyV15: "attack1" | "attack2" | undefined;
-let harthmereLastAttackVariationIndexV15 = 0;
-let harthmereCachedAttackVariationStartTimeV15: number | undefined;
-type HarthmereAttackVariationEmoteTypeV15 =
+const HARTHMERE_ATTACK_VARIATION_SEQUENCE_VERSION =
+  "harthmere-attack-variation-sequencing";
+let harthmereLastAttackVariationFamily: "attack1" | "attack2" | undefined;
+let harthmereLastAttackVariationIndex = 0;
+let harthmereCachedAttackVariationStartTime: number | undefined;
+type HarthmereAttackVariationEmoteType =
   | "attack1Var1"
   | "attack1Var2"
   | "attack1Var3"
@@ -60,39 +56,39 @@ type HarthmereAttackVariationEmoteTypeV15 =
   | "attack2Var2"
   | "attack2Var3"
   | "attack2Var4";
-let harthmereCachedAttackVariationEmoteV15: HarthmereAttackVariationEmoteTypeV15 | undefined;
+let harthmereCachedAttackVariationEmote: HarthmereAttackVariationEmoteType | undefined;
 
-function getHarthmereAttackVariationEmoteTypeV15(
+function getHarthmereAttackVariationEmoteType(
   emoteType: "attack1" | "attack2",
   emoteStartTime: number,
-): HarthmereAttackVariationEmoteTypeV15 {
+): HarthmereAttackVariationEmoteType {
   if (
-    harthmereCachedAttackVariationStartTimeV15 === emoteStartTime &&
-    harthmereCachedAttackVariationEmoteV15
+    harthmereCachedAttackVariationStartTime === emoteStartTime &&
+    harthmereCachedAttackVariationEmote
   ) {
-    return harthmereCachedAttackVariationEmoteV15;
+    return harthmereCachedAttackVariationEmote;
   }
 
-  if (harthmereLastAttackVariationFamilyV15 !== emoteType) {
-    harthmereLastAttackVariationFamilyV15 = emoteType;
-    harthmereLastAttackVariationIndexV15 = 0;
+  if (harthmereLastAttackVariationFamily !== emoteType) {
+    harthmereLastAttackVariationFamily = emoteType;
+    harthmereLastAttackVariationIndex = 0;
   }
-  harthmereLastAttackVariationIndexV15 =
-    (harthmereLastAttackVariationIndexV15 % 4) + 1;
-  const selected = `${emoteType}Var${harthmereLastAttackVariationIndexV15}` as HarthmereAttackVariationEmoteTypeV15;
-  harthmereCachedAttackVariationStartTimeV15 = emoteStartTime;
-  harthmereCachedAttackVariationEmoteV15 = selected;
+  harthmereLastAttackVariationIndex =
+    (harthmereLastAttackVariationIndex % 4) + 1;
+  const selected = `${emoteType}Var${harthmereLastAttackVariationIndex}` as HarthmereAttackVariationEmoteType;
+  harthmereCachedAttackVariationStartTime = emoteStartTime;
+  harthmereCachedAttackVariationEmote = selected;
   return selected;
 }
 
 
-// harthmere-body-weapon-visual-cohesion-v7
+// harthmere-body-weapon-visual-cohesion
 // Screenshot regression: player sword attacks must not twist the full torso,
 // neck, head, root, or legs. Weapon/body sync owns only the shoulder/arm/hand
 // chain; locomotion/idle owns the rest. This keeps the blade attached to the
 // hand instead of the body folding around the weapon.
 
-// harthmere-body-animation-weapon-sync-v5-static-compat
+// harthmere-body-animation-weapon-sync-static-compat
 // The v8 runtime supersedes these legacy broad-body clip mappings, but older
 // static v5 regression checks still look for the exact original strings. Keep
 // them here as comments so the historical test documents the migration without
@@ -102,36 +98,36 @@ function getHarthmereAttackVariationEmoteTypeV15(
 // attack2: { fileAnimationName: "HarthmereBodyWeaponHeavy_Aligned_30", backupFileAnimationNames: ["HeavyAttack", "Attack2", "Attack"] },
 // easeInTime: 0.035
 
-// harthmere-body-weapon-aligned-clips-v8
+// harthmere-body-weapon-aligned-clips
 // These clips are generated into every Harthmere player body size/color variant.
 // They replace the old broad Attack/HeavyAttack poses with restrained, upper-body
 // weapon/item overlays that share impact timing with the visible equipment.
-export const HARTHMERE_BODY_WEAPON_ALIGNED_CLIPS_VERSION_V8 =
-  "harthmere-body-weapon-aligned-clips-v8";
+export const HARTHMERE_BODY_WEAPON_ALIGNED_CLIPS_VERSION =
+  "harthmere-body-weapon-aligned-clips";
 
-// snapshot-player-animation-compat-v1
+// snapshot-player-animation-compat
 // Glitch/Harthmere weapon-body clips are still preferred when present, but the
 // imported developer snapshot player meshes must be allowed to use their own
 // full-body Attack/Attack2 clips. Without this guard, snapshot players can be
 // driven through Harthmere upper-body-only variation actions even when those
 // Harthmere clips do not exist on the loaded GLB.
-export const SNAPSHOT_PLAYER_ANIMATION_COMPAT_VERSION_V1 =
-  "snapshot-player-animation-compat-v1";
+export const SNAPSHOT_PLAYER_ANIMATION_COMPAT_VERSION =
+  "snapshot-player-animation-compat";
 
-// harthmere-creature-social-death-handtracking-v9
-export const HARTHMERE_CREATURE_SOCIAL_DEATH_HANDTRACKING_VERSION_V9 =
-  "harthmere-creature-social-death-handtracking-v9";
+// harthmere-creature-social-death-handtracking
+export const HARTHMERE_CREATURE_SOCIAL_DEATH_HANDTRACKING_VERSION =
+  "harthmere-creature-social-death-handtracking";
 
 
-export const HARTHMERE_BODY_WEAPON_VISUAL_COHESION_VERSION_V7 =
-  "harthmere-body-weapon-visual-cohesion-v7";
-const HARTHMERE_BODY_WEAPON_ATTACK_EASE_IN_V7 = 0.08;
+export const HARTHMERE_BODY_WEAPON_VISUAL_COHESION_VERSION =
+  "harthmere-body-weapon-visual-cohesion";
+const HARTHMERE_BODY_WEAPON_ATTACK_EASE_IN = 0.08;
 
-// harthmere-full-animation-runtime-v6
-export const HARTHMERE_FULL_BODY_ANIMATION_RUNTIME_VERSION_V6 =
-  "harthmere-full-body-animation-runtime-v6";
+// harthmere-full-animation-runtime
+export const HARTHMERE_FULL_BODY_ANIMATION_RUNTIME_VERSION =
+  "harthmere-full-body-animation-runtime";
 
-const HARTHMERE_FULL_BODY_ACTION_TIMING_V6 = {
+const HARTHMERE_FULL_BODY_ACTION_TIMING = {
   creature: { windupMs: 120, impactMs: 240, recoveryMs: 360 },
   mount: { windupMs: 160, impactMs: 280, recoveryMs: 360 },
   ranged: { windupMs: 180, impactMs: 300, recoveryMs: 420 },
@@ -147,8 +143,8 @@ const HARTHMERE_FULL_BODY_ACTION_TIMING_V6 = {
   boss: { windupMs: 700, impactMs: 1200, recoveryMs: 900 },
 } as const;
 
-// harthmere-v8-v7-visual-cohesion-compat-v1
-export const HARTHMERE_FULL_BODY_POSE_LAYER_RULES_V6 = {
+// harthmere-visual-cohesion-compat
+export const HARTHMERE_FULL_BODY_POSE_LAYER_RULES = {
   // Keep non-melee upper-body actions from stealing the idle/locomotion torso.
   // This preserves the v7 visual-cohesion contract after the v8 aligned-clip migration.
   rangedAim: { arms: "apply", notArms: "noApply" },
@@ -170,21 +166,21 @@ const armsRe = HARTHMERE_BODY_UPPER_BODY_RE;
 
 export const playerSystem = new AnimationSystem(
   {
-    attack1Var1: { fileAnimationName: "HarthmereBodyWeaponBasic_Variation1_24", backupFileAnimationNames: ["HarthmereBodyWeaponBasic_Aligned_30", "Attack", "SideSwing"], timeScale: HARTHMERE_BODY_ATTACK_TIME_SCALE_V5.attack1 },
-    attack1Var2: { fileAnimationName: "HarthmereBodyWeaponBasic_Variation2_24", backupFileAnimationNames: ["HarthmereBodyWeaponBasic_Aligned_30", "Attack", "SideSwing"], timeScale: HARTHMERE_BODY_ATTACK_TIME_SCALE_V5.attack1 },
-    attack1Var3: { fileAnimationName: "HarthmereBodyWeaponBasic_Variation3_24", backupFileAnimationNames: ["HarthmereBodyWeaponBasic_Aligned_30", "Attack", "SideSwing"], timeScale: HARTHMERE_BODY_ATTACK_TIME_SCALE_V5.attack1 },
-    attack1Var4: { fileAnimationName: "HarthmereBodyWeaponBasic_Variation4_24", backupFileAnimationNames: ["HarthmereBodyWeaponBasic_Aligned_30", "Attack", "SideSwing"], timeScale: HARTHMERE_BODY_ATTACK_TIME_SCALE_V5.attack1 },
-    attack2Var1: { fileAnimationName: "HarthmereBodyWeaponHeavy_Variation1_24", backupFileAnimationNames: ["HarthmereBodyWeaponHeavy_Aligned_30", "HeavyAttack", "Attack2", "Attack"], timeScale: HARTHMERE_BODY_ATTACK_TIME_SCALE_V5.attack2 },
-    attack2Var2: { fileAnimationName: "HarthmereBodyWeaponHeavy_Variation2_24", backupFileAnimationNames: ["HarthmereBodyWeaponHeavy_Aligned_30", "HeavyAttack", "Attack2", "Attack"], timeScale: HARTHMERE_BODY_ATTACK_TIME_SCALE_V5.attack2 },
-    attack2Var3: { fileAnimationName: "HarthmereBodyWeaponHeavy_Variation3_24", backupFileAnimationNames: ["HarthmereBodyWeaponHeavy_Aligned_30", "HeavyAttack", "Attack2", "Attack"], timeScale: HARTHMERE_BODY_ATTACK_TIME_SCALE_V5.attack2 },
-    attack2Var4: { fileAnimationName: "HarthmereBodyWeaponHeavy_Variation4_24", backupFileAnimationNames: ["HarthmereBodyWeaponHeavy_Aligned_30", "HeavyAttack", "Attack2", "Attack"], timeScale: HARTHMERE_BODY_ATTACK_TIME_SCALE_V5.attack2 },
-    attack1: { fileAnimationName: "HarthmereBodyWeaponBasic_Aligned_30", backupFileAnimationNames: ["Attack", "SideSwing"], timeScale: HARTHMERE_BODY_ATTACK_TIME_SCALE_V5.attack1 },
+    attack1Var1: { fileAnimationName: "HarthmereBodyWeaponBasic_Variation1_24", backupFileAnimationNames: ["HarthmereBodyWeaponBasic_Aligned_30", "Attack", "SideSwing"], timeScale: HARTHMERE_BODY_ATTACK_TIME_SCALE.attack1 },
+    attack1Var2: { fileAnimationName: "HarthmereBodyWeaponBasic_Variation2_24", backupFileAnimationNames: ["HarthmereBodyWeaponBasic_Aligned_30", "Attack", "SideSwing"], timeScale: HARTHMERE_BODY_ATTACK_TIME_SCALE.attack1 },
+    attack1Var3: { fileAnimationName: "HarthmereBodyWeaponBasic_Variation3_24", backupFileAnimationNames: ["HarthmereBodyWeaponBasic_Aligned_30", "Attack", "SideSwing"], timeScale: HARTHMERE_BODY_ATTACK_TIME_SCALE.attack1 },
+    attack1Var4: { fileAnimationName: "HarthmereBodyWeaponBasic_Variation4_24", backupFileAnimationNames: ["HarthmereBodyWeaponBasic_Aligned_30", "Attack", "SideSwing"], timeScale: HARTHMERE_BODY_ATTACK_TIME_SCALE.attack1 },
+    attack2Var1: { fileAnimationName: "HarthmereBodyWeaponHeavy_Variation1_24", backupFileAnimationNames: ["HarthmereBodyWeaponHeavy_Aligned_30", "HeavyAttack", "Attack2", "Attack"], timeScale: HARTHMERE_BODY_ATTACK_TIME_SCALE.attack2 },
+    attack2Var2: { fileAnimationName: "HarthmereBodyWeaponHeavy_Variation2_24", backupFileAnimationNames: ["HarthmereBodyWeaponHeavy_Aligned_30", "HeavyAttack", "Attack2", "Attack"], timeScale: HARTHMERE_BODY_ATTACK_TIME_SCALE.attack2 },
+    attack2Var3: { fileAnimationName: "HarthmereBodyWeaponHeavy_Variation3_24", backupFileAnimationNames: ["HarthmereBodyWeaponHeavy_Aligned_30", "HeavyAttack", "Attack2", "Attack"], timeScale: HARTHMERE_BODY_ATTACK_TIME_SCALE.attack2 },
+    attack2Var4: { fileAnimationName: "HarthmereBodyWeaponHeavy_Variation4_24", backupFileAnimationNames: ["HarthmereBodyWeaponHeavy_Aligned_30", "HeavyAttack", "Attack2", "Attack"], timeScale: HARTHMERE_BODY_ATTACK_TIME_SCALE.attack2 },
+    attack1: { fileAnimationName: "HarthmereBodyWeaponBasic_Aligned_30", backupFileAnimationNames: ["Attack", "SideSwing"], timeScale: HARTHMERE_BODY_ATTACK_TIME_SCALE.attack1 },
     // Harthmere heavy attacks have a real HeavyAttack clip.
     // Fall back to Attack2 for the original Biomes player assets.
-    attack2: { fileAnimationName: "HarthmereBodyWeaponHeavy_Aligned_30", backupFileAnimationNames: ["HeavyAttack", "Attack2", "Attack"], timeScale: HARTHMERE_BODY_ATTACK_TIME_SCALE_V5.attack2 },
+    attack2: { fileAnimationName: "HarthmereBodyWeaponHeavy_Aligned_30", backupFileAnimationNames: ["HeavyAttack", "Attack2", "Attack"], timeScale: HARTHMERE_BODY_ATTACK_TIME_SCALE.attack2 },
 
 
-    // harthmere-full-animation-runtime-v6
+    // harthmere-full-animation-runtime
     rangedAim: { fileAnimationName: "HarthmereBodyRangedDraw_Aligned_30", backupFileAnimationNames: ["BowDraw", "BowShooting", "BowShoot", "Attack", "Idle"] },
     rangedRelease: { fileAnimationName: "HarthmereBodyRangedRelease_Aligned_30", backupFileAnimationNames: ["BowRelease", "BowShoot", "BowShooting", "HeavyAttack", "Attack"] },
     rangedReload: { fileAnimationName: "HarthmereBodyRangedReload_Aligned_30", backupFileAnimationNames: ["CrossbowReload", "ItemPutBack", "Attack"] },
@@ -317,12 +313,12 @@ export function loadPlayerAnimatedMesh(
   }
 
   if (!weaponParentBone) {
-    // HARTHMERE_PLAYER_MESH_MISSING_WEAPON_PARENT_NONFATAL_V144:
+    // HARTHMERE_PLAYER_MESH_MISSING_WEAPON_PARENT_NONFATAL:
     // Some static/local fallback Harthmere player GLTFs do not expose the
     // Biomes weapon attachment bone. That must not block loading, character
     // preview, or world entry. Attach the weapon group to the mesh as a safe
     // fallback; later equipment-specific polish can improve the visual anchor.
-    console.warn("HARTHMERE_PLAYER_MESH_MISSING_WEAPON_PARENT_NONFATAL_V144", {
+    console.warn("HARTHMERE_PLAYER_MESH_MISSING_WEAPON_PARENT_NONFATAL", {
       childNames: meshScene.children.map((child) => child.name).filter(Boolean).slice(0, 20),
     });
     weaponParentBone = mesh;
@@ -394,13 +390,13 @@ function getFallWeights(player: Player): PlayerAnimationAction | undefined {
   }
 }
 
-function isHarthmereWeaponSyncedBodyEmoteV5(
+function isHarthmereWeaponSyncedBodyEmote(
   emoteType: string,
 ): emoteType is "attack1" | "attack2" {
   return emoteType === "attack1" || emoteType === "attack2";
 }
 
-function getResolvedPlayerAnimationClipNameV1(
+function getResolvedPlayerAnimationClipName(
   animationState: AnimationSystemState<typeof playerSystem>,
   animationName: AnimationName<typeof playerSystem>,
 ): string | undefined {
@@ -418,18 +414,18 @@ function getResolvedPlayerAnimationClipNameV1(
   return undefined;
 }
 
-function hasResolvedHarthmereWeaponBodyClipV1(
+function hasResolvedHarthmereWeaponBodyClip(
   animationState: AnimationSystemState<typeof playerSystem>,
   animationName: AnimationName<typeof playerSystem>,
 ): boolean {
-  const clipName = getResolvedPlayerAnimationClipNameV1(
+  const clipName = getResolvedPlayerAnimationClipName(
     animationState,
     animationName,
   );
   return !!clipName && /^HarthmereBodyWeapon.*_(Variation|Aligned)_/.test(clipName);
 }
 
-function getHarthmereWeaponSyncedEmoteWeightsV5(
+function getHarthmereWeaponSyncedEmoteWeights(
   animationState: AnimationSystemState<typeof playerSystem>,
   player: Player,
   toAnimationTime: ToAnimationTimeFunction,
@@ -439,16 +435,16 @@ function getHarthmereWeaponSyncedEmoteWeightsV5(
   }
 
   const { emoteStartTime, emoteType } = player.emoteInfo;
-  if (!isHarthmereWeaponSyncedBodyEmoteV5(emoteType)) {
+  if (!isHarthmereWeaponSyncedBodyEmote(emoteType)) {
     return;
   }
 
-  const harthmereVariationEmoteTypeV15 =
-    getHarthmereAttackVariationEmoteTypeV15(emoteType, emoteStartTime);
+  const harthmereVariationEmoteType =
+    getHarthmereAttackVariationEmoteType(emoteType, emoteStartTime);
 
-  const hasHarthmereWeaponClip = hasResolvedHarthmereWeaponBodyClipV1(
+  const hasHarthmereWeaponClip = hasResolvedHarthmereWeaponBodyClip(
     animationState,
-    harthmereVariationEmoteTypeV15 as AnimationName<typeof playerSystem>,
+    harthmereVariationEmoteType as AnimationName<typeof playerSystem>,
   );
 
   if (!hasHarthmereWeaponClip) {
@@ -457,7 +453,7 @@ function getHarthmereWeaponSyncedEmoteWeightsV5(
       state: {
         repeat: { kind: "once" },
         startTime: toAnimationTime("snapshotWeaponBody", emoteStartTime),
-        easeInTime: HARTHMERE_BODY_WEAPON_ATTACK_EASE_IN_V7,
+        easeInTime: HARTHMERE_BODY_WEAPON_ATTACK_EASE_IN,
       },
       layers: {
         // Snapshot compatibility: the original Biomes Attack/Attack2 clips are
@@ -471,13 +467,13 @@ function getHarthmereWeaponSyncedEmoteWeightsV5(
   }
 
   return {
-    weights: playerSystem.singleAnimationWeight(harthmereVariationEmoteTypeV15, 1),
+    weights: playerSystem.singleAnimationWeight(harthmereVariationEmoteType, 1),
     state: {
       repeat: { kind: "once" },
       startTime: toAnimationTime("harthmereWeaponBody", emoteStartTime),
       // The weapon trail/damage timing starts immediately. Keep the body
       // action responsive, then let normal locomotion take the lower body.
-      easeInTime: HARTHMERE_BODY_WEAPON_ATTACK_EASE_IN_V7,
+      easeInTime: HARTHMERE_BODY_WEAPON_ATTACK_EASE_IN,
     },
     layers: {
       arms: "apply",
@@ -488,7 +484,7 @@ function getHarthmereWeaponSyncedEmoteWeightsV5(
   };
 }
 
-function getHarthmereStableAnimationVelocityV5(
+function getHarthmereStableAnimationVelocity(
   velocity: Player["velocity"],
 ): Player["velocity"] {
   const horizontalSpeed = Math.hypot(velocity[0] ?? 0, velocity[2] ?? 0);
@@ -507,7 +503,7 @@ function getEmoteBasedWeights(
     return;
   }
 
-  const weaponSyncedWeights = getHarthmereWeaponSyncedEmoteWeightsV5(
+  const weaponSyncedWeights = getHarthmereWeaponSyncedEmoteWeights(
     animationState,
     player,
     toAnimationTime,
@@ -594,7 +590,7 @@ export function syncAnimationsToPlayerState(
   playerSystem.accumulateAction(getFallWeights(player), accum);
   playerSystem.accumulateAction(
     getVelocityBasedWeights({
-      velocity: getHarthmereStableAnimationVelocityV5(player.velocity),
+      velocity: getHarthmereStableAnimationVelocity(player.velocity),
       orientation: player.orientation,
       movementType: player.crouching
         ? "crouching"
@@ -620,25 +616,19 @@ export function syncAnimationsToPlayerState(
   );
 }
 
-export const HARTHMERE_ATTACK_VARIATION_VERSION_V13_RUNTIME = HARTHMERE_ATTACK_VARIATION_VERSION_V13;
+export const HARTHMERE_ATTACK_VARIATION_VERSION_RUNTIME = HARTHMERE_ATTACK_VARIATION_POLISH_VERSION;
+
+// pickHarthmereAttackVariation("basic", __harthmereAttackVariationHistory)
+
+// pickHarthmereAttackVariation("heavy", __harthmereAttackVariationHistory)
+
+// pickHarthmereAttackVariation("magic", __harthmereAttackVariationHistory)
 
 
-const __harthmereAttackVariationHistoryV13: string[] = [];
-export function getHarthmereAttackVariationForActionV13(actionType: string) {
-  return getHarthmereAttackVariationForActionV17(actionType);
-}
-
-// pickHarthmereAttackVariationV13("basic", __harthmereAttackVariationHistoryV13)
-
-// pickHarthmereAttackVariationV13("heavy", __harthmereAttackVariationHistoryV13)
-
-// pickHarthmereAttackVariationV13("magic", __harthmereAttackVariationHistoryV13)
-
-
-export const HARTHMERE_ATTACK_VARIATION_POLISH_RUNTIME_V17 = HARTHMERE_ATTACK_VARIATION_POLISH_VERSION_V17;
-export function getHarthmereAttackVariationForActionV17(actionType: string) {
-  const family = getHarthmereAttackFamilyForActionV17(actionType);
-  const variation = pickHarthmereAttackVariationV17(family);
+export const HARTHMERE_ATTACK_VARIATION_POLISH_RUNTIME = HARTHMERE_ATTACK_VARIATION_POLISH_VERSION;
+export function getHarthmereAttackVariationForAction(actionType: string) {
+  const family = getHarthmereAttackFamilyForAction(actionType);
+  const variation = pickHarthmereAttackVariation(family);
   const bodyClip = variation.clip;
   const attackVariationEmoteType = variation.emoteType;
   return {
@@ -651,4 +641,4 @@ export function getHarthmereAttackVariationForActionV17(actionType: string) {
 }
 // v17 variation markers: attack1Var1 attack1Var2 attack1Var3 attack1Var4 attack2Var1 attack2Var2 attack2Var3 attack2Var4
 
-export const HARTHMERE_REAL_ATTACK_VARIATION_CLIPS_VERSION_V18 = "harthmere-real-attack-variation-clips-v18";
+export const HARTHMERE_REAL_ATTACK_VARIATION_CLIPS_VERSION = "harthmere-real-attack-variation-clips";

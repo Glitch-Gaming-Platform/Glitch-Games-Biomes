@@ -1,7 +1,7 @@
 
 import React from "react";
 
-export const HARTHMERE_QUEST_GUIDANCE_VERSION = "harthmere-quest-guidance-depth-v1";
+export const HARTHMERE_QUEST_GUIDANCE_VERSION = "harthmere-quest-guidance-depth";
 
 export type HarthmereQuestStatus = "unavailable" | "available" | "accepted" | "in_progress" | "objective_complete" | "ready_to_turn_in" | "completed" | "failed" | "abandoned" | "expired" | "locked" | "blocked" | "repeatable_available" | "repeatable_completed" | "paused";
 export type HarthmereQuestType = "main" | "side" | "faction" | "daily" | "weekly" | "profession" | "dungeon" | "raid" | "pvp" | "bounty";
@@ -112,7 +112,7 @@ export function getHarthmereQuestAnalyticsDebug(quest: HarthmereQuestGuidanceEnt
 }
 
 export const HarthmereQuestGuidancePanel: React.FunctionComponent<{}> = () => (
-  <div className="space-y-2 rounded-xl border border-white/10 bg-white/5 p-3 text-xs" data-harthmere-quest-guidance="v1">
+  <div className="space-y-2 rounded-xl border border-white/10 bg-white/5 p-3 text-xs" data-harthmere-quest-guidance="current">
     <div className="text-sm font-bold text-emerald-100">Quest Guidance</div>
     <div>Journal sections: {HARTHMERE_QUEST_JOURNAL_SECTIONS.length}</div>
     <div>Nearby: {getNearbyHarthmereQuestHelper(SAMPLE_HARTHMERE_QUEST_GUIDANCE).map((q) => q.label).join(" | ")}</div>

@@ -185,14 +185,14 @@ export function logHttpRequest(
 
 
 
-const GLITCH_LOCAL_BUCKET_ASSET_PROXY_V146 = "GLITCH_LOCAL_BUCKET_ASSET_PROXY_V146";
-const GLITCH_BUCKET_ASSET_REMOTE_FETCH_TIMEOUT_MS_V146 = 10_000;
+const GLITCH_LOCAL_BUCKET_ASSET_PROXY = "GLITCH_LOCAL_BUCKET_ASSET_PROXY";
+const GLITCH_BUCKET_ASSET_REMOTE_FETCH_TIMEOUT_MS = 10_000;
 const GLITCH_BUCKET_ASSET_PROXY_ALLOWED_BUCKETS = new Set([
   "biomes-static",
   "biomes-bikkie",
 ]);
 
-function shouldProxyLocalBucketAssetsV146() {
+function shouldProxyLocalBucketAssets() {
   return (
     process.env.GLITCH_RUNTIME === "1" ||
     process.env.GLITCH_LOCAL_ASSETS === "1" ||
@@ -202,14 +202,14 @@ function shouldProxyLocalBucketAssetsV146() {
   );
 }
 
-async function fetchGlitchBucketAssetWithTimeoutV146(
+async function fetchGlitchBucketAssetWithTimeout(
   url: string,
   init: RequestInit
 ) {
   const controller = new AbortController();
   const timeout = setTimeout(
     () => controller.abort(),
-    GLITCH_BUCKET_ASSET_REMOTE_FETCH_TIMEOUT_MS_V146
+    GLITCH_BUCKET_ASSET_REMOTE_FETCH_TIMEOUT_MS
   );
   try {
     return await fetch(url, { ...init, signal: controller.signal });
@@ -218,7 +218,7 @@ async function fetchGlitchBucketAssetWithTimeoutV146(
   }
 }
 
-function contentTypeForBucketAssetV146(pathname: string) {
+function contentTypeForBucketAsset(pathname: string) {
   switch (extname(pathname).toLowerCase()) {
     case ".avif":
       return "image/avif";
@@ -260,7 +260,7 @@ function contentTypeForBucketAssetV146(pathname: string) {
   }
 }
 
-function cacheControlForBucketAssetV146(pathname: string) {
+function cacheControlForBucketAsset(pathname: string) {
   if (/^assets\/[0-9a-f]{2}\/[0-9a-f]{40}$/i.test(pathname)) {
     return "public, max-age=31536000, immutable";
   }
@@ -270,16 +270,16 @@ function cacheControlForBucketAssetV146(pathname: string) {
   return "public, max-age=3600, must-revalidate";
 }
 
-async function contentTypeForLocalBucketAssetV151(
+async function contentTypeForLocalBucketAsset(
   pathname: string,
   candidate: string
 ) {
-  const explicit = contentTypeForBucketAssetV146(pathname);
+  const explicit = contentTypeForBucketAsset(pathname);
   if (explicit !== "application/octet-stream") {
     return explicit;
   }
 
-  // GLITCH_IFRAME_BUCKET_ASSET_HEADERS_V151:
+  // GLITCH_IFRAME_BUCKET_ASSET_HEADERS:
   // Most production bikkie mesh URLs are extensionless content hashes.  Direct
   // navigation downloads them, but GLTFLoader/XHR should still receive a useful
   // GLB type when the bytes are GLB.  Sniff only the tiny magic header.
@@ -304,7 +304,7 @@ async function contentTypeForLocalBucketAssetV151(
   return explicit;
 }
 
-function setBucketAssetCorsHeadersV151(res: ServerResponse) {
+function setBucketAssetCorsHeaders(res: ServerResponse) {
   // The game is embedded from www.glitch.fun while the runtime iframe is served
   // from the Azure Container App hostname.  Sandboxed/credentialless iframe and
   // GLTFLoader/XHR paths must be able to consume these binary assets regardless
@@ -322,7 +322,7 @@ function setBucketAssetCorsHeadersV151(res: ServerResponse) {
   res.setHeader("Accept-Ranges", "bytes");
 }
 
-function safeBucketObjectPathV146(rawPath: string) {
+function safeBucketObjectPath(rawPath: string) {
   let decodedPath: string;
   try {
     decodedPath = decodeURIComponent(rawPath);
@@ -340,7 +340,7 @@ function safeBucketObjectPathV146(rawPath: string) {
   return parts.join("/");
 }
 
-function remoteBucketBaseUrlV146(bucket: string) {
+function remoteBucketBaseUrl(bucket: string) {
   const envKey = `GLITCH_${bucket.toUpperCase().replace(/[^A-Z0-9]/g, "_")}_FALLBACK_BASE_URL`;
   const explicit = process.env[envKey] ?? process.env.GLITCH_BUCKET_FALLBACK_BASE_URL;
   if (explicit) {
@@ -355,20 +355,20 @@ function remoteBucketBaseUrlV146(bucket: string) {
   return undefined;
 }
 
-function encodedBucketObjectPathV146(pathname: string) {
+function encodedBucketObjectPath(pathname: string) {
   return pathname.split("/").map(encodeURIComponent).join("/");
 }
 
-const GLITCH_HASH_BUCKET_ASSET_PATH_V147 =
+const GLITCH_HASH_BUCKET_ASSET_PATH =
   /^assets\/[0-9a-f]{2}\/[0-9a-f]{40}(?:\.[a-z0-9]+)?$/i;
 
-function isSafeLocalPublicPathV147(publicRoot: string, candidate: string) {
+function isSafeLocalPublicPath(publicRoot: string, candidate: string) {
   const rel = relative(publicRoot, candidate);
   return rel === "" || (!!rel && !rel.startsWith("..") && !rel.startsWith("/"));
 }
 
-// localBucketAssetCandidatesV147 was upgraded in-place by v151.
-async function localBucketAssetCandidatesV151(
+// localBucketAssetCandidates was upgraded in-place by v151.
+async function localBucketAssetCandidates(
   publicRoot: string,
   bucket: string,
   objectPath: string
@@ -382,9 +382,9 @@ async function localBucketAssetCandidatesV151(
 
   if (
     bucket === "biomes-static" &&
-    GLITCH_HASH_BUCKET_ASSET_PATH_V147.test(objectPath)
+    GLITCH_HASH_BUCKET_ASSET_PATH.test(objectPath)
   ) {
-    // GLITCH_STATIC_TO_BIKKIE_BUCKET_ALIAS_V147:
+    // GLITCH_STATIC_TO_BIKKIE_BUCKET_ALIAS:
     // Bikkie binary attributes are emitted as /buckets/biomes-static/assets/...
     // in local/Glitch runtimes, but the snapshot build stores many of those exact
     // hash-addressed files under public/buckets/biomes-bikkie/assets/...
@@ -395,7 +395,7 @@ async function localBucketAssetCandidatesV151(
       source: "local:biomes-bikkie-exact-alias",
     });
 
-    // GLITCH_BUCKET_EXTENSIONLESS_VARIANTS_V151:
+    // GLITCH_BUCKET_EXTENSIONLESS_VARIANTS:
     // Some GLB/JSON/bin assets are referenced without file extensions while the
     // packaged file may include one, or vice versa.  Probe the same prefix folder
     // for exact-hash extension variants before remote fallback.
@@ -427,12 +427,12 @@ async function localBucketAssetCandidatesV151(
   return candidates;
 }
 
-async function tryServeGlitchLocalBucketAssetV146(
+async function tryServeGlitchLocalBucketAsset(
   req: IncomingMessage,
   res: ServerResponse,
   pathname: string
 ) {
-  if (!shouldProxyLocalBucketAssetsV146()) {
+  if (!shouldProxyLocalBucketAssets()) {
     return false;
   }
   const match = /^\/buckets\/([^/]+)\/(.+)$/.exec(pathname);
@@ -444,13 +444,13 @@ async function tryServeGlitchLocalBucketAssetV146(
   if (!GLITCH_BUCKET_ASSET_PROXY_ALLOWED_BUCKETS.has(bucket)) {
     return false;
   }
-  const objectPath = safeBucketObjectPathV146(match[2]);
+  const objectPath = safeBucketObjectPath(match[2]);
   if (!objectPath) {
     res.statusCode = 400;
     res.end("Invalid bucket asset path");
     return true;
   }
-  setBucketAssetCorsHeadersV151(res);
+  setBucketAssetCorsHeaders(res);
   if (req.method === "OPTIONS") {
     res.statusCode = 204;
     res.end();
@@ -464,14 +464,14 @@ async function tryServeGlitchLocalBucketAssetV146(
   }
 
   const publicRoot = resolve("./public");
-  const localCandidates = await localBucketAssetCandidatesV151(
+  const localCandidates = await localBucketAssetCandidates(
     publicRoot,
     bucket,
     objectPath
   );
 
   for (const candidate of localCandidates) {
-    if (!isSafeLocalPublicPathV147(publicRoot, candidate.path)) {
+    if (!isSafeLocalPublicPath(publicRoot, candidate.path)) {
       continue;
     }
     try {
@@ -482,11 +482,11 @@ async function tryServeGlitchLocalBucketAssetV146(
       res.statusCode = 200;
       res.setHeader(
         "Content-Type",
-        await contentTypeForLocalBucketAssetV151(objectPath, candidate.path)
+        await contentTypeForLocalBucketAsset(objectPath, candidate.path)
       );
       res.setHeader("Content-Length", String(fileStat.size));
-      res.setHeader("Cache-Control", cacheControlForBucketAssetV146(objectPath));
-      res.setHeader("X-Glitch-Bucket-Asset-Proxy", `${GLITCH_LOCAL_BUCKET_ASSET_PROXY_V146}; source=${candidate.source}`);
+      res.setHeader("Cache-Control", cacheControlForBucketAsset(objectPath));
+      res.setHeader("X-Glitch-Bucket-Asset-Proxy", `${GLITCH_LOCAL_BUCKET_ASSET_PROXY}; source=${candidate.source}`);
       res.setHeader("X-Glitch-Bucket-Asset-Path", `${bucket}/${objectPath}`);
       res.setHeader("X-Glitch-Bucket-Asset-Revision", process.env.K_REVISION || process.env.CONTAINER_APP_REVISION || "local");
       if (req.method === "HEAD") {
@@ -500,27 +500,27 @@ async function tryServeGlitchLocalBucketAssetV146(
     }
   }
 
-  const remoteBase = remoteBucketBaseUrlV146(bucket);
+  const remoteBase = remoteBucketBaseUrl(bucket);
   if (!remoteBase || process.env.GLITCH_DISABLE_REMOTE_BUCKET_FALLBACK === "1") {
     res.statusCode = 404;
-    setBucketAssetCorsHeadersV151(res);
+    setBucketAssetCorsHeaders(res);
     res.setHeader("Content-Type", "text/plain; charset=utf-8");
-    res.setHeader("X-Glitch-Bucket-Asset-Proxy", `${GLITCH_LOCAL_BUCKET_ASSET_PROXY_V146}; source=local-miss`);
+    res.setHeader("X-Glitch-Bucket-Asset-Proxy", `${GLITCH_LOCAL_BUCKET_ASSET_PROXY}; source=local-miss`);
     res.end(`Missing bucket asset: ${bucket}/${objectPath}`);
     return true;
   }
 
-  const remoteUrl = `${remoteBase}/${encodedBucketObjectPathV146(objectPath)}`;
+  const remoteUrl = `${remoteBase}/${encodedBucketObjectPath(objectPath)}`;
   try {
-    const upstream = await fetchGlitchBucketAssetWithTimeoutV146(remoteUrl, {
+    const upstream = await fetchGlitchBucketAssetWithTimeout(remoteUrl, {
       method: req.method === "HEAD" ? "HEAD" : "GET",
     });
     if (!upstream.ok) {
       res.statusCode = upstream.status;
-      setBucketAssetCorsHeadersV151(res);
+      setBucketAssetCorsHeaders(res);
       res.setHeader("Content-Type", "text/plain; charset=utf-8");
       res.setHeader("Cache-Control", "no-store");
-      res.setHeader("X-Glitch-Bucket-Asset-Proxy", `${GLITCH_LOCAL_BUCKET_ASSET_PROXY_V146}; source=remote-miss`);
+      res.setHeader("X-Glitch-Bucket-Asset-Proxy", `${GLITCH_LOCAL_BUCKET_ASSET_PROXY}; source=remote-miss`);
       res.end(`Missing bucket asset fallback: ${bucket}/${objectPath}`);
       log.warn("Glitch bucket asset fallback miss", {
         bucket,
@@ -531,14 +531,14 @@ async function tryServeGlitchLocalBucketAssetV146(
       return true;
     }
 
-    const contentType = upstream.headers.get("content-type") ?? contentTypeForBucketAssetV146(objectPath);
-    const cacheControl = upstream.headers.get("cache-control") ?? cacheControlForBucketAssetV146(objectPath);
+    const contentType = upstream.headers.get("content-type") ?? contentTypeForBucketAsset(objectPath);
+    const cacheControl = upstream.headers.get("cache-control") ?? cacheControlForBucketAsset(objectPath);
     const contentLength = upstream.headers.get("content-length");
     res.statusCode = 200;
-    setBucketAssetCorsHeadersV151(res);
+    setBucketAssetCorsHeaders(res);
     res.setHeader("Content-Type", contentType);
     res.setHeader("Cache-Control", cacheControl);
-    res.setHeader("X-Glitch-Bucket-Asset-Proxy", `${GLITCH_LOCAL_BUCKET_ASSET_PROXY_V146}; source=remote`);
+    res.setHeader("X-Glitch-Bucket-Asset-Proxy", `${GLITCH_LOCAL_BUCKET_ASSET_PROXY}; source=remote`);
     res.setHeader("X-Glitch-Bucket-Asset-Path", `${bucket}/${objectPath}`);
     res.setHeader("X-Glitch-Bucket-Asset-Revision", process.env.K_REVISION || process.env.CONTAINER_APP_REVISION || "local");
     if (contentLength) {
@@ -562,10 +562,10 @@ async function tryServeGlitchLocalBucketAssetV146(
       error,
     });
     res.statusCode = 502;
-    setBucketAssetCorsHeadersV151(res);
+    setBucketAssetCorsHeaders(res);
     res.setHeader("Content-Type", "text/plain; charset=utf-8");
     res.setHeader("Cache-Control", "no-store");
-    res.setHeader("X-Glitch-Bucket-Asset-Proxy", `${GLITCH_LOCAL_BUCKET_ASSET_PROXY_V146}; source=remote-error`);
+    res.setHeader("X-Glitch-Bucket-Asset-Proxy", `${GLITCH_LOCAL_BUCKET_ASSET_PROXY}; source=remote-error`);
     res.end(`Bucket asset fallback failed: ${bucket}/${objectPath}`);
     return true;
   }
@@ -624,7 +624,7 @@ export class ApiApp {
             void (async () => {
               if (
                 url.pathname &&
-                (await tryServeGlitchLocalBucketAssetV146(req, res, url.pathname))
+                (await tryServeGlitchLocalBucketAsset(req, res, url.pathname))
               ) {
                 return;
               }

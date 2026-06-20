@@ -2,11 +2,11 @@ import assert from "assert";
 import * as React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import {
-  BIOMES_HUD_VISIBILITY_OPTIONS_V1,
+  BIOMES_HUD_VISIBILITY_OPTIONS,
   biomesHUDVisibilitySnapshotWithDefaultsForTest,
   biomesHUDVisibilityStorageKeyForTest,
-  readBiomesHUDVisibilitySettingV1,
-  setBiomesHUDVisibilitySettingV1,
+  readBiomesHUDVisibilitySetting,
+  setBiomesHUDVisibilitySetting,
   shouldShowBiomesHUDElementForTest,
   toggledBiomesHUDVisibilitySnapshotForTest,
 } from "../hudVisibilitySettings";
@@ -62,7 +62,7 @@ function withMemoryLocalStorage(run: () => void) {
 describe("BiomesUI HUD visibility settings", () => {
   it("defaults every HUD visibility option on", () => {
     const snapshot = biomesHUDVisibilitySnapshotWithDefaultsForTest();
-    for (const option of BIOMES_HUD_VISIBILITY_OPTIONS_V1) {
+    for (const option of BIOMES_HUD_VISIBILITY_OPTIONS) {
       assert.equal(snapshot[option.id], true, `${option.id} should default on`);
       assert.equal(
         shouldShowBiomesHUDElementForTest(undefined, option.id),
@@ -73,12 +73,12 @@ describe("BiomesUI HUD visibility settings", () => {
 
   it("persists each visibility toggle through the typed storage schema", () => {
     withMemoryLocalStorage(() => {
-      for (const option of BIOMES_HUD_VISIBILITY_OPTIONS_V1) {
-        assert.equal(readBiomesHUDVisibilitySettingV1(option.id), true);
-        setBiomesHUDVisibilitySettingV1(option.id, false);
-        assert.equal(readBiomesHUDVisibilitySettingV1(option.id), false);
-        setBiomesHUDVisibilitySettingV1(option.id, true);
-        assert.equal(readBiomesHUDVisibilitySettingV1(option.id), true);
+      for (const option of BIOMES_HUD_VISIBILITY_OPTIONS) {
+        assert.equal(readBiomesHUDVisibilitySetting(option.id), true);
+        setBiomesHUDVisibilitySetting(option.id, false);
+        assert.equal(readBiomesHUDVisibilitySetting(option.id), false);
+        setBiomesHUDVisibilitySetting(option.id, true);
+        assert.equal(readBiomesHUDVisibilitySetting(option.id), true);
         assert.equal(
           zTypesafeLocalStorageSchema.shape[
             biomesHUDVisibilityStorageKeyForTest(option.id)
@@ -108,14 +108,14 @@ describe("BiomesUI HUD visibility settings", () => {
   });
 
   it("toggles individual HUD entries without changing the other defaults", () => {
-    for (const option of BIOMES_HUD_VISIBILITY_OPTIONS_V1) {
+    for (const option of BIOMES_HUD_VISIBILITY_OPTIONS) {
       const snapshot = toggledBiomesHUDVisibilitySnapshotForTest(
         undefined,
         option.id,
         false
       );
       assert.equal(snapshot[option.id], false);
-      for (const other of BIOMES_HUD_VISIBILITY_OPTIONS_V1) {
+      for (const other of BIOMES_HUD_VISIBILITY_OPTIONS) {
         if (other.id !== option.id) {
           assert.equal(snapshot[other.id], true);
         }
@@ -140,7 +140,7 @@ describe("BiomesUI HUD visibility settings", () => {
         shortcuts={DEFAULT_TAB_SHORTCUTS}
       />
     );
-    for (const option of BIOMES_HUD_VISIBILITY_OPTIONS_V1) {
+    for (const option of BIOMES_HUD_VISIBILITY_OPTIONS) {
       assert.ok(html.includes(`data-biomes-hud-setting-id="${option.id}"`));
       assert.ok(html.includes(option.label));
     }

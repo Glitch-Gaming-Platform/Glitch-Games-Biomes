@@ -8,27 +8,27 @@ import { log } from "@/shared/logging";
 import { jsonPost } from "@/shared/util/fetch_helpers";
 import React from "react";
 
-const RECENTLY_PLAYED_VOICE_LINES_V1 = new Map<string, number>();
-export const RECENT_VOICE_LINE_TTL_MS_FOR_TEST_V1 = 5 * 60_000;
+const RECENTLY_PLAYED_VOICE_LINES = new Map<string, number>();
+export const RECENT_VOICE_LINE_TTL_MS_FOR_TEST = 5 * 60_000;
 
-function shouldSuppressRecentVoiceLineV1(key: string, now = Date.now()) {
-  for (const [playedKey, playedAt] of RECENTLY_PLAYED_VOICE_LINES_V1) {
-    if (now - playedAt > RECENT_VOICE_LINE_TTL_MS_FOR_TEST_V1) {
-      RECENTLY_PLAYED_VOICE_LINES_V1.delete(playedKey);
+function shouldSuppressRecentVoiceLine(key: string, now = Date.now()) {
+  for (const [playedKey, playedAt] of RECENTLY_PLAYED_VOICE_LINES) {
+    if (now - playedAt > RECENT_VOICE_LINE_TTL_MS_FOR_TEST) {
+      RECENTLY_PLAYED_VOICE_LINES.delete(playedKey);
     }
   }
-  const lastPlayedAt = RECENTLY_PLAYED_VOICE_LINES_V1.get(key);
+  const lastPlayedAt = RECENTLY_PLAYED_VOICE_LINES.get(key);
   if (
     lastPlayedAt !== undefined &&
-    now - lastPlayedAt <= RECENT_VOICE_LINE_TTL_MS_FOR_TEST_V1
+    now - lastPlayedAt <= RECENT_VOICE_LINE_TTL_MS_FOR_TEST
   ) {
     return true;
   }
-  RECENTLY_PLAYED_VOICE_LINES_V1.set(key, now);
+  RECENTLY_PLAYED_VOICE_LINES.set(key, now);
   return false;
 }
 
-export function voiceLineSuppressionKeyForTestV1(input: {
+export function voiceLineSuppressionKeyForTest(input: {
   text: string;
   voice: string;
   language?: string;
@@ -38,15 +38,15 @@ export function voiceLineSuppressionKeyForTestV1(input: {
     .replace(/\s+/g, " ")}`;
 }
 
-export function shouldPlayVoiceLineForTestV1(key: string, now = Date.now()) {
-  return !shouldSuppressRecentVoiceLineV1(key, now);
+export function shouldPlayVoiceLineForTest(key: string, now = Date.now()) {
+  return !shouldSuppressRecentVoiceLine(key, now);
 }
 
-export function clearRecentVoiceLinesForTestV1() {
-  RECENTLY_PLAYED_VOICE_LINES_V1.clear();
+export function clearRecentVoiceLinesForTest() {
+  RECENTLY_PLAYED_VOICE_LINES.clear();
 }
 
-export function clearVoiceChatAudioElementForTestV1(
+export function clearVoiceChatAudioElementForTest(
   audio: HTMLAudioElement | null | undefined
 ) {
   if (!audio) {
@@ -57,7 +57,7 @@ export function clearVoiceChatAudioElementForTestV1(
   audio.load();
 }
 
-export function shouldRequestVoiceChatAudioForTestV1(input: {
+export function shouldRequestVoiceChatAudioForTest(input: {
   npcSpeechEnabled: boolean;
   text?: string;
   voice?: string;
@@ -67,7 +67,7 @@ export function shouldRequestVoiceChatAudioForTestV1(input: {
   );
 }
 
-export function shouldApplyVoiceChatAudioResultForTestV1(input: {
+export function shouldApplyVoiceChatAudioResultForTest(input: {
   cancelled: boolean;
   requestText: string;
   latestText?: string;
@@ -111,10 +111,10 @@ export const VoiceChat: React.FunctionComponent<{
     }
     const controller = new AbortController();
     let cancelled = false;
-    clearVoiceChatAudioElementForTestV1(audio);
+    clearVoiceChatAudioElementForTest(audio);
 
     if (
-      !shouldRequestVoiceChatAudioForTestV1({
+      !shouldRequestVoiceChatAudioForTest({
         npcSpeechEnabled,
         text,
         voice,
@@ -125,14 +125,14 @@ export const VoiceChat: React.FunctionComponent<{
     }
     const requestText = text ?? "";
     const requestVoice = voice ?? "";
-    const lineKey = voiceLineSuppressionKeyForTestV1({
+    const lineKey = voiceLineSuppressionKeyForTest({
       text: requestText,
       voice: requestVoice,
       language,
     });
     const requestKey = `${playbackKey ?? ""}|${lineKey}`;
     latestRequestKey.current = requestKey;
-    if (shouldSuppressRecentVoiceLineV1(lineKey)) {
+    if (shouldSuppressRecentVoiceLine(lineKey)) {
       latestRequestKey.current = "";
       return;
     }
@@ -152,7 +152,7 @@ export const VoiceChat: React.FunctionComponent<{
           return;
         }
         if (
-          shouldApplyVoiceChatAudioResultForTestV1({
+          shouldApplyVoiceChatAudioResultForTest({
             cancelled,
             requestText,
             latestText: latestText.current,
@@ -178,7 +178,7 @@ export const VoiceChat: React.FunctionComponent<{
         log.warn("Voice chat audio unavailable; continuing with text only", {
           error,
         });
-        clearVoiceChatAudioElementForTestV1(audio);
+        clearVoiceChatAudioElementForTest(audio);
       }
     })();
 
@@ -188,7 +188,7 @@ export const VoiceChat: React.FunctionComponent<{
       if (latestRequestKey.current === requestKey) {
         latestRequestKey.current = "";
       }
-      clearVoiceChatAudioElementForTestV1(audio);
+      clearVoiceChatAudioElementForTest(audio);
     };
   }, [text, voice, language, playbackKey, npcSpeechEnabled]);
 
@@ -196,7 +196,7 @@ export const VoiceChat: React.FunctionComponent<{
     <audio
       ref={audioRef}
       preload="auto"
-      onEnded={() => clearVoiceChatAudioElementForTestV1(audioRef.current)}
+      onEnded={() => clearVoiceChatAudioElementForTest(audioRef.current)}
     />
   );
 };

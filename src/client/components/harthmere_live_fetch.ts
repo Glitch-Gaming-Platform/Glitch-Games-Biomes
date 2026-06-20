@@ -1,7 +1,7 @@
-export const HARTHMERE_LIVE_READ_TIMEOUT_MS_V1 = 8_000;
-export const HARTHMERE_LIVE_MUTATION_TIMEOUT_MS_V1 = 15_000;
+export const HARTHMERE_LIVE_READ_TIMEOUT_MS = 8_000;
+export const HARTHMERE_LIVE_MUTATION_TIMEOUT_MS = 15_000;
 
-async function rawHarthmereLiveFetchWithTimeoutV1(
+async function rawHarthmereLiveFetchWithTimeout(
   fetchImpl: typeof fetch,
   input: RequestInfo | URL,
   init: RequestInit & { timeoutMs?: number } = {}
@@ -13,8 +13,8 @@ async function rawHarthmereLiveFetchWithTimeoutV1(
   const timeoutMs =
     requestedTimeoutMs ??
     (String(requestInit.method ?? "GET").toUpperCase() === "POST"
-      ? HARTHMERE_LIVE_MUTATION_TIMEOUT_MS_V1
-      : HARTHMERE_LIVE_READ_TIMEOUT_MS_V1);
+      ? HARTHMERE_LIVE_MUTATION_TIMEOUT_MS
+      : HARTHMERE_LIVE_READ_TIMEOUT_MS);
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
   try {
@@ -26,7 +26,7 @@ async function rawHarthmereLiveFetchWithTimeoutV1(
     } catch (error) {
       if (
         controller.signal.aborted &&
-        isHarthmereLiveFetchAbortErrorV1(error)
+        isHarthmereLiveFetchAbortError(error)
       ) {
         return new Response(
           JSON.stringify({
@@ -46,7 +46,7 @@ async function rawHarthmereLiveFetchWithTimeoutV1(
   }
 }
 
-export function isHarthmereLiveFetchAbortErrorV1(error: unknown) {
+export function isHarthmereLiveFetchAbortError(error: unknown) {
   return typeof DOMException !== "undefined" && error instanceof DOMException
     ? error.name === "AbortError"
     : error instanceof Error
@@ -55,7 +55,7 @@ export function isHarthmereLiveFetchAbortErrorV1(error: unknown) {
     : false;
 }
 
-// HARTHMERE_LIVE_FETCH_COALESCE_V1
+// HARTHMERE_LIVE_FETCH_COALESCE
 //
 // The live_mode_*_state snapshots are fetched from several independent pollers
 // (e.g. building_state is read by the minimap, the land tab, the world prompt,
@@ -69,9 +69,9 @@ export function isHarthmereLiveFetchAbortErrorV1(error: unknown) {
 // Only idempotent GETs without a caller-supplied AbortSignal are coalesced.
 // POST mutations (which carry unique requestId/idempotencyKey) always pass
 // straight through.
-export const HARTHMERE_LIVE_FETCH_COALESCE_TTL_MS_V1 = 1_000;
+export const HARTHMERE_LIVE_FETCH_COALESCE_TTL_MS = 1_000;
 
-export function planHarthmereLiveFetchCacheV1(input: {
+export function planHarthmereLiveFetchCache(input: {
   method?: string;
   hasCustomSignal?: boolean;
   url: string;
@@ -83,26 +83,26 @@ export function planHarthmereLiveFetchCacheV1(input: {
   return { cacheable: true, key: `GET ${input.url}` };
 }
 
-interface HarthmereLiveFetchCacheEntryV1 {
+interface HarthmereLiveFetchCacheEntry {
   at: number;
   promise: Promise<Response>;
 }
 
-const globalForHarthmereLiveFetchCacheV1 = globalThis as typeof globalThis & {
-  __harthmereLiveFetchCacheV1?: Map<string, HarthmereLiveFetchCacheEntryV1>;
+const globalForHarthmereLiveFetchCache = globalThis as typeof globalThis & {
+  __harthmereLiveFetchCache?: Map<string, HarthmereLiveFetchCacheEntry>;
 };
 
-function harthmereLiveFetchCacheV1() {
-  return (globalForHarthmereLiveFetchCacheV1.__harthmereLiveFetchCacheV1 ??=
-    new Map<string, HarthmereLiveFetchCacheEntryV1>());
+function harthmereLiveFetchCache() {
+  return (globalForHarthmereLiveFetchCache.__harthmereLiveFetchCache ??=
+    new Map<string, HarthmereLiveFetchCacheEntry>());
 }
 
 // Exposed for tests.
-export function resetHarthmereLiveFetchCacheV1() {
-  harthmereLiveFetchCacheV1().clear();
+export function resetHarthmereLiveFetchCache() {
+  harthmereLiveFetchCache().clear();
 }
 
-export function coalescedHarthmereLiveFetchV1(
+export function coalescedHarthmereLiveFetch(
   fetchImpl: typeof fetch,
   input: RequestInfo | URL,
   init: RequestInit & { timeoutMs?: number } = {},
@@ -114,26 +114,26 @@ export function coalescedHarthmereLiveFetchV1(
       : input instanceof URL
       ? input.toString()
       : (input as Request).url;
-  const plan = planHarthmereLiveFetchCacheV1({
+  const plan = planHarthmereLiveFetchCache({
     method: init.method,
     hasCustomSignal: Boolean(init.signal),
     url,
   });
   if (!plan.cacheable || !plan.key) {
-    return rawHarthmereLiveFetchWithTimeoutV1(fetchImpl, input, init);
+    return rawHarthmereLiveFetchWithTimeout(fetchImpl, input, init);
   }
   const key = plan.key;
-  const cache = harthmereLiveFetchCacheV1();
+  const cache = harthmereLiveFetchCache();
   const nowMs = options.nowMs ?? Date.now;
-  const ttlMs = options.ttlMs ?? HARTHMERE_LIVE_FETCH_COALESCE_TTL_MS_V1;
+  const ttlMs = options.ttlMs ?? HARTHMERE_LIVE_FETCH_COALESCE_TTL_MS;
   const now = nowMs();
   const existing = cache.get(key);
   if (existing && now - existing.at < ttlMs) {
     // Clone so each caller owns an independently-readable body; the cached
     // original is never read directly.
-    return existing.promise.then(cloneHarthmereLiveResponseV1);
+    return existing.promise.then(cloneHarthmereLiveResponse);
   }
-  const promise = rawHarthmereLiveFetchWithTimeoutV1(fetchImpl, input, init);
+  const promise = rawHarthmereLiveFetchWithTimeout(fetchImpl, input, init);
   cache.set(key, { at: now, promise });
   // Never let a rejection, an error response (non-2xx), or a response that
   // cannot be cloned (so it cannot be safely shared) linger in the cache.
@@ -150,13 +150,13 @@ export function coalescedHarthmereLiveFetchV1(
         cache.delete(key);
       }
     });
-  return promise.then(cloneHarthmereLiveResponseV1);
+  return promise.then(cloneHarthmereLiveResponse);
 }
 
 // Clone the response so concurrent/cached callers each get an independent body.
 // Falls back to the original when clone() is unavailable (e.g. a test fetch
 // stub), in which case the entry is also evicted above so it is never reused.
-function cloneHarthmereLiveResponseV1(response: Response): Response {
+function cloneHarthmereLiveResponse(response: Response): Response {
   return typeof (response as any).clone === "function"
     ? response.clone()
     : response;
@@ -165,18 +165,18 @@ function cloneHarthmereLiveResponseV1(response: Response): Response {
 // Public entry point used across the Harthmere live adapters. It now coalesces
 // idempotent GETs (POSTs and signal-bearing requests pass straight through to
 // the raw timeout fetch), so every caller -- including the ones that call this
-// directly rather than via defaultHarthmereLiveFetchV1 -- shares the dedupe.
-export function fetchHarthmereLiveWithTimeoutV1(
+// directly rather than via defaultHarthmereLiveFetch -- shares the dedupe.
+export function fetchHarthmereLiveWithTimeout(
   fetchImpl: typeof fetch,
   input: RequestInfo | URL,
   init: RequestInit & { timeoutMs?: number } = {}
 ) {
-  return coalescedHarthmereLiveFetchV1(fetchImpl, input, init);
+  return coalescedHarthmereLiveFetch(fetchImpl, input, init);
 }
 
-export function defaultHarthmereLiveFetchV1(
+export function defaultHarthmereLiveFetch(
   input: RequestInfo | URL,
   init: RequestInit & { timeoutMs?: number } = {}
 ) {
-  return fetchHarthmereLiveWithTimeoutV1(fetch, input, init);
+  return fetchHarthmereLiveWithTimeout(fetch, input, init);
 }

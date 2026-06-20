@@ -1,16 +1,16 @@
 import { connectToRedis } from "@/server/shared/redis/connection";
 import { biomesApiHandler } from "@/server/web/util/api_middleware";
 import {
-  createHarthmereLiveModeBuildingClientSnapshotV1,
-  harthmereLiveModePlayerStateKeyV1,
-  harthmereLiveModeSharedWorldStateKeyV1,
-  mergeHarthmereLiveModeSharedWorldStateIntoBackendV1,
-  parseHarthmereLiveModeBackendStateV1,
-  parseHarthmereLiveModeSharedWorldStateV1,
-} from "@/shared/harthmere/live_mode_backend_v1";
+  createHarthmereLiveModeBuildingClientSnapshot,
+  harthmereLiveModePlayerStateKey,
+  harthmereLiveModeSharedWorldStateKey,
+  mergeHarthmereLiveModeSharedWorldStateIntoBackend,
+  parseHarthmereLiveModeBackendState,
+  parseHarthmereLiveModeSharedWorldState,
+} from "@/shared/harthmere/live_mode_backend";
 import { z } from "zod";
-import { readHarthmerePlayerAndSharedStateStringsV1 } from "@/server/harthmere/live_mode_state_read_helpers";
-import { resolveHarthmereLiveModeActorIdV1 } from "@/server/harthmere/live_mode_actor_resolution_v1";
+import { readHarthmerePlayerAndSharedStateStrings } from "@/server/harthmere/live_mode_state_read_helpers";
+import { resolveHarthmereLiveModeActorId } from "@/server/harthmere/live_mode_actor_resolution";
 
 const zJsonRecord = z.record(z.unknown());
 
@@ -20,11 +20,11 @@ export const zHarthmereLiveModeBuildingStateResponse = z.object({
 });
 
 const globalForHarthmereLiveModeBuildingState = globalThis as typeof globalThis & {
-  __harthmereLiveModeBuildingStateRedisV1?: ReturnType<typeof connectToRedis>;
+  __harthmereLiveModeBuildingStateRedis?: ReturnType<typeof connectToRedis>;
 };
 
-function liveModeBuildingStateRedisV1() {
-  return (globalForHarthmereLiveModeBuildingState.__harthmereLiveModeBuildingStateRedisV1 ??=
+function liveModeBuildingStateRedis() {
+  return (globalForHarthmereLiveModeBuildingState.__harthmereLiveModeBuildingStateRedis ??=
     connectToRedis("firehose"));
 }
 
@@ -35,33 +35,33 @@ export default biomesApiHandler(
     response: zHarthmereLiveModeBuildingStateResponse,
   },
   async ({ auth, unsafeRequest }) => {
-    const redis = await liveModeBuildingStateRedisV1();
-    const actorId = await resolveHarthmereLiveModeActorIdV1(
+    const redis = await liveModeBuildingStateRedis();
+    const actorId = await resolveHarthmereLiveModeActorId(
       redis,
       { auth, unsafeRequest },
       "anonymous:building-reader"
     );
     const nowMs = Date.now();
     const { rawState, rawSharedState } =
-      await readHarthmerePlayerAndSharedStateStringsV1(
+      await readHarthmerePlayerAndSharedStateStrings(
         redis.primary,
-        harthmereLiveModePlayerStateKeyV1(actorId),
-        harthmereLiveModeSharedWorldStateKeyV1()
+        harthmereLiveModePlayerStateKey(actorId),
+        harthmereLiveModeSharedWorldStateKey()
       );
-    const state = parseHarthmereLiveModeBackendStateV1(
+    const state = parseHarthmereLiveModeBackendState(
       rawState,
       actorId,
       nowMs
     );
-    mergeHarthmereLiveModeSharedWorldStateIntoBackendV1(
+    mergeHarthmereLiveModeSharedWorldStateIntoBackend(
       state,
-      parseHarthmereLiveModeSharedWorldStateV1(rawSharedState, nowMs),
+      parseHarthmereLiveModeSharedWorldState(rawSharedState, nowMs),
       nowMs
     );
     state.updatedAtMs = nowMs;
     return {
       ok: true,
-      buildingState: createHarthmereLiveModeBuildingClientSnapshotV1(state),
+      buildingState: createHarthmereLiveModeBuildingClientSnapshot(state),
     };
   }
 );

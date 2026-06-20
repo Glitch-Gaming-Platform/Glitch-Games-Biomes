@@ -1,12 +1,12 @@
 import {
-  azureOpenAIConfigFromEnvV1,
-  createAzureOpenAIResponseTextV1,
+  azureOpenAIConfigFromEnv,
+  createAzureOpenAIResponseText,
 } from "@/server/shared/azure_openai";
 import assert from "assert";
 
 const ORIGINAL_FETCH = globalThis.fetch;
 
-function mockFetchV1(
+function mockFetch(
   handler: (url: string, init?: RequestInit) => Promise<Response> | Response
 ) {
   (globalThis as any).fetch = (
@@ -21,16 +21,16 @@ describe("Azure OpenAI helpers", () => {
   });
 
   it("treats Azure OpenAI env vars as optional", () => {
-    assert.equal(azureOpenAIConfigFromEnvV1({}), undefined);
+    assert.equal(azureOpenAIConfigFromEnv({}), undefined);
     assert.equal(
-      azureOpenAIConfigFromEnvV1({
+      azureOpenAIConfigFromEnv({
         AZURE_OPENAI_ENDPOINT: "https://example.openai.azure.com/",
         AZURE_OPENAI_API_KEY: "key",
       }),
       undefined
     );
     assert.deepEqual(
-      azureOpenAIConfigFromEnvV1({
+      azureOpenAIConfigFromEnv({
         AZURE_OPENAI_ENDPOINT: "https://example.openai.azure.com/",
         AZURE_OPENAI_API_KEY: "key",
         AZURE_OPENAI_DEPLOYMENT: "gpt-5.5",
@@ -43,7 +43,7 @@ describe("Azure OpenAI helpers", () => {
       }
     );
     assert.deepEqual(
-      azureOpenAIConfigFromEnvV1({
+      azureOpenAIConfigFromEnv({
         AZURE_OPENAI_ENDPOINT: "https://example.openai.azure.com/",
         AZURE_OPENAI_KEY: "key",
         AZURE_OPENAI_RESPONSES_MODEL: "gpt-5.5",
@@ -60,7 +60,7 @@ describe("Azure OpenAI helpers", () => {
 
   it("does not call Azure OpenAI when config is absent", async () => {
     let called = false;
-    mockFetchV1(() => {
+    mockFetch(() => {
       called = true;
       return new Response();
     });
@@ -80,7 +80,7 @@ describe("Azure OpenAI helpers", () => {
 
     try {
       assert.equal(
-        await createAzureOpenAIResponseTextV1({
+        await createAzureOpenAIResponseText({
           messages: [{ role: "user", content: "hello" }],
         }),
         undefined
@@ -100,7 +100,7 @@ describe("Azure OpenAI helpers", () => {
   it("posts system instructions separately from conversation input", async () => {
     let capturedUrl = "";
     let capturedBody: any;
-    mockFetchV1(async (url, init) => {
+    mockFetch(async (url, init) => {
       capturedUrl = url;
       capturedBody = JSON.parse(String(init?.body));
       return Response.json({
@@ -108,7 +108,7 @@ describe("Azure OpenAI helpers", () => {
       });
     });
 
-    const text = await createAzureOpenAIResponseTextV1({
+    const text = await createAzureOpenAIResponseText({
       config: {
         endpoint: "https://example.openai.azure.com/",
         apiKey: "openai-key",
@@ -140,7 +140,7 @@ describe("Azure OpenAI helpers", () => {
   });
 
   it("uses Responses API output fragments when output_text is absent", async () => {
-    mockFetchV1(() =>
+    mockFetch(() =>
       Response.json({
         output: [
           {
@@ -151,7 +151,7 @@ describe("Azure OpenAI helpers", () => {
     );
 
     assert.equal(
-      await createAzureOpenAIResponseTextV1({
+      await createAzureOpenAIResponseText({
         config: {
           endpoint:
             "https://example.openai.azure.com/openai/responses?api-version=2025-04-01-preview",
@@ -166,11 +166,11 @@ describe("Azure OpenAI helpers", () => {
   });
 
   it("throws with Azure OpenAI error text when generation fails", async () => {
-    mockFetchV1(() => new Response("bad deployment", { status: 404 }));
+    mockFetch(() => new Response("bad deployment", { status: 404 }));
 
     await assert.rejects(
       () =>
-        createAzureOpenAIResponseTextV1({
+        createAzureOpenAIResponseText({
           config: {
             endpoint: "https://example.openai.azure.com/",
             apiKey: "openai-key",

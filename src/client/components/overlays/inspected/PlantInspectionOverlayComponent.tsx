@@ -2,7 +2,7 @@ import { useClientContext } from "@/client/components/contexts/ClientContextReac
 import { ProgressBar } from "@/client/components/HealthBarHUD";
 import type { InspectShortcuts } from "@/client/components/overlays/inspected/CursorInspectionOverlayComponent";
 import { CursorInspectionComponent } from "@/client/components/overlays/inspected/CursorInspectionOverlayComponent";
-import { plantInspectionCanHarvestV1 } from "@/client/components/overlays/inspected/plantInspectionShortcuts";
+import { plantInspectionCanHarvest } from "@/client/components/overlays/inspected/plantInspectionShortcuts";
 import type { PlantInspectOverlay } from "@/client/game/resources/overlays";
 import { getBiscuit } from "@/shared/bikkie/active";
 import { secondsSinceEpoch } from "@/shared/ecs/config";
@@ -49,7 +49,7 @@ export const PlantInspectionOverlayComponent: React.FunctionComponent<{
 
   const plantBiscuit =
     plant && plant.seed ? getBiscuit(plant?.seed) : undefined;
-  const harvestPermitted = plantInspectionCanHarvestV1(
+  const harvestPermitted = plantInspectionCanHarvest(
     plant?.status,
     plantBiscuit?.farming?.kind
   );

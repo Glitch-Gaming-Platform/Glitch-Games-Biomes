@@ -1,15 +1,15 @@
 /// <reference types="mocha" />
 
 import assert from "assert";
-import { humanizeBiomesInventoryItemIdV1 } from "@/client/components/biomes_ui/adapters/inventoryItemPresentation";
+import { humanizeBiomesInventoryItemId } from "@/client/components/biomes_ui/adapters/inventoryItemPresentation";
 import { BikkieIds } from "@/shared/bikkie/ids";
 import {
-  harthmereBikkieWearableSlotsFromAssignmentV1,
-  harthmereBikkieWearablesUseGeneratedBodyV1,
-  harthmereBikkieWearablesUseGeneratedHeadV1,
-  harthmereClothingSlotsHiddenByBikkieWearablesV1,
-  harthmereLocalEquipmentBikkieWearablesV1,
-} from "@/shared/harthmere/harthmere_bikkie_wearables_v1";
+  harthmereBikkieWearableSlotsFromAssignment,
+  harthmereBikkieWearablesUseGeneratedBody,
+  harthmereBikkieWearablesUseGeneratedHead,
+  harthmereClothingSlotsHiddenByBikkieWearables,
+  harthmereLocalEquipmentBikkieWearables,
+} from "@/shared/harthmere/harthmere_bikkie_wearables";
 
 const memoryStore = new Map<string, string>();
 const localStorageShim = {
@@ -51,9 +51,9 @@ if (typeof (globalThis as any).CustomEvent === "undefined") {
 }
 
 import {
-  getHarthmereItemDisplayV1,
+  getHarthmereItemDisplay,
   grantHarthmereItem,
-  harthmereInventoryCountByItemIdV141,
+  harthmereInventoryCountByItemId,
   performHarthmereBackpackItemEquipForBiomesUI,
   performHarthmereBackpackItemUseForBiomesUI,
   performHarthmereEquipmentItemUnequipForBiomesUI,
@@ -75,8 +75,8 @@ describe("Harthmere inventory BiomesUI presentation and actions", () => {
   });
 
   it("exposes human-readable local item names and distinct icons", () => {
-    const apron = getHarthmereItemDisplayV1("baker_apron");
-    const trousers = getHarthmereItemDisplayV1("field_trousers");
+    const apron = getHarthmereItemDisplay("baker_apron");
+    const trousers = getHarthmereItemDisplay("field_trousers");
     assert.equal(apron?.name, "Dawn Loaf Apron");
     assert.equal(apron?.slot, "chest");
     assert.equal(apron?.icon, "🥼");
@@ -91,7 +91,7 @@ describe("Harthmere inventory BiomesUI presentation and actions", () => {
     assert.notEqual(apron?.icon, "▣");
     assert.notEqual(trousers?.icon, "▥");
     assert.equal(
-      humanizeBiomesInventoryItemIdV1("bakerApron", "bakerApron"),
+      humanizeBiomesInventoryItemId("bakerApron", "bakerApron"),
       "Baker Apron"
     );
   });
@@ -106,7 +106,7 @@ describe("Harthmere inventory BiomesUI presentation and actions", () => {
     performHarthmereBackpackItemEquipForBiomesUI(apron.instanceId);
     let state = readHarthmereInventoryState();
     assert.equal(state.equipment.chest?.itemId, "baker_apron");
-    assert.equal(harthmereInventoryCountByItemIdV141("baker_apron"), 0);
+    assert.equal(harthmereInventoryCountByItemId("baker_apron"), 0);
     assert.equal(
       state.backpack.items.some((item) => item.itemId === "baker_apron"),
       false
@@ -123,7 +123,7 @@ describe("Harthmere inventory BiomesUI presentation and actions", () => {
 
   it("maps equipped Harthmere and Bikkie clothes to visible avatar slots", () => {
     assert.deepEqual(
-      harthmereLocalEquipmentBikkieWearablesV1({
+      harthmereLocalEquipmentBikkieWearables({
         chest: { itemId: "baker_apron" },
         legs: "field_trousers",
         back: { itemId: "patched_cloak" },
@@ -136,7 +136,7 @@ describe("Harthmere inventory BiomesUI presentation and actions", () => {
       ]
     );
 
-    const slots = harthmereBikkieWearableSlotsFromAssignmentV1(
+    const slots = harthmereBikkieWearableSlotsFromAssignment(
       new Map([
         [BikkieIds.top, { id: BikkieIds.grassyTop }],
         [BikkieIds.bottoms, { id: BikkieIds.bellBottoms }],
@@ -144,10 +144,10 @@ describe("Harthmere inventory BiomesUI presentation and actions", () => {
       ])
     );
 
-    assert.equal(harthmereBikkieWearablesUseGeneratedBodyV1(slots), true);
-    assert.equal(harthmereBikkieWearablesUseGeneratedHeadV1(slots), true);
+    assert.equal(harthmereBikkieWearablesUseGeneratedBody(slots), true);
+    assert.equal(harthmereBikkieWearablesUseGeneratedHead(slots), true);
     assert.deepEqual(
-      [...harthmereClothingSlotsHiddenByBikkieWearablesV1(slots)].sort(),
+      [...harthmereClothingSlotsHiddenByBikkieWearables(slots)].sort(),
       ["belt", "hair", "head", "legs", "torso"]
     );
   });
@@ -158,7 +158,7 @@ describe("Harthmere inventory BiomesUI presentation and actions", () => {
     );
     assert.ok(scroll);
     assert.equal(
-      harthmereInventoryCountByItemIdV141("field_revival_scroll"),
+      harthmereInventoryCountByItemId("field_revival_scroll"),
       1
     );
 
@@ -168,7 +168,7 @@ describe("Harthmere inventory BiomesUI presentation and actions", () => {
     );
 
     assert.equal(
-      harthmereInventoryCountByItemIdV141("field_revival_scroll"),
+      harthmereInventoryCountByItemId("field_revival_scroll"),
       0
     );
     assert.equal(readHarthmereInventoryState().recent[0]?.action, "Item Used");

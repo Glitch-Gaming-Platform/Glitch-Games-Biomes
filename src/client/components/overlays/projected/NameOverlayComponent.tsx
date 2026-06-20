@@ -9,9 +9,9 @@ import {
 } from "@/client/components/hooks/client_hooks";
 import { RobotBatteryIconNameOverlay } from "@/client/components/map/pannable/PlayerRow";
 import {
-  LIVE_ENTITY_ROBOT_ENERGY_EVENT_V1,
-  liveEntityRobotEnergyDisplayForEntityV1,
-  syncLocalDevLiveEntityRobotEnergyFromComponentV1,
+  LIVE_ENTITY_ROBOT_ENERGY_EVENT,
+  liveEntityRobotEnergyDisplayForEntity,
+  syncLocalDevLiveEntityRobotEnergyFromComponent,
 } from "@/client/components/challenges/LocalDevLiveEntityRobotEnergyState";
 import { useAppliedOverlayPosition } from "@/client/components/overlays/projected/helpers";
 import { TeamLabelForUser } from "@/client/components/social/TeamLabel";
@@ -221,10 +221,10 @@ export const NameOverlayComponent: React.FunctionComponent<{
       return;
     }
     const refresh = () => setRobotEnergyRefresh((old) => old + 1);
-    window.addEventListener(LIVE_ENTITY_ROBOT_ENERGY_EVENT_V1, refresh);
+    window.addEventListener(LIVE_ENTITY_ROBOT_ENERGY_EVENT, refresh);
     window.addEventListener("storage", refresh);
     return () => {
-      window.removeEventListener(LIVE_ENTITY_ROBOT_ENERGY_EVENT_V1, refresh);
+      window.removeEventListener(LIVE_ENTITY_ROBOT_ENERGY_EVENT, refresh);
       window.removeEventListener("storage", refresh);
     };
   }, []);
@@ -232,7 +232,7 @@ export const NameOverlayComponent: React.FunctionComponent<{
     if (!robotComponent && !/robot/i.test(overlay.name)) {
       return;
     }
-    syncLocalDevLiveEntityRobotEnergyFromComponentV1({
+    syncLocalDevLiveEntityRobotEnergyFromComponent({
       position: position?.v,
       robotComponent,
       displayName: overlay.name,
@@ -241,7 +241,7 @@ export const NameOverlayComponent: React.FunctionComponent<{
   const robotProtectionEnergy = useMemo(
     () =>
       robotComponent || /robot/i.test(overlay.name)
-        ? liveEntityRobotEnergyDisplayForEntityV1(
+        ? liveEntityRobotEnergyDisplayForEntity(
             position?.v,
             robotComponent,
             overlay.name

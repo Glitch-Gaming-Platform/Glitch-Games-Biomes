@@ -1,7 +1,7 @@
 
 import React from "react";
 
-export const HARTHMERE_CRIME_LAW_SYSTEM_VERSION = "harthmere-crime-law-depth-v1";
+export const HARTHMERE_CRIME_LAW_SYSTEM_VERSION = "harthmere-crime-law-depth";
 
 export type HarthmereCrimeType = "theft" | "pickpocket" | "lockpicking" | "trespassing" | "assault" | "murder" | "smuggling" | "illegal_magic" | "bribery" | "arson";
 export type HarthmereGuardResponseLevel = "warning" | "questioning" | "fine" | "confiscation" | "arrest_attempt" | "combat" | "reinforcements" | "city_lockdown";
@@ -243,5 +243,5 @@ export function getHarthmereOutlawEscalation(legalStanding: number, activeBounti
 
 export const HarthmereCrimeLawPanel: React.FunctionComponent<{}> = () => {
   const sample = createHarthmereCrimeRecord({ crimeType: "theft", severity: 1, value: 80, witnesses: 1, lineOfSight: true, noise: 20, lighting: "normal", disguiseQuality: 0, guardAlertness: 70, crowdDensity: 40, legalStanding: 0, notoriety: 0, location: "Market Square", itemIds: ["apple_basket"] });
-  return <div className="space-y-2 rounded-xl border border-white/10 bg-white/5 p-3 text-xs" data-harthmere-crime-law="v1"><div className="text-sm font-bold text-red-100">Crime & Law</div><div>Sample response: {sample.response}</div><div>Fine: {sample.fineGold} gold</div><div>Evidence expires: {new Date(sample.evidenceExpiresAt).toLocaleString()}</div></div>;
+  return <div className="space-y-2 rounded-xl border border-white/10 bg-white/5 p-3 text-xs" data-harthmere-crime-law="current"><div className="text-sm font-bold text-red-100">Crime & Law</div><div>Sample response: {sample.response}</div><div>Fine: {sample.fineGold} gold</div><div>Evidence expires: {new Date(sample.evidenceExpiresAt).toLocaleString()}</div></div>;
 };

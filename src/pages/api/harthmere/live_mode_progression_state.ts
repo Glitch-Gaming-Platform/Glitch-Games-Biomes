@@ -1,15 +1,15 @@
 import { connectToRedis } from "@/server/shared/redis/connection";
 import { biomesApiHandler } from "@/server/web/util/api_middleware";
 import {
-  createHarthmereProgressionClientSnapshotFromBackendV1,
-  harthmereLiveModePlayerStateKeyV1,
-  harthmereLiveModeSharedWorldStateKeyV1,
-  mergeHarthmereLiveModeSharedWorldStateIntoBackendV1,
-  parseHarthmereLiveModeBackendStateV1,
-  parseHarthmereLiveModeSharedWorldStateV1,
-} from "@/shared/harthmere/live_mode_backend_v1";
+  createHarthmereProgressionClientSnapshotFromBackend,
+  harthmereLiveModePlayerStateKey,
+  harthmereLiveModeSharedWorldStateKey,
+  mergeHarthmereLiveModeSharedWorldStateIntoBackend,
+  parseHarthmereLiveModeBackendState,
+  parseHarthmereLiveModeSharedWorldState,
+} from "@/shared/harthmere/live_mode_backend";
 import { z } from "zod";
-import { readHarthmerePlayerAndSharedStateStringsV1 } from "@/server/harthmere/live_mode_state_read_helpers";
+import { readHarthmerePlayerAndSharedStateStrings } from "@/server/harthmere/live_mode_state_read_helpers";
 
 const zJsonRecord = z.record(z.unknown());
 
@@ -20,15 +20,15 @@ export const zHarthmereLiveModeProgressionStateResponse = z.object({
 
 const globalForHarthmereLiveModeProgressionState =
   globalThis as typeof globalThis & {
-    __harthmereLiveModeProgressionStateRedisV1?: ReturnType<typeof connectToRedis>;
+    __harthmereLiveModeProgressionStateRedis?: ReturnType<typeof connectToRedis>;
   };
 
-function liveModeProgressionStateRedisV1() {
-  return (globalForHarthmereLiveModeProgressionState.__harthmereLiveModeProgressionStateRedisV1 ??=
+function liveModeProgressionStateRedis() {
+  return (globalForHarthmereLiveModeProgressionState.__harthmereLiveModeProgressionStateRedis ??=
     connectToRedis("firehose"));
 }
 
-export async function readHarthmereLiveModeProgressionStateForActorV1(input: {
+export async function readHarthmereLiveModeProgressionStateForActor(input: {
   redis: {
     primary: {
       get: (key: string) => Promise<string | null>;
@@ -39,19 +39,19 @@ export async function readHarthmereLiveModeProgressionStateForActorV1(input: {
   nowMs: number;
 }) {
   const { rawState, rawSharedState } =
-    await readHarthmerePlayerAndSharedStateStringsV1(
+    await readHarthmerePlayerAndSharedStateStrings(
       input.redis.primary,
-      harthmereLiveModePlayerStateKeyV1(input.actorId),
-      harthmereLiveModeSharedWorldStateKeyV1()
+      harthmereLiveModePlayerStateKey(input.actorId),
+      harthmereLiveModeSharedWorldStateKey()
     );
-  const state = parseHarthmereLiveModeBackendStateV1(rawState, input.actorId, input.nowMs);
-  mergeHarthmereLiveModeSharedWorldStateIntoBackendV1(
+  const state = parseHarthmereLiveModeBackendState(rawState, input.actorId, input.nowMs);
+  mergeHarthmereLiveModeSharedWorldStateIntoBackend(
     state,
-    parseHarthmereLiveModeSharedWorldStateV1(rawSharedState, input.nowMs),
+    parseHarthmereLiveModeSharedWorldState(rawSharedState, input.nowMs),
     input.nowMs
   );
   state.updatedAtMs = input.nowMs;
-  return createHarthmereProgressionClientSnapshotFromBackendV1(state);
+  return createHarthmereProgressionClientSnapshotFromBackend(state);
 }
 
 export default biomesApiHandler(
@@ -62,11 +62,11 @@ export default biomesApiHandler(
   },
   async ({ auth: { userId } }) => {
     const actorId = String(userId);
-    const redis = await liveModeProgressionStateRedisV1();
+    const redis = await liveModeProgressionStateRedis();
     const nowMs = Date.now();
     return {
       ok: true,
-      progressionState: await readHarthmereLiveModeProgressionStateForActorV1({
+      progressionState: await readHarthmereLiveModeProgressionStateForActor({
         redis,
         actorId,
         nowMs,

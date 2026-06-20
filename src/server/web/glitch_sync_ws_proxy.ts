@@ -66,9 +66,9 @@ function attachSocketGuards(options: {
         error,
       };
       if (isExpectedGlitchSyncWsProxySocketError(error)) {
-        log.info("GLITCH_SAME_ORIGIN_SYNC_WS_PROXY_SOCKET_CLOSED_V135", details);
+        log.info("GLITCH_SAME_ORIGIN_SYNC_WS_PROXY_SOCKET_CLOSED", details);
       } else {
-        log.warn("GLITCH_SAME_ORIGIN_SYNC_WS_PROXY_SOCKET_ERROR_V135", details);
+        log.warn("GLITCH_SAME_ORIGIN_SYNC_WS_PROXY_SOCKET_ERROR", details);
       }
       destroySocket(peer);
     });
@@ -92,7 +92,7 @@ export function installGlitchSyncWsProxy(server: Server) {
 
     const upstream = net.connect(targetPort, targetHost);
     const failUpstreamConnect = (error: Error) => {
-      log.warn("GLITCH_SAME_ORIGIN_SYNC_WS_PROXY_FAILED_V134.", {
+      log.warn("GLITCH_SAME_ORIGIN_SYNC_WS_PROXY_FAILED.", {
         path: url.pathname,
         target,
         error,
@@ -108,9 +108,9 @@ export function installGlitchSyncWsProxy(server: Server) {
         error,
       };
       if (isExpectedGlitchSyncWsProxySocketError(error)) {
-        log.info("GLITCH_SAME_ORIGIN_SYNC_WS_PROXY_SOCKET_CLOSED_V135", details);
+        log.info("GLITCH_SAME_ORIGIN_SYNC_WS_PROXY_SOCKET_CLOSED", details);
       } else {
-        log.warn("GLITCH_SAME_ORIGIN_SYNC_WS_PROXY_SOCKET_ERROR_V135", details);
+        log.warn("GLITCH_SAME_ORIGIN_SYNC_WS_PROXY_SOCKET_ERROR", details);
       }
       destroySocket(upstream);
     };
@@ -126,7 +126,7 @@ export function installGlitchSyncWsProxy(server: Server) {
         path: url.pathname,
         target,
       });
-      log.info("GLITCH_SAME_ORIGIN_SYNC_WS_PROXY_CONNECTED_V134", {
+      log.info("GLITCH_SAME_ORIGIN_SYNC_WS_PROXY_CONNECTED", {
         path: url.pathname,
         target,
       });
@@ -145,7 +145,7 @@ export function installGlitchSyncWsProxy(server: Server) {
     });
   });
 
-  log.info("GLITCH_SAME_ORIGIN_SYNC_WS_PROXY_V134 installed /sync, /beta-sync, and /ro-sync on web", {
+  log.info("GLITCH_SAME_ORIGIN_SYNC_WS_PROXY installed /sync, /beta-sync, and /ro-sync on web", {
     target,
   });
 }

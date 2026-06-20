@@ -20,11 +20,11 @@ describe("BiomesUIMount world-object interaction surfaces", () => {
 
   it("keeps the existing working F prompt surfaces mounted", () => {
     for (const component of [
-      "HarthmereJobsBoardWorldInteractionV146",
-      "HarthmereWantedBoardWorldInteractionV1",
-      "HarthmereBusinessWorldInteractionV1",
-      "HarthmerePropertyForSaleWorldInteractionV1",
-      "HarthmereGatheringNodeWorldInteractionV1",
+      "HarthmereJobsBoardWorldInteraction",
+      "HarthmereWantedBoardWorldInteraction",
+      "HarthmereBusinessWorldInteraction",
+      "HarthmerePropertyForSaleWorldInteraction",
+      "HarthmereGatheringNodeWorldInteraction",
     ]) {
       assert.match(
         source,

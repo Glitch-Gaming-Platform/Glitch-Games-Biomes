@@ -4,8 +4,8 @@ import { getNpcBehavior, getNpcRunSpeed, idToNpcType } from "@/shared/npc/bikkie
 import type { Environment } from "@/shared/npc/environment";
 import type { SimulatedNpc } from "@/shared/npc/simulated";
 
-export const HARTHMERE_NPC_FLEE_FROM_THREAT_VERSION_V37 =
-  "harthmere-npc-flee-from-threat-v37";
+export const HARTHMERE_NPC_FLEE_FROM_THREAT_VERSION =
+  "harthmere-npc-flee-from-threat";
 
 const DEFAULT_THREAT_RADIUS = 12;
 

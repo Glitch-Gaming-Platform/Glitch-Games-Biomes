@@ -26,7 +26,7 @@ export async function wrapInEnvelope(
     to,
   };
   if (envelope.from && envelope.spatial) {
-    // Harthmere world chat v152: prefer the authoritative server/world
+    // Harthmere world chat current: prefer the authoritative server/world
     // position when it is available, but keep a client-supplied position as
     // a fallback. In the Glitch single-container runtime, world snapshots can
     // briefly lag behind the iframe client; dropping the position makes a

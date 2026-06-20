@@ -1,7 +1,7 @@
 
 import React, { useMemo, useState } from "react";
 
-export const HARTHMERE_INVENTORY_GUIDANCE_VERSION = "harthmere-inventory-guidance-ui-v1";
+export const HARTHMERE_INVENTORY_GUIDANCE_VERSION = "harthmere-inventory-guidance-ui";
 
 export type HarthmereGuidanceItem = {
   instanceId: string;
@@ -151,7 +151,7 @@ export const HarthmereInventoryGuidancePanel: React.FunctionComponent<{}> = () =
   const [sort, setSort] = useState<HarthmereInventoryFilterState["sort"]>("name");
   const items = useMemo(() => filterHarthmereInventoryItems(DEMO_ITEMS, { search, category, sort }), [search, category, sort]);
   return (
-    <div className="space-y-2 rounded-xl border border-white/10 bg-white/5 p-3 text-xs" data-harthmere-inventory-guidance="v1">
+    <div className="space-y-2 rounded-xl border border-white/10 bg-white/5 p-3 text-xs" data-harthmere-inventory-guidance="current">
       <div className="text-sm font-bold text-sky-100">Inventory Guidance</div>
       <div className="grid gap-2 md:grid-cols-3">
         <input className="rounded bg-black/40 p-1" placeholder="Search inventory" value={search} onChange={(e) => setSearch(e.target.value)} />

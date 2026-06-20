@@ -32,7 +32,7 @@ export async function registerWebServerConfig(): Promise<WebServerConfig> {
     ...baseServerArgumentConfig,
     assetServerMode: {
       type: stringLiteralCtor("none", "lazy", "local", "proxy"),
-      // HARTHMERE_PROD_LOCAL_ASSET_PARITY_V161:
+      // HARTHMERE_PROD_LOCAL_ASSET_PARITY:
       // Local works because the browser hits /api/assets/player_mesh.glb and
       // the server computes that mesh through the lazy/local asset exporter.
       // Production must use that same path. Do not default to none/proxy.

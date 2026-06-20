@@ -1,7 +1,7 @@
 import type { LoadProgress } from "@/client/game/load_progress";
 import { emptyChannelStats } from "@/shared/zrpc/core";
 import assert from "assert";
-import { shouldAutoReloadForPartialTerrainRecoveryV1 } from "../load_progress_recovery";
+import { shouldAutoReloadForPartialTerrainRecovery } from "../load_progress_recovery";
 
 function progress(overrides: Partial<LoadProgress> = {}): LoadProgress {
   return {
@@ -20,7 +20,7 @@ function progress(overrides: Partial<LoadProgress> = {}): LoadProgress {
 describe("partial terrain load recovery", () => {
   it("reloads a stale bootstrapped client that never meshed terrain", () => {
     assert.equal(
-      shouldAutoReloadForPartialTerrainRecoveryV1({
+      shouldAutoReloadForPartialTerrainRecovery({
         progress: progress(),
         alreadyReloaded: false,
       }),
@@ -30,19 +30,19 @@ describe("partial terrain load recovery", () => {
 
   it("does not reload before bootstrap/player mesh or after a recovery reload", () => {
     assert.equal(
-      shouldAutoReloadForPartialTerrainRecoveryV1({
+      shouldAutoReloadForPartialTerrainRecovery({
         progress: progress({ bootstrapped: false }),
       }),
       false
     );
     assert.equal(
-      shouldAutoReloadForPartialTerrainRecoveryV1({
+      shouldAutoReloadForPartialTerrainRecovery({
         progress: progress({ playerMeshLoaded: false }),
       }),
       false
     );
     assert.equal(
-      shouldAutoReloadForPartialTerrainRecoveryV1({
+      shouldAutoReloadForPartialTerrainRecovery({
         progress: progress(),
         alreadyReloaded: true,
       }),

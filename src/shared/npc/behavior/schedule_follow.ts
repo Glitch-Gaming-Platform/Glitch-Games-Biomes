@@ -1,4 +1,4 @@
-// HARTHMERE_SCHEDULE_FOLLOW_V2
+// HARTHMERE_SCHEDULE_FOLLOW
 // Drives an NPC along its scheduled route. Reads npc.state.schedule
 // (zNpcScheduleComponent), picks the entry whose hour_of_day is current,
 // resolves its anchor_id to a world position, and returns the forwardSpeed
@@ -71,5 +71,5 @@ export function scheduleFollowTick(
   return { forwardSpeed: speed, targetReached: false };
 }
 
-export const HARTHMERE_SCHEDULE_FOLLOW_VERSION_V2 =
-  "harthmere-schedule-follow-v2" as const;
+export const HARTHMERE_SCHEDULE_FOLLOW_VERSION =
+  "harthmere-schedule-follow" as const;

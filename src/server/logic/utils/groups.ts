@@ -236,12 +236,12 @@ export function transformBoxOwnedPosition(
 
   const newPosition = add(
     rotatePositionWithinBox(
-      sub(oldPosition, oldBox.v0),
+      sub(oldPosition, oldBox),
       rotation,
       reflection,
       oldSize
     ),
-    newBox.v0
+    newBox
   );
 
   return [newPosition, newOrientation];
@@ -288,7 +288,7 @@ export function involvedShards(
     if (aabb === undefined) {
       continue;
     }
-    for (const shard of Shards.shardsForAABB(aabb.v0, aabb.v1)) {
+    for (const shard of Shards.shardsForAABB(aabb, aabb)) {
       shards.add(shard);
     }
   }

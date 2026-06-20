@@ -168,12 +168,12 @@ vox/props/itch_voxel_asset_pack/Village House Stuff/VILL_H_W_INV_LR.vox
 vox/props/itch_voxel_asset_pack/Village House Stuff/VILL_H_W_LR.vox
 vox/props/itch_voxel_asset_pack/Village House Stuff/VILL_H_W_PLN.vox
 vox/props/itch_voxel_asset_pack/Village House Stuff/VILL_H_W_SBEAM.vox
-vox/props/itch_voxel_asset_pack/Village House Stuff/VILL_H_W_V1.vox
-vox/props/itch_voxel_asset_pack/Village House Stuff/VILL_H_W_V2.vox
+vox/props/itch_voxel_asset_pack/Village House Stuff/VILL_H_W.vox
+vox/props/itch_voxel_asset_pack/Village House Stuff/VILL_H_W.vox
 vox/props/itch_voxel_asset_pack/Village House Stuff/VILL_H_W_V2_INV.vox
-vox/props/itch_voxel_asset_pack/Village House Stuff/VILL_H_W_V3.vox
-vox/props/itch_voxel_asset_pack/Village House Stuff/VILL_H_W_V4.5.vox
-vox/props/itch_voxel_asset_pack/Village House Stuff/VILL_H_W_V4.vox
+vox/props/itch_voxel_asset_pack/Village House Stuff/VILL_H_W.vox
+vox/props/itch_voxel_asset_pack/Village House Stuff/VILL_H_W.5.vox
+vox/props/itch_voxel_asset_pack/Village House Stuff/VILL_H_W.vox
 vox/props/itch_voxel_asset_pack/book_open.vox
 vox/props/itch_voxel_asset_pack/corpse_skeleton.vox
 vox/props/itch_voxel_asset_pack/rope tied wood pole thing.vox

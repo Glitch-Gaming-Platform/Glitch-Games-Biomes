@@ -1,4 +1,4 @@
-import type { SimulationName } from "@/server/gaia_v2/simulations/api";
+import type { SimulationName } from "@/server/gaia/simulations/api";
 import type { ForeignAuthProviderName } from "@/server/shared/auth/providers";
 import type { LookupPath } from "@/server/shared/file_watcher";
 import type { ShardDomainConfig } from "@/server/shared/shard_manager/api";
@@ -128,7 +128,7 @@ const DEFAULT_CONFIG = deepFreeze({
   wsZrpcHeartbeatIntervalMs: 150,
   // How long the client waits for a heartbeat before being unhealthy.
   //
-  // HARTHMERE_SYNC_HEARTBEAT_TOLERANCE_V1: the previous 400ms/600ms thresholds
+  // HARTHMERE_SYNC_HEARTBEAT_TOLERANCE: the previous 400ms/600ms thresholds
   // were far too aggressive for the Glitch/Azure deployment. Production showed
   // synchronous Glitch backend calls (e.g. storeSave) blocking the event loop
   // for ~2.4s and client frames of 100-180ms (FPS 0 spikes); any stall over

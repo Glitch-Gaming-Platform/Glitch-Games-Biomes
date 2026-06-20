@@ -1,14 +1,14 @@
 import assert from "assert";
 
 import {
-  HARTHMERE_BUSINESS_CRAFTING_STATION_SEEDS_V1,
-  type HarthmereBusinessCraftingStationSeedV1,
-} from "@/shared/harthmere/business_crafting_station_seed_v1";
+  HARTHMERE_BUSINESS_CRAFTING_STATION_SEEDS,
+  type HarthmereBusinessCraftingStationSeed,
+} from "@/shared/harthmere/business_crafting_station_seed";
 import {
-  type HarthmereCraftingTableCandidateV1,
-  isHarthmereCraftingTableV1,
-  selectNearestHarthmereCraftingTableV1,
-} from "@/shared/harthmere/harthmere_crafting_table_proximity_v1";
+  type HarthmereCraftingTableCandidate,
+  isHarthmereCraftingTable,
+  selectNearestHarthmereCraftingTable,
+} from "@/shared/harthmere/harthmere_crafting_table_proximity";
 
 // FRONTEND: this is what the client crafting-table prompt does — it reads each
 // nearby placeable's bikkie `isCraftingStation` flag and builds candidates, then
@@ -16,9 +16,9 @@ import {
 // adapter (every seeded business station resolves isCraftingStation=true, since
 // each references a real crafting-station bikkie item) and verify the seeded
 // stations actually drive the prompt.
-function candidateFromSeedV1(
-  seed: HarthmereBusinessCraftingStationSeedV1
-): HarthmereCraftingTableCandidateV1 {
+function candidateFromSeed(
+  seed: HarthmereBusinessCraftingStationSeed
+): HarthmereCraftingTableCandidate {
   return {
     entityId: String(seed.entityId),
     position: [seed.position[0], seed.position[1], seed.position[2]] as const,
@@ -30,9 +30,9 @@ function candidateFromSeedV1(
 
 describe("business crafting station proximity prompt", () => {
   it("treats every seeded business station as a craftable table", () => {
-    for (const seed of HARTHMERE_BUSINESS_CRAFTING_STATION_SEEDS_V1) {
+    for (const seed of HARTHMERE_BUSINESS_CRAFTING_STATION_SEEDS) {
       assert.ok(
-        isHarthmereCraftingTableV1({
+        isHarthmereCraftingTable({
           hasPlaceableComponent: true,
           itemIsCraftingStation: true,
         }),
@@ -42,9 +42,9 @@ describe("business crafting station proximity prompt", () => {
   });
 
   it("offers the prompt when the player stands at a station facing it", () => {
-    const seed = HARTHMERE_BUSINESS_CRAFTING_STATION_SEEDS_V1[0];
-    const candidates = HARTHMERE_BUSINESS_CRAFTING_STATION_SEEDS_V1.map(
-      candidateFromSeedV1
+    const seed = HARTHMERE_BUSINESS_CRAFTING_STATION_SEEDS[0];
+    const candidates = HARTHMERE_BUSINESS_CRAFTING_STATION_SEEDS.map(
+      candidateFromSeed
     );
     // Stand just south of the first station, looking north (+x toward it).
     const playerPosition = [
@@ -53,7 +53,7 @@ describe("business crafting station proximity prompt", () => {
       seed.position[2],
     ] as const;
     const facingView = [1, 0, 0] as const;
-    const selection = selectNearestHarthmereCraftingTableV1({
+    const selection = selectNearestHarthmereCraftingTable({
       playerPosition,
       facingView,
       candidates,
@@ -64,13 +64,13 @@ describe("business crafting station proximity prompt", () => {
   });
 
   it("never offers the prompt for a non-station placeable at the same spot", () => {
-    const seed = HARTHMERE_BUSINESS_CRAFTING_STATION_SEEDS_V1[0];
-    const notAStation: HarthmereCraftingTableCandidateV1 = {
+    const seed = HARTHMERE_BUSINESS_CRAFTING_STATION_SEEDS[0];
+    const notAStation: HarthmereCraftingTableCandidate = {
       entityId: "decoration",
       position: [seed.position[0], seed.position[1], seed.position[2]] as const,
       isCraftingStation: false,
     };
-    const selection = selectNearestHarthmereCraftingTableV1({
+    const selection = selectNearestHarthmereCraftingTable({
       playerPosition: [
         seed.position[0] - 1.5,
         seed.position[1],

@@ -2,9 +2,9 @@ import assert from "assert";
 
 import { BikkieIds } from "@/shared/bikkie/ids";
 import {
-  HARTHMERE_PLACED_COOK_STATION_RE_V1,
-  isHarthmerePlacedCookStationItemV1,
-} from "./craftingStationCookRoutingV1";
+  HARTHMERE_PLACED_COOK_STATION_RE,
+  isHarthmerePlacedCookStationItem,
+} from "./craftingStationCookRouting";
 
 describe("placed crafting station cooking routing", () => {
   it("routes placed fire pits, ovens, and pots to the cooking UI", () => {
@@ -19,12 +19,12 @@ describe("placed crafting station cooking routing", () => {
       "Soup Pot",
       "Pot",
     ]) {
-      assert.match(label, HARTHMERE_PLACED_COOK_STATION_RE_V1);
+      assert.match(label, HARTHMERE_PLACED_COOK_STATION_RE);
     }
   });
 });
 
-describe("isHarthmerePlacedCookStationItemV1 prompt gate", () => {
+describe("isHarthmerePlacedCookStationItem prompt gate", () => {
   it("surfaces the cook prompt for campfires / ovens / cookpots / fire pits", () => {
     for (const displayName of [
       "Campfire",
@@ -43,7 +43,7 @@ describe("isHarthmerePlacedCookStationItemV1 prompt gate", () => {
       "Cooking Fire",
     ]) {
       assert.ok(
-        isHarthmerePlacedCookStationItemV1({ displayName }),
+        isHarthmerePlacedCookStationItem({ displayName }),
         `expected "${displayName}" to be a cook station`
       );
     }
@@ -51,10 +51,10 @@ describe("isHarthmerePlacedCookStationItemV1 prompt gate", () => {
 
   it("matches the base-game campfire by id even with no display name", () => {
     assert.ok(
-      isHarthmerePlacedCookStationItemV1({ id: BikkieIds.campfire })
+      isHarthmerePlacedCookStationItem({ id: BikkieIds.campfire })
     );
     assert.ok(
-      isHarthmerePlacedCookStationItemV1({
+      isHarthmerePlacedCookStationItem({
         id: BikkieIds.campfire,
         displayName: "",
       })
@@ -76,16 +76,16 @@ describe("isHarthmerePlacedCookStationItemV1 prompt gate", () => {
       "Jobs Board",
     ]) {
       assert.ok(
-        !isHarthmerePlacedCookStationItemV1({ displayName }),
+        !isHarthmerePlacedCookStationItem({ displayName }),
         `expected "${displayName}" NOT to be a cook station`
       );
     }
   });
 
   it("is safe for missing / empty items", () => {
-    assert.ok(!isHarthmerePlacedCookStationItemV1(undefined));
-    assert.ok(!isHarthmerePlacedCookStationItemV1(null));
-    assert.ok(!isHarthmerePlacedCookStationItemV1({}));
-    assert.ok(!isHarthmerePlacedCookStationItemV1({ displayName: "" }));
+    assert.ok(!isHarthmerePlacedCookStationItem(undefined));
+    assert.ok(!isHarthmerePlacedCookStationItem(null));
+    assert.ok(!isHarthmerePlacedCookStationItem({}));
+    assert.ok(!isHarthmerePlacedCookStationItem({ displayName: "" }));
   });
 });

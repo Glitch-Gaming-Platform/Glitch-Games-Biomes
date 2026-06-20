@@ -1,7 +1,7 @@
 import emojiData from "@emoji-mart/data";
 import { init, SearchIndex } from "emoji-mart";
 
-export const HARTHMERE_EMOJI_MART_COMPAT_VERSION = "emoji-mart-v5-react18-compat-v1";
+export const HARTHMERE_EMOJI_MART_COMPAT_VERSION = "emoji-mart-react18-compat";
 
 export interface HarthmereEmojiSearchResult {
   id?: string;

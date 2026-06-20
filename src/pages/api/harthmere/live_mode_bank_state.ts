@@ -1,11 +1,11 @@
 import { connectToRedis } from "@/server/shared/redis/connection";
 import { biomesApiHandler } from "@/server/web/util/api_middleware";
 import {
-  applyHarthmereBankLoanConsequencesV1,
-  createHarthmereLiveModeBankingClientSnapshotV1,
-  harthmereLiveModePlayerStateKeyV1,
-  parseHarthmereLiveModeBackendStateV1,
-} from "@/shared/harthmere/live_mode_backend_v1";
+  applyHarthmereBankLoanConsequences,
+  createHarthmereLiveModeBankingClientSnapshot,
+  harthmereLiveModePlayerStateKey,
+  parseHarthmereLiveModeBackendState,
+} from "@/shared/harthmere/live_mode_backend";
 import { z } from "zod";
 
 const zJsonRecord = z.record(z.unknown());
@@ -15,7 +15,7 @@ export const zHarthmereLiveModeBankStateResponse = z.object({
   bankingState: zJsonRecord,
 });
 
-export interface HarthmereLiveModeBankStateRedisV1 {
+export interface HarthmereLiveModeBankStateRedis {
   primary: {
     get: (key: string) => Promise<string | null>;
     set?: (key: string, value: string) => Promise<unknown>;
@@ -29,28 +29,28 @@ export interface HarthmereLiveModeBankStateRedisV1 {
 }
 
 const globalForHarthmereLiveModeBankState = globalThis as typeof globalThis & {
-  __harthmereLiveModeBankStateRedisV1?: ReturnType<typeof connectToRedis>;
+  __harthmereLiveModeBankStateRedis?: ReturnType<typeof connectToRedis>;
 };
 
-function liveModeBankStateRedisV1() {
-  return (globalForHarthmereLiveModeBankState.__harthmereLiveModeBankStateRedisV1 ??=
+function liveModeBankStateRedis() {
+  return (globalForHarthmereLiveModeBankState.__harthmereLiveModeBankStateRedis ??=
     connectToRedis("firehose"));
 }
 
-export async function readHarthmereLiveModeBankStateForActorV1(input: {
-  redis: HarthmereLiveModeBankStateRedisV1;
+export async function readHarthmereLiveModeBankStateForActor(input: {
+  redis: HarthmereLiveModeBankStateRedis;
   actorId: string;
   nowMs: number;
 }) {
-  const stateKey = harthmereLiveModePlayerStateKeyV1(input.actorId);
+  const stateKey = harthmereLiveModePlayerStateKey(input.actorId);
   const rawState = await input.redis.primary.get(stateKey);
-  const state = parseHarthmereLiveModeBackendStateV1(
+  const state = parseHarthmereLiveModeBackendState(
     rawState,
     input.actorId,
     input.nowMs
   );
   state.updatedAtMs = input.nowMs;
-  const consequences = applyHarthmereBankLoanConsequencesV1(
+  const consequences = applyHarthmereBankLoanConsequences(
     state,
     input.nowMs
   );
@@ -62,13 +62,13 @@ export async function readHarthmereLiveModeBankStateForActorV1(input: {
       await input.redis.primary.watch?.(stateKey);
       try {
         const latestRawState = await input.redis.primary.get(stateKey);
-        const latestState = parseHarthmereLiveModeBackendStateV1(
+        const latestState = parseHarthmereLiveModeBackendState(
           latestRawState,
           input.actorId,
           input.nowMs
         );
         latestState.updatedAtMs = input.nowMs;
-        const latestConsequences = applyHarthmereBankLoanConsequencesV1(
+        const latestConsequences = applyHarthmereBankLoanConsequences(
           latestState,
           input.nowMs
         );
@@ -87,7 +87,7 @@ export async function readHarthmereLiveModeBankStateForActorV1(input: {
       await input.redis.primary.set(stateKey, JSON.stringify(state));
     }
   }
-  return createHarthmereLiveModeBankingClientSnapshotV1(state);
+  return createHarthmereLiveModeBankingClientSnapshot(state);
 }
 
 export default biomesApiHandler(
@@ -98,10 +98,10 @@ export default biomesApiHandler(
   },
   async ({ auth: { userId } }) => {
     const actorId = String(userId);
-    const redis = await liveModeBankStateRedisV1();
+    const redis = await liveModeBankStateRedis();
     return {
       ok: true,
-      bankingState: await readHarthmereLiveModeBankStateForActorV1({
+      bankingState: await readHarthmereLiveModeBankStateForActor({
         redis,
         actorId,
         nowMs: Date.now(),

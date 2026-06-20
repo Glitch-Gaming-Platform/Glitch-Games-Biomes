@@ -16,7 +16,7 @@ import type { BiomesId } from "@/shared/ids";
 
 export const MAX_BIOMES_UI_ADMIN_SHOP_PURCHASE_COUNT = 20;
 
-export function clampBiomesUIShopAmountV1(
+export function clampBiomesUIShopAmount(
   value: number,
   min: number,
   max: number
@@ -27,31 +27,31 @@ export function clampBiomesUIShopAmountV1(
   return Math.max(min, Math.min(max, Math.floor(value)));
 }
 
-export function normalizeShopPurchaseCountV1(
+export function normalizeShopPurchaseCount(
   requested: number,
   isAdminShop: boolean
 ) {
-  return clampBiomesUIShopAmountV1(
+  return clampBiomesUIShopAmount(
     requested,
     1,
     isAdminShop ? MAX_BIOMES_UI_ADMIN_SHOP_PURCHASE_COUNT : 1
   );
 }
 
-export function normalizeShopListingPriceGoldV1(requested: number) {
-  return clampBiomesUIShopAmountV1(requested, 1, 999_999);
+export function normalizeShopListingPriceGold(requested: number) {
+  return clampBiomesUIShopAmount(requested, 1, 999_999);
 }
 
-export function nextBiomesUIShopAmountV1(
+export function nextBiomesUIShopAmount(
   current: number,
   delta: number,
   min: number,
   max: number
 ) {
-  return clampBiomesUIShopAmountV1(current + delta, min, max);
+  return clampBiomesUIShopAmount(current + delta, min, max);
 }
 
-export function chunkShopSlotIndexesForRovingGridV1(
+export function chunkShopSlotIndexesForRovingGrid(
   totalSlots: number,
   columns: number
 ) {
@@ -69,13 +69,13 @@ export function chunkShopSlotIndexesForRovingGridV1(
   return rows;
 }
 
-export function firstFilledShopSlotIndexV1<T>(
+export function firstFilledShopSlotIndex<T>(
   slots: ReadonlyArray<T | undefined | null>
 ) {
   return slots.findIndex((slot) => slot !== undefined && slot !== null);
 }
 
-export function selectedShopSlotOrFirstAvailableV1<T>(
+export function selectedShopSlotOrFirstAvailable<T>(
   slots: ReadonlyArray<T | undefined | null>,
   currentSlotIdx?: number
 ) {
@@ -88,11 +88,11 @@ export function selectedShopSlotOrFirstAvailableV1<T>(
   ) {
     return currentSlotIdx;
   }
-  const first = firstFilledShopSlotIndexV1(slots);
+  const first = firstFilledShopSlotIndex(slots);
   return first >= 0 ? first : undefined;
 }
 
-export function cannotBuyFromBiomesUIShopReasonV1({
+export function cannotBuyFromBiomesUIShopReason({
   hasSelection,
   itemAvailable,
   hasInventory,
@@ -123,7 +123,7 @@ export function cannotBuyFromBiomesUIShopReasonV1({
   return undefined;
 }
 
-export function canSellItemToNpcBuyerV1(
+export function canSellItemToNpcBuyer(
   item: ItemAndCount | undefined,
   buyerAttributeIds: readonly number[] | undefined
 ) {
@@ -135,7 +135,7 @@ export function canSellItemToNpcBuyerV1(
   );
 }
 
-export function buildShopPurchaseEventV1({
+export function buildShopPurchaseEvent({
   containerId,
   purchaserId,
   sellerId,
@@ -158,11 +158,11 @@ export function buildShopPurchaseEventV1({
     src: { kind: "item", idx: slotIdx },
     purchaser_id: purchaserId,
     seller_id: sellerId,
-    quantity: normalizeShopPurchaseCountV1(quantity, isAdminShop),
+    quantity: normalizeShopPurchaseCount(quantity, isAdminShop),
   });
 }
 
-export function buildShopListingEventV1({
+export function buildShopListingEvent({
   containerId,
   sellerId,
   src,
@@ -187,7 +187,7 @@ export function buildShopListingEventV1({
     sell_item: sellItem,
     dst_price: countOf(
       BikkieIds.bling,
-      BigInt(normalizeShopListingPriceGoldV1(priceGold))
+      BigInt(normalizeShopListingPriceGold(priceGold))
     ),
     dst_slot: {
       kind: "item",
@@ -196,7 +196,7 @@ export function buildShopListingEventV1({
   });
 }
 
-export function buildNpcSellToEntityEventV1({
+export function buildNpcSellToEntityEvent({
   buyerEntityId,
   sellerId,
   src,

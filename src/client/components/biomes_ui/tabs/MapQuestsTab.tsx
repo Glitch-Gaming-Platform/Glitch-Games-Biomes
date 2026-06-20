@@ -4,7 +4,7 @@
 // current player position, Grove landmarks, quest markers, service NPCs/stores,
 // and mission objectives supplied by the Snapshot/Grove adapter.
 //
-// BIOMES_UI_MAP_TAB_V141 upgrade:
+// BIOMES_UI_MAP_TAB upgrade:
 //   - Mouse wheel zoom (centered on cursor).
 //   - Click+drag to pan.
 //   - Player marker is a pulsing ring (animated, easy to spot).
@@ -16,28 +16,28 @@
 import * as React from "react";
 import { Highlightable } from "../highlight/HighlightOverlay";
 import { UI_IDS } from "../uniqueIds";
-import { questDetailToolShopMarkerCandidatesV1 } from "./questDetailToolSourceV1";
+import { questDetailToolShopMarkerCandidates } from "./questDetailToolSource";
 import {
   activeBiomesUIMapPinFromMarkerForTest,
-  BIOMES_UI_LOCATE_ON_MAP_EVENT_V1,
-  BIOMES_UI_LOCATE_ON_MAP_RECENCY_MS_V1,
-  type BiomesUIActiveMapPinV142,
-  readActiveBiomesUIMapPinV142,
-  writeActiveBiomesUIMapPinV142,
+  BIOMES_UI_LOCATE_ON_MAP_EVENT,
+  BIOMES_UI_LOCATE_ON_MAP_RECENCY_MS,
+  type BiomesUIActiveMapPin,
+  readActiveBiomesUIMapPin,
+  writeActiveBiomesUIMapPin,
 } from "../adapters/mapPinnedDestination";
 import {
-  BIOMES_UI_MAIN_QUEST_EVENT_V1,
-  type BiomesUIMainQuestSelectionV1,
+  BIOMES_UI_MAIN_QUEST_EVENT,
+  type BiomesUIMainQuestSelection,
   mainQuestFromTrackableQuestsForTest,
-  readBiomesUIMainQuestSelectionV1,
-  setBiomesUIMainQuestFromTrackableQuestV1,
-  writeBiomesUIMainQuestSelectionV1,
+  readBiomesUIMainQuestSelection,
+  setBiomesUIMainQuestFromTrackableQuest,
+  writeBiomesUIMainQuestSelection,
 } from "../adapters/mainQuestSelection";
 import {
-  harthmereMapElevationBandForHeightV1,
-  type HarthmereMapTerrainKindV1,
-  type MapTerrainRegionV1,
-} from "../adapters/harthmereMapTerrainRegionsV1";
+  harthmereMapElevationBandForHeight,
+  type HarthmereMapTerrainKind,
+  type MapTerrainRegion,
+} from "../adapters/harthmereMapTerrainRegions";
 
 export type MapMarkerKind =
   | "objective"
@@ -94,15 +94,15 @@ interface MissionStep {
   done: boolean;
 }
 
-// BIOMES_UI_MAP_TAB_QUESTS_V141:
+// BIOMES_UI_MAP_TAB_QUESTS:
 // Trackable-quest entries surface in the new clickable side list and let
 // the player center the map on each quest's first marker without scrolling
 // through the active mission timeline.
-// HARTHMERE_QUEST_DETAIL_V151: optional fields that let the quests panel show the
+// HARTHMERE_QUEST_DETAIL: optional fields that let the quests panel show the
 // FULL quest information when a player clicks a quest — the kind, the objective,
 // a longer description, and (for tool-requiring jobs the player can't yet do)
 // where to buy the required tool, with a marker the panel can locate on the map.
-export interface MapTrackableQuestToolSourceV1 {
+export interface MapTrackableQuestToolSource {
   action: string;
   toolName: string;
   vendorName: string;
@@ -126,7 +126,7 @@ export interface MapTrackableQuest {
   objective?: string;
   objectives?: string[];
   description?: string;
-  toolSource?: MapTrackableQuestToolSourceV1;
+  toolSource?: MapTrackableQuestToolSource;
 }
 
 interface MapAdapter {
@@ -138,17 +138,17 @@ interface MapAdapter {
     | { minX: number; maxX: number; minZ: number; maxZ: number }
     | undefined;
   getTrackableQuests?: () => MapTrackableQuest[];
-  getActiveMapPin?: () => BiomesUIActiveMapPinV142 | undefined;
+  getActiveMapPin?: () => BiomesUIActiveMapPin | undefined;
   setActiveMapPin?: (marker: MapMarker) => void;
   clearActiveMapPin?: () => void;
-  getMainQuestSelection?: () => BiomesUIMainQuestSelectionV1 | undefined;
+  getMainQuestSelection?: () => BiomesUIMainQuestSelection | undefined;
   setMainQuest?: (
     quest: MapTrackableQuest
-  ) => BiomesUIMainQuestSelectionV1 | undefined;
+  ) => BiomesUIMainQuestSelection | undefined;
   clearMainQuest?: () => void;
   // Authentic terrain regions (town, roads, river, muck, highland), already
   // projected to 0..100 map units against the same bounds as the markers.
-  getTerrainRegions?: () => MapTerrainRegionV1[];
+  getTerrainRegions?: () => MapTerrainRegion[];
 }
 
 type MapPanelTab =
@@ -429,7 +429,7 @@ function markersForPanelTab(
 
 // Authentic terrain layer styling (water / muck / town / road / highland / land).
 const TERRAIN_REGION_STYLE: Record<
-  HarthmereMapTerrainKindV1,
+  HarthmereMapTerrainKind,
   { fill: string; stroke: string; strokeWidth: number }
 > = {
   land: {
@@ -465,8 +465,8 @@ const TERRAIN_REGION_STYLE: Record<
   },
 };
 
-export const TERRAIN_LEGEND_V1: Array<{
-  kind: HarthmereMapTerrainKindV1;
+export const TERRAIN_LEGEND: Array<{
+  kind: HarthmereMapTerrainKind;
   label: string;
 }> = [
   { kind: "land", label: "Land" },
@@ -485,7 +485,7 @@ function MapTerrainLayer({
   zoom,
   pan,
 }: {
-  regions: MapTerrainRegionV1[];
+  regions: MapTerrainRegion[];
   zoom: number;
   pan: { x: number; y: number };
 }) {
@@ -637,7 +637,7 @@ export function questMapMarkerCandidatesForTest(
   const seen = new Set<string>();
   return [
     quest.firstMarkerId,
-    ...questDetailToolShopMarkerCandidatesV1(quest),
+    ...questDetailToolShopMarkerCandidates(quest),
   ].filter((markerId): markerId is string => {
     const id = markerId?.trim();
     if (!id || seen.has(id)) return false;
@@ -656,35 +656,35 @@ function distanceFromPlayer(
   return Math.round(Math.sqrt(dx * dx + dz * dz));
 }
 
-// BIOMES_UI_MAP_TAB_V141:
+// BIOMES_UI_MAP_TAB:
 // Inject the keyframes for the player pulse + active-marker ping. Idempotent —
 // guarded by the style tag id so multiple mounts don't duplicate.
-function ensureMapTabStylesV141() {
+function ensureMapTabStyles() {
   if (typeof document === "undefined") return;
-  const id = "biomes-ui-map-tab-styles-v141";
+  const id = "biomes-ui-map-tab-styles";
   if (document.getElementById(id)) return;
   const style = document.createElement("style");
   style.id = id;
   style.textContent = `
-@keyframes biomesMapPlayerPulseV141 {
+@keyframes biomesMapPlayerPulse {
   0%   { box-shadow: 0 0 0 0 rgba(255,255,255,0.85), 0 0 14px rgba(255,255,255,0.6); }
   70%  { box-shadow: 0 0 0 12px rgba(255,255,255,0), 0 0 22px rgba(255,255,255,0.5); }
   100% { box-shadow: 0 0 0 0 rgba(255,255,255,0), 0 0 14px rgba(255,255,255,0.6); }
 }
-@keyframes biomesMapActivePingV141 {
+@keyframes biomesMapActivePing {
   0%   { box-shadow: 0 0 0 0 rgba(252,211,77,0.85), 0 0 14px rgba(252,211,77,0.6); }
   70%  { box-shadow: 0 0 0 14px rgba(252,211,77,0),    0 0 22px rgba(252,211,77,0.5); }
   100% { box-shadow: 0 0 0 0 rgba(252,211,77,0),       0 0 14px rgba(252,211,77,0.6); }
 }
-.biomes-map-tab-v141 .biomes-map-marker:focus-visible {
+.biomes-map-tab .biomes-map-marker:focus-visible {
   outline: 2px solid var(--biomes-edge-cyan);
   outline-offset: 2px;
 }
 @media (max-width: 720px) {
-  .biomes-map-tab-v141 {
+  .biomes-map-tab {
     grid-template-columns: 1fr !important;
   }
-  .biomes-map-tab-v141 .biomes-map-canvas {
+  .biomes-map-tab .biomes-map-canvas {
     min-height: 320px;
     aspect-ratio: 4 / 3;
   }
@@ -726,13 +726,13 @@ export const MapQuestsTab: React.FunctionComponent<{
     geography: "",
   });
   const [activeMapPin, setActiveMapPin] = React.useState<
-    BiomesUIActiveMapPinV142 | undefined
+    BiomesUIActiveMapPin | undefined
   >(() => adapter?.getActiveMapPin?.());
   const [mainQuestSelection, setMainQuestSelection] = React.useState<
-    BiomesUIMainQuestSelectionV1 | undefined
+    BiomesUIMainQuestSelection | undefined
   >(
     () =>
-      adapter?.getMainQuestSelection?.() ?? readBiomesUIMainQuestSelectionV1()
+      adapter?.getMainQuestSelection?.() ?? readBiomesUIMainQuestSelection()
   );
   // "Locate on map" target we still need to pan/zoom to. Seeded from a recent
   // active pin on mount because the locate event fires during the tab switch,
@@ -740,9 +740,9 @@ export const MapQuestsTab: React.FunctionComponent<{
   const [pendingLocateMarkerId, setPendingLocateMarkerId] = React.useState<
     string | undefined
   >(() => {
-    const pin = readActiveBiomesUIMapPinV142();
+    const pin = readActiveBiomesUIMapPin();
     return pin &&
-      Date.now() - pin.setAtMs <= BIOMES_UI_LOCATE_ON_MAP_RECENCY_MS_V1
+      Date.now() - pin.setAtMs <= BIOMES_UI_LOCATE_ON_MAP_RECENCY_MS
       ? pin.markerId
       : undefined;
   });
@@ -755,7 +755,7 @@ export const MapQuestsTab: React.FunctionComponent<{
   } | null>(null);
   const didAutoCenterPlayerRef = React.useRef(false);
 
-  React.useEffect(() => ensureMapTabStylesV141(), []);
+  React.useEffect(() => ensureMapTabStyles(), []);
 
   const markers = React.useMemo(() => adapter?.getMarkers?.() ?? [], [adapter]);
   const playerMarker = adapter?.getPlayerMarker?.();
@@ -810,24 +810,24 @@ export const MapQuestsTab: React.FunctionComponent<{
   ]);
   React.useEffect(() => {
     setMainQuestSelection(
-      adapter?.getMainQuestSelection?.() ?? readBiomesUIMainQuestSelectionV1()
+      adapter?.getMainQuestSelection?.() ?? readBiomesUIMainQuestSelection()
     );
   }, [adapter]);
   React.useEffect(() => {
     if (typeof window === "undefined") return;
     const onMainQuestChanged = (event: Event) => {
       const next =
-        (event as CustomEvent<BiomesUIMainQuestSelectionV1 | undefined>)
+        (event as CustomEvent<BiomesUIMainQuestSelection | undefined>)
           .detail ??
         adapter?.getMainQuestSelection?.() ??
-        readBiomesUIMainQuestSelectionV1();
+        readBiomesUIMainQuestSelection();
       setMainQuestSelection(next);
     };
-    window.addEventListener(BIOMES_UI_MAIN_QUEST_EVENT_V1, onMainQuestChanged);
+    window.addEventListener(BIOMES_UI_MAIN_QUEST_EVENT, onMainQuestChanged);
     window.addEventListener("storage", onMainQuestChanged);
     return () => {
       window.removeEventListener(
-        BIOMES_UI_MAIN_QUEST_EVENT_V1,
+        BIOMES_UI_MAIN_QUEST_EVENT,
         onMainQuestChanged
       );
       window.removeEventListener("storage", onMainQuestChanged);
@@ -839,7 +839,7 @@ export const MapQuestsTab: React.FunctionComponent<{
     if (adapter?.clearMainQuest) {
       adapter.clearMainQuest();
     } else {
-      writeBiomesUIMainQuestSelectionV1(undefined);
+      writeBiomesUIMainQuestSelection(undefined);
     }
     setMainQuestSelection(undefined);
   }, [adapter, mainQuest, mainQuestSelection, trackableQuests]);
@@ -891,7 +891,7 @@ export const MapQuestsTab: React.FunctionComponent<{
   const elevationBands = React.useMemo(() => {
     const counts: Record<string, number> = {};
     for (const marker of allMarkers) {
-      const band = harthmereMapElevationBandForHeightV1(
+      const band = harthmereMapElevationBandForHeight(
         marker.worldPosition?.[1]
       );
       counts[band] = (counts[band] ?? 0) + 1;
@@ -1008,7 +1008,7 @@ export const MapQuestsTab: React.FunctionComponent<{
       if (adapter?.setActiveMapPin) {
         adapter.setActiveMapPin(marker);
       } else {
-        writeActiveBiomesUIMapPinV142(pin);
+        writeActiveBiomesUIMapPin(pin);
       }
       setActiveMapPin(pin);
     },
@@ -1018,7 +1018,7 @@ export const MapQuestsTab: React.FunctionComponent<{
     if (adapter?.clearActiveMapPin) {
       adapter.clearActiveMapPin();
     } else {
-      writeActiveBiomesUIMapPinV142(undefined);
+      writeActiveBiomesUIMapPin(undefined);
     }
     setActiveMapPin(undefined);
   }, [adapter]);
@@ -1059,7 +1059,7 @@ export const MapQuestsTab: React.FunctionComponent<{
     (quest: MapTrackableQuest) => {
       const selection =
         adapter?.setMainQuest?.(quest) ??
-        setBiomesUIMainQuestFromTrackableQuestV1(quest);
+        setBiomesUIMainQuestFromTrackableQuest(quest);
       setMainQuestSelection(selection);
       setTrackedQuestId(quest.questId);
       setSelectedQuestId(quest.questId);
@@ -1103,16 +1103,16 @@ export const MapQuestsTab: React.FunctionComponent<{
     if (typeof window === "undefined") return;
     const handler = (event: Event) => {
       const pin = (event as CustomEvent).detail as
-        | BiomesUIActiveMapPinV142
+        | BiomesUIActiveMapPin
         | undefined;
       if (pin?.markerId) {
         setActiveMapPin(pin);
         setPendingLocateMarkerId(pin.markerId);
       }
     };
-    window.addEventListener(BIOMES_UI_LOCATE_ON_MAP_EVENT_V1, handler);
+    window.addEventListener(BIOMES_UI_LOCATE_ON_MAP_EVENT, handler);
     return () =>
-      window.removeEventListener(BIOMES_UI_LOCATE_ON_MAP_EVENT_V1, handler);
+      window.removeEventListener(BIOMES_UI_LOCATE_ON_MAP_EVENT, handler);
   }, []);
 
   // Center on the located target once its marker is available. Markers hydrate
@@ -1129,7 +1129,7 @@ export const MapQuestsTab: React.FunctionComponent<{
     setPendingLocateMarkerId(undefined);
   }, [pendingLocateMarkerId, allMarkers, centerOnMarker]);
 
-  // BIOMES_UI_MAP_TAB_V141:
+  // BIOMES_UI_MAP_TAB:
   // Mouse wheel zoom (Shift+wheel pans horizontally). Centered on the cursor
   // so the point under the pointer stays put — same behaviour every modern
   // map UI uses.
@@ -1186,7 +1186,7 @@ export const MapQuestsTab: React.FunctionComponent<{
     } catch {}
   };
 
-  // BIOMES_UI_MAP_TAB_V141: keyboard pan (arrow keys when the canvas has focus).
+  // BIOMES_UI_MAP_TAB: keyboard pan (arrow keys when the canvas has focus).
   const onKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
     const step = 0.08;
     if (event.key === "ArrowLeft") {
@@ -1218,7 +1218,7 @@ export const MapQuestsTab: React.FunctionComponent<{
 
   return (
     <div
-      className="biomes-map-tab-v141"
+      className="biomes-map-tab"
       style={{
         display: "grid",
         gridTemplateColumns: "minmax(0, 1fr) minmax(280px, 340px)",
@@ -1416,9 +1416,9 @@ export const MapQuestsTab: React.FunctionComponent<{
                       : "0 0 8px rgba(74,222,255,0.65)",
                     cursor: "pointer",
                     animation: visual.isPlayer
-                      ? "biomesMapPlayerPulseV141 1.6s ease-in-out infinite"
+                      ? "biomesMapPlayerPulse 1.6s ease-in-out infinite"
                       : visual.isActive
-                      ? "biomesMapActivePingV141 1.4s ease-in-out infinite"
+                      ? "biomesMapActivePing 1.4s ease-in-out infinite"
                       : undefined,
                     zIndex: visual.zIndex,
                   }}
@@ -1477,7 +1477,7 @@ export const MapQuestsTab: React.FunctionComponent<{
             </span>
           ))}
           {showTerrain
-            ? TERRAIN_LEGEND_V1.map((entry) => (
+            ? TERRAIN_LEGEND.map((entry) => (
                 <span
                   key={`terrain-${entry.kind}`}
                   style={{
@@ -1520,7 +1520,7 @@ export const MapQuestsTab: React.FunctionComponent<{
                   .join(", ")}
                 {" · "}
                 Elevation:{" "}
-                {harthmereMapElevationBandForHeightV1(
+                {harthmereMapElevationBandForHeight(
                   focusedMarker.worldPosition[1]
                 )}
               </small>
@@ -1843,7 +1843,7 @@ export const MapQuestsTab: React.FunctionComponent<{
   );
 };
 
-// HARTHMERE_QUEST_DETAIL_PANEL_V151: the full quest information shown when a
+// HARTHMERE_QUEST_DETAIL_PANEL: the full quest information shown when a
 // player clicks a quest in the Quests panel — kind, objective, description,
 // reward, time, and (for a tool-requiring job the player can't yet do) a clear
 // "where to buy the tool" callout with a button that locates the shop on the map.
@@ -1935,7 +1935,7 @@ function QuestDetailPanel({
             type="button"
             data-testid={`biomes-map-quest-locate-tool-${quest.questId}`}
             onClick={() =>
-              onLocateToolShop(questDetailToolShopMarkerCandidatesV1(quest))
+              onLocateToolShop(questDetailToolShopMarkerCandidates(quest))
             }
             style={{
               padding: "4px 8px",

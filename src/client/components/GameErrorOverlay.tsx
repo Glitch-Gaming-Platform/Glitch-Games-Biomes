@@ -50,7 +50,7 @@ export const GameErrorOverlay: React.FunctionComponent<{}> = ({}) => {
           INSTALL_DISCONNECT_SUPPRESSION_LOG_INTERVAL_MS
         ) {
           lastSuppressionLogAtRef.current = now;
-          log.warn("HARTHMERE_SUPPRESS_INSTALL_DISCONNECT_OVERLAY_V141", {
+          log.warn("HARTHMERE_SUPPRESS_INSTALL_DISCONNECT_OVERLAY", {
             socketStatus: socketStatus.status,
             currentModal,
           });

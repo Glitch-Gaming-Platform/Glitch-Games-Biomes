@@ -16,7 +16,7 @@ export const allCloudBuckets = valueLiteral<CloudBucket>()({
     cdnDomain: "social.biomes.gg",
   },
   "biomes-static": {
-    // GLITCH_REMOVE_STATIC_BIOMES_GG_V193: do not serve this bucket through
+    // GLITCH_REMOVE_STATIC_BIOMES_GG: do not serve this bucket through
     // the legacy static CDN. Local/Glitch runtimes use /buckets/...;
     // non-local cloud callers fall back to the bucket URL below.
     cdnDomain: undefined,
@@ -30,7 +30,7 @@ export const allCloudBuckets = valueLiteral<CloudBucket>()({
 });
 
 export function useLocalDisk() {
-  // GLITCH_PROD_LOCAL_PARITY_V1: any local-asset/GCP-disabled runtime uses local public buckets.
+  // GLITCH_PROD_LOCAL_PARITY: any local-asset/GCP-disabled runtime uses local public buckets.
   return (
     process.env.LOCAL_GCS === "1" ||
     process.env.GCS_LOCAL_DISK === "1" ||

@@ -339,7 +339,7 @@ function computeDrawDistance(
   return DRAW_DISTANCES[resolved.drawDistance];
 }
 
-export function applyMinimumDrawDistanceV1(
+export function applyMinimumDrawDistance(
   drawDistance: number,
   minDrawDistance: number | undefined
 ) {
@@ -348,7 +348,7 @@ export function applyMinimumDrawDistanceV1(
     : drawDistance;
 }
 
-export function applyDrawDistanceFloorsV1(
+export function applyDrawDistanceFloors(
   drawDistance: number,
   options: {
     hardMinDrawDistance?: number;
@@ -356,12 +356,12 @@ export function applyDrawDistanceFloorsV1(
     isDynamicDrawDistance: boolean;
   }
 ) {
-  const hardFloored = applyMinimumDrawDistanceV1(
+  const hardFloored = applyMinimumDrawDistance(
     drawDistance,
     options.hardMinDrawDistance
   );
   return options.isDynamicDrawDistance
-    ? applyMinimumDrawDistanceV1(hardFloored, options.dynamicMinDrawDistance)
+    ? applyMinimumDrawDistance(hardFloored, options.dynamicMinDrawDistance)
     : hardFloored;
 }
 
@@ -387,7 +387,7 @@ function genGraphicsSettingsDynamic(
     : typeof computedSettings.drawDistance === "number"
       ? computedSettings.drawDistance
       : DRAW_DISTANCES.low;
-  const drawDistance = applyDrawDistanceFloorsV1(dynamicDrawDistance, {
+  const drawDistance = applyDrawDistanceFloors(dynamicDrawDistance, {
     hardMinDrawDistance: context.clientConfig.minDrawDistance,
     dynamicMinDrawDistance: context.clientConfig.dynamicMinDrawDistance,
     isDynamicDrawDistance,

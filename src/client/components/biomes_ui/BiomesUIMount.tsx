@@ -13,15 +13,15 @@ import { useBiomesUILiveAdapters } from "./adapters/useBiomesUILiveAdapters";
 import { TutorialDirector } from "./tutorial/TutorialDirector";
 import { BiomesUITutorialCueBar } from "./tutorial/BiomesUITutorialCueBar";
 import { BiomesUIVitalsPanel } from "./BiomesUIVitalsPanel";
-import { HarthmereJobsBoardWorldInteractionV146 } from "@/client/components/harthmere_jobs_board/HarthmereJobsBoardWorldInteractionV146";
-import { HarthmereWantedBoardWorldInteractionV1 } from "@/client/components/harthmere_wanted_board/HarthmereWantedBoardWorldInteractionV1";
-import { HarthmereBusinessWorldInteractionV1 } from "@/client/components/harthmere_business/HarthmereBusinessWorldInteractionV1";
-import { HarthmerePropertyForSaleWorldInteractionV1 } from "@/client/components/harthmere_building/HarthmerePropertyForSaleWorldInteractionV1";
-import { HarthmereGatheringNodeWorldInteractionV1 } from "@/client/components/challenges/HarthmereGatheringNodeWorldInteractionV1";
+import { HarthmereJobsBoardWorldInteraction } from "@/client/components/harthmere_jobs_board/HarthmereJobsBoardWorldInteraction";
+import { HarthmereWantedBoardWorldInteraction } from "@/client/components/harthmere_wanted_board/HarthmereWantedBoardWorldInteraction";
+import { HarthmereBusinessWorldInteraction } from "@/client/components/harthmere_business/HarthmereBusinessWorldInteraction";
+import { HarthmerePropertyForSaleWorldInteraction } from "@/client/components/harthmere_building/HarthmerePropertyForSaleWorldInteraction";
+import { HarthmereGatheringNodeWorldInteraction } from "@/client/components/challenges/HarthmereGatheringNodeWorldInteraction";
 import { HarthmereObjectContainerPanel } from "@/client/components/challenges/HarthmereObjectContainerPanel";
 import { HarthmereCookingStationPanel } from "@/client/components/harthmere_cooking/HarthmereCookingStationPanel";
-import { BIOMES_UI_LOCATE_ON_MAP_EVENT_V1 } from "./adapters/mapPinnedDestination";
-import { useBiomesHUDVisibilitySnapshotV1 } from "./hudVisibilitySettings";
+import { BIOMES_UI_LOCATE_ON_MAP_EVENT } from "./adapters/mapPinnedDestination";
+import { useBiomesHUDVisibilitySnapshot } from "./hudVisibilitySettings";
 import type { TabKey } from "./BiomesUITypes";
 
 function truthy(value: string | undefined | null): boolean {
@@ -68,7 +68,7 @@ export const BiomesUIMount: React.FunctionComponent<{
   const replacementMode = forceEnabled || replaceLegacy;
   const [enabled, setEnabled] = useState<boolean>(() => false);
   const [activeTab, setActiveTab] = useState<TabKey | null>(null);
-  const hudVisibility = useBiomesHUDVisibilitySnapshotV1();
+  const hudVisibility = useBiomesHUDVisibilitySnapshot();
   const live = useBiomesUILiveAdapters({
     activeTab,
     onActiveTabChange: setActiveTab,
@@ -89,9 +89,9 @@ export const BiomesUIMount: React.FunctionComponent<{
     function onLocate() {
       setActiveTab("map");
     }
-    window.addEventListener(BIOMES_UI_LOCATE_ON_MAP_EVENT_V1, onLocate);
+    window.addEventListener(BIOMES_UI_LOCATE_ON_MAP_EVENT, onLocate);
     return () =>
-      window.removeEventListener(BIOMES_UI_LOCATE_ON_MAP_EVENT_V1, onLocate);
+      window.removeEventListener(BIOMES_UI_LOCATE_ON_MAP_EVENT, onLocate);
   }, []);
 
   // Allow toggling at runtime via key combo: Shift+Alt+B.
@@ -128,19 +128,19 @@ export const BiomesUIMount: React.FunctionComponent<{
         adapters={live.adapters}
         shortcutOverrides={live.shortcuts}
       />
-      <HarthmereJobsBoardWorldInteractionV146
+      <HarthmereJobsBoardWorldInteraction
         suppressPrompt={activeTab !== null}
       />
-      <HarthmereWantedBoardWorldInteractionV1
+      <HarthmereWantedBoardWorldInteraction
         suppressPrompt={activeTab !== null}
       />
-      <HarthmereBusinessWorldInteractionV1
+      <HarthmereBusinessWorldInteraction
         suppressPrompt={activeTab !== null}
       />
-      <HarthmerePropertyForSaleWorldInteractionV1
+      <HarthmerePropertyForSaleWorldInteraction
         suppressPrompt={activeTab !== null}
       />
-      <HarthmereGatheringNodeWorldInteractionV1
+      <HarthmereGatheringNodeWorldInteraction
         suppressPrompt={activeTab !== null}
       />
       <HarthmereObjectContainerPanel />

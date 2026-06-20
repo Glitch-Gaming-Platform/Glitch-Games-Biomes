@@ -42,7 +42,7 @@ const LOCAL_AD_TRACKING_HOST =
   /^(localhost|127\.0\.0\.1|0\.0\.0\.0|\[::1\])(:\d+)?$/;
 
 function shouldInstallTrackers() {
-  // GLITCH_AD_TRACKER_PROD_ONLY_V80: third-party ad/conversion pixels run
+  // GLITCH_AD_TRACKER_PROD_ONLY: third-party ad/conversion pixels run
   // only in production. In local development they cost 70-150ms per page
   // load (snapshot perf walker recorded LinkedIn, Twitter, Reddit, Google,
   // Meta all firing on /at and /at/<id>) and they don't help anyone debug

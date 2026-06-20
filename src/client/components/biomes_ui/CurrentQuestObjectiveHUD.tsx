@@ -1,23 +1,23 @@
 import * as React from "react";
 import {
-  BIOMES_UI_ACTIVE_MAP_PIN_EVENT_V142,
-  readActiveBiomesUIMapPinV142,
-  type BiomesUIActiveMapPinV142,
+  BIOMES_UI_ACTIVE_MAP_PIN_EVENT,
+  readActiveBiomesUIMapPin,
+  type BiomesUIActiveMapPin,
 } from "./adapters/mapPinnedDestination";
 import {
-  BIOMES_UI_MAIN_QUEST_EVENT_V1,
-  type BiomesUIMainQuestSelectionV1,
+  BIOMES_UI_MAIN_QUEST_EVENT,
+  type BiomesUIMainQuestSelection,
   mainQuestFromTrackableQuestsForTest,
-  readBiomesUIMainQuestSelectionV1,
+  readBiomesUIMainQuestSelection,
 } from "./adapters/mainQuestSelection";
-import { questDetailToolShopMarkerCandidatesV1 } from "./tabs/questDetailToolSourceV1";
+import { questDetailToolShopMarkerCandidates } from "./tabs/questDetailToolSource";
 import type { MapTrackableQuest } from "./tabs/MapQuestsTab";
 
 interface CurrentQuestObjectiveMapAdapter {
   getTrackableQuests?: () => MapTrackableQuest[];
   getMissionSteps?: () => Array<{ objective: string; done: boolean }>;
-  getActiveMapPin?: () => BiomesUIActiveMapPinV142 | undefined;
-  getMainQuestSelection?: () => BiomesUIMainQuestSelectionV1 | undefined;
+  getActiveMapPin?: () => BiomesUIActiveMapPin | undefined;
+  getMainQuestSelection?: () => BiomesUIMainQuestSelection | undefined;
 }
 
 function cleanObjectiveText(value: unknown): string | undefined {
@@ -27,11 +27,11 @@ function cleanObjectiveText(value: unknown): string | undefined {
 
 function questToolSourceMatchesActivePin(
   quest: MapTrackableQuest,
-  pin: BiomesUIActiveMapPinV142 | undefined
+  pin: BiomesUIActiveMapPin | undefined
 ): boolean {
   return Boolean(
     pin?.markerId &&
-      questDetailToolShopMarkerCandidatesV1(quest).includes(pin.markerId)
+      questDetailToolShopMarkerCandidates(quest).includes(pin.markerId)
   );
 }
 
@@ -41,7 +41,7 @@ function questIsDisplayableOnHUD(quest: MapTrackableQuest): boolean {
 
 function questObjectiveForHUD(
   quest: MapTrackableQuest | undefined,
-  pin?: BiomesUIActiveMapPinV142
+  pin?: BiomesUIActiveMapPin
 ): string | undefined {
   if (!quest) return undefined;
   if (questToolSourceMatchesActivePin(quest, pin)) {
@@ -56,18 +56,18 @@ function questObjectiveForHUD(
 
 function questMatchesActivePin(
   quest: MapTrackableQuest,
-  pin: BiomesUIActiveMapPinV142 | undefined
+  pin: BiomesUIActiveMapPin | undefined
 ): boolean {
   if (!pin?.markerId) return false;
   if (quest.firstMarkerId === pin.markerId) return true;
-  return questDetailToolShopMarkerCandidatesV1(quest).includes(pin.markerId);
+  return questDetailToolShopMarkerCandidates(quest).includes(pin.markerId);
 }
 
 export function currentQuestObjectiveForHUDForTest(input: {
   quests: MapTrackableQuest[];
   missionSteps?: Array<{ objective: string; done: boolean }>;
-  activeMapPin?: BiomesUIActiveMapPinV142;
-  mainQuestSelection?: BiomesUIMainQuestSelectionV1;
+  activeMapPin?: BiomesUIActiveMapPin;
+  mainQuestSelection?: BiomesUIMainQuestSelection;
 }): string | undefined {
   const mainQuest = mainQuestFromTrackableQuestsForTest(
     input.quests,
@@ -108,22 +108,22 @@ export const CurrentQuestObjectiveHUD: React.FunctionComponent<{
   isOpen?: boolean;
 }> = ({ adapter, isOpen = false }) => {
   const [activeMapPin, setActiveMapPin] = React.useState<
-    BiomesUIActiveMapPinV142 | undefined
-  >(() => adapter?.getActiveMapPin?.() ?? readActiveBiomesUIMapPinV142());
+    BiomesUIActiveMapPin | undefined
+  >(() => adapter?.getActiveMapPin?.() ?? readActiveBiomesUIMapPin());
   const [mainQuestSelection, setMainQuestSelection] = React.useState<
-    BiomesUIMainQuestSelectionV1 | undefined
+    BiomesUIMainQuestSelection | undefined
   >(
     () =>
-      adapter?.getMainQuestSelection?.() ?? readBiomesUIMainQuestSelectionV1()
+      adapter?.getMainQuestSelection?.() ?? readBiomesUIMainQuestSelection()
   );
   const [revision, setRevision] = React.useState(0);
 
   React.useEffect(() => {
     setActiveMapPin(
-      adapter?.getActiveMapPin?.() ?? readActiveBiomesUIMapPinV142()
+      adapter?.getActiveMapPin?.() ?? readActiveBiomesUIMapPin()
     );
     setMainQuestSelection(
-      adapter?.getMainQuestSelection?.() ?? readBiomesUIMainQuestSelectionV1()
+      adapter?.getMainQuestSelection?.() ?? readBiomesUIMainQuestSelection()
     );
   }, [adapter]);
 
@@ -131,15 +131,15 @@ export const CurrentQuestObjectiveHUD: React.FunctionComponent<{
     if (typeof window === "undefined") return;
     const onPin = (event: Event) => {
       setActiveMapPin(
-        (event as CustomEvent<BiomesUIActiveMapPinV142 | undefined>).detail ??
-          readActiveBiomesUIMapPinV142()
+        (event as CustomEvent<BiomesUIActiveMapPin | undefined>).detail ??
+          readActiveBiomesUIMapPin()
       );
       setRevision((value) => value + 1);
     };
-    window.addEventListener(BIOMES_UI_ACTIVE_MAP_PIN_EVENT_V142, onPin);
+    window.addEventListener(BIOMES_UI_ACTIVE_MAP_PIN_EVENT, onPin);
     window.addEventListener("storage", onPin);
     return () => {
-      window.removeEventListener(BIOMES_UI_ACTIVE_MAP_PIN_EVENT_V142, onPin);
+      window.removeEventListener(BIOMES_UI_ACTIVE_MAP_PIN_EVENT, onPin);
       window.removeEventListener("storage", onPin);
     };
   }, []);
@@ -148,17 +148,17 @@ export const CurrentQuestObjectiveHUD: React.FunctionComponent<{
     if (typeof window === "undefined") return;
     const onMainQuest = (event: Event) => {
       setMainQuestSelection(
-        (event as CustomEvent<BiomesUIMainQuestSelectionV1 | undefined>)
+        (event as CustomEvent<BiomesUIMainQuestSelection | undefined>)
           .detail ??
           adapter?.getMainQuestSelection?.() ??
-          readBiomesUIMainQuestSelectionV1()
+          readBiomesUIMainQuestSelection()
       );
       setRevision((value) => value + 1);
     };
-    window.addEventListener(BIOMES_UI_MAIN_QUEST_EVENT_V1, onMainQuest);
+    window.addEventListener(BIOMES_UI_MAIN_QUEST_EVENT, onMainQuest);
     window.addEventListener("storage", onMainQuest);
     return () => {
-      window.removeEventListener(BIOMES_UI_MAIN_QUEST_EVENT_V1, onMainQuest);
+      window.removeEventListener(BIOMES_UI_MAIN_QUEST_EVENT, onMainQuest);
       window.removeEventListener("storage", onMainQuest);
     };
   }, [adapter]);

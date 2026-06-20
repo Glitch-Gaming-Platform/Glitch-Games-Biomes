@@ -8,78 +8,78 @@ import {
 } from "@/client/game/glitch/harthmere_glitch_identity";
 import { useEffect, useRef } from "react";
 import {
-  HARTHMERE_GLITCH_BEHAVIOR_EVENT_NAME_V138,
-  type HarthmereGlitchBehaviorEventV138,
+  HARTHMERE_GLITCH_BEHAVIOR_EVENT_NAME,
+  type HarthmereGlitchBehaviorEvent,
 } from "@/client/game/glitch/harthmere_glitch_behavior_events";
-import { shouldApplyHarthmereCloudSaveV153 } from "@/client/game/glitch/harthmere_cloud_save_restore_policy_v153";
+import { shouldApplyHarthmereCloudSave } from "@/client/game/glitch/harthmere_cloud_save_restore_policy";
 
 import { BIOMES_GAME_NAME } from "@/shared/biomes/display_names";
 const DEFAULT_HARTHMERE_TITLE_ID = "42de534c-600f-4228-af9e-b69faef94cce";
-const HARTHMERE_GLITCH_BRIDGE_FETCH_TIMEOUT_MS_V1 = 15_000;
+const HARTHMERE_GLITCH_BRIDGE_FETCH_TIMEOUT_MS = 15_000;
 const HARTHMERE_STORAGE_PREFIX = "biomes.localDev.harthmere.";
-export const HARTHMERE_GLITCH_SAVE_SCHEMA_VERSION_V153 =
-  "harthmere-glitch-save-all-state-v153" as const;
-export const HARTHMERE_GLITCH_REQUIRED_SAVE_KEYS_V153 = [
-  "biomes.localDev.harthmere.activeUserScope.v1",
-  "biomes.localDev.harthmere.levelingState.v1",
-  "biomes.localDev.harthmere.questState.v1",
-  "biomes.localDev.snapshotGroveQuestState.v75",
-  "biomes.localDev.snapshotGroveLikeability.v75",
-  "biomes.localDev.snapshotMissionState.v73",
-  "biomes.localDev.snapshotMissionEvents.v73",
-  "biomes.localDev.snapshotMissionRewards.v73",
-  "biomes.localDev.harthmere.trackedMissions.v1",
-  "biomes.localDev.harthmere.missionEvents.v1",
-  "biomes.localDev.harthmere.inventoryState.v1",
-  "biomes.localDev.harthmere.combatState.v1",
-  "biomes.localDev.harthmere.deathState.v1",
-  "biomes.localDev.harthmere.classSkillState.v1",
-  "biomes.localDev.harthmere.buildingState.v1",
-  "biomes.localDev.harthmere.economyState.v1",
-  "biomes.localDev.harthmere.gatheringState.v1",
-  "biomes.localDev.harthmere.guildState.v1",
-  "biomes.localDev.harthmere.questEconomyState.v1",
-  "biomes.localDev.harthmere.reputation.v1",
-  "biomes.localDev.harthmere.reputationState.v1",
-  "biomes.localDev.harthmere.vendorStockState.v1",
-  "biomes.localDev.harthmere.storageMailRecoveryState.v1",
-  "biomes.localDev.harthmere.tradeAuctionState.v1",
-  "biomes.localDev.harthmere.mountPetCollection.v1",
-  "biomes.localDev.harthmere.mountPetCollection.recent.v1",
-  "biomes.localDev.harthmere.multiplayerCombatState.v1",
-  "biomes.localDev.harthmere.dialogueMemory.v1",
-  "biomes.localDev.harthmere.dialogueSafety.v1",
-  "biomes.localDev.harthmere.foodStaminaState.v1",
-  "biomes.localDev.harthmere.rapidEconomyActions.v1",
-  "biomes.localDev.harthmere.pendingVendorTrade.v1",
-  "biomes.localDev.harthmere.npcAi.memory.v1",
-  "biomes.localDev.harthmere.npcAi.decisionLog.v1",
-  "biomes.localDev.harthmere.npcAi.debug.v1",
-  "biomes.localDev.liveEntityRobotEnergy.v1",
-  "biomes.localDev.liveEntityHelperQuests.v1",
-  "biomes.localDev.snapshotCombatState.v74",
+export const HARTHMERE_GLITCH_SAVE_SCHEMA_VERSION =
+  "harthmere-glitch-save-all-state" as const;
+export const HARTHMERE_GLITCH_REQUIRED_SAVE_KEYS = [
+  "biomes.localDev.harthmere.activeUserScope",
+  "biomes.localDev.harthmere.levelingState",
+  "biomes.localDev.harthmere.questState",
+  "biomes.localDev.snapshotGroveQuestState",
+  "biomes.localDev.snapshotGroveLikeability",
+  "biomes.localDev.snapshotMissionState",
+  "biomes.localDev.snapshotMissionEvents",
+  "biomes.localDev.snapshotMissionRewards",
+  "biomes.localDev.harthmere.trackedMissions",
+  "biomes.localDev.harthmere.missionEvents",
+  "biomes.localDev.harthmere.inventoryState",
+  "biomes.localDev.harthmere.combatState",
+  "biomes.localDev.harthmere.deathState",
+  "biomes.localDev.harthmere.classSkillState",
+  "biomes.localDev.harthmere.buildingState",
+  "biomes.localDev.harthmere.economyState",
+  "biomes.localDev.harthmere.gatheringState",
+  "biomes.localDev.harthmere.guildState",
+  "biomes.localDev.harthmere.questEconomyState",
+  "biomes.localDev.harthmere.reputation",
+  "biomes.localDev.harthmere.reputationState",
+  "biomes.localDev.harthmere.vendorStockState",
+  "biomes.localDev.harthmere.storageMailRecoveryState",
+  "biomes.localDev.harthmere.tradeAuctionState",
+  "biomes.localDev.harthmere.mountPetCollection",
+  "biomes.localDev.harthmere.mountPetCollection.recent",
+  "biomes.localDev.harthmere.multiplayerCombatState",
+  "biomes.localDev.harthmere.dialogueMemory",
+  "biomes.localDev.harthmere.dialogueSafety",
+  "biomes.localDev.harthmere.foodStaminaState",
+  "biomes.localDev.harthmere.rapidEconomyActions",
+  "biomes.localDev.harthmere.pendingVendorTrade",
+  "biomes.localDev.harthmere.npcAi.memory",
+  "biomes.localDev.harthmere.npcAi.decisionLog",
+  "biomes.localDev.harthmere.npcAi.debug",
+  "biomes.localDev.liveEntityRobotEnergy",
+  "biomes.localDev.liveEntityHelperQuests",
+  "biomes.localDev.snapshotCombatState",
 ] as const;
-export const HARTHMERE_GLITCH_REQUIRED_SAVE_KEY_PREFIXES_V153 = [
-  "biomes.localDev.harthmere.playerFace.v2.user.",
-  "biomes.localDev.harthmere.playerBody.v2.user.",
-  "biomes.localDev.harthmere.playerClothing.v1.user.",
-  "biomes.localDev.harthmere.playerBody.v1.user.",
-  "biomes.localDev.harthmere.foodStaminaState.v1.user.",
-  "biomes.localDev.liveEntityRobotEnergy.v1.user.",
-  "biomes.localDev.liveEntityHelperQuests.v1.user.",
-  "biomes.localDev.snapshotCompletePortState.v76.snapshot-per-player-mission-state-v78.",
-  "biomes.localDev.snapshotPhotoProofs.v76.snapshot-per-player-mission-state-v78.",
-  "biomes.localDev.snapshotClearedMuck.v76.snapshot-per-player-mission-state-v78.",
-  "biomes.snapshot.pendingMutations.v77.snapshot-per-player-mission-state-v78.",
-  "biomes.snapshot.lastBackendSync.v77.snapshot-per-player-mission-state-v78.",
+export const HARTHMERE_GLITCH_REQUIRED_SAVE_KEY_PREFIXES = [
+  "biomes.localDev.harthmere.playerFace.user.",
+  "biomes.localDev.harthmere.playerBody.user.",
+  "biomes.localDev.harthmere.playerClothing.user.",
+  "biomes.localDev.harthmere.playerBody.user.",
+  "biomes.localDev.harthmere.foodStaminaState.user.",
+  "biomes.localDev.liveEntityRobotEnergy.user.",
+  "biomes.localDev.liveEntityHelperQuests.user.",
+  "biomes.localDev.snapshotCompletePortState.snapshot-per-player-mission-state.",
+  "biomes.localDev.snapshotPhotoProofs.snapshot-per-player-mission-state.",
+  "biomes.localDev.snapshotClearedMuck.snapshot-per-player-mission-state.",
+  "biomes.snapshot.pendingMutations.snapshot-per-player-mission-state.",
+  "biomes.snapshot.lastBackendSync.snapshot-per-player-mission-state.",
 ] as const;
-export const HARTHMERE_GLITCH_RESTORE_EVENTS_V153 = [
-  "biomes:harthmere-glitch-cloud-save-restored-v153",
-  "biomes:local-dev-snapshot-grove-quest-state-v75",
-  "biomes:local-dev-snapshot-mission-state-v73",
-  "biomes:local-dev-snapshot-combat-state-v74",
-  "biomes:local-dev-snapshot-complete-port-v76",
-  "biomes:snapshot-production-port-v77",
+export const HARTHMERE_GLITCH_RESTORE_EVENTS = [
+  "biomes:harthmere-glitch-cloud-save-restored",
+  "biomes:local-dev-snapshot-grove-quest-state",
+  "biomes:local-dev-snapshot-mission-state",
+  "biomes:local-dev-snapshot-combat-state",
+  "biomes:local-dev-snapshot-complete-port",
+  "biomes:snapshot-production-port",
   "biomes:harthmere-leveling-changed",
   "biomes:harthmere-combat-changed",
   "biomes:harthmere-death-changed",
@@ -100,8 +100,8 @@ export const HARTHMERE_GLITCH_RESTORE_EVENTS_V153 = [
   "biomes:harthmere-dialogue-changed",
   "biomes:harthmere-multiplayer-combat-changed",
   "biomes:harthmere-food-stamina-changed",
-  "biomes:live-entity-robot-energy-v1",
-  "biomes:live-entity-helper-quest-v1",
+  "biomes:live-entity-robot-energy",
+  "biomes:live-entity-helper-quest",
   // Avatar/appearance refresh: after a cloud restore writes the player's
   // face/body/clothing keys, the live avatar must re-read them so the restored
   // character design actually shows (otherwise it only applied on a hard
@@ -111,10 +111,10 @@ export const HARTHMERE_GLITCH_RESTORE_EVENTS_V153 = [
   "biomes:harthmere-clothing-changed",
   "biomes:harthmere-appearance-changed",
 ] as const;
-const HARTHMERE_GLITCH_STATE_CHANGE_SAVE_EVENTS_V153 = [
-  "biomes:local-dev-snapshot-combat-state-v74",
-  "biomes:local-dev-snapshot-complete-port-v76",
-  "biomes:snapshot-production-port-v77",
+const HARTHMERE_GLITCH_STATE_CHANGE_SAVE_EVENTS = [
+  "biomes:local-dev-snapshot-combat-state",
+  "biomes:local-dev-snapshot-complete-port",
+  "biomes:snapshot-production-port",
   "biomes:harthmere-leveling-changed",
   "biomes:harthmere-combat-changed",
   "biomes:harthmere-death-changed",
@@ -135,30 +135,30 @@ const HARTHMERE_GLITCH_STATE_CHANGE_SAVE_EVENTS_V153 = [
   "biomes:harthmere-dialogue-changed",
   "biomes:harthmere-multiplayer-combat-changed",
   "biomes:harthmere-food-stamina-changed",
-  "biomes:live-entity-robot-energy-v1",
-  "biomes:live-entity-helper-quest-v1",
+  "biomes:live-entity-robot-energy",
+  "biomes:live-entity-helper-quest",
 ] as const;
-const BRIDGE_STATE_KEY = "biomes.localDev.harthmere.glitchBridgeState.v1";
-const CLOUD_SAVE_VERSION_KEY_PREFIX = "glitch.harthmere.cloudSaveVersion.v1";
-const LOCAL_INSTALL_ID_KEY = "biomes.localDev.harthmere.localInstallId.v1";
-const ACTIVE_USER_SCOPE_KEY = "biomes.localDev.harthmere.activeUserScope.v1";
+const BRIDGE_STATE_KEY = "biomes.localDev.harthmere.glitchBridgeState";
+const CLOUD_SAVE_VERSION_KEY_PREFIX = "glitch.harthmere.cloudSaveVersion";
+const LOCAL_INSTALL_ID_KEY = "biomes.localDev.harthmere.localInstallId";
+const ACTIVE_USER_SCOPE_KEY = "biomes.localDev.harthmere.activeUserScope";
 const GLITCH_EVENT = "biomes:harthmere-glitch-changed";
-const SESSION_CHANNEL_NAME = "biomes:harthmere-glitch-session-v70";
+const SESSION_CHANNEL_NAME = "biomes:harthmere-glitch-session";
 const CLOUD_SAVE_SLOT_INDEX = 0;
 const AUTOSAVE_INTERVAL_MS = 60_000;
 const STATE_CHANGE_AUTOSAVE_DELAY_MS = 1_500;
 const PROGRESSION_INTERVAL_MS = 30_000;
 const SESSION_HEARTBEAT_INTERVAL_MS = 15_000;
-const GLITCH_INSTALL_HEARTBEAT_INTERVAL_MS_V143 = 60_000;
-const AEGIS_BRIDGE_SCRIPT_URL_V138 =
+const GLITCH_INSTALL_HEARTBEAT_INTERVAL_MS = 60_000;
+const AEGIS_BRIDGE_SCRIPT_URL =
   "https://api.glitch.fun/js/aegis-bridge.js";
-const HARTHMERE_GLITCH_BEHAVIOR_BATCH_INTERVAL_MS_V138 = 30_000;
-const HARTHMERE_GLITCH_BEHAVIOR_MAX_BATCH_V138 = 25;
-const HARTHMERE_GLITCH_BEHAVIOR_THROTTLE_MS_V138 = 12_000;
-const HARTHMERE_GLITCH_BEHAVIOR_SCHEMA_V138 =
-  "harthmere-glitch-funnel-schema-v138" as const;
+const HARTHMERE_GLITCH_BEHAVIOR_BATCH_INTERVAL_MS = 30_000;
+const HARTHMERE_GLITCH_BEHAVIOR_MAX_BATCH = 25;
+const HARTHMERE_GLITCH_BEHAVIOR_THROTTLE_MS = 12_000;
+const HARTHMERE_GLITCH_BEHAVIOR_SCHEMA =
+  "harthmere-glitch-funnel-schema" as const;
 
-export const HARTHMERE_GLITCH_STANDARD_FUNNEL_EVENTS_V138 = [
+export const HARTHMERE_GLITCH_STANDARD_FUNNEL_EVENTS = [
   { step_key: "game_boot", action_key: "start" },
   { step_key: "glitch_auth", action_key: "start" },
   { step_key: "glitch_auth", action_key: "success" },
@@ -237,8 +237,8 @@ type HarthmereSnapshotMetadata = {
 };
 
 type HarthmereGlitchSnapshot = {
-  version: "harthmere-glitch-save-v1";
-  schemaAuditVersion: typeof HARTHMERE_GLITCH_SAVE_SCHEMA_VERSION_V153;
+  version: "harthmere-glitch-save";
+  schemaAuditVersion: typeof HARTHMERE_GLITCH_SAVE_SCHEMA_VERSION;
   savedAt: string;
   titleId: string;
   installId?: string;
@@ -256,12 +256,12 @@ declare global {
       fingerprintId: string;
     }>;
     AEGIS_CONFIG?: Record<string, unknown>;
-    __harthmereGlitchTelemetryV138?: {
+    __harthmereGlitchTelemetry?: {
       status: () => Record<string, unknown>;
       flush: (reason?: string) => Promise<void>;
-      standardEvents: typeof HARTHMERE_GLITCH_STANDARD_FUNNEL_EVENTS_V138;
+      standardEvents: typeof HARTHMERE_GLITCH_STANDARD_FUNNEL_EVENTS;
     };
-    __harthmereGlitchBehaviorBacklogV138?: HarthmereGlitchBehaviorEventV138[];
+    __harthmereGlitchBehaviorBacklog?: HarthmereGlitchBehaviorEvent[];
     __harthmereGlitch?: {
       status: () => HarthmereGlitchStatus;
       identity: () => HarthmereGlitchIdentity | undefined;
@@ -474,7 +474,7 @@ async function requestGlitch<T = any>(
     controller && typeof window !== "undefined"
       ? window.setTimeout(
           () => controller.abort(),
-          HARTHMERE_GLITCH_BRIDGE_FETCH_TIMEOUT_MS_V1
+          HARTHMERE_GLITCH_BRIDGE_FETCH_TIMEOUT_MS
         )
       : undefined;
   let response: Response;
@@ -516,7 +516,7 @@ function collectHarthmereStorage() {
   if (!isBrowser()) return result;
   for (let i = 0; i < window.localStorage.length; i += 1) {
     const key = window.localStorage.key(i);
-    if (!key || !isHarthmereCloudSaveStorageKeyV153(key)) continue;
+    if (!key || !isHarthmereCloudSaveStorageKey(key)) continue;
     const value = window.localStorage.getItem(key);
     if (value === null) continue;
     result[key] = value;
@@ -545,13 +545,13 @@ function sumQuantities(rows: any[]) {
   );
 }
 
-function isHarthmereCloudSaveStorageKeyV153(key: string) {
+function isHarthmereCloudSaveStorageKey(key: string) {
   return (
     key.startsWith(HARTHMERE_STORAGE_PREFIX) ||
-    (HARTHMERE_GLITCH_REQUIRED_SAVE_KEYS_V153 as readonly string[]).includes(
+    (HARTHMERE_GLITCH_REQUIRED_SAVE_KEYS as readonly string[]).includes(
       key
     ) ||
-    HARTHMERE_GLITCH_REQUIRED_SAVE_KEY_PREFIXES_V153.some((prefix) =>
+    HARTHMERE_GLITCH_REQUIRED_SAVE_KEY_PREFIXES.some((prefix) =>
       key.startsWith(prefix)
     )
   );
@@ -560,11 +560,11 @@ function isHarthmereCloudSaveStorageKeyV153(key: string) {
 function hasSnapshotMissionProgress(storage: Record<string, string>) {
   const snapshotGrove = parseStoredObject(
     storage,
-    "biomes.localDev.snapshotGroveQuestState.v75"
+    "biomes.localDev.snapshotGroveQuestState"
   );
   const snapshotMission = parseStoredObject(
     storage,
-    "biomes.localDev.snapshotMissionState.v73"
+    "biomes.localDev.snapshotMissionState"
   );
   return (
     (Array.isArray(snapshotGrove?.acceptedQuestIds) &&
@@ -586,27 +586,27 @@ function deriveMetadata(
 ): HarthmereSnapshotMetadata {
   const leveling = parseStoredObject(
     storage,
-    "biomes.localDev.harthmere.levelingState.v1"
+    "biomes.localDev.harthmere.levelingState"
   );
   const quests = parseStoredObject(
     storage,
-    "biomes.localDev.harthmere.questState.v1"
+    "biomes.localDev.harthmere.questState"
   );
   const snapshotGrove = parseStoredObject(
     storage,
-    "biomes.localDev.snapshotGroveQuestState.v75"
+    "biomes.localDev.snapshotGroveQuestState"
   );
   const snapshotMission = parseStoredObject(
     storage,
-    "biomes.localDev.snapshotMissionState.v73"
+    "biomes.localDev.snapshotMissionState"
   );
   const inventory = parseStoredObject(
     storage,
-    "biomes.localDev.harthmere.inventoryState.v1"
+    "biomes.localDev.harthmere.inventoryState"
   );
   const combat = parseStoredObject(
     storage,
-    "biomes.localDev.harthmere.combatState.v1"
+    "biomes.localDev.harthmere.combatState"
   );
 
   const backpackCount = sumQuantities(
@@ -659,8 +659,8 @@ function createSnapshot(
 ): HarthmereGlitchSnapshot {
   const localStorage = collectHarthmereStorage();
   return {
-    version: "harthmere-glitch-save-v1",
-    schemaAuditVersion: HARTHMERE_GLITCH_SAVE_SCHEMA_VERSION_V153,
+    version: "harthmere-glitch-save",
+    schemaAuditVersion: HARTHMERE_GLITCH_SAVE_SCHEMA_VERSION,
     savedAt: new Date().toISOString(),
     titleId: config.titleId,
     installId: config.installId,
@@ -670,28 +670,28 @@ function createSnapshot(
   };
 }
 
-type HarthmereCloudRestoreDetailV153 = {
+type HarthmereCloudRestoreDetail = {
   restoredKeyCount: number;
   migratedKeyCount: number;
   hasCharacterCustomization: boolean;
   cloudSaveVersion?: number;
 };
 
-function dispatchHarthmereCloudRestoreEventsV153(
-  detail: HarthmereCloudRestoreDetailV153
+function dispatchHarthmereCloudRestoreEvents(
+  detail: HarthmereCloudRestoreDetail
 ) {
   if (!isBrowser()) return;
-  for (const eventName of HARTHMERE_GLITCH_RESTORE_EVENTS_V153) {
+  for (const eventName of HARTHMERE_GLITCH_RESTORE_EVENTS) {
     window.dispatchEvent(new CustomEvent(eventName, { detail }));
   }
 }
 
-function currentCloudSaveRestoreScopeV153() {
+function currentCloudSaveRestoreScope() {
   return readHarthmereGlitchIdentity()?.gameUserId;
 }
 
-function currentCloudSaveCustomizationScopeV153() {
-  const scope = currentCloudSaveRestoreScopeV153();
+function currentCloudSaveCustomizationScope() {
+  const scope = currentCloudSaveRestoreScope();
   if (!scope) return undefined;
   if (scope.startsWith("biomes:")) {
     const numeric = scope.slice("biomes:".length).trim();
@@ -700,17 +700,16 @@ function currentCloudSaveCustomizationScopeV153() {
   return scope;
 }
 
-function migrateCloudSaveStorageKeyToCurrentScopeV153(key: string) {
-  const scope = currentCloudSaveRestoreScopeV153();
+function migrateCloudSaveStorageKeyToCurrentScope(key: string) {
+  const scope = currentCloudSaveRestoreScope();
   if (!scope) return undefined;
-  for (const prefix of HARTHMERE_GLITCH_REQUIRED_SAVE_KEY_PREFIXES_V153) {
+  for (const prefix of HARTHMERE_GLITCH_REQUIRED_SAVE_KEY_PREFIXES) {
     if (!prefix.endsWith(".user.") || !key.startsWith(prefix)) continue;
     const nextScope =
-      prefix === "biomes.localDev.harthmere.playerFace.v2.user." ||
-      prefix === "biomes.localDev.harthmere.playerBody.v2.user." ||
-      prefix === "biomes.localDev.harthmere.playerClothing.v1.user." ||
-      prefix === "biomes.localDev.harthmere.playerBody.v1.user."
-        ? currentCloudSaveCustomizationScopeV153() ?? scope
+      prefix === "biomes.localDev.harthmere.playerFace.user." ||
+      prefix === "biomes.localDev.harthmere.playerBody.user." ||
+      prefix === "biomes.localDev.harthmere.playerClothing.user."
+        ? currentCloudSaveCustomizationScope() ?? scope
         : scope;
     const previousScope = key.slice(prefix.length);
     if (!previousScope || previousScope === nextScope) return undefined;
@@ -724,7 +723,7 @@ function applySnapshot(snapshot: unknown, cloudSaveVersion?: number) {
   const parsed = snapshot as Partial<HarthmereGlitchSnapshot> | undefined;
   if (
     !parsed ||
-    parsed.version !== "harthmere-glitch-save-v1" ||
+    parsed.version !== "harthmere-glitch-save" ||
     !parsed.localStorage
   ) {
     return false;
@@ -733,30 +732,30 @@ function applySnapshot(snapshot: unknown, cloudSaveVersion?: number) {
   let migratedKeyCount = 0;
   let hasCharacterCustomization = false;
   for (const [key, value] of Object.entries(parsed.localStorage)) {
-    if (isHarthmereCloudSaveStorageKeyV153(key) && typeof value === "string") {
+    if (isHarthmereCloudSaveStorageKey(key) && typeof value === "string") {
       restoredKeyCount += 1;
       if (
-        key.startsWith("biomes.localDev.harthmere.playerFace.v2.user.") ||
-        key.startsWith("biomes.localDev.harthmere.playerBody.v2.user.") ||
-        key.startsWith("biomes.localDev.harthmere.playerClothing.v1.user.") ||
-        key.startsWith("biomes.localDev.harthmere.playerBody.v1.user.")
+        key.startsWith("biomes.localDev.harthmere.playerFace.user.") ||
+        key.startsWith("biomes.localDev.harthmere.playerBody.user.") ||
+        key.startsWith("biomes.localDev.harthmere.playerClothing.user.") ||
+        key.startsWith("biomes.localDev.harthmere.playerBody.user.")
       ) {
         hasCharacterCustomization = true;
       }
       window.localStorage.setItem(
         key,
         key === ACTIVE_USER_SCOPE_KEY
-          ? currentCloudSaveRestoreScopeV153() ?? value
+          ? currentCloudSaveRestoreScope() ?? value
           : value
       );
-      const migratedKey = migrateCloudSaveStorageKeyToCurrentScopeV153(key);
+      const migratedKey = migrateCloudSaveStorageKeyToCurrentScope(key);
       if (migratedKey) {
         migratedKeyCount += 1;
         window.localStorage.setItem(migratedKey, value);
       }
     }
   }
-  dispatchHarthmereCloudRestoreEventsV153({
+  dispatchHarthmereCloudRestoreEvents({
     restoredKeyCount,
     migratedKeyCount,
     hasCharacterCustomization,
@@ -801,7 +800,7 @@ function progressionPayloadFromSnapshot(
       harthmere_playtime_score: meta.playtimeSeconds,
     },
     metadata: {
-      source: "harthmere-glitch-bridge-v70",
+      source: "harthmere-glitch-bridge",
       saved_at: snapshot.savedAt,
       storage_key_count: meta.storageKeyCount,
       game_user_id: identity?.gameUserId,
@@ -941,7 +940,7 @@ function shouldSuppressDisconnectedOverlay(reason: string) {
   );
 }
 
-function isLocalBrowserHostV138() {
+function isLocalBrowserHost() {
   if (!isBrowser()) return true;
   const host = window.location.hostname.toLowerCase();
   return (
@@ -953,18 +952,18 @@ function isLocalBrowserHostV138() {
   );
 }
 
-function isProductionGlitchRuntimeV138(config: HarthmereGlitchRuntimeConfig) {
+function isProductionGlitchRuntime(config: HarthmereGlitchRuntimeConfig) {
   if (!isBrowser()) return false;
   return Boolean(
     config.launchedByGlitch &&
       config.installId &&
       !config.localOnly &&
-      !isLocalBrowserHostV138()
+      !isLocalBrowserHost()
   );
 }
 
-function ensureAegisBridgeBestEffortV138(config: HarthmereGlitchRuntimeConfig) {
-  if (!isProductionGlitchRuntimeV138(config)) {
+function ensureAegisBridgeBestEffort(config: HarthmereGlitchRuntimeConfig) {
+  if (!isProductionGlitchRuntime(config)) {
     return { injected: false, skipped: "not_production_glitch_runtime" };
   }
 
@@ -980,35 +979,35 @@ function ensureAegisBridgeBestEffortV138(config: HarthmereGlitchRuntimeConfig) {
       session_id: config.sessionId,
       fingerprintId: config.fingerprintId,
       fingerprint_id: config.fingerprintId,
-      source: "harthmere-biomes-v138",
+      source: "harthmere-biomes",
     };
 
     const existing = document.querySelector(
-      `script[src="${AEGIS_BRIDGE_SCRIPT_URL_V138}"]`
+      `script[src="${AEGIS_BRIDGE_SCRIPT_URL}"]`
     );
     if (existing) {
       return { injected: false, skipped: "already_present" };
     }
 
     const script = document.createElement("script");
-    script.src = AEGIS_BRIDGE_SCRIPT_URL_V138;
+    script.src = AEGIS_BRIDGE_SCRIPT_URL;
     script.async = true;
     script.defer = true;
-    script.dataset.harthmereAegisBridge = "v138";
+    script.dataset.harthmereAegisBridge = "current";
     script.onerror = () => {
-      console.warn("HARTHMERE_AEGIS_BRIDGE_LOAD_FAILED_V138", {
-        src: AEGIS_BRIDGE_SCRIPT_URL_V138,
+      console.warn("HARTHMERE_AEGIS_BRIDGE_LOAD_FAILED", {
+        src: AEGIS_BRIDGE_SCRIPT_URL,
       });
     };
     document.head.appendChild(script);
     return { injected: true, skipped: undefined };
   } catch (error) {
-    console.warn("HARTHMERE_AEGIS_BRIDGE_INJECTION_FAILED_V138", error);
+    console.warn("HARTHMERE_AEGIS_BRIDGE_INJECTION_FAILED", error);
     return { injected: false, skipped: "exception" };
   }
 }
 
-function safeBehaviorMetadataV138(
+function safeBehaviorMetadata(
   metadata: Record<string, unknown> | undefined
 ) {
   if (!metadata || typeof metadata !== "object") return undefined;
@@ -1034,26 +1033,26 @@ function safeBehaviorMetadataV138(
   return Object.keys(out).length ? out : undefined;
 }
 
-function behaviorEventPayloadV138(
+function behaviorEventPayload(
   config: HarthmereGlitchRuntimeConfig,
-  event: HarthmereGlitchBehaviorEventV138
+  event: HarthmereGlitchBehaviorEvent
 ) {
   return {
     game_install_id: config.installId,
     step_key: event.step_key,
     action_key: event.action_key,
     event_timestamp: event.event_timestamp,
-    metadata: safeBehaviorMetadataV138({
+    metadata: safeBehaviorMetadata({
       ...(event.metadata ?? {}),
-      schema: HARTHMERE_GLITCH_BEHAVIOR_SCHEMA_V138,
-      source: "harthmere-biomes-v138",
+      schema: HARTHMERE_GLITCH_BEHAVIOR_SCHEMA,
+      source: "harthmere-biomes",
       title_id: config.titleId,
       session_id: config.sessionId,
     }),
   };
 }
 
-function closestTelemetryButtonLabelV138(target: EventTarget | null) {
+function closestTelemetryButtonLabel(target: EventTarget | null) {
   if (!target || !(target instanceof Element)) return undefined;
   const el = target.closest(
     "[data-harthmere-track-step],button,[role='button'],.biomes-ui-tab"
@@ -1077,7 +1076,7 @@ function closestTelemetryButtonLabelV138(target: EventTarget | null) {
 
 function showDisconnectedOverlay(reason: string) {
   if (shouldSuppressDisconnectedOverlay(reason)) {
-    console.warn("HARTHMERE_SUPPRESS_DUPLICATE_DISCONNECT_OVERLAY_V141", {
+    console.warn("HARTHMERE_SUPPRESS_DUPLICATE_DISCONNECT_OVERLAY", {
       reason,
     });
     return;
@@ -1179,7 +1178,7 @@ class HarthmereGlitchBridgeController {
   private identity?: HarthmereGlitchIdentity;
   private channel?: BroadcastChannel;
   private behaviorTimer?: number;
-  private behaviorQueue: ReturnType<typeof behaviorEventPayloadV138>[] = [];
+  private behaviorQueue: ReturnType<typeof behaviorEventPayload>[] = [];
   private readonly behaviorThrottle = new Map<string, number>();
   private behaviorInstalled = false;
   private readonly behaviorCleanup: Array<() => void> = [];
@@ -1305,7 +1304,7 @@ class HarthmereGlitchBridgeController {
       window.clearTimeout(this.stateChangeSaveTimer);
     window.removeEventListener("visibilitychange", this.visibilityHandler);
     window.removeEventListener("pagehide", this.pageHideHandler);
-    for (const eventName of HARTHMERE_GLITCH_STATE_CHANGE_SAVE_EVENTS_V153) {
+    for (const eventName of HARTHMERE_GLITCH_STATE_CHANGE_SAVE_EVENTS) {
       window.removeEventListener(eventName, this.stateChangeSaveHandler);
     }
     for (const cleanup of this.behaviorCleanup.splice(0)) cleanup();
@@ -1451,11 +1450,11 @@ class HarthmereGlitchBridgeController {
       void this.heartbeatInstall("interval").catch((error) =>
         this.recordError(error)
       );
-    }, GLITCH_INSTALL_HEARTBEAT_INTERVAL_MS_V143);
+    }, GLITCH_INSTALL_HEARTBEAT_INTERVAL_MS);
 
     window.addEventListener("visibilitychange", this.visibilityHandler);
     window.addEventListener("pagehide", this.pageHideHandler);
-    for (const eventName of HARTHMERE_GLITCH_STATE_CHANGE_SAVE_EVENTS_V153) {
+    for (const eventName of HARTHMERE_GLITCH_STATE_CHANGE_SAVE_EVENTS) {
       window.addEventListener(eventName, this.stateChangeSaveHandler);
     }
   }
@@ -1558,7 +1557,7 @@ class HarthmereGlitchBridgeController {
       playtimeSeconds: this.currentPlaytimeSeconds(),
     });
     // eslint-disable-next-line no-console
-    console.warn("HARTHMERE_GLITCH_CLOUD_SAVE_CONFLICT_V154", {
+    console.warn("HARTHMERE_GLITCH_CLOUD_SAVE_CONFLICT", {
       reason,
       conflictId: conflict.conflictId,
       serverVersion: conflict.serverVersion,
@@ -1574,7 +1573,7 @@ class HarthmereGlitchBridgeController {
     this.channel = new BroadcastChannel(SESSION_CHANNEL_NAME);
     this.channel.onmessage = (event) => {
       const message = event.data;
-      if (!message || message.kind !== "harthmere-session-claimed-v70") return;
+      if (!message || message.kind !== "harthmere-session-claimed") return;
       if (!this.identity || !this.valid || this.disconnected) return;
       if (message.gameUserId !== this.identity.gameUserId) return;
       if (message.serverSessionId === this.identity.serverSessionId) return;
@@ -1584,7 +1583,7 @@ class HarthmereGlitchBridgeController {
 
   private broadcastSessionClaim(identity: HarthmereGlitchIdentity) {
     this.channel?.postMessage({
-      kind: "harthmere-session-claimed-v70",
+      kind: "harthmere-session-claimed",
       gameUserId: identity.gameUserId,
       serverSessionId: identity.serverSessionId,
       claimedAt: Date.now(),
@@ -1636,7 +1635,7 @@ class HarthmereGlitchBridgeController {
           fingerprint_id: this.config.fingerprintId,
           device_id: this.config.installId,
           platform: "web",
-          game_version: "harthmere-glitch-v143",
+          game_version: "harthmere-glitch",
           reason,
         },
         {
@@ -1712,7 +1711,7 @@ class HarthmereGlitchBridgeController {
       playtimeSeconds: this.currentPlaytimeSeconds(),
     });
     // eslint-disable-next-line no-console
-    console.warn("HARTHMERE_GLITCH_SESSION_RECLAIMED_V139", {
+    console.warn("HARTHMERE_GLITCH_SESSION_RECLAIMED", {
       reason,
       previousSessionId,
       serverSessionId: this.identity.serverSessionId,
@@ -1763,7 +1762,7 @@ class HarthmereGlitchBridgeController {
     // "nothing" must not wipe local). An explicit force wins for account
     // switches.
     if (
-      !shouldApplyHarthmereCloudSaveV153({
+      !shouldApplyHarthmereCloudSave({
         latestCloudVersion: latestVersion,
         hasMeaningfulLocalProgress: hasMeaningfulLocalProgress(localStorage),
         forceCloudRestore: forceCloudRestoreForUserSwitch,
@@ -1809,7 +1808,7 @@ class HarthmereGlitchBridgeController {
     return saves
       .filter(
         (save: any) =>
-          save?.decoded_payload?.version === "harthmere-glitch-save-v1"
+          save?.decoded_payload?.version === "harthmere-glitch-save"
       )
       .sort(
         (a: any, b: any) => Number(b.version ?? 0) - Number(a.version ?? 0)
@@ -1889,7 +1888,7 @@ class HarthmereGlitchBridgeController {
         slot_index: CLOUD_SAVE_SLOT_INDEX,
         slot_name: `${BIOMES_GAME_NAME} Autosave`,
         platform: "web",
-        game_version: "harthmere-glitch-v70",
+        game_version: "harthmere-glitch",
       });
     } catch (error) {
       const conflict = cloudSaveConflictFromError(error);
@@ -1977,11 +1976,11 @@ class HarthmereGlitchBridgeController {
   }
 
   private installAegisBridge() {
-    const result = ensureAegisBridgeBestEffortV138(this.config);
+    const result = ensureAegisBridgeBestEffort(this.config);
     if (isBrowser()) {
       try {
         window.localStorage.setItem(
-          "biomes.localDev.harthmere.aegisBridgeV138",
+          "biomes.localDev.harthmere.aegisBridge",
           JSON.stringify({ at: new Date().toISOString(), ...result })
         );
       } catch {
@@ -1992,7 +1991,7 @@ class HarthmereGlitchBridgeController {
 
   private shouldSendBehaviorEvents() {
     return (
-      isProductionGlitchRuntimeV138(this.config) &&
+      isProductionGlitchRuntime(this.config) &&
       Boolean(this.config.installId) &&
       this.valid
     );
@@ -2017,27 +2016,27 @@ class HarthmereGlitchBridgeController {
       const previous = this.behaviorThrottle.get(throttleKey) ?? 0;
       if (
         now - previous <
-        (options.throttleMs ?? HARTHMERE_GLITCH_BEHAVIOR_THROTTLE_MS_V138)
+        (options.throttleMs ?? HARTHMERE_GLITCH_BEHAVIOR_THROTTLE_MS)
       ) {
         return;
       }
       this.behaviorThrottle.set(throttleKey, now);
     }
-    const event: HarthmereGlitchBehaviorEventV138 = {
-      version: "harthmere-glitch-behavior-events-v138",
+    const event: HarthmereGlitchBehaviorEvent = {
+      version: "harthmere-glitch-behavior-events",
       step_key: stepKey,
       action_key: actionKey,
-      metadata: safeBehaviorMetadataV138(metadata),
+      metadata: safeBehaviorMetadata(metadata),
       event_timestamp: new Date().toISOString(),
     };
-    const payload = behaviorEventPayloadV138(this.config, event);
+    const payload = behaviorEventPayload(this.config, event);
     this.behaviorQueue.push(payload);
-    if (this.behaviorQueue.length >= HARTHMERE_GLITCH_BEHAVIOR_MAX_BATCH_V138) {
+    if (this.behaviorQueue.length >= HARTHMERE_GLITCH_BEHAVIOR_MAX_BATCH) {
       void this.flushBehaviorEvents("batch_full").catch(() => undefined);
     }
   }
 
-  private enqueueCustomBehaviorEvent(event: HarthmereGlitchBehaviorEventV138) {
+  private enqueueCustomBehaviorEvent(event: HarthmereGlitchBehaviorEvent) {
     this.enqueueBehaviorEvent(event.step_key, event.action_key, event.metadata);
   }
 
@@ -2053,24 +2052,24 @@ class HarthmereGlitchBridgeController {
     this.behaviorInstalled = true;
 
     const customHandler = (event: Event) => {
-      const detail = (event as CustomEvent<HarthmereGlitchBehaviorEventV138>)
+      const detail = (event as CustomEvent<HarthmereGlitchBehaviorEvent>)
         .detail;
       if (!detail?.step_key) return;
       this.enqueueCustomBehaviorEvent(detail);
     };
     window.addEventListener(
-      HARTHMERE_GLITCH_BEHAVIOR_EVENT_NAME_V138,
+      HARTHMERE_GLITCH_BEHAVIOR_EVENT_NAME,
       customHandler as EventListener
     );
     this.behaviorCleanup.push(() =>
       window.removeEventListener(
-        HARTHMERE_GLITCH_BEHAVIOR_EVENT_NAME_V138,
+        HARTHMERE_GLITCH_BEHAVIOR_EVENT_NAME,
         customHandler as EventListener
       )
     );
 
-    const backlog = window.__harthmereGlitchBehaviorBacklogV138 ?? [];
-    window.__harthmereGlitchBehaviorBacklogV138 = [];
+    const backlog = window.__harthmereGlitchBehaviorBacklog ?? [];
+    window.__harthmereGlitchBehaviorBacklog = [];
     for (const event of backlog) {
       if (event?.step_key) this.enqueueCustomBehaviorEvent(event);
     }
@@ -2116,7 +2115,7 @@ class HarthmereGlitchBridgeController {
     );
 
     const clickHandler = (event: MouseEvent) => {
-      const info = closestTelemetryButtonLabelV138(event.target);
+      const info = closestTelemetryButtonLabel(event.target);
       if (!info?.label && !info?.step) return;
       this.enqueueBehaviorEvent(
         info.step ?? "interface",
@@ -2140,7 +2139,7 @@ class HarthmereGlitchBridgeController {
 
     this.behaviorTimer = window.setInterval(() => {
       void this.flushBehaviorEvents("interval").catch(() => undefined);
-    }, HARTHMERE_GLITCH_BEHAVIOR_BATCH_INTERVAL_MS_V138);
+    }, HARTHMERE_GLITCH_BEHAVIOR_BATCH_INTERVAL_MS);
   }
 
   async flushBehaviorEvents(reason = "manual") {
@@ -2162,7 +2161,7 @@ class HarthmereGlitchBridgeController {
     }
     const events = this.behaviorQueue.splice(
       0,
-      HARTHMERE_GLITCH_BEHAVIOR_MAX_BATCH_V138
+      HARTHMERE_GLITCH_BEHAVIOR_MAX_BATCH
     );
     this.behaviorFlushInFlight = true;
     try {
@@ -2228,16 +2227,16 @@ class HarthmereGlitchBridgeController {
       leaderboard: (apiKey?: string) => this.leaderboard(apiKey),
       achievements: () => this.achievements(),
     };
-    window.__harthmereGlitchTelemetryV138 = {
+    window.__harthmereGlitchTelemetry = {
       status: () => ({
-        version: HARTHMERE_GLITCH_BEHAVIOR_SCHEMA_V138,
-        productionRuntime: isProductionGlitchRuntimeV138(this.config),
+        version: HARTHMERE_GLITCH_BEHAVIOR_SCHEMA,
+        productionRuntime: isProductionGlitchRuntime(this.config),
         launchedByGlitch: this.config.launchedByGlitch,
         queueLength: this.behaviorQueue.length,
-        standardEvents: HARTHMERE_GLITCH_STANDARD_FUNNEL_EVENTS_V138.length,
+        standardEvents: HARTHMERE_GLITCH_STANDARD_FUNNEL_EVENTS.length,
       }),
       flush: (reason = "debug") => this.flushBehaviorEvents(reason),
-      standardEvents: HARTHMERE_GLITCH_STANDARD_FUNNEL_EVENTS_V138,
+      standardEvents: HARTHMERE_GLITCH_STANDARD_FUNNEL_EVENTS,
     };
   }
 }

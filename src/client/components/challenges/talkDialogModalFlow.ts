@@ -1,13 +1,13 @@
-import type { NpcSpeechButtonStateV1 } from "@/client/components/system/npcSpeechInputState";
+import type { NpcSpeechButtonState } from "@/client/components/system/npcSpeechInputState";
 
-export function talkDialogHasChoiceActionsForTestV1(
+export function talkDialogHasChoiceActionsForTest(
   actions: readonly unknown[] | undefined
 ) {
   return (actions?.length ?? 0) > 0;
 }
 
-export function talkDialogVoiceInputBlocksAdvanceForTestV1(input: {
-  voiceInputState?: NpcSpeechButtonStateV1;
+export function talkDialogVoiceInputBlocksAdvanceForTest(input: {
+  voiceInputState?: NpcSpeechButtonState;
 }) {
   return (
     input.voiceInputState === "recording" ||
@@ -15,10 +15,10 @@ export function talkDialogVoiceInputBlocksAdvanceForTestV1(input: {
   );
 }
 
-export function talkDialogAdvanceDecisionForTestV1(input: {
+export function talkDialogAdvanceDecisionForTest(input: {
   typingComplete: boolean;
   hasChoiceActions: boolean;
-  voiceInputState?: NpcSpeechButtonStateV1;
+  voiceInputState?: NpcSpeechButtonState;
 }) {
   if (input.voiceInputState === "recording") {
     return "stop_recording" as const;
@@ -32,7 +32,7 @@ export function talkDialogAdvanceDecisionForTestV1(input: {
   return input.hasChoiceActions ? ("ignore" as const) : ("go_next" as const);
 }
 
-export function talkDialogShouldShowVoiceInputForTestV1(input: {
+export function talkDialogShouldShowVoiceInputForTest(input: {
   hasVoiceInput: boolean;
   microphoneInputEnabled: boolean;
   actionCount: number;

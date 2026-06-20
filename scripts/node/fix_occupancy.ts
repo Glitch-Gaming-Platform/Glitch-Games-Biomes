@@ -61,7 +61,7 @@ async function main() {
       using(new voxeloo.GroupTensor(), (tensor) => {
         tensor.load(tensorBlob);
         for (const { tensorPos } of scanGroupTensor(tensor)) {
-          const worldPos = add(tensorPos, box.v0);
+          const worldPos = add(tensorPos, box);
           const shardPos = blockPos(...worldPos);
           const shardId = voxelShard(...worldPos);
           // Add group occupancies.

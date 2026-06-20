@@ -12,14 +12,14 @@ const INSTALL_PARAM_NAMES = ["install_id", "installId"];
 
 const INSTALL_STORAGE_KEYS = [
   "glitch.install.id",
-  "biomes.localDev.harthmere.localInstallId.v1",
+  "biomes.localDev.harthmere.localInstallId",
 ];
 
 const AUTH_GATE_SELECTOR = '[data-harthmere-glitch-auth-waiting="1"]';
 const AUTO_AUTH_RELOAD_PARAM = "glitch_biomes_auth";
 const AUTO_AUTH_RELOAD_REASON_PARAM = "glitch_biomes_auth_reason";
 const AUTO_AUTH_RELOAD_ATTEMPT_KEY =
-  "biomes.localDev.harthmere.glitchAutoAuthReloadAttempts.v142";
+  "biomes.localDev.harthmere.glitchAutoAuthReloadAttempts";
 const AUTO_AUTH_MAX_RELOAD_ATTEMPTS = 2;
 const AUTH_CHECK_RETRY_DELAYS_MS = [100, 250, 500, 1000];
 
@@ -187,7 +187,7 @@ export function normalizeIdentity(json: any, installId: string) {
   } as any;
 }
 
-// HARTHMERE_INSTALL_ID_FLOW_V127
+// HARTHMERE_INSTALL_ID_FLOW
 async function checkBiomesAuth(): Promise<boolean> {
   try {
     const existing = await fetch("/api/auth/check", {
@@ -209,7 +209,7 @@ function markAutoAuthReload(installId: string, reason: string) {
   const attempt = nextReloadAttempt(installId);
   if (attempt > AUTO_AUTH_MAX_RELOAD_ATTEMPTS) {
     // eslint-disable-next-line no-console
-    console.error("HARTHMERE_AUTH_RELOAD_LIMIT_V128", {
+    console.error("HARTHMERE_AUTH_RELOAD_LIMIT", {
       installId,
       reason,
       attempt,
@@ -222,7 +222,7 @@ function markAutoAuthReload(installId: string, reason: string) {
   nextUrl.searchParams.set(AUTO_AUTH_RELOAD_REASON_PARAM, reason);
   // eslint-disable-next-line no-console
   console.info(
-    `HARTHMERE_PRE_RELOAD_V128 nextUrl=${nextUrl.toString()} reason=${reason} attempt=${attempt}`
+    `HARTHMERE_PRE_RELOAD nextUrl=${nextUrl.toString()} reason=${reason} attempt=${attempt}`
   );
   window.location.replace(nextUrl.toString());
   return true;
@@ -239,7 +239,7 @@ async function autoLoginWithGlitchInstall(installId: string) {
       op: "autoLogin",
       install_id: installId,
       glitch_auto_play: true,
-      source: "harthmere_glitch_install_bootstrap_v127",
+      source: "harthmere_glitch_install_bootstrap",
     }),
   });
 
@@ -269,12 +269,12 @@ function writeBootstrapIdentity(json: any, installId: string) {
     writeHarthmereGlitchIdentity(identity);
   } catch (error) {
     // eslint-disable-next-line no-console
-    console.warn("HARTHMERE_BOOTSTRAP_WRITE_IDENTITY_FAILED_V127", error);
+    console.warn("HARTHMERE_BOOTSTRAP_WRITE_IDENTITY_FAILED", error);
   }
 
   try {
     window.localStorage.setItem(
-      "biomes.localDev.harthmere.glitchBootstrapIdentity.v90",
+      "biomes.localDev.harthmere.glitchBootstrapIdentity",
       JSON.stringify(identity)
     );
   } catch {
@@ -296,7 +296,7 @@ function writeBootstrapIdentity(json: any, installId: string) {
   // Preserve the legacy v115 marker so any prior log-pattern scrapers still
   // catch the bootstrap. v127 emits checkpoint markers separately above.
   // eslint-disable-next-line no-console
-  console.info("GLITCH_INSTALL_BOOTSTRAP_AUTO_LOGIN_V115", {
+  console.info("GLITCH_INSTALL_BOOTSTRAP_AUTO_LOGIN", {
     installId,
     gameUserId: identity.gameUserId,
     userName: identity.userName,
@@ -311,11 +311,11 @@ export function HarthmereGlitchInstallBootstrap() {
     const installId = findInstallId();
     if (!installId) {
       // eslint-disable-next-line no-console
-      console.info("HARTHMERE_INSTALL_NO_ID_V127");
+      console.info("HARTHMERE_INSTALL_NO_ID");
       return;
     }
     // eslint-disable-next-line no-console
-    console.info(`HARTHMERE_INSTALL_ID_FOUND_V127 installId=${installId}`);
+    console.info(`HARTHMERE_INSTALL_ID_FOUND installId=${installId}`);
 
     persistInstallId(installId);
 
@@ -332,7 +332,7 @@ export function HarthmereGlitchInstallBootstrap() {
         const initialAuthed = await checkBiomesAuth();
         // eslint-disable-next-line no-console
         console.info(
-          `HARTHMERE_INITIAL_AUTH_CHECK_V127 authed=${initialAuthed} isAfterReload=${isAfterReload}`
+          `HARTHMERE_INITIAL_AUTH_CHECK authed=${initialAuthed} isAfterReload=${isAfterReload}`
         );
 
         if (cancelled) return;
@@ -340,7 +340,7 @@ export function HarthmereGlitchInstallBootstrap() {
         if (initialAuthed) {
           // eslint-disable-next-line no-console
           console.info(
-            `HARTHMERE_ALREADY_AUTHED_V128 isAfterReload=${isAfterReload}`
+            `HARTHMERE_ALREADY_AUTHED isAfterReload=${isAfterReload}`
           );
 
           const gateWaitingBeforeRefresh = isServerAuthGateWaiting();
@@ -350,7 +350,7 @@ export function HarthmereGlitchInstallBootstrap() {
             writeBootstrapIdentity(json, installId);
             // eslint-disable-next-line no-console
             console.info(
-              `HARTHMERE_POST_RELOAD_IDENTITY_REFRESHED_V127 gameUserId=${
+              `HARTHMERE_POST_RELOAD_IDENTITY_REFRESHED gameUserId=${
                 json?.game_user_id ?? "(none)"
               }`
             );
@@ -361,7 +361,7 @@ export function HarthmereGlitchInstallBootstrap() {
               // because the install-backed user did not exist yet. Refresh the
               // install identity first, then reload the gated SSR page so it can
               // find the freshly-created user and mount the game automatically.
-              // HARTHMERE_SERVER_GATE_IDENTITY_REFRESH_V142
+              // HARTHMERE_SERVER_GATE_IDENTITY_REFRESH
               if (
                 markAutoAuthReload(installId, "server_gate_identity_refreshed")
               ) {
@@ -369,7 +369,7 @@ export function HarthmereGlitchInstallBootstrap() {
               }
               // eslint-disable-next-line no-console
               console.error(
-                "HARTHMERE_AUTH_GATE_IDENTITY_REFRESH_RELOAD_LIMIT_V142",
+                "HARTHMERE_AUTH_GATE_IDENTITY_REFRESH_RELOAD_LIMIT",
                 {
                   installId,
                 }
@@ -380,7 +380,7 @@ export function HarthmereGlitchInstallBootstrap() {
           } catch (error) {
             // eslint-disable-next-line no-console
             console.warn(
-              "HARTHMERE_POST_RELOAD_IDENTITY_REFRESH_FAILED_V127",
+              "HARTHMERE_POST_RELOAD_IDENTITY_REFRESH_FAILED",
               error
             );
           }
@@ -389,13 +389,13 @@ export function HarthmereGlitchInstallBootstrap() {
 
         // eslint-disable-next-line no-console
         console.info(
-          `HARTHMERE_AUTO_LOGIN_REQUEST_V127 installId=${installId}`
+          `HARTHMERE_AUTO_LOGIN_REQUEST installId=${installId}`
         );
         const json = await autoLoginWithGlitchInstall(installId);
         if (cancelled) return;
         // eslint-disable-next-line no-console
         console.info(
-          `HARTHMERE_AUTO_LOGIN_RESPONSE_V127 installId=${installId} gameUserId=${
+          `HARTHMERE_AUTO_LOGIN_RESPONSE installId=${installId} gameUserId=${
             json?.game_user_id ?? "(none)"
           } biomesUserId=${json?.biomes_user_id ?? "(none)"}`
         );
@@ -405,7 +405,7 @@ export function HarthmereGlitchInstallBootstrap() {
         const postLoginAuthed = await waitForBiomesAuth();
         // eslint-disable-next-line no-console
         console.info(
-          `HARTHMERE_POST_LOGIN_AUTH_CHECK_V128 authed=${postLoginAuthed}`
+          `HARTHMERE_POST_LOGIN_AUTH_CHECK authed=${postLoginAuthed}`
         );
 
         if (cancelled) return;
@@ -426,7 +426,7 @@ export function HarthmereGlitchInstallBootstrap() {
         }
 
         // eslint-disable-next-line no-console
-        console.error("HARTHMERE_AUTH_COOKIE_MISSING_V128", {
+        console.error("HARTHMERE_AUTH_COOKIE_MISSING", {
           installId,
           gameUserId: json?.game_user_id,
           isAfterReload,
@@ -434,7 +434,7 @@ export function HarthmereGlitchInstallBootstrap() {
         });
       } catch (error) {
         // eslint-disable-next-line no-console
-        console.error("HARTHMERE_INSTALL_BOOTSTRAP_FAILED_V127", error);
+        console.error("HARTHMERE_INSTALL_BOOTSTRAP_FAILED", error);
       }
     })();
 

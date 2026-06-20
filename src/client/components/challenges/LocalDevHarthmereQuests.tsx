@@ -7,15 +7,15 @@ import {
   recordHarthmereEconomicEvent,
 } from "@/client/components/challenges/LocalDevHarthmereEconomySystem";
 import {
-  consumeHarthmereItemByItemIdV141,
+  consumeHarthmereItemByItemId,
   grantHarthmereItem,
   grantHarthmereQuestInventoryReward,
-  harthmereInventoryCountByItemIdV141,
+  harthmereInventoryCountByItemId,
   inventoryActionsForHarthmereNpc,
 } from "@/client/components/challenges/LocalDevHarthmereInventorySystem";
 import { gatheringActionsForHarthmereNpc } from "@/client/components/challenges/LocalDevHarthmereGatheringSystem";
 import { buildingActionsForHarthmereNpc } from "@/client/components/challenges/LocalDevHarthmereBuildingSystem";
-import { BUILDING_SYSTEM_GROVE_STEWARD_NPC_V1, BUILDING_SYSTEM_MIRA_INTRO_QUEST_V1 } from "@/shared/harthmere/building_system_v1";
+import { BUILDING_SYSTEM_GROVE_STEWARD_NPC, BUILDING_SYSTEM_MIRA_INTRO_QUEST } from "@/shared/harthmere/building_system";
 import { guildActionsForHarthmereNpc } from "@/client/components/challenges/LocalDevHarthmereGuildSystem";
 import { classSkillActionsForHarthmereNpc } from "@/client/components/challenges/LocalDevHarthmereClassSkillSystem";
 import type { TalkDialogStepAction } from "@/client/components/challenges/TalkDialogModalStep";
@@ -35,15 +35,15 @@ import {
 } from "@/client/components/challenges/LocalDevHarthmereReputation";
 import { useClientContext } from "@/client/components/contexts/ClientContextReactContext";
 import {
-  getHarthmereWorldMapBoundsV71,
-  shiftHarthmereAuthoredPositionToWorldV71,
-} from "@/shared/harthmere/coordinate_transform_v71";
+  getHarthmereWorldMapBounds,
+  shiftHarthmereAuthoredPositionToWorld,
+} from "@/shared/harthmere/coordinate_transform";
 import {
-  SNAPSHOT_GROVE_LANDMARKS_V75,
-  SNAPSHOT_GROVE_QUESTS_V75,
-  type SnapshotGroveLandmarkV75,
-} from "@/shared/harthmere/snapshot_grove_content_v75";
-import { readSnapshotGroveQuestStateV75 } from "@/client/components/challenges/LocalDevSnapshotGroveBibleRuntime";
+  SNAPSHOT_GROVE_LANDMARKS,
+  SNAPSHOT_GROVE_QUESTS,
+  type SnapshotGroveLandmark,
+} from "@/shared/harthmere/snapshot_grove_content";
+import { readSnapshotGroveQuestState } from "@/client/components/challenges/LocalDevSnapshotGroveBibleRuntime";
 import {
   BIOMES_GAME_NAME,
   BIOMES_HARTHMERE_TOWN_NAME,
@@ -58,25 +58,25 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 const LOCAL_DEV_NPC_ID_BASE = 8_810_000_000_010_000;
 const LOCAL_DEV_NPC_ID_LIMIT = 8_810_000_000_020_000;
 export const HARTHMERE_QUEST_STATE_KEY =
-  "biomes.localDev.harthmere.questState.v1";
+  "biomes.localDev.harthmere.questState";
 export const HARTHMERE_MISSION_EVENTS_KEY =
-  "biomes.localDev.harthmere.missionEvents.v1";
-export const SNAPSHOT_MARKET_BOARD_ACTIVATION_EVENT_V76 =
+  "biomes.localDev.harthmere.missionEvents";
+export const SNAPSHOT_MARKET_BOARD_ACTIVATION_EVENT =
   "harthmere.market_board.activate";
 
-export const HARTHMERE_READ_JOBS_BOARD_QUEST_ID_V140 =
+export const HARTHMERE_READ_JOBS_BOARD_QUEST_ID =
   "read-the-jobs-board";
-export const HARTHMERE_READ_JOBS_BOARD_TITLE_V140 =
+export const HARTHMERE_READ_JOBS_BOARD_TITLE =
   "Read the Jobs Board";
-export const HARTHMERE_JOBS_BOARD_TARGET_OFFSET_V140 = 140_041;
-export const HARTHMERE_JOBS_BOARD_MARKER_ID_V140 =
+export const HARTHMERE_JOBS_BOARD_TARGET_OFFSET = 140_041;
+export const HARTHMERE_JOBS_BOARD_MARKER_ID =
   "harthmere_market_posting_board";
-export const HARTHMERE_JOBS_BOARD_READ_EVENT_V140 =
+export const HARTHMERE_JOBS_BOARD_READ_EVENT =
   "harthmere.jobs_board.read";
-const HARTHMERE_JOBS_BOARD_OPEN_EVENT_V141 =
-  "biomes:harthmere-jobs-board-open-v141";
+const HARTHMERE_JOBS_BOARD_OPEN_EVENT =
+  "biomes:harthmere-jobs-board-open";
 
-// HARTHMERE_QUEST_ITEM_FLOW_V141:
+// HARTHMERE_QUEST_ITEM_FLOW:
 // Quest steps can optionally grant an item when the step completes (e.g.,
 // talking to an orchard worker can add a basket of apples) and/or require an item to
 // be present in the player's inventory before completion is allowed (e.g.,
@@ -114,20 +114,20 @@ const EMPTY_STATE: HarthmereQuestState = {
   completed: [],
 };
 
-const HARTHMERE_AUTOSTART_QUEST_IDS_V140 = [
-  HARTHMERE_READ_JOBS_BOARD_QUEST_ID_V140,
+const HARTHMERE_AUTOSTART_QUEST_IDS = [
+  HARTHMERE_READ_JOBS_BOARD_QUEST_ID,
 ] as const;
 
-export function createHarthmereStarterQuestStateV140(): HarthmereQuestState {
+export function createHarthmereStarterQuestState(): HarthmereQuestState {
   return {
     active: Object.fromEntries(
-      HARTHMERE_AUTOSTART_QUEST_IDS_V140.map((questId) => [questId, 0]),
+      HARTHMERE_AUTOSTART_QUEST_IDS.map((questId) => [questId, 0]),
     ),
     completed: [],
   };
 }
 
-export function normalizeHarthmereQuestStateV140(
+export function normalizeHarthmereQuestState(
   parsed: Partial<HarthmereQuestState> | undefined,
 ): HarthmereQuestState {
   const parsedState = parsed ?? {};
@@ -155,7 +155,7 @@ export function normalizeHarthmereQuestStateV140(
     ),
   )];
 
-  for (const questId of HARTHMERE_AUTOSTART_QUEST_IDS_V140) {
+  for (const questId of HARTHMERE_AUTOSTART_QUEST_IDS) {
     if (!completed.includes(questId) && active[questId] === undefined) {
       active[questId] = 0;
     }
@@ -166,8 +166,8 @@ export function normalizeHarthmereQuestStateV140(
 
 export const QUESTS: HarthmereQuestDefinition[] = [
   {
-    id: HARTHMERE_READ_JOBS_BOARD_QUEST_ID_V140,
-    title: HARTHMERE_READ_JOBS_BOARD_TITLE_V140,
+    id: HARTHMERE_READ_JOBS_BOARD_QUEST_ID,
+    title: HARTHMERE_READ_JOBS_BOARD_TITLE,
     giverOffsets: [],
     boardListed: false,
     summary:
@@ -177,24 +177,24 @@ export const QUESTS: HarthmereQuestDefinition[] = [
     steps: [
       {
         objective: "Read the Jobs Board.",
-        targetOffset: HARTHMERE_JOBS_BOARD_TARGET_OFFSET_V140,
+        targetOffset: HARTHMERE_JOBS_BOARD_TARGET_OFFSET,
         completion:
           "You read the Jobs Board. It lists town, guild, business, NPC, and player work that seekers can accept in person.",
       },
     ],
   },
   {
-    id: BUILDING_SYSTEM_MIRA_INTRO_QUEST_V1.questId,
-    title: BUILDING_SYSTEM_MIRA_INTRO_QUEST_V1.displayName,
-    giverOffsets: [BUILDING_SYSTEM_GROVE_STEWARD_NPC_V1.idOffset],
+    id: BUILDING_SYSTEM_MIRA_INTRO_QUEST.questId,
+    title: BUILDING_SYSTEM_MIRA_INTRO_QUEST.displayName,
+    giverOffsets: [BUILDING_SYSTEM_GROVE_STEWARD_NPC.idOffset],
     boardListed: true,
     summary:
       "Meet Mira in the Grove so new players can find the Building System, buy safe land, and understand voxel-only construction.",
     reward: "Building System guidance and Grove plot marker access.",
     steps: [
       {
-        objective: BUILDING_SYSTEM_MIRA_INTRO_QUEST_V1.objective,
-        targetOffset: BUILDING_SYSTEM_GROVE_STEWARD_NPC_V1.idOffset,
+        objective: BUILDING_SYSTEM_MIRA_INTRO_QUEST.objective,
+        targetOffset: BUILDING_SYSTEM_GROVE_STEWARD_NPC.idOffset,
         completion:
           "Mira explains land claims, safe muck clearing, voxel construction, property permissions, taxes, repairs, upgrades, and demolition rules.",
       },
@@ -280,7 +280,7 @@ export const QUESTS: HarthmereQuestDefinition[] = [
         completion: "I need clean orchard apples for road cakes.",
       },
       {
-        // HARTHMERE_QUEST_ITEM_FLOW_V141: Ren actually drops an apple basket
+        // HARTHMERE_QUEST_ITEM_FLOW: Ren actually drops an apple basket
         // into the player's quest pouch on this step's completion.
         objective: "Speak with Apple Picker Ren in the orchard.",
         targetOffset: 63,
@@ -290,7 +290,7 @@ export const QUESTS: HarthmereQuestDefinition[] = [
         grantsQuantity: 1,
       },
       {
-        // HARTHMERE_QUEST_ITEM_FLOW_V141: Maren refuses the turn-in until the
+        // HARTHMERE_QUEST_ITEM_FLOW: Maren refuses the turn-in until the
         // apple basket is actually in the player's inventory, then consumes it
         // when the step is marked complete.
         objective: "Return the apples to Maren Dawnloaf.",
@@ -519,16 +519,16 @@ export const QUESTS: HarthmereQuestDefinition[] = [
   },
 ];
 
-// HARTHMERE_PERF_AND_PLACEMENT_V94 — Mission target Y override map.
+// HARTHMERE_PERF_AND_PLACEMENT — Mission target Y override map.
 //
-// The mission-audit v90 series repeatedly flagged "mission target Y looks
+// The mission-audit current series repeatedly flagged "mission target Y looks
 // wrong; target delta is -19 blocks" on the Whispering Crate marker. The cause
 // is identical to the NPC bury bug: QUEST_TARGETS holds authored Y values
 // (mostly y=58), but the live snapshot terrain at those XZ positions has
-// raised structures that put feet at y=68, y=73, etc. v94 overrides Y at the
+// raised structures that put feet at y=68, y=73, etc. current overrides Y at the
 // transform boundary using the same cluster measurements the server uses for
 // NPC placement, so markers, NPCs, and the audit all agree.
-const HARTHMERE_QUEST_TARGET_LABEL_CLUSTER_FEET_Y_V94: Record<string, number> = {
+const HARTHMERE_QUEST_TARGET_LABEL_CLUSTER_FEET_Y: Record<string, number> = {
   // Plaza fountain (audit-measured y=68)
   "Market Board": 68,
   "Master Osric Vale": 68,
@@ -578,25 +578,25 @@ const HARTHMERE_QUEST_TARGET_LABEL_CLUSTER_FEET_Y_V94: Record<string, number> = 
   "Farm and Chicken Yard": 53,
 };
 
-export const HARTHMERE_QUEST_TARGET_V94_VERSION =
-  "harthmere-quest-target-cluster-feet-y-v94";
+export const HARTHMERE_QUEST_TARGET_VERSION =
+  "harthmere-quest-target-cluster-feet-y";
 
-function harthmereQuestTargetFeetYForLabelV94(label: string | undefined, authoredY: number) {
+function harthmereQuestTargetFeetYForLabel(label: string | undefined, authoredY: number) {
   if (!label) return authoredY;
-  const override = HARTHMERE_QUEST_TARGET_LABEL_CLUSTER_FEET_Y_V94[label];
+  const override = HARTHMERE_QUEST_TARGET_LABEL_CLUSTER_FEET_Y[label];
   return override === undefined ? authoredY : override;
 }
 
-export function getHarthmereQuestTargetWorldPosV71(
+export function getHarthmereQuestTargetWorldPos(
   target: HarthmereQuestTarget,
 ): [number, number, number] {
-  const overrideY = harthmereQuestTargetFeetYForLabelV94(target.label, target.pos[1]);
-  const shifted = shiftHarthmereAuthoredPositionToWorldV71(target.pos);
-  // Note: shifting preserves Y already; v94 just substitutes the cluster Y.
+  const overrideY = harthmereQuestTargetFeetYForLabel(target.label, target.pos[1]);
+  const shifted = shiftHarthmereAuthoredPositionToWorld(target.pos);
+  // Note: shifting preserves Y already; current just substitutes the cluster Y.
   return [shifted[0], overrideY, shifted[2]];
 }
 
-function harthmereQuestTargetGuideV93(step: HarthmereQuestStep | undefined) {
+function harthmereQuestTargetGuide(step: HarthmereQuestStep | undefined) {
   if (!step) {
     return "No current objective is available.";
   }
@@ -607,12 +607,12 @@ function harthmereQuestTargetGuideV93(step: HarthmereQuestStep | undefined) {
   return `${step.objective} ${targetCopy} Use the Harthmere Quest Map button to mark the exact stop.`;
 }
 
-function harthmereQuestNextLeadCopyV93(quest: HarthmereQuestDefinition, nextIndex: number) {
+function harthmereQuestNextLeadCopy(quest: HarthmereQuestDefinition, nextIndex: number) {
   const nextStep = quest.steps[nextIndex];
   if (!nextStep) {
     return `Quest complete. Reward available: ${quest.reward}. Return to the Market Board for another route if you need a next lead.`;
   }
-  return `Next lead: ${harthmereQuestTargetGuideV93(nextStep)}`;
+  return `Next lead: ${harthmereQuestTargetGuide(nextStep)}`;
 }
 
 const HARTHMERE_EXTRA_DIALOGUE: Record<number, string[]> = {
@@ -691,13 +691,13 @@ export function readHarthmereQuestState(): HarthmereQuestState {
   try {
     const raw = window.localStorage.getItem(HARTHMERE_QUEST_STATE_KEY);
     if (!raw) {
-      return createHarthmereStarterQuestStateV140();
+      return createHarthmereStarterQuestState();
     }
-    return normalizeHarthmereQuestStateV140(
+    return normalizeHarthmereQuestState(
       JSON.parse(raw) as Partial<HarthmereQuestState>,
     );
   } catch {
-    return createHarthmereStarterQuestStateV140();
+    return createHarthmereStarterQuestState();
   }
 }
 
@@ -705,7 +705,7 @@ export function writeHarthmereQuestState(state: HarthmereQuestState) {
   if (!isBrowser()) {
     return;
   }
-  const normalized = normalizeHarthmereQuestStateV140(state);
+  const normalized = normalizeHarthmereQuestState(state);
   window.localStorage.setItem(
     HARTHMERE_QUEST_STATE_KEY,
     JSON.stringify(normalized),
@@ -791,7 +791,7 @@ function availableQuestsForOffset(offset: number, state: HarthmereQuestState) {
     if (state.active[quest.id] !== undefined) {
       return false;
     }
-    if (isHarthmereJobsBoardOffsetV140(offset) && quest.boardListed) {
+    if (isHarthmereJobsBoardOffset(offset) && quest.boardListed) {
       return true;
     }
     return quest.giverOffsets.includes(offset);
@@ -855,22 +855,22 @@ function initialQuestStepIndexOnAccept(
   return quest.steps[0]?.targetOffset === acceptingOffset ? 1 : 0;
 }
 
-export function completeHarthmereJobsBoardReadQuestV140(
-  reason = HARTHMERE_JOBS_BOARD_READ_EVENT_V140,
+export function completeHarthmereJobsBoardReadQuest(
+  reason = HARTHMERE_JOBS_BOARD_READ_EVENT,
 ) {
   if (!isBrowser()) {
     return { changed: false, reason: "not_browser" as const };
   }
 
   const quest = QUESTS.find(
-    (entry) => entry.id === HARTHMERE_READ_JOBS_BOARD_QUEST_ID_V140,
+    (entry) => entry.id === HARTHMERE_READ_JOBS_BOARD_QUEST_ID,
   );
   if (!quest) {
     return { changed: false, reason: "missing_quest" as const };
   }
 
   const current = readQuestState();
-  if (current.completed.includes(HARTHMERE_READ_JOBS_BOARD_QUEST_ID_V140)) {
+  if (current.completed.includes(HARTHMERE_READ_JOBS_BOARD_QUEST_ID)) {
     return { changed: false, reason: "already_completed" as const };
   }
 
@@ -878,10 +878,10 @@ export function completeHarthmereJobsBoardReadQuestV140(
     active: { ...current.active },
     completed: [
       ...current.completed,
-      HARTHMERE_READ_JOBS_BOARD_QUEST_ID_V140,
+      HARTHMERE_READ_JOBS_BOARD_QUEST_ID,
     ],
   };
-  delete next.active[HARTHMERE_READ_JOBS_BOARD_QUEST_ID_V140];
+  delete next.active[HARTHMERE_READ_JOBS_BOARD_QUEST_ID];
 
   writeQuestState(next);
   recordMissionEvent(
@@ -892,7 +892,7 @@ export function completeHarthmereJobsBoardReadQuestV140(
   recordHarthmereQuestStepCompleted(
     quest.id,
     quest.title,
-    HARTHMERE_JOBS_BOARD_TARGET_OFFSET_V140,
+    HARTHMERE_JOBS_BOARD_TARGET_OFFSET,
     true,
   );
   awardHarthmereQuestXp(quest.id, quest.title, true);
@@ -902,7 +902,7 @@ export function completeHarthmereJobsBoardReadQuestV140(
 }
 
 function compactHarthmereNpcActions(actions: TalkDialogStepAction[]) {
-  // SNAPSHOT_MARKET_BOARD_PRIORITY_FIX_V76:
+  // SNAPSHOT_MARKET_BOARD_PRIORITY_FIX:
   // The Market Board is a mission router before it is a vendor/dialogue utility.
   // Previously the generic utility actions could fill all four slots before
   // "Complete:" or "Accept:" appeared, so Jackie/Bram could send the player
@@ -958,8 +958,8 @@ function compactHarthmereNpcActions(actions: TalkDialogStepAction[]) {
   return selected.slice(0, 4);
 }
 
-export function isHarthmereJobsBoardOffsetV140(offset: number) {
-  return offset === 41 || offset === HARTHMERE_JOBS_BOARD_TARGET_OFFSET_V140;
+export function isHarthmereJobsBoardOffset(offset: number) {
+  return offset === 41 || offset === HARTHMERE_JOBS_BOARD_TARGET_OFFSET;
 }
 
 export function useLocalDevHarthmereDialog(
@@ -1016,9 +1016,9 @@ export function useLocalDevHarthmereDialog(
       return undefined;
     }
 
-    const isBoard = isHarthmereJobsBoardOffsetV140(offset);
+    const isBoard = isHarthmereJobsBoardOffset(offset);
     const combatStatus = getHarthmereCombatNpcStatus(offset);
-    // harthmere-death-ai-dialog-render-v1
+    // harthmere-death-ai-dialog-render
     // Dead NPCs should stop behaving like conversational/quest/shop actors.
     // The body can stay visible as a corpse, but the interaction menu must not
     // offer normal living-NPC actions after combat says HP reached zero.
@@ -1069,7 +1069,7 @@ export function useLocalDevHarthmereDialog(
 
     for (const quest of matching) {
       const step = quest.steps[state.active[quest.id] ?? 0];
-      // HARTHMERE_QUEST_ITEM_FLOW_V141:
+      // HARTHMERE_QUEST_ITEM_FLOW:
       // If the step requires the player to be carrying a quest item, gate the
       // Complete button on that item actually being in the inventory. The
       // tooltip explains why so the user is not just stuck on a disabled
@@ -1077,7 +1077,7 @@ export function useLocalDevHarthmereDialog(
       const requiresItemId = step?.requiresItemId;
       const requiresQuantity = step?.requiresQuantity ?? 1;
       const heldQuantity = requiresItemId
-        ? harthmereInventoryCountByItemIdV141(requiresItemId)
+        ? harthmereInventoryCountByItemId(requiresItemId)
         : 0;
       const missingRequiredItem =
         requiresItemId !== undefined && heldQuantity < requiresQuantity;
@@ -1090,7 +1090,7 @@ export function useLocalDevHarthmereDialog(
         disabled: missingRequiredItem,
         tooltip: requirementTooltip ?? step?.objective,
         followUpText: step
-          ? `${step.completion} ${harthmereQuestNextLeadCopyV93(
+          ? `${step.completion} ${harthmereQuestNextLeadCopy(
               quest,
               (state.active[quest.id] ?? 0) + 1,
             )}`
@@ -1100,10 +1100,10 @@ export function useLocalDevHarthmereDialog(
           const stepIndex = current.active[quest.id] ?? 0;
           const justFinishedStep = quest.steps[stepIndex];
           const completedQuest = stepIndex + 1 >= quest.steps.length;
-          // HARTHMERE_QUEST_ITEM_FLOW_V141: re-verify the item requirement at
+          // HARTHMERE_QUEST_ITEM_FLOW: re-verify the item requirement at
           // click time in case state changed between render and click.
           if (justFinishedStep?.requiresItemId) {
-            const stillHas = harthmereInventoryCountByItemIdV141(
+            const stillHas = harthmereInventoryCountByItemId(
               justFinishedStep.requiresItemId,
             );
             if (stillHas < (justFinishedStep.requiresQuantity ?? 1)) {
@@ -1112,19 +1112,19 @@ export function useLocalDevHarthmereDialog(
           }
           const next = completeStep(current, quest);
           writeQuestState(next);
-          // HARTHMERE_QUEST_ITEM_FLOW_V141: consume the required item now that
+          // HARTHMERE_QUEST_ITEM_FLOW: consume the required item now that
           // the step is being marked complete.
           if (
             justFinishedStep?.requiresItemId &&
             justFinishedStep.consumesOnComplete
           ) {
-            consumeHarthmereItemByItemIdV141(
+            consumeHarthmereItemByItemId(
               justFinishedStep.requiresItemId,
               justFinishedStep.requiresQuantity ?? 1,
               `${quest.title}: turned in`,
             );
           }
-          // HARTHMERE_QUEST_ITEM_FLOW_V141: hand over an item if the step's
+          // HARTHMERE_QUEST_ITEM_FLOW: hand over an item if the step's
           // completion says the NPC gives the player something.
           if (justFinishedStep?.grantsItemId) {
             grantHarthmereItem(
@@ -1136,10 +1136,10 @@ export function useLocalDevHarthmereDialog(
           recordMissionEvent(
             completedQuest ? "completed" : "updated",
             quest.title,
-            `${harthmereQuestNextLeadCopyV93(
+            `${harthmereQuestNextLeadCopy(
               quest,
               completedQuest ? quest.steps.length : next.active[quest.id] ?? 0,
-            )}${isBoard ? ` · Market Board activation cue: ${SNAPSHOT_MARKET_BOARD_ACTIVATION_EVENT_V76}` : ""}`,
+            )}${isBoard ? ` · Market Board activation cue: ${SNAPSHOT_MARKET_BOARD_ACTIVATION_EVENT}` : ""}`,
           );
           recordHarthmereQuestStepCompleted(
             quest.id,
@@ -1171,16 +1171,16 @@ export function useLocalDevHarthmereDialog(
         tooltip: `${quest.summary} Reward: ${quest.reward}`,
         followUpText: `Accepted: ${quest.title}. Step ${
           initialStepIndex + 1
-        }/${quest.steps.length}: ${harthmereQuestTargetGuideV93(initialStep)}`,
+        }/${quest.steps.length}: ${harthmereQuestTargetGuide(initialStep)}`,
         onPerformed: () => {
           const next = acceptQuest(readQuestState(), quest, offset);
           writeQuestState(next);
           recordMissionEvent(
             "accepted",
             quest.title,
-            `Current objective: ${harthmereQuestTargetGuideV93(initialStep)}${
+            `Current objective: ${harthmereQuestTargetGuide(initialStep)}${
               isBoard
-                ? ` · Market Board activation cue: ${SNAPSHOT_MARKET_BOARD_ACTIVATION_EVENT_V76}`
+                ? ` · Market Board activation cue: ${SNAPSHOT_MARKET_BOARD_ACTIVATION_EVENT}`
                 : ""
             }`,
           );
@@ -1220,10 +1220,10 @@ export function useLocalDevHarthmereDialog(
           "You open the Jobs Board. It lists public work, business requests, guild tasks, and seeker contracts posted for Harthmere.",
         closeAfterPerformed: true,
         onPerformed: () => {
-          completeHarthmereJobsBoardReadQuestV140("jobs_board_panel_opened");
+          completeHarthmereJobsBoardReadQuest("jobs_board_panel_opened");
           setState(readQuestState());
           window.dispatchEvent(
-            new CustomEvent(HARTHMERE_JOBS_BOARD_OPEN_EVENT_V141),
+            new CustomEvent(HARTHMERE_JOBS_BOARD_OPEN_EVENT),
           );
         },
       });
@@ -1234,7 +1234,7 @@ export function useLocalDevHarthmereDialog(
         followUpText:
           "Local-dev mission progress reset. The Market Board is ready for a clean quest test pass.",
         onPerformed: () => {
-          const resetState = createHarthmereStarterQuestStateV140();
+          const resetState = createHarthmereStarterQuestState();
           writeQuestState(resetState);
           recordMissionEvent(
             "reset",
@@ -1432,22 +1432,22 @@ export const QUEST_TARGETS: Record<number, HarthmereQuestTarget> = {
     pos: [402, 58, -235],
     icon: "?",
   },
-  // HARTHMERE_JOBS_BOARD_GROVE_PLACEMENT_V141:
+  // HARTHMERE_JOBS_BOARD_GROVE_PLACEMENT:
   // Moved from the Harthmere market square to The Grove (just east of the
-  // fountain). Position matches the SNAPSHOT_GROVE_LANDMARKS_V75 entry for
+  // fountain). Position matches the SNAPSHOT_GROVE_LANDMARKS entry for
   // `harthmere_market_posting_board`, so the world map marker, the runtime
-  // nav-aid pin (HarthmereQuestNavAidControllerV141), and the physical voxel
+  // nav-aid pin (HarthmereQuestNavAidController), and the physical voxel
   // building all line up at the same coordinate. The Grove fountain center is
   // [496, ~70, -126]; (4, 6) puts the board at the east edge of the fountain
   // plaza where it's reachable from spawn.
-  [HARTHMERE_JOBS_BOARD_TARGET_OFFSET_V140]: {
+  [HARTHMERE_JOBS_BOARD_TARGET_OFFSET]: {
     label: "Jobs Board",
     district: "The Grove",
     pos: [501.99486179104775, 70, -132.00350672753194],
     icon: "J",
   },
-  [BUILDING_SYSTEM_GROVE_STEWARD_NPC_V1.idOffset]: {
-    label: BUILDING_SYSTEM_GROVE_STEWARD_NPC_V1.displayName,
+  [BUILDING_SYSTEM_GROVE_STEWARD_NPC.idOffset]: {
+    label: BUILDING_SYSTEM_GROVE_STEWARD_NPC.displayName,
     district: "The Grove",
     pos: [501, 53, -132],
     icon: "⌂",
@@ -1507,13 +1507,13 @@ function verticalRelationLabel(playerY: number, targetY: number) {
   return delta > 0 ? `${delta}m above you` : `${Math.abs(delta)}m below you`;
 }
 
-type HudMapRegionV97 = "grove" | "harthmere";
+type HudMapRegion = "grove" | "harthmere";
 
-const GROVE_MAP_MARKERS_V97 = SNAPSHOT_GROVE_LANDMARKS_V75.filter(
+const GROVE_MAP_MARKERS = SNAPSHOT_GROVE_LANDMARKS.filter(
   (landmark) => landmark.area !== "harthmere",
 );
 
-const GROVE_BOUNDS_V97 = GROVE_MAP_MARKERS_V97.reduce(
+const GROVE_BOUNDS = GROVE_MAP_MARKERS.reduce(
   (acc, landmark) => ({
     minX: Math.min(acc.minX, landmark.position[0]),
     maxX: Math.max(acc.maxX, landmark.position[0]),
@@ -1528,26 +1528,26 @@ const GROVE_BOUNDS_V97 = GROVE_MAP_MARKERS_V97.reduce(
   },
 );
 
-export function hudMapRegionForPlayerPositionV97(
+export function hudMapRegionForPlayerPosition(
   playerPos: readonly [number, number, number] | undefined,
-): HudMapRegionV97 {
+): HudMapRegion {
   if (!playerPos) {
     return "harthmere";
   }
   const [x, , z] = playerPos;
   const padding = 88;
   if (
-    x >= GROVE_BOUNDS_V97.minX - padding &&
-    x <= GROVE_BOUNDS_V97.maxX + padding &&
-    z >= GROVE_BOUNDS_V97.minZ - padding &&
-    z <= GROVE_BOUNDS_V97.maxZ + padding
+    x >= GROVE_BOUNDS.minX - padding &&
+    x <= GROVE_BOUNDS.maxX + padding &&
+    z >= GROVE_BOUNDS.minZ - padding &&
+    z <= GROVE_BOUNDS.maxZ + padding
   ) {
     return "grove";
   }
   return "harthmere";
 }
 
-function groveMarkerGlyphV97(marker: SnapshotGroveLandmarkV75) {
+function groveMarkerGlyph(marker: SnapshotGroveLandmark) {
   if (marker.id === "quest_board") return "!";
   if (/smith|anvil|workshop/.test(marker.id)) return "A";
   if (/healer|apothecary/.test(marker.id)) return "+";
@@ -1561,8 +1561,8 @@ function groveMarkerGlyphV97(marker: SnapshotGroveLandmarkV75) {
 }
 
 
-function groveMapMarkerIsQuestItemV111(
-  marker: SnapshotGroveLandmarkV75,
+function groveMapMarkerIsQuestItem(
+  marker: SnapshotGroveLandmark,
   objective?: string,
 ) {
   const text = `${marker.id} ${marker.label} ${marker.kind} ${objective ?? ""}`.toLowerCase();
@@ -1572,8 +1572,8 @@ function groveMapMarkerIsQuestItemV111(
   );
 }
 
-function groveQuestMarkerRowsV111(
-  quest: (typeof SNAPSHOT_GROVE_QUESTS_V75)[number] | undefined,
+function groveQuestMarkerRows(
+  quest: (typeof SNAPSHOT_GROVE_QUESTS)[number] | undefined,
   activeObjectiveIndex: number,
 ) {
   if (!quest) {
@@ -1585,7 +1585,7 @@ function groveQuestMarkerRowsV111(
   );
   return quest.markerIds
     .map((markerId, stepIndex) => {
-      const marker = SNAPSHOT_GROVE_LANDMARKS_V75.find((entry) => entry.id === markerId);
+      const marker = SNAPSHOT_GROVE_LANDMARKS.find((entry) => entry.id === markerId);
       if (!marker) {
         return undefined;
       }
@@ -1598,11 +1598,11 @@ function groveQuestMarkerRowsV111(
         isActive: stepIndex === activeIndex,
         isPast: stepIndex < activeIndex,
         isFuture: stepIndex > activeIndex,
-        isItem: groveMapMarkerIsQuestItemV111(marker, objective),
+        isItem: groveMapMarkerIsQuestItem(marker, objective),
       };
     })
     .filter(Boolean) as Array<{
-      marker: SnapshotGroveLandmarkV75;
+      marker: SnapshotGroveLandmark;
       markerId: string;
       stepIndex: number;
       objective?: string;
@@ -1613,25 +1613,25 @@ function groveQuestMarkerRowsV111(
     }>;
 }
 
-// HARTHMERE_QUEST_NAV_AID_V141:
+// HARTHMERE_QUEST_NAV_AID:
 // The Harthmere quest pipeline previously updated localStorage state and the
 // in-panel HUD but never pinned a navigation aid for the active step. That
 // meant accepting a multi-step quest from a quest giver left the map marker
 // stuck on the giver — the player had no map cue for the destination step
-// (item, repair, witness, etc.) or for the return-to-giver step. v141 adds a
+// (item, repair, witness, etc.) or for the return-to-giver step. current adds a
 // runtime controller that pins/repins the world-map nav aid every time the
 // active step changes so the marker always points at the *next* place the
 // quest expects the player to go.
-export const HARTHMERE_QUEST_NAV_AID_ID_V141 = 760_141;
+export const HARTHMERE_QUEST_NAV_AID_ID = 760_141;
 
-function pinHarthmereQuestStepMarkerV141(
+function pinHarthmereQuestStepMarker(
   mapManager: {
     addNavigationAid: (aid: any, id?: number) => number;
     removeNavigationAid?: (id: number) => void;
   },
   targetPos: readonly [number, number, number],
 ) {
-  mapManager.removeNavigationAid?.(HARTHMERE_QUEST_NAV_AID_ID_V141);
+  mapManager.removeNavigationAid?.(HARTHMERE_QUEST_NAV_AID_ID);
   return mapManager.addNavigationAid(
     {
       kind: "quest",
@@ -1641,32 +1641,32 @@ function pinHarthmereQuestStepMarkerV141(
         position: [...targetPos],
       },
     },
-    HARTHMERE_QUEST_NAV_AID_ID_V141,
+    HARTHMERE_QUEST_NAV_AID_ID,
   );
 }
 
-function clearHarthmereQuestStepMarkerV141(mapManager: {
+function clearHarthmereQuestStepMarker(mapManager: {
   removeNavigationAid?: (id: number) => void;
 }) {
-  mapManager.removeNavigationAid?.(HARTHMERE_QUEST_NAV_AID_ID_V141);
+  mapManager.removeNavigationAid?.(HARTHMERE_QUEST_NAV_AID_ID);
 }
 
-// HARTHMERE_TUTOR_HUD_HIGHLIGHT_V141:
+// HARTHMERE_TUTOR_HUD_HIGHLIGHT:
 // Same channel-name pattern as the Grove broadcast. The unified HUD's
-// useTutorHighlightedNavLabelsV109 merges both channels so neither overwrites
+// useTutorHighlightedNavLabels merges both channels so neither overwrites
 // the other. Labels here are the *NavSlot* labels visible on the bottom
 // action bar — "Bag", "Map", "Quests", "Mail", etc. — and the matching slot
 // pulses + drops a bouncing arrow when its label is broadcast.
-export const HARTHMERE_TUTOR_HUD_HIGHLIGHT_EVENT_V141 =
-  "biomes:harthmere-quest-tutor-hud-highlights-v141";
+export const HARTHMERE_TUTOR_HUD_HIGHLIGHT_EVENT =
+  "biomes:harthmere-quest-tutor-hud-highlights";
 
-function broadcastHarthmereTutorHudLabelsV141(labels: string[]) {
+function broadcastHarthmereTutorHudLabels(labels: string[]) {
   if (typeof window === "undefined") {
     return;
   }
   try {
     window.dispatchEvent(
-      new CustomEvent(HARTHMERE_TUTOR_HUD_HIGHLIGHT_EVENT_V141, {
+      new CustomEvent(HARTHMERE_TUTOR_HUD_HIGHLIGHT_EVENT, {
         detail: { labels },
       }),
     );
@@ -1675,7 +1675,7 @@ function broadcastHarthmereTutorHudLabelsV141(labels: string[]) {
   }
 }
 
-// HARTHMERE_TUTOR_HUD_HIGHLIGHT_V141:
+// HARTHMERE_TUTOR_HUD_HIGHLIGHT:
 // Derive which NavSlot buttons should pulse for a given quest step. Each
 // rule is a soft hint — the more matches we get, the more buttons light up,
 // but we cap the set so the bar doesn't turn into a christmas tree.
@@ -1693,7 +1693,7 @@ function broadcastHarthmereTutorHudLabelsV141(labels: string[]) {
 //   - Step text mentions codex / lore / glossary → Codex.
 //   - Step text mentions chat / whisper / channel → Chat.
 //   - Step text mentions settings / options / preferences → Settings.
-function harthmereStepHudLabelsV141(
+function harthmereStepHudLabels(
   quest: HarthmereQuestDefinition | undefined,
   step: HarthmereQuestStep | undefined,
 ): string[] {
@@ -1741,7 +1741,7 @@ function harthmereStepHudLabelsV141(
   return [...labels].slice(0, 4);
 }
 
-export const HarthmereQuestNavAidControllerV141: React.FunctionComponent<{}> = () => {
+export const HarthmereQuestNavAidController: React.FunctionComponent<{}> = () => {
   const { mapManager } = useClientContext();
   const [state, setState] = useState<HarthmereQuestState>(() => readQuestState());
 
@@ -1765,24 +1765,24 @@ export const HarthmereQuestNavAidControllerV141: React.FunctionComponent<{}> = (
 
   useEffect(() => {
     if (targetOffset === undefined) {
-      clearHarthmereQuestStepMarkerV141(mapManager);
+      clearHarthmereQuestStepMarker(mapManager);
       return;
     }
     const target = QUEST_TARGETS[targetOffset];
     if (!target) {
-      clearHarthmereQuestStepMarkerV141(mapManager);
+      clearHarthmereQuestStepMarker(mapManager);
       return;
     }
-    pinHarthmereQuestStepMarkerV141(
+    pinHarthmereQuestStepMarker(
       mapManager,
-      getHarthmereQuestTargetWorldPosV71(target),
+      getHarthmereQuestTargetWorldPos(target),
     );
     return () => {
-      clearHarthmereQuestStepMarkerV141(mapManager);
+      clearHarthmereQuestStepMarker(mapManager);
     };
   }, [mapManager, targetOffset]);
 
-  // HARTHMERE_TUTOR_HUD_HIGHLIGHT_V141:
+  // HARTHMERE_TUTOR_HUD_HIGHLIGHT:
   // Broadcast the NavSlot labels the player should look at right now. This
   // depends on which active step they are on; "no active step" clears the
   // highlights so the bar goes calm again. Re-broadcast on quest/step
@@ -1790,15 +1790,15 @@ export const HarthmereQuestNavAidControllerV141: React.FunctionComponent<{}> = (
   // render so step-level fields like requiresItemId pick up.
   useEffect(() => {
     if (!active) {
-      broadcastHarthmereTutorHudLabelsV141([]);
+      broadcastHarthmereTutorHudLabels([]);
       return;
     }
-    const labels = harthmereStepHudLabelsV141(active.quest, active.step);
-    broadcastHarthmereTutorHudLabelsV141(labels);
+    const labels = harthmereStepHudLabels(active.quest, active.step);
+    broadcastHarthmereTutorHudLabels(labels);
     return () => {
       // Clear when the controller unmounts so the bar does not get stuck
       // pulsing for a stale step.
-      broadcastHarthmereTutorHudLabelsV141([]);
+      broadcastHarthmereTutorHudLabels([]);
     };
   }, [active?.quest.id, active?.stepIndex]);
 
@@ -1812,13 +1812,13 @@ export const HarthmereQuestMapHUD: React.FunctionComponent<{}> = () => {
     readQuestState(),
   );
   const [groveQuestState, setGroveQuestState] = useState(() =>
-    readSnapshotGroveQuestStateV75(),
+    readSnapshotGroveQuestState(),
   );
 
   useEffect(() => {
     const refresh = () => {
       setState(readQuestState());
-      setGroveQuestState(readSnapshotGroveQuestStateV75());
+      setGroveQuestState(readSnapshotGroveQuestState());
     };
     const interval = window.setInterval(refresh, 500);
     window.addEventListener("storage", refresh);
@@ -1829,16 +1829,16 @@ export const HarthmereQuestMapHUD: React.FunctionComponent<{}> = () => {
   }, []);
 
   const playerPos = localPlayer.player.position;
-  const region = hudMapRegionForPlayerPositionV97(playerPos);
+  const region = hudMapRegionForPlayerPosition(playerPos);
   const active = firstActiveQuest(state);
   const targetOffset = active?.step.targetOffset ?? 41;
   const target = QUEST_TARGETS[targetOffset] ?? QUEST_TARGETS[41];
-  const targetPos = getHarthmereQuestTargetWorldPosV71(target);
+  const targetPos = getHarthmereQuestTargetWorldPos(target);
   const dx = targetPos[0] - playerPos[0];
   const dz = targetPos[2] - playerPos[2];
   const distance = Math.round(Math.hypot(dx, dz));
   const direction = compassDirection(dx, dz);
-  const bounds = getHarthmereWorldMapBoundsV71();
+  const bounds = getHarthmereWorldMapBounds();
 
   const majorMarkerOffsets = [
     targetOffset,
@@ -1866,13 +1866,13 @@ export const HarthmereQuestMapHUD: React.FunctionComponent<{}> = () => {
     .filter((entry): entry is { offset: number; marker: HarthmereQuestTarget } => Boolean(entry.marker));
   const [selectedOffset, setSelectedOffset] = useState<number | undefined>(targetOffset);
   const activeGrove = useMemo(() => {
-    const quest = SNAPSHOT_GROVE_QUESTS_V75.find(
+    const quest = SNAPSHOT_GROVE_QUESTS.find(
       (entry) => entry.id === groveQuestState.activeQuestId,
     );
     if (!quest) {
       return undefined;
     }
-    // SnapshotGroveQuestV75.objectives and .markerIds are parallel string[]
+    // SnapshotGroveQuest.objectives and .markerIds are parallel string[]
     // arrays — labels in one, marker ids in the other, indexed by objective.
     const objectiveIndex = Math.max(
       0,
@@ -1882,7 +1882,7 @@ export const HarthmereQuestMapHUD: React.FunctionComponent<{}> = () => {
     const markerId =
       quest.markerIds[objectiveIndex] ?? quest.markerIds[0];
     const marker = markerId
-      ? GROVE_MAP_MARKERS_V97.find((entry) => entry.id === markerId)
+      ? GROVE_MAP_MARKERS.find((entry) => entry.id === markerId)
       : undefined;
     return {
       quest,
@@ -1892,7 +1892,7 @@ export const HarthmereQuestMapHUD: React.FunctionComponent<{}> = () => {
     };
   }, [groveQuestState]);
   const nearestGroveMarker = useMemo(() => {
-    return GROVE_MAP_MARKERS_V97.reduce<SnapshotGroveLandmarkV75 | undefined>((closest, marker) => {
+    return GROVE_MAP_MARKERS.reduce<SnapshotGroveLandmark | undefined>((closest, marker) => {
       if (!closest) {
         return marker;
       }
@@ -1909,16 +1909,16 @@ export const HarthmereQuestMapHUD: React.FunctionComponent<{}> = () => {
 
   useEffect(() => {
     setSelectedGroveId(
-      activeGrove?.marker?.id ?? nearestGroveMarker?.id ?? GROVE_MAP_MARKERS_V97[0]?.id,
+      activeGrove?.marker?.id ?? nearestGroveMarker?.id ?? GROVE_MAP_MARKERS[0]?.id,
     );
   }, [activeGrove?.marker?.id, nearestGroveMarker?.id, region]);
 
   if (region === "grove") {
     const selectedGroveMarker =
-      GROVE_MAP_MARKERS_V97.find((entry) => entry.id === selectedGroveId) ??
+      GROVE_MAP_MARKERS.find((entry) => entry.id === selectedGroveId) ??
       activeGrove?.marker ??
       nearestGroveMarker ??
-      GROVE_MAP_MARKERS_V97[0];
+      GROVE_MAP_MARKERS[0];
     const selectedPos = selectedGroveMarker?.position ?? playerPos;
     const selectedDx = selectedPos[0] - playerPos[0];
     const selectedDz = selectedPos[2] - playerPos[2];
@@ -1930,17 +1930,17 @@ export const HarthmereQuestMapHUD: React.FunctionComponent<{}> = () => {
       activeGrove?.objectiveLabel ??
       "Explore the Grove and follow nearby lesson markers instead of using the Harthmere town map.";
     const objectiveMarkerId = activeGrove?.marker?.id;
-    const activeGroveMarkerRowsV111 = groveQuestMarkerRowsV111(
+    const activeGroveMarkerRows = groveQuestMarkerRows(
       activeGrove?.quest,
       activeGrove?.objectiveIndex ?? 0,
     );
-    const activeGroveMarkerIdsV111 = new Set(
-      activeGroveMarkerRowsV111
+    const activeGroveMarkerIds = new Set(
+      activeGroveMarkerRows
         .filter((row) => !row.isPast)
         .map((row) => row.marker.id),
     );
-    const activeGroveItemMarkerIdsV111 = new Set(
-      activeGroveMarkerRowsV111
+    const activeGroveItemMarkerIds = new Set(
+      activeGroveMarkerRows
         .filter((row) => !row.isPast && row.isItem)
         .map((row) => row.marker.id),
     );
@@ -1980,19 +1980,19 @@ export const HarthmereQuestMapHUD: React.FunctionComponent<{}> = () => {
             <div className="absolute left-[58%] top-[12%] text-[8px] font-semibold uppercase tracking-wide text-white/35">Watchtower</div>
             <div className="absolute left-[43%] top-[63%] text-[8px] font-semibold uppercase tracking-wide text-white/35">Temple</div>
             <div className="absolute left-[24%] top-[84%] text-[8px] font-semibold uppercase tracking-wide text-white/35">Lower trail</div>
-            {GROVE_MAP_MARKERS_V97.map((marker) => {
-              const left = mapPercent(marker.position[0], GROVE_BOUNDS_V97.minX, GROVE_BOUNDS_V97.maxX);
-              const top = mapPercent(marker.position[2], GROVE_BOUNDS_V97.minZ, GROVE_BOUNDS_V97.maxZ);
+            {GROVE_MAP_MARKERS.map((marker) => {
+              const left = mapPercent(marker.position[0], GROVE_BOUNDS.minX, GROVE_BOUNDS.maxX);
+              const top = mapPercent(marker.position[2], GROVE_BOUNDS.minZ, GROVE_BOUNDS.maxZ);
               const isObjective = marker.id === objectiveMarkerId;
               const isSelected = marker.id === selectedGroveMarker?.id;
-              const isLessonMarker = activeGroveMarkerIdsV111.has(marker.id);
-              const isLessonItemMarker = activeGroveItemMarkerIdsV111.has(marker.id);
+              const isLessonMarker = activeGroveMarkerIds.has(marker.id);
+              const isLessonItemMarker = activeGroveItemMarkerIds.has(marker.id);
               return (
                 <button
                   key={marker.id}
-                  data-snapshot-grove-center-map-marker-v111="true"
-                  data-snapshot-grove-center-map-item-v111={isLessonItemMarker ? "true" : "false"}
-                  data-snapshot-grove-center-map-active-v111={isObjective ? "true" : "false"}
+                  data-snapshot-grove-center-map-marker="true"
+                  data-snapshot-grove-center-map-item={isLessonItemMarker ? "true" : "false"}
+                  data-snapshot-grove-center-map-active={isObjective ? "true" : "false"}
                   className={`absolute flex h-7 w-7 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full text-[10px] font-bold transition hover:scale-110 focus:outline-none focus:ring-2 focus:ring-white ${
                     isSelected
                       ? "bg-cyan-200 text-black ring-4 ring-white"
@@ -2008,15 +2008,15 @@ export const HarthmereQuestMapHUD: React.FunctionComponent<{}> = () => {
                   title={`${marker.label} · ${marker.area.replaceAll("_", " ")}${isLessonItemMarker ? " · tutorial item/pickup marker" : ""}`}
                   onClick={() => setSelectedGroveId(marker.id)}
                 >
-                  {isObjective ? "!" : isLessonItemMarker ? "I" : groveMarkerGlyphV97(marker)}
+                  {isObjective ? "!" : isLessonItemMarker ? "I" : groveMarkerGlyph(marker)}
                 </button>
               );
             })}
             <div
               className="absolute flex h-5 w-5 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-cyan-300 text-[9px] font-bold text-black ring-2 ring-white"
               style={{
-                left: `${mapPercent(playerPos[0], GROVE_BOUNDS_V97.minX, GROVE_BOUNDS_V97.maxX)}%`,
-                top: `${mapPercent(playerPos[2], GROVE_BOUNDS_V97.minZ, GROVE_BOUNDS_V97.maxZ)}%`,
+                left: `${mapPercent(playerPos[0], GROVE_BOUNDS.minX, GROVE_BOUNDS.maxX)}%`,
+                top: `${mapPercent(playerPos[2], GROVE_BOUNDS.minZ, GROVE_BOUNDS.maxZ)}%`,
               }}
               title={`You · ${playerLayer} · y ${Math.round(playerPos[1])}`}
             >
@@ -2050,14 +2050,14 @@ export const HarthmereQuestMapHUD: React.FunctionComponent<{}> = () => {
                 <div>{currentObjectiveText}</div>
               </div>
             )}
-            {!!activeGroveMarkerRowsV111.length && (
+            {!!activeGroveMarkerRows.length && (
               <div
                 className="mt-2 rounded border border-amber-300/20 bg-amber-300/10 p-2"
-                data-snapshot-grove-center-map-item-list-v111="true"
+                data-snapshot-grove-center-map-item-list="true"
               >
                 <div className="font-semibold text-amber-100">Active lesson item stops</div>
                 <div className="mt-1 space-y-1">
-                  {activeGroveMarkerRowsV111.filter((row) => !row.isPast).map((row) => (
+                  {activeGroveMarkerRows.filter((row) => !row.isPast).map((row) => (
                     <button
                       key={`${row.marker.id}-${row.stepIndex}`}
                       type="button"
@@ -2066,7 +2066,7 @@ export const HarthmereQuestMapHUD: React.FunctionComponent<{}> = () => {
                         : row.isItem
                           ? "flex w-full items-center justify-between rounded bg-amber-300/15 px-2 py-1 text-left text-amber-50"
                           : "flex w-full items-center justify-between rounded bg-white/5 px-2 py-1 text-left text-white/70"}
-                      data-snapshot-grove-center-map-item-row-v111={row.isItem ? "true" : "false"}
+                      data-snapshot-grove-center-map-item-row={row.isItem ? "true" : "false"}
                       onClick={() => setSelectedGroveId(row.marker.id)}
                     >
                       <span>{row.stepIndex + 1}. {row.marker.label}</span>
@@ -2102,7 +2102,7 @@ export const HarthmereQuestMapHUD: React.FunctionComponent<{}> = () => {
     markerEntries[0];
   const selectedMarker = selectedEntry?.marker;
   const selectedPos = selectedMarker
-    ? getHarthmereQuestTargetWorldPosV71(selectedMarker)
+    ? getHarthmereQuestTargetWorldPos(selectedMarker)
     : targetPos;
   const selectedDx = selectedPos[0] - playerPos[0];
   const selectedDz = selectedPos[2] - playerPos[2];
@@ -2151,7 +2151,7 @@ export const HarthmereQuestMapHUD: React.FunctionComponent<{}> = () => {
           <div className="absolute left-[10%] top-[55%] text-[8px] font-semibold uppercase tracking-wide text-white/40">Mudden</div>
           <div className="absolute left-[17%] top-[86%] text-[8px] font-semibold uppercase tracking-wide text-white/40">Lower</div>
           {markerEntries.map(({ offset, marker }) => {
-            const markerPos = getHarthmereQuestTargetWorldPosV71(marker);
+            const markerPos = getHarthmereQuestTargetWorldPos(marker);
             const left = mapPercent(markerPos[0], bounds.minX, bounds.maxX);
             const top = mapPercent(markerPos[2], bounds.minZ, bounds.maxZ);
             const isTarget = offset === targetOffset;

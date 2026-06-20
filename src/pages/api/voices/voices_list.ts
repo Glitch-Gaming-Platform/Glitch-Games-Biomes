@@ -1,6 +1,6 @@
 import {
-  azureSpeechConfigFromEnvV1,
-  listAzureSpeechVoicesV1,
+  azureSpeechConfigFromEnv,
+  listAzureSpeechVoices,
 } from "@/server/shared/azure_speech";
 import { biomesApiHandler } from "@/server/web/util/api_middleware";
 import { log } from "@/shared/logging";
@@ -23,12 +23,12 @@ export default biomesApiHandler(
     response: zVoicesListResponse,
   },
   async () => {
-    const config = azureSpeechConfigFromEnvV1();
+    const config = azureSpeechConfigFromEnv();
     if (!config) {
       return { voices: [] };
     }
     try {
-      const voices = await listAzureSpeechVoicesV1({ config });
+      const voices = await listAzureSpeechVoices({ config });
 
       return {
         voices: (voices ?? []).flatMap((voice) => {

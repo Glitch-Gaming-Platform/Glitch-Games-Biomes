@@ -4,10 +4,10 @@ import type { TalkDialogStepAction } from "@/client/components/challenges/TalkDi
 import React, { useEffect, useMemo, useState } from "react";
 
 const HARTHMERE_LEVELING_STATE_KEY =
-  "biomes.localDev.harthmere.levelingState.v1";
+  "biomes.localDev.harthmere.levelingState";
 const HARTHMERE_LEVELING_EVENT = "biomes:harthmere-leveling-changed";
 const HARTHMERE_LEVELING_RULESET_REVISION =
-  "harthmere-user-scoped-leveling-v2";
+  "harthmere-user-scoped-leveling";
 
 const LEVEL_CAP = 50;
 const BASE_XP = 100;

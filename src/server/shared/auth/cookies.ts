@@ -164,7 +164,7 @@ function cookieOptions(httpOnly: boolean, req?: IncomingMessage) {
   };
   if (process.env.NODE_ENV === "production") {
     if (isGlitchLocalAuthRuntime()) {
-      // GLITCH_CROSS_SITE_EMBED_COOKIE_FIX_V129
+      // GLITCH_CROSS_SITE_EMBED_COOKIE_FIX
       // Harthmere is launched inside a www.glitch.fun iframe but served from
       // the game container origin. Chrome treats the iframe as a third-party
       // context, so auth cookies must be SameSite=None; Secure when the request

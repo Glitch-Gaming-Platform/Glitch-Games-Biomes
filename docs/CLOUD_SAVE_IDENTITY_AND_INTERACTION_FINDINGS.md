@@ -17,11 +17,11 @@ Uploaded files (absolute paths, for any follow-up tooling):
 `storeSave` calls return **200** and the slot version increments monotonically
 (1515 → 1527 across the session). The payload genuinely contains the player's
 state: `gold:75, level:2, inventoryItems:30`, plus the player-mesh keys
-(`playerFace.v2`, `playerBody.v2`, `playerClothing.v1`). The boot `listSaves`
+(`playerFace`, `playerBody`, `playerClothing`). The boot `listSaves`
 response includes a valid `decoded_payload`, so the restore filter
-(`save.decoded_payload.version === "harthmere-glitch-save-v1"`) matches and
+(`save.decoded_payload.version === "harthmere-glitch-save"`) matches and
 `applySnapshot` runs. The restore *policy*
-(`shouldApplyHarthmereCloudSaveV153`) is correct: a cloud save is always treated
+(`shouldApplyHarthmereCloudSave`) is correct: a cloud save is always treated
 as the source of truth on boot.
 
 ### The real bug: the save SCOPE is volatile
@@ -60,11 +60,11 @@ two forms** across sessions → different link → different `user.id` → diffe
 
 ### Fix (shipped, with tests)
 New dependency-free module
-`src/pages/api/glitch/harthmere_cloud_save_identity_v1.ts`:
-- `harthmereCloudSaveForeignAuthPrimaryIdV1` — one deterministic key, preferring
+`src/pages/api/glitch/harthmere_cloud_save_identity.ts`:
+- `harthmereCloudSaveForeignAuthPrimaryId` — one deterministic key, preferring
   a real glitch id → stable `user_name` → install id. It never flips based on a
   field that comes and goes.
-- `harthmereCloudSaveForeignAuthCandidateIdsV1` — ordered legacy/secondary keys
+- `harthmereCloudSaveForeignAuthCandidateIds` — ordered legacy/secondary keys
   so an existing link is still found; the install form is **always** present (the
   anti-flip guarantee).
 
@@ -73,7 +73,7 @@ first existing link, and **back-fills** the stable primary key (pointing at the
 same user) so the volatile-id flip can never orphan progress again. New users are
 created under the stable primary key.
 
-Tests: `src/pages/api/glitch/test/harthmere_cloud_save_identity_v1.test.ts` —
+Tests: `src/pages/api/glitch/test/harthmere_cloud_save_identity.test.ts` —
 **11 passing**, including the regression that the same (install, userName)
 resolves to a stable key whether or not the volatile glitch id is present.
 
@@ -91,8 +91,8 @@ resolves to a stable key whether or not the volatile glitch id is present.
 The Harthmere container path is wired end-to-end and is **structurally identical
 to the proven-working vendor panel**:
 `OverlayView` routes `harthmere_object` → `CursorInspectionComponent`, whose F
-shortcut calls `openHarthmereObjectContainerV1` (seeds container from a
-label-driven loot table, dispatches `…_OPEN_EVENT_V1` + writes a localStorage
+shortcut calls `openHarthmereObjectContainer` (seeds container from a
+label-driven loot table, dispatches `…_OPEN_EVENT` + writes a localStorage
 open-request). `HarthmereObjectContainerPanel` listens and is **mounted in both
 HUD branches**. Compared line-for-line against `HarthmereVendorTradePanel`
 (the shop that works): same event+storage listeners, same `zIndex 2147483000`,
@@ -100,7 +100,7 @@ same `createPortal(panel, document.body)`. So the bespoke path itself is sound.
 
 `harthmereObjectContainers.ts` makes containers act like an inventory: Take /
 Take All routes items to the player via `grantHarthmereItem`; Store pulls from
-the player via `consumeHarthmereItemByItemIdV141`; contents persist in
+the player via `consumeHarthmereItemByItemId`; contents persist in
 localStorage and an emptied container is **not** re-seeded (no infinite loot).
 The clothing-crate loot grants BOTH halves (`baker_apron` + `field_trousers`) so
 The Road Ahead can complete from the crate.
@@ -111,7 +111,7 @@ Tests: `harthmereObjectContainers.transfer.test.ts` — **5 passing**
 The remaining real-world gap is **routing/selection, not the panel**: authored
 crates are rerouted to the `harthmere_object` prompt only when they carry a
 `quest_giver` and their placeable item has no native interactive overlay
-(`isAuthoredHarthmereWorldObjectPlaceableV1` in `client/game/scripts/overlays.ts`).
+(`isAuthoredHarthmereWorldObjectPlaceable` in `client/game/scripts/overlays.ts`).
 A real ECS `placeable` + `isContainer` chest instead hits the native
 `ContainerOverlayComponent`, whose "Open Container" shortcut is gated on
 `useUserCanAction(id, "destroy")` — so a world/seeded chest the player does not
@@ -124,11 +124,11 @@ is the inconsistency seen in the screenshots and needs a live world to finish.
 
 `LocalDevHarthmereGatheringSystem` already had real nodes (`requiredTool`,
 `requiredSkill`, yields, cooldown, authority gating) and the node-body renderer
-`harthmere_gathering_node_markers_v1` was registered. The missing piece was the
-**F-prompt component**: `HarthmereGatheringNodeWorldInteractionV1` existed but
+`harthmere_gathering_node_markers` was registered. The missing piece was the
+**F-prompt component**: `HarthmereGatheringNodeWorldInteraction` existed but
 was never mounted, so walking up to a node and pressing F did nothing.
 
-Fix: mounted `HarthmereGatheringNodeWorldInteractionV1` in **both** HUD branches
+Fix: mounted `HarthmereGatheringNodeWorldInteraction` in **both** HUD branches
 next to the jobs-board prompt. Now the closest in-range node shows
 "Harvest <node>" with the tool/skill requirement, and F (or click) runs
 `performHarthmereGather`, which grants the yield, awards XP, and puts the node on
@@ -147,11 +147,11 @@ Audit (from the screenshots + cosmetic code):
 UNIQUE-look NPCs — explicit role clothing WITH a hat + Grove polish:
 - Business **staff** (guard: `militia_halfhelm` + tabard; hunter: `hunter_cap`;
   clergy: cap/`mage_hood`; farmer: `straw_hat` + apron; merchant: `noble_cap` +
-  coat) — `groveBusinessRoleClothingV1`.
+  coat) — `groveBusinessRoleClothing`.
 - Business **customers** — role clothing + a per-id face/hair/eye/accessory
-  spread (`customerSpecificAppearanceSpreadV1`).
+  spread (`customerSpecificAppearanceSpread`).
 - Named Grove uniques (Billy Whisker, Donnie, Max) via
-  `harthmereApplyGroveUniqueNpcPolishV137`.
+  `harthmereApplyGroveUniqueNpcPolish`.
 
 BLAND NPCs — varied face but generic/hatless auto-derived outfit:
 - Business **owners / shopkeepers** (Doctor Hana Greenlamp, the smith, the
@@ -163,13 +163,13 @@ BLAND NPCs — varied face but generic/hatless auto-derived outfit:
 Difference in one line: **owners weren't handed the role-clothing table the rest
 of the townsfolk use.**
 
-Fix: new `harthmereBusinessOwnerRoleClothingV1` (exports the same
-`roleForBusinessTextV1` + `groveBusinessRoleClothingV1` the staff use); the owner
+Fix: new `harthmereBusinessOwnerRoleClothing` (exports the same
+`roleForBusinessText` + `groveBusinessRoleClothing` the staff use); the owner
 ECS seed now passes the derived `role` + hatted `clothing` into the appearance
 config. Face/body still vary per entity id, so two same-role owners share an
 outfit silhouette but not a face. This intentionally keeps the player/Grove
 "rich avatar" design (NOT the blocky voxel NPC look).
 
-Tests: `business_owner_npc_distinct_look_v1.test.ts` — **6 passing** (role
+Tests: `business_owner_npc_distinct_look.test.ts` — **6 passing** (role
 mapping, every owner gets a hat+torso, Greenlamp→medic coat, hat variety across
 owners, determinism, parity with the staff generator).

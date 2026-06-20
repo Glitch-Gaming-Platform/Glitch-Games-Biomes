@@ -320,7 +320,7 @@ export async function genGPUTier() {
   return ret;
 }
 
-// HARTHMERE_RUNTIME_SYNC_BASE_URL_V127
+// HARTHMERE_RUNTIME_SYNC_BASE_URL
 // Resolve the sync base URL at runtime instead of trusting a build-time
 // NEXT_PUBLIC_GLITCH_SYNC_BASE_URL value. The previous code blindly used the
 // build-time env, which means a stale `.env.local` (e.g. one left over from a
@@ -364,7 +364,7 @@ export function resolveGlitchLocalSyncBaseUrl(input: {
     ? sameOriginBase
     : `${input.protocol}//${input.hostname}:${fallbackPort}`;
 
-  // HARTHMERE_PROD_SAME_ORIGIN_SYNC_PROXY_V129
+  // HARTHMERE_PROD_SAME_ORIGIN_SYNC_PROXY
   // Azure Container Apps reliably exposes the web ingress over the normal
   // HTTPS origin, but the browser cannot assume an external :4900 WebSocket
   // listener is reachable. In an install_id iframe served over public HTTPS,
@@ -439,7 +439,7 @@ export async function initializeClientConfig(
   ret.primaryCTA = options?.primaryCTA;
   ret.displayName = options?.displayName;
 
-  // HARTHMERE_RUNTIME_SYNC_BASE_URL_V127
+  // HARTHMERE_RUNTIME_SYNC_BASE_URL
   // Docker runs Biomes with NODE_ENV=production, but local Glitch play must
   // not connect to wss://api*.biomes.gg or to a stale Azure host that leaked
   // into NEXT_PUBLIC_GLITCH_SYNC_BASE_URL via .env.local. Force the browser
@@ -476,7 +476,7 @@ export async function initializeClientConfig(
     // unwrapping puppeteer's JSHandle@object boxing of the second arg.
     // eslint-disable-next-line no-console
     console.info(
-      `HARTHMERE_SYNC_URL_RESOLVED_V127 syncBaseUrl=${resolved.syncBaseUrl} reason=${resolved.reason} fallback=${resolved.fallback} hostname=${window.location.hostname} port=${window.location.port} installIdInUrl=${installIdInUrl}`
+      `HARTHMERE_SYNC_URL_RESOLVED syncBaseUrl=${resolved.syncBaseUrl} reason=${resolved.reason} fallback=${resolved.fallback} hostname=${window.location.hostname} port=${window.location.port} installIdInUrl=${installIdInUrl}`
     );
   }
 

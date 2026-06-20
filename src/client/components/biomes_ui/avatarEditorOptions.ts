@@ -43,22 +43,22 @@ export interface AvatarEditorOptionSummary {
   palette?: PaletteKey;
 }
 
-export function avatarEditorHeadIdsV1(): BiomesId[] {
+export function avatarEditorHeadIds(): BiomesId[] {
   return getBiscuits(bikkie.schema.head).map(({ id }) => id);
 }
 
-export function avatarEditorHairStyleIdsV1(): BiomesId[] {
+export function avatarEditorHairStyleIds(): BiomesId[] {
   return getBiscuits(bikkie.schema.items.wearables.hair)
     .map(({ id }) => id)
     .filter((id) => id !== BikkieIds.hair);
 }
 
-export function avatarEditorOptionSummaryForTestV1(): AvatarEditorOptionSummary[] {
+export function avatarEditorOptionSummaryForTest(): AvatarEditorOptionSummary[] {
   return [
     {
       kind: "head",
       label: "Head shape",
-      count: avatarEditorHeadIdsV1().length,
+      count: avatarEditorHeadIds().length,
     },
     {
       kind: "skin",
@@ -81,12 +81,12 @@ export function avatarEditorOptionSummaryForTestV1(): AvatarEditorOptionSummary[
     {
       kind: "hairStyle",
       label: "Hair style",
-      count: avatarEditorHairStyleIdsV1().length + 1,
+      count: avatarEditorHairStyleIds().length + 1,
     },
   ];
 }
 
-export function applyAvatarEditorOptionChangeV1(
+export function applyAvatarEditorOptionChange(
   selection: AvatarEditorSelectionState,
   change: AvatarEditorOptionChange
 ): AvatarEditorSelectionState {
@@ -112,13 +112,13 @@ export function applyAvatarEditorOptionChangeV1(
   }
 }
 
-export function itemForAvatarHairIdV1(
+export function itemForAvatarHairId(
   id: BiomesId | undefined
 ): Item | undefined {
   return id && id !== INVALID_BIOMES_ID ? anItem(id) : undefined;
 }
 
-export function buildAvatarPreviewWearableOverridesV1(
+export function buildAvatarPreviewWearableOverrides(
   currentWearing: ItemAssignment | undefined,
   previewHair: Item | undefined
 ): ItemAssignment {

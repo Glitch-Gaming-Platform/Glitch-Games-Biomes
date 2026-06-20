@@ -1,4 +1,4 @@
-// HARTHMERE_LIVE_CREATURE_BRIDGE_SCRIPT_V1
+// HARTHMERE_LIVE_CREATURE_BRIDGE_SCRIPT
 //
 // Client tick script that bridges live-creature ECS entities to the renderer.
 // The Harthmere renderer's draw() has no table access, so this script (which
@@ -15,11 +15,11 @@ import type { ClientTable } from "@/client/game/game";
 import type { Script } from "@/client/game/scripts/script_controller";
 import { NpcMetadataSelector } from "@/shared/ecs/gen/selectors";
 import {
-  harthmereLiveCreatureBridgeRecordV1,
-  publishHarthmereLiveCreatureBridgeV1,
-  type HarthmereLiveCreatureBridgeRecordV1,
-  type HarthmereLiveCreatureEntityViewV1,
-} from "@/shared/harthmere/live_creature_ecs_bridge_v1";
+  harthmereLiveCreatureBridgeRecord,
+  publishHarthmereLiveCreatureBridge,
+  type HarthmereLiveCreatureBridgeRecord,
+  type HarthmereLiveCreatureEntityView,
+} from "@/shared/harthmere/live_creature_ecs_bridge";
 
 const PUBLISH_INTERVAL_SECONDS = 0.25;
 
@@ -36,19 +36,19 @@ export class HarthmereLiveCreatureBridgeScript implements Script {
     }
     this.sincePublish = 0;
 
-    const records: HarthmereLiveCreatureBridgeRecordV1[] = [];
+    const records: HarthmereLiveCreatureBridgeRecord[] = [];
     for (const entity of this.table.scan(NpcMetadataSelector.query.all())) {
-      const record = harthmereLiveCreatureBridgeRecordV1(
-        entity as unknown as HarthmereLiveCreatureEntityViewV1
+      const record = harthmereLiveCreatureBridgeRecord(
+        entity as unknown as HarthmereLiveCreatureEntityView
       );
       if (record) {
         records.push(record);
       }
     }
-    publishHarthmereLiveCreatureBridgeV1(records);
+    publishHarthmereLiveCreatureBridge(records);
   }
 
   clear() {
-    publishHarthmereLiveCreatureBridgeV1([]);
+    publishHarthmereLiveCreatureBridge([]);
   }
 }

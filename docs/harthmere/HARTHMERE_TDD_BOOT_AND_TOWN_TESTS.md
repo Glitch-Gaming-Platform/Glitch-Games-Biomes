@@ -84,7 +84,7 @@ Run:
 ```bash
 cd /Users/devindixon/Development/biomes-game
 
-node scripts/harthmere/find-harthmere-live-runtime-url-v1.cjs \
+node scripts/harthmere/find-harthmere-live-runtime-url.cjs \
   /Users/devindixon/Development/biomes-game
 ```
 
@@ -110,7 +110,7 @@ When the finder returns a working URL, run browser tests with that URL:
 
 ```bash
 HARTHMERE_E2E_URL="http://localhost:3000/at/Joe" \
-node scripts/harthmere/test-harthmere-live-browser-regression-suite-v1.cjs \
+node scripts/harthmere/test-harthmere-live-browser-regression-suite.cjs \
   /Users/devindixon/Development/biomes-game
 ```
 
@@ -139,7 +139,7 @@ Terminal 2:
 ```bash
 cd /Users/devindixon/Development/biomes-game
 
-node scripts/harthmere/test-harthmere-town-placement-suite-v1.cjs \
+node scripts/harthmere/test-harthmere-town-placement-suite.cjs \
   /Users/devindixon/Development/biomes-game
 ```
 
@@ -147,7 +147,7 @@ For browser tests, use the real runtime URL:
 
 ```bash
 HARTHMERE_E2E_URL="http://localhost:3000/at/Joe" \
-node scripts/harthmere/test-harthmere-live-browser-regression-suite-v1.cjs \
+node scripts/harthmere/test-harthmere-live-browser-regression-suite.cjs \
   /Users/devindixon/Development/biomes-game
 ```
 
@@ -187,7 +187,7 @@ a cold boot, populate Redis from the installed snapshot before starting again:
    marketing/landing page. Find or use the actual runtime URL:
 
 ```bash
-node scripts/harthmere/find-harthmere-live-runtime-url-v1.cjs \
+node scripts/harthmere/find-harthmere-live-runtime-url.cjs \
   /Users/devindixon/Development/biomes-game
 ```
 
@@ -239,7 +239,7 @@ leave the conversation clickable.
 
 ```bash
 HARTHMERE_E2E_URL="http://localhost:3000/at/Joe" \
-node scripts/harthmere/test-harthmere-live-browser-regression-suite-v1.cjs \
+node scripts/harthmere/test-harthmere-live-browser-regression-suite.cjs \
   /Users/devindixon/Development/biomes-game
 ```
 
@@ -258,7 +258,7 @@ Run the full static town suite:
 ```bash
 cd /Users/devindixon/Development/biomes-game
 
-node scripts/harthmere/test-harthmere-town-placement-suite-v1.cjs \
+node scripts/harthmere/test-harthmere-town-placement-suite.cjs \
   /Users/devindixon/Development/biomes-game
 ```
 
@@ -298,7 +298,7 @@ Run only after the local game server is running and you know the real runtime UR
 cd /Users/devindixon/Development/biomes-game
 
 HARTHMERE_E2E_URL="http://localhost:3000/at/Joe" \
-node scripts/harthmere/test-harthmere-live-browser-regression-suite-v1.cjs \
+node scripts/harthmere/test-harthmere-live-browser-regression-suite.cjs \
   /Users/devindixon/Development/biomes-game
 ```
 
@@ -337,7 +337,7 @@ It means the code found collision metadata but did not prove actual movement blo
 ### Uploaded solid asset collision
 
 ```bash
-node scripts/harthmere/test-harthmere-uploaded-asset-solid-collision-v1.cjs \
+node scripts/harthmere/test-harthmere-uploaded-asset-solid-collision.cjs \
   /Users/devindixon/Development/biomes-game
 ```
 
@@ -358,7 +358,7 @@ Examples:
 ### Solid landmark fixture collision
 
 ```bash
-node scripts/harthmere/test-harthmere-solid-landmark-fixture-collision-v1.cjs \
+node scripts/harthmere/test-harthmere-solid-landmark-fixture-collision.cjs \
   /Users/devindixon/Development/biomes-game
 ```
 
@@ -372,7 +372,7 @@ Protects specific visible fixtures that can look decorative by name but must be 
 ### Runtime navigation and collision
 
 ```bash
-node scripts/harthmere/test-harthmere-runtime-navigation-collision-v1.cjs \
+node scripts/harthmere/test-harthmere-runtime-navigation-collision.cjs \
   /Users/devindixon/Development/biomes-game
 ```
 
@@ -381,7 +381,7 @@ Protects core walking lanes and service routes.
 ### Fixture attachment sanity
 
 ```bash
-node scripts/harthmere/test-harthmere-fixture-attachment-sanity-v1.cjs \
+node scripts/harthmere/test-harthmere-fixture-attachment-sanity.cjs \
   /Users/devindixon/Development/biomes-game
 ```
 
@@ -390,7 +390,7 @@ Protects against floating lamps, torches, candles, chandeliers, and lights witho
 ### Wall/client fixture attachment sanity
 
 ```bash
-node scripts/harthmere/test-harthmere-wall-fixture-attachment-sanity-v1.cjs \
+node scripts/harthmere/test-harthmere-wall-fixture-attachment-sanity.cjs \
   /Users/devindixon/Development/biomes-game
 ```
 
@@ -401,7 +401,7 @@ This is different from generic support testing. Freestanding signs, plaza banner
 ### Player vertical collision safety
 
 ```bash
-node scripts/harthmere/test-harthmere-player-no-vertical-town-collision-by-default-v1.cjs \
+node scripts/harthmere/test-harthmere-player-no-vertical-town-collision-by-default.cjs \
   /Users/devindixon/Development/biomes-game
 ```
 
@@ -662,7 +662,7 @@ Run this sequence:
 ```bash
 cd /Users/devindixon/Development/biomes-game
 
-node scripts/harthmere/test-harthmere-town-placement-suite-v1.cjs \
+node scripts/harthmere/test-harthmere-town-placement-suite.cjs \
   /Users/devindixon/Development/biomes-game
 ```
 
@@ -679,7 +679,7 @@ BIOMES_FORCE_LOCAL_DEV_TOWN=1 \
 Find the runtime URL:
 
 ```bash
-node scripts/harthmere/find-harthmere-live-runtime-url-v1.cjs \
+node scripts/harthmere/find-harthmere-live-runtime-url.cjs \
   /Users/devindixon/Development/biomes-game
 ```
 
@@ -687,7 +687,7 @@ Run the live suite:
 
 ```bash
 HARTHMERE_E2E_URL="http://localhost:3000/at/Joe" \
-node scripts/harthmere/test-harthmere-live-browser-regression-suite-v1.cjs \
+node scripts/harthmere/test-harthmere-live-browser-regression-suite.cjs \
   /Users/devindixon/Development/biomes-game
 ```
 
@@ -784,7 +784,7 @@ terrain.
 Always verify the browser loaded the game runtime, not the marketing page:
 
 ```bash
-node scripts/harthmere/find-harthmere-live-runtime-url-v1.cjs \
+node scripts/harthmere/find-harthmere-live-runtime-url.cjs \
   /Users/devindixon/Development/biomes-game
 ```
 
@@ -792,7 +792,7 @@ Then pass the returned `/at/...` URL into visual tests:
 
 ```bash
 HARTHMERE_E2E_URL="http://localhost:3000/at/Joe" \
-node scripts/harthmere/test-harthmere-live-browser-regression-suite-v1.cjs \
+node scripts/harthmere/test-harthmere-live-browser-regression-suite.cjs \
   /Users/devindixon/Development/biomes-game
 ```
 
@@ -812,9 +812,9 @@ The production terrain placement map is the source of truth for Harthmere quest
 items, monsters, map pins, HUD targets, quest pointers, and random spawn pools:
 
 ```text
-docs/harthmere/HARTHMERE_PRODUCTION_TERRAIN_PLACEMENT_MAP_V1.md
-src/shared/harthmere/production_terrain_placement_map_v1.ts
-src/shared/harthmere/generated/production_terrain_placement_map_v1.ts
+docs/harthmere/HARTHMERE_PRODUCTION_TERRAIN_PLACEMENT_MAP.md
+src/shared/harthmere/production_terrain_placement_map.ts
+src/shared/harthmere/generated/production_terrain_placement_map.ts
 ```
 
 The authored/local terrain helper can return a flat or incomplete height and
@@ -834,12 +834,12 @@ Placement source-of-truth rules:
   shared data or an idempotent production seeder.
 - Do not move one buried object by hand when a whole cluster shares the same
   terrain mismatch. Fix or document the cluster rule.
-- Use `resolveHarthmereQuestObjectivePlacementV1` or
-  `getHarthmereQuestResolvedWaypointV47` for fixed quest objectives.
-- Use `resolveHarthmereProductionMarkerPositionV1` for shared marker ids such
+- Use `resolveHarthmereQuestObjectivePlacement` or
+  `getHarthmereQuestResolvedWaypoint` for fixed quest objectives.
+- Use `resolveHarthmereProductionMarkerPosition` for shared marker ids such
   as Jobs Board, business, and live-helper landmarks.
-- Use `chooseHarthmereQuestOutdoorSpawnPointV1` for random outdoor content and
-  `chooseHarthmereQuestCaveSpawnPointV1` for random cave content.
+- Use `chooseHarthmereQuestOutdoorSpawnPoint` for random outdoor content and
+  `chooseHarthmereQuestCaveSpawnPoint` for random cave content.
 - BiomesUI Map, HUD/minimap, quest pointer, server authority, and 3D markers
   should all consume the same resolved `recommendedPosition`.
 - Do not shift authored Harthmere coordinates twice; quest/runtime helpers

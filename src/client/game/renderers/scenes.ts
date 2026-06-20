@@ -60,8 +60,8 @@ export const sceneForMaterial = (material: THREE.Material): SceneType => {
   }
 };
 
-const materialsForMeshV156 = (mesh: THREE.Mesh): THREE.Material[] => {
-  // HARTHMERE_SCENES_MULTI_MATERIAL_ARRAY_V156
+const materialsForMesh = (mesh: THREE.Mesh): THREE.Material[] => {
+  // HARTHMERE_SCENES_MULTI_MATERIAL_ARRAY
   // Production player/avatar wearables and generated item meshes can use
   // THREE.Material[] on one mesh. The previous scene classifier treated that
   // array object like one material, which fell through to "three" even when
@@ -85,7 +85,7 @@ export const scenesForObject = (object: THREE.Object3D): Set<SceneType> => {
         seenScenes.add("css");
       }
       if (child instanceof THREE.Mesh) {
-        for (const material of materialsForMeshV156(child)) {
+        for (const material of materialsForMesh(child)) {
           seenScenes.add(sceneForMaterial(material));
         }
       }
@@ -111,7 +111,7 @@ export const addMaterialDependencies = (
   object &&
     object.traverse((child) => {
       if (child instanceof THREE.Mesh) {
-        for (const material of materialsForMeshV156(child)) {
+        for (const material of materialsForMesh(child)) {
           if (material instanceof THREE.RawShaderMaterial) {
             for (const name of namedDependencies) {
               if (name in material.uniforms) {
@@ -251,13 +251,13 @@ const rememberSceneDebug = (
 
 const isBasePassCoercedPlayerRoot = (object: THREE.Object3D) =>
   object.userData?.harthmerePlayerAvatarBasePassMaterialsVersion ===
-  "harthmere-player-avatar-base-pass-materials-v153";
+  "harthmere-player-avatar-base-pass-materials";
 
-const chooseMixedSceneFallbackV155 = (
+const chooseMixedSceneFallback = (
   object: THREE.Object3D,
   objScenes: Set<SceneType>
 ): SceneType => {
-  // HARTHMERE_MIXED_SCENE_TYPE_PROD_SAFE_FALLBACK_V155
+  // HARTHMERE_MIXED_SCENE_TYPE_PROD_SAFE_FALLBACK
   // The earlier broad "mixed root => base" fallback fixed one player-avatar
   // path but broke production when ordinary Harthmere roots containing stock
   // Three.js materials were sent to SceneBasePass. SceneBasePass renders into
@@ -291,7 +291,7 @@ export const addToScenes = (scenes: Scenes, object: THREE.Object3D) => {
   if (objScenes.size === 1) {
     sceneName = [...objScenes][0];
   } else if (objScenes.size > 1) {
-    sceneName = chooseMixedSceneFallbackV155(object, objScenes);
+    sceneName = chooseMixedSceneFallback(object, objScenes);
     rememberSceneDebug(object, sceneName, objScenes);
     if (!mixedSceneTypeWarningUuids.has(object.uuid)) {
       mixedSceneTypeWarningUuids.add(object.uuid);

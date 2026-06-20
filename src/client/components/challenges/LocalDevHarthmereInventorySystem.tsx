@@ -1,10 +1,10 @@
 // LocalDevHarthmereInventorySystem local-dev economy boundary. Do not trust client storage in production.
 import type { TalkDialogStepAction } from "@/client/components/challenges/TalkDialogModalStep";
 import {
-  HARTHMERE_BUSINESS_TOOL_SHOP_NEW_TOOL_DEFS_V151,
-  harthmereBusinessToolForTypeV151,
-  harthmereBusinessToolPurchaseOutcomeV151,
-} from "@/shared/harthmere/harthmere_business_tool_shop_v151";
+  HARTHMERE_BUSINESS_TOOL_SHOP_NEW_TOOL_DEFS,
+  harthmereBusinessToolForType,
+  harthmereBusinessToolPurchaseOutcome,
+} from "@/shared/harthmere/harthmere_business_tool_shop";
 import {
   HARTHMERE_VENDOR_STOCK,
   decrementHarthmereVendorStock,
@@ -26,7 +26,7 @@ import {
   normalizeHarthmereWallet,
   nonNegativeInt,
 } from "@/client/components/challenges/LocalDevHarthmereEconomyHardening";
-import { completeHarthmereDailyTaskSoonV1 } from "@/client/components/challenges/harthmereDailyTasks";
+import { completeHarthmereDailyTaskSoon } from "@/client/components/challenges/harthmereDailyTasks";
 import {
   healHarthmerePlayer,
   reviveHarthmerePlayer,
@@ -34,18 +34,18 @@ import {
 import { eatHarthmereFoodForStamina } from "@/client/components/challenges/LocalDevHarthmereFoodStaminaSystem";
 import { getHarthmereLevelSummary } from "@/client/components/challenges/LocalDevHarthmereLevelingSystem";
 import { readHarthmereReputationState } from "@/client/components/challenges/LocalDevHarthmereReputation";
-import { SNAPSHOT_GROVE_QUESTS_V75 } from "@/shared/harthmere/snapshot_grove_content_v75";
-import { harthmereLocalItemBikkieWearableV1 } from "@/shared/harthmere/harthmere_bikkie_wearables_v1";
-import { HARTHMERE_LOCAL_DEV_ITEM_USE_EVENT_V130 } from "@/shared/harthmere/snapshot_grove_trigger_contract_v130";
+import { SNAPSHOT_GROVE_QUESTS } from "@/shared/harthmere/snapshot_grove_content";
+import { harthmereLocalItemBikkieWearable } from "@/shared/harthmere/harthmere_bikkie_wearables";
+import { HARTHMERE_LOCAL_DEV_ITEM_USE_EVENT } from "@/shared/harthmere/snapshot_grove_trigger_contract";
 import React, { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 
 const HARTHMERE_INVENTORY_STATE_KEY =
-  "biomes.localDev.harthmere.inventoryState.v1";
+  "biomes.localDev.harthmere.inventoryState";
 export const HARTHMERE_INVENTORY_EVENT = "biomes:harthmere-inventory-changed";
 const HARTHMERE_VENDOR_TRADE_EVENT = "biomes:harthmere-open-vendor-trade";
 const HARTHMERE_VENDOR_TRADE_REQUEST_KEY =
-  "biomes.localDev.harthmere.pendingVendorTrade.v1";
+  "biomes.localDev.harthmere.pendingVendorTrade";
 const HARTHMERE_VENDOR_TRADE_CLOSE_TALK_EVENT =
   "biomes:harthmere-close-talk-for-vendor";
 
@@ -1966,7 +1966,7 @@ const ITEM_DEFINITIONS: Record<string, HarthmereItemDefinition> = {
   },
 };
 
-function harthmereResourceIconForItemV96(def: HarthmereItemDefinition): string {
+function harthmereResourceIconForItem(def: HarthmereItemDefinition): string {
   const text =
     `${def.id} ${def.name} ${def.subtype} ${def.description}`.toLowerCase();
   if (
@@ -2017,14 +2017,14 @@ function harthmereResourceIconForItemV96(def: HarthmereItemDefinition): string {
 
 for (const def of Object.values(ITEM_DEFINITIONS)) {
   if (def.category === "crafting_material" && def.icon === "◇") {
-    def.icon = harthmereResourceIconForItemV96(def);
+    def.icon = harthmereResourceIconForItem(def);
   }
 }
 
-// HARTHMERE_BUSINESS_TOOL_SHOP_V151: register the tools introduced for the per-
+// HARTHMERE_BUSINESS_TOOL_SHOP: register the tools introduced for the per-
 // business tool shops (the businesses that had no themed tool). They are real
 // main-hand tools so they can be bought, carried, and equipped like any other.
-for (const seed of HARTHMERE_BUSINESS_TOOL_SHOP_NEW_TOOL_DEFS_V151) {
+for (const seed of HARTHMERE_BUSINESS_TOOL_SHOP_NEW_TOOL_DEFS) {
   if (ITEM_DEFINITIONS[seed.itemId]) {
     continue;
   }
@@ -2217,12 +2217,12 @@ function itemDef(itemId: string) {
   return ITEM_DEFINITIONS[itemId];
 }
 
-// HARTHMERE_OBJECT_CONTAINER_UI_V199:
+// HARTHMERE_OBJECT_CONTAINER_UI:
 // Lightweight, read-only view of an item definition for surfaces that render
 // item rows/slots outside this module (e.g. the world-object container panel).
 // Keeps the full ITEM_DEFINITIONS map private while letting other components
 // show an item's name, icon, category and stack rules.
-export interface HarthmereItemDisplayV1 {
+export interface HarthmereItemDisplay {
   id: string;
   name: string;
   icon: string;
@@ -2239,14 +2239,14 @@ export interface HarthmereItemDisplayV1 {
   useEffectType?: string;
 }
 
-export function getHarthmereItemDisplayV1(
+export function getHarthmereItemDisplay(
   itemId: string
-): HarthmereItemDisplayV1 | undefined {
+): HarthmereItemDisplay | undefined {
   const def = ITEM_DEFINITIONS[itemId];
   if (!def) {
     return undefined;
   }
-  const wearable = harthmereLocalItemBikkieWearableV1(def.id);
+  const wearable = harthmereLocalItemBikkieWearable(def.id);
   return {
     id: def.id,
     name: def.name,
@@ -2715,11 +2715,11 @@ function addItemByStorageRules(
   return insertBackpackItem(state, itemId, quantity);
 }
 
-// HARTHMERE_QUEST_ITEM_FLOW_V141:
+// HARTHMERE_QUEST_ITEM_FLOW:
 // Count how many of a given item id the player holds across all relevant
 // storage locations (backpack, quest pouch, material storage). Quest steps
 // that "require" an item check this before allowing the Complete action.
-export function harthmereInventoryCountByItemIdV141(itemId: string): number {
+export function harthmereInventoryCountByItemId(itemId: string): number {
   const state = readHarthmereInventoryState();
   let total = 0;
   for (const item of state.backpack.items) {
@@ -2738,11 +2738,11 @@ export function harthmereInventoryCountByItemIdV141(itemId: string): number {
   return total;
 }
 
-// HARTHMERE_QUEST_ITEM_FLOW_V141:
+// HARTHMERE_QUEST_ITEM_FLOW:
 // Remove `quantity` of `itemId` from the player's inventory, preferring the
 // quest pouch (where mid-quest items normally land) and falling back to the
 // backpack and material storage. Returns the number actually removed.
-export function consumeHarthmereItemByItemIdV141(
+export function consumeHarthmereItemByItemId(
   itemId: string,
   quantity = 1,
   reason = "Quest step turn-in"
@@ -2841,14 +2841,14 @@ export function grantHarthmereItem(
   return { added, overflow };
 }
 
-// HARTHMERE_REWARD_INVENTORY_FIT_V151:
+// HARTHMERE_REWARD_INVENTORY_FIT:
 // Dry-run whether a set of reward items can ALL be received without overflow,
 // threading the simulated state through each item so multiple rewards are
 // checked cumulatively (and special-storage categories like materials/quest
 // items, which never overflow, are accounted for correctly). Callers use this
 // to refuse a quest turn-in that would silently drop reward items when the
 // backpack is full, leaving the quest claimable once the player frees space.
-export function harthmereInventoryCanAcceptItemsV151(
+export function harthmereInventoryCanAcceptItems(
   items: ReadonlyArray<{ itemId: string; quantity: number }>,
   state: HarthmereInventoryState = readHarthmereInventoryState()
 ): boolean {
@@ -2866,10 +2866,10 @@ export function harthmereInventoryCanAcceptItemsV151(
   return true;
 }
 
-// HARTHMERE_REPAIR_TOOL_EQUIP_V151: a repair tool only works while EQUIPPED in
+// HARTHMERE_REPAIR_TOOL_EQUIP: a repair tool only works while EQUIPPED in
 // the main hand. These read the equipped main-hand item and report whether it
 // is a repair tool, so the repair interaction and job completion can gate on it.
-export function isHarthmereRepairToolItemIdV151(
+export function isHarthmereRepairToolItemId(
   itemId: string | undefined
 ): boolean {
   if (!itemId) {
@@ -2879,21 +2879,21 @@ export function isHarthmereRepairToolItemIdV151(
   return !!def && def.category === "tool" && def.subtype === "repair_tool";
 }
 
-export function equippedHarthmereRepairToolItemIdV151(
+export function equippedHarthmereRepairToolItemId(
   state: HarthmereInventoryState = readHarthmereInventoryState()
 ): string | undefined {
   const itemId = state.equipment.main_hand?.itemId;
-  return isHarthmereRepairToolItemIdV151(itemId) ? itemId : undefined;
+  return isHarthmereRepairToolItemId(itemId) ? itemId : undefined;
 }
 
-export function isHarthmereRepairToolEquippedV151(
+export function isHarthmereRepairToolEquipped(
   state: HarthmereInventoryState = readHarthmereInventoryState()
 ): boolean {
-  return equippedHarthmereRepairToolItemIdV151(state) !== undefined;
+  return equippedHarthmereRepairToolItemId(state) !== undefined;
 }
 
 // Cleanup tool (muck->dirt + gardening) equip detection — mirror of repair.
-export function isHarthmereCleanupToolItemIdV151(
+export function isHarthmereCleanupToolItemId(
   itemId: string | undefined
 ): boolean {
   if (!itemId) {
@@ -2903,46 +2903,46 @@ export function isHarthmereCleanupToolItemIdV151(
   return !!def && def.category === "tool" && def.subtype === "cleanup_tool";
 }
 
-export function equippedHarthmereCleanupToolItemIdV151(
+export function equippedHarthmereCleanupToolItemId(
   state: HarthmereInventoryState = readHarthmereInventoryState()
 ): string | undefined {
   const itemId = state.equipment.main_hand?.itemId;
-  return isHarthmereCleanupToolItemIdV151(itemId) ? itemId : undefined;
+  return isHarthmereCleanupToolItemId(itemId) ? itemId : undefined;
 }
 
-export function isHarthmereCleanupToolEquippedV151(
+export function isHarthmereCleanupToolEquipped(
   state: HarthmereInventoryState = readHarthmereInventoryState()
 ): boolean {
-  return equippedHarthmereCleanupToolItemIdV151(state) !== undefined;
+  return equippedHarthmereCleanupToolItemId(state) !== undefined;
 }
 
-// HARTHMERE_JOB_TOOL_EQUIP_STATE_V151: a single read of whether the repair/cleanup
+// HARTHMERE_JOB_TOOL_EQUIP_STATE: a single read of whether the repair/cleanup
 // tools are currently equipped, so the jobs-board map adapters can decide whether
 // to surface a "buy the tool here" vendor marker + quest-detail callout.
-export interface HarthmereJobToolEquipStateV151 {
+export interface HarthmereJobToolEquipState {
   repairToolEquipped: boolean;
   cleanupToolEquipped: boolean;
 }
 
-export function harthmereJobToolEquipStateV151(
+export function harthmereJobToolEquipState(
   state: HarthmereInventoryState = readHarthmereInventoryState()
-): HarthmereJobToolEquipStateV151 {
+): HarthmereJobToolEquipState {
   return {
-    repairToolEquipped: isHarthmereRepairToolEquippedV151(state),
-    cleanupToolEquipped: isHarthmereCleanupToolEquippedV151(state),
+    repairToolEquipped: isHarthmereRepairToolEquipped(state),
+    cleanupToolEquipped: isHarthmereCleanupToolEquipped(state),
   };
 }
 
-// HARTHMERE_JOB_TOOL_OWNED_STATE_V151: whether the player OWNS the repair/cleanup
+// HARTHMERE_JOB_TOOL_OWNED_STATE: whether the player OWNS the repair/cleanup
 // tool at all (backpack OR equipped), not just whether it's equipped. The job
 // buy-redirect is keyed on ownership: a player who already owns the tool is never
 // sent to a shop — they're sent to the job (and may equip the tool they bought).
-export interface HarthmereJobToolOwnedStateV151 {
+export interface HarthmereJobToolOwnedState {
   repairToolOwned: boolean;
   cleanupToolOwned: boolean;
 }
 
-function ownsHarthmereToolMatchingV151(
+function ownsHarthmereToolMatching(
   state: HarthmereInventoryState,
   matches: (itemId: string | undefined) => boolean
 ): boolean {
@@ -2955,29 +2955,29 @@ function ownsHarthmereToolMatchingV151(
   return state.backpack.items.some((item) => matches(item.itemId));
 }
 
-export function harthmereJobToolOwnedStateV151(
+export function harthmereJobToolOwnedState(
   state: HarthmereInventoryState = readHarthmereInventoryState()
-): HarthmereJobToolOwnedStateV151 {
+): HarthmereJobToolOwnedState {
   return {
-    repairToolOwned: ownsHarthmereToolMatchingV151(
+    repairToolOwned: ownsHarthmereToolMatching(
       state,
-      isHarthmereRepairToolItemIdV151
+      isHarthmereRepairToolItemId
     ),
-    cleanupToolOwned: ownsHarthmereToolMatchingV151(
+    cleanupToolOwned: ownsHarthmereToolMatching(
       state,
-      isHarthmereCleanupToolItemIdV151
+      isHarthmereCleanupToolItemId
     ),
   };
 }
 
-// HARTHMERE_BUSINESS_TOOL_PURCHASE_V151: buy the tool a given business sells,
+// HARTHMERE_BUSINESS_TOOL_PURCHASE: buy the tool a given business sells,
 // paying with the player's own gold and depositing the tool into their backpack.
 // This is the path a tool-gated job's "buy it at the marked shop" redirect leads
 // to. Idempotent against double-owning: refuses if the player already owns it.
-export function purchaseHarthmereBusinessToolV151(
+export function purchaseHarthmereBusinessTool(
   businessType: string | undefined
 ): { ok: boolean; reason?: string; toolItemId?: string } {
-  const listing = harthmereBusinessToolForTypeV151(businessType);
+  const listing = harthmereBusinessToolForType(businessType);
   if (!listing) {
     return { ok: false, reason: "no_tool" };
   }
@@ -2986,11 +2986,11 @@ export function purchaseHarthmereBusinessToolV151(
   if (!def) {
     return { ok: false, reason: "unknown_tool" };
   }
-  const alreadyOwned = ownsHarthmereToolMatchingV151(
+  const alreadyOwned = ownsHarthmereToolMatching(
     state,
     (id) => id === listing.toolItemId
   );
-  const outcome = harthmereBusinessToolPurchaseOutcomeV151({
+  const outcome = harthmereBusinessToolPurchaseOutcome({
     businessType,
     goldAvailable: state.wallet.gold ?? 0,
     alreadyOwned,
@@ -3021,7 +3021,7 @@ export function purchaseHarthmereBusinessToolV151(
   return { ok: true, toolItemId: listing.toolItemId };
 }
 
-// HARTHMERE_JOB_REWARD_BRIDGE_V151:
+// HARTHMERE_JOB_REWARD_BRIDGE:
 // Jobs-board (and crafting) payouts must land in the player's VISIBLE wallet +
 // inventory (the LocalDev HUD), which is what the player actually spends from —
 // the server jobs-board economy is separate bookkeeping the HUD never reads, so
@@ -3029,13 +3029,13 @@ export function purchaseHarthmereBusinessToolV151(
 // to a HUD state ONCE per jobId (idempotent), so a re-fired turn-in effect can
 // never double-grant. Items route through addItemByStorageRules (overflow is
 // reported, never silently lost — the turn-in flow refuses when it won't fit).
-export interface HarthmereJobRewardV151 {
+export interface HarthmereJobReward {
   jobId: string;
   rewardGold?: number;
   rewardItems?: ReadonlyArray<{ itemId: string; count: number }>;
 }
 
-export interface HarthmereJobRewardApplyResultV151 {
+export interface HarthmereJobRewardApplyResult {
   granted: boolean;
   alreadyGranted: boolean;
   goldAdded: number;
@@ -3043,14 +3043,14 @@ export interface HarthmereJobRewardApplyResultV151 {
   overflow: number;
 }
 
-export function applyHarthmereJobRewardToStateV151(
+export function applyHarthmereJobRewardToState(
   state: HarthmereInventoryState,
   granted: ReadonlySet<string>,
-  reward: HarthmereJobRewardV151
+  reward: HarthmereJobReward
 ): {
   state: HarthmereInventoryState;
   granted: Set<string>;
-  result: HarthmereJobRewardApplyResultV151;
+  result: HarthmereJobRewardApplyResult;
 } {
   const grantedNext = new Set(granted);
   if (granted.has(reward.jobId)) {
@@ -3096,14 +3096,14 @@ export function applyHarthmereJobRewardToStateV151(
   };
 }
 
-const HARTHMERE_JOB_REWARD_GRANTED_KEY_V151 =
-  "biomes.localDev.harthmere.jobsBoardRewardsGranted.v151";
+const HARTHMERE_JOB_REWARD_GRANTED_KEY =
+  "biomes.localDev.harthmere.jobsBoardRewardsGranted";
 
-function readGrantedHarthmereJobRewardsV151(): Set<string> {
+function readGrantedHarthmereJobRewards(): Set<string> {
   if (typeof window === "undefined") return new Set();
   try {
     const raw = window.localStorage.getItem(
-      HARTHMERE_JOB_REWARD_GRANTED_KEY_V151
+      HARTHMERE_JOB_REWARD_GRANTED_KEY
     );
     const arr = raw ? (JSON.parse(raw) as string[]) : [];
     return new Set(Array.isArray(arr) ? arr : []);
@@ -3112,12 +3112,12 @@ function readGrantedHarthmereJobRewardsV151(): Set<string> {
   }
 }
 
-export function harthmereJobRewardAlreadyGrantedV151(jobId: string): boolean {
-  return readGrantedHarthmereJobRewardsV151().has(jobId);
+export function harthmereJobRewardAlreadyGranted(jobId: string): boolean {
+  return readGrantedHarthmereJobRewards().has(jobId);
 }
 
 // Add gold to the HUD wallet (exported for reward/economy callers).
-export function addHarthmereGoldV151(amount: number, reason = "Gold received") {
+export function addHarthmereGold(amount: number, reason = "Gold received") {
   if (typeof window === "undefined") return;
   const next = addGold(readHarthmereInventoryState(), amount);
   writeHarthmereInventoryState(
@@ -3126,9 +3126,9 @@ export function addHarthmereGoldV151(amount: number, reason = "Gold received") {
 }
 
 // localStorage-backed idempotent job-reward grant used on turn-in.
-export function grantHarthmereJobRewardV151(
-  reward: HarthmereJobRewardV151
-): HarthmereJobRewardApplyResultV151 {
+export function grantHarthmereJobReward(
+  reward: HarthmereJobReward
+): HarthmereJobRewardApplyResult {
   if (typeof window === "undefined") {
     return {
       granted: false,
@@ -3138,8 +3138,8 @@ export function grantHarthmereJobRewardV151(
       overflow: 0,
     };
   }
-  const granted = readGrantedHarthmereJobRewardsV151();
-  const applied = applyHarthmereJobRewardToStateV151(
+  const granted = readGrantedHarthmereJobRewards();
+  const applied = applyHarthmereJobRewardToState(
     readHarthmereInventoryState(),
     granted,
     reward
@@ -3162,7 +3162,7 @@ export function grantHarthmereJobRewardV151(
   );
   try {
     window.localStorage.setItem(
-      HARTHMERE_JOB_REWARD_GRANTED_KEY_V151,
+      HARTHMERE_JOB_REWARD_GRANTED_KEY,
       JSON.stringify([...applied.granted])
     );
   } catch {
@@ -3533,7 +3533,7 @@ function useBackpackItem(instanceId: string) {
   writeHarthmereInventoryState(appendLog(state, "Item Used", detail));
   if (typeof window !== "undefined") {
     window.dispatchEvent(
-      new CustomEvent(HARTHMERE_LOCAL_DEV_ITEM_USE_EVENT_V130, {
+      new CustomEvent(HARTHMERE_LOCAL_DEV_ITEM_USE_EVENT, {
         detail: {
           itemId: instance.itemId,
           itemName: def.name,
@@ -3541,13 +3541,13 @@ function useBackpackItem(instanceId: string) {
           subtype: def.subtype,
           useEffect: def.useEffect.type,
           instanceId,
-          source: "harthmere-inventory-use-v130",
+          source: "harthmere-inventory-use",
         },
       })
     );
   }
   if (def.category === "food") {
-    completeHarthmereDailyTaskSoonV1("eat_meal");
+    completeHarthmereDailyTaskSoon("eat_meal");
   }
 }
 
@@ -3718,7 +3718,7 @@ function unequipMainHandToBackpack(state: HarthmereInventoryState) {
 export function ensureHarthmereStarterSwordGranted() {
   let state = readHarthmereInventoryState();
 
-  // Harthmere starter weapon migration v1:
+  // Harthmere starter weapon migration current:
   // Old local-dev saves may have fists or only a dagger. This function is
   // intentionally idempotent: it gives the player one Iron Longsword if they
   // do not already own one, then equips it in main hand so the renderer and
@@ -3781,12 +3781,12 @@ export function ensureHarthmereStarterSwordGranted() {
   );
 }
 
-// HARTHMERE_TOOL_OBTAINABLE_V151: ensure the player can always obtain the job
+// HARTHMERE_TOOL_OBTAINABLE: ensure the player can always obtain the job
 // tools, so repair AND cleanup jobs (which require the matching equipped tool)
 // are never soft-locked. Idempotent per tool. The tools are ALSO stocked at the
 // in-world vendor owners so they can be re-bought if sold/dropped (see the
 // vendor catalog), and the resolver guides the player there when one is missing.
-function ensureHarthmereStarterToolGrantedV151(
+function ensureHarthmereStarterToolGranted(
   itemId: string,
   reason: string,
   state = readHarthmereInventoryState()
@@ -3802,11 +3802,11 @@ function ensureHarthmereStarterToolGrantedV151(
 }
 
 export function ensureHarthmereStarterRepairToolGranted() {
-  ensureHarthmereStarterToolGrantedV151("repair_mallet", "Starter repair tool");
+  ensureHarthmereStarterToolGranted("repair_mallet", "Starter repair tool");
 }
 
 export function ensureHarthmereStarterCleanupToolGranted() {
-  ensureHarthmereStarterToolGrantedV151("muck_rake", "Starter cleanup tool");
+  ensureHarthmereStarterToolGranted("muck_rake", "Starter cleanup tool");
 }
 
 export function ensureStarterWeaponEquipped() {
@@ -5037,15 +5037,15 @@ export const HarthmereVendorTradePanel: React.FunctionComponent<{}> = () => {
   return createPortal(panel, document.body);
 };
 
-// HARTHMERE_INVENTORY_TUTORIAL_ITEM_HIGHLIGHT_V111:
+// HARTHMERE_INVENTORY_TUTORIAL_ITEM_HIGHLIGHT:
 // Reads the active Snapshot Grove lesson directly from localStorage (not via
 // the runtime module) to avoid import cycles. This lets Backpack, material,
 // and quest-pouch rows pulse when a tutorial says "eat the ration", "collect
 // the root sample", or "use the bandage".
-const SNAPSHOT_GROVE_QUEST_STATE_KEY_FOR_INVENTORY_V111 =
-  "biomes.localDev.snapshotGroveQuestState.v75";
+const SNAPSHOT_GROVE_QUEST_STATE_KEY_FOR_INVENTORY =
+  "biomes.localDev.snapshotGroveQuestState";
 
-function snapshotGroveTutorialItemIdsForObjectiveV111(text: string) {
+function snapshotGroveTutorialItemIdsForObjective(text: string) {
   const lowered = text.toLowerCase();
   const ids = new Set<string>();
   if (/ration|food|snack|eat|stamina/.test(lowered)) ids.add("road_ration");
@@ -5068,13 +5068,13 @@ function snapshotGroveTutorialItemIdsForObjectiveV111(text: string) {
   return ids;
 }
 
-function readSnapshotGroveActiveInventoryItemIdsV111() {
+function readSnapshotGroveActiveInventoryItemIds() {
   if (typeof window === "undefined" || !window.localStorage) {
     return new Set<string>();
   }
   try {
     const raw = window.localStorage.getItem(
-      SNAPSHOT_GROVE_QUEST_STATE_KEY_FOR_INVENTORY_V111
+      SNAPSHOT_GROVE_QUEST_STATE_KEY_FOR_INVENTORY
     );
     const parsed = raw ? JSON.parse(raw) : undefined;
     const activeQuestId =
@@ -5084,7 +5084,7 @@ function readSnapshotGroveActiveInventoryItemIdsV111() {
     const activeObjectiveIndex = Number.isFinite(parsed?.activeObjectiveIndex)
       ? Math.max(0, Number(parsed.activeObjectiveIndex))
       : 0;
-    const quest = SNAPSHOT_GROVE_QUESTS_V75.find(
+    const quest = SNAPSHOT_GROVE_QUESTS.find(
       (entry) => entry.id === activeQuestId
     );
     if (!quest || parsed?.completedQuestIds?.includes?.(quest.id)) {
@@ -5094,7 +5094,7 @@ function readSnapshotGroveActiveInventoryItemIdsV111() {
       quest.objectives[
         Math.min(activeObjectiveIndex, quest.objectives.length - 1)
       ] ?? "";
-    return snapshotGroveTutorialItemIdsForObjectiveV111(
+    return snapshotGroveTutorialItemIdsForObjective(
       `${quest.id} ${quest.title} ${objective}`
     );
   } catch {
@@ -5129,11 +5129,11 @@ function InventorySlot({
           ? "ring-lime-200/85 shadow-[0_0_18px_rgba(190,242,100,0.38)] ring-2"
           : ""
       }`}
-      data-harthmere-tutorial-item-highlight-v111={
+      data-harthmere-tutorial-item-highlight={
         highlighted ? "true" : "false"
       }
-      data-harthmere-auto-focus-v112={highlighted ? "true" : undefined}
-      data-harthmere-inventory-item-id-v111={item.itemId}
+      data-harthmere-auto-focus={highlighted ? "true" : undefined}
+      data-harthmere-inventory-item-id={item.itemId}
       tabIndex={highlighted ? 0 : undefined}
     >
       <div className="flex items-start justify-between gap-2">
@@ -5167,7 +5167,7 @@ function InventorySlot({
         {def.useEffect && (
           <button
             className="rounded py-0.5 bg-white/10 px-2 text-[10px] hover:bg-white/20"
-            data-harthmere-primary-action-v112={
+            data-harthmere-primary-action={
               highlighted ? "true" : undefined
             }
             onClick={onUse}
@@ -5239,48 +5239,48 @@ export const HarthmereInventoryMenuPanel: React.FunctionComponent<{}> = () => {
     "backpack" | "equipment" | "spellbook" | "wallet" | "bank" | "guide"
   >("backpack");
   const [query, setQuery] = useState("");
-  const [tutorialItemIdsV111, setTutorialItemIdsV111] = useState(() =>
-    readSnapshotGroveActiveInventoryItemIdsV111()
+  const [tutorialItemIds, setTutorialItemIds] = useState(() =>
+    readSnapshotGroveActiveInventoryItemIds()
   );
   const stats = totalEquippedStats(state);
 
   useEffect(() => {
     const refresh = () =>
-      setTutorialItemIdsV111(readSnapshotGroveActiveInventoryItemIdsV111());
+      setTutorialItemIds(readSnapshotGroveActiveInventoryItemIds());
     const interval = window.setInterval(refresh, 500);
     window.addEventListener("storage", refresh);
     window.addEventListener(
-      "biomes:local-dev-snapshot-grove-quest-state-v75",
+      "biomes:local-dev-snapshot-grove-quest-state",
       refresh
     );
     return () => {
       window.clearInterval(interval);
       window.removeEventListener("storage", refresh);
       window.removeEventListener(
-        "biomes:local-dev-snapshot-grove-quest-state-v75",
+        "biomes:local-dev-snapshot-grove-quest-state",
         refresh
       );
     };
   }, []);
 
   useEffect(() => {
-    if (!tutorialItemIdsV111.size) {
+    if (!tutorialItemIds.size) {
       return;
     }
     const needsBackpack = state.backpack.items.some((item) =>
-      tutorialItemIdsV111.has(item.itemId)
+      tutorialItemIds.has(item.itemId)
     );
     if (needsBackpack && tab !== "backpack") {
       setTab("backpack");
       return;
     }
     const needsMaterials = Object.entries(state.materialStorage).some(
-      ([itemId, qty]) => tutorialItemIdsV111.has(itemId) && qty > 0
+      ([itemId, qty]) => tutorialItemIds.has(itemId) && qty > 0
     );
     if (!needsBackpack && needsMaterials && tab !== "wallet") {
       setTab("wallet");
     }
-  }, [state.backpack.items, state.materialStorage, tab, tutorialItemIdsV111]);
+  }, [state.backpack.items, state.materialStorage, tab, tutorialItemIds]);
 
   const filteredBackpack = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -5300,8 +5300,8 @@ export const HarthmereInventoryMenuPanel: React.FunctionComponent<{}> = () => {
   return (
     <div
       className="rounded-lg bg-black/85 mb-2 max-h-[70vh] w-[31rem] overflow-hidden border border-white/20 text-white shadow-xl"
-      data-harthmere-inventory-tutorial-items-v111={
-        tutorialItemIdsV111.size ? "true" : "false"
+      data-harthmere-inventory-tutorial-items={
+        tutorialItemIds.size ? "true" : "false"
       }
     >
       <div className="border-b border-white/10 p-3">
@@ -5384,7 +5384,7 @@ export const HarthmereInventoryMenuPanel: React.FunctionComponent<{}> = () => {
                     onEquip={() => equipBackpackItem(item.instanceId)}
                     onBank={() => transferToBank(item.instanceId)}
                     onLock={() => toggleLock(item.instanceId)}
-                    highlighted={tutorialItemIdsV111.has(item.itemId)}
+                    highlighted={tutorialItemIds.has(item.itemId)}
                   />
                 ))
               ) : (
@@ -5508,18 +5508,18 @@ export const HarthmereInventoryMenuPanel: React.FunctionComponent<{}> = () => {
                     <div
                       key={itemId}
                       className={`rounded px-1.5 flex min-w-0 items-center gap-1 py-1 ${
-                        tutorialItemIdsV111.has(itemId)
+                        tutorialItemIds.has(itemId)
                           ? "border-lime-200/60 bg-lime-300/20 text-lime-50 border"
                           : "bg-white/5"
                       }`}
-                      data-harthmere-tutorial-item-highlight-v111={
-                        tutorialItemIdsV111.has(itemId) ? "true" : "false"
+                      data-harthmere-tutorial-item-highlight={
+                        tutorialItemIds.has(itemId) ? "true" : "false"
                       }
-                      data-harthmere-auto-focus-v112={
-                        tutorialItemIdsV111.has(itemId) ? "true" : undefined
+                      data-harthmere-auto-focus={
+                        tutorialItemIds.has(itemId) ? "true" : undefined
                       }
-                      data-harthmere-inventory-item-id-v111={itemId}
-                      tabIndex={tutorialItemIdsV111.has(itemId) ? 0 : undefined}
+                      data-harthmere-inventory-item-id={itemId}
+                      tabIndex={tutorialItemIds.has(itemId) ? 0 : undefined}
                     >
                       <span className="shrink-0 text-sm" aria-hidden="true">
                         {def?.icon ?? "◆"}

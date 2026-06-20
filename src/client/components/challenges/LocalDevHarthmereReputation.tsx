@@ -3,10 +3,10 @@ import { harthmereUserScopedStorageKey } from "@/client/components/challenges/Lo
 import React, { useEffect, useMemo, useState } from "react";
 
 const HARTHMERE_REPUTATION_STATE_KEY =
-  "biomes.localDev.harthmere.reputation.v1";
+  "biomes.localDev.harthmere.reputation";
 const HARTHMERE_REPUTATION_EVENT = "biomes:harthmere-reputation-changed";
 const HARTHMERE_REPUTATION_RULESET_REVISION =
-  "harthmere-user-scoped-reputation-v2";
+  "harthmere-user-scoped-reputation";
 
 export type HarthmereReputationScope = "global" | "harthmere" | "personal";
 

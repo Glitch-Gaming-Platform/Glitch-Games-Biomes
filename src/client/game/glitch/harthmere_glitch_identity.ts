@@ -1,12 +1,12 @@
 export const HARTHMERE_GLITCH_IDENTITY_KEY =
-  "biomes.localDev.harthmere.glitchIdentity.v1";
+  "biomes.localDev.harthmere.glitchIdentity";
 export const HARTHMERE_GLITCH_IDENTITY_CHANGED_EVENT =
   "biomes:harthmere-glitch-identity-changed";
 export const HARTHMERE_GLITCH_SESSION_DISCONNECTED_EVENT =
   "biomes:harthmere-glitch-session-disconnected";
 
 const HARTHMERE_ACTIVE_USER_SCOPE_KEY =
-  "biomes.localDev.harthmere.activeUserScope.v1";
+  "biomes.localDev.harthmere.activeUserScope";
 
 export type HarthmereGlitchIdentity = {
   source: "glitch" | "local";

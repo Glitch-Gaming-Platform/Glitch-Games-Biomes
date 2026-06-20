@@ -22,7 +22,7 @@ import {
 } from "@/client/components/challenges/LocalDevHarthmereReputation";
 import React, { useEffect, useMemo, useState } from "react";
 
-const HARTHMERE_ECONOMY_STATE_KEY = "biomes.localDev.harthmere.economyState.v1";
+const HARTHMERE_ECONOMY_STATE_KEY = "biomes.localDev.harthmere.economyState";
 const HARTHMERE_ECONOMY_EVENT = "biomes:harthmere-economy-changed";
 
 type EconomyItemCategory =

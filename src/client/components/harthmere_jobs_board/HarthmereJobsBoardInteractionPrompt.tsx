@@ -1,16 +1,16 @@
 import * as React from "react";
-import { getHarthmereJobsBoardPromptV1, type HarthmereJobsBoardSnapshotV1, type HarthmereJobsBoardWorldContextV1 } from "./jobsBoardLiveAdapter";
+import { getHarthmereJobsBoardPrompt, type HarthmereJobsBoardSnapshot, type HarthmereJobsBoardWorldContext } from "./jobsBoardLiveAdapter";
 
 export function HarthmereJobsBoardInteractionPrompt({
   snapshot,
   world,
   onOpen,
 }: {
-  snapshot: HarthmereJobsBoardSnapshotV1;
-  world: HarthmereJobsBoardWorldContextV1;
+  snapshot: HarthmereJobsBoardSnapshot;
+  world: HarthmereJobsBoardWorldContext;
   onOpen?: () => void;
 }) {
-  const prompt = getHarthmereJobsBoardPromptV1(snapshot, world);
+  const prompt = getHarthmereJobsBoardPrompt(snapshot, world);
   React.useEffect(() => {
     if (!prompt || !onOpen) return;
     const handler = (event: KeyboardEvent) => {

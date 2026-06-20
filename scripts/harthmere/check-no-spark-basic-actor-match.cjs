@@ -8,7 +8,7 @@ const checks = [
   [
     "src/client/game/renderers/local_dev/harthmere_assets.ts",
     [
-      "harthmere-no-spark-basic-actor-match-v11",
+      "harthmere-no-spark-basic-actor-match",
       "harthmere-no-spark-basic-physical-sanitize",
       "harthmere-no-spark-basic-debug-extra",
       "harthmereNoSparkBasic",
@@ -20,7 +20,7 @@ const checks = [
   [
     "src/client/components/challenges/LocalDevHarthmereCombat.tsx",
     [
-      "harthmere-no-spark-basic-actor-match-v11",
+      "harthmere-no-spark-basic-actor-match",
       "harthmere-no-spark-basic-event-marker",
       "harthmerePhysicalAttack",
       "harthmereEventAttackerClipPriority",

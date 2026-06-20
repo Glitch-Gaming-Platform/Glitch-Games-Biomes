@@ -1,9 +1,9 @@
 import { BIOMES_UI_PLAYER_STATUS_UPDATED_EVENT } from "@/client/components/biomes_ui/adapters/playerStatusAdapter";
 
-export const HARTHMERE_DIALOGUE_LIVE_MODE_RESPONSE_EVENT_V1 =
-  "biomes:harthmere-dialogue-live-mode-response-v1" as const;
+export const HARTHMERE_DIALOGUE_LIVE_MODE_RESPONSE_EVENT =
+  "biomes:harthmere-dialogue-live-mode-response" as const;
 
-export function harthmereDialogueLiveModeUrlV1(search?: string) {
+export function harthmereDialogueLiveModeUrl(search?: string) {
   const rawSearch =
     search ?? (typeof window !== "undefined" ? window.location.search : "");
   const params = new URLSearchParams(rawSearch);
@@ -14,7 +14,7 @@ export function harthmereDialogueLiveModeUrlV1(search?: string) {
     : endpoint;
 }
 
-export function harthmereDialogueLiveModeHeadersV1(search?: string) {
+export function harthmereDialogueLiveModeHeaders(search?: string) {
   const rawSearch =
     search ?? (typeof window !== "undefined" ? window.location.search : "");
   const params = new URLSearchParams(rawSearch);
@@ -29,16 +29,16 @@ export function harthmereDialogueLiveModeHeadersV1(search?: string) {
   return headers;
 }
 
-function dispatchHarthmereDialogueLiveModeResponseV1(body: any) {
+function dispatchHarthmereDialogueLiveModeResponse(body: any) {
   if (typeof window === "undefined") return;
   window.dispatchEvent(
-    new CustomEvent(HARTHMERE_DIALOGUE_LIVE_MODE_RESPONSE_EVENT_V1, {
+    new CustomEvent(HARTHMERE_DIALOGUE_LIVE_MODE_RESPONSE_EVENT, {
       detail: body,
     })
   );
 }
 
-function dispatchHarthmereDialoguePlayerStatusV1(body: any) {
+function dispatchHarthmereDialoguePlayerStatus(body: any) {
   if (typeof window === "undefined") return;
   if (body?.playerStatusState) {
     window.dispatchEvent(
@@ -49,7 +49,7 @@ function dispatchHarthmereDialoguePlayerStatusV1(body: any) {
   }
 }
 
-function harthmereDialogueWorldDeltasV1(likeabilityDelta: number) {
+function harthmereDialogueWorldDeltas(likeabilityDelta: number) {
   const sign = Math.sign(likeabilityDelta);
   if (sign === 0) {
     return { likeabilityDelta: 0, legalDelta: 0, notorietyDelta: 0 };
@@ -62,14 +62,14 @@ function harthmereDialogueWorldDeltasV1(likeabilityDelta: number) {
   };
 }
 
-export function harthmereDialogueLiveModeMutationsForChoiceV1(input: {
+export function harthmereDialogueLiveModeMutationsForChoice(input: {
   entityId: string | number;
   label?: string;
   message: string;
   likeabilityDelta: number;
 }) {
   const personalScopeId = `npc:${String(input.entityId)}`;
-  const worldDeltas = harthmereDialogueWorldDeltasV1(input.likeabilityDelta);
+  const worldDeltas = harthmereDialogueWorldDeltas(input.likeabilityDelta);
   const reason =
     input.likeabilityDelta < 0
       ? "dialogue_choice_rude"
@@ -107,7 +107,7 @@ export function harthmereDialogueLiveModeMutationsForChoiceV1(input: {
   );
 }
 
-export async function submitHarthmereDialogueLiveModeChoiceV1(
+export async function submitHarthmereDialogueLiveModeChoice(
   input: {
     entityId: string | number;
     label?: string;
@@ -121,18 +121,18 @@ export async function submitHarthmereDialogueLiveModeChoiceV1(
   } = {}
 ) {
   const fetchImpl = options.fetchImpl ?? fetch;
-  const mutations = harthmereDialogueLiveModeMutationsForChoiceV1(input);
+  const mutations = harthmereDialogueLiveModeMutationsForChoice(input);
   let latestBody: any;
   for (const [index, payload] of mutations.entries()) {
     const requestId = `${
       options.requestIdPrefix ?? "dialogue_choice"
     }_${Date.now()}_${index}_${Math.random().toString(36).slice(2)}`;
     const response = await fetchImpl(
-      harthmereDialogueLiveModeUrlV1(options.locationSearch),
+      harthmereDialogueLiveModeUrl(options.locationSearch),
       {
         method: "POST",
         credentials: "same-origin",
-        headers: harthmereDialogueLiveModeHeadersV1(options.locationSearch),
+        headers: harthmereDialogueLiveModeHeaders(options.locationSearch),
         body: JSON.stringify({
           requestId,
           idempotencyKey: requestId,
@@ -149,7 +149,7 @@ export async function submitHarthmereDialogueLiveModeChoiceV1(
       }
     );
     latestBody = await response.json();
-    dispatchHarthmereDialogueLiveModeResponseV1(latestBody);
+    dispatchHarthmereDialogueLiveModeResponse(latestBody);
     if (!response.ok || latestBody?.ok === false) {
       throw new Error(
         latestBody?.error ??
@@ -160,6 +160,6 @@ export async function submitHarthmereDialogueLiveModeChoiceV1(
       );
     }
   }
-  dispatchHarthmereDialoguePlayerStatusV1(latestBody);
+  dispatchHarthmereDialoguePlayerStatus(latestBody);
   return latestBody;
 }

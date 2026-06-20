@@ -1,6 +1,6 @@
 import {
-  azureSpeechConfigFromEnvV1,
-  transcribeAzureSpeechV1,
+  azureSpeechConfigFromEnv,
+  transcribeAzureSpeech,
 } from "@/server/shared/azure_speech";
 import { biomesApiHandler } from "@/server/web/util/api_middleware";
 import { log } from "@/shared/logging";
@@ -28,7 +28,7 @@ export default biomesApiHandler(
     response: zSpeechToTextResponse,
   },
   async ({ body: { audioBase64, mimeType, language } }) => {
-    const config = azureSpeechConfigFromEnvV1();
+    const config = azureSpeechConfigFromEnv();
     if (!config) {
       return {
         text: "",
@@ -37,7 +37,7 @@ export default biomesApiHandler(
     }
 
     try {
-      const text = await transcribeAzureSpeechV1({
+      const text = await transcribeAzureSpeech({
         config,
         audio: Buffer.from(audioBase64, "base64"),
         mimeType,

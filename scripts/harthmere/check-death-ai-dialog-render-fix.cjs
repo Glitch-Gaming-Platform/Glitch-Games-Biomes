@@ -16,7 +16,7 @@ const renderer = read("src/client/game/renderers/local_dev/harthmere_assets.ts")
 const quests = read("src/client/components/challenges/LocalDevHarthmereQuests.tsx");
 const scenes = read("src/client/game/renderers/scenes.ts");
 
-ok("ruleset revision bumped", combat.includes("harthmere-death-ai-dialog-render-v1"));
+ok("ruleset revision bumped", combat.includes("harthmere-death-ai-dialog-render"));
 ok("death pulse helper exists", combat.includes("shouldHarthmereTargetPlayDeathPulse"));
 ok("target reaction considers finalDamage", combat.includes("targetReactionClipPriority(entry.result, entry.targetHpAfter, entry.ability, entry.detail, entry.finalDamage)"));
 ok("animation kind uses safe death helper", combat.includes("shouldHarthmereTargetPlayDeathPulse(entry.result, entry.targetHpAfter, entry.finalDamage)"));

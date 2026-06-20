@@ -1,18 +1,18 @@
 import {
-  browserSupportsNpcSpeechInputV1,
-  npcSpeechButtonTooltipV1,
-  npcSpeechEmptyTranscriptMessageV1,
-  npcSpeechRecordingRemainingSecondsV1,
-  npcSpeechRecordingTimeoutProgressV1,
-  npcSpeechStatusActiveV1,
+  browserSupportsNpcSpeechInput,
+  npcSpeechButtonTooltip,
+  npcSpeechEmptyTranscriptMessage,
+  npcSpeechRecordingRemainingSeconds,
+  npcSpeechRecordingTimeoutProgress,
+  npcSpeechStatusActive,
 } from "@/client/components/system/npcSpeechInputState";
 import assert from "assert";
 
 describe("NPC speech input state", () => {
   it("only enables voice UI when STT, TTS, and generated chat are configured", () => {
-    assert.equal(npcSpeechStatusActiveV1(undefined), false);
+    assert.equal(npcSpeechStatusActive(undefined), false);
     assert.equal(
-      npcSpeechStatusActiveV1({
+      npcSpeechStatusActive({
         speechToText: true,
         textToSpeech: true,
         generatedChat: true,
@@ -20,7 +20,7 @@ describe("NPC speech input state", () => {
       true
     );
     assert.equal(
-      npcSpeechStatusActiveV1({
+      npcSpeechStatusActive({
         speechToText: false,
         textToSpeech: true,
         generatedChat: true,
@@ -28,7 +28,7 @@ describe("NPC speech input state", () => {
       false
     );
     assert.equal(
-      npcSpeechStatusActiveV1({
+      npcSpeechStatusActive({
         speechToText: true,
         textToSpeech: false,
         generatedChat: true,
@@ -36,7 +36,7 @@ describe("NPC speech input state", () => {
       false
     );
     assert.equal(
-      npcSpeechStatusActiveV1({
+      npcSpeechStatusActive({
         speechToText: true,
         textToSpeech: true,
         generatedChat: false,
@@ -50,21 +50,21 @@ describe("NPC speech input state", () => {
     const AudioContext = function AudioContext() {};
 
     assert.equal(
-      browserSupportsNpcSpeechInputV1({
+      browserSupportsNpcSpeechInput({
         navigator: { mediaDevices: { getUserMedia } },
         window: { AudioContext },
       }),
       true
     );
     assert.equal(
-      browserSupportsNpcSpeechInputV1({
+      browserSupportsNpcSpeechInput({
         navigator: { mediaDevices: { getUserMedia } },
         window: {},
       }),
       false
     );
     assert.equal(
-      browserSupportsNpcSpeechInputV1({
+      browserSupportsNpcSpeechInput({
         navigator: { mediaDevices: {} },
         window: { AudioContext },
       }),
@@ -74,38 +74,38 @@ describe("NPC speech input state", () => {
 
   it("uses explicit STT failure reasons before generic empty-transcript text", () => {
     assert.equal(
-      npcSpeechEmptyTranscriptMessageV1("Azure Speech is not configured."),
+      npcSpeechEmptyTranscriptMessage("Azure Speech is not configured."),
       "Azure Speech is not configured."
     );
     assert.equal(
-      npcSpeechEmptyTranscriptMessageV1("   "),
+      npcSpeechEmptyTranscriptMessage("   "),
       "I couldn't catch that."
     );
     assert.equal(
-      npcSpeechEmptyTranscriptMessageV1(undefined),
+      npcSpeechEmptyTranscriptMessage(undefined),
       "I couldn't catch that."
     );
   });
 
   it("returns state-specific tooltips for idle, recording, transcribing, unsupported, and error", () => {
     assert.equal(
-      npcSpeechButtonTooltipV1({ supported: true, state: "idle" }),
+      npcSpeechButtonTooltip({ supported: true, state: "idle" }),
       "Talk"
     );
     assert.equal(
-      npcSpeechButtonTooltipV1({ supported: true, state: "recording" }),
+      npcSpeechButtonTooltip({ supported: true, state: "recording" }),
       "Stop talking"
     );
     assert.equal(
-      npcSpeechButtonTooltipV1({ supported: true, state: "transcribing" }),
+      npcSpeechButtonTooltip({ supported: true, state: "transcribing" }),
       "Listening"
     );
     assert.equal(
-      npcSpeechButtonTooltipV1({ supported: false, state: "idle" }),
+      npcSpeechButtonTooltip({ supported: false, state: "idle" }),
       "Microphone recording is not available here."
     );
     assert.equal(
-      npcSpeechButtonTooltipV1({
+      npcSpeechButtonTooltip({
         error: "Microphone is unavailable.",
         supported: true,
         state: "error",
@@ -116,35 +116,35 @@ describe("NPC speech input state", () => {
 
   it("maps recording time into a visible countdown and grey-out progress", () => {
     assert.equal(
-      npcSpeechRecordingRemainingSecondsV1({
+      npcSpeechRecordingRemainingSeconds({
         maxRecordingMs: 15_000,
         remainingMs: 15_000,
       }),
       15
     );
     assert.equal(
-      npcSpeechRecordingRemainingSecondsV1({
+      npcSpeechRecordingRemainingSeconds({
         maxRecordingMs: 15_000,
         remainingMs: 14_001,
       }),
       15
     );
     assert.equal(
-      npcSpeechRecordingRemainingSecondsV1({
+      npcSpeechRecordingRemainingSeconds({
         maxRecordingMs: 15_000,
         remainingMs: 14_000,
       }),
       14
     );
     assert.equal(
-      npcSpeechRecordingRemainingSecondsV1({
+      npcSpeechRecordingRemainingSeconds({
         maxRecordingMs: 15_000,
         remainingMs: -100,
       }),
       0
     );
     assert.equal(
-      npcSpeechRecordingRemainingSecondsV1({
+      npcSpeechRecordingRemainingSeconds({
         maxRecordingMs: 0,
         remainingMs: 0,
       }),
@@ -152,21 +152,21 @@ describe("NPC speech input state", () => {
     );
 
     assert.equal(
-      npcSpeechRecordingTimeoutProgressV1({
+      npcSpeechRecordingTimeoutProgress({
         maxRecordingMs: 15_000,
         remainingMs: 15_000,
       }),
       0
     );
     assert.equal(
-      npcSpeechRecordingTimeoutProgressV1({
+      npcSpeechRecordingTimeoutProgress({
         maxRecordingMs: 15_000,
         remainingMs: 7_500,
       }),
       0.5
     );
     assert.equal(
-      npcSpeechRecordingTimeoutProgressV1({
+      npcSpeechRecordingTimeoutProgress({
         maxRecordingMs: 15_000,
         remainingMs: -100,
       }),

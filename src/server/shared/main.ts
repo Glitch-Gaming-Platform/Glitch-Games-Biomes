@@ -193,7 +193,7 @@ export async function runServer<
   log.info(`${service} initializing`, { lifecycle: true });
   state.value = "creatingContext";
   console.log(
-    `GLITCH_STARTUP_TRACE_V2 runServer:before-makeContext service=${service}`
+    `GLITCH_STARTUP_TRACE runServer:before-makeContext service=${service}`
   );
   const tCtx = Date.now();
 
@@ -202,11 +202,11 @@ export async function runServer<
       void gracefulShutdown("local");
     });
     console.log(
-      `GLITCH_STARTUP_TRACE_V2 runServer:after-makeContext service=${service} elapsedMs=${Date.now() - tCtx}`
+      `GLITCH_STARTUP_TRACE runServer:after-makeContext service=${service} elapsedMs=${Date.now() - tCtx}`
     );
     if (controller.signal.aborted) {
       console.log(
-        `GLITCH_STARTUP_TRACE_V2 runServer:aborted-during-makeContext service=${service}`
+        `GLITCH_STARTUP_TRACE runServer:aborted-during-makeContext service=${service}`
       );
       return;
     }
@@ -214,7 +214,7 @@ export async function runServer<
     globalThis.ctx = context;
 
     console.log(
-      `GLITCH_STARTUP_TRACE_V2 runServer:before-initializer service=${service}`
+      `GLITCH_STARTUP_TRACE runServer:before-initializer service=${service}`
     );
     const tInit = Date.now();
     // Initialize the server and then register a SIGINT handler to shut it down.
@@ -223,7 +223,7 @@ export async function runServer<
         void gracefulShutdown("local");
       })) || {};
     console.log(
-      `GLITCH_STARTUP_TRACE_V2 runServer:after-initializer service=${service} elapsedMs=${Date.now() - tInit}`
+      `GLITCH_STARTUP_TRACE runServer:after-initializer service=${service} elapsedMs=${Date.now() - tInit}`
     );
     if (state.value === "starting") {
       state.value = "ready";

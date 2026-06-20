@@ -1,32 +1,32 @@
 import assert from "assert";
 
 import {
-  doesSnapshotGroveEventAdvanceQuestForTestV132,
-  grantSnapshotGroveWorldObjectPickupItemForTestV1,
-  snapshotGrovePracticeItemForObjectiveForTestV110,
-  snapshotGroveQuestEventFromWorldObjectInteractionForTestV1,
-  validateSnapshotGroveQuestEventContextV132,
+  doesSnapshotGroveEventAdvanceQuestForTest,
+  grantSnapshotGroveWorldObjectPickupItemForTest,
+  snapshotGrovePracticeItemForObjectiveForTest,
+  snapshotGroveQuestEventFromWorldObjectInteractionForTest,
+  validateSnapshotGroveQuestEventContext,
 } from "@/client/components/challenges/LocalDevSnapshotGroveBibleRuntime";
 import { CURSOR_INSPECTION_SHORTCUT_KEYS_FOR_TEST } from "@/client/components/overlays/inspected/inspectionShortcutKeys";
-import { harthmereInventoryCountByItemIdV141 } from "@/client/components/challenges/LocalDevHarthmereInventorySystem";
-import { selectNearestHarthmereWorldObjectInspectableV1 } from "@/shared/harthmere/harthmere_world_object_inspectable_v1";
+import { harthmereInventoryCountByItemId } from "@/client/components/challenges/LocalDevHarthmereInventorySystem";
+import { selectNearestHarthmereWorldObjectInspectable } from "@/shared/harthmere/harthmere_world_object_inspectable";
 import {
-  SNAPSHOT_GROVE_NPCS_V75,
-  SNAPSHOT_GROVE_QUESTS_V75,
-  snapshotGroveLandmarkByIdV75,
-  snapshotGroveNpcEntityIdV75,
-} from "@/shared/harthmere/snapshot_grove_content_v75";
+  SNAPSHOT_GROVE_NPCS,
+  SNAPSHOT_GROVE_QUESTS,
+  snapshotGroveLandmarkById,
+  snapshotGroveNpcEntityId,
+} from "@/shared/harthmere/snapshot_grove_content";
 
 function questById(id: string) {
-  const quest = SNAPSHOT_GROVE_QUESTS_V75.find((entry) => entry.id === id);
+  const quest = SNAPSHOT_GROVE_QUESTS.find((entry) => entry.id === id);
   assert.ok(quest, `Expected Snapshot Grove quest ${id} to exist`);
   return quest;
 }
 
 function npcEntityId(id: string) {
-  const npc = SNAPSHOT_GROVE_NPCS_V75.find((entry) => entry.id === id);
+  const npc = SNAPSHOT_GROVE_NPCS.find((entry) => entry.id === id);
   assert.ok(npc, `Expected Snapshot Grove NPC ${id} to exist`);
-  return snapshotGroveNpcEntityIdV75(npc);
+  return snapshotGroveNpcEntityId(npc);
 }
 
 const localStorageValues = new Map<string, string>();
@@ -73,10 +73,10 @@ const PHYSICAL_PICKUP_INTERACT_RE =
 const NON_PICKUP_INTERACT_RE = /\bmirror check\b/i;
 
 function snapshotGrovePhysicalPickupCases() {
-  return SNAPSHOT_GROVE_QUESTS_V75.flatMap((quest) =>
+  return SNAPSHOT_GROVE_QUESTS.flatMap((quest) =>
     quest.objectives.flatMap((objective, objectiveIndex) => {
       const trigger = quest.triggers[objectiveIndex];
-      const item = snapshotGrovePracticeItemForObjectiveForTestV110(
+      const item = snapshotGrovePracticeItemForObjectiveForTest(
         quest,
         objectiveIndex
       );
@@ -89,7 +89,7 @@ function snapshotGrovePhysicalPickupCases() {
       if (!isPickupTrigger) {
         return [];
       }
-      const marker = snapshotGroveLandmarkByIdV75(
+      const marker = snapshotGroveLandmarkById(
         quest.markerIds[objectiveIndex]
       );
       if (
@@ -105,7 +105,7 @@ function snapshotGrovePhysicalPickupCases() {
   );
 }
 
-describe("Snapshot Grove quest runtime validation v132", () => {
+describe("Snapshot Grove quest runtime validation current", () => {
   it("accepts a tagged world event for the current objective", () => {
     const quest = questById("color_that_still_points_home");
     const event = {
@@ -117,11 +117,11 @@ describe("Snapshot Grove quest runtime validation v132", () => {
     };
 
     assert.equal(
-      validateSnapshotGroveQuestEventContextV132(event as any, quest, 1).ok,
+      validateSnapshotGroveQuestEventContext(event as any, quest, 1).ok,
       true
     );
     assert.equal(
-      doesSnapshotGroveEventAdvanceQuestForTestV132(event as any, quest, 1),
+      doesSnapshotGroveEventAdvanceQuestForTest(event as any, quest, 1),
       true
     );
   });
@@ -137,11 +137,11 @@ describe("Snapshot Grove quest runtime validation v132", () => {
     };
 
     assert.deepEqual(
-      validateSnapshotGroveQuestEventContextV132(event as any, quest, 1),
+      validateSnapshotGroveQuestEventContext(event as any, quest, 1),
       { ok: false, reason: "quest_id_mismatch" }
     );
     assert.equal(
-      doesSnapshotGroveEventAdvanceQuestForTestV132(event as any, quest, 1),
+      doesSnapshotGroveEventAdvanceQuestForTest(event as any, quest, 1),
       false
     );
   });
@@ -157,11 +157,11 @@ describe("Snapshot Grove quest runtime validation v132", () => {
     };
 
     assert.deepEqual(
-      validateSnapshotGroveQuestEventContextV132(event as any, quest, 1),
+      validateSnapshotGroveQuestEventContext(event as any, quest, 1),
       { ok: false, reason: "objective_index_mismatch" }
     );
     assert.equal(
-      doesSnapshotGroveEventAdvanceQuestForTestV132(event as any, quest, 1),
+      doesSnapshotGroveEventAdvanceQuestForTest(event as any, quest, 1),
       false
     );
   });
@@ -177,11 +177,11 @@ describe("Snapshot Grove quest runtime validation v132", () => {
     };
 
     assert.deepEqual(
-      validateSnapshotGroveQuestEventContextV132(event as any, quest, 1),
+      validateSnapshotGroveQuestEventContext(event as any, quest, 1),
       { ok: false, reason: "marker_id_mismatch" }
     );
     assert.equal(
-      doesSnapshotGroveEventAdvanceQuestForTestV132(event as any, quest, 1),
+      doesSnapshotGroveEventAdvanceQuestForTest(event as any, quest, 1),
       false
     );
   });
@@ -190,7 +190,7 @@ describe("Snapshot Grove quest runtime validation v132", () => {
     const quest = questById("color_that_still_points_home");
 
     assert.equal(
-      doesSnapshotGroveEventAdvanceQuestForTestV132(
+      doesSnapshotGroveEventAdvanceQuestForTest(
         { kind: "destroy" } as any,
         quest,
         1
@@ -203,7 +203,7 @@ describe("Snapshot Grove quest runtime validation v132", () => {
     const quest = questById("road_ready_not_fancy");
 
     assert.equal(
-      doesSnapshotGroveEventAdvanceQuestForTestV132(
+      doesSnapshotGroveEventAdvanceQuestForTest(
         { kind: "open_tab", tab: "map" } as any,
         quest,
         0
@@ -211,7 +211,7 @@ describe("Snapshot Grove quest runtime validation v132", () => {
       false
     );
     assert.equal(
-      doesSnapshotGroveEventAdvanceQuestForTestV132(
+      doesSnapshotGroveEventAdvanceQuestForTest(
         { kind: "open_tab", tab: "inventory" } as any,
         quest,
         0
@@ -225,11 +225,11 @@ describe("Snapshot Grove quest runtime validation v132", () => {
     const event = { kind: "inventory_change" };
 
     assert.equal(
-      doesSnapshotGroveEventAdvanceQuestForTestV132(event as any, quest, 1),
+      doesSnapshotGroveEventAdvanceQuestForTest(event as any, quest, 1),
       true
     );
     assert.equal(
-      doesSnapshotGroveEventAdvanceQuestForTestV132(event as any, quest, 2),
+      doesSnapshotGroveEventAdvanceQuestForTest(event as any, quest, 2),
       true
     );
   });
@@ -300,7 +300,7 @@ describe("Snapshot Grove quest runtime validation v132", () => {
     for (const step of steps) {
       const event =
         "object" in step
-          ? snapshotGroveQuestEventFromWorldObjectInteractionForTestV1(
+          ? snapshotGroveQuestEventFromWorldObjectInteractionForTest(
               step.object!,
               quest,
               step.index
@@ -308,7 +308,7 @@ describe("Snapshot Grove quest runtime validation v132", () => {
           : step.event;
       assert.ok(event, `Expected Luis step ${step.index} to produce an event`);
       assert.equal(
-        doesSnapshotGroveEventAdvanceQuestForTestV132(
+        doesSnapshotGroveEventAdvanceQuestForTest(
           event as any,
           quest,
           step.index
@@ -389,7 +389,7 @@ describe("Snapshot Grove quest runtime validation v132", () => {
     for (const step of steps) {
       const event =
         "object" in step
-          ? snapshotGroveQuestEventFromWorldObjectInteractionForTestV1(
+          ? snapshotGroveQuestEventFromWorldObjectInteractionForTest(
               step.object!,
               quest,
               step.index
@@ -397,7 +397,7 @@ describe("Snapshot Grove quest runtime validation v132", () => {
           : step.event;
       assert.ok(event, `Expected Nia step ${step.index} to produce an event`);
       assert.equal(
-        doesSnapshotGroveEventAdvanceQuestForTestV132(
+        doesSnapshotGroveEventAdvanceQuestForTest(
           event as any,
           quest,
           step.index
@@ -413,7 +413,7 @@ describe("Snapshot Grove quest runtime validation v132", () => {
     const nia = questById("guilds_are_promises");
 
     assert.equal(
-      snapshotGroveQuestEventFromWorldObjectInteractionForTestV1(
+      snapshotGroveQuestEventFromWorldObjectInteractionForTest(
         {
           label: "Practice Land Ledger",
           kind: "read",
@@ -425,7 +425,7 @@ describe("Snapshot Grove quest runtime validation v132", () => {
       undefined
     );
     assert.equal(
-      snapshotGroveQuestEventFromWorldObjectInteractionForTestV1(
+      snapshotGroveQuestEventFromWorldObjectInteractionForTest(
         {
           label: "Guild Project Table",
           kind: "use",
@@ -454,7 +454,7 @@ describe("Snapshot Grove quest runtime validation v132", () => {
     );
 
     for (const { quest, objectiveIndex, trigger, marker } of cases) {
-      const selected = selectNearestHarthmereWorldObjectInspectableV1({
+      const selected = selectNearestHarthmereWorldObjectInspectable({
         playerPosition: [
           marker.position[0] - 1,
           marker.position[1],
@@ -474,7 +474,7 @@ describe("Snapshot Grove quest runtime validation v132", () => {
         `${quest.id}[${objectiveIndex}] should show a world-object F prompt for ${marker.label}`
       );
 
-      const event = snapshotGroveQuestEventFromWorldObjectInteractionForTestV1(
+      const event = snapshotGroveQuestEventFromWorldObjectInteractionForTest(
         {
           label: marker.label,
           kind: selected!.interaction.kind,
@@ -488,7 +488,7 @@ describe("Snapshot Grove quest runtime validation v132", () => {
         `${quest.id}[${objectiveIndex}] ${trigger} should produce a quest event from F`
       );
       assert.equal(
-        doesSnapshotGroveEventAdvanceQuestForTestV132(
+        doesSnapshotGroveEventAdvanceQuestForTest(
           event as any,
           quest,
           objectiveIndex
@@ -515,8 +515,8 @@ describe("Snapshot Grove quest runtime validation v132", () => {
           item,
           `${quest.id}[${objectiveIndex}] should map ${marker.label} to an inventory item`
         );
-        const before = harthmereInventoryCountByItemIdV141(item.itemId);
-        const granted = grantSnapshotGroveWorldObjectPickupItemForTestV1(
+        const before = harthmereInventoryCountByItemId(item.itemId);
+        const granted = grantSnapshotGroveWorldObjectPickupItemForTest(
           quest,
           objectiveIndex,
           trigger
@@ -527,7 +527,7 @@ describe("Snapshot Grove quest runtime validation v132", () => {
         );
         assert.equal(granted!.itemId, item.itemId);
         assert.equal(
-          harthmereInventoryCountByItemIdV141(item.itemId),
+          harthmereInventoryCountByItemId(item.itemId),
           before + item.quantity,
           `${quest.id}[${objectiveIndex}] should put ${item.itemId} into inventory`
         );

@@ -6,8 +6,8 @@ export type HarthmereBiomesAuthSession = {
   createdAtMs?: number;
 };
 
-const STORAGE_KEY = "harthmere.biomesAuth.v1";
-const GLOBAL_KEY = "__HARTHMERE_BIOMES_AUTH_SESSION_V1";
+const STORAGE_KEY = "harthmere.biomesAuth";
+const GLOBAL_KEY = "__HARTHMERE_BIOMES_AUTH_SESSION";
 
 function browserWindow() {
   return typeof window === "undefined" ? undefined : (window as any);

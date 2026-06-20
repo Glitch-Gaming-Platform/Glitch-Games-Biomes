@@ -1,23 +1,23 @@
 import assert from "assert";
 
 import { BikkieIds } from "@/shared/bikkie/ids";
-import { HARTHMERE_BUSINESS_CUSTOMER_NPCS_V1 } from "@/shared/harthmere/business_customer_simulator_v1";
+import { HARTHMERE_BUSINESS_CUSTOMER_NPCS } from "@/shared/harthmere/business_customer_simulator";
 import {
-  harthmereBusinessCustomerFaceSeedV1,
-  harthmereBusinessCustomerPlayerMeshAvatarV1,
-} from "../businessMiniGameFacesV1";
+  harthmereBusinessCustomerFaceSeed,
+  harthmereBusinessCustomerPlayerMeshAvatar,
+} from "../businessMiniGameFaces";
 
 describe("business mini-game customer faces", () => {
   it("uses the stable customer identity instead of per-ticket randomness", () => {
-    const first = harthmereBusinessCustomerFaceSeedV1({
+    const first = harthmereBusinessCustomerFaceSeed({
       npcId: "customer_wen_auster",
       displayName: "Wen Auster",
     });
-    const second = harthmereBusinessCustomerFaceSeedV1({
+    const second = harthmereBusinessCustomerFaceSeed({
       npcId: "customer_wen_auster",
       displayName: "Wen Auster",
     });
-    const other = harthmereBusinessCustomerFaceSeedV1({
+    const other = harthmereBusinessCustomerFaceSeed({
       npcId: "customer_pella_snow",
       displayName: "Pella Snow",
     });
@@ -27,17 +27,17 @@ describe("business mini-game customer faces", () => {
   });
 
   it("constructs mini-game customer portraits as player mesh avatar inputs", () => {
-    const customer = HARTHMERE_BUSINESS_CUSTOMER_NPCS_V1.find(
+    const customer = HARTHMERE_BUSINESS_CUSTOMER_NPCS.find(
       (npc) => npc.npcId === "customer_wen_auster"
     );
     assert.ok(customer);
 
-    const avatar = harthmereBusinessCustomerPlayerMeshAvatarV1({
+    const avatar = harthmereBusinessCustomerPlayerMeshAvatar({
       npcId: customer.npcId,
       displayName: customer.displayName,
       appearance: customer.appearance,
     });
-    const second = harthmereBusinessCustomerPlayerMeshAvatarV1({
+    const second = harthmereBusinessCustomerPlayerMeshAvatar({
       npcId: customer.npcId,
       displayName: customer.displayName,
       appearance: customer.appearance,

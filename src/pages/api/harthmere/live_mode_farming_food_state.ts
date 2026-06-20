@@ -1,12 +1,12 @@
 import { connectToRedis } from "@/server/shared/redis/connection";
 import { biomesApiHandler } from "@/server/web/util/api_middleware";
-import { readHarthmereRedisStringsV1 } from "@/server/harthmere/live_mode_state_read_helpers";
-import { resolveHarthmereLiveModeActorIdV1 } from "@/server/harthmere/live_mode_actor_resolution_v1";
+import { readHarthmereRedisStrings } from "@/server/harthmere/live_mode_state_read_helpers";
+import { resolveHarthmereLiveModeActorId } from "@/server/harthmere/live_mode_actor_resolution";
 import {
-  createHarthmereLiveModeFarmingFoodClientSnapshotV1,
-  harthmereLiveModePlayerStateKeyV1,
-  parseHarthmereLiveModeBackendStateV1,
-} from "@/shared/harthmere/live_mode_backend_v1";
+  createHarthmereLiveModeFarmingFoodClientSnapshot,
+  harthmereLiveModePlayerStateKey,
+  parseHarthmereLiveModeBackendState,
+} from "@/shared/harthmere/live_mode_backend";
 import { z } from "zod";
 
 const zJsonRecord = z.record(z.unknown());
@@ -18,13 +18,13 @@ export const zHarthmereLiveModeFarmingFoodStateResponse = z.object({
 
 const globalForHarthmereLiveModeFarmingFoodState =
   globalThis as typeof globalThis & {
-    __harthmereLiveModeFarmingFoodStateRedisV1?: ReturnType<
+    __harthmereLiveModeFarmingFoodStateRedis?: ReturnType<
       typeof connectToRedis
     >;
   };
 
-function liveModeFarmingFoodStateRedisV1() {
-  return (globalForHarthmereLiveModeFarmingFoodState.__harthmereLiveModeFarmingFoodStateRedisV1 ??=
+function liveModeFarmingFoodStateRedis() {
+  return (globalForHarthmereLiveModeFarmingFoodState.__harthmereLiveModeFarmingFoodStateRedis ??=
     connectToRedis("firehose"));
 }
 
@@ -38,17 +38,17 @@ export default biomesApiHandler(
     response: zHarthmereLiveModeFarmingFoodStateResponse,
   },
   async ({ auth, unsafeRequest }) => {
-    const redis = await liveModeFarmingFoodStateRedisV1();
-    const actorId = await resolveHarthmereLiveModeActorIdV1(
+    const redis = await liveModeFarmingFoodStateRedis();
+    const actorId = await resolveHarthmereLiveModeActorId(
       redis,
       { auth, unsafeRequest },
       "anonymous:farming-food-reader"
     );
-    const [rawState] = await readHarthmereRedisStringsV1(redis.primary, [
-      harthmereLiveModePlayerStateKeyV1(actorId),
+    const [rawState] = await readHarthmereRedisStrings(redis.primary, [
+      harthmereLiveModePlayerStateKey(actorId),
     ]);
     const nowMs = Date.now();
-    const state = parseHarthmereLiveModeBackendStateV1(
+    const state = parseHarthmereLiveModeBackendState(
       rawState,
       actorId,
       nowMs
@@ -57,7 +57,7 @@ export default biomesApiHandler(
     return {
       ok: true,
       farmingFoodState:
-        createHarthmereLiveModeFarmingFoodClientSnapshotV1(state),
+        createHarthmereLiveModeFarmingFoodClientSnapshot(state),
     };
   }
 );

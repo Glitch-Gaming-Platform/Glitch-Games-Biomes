@@ -1,11 +1,11 @@
-import { installSnapshotLiveNpcLoreDebugV79 } from "@/client/components/challenges/LocalDevSnapshotLiveNpcLoreRuntimeV79";
+import { installSnapshotLiveNpcLoreDebug } from "@/client/components/challenges/LocalDevSnapshotLiveNpcLoreRuntime";
 import { HarthmereServerAuthorityPanel } from "@/client/components/challenges/LocalDevHarthmereServerAuthorityContracts";
 import { HarthmereCrimeLawPanel } from "@/client/components/challenges/LocalDevHarthmereCrimeLawSystem";
 import { HarthmereQuestGuidancePanel } from "@/client/components/challenges/LocalDevHarthmereQuestGuidanceSystem";
 import { HarthmereDialogueSafetyPanel } from "@/client/components/challenges/LocalDevHarthmereDialogueSafetySystem";
 import { HarthmereInventoryGuidancePanel } from "@/client/components/challenges/LocalDevHarthmereInventoryGuidance";
 import { HarthmereMountPetCollectionPanel } from "@/client/components/challenges/LocalDevHarthmereMountPetCollections";
-// harthmere-no-spark-basic-hud-v11
+// harthmere-no-spark-basic-hud
 import { HarthmereBuildingMenuPanel } from "@/client/components/challenges/LocalDevHarthmereBuildingSystem";
 import {
   HARTHMERE_COMBAT_EFFECT_EVENT,
@@ -16,7 +16,7 @@ import {
   useHarthmereDrowningDamageBridge,
   useHarthmereFallDamageBridge,
   useHarthmereForwardArcRuntime,
-  useHarthmerePvpIncomingDamageBridgeV1,
+  useHarthmerePvpIncomingDamageBridge,
   useHarthmereRealtimeCombatAI,
 } from "@/client/components/challenges/LocalDevHarthmereCombat";
 import { HarthmereClassSkillMenuPanel } from "@/client/components/challenges/LocalDevHarthmereClassSkillSystem";
@@ -24,7 +24,7 @@ import {
   HarthmereDeathHUD,
   HarthmereDeathMenuPanel,
   HarthmereDeathRuntimeController,
-  HarthmereDeathScreenOverlayV139,
+  HarthmereDeathScreenOverlay,
   useHarthmereDeathState,
 } from "@/client/components/challenges/LocalDevHarthmereDeathSystem";
 import {
@@ -39,8 +39,8 @@ import { HarthmereTradeAuctionMenuPanel } from "@/client/components/challenges/L
 import { HarthmereStorageMailRecoveryMenuPanel } from "@/client/components/challenges/LocalDevHarthmereStorageMailRecoverySystem";
 import { HarthmereObjectContainerPanel } from "@/client/components/challenges/HarthmereObjectContainerPanel";
 import { HarthmereCookingStationPanel } from "@/client/components/harthmere_cooking/HarthmereCookingStationPanel";
-import { HarthmereGatheringNodeWorldInteractionV1 } from "@/client/components/challenges/HarthmereGatheringNodeWorldInteractionV1";
-import { HarthmereLootDropWorldInteractionV1 } from "@/client/components/challenges/HarthmereLootDropWorldInteractionV1";
+import { HarthmereGatheringNodeWorldInteraction } from "@/client/components/challenges/HarthmereGatheringNodeWorldInteraction";
+import { HarthmereLootDropWorldInteraction } from "@/client/components/challenges/HarthmereLootDropWorldInteraction";
 import {
   HARTHMERE_INVENTORY_EVENT,
   HarthmereInventoryMenuPanel,
@@ -53,39 +53,39 @@ import {
 import { HarthmereLevelingMenuPanel } from "@/client/components/challenges/LocalDevHarthmereLevelingSystem";
 import { HarthmereMissionJournalPanel } from "@/client/components/challenges/LocalDevHarthmereMissionSystem";
 import {
-  SnapshotMissionJournalPanelV71,
-  SnapshotMissionMapHUDV71,
-  SnapshotMissionRuntimeControllerV71,
+  SnapshotMissionJournalPanel,
+  SnapshotMissionMapHUD,
+  SnapshotMissionRuntimeController,
 } from "@/client/components/challenges/LocalDevSnapshotMissionBridge";
 import {
-  SnapshotCombatJournalPanelV74,
-  SnapshotCombatMapHUDV74,
-  SnapshotCombatRuntimeControllerV74,
+  SnapshotCombatJournalPanel,
+  SnapshotCombatMapHUD,
+  SnapshotCombatRuntimeController,
 } from "@/client/components/challenges/LocalDevSnapshotCombatRuntime";
 import {
-  openSnapshotGroveTutorChatPanelV109,
-  SnapshotGroveBibleRuntimeControllerV75,
-  SnapshotGroveJournalPanelV75,
-  SnapshotGroveMapHUDV75,
-  SnapshotGroveTutorChatPanelV109,
+  openSnapshotGroveTutorChatPanel,
+  SnapshotGroveBibleRuntimeController,
+  SnapshotGroveJournalPanel,
+  SnapshotGroveMapHUD,
+  SnapshotGroveTutorChatPanel,
 } from "@/client/components/challenges/LocalDevSnapshotGroveBibleRuntime";
 import {
-  SnapshotCompletePortRuntimeControllerV76,
-  SnapshotGroundingAuditPanelV76,
-  SnapshotMissionAuditPanelV76,
-  SnapshotPortStatusPanelV76,
-} from "@/client/components/challenges/LocalDevSnapshotCompletePortV76";
+  SnapshotCompletePortRuntimeController,
+  SnapshotGroundingAuditPanel,
+  SnapshotMissionAuditPanel,
+  SnapshotPortStatusPanel,
+} from "@/client/components/challenges/LocalDevSnapshotCompletePort";
 import {
-  SnapshotProductionPortFactsV77,
-  SnapshotProductionPortRuntimeControllerV77,
-  SnapshotProductionPortStatusPanelV77,
-} from "@/client/components/challenges/SnapshotProductionPortV77";
+  SnapshotProductionPortFacts,
+  SnapshotProductionPortRuntimeController,
+  SnapshotProductionPortStatusPanel,
+} from "@/client/components/challenges/SnapshotProductionPort";
 import {
-  SnapshotLiveDiagnosticsRuntimeControllerV78,
-  SnapshotLiveGroundingAuditPanelV78,
-  SnapshotPerformanceWalkerPanelV78,
-  SnapshotRemainingPortAuditPanelV78,
-} from "@/client/components/challenges/SnapshotLiveDiagnosticsV78";
+  SnapshotLiveDiagnosticsRuntimeController,
+  SnapshotLiveGroundingAuditPanel,
+  SnapshotPerformanceWalkerPanel,
+  SnapshotRemainingPortAuditPanel,
+} from "@/client/components/challenges/SnapshotLiveDiagnostics";
 import {
   HARTHMERE_ATTACK_ANIMATION_EVENT,
   HarthmereMultiplayerCombatMenuPanel,
@@ -97,22 +97,22 @@ import {
 } from "@/client/components/challenges/LocalDevHarthmereMultiplayerCombatSystem";
 import {
   HarthmereQuestMapHUD,
-  HarthmereQuestNavAidControllerV141,
+  HarthmereQuestNavAidController,
 } from "@/client/components/challenges/LocalDevHarthmereQuests";
 import { HarthmereHomeConsoleLiveContainer } from "@/client/components/harthmere_home";
 import { HarthmereBusinessLiveContainer } from "@/client/components/harthmere_business";
-import { nearestHarthmereBusinessBoardPhysicalPromptV1 } from "@/client/game/renderers/local_dev/harthmere_business_board_marker_v1";
-import { HarthmereJobsBoardLiveContainerV141 } from "@/client/components/harthmere_jobs_board";
+import { nearestHarthmereBusinessBoardPhysicalPrompt } from "@/client/game/renderers/local_dev/harthmere_business_board_marker";
+import { HarthmereJobsBoardLiveContainer } from "@/client/components/harthmere_jobs_board";
 import {
-  HARTHMERE_JOBS_BOARD_PHYSICAL_BOARDS_V141,
-  nearestHarthmereJobsBoardPhysicalPromptV141,
-  normalizeHarthmereJobsBoardPointV146,
-  type HarthmereJobsBoardWorldContextV1,
+  HARTHMERE_JOBS_BOARD_PHYSICAL_BOARDS,
+  nearestHarthmereJobsBoardPhysicalPrompt,
+  normalizeHarthmereJobsBoardPoint,
+  type HarthmereJobsBoardWorldContext,
 } from "@/client/components/harthmere_jobs_board";
 import {
-  closeHarthmereJobsBoardPointerLockV145,
-  openHarthmereJobsBoardPointerLockV145,
-} from "@/client/components/harthmere_jobs_board/jobsBoardPointerLockV145";
+  closeHarthmereJobsBoardPointerLock,
+  openHarthmereJobsBoardPointerLock,
+} from "@/client/components/harthmere_jobs_board/jobsBoardPointerLock";
 import {
   HarthmereReputationMenuPanel,
   getHarthmereCombinedPublicTitle,
@@ -122,9 +122,9 @@ import { MiniMapHUD } from "@/client/components/MiniMapHUD";
 import {
   biomesUIVitalsCombatResourceDisplayForTest,
   biomesUIVitalsDisplayFromLiveStatusForTest,
-  useBiomesUIPlayerStatusStateV1,
+  useBiomesUIPlayerStatusState,
 } from "@/client/components/biomes_ui/adapters/playerStatusAdapter";
-import { useBiomesHUDVisibilitySnapshotV1 } from "@/client/components/biomes_ui/hudVisibilitySettings";
+import { useBiomesHUDVisibilitySnapshot } from "@/client/components/biomes_ui/hudVisibilitySettings";
 import { useClientContext } from "@/client/components/contexts/ClientContextReactContext";
 import { usePointerLockManager } from "@/client/components/contexts/PointerLockContext";
 import { setHarthmereLocalDevUserScope } from "@/client/components/challenges/LocalDevHarthmereUserScope";
@@ -141,18 +141,18 @@ import {
   BIOMES_HARTHMERE_TOWN_NAME,
 } from "@/shared/biomes/display_names";
 import {
-  dispatchHarthmereHudActionEventV96,
-  harthmereHudBindingForCodeV96,
-  type HarthmereHudActionV96,
-  type HarthmereHudSystemTabV96,
-} from "@/shared/harthmere/harthmere_hud_key_bindings_v96";
+  dispatchHarthmereHudActionEvent,
+  harthmereHudBindingForCode,
+  type HarthmereHudAction,
+  type HarthmereHudSystemTab,
+} from "@/shared/harthmere/harthmere_hud_key_bindings";
 import {
-  reduceHarthmereHudStateForActionV97,
-  type HarthmereHudPanelV97,
-} from "@/shared/harthmere/harthmere_hud_state_v97";
-export { reduceHarthmereHudStateForActionV97 } from "@/shared/harthmere/harthmere_hud_state_v97";
+  reduceHarthmereHudStateForAction,
+  type HarthmereHudPanel,
+} from "@/shared/harthmere/harthmere_hud_state";
+export { reduceHarthmereHudStateForAction } from "@/shared/harthmere/harthmere_hud_state";
 
-// HARTHMERE_POLISH_V1_HUD_REDESIGN — switched to the in-house medieval pack
+// HARTHMERE_POLISH_HUD_REDESIGN — switched to the in-house medieval pack
 // served from /public/hud. Falls back to quaternius placeholders if a file
 // is missing so an asset-load failure does not crash the HUD.
 const ICONS = {
@@ -218,8 +218,8 @@ type MenuTab =
   | "world"
   | "dialogue";
 
-const HARTHMERE_MENU_TABS_COVER_SHARED_BINDINGS_V96: Record<
-  HarthmereHudSystemTabV96,
+const HARTHMERE_MENU_TABS_COVER_SHARED_BINDINGS: Record<
+  HarthmereHudSystemTab,
   true
 > = {
   journal: true,
@@ -230,7 +230,7 @@ const HARTHMERE_MENU_TABS_COVER_SHARED_BINDINGS_V96: Record<
   world: true,
   dialogue: true,
 };
-void HARTHMERE_MENU_TABS_COVER_SHARED_BINDINGS_V96;
+void HARTHMERE_MENU_TABS_COVER_SHARED_BINDINGS;
 
 const MENU_TABS: { id: MenuTab; label: string }[] = [
   { id: "journal", label: "Journal" },
@@ -242,7 +242,7 @@ const MENU_TABS: { id: MenuTab; label: string }[] = [
   { id: "dialogue", label: "Dialogue Rules" },
 ];
 
-const SYSTEM_TAB_DESCRIPTIONS_V97: Record<MenuTab, string> = {
+const SYSTEM_TAB_DESCRIPTIONS: Record<MenuTab, string> = {
   journal:
     "Objective journal, Grove starter chain, Harthmere mission chain, and progress callouts.",
   inventory:
@@ -259,10 +259,10 @@ const SYSTEM_TAB_DESCRIPTIONS_V97: Record<MenuTab, string> = {
     "Conversation memory, tone rules, dialogue safeguards, and lore/codex references.",
 };
 
-// SYSTEM_TAB_HIGHLIGHTS_V107: in-world, production-ready bullets per panel.
+// SYSTEM_TAB_HIGHLIGHTS: in-world, production-ready bullets per panel.
 // These replace the older dev-facing "What matters" copy ("The active tab
 // stays visually highlighted", etc.) that read as debug notes.
-const SYSTEM_TAB_HIGHLIGHTS_V107: Record<MenuTab, string[]> = {
+const SYSTEM_TAB_HIGHLIGHTS: Record<MenuTab, string[]> = {
   journal: [
     "Your active lesson is at the top with its next stop.",
     "Each finished step gets a green check so the road feels traceable.",
@@ -300,8 +300,8 @@ const SYSTEM_TAB_HIGHLIGHTS_V107: Record<MenuTab, string[]> = {
   ],
 };
 
-const SYSTEM_ENTRY_ACTION_COPY_V97: Record<
-  HarthmereHudActionV96,
+const SYSTEM_ENTRY_ACTION_COPY: Record<
+  HarthmereHudAction,
   { eyebrow: string; heading: string; summary: string }
 > = {
   inventory: {
@@ -360,12 +360,12 @@ const SYSTEM_ENTRY_ACTION_COPY_V97: Record<
   },
 };
 
-// HARTHMERE_SYSTEMS_MENU_FOCUS_NAV_V111:
+// HARTHMERE_SYSTEMS_MENU_FOCUS_NAV:
 // The right-side black Systems menu is a keyboard-first onboarding surface.
 // Every interactive item inside every tab must be visibly focusable, arrow-key
 // navigable, and activatable with Return/Space. The handler is scoped to the
 // menu root so Enter still belongs to chat whenever focus is in chat UI.
-const SYSTEM_MENU_SELECTABLE_QUERY_V111 = [
+const SYSTEM_MENU_SELECTABLE_QUERY = [
   "button:not([disabled])",
   "a[href]",
   "input:not([disabled])",
@@ -375,7 +375,7 @@ const SYSTEM_MENU_SELECTABLE_QUERY_V111 = [
   "[tabindex]:not([tabindex='-1'])",
 ].join(",");
 
-function isTextEntryElementV111(target: EventTarget | null) {
+function isTextEntryElement(target: EventTarget | null) {
   if (!(target instanceof HTMLElement)) {
     return false;
   }
@@ -388,44 +388,44 @@ function isTextEntryElementV111(target: EventTarget | null) {
   );
 }
 
-function ensureHarthmereSystemsMenuFocusStylesV111() {
+function ensureHarthmereSystemsMenuFocusStyles() {
   if (typeof document === "undefined") return;
-  const id = "harthmere-systems-menu-focus-nav-v111";
+  const id = "harthmere-systems-menu-focus-nav";
   if (document.getElementById(id)) return;
   const style = document.createElement("style");
   style.id = id;
   style.textContent = `
-@keyframes harthmereSystemsMenuJumpV111 {
+@keyframes harthmereSystemsMenuJump {
   0%, 100% { transform: translateY(0) scale(1); }
   50% { transform: translateY(-2px) scale(1.018); }
 }
-[data-harthmere-system-menu-v111="true"] button,
-[data-harthmere-system-menu-v111="true"] a[href],
-[data-harthmere-system-menu-v111="true"] input,
-[data-harthmere-system-menu-v111="true"] select,
-[data-harthmere-system-menu-v111="true"] textarea,
-[data-harthmere-system-menu-v111="true"] [role="button"] {
+[data-harthmere-system-menu="true"] button,
+[data-harthmere-system-menu="true"] a[href],
+[data-harthmere-system-menu="true"] input,
+[data-harthmere-system-menu="true"] select,
+[data-harthmere-system-menu="true"] textarea,
+[data-harthmere-system-menu="true"] [role="button"] {
   scroll-margin: 5rem;
 }
-[data-harthmere-system-menu-v111="true"] button:focus-visible,
-[data-harthmere-system-menu-v111="true"] a[href]:focus-visible,
-[data-harthmere-system-menu-v111="true"] input:focus-visible,
-[data-harthmere-system-menu-v111="true"] select:focus-visible,
-[data-harthmere-system-menu-v111="true"] textarea:focus-visible,
-[data-harthmere-system-menu-v111="true"] [role="button"]:focus-visible,
-[data-harthmere-system-menu-v111="true"] [data-harthmere-system-nav-focused-v111="true"] {
+[data-harthmere-system-menu="true"] button:focus-visible,
+[data-harthmere-system-menu="true"] a[href]:focus-visible,
+[data-harthmere-system-menu="true"] input:focus-visible,
+[data-harthmere-system-menu="true"] select:focus-visible,
+[data-harthmere-system-menu="true"] textarea:focus-visible,
+[data-harthmere-system-menu="true"] [role="button"]:focus-visible,
+[data-harthmere-system-menu="true"] [data-harthmere-system-nav-focused="true"] {
   outline: 2px solid rgba(253, 224, 71, 0.98) !important;
   outline-offset: 2px !important;
   box-shadow: 0 0 0 3px rgba(15, 23, 42, 0.9), 0 0 18px rgba(253, 224, 71, 0.55) !important;
-  animation: harthmereSystemsMenuJumpV111 0.78s ease-in-out infinite;
+  animation: harthmereSystemsMenuJump 0.78s ease-in-out infinite;
   position: relative;
   z-index: 2;
 }
-[data-harthmere-system-menu-v111="true"] [data-tutor-panel-highlighted-v111="true"] {
+[data-harthmere-system-menu="true"] [data-tutor-panel-highlighted="true"] {
   border-color: rgba(253, 224, 71, 0.75) !important;
   box-shadow: 0 0 0 1px rgba(253, 224, 71, 0.22), 0 0 22px rgba(253, 224, 71, 0.35) !important;
 }
-[data-harthmere-system-menu-v111="true"] [data-harthmere-tutorial-item-highlight-v111="true"] {
+[data-harthmere-system-menu="true"] [data-harthmere-tutorial-item-highlight="true"] {
   border-color: rgba(190, 242, 100, 0.78) !important;
   background: rgba(101, 163, 13, 0.22) !important;
   box-shadow: 0 0 0 1px rgba(190, 242, 100, 0.22), 0 0 18px rgba(190, 242, 100, 0.35) !important;
@@ -434,35 +434,35 @@ function ensureHarthmereSystemsMenuFocusStylesV111() {
   document.head.appendChild(style);
 }
 
-function focusHarthmereSystemMenuElementV111(
+function focusHarthmereSystemMenuElement(
   root: HTMLElement,
   next: HTMLElement
 ) {
   root
     .querySelectorAll<HTMLElement>(
-      "[data-harthmere-system-nav-focused-v111='true']"
+      "[data-harthmere-system-nav-focused='true']"
     )
     .forEach((node) =>
-      node.removeAttribute("data-harthmere-system-nav-focused-v111")
+      node.removeAttribute("data-harthmere-system-nav-focused")
     );
-  next.setAttribute("data-harthmere-system-nav-focused-v111", "true");
+  next.setAttribute("data-harthmere-system-nav-focused", "true");
   next.focus({ preventScroll: true });
   next.scrollIntoView({ block: "nearest", inline: "nearest" });
 }
 
-// HARTHMERE_SYSTEMS_MENU_AUTO_FOCUS_V112:
+// HARTHMERE_SYSTEMS_MENU_AUTO_FOCUS:
 // Opening the black Systems menu should immediately land keyboard focus on the
 // useful game control. Prefer the active quest/item affordance, then the first
 // visible action. This keeps onboarding playable without needing a mouse.
-function findHarthmereSystemsMenuInitialFocusV112(root: HTMLElement) {
+function findHarthmereSystemsMenuInitialFocus(root: HTMLElement) {
   const preferredSelectors = [
-    "[data-harthmere-auto-focus-v112='true'] button:not([disabled])",
-    "[data-harthmere-auto-focus-v112='true'] [role='button']:not([aria-disabled='true'])",
-    "[data-harthmere-tutorial-item-highlight-v111='true'] button:not([disabled])",
-    "[data-harthmere-tutorial-item-highlight-v111='true'][tabindex]:not([tabindex='-1'])",
-    "[data-harthmere-primary-action-v112='true']:not([disabled])",
+    "[data-harthmere-auto-focus='true'] button:not([disabled])",
+    "[data-harthmere-auto-focus='true'] [role='button']:not([aria-disabled='true'])",
+    "[data-harthmere-tutorial-item-highlight='true'] button:not([disabled])",
+    "[data-harthmere-tutorial-item-highlight='true'][tabindex]:not([tabindex='-1'])",
+    "[data-harthmere-primary-action='true']:not([disabled])",
     "button[aria-selected='true']",
-    SYSTEM_MENU_SELECTABLE_QUERY_V111,
+    SYSTEM_MENU_SELECTABLE_QUERY,
   ];
   for (const selector of preferredSelectors) {
     const node = Array.from(root.querySelectorAll<HTMLElement>(selector)).find(
@@ -478,8 +478,8 @@ function findHarthmereSystemsMenuInitialFocusV112(root: HTMLElement) {
   return undefined;
 }
 
-// harthmere-body-animation-weapon-sync-v5
-type HarthmereBodyAnimationGestureDetailV5 = {
+// harthmere-body-animation-weapon-sync
+type HarthmereBodyAnimationGestureDetail = {
   attack?: string;
   at?: number;
   windupMs?: number;
@@ -490,11 +490,11 @@ type HarthmereBodyAnimationGestureDetailV5 = {
   weaponVisual?: boolean;
 };
 
-const HARTHMERE_BODY_ANIMATION_GESTURE_BRIDGE_V5 =
-  "harthmere-body-animation-gesture-bridge-v5";
+const HARTHMERE_BODY_ANIMATION_GESTURE_BRIDGE =
+  "harthmere-body-animation-gesture-bridge";
 
-function harthmereBodyAttackTimingFromWeaponEventV5(
-  detail: HarthmereBodyAnimationGestureDetailV5 | undefined,
+function harthmereBodyAttackTimingFromWeaponEvent(
+  detail: HarthmereBodyAnimationGestureDetail | undefined,
   attack: "basic" | "heavy"
 ) {
   const defaults =
@@ -512,7 +512,7 @@ function harthmereBodyAttackTimingFromWeaponEventV5(
   };
 }
 
-function recordHarthmereBodyAnimationSyncDebugV5(
+function recordHarthmereBodyAnimationSyncDebug(
   payload: Record<string, unknown>
 ) {
   if (typeof window === "undefined") {
@@ -524,7 +524,7 @@ function recordHarthmereBodyAnimationSyncDebugV5(
   win.__harthmereBodyAnimationSyncDebug = [
     {
       at: Date.now(),
-      bridge: HARTHMERE_BODY_ANIMATION_GESTURE_BRIDGE_V5,
+      bridge: HARTHMERE_BODY_ANIMATION_GESTURE_BRIDGE,
       upperBodyOnly: true,
       lowerBodyLocomotionPreserved: true,
       ...payload,
@@ -544,7 +544,7 @@ function useHarthmereLocalPlayerAttackGestureBridge() {
 
     const handler = (event: Event) => {
       const detail = (
-        event as CustomEvent<HarthmereBodyAnimationGestureDetailV5>
+        event as CustomEvent<HarthmereBodyAnimationGestureDetail>
       ).detail;
       const attack = detail?.attack;
       if (attack !== "basic" && attack !== "heavy") {
@@ -560,7 +560,7 @@ function useHarthmereLocalPlayerAttackGestureBridge() {
           attack === "heavy"
             ? "HarthmereBodyWeaponHeavy_Aligned_30"
             : "HarthmereBodyWeaponBasic_Aligned_30";
-        const bodyTiming = harthmereBodyAttackTimingFromWeaponEventV5(
+        const bodyTiming = harthmereBodyAttackTimingFromWeaponEvent(
           detail,
           attack
         );
@@ -585,7 +585,7 @@ function useHarthmereLocalPlayerAttackGestureBridge() {
           duration,
         };
         localPlayer.player.eagerEmote(events, resources, emoteType);
-        recordHarthmereBodyAnimationSyncDebugV5({
+        recordHarthmereBodyAnimationSyncDebug({
           attack,
           emoteType,
           desiredFileAnimationName,
@@ -706,7 +706,7 @@ function useHarthmerePlayerSwordVisualBridge() {
     // idempotent, so it is safe when React remounts during development.
     ensureHarthmereStarterSwordGranted();
     // NOTE: repair/cleanup tools are NOT granted for free. The player must buy
-    // them from the business that sells them (see harthmere_business_tool_shop_v151);
+    // them from the business that sells them (see harthmere_business_tool_shop);
     // a job that needs a tool the player lacks redirects them there on the map.
     emitHarthmerePlayerSwordVisual({ action: "grant", drawn: false, itemId });
   }, []);
@@ -742,8 +742,8 @@ function useHarthmereLocalPlayerWearableMeshBridge() {
   }, [resources, userId]);
 }
 
-// harthmere-full-animation-runtime-v6
-type HarthmereFullAnimationFamilyV6 =
+// harthmere-full-animation-runtime
+type HarthmereFullAnimationFamily =
   | "creature"
   | "mount"
   | "ranged"
@@ -758,8 +758,8 @@ type HarthmereFullAnimationFamilyV6 =
   | "deathRespawn"
   | "boss"
   | "screenshot";
-type HarthmereFullAnimationRequestV6 = {
-  family?: HarthmereFullAnimationFamilyV6;
+type HarthmereFullAnimationRequest = {
+  family?: HarthmereFullAnimationFamily;
   action?: string;
   phase?: string;
   actorId?: string | number;
@@ -770,13 +770,13 @@ type HarthmereFullAnimationRequestV6 = {
   recoveryMs?: number;
   screenshotLabel?: string;
 };
-const HARTHMERE_FULL_ANIMATION_RUNTIME_BRIDGE_VERSION_V6 =
-  "harthmere-full-animation-runtime-bridge-v6";
-const HARTHMERE_FULL_ANIMATION_REQUEST_EVENT_V6 =
-  "biomes:harthmere-animation-request-v6";
-const HARTHMERE_FULL_ANIMATION_DEBUG_EVENT_V6 =
-  "biomes:harthmere-animation-debug-v6";
-const HARTHMERE_FULL_ANIMATION_FAMILIES_V6: HarthmereFullAnimationFamilyV6[] = [
+const HARTHMERE_FULL_ANIMATION_RUNTIME_BRIDGE_VERSION =
+  "harthmere-full-animation-runtime-bridge";
+const HARTHMERE_FULL_ANIMATION_REQUEST_EVENT =
+  "biomes:harthmere-animation-request";
+const HARTHMERE_FULL_ANIMATION_DEBUG_EVENT =
+  "biomes:harthmere-animation-debug";
+const HARTHMERE_FULL_ANIMATION_FAMILIES: HarthmereFullAnimationFamily[] = [
   "creature",
   "mount",
   "ranged",
@@ -792,8 +792,8 @@ const HARTHMERE_FULL_ANIMATION_FAMILIES_V6: HarthmereFullAnimationFamilyV6[] = [
   "boss",
   "screenshot",
 ];
-function harthmereAnimationDefaultTimingV6(
-  family: HarthmereFullAnimationFamilyV6
+function harthmereAnimationDefaultTiming(
+  family: HarthmereFullAnimationFamily
 ) {
   switch (family) {
     case "ranged":
@@ -818,26 +818,26 @@ function harthmereAnimationDefaultTimingV6(
       return { windupMs: 120, impactMs: 240, recoveryMs: 360 };
   }
 }
-function useHarthmereComprehensiveAnimationRuntimeBridgeV6() {
+function useHarthmereComprehensiveAnimationRuntimeBridge() {
   useEffect(() => {
     if (typeof window === "undefined") return;
     const win = window as typeof window & {
-      __harthmereAnimationRuntimeV6?: {
+      __harthmereAnimationRuntime?: {
         version: string;
-        families: HarthmereFullAnimationFamilyV6[];
+        families: HarthmereFullAnimationFamily[];
         log: unknown[];
-        record: (request: HarthmereFullAnimationRequestV6) => unknown;
-        request: (request: HarthmereFullAnimationRequestV6) => unknown;
+        record: (request: HarthmereFullAnimationRequest) => unknown;
+        request: (request: HarthmereFullAnimationRequest) => unknown;
         snapshot: () => unknown;
       };
-      __harthmereFullAnimationRuntimeDebugV6?: unknown[];
+      __harthmereFullAnimationRuntimeDebug?: unknown[];
     };
-    const record = (request: HarthmereFullAnimationRequestV6) => {
+    const record = (request: HarthmereFullAnimationRequest) => {
       const family = request.family ?? "screenshot";
-      const timing = harthmereAnimationDefaultTimingV6(family);
+      const timing = harthmereAnimationDefaultTiming(family);
       const entry = {
         at: Date.now(),
-        version: HARTHMERE_FULL_ANIMATION_RUNTIME_BRIDGE_VERSION_V6,
+        version: HARTHMERE_FULL_ANIMATION_RUNTIME_BRIDGE_VERSION,
         family,
         action: request.action ?? "debug",
         phase: request.phase ?? "start",
@@ -866,42 +866,42 @@ function useHarthmereComprehensiveAnimationRuntimeBridgeV6() {
         targetId: request.targetId,
         itemId: request.itemId,
       };
-      win.__harthmereFullAnimationRuntimeDebugV6 = [
+      win.__harthmereFullAnimationRuntimeDebug = [
         entry,
-        ...(win.__harthmereFullAnimationRuntimeDebugV6 ?? []),
+        ...(win.__harthmereFullAnimationRuntimeDebug ?? []),
       ].slice(0, 200);
       win.dispatchEvent(
-        new CustomEvent(HARTHMERE_FULL_ANIMATION_DEBUG_EVENT_V6, {
+        new CustomEvent(HARTHMERE_FULL_ANIMATION_DEBUG_EVENT, {
           detail: entry,
         })
       );
       return entry;
     };
-    win.__harthmereAnimationRuntimeV6 = {
-      version: HARTHMERE_FULL_ANIMATION_RUNTIME_BRIDGE_VERSION_V6,
-      families: HARTHMERE_FULL_ANIMATION_FAMILIES_V6,
+    win.__harthmereAnimationRuntime = {
+      version: HARTHMERE_FULL_ANIMATION_RUNTIME_BRIDGE_VERSION,
+      families: HARTHMERE_FULL_ANIMATION_FAMILIES,
       get log() {
-        return win.__harthmereFullAnimationRuntimeDebugV6 ?? [];
+        return win.__harthmereFullAnimationRuntimeDebug ?? [];
       },
       record,
       request: (request) => {
         win.dispatchEvent(
-          new CustomEvent(HARTHMERE_FULL_ANIMATION_REQUEST_EVENT_V6, {
+          new CustomEvent(HARTHMERE_FULL_ANIMATION_REQUEST_EVENT, {
             detail: request,
           })
         );
         return record(request);
       },
       snapshot: () => ({
-        version: HARTHMERE_FULL_ANIMATION_RUNTIME_BRIDGE_VERSION_V6,
-        families: HARTHMERE_FULL_ANIMATION_FAMILIES_V6,
-        last: win.__harthmereFullAnimationRuntimeDebugV6?.[0],
-        count: win.__harthmereFullAnimationRuntimeDebugV6?.length ?? 0,
+        version: HARTHMERE_FULL_ANIMATION_RUNTIME_BRIDGE_VERSION,
+        families: HARTHMERE_FULL_ANIMATION_FAMILIES,
+        last: win.__harthmereFullAnimationRuntimeDebug?.[0],
+        count: win.__harthmereFullAnimationRuntimeDebug?.length ?? 0,
       }),
     };
     const onRequest = (event: Event) =>
       record(
-        (event as CustomEvent<HarthmereFullAnimationRequestV6>).detail ?? {}
+        (event as CustomEvent<HarthmereFullAnimationRequest>).detail ?? {}
       );
     const onWeapon = (event: Event) => {
       const detail =
@@ -925,7 +925,7 @@ function useHarthmereComprehensiveAnimationRuntimeBridgeV6() {
           itemId,
         });
     };
-    win.addEventListener(HARTHMERE_FULL_ANIMATION_REQUEST_EVENT_V6, onRequest);
+    win.addEventListener(HARTHMERE_FULL_ANIMATION_REQUEST_EVENT, onRequest);
     win.addEventListener("biomes:harthmere-player-sword-visual", onWeapon);
     record({
       family: "screenshot",
@@ -934,7 +934,7 @@ function useHarthmereComprehensiveAnimationRuntimeBridgeV6() {
     });
     return () => {
       win.removeEventListener(
-        HARTHMERE_FULL_ANIMATION_REQUEST_EVENT_V6,
+        HARTHMERE_FULL_ANIMATION_REQUEST_EVENT,
         onRequest
       );
       win.removeEventListener("biomes:harthmere-player-sword-visual", onWeapon);
@@ -1021,7 +1021,7 @@ function TouchButton({
   );
 }
 
-// HARTHMERE_POLISH_V1_HUD_REDESIGN — heart-pip row + framed mana + standing chips
+// HARTHMERE_POLISH_HUD_REDESIGN — heart-pip row + framed mana + standing chips
 function HeartRow({ hp, maxHp }: { hp: number; maxHp: number }) {
   // One pip per 10 HP up to 10 pips. Sub-10 HP shows a half pip.
   const totalPips = Math.max(1, Math.min(10, Math.ceil(maxHp / 10)));
@@ -1087,7 +1087,7 @@ function CompactStatusCluster() {
   const reputation = useHarthmereReputationState();
   const multiplayer = useHarthmereMultiplayerCombatState();
   const stamina = useHarthmereFoodStaminaState();
-  const liveStatus = useBiomesUIPlayerStatusStateV1();
+  const liveStatus = useBiomesUIPlayerStatusState();
   const deathScreenActive = [
     "downed",
     "dead",
@@ -1228,7 +1228,7 @@ function FightSideControls() {
     | { id: string; label: string; kind: string; targetOffset?: number }
     | undefined
   >(undefined);
-  const combatActorHud = useHarthmereCombatActorHudSnapshotsV96(90);
+  const combatActorHud = useHarthmereCombatActorHudSnapshots(90);
 
   useEffect(() => {
     if (!latestCombat?.id) {
@@ -1348,7 +1348,7 @@ function FightSideControls() {
             className="pointer-events-none fixed inset-0 z-40"
           >
             <style>{`
-            @keyframes harthmere-floating-combat-v96 {
+            @keyframes harthmere-floating-combat {
               0% { transform: translate(-50%, -120%) scale(0.82); opacity: 0; }
               18% { opacity: 1; }
               100% { transform: translate(-50%, -190%) scale(1.08); opacity: 0; }
@@ -1364,7 +1364,7 @@ function FightSideControls() {
                   combatActorHud[String(combatFloat.targetOffset)]?.screen?.y ??
                   0,
                 animation:
-                  "harthmere-floating-combat-v96 760ms ease-out forwards",
+                  "harthmere-floating-combat 760ms ease-out forwards",
               }}
             >
               {combatFloat.label}
@@ -1463,7 +1463,7 @@ function FightSideControls() {
   );
 }
 
-type HarthmereCombatActorHudSnapshotV96 = {
+type HarthmereCombatActorHudSnapshot = {
   offset?: number;
   targetId?: string;
   liveModeTargetId?: string;
@@ -1485,7 +1485,7 @@ type HarthmereCombatActorHudSnapshotV96 = {
   at?: number;
 };
 
-type HarthmereLiveEntityHealthHudSnapshotV1 = {
+type HarthmereLiveEntityHealthHudSnapshot = {
   entityId: string;
   hp: number;
   maxHp: number;
@@ -1495,9 +1495,9 @@ type HarthmereLiveEntityHealthHudSnapshotV1 = {
   showUntilMs: number;
 };
 
-function readHarthmereCombatActorHudSnapshotsV96(): Record<
+function readHarthmereCombatActorHudSnapshots(): Record<
   string,
-  HarthmereCombatActorHudSnapshotV96
+  HarthmereCombatActorHudSnapshot
 > {
   if (typeof window === "undefined") {
     return {};
@@ -1505,19 +1505,19 @@ function readHarthmereCombatActorHudSnapshotsV96(): Record<
   const win = window as typeof window & {
     __harthmereCombatActorPositions?: Record<
       string,
-      HarthmereCombatActorHudSnapshotV96
+      HarthmereCombatActorHudSnapshot
     >;
   };
   return win.__harthmereCombatActorPositions ?? {};
 }
 
-function useHarthmereCombatActorHudSnapshotsV96(intervalMs = 120) {
+function useHarthmereCombatActorHudSnapshots(intervalMs = 120) {
   const [snapshots, setSnapshots] = useState<
-    Record<string, HarthmereCombatActorHudSnapshotV96>
+    Record<string, HarthmereCombatActorHudSnapshot>
   >({});
   useEffect(() => {
     const refresh = () =>
-      setSnapshots(readHarthmereCombatActorHudSnapshotsV96());
+      setSnapshots(readHarthmereCombatActorHudSnapshots());
     refresh();
     const interval = window.setInterval(refresh, intervalMs);
     return () => window.clearInterval(interval);
@@ -1525,29 +1525,29 @@ function useHarthmereCombatActorHudSnapshotsV96(intervalMs = 120) {
   return snapshots;
 }
 
-function readHarthmereLiveEntityHealthHudSnapshotsV1(): Record<
+function readHarthmereLiveEntityHealthHudSnapshots(): Record<
   string,
-  HarthmereLiveEntityHealthHudSnapshotV1
+  HarthmereLiveEntityHealthHudSnapshot
 > {
   if (typeof window === "undefined") {
     return {};
   }
   const win = window as typeof window & {
-    __harthmereLiveEntityCombatHealthV1?: Record<
+    __harthmereLiveEntityCombatHealth?: Record<
       string,
-      HarthmereLiveEntityHealthHudSnapshotV1
+      HarthmereLiveEntityHealthHudSnapshot
     >;
   };
-  return win.__harthmereLiveEntityCombatHealthV1 ?? {};
+  return win.__harthmereLiveEntityCombatHealth ?? {};
 }
 
-function useHarthmereLiveEntityHealthHudSnapshotsV1(intervalMs = 120) {
+function useHarthmereLiveEntityHealthHudSnapshots(intervalMs = 120) {
   const [snapshots, setSnapshots] = useState<
-    Record<string, HarthmereLiveEntityHealthHudSnapshotV1>
+    Record<string, HarthmereLiveEntityHealthHudSnapshot>
   >({});
   useEffect(() => {
     const refresh = () =>
-      setSnapshots(readHarthmereLiveEntityHealthHudSnapshotsV1());
+      setSnapshots(readHarthmereLiveEntityHealthHudSnapshots());
     refresh();
     const interval = window.setInterval(refresh, intervalMs);
     return () => window.clearInterval(interval);
@@ -1558,8 +1558,8 @@ function useHarthmereLiveEntityHealthHudSnapshotsV1(intervalMs = 120) {
 function HarthmereEnemyHealthBarsHUD() {
   const combat = useHarthmereCombatState();
   const multiplayer = useHarthmereMultiplayerCombatState();
-  const actorHud = useHarthmereCombatActorHudSnapshotsV96(100);
-  const liveEntityHealth = useHarthmereLiveEntityHealthHudSnapshotsV1(100);
+  const actorHud = useHarthmereCombatActorHudSnapshots(100);
+  const liveEntityHealth = useHarthmereLiveEntityHealthHudSnapshots(100);
   const selectedOffset =
     multiplayer.currentTargetOffset ?? combat.selectedNpcOffset;
   const selectedActor =
@@ -1609,7 +1609,7 @@ function HarthmereEnemyHealthBarsHUD() {
       };
     })
     .filter((row) => row.show);
-  const actorsByLiveTargetId = new Map<string, HarthmereCombatActorHudSnapshotV96>();
+  const actorsByLiveTargetId = new Map<string, HarthmereCombatActorHudSnapshot>();
   for (const actor of Object.values(actorHud)) {
     const liveId = actor.liveModeTargetId ?? actor.targetId;
     if (liveId) {
@@ -1714,30 +1714,30 @@ function HarthmereEnemyHealthBarsHUD() {
 function UtilityActionBar({
   onAction,
 }: {
-  onAction: (action: HarthmereHudActionV96) => void;
+  onAction: (action: HarthmereHudAction) => void;
 }) {
-  // HARTHMERE_POLISH_V1_HUD_REDESIGN — medieval nav strip pinned to the
+  // HARTHMERE_POLISH_HUD_REDESIGN — medieval nav strip pinned to the
   // bottom-center. The "primary" group on the left routes to the three
   // most-used menus (Inventory, Crafting, Map). The "secondary" group on
   // the right is for journal/social/settings — items the player needs but
   // not every minute.
   //
-  // SNAPSHOT_GROVE_TUTOR_HIGHLIGHTS_V109:
+  // SNAPSHOT_GROVE_TUTOR_HIGHLIGHTS:
   // Each NavSlot looks at the active tutorial's highlight broadcast and
   // pulses + shows a bouncing down-arrow when the current step needs that
   // specific button. The new "Chat" slot opens the tutor chat practice
   // panel so the chat lesson actually has a visible target.
   //
-  // SNAPSHOT_GROVE_NAVSLOT_ARROW_KEYS_V109:
+  // SNAPSHOT_GROVE_NAVSLOT_ARROW_KEYS:
   // Once a NavSlot button has focus (via Tab or click), Left/Right arrow
   // keys move focus to the previous/next slot. This follows the WAI-ARIA
   // toolbar roving-tabindex pattern. We only intercept the arrow when the
   // event target is one of our NavSlot buttons, so player movement using
   // arrow keys outside the HUD bar is unaffected.
-  const tutorHighlights = useTutorHighlightedNavLabelsV109();
+  const tutorHighlights = useTutorHighlightedNavLabels();
   const barRef = React.useRef<HTMLDivElement | null>(null);
   React.useEffect(() => {
-    ensureSnapshotGroveTutorHighlightStylesV109();
+    ensureSnapshotGroveTutorHighlightStyles();
   }, []);
   const isHot = (label: string) => tutorHighlights.has(label);
   const onArrowKey = (e: React.KeyboardEvent<HTMLDivElement>) => {
@@ -1769,7 +1769,7 @@ function UtilityActionBar({
         className="gap-1.5 rounded-2xl border-amber-200/25 from-stone-950/95 to-stone-800/85 py-1.5 pointer-events-auto flex max-w-[calc(100vw-1rem)] items-end overflow-x-auto overscroll-contain border bg-gradient-to-t px-2.5 shadow-[0_8px_24px_rgba(0,0,0,0.55)] backdrop-blur-md md:gap-2"
         role="toolbar"
         aria-label="Game HUD action bar — use Left and Right arrow keys to switch between buttons"
-        data-snapshot-grove-nav-arrow-keys-v109="true"
+        data-snapshot-grove-nav-arrow-keys="true"
         style={{
           boxShadow:
             "0 8px 24px rgba(0,0,0,0.55), inset 0 0 0 1px rgba(255, 215, 130, 0.07)",
@@ -1803,12 +1803,12 @@ function UtilityActionBar({
           onClick={() => onAction("quests")}
           highlighted={isHot("Quests")}
         />
-        {/* HARTHMERE_JOBS_BOARD_PANEL_V141: opens the live Grove Jobs Board */}
+        {/* HARTHMERE_JOBS_BOARD_PANEL: opens the live Grove Jobs Board */}
         <NavSlot
           icon={ICONS.navChallenges}
           label="Jobs"
           hint="B"
-          onClick={openHarthmereJobsBoardPanelV141}
+          onClick={openHarthmereJobsBoardPanel}
           highlighted={isHot("Jobs")}
         />
         <div className="bg-amber-200/20 mx-1 hidden h-7 w-px self-center sm:block" />
@@ -1830,7 +1830,7 @@ function UtilityActionBar({
           icon={ICONS.navNotifications}
           label="Chat"
           hint="Enter"
-          onClick={() => openSnapshotGroveTutorChatPanelV109()}
+          onClick={() => openSnapshotGroveTutorChatPanel()}
           highlighted={isHot("Chat")}
         />
         <NavSlot
@@ -1867,8 +1867,8 @@ function UtilityActionBar({
   );
 }
 
-// HARTHMERE_POLISH_V1_HUD_REDESIGN — nav slot button used by UtilityActionBar.
-// SNAPSHOT_GROVE_TUTOR_HIGHLIGHTS_V109 — accepts a `highlighted` prop that
+// HARTHMERE_POLISH_HUD_REDESIGN — nav slot button used by UtilityActionBar.
+// SNAPSHOT_GROVE_TUTOR_HIGHLIGHTS — accepts a `highlighted` prop that
 // makes the button pulse and drops a bouncing arrow above it pointing down,
 // so an active tutorial step's required HUD click is unmistakable.
 function NavSlot({
@@ -1891,7 +1891,7 @@ function NavSlot({
   // this exact slot pressed. The animation is css-keyframed so it works even
   // when the Framer Motion bundle is loaded lazily.
   const hotClass =
-    "border-amber-300/95 ring-2 ring-amber-300/90 ring-offset-1 ring-offset-stone-900 [animation:snapshotGroveTutorPulseV109_1.05s_ease-in-out_infinite] shadow-[0_0_18px_rgba(252,211,77,0.65)]";
+    "border-amber-300/95 ring-2 ring-amber-300/90 ring-offset-1 ring-offset-stone-900 [animation:snapshotGroveTutorPulse_1.05s_ease-in-out_infinite] shadow-[0_0_18px_rgba(252,211,77,0.65)]";
   return (
     <button
       className={`${baseClass} ${highlighted ? hotClass : calmClass}`}
@@ -1909,7 +1909,7 @@ function NavSlot({
       {highlighted && (
         <span
           aria-hidden="true"
-          className="text-amber-200 pointer-events-none absolute -top-[1.55rem] left-1/2 -translate-x-1/2 drop-shadow-[0_0_6px_rgba(252,211,77,0.85)] [animation:snapshotGroveTutorArrowV109_0.85s_ease-in-out_infinite]"
+          className="text-amber-200 pointer-events-none absolute -top-[1.55rem] left-1/2 -translate-x-1/2 drop-shadow-[0_0_6px_rgba(252,211,77,0.85)] [animation:snapshotGroveTutorArrow_0.85s_ease-in-out_infinite]"
           style={{
             fontSize: "1.05rem",
             lineHeight: "1rem",
@@ -1935,35 +1935,35 @@ function NavSlot({
   );
 }
 
-// HARTHMERE_JOBS_BOARD_PANEL_V141:
+// HARTHMERE_JOBS_BOARD_PANEL:
 // Side-channel opener for the live Jobs Board container. NavSlot dispatches
 // this event; the unified HUD listens and flips `jobsBoardOpen` to true.
 // Routing it through a window event (rather than a callback) keeps NavSlot
 // free of jobs-board-specific props and lets external code — like an "Open
 // Jobs Board" prompt at the physical Grove board — open the panel without
 // holding a React ref.
-export const HARTHMERE_JOBS_BOARD_OPEN_EVENT_V141 =
-  "biomes:harthmere-jobs-board-open-v141";
+export const HARTHMERE_JOBS_BOARD_OPEN_EVENT =
+  "biomes:harthmere-jobs-board-open";
 
-export function openHarthmereJobsBoardPanelV141() {
+export function openHarthmereJobsBoardPanel() {
   if (typeof window === "undefined") return;
   try {
-    window.dispatchEvent(new CustomEvent(HARTHMERE_JOBS_BOARD_OPEN_EVENT_V141));
+    window.dispatchEvent(new CustomEvent(HARTHMERE_JOBS_BOARD_OPEN_EVENT));
   } catch {
     // Non-browser environments are no-op.
   }
 }
 
-// SNAPSHOT_GROVE_TUTOR_HIGHLIGHTS_V109:
+// SNAPSHOT_GROVE_TUTOR_HIGHLIGHTS:
 // Listens for the runtime's "which nav slot to highlight right now?"
 // broadcast. Returns a Set of NavSlot labels (e.g. "Bag", "Map", "Chat").
-// HARTHMERE_TUTOR_HUD_HIGHLIGHT_MERGE_V141:
+// HARTHMERE_TUTOR_HUD_HIGHLIGHT_MERGE:
 // The Harthmere quest runtime publishes a parallel channel of its own labels
 // so any non-Grove HUD/BiomesUI tutorial step (e.g. "you need an apple
 // basket — look in your Bag", "an active quest is pinned on your Map") can
 // pulse the right bottom-bar button. We merge both channels so neither one
 // clobbers the other.
-function useTutorHighlightedNavLabelsV109(): Set<string> {
+function useTutorHighlightedNavLabels(): Set<string> {
   const [groveLabels, setGroveLabels] = React.useState<Set<string>>(
     () => new Set()
   );
@@ -1981,20 +1981,20 @@ function useTutorHighlightedNavLabelsV109(): Set<string> {
       setHarthmereLabels(new Set(detail?.labels ?? []));
     };
     window.addEventListener(
-      "biomes:snapshot-grove-tutor-hud-highlights-v109",
+      "biomes:snapshot-grove-tutor-hud-highlights",
       groveHandler
     );
     window.addEventListener(
-      "biomes:harthmere-quest-tutor-hud-highlights-v141",
+      "biomes:harthmere-quest-tutor-hud-highlights",
       harthmereHandler
     );
     return () => {
       window.removeEventListener(
-        "biomes:snapshot-grove-tutor-hud-highlights-v109",
+        "biomes:snapshot-grove-tutor-hud-highlights",
         groveHandler
       );
       window.removeEventListener(
-        "biomes:harthmere-quest-tutor-hud-highlights-v141",
+        "biomes:harthmere-quest-tutor-hud-highlights",
         harthmereHandler
       );
     };
@@ -2007,16 +2007,16 @@ function useTutorHighlightedNavLabelsV109(): Set<string> {
   }, [groveLabels, harthmereLabels]);
 }
 
-// SNAPSHOT_GROVE_TUTOR_HIGHLIGHTS_V109 — keyframe styles for the pulse + arrow.
+// SNAPSHOT_GROVE_TUTOR_HIGHLIGHTS — keyframe styles for the pulse + arrow.
 // Injected once at module load via a stable element id.
-function ensureSnapshotGroveTutorHighlightStylesV109() {
+function ensureSnapshotGroveTutorHighlightStyles() {
   if (typeof document === "undefined") return;
-  const id = "snapshot-grove-tutor-highlight-styles-v109";
+  const id = "snapshot-grove-tutor-highlight-styles";
   if (document.getElementById(id)) return;
   const style = document.createElement("style");
   style.id = id;
   style.textContent = `
-@keyframes snapshotGroveTutorPulseV109 {
+@keyframes snapshotGroveTutorPulse {
   0%, 100% {
     box-shadow: 0 0 0 0 rgba(252, 211, 77, 0.85), 0 0 18px rgba(252, 211, 77, 0.55);
     transform: translateY(0px);
@@ -2026,7 +2026,7 @@ function ensureSnapshotGroveTutorHighlightStylesV109() {
     transform: translateY(-2px);
   }
 }
-@keyframes snapshotGroveTutorArrowV109 {
+@keyframes snapshotGroveTutorArrow {
   0%, 100% { transform: translate(-50%, 0); opacity: 0.95; }
   50% { transform: translate(-50%, 5px); opacity: 1; }
 }
@@ -2061,14 +2061,14 @@ function FloatingPanel({
   );
 }
 
-// HARTHMERE_JOBS_BOARD_PROXIMITY_GATE_V141:
+// HARTHMERE_JOBS_BOARD_PROXIMITY_GATE:
 // Reads the player's live world position (from /scene/local_player) and
 // passes it to the jobs board container as `worldContext.playerPosition`.
 // The container then refuses to render the jobs list unless the player is
 // actually inside a board's interaction radius. From the BiomesUI side this
 // means: pressing B (or clicking the Jobs NavSlot) from anywhere other than
 // a physical jobs board shows a wayfinding prompt instead of the jobs list.
-function HarthmereJobsBoardLiveContainerWithPlayerProximityV141({
+function HarthmereJobsBoardLiveContainerWithPlayerProximity({
   onClose,
 }: {
   onClose: () => void;
@@ -2076,11 +2076,11 @@ function HarthmereJobsBoardLiveContainerWithPlayerProximityV141({
   const { reactResources } = useClientContext();
   const localPlayer = reactResources.use("/scene/local_player") as any;
   const camera = reactResources.use("/scene/camera") as any;
-  const playerPosition = harthmereJobsBoardPlayerPositionV146(
+  const playerPosition = harthmereJobsBoardPlayerPosition(
     localPlayer,
     camera
   );
-  const worldContext: HarthmereJobsBoardWorldContextV1 | undefined = (() => {
+  const worldContext: HarthmereJobsBoardWorldContext | undefined = (() => {
     if (playerPosition) {
       return {
         playerPosition: {
@@ -2093,19 +2093,19 @@ function HarthmereJobsBoardLiveContainerWithPlayerProximityV141({
     return undefined;
   })();
   return (
-    <HarthmereJobsBoardLiveContainerV141
+    <HarthmereJobsBoardLiveContainer
       worldContext={worldContext}
       onClose={onClose}
     />
   );
 }
 
-// HARTHMERE_HOME_CONSOLE_WORLD_INTERFACE_V1:
+// HARTHMERE_HOME_CONSOLE_WORLD_INTERFACE:
 // Mirrors the physical jobs-board flow for player homes. The live container
 // receives only the current player position; it resolves the nearest owned
 // home_console marker from the server building snapshot before showing the
 // prompt or allowing the management panel to open.
-function HarthmereHomeConsoleWorldInterfaceV1({
+function HarthmereHomeConsoleWorldInterface({
   open,
   onOpen,
   onClose,
@@ -2117,7 +2117,7 @@ function HarthmereHomeConsoleWorldInterfaceV1({
   const { reactResources } = useClientContext();
   const localPlayer = reactResources.use("/scene/local_player") as any;
   const camera = reactResources.use("/scene/camera") as any;
-  const playerPosition = harthmereJobsBoardPlayerPositionV146(
+  const playerPosition = harthmereJobsBoardPlayerPosition(
     localPlayer,
     camera
   );
@@ -2139,7 +2139,7 @@ function HarthmereHomeConsoleWorldInterfaceV1({
   );
 }
 
-function HarthmereBusinessWorldInterfaceV1({
+function HarthmereBusinessWorldInterface({
   open,
   onOpen,
   onClose,
@@ -2154,7 +2154,7 @@ function HarthmereBusinessWorldInterfaceV1({
   const [selectedBusinessId, setSelectedBusinessId] = React.useState<
     string | undefined
   >();
-  const playerPosition = harthmereJobsBoardPlayerPositionV146(
+  const playerPosition = harthmereJobsBoardPlayerPosition(
     localPlayer,
     camera
   );
@@ -2172,7 +2172,7 @@ function HarthmereBusinessWorldInterfaceV1({
   const openFromPrompt = React.useCallback(
     (
       prompt: NonNullable<
-        ReturnType<typeof nearestHarthmereBusinessBoardPhysicalPromptV1>
+        ReturnType<typeof nearestHarthmereBusinessBoardPhysicalPrompt>
       >
     ) => {
       setSelectedBusinessId(prompt.businessId);
@@ -2186,7 +2186,7 @@ function HarthmereBusinessWorldInterfaceV1({
   }, [onClose]);
   return (
     <>
-      <HarthmereBusinessBoardWorldPromptV1 onOpen={openFromPrompt} />
+      <HarthmereBusinessBoardWorldPrompt onOpen={openFromPrompt} />
       <HarthmereBusinessLiveContainer
         open={open}
         onOpen={onOpen}
@@ -2207,26 +2207,26 @@ function HarthmereBusinessWorldInterfaceV1({
   );
 }
 
-function HarthmereBusinessBoardWorldPromptV1({
+function HarthmereBusinessBoardWorldPrompt({
   onOpen,
 }: {
   onOpen: (
     prompt: NonNullable<
-      ReturnType<typeof nearestHarthmereBusinessBoardPhysicalPromptV1>
+      ReturnType<typeof nearestHarthmereBusinessBoardPhysicalPrompt>
     >
   ) => void;
 }) {
   const { reactResources } = useClientContext();
   const localPlayer = reactResources.use("/scene/local_player") as any;
   const camera = reactResources.use("/scene/camera") as any;
-  const playerPosition = harthmereJobsBoardPlayerPositionV146(
+  const playerPosition = harthmereJobsBoardPlayerPosition(
     localPlayer,
     camera
   );
-  const cameraPosition = harthmereJobsBoardCameraPositionV146(camera);
-  const prompt = nearestHarthmereBusinessBoardPhysicalPromptV1(playerPosition);
+  const cameraPosition = harthmereJobsBoardCameraPosition(camera);
+  const prompt = nearestHarthmereBusinessBoardPhysicalPrompt(playerPosition);
   const projectedPrompt = prompt
-    ? harthmereJobsBoardPromptScreenProjectionV146(prompt.position, camera)
+    ? harthmereJobsBoardPromptScreenProjection(prompt.position, camera)
     : undefined;
 
   const openBusinessBoardFromPrompt = React.useCallback(() => {
@@ -2268,7 +2268,7 @@ function HarthmereBusinessBoardWorldPromptV1({
       if (
         event.defaultPrevented ||
         event.button !== 0 ||
-        harthmereJobsBoardEventFromEditableV146(event)
+        harthmereJobsBoardEventFromEditable(event)
       ) {
         return;
       }
@@ -2289,16 +2289,16 @@ function HarthmereBusinessBoardWorldPromptV1({
   useEffect(() => {
     if (typeof window === "undefined") return;
     const debug = {
-      version: "harthmere-business-board-click-v1",
+      version: "harthmere-business-board-click",
       playerPosition,
       cameraPosition,
       prompt,
       open: () => prompt && onOpen(prompt),
     };
-    (window as any).__harthmereBusinessBoardPromptDebugV1 = debug;
+    (window as any).__harthmereBusinessBoardPromptDebug = debug;
     return () => {
-      if ((window as any).__harthmereBusinessBoardPromptDebugV1 === debug) {
-        delete (window as any).__harthmereBusinessBoardPromptDebugV1;
+      if ((window as any).__harthmereBusinessBoardPromptDebug === debug) {
+        delete (window as any).__harthmereBusinessBoardPromptDebug;
       }
     };
   }, [cameraPosition, onOpen, playerPosition, prompt]);
@@ -2369,18 +2369,18 @@ function HarthmereBusinessBoardWorldPromptV1({
   );
 }
 
-function HarthmereJobsBoardWorldPromptV141({ onOpen }: { onOpen: () => void }) {
+function HarthmereJobsBoardWorldPrompt({ onOpen }: { onOpen: () => void }) {
   const { reactResources } = useClientContext();
   const localPlayer = reactResources.use("/scene/local_player") as any;
   const camera = reactResources.use("/scene/camera") as any;
-  const playerPosition = harthmereJobsBoardPlayerPositionV146(
+  const playerPosition = harthmereJobsBoardPlayerPosition(
     localPlayer,
     camera
   );
-  const cameraPosition = harthmereJobsBoardCameraPositionV146(camera);
-  const prompt = nearestHarthmereJobsBoardPhysicalPromptV141(playerPosition);
+  const cameraPosition = harthmereJobsBoardCameraPosition(camera);
+  const prompt = nearestHarthmereJobsBoardPhysicalPrompt(playerPosition);
   const projectedPrompt = prompt
-    ? harthmereJobsBoardPromptScreenProjectionV146(prompt.position, camera)
+    ? harthmereJobsBoardPromptScreenProjection(prompt.position, camera)
     : undefined;
 
   useEffect(() => {
@@ -2417,7 +2417,7 @@ function HarthmereJobsBoardWorldPromptV141({ onOpen }: { onOpen: () => void }) {
       if (
         event.defaultPrevented ||
         event.button !== 0 ||
-        harthmereJobsBoardEventFromEditableV146(event)
+        harthmereJobsBoardEventFromEditable(event)
       ) {
         return;
       }
@@ -2438,20 +2438,20 @@ function HarthmereJobsBoardWorldPromptV141({ onOpen }: { onOpen: () => void }) {
   useEffect(() => {
     if (typeof window === "undefined") return;
     const debug = {
-      version: "harthmere-jobs-board-click-v146",
+      version: "harthmere-jobs-board-click",
       playerPosition,
       cameraPosition,
       prompt,
-      boards: HARTHMERE_JOBS_BOARD_PHYSICAL_BOARDS_V141,
+      boards: HARTHMERE_JOBS_BOARD_PHYSICAL_BOARDS,
       open: onOpen,
       dispatchOpen() {
-        window.dispatchEvent(new Event(HARTHMERE_JOBS_BOARD_OPEN_EVENT_V141));
+        window.dispatchEvent(new Event(HARTHMERE_JOBS_BOARD_OPEN_EVENT));
       },
     };
-    (window as any).__harthmereJobsBoardDebugV146 = debug;
+    (window as any).__harthmereJobsBoardDebug = debug;
     return () => {
-      if ((window as any).__harthmereJobsBoardDebugV146 === debug) {
-        delete (window as any).__harthmereJobsBoardDebugV146;
+      if ((window as any).__harthmereJobsBoardDebug === debug) {
+        delete (window as any).__harthmereJobsBoardDebug;
       }
     };
   }, [cameraPosition, onOpen, playerPosition, prompt]);
@@ -2518,25 +2518,25 @@ function HarthmereJobsBoardWorldPromptV141({ onOpen }: { onOpen: () => void }) {
   );
 }
 
-function harthmereJobsBoardPlayerPositionV146(localPlayer: any, camera: any) {
+function harthmereJobsBoardPlayerPosition(localPlayer: any, camera: any) {
   return (
-    normalizeHarthmereJobsBoardPointV146(localPlayer?.player?.position) ??
-    normalizeHarthmereJobsBoardPointV146(localPlayer?.position) ??
-    harthmereJobsBoardCameraPositionV146(camera)
+    normalizeHarthmereJobsBoardPoint(localPlayer?.player?.position) ??
+    normalizeHarthmereJobsBoardPoint(localPlayer?.position) ??
+    harthmereJobsBoardCameraPosition(camera)
   );
 }
 
-function harthmereJobsBoardCameraPositionV146(camera: any) {
+function harthmereJobsBoardCameraPosition(camera: any) {
   return (
-    normalizeHarthmereJobsBoardPointV146(camera?.pos?.()) ??
-    normalizeHarthmereJobsBoardPointV146(
+    normalizeHarthmereJobsBoardPoint(camera?.pos?.()) ??
+    normalizeHarthmereJobsBoardPoint(
       camera?.three?.position?.toArray?.()
     ) ??
-    normalizeHarthmereJobsBoardPointV146(camera?.three?.position)
+    normalizeHarthmereJobsBoardPoint(camera?.three?.position)
   );
 }
 
-function harthmereJobsBoardEventFromEditableV146(event: Event) {
+function harthmereJobsBoardEventFromEditable(event: Event) {
   const target = event.target as HTMLElement | null;
   const tagName = target?.tagName?.toLowerCase();
   return (
@@ -2552,7 +2552,7 @@ function harthmereJobsBoardEventFromEditableV146(event: Event) {
   );
 }
 
-function harthmereJobsBoardPromptScreenProjectionV146(
+function harthmereJobsBoardPromptScreenProjection(
   position: { x: number; y?: number; z: number },
   camera:
     | { three?: any; pos?: () => number[]; view?: () => number[] }
@@ -2630,7 +2630,7 @@ function CenterMapPanel({
   );
 }
 
-installSnapshotLiveNpcLoreDebugV79();
+installSnapshotLiveNpcLoreDebug();
 
 export const HarthmereUnifiedHUD: React.FunctionComponent<{
   hideLegacyVisuals?: boolean;
@@ -2664,17 +2664,17 @@ export const HarthmereUnifiedHUD: React.FunctionComponent<{
   useHarthmereForwardArcRuntime();
   useHarthmereFallDamageBridge();
   useHarthmereDrowningDamageBridge();
-  useHarthmerePvpIncomingDamageBridgeV1();
+  useHarthmerePvpIncomingDamageBridge();
   useHarthmereLocalPlayerAttackGestureBridge();
-  useHarthmereComprehensiveAnimationRuntimeBridgeV6();
+  useHarthmereComprehensiveAnimationRuntimeBridge();
   useHarthmereCombatHotkeys();
-  const hudVisibility = useBiomesHUDVisibilitySnapshotV1();
-  const [panel, setPanel] = useState<HarthmereHudPanelV97>();
+  const hudVisibility = useBiomesHUDVisibilitySnapshot();
+  const [panel, setPanel] = useState<HarthmereHudPanel>();
   const [systemsTab, setSystemsTab] = useState<MenuTab | undefined>();
   const [focusAction, setFocusAction] = useState<
-    HarthmereHudActionV96 | undefined
+    HarthmereHudAction | undefined
   >();
-  // HARTHMERE_JOBS_BOARD_PANEL_V141:
+  // HARTHMERE_JOBS_BOARD_PANEL:
   // Independent overlay state — the shared HUD reducer doesn't know about the
   // jobs board, and the panel is a self-contained live modal. Keeping it out
   // of `panel` avoids touching the reducer contract / tests.
@@ -2682,7 +2682,7 @@ export const HarthmereUnifiedHUD: React.FunctionComponent<{
   const [homeConsoleOpen, setHomeConsoleOpen] = useState(false);
   const [businessInterfaceOpen, setBusinessInterfaceOpen] = useState(false);
   const openJobsBoard = React.useCallback(() => {
-    openHarthmereJobsBoardPointerLockV145(
+    openHarthmereJobsBoardPointerLock(
       pointerLockManager,
       jobsBoardReturnPointerLockRef
     );
@@ -2698,7 +2698,7 @@ export const HarthmereUnifiedHUD: React.FunctionComponent<{
   }, [pointerLockManager, reactResources]);
   const closeJobsBoard = React.useCallback(() => {
     setJobsBoardOpen(false);
-    closeHarthmereJobsBoardPointerLockV145(
+    closeHarthmereJobsBoardPointerLock(
       pointerLockManager,
       jobsBoardReturnPointerLockRef
     );
@@ -2711,7 +2711,7 @@ export const HarthmereUnifiedHUD: React.FunctionComponent<{
   }, []);
   useEffect(() => {
     return () => {
-      closeHarthmereJobsBoardPointerLockV145(
+      closeHarthmereJobsBoardPointerLock(
         pointerLockManager,
         jobsBoardReturnPointerLockRef
       );
@@ -2747,22 +2747,22 @@ export const HarthmereUnifiedHUD: React.FunctionComponent<{
       }
     };
     window.addEventListener(
-      HARTHMERE_JOBS_BOARD_OPEN_EVENT_V141,
+      HARTHMERE_JOBS_BOARD_OPEN_EVENT,
       openJobsBoard
     );
     window.addEventListener("keydown", keyHandler);
     return () => {
       window.removeEventListener(
-        HARTHMERE_JOBS_BOARD_OPEN_EVENT_V141,
+        HARTHMERE_JOBS_BOARD_OPEN_EVENT,
         openJobsBoard
       );
       window.removeEventListener("keydown", keyHandler);
     };
   }, [closeJobsBoard, jobsBoardOpen, openJobsBoard]);
 
-  const openHudAction = (action: HarthmereHudActionV96) => {
-    dispatchHarthmereHudActionEventV96(action);
-    const next = reduceHarthmereHudStateForActionV97(
+  const openHudAction = (action: HarthmereHudAction) => {
+    dispatchHarthmereHudActionEvent(action);
+    const next = reduceHarthmereHudStateForAction(
       { panel, systemsTab, focusAction },
       action
     );
@@ -2788,7 +2788,7 @@ export const HarthmereUnifiedHUD: React.FunctionComponent<{
       ) {
         return;
       }
-      const binding = harthmereHudBindingForCodeV96(event.code);
+      const binding = harthmereHudBindingForCode(event.code);
       if (!binding) {
         return;
       }
@@ -2809,16 +2809,16 @@ export const HarthmereUnifiedHUD: React.FunctionComponent<{
 
   const runtimeControllers = (
     <>
-      <HarthmereQuestNavAidControllerV141 />
-      <SnapshotMissionRuntimeControllerV71 />
-      <SnapshotGroveBibleRuntimeControllerV75 />
-      <SnapshotCompletePortRuntimeControllerV76 />
-      <SnapshotProductionPortRuntimeControllerV77 />
-      <SnapshotLiveDiagnosticsRuntimeControllerV78 />
+      <HarthmereQuestNavAidController />
+      <SnapshotMissionRuntimeController />
+      <SnapshotGroveBibleRuntimeController />
+      <SnapshotCompletePortRuntimeController />
+      <SnapshotProductionPortRuntimeController />
+      <SnapshotLiveDiagnosticsRuntimeController />
       <HarthmereDeathRuntimeController />
       <HarthmereFoodStaminaRuntimeController />
-      <SnapshotProductionPortFactsV77 />
-      <SnapshotCombatRuntimeControllerV74 />
+      <SnapshotProductionPortFacts />
+      <SnapshotCombatRuntimeController />
     </>
   );
 
@@ -2826,25 +2826,25 @@ export const HarthmereUnifiedHUD: React.FunctionComponent<{
     return (
       <>
         {runtimeControllers}
-        <HarthmereDeathScreenOverlayV139 />
+        <HarthmereDeathScreenOverlay />
         <HarthmereVendorTradePanel />
         <HarthmereObjectContainerPanel />
         <HarthmereCookingStationPanel />
-        <HarthmereGatheringNodeWorldInteractionV1 />
-        <HarthmereLootDropWorldInteractionV1 />
-        <HarthmereJobsBoardWorldPromptV141 onOpen={openJobsBoard} />
-        <HarthmereHomeConsoleWorldInterfaceV1
+        <HarthmereGatheringNodeWorldInteraction />
+        <HarthmereLootDropWorldInteraction />
+        <HarthmereJobsBoardWorldPrompt onOpen={openJobsBoard} />
+        <HarthmereHomeConsoleWorldInterface
           open={homeConsoleOpen}
           onOpen={() => setHomeConsoleOpen(true)}
           onClose={() => setHomeConsoleOpen(false)}
         />
-        <HarthmereBusinessWorldInterfaceV1
+        <HarthmereBusinessWorldInterface
           open={businessInterfaceOpen}
           onOpen={openBusinessInterface}
           onClose={closeBusinessInterface}
         />
         {jobsBoardOpen && (
-          <HarthmereJobsBoardLiveContainerWithPlayerProximityV141
+          <HarthmereJobsBoardLiveContainerWithPlayerProximity
             onClose={closeJobsBoard}
           />
         )}
@@ -2856,7 +2856,7 @@ export const HarthmereUnifiedHUD: React.FunctionComponent<{
     <>
       {runtimeControllers}
       {hudVisibility.vitals && <CompactStatusCluster />}
-      <HarthmereDeathScreenOverlayV139 />
+      <HarthmereDeathScreenOverlay />
       {hudVisibility.vitals && (
         <div className="fixed left-2 top-[9.25rem] z-30 md:left-3 md:top-[10.25rem]">
           <HarthmereDeathHUD />
@@ -2870,19 +2870,19 @@ export const HarthmereUnifiedHUD: React.FunctionComponent<{
       )}
       {hudVisibility.objectives && (
         <div className="pointer-events-auto fixed right-2 top-[20.25rem] z-30 w-[min(19rem,calc(100vw-1rem))] max-sm:hidden md:right-4 md:top-[20.75rem]">
-          <SnapshotGroveMapHUDV75 />
+          <SnapshotGroveMapHUD />
         </div>
       )}
       {hudVisibility.helpButtons && <FightSideControls />}
       {hudVisibility.actionBar && <UtilityActionBar onAction={openHudAction} />}
-      <SnapshotGroveTutorChatPanelV109 />
-      <HarthmereJobsBoardWorldPromptV141 onOpen={openJobsBoard} />
-      <HarthmereHomeConsoleWorldInterfaceV1
+      <SnapshotGroveTutorChatPanel />
+      <HarthmereJobsBoardWorldPrompt onOpen={openJobsBoard} />
+      <HarthmereHomeConsoleWorldInterface
         open={homeConsoleOpen}
         onOpen={() => setHomeConsoleOpen(true)}
         onClose={() => setHomeConsoleOpen(false)}
       />
-      <HarthmereBusinessWorldInterfaceV1
+      <HarthmereBusinessWorldInterface
         open={businessInterfaceOpen}
         onOpen={openBusinessInterface}
         onClose={closeBusinessInterface}
@@ -2909,9 +2909,9 @@ export const HarthmereUnifiedHUD: React.FunctionComponent<{
           <div className="space-y-4">
             <HarthmereQuestMapHUD />
             <div className="grid gap-3 md:grid-cols-3">
-              <SnapshotMissionMapHUDV71 />
-              <SnapshotGroveMapHUDV75 />
-              <SnapshotCombatMapHUDV74 />
+              <SnapshotMissionMapHUD />
+              <SnapshotGroveMapHUD />
+              <SnapshotCombatMapHUD />
             </div>
           </div>
         </CenterMapPanel>
@@ -2925,14 +2925,14 @@ export const HarthmereUnifiedHUD: React.FunctionComponent<{
           }}
         >
           <div className="space-y-3">
-            <SnapshotMissionJournalPanelV71 />
-            <SnapshotGroveJournalPanelV75 />
-            <SnapshotMissionAuditPanelV76 />
-            <SnapshotGroundingAuditPanelV76 />
-            <SnapshotLiveGroundingAuditPanelV78 />
-            <SnapshotPerformanceWalkerPanelV78 />
-            <SnapshotRemainingPortAuditPanelV78 />
-            <SnapshotCombatJournalPanelV74 />
+            <SnapshotMissionJournalPanel />
+            <SnapshotGroveJournalPanel />
+            <SnapshotMissionAuditPanel />
+            <SnapshotGroundingAuditPanel />
+            <SnapshotLiveGroundingAuditPanel />
+            <SnapshotPerformanceWalkerPanel />
+            <SnapshotRemainingPortAuditPanel />
+            <SnapshotCombatJournalPanel />
             <HarthmereMissionJournalPanel />
           </div>
         </FloatingPanel>
@@ -2940,17 +2940,17 @@ export const HarthmereUnifiedHUD: React.FunctionComponent<{
       <HarthmereVendorTradePanel />
       <HarthmereObjectContainerPanel />
       <HarthmereCookingStationPanel />
-      <HarthmereGatheringNodeWorldInteractionV1 />
-      <HarthmereLootDropWorldInteractionV1 />
-      {/* HARTHMERE_JOBS_BOARD_PANEL_V141:
+      <HarthmereGatheringNodeWorldInteraction />
+      <HarthmereLootDropWorldInteraction />
+      {/* HARTHMERE_JOBS_BOARD_PANEL:
           The live container fetches `/api/harthmere/live_mode_jobs_board_state`
           on mount and replays the server snapshot through every mutation.
           When `jobsBoardOpen` is true, the panel renders over the world; the
-          panel itself fires `completeHarthmereJobsBoardReadQuestV140` so the
+          panel itself fires `completeHarthmereJobsBoardReadQuest` so the
           starter "Read the Jobs Board" quest completes the first time the
           player opens it. */}
       {jobsBoardOpen && (
-        <HarthmereJobsBoardLiveContainerWithPlayerProximityV141
+        <HarthmereJobsBoardLiveContainerWithPlayerProximity
           onClose={closeJobsBoard}
         />
       )}
@@ -2958,12 +2958,12 @@ export const HarthmereUnifiedHUD: React.FunctionComponent<{
   );
 };
 
-export const HARTHMERE_LEGACY_BIOMES_SYSTEMS_PANEL_RETIRED_V132 =
-  "harthmere-legacy-biomes-systems-panel-retired-v132" as const;
+export const HARTHMERE_LEGACY_BIOMES_SYSTEMS_PANEL_RETIRED =
+  "harthmere-legacy-biomes-systems-panel-retired" as const;
 
 export const HarthmereSystemsMenuPanel: React.FunctionComponent<{
   initialTab?: MenuTab;
-  initialAction?: HarthmereHudActionV96;
+  initialAction?: HarthmereHudAction;
   onClose?: () => void;
 }> = ({ initialTab = "journal", initialAction, onClose }) => {
   // The replacement BiomesUI now owns Journal/Inventory/Map/Bank/Skills/etc.
@@ -2972,23 +2972,23 @@ export const HarthmereSystemsMenuPanel: React.FunctionComponent<{
   void initialTab;
   void initialAction;
   void onClose;
-  void HARTHMERE_LEGACY_BIOMES_SYSTEMS_PANEL_RETIRED_V132;
+  void HARTHMERE_LEGACY_BIOMES_SYSTEMS_PANEL_RETIRED;
   return null;
 };
 
-// v13 attack variation debug payload marker
-const __HARTHMERE_ATTACK_VARIATION_HUD_V13 = {
+// current attack variation debug payload marker
+const __HARTHMERE_ATTACK_VARIATION_HUD = {
   attackVariationId: true,
   attackVariationFamily: true,
 };
 
-// v17 attack variation HUD bridge markers.
-const __HARTHMERE_VARIATION_HUD_V17 = {
+// current attack variation HUD bridge markers.
+const __HARTHMERE_VARIATION_HUD = {
   attackVariationId: true,
   attackVariationFamily: true,
   attackVariationIndex: true,
   attackVariationEmoteType: true,
 };
 
-// HARTHMERE_ECONOMY_OPTIMIZATION_PANEL_WIRED_V1
+// HARTHMERE_ECONOMY_OPTIMIZATION_PANEL_WIRED
 // LocalDevHarthmereEconomyOptimizationSystem is imported for economy health/market review wiring.

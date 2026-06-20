@@ -9,10 +9,10 @@ import {
   getHarthmereNpcSocialResponse,
 } from "@/client/components/challenges/LocalDevHarthmereNpcBehaviorSystem";
 import React, { useEffect, useMemo, useState } from "react";
-import { snapshotHarthmereBibleLinesV76 } from "@/shared/harthmere/snapshot_complete_port_v76";
+import { snapshotHarthmereBibleLines } from "@/shared/harthmere/snapshot_complete_port";
 
 const HARTHMERE_DIALOGUE_MEMORY_KEY =
-  "biomes.localDev.harthmere.dialogueMemory.v1";
+  "biomes.localDev.harthmere.dialogueMemory";
 const HARTHMERE_DIALOGUE_EVENT = "biomes:harthmere-dialogue-changed";
 
 export type HarthmereDialogueChoiceKind =
@@ -64,7 +64,7 @@ const EMPTY_DIALOGUE_MEMORY: HarthmereDialogueMemoryState = {
   choices: [],
 };
 
-const HARTHMERE_JOBS_BOARD_TARGET_OFFSET_V140 = 140_041;
+const HARTHMERE_JOBS_BOARD_TARGET_OFFSET = 140_041;
 
 const NPC_NAMES: Record<number, string> = {
   1: "Mira, Town Guide",
@@ -87,7 +87,7 @@ const NPC_NAMES: Record<number, string> = {
   39: "Rusk, Toll Clerk",
   40: "Sable, Smuggler",
   41: "Harthmere Market Board",
-  [HARTHMERE_JOBS_BOARD_TARGET_OFFSET_V140]: "Jobs Board",
+  [HARTHMERE_JOBS_BOARD_TARGET_OFFSET]: "Jobs Board",
   43: "Courier Anwen",
   44: "Drill Instructor Hal",
   45: "Bounty Clerk Rowan",
@@ -315,7 +315,7 @@ function neutralRoleTone(offset: number) {
   if (CRIMINAL_OFFSETS.has(offset)) {
     return "I choose each word carefully and keep one eye on the street behind you.";
   }
-  if (offset === 41 || offset === HARTHMERE_JOBS_BOARD_TARGET_OFFSET_V140) {
+  if (offset === 41 || offset === HARTHMERE_JOBS_BOARD_TARGET_OFFSET) {
     return "The newest notices are nailed over older work, with fresh ink marking the urgent jobs.";
   }
   return "I see the road dust on your boots, and I am waiting to learn what brought you to Harthmere.";
@@ -356,9 +356,9 @@ export function buildHarthmereDialogueLines(
   const memory = readHarthmereDialogueMemory();
   const greetedCount = memory.greeted[context.offset] ?? 0;
   const lines: string[] = [];
-  // SNAPSHOT_HARTHMERE_BIBLE_DIALOGUE_V76:
+  // SNAPSHOT_HARTHMERE_BIBLE_DIALOGUE:
   // Add Grove-style character-bible lines while preserving existing quest, vendor, combat, and reputation actions.
-  const bibleLinesV76 = snapshotHarthmereBibleLinesV76(context.offset);
+  const bibleLines = snapshotHarthmereBibleLines(context.offset);
 
   if (context.isBoard) {
     lines.push("Harthmere Market Board");
@@ -377,8 +377,8 @@ export function buildHarthmereDialogueLines(
   if (roleLine) {
     lines.push(roleLine);
   }
-  if (bibleLinesV76.length) {
-    lines.push(...bibleLinesV76.slice(0, 2));
+  if (bibleLines.length) {
+    lines.push(...bibleLines.slice(0, 2));
   }
   const routeLine = getHarthmereNpcCurrentRouteLine(context.offset);
   if (routeLine) {
@@ -724,7 +724,7 @@ export function dialogueActionsForHarthmereNpc(
     },
   });
 
-  if (offset === 41 || offset === HARTHMERE_JOBS_BOARD_TARGET_OFFSET_V140) {
+  if (offset === 41 || offset === HARTHMERE_JOBS_BOARD_TARGET_OFFSET) {
     actions.push({
       name: "How do I read the notices?",
       tooltip: "Ask how public work is posted around Harthmere.",
@@ -772,7 +772,7 @@ export function dialogueActionsForHarthmereNpc(
     take((action) => action.name === "What does mercy cost here?" && !action.disabled);
   } else if (CRIMINAL_OFFSETS.has(offset)) {
     take((action) => action.name === "The Watch is not watching.");
-  } else if (offset === 41 || offset === HARTHMERE_JOBS_BOARD_TARGET_OFFSET_V140) {
+  } else if (offset === 41 || offset === HARTHMERE_JOBS_BOARD_TARGET_OFFSET) {
     take((action) => action.name === "How do I read the notices?");
   }
   take((action) => action.name === "Heard anything useful?");

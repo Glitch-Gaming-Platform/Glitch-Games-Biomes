@@ -8,8 +8,8 @@ import { zWorldMapMetadataResponse } from "@/shared/types";
 function localFallbackMapMetadata(
   worldMetadata?: ReadonlyWorldMetadata
 ): Omit<WorldMapMetadataResponse, "socialData"> {
-  const v0 = worldMetadata?.aabb.v0 ?? [-2048, -256, -2048];
-  const v1 = worldMetadata?.aabb.v1 ?? [2048, 512, 2048];
+  const v0 = worldMetadata?.aabb ?? [-2048, -256, -2048];
+  const v1 = worldMetadata?.aabb ?? [2048, 512, 2048];
 
   let x0 = Math.min(v0[0], v1[0]);
   let x1 = Math.max(v0[0], v1[0]);

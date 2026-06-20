@@ -25,7 +25,7 @@ The sync service still listens on internal container port `4900`, but browsers s
 Use the guarded deploy script instead of hand-running build/upload commands:
 
 ```bash
-scripts/glitch/deploy-production-local-redis-smoke-v1.sh
+scripts/glitch/deploy-production-local-redis-smoke.sh
 ```
 
 That command runs the production source guardrails, builds the production Next
@@ -36,7 +36,7 @@ The local production-image HTTP smoke is memory-heavy and is now opt-in. Run it
 when you need the full local container proof:
 
 ```bash
-scripts/glitch/deploy-production-local-redis-smoke-v1.sh --local-smoke
+scripts/glitch/deploy-production-local-redis-smoke.sh --local-smoke
 ```
 
 For an app-only production deploy from a local workstation, keep production
@@ -44,7 +44,7 @@ Redis private and skip the post-deploy Redis world-sync phase:
 
 ```bash
 HARTHMERE_SKIP_WORLD_SYNC_RECONCILIATION=1 \
-scripts/glitch/deploy-production-local-redis-smoke-v1.sh --push
+scripts/glitch/deploy-production-local-redis-smoke.sh --push
 ```
 
 For a full production deploy with post-deploy world reconciliation, run from an
@@ -52,7 +52,7 @@ Azure/VNet runner that can reach private Redis and pass the private Redis host:
 
 ```bash
 PROD_REDIS_RECONCILE_HOST=10.0.0.12 \
-scripts/glitch/deploy-production-local-redis-smoke-v1.sh --push
+scripts/glitch/deploy-production-local-redis-smoke.sh --push
 ```
 
 The script avoids `az acr build`; production upload is `docker push` of the
@@ -83,7 +83,7 @@ shim -> bikkie -> logic -> oob -> sidefx -> sync -> web
 The stack is started with:
 
 ```bash
-./scripts/glitch/run-glitch-local-game-stack-v92.sh
+./scripts/glitch/run-glitch-local-game-stack.sh
 ```
 
 The current production stack also starts `bikkie` and `sidefx` so the packaged
@@ -207,7 +207,7 @@ Use the guarded health check after any Redis VM, disk, NSG, or snapshot repair:
 
 ```bash
 HARTHMERE_SKIP_WORLD_SYNC_RECONCILIATION=1 \
-scripts/glitch/deploy-production-local-redis-smoke-v1.sh --redis-health-check-only
+scripts/glitch/deploy-production-local-redis-smoke.sh --redis-health-check-only
 ```
 
 ---
@@ -266,13 +266,13 @@ az cognitiveservices usage list \
 Static NPC line recordings can be generated after secrets are present:
 
 ```bash
-node scripts/harthmere/generate-harthmere-npc-voice-recordings-v1.cjs --dry-run
+node scripts/harthmere/generate-harthmere-npc-voice-recordings.cjs --dry-run
 ```
 
 Full docs:
 
 ```text
-docs/harthmere/HARTHMERE_AZURE_VOICE_AND_SPEECH_V1.md
+docs/harthmere/HARTHMERE_AZURE_VOICE_AND_SPEECH.md
 ```
 
 ---
@@ -349,7 +349,7 @@ The production Dockerfile must do these things:
 
 ```dockerfile
 ENTRYPOINT ["/usr/bin/tini", "--"]
-CMD ["./scripts/glitch/run-glitch-local-game-stack-v92.sh"]
+CMD ["./scripts/glitch/run-glitch-local-game-stack.sh"]
 ```
 
 ### Why not `CMD ["dist/web.js"]`?
@@ -726,7 +726,7 @@ Expected logs:
 ```text
 Redis preflight host=glitch-redis-local port=6379
 Redis is already populated with the installed snapshot data.
-Glitch local game stack v92
+Glitch local game stack
 START shim HOST=127.0.0.1 BASE_PORT=3100 RPC_PORT=3104 METRICS_PORT=3101 file=/app/dist/shim.js
 START bikkie HOST=127.0.0.1 BASE_PORT=3400 RPC_PORT=3404 METRICS_PORT=3401 file=/app/dist/bikkie.js
 START logic HOST=127.0.0.1 BASE_PORT=3500 RPC_PORT=3504 METRICS_PORT=3501 file=/app/dist/logic.js
@@ -836,7 +836,7 @@ Also make sure the local `next build` was run with the same value.
 Checklist:
 
 1. Was `NEXT_PUBLIC_GLITCH_SYNC_BASE_URL` set before `next build` to the web origin, not `:4900`?
-2. Do logs show `GLITCH_SAME_ORIGIN_SYNC_WS_PROXY_V129 installed`?
+2. Do logs show `GLITCH_SAME_ORIGIN_SYNC_WS_PROXY installed`?
 3. Do logs show `WebSocket listening on port 4900` internally?
 4. Does the browser attempt `wss://<web-origin>/ro-sync` instead of `wss://<web-origin>:4900/ro-sync`?
 5. Is Glitch pointing to the VNet app URL?
@@ -902,7 +902,7 @@ Troubleshoot -> Clean / Purge data
 
 Before build:
 
-- [ ] `Dockerfile.biomes` starts `run-glitch-local-game-stack-v92.sh`.
+- [ ] `Dockerfile.biomes` starts `run-glitch-local-game-stack.sh`.
 - [ ] `.dockerignore` does not exclude `node_modules`, `.next`, or `dist`.
 - [ ] `NEXT_PUBLIC_GLITCH_SYNC_BASE_URL` is set to the production web origin; no external `:4900`.
 - [ ] Build env includes `NEXT_PUBLIC_BIOMES_ENABLE_HARTHMERE_EXTRA_TOWN=0`, `NEXT_PUBLIC_BIOMES_FORCE_LOCAL_DEV_TOWN=0`, `NEXT_PUBLIC_BIOMES_START_IN_HARTHMERE=0`, `NEXT_PUBLIC_BIOMES_SNAPSHOT_MERGE_MODE=1`, and `NEXT_PUBLIC_BIOMES_SNAPSHOT_RICH_NPC_APPEARANCE=1`.
@@ -914,7 +914,7 @@ Before build:
 
 Before deploy:
 
-- [ ] `scripts/glitch/deploy-production-local-redis-smoke-v1.sh --redis-health-check-only` passes.
+- [ ] `scripts/glitch/deploy-production-local-redis-smoke.sh --redis-health-check-only` passes.
 - [ ] Redis NSG allows `6379/tcp` from `10.0.1.0/27` and explicitly denies all other sources.
 - [ ] Public Redis access is blocked; do not reopen `6379` to `*`, `Internet`, or `0.0.0.0/0`.
 - [ ] Redis persistence is `dir=/var/lib/redis`, `dbfilename=dump.rdb`, `save="900 1 300 10 60 10000"`, and `rdb_last_bgsave_status=ok`.
@@ -932,7 +932,7 @@ After deploy:
 
 - [ ] Revision is `Running`.
 - [ ] Revision is `Healthy`.
-- [ ] `audit_production_authored_content_v1` passes: business owners `19/19`,
+- [ ] `audit_production_authored_content` passes: business owners `19/19`,
   business crafting stations `19/19`, business customers `57/57`, muckers
   `100/100`, and wildlife `24/24`.
 - [ ] Business outpost terrain materialization logs
@@ -940,7 +940,7 @@ After deploy:
   without the voxel building means this step was skipped or killed.
 - [ ] Post-reconciliation Redis `BGSAVE` completed with
   `rdb_last_bgsave_status=ok`.
-- [ ] Logs show production sync URL and `GLITCH_SAME_ORIGIN_SYNC_WS_PROXY_V129 installed`.
+- [ ] Logs show production sync URL and `GLITCH_SAME_ORIGIN_SYNC_WS_PROXY installed`.
 - [ ] Logs show `Redis is already populated with the installed snapshot data.`; production app replicas must not run the snapshot populate path.
 - [ ] Logs show `registerWorldApi:got-config mode=hfc-hybrid`.
 - [ ] Logs show the snapshot world ready and no Harthmere extra-town seeding unless a dedicated bootstrap/migration explicitly enabled it.
@@ -994,7 +994,7 @@ cd /Users/devindixon/Development/biomes-game
 
 # App-only local deploy; Redis stays private and no world-sync writes run.
 HARTHMERE_SKIP_WORLD_SYNC_RECONCILIATION=1 \
-scripts/glitch/deploy-production-local-redis-smoke-v1.sh --push
+scripts/glitch/deploy-production-local-redis-smoke.sh --push
 ```
 
 For a full deploy with authored-content/world reconciliation, run from a host
@@ -1004,7 +1004,7 @@ inside the Azure VNet and use:
 cd /Users/devindixon/Development/biomes-game
 
 PROD_REDIS_RECONCILE_HOST=10.0.0.12 \
-scripts/glitch/deploy-production-local-redis-smoke-v1.sh --push
+scripts/glitch/deploy-production-local-redis-smoke.sh --push
 ```
 
 ## 21. Authored content reconciliation (NPCs, owners, customers, muckers)
@@ -1013,16 +1013,16 @@ New authored content does NOT reach production by simply existing in code — tw
 gates matter:
 
 1. **Boot content-sync** (`src/server/shim/main.ts`,
-   `seedMissingLocalDevContentIntoExistingWorldV1`): on boot, production creates
+   `seedMissingLocalDevContentIntoExistingWorld`): on boot, production creates
    only the _missing_ content entities (it never rebuilds/overwrites terrain).
-2. **Deploy reconciler** (`scripts/harthmere/reconcile-production-world-sync-v1.cjs`,
+2. **Deploy reconciler** (`scripts/harthmere/reconcile-production-world-sync.cjs`,
    run by this deploy script with `APPLY=1` from an in-VNet runner against
    private Redis): it materializes the seed _families_ listed in its
    `seedFamilies` array.
    **When you add a new authored-content family (e.g. business owners), you MUST
    add it to that array** or it never lands in prod.
 3. **Business outpost terrain materializer**
-   (`scripts/harthmere/materialize-business-outposts-redis-v1.cjs`): production
+   (`scripts/harthmere/materialize-business-outposts-redis.cjs`): production
    must also write the voxel shard diffs for the authored shop buildings. The
    deploy script defaults this to `HARTHMERE_BUSINESS_OUTPOST_MATERIALIZATION_MODE=per-outpost`
    with `OUTPOST_ID=<id>` and small shard batches, because the single bulk
@@ -1030,7 +1030,7 @@ gates matter:
    bulk mode for production unless the container memory profile has been
    re-tested.
 
-After reconciliation the deploy runs `audit_production_authored_content_v1`,
+After reconciliation the deploy runs `audit_production_authored_content`,
 which fails the deploy if business owners < 19, business crafting stations <
 19, business customers < 57, muckers < 100, or Grove NPCs are missing. Once
 that audit and the per-outpost terrain materialization pass, the deploy forces a
@@ -1038,7 +1038,7 @@ Redis `BGSAVE` so newly reconciled authored content and building voxel diffs are
 durable before the next Redis restart. See
 `src/shared/harthmere/harthmere-content-reaches-production` notes.
 
-Id bands (offset on `SNAPSHOT_GROVE_LOCAL_DEV_NPC_BASE_V75`): Grove NPCs 9301+,
+Id bands (offset on `SNAPSHOT_GROVE_LOCAL_DEV_NPC_BASE`): Grove NPCs 9301+,
 robots 9401+, muckers 9451–9550, **business owners 9601–9619**, **business
 crafting stations 9651–9669**, and **business customers 9701–9757** (19
 businesses × 3 patrons = 57). Owners are `quest_giver`s at the counter;
@@ -1051,9 +1051,9 @@ The current placement source of truth is the generated production terrain
 placement map:
 
 ```text
-docs/harthmere/HARTHMERE_PRODUCTION_TERRAIN_PLACEMENT_MAP_V1.md
-src/shared/harthmere/production_terrain_placement_map_v1.ts
-src/shared/harthmere/generated/production_terrain_placement_map_v1.ts
+docs/harthmere/HARTHMERE_PRODUCTION_TERRAIN_PLACEMENT_MAP.md
+src/shared/harthmere/production_terrain_placement_map.ts
+src/shared/harthmere/generated/production_terrain_placement_map.ts
 ```
 
 Use it for quest items, quest markers, monsters, NPCs, interactables, BiomesUI
@@ -1069,12 +1069,12 @@ az account show
 
 HARTHMERE_WORLD_SYNC_REDIS_HOST=10.0.0.12 \
 NODE_OPTIONS=--max-old-space-size=8192 \
-node scripts/harthmere/build-production-terrain-placement-map-v1.cjs \
+node scripts/harthmere/build-production-terrain-placement-map.cjs \
   --write \
   --stride=8 \
   --margin=64
 
-node scripts/harthmere/check-harthmere-production-placement-map-v1.cjs
+node scripts/harthmere/check-harthmere-production-placement-map.cjs
 ```
 
 The scanner uses `az account show`, `az containerapp show`, and Redis `mget`
@@ -1084,21 +1084,21 @@ publicly for this workflow.
 
 Runtime rules:
 
-- Fixed quest objectives use `resolveHarthmereQuestObjectivePlacementV1` or
-  `getHarthmereQuestResolvedWaypointV47`.
+- Fixed quest objectives use `resolveHarthmereQuestObjectivePlacement` or
+  `getHarthmereQuestResolvedWaypoint`.
 - Jobs Board, business, and live-helper markers use
-  `resolveHarthmereProductionMarkerPositionV1` through their adapters.
-- Random outdoor content uses `chooseHarthmereQuestOutdoorSpawnPointV1`.
-- Random cave content uses `chooseHarthmereQuestCaveSpawnPointV1`.
+  `resolveHarthmereProductionMarkerPosition` through their adapters.
+- Random outdoor content uses `chooseHarthmereQuestOutdoorSpawnPoint`.
+- Random cave content uses `chooseHarthmereQuestCaveSpawnPoint`.
 - BiomesUI Map, HUD/minimap, quest pointer, server authority, and 3D markers
   should all use the same resolved `recommendedPosition`.
 
 The client terrain grounder still exists as a final visual safety layer:
 
-- Core (pure, tested): `src/shared/harthmere/harthmere_entity_grounding_v1.ts`.
+- Core (pure, tested): `src/shared/harthmere/harthmere_entity_grounding.ts`.
 - Client adapter (terrain + water): `src/client/game/util/harthmere_entity_grounding.ts`.
 - Spec + per-entity registry + live probe numbers:
-  `src/shared/harthmere/harthmere_entity_grounding_manifest_v1.ts`.
+  `src/shared/harthmere/harthmere_entity_grounding_manifest.ts`.
 
 Do not patch invisible, underground, or floating content with magic Y constants.
 Regenerate or inspect the production placement map instead, then wire every

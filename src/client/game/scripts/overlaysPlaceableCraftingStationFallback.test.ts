@@ -11,9 +11,9 @@ describe("Harthmere placeable crafting-station F fallback", () => {
   it("scans nearby placeable crafting stations with the shared proximity gate", () => {
     assert.match(
       source,
-      /HARTHMERE_PLACEABLE_CRAFTING_STATION_FALLBACK_V1/
+      /HARTHMERE_PLACEABLE_CRAFTING_STATION_FALLBACK/
     );
-    assert.match(source, /selectNearestHarthmereCraftingTableV1/);
+    assert.match(source, /selectNearestHarthmereCraftingTable/);
     assert.match(source, /PlaceableSelector\.query\.spatial\.inSphere/);
     assert.match(source, /item\.isCraftingStation/);
   });
@@ -22,7 +22,7 @@ describe("Harthmere placeable crafting-station F fallback", () => {
     // A placed campfire is not flagged isCraftingStation, so the proximity
     // fallback must additionally accept cook stations or standing over a
     // campfire shows no F prompt.
-    assert.match(source, /isHarthmerePlacedCookStationItemV1/);
+    assert.match(source, /isHarthmerePlacedCookStationItem/);
     assert.match(
       source,
       /!item\.isCraftingStation\s*&&\s*!isCookStation/
@@ -39,7 +39,7 @@ describe("Harthmere placeable crafting-station F fallback", () => {
 
   it("checks placeable stations before falling back to NPC talk", () => {
     const priority =
-      /getNearbyHarthmereObjectInspectableOverlayV1\(\)\s*\?\?\s*this\.getNearbyHarthmerePlaceableCraftingStationOverlayV1\(\)\s*\?\?\s*this\.getNearbyNpcTalkInspectableOverlayV140\(\)/;
+      /getNearbyHarthmereObjectInspectableOverlay\(\)\s*\?\?\s*this\.getNearbyHarthmerePlaceableCraftingStationOverlay\(\)\s*\?\?\s*this\.getNearbyNpcTalkInspectableOverlay\(\)/;
     assert.match(source, priority);
   });
 });

@@ -1,42 +1,42 @@
 import * as React from "react";
 import { usePointerLockManager } from "../contexts/PointerLockContext";
 import {
-  closePointerLockUnlockWhileOpenV1,
-  openPointerLockUnlockWhileOpenV1,
-  type PointerLockUnlockWhileOpenReturnRefV1,
+  closePointerLockUnlockWhileOpen,
+  openPointerLockUnlockWhileOpen,
+  type PointerLockUnlockWhileOpenReturnRef,
 } from "../contexts/pointerLockModalPolicy";
 import { installBiomesUITheme } from "../biomes_ui/theme/biomesUITheme";
 import { RovingGrid } from "../biomes_ui/nav/RovingGrid";
 import {
-  harthmereBikkieVisualGlyphStyleV1,
-  harthmereBikkieVisualImageStyleV1,
-  harthmereBikkieVisualImageUrlV1,
-  harthmereBikkieVisualTileStyleV1,
-} from "../biomes_ui/adapters/harthmereBikkieVisualRenderingV1";
+  harthmereBikkieVisualGlyphStyle,
+  harthmereBikkieVisualImageStyle,
+  harthmereBikkieVisualImageUrl,
+  harthmereBikkieVisualTileStyle,
+} from "../biomes_ui/adapters/harthmereBikkieVisualRendering";
 import type {
-  HarthmereHomeConsoleAdapterV1,
-  HarthmereHomeConsoleVisibleDecorationV1,
-  HarthmereHomeConsoleVisibleDefinitionV1,
-  HarthmereHomeConsoleVisibleSeedV1,
-  HarthmereHomeConsoleWorldContextV1,
+  HarthmereHomeConsoleAdapter,
+  HarthmereHomeConsoleVisibleDecoration,
+  HarthmereHomeConsoleVisibleDefinition,
+  HarthmereHomeConsoleVisibleSeed,
+  HarthmereHomeConsoleWorldContext,
 } from "./homeConsoleLiveAdapter";
 
 export interface HarthmereHomeConsolePanelProps {
-  adapter: HarthmereHomeConsoleAdapterV1;
-  context?: HarthmereHomeConsoleWorldContextV1;
+  adapter: HarthmereHomeConsoleAdapter;
+  context?: HarthmereHomeConsoleWorldContext;
   onClose?: () => void;
   compact?: boolean;
-  initialTab?: HarthmereHomeConsolePanelTabV1;
+  initialTab?: HarthmereHomeConsolePanelTab;
 }
 
-export type HarthmereHomeConsolePanelTabV1 =
+export type HarthmereHomeConsolePanelTab =
   | "overview"
   | "furniture"
   | "decorate"
   | "garden"
   | "access";
 
-const TABS: HarthmereHomeConsolePanelTabV1[] = [
+const TABS: HarthmereHomeConsolePanelTab[] = [
   "overview",
   "furniture",
   "decorate",
@@ -44,7 +44,7 @@ const TABS: HarthmereHomeConsolePanelTabV1[] = [
   "access",
 ];
 
-const TAB_LABELS: Record<HarthmereHomeConsolePanelTabV1, string> = {
+const TAB_LABELS: Record<HarthmereHomeConsolePanelTab, string> = {
   overview: "Overview",
   furniture: "Furniture",
   decorate: "Decorate",
@@ -69,7 +69,7 @@ function chunk<T>(items: readonly T[], size: number): T[][] {
 }
 
 function moveBy(
-  entry: HarthmereHomeConsoleVisibleDecorationV1,
+  entry: HarthmereHomeConsoleVisibleDecoration,
   dx: number,
   dz: number
 ) {
@@ -80,21 +80,21 @@ function moveBy(
   };
 }
 
-function rotated(entry: HarthmereHomeConsoleVisibleDecorationV1) {
+function rotated(entry: HarthmereHomeConsoleVisibleDecoration) {
   const next = (entry.record.rotationDegrees + 90) % 360;
   return next === 90 || next === 180 || next === 270 ? next : 0;
 }
 
 const BikkieVisualTile: React.FunctionComponent<{
-  entry: Pick<HarthmereHomeConsoleVisibleDefinitionV1, "visual">;
+  entry: Pick<HarthmereHomeConsoleVisibleDefinition, "visual">;
   size?: number;
 }> = ({ entry, size = 40 }) => {
-  const imageUrl = harthmereBikkieVisualImageUrlV1(entry.visual);
+  const imageUrl = harthmereBikkieVisualImageUrl(entry.visual);
   return (
     <span
       aria-label={entry.visual.ariaLabel}
       title={entry.visual.metadataSummary}
-      style={harthmereBikkieVisualTileStyleV1(entry.visual, size)}
+      style={harthmereBikkieVisualTileStyle(entry.visual, size)}
       data-home-console-visual="true"
       data-visual-source={entry.visual.source}
       data-visual-kind={entry.visual.shape}
@@ -106,11 +106,11 @@ const BikkieVisualTile: React.FunctionComponent<{
           src={imageUrl}
           alt=""
           aria-hidden="true"
-          style={harthmereBikkieVisualImageStyleV1}
+          style={harthmereBikkieVisualImageStyle}
           data-home-console-visual-img="true"
         />
       ) : null}
-      <span style={harthmereBikkieVisualGlyphStyleV1}>
+      <span style={harthmereBikkieVisualGlyphStyle}>
         {entry.visual.glyph}
       </span>
     </span>
@@ -122,23 +122,23 @@ export const HarthmereHomeConsolePanel: React.FunctionComponent<
 > = ({ adapter, context = {}, onClose, compact = false, initialTab = "overview" }) => {
   const pointerLockManager = usePointerLockManager();
   const shouldReturnPointerLock =
-    React.useRef<PointerLockUnlockWhileOpenReturnRefV1>({ current: false });
+    React.useRef<PointerLockUnlockWhileOpenReturnRef>({ current: false });
   const panel = adapter.getPanel(context);
   const available = adapter.isHydrated() && panel.canAccess;
   const [activeTab, setActiveTab] =
-    React.useState<HarthmereHomeConsolePanelTabV1>(
+    React.useState<HarthmereHomeConsolePanelTab>(
       TABS.includes(initialTab) ? initialTab : "overview"
     );
 
   React.useEffect(() => installBiomesUITheme(), []);
   React.useEffect(() => {
     if (!available || compact) return;
-    openPointerLockUnlockWhileOpenV1(
+    openPointerLockUnlockWhileOpen(
       pointerLockManager,
       shouldReturnPointerLock.current
     );
     return () => {
-      closePointerLockUnlockWhileOpenV1(
+      closePointerLockUnlockWhileOpen(
         pointerLockManager,
         shouldReturnPointerLock.current
       );
@@ -242,7 +242,7 @@ export const HarthmereHomeConsolePanel: React.FunctionComponent<
 };
 
 const OverviewPane: React.FunctionComponent<{
-  panel: ReturnType<HarthmereHomeConsoleAdapterV1["getPanel"]>;
+  panel: ReturnType<HarthmereHomeConsoleAdapter["getPanel"]>;
 }> = ({ panel }) => {
   const metrics = [
     ["Storage", `+${panel.summary.storageSlotsBonus}`],
@@ -274,8 +274,8 @@ const OverviewPane: React.FunctionComponent<{
 };
 
 const FurniturePane: React.FunctionComponent<{
-  placeable: HarthmereHomeConsoleVisibleDefinitionV1[];
-  adapter: HarthmereHomeConsoleAdapterV1;
+  placeable: HarthmereHomeConsoleVisibleDefinition[];
+  adapter: HarthmereHomeConsoleAdapter;
 }> = ({ placeable, adapter }) => {
   return (
     <section style={sectionGridStyle}>
@@ -327,8 +327,8 @@ const FurniturePane: React.FunctionComponent<{
 };
 
 const DecoratePane: React.FunctionComponent<{
-  placed: HarthmereHomeConsoleVisibleDecorationV1[];
-  adapter: HarthmereHomeConsoleAdapterV1;
+  placed: HarthmereHomeConsoleVisibleDecoration[];
+  adapter: HarthmereHomeConsoleAdapter;
 }> = ({ placed, adapter }) => {
   if (placed.length === 0) {
     return (
@@ -460,9 +460,9 @@ const DecoratePane: React.FunctionComponent<{
 };
 
 const GardenPane: React.FunctionComponent<{
-  placed: HarthmereHomeConsoleVisibleDecorationV1[];
-  seeds: HarthmereHomeConsoleVisibleSeedV1[];
-  adapter: HarthmereHomeConsoleAdapterV1;
+  placed: HarthmereHomeConsoleVisibleDecoration[];
+  seeds: HarthmereHomeConsoleVisibleSeed[];
+  adapter: HarthmereHomeConsoleAdapter;
 }> = ({ placed, seeds, adapter }) => {
   const gardens = placed.filter((entry) => entry.record.kind === "garden");
   if (gardens.length === 0) {
@@ -545,7 +545,7 @@ const GardenPane: React.FunctionComponent<{
 };
 
 const AccessPane: React.FunctionComponent<{
-  panel: ReturnType<HarthmereHomeConsoleAdapterV1["getPanel"]>;
+  panel: ReturnType<HarthmereHomeConsoleAdapter["getPanel"]>;
 }> = ({ panel }) => (
   <section style={sectionGridStyle}>
     <div className="biomes-ui-card" style={summaryCardStyle}>
