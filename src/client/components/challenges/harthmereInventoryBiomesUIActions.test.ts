@@ -10,8 +10,13 @@ import {
   harthmereClothingSlotsHiddenByBikkieWearables,
   harthmereLocalEquipmentBikkieWearables,
 } from "@/shared/harthmere/harthmere_bikkie_wearables";
+import {
+  HARTHMERE_BIOMES_ECS_INVENTORY_UPDATED_EVENT,
+  HARTHMERE_GOLD_ECS_CURRENCY_ID,
+} from "@/shared/harthmere/harthmere_biomes_ecs_bridge";
 
 const memoryStore = new Map<string, string>();
+const dispatchedEvents: any[] = [];
 const localStorageShim = {
   getItem: (key: string) =>
     memoryStore.has(key) ? memoryStore.get(key)! : null,
@@ -26,7 +31,10 @@ const localStorageShim = {
 
 (globalThis as any).window = {
   localStorage: localStorageShim,
-  dispatchEvent: () => true,
+  dispatchEvent: (event: any) => {
+    dispatchedEvents.push(event);
+    return true;
+  },
   addEventListener: () => {},
   removeEventListener: () => {},
 };
@@ -66,12 +74,16 @@ describe("Harthmere inventory BiomesUI presentation and actions", () => {
   beforeEach(() => {
     (globalThis as any).window = {
       localStorage: localStorageShim,
-      dispatchEvent: () => true,
+      dispatchEvent: (event: any) => {
+        dispatchedEvents.push(event);
+        return true;
+      },
       addEventListener: () => {},
       removeEventListener: () => {},
     };
     (globalThis as any).localStorage = localStorageShim;
     memoryStore.clear();
+    dispatchedEvents.length = 0;
   });
 
   it("exposes human-readable local item names and distinct icons", () => {
@@ -157,20 +169,14 @@ describe("Harthmere inventory BiomesUI presentation and actions", () => {
       (item) => item.itemId === "field_revival_scroll"
     );
     assert.ok(scroll);
-    assert.equal(
-      harthmereInventoryCountByItemId("field_revival_scroll"),
-      1
-    );
+    assert.equal(harthmereInventoryCountByItemId("field_revival_scroll"), 1);
 
     performHarthmereBackpackItemUseForBiomesUI(
       scroll.instanceId,
       "field_revival_scroll"
     );
 
-    assert.equal(
-      harthmereInventoryCountByItemId("field_revival_scroll"),
-      0
-    );
+    assert.equal(harthmereInventoryCountByItemId("field_revival_scroll"), 0);
     assert.equal(readHarthmereInventoryState().recent[0]?.action, "Item Used");
   });
 
@@ -193,5 +199,25 @@ describe("Harthmere inventory BiomesUI presentation and actions", () => {
     );
     state = readHarthmereInventoryState();
     assert.equal(state.materialStorage.iron_ore, 1);
+  });
+
+  it("publishes the canonical Biomes ECS inventory projection on writes", () => {
+    grantHarthmereItem("iron_ore", 2, "ecs projection test");
+    const event = dispatchedEvents.find(
+      (entry) => entry.type === HARTHMERE_BIOMES_ECS_INVENTORY_UPDATED_EVENT
+    );
+
+    assert.ok(event);
+    assert.equal(
+      event.detail.component.currencies.get(
+        String(HARTHMERE_GOLD_ECS_CURRENCY_ID)
+      )?.count,
+      75n
+    );
+    assert.ok(
+      event.detail.warnings.some(
+        (warning: { id?: string }) => warning.id === "iron_ore"
+      )
+    );
   });
 });

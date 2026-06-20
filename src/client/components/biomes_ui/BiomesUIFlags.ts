@@ -11,17 +11,19 @@ function falsy(value: string | undefined | null): boolean {
 }
 
 export function readBiomesUIReplaceLegacyFlag(): boolean {
+  // BiomesUI is the only UI authority now. The legacy storage/env flags remain
+  // readable for compatibility, but false values no longer re-enable old panels.
   if (typeof window !== "undefined") {
     const value = window.localStorage?.getItem("biomes_ui_replace_legacy");
     if (truthy(value)) return true;
-    if (falsy(value)) return false;
+    if (falsy(value)) return true;
   }
 
   if (typeof process !== "undefined") {
     if (truthy(process.env.NEXT_PUBLIC_BIOMES_UI_REPLACE_LEGACY)) return true;
     if (truthy(process.env.BIOMES_UI_REPLACE_LEGACY)) return true;
-    if (falsy(process.env.NEXT_PUBLIC_BIOMES_UI_REPLACE_LEGACY)) return false;
-    if (falsy(process.env.BIOMES_UI_REPLACE_LEGACY)) return false;
+    if (falsy(process.env.NEXT_PUBLIC_BIOMES_UI_REPLACE_LEGACY)) return true;
+    if (falsy(process.env.BIOMES_UI_REPLACE_LEGACY)) return true;
   }
 
   return true;
@@ -29,7 +31,8 @@ export function readBiomesUIReplaceLegacyFlag(): boolean {
 
 export function setBiomesUIReplaceLegacyFlag(enabled: boolean): void {
   if (typeof window === "undefined") return;
-  window.localStorage.setItem("biomes_ui_replace_legacy", enabled ? "1" : "0");
+  void enabled;
+  window.localStorage.setItem("biomes_ui_replace_legacy", "1");
   window.dispatchEvent(new Event("biomes-ui-flags-changed"));
 }
 

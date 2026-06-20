@@ -8,6 +8,7 @@ import {
   type HarthmereFoodStaminaState,
 } from "@/shared/harthmere/mmo_farming_food_stamina";
 import { downHarthmerePlayerFromSystem } from "@/client/components/challenges/LocalDevHarthmereCombat";
+import { HARTHMERE_LOCAL_DEV_STATE_KEYS } from "@/client/components/challenges/LocalDevHarthmereEconomyHardening";
 import { harthmereUserScopedStorageKey } from "@/client/components/challenges/LocalDevHarthmereUserScope";
 import React, { useEffect, useState } from "react";
 
@@ -18,7 +19,7 @@ export const HARTHMERE_FOOD_STAMINA_EVENT =
 export const HARTHMERE_WAKE_UP_ACTIVE_DATASET_KEY =
   "harthmereWakeUpActive" as const;
 const HARTHMERE_LOCAL_INVENTORY_STATE_KEY_FOR_STAMINA =
-  "biomes.localDev.harthmere.inventoryState";
+  HARTHMERE_LOCAL_DEV_STATE_KEYS.inventory;
 const HARTHMERE_LOCAL_INVENTORY_EVENT_FOR_STAMINA =
   "biomes:harthmere-inventory-changed";
 
@@ -77,9 +78,7 @@ export function carriedHarthmereLocalInventoryFromStorageValuesForStamina(
   for (const raw of [scopedRaw, legacyRaw]) {
     if (!raw) continue;
     try {
-      const carried = carriedHarthmereLocalInventoryForStamina(
-        JSON.parse(raw)
-      );
+      const carried = carriedHarthmereLocalInventoryForStamina(JSON.parse(raw));
       if (carried) return carried;
     } catch {
       // Try the next storage slot. User-scoped saves replaced the legacy key,
@@ -196,9 +195,8 @@ export function writeHarthmereFoodStaminaState(
 export function isHarthmereWakeUpScreenActive() {
   return (
     isBrowser() &&
-    document.documentElement.dataset[
-      HARTHMERE_WAKE_UP_ACTIVE_DATASET_KEY
-    ] === "true"
+    document.documentElement.dataset[HARTHMERE_WAKE_UP_ACTIVE_DATASET_KEY] ===
+      "true"
   );
 }
 

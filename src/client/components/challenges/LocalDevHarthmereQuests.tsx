@@ -15,7 +15,10 @@ import {
 } from "@/client/components/challenges/LocalDevHarthmereInventorySystem";
 import { gatheringActionsForHarthmereNpc } from "@/client/components/challenges/LocalDevHarthmereGatheringSystem";
 import { buildingActionsForHarthmereNpc } from "@/client/components/challenges/LocalDevHarthmereBuildingSystem";
-import { BUILDING_SYSTEM_GROVE_STEWARD_NPC, BUILDING_SYSTEM_MIRA_INTRO_QUEST } from "@/shared/harthmere/building_system";
+import {
+  BUILDING_SYSTEM_GROVE_STEWARD_NPC,
+  BUILDING_SYSTEM_MIRA_INTRO_QUEST,
+} from "@/shared/harthmere/building_system";
 import { guildActionsForHarthmereNpc } from "@/client/components/challenges/LocalDevHarthmereGuildSystem";
 import { classSkillActionsForHarthmereNpc } from "@/client/components/challenges/LocalDevHarthmereClassSkillSystem";
 import type { TalkDialogStepAction } from "@/client/components/challenges/TalkDialogModalStep";
@@ -49,6 +52,10 @@ import {
   BIOMES_HARTHMERE_TOWN_NAME,
 } from "@/shared/biomes/display_names";
 import {
+  HARTHMERE_BIOMES_ECS_CHALLENGES_UPDATED_EVENT,
+  createHarthmereBiomesEcsChallenges,
+} from "@/shared/harthmere/harthmere_biomes_ecs_bridge";
+import {
   isHarthmereRepeatableQuestAvailable,
   recordHarthmereQuestEconomyCompletion,
 } from "@/client/components/challenges/LocalDevHarthmereQuestEconomySystem";
@@ -57,24 +64,18 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 const LOCAL_DEV_NPC_ID_BASE = 8_810_000_000_010_000;
 const LOCAL_DEV_NPC_ID_LIMIT = 8_810_000_000_020_000;
-export const HARTHMERE_QUEST_STATE_KEY =
-  "biomes.localDev.harthmere.questState";
+export const HARTHMERE_QUEST_STATE_KEY = "biomes.localDev.harthmere.questState";
 export const HARTHMERE_MISSION_EVENTS_KEY =
   "biomes.localDev.harthmere.missionEvents";
 export const SNAPSHOT_MARKET_BOARD_ACTIVATION_EVENT =
   "harthmere.market_board.activate";
 
-export const HARTHMERE_READ_JOBS_BOARD_QUEST_ID =
-  "read-the-jobs-board";
-export const HARTHMERE_READ_JOBS_BOARD_TITLE =
-  "Read the Jobs Board";
+export const HARTHMERE_READ_JOBS_BOARD_QUEST_ID = "read-the-jobs-board";
+export const HARTHMERE_READ_JOBS_BOARD_TITLE = "Read the Jobs Board";
 export const HARTHMERE_JOBS_BOARD_TARGET_OFFSET = 140_041;
-export const HARTHMERE_JOBS_BOARD_MARKER_ID =
-  "harthmere_market_posting_board";
-export const HARTHMERE_JOBS_BOARD_READ_EVENT =
-  "harthmere.jobs_board.read";
-const HARTHMERE_JOBS_BOARD_OPEN_EVENT =
-  "biomes:harthmere-jobs-board-open";
+export const HARTHMERE_JOBS_BOARD_MARKER_ID = "harthmere_market_posting_board";
+export const HARTHMERE_JOBS_BOARD_READ_EVENT = "harthmere.jobs_board.read";
+const HARTHMERE_JOBS_BOARD_OPEN_EVENT = "biomes:harthmere-jobs-board-open";
 
 // HARTHMERE_QUEST_ITEM_FLOW:
 // Quest steps can optionally grant an item when the step completes (e.g.,
@@ -121,18 +122,20 @@ const HARTHMERE_AUTOSTART_QUEST_IDS = [
 export function createHarthmereStarterQuestState(): HarthmereQuestState {
   return {
     active: Object.fromEntries(
-      HARTHMERE_AUTOSTART_QUEST_IDS.map((questId) => [questId, 0]),
+      HARTHMERE_AUTOSTART_QUEST_IDS.map((questId) => [questId, 0])
     ),
     completed: [],
   };
 }
 
 export function normalizeHarthmereQuestState(
-  parsed: Partial<HarthmereQuestState> | undefined,
+  parsed: Partial<HarthmereQuestState> | undefined
 ): HarthmereQuestState {
   const parsedState = parsed ?? {};
   const rawActive =
-    parsedState.active && typeof parsedState.active === "object" ? parsedState.active : {};
+    parsedState.active && typeof parsedState.active === "object"
+      ? parsedState.active
+      : {};
   const active: Record<string, number> = {};
 
   for (const [questId, rawStepIndex] of Object.entries(rawActive)) {
@@ -146,14 +149,18 @@ export function normalizeHarthmereQuestState(
       : 0;
   }
 
-  const rawCompleted = Array.isArray(parsedState.completed) ? parsedState.completed : [];
-  const completed = [...new Set(
-    rawCompleted.filter(
-      (questId): questId is string =>
-        typeof questId === "string" &&
-        QUESTS.some((entry) => entry.id === questId),
+  const rawCompleted = Array.isArray(parsedState.completed)
+    ? parsedState.completed
+    : [];
+  const completed = [
+    ...new Set(
+      rawCompleted.filter(
+        (questId): questId is string =>
+          typeof questId === "string" &&
+          QUESTS.some((entry) => entry.id === questId)
+      )
     ),
-  )];
+  ];
 
   for (const questId of HARTHMERE_AUTOSTART_QUEST_IDS) {
     if (!completed.includes(questId) && active[questId] === undefined) {
@@ -172,8 +179,7 @@ export const QUESTS: HarthmereQuestDefinition[] = [
     boardListed: false,
     summary:
       "Find the Jobs Board so new players understand where public work, seeker tasks, and business requests live.",
-    reward:
-      "Jobs Board unlocked, public work routing, and first-job guidance.",
+    reward: "Jobs Board unlocked, public work routing, and first-job guidance.",
     steps: [
       {
         objective: "Read the Jobs Board.",
@@ -325,14 +331,12 @@ export const QUESTS: HarthmereQuestDefinition[] = [
       {
         objective: "Ask Nessa Crowe about wet footprints in Mudden Ward.",
         targetOffset: 33,
-        completion:
-          "I say the print leads toward a drain, not a thief's room.",
+        completion: "I say the print leads toward a drain, not a thief's room.",
       },
       {
         objective: "Return to Banker Merl Voss with the clue.",
         targetOffset: 6,
-        completion:
-          "I unlock a small storage favor and reluctantly thank you.",
+        completion: "I unlock a small storage favor and reluctantly thank you.",
       },
     ],
   },
@@ -347,8 +351,7 @@ export const QUESTS: HarthmereQuestDefinition[] = [
       {
         objective: "Speak with Master Osric Vale at the Black Anvil.",
         targetOffset: 29,
-        completion:
-          "I list the missing nails, hinges, and cold iron scraps.",
+        completion: "I list the missing nails, hinges, and cold iron scraps.",
       },
       {
         objective: "Ask Forge Apprentice Luth to prepare the scrap bundle.",
@@ -359,8 +362,7 @@ export const QUESTS: HarthmereQuestDefinition[] = [
       {
         objective: "Report to Drill Instructor Hal in the Guard Yard.",
         targetOffset: 44,
-        completion:
-          "I accept the training gear and update the Guard notice.",
+        completion: "I accept the training gear and update the Guard notice.",
       },
     ],
   },
@@ -380,8 +382,7 @@ export const QUESTS: HarthmereQuestDefinition[] = [
       {
         objective: "Ask Ysabet Fenlow to prepare the fever tea.",
         targetOffset: 47,
-        completion:
-          "I mix the remedy and complain about imprecise spoons.",
+        completion: "I mix the remedy and complain about imprecise spoons.",
       },
       {
         objective: "Deliver the fever tea to Sister Maelle at the chapel.",
@@ -442,8 +443,7 @@ export const QUESTS: HarthmereQuestDefinition[] = [
         objective:
           "Ask Pip the mascot whether the chickens escaped toward the market.",
         targetOffset: 4,
-        completion:
-          "I deny eating any evidence and point back to the farm.",
+        completion: "I deny eating any evidence and point back to the farm.",
       },
       {
         objective: "Return to Tilda Fen with the count.",
@@ -470,8 +470,7 @@ export const QUESTS: HarthmereQuestDefinition[] = [
       {
         objective: "Ask the River Knots Lookout what the crate is hiding.",
         targetOffset: 65,
-        completion:
-          "I say the crate was dry inside after three days in rain.",
+        completion: "I say the crate was dry inside after three days in rain.",
       },
       {
         objective:
@@ -505,8 +504,7 @@ export const QUESTS: HarthmereQuestDefinition[] = [
       {
         objective: "Ask Nessa Crowe about the drains under Mudden Ward.",
         targetOffset: 33,
-        completion:
-          "I say the drains lead to older stones and colder water.",
+        completion: "I say the drains lead to older stones and colder water.",
       },
       {
         objective:
@@ -581,16 +579,22 @@ const HARTHMERE_QUEST_TARGET_LABEL_CLUSTER_FEET_Y: Record<string, number> = {
 export const HARTHMERE_QUEST_TARGET_VERSION =
   "harthmere-quest-target-cluster-feet-y";
 
-function harthmereQuestTargetFeetYForLabel(label: string | undefined, authoredY: number) {
+function harthmereQuestTargetFeetYForLabel(
+  label: string | undefined,
+  authoredY: number
+) {
   if (!label) return authoredY;
   const override = HARTHMERE_QUEST_TARGET_LABEL_CLUSTER_FEET_Y[label];
   return override === undefined ? authoredY : override;
 }
 
 export function getHarthmereQuestTargetWorldPos(
-  target: HarthmereQuestTarget,
+  target: HarthmereQuestTarget
 ): [number, number, number] {
-  const overrideY = harthmereQuestTargetFeetYForLabel(target.label, target.pos[1]);
+  const overrideY = harthmereQuestTargetFeetYForLabel(
+    target.label,
+    target.pos[1]
+  );
   const shifted = shiftHarthmereAuthoredPositionToWorld(target.pos);
   // Note: shifting preserves Y already; current just substitutes the cluster Y.
   return [shifted[0], overrideY, shifted[2]];
@@ -607,7 +611,10 @@ function harthmereQuestTargetGuide(step: HarthmereQuestStep | undefined) {
   return `${step.objective} ${targetCopy} Use the Harthmere Quest Map button to mark the exact stop.`;
 }
 
-function harthmereQuestNextLeadCopy(quest: HarthmereQuestDefinition, nextIndex: number) {
+function harthmereQuestNextLeadCopy(
+  quest: HarthmereQuestDefinition,
+  nextIndex: number
+) {
   const nextStep = quest.steps[nextIndex];
   if (!nextStep) {
     return `Quest complete. Reward available: ${quest.reward}. Return to the Market Board for another route if you need a next lead.`;
@@ -684,6 +691,37 @@ function isBrowser() {
   );
 }
 
+function harthmereAvailableQuestIdsForBiomesEcs(state: HarthmereQuestState) {
+  return QUESTS.filter((quest) => {
+    if (state.active[quest.id] !== undefined) {
+      return false;
+    }
+    if (!state.completed.includes(quest.id)) {
+      return true;
+    }
+    return quest.repeatable && isHarthmereRepeatableQuestAvailable(quest.id);
+  }).map((quest) => quest.id);
+}
+
+function dispatchHarthmereQuestBiomesEcsProjection(state: HarthmereQuestState) {
+  window.dispatchEvent(
+    new CustomEvent(HARTHMERE_BIOMES_ECS_CHALLENGES_UPDATED_EVENT, {
+      detail: createHarthmereBiomesEcsChallenges({
+        active: Object.fromEntries(
+          Object.keys(state.active).map((questId) => [
+            questId,
+            { startedAtMs: 0 },
+          ])
+        ),
+        completed: Object.fromEntries(
+          state.completed.map((questId) => [questId, 0])
+        ),
+        available: harthmereAvailableQuestIdsForBiomesEcs(state),
+      }),
+    })
+  );
+}
+
 export function readHarthmereQuestState(): HarthmereQuestState {
   if (!isBrowser()) {
     return EMPTY_STATE;
@@ -694,7 +732,7 @@ export function readHarthmereQuestState(): HarthmereQuestState {
       return createHarthmereStarterQuestState();
     }
     return normalizeHarthmereQuestState(
-      JSON.parse(raw) as Partial<HarthmereQuestState>,
+      JSON.parse(raw) as Partial<HarthmereQuestState>
     );
   } catch {
     return createHarthmereStarterQuestState();
@@ -708,8 +746,9 @@ export function writeHarthmereQuestState(state: HarthmereQuestState) {
   const normalized = normalizeHarthmereQuestState(state);
   window.localStorage.setItem(
     HARTHMERE_QUEST_STATE_KEY,
-    JSON.stringify(normalized),
+    JSON.stringify(normalized)
   );
+  dispatchHarthmereQuestBiomesEcsProjection(normalized);
   window.dispatchEvent(new Event("biomes:harthmere-quest-state-changed"));
 }
 
@@ -756,7 +795,7 @@ function recordMissionEvent(kind: string, title: string, detail: string) {
     ].slice(0, 12);
     window.localStorage.setItem(
       HARTHMERE_MISSION_EVENTS_KEY,
-      JSON.stringify(next),
+      JSON.stringify(next)
     );
     window.dispatchEvent(new Event("biomes:harthmere-mission-event"));
   } catch {
@@ -810,7 +849,7 @@ function matchingActiveQuests(offset: number, state: HarthmereQuestState) {
 
 function completeStep(
   state: HarthmereQuestState,
-  quest: HarthmereQuestDefinition,
+  quest: HarthmereQuestDefinition
 ): HarthmereQuestState {
   const stepIndex = state.active[quest.id] ?? 0;
   const nextStep = stepIndex + 1;
@@ -830,12 +869,9 @@ function completeStep(
 function acceptQuest(
   state: HarthmereQuestState,
   quest: HarthmereQuestDefinition,
-  acceptingOffset?: number,
+  acceptingOffset?: number
 ): HarthmereQuestState {
-  const activeStepIndex = initialQuestStepIndexOnAccept(
-    quest,
-    acceptingOffset,
-  );
+  const activeStepIndex = initialQuestStepIndexOnAccept(quest, acceptingOffset);
   return {
     ...state,
     active: {
@@ -847,7 +883,7 @@ function acceptQuest(
 
 function initialQuestStepIndexOnAccept(
   quest: HarthmereQuestDefinition,
-  acceptingOffset?: number,
+  acceptingOffset?: number
 ) {
   if (acceptingOffset === undefined || quest.steps.length <= 1) {
     return 0;
@@ -856,14 +892,14 @@ function initialQuestStepIndexOnAccept(
 }
 
 export function completeHarthmereJobsBoardReadQuest(
-  reason = HARTHMERE_JOBS_BOARD_READ_EVENT,
+  reason = HARTHMERE_JOBS_BOARD_READ_EVENT
 ) {
   if (!isBrowser()) {
     return { changed: false, reason: "not_browser" as const };
   }
 
   const quest = QUESTS.find(
-    (entry) => entry.id === HARTHMERE_READ_JOBS_BOARD_QUEST_ID,
+    (entry) => entry.id === HARTHMERE_READ_JOBS_BOARD_QUEST_ID
   );
   if (!quest) {
     return { changed: false, reason: "missing_quest" as const };
@@ -876,10 +912,7 @@ export function completeHarthmereJobsBoardReadQuest(
 
   const next: HarthmereQuestState = {
     active: { ...current.active },
-    completed: [
-      ...current.completed,
-      HARTHMERE_READ_JOBS_BOARD_QUEST_ID,
-    ],
+    completed: [...current.completed, HARTHMERE_READ_JOBS_BOARD_QUEST_ID],
   };
   delete next.active[HARTHMERE_READ_JOBS_BOARD_QUEST_ID];
 
@@ -887,13 +920,13 @@ export function completeHarthmereJobsBoardReadQuest(
   recordMissionEvent(
     "completed",
     quest.title,
-    `${quest.steps[0]?.completion ?? "Jobs Board read."} · ${reason}`,
+    `${quest.steps[0]?.completion ?? "Jobs Board read."} · ${reason}`
   );
   recordHarthmereQuestStepCompleted(
     quest.id,
     quest.title,
     HARTHMERE_JOBS_BOARD_TARGET_OFFSET,
-    true,
+    true
   );
   awardHarthmereQuestXp(quest.id, quest.title, true);
   grantHarthmereQuestInventoryReward(quest.id, quest.title);
@@ -910,19 +943,22 @@ function compactHarthmereNpcActions(actions: TalkDialogStepAction[]) {
   // for mission progression, then add useful systems.
   const unique = actions.filter(
     (action, index) =>
-      actions.findIndex((entry) => entry.name === action.name) === index,
+      actions.findIndex((entry) => entry.name === action.name) === index
   );
   const selected: TalkDialogStepAction[] = [];
   const take = (
     predicate: (action: TalkDialogStepAction) => boolean,
-    limit = 4,
+    limit = 4
   ) => {
     let takenFromGroup = 0;
     for (const action of unique) {
       if (selected.length >= 4 || takenFromGroup >= limit) {
         break;
       }
-      if (predicate(action) && !selected.some((entry) => entry.name === action.name)) {
+      if (
+        predicate(action) &&
+        !selected.some((entry) => entry.name === action.name)
+      ) {
         selected.push(action);
         takenFromGroup += 1;
       }
@@ -944,7 +980,7 @@ function compactHarthmereNpcActions(actions: TalkDialogStepAction[]) {
       action.name === "Ready an owned weapon" ||
       action.name === "Deposit materials" ||
       action.name === "Sell junk",
-    1,
+    1
   );
   take(
     (action) =>
@@ -952,7 +988,7 @@ function compactHarthmereNpcActions(actions: TalkDialogStepAction[]) {
       action.name === "Your work matters here." ||
       action.name === "What are the local laws?" ||
       action.name === "I saw something suspicious.",
-    1,
+    1
   );
   take(() => true, 4);
   return selected.slice(0, 4);
@@ -964,7 +1000,7 @@ export function isHarthmereJobsBoardOffset(offset: number) {
 
 export function useLocalDevHarthmereDialog(
   talkingToNPCId: BiomesId,
-  defaultDialog: string,
+  defaultDialog: string
 ):
   | {
       id: string;
@@ -974,10 +1010,10 @@ export function useLocalDevHarthmereDialog(
   | undefined {
   const offset = entityOffset(talkingToNPCId);
   const [state, setState] = useState<HarthmereQuestState>(() =>
-    readQuestState(),
+    readQuestState()
   );
   const [reputationState, setReputationState] = useState(() =>
-    readHarthmereReputationState(),
+    readHarthmereReputationState()
   );
   const [combatRevision, setCombatRevision] = useState(0);
 
@@ -991,7 +1027,7 @@ export function useLocalDevHarthmereDialog(
       window.removeEventListener("storage", refresh);
       window.removeEventListener(
         "biomes:harthmere-reputation-changed",
-        refresh,
+        refresh
       );
     };
   }, []);
@@ -1006,10 +1042,12 @@ export function useLocalDevHarthmereDialog(
     window.addEventListener("biomes:harthmere-combat-changed", refreshCombat);
     return () => {
       window.removeEventListener("storage", refreshCombat);
-      window.removeEventListener("biomes:harthmere-combat-changed", refreshCombat);
+      window.removeEventListener(
+        "biomes:harthmere-combat-changed",
+        refreshCombat
+      );
     };
   }, []);
-
 
   return useMemo(() => {
     if (offset === undefined) {
@@ -1034,7 +1072,7 @@ export function useLocalDevHarthmereDialog(
     const available = availableQuestsForOffset(offset, state);
     const objectiveLines = activeObjectiveLines(state);
     const completedQuestTitles = QUESTS.filter((quest) =>
-      state.completed.includes(quest.id),
+      state.completed.includes(quest.id)
     ).map((quest) => quest.title);
     const firstMatching = matching[0];
     const firstMatchingStep = firstMatching
@@ -1064,7 +1102,7 @@ export function useLocalDevHarthmereDialog(
         matchingQuestTitle: firstMatching?.title,
         matchingQuestObjective: firstMatchingStep?.objective,
         onRefresh: refreshReputation,
-      }),
+      })
     );
 
     for (const quest of matching) {
@@ -1092,7 +1130,7 @@ export function useLocalDevHarthmereDialog(
         followUpText: step
           ? `${step.completion} ${harthmereQuestNextLeadCopy(
               quest,
-              (state.active[quest.id] ?? 0) + 1,
+              (state.active[quest.id] ?? 0) + 1
             )}`
           : undefined,
         onPerformed: () => {
@@ -1104,7 +1142,7 @@ export function useLocalDevHarthmereDialog(
           // click time in case state changed between render and click.
           if (justFinishedStep?.requiresItemId) {
             const stillHas = harthmereInventoryCountByItemId(
-              justFinishedStep.requiresItemId,
+              justFinishedStep.requiresItemId
             );
             if (stillHas < (justFinishedStep.requiresQuantity ?? 1)) {
               return;
@@ -1121,7 +1159,7 @@ export function useLocalDevHarthmereDialog(
             consumeHarthmereItemByItemId(
               justFinishedStep.requiresItemId,
               justFinishedStep.requiresQuantity ?? 1,
-              `${quest.title}: turned in`,
+              `${quest.title}: turned in`
             );
           }
           // HARTHMERE_QUEST_ITEM_FLOW: hand over an item if the step's
@@ -1130,7 +1168,7 @@ export function useLocalDevHarthmereDialog(
             grantHarthmereItem(
               justFinishedStep.grantsItemId,
               justFinishedStep.grantsQuantity ?? 1,
-              `${quest.title}: received from step ${stepIndex + 1}`,
+              `${quest.title}: received from step ${stepIndex + 1}`
             );
           }
           recordMissionEvent(
@@ -1138,14 +1176,18 @@ export function useLocalDevHarthmereDialog(
             quest.title,
             `${harthmereQuestNextLeadCopy(
               quest,
-              completedQuest ? quest.steps.length : next.active[quest.id] ?? 0,
-            )}${isBoard ? ` · Market Board activation cue: ${SNAPSHOT_MARKET_BOARD_ACTIVATION_EVENT}` : ""}`,
+              completedQuest ? quest.steps.length : next.active[quest.id] ?? 0
+            )}${
+              isBoard
+                ? ` · Market Board activation cue: ${SNAPSHOT_MARKET_BOARD_ACTIVATION_EVENT}`
+                : ""
+            }`
           );
           recordHarthmereQuestStepCompleted(
             quest.id,
             quest.title,
             offset,
-            completedQuest,
+            completedQuest
           );
           awardHarthmereQuestXp(quest.id, quest.title, completedQuest);
           if (completedQuest) {
@@ -1154,7 +1196,7 @@ export function useLocalDevHarthmereDialog(
             recordHarthmereEconomicEvent(
               "source",
               "Quest Economy Reward",
-              `${quest.title} paid rewards and moved goods through the local economy.`,
+              `${quest.title} paid rewards and moved goods through the local economy.`
             );
           }
           setState(next);
@@ -1169,9 +1211,9 @@ export function useLocalDevHarthmereDialog(
       actions.push({
         name: `Accept: ${quest.title}`,
         tooltip: `${quest.summary} Reward: ${quest.reward}`,
-        followUpText: `Accepted: ${quest.title}. Step ${
-          initialStepIndex + 1
-        }/${quest.steps.length}: ${harthmereQuestTargetGuide(initialStep)}`,
+        followUpText: `Accepted: ${quest.title}. Step ${initialStepIndex + 1}/${
+          quest.steps.length
+        }: ${harthmereQuestTargetGuide(initialStep)}`,
         onPerformed: () => {
           const next = acceptQuest(readQuestState(), quest, offset);
           writeQuestState(next);
@@ -1182,7 +1224,7 @@ export function useLocalDevHarthmereDialog(
               isBoard
                 ? ` · Market Board activation cue: ${SNAPSHOT_MARKET_BOARD_ACTIVATION_EVENT}`
                 : ""
-            }`,
+            }`
           );
           recordHarthmereQuestAccepted(quest.id, quest.title, offset);
           setState(next);
@@ -1208,7 +1250,7 @@ export function useLocalDevHarthmereDialog(
     actions.push(...levelingActionsForHarthmereNpc(offset));
 
     actions.push(
-      ...reputationActionsForHarthmereNpc(offset, refreshReputation),
+      ...reputationActionsForHarthmereNpc(offset, refreshReputation)
     );
 
     if (isBoard) {
@@ -1223,7 +1265,7 @@ export function useLocalDevHarthmereDialog(
           completeHarthmereJobsBoardReadQuest("jobs_board_panel_opened");
           setState(readQuestState());
           window.dispatchEvent(
-            new CustomEvent(HARTHMERE_JOBS_BOARD_OPEN_EVENT),
+            new CustomEvent(HARTHMERE_JOBS_BOARD_OPEN_EVENT)
           );
         },
       });
@@ -1239,7 +1281,7 @@ export function useLocalDevHarthmereDialog(
           recordMissionEvent(
             "reset",
             "Harthmere mission state",
-            "Local-dev mission progress was reset from the Market Board, then starter quests were re-assigned.",
+            "Local-dev mission progress was reset from the Market Board, then starter quests were re-assigned."
           );
           setState(resetState);
         },
@@ -1489,7 +1531,9 @@ function mapPercent(value: number, min: number, max: number) {
 }
 
 function mapLayerLabel(marker: HarthmereQuestTarget | undefined, y: number) {
-  const district = `${marker?.district ?? ""} ${marker?.label ?? ""}`.toLowerCase();
+  const district = `${marker?.district ?? ""} ${
+    marker?.label ?? ""
+  }`.toLowerCase();
   if (/underways|drain|dungeon|crypt|cellar/.test(district) || y < 55) {
     return "Lower level / underways";
   }
@@ -1510,7 +1554,7 @@ function verticalRelationLabel(playerY: number, targetY: number) {
 type HudMapRegion = "grove" | "harthmere";
 
 const GROVE_MAP_MARKERS = SNAPSHOT_GROVE_LANDMARKS.filter(
-  (landmark) => landmark.area !== "harthmere",
+  (landmark) => landmark.area !== "harthmere"
 );
 
 const GROVE_BOUNDS = GROVE_MAP_MARKERS.reduce(
@@ -1525,11 +1569,11 @@ const GROVE_BOUNDS = GROVE_MAP_MARKERS.reduce(
     maxX: Number.NEGATIVE_INFINITY,
     minZ: Number.POSITIVE_INFINITY,
     maxZ: Number.NEGATIVE_INFINITY,
-  },
+  }
 );
 
 export function hudMapRegionForPlayerPosition(
-  playerPos: readonly [number, number, number] | undefined,
+  playerPos: readonly [number, number, number] | undefined
 ): HudMapRegion {
   if (!playerPos) {
     return "harthmere";
@@ -1560,32 +1604,37 @@ function groveMarkerGlyph(marker: SnapshotGroveLandmark) {
   return marker.label.charAt(0).toUpperCase();
 }
 
-
 function groveMapMarkerIsQuestItem(
   marker: SnapshotGroveLandmark,
-  objective?: string,
+  objective?: string
 ) {
-  const text = `${marker.id} ${marker.label} ${marker.kind} ${objective ?? ""}`.toLowerCase();
+  const text = `${marker.id} ${marker.label} ${marker.kind} ${
+    objective ?? ""
+  }`.toLowerCase();
   return (
     marker.kind === "resource" ||
-    /food|ration|item|sample|root|berry|berries|stick|stone|bolt|key|crate|satchel|basket|bin|bandage|salve|medicine|workbench|drop/.test(text)
+    /food|ration|item|sample|root|berry|berries|stick|stone|bolt|key|crate|satchel|basket|bin|bandage|salve|medicine|workbench|drop/.test(
+      text
+    )
   );
 }
 
 function groveQuestMarkerRows(
   quest: (typeof SNAPSHOT_GROVE_QUESTS)[number] | undefined,
-  activeObjectiveIndex: number,
+  activeObjectiveIndex: number
 ) {
   if (!quest) {
     return [];
   }
   const activeIndex = Math.max(
     0,
-    Math.min(activeObjectiveIndex, quest.objectives.length - 1),
+    Math.min(activeObjectiveIndex, quest.objectives.length - 1)
   );
   return quest.markerIds
     .map((markerId, stepIndex) => {
-      const marker = SNAPSHOT_GROVE_LANDMARKS.find((entry) => entry.id === markerId);
+      const marker = SNAPSHOT_GROVE_LANDMARKS.find(
+        (entry) => entry.id === markerId
+      );
       if (!marker) {
         return undefined;
       }
@@ -1602,15 +1651,15 @@ function groveQuestMarkerRows(
       };
     })
     .filter(Boolean) as Array<{
-      marker: SnapshotGroveLandmark;
-      markerId: string;
-      stepIndex: number;
-      objective?: string;
-      isActive: boolean;
-      isPast: boolean;
-      isFuture: boolean;
-      isItem: boolean;
-    }>;
+    marker: SnapshotGroveLandmark;
+    markerId: string;
+    stepIndex: number;
+    objective?: string;
+    isActive: boolean;
+    isPast: boolean;
+    isFuture: boolean;
+    isItem: boolean;
+  }>;
 }
 
 // HARTHMERE_QUEST_NAV_AID:
@@ -1629,7 +1678,7 @@ function pinHarthmereQuestStepMarker(
     addNavigationAid: (aid: any, id?: number) => number;
     removeNavigationAid?: (id: number) => void;
   },
-  targetPos: readonly [number, number, number],
+  targetPos: readonly [number, number, number]
 ) {
   mapManager.removeNavigationAid?.(HARTHMERE_QUEST_NAV_AID_ID);
   return mapManager.addNavigationAid(
@@ -1641,7 +1690,7 @@ function pinHarthmereQuestStepMarker(
         position: [...targetPos],
       },
     },
-    HARTHMERE_QUEST_NAV_AID_ID,
+    HARTHMERE_QUEST_NAV_AID_ID
   );
 }
 
@@ -1668,7 +1717,7 @@ function broadcastHarthmereTutorHudLabels(labels: string[]) {
     window.dispatchEvent(
       new CustomEvent(HARTHMERE_TUTOR_HUD_HIGHLIGHT_EVENT, {
         detail: { labels },
-      }),
+      })
     );
   } catch {
     // Ignore in non-browser contexts.
@@ -1695,7 +1744,7 @@ function broadcastHarthmereTutorHudLabels(labels: string[]) {
 //   - Step text mentions settings / options / preferences → Settings.
 function harthmereStepHudLabels(
   quest: HarthmereQuestDefinition | undefined,
-  step: HarthmereQuestStep | undefined,
+  step: HarthmereQuestStep | undefined
 ): string[] {
   if (!quest || !step) {
     return [];
@@ -1717,7 +1766,11 @@ function harthmereStepHudLabels(
   if (/craft|recipe|repair|forge|workbench|smithy|anvil/.test(text)) {
     labels.add("Craft");
   }
-  if (/mail|letter|parcel|courier|storage|deposit|withdraw|bank|vault|lockbox/.test(text)) {
+  if (
+    /mail|letter|parcel|courier|storage|deposit|withdraw|bank|vault|lockbox/.test(
+      text
+    )
+  ) {
     labels.add("Mail");
   }
   if (/jobs board|job board|public work/.test(text)) {
@@ -1741,78 +1794,84 @@ function harthmereStepHudLabels(
   return [...labels].slice(0, 4);
 }
 
-export const HarthmereQuestNavAidController: React.FunctionComponent<{}> = () => {
-  const { mapManager } = useClientContext();
-  const [state, setState] = useState<HarthmereQuestState>(() => readQuestState());
-
-  useEffect(() => {
-    const refresh = () => setState(readQuestState());
-    window.addEventListener("storage", refresh);
-    window.addEventListener("biomes:harthmere-quest-state-changed", refresh);
-    const interval = window.setInterval(refresh, 500);
-    return () => {
-      window.clearInterval(interval);
-      window.removeEventListener("storage", refresh);
-      window.removeEventListener("biomes:harthmere-quest-state-changed", refresh);
-    };
-  }, []);
-
-  // active is recomputed each render from state so it stays in lockstep with
-  // whichever quest/step is current. The effect repins whenever the active
-  // step's targetOffset changes.
-  const active = firstActiveQuest(state);
-  const targetOffset = active?.step.targetOffset;
-
-  useEffect(() => {
-    if (targetOffset === undefined) {
-      clearHarthmereQuestStepMarker(mapManager);
-      return;
-    }
-    const target = QUEST_TARGETS[targetOffset];
-    if (!target) {
-      clearHarthmereQuestStepMarker(mapManager);
-      return;
-    }
-    pinHarthmereQuestStepMarker(
-      mapManager,
-      getHarthmereQuestTargetWorldPos(target),
+export const HarthmereQuestNavAidController: React.FunctionComponent<{}> =
+  () => {
+    const { mapManager } = useClientContext();
+    const [state, setState] = useState<HarthmereQuestState>(() =>
+      readQuestState()
     );
-    return () => {
-      clearHarthmereQuestStepMarker(mapManager);
-    };
-  }, [mapManager, targetOffset]);
 
-  // HARTHMERE_TUTOR_HUD_HIGHLIGHT:
-  // Broadcast the NavSlot labels the player should look at right now. This
-  // depends on which active step they are on; "no active step" clears the
-  // highlights so the bar goes calm again. Re-broadcast on quest/step
-  // changes — note that we deliberately re-derive the *step object* per
-  // render so step-level fields like requiresItemId pick up.
-  useEffect(() => {
-    if (!active) {
-      broadcastHarthmereTutorHudLabels([]);
-      return;
-    }
-    const labels = harthmereStepHudLabels(active.quest, active.step);
-    broadcastHarthmereTutorHudLabels(labels);
-    return () => {
-      // Clear when the controller unmounts so the bar does not get stuck
-      // pulsing for a stale step.
-      broadcastHarthmereTutorHudLabels([]);
-    };
-  }, [active?.quest.id, active?.stepIndex]);
+    useEffect(() => {
+      const refresh = () => setState(readQuestState());
+      window.addEventListener("storage", refresh);
+      window.addEventListener("biomes:harthmere-quest-state-changed", refresh);
+      const interval = window.setInterval(refresh, 500);
+      return () => {
+        window.clearInterval(interval);
+        window.removeEventListener("storage", refresh);
+        window.removeEventListener(
+          "biomes:harthmere-quest-state-changed",
+          refresh
+        );
+      };
+    }, []);
 
-  return null;
-};
+    // active is recomputed each render from state so it stays in lockstep with
+    // whichever quest/step is current. The effect repins whenever the active
+    // step's targetOffset changes.
+    const active = firstActiveQuest(state);
+    const targetOffset = active?.step.targetOffset;
+
+    useEffect(() => {
+      if (targetOffset === undefined) {
+        clearHarthmereQuestStepMarker(mapManager);
+        return;
+      }
+      const target = QUEST_TARGETS[targetOffset];
+      if (!target) {
+        clearHarthmereQuestStepMarker(mapManager);
+        return;
+      }
+      pinHarthmereQuestStepMarker(
+        mapManager,
+        getHarthmereQuestTargetWorldPos(target)
+      );
+      return () => {
+        clearHarthmereQuestStepMarker(mapManager);
+      };
+    }, [mapManager, targetOffset]);
+
+    // HARTHMERE_TUTOR_HUD_HIGHLIGHT:
+    // Broadcast the NavSlot labels the player should look at right now. This
+    // depends on which active step they are on; "no active step" clears the
+    // highlights so the bar goes calm again. Re-broadcast on quest/step
+    // changes — note that we deliberately re-derive the *step object* per
+    // render so step-level fields like requiresItemId pick up.
+    useEffect(() => {
+      if (!active) {
+        broadcastHarthmereTutorHudLabels([]);
+        return;
+      }
+      const labels = harthmereStepHudLabels(active.quest, active.step);
+      broadcastHarthmereTutorHudLabels(labels);
+      return () => {
+        // Clear when the controller unmounts so the bar does not get stuck
+        // pulsing for a stale step.
+        broadcastHarthmereTutorHudLabels([]);
+      };
+    }, [active?.quest.id, active?.stepIndex]);
+
+    return null;
+  };
 
 export const HarthmereQuestMapHUD: React.FunctionComponent<{}> = () => {
   const { reactResources } = useClientContext();
   const localPlayer = reactResources.use("/scene/local_player");
   const [state, setState] = useState<HarthmereQuestState>(() =>
-    readQuestState(),
+    readQuestState()
   );
   const [groveQuestState, setGroveQuestState] = useState(() =>
-    readSnapshotGroveQuestState(),
+    readSnapshotGroveQuestState()
   );
 
   useEffect(() => {
@@ -1863,11 +1922,16 @@ export const HarthmereQuestMapHUD: React.FunctionComponent<{}> = () => {
   ];
   const markerEntries = [...new Set(majorMarkerOffsets)]
     .map((offset) => ({ offset, marker: QUEST_TARGETS[offset] }))
-    .filter((entry): entry is { offset: number; marker: HarthmereQuestTarget } => Boolean(entry.marker));
-  const [selectedOffset, setSelectedOffset] = useState<number | undefined>(targetOffset);
+    .filter(
+      (entry): entry is { offset: number; marker: HarthmereQuestTarget } =>
+        Boolean(entry.marker)
+    );
+  const [selectedOffset, setSelectedOffset] = useState<number | undefined>(
+    targetOffset
+  );
   const activeGrove = useMemo(() => {
     const quest = SNAPSHOT_GROVE_QUESTS.find(
-      (entry) => entry.id === groveQuestState.activeQuestId,
+      (entry) => entry.id === groveQuestState.activeQuestId
     );
     if (!quest) {
       return undefined;
@@ -1876,11 +1940,13 @@ export const HarthmereQuestMapHUD: React.FunctionComponent<{}> = () => {
     // arrays — labels in one, marker ids in the other, indexed by objective.
     const objectiveIndex = Math.max(
       0,
-      Math.min(groveQuestState.activeObjectiveIndex, quest.objectives.length - 1),
+      Math.min(
+        groveQuestState.activeObjectiveIndex,
+        quest.objectives.length - 1
+      )
     );
     const objectiveLabel = quest.objectives[objectiveIndex];
-    const markerId =
-      quest.markerIds[objectiveIndex] ?? quest.markerIds[0];
+    const markerId = quest.markerIds[objectiveIndex] ?? quest.markerIds[0];
     const marker = markerId
       ? GROVE_MAP_MARKERS.find((entry) => entry.id === markerId)
       : undefined;
@@ -1892,16 +1958,27 @@ export const HarthmereQuestMapHUD: React.FunctionComponent<{}> = () => {
     };
   }, [groveQuestState]);
   const nearestGroveMarker = useMemo(() => {
-    return GROVE_MAP_MARKERS.reduce<SnapshotGroveLandmark | undefined>((closest, marker) => {
-      if (!closest) {
-        return marker;
-      }
-      const currentDistance = Math.hypot(marker.position[0] - playerPos[0], marker.position[2] - playerPos[2]);
-      const bestDistance = Math.hypot(closest.position[0] - playerPos[0], closest.position[2] - playerPos[2]);
-      return currentDistance < bestDistance ? marker : closest;
-    }, undefined);
+    return GROVE_MAP_MARKERS.reduce<SnapshotGroveLandmark | undefined>(
+      (closest, marker) => {
+        if (!closest) {
+          return marker;
+        }
+        const currentDistance = Math.hypot(
+          marker.position[0] - playerPos[0],
+          marker.position[2] - playerPos[2]
+        );
+        const bestDistance = Math.hypot(
+          closest.position[0] - playerPos[0],
+          closest.position[2] - playerPos[2]
+        );
+        return currentDistance < bestDistance ? marker : closest;
+      },
+      undefined
+    );
   }, [playerPos]);
-  const [selectedGroveId, setSelectedGroveId] = useState<string | undefined>(undefined);
+  const [selectedGroveId, setSelectedGroveId] = useState<string | undefined>(
+    undefined
+  );
 
   useEffect(() => {
     setSelectedOffset(targetOffset);
@@ -1909,7 +1986,9 @@ export const HarthmereQuestMapHUD: React.FunctionComponent<{}> = () => {
 
   useEffect(() => {
     setSelectedGroveId(
-      activeGrove?.marker?.id ?? nearestGroveMarker?.id ?? GROVE_MAP_MARKERS[0]?.id,
+      activeGrove?.marker?.id ??
+        nearestGroveMarker?.id ??
+        GROVE_MAP_MARKERS[0]?.id
     );
   }, [activeGrove?.marker?.id, nearestGroveMarker?.id, region]);
 
@@ -1932,165 +2011,257 @@ export const HarthmereQuestMapHUD: React.FunctionComponent<{}> = () => {
     const objectiveMarkerId = activeGrove?.marker?.id;
     const activeGroveMarkerRows = groveQuestMarkerRows(
       activeGrove?.quest,
-      activeGrove?.objectiveIndex ?? 0,
+      activeGrove?.objectiveIndex ?? 0
     );
     const activeGroveMarkerIds = new Set(
       activeGroveMarkerRows
         .filter((row) => !row.isPast)
-        .map((row) => row.marker.id),
+        .map((row) => row.marker.id)
     );
     const activeGroveItemMarkerIds = new Set(
       activeGroveMarkerRows
         .filter((row) => !row.isPast && row.isItem)
-        .map((row) => row.marker.id),
+        .map((row) => row.marker.id)
     );
 
     return (
       <div
-        className="pointer-events-auto mx-auto w-full rounded-none border-0 bg-transparent p-0 text-white shadow-none"
+        className="rounded-none bg-transparent pointer-events-auto mx-auto w-full border-0 p-0 text-white shadow-none"
         style={{ textShadow: "0 1px 2px rgba(0,0,0,0.85)" }}
       >
         <div className="mb-2 flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
           <div>
-            <div className="text-sm font-semibold uppercase tracking-wide text-emerald-200">
+            <div className="text-emerald-200 text-sm font-semibold uppercase tracking-wide">
               {BIOMES_GAME_NAME} Map
             </div>
             <div className="text-xs text-white/80">
-              The Grove field map · player layer: {playerLayer} · y {Math.round(playerPos[1])}
+              The Grove field map · player layer: {playerLayer} · y{" "}
+              {Math.round(playerPos[1])}
             </div>
           </div>
-          <div className="rounded bg-emerald-300/20 px-2 py-1 text-xs font-semibold text-emerald-100">
-            Current area: The Grove · {selectedDistance}m {selectedDirection} · {verticalRelationLabel(playerPos[1], selectedPos[1])}
+          <div className="rounded bg-emerald-300/20 text-emerald-100 px-2 py-1 text-xs font-semibold">
+            Current area: The Grove · {selectedDistance}m {selectedDirection} ·{" "}
+            {verticalRelationLabel(playerPos[1], selectedPos[1])}
           </div>
         </div>
-        <div className="mb-2 rounded-lg border border-emerald-200/15 bg-black/35 p-2 text-xs leading-snug text-white/90">
-          <span className="font-semibold text-emerald-100">Current area objective:</span>{" "}
+        <div className="rounded-lg border-emerald-200/15 bg-black/35 mb-2 border p-2 text-xs leading-snug text-white/90">
+          <span className="text-emerald-100 font-semibold">
+            Current area objective:
+          </span>{" "}
           {currentObjectiveText}
-          <span className="ml-2 text-white/55">The map now follows the region the player is actually standing in, so The Grove uses Grove markers instead of the Harthmere town layout.</span>
+          <span className="text-white/55 ml-2">
+            The map now follows the region the player is actually standing in,
+            so The Grove uses Grove markers instead of the Harthmere town
+            layout.
+          </span>
         </div>
         <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_18rem]">
-          <div className="relative h-[min(60vh,32rem)] min-h-[20rem] overflow-hidden rounded-xl border border-white/10 bg-slate-950/85">
-            <div className="absolute inset-[7%] rounded-[1.25rem] border border-emerald-300/20 bg-emerald-500/[0.04]" />
+          <div className="rounded-xl bg-slate-950/85 relative h-[min(60vh,32rem)] min-h-[20rem] overflow-hidden border border-white/10">
+            <div className="border-emerald-300/20 bg-emerald-500/[0.04] absolute inset-[7%] rounded-[1.25rem] border" />
             <div className="absolute left-[14%] top-[18%] h-[18%] w-[22%] rounded-full border border-white/10 bg-white/[0.03]" />
             <div className="absolute left-[58%] top-[14%] h-[22%] w-[24%] rounded-full border border-white/10 bg-white/[0.03]" />
-            <div className="absolute left-[44%] top-[44%] h-[18%] w-[20%] rounded-full border border-emerald-300/20 bg-emerald-300/[0.08]" />
-            <div className="absolute left-[22%] top-[68%] h-[14%] w-[18%] rounded-full border border-blue-300/20 bg-blue-300/[0.06]" />
-            <div className="absolute left-[65%] top-[64%] h-[12%] w-[14%] rounded-full border border-amber-200/15 bg-amber-200/[0.05]" />
-            <div className="absolute left-[18%] top-[14%] text-[8px] font-semibold uppercase tracking-wide text-white/35">Old Road</div>
-            <div className="absolute left-[58%] top-[12%] text-[8px] font-semibold uppercase tracking-wide text-white/35">Watchtower</div>
-            <div className="absolute left-[43%] top-[63%] text-[8px] font-semibold uppercase tracking-wide text-white/35">Temple</div>
-            <div className="absolute left-[24%] top-[84%] text-[8px] font-semibold uppercase tracking-wide text-white/35">Lower trail</div>
+            <div className="border-emerald-300/20 bg-emerald-300/[0.08] absolute left-[44%] top-[44%] h-[18%] w-[20%] rounded-full border" />
+            <div className="border-blue-300/20 bg-blue-300/[0.06] absolute left-[22%] top-[68%] h-[14%] w-[18%] rounded-full border" />
+            <div className="border-amber-200/15 bg-amber-200/[0.05] absolute left-[65%] top-[64%] h-[12%] w-[14%] rounded-full border" />
+            <div className="text-white/35 absolute left-[18%] top-[14%] text-[8px] font-semibold uppercase tracking-wide">
+              Old Road
+            </div>
+            <div className="text-white/35 absolute left-[58%] top-[12%] text-[8px] font-semibold uppercase tracking-wide">
+              Watchtower
+            </div>
+            <div className="text-white/35 absolute left-[43%] top-[63%] text-[8px] font-semibold uppercase tracking-wide">
+              Temple
+            </div>
+            <div className="text-white/35 absolute left-[24%] top-[84%] text-[8px] font-semibold uppercase tracking-wide">
+              Lower trail
+            </div>
             {GROVE_MAP_MARKERS.map((marker) => {
-              const left = mapPercent(marker.position[0], GROVE_BOUNDS.minX, GROVE_BOUNDS.maxX);
-              const top = mapPercent(marker.position[2], GROVE_BOUNDS.minZ, GROVE_BOUNDS.maxZ);
+              const left = mapPercent(
+                marker.position[0],
+                GROVE_BOUNDS.minX,
+                GROVE_BOUNDS.maxX
+              );
+              const top = mapPercent(
+                marker.position[2],
+                GROVE_BOUNDS.minZ,
+                GROVE_BOUNDS.maxZ
+              );
               const isObjective = marker.id === objectiveMarkerId;
               const isSelected = marker.id === selectedGroveMarker?.id;
               const isLessonMarker = activeGroveMarkerIds.has(marker.id);
-              const isLessonItemMarker = activeGroveItemMarkerIds.has(marker.id);
+              const isLessonItemMarker = activeGroveItemMarkerIds.has(
+                marker.id
+              );
               return (
                 <button
                   key={marker.id}
                   data-snapshot-grove-center-map-marker="true"
-                  data-snapshot-grove-center-map-item={isLessonItemMarker ? "true" : "false"}
-                  data-snapshot-grove-center-map-active={isObjective ? "true" : "false"}
+                  data-snapshot-grove-center-map-item={
+                    isLessonItemMarker ? "true" : "false"
+                  }
+                  data-snapshot-grove-center-map-active={
+                    isObjective ? "true" : "false"
+                  }
                   className={`absolute flex h-7 w-7 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full text-[10px] font-bold transition hover:scale-110 focus:outline-none focus:ring-2 focus:ring-white ${
                     isSelected
                       ? "bg-cyan-200 text-black ring-4 ring-white"
                       : isObjective
-                        ? "bg-emerald-300 text-black ring-2 ring-white shadow-[0_0_16px_rgba(190,242,100,0.85)]"
-                        : isLessonItemMarker
-                          ? "bg-amber-300 text-black ring-2 ring-amber-100 shadow-[0_0_14px_rgba(252,211,77,0.75)]"
-                          : isLessonMarker
-                            ? "bg-violet-300 text-black ring-2 ring-violet-100"
-                            : "bg-black/75 text-white ring-1 ring-white/30"
+                      ? "bg-emerald-300 text-black shadow-[0_0_16px_rgba(190,242,100,0.85)] ring-2 ring-white"
+                      : isLessonItemMarker
+                      ? "bg-amber-300 ring-amber-100 text-black shadow-[0_0_14px_rgba(252,211,77,0.75)] ring-2"
+                      : isLessonMarker
+                      ? "bg-violet-300 ring-violet-100 text-black ring-2"
+                      : "bg-black/75 text-white ring-1 ring-white/30"
                   }`}
                   style={{ left: `${left}%`, top: `${top}%` }}
-                  title={`${marker.label} · ${marker.area.replaceAll("_", " ")}${isLessonItemMarker ? " · tutorial item/pickup marker" : ""}`}
+                  title={`${marker.label} · ${marker.area.replaceAll(
+                    "_",
+                    " "
+                  )}${
+                    isLessonItemMarker ? " · tutorial item/pickup marker" : ""
+                  }`}
                   onClick={() => setSelectedGroveId(marker.id)}
                 >
-                  {isObjective ? "!" : isLessonItemMarker ? "I" : groveMarkerGlyph(marker)}
+                  {isObjective
+                    ? "!"
+                    : isLessonItemMarker
+                    ? "I"
+                    : groveMarkerGlyph(marker)}
                 </button>
               );
             })}
             <div
-              className="absolute flex h-5 w-5 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-cyan-300 text-[9px] font-bold text-black ring-2 ring-white"
+              className="bg-cyan-300 absolute flex h-5 w-5 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full text-[9px] font-bold text-black ring-2 ring-white"
               style={{
-                left: `${mapPercent(playerPos[0], GROVE_BOUNDS.minX, GROVE_BOUNDS.maxX)}%`,
-                top: `${mapPercent(playerPos[2], GROVE_BOUNDS.minZ, GROVE_BOUNDS.maxZ)}%`,
+                left: `${mapPercent(
+                  playerPos[0],
+                  GROVE_BOUNDS.minX,
+                  GROVE_BOUNDS.maxX
+                )}%`,
+                top: `${mapPercent(
+                  playerPos[2],
+                  GROVE_BOUNDS.minZ,
+                  GROVE_BOUNDS.maxZ
+                )}%`,
               }}
               title={`You · ${playerLayer} · y ${Math.round(playerPos[1])}`}
             >
               Y
             </div>
           </div>
-          <div className="rounded-xl border border-white/10 bg-black/55 p-3 text-xs leading-snug text-white/80">
-            <div className="mb-2 text-[10px] font-bold uppercase tracking-wide text-white/55">Selected marker</div>
-            <div className="text-base font-bold text-white">{selectedGroveMarker?.label ?? "Unknown marker"}</div>
-            <div className="text-[11px] uppercase tracking-wide text-emerald-100/75">
+          <div className="rounded-xl bg-black/55 border border-white/10 p-3 text-xs leading-snug text-white/80">
+            <div className="text-white/55 mb-2 text-[10px] font-bold uppercase tracking-wide">
+              Selected marker
+            </div>
+            <div className="text-base font-bold text-white">
+              {selectedGroveMarker?.label ?? "Unknown marker"}
+            </div>
+            <div className="text-emerald-100/75 text-[11px] uppercase tracking-wide">
               {selectedGroveMarker?.area.replaceAll("_", " ") ?? "Unknown area"}
             </div>
             <div className="mt-2 grid grid-cols-2 gap-2">
               <div className="rounded bg-white/5 p-2">
                 <div className="text-white/45">Distance</div>
-                <div className="font-semibold text-white">{selectedDistance}m {selectedDirection}</div>
+                <div className="font-semibold text-white">
+                  {selectedDistance}m {selectedDirection}
+                </div>
               </div>
               <div className="rounded bg-white/5 p-2">
                 <div className="text-white/45">Terrain level</div>
-                <div className="font-semibold text-white">y {Math.round(selectedPos[1])}</div>
+                <div className="font-semibold text-white">
+                  y {Math.round(selectedPos[1])}
+                </div>
               </div>
             </div>
-            <div className="mt-2 rounded bg-white/5 p-2">
+            <div className="rounded mt-2 bg-white/5 p-2">
               <div className="text-white/45">Layer</div>
               <div className="font-semibold text-white">{selectedLayer}</div>
-              <div className="mt-1 text-white/60">{verticalRelationLabel(playerPos[1], selectedPos[1])}</div>
+              <div className="mt-1 text-white/60">
+                {verticalRelationLabel(playerPos[1], selectedPos[1])}
+              </div>
             </div>
             {selectedGroveMarker?.id === objectiveMarkerId && (
-              <div className="mt-2 rounded border border-emerald-300/20 bg-emerald-300/10 p-2">
-                <div className="font-semibold text-emerald-100">Active objective</div>
+              <div className="rounded border-emerald-300/20 bg-emerald-300/10 mt-2 border p-2">
+                <div className="text-emerald-100 font-semibold">
+                  Active objective
+                </div>
                 <div>{currentObjectiveText}</div>
               </div>
             )}
             {!!activeGroveMarkerRows.length && (
               <div
-                className="mt-2 rounded border border-amber-300/20 bg-amber-300/10 p-2"
+                className="rounded border-amber-300/20 bg-amber-300/10 mt-2 border p-2"
                 data-snapshot-grove-center-map-item-list="true"
               >
-                <div className="font-semibold text-amber-100">Active lesson item stops</div>
+                <div className="text-amber-100 font-semibold">
+                  Active lesson item stops
+                </div>
                 <div className="mt-1 space-y-1">
-                  {activeGroveMarkerRows.filter((row) => !row.isPast).map((row) => (
-                    <button
-                      key={`${row.marker.id}-${row.stepIndex}`}
-                      type="button"
-                      className={row.isActive
-                        ? "flex w-full items-center justify-between rounded bg-lime-300/20 px-2 py-1 text-left text-lime-50"
-                        : row.isItem
-                          ? "flex w-full items-center justify-between rounded bg-amber-300/15 px-2 py-1 text-left text-amber-50"
-                          : "flex w-full items-center justify-between rounded bg-white/5 px-2 py-1 text-left text-white/70"}
-                      data-snapshot-grove-center-map-item-row={row.isItem ? "true" : "false"}
-                      onClick={() => setSelectedGroveId(row.marker.id)}
-                    >
-                      <span>{row.stepIndex + 1}. {row.marker.label}</span>
-                      <span className="text-[10px] font-bold uppercase tracking-wide">{row.isActive ? "Now" : row.isItem ? "Item" : "Next"}</span>
-                    </button>
-                  ))}
+                  {activeGroveMarkerRows
+                    .filter((row) => !row.isPast)
+                    .map((row) => (
+                      <button
+                        key={`${row.marker.id}-${row.stepIndex}`}
+                        type="button"
+                        className={
+                          row.isActive
+                            ? "rounded bg-lime-300/20 text-lime-50 flex w-full items-center justify-between px-2 py-1 text-left"
+                            : row.isItem
+                            ? "rounded bg-amber-300/15 text-amber-50 flex w-full items-center justify-between px-2 py-1 text-left"
+                            : "rounded flex w-full items-center justify-between bg-white/5 px-2 py-1 text-left text-white/70"
+                        }
+                        data-snapshot-grove-center-map-item-row={
+                          row.isItem ? "true" : "false"
+                        }
+                        onClick={() => setSelectedGroveId(row.marker.id)}
+                      >
+                        <span>
+                          {row.stepIndex + 1}. {row.marker.label}
+                        </span>
+                        <span className="text-[10px] font-bold uppercase tracking-wide">
+                          {row.isActive ? "Now" : row.isItem ? "Item" : "Next"}
+                        </span>
+                      </button>
+                    ))}
                 </div>
               </div>
             )}
-            <div className="mt-2 text-[11px] text-white/55">
-              The map mirrors the region you are actually standing in, and shows the active lesson's selected marker, distance, and terrain layer.
+            <div className="text-white/55 mt-2 text-[11px]">
+              The map mirrors the region you are actually standing in, and shows
+              the active lesson's selected marker, distance, and terrain layer.
             </div>
           </div>
         </div>
         <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-[10px] leading-snug text-white/75 md:grid-cols-4">
-          <div><span className="font-bold text-cyan-200">Y</span> = You</div>
-          <div><span className="font-bold text-emerald-200">!</span> = Active objective</div>
-          <div><span className="font-bold text-amber-200">I</span> = Lesson item / pickup</div>
-          <div><span className="font-bold">G</span> = Grove / guard / guide</div>
-          <div><span className="font-bold">A</span> = Smith / crafting</div>
-          <div><span className="font-bold">+</span> = Healer / apothecary</div>
-          <div><span className="font-bold">B</span> = Bakery / road post</div>
-          <div><span className="font-bold">C</span> = Chapel / shrine</div>
-          <div><span className="font-bold">D</span> = Docks / water route</div>
+          <div>
+            <span className="text-cyan-200 font-bold">Y</span> = You
+          </div>
+          <div>
+            <span className="text-emerald-200 font-bold">!</span> = Active
+            objective
+          </div>
+          <div>
+            <span className="text-amber-200 font-bold">I</span> = Lesson item /
+            pickup
+          </div>
+          <div>
+            <span className="font-bold">G</span> = Grove / guard / guide
+          </div>
+          <div>
+            <span className="font-bold">A</span> = Smith / crafting
+          </div>
+          <div>
+            <span className="font-bold">+</span> = Healer / apothecary
+          </div>
+          <div>
+            <span className="font-bold">B</span> = Bakery / road post
+          </div>
+          <div>
+            <span className="font-bold">C</span> = Chapel / shrine
+          </div>
+          <div>
+            <span className="font-bold">D</span> = Docks / water route
+          </div>
         </div>
       </div>
     );
@@ -2114,42 +2285,59 @@ export const HarthmereQuestMapHUD: React.FunctionComponent<{}> = () => {
 
   return (
     <div
-      className="pointer-events-auto mx-auto w-full rounded-none border-0 bg-transparent p-0 text-white shadow-none"
+      className="rounded-none bg-transparent pointer-events-auto mx-auto w-full border-0 p-0 text-white shadow-none"
       style={{ textShadow: "0 1px 2px rgba(0,0,0,0.85)" }}
     >
       <div className="mb-2 flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
         <div>
-          <div className="text-sm font-semibold uppercase tracking-wide text-yellow-200">
+          <div className="text-yellow-200 text-sm font-semibold uppercase tracking-wide">
             {BIOMES_GAME_NAME} Map
           </div>
           <div className="text-xs text-white/80">
-            {BIOMES_HARTHMERE_TOWN_NAME} town map · player layer: {playerLayer} · y {Math.round(playerPos[1])}
+            {BIOMES_HARTHMERE_TOWN_NAME} town map · player layer: {playerLayer}{" "}
+            · y {Math.round(playerPos[1])}
           </div>
         </div>
-        <div className="rounded bg-yellow-300/20 px-2 py-1 text-xs font-semibold text-yellow-100">
-          Objective: {distance}m {direction} · {verticalRelationLabel(playerPos[1], targetPos[1])}
+        <div className="rounded bg-yellow-300/20 text-yellow-100 px-2 py-1 text-xs font-semibold">
+          Objective: {distance}m {direction} ·{" "}
+          {verticalRelationLabel(playerPos[1], targetPos[1])}
         </div>
       </div>
-      <div className="mb-2 rounded-lg border border-yellow-200/15 bg-black/35 p-2 text-xs leading-snug text-white/90">
-        <span className="font-semibold text-yellow-100">Current objective:</span>{" "}
+      <div className="rounded-lg border-yellow-200/15 bg-black/35 mb-2 border p-2 text-xs leading-snug text-white/90">
+        <span className="text-yellow-100 font-semibold">
+          Current objective:
+        </span>{" "}
         {active?.step.objective ?? "Read the Market Board beside the fountain."}
-        <span className="ml-2 text-white/55">Click or press a map marker to inspect the location, objective, district, and terrain level.</span>
+        <span className="text-white/55 ml-2">
+          Click or press a map marker to inspect the location, objective,
+          district, and terrain level.
+        </span>
       </div>
       <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_18rem]">
-        <div className="relative h-[min(60vh,32rem)] min-h-[20rem] overflow-hidden rounded-xl border border-white/10 bg-slate-900/80">
-          <div className="absolute left-[8%] top-[6%] right-[8%] bottom-[8%] rounded border border-stone-400/40" />
-          <div className="absolute left-[44%] top-[6%] bottom-[8%] w-[9%] bg-stone-500/30" />
-          <div className="absolute left-[8%] right-[8%] top-[42%] h-[11%] bg-stone-500/30" />
-          <div className="absolute left-[75%] top-[42%] h-[20%] w-[21%] bg-blue-500/30" />
-          <div className="absolute left-[38%] top-[36%] h-[22%] w-[24%] rounded-full border border-yellow-300/40 bg-yellow-300/10" />
-          <div className="absolute left-[72%] top-[8%] h-[18%] w-[18%] rounded border border-emerald-300/30 bg-emerald-300/10" />
-          <div className="absolute left-[6%] top-[60%] h-[20%] w-[18%] rounded border border-stone-700/50 bg-stone-700/30" />
-          <div className="absolute left-[16%] top-[78%] h-[14%] w-[24%] rounded border border-lime-300/30 bg-lime-300/10" />
-          <div className="absolute left-[40%] top-[58%] text-[8px] font-semibold uppercase tracking-wide text-white/40">Temple</div>
-          <div className="absolute left-[72%] top-[27%] text-[8px] font-semibold uppercase tracking-wide text-white/40">Noble</div>
-          <div className="absolute left-[79%] top-[64%] text-[8px] font-semibold uppercase tracking-wide text-white/40">Docks</div>
-          <div className="absolute left-[10%] top-[55%] text-[8px] font-semibold uppercase tracking-wide text-white/40">Mudden</div>
-          <div className="absolute left-[17%] top-[86%] text-[8px] font-semibold uppercase tracking-wide text-white/40">Lower</div>
+        <div className="rounded-xl bg-slate-900/80 relative h-[min(60vh,32rem)] min-h-[20rem] overflow-hidden border border-white/10">
+          <div className="rounded border-stone-400/40 absolute bottom-[8%] left-[8%] right-[8%] top-[6%] border" />
+          <div className="bg-stone-500/30 absolute bottom-[8%] left-[44%] top-[6%] w-[9%]" />
+          <div className="bg-stone-500/30 absolute left-[8%] right-[8%] top-[42%] h-[11%]" />
+          <div className="bg-blue-500/30 absolute left-[75%] top-[42%] h-[20%] w-[21%]" />
+          <div className="border-yellow-300/40 bg-yellow-300/10 absolute left-[38%] top-[36%] h-[22%] w-[24%] rounded-full border" />
+          <div className="rounded border-emerald-300/30 bg-emerald-300/10 absolute left-[72%] top-[8%] h-[18%] w-[18%] border" />
+          <div className="rounded border-stone-700/50 bg-stone-700/30 absolute left-[6%] top-[60%] h-[20%] w-[18%] border" />
+          <div className="rounded border-lime-300/30 bg-lime-300/10 absolute left-[16%] top-[78%] h-[14%] w-[24%] border" />
+          <div className="absolute left-[40%] top-[58%] text-[8px] font-semibold uppercase tracking-wide text-white/40">
+            Temple
+          </div>
+          <div className="absolute left-[72%] top-[27%] text-[8px] font-semibold uppercase tracking-wide text-white/40">
+            Noble
+          </div>
+          <div className="absolute left-[79%] top-[64%] text-[8px] font-semibold uppercase tracking-wide text-white/40">
+            Docks
+          </div>
+          <div className="absolute left-[10%] top-[55%] text-[8px] font-semibold uppercase tracking-wide text-white/40">
+            Mudden
+          </div>
+          <div className="absolute left-[17%] top-[86%] text-[8px] font-semibold uppercase tracking-wide text-white/40">
+            Lower
+          </div>
           {markerEntries.map(({ offset, marker }) => {
             const markerPos = getHarthmereQuestTargetWorldPos(marker);
             const left = mapPercent(markerPos[0], bounds.minX, bounds.maxX);
@@ -2164,8 +2352,8 @@ export const HarthmereQuestMapHUD: React.FunctionComponent<{}> = () => {
                   isSelected
                     ? "bg-cyan-200 text-black ring-4 ring-white"
                     : isTarget
-                      ? "bg-yellow-300 text-black ring-2 ring-white"
-                      : "bg-black/75 text-white ring-1 ring-white/30"
+                    ? "bg-yellow-300 text-black ring-2 ring-white"
+                    : "bg-black/75 text-white ring-1 ring-white/30"
                 }`}
                 style={{ left: `${left}%`, top: `${top}%` }}
                 title={`${marker.label} · ${marker.district} · ${markerLayer}`}
@@ -2176,7 +2364,7 @@ export const HarthmereQuestMapHUD: React.FunctionComponent<{}> = () => {
             );
           })}
           <div
-            className="absolute flex h-5 w-5 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-cyan-300 text-[9px] font-bold text-black ring-2 ring-white"
+            className="bg-cyan-300 absolute flex h-5 w-5 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full text-[9px] font-bold text-black ring-2 ring-white"
             style={{
               left: `${mapPercent(playerPos[0], bounds.minX, bounds.maxX)}%`,
               top: `${mapPercent(playerPos[2], bounds.minZ, bounds.maxZ)}%`,
@@ -2186,46 +2374,84 @@ export const HarthmereQuestMapHUD: React.FunctionComponent<{}> = () => {
             Y
           </div>
         </div>
-        <div className="rounded-xl border border-white/10 bg-black/45 p-3 text-xs leading-snug text-white/80">
-          <div className="mb-2 text-[10px] font-bold uppercase tracking-wide text-white/55">Selected marker</div>
-          <div className="text-base font-bold text-white">{selectedMarker?.label ?? "Unknown marker"}</div>
-          <div className="text-[11px] uppercase tracking-wide text-yellow-100/75">{selectedMarker?.district ?? "Unknown district"}</div>
+        <div className="rounded-xl bg-black/45 border border-white/10 p-3 text-xs leading-snug text-white/80">
+          <div className="text-white/55 mb-2 text-[10px] font-bold uppercase tracking-wide">
+            Selected marker
+          </div>
+          <div className="text-base font-bold text-white">
+            {selectedMarker?.label ?? "Unknown marker"}
+          </div>
+          <div className="text-yellow-100/75 text-[11px] uppercase tracking-wide">
+            {selectedMarker?.district ?? "Unknown district"}
+          </div>
           <div className="mt-2 grid grid-cols-2 gap-2">
             <div className="rounded bg-white/5 p-2">
               <div className="text-white/45">Distance</div>
-              <div className="font-semibold text-white">{selectedDistance}m {selectedDirection}</div>
+              <div className="font-semibold text-white">
+                {selectedDistance}m {selectedDirection}
+              </div>
             </div>
             <div className="rounded bg-white/5 p-2">
               <div className="text-white/45">Terrain level</div>
-              <div className="font-semibold text-white">y {Math.round(selectedPos[1])}</div>
+              <div className="font-semibold text-white">
+                y {Math.round(selectedPos[1])}
+              </div>
             </div>
           </div>
-          <div className="mt-2 rounded bg-white/5 p-2">
+          <div className="rounded mt-2 bg-white/5 p-2">
             <div className="text-white/45">Layer</div>
             <div className="font-semibold text-white">{selectedLayer}</div>
-            <div className="mt-1 text-white/60">{verticalRelationLabel(playerPos[1], selectedPos[1])}</div>
+            <div className="mt-1 text-white/60">
+              {verticalRelationLabel(playerPos[1], selectedPos[1])}
+            </div>
           </div>
           {selectedIsObjective && (
-            <div className="mt-2 rounded border border-yellow-300/20 bg-yellow-300/10 p-2">
-              <div className="font-semibold text-yellow-100">Active objective</div>
-              <div>{active?.step.objective ?? "Read the Market Board beside the fountain."}</div>
+            <div className="rounded border-yellow-300/20 bg-yellow-300/10 mt-2 border p-2">
+              <div className="text-yellow-100 font-semibold">
+                Active objective
+              </div>
+              <div>
+                {active?.step.objective ??
+                  "Read the Market Board beside the fountain."}
+              </div>
             </div>
           )}
-          <div className="mt-2 text-[11px] text-white/55">
-            District labels and service icons stay on the map at all times. The selected marker holds your active objective, distance, and terrain layer.
+          <div className="text-white/55 mt-2 text-[11px]">
+            District labels and service icons stay on the map at all times. The
+            selected marker holds your active objective, distance, and terrain
+            layer.
           </div>
         </div>
       </div>
       <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-[10px] leading-snug text-white/75 md:grid-cols-4">
-        <div><span className="font-bold text-cyan-200">Y</span> = You</div>
-        <div><span className="font-bold text-yellow-200">!</span> = Quest / board</div>
-        <div><span className="font-bold">⚔</span> = Weapon shop</div>
-        <div><span className="font-bold">✦</span> = Magic shop</div>
-        <div><span className="font-bold">A</span> = Smith / crafting</div>
-        <div><span className="font-bold">+</span> = Healer / apothecary</div>
-        <div><span className="font-bold">B/I</span> = Bakery / inn</div>
-        <div><span className="font-bold">$ / @</span> = Bank / mail</div>
-        <div><span className="font-bold">C/D/?</span> = Chapel / docks / lower route</div>
+        <div>
+          <span className="text-cyan-200 font-bold">Y</span> = You
+        </div>
+        <div>
+          <span className="text-yellow-200 font-bold">!</span> = Quest / board
+        </div>
+        <div>
+          <span className="font-bold">⚔</span> = Weapon shop
+        </div>
+        <div>
+          <span className="font-bold">✦</span> = Magic shop
+        </div>
+        <div>
+          <span className="font-bold">A</span> = Smith / crafting
+        </div>
+        <div>
+          <span className="font-bold">+</span> = Healer / apothecary
+        </div>
+        <div>
+          <span className="font-bold">B/I</span> = Bakery / inn
+        </div>
+        <div>
+          <span className="font-bold">$ / @</span> = Bank / mail
+        </div>
+        <div>
+          <span className="font-bold">C/D/?</span> = Chapel / docks / lower
+          route
+        </div>
       </div>
     </div>
   );

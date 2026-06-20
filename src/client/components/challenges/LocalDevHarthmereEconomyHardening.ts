@@ -50,7 +50,9 @@ export type HarthmereAllowedWalletCurrency =
   (typeof HARTHMERE_ALLOWED_WALLET_CURRENCIES)[number];
 
 function isBrowser() {
-  return typeof window !== "undefined" && typeof window.localStorage !== "undefined";
+  return (
+    typeof window !== "undefined" && typeof window.localStorage !== "undefined"
+  );
 }
 
 export function nonNegativeInt(value: unknown, fallback = 0) {
@@ -62,10 +64,10 @@ export function nonNegativeInt(value: unknown, fallback = 0) {
 }
 
 export function normalizeHarthmereWallet(
-  raw: Record<string, unknown> | undefined,
+  raw: Record<string, unknown> | undefined
 ): Record<HarthmereAllowedWalletCurrency, number> {
   const out = Object.fromEntries(
-    HARTHMERE_ALLOWED_WALLET_CURRENCIES.map((currency) => [currency, 0]),
+    HARTHMERE_ALLOWED_WALLET_CURRENCIES.map((currency) => [currency, 0])
   ) as Record<HarthmereAllowedWalletCurrency, number>;
   for (const currency of HARTHMERE_ALLOWED_WALLET_CURRENCIES) {
     out[currency] = nonNegativeInt(raw?.[currency], 0);
@@ -74,7 +76,7 @@ export function normalizeHarthmereWallet(
 }
 
 export function normalizeHarthmereNumberMap(
-  raw: Record<string, unknown> | undefined,
+  raw: Record<string, unknown> | undefined
 ): Record<string, number> {
   const out: Record<string, number> = {};
   for (const [key, value] of Object.entries(raw ?? {})) {
@@ -83,11 +85,63 @@ export function normalizeHarthmereNumberMap(
   return out;
 }
 
+export function applyHarthmereLocalDevTownEconomyImpact(input: {
+  sourceId: string;
+  deltas: Record<string, number | undefined>;
+  label: string;
+  detail: string;
+  reason: string;
+}) {
+  assertHarthmereLocalDevEconomyNotProduction();
+  if (!isBrowser()) return;
+  try {
+    const raw = window.localStorage.getItem(
+      HARTHMERE_LOCAL_DEV_STATE_KEYS.economy
+    );
+    if (!raw) return;
+    const economy = JSON.parse(raw) as {
+      town?: Record<string, unknown>;
+      recent?: unknown[];
+    };
+    const town = { ...(economy.town ?? {}) } as Record<string, unknown>;
+    for (const [key, delta] of Object.entries(input.deltas)) {
+      town[key] = Math.max(
+        0,
+        Math.round(Number(town[key] ?? 0) + Number(delta ?? 0))
+      );
+    }
+    const recent = [
+      {
+        id: `${Date.now()}-${Math.floor(Math.random() * 1_000_000)}`,
+        at: Date.now(),
+        system: "economy",
+        actorId: "local-player",
+        type: "source",
+        label: input.label,
+        detail: input.detail,
+        reason: input.reason,
+        sourceId: input.sourceId,
+        success: true,
+      },
+      ...((economy.recent as unknown[]) ?? []),
+    ].slice(0, 16);
+    window.localStorage.setItem(
+      HARTHMERE_LOCAL_DEV_STATE_KEYS.economy,
+      JSON.stringify({ ...economy, town, recent })
+    );
+    window.dispatchEvent(new CustomEvent("biomes:harthmere-economy-changed"));
+  } catch {
+    // Malformed local-dev economy state is repaired by the main economy system.
+  }
+}
+
 export function createHarthmereLocalDevTransactionId(
   kind: string,
-  subject: string,
+  subject: string
 ) {
-  return `${kind}:${subject}:${Date.now()}:${Math.floor(Math.random() * 1_000_000)}`;
+  return `${kind}:${subject}:${Date.now()}:${Math.floor(
+    Math.random() * 1_000_000
+  )}`;
 }
 
 type RapidActionState = Record<string, number>;
@@ -98,7 +152,9 @@ function readRapidActionState(): RapidActionState {
     return {};
   }
   try {
-    const raw = window.localStorage.getItem(HARTHMERE_LOCAL_DEV_STATE_KEYS.rapidActions);
+    const raw = window.localStorage.getItem(
+      HARTHMERE_LOCAL_DEV_STATE_KEYS.rapidActions
+    );
     return raw ? (JSON.parse(raw) as RapidActionState) : {};
   } catch {
     return {};
@@ -112,13 +168,13 @@ function writeRapidActionState(state: RapidActionState) {
   }
   window.localStorage.setItem(
     HARTHMERE_LOCAL_DEV_STATE_KEYS.rapidActions,
-    JSON.stringify(state),
+    JSON.stringify(state)
   );
 }
 
 export function claimHarthmereLocalDevRapidAction(
   actionKey: string,
-  ttlMs = 450,
+  ttlMs = 450
 ) {
   if (!isBrowser()) {
     return true;
@@ -147,9 +203,16 @@ export function resetHarthmereLocalDevRapidActionGuards() {
 }
 
 export function createHarthmereStructuredLogFields(
-  system: "inventory" | "economy" | "vendor" | "auction" | "guild" | "building" | "gathering",
+  system:
+    | "inventory"
+    | "economy"
+    | "vendor"
+    | "auction"
+    | "guild"
+    | "building"
+    | "gathering",
   action: string,
-  success = true,
+  success = true
 ) {
   return {
     system,

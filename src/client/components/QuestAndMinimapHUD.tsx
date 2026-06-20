@@ -4,7 +4,6 @@ import { BiomesUIMount } from "@/client/components/biomes_ui/BiomesUIMount";
 import { useBiomesUIReplaceLegacyFlag } from "@/client/components/biomes_ui/BiomesUIFlags";
 import { useBiomesHUDVisibilitySnapshot } from "@/client/components/biomes_ui/hudVisibilitySettings";
 import { HarthmereUnifiedHUD } from "@/client/components/challenges/HarthmereUnifiedHUD";
-import { QuestsHUD } from "@/client/components/challenges/QuestsHUD";
 import React from "react";
 
 export const QuestsAndMiniMapHUD: React.FunctionComponent<{}> = ({}) => {
@@ -15,7 +14,7 @@ export const QuestsAndMiniMapHUD: React.FunctionComponent<{}> = ({}) => {
     return (
       <>
         <HarthmereUnifiedHUD hideLegacyVisuals={replaceLegacy} />
-        {replaceLegacy && hudVisibility.miniMap && (
+        {hudVisibility.miniMap && (
           <div className="absolute right-0.8 top-0.8 flex flex-col items-end gap-2">
             <RulesetToggleable name="minimap">
               <MiniMapHUD />
@@ -29,27 +28,12 @@ export const QuestsAndMiniMapHUD: React.FunctionComponent<{}> = ({}) => {
 
   return (
     <>
-      {!replaceLegacy ? (
-        <div className="absolute bottom-0.8 right-0.8 flex flex-col items-end gap-2">
-          {hudVisibility.objectives && (
-            <RulesetToggleable name="challenges">
-              <QuestsHUD />
-            </RulesetToggleable>
-          )}
-          {hudVisibility.miniMap && (
-            <RulesetToggleable name="minimap">
-              <MiniMapHUD />
-            </RulesetToggleable>
-          )}
+      {hudVisibility.miniMap && (
+        <div className="absolute right-0.8 top-0.8 flex flex-col items-end gap-2">
+          <RulesetToggleable name="minimap">
+            <MiniMapHUD />
+          </RulesetToggleable>
         </div>
-      ) : (
-        hudVisibility.miniMap && (
-          <div className="absolute right-0.8 top-0.8 flex flex-col items-end gap-2">
-            <RulesetToggleable name="minimap">
-              <MiniMapHUD />
-            </RulesetToggleable>
-          </div>
-        )
       )}
       <BiomesUIMount forceEnabled={replaceLegacy} />
     </>

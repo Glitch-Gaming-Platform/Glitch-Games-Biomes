@@ -3,7 +3,7 @@ import {
   NavigationAidSideEffect,
   StepSideEffects,
   useQuestDisplayInfo,
-} from "@/client/components/challenges/QuestsHUD";
+} from "@/client/components/challenges/QuestSideEffectHelpers";
 import { allFirstStepsOfQuest } from "@/client/components/challenges/helpers";
 import { useClientContext } from "@/client/components/contexts/ClientContextReactContext";
 import type { QuestBundle } from "@/client/game/resources/challenges";

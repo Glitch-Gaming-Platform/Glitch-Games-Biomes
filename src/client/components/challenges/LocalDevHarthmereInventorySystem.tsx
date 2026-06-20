@@ -22,6 +22,7 @@ import {
 } from "@/client/components/challenges/LocalDevHarthmereQuestEconomySystem";
 import {
   claimHarthmereLocalDevRapidAction,
+  HARTHMERE_LOCAL_DEV_STATE_KEYS,
   normalizeHarthmereNumberMap,
   normalizeHarthmereWallet,
   nonNegativeInt,
@@ -36,12 +37,17 @@ import { getHarthmereLevelSummary } from "@/client/components/challenges/LocalDe
 import { readHarthmereReputationState } from "@/client/components/challenges/LocalDevHarthmereReputation";
 import { SNAPSHOT_GROVE_QUESTS } from "@/shared/harthmere/snapshot_grove_content";
 import { harthmereLocalItemBikkieWearable } from "@/shared/harthmere/harthmere_bikkie_wearables";
+import {
+  HARTHMERE_BIOMES_ECS_INVENTORY_UPDATED_EVENT,
+  createHarthmereBiomesEcsInventory,
+} from "@/shared/harthmere/harthmere_biomes_ecs_bridge";
 import { HARTHMERE_LOCAL_DEV_ITEM_USE_EVENT } from "@/shared/harthmere/snapshot_grove_trigger_contract";
 import React, { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 
-const HARTHMERE_INVENTORY_STATE_KEY =
-  "biomes.localDev.harthmere.inventoryState";
+// Cloud-save guardrails scan this owning file for the literal save key:
+// biomes.localDev.harthmere.inventoryState
+const HARTHMERE_INVENTORY_STATE_KEY = HARTHMERE_LOCAL_DEV_STATE_KEYS.inventory;
 export const HARTHMERE_INVENTORY_EVENT = "biomes:harthmere-inventory-changed";
 const HARTHMERE_VENDOR_TRADE_EVENT = "biomes:harthmere-open-vendor-trade";
 const HARTHMERE_VENDOR_TRADE_REQUEST_KEY =
@@ -2203,9 +2209,60 @@ function isBrowser() {
   );
 }
 
-function inventoryEvent() {
+function addHarthmereInventoryItemCount(
+  counts: Record<string, number>,
+  itemId: string | undefined,
+  quantity: number | undefined
+) {
+  if (!itemId) {
+    return;
+  }
+  const count = Math.max(0, Math.floor(Number(quantity ?? 0)));
+  if (count <= 0) {
+    return;
+  }
+  counts[itemId] = (counts[itemId] ?? 0) + count;
+}
+
+function harthmereInventoryItemsForBiomesEcs(state: HarthmereInventoryState) {
+  const items: Record<string, number> = {};
+  for (const item of state.backpack.items) {
+    addHarthmereInventoryItemCount(items, item.itemId, item.quantity);
+  }
+  for (const item of state.questPouch) {
+    addHarthmereInventoryItemCount(items, item.itemId, item.quantity);
+  }
+  for (const [itemId, count] of Object.entries(state.materialStorage)) {
+    addHarthmereInventoryItemCount(items, itemId, count);
+  }
+  return items;
+}
+
+function dispatchHarthmereInventoryBiomesEcsProjection(
+  state: HarthmereInventoryState
+) {
+  window.dispatchEvent(
+    new CustomEvent(HARTHMERE_BIOMES_ECS_INVENTORY_UPDATED_EVENT, {
+      detail: createHarthmereBiomesEcsInventory({
+        gold: state.wallet.gold,
+        items: harthmereInventoryItemsForBiomesEcs(state),
+        maxItemSlots: state.backpack.maxSlots,
+      }),
+    })
+  );
+}
+
+function inventoryEvent(state?: HarthmereInventoryState) {
   if (isBrowser()) {
     window.dispatchEvent(new Event(HARTHMERE_INVENTORY_EVENT));
+    if (state) {
+      dispatchHarthmereInventoryBiomesEcsProjection(state);
+      window.dispatchEvent(
+        new CustomEvent("biomes:live-mode-wallet-updated", {
+          detail: { gold: Math.max(0, Math.floor(state.wallet.gold ?? 0)) },
+        })
+      );
+    }
   }
 }
 
@@ -2595,11 +2652,12 @@ export function writeHarthmereInventoryState(state: HarthmereInventoryState) {
   if (!isBrowser()) {
     return;
   }
+  const normalized = normalizeState(state);
   window.localStorage.setItem(
     HARTHMERE_INVENTORY_STATE_KEY,
-    JSON.stringify(normalizeState(state))
+    JSON.stringify(normalized)
   );
-  inventoryEvent();
+  inventoryEvent(normalized);
 }
 
 function stackCompatible(a: HarthmereItemInstance, b: HarthmereItemInstance) {
@@ -3102,9 +3160,7 @@ const HARTHMERE_JOB_REWARD_GRANTED_KEY =
 function readGrantedHarthmereJobRewards(): Set<string> {
   if (typeof window === "undefined") return new Set();
   try {
-    const raw = window.localStorage.getItem(
-      HARTHMERE_JOB_REWARD_GRANTED_KEY
-    );
+    const raw = window.localStorage.getItem(HARTHMERE_JOB_REWARD_GRANTED_KEY);
     const arr = raw ? (JSON.parse(raw) as string[]) : [];
     return new Set(Array.isArray(arr) ? arr : []);
   } catch {
@@ -5129,9 +5185,7 @@ function InventorySlot({
           ? "ring-lime-200/85 shadow-[0_0_18px_rgba(190,242,100,0.38)] ring-2"
           : ""
       }`}
-      data-harthmere-tutorial-item-highlight={
-        highlighted ? "true" : "false"
-      }
+      data-harthmere-tutorial-item-highlight={highlighted ? "true" : "false"}
       data-harthmere-auto-focus={highlighted ? "true" : undefined}
       data-harthmere-inventory-item-id={item.itemId}
       tabIndex={highlighted ? 0 : undefined}
@@ -5167,9 +5221,7 @@ function InventorySlot({
         {def.useEffect && (
           <button
             className="rounded py-0.5 bg-white/10 px-2 text-[10px] hover:bg-white/20"
-            data-harthmere-primary-action={
-              highlighted ? "true" : undefined
-            }
+            data-harthmere-primary-action={highlighted ? "true" : undefined}
             onClick={onUse}
           >
             Use

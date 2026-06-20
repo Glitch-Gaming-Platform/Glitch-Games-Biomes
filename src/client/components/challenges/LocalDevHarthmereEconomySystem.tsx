@@ -1,8 +1,12 @@
 // LocalDevHarthmereEconomySystem local-dev economy boundary. Do not trust client storage in production.
 import type { TalkDialogStepAction } from "@/client/components/challenges/TalkDialogModalStep";
-import { HARTHMERE_BLACK_MARKET_OFFSETS, HARTHMERE_VENDOR_ECONOMY_PROFILES } from "@/client/components/challenges/LocalDevHarthmereVendorCatalog";
+import {
+  HARTHMERE_BLACK_MARKET_OFFSETS,
+  HARTHMERE_VENDOR_ECONOMY_PROFILES,
+} from "@/client/components/challenges/LocalDevHarthmereVendorCatalog";
 import {
   claimHarthmereLocalDevRapidAction,
+  HARTHMERE_LOCAL_DEV_STATE_KEYS,
   normalizeHarthmereNumberMap,
   normalizeHarthmereWallet,
 } from "@/client/components/challenges/LocalDevHarthmereEconomyHardening";
@@ -22,7 +26,9 @@ import {
 } from "@/client/components/challenges/LocalDevHarthmereReputation";
 import React, { useEffect, useMemo, useState } from "react";
 
-const HARTHMERE_ECONOMY_STATE_KEY = "biomes.localDev.harthmere.economyState";
+// Cloud-save guardrails scan this owning file for the literal save key:
+// biomes.localDev.harthmere.economyState
+const HARTHMERE_ECONOMY_STATE_KEY = HARTHMERE_LOCAL_DEV_STATE_KEYS.economy;
 const HARTHMERE_ECONOMY_EVENT = "biomes:harthmere-economy-changed";
 
 type EconomyItemCategory =
@@ -375,7 +381,10 @@ const ECONOMY_ITEMS: Record<string, EconomyItemData> = {
   },
 };
 
-const VENDOR_PROFILES = HARTHMERE_VENDOR_ECONOMY_PROFILES as Record<number, VendorEconomyProfile>;
+const VENDOR_PROFILES = HARTHMERE_VENDOR_ECONOMY_PROFILES as Record<
+  number,
+  VendorEconomyProfile
+>;
 const BLACK_MARKET_OFFSETS = HARTHMERE_BLACK_MARKET_OFFSETS;
 
 function isBrowser() {
@@ -403,7 +412,7 @@ function logEntry(
   type: EconomyEventType,
   label: string,
   detail: string,
-  goldDelta?: number,
+  goldDelta?: number
 ): EconomyLogEntry {
   return {
     id: `${Date.now()}-${Math.floor(Math.random() * 1_000_000)}`,
@@ -531,27 +540,27 @@ function defaultState(): HarthmereEconomyState {
           item.baseValue,
           Math.round(item.baseValue * 1.1),
         ],
-      ]),
+      ])
     ),
     blackMarketDiscovered: false,
     recent: [
       logEntry(
         "exchange",
         "Economy Ready",
-        "Harthmere economy loaded: local prices, taxes, vendors, auction listings, town projects, trade routes, and black market hooks are active.",
+        "Harthmere economy loaded: local prices, taxes, vendors, auction listings, town projects, trade routes, and black market hooks are active."
       ),
     ],
   };
 }
 
 function normalizeState(
-  raw: Partial<HarthmereEconomyState> | undefined,
+  raw: Partial<HarthmereEconomyState> | undefined
 ): HarthmereEconomyState {
   const fallback = defaultState();
   const rawProjects = raw?.town?.activeProjects ?? [];
   const projects = defaultTownProjects().map((project) => {
     const existing = rawProjects.find(
-      (candidate) => candidate.id === project.id,
+      (candidate) => candidate.id === project.id
     );
     return existing ? { ...project, ...existing } : project;
   });
@@ -564,32 +573,32 @@ function normalizeState(
       security: clamp(
         Number(raw?.town?.security ?? fallback.town.security),
         0,
-        100,
+        100
       ),
       crimeRate: clamp(
         Number(raw?.town?.crimeRate ?? fallback.town.crimeRate),
         0,
-        100,
+        100
       ),
       foodSupply: clamp(
         Number(raw?.town?.foodSupply ?? fallback.town.foodSupply),
         0,
-        100,
+        100
       ),
       oreSupply: clamp(
         Number(raw?.town?.oreSupply ?? fallback.town.oreSupply),
         0,
-        100,
+        100
       ),
       medicineSupply: clamp(
         Number(raw?.town?.medicineSupply ?? fallback.town.medicineSupply),
         0,
-        100,
+        100
       ),
       taxRate: clamp(
         Number(raw?.town?.taxRate ?? fallback.town.taxRate),
         0,
-        0.25,
+        0.25
       ),
       tradeRouteStatus: {
         ...fallback.town.tradeRouteStatus,
@@ -637,7 +646,7 @@ export function writeHarthmereEconomyState(state: HarthmereEconomyState) {
   }
   window.localStorage.setItem(
     HARTHMERE_ECONOMY_STATE_KEY,
-    JSON.stringify(normalizeState(state)),
+    JSON.stringify(normalizeState(state))
   );
   economyEvent();
 }
@@ -647,13 +656,13 @@ function appendEconomyLog(
   type: EconomyEventType,
   label: string,
   detail: string,
-  goldDelta?: number,
+  goldDelta?: number
 ) {
   return {
     ...state,
     recent: [logEntry(type, label, detail, goldDelta), ...state.recent].slice(
       0,
-      16,
+      16
     ),
   };
 }
@@ -662,7 +671,7 @@ export function recordHarthmereEconomicEvent(
   type: EconomyEventType,
   label: string,
   detail: string,
-  goldDelta?: number,
+  goldDelta?: number
 ) {
   writeHarthmereEconomyState(
     appendEconomyLog(
@@ -670,14 +679,14 @@ export function recordHarthmereEconomicEvent(
       type,
       label,
       detail,
-      goldDelta,
-    ),
+      goldDelta
+    )
   );
 }
 
 function makeInventoryLogEntry(
   action: string,
-  detail: string,
+  detail: string
 ): ReturnType<typeof readHarthmereInventoryState>["recent"][number] {
   return {
     id: `${Date.now()}-${Math.floor(Math.random() * 1_000_000)}`,
@@ -693,11 +702,14 @@ function makeInventoryLogEntry(
 function appendInventoryLog(
   state: HarthmereInventoryState,
   action: string,
-  detail: string,
+  detail: string
 ) {
   return {
     ...state,
-    recent: [makeInventoryLogEntry(action, detail), ...state.recent].slice(0, 18),
+    recent: [makeInventoryLogEntry(action, detail), ...state.recent].slice(
+      0,
+      18
+    ),
   };
 }
 
@@ -705,7 +717,7 @@ function setGold(
   state: HarthmereInventoryState,
   gold: number,
   action: string,
-  detail: string,
+  detail: string
 ) {
   return appendInventoryLog(
     {
@@ -716,7 +728,7 @@ function setGold(
       },
     },
     action,
-    detail,
+    detail
   );
 }
 
@@ -729,8 +741,8 @@ function adjustGold(amount: number, action: string, detail: string): boolean {
       appendInventoryLog(
         state,
         "Not Enough Gold",
-        `${detail} Need ${Math.abs(amount)} gold, but you have ${current}.`,
-      ),
+        `${detail} Need ${Math.abs(amount)} gold, but you have ${current}.`
+      )
     );
     return false;
   }
@@ -782,7 +794,7 @@ function legalAccessBlocked(vendor: VendorEconomyProfile) {
 
 function townSupplyModifier(
   state: HarthmereEconomyState,
-  item: EconomyItemData,
+  item: EconomyItemData
 ) {
   let modifier = 1;
   if (item.demandTags.includes("food")) {
@@ -811,7 +823,7 @@ function vendorPrice(
   vendor: VendorEconomyProfile,
   itemId: string,
   quantity: number,
-  mode: "sell_to_player" | "buy_from_player",
+  mode: "sell_to_player" | "buy_from_player"
 ) {
   const economy = readHarthmereEconomyState();
   const item = itemData(itemId);
@@ -829,8 +841,8 @@ function vendorPrice(
           vendor.baseSellModifier *
           supply *
           scarcity *
-          reputationPriceModifier(),
-      ),
+          reputationPriceModifier()
+      )
     );
   }
   return Math.max(
@@ -841,15 +853,15 @@ function vendorPrice(
         vendor.baseBuyModifier *
         buyPriceModifier() *
         (2 - supply) *
-        0.95,
-    ),
+        0.95
+    )
   );
 }
 
 function activeListings(state: HarthmereEconomyState) {
   const time = now();
   return state.auctionListings.filter(
-    (listing) => listing.status === "active" && listing.expiresAt > time,
+    (listing) => listing.status === "active" && listing.expiresAt > time
   );
 }
 
@@ -874,7 +886,12 @@ function hasStorageForPurchase(itemId: string, quantity: number) {
 }
 
 function buyEconomyItem(offset: number, itemId: string, quantity: number) {
-  if (!claimHarthmereLocalDevRapidAction(`economy:buy:${offset}:${itemId}:${quantity}`, 650)) {
+  if (
+    !claimHarthmereLocalDevRapidAction(
+      `economy:buy:${offset}:${itemId}:${quantity}`,
+      650
+    )
+  ) {
     return;
   }
   const vendor = VENDOR_PROFILES[offset];
@@ -886,7 +903,7 @@ function buyEconomyItem(offset: number, itemId: string, quantity: number) {
     recordHarthmereEconomicEvent(
       "warning",
       "Service Refused",
-      `${vendor.name} refuses service while your Harthmere legal standing is outlaw-level. Try a fence or repair your legal standing.`,
+      `${vendor.name} refuses service while your Harthmere legal standing is outlaw-level. Try a fence or repair your legal standing.`
     );
     return;
   }
@@ -894,7 +911,7 @@ function buyEconomyItem(offset: number, itemId: string, quantity: number) {
     recordHarthmereEconomicEvent(
       "warning",
       "Inventory Full",
-      `${item.name} was not bought because there is no safe storage space. The economy system blocks purchases instead of deleting items.`,
+      `${item.name} was not bought because there is no safe storage space. The economy system blocks purchases instead of deleting items.`
     );
     return;
   }
@@ -903,13 +920,13 @@ function buyEconomyItem(offset: number, itemId: string, quantity: number) {
     !adjustGold(
       -price,
       "Vendor Purchase",
-      `${item.name} x${quantity} bought from ${vendor.name} for ${price} gold.`,
+      `${item.name} x${quantity} bought from ${vendor.name} for ${price} gold.`
     )
   ) {
     recordHarthmereEconomicEvent(
       "warning",
       "Cannot Buy",
-      `${vendor.name} quoted ${price} gold for ${item.name} x${quantity}, but you do not have enough gold.`,
+      `${vendor.name} quoted ${price} gold for ${item.name} x${quantity}, but you do not have enough gold.`
     );
     return;
   }
@@ -918,14 +935,14 @@ function buyEconomyItem(offset: number, itemId: string, quantity: number) {
     "sink",
     "Vendor Purchase",
     `${vendor.name} sold ${item.name} x${quantity}. Gold left the economy through vendor pricing and local taxes.`,
-    -price,
+    -price
   );
 }
 
 function removeBackpackItemForSale(
   state: HarthmereInventoryState,
   itemId: string,
-  quantity: number,
+  quantity: number
 ): { state: HarthmereInventoryState; removed: number; stolen: boolean } {
   let remaining = quantity;
   let stolen = false;
@@ -950,7 +967,12 @@ function removeBackpackItemForSale(
 }
 
 function sellEconomyItem(offset: number, itemId: string, quantity: number) {
-  if (!claimHarthmereLocalDevRapidAction(`economy:sell:${offset}:${itemId}:${quantity}`, 650)) {
+  if (
+    !claimHarthmereLocalDevRapidAction(
+      `economy:sell:${offset}:${itemId}:${quantity}`,
+      650
+    )
+  ) {
     return;
   }
   const vendor = VENDOR_PROFILES[offset];
@@ -962,7 +984,7 @@ function sellEconomyItem(offset: number, itemId: string, quantity: number) {
     recordHarthmereEconomicEvent(
       "warning",
       "Vendor Refused Item",
-      `${vendor.name} does not buy ${item.category.replaceAll("_", " ")} goods.`,
+      `${vendor.name} does not buy ${item.category.replaceAll("_", " ")} goods.`
     );
     return;
   }
@@ -995,8 +1017,8 @@ function sellEconomyItem(offset: number, itemId: string, quantity: number) {
       appendInventoryLog(
         inventory,
         "Nothing Sold",
-        `No unlocked ${item.name} was available to sell.`,
-      ),
+        `No unlocked ${item.name} was available to sell.`
+      )
     );
     return;
   }
@@ -1006,13 +1028,13 @@ function sellEconomyItem(offset: number, itemId: string, quantity: number) {
       appendInventoryLog(
         readHarthmereInventoryState(),
         "Stolen Goods Refused",
-        `${vendor.name} refused stolen ${item.name}. Try a fence instead.`,
-      ),
+        `${vendor.name} refused stolen ${item.name}. Try a fence instead.`
+      )
     );
     recordHarthmereEconomicEvent(
       "warning",
       "Stolen Goods Refused",
-      `${vendor.name} refused stolen goods and may remember the attempt.`,
+      `${vendor.name} refused stolen goods and may remember the attempt.`
     );
     return;
   }
@@ -1022,14 +1044,14 @@ function sellEconomyItem(offset: number, itemId: string, quantity: number) {
     inventory,
     (inventory.wallet.gold ?? 0) + payout,
     "Vendor Sale",
-    `${item.name} x${removed} sold to ${vendor.name} for ${payout} gold.`,
+    `${item.name} x${removed} sold to ${vendor.name} for ${payout} gold.`
   );
   writeHarthmereInventoryState(inventory);
   recordHarthmereEconomicEvent(
     "source",
     "Vendor Sale",
     `${vendor.name} bought ${item.name} x${removed}. Vendor sale created local gold income, but the buy price stayed below base value to avoid infinite loops.`,
-    payout,
+    payout
   );
 }
 
@@ -1049,23 +1071,23 @@ function repairEquippedGearWithEconomy() {
         item.itemId === "iron_longsword"
           ? 50
           : item.itemId === "wooden_shield"
-            ? 45
-            : item.itemId === "training_dagger"
-              ? 35
-              : (item.durability ?? 40);
+          ? 45
+          : item.itemId === "training_dagger"
+          ? 35
+          : item.durability ?? 40;
       const missing = Math.max(
         0,
-        expectedMax - (item.durability ?? expectedMax),
+        expectedMax - (item.durability ?? expectedMax)
       );
       if (missing > 0) {
         const damagePercent = missing / expectedMax;
         cost += Math.max(
           1,
-          Math.round((economy?.baseValue ?? 20) * damagePercent * 0.2),
+          Math.round((economy?.baseValue ?? 20) * damagePercent * 0.2)
         );
       }
       return [slot, { ...item, durability: expectedMax }];
-    }),
+    })
   ) as HarthmereInventoryState["equipment"];
 
   if (cost <= 0) {
@@ -1073,8 +1095,8 @@ function repairEquippedGearWithEconomy() {
       appendInventoryLog(
         inventory,
         "No Repair Needed",
-        "Your equipped gear is already in good condition.",
-      ),
+        "Your equipped gear is already in good condition."
+      )
     );
     return;
   }
@@ -1083,8 +1105,8 @@ function repairEquippedGearWithEconomy() {
       appendInventoryLog(
         inventory,
         "Cannot Repair",
-        `Repairs cost ${cost} gold. You have ${inventory.wallet.gold ?? 0}.`,
-      ),
+        `Repairs cost ${cost} gold. You have ${inventory.wallet.gold ?? 0}.`
+      )
     );
     return;
   }
@@ -1092,14 +1114,14 @@ function repairEquippedGearWithEconomy() {
     { ...inventory, equipment },
     (inventory.wallet.gold ?? 0) - cost,
     "Repaired Gear",
-    `Paid ${cost} gold in repair fees. Repairs are a gold sink, but kept moderate for local-dev testing.`,
+    `Paid ${cost} gold in repair fees. Repairs are a gold sink, but kept moderate for local-dev testing.`
   );
   writeHarthmereInventoryState(inventory);
   recordHarthmereEconomicEvent(
     "sink",
     "Repair Fees",
     `Black Anvil repairs removed ${cost} gold from the local economy.`,
-    -cost,
+    -cost
   );
 }
 
@@ -1115,7 +1137,7 @@ function payLegalFine() {
     recordHarthmereEconomicEvent(
       "warning",
       "No Fine Due",
-      "The bank clerk finds no Harthmere legal fine attached to your name.",
+      "The bank clerk finds no Harthmere legal fine attached to your name."
     );
     return;
   }
@@ -1123,13 +1145,13 @@ function payLegalFine() {
     !adjustGold(
       -cost,
       "Fine Paid",
-      `Paid ${cost} gold in Harthmere legal fines.`,
+      `Paid ${cost} gold in Harthmere legal fines.`
     )
   ) {
     recordHarthmereEconomicEvent(
       "warning",
       "Cannot Pay Fine",
-      `The clerk quoted ${cost} gold to settle part of your legal trouble.`,
+      `The clerk quoted ${cost} gold to settle part of your legal trouble.`
     );
     return;
   }
@@ -1144,14 +1166,14 @@ function payLegalFine() {
     "sink",
     "Legal Fine",
     `Paid ${cost} gold in fines. Legal fines are a gold sink tied to the law system.`,
-    -cost,
+    -cost
   );
 }
 
 function contributeGoldToProject(projectId: string, amount: number) {
   let economy = readHarthmereEconomyState();
   const project = economy.town.activeProjects.find(
-    (entry) => entry.id === projectId,
+    (entry) => entry.id === projectId
   );
   if (!project || project.completed) {
     return;
@@ -1165,7 +1187,7 @@ function contributeGoldToProject(projectId: string, amount: number) {
     !adjustGold(
       -contribution,
       "Town Project",
-      `${project.name}: contributed ${contribution} gold.`,
+      `${project.name}: contributed ${contribution} gold.`
     )
   ) {
     return;
@@ -1191,8 +1213,8 @@ function contributeGoldToProject(projectId: string, amount: number) {
       "project",
       "Town Project Contribution",
       `${project.name} received ${contribution} gold. Town projects are major voluntary sinks that change Harthmere's economy.`,
-      -contribution,
-    ),
+      -contribution
+    )
   );
   applyHarthmereReputationChange({
     label: "Town Project Support",
@@ -1205,12 +1227,12 @@ function contributeGoldToProject(projectId: string, amount: number) {
 function contributeMaterialToProject(
   projectId: string,
   itemId: string,
-  amount: number,
+  amount: number
 ) {
   let inventory = readHarthmereInventoryState();
   let economy = readHarthmereEconomyState();
   const project = economy.town.activeProjects.find(
-    (entry) => entry.id === projectId,
+    (entry) => entry.id === projectId
   );
   const item = itemData(itemId);
   if (!project || !item || project.completed) {
@@ -1226,8 +1248,8 @@ function contributeMaterialToProject(
       appendInventoryLog(
         inventory,
         "No Project Materials",
-        `${project.name} still needs ${item.name}, but none is available in material storage.`,
-      ),
+        `${project.name} still needs ${item.name}, but none is available in material storage.`
+      )
     );
     return;
   }
@@ -1240,7 +1262,7 @@ function contributeMaterialToProject(
       },
     },
     "Town Project Materials",
-    `${item.name} x${contribution} contributed to ${project.name}.`,
+    `${item.name} x${contribution} contributed to ${project.name}.`
   );
   writeHarthmereInventoryState(inventory);
   economy = readHarthmereEconomyState();
@@ -1269,8 +1291,8 @@ function contributeMaterialToProject(
       economy,
       "project",
       "Project Materials",
-      `${item.name} x${contribution} moved from material storage into ${project.name}.`,
-    ),
+      `${item.name} x${contribution} moved from material storage into ${project.name}.`
+    )
   );
 }
 
@@ -1280,7 +1302,7 @@ function finishProjectsIfComplete(state: HarthmereEconomyState) {
     const goldDone = project.contributedGold >= project.requiredGold;
     const materialsDone = Object.entries(project.requiredMaterials).every(
       ([itemId, required]) =>
-        (project.contributedMaterials[itemId] ?? 0) >= required,
+        (project.contributedMaterials[itemId] ?? 0) >= required
     );
     if (!project.completed && goldDone && materialsDone) {
       changed = true;
@@ -1301,18 +1323,18 @@ function finishProjectsIfComplete(state: HarthmereEconomyState) {
         security: clamp(state.town.security + 6, 0, 100),
         crimeRate: clamp(state.town.crimeRate - 4, 0, 100),
         activeShortages: state.town.activeShortages.filter(
-          (shortage) => shortage !== "medicine" && shortage !== "ore",
+          (shortage) => shortage !== "medicine" && shortage !== "ore"
         ),
       },
     },
     "project",
     "Town Project Complete",
-    "A Harthmere town project was completed. Wealth, security, and market access improved.",
+    "A Harthmere town project was completed. Wealth, security, and market access improved."
   );
 }
 
 function escortTradeRoute(
-  route: keyof HarthmereTownEconomyState["tradeRouteStatus"],
+  route: keyof HarthmereTownEconomyState["tradeRouteStatus"]
 ) {
   let economy = readHarthmereEconomyState();
   const status = economy.town.tradeRouteStatus[route] ?? "open";
@@ -1321,7 +1343,7 @@ function escortTradeRoute(
   adjustGold(
     reward,
     "Trade Route Reward",
-    `Escorted ${route.replaceAll("_", " ")} trade and earned ${reward} gold.`,
+    `Escorted ${route.replaceAll("_", " ")} trade and earned ${reward} gold.`
   );
   economy = readHarthmereEconomyState();
   economy = appendEconomyLog(
@@ -1343,8 +1365,11 @@ function escortTradeRoute(
     },
     "trade_route",
     "Trade Route Protected",
-    `${route.replaceAll("_", " ")} is safer. Safe routes lower shortages and improve town wealth.`,
-    reward,
+    `${route.replaceAll(
+      "_",
+      " "
+    )} is safer. Safe routes lower shortages and improve town wealth.`,
+    reward
   );
   writeHarthmereEconomyState(economy);
   applyHarthmereReputationChange({
@@ -1372,8 +1397,8 @@ function smuggleRiverCargo() {
         },
       },
       "Smuggled Cargo",
-      `Earned ${reward} gold and 2 Black Market Coins. This is profitable but illegal.`,
-    ),
+      `Earned ${reward} gold and 2 Black Market Coins. This is profitable but illegal.`
+    )
   );
   writeHarthmereEconomyState(
     appendEconomyLog(
@@ -1385,15 +1410,15 @@ function smuggleRiverCargo() {
           crimeRate: clamp(
             readHarthmereEconomyState().town.crimeRate + 3,
             0,
-            100,
+            100
           ),
         },
       },
       "black_market",
       "Smuggled Cargo",
       "Smuggling created profit and black-market access, but increased local crime pressure.",
-      reward,
-    ),
+      reward
+    )
   );
   applyHarthmereReputationChange({
     label: "Smuggling Rumor",
@@ -1415,7 +1440,7 @@ function sellStolenGoodsToFence() {
     if (item.stolen && economy?.vendorSellable && !item.locked) {
       payout += Math.max(
         1,
-        Math.round(economy.baseValue * item.quantity * 0.35),
+        Math.round(economy.baseValue * item.quantity * 0.35)
       );
     } else {
       kept.push(item);
@@ -1426,8 +1451,8 @@ function sellStolenGoodsToFence() {
       appendInventoryLog(
         inventory,
         "No Stolen Goods",
-        "The fence found no unlocked stolen goods in your backpack.",
-      ),
+        "The fence found no unlocked stolen goods in your backpack."
+      )
     );
     return;
   }
@@ -1442,7 +1467,7 @@ function sellStolenGoodsToFence() {
       },
     },
     "Fence Sale",
-    `Fence bought stolen goods for ${payout} gold and 1 Black Market Coin.`,
+    `Fence bought stolen goods for ${payout} gold and 1 Black Market Coin.`
   );
   writeHarthmereInventoryState(inventory);
   writeHarthmereEconomyState(
@@ -1451,8 +1476,8 @@ function sellStolenGoodsToFence() {
       "black_market",
       "Fence Sale",
       "Stolen goods left your backpack through the black market at a reduced cut.",
-      payout,
-    ),
+      payout
+    )
   );
 }
 
@@ -1462,15 +1487,15 @@ function launderStolenItem() {
   }
   let inventory = readHarthmereInventoryState();
   const index = inventory.backpack.items.findIndex(
-    (item) => item.stolen && !item.locked,
+    (item) => item.stolen && !item.locked
   );
   if (index < 0) {
     writeHarthmereInventoryState(
       appendInventoryLog(
         inventory,
         "Nothing To Launder",
-        "No unlocked stolen item was found in your backpack.",
-      ),
+        "No unlocked stolen item was found in your backpack."
+      )
     );
     return;
   }
@@ -1482,8 +1507,8 @@ function launderStolenItem() {
       appendInventoryLog(
         inventory,
         "Cannot Launder",
-        `Laundering ${economy?.name ?? item.itemId} costs ${fee} gold.`,
-      ),
+        `Laundering ${economy?.name ?? item.itemId} costs ${fee} gold.`
+      )
     );
     return;
   }
@@ -1496,30 +1521,36 @@ function launderStolenItem() {
       wallet: { ...inventory.wallet, gold: (inventory.wallet.gold ?? 0) - fee },
     },
     "Item Laundered",
-    `${economy?.name ?? item.itemId} is no longer marked stolen. Paid ${fee} gold to the fence.`,
+    `${
+      economy?.name ?? item.itemId
+    } is no longer marked stolen. Paid ${fee} gold to the fence.`
   );
   writeHarthmereInventoryState(inventory);
   recordHarthmereEconomicEvent(
     "black_market",
     "Laundered Item",
-    `A fence laundered ${economy?.name ?? item.itemId}. Black markets are useful but expensive and risky.`,
-    -fee,
+    `A fence laundered ${
+      economy?.name ?? item.itemId
+    }. Black markets are useful but expensive and risky.`,
+    -fee
   );
 }
 
 function buyAuctionListing(listingId: string) {
-  if (!claimHarthmereLocalDevRapidAction(`economy:buy-auction:${listingId}`, 650)) {
+  if (
+    !claimHarthmereLocalDevRapidAction(`economy:buy-auction:${listingId}`, 650)
+  ) {
     return;
   }
   let economy = readHarthmereEconomyState();
   const listing = economy.auctionListings.find(
-    (entry) => entry.listingId === listingId,
+    (entry) => entry.listingId === listingId
   );
   if (!listing || listing.status !== "active" || listing.expiresAt <= now()) {
     recordHarthmereEconomicEvent(
       "warning",
       "Auction Unavailable",
-      "That listing is no longer active.",
+      "That listing is no longer active."
     );
     return;
   }
@@ -1531,7 +1562,7 @@ function buyAuctionListing(listingId: string) {
     recordHarthmereEconomicEvent(
       "warning",
       "Inventory Full",
-      `Cannot buy ${item.name}; free space or use material storage first.`,
+      `Cannot buy ${item.name}; free space or use material storage first.`
     );
     return;
   }
@@ -1539,7 +1570,7 @@ function buyAuctionListing(listingId: string) {
     !adjustGold(
       -listing.totalPrice,
       "Auction Purchase",
-      `${item.name} x${listing.quantity} bought for ${listing.totalPrice} gold.`,
+      `${item.name} x${listing.quantity} bought for ${listing.totalPrice} gold.`
     )
   ) {
     return;
@@ -1551,7 +1582,7 @@ function buyAuctionListing(listingId: string) {
     {
       ...economy,
       auctionListings: economy.auctionListings.map((entry) =>
-        entry.listingId === listingId ? { ...entry, status: "sold" } : entry,
+        entry.listingId === listingId ? { ...entry, status: "sold" } : entry
       ),
       priceHistory: {
         ...economy.priceHistory,
@@ -1564,7 +1595,7 @@ function buyAuctionListing(listingId: string) {
     "auction",
     "Auction Bought",
     `${item.name} x${listing.quantity} bought from ${listing.sellerName}. ${tax} gold was removed as sale tax.`,
-    -listing.totalPrice,
+    -listing.totalPrice
   );
   writeHarthmereEconomyState(economy);
 }
@@ -1583,27 +1614,27 @@ function postFirstSellableItemToAuction() {
       appendInventoryLog(
         inventory,
         "No Auction Item",
-        "No unlocked, unbound, non-stolen auctionable backpack item was found.",
-      ),
+        "No unlocked, unbound, non-stolen auctionable backpack item was found."
+      )
     );
     return;
   }
   const economyItem = itemData(candidate.itemId)!;
   const quantity = Math.min(
     candidate.quantity,
-    economyItem.stackSize > 1 ? 5 : 1,
+    economyItem.stackSize > 1 ? 5 : 1
   );
   const listingFee = Math.max(
     1,
-    Math.round(economyItem.baseValue * quantity * 0.03),
+    Math.round(economyItem.baseValue * quantity * 0.03)
   );
   if ((inventory.wallet.gold ?? 0) < listingFee) {
     writeHarthmereInventoryState(
       appendInventoryLog(
         inventory,
         "Cannot List Auction",
-        `Listing ${economyItem.name} costs ${listingFee} gold.`,
-      ),
+        `Listing ${economyItem.name} costs ${listingFee} gold.`
+      )
     );
     return;
   }
@@ -1611,7 +1642,7 @@ function postFirstSellableItemToAuction() {
   const removed = removeBackpackItemForSale(
     inventory,
     candidate.itemId,
-    quantity,
+    quantity
   );
   inventory = appendInventoryLog(
     {
@@ -1622,7 +1653,7 @@ function postFirstSellableItemToAuction() {
       },
     },
     "Auction Listed",
-    `${economyItem.name} x${removed.removed} moved into auction escrow. Listing fee: ${listingFee} gold.`,
+    `${economyItem.name} x${removed.removed} moved into auction escrow. Listing fee: ${listingFee} gold.`
   );
   writeHarthmereInventoryState(inventory);
 
@@ -1652,8 +1683,8 @@ function postFirstSellableItemToAuction() {
       "auction",
       "Auction Listed",
       `${economyItem.name} x${removed.removed} listed at ${unitPrice} gold each. Auction fees prevent spam and remove currency.`,
-      -listingFee,
-    ),
+      -listingFee
+    )
   );
 }
 
@@ -1663,13 +1694,13 @@ function settleOldestPlayerAuction() {
   }
   let economy = readHarthmereEconomyState();
   const listing = economy.auctionListings.find(
-    (entry) => entry.playerOwned && entry.status === "active",
+    (entry) => entry.playerOwned && entry.status === "active"
   );
   if (!listing) {
     recordHarthmereEconomicEvent(
       "warning",
       "No Player Auction",
-      "No active player-owned auction listing is waiting to settle.",
+      "No active player-owned auction listing is waiting to settle."
     );
     return;
   }
@@ -1678,7 +1709,9 @@ function settleOldestPlayerAuction() {
   adjustGold(
     payout,
     "Auction Sale",
-    `${itemData(listing.itemId)?.name ?? listing.itemId} sold at auction. Net payout: ${payout} gold after ${tax} tax.`,
+    `${
+      itemData(listing.itemId)?.name ?? listing.itemId
+    } sold at auction. Net payout: ${payout} gold after ${tax} tax.`
   );
   economy = readHarthmereEconomyState();
   writeHarthmereEconomyState(
@@ -1688,7 +1721,7 @@ function settleOldestPlayerAuction() {
         auctionListings: economy.auctionListings.map((entry) =>
           entry.listingId === listing.listingId
             ? { ...entry, status: "sold" }
-            : entry,
+            : entry
         ),
         priceHistory: {
           ...economy.priceHistory,
@@ -1700,9 +1733,11 @@ function settleOldestPlayerAuction() {
       },
       "auction",
       "Auction Sale Settled",
-      `${listing.sellerName}'s ${itemData(listing.itemId)?.name ?? listing.itemId} listing sold. ${tax} gold left the economy as tax.`,
-      payout,
-    ),
+      `${listing.sellerName}'s ${
+        itemData(listing.itemId)?.name ?? listing.itemId
+      } listing sold. ${tax} gold left the economy as tax.`,
+      payout
+    )
   );
 }
 
@@ -1717,8 +1752,8 @@ function upgradeBankSpace() {
       appendInventoryLog(
         inventory,
         "Cannot Upgrade Bank",
-        `A bank-slot upgrade costs ${cost} gold.`,
-      ),
+        `A bank-slot upgrade costs ${cost} gold.`
+      )
     );
     return;
   }
@@ -1732,14 +1767,14 @@ function upgradeBankSpace() {
       bank: { ...inventory.bank, maxSlots: inventory.bank.maxSlots + 4 },
     },
     "Bank Upgraded",
-    `Bought 4 bank slots for ${cost} gold. Storage upgrades are a safe long-term gold sink.`,
+    `Bought 4 bank slots for ${cost} gold. Storage upgrades are a safe long-term gold sink.`
   );
   writeHarthmereInventoryState(inventory);
   recordHarthmereEconomicEvent(
     "sink",
     "Bank Upgrade",
     `Bank space expanded by 4 slots. ${cost} gold left the economy.`,
-    -cost,
+    -cost
   );
 }
 
@@ -1749,8 +1784,8 @@ function resetEconomy() {
       defaultState(),
       "exchange",
       "Economy Reset",
-      "Local-dev economy state reset.",
-    ),
+      "Local-dev economy state reset."
+    )
   );
 }
 
@@ -1760,13 +1795,13 @@ function averagePrice(itemId: string, state: HarthmereEconomyState) {
     return itemData(itemId)?.baseValue ?? 0;
   }
   return Math.round(
-    history.reduce((sum, value) => sum + value, 0) / history.length,
+    history.reduce((sum, value) => sum + value, 0) / history.length
   );
 }
 
 export function useHarthmereEconomyState() {
   const [state, setState] = useState<HarthmereEconomyState>(() =>
-    readHarthmereEconomyState(),
+    readHarthmereEconomyState()
   );
 
   useEffect(() => {
@@ -1785,7 +1820,7 @@ export function useHarthmereEconomyState() {
 }
 
 export function economyActionsForHarthmereNpc(
-  offset: number,
+  offset: number
 ): TalkDialogStepAction[] {
   const actions: TalkDialogStepAction[] = [];
   const vendor = VENDOR_PROFILES[offset];
@@ -1800,7 +1835,7 @@ export function economyActionsForHarthmereNpc(
         vendor,
         stock.itemId,
         stock.quantity,
-        "sell_to_player",
+        "sell_to_player"
       );
       actions.push({
         name: `Economy buy: ${item.name}`,
@@ -1811,7 +1846,7 @@ export function economyActionsForHarthmereNpc(
     }
     const firstBuyCategory = vendor.buysCategories[0];
     const sellable = Object.values(ECONOMY_ITEMS).find(
-      (item) => item.category === firstBuyCategory,
+      (item) => item.category === firstBuyCategory
     );
     if (sellable) {
       const quote = vendorPrice(vendor, sellable.itemId, 1, "buy_from_player");
@@ -1909,7 +1944,7 @@ export function economyActionsForHarthmereNpc(
         contributeMaterialToProject(
           "repair_north_bridge",
           "cold_iron_scrap",
-          4,
+          4
         ),
     });
   }
@@ -1923,7 +1958,7 @@ export function economyActionsForHarthmereNpc(
         contributeMaterialToProject(
           "stock_temple_medicine",
           "fever_tea_bundle",
-          2,
+          2
         ),
     });
     actions.push({
@@ -1957,7 +1992,7 @@ export function economyActionsForHarthmereNpc(
       tooltip: "Buy the first active salve listing from the market board.",
       onPerformed: () => {
         const listing = activeListings(readHarthmereEconomyState()).find(
-          (entry) => entry.itemId === "minor_healing_salve",
+          (entry) => entry.itemId === "minor_healing_salve"
         );
         if (listing) {
           buyAuctionListing(listing.listingId);
@@ -1992,12 +2027,12 @@ export const HarthmereEconomyHUD: React.FunctionComponent<{}> = () => {
   const latest = economy.recent[0];
   return (
     <div
-      className="pointer-events-none w-[21rem] rounded-lg border border-white/20 bg-black/70 p-2 text-white shadow-lg"
+      className="rounded-lg pointer-events-none w-[21rem] border border-white/20 bg-black/70 p-2 text-white shadow-lg"
       style={{ textShadow: "0 1px 2px rgba(0,0,0,0.85)" }}
     >
       <div className="flex items-start justify-between gap-2">
         <div>
-          <div className="text-sm font-semibold uppercase tracking-wide text-emerald-200">
+          <div className="text-emerald-200 text-sm font-semibold uppercase tracking-wide">
             Harthmere Economy
           </div>
           <div className="text-xs text-white/80">
@@ -2005,7 +2040,7 @@ export const HarthmereEconomyHUD: React.FunctionComponent<{}> = () => {
             Tax {percent(economy.town.taxRate * 100)}
           </div>
         </div>
-        <div className="rounded bg-white/10 px-1.5 py-0.5 text-xs font-semibold text-white/80">
+        <div className="rounded px-1.5 py-0.5 bg-white/10 text-xs font-semibold text-white/80">
           {economy.town.activeShortages.length
             ? `Short: ${economy.town.activeShortages[0]}`
             : "Stable"}
@@ -2017,7 +2052,7 @@ export const HarthmereEconomyHUD: React.FunctionComponent<{}> = () => {
         <div>Med {economy.town.medicineSupply}</div>
       </div>
       <div className="mt-1 text-xs leading-snug text-white/80">
-        <span className="font-semibold text-emerald-100">Latest:</span>{" "}
+        <span className="text-emerald-100 font-semibold">Latest:</span>{" "}
         {latest?.detail ?? "Economy ready."}{" "}
         {latest?.goldDelta ? goldLabel(latest.goldDelta) : ""}
       </div>
@@ -2038,11 +2073,11 @@ export const HarthmereEconomyMenuPanel: React.FunctionComponent<{}> = () => {
   const vendorRows = useMemo(() => Object.values(VENDOR_PROFILES), []);
 
   return (
-    <div className="mb-2 max-h-[70vh] w-[33rem] overflow-hidden rounded-lg border border-white/20 bg-black/85 text-white shadow-xl">
+    <div className="rounded-lg bg-black/85 mb-2 max-h-[70vh] w-[33rem] overflow-hidden border border-white/20 text-white shadow-xl">
       <div className="border-b border-white/10 p-3">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <div className="text-base font-semibold text-emerald-200">
+            <div className="text-base text-emerald-200 font-semibold">
               Harthmere World Economy
             </div>
             <div className="text-xs text-white/70">
@@ -2085,21 +2120,21 @@ export const HarthmereEconomyMenuPanel: React.FunctionComponent<{}> = () => {
           <div className="space-y-2 text-xs leading-snug text-white/75">
             <div className="grid grid-cols-3 gap-2">
               <div className="rounded border border-white/10 bg-white/5 p-2">
-                <div className="font-semibold text-emerald-100">
+                <div className="text-emerald-100 font-semibold">
                   Town Wealth
                 </div>
                 <div className="text-lg text-white">{economy.town.wealth}</div>
                 <div>Higher wealth improves stock and services.</div>
               </div>
               <div className="rounded border border-white/10 bg-white/5 p-2">
-                <div className="font-semibold text-emerald-100">Security</div>
+                <div className="text-emerald-100 font-semibold">Security</div>
                 <div className="text-lg text-white">
                   {economy.town.security}
                 </div>
                 <div>Security lowers crime and route risk.</div>
               </div>
               <div className="rounded border border-white/10 bg-white/5 p-2">
-                <div className="font-semibold text-emerald-100">Crime</div>
+                <div className="text-emerald-100 font-semibold">Crime</div>
                 <div className="text-lg text-white">
                   {economy.town.crimeRate}
                 </div>
@@ -2118,7 +2153,7 @@ export const HarthmereEconomyMenuPanel: React.FunctionComponent<{}> = () => {
               </div>
             </div>
             <div className="rounded border border-white/10 bg-white/5 p-2">
-              <div className="font-semibold text-emerald-100">Trade Routes</div>
+              <div className="text-emerald-100 font-semibold">Trade Routes</div>
               <div className="mt-1 grid grid-cols-3 gap-1">
                 {Object.entries(economy.town.tradeRouteStatus).map(
                   ([route, status]) => (
@@ -2126,12 +2161,12 @@ export const HarthmereEconomyMenuPanel: React.FunctionComponent<{}> = () => {
                       {route.replaceAll("_", " ")}:{" "}
                       {status.replaceAll("_", " ")}
                     </div>
-                  ),
+                  )
                 )}
               </div>
             </div>
             <div className="rounded border border-white/10 bg-white/5 p-2">
-              <div className="font-semibold text-emerald-100">
+              <div className="text-emerald-100 font-semibold">
                 Recent Economy Log
               </div>
               <div className="mt-1 space-y-1">
@@ -2183,26 +2218,26 @@ export const HarthmereEconomyMenuPanel: React.FunctionComponent<{}> = () => {
                       vendor,
                       stock.itemId,
                       stock.quantity,
-                      "sell_to_player",
+                      "sell_to_player"
                     );
                     return (
                       <div
                         key={`${vendor.vendorId}-${stock.itemId}`}
-                        className="flex items-center justify-between rounded bg-black/25 p-1"
+                        className="rounded flex items-center justify-between bg-black/25 p-1"
                       >
                         <div>
                           {item?.name ?? stock.itemId} x{stock.quantity}
-                          <span className="ml-2 text-white/45">
+                          <span className="text-white/45 ml-2">
                             avg {averagePrice(stock.itemId, economy)}g
                           </span>
                         </div>
                         <button
-                          className="rounded bg-emerald-300 px-2 py-0.5 text-[10px] font-semibold text-black hover:bg-emerald-200"
+                          className="rounded bg-emerald-300 py-0.5 hover:bg-emerald-200 px-2 text-[10px] font-semibold text-black"
                           onClick={() =>
                             buyEconomyItem(
                               vendor.offset,
                               stock.itemId,
-                              stock.quantity,
+                              stock.quantity
                             )
                           }
                         >
@@ -2252,7 +2287,7 @@ export const HarthmereEconomyMenuPanel: React.FunctionComponent<{}> = () => {
                         </div>
                       </div>
                       <button
-                        className="rounded bg-emerald-300 px-2 py-1 text-[10px] font-semibold text-black hover:bg-emerald-200"
+                        className="rounded bg-emerald-300 hover:bg-emerald-200 px-2 py-1 text-[10px] font-semibold text-black"
                         onClick={() => buyAuctionListing(listing.listingId)}
                       >
                         Buy {listing.totalPrice}g
@@ -2284,7 +2319,11 @@ export const HarthmereEconomyMenuPanel: React.FunctionComponent<{}> = () => {
                     <div className="text-white/60">{project.description}</div>
                   </div>
                   <div
-                    className={`rounded px-2 py-1 ${project.completed ? "bg-emerald-300 text-black" : "bg-white/10 text-white/80"}`}
+                    className={`rounded px-2 py-1 ${
+                      project.completed
+                        ? "bg-emerald-300 text-black"
+                        : "bg-white/10 text-white/80"
+                    }`}
                   >
                     {project.completed ? "Complete" : "Open"}
                   </div>
@@ -2300,7 +2339,7 @@ export const HarthmereEconomyMenuPanel: React.FunctionComponent<{}> = () => {
                         {itemData(itemId)?.name ?? itemId}:{" "}
                         {project.contributedMaterials[itemId] ?? 0}/{qty}
                       </div>
-                    ),
+                    )
                   )}
                 </div>
                 {!project.completed && (
@@ -2331,8 +2370,8 @@ export const HarthmereEconomyMenuPanel: React.FunctionComponent<{}> = () => {
 
         {tab === "black_market" && (
           <div className="space-y-2 text-xs leading-snug text-white/75">
-            <div className="rounded border border-red-300/30 bg-red-500/10 p-2">
-              <div className="font-semibold text-red-100">Black Market</div>
+            <div className="rounded border-red-300/30 bg-red-500/10 border p-2">
+              <div className="text-red-100 font-semibold">Black Market</div>
               Fences buy stolen goods, launder items, and reward smuggling, but
               they cut value hard and damage legal standing. Discovered:{" "}
               {economy.blackMarketDiscovered ? "yes" : "no"}.
@@ -2367,24 +2406,24 @@ export const HarthmereEconomyMenuPanel: React.FunctionComponent<{}> = () => {
         {tab === "guide" && (
           <div className="space-y-2 text-xs leading-snug text-white/75">
             <div className="rounded border border-white/10 bg-white/5 p-2">
-              <div className="font-semibold text-emerald-100">Sources</div>
+              <div className="text-emerald-100 font-semibold">Sources</div>
               Gold enters through quests, vendor sales, trade route rewards,
               auction payouts, and lawful or unlawful jobs.
             </div>
             <div className="rounded border border-white/10 bg-white/5 p-2">
-              <div className="font-semibold text-emerald-100">Sinks</div>
+              <div className="text-emerald-100 font-semibold">Sinks</div>
               Gold leaves through vendor purchases, repair bills, auction taxes,
               listing fees, fines, bank upgrades, and town projects.
             </div>
             <div className="rounded border border-white/10 bg-white/5 p-2">
-              <div className="font-semibold text-emerald-100">
+              <div className="text-emerald-100 font-semibold">
                 Supply/Demand
               </div>
               Food, ore, and medicine supplies change prices. Safe trade routes
               reduce shortages; crime and smuggling strengthen black markets.
             </div>
             <div className="rounded border border-white/10 bg-white/5 p-2">
-              <div className="font-semibold text-emerald-100">
+              <div className="text-emerald-100 font-semibold">
                 Production Target
               </div>
               This is local-dev state. Production MMO economy must validate item

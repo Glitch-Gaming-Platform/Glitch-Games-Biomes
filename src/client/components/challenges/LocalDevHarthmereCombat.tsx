@@ -1,13 +1,23 @@
-export const HARTHMERE_COMBAT_DEBUG_PROBE =
-  "harthmere-combat-debug-probe";
+export const HARTHMERE_COMBAT_DEBUG_PROBE = "harthmere-combat-debug-probe";
 export const HARTHMERE_FULL_FIGHT_SYSTEM_REVISION =
   "harthmere-full-fight-system";
 import type { TalkDialogStepAction } from "@/client/components/challenges/TalkDialogModalStep";
 import { getHarthmereCombatantActionBlockReason } from "@/client/components/challenges/harthmereCombatDeathInterfaceRules";
+import {
+  appendHarthmereDeathLog,
+  markHarthmereDeathStateAlive,
+  markHarthmereDeathStateProtected,
+  markHarthmerePlayerDownedDeathState,
+  readHarthmereDeathState,
+  writeHarthmereDeathState,
+  type HarthmereDeathRecord,
+} from "@/client/components/challenges/harthmereDeathStateStore";
+import { HARTHMERE_LOCAL_DEV_STATE_KEYS } from "@/client/components/challenges/LocalDevHarthmereEconomyHardening";
 import { applyHarthmereReputationChange } from "@/client/components/challenges/LocalDevHarthmereReputation";
 import { harthmereUserScopedStorageKey } from "@/client/components/challenges/LocalDevHarthmereUserScope";
 import { isLiveEntityHelperMuckBossSpawned } from "@/client/components/challenges/LocalDevLiveEntityHelperQuestState";
 import { isLocalDevLiveEntityRobotProtectionAreaSafeForPosition } from "@/client/components/challenges/LocalDevLiveEntityRobotEnergyState";
+import { BIOMES_UI_PLAYER_STATUS_UPDATED_EVENT } from "@/client/components/biomes_ui/adapters/playerStatusAdapter";
 import {
   HARTHMERE_LOCAL_COMBAT_ATTACK_CONTACT_GRACE,
   HARTHMERE_LOCAL_COMBAT_LINE_OF_SIGHT_RANGE,
@@ -25,11 +35,12 @@ import {
 import { harthmereIncomingExternalAttack } from "@/client/components/challenges/harthmerePvpHitRules";
 import { useClientContext } from "@/client/components/contexts/ClientContextReactContext";
 import { isPlayer } from "@/shared/game/players";
-import {
-  fallDamageForBlocks,
-  FEET_PER_BLOCK,
-} from "@/shared/game/fall_damage";
+import { fallDamageForBlocks, FEET_PER_BLOCK } from "@/shared/game/fall_damage";
 import { HARTHMERE_VOXEL_INTERACTION_ATTACK_REACH_UNITS } from "@/shared/harthmere/combat_reach";
+import {
+  HARTHMERE_BIOMES_ECS_HEALTH_UPDATED_EVENT,
+  createHarthmereBiomesEcsHealth,
+} from "@/shared/harthmere/harthmere_biomes_ecs_bridge";
 import { LIVE_ENTITY_HELPER_MUCK_BOSS_OFFSET } from "@/shared/harthmere/live_entity_helper_quests";
 import { evaluateMuckMonsterAggression } from "@/shared/harthmere/muck_monster_aggression_ai";
 import { HARTHMERE_HALF_DAY_MS } from "@/shared/harthmere/mmo_farming_food_stamina";
@@ -37,8 +48,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 const HARTHMERE_NO_SPARK_BASIC_ACTOR_MATCH_VERSION =
   "harthmere-no-spark-basic-actor-match";
-const HARTHMERE_FIX_BAD_INLINE_CONST_VERSION =
-  "harthmere-fix-bad-inline-const";
+const HARTHMERE_FIX_BAD_INLINE_CONST_VERSION = "harthmere-fix-bad-inline-const";
 const HARTHMERE_TOWN_PLAYER_COLLISION_SAFETY_VERSION =
   "harthmere-town-player-collision-safety";
 export const HARTHMERE_NPC_RETALIATION_RUNTIME =
@@ -72,13 +82,8 @@ const HARTHMERE_NPC_LOST_SIGHT_SEARCH_MS = 3200;
 
 const HARTHMERE_COMBAT_STATE_KEY = "biomes.localDev.harthmere.combatState";
 const HARTHMERE_COMBAT_EVENT = "biomes:harthmere-combat-changed";
-const BIOMES_UI_PLAYER_STATUS_UPDATED_EVENT =
-  "biomes:live-mode-player-status-updated";
 export const HARTHMERE_COMBAT_EFFECT_EVENT = "biomes:harthmere-combat-effect";
-const HARTHMERE_DEATH_STATE_KEY = "biomes.localDev.harthmere.deathState";
-const HARTHMERE_DEATH_EVENT = "biomes:harthmere-death-changed";
-const HARTHMERE_INVENTORY_STATE_KEY =
-  "biomes.localDev.harthmere.inventoryState";
+const HARTHMERE_INVENTORY_STATE_KEY = HARTHMERE_LOCAL_DEV_STATE_KEYS.inventory;
 
 const HARTHMERE_BASIC_LONGSWORD_ATTACK_LABEL = "Iron Longsword Slash";
 const HARTHMERE_HEAVY_LONGSWORD_ATTACK_LABEL = "Heavy Iron Longsword Slash";
@@ -108,8 +113,7 @@ const normalizeHarthmereVisibleAttackLabel = (
   return normalized;
 };
 
-const HARTHMERE_COMBAT_RULESET_REVISION =
-  "harthmere-muck-hex-5x-death-loot";
+const HARTHMERE_COMBAT_RULESET_REVISION = "harthmere-muck-hex-5x-death-loot";
 
 const HARTHMERE_TRAINING_DUMMY_OFFSET = 9001;
 const HARTHMERE_DRAIN_RAT_OFFSET = 9002;
@@ -566,62 +570,8 @@ function combatEvent() {
   window.dispatchEvent(new CustomEvent(HARTHMERE_COMBAT_EVENT));
 }
 
-function deathEvent() {
-  if (!isBrowser()) {
-    return;
-  }
-  window.dispatchEvent(new CustomEvent(HARTHMERE_DEATH_EVENT));
-}
-
-function readRawDeathState(): any {
-  if (!isBrowser()) {
-    return undefined;
-  }
-  try {
-    const raw = window.localStorage.getItem(
-      harthmereUserScopedStorageKey(HARTHMERE_DEATH_STATE_KEY)
-    );
-    return raw ? JSON.parse(raw) : undefined;
-  } catch {
-    return undefined;
-  }
-}
-
-function writeRawDeathState(state: any) {
-  if (!isBrowser()) {
-    return;
-  }
-  window.localStorage.setItem(
-    harthmereUserScopedStorageKey(HARTHMERE_DEATH_STATE_KEY),
-    JSON.stringify(state)
-  );
-  deathEvent();
-}
-
-function deathLogEntry(label: string, detail: string) {
-  return {
-    id: `${Date.now()}-${Math.floor(Math.random() * 1_000_000)}`,
-    at: Date.now(),
-    label,
-    detail,
-  };
-}
-
 function markDeathStateAlive(detail: string) {
-  const current = readRawDeathState();
-  writeRawDeathState({
-    version: 1,
-    ...(current ?? {}),
-    state: "alive",
-    currentDeath: undefined,
-    downedUntil: undefined,
-    forcedRespawnAt: undefined,
-    protectionUntil: undefined,
-    recent: [deathLogEntry("Alive", detail), ...(current?.recent ?? [])].slice(
-      0,
-      12
-    ),
-  });
+  markHarthmereDeathStateAlive(detail);
 }
 
 function markDeathStateProtected(
@@ -630,21 +580,11 @@ function markDeathStateProtected(
   protectionSeconds: number,
   sicknessSeconds: number
 ) {
-  const current = readRawDeathState();
-  writeRawDeathState({
-    version: 1,
-    ...(current ?? {}),
-    state: "protected_after_respawn",
-    currentDeath: undefined,
-    downedUntil: undefined,
-    forcedRespawnAt: undefined,
-    protectionUntil: Date.now() + protectionSeconds * 1000,
-    resurrectionSicknessUntil:
-      sicknessSeconds > 0 ? Date.now() + sicknessSeconds * 1000 : undefined,
-    recent: [deathLogEntry(label, detail), ...(current?.recent ?? [])].slice(
-      0,
-      12
-    ),
+  markHarthmereDeathStateProtected({
+    label,
+    detail,
+    protectionSeconds,
+    sicknessSeconds,
   });
 }
 
@@ -654,7 +594,6 @@ function markPlayerDownedFromCombat(
   finalDamage: number,
   detail: string
 ) {
-  const current = readRawDeathState();
   const deathId = `hm-death-${Date.now()}-${Math.floor(
     Math.random() * 1_000_000
   )}`;
@@ -665,7 +604,7 @@ function markPlayerDownedFromCombat(
       : killer.behavior === "hostile"
       ? "npc"
       : "unknown";
-  const record = {
+  const record: HarthmereDeathRecord = {
     deathId,
     state: "downed",
     zone: "Harthmere",
@@ -692,19 +631,11 @@ function markPlayerDownedFromCombat(
     ],
     createdAt: now,
   };
-  writeRawDeathState({
-    version: 1,
-    ...(current ?? {}),
-    state: "downed",
-    currentDeath: record,
-    downedUntil: now + 45_000,
-    forcedRespawnAt: now + 5 * 60_000,
-    protectionUntil: undefined,
-    deathCount: (current?.deathCount ?? 0) + 1,
-    recent: [deathLogEntry("Downed", detail), ...(current?.recent ?? [])].slice(
-      0,
-      12
-    ),
+  markHarthmerePlayerDownedDeathState({
+    record,
+    detail,
+    downedMs: 45_000,
+    forcedRespawnMs: 5 * 60_000,
   });
 }
 
@@ -717,7 +648,6 @@ export function downHarthmerePlayerFromSystem(input: {
   damageType?: string;
 }) {
   const state = readHarthmereCombatState();
-  const current = readRawDeathState();
   const now = Date.now();
   const damage = Math.max(
     0,
@@ -725,7 +655,7 @@ export function downHarthmerePlayerFromSystem(input: {
   );
   const abilityName = input.abilityName ?? "Stamina Depletion";
   const damageType = input.damageType ?? "survival";
-  const record = {
+  const record: HarthmereDeathRecord = {
     deathId: `hm-system-death-${now}-${Math.floor(Math.random() * 1_000_000)}`,
     state: "downed",
     zone: "Harthmere",
@@ -752,19 +682,11 @@ export function downHarthmerePlayerFromSystem(input: {
     ],
     createdAt: now,
   };
-  writeRawDeathState({
-    version: 1,
-    ...(current ?? {}),
-    state: "downed",
-    currentDeath: record,
-    downedUntil: now + 45_000,
-    forcedRespawnAt: now + 5 * 60_000,
-    protectionUntil: undefined,
-    deathCount: (current?.deathCount ?? 0) + 1,
-    recent: [
-      deathLogEntry("Downed", input.detail),
-      ...(current?.recent ?? []),
-    ].slice(0, 12),
+  markHarthmerePlayerDownedDeathState({
+    record,
+    detail: input.detail,
+    downedMs: 45_000,
+    forcedRespawnMs: 5 * 60_000,
   });
   writeHarthmereCombatState({
     ...appendCombatLog(state, {
@@ -1069,7 +991,8 @@ export function useHarthmerePvpIncomingDamageBridge() {
     }
     processedRef.current = health.lastDamageTime ?? undefined;
     const attackerName =
-      resources.get("/ecs/c/label", decision.attacker)?.text ?? "Another player";
+      resources.get("/ecs/c/label", decision.attacker)?.text ??
+      "Another player";
     applyHarthmerePvpDamageFromRemotePlayer({
       damage: decision.damage,
       attackerName,
@@ -1860,12 +1783,19 @@ export function readHarthmereCombatState(): HarthmereCombatState {
   }
 }
 
-function dispatchHarthmereCombatVitalsToBiomesUi(
-  state: HarthmereCombatState
-) {
+function dispatchHarthmereCombatVitalsToBiomesUi(state: HarthmereCombatState) {
   if (!isBrowser()) {
     return;
   }
+  const ecsHealth = createHarthmereBiomesEcsHealth({
+    hp: state.player.hp,
+    maxHp: state.player.maxHp,
+  });
+  window.dispatchEvent(
+    new CustomEvent(HARTHMERE_BIOMES_ECS_HEALTH_UPDATED_EVENT, {
+      detail: ecsHealth,
+    })
+  );
   window.dispatchEvent(
     new CustomEvent(BIOMES_UI_PLAYER_STATUS_UPDATED_EVENT, {
       detail: {
@@ -1874,8 +1804,8 @@ function dispatchHarthmereCombatVitalsToBiomesUi(
         className: state.player.name,
         level: state.player.level,
         combat: {
-          hp: state.player.hp,
-          maxHp: state.player.maxHp,
+          hp: ecsHealth.component.hp,
+          maxHp: ecsHealth.component.maxHp,
           deathState: state.player.combatState,
           primaryResource: "mana",
         },
@@ -3226,9 +3156,7 @@ function emitHarthmereVoxelNpcMotion(
     ...(win.__harthmereVoxelNpcMotionLog ?? []),
   ].slice(0, 160);
   debugHarthmereCombat("combat.ai.chase_motion", detail);
-  window.dispatchEvent(
-    new CustomEvent(HARTHMERE_NPC_MOTION_EVENT, { detail })
-  );
+  window.dispatchEvent(new CustomEvent(HARTHMERE_NPC_MOTION_EVENT, { detail }));
 }
 
 function tickHarthmereNpcHealthRegen(
@@ -3746,22 +3674,16 @@ export function tickHarthmereRealtimeCombatAI(source = "combat_ai") {
 
     if (brain.phase !== "windup" || now < brain.nextAttackAt) {
       const ability = npcRealtimeAbility(npc);
-      emitHarthmereVoxelNpcMotion(
-        offset,
-        npc,
-        "chase",
-        "windup_face_player",
-        {
-          targetPos: harthmerePlayerCombatPos2(),
-          stopDistance: Math.max(
-            1.35,
-            npc.attackRange +
-              (harthmereForwardArcTargetPositions()[offset]?.radius ?? 1.15) +
-              0.25
-          ),
-          durationMs: profile.windupMs + profile.recoverMs,
-        }
-      );
+      emitHarthmereVoxelNpcMotion(offset, npc, "chase", "windup_face_player", {
+        targetPos: harthmerePlayerCombatPos2(),
+        stopDistance: Math.max(
+          1.35,
+          npc.attackRange +
+            (harthmereForwardArcTargetPositions()[offset]?.radius ?? 1.15) +
+            0.25
+        ),
+        durationMs: profile.windupMs + profile.recoverMs,
+      });
       const nextAttackAt = now + profile.windupMs;
       state = harthmereSetNpcBrain(state, offset, {
         ...brain,
@@ -6234,9 +6156,8 @@ function installHarthmereNativeNpcAttackDamageBridge() {
   };
 
   const handler = (event: Event) => {
-    const detail = (
-      event as CustomEvent<HarthmereNativeNpcAttackContactDetail>
-    ).detail;
+    const detail = (event as CustomEvent<HarthmereNativeNpcAttackContactDetail>)
+      .detail;
     const hits = Array.isArray(detail?.hits) ? detail.hits : [];
     if (hits.length === 0) {
       pushLog({ type: "ignored", reason: "no_hits", detail });
@@ -6310,10 +6231,7 @@ function installHarthmereNativeNpcAttackDamageBridge() {
     });
   };
 
-  window.addEventListener(
-    HARTHMERE_NATIVE_NPC_ATTACK_CONTACT_EVENT,
-    handler
-  );
+  window.addEventListener(HARTHMERE_NATIVE_NPC_ATTACK_CONTACT_EVENT, handler);
   win.__harthmereNativeNpcAttackDamageBridgeCleanup = () => {
     window.removeEventListener(
       HARTHMERE_NATIVE_NPC_ATTACK_CONTACT_EVENT,
@@ -6484,20 +6402,18 @@ export function reviveHarthmerePlayer(source = "Temple Green") {
 
 export function releaseHarthmerePlayerSpirit() {
   const state = readHarthmereCombatState();
-  const current = readRawDeathState();
-  writeRawDeathState({
-    version: 1,
-    ...(current ?? {}),
-    state: "dead",
-    downedUntil: undefined,
-    recent: [
-      deathLogEntry(
-        "Released Spirit",
-        "You released from downed state. Choose a safe respawn point to return."
-      ),
-      ...(current?.recent ?? []),
-    ].slice(0, 12),
-  });
+  const current = readHarthmereDeathState();
+  writeHarthmereDeathState(
+    appendHarthmereDeathLog(
+      {
+        ...current,
+        state: "dead",
+        downedUntil: undefined,
+      },
+      "Released Spirit",
+      "You released from downed state. Choose a safe respawn point to return."
+    )
+  );
   writeHarthmereCombatState({
     ...appendCombatLog(state, {
       attacker: "Death System",
@@ -6519,20 +6435,21 @@ export function endHarthmereRespawnProtection(
   detail = "Respawn protection expired."
 ) {
   const state = readHarthmereCombatState();
-  const current = readRawDeathState();
-  writeRawDeathState({
-    version: 1,
-    ...(current ?? {}),
-    state: "alive",
-    currentDeath: undefined,
-    downedUntil: undefined,
-    forcedRespawnAt: undefined,
-    protectionUntil: undefined,
-    recent: [
-      deathLogEntry("Protection Ended", detail),
-      ...(current?.recent ?? []),
-    ].slice(0, 12),
-  });
+  const current = readHarthmereDeathState();
+  writeHarthmereDeathState(
+    appendHarthmereDeathLog(
+      {
+        ...current,
+        state: "alive",
+        currentDeath: undefined,
+        downedUntil: undefined,
+        forcedRespawnAt: undefined,
+        protectionUntil: undefined,
+      },
+      "Protection Ended",
+      detail
+    )
+  );
   if (state.player.combatState !== "protected_after_respawn") {
     return;
   }
@@ -7700,10 +7617,7 @@ function installHarthmereRetaliationTraceBridge() {
   const sample = (label = "manual") => {
     const snapshot = harthmereRetaliationTraceSnapshot(String(label));
     traceState.samples = [snapshot, ...traceState.samples].slice(0, 80);
-    console.info(
-      `[${HARTHMERE_RETALIATION_CURRENT_TRACE}] sample`,
-      snapshot
-    );
+    console.info(`[${HARTHMERE_RETALIATION_CURRENT_TRACE}] sample`, snapshot);
     return snapshot;
   };
 

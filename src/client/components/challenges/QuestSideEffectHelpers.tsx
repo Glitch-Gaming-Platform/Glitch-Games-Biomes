@@ -8,23 +8,13 @@ import type {
   QuestBundle,
   TriggerProgress,
 } from "@/client/game/resources/challenges";
-import React, { useEffect, useMemo } from "react";
-
-import { MINI_MAP_WIDTH } from "@/client/components/MiniMapHUD";
-import {
-  LastNpcDialogTooltipContent,
-  QuestHUDSteps,
-} from "@/client/components/challenges/QuestViews";
 import { usePlayerCreatedRobots } from "@/client/components/map/hooks";
-import { Tooltipped } from "@/client/components/system/Tooltipped";
 import type { BiomesId } from "@/shared/ids";
 import { INVALID_BIOMES_ID } from "@/shared/ids";
 import { xzUnproject } from "@/shared/math/linear";
 import { assertNever } from "@/shared/util/type_helpers";
 import { first } from "lodash";
-import pluralize from "pluralize";
-
-export const QUEST_HUD_DEFAULT_NUMBER_TO_SHOW = 1;
+import React, { useEffect, useMemo } from "react";
 
 export const NavigationAidForRobotSideEffect: React.FunctionComponent<{
   aidId: BiomesId;
@@ -252,7 +242,6 @@ export const StepSideEffects: React.FunctionComponent<{
           )}
         </>
       );
-      break;
     }
 
     case "mapBeam":
@@ -333,44 +322,6 @@ export const StepSideEffects: React.FunctionComponent<{
   );
 });
 
-const QuestHUDTitle: React.FunctionComponent<{
-  quest: QuestBundle;
-}> = ({ quest }) => {
-  const { mapManager } = useClientContext();
-  const [tracked] = mapManager.react.useTrackingQuestStatus(quest.biscuit.id);
-  return (
-    <div className="font-semibold text-light-yellow">
-      {tracked && <>♦ </>} {quest.biscuit.displayName ?? quest.biscuit.name}
-    </div>
-  );
-};
-
-const QuestHUDTitleAndSteps: React.FunctionComponent<{
-  questId: BiomesId;
-}> = React.memo(({ questId }) => {
-  const { reactResources } = useClientContext();
-  const quest = reactResources.useResolved("/quest", questId);
-
-  if (!quest) {
-    return <></>;
-  }
-
-  return (
-    <Tooltipped tooltip={<LastNpcDialogTooltipContent quest={quest} />}>
-      <div className="flex flex-col items-end">
-        <QuestHUDTitle quest={quest} />
-        {quest.progress && (
-          <QuestHUDSteps
-            containerClassName="flex flex-col items-end"
-            className="text-right"
-            progress={quest.progress}
-          />
-        )}
-      </div>
-    </Tooltipped>
-  );
-});
-
 export const useQuestDisplayInfo = () => {
   const challenges = useAvailableOrInProgressChallenges();
   const inProgressQuests = useMemo(
@@ -389,38 +340,3 @@ export const useQuestDisplayInfo = () => {
     inProgressQuests,
   };
 };
-
-export const QuestsHUD: React.FunctionComponent<{}> = React.memo(({}) => {
-  const { mapManager, reactResources, userId } = useClientContext();
-  const inProgressIds =
-    reactResources.use("/ecs/c/challenges", userId)?.in_progress ?? new Set();
-  const [trackedQuestId] = mapManager.react.useTrackedQuestId();
-
-  const trackedQuest = Boolean(
-    trackedQuestId && inProgressIds.has(trackedQuestId)
-  );
-  const additionalQuests = inProgressIds.size - (trackedQuest ? 1 : 0);
-
-  return (
-    <div className="flex w-32 flex-col items-end gap-1 text-shadow-bordered">
-      <>
-        {trackedQuest && (
-          <QuestHUDTitleAndSteps
-            key={trackedQuestId}
-            questId={trackedQuestId!}
-          />
-        )}
-        {additionalQuests > 0 && (
-          <div
-            className={`font-semibold text-light-yellow ${MINI_MAP_WIDTH} ${
-              trackedQuest ? "text-right" : "text-center"
-            }`}
-          >
-            {additionalQuests} {trackedQuest ? "more " : ""}
-            active {pluralize("Quest", additionalQuests)}
-          </div>
-        )}
-      </>
-    </div>
-  );
-});

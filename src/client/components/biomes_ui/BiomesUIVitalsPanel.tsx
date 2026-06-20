@@ -1,13 +1,7 @@
-import {
-  useHarthmereCombatState,
-} from "@/client/components/challenges/LocalDevHarthmereCombat";
+import { useHarthmereCombatState } from "@/client/components/challenges/LocalDevHarthmereCombat";
 import { defaultHarthmereLiveFetch } from "@/client/components/harthmere_live_fetch";
-import {
-  useHarthmereMultiplayerCombatState,
-} from "@/client/components/challenges/LocalDevHarthmereMultiplayerCombatSystem";
-import {
-  useHarthmereFoodStaminaState,
-} from "@/client/components/challenges/LocalDevHarthmereFoodStaminaSystem";
+import { useHarthmereMultiplayerCombatState } from "@/client/components/challenges/LocalDevHarthmereMultiplayerCombatSystem";
+import { useHarthmereFoodStaminaState } from "@/client/components/challenges/LocalDevHarthmereFoodStaminaSystem";
 import {
   getHarthmereCombinedPublicTitle,
   useHarthmereReputationState,
@@ -90,7 +84,10 @@ function VitalsBar({
   return (
     <div
       ref={highlight.ref}
-      className={`biomes-ui-vitals-bar ${highlightClassName(highlight.blinking, highlight.style)}`.trim()}
+      className={`biomes-ui-vitals-bar ${highlightClassName(
+        highlight.blinking,
+        highlight.style
+      )}`.trim()}
       data-ui-id={uiId}
       data-ui-blinking={highlight.blinking ? "true" : undefined}
     >
@@ -130,7 +127,10 @@ function StandingChip({
   return (
     <div
       ref={highlight.ref}
-      className={`biomes-ui-vitals-chip ${highlightClassName(highlight.blinking, highlight.style)}`.trim()}
+      className={`biomes-ui-vitals-chip ${highlightClassName(
+        highlight.blinking,
+        highlight.style
+      )}`.trim()}
       data-tone={tone}
       data-ui-id={uiId}
       data-ui-blinking={highlight.blinking ? "true" : undefined}
@@ -182,7 +182,9 @@ function useLiveModeGoldBalance(): number {
       }
     };
     const onWallet = (event: Event) => {
-      const nextGold = Number((event as CustomEvent<{ gold?: number }>).detail?.gold);
+      const nextGold = Number(
+        (event as CustomEvent<{ gold?: number }>).detail?.gold
+      );
       if (Number.isFinite(nextGold)) {
         setGold(Math.max(0, Math.floor(nextGold)));
       } else {
@@ -220,15 +222,12 @@ export const BiomesUIVitalsPanel: React.FunctionComponent<{}> = () => {
     standing: reputation.regions.harthmere,
     gold,
   });
-  // HARTHMERE_HEALTH_SOURCE_OF_TRUTH: the Health bar reads the live combat
-  // store directly — the SAME state that fall damage, combat, and healing
-  // mutate — so it is the single source of truth for the player's health.
-  // Routing it through the live-status adapter let the periodically-polled
-  // backend status (which never sees client-side fall damage) override the bar,
-  // so falls appeared to do nothing. The combat store is authoritative here.
-  const healthHp = Math.max(0, Math.round(player.hp));
-  const healthMaxHp = Math.max(1, Math.round(player.maxHp));
-  const healthCombatState = player.combatState ?? display.combatState;
+  // BiomesUI is the only active vitals surface. The data can arrive from the
+  // server or the local-dev ECS bridge, but it must pass through the BiomesUI
+  // player-status adapter so the panel never has competing health authorities.
+  const healthHp = Math.max(0, Math.round(display.hp));
+  const healthMaxHp = Math.max(1, Math.round(display.maxHp));
+  const healthCombatState = display.combatState;
   // Mana & Stamina, like Health, read their LOCAL real-time systems as the
   // source of truth — the multiplayer-combat mana pool and the food-stamina
   // system — NOT the 5-15s-polled backend status. Both of those local systems
@@ -247,7 +246,10 @@ export const BiomesUIVitalsPanel: React.FunctionComponent<{}> = () => {
   // those local awards and would otherwise show "Level 1" until the next poll.
   const playerLevel = Math.max(1, Math.floor(leveling.level));
   const xpCurrent = Math.max(0, Math.floor(leveling.xpCurrent));
-  const xpNext = Math.max(1, Math.floor(xpRequiredForNextHarthmereLevel(playerLevel)));
+  const xpNext = Math.max(
+    1,
+    Math.floor(xpRequiredForNextHarthmereLevel(playerLevel))
+  );
   const levelProgress = `${xpCurrent}/${xpNext} xp`;
   // Keep the class name from the live status but show the LOCAL level so the
   // header and the footer Level chip never disagree.
@@ -261,17 +263,24 @@ export const BiomesUIVitalsPanel: React.FunctionComponent<{}> = () => {
   return (
     <aside
       ref={panelHighlight.ref}
-      className={`biomes-ui-vitals-panel ${highlightClassName(panelHighlight.blinking, panelHighlight.style)}`.trim()}
+      className={`biomes-ui-vitals-panel ${highlightClassName(
+        panelHighlight.blinking,
+        panelHighlight.style
+      )}`.trim()}
       data-ui-id={UI_IDS.HUD_VITALS}
       data-ui-blinking={panelHighlight.blinking ? "true" : undefined}
       aria-label="Player vitals and reputation"
     >
       <div className="biomes-ui-vitals-panel__header">
         <div className="biomes-ui-vitals-panel__identity">
-          <span className="biomes-ui-vitals-panel__game">{BIOMES_GAME_NAME}</span>
+          <span className="biomes-ui-vitals-panel__game">
+            {BIOMES_GAME_NAME}
+          </span>
           <span
             className="biomes-ui-vitals-panel__title"
-            title={levelProgress ? `${headerTitle} · ${levelProgress}` : headerTitle}
+            title={
+              levelProgress ? `${headerTitle} · ${levelProgress}` : headerTitle
+            }
           >
             {headerTitle}
           </span>
@@ -331,7 +340,10 @@ export const BiomesUIVitalsPanel: React.FunctionComponent<{}> = () => {
       <div className="biomes-ui-vitals-panel__footer">
         <div
           ref={goldHighlight.ref}
-          className={`biomes-ui-vitals-chip ${highlightClassName(goldHighlight.blinking, goldHighlight.style)}`.trim()}
+          className={`biomes-ui-vitals-chip ${highlightClassName(
+            goldHighlight.blinking,
+            goldHighlight.style
+          )}`.trim()}
           data-tone="notoriety"
           data-ui-id={UI_IDS.HUD_VITALS_GOLD}
           data-ui-blinking={goldHighlight.blinking ? "true" : undefined}

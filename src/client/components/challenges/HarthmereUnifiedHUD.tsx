@@ -434,14 +434,9 @@ function ensureHarthmereSystemsMenuFocusStyles() {
   document.head.appendChild(style);
 }
 
-function focusHarthmereSystemMenuElement(
-  root: HTMLElement,
-  next: HTMLElement
-) {
+function focusHarthmereSystemMenuElement(root: HTMLElement, next: HTMLElement) {
   root
-    .querySelectorAll<HTMLElement>(
-      "[data-harthmere-system-nav-focused='true']"
-    )
+    .querySelectorAll<HTMLElement>("[data-harthmere-system-nav-focused='true']")
     .forEach((node) =>
       node.removeAttribute("data-harthmere-system-nav-focused")
     );
@@ -543,9 +538,8 @@ function useHarthmereLocalPlayerAttackGestureBridge() {
     }
 
     const handler = (event: Event) => {
-      const detail = (
-        event as CustomEvent<HarthmereBodyAnimationGestureDetail>
-      ).detail;
+      const detail = (event as CustomEvent<HarthmereBodyAnimationGestureDetail>)
+        .detail;
       const attack = detail?.attack;
       if (attack !== "basic" && attack !== "heavy") {
         return;
@@ -774,8 +768,7 @@ const HARTHMERE_FULL_ANIMATION_RUNTIME_BRIDGE_VERSION =
   "harthmere-full-animation-runtime-bridge";
 const HARTHMERE_FULL_ANIMATION_REQUEST_EVENT =
   "biomes:harthmere-animation-request";
-const HARTHMERE_FULL_ANIMATION_DEBUG_EVENT =
-  "biomes:harthmere-animation-debug";
+const HARTHMERE_FULL_ANIMATION_DEBUG_EVENT = "biomes:harthmere-animation-debug";
 const HARTHMERE_FULL_ANIMATION_FAMILIES: HarthmereFullAnimationFamily[] = [
   "creature",
   "mount",
@@ -792,9 +785,7 @@ const HARTHMERE_FULL_ANIMATION_FAMILIES: HarthmereFullAnimationFamily[] = [
   "boss",
   "screenshot",
 ];
-function harthmereAnimationDefaultTiming(
-  family: HarthmereFullAnimationFamily
-) {
+function harthmereAnimationDefaultTiming(family: HarthmereFullAnimationFamily) {
   switch (family) {
     case "ranged":
       return { windupMs: 180, impactMs: 300, recoveryMs: 420 };
@@ -1363,8 +1354,7 @@ function FightSideControls() {
                 top:
                   combatActorHud[String(combatFloat.targetOffset)]?.screen?.y ??
                   0,
-                animation:
-                  "harthmere-floating-combat 760ms ease-out forwards",
+                animation: "harthmere-floating-combat 760ms ease-out forwards",
               }}
             >
               {combatFloat.label}
@@ -1516,8 +1506,7 @@ function useHarthmereCombatActorHudSnapshots(intervalMs = 120) {
     Record<string, HarthmereCombatActorHudSnapshot>
   >({});
   useEffect(() => {
-    const refresh = () =>
-      setSnapshots(readHarthmereCombatActorHudSnapshots());
+    const refresh = () => setSnapshots(readHarthmereCombatActorHudSnapshots());
     refresh();
     const interval = window.setInterval(refresh, intervalMs);
     return () => window.clearInterval(interval);
@@ -1609,7 +1598,10 @@ function HarthmereEnemyHealthBarsHUD() {
       };
     })
     .filter((row) => row.show);
-  const actorsByLiveTargetId = new Map<string, HarthmereCombatActorHudSnapshot>();
+  const actorsByLiveTargetId = new Map<
+    string,
+    HarthmereCombatActorHudSnapshot
+  >();
   for (const actor of Object.values(actorHud)) {
     const liveId = actor.liveModeTargetId ?? actor.targetId;
     if (liveId) {
@@ -1678,10 +1670,7 @@ function HarthmereEnemyHealthBarsHUD() {
   return (
     <div className="pointer-events-none fixed inset-0 z-30" aria-hidden="true">
       {rows.map(({ key, label, hp, maxHp, selected, screen }) => {
-        const pct = Math.max(
-          0,
-          Math.min(100, (hp / Math.max(1, maxHp)) * 100)
-        );
+        const pct = Math.max(0, Math.min(100, (hp / Math.max(1, maxHp)) * 100));
         return (
           <div
             key={key}
@@ -2076,10 +2065,7 @@ function HarthmereJobsBoardLiveContainerWithPlayerProximity({
   const { reactResources } = useClientContext();
   const localPlayer = reactResources.use("/scene/local_player") as any;
   const camera = reactResources.use("/scene/camera") as any;
-  const playerPosition = harthmereJobsBoardPlayerPosition(
-    localPlayer,
-    camera
-  );
+  const playerPosition = harthmereJobsBoardPlayerPosition(localPlayer, camera);
   const worldContext: HarthmereJobsBoardWorldContext | undefined = (() => {
     if (playerPosition) {
       return {
@@ -2117,10 +2103,7 @@ function HarthmereHomeConsoleWorldInterface({
   const { reactResources } = useClientContext();
   const localPlayer = reactResources.use("/scene/local_player") as any;
   const camera = reactResources.use("/scene/camera") as any;
-  const playerPosition = harthmereJobsBoardPlayerPosition(
-    localPlayer,
-    camera
-  );
+  const playerPosition = harthmereJobsBoardPlayerPosition(localPlayer, camera);
   return (
     <HarthmereHomeConsoleLiveContainer
       open={open}
@@ -2154,10 +2137,7 @@ function HarthmereBusinessWorldInterface({
   const [selectedBusinessId, setSelectedBusinessId] = React.useState<
     string | undefined
   >();
-  const playerPosition = harthmereJobsBoardPlayerPosition(
-    localPlayer,
-    camera
-  );
+  const playerPosition = harthmereJobsBoardPlayerPosition(localPlayer, camera);
   const businessWorldContext = React.useMemo(
     () =>
       selectedBusinessId
@@ -2219,10 +2199,7 @@ function HarthmereBusinessBoardWorldPrompt({
   const { reactResources } = useClientContext();
   const localPlayer = reactResources.use("/scene/local_player") as any;
   const camera = reactResources.use("/scene/camera") as any;
-  const playerPosition = harthmereJobsBoardPlayerPosition(
-    localPlayer,
-    camera
-  );
+  const playerPosition = harthmereJobsBoardPlayerPosition(localPlayer, camera);
   const cameraPosition = harthmereJobsBoardCameraPosition(camera);
   const prompt = nearestHarthmereBusinessBoardPhysicalPrompt(playerPosition);
   const projectedPrompt = prompt
@@ -2373,10 +2350,7 @@ function HarthmereJobsBoardWorldPrompt({ onOpen }: { onOpen: () => void }) {
   const { reactResources } = useClientContext();
   const localPlayer = reactResources.use("/scene/local_player") as any;
   const camera = reactResources.use("/scene/camera") as any;
-  const playerPosition = harthmereJobsBoardPlayerPosition(
-    localPlayer,
-    camera
-  );
+  const playerPosition = harthmereJobsBoardPlayerPosition(localPlayer, camera);
   const cameraPosition = harthmereJobsBoardCameraPosition(camera);
   const prompt = nearestHarthmereJobsBoardPhysicalPrompt(playerPosition);
   const projectedPrompt = prompt
@@ -2529,9 +2503,7 @@ function harthmereJobsBoardPlayerPosition(localPlayer: any, camera: any) {
 function harthmereJobsBoardCameraPosition(camera: any) {
   return (
     normalizeHarthmereJobsBoardPoint(camera?.pos?.()) ??
-    normalizeHarthmereJobsBoardPoint(
-      camera?.three?.position?.toArray?.()
-    ) ??
+    normalizeHarthmereJobsBoardPoint(camera?.three?.position?.toArray?.()) ??
     normalizeHarthmereJobsBoardPoint(camera?.three?.position)
   );
 }
@@ -2634,7 +2606,7 @@ installSnapshotLiveNpcLoreDebug();
 
 export const HarthmereUnifiedHUD: React.FunctionComponent<{
   hideLegacyVisuals?: boolean;
-}> = ({ hideLegacyVisuals = false }) => {
+}> = ({ hideLegacyVisuals = true }) => {
   useHarthmerePlayerSwordVisualBridge();
   useHarthmereLocalPlayerWearableMeshBridge();
   const pointerLockManager = usePointerLockManager();
@@ -2674,6 +2646,8 @@ export const HarthmereUnifiedHUD: React.FunctionComponent<{
   const [focusAction, setFocusAction] = useState<
     HarthmereHudAction | undefined
   >();
+  void hideLegacyVisuals;
+  const legacyVisualsHidden = true;
   // HARTHMERE_JOBS_BOARD_PANEL:
   // Independent overlay state — the shared HUD reducer doesn't know about the
   // jobs board, and the panel is a self-contained live modal. Keeping it out
@@ -2746,10 +2720,7 @@ export const HarthmereUnifiedHUD: React.FunctionComponent<{
         }
       }
     };
-    window.addEventListener(
-      HARTHMERE_JOBS_BOARD_OPEN_EVENT,
-      openJobsBoard
-    );
+    window.addEventListener(HARTHMERE_JOBS_BOARD_OPEN_EVENT, openJobsBoard);
     window.addEventListener("keydown", keyHandler);
     return () => {
       window.removeEventListener(
@@ -2792,7 +2763,7 @@ export const HarthmereUnifiedHUD: React.FunctionComponent<{
       if (!binding) {
         return;
       }
-      if (hideLegacyVisuals) {
+      if (legacyVisualsHidden) {
         // Replacement mode keeps all Harthmere runtime hooks/controllers alive,
         // but key presses should open the BiomesUI replacement tabs instead of
         // invisible legacy panels. BiomesUIMount handles those keys.
@@ -2805,7 +2776,7 @@ export const HarthmereUnifiedHUD: React.FunctionComponent<{
     };
     window.addEventListener("keydown", handler, true);
     return () => window.removeEventListener("keydown", handler, true);
-  }, [systemsTab, panel, focusAction, hideLegacyVisuals]);
+  }, [systemsTab, panel, focusAction, legacyVisualsHidden]);
 
   const runtimeControllers = (
     <>
@@ -2822,7 +2793,7 @@ export const HarthmereUnifiedHUD: React.FunctionComponent<{
     </>
   );
 
-  if (hideLegacyVisuals) {
+  if (legacyVisualsHidden) {
     return (
       <>
         {runtimeControllers}
