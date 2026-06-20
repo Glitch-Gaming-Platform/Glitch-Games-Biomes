@@ -18,9 +18,15 @@ function includesAll(source, label, values) {
 }
 
 const root = process.argv[2] ? path.resolve(process.argv[2]) : process.cwd();
-const backendPath = path.join(root, "src/shared/harthmere/live_mode_backend.ts");
+const backendPath = path.join(
+  root,
+  "src/shared/harthmere/live_mode_backend.ts"
+);
 const routePath = path.join(root, "src/pages/api/harthmere/live_mode.ts");
-const readinessPath = path.join(root, "src/shared/harthmere/live_mode_readiness.ts");
+const readinessPath = path.join(
+  root,
+  "src/shared/harthmere/live_mode_readiness.ts"
+);
 
 console.log("== Harthmere live-mode backend production current ==");
 
@@ -31,6 +37,38 @@ check(fs.existsSync(readinessPath), "readiness contracts exist");
 const backend = fs.readFileSync(backendPath, "utf8");
 const route = fs.readFileSync(routePath, "utf8");
 const readiness = fs.readFileSync(readinessPath, "utf8");
+const readOnlyStateRoutes = [
+  { fileName: "live_mode_bank_state.ts", expectsReadOnlyResolver: false },
+  { fileName: "live_mode_building_state.ts", expectsReadOnlyResolver: true },
+  { fileName: "live_mode_daily_state.ts", expectsReadOnlyResolver: false },
+  { fileName: "live_mode_economy_state.ts", expectsReadOnlyResolver: true },
+  {
+    fileName: "live_mode_farming_food_state.ts",
+    expectsReadOnlyResolver: true,
+  },
+  { fileName: "live_mode_guild_state.ts", expectsReadOnlyResolver: false },
+  {
+    fileName: "live_mode_inventory_loot_state.ts",
+    expectsReadOnlyResolver: true,
+  },
+  { fileName: "live_mode_jobs_board_state.ts", expectsReadOnlyResolver: true },
+  {
+    fileName: "live_mode_player_status_state.ts",
+    expectsReadOnlyResolver: true,
+  },
+  {
+    fileName: "live_mode_progression_state.ts",
+    expectsReadOnlyResolver: false,
+  },
+  { fileName: "live_mode_quest_state.ts", expectsReadOnlyResolver: true },
+].map(({ fileName, expectsReadOnlyResolver }) => ({
+  fileName,
+  expectsReadOnlyResolver,
+  source: fs.readFileSync(
+    path.join(root, "src/pages/api/harthmere", fileName),
+    "utf8"
+  ),
+}));
 
 includesAll(backend, "backend state models", [
   "HARTHMERE_LIVE_MODE_BACKEND_VERSION",
@@ -83,8 +121,11 @@ includesAll(route, "route persistence wiring", [
   "harthmereLiveModePlayerStateKey",
   "harthmereLiveModeLedgerStreamKey",
   "tx.set(playerStateKey",
+  "stateAdoption",
+  ".del?.(adoptionSourceStateKey)",
+  "actor_state_adopted",
   "tx.xadd(",
-  "\"NX\"",
+  '"NX"',
 ]);
 
 includesAll(route, "route accepts production gameplay subsystems", [
@@ -104,8 +145,34 @@ includesAll(route, "route accepts production gameplay subsystems", [
   '"building"',
 ]);
 
-check(!backend.includes("localStorage"), "backend reducer does not use localStorage");
-check(!route.includes("localStorage"), "live-mode route does not use localStorage");
+check(
+  !backend.includes("localStorage"),
+  "backend reducer does not use localStorage"
+);
+check(
+  !route.includes("localStorage"),
+  "live-mode route does not use localStorage"
+);
+for (const {
+  fileName,
+  expectsReadOnlyResolver,
+  source,
+} of readOnlyStateRoutes) {
+  check(
+    !source.includes(".primary.set(") &&
+      !source.includes(".multi(") &&
+      !source.includes(".watch(") &&
+      !source.includes("tx.set("),
+    `${fileName} does not write Redis during GET projection`
+  );
+  if (expectsReadOnlyResolver) {
+    check(
+      source.includes("allowIdentityWrites: false") &&
+        source.includes("allowStateAdoptionPlan: false"),
+      `${fileName} resolves actor identity without read-side writes`
+    );
+  }
+}
 check(
   readiness.includes("HarthmereLiveModeProductionSubsystem") &&
     readiness.includes("HarthmereLiveModeAnySubsystem"),

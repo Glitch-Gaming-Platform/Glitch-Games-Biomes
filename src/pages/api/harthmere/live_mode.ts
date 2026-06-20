@@ -55,7 +55,11 @@ import type { Vec3 } from "@/shared/math/types";
 import { loadBlockWrapper, saveBlockWrapper } from "@/shared/wasm/biomes";
 import { z } from "zod";
 import { readHarthmerePlayerAndSharedStateStrings } from "@/server/harthmere/live_mode_state_read_helpers";
-import { resolveHarthmereLiveModeActorId } from "@/server/harthmere/live_mode_actor_resolution";
+import {
+  resolveHarthmereLiveModeActorContext,
+  type HarthmereLiveModeActorStateAdoption,
+} from "@/server/harthmere/live_mode_actor_resolution";
+import { shouldAdoptHarthmereInstallOrphan } from "@/shared/harthmere/live_mode_actor_identity";
 
 const HARTHMERE_LIVE_MODE_SERVER_ROUTE =
   "HARTHMERE_LIVE_MODE_SERVER_ROUTE" as const;
@@ -157,9 +161,7 @@ const zJsonRecord = z.record(z.unknown());
 const zBuildingMaterializationPlansResponse = z
   .unknown()
   .array()
-  .optional() as z.ZodType<
-  BuildingSystemAnyMaterializationPlan[] | undefined
->;
+  .optional() as z.ZodType<BuildingSystemAnyMaterializationPlan[] | undefined>;
 const zHarthmereCareLoopClientSnapshotResponse = z.object({
   actorId: z.string(),
   day: z.number(),
@@ -733,9 +735,7 @@ function liveModeInstallIdFromUnsafeRequest(unsafeRequest: {
   return (
     firstLiveModeRequestString(unsafeRequest.query?.install_id) ??
     firstLiveModeRequestString(unsafeRequest.query?.installId) ??
-    firstLiveModeRequestString(
-      unsafeRequest.headers?.["x-glitch-install-id"]
-    )
+    firstLiveModeRequestString(unsafeRequest.headers?.["x-glitch-install-id"])
   );
 }
 
@@ -767,10 +767,7 @@ export function liveModeActorIdentityFromRequest(input: {
       };
 }
 
-function payloadString(
-  body: z.infer<typeof zLiveModeRequest>,
-  key: string
-) {
+function payloadString(body: z.infer<typeof zLiveModeRequest>, key: string) {
   const value = body.payload?.[key];
   return typeof value === "string" && value.trim() ? value.trim() : undefined;
 }
@@ -785,9 +782,7 @@ export function jobsBoardPositionFromLiveModeBody(
     payloadString(body, "interactionTargetId") ??
     payloadString(body, "boardId") ??
     body.targetId;
-  const board = boardId
-    ? HARTHMERE_JOBS_BOARD_LOCATIONS[boardId]
-    : undefined;
+  const board = boardId ? HARTHMERE_JOBS_BOARD_LOCATIONS[boardId] : undefined;
   return board
     ? {
         x: board.location.x,
@@ -924,9 +919,7 @@ async function flushHarthmereLiveModePostCommitOutbox(
 ) {
   const startedAt = Date.now();
   try {
-    await publish_createHarthmereLiveModeEvent_to_server_event_stream(
-      response
-    );
+    await publish_createHarthmereLiveModeEvent_to_server_event_stream(response);
     await deliver_createHarthmereLiveModeUiEvent_from_server_outbox(response);
     const ms = Date.now() - startedAt;
     if (process.env.NODE_ENV === "production" && ms >= 500) {
@@ -1191,12 +1184,10 @@ async function groundBuildingSystemPlansToRealTerrain(input: {
         probePositions.push([columnX, y, columnZ]);
       }
     }
-    const terrainResolution = await resolveTerrainEntityIdsForMaterialization(
-      {
-        askApi: input.askApi,
-        positions: probePositions,
-      }
-    );
+    const terrainResolution = await resolveTerrainEntityIdsForMaterialization({
+      askApi: input.askApi,
+      positions: probePositions,
+    });
     const voxeloo = await loadVoxeloo();
     const editor = input.worldApi.edit();
     const shardIds = [...new Set(probePositions.map((p) => voxelShard(...p)))];
@@ -1453,6 +1444,40 @@ export async function ensureHarthmereWorldMaterializerPlayerExists(
   await editor.commit();
 }
 
+function normalizeHarthmereLiveModeActorStateAdoption(input: {
+  actorId: string;
+  playerStateKey: string;
+  stateAdoption?: HarthmereLiveModeActorStateAdoption;
+}) {
+  if (!input.stateAdoption) {
+    return undefined;
+  }
+  if (input.stateAdoption.toActorId !== input.actorId) {
+    return undefined;
+  }
+  if (input.stateAdoption.toStateKey !== input.playerStateKey) {
+    return undefined;
+  }
+  if (input.stateAdoption.fromStateKey === input.playerStateKey) {
+    return undefined;
+  }
+  return input.stateAdoption;
+}
+
+function uniqueHarthmereLiveModeWatchKeys(keys: Array<string | undefined>) {
+  return [...new Set(keys.filter((key): key is string => !!key))];
+}
+
+function shouldAdoptHarthmereLiveModeActorState(input: {
+  targetStateRaw: string | null | undefined;
+  sourceStateRaw: string | null | undefined;
+}) {
+  return shouldAdoptHarthmereInstallOrphan({
+    userStateRaw: input.targetStateRaw,
+    installStateRaw: input.sourceStateRaw,
+  });
+}
+
 export async function persistHarthmereLiveModeResponse(
   envelope: HarthmereLiveModeAuthorityEnvelope,
   response: LiveModeResponse,
@@ -1461,6 +1486,7 @@ export async function persistHarthmereLiveModeResponse(
     logicApi: LogicApi;
     worldApi?: WorldApi;
     userId?: BiomesId;
+    stateAdoption?: HarthmereLiveModeActorStateAdoption;
   }
 ): Promise<LiveModeResponse> {
   const persistStartedAt = Date.now();
@@ -1472,6 +1498,12 @@ export async function persistHarthmereLiveModeResponse(
   const redis = await liveModeRedis();
   const playerStateKey = harthmereLiveModePlayerStateKey(response.actorId);
   const sharedWorldStateKey = harthmereLiveModeSharedWorldStateKey();
+  const stateAdoption = normalizeHarthmereLiveModeActorStateAdoption({
+    actorId: response.actorId,
+    playerStateKey,
+    stateAdoption: deps.stateAdoption,
+  });
+  const adoptionSourceStateKey = stateAdoption?.fromStateKey;
   const supportsWatch = typeof (redis.primary as any).watch === "function";
   if (!supportsWatch) {
     throw new Error(
@@ -1496,7 +1528,12 @@ export async function persistHarthmereLiveModeResponse(
       };
     }
 
-    const watchKeys = [key, playerStateKey, sharedWorldStateKey];
+    const watchKeys = uniqueHarthmereLiveModeWatchKeys([
+      key,
+      playerStateKey,
+      sharedWorldStateKey,
+      adoptionSourceStateKey,
+    ]);
     const now = Date.now();
     if (supportsWatch) {
       stageStartedAt = Date.now();
@@ -1523,10 +1560,19 @@ export async function persistHarthmereLiveModeResponse(
         playerStateKey,
         sharedWorldStateKey
       );
+    let rawAdoptionSourceState = adoptionSourceStateKey
+      ? await redis.primary.get(adoptionSourceStateKey)
+      : undefined;
     mark("state_get_ms", stageStartedAt);
     stageStartedAt = Date.now();
+    let adoptedActorState =
+      stateAdoption &&
+      shouldAdoptHarthmereLiveModeActorState({
+        targetStateRaw: rawState,
+        sourceStateRaw: rawAdoptionSourceState,
+      });
     let currentState = parseHarthmereLiveModeBackendState(
-      rawState,
+      adoptedActorState ? rawAdoptionSourceState : rawState,
       response.actorId,
       now
     );
@@ -1555,10 +1601,13 @@ export async function persistHarthmereLiveModeResponse(
     if (sellerStateKey && supportsWatch) {
       await redisUnwatchIfSupported(redis.primary);
       await (redis.primary as any).watch(
-        key,
-        playerStateKey,
-        sharedWorldStateKey,
-        sellerStateKey
+        ...uniqueHarthmereLiveModeWatchKeys([
+          key,
+          playerStateKey,
+          sharedWorldStateKey,
+          adoptionSourceStateKey,
+          sellerStateKey,
+        ])
       );
       const secondPrevious = await redis.primary.get(key);
       if (secondPrevious) {
@@ -1576,10 +1625,19 @@ export async function persistHarthmereLiveModeResponse(
           playerStateKey,
           sharedWorldStateKey
         ));
+      rawAdoptionSourceState = adoptionSourceStateKey
+        ? await redis.primary.get(adoptionSourceStateKey)
+        : undefined;
       mark("seller_state_get_ms", stageStartedAt);
       stageStartedAt = Date.now();
+      adoptedActorState =
+        stateAdoption &&
+        shouldAdoptHarthmereLiveModeActorState({
+          targetStateRaw: rawState,
+          sourceStateRaw: rawAdoptionSourceState,
+        });
       currentState = parseHarthmereLiveModeBackendState(
-        rawState,
+        adoptedActorState ? rawAdoptionSourceState : rawState,
         response.actorId,
         now
       );
@@ -1640,6 +1698,12 @@ export async function persistHarthmereLiveModeResponse(
         ? envelope.payload.stationType
         : undefined;
 
+    if (adoptedActorState && stateAdoption) {
+      reduced.summary.warnings.push(
+        `actor_state_adopted:${stateAdoption.reason}:${stateAdoption.fromActorId}->${stateAdoption.toActorId}`
+      );
+    }
+
     const includedSnapshots = harthmereLiveModeMutationSnapshotKeys({
       actionKind: reduced.summary.actionKind,
       subsystem: reduced.summary.subsystem,
@@ -1653,10 +1717,9 @@ export async function persistHarthmereLiveModeResponse(
         ? "full"
         : "changed",
       includedSnapshots,
-      invalidatedSnapshots:
-        HARTHMERE_LIVE_MODE_MUTATION_SNAPSHOT_KEYS.filter(
-          (key) => !includedSnapshotSet.has(key)
-        ),
+      invalidatedSnapshots: HARTHMERE_LIVE_MODE_MUTATION_SNAPSHOT_KEYS.filter(
+        (key) => !includedSnapshotSet.has(key)
+      ),
     };
 
     stageStartedAt = Date.now();
@@ -1712,8 +1775,9 @@ export async function persistHarthmereLiveModeResponse(
         createHarthmereLiveModePlayerStatusClientSnapshot(reduced.state);
     }
     if (includedSnapshotSet.has("questState")) {
-      persistedResponse.questState =
-        createHarthmereLiveModeQuestClientSnapshot(reduced.state);
+      persistedResponse.questState = createHarthmereLiveModeQuestClientSnapshot(
+        reduced.state
+      );
     }
     mark("snapshots_ms", stageStartedAt);
 
@@ -1726,6 +1790,9 @@ export async function persistHarthmereLiveModeResponse(
         createHarthmereLiveModeSharedWorldState(reduced.state, now)
       )
     );
+    if (adoptedActorState && adoptionSourceStateKey) {
+      (tx as { del?: (key: string) => unknown }).del?.(adoptionSourceStateKey);
+    }
     if (sellerStateKey && sellerState) {
       tx.set(sellerStateKey, JSON.stringify(sellerState));
     }
@@ -1845,12 +1912,11 @@ export async function persistHarthmereLiveModeResponse(
             "escort_companion_materialization_deferred:no_world_api"
           );
         } else {
-          const materialized =
-            await materializeHarthmereEscortCompanionsToEcs({
-              worldApi: deps.worldApi,
-              state: reduced.state,
-              nowSeconds: Math.floor(now / 1000),
-            });
+          const materialized = await materializeHarthmereEscortCompanionsToEcs({
+            worldApi: deps.worldApi,
+            state: reduced.state,
+            nowSeconds: Math.floor(now / 1000),
+          });
           persistedResponse.backendMutation?.warnings.push(
             `escort_companion_materialized:changes:${materialized.changeCount}:outcome:${materialized.outcome}`
           );
@@ -1945,11 +2011,12 @@ export default biomesApiHandler(
     // Heal the install/user split on writes too: converge an install-only write
     // onto the linked user key and record the install->user link on the first
     // authed write, so actions never strand progress under a second key.
-    const actorId = await resolveHarthmereLiveModeActorId(
+    const actorContext = await resolveHarthmereLiveModeActorContext(
       await liveModeRedis(),
       { auth, unsafeRequest },
       actorIdentity.actorId
     );
+    const actorId = actorContext.actorId;
     const serverActorPosition =
       actorIdentity.userId !== undefined
         ? await readServerActorPositionForLiveMode(
@@ -2005,7 +2072,13 @@ export default biomesApiHandler(
         events: routed.events,
         uiEvents: routed.uiEvents,
       },
-      { askApi, logicApi, worldApi, userId: actorIdentity.userId }
+      {
+        askApi,
+        logicApi,
+        worldApi,
+        userId: actorIdentity.userId,
+        stateAdoption: actorContext.stateAdoption,
+      }
     );
   }
 );

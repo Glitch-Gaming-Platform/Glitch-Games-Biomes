@@ -6,11 +6,14 @@
 // split-brain described in live_mode_actor_identity.ts:
 //   * install-only (pre-cookie) requests converge onto the linked user key,
 //   * the install -> user link is recorded on the first authed sighting,
-//   * an orphaned `install:` blob is adopted into an EMPTY user key (recovering
-//     a stranded save without ever overwriting real data).
+//   * an orphaned `install:` blob is returned as an adoption plan for the
+//     live-mode write transaction (recovering a stranded save without ever
+//     overwriting real data).
 //
-// All bookkeeping is best-effort: a Redis hiccup on the link/adoption path must
-// never fail the underlying read, so every side effect is wrapped and swallowed.
+// Install-link bookkeeping is best-effort: a Redis hiccup on the link path must
+// never fail the underlying read. Gameplay state adoption is not performed here;
+// callers that mutate live-mode state receive an adoption plan and apply it in
+// the live-mode transaction so player_state has one durable writer.
 
 import {
   HarthmereLiveModeActorRequest,
@@ -19,7 +22,6 @@ import {
   harthmereLiveModeInstallLinkKey,
   planHarthmereLiveModeActorKey,
   resolveHarthmereLiveModeActorIdentity,
-  shouldAdoptHarthmereInstallOrphan,
 } from "@/shared/harthmere/live_mode_actor_identity";
 import { harthmereLiveModePlayerStateKey } from "@/shared/harthmere/live_mode_backend";
 
@@ -28,6 +30,24 @@ export interface HarthmereActorResolutionRedis {
     get: (key: string) => Promise<string | null>;
     set?: (key: string, value: string) => Promise<unknown>;
   };
+}
+
+export interface HarthmereLiveModeActorStateAdoption {
+  fromActorId: string;
+  fromStateKey: string;
+  toActorId: string;
+  toStateKey: string;
+  reason: "install_orphan" | "linked_game_user";
+}
+
+export interface HarthmereLiveModeActorResolutionResult {
+  actorId: string;
+  stateAdoption?: HarthmereLiveModeActorStateAdoption;
+}
+
+export interface HarthmereLiveModeActorResolutionOptions {
+  allowIdentityWrites?: boolean;
+  allowStateAdoptionPlan?: boolean;
 }
 
 function actorResolutionSetter(redis: HarthmereActorResolutionRedis) {
@@ -64,76 +84,34 @@ async function writeInstallLink(
   }
 }
 
-async function maybeAdoptInstallOrphan(
-  redis: HarthmereActorResolutionRedis,
-  installId: string,
-  userId: string
-): Promise<void> {
-  const set = actorResolutionSetter(redis);
-  if (!set) {
-    return;
+function buildStateAdoptionPlan(input: {
+  fromActorId?: string;
+  toActorId?: string;
+  reason: HarthmereLiveModeActorStateAdoption["reason"];
+}): HarthmereLiveModeActorStateAdoption | undefined {
+  if (!input.fromActorId || !input.toActorId) {
+    return undefined;
   }
-  try {
-    const userKey = harthmereLiveModePlayerStateKey(userId);
-    const installKey = harthmereLiveModePlayerStateKey(
-      harthmereLiveModeInstallActorId(installId)
-    );
-    const [userStateRaw, installStateRaw] = await Promise.all([
-      redis.primary.get(userKey),
-      redis.primary.get(installKey),
-    ]);
-    if (
-      shouldAdoptHarthmereInstallOrphan({ userStateRaw, installStateRaw }) &&
-      typeof installStateRaw === "string"
-    ) {
-      // Copy the stranded blob verbatim; parseHarthmereLiveModeBackendState
-      // re-stamps the embedded actorId on read, so the user key surfaces under
-      // the correct identity.
-      await set(userKey, installStateRaw);
-    }
-  } catch {
-    // best effort — adoption is opportunistic recovery, not a hard dependency.
+  if (input.fromActorId === input.toActorId) {
+    return undefined;
   }
+  return {
+    fromActorId: input.fromActorId,
+    fromStateKey: harthmereLiveModePlayerStateKey(input.fromActorId),
+    toActorId: input.toActorId,
+    toStateKey: harthmereLiveModePlayerStateKey(input.toActorId),
+    reason: input.reason,
+  };
 }
 
-async function maybeAdoptLinkedActorBlob(
-  redis: HarthmereActorResolutionRedis,
-  fromActorId: string | undefined,
-  toActorId: string | undefined
-): Promise<void> {
-  const set = actorResolutionSetter(redis);
-  if (!set || !fromActorId || !toActorId || fromActorId === toActorId) {
-    return;
-  }
-  try {
-    const fromKey = harthmereLiveModePlayerStateKey(fromActorId);
-    const toKey = harthmereLiveModePlayerStateKey(toActorId);
-    const [toStateRaw, fromStateRaw] = await Promise.all([
-      redis.primary.get(toKey),
-      redis.primary.get(fromKey),
-    ]);
-    if (
-      shouldAdoptHarthmereInstallOrphan({
-        userStateRaw: toStateRaw,
-        installStateRaw: fromStateRaw,
-      }) &&
-      typeof fromStateRaw === "string"
-    ) {
-      await set(toKey, fromStateRaw);
-    }
-  } catch {
-    // best effort — link convergence must not make the read/write fail.
-  }
-}
-
-// Resolve the player_state actorId for a live-mode request, healing the
-// install/user split. Pass the same per-handler anonymous fallback string the
-// old per-handler resolver used (e.g. "anonymous:building-reader").
-export async function resolveHarthmereLiveModeActorId(
+export async function resolveHarthmereLiveModeActorContext(
   redis: HarthmereActorResolutionRedis,
   request: HarthmereLiveModeActorRequest,
-  anonymousFallback: string
-): Promise<string> {
+  anonymousFallback: string,
+  options?: HarthmereLiveModeActorResolutionOptions
+): Promise<HarthmereLiveModeActorResolutionResult> {
+  const allowIdentityWrites = options?.allowIdentityWrites !== false;
+  const allowStateAdoptionPlan = options?.allowStateAdoptionPlan !== false;
   const identity = resolveHarthmereLiveModeActorIdentity(request);
 
   // Look up the existing install -> user link whenever an install id is present.
@@ -154,13 +132,15 @@ export async function resolveHarthmereLiveModeActorId(
       harthmereLiveModeInstallGameUserLinkKey(identity.installId)
     );
   }
-  if (linkedGameUserId) {
-    await maybeAdoptLinkedActorBlob(
-      redis,
-      linkedUserId ?? identity.userId,
-      linkedGameUserId
-    );
-  }
+
+  let stateAdoption =
+    allowStateAdoptionPlan && linkedGameUserId
+      ? buildStateAdoptionPlan({
+          fromActorId: linkedUserId ?? identity.userId,
+          toActorId: linkedGameUserId,
+          reason: "linked_game_user",
+        })
+      : undefined;
 
   const plan = planHarthmereLiveModeActorKey({
     userId: identity.userId,
@@ -170,20 +150,41 @@ export async function resolveHarthmereLiveModeActorId(
     anonymousFallback,
   });
 
-  if (plan.writeInstallLink) {
+  if (allowIdentityWrites && plan.writeInstallLink) {
     await writeInstallLink(
       redis,
       plan.writeInstallLink.installId,
       plan.writeInstallLink.userId
     );
   }
-  if (plan.considerInstallOrphan) {
-    await maybeAdoptInstallOrphan(
-      redis,
-      plan.considerInstallOrphan.installId,
-      plan.considerInstallOrphan.userId
-    );
+  if (allowStateAdoptionPlan && !stateAdoption && plan.considerInstallOrphan) {
+    stateAdoption = buildStateAdoptionPlan({
+      fromActorId: harthmereLiveModeInstallActorId(
+        plan.considerInstallOrphan.installId
+      ),
+      toActorId: plan.considerInstallOrphan.userId,
+      reason: "install_orphan",
+    });
   }
 
-  return plan.actorId;
+  return { actorId: plan.actorId, stateAdoption };
+}
+
+// Resolve the player_state actorId for a live-mode request, healing the
+// install/user split. Pass the same per-handler anonymous fallback string the
+// old per-handler resolver used (e.g. "anonymous:building-reader").
+export async function resolveHarthmereLiveModeActorId(
+  redis: HarthmereActorResolutionRedis,
+  request: HarthmereLiveModeActorRequest,
+  anonymousFallback: string,
+  options?: HarthmereLiveModeActorResolutionOptions
+): Promise<string> {
+  return (
+    await resolveHarthmereLiveModeActorContext(
+      redis,
+      request,
+      anonymousFallback,
+      options
+    )
+  ).actorId;
 }

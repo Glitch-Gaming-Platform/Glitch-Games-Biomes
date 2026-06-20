@@ -132,7 +132,10 @@ describe("Harthmere live entity production seeds", () => {
     );
 
     // Every authored Muck monster is present, plus the wildlife herd.
-    assert.equal(muckEntries.length, HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_SEEDS.length);
+    assert.equal(
+      muckEntries.length,
+      HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_SEEDS.length
+    );
     assert.ok(animalEntries.length >= 16, "expected the wildlife herd");
     assert.equal(entries.length, muckEntries.length + animalEntries.length);
     assert.ok(entries.some(([, snapshot]) => snapshot.entityKind === "mux"));
@@ -178,14 +181,12 @@ describe("Harthmere live entity production seeds", () => {
       nowSeconds: 1234,
       existingIds: new Set(),
     });
-    assert.equal(
-      changes.length,
-      HARTHMERE_LIVE_ENTITY_PRODUCTION_SEEDS.length
-    );
+    assert.equal(changes.length, HARTHMERE_LIVE_ENTITY_PRODUCTION_SEEDS.length);
     const robotChange = changes.find(
       (change) =>
         change.kind !== "delete" &&
-        change.entity.id === HARTHMERE_LIVE_ENTITY_ROBOT_SENTINEL_SEEDS[0].entityId
+        change.entity.id ===
+          HARTHMERE_LIVE_ENTITY_ROBOT_SENTINEL_SEEDS[0].entityId
     );
     assert.ok(robotChange && robotChange.kind !== "delete");
     assert.equal(robotChange.tick, 77);
@@ -193,12 +194,20 @@ describe("Harthmere live entity production seeds", () => {
       robotChange.entity.npc_metadata?.type_id,
       BikkieIds.biomesRobot
     );
-    assert.equal(robotChange.entity.robot_component?.internal_battery_charge, 100);
-    assert.equal(robotChange.entity.entity_description?.text.includes("_"), false);
+    assert.equal(
+      robotChange.entity.robot_component?.internal_battery_charge,
+      100
+    );
+    assert.equal(
+      robotChange.entity.entity_description?.text.includes("_"),
+      false
+    );
 
     const proposed = buildHarthmereLiveEntityProductionSeedProposedChanges({
       nowSeconds: 1234,
-      existingIds: new Set([HARTHMERE_LIVE_ENTITY_ROBOT_SENTINEL_SEEDS[0].entityId]),
+      existingIds: new Set([
+        HARTHMERE_LIVE_ENTITY_ROBOT_SENTINEL_SEEDS[0].entityId,
+      ]),
     });
     assert.equal(proposed[0].kind, "update");
   });
@@ -217,10 +226,7 @@ describe("Harthmere Grove race minigame seed", () => {
       nowSeconds: 1234,
       existingIds: new Set(),
     });
-    assert.equal(
-      changes.length,
-      HARTHMERE_GROVE_RACE_MINIGAME_SEED_IDS.length
-    );
+    assert.equal(changes.length, HARTHMERE_GROVE_RACE_MINIGAME_SEED_IDS.length);
 
     const minigameChange = changes.find(
       (change) =>
@@ -292,6 +298,31 @@ describe("Harthmere Grove race minigame seed", () => {
 });
 
 describe("Harthmere robot energy scheduler", () => {
+  it("requires transactional Redis writes for backend authority state", async () => {
+    const redis = {
+      primary: {
+        get: async () => null,
+      },
+    } as any;
+
+    await assert.rejects(
+      () =>
+        readOrSeedHarthmereLiveModeRobotProtectionSharedState({
+          redis,
+          nowMs: NOW_MS,
+        }),
+      /requires Redis WATCH\/MULTI/
+    );
+    await assert.rejects(
+      () =>
+        runHarthmereLiveModeRobotEnergySchedulerTick({
+          redis,
+          nowMs: NOW_MS,
+        }),
+      /requires Redis WATCH\/MULTI/
+    );
+  });
+
   it("bootstraps robot protection into shared Redis when no world state exists", async () => {
     const redis = { primary: new FakeRedisPrimary() };
     const result = await readOrSeedHarthmereLiveModeRobotProtectionSharedState({
@@ -300,13 +331,19 @@ describe("Harthmere robot energy scheduler", () => {
     });
 
     assert.equal(result.seededSharedState, true);
-    assert.equal(result.sharedWorldStateKey, harthmereLiveModeSharedWorldStateKey());
+    assert.equal(
+      result.sharedWorldStateKey,
+      harthmereLiveModeSharedWorldStateKey()
+    );
     assert.deepEqual(redis.primary.watched, [
       [harthmereLiveModeSharedWorldStateKey()],
     ]);
     assert.equal(redis.primary.writes.length, 1);
     for (const area of LIVE_ENTITY_ROBOT_PROTECTION_AREAS) {
-      assert.equal(result.robotProtection.areas[area.areaId].safeFromMuck, true);
+      assert.equal(
+        result.robotProtection.areas[area.areaId].safeFromMuck,
+        true
+      );
     }
   });
 
@@ -344,13 +381,19 @@ describe("Harthmere robot energy scheduler", () => {
     assert.ok(result.changedAreaIds.includes(area.areaId));
     assert.equal(result.robotProtection.robots[robotId].energy, 0);
     assert.equal(result.robotProtection.areas[area.areaId].status, "mucked");
-    assert.equal(result.summary.touchedModels.includes("robot_protection"), true);
+    assert.equal(
+      result.summary.touchedModels.includes("robot_protection"),
+      true
+    );
 
     const persisted = parseHarthmereLiveModeSharedWorldState(
       redis.primary.store.get(harthmereLiveModeSharedWorldStateKey()),
       NOW_MS
     );
     assert.equal(persisted?.robotProtection.robots[robotId].energy, 0);
-    assert.equal(persisted?.robotProtection.areas[area.areaId].safeFromMuck, false);
+    assert.equal(
+      persisted?.robotProtection.areas[area.areaId].safeFromMuck,
+      false
+    );
   });
 });

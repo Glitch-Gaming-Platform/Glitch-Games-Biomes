@@ -5,14 +5,19 @@ the existing game playable during the merge.
 
 ## Rule
 
-Biomes ECS is the gameplay source of truth. Harthmere systems may keep
+Biomes ECS is the gameplay model boundary, and Harthmere live-mode Redis state
+is the durable backend source of truth for Harthmere gameplay until that state is
+fully materialized into native Biomes ECS components. Harthmere systems may keep
 local-dev adapters and live-mode snapshots only when they project into, or read
-from, the Biomes ECS-shaped boundary.
+from, that boundary.
 
 BiomesUI is the UI source of truth. Player-facing Harthmere panels must either
 be BiomesUI tabs/surfaces or BiomesUI-styled world interaction modals. Legacy
 Harthmere HUD panels can remain mounted only as runtime controllers or no-op
 compatibility shims.
+
+Cloud Save and localStorage are snapshot/import-export compatibility layers.
+They are never allowed to auto-overwrite existing live-mode backend state.
 
 ## Current Canonical Boundaries
 
@@ -29,6 +34,24 @@ compatibility shims.
 - UI: `src/client/components/biomes_ui` is the active UI shell. Local-dev
   systems dispatch BiomesUI adapter events instead of rendering duplicate
   gameplay tabs.
+- Backend gameplay writes: `src/pages/api/harthmere/live_mode.ts` validates a
+  `HarthmereLiveModeAuthorityEnvelope`, reduces it through
+  `reduceHarthmereLiveModeBackendState`, then persists player/shared Redis state
+  in one WATCH/MULTI transaction.
+- Backend state reads: `src/pages/api/harthmere/live_mode_*_state.ts` endpoints
+  are read-only projections. Derived repairs, stamina ticks, jobs-board seeds,
+  and bank loan consequences can appear in the returned snapshot, but durable
+  changes must be sent back through the live-mode writer.
+- Actor identity healing: `src/server/harthmere/live_mode_actor_resolution.ts`
+  may plan an install/user state adoption, but only the live-mode write
+  transaction may move that state and delete the old duplicate key.
+- Cloud Save: `src/client/game/glitch/harthmere_glitch_bridge.ts` stores
+  `localStorageSnapshot` payloads for compatibility/import-export only. On boot,
+  `shouldApplyHarthmereCloudSave` refuses automatic restore whenever backend
+  authority state already exists.
+- Scheduled backend jobs: server-only schedulers, such as robot energy drain,
+  must reduce through shared backend rules and write only backend shared state.
+  They are part of the backend authority, not client/local UI state.
 
 ## Duplicate-Write Rules
 
@@ -40,6 +63,11 @@ compatibility shims.
   event so the vitals panel reads one UI contract.
 - Do not insert non-Biomes item or quest ids into ECS by hashing or fabricating
   ids. Add real Bikkie/challenge ids or keep them in the adapter with a warning.
+- Do not persist gameplay changes from GET/read endpoints.
+- Do not promote Cloud Save or localStorage back into gameplay truth when
+  live-mode backend state exists.
+- Do not copy duplicate install/user Redis player_state blobs outside the
+  live-mode transaction; move-and-delete adoption belongs to the writer.
 
 ## Migration Notes
 

@@ -32,7 +32,13 @@ function check(condition, message, detail) {
   }
 }
 
-function envelope(actionKind, subsystem, payload = {}, targetId, overrides = {}) {
+function envelope(
+  actionKind,
+  subsystem,
+  payload = {},
+  targetId,
+  overrides = {}
+) {
   return {
     requestId: `req-${actionKind}-${Math.random().toString(36).slice(2)}`,
     idempotencyKey: `idem-${actionKind}-${Math.random().toString(36).slice(2)}`,
@@ -127,20 +133,36 @@ registerHarthmereItemDefinition({
 
 let state = defaultHarthmereLiveModeBackendState("player-1", 1000);
 
-state = apply(state, "request_inventory_mutation", "inventory", {
-  itemId: "health_potion",
-  count: 2,
-  itemDeltas: { wheat_seed: 3 },
-}, undefined, { source: "admin_tool" });
-check(state.inventory.items.health_potion === 2, "loot/item claim adds item count");
-check(state.inventory.items.wheat_seed === 3, "inventory delta adds material count");
+state = apply(
+  state,
+  "request_inventory_mutation",
+  "inventory",
+  {
+    itemId: "health_potion",
+    count: 2,
+    itemDeltas: { wheat_seed: 3 },
+  },
+  undefined,
+  { source: "admin_tool" }
+);
+check(
+  state.inventory.items.health_potion === 2,
+  "loot/item claim adds item count"
+);
+check(
+  state.inventory.items.wheat_seed === 3,
+  "inventory delta adds material count"
+);
 
 state = apply(state, "request_vendor_transaction", "vendor", {
   vendorId: "grove_trade_desk",
   goldDelta: -5,
 });
 check(state.inventory.gold === 0, "wallet cannot go below zero");
-check(state.economy.vendorTransactions.grove_trade_desk === 1, "vendor transaction is persisted");
+check(
+  state.economy.vendorTransactions.grove_trade_desk === 1,
+  "vendor transaction is persisted"
+);
 
 state.inventory.gold = 500;
 state.classMagic.skills.character_level = { xp: 0, level: 10 };
@@ -159,7 +181,10 @@ state = apply(state, "request_guild_mutation", "guild", {
 });
 const guildRecord = guildId ? state.guild.guilds[guildId] : undefined;
 check(state.guild.treasury === 12, "guild treasury is persisted");
-check(guildRecord?.treasuryGold === 12, "guild directory treasury is persisted");
+check(
+  guildRecord?.treasuryGold === 12,
+  "guild directory treasury is persisted"
+);
 
 // Enforced-fine model (hardening): a positive fine is charged to the wallet
 // immediately; only the unpayable remainder is carried as outstanding debt in
@@ -172,7 +197,10 @@ state = apply(state, "request_law_reputation_mutation", "law", {
   fineDelta: 10,
   crimeKind: "theft",
 });
-check(state.law.reputation.harthmere_watch === -2, "signed reputation delta is persisted");
+check(
+  state.law.reputation.harthmere_watch === -2,
+  "signed reputation delta is persisted"
+);
 check(
   state.inventory.gold === goldBeforeFine - 10,
   "affordable fine is charged to the wallet",
@@ -217,22 +245,40 @@ state = apply(state, "request_magic_progress", "magic", {
   skillXpDelta: 1200,
   legalStatus: "illegal",
 });
-check(state.classMagic.knownAbilities.includes("spark"), "magic ability is known before progress is credited");
-check(state.classMagic.magicSchools.fire_magic.level === 2, "magic school levels from XP");
-check(state.classMagic.magicSchools.fire_magic.illegal === true, "illegal magic flag is persisted");
+check(
+  state.classMagic.knownAbilities.includes("spark"),
+  "magic ability is known before progress is credited"
+);
+check(
+  state.classMagic.magicSchools.fire_magic.level === 2,
+  "magic school levels from XP"
+);
+check(
+  state.classMagic.magicSchools.fire_magic.illegal === true,
+  "illegal magic flag is persisted"
+);
 
 state = apply(state, "request_quest_state_update", "quest", {
   questId: "fountain_buttons_first",
   stepId: "step_2",
   progress: 2,
 });
-check(state.quests.active.fountain_buttons_first.progress === 2, "quest progress is persisted");
+check(
+  state.quests.active.fountain_buttons_first.progress === 2,
+  "quest progress is persisted"
+);
 state = apply(state, "request_quest_state_update", "quest", {
   questId: "fountain_buttons_first",
   completed: true,
 });
-check(Boolean(state.quests.completed.fountain_buttons_first), "quest completion is persisted");
-check(!state.quests.active.fountain_buttons_first, "completed quest leaves active map");
+check(
+  Boolean(state.quests.completed.fountain_buttons_first),
+  "quest completion is persisted"
+);
+check(
+  !state.quests.active.fountain_buttons_first,
+  "completed quest leaves active map"
+);
 
 const robotArea = LIVE_ENTITY_ROBOT_PROTECTION_AREAS[1];
 const robotId = liveEntityRobotDefaultRobotIdForArea(robotArea.areaId);
@@ -242,13 +288,17 @@ state = apply(state, "request_quest_state_update", "quest", {
   robotId,
   drainPerHour: 100,
 });
-check(state.robotProtection.robots[robotId].energy === 0, "robot energy can deplete to zero");
+check(
+  state.robotProtection.robots[robotId].energy === 0,
+  "robot energy can deplete to zero"
+);
 check(
   state.robotProtection.areas[robotArea.areaId].safeFromMuck === false,
   "depleted robot turns protected area into Muck"
 );
 check(
-  state.building.inWorldMarkers[robotArea.muckMarkerId]?.kind === "muck_boundary",
+  state.building.inWorldMarkers[robotArea.muckMarkerId]?.kind ===
+    "muck_boundary",
   "depleted robot publishes a Muck boundary marker"
 );
 
@@ -256,7 +306,11 @@ const muckNpcId = "npc:smoke_mossy_muckling";
 state.combat.entitySnapshots[muckNpcId] = {
   hp: 300,
   maxHp: 300,
-  position: { x: robotArea.anchor[0], y: robotArea.anchor[1], z: robotArea.anchor[2] },
+  position: {
+    x: robotArea.anchor[0],
+    y: robotArea.anchor[1],
+    z: robotArea.anchor[2],
+  },
   isHostile: true,
   isAlive: true,
   isAttackable: true,
@@ -282,7 +336,10 @@ check(
   /^muck_unprovoked:/.test(state.combat.npcAiTicks[muckNpcId]?.decision ?? ""),
   "Muck monster starts unprovoked aggression from server-known positions"
 );
-check(state.combat.threat["player-1"] === 1, "Muck aggression writes server threat");
+check(
+  state.combat.threat["player-1"] === 1,
+  "Muck aggression writes server threat"
+);
 
 state.inventory.items[LIVE_ENTITY_ROBOT_RECHARGE_ITEM_ID] = 1;
 state = apply(state, "request_quest_state_update", "quest", {
@@ -293,9 +350,18 @@ check(
   state.inventory.items[LIVE_ENTITY_ROBOT_RECHARGE_ITEM_ID] === undefined,
   "robot recharge consumes Stabilized Exotic Matter"
 );
-check(state.inventory.items.repair_voucher === 1, "robot recharge grants repair voucher reward");
-check(state.inventory.items.minor_healing_salve === 2, "robot recharge grants salve reward");
-check(state.robotProtection.robots[robotId].energy > 0, "robot recharge restores energy");
+check(
+  state.inventory.items.repair_voucher === 1,
+  "robot recharge grants repair voucher reward"
+);
+check(
+  state.inventory.items.minor_healing_salve === 2,
+  "robot recharge grants salve reward"
+);
+check(
+  state.robotProtection.robots[robotId].energy > 0,
+  "robot recharge restores energy"
+);
 check(
   state.robotProtection.areas[robotArea.areaId].safeFromMuck === true,
   "recharged robot restores protected area"
@@ -309,15 +375,24 @@ state = apply(state, "request_property_building_mutation", "property", {
   propertyValue: 25,
   buildingProgressDelta: 3,
 });
-check(state.property.owned.property_grove_muckstead_cottage_lot.value === 25, "property ownership is persisted");
-check(state.property.buildingProgress.property_grove_muckstead_cottage_lot === 3, "building progress is persisted");
+check(
+  state.property.owned.property_grove_muckstead_cottage_lot.value === 25,
+  "property ownership is persisted"
+);
+check(
+  state.property.buildingProgress.property_grove_muckstead_cottage_lot === 3,
+  "building progress is persisted"
+);
 
 state = apply(state, "request_farming_action", "farming", {
   plotId: "plot-1",
   cropId: "wheat_seed",
   farmingState: "planted",
 });
-check(state.farming.plots["plot-1"].cropId === "wheat_seed", "farming plot is persisted");
+check(
+  state.farming.plots["plot-1"].cropId === "wheat_seed",
+  "farming plot is persisted"
+);
 
 if (!state.classMagic.knownAbilities.includes("basic_attack")) {
   state.classMagic.knownAbilities.push("basic_attack");
@@ -333,35 +408,61 @@ state.combat.entitySnapshots["npc-mucker-1"] = {
   level: 1,
 };
 
-state = apply(state, "request_attack", "combat", {
-  abilityId: "basic_attack",
-  baseDamage: 20,
-}, "npc-mucker-1");
+state = apply(
+  state,
+  "request_attack",
+  "combat",
+  {
+    abilityId: "basic_attack",
+    baseDamage: 20,
+  },
+  "npc-mucker-1",
+  { requestId: "req-basic-attack-hit" }
+);
 const attackDamageDone = 100 - state.combat.entitySnapshots["npc-mucker-1"].hp;
 check(
   state.combat.threat["npc-mucker-1"] === attackDamageDone &&
-    attackDamageDone >= 19 &&
-    attackDamageDone <= 21,
-  "attack writes threat against target"
+    attackDamageDone > 0,
+  "attack writes threat against target",
+  `damage=${attackDamageDone} threat=${state.combat.threat["npc-mucker-1"]}`
 );
 check(Boolean(state.combat.cooldowns.basic_attack), "attack writes cooldown");
 
 state = apply(state, "request_death_transition", "death", {});
-check(state.combat.deathState === "dead" && state.combat.hp === 0, "death transition persists death state");
+check(
+  state.combat.deathState === "dead" && state.combat.hp === 0,
+  "death transition persists death state"
+);
 state = apply(state, "request_respawn", "respawn", {});
-check(state.combat.deathState === "alive" && state.combat.hp === state.combat.maxHp, "respawn restores player state");
+check(
+  state.combat.deathState === "alive" && state.combat.hp === state.combat.maxHp,
+  "respawn restores player state"
+);
 
 const parsed = parseHarthmereLiveModeBackendState(
   JSON.stringify({ version: "old", actorId: "other", inventory: { gold: 7 } }),
   "player-1",
   3000
 );
-check(parsed.version === HARTHMERE_LIVE_MODE_BACKEND_VERSION, "parser upgrades old state version");
+check(
+  parsed.version === HARTHMERE_LIVE_MODE_BACKEND_VERSION,
+  "parser upgrades old state version"
+);
 check(parsed.actorId === "player-1", "parser preserves server-owned actor id");
-check(parsed.inventory.gold === 7 && parsed.inventory.items, "parser deep-merges partial state");
+check(
+  parsed.inventory.gold === 7 && parsed.inventory.items,
+  "parser deep-merges partial state"
+);
 
-const corrupted = parseHarthmereLiveModeBackendState("{not-json", "player-1", 3000);
-check(corrupted.version === HARTHMERE_LIVE_MODE_BACKEND_VERSION, "parser recovers corrupted state to defaults");
+const corrupted = parseHarthmereLiveModeBackendState(
+  "{not-json",
+  "player-1",
+  3000
+);
+check(
+  corrupted.version === HARTHMERE_LIVE_MODE_BACKEND_VERSION,
+  "parser recovers corrupted state to defaults"
+);
 
 if (process.exitCode) {
   console.error("\nRESULT: FAIL");

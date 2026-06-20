@@ -5,26 +5,30 @@ Investigation against the uploaded `biomes_claude_2.har` (boot at 12:21, install
 Glitch Cloud Save developer docs.
 
 Uploaded files (absolute paths, for any follow-up tooling):
+
 - `…/local_8559fc71-…/uploads/www.glitch.fun-1780576288925.log`
 - `…/local_8559fc71-…/uploads/biomes_claude_2.har`
-(The 11 screenshots were pasted inline in chat; they are not separate files on disk.)
+  (The 11 screenshots were pasted inline in chat; they are not separate files on disk.)
 
 ---
 
 ## 2. Save / Load — ROOT CAUSE FOUND + FIX SHIPPED
 
 ### Saving works
+
 `storeSave` calls return **200** and the slot version increments monotonically
 (1515 → 1527 across the session). The payload genuinely contains the player's
 state: `gold:75, level:2, inventoryItems:30`, plus the player-mesh keys
 (`playerFace`, `playerBody`, `playerClothing`). The boot `listSaves`
 response includes a valid `decoded_payload`, so the restore filter
 (`save.decoded_payload.version === "harthmere-glitch-save"`) matches and
-`applySnapshot` runs. The restore *policy*
-(`shouldApplyHarthmereCloudSave`) is correct: a cloud save is always treated
-as the source of truth on boot.
+`applySnapshot` runs. The restore _policy_
+(`shouldApplyHarthmereCloudSave`) now treats cloud saves as import/export
+snapshots: they can restore only when no live-mode backend authority state
+exists, so Cloud Save cannot become gameplay authority on boot.
 
 ### The real bug: the save SCOPE is volatile
+
 The save data is keyed by a per-player scope (`activeUserScope` =
 `identity.gameUserId`). That scope is derived from the **biomes user id** that
 the server mints for the Glitch player:
@@ -38,6 +42,7 @@ the new session looks at a different scope and the prior progress appears wiped,
 even though the Glitch cloud slot itself is intact.
 
 ### Why the biomes user id changes
+
 The Glitch validate/claim/autoLogin responses contain **no stable Glitch user
 UUID** — there is no `glitch_user_id`, `user_id`, or `user_email`. The only
 stable human identifier returned is `user_name` ("blackmage"); everything else is
@@ -59,8 +64,10 @@ two forms** across sessions → different link → different `user.id` → diffe
 `profile.id`, so this is the exact lever.)
 
 ### Fix (shipped, with tests)
+
 New dependency-free module
 `src/pages/api/glitch/harthmere_cloud_save_identity.ts`:
+
 - `harthmereCloudSaveForeignAuthPrimaryId` — one deterministic key, preferring
   a real glitch id → stable `user_name` → install id. It never flips based on a
   field that comes and goes.
@@ -78,6 +85,7 @@ Tests: `src/pages/api/glitch/test/harthmere_cloud_save_identity.test.ts` —
 resolves to a stable key whether or not the volatile glitch id is present.
 
 ### Still recommended (not yet done)
+
 - Server should also surface a stable `glitch_user_email`/`glitch_user_id` if a
   richer Glitch endpoint exposes it, and prefer it for the scope.
 - Client refresh hardening: confirm leveling/inventory React state re-reads after
@@ -145,6 +153,7 @@ Tests: `harthmereGatheringNodeWorldInteraction.test.ts` — **4 passing**
 Audit (from the screenshots + cosmetic code):
 
 UNIQUE-look NPCs — explicit role clothing WITH a hat + Grove polish:
+
 - Business **staff** (guard: `militia_halfhelm` + tabard; hunter: `hunter_cap`;
   clergy: cap/`mage_hood`; farmer: `straw_hat` + apron; merchant: `noble_cap` +
   coat) — `groveBusinessRoleClothing`.
@@ -154,6 +163,7 @@ UNIQUE-look NPCs — explicit role clothing WITH a hat + Grove polish:
   `harthmereApplyGroveUniqueNpcPolish`.
 
 BLAND NPCs — varied face but generic/hatless auto-derived outfit:
+
 - Business **owners / shopkeepers** (Doctor Hana Greenlamp, the smith, the
   foreman, …). Root cause: the owner ECS seed called
   `makeHarthmereNpcAppearanceConfig` with **no `role` and no `clothing`**, so it

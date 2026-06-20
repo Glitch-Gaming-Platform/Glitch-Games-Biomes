@@ -39,24 +39,6 @@ function firstPlayerStatusReadString(value: unknown) {
     : undefined;
 }
 
-function playerStatusStaminaWriteThrottleMs() {
-  const raw = Number(
-    process.env.HARTHMERE_PLAYER_STATUS_STAMINA_WRITE_THROTTLE_MS
-  );
-  return Number.isFinite(raw) && raw >= 0
-    ? Math.trunc(raw)
-    : DEFAULT_PLAYER_STATUS_STAMINA_WRITE_THROTTLE_MS;
-}
-
-function playerStatusStaminaMeaningfulDelta() {
-  const raw = Number(
-    process.env.HARTHMERE_PLAYER_STATUS_STAMINA_MEANINGFUL_DELTA
-  );
-  return Number.isFinite(raw) && raw >= 0
-    ? raw
-    : DEFAULT_PLAYER_STATUS_STAMINA_MEANINGFUL_DELTA;
-}
-
 export function shouldPersistHarthmerePlayerStatusStaminaTick(input: {
   changed: boolean;
   deathTriggered: boolean;
@@ -100,20 +82,11 @@ export async function readHarthmereLiveModePlayerStatusStateForActor(input: {
     primary: {
       get: (key: string) => Promise<string | null>;
       mget?: (...keys: string[]) => Promise<Array<string | null>>;
-      set?: (key: string, value: string) => Promise<unknown>;
-      watch?: (...keys: string[]) => Promise<unknown>;
-      unwatch?: () => Promise<unknown>;
-      multi?: () => {
-        set: (key: string, value: string) => unknown;
-        exec: () => Promise<unknown[] | null>;
-      };
     };
   };
   actorId: string;
   nowMs: number;
   gameplayActive?: boolean;
-  staminaWriteThrottleMs?: number;
-  staminaMeaningfulDelta?: number;
 }) {
   const stateKey = harthmereLiveModePlayerStateKey(input.actorId);
   const [rawState] = await readHarthmereRedisStrings(input.redis.primary, [
@@ -124,132 +97,35 @@ export async function readHarthmereLiveModePlayerStatusStateForActor(input: {
     input.actorId,
     input.nowMs
   );
-  const previousUpdatedAtMs = Number(state.updatedAtMs);
-  const previousStamina = Number(state.combat.resources.stamina ?? 0);
-  const previousDeadFromStaminaAtMs = Number.isFinite(
-    Number(state.combat.deadFromStaminaAtMs)
-  )
-    ? Number(state.combat.deadFromStaminaAtMs)
-    : undefined;
+  const hasBackendAuthorityState = rawState !== null;
+  // GET endpoints are read-only projections. Stamina/death repairs can be shown
+  // in the returned snapshot, but durable state changes must flow through the
+  // live-mode reducer transaction so Redis has one backend writer.
   const statusReadRepair = repairHarthmereStatusReadStaminaDeath(state, {
     nowMs: input.nowMs,
   });
-  const staminaTick = tickHarthmereLiveModeStaminaForGameplay(state, {
+  tickHarthmereLiveModeStaminaForGameplay(state, {
     nowMs: input.nowMs,
     gameplayActive: input.gameplayActive === true,
     allowDeathFromStamina: false,
   });
-  const nextStamina = Number(state.combat.resources.stamina ?? 0);
-  const nextDeadFromStaminaAtMs = Number.isFinite(
-    Number(state.combat.deadFromStaminaAtMs)
-  )
-    ? Number(state.combat.deadFromStaminaAtMs)
-    : undefined;
-  if (
-    shouldPersistHarthmerePlayerStatusStaminaTick({
-      changed: staminaTick.changed || statusReadRepair.changed,
-      deathTriggered: staminaTick.deathTriggered,
-      previousDeadFromStaminaAtMs,
-      nextDeadFromStaminaAtMs,
-      previousStamina,
-      nextStamina,
-      previousUpdatedAtMs,
-      nowMs: input.nowMs,
-      throttleMs:
-        input.staminaWriteThrottleMs ?? playerStatusStaminaWriteThrottleMs(),
-      meaningfulDelta:
-        input.staminaMeaningfulDelta ?? playerStatusStaminaMeaningfulDelta(),
-    }) &&
-    input.redis.primary.set
-  ) {
-    const supportsWatch =
-      typeof input.redis.primary.watch === "function" &&
-      typeof input.redis.primary.multi === "function";
-    if (supportsWatch) {
-      await input.redis.primary.watch?.(stateKey);
-      try {
-        const latestRawState = await input.redis.primary.get(stateKey);
-        const latestState = parseHarthmereLiveModeBackendState(
-          latestRawState,
-          input.actorId,
-          input.nowMs
-        );
-        const latestPreviousUpdatedAtMs = Number(latestState.updatedAtMs);
-        const latestPreviousStamina = Number(
-          latestState.combat.resources.stamina ?? 0
-        );
-        const latestPreviousDeadFromStaminaAtMs = Number.isFinite(
-          Number(latestState.combat.deadFromStaminaAtMs)
-        )
-          ? Number(latestState.combat.deadFromStaminaAtMs)
-          : undefined;
-        const latestStatusReadRepair = repairHarthmereStatusReadStaminaDeath(
-          latestState,
-          {
-            nowMs: input.nowMs,
-          }
-        );
-        const latestStaminaTick = tickHarthmereLiveModeStaminaForGameplay(
-          latestState,
-          {
-            nowMs: input.nowMs,
-            gameplayActive: input.gameplayActive === true,
-            allowDeathFromStamina: false,
-          }
-        );
-        const latestNextStamina = Number(
-          latestState.combat.resources.stamina ?? 0
-        );
-        const latestNextDeadFromStaminaAtMs = Number.isFinite(
-          Number(latestState.combat.deadFromStaminaAtMs)
-        )
-          ? Number(latestState.combat.deadFromStaminaAtMs)
-          : undefined;
-        if (
-          shouldPersistHarthmerePlayerStatusStaminaTick({
-            changed:
-              latestStaminaTick.changed || latestStatusReadRepair.changed,
-            deathTriggered: latestStaminaTick.deathTriggered,
-            previousDeadFromStaminaAtMs: latestPreviousDeadFromStaminaAtMs,
-            nextDeadFromStaminaAtMs: latestNextDeadFromStaminaAtMs,
-            previousStamina: latestPreviousStamina,
-            nextStamina: latestNextStamina,
-            previousUpdatedAtMs: latestPreviousUpdatedAtMs,
-            nowMs: input.nowMs,
-            throttleMs:
-              input.staminaWriteThrottleMs ??
-              playerStatusStaminaWriteThrottleMs(),
-            meaningfulDelta:
-              input.staminaMeaningfulDelta ??
-              playerStatusStaminaMeaningfulDelta(),
-          })
-        ) {
-          latestState.updatedAtMs = input.nowMs;
-          const tx = input.redis.primary.multi?.();
-          tx?.set(stateKey, JSON.stringify(latestState));
-          await tx?.exec();
-        } else {
-          await input.redis.primary.unwatch?.();
-        }
-      } catch (error) {
-        await input.redis.primary.unwatch?.();
-        throw error;
-      }
-    } else {
-      state.updatedAtMs = input.nowMs;
-      await input.redis.primary.set(stateKey, JSON.stringify(state));
-    }
-  }
-  return createHarthmereLiveModePlayerStatusClientSnapshot(state);
+  return {
+    ...createHarthmereLiveModePlayerStatusClientSnapshot(state),
+    backendAuthority: {
+      source: "harthmere-live-mode-redis",
+      role: "backend-source-of-truth",
+      persisted: hasBackendAuthorityState,
+      readOnlyProjection: true,
+      repairedForSnapshot: statusReadRepair.changed,
+    },
+  };
 }
 
 function playerStatusGameplayActive(input: {
   unsafeRequest: { query?: Record<string, unknown> };
 }) {
   const raw =
-    firstPlayerStatusReadString(
-      input.unsafeRequest.query?.gameplay_active
-    ) ??
+    firstPlayerStatusReadString(input.unsafeRequest.query?.gameplay_active) ??
     firstPlayerStatusReadString(input.unsafeRequest.query?.gameplayActive);
   return /^(1|true|yes)$/i.test(raw ?? "");
 }
@@ -265,18 +141,20 @@ export default biomesApiHandler(
     const actorId = await resolveHarthmereLiveModeActorId(
       redis,
       { auth, unsafeRequest },
-      "anonymous:player-status-reader"
+      "anonymous:player-status-reader",
+      {
+        allowIdentityWrites: false,
+        allowStateAdoptionPlan: false,
+      }
     );
     return {
       ok: true,
-      playerStatusState: await readHarthmereLiveModePlayerStatusStateForActor(
-        {
-          redis,
-          actorId,
-          nowMs: Date.now(),
-          gameplayActive: playerStatusGameplayActive({ unsafeRequest }),
-        }
-      ),
+      playerStatusState: await readHarthmereLiveModePlayerStatusStateForActor({
+        redis,
+        actorId,
+        nowMs: Date.now(),
+        gameplayActive: playerStatusGameplayActive({ unsafeRequest }),
+      }),
     };
   }
 );

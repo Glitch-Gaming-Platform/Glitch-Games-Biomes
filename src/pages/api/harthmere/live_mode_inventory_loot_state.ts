@@ -66,16 +66,21 @@ export default biomesApiHandler(
     const actorId = await resolveHarthmereLiveModeActorId(
       redis,
       { auth, unsafeRequest },
-      "anonymous:inventory-loot-reader"
+      "anonymous:inventory-loot-reader",
+      {
+        allowIdentityWrites: false,
+        allowStateAdoptionPlan: false,
+      }
     );
     return {
       ok: true,
-      inventoryLootState:
-        await readHarthmereLiveModeInventoryLootStateForActor({
+      inventoryLootState: await readHarthmereLiveModeInventoryLootStateForActor(
+        {
           redis,
           actorId,
           nowMs: Date.now(),
-        }),
+        }
+      ),
     };
   }
 );

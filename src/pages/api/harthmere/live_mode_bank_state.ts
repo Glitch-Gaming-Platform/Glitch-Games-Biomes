@@ -18,13 +18,6 @@ export const zHarthmereLiveModeBankStateResponse = z.object({
 export interface HarthmereLiveModeBankStateRedis {
   primary: {
     get: (key: string) => Promise<string | null>;
-    set?: (key: string, value: string) => Promise<unknown>;
-    watch?: (...keys: string[]) => Promise<unknown>;
-    unwatch?: () => Promise<unknown>;
-    multi?: () => {
-      set: (key: string, value: string) => unknown;
-      exec: () => Promise<unknown[] | null>;
-    };
   };
 }
 
@@ -50,43 +43,9 @@ export async function readHarthmereLiveModeBankStateForActor(input: {
     input.nowMs
   );
   state.updatedAtMs = input.nowMs;
-  const consequences = applyHarthmereBankLoanConsequences(
-    state,
-    input.nowMs
-  );
-  if (consequences.changed && input.redis.primary.set) {
-    const supportsWatch =
-      typeof input.redis.primary.watch === "function" &&
-      typeof input.redis.primary.multi === "function";
-    if (supportsWatch) {
-      await input.redis.primary.watch?.(stateKey);
-      try {
-        const latestRawState = await input.redis.primary.get(stateKey);
-        const latestState = parseHarthmereLiveModeBackendState(
-          latestRawState,
-          input.actorId,
-          input.nowMs
-        );
-        latestState.updatedAtMs = input.nowMs;
-        const latestConsequences = applyHarthmereBankLoanConsequences(
-          latestState,
-          input.nowMs
-        );
-        if (latestConsequences.changed) {
-          const tx = input.redis.primary.multi?.();
-          tx?.set(stateKey, JSON.stringify(latestState));
-          await tx?.exec();
-        } else {
-          await input.redis.primary.unwatch?.();
-        }
-      } catch (error) {
-        await input.redis.primary.unwatch?.();
-        throw error;
-      }
-    } else {
-      await input.redis.primary.set(stateKey, JSON.stringify(state));
-    }
-  }
+  // GET endpoints are read-only projections. Loan consequence mutations must go
+  // through the live-mode reducer path so Redis has one durable backend writer.
+  applyHarthmereBankLoanConsequences(state, input.nowMs);
   return createHarthmereLiveModeBankingClientSnapshot(state);
 }
 

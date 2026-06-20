@@ -389,9 +389,7 @@ check(
 );
 check(
   "bridge stores the current schema marker in each save snapshot",
-  bridge.includes(
-    "schemaAuditVersion: HARTHMERE_GLITCH_SAVE_SCHEMA_VERSION"
-  )
+  bridge.includes("schemaAuditVersion: HARTHMERE_GLITCH_SAVE_SCHEMA_VERSION")
 );
 check(
   "bridge declares required exact save-key manifest",
@@ -482,7 +480,7 @@ check(
   ])
 );
 check(
-  "metadata derives player level, quests, snapshot missions, inventory, combat, playtime and localStorage authority",
+  "metadata derives player level, quests, snapshot missions, inventory, combat, playtime and localStorage snapshot authority",
   includesAll(bridge, [
     "function deriveMetadata",
     "levelingState",
@@ -495,7 +493,7 @@ check(
     "completedQuestCount",
     "inventoryItems",
     "defeatedEnemies",
-    'storageAuthority: "localStorage"',
+    'storageAuthority: "localStorageSnapshot"',
   ])
 );
 
@@ -594,9 +592,7 @@ check(
 );
 check(
   "restoreLatest only applies Harthmere cloud-save snapshots",
-  restoreLatest.includes(
-    'decoded_payload?.version === "harthmere-glitch-save"'
-  )
+  restoreLatest.includes('decoded_payload?.version === "harthmere-glitch-save"')
 );
 check(
   "restoreLatest picks latest version and applies snapshot",
@@ -610,9 +606,11 @@ check(
     bridge.includes("writeStoredCloudSaveVersion")
 );
 check(
-  "restoreLatestIfEmpty treats a returned Glitch cloud save as source of truth",
+  "restoreLatestIfEmpty treats cloud saves as snapshots and defers to backend authority",
   bridge.includes("async restoreLatestIfEmpty") &&
     bridge.includes("shouldApplyHarthmereCloudSave") &&
+    bridge.includes("this.hasBackendAuthorityState()") &&
+    bridge.includes("hasBackendAuthorityState,") &&
     bridge.includes("latestCloudVersion: latestVersion") &&
     bridge.includes(
       "hasMeaningfulLocalProgress: hasMeaningfulLocalProgress(localStorage)"
@@ -811,9 +809,8 @@ sampleStorage[
 ] = JSON.stringify({ stamina: 75, maxStamina: 100 });
 sampleStorage["biomes.localDev.liveEntityRobotEnergy.user.glitch_user_123"] =
   JSON.stringify({ robots: { helper: { energy: 42 } } });
-sampleStorage[
-  "biomes.localDev.liveEntityHelperQuests.user.glitch_user_123"
-] = JSON.stringify({ active: {}, completed: {} });
+sampleStorage["biomes.localDev.liveEntityHelperQuests.user.glitch_user_123"] =
+  JSON.stringify({ active: {}, completed: {} });
 sampleStorage[
   "biomes.localDev.snapshotCompletePortState.snapshot-per-player-mission-state.install_test"
 ] = JSON.stringify({ activeStepIndex: 2 });
@@ -862,7 +859,7 @@ const snapshot = {
     defeatedEnemies: 2,
     playtimeSeconds: 88,
     storageKeyCount: Object.keys(sampleStorage).length,
-    storageAuthority: "localStorage",
+    storageAuthority: "localStorageSnapshot",
   },
   localStorage: sampleStorage,
 };
@@ -1004,8 +1001,8 @@ check(
   decoded.metadata.level >= 1
 );
 check(
-  "decoded payload metadata declares localStorage as save authority",
-  decoded.metadata.storageAuthority === "localStorage"
+  "decoded payload metadata declares localStorage as snapshot authority",
+  decoded.metadata.storageAuthority === "localStorageSnapshot"
 );
 for (const [field, type] of requiredIdentityFields) {
   check(
@@ -1072,24 +1069,20 @@ check(
   "roundtrip restore migrates saved face to current Biomes customization scope",
   migratedRestored[
     `biomes.localDev.harthmere.playerFace.user.${simulatedCustomizationScope}`
-  ] ===
-    sampleStorage["biomes.localDev.harthmere.playerFace.user.install_test"]
+  ] === sampleStorage["biomes.localDev.harthmere.playerFace.user.install_test"]
 );
 check(
   "roundtrip restore migrates saved body to current Biomes customization scope",
   migratedRestored[
     `biomes.localDev.harthmere.playerBody.user.${simulatedCustomizationScope}`
-  ] ===
-    sampleStorage["biomes.localDev.harthmere.playerBody.user.install_test"]
+  ] === sampleStorage["biomes.localDev.harthmere.playerBody.user.install_test"]
 );
 check(
   "roundtrip restore migrates saved clothing to current Biomes customization scope",
   migratedRestored[
     `biomes.localDev.harthmere.playerClothing.user.${simulatedCustomizationScope}`
   ] ===
-    sampleStorage[
-      "biomes.localDev.harthmere.playerClothing.user.install_test"
-    ]
+    sampleStorage["biomes.localDev.harthmere.playerClothing.user.install_test"]
 );
 check(
   "roundtrip restore migrates per-user stamina to durable Biomes cloud scope",
@@ -1171,9 +1164,7 @@ check(
 );
 check(
   "restoreLatest ignores non-Harthmere payloads",
-  restoreLatest.includes(
-    'decoded_payload?.version === "harthmere-glitch-save"'
-  )
+  restoreLatest.includes('decoded_payload?.version === "harthmere-glitch-save"')
 );
 check(
   "restoreLatest sorts by highest version",
@@ -1232,9 +1223,9 @@ check(
   ])
 );
 check(
-  "cloud snapshot documents localStorage authority so production Redis divergence is visible",
-  bridge.includes('storageAuthority: "localStorage"') &&
-    decoded.metadata.storageAuthority === "localStorage"
+  "cloud snapshot documents localStorage snapshot authority so backend source-of-truth divergence is visible",
+  bridge.includes('storageAuthority: "localStorageSnapshot"') &&
+    decoded.metadata.storageAuthority === "localStorageSnapshot"
 );
 
 check(

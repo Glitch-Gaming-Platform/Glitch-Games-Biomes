@@ -71,7 +71,11 @@ export default biomesApiHandler(
     const actorId = await resolveHarthmereLiveModeActorId(
       redis,
       { auth, unsafeRequest },
-      "anonymous:quest-state-reader"
+      "anonymous:quest-state-reader",
+      {
+        allowIdentityWrites: false,
+        allowStateAdoptionPlan: false,
+      }
     );
     const nowMs = Date.now();
     return {

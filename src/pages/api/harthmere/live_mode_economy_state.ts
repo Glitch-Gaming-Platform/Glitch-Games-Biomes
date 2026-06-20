@@ -19,9 +19,10 @@ export const zHarthmereLiveModeEconomyStateResponse = z.object({
   economyState: zJsonRecord,
 });
 
-const globalForHarthmereLiveModeEconomyState = globalThis as typeof globalThis & {
-  __harthmereLiveModeEconomyStateRedis?: ReturnType<typeof connectToRedis>;
-};
+const globalForHarthmereLiveModeEconomyState =
+  globalThis as typeof globalThis & {
+    __harthmereLiveModeEconomyStateRedis?: ReturnType<typeof connectToRedis>;
+  };
 
 function liveModeEconomyStateRedis() {
   return (globalForHarthmereLiveModeEconomyState.__harthmereLiveModeEconomyStateRedis ??=
@@ -74,7 +75,11 @@ export default biomesApiHandler(
     const actorId = await resolveHarthmereLiveModeActorId(
       redis,
       { auth, unsafeRequest },
-      "anonymous:economy-reader"
+      "anonymous:economy-reader",
+      {
+        allowIdentityWrites: false,
+        allowStateAdoptionPlan: false,
+      }
     );
     const nowMs = Date.now();
     return {

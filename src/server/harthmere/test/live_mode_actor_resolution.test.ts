@@ -1,6 +1,9 @@
 /// <reference types="mocha" />
 import assert from "assert";
-import { resolveHarthmereLiveModeActorId } from "@/server/harthmere/live_mode_actor_resolution";
+import {
+  resolveHarthmereLiveModeActorContext,
+  resolveHarthmereLiveModeActorId,
+} from "@/server/harthmere/live_mode_actor_resolution";
 import {
   harthmereLiveModeInstallGameUserLinkKey,
   harthmereLiveModeInstallLinkKey,
@@ -31,17 +34,15 @@ function fakeRedis(seed: Record<string, string> = {}) {
 const ANON = "anonymous:test-reader";
 
 describe("resolveHarthmereLiveModeActorId (server healing)", () => {
-  it("authed first sighting adopts a stranded install blob into the empty user key", async () => {
+  it("authed first sighting plans stranded install adoption without writing gameplay state", async () => {
     const installId = "25f687dd";
     const userId = "5542414781262472";
-    const installKey = harthmereLiveModePlayerStateKey(
-      `install:${installId}`
-    );
+    const installKey = harthmereLiveModePlayerStateKey(`install:${installId}`);
     const userKey = harthmereLiveModePlayerStateKey(userId);
     const strandedBlob = '{"level":7,"gold":999,"actorId":"install:25f687dd"}';
     const redis = fakeRedis({ [installKey]: strandedBlob });
 
-    const actorId = await resolveHarthmereLiveModeActorId(
+    const context = await resolveHarthmereLiveModeActorContext(
       redis,
       {
         auth: { userId: 5542414781262472 },
@@ -50,9 +51,18 @@ describe("resolveHarthmereLiveModeActorId (server healing)", () => {
       ANON
     );
 
-    assert.strictEqual(actorId, userId);
-    // Stranded save recovered into the user key, verbatim.
-    assert.strictEqual(redis.store.get(userKey), strandedBlob);
+    assert.strictEqual(context.actorId, userId);
+    assert.deepStrictEqual(context.stateAdoption, {
+      fromActorId: `install:${installId}`,
+      fromStateKey: installKey,
+      toActorId: userId,
+      toStateKey: userKey,
+      reason: "install_orphan",
+    });
+    // The resolver no longer copies gameplay state; the live-mode writer adopts
+    // and deletes duplicate state in its WATCH/MULTI transaction.
+    assert.strictEqual(redis.store.get(userKey), undefined);
+    assert.strictEqual(redis.store.get(installKey), strandedBlob);
     // install -> user link persisted.
     assert.strictEqual(
       redis.store.get(harthmereLiveModeInstallLinkKey(installId)),
@@ -63,9 +73,7 @@ describe("resolveHarthmereLiveModeActorId (server healing)", () => {
   it("authed first sighting NEVER overwrites an existing user blob", async () => {
     const installId = "i1";
     const userId = "u1";
-    const installKey = harthmereLiveModePlayerStateKey(
-      `install:${installId}`
-    );
+    const installKey = harthmereLiveModePlayerStateKey(`install:${installId}`);
     const userKey = harthmereLiveModePlayerStateKey(userId);
     const realUserBlob = '{"level":42,"gold":1}';
     const redis = fakeRedis({
@@ -73,7 +81,7 @@ describe("resolveHarthmereLiveModeActorId (server healing)", () => {
       [userKey]: realUserBlob,
     });
 
-    const actorId = await resolveHarthmereLiveModeActorId(
+    const context = await resolveHarthmereLiveModeActorContext(
       redis,
       {
         auth: { userId: "u1" },
@@ -82,7 +90,14 @@ describe("resolveHarthmereLiveModeActorId (server healing)", () => {
       ANON
     );
 
-    assert.strictEqual(actorId, userId);
+    assert.strictEqual(context.actorId, userId);
+    assert.deepStrictEqual(context.stateAdoption, {
+      fromActorId: `install:${installId}`,
+      fromStateKey: installKey,
+      toActorId: userId,
+      toStateKey: userKey,
+      reason: "install_orphan",
+    });
     // User's real progress is untouched.
     assert.strictEqual(redis.store.get(userKey), realUserBlob);
     // Link still recorded.
@@ -111,7 +126,34 @@ describe("resolveHarthmereLiveModeActorId (server healing)", () => {
     assert.deepStrictEqual(redis.sets, []);
   });
 
-  it("stable Glitch game-user link wins after deploy and adopts the old live blob", async () => {
+  it("read-only resolution never writes links or state-adoption plans", async () => {
+    const installId = "i1";
+    const userId = "u1";
+    const redis = fakeRedis();
+
+    const context = await resolveHarthmereLiveModeActorContext(
+      redis,
+      {
+        auth: { userId },
+        unsafeRequest: { query: { install_id: installId } },
+      },
+      ANON,
+      {
+        allowIdentityWrites: false,
+        allowStateAdoptionPlan: false,
+      }
+    );
+
+    assert.strictEqual(context.actorId, userId);
+    assert.strictEqual(context.stateAdoption, undefined);
+    assert.deepStrictEqual(redis.sets, []);
+    assert.strictEqual(
+      redis.store.get(harthmereLiveModeInstallLinkKey(installId)),
+      undefined
+    );
+  });
+
+  it("stable Glitch game-user link wins after deploy and plans old live blob adoption", async () => {
     const installId = "25f687dd";
     const oldUserId = "8711576235822475";
     const newUserId = "7804034240681026";
@@ -125,7 +167,7 @@ describe("resolveHarthmereLiveModeActorId (server healing)", () => {
       [oldUserStateKey]: oldUserBlob,
     });
 
-    const actorId = await resolveHarthmereLiveModeActorId(
+    const context = await resolveHarthmereLiveModeActorContext(
       redis,
       {
         auth: { userId: newUserId },
@@ -134,8 +176,16 @@ describe("resolveHarthmereLiveModeActorId (server healing)", () => {
       ANON
     );
 
-    assert.strictEqual(actorId, gameUserId);
-    assert.strictEqual(redis.store.get(gameUserStateKey), oldUserBlob);
+    assert.strictEqual(context.actorId, gameUserId);
+    assert.deepStrictEqual(context.stateAdoption, {
+      fromActorId: oldUserId,
+      fromStateKey: oldUserStateKey,
+      toActorId: gameUserId,
+      toStateKey: gameUserStateKey,
+      reason: "linked_game_user",
+    });
+    assert.strictEqual(redis.store.get(gameUserStateKey), undefined);
+    assert.strictEqual(redis.store.get(oldUserStateKey), oldUserBlob);
   });
 
   it("install-only request with no link falls back to the install bucket", async () => {

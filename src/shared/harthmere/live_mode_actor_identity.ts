@@ -26,10 +26,11 @@
 // 2. A durable `install -> biomesUser` link. Once any authed request for an
 //    install is seen, later install-only (pre-cookie) requests converge onto the
 //    SAME user key instead of forking a new `install:` bucket.
-// 3. A conservative one-time adoption: when an authed user has NO blob yet but an
-//    orphaned `install:` blob exists, the install blob is adopted into the user
-//    key. This recovers already-stranded saves. It NEVER overwrites a non-empty
-//    user blob, so it cannot lose data.
+// 3. A conservative one-time adoption plan: when an authed user has NO blob yet
+//    but an orphaned `install:` blob exists, the live-mode writer may move that
+//    blob into the user key inside its WATCH/MULTI transaction. This recovers
+//    already-stranded saves and deletes the duplicate key. It NEVER overwrites a
+//    non-empty user blob, so it cannot lose data.
 
 export interface HarthmereLiveModeActorRequest {
   auth?: { userId?: unknown };
@@ -39,9 +40,7 @@ export interface HarthmereLiveModeActorRequest {
   };
 }
 
-function firstHarthmereActorRequestString(
-  value: unknown
-): string | undefined {
+function firstHarthmereActorRequestString(value: unknown): string | undefined {
   const candidate = Array.isArray(value) ? value[0] : value;
   return typeof candidate === "string" && candidate.trim()
     ? candidate.trim()
@@ -76,9 +75,7 @@ export function resolveHarthmereLiveModeActorIdentity(
 ): HarthmereLiveModeActorIdentity {
   const userId =
     input.auth?.userId !== undefined ? String(input.auth.userId) : undefined;
-  const installId = harthmereLiveModeInstallIdFromRequest(
-    input.unsafeRequest
-  );
+  const installId = harthmereLiveModeInstallIdFromRequest(input.unsafeRequest);
   return {
     userId: userId && userId.trim() ? userId : undefined,
     installId,
@@ -103,8 +100,8 @@ export interface HarthmereLiveModeActorKeyPlan {
   // When set, persist this install -> user link so future install-only requests
   // converge onto the user key.
   writeInstallLink?: { installId: string; userId: string };
-  // When set, the caller should check for an orphaned `install:` blob and adopt
-  // it into the user key if (and only if) the user blob is still empty.
+  // When set, the mutation writer should check for an orphaned `install:` blob
+  // and move it into the user key if (and only if) the user blob is still empty.
   considerInstallOrphan?: { installId: string; userId: string };
 }
 

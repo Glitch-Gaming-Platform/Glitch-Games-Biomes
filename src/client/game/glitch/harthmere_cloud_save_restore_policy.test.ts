@@ -2,13 +2,25 @@ import assert from "assert";
 import { shouldApplyHarthmereCloudSave } from "@/client/game/glitch/harthmere_cloud_save_restore_policy";
 
 describe("Harthmere Cloud Save restore policy current", () => {
-  it("uses a returned Glitch cloud slot as the source of truth over local progress", () => {
+  it("imports a returned Glitch cloud slot only when no backend authority state exists", () => {
     assert.equal(
       shouldApplyHarthmereCloudSave({
         latestCloudVersion: 7,
+        hasBackendAuthorityState: false,
         hasMeaningfulLocalProgress: true,
       }),
       true
+    );
+  });
+
+  it("does not auto-restore cloud over an existing backend authority state", () => {
+    assert.equal(
+      shouldApplyHarthmereCloudSave({
+        latestCloudVersion: 7,
+        hasBackendAuthorityState: true,
+        hasMeaningfulLocalProgress: false,
+      }),
+      false
     );
   });
 
@@ -32,26 +44,35 @@ describe("Harthmere Cloud Save restore policy current", () => {
     );
   });
 
-  it("always restores the cloud save on boot, even when local also has progress (deploy / new device)", () => {
-    // Cloud is the source of truth on load: the player's previous progress must
-    // be applied after a redeploy regardless of whatever sits in local storage.
+  it("restores the cloud save on boot when local has progress but backend has no state", () => {
     assert.equal(
       shouldApplyHarthmereCloudSave({
         latestCloudVersion: 1422,
+        hasBackendAuthorityState: false,
         hasMeaningfulLocalProgress: true,
       }),
       true
     );
   });
 
-  it("force restore always wins (a different account claimed this browser)", () => {
+  it("force restore wins only when no backend authority state exists", () => {
     assert.equal(
       shouldApplyHarthmereCloudSave({
         latestCloudVersion: 1422,
+        hasBackendAuthorityState: false,
         hasMeaningfulLocalProgress: true,
         forceCloudRestore: true,
       }),
       true
+    );
+    assert.equal(
+      shouldApplyHarthmereCloudSave({
+        latestCloudVersion: 1422,
+        hasBackendAuthorityState: true,
+        hasMeaningfulLocalProgress: true,
+        forceCloudRestore: true,
+      }),
+      false
     );
   });
 });

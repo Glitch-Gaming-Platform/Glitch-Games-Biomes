@@ -150,8 +150,7 @@ const STATE_CHANGE_AUTOSAVE_DELAY_MS = 1_500;
 const PROGRESSION_INTERVAL_MS = 30_000;
 const SESSION_HEARTBEAT_INTERVAL_MS = 15_000;
 const GLITCH_INSTALL_HEARTBEAT_INTERVAL_MS = 60_000;
-const AEGIS_BRIDGE_SCRIPT_URL =
-  "https://api.glitch.fun/js/aegis-bridge.js";
+const AEGIS_BRIDGE_SCRIPT_URL = "https://api.glitch.fun/js/aegis-bridge.js";
 const HARTHMERE_GLITCH_BEHAVIOR_BATCH_INTERVAL_MS = 30_000;
 const HARTHMERE_GLITCH_BEHAVIOR_MAX_BATCH = 25;
 const HARTHMERE_GLITCH_BEHAVIOR_THROTTLE_MS = 12_000;
@@ -233,7 +232,7 @@ type HarthmereSnapshotMetadata = {
   defeatedEnemies: number;
   playtimeSeconds: number;
   storageKeyCount: number;
-  storageAuthority: "localStorage";
+  storageAuthority: "localStorageSnapshot";
 };
 
 type HarthmereGlitchSnapshot = {
@@ -548,9 +547,7 @@ function sumQuantities(rows: any[]) {
 function isHarthmereCloudSaveStorageKey(key: string) {
   return (
     key.startsWith(HARTHMERE_STORAGE_PREFIX) ||
-    (HARTHMERE_GLITCH_REQUIRED_SAVE_KEYS as readonly string[]).includes(
-      key
-    ) ||
+    (HARTHMERE_GLITCH_REQUIRED_SAVE_KEYS as readonly string[]).includes(key) ||
     HARTHMERE_GLITCH_REQUIRED_SAVE_KEY_PREFIXES.some((prefix) =>
       key.startsWith(prefix)
     )
@@ -649,7 +646,7 @@ function deriveMetadata(
     defeatedEnemies,
     playtimeSeconds,
     storageKeyCount: Object.keys(storage).length,
-    storageAuthority: "localStorage",
+    storageAuthority: "localStorageSnapshot",
   };
 }
 
@@ -1007,9 +1004,7 @@ function ensureAegisBridgeBestEffort(config: HarthmereGlitchRuntimeConfig) {
   }
 }
 
-function safeBehaviorMetadata(
-  metadata: Record<string, unknown> | undefined
-) {
+function safeBehaviorMetadata(metadata: Record<string, unknown> | undefined) {
   if (!metadata || typeof metadata !== "object") return undefined;
   const out: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(metadata).slice(0, 24)) {
@@ -1755,15 +1750,14 @@ class HarthmereGlitchBridgeController {
     }
     const localStorage = collectHarthmereStorage();
     const latestVersion = normalizeCloudSaveVersion(latest.version);
-    // The cloud save is the source of truth on boot: whenever one exists we
-    // restore it so the player's previous progress (items, quests, avatar) is
-    // applied after a redeploy / on a new device. We only decline when there is
-    // no cloud save and local already has meaningful progress (restoring
-    // "nothing" must not wipe local). An explicit force wins for account
-    // switches.
+    const hasBackendAuthorityState =
+      await this.hasBackendAuthorityState().catch(() => false);
+    // Live-mode backend state is the gameplay source of truth. Cloud saves are
+    // compatibility/import snapshots and must not auto-overwrite backend state.
     if (
       !shouldApplyHarthmereCloudSave({
         latestCloudVersion: latestVersion,
+        hasBackendAuthorityState,
         hasMeaningfulLocalProgress: hasMeaningfulLocalProgress(localStorage),
         forceCloudRestore: forceCloudRestoreForUserSwitch,
       })
@@ -1780,6 +1774,27 @@ class HarthmereGlitchBridgeController {
       });
     }
     return applied;
+  }
+
+  private async hasBackendAuthorityState() {
+    if (!isBrowser()) {
+      return false;
+    }
+    const response = await fetch(
+      "/api/harthmere/live_mode_player_status_state",
+      {
+        cache: "no-store",
+      }
+    );
+    if (!response.ok) {
+      return false;
+    }
+    const body = (await response.json()) as {
+      playerStatusState?: {
+        backendAuthority?: { persisted?: unknown };
+      };
+    };
+    return body.playerStatusState?.backendAuthority?.persisted === true;
   }
 
   async restoreLatest() {

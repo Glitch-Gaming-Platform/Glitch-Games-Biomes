@@ -96,6 +96,11 @@ class FakeRedisPrimary {
         ops.push(() => this.store.set(key, value));
         return this;
       },
+      del: (key: string) => {
+        this.txOps.push(["del", key]);
+        ops.push(() => this.store.delete(key));
+        return this;
+      },
       xadd: (key: string) => {
         this.txOps.push(["xadd", key]);
         ops.push(() => {});
@@ -195,6 +200,13 @@ function addOpenProductionBusiness(
       bestStreak: 6,
       currentTier: 3,
     };
+}
+
+function gameplayMutationWarnings(warnings: string[] | undefined) {
+  return (warnings ?? []).filter(
+    (warning) =>
+      !warning.startsWith("escort_companion_materialization_deferred:")
+  );
 }
 
 describe("live_mode API Redis persistence", () => {
@@ -423,14 +435,10 @@ describe("live_mode API Redis persistence", () => {
         ],
       };
 
-      const persisted = await persistHarthmereLiveModeResponse(
-        env,
-        response,
-        {
-          logicApi: { publish: async () => {} } as any,
-          userId: 1 as any,
-        }
-      );
+      const persisted = await persistHarthmereLiveModeResponse(env, response, {
+        logicApi: { publish: async () => {} } as any,
+        userId: 1 as any,
+      });
 
       const playerKey = harthmereLiveModePlayerStateKey(ACTOR);
       const sharedWorldKey = harthmereLiveModeSharedWorldStateKey();
@@ -489,11 +497,7 @@ describe("live_mode API Redis persistence", () => {
       );
 
       const rawState = redisPrimary.store.get(playerKey);
-      const state = parseHarthmereLiveModeBackendState(
-        rawState,
-        ACTOR,
-        NOW_MS
-      );
+      const state = parseHarthmereLiveModeBackendState(rawState, ACTOR, NOW_MS);
       assert.equal(state.classMagic.skills.combat?.xp, 100);
 
       const replay = await persistHarthmereLiveModeResponse(env, response, {
@@ -505,6 +509,79 @@ describe("live_mode API Redis persistence", () => {
       assert.deepEqual(replay.includedSnapshots, []);
       assert.equal(replay.playerStatusState, undefined);
     }));
+
+  it("adopts duplicate install actor state inside the live-mode transaction", async () => {
+    const redisPrimary = new FakeRedisPrimary();
+    (globalThis as any).__harthmereLiveModeRedis = {
+      primary: redisPrimary,
+    };
+
+    const sourceActorId = "install:install-abc";
+    const sourceKey = harthmereLiveModePlayerStateKey(sourceActorId);
+    const targetKey = harthmereLiveModePlayerStateKey(ACTOR);
+    const sourceState = defaultHarthmereLiveModeBackendState(
+      sourceActorId,
+      NOW_MS
+    );
+    sourceState.inventory.gold = 321;
+    redisPrimary.store.set(sourceKey, JSON.stringify(sourceState));
+
+    const env = envelope();
+    const mutationPlan = buildHarthmereLiveModePersistenceMutationPlan(env);
+    const response = {
+      ok: true,
+      version: "HARTHMERE_LIVE_MODE_SERVER_ROUTE" as const,
+      actorId: ACTOR,
+      duplicate: false,
+      replayed: false,
+      persisted: true,
+      validation: {
+        ok: true,
+        errors: [],
+        warnings: [],
+        rejectedClientClaims: [],
+      },
+      mutationPlan,
+      events: [],
+      uiEvents: [],
+    };
+
+    const persisted = await persistHarthmereLiveModeResponse(env, response, {
+      logicApi: { publish: async () => {} } as any,
+      userId: 1 as any,
+      stateAdoption: {
+        fromActorId: sourceActorId,
+        fromStateKey: sourceKey,
+        toActorId: ACTOR,
+        toStateKey: targetKey,
+        reason: "install_orphan",
+      },
+    });
+
+    assert.deepEqual(redisPrimary.watched[0], [
+      "harthmere:live_mode:current:idempotency:player_live_api_persist_001:live-api-persist-idem-1",
+      targetKey,
+      harthmereLiveModeSharedWorldStateKey(),
+      sourceKey,
+    ]);
+    assert.ok(
+      persisted.backendMutation?.warnings.includes(
+        `actor_state_adopted:install_orphan:${sourceActorId}->${ACTOR}`
+      )
+    );
+    assert.ok(
+      redisPrimary.txOps.some((op) => op[0] === "del" && op[1] === sourceKey)
+    );
+    assert.equal(redisPrimary.store.has(sourceKey), false);
+
+    const targetState = parseHarthmereLiveModeBackendState(
+      redisPrimary.store.get(targetKey),
+      ACTOR,
+      NOW_MS
+    );
+    assert.equal(targetState.inventory.gold, 321);
+    assert.equal(targetState.classMagic.skills.combat?.xp, 100);
+  });
 
   it("hydrates public economy from shared world state before reducing actor mutations", async () =>
     withFullLiveModeMutationSnapshotsForTest(async () => {
@@ -585,14 +662,10 @@ describe("live_mode API Redis persistence", () => {
         uiEvents: [],
       };
 
-      const persisted = await persistHarthmereLiveModeResponse(
-        env,
-        response,
-        {
-          logicApi: { publish: async () => {} } as any,
-          userId: 1 as any,
-        }
-      );
+      const persisted = await persistHarthmereLiveModeResponse(env, response, {
+        logicApi: { publish: async () => {} } as any,
+        userId: 1 as any,
+      });
 
       assert.ok((persisted.economyState as any).businesses.shared_shop);
       const rawActor = redisPrimary.store.get(
@@ -718,7 +791,10 @@ describe("live_mode API Redis persistence", () => {
     };
     const persisted = await persistEnvelope(env);
 
-    assert.deepEqual(persisted.backendMutation?.warnings, []);
+    assert.deepEqual(
+      gameplayMutationWarnings(persisted.backendMutation?.warnings),
+      []
+    );
     assert.equal(persisted.snapshotMode, "changed");
     assert.deepEqual(persisted.includedSnapshots?.sort(), [
       "inventoryLootState",
@@ -790,7 +866,10 @@ describe("live_mode API Redis persistence", () => {
     };
     const questPersisted = await persistEnvelope(questEnv);
 
-    assert.deepEqual(questPersisted.backendMutation?.warnings, []);
+    assert.deepEqual(
+      gameplayMutationWarnings(questPersisted.backendMutation?.warnings),
+      []
+    );
     rawActor = redisPrimary.store.get(harthmereLiveModePlayerStateKey(ACTOR));
     persistedActorState = parseHarthmereLiveModeBackendState(
       rawActor,
@@ -834,7 +913,10 @@ describe("live_mode API Redis persistence", () => {
     };
     const turnInPersisted = await persistEnvelope(turnInEnv);
 
-    assert.deepEqual(turnInPersisted.backendMutation?.warnings, []);
+    assert.deepEqual(
+      gameplayMutationWarnings(turnInPersisted.backendMutation?.warnings),
+      []
+    );
     rawActor = redisPrimary.store.get(harthmereLiveModePlayerStateKey(ACTOR));
     persistedActorState = parseHarthmereLiveModeBackendState(
       rawActor,
@@ -923,7 +1005,8 @@ describe("live_mode API Redis persistence", () => {
     assert.deepEqual(persisted.backendMutation?.warnings, []);
     assert.ok(
       (persisted.jobsBoardState as any).myAcceptedJobs.some(
-        (job: any) => job.jobId === "harthmere_auto_1" && job.status === "active"
+        (job: any) =>
+          job.jobId === "harthmere_auto_1" && job.status === "active"
       ),
       "accept should persist and activate jobs that were seeded by a read-only board snapshot"
     );
@@ -1134,8 +1217,8 @@ describe("live_mode API Redis persistence", () => {
 
   it("keeps production-coordinate Harthmere outpost voxel edits and resolves real terrain entity ids", async () => {
     const plan =
-      HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS
-        .outpost_refinery_ashline.materializationPlan;
+      HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS.outpost_refinery_ashline
+        .materializationPlan;
     const authoredPosition = plan.edits.find(
       (edit) => edit.label === "floor"
     )!.position;
@@ -1189,8 +1272,8 @@ describe("live_mode API Redis persistence", () => {
     const world = new InMemoryWorld();
     const worldApi = ShimWorldApi.createForWorld(world);
     const plan =
-      HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS
-        .outpost_refinery_ashline.materializationPlan;
+      HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS.outpost_refinery_ashline
+        .materializationPlan;
     const floorEdit = plan.edits.find((edit) => edit.label === "floor")!;
     const worldPosition = buildingSystemMaterializationWorldPositionForTest(
       plan,
@@ -1213,20 +1296,20 @@ describe("live_mode API Redis persistence", () => {
       edits: [floorEdit],
     };
 
-    const first =
-      await materializeBuildingSystemMaterializationPlansToTerrain({
+    const first = await materializeBuildingSystemMaterializationPlansToTerrain({
+      askApi,
+      userId: 1 as any,
+      worldApi,
+      plans: [oneEditPlan],
+    });
+    const second = await materializeBuildingSystemMaterializationPlansToTerrain(
+      {
         askApi,
         userId: 1 as any,
         worldApi,
         plans: [oneEditPlan],
-      });
-    const second =
-      await materializeBuildingSystemMaterializationPlansToTerrain({
-        askApi,
-        userId: 1 as any,
-        worldApi,
-        plans: [oneEditPlan],
-      });
+      }
+    );
 
     assert.equal(first.directTerrainEditCount, 1);
     assert.equal(first.directTerrainShardCount, 1);

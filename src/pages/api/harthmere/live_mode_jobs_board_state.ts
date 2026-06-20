@@ -1,7 +1,6 @@
 import { connectToRedis } from "@/server/shared/redis/connection";
 import { biomesApiHandler } from "@/server/web/util/api_middleware";
 import {
-  createHarthmereLiveModeSharedWorldState,
   createHarthmereJobsBoardClientSnapshotFromBackend,
   harthmereLiveModePlayerStateKey,
   harthmereLiveModeSharedWorldStateKey,
@@ -25,9 +24,10 @@ export const zHarthmereLiveModeJobsBoardStateResponse = z.object({
   jobsBoardState: zJsonRecord,
 });
 
-const globalForHarthmereLiveModeJobsBoardState = globalThis as typeof globalThis & {
-  __harthmereLiveModeJobsBoardStateRedis?: ReturnType<typeof connectToRedis>;
-};
+const globalForHarthmereLiveModeJobsBoardState =
+  globalThis as typeof globalThis & {
+    __harthmereLiveModeJobsBoardStateRedis?: ReturnType<typeof connectToRedis>;
+  };
 
 function liveModeJobsBoardStateRedis() {
   return (globalForHarthmereLiveModeJobsBoardState.__harthmereLiveModeJobsBoardStateRedis ??=
@@ -39,12 +39,10 @@ export async function readHarthmereLiveModeJobsBoardStateForActor(input: {
     primary: {
       get: (key: string) => Promise<string | null>;
       mget?: (...keys: string[]) => Promise<Array<string | null>>;
-      set?: (key: string, value: string) => Promise<unknown>;
     };
   };
   actorId: string;
   nowMs: number;
-  persistReadSideEffects?: boolean;
 }) {
   const stateKey = harthmereLiveModePlayerStateKey(input.actorId);
   const sharedStateKey = harthmereLiveModeSharedWorldStateKey();
@@ -54,14 +52,19 @@ export async function readHarthmereLiveModeJobsBoardStateForActor(input: {
       stateKey,
       sharedStateKey
     );
-  const state = parseHarthmereLiveModeBackendState(rawState, input.actorId, input.nowMs);
+  const state = parseHarthmereLiveModeBackendState(
+    rawState,
+    input.actorId,
+    input.nowMs
+  );
   mergeHarthmereLiveModeSharedWorldStateIntoBackend(
     state,
     parseHarthmereLiveModeSharedWorldState(rawSharedState, input.nowMs),
     input.nowMs
   );
   state.updatedAtMs = input.nowMs;
-  let changed = false;
+  // Read-time job seeding is a snapshot projection only. Durable public-board
+  // mutations belong to the live-mode reducer/transaction path, not GET reads.
   for (const boardId of [
     HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID,
     HARTHMERE_JOBS_BOARD_HARTHMERE_BOARD_ID,
@@ -80,20 +83,12 @@ export async function readHarthmereLiveModeJobsBoardStateForActor(input: {
         actorInventoryItems: state.inventory.items,
         actorGuildId: state.guild.memberGuildId,
         economy: state.economy.production,
-      },
+      }
     );
     state.jobsBoard = result.jobsBoard;
     if (result.economy) {
       state.economy.production = result.economy;
     }
-    changed ||= result.touchedModels.includes("jobs_board_auto_seeded")
-      || result.sharedStateKeys.length > 0;
-  }
-  if (changed && input.persistReadSideEffects && input.redis.primary.set) {
-    await input.redis.primary.set(
-      sharedStateKey,
-      JSON.stringify(createHarthmereLiveModeSharedWorldState(state, input.nowMs))
-    );
   }
   return createHarthmereJobsBoardClientSnapshotFromBackend(state);
 }
@@ -109,12 +104,20 @@ export default biomesApiHandler(
     const actorId = await resolveHarthmereLiveModeActorId(
       redis,
       { auth, unsafeRequest },
-      "anonymous:jobs-board-reader"
+      "anonymous:jobs-board-reader",
+      {
+        allowIdentityWrites: false,
+        allowStateAdoptionPlan: false,
+      }
     );
     const nowMs = Date.now();
     return {
       ok: true,
-      jobsBoardState: await readHarthmereLiveModeJobsBoardStateForActor({ redis, actorId, nowMs }),
+      jobsBoardState: await readHarthmereLiveModeJobsBoardStateForActor({
+        redis,
+        actorId,
+        nowMs,
+      }),
     };
   }
 );

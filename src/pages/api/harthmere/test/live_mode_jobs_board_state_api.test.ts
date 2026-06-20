@@ -1,7 +1,5 @@
 import assert from "assert";
-import {
-  readHarthmereLiveModeJobsBoardStateForActor,
-} from "../live_mode_jobs_board_state";
+import { readHarthmereLiveModeJobsBoardStateForActor } from "../live_mode_jobs_board_state";
 import {
   createHarthmereLiveModeSharedWorldState,
   defaultHarthmereLiveModeBackendState,
@@ -59,23 +57,37 @@ describe("live_mode_jobs_board_state API route integration", () => {
       nowMs: NOW_MS,
     });
 
-    assert.deepEqual(calls.sort(), [
-      harthmereLiveModePlayerStateKey(ACTOR),
-      harthmereLiveModeSharedWorldStateKey(),
-    ].sort());
+    assert.deepEqual(
+      calls.sort(),
+      [
+        harthmereLiveModePlayerStateKey(ACTOR),
+        harthmereLiveModeSharedWorldStateKey(),
+      ].sort()
+    );
     assert.equal(snapshot.actorId, ACTOR);
     assert.ok(snapshot.boards[HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID]);
     assert.ok(snapshot.boards[HARTHMERE_JOBS_BOARD_HARTHMERE_BOARD_ID]);
-    assert.equal(snapshot.boards[HARTHMERE_JOBS_BOARD_HARTHMERE_BOARD_ID].location.x, 1046);
-    assert.equal(snapshot.boards[HARTHMERE_JOBS_BOARD_HARTHMERE_BOARD_ID].location.z, -202);
-    const existingHarthmereJob = snapshot.openJobs.find(
-      (job) => job.jobId === "harthmere_auto_1",
+    assert.equal(
+      snapshot.boards[HARTHMERE_JOBS_BOARD_HARTHMERE_BOARD_ID].location.x,
+      1046
     );
-    assert.equal(existingHarthmereJob?.boardId, HARTHMERE_JOBS_BOARD_HARTHMERE_BOARD_ID);
+    assert.equal(
+      snapshot.boards[HARTHMERE_JOBS_BOARD_HARTHMERE_BOARD_ID].location.z,
+      -202
+    );
+    const existingHarthmereJob = snapshot.openJobs.find(
+      (job) => job.jobId === "harthmere_auto_1"
+    );
+    assert.equal(
+      existingHarthmereJob?.boardId,
+      HARTHMERE_JOBS_BOARD_HARTHMERE_BOARD_ID
+    );
     assert.equal(existingHarthmereJob?.source, "economy_auto_seed");
     assert.ok(
-      snapshot.openJobs.some((job) => job.boardId === HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID),
-      "read path should top up the Grove board when it is empty",
+      snapshot.openJobs.some(
+        (job) => job.boardId === HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID
+      ),
+      "read path should top up the Grove board when it is empty"
     );
   });
 
@@ -162,10 +174,12 @@ describe("live_mode_jobs_board_state API route integration", () => {
       nowMs: NOW_MS,
     });
 
-    assert.deepEqual(mgetCalls, [[
-      harthmereLiveModePlayerStateKey(ACTOR),
-      harthmereLiveModeSharedWorldStateKey(),
-    ]]);
+    assert.deepEqual(mgetCalls, [
+      [
+        harthmereLiveModePlayerStateKey(ACTOR),
+        harthmereLiveModeSharedWorldStateKey(),
+      ],
+    ]);
     assert.deepEqual(getCalls, []);
     assert.equal(snapshot.actorId, ACTOR);
   });
@@ -190,18 +204,28 @@ describe("live_mode_jobs_board_state API route integration", () => {
     assert.ok(snapshot.boards[HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID]);
     assert.ok(snapshot.boards[HARTHMERE_JOBS_BOARD_HARTHMERE_BOARD_ID]);
     assert.ok(
-      snapshot.openJobs.some((job) => job.boardId === HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID),
-      "fresh local players should see Grove jobs instead of a blank board",
+      snapshot.openJobs.some(
+        (job) => job.boardId === HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID
+      ),
+      "fresh local players should see Grove jobs instead of a blank board"
     );
     assert.ok(
-      snapshot.openJobs.some((job) => job.boardId === HARTHMERE_JOBS_BOARD_HARTHMERE_BOARD_ID),
-      "fresh local players should see Harthmere town jobs too",
+      snapshot.openJobs.some(
+        (job) => job.boardId === HARTHMERE_JOBS_BOARD_HARTHMERE_BOARD_ID
+      ),
+      "fresh local players should see Harthmere town jobs too"
     );
-    assert.ok(snapshot.openJobs.every((job) => job.source === "economy_auto_seed"));
-    assert.equal(writes.length, 0, "plain reads should not contend with live mutations");
+    assert.ok(
+      snapshot.openJobs.every((job) => job.source === "economy_auto_seed")
+    );
+    assert.equal(
+      writes.length,
+      0,
+      "plain reads should not contend with live mutations"
+    );
   });
 
-  it("can explicitly persist auto-seeded read side effects for compatibility", async () => {
+  it("does not persist auto-seeded read projections even when a writer is present", async () => {
     const writes: Array<{ key: string; value: string }> = [];
     const redis = {
       primary: {
@@ -215,17 +239,15 @@ describe("live_mode_jobs_board_state API route integration", () => {
       redis,
       actorId: ACTOR,
       nowMs: NOW_MS,
-      persistReadSideEffects: true,
     });
 
-    assert.equal(writes.length, 1, "explicit compatibility mode still persists seeded jobs");
-    assert.equal(writes[0]?.key, harthmereLiveModeSharedWorldStateKey());
+    assert.equal(writes.length, 0, "GET reads must not persist seeded jobs");
   });
 
   it("expires stale shared auto jobs on read before returning clickable open jobs", async () => {
     const sharedBackend = defaultHarthmereLiveModeBackendState(
       "shared_board",
-      NOW_MS,
+      NOW_MS
     );
     sharedBackend.jobsBoard.postings.expired_shared_auto = {
       jobId: "expired_shared_auto",
@@ -264,7 +286,7 @@ describe("live_mode_jobs_board_state API route integration", () => {
           }
           if (key === harthmereLiveModeSharedWorldStateKey()) {
             return JSON.stringify(
-              createHarthmereLiveModeSharedWorldState(sharedBackend, NOW_MS),
+              createHarthmereLiveModeSharedWorldState(sharedBackend, NOW_MS)
             );
           }
           return null;
@@ -279,29 +301,26 @@ describe("live_mode_jobs_board_state API route integration", () => {
       redis,
       actorId: ACTOR,
       nowMs: NOW_MS,
-      persistReadSideEffects: true,
     });
 
     assert.ok(
       !snapshot.openJobs.some((job) => job.jobId === "expired_shared_auto"),
-      "expired shared jobs should not be returned as open/clickable",
+      "expired shared jobs should not be returned as open/clickable"
     );
     assert.ok(
       snapshot.openJobs.some(
-        (job) => job.boardId === HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID,
+        (job) => job.boardId === HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID
       ),
-      "the read path should replace expired auto jobs with current board work",
+      "the read path should replace expired auto jobs with current board work"
     );
-    assert.equal(writes.length, 1, "expired shared jobs should be persisted");
-    const persisted = JSON.parse(writes[0].value);
-    assert.equal(
-      persisted.jobsBoard.postings.expired_shared_auto.status,
-      "expired",
-    );
+    assert.equal(writes.length, 0, "GET reads must not persist expired jobs");
   });
 
   it("prefers shared public board state over an empty actor-local board", async () => {
-    const sharedBackend = defaultHarthmereLiveModeBackendState("shared_board", NOW_MS);
+    const sharedBackend = defaultHarthmereLiveModeBackendState(
+      "shared_board",
+      NOW_MS
+    );
     sharedBackend.jobsBoard.postings.shared_job_1 = {
       jobId: "shared_job_1",
       boardId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID,
@@ -334,7 +353,9 @@ describe("live_mode_jobs_board_state API route integration", () => {
             return JSON.stringify(actorBackend);
           }
           if (key === harthmereLiveModeSharedWorldStateKey()) {
-            return JSON.stringify(createHarthmereLiveModeSharedWorldState(sharedBackend, NOW_MS));
+            return JSON.stringify(
+              createHarthmereLiveModeSharedWorldState(sharedBackend, NOW_MS)
+            );
           }
           return null;
         },
@@ -351,14 +372,18 @@ describe("live_mode_jobs_board_state API route integration", () => {
   });
 
   it("returns the actor's accepted shared jobs as quest-board todos", async () => {
-    const sharedBackend = defaultHarthmereLiveModeBackendState("shared_board", NOW_MS);
+    const sharedBackend = defaultHarthmereLiveModeBackendState(
+      "shared_board",
+      NOW_MS
+    );
     sharedBackend.jobsBoard.postings.shared_accepted_job = {
       jobId: "shared_accepted_job",
       boardId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID,
       issuerKind: "town",
       issuerId: "harthmere_grove",
       title: "Clear the Muckwad Patch",
-      description: "Accepted job visible through the live jobs board state read path.",
+      description:
+        "Accepted job visible through the live jobs board state read path.",
       kind: "hunt",
       requirements: [
         {
@@ -392,7 +417,8 @@ describe("live_mode_jobs_board_state API route integration", () => {
       actorId: ACTOR,
       boardId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID,
       title: "Clear the Muckwad Patch",
-      todoText: "Go to the marked location and complete: Clear the Muckwad Patch",
+      todoText:
+        "Go to the marked location and complete: Clear the Muckwad Patch",
       status: "active",
       kind: "hunt",
       mapMarkerId: "muckwad_patch",
@@ -403,7 +429,9 @@ describe("live_mode_jobs_board_state API route integration", () => {
       dueAtMs: NOW_MS + 86_400_000,
       questBoardTodo: true,
     };
-    sharedBackend.jobsBoard.actorAcceptedJobIds[ACTOR] = ["shared_accepted_job"];
+    sharedBackend.jobsBoard.actorAcceptedJobIds[ACTOR] = [
+      "shared_accepted_job",
+    ];
 
     const actorBackend = defaultHarthmereLiveModeBackendState(ACTOR, NOW_MS);
     const redis = {
@@ -413,7 +441,9 @@ describe("live_mode_jobs_board_state API route integration", () => {
             return JSON.stringify(actorBackend);
           }
           if (key === harthmereLiveModeSharedWorldStateKey()) {
-            return JSON.stringify(createHarthmereLiveModeSharedWorldState(sharedBackend, NOW_MS));
+            return JSON.stringify(
+              createHarthmereLiveModeSharedWorldState(sharedBackend, NOW_MS)
+            );
           }
           return null;
         },
@@ -427,11 +457,13 @@ describe("live_mode_jobs_board_state API route integration", () => {
     });
 
     assert.ok(
-      snapshot.myAcceptedJobs.some((job) => job.jobId === "shared_accepted_job"),
-      "accepted shared jobs should appear in the actor's My Jobs list",
+      snapshot.myAcceptedJobs.some(
+        (job) => job.jobId === "shared_accepted_job"
+      ),
+      "accepted shared jobs should appear in the actor's My Jobs list"
     );
     const todo = snapshot.myTodos.find(
-      (entry) => entry.todoId === "harthmere_job_todo_42",
+      (entry) => entry.todoId === "harthmere_job_todo_42"
     );
     assert.ok(todo, "accepted shared jobs should keep their quest-board todo");
     assert.equal(todo?.mapMarkerId, "muckwad_patch");

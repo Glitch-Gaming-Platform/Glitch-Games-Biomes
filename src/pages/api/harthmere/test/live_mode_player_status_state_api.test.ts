@@ -77,7 +77,7 @@ describe("live_mode_player_status_state API route integration", () => {
     assert.equal(snapshot.standing.likeability, 0);
   });
 
-  it("persists survival stamina drain only when gameplay is active", async () => {
+  it("projects survival stamina drain without writing backend state", async () => {
     const backend = defaultHarthmereLiveModeBackendState(ACTOR, NOW_MS);
     backend.combat.resources.stamina = 108;
     backend.combat.maxResources.stamina = 108;
@@ -101,8 +101,8 @@ describe("live_mode_player_status_state API route integration", () => {
     const persisted = JSON.parse(stored);
 
     assert.equal(snapshot.combat.resources.stamina, 58);
-    assert.equal(persisted.combat.resources.stamina, 58);
-    assert.equal(persisted.combat.lastStaminaTickMs, NOW_MS);
+    assert.equal(persisted.combat.resources.stamina, 108);
+    assert.equal(persisted.combat.lastStaminaTickMs, NOW_MS - 60 * 60 * 1000);
     assert.equal(snapshot.combat.deathState, "alive");
   });
 
@@ -135,14 +135,11 @@ describe("live_mode_player_status_state API route integration", () => {
       snapshot.combat.resources.stamina < 58,
       `expected encumbrance drain below base-drain stamina, got ${snapshot.combat.resources.stamina}`
     );
-    assert.equal(
-      persisted.combat.resources.stamina,
-      snapshot.combat.resources.stamina
-    );
+    assert.equal(persisted.combat.resources.stamina, 108);
     assert.equal(snapshot.combat.deathState, "alive");
   });
 
-  it("persists stamina ticks with WATCH so polling does not overwrite newer actor state", async () => {
+  it("does not write or WATCH backend state during status polling", async () => {
     const staleBackend = defaultHarthmereLiveModeBackendState(ACTOR, NOW_MS);
     staleBackend.inventory.gold = 1;
     staleBackend.combat.resources.stamina = 108;
@@ -155,15 +152,13 @@ describe("live_mode_player_status_state API route integration", () => {
     latestBackend.combat.maxResources.stamina = 108;
     latestBackend.combat.lastStaminaTickMs = NOW_MS - 60 * 60 * 1000;
 
-    const stateKey = harthmereLiveModePlayerStateKey(ACTOR);
     const watched: string[][] = [];
-    const reads = [JSON.stringify(staleBackend), JSON.stringify(latestBackend)];
-    let stored = "";
+    const writes: string[] = [];
     const redis = {
       primary: {
-        get: async () => reads.shift() ?? stored,
+        get: async () => JSON.stringify(staleBackend),
         set: async (_key: string, value: string) => {
-          stored = value;
+          writes.push(value);
         },
         watch: async (...keys: string[]) => {
           watched.push(keys);
@@ -185,10 +180,8 @@ describe("live_mode_player_status_state API route integration", () => {
       gameplayActive: true,
     });
 
-    const persisted = JSON.parse(stored);
-    assert.deepEqual(watched, [[stateKey]]);
-    assert.equal(persisted.inventory.gold, 99);
-    assert.equal(persisted.combat.resources.stamina, 58);
+    assert.deepEqual(watched, []);
+    assert.deepEqual(writes, []);
   });
 
   it("uses a four-hour stamina clock for custom max stamina pools", async () => {
@@ -215,7 +208,7 @@ describe("live_mode_player_status_state API route integration", () => {
     const persisted = JSON.parse(stored);
 
     assert.equal(snapshot.combat.resources.stamina, 150);
-    assert.equal(persisted.combat.resources.stamina, 150);
+    assert.equal(persisted.combat.resources.stamina, 200);
     assert.equal(snapshot.combat.maxResources.stamina, 200);
     assert.equal(snapshot.combat.deathState, "alive");
   });
@@ -249,6 +242,7 @@ describe("live_mode_player_status_state API route integration", () => {
     assert.equal(snapshot.combat.resources.stamina, 0);
     assert.equal(persisted.combat.hp, 80);
     assert.equal(persisted.combat.deathState, "alive");
+    assert.equal(persisted.combat.resources.stamina, 1);
     assert.equal(persisted.combat.deadFromStaminaAtMs, undefined);
     assert.equal(Object.keys(persisted.combat.deathRecords).length, 0);
   });
@@ -294,13 +288,10 @@ describe("live_mode_player_status_state API route integration", () => {
       snapshot.combat.resources.stamina,
       snapshot.combat.maxResources.stamina
     );
-    assert.equal(persisted.combat.hp, 100);
-    assert.equal(persisted.combat.deathState, "alive");
-    assert.equal(
-      persisted.combat.resources.stamina,
-      persisted.combat.maxResources.stamina
-    );
-    assert.equal(persisted.combat.deadFromStaminaAtMs, undefined);
+    assert.equal(persisted.combat.hp, 0);
+    assert.equal(persisted.combat.deathState, "dead");
+    assert.equal(persisted.combat.resources.stamina, 0);
+    assert.equal(persisted.combat.deadFromStaminaAtMs, deadAtMs);
   });
 
   it("does not revive non-stamina deaths during status polling", async () => {

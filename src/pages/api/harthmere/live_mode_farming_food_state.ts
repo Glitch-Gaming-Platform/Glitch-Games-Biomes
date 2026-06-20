@@ -42,22 +42,21 @@ export default biomesApiHandler(
     const actorId = await resolveHarthmereLiveModeActorId(
       redis,
       { auth, unsafeRequest },
-      "anonymous:farming-food-reader"
+      "anonymous:farming-food-reader",
+      {
+        allowIdentityWrites: false,
+        allowStateAdoptionPlan: false,
+      }
     );
     const [rawState] = await readHarthmereRedisStrings(redis.primary, [
       harthmereLiveModePlayerStateKey(actorId),
     ]);
     const nowMs = Date.now();
-    const state = parseHarthmereLiveModeBackendState(
-      rawState,
-      actorId,
-      nowMs
-    );
+    const state = parseHarthmereLiveModeBackendState(rawState, actorId, nowMs);
     state.updatedAtMs = nowMs;
     return {
       ok: true,
-      farmingFoodState:
-        createHarthmereLiveModeFarmingFoodClientSnapshot(state),
+      farmingFoodState: createHarthmereLiveModeFarmingFoodClientSnapshot(state),
     };
   }
 );

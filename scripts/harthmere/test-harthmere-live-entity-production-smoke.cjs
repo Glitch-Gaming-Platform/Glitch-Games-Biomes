@@ -79,6 +79,24 @@ class FakeRedisPrimary {
     this.store.set(key, value);
     return "OK";
   }
+  async watch(...keys) {
+    this.watched = keys;
+  }
+  async unwatch() {
+    this.watched = [];
+  }
+  multi() {
+    const ops = [];
+    return {
+      set: (key, value) => {
+        ops.push(() => this.set(key, value));
+      },
+      exec: async () => {
+        for (const op of ops) op();
+        return [];
+      },
+    };
+  }
 }
 
 async function main() {
@@ -224,8 +242,7 @@ async function main() {
   const raceStart = raceProposed.find(
     (change) =>
       change.kind !== "delete" &&
-      change.entity.position?.v?.[0] ===
-        HARTHMERE_GROVE_RACE_START_POSITION[0]
+      change.entity.position?.v?.[0] === HARTHMERE_GROVE_RACE_START_POSITION[0]
   );
   check(
     raceStart?.kind !== "delete" &&
@@ -283,9 +300,7 @@ async function main() {
   const simpleRaceStartOverlay = read(
     "src/client/components/minigames/simple_race/SimpleRaceStartOverlayComponent.tsx"
   );
-  const deploy = read(
-    "scripts/glitch/deploy-production-local-redis-smoke.sh"
-  );
+  const deploy = read("scripts/glitch/deploy-production-local-redis-smoke.sh");
   const renderer = read(
     "src/client/game/renderers/local_dev/harthmere_assets.ts"
   );
@@ -327,9 +342,7 @@ async function main() {
       bootstrap.includes(
         "buildHarthmereLiveEntityProductionSeedProposedChanges"
       ) &&
-      bootstrap.includes(
-        "buildHarthmereSnapshotGroveNpcSeedProposedChanges"
-      ) &&
+      bootstrap.includes("buildHarthmereSnapshotGroveNpcSeedProposedChanges") &&
       bootstrap.includes(
         "buildHarthmereGroveRaceMinigameSeedProposedChanges"
       ) &&

@@ -19,9 +19,10 @@ export const zHarthmereLiveModeBuildingStateResponse = z.object({
   buildingState: zJsonRecord,
 });
 
-const globalForHarthmereLiveModeBuildingState = globalThis as typeof globalThis & {
-  __harthmereLiveModeBuildingStateRedis?: ReturnType<typeof connectToRedis>;
-};
+const globalForHarthmereLiveModeBuildingState =
+  globalThis as typeof globalThis & {
+    __harthmereLiveModeBuildingStateRedis?: ReturnType<typeof connectToRedis>;
+  };
 
 function liveModeBuildingStateRedis() {
   return (globalForHarthmereLiveModeBuildingState.__harthmereLiveModeBuildingStateRedis ??=
@@ -39,7 +40,11 @@ export default biomesApiHandler(
     const actorId = await resolveHarthmereLiveModeActorId(
       redis,
       { auth, unsafeRequest },
-      "anonymous:building-reader"
+      "anonymous:building-reader",
+      {
+        allowIdentityWrites: false,
+        allowStateAdoptionPlan: false,
+      }
     );
     const nowMs = Date.now();
     const { rawState, rawSharedState } =
@@ -48,11 +53,7 @@ export default biomesApiHandler(
         harthmereLiveModePlayerStateKey(actorId),
         harthmereLiveModeSharedWorldStateKey()
       );
-    const state = parseHarthmereLiveModeBackendState(
-      rawState,
-      actorId,
-      nowMs
-    );
+    const state = parseHarthmereLiveModeBackendState(rawState, actorId, nowMs);
     mergeHarthmereLiveModeSharedWorldStateIntoBackend(
       state,
       parseHarthmereLiveModeSharedWorldState(rawSharedState, nowMs),
