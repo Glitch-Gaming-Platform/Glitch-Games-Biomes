@@ -1289,44 +1289,58 @@ push_and_deploy() {
   check_production_redis_aof_health "Azure Container App update"
   check_production_redis_snapshot_hash "Azure Container App update"
   log "Updating Azure Container App $AZURE_CONTAINER_APP to $IMAGE."
-  az containerapp update \
-    --resource-group "$AZURE_RESOURCE_GROUP" \
-    --name "$AZURE_CONTAINER_APP" \
-    --image "$IMAGE" \
-    --min-replicas "$AZURE_MIN_REPLICAS" \
-    --max-replicas "$AZURE_MAX_REPLICAS" \
-    --set-env-vars \
-      GLITCH_TITLE_TOKEN=secretref:glitch-title-token \
-      GLITCH_TITLE_ID="$GLITCH_TITLE_ID" \
-      GLITCH_API_BASE_URL="$GLITCH_API_BASE_URL" \
-      NEXT_PUBLIC_GLITCH_TITLE_ID="$GLITCH_TITLE_ID" \
-      GLITCH_REDIS_MODE=external \
-      REDIS_HOST="$PROD_REDIS_HOST" \
-      GLITCH_REDIS_HOST="$PROD_REDIS_HOST" \
-      LOCAL_REDIS_HOST="$PROD_REDIS_HOST" \
-      REDIS_PORT="$PROD_REDIS_PORT" \
-      GLITCH_REDIS_PORT="$PROD_REDIS_PORT" \
-      GLITCH_POPULATE_SNAPSHOT_REDIS=0 \
-      GLITCH_REQUIRE_SNAPSHOT_REDIS=1 \
-      GLITCH_SNAPSHOT_BOOTSTRAP_ROLE=0 \
-      GLITCH_ALLOW_SNAPSHOT_REDIS_FLUSH=0 \
-      GLITCH_ENABLE_STREAM_WORKERS=1 \
-      GLITCH_ENABLE_SINK_WORKER=0 \
-      NEXT_PUBLIC_GLITCH_SYNC_BASE_URL="$PROD_ORIGIN" \
-      GLITCH_STATIC_BUCKET_FALLBACK_BASE_URL=https://storage.googleapis.com/biomes-static \
-      BIOMES_PLAYER_START_POSITION=484.24980838010384,53,-207.51197432867897 \
-      BIOMES_FORCE_LOCAL_DEV_TOWN=0 \
-      BIOMES_START_IN_HARTHMERE=0 \
-      BIOMES_ENABLE_HARTHMERE_EXTRA_TOWN=0 \
-      GLITCH_DISABLE_GCP=1 \
-      GLITCH_SKIP_GOOGLE_SECRETS=1 \
-      GLITCH_DISABLE_DISCORD=1 \
-      AZURE_OPENAI_ENDPOINT="${AZURE_OPENAI_ENDPOINT:-https://glitch-openai-instance.openai.azure.com/}" \
-      AZURE_OPENAI_API_VERSION="${AZURE_OPENAI_API_VERSION:-2025-04-01-preview}" \
-      AZURE_OPENAI_DEPLOYMENT="${AZURE_OPENAI_DEPLOYMENT:-gpt-5.5}" \
-      AZURE_OPENAI_API_KEY=secretref:azure-openai-api-key \
-      AZURE_SPEECH_REGION="${AZURE_SPEECH_REGION:-eastus2}" \
+  mapfile -t legacy_voxel_tree_envs < <(
+    az containerapp show \
+      --resource-group "$AZURE_RESOURCE_GROUP" \
+      --name "$AZURE_CONTAINER_APP" \
+      --query "properties.template.containers[0].env[?starts_with(name, 'ES_LOCAL_DEV_BACKEND_VOXEL_TREES_')].name" \
+      -o tsv
+  )
+  update_args=(
+    --resource-group "$AZURE_RESOURCE_GROUP"
+    --name "$AZURE_CONTAINER_APP"
+    --image "$IMAGE"
+    --min-replicas "$AZURE_MIN_REPLICAS"
+    --max-replicas "$AZURE_MAX_REPLICAS"
+  )
+  if [ "${#legacy_voxel_tree_envs[@]}" -gt 0 ]; then
+    update_args+=(--remove-env-vars "${legacy_voxel_tree_envs[@]}")
+  fi
+  update_args+=(
+    --set-env-vars
+      GLITCH_TITLE_TOKEN=secretref:glitch-title-token
+      GLITCH_TITLE_ID="$GLITCH_TITLE_ID"
+      GLITCH_API_BASE_URL="$GLITCH_API_BASE_URL"
+      NEXT_PUBLIC_GLITCH_TITLE_ID="$GLITCH_TITLE_ID"
+      GLITCH_REDIS_MODE=external
+      REDIS_HOST="$PROD_REDIS_HOST"
+      GLITCH_REDIS_HOST="$PROD_REDIS_HOST"
+      LOCAL_REDIS_HOST="$PROD_REDIS_HOST"
+      REDIS_PORT="$PROD_REDIS_PORT"
+      GLITCH_REDIS_PORT="$PROD_REDIS_PORT"
+      GLITCH_POPULATE_SNAPSHOT_REDIS=0
+      GLITCH_REQUIRE_SNAPSHOT_REDIS=1
+      GLITCH_SNAPSHOT_BOOTSTRAP_ROLE=0
+      GLITCH_ALLOW_SNAPSHOT_REDIS_FLUSH=0
+      GLITCH_ENABLE_STREAM_WORKERS=1
+      GLITCH_ENABLE_SINK_WORKER=0
+      NEXT_PUBLIC_GLITCH_SYNC_BASE_URL="$PROD_ORIGIN"
+      GLITCH_STATIC_BUCKET_FALLBACK_BASE_URL=https://storage.googleapis.com/biomes-static
+      BIOMES_PLAYER_START_POSITION=484.24980838010384,53,-207.51197432867897
+      BIOMES_FORCE_LOCAL_DEV_TOWN=0
+      BIOMES_START_IN_HARTHMERE=0
+      BIOMES_ENABLE_HARTHMERE_EXTRA_TOWN=0
+      GLITCH_DISABLE_GCP=1
+      GLITCH_SKIP_GOOGLE_SECRETS=1
+      GLITCH_DISABLE_DISCORD=1
+      AZURE_OPENAI_ENDPOINT="${AZURE_OPENAI_ENDPOINT:-https://glitch-openai-instance.openai.azure.com/}"
+      AZURE_OPENAI_API_VERSION="${AZURE_OPENAI_API_VERSION:-2025-04-01-preview}"
+      AZURE_OPENAI_DEPLOYMENT="${AZURE_OPENAI_DEPLOYMENT:-gpt-5.5}"
+      AZURE_OPENAI_API_KEY=secretref:azure-openai-api-key
+      AZURE_SPEECH_REGION="${AZURE_SPEECH_REGION:-eastus2}"
       AZURE_SPEECH_KEY=secretref:azure-speech-key
+  )
+  az containerapp update "${update_args[@]}"
 
   local latest_revision
   latest_revision="$(az containerapp show \
