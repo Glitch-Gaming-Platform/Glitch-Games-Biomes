@@ -1,0 +1,99 @@
+name: Azure production deploy
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Optional image tag. Defaults to prod-<short sha>."
+        required: false
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: azure-production-deploy
+  cancel-in-progress: false
+
+env:
+  CI: "1"
+  NEXT_TELEMETRY_DISABLED: "1"
+  AZURE_CORE_OUTPUT: none
+  PROD_ORIGIN: https://biomes-node-vnet.thankfulfield-9814940f.eastus.azurecontainerapps.io
+  ACR_NAME: GlitchGames
+  ACR_SERVER: glitchgames.azurecr.io
+  IMAGE_REPO: biomes-node
+  DOCKER_PLATFORM: linux/amd64
+  AZURE_RESOURCE_GROUP: openai-resource-group
+  AZURE_CONTAINER_APP: biomes-node-vnet
+  HARTHMERE_SKIP_WORLD_SYNC_RECONCILIATION: "1"
+
+jobs:
+  deploy:
+    name: Build, push, and deploy
+    if: github.repository == 'Glitch-Gaming-Platform/Glitch-Games-Biomes'
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    environment: production
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+
+      - name: Install Yarn
+        run: npm install -g yarn@1
+
+      - name: Install dependencies
+        run: yarn install --production=false --frozen-lockfile --non-interactive
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Check required Azure OIDC secrets
+        env:
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+        run: |
+          set -euo pipefail
+          missing=0
+          for name in AZURE_CLIENT_ID AZURE_TENANT_ID AZURE_SUBSCRIPTION_ID; do
+            if [ -z "${!name:-}" ]; then
+              echo "Missing GitHub production environment secret: $name" >&2
+              missing=1
+            fi
+          done
+          exit "$missing"
+
+      - name: Azure login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Allow Azure CLI extension auto-install
+        run: az config set extension.use_dynamic_install=yes_without_prompt
+
+      - name: Deploy production Container App
+        env:
+          REQUESTED_TAG: ${{ github.event.inputs.tag }}
+        run: |
+          set -euo pipefail
+          if [ -n "${REQUESTED_TAG:-}" ]; then
+            TAG="$REQUESTED_TAG"
+          else
+            TAG="prod-${GITHUB_SHA::12}"
+          fi
+          scripts/glitch/deploy-production-local-redis-smoke.sh --push --tag "$TAG"

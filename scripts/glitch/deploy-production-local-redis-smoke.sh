@@ -9,6 +9,7 @@ cd "$ROOT"
 
 PUSH_PRODUCTION=0
 SKIP_BUILD=0
+STOP_BEFORE_DOCKER_BUILD=0
 KEEP_LOCAL_SMOKE=0
 REDIS_HEALTH_CHECK_ONLY=0
 BOOTSTRAP_PROD_REDIS_SNAPSHOT=0
@@ -23,6 +24,9 @@ Options:
   --push          Push the built image and update Azure Container Apps.
   --tag TAG      Use a specific image tag.
   --skip-build   Reuse existing .next/dist and Docker image tag.
+  --stop-before-docker-build
+                 Run guardrails and source artifact builds, then exit before
+                 the Docker image build.
   --local-smoke  Run the memory-heavy local container HTTP smoke before push.
   --keep-local   Leave local smoke containers running for manual inspection.
   --bootstrap-prod-redis-snapshot
@@ -53,6 +57,10 @@ while [ "$#" -gt 0 ]; do
       SKIP_BUILD=1
       shift
       ;;
+    --stop-before-docker-build)
+      STOP_BEFORE_DOCKER_BUILD=1
+      shift
+      ;;
     --local-smoke)
       RUN_LOCAL_SMOKE=1
       shift
@@ -80,6 +88,16 @@ while [ "$#" -gt 0 ]; do
       ;;
   esac
 done
+
+if [ "$STOP_BEFORE_DOCKER_BUILD" = "1" ] && [ "$PUSH_PRODUCTION" = "1" ]; then
+  echo "ERROR --stop-before-docker-build cannot be combined with --push." >&2
+  exit 2
+fi
+
+if [ "$STOP_BEFORE_DOCKER_BUILD" = "1" ] && [ "$RUN_LOCAL_SMOKE" = "1" ]; then
+  echo "ERROR --stop-before-docker-build cannot be combined with --local-smoke." >&2
+  exit 2
+fi
 
 PROD_ORIGIN="${PROD_ORIGIN:-https://biomes-node-vnet.thankfulfield-9814940f.eastus.azurecontainerapps.io}"
 ACR_SERVER="${ACR_SERVER:-glitchgames.azurecr.io}"
@@ -1315,13 +1333,23 @@ if [ "$REDIS_HEALTH_CHECK_ONLY" = "1" ]; then
 fi
 
 require_cmd node
-require_cmd docker
+if [ "$STOP_BEFORE_DOCKER_BUILD" != "1" ]; then
+  require_cmd docker
+fi
 
 run_build_checks
 if [ "$SKIP_BUILD" != "1" ]; then
   build_artifacts
+  if [ "$STOP_BEFORE_DOCKER_BUILD" = "1" ]; then
+    log "Stopping before Docker build by request. Build artifacts are current; skipped image build."
+    exit 0
+  fi
   build_image
 else
+  if [ "$STOP_BEFORE_DOCKER_BUILD" = "1" ]; then
+    log "Skipping source/build/image steps by request; stop-before-Docker-build mode has no Docker work to run."
+    exit 0
+  fi
   log "Skipping source/build/image steps by request."
 fi
 if [ "$RUN_LOCAL_SMOKE" = "1" ]; then

@@ -32,6 +32,12 @@ That command runs the production source guardrails, builds the production Next
 and webpack artifacts, and builds the Docker image locally. It does not upload
 anything by default.
 
+To run the deploy path up to the Docker build boundary and stop there:
+
+```bash
+scripts/glitch/deploy-production-local-redis-smoke.sh --stop-before-docker-build
+```
+
 The local production-image HTTP smoke is memory-heavy and is now opt-in. Run it
 when you need the full local container proof:
 
@@ -59,6 +65,39 @@ The script avoids `az acr build`; production upload is `docker push` of the
 locally-built image, followed by `az containerapp update`. Before any production
 update it validates the private Redis NSG, Redis write/persistence health,
 snapshot hash, and required world seed keys.
+
+## GitHub Actions production deploy
+
+`.github/workflows/azure-production-deploy.yml` runs the same guarded deploy
+script on every push to `main` and from manual `workflow_dispatch` runs. It
+builds the production artifacts, builds the Docker image, pushes it to ACR, and
+updates the Azure Container App.
+
+Because this repository is public, the workflow uses GitHub OIDC with a
+user-assigned managed identity instead of a long-lived Azure client secret. The
+GitHub `production` environment stores these values as environment secrets:
+
+- `AZURE_CLIENT_ID`
+- `AZURE_TENANT_ID`
+- `AZURE_SUBSCRIPTION_ID`
+
+The Azure identity is `biomes-github-actions-prod-deploy`, federated to:
+
+```text
+repo:Glitch-Gaming-Platform/Glitch-Games-Biomes:environment:production
+```
+
+The managed identity needs enough access to:
+
+- Push to ACR `GlitchGames` / `glitchgames.azurecr.io`.
+- Update Container App `biomes-node-vnet` in resource group `openai-resource-group`.
+- Read Redis NSG rules for `biomes-redis-prod-nsg`.
+- Run commands on VM `biomes-redis-prod` for private Redis health checks.
+
+The workflow sets `HARTHMERE_SKIP_WORLD_SYNC_RECONCILIATION=1` because GitHub
+hosted runners cannot directly reach the private production Redis host. Use an
+Azure/VNet runner and the local deploy command when a full post-deploy world
+reconciliation is required.
 
 The validated production image was:
 

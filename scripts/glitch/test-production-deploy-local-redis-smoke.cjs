@@ -64,6 +64,18 @@ ok(
   "script exposes an explicit opt-in flag for memory-heavy local HTTP smoke"
 );
 ok(
+  script.includes("STOP_BEFORE_DOCKER_BUILD=0"),
+  "script tracks the explicit pre-Docker-build stop mode"
+);
+ok(
+  script.includes("--stop-before-docker-build"),
+  "script exposes a repeatable stop point before the Docker image build"
+);
+ok(
+  script.includes("Stopping before Docker build by request"),
+  "pre-Docker-build stop mode exits after refreshed source artifacts"
+);
+ok(
   script.includes("--bootstrap-prod-redis-snapshot"),
   "script exposes an explicit production Redis snapshot bootstrap flag"
 );
