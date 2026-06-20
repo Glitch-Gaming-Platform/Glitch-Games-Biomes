@@ -1,13 +1,9 @@
 name: Azure production deploy
 
 on:
-  workflow_run:
-    workflows:
-      - merge-ci
+  push:
     branches:
       - main
-    types:
-      - completed
   workflow_dispatch:
     inputs:
       tag:
@@ -47,9 +43,7 @@ env:
 jobs:
   deploy:
     name: Build, push, and deploy
-    if: |
-      github.repository == 'Glitch-Gaming-Platform/Glitch-Games-Biomes' &&
-      (github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success')
+    if: github.repository == 'Glitch-Gaming-Platform/Glitch-Games-Biomes'
     runs-on: ubuntu-latest
     timeout-minutes: 180
     environment: production

@@ -1,36 +1,10 @@
 name: merge-ci
 
-# By triggering this test to run on main, it ensures that our caches are
-# populated and up-to-date. GitHub's current policy is that feature branche
-# cache results are not able to influence upstream branch caches, for security
-# reasons.
-#   https://docs.github.com/en/actions/using-workflows/caching-dependencies-to-speed-up-workflows
+# Manual CI entrypoint. Main branch pushes deploy through the Azure production
+# workflow directly so only one paid workflow starts for a production deploy.
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - ".bazelrc"
-      - ".bazelversion"
-      - ".github/actions/**"
-      - ".github/workflows/merge-ci.yml"
-      - "BUILD.bazel"
-      - "Cargo.*"
-      - "Dockerfile.biomes"
-      - "WORKSPACE.bazel"
-      - "b"
-      - "deploy/**"
-      - "ecs/**"
-      - "next.config.js"
-      - "package.json"
-      - "requirements.txt"
-      - "scripts/**"
-      - "server.webpack.config.*"
-      - "src/**"
-      - "tsconfig*.json"
-      - "voxeloo/**"
-      - "yarn.lock"
+  workflow_dispatch:
 
 permissions:
   id-token: write # Needed for gcloud auth.
