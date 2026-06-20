@@ -194,7 +194,7 @@ ok(
   "Docker image starts the unified Glitch local game stack script"
 );
 ok(
-  !dockerfile.includes("run-glitch-local-game-stack-v92"),
+  !/run-glitch-local-game-stack-[A-Za-z0-9_.-]+[.]sh/.test(dockerfile),
   "Docker image no longer references removed versioned stack scripts"
 );
 ok(

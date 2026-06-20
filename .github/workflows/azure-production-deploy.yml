@@ -17,11 +17,13 @@ permissions:
 
 concurrency:
   group: azure-production-deploy
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 env:
   CI: "1"
   HUSKY: "0"
+  HUSKY_SKIP_HOOKS: "1"
+  HUSKY_SKIP_INSTALL: "1"
   NEXT_TELEMETRY_DISABLED: "1"
   AZURE_CORE_OUTPUT: none
   PROD_ORIGIN: https://biomes-node-vnet.thankfulfield-9814940f.eastus.azurecontainerapps.io
@@ -82,7 +84,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: node_modules
-          key: ${{ runner.os }}-node20-node-modules-${{ hashFiles('yarn.lock') }}-production-deploy-v1
+          key: ${{ runner.os }}-node20-node-modules-${{ hashFiles('yarn.lock') }}-production-deploy-cache
           restore-keys: |
             ${{ runner.os }}-node20-node-modules-
 

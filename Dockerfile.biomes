@@ -62,7 +62,6 @@ ENV NEXT_PUBLIC_BIOMES_START_IN_HARTHMERE=0
 ENV BIOMES_SNAPSHOT_MERGE_MODE=1
 ENV NEXT_PUBLIC_BIOMES_SNAPSHOT_MERGE_MODE=1
 ENV GLITCH_ENABLE_SNAPSHOT_ASSET_SERVER=1
-# HARTHMERE_GALOIS_RUNTIME_PACKAGING_V174:
 # The local/lazy player mesh endpoint uses the Python Galois asset builder.
 # Force it to the packaged venv so production does not fall back to system
 # python, which lacks requirements.txt and the native voxeloo extension.
@@ -86,7 +85,6 @@ ENV DISTRIBUTED_NOTIFIER_KIND=shim
 ENV DISCOVERY_KIND=shim
 ENV RO_SYNC=1
 
-# GLITCH_PRODUCTION_STACK_PORT_FIX_V134
 # Keep the internal sync websocket aligned with the web same-origin proxy.
 ENV SYNC_PORT=4900
 ENV GLITCH_SYNC_WEBSOCKET_PORT=4900
@@ -162,7 +160,6 @@ RUN apt-get clean && apt-get purge && apt-get autoremove --purge -y
 
 RUN ln -sf python3 /usr/bin/python
 
-# HARTHMERE_GALOIS_RUNTIME_PACKAGING_V174:
 # voxeloo/setup.py builds the Python extension through Bazel. The repository
 # pins the Bazel version in .bazelversion, so install Bazelisk and expose it as
 # bazel for pip install ./voxeloo.
@@ -210,7 +207,6 @@ RUN set -eux; \
 RUN npm rebuild sharp bufferutil utf-8-validate segfault-handler --platform=linux --arch=x64 --foreground-scripts \
     && node -e "for (const m of ['sharp','uWebSockets.js','bufferutil','utf-8-validate','segfault-handler']) { require(m); console.log('OK native module', m, process.platform, process.arch); }"
 
-# HARTHMERE_GALOIS_RUNTIME_PACKAGING_V179:
 # Generated local player meshes call src/galois/py/assets/build.py, which imports
 # requirements.txt packages and the native voxeloo Python extension. Production
 # must package and verify that toolchain before Docker packaging can pass.
@@ -224,7 +220,6 @@ COPY --chown=nextjs:nodejs requirements.txt WORKSPACE.bazel BUILD.bazel Cargo.lo
 # tree is copied again later for the runtime.
 COPY --chown=nextjs:nodejs src/bazel_utils/ src/bazel_utils/
 COPY --chown=nextjs:nodejs voxeloo/ voxeloo/
-# HARTHMERE_GALOIS_RUNTIME_PACKAGING_V180:
 # voxeloo/setup.py copies from /app/bazel-bin/..., so /app itself must be
 # writable by nextjs; otherwise Bazel builds py_ext.so but cannot create
 # the bazel-bin convenience symlink and pip install ./voxeloo fails.
