@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1.7
 FROM --platform=linux/amd64 docker.io/curlimages/curl:latest AS linkerd
-ARG LINKERD_AWAIT_VERSION=v0.2.7
-RUN curl -sSLo /tmp/linkerd-await https://github.com/linkerd/linkerd-await/releases/download/release%2F${LINKERD_AWAIT_VERSION}/linkerd-await-${LINKERD_AWAIT_VERSION}-amd64 \
+ARG LINKERD_AWAIT_RELEASE=0.2.7
+RUN curl -sSLo /tmp/linkerd-await https://github.com/linkerd/linkerd-await/releases/download/release%2Fv${LINKERD_AWAIT_RELEASE}/linkerd-await-v${LINKERD_AWAIT_RELEASE}-amd64 \
     && chmod 755 /tmp/linkerd-await
 
 FROM --platform=linux/amd64 ubuntu:22.04 AS jemalloc
@@ -134,9 +134,9 @@ for (const file of ['package.json', 'yarn.lock']) {
 }
 NODE
 
-RUN --mount=type=cache,id=glitch-yarn-cache-v1,target=/usr/local/share/.cache/yarn/v6,sharing=locked \
+RUN --mount=type=cache,id=glitch-yarn-cache,target=/usr/local/share/.cache/yarn,sharing=locked \
     set -eux; \
-    yarn config set cache-folder /usr/local/share/.cache/yarn/v6; \
+    yarn config set cache-folder /usr/local/share/.cache/yarn; \
     yarn config set ignore-scripts true; \
     YARN_IGNORE_SCRIPTS=1 npm_config_ignore_scripts=true yarn install --ignore-scripts --frozen-lockfile --non-interactive --production=false; \
     yarn config delete ignore-scripts

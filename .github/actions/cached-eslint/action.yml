@@ -10,11 +10,11 @@ runs:
   using: "composite"
   steps:
     - name: Restore .eslintcache
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       id: eslintcache-cache
       with:
         path: ./.next/cache/eslint
-        key: ${{ runner.os }}-eslintcache-${{ hashFiles('./yarn.lock') }}-v1
+        key: ${{ runner.os }}-eslintcache-${{ hashFiles('./yarn.lock') }}
         # Start from an older cache if we don't have an exact match.
         restore-keys: |
           ${{ runner.os }}-eslintcache-

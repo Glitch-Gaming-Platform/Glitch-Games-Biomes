@@ -22,13 +22,13 @@ runs:
       shell: bash
 
     - name: Restore pip install cache
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       id: pip-cache
       with:
         path: ./.venv
         # We reference '.venv/pyvenv.cfg' in the key here since it contains
         # the Python version that we're using.
-        key: ${{ runner.os }}-pip-${{ hashFiles('.venv/pyvenv.cfg') }}-${{ hashFiles('./requirements.txt', './voxeloo/**') }}-v1
+        key: ${{ runner.os }}-pip-${{ hashFiles('.venv/pyvenv.cfg') }}-${{ hashFiles('./requirements.txt', './voxeloo/**') }}
 
     - run: pip install wheel
       if: steps.pip-cache.outputs.cache-hit != 'true'

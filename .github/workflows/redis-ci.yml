@@ -20,7 +20,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
       - name: git lfs pull
         uses: ./.github/actions/cached-lfs-pull
       - name: yarn install

@@ -10,6 +10,27 @@ on:
   push:
     branches:
       - main
+    paths:
+      - ".bazelrc"
+      - ".bazelversion"
+      - ".github/actions/**"
+      - ".github/workflows/merge-ci.yml"
+      - "BUILD.bazel"
+      - "Cargo.*"
+      - "Dockerfile.biomes"
+      - "WORKSPACE.bazel"
+      - "b"
+      - "deploy/**"
+      - "ecs/**"
+      - "next.config.js"
+      - "package.json"
+      - "requirements.txt"
+      - "scripts/**"
+      - "server.webpack.config.*"
+      - "src/**"
+      - "tsconfig*.json"
+      - "voxeloo/**"
+      - "yarn.lock"
 
 permissions:
   id-token: write # Needed for gcloud auth.
@@ -20,7 +41,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: git lfs pull
         uses: ./.github/actions/cached-lfs-pull
       - name: yarn install

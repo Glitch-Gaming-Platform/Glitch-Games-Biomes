@@ -1,11 +1,11 @@
 FROM --platform=linux/amd64 docker.io/curlimages/curl:latest as linkerd
-ARG LINKERD_AWAIT_VERSION=v0.2.7
-RUN curl -sSLo /tmp/linkerd-await https://github.com/linkerd/linkerd-await/releases/download/release%2F${LINKERD_AWAIT_VERSION}/linkerd-await-${LINKERD_AWAIT_VERSION}-amd64 && \
+ARG LINKERD_AWAIT_RELEASE=0.2.7
+RUN curl -sSLo /tmp/linkerd-await https://github.com/linkerd/linkerd-await/releases/download/release%2Fv${LINKERD_AWAIT_RELEASE}/linkerd-await-v${LINKERD_AWAIT_RELEASE}-amd64 && \
         chmod 755 /tmp/linkerd-await
 
 FROM --platform=linux/amd64 docker.io/curlimages/curl:latest as dcg
-ARG VERSION=2.1.6
-RUN curl -fsSL "https://github.com/GoogleCloudPlatform/docker-credential-gcr/releases/download/v${VERSION}/docker-credential-gcr_linux_amd64-${VERSION}.tar.gz" \
+ARG DOCKER_CREDENTIAL_GCR_RELEASE=2.1.6
+RUN curl -fsSL "https://github.com/GoogleCloudPlatform/docker-credential-gcr/releases/download/v${DOCKER_CREDENTIAL_GCR_RELEASE}/docker-credential-gcr_linux_amd64-${DOCKER_CREDENTIAL_GCR_RELEASE}.tar.gz" \
         | tar xz docker-credential-gcr -C /tmp \
         && chmod +x /tmp/docker-credential-gcr
 
@@ -51,12 +51,12 @@ RUN apt-get update --fix-missing && apt-get -y install \
         python3-dev
 
 # Install Bazel.
-ARG BAZEL_VERSION=6.0.0
+ARG BAZEL_RELEASE=6.0.0
 RUN curl -fsSL https://bazel.build/bazel-release.pub.gpg | gpg --dearmor > ${HOME}/bazel-archive-keyring.gpg && \
         mv ${HOME}/bazel-archive-keyring.gpg /usr/share/keyrings && \
         echo "deb [arch=amd64 signed-by=/usr/share/keyrings/bazel-archive-keyring.gpg] https://storage.googleapis.com/bazel-apt stable jdk1.8" | tee /etc/apt/sources.list.d/bazel.list && \
-        apt-get update && apt-get -y install bazel-${BAZEL_VERSION} && \
-        ln -s $(which bazel-${BAZEL_VERSION}) /usr/bin/bazel
+        apt-get update && apt-get -y install bazel-${BAZEL_RELEASE} && \
+        ln -s $(which bazel-${BAZEL_RELEASE}) /usr/bin/bazel
 
 RUN apt-get clean && apt-get purge && apt-get autoremove --purge -y
 
@@ -84,7 +84,8 @@ RUN pip3 uninstall crcmod && \
 # Install nvm and node.
 RUN mkdir ${NVM_DIR}
 ENV NODE_VERSION 20.0.0
-RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.1/install.sh | bash \
+ARG NVM_INSTALL_RELEASE=0.39.1
+RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v${NVM_INSTALL_RELEASE}/install.sh | bash \
         && . "$NVM_DIR/nvm.sh"  \
         && nvm install ${NODE_VERSION} \
         && nvm alias default ${NODE_VERSION} \

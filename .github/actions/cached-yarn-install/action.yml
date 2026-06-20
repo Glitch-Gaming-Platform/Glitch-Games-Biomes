@@ -9,7 +9,7 @@ branding:
 runs:
   using: "composite"
   steps:
-    - uses: actions/setup-node@v3
+    - uses: actions/setup-node@v4
       with:
         node-version: "20"
 
@@ -25,11 +25,11 @@ runs:
       shell: bash
 
     - name: Restore node_modules cache
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       id: node_modules-cache
       with:
         path: ./node_modules
-        key: ${{ runner.os }}-${{ hashFiles('.current_node_version') }}-node_modules-${{ hashFiles('./yarn.lock') }}-v1
+        key: ${{ runner.os }}-${{ hashFiles('.current_node_version') }}-node_modules-${{ hashFiles('./yarn.lock') }}
         # Start from an older cache if we don't have an exact match.
         restore-keys: |
           ${{ runner.os }}-${{ hashFiles('.current_node_version') }}-

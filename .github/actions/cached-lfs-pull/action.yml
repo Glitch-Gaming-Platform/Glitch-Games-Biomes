@@ -21,11 +21,11 @@ runs:
       shell: bash
 
     - name: Restore LFS cache
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       id: lfs-cache
       with:
         path: .git/lfs
-        key: lfs-${{ hashFiles('.lfs-assets-id') }}-v1
+        key: lfs-${{ hashFiles('.lfs-assets-id') }}
 
     - name: Remove cache key file
       run: rm .lfs-assets-id
@@ -45,7 +45,7 @@ runs:
             if [[ TRY_COUNT -ge 3 ]]; then
                 exit 1
             fi
-            bash -c "! [ $(git status --porcelain=v1 2>/dev/null | wc -l) == '0' ]" || break
+            bash -c "! [ $(git status --porcelain 2>/dev/null | wc -l) == '0' ]" || break
             echo "Expected 'git status' to show no modified files, instead:"
             git status
             echo

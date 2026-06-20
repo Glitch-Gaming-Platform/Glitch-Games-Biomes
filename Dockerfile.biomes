@@ -1,6 +1,6 @@
 FROM docker.io/curlimages/curl:latest AS linkerd
-ARG LINKERD_AWAIT_VERSION=v0.2.7
-RUN curl -sSLo /tmp/linkerd-await https://github.com/linkerd/linkerd-await/releases/download/release%2F${LINKERD_AWAIT_VERSION}/linkerd-await-${LINKERD_AWAIT_VERSION}-amd64 && \
+ARG LINKERD_AWAIT_RELEASE=0.2.7
+RUN curl -sSLo /tmp/linkerd-await https://github.com/linkerd/linkerd-await/releases/download/release%2Fv${LINKERD_AWAIT_RELEASE}/linkerd-await-v${LINKERD_AWAIT_RELEASE}-amd64 && \
         chmod 755 /tmp/linkerd-await
 
 FROM ubuntu:22.04 AS jemalloc
@@ -50,7 +50,6 @@ ENV GLITCH_SKIP_PROD_TRAY=1
 
 ENV SKIP_PROD_LOAD=true
 ENV SKIP_MISSING_ASSET_CHECK=true
-ENV ES_LOCAL_DEV_BACKEND_VOXEL_TREES_V65=1
 ENV BIOMES_ENABLE_HARTHMERE_EXTRA_TOWN=0
 ENV BIOMES_FORCE_LOCAL_DEV_TOWN=0
 ENV BIOMES_CREATE_LOCAL_DEV_TERRAIN=1
@@ -163,9 +162,9 @@ RUN ln -sf python3 /usr/bin/python
 # voxeloo/setup.py builds the Python extension through Bazel. The repository
 # pins the Bazel version in .bazelversion, so install Bazelisk and expose it as
 # bazel for pip install ./voxeloo.
-ARG BAZELISK_VERSION=v1.19.0
+ARG BAZELISK_RELEASE=1.19.0
 RUN curl -fsSL -o /usr/local/bin/bazelisk \
-      https://github.com/bazelbuild/bazelisk/releases/download/${BAZELISK_VERSION}/bazelisk-linux-amd64 \
+      https://github.com/bazelbuild/bazelisk/releases/download/v${BAZELISK_RELEASE}/bazelisk-linux-amd64 \
     && chmod 755 /usr/local/bin/bazelisk \
     && ln -sf /usr/local/bin/bazelisk /usr/local/bin/bazel \
     && bazel --version
