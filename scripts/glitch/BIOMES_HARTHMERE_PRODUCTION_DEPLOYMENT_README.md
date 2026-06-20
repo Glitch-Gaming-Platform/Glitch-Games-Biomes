@@ -99,6 +99,17 @@ hosted runners cannot directly reach the private production Redis host. Use an
 Azure/VNet runner and the local deploy command when a full post-deploy world
 reconciliation is required.
 
+Every deployment also pins the Glitch title identity used by the runtime:
+
+```text
+GLITCH_TITLE_ID=42de534c-600f-4228-af9e-b69faef94cce
+GLITCH_API_BASE_URL=https://api.glitch.fun/api
+GLITCH_TITLE_TOKEN=secretref:glitch-title-token
+```
+
+The title token lives only as the Azure Container App secret
+`glitch-title-token`; it is not stored in GitHub or source control.
+
 The validated production image was:
 
 ```text

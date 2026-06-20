@@ -156,6 +156,22 @@ ok(
   "Next build bakes the production web origin"
 );
 ok(
+  script.includes('GLITCH_TITLE_ID="${GLITCH_TITLE_ID:-42de534c-600f-4228-af9e-b69faef94cce}"'),
+  "deploy has an explicit default Glitch title id"
+);
+ok(
+  script.includes('GLITCH_API_BASE_URL="${GLITCH_API_BASE_URL:-https://api.glitch.fun/api}"'),
+  "deploy has an explicit Glitch API base URL"
+);
+ok(
+  script.includes('NEXT_PUBLIC_GLITCH_TITLE_ID="$GLITCH_TITLE_ID"'),
+  "Next build and Azure runtime include the Glitch title id for client identity"
+);
+ok(
+  script.includes("GLITCH_TITLE_TOKEN=secretref:glitch-title-token"),
+  "production app uses the Azure Container App title-token secret reference"
+);
+ok(
   script.includes('--platform "$DOCKER_PLATFORM"'),
   "Docker build is production-platform aware"
 );

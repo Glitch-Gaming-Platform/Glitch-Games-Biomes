@@ -100,6 +100,8 @@ if [ "$STOP_BEFORE_DOCKER_BUILD" = "1" ] && [ "$RUN_LOCAL_SMOKE" = "1" ]; then
 fi
 
 PROD_ORIGIN="${PROD_ORIGIN:-https://biomes-node-vnet.thankfulfield-9814940f.eastus.azurecontainerapps.io}"
+GLITCH_TITLE_ID="${GLITCH_TITLE_ID:-42de534c-600f-4228-af9e-b69faef94cce}"
+GLITCH_API_BASE_URL="${GLITCH_API_BASE_URL:-https://api.glitch.fun/api}"
 ACR_SERVER="${ACR_SERVER:-glitchgames.azurecr.io}"
 IMAGE_REPO="${IMAGE_REPO:-biomes-node}"
 IMAGE="${ACR_SERVER}/${IMAGE_REPO}:${TAG}"
@@ -307,7 +309,7 @@ snapshot_backup_hash() {
 }
 
 production_snapshot_hash_key() {
-  printf 'biomes:%s:snapshot_hash' "${GLITCH_TITLE_ID:-42de534c-600f-4228-af9e-b69faef94cce}"
+  printf 'biomes:%s:snapshot_hash' "$GLITCH_TITLE_ID"
 }
 
 production_redis_snapshot_hash() {
@@ -1099,8 +1101,11 @@ build_artifacts() {
   rm -rf .next/cache node_modules/.cache/webpack
   GLITCH_RUNTIME=1 \
   GLITCH_LOCAL_ASSETS=1 \
+  GLITCH_TITLE_ID="$GLITCH_TITLE_ID" \
+  GLITCH_API_BASE_URL="$GLITCH_API_BASE_URL" \
   NEXT_PUBLIC_GLITCH_RUNTIME=1 \
   NEXT_PUBLIC_GLITCH_LOCAL_ASSETS=1 \
+  NEXT_PUBLIC_GLITCH_TITLE_ID="$GLITCH_TITLE_ID" \
   NEXT_PUBLIC_GLITCH_SYNC_BASE_URL="$PROD_ORIGIN" \
   NEXT_PUBLIC_BIOMES_ENABLE_HARTHMERE_EXTRA_TOWN=0 \
   NEXT_PUBLIC_BIOMES_FORCE_LOCAL_DEV_TOWN=0 \
@@ -1214,8 +1219,8 @@ smoke_local_image() {
     -p "${LOCAL_WEB_PORT}:3000" \
     -p "${LOCAL_SYNC_PORT}:4900" \
     -e GLITCH_TITLE_TOKEN="$GLITCH_TITLE_TOKEN" \
-    -e GLITCH_TITLE_ID="${GLITCH_TITLE_ID:-42de534c-600f-4228-af9e-b69faef94cce}" \
-    -e GLITCH_API_BASE_URL="${GLITCH_API_BASE_URL:-https://api.glitch.fun/api}" \
+    -e GLITCH_TITLE_ID="$GLITCH_TITLE_ID" \
+    -e GLITCH_API_BASE_URL="$GLITCH_API_BASE_URL" \
     -e GLITCH_REDIS_MODE=external \
     -e REDIS_HOST="$LOCAL_REDIS_CONTAINER" \
     -e GLITCH_REDIS_HOST="$LOCAL_REDIS_CONTAINER" \
@@ -1283,6 +1288,9 @@ push_and_deploy() {
     --max-replicas "$AZURE_MAX_REPLICAS" \
     --set-env-vars \
       GLITCH_TITLE_TOKEN=secretref:glitch-title-token \
+      GLITCH_TITLE_ID="$GLITCH_TITLE_ID" \
+      GLITCH_API_BASE_URL="$GLITCH_API_BASE_URL" \
+      NEXT_PUBLIC_GLITCH_TITLE_ID="$GLITCH_TITLE_ID" \
       GLITCH_REDIS_MODE=external \
       REDIS_HOST="$PROD_REDIS_HOST" \
       GLITCH_REDIS_HOST="$PROD_REDIS_HOST" \
