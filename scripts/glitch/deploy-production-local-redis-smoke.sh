@@ -1064,8 +1064,80 @@ ensure_generated_ts_deps() {
   ./b --no-check-ts-deps ts-deps build
 }
 
+count_files_under() {
+  local dir="$1"
+  if [ ! -d "$dir" ]; then
+    printf '0\n'
+    return
+  fi
+  find "$dir" -type f | wc -l | tr -d '[:space:]'
+}
+
+count_harthmere_runtime_assets() {
+  local dir="public/assets/harthmere"
+  if [ ! -d "$dir" ]; then
+    printf '0\n'
+    return
+  fi
+  find "$dir" -path "$dir/_source" -prune -o -type f -print | wc -l | tr -d '[:space:]'
+}
+
+ensure_harthmere_runtime_assets() {
+  local runtime_count
+  runtime_count="$(count_harthmere_runtime_assets)"
+  if [ "$runtime_count" -ge 6500 ]; then
+    log "Harthmere runtime assets are present ($runtime_count files)."
+    return
+  fi
+
+  if command -v git >/dev/null 2>&1 && git lfs version >/dev/null 2>&1; then
+    log "Refreshing Git LFS Harthmere runtime assets."
+    git lfs pull --include="public/assets/harthmere/**" --exclude=""
+    runtime_count="$(count_harthmere_runtime_assets)"
+  fi
+
+  if [ "$runtime_count" -lt 6500 ]; then
+    echo "ERROR Harthmere runtime assets are incomplete ($runtime_count files)." >&2
+    echo "Run git lfs pull --include=\"public/assets/harthmere/**\" --exclude=\"\" and retry." >&2
+    exit 1
+  fi
+}
+
+ensure_snapshot_bucket_assets() {
+  local bucket_count
+  bucket_count="$(count_files_under public/buckets)"
+  if [ -d public/buckets/biomes-static ] &&
+     [ -d public/buckets/biomes-bikkie ] &&
+     [ -f snapshot_backup.json ] &&
+     [ "$bucket_count" -ge 15000 ]; then
+    log "Snapshot bucket mirror is present ($bucket_count files)."
+    return
+  fi
+
+  log "Installing production data snapshot bucket mirror."
+  ./b --no-check-ts-deps data-snapshot uninstall
+  ./b --no-check-ts-deps data-snapshot pull
+
+  bucket_count="$(count_files_under public/buckets)"
+  if [ ! -d public/buckets/biomes-static ] ||
+     [ ! -d public/buckets/biomes-bikkie ] ||
+     [ ! -f snapshot_backup.json ] ||
+     [ "$bucket_count" -lt 15000 ]; then
+    echo "ERROR production data snapshot buckets are incomplete after hydration ($bucket_count files)." >&2
+    echo "Check BIOMES_DATA_SNAPSHOT_URL/BIOMES_DATA_SNAPSHOT_SHA256 or rerun ./b --no-check-ts-deps data-snapshot pull." >&2
+    exit 1
+  fi
+}
+
+ensure_production_asset_inputs() {
+  log "Preparing production asset inputs."
+  ensure_harthmere_runtime_assets
+  ensure_snapshot_bucket_assets
+}
+
 run_build_checks() {
   log "Running production source guardrails."
+  ensure_production_asset_inputs
   ensure_generated_ts_deps
   node scripts/harthmere/test-harthmere-world-chat-live.cjs .
   BIOMES_PROD_STREAM_REDIS_CHECK=0 node scripts/harthmere/test-harthmere-stream-workers-production.cjs .

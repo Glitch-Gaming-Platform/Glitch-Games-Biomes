@@ -25,6 +25,14 @@ const gitDepsAction = fs.readFileSync(
   path.join(root, ".github/actions/configure-github-git-deps/action.yml"),
   "utf8"
 );
+const snapshotBucketCheck = fs.readFileSync(
+  path.join(
+    root,
+    "scripts/harthmere/check-biomes-snapshot-bucket-conversion.cjs"
+  ),
+  "utf8"
+);
+const runBuildChecks = script.slice(script.indexOf("run_build_checks()"));
 
 let failed = false;
 function ok(condition, message) {
@@ -129,8 +137,25 @@ ok(
   "script generates TypeScript deps before sweeping API route imports"
 );
 ok(
+  script.includes("ensure_production_asset_inputs") &&
+    script.includes("./b --no-check-ts-deps data-snapshot pull") &&
+    script.includes("[ -f snapshot_backup.json ]"),
+  "script hydrates production asset inputs before source guardrails"
+);
+ok(
+  runBuildChecks.indexOf("ensure_production_asset_inputs") <
+    runBuildChecks.indexOf("ensure_generated_ts_deps"),
+  "script prepares production assets before generated TypeScript deps and guardrails"
+);
+ok(
   deployWorkflow.includes("npm install -g yarn@1 @bazel/bazelisk"),
   "production workflow installs Bazelisk before deploy script generation checks"
+);
+ok(
+  deployWorkflow.includes("Restore production asset cache") &&
+    deployWorkflow.includes("public/buckets") &&
+    deployWorkflow.includes("snapshot_backup.json"),
+  "production workflow caches hydrated snapshot bucket assets"
 );
 ok(
   deployWorkflow.includes("./.github/actions/configure-github-git-deps"),
@@ -197,6 +222,16 @@ ok(
 ok(
   script.includes("check-biomes-snapshot-bucket-conversion.cjs"),
   "script verifies snapshot bucket asset conversion before packaging"
+);
+ok(
+  snapshotBucketCheck.includes('skipDirNames: new Set(["_source"])'),
+  "snapshot bucket guardrail ignores local source-pack files in runtime asset counts"
+);
+ok(
+  snapshotBucketCheck.includes("harthmereFiles.length >= 6500") &&
+    snapshotBucketCheck.includes("(extCounts.obj || 0) >= 480") &&
+    snapshotBucketCheck.includes("(extCounts.png || 0) >= 1300"),
+  "snapshot bucket guardrail thresholds match clean checkout runtime assets"
 );
 ok(
   script.includes('NEXT_PUBLIC_GLITCH_SYNC_BASE_URL="$PROD_ORIGIN"'),
