@@ -80,6 +80,7 @@ GitHub `production` environment stores these values as environment secrets:
 - `AZURE_CLIENT_ID`
 - `AZURE_TENANT_ID`
 - `AZURE_SUBSCRIPTION_ID`
+- `BIOMES_DEPENDENCY_GITHUB_TOKEN` for private Git dependencies in `yarn.lock`
 
 The Azure identity is `biomes-github-actions-prod-deploy`, federated to:
 
