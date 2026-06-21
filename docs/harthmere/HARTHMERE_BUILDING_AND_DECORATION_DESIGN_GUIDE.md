@@ -150,6 +150,8 @@ Windows can be voxel cutouts, shaped blocks, or renderer dressing, but they must
 
 Furniture should make the building read as its profession while preserving the route graph.
 
+For business outposts, voxel terrain owns only the shell, floor, roof, stairs, doors, windows, safe-ground pad, and tiny access anchors. Interior furniture and decor should be runtime visual props using the shared GLTF/OBJ/FBX furniture library, with non-blocking collision unless a route audit explicitly proves the blocker belongs off the customer path. Do not build counters, shelves, beds, benches, workbenches, racks, storage, stock piles, or NPC silhouettes out of terrain voxels; they read as raw blocks in play and can trap customers or players.
+
 Use supported, grounded furniture:
 
 - Tables, counters, benches, cabinets, shelves, storage chests, bookcases, lamps, candles, crates, beds, rugs, planters, machines, workstations, and signs.

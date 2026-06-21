@@ -1,5 +1,132 @@
+import { readHarthmereGlitchIdentity } from "@/client/game/glitch/harthmere_glitch_identity";
+
 export const HARTHMERE_LIVE_READ_TIMEOUT_MS = 8_000;
 export const HARTHMERE_LIVE_MUTATION_TIMEOUT_MS = 15_000;
+
+const HARTHMERE_LIVE_API_PATH = "/api/harthmere/live_mode";
+const HARTHMERE_LIVE_INSTALL_HEADER = "X-Glitch-Install-Id";
+const HARTHMERE_LIVE_INSTALL_STORAGE_KEYS = [
+  "biomes.glitch.installId",
+  "biomes.localDev.harthmere.installId",
+] as const;
+
+function isHarthmereLiveApiPath(pathname: string) {
+  return (
+    pathname === HARTHMERE_LIVE_API_PATH ||
+    pathname.startsWith(`${HARTHMERE_LIVE_API_PATH}_`)
+  );
+}
+
+function currentWindowLocation() {
+  return typeof window !== "undefined" ? window.location : undefined;
+}
+
+function currentLocationSearch() {
+  return currentWindowLocation()?.search ?? "";
+}
+
+function installIdFromSearch(search: string | undefined) {
+  const params = new URLSearchParams(search ?? "");
+  return params.get("install_id") ?? params.get("installId") ?? undefined;
+}
+
+function storedHarthmereInstallId() {
+  if (
+    typeof window === "undefined" ||
+    typeof window.localStorage === "undefined"
+  ) {
+    return undefined;
+  }
+  for (const key of HARTHMERE_LIVE_INSTALL_STORAGE_KEYS) {
+    const value = window.localStorage.getItem(key)?.trim();
+    if (value) {
+      return value;
+    }
+  }
+  return undefined;
+}
+
+function resolveHarthmereLiveInstallId(url: URL) {
+  return (
+    installIdFromSearch(url.search) ??
+    installIdFromSearch(currentLocationSearch()) ??
+    readHarthmereGlitchIdentity()?.installId ??
+    storedHarthmereInstallId()
+  );
+}
+
+function urlBaseForHarthmereLiveFetch() {
+  const location = currentWindowLocation();
+  return location?.href ?? "http://localhost/";
+}
+
+function formatDecoratedHarthmereLiveUrl(input: RequestInfo | URL, url: URL) {
+  if (input instanceof URL) {
+    return url;
+  }
+  const raw =
+    typeof input === "string" ? input : isRequestInput(input) ? input.url : "";
+  if (/^[a-z][a-z0-9+.-]*:/i.test(raw)) {
+    return url.toString();
+  }
+  return `${url.pathname}${url.search}${url.hash}`;
+}
+
+function isRequestInput(input: unknown): input is Request {
+  return typeof Request !== "undefined" && input instanceof Request;
+}
+
+export function prepareHarthmereLiveFetchRequest(
+  input: RequestInfo | URL,
+  init: RequestInit & { timeoutMs?: number } = {}
+): { input: RequestInfo | URL; init: RequestInit & { timeoutMs?: number } } {
+  const rawUrl =
+    typeof input === "string"
+      ? input
+      : input instanceof URL
+      ? input.toString()
+      : isRequestInput(input)
+      ? input.url
+      : "";
+  let url: URL;
+  try {
+    url = new URL(rawUrl, urlBaseForHarthmereLiveFetch());
+  } catch {
+    return { input, init };
+  }
+  if (!isHarthmereLiveApiPath(url.pathname)) {
+    return { input, init };
+  }
+  const installId = resolveHarthmereLiveInstallId(url);
+  if (!installId) {
+    return { input, init };
+  }
+
+  if (!url.searchParams.has("install_id")) {
+    url.searchParams.set("install_id", installId);
+  }
+
+  const nextHeaders = new Headers(
+    init.headers ??
+      (isRequestInput(input) ? input.headers : undefined)
+  );
+  if (!nextHeaders.has(HARTHMERE_LIVE_INSTALL_HEADER)) {
+    nextHeaders.set(HARTHMERE_LIVE_INSTALL_HEADER, installId);
+  }
+  const nextInit = { ...init, headers: nextHeaders };
+
+  if (isRequestInput(input)) {
+    return {
+      input: new Request(formatDecoratedHarthmereLiveUrl(input, url), input),
+      init: nextInit,
+    };
+  }
+
+  return {
+    input: formatDecoratedHarthmereLiveUrl(input, url),
+    init: nextInit,
+  };
+}
 
 async function rawHarthmereLiveFetchWithTimeout(
   fetchImpl: typeof fetch,
@@ -108,6 +235,9 @@ export function coalescedHarthmereLiveFetch(
   init: RequestInit & { timeoutMs?: number } = {},
   options: { nowMs?: () => number; ttlMs?: number } = {}
 ): Promise<Response> {
+  const prepared = prepareHarthmereLiveFetchRequest(input, init);
+  input = prepared.input;
+  init = prepared.init;
   const url =
     typeof input === "string"
       ? input

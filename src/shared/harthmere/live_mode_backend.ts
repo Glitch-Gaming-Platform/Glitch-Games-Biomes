@@ -576,7 +576,7 @@ export function createHarthmereServerMuckCombatEntitySnapshots(
             patrolRadius: 8,
             aggroRange: entityKind === "hex" ? 12 : 10.5,
             leashRange: 34,
-            requiresLineOfSight: false,
+            requiresLineOfSight: true,
             aiEnabled: true,
             retaliatesWhenAttacked: true,
             animationState: "idle",
@@ -635,7 +635,7 @@ export function createHarthmereServerMuckCombatEntitySnapshots(
             patrolRadius: 6,
             aggroRange: 0,
             leashRange: 16,
-            requiresLineOfSight: false,
+            requiresLineOfSight: true,
             aiEnabled: true,
             retaliatesWhenAttacked: true,
             // Hunting any of them yields meat; larger animals drop more.
@@ -7889,6 +7889,8 @@ export function reduceHarthmereLiveModeBackendState(
     "request_world_placement",
     "request_guild_mutation",
     "request_economy_mutation",
+    "request_farming_action",
+    "request_care_loop_action",
     "request_medical_action",
   ]);
 
@@ -13559,8 +13561,11 @@ export function reduceHarthmereLiveModeBackendState(
         atMs: nowMs,
         respawnAvailableAtMs:
           nowMs +
-          Math.max(0, payloadNumber(envelope, "respawnDelayMs") ?? 5_000),
+            Math.max(0, payloadNumber(envelope, "respawnDelayMs") ?? 5_000),
       };
+      touchedModels.add("combat_state");
+      touchedModels.add("player_status");
+      touchedModels.add("death_state");
       touchedModels.add("death_record");
       break;
     case "request_environment_damage": {

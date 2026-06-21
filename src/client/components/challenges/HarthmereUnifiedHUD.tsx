@@ -1637,7 +1637,7 @@ function HarthmereEnemyHealthBarsHUD() {
           visible &&
           health.isAttackable !== false &&
           health.showUntilMs >= now &&
-          (selected || damaged || recentlyDamaged),
+          (selected || health.isAttackable || damaged || recentlyDamaged),
       };
     })
     .filter((row) => row.show);

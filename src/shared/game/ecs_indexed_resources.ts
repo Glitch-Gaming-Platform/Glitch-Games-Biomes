@@ -7,9 +7,9 @@ import {
   ProtectionByTeamIdSelector,
   RobotsByCreatorIdSelector,
   RobotsByLandmarkNameSelector,
-  TerrainShardSelector,
 } from "@/shared/ecs/gen/selectors";
 import type { KeyIndex } from "@/shared/ecs/key_index";
+import { createComponentSelector } from "@/shared/ecs/selectors/helper";
 import type { SpecifiedComponentSelector } from "@/shared/ecs/selectors/helper";
 import type { Table } from "@/shared/ecs/table";
 import type { ShardId } from "@/shared/game/shard";
@@ -57,6 +57,14 @@ export class EcsIndexedResource<
   }
 }
 
+export const TerrainShardByShardIdSelector = createComponentSelector(
+  "terrain_shard_by_shard_id_selector",
+  "box",
+  "shard_seed",
+  "shard_diff",
+  "shard_shapes"
+);
+
 export interface IndexedEcsResourcePaths {
   "/ecs/terrain": PathDef<
     [ShardId],
@@ -76,7 +84,11 @@ export interface IndexedEcsResourcePaths {
   >;
 }
 const indexedEcsResourceSelectors = [
-  { path: "/ecs/terrain", selector: TerrainShardSelector, singular: true },
+  {
+    path: "/ecs/terrain",
+    selector: TerrainShardByShardIdSelector,
+    singular: true,
+  },
   {
     path: "/ecs/robots_by_creator_id",
     selector: RobotsByCreatorIdSelector,

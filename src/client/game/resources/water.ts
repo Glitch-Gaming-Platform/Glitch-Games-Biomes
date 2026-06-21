@@ -97,6 +97,7 @@ async function genWaterMesh(
   if (!shard) {
     return;
   }
+  const shardOrigin = shard.box.v0;
 
   // Work out the shard center for async task prioritization.
   const center = Shards.shardCenter(shardId);
@@ -127,7 +128,7 @@ async function genWaterMesh(
     const surfaceTensor = timeCode("water:toWaterSurface", () => {
       return voxeloo.toWaterSurface(
         tensor.cpp,
-        shard.box,
+        shardOrigin,
         (shard) => waterLoader(shard)?.cpp
       );
     });
@@ -138,7 +139,7 @@ async function genWaterMesh(
         surfaceTensor,
         (shard) => isomorphismLoader(shard)?.cpp,
         (shard) => waterLoader(shard)?.cpp,
-        shard.box
+        shardOrigin
       );
     });
 
@@ -148,7 +149,7 @@ async function genWaterMesh(
     const lightBuffer = timeCode("water:toLightBuffer", () => {
       return voxeloo.toWaterLightingBuffer(
         surfaceTensor,
-        shard.box,
+        shardOrigin,
         (shard) => isomorphismLoader(shard)?.cpp,
         (shard) => skyOcclusionLoader(shard)?.cpp,
         (shard) => irradianceLoader(shard)?.cpp

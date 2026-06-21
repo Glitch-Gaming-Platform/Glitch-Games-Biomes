@@ -2,14 +2,49 @@ import { fetchSocialMetadata, fetchTileMetadata } from "@/server/web/db/map";
 import { biomesApiHandler } from "@/server/web/util/api_middleware";
 import type { ReadonlyWorldMetadata } from "@/shared/ecs/gen/components";
 import { WorldMetadataId } from "@/shared/ecs/ids";
+import type { ReadonlyAABB, ReadonlyVec3 } from "@/shared/math/types";
 import type { WorldMapMetadataResponse } from "@/shared/types";
 import { zWorldMapMetadataResponse } from "@/shared/types";
 
-function localFallbackMapMetadata(
+const LOCAL_FALLBACK_MAP_AABB: ReadonlyAABB = [
+  [-2048, -256, -2048],
+  [2048, 512, 2048],
+];
+
+function isFiniteVec3(value: unknown): value is ReadonlyVec3 {
+  return (
+    Array.isArray(value) &&
+    value.length >= 3 &&
+    Number.isFinite(value[0]) &&
+    Number.isFinite(value[1]) &&
+    Number.isFinite(value[2])
+  );
+}
+
+function normalizeWorldMetadataAabb(
+  worldMetadata?: ReadonlyWorldMetadata
+): ReadonlyAABB {
+  const aabb = worldMetadata?.aabb as unknown;
+  if (Array.isArray(aabb) && isFiniteVec3(aabb[0]) && isFiniteVec3(aabb[1])) {
+    return [aabb[0], aabb[1]];
+  }
+  if (
+    aabb &&
+    typeof aabb === "object" &&
+    "v0" in aabb &&
+    "v1" in aabb &&
+    isFiniteVec3(aabb.v0) &&
+    isFiniteVec3(aabb.v1)
+  ) {
+    return [aabb.v0, aabb.v1];
+  }
+  return LOCAL_FALLBACK_MAP_AABB;
+}
+
+export function localFallbackMapMetadata(
   worldMetadata?: ReadonlyWorldMetadata
 ): Omit<WorldMapMetadataResponse, "socialData"> {
-  const v0 = worldMetadata?.aabb ?? [-2048, -256, -2048];
-  const v1 = worldMetadata?.aabb ?? [2048, 512, 2048];
+  const [v0, v1] = normalizeWorldMetadataAabb(worldMetadata);
 
   let x0 = Math.min(v0[0], v1[0]);
   let x1 = Math.max(v0[0], v1[0]);

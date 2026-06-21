@@ -47,6 +47,19 @@ const worldVoxelsRemoved = createCounter({
   help: "Number of voxels removed from the world",
 });
 
+export function blockDropBagForEdit(
+  terrainId: TerrainID,
+  gameStateContext: GameStateContext,
+  roll: typeof rollLootTable = rollLootTable
+) {
+  const block = terrainIdToBlockOrDie(terrainId);
+  let bag = roll(blockDropTable(), gameStateContext);
+  if (bag.size === 0) {
+    bag = createBag(countOf(block, 1n));
+  }
+  return bag;
+}
+
 function handleBlockDrops<
   TInvolvedSpecification extends InvolvedSpecification,
   TKey extends InvolvedKeysFor<TInvolvedSpecification, NewIds>
@@ -82,7 +95,7 @@ function handleBlockDrops<
     expiry: secondsSinceEpoch() + CONFIG.gameMinePrioritySecs,
   } as GrabBagFilter;
 
-  const bag = rollLootTable(blockDropTable(), gameStateContext);
+  const bag = blockDropBagForEdit(terrainId, gameStateContext);
   createDropsForBag(
     context,
     keyForDrops,

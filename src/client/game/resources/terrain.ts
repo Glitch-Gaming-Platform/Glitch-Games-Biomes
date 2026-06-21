@@ -276,7 +276,7 @@ function genTerrainShardMesh(deps: ClientResourceDeps, shardId: ShardId) {
     return;
   }
 
-  const vertices = boxEdgeVertices(...expand([shard.box, shard.box]));
+  const vertices = boxEdgeVertices(...expand([shard.box.v0, shard.box.v1]));
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute(
     "position",

@@ -480,7 +480,7 @@ check(
   ])
 );
 check(
-  "metadata derives player level, quests, snapshot missions, inventory, combat, playtime and localStorage snapshot authority",
+  "metadata derives player level, quests, snapshot missions, inventory, combat, playtime and Glitch Cloud Save authority",
   includesAll(bridge, [
     "function deriveMetadata",
     "levelingState",
@@ -493,7 +493,7 @@ check(
     "completedQuestCount",
     "inventoryItems",
     "defeatedEnemies",
-    'storageAuthority: "localStorageSnapshot"',
+    'storageAuthority: "glitchCloudSave"',
   ])
 );
 
@@ -606,11 +606,10 @@ check(
     bridge.includes("writeStoredCloudSaveVersion")
 );
 check(
-  "restoreLatestIfEmpty treats cloud saves as snapshots and defers to backend authority",
+  "restoreLatestIfEmpty treats Glitch Cloud Save as durable player truth",
   bridge.includes("async restoreLatestIfEmpty") &&
     bridge.includes("shouldApplyHarthmereCloudSave") &&
-    bridge.includes("this.hasBackendAuthorityState()") &&
-    bridge.includes("hasBackendAuthorityState,") &&
+    !bridge.includes(["hasBackend", "AuthorityState"].join("")) &&
     bridge.includes("latestCloudVersion: latestVersion") &&
     bridge.includes(
       "hasMeaningfulLocalProgress: hasMeaningfulLocalProgress(localStorage)"
@@ -859,7 +858,7 @@ const snapshot = {
     defeatedEnemies: 2,
     playtimeSeconds: 88,
     storageKeyCount: Object.keys(sampleStorage).length,
-    storageAuthority: "localStorageSnapshot",
+    storageAuthority: "glitchCloudSave",
   },
   localStorage: sampleStorage,
 };
@@ -1001,8 +1000,8 @@ check(
   decoded.metadata.level >= 1
 );
 check(
-  "decoded payload metadata declares localStorage as snapshot authority",
-  decoded.metadata.storageAuthority === "localStorageSnapshot"
+  "decoded payload metadata declares Glitch Cloud Save as player authority",
+  decoded.metadata.storageAuthority === "glitchCloudSave"
 );
 for (const [field, type] of requiredIdentityFields) {
   check(
@@ -1223,9 +1222,9 @@ check(
   ])
 );
 check(
-  "cloud snapshot documents localStorage snapshot authority so backend source-of-truth divergence is visible",
-  bridge.includes('storageAuthority: "localStorageSnapshot"') &&
-    decoded.metadata.storageAuthority === "localStorageSnapshot"
+  "cloud snapshot documents Glitch Cloud Save as the durable player authority",
+  bridge.includes('storageAuthority: "glitchCloudSave"') &&
+    decoded.metadata.storageAuthority === "glitchCloudSave"
 );
 
 check(

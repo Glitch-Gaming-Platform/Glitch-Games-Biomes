@@ -117,7 +117,10 @@ describe("live-entity helper live-mode adapter", () => {
       call!.url,
       "/api/harthmere/live_mode?install_id=glitch-install"
     );
-    assert.equal(call!.init.headers["X-Glitch-Install-Id"], "glitch-install");
+    assert.equal(
+      new Headers(call!.init.headers).get("X-Glitch-Install-Id"),
+      "glitch-install"
+    );
     const body = JSON.parse(call!.init.body);
     assert.equal(body.actionKind, "request_quest_state_update");
     assert.equal(body.subsystem, "quest");

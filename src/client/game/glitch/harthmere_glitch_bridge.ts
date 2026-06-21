@@ -232,7 +232,7 @@ type HarthmereSnapshotMetadata = {
   defeatedEnemies: number;
   playtimeSeconds: number;
   storageKeyCount: number;
-  storageAuthority: "localStorageSnapshot";
+  storageAuthority: "glitchCloudSave";
 };
 
 type HarthmereGlitchSnapshot = {
@@ -646,7 +646,7 @@ function deriveMetadata(
     defeatedEnemies,
     playtimeSeconds,
     storageKeyCount: Object.keys(storage).length,
-    storageAuthority: "localStorageSnapshot",
+    storageAuthority: "glitchCloudSave",
   };
 }
 
@@ -1750,14 +1750,12 @@ class HarthmereGlitchBridgeController {
     }
     const localStorage = collectHarthmereStorage();
     const latestVersion = normalizeCloudSaveVersion(latest.version);
-    const hasBackendAuthorityState =
-      await this.hasBackendAuthorityState().catch(() => false);
-    // Live-mode backend state is the gameplay source of truth. Cloud saves are
-    // compatibility/import snapshots and must not auto-overwrite backend state.
+    // Glitch Cloud Save is the durable source of truth for player information.
+    // Redis/backend state is a live runtime cache and may reset, so it must not
+    // block importing the latest valid cloud snapshot on boot.
     if (
       !shouldApplyHarthmereCloudSave({
         latestCloudVersion: latestVersion,
-        hasBackendAuthorityState,
         hasMeaningfulLocalProgress: hasMeaningfulLocalProgress(localStorage),
         forceCloudRestore: forceCloudRestoreForUserSwitch,
       })
@@ -1774,27 +1772,6 @@ class HarthmereGlitchBridgeController {
       });
     }
     return applied;
-  }
-
-  private async hasBackendAuthorityState() {
-    if (!isBrowser()) {
-      return false;
-    }
-    const response = await fetch(
-      "/api/harthmere/live_mode_player_status_state",
-      {
-        cache: "no-store",
-      }
-    );
-    if (!response.ok) {
-      return false;
-    }
-    const body = (await response.json()) as {
-      playerStatusState?: {
-        backendAuthority?: { persisted?: unknown };
-      };
-    };
-    return body.playerStatusState?.backendAuthority?.persisted === true;
   }
 
   async restoreLatest() {

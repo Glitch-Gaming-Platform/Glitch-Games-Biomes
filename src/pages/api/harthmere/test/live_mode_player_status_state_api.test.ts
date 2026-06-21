@@ -166,7 +166,7 @@ describe("live_mode_player_status_state API route integration", () => {
         unwatch: async () => {},
         multi: () => ({
           set: (_key: string, value: string) => {
-            stored = value;
+            writes.push(value);
           },
           exec: async () => [],
         }),

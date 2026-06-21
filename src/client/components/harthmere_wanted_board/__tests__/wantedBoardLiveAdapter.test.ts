@@ -225,10 +225,12 @@ describe("Harthmere wanted board live adapter", () => {
       "/api/harthmere/live_mode?install_id=abc%20123"
     );
     assert.equal(calls[0].init.method, "POST");
-    assert.equal(calls[0].init.headers["X-Glitch-Install-Id"], "abc 123");
+    assert.equal(
+      new Headers(calls[0].init.headers).get("X-Glitch-Install-Id"),
+      "abc 123"
+    );
     assert.equal(calls[0].body.actionKind, "request_clear_bounty");
     assert.equal(calls[0].body.subsystem, "law");
     assert.equal(calls[0].body.payload.factionId, "city_guard");
   });
 });
-

@@ -231,6 +231,7 @@ describe("live-entity helper dialog context", () => {
     const expected: Record<string, [string, string]> = {
       "Berry Patch": ["gather", "Gather"],
       "Billy's Drop Post": ["read", "Read"],
+      "Billy's Toolbag": ["open_container", "Open Container"],
       "Broken Safe-Zone Fence": ["repair", "Repair"],
       "Building Practice Spot": ["practice", "Practice"],
       "Carlo's Cookpot": ["cook", "Cook"],
@@ -248,8 +249,12 @@ describe("live-entity helper dialog context", () => {
       "Fountain Repair Post": ["repair", "Repair"],
       "Fountain Workbench": ["craft", "Craft"],
       "Garden Edge Berries": ["gather", "Gather"],
+      "Grove Garden Gate": ["open_gate", "Open Gate"],
       "Grove Guild Charter Board": ["read", "Read"],
       "Grove Practice Claim Stakes": ["practice", "Practice"],
+      "Grove Storehouse Door": ["open_door", "Open Door"],
+      "Grove Supply Chest": ["open_container", "Open Container"],
+      "Grove Wishing Well": ["inspect", "Inspect"],
       "Guild Project Table": ["use", "Use Table"],
       "Gus's Oven": ["cook", "Cook"],
       "Harthmere Chapel Stone": ["inspect", "Inspect"],
@@ -404,7 +409,10 @@ describe("NPC dialogue live-mode reputation bridge", () => {
       calls[0].url,
       "/api/harthmere/live_mode?install_id=install-abc"
     );
-    assert.equal(calls[0].init.headers["X-Glitch-Install-Id"], "install-abc");
+    assert.equal(
+      new Headers(calls[0].init.headers).get("X-Glitch-Install-Id"),
+      "install-abc"
+    );
     assert.equal(calls[0].body.actionKind, "request_law_reputation_mutation");
     assert.equal(calls[0].body.payload.factionId, "npc:456");
     assert.equal(calls[1].body.payload.factionId, "harthmere");

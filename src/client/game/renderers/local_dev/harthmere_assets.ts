@@ -101,12 +101,19 @@ import {
   HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS,
   HARTHMERE_BUSINESS_OUTPOSTS,
   type HarthmereBusinessOutpost,
+  type HarthmereBusinessOutpostProceduralBuildingRecord,
   harthmereBusinessOutpostGroundY,
 } from "@/shared/harthmere/business_customer_simulator";
 import {
   harthmereBusinessOutpostStaffAppearance,
   harthmereBusinessOutpostStaffAsset,
 } from "@/shared/harthmere/business_npc_cosmetics";
+import {
+  createHarthmereBusinessOutpostInteriorDecorSpecs,
+  HARTHMERE_BUSINESS_OUTPOST_VISUAL_DECOR_COLLISION,
+  HARTHMERE_BUSINESS_OUTPOST_VISUAL_DECOR_VERSION,
+  type HarthmereBusinessOutpostInteriorDecorSpec,
+} from "@/shared/harthmere/business_outpost_visual_decor";
 import { LIVE_ENTITY_ROBOT_PROTECTION_AREAS } from "@/shared/harthmere/live_entity_robot_energy_protection";
 import {
   reconcileHarthmereLiveCreatureBridge,
@@ -199,7 +206,7 @@ type RuntimeAsset = {
   defaultScale?: number;
 };
 
-type RuntimePlacement = {
+export type RuntimePlacement = {
   asset: string;
   at: [number, number, number];
   rot?: number;
@@ -4355,16 +4362,112 @@ function harthmereBusinessOutpostStaffWorkPoint(outpost: HarthmereBusinessOutpos
   };
 }
 
+function harthmereBusinessOutpostFixtureRotation(
+  record: HarthmereBusinessOutpostProceduralBuildingRecord,
+  fixture: HarthmereBusinessOutpostInteriorDecorSpec["fixture"],
+) {
+  const midX = record.origin.x + record.blueprint.footprint.width / 2;
+  const midZ = record.origin.z + record.blueprint.footprint.depth / 2;
+  const label = `${fixture.role} ${fixture.label}`.toLowerCase();
+  if (/wall|map|board|pegboard|rack|shelf|cabinet|bookcase|lantern/.test(label)) {
+    if (fixture.position.x < midX - 2) return Math.PI / 2;
+    if (fixture.position.x > midX + 2) return -Math.PI / 2;
+    if (fixture.position.z > midZ) return Math.PI;
+    return 0;
+  }
+  if (fixture.role === "service_counter") return Math.PI;
+  if (fixture.position.z > midZ + 1) return Math.PI;
+  if (fixture.position.x < midX - 2) return Math.PI / 2;
+  if (fixture.position.x > midX + 2) return -Math.PI / 2;
+  return 0;
+}
+
+function makeHarthmereBusinessOutpostVisualDecorPlacement(input: {
+  record: HarthmereBusinessOutpostProceduralBuildingRecord;
+  outpost?: HarthmereBusinessOutpost;
+  spec: HarthmereBusinessOutpostInteriorDecorSpec;
+}): RuntimePlacement {
+  const fixture = input.spec.fixture;
+  const x = fixture.position.x + 0.5 + (input.spec.dx ?? 0);
+  const z = fixture.position.z + 0.5 + (input.spec.dz ?? 0);
+  const y = fixture.position.y + (input.spec.yOffset ?? 0);
+  const name = `${input.record.displayName} visual-only supported ${input.spec.support} ${fixture.label}${input.spec.nameSuffix ?? ""} real interior furniture`;
+  const placement = P(
+    input.spec.asset,
+    x,
+    z,
+    harthmereBusinessOutpostFixtureRotation(input.record, fixture) +
+      (input.spec.drot ?? 0),
+    input.spec.scale,
+    name,
+    input.outpost?.district,
+    y,
+  );
+  const meta: HarthmerePlacementMetadata | undefined = placement.meta
+    ? {
+        ...placement.meta,
+        kind: "interiorProp",
+        lodTier: "interior",
+        collision: HARTHMERE_BUSINESS_OUTPOST_VISUAL_DECOR_COLLISION,
+        physicalSupport: input.spec.support,
+        tags: [
+          ...new Set([
+            ...placement.meta.tags,
+            "business-outpost-interior",
+            "visual-only-decor",
+            input.record.outpostId,
+            fixture.role,
+            HARTHMERE_BUSINESS_OUTPOST_VISUAL_DECOR_VERSION,
+          ]),
+        ],
+      }
+    : undefined;
+
+  return {
+    ...placement,
+    meta,
+    collision: HARTHMERE_BUSINESS_OUTPOST_VISUAL_DECOR_COLLISION,
+    lodTier: "interior",
+  };
+}
+
+export function createHarthmereBusinessOutpostInteriorDecorPlacements(
+  record: HarthmereBusinessOutpostProceduralBuildingRecord,
+  outpost = HARTHMERE_BUSINESS_OUTPOSTS.find(
+    (candidate) => candidate.outpostId === record.outpostId,
+  ),
+): RuntimePlacement[] {
+  const placements: RuntimePlacement[] = [];
+  for (const spec of createHarthmereBusinessOutpostInteriorDecorSpecs(record)) {
+    placements.push(
+      makeHarthmereBusinessOutpostVisualDecorPlacement({
+        record,
+        outpost,
+        spec,
+      }),
+    );
+  }
+  return placements;
+}
+
 // Business outpost buildings are server-materialized procedural voxel buildings
 // (cobblestone walls, stone floor/roof, stone stairs, oak-log door frame).
 // The voxel plans live in HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS and
 // are applied to the game world by the server via the live_mode_backend
 // "rebuild_business_outposts" / auto-revision path.
-// The building shell and business-board access object are pure procedural
-// renderers, not GLTF/OBJ placements. This function only places the owner NPC.
+// The building shell and board access object are pure procedural renderers; the
+// interior furniture/decor is runtime GLTF/OBJ/FBX so it reads like real stores
+// without turning shelves, counters, and workbenches into block collision stacks.
 function createHarthmereBusinessOutpostPlacements(): RuntimePlacement[] {
   const placements: RuntimePlacement[] = [];
   for (const outpost of HARTHMERE_BUSINESS_OUTPOSTS) {
+    const record =
+      HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS[outpost.outpostId];
+    if (record) {
+      placements.push(
+        ...createHarthmereBusinessOutpostInteriorDecorPlacements(record, outpost),
+      );
+    }
     const workPoint = harthmereBusinessOutpostStaffWorkPoint(outpost);
     const groundY = harthmereBusinessOutpostGroundY(outpost);
     placements.push(

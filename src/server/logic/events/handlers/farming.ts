@@ -363,7 +363,10 @@ export const harvestPlantEventHandler = makeEventHandler("harvestPlantEvent", {
     if (isTreeSeed(plantComponent.seed)) {
       return;
     }
-    if (!acl.can("destroy", { entity: plant })) {
+    if (
+      plantComponent.planter !== event.id &&
+      !acl.can("destroy", { entity: plant })
+    ) {
       return;
     }
 

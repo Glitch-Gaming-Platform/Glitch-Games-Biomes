@@ -24,6 +24,7 @@ import {
   createHarthmereCraftingStationClientSnapshotFromBackend,
   createHarthmereLiveModeQuestClientSnapshot,
   createHarthmereLiveModeSharedWorldState,
+  defaultHarthmereLiveModeBackendState,
   mergeHarthmereLiveModeSharedWorldStateIntoBackend,
   parseHarthmereLiveModeBackendState,
   parseHarthmereLiveModeSharedWorldState,
@@ -1471,11 +1472,112 @@ function uniqueHarthmereLiveModeWatchKeys(keys: Array<string | undefined>) {
 function shouldAdoptHarthmereLiveModeActorState(input: {
   targetStateRaw: string | null | undefined;
   sourceStateRaw: string | null | undefined;
+  reason?: HarthmereLiveModeActorStateAdoption["reason"];
 }) {
-  return shouldAdoptHarthmereInstallOrphan({
-    userStateRaw: input.targetStateRaw,
-    installStateRaw: input.sourceStateRaw,
-  });
+  if (
+    shouldAdoptHarthmereInstallOrphan({
+      userStateRaw: input.targetStateRaw,
+      installStateRaw: input.sourceStateRaw,
+    })
+  ) {
+    return true;
+  }
+  if (input.reason !== "linked_game_user") {
+    return false;
+  }
+  const targetProgress = summarizeHarthmereLiveActorStateProgress(
+    input.targetStateRaw
+  );
+  const sourceProgress = summarizeHarthmereLiveActorStateProgress(
+    input.sourceStateRaw
+  );
+  return sourceProgress.meaningful && !targetProgress.meaningful;
+}
+
+function summarizeHarthmereLiveActorStateProgress(
+  raw: string | null | undefined
+) {
+  const text = typeof raw === "string" ? raw.trim() : "";
+  if (!text) {
+    return { meaningful: false };
+  }
+  let parsed: any;
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    return { meaningful: false };
+  }
+  const inventory = parsed?.inventory ?? {};
+  const items: Record<string, unknown> =
+    inventory.items && typeof inventory.items === "object"
+      ? inventory.items
+      : {};
+  const materialStorage: Record<string, unknown> =
+    parsed?.materialStorage?.items &&
+    typeof parsed.materialStorage.items === "object"
+      ? parsed.materialStorage.items
+      : parsed?.materialStorage && typeof parsed.materialStorage === "object"
+      ? parsed.materialStorage
+      : {};
+  const itemCount = Object.values({ ...items, ...materialStorage }).reduce(
+    (sum: number, value: unknown) => sum + Math.max(0, Number(value) || 0),
+    0
+  );
+  const gold = Math.max(
+    0,
+    Number(inventory.gold ?? parsed?.gold ?? parsed?.wallet?.gold) || 0
+  );
+  const skills: Record<string, any> =
+    parsed?.classMagic?.skills && typeof parsed.classMagic.skills === "object"
+      ? parsed.classMagic.skills
+      : {};
+  const skillXp = Object.values(skills).reduce(
+    (sum: number, value: any) => sum + Math.max(0, Number(value?.xp) || 0),
+    0
+  );
+  const actorId =
+    typeof parsed?.actorId === "string" ? parsed.actorId : "progress-summary";
+  const defaultState = defaultHarthmereLiveModeBackendState(
+    actorId,
+    0
+  );
+  const defaultSkillRows = defaultState.classMagic.skills;
+  const defaultSkillXp = Object.values(defaultSkillRows).reduce(
+    (sum: number, value: any) => sum + Math.max(0, Number(value?.xp) || 0),
+    0
+  );
+  const activeQuests =
+    parsed?.quests?.active && typeof parsed.quests.active === "object"
+      ? parsed.quests.active
+      : {};
+  const completedQuests =
+    parsed?.quests?.completed && typeof parsed.quests.completed === "object"
+      ? parsed.quests.completed
+      : {};
+  const activeQuestProgress = Object.values(activeQuests).some(
+    (value: any) => Math.max(0, Number(value?.progress) || 0) > 0
+  );
+  const questCount =
+    Object.keys(activeQuests).length + Object.keys(completedQuests).length;
+  const defaultQuestCount =
+    Object.keys(defaultState.quests.active ?? {}).length +
+    Object.keys(defaultState.quests.completed ?? {}).length;
+  const propertyCount =
+    Object.keys(parsed?.property?.owned ?? {}).length +
+    Object.keys(parsed?.building?.ownedPlots ?? {}).length;
+  const progressionCount =
+    Object.keys(parsed?.progression?.completedMilestones ?? {}).length +
+    Object.keys(parsed?.daily?.completedTasks ?? {}).length;
+  return {
+    meaningful:
+      gold > 0 ||
+      itemCount > 0 ||
+      skillXp > defaultSkillXp ||
+      questCount > defaultQuestCount ||
+      activeQuestProgress ||
+      propertyCount > 0 ||
+      progressionCount > 0,
+  };
 }
 
 export async function persistHarthmereLiveModeResponse(
@@ -1570,6 +1672,7 @@ export async function persistHarthmereLiveModeResponse(
       shouldAdoptHarthmereLiveModeActorState({
         targetStateRaw: rawState,
         sourceStateRaw: rawAdoptionSourceState,
+        reason: stateAdoption.reason,
       });
     let currentState = parseHarthmereLiveModeBackendState(
       adoptedActorState ? rawAdoptionSourceState : rawState,
@@ -1635,6 +1738,7 @@ export async function persistHarthmereLiveModeResponse(
         shouldAdoptHarthmereLiveModeActorState({
           targetStateRaw: rawState,
           sourceStateRaw: rawAdoptionSourceState,
+          reason: stateAdoption.reason,
         });
       currentState = parseHarthmereLiveModeBackendState(
         adoptedActorState ? rawAdoptionSourceState : rawState,

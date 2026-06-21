@@ -16,6 +16,7 @@ import {
   readHarthmereInventoryState,
   writeHarthmereInventoryState,
 } from "@/client/components/challenges/LocalDevHarthmereInventorySystem";
+import { defaultHarthmereLiveFetch } from "@/client/components/harthmere_live_fetch";
 import {
   readHarthmereEconomyState,
   recordHarthmereEconomicEvent,
@@ -903,7 +904,7 @@ function postBuildingSystemServerMutation(
   const requestId = `building_${buildingAction}_${Date.now()}_${Math.random()
     .toString(36)
     .slice(2)}`;
-  void fetch("/api/harthmere/live_mode", {
+  void defaultHarthmereLiveFetch("/api/harthmere/live_mode", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     credentials: "same-origin",

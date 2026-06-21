@@ -165,7 +165,8 @@ export function publishHarthmereLiveEntityCombatMotionToRenderer(
     const damaged = hp < maxHp;
     const recentlyDamaged =
       lastAttackedAtMs !== undefined && nowMs - lastAttackedAtMs < 20_000;
-    if (!damaged && !recentlyDamaged) {
+    const isAttackable = entity.isAttackable === false ? false : true;
+    if (!isAttackable && !damaged && !recentlyDamaged) {
       continue;
     }
     healthEntries[entityId] = {
@@ -174,12 +175,12 @@ export function publishHarthmereLiveEntityCombatMotionToRenderer(
       hp: Math.max(0, Math.trunc(hp)),
       maxHp: Math.max(1, Math.trunc(maxHp)),
       isAlive: entity.isAlive === false ? false : hp > 0,
-      isAttackable: entity.isAttackable === false ? false : true,
+      isAttackable,
       position: parsePosition(entity.position),
       lastDamageTaken,
       lastAttackedAtMs,
       publishedAtMs: nowMs,
-      showUntilMs: nowMs + 20_000,
+      showUntilMs: nowMs + (isAttackable ? 30_000 : 20_000),
     };
   }
   for (const [entityId, health] of Object.entries(healthEntries)) {

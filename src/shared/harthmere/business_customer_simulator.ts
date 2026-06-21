@@ -47,8 +47,7 @@ export function harthmereBusinessScaledJobPay(rewardGold: number): number {
   return Math.max(
     1,
     Math.round(
-      Math.max(0, Number(rewardGold) || 0) /
-        HARTHMERE_BUSINESS_JOB_PAY_DIVISOR
+      Math.max(0, Number(rewardGold) || 0) / HARTHMERE_BUSINESS_JOB_PAY_DIVISOR
     )
   );
 }
@@ -487,8 +486,7 @@ export const HARTHMERE_GROVE_BUSINESS_BUILDING_REFERENCE_COORDINATES =
 
 export const HARTHMERE_GROVE_BUSINESS_BUILDING_SOURCE_SCAN = Object.freeze({
   version: "harthmere-grove-business-coordinate-source-scan",
-  scannedCoordinates:
-    HARTHMERE_GROVE_BUSINESS_BUILDING_REFERENCE_COORDINATES,
+  scannedCoordinates: HARTHMERE_GROVE_BUSINESS_BUILDING_REFERENCE_COORDINATES,
   authoredPlacementFindings: [
     {
       coordinateIndex: 0,
@@ -700,8 +698,7 @@ export const HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN = Object.freeze({
   findings: [
     {
       coordinateIndex: 0,
-      coordinate:
-        HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_COORDINATES[0],
+      coordinate: HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_COORDINATES[0],
       observedFeatures: [
         "stone courtyard reads as a public business threshold",
         "wall greenery and hanging vines soften hard masonry",
@@ -710,8 +707,7 @@ export const HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN = Object.freeze({
     },
     {
       coordinateIndex: 1,
-      coordinate:
-        HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_COORDINATES[1],
+      coordinate: HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_COORDINATES[1],
       observedFeatures: [
         "compact yellow storefront with framed glass window",
         "tiny counter/display props are supported on the facade",
@@ -720,8 +716,7 @@ export const HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN = Object.freeze({
     },
     {
       coordinateIndex: 2,
-      coordinate:
-        HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_COORDINATES[2],
+      coordinate: HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_COORDINATES[2],
       observedFeatures: [
         "low stone boundary wall shapes the path without closing it",
         "dense flower beds and trees make the exterior lush",
@@ -730,8 +725,7 @@ export const HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN = Object.freeze({
     },
     {
       coordinateIndex: 3,
-      coordinate:
-        HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_COORDINATES[3],
+      coordinate: HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_COORDINATES[3],
       observedFeatures: [
         "striped purple awning marks a shop front from a distance",
         "planters and flowers frame the entry without blocking it",
@@ -740,8 +734,7 @@ export const HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN = Object.freeze({
     },
     {
       coordinateIndex: 4,
-      coordinate:
-        HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_COORDINATES[4],
+      coordinate: HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_COORDINATES[4],
       observedFeatures: [
         "raised grassy terrace and retaining edges make slope sites usable",
         "small sign and field rows work as exterior business identity",
@@ -750,8 +743,7 @@ export const HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN = Object.freeze({
     },
     {
       coordinateIndex: 5,
-      coordinate:
-        HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_COORDINATES[5],
+      coordinate: HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_COORDINATES[5],
       observedFeatures: [
         "wooden counter and barrel grouping creates a market-stall service face",
         "crate and log textures communicate stock and storage",
@@ -760,8 +752,7 @@ export const HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN = Object.freeze({
     },
     {
       coordinateIndex: 6,
-      coordinate:
-        HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_COORDINATES[6],
+      coordinate: HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_COORDINATES[6],
       observedFeatures: [
         "low white service table sits in a garden clearing",
         "glass greenhouse language pairs with stone and trees",
@@ -770,8 +761,7 @@ export const HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN = Object.freeze({
     },
     {
       coordinateIndex: 7,
-      coordinate:
-        HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_COORDINATES[7],
+      coordinate: HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_COORDINATES[7],
       observedFeatures: [
         "striped awning differentiates the storefront from nearby homes",
         "tree canopy and garden beds make the shop exterior green",
@@ -780,8 +770,7 @@ export const HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN = Object.freeze({
     },
     {
       coordinateIndex: 8,
-      coordinate:
-        HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_COORDINATES[8],
+      coordinate: HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_COORDINATES[8],
       observedFeatures: [
         "white tent-like counter structure reads as a lightweight stall",
         "supported sign and slim posts establish a clear service point",
@@ -790,8 +779,7 @@ export const HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN = Object.freeze({
     },
     {
       coordinateIndex: 9,
-      coordinate:
-        HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_COORDINATES[9],
+      coordinate: HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_COORDINATES[9],
       observedFeatures: [
         "tree-obscured view confirms this coordinate is reference-only",
         "nearby Grove greenery should inform exterior density, not placement",
@@ -852,8 +840,7 @@ export const HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN = Object.freeze({
   interiorFindings: [
     {
       coordinateIndex: 0,
-      coordinate:
-        HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_COORDINATES[0],
+      coordinate: HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_COORDINATES[0],
       observedInteriorFeatures: [
         "open civic threshold rather than a closed shop room",
         "stone floor is kept mostly clear for movement",
@@ -862,8 +849,7 @@ export const HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN = Object.freeze({
     },
     {
       coordinateIndex: 1,
-      coordinate:
-        HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_COORDINATES[1],
+      coordinate: HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_COORDINATES[1],
       observedInteriorFeatures: [
         "compact room with supported bed/bench zone",
         "colored counter run with small bottle stock on top",
@@ -872,8 +858,7 @@ export const HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN = Object.freeze({
     },
     {
       coordinateIndex: 2,
-      coordinate:
-        HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_COORDINATES[2],
+      coordinate: HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_COORDINATES[2],
       observedInteriorFeatures: [
         "stone interior with windows and purple counter/table accent",
         "wall bench and bed-like service furniture stay off the path",
@@ -882,8 +867,7 @@ export const HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN = Object.freeze({
     },
     {
       coordinateIndex: 3,
-      coordinate:
-        HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_COORDINATES[3],
+      coordinate: HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_COORDINATES[3],
       observedInteriorFeatures: [
         "warm wood interior with simple table and bed furniture",
         "small lamp on a side table gives a clear supported light cue",
@@ -892,8 +876,7 @@ export const HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN = Object.freeze({
     },
     {
       coordinateIndex: 4,
-      coordinate:
-        HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_COORDINATES[4],
+      coordinate: HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_COORDINATES[4],
       observedInteriorFeatures: [
         "wood-and-glass interior with seating and table work zone",
         "green bed or bench furniture sits against a wall",
@@ -902,8 +885,7 @@ export const HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN = Object.freeze({
     },
     {
       coordinateIndex: 5,
-      coordinate:
-        HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_COORDINATES[5],
+      coordinate: HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_COORDINATES[5],
       observedInteriorFeatures: [
         "blue shop room with purple shelf, books, bottles, and cobweb detail",
         "white counter and wall tool/key sign create a strong service face",
@@ -912,8 +894,7 @@ export const HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN = Object.freeze({
     },
     {
       coordinateIndex: 6,
-      coordinate:
-        HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_COORDINATES[6],
+      coordinate: HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_COORDINATES[6],
       observedInteriorFeatures: [
         "glass-and-white wall corridor reads greenhouse or clinic-like",
         "simple bed/bench furniture is tucked behind glass panels",
@@ -922,8 +903,7 @@ export const HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN = Object.freeze({
     },
     {
       coordinateIndex: 7,
-      coordinate:
-        HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_COORDINATES[7],
+      coordinate: HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_COORDINATES[7],
       observedInteriorFeatures: [
         "coordinate is mostly outside but shows shop threshold context",
         "blackboard/sign access point and exterior posts face the path",
@@ -932,8 +912,7 @@ export const HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN = Object.freeze({
     },
     {
       coordinateIndex: 8,
-      coordinate:
-        HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_COORDINATES[8],
+      coordinate: HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_COORDINATES[8],
       observedInteriorFeatures: [
         "stone-and-glass interior with stairs and raised work/display ledge",
         "small expressive object on a supported pedestal reads as focal stock",
@@ -942,8 +921,7 @@ export const HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN = Object.freeze({
     },
     {
       coordinateIndex: 9,
-      coordinate:
-        HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_COORDINATES[9],
+      coordinate: HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_COORDINATES[9],
       observedInteriorFeatures: [
         "clean gray room with desk, chair, couch, planter, and floor lamp",
         "black wall cabinet and small colored bottles read as stocked display",
@@ -2074,31 +2052,28 @@ export const HARTHMERE_BUSINESS_BIKKIE_GRAPHICS: Readonly<
       "Display-table shaping tool for showroom counters.",
     ],
   ]),
-  security_defense_contractor: businessGraphics(
-    "security_defense_contractor",
+  security_defense_contractor: businessGraphics("security_defense_contractor", [
     [
-      [
-        "fencer",
-        "primary_station",
-        "Fence-profile tool for perimeter contracts and yard defense planning.",
-      ],
-      [
-        "muckBuster",
-        "service_tool",
-        "Hazard-clearing tool for threat triage and contaminated route security.",
-      ],
-      [
-        "camera",
-        "service_tool",
-        "Proof and surveillance graphic for threat boards.",
-      ],
-      [
-        "recipePaper",
-        "counter_prop",
-        "Guard contracts, route plans, and threat slips.",
-      ],
-    ]
-  ),
+      "fencer",
+      "primary_station",
+      "Fence-profile tool for perimeter contracts and yard defense planning.",
+    ],
+    [
+      "muckBuster",
+      "service_tool",
+      "Hazard-clearing tool for threat triage and contaminated route security.",
+    ],
+    [
+      "camera",
+      "service_tool",
+      "Proof and surveillance graphic for threat boards.",
+    ],
+    [
+      "recipePaper",
+      "counter_prop",
+      "Guard contracts, route plans, and threat slips.",
+    ],
+  ]),
   portal_transit_company: businessGraphics("portal_transit_company", [
     [
       "remoteControl",
@@ -6416,9 +6391,7 @@ export const HARTHMERE_BUSINESS_SERVICE_ITEM_CATALOG: Readonly<
 export function getHarthmereBusinessServiceItemDefinition(
   itemId: string | undefined
 ) {
-  return itemId
-    ? HARTHMERE_BUSINESS_SERVICE_ITEM_CATALOG[itemId]
-    : undefined;
+  return itemId ? HARTHMERE_BUSINESS_SERVICE_ITEM_CATALOG[itemId] : undefined;
 }
 
 export function validateHarthmereBusinessServiceItemReferences(): HarthmereBusinessServiceItemReferenceValidation {
@@ -6653,14 +6626,11 @@ export function getHarthmereBusinessBikkieGraphicForServiceOffer(
   const graphics = getHarthmereBusinessBikkieGraphics(typeId);
   return [...graphics].sort(
     (a, b) =>
-      serviceOfferGraphicScore(b, offer) -
-      serviceOfferGraphicScore(a, offer)
+      serviceOfferGraphicScore(b, offer) - serviceOfferGraphicScore(a, offer)
   )[0];
 }
 
-export function getHarthmereBusinessBikkieGraphicForServiceCue(
-  cueId: string
-) {
+export function getHarthmereBusinessBikkieGraphicForServiceCue(cueId: string) {
   for (const definition of Object.values(
     HARTHMERE_BUSINESS_MINIGAME_DEFINITIONS
   )) {
@@ -7213,7 +7183,51 @@ export const HARTHMERE_BUSINESS_SCENARIO_OPENERS: readonly string[] = [
   "Pardon me. ",
 ];
 
-// FNV-1a string hash → unsigned 32-bit int. Deterministic, no Math.random, so
+const HARTHMERE_BUSINESS_REQUEST_CONTEXTS: readonly {
+  id: string;
+  line: string;
+}[] = [
+  { id: "before_lunch", line: "I need it handled before lunch." },
+  { id: "after_rain", line: "The rain made the problem worse." },
+  { id: "neighbor_waiting", line: "My neighbor is waiting on the result." },
+  { id: "guild_delivery", line: "It is tied to a guild delivery." },
+  { id: "inspection_clock", line: "The inspection clock is ticking." },
+  { id: "market_day", line: "Market day has everyone backed up." },
+  { id: "road_delay", line: "A road delay already cost me an hour." },
+  { id: "family_visit", line: "Family arrives tonight." },
+  { id: "branch_order", line: "This is for a branch order." },
+  { id: "festival_queue", line: "The festival queue is spilling over." },
+  { id: "return_trip", line: "I have one return trip left today." },
+  { id: "quiet_request", line: "Please keep the paperwork simple." },
+];
+
+const HARTHMERE_BUSINESS_REQUEST_COMPLICATIONS: readonly {
+  id: string;
+  line: string;
+}[] = [
+  { id: "parts_checked", line: "I checked the parts list once already." },
+  { id: "stock_uncertain", line: "I am not sure the usual stock is enough." },
+  { id: "wrong_queue", line: "I may be in the wrong queue." },
+  { id: "time_window", line: "There is a narrow handoff window." },
+  { id: "repeat_issue", line: "This happened once last week too." },
+  { id: "small_budget", line: "Keep the solution practical." },
+  { id: "extra_care", line: "Please be careful with the fragile bit." },
+  { id: "clear_notes", line: "I need clear notes for whoever follows up." },
+  { id: "backup_plan", line: "If the first plan fails, I need a backup." },
+  { id: "handoff_rush", line: "The handoff is already late." },
+  { id: "quality_check", line: "I will notice if the quality is sloppy." },
+  { id: "simple_finish", line: "A clean finish matters more than speed." },
+  { id: "mixed_signals", line: "The symptoms are giving mixed signals." },
+  { id: "rush_surcharge", line: "I can cover a rush surcharge if needed." },
+  { id: "public_counter", line: "Everyone at the counter can see this." },
+  { id: "private_counter", line: "I would rather keep this quiet." },
+  { id: "courier_waiting", line: "A courier is already waiting outside." },
+  { id: "second_opinion", line: "Another shop gave me a different answer." },
+  { id: "owner_absent", line: "The owner who usually handles it is away." },
+  { id: "weather_hold", line: "Bad weather may pause the next step." },
+];
+
+// FNV-1a string hash -> unsigned 32-bit int. Deterministic, no Math.random, so
 // the generated queue is reproducible across server and client.
 function hashHarthmereScenarioSeed(value: string): number {
   let hash = 2166136261;
@@ -7270,7 +7284,21 @@ export function createHarthmereBusinessCustomerQueue(input: {
         ];
       const modifier = modifiers[(seed * 3 + index * 5) % modifiers.length];
       const opener = openers[(seed * 7 + index * 3) % openers.length];
-      const askLine = `${opener}${modifier.linePrefix}${ask.line}${modifier.lineSuffix}`;
+      const requestContext =
+        HARTHMERE_BUSINESS_REQUEST_CONTEXTS[
+          (seed + businessIndex * 11 + index * 7) %
+            HARTHMERE_BUSINESS_REQUEST_CONTEXTS.length
+        ];
+      const complication =
+        HARTHMERE_BUSINESS_REQUEST_COMPLICATIONS[
+          (seed * 5 + businessIndex * 13 + index * 11) %
+            HARTHMERE_BUSINESS_REQUEST_COMPLICATIONS.length
+        ];
+      const askLine = [
+        `${opener}${modifier.linePrefix}${ask.line}${modifier.lineSuffix}`,
+        requestContext.line,
+        complication.line,
+      ].join(" ");
       const patience = Math.max(
         15,
         Math.round(
@@ -7302,7 +7330,7 @@ export function createHarthmereBusinessCustomerQueue(input: {
         ),
         needDelta: ask.needDelta,
         navGoal: ask.navGoal,
-        scenarioId: `${ask.askId}:${modifier.id}`,
+        scenarioId: `${ask.askId}:${modifier.id}:${requestContext.id}:${complication.id}`,
       };
     }
   );
@@ -7328,28 +7356,27 @@ export function findHarthmereBusinessCustomerNpc(npcId: string | undefined) {
   return HARTHMERE_BUSINESS_CUSTOMER_NPCS.find((npc) => npc.npcId === npcId);
 }
 
-export const HARTHMERE_BUSINESS_OUTPOST_TERRAIN_GROUND_Y_BY_ID =
-  Object.freeze({
-    outpost_refinery_ashline: 66,
-    outpost_biome_repair_north: 62,
-    outpost_design_glassyard: 45,
-    outpost_security_redoubt: 46,
-    outpost_portal_eastgate: 65,
-    outpost_rare_foods_southplot: 49,
-    outpost_tools_cinderlane: 42,
-    outpost_magic_moonstall: 26,
-    outpost_exploration_westtrail: 51,
-    outpost_property_keylot: 53,
-    outpost_trader_brightcart: 52,
-    outpost_hunter_ridgecooler: 36,
-    outpost_clinic_greenlamp: 64,
-    outpost_teleport_returnstone: 40,
-    outpost_sanitation_clearbarrel: 44,
-    outpost_repair_hingehall: 45,
-    outpost_restaurant_redpot: 43,
-    outpost_courier_stampspur: 46,
-    outpost_hospitality_lanternrest: 47,
-  } as const);
+export const HARTHMERE_BUSINESS_OUTPOST_TERRAIN_GROUND_Y_BY_ID = Object.freeze({
+  outpost_refinery_ashline: 66,
+  outpost_biome_repair_north: 62,
+  outpost_design_glassyard: 45,
+  outpost_security_redoubt: 46,
+  outpost_portal_eastgate: 65,
+  outpost_rare_foods_southplot: 49,
+  outpost_tools_cinderlane: 42,
+  outpost_magic_moonstall: 26,
+  outpost_exploration_westtrail: 51,
+  outpost_property_keylot: 53,
+  outpost_trader_brightcart: 52,
+  outpost_hunter_ridgecooler: 36,
+  outpost_clinic_greenlamp: 64,
+  outpost_teleport_returnstone: 40,
+  outpost_sanitation_clearbarrel: 44,
+  outpost_repair_hingehall: 45,
+  outpost_restaurant_redpot: 43,
+  outpost_courier_stampspur: 46,
+  outpost_hospitality_lanternrest: 47,
+} as const);
 
 export const HARTHMERE_BUSINESS_OUTPOSTS: readonly HarthmereBusinessOutpost[] =
   [
@@ -8039,12 +8066,12 @@ function harthmereBusinessOutpostBuildingStyleKit(
       "landscaped Grove entry",
     ],
     sourceAssetVocabulary: [
-      ...HARTHMERE_GROVE_BUSINESS_BUILDING_SOURCE_SCAN
-        .reusableAssetVocabulary.shell,
-      ...HARTHMERE_GROVE_BUSINESS_BUILDING_SOURCE_SCAN
-        .reusableAssetVocabulary.interior,
-      ...HARTHMERE_GROVE_BUSINESS_BUILDING_SOURCE_SCAN
-        .reusableAssetVocabulary.exterior,
+      ...HARTHMERE_GROVE_BUSINESS_BUILDING_SOURCE_SCAN.reusableAssetVocabulary
+        .shell,
+      ...HARTHMERE_GROVE_BUSINESS_BUILDING_SOURCE_SCAN.reusableAssetVocabulary
+        .interior,
+      ...HARTHMERE_GROVE_BUSINESS_BUILDING_SOURCE_SCAN.reusableAssetVocabulary
+        .exterior,
     ],
   } as const;
   if (/medical_doctor/.test(outpost.businessType)) {
@@ -9145,8 +9172,7 @@ function harthmereBusinessDecorFixtureSeeds(
   // Layer the trade-specific props on top, each pinned to an unused slot from
   // the spaced pool so the interior reads as the real business while staying
   // passable.
-  const thematic =
-    HARTHMERE_BUSINESS_THEMATIC_INTERIOR_FIXTURES[typeId] ?? [];
+  const thematic = HARTHMERE_BUSINESS_THEMATIC_INTERIOR_FIXTURES[typeId] ?? [];
   thematic.forEach(([label, role, size, colorHint], index) => {
     const slot =
       HARTHMERE_BUSINESS_THEMATIC_FIXTURE_SLOT_POOL[
@@ -9539,9 +9565,7 @@ function addHarthmereOutpostSiteGradingAndGarden(input: {
   }
 }
 
-function harthmereOutpostEditKey(
-  position: readonly [number, number, number]
-) {
+function harthmereOutpostEditKey(position: readonly [number, number, number]) {
   return position.join(":");
 }
 
@@ -9717,6 +9741,16 @@ function pushHarthmereOutpostFixtureVoxels(input: {
   reservedPathKeys: Set<string>;
   usedFixtureKeys: Set<string>;
 }) {
+  // Business interiors use runtime GLTF/OBJ/FBX props for furniture and decor.
+  // Only the dashboard gets a tiny voxel anchor so interaction is still visible
+  // before the runtime prop layer loads; tables, shelves, beds, racks, and stock
+  // stay out of terrain so they do not become blocky collision stacks.
+  if (
+    (input.fixture.role as HarthmereBusinessOutpostInteriorFixtureRole) !==
+    "dashboard_access"
+  )
+    return;
+
   const width = Math.max(1, Math.min(3, Math.round(input.fixture.size[0])));
   const depth = Math.max(1, Math.min(3, Math.round(input.fixture.size[2])));
   const x0 = Math.round(input.fixture.position.x - Math.floor(width / 2));
@@ -9982,12 +10016,7 @@ function addHarthmereOutpostGuideVoxels(input: {
   ) => {
     const key = harthmereOutpostEditKey(position);
     if (reserve && reservedPathKeys.has(key)) return false;
-    pushHarthmereOutpostVoxelEdit(
-      materializationPlan,
-      position,
-      value,
-      label
-    );
+    pushHarthmereOutpostVoxelEdit(materializationPlan, position, value, label);
     return true;
   };
   const polishedKeys = new Set<string>();
@@ -10493,50 +10522,9 @@ function addHarthmereOutpostGuideVoxels(input: {
     }
   }
 
-  // Keep the service node clear, then place the physical counter one row behind
-  // it so the mini-game can require the player to walk up and serve.
-  const counterZ = Math.min(z1 - 2, input.serviceCounter.z + 1);
-  for (const dx of [-3, -2, -1, 0, 1, 2, 3]) {
-    const position = [doorX + dx, y0 + 1, counterZ] as const;
-    if (!reservedPathKeys.has(harthmereOutpostEditKey(position))) {
-      pushHarthmereOutpostVoxelEdit(
-        materializationPlan,
-        position,
-        blocks.oakLumber,
-        "interior"
-      );
-    }
-  }
-  for (const dx of [-3, -1, 1, 3]) {
-    tryPush(
-      [doorX + dx, y0 + 2, counterZ],
-      blocks.simpleGlass,
-      "storage_container"
-    );
-  }
-  for (const [x, z] of [
-    [x0 + 2, z0 + 2],
-    [x1 - 2, z0 + 2],
-    [x0 + 2, z1 - 2],
-    [x1 - 2, z1 - 2],
-  ] as Array<[number, number]>) {
-    tryPush([x, y0 + 1, z], blocks.oakLog, "frame");
-    tryPush([x, y0 + 2, z], blocks.simpleGlass, "interior");
-  }
-  for (let z = z0 + 4; z <= z0 + 6; z += 1) {
-    tryPush([x0 + 3, y0 + 1, z], blocks.oakLumber, "interior");
-    tryPush([x1 - 3, y0 + 1, z], blocks.oakLumber, "interior");
-  }
-  for (const [x, z] of [
-    [x0 + 3, z1 - 3],
-    [x0 + 4, z1 - 3],
-    [x1 - 4, z1 - 3],
-    [x1 - 3, z1 - 3],
-  ] as Array<[number, number]>) {
-    tryPush([x, y0 + 1, z], blocks.oakLumber, "storage_container");
-    tryPush([x, y0 + 2, z], blocks.oakLumber, "interior");
-  }
-
+  // Interior furniture and shop stock are rendered as passable runtime props.
+  // The server-owned materialization intentionally stops at the structural shell
+  // and dashboard anchor so stores no longer look like piles of voxel blocks.
   for (const fixture of input.interiorFixtures) {
     pushHarthmereOutpostFixtureVoxels({
       materializationPlan,
@@ -10546,7 +10534,6 @@ function addHarthmereOutpostGuideVoxels(input: {
       usedFixtureKeys,
     });
   }
-  addBusinessInteriorPolish();
 
   // The customer dashboard is an in-room access object, not a hidden marker.
   pushHarthmereOutpostVoxelEdit(
@@ -10559,37 +10546,6 @@ function addHarthmereOutpostGuideVoxels(input: {
     blocks.simpleGlass,
     "business_marker"
   );
-
-  // Business-appropriate consumable/sample stock, placed along side counters.
-  const sampleValue = /food_service|farming|hunter/.test(
-    input.outpost.businessType
-  )
-    ? blocks.hay
-    : /medical|sanitation/.test(input.outpost.businessType)
-    ? blocks.clay
-    : /courier/.test(input.outpost.businessType)
-    ? blocks.oakLumber
-    : /design|property|security|portal|teleport|magic|exotic/.test(
-        input.outpost.businessType
-      )
-    ? blocks.simpleGlass
-    : blocks.stonePolished;
-  for (const [x, z] of [
-    [x0 + 4, z0 + 5],
-    [x1 - 4, z0 + 5],
-    [x0 + 4, Math.max(z0 + 8, z1 - 4)],
-    [x1 - 4, Math.max(z0 + 8, z1 - 4)],
-  ] as Array<[number, number]>) {
-    const position = [x, y0 + 1, z] as const;
-    if (!reservedPathKeys.has(harthmereOutpostEditKey(position))) {
-      pushHarthmereOutpostVoxelEdit(
-        materializationPlan,
-        position,
-        sampleValue,
-        "interior"
-      );
-    }
-  }
 
   // Grounded exterior dressing and entry path. These are authored as real edits
   // so old invisible/fake client structures are not needed for polish.
@@ -10713,15 +10669,21 @@ function addHarthmereOutpostBusinessSignature(input: {
     value: BiomesId,
     label: BuildingSystemVoxelEditSpec["label"] = "frame"
   ) => {
+    if (
+      (label === "interior" || label === "storage_container") &&
+      position[0] > x0 &&
+      position[0] < x1 &&
+      position[1] >= y0 + 1 &&
+      position[1] < roofY &&
+      position[2] > z0 &&
+      position[2] < z1
+    ) {
+      return false;
+    }
     const key = harthmereOutpostEditKey(position);
     if (used.has(key)) return false;
     used.add(key);
-    pushHarthmereOutpostVoxelEdit(
-      materializationPlan,
-      position,
-      value,
-      label
-    );
+    pushHarthmereOutpostVoxelEdit(materializationPlan, position, value, label);
     return true;
   };
   const column = (
@@ -12024,13 +11986,7 @@ export function validateHarthmereBusinessOutpostLiveWorldNavigation(
     const start = liveWorldNodeFor(record, actor.start);
     const goal = liveWorldNodeFor(record, actor.goal);
     const routeId = `${actor.actorId}:${actor.start}->${actor.goal}`;
-    let path = findLiveWorldPath(
-      record,
-      start,
-      goal,
-      wallKeys,
-      allBlockerKeys
-    );
+    let path = findLiveWorldPath(record, start, goal, wallKeys, allBlockerKeys);
     if (!path) {
       path = findLiveWorldPath(
         record,
@@ -12112,7 +12068,7 @@ export const HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS: Readonly<
 );
 
 export const HARTHMERE_BUSINESS_OUTPOST_REBUILD_REVISION =
-  "harthmere-business-outpost-rebuild-real-interior-fixtures" as const;
+  "harthmere-business-outpost-rebuild-real-interior-visual-props" as const;
 
 export interface HarthmereBusinessOutpostSafeSite {
   outpostId: string;
@@ -12216,9 +12172,7 @@ export const HARTHMERE_BUSINESS_OUTPOST_SAFE_SITES: readonly HarthmereBusinessOu
           zMax: record.origin.z + record.blueprint.footprint.depth,
         },
         plotBounds: record.plot.bounds,
-        safeBounds: harthmereBusinessOutpostSafeSiteBounds(
-          record.plot.bounds
-        ),
+        safeBounds: harthmereBusinessOutpostSafeSiteBounds(record.plot.bounds),
         muckRelocation: harthmereBusinessOutpostMuckRelocationTarget(center),
       };
     })
@@ -12370,11 +12324,7 @@ export function validateHarthmereBusinessOutpostSafeSiting() {
   for (let i = 0; i < sites.length; i += 1) {
     for (let j = i + 1; j < sites.length; j += 1) {
       if (
-        harthmereBusinessRectsOverlap(
-          sites[i].footprint,
-          sites[j].footprint,
-          2
-        )
+        harthmereBusinessRectsOverlap(sites[i].footprint, sites[j].footprint, 2)
       ) {
         errors.push(
           `outpost_footprints_overlap:${sites[i].outpostId}:${sites[j].outpostId}`
@@ -12451,10 +12401,7 @@ export function validateHarthmereBusinessOutpostProductionReadiness() {
     const expectedGroundY = harthmereBusinessOutpostGroundY(outpost);
     groundedYs.add(expectedGroundY);
     if (
-      !(
-        outpost.outpostId in
-        HARTHMERE_BUSINESS_OUTPOST_TERRAIN_GROUND_Y_BY_ID
-      )
+      !(outpost.outpostId in HARTHMERE_BUSINESS_OUTPOST_TERRAIN_GROUND_Y_BY_ID)
     ) {
       gaps.push(`${outpost.outpostId}:missing_explicit_terrain_ground_y`);
     }
@@ -12888,8 +12835,8 @@ export function validateHarthmereGroveBusinessCoordinateReferenceRoles(): Harthm
     errors.push("design_furniture_scan_findings_do_not_cover_every_coordinate");
   }
   if (
-    HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN.interiorFindings
-      .length !== designFurnitureCoords.length
+    HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN.interiorFindings.length !==
+    designFurnitureCoords.length
   ) {
     errors.push(
       "design_furniture_interior_scan_findings_do_not_cover_every_coordinate"
@@ -12930,14 +12877,12 @@ export function validateHarthmereGroveBusinessCoordinateReferenceRoles(): Harthm
     }
   }
   if (
-    HARTHMERE_GROVE_BUSINESS_PEOPLE_SOURCE_SCAN.coordinatesAreOutposts !==
-    false
+    HARTHMERE_GROVE_BUSINESS_PEOPLE_SOURCE_SCAN.coordinatesAreOutposts !== false
   ) {
     errors.push("people_reference_marked_as_outposts");
   }
   if (
-    HARTHMERE_GROVE_BUSINESS_PEOPLE_SOURCE_SCAN.materializesBuildings !==
-    false
+    HARTHMERE_GROVE_BUSINESS_PEOPLE_SOURCE_SCAN.materializesBuildings !== false
   ) {
     errors.push("people_reference_would_materialize_buildings");
   }
@@ -12974,9 +12919,7 @@ export function validateHarthmereGroveBusinessCoordinateReferenceRoles(): Harthm
   }
   for (const coord of peopleCoords) {
     for (const outpost of HARTHMERE_BUSINESS_OUTPOSTS) {
-      if (
-        harthmereBusinessCoordinateXzDistance(coord, outpost.position) < 3
-      ) {
+      if (harthmereBusinessCoordinateXzDistance(coord, outpost.position) < 3) {
         errors.push(
           `people_reference_too_close_to_outpost_center:${
             outpost.outpostId

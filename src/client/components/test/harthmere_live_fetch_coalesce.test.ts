@@ -4,6 +4,7 @@ import {
   coalescedHarthmereLiveFetch,
   isHarthmereLiveFetchAbortError,
   planHarthmereLiveFetchCache,
+  prepareHarthmereLiveFetchRequest,
   resetHarthmereLiveFetchCache,
 } from "@/client/components/harthmere_live_fetch";
 
@@ -36,8 +37,31 @@ function deferred<T>() {
   return { promise, resolve, reject };
 }
 
+const originalWindow = (globalThis as any).window;
+
+function setFakeWindow(search: string, storedInstallId?: string) {
+  (globalThis as any).window = {
+    location: {
+      href: `https://www.glitch.fun/games/test/play${search}`,
+      search,
+    },
+    localStorage: {
+      getItem(key: string) {
+        return key === "biomes.glitch.installId" ? storedInstallId ?? null : null;
+      },
+    },
+  };
+}
+
 describe("harthmere live fetch coalescing", () => {
   beforeEach(() => resetHarthmereLiveFetchCache());
+  afterEach(() => {
+    if (originalWindow === undefined) {
+      delete (globalThis as any).window;
+    } else {
+      (globalThis as any).window = originalWindow;
+    }
+  });
 
   describe("planHarthmereLiveFetchCache", () => {
     it("caches idempotent GETs by url", () => {
@@ -152,6 +176,60 @@ describe("harthmere live fetch coalescing", () => {
     await coalescedHarthmereLiveFetch(fetchImpl, url, { method: "POST" });
     await coalescedHarthmereLiveFetch(fetchImpl, url, { method: "POST" });
     assert.strictEqual(calls, 2, "every mutation must reach the server");
+  });
+
+  it("attaches the stable install id to bare Harthmere live mutations", async () => {
+    setFakeWindow("?install_id=install with spaces");
+    let capturedUrl = "";
+    let capturedHeaders: Headers | undefined;
+    const fetchImpl = (async (
+      input: RequestInfo | URL,
+      init?: RequestInit
+    ) => {
+      capturedUrl =
+        typeof input === "string"
+          ? input
+          : input instanceof URL
+          ? input.toString()
+          : (input as Request).url;
+      capturedHeaders = new Headers(init?.headers);
+      return fakeResponse("server-install");
+    }) as unknown as typeof fetch;
+
+    await coalescedHarthmereLiveFetch(
+      fetchImpl,
+      "/api/harthmere/live_mode",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      }
+    );
+
+    assert.equal(
+      capturedUrl,
+      "/api/harthmere/live_mode?install_id=install+with+spaces"
+    );
+    assert.equal(
+      capturedHeaders?.get("X-Glitch-Install-Id"),
+      "install with spaces"
+    );
+    assert.equal(capturedHeaders?.get("Content-Type"), "application/json");
+  });
+
+  it("does not duplicate existing live-mode install query params", () => {
+    setFakeWindow("?install_id=window-install", "stored-install");
+    const prepared = prepareHarthmereLiveFetchRequest(
+      "/api/harthmere/live_mode_player_status_state?install_id=url-install",
+      {}
+    );
+    assert.equal(
+      prepared.input,
+      "/api/harthmere/live_mode_player_status_state?install_id=url-install"
+    );
+    assert.equal(
+      new Headers(prepared.init.headers).get("X-Glitch-Install-Id"),
+      "url-install"
+    );
   });
 
   it("evicts an error response so the next call retries immediately", async () => {

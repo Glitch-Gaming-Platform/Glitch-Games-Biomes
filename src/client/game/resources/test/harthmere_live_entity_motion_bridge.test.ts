@@ -196,4 +196,29 @@ describe("Harthmere live entity render motion bridge current", () => {
     assert.equal(health.isAttackable, true);
     assert.ok(health.showUntilMs > 1_700_000_000_100);
   });
+
+  it("publishes full-health attackable entities so visible enemies always have bars", () => {
+    (globalThis as any).window = {};
+    publishHarthmereLiveEntityCombatMotionToRenderer(
+      {
+        entitySnapshots: {
+          "server-muck-combat:hex:7": {
+            hp: 240,
+            maxHp: 240,
+            isAlive: true,
+            isAttackable: true,
+            position: { x: 300, y: 54, z: -320 },
+          },
+        },
+      },
+      1_700_000_000_100
+    );
+
+    const health = (globalThis as any).window
+      .__harthmereLiveEntityCombatHealth["server-muck-combat:hex:7"];
+    assert.equal(health.hp, 240);
+    assert.equal(health.maxHp, 240);
+    assert.equal(health.isAttackable, true);
+    assert.ok(health.showUntilMs >= 1_700_000_030_100);
+  });
 });

@@ -11,7 +11,9 @@ import { LayeredTable } from "@/shared/ecs/layered_table";
 import type { EntityState, VersionedTable } from "@/shared/ecs/table";
 import { MetaIndexTableImpl, VersionedTableImpl } from "@/shared/ecs/table";
 import { TickVersionStamper } from "@/shared/ecs/version";
+import { TerrainShardByShardIdSelector } from "@/shared/game/ecs_indexed_resources";
 import { createProtectionIndexConfig } from "@/shared/game/protection";
+import { shardsForAABB } from "@/shared/game/shard";
 import type { BiomesId } from "@/shared/ids";
 import { log } from "@/shared/logging";
 import type { RegistryLoader } from "@/shared/registry";
@@ -20,7 +22,7 @@ import { ok } from "assert";
 import type { DBSchema, IDBPDatabase } from "idb/with-async-ittr";
 import { openDB } from "idb/with-async-ittr";
 
-function createClientIndexConfig() {
+export function createClientIndexConfig() {
   return {
     ...createProtectionIndexConfig(),
     ...s.BlueprintSelector.createIndexFor.spatial(),
@@ -55,6 +57,9 @@ function createClientIndexConfig() {
     ),
     ...s.RobotsThatClearSelector.createIndexFor.all(),
     ...s.TerrainShardSelector.createIndexFor.spatial(),
+    ...TerrainShardByShardIdSelector.createIndexFor.key(
+      keyFromComponent("box", (c) => shardsForAABB(c.v0, c.v1))
+    ),
     ...s.RestoredPlaceableSelector.createIndexFor.spatial(),
   };
 }

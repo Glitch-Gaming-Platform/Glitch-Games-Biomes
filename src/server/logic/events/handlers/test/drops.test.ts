@@ -1,3 +1,5 @@
+import { blockDropBagForEdit } from "@/server/logic/events/handlers/edits";
+import { getTerrainID } from "@/shared/asset_defs/terrain";
 import { blockDropTable } from "@/server/logic/utils/drops";
 import { BikkieIds } from "@/shared/bikkie/ids";
 import type { ItemBag } from "@/shared/ecs/gen/types";
@@ -96,6 +98,21 @@ describe("Test drops", () => {
         seedBlock: false,
       }),
       createBag(countOf(BikkieIds.stone, 1n))
+    );
+  });
+
+  it("falls back to the broken block when an authored natural drop is empty", () => {
+    assertBagContents(
+      blockDropBagForEdit(
+        getTerrainID("dirt"),
+        {
+          block: BikkieIds.dirt,
+          toolDestroyerClass: 0,
+          seedBlock: true,
+        },
+        () => createBag()
+      ),
+      createBag(countOf(BikkieIds.dirt, 1n))
     );
   });
 });

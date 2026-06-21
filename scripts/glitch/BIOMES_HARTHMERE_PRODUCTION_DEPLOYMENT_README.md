@@ -111,10 +111,11 @@ GLITCH_TITLE_TOKEN=secretref:glitch-title-token
 The title token lives only as the Azure Container App secret
 `glitch-title-token`; it is not stored in GitHub or source control.
 
-The workflow restores a `node_modules` cache before `yarn install` and a Buildx
-layer cache before Docker packaging. The first run can still be slow because it
-has to populate both caches; later runs should reuse dependency and image
-layers when `yarn.lock`, Dockerfile layers, and copied assets have not changed.
+The workflow restores `node_modules`, production data snapshot assets, Next.js
+compiler cache, server Webpack compiler cache, and Buildx layers. The first run
+can still be slow because it has to populate those caches; later runs should
+reuse dependency, compiler, asset, and image layers when the lockfile, build
+configuration, Dockerfile layers, and copied assets have not changed.
 
 The validated production image was:
 
@@ -408,6 +409,15 @@ ENTRYPOINT ["/usr/bin/tini", "--"]
 CMD ["./scripts/glitch/run-glitch-local-game-stack.sh"]
 ```
 
+The deploy script replaces Azure Container App `command` overrides with
+`./scripts/glitch/run-glitch-local-game-stack.sh` on every update so Azure
+cannot keep running an older manual startup command after the image has moved
+to the unified stack script.
+
+After the new revision reports ready, the script pins 100% traffic to that
+concrete revision and deactivates older active revisions so idle no-traffic
+revisions do not keep running after production is healthy.
+
 ### Why not `CMD ["dist/web.js"]`?
 
 Because `dist/web.js` only starts the web service. Production needs shim,
@@ -638,7 +648,9 @@ printf "NEXT_PUBLIC_GLITCH_SYNC_BASE_URL=%s\n" "$NEXT_PUBLIC_GLITCH_SYNC_BASE_UR
 ```bash
 cd /Users/devindixon/Development/biomes-game
 
-rm -rf .next/cache
+# Clear generated build outputs, but keep .next/cache when the workflow restored
+# it. The deploy script does this automatically.
+rm -rf .next dist
 
 GLITCH_RUNTIME=1 \
 GLITCH_LOCAL_ASSETS=1 \
@@ -656,7 +668,7 @@ NODE_OPTIONS="--openssl-legacy-provider" \
 
 Why this is done:
 
-- Removes stale Next cache.
+- Removes stale generated Next/server outputs while preserving safe compiler caches.
 - Bakes the correct public sync URL into the browser bundle.
 - Bakes the snapshot-first Grove start into the browser bundle. Shifted Harthmere extra-town seeding remains available only as an explicit opt-in.
 - Builds the production Next app before Docker packaging.
@@ -989,13 +1001,13 @@ After deploy:
 - [ ] Revision is `Running`.
 - [ ] Revision is `Healthy`.
 - [ ] `audit_production_authored_content` passes: business owners `19/19`,
-  business crafting stations `19/19`, business customers `57/57`, muckers
-  `100/100`, and wildlife `24/24`.
+      business crafting stations `19/19`, business customers `57/57`, muckers
+      `100/100`, and wildlife `24/24`.
 - [ ] Business outpost terrain materialization logs
-  `processed 19/19 outposts` and no `missingShardCount` failures. NPCs/boards
-  without the voxel building means this step was skipped or killed.
+      `processed 19/19 outposts` and no `missingShardCount` failures. NPCs/boards
+      without the voxel building means this step was skipped or killed.
 - [ ] Post-reconciliation Redis `BGSAVE` completed with
-  `rdb_last_bgsave_status=ok`.
+      `rdb_last_bgsave_status=ok`.
 - [ ] Logs show production sync URL and `GLITCH_SAME_ORIGIN_SYNC_WS_PROXY installed`.
 - [ ] Logs show `Redis is already populated with the installed snapshot data.`; production app replicas must not run the snapshot populate path.
 - [ ] Logs show `registerWorldApi:got-config mode=hfc-hybrid`.
@@ -1003,6 +1015,8 @@ After deploy:
 - [ ] Logs show `/api/assets/player_mesh.glb` responses without automatic redirects to the Harthmere static body fallback.
 - [ ] Logs show `WebSocket listening on port 4900`.
 - [ ] Logs show `web now running`.
+- [ ] Production `/api/world_map/metadata` returns finite map bounds and no
+      response-schema validation error.
 - [ ] Production `/api/glitch/harthmere` returns `valid:true`.
 - [ ] Glitch backend points to the VNet app URL.
 

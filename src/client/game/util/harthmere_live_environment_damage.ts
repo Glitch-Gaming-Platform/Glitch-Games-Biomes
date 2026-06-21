@@ -1,4 +1,5 @@
 import { BIOMES_UI_PLAYER_STATUS_UPDATED_EVENT } from "@/client/components/biomes_ui/adapters/playerStatusAdapter";
+import { fetchHarthmereLiveWithTimeout } from "@/client/components/harthmere_live_fetch";
 
 export function harthmereLiveModeEnvironmentDamageUrl(search?: string) {
   const rawSearch =
@@ -53,7 +54,8 @@ export async function submitHarthmereFallDamageLiveMode(
   const requestId = `${
     options.requestIdPrefix ?? "harthmere_fall_damage"
   }_${Date.now()}_${Math.random().toString(36).slice(2)}`;
-  const response = await fetchImpl(
+  const response = await fetchHarthmereLiveWithTimeout(
+    fetchImpl,
     harthmereLiveModeEnvironmentDamageUrl(options.locationSearch),
     {
       method: "POST",
@@ -100,7 +102,8 @@ export async function submitHarthmereDrowningDamageLiveMode(
   const requestId = `${
     options.requestIdPrefix ?? "harthmere_drowning_damage"
   }_${Date.now()}_${Math.random().toString(36).slice(2)}`;
-  const response = await fetchImpl(
+  const response = await fetchHarthmereLiveWithTimeout(
+    fetchImpl,
     harthmereLiveModeEnvironmentDamageUrl(options.locationSearch),
     {
       method: "POST",

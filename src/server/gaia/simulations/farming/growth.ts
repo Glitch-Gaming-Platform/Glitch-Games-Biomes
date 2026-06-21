@@ -216,7 +216,7 @@ export class GrowthTransition {
   canSeeSun(terrainModifier: FarmingPlantTerrainModifier) {
     // Can any block see the sun?
     const heightLimit =
-      terrainModifier.changeBatcher.getWorldMetadata()?.aabb[1];
+      terrainModifier.changeBatcher.getWorldMetadata()?.aabb.v1[1];
     if (heightLimit === undefined) {
       farmLog("error: No height limit for farm");
       return true;

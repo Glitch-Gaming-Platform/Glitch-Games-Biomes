@@ -10,12 +10,15 @@ function fakeHarvestPlant({
   status = "fully_grown",
   seed = BikkieIds.raspberrySeed,
   position = [1, 2, 3],
+  planter = generateTestId(),
 }: {
   status?: string;
   seed?: number;
   position?: [number, number, number];
+  planter?: ReturnType<typeof generateTestId>;
 } = {}) {
   const component = {
+    planter,
     status,
     seed,
     player_actions: [] as Array<{ kind: string; timestamp: number }>,
@@ -55,6 +58,26 @@ describe("harvestPlantEventHandler", () => {
       } as any,
       new HarvestPlantEvent({
         id: generateTestId(),
+        plant_id: plant.id,
+        position: [1, 2, 3],
+      }),
+      {} as any
+    );
+
+    assert.equal(component.player_actions.length, 1);
+    assert.equal(component.player_actions[0].kind, "harvest");
+  });
+
+  it("lets the planter harvest their own fully grown non-tree crop in protected terrain", () => {
+    const playerId = generateTestId();
+    const { component, plant } = fakeHarvestPlant({ planter: playerId });
+    harvestPlantEventHandler.apply(
+      {
+        plant,
+        acl: { can: () => false },
+      } as any,
+      new HarvestPlantEvent({
+        id: playerId,
         plant_id: plant.id,
         position: [1, 2, 3],
       }),

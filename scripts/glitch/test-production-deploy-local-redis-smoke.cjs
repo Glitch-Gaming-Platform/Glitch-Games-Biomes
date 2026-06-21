@@ -12,7 +12,10 @@ const stackRunner = fs.readFileSync(
   path.join(root, "scripts/glitch/run-glitch-local-game-stack.sh"),
   "utf8"
 );
-const dockerfile = fs.readFileSync(path.join(root, "Dockerfile.biomes"), "utf8");
+const dockerfile = fs.readFileSync(
+  path.join(root, "Dockerfile.biomes"),
+  "utf8"
+);
 const deployWorkflow = fs.readFileSync(
   path.join(root, ".github/workflows/azure-production-deploy.yml"),
   "utf8"
@@ -33,6 +36,10 @@ const snapshotBucketCheck = fs.readFileSync(
   "utf8"
 );
 const runBuildChecks = script.slice(script.indexOf("run_build_checks()"));
+const pushAndDeploy = script.slice(
+  script.indexOf("push_and_deploy()"),
+  script.indexOf('if [ "$REDIS_HEALTH_CHECK_ONLY"')
+);
 
 let failed = false;
 function ok(condition, message) {
@@ -158,6 +165,12 @@ ok(
   "production workflow caches hydrated snapshot bucket assets"
 );
 ok(
+  deployWorkflow.includes("Restore production compiler cache") &&
+    deployWorkflow.includes(".next/cache") &&
+    deployWorkflow.includes("node_modules/.cache/webpack"),
+  "production workflow caches Next and server Webpack compiler outputs"
+);
+ok(
   deployWorkflow.includes("./.github/actions/configure-github-git-deps"),
   "production workflow configures GitHub package URL rewrites before Yarn"
 );
@@ -238,11 +251,15 @@ ok(
   "Next build bakes the production web origin"
 );
 ok(
-  script.includes('GLITCH_TITLE_ID="${GLITCH_TITLE_ID:-42de534c-600f-4228-af9e-b69faef94cce}"'),
+  script.includes(
+    'GLITCH_TITLE_ID="${GLITCH_TITLE_ID:-42de534c-600f-4228-af9e-b69faef94cce}"'
+  ),
   "deploy has an explicit default Glitch title id"
 );
 ok(
-  script.includes('GLITCH_API_BASE_URL="${GLITCH_API_BASE_URL:-https://api.glitch.fun/api}"'),
+  script.includes(
+    'GLITCH_API_BASE_URL="${GLITCH_API_BASE_URL:-https://api.glitch.fun/api}"'
+  ),
   "deploy has an explicit Glitch API base URL"
 );
 ok(
@@ -252,6 +269,23 @@ ok(
 ok(
   script.includes("GLITCH_TITLE_TOKEN=secretref:glitch-title-token"),
   "production app uses the Azure Container App title-token secret reference"
+);
+ok(
+  script.includes(
+    "--command ./scripts/glitch/run-glitch-local-game-stack.sh"
+  ) && script.includes('--args ""'),
+  "production update replaces stale Azure startup command overrides with the unified stack runner"
+);
+ok(
+  script.includes("az containerapp ingress traffic set") &&
+    script.includes('--revision-weight "$revision=100"') &&
+    script.includes("az containerapp revision deactivate") &&
+    script.includes("properties.active==\\`true\\`"),
+  "production deploy pins one ready Azure revision and deactivates stale active revisions"
+);
+ok(
+  !/run-glitch-local-game-stack-[A-Za-z0-9_.-]+[.]sh/.test(script),
+  "production deploy script no longer references removed versioned stack runners"
 );
 ok(
   script.includes('--platform "$DOCKER_PLATFORM"'),
@@ -267,11 +301,18 @@ ok(
   "Docker build can consume and refresh an external Buildx layer cache"
 );
 ok(
+  script.includes("reset_build_outputs_preserving_caches") &&
+    !script.includes("rm -rf .next/cache node_modules/.cache/webpack"),
+  "source artifact build keeps restored compiler caches while clearing generated outputs"
+);
+ok(
   !/^\s*az acr build\b/m.test(script),
   "script avoids expensive remote ACR source uploads"
 );
 ok(
-  dockerfile.includes('CMD ["./scripts/glitch/run-glitch-local-game-stack.sh"]'),
+  dockerfile.includes(
+    'CMD ["./scripts/glitch/run-glitch-local-game-stack.sh"]'
+  ),
   "Docker image starts the unified Glitch local game stack script"
 );
 ok(
@@ -319,7 +360,9 @@ ok(
   "deploy requires an explicit Redis deny-all NSG rule after the subnet allow"
 );
 ok(
-  script.includes("refusing local production Redis bootstrap while Redis is private"),
+  script.includes(
+    "refusing local production Redis bootstrap while Redis is private"
+  ),
   "deploy refuses destructive local Redis bootstrap when Redis is private"
 );
 ok(
@@ -331,9 +374,7 @@ ok(
   "deploy enables Redis AOF auto-repair by default"
 );
 ok(
-  script.includes(
-    'check_production_redis_aof_health "production image push"'
-  ),
+  script.includes('check_production_redis_aof_health "production image push"'),
   "deploy checks Redis AOF/write health before the expensive image push"
 );
 ok(
@@ -430,7 +471,9 @@ ok(
   "deploy repair keeps scheduled RDB snapshots enabled for the shared Redis runtime"
 );
 ok(
-  script.includes('PROD_REDIS_SAVE_SCHEDULE="${PROD_REDIS_SAVE_SCHEDULE:-900 1 300 10 60 10000}"'),
+  script.includes(
+    'PROD_REDIS_SAVE_SCHEDULE="${PROD_REDIS_SAVE_SCHEDULE:-900 1 300 10 60 10000}"'
+  ),
   "deploy uses the production Redis RDB save schedule by default"
 );
 ok(
@@ -468,9 +511,7 @@ ok(
   "production deploy has a named broad world sync reconciliation phase"
 );
 ok(
-  script.includes(
-    'check_production_redis_aof_health "post-deploy world sync"'
-  ),
+  script.includes('check_production_redis_aof_health "post-deploy world sync"'),
   "post-deploy world sync re-checks Redis write health"
 );
 ok(
@@ -526,12 +567,24 @@ ok(
   "production deploy runs the broad Harthmere world sync reconciler"
 );
 ok(
-  script.includes("HARTHMERE_WORLD_SYNC_REDIS_HOST:-$PROD_REDIS_RECONCILE_HOST"),
+  script.includes(
+    "HARTHMERE_WORLD_SYNC_REDIS_HOST:-$PROD_REDIS_RECONCILE_HOST"
+  ),
   "broad world sync reconciliation uses the explicitly configured private Redis runner host"
 );
 ok(
   script.includes("validate_production_world_sync_http"),
   "production deploy validates live Harthmere world APIs after Redis reconciliation"
+);
+ok(
+  pushAndDeploy.includes(
+    [
+      'validate_production_bucket_assets "$latest_revision"',
+      'validate_production_world_sync_http "$latest_revision"',
+      'reconcile_production_world_sync "$latest_revision"',
+    ].join("\n  ")
+  ),
+  "app-only production deploy validates live Harthmere world APIs even when Redis reconciliation is skipped"
 );
 ok(
   script.includes("audit_production_authored_content"),
@@ -554,6 +607,11 @@ ok(
 ok(
   script.includes("/api/glitch/runtime_environment"),
   "post-deploy world sync validates runtime environment API"
+);
+ok(
+  script.includes("/api/world_map/metadata") &&
+    script.includes('"fullImageWidth"[[:space:]]*:[[:space:]]*[0-9]'),
+  "post-deploy world sync validates map metadata API"
 );
 
 if (failed) {

@@ -629,6 +629,32 @@ describe("business_customer_simulator", () => {
     }
   });
 
+  it("varies repair mini-game questions even when a shift loops through the same base offers", () => {
+    const stats = defaultHarthmereBusinessCustomerStats("business_repair");
+    const result = createHarthmereBusinessCustomerQueue({
+      businessId: "business_repair",
+      typeId: "repair_maintenance_person",
+      sessionId: "repair_shift_variety",
+      nowMs: 1000,
+      count: 9,
+      nextTicketNumber: 1,
+      stats,
+    });
+
+    assert.equal(result.queue.length, 9);
+    assert.equal(
+      new Set(result.queue.map((ticket) => ticket.askLine)).size,
+      result.queue.length
+    );
+    assert.equal(
+      new Set(result.queue.map((ticket) => ticket.scenarioId)).size,
+      result.queue.length
+    );
+    assert.ok(
+      new Set(result.queue.map((ticket) => ticket.requestedOfferId)).size >= 3
+    );
+  });
+
   it("tracks cozy non-money service rewards without replacing money rewards", () => {
     const definition =
       HARTHMERE_BUSINESS_MINIGAME_DEFINITIONS.food_service_restaurant;
@@ -681,9 +707,7 @@ describe("business_customer_simulator", () => {
     const businessTypes = Object.keys(HARTHMERE_ECONOMY_BUSINESS_TYPES);
     assert.equal(HARTHMERE_BUSINESS_OUTPOSTS.length, 19);
     assert.deepEqual(
-      HARTHMERE_BUSINESS_OUTPOSTS.map(
-        (outpost) => outpost.businessType
-      ).sort(),
+      HARTHMERE_BUSINESS_OUTPOSTS.map((outpost) => outpost.businessType).sort(),
       businessTypes.sort()
     );
     for (const outpost of HARTHMERE_BUSINESS_OUTPOSTS) {
@@ -827,8 +851,7 @@ describe("business_customer_simulator", () => {
         HARTHMERE_GROVE_BUSINESS_BUILDING_SOURCE_SCAN.version
       );
       assert.equal(
-        HARTHMERE_GROVE_BUSINESS_BUILDING_SOURCE_SCAN.scannedCoordinates
-          .length,
+        HARTHMERE_GROVE_BUSINESS_BUILDING_SOURCE_SCAN.scannedCoordinates.length,
         8
       );
       assert.equal(
@@ -1139,35 +1162,57 @@ describe("business_customer_simulator", () => {
         );
       }
       if (outpost.businessType === "food_service_restaurant") {
+        const kitchenFixtures = record.interiorFixtures.filter(
+          (fixture) =>
+            fixture.role === "primary_station" &&
+            /kitchen|cook|buff|service/i.test(fixture.label)
+        );
         assert.ok(
-          record.interiorFixtures.some(
-            (fixture) =>
-              fixture.role === "primary_station" &&
-              /kitchen|cook|buff|service/i.test(fixture.label)
-          ) &&
+          kitchenFixtures.length > 0,
+          `${outpost.outpostId} must publish a kitchen station fixture for runtime furniture`
+        );
+        assert.equal(
+          kitchenFixtures.some((fixture) =>
             record.materializationPlan.edits.some(
               (edit) =>
-                edit.label === "business_marker" &&
-                (edit.value === terrain("stone_brick") ||
-                  edit.value === terrain("oak_lumber"))
-            ),
-          `${outpost.outpostId} must include a physical voxel kitchen station`
+                ["business_marker", "interior", "storage_container"].includes(
+                  edit.label
+                ) &&
+                edit.position[0] === Math.round(fixture.position.x) &&
+                edit.position[1] >= Math.round(fixture.position.y) &&
+                edit.position[1] <= Math.round(fixture.position.y) + 2 &&
+                edit.position[2] === Math.round(fixture.position.z)
+            )
+          ),
+          false,
+          `${outpost.outpostId} must not rebuild the kitchen station as blocky voxel furniture`
         );
       }
       if (outpost.businessType === "repair_maintenance_person") {
+        const repairFixtures = record.interiorFixtures.filter(
+          (fixture) =>
+            fixture.role === "primary_station" &&
+            /repair|work|bench|order/i.test(fixture.label)
+        );
         assert.ok(
-          record.interiorFixtures.some(
-            (fixture) =>
-              fixture.role === "primary_station" &&
-              /repair|work|bench|order/i.test(fixture.label)
-          ) &&
+          repairFixtures.length > 0,
+          `${outpost.outpostId} must publish a repair workbench fixture for runtime furniture`
+        );
+        assert.equal(
+          repairFixtures.some((fixture) =>
             record.materializationPlan.edits.some(
               (edit) =>
-                edit.label === "business_marker" &&
-                (edit.value === terrain("stone_polished") ||
-                  edit.value === terrain("oak_lumber"))
-            ),
-          `${outpost.outpostId} must include a physical voxel repair workbench`
+                ["business_marker", "interior", "storage_container"].includes(
+                  edit.label
+                ) &&
+                edit.position[0] === Math.round(fixture.position.x) &&
+                edit.position[1] >= Math.round(fixture.position.y) &&
+                edit.position[1] <= Math.round(fixture.position.y) + 2 &&
+                edit.position[2] === Math.round(fixture.position.z)
+            )
+          ),
+          false,
+          `${outpost.outpostId} must not rebuild the repair workbench as blocky voxel furniture`
         );
       }
       assert.deepEqual(
@@ -1224,16 +1269,12 @@ describe("business_customer_simulator", () => {
         dashboardKioskEdits.length >= 3,
         `${outpost.outpostId} must materialize a visible dashboard access kiosk instead of a single hidden marker`
       );
-      const npcMarkerEdits = record.materializationPlan.edits.filter(
-        (edit) =>
-          edit.label === "npc_marker" ||
-          (edit.label === "business_marker" &&
-            (edit.position[1] === record.origin.y + 3 ||
-              edit.position[1] === record.origin.y + 4))
-      );
-      assert.ok(
-        npcMarkerEdits.length >= 4,
-        `${outpost.outpostId} must show staffed/customer NPC silhouettes inside`
+      assert.equal(
+        record.materializationPlan.edits.some(
+          (edit) => edit.label === "npc_marker"
+        ),
+        false,
+        `${outpost.outpostId} must use runtime NPC placements instead of block-built NPC silhouettes`
       );
       assert.ok(
         record.dashboardAccessPoint.position.x >= record.origin.x + 2 &&
@@ -1426,20 +1467,17 @@ describe("business_customer_simulator", () => {
   it("fails live-world navigation when a permanent player object seals the service counter", () => {
     const record =
       HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS.outpost_restaurant_redpot;
-    const audit = validateHarthmereBusinessOutpostLiveWorldNavigation(
-      record,
-      {
-        dynamicBlockers: [
-          {
-            blockerId: "player_counter_wall",
-            kind: "player_object",
-            position: record.serviceCounter,
-            radiusMeters: 1,
-            temporary: false,
-          },
-        ],
-      }
-    );
+    const audit = validateHarthmereBusinessOutpostLiveWorldNavigation(record, {
+      dynamicBlockers: [
+        {
+          blockerId: "player_counter_wall",
+          kind: "player_object",
+          position: record.serviceCounter,
+          radiusMeters: 1,
+          temporary: false,
+        },
+      ],
+    });
     assert.equal(audit.ok, false);
     assert.ok(
       audit.unreachableRoutes.some(
@@ -1457,9 +1495,7 @@ describe("business_customer_simulator", () => {
     for (let index = 0; index < plans.length; index += 2) {
       const cleanup = plans[index];
       const rebuild = plans[index + 1];
-      assert.ok(
-        cleanup.requestId.endsWith("_backend_cleanup_before_rebuild")
-      );
+      assert.ok(cleanup.requestId.endsWith("_backend_cleanup_before_rebuild"));
       assert.equal(cleanup.partialMaterialization, true);
       assert.ok(
         cleanup.edits.length > 500,
@@ -1474,8 +1510,7 @@ describe("business_customer_simulator", () => {
         "_backend_cleanup_before_rebuild",
         ""
       );
-      const record =
-        HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS[outpostId];
+      const record = HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS[outpostId];
       assert.ok(
         record &&
           cleanup.edits.some(
@@ -1521,6 +1556,32 @@ describe("business_customer_simulator", () => {
         ).length,
         0,
         `${rebuild.requestId} must not dress real business interiors with crate/box terrain`
+      );
+      const visualRuntimeFixtureKeys = new Set<string>();
+      for (const fixture of record.interiorFixtures) {
+        if (fixture.role === "customer_queue_space") continue;
+        if (fixture.role === "dashboard_access") continue;
+        const width = Math.max(1, Math.min(3, Math.round(fixture.size[0])));
+        const depth = Math.max(1, Math.min(3, Math.round(fixture.size[2])));
+        const x0 = Math.round(fixture.position.x - Math.floor(width / 2));
+        const z0 = Math.round(fixture.position.z - Math.floor(depth / 2));
+        const y0 = Math.round(fixture.position.y);
+        for (let x = x0; x < x0 + width; x += 1) {
+          for (let z = z0; z < z0 + depth; z += 1) {
+            for (let y = y0; y <= y0 + 2; y += 1) {
+              visualRuntimeFixtureKeys.add(`${x}:${y}:${z}`);
+            }
+          }
+        }
+      }
+      assert.equal(
+        rebuild.edits.some(
+          (edit) =>
+            ["interior", "storage_container"].includes(edit.label) &&
+            visualRuntimeFixtureKeys.has(edit.position.join(":"))
+        ),
+        false,
+        `${rebuild.requestId} must leave store furniture footprints to runtime visual props instead of terrain voxels`
       );
     }
   });
@@ -1568,8 +1629,7 @@ describe("business_customer_simulator", () => {
         "_backend_cleanup_before_rebuild",
         ""
       );
-      const record =
-        HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS[outpostId];
+      const record = HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS[outpostId];
       if (!record) continue;
       // Every voxel from the rebuild plan must be covered by the cleanup plan
       const cleanupKeys = new Set(
@@ -1719,8 +1779,7 @@ describe("business_customer_simulator", () => {
         "_backend_cleanup_before_rebuild",
         ""
       );
-      const record =
-        HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS[outpostId];
+      const record = HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS[outpostId];
       if (!record) continue;
       const cleanupKeys = new Set(
         cleanup.edits.map((edit) => edit.position.join(":"))

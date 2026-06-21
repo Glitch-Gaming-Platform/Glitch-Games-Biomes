@@ -1,7 +1,7 @@
 import type { ClientResources } from "@/client/game/resources/types";
 import { SHARD_DIM, shardCenter, shardsForAABB } from "@/shared/game/shard";
 import { containsAABB, growAABB } from "@/shared/math/linear";
-import type { AABB } from "@/shared/math/types";
+import type { AABB, ReadonlyAABB } from "@/shared/math/types";
 
 function nearbyAabbShards(
   resources: ClientResources,
@@ -13,11 +13,12 @@ function nearbyAabbShards(
   }
 
   const metadata = resources.get("/ecs/metadata");
+  const worldAabb: ReadonlyAABB = [metadata.aabb.v0, metadata.aabb.v1];
   if (grow) {
     aabb = growAABB(aabb, grow);
   }
   return Array.from(shardsForAABB(...aabb)).filter((shard) =>
-    containsAABB([metadata.aabb, metadata.aabb], shardCenter(shard))
+    containsAABB(worldAabb, shardCenter(shard))
   );
 }
 

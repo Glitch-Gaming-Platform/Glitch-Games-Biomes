@@ -1,4 +1,5 @@
 import { BIOMES_UI_PLAYER_STATUS_UPDATED_EVENT } from "@/client/components/biomes_ui/adapters/playerStatusAdapter";
+import { fetchHarthmereLiveWithTimeout } from "@/client/components/harthmere_live_fetch";
 
 export const HARTHMERE_DIALOGUE_LIVE_MODE_RESPONSE_EVENT =
   "biomes:harthmere-dialogue-live-mode-response" as const;
@@ -127,7 +128,8 @@ export async function submitHarthmereDialogueLiveModeChoice(
     const requestId = `${
       options.requestIdPrefix ?? "dialogue_choice"
     }_${Date.now()}_${index}_${Math.random().toString(36).slice(2)}`;
-    const response = await fetchImpl(
+    const response = await fetchHarthmereLiveWithTimeout(
+      fetchImpl,
       harthmereDialogueLiveModeUrl(options.locationSearch),
       {
         method: "POST",

@@ -23,9 +23,9 @@ state: `gold:75, level:2, inventoryItems:30`, plus the player-mesh keys
 response includes a valid `decoded_payload`, so the restore filter
 (`save.decoded_payload.version === "harthmere-glitch-save"`) matches and
 `applySnapshot` runs. The restore _policy_
-(`shouldApplyHarthmereCloudSave`) now treats cloud saves as import/export
-snapshots: they can restore only when no live-mode backend authority state
-exists, so Cloud Save cannot become gameplay authority on boot.
+(`shouldApplyHarthmereCloudSave`) treats Glitch Cloud Save as the durable player
+record: a valid latest cloud slot can restore on boot even when live-mode Redis
+still has runtime state, because Redis can reset and should be rebuildable.
 
 ### The real bug: the save SCOPE is volatile
 

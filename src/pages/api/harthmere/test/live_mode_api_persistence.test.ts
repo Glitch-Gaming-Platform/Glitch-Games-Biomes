@@ -583,6 +583,74 @@ describe("live_mode API Redis persistence", () => {
     assert.equal(targetState.classMagic.skills.combat?.xp, 100);
   });
 
+  it("adopts a linked game-user source when the stable actor only has a default shell", async () => {
+    const redisPrimary = new FakeRedisPrimary();
+    (globalThis as any).__harthmereLiveModeRedis = {
+      primary: redisPrimary,
+    };
+
+    const sourceActorId = "1358212051954288";
+    const sourceKey = harthmereLiveModePlayerStateKey(sourceActorId);
+    const targetKey = harthmereLiveModePlayerStateKey(ACTOR);
+    const sourceState = defaultHarthmereLiveModeBackendState(
+      sourceActorId,
+      NOW_MS
+    );
+    sourceState.inventory.gold = 68;
+    redisPrimary.store.set(sourceKey, JSON.stringify(sourceState));
+    redisPrimary.store.set(
+      targetKey,
+      JSON.stringify(defaultHarthmereLiveModeBackendState(ACTOR, NOW_MS))
+    );
+
+    const env = envelope();
+    env.requestId = "live-api-persist-linked-game-user-adopt";
+    env.idempotencyKey = "live-api-persist-linked-game-user-adopt";
+    const response = {
+      ok: true,
+      version: "HARTHMERE_LIVE_MODE_SERVER_ROUTE" as const,
+      actorId: ACTOR,
+      duplicate: false,
+      replayed: false,
+      persisted: true,
+      validation: {
+        ok: true,
+        errors: [],
+        warnings: [],
+        rejectedClientClaims: [],
+      },
+      mutationPlan: buildHarthmereLiveModePersistenceMutationPlan(env),
+      events: [],
+      uiEvents: [],
+    };
+
+    const persisted = await persistHarthmereLiveModeResponse(env, response, {
+      logicApi: { publish: async () => {} } as any,
+      userId: 1 as any,
+      stateAdoption: {
+        fromActorId: sourceActorId,
+        fromStateKey: sourceKey,
+        toActorId: ACTOR,
+        toStateKey: targetKey,
+        reason: "linked_game_user",
+      },
+    });
+
+    assert.ok(
+      persisted.backendMutation?.warnings.includes(
+        `actor_state_adopted:linked_game_user:${sourceActorId}->${ACTOR}`
+      )
+    );
+    assert.equal(redisPrimary.store.has(sourceKey), false);
+    const targetState = parseHarthmereLiveModeBackendState(
+      redisPrimary.store.get(targetKey),
+      ACTOR,
+      NOW_MS
+    );
+    assert.equal(targetState.inventory.gold, 68);
+    assert.equal(targetState.classMagic.skills.combat?.xp, 100);
+  });
+
   it("hydrates public economy from shared world state before reducing actor mutations", async () =>
     withFullLiveModeMutationSnapshotsForTest(async () => {
       const redisPrimary = new FakeRedisPrimary();
@@ -1002,7 +1070,10 @@ describe("live_mode API Redis persistence", () => {
       }
     );
 
-    assert.deepEqual(persisted.backendMutation?.warnings, []);
+    assert.deepEqual(
+      gameplayMutationWarnings(persisted.backendMutation?.warnings),
+      []
+    );
     assert.ok(
       (persisted.jobsBoardState as any).myAcceptedJobs.some(
         (job: any) =>

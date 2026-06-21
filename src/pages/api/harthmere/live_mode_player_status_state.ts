@@ -97,7 +97,7 @@ export async function readHarthmereLiveModePlayerStatusStateForActor(input: {
     input.actorId,
     input.nowMs
   );
-  const hasBackendAuthorityState = rawState !== null;
+  const hasBackendRuntimeState = rawState !== null;
   // GET endpoints are read-only projections. Stamina/death repairs can be shown
   // in the returned snapshot, but durable state changes must flow through the
   // live-mode reducer transaction so Redis has one backend writer.
@@ -113,8 +113,8 @@ export async function readHarthmereLiveModePlayerStatusStateForActor(input: {
     ...createHarthmereLiveModePlayerStatusClientSnapshot(state),
     backendAuthority: {
       source: "harthmere-live-mode-redis",
-      role: "backend-source-of-truth",
-      persisted: hasBackendAuthorityState,
+      role: "backend-runtime-cache",
+      persisted: hasBackendRuntimeState,
       readOnlyProjection: true,
       repairedForSnapshot: statusReadRepair.changed,
     },

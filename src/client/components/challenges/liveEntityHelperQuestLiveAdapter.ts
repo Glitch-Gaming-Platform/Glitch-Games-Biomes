@@ -2,6 +2,7 @@ import type {
   LiveEntityHelperQuestEntityContext,
   LiveEntityHelperQuestInstance,
 } from "@/shared/harthmere/live_entity_helper_quests";
+import { fetchHarthmereLiveWithTimeout } from "@/client/components/harthmere_live_fetch";
 import {
   liveEntityRobotDefaultRobotIdForArea,
   liveEntityRobotProtectionAreaForPosition,
@@ -189,7 +190,8 @@ async function submitLiveEntityHelperLiveModeAction(
   const requestId =
     options.requestId ??
     `live_entity_helper_${Date.now()}_${Math.random().toString(36).slice(2)}`;
-  const response = await fetchImpl(
+  const response = await fetchHarthmereLiveWithTimeout(
+    fetchImpl,
     harthmereLiveEntityHelperLiveModeUrl(options.locationSearch),
     {
       method: "POST",

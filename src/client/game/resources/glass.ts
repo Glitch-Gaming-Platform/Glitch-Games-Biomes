@@ -164,6 +164,7 @@ async function genGlassMesh(
   if (!shard) {
     return;
   }
+  const shardOrigin = shard.box.v0;
 
   // Fetch the flora index.
   const [
@@ -229,7 +230,7 @@ async function genGlassMesh(
         tensor.cpp,
         dye.cpp,
         shapeIndex,
-        shard.box,
+        shardOrigin,
         isomorphismLoader,
         (shard) => glassLoader(shard)?.cpp,
         (shard) => dyeLoader(shard)?.cpp
@@ -247,7 +248,7 @@ async function genGlassMesh(
           isomorphisms,
           occlusions,
           shapeIndex,
-          shard.box
+          shardOrigin
         );
       });
 
@@ -276,7 +277,7 @@ async function genGlassMesh(
       const lbuf = timeCode("glass:toBlockLightBuffer", () => {
         return voxeloo.toBlockLightingBuffer(
           tensor.cpp,
-          shard.box,
+          shardOrigin,
           isomorphismLoader,
           (shard) => skyOcclusionLoader(shard)?.cpp,
           (shard) => irradianceLoader(shard)?.cpp

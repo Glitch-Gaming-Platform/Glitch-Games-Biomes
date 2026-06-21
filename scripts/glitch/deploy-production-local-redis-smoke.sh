@@ -830,6 +830,7 @@ validate_production_world_sync_http() {
     # healthcheck uses — then the API readiness endpoints below confirm ok:true.
     validate_world_sync_http_url "$base" "/" "root reachability"
     validate_world_sync_http_url "$base" "/api/glitch/runtime_environment" "runtime environment" '"ok"[[:space:]]*:[[:space:]]*true'
+    validate_world_sync_http_url "$base" "/api/world_map/metadata" "world map metadata" '"fullImageWidth"[[:space:]]*:[[:space:]]*[0-9]'
     validate_world_sync_http_url "$base" "/api/harthmere/live_mode_jobs_board_state?install_id=${install_id}" "jobs board shared state" '"ok"[[:space:]]*:[[:space:]]*true'
     validate_world_sync_http_url "$base" "/api/harthmere/live_mode_player_status_state?install_id=${install_id}&gameplay_active=0" "player status state" '"ok"[[:space:]]*:[[:space:]]*true'
   done
@@ -1135,6 +1136,22 @@ ensure_production_asset_inputs() {
   ensure_snapshot_bucket_assets
 }
 
+reset_build_outputs_preserving_caches() {
+  local next_cache_tmp=""
+  if [ -d .next/cache ]; then
+    next_cache_tmp="$(mktemp -d "${TMPDIR:-/tmp}/biomes-next-cache.XXXXXX")"
+    mv .next/cache "$next_cache_tmp/cache"
+  fi
+
+  rm -rf .next dist
+  if [ -n "$next_cache_tmp" ]; then
+    mkdir -p .next
+    mv "$next_cache_tmp/cache" .next/cache
+    rmdir "$next_cache_tmp"
+  fi
+  mkdir -p node_modules/.cache/webpack
+}
+
 run_build_checks() {
   log "Running production source guardrails."
   ensure_production_asset_inputs
@@ -1148,15 +1165,8 @@ run_build_checks() {
   node scripts/glitch/test-production-redis6-stream-compat.cjs .
   node scripts/glitch/test-production-redis-shared-world.cjs .
   node scripts/harthmere/test-glitch-prod-bucket-asset-proxy.cjs .
-  node scripts/harthmere/test-glitch-prod-bucket-asset-proxy.cjs .
-  node scripts/harthmere/test-glitch-prod-bucket-asset-proxy.cjs .
   node scripts/harthmere/test-glitch-player-mesh-runtime.cjs .
   node scripts/glitch/test-glitch-oob-anonymous-ro-sync.cjs .
-  node scripts/harthmere/test-glitch-prod-galois-runtime-packaging.cjs .
-  node scripts/harthmere/test-glitch-prod-galois-runtime-packaging.cjs .
-  node scripts/harthmere/test-glitch-prod-galois-runtime-packaging.cjs .
-  node scripts/harthmere/test-glitch-prod-galois-runtime-packaging.cjs .
-  node scripts/harthmere/test-glitch-prod-galois-runtime-packaging.cjs .
   node scripts/harthmere/test-glitch-prod-galois-runtime-packaging.cjs .
   node scripts/harthmere/test-harthmere-character-builder-save-glitch.cjs .
   node scripts/harthmere/test-harthmere-animation-target-pruning.cjs .
@@ -1181,7 +1191,7 @@ run_build_checks() {
 
 build_artifacts() {
   log "Building Next client for production origin: $PROD_ORIGIN"
-  rm -rf .next/cache node_modules/.cache/webpack
+  reset_build_outputs_preserving_caches
   GLITCH_RUNTIME=1 \
   GLITCH_LOCAL_ASSETS=1 \
   GLITCH_TITLE_ID="$GLITCH_TITLE_ID" \
@@ -1383,6 +1393,8 @@ push_and_deploy() {
     --resource-group "$AZURE_RESOURCE_GROUP"
     --name "$AZURE_CONTAINER_APP"
     --image "$IMAGE"
+    --command ./scripts/glitch/run-glitch-local-game-stack.sh
+    --args ""
     --min-replicas "$AZURE_MIN_REPLICAS"
     --max-replicas "$AZURE_MAX_REPLICAS"
   )
@@ -1434,6 +1446,7 @@ push_and_deploy() {
 
   promote_azure_revision_when_ready "$latest_revision"
   validate_production_bucket_assets "$latest_revision"
+  validate_production_world_sync_http "$latest_revision"
   reconcile_production_world_sync "$latest_revision"
 
   log "Production update verified: $IMAGE revision=$latest_revision"

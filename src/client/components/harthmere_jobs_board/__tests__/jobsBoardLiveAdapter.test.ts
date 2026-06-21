@@ -279,7 +279,10 @@ describe("Harthmere universal jobs board live adapter", () => {
       calls[0].url,
       "/api/harthmere/live_mode?install_id=install-123"
     );
-    assert.equal(calls[0].init.headers["X-Glitch-Install-Id"], "install-123");
+    assert.equal(
+      new Headers(calls[0].init.headers).get("X-Glitch-Install-Id"),
+      "install-123"
+    );
   });
 
   it("posts every write through request_jobs_board_mutation with the board as target", async () => {

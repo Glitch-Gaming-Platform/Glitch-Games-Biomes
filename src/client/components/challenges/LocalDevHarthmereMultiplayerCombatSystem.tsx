@@ -800,6 +800,8 @@ const HARTHMERE_MOUSE_LIVE_MODE_ATTACK_BRIDGE_VERSION =
   "harthmere-mouse-live-mode-attack-bridge";
 const HARTHMERE_LIVE_MODE_BASIC_ATTACK_ABILITY_ID = "basic_strike";
 const HARTHMERE_LIVE_MODE_MOUSE_ATTACK_ZONE_ID = "harthmere_wilderness";
+const HARTHMERE_LIVE_MODE_NPC_AI_TICK_INTERVAL_MS = 2_000;
+const HARTHMERE_LIVE_MODE_NPC_AI_TARGET_MEMORY_MS = 60_000;
 
 const HARTHMERE_LIVE_MODE_TARGET_BY_ECS_ID = new Map<number, string>(
   [
@@ -865,6 +867,143 @@ function debugHarthmereMouseLiveModeAttack(entry: Record<string, unknown>) {
     "1"
   ) {
     console.info("[HarthmereMouseLiveModeAttack]", logged);
+  }
+}
+
+const harthmereLiveModeNpcAiTargetMemory = new Map<string, number>();
+const harthmereLiveModeNpcAiTickInFlight = new Set<string>();
+
+function rememberHarthmereLiveModeNpcAiTarget(targetId: string) {
+  harthmereLiveModeNpcAiTargetMemory.set(targetId, Date.now());
+}
+
+function freshHarthmereLiveModeNpcAiTargets(nowMs = Date.now()) {
+  for (const [targetId, atMs] of harthmereLiveModeNpcAiTargetMemory) {
+    if (nowMs - atMs > HARTHMERE_LIVE_MODE_NPC_AI_TARGET_MEMORY_MS) {
+      harthmereLiveModeNpcAiTargetMemory.delete(targetId);
+    }
+  }
+  return [...harthmereLiveModeNpcAiTargetMemory.keys()];
+}
+
+function actorPositionPayload(
+  runtime: HarthmereForwardArcRuntimeSnapshot | undefined
+) {
+  const position = runtime?.position;
+  if (!position) {
+    return {};
+  }
+  const [actorX, actorY, actorZ] = position;
+  return Number.isFinite(actorX) &&
+    Number.isFinite(actorY) &&
+    Number.isFinite(actorZ)
+    ? { actorX, actorY, actorZ }
+    : {};
+}
+
+function submitHarthmereLiveModeNpcAiTicks(
+  explicitTargetIds?: ReadonlyArray<string>,
+  reason = "interval"
+) {
+  if (!isBrowser()) {
+    return;
+  }
+  const nowMs = Date.now();
+  const runtime = readHarthmereForwardArcRuntime();
+  const actors = readHarthmereCrosshairCombatActors();
+  const actorsByTargetId = new Map(
+    actors
+      .filter((actor) => actor.targetId)
+      .map((actor) => [actor.targetId as string, actor])
+  );
+  const visibleAttackableTargetIds = actors
+    .filter(
+      (actor) =>
+        actor.attackable !== false &&
+        actor.screenVisible !== false &&
+        actor.targetId
+    )
+    .map((actor) => actor.targetId as string);
+  const targetIds = [
+    ...new Set([
+      ...(explicitTargetIds ?? []),
+      ...freshHarthmereLiveModeNpcAiTargets(nowMs),
+      ...visibleAttackableTargetIds,
+    ]),
+  ].slice(0, 16);
+  const positionPayload = actorPositionPayload(runtime);
+  for (const targetId of targetIds) {
+    if (harthmereLiveModeNpcAiTickInFlight.has(targetId)) {
+      continue;
+    }
+    const actor = actorsByTargetId.get(targetId);
+    const lineOfSight = actor ? actor.screenVisible !== false : false;
+    const requestId = `harthmere_npc_ai_tick_${Date.now()}_${Math.random()
+      .toString(36)
+      .slice(2)}`;
+    harthmereLiveModeNpcAiTickInFlight.add(targetId);
+    fireAndForget(
+      (async () => {
+        const response = await defaultHarthmereLiveFetch(
+          harthmereDialogueLiveModeUrl(window.location.search),
+          {
+            method: "POST",
+            credentials: "same-origin",
+            headers: harthmereDialogueLiveModeHeaders(window.location.search),
+            body: JSON.stringify({
+              requestId,
+              idempotencyKey: requestId,
+              targetId,
+              actionKind: "request_npc_ai_tick",
+              subsystem: "combat",
+              actorEntityVersion: 1,
+              zoneId: HARTHMERE_LIVE_MODE_MOUSE_ATTACK_ZONE_ID,
+              payload: {
+                npcId: targetId,
+                lineOfSight,
+                thinkIntervalMs: HARTHMERE_LIVE_MODE_NPC_AI_TICK_INTERVAL_MS,
+                ...positionPayload,
+              },
+              clientClaims: {
+                reason,
+                runtimePosition: runtime?.position,
+                runtimeForward: runtime?.forward,
+                actorScreenVisible: actor?.screenVisible,
+                actorWorld: actor
+                  ? [actor.worldX, actor.worldY, actor.worldZ]
+                  : undefined,
+              },
+            }),
+          }
+        );
+        const body = await response.json().catch(() => undefined);
+        if (body?.combatState) {
+          publishHarthmereLiveEntityCombatMotionToRenderer(body.combatState);
+          const tick = body.combatState.npcAiTicks?.[targetId];
+          const decision = String(tick?.decision ?? "");
+          if (
+            !lineOfSight ||
+            decision.includes("no_line_of_sight") ||
+            decision.includes("target_out_of_chase_range") ||
+            decision.includes("player_not_alive") ||
+            decision.includes("safe_zone")
+          ) {
+            harthmereLiveModeNpcAiTargetMemory.delete(targetId);
+          }
+        }
+      })()
+        .catch((error) => {
+          debugHarthmereMouseLiveModeAttack({
+            type: "npc_ai_tick_error",
+            targetId,
+            reason,
+            error: error instanceof Error ? error.message : String(error),
+          });
+        })
+        .finally(() => {
+          harthmereLiveModeNpcAiTickInFlight.delete(targetId);
+        })
+    );
   }
 }
 
@@ -976,6 +1115,8 @@ function submitHarthmereLiveModeMousePrimaryAttack(
         const body = await response.json().catch(() => undefined);
         if (body?.combatState) {
           publishHarthmereLiveEntityCombatMotionToRenderer(body.combatState);
+          rememberHarthmereLiveModeNpcAiTarget(targetId);
+          submitHarthmereLiveModeNpcAiTicks([targetId], "player_attack");
         }
         debugHarthmereMouseLiveModeAttack({
           type: response.ok ? "submitted" : "rejected",
@@ -1477,9 +1618,14 @@ export function useHarthmereCombatHotkeys() {
 
     window.addEventListener("keydown", handler, true);
     window.addEventListener("mousedown", mouseHandler, true);
+    const npcAiInterval = window.setInterval(
+      () => submitHarthmereLiveModeNpcAiTicks(undefined, "combat_runtime"),
+      HARTHMERE_LIVE_MODE_NPC_AI_TICK_INTERVAL_MS
+    );
     return () => {
       window.removeEventListener("keydown", handler, true);
       window.removeEventListener("mousedown", mouseHandler, true);
+      window.clearInterval(npcAiInterval);
     };
   }, []);
 }

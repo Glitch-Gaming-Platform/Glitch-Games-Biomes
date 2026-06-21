@@ -2,25 +2,23 @@ import assert from "assert";
 import { shouldApplyHarthmereCloudSave } from "@/client/game/glitch/harthmere_cloud_save_restore_policy";
 
 describe("Harthmere Cloud Save restore policy current", () => {
-  it("imports a returned Glitch cloud slot only when no backend authority state exists", () => {
+  it("imports a returned Glitch cloud slot as durable player truth", () => {
     assert.equal(
       shouldApplyHarthmereCloudSave({
         latestCloudVersion: 7,
-        hasBackendAuthorityState: false,
         hasMeaningfulLocalProgress: true,
       }),
       true
     );
   });
 
-  it("does not auto-restore cloud over an existing backend authority state", () => {
+  it("does not let backend runtime state block cloud restore", () => {
     assert.equal(
       shouldApplyHarthmereCloudSave({
         latestCloudVersion: 7,
-        hasBackendAuthorityState: true,
         hasMeaningfulLocalProgress: false,
       }),
-      false
+      true
     );
   });
 
@@ -44,22 +42,20 @@ describe("Harthmere Cloud Save restore policy current", () => {
     );
   });
 
-  it("restores the cloud save on boot when local has progress but backend has no state", () => {
+  it("restores the cloud save on boot even when local has progress", () => {
     assert.equal(
       shouldApplyHarthmereCloudSave({
         latestCloudVersion: 1422,
-        hasBackendAuthorityState: false,
         hasMeaningfulLocalProgress: true,
       }),
       true
     );
   });
 
-  it("force restore wins only when no backend authority state exists", () => {
+  it("force restore wins without consulting backend runtime state", () => {
     assert.equal(
       shouldApplyHarthmereCloudSave({
         latestCloudVersion: 1422,
-        hasBackendAuthorityState: false,
         hasMeaningfulLocalProgress: true,
         forceCloudRestore: true,
       }),
@@ -68,11 +64,10 @@ describe("Harthmere Cloud Save restore policy current", () => {
     assert.equal(
       shouldApplyHarthmereCloudSave({
         latestCloudVersion: 1422,
-        hasBackendAuthorityState: true,
         hasMeaningfulLocalProgress: true,
         forceCloudRestore: true,
       }),
-      false
+      true
     );
   });
 });

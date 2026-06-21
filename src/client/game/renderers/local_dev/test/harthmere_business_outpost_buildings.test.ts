@@ -10,6 +10,11 @@ import {
   HARTHMERE_BUSINESS_OUTPOST_BUILDING_RENDER_VERSION,
   makeHarthmereBusinessOutpostBuildingsRenderer,
 } from "@/client/game/renderers/local_dev/harthmere_business_outpost_buildings";
+import {
+  createHarthmereBusinessOutpostInteriorDecorSpecs,
+  HARTHMERE_BUSINESS_OUTPOST_VISUAL_DECOR_COLLISION,
+  HARTHMERE_BUSINESS_OUTPOST_VISUAL_DECOR_VERSION,
+} from "@/shared/harthmere/business_outpost_visual_decor";
 import { createNewScenes } from "@/client/game/renderers/scenes";
 import {
   HARTHMERE_BUSINESS_OUTPOSTS,
@@ -474,7 +479,7 @@ describe("Harthmere business outpost guide renderer current", () => {
     }
   });
 
-  it("places the owner NPC while business boards are drawn by the dedicated procedural renderer", () => {
+  it("places the owner NPC and visual-only furniture while boards are drawn by the dedicated procedural renderer", () => {
     const start = SOURCE.indexOf(
       "function createHarthmereBusinessOutpostPlacements()"
     );
@@ -514,6 +519,10 @@ describe("Harthmere business outpost guide renderer current", () => {
       false,
       "business boards must come from the procedural marker renderer, not the runtime placement list"
     );
+    assert.ok(
+      body.includes("createHarthmereBusinessOutpostInteriorDecorPlacements"),
+      "business outposts must add real runtime furniture/decor placements after the server voxel shell"
+    );
     // Must still place the owner NPC with proper cosmetics.
     assert.ok(
       body.includes(
@@ -545,6 +554,116 @@ describe("Harthmere business outpost guide renderer current", () => {
       body.includes("inside business staff NPC") &&
         body.includes('lodTier = "always"'),
       "staff NPC must be an always-visible inside-business placement"
+    );
+  });
+
+  it("renders passable real furniture/decor placements for all 19 business interiors", () => {
+    const polishedInteriorAssets = new Set([
+      "anvil_fp",
+      "barrel_apples",
+      "barrel_fp",
+      "barrel_holder_fp",
+      "bed_twin1",
+      "bed_twin2",
+      "bench_fp",
+      "book_group_1",
+      "book_group_2",
+      "book_stack_1",
+      "book_stack_2",
+      "bookcase_2",
+      "bookstand_fp",
+      "bucket_wood",
+      "cabinet",
+      "cauldron_fp",
+      "crate_wooden_fp",
+      "farmcrate_carrot",
+      "lantern_wall_fp",
+      "mug_fp",
+      "potion_2_fp",
+      "shelf_small_bottles",
+      "stool_fp",
+      "table_large_fp",
+      "weaponstand_fp",
+      "whetstone_fp",
+      "workbench_drawers_fp",
+    ]);
+
+    for (const outpost of HARTHMERE_BUSINESS_OUTPOSTS) {
+      const record =
+        HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS[outpost.outpostId];
+      const specs = createHarthmereBusinessOutpostInteriorDecorSpecs(record);
+      const nonQueueFixtures = record.interiorFixtures.filter(
+        (fixture) => fixture.role !== "customer_queue_space"
+      );
+      assert.ok(
+        specs.length >= nonQueueFixtures.length,
+        `${record.outpostId} must render at least one real prop for every non-queue interior fixture`
+      );
+      assert.ok(
+        new Set(specs.map((spec) => spec.asset)).size >= 5,
+        `${record.outpostId} must use a varied asset mix, not one repeated block-like prop`
+      );
+      for (const spec of specs) {
+        assert.equal(
+          polishedInteriorAssets.has(spec.asset),
+          true,
+          `${record.outpostId} uses non-polished interior asset ${spec.asset}`
+        );
+        assert.equal(spec.scale > 0, true);
+        assert.ok(spec.support);
+        assert.equal(
+          HARTHMERE_BUSINESS_OUTPOST_VISUAL_DECOR_COLLISION.category,
+          "none"
+        );
+        assert.equal(
+          HARTHMERE_BUSINESS_OUTPOST_VISUAL_DECOR_COLLISION.blocksPlayer,
+          false
+        );
+        assert.equal(
+          HARTHMERE_BUSINESS_OUTPOST_VISUAL_DECOR_COLLISION.blocksNpc,
+          false
+        );
+        assert.ok(
+          HARTHMERE_BUSINESS_OUTPOST_VISUAL_DECOR_VERSION.includes(
+            "visual-prop-interiors"
+          )
+        );
+      }
+    }
+
+    const repairRecord =
+      HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS[
+        "outpost_repair_hingehall"
+      ];
+    assert.ok(
+      createHarthmereBusinessOutpostInteriorDecorSpecs(repairRecord).some(
+        (spec) => spec.asset === "workbench_drawers_fp"
+      ),
+      "Hingehall Repair Shop must render an actual workbench model"
+    );
+    const restaurantRecord =
+      HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS[
+        "outpost_restaurant_redpot"
+      ];
+    assert.ok(
+      createHarthmereBusinessOutpostInteriorDecorSpecs(restaurantRecord).some(
+        (spec) =>
+          spec.asset === "cauldron_fp" ||
+          spec.asset === "barrel_apples" ||
+          spec.asset === "farmcrate_carrot"
+      ),
+      "Redpot restaurant must render food/kitchen props instead of voxel counters"
+    );
+    const sanitationRecord =
+      HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS[
+        "outpost_sanitation_clearbarrel"
+      ];
+    assert.ok(
+      createHarthmereBusinessOutpostInteriorDecorSpecs(sanitationRecord).some(
+        (spec) =>
+          spec.asset === "bucket_wood" || spec.asset === "barrel_holder_fp"
+      ),
+      "Clearbarrel cleanup yard must render cleanup props instead of block stacks"
     );
   });
 
@@ -881,9 +1000,7 @@ describe("Harthmere business outpost guide renderer current", () => {
       const scenes = createNewScenes();
       renderer.draw(scenes, 0.016);
       const root = scenes.three.children.find((child) =>
-        child.name.includes(
-          HARTHMERE_BUSINESS_OUTPOST_BUILDING_RENDER_VERSION
-        )
+        child.name.includes(HARTHMERE_BUSINESS_OUTPOST_BUILDING_RENDER_VERSION)
       );
       assert.ok(
         root,

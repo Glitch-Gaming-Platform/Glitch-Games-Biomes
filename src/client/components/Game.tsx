@@ -36,8 +36,23 @@ const Game: React.FunctionComponent<{
   const mounted = useMountedRef();
   const hotVersion = useRef(0);
   const [hotVersionState, setHotVersionState] = useState(0);
+  const loadEffectStarted = useRef(false);
 
   useHarthmereGlitchBridge(Boolean(clientContext), clientContext);
+
+  const startWorldLoadEffect = (context: ClientContext) => {
+    if (loadEffectStarted.current) {
+      return;
+    }
+    loadEffectStarted.current = true;
+    if (userId) {
+      trackConversion("authenticatedLoad");
+    }
+    setCanvasEffect(context.resources, {
+      kind: "worldLoad",
+      onComplete: () => {},
+    });
+  };
 
   useEffect(() => {
     if (!mounted.current) {
@@ -71,6 +86,8 @@ const Game: React.FunctionComponent<{
         const context = await clientLoader.load();
         emitHarthmereGlitchBehaviorEvent("loading", "complete");
         setClientContext(context);
+        startWorldLoadEffect(context);
+        setLoadProgress(undefined);
         warnAboutBadExtensions(context.mailman);
       } catch (error: any) {
         emitHarthmereGlitchBehaviorEvent("loading", "error", {
@@ -105,17 +122,10 @@ const Game: React.FunctionComponent<{
   const startLoadEffect =
     clientContext && (loadProgress?.sceneRendered ?? 0) > REQUIRED_FRAMES - 5;
   useEffect(() => {
-    if (!startLoadEffect) {
+    if (!startLoadEffect || !clientContext) {
       return;
     }
-
-    if (userId) {
-      trackConversion("authenticatedLoad");
-    }
-    setCanvasEffect(clientContext.resources, {
-      kind: "worldLoad",
-      onComplete: () => {},
-    });
+    startWorldLoadEffect(clientContext);
   }, [startLoadEffect]);
 
   if (error) {

@@ -67,7 +67,10 @@ describe("Harthmere live environment damage client", () => {
       calls[0].url,
       "/api/harthmere/live_mode?install_id=install-abc"
     );
-    assert.equal(calls[0].init.headers["X-Glitch-Install-Id"], "install-abc");
+    assert.equal(
+      new Headers(calls[0].init.headers).get("X-Glitch-Install-Id"),
+      "install-abc"
+    );
     assert.equal(calls[0].body.actionKind, "request_environment_damage");
     assert.equal(calls[0].body.subsystem, "combat");
     assert.deepEqual(calls[0].body.payload, {

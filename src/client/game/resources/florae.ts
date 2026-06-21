@@ -109,6 +109,7 @@ async function genFloraMesh(
   if (!shard) {
     return;
   }
+  const shardOrigin = shard.box.v0;
 
   // Fetch the flora index.
   const [index, colorMap, tensor, growth, muck] = await Promise.all([
@@ -145,7 +146,7 @@ async function genFloraMesh(
         growth.cpp,
         muck.cpp,
         index,
-        shard.box
+        shardOrigin
       );
     });
 
@@ -156,7 +157,7 @@ async function genFloraMesh(
     const lightBuffer = timeCode("florae:toLightBuffer", () => {
       return voxeloo.toFloraLightingBuffer(
         tensor.cpp,
-        shard.box,
+        shardOrigin,
         (shard) => isomorphismLoader(shard)?.cpp,
         (shard) => skyOcclusionLoader(shard)?.cpp,
         (shard) => irradianceLoader(shard)?.cpp
