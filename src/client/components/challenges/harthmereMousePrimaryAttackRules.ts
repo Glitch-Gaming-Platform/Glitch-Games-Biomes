@@ -1,5 +1,9 @@
 // HARTHMERE_MOUSE_PRIMARY_ATTACK
 import { harthmereServerMuckCombatTargetIdForSeed } from "@/shared/harthmere/visible_combat_target";
+import {
+  harthmereGroundedLivestockSeedsInTerritory,
+  harthmereGroundedMuckMonsterSeedsInTerritory,
+} from "@/shared/harthmere/live_entity_production_seed";
 
 // Pure decision rule for whether a raw left mouse-down should resolve a Harthmere
 // basic attack. The left mouse button is shared with voxel-block breaking and
@@ -46,4 +50,24 @@ export function harthmereLiveModeCombatTargetIdForSeed(input: {
   idOffset: number;
 }): string | undefined {
   return harthmereServerMuckCombatTargetIdForSeed(input);
+}
+
+const HARTHMERE_LIVE_MODE_TARGET_BY_ECS_ID = new Map<number, string>(
+  [
+    ...harthmereGroundedMuckMonsterSeedsInTerritory(),
+    ...harthmereGroundedLivestockSeedsInTerritory(),
+  ].flatMap((seed) => {
+    const targetId = harthmereLiveModeCombatTargetIdForSeed(seed);
+    const entityId = Number(seed.entityId);
+    return targetId && Number.isFinite(entityId) ? [[entityId, targetId]] : [];
+  })
+);
+
+export function harthmereLiveModeCombatTargetIdForEcsEntity(
+  entityId: number | string | undefined
+): string | undefined {
+  const numeric = Number(entityId);
+  return Number.isFinite(numeric)
+    ? HARTHMERE_LIVE_MODE_TARGET_BY_ECS_ID.get(numeric)
+    : undefined;
 }

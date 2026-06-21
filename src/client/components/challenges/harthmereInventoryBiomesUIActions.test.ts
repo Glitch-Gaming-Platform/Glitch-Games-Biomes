@@ -61,6 +61,8 @@ if (typeof (globalThis as any).CustomEvent === "undefined") {
 import {
   getHarthmereItemDisplay,
   grantHarthmereItem,
+  grantHarthmereNativeTerrainBlockDropForTest,
+  harthmereInventoryItemForNativeTerrainBlockForTest,
   harthmereInventoryCountByItemId,
   performHarthmereBackpackItemEquipForBiomesUI,
   performHarthmereBackpackItemUseForBiomesUI,
@@ -69,7 +71,11 @@ import {
   performHarthmereMaterialStorageRemoveForBiomesUI,
   readHarthmereInventoryState,
 } from "@/client/components/challenges/LocalDevHarthmereInventorySystem";
-import { HARTHMERE_LIVE_INVENTORY_SYNC_EVENT } from "@/client/components/challenges/harthmereEvents";
+import {
+  HARTHMERE_BUSINESS_INVENTORY_LOOT_UPDATED_EVENT,
+  HARTHMERE_LIVE_INVENTORY_SYNC_EVENT,
+} from "@/client/components/challenges/harthmereEvents";
+import { dispatchHarthmereLiveModeResponseEventsForTest } from "@/client/components/challenges/harthmereLiveModeClientEvents";
 
 describe("Harthmere inventory BiomesUI presentation and actions", () => {
   beforeEach(() => {
@@ -81,6 +87,10 @@ describe("Harthmere inventory BiomesUI presentation and actions", () => {
       },
       addEventListener: () => {},
       removeEventListener: () => {},
+      location: {
+        href: "https://www.glitch.fun/games/test/play?install_id=test-install",
+        search: "?install_id=test-install",
+      },
     };
     (globalThis as any).localStorage = localStorageShim;
     memoryStore.clear();
@@ -256,5 +266,87 @@ describe("Harthmere inventory BiomesUI presentation and actions", () => {
         (event) => event.type === HARTHMERE_LIVE_INVENTORY_SYNC_EVENT
       )
     );
+  });
+
+  it("broadcasts live loot snapshots to the loot prompt and BiomesUI adapters", () => {
+    dispatchHarthmereLiveModeResponseEventsForTest({
+      inventoryLootState: {
+        availableLootDrops: [
+          {
+            dropId: "drop-1",
+            itemStacks: { raw_meat: 2 },
+            status: "available",
+          },
+        ],
+      },
+      playerStatusState: { combat: { hp: 0, maxHp: 100 } },
+    });
+
+    const eventTypes = dispatchedEvents.map((event) => event.type);
+    assert.ok(
+      eventTypes.includes(HARTHMERE_BUSINESS_INVENTORY_LOOT_UPDATED_EVENT)
+    );
+    assert.ok(eventTypes.includes(HARTHMERE_LIVE_INVENTORY_SYNC_EVENT));
+    assert.ok(
+      dispatchedEvents.some(
+        (event) =>
+          event.type === HARTHMERE_BUSINESS_INVENTORY_LOOT_UPDATED_EVENT &&
+          event.detail?.inventoryLootState?.availableLootDrops?.[0]?.dropId ===
+            "drop-1"
+      )
+    );
+  });
+
+  it("turns native terrain block breaks into BiomesUI material storage and live loot rolls", async () => {
+    assert.equal(
+      harthmereInventoryItemForNativeTerrainBlockForTest({
+        blockName: "Road Muckwad",
+      }),
+      "rough_stone"
+    );
+    assert.equal(
+      harthmereInventoryItemForNativeTerrainBlockForTest({
+        blockName: "Old Wood Copse Mucker",
+      }),
+      "softwood_log"
+    );
+
+    const fetchCalls: Array<{ input: unknown; init?: RequestInit }> = [];
+    (globalThis as any).window.fetch = async (
+      input: unknown,
+      init?: RequestInit
+    ) => {
+      fetchCalls.push({ input, init });
+      return {
+        ok: true,
+        json: async () => ({
+          inventoryLootState: {
+            actor: { gold: 75, items: {}, instanceIds: [] },
+            materialStorage: { items: { rough_stone: 1 } },
+          },
+        }),
+      };
+    };
+
+    const grant = grantHarthmereNativeTerrainBlockDropForTest(
+      {
+        terrainId: 1001,
+        blockName: "Road Muckwad",
+        position: [12.2, 53, -18.8],
+      },
+      { dedupeMs: 0 }
+    );
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    assert.equal(grant.itemId, "rough_stone");
+    assert.equal(grant.added, 1);
+    assert.equal(readHarthmereInventoryState().materialStorage.rough_stone, 1);
+    assert.equal(fetchCalls.length, 1);
+    assert.match(String(fetchCalls[0].input), /install_id=test-install/);
+    const body = JSON.parse(String(fetchCalls[0].init?.body ?? "{}"));
+    assert.equal(body.actionKind, "request_loot_roll");
+    assert.equal(body.payload.itemId, "rough_stone");
+    assert.equal(body.payload.count, 1);
+    assert.ok(body.includeSnapshots.includes("playerStatusState"));
   });
 });

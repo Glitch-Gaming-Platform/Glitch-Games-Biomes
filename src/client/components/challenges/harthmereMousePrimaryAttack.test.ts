@@ -8,6 +8,7 @@ import {
 } from "@/client/components/challenges/LocalDevHarthmereCombat";
 import { setHarthmereLocalDevUserScope } from "@/client/components/challenges/LocalDevHarthmereUserScope";
 import {
+  harthmereLiveModeCombatTargetIdForEcsEntity,
   harthmereLiveModeCombatTargetIdForSeed,
   shouldBypassHarthmereKeyboardDrawGateForMousePrimaryAttack,
   shouldEngageHarthmereMousePrimaryAttack,
@@ -171,6 +172,17 @@ describe("harthmere left-mouse primary attack routing", () => {
         seedId: "",
         idOffset: 1308,
       }),
+      undefined
+    );
+  });
+
+  it("maps ECS entity ids from native combat hits to the same live backend target ids", () => {
+    assert.equal(
+      harthmereLiveModeCombatTargetIdForEcsEntity(8810000000019451),
+      "server-muck-combat:ambient-muck-monster-west_muck_breach-9451:9451"
+    );
+    assert.equal(
+      harthmereLiveModeCombatTargetIdForEcsEntity("not-a-number"),
       undefined
     );
   });

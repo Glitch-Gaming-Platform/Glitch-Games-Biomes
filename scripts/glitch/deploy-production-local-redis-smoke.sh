@@ -1228,16 +1228,20 @@ build_image() {
   if [ -n "${DOCKER_BUILD_CACHE_TO:-}" ]; then
     cache_args+=(--cache-to "$DOCKER_BUILD_CACHE_TO")
   fi
+  local docker_args=(
+    --platform "$DOCKER_PLATFORM"
+    --load
+    -f Dockerfile.biomes
+    -t "$LOCAL_IMAGE"
+    -t "$IMAGE"
+  )
+  if [ "${#cache_args[@]}" -gt 0 ]; then
+    docker_args+=("${cache_args[@]}")
+  fi
+  docker_args+=(.)
 
   log "Building local production image $LOCAL_IMAGE for $DOCKER_PLATFORM."
-  docker buildx build \
-    --platform "$DOCKER_PLATFORM" \
-    --load \
-    -f Dockerfile.biomes \
-    -t "$LOCAL_IMAGE" \
-    -t "$IMAGE" \
-    "${cache_args[@]}" \
-    .
+  docker buildx build "${docker_args[@]}"
 }
 
 wait_for_http() {

@@ -336,6 +336,32 @@ export function harthmereShouldClearLiveAliveDeathLockForTest(input: {
   );
 }
 
+export function harthmereDeathMovementShouldLockForTest(input: {
+  deathState: HarthmereDeathStateName;
+  hp?: number;
+  combatState?: unknown;
+  wakeUpActive?: boolean;
+}) {
+  const deathActive =
+    HARTHMERE_DEATH_LOCKED_STATES.has(input.deathState) ||
+    harthmereLocalCombatLooksDeadForTest(input);
+  if (!deathActive) {
+    return false;
+  }
+  return true;
+}
+
+export function harthmereDeathScreenShouldRenderForTest(input: {
+  death: HarthmereDeathState;
+  effectiveDeath: HarthmereDeathState;
+  wakeUpActive?: boolean;
+}) {
+  return (
+    HARTHMERE_DEATH_LOCKED_STATES.has(input.effectiveDeath.state) ||
+    input.effectiveDeath !== input.death
+  );
+}
+
 export function harthmereLivePlayerDeathSyncSummaryForTest(
   status: BiomesUIPlayerStatusSnapshot | undefined
 ) {
@@ -479,16 +505,12 @@ function shouldLockHarthmereDeathMovement(
   death: HarthmereDeathState,
   combat: ReturnType<typeof useHarthmereCombatState>
 ) {
-  if (isHarthmereWakeUpScreenActive()) {
-    return false;
-  }
-  return (
-    HARTHMERE_DEATH_LOCKED_STATES.has(death.state) ||
-    Number(combat.player.hp) <= 0 ||
-    ["downed", "dead", "respawning"].includes(
-      String(combat.player.combatState ?? "")
-    )
-  );
+  return harthmereDeathMovementShouldLockForTest({
+    deathState: death.state,
+    hp: combat.player.hp,
+    combatState: combat.player.combatState,
+    wakeUpActive: isHarthmereWakeUpScreenActive(),
+  });
 }
 
 function dispatchHarthmerePlayerDeathPose(active: boolean, state: string) {
@@ -690,11 +712,7 @@ export const HarthmereDeathRuntimeController: React.FunctionComponent<{}> =
         const combatDead =
           Number(combat.player.hp) <= 0 ||
           ["downed", "dead"].includes(String(combat.player.combatState ?? ""));
-        if (
-          combatDead &&
-          !HARTHMERE_DEATH_LOCKED_STATES.has(latest.state) &&
-          !isHarthmereWakeUpScreenActive()
-        ) {
+        if (combatDead && !HARTHMERE_DEATH_LOCKED_STATES.has(latest.state)) {
           downHarthmerePlayerFromSystem({
             cause: "HP reached zero",
             killerName: "Combat",
@@ -815,12 +833,11 @@ export const HarthmereDeathScreenOverlay: React.FunctionComponent<{}> = () => {
     liveDeathState: live.deathState,
   });
   const downedSeconds = secondsRemaining(effectiveDeath.downedUntil);
-  if (isHarthmereWakeUpScreenActive()) {
-    return <></>;
-  }
-  const active =
-    HARTHMERE_DEATH_LOCKED_STATES.has(effectiveDeath.state) ||
-    effectiveDeath !== death;
+  const active = harthmereDeathScreenShouldRenderForTest({
+    death,
+    effectiveDeath,
+    wakeUpActive: isHarthmereWakeUpScreenActive(),
+  });
 
   if (!active) {
     return <></>;

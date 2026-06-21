@@ -43,6 +43,8 @@ import {
   createHarthmereBiomesEcsInventory,
 } from "@/shared/harthmere/harthmere_biomes_ecs_bridge";
 import { HARTHMERE_LOCAL_DEV_ITEM_USE_EVENT } from "@/shared/harthmere/snapshot_grove_trigger_contract";
+import { safeGetTerrainName } from "@/shared/asset_defs/terrain";
+import { terrainIdToBlock } from "@/shared/bikkie/terrain";
 import {
   HARTHMERE_INVENTORY_EVENT,
   HARTHMERE_LIVE_INVENTORY_SYNC_EVENT,
@@ -57,6 +59,16 @@ const HARTHMERE_INVENTORY_STATE_KEY = HARTHMERE_LOCAL_DEV_STATE_KEYS.inventory;
 const HARTHMERE_VENDOR_TRADE_EVENT = "biomes:harthmere-open-vendor-trade";
 const HARTHMERE_VENDOR_TRADE_REQUEST_KEY =
   "biomes.localDev.harthmere.pendingVendorTrade";
+export const HARTHMERE_NATIVE_TERRAIN_BLOCK_DESTROYED_EVENT =
+  "biomes:harthmere-native-terrain-block-destroyed" as const;
+
+export interface HarthmereNativeTerrainBlockDestroyedDetail {
+  terrainId?: number;
+  terrainName?: string;
+  blockName?: string;
+  position?: unknown;
+  at?: number;
+}
 
 type HarthmereVendorTradeMode = "buy" | "sell";
 
@@ -2971,6 +2983,147 @@ export function grantHarthmereItem(
   void submitHarthmereInventoryGrantToLiveModeForTest(itemId, added, reason);
   return { added, overflow };
 }
+
+function knownHarthmereMaterialOrFallback(
+  itemId: string,
+  fallback = "rough_stone"
+) {
+  return itemDef(itemId) ? itemId : fallback;
+}
+
+function terrainBlockNameParts(
+  detail: HarthmereNativeTerrainBlockDestroyedDetail
+) {
+  const parts = [detail.blockName, detail.terrainName];
+  if (detail.terrainId) {
+    parts.push(safeGetTerrainName(detail.terrainId));
+    try {
+      const block = terrainIdToBlock(detail.terrainId) as
+        | {
+            displayName?: string;
+            name?: string;
+            id?: string | number;
+          }
+        | undefined;
+      parts.push(
+        block?.displayName,
+        block?.name,
+        block?.id === undefined ? undefined : String(block.id)
+      );
+    } catch {
+      // Terrain biscuit lookup is best-effort; the terrain name is enough for
+      // the generic stone/wood/sand/clay fallbacks.
+    }
+  }
+  return parts
+    .filter(
+      (part): part is string => typeof part === "string" && part.length > 0
+    )
+    .join(" ")
+    .toLowerCase();
+}
+
+export function harthmereInventoryItemForNativeTerrainBlockForTest(
+  detail: HarthmereNativeTerrainBlockDestroyedDetail
+) {
+  const text = terrainBlockNameParts(detail);
+  if (/coal|charcoal/.test(text)) {
+    return knownHarthmereMaterialOrFallback("coal");
+  }
+  if (/gold/.test(text)) {
+    return knownHarthmereMaterialOrFallback("gold_ore");
+  }
+  if (/silver/.test(text)) {
+    return knownHarthmereMaterialOrFallback("silver_ore");
+  }
+  if (/iron|ore|metal/.test(text)) {
+    return knownHarthmereMaterialOrFallback("iron_ore");
+  }
+  if (/log|wood|tree|trunk|branch|timber|plank|bark/.test(text)) {
+    return knownHarthmereMaterialOrFallback("softwood_log");
+  }
+  if (/sand|beach|dune/.test(text)) {
+    return knownHarthmereMaterialOrFallback("sand_lump");
+  }
+  if (/clay|mud|brick/.test(text)) {
+    return knownHarthmereMaterialOrFallback("river_clay");
+  }
+  return knownHarthmereMaterialOrFallback("rough_stone");
+}
+
+const recentNativeTerrainBlockGrants = new Map<string, number>();
+
+function nativeTerrainBlockGrantKey(
+  detail: HarthmereNativeTerrainBlockDestroyedDetail,
+  itemId: string
+) {
+  const position = Array.isArray(detail.position)
+    ? detail.position
+        .slice(0, 3)
+        .map((value) => Math.floor(Number(value) || 0))
+        .join(",")
+    : "unknown";
+  return `${itemId}:${
+    detail.terrainId ?? detail.terrainName ?? detail.blockName ?? "terrain"
+  }:${position}`;
+}
+
+export function grantHarthmereNativeTerrainBlockDropForTest(
+  detail: HarthmereNativeTerrainBlockDestroyedDetail,
+  options: { nowMs?: number; dedupeMs?: number } = {}
+) {
+  const itemId = harthmereInventoryItemForNativeTerrainBlockForTest(detail);
+  const nowMs = options.nowMs ?? Date.now();
+  const dedupeMs = options.dedupeMs ?? 1_250;
+  const key = nativeTerrainBlockGrantKey(detail, itemId);
+  const lastGrantAt = recentNativeTerrainBlockGrants.get(key);
+  if (lastGrantAt !== undefined && nowMs - lastGrantAt < dedupeMs) {
+    return { itemId, added: 0, overflow: 0, skipped: true as const };
+  }
+  recentNativeTerrainBlockGrants.set(key, nowMs);
+  const terrainLabel =
+    detail.blockName ??
+    detail.terrainName ??
+    (detail.terrainId ? safeGetTerrainName(detail.terrainId) : undefined) ??
+    "block";
+  const result = grantHarthmereItem(
+    itemId,
+    1,
+    `Mined ${String(terrainLabel).replaceAll("_", " ")}`
+  );
+  return { itemId, ...result, skipped: false as const };
+}
+
+export const HarthmereNativeTerrainBlockInventoryBridge: React.FunctionComponent<{}> =
+  () => {
+    useEffect(() => {
+      if (typeof window === "undefined") {
+        return;
+      }
+      const onNativeTerrainBlockDestroyed = (event: Event) => {
+        const result = grantHarthmereNativeTerrainBlockDropForTest(
+          ((event as CustomEvent<HarthmereNativeTerrainBlockDestroyedDetail>)
+            .detail ?? {}) as HarthmereNativeTerrainBlockDestroyedDetail
+        );
+        (
+          window as typeof window & {
+            __harthmereNativeTerrainInventoryBridgeLastGrant?: unknown;
+          }
+        ).__harthmereNativeTerrainInventoryBridgeLastGrant = result;
+      };
+      window.addEventListener(
+        HARTHMERE_NATIVE_TERRAIN_BLOCK_DESTROYED_EVENT,
+        onNativeTerrainBlockDestroyed
+      );
+      return () =>
+        window.removeEventListener(
+          HARTHMERE_NATIVE_TERRAIN_BLOCK_DESTROYED_EVENT,
+          onNativeTerrainBlockDestroyed
+        );
+    }, []);
+
+    return null;
+  };
 
 // HARTHMERE_REWARD_INVENTORY_FIT:
 // Dry-run whether a set of reward items can ALL be received without overflow,

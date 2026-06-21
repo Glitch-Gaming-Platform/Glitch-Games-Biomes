@@ -4293,6 +4293,23 @@ describe("reduceHarthmereLiveModeBackendState — loot and inventory mutation", 
     assert.ok(Object.keys(state.combat.lootClaims).length >= 1);
   });
 
+  it("request_loot_roll from native block mining routes materials into Cloud Save storage", function () {
+    const s = freshState();
+    const { state, summary } = applyOne(s, "request_loot_roll", {
+      itemId: "rough_stone",
+      count: 1,
+      source: "Mined Road Muckwad",
+    });
+
+    assert.equal(state.banking.materialStorage.rough_stone, 1);
+    assert.equal(state.inventory.items.rough_stone ?? 0, 0);
+    assert.ok(Object.keys(state.combat.lootClaims).length >= 1);
+    assert.ok(summary.touchedModels.includes("material_storage"));
+    assert.ok(
+      summary.warnings.includes("loot_sent_to_material_storage:rough_stone")
+    );
+  });
+
   it("rejects public request_inventory_mutation admin grants", function () {
     const s = freshState();
     const { state, summary } = applyOne(s, "request_inventory_mutation", {

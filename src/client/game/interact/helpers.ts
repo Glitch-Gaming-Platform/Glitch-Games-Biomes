@@ -135,6 +135,8 @@ const HARTHMERE_NATIVE_NPC_ATTACK_DAMAGE_BRIDGE =
   "harthmere-native-npc-attack-damage-bridge";
 const HARTHMERE_NATIVE_NPC_ATTACK_CONTACT_EVENT =
   "biomes:harthmere-native-npc-attack-contact";
+const HARTHMERE_NATIVE_TERRAIN_BLOCK_DESTROYED_EVENT =
+  "biomes:harthmere-native-terrain-block-destroyed";
 
 function emitHarthmereNativeNpcAttackContact({
   attackedEntities,
@@ -168,10 +170,10 @@ function emitHarthmereNativeNpcAttackContact({
         typeof labelRecord.text === "string"
           ? labelRecord.text
           : typeof labelRecord.label === "string"
-            ? labelRecord.label
-            : typeof record.name === "string"
-              ? record.name
-              : undefined;
+          ? labelRecord.label
+          : typeof record.name === "string"
+          ? record.name
+          : undefined;
       return {
         id,
         label,
@@ -179,8 +181,15 @@ function emitHarthmereNativeNpcAttackContact({
         hasPosition: true,
       };
     })
-    .filter((hit): hit is { id: number; label: string | undefined; hasNpcMetadata: boolean; hasPosition: true } =>
-      Boolean(hit),
+    .filter(
+      (
+        hit
+      ): hit is {
+        id: number;
+        label: string | undefined;
+        hasNpcMetadata: boolean;
+        hasPosition: true;
+      } => Boolean(hit)
     );
 
   if (hits.length === 0) {
@@ -203,7 +212,7 @@ function emitHarthmereNativeNpcAttackContact({
   window.dispatchEvent(
     new CustomEvent(HARTHMERE_NATIVE_NPC_ATTACK_CONTACT_EVENT, {
       detail,
-    }),
+    })
   );
 
   const win = window as typeof window & {
@@ -216,6 +225,41 @@ function emitHarthmereNativeNpcAttackContact({
   win.__harthmereNativeNpcAttackContactDebug = [
     detail,
     ...(win.__harthmereNativeNpcAttackContactDebug ?? []),
+  ].slice(0, 80);
+}
+
+function emitHarthmereNativeTerrainBlockDestroyed(input: {
+  terrainId: number;
+  position: ReadonlyVec3;
+  toolRef: OwnedItemReference | undefined;
+}) {
+  if (typeof window === "undefined" || !input.terrainId) {
+    return;
+  }
+
+  const detail = {
+    version: "harthmere-native-terrain-block-inventory-bridge",
+    source: "client.game.interact.helpers.changeShape",
+    terrainId: input.terrainId,
+    position: [...input.position],
+    toolRef: input.toolRef,
+    at: Date.now(),
+  };
+
+  window.dispatchEvent(
+    new CustomEvent(HARTHMERE_NATIVE_TERRAIN_BLOCK_DESTROYED_EVENT, {
+      detail,
+    })
+  );
+
+  const win = window as typeof window & {
+    __harthmereNativeTerrainBlockDestroyedDebug?: unknown[];
+    __harthmereNativeTerrainBlockDestroyedLastAt?: number;
+  };
+  win.__harthmereNativeTerrainBlockDestroyedLastAt = detail.at;
+  win.__harthmereNativeTerrainBlockDestroyedDebug = [
+    detail,
+    ...(win.__harthmereNativeTerrainBlockDestroyedDebug ?? []),
   ].slice(0, 80);
 }
 
@@ -733,6 +777,13 @@ export function setVoxel(
       })
     )
   );
+  if (currentTerrainId && terrainId === 0 && !isFloraId(currentTerrainId)) {
+    emitHarthmereNativeTerrainBlockDestroyed({
+      terrainId: currentTerrainId,
+      position: pos,
+      toolRef,
+    });
+  }
   if (blueprint && blueprintCompleted) {
     blueprintCompletedEffects(deps, blueprint);
   }

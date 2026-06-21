@@ -18,6 +18,9 @@ import { harthmereUserScopedStorageKey } from "@/client/components/challenges/Lo
 import { isLiveEntityHelperMuckBossSpawned } from "@/client/components/challenges/LocalDevLiveEntityHelperQuestState";
 import { isLocalDevLiveEntityRobotProtectionAreaSafeForPosition } from "@/client/components/challenges/LocalDevLiveEntityRobotEnergyState";
 import { BIOMES_UI_PLAYER_STATUS_UPDATED_EVENT } from "@/client/components/biomes_ui/adapters/playerStatusAdapter";
+import { defaultHarthmereLiveFetch } from "@/client/components/harthmere_live_fetch";
+import { harthmereLiveModeCombatTargetIdForEcsEntity } from "@/client/components/challenges/harthmereMousePrimaryAttackRules";
+import { dispatchHarthmereLiveModeResponseEventsForTest } from "@/client/components/challenges/harthmereLiveModeClientEvents";
 import {
   HARTHMERE_LOCAL_COMBAT_ATTACK_CONTACT_GRACE,
   HARTHMERE_LOCAL_COMBAT_LINE_OF_SIGHT_RANGE,
@@ -494,6 +497,163 @@ function isBrowser() {
   );
 }
 
+export function createHarthmereDeathTransitionLiveModeRequestForTest(
+  input: {
+    cause: string;
+    killerName: string;
+    detail: string;
+    abilityName?: string;
+    damage?: number;
+    damageType?: string;
+  },
+  nowMs = Date.now()
+) {
+  const requestId = `harthmere_local_death_transition_${nowMs}_${Math.random()
+    .toString(36)
+    .slice(2)}`;
+  return {
+    requestId,
+    idempotencyKey: requestId,
+    actionKind: "request_death_transition",
+    subsystem: "combat",
+    actorEntityVersion: 1,
+    zoneId: "harthmere",
+    payload: {
+      cause: input.cause,
+      killerName: input.killerName,
+      detail: input.detail,
+      abilityName: input.abilityName,
+      damage: Math.max(0, Math.round(Number(input.damage ?? 0))),
+      damageType: input.damageType ?? "combat",
+      respawnDelayMs: 5 * 60_000,
+    },
+    includeSnapshots: ["combatState", "playerStatusState"],
+    clientClaims: {
+      source: "local_harthmere_combat_death",
+      reason: input.detail,
+    },
+  };
+}
+
+export function harthmereLiveModeAbilityIdForLocalCombatForTest(
+  ability: HarthmerePlayerAttackType
+) {
+  return ability === "spark" ? "spark" : "basic_strike";
+}
+
+export function createHarthmereLocalCombatAttackLiveModeRequestForTest(
+  input: {
+    targetOffset: number;
+    ability: HarthmerePlayerAttackType;
+    source: string;
+    finalDamage?: number;
+    targetDead?: boolean;
+  },
+  nowMs = Date.now()
+) {
+  const targetId = harthmereLiveModeCombatTargetIdForEcsEntity(
+    input.targetOffset
+  );
+  if (!targetId) {
+    return undefined;
+  }
+  const requestId = `harthmere_local_combat_attack_${nowMs}_${Math.random()
+    .toString(36)
+    .slice(2)}`;
+  return {
+    requestId,
+    idempotencyKey: requestId,
+    targetId,
+    actionKind: "request_attack",
+    subsystem: "combat",
+    actorEntityVersion: 1,
+    zoneId: "harthmere_wilderness",
+    payload: {
+      abilityId: harthmereLiveModeAbilityIdForLocalCombatForTest(
+        input.ability
+      ),
+    },
+    includeSnapshots: [
+      "combatState",
+      "inventoryLootState",
+      "playerStatusState",
+    ],
+    clientClaims: {
+      source: input.source,
+      localTargetOffset: input.targetOffset,
+      localFinalDamage: Math.max(
+        0,
+        Math.round(Number(input.finalDamage ?? 0))
+      ),
+      localTargetDead: Boolean(input.targetDead),
+    },
+  };
+}
+
+async function submitHarthmereLocalCombatAttackToLiveMode(input: {
+  targetOffset: number;
+  ability: HarthmerePlayerAttackType;
+  source: string;
+  finalDamage?: number;
+  targetDead?: boolean;
+}) {
+  if (!isBrowser() || typeof fetch !== "function") {
+    return undefined;
+  }
+  const request =
+    createHarthmereLocalCombatAttackLiveModeRequestForTest(input);
+  if (!request) {
+    return undefined;
+  }
+  try {
+    const response = await defaultHarthmereLiveFetch(
+      "/api/harthmere/live_mode",
+      {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(request),
+      }
+    );
+    const body = await response.json().catch(() => undefined);
+    dispatchHarthmereLiveModeResponseEventsForTest(body);
+    return body;
+  } catch {
+    return undefined;
+  }
+}
+
+async function submitHarthmereDeathTransitionToLiveMode(input: {
+  cause: string;
+  killerName: string;
+  detail: string;
+  abilityName?: string;
+  damage?: number;
+  damageType?: string;
+}) {
+  if (!isBrowser() || typeof fetch !== "function") {
+    return undefined;
+  }
+  try {
+    const response = await defaultHarthmereLiveFetch(
+      "/api/harthmere/live_mode",
+      {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(
+          createHarthmereDeathTransitionLiveModeRequestForTest(input)
+        ),
+      }
+    );
+    const body = await response.json().catch(() => undefined);
+    dispatchHarthmereLiveModeResponseEventsForTest(body);
+    return body;
+  } catch {
+    return undefined;
+  }
+}
+
 type HarthmereCombatDebugStage =
   | "combat.effect.emit"
   | "combat.attack.start"
@@ -702,6 +862,12 @@ export function downHarthmerePlayerFromSystem(input: {
       detail: input.detail,
     }),
     player: { ...state.player, hp: 0, combatState: "downed" },
+  });
+  void submitHarthmereDeathTransitionToLiveMode({
+    ...input,
+    abilityName,
+    damage,
+    damageType,
   });
 }
 
@@ -5839,6 +6005,15 @@ export function performHarthmereCombatAttack(
         (state.killCredit[contributionKey] ?? 0) + playerAttack.finalDamage,
     },
   };
+  void submitHarthmereLocalCombatAttackToLiveMode({
+    targetOffset,
+    ability,
+    source: retaliationOptions.contactSource
+      ? `local_combat_${retaliationOptions.contactSource}`
+      : "local_combat",
+    finalDamage: playerAttack.finalDamage,
+    targetDead: target.combatState === "dead",
+  });
 
   // harthmere-game-ai-state-machine
   // A damaging hit, or a blocked weapon contact, wakes the NPC brain. The

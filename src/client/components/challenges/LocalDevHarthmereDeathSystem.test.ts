@@ -1,9 +1,15 @@
 import {
   effectiveHarthmereDeathStateForRespawn,
+  harthmereDeathMovementShouldLockForTest,
+  harthmereDeathScreenShouldRenderForTest,
   harthmereShouldClearLiveAliveDeathLockForTest,
   harthmereLivePlayerDeathSyncSummaryForTest,
   type HarthmereDeathState,
 } from "@/client/components/challenges/LocalDevHarthmereDeathSystem";
+import {
+  createHarthmereDeathTransitionLiveModeRequestForTest,
+  createHarthmereLocalCombatAttackLiveModeRequestForTest,
+} from "@/client/components/challenges/LocalDevHarthmereCombat";
 import { harthmereRespawnDisabledReason } from "@/client/components/challenges/harthmereCombatDeathInterfaceRules";
 import assert from "assert";
 
@@ -164,5 +170,81 @@ describe("Harthmere live death sync", () => {
     });
 
     assert.strictEqual(effective, death);
+  });
+
+  it("does not let the wake-up screen suppress a real death screen or movement lock", () => {
+    const death = aliveDeathState();
+    const effective = effectiveHarthmereDeathStateForRespawn({
+      death,
+      combatHp: 0,
+      combatMaxHp: 260,
+      combatState: "idle",
+      nowMs: 1_800_000,
+    });
+
+    assert.equal(
+      harthmereDeathScreenShouldRenderForTest({
+        death,
+        effectiveDeath: effective,
+        wakeUpActive: true,
+      }),
+      true
+    );
+    assert.equal(
+      harthmereDeathMovementShouldLockForTest({
+        deathState: "alive",
+        hp: 0,
+        combatState: "idle",
+        wakeUpActive: true,
+      }),
+      true
+    );
+  });
+
+  it("builds a Cloud Save death transition mutation when local combat downs the player", () => {
+    const body = createHarthmereDeathTransitionLiveModeRequestForTest(
+      {
+        cause: "HP reached zero",
+        killerName: "Mucker",
+        detail: "Test death",
+        abilityName: "Bite",
+        damage: 260,
+        damageType: "combat",
+      },
+      1_800_000
+    );
+
+    assert.equal(body.actionKind, "request_death_transition");
+    assert.equal(body.subsystem, "combat");
+    assert.equal(body.payload.cause, "HP reached zero");
+    assert.equal(body.payload.damage, 260);
+    assert.ok(body.includeSnapshots.includes("playerStatusState"));
+  });
+
+  it("builds a Cloud Save attack mutation with loot snapshots for local ECS combat hits", () => {
+    const body = createHarthmereLocalCombatAttackLiveModeRequestForTest(
+      {
+        targetOffset: 8810000000019451,
+        ability: "basic",
+        source: "local_combat_test",
+        finalDamage: 14,
+        targetDead: true,
+      },
+      1_900_000
+    );
+
+    assert.ok(body);
+    assert.equal(body?.actionKind, "request_attack");
+    assert.equal(
+      body?.targetId,
+      "server-muck-combat:ambient-muck-monster-west_muck_breach-9451:9451"
+    );
+    assert.equal(body?.payload.abilityId, "basic_strike");
+    assert.deepEqual(body?.includeSnapshots, [
+      "combatState",
+      "inventoryLootState",
+      "playerStatusState",
+    ]);
+    assert.equal(body?.clientClaims.localTargetDead, true);
   });
 });

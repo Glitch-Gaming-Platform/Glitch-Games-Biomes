@@ -43,6 +43,7 @@ import { HarthmereGatheringNodeWorldInteraction } from "@/client/components/chal
 import { HarthmereLootDropWorldInteraction } from "@/client/components/challenges/HarthmereLootDropWorldInteraction";
 import {
   HarthmereInventoryMenuPanel,
+  HarthmereNativeTerrainBlockInventoryBridge,
   HarthmereVendorTradePanel,
   cycleHarthmereWeapon,
   ensureHarthmereSpellSlotted,
@@ -2828,6 +2829,7 @@ export const HarthmereUnifiedHUD: React.FunctionComponent<{
       <SnapshotLiveDiagnosticsRuntimeController />
       <HarthmereDeathRuntimeController />
       <HarthmereFoodStaminaRuntimeController />
+      <HarthmereNativeTerrainBlockInventoryBridge />
       <SnapshotProductionPortFacts />
       <SnapshotCombatRuntimeController />
     </>

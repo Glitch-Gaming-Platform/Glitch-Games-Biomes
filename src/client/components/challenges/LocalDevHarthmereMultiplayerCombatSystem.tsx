@@ -65,10 +65,11 @@ import {
 } from "@/client/components/challenges/harthmereCombatDeathInterfaceRules";
 import { getHarthmereLevelSummary } from "@/client/components/challenges/LocalDevHarthmereLevelingSystem";
 import {
-  harthmereLiveModeCombatTargetIdForSeed,
+  harthmereLiveModeCombatTargetIdForEcsEntity,
   shouldBypassHarthmereKeyboardDrawGateForMousePrimaryAttack,
   shouldEngageHarthmereMousePrimaryAttack,
 } from "@/client/components/challenges/harthmereMousePrimaryAttackRules";
+import { dispatchHarthmereLiveModeResponseEventsForTest } from "@/client/components/challenges/harthmereLiveModeClientEvents";
 import {
   harthmereCrosshairAimFromEvent,
   harthmereHasCrosshairCombatTarget,
@@ -78,10 +79,6 @@ import {
 } from "@/client/components/challenges/harthmereCrosshairCombatTarget";
 import { harthmereUserScopedStorageKey } from "@/client/components/challenges/LocalDevHarthmereUserScope";
 import { HARTHMERE_VOXEL_INTERACTION_ATTACK_REACH_UNITS } from "@/shared/harthmere/combat_reach";
-import {
-  harthmereGroundedLivestockSeedsInTerritory,
-  harthmereGroundedMuckMonsterSeedsInTerritory,
-} from "@/shared/harthmere/live_entity_production_seed";
 import React, { useEffect, useMemo, useState } from "react";
 
 const HARTHMERE_NO_SPARK_BASIC_ACTOR_MATCH_VERSION = "harthmere-no-spark-basic-actor-match";
@@ -803,26 +800,6 @@ const HARTHMERE_LIVE_MODE_MOUSE_ATTACK_ZONE_ID = "harthmere_wilderness";
 const HARTHMERE_LIVE_MODE_NPC_AI_TICK_INTERVAL_MS = 2_000;
 const HARTHMERE_LIVE_MODE_NPC_AI_TARGET_MEMORY_MS = 60_000;
 
-const HARTHMERE_LIVE_MODE_TARGET_BY_ECS_ID = new Map<number, string>(
-  [
-    ...harthmereGroundedMuckMonsterSeedsInTerritory(),
-    ...harthmereGroundedLivestockSeedsInTerritory(),
-  ].flatMap((seed) => {
-    const targetId = harthmereLiveModeCombatTargetIdForSeed(seed);
-    const entityId = Number(seed.entityId);
-    return targetId && Number.isFinite(entityId) ? [[entityId, targetId]] : [];
-  })
-);
-
-export function harthmereLiveModeCombatTargetIdForEcsEntity(
-  entityId: number | string | undefined
-): string | undefined {
-  const numeric = Number(entityId);
-  return Number.isFinite(numeric)
-    ? HARTHMERE_LIVE_MODE_TARGET_BY_ECS_ID.get(numeric)
-    : undefined;
-}
-
 type HarthmereNativeNpcAttackContactHit = {
   id?: number | string;
   entityId?: number | string;
@@ -1102,6 +1079,11 @@ function submitHarthmereLiveModeMousePrimaryAttack(
               payload: {
                 abilityId: HARTHMERE_LIVE_MODE_BASIC_ATTACK_ABILITY_ID,
               },
+              includeSnapshots: [
+                "combatState",
+                "inventoryLootState",
+                "playerStatusState",
+              ],
               clientClaims: {
                 source,
                 hitOffsets: request.hitOffsets,
@@ -1113,6 +1095,7 @@ function submitHarthmereLiveModeMousePrimaryAttack(
           }
         );
         const body = await response.json().catch(() => undefined);
+        dispatchHarthmereLiveModeResponseEventsForTest(body);
         if (body?.combatState) {
           publishHarthmereLiveEntityCombatMotionToRenderer(body.combatState);
           rememberHarthmereLiveModeNpcAiTarget(targetId);
