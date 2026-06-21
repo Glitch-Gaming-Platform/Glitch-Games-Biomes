@@ -1,5 +1,6 @@
 import {
   effectiveHarthmereDeathStateForRespawn,
+  harthmereShouldClearLiveAliveDeathLockForTest,
   harthmereLivePlayerDeathSyncSummaryForTest,
   type HarthmereDeathState,
 } from "@/client/components/challenges/LocalDevHarthmereDeathSystem";
@@ -41,6 +42,28 @@ describe("Harthmere live death sync", () => {
 
     assert.equal(summary.dead, true);
     assert.equal(summary.alive, false);
+  });
+
+  it("does not let a stale live-alive read clear a local zero-hp death lock", () => {
+    assert.equal(
+      harthmereShouldClearLiveAliveDeathLockForTest({
+        deathState: "dead",
+        hp: 0,
+        combatState: "dead",
+      }),
+      false
+    );
+  });
+
+  it("clears a stale death lock only after local combat is actually alive", () => {
+    assert.equal(
+      harthmereShouldClearLiveAliveDeathLockForTest({
+        deathState: "dead",
+        hp: 61,
+        combatState: "idle",
+      }),
+      true
+    );
   });
 
   it("makes a local hp-zero player immediately respawnable at The Grove", () => {

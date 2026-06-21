@@ -5,10 +5,8 @@ import { fillKnownRoadAheadClothingCrates } from "@/client/components/challenges
 import { awardHarthmereQuestXp } from "@/client/components/challenges/LocalDevHarthmereLevelingSystem";
 import { addToast } from "@/client/components/toast/helpers";
 import { useClientContext } from "@/client/components/contexts/ClientContextReactContext";
-import {
-  HARTHMERE_INVENTORY_EVENT,
-  readHarthmereInventoryState,
-} from "@/client/components/challenges/LocalDevHarthmereInventorySystem";
+import { readHarthmereInventoryState } from "@/client/components/challenges/LocalDevHarthmereInventorySystem";
+import { HARTHMERE_INVENTORY_EVENT } from "@/client/components/challenges/harthmereEvents";
 import type { GardenHoseEvent } from "@/client/events/api";
 import {
   GENESIS_CROSSROADS_LOCATION,
@@ -25,8 +23,7 @@ import type { ReadonlyVec3, Vec3 } from "@/shared/math/types";
 import { snapshotGroveLandmarkById } from "@/shared/harthmere/snapshot_grove_content";
 import React, { useEffect, useMemo, useState } from "react";
 
-export const SNAPSHOT_MISSION_BRIDGE_VERSION =
-  "snapshot-road-ahead-full-chain";
+export const SNAPSHOT_MISSION_BRIDGE_VERSION = "snapshot-road-ahead-full-chain";
 
 export const SNAPSHOT_MISSION_BRIDGE_PRODUCTION_COPY =
   "snapshot-road-ahead-production-dialogue";
@@ -44,11 +41,9 @@ export const SNAPSHOT_MISSION_STATE_EVENT =
 
 export const SNAPSHOT_MISSION_NAV_AID_ID = 710_073;
 
-const SNAPSHOT_MISSION_EVENTS_KEY =
-  "biomes.localDev.snapshotMissionEvents";
+const SNAPSHOT_MISSION_EVENTS_KEY = "biomes.localDev.snapshotMissionEvents";
 
-const SNAPSHOT_MISSION_REWARDS_KEY =
-  "biomes.localDev.snapshotMissionRewards";
+const SNAPSHOT_MISSION_REWARDS_KEY = "biomes.localDev.snapshotMissionRewards";
 const SNAPSHOT_ROAD_AHEAD_EQUIPPED_GEAR_KEY =
   "biomes.localDev.snapshotRoadAheadEquippedGear";
 const SNAPSHOT_ROAD_AHEAD_EQUIPPED_GEAR_EVENT =
@@ -306,8 +301,9 @@ const SNAPSHOT_MISSION_TARGET_OFFSETS: Record<
   Vec3
 > = {
   grove: [GENESIS_CROSSROADS_LOCATION[0], 54, GENESIS_CROSSROADS_LOCATION[1]],
-  road_marker: snapshotGroveLandmarkById("old_grove_road_post")
-    ?.position ?? [500, 54, -140],
+  road_marker: snapshotGroveLandmarkById("old_grove_road_post")?.position ?? [
+    500, 54, -140,
+  ],
   muckwad_patch: snapshotGroveLandmarkById("muckwad_patch")?.position ?? [
     512, 54, -152,
   ],
@@ -321,8 +317,9 @@ const SNAPSHOT_MISSION_TARGET_OFFSETS: Record<
   jump_run: snapshotGroveLandmarkById("road_jump_stretch")?.position ?? [
     548, 54, -170,
   ],
-  selfie_overlook: snapshotGroveLandmarkById("selfie_overlook")
-    ?.position ?? [560, 54, -182],
+  selfie_overlook: snapshotGroveLandmarkById("selfie_overlook")?.position ?? [
+    560, 54, -182,
+  ],
   crafting_stop: snapshotGroveLandmarkById("service_tower_platform")
     ?.position ?? [
     GENESIS_CROSSROADS_LOCATION[0] + 8,
@@ -337,9 +334,7 @@ function isBrowser() {
   );
 }
 
-function cloneState(
-  state: SnapshotMissionState
-): SnapshotMissionState {
+function cloneState(state: SnapshotMissionState): SnapshotMissionState {
   return {
     accepted: state.accepted,
     active: { ...state.active },
@@ -528,10 +523,7 @@ export function writeSnapshotMissionState(state: SnapshotMissionState) {
     ...state,
     updatedAt: Date.now(),
   });
-  window.localStorage.setItem(
-    SNAPSHOT_MISSION_STATE_KEY,
-    JSON.stringify(next)
-  );
+  window.localStorage.setItem(SNAPSHOT_MISSION_STATE_KEY, JSON.stringify(next));
   window.dispatchEvent(new Event(SNAPSHOT_MISSION_STATE_EVENT));
 }
 
@@ -699,8 +691,7 @@ function readSnapshotRoadAheadLocalHarthmereMuckClearingTool() {
       ...inventory.backpack.items,
     ].some(
       (item) =>
-        item?.itemId &&
-        isSnapshotRoadAheadLocalMuckClearingTool(item.itemId)
+        item?.itemId && isSnapshotRoadAheadLocalMuckClearingTool(item.itemId)
     )
   );
 }
@@ -734,10 +725,7 @@ function getMissionStep(
   state: SnapshotMissionState,
   challengeStepHints?: Iterable<SnapshotRoadAheadChallengeStepHint>
 ) {
-  const uiState = snapshotRoadAheadStateForBiomesUI(
-    state,
-    challengeStepHints
-  );
+  const uiState = snapshotRoadAheadStateForBiomesUI(state, challengeStepHints);
   const mission = firstSnapshotMission();
   const completed = isMissionCompleted(uiState);
   const stepIndex = completed
@@ -824,10 +812,7 @@ export function firstActiveSnapshotRoadAheadQuestTitleForBiomesUI(
   state: SnapshotMissionState = readSnapshotMissionState(),
   challengeStepHints?: Iterable<SnapshotRoadAheadChallengeStepHint>
 ) {
-  const uiState = snapshotRoadAheadStateForBiomesUI(
-    state,
-    challengeStepHints
-  );
+  const uiState = snapshotRoadAheadStateForBiomesUI(state, challengeStepHints);
   return uiState.accepted && !isMissionCompleted(uiState)
     ? firstSnapshotMission().title
     : undefined;
@@ -1131,11 +1116,7 @@ export function handleSnapshotRoadAheadEventForTest(event: GardenHoseEvent) {
   const published: GardenHoseEvent[] = [];
   const current = readSnapshotMissionState();
   const { step, completed } = getMissionStep(current);
-  if (
-    current.accepted &&
-    !completed &&
-    shouldEventCompleteStep(step, event)
-  ) {
+  if (current.accepted && !completed && shouldEventCompleteStep(step, event)) {
     advanceSnapshotRoadAhead(
       { publish: (publishedEvent) => published.push(publishedEvent) },
       event.kind
@@ -1192,10 +1173,7 @@ export const SnapshotMissionRuntimeController: React.FunctionComponent<{}> =
       const refresh = () => setState(readSnapshotMissionState());
       window.addEventListener("storage", refresh);
       window.addEventListener(SNAPSHOT_MISSION_STATE_EVENT, refresh);
-      window.addEventListener(
-        SNAPSHOT_ROAD_AHEAD_EQUIPPED_GEAR_EVENT,
-        refresh
-      );
+      window.addEventListener(SNAPSHOT_ROAD_AHEAD_EQUIPPED_GEAR_EVENT, refresh);
       window.addEventListener(HARTHMERE_INVENTORY_EVENT, refresh);
       return () => {
         window.removeEventListener("storage", refresh);
@@ -1267,14 +1245,9 @@ export const SnapshotMissionRuntimeController: React.FunctionComponent<{}> =
       const ownedItems = getOwnedItems(resources, userId);
       const hasMuckBuster =
         matchingItemRefs(ownedItems, (entry) => Boolean(entry?.item.unmuck))
-          .length > 0 ||
-        readSnapshotRoadAheadLocalHarthmereMuckClearingTool();
+          .length > 0 || readSnapshotRoadAheadLocalHarthmereMuckClearingTool();
       if (hasMuckBuster) {
-        advanceSnapshotRoadAhead(
-          gardenHose,
-          "muck buster acquired",
-          resources
-        );
+        advanceSnapshotRoadAhead(gardenHose, "muck buster acquired", resources);
       }
     }, [gardenHose, inventory, resources, state, userId]);
 
@@ -1437,9 +1410,7 @@ export function useSnapshotMissionDialog(
             name: "Mark Nia's guild lesson",
             type: "normal",
             onPerformed: () => {
-              const marker = snapshotGroveLandmarkById(
-                "npc_guild_clerk_nia"
-              );
+              const marker = snapshotGroveLandmarkById("npc_guild_clerk_nia");
               if (marker) {
                 pinSnapshotMissionTarget(mapManager, marker.position);
               }
@@ -1544,68 +1515,67 @@ export const SnapshotMissionMapHUD: React.FunctionComponent<{}> = () => {
   );
 };
 
-export const SnapshotMissionJournalPanel: React.FunctionComponent<{}> =
-  () => {
-    const state = useSnapshotMissionState();
-    const { mission, step, stepIndex, completed } = getMissionStep(state);
-    const events = readSnapshotMissionEvents();
-    const status = completed
-      ? "Completed"
-      : !state.accepted
-      ? "Available"
-      : `In Progress · ${stepIndex}/${mission.steps.length - 1}`;
+export const SnapshotMissionJournalPanel: React.FunctionComponent<{}> = () => {
+  const state = useSnapshotMissionState();
+  const { mission, step, stepIndex, completed } = getMissionStep(state);
+  const events = readSnapshotMissionEvents();
+  const status = completed
+    ? "Completed"
+    : !state.accepted
+    ? "Available"
+    : `In Progress · ${stepIndex}/${mission.steps.length - 1}`;
 
-    return (
-      <div className="rounded border-emerald-200/20 bg-emerald-950/30 border p-2">
-        <div className="flex items-start justify-between gap-2">
-          <div>
-            <div className="text-sm font-semibold text-white">
-              {mission.title}
-            </div>
-            <div className="text-emerald-100/80 text-[10px] uppercase tracking-wide">
-              Road Lesson · {mission.district}
-            </div>
+  return (
+    <div className="rounded border-emerald-200/20 bg-emerald-950/30 border p-2">
+      <div className="flex items-start justify-between gap-2">
+        <div>
+          <div className="text-sm font-semibold text-white">
+            {mission.title}
           </div>
-          <div className="text-emerald-100 text-xs font-semibold">{status}</div>
+          <div className="text-emerald-100/80 text-[10px] uppercase tracking-wide">
+            Road Lesson · {mission.district}
+          </div>
         </div>
-        <div className="text-white/85 mt-1 text-xs leading-snug">
-          {completed
-            ? SNAPSHOT_GROVE_NEXT_LESSONS_COPY
-            : state.accepted
-            ? step.objective
-            : mission.summary}
-        </div>
-        {state.accepted && !completed && (
-          <>
-            <div className="mt-1 text-[11px] leading-snug text-white/60">
-              <span className="font-semibold text-white/75">Target:</span>{" "}
-              {step.targetLabel}
-            </div>
-            <div className="mt-1 text-[11px] leading-snug text-white/60">
-              <span className="font-semibold text-white/75">
-                How it advances:
-              </span>{" "}
-              {roadAheadStepCopy(mission, step, stepIndex).howItCompletes}
-            </div>
-            <div className="mt-1 text-[11px] leading-snug text-white/60">
-              <span className="font-semibold text-white/75">Reward:</span>{" "}
-              {step.reward}
-            </div>
-          </>
-        )}
-        {!!state.rewards.length && (
-          <div className="rounded p-1.5 text-white/65 mt-2 bg-black/20 text-[11px] leading-snug">
-            <div className="text-emerald-100 font-semibold">Earned</div>
-            {state.rewards.slice(-3).map((reward) => (
-              <div key={reward}>• {reward}</div>
-            ))}
-          </div>
-        )}
-        {!!events.length && (
-          <div className="mt-2 text-[10px] leading-snug text-white/50">
-            Latest: {events[0].detail}
-          </div>
-        )}
+        <div className="text-emerald-100 text-xs font-semibold">{status}</div>
       </div>
-    );
-  };
+      <div className="text-white/85 mt-1 text-xs leading-snug">
+        {completed
+          ? SNAPSHOT_GROVE_NEXT_LESSONS_COPY
+          : state.accepted
+          ? step.objective
+          : mission.summary}
+      </div>
+      {state.accepted && !completed && (
+        <>
+          <div className="mt-1 text-[11px] leading-snug text-white/60">
+            <span className="font-semibold text-white/75">Target:</span>{" "}
+            {step.targetLabel}
+          </div>
+          <div className="mt-1 text-[11px] leading-snug text-white/60">
+            <span className="font-semibold text-white/75">
+              How it advances:
+            </span>{" "}
+            {roadAheadStepCopy(mission, step, stepIndex).howItCompletes}
+          </div>
+          <div className="mt-1 text-[11px] leading-snug text-white/60">
+            <span className="font-semibold text-white/75">Reward:</span>{" "}
+            {step.reward}
+          </div>
+        </>
+      )}
+      {!!state.rewards.length && (
+        <div className="rounded p-1.5 text-white/65 mt-2 bg-black/20 text-[11px] leading-snug">
+          <div className="text-emerald-100 font-semibold">Earned</div>
+          {state.rewards.slice(-3).map((reward) => (
+            <div key={reward}>• {reward}</div>
+          ))}
+        </div>
+      )}
+      {!!events.length && (
+        <div className="mt-2 text-[10px] leading-snug text-white/50">
+          Latest: {events[0].detail}
+        </div>
+      )}
+    </div>
+  );
+};

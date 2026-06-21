@@ -2,14 +2,16 @@
 import assert from "assert";
 import {
   jobsBoardAcceptedJobLandmarksForBiomesUI,
+  jobsBoardItemSourceLandmarksForBiomesUI,
   jobsBoardToolSourceLandmarksForBiomesUI,
   jobsBoardTrackableQuestsForBiomesUI,
   activeJobsBoardMissionStepsForBiomesUI,
   firstActiveJobsBoardLandmarkForBiomesUI,
   shouldClearStaleJobsBoardPin,
+  BIOMES_UI_JOBS_BOARD_ITEM_SOURCE_MARKER_SOURCE,
   BIOMES_UI_JOBS_BOARD_TOOL_SOURCE_MARKER_SOURCE,
 } from "../jobsBoardQuestMapAdapter";
-import { harthmereJobsBoardQuestMarkerPositionForId } from "@/shared/harthmere/jobs_board_quest_marker_positions";
+import { harthmereJobsBoardQuestMarkerRuntimePositionForId } from "@/shared/harthmere/jobs_board_quest_marker_positions";
 import { HARTHMERE_TOOL_SOURCES } from "@/shared/harthmere/harthmere_job_objective";
 import {
   HARTHMERE_JOBS_BOARD_ELITE_MUCKER_BOUNTY_MARKER_ID,
@@ -88,7 +90,8 @@ function acceptedJobsBoardSnapshot() {
         actorId: "player_jobs_map_001",
         boardId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID,
         title: "Clear the Muckwad Patch",
-        todoText: "Go to the marked location and complete: Clear the Muckwad Patch",
+        todoText:
+          "Go to the marked location and complete: Clear the Muckwad Patch",
         status: "active",
         kind: "hunt",
         mapMarkerId: HARTHMERE_JOBS_BOARD_ELITE_MUCKER_BOUNTY_MARKER_ID,
@@ -115,14 +118,20 @@ function acceptedJobsBoardSnapshot() {
 describe("BiomesUI jobs board quest map adapter", () => {
   it("turns accepted jobs board todos into active quest entries and target map markers", () => {
     const snapshot = acceptedJobsBoardSnapshot();
-    const target = harthmereJobsBoardQuestMarkerPositionForId(
+    const target = harthmereJobsBoardQuestMarkerRuntimePositionForId(
       HARTHMERE_JOBS_BOARD_ELITE_MUCKER_BOUNTY_MARKER_ID
     );
-    assert.ok(target, "fixture marker should resolve through the shared marker registry");
+    assert.ok(
+      target,
+      "fixture marker should resolve through the shared marker registry"
+    );
 
     const landmarks = jobsBoardAcceptedJobLandmarksForBiomesUI(snapshot);
     assert.equal(landmarks.length, 1);
-    assert.deepEqual(firstActiveJobsBoardLandmarkForBiomesUI(snapshot), landmarks[0]);
+    assert.deepEqual(
+      firstActiveJobsBoardLandmarkForBiomesUI(snapshot),
+      landmarks[0]
+    );
     assert.equal(landmarks[0].id, "jobs_board_marker:harthmere_job_todo_7");
     assert.equal(landmarks[0].kind, "objective");
     assert.equal(landmarks[0].active, true);
@@ -157,6 +166,7 @@ describe("BiomesUI jobs board quest map adapter", () => {
           "Go to the marked location and complete: Clear the Muckwad Patch",
         ],
         description: "Clear the marked muck threat.",
+        itemSource: undefined,
         // A hunt needs no tool, so there is no tool-source callout.
         toolSource: undefined,
       },
@@ -184,10 +194,13 @@ describe("BiomesUI jobs board quest map adapter", () => {
     // The tracker surfaces completed AND failed (so the player sees the outcome);
     // cancelled is dropped.
     const quests = jobsBoardTrackableQuestsForBiomesUI(snapshot);
-    assert.deepEqual(quests.map((quest) => [quest.questId, quest.status]), [
-      ["jobs_board:completed_todo", "completed"],
-      ["jobs_board:failed_todo", "failed"],
-    ]);
+    assert.deepEqual(
+      quests.map((quest) => [quest.questId, quest.status]),
+      [
+        ["jobs_board:completed_todo", "completed"],
+        ["jobs_board:failed_todo", "failed"],
+      ]
+    );
   });
 });
 
@@ -220,7 +233,8 @@ describe("BiomesUI jobs board tool-source guidance", () => {
   it("points a tool-requiring job at the vendor when the tool is NOT equipped", () => {
     const snapshot = repairJobSnapshot();
     const vendorMarkerId = HARTHMERE_TOOL_SOURCES.repair.vendorMarkerId;
-    const vendor = harthmereJobsBoardQuestMarkerPositionForId(vendorMarkerId);
+    const vendor =
+      harthmereJobsBoardQuestMarkerRuntimePositionForId(vendorMarkerId);
     assert.ok(vendor, "repair vendor must resolve through the shared registry");
 
     const landmarks = jobsBoardToolSourceLandmarksForBiomesUI(snapshot, {
@@ -287,6 +301,63 @@ describe("BiomesUI jobs board tool-source guidance", () => {
       cleanupToolOwned: true,
     });
     assert.equal(equipped[0].toolSource, undefined);
+  });
+});
+
+function missingItemRepairJobSnapshot() {
+  const snapshot = repairJobSnapshot();
+  snapshot.inventoryItems = { softwood_log: 1 } as any;
+  snapshot.myAcceptedJobs = [
+    {
+      ...snapshot.myAcceptedJobs[0],
+      requirements: [
+        {
+          itemId: "softwood_log",
+          count: 3,
+          mapMarkerId: "grove_repair_fence",
+          requiredToolAction: "repair",
+        },
+      ],
+    },
+  ] as any;
+  return snapshot;
+}
+
+describe("BiomesUI jobs board item-source guidance", () => {
+  it("points an accepted job at how and where to obtain missing requirement items", () => {
+    const snapshot = missingItemRepairJobSnapshot();
+
+    const landmarks = jobsBoardItemSourceLandmarksForBiomesUI(snapshot);
+    assert.equal(landmarks.length, 1);
+    assert.equal(landmarks[0].id, "jobs_board_item_source:repair_todo_1");
+    assert.equal(
+      landmarks[0].source,
+      BIOMES_UI_JOBS_BOARD_ITEM_SOURCE_MARKER_SOURCE
+    );
+    assert.equal(landmarks[0].mapMarkerId, "harthmere_orchard_softwood");
+    assert.deepEqual(landmarks[0].position, [468, 53, -118]);
+    assert.ok(/Gather 2 Softwood Logs/i.test(landmarks[0].description));
+
+    const [quest] = jobsBoardTrackableQuestsForBiomesUI(snapshot, 1000, {
+      repairToolOwned: true,
+    });
+    assert.equal(quest.firstMarkerId, "jobs_board_item_source:repair_todo_1");
+    assert.ok(quest.itemSource, "missing item should surface an item source");
+    assert.equal(quest.itemSource!.itemId, "softwood_log");
+    assert.equal(quest.itemSource!.missingCount, 2);
+    assert.ok(
+      quest.objectives?.some((objective) =>
+        /Orchard Softwood Branches/i.test(objective)
+      )
+    );
+  });
+
+  it("does not show an item-source pin once inventory satisfies the requirement", () => {
+    const snapshot = missingItemRepairJobSnapshot();
+    snapshot.inventoryItems = { softwood_log: 3 } as any;
+    assert.equal(jobsBoardItemSourceLandmarksForBiomesUI(snapshot).length, 0);
+    const [quest] = jobsBoardTrackableQuestsForBiomesUI(snapshot, 1000);
+    assert.equal(quest.itemSource, undefined);
   });
 });
 

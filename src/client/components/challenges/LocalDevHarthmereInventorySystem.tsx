@@ -28,6 +28,7 @@ import {
   nonNegativeInt,
 } from "@/client/components/challenges/LocalDevHarthmereEconomyHardening";
 import { completeHarthmereDailyTaskSoon } from "@/client/components/challenges/harthmereDailyTasks";
+import { prepareHarthmereLiveFetchRequest } from "@/client/components/harthmere_live_fetch";
 import {
   healHarthmerePlayer,
   reviveHarthmerePlayer,
@@ -42,18 +43,20 @@ import {
   createHarthmereBiomesEcsInventory,
 } from "@/shared/harthmere/harthmere_biomes_ecs_bridge";
 import { HARTHMERE_LOCAL_DEV_ITEM_USE_EVENT } from "@/shared/harthmere/snapshot_grove_trigger_contract";
+import {
+  HARTHMERE_INVENTORY_EVENT,
+  HARTHMERE_LIVE_INVENTORY_SYNC_EVENT,
+  HARTHMERE_VENDOR_TRADE_CLOSE_TALK_EVENT,
+} from "@/client/components/challenges/harthmereEvents";
 import React, { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 
 // Cloud-save guardrails scan this owning file for the literal save key:
 // biomes.localDev.harthmere.inventoryState
 const HARTHMERE_INVENTORY_STATE_KEY = HARTHMERE_LOCAL_DEV_STATE_KEYS.inventory;
-export const HARTHMERE_INVENTORY_EVENT = "biomes:harthmere-inventory-changed";
 const HARTHMERE_VENDOR_TRADE_EVENT = "biomes:harthmere-open-vendor-trade";
 const HARTHMERE_VENDOR_TRADE_REQUEST_KEY =
   "biomes.localDev.harthmere.pendingVendorTrade";
-const HARTHMERE_VENDOR_TRADE_CLOSE_TALK_EVENT =
-  "biomes:harthmere-close-talk-for-vendor";
 
 type HarthmereVendorTradeMode = "buy" | "sell";
 
@@ -2266,6 +2269,75 @@ function inventoryEvent(state?: HarthmereInventoryState) {
   }
 }
 
+function dispatchHarthmereLiveInventorySync(body: unknown) {
+  if (!isBrowser()) return;
+  window.dispatchEvent(
+    new CustomEvent(HARTHMERE_LIVE_INVENTORY_SYNC_EVENT, {
+      detail: { body },
+    })
+  );
+}
+
+export function submitHarthmereInventoryGrantToLiveModeForTest(
+  itemId: string,
+  quantity = 1,
+  reason = "Item received"
+) {
+  if (
+    !isBrowser() ||
+    typeof window.fetch !== "function" ||
+    !itemId ||
+    quantity <= 0
+  ) {
+    return undefined;
+  }
+  const count = Math.max(1, Math.floor(Number(quantity) || 0));
+  const requestId = `harthmere_local_inventory_grant_${Date.now()}_${Math.random()
+    .toString(36)
+    .slice(2)}`;
+  const prepared = prepareHarthmereLiveFetchRequest(
+    "/api/harthmere/live_mode",
+    {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        requestId,
+        idempotencyKey: requestId,
+        actionKind: "request_loot_roll",
+        subsystem: "inventory",
+        actorEntityVersion: 1,
+        zoneId: "harthmere",
+        payload: {
+          itemId,
+          count,
+          source: reason,
+        },
+        includeSnapshots: [
+          "inventoryLootState",
+          "farmingFoodState",
+          "buildingState",
+          "playerStatusState",
+        ],
+        clientClaims: {
+          source: "local_harthmere_inventory_grant",
+          reason,
+        },
+      }),
+    }
+  );
+  return window
+    .fetch(prepared.input, prepared.init)
+    .then((response) => response.json().catch(() => undefined))
+    .then((body) => {
+      if (body) {
+        dispatchHarthmereLiveInventorySync(body);
+      }
+      return body;
+    })
+    .catch(() => undefined);
+}
+
 function instanceId(itemId: string) {
   return `hm-${itemId}-${Date.now()}-${Math.floor(Math.random() * 1_000_000)}`;
 }
@@ -2896,6 +2968,7 @@ export function grantHarthmereItem(
         )}.`
   );
   writeHarthmereInventoryState(next);
+  void submitHarthmereInventoryGrantToLiveModeForTest(itemId, added, reason);
   return { added, overflow };
 }
 

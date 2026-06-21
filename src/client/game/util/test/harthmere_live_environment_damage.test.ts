@@ -15,9 +15,7 @@ describe("Harthmere live environment damage client", () => {
 
   it("keeps Glitch install identity on fall-damage mutations", () => {
     assert.equal(
-      harthmereLiveModeEnvironmentDamageUrl(
-        "?install_id=install with spaces"
-      ),
+      harthmereLiveModeEnvironmentDamageUrl("?install_id=install with spaces"),
       "/api/harthmere/live_mode?install_id=install%20with%20spaces"
     );
     assert.equal(
@@ -114,7 +112,7 @@ describe("Harthmere live environment damage client", () => {
       };
     }) as any;
 
-    await submitHarthmereDrowningDamageLiveMode(3, {
+    await submitHarthmereDrowningDamageLiveMode(5, {
       fetchImpl,
       requestIdPrefix: "test_drown",
     });
@@ -123,7 +121,7 @@ describe("Harthmere live environment damage client", () => {
     assert.equal(calls[0].url, "/api/harthmere/live_mode");
     assert.deepEqual(calls[0].body.payload, {
       damageKind: "drowning",
-      damage: 3,
+      damage: 5,
     });
     assert.deepEqual(dispatched, [
       {

@@ -24,6 +24,30 @@ const cachedYarnAction = fs.readFileSync(
   path.join(root, ".github/actions/cached-yarn-install/action.yml"),
   "utf8"
 );
+const cachedLfsAction = fs.readFileSync(
+  path.join(root, ".github/actions/cached-lfs-pull/action.yml"),
+  "utf8"
+);
+const cachedPipAction = fs.readFileSync(
+  path.join(root, ".github/actions/cached-pip-install/action.yml"),
+  "utf8"
+);
+const cachedEslintAction = fs.readFileSync(
+  path.join(root, ".github/actions/cached-eslint/action.yml"),
+  "utf8"
+);
+const bazelAction = fs.readFileSync(
+  path.join(root, ".github/actions/bazel/action.yml"),
+  "utf8"
+);
+const mergeCiWorkflow = fs.readFileSync(
+  path.join(root, ".github/workflows/merge-ci.yml"),
+  "utf8"
+);
+const tsEslintCiWorkflow = fs.readFileSync(
+  path.join(root, ".github/workflows/ts-eslint-ci.yml"),
+  "utf8"
+);
 const gitDepsAction = fs.readFileSync(
   path.join(root, ".github/actions/configure-github-git-deps/action.yml"),
   "utf8"
@@ -165,15 +189,29 @@ ok(
 );
 ok(
   deployWorkflow.includes("Restore production asset cache") &&
+    deployWorkflow.includes("actions/cache/restore@v5") &&
+    deployWorkflow.includes("Save production asset cache") &&
+    deployWorkflow.includes(
+      "refreshed-production-asset-cache.outputs.cache_present"
+    ) &&
     deployWorkflow.includes("public/buckets") &&
     deployWorkflow.includes("snapshot_backup.json"),
-  "production workflow caches hydrated snapshot bucket assets"
+  "production workflow explicitly restores and saves hydrated snapshot bucket assets"
 );
 ok(
   deployWorkflow.includes("Restore production compiler cache") &&
+    deployWorkflow.includes("actions/cache/restore@v5") &&
+    deployWorkflow.includes("Save production compiler cache") &&
+    deployWorkflow.includes(
+      "refreshed-production-compiler-cache.outputs.cache_present"
+    ) &&
     deployWorkflow.includes(".next/cache") &&
     deployWorkflow.includes("node_modules/.cache/webpack"),
-  "production workflow caches Next and server Webpack compiler outputs"
+  "production workflow explicitly restores and saves Next and server Webpack compiler outputs"
+);
+ok(
+  !deployWorkflow.includes("save-always: true"),
+  "production workflow does not use deprecated actions/cache save-always"
 );
 ok(
   deployWorkflow.includes("uses: ./.github/actions/cached-yarn-install"),
@@ -191,6 +229,46 @@ ok(
     cachedYarnAction.includes("Save node_modules cache") &&
     cachedYarnAction.includes("Save Yarn tarball cache"),
   "shared Yarn install action saves dependency caches immediately after install"
+);
+ok(
+  cachedLfsAction.includes("actions/cache/restore@v5") &&
+    cachedLfsAction.includes("actions/cache/save@v5") &&
+    cachedLfsAction.includes("Save LFS cache") &&
+    cachedLfsAction.includes("Capture LFS cache key") &&
+    cachedLfsAction.includes("continue-on-error: true"),
+  "shared LFS action explicitly restores and saves Git LFS cache"
+);
+ok(
+  cachedPipAction.includes("actions/cache/restore@v5") &&
+    cachedPipAction.includes("actions/cache/save@v5") &&
+    cachedPipAction.includes("Save pip install cache") &&
+    cachedPipAction.includes("continue-on-error: true"),
+  "shared pip action explicitly restores and saves virtualenv cache"
+);
+ok(
+  cachedEslintAction.includes("actions/cache/restore@v5") &&
+    cachedEslintAction.includes("cache-hit:") &&
+    mergeCiWorkflow.includes("Save eslint cache") &&
+    tsEslintCiWorkflow.includes("Save eslint cache"),
+  "eslint cache is restored in the shared action and saved after lint populates it"
+);
+ok(
+  bazelAction.includes("actions/cache/restore@v5") &&
+    bazelAction.includes("actions/cache/save@v5") &&
+    bazelAction.includes("Save Bazel 3rd party deps cache") &&
+    bazelAction.includes("continue-on-error: true"),
+  "shared Bazel action explicitly restores and saves third-party dependency cache"
+);
+ok(
+  ![
+    cachedYarnAction,
+    cachedLfsAction,
+    cachedPipAction,
+    cachedEslintAction,
+    bazelAction,
+    deployWorkflow,
+  ].some((source) => source.includes("actions/cache@v5")),
+  "shared and production cache steps use explicit restore/save actions"
 );
 ok(
   gitDepsAction.includes("git+ssh://git@github.com/") &&

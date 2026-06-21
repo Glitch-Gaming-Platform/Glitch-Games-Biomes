@@ -1,4 +1,5 @@
 export * from "./jobsBoardLiveAdapter";
+export * from "./harthmereJobsBoardPosition";
 export * from "./HarthmereJobsBoardInteractionPrompt";
 export * from "./HarthmereJobsBoardPanel";
 export * from "./HarthmereJobsBoardLiveContainer";

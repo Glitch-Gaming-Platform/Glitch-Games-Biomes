@@ -8,7 +8,10 @@ import {
   harthmereJobsBoardQuestMarkerRuntimePositionForId,
   harthmereJobsBoardQuestMarkerRuntimePositionForTodo,
 } from "@/shared/harthmere/jobs_board_quest_marker_positions";
-import { harthmereJobToolSourceGuidance } from "@/shared/harthmere/harthmere_job_objective";
+import {
+  harthmereJobItemSourceGuidance,
+  harthmereJobToolSourceGuidance,
+} from "@/shared/harthmere/harthmere_job_objective";
 import { formatHarthmereJobTimeRemaining } from "@/shared/harthmere/mmo_jobs_board_authority";
 import type { Vec3 } from "@/shared/math/types";
 import type { MapTrackableQuest } from "../tabs/MapQuestsTab";
@@ -40,9 +43,13 @@ export const BIOMES_UI_JOBS_BOARD_ACCEPTED_JOB_MARKER_SOURCE =
 
 export const BIOMES_UI_JOBS_BOARD_TOOL_SOURCE_MARKER_SOURCE =
   "jobs_board_tool_source" as const;
+export const BIOMES_UI_JOBS_BOARD_ITEM_SOURCE_MARKER_SOURCE =
+  "jobs_board_item_source" as const;
 
 export const JOBS_BOARD_TOOL_SOURCE_MARKER_ID_PREFIX =
   "jobs_board_tool_source:";
+export const JOBS_BOARD_ITEM_SOURCE_MARKER_ID_PREFIX =
+  "jobs_board_item_source:";
 
 export interface BiomesUIJobsBoardAcceptedJobLandmark {
   id: string;
@@ -56,7 +63,8 @@ export interface BiomesUIJobsBoardAcceptedJobLandmark {
   description: string;
   source:
     | typeof BIOMES_UI_JOBS_BOARD_ACCEPTED_JOB_MARKER_SOURCE
-    | typeof BIOMES_UI_JOBS_BOARD_TOOL_SOURCE_MARKER_SOURCE;
+    | typeof BIOMES_UI_JOBS_BOARD_TOOL_SOURCE_MARKER_SOURCE
+    | typeof BIOMES_UI_JOBS_BOARD_ITEM_SOURCE_MARKER_SOURCE;
   jobsBoardTodoId: string;
   jobsBoardJobId: string;
   mapMarkerId: string;
@@ -96,9 +104,7 @@ export function jobsBoardKindLabel(kind: string | undefined): string {
 }
 
 const JOBS_BOARD_FALLBACK_POSITION: Vec3 = [
-  501.99486179104775,
-  71,
-  -132.00350672753194,
+  501.99486179104775, 71, -132.00350672753194,
 ];
 
 function normalizeJobsBoardSnapshotForBiomesUI(
@@ -126,7 +132,12 @@ export function shouldClearStaleJobsBoardPin(input: {
   activeJobsBoardMarkerIds: readonly string[];
 }): boolean {
   const id = input.activePinMarkerId;
-  if (!id || !id.startsWith(JOBS_BOARD_MARKER_ID_PREFIX)) {
+  if (
+    !id ||
+    (!id.startsWith(JOBS_BOARD_MARKER_ID_PREFIX) &&
+      !id.startsWith(JOBS_BOARD_ITEM_SOURCE_MARKER_ID_PREFIX) &&
+      !id.startsWith(JOBS_BOARD_TOOL_SOURCE_MARKER_ID_PREFIX))
+  ) {
     return false;
   }
   return !input.activeJobsBoardMarkerIds.includes(id);
@@ -242,7 +253,11 @@ export function jobsBoardToolSourceLandmarksForBiomesUI(
     }
     seenTodoIds.add(todo.todoId);
     const action =
-      todo.kind === "repair" ? "repair" : todo.kind === "cleanup" ? "cleanup" : undefined;
+      todo.kind === "repair"
+        ? "repair"
+        : todo.kind === "cleanup"
+        ? "cleanup"
+        : undefined;
     if (!action) return [];
     // Only guide to the shop when we KNOW the player does NOT own the tool, so a
     // player who already has it never sees a spurious "buy it" pin (they're sent
@@ -280,6 +295,60 @@ export function jobsBoardToolSourceLandmarksForBiomesUI(
   });
 }
 
+export function jobsBoardItemSourceLandmarksForBiomesUI(
+  raw: unknown
+): BiomesUIJobsBoardAcceptedJobLandmark[] {
+  const snapshot = normalizeJobsBoardSnapshotForBiomesUI(raw);
+  if (!snapshot) return [];
+  const jobsById = new Map(
+    snapshot.myAcceptedJobs.map((job) => [job.jobId, job])
+  );
+  const seenTodoIds = new Set<string>();
+
+  return snapshot.myTodos.flatMap((todo) => {
+    if (todo.status !== "active" || seenTodoIds.has(todo.todoId)) {
+      return [];
+    }
+    seenTodoIds.add(todo.todoId);
+    const job = jobsById.get(todo.jobId);
+    const guidance = harthmereJobItemSourceGuidance({
+      kind: todo.kind,
+      requirements: job?.requirements,
+      inventoryItems: snapshot.inventoryItems,
+    });
+    if (!guidance) return [];
+    const registryMarker = guidance.markerId
+      ? harthmereJobsBoardQuestMarkerRuntimePositionForId(guidance.markerId)
+      : undefined;
+    const position =
+      registryMarker?.position ??
+      (guidance.markerPosition
+        ? ([...guidance.markerPosition] as Vec3)
+        : undefined);
+    if (!position) return [];
+    return [
+      {
+        id: `${JOBS_BOARD_ITEM_SOURCE_MARKER_ID_PREFIX}${todo.todoId}`,
+        label: `Get ${guidance.itemName} — ${guidance.sourceName}`,
+        position,
+        kind: "objective" as const,
+        area: guidance.sourceName,
+        visibleOnWorldMap: true as const,
+        visibleOnHudMap: true as const,
+        active: true as const,
+        description: guidance.hint,
+        source: BIOMES_UI_JOBS_BOARD_ITEM_SOURCE_MARKER_SOURCE,
+        jobsBoardTodoId: todo.todoId,
+        jobsBoardJobId: todo.jobId,
+        mapMarkerId:
+          guidance.markerId ??
+          `${JOBS_BOARD_ITEM_SOURCE_MARKER_ID_PREFIX}${todo.todoId}`,
+        targetId: guidance.markerId,
+      },
+    ];
+  });
+}
+
 export function jobsBoardTrackableQuestsForBiomesUI(
   raw: unknown,
   nowMs: number = Date.now(),
@@ -302,6 +371,14 @@ export function jobsBoardTrackableQuestsForBiomesUI(
       todo.todoText ||
       job?.description ||
       "Follow the job marker and complete the accepted board job.";
+    const itemGuidance =
+      status === "active"
+        ? harthmereJobItemSourceGuidance({
+            kind: todo.kind,
+            requirements: job?.requirements,
+            inventoryItems: snapshot.inventoryItems,
+          })
+        : undefined;
     // Full-detail fields for the click-to-review quest panel. The tool-source
     // callout only shows for an active job whose tool the player does NOT own.
     const guidance =
@@ -325,7 +402,11 @@ export function jobsBoardTrackableQuestsForBiomesUI(
         area: jobsBoardTodoArea(snapshot, todo),
         status,
         firstMarkerId:
-          status === "active" ? jobsBoardTodoMarkerId(todo) : undefined,
+          status === "active"
+            ? itemGuidance?.markerId || itemGuidance?.markerPosition
+              ? `${JOBS_BOARD_ITEM_SOURCE_MARKER_ID_PREFIX}${todo.todoId}`
+              : jobsBoardTodoMarkerId(todo)
+            : undefined,
         reward:
           Number.isFinite(rewardGold) && rewardGold > 0
             ? `${Math.trunc(rewardGold)} gold`
@@ -338,8 +419,18 @@ export function jobsBoardTrackableQuestsForBiomesUI(
         kind: todo.kind,
         kindLabel: jobsBoardKindLabel(todo.kind),
         objective,
-        objectives: [objective],
+        objectives: itemGuidance ? [objective, itemGuidance.hint] : [objective],
         description: job?.description || undefined,
+        itemSource: itemGuidance
+          ? {
+              itemId: itemGuidance.itemId,
+              itemName: itemGuidance.itemName,
+              sourceName: itemGuidance.sourceName,
+              markerId: itemGuidance.markerId,
+              hint: itemGuidance.hint,
+              missingCount: itemGuidance.missingCount,
+            }
+          : undefined,
         toolSource: guidance
           ? {
               action: guidance.action,
@@ -360,12 +451,24 @@ export function activeJobsBoardMissionStepsForBiomesUI(
 ): BiomesUIJobsBoardMissionStep[] {
   const snapshot = normalizeJobsBoardSnapshotForBiomesUI(raw);
   if (!snapshot) return [];
+  const jobsById = new Map(
+    snapshot.myAcceptedJobs.map((job) => [job.jobId, job])
+  );
   return snapshot.myTodos
     .filter((todo) => todo.status === "active")
     .map((todo) => {
+      const job = jobsById.get(todo.jobId);
       const baseObjective =
         todo.todoText ||
         `Complete accepted board job: ${todo.title || todo.jobId}`;
+      const itemGuidance = harthmereJobItemSourceGuidance({
+        kind: todo.kind,
+        requirements: job?.requirements,
+        inventoryItems: snapshot.inventoryItems,
+      });
+      const objective = itemGuidance
+        ? `${baseObjective} ${itemGuidance.hint}`
+        : baseObjective;
       const kindLabel = jobsBoardKindLabel(todo.kind);
       // Show the accept-window countdown on the quest entry (jobs are timed).
       const timeLabel = formatHarthmereJobTimeRemaining(todo.dueAtMs, nowMs);
@@ -376,8 +479,8 @@ export function activeJobsBoardMissionStepsForBiomesUI(
         // so the player can tell a repair from a hunt at a glance.
         title: todo.title || todo.jobId || "Accepted Job",
         objective: timeLabel
-          ? `[${kindLabel}] ${baseObjective} (${timeLabel})`
-          : `[${kindLabel}] ${baseObjective}`,
+          ? `[${kindLabel}] ${objective} (${timeLabel})`
+          : `[${kindLabel}] ${objective}`,
         done: false,
       };
     });

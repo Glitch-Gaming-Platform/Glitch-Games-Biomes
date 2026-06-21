@@ -5,10 +5,13 @@ import { usePointerLockUnlockWhileOpenActive } from "@/client/components/context
 import {
   HARTHMERE_JOBS_BOARD_PHYSICAL_BOARDS,
   nearestHarthmereJobsBoardPhysicalPrompt,
-  normalizeHarthmereJobsBoardPoint,
-  type HarthmereJobsBoardPoint,
   type HarthmereJobsBoardWorldContext,
 } from "./jobsBoardLiveAdapter";
+import {
+  harthmereJobsBoardCameraPosition,
+  harthmereJobsBoardPlayerPosition,
+} from "./harthmereJobsBoardPosition";
+import { HARTHMERE_JOBS_BOARD_OPEN_EVENT } from "@/client/components/challenges/harthmereEvents";
 import { HarthmereJobsBoardLiveContainer } from "./HarthmereJobsBoardLiveContainer";
 import { installHarthmereJobsBoardStyles } from "./HarthmereJobsBoardStyles";
 import {
@@ -18,46 +21,6 @@ import {
 
 export const HARTHMERE_JOBS_BOARD_WORLD_INTERACTION_VERSION =
   "harthmere-jobs-board-world-interaction" as const;
-
-export const HARTHMERE_JOBS_BOARD_OPEN_EVENT =
-  "biomes:harthmere-jobs-board-open" as const;
-
-function pointFromMaybeMethod(value: unknown): HarthmereJobsBoardPoint | undefined {
-  if (typeof value === "function") {
-    try {
-      return normalizeHarthmereJobsBoardPoint(value());
-    } catch {
-      return undefined;
-    }
-  }
-  return normalizeHarthmereJobsBoardPoint(value);
-}
-
-export function harthmereJobsBoardPlayerPosition(
-  localPlayer: unknown,
-  camera: unknown
-): HarthmereJobsBoardPoint | undefined {
-  const player = localPlayer as Record<string, unknown> | undefined;
-  return (
-    normalizeHarthmereJobsBoardPoint(player?.position) ??
-    normalizeHarthmereJobsBoardPoint(player?.player && (player.player as any).position) ??
-    normalizeHarthmereJobsBoardPoint(player?.centerPos) ??
-    pointFromMaybeMethod((player as any)?.player?.centerPos) ??
-    pointFromMaybeMethod((player as any)?.pos) ??
-    harthmereJobsBoardCameraPosition(camera)
-  );
-}
-
-export function harthmereJobsBoardCameraPosition(
-  camera: unknown
-): HarthmereJobsBoardPoint | undefined {
-  const record = camera as Record<string, unknown> | undefined;
-  return (
-    normalizeHarthmereJobsBoardPoint(record?.pos) ??
-    pointFromMaybeMethod((record as any)?.pos) ??
-    normalizeHarthmereJobsBoardPoint(record?.position)
-  );
-}
 
 function eventStartedInEditable(event: Event): boolean {
   const target = event.target as HTMLElement | null;
@@ -74,7 +37,10 @@ function dispatchJobsBoardOpen(source: string) {
   if (typeof window === "undefined") return;
   window.dispatchEvent(
     new CustomEvent(HARTHMERE_JOBS_BOARD_OPEN_EVENT, {
-      detail: { source, version: HARTHMERE_JOBS_BOARD_WORLD_INTERACTION_VERSION },
+      detail: {
+        source,
+        version: HARTHMERE_JOBS_BOARD_WORLD_INTERACTION_VERSION,
+      },
     })
   );
 }
@@ -118,16 +84,13 @@ export function HarthmereJobsBoardWorldInteraction({
     [activePrompt, pointerLockManager, reactResources]
   );
 
-  const close = React.useCallback(
-    () => {
-      setOpenBoardId(undefined);
-      closeHarthmereJobsBoardPointerLock(
-        pointerLockManager,
-        shouldReturnPointerLock
-      );
-    },
-    [pointerLockManager]
-  );
+  const close = React.useCallback(() => {
+    setOpenBoardId(undefined);
+    closeHarthmereJobsBoardPointerLock(
+      pointerLockManager,
+      shouldReturnPointerLock
+    );
+  }, [pointerLockManager]);
 
   React.useEffect(() => {
     installHarthmereJobsBoardStyles();
@@ -210,16 +173,21 @@ export function HarthmereJobsBoardWorldInteraction({
     };
   }, [activePrompt, cameraPosition, close, open, playerPosition, prompt]);
 
-  const worldContext: HarthmereJobsBoardWorldContext | undefined = React.useMemo(() => {
-    if (!openBoardId && !playerPosition) return undefined;
-    return {
-      nearbyBoardId: openBoardId,
-      interactionTargetId: openBoardId,
-      playerPosition: playerPosition
-        ? { x: playerPosition.x, y: playerPosition.y ?? 0, z: playerPosition.z }
-        : undefined,
-    };
-  }, [openBoardId, playerPosition]);
+  const worldContext: HarthmereJobsBoardWorldContext | undefined =
+    React.useMemo(() => {
+      if (!openBoardId && !playerPosition) return undefined;
+      return {
+        nearbyBoardId: openBoardId,
+        interactionTargetId: openBoardId,
+        playerPosition: playerPosition
+          ? {
+              x: playerPosition.x,
+              y: playerPosition.y ?? 0,
+              z: playerPosition.z,
+            }
+          : undefined,
+      };
+    }, [openBoardId, playerPosition]);
 
   return (
     <>

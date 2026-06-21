@@ -452,8 +452,9 @@ export const HARTHMERE_SERVER_MUCK_COMBAT_ENTITY_SEED_VERSION =
   "harthmere-server-muck-combat-entity-seed" as const;
 
 export const HARTHMERE_MUCK_HEX_STRENGTH_MULTIPLIER = 5 as const;
-const HARTHMERE_LIVE_ENTITY_DEFEAT_POSITION_LIFT = 1.1;
-const HARTHMERE_LIVE_ENTITY_LOOT_DROP_POSITION_LIFT = 1.35;
+const HARTHMERE_LIVE_ENTITY_DEFEAT_POSITION_LIFT = 2.0;
+const HARTHMERE_LIVE_ENTITY_LOOT_DROP_POSITION_LIFT = 1.2;
+const HARTHMERE_LIVE_ENTITY_RETALIATION_CHASE_RANGE = 80;
 
 type HarthmereLiveCombatEntitySnapshot =
   HarthmereLiveModeBackendState["combat"]["entitySnapshots"][string];
@@ -4622,9 +4623,41 @@ function syncBuildingSystemPhysicalAccessRecords(input: {
       nowMs: input.nowMs,
     });
     input.state.building.inWorldMarkers[marker.markerId] = marker;
+    delete input.state.building.inWorldMarkers[
+      `business_${input.property.propertyId}:marker`
+    ];
+  } else if (input.property.use === "business") {
+    const resolvedOrigin =
+      origin ?? buildingSystemDefaultOrigin(plot, blueprint);
+    const markerId = `business_${input.property.propertyId}:marker`;
+    input.state.building.inWorldMarkers[markerId] = {
+      markerId,
+      plotId: plot.plotId,
+      kind: "business_marker",
+      position: [
+        resolvedOrigin.x + Math.floor(blueprint.footprint.width / 2),
+        resolvedOrigin.y + 1,
+        resolvedOrigin.z +
+          Math.max(
+            1,
+            Math.min(
+              blueprint.footprint.depth - 1,
+              blueprint.footprint.depth - 2
+            )
+          ),
+      ],
+      label: `${blueprint.displayName} Counter`,
+      createdAtMs: input.nowMs,
+    };
+    delete input.state.building.inWorldMarkers[
+      buildingSystemHomeConsoleMarkerId(input.property.propertyId)
+    ];
   } else {
     delete input.state.building.inWorldMarkers[
       buildingSystemHomeConsoleMarkerId(input.property.propertyId)
+    ];
+    delete input.state.building.inWorldMarkers[
+      `business_${input.property.propertyId}:marker`
     ];
   }
 }
@@ -4647,6 +4680,9 @@ function removeBuildingSystemPhysicalAccessRecords(input: {
   }
   delete input.state.building.inWorldMarkers[
     buildingSystemHomeConsoleMarkerId(input.property.propertyId)
+  ];
+  delete input.state.building.inWorldMarkers[
+    `business_${input.property.propertyId}:marker`
   ];
 }
 
@@ -5827,6 +5863,7 @@ export function createHarthmereLiveModeFarmingFoodClientSnapshot(
     lastStaminaTickMs: state.combat.lastStaminaTickMs,
     deadFromStaminaAtMs: state.combat.deadFromStaminaAtMs,
     inventory: { ...state.inventory.items },
+    materialStorage: { ...state.banking.materialStorage },
     foodDefinitions: HARTHMERE_FOOD_DEFINITIONS,
     seedDefinitions: HARTHMERE_SEED_DEFINITIONS,
     cookingRecipes: HARTHMERE_COOKING_RECIPES,
@@ -6155,6 +6192,7 @@ export function createHarthmereLiveModeBuildingClientSnapshot(
     actorId: state.actorId,
     gold: state.inventory.gold,
     inventoryItems: state.inventory.items,
+    materialStorage: { ...state.banking.materialStorage },
     ownedPlotIds: state.building.ownedPlots,
     safeZones: state.building.safeZones,
     activeProjects: state.building.activeProjects,
@@ -6528,22 +6566,44 @@ export function reduceHarthmereLiveModeBackendState(
 
   function liveEntityAiChaseRange(
     npcId: string,
-    npcSnapshot: HarthmereLiveModeBackendState["combat"]["entitySnapshots"][string]
+    npcSnapshot: HarthmereLiveModeBackendState["combat"]["entitySnapshots"][string],
+    input?: { pursuingActorThreat?: boolean }
   ) {
+    const retaliationRange = input?.pursuingActorThreat
+      ? HARTHMERE_LIVE_ENTITY_RETALIATION_CHASE_RANGE
+      : 0;
     const explicitLeash = Number(npcSnapshot.leashRange);
     if (Number.isFinite(explicitLeash) && explicitLeash > 0) {
-      return Math.max(1, Math.min(80, explicitLeash));
+      return Math.max(
+        1,
+        Math.min(
+          HARTHMERE_LIVE_ENTITY_RETALIATION_CHASE_RANGE,
+          Math.max(explicitLeash, retaliationRange)
+        )
+      );
     }
     const explicitAggro = Number(npcSnapshot.aggroRange);
     if (Number.isFinite(explicitAggro) && explicitAggro > 0) {
-      return Math.max(1, Math.min(80, explicitAggro + 6));
+      return Math.max(
+        1,
+        Math.min(
+          HARTHMERE_LIVE_ENTITY_RETALIATION_CHASE_RANGE,
+          Math.max(explicitAggro + 6, retaliationRange)
+        )
+      );
     }
     const kind = liveEntityKindForSnapshot(npcId, npcSnapshot);
-    if (kind === "mux" || kind === "hex") return 22;
-    if (kind === "monster" || kind === "undead") return 24;
-    if (kind === "robot" || kind === "construct") return 18;
-    if (kind === "animal") return 14;
-    return 16;
+    const base =
+      kind === "mux" || kind === "hex"
+        ? 22
+        : kind === "monster" || kind === "undead"
+        ? 24
+        : kind === "robot" || kind === "construct"
+        ? 18
+        : kind === "animal"
+        ? 14
+        : 16;
+    return Math.max(base, retaliationRange);
   }
 
   function liveEntityAiPlayerTargetBlockReason(input: {
@@ -6579,7 +6639,16 @@ export function reduceHarthmereLiveModeBackendState(
       input.npcSnapshot.position,
       input.playerPosition
     );
-    if (distance > liveEntityAiChaseRange(input.npcId, input.npcSnapshot)) {
+    const pursuingActorThreat =
+      input.npcSnapshot.lastAttackerId === next.actorId ||
+      (next.combat.threat[next.actorId] ?? 0) > 0 ||
+      (next.combat.threat[input.npcId] ?? 0) > 0;
+    if (
+      distance >
+      liveEntityAiChaseRange(input.npcId, input.npcSnapshot, {
+        pursuingActorThreat,
+      })
+    ) {
       return "target_out_of_chase_range";
     }
     return undefined;

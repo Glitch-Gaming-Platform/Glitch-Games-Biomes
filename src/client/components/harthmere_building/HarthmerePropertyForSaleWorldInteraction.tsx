@@ -5,7 +5,7 @@
 
 import * as React from "react";
 import { useClientContext } from "@/client/components/contexts/ClientContextReactContext";
-import { harthmereJobsBoardPlayerPosition } from "@/client/components/harthmere_jobs_board/HarthmereJobsBoardWorldInteraction";
+import { harthmereJobsBoardPlayerPosition } from "@/client/components/harthmere_jobs_board/harthmereJobsBoardPosition";
 import {
   HARTHMERE_PROPERTY_BUILDING_STATE_EVENT,
   harthmerePurchasablePlotMapLandmarksFromBuildingState,
@@ -81,7 +81,9 @@ export function HarthmerePropertyForSaleWorldInteraction({
   // markers — so the beam never floats above or buries below the plot ground.
   const groundCacheRef = React.useRef<Map<string, number>>(new Map());
 
-  const beamPosition = React.useMemo<[number, number, number] | undefined>(() => {
+  const beamPosition = React.useMemo<
+    [number, number, number] | undefined
+  >(() => {
     const pos = nearest?.landmark.position;
     if (!pos) {
       return undefined;
@@ -122,7 +124,13 @@ export function HarthmerePropertyForSaleWorldInteraction({
     return () => {
       mapManager.removeNavigationAid(PROPERTY_FOR_SALE_NAV_AID_ID);
     };
-  }, [mapManager, nearestPlotId, beamPosition?.[0], beamPosition?.[1], beamPosition?.[2]]);
+  }, [
+    mapManager,
+    nearestPlotId,
+    beamPosition?.[0],
+    beamPosition?.[1],
+    beamPosition?.[2],
+  ]);
 
   // Toast once per entry into a plot's radius.
   React.useEffect(() => {

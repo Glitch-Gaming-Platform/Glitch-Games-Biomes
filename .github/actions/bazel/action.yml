@@ -34,7 +34,7 @@ runs:
     # GitHub Actions is addressing this soon:
     #   https://github.com/actions/toolkit/pull/1327
     - name: Restore Bazel 3rd party deps cache
-      uses: actions/cache@v5
+      uses: actions/cache/restore@v5
       id: bazel-repo-cache
       with:
         path: ${{ inputs.bazel_output_base }}
@@ -45,3 +45,10 @@ runs:
       # do everything we would in a normal build except building everything.
       run: bazel build --nobuild //...
       shell: bash
+    - name: Save Bazel 3rd party deps cache
+      if: steps.bazel-repo-cache.outputs.cache-hit != 'true'
+      continue-on-error: true
+      uses: actions/cache/save@v5
+      with:
+        path: ${{ inputs.bazel_output_base }}
+        key: ${{ runner.os }}-bazel-repos-${{ hashFiles('WORKSPACE.bazel', '.bazelrc', './voxeloo/third_party/**', './src/**/*.bzl', './Cargo.*', './requirements.txt') }}

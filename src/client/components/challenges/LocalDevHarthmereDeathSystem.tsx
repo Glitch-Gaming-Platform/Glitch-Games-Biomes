@@ -315,6 +315,27 @@ const HARTHMERE_DEATH_MOVEMENT_KEYS = new Set([
   "Mouse0",
 ]);
 
+export function harthmereLocalCombatLooksDeadForTest(input: {
+  hp?: number;
+  combatState?: unknown;
+}) {
+  return (
+    Number(input.hp) <= 0 ||
+    ["downed", "dead", "respawning"].includes(String(input.combatState ?? ""))
+  );
+}
+
+export function harthmereShouldClearLiveAliveDeathLockForTest(input: {
+  deathState: HarthmereDeathStateName;
+  hp?: number;
+  combatState?: unknown;
+}) {
+  return (
+    HARTHMERE_DEATH_LOCKED_STATES.has(input.deathState) &&
+    !harthmereLocalCombatLooksDeadForTest(input)
+  );
+}
+
 export function harthmereLivePlayerDeathSyncSummaryForTest(
   status: BiomesUIPlayerStatusSnapshot | undefined
 ) {
@@ -577,21 +598,40 @@ export const HarthmereDeathRuntimeController: React.FunctionComponent<{}> =
         const live = harthmereLivePlayerDeathSyncSummaryForTest(status);
         if (live.alive) {
           const latest = readHarthmereDeathState();
-          const localCombatDead =
-            Number(combat.player.hp) <= 0 ||
-            ["downed", "dead", "respawning"].includes(
-              String(combat.player.combatState ?? "")
+          const localCombatDead = harthmereLocalCombatLooksDeadForTest({
+            hp: combat.player.hp,
+            combatState: combat.player.combatState,
+          });
+          if (localCombatDead) {
+            if (!HARTHMERE_DEATH_LOCKED_STATES.has(latest.state)) {
+              downHarthmerePlayerFromSystem({
+                cause: "HP reached zero",
+                killerName: "Combat",
+                abilityName: "HP Zero Death Check",
+                damage: Math.max(0, Number(combat.player.hp) || 0),
+                damageType: "combat",
+                detail:
+                  "Your HP reached zero. Respawn at The Grove or wait for a revive.",
+              });
+            }
+            dispatchHarthmerePlayerDeathPose(
+              true,
+              HARTHMERE_DEATH_LOCKED_STATES.has(latest.state)
+                ? latest.state
+                : "dead"
             );
+            return;
+          }
           if (
-            HARTHMERE_DEATH_LOCKED_STATES.has(latest.state) ||
-            localCombatDead
+            harthmereShouldClearLiveAliveDeathLockForTest({
+              deathState: latest.state,
+              hp: combat.player.hp,
+              combatState: combat.player.combatState,
+            })
           ) {
             clearHarthmereDeathState(
               "Live player status recovered; clearing stale movement lock."
             );
-            if (localCombatDead) {
-              reviveHarthmerePlayer("Live player status");
-            }
             dispatchHarthmerePlayerDeathPose(false, "alive");
           }
           return;

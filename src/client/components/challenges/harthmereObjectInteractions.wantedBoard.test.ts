@@ -1,8 +1,6 @@
 import assert from "assert";
-import {
-  HARTHMERE_WANTED_BOARD_OPEN_EVENT,
-  performHarthmereObjectInteraction,
-} from "./harthmereObjectInteractions";
+import { HARTHMERE_WANTED_BOARD_OPEN_EVENT } from "@/client/components/challenges/harthmereEvents";
+import { performHarthmereObjectInteraction } from "./harthmereObjectInteractions";
 
 describe("harthmere object interactions wanted board dispatch", () => {
   it("dispatches the wanted-board open event for F interactions", () => {
@@ -17,9 +15,12 @@ describe("harthmere object interactions wanted board dispatch", () => {
       json: async () => ({ ok: true }),
     });
     let detail: any;
-    windowTarget.addEventListener(HARTHMERE_WANTED_BOARD_OPEN_EVENT, (event) => {
-      detail = (event as CustomEvent).detail;
-    });
+    windowTarget.addEventListener(
+      HARTHMERE_WANTED_BOARD_OPEN_EVENT,
+      (event) => {
+        detail = (event as CustomEvent).detail;
+      }
+    );
 
     try {
       performHarthmereObjectInteraction({
@@ -43,4 +44,3 @@ describe("harthmere object interactions wanted board dispatch", () => {
     assert.equal(detail?.entityId, "wanted_board_entity");
   });
 });
-

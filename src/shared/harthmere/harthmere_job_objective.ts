@@ -24,6 +24,7 @@ import {
   harthmereDeliveryPlan,
   type HarthmereJobsBoardRequirement,
 } from "@/shared/harthmere/mmo_jobs_board_authority";
+import type { Vec3 } from "@/shared/math/types";
 
 export const HARTHMERE_JOB_OBJECTIVE_VERSION =
   "harthmere-job-objective" as const;
@@ -115,6 +116,311 @@ export function harthmereToolSourceForAction(
   return action ? HARTHMERE_TOOL_SOURCES[action] : undefined;
 }
 
+export type HarthmereJobItemSourceKind =
+  | "gather"
+  | "craft"
+  | "vendor"
+  | "pickup"
+  | "quest_grant"
+  | "loot"
+  | "unknown";
+
+export interface HarthmereJobItemSourceGuidance {
+  itemId: string;
+  itemName: string;
+  requiredCount: number;
+  haveCount: number;
+  missingCount: number;
+  sourceKind: HarthmereJobItemSourceKind;
+  sourceName: string;
+  markerId?: string;
+  markerPosition?: Vec3;
+  hint: string;
+}
+
+interface HarthmereJobItemSourceDefinition {
+  sourceKind: HarthmereJobItemSourceKind;
+  sourceName: string;
+  markerId?: string;
+  markerPosition?: Vec3;
+  hint: (itemName: string, missingCount: number) => string;
+}
+
+function pluralItem(itemName: string, count: number) {
+  return count === 1 ? itemName : `${itemName}s`;
+}
+
+function displayNameForItemId(itemId: string) {
+  return itemId
+    .split("_")
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
+const HARTHMERE_JOB_ITEM_SOURCE_DEFINITIONS: Record<
+  string,
+  HarthmereJobItemSourceDefinition
+> = {
+  wild_berries: {
+    sourceKind: "gather",
+    sourceName: "Garden Edge Berries",
+    markerId: "grove_garden_edge_berries",
+    hint: (itemName, missing) =>
+      `Forage ${missing} ${pluralItem(
+        itemName,
+        missing
+      )} at the marked Garden Edge Berries.`,
+  },
+  softwood_log: {
+    sourceKind: "gather",
+    sourceName: "Orchard Softwood Branches",
+    markerId: "harthmere_orchard_softwood",
+    markerPosition: [468, 53, -118],
+    hint: (itemName, missing) =>
+      `Gather ${missing} ${pluralItem(
+        itemName,
+        missing
+      )} from fallen branches at the Orchard Softwood Branches.`,
+  },
+  oak_branch: {
+    sourceKind: "gather",
+    sourceName: "Orchard Softwood Branches",
+    markerId: "harthmere_orchard_softwood",
+    markerPosition: [468, 53, -118],
+    hint: (itemName, missing) =>
+      `Gather ${missing} ${pluralItem(
+        itemName,
+        missing
+      )} from fallen branches at the Orchard Softwood Branches.`,
+  },
+  tree_resin: {
+    sourceKind: "gather",
+    sourceName: "Orchard Softwood Branches",
+    markerId: "harthmere_orchard_softwood",
+    markerPosition: [468, 53, -118],
+    hint: (itemName, missing) =>
+      `Gather wood in the Orchard for a chance at ${missing} ${pluralItem(
+        itemName,
+        missing
+      )}.`,
+  },
+  iron_ore: {
+    sourceKind: "gather",
+    sourceName: "North Road Iron Vein",
+    markerId: "harthmere_north_iron_vein",
+    markerPosition: [503, 53, -270],
+    hint: (itemName, missing) =>
+      `Mine ${missing} ${pluralItem(
+        itemName,
+        missing
+      )} at the North Road Iron Vein.`,
+  },
+  rough_stone: {
+    sourceKind: "gather",
+    sourceName: "North Road Iron Vein",
+    markerId: "harthmere_north_iron_vein",
+    markerPosition: [503, 53, -270],
+    hint: (itemName, missing) =>
+      `Mine ${missing} ${pluralItem(
+        itemName,
+        missing
+      )} from the rocky shoulder at the North Road Iron Vein.`,
+  },
+  iron_ingot: {
+    sourceKind: "craft",
+    sourceName: "Forge or Metal Vendor",
+    markerId: "harthmere_owner:npc_outpost_metalmarket_smith",
+    hint: (itemName, missing) =>
+      `Smelt or buy ${missing} ${pluralItem(
+        itemName,
+        missing
+      )} before turning in this job.`,
+  },
+  wood_plank: {
+    sourceKind: "craft",
+    sourceName: "Fountain Workbench",
+    markerId: "grove_fountain_workbench",
+    hint: (itemName, missing) =>
+      `Craft or buy ${missing} ${pluralItem(
+        itemName,
+        missing
+      )}. Start at the Fountain Workbench, or buy planks from a building-materials vendor.`,
+  },
+  road_ration: {
+    sourceKind: "vendor",
+    sourceName: "Fountain Food Satchel",
+    markerId: "grove_mail_bank_satchel",
+    hint: (itemName, missing) =>
+      `Take or buy ${missing} ${pluralItem(
+        itemName,
+        missing
+      )} from food supplies such as the Fountain Food Satchel.`,
+  },
+  clean_water: {
+    sourceKind: "gather",
+    sourceName: "Water Supply",
+    markerId: "grove_mail_bank_satchel",
+    hint: (itemName, missing) =>
+      `Gather or buy ${missing} ${pluralItem(
+        itemName,
+        missing
+      )} from Grove supply containers or water vendors.`,
+  },
+  sealed_package: {
+    sourceKind: "quest_grant",
+    sourceName: "Accepted Delivery Parcel",
+    hint: (itemName, missing) =>
+      `This delivery should place ${missing} ${pluralItem(
+        itemName,
+        missing
+      )} in your inventory when you accept it. Check your backpack, then return to the board if it did not sync.`,
+  },
+  repair_part: {
+    sourceKind: "vendor",
+    sourceName: "Hingehall Repair Shop",
+    markerId: "harthmere_owner:npc_outpost_hingehall_fixer",
+    hint: (itemName, missing) =>
+      `Buy or craft ${missing} ${pluralItem(
+        itemName,
+        missing
+      )} through Hingehall Repair Shop before returning to the job.`,
+  },
+  field_medkit: {
+    sourceKind: "vendor",
+    sourceName: "Clinic Supplies",
+    markerId: "harthmere_owner:npc_outpost_clinic_medic",
+    hint: (itemName, missing) =>
+      `Buy ${missing} ${pluralItem(
+        itemName,
+        missing
+      )} from clinic supplies before turning in this job.`,
+  },
+  minor_healing_salve: {
+    sourceKind: "vendor",
+    sourceName: "Clinic Supplies",
+    markerId: "harthmere_owner:npc_outpost_clinic_medic",
+    hint: (itemName, missing) =>
+      `Buy or craft ${missing} ${pluralItem(
+        itemName,
+        missing
+      )} through clinic supplies before turning in this job.`,
+  },
+  bandage: {
+    sourceKind: "vendor",
+    sourceName: "Clinic Supplies",
+    markerId: "harthmere_owner:npc_outpost_clinic_medic",
+    hint: (itemName, missing) =>
+      `Buy or craft ${missing} ${pluralItem(
+        itemName,
+        missing
+      )} through clinic supplies before turning in this job.`,
+  },
+  mixed_waste: {
+    sourceKind: "gather",
+    sourceName: "Cleanup Yards",
+    markerId: "harthmere_owner:npc_outpost_clearbarrel_boss",
+    hint: (itemName, missing) =>
+      `Collect ${missing} ${pluralItem(
+        itemName,
+        missing
+      )} through cleanup work, or ask Clearbarrel Depot for sanitation work.`,
+  },
+};
+
+export function harthmereJobItemSourceGuidance(input: {
+  kind?: string;
+  requirements?: HarthmereJobsBoardRequirement[];
+  inventoryItems?: Record<string, number>;
+}): HarthmereJobItemSourceGuidance | undefined {
+  const requirements = input.requirements ?? [];
+  const deliveryPlan = harthmereDeliveryPlan({
+    kind: input.kind,
+    requirements,
+  });
+  for (const req of requirements) {
+    if (!req.itemId) continue;
+    const required = requiredCount(req);
+    const have = Math.max(
+      0,
+      Math.floor(Number(input.inventoryItems?.[req.itemId] ?? 0))
+    );
+    if (have >= required) continue;
+    const missing = Math.max(1, required - have);
+    const itemName = displayNameForItemId(req.itemId);
+    if (req.pickupMarkerId) {
+      return {
+        itemId: req.itemId,
+        itemName,
+        requiredCount: required,
+        haveCount: have,
+        missingCount: missing,
+        sourceKind: "pickup",
+        sourceName: req.pickupMarkerId,
+        markerId: req.pickupMarkerId,
+        hint: `Pick up ${missing} ${pluralItem(
+          itemName,
+          missing
+        )} at the marked pickup spot, then continue the job.`,
+      };
+    }
+    const definition = HARTHMERE_JOB_ITEM_SOURCE_DEFINITIONS[req.itemId];
+    if (definition) {
+      return {
+        itemId: req.itemId,
+        itemName,
+        requiredCount: required,
+        haveCount: have,
+        missingCount: missing,
+        sourceKind:
+          deliveryPlan?.parcelItemId === req.itemId &&
+          deliveryPlan.grantOnAccept
+            ? "quest_grant"
+            : definition.sourceKind,
+        sourceName: definition.sourceName,
+        markerId: definition.markerId,
+        markerPosition: definition.markerPosition
+          ? ([...definition.markerPosition] as Vec3)
+          : undefined,
+        hint: definition.hint(itemName, missing),
+      };
+    }
+    if (
+      req.mapMarkerId &&
+      (input.kind === "gather" || input.kind === "cleanup")
+    ) {
+      return {
+        itemId: req.itemId,
+        itemName,
+        requiredCount: required,
+        haveCount: have,
+        missingCount: missing,
+        sourceKind: input.kind === "cleanup" ? "loot" : "gather",
+        sourceName: req.targetName ?? req.mapMarkerId,
+        markerId: req.mapMarkerId,
+        hint: `Get ${missing} ${pluralItem(itemName, missing)} at the marked ${
+          req.targetName ?? "job location"
+        }.`,
+      };
+    }
+    return {
+      itemId: req.itemId,
+      itemName,
+      requiredCount: required,
+      haveCount: have,
+      missingCount: missing,
+      sourceKind: "unknown",
+      sourceName: "Inventory Requirement",
+      markerId: req.mapMarkerId,
+      hint: `Obtain ${missing} ${pluralItem(
+        itemName,
+        missing
+      )} through gathering, crafting, vendors, or loot before turning in this job.`,
+    };
+  }
+  return undefined;
+}
+
 // HARTHMERE_JOB_REQUIRED_TOOL: which equipped tool action a job KIND demands
 // before its field work can be done. Repair jobs need a repair tool; cleanup jobs
 // need a cleanup tool. Every other kind needs none. Pure so both the map adapter
@@ -175,7 +481,7 @@ function firstItemRequirement(
 }
 
 function requiredCount(req: HarthmereJobsBoardRequirement | undefined) {
-  return Math.max(1, Math.floor(req?.count ?? 1));
+  return Math.max(1, Math.floor(req?.count ?? req?.serviceUnits ?? 1));
 }
 
 function boardPhase(
@@ -228,12 +534,18 @@ export function harthmereJobMarkerPlan(input: {
 
   // ---- Delivery -----------------------------------------------------------
   if (kind === "delivery") {
-    const plan = harthmereDeliveryPlan({ kind, requirements: input.requirements });
-    const recipientMarker =
-      plan?.recipient.markerId ?? fieldMarker;
+    const plan = harthmereDeliveryPlan({
+      kind,
+      requirements: input.requirements,
+    });
+    const recipientMarker = plan?.recipient.markerId ?? fieldMarker;
     const parcelName = plan?.parcelItemId ?? "the parcel";
     if (progress.deliveredToRecipient) {
-      return boardPhase(kind, board, "Delivered. Return to the jobs board to collect your reward.");
+      return boardPhase(
+        kind,
+        board,
+        "Delivered. Return to the jobs board to collect your reward."
+      );
     }
     // Pickup phase: a pickup spot exists and the parcel is not yet in hand.
     if (plan?.pickupMarkerId && !plan.grantOnAccept && !progress.hasParcel) {
@@ -268,7 +580,9 @@ export function harthmereJobMarkerPlan(input: {
       // Distinct messaging for the "already had them" shortcut so it is obvious
       // and never looks like the job auto-completed by mistake.
       const hint = progress.satisfiedOnAccept
-        ? `You already have ${required} ${req?.itemId ?? "materials"} — no gathering needed. Return to the jobs board to hand them in.`
+        ? `You already have ${required} ${
+            req?.itemId ?? "materials"
+          } — no gathering needed. Return to the jobs board to hand them in.`
         : `Gathered ${required}/${required}. Return to the jobs board to hand them in.`;
       return boardPhase(kind, board, hint, {
         requiredCount: required,
@@ -281,7 +595,9 @@ export function harthmereJobMarkerPlan(input: {
       activeMarkerId: req?.mapMarkerId ?? fieldMarker,
       boardMarkerId: board,
       objectiveMet: false,
-      hint: `Gather ${have}/${required} ${req?.itemId ?? "materials"} at the marked spot.`,
+      hint: `Gather ${have}/${required} ${
+        req?.itemId ?? "materials"
+      } at the marked spot.`,
       requiredCount: required,
       currentCount: have,
     };
@@ -309,7 +625,8 @@ export function harthmereJobMarkerPlan(input: {
       return {
         kind,
         phase: "field",
-        activeMarkerId: source?.vendorMarkerId ?? req?.mapMarkerId ?? fieldMarker,
+        activeMarkerId:
+          source?.vendorMarkerId ?? req?.mapMarkerId ?? fieldMarker,
         boardMarkerId: board,
         objectiveMet: false,
         needsToolAction: "cleanup",
@@ -338,7 +655,11 @@ export function harthmereJobMarkerPlan(input: {
   // ---- Repair -------------------------------------------------------------
   if (kind === "repair") {
     if (progress.repaired) {
-      return boardPhase(kind, board, "Repaired. Return to the jobs board to collect your reward.");
+      return boardPhase(
+        kind,
+        board,
+        "Repaired. Return to the jobs board to collect your reward."
+      );
     }
     // Does NOT own the tool -> redirect to the shop that sells it. Once owned, the
     // marker flips back to the structure (the player can equip the tool they bought).
@@ -393,7 +714,11 @@ export function harthmereJobMarkerPlan(input: {
   // with that kind. Once met, the client passes satisfiedOnAccept/objective via
   // progress and we route to the board.
   if (progress.satisfiedOnAccept) {
-    return boardPhase(kind, board, "Objective complete. Return to the jobs board to collect your reward.");
+    return boardPhase(
+      kind,
+      board,
+      "Objective complete. Return to the jobs board to collect your reward."
+    );
   }
   return {
     kind,

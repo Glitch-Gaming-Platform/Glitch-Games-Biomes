@@ -6,7 +6,7 @@
 // property-for-sale world-interaction prompts.
 import * as React from "react";
 import { useClientContext } from "@/client/components/contexts/ClientContextReactContext";
-import { harthmereJobsBoardPlayerPosition } from "@/client/components/harthmere_jobs_board/HarthmereJobsBoardWorldInteraction";
+import { harthmereJobsBoardPlayerPosition } from "@/client/components/harthmere_jobs_board/harthmereJobsBoardPosition";
 import { installHarthmereJobsBoardStyles } from "@/client/components/harthmere_jobs_board/HarthmereJobsBoardStyles";
 import {
   nearestHarthmereGatheringNodePrompt,
@@ -51,10 +51,7 @@ export function HarthmereGatheringNodeWorldInteraction({
   >();
   const feedbackTimer = React.useRef<ReturnType<typeof setTimeout>>();
 
-  const playerPosition = harthmereJobsBoardPlayerPosition(
-    localPlayer,
-    camera
-  );
+  const playerPosition = harthmereJobsBoardPlayerPosition(localPlayer, camera);
   const prompt = nearestHarthmereGatheringNodePrompt(playerPosition);
   const promptBlocked = suppressPrompt;
 

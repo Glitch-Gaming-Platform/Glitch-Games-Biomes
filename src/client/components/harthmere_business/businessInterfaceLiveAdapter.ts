@@ -51,9 +51,7 @@ import type {
   HarthmereBusinessEmployeeTaskRun,
 } from "../../../shared/harthmere/business_employee_ai";
 import { fetchHarthmereLiveWithTimeout } from "@/client/components/harthmere_live_fetch";
-
-export const HARTHMERE_BUSINESS_INVENTORY_LOOT_UPDATED_EVENT =
-  "biomes:harthmere-business-inventory-loot-updated";
+import { HARTHMERE_BUSINESS_INVENTORY_LOOT_UPDATED_EVENT } from "@/client/components/challenges/harthmereEvents";
 
 export type {
   HarthmereBusinessBikkieGraphic,
@@ -1134,7 +1132,11 @@ export async function submitHarthmereBusinessEconomyMutation(
         actorEntityVersion: 1,
         zoneId: options.zoneId ?? "the_grove",
         payload: { operation, ...payload },
-        includeSnapshots: ["economyState", "inventoryLootState", "playerStatusState"],
+        includeSnapshots: [
+          "economyState",
+          "inventoryLootState",
+          "playerStatusState",
+        ],
       }),
       timeoutMs: 30_000,
     }
@@ -1948,10 +1950,9 @@ export function getHarthmereOwnerDashboard(
   const business = state.businesses[businessId];
   const money = getHarthmereBusinessMoneySummary(state, businessId);
   const todos = getHarthmereBusinessTodos(state, businessId);
-  const activeOrders = getHarthmereBusinessContracts(
-    state,
-    businessId
-  ).filter((contract) => contract.status === "active").length;
+  const activeOrders = getHarthmereBusinessContracts(state, businessId).filter(
+    (contract) => contract.status === "active"
+  ).length;
   return {
     title: `${business?.name ?? "Business"} Dashboard`,
     metrics: [

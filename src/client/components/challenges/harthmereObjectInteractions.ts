@@ -12,13 +12,12 @@ import {
   harthmereGatheringNodeIdForObjectLabel,
   performHarthmereGather,
 } from "@/client/components/challenges/LocalDevHarthmereGatheringSystem";
+import {
+  HARTHMERE_JOBS_BOARD_OPEN_EVENT,
+  HARTHMERE_WANTED_BOARD_OPEN_EVENT,
+} from "@/client/components/challenges/harthmereEvents";
 import { dispatchHarthmereHudActionEvent } from "@/shared/harthmere/harthmere_hud_key_bindings";
 import type { HarthmereObjectInteraction } from "@/shared/harthmere/object_interaction_semantics";
-
-export const HARTHMERE_JOBS_BOARD_OPEN_EVENT =
-  "biomes:harthmere-jobs-board-open" as const;
-export const HARTHMERE_WANTED_BOARD_OPEN_EVENT =
-  "biomes:harthmere-wanted-board-open" as const;
 
 // HARTHMERE_REPAIR_PERFORMED_EVENT: fired when the player interacts with a
 // repair target. `repaired` is true only when a repair tool is equipped — that

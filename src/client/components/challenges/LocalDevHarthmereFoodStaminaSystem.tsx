@@ -10,6 +10,7 @@ import {
 import { downHarthmerePlayerFromSystem } from "@/client/components/challenges/LocalDevHarthmereCombat";
 import { HARTHMERE_LOCAL_DEV_STATE_KEYS } from "@/client/components/challenges/LocalDevHarthmereEconomyHardening";
 import { harthmereUserScopedStorageKey } from "@/client/components/challenges/LocalDevHarthmereUserScope";
+import { HARTHMERE_INVENTORY_EVENT } from "@/client/components/challenges/harthmereEvents";
 import React, { useEffect, useState } from "react";
 
 export const HARTHMERE_FOOD_STAMINA_STATE_KEY =
@@ -20,8 +21,6 @@ export const HARTHMERE_WAKE_UP_ACTIVE_DATASET_KEY =
   "harthmereWakeUpActive" as const;
 const HARTHMERE_LOCAL_INVENTORY_STATE_KEY_FOR_STAMINA =
   HARTHMERE_LOCAL_DEV_STATE_KEYS.inventory;
-const HARTHMERE_LOCAL_INVENTORY_EVENT_FOR_STAMINA =
-  "biomes:harthmere-inventory-changed";
 
 function isBrowser() {
   return (
@@ -283,18 +282,12 @@ export const HarthmereFoodStaminaRuntimeController: React.FunctionComponent<{}> 
         }
       };
       const id = window.setInterval(tick, 15_000);
-      window.addEventListener(
-        HARTHMERE_LOCAL_INVENTORY_EVENT_FOR_STAMINA,
-        tick
-      );
+      window.addEventListener(HARTHMERE_INVENTORY_EVENT, tick);
       window.addEventListener("storage", tick);
       tick();
       return () => {
         window.clearInterval(id);
-        window.removeEventListener(
-          HARTHMERE_LOCAL_INVENTORY_EVENT_FOR_STAMINA,
-          tick
-        );
+        window.removeEventListener(HARTHMERE_INVENTORY_EVENT, tick);
         window.removeEventListener("storage", tick);
       };
     }, []);

@@ -5,6 +5,7 @@ import {
 import { formatHarthmereJobTimeRemaining } from "../../../shared/harthmere/mmo_jobs_board_authority";
 import { completeHarthmereDailyTask } from "@/client/components/challenges/harthmereDailyTasks";
 import { fetchHarthmereLiveWithTimeout } from "@/client/components/harthmere_live_fetch";
+import { HARTHMERE_LIVE_INVENTORY_SYNC_EVENT } from "@/client/components/challenges/harthmereEvents";
 
 export const HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID =
   "harthmere_grove_market_jobs_board" as const;
@@ -77,9 +78,7 @@ export function nearestHarthmereJobsBoardPhysicalPrompt(
   playerPosition: HarthmereJobsBoardPoint | undefined
 ) {
   if (!playerPosition) return undefined;
-  let best:
-    | (typeof HARTHMERE_JOBS_BOARD_PHYSICAL_BOARDS)[number]
-    | undefined;
+  let best: (typeof HARTHMERE_JOBS_BOARD_PHYSICAL_BOARDS)[number] | undefined;
   let bestDistance = Infinity;
   for (const board of HARTHMERE_JOBS_BOARD_PHYSICAL_BOARDS) {
     const distance = Math.hypot(
@@ -335,7 +334,7 @@ function normalizeHarthmereJobsBoardLawSummary(
     },
     fines:
       raw.fines && typeof raw.fines === "object"
-          ? Object.fromEntries(
+        ? Object.fromEntries(
             Object.entries(raw.fines)
               .map(
                 ([factionId, value]) =>
@@ -444,6 +443,25 @@ export function dispatchHarthmereJobsBoardStateUpdated(
   window.dispatchEvent(
     new CustomEvent(HARTHMERE_JOBS_BOARD_STATE_UPDATED_EVENT, {
       detail: { jobsBoardState: snapshot },
+    })
+  );
+}
+
+function dispatchHarthmereJobsBoardInventoryLootUpdated(response: any) {
+  if (
+    typeof window === "undefined" ||
+    !response?.inventoryLootState ||
+    typeof CustomEvent === "undefined"
+  ) {
+    return;
+  }
+  window.dispatchEvent(
+    new CustomEvent(HARTHMERE_LIVE_INVENTORY_SYNC_EVENT, {
+      detail: {
+        body: response,
+        inventoryLootState: response.inventoryLootState,
+        playerStatusState: response.playerStatusState,
+      },
     })
   );
 }
@@ -585,10 +603,7 @@ export function getHarthmereAvailableJobsPanel(
       kindLabel: HARTHMERE_JOBS_BOARD_JOB_KIND_LABELS[job.kind],
       rewardGold: job.rewardGold,
       deadlineAtMs: job.deadlineAtMs,
-      timeRemaining: formatHarthmereJobTimeRemaining(
-        job.deadlineAtMs,
-        nowMs
-      ),
+      timeRemaining: formatHarthmereJobTimeRemaining(job.deadlineAtMs, nowMs),
       issuerKind: job.issuerKind,
       requiresFieldWork: job.requiresFieldWork,
       targetLabel:
@@ -610,10 +625,7 @@ export function getHarthmereMyJobsPanel(
       status: job.status,
       rewardGold: job.rewardGold,
       deadlineAtMs: job.deadlineAtMs,
-      timeRemaining: formatHarthmereJobTimeRemaining(
-        job.deadlineAtMs,
-        nowMs
-      ),
+      timeRemaining: formatHarthmereJobTimeRemaining(job.deadlineAtMs, nowMs),
       todo,
       todoStatus: todo?.status,
       questTodoId: todo?.todoId,
@@ -662,9 +674,15 @@ export function getHarthmereJobsBoardSafetyPanel(
   };
 }
 
+function harthmereJobsBoardLocationSearch(search?: string) {
+  return (
+    search ??
+    (typeof window !== "undefined" ? window.location?.search ?? "" : "")
+  );
+}
+
 export function harthmereJobsBoardStateUrl(search?: string) {
-  const rawSearch =
-    search ?? (typeof window !== "undefined" ? window.location.search : "");
+  const rawSearch = harthmereJobsBoardLocationSearch(search);
   const params = new URLSearchParams(rawSearch);
   const installId = params.get("install_id") ?? params.get("installId");
   const endpoint = "/api/harthmere/live_mode_jobs_board_state";
@@ -674,8 +692,7 @@ export function harthmereJobsBoardStateUrl(search?: string) {
 }
 
 export function harthmereJobsBoardMutationUrl(search?: string) {
-  const rawSearch =
-    search ?? (typeof window !== "undefined" ? window.location.search : "");
+  const rawSearch = harthmereJobsBoardLocationSearch(search);
   const params = new URLSearchParams(rawSearch);
   const installId = params.get("install_id") ?? params.get("installId");
   const endpoint = "/api/harthmere/live_mode";
@@ -685,8 +702,7 @@ export function harthmereJobsBoardMutationUrl(search?: string) {
 }
 
 function harthmereJobsBoardMutationHeaders(search?: string) {
-  const rawSearch =
-    search ?? (typeof window !== "undefined" ? window.location.search : "");
+  const rawSearch = harthmereJobsBoardLocationSearch(search);
   const params = new URLSearchParams(rawSearch);
   const installId = params.get("install_id") ?? params.get("installId");
   const headers: Record<string, string> = {
@@ -783,6 +799,7 @@ export async function submitHarthmereJobsBoardMutation(
     json.jobsBoardState ?? json.economyState?.jobsBoardState ?? {}
   );
   dispatchHarthmereJobsBoardStateUpdated(snapshot);
+  dispatchHarthmereJobsBoardInventoryLootUpdated(json);
   return snapshot;
 }
 

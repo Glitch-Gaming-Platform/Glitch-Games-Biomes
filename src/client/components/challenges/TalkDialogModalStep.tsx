@@ -20,6 +20,7 @@ import {
   talkDialogHasChoiceActionsForTest,
   talkDialogShouldShowVoiceInputForTest,
 } from "@/client/components/challenges/talkDialogModalFlow";
+import { HARTHMERE_VENDOR_TRADE_CLOSE_TALK_EVENT } from "@/client/components/challenges/harthmereEvents";
 import { cleanListener } from "@/client/util/helpers";
 import { useEffectAsync } from "@/client/util/hooks";
 import { useTypedStorageItem } from "@/client/util/typed_local_storage";
@@ -63,9 +64,6 @@ export interface TalkDialogVoiceInput {
   maxRecordingMs?: number;
   onTranscript: (text: string) => unknown;
 }
-
-const HARTHMERE_VENDOR_TRADE_CLOSE_TALK_EVENT =
-  "biomes:harthmere-close-talk-for-vendor";
 
 export type ButtonLayout = "horizontal-rectangle" | "vertical";
 

@@ -25,7 +25,6 @@ import {
 import {
   HARTHMERE_BUSINESS_SERVICE_ACTIONS,
   HARTHMERE_BUSINESS_TYPE_ORDER,
-  HARTHMERE_BUSINESS_INVENTORY_LOOT_UPDATED_EVENT,
   canCustomerUseHarthmereBusiness,
   createHarthmereBusinessInterfaceAdapter,
   fetchHarthmereBusinessEconomyState,
@@ -60,6 +59,7 @@ import {
   type HarthmereBusinessEconomySnapshot,
   type HarthmereBusinessTypeId,
 } from "../businessInterfaceLiveAdapter";
+import { HARTHMERE_BUSINESS_INVENTORY_LOOT_UPDATED_EVENT } from "@/client/components/challenges/harthmereEvents";
 
 function resolveRepoAliasForEsbuild(importPath: string) {
   const basePath = path.join(process.cwd(), "src", importPath.slice(2));
@@ -551,10 +551,7 @@ describe("Harthmere in-world business interface live adapter", () => {
       inventory.find((item) => item.itemId === "worker_meal")?.priceGold,
       30
     );
-    const customerOrders = getHarthmereCustomerOrders(
-      state,
-      "business_clinic"
-    );
+    const customerOrders = getHarthmereCustomerOrders(state, "business_clinic");
     assert.equal(customerOrders[0].contractId, "contract_customer_open");
 
     const adapter = createHarthmereBusinessInterfaceAdapter({
@@ -1257,8 +1254,7 @@ describe("Harthmere in-world business interface current screens", () => {
       outpost.dashboardAccessPoint.markerId
     );
     assert.deepEqual(
-      harthmereBusinessWorldContextPayload(context)
-        .businessInteractionPosition,
+      harthmereBusinessWorldContextPayload(context).businessInteractionPosition,
       outpost.dashboardAccessPoint.position
     );
     const prompt = getHarthmereBusinessInteractionPrompt(state, context);
@@ -1543,10 +1539,7 @@ describe("Harthmere in-world business interface current screens", () => {
 
     for (const typeId of HARTHMERE_BUSINESS_TYPE_ORDER) {
       const businessId = `customer_ui_${typeId}`;
-      const miniGame = getHarthmereBusinessCustomerMiniGame(
-        state,
-        businessId
-      );
+      const miniGame = getHarthmereBusinessCustomerMiniGame(state, businessId);
       const html = renderToStaticMarkup(
         React.createElement(HarthmereBusinessInterfacePanel, {
           adapter,
@@ -1609,10 +1602,7 @@ describe("Harthmere in-world business interface current screens", () => {
     });
     for (const typeId of HARTHMERE_BUSINESS_TYPE_ORDER) {
       const businessId = `arena_ui_${typeId}`;
-      const miniGame = getHarthmereBusinessCustomerMiniGame(
-        state,
-        businessId
-      );
+      const miniGame = getHarthmereBusinessCustomerMiniGame(state, businessId);
       const spec = miniGame.definition.mechanicSpec;
       const html = renderToStaticMarkup(
         React.createElement(HarthmereBusinessInterfacePanel, {
@@ -1959,6 +1949,9 @@ describe("Harthmere in-world business interface current screens", () => {
       nodePaths: [path.join(process.cwd(), "node_modules")],
       platform: "browser",
       format: "iife",
+      banner: {
+        js: "var process = { env: {}, argv: [], platform: 'test' }; var Buffer = { from: () => ({ toString: () => '' }) }; var global = globalThis;",
+      },
       jsx: "transform",
       jsxFactory: "React.createElement",
       jsxFragment: "React.Fragment",
@@ -1975,9 +1968,55 @@ describe("Harthmere in-world business interface current screens", () => {
                 namespace: "business-panel-test",
               })
             );
+            pluginBuild.onResolve(
+              { filter: /@\/galois\/assets\/audio$/ },
+              () => ({
+                path: "galois-audio",
+                namespace: "business-panel-test",
+              })
+            );
+            pluginBuild.onResolve(
+              { filter: /@\/galois\/interface\/asset_paths$/ },
+              () => ({
+                path: "galois-asset-paths",
+                namespace: "business-panel-test",
+              })
+            );
+            pluginBuild.onResolve({ filter: /@\/shared\/logging$/ }, () => ({
+              path: "shared-logging",
+              namespace: "business-panel-test",
+            }));
+            pluginBuild.onResolve(
+              { filter: /@\/shared\/zrpc\/serde$/ },
+              () => ({
+                path: "zrpc-serde",
+                namespace: "business-panel-test",
+              })
+            );
             pluginBuild.onResolve({ filter: /^@\// }, (args) => ({
               path: resolveRepoAliasForEsbuild(args.path),
             }));
+            pluginBuild.onResolve(
+              { filter: /^(async_hooks|perf_hooks|crypto|process|os)$/ },
+              (args) => ({
+                path: args.path,
+                namespace: "business-panel-node-stub",
+              })
+            );
+            pluginBuild.onResolve(
+              { filter: /^\/public\/.*\.(png|jpg|jpeg|webp)$/ },
+              (args) => ({
+                path: args.path,
+                namespace: "business-panel-asset-stub",
+              })
+            );
+            pluginBuild.onResolve(
+              { filter: /^three\/examples\/jsm\// },
+              (args) => ({
+                path: args.path,
+                namespace: "business-panel-three-stub",
+              })
+            );
             pluginBuild.onResolve({ filter: /PointerLockContext$/ }, () => ({
               path: "pointer-lock-context",
               namespace: "business-panel-test",
@@ -2048,8 +2087,11 @@ describe("Harthmere in-world business interface current screens", () => {
                 namespace: "business-panel-test",
               },
               () => ({
-                contents:
+                contents: [
+                  "export const HARTHMERE_BUSINESS_OUTPOSTS = [];",
+                  "export const HARTHMERE_BUSINESS_OUTPOST_SAFE_SITES = [];",
                   "export function createHarthmereBusinessMiniGameDecisionForOffer(offer) { return { actionId: offer?.actionId ?? 'test_action' }; }",
+                ].join("\n"),
                 loader: "js",
               })
             );
@@ -2059,8 +2101,135 @@ describe("Harthmere in-world business interface current screens", () => {
                 namespace: "business-panel-test",
               },
               () => ({
-                contents:
+                contents: [
                   "export function formatHarthmereBusinessPlayerWarning(value) { return String(value ?? '').replace(/[_:-]+/g, ' '); }",
+                  "export function harthmereBusinessServicePriceGold(service) { return Number(service?.priceGold ?? service?.rewardGold ?? 0); }",
+                ].join("\n"),
+                loader: "js",
+              })
+            );
+            pluginBuild.onLoad(
+              {
+                filter: /.*/,
+                namespace: "business-panel-node-stub",
+              },
+              (args) => {
+                if (args.path === "async_hooks") {
+                  return {
+                    contents:
+                      "export class AsyncLocalStorage { getStore() { return undefined; } run(_store, callback, ...args) { return callback(...args); } enterWith() {} }",
+                    loader: "js",
+                  };
+                }
+                if (args.path === "perf_hooks") {
+                  return {
+                    contents:
+                      "export const performance = globalThis.performance ?? { now: () => Date.now() };",
+                    loader: "js",
+                  };
+                }
+                if (args.path === "process") {
+                  return {
+                    contents: "export const env = {}; export default { env };",
+                    loader: "js",
+                  };
+                }
+                if (args.path === "os") {
+                  return {
+                    contents:
+                      "export function release() { return ''; } export function type() { return ''; } export default { release, type };",
+                    loader: "js",
+                  };
+                }
+                return {
+                  contents:
+                    "export function randomBytes(size) { return new Uint8Array(size); } export const webcrypto = globalThis.crypto; export default { randomBytes, webcrypto };",
+                  loader: "js",
+                };
+              }
+            );
+            pluginBuild.onLoad(
+              {
+                filter: /.*/,
+                namespace: "business-panel-asset-stub",
+              },
+              () => ({
+                contents: "export default 'data:image/png;base64,';",
+                loader: "js",
+              })
+            );
+            pluginBuild.onLoad(
+              {
+                filter: /.*/,
+                namespace: "business-panel-three-stub",
+              },
+              () => ({
+                contents: [
+                  "export class GLTFLoader {}",
+                  "export class OrbitControls {}",
+                  "export class RoundedBoxGeometry {}",
+                  "export class SMAAPass {}",
+                  "export class FullScreenQuad {}",
+                  "export default {};",
+                ].join("\n"),
+                loader: "js",
+              })
+            );
+            pluginBuild.onLoad(
+              {
+                filter: /galois-audio/,
+                namespace: "business-panel-test",
+              },
+              () => ({
+                contents: "export function getAudioAssetPaths() { return []; }",
+                loader: "js",
+              })
+            );
+            pluginBuild.onLoad(
+              {
+                filter: /galois-asset-paths/,
+                namespace: "business-panel-test",
+              },
+              () => ({
+                contents: [
+                  "export function assetPaths() { return []; }",
+                  "export function resolveAssetUrl(path) { return String(path ?? ''); }",
+                  "export function resolveAssetUrlUntyped(path) { return String(path ?? ''); }",
+                ].join("\n"),
+                loader: "js",
+              })
+            );
+            pluginBuild.onLoad(
+              {
+                filter: /shared-logging/,
+                namespace: "business-panel-test",
+              },
+              () => ({
+                contents: [
+                  "export const log = { debug() {}, info() {}, warn() {}, error() {}, child() { return log; } };",
+                  "export function addSink() {}",
+                  "export function removeSink() {}",
+                  "export function addToLogContext() {}",
+                  "export function withLogContext(_context, callback) { return callback(); }",
+                  "export function setVoxelooForExceptionReporting() {}",
+                  "export default log;",
+                ].join("\n"),
+                loader: "js",
+              })
+            );
+            pluginBuild.onLoad(
+              {
+                filter: /zrpc-serde/,
+                namespace: "business-panel-test",
+              },
+              () => ({
+                contents: [
+                  "export function prepare(value) { return value; }",
+                  "export function zrpcSerialize(value) { return value; }",
+                  "export function zrpcDeserialize(value) { return value; }",
+                  "export function zrpcWebSerialize(value) { return JSON.stringify(value); }",
+                  "export function zrpcWebDeserialize(value) { return typeof value === 'string' ? JSON.parse(value) : value; }",
+                ].join("\n"),
                 loader: "js",
               })
             );
@@ -2081,7 +2250,7 @@ describe("Harthmere in-world business interface current screens", () => {
       page.on("console", (message) => {
         if (message.type() === "error") browserErrors.push(message.text());
       });
-      await page.setContent(`
+      const html = `
         <html>
           <head>
             <style>
@@ -2091,13 +2260,30 @@ describe("Harthmere in-world business interface current screens", () => {
           </head>
           <body><div id="root"></div></body>
         </html>
-      `);
+      `;
+      await page.route("https://business-panel.test/", (route) =>
+        route.fulfill({ contentType: "text/html", body: html })
+      );
+      await page.goto("https://business-panel.test/");
       await page.addScriptTag({ content: await readFile(bundlePath, "utf8") });
-      await page.getByRole("button", { name: "Start Shift" }).waitFor({
-        timeout: 15_000,
+      const startShiftButton = page.getByRole("button", {
+        name: /start shift/i,
       });
+      try {
+        await startShiftButton.waitFor({
+          timeout: 15_000,
+        });
+      } catch (error) {
+        const bodyText = await page.locator("body").innerText();
+        throw new Error(
+          `Start Shift button did not appear. Browser errors: ${browserErrors.join(
+            "\n"
+          )}. Body: ${bodyText}`,
+          { cause: error }
+        );
+      }
       assert.deepEqual(browserErrors, []);
-      await page.getByRole("button", { name: "Start Shift" }).click();
+      await startShiftButton.click();
       await page.waitForFunction(
         () => (window as any).__businessOperations?.length === 1
       );

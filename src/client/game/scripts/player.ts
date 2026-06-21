@@ -1587,7 +1587,8 @@ export const MILLISECONDS_PER_TICK = 16;
 
 // Drown constants.
 export const DROWN_DELAY_IN_TICKS = 15 * 60; // 15 seconds
-const DROWN_INTERVAL_IN_TICKS = 5 * 60; // 5 seconds
+export const HARTHMERE_DROWNING_DAMAGE_PER_SECOND = 5;
+export const DROWN_INTERVAL_IN_TICKS = 1 * 60; // 1 second
 
 // Regen constants.
 const REGEN_DELAY_IN_TICKS = 5 * 60; // 5 seconds
@@ -2100,7 +2101,9 @@ export class PlayerScript implements Script {
     if (canBreathe) {
       this.drownThrottle.reset(DROWN_DELAY_IN_TICKS);
     } else if (this.drownThrottle.tick(DROWN_INTERVAL_IN_TICKS)) {
-      const damage = this.tweaks.healthWaterDamageAmount;
+      const damage =
+        this.tweaks.healthWaterDamageAmount ??
+        HARTHMERE_DROWNING_DAMAGE_PER_SECOND;
       this.applyHpChange(-damage, {
         kind: "drown",
       });

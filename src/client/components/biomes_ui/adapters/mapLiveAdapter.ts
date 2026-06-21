@@ -23,6 +23,7 @@ import {
   activeJobsBoardMissionStepsForBiomesUI,
   firstActiveJobsBoardQuestTitleForBiomesUI,
   jobsBoardAcceptedJobLandmarksForBiomesUI,
+  jobsBoardItemSourceLandmarksForBiomesUI,
   jobsBoardToolSourceLandmarksForBiomesUI,
   jobsBoardTrackableQuestsForBiomesUI,
 } from "./jobsBoardQuestMapAdapter";
@@ -281,6 +282,7 @@ export function buildBiomesUIMapAdapter(
     return appendHarthmereBusinessOutpostMapLandmarks([
       ...(Array.isArray(api?.landmarks) ? api.landmarks : []),
       ...jobsBoardAcceptedJobLandmarksForBiomesUI(jobsBoardState),
+      ...jobsBoardItemSourceLandmarksForBiomesUI(jobsBoardState),
       ...jobsBoardToolSourceLandmarksForBiomesUI(jobsBoardState, toolOwned),
       ...liveEntityHelperAcceptedQuestLandmarksForBiomesUI(
         liveEntityHelperState,
@@ -595,8 +597,7 @@ export function buildBiomesUIMapAdapter(
       ];
     },
     getMainQuestSelection: () => readBiomesUIMainQuestSelection(),
-    setMainQuest: (quest: any) =>
-      setBiomesUIMainQuestFromTrackableQuest(quest),
+    setMainQuest: (quest: any) => setBiomesUIMainQuestFromTrackableQuest(quest),
     clearMainQuest: () => writeBiomesUIMainQuestSelection(undefined),
     getActiveMapPin: () => {
       const pin = readActiveBiomesUIMapPin();

@@ -1,7 +1,6 @@
 import { useClientContext } from "@/client/components/contexts/ClientContextReactContext";
 import { defaultHarthmereLiveFetch } from "@/client/components/harthmere_live_fetch";
 import {
-  HARTHMERE_INVENTORY_EVENT,
   getHarthmereItemDisplay,
   harthmereJobToolOwnedState,
   performHarthmereHotbarAssignForBiomesUI,
@@ -14,6 +13,11 @@ import {
   readHarthmereInventoryState,
   type HarthmereItemInstance,
 } from "@/client/components/challenges/LocalDevHarthmereInventorySystem";
+import {
+  HARTHMERE_BUSINESS_INVENTORY_LOOT_UPDATED_EVENT,
+  HARTHMERE_INVENTORY_EVENT,
+  HARTHMERE_LIVE_INVENTORY_SYNC_EVENT,
+} from "@/client/components/challenges/harthmereEvents";
 import {
   HARTHMERE_DAILY_TASK_COMPLETED_EVENT,
   completeHarthmereDailyTaskSoon,
@@ -101,6 +105,7 @@ import {
   activeJobsBoardMissionStepsForBiomesUI,
   firstActiveJobsBoardQuestTitleForBiomesUI,
   jobsBoardAcceptedJobLandmarksForBiomesUI,
+  jobsBoardItemSourceLandmarksForBiomesUI,
   jobsBoardToolSourceLandmarksForBiomesUI,
   jobsBoardTrackableQuestsForBiomesUI,
   shouldClearStaleJobsBoardPin,
@@ -156,8 +161,6 @@ import {
   HARTHMERE_PROPERTY_MARKER_SOURCE,
   type HarthmerePropertyMapBuildingState,
 } from "./propertyMapMarkers";
-import { HARTHMERE_BUSINESS_INVENTORY_LOOT_UPDATED_EVENT } from "@/client/components/harthmere_business/businessInterfaceLiveAdapter";
-
 export const BIOMES_UI_OPEN_TAB_EVENT = "biomes-ui-open-tab";
 
 const BIOMES_UI_KEY_TO_TAB: Record<string, TabKey> = {
@@ -206,8 +209,7 @@ const BIOMES_UI_TAB_TO_GARDEN_HOSE_TABS: Partial<Record<TabKey, string[]>> = {
 };
 
 const HARTHMERE_BIOMES_UI_LOCAL_ITEM_REF_PREFIX = "harthmere:";
-const HARTHMERE_BIOMES_UI_LOCAL_EQUIPMENT_REF_PREFIX =
-  "harthmere_equipment:";
+const HARTHMERE_BIOMES_UI_LOCAL_EQUIPMENT_REF_PREFIX = "harthmere_equipment:";
 const HARTHMERE_QUEST_INVITE_POLL_INTERVAL_MS = 30_000;
 
 function isTypingInInput(target: EventTarget | null): boolean {
@@ -293,8 +295,7 @@ function slotToUiItem(slot: any, fallback: string): HotbarSlotItem | null {
     try {
       icon = iconUrl(item) ?? biomesInventoryItemIcon(itemId) ?? icon;
     } catch {
-      icon =
-        item?.action === "photo" ? "📷" : biomesInventoryItemIcon(itemId);
+      icon = item?.action === "photo" ? "📷" : biomesInventoryItemIcon(itemId);
     }
   }
   return {
@@ -389,9 +390,7 @@ function isLocalHarthmereEquipmentRef(ref: InventoryUiRef) {
 
 function localHarthmereInstanceIdFromRef(ref: InventoryUiRef) {
   return isLocalHarthmereItemRef(ref)
-    ? String(ref.key).slice(
-        HARTHMERE_BIOMES_UI_LOCAL_ITEM_REF_PREFIX.length
-      )
+    ? String(ref.key).slice(HARTHMERE_BIOMES_UI_LOCAL_ITEM_REF_PREFIX.length)
     : undefined;
 }
 
@@ -483,10 +482,7 @@ function localHarthmereHotbarItemToUiItem(
     icon: display.icon ?? biomesInventoryItemIcon(itemId),
     count: 1,
     quality: "common",
-    category: harthmereDisplayCategoryForBiomesUI(
-      display.category,
-      equipSlot
-    ),
+    category: harthmereDisplayCategoryForBiomesUI(display.category, equipSlot),
     description: display.description,
     equipSlot,
     ref: {
@@ -519,10 +515,7 @@ function localHarthmereEquipmentItemToUiItem(
     icon: display?.icon ?? biomesInventoryItemIcon(itemId),
     count: 1,
     quality: item.bound ? "quest" : "common",
-    category: harthmereDisplayCategoryForBiomesUI(
-      display?.category,
-      equipSlot
-    ),
+    category: harthmereDisplayCategoryForBiomesUI(display?.category, equipSlot),
     description: display?.description ?? "Equipped from your Harthmere pack.",
     equipSlot,
     ref: {
@@ -909,27 +902,24 @@ async function submitBuildingSystemLiveModeAction(
   const requestId = `biomes_ui_building_${action}_${Date.now()}_${Math.random()
     .toString(36)
     .slice(2)}`;
-  const response = await defaultHarthmereLiveFetch(
-    "/api/harthmere/live_mode",
-    {
-      method: "POST",
-      credentials: "same-origin",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        requestId,
-        idempotencyKey: requestId,
-        actionKind: "request_property_building_mutation",
-        subsystem: "building",
-        actorEntityVersion: 1,
-        zoneId: "the_grove",
-        payload: {
-          buildingAction: action,
-          ...payload,
-        },
-        clientClaims: {},
-      }),
-    }
-  );
+  const response = await defaultHarthmereLiveFetch("/api/harthmere/live_mode", {
+    method: "POST",
+    credentials: "same-origin",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      requestId,
+      idempotencyKey: requestId,
+      actionKind: "request_property_building_mutation",
+      subsystem: "building",
+      actorEntityVersion: 1,
+      zoneId: "the_grove",
+      payload: {
+        buildingAction: action,
+        ...payload,
+      },
+      clientClaims: {},
+    }),
+  });
   return response.json();
 }
 
@@ -1066,9 +1056,7 @@ function stackRecordToInventoryUiItems(
         source,
         storageLocation: source,
         canUse:
-          options.canUse ??
-          display?.canUse ??
-          isLiveUsableBackpackItem(itemId),
+          options.canUse ?? display?.canUse ?? isLiveUsableBackpackItem(itemId),
         canEquip: options.canEquip ?? display?.canEquip ?? Boolean(equipSlot),
         canMove: options.canMove ?? false,
         canSplit: options.canSplit ?? false,
@@ -1304,24 +1292,21 @@ async function submitBankingLiveModeAction(
   const requestId = `biomes_ui_bank_${operation}_${Date.now()}_${Math.random()
     .toString(36)
     .slice(2)}`;
-  const response = await defaultHarthmereLiveFetch(
-    "/api/harthmere/live_mode",
-    {
-      method: "POST",
-      credentials: "same-origin",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        requestId,
-        idempotencyKey: requestId,
-        actionKind: "request_bank_transaction",
-        subsystem: "bank",
-        actorEntityVersion: 1,
-        zoneId: "the_grove",
-        payload: { operation, ...payload },
-        clientClaims: {},
-      }),
-    }
-  );
+  const response = await defaultHarthmereLiveFetch("/api/harthmere/live_mode", {
+    method: "POST",
+    credentials: "same-origin",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      requestId,
+      idempotencyKey: requestId,
+      actionKind: "request_bank_transaction",
+      subsystem: "bank",
+      actorEntityVersion: 1,
+      zoneId: "the_grove",
+      payload: { operation, ...payload },
+      clientClaims: {},
+    }),
+  });
   const body = await response.json();
   if (!response.ok || body?.ok === false) {
     throw new Error(
@@ -1344,24 +1329,21 @@ async function submitProgressionLiveModeAction(
   const requestId = `biomes_ui_progression_${actionKind}_${Date.now()}_${Math.random()
     .toString(36)
     .slice(2)}`;
-  const response = await defaultHarthmereLiveFetch(
-    "/api/harthmere/live_mode",
-    {
-      method: "POST",
-      credentials: "same-origin",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        requestId,
-        idempotencyKey: requestId,
-        actionKind,
-        subsystem,
-        actorEntityVersion: 1,
-        zoneId: "the_grove",
-        payload,
-        clientClaims: {},
-      }),
-    }
-  );
+  const response = await defaultHarthmereLiveFetch("/api/harthmere/live_mode", {
+    method: "POST",
+    credentials: "same-origin",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      requestId,
+      idempotencyKey: requestId,
+      actionKind,
+      subsystem,
+      actorEntityVersion: 1,
+      zoneId: "the_grove",
+      payload,
+      clientClaims: {},
+    }),
+  });
   const body = await response.json();
   if (!response.ok || body?.ok === false) {
     throw new Error(
@@ -1377,27 +1359,24 @@ async function submitDailyLiveModeAction(activityId: string): Promise<any> {
   const requestId = `biomes_ui_daily_${activityId}_${Date.now()}_${Math.random()
     .toString(36)
     .slice(2)}`;
-  const response = await defaultHarthmereLiveFetch(
-    "/api/harthmere/live_mode",
-    {
-      method: "POST",
-      credentials: "same-origin",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        requestId,
-        idempotencyKey: requestId,
-        actionKind: "request_care_loop_action",
-        subsystem: "care",
-        actorEntityVersion: 1,
-        zoneId: "the_grove",
-        payload: {
-          operation: "daily_check_in",
-          targetId: activityId,
-        },
-        clientClaims: {},
-      }),
-    }
-  );
+  const response = await defaultHarthmereLiveFetch("/api/harthmere/live_mode", {
+    method: "POST",
+    credentials: "same-origin",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      requestId,
+      idempotencyKey: requestId,
+      actionKind: "request_care_loop_action",
+      subsystem: "care",
+      actorEntityVersion: 1,
+      zoneId: "the_grove",
+      payload: {
+        operation: "daily_check_in",
+        targetId: activityId,
+      },
+      clientClaims: {},
+    }),
+  });
   const body = await response.json();
   if (!response.ok || body?.ok === false) {
     throw new Error(
@@ -1416,24 +1395,21 @@ async function submitFarmingFoodLiveModeAction(
   const requestId = `biomes_ui_farming_food_${operation}_${Date.now()}_${Math.random()
     .toString(36)
     .slice(2)}`;
-  const response = await defaultHarthmereLiveFetch(
-    "/api/harthmere/live_mode",
-    {
-      method: "POST",
-      credentials: "same-origin",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        requestId,
-        idempotencyKey: requestId,
-        actionKind: "request_farming_action",
-        subsystem: "farming",
-        actorEntityVersion: 1,
-        zoneId: "the_grove",
-        payload: { operation, ...payload },
-        clientClaims: {},
-      }),
-    }
-  );
+  const response = await defaultHarthmereLiveFetch("/api/harthmere/live_mode", {
+    method: "POST",
+    credentials: "same-origin",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      requestId,
+      idempotencyKey: requestId,
+      actionKind: "request_farming_action",
+      subsystem: "farming",
+      actorEntityVersion: 1,
+      zoneId: "the_grove",
+      payload: { operation, ...payload },
+      clientClaims: {},
+    }),
+  });
   const body = await response.json();
   if (!response.ok || body?.ok === false) {
     throw new Error(
@@ -1458,24 +1434,21 @@ async function submitMedicalLiveModeAction(
   const requestId = `biomes_ui_medical_${operation}_${Date.now()}_${Math.random()
     .toString(36)
     .slice(2)}`;
-  const response = await defaultHarthmereLiveFetch(
-    "/api/harthmere/live_mode",
-    {
-      method: "POST",
-      credentials: "same-origin",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        requestId,
-        idempotencyKey: requestId,
-        actionKind: "request_medical_action",
-        subsystem: "medical",
-        actorEntityVersion: 1,
-        zoneId: "the_grove",
-        payload: { operation, ...payload },
-        clientClaims: {},
-      }),
-    }
-  );
+  const response = await defaultHarthmereLiveFetch("/api/harthmere/live_mode", {
+    method: "POST",
+    credentials: "same-origin",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      requestId,
+      idempotencyKey: requestId,
+      actionKind: "request_medical_action",
+      subsystem: "medical",
+      actorEntityVersion: 1,
+      zoneId: "the_grove",
+      payload: { operation, ...payload },
+      clientClaims: {},
+    }),
+  });
   const body = await response.json();
   if (!response.ok || body?.ok === false) {
     throw new Error(
@@ -1494,25 +1467,22 @@ async function submitEquipmentLiveModeAction(
   const requestId = `biomes_ui_equipment_${slot}_${Date.now()}_${Math.random()
     .toString(36)
     .slice(2)}`;
-  const response = await defaultHarthmereLiveFetch(
-    "/api/harthmere/live_mode",
-    {
-      method: "POST",
-      credentials: "same-origin",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        requestId,
-        idempotencyKey: requestId,
-        actionKind: "request_equipment_change",
-        subsystem: "equipment",
-        actorEntityVersion: 1,
-        zoneId: "the_grove",
-        payload: { itemId, slot },
-        clientClaims: {},
-        includeSnapshots: ["inventoryLootState"],
-      }),
-    }
-  );
+  const response = await defaultHarthmereLiveFetch("/api/harthmere/live_mode", {
+    method: "POST",
+    credentials: "same-origin",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      requestId,
+      idempotencyKey: requestId,
+      actionKind: "request_equipment_change",
+      subsystem: "equipment",
+      actorEntityVersion: 1,
+      zoneId: "the_grove",
+      payload: { itemId, slot },
+      clientClaims: {},
+      includeSnapshots: ["inventoryLootState"],
+    }),
+  });
   const body = await response.json();
   if (!response.ok || body?.ok === false) {
     throw new Error(
@@ -1535,25 +1505,22 @@ async function submitInventoryItemLiveModeAction(
   const requestId = `biomes_ui_inventory_${operation}_${Date.now()}_${Math.random()
     .toString(36)
     .slice(2)}`;
-  const response = await defaultHarthmereLiveFetch(
-    "/api/harthmere/live_mode",
-    {
-      method: "POST",
-      credentials: "same-origin",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        requestId,
-        idempotencyKey: requestId,
-        actionKind: "request_inventory_item_action",
-        subsystem: "inventory",
-        actorEntityVersion: 1,
-        zoneId: "the_grove",
-        payload: { operation, ...payload },
-        clientClaims: {},
-        includeSnapshots: ["inventoryLootState", "playerStatusState"],
-      }),
-    }
-  );
+  const response = await defaultHarthmereLiveFetch("/api/harthmere/live_mode", {
+    method: "POST",
+    credentials: "same-origin",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      requestId,
+      idempotencyKey: requestId,
+      actionKind: "request_inventory_item_action",
+      subsystem: "inventory",
+      actorEntityVersion: 1,
+      zoneId: "the_grove",
+      payload: { operation, ...payload },
+      clientClaims: {},
+      includeSnapshots: ["inventoryLootState", "playerStatusState"],
+    }),
+  });
   const body = await response.json();
   if (!response.ok || body?.ok === false) {
     throw new Error(
@@ -1729,6 +1696,7 @@ export function buildBiomesUIMapAdapterForTest(
     return appendHarthmereBusinessOutpostMapLandmarks([
       ...(Array.isArray(api?.landmarks) ? api.landmarks : []),
       ...jobsBoardAcceptedJobLandmarksForBiomesUI(jobsBoardState),
+      ...jobsBoardItemSourceLandmarksForBiomesUI(jobsBoardState),
       ...jobsBoardToolSourceLandmarksForBiomesUI(
         jobsBoardState,
         harthmereJobToolOwnedState()
@@ -2003,8 +1971,7 @@ export function buildBiomesUIMapAdapterForTest(
       ];
     },
     getMainQuestSelection: () => readBiomesUIMainQuestSelection(),
-    setMainQuest: (quest: any) =>
-      setBiomesUIMainQuestFromTrackableQuest(quest),
+    setMainQuest: (quest: any) => setBiomesUIMainQuestFromTrackableQuest(quest),
     clearMainQuest: () => writeBiomesUIMainQuestSelection(undefined),
     getActiveMapPin: () => readActiveBiomesUIMapPin(),
     setActiveMapPin: (marker: any) => {
@@ -2175,10 +2142,7 @@ export function useBiomesUILiveAdapters({
       "biomes:local-dev-snapshot-grove-quest-state",
       bump
     );
-    window.addEventListener(
-      "biomes:snapshot-grove-tutor-hud-highlights",
-      bump
-    );
+    window.addEventListener("biomes:snapshot-grove-tutor-hud-highlights", bump);
     window.addEventListener(SNAPSHOT_MISSION_STATE_EVENT, bump);
     window.addEventListener(LIVE_ENTITY_HELPER_QUEST_EVENT, bump);
     return () => {
@@ -2305,8 +2269,7 @@ export function useBiomesUILiveAdapters({
 
   React.useEffect(() => {
     if (typeof window === "undefined") return;
-    if (!shouldHydrateBiomesUILiveStateForTab("progression", activeTab))
-      return;
+    if (!shouldHydrateBiomesUILiveStateForTab("progression", activeTab)) return;
     void refreshProgressionState();
   }, [activeTab, refreshProgressionState]);
 
@@ -2345,10 +2308,7 @@ export function useBiomesUILiveAdapters({
     };
     window.addEventListener(HARTHMERE_DAILY_TASK_COMPLETED_EVENT, handler);
     return () =>
-      window.removeEventListener(
-        HARTHMERE_DAILY_TASK_COMPLETED_EVENT,
-        handler
-      );
+      window.removeEventListener(HARTHMERE_DAILY_TASK_COMPLETED_EVENT, handler);
   }, [refreshDailyState]);
 
   React.useEffect(() => {
@@ -2450,8 +2410,14 @@ export function useBiomesUILiveAdapters({
 
   React.useEffect(() => {
     if (typeof window === "undefined") return;
-    const landmarks =
-      jobsBoardAcceptedJobLandmarksForBiomesUI(jobsBoardState);
+    const landmarks = [
+      ...jobsBoardAcceptedJobLandmarksForBiomesUI(jobsBoardState),
+      ...jobsBoardItemSourceLandmarksForBiomesUI(jobsBoardState),
+      ...jobsBoardToolSourceLandmarksForBiomesUI(
+        jobsBoardState,
+        harthmereJobToolOwnedState()
+      ),
+    ];
     const existing = readActiveBiomesUIMapPin();
     // Drop a jobs-board pin whose job is no longer active (completed/abandoned)
     // so it stops driving the HUD aid and suppressing other quest beacons.
@@ -2555,10 +2521,7 @@ export function useBiomesUILiveAdapters({
         void refreshJobsBoardState();
       }
     };
-    window.addEventListener(
-      HARTHMERE_JOBS_BOARD_STATE_UPDATED_EVENT,
-      handler
-    );
+    window.addEventListener(HARTHMERE_JOBS_BOARD_STATE_UPDATED_EVENT, handler);
     return () =>
       window.removeEventListener(
         HARTHMERE_JOBS_BOARD_STATE_UPDATED_EVENT,
@@ -2586,7 +2549,8 @@ export function useBiomesUILiveAdapters({
   React.useEffect(() => {
     if (typeof window === "undefined") return;
     const handler = (event: Event) => {
-      const body = (event as CustomEvent<any>).detail;
+      const detail = (event as CustomEvent<any>).detail;
+      const body = detail?.body ?? detail;
       void applyLiveModeInventoryResponse(body);
       setSnapshotRevision((value) => value + 1);
     };
@@ -2599,6 +2563,18 @@ export function useBiomesUILiveAdapters({
         LIVE_ENTITY_HELPER_LIVE_MODE_RESPONSE_EVENT,
         handler
       );
+  }, [applyLiveModeInventoryResponse]);
+
+  React.useEffect(() => {
+    if (typeof window === "undefined") return;
+    const handler = (event: Event) => {
+      const detail = (event as CustomEvent<{ body?: any }>).detail ?? {};
+      void applyLiveModeInventoryResponse(detail.body ?? detail);
+      setSnapshotRevision((value) => value + 1);
+    };
+    window.addEventListener(HARTHMERE_LIVE_INVENTORY_SYNC_EVENT, handler);
+    return () =>
+      window.removeEventListener(HARTHMERE_LIVE_INVENTORY_SYNC_EVENT, handler);
   }, [applyLiveModeInventoryResponse]);
 
   const setActiveTabFromUi = React.useCallback(
@@ -2775,10 +2751,7 @@ export function useBiomesUILiveAdapters({
     const slots = Array.from({ length: 9 }, (_unused, index) => {
       const localItemId = localHotbarItemIds[index];
       if (localItemId) {
-        const localItem = localHarthmereHotbarItemToUiItem(
-          localItemId,
-          index
-        );
+        const localItem = localHarthmereHotbarItemToUiItem(localItemId, index);
         if (localItem) {
           return localItem as unknown as HotbarSlotItem;
         }
@@ -3003,10 +2976,11 @@ export function useBiomesUILiveAdapters({
           !("maxSlots" in materialStorageSnapshot)
         ? materialStorageSnapshot
         : undefined;
-    const combinedMaterialStorageItems = mergeInventoryStackRecords(
-      materialStorageItems as Record<string, number> | undefined,
-      localHarthmereInventoryState.materialStorage
-    ) ?? {};
+    const combinedMaterialStorageItems =
+      mergeInventoryStackRecords(
+        materialStorageItems as Record<string, number> | undefined,
+        localHarthmereInventoryState.materialStorage
+      ) ?? {};
 
     const liveItemForRef = (ref: InventoryUiRef): InventoryUiItem | null => {
       if (ref.kind !== "item" || isLocalHarthmereItemRef(ref)) return null;
@@ -3409,10 +3383,7 @@ export function useBiomesUILiveAdapters({
           );
           return;
         }
-        if (
-          liveItem?.id &&
-          HARTHMERE_MEDICAL_ITEM_DEFINITIONS[liveItem.id]
-        ) {
+        if (liveItem?.id && HARTHMERE_MEDICAL_ITEM_DEFINITIONS[liveItem.id]) {
           fireAndForget(
             submitMedicalLiveModeAction("use_medical_item", {
               itemId: liveItem.id,

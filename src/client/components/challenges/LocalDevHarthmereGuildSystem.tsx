@@ -13,6 +13,7 @@ import {
   getHarthmereLevelSummary,
 } from "@/client/components/challenges/LocalDevHarthmereLevelingSystem";
 import { applyHarthmereReputationChange } from "@/client/components/challenges/LocalDevHarthmereReputation";
+import { HARTHMERE_INVENTORY_EVENT } from "@/client/components/challenges/harthmereEvents";
 import React, { useEffect, useMemo, useState } from "react";
 
 const HARTHMERE_GUILD_STATE_KEY = "biomes.localDev.harthmere.guildState";
@@ -827,7 +828,9 @@ function consumePlayerMaterials(
           `${label} needs ${missing
             .map(
               ([itemId, quantity]) =>
-                `${materialLabel(itemId)} ${inventory.materialStorage[itemId] ?? 0}/${quantity}`
+                `${materialLabel(itemId)} ${
+                  inventory.materialStorage[itemId] ?? 0
+                }/${quantity}`
             )
             .join(", ")}.`
         ),
@@ -846,7 +849,9 @@ function consumePlayerMaterials(
     recent: [
       makeInventoryLogEntry(
         "Guild Materials Used",
-        `${label}: ${formatMaterials(materials)} moved into guild records atomically.`
+        `${label}: ${formatMaterials(
+          materials
+        )} moved into guild records atomically.`
       ),
       ...inventory.recent,
     ].slice(0, 18),
@@ -1123,7 +1128,9 @@ function depositUsefulMaterialsToGuild() {
       nextGuild,
       "bank",
       "Guild Bank Deposit",
-      `${formatMaterials(deposit)} deposited into the Guild Projects tab. Production guild banks need rank permissions, limits, and logs like this.`
+      `${formatMaterials(
+        deposit
+      )} deposited into the Guild Projects tab. Production guild banks need rank permissions, limits, and logs like this.`
     );
   });
 }
@@ -1167,7 +1174,9 @@ function withdrawBasicGuildSupplies() {
       recent: [
         makeInventoryLogEntry(
           "Guild Bank Withdrawal",
-          `${formatMaterials(materialsToReturn)} withdrawn by guild leader permission.`
+          `${formatMaterials(
+            materialsToReturn
+          )} withdrawn by guild leader permission.`
         ),
         ...inventory.recent,
       ].slice(0, 18),
@@ -1191,7 +1200,9 @@ function withdrawBasicGuildSupplies() {
       nextGuild,
       "bank",
       "Guild Bank Withdrawal",
-      `${formatMaterials(materialsToReturn)} withdrawn. Withdrawal limits and high-value locks are modeled by rank permissions in the guild ledger.`
+      `${formatMaterials(
+        materialsToReturn
+      )} withdrawn. Withdrawal limits and high-value locks are modeled by rank permissions in the guild ledger.`
     );
   });
 }
@@ -1226,7 +1237,9 @@ function startGuildProject(projectId: string) {
       nextGuild,
       "project",
       "Guild Project Started",
-      `${definition.name} started. Needed: ${definition.requiredGold} gold and ${formatMaterials(definition.requiredMaterials)}.`
+      `${definition.name} started. Needed: ${
+        definition.requiredGold
+      } gold and ${formatMaterials(definition.requiredMaterials)}.`
     );
   });
 }
@@ -1370,7 +1383,9 @@ function contributeToGuildProject(projectId: string) {
         guild,
         "project",
         "Project Needs Materials",
-        `${definition.name} still needs ${formatMaterials(remaining.materials)}.`
+        `${definition.name} still needs ${formatMaterials(
+          remaining.materials
+        )}.`
       );
     }
     const updatedProject: GuildProjectState = {
@@ -1424,8 +1439,14 @@ function contributeToGuildProject(projectId: string) {
       "project",
       completed ? "Guild Project Completed" : "Guild Project Contribution",
       completed
-        ? `${definition.name} completed. Rewards: ${definition.rewards.join(", ")}.`
-        : `${definition.name}: contributed ${goldMove} gold and ${formatMaterials(materialMove)}.`,
+        ? `${definition.name} completed. Rewards: ${definition.rewards.join(
+            ", "
+          )}.`
+        : `${
+            definition.name
+          }: contributed ${goldMove} gold and ${formatMaterials(
+            materialMove
+          )}.`,
       -goldMove
     );
   });
@@ -1534,26 +1555,26 @@ function scheduleGuildEvent(type: GuildEventType = "gathering") {
         type === "raid"
           ? "Old Well Raid Planning"
           : type === "pvp"
-            ? "Caravan Defense Patrol"
-            : type === "crafting"
-              ? "Guild Crafting Night"
-              : "Harthmere Gathering Run",
+          ? "Caravan Defense Patrol"
+          : type === "crafting"
+          ? "Guild Crafting Night"
+          : "Harthmere Gathering Run",
       type,
       startAt: Date.now() + 24 * 60 * 60 * 1000,
       location:
         type === "raid"
           ? "Old Well / Underways Staging"
           : type === "pvp"
-            ? "North Gate"
-            : type === "crafting"
-              ? "Black Anvil / Guild Forge"
-              : "Market Board",
+          ? "North Gate"
+          : type === "crafting"
+          ? "Black Anvil / Guild Forge"
+          : "Market Board",
       requiredRoles:
         type === "raid"
           ? { tank: 1, healer: 1, damage: 3 }
           : type === "pvp"
-            ? { scout: 1, guard: 2, healer: 1 }
-            : { gatherer: 3, crafter: 1 },
+          ? { scout: 1, guard: 2, healer: 1 }
+          : { gatherer: 3, crafter: 1 },
       notes:
         type === "raid"
           ? "Bring salves, repair vouchers, and a clear objective plan."
@@ -1569,7 +1590,9 @@ function scheduleGuildEvent(type: GuildEventType = "gathering") {
       nextGuild,
       "event",
       "Guild Event Scheduled",
-      `${event.title} added to the guild calendar for ${new Date(event.startAt).toLocaleString()}.`
+      `${event.title} added to the guild calendar for ${new Date(
+        event.startAt
+      ).toLocaleString()}.`
     );
   });
 }
@@ -1621,7 +1644,13 @@ function completeGuildContract(kind: "caravan" | "crafting" | "town") {
       nextGuild,
       "project",
       "Guild Contract Completed",
-      `${kind === "caravan" ? "Caravan defense" : kind === "crafting" ? "Crafting order" : "Town support"} completed. Treasury +${reward} gold and guild reputation improved.`,
+      `${
+        kind === "caravan"
+          ? "Caravan defense"
+          : kind === "crafting"
+          ? "Crafting order"
+          : "Town support"
+      } completed. Treasury +${reward} gold and guild reputation improved.`,
       reward
     );
   });
@@ -1679,12 +1708,12 @@ export function useHarthmereGuildState() {
     const interval = window.setInterval(refresh, 750);
     window.addEventListener("storage", refresh);
     window.addEventListener(HARTHMERE_GUILD_EVENT, refresh);
-    window.addEventListener("biomes:harthmere-inventory-changed", refresh);
+    window.addEventListener(HARTHMERE_INVENTORY_EVENT, refresh);
     return () => {
       window.clearInterval(interval);
       window.removeEventListener("storage", refresh);
       window.removeEventListener(HARTHMERE_GUILD_EVENT, refresh);
-      window.removeEventListener("biomes:harthmere-inventory-changed", refresh);
+      window.removeEventListener(HARTHMERE_INVENTORY_EVENT, refresh);
     };
   }, []);
 
@@ -1705,7 +1734,9 @@ function projectSummary(guild?: GuildRecord) {
   const def = projectById(active.id);
   if (!def) return "Unknown project.";
   const remaining = requiredRemaining(def, active);
-  return `${def.name}: needs ${remaining.gold}g and ${formatMaterials(remaining.materials)}.`;
+  return `${def.name}: needs ${remaining.gold}g and ${formatMaterials(
+    remaining.materials
+  )}.`;
 }
 
 export function guildActionsForHarthmereNpc(
@@ -1806,7 +1837,9 @@ export function guildActionsForHarthmereNpc(
           : `Contribute to guild project: ${def.name}`,
       tooltip:
         project.status === "available"
-          ? `${def.description} Needs ${def.requiredGold}g and ${formatMaterials(def.requiredMaterials)}.`
+          ? `${def.description} Needs ${
+              def.requiredGold
+            }g and ${formatMaterials(def.requiredMaterials)}.`
           : projectSummary(guild),
       followUpText:
         project.status === "available"
@@ -1891,10 +1924,10 @@ export const HarthmereGuildHUD: React.FunctionComponent<{}> = () => {
   const projectDef = activeProject ? projectById(activeProject.id) : undefined;
   return (
     <div
-      className="pointer-events-none w-[21rem] rounded-lg border border-white/20 bg-black/70 p-2 text-white shadow-lg"
+      className="rounded-lg pointer-events-none w-[21rem] border border-white/20 bg-black/70 p-2 text-white shadow-lg"
       style={{ textShadow: "0 1px 2px rgba(0,0,0,0.85)" }}
     >
-      <div className="text-sm font-semibold uppercase tracking-wide text-yellow-200">
+      <div className="text-yellow-200 text-sm font-semibold uppercase tracking-wide">
         Harthmere Guild
       </div>
       <div className="mt-1 text-xs text-white/90">{guildSummary(guild)}</div>
@@ -1906,13 +1939,13 @@ export const HarthmereGuildHUD: React.FunctionComponent<{}> = () => {
         </div>
       )}
       {projectDef && activeProject && (
-        <div className="mt-1 rounded bg-white/10 px-1.5 py-1 text-[0.68rem] text-white/80">
+        <div className="rounded px-1.5 mt-1 bg-white/10 py-1 text-[0.68rem] text-white/80">
           Project: {projectDef.name} ·{" "}
           {requiredRemaining(projectDef, activeProject).gold}g left
         </div>
       )}
       {latest && (
-        <div className="mt-1 text-[0.68rem] text-yellow-100">
+        <div className="text-yellow-100 mt-1 text-[0.68rem]">
           {latest.label}: {latest.detail}
         </div>
       )}
@@ -1928,7 +1961,7 @@ const PanelButton: React.FunctionComponent<{
   <button
     className={`rounded px-2 py-1 text-left text-xs font-semibold ${
       disabled
-        ? "bg-white/10 text-white/35"
+        ? "text-white/35 bg-white/10"
         : "bg-yellow-300/20 text-yellow-100 hover:bg-yellow-300/30"
     }`}
     disabled={disabled}
@@ -1953,13 +1986,13 @@ export const HarthmereGuildMenuPanel: React.FunctionComponent<{}> = () => {
   const latest = guild?.recent[0] ?? state.recent[0];
 
   return (
-    <div className="mb-2 max-h-[36rem] w-[28rem] overflow-y-auto rounded-lg border border-white/15 bg-slate-950/95 p-3 text-white shadow-2xl">
+    <div className="rounded-lg border-white/15 bg-slate-950/95 mb-2 max-h-[36rem] w-[28rem] overflow-y-auto border p-3 text-white shadow-2xl">
       <div className="flex items-start justify-between gap-2">
         <div>
-          <div className="text-base font-bold text-yellow-200">
+          <div className="text-base text-yellow-200 font-bold">
             Harthmere Guild System
           </div>
-          <div className="text-xs text-white/65">
+          <div className="text-white/65 text-xs">
             Roster, ranks, bank, treasury, projects, hall, events, diplomacy,
             and logs.
           </div>
@@ -1975,7 +2008,11 @@ export const HarthmereGuildMenuPanel: React.FunctionComponent<{}> = () => {
         ).map((nextTab) => (
           <button
             key={nextTab}
-            className={`rounded px-2 py-1 text-xs ${tab === nextTab ? "bg-yellow-300/25 text-yellow-100" : "bg-white/10 text-white/70"}`}
+            className={`rounded px-2 py-1 text-xs ${
+              tab === nextTab
+                ? "bg-yellow-300/25 text-yellow-100"
+                : "bg-white/10 text-white/70"
+            }`}
             onClick={() => setTab(nextTab)}
           >
             {nextTab[0].toUpperCase() + nextTab.slice(1)}
@@ -1984,7 +2021,7 @@ export const HarthmereGuildMenuPanel: React.FunctionComponent<{}> = () => {
       </div>
 
       {!guild && (
-        <div className="mt-3 rounded border border-yellow-300/30 bg-yellow-300/10 p-2 text-xs text-yellow-50">
+        <div className="rounded border-yellow-300/30 bg-yellow-300/10 text-yellow-50 mt-3 border p-2 text-xs">
           Create a guild from the Market Board or here. This costs 25 gold in
           local-dev and creates ranks, permissions, bank tabs, treasury,
           projects, events, hall state, diplomacy, and logs.
@@ -1999,7 +2036,7 @@ export const HarthmereGuildMenuPanel: React.FunctionComponent<{}> = () => {
       {guild && tab === "overview" && (
         <div className="mt-3 space-y-2 text-xs">
           <div className="rounded bg-white/10 p-2">
-            <div className="font-semibold text-yellow-100">
+            <div className="text-yellow-100 font-semibold">
               {guild.name} &lt;{guild.tag}&gt;
             </div>
             <div className="text-white/75">{guild.description}</div>
@@ -2042,7 +2079,7 @@ export const HarthmereGuildMenuPanel: React.FunctionComponent<{}> = () => {
             </PanelButton>
           </div>
           {latest && (
-            <div className="rounded bg-yellow-300/10 p-2 text-yellow-50">
+            <div className="rounded bg-yellow-300/10 text-yellow-50 p-2">
               Latest: {latest.label} — {latest.detail}
             </div>
           )}
@@ -2054,7 +2091,7 @@ export const HarthmereGuildMenuPanel: React.FunctionComponent<{}> = () => {
           {guild.members.map((member) => (
             <div key={member.playerId} className="rounded bg-white/10 p-2">
               <div className="flex justify-between gap-2">
-                <span className="font-semibold text-yellow-100">
+                <span className="text-yellow-100 font-semibold">
                   {member.name}
                 </span>
                 <span className="text-white/60">{member.rank}</span>
@@ -2085,7 +2122,7 @@ export const HarthmereGuildMenuPanel: React.FunctionComponent<{}> = () => {
         <div className="mt-3 space-y-2 text-xs">
           {guild.bankTabs.map((tabRow) => (
             <div key={tabRow.id} className="rounded bg-white/10 p-2">
-              <div className="font-semibold text-yellow-100">{tabRow.name}</div>
+              <div className="text-yellow-100 font-semibold">{tabRow.name}</div>
               <div className="text-white/60">{tabRow.description}</div>
               <div className="mt-1 text-white/75">
                 Gold: {tabRow.gold} · Locked to rank order{" "}
@@ -2116,7 +2153,7 @@ export const HarthmereGuildMenuPanel: React.FunctionComponent<{}> = () => {
             return (
               <div key={def.id} className="rounded bg-white/10 p-2">
                 <div className="flex justify-between gap-2">
-                  <span className="font-semibold text-yellow-100">
+                  <span className="text-yellow-100 font-semibold">
                     {def.name}
                   </span>
                   <span className="text-white/60">
@@ -2174,7 +2211,7 @@ export const HarthmereGuildMenuPanel: React.FunctionComponent<{}> = () => {
           )}
           {guild.events.map((event) => (
             <div key={event.id} className="rounded bg-white/10 p-2">
-              <div className="font-semibold text-yellow-100">{event.title}</div>
+              <div className="text-yellow-100 font-semibold">{event.title}</div>
               <div className="text-white/70">
                 {event.type} · {event.location} ·{" "}
                 {new Date(event.startAt).toLocaleString()}

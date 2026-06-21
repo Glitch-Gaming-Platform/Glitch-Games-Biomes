@@ -16,7 +16,10 @@
 import * as React from "react";
 import { Highlightable } from "../highlight/HighlightOverlay";
 import { UI_IDS } from "../uniqueIds";
-import { questDetailToolShopMarkerCandidates } from "./questDetailToolSource";
+import {
+  questDetailItemSourceMarkerCandidates,
+  questDetailToolShopMarkerCandidates,
+} from "./questDetailToolSource";
 import {
   activeBiomesUIMapPinFromMarkerForTest,
   BIOMES_UI_LOCATE_ON_MAP_EVENT,
@@ -110,6 +113,15 @@ export interface MapTrackableQuestToolSource {
   hint: string;
 }
 
+export interface MapTrackableQuestItemSource {
+  itemId: string;
+  itemName: string;
+  sourceName: string;
+  markerId?: string;
+  hint: string;
+  missingCount: number;
+}
+
 export interface MapTrackableQuest {
   questId: string;
   title: string;
@@ -127,6 +139,7 @@ export interface MapTrackableQuest {
   objectives?: string[];
   description?: string;
   toolSource?: MapTrackableQuestToolSource;
+  itemSource?: MapTrackableQuestItemSource;
 }
 
 interface MapAdapter {
@@ -637,6 +650,7 @@ export function questMapMarkerCandidatesForTest(
   const seen = new Set<string>();
   return [
     quest.firstMarkerId,
+    ...questDetailItemSourceMarkerCandidates(quest),
     ...questDetailToolShopMarkerCandidates(quest),
   ].filter((markerId): markerId is string => {
     const id = markerId?.trim();
@@ -731,8 +745,7 @@ export const MapQuestsTab: React.FunctionComponent<{
   const [mainQuestSelection, setMainQuestSelection] = React.useState<
     BiomesUIMainQuestSelection | undefined
   >(
-    () =>
-      adapter?.getMainQuestSelection?.() ?? readBiomesUIMainQuestSelection()
+    () => adapter?.getMainQuestSelection?.() ?? readBiomesUIMainQuestSelection()
   );
   // "Locate on map" target we still need to pan/zoom to. Seeded from a recent
   // active pin on mount because the locate event fires during the tab switch,
@@ -741,8 +754,7 @@ export const MapQuestsTab: React.FunctionComponent<{
     string | undefined
   >(() => {
     const pin = readActiveBiomesUIMapPin();
-    return pin &&
-      Date.now() - pin.setAtMs <= BIOMES_UI_LOCATE_ON_MAP_RECENCY_MS
+    return pin && Date.now() - pin.setAtMs <= BIOMES_UI_LOCATE_ON_MAP_RECENCY_MS
       ? pin.markerId
       : undefined;
   });
@@ -817,8 +829,7 @@ export const MapQuestsTab: React.FunctionComponent<{
     if (typeof window === "undefined") return;
     const onMainQuestChanged = (event: Event) => {
       const next =
-        (event as CustomEvent<BiomesUIMainQuestSelection | undefined>)
-          .detail ??
+        (event as CustomEvent<BiomesUIMainQuestSelection | undefined>).detail ??
         adapter?.getMainQuestSelection?.() ??
         readBiomesUIMainQuestSelection();
       setMainQuestSelection(next);
@@ -1949,6 +1960,42 @@ function QuestDetailPanel({
             }}
           >
             Locate {quest.toolSource.toolName} shop on map
+          </button>
+        </div>
+      ) : null}
+      {quest.itemSource ? (
+        <div
+          data-testid={`biomes-map-quest-item-source-${quest.questId}`}
+          style={{
+            marginTop: 6,
+            padding: 6,
+            background: "rgba(125,211,252,0.12)",
+            border: "1px solid var(--biomes-border)",
+            borderRadius: 3,
+          }}
+        >
+          <strong style={{ fontSize: 11 }}>Item needed</strong>
+          <p style={{ margin: "3px 0", lineHeight: 1.4 }}>
+            {quest.itemSource.hint}
+          </p>
+          <button
+            type="button"
+            data-testid={`biomes-map-quest-locate-item-${quest.questId}`}
+            onClick={() =>
+              onLocateToolShop(questDetailItemSourceMarkerCandidates(quest))
+            }
+            style={{
+              padding: "4px 8px",
+              fontSize: 11,
+              fontWeight: 800,
+              background: "rgba(125,211,252,0.18)",
+              color: "var(--biomes-fg)",
+              border: "1px solid var(--biomes-border)",
+              borderRadius: 3,
+              cursor: "pointer",
+            }}
+          >
+            Locate {quest.itemSource.sourceName} on map
           </button>
         </div>
       ) : null}

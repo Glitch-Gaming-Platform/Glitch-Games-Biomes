@@ -3,6 +3,7 @@ import {
   type HarthmereLiveEntityProductionSeed,
 } from "@/shared/harthmere/live_entity_production_seed";
 import { muckMonsterAreaForPosition } from "@/shared/harthmere/muck_monster_aggression_ai";
+import { resolveHarthmereProductionMarkerPosition } from "@/shared/harthmere/production_terrain_placement_map";
 import type { BiomesId } from "@/shared/ids";
 import type { Vec3 } from "@/shared/math/types";
 
@@ -23,9 +24,7 @@ export const HARTHMERE_JOBS_BOARD_ALPHA_MUCKER_BOUNTY_MARKER_ID =
   "muck_bounty_alpha_mucker_marker" as const;
 
 export type HarthmereJobsBoardMuckBountyMonsterId = "mucker" | "hex";
-export type HarthmereJobsBoardMuckBountyTier =
-  | "elite"
-  | "boss";
+export type HarthmereJobsBoardMuckBountyTier = "elite" | "boss";
 
 export interface HarthmereJobsBoardMuckBountyTarget {
   targetId: string;
@@ -78,12 +77,17 @@ function targetFromSeed(input: {
   monsterTier: HarthmereJobsBoardMuckBountyTier;
   seed: HarthmereLiveEntityProductionSeed;
 }): HarthmereJobsBoardMuckBountyTarget {
+  const position = resolveHarthmereProductionMarkerPosition({
+    source: "live_muck_monster",
+    markerId: input.seed.seedId,
+    fallback: [...input.seed.position] as Vec3,
+  });
   return {
     targetId: input.targetId,
     markerId: input.markerId,
     targetName: input.targetName,
     label: input.label,
-    position: [...input.seed.position] as Vec3,
+    position,
     areaId: input.seed.areaId,
     areaLabel: input.seed.areaLabel,
     seedId: input.seed.seedId,
@@ -179,12 +183,21 @@ export function validateHarthmereJobsBoardMuckBountyTargets() {
     );
     if (!seed) {
       errors.push(`${target.markerId}:missing_seed`);
-    } else if (
-      seed.entityId !== target.entityId ||
-      seed.areaId !== target.areaId ||
-      seed.position.some((value, index) => value !== target.position[index])
-    ) {
-      errors.push(`${target.markerId}:seed_mismatch`);
+    } else {
+      const resolvedSeedPosition = resolveHarthmereProductionMarkerPosition({
+        source: "live_muck_monster",
+        markerId: seed.seedId,
+        fallback: [...seed.position] as Vec3,
+      });
+      if (
+        seed.entityId !== target.entityId ||
+        seed.areaId !== target.areaId ||
+        resolvedSeedPosition.some(
+          (value, index) => value !== target.position[index]
+        )
+      ) {
+        errors.push(`${target.markerId}:seed_mismatch`);
+      }
     }
     if (/grove|town|board|placeholder/i.test(target.markerId)) {
       errors.push(`${target.markerId}:unsafe_marker_name`);

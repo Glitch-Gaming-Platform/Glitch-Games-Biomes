@@ -11,12 +11,12 @@ import {
 import {
   harthmereJobsBoardPlayerPosition,
   harthmereJobsBoardCameraPosition,
-} from "@/client/components/harthmere_jobs_board/HarthmereJobsBoardWorldInteraction";
+} from "@/client/components/harthmere_jobs_board/harthmereJobsBoardPosition";
 import {
   closeHarthmereJobsBoardPointerLock,
   openHarthmereJobsBoardPointerLock,
 } from "@/client/components/harthmere_jobs_board/jobsBoardPointerLock";
-import { HARTHMERE_WANTED_BOARD_OPEN_EVENT } from "@/client/components/challenges/harthmereObjectInteractions";
+import { HARTHMERE_WANTED_BOARD_OPEN_EVENT } from "@/client/components/challenges/harthmereEvents";
 import { HarthmereWantedBoardLiveContainer } from "./HarthmereWantedBoardLiveContainer";
 import { installHarthmereWantedBoardStyles } from "./HarthmereWantedBoardStyles";
 
@@ -28,7 +28,9 @@ function wantedBoardIdFromLabel(
   fallbackBoardId: string | undefined
 ) {
   if (fallbackBoardId) return fallbackBoardId;
-  const text = String(label ?? "").trim().toLowerCase();
+  const text = String(label ?? "")
+    .trim()
+    .toLowerCase();
   if (!text) return HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID;
   const match = HARTHMERE_JOBS_BOARD_PHYSICAL_BOARDS.find((board) => {
     const base = board.displayName
@@ -51,10 +53,7 @@ export function HarthmereWantedBoardWorldInteraction({
   const shouldReturnPointerLock = React.useRef(false);
   const localPlayer = reactResources.use("/scene/local_player") as unknown;
   const camera = reactResources.use("/scene/camera") as unknown;
-  const playerPosition = harthmereJobsBoardPlayerPosition(
-    localPlayer,
-    camera
-  );
+  const playerPosition = harthmereJobsBoardPlayerPosition(localPlayer, camera);
   const cameraPosition = harthmereJobsBoardCameraPosition(camera);
   const activePrompt = nearestHarthmereJobsBoardPhysicalPrompt(playerPosition);
   const [openBoardId, setOpenBoardId] = React.useState<string | undefined>();
@@ -160,7 +159,11 @@ export function HarthmereWantedBoardWorldInteraction({
         nearbyBoardId: openBoardId,
         interactionTargetId: openBoardId,
         playerPosition: playerPosition
-          ? { x: playerPosition.x, y: playerPosition.y ?? 0, z: playerPosition.z }
+          ? {
+              x: playerPosition.x,
+              y: playerPosition.y ?? 0,
+              z: playerPosition.z,
+            }
           : undefined,
       };
     }, [openBoardId, playerPosition]);
@@ -177,4 +180,3 @@ export function HarthmereWantedBoardWorldInteraction({
     </>
   );
 }
-

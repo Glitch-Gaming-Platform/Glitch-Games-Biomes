@@ -194,6 +194,7 @@ describe("Harthmere live entity render motion bridge current", () => {
     assert.equal(health.maxHp, 600);
     assert.equal(health.isAlive, true);
     assert.equal(health.isAttackable, true);
+    assert.deepEqual(health.position, { x: 332, y: 53, z: -390 });
     assert.ok(health.showUntilMs > 1_700_000_000_100);
   });
 

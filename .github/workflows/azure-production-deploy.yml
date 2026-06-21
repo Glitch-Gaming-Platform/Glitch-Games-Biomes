@@ -64,16 +64,17 @@ jobs:
         run: npm install -g @bazel/bazelisk
 
       - name: Restore production asset cache
-        uses: actions/cache@v5
+        id: production-asset-cache
+        uses: actions/cache/restore@v5
         with:
           path: |
             public/buckets
             snapshot_backup.json
           key: ${{ runner.os }}-production-data-snapshot-${{ hashFiles('scripts/b/data_snapshot.py') }}
-          save-always: true
 
       - name: Restore production compiler cache
-        uses: actions/cache@v5
+        id: production-compiler-cache
+        uses: actions/cache/restore@v5
         with:
           path: |
             .next/cache
@@ -81,7 +82,6 @@ jobs:
           key: ${{ runner.os }}-production-compiler-${{ hashFiles('yarn.lock', 'next.config.js', 'server.webpack.config.cjs', 'tsconfig.next.json', 'tsconfig.server.json') }}
           restore-keys: |
             ${{ runner.os }}-production-compiler-
-          save-always: true
 
       - name: Restore Docker layer cache
         id: docker-buildx-cache
@@ -148,6 +148,48 @@ jobs:
           else
             echo "cache_present=false" >> "$GITHUB_OUTPUT"
           fi
+
+      - name: Check refreshed production asset cache
+        id: refreshed-production-asset-cache
+        if: always()
+        run: |
+          set -euo pipefail
+          if [ -d public/buckets ] || [ -f snapshot_backup.json ]; then
+            echo "cache_present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "cache_present=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Save production asset cache
+        if: always() && steps.refreshed-production-asset-cache.outputs.cache_present == 'true' && steps.production-asset-cache.outputs.cache-hit != 'true'
+        continue-on-error: true
+        uses: actions/cache/save@v5
+        with:
+          path: |
+            public/buckets
+            snapshot_backup.json
+          key: ${{ runner.os }}-production-data-snapshot-${{ hashFiles('scripts/b/data_snapshot.py') }}
+
+      - name: Check refreshed production compiler cache
+        id: refreshed-production-compiler-cache
+        if: always()
+        run: |
+          set -euo pipefail
+          if [ -d .next/cache ] || [ -d node_modules/.cache/webpack ]; then
+            echo "cache_present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "cache_present=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Save production compiler cache
+        if: always() && steps.refreshed-production-compiler-cache.outputs.cache_present == 'true' && steps.production-compiler-cache.outputs.cache-hit != 'true'
+        continue-on-error: true
+        uses: actions/cache/save@v5
+        with:
+          path: |
+            .next/cache
+            node_modules/.cache/webpack
+          key: ${{ runner.os }}-production-compiler-${{ hashFiles('yarn.lock', 'next.config.js', 'server.webpack.config.cjs', 'tsconfig.next.json', 'tsconfig.server.json') }}
 
       - name: Save Docker layer cache
         if: always() && steps.promote-buildx-cache.outputs.cache_present == 'true' && steps.docker-buildx-cache.outputs.cache-hit != 'true'

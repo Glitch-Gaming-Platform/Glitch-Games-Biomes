@@ -5,6 +5,7 @@ import {
   HARTHMERE_BUSINESS_OUTPOSTS,
   harthmereBusinessOutpostJobsBoardPosition,
 } from "../../../../shared/harthmere/business_customer_simulator";
+import { HARTHMERE_LIVE_INVENTORY_SYNC_EVENT } from "../../challenges/harthmereEvents";
 import {
   HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID,
   HARTHMERE_JOBS_BOARD_STATE_UPDATED_EVENT,
@@ -360,6 +361,68 @@ describe("Harthmere universal jobs board live adapter", () => {
     assert.equal(events[0].detail.jobsBoardState.actorId, "player_a");
   });
 
+  it("emits live inventory sync when a jobs board mutation grants items or gold", async () => {
+    const globalAny = global as any;
+    const oldWindow = globalAny.window;
+    const oldCustomEvent = globalAny.CustomEvent;
+    const events: Array<{ type: string; detail: any }> = [];
+    globalAny.CustomEvent = class {
+      type: string;
+      detail: any;
+      constructor(type: string, init?: { detail?: any }) {
+        this.type = type;
+        this.detail = init?.detail;
+      }
+    };
+    globalAny.window = {
+      location: { search: "" },
+      dispatchEvent: (event: { type: string; detail: any }) => {
+        events.push(event);
+        return true;
+      },
+    };
+    const inventoryLootState = {
+      actor: {
+        gold: 76,
+        items: { sealed_package: 1 },
+        instanceIds: [],
+      },
+    };
+    const playerStatusState = { combat: { hp: 100, deathState: "alive" } };
+    const fetchImpl = (async () => ({
+      ok: true,
+      json: async () => ({
+        ok: true,
+        jobsBoardState: sampleSnapshot(),
+        inventoryLootState,
+        playerStatusState,
+        backendMutation: { warnings: [] },
+      }),
+    })) as any;
+
+    try {
+      await submitHarthmereJobsBoardMutation(
+        "accept_job",
+        { jobId: "delivery_job_1" },
+        { fetchImpl, requestId: "inventory_sync_request" }
+      );
+    } finally {
+      globalAny.window = oldWindow;
+      globalAny.CustomEvent = oldCustomEvent;
+    }
+
+    const syncEvent = events.find(
+      (event) => event.type === HARTHMERE_LIVE_INVENTORY_SYNC_EVENT
+    );
+    assert.ok(syncEvent);
+    assert.deepEqual(syncEvent.detail.inventoryLootState, inventoryLootState);
+    assert.deepEqual(syncEvent.detail.playerStatusState, playerStatusState);
+    assert.deepEqual(
+      syncEvent.detail.body.inventoryLootState,
+      inventoryLootState
+    );
+  });
+
   it("throws when backend abuse or validation protections reject the mutation", async () => {
     const fetchImpl = (async () => ({
       ok: true,
@@ -440,7 +503,11 @@ describe("Harthmere universal jobs board live adapter", () => {
     const outpost = HARTHMERE_BUSINESS_OUTPOSTS[0];
     const boardId = `${outpost.outpostId}_jobs_board`;
     const boardPosition = harthmereBusinessOutpostJobsBoardPosition(outpost);
-    assert.ok(HARTHMERE_JOBS_BOARD_PHYSICAL_BOARDS.some((board) => board.boardId === boardId));
+    assert.ok(
+      HARTHMERE_JOBS_BOARD_PHYSICAL_BOARDS.some(
+        (board) => board.boardId === boardId
+      )
+    );
     const prompt = nearestHarthmereJobsBoardPhysicalPrompt(boardPosition);
     assert.equal(prompt?.boardId, boardId);
     assert.equal(prompt?.displayName, `${outpost.displayName} Jobs Board`);

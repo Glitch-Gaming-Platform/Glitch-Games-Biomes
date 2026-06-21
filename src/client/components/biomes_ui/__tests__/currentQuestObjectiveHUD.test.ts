@@ -11,8 +11,7 @@ describe("CurrentQuestObjectiveHUD", () => {
       area: "West Muck Breach",
       status: "active",
       firstMarkerId: "helix_marker",
-      objective:
-        "Defeat the Muck-Scarred Helix at the West Muck Breach.",
+      objective: "Defeat the Muck-Scarred Helix at the West Muck Breach.",
     };
     const pinnedQuest: MapTrackableQuest = {
       questId: "road_ahead",
@@ -63,6 +62,39 @@ describe("CurrentQuestObjectiveHUD", () => {
         mainQuestSelection: selection,
       }),
       undefined
+    );
+  });
+
+  it("shows item-source guidance when the active pin is a jobs-board item source", () => {
+    const quest: MapTrackableQuest = {
+      questId: "jobs_board:repair_todo_1",
+      title: "Patch the Safe-Zone Fence",
+      area: "The Grove",
+      status: "active",
+      firstMarkerId: "jobs_board_item_source:repair_todo_1",
+      objective: "Repair the marked fence.",
+      itemSource: {
+        itemId: "softwood_log",
+        itemName: "Softwood Log",
+        sourceName: "Orchard Softwood Branches",
+        markerId: "harthmere_orchard_softwood",
+        hint: "Gather 2 Softwood Logs from fallen branches at the Orchard Softwood Branches.",
+        missingCount: 2,
+      },
+    };
+
+    assert.equal(
+      currentQuestObjectiveForHUDForTest({
+        quests: [quest],
+        activeMapPin: {
+          markerId: "jobs_board_item_source:repair_todo_1",
+          label: "Get Softwood Log",
+          kind: "objective",
+          worldPosition: [468, 53, -118],
+          setAtMs: 3000,
+        },
+      }),
+      "Gather 2 Softwood Logs from fallen branches at the Orchard Softwood Branches."
     );
   });
 });

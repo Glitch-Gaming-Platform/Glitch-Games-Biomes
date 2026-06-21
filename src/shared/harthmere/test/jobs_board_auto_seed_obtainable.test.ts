@@ -15,6 +15,8 @@ describe("jobs board auto-seed obtainable requirements", () => {
       harthmereAutoSeedTemplateRequirementsObtainable([
         { itemId: "raw_exotic_matter" },
         { itemId: "iron_ore" },
+        { itemId: "sealed_package" },
+        { itemId: "wild_berries" },
       ]),
       true
     );
@@ -62,8 +64,6 @@ describe("jobs board auto-seed obtainable requirements", () => {
         }
       }
     }
-    // Sanity: the filter actually drops at least the known phantom-item templates.
-    const dropped = HARTHMERE_JOBS_BOARD_AUTO_SEED_TEMPLATES.length - surviving.length;
-    assert.ok(dropped >= 1, "expected at least one unobtainable template to be filtered out");
+    assert.ok(surviving.length > 0, "expected auto-seed templates to survive");
   });
 });

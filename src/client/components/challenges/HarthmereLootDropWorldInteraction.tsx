@@ -1,7 +1,12 @@
 import * as React from "react";
 import { useClientContext } from "@/client/components/contexts/ClientContextReactContext";
 import { defaultHarthmereLiveFetch } from "@/client/components/harthmere_live_fetch";
-import { harthmereJobsBoardPlayerPosition } from "@/client/components/harthmere_jobs_board/HarthmereJobsBoardWorldInteraction";
+import { harthmereJobsBoardPlayerPosition } from "@/client/components/harthmere_jobs_board/harthmereJobsBoardPosition";
+import {
+  HARTHMERE_BUSINESS_INVENTORY_LOOT_UPDATED_EVENT,
+  HARTHMERE_INVENTORY_EVENT,
+  HARTHMERE_LIVE_INVENTORY_SYNC_EVENT,
+} from "@/client/components/challenges/harthmereEvents";
 import type { HarthmereInventoryLootDrop } from "@/shared/harthmere/mmo_inventory_loot_authority";
 
 export const HARTHMERE_LOOT_DROP_WORLD_INTERACTION_VERSION =
@@ -10,9 +15,6 @@ export const HARTHMERE_LOOT_DROP_WORLD_INTERACTION_VERSION =
 const HARTHMERE_LOOT_DROP_PROMPT_RADIUS = 7.5;
 const HARTHMERE_LOOT_DROP_REFRESH_MS = 10_000;
 const HARTHMERE_LOOT_FEEDBACK_VISIBLE_MS = 4500;
-const HARTHMERE_BUSINESS_INVENTORY_LOOT_UPDATED_EVENT =
-  "biomes:harthmere-business-inventory-loot-updated";
-
 type HarthmereLootPoint = { x: number; y?: number; z: number };
 
 function eventStartedInEditable(event: Event): boolean {
@@ -162,10 +164,7 @@ export function HarthmereLootDropWorldInteraction({
   const { reactResources } = useClientContext();
   const localPlayer = reactResources.use("/scene/local_player") as unknown;
   const camera = reactResources.use("/scene/camera") as unknown;
-  const playerPosition = harthmereJobsBoardPlayerPosition(
-    localPlayer,
-    camera
-  );
+  const playerPosition = harthmereJobsBoardPlayerPosition(localPlayer, camera);
   const [drops, setDrops] = React.useState<HarthmereInventoryLootDrop[]>([]);
   const [feedback, setFeedback] = React.useState<
     { message: string; ok: boolean } | undefined
@@ -211,7 +210,7 @@ export function HarthmereLootDropWorldInteraction({
       }
       void refresh();
     };
-    window.addEventListener("biomes:harthmere-inventory-changed", eventRefresh);
+    window.addEventListener(HARTHMERE_INVENTORY_EVENT, eventRefresh);
     window.addEventListener("biomes:harthmere-combat-changed", eventRefresh);
     window.addEventListener(
       "biomes:harthmere-multiplayer-combat-changed",
@@ -227,10 +226,7 @@ export function HarthmereLootDropWorldInteraction({
       if (refreshTimer !== undefined) {
         window.clearTimeout(refreshTimer);
       }
-      window.removeEventListener(
-        "biomes:harthmere-inventory-changed",
-        eventRefresh
-      );
+      window.removeEventListener(HARTHMERE_INVENTORY_EVENT, eventRefresh);
       window.removeEventListener(
         "biomes:harthmere-combat-changed",
         eventRefresh
@@ -273,11 +269,16 @@ export function HarthmereLootDropWorldInteraction({
     if (!activeDrop || claimingDropId) return;
     setClaimingDropId(activeDrop.dropId);
     try {
-      await claimLootDrop(activeDrop);
+      const body = await claimLootDrop(activeDrop);
       showFeedback(`Salvaged ${lootDropLabel(activeDrop)}.`, true);
       await refreshDrops();
       if (typeof window !== "undefined") {
-        window.dispatchEvent(new Event("biomes:harthmere-inventory-changed"));
+        window.dispatchEvent(new Event(HARTHMERE_INVENTORY_EVENT));
+        window.dispatchEvent(
+          new CustomEvent(HARTHMERE_LIVE_INVENTORY_SYNC_EVENT, {
+            detail: { body },
+          })
+        );
       }
     } catch (error) {
       showFeedback(

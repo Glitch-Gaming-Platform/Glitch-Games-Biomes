@@ -416,9 +416,7 @@ export interface HarthmereJobsBoardMutationContext {
   allowNpcJobPosting?: boolean;
   canManageGuildJobs?: (guildId: string) => boolean;
   canManageTownJobs?: (townId: string) => boolean;
-  canManageBusinessJobs?: (
-    business: HarthmereEconomyBusinessRecord
-  ) => boolean;
+  canManageBusinessJobs?: (business: HarthmereEconomyBusinessRecord) => boolean;
 }
 
 export interface HarthmereJobsBoardMutationResult {
@@ -684,9 +682,7 @@ function pushAudit(
     actorId: request.actorId,
     ...entry,
   });
-  result.next.audit = result.next.audit.slice(
-    -HARTHMERE_JOBS_BOARD_MAX_LOGS
-  );
+  result.next.audit = result.next.audit.slice(-HARTHMERE_JOBS_BOARD_MAX_LOGS);
 }
 
 function issuerKey(kind: HarthmereJobsBoardIssuerKind, id: string) {
@@ -847,8 +843,7 @@ function normalizeRewardItems(
       typeof reward.itemId === "string"
         ? reward.itemId.trim().slice(0, 80)
         : "";
-    if (!itemId || !isKnownHarthmereJobsBoardExecutableItemId(itemId))
-      continue;
+    if (!itemId || !isKnownHarthmereJobsBoardExecutableItemId(itemId)) continue;
     const count = positiveInt(reward.count, 1);
     if (count <= 0) continue;
     out[itemId] = (out[itemId] ?? 0) + count;
@@ -886,9 +881,7 @@ function applyBusinessTemplateDefaults(
   request: HarthmereJobsBoardMutationRequest,
   issuerBusinessType: HarthmereEconomyBusinessTypeId | undefined
 ) {
-  const template = harthmereJobsBoardBusinessTemplateById(
-    request.templateId
-  );
+  const template = harthmereJobsBoardBusinessTemplateById(request.templateId);
   if (!request.templateId) return undefined;
   if (!template) {
     reject(result, "jobs_board_rejected:unknown_business_job_template");
@@ -1076,10 +1069,7 @@ function openJobIdsForIssuer(
     .map((job) => job.jobId);
 }
 
-function activeJobIdsForActor(
-  state: HarthmereJobsBoardState,
-  actorId: string
-) {
+function activeJobIdsForActor(state: HarthmereJobsBoardState, actorId: string) {
   return Object.values(state.postings)
     .filter(
       (job) => job.acceptedByActorId === actorId && job.status === "active"
@@ -1148,10 +1138,7 @@ function createJobPosting(
   if (!requirements.length)
     return reject(result, "jobs_board_rejected:requirements_required");
   for (const req of requirements) {
-    if (
-      req.itemId &&
-      !isKnownHarthmereJobsBoardExecutableItemId(req.itemId)
-    ) {
+    if (req.itemId && !isKnownHarthmereJobsBoardExecutableItemId(req.itemId)) {
       return reject(
         result,
         `jobs_board_rejected:unknown_requirement_item:${req.itemId}`
@@ -1325,8 +1312,7 @@ function acceptJobPosting(
     abuseScore: 0,
   };
   if (
-    (cooldown.lastAcceptAtMs ?? 0) +
-      HARTHMERE_JOBS_BOARD_ACCEPT_COOLDOWN_MS >
+    (cooldown.lastAcceptAtMs ?? 0) + HARTHMERE_JOBS_BOARD_ACCEPT_COOLDOWN_MS >
     request.nowMs
   ) {
     cooldown.abuseScore += 1;
@@ -1364,6 +1350,22 @@ function acceptJobPosting(
     lastAcceptAtMs: request.nowMs,
   };
   createTodoForJob(result, request, job);
+  const deliveryPlan = harthmereDeliveryPlan(job);
+  if (
+    deliveryPlan?.grantOnAccept &&
+    deliveryPlan.parcelItemId &&
+    deliveryPlan.parcelCount > 0
+  ) {
+    recordItemDelta(
+      result.itemDeltas,
+      deliveryPlan.parcelItemId,
+      deliveryPlan.parcelCount
+    );
+    job.logs.push(
+      `delivery_parcel_granted:${deliveryPlan.parcelItemId}:${deliveryPlan.parcelCount}:${request.nowMs}`
+    );
+    result.touched.add("jobs_board_delivery_parcel");
+  }
   pushAudit(result, request, {
     id: request.requestId,
     kind: "job_accepted",
@@ -1467,10 +1469,7 @@ function completeJobQuest(
       );
     }
   }
-  if (
-    job.kind === "escort" &&
-    job.escortCompanion?.status !== "arrived"
-  ) {
+  if (job.kind === "escort" && job.escortCompanion?.status !== "arrived") {
     return reject(result, "jobs_board_rejected:escort_companion_not_arrived");
   }
   // HARTHMERE_REPAIR_TOOL_COMPLETION: any requirement that needs a tool
@@ -1853,22 +1852,17 @@ function expireJobs(
 // can assert on them and ops can tune them without changing the seeder body.
 export const HARTHMERE_JOBS_BOARD_AUTO_SEED_TARGET_OPEN = 8;
 export const HARTHMERE_JOBS_BOARD_AUTO_SEED_MAX_PER_TICK = 4;
-export const HARTHMERE_JOBS_BOARD_AUTO_SEED_DEADLINE_MS =
-  24 * 60 * 60 * 1000;
+export const HARTHMERE_JOBS_BOARD_AUTO_SEED_DEADLINE_MS = 24 * 60 * 60 * 1000;
 
 // HARTHMERE_JOB_ACCEPT_TIMER: a job's completion timer starts when it is
 // ACCEPTED (not when posted) — the player then has a few hours to a day to finish
 // it, which keeps people coming back daily. If the window lapses, the accepted
 // job is RELEASED back to "open" (claim lost, seeker slot freed, marker cleared);
 // the escrowed reward stays held for whoever completes it (no escrow movement).
-export const HARTHMERE_JOBS_BOARD_ACCEPT_WINDOW_MIN_MS =
-  4 * 60 * 60 * 1000;
-export const HARTHMERE_JOBS_BOARD_ACCEPT_WINDOW_MAX_MS =
-  24 * 60 * 60 * 1000;
-export const HARTHMERE_ESCORT_ACCEPT_WINDOW_MIN_MS =
-  2 * 60 * 60 * 1000;
-export const HARTHMERE_ESCORT_ACCEPT_WINDOW_MAX_MS =
-  5 * 60 * 60 * 1000;
+export const HARTHMERE_JOBS_BOARD_ACCEPT_WINDOW_MIN_MS = 4 * 60 * 60 * 1000;
+export const HARTHMERE_JOBS_BOARD_ACCEPT_WINDOW_MAX_MS = 24 * 60 * 60 * 1000;
+export const HARTHMERE_ESCORT_ACCEPT_WINDOW_MIN_MS = 2 * 60 * 60 * 1000;
+export const HARTHMERE_ESCORT_ACCEPT_WINDOW_MAX_MS = 5 * 60 * 60 * 1000;
 export const HARTHMERE_ESCORT_COMPANION_ENTITY_ID_BASE =
   8_810_000_000_030_000 as BiomesId;
 
@@ -1974,10 +1968,7 @@ function createEscortCompanionForAcceptedJob(
     y: anchor.y,
     z: anchor.z + 1.1,
   };
-  const entityId = harthmereEscortCompanionEntityId(
-    job.jobId,
-    request.actorId
-  );
+  const entityId = harthmereEscortCompanionEntityId(job.jobId, request.actorId);
   return {
     companionId: `escort_companion:${job.jobId}:${request.actorId}`,
     entityId,
@@ -2017,8 +2008,7 @@ export function formatHarthmereJobTimeRemaining(
   if (minutes > 0) return `${minutes}m left`;
   return "under 1m left";
 }
-export const HARTHMERE_JOBS_BOARD_AUTO_SEED_ISSUER_PREFIX =
-  "harthmere_auto_";
+export const HARTHMERE_JOBS_BOARD_AUTO_SEED_ISSUER_PREFIX = "harthmere_auto_";
 export const HARTHMERE_JOBS_BOARD_MONSTER_HUNT_REWARD_FLOOR = 1200;
 export const HARTHMERE_JOBS_BOARD_MONSTER_HUNT_REWARD_CEILING = 4500;
 export const HARTHMERE_EXOTIC_MATTER_MINING_TEMPLATE_ID_PREFIXES = [
@@ -2117,503 +2107,503 @@ function hasOpenExoticMatterMiningJob(
   );
 }
 
-export const HARTHMERE_JOBS_BOARD_AUTO_SEED_TEMPLATES: AutoSeedTemplate[] =
-  [
-    // Grove-scoped town/NPC/guild work — these reference Grove landmarks.
-    {
-      templateId: "town_gather_road_rations",
-      issuerKind: "town",
-      issuerId: "harthmere_grove",
-      kind: "gather",
-      title: "Stock the Road Rations Crate",
-      description:
-        "Grove travellers leave hungry. Gather 6 wild berries for the road rations crate at the fountain.",
-      requirements: [
-        {
-          itemId: "wild_berries",
-          count: 6,
-          mapMarkerId: "grove_garden_edge_berries",
-        },
-      ],
-      rewardGold: { min: 35, max: 75 },
-      requiresFieldWork: true,
-      mapMarkerId: "grove_garden_edge_berries",
-      boardScope: "grove",
-    },
-    {
-      templateId: "town_repair_fence",
-      issuerKind: "town",
-      issuerId: "harthmere_grove",
-      kind: "repair",
-      title: "Patch the Safe-Zone Fence",
-      description:
-        "The eastern fence post split again. Replace 3 softwood planks before the next muck flush — bring a repair tool.",
-      requirements: [
-        {
-          itemId: "softwood_log",
-          count: 3,
-          mapMarkerId: "grove_repair_fence",
-          // Needs a repair tool EQUIPPED to restore the fence blocks. Without one,
-          // the quest layer routes the player to acquire/equip a repair tool first.
-          requiredToolAction: "repair",
-        },
-      ],
-      rewardGold: { min: 60, max: 110 },
-      requiresFieldWork: true,
-      mapMarkerId: "grove_repair_fence",
-      boardScope: "grove",
-    },
-    {
-      templateId: "town_cleanup_muck_patch",
-      issuerKind: "town",
-      issuerId: "harthmere_grove",
-      kind: "cleanup",
-      title: "Clear the Muckwad Patch",
-      description:
-        "Five muckwad clumps near the road need clearing before they spread to the practice fields.",
-      requirements: [
-        { itemId: "muckwad", count: 5, mapMarkerId: "muckwad_patch" },
-      ],
-      rewardGold: { min: 90, max: 160 },
-      requiresFieldWork: true,
-      mapMarkerId: "muckwad_patch",
-      boardScope: "grove",
-    },
-    {
-      templateId: "npc_delivery_apples",
-      issuerKind: "npc",
-      issuerId: "old_coop",
-      kind: "delivery",
-      title: "Run the Coop Apple Sack",
-      description:
-        "Old Coop wants an apple sack carried from the hen yard to the fountain bakery satchel.",
-      requirements: [
-        {
-          itemId: "apple_basket",
-          count: 1,
-          mapMarkerId: "grove_mail_bank_satchel",
-        },
-      ],
-      rewardGold: { min: 45, max: 90 },
-      requiresFieldWork: true,
-      mapMarkerId: "grove_mail_bank_satchel",
-      boardScope: "grove",
-    },
-    {
-      templateId: "business_craft_torch",
-      issuerKind: "business",
-      issuerId: "grove_kettle_inn",
-      kind: "craft",
-      title: "Craft Two Travel Torches",
-      description:
-        "The inn ran low on travel torches before dusk. Craft 2 and turn them in at the board.",
-      requirements: [{ itemId: "torch", count: 2 }],
-      rewardGold: { min: 70, max: 120 },
-      requiresFieldWork: false,
-      boardScope: "grove",
-    },
-    {
-      templateId: "guild_escort_road_post",
-      issuerKind: "guild",
-      issuerId: "grove_wayfinder_guild",
-      kind: "escort",
-      title: "Escort a Newcomer to the Road Post",
-      description:
-        "A new arrival needs a steady walk to the Old Grove Road Post. Stay close until they reach it.",
-      requirements: [
-        {
-          targetId: "old_grove_road_post",
-          targetName: "Old Grove Road Post",
-          mapMarkerId: "old_grove_road_post",
-        },
-      ],
-      rewardGold: { min: 50, max: 100 },
-      requiresFieldWork: true,
-      mapMarkerId: "old_grove_road_post",
-      boardScope: "grove",
-    },
-    // HARTHMERE_JOBS_BOARD_MONSTER_HUNT:
-    // Two high-reward party-required hunts. The Mucker variant is a tougher
-    // version of the Mucked Robot the player meets in the muck edges; the Hex
-    // variant is a corrupted boss that drops a sigil and an arcane shard. The
-    // Grove board carries the Mucker hunt (closer to the Grove muck edge); the
-    // Harthmere board carries the Hex wraith hunt (out in Mosslawn closer to
-    // Harthmere's far districts), and there is a third "any" boss for both.
-    {
-      templateId: "hunt_mucker_elite",
-      issuerKind: "town",
-      issuerId: "harthmere_grove",
-      kind: "hunt",
-      title: "Bounty: Elite Mucker at the Muck Edge",
-      description:
-        "An elite Mucker has dug in past the safe-zone boundary. Strong, slow, hits like a piledriver — bring a party. Reward only paid on confirmed kill.",
-      requirements: [
-        {
-          targetId: HARTHMERE_JOBS_BOARD_ELITE_MUCKER_BOUNTY_TARGET_ID,
-          targetName: "Elite Mucker",
-          mapMarkerId: HARTHMERE_JOBS_BOARD_ELITE_MUCKER_BOUNTY_MARKER_ID,
-        },
-      ],
-      rewardGold: {
-        min: HARTHMERE_JOBS_BOARD_MONSTER_HUNT_REWARD_FLOOR,
-        max: 2400,
+export const HARTHMERE_JOBS_BOARD_AUTO_SEED_TEMPLATES: AutoSeedTemplate[] = [
+  // Grove-scoped town/NPC/guild work — these reference Grove landmarks.
+  {
+    templateId: "town_gather_road_rations",
+    issuerKind: "town",
+    issuerId: "harthmere_grove",
+    kind: "gather",
+    title: "Stock the Road Rations Crate",
+    description:
+      "Grove travellers leave hungry. Gather 6 wild berries for the road rations crate at the fountain.",
+    requirements: [
+      {
+        itemId: "wild_berries",
+        count: 6,
+        mapMarkerId: "grove_garden_edge_berries",
       },
-      requiresFieldWork: true,
-      mapMarkerId: HARTHMERE_JOBS_BOARD_ELITE_MUCKER_BOUNTY_MARKER_ID,
-      targetId: HARTHMERE_JOBS_BOARD_ELITE_MUCKER_BOUNTY_TARGET_ID,
-      monsterId: "mucker",
-      monsterTier: "elite",
-      monsterPowerLevel: 18,
-      partyRecommended: true,
-      partyMinSize: 3,
-      lootHint: ["Muckheart", "Mucked Plate Fragment", "Elite Reward Chest"],
-      boardScope: "grove",
-    },
-    {
-      templateId: "hunt_hex_boss",
-      issuerKind: "guild",
-      issuerId: "harthmere_warden_guild",
-      kind: "hunt",
-      title: "Bounty: Hex Wraith Sighting in Mosslawn",
-      description:
-        "A Hex wraith has surfaced under the Mosslawn songline near Harthmere's borderlands. Heavily resists single attackers and drops a Hex Sigil. Take a party of four.",
-      requirements: [
-        {
-          targetId: HARTHMERE_JOBS_BOARD_HEX_WRAITH_BOUNTY_TARGET_ID,
-          targetName: "Hex Wraith",
-          mapMarkerId: HARTHMERE_JOBS_BOARD_HEX_WRAITH_BOUNTY_MARKER_ID,
-        },
-      ],
-      rewardGold: {
-        min: 2600,
-        max: HARTHMERE_JOBS_BOARD_MONSTER_HUNT_REWARD_CEILING,
+    ],
+    rewardGold: { min: 35, max: 75 },
+    requiresFieldWork: true,
+    mapMarkerId: "grove_garden_edge_berries",
+    boardScope: "grove",
+  },
+  {
+    templateId: "town_repair_fence",
+    issuerKind: "town",
+    issuerId: "harthmere_grove",
+    kind: "repair",
+    title: "Patch the Safe-Zone Fence",
+    description:
+      "The eastern fence post split again. Replace 3 softwood planks before the next muck flush — bring a repair tool.",
+    requirements: [
+      {
+        itemId: "softwood_log",
+        count: 3,
+        mapMarkerId: "grove_repair_fence",
+        // Needs a repair tool EQUIPPED to restore the fence blocks. Without one,
+        // the quest layer routes the player to acquire/equip a repair tool first.
+        requiredToolAction: "repair",
       },
-      requiresFieldWork: true,
-      mapMarkerId: HARTHMERE_JOBS_BOARD_HEX_WRAITH_BOUNTY_MARKER_ID,
-      targetId: HARTHMERE_JOBS_BOARD_HEX_WRAITH_BOUNTY_TARGET_ID,
-      monsterId: "hex",
-      monsterTier: "boss",
-      monsterPowerLevel: 24,
-      partyRecommended: true,
-      partyMinSize: 4,
-      lootHint: ["Hex Sigil", "Arcane Shard", "Boss Loot Cache"],
-      boardScope: "harthmere",
+    ],
+    rewardGold: { min: 60, max: 110 },
+    requiresFieldWork: true,
+    mapMarkerId: "grove_repair_fence",
+    boardScope: "grove",
+  },
+  {
+    templateId: "town_cleanup_muck_patch",
+    issuerKind: "town",
+    issuerId: "harthmere_grove",
+    kind: "cleanup",
+    title: "Clear the Muckwad Patch",
+    description:
+      "Five muckwad clumps near the road need clearing before they spread to the practice fields.",
+    requirements: [
+      {
+        serviceKind: "cleanup_muck",
+        serviceUnits: 5,
+        count: 5,
+        targetId: "muckwad_patch",
+        targetName: "Muckwad Patch",
+        mapMarkerId: "muckwad_patch",
+        requiredToolAction: "cleanup",
+      },
+    ],
+    rewardGold: { min: 90, max: 160 },
+    requiresFieldWork: true,
+    mapMarkerId: "muckwad_patch",
+    boardScope: "grove",
+  },
+  {
+    templateId: "npc_delivery_apples",
+    issuerKind: "npc",
+    issuerId: "old_coop",
+    kind: "delivery",
+    title: "Run the Coop Food Parcel",
+    description:
+      "Old Coop wants a sealed food parcel carried from the hen yard to the fountain bakery satchel. You start with the parcel when you accept.",
+    requirements: [
+      {
+        itemId: "sealed_package",
+        count: 1,
+        mapMarkerId: "grove_mail_bank_satchel",
+      },
+    ],
+    rewardGold: { min: 45, max: 90 },
+    requiresFieldWork: true,
+    mapMarkerId: "grove_mail_bank_satchel",
+    boardScope: "grove",
+  },
+  {
+    templateId: "business_craft_torch",
+    issuerKind: "npc",
+    issuerId: "grove_kettle_inn",
+    kind: "craft",
+    title: "Plane Bench Planks for the Inn",
+    description:
+      "The inn needs sturdy bench planks before dusk. Craft or buy 3 wood planks and turn them in at the board.",
+    requirements: [{ itemId: "wood_plank", count: 3 }],
+    rewardGold: { min: 70, max: 120 },
+    requiresFieldWork: false,
+    boardScope: "grove",
+  },
+  {
+    templateId: "guild_escort_road_post",
+    issuerKind: "guild",
+    issuerId: "grove_wayfinder_guild",
+    kind: "escort",
+    title: "Escort a Newcomer to the Road Post",
+    description:
+      "A new arrival needs a steady walk to the Old Grove Road Post. Stay close until they reach it.",
+    requirements: [
+      {
+        targetId: "old_grove_road_post",
+        targetName: "Old Grove Road Post",
+        mapMarkerId: "old_grove_road_post",
+      },
+    ],
+    rewardGold: { min: 50, max: 100 },
+    requiresFieldWork: true,
+    mapMarkerId: "old_grove_road_post",
+    boardScope: "grove",
+  },
+  // HARTHMERE_JOBS_BOARD_MONSTER_HUNT:
+  // Two high-reward party-required hunts. The Mucker variant is a tougher
+  // version of the Mucked Robot the player meets in the muck edges; the Hex
+  // variant is a corrupted boss that drops a sigil and an arcane shard. The
+  // Grove board carries the Mucker hunt (closer to the Grove muck edge); the
+  // Harthmere board carries the Hex wraith hunt (out in Mosslawn closer to
+  // Harthmere's far districts), and there is a third "any" boss for both.
+  {
+    templateId: "hunt_mucker_elite",
+    issuerKind: "town",
+    issuerId: "harthmere_grove",
+    kind: "hunt",
+    title: "Bounty: Elite Mucker at the Muck Edge",
+    description:
+      "An elite Mucker has dug in past the safe-zone boundary. Strong, slow, hits like a piledriver — bring a party. Reward only paid on confirmed kill.",
+    requirements: [
+      {
+        targetId: HARTHMERE_JOBS_BOARD_ELITE_MUCKER_BOUNTY_TARGET_ID,
+        targetName: "Elite Mucker",
+        mapMarkerId: HARTHMERE_JOBS_BOARD_ELITE_MUCKER_BOUNTY_MARKER_ID,
+      },
+    ],
+    rewardGold: {
+      min: HARTHMERE_JOBS_BOARD_MONSTER_HUNT_REWARD_FLOOR,
+      max: 2400,
     },
-    // HARTHMERE_EXOTIC_MATTER_CAVE_JOBS:
-    // High-value Harthmere board contracts that send miners into confirmed
-    // underground cave rooms for the three antimatter blocks needed to craft Raw
-    // Exotic Matter. These use shared cave deposit markers so the board, map,
-    // renderer, and live backend agree on exact [x, y, z] targets.
-    {
-      templateId: "exotic_matter_mine_antihydrogen",
-      issuerKind: "guild",
-      issuerId: "harthmere_exotic_refiners_guild",
-      kind: "gather",
-      title: "Mine Antihydrogen for Exotic Matter",
-      description:
-        "The refiners need sealed Antihydrogen from the Mossglass survey cave before the next Biome stabilizer run. Mine the marked seam and bring the blocks back intact.",
-      requirements: [
-        {
-          itemId: HARTHMERE_EXOTIC_MATTER_COMPONENTS.antihydrogen.itemId,
-          count: 3,
-          targetId: "harthmere_antihydrogen_deposit",
-          targetName:
-            HARTHMERE_EXOTIC_MATTER_COMPONENTS.antihydrogen.jobTargetName,
-          mapMarkerId: "exotic_antihydrogen_mossglass_survey_02",
-        },
-      ],
-      rewardGold: { min: 3200, max: HARTHMERE_JOBS_BOARD_MAX_REWARD_GOLD },
-      requiresFieldWork: true,
-      mapMarkerId: "exotic_antihydrogen_mossglass_survey_02",
-      targetId: "harthmere_antihydrogen_deposit",
-      lootHint: [
-        "Refinery priority pay",
-        "Biome stabilizer supply",
-        "Rare mining bonus",
-      ],
-      boardScope: "harthmere",
+    requiresFieldWork: true,
+    mapMarkerId: HARTHMERE_JOBS_BOARD_ELITE_MUCKER_BOUNTY_MARKER_ID,
+    targetId: HARTHMERE_JOBS_BOARD_ELITE_MUCKER_BOUNTY_TARGET_ID,
+    monsterId: "mucker",
+    monsterTier: "elite",
+    monsterPowerLevel: 18,
+    partyRecommended: true,
+    partyMinSize: 3,
+    lootHint: ["Muckheart", "Mucked Plate Fragment", "Elite Reward Chest"],
+    boardScope: "grove",
+  },
+  {
+    templateId: "hunt_hex_boss",
+    issuerKind: "guild",
+    issuerId: "harthmere_warden_guild",
+    kind: "hunt",
+    title: "Bounty: Hex Wraith Sighting in Mosslawn",
+    description:
+      "A Hex wraith has surfaced under the Mosslawn songline near Harthmere's borderlands. Heavily resists single attackers and drops a Hex Sigil. Take a party of four.",
+    requirements: [
+      {
+        targetId: HARTHMERE_JOBS_BOARD_HEX_WRAITH_BOUNTY_TARGET_ID,
+        targetName: "Hex Wraith",
+        mapMarkerId: HARTHMERE_JOBS_BOARD_HEX_WRAITH_BOUNTY_MARKER_ID,
+      },
+    ],
+    rewardGold: {
+      min: 2600,
+      max: HARTHMERE_JOBS_BOARD_MONSTER_HUNT_REWARD_CEILING,
     },
-    {
-      templateId: "exotic_matter_mine_antihelium",
-      issuerKind: "guild",
-      issuerId: "harthmere_exotic_refiners_guild",
-      kind: "gather",
-      title: "Mine Antihelium for Exotic Matter",
-      description:
-        "A clean-power order is waiting on Antihelium. Follow the marked cave pocket, mine the contained blocks, and keep the shipment sealed.",
-      requirements: [
-        {
-          itemId: HARTHMERE_EXOTIC_MATTER_COMPONENTS.antihelium.itemId,
-          count: 2,
-          targetId: "harthmere_antihelium_deposit",
-          targetName:
-            HARTHMERE_EXOTIC_MATTER_COMPONENTS.antihelium.jobTargetName,
-          mapMarkerId: "exotic_antihelium_mossglass_survey_05",
-        },
-      ],
-      rewardGold: { min: 3400, max: HARTHMERE_JOBS_BOARD_MAX_REWARD_GOLD },
-      requiresFieldWork: true,
-      mapMarkerId: "exotic_antihelium_mossglass_survey_05",
-      targetId: "harthmere_antihelium_deposit",
-      lootHint: [
-        "Refinery priority pay",
-        "Teleport fuel supply",
-        "Rare mining bonus",
-      ],
-      boardScope: "harthmere",
-    },
-    {
-      templateId: "exotic_matter_mine_antiboron",
-      issuerKind: "guild",
-      issuerId: "harthmere_exotic_refiners_guild",
-      kind: "gather",
-      title: "Mine Antiboron for Exotic Matter",
-      description:
-        "Antiboron is scarce and the refinery is paying accordingly. Mine the marked blackglass vein in the Mossglass survey cave and return with sealed blocks.",
-      requirements: [
-        {
-          itemId: HARTHMERE_EXOTIC_MATTER_COMPONENTS.antiboron.itemId,
-          count: 1,
-          targetId: "harthmere_antiboron_deposit",
-          targetName:
-            HARTHMERE_EXOTIC_MATTER_COMPONENTS.antiboron.jobTargetName,
-          mapMarkerId: "exotic_antiboron_mossglass_survey_03",
-        },
-      ],
-      rewardGold: { min: 3800, max: HARTHMERE_JOBS_BOARD_MAX_REWARD_GOLD },
-      requiresFieldWork: true,
-      mapMarkerId: "exotic_antiboron_mossglass_survey_03",
-      targetId: "harthmere_antiboron_deposit",
-      lootHint: [
-        "Refinery priority pay",
-        "Alcubierre supply chain",
-        "Rare mining bonus",
-      ],
-      boardScope: "harthmere",
-    },
-    {
-      templateId: "deep_exotic_matter_mine_antihydrogen",
-      issuerKind: "guild",
-      issuerId: "harthmere_exotic_refiners_guild",
-      kind: "gather",
-      title: "Deep Mine Antihydrogen for Exotic Matter",
-      description:
-        "A major refinery order needs Antihydrogen from the Deep Spindle massive cave. Mine the marked blue seam and return with sealed blocks.",
-      requirements: [
-        {
-          itemId: HARTHMERE_EXOTIC_MATTER_COMPONENTS.antihydrogen.itemId,
-          count: 5,
-          targetId: "harthmere_deep_antihydrogen_deposit",
-          targetName:
-            HARTHMERE_EXOTIC_MATTER_COMPONENTS.antihydrogen.jobTargetName,
-          mapMarkerId: "exotic_antihydrogen_deep_spindle_14",
-        },
-      ],
-      rewardGold: { min: 4600, max: HARTHMERE_JOBS_BOARD_MAX_REWARD_GOLD },
-      requiresFieldWork: true,
-      mapMarkerId: "exotic_antihydrogen_deep_spindle_14",
-      targetId: "harthmere_deep_antihydrogen_deposit",
-      lootHint: [
-        "Deep-cave hazard pay",
-        "Biome stabilizer supply",
-        "Rare mining bonus",
-      ],
-      boardScope: "harthmere",
-    },
-    {
-      templateId: "deep_exotic_matter_mine_antihelium",
-      issuerKind: "guild",
-      issuerId: "harthmere_exotic_refiners_guild",
-      kind: "gather",
-      title: "Deep Mine Antihelium for Exotic Matter",
-      description:
-        "The clean-power line is short on Antihelium. Push into the Deep Spindle massive cave and mine the marked pocket.",
-      requirements: [
-        {
-          itemId: HARTHMERE_EXOTIC_MATTER_COMPONENTS.antihelium.itemId,
-          count: 4,
-          targetId: "harthmere_deep_antihelium_deposit",
-          targetName:
-            HARTHMERE_EXOTIC_MATTER_COMPONENTS.antihelium.jobTargetName,
-          mapMarkerId: "exotic_antihelium_deep_spindle_15",
-        },
-      ],
-      rewardGold: { min: 4700, max: HARTHMERE_JOBS_BOARD_MAX_REWARD_GOLD },
-      requiresFieldWork: true,
-      mapMarkerId: "exotic_antihelium_deep_spindle_15",
-      targetId: "harthmere_deep_antihelium_deposit",
-      lootHint: [
-        "Deep-cave hazard pay",
-        "Teleport fuel supply",
-        "Rare mining bonus",
-      ],
-      boardScope: "harthmere",
-    },
-    {
-      templateId: "deep_exotic_matter_mine_antiboron",
-      issuerKind: "guild",
-      issuerId: "harthmere_exotic_refiners_guild",
-      kind: "gather",
-      title: "Deep Mine Antiboron for Exotic Matter",
-      description:
-        "Antiboron from the Deep Spindle massive cave is scarce and dangerous to extract. Mine the marked blackglass vein for premium pay.",
-      requirements: [
-        {
-          itemId: HARTHMERE_EXOTIC_MATTER_COMPONENTS.antiboron.itemId,
-          count: 3,
-          targetId: "harthmere_deep_antiboron_deposit",
-          targetName:
-            HARTHMERE_EXOTIC_MATTER_COMPONENTS.antiboron.jobTargetName,
-          mapMarkerId: "exotic_antiboron_deep_spindle_16",
-        },
-      ],
-      rewardGold: { min: 4800, max: HARTHMERE_JOBS_BOARD_MAX_REWARD_GOLD },
-      requiresFieldWork: true,
-      mapMarkerId: "exotic_antiboron_deep_spindle_16",
-      targetId: "harthmere_deep_antiboron_deposit",
-      lootHint: [
-        "Deep-cave hazard pay",
-        "Alcubierre supply chain",
-        "Rare mining bonus",
-      ],
-      boardScope: "harthmere",
-    },
-    // HARTHMERE_JOBS_BOARD_HARTHMERE_TOWN:
-    // Harthmere-scoped town/NPC/business work tied to Harthmere landmarks
-    // (market office, chapel stone, bridge center, Mosslawn). These keep the
-    // Harthmere board populated with town-flavored jobs.
-    {
-      templateId: "harthmere_town_market_delivery",
-      issuerKind: "town",
-      issuerId: "harthmere_town",
-      kind: "delivery",
-      title: "Deliver Ledger Pouch to Trader Odette Bright",
-      description:
-        "Carry the sealed ledger pouch to Trader Odette Bright at the Brightcart Exchange. You start with the pouch — find her shop on the map and hand it to her.",
-      // Person recipient: the pouch is granted on accept (no pickup), and the
-      // marker leads the player to the owner to hand it off.
-      requirements: [
-        {
-          itemId: "harthmere_ledger_pouch",
-          count: 1,
-          mapMarkerId: "harthmere_owner:npc_outpost_brightcart_trader",
-          recipientNpcId: "npc_outpost_brightcart_trader",
-        },
-      ],
-      rewardGold: { min: 60, max: 120 },
-      requiresFieldWork: true,
-      mapMarkerId: "harthmere_owner:npc_outpost_brightcart_trader",
-      boardScope: "harthmere",
-    },
-    {
-      templateId: "harthmere_town_repair_chapel",
-      issuerKind: "town",
-      issuerId: "harthmere_town",
-      kind: "repair",
-      title: "Restore the Chapel Stone Engravings",
-      description:
-        "Wind and muck have dulled the chapel stone. Bring 4 chisel-grade stones and an etcher's mallet to repair the etchings.",
-      requirements: [
-        {
-          itemId: "rough_stone",
-          count: 4,
-          mapMarkerId: "harthmere_chapel_stone",
-        },
-      ],
-      rewardGold: { min: 80, max: 150 },
-      requiresFieldWork: true,
-      mapMarkerId: "harthmere_chapel_stone",
-      boardScope: "harthmere",
-    },
-    {
-      templateId: "harthmere_npc_courier_bridge",
-      issuerKind: "npc",
-      issuerId: "sergeant_bram_holt",
-      kind: "delivery",
-      title: "Bram's Bridge Courier Run",
-      description:
-        "Collect the courier pouch at the bridge center, then carry it to Dispatcher Nyle Stampspur at Stampspur Station before dusk.",
-      // Pickup variant: the pouch is NOT granted on accept — the player collects it
-      // at the bridge center first (pickupMarkerId), then delivers to the person.
-      requirements: [
-        {
-          itemId: "courier_pouch",
-          count: 1,
-          mapMarkerId: "harthmere_owner:npc_outpost_stampspur_dispatcher",
-          recipientNpcId: "npc_outpost_stampspur_dispatcher",
-          pickupMarkerId: "harthmere_bridge_center",
-        },
-      ],
-      rewardGold: { min: 70, max: 140 },
-      requiresFieldWork: true,
-      mapMarkerId: "harthmere_bridge_center",
-      boardScope: "harthmere",
-    },
-    {
-      templateId: "harthmere_business_craft_lantern",
-      issuerKind: "business",
-      issuerId: "harthmere_marketcraft_co",
-      kind: "craft",
-      title: "Forge Three Market Lanterns",
-      description:
-        "The market lamps need replacements. Craft 3 lanterns and turn them in at the Harthmere jobs board.",
-      requirements: [{ itemId: "iron_lantern", count: 3 }],
-      rewardGold: { min: 90, max: 180 },
-      requiresFieldWork: false,
-      boardScope: "harthmere",
-    },
-    {
-      templateId: "harthmere_guild_security_patrol",
-      issuerKind: "guild",
-      issuerId: "harthmere_warden_guild",
-      kind: "security",
-      title: "Night Patrol the Market District",
-      description:
-        "A night patrol pass between bridge and market office. Report anything that doesn't belong.",
-      requirements: [
-        {
-          targetId: "harthmere_market_office",
-          targetName: "Harthmere Market Office",
-          mapMarkerId: "harthmere_market_office",
-        },
-      ],
-      rewardGold: { min: 100, max: 200 },
-      requiresFieldWork: true,
-      mapMarkerId: "harthmere_market_office",
-      boardScope: "harthmere",
-    },
-    // HARTHMERE_JOBS_BOARD_MONSTER_HUNT (Harthmere-side):
-    // Tougher Mucker variant operating along the Harthmere borderlands. Same
-    // pattern as the Grove Elite Mucker but rewards scale higher because the
-    // monster is later-game power level and the travel distance is bigger.
-    {
-      templateId: "hunt_mucker_alpha",
-      issuerKind: "town",
-      issuerId: "harthmere_town",
-      kind: "hunt",
-      title: "Bounty: Alpha Mucker Past the Bridge",
-      description:
-        "An alpha Mucker is digging up the road past the bridge. Even a small party will struggle — bring four and stay clear of its slam radius.",
-      requirements: [
-        {
-          targetId: HARTHMERE_JOBS_BOARD_ALPHA_MUCKER_BOUNTY_TARGET_ID,
-          targetName: "Alpha Mucker",
-          mapMarkerId: HARTHMERE_JOBS_BOARD_ALPHA_MUCKER_BOUNTY_MARKER_ID,
-        },
-      ],
-      rewardGold: { min: 1800, max: 3600 },
-      requiresFieldWork: true,
-      mapMarkerId: HARTHMERE_JOBS_BOARD_ALPHA_MUCKER_BOUNTY_MARKER_ID,
-      targetId: HARTHMERE_JOBS_BOARD_ALPHA_MUCKER_BOUNTY_TARGET_ID,
-      monsterId: "mucker",
-      monsterTier: "boss",
-      monsterPowerLevel: 22,
-      partyRecommended: true,
-      partyMinSize: 4,
-      lootHint: ["Alpha Muckheart", "Slag Plate", "Boss Loot Cache"],
-      boardScope: "harthmere",
-    },
-  ];
+    requiresFieldWork: true,
+    mapMarkerId: HARTHMERE_JOBS_BOARD_HEX_WRAITH_BOUNTY_MARKER_ID,
+    targetId: HARTHMERE_JOBS_BOARD_HEX_WRAITH_BOUNTY_TARGET_ID,
+    monsterId: "hex",
+    monsterTier: "boss",
+    monsterPowerLevel: 24,
+    partyRecommended: true,
+    partyMinSize: 4,
+    lootHint: ["Hex Sigil", "Arcane Shard", "Boss Loot Cache"],
+    boardScope: "harthmere",
+  },
+  // HARTHMERE_EXOTIC_MATTER_CAVE_JOBS:
+  // High-value Harthmere board contracts that send miners into confirmed
+  // underground cave rooms for the three antimatter blocks needed to craft Raw
+  // Exotic Matter. These use shared cave deposit markers so the board, map,
+  // renderer, and live backend agree on exact [x, y, z] targets.
+  {
+    templateId: "exotic_matter_mine_antihydrogen",
+    issuerKind: "guild",
+    issuerId: "harthmere_exotic_refiners_guild",
+    kind: "gather",
+    title: "Mine Antihydrogen for Exotic Matter",
+    description:
+      "The refiners need sealed Antihydrogen from the Mossglass survey cave before the next Biome stabilizer run. Mine the marked seam and bring the blocks back intact.",
+    requirements: [
+      {
+        itemId: HARTHMERE_EXOTIC_MATTER_COMPONENTS.antihydrogen.itemId,
+        count: 3,
+        targetId: "harthmere_antihydrogen_deposit",
+        targetName:
+          HARTHMERE_EXOTIC_MATTER_COMPONENTS.antihydrogen.jobTargetName,
+        mapMarkerId: "exotic_antihydrogen_mossglass_survey_02",
+      },
+    ],
+    rewardGold: { min: 3200, max: HARTHMERE_JOBS_BOARD_MAX_REWARD_GOLD },
+    requiresFieldWork: true,
+    mapMarkerId: "exotic_antihydrogen_mossglass_survey_02",
+    targetId: "harthmere_antihydrogen_deposit",
+    lootHint: [
+      "Refinery priority pay",
+      "Biome stabilizer supply",
+      "Rare mining bonus",
+    ],
+    boardScope: "harthmere",
+  },
+  {
+    templateId: "exotic_matter_mine_antihelium",
+    issuerKind: "guild",
+    issuerId: "harthmere_exotic_refiners_guild",
+    kind: "gather",
+    title: "Mine Antihelium for Exotic Matter",
+    description:
+      "A clean-power order is waiting on Antihelium. Follow the marked cave pocket, mine the contained blocks, and keep the shipment sealed.",
+    requirements: [
+      {
+        itemId: HARTHMERE_EXOTIC_MATTER_COMPONENTS.antihelium.itemId,
+        count: 2,
+        targetId: "harthmere_antihelium_deposit",
+        targetName: HARTHMERE_EXOTIC_MATTER_COMPONENTS.antihelium.jobTargetName,
+        mapMarkerId: "exotic_antihelium_mossglass_survey_05",
+      },
+    ],
+    rewardGold: { min: 3400, max: HARTHMERE_JOBS_BOARD_MAX_REWARD_GOLD },
+    requiresFieldWork: true,
+    mapMarkerId: "exotic_antihelium_mossglass_survey_05",
+    targetId: "harthmere_antihelium_deposit",
+    lootHint: [
+      "Refinery priority pay",
+      "Teleport fuel supply",
+      "Rare mining bonus",
+    ],
+    boardScope: "harthmere",
+  },
+  {
+    templateId: "exotic_matter_mine_antiboron",
+    issuerKind: "guild",
+    issuerId: "harthmere_exotic_refiners_guild",
+    kind: "gather",
+    title: "Mine Antiboron for Exotic Matter",
+    description:
+      "Antiboron is scarce and the refinery is paying accordingly. Mine the marked blackglass vein in the Mossglass survey cave and return with sealed blocks.",
+    requirements: [
+      {
+        itemId: HARTHMERE_EXOTIC_MATTER_COMPONENTS.antiboron.itemId,
+        count: 1,
+        targetId: "harthmere_antiboron_deposit",
+        targetName: HARTHMERE_EXOTIC_MATTER_COMPONENTS.antiboron.jobTargetName,
+        mapMarkerId: "exotic_antiboron_mossglass_survey_03",
+      },
+    ],
+    rewardGold: { min: 3800, max: HARTHMERE_JOBS_BOARD_MAX_REWARD_GOLD },
+    requiresFieldWork: true,
+    mapMarkerId: "exotic_antiboron_mossglass_survey_03",
+    targetId: "harthmere_antiboron_deposit",
+    lootHint: [
+      "Refinery priority pay",
+      "Alcubierre supply chain",
+      "Rare mining bonus",
+    ],
+    boardScope: "harthmere",
+  },
+  {
+    templateId: "deep_exotic_matter_mine_antihydrogen",
+    issuerKind: "guild",
+    issuerId: "harthmere_exotic_refiners_guild",
+    kind: "gather",
+    title: "Deep Mine Antihydrogen for Exotic Matter",
+    description:
+      "A major refinery order needs Antihydrogen from the Deep Spindle massive cave. Mine the marked blue seam and return with sealed blocks.",
+    requirements: [
+      {
+        itemId: HARTHMERE_EXOTIC_MATTER_COMPONENTS.antihydrogen.itemId,
+        count: 5,
+        targetId: "harthmere_deep_antihydrogen_deposit",
+        targetName:
+          HARTHMERE_EXOTIC_MATTER_COMPONENTS.antihydrogen.jobTargetName,
+        mapMarkerId: "exotic_antihydrogen_deep_spindle_14",
+      },
+    ],
+    rewardGold: { min: 4600, max: HARTHMERE_JOBS_BOARD_MAX_REWARD_GOLD },
+    requiresFieldWork: true,
+    mapMarkerId: "exotic_antihydrogen_deep_spindle_14",
+    targetId: "harthmere_deep_antihydrogen_deposit",
+    lootHint: [
+      "Deep-cave hazard pay",
+      "Biome stabilizer supply",
+      "Rare mining bonus",
+    ],
+    boardScope: "harthmere",
+  },
+  {
+    templateId: "deep_exotic_matter_mine_antihelium",
+    issuerKind: "guild",
+    issuerId: "harthmere_exotic_refiners_guild",
+    kind: "gather",
+    title: "Deep Mine Antihelium for Exotic Matter",
+    description:
+      "The clean-power line is short on Antihelium. Push into the Deep Spindle massive cave and mine the marked pocket.",
+    requirements: [
+      {
+        itemId: HARTHMERE_EXOTIC_MATTER_COMPONENTS.antihelium.itemId,
+        count: 4,
+        targetId: "harthmere_deep_antihelium_deposit",
+        targetName: HARTHMERE_EXOTIC_MATTER_COMPONENTS.antihelium.jobTargetName,
+        mapMarkerId: "exotic_antihelium_deep_spindle_15",
+      },
+    ],
+    rewardGold: { min: 4700, max: HARTHMERE_JOBS_BOARD_MAX_REWARD_GOLD },
+    requiresFieldWork: true,
+    mapMarkerId: "exotic_antihelium_deep_spindle_15",
+    targetId: "harthmere_deep_antihelium_deposit",
+    lootHint: [
+      "Deep-cave hazard pay",
+      "Teleport fuel supply",
+      "Rare mining bonus",
+    ],
+    boardScope: "harthmere",
+  },
+  {
+    templateId: "deep_exotic_matter_mine_antiboron",
+    issuerKind: "guild",
+    issuerId: "harthmere_exotic_refiners_guild",
+    kind: "gather",
+    title: "Deep Mine Antiboron for Exotic Matter",
+    description:
+      "Antiboron from the Deep Spindle massive cave is scarce and dangerous to extract. Mine the marked blackglass vein for premium pay.",
+    requirements: [
+      {
+        itemId: HARTHMERE_EXOTIC_MATTER_COMPONENTS.antiboron.itemId,
+        count: 3,
+        targetId: "harthmere_deep_antiboron_deposit",
+        targetName: HARTHMERE_EXOTIC_MATTER_COMPONENTS.antiboron.jobTargetName,
+        mapMarkerId: "exotic_antiboron_deep_spindle_16",
+      },
+    ],
+    rewardGold: { min: 4800, max: HARTHMERE_JOBS_BOARD_MAX_REWARD_GOLD },
+    requiresFieldWork: true,
+    mapMarkerId: "exotic_antiboron_deep_spindle_16",
+    targetId: "harthmere_deep_antiboron_deposit",
+    lootHint: [
+      "Deep-cave hazard pay",
+      "Alcubierre supply chain",
+      "Rare mining bonus",
+    ],
+    boardScope: "harthmere",
+  },
+  // HARTHMERE_JOBS_BOARD_HARTHMERE_TOWN:
+  // Harthmere-scoped town/NPC/business work tied to Harthmere landmarks
+  // (market office, chapel stone, bridge center, Mosslawn). These keep the
+  // Harthmere board populated with town-flavored jobs.
+  {
+    templateId: "harthmere_town_market_delivery",
+    issuerKind: "town",
+    issuerId: "harthmere_town",
+    kind: "delivery",
+    title: "Deliver Sealed Package to Trader Odette Bright",
+    description:
+      "Carry the sealed market package to Trader Odette Bright at the Brightcart Exchange. You start with the package — find her shop on the map and hand it to her.",
+    // Person recipient: the pouch is granted on accept (no pickup), and the
+    // marker leads the player to the owner to hand it off.
+    requirements: [
+      {
+        itemId: "sealed_package",
+        count: 1,
+        mapMarkerId: "harthmere_owner:npc_outpost_brightcart_trader",
+        recipientNpcId: "npc_outpost_brightcart_trader",
+      },
+    ],
+    rewardGold: { min: 60, max: 120 },
+    requiresFieldWork: true,
+    mapMarkerId: "harthmere_owner:npc_outpost_brightcart_trader",
+    boardScope: "harthmere",
+  },
+  {
+    templateId: "harthmere_town_repair_chapel",
+    issuerKind: "town",
+    issuerId: "harthmere_town",
+    kind: "repair",
+    title: "Restore the Chapel Stone Engravings",
+    description:
+      "Wind and muck have dulled the chapel stone. Bring 4 chisel-grade stones and an etcher's mallet to repair the etchings.",
+    requirements: [
+      {
+        itemId: "rough_stone",
+        count: 4,
+        mapMarkerId: "harthmere_chapel_stone",
+      },
+    ],
+    rewardGold: { min: 80, max: 150 },
+    requiresFieldWork: true,
+    mapMarkerId: "harthmere_chapel_stone",
+    boardScope: "harthmere",
+  },
+  {
+    templateId: "harthmere_npc_courier_bridge",
+    issuerKind: "npc",
+    issuerId: "sergeant_bram_holt",
+    kind: "delivery",
+    title: "Bram's Bridge Report Delivery",
+    description:
+      "Carry Bram's sealed bridge report to Dispatcher Nyle Stampspur at Stampspur Station before dusk. The report is placed in your pack when you accept.",
+    requirements: [
+      {
+        itemId: "sealed_package",
+        count: 1,
+        mapMarkerId: "harthmere_owner:npc_outpost_stampspur_dispatcher",
+        recipientNpcId: "npc_outpost_stampspur_dispatcher",
+      },
+    ],
+    rewardGold: { min: 70, max: 140 },
+    requiresFieldWork: true,
+    mapMarkerId: "harthmere_owner:npc_outpost_stampspur_dispatcher",
+    boardScope: "harthmere",
+  },
+  {
+    templateId: "harthmere_business_craft_lantern",
+    issuerKind: "business",
+    issuerId: "harthmere_marketcraft_co",
+    kind: "craft",
+    title: "Forge Market Iron Fittings",
+    description:
+      "The market lamps need replacement brackets. Smelt or buy 3 iron ingots and turn them in at the Harthmere jobs board.",
+    requirements: [{ itemId: "iron_ingot", count: 3 }],
+    rewardGold: { min: 90, max: 180 },
+    requiresFieldWork: false,
+    boardScope: "harthmere",
+  },
+  {
+    templateId: "harthmere_guild_security_patrol",
+    issuerKind: "guild",
+    issuerId: "harthmere_warden_guild",
+    kind: "security",
+    title: "Night Patrol the Market District",
+    description:
+      "A night patrol pass between bridge and market office. Report anything that doesn't belong.",
+    requirements: [
+      {
+        targetId: "harthmere_market_office",
+        targetName: "Harthmere Market Office",
+        mapMarkerId: "harthmere_market_office",
+      },
+    ],
+    rewardGold: { min: 100, max: 200 },
+    requiresFieldWork: true,
+    mapMarkerId: "harthmere_market_office",
+    boardScope: "harthmere",
+  },
+  // HARTHMERE_JOBS_BOARD_MONSTER_HUNT (Harthmere-side):
+  // Tougher Mucker variant operating along the Harthmere borderlands. Same
+  // pattern as the Grove Elite Mucker but rewards scale higher because the
+  // monster is later-game power level and the travel distance is bigger.
+  {
+    templateId: "hunt_mucker_alpha",
+    issuerKind: "town",
+    issuerId: "harthmere_town",
+    kind: "hunt",
+    title: "Bounty: Alpha Mucker Past the Bridge",
+    description:
+      "An alpha Mucker is digging up the road past the bridge. Even a small party will struggle — bring four and stay clear of its slam radius.",
+    requirements: [
+      {
+        targetId: HARTHMERE_JOBS_BOARD_ALPHA_MUCKER_BOUNTY_TARGET_ID,
+        targetName: "Alpha Mucker",
+        mapMarkerId: HARTHMERE_JOBS_BOARD_ALPHA_MUCKER_BOUNTY_MARKER_ID,
+      },
+    ],
+    rewardGold: { min: 1800, max: 3600 },
+    requiresFieldWork: true,
+    mapMarkerId: HARTHMERE_JOBS_BOARD_ALPHA_MUCKER_BOUNTY_MARKER_ID,
+    targetId: HARTHMERE_JOBS_BOARD_ALPHA_MUCKER_BOUNTY_TARGET_ID,
+    monsterId: "mucker",
+    monsterTier: "boss",
+    monsterPowerLevel: 22,
+    partyRecommended: true,
+    partyMinSize: 4,
+    lootHint: ["Alpha Muckheart", "Slag Plate", "Boss Loot Cache"],
+    boardScope: "harthmere",
+  },
+];
 
 // Small deterministic PRNG used by the seeder so tests can run with a fixed
 // "now" timestamp and assert exact outputs. Mulberry32 is plenty for picking
@@ -2809,8 +2799,7 @@ function economyAutoSeedProductionBusinessJobs(
     .sort((a, b) => a.businessId.localeCompare(b.businessId));
 
   for (const business of businesses) {
-    if (produced >= HARTHMERE_JOBS_BOARD_BUSINESS_AUTO_SEED_MAX_PER_TICK)
-      break;
+    if (produced >= HARTHMERE_JOBS_BOARD_BUSINESS_AUTO_SEED_MAX_PER_TICK) break;
     if (
       hasOpenBusinessTemplateJob(
         result.next,
@@ -2831,15 +2820,12 @@ function economyAutoSeedProductionBusinessJobs(
       continue;
     const rewardGold = Math.max(
       HARTHMERE_JOBS_BOARD_MIN_REWARD_GOLD,
-      Math.min(
-        HARTHMERE_JOBS_BOARD_MAX_REWARD_GOLD,
-        template.defaultRewardGold
-      )
+      Math.min(HARTHMERE_JOBS_BOARD_MAX_REWARD_GOLD, template.defaultRewardGold)
     );
     if (business.balanceGold < rewardGold) continue;
     business.balanceGold -= rewardGold;
-    let jobId = `${HARTHMERE_JOBS_BOARD_AUTO_SEED_ISSUER_PREFIX}${result
-      .next.nextJobNumber++}`;
+    let jobId = `${HARTHMERE_JOBS_BOARD_AUTO_SEED_ISSUER_PREFIX}${result.next
+      .nextJobNumber++}`;
     while (result.next.postings[jobId]) {
       jobId = `${HARTHMERE_JOBS_BOARD_AUTO_SEED_ISSUER_PREFIX}${result.next
         .nextJobNumber++}`;
@@ -2959,6 +2945,18 @@ function economyAutoSeedJobs(
     result.touched.add("jobs_board_auto_seed_no_templates");
     return;
   }
+  const openAutoPostings = Object.values(result.next.postings).filter(
+    (job) =>
+      job.boardId === boardId &&
+      job.status === "open" &&
+      job.autoPosted === true
+  );
+  const openTemplateIds = new Set(
+    openAutoPostings
+      .map((job) => job.templateId)
+      .filter((templateId): templateId is string => Boolean(templateId))
+  );
+  const openKinds = new Set(openAutoPostings.map((job) => job.kind));
   const exoticMatterTemplates =
     boardId === HARTHMERE_JOBS_BOARD_HARTHMERE_BOARD_ID
       ? templates.filter((template) =>
@@ -2970,17 +2968,36 @@ function economyAutoSeedJobs(
     !hasOpenExoticMatterMiningJob(result.next, boardId);
 
   // Pick distinct template ids per tick when possible so the board feels
-  // varied. When the target slot count exceeds the template count, repeats
-  // are allowed (still bounded by per-issuer cap below).
+  // varied. Prefer kinds/templates missing from the board before repeating, so
+  // one narrow RNG streak cannot leave players seeing only repairs and hunts.
+  // When the target slot count exceeds the template count, repeats are allowed
+  // (still bounded by per-issuer cap below).
   const usedTemplateIds = new Set<string>();
+  const usedKinds = new Set<string>();
   let produced = 0;
   let attempts = 0;
   while (produced < slotsToFill && attempts < slotsToFill * 6) {
     attempts += 1;
-    const templatePool =
+    const baseTemplatePool =
       shouldPrimeExoticMatterMining && produced === 0
         ? exoticMatterTemplates
         : templates;
+    const distinctTemplatePool = baseTemplatePool.filter(
+      (template) =>
+        !usedTemplateIds.has(template.templateId) &&
+        (!openTemplateIds.has(template.templateId) ||
+          openTemplateIds.size >= templates.length)
+    );
+    const diverseKindPool = distinctTemplatePool.filter(
+      (template) =>
+        !openKinds.has(template.kind) && !usedKinds.has(template.kind)
+    );
+    const templatePool =
+      diverseKindPool.length > 0
+        ? diverseKindPool
+        : distinctTemplatePool.length > 0
+        ? distinctTemplatePool
+        : baseTemplatePool;
     const template = templatePool[Math.floor(rng() * templatePool.length)];
     if (!template) break;
     if (
@@ -3019,8 +3036,8 @@ function economyAutoSeedJobs(
       result.touched.add("economy_business_bank");
       result.shared.add(`harthmere:economy:business:${business.businessId}`);
     }
-    let jobId = `${HARTHMERE_JOBS_BOARD_AUTO_SEED_ISSUER_PREFIX}${result
-      .next.nextJobNumber++}`;
+    let jobId = `${HARTHMERE_JOBS_BOARD_AUTO_SEED_ISSUER_PREFIX}${result.next
+      .nextJobNumber++}`;
     while (result.next.postings[jobId]) {
       jobId = `${HARTHMERE_JOBS_BOARD_AUTO_SEED_ISSUER_PREFIX}${result.next
         .nextJobNumber++}`;
@@ -3046,8 +3063,7 @@ function economyAutoSeedJobs(
       townId: board.townId,
       regionId: board.regionId,
       createdAtMs: request.nowMs,
-      deadlineAtMs:
-        request.nowMs + HARTHMERE_JOBS_BOARD_AUTO_SEED_DEADLINE_MS,
+      deadlineAtMs: request.nowMs + HARTHMERE_JOBS_BOARD_AUTO_SEED_DEADLINE_MS,
       failurePenaltyGold: Math.round(rewardGold * 0.1),
       requiresFieldWork: template.requiresFieldWork,
       mapMarkerId: template.mapMarkerId,
@@ -3069,6 +3085,9 @@ function economyAutoSeedJobs(
       jobId,
     ];
     usedTemplateIds.add(template.templateId);
+    usedKinds.add(template.kind);
+    openTemplateIds.add(template.templateId);
+    openKinds.add(template.kind);
     produced += 1;
 
     // Audit and shared-state markers — same shape as player-posted jobs so

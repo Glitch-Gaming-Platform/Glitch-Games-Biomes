@@ -4,7 +4,7 @@ import { fetchHarthmereLiveWithTimeout } from "@/client/components/harthmere_liv
 import {
   harthmereJobsBoardCameraPosition,
   harthmereJobsBoardPlayerPosition,
-} from "@/client/components/harthmere_jobs_board/HarthmereJobsBoardWorldInteraction";
+} from "@/client/components/harthmere_jobs_board/harthmereJobsBoardPosition";
 import type { BuildingSystemInWorldMarker } from "@/shared/harthmere/building_system";
 import {
   HARTHMERE_BUSINESS_OUTPOSTS,
@@ -37,10 +37,9 @@ export interface HarthmereBusinessWorldBoard {
   radius: number;
 }
 
-const HARTHMERE_BUSINESS_WORLD_BOARDS: HarthmereBusinessWorldBoard[] = HARTHMERE_BUSINESS_OUTPOSTS.map(
-  (outpost) => {
-    const building =
-      createHarthmereBusinessOutpostProceduralBuilding(outpost);
+const HARTHMERE_BUSINESS_WORLD_BOARDS: HarthmereBusinessWorldBoard[] =
+  HARTHMERE_BUSINESS_OUTPOSTS.map((outpost) => {
+    const building = createHarthmereBusinessOutpostProceduralBuilding(outpost);
     return {
       businessId: harthmereBusinessOutpostBusinessId(outpost.outpostId),
       outpostId: outpost.outpostId,
@@ -49,8 +48,7 @@ const HARTHMERE_BUSINESS_WORLD_BOARDS: HarthmereBusinessWorldBoard[] = HARTHMERE
       markerId: building.dashboardAccessPoint.markerId,
       radius: BUSINESS_BOARD_RADIUS,
     };
-  }
-);
+  });
 
 function businessIdFromLiveMarkerId(markerId: string) {
   const match = markerId.match(/^(.+):(?:marker|owner-npc)$/);
@@ -141,10 +139,7 @@ export function HarthmereBusinessWorldInteraction({
   const [buildingMarkers, setBuildingMarkers] = React.useState<
     Record<string, BuildingSystemInWorldMarker>
   >({});
-  const playerPosition = harthmereJobsBoardPlayerPosition(
-    localPlayer,
-    camera
-  );
+  const playerPosition = harthmereJobsBoardPlayerPosition(localPlayer, camera);
   const cameraPosition = harthmereJobsBoardCameraPosition(camera);
   React.useEffect(() => {
     if (typeof window === "undefined") return;

@@ -63,9 +63,9 @@ import {
   maybeIdToNpcType,
   relevantBiscuitForEntityId,
 } from "@/shared/npc/bikkie";
+import { HARTHMERE_INVENTORY_EVENT } from "@/client/components/challenges/harthmereEvents";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-const HARTHMERE_INVENTORY_EVENT = "biomes:harthmere-inventory-changed";
 const HARTHMERE_COMBAT_EVENT = "biomes:harthmere-combat-changed";
 
 function textBlock(text: string) {
@@ -98,9 +98,8 @@ function hardBossDefeatCount() {
   );
   const combat = readHarthmereCombatState();
   const killCredit =
-    combat.killCredit[
-      String(HARTHMERE_LIVE_ENTITY_HELPER_MUCK_BOSS_OFFSET)
-    ] ?? 0;
+    combat.killCredit[String(HARTHMERE_LIVE_ENTITY_HELPER_MUCK_BOSS_OFFSET)] ??
+    0;
   return status.dead && killCredit > 0 ? 1 : 0;
 }
 
@@ -345,9 +344,7 @@ async function completeQuest(
           extraPayload: {
             bossDefeated: true,
             bossKillCredit: hardBossDefeatCount(),
-            bossEntityId: String(
-              HARTHMERE_LIVE_ENTITY_HELPER_MUCK_BOSS_OFFSET
-            ),
+            bossEntityId: String(HARTHMERE_LIVE_ENTITY_HELPER_MUCK_BOSS_OFFSET),
           },
         }
       );
@@ -583,10 +580,7 @@ export function useLiveEntityHelperQuestDialog(talkingToNPCId: BiomesId) {
     });
   }, [label?.text, position?.v, robotComponent]);
 
-  const state = useMemo(
-    () => readLiveEntityHelperQuestState(),
-    [refreshToken]
-  );
+  const state = useMemo(() => readLiveEntityHelperQuestState(), [refreshToken]);
   const robotEnergyDisplay = useMemo(
     () =>
       liveEntityRobotEnergyDisplayForEntity(
@@ -690,13 +684,8 @@ export function useLiveEntityHelperQuestDialog(talkingToNPCId: BiomesId) {
   if (
     robotEnergyDisplay?.needsRechargeText &&
     Math.max(
-      harthmereInventoryCountByItemId(
-        LIVE_ENTITY_ROBOT_RECHARGE_ITEM_ID
-      ),
-      liveInventoryCount(
-        liveQuestSnapshot,
-        LIVE_ENTITY_ROBOT_RECHARGE_ITEM_ID
-      )
+      harthmereInventoryCountByItemId(LIVE_ENTITY_ROBOT_RECHARGE_ITEM_ID),
+      liveInventoryCount(liveQuestSnapshot, LIVE_ENTITY_ROBOT_RECHARGE_ITEM_ID)
     ) >= LIVE_ENTITY_ROBOT_RECHARGE_ITEM_QUANTITY
   ) {
     actions.push({

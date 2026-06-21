@@ -662,9 +662,7 @@ describe("defaultHarthmereLiveModeBackendState", function () {
   it("seeds canonical outpost businesses without duplicating saved records", function () {
     const canonical =
       HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS.outpost_restaurant_redpot;
-    const businessId = harthmereBusinessOutpostBusinessId(
-      canonical.outpostId
-    );
+    const businessId = harthmereBusinessOutpostBusinessId(canonical.outpostId);
     const state = freshState();
     const business = state.economy.production.businesses[businessId];
     assert.ok(business);
@@ -1105,9 +1103,7 @@ describe("parseHarthmereLiveModeBackendState", function () {
       { subsystem: "quest" }
     ).state;
     const shared = parseHarthmereLiveModeSharedWorldState(
-      JSON.stringify(
-        createHarthmereLiveModeSharedWorldState(depleted, NOW_MS)
-      ),
+      JSON.stringify(createHarthmereLiveModeSharedWorldState(depleted, NOW_MS)),
       NOW_MS
     );
     const secondActor = defaultHarthmereLiveModeBackendState(
@@ -1155,7 +1151,10 @@ describe("state key helpers", function () {
 
   it("harthmereLiveModeSharedStateKey encodes kind and id", function () {
     const key = harthmereLiveModeSharedStateKey("vendor", "blacksmith_001");
-    assert.strictEqual(key, "harthmere:live_mode:current:vendor:blacksmith_001");
+    assert.strictEqual(
+      key,
+      "harthmere:live_mode:current:vendor:blacksmith_001"
+    );
   });
 });
 
@@ -1315,6 +1314,31 @@ describe("reduceHarthmereLiveModeBackendState — death lifecycle", function () 
     assert.strictEqual(
       createHarthmereLiveModePlayerStatusClientSnapshot(state).combat.hp,
       9
+    );
+  });
+
+  it("request_environment_damage records death when drowning damage is fatal", function () {
+    const s = freshState();
+    s.combat.hp = 5;
+    s.combat.maxHp = 100;
+
+    const { state } = applyOne(
+      s,
+      "request_environment_damage",
+      {
+        damageKind: "drowning",
+        damage: 5,
+      },
+      {
+        requestId: "fatal_drowning_damage",
+      }
+    );
+
+    assert.strictEqual(state.combat.hp, 0);
+    assert.strictEqual(state.combat.deathState, "dead");
+    assert.strictEqual(
+      state.combat.deathRecords.fatal_drowning_damage.cause,
+      "drowning"
     );
   });
 
@@ -1819,6 +1843,75 @@ describe("reduceHarthmereLiveModeBackendState — combat target authority", func
     }
   });
 
+  it("keeps an attacked hex chasing at long range until line of sight breaks", function () {
+    const npcId = "hexer-retaliation-long-chase";
+    const s = freshState();
+    s.combat.hp = 100;
+    s.combat.maxHp = 100;
+    s.combat.entitySnapshots[npcId] = {
+      hp: 120,
+      maxHp: 120,
+      position: { x: 0, y: 0, z: 0 },
+      homePosition: { x: 0, y: 0, z: 0 },
+      isHostile: true,
+      isAlive: true,
+      isAttackable: true,
+      entityKind: "hex",
+      level: 1,
+      lastAttackerId: ACTOR,
+      lastAttackedAtMs: NOW_MS,
+      lastDamageTaken: 8,
+      leashRange: 12,
+      resources: { mana: 50 },
+      maxResources: { mana: 50 },
+    };
+
+    const chasing = applyOne(
+      s,
+      "request_npc_ai_tick",
+      { npcId, npcAbilityId: "npc_hex_swipe_test", lineOfSight: true },
+      {
+        source: "server_scheduled_tick",
+        subsystem: "npc_ai",
+        targetId: npcId,
+        serverActorPosition: { x: 60, y: 0, z: 0 },
+        requestId: "npc_ai_retaliation_long_chase",
+        idempotencyKey: "npc_ai_retaliation_long_chase_key",
+      }
+    ).state;
+
+    assert.equal(
+      chasing.combat.npcAiTicks[npcId].decision,
+      "retaliate_to_recent_attacker"
+    );
+    assert.equal(chasing.combat.npcAiTicks[npcId].targetId, ACTOR);
+    assert.equal(chasing.combat.npcAiTicks[npcId].movementMode, "combat_chase");
+    assert.equal(
+      chasing.combat.npcAiTicks[npcId].attackBlockedReason,
+      "target_out_of_range"
+    );
+
+    const hidden = applyOne(
+      chasing,
+      "request_npc_ai_tick",
+      { npcId, npcAbilityId: "npc_hex_swipe_test", lineOfSight: false },
+      {
+        source: "server_scheduled_tick",
+        subsystem: "npc_ai",
+        targetId: npcId,
+        serverActorPosition: { x: 60, y: 0, z: 0 },
+        requestId: "npc_ai_retaliation_no_line_of_sight",
+        idempotencyKey: "npc_ai_retaliation_no_line_of_sight_key",
+      }
+    ).state;
+
+    assert.equal(
+      hidden.combat.npcAiTicks[npcId].attackBlockedReason,
+      "no_line_of_sight"
+    );
+    assert.notEqual(hidden.combat.npcAiTicks[npcId].targetId, ACTOR);
+  });
+
   it("marks the player dead when NPC AI damage is fatal and blocks repeat hits while dead", function () {
     const npcId = "hexer-ai-fatal-player";
     let s = freshState();
@@ -2008,7 +2101,7 @@ describe("reduceHarthmereLiveModeBackendState — combat target authority", func
         source: "server_scheduled_tick",
         subsystem: "npc_ai",
         targetId: outOfRangeNpcId,
-        serverActorPosition: { x: 30, y: 0, z: 0 },
+        serverActorPosition: { x: 90, y: 0, z: 0 },
       }
     ).state;
     assert.equal(outOfRangeResult.combat.hp, 100);
@@ -2832,7 +2925,7 @@ describe("reduceHarthmereLiveModeBackendState — combat target authority", func
       // falls outside the chase/leash range.
       const { finalThreat, id, samples } = driveChaseTicks({
         entityKind: entry.kind,
-        playerPosAt: () => ({ x: 60, z: 0 }),
+        playerPosAt: () => ({ x: 120, z: 0 }),
         snapshotOverrides,
         ticks: 1,
       });
@@ -3352,8 +3445,7 @@ describe("reduceHarthmereLiveModeBackendState — combat target authority", func
       "defeated body should be lifted above the terrain contact point"
     );
     assert.ok(
-      lootPosition.y >
-        s.combat.entitySnapshots[targetId].position.y,
+      lootPosition.y > s.combat.entitySnapshots[targetId].position.y,
       "loot should spawn visibly above the defeated body/ground"
     );
 
@@ -3402,15 +3494,26 @@ describe("reduceHarthmereLiveModeBackendState — combat target authority", func
     ));
     const dropId = s.combat.entitySnapshots[targetId].lootDropId!;
     assert.equal(s.combat.entitySnapshots[targetId].isAlive, false);
+    assert.ok(
+      s.combat.entitySnapshots[targetId].position.y >= 2,
+      "defeated entity should rest above the ground"
+    );
     assert.ok(dropId);
-    assert.equal(s.inventoryLoot.lootDrops[dropId].itemStacks.raw_meat, 2);
+    const drop = s.inventoryLoot.lootDrops[dropId];
+    assert.ok(drop);
+    assert.equal(drop.itemStacks.raw_meat, 2);
+    assert.ok(drop.position);
+    assert.ok(
+      drop.position.y >= 3,
+      "defeated entity loot should float above the corpse/ground"
+    );
 
     const claimed = applyOne(
       s,
       "request_loot_claim",
       {
         dropId,
-        pickupToken: s.inventoryLoot.lootDrops[dropId].pickupToken,
+        pickupToken: drop.pickupToken,
       },
       {
         requestId: "claim_live_animal_raw_meat",
@@ -4665,7 +4768,10 @@ describe("reduceHarthmereLiveModeBackendState — quest state", function () {
     assert.equal(questSnapshot.active[quest!.questId].stepId, marker!.id);
     assert.deepEqual(
       result.state.building.inWorldMarkers[marker!.id].position,
-      marker!.position
+      resolveHarthmereProductionMarkerPosition({
+        markerId: marker!.id,
+        fallback: marker!.position,
+      })
     );
 
     result = applyOne(
@@ -5447,8 +5553,7 @@ describe("reduceHarthmereLiveModeBackendState — law and reputation", function 
       notorietyFloor: 0,
     });
     assert.deepStrictEqual(
-      createHarthmereLiveModePlayerStatusClientSnapshot(reduced.state)
-        .standing,
+      createHarthmereLiveModePlayerStatusClientSnapshot(reduced.state).standing,
       {
         scopeId: "harthmere",
         likeability: -3,
@@ -5583,10 +5688,7 @@ describe("reduceHarthmereLiveModeBackendState — farming", function () {
       1
     );
     assert.equal(first.state.combat.lootClaims[claimKey], NOW_MS);
-    const shared = createHarthmereLiveModeSharedWorldState(
-      first.state,
-      NOW_MS
-    );
+    const shared = createHarthmereLiveModeSharedWorldState(first.state, NOW_MS);
     assert.equal(shared.exoticMatterDepositClaims[claimKey], NOW_MS);
 
     const otherMinerState = mergeHarthmereLiveModeSharedWorldStateIntoBackend(
@@ -6154,7 +6256,7 @@ describe("reduceHarthmereLiveModeBackendState — building mutation", function (
   it("claims a Grove plot as a visible muck deed without terraforming safe ground", function () {
     const s = freshState();
     s.inventory.gold = 1_000;
-    const plot = buildingSystemPlotById("grove_muckstead_cottage_lot");
+    const plot = buildingSystemPlotById("grove_crossroads_shop_lot");
     assert.ok(plot);
 
     const { state, summary } = applyOne(
@@ -6194,7 +6296,7 @@ describe("reduceHarthmereLiveModeBackendState — building mutation", function (
       "request_property_building_mutation",
       {
         buildingAction: "claim_plot",
-        plotId: "grove_muckstead_cottage_lot",
+        plotId: "grove_crossroads_shop_lot",
       },
       { subsystem: "building", zoneId: "the_grove" }
     ));
@@ -6204,8 +6306,8 @@ describe("reduceHarthmereLiveModeBackendState — building mutation", function (
       "request_property_building_mutation",
       {
         buildingAction: "terraform_plot",
-        plotId: "grove_muckstead_cottage_lot",
-        propertyId: "property_grove_muckstead_cottage_lot",
+        plotId: "grove_crossroads_shop_lot",
+        propertyId: "property_grove_crossroads_shop_lot",
       },
       { subsystem: "building", zoneId: "the_grove" }
     );
@@ -6216,12 +6318,12 @@ describe("reduceHarthmereLiveModeBackendState — building mutation", function (
       )
     );
     assert.equal(
-      result.state.building.safeZones.grove_muckstead_cottage_lot.safeFromMuck,
+      result.state.building.safeZones.grove_crossroads_shop_lot.safeFromMuck,
       false
     );
   });
 
-  it("terraforms from an owned home UI marker and updates property map state", function () {
+  it("terraforms from an owned business UI marker and updates property map state", function () {
     let s = freshState();
     s.inventory.gold = 1_000;
     ({ state: s } = applyOne(
@@ -6229,7 +6331,7 @@ describe("reduceHarthmereLiveModeBackendState — building mutation", function (
       "request_property_building_mutation",
       {
         buildingAction: "claim_plot",
-        plotId: "grove_muckstead_cottage_lot",
+        plotId: "grove_crossroads_shop_lot",
       },
       { subsystem: "building", zoneId: "the_grove" }
     ));
@@ -6238,17 +6340,15 @@ describe("reduceHarthmereLiveModeBackendState — building mutation", function (
       "request_property_building_mutation",
       {
         buildingAction: "place",
-        plotId: "grove_muckstead_cottage_lot",
-        blueprintId: "grove_voxel_cottage_tier_1",
-        propertyId: "property_grove_muckstead_cottage_lot",
+        plotId: "grove_crossroads_shop_lot",
+        blueprintId: "grove_voxel_shop_tier_1",
+        propertyId: "property_grove_crossroads_shop_lot",
       },
       { subsystem: "building", zoneId: "the_grove" }
     ));
     const consoleMarker =
       s.building.inWorldMarkers[
-        buildingSystemHomeConsoleMarkerId(
-          "property_grove_muckstead_cottage_lot"
-        )
+        "business_property_grove_crossroads_shop_lot:marker"
       ];
     assert.ok(consoleMarker);
 
@@ -6257,8 +6357,8 @@ describe("reduceHarthmereLiveModeBackendState — building mutation", function (
       "request_property_building_mutation",
       {
         buildingAction: "terraform_plot",
-        plotId: "grove_muckstead_cottage_lot",
-        propertyId: "property_grove_muckstead_cottage_lot",
+        plotId: "grove_crossroads_shop_lot",
+        propertyId: "property_grove_crossroads_shop_lot",
       },
       {
         subsystem: "building",
@@ -6272,7 +6372,7 @@ describe("reduceHarthmereLiveModeBackendState — building mutation", function (
     );
 
     assert.equal(
-      state.building.safeZones.grove_muckstead_cottage_lot.safeFromMuck,
+      state.building.safeZones.grove_crossroads_shop_lot.safeFromMuck,
       true
     );
     const plan = summary.buildingMaterializationPlans?.find(
@@ -6284,7 +6384,7 @@ describe("reduceHarthmereLiveModeBackendState — building mutation", function (
       "terraforming from owned property UI should materialize safe ground"
     );
     assert.match(
-      state.building.inWorldMarkers["grove_muckstead_cottage_lot:map"].label,
+      state.building.inWorldMarkers["grove_crossroads_shop_lot:map"].label,
       /terraformed property/i
     );
 
@@ -6293,8 +6393,8 @@ describe("reduceHarthmereLiveModeBackendState — building mutation", function (
       "request_property_building_mutation",
       {
         buildingAction: "terraform_plot",
-        plotId: "grove_muckstead_cottage_lot",
-        propertyId: "property_grove_muckstead_cottage_lot",
+        plotId: "grove_crossroads_shop_lot",
+        propertyId: "property_grove_crossroads_shop_lot",
       },
       { subsystem: "building", zoneId: "the_grove" }
     );
@@ -6313,7 +6413,7 @@ describe("reduceHarthmereLiveModeBackendState — building mutation", function (
       "request_property_building_mutation",
       {
         buildingAction: "claim_plot",
-        plotId: "grove_muckstead_cottage_lot",
+        plotId: "grove_crossroads_shop_lot",
       },
       { subsystem: "building", zoneId: "the_grove" }
     ));
@@ -6322,9 +6422,9 @@ describe("reduceHarthmereLiveModeBackendState — building mutation", function (
       "request_property_building_mutation",
       {
         buildingAction: "place",
-        plotId: "grove_muckstead_cottage_lot",
-        blueprintId: "grove_voxel_cottage_tier_1",
-        propertyId: "property_grove_muckstead_cottage_lot",
+        plotId: "grove_crossroads_shop_lot",
+        blueprintId: "grove_voxel_shop_tier_1",
+        propertyId: "property_grove_crossroads_shop_lot",
       },
       { subsystem: "building", zoneId: "the_grove" }
     ));
@@ -6334,8 +6434,8 @@ describe("reduceHarthmereLiveModeBackendState — building mutation", function (
       "request_property_building_mutation",
       {
         buildingAction: "terraform_plot",
-        plotId: "grove_muckstead_cottage_lot",
-        propertyId: "property_grove_muckstead_cottage_lot",
+        plotId: "grove_crossroads_shop_lot",
+        propertyId: "property_grove_crossroads_shop_lot",
       },
       {
         subsystem: "building",
@@ -6350,7 +6450,7 @@ describe("reduceHarthmereLiveModeBackendState — building mutation", function (
       )
     );
     assert.equal(
-      result.state.building.safeZones.grove_muckstead_cottage_lot.safeFromMuck,
+      result.state.building.safeZones.grove_crossroads_shop_lot.safeFromMuck,
       false
     );
   });
@@ -6443,8 +6543,7 @@ describe("reduceHarthmereLiveModeBackendState — building mutation", function (
     );
     assert.equal(
       summary.buildingMaterializationPlans?.length,
-      Object.keys(HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS).length *
-        2,
+      Object.keys(HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS).length * 2,
       "read_state must produce one cleanup + one rebuild plan per outpost"
     );
     assert.ok(
@@ -7010,6 +7109,62 @@ describe("reduceHarthmereLiveModeBackendState — physical jobs board and live t
     assert.equal(Object.values(state.jobsBoard.todos)[0]?.actorId, ACTOR);
   });
 
+  it("accepting a delivery job grants the parcel into live inventory", function () {
+    const s = freshState();
+    s.jobsBoard.postings.job_delivery_accept = {
+      jobId: "job_delivery_accept",
+      boardId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID,
+      issuerKind: "town",
+      issuerId: "harthmere_grove",
+      title: "Run the Coop Food Parcel",
+      description: "Deliver the sealed package to the satchel.",
+      kind: "delivery",
+      requirements: [
+        {
+          itemId: "sealed_package",
+          count: 1,
+          mapMarkerId: "grove_mail_bank_satchel",
+        },
+      ],
+      rewardGold: 45,
+      escrowGold: 45,
+      reputationDelta: 1,
+      status: "open",
+      townId: "harthmere_grove",
+      regionId: "harthmere_grove_region",
+      createdAtMs: NOW_MS,
+      deadlineAtMs: NOW_MS + 86_400_000,
+      failurePenaltyGold: 0,
+      requiresFieldWork: true,
+      mapMarkerId: "grove_mail_bank_satchel",
+      abuseFlags: [],
+      logs: [],
+    } as any;
+
+    const { state, summary } = applyOne(
+      s,
+      "request_jobs_board_mutation",
+      {
+        operation: "accept_job",
+        boardId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID,
+        jobId: "job_delivery_accept",
+      },
+      {
+        subsystem: "jobs",
+        targetId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID,
+        serverActorPosition: {
+          x: 501.99486179104775,
+          y: 70,
+          z: -132.00350672753194,
+        },
+      }
+    );
+
+    assert.deepEqual(summary.warnings, []);
+    assert.equal(state.jobsBoard.postings.job_delivery_accept.status, "active");
+    assert.equal(state.inventory.items.sealed_package, 1);
+  });
+
   function addOpenEscortJob(state: HarthmereLiveModeBackendState) {
     state.jobsBoard.postings.job_escort_newcomer = {
       jobId: "job_escort_newcomer",
@@ -7275,7 +7430,13 @@ describe("reduceHarthmereLiveModeBackendState — physical jobs board and live t
       marker.plotId,
       HARTHMERE_JOBS_BOARD_ELITE_MUCKER_BOUNTY_MARKER_ID
     );
-    assert.deepEqual(marker.position, target!.position);
+    assert.deepEqual(
+      marker.position,
+      resolveHarthmereProductionMarkerPosition({
+        markerId: target!.markerId,
+        fallback: target!.position,
+      })
+    );
     assert.ok(marker.label.includes("Elite Mucker Bounty"));
     assert.ok(
       muckMonsterAreaForPosition(marker.position, 1.5),
@@ -7358,7 +7519,13 @@ describe("reduceHarthmereLiveModeBackendState — physical jobs board and live t
       "accepted job should expose its primary cave marker"
     );
     assert.equal(genericMarker.plotId, "exotic_antiboron_mossglass_survey_03");
-    assert.deepEqual(genericMarker.position, target!.position);
+    assert.deepEqual(
+      genericMarker.position,
+      resolveHarthmereProductionMarkerPosition({
+        markerId: target!.markerId,
+        fallback: target!.position,
+      })
+    );
 
     const spawnedMarkerEntries = Object.entries(
       accepted.state.building.inWorldMarkers
@@ -7378,7 +7545,14 @@ describe("reduceHarthmereLiveModeBackendState — physical jobs board and live t
       assert.equal(deposit!.componentId, "antiboron");
       assert.equal(deposit!.jobEligible, true);
       assert.equal(deposit!.caveId, "mossglass_survey_cave");
-      assert.deepEqual(marker.position, deposit!.position);
+      assert.deepEqual(
+        marker.position,
+        resolveHarthmereProductionMarkerPosition({
+          source: "exotic_matter_deposit",
+          markerId: deposit!.depositId,
+          fallback: deposit!.position,
+        })
+      );
       const cave = HARTHMERE_EXOTIC_MATTER_CAVES.find(
         (entry) => entry.caveId === deposit!.caveId
       );
@@ -7387,16 +7561,16 @@ describe("reduceHarthmereLiveModeBackendState — physical jobs board and live t
         `deposit should belong to a confirmed cave: ${deposit!.depositId}`
       );
       assert.ok(
-        marker.position[0] > cave!.bounds.x0 &&
-          marker.position[0] < cave!.bounds.x1
+        deposit!.position[0] > cave!.bounds.x0 &&
+          deposit!.position[0] < cave!.bounds.x1
       );
       assert.ok(
-        marker.position[1] >= cave!.bounds.y0 &&
-          marker.position[1] <= cave!.bounds.y1
+        deposit!.position[1] >= cave!.bounds.y0 &&
+          deposit!.position[1] <= cave!.bounds.y1
       );
       assert.ok(
-        marker.position[2] > cave!.bounds.z0 &&
-          marker.position[2] < cave!.bounds.z1
+        deposit!.position[2] > cave!.bounds.z0 &&
+          deposit!.position[2] < cave!.bounds.z1
       );
     }
 
@@ -7455,10 +7629,7 @@ describe("reduceHarthmereLiveModeBackendState — physical jobs board and live t
       {
         subsystem: "jobs",
         serverActorPosition: {
-          x:
-            501.99486179104775 +
-            HARTHMERE_JOBS_BOARD_INTERACTION_RADIUS +
-            0.1,
+          x: 501.99486179104775 + HARTHMERE_JOBS_BOARD_INTERACTION_RADIUS + 0.1,
           y: 70,
           z: -132.00350672753194,
         },
@@ -8082,10 +8253,7 @@ describe("reduceHarthmereLiveModeBackendState — cross-actor auction", function
     );
 
     // The listing reaches the shared marketplace; a buyer in a separate backend sees it.
-    const shared = createHarthmereLiveModeSharedWorldState(
-      sellerState,
-      NOW_MS
-    );
+    const shared = createHarthmereLiveModeSharedWorldState(sellerState, NOW_MS);
     assert.ok(
       shared.auctionListings[listingId],
       "listing must publish to shared marketplace"

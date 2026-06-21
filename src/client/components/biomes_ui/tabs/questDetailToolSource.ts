@@ -10,6 +10,8 @@ import type { MapTrackableQuest } from "./MapQuestsTab";
 export const JOBS_BOARD_QUEST_ID_PREFIX = "jobs_board:";
 export const JOBS_BOARD_TOOL_SOURCE_MARKER_ID_PREFIX =
   "jobs_board_tool_source:";
+export const JOBS_BOARD_ITEM_SOURCE_MARKER_ID_PREFIX =
+  "jobs_board_item_source:";
 
 // The marker ids the detail's locate button should try, most-specific first:
 //  1. the per-todo tool-source landmark (matches the pin emitted on the maps),
@@ -24,6 +26,20 @@ export function questDetailToolShopMarkerCandidates(
   }
   if (quest.toolSource?.vendorMarkerId) {
     candidates.push(quest.toolSource.vendorMarkerId);
+  }
+  return candidates;
+}
+
+export function questDetailItemSourceMarkerCandidates(
+  quest: Pick<MapTrackableQuest, "questId" | "itemSource">
+): string[] {
+  const candidates: string[] = [];
+  if (quest.questId.startsWith(JOBS_BOARD_QUEST_ID_PREFIX)) {
+    const todoId = quest.questId.slice(JOBS_BOARD_QUEST_ID_PREFIX.length);
+    candidates.push(`${JOBS_BOARD_ITEM_SOURCE_MARKER_ID_PREFIX}${todoId}`);
+  }
+  if (quest.itemSource?.markerId) {
+    candidates.push(quest.itemSource.markerId);
   }
   return candidates;
 }

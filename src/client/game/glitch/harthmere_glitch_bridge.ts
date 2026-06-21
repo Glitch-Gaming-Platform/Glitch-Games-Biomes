@@ -12,6 +12,7 @@ import {
   type HarthmereGlitchBehaviorEvent,
 } from "@/client/game/glitch/harthmere_glitch_behavior_events";
 import { shouldApplyHarthmereCloudSave } from "@/client/game/glitch/harthmere_cloud_save_restore_policy";
+import { HARTHMERE_INVENTORY_EVENT } from "@/client/components/challenges/harthmereEvents";
 
 import { BIOMES_GAME_NAME } from "@/shared/biomes/display_names";
 const DEFAULT_HARTHMERE_TITLE_ID = "42de534c-600f-4228-af9e-b69faef94cce";
@@ -83,7 +84,7 @@ export const HARTHMERE_GLITCH_RESTORE_EVENTS = [
   "biomes:harthmere-leveling-changed",
   "biomes:harthmere-combat-changed",
   "biomes:harthmere-death-changed",
-  "biomes:harthmere-inventory-changed",
+  HARTHMERE_INVENTORY_EVENT,
   "biomes:harthmere-quest-changed",
   "biomes:harthmere-quest-state-changed",
   "biomes:harthmere-mission-event",
@@ -118,7 +119,7 @@ const HARTHMERE_GLITCH_STATE_CHANGE_SAVE_EVENTS = [
   "biomes:harthmere-leveling-changed",
   "biomes:harthmere-combat-changed",
   "biomes:harthmere-death-changed",
-  "biomes:harthmere-inventory-changed",
+  HARTHMERE_INVENTORY_EVENT,
   "biomes:harthmere-quest-changed",
   "biomes:harthmere-quest-state-changed",
   "biomes:harthmere-mission-event",
@@ -895,7 +896,7 @@ function applyIdentityToLocalScope(identity: HarthmereGlitchIdentity) {
   );
   window.dispatchEvent(new CustomEvent("biomes:harthmere-leveling-changed"));
   window.dispatchEvent(new CustomEvent("biomes:harthmere-combat-changed"));
-  window.dispatchEvent(new CustomEvent("biomes:harthmere-inventory-changed"));
+  window.dispatchEvent(new CustomEvent(HARTHMERE_INVENTORY_EVENT));
 }
 
 function applyIdentityToGameContext(
@@ -2077,11 +2078,7 @@ class HarthmereGlitchBridgeController {
       );
     };
 
-    addThrottled(
-      "biomes:harthmere-inventory-changed",
-      "inventory",
-      "state_changed"
-    );
+    addThrottled(HARTHMERE_INVENTORY_EVENT, "inventory", "state_changed");
     addThrottled(
       "biomes:harthmere-economy-changed",
       "economy",

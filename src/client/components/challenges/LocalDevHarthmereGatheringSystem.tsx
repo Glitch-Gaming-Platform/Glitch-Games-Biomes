@@ -14,6 +14,7 @@ import {
 } from "@/client/components/challenges/LocalDevHarthmereEconomySystem";
 import { awardHarthmereXp } from "@/client/components/challenges/LocalDevHarthmereLevelingSystem";
 import { applyHarthmereReputationChange } from "@/client/components/challenges/LocalDevHarthmereReputation";
+import { HARTHMERE_INVENTORY_EVENT } from "@/client/components/challenges/harthmereEvents";
 import type { TalkDialogStepAction } from "@/client/components/challenges/TalkDialogModalStep";
 import React, { useEffect, useMemo, useState } from "react";
 
@@ -445,7 +446,8 @@ const HARTHMERE_DEEP_RESOURCE_NODE_DEFINITIONS: ResourceNodeDefinition[] = [
     rareYield: [{ itemId: "tree_resin", min: 1, max: 2, chance: 0.1 }],
     biome: "forest edge",
     economyImpact: { wealth: 1 },
-    notes: "Tied to real oak_log and oak_leaf voxel trees placed in the north Wilds.",
+    notes:
+      "Tied to real oak_log and oak_leaf voxel trees placed in the north Wilds.",
   },
   {
     id: "north_pine_stand",
@@ -467,7 +469,9 @@ const HARTHMERE_DEEP_RESOURCE_NODE_DEFINITIONS: ResourceNodeDefinition[] = [
       { itemId: "pine_log", min: 3, max: 5 },
       { itemId: "pine_pitch", min: 1, max: 2 },
     ],
-    rareYield: [{ itemId: "straight_pine_heartwood", min: 1, max: 1, chance: 0.06 }],
+    rareYield: [
+      { itemId: "straight_pine_heartwood", min: 1, max: 1, chance: 0.06 },
+    ],
     biome: "deep pine forest",
     economyImpact: { wealth: 2 },
     notes: "Supports building, arrows, shafts, repairs, and charcoal work.",
@@ -495,7 +499,8 @@ const HARTHMERE_DEEP_RESOURCE_NODE_DEFINITIONS: ResourceNodeDefinition[] = [
     rareYield: [{ itemId: "clean_birch_strip", min: 1, max: 1, chance: 0.08 }],
     biome: "old forest",
     economyImpact: { medicineSupply: 1, wealth: 1 },
-    notes: "Birch bark feeds apothecary, parchment, kindling, and crafting recipes.",
+    notes:
+      "Birch bark feeds apothecary, parchment, kindling, and crafting recipes.",
   },
   {
     id: "briarfen_willow_cuttings",
@@ -594,7 +599,9 @@ const HARTHMERE_DEEP_RESOURCE_NODE_DEFINITIONS: ResourceNodeDefinition[] = [
       { itemId: "silver_ore", min: 1, max: 3 },
       { itemId: "rough_stone", min: 2, max: 4 },
     ],
-    rareYield: [{ itemId: "bright_silver_nugget", min: 1, max: 1, chance: 0.04 }],
+    rareYield: [
+      { itemId: "bright_silver_nugget", min: 1, max: 1, chance: 0.04 },
+    ],
     biome: "old forest stone cut",
     economyImpact: { oreSupply: 3, wealth: 2 },
     notes: "Silver is rarer and farther from town than iron/coal.",
@@ -622,7 +629,8 @@ const HARTHMERE_DEEP_RESOURCE_NODE_DEFINITIONS: ResourceNodeDefinition[] = [
     rareYield: [{ itemId: "bell_gold_flake", min: 1, max: 1, chance: 0.03 }],
     biome: "haunted gravewood",
     danger: "Bell-woken dead may retaliate.",
-    legalWarning: "Chapel law treats grave extraction as restricted unless a quest asked for it.",
+    legalWarning:
+      "Chapel law treats grave extraction as restricted unless a quest asked for it.",
     economyImpact: { wealth: 3, security: -1 },
     notes: "High-value ore has legal and undead consequences.",
   },
@@ -646,7 +654,9 @@ const HARTHMERE_DEEP_RESOURCE_NODE_DEFINITIONS: ResourceNodeDefinition[] = [
       { itemId: "wild_berries", min: 2, max: 5 },
       { itemId: "berry_leaf", min: 1, max: 2 },
     ],
-    rareYield: [{ itemId: "sweet_greenmere_berry", min: 1, max: 1, chance: 0.06 }],
+    rareYield: [
+      { itemId: "sweet_greenmere_berry", min: 1, max: 1, chance: 0.06 },
+    ],
     biome: "forest undergrowth",
     danger: "Bears sometimes guard berry thickets.",
     economyImpact: { foodSupply: 2, medicineSupply: 1 },
@@ -675,7 +685,8 @@ const HARTHMERE_DEEP_RESOURCE_NODE_DEFINITIONS: ResourceNodeDefinition[] = [
     rareYield: [{ itemId: "mooncap_mushroom", min: 1, max: 1, chance: 0.05 }],
     biome: "old forest hollow",
     economyImpact: { medicineSupply: 2 },
-    notes: "Mushrooms are not decoration only; they are gatherable herbalism nodes.",
+    notes:
+      "Mushrooms are not decoration only; they are gatherable herbalism nodes.",
   },
   {
     id: "briarfen_reed_bed",
@@ -701,7 +712,8 @@ const HARTHMERE_DEEP_RESOURCE_NODE_DEFINITIONS: ResourceNodeDefinition[] = [
     biome: "wetland reed bed",
     danger: "Snakes and drowned dead patrol this wetland edge.",
     economyImpact: { medicineSupply: 2, wealth: 1 },
-    notes: "Reeds, mudroot, clay, and water resources are separate from forest logging.",
+    notes:
+      "Reeds, mudroot, clay, and water resources are separate from forest logging.",
   },
   {
     id: "briarfen_clay_bank",
@@ -753,7 +765,8 @@ const HARTHMERE_DEEP_RESOURCE_NODE_DEFINITIONS: ResourceNodeDefinition[] = [
     danger: "Undead are more common near these nodes at night.",
     legalWarning: "Temple restrictions apply around blessed graves.",
     economyImpact: { medicineSupply: 2, security: -1 },
-    notes: "Legal and spiritual restrictions make grave resources more interesting than generic herbs.",
+    notes:
+      "Legal and spiritual restrictions make grave resources more interesting than generic herbs.",
   },
   {
     id: "gate_field_flax_row",
@@ -776,7 +789,8 @@ const HARTHMERE_DEEP_RESOURCE_NODE_DEFINITIONS: ResourceNodeDefinition[] = [
     ],
     rareYield: [{ itemId: "clean_flax_bundle", min: 1, max: 1, chance: 0.06 }],
     biome: "starter farmland",
-    legalWarning: "Owned crops require a work order. Taking them freely is theft.",
+    legalWarning:
+      "Owned crops require a work order. Taking them freely is theft.",
     economyImpact: { wealth: 1 },
     notes: "Flax supports tailoring and bowstring recipes.",
   },
@@ -828,7 +842,8 @@ const HARTHMERE_DEEP_RESOURCE_NODE_DEFINITIONS: ResourceNodeDefinition[] = [
     rareYield: [{ itemId: "clean_antler", min: 1, max: 1, chance: 0.07 }],
     biome: "forest game trail",
     economyImpact: { foodSupply: 2, wealth: 1 },
-    notes: "Hunting animals ties into the combat targets; skinning remains a separate gathering action.",
+    notes:
+      "Hunting animals ties into the combat targets; skinning remains a separate gathering action.",
   },
   {
     id: "boar_sounder_harvest",
@@ -881,7 +896,8 @@ const HARTHMERE_DEEP_RESOURCE_NODE_DEFINITIONS: ResourceNodeDefinition[] = [
     biome: "deep forest den",
     danger: "Bears are dangerous and should be fought deliberately.",
     economyImpact: { foodSupply: 1, wealth: 2 },
-    notes: "Large animals require the combat system before reliable harvesting.",
+    notes:
+      "Large animals require the combat system before reliable harvesting.",
   },
   {
     id: "gravewood_zombie_remains",
@@ -908,7 +924,8 @@ const HARTHMERE_DEEP_RESOURCE_NODE_DEFINITIONS: ResourceNodeDefinition[] = [
     danger: "Bell-woken dead attack trespassers.",
     legalWarning: "The chapel wants these remains handled carefully.",
     economyImpact: { medicineSupply: 1, security: 1 },
-    notes: "Monster harvesting connects combat kills to alchemy and chapel quests.",
+    notes:
+      "Monster harvesting connects combat kills to alchemy and chapel quests.",
   },
 ];
 
@@ -971,8 +988,9 @@ export function harthmereGatheringNodeIdForObjectLabel(
   })?.id;
 }
 
-export type HarthmereGatheringNodePrompt =
-  HarthmereGatheringNodeWorldTarget & { distance: number };
+export type HarthmereGatheringNodePrompt = HarthmereGatheringNodeWorldTarget & {
+  distance: number;
+};
 
 // Nearest harvestable node within interaction range of the player (XZ distance;
 // the authored Y is a flat hint, so the vertical gate stays generous). Mirrors
@@ -1017,7 +1035,7 @@ function gatheringEvent() {
 
 function defaultProfessions(): Record<GatheringProfession, ProfessionState> {
   return Object.fromEntries(
-    PROFESSIONS.map((profession) => [profession, { level: 1, xp: 0 }]),
+    PROFESSIONS.map((profession) => [profession, { level: 1, xp: 0 }])
   ) as Record<GatheringProfession, ProfessionState>;
 }
 
@@ -1041,11 +1059,11 @@ function normalizeState(raw?: Partial<HarthmereGatheringState>) {
     professions[profession] = {
       level: Math.max(
         1,
-        Math.floor(Number(raw?.professions?.[profession]?.level ?? 1)),
+        Math.floor(Number(raw?.professions?.[profession]?.level ?? 1))
       ),
       xp: Math.max(
         0,
-        Math.floor(Number(raw?.professions?.[profession]?.xp ?? 0)),
+        Math.floor(Number(raw?.professions?.[profession]?.xp ?? 0))
       ),
     };
   }
@@ -1083,14 +1101,14 @@ export function writeHarthmereGatheringState(state: HarthmereGatheringState) {
   }
   window.localStorage.setItem(
     HARTHMERE_GATHERING_STATE_KEY,
-    JSON.stringify(normalizeState(state)),
+    JSON.stringify(normalizeState(state))
   );
   gatheringEvent();
 }
 
 function appendLog(
   state: HarthmereGatheringState,
-  entry: Omit<GatheringLogEntry, "id" | "at">,
+  entry: Omit<GatheringLogEntry, "id" | "at">
 ) {
   return {
     ...state,
@@ -1124,7 +1142,7 @@ function hasInventoryItem(itemId: string) {
   return (
     inventory.backpack.items.some((item) => item.itemId === itemId) ||
     Object.values(inventory.equipment).some(
-      (item) => item?.itemId === itemId,
+      (item) => item?.itemId === itemId
     ) ||
     inventory.bank.items.some((item) => item.itemId === itemId) ||
     inventory.keyring.includes(itemId)
@@ -1154,7 +1172,7 @@ function professionXpForNode(node: ResourceNodeDefinition) {
 function applyProfessionXp(
   state: HarthmereGatheringState,
   profession: GatheringProfession,
-  xp: number,
+  xp: number
 ) {
   const current = state.professions[profession] ?? { level: 1, xp: 0 };
   let level = current.level;
@@ -1182,7 +1200,7 @@ function applyProfessionXp(
 
 function cooldownReady(
   state: HarthmereGatheringState,
-  node: ResourceNodeDefinition,
+  node: ResourceNodeDefinition
 ) {
   return (state.nodeCooldowns[node.id] ?? 0) <= Date.now();
 }
@@ -1196,7 +1214,7 @@ function nextRespawnAt(node: ResourceNodeDefinition) {
 function updateTownSupply(
   node: ResourceNodeDefinition,
   legal: boolean,
-  label: string,
+  label: string
 ) {
   const impact = node.economyImpact;
   if (!impact) {
@@ -1212,12 +1230,12 @@ function updateTownSupply(
       foodSupply: clamp(economy.town.foodSupply + (impact.foodSupply ?? 0)),
       oreSupply: clamp(economy.town.oreSupply + (impact.oreSupply ?? 0)),
       medicineSupply: clamp(
-        economy.town.medicineSupply + (impact.medicineSupply ?? 0),
+        economy.town.medicineSupply + (impact.medicineSupply ?? 0)
       ),
       wealth: clamp(economy.town.wealth + (impact.wealth ?? 0)),
       security: clamp(economy.town.security + (impact.security ?? 0)),
       crimeRate: clamp(
-        economy.town.crimeRate + (legal ? (impact.crimeRate ?? 0) : 2),
+        economy.town.crimeRate + (legal ? impact.crimeRate ?? 0 : 2)
       ),
     },
   };
@@ -1225,7 +1243,7 @@ function updateTownSupply(
   recordHarthmereEconomicEvent(
     legal ? "source" : "black_market",
     "Gathered Materials",
-    `${label} moved raw materials into Harthmere's local economy.`,
+    `${label} moved raw materials into Harthmere's local economy.`
   );
 }
 
@@ -1243,7 +1261,7 @@ export function performHarthmereGather(
   options?: HarthmereGatheringActionOptions & {
     ignoreCooldown?: boolean;
     forceIllegal?: boolean;
-  },
+  }
 ) {
   const node = nodeById(nodeId);
   if (!node) {
@@ -1258,7 +1276,8 @@ export function performHarthmereGather(
     playerState: options?.playerState,
     hasRequiredTool: !node.requiredTool || hasInventoryItem(node.requiredTool),
     professionLevel: profession.level,
-    cooldownReady: Boolean(options?.ignoreCooldown) || cooldownReady(state, node),
+    cooldownReady:
+      Boolean(options?.ignoreCooldown) || cooldownReady(state, node),
     reservation: options?.reservation,
     environment: options?.environment,
     antiBot: options?.antiBot,
@@ -1269,10 +1288,12 @@ export function performHarthmereGather(
     writeHarthmereGatheringState(
       appendLog(state, {
         label: `Authority Blocked: ${authority.code}`,
-        detail: `${message} Evidence: ${authority.evidence.join(", ") || "none"}.`,
+        detail: `${message} Evidence: ${
+          authority.evidence.join(", ") || "none"
+        }.`,
         nodeId: node.id,
         profession: node.profession,
-      }),
+      })
     );
     return { ok: false, message, authority };
   }
@@ -1281,8 +1302,8 @@ export function performHarthmereGather(
     const seconds = Math.max(
       1,
       Math.ceil(
-        ((state.nodeCooldowns[node.id] ?? Date.now()) - Date.now()) / 1000,
-      ),
+        ((state.nodeCooldowns[node.id] ?? Date.now()) - Date.now()) / 1000
+      )
     );
     const message = `${node.name} is depleted. Respawn estimate: ${seconds}s.`;
     writeHarthmereGatheringState(
@@ -1291,33 +1312,39 @@ export function performHarthmereGather(
         detail: message,
         nodeId: node.id,
         profession: node.profession,
-      }),
+      })
     );
     return { ok: false, message };
   }
 
   if (node.requiredTool && !hasInventoryItem(node.requiredTool)) {
-    const message = `${node.name} requires ${node.requiredTool.replaceAll("_", " ")}. Claim starter tools at the Market Board, Smithy, Farm, Docks, or Guard Yard.`;
+    const message = `${node.name} requires ${node.requiredTool.replaceAll(
+      "_",
+      " "
+    )}. Claim starter tools at the Market Board, Smithy, Farm, Docks, or Guard Yard.`;
     writeHarthmereGatheringState(
       appendLog(state, {
         label: "Missing Tool",
         detail: message,
         nodeId: node.id,
         profession: node.profession,
-      }),
+      })
     );
     return { ok: false, message };
   }
 
   if (profession.level < node.requiredSkill) {
-    const message = `${node.name} requires ${node.profession.replaceAll("_", " ")} ${node.requiredSkill}. You are level ${profession.level}.`;
+    const message = `${node.name} requires ${node.profession.replaceAll(
+      "_",
+      " "
+    )} ${node.requiredSkill}. You are level ${profession.level}.`;
     writeHarthmereGatheringState(
       appendLog(state, {
         label: "Skill Too Low",
         detail: message,
         nodeId: node.id,
         profession: node.profession,
-      }),
+      })
     );
     return { ok: false, message };
   }
@@ -1325,18 +1352,18 @@ export function performHarthmereGather(
   const legal = !isIllegalGather(node, options?.forceIllegal);
   const yieldMultiplier = skillYieldMultiplier(
     profession.level,
-    node.requiredSkill,
+    node.requiredSkill
   );
   const rareMultiplier = rareChanceMultiplier(
     profession.level,
-    node.requiredSkill,
+    node.requiredSkill
   );
   const materials: Record<string, number> = {};
 
   for (const item of node.baseYield) {
     const quantity = Math.max(
       1,
-      Math.round(rollInt(item.min, item.max) * yieldMultiplier),
+      Math.round(rollInt(item.min, item.max) * yieldMultiplier)
     );
     materials[item.itemId] = (materials[item.itemId] ?? 0) + quantity;
   }
@@ -1361,10 +1388,12 @@ export function performHarthmereGather(
     writeHarthmereGatheringState(
       appendLog(state, {
         label: `Storage Blocked: ${storagePlan.code}`,
-        detail: `${message} Evidence: ${storagePlan.evidence.join(", ") || "none"}.`,
+        detail: `${message} Evidence: ${
+          storagePlan.evidence.join(", ") || "none"
+        }.`,
         nodeId: node.id,
         profession: node.profession,
-      }),
+      })
     );
     return { ok: false, message, authority: storagePlan };
   }
@@ -1374,7 +1403,9 @@ export function performHarthmereGather(
     grantHarthmereItem(
       itemId,
       quantity,
-      `${rareFind === itemId ? "Rare find" : "Gathered"} from ${node.name} via ${route}`,
+      `${rareFind === itemId ? "Rare find" : "Gathered"} from ${
+        node.name
+      } via ${route}`
     );
   }
 
@@ -1382,7 +1413,7 @@ export function performHarthmereGather(
   const professionResult = applyProfessionXp(
     state,
     node.profession,
-    professionXp,
+    professionXp
   );
   state = professionResult.state;
 
@@ -1398,7 +1429,7 @@ export function performHarthmereGather(
   const recentCount = state.nodeGatherCounts[node.id] ?? 0;
   const suspiciousRouteScore = Math.max(
     0,
-    state.suspiciousRouteScore + (recentCount > 8 ? 1 : 0),
+    state.suspiciousRouteScore + (recentCount > 8 ? 1 : 0)
   );
   state = {
     ...state,
@@ -1415,7 +1446,7 @@ export function performHarthmereGather(
         ...state.discoveredResources,
         node.id,
         ...Object.keys(materials),
-      ]),
+      ])
     ),
     lastGatherAt: Date.now(),
     suspiciousRouteScore,
@@ -1436,9 +1467,14 @@ export function performHarthmereGather(
     .map(([itemId, quantity]) => `${itemId.replaceAll("_", " ")} x${quantity}`)
     .join(", ");
 
-  const detail = `${materialSummary}. ${professionXp} ${node.profession.replaceAll("_", " ")} XP.${
+  const detail = `${materialSummary}. ${professionXp} ${node.profession.replaceAll(
+    "_",
+    " "
+  )} XP.${
     professionResult.leveled
-      ? ` ${node.profession.replaceAll("_", " ")} rose to level ${professionResult.level}.`
+      ? ` ${node.profession.replaceAll("_", " ")} rose to level ${
+          professionResult.level
+        }.`
       : ""
   }${rareFind ? ` Rare find: ${rareFind.replaceAll("_", " ")}.` : ""}${
     legal ? "" : " This was illegal and affected your local standing."
@@ -1453,7 +1489,7 @@ export function performHarthmereGather(
       materials,
       rareFind,
       legal,
-    }),
+    })
   );
 
   return { ok: true, message: detail };
@@ -1478,7 +1514,7 @@ export function grantHarthmereStarterGatheringTools() {
       label: "Starter Gathering Tools",
       detail:
         "You received a pickaxe, axe, sickle, fishing rod, skinning knife, scavenger hook, shovel, and arcane extractor. Tools live in inventory/bank and are checked before gathering.",
-    }),
+    })
   );
 }
 
@@ -1488,7 +1524,7 @@ export function resetHarthmereGatheringState() {
 
 export function useHarthmereGatheringState() {
   const [state, setState] = useState<HarthmereGatheringState>(() =>
-    readHarthmereGatheringState(),
+    readHarthmereGatheringState()
   );
 
   useEffect(() => {
@@ -1496,12 +1532,12 @@ export function useHarthmereGatheringState() {
     const interval = window.setInterval(refresh, 900);
     window.addEventListener("storage", refresh);
     window.addEventListener(HARTHMERE_GATHERING_EVENT, refresh);
-    window.addEventListener("biomes:harthmere-inventory-changed", refresh);
+    window.addEventListener(HARTHMERE_INVENTORY_EVENT, refresh);
     return () => {
       window.clearInterval(interval);
       window.removeEventListener("storage", refresh);
       window.removeEventListener(HARTHMERE_GATHERING_EVENT, refresh);
-      window.removeEventListener("biomes:harthmere-inventory-changed", refresh);
+      window.removeEventListener(HARTHMERE_INVENTORY_EVENT, refresh);
     };
   }, []);
 
@@ -1517,27 +1553,48 @@ function professionLabel(profession: GatheringProfession) {
 
 function harthmereGatheringResourceIcon(itemId: string): string {
   const text = itemId.toLowerCase();
-  if (/log|wood|branch|bark|willow|sap|pitch|heartwood|birch|oak|pine|timber/.test(text)) return "🪵";
-  if (/ore|iron|coal|silver|gold|stone|shard|nugget|garnet|rock|marble|quartz|crystal/.test(text)) return "⛏️";
+  if (
+    /log|wood|branch|bark|willow|sap|pitch|heartwood|birch|oak|pine|timber/.test(
+      text
+    )
+  )
+    return "🪵";
+  if (
+    /ore|iron|coal|silver|gold|stone|shard|nugget|garnet|rock|marble|quartz|crystal/.test(
+      text
+    )
+  )
+    return "⛏️";
   if (/mushroom|fungus|spore|cap/.test(text)) return "🍄";
-  if (/berry|leaf|peacebloom|herb|moss|nightshade|lotus|root|reed|flax|fiber|daffodil|grain|wheat|flower|seed|petal/.test(text)) return "🌿";
+  if (
+    /berry|leaf|peacebloom|herb|moss|nightshade|lotus|root|reed|flax|fiber|daffodil|grain|wheat|flower|seed|petal/.test(
+      text
+    )
+  )
+    return "🌿";
   if (/trout|fish|pearl|water|river|scale/.test(text)) return "🐟";
   if (/clay|mud|brick/.test(text)) return "🧱";
-  if (/hide|pelt|meat|fang|bone|fur|antler|carcass|venison|boar/.test(text)) return "🦴";
-  if (/relic|dust|ash|ghost|bell|rune|arcane|magic|well|grave|spirit|aether/.test(text)) return "✦";
+  if (/hide|pelt|meat|fang|bone|fur|antler|carcass|venison|boar/.test(text))
+    return "🦴";
+  if (
+    /relic|dust|ash|ghost|bell|rune|arcane|magic|well|grave|spirit|aether/.test(
+      text
+    )
+  )
+    return "✦";
   if (/scrap|gear|metal|hook|junk|cog|part|wire/.test(text)) return "⚙️";
   return "◆";
 }
 
 function nodeDistanceText(node: ResourceNodeDefinition) {
   return `${node.district} · ${Math.round(node.position[0])}, ${Math.round(
-    node.position[2],
+    node.position[2]
   )}`;
 }
 
 function nodeStatus(
   state: HarthmereGatheringState,
-  node: ResourceNodeDefinition,
+  node: ResourceNodeDefinition
 ) {
   if (cooldownReady(state, node) || node.shareMode === "personal") {
     return "Ready";
@@ -1545,8 +1602,8 @@ function nodeStatus(
   const seconds = Math.max(
     1,
     Math.ceil(
-      ((state.nodeCooldowns[node.id] ?? Date.now()) - Date.now()) / 1000,
-    ),
+      ((state.nodeCooldowns[node.id] ?? Date.now()) - Date.now()) / 1000
+    )
   );
   return `${seconds}s`;
 }
@@ -1554,16 +1611,46 @@ function nodeStatus(
 function nodesForNpc(offset: number) {
   const byOffset: Record<number, string[]> = {
     41: NODE_DEFINITIONS.map((node) => node.id),
-    42: ["harthmere_north_iron_vein", "harthmere_orchard_softwood", "greenmere_oak_grove", "watchtower_iron_cut"],
+    42: [
+      "harthmere_north_iron_vein",
+      "harthmere_orchard_softwood",
+      "greenmere_oak_grove",
+      "watchtower_iron_cut",
+    ],
     2: ["harthmere_orchard_softwood", "harthmere_farm_crops"],
     6: ["harthmere_north_iron_vein", "harthmere_wolf_carcass"],
     7: ["harthmere_temple_peacebloom", "harthmere_old_well_essence"],
-    8: ["harthmere_temple_peacebloom", "harthmere_chapel_relic_dig", "gravewood_moss_and_nightshade", "gravewood_zombie_remains"],
-    10: ["harthmere_old_well_essence", "harthmere_chapel_relic_dig", "greenmere_berry_thicket", "old_wood_mushroom_ring"],
-    13: ["harthmere_river_fishing_pool", "harthmere_river_clay", "briarfen_reed_bed", "briarfen_clay_bank"],
+    8: [
+      "harthmere_temple_peacebloom",
+      "harthmere_chapel_relic_dig",
+      "gravewood_moss_and_nightshade",
+      "gravewood_zombie_remains",
+    ],
+    10: [
+      "harthmere_old_well_essence",
+      "harthmere_chapel_relic_dig",
+      "greenmere_berry_thicket",
+      "old_wood_mushroom_ring",
+    ],
+    13: [
+      "harthmere_river_fishing_pool",
+      "harthmere_river_clay",
+      "briarfen_reed_bed",
+      "briarfen_clay_bank",
+    ],
     14: ["harthmere_mudden_scrap", "harthmere_old_well_essence"],
-    16: ["harthmere_farm_crops", "gate_field_flax_row", "orchard_honey_hive", "harthmere_orchard_softwood"],
-    27: ["harthmere_wolf_carcass", "watchtower_iron_cut", "bandit_ridge_coal_seam", "deer_hunting_trail"],
+    16: [
+      "harthmere_farm_crops",
+      "gate_field_flax_row",
+      "orchard_honey_hive",
+      "harthmere_orchard_softwood",
+    ],
+    27: [
+      "harthmere_wolf_carcass",
+      "watchtower_iron_cut",
+      "bandit_ridge_coal_seam",
+      "deer_hunting_trail",
+    ],
   };
   return (byOffset[offset] ?? [])
     .map(nodeById)
@@ -1571,7 +1658,7 @@ function nodesForNpc(offset: number) {
 }
 
 export function gatheringActionsForHarthmereNpc(
-  offset: number,
+  offset: number
 ): TalkDialogStepAction[] {
   const nodes = nodesForNpc(offset);
   const actions: TalkDialogStepAction[] = [];
@@ -1591,7 +1678,13 @@ export function gatheringActionsForHarthmereNpc(
     const illegal = isIllegalGather(node);
     actions.push({
       name: `${illegal ? "[Illegal] " : "Gather: "}${node.name}`,
-      tooltip: `${professionLabel(node.profession)} ${node.requiredSkill}. Tool: ${node.requiredTool?.replaceAll("_", " ") ?? "none"}. ${node.area}. ${node.notes}${node.legalWarning ? ` Warning: ${node.legalWarning}` : ""}`,
+      tooltip: `${professionLabel(node.profession)} ${
+        node.requiredSkill
+      }. Tool: ${node.requiredTool?.replaceAll("_", " ") ?? "none"}. ${
+        node.area
+      }. ${node.notes}${
+        node.legalWarning ? ` Warning: ${node.legalWarning}` : ""
+      }`,
       followUpText: illegal
         ? `You work quickly around ${node.name}. This resource has ownership or restriction rules, so the town may treat it as theft if noticed.`
         : `You gather from ${node.name}. The materials go to material storage or your backpack depending on item type.`,
@@ -1621,28 +1714,28 @@ export const HarthmereGatheringHUD: React.FunctionComponent<{}> = () => {
   const topProfessions = PROFESSIONS.slice(0, 4)
     .map(
       (profession) =>
-        `${professionLabel(profession)} ${state.professions[profession].level}`,
+        `${professionLabel(profession)} ${state.professions[profession].level}`
     )
     .join(" · ");
 
   return (
     <div
-      className="pointer-events-none w-[21rem] rounded-lg border border-white/20 bg-black/70 p-2 text-white shadow-lg"
+      className="rounded-lg pointer-events-none w-[21rem] border border-white/20 bg-black/70 p-2 text-white shadow-lg"
       style={{ textShadow: "0 1px 2px rgba(0,0,0,0.85)" }}
     >
       <div className="flex items-start justify-between gap-2">
         <div>
-          <div className="text-sm font-semibold uppercase tracking-wide text-lime-200">
+          <div className="text-lime-200 text-sm font-semibold uppercase tracking-wide">
             Harthmere Gathering
           </div>
           <div className="text-xs text-white/80">{topProfessions}</div>
         </div>
-        <div className="rounded bg-white/10 px-1.5 py-0.5 text-xs font-semibold text-white/80">
+        <div className="rounded px-1.5 py-0.5 bg-white/10 text-xs font-semibold text-white/80">
           {state.discoveredResources.length} found
         </div>
       </div>
       <div className="mt-1 text-xs leading-snug text-white/80">
-        <span className="font-semibold text-lime-100">Latest:</span>{" "}
+        <span className="text-lime-100 font-semibold">Latest:</span>{" "}
         {latest?.detail ?? "Gathering nodes ready. Claim starter tools first."}
       </div>
     </div>
@@ -1652,7 +1745,7 @@ export const HarthmereGatheringHUD: React.FunctionComponent<{}> = () => {
 export const HarthmereGatheringMenuPanel: React.FunctionComponent<{}> = () => {
   const state = useHarthmereGatheringState();
   const [tab, setTab] = useState<"nodes" | "professions" | "storage" | "guide">(
-    "nodes",
+    "nodes"
   );
   const [filter, setFilter] = useState<"all" | GatheringProfession>("all");
   const inventory = readHarthmereInventoryState();
@@ -1660,9 +1753,9 @@ export const HarthmereGatheringMenuPanel: React.FunctionComponent<{}> = () => {
   const visibleNodes = useMemo(
     () =>
       NODE_DEFINITIONS.filter(
-        (node) => filter === "all" || node.profession === filter,
+        (node) => filter === "all" || node.profession === filter
       ),
-    [filter],
+    [filter]
   );
 
   const materialRows = Object.entries(inventory.materialStorage)
@@ -1670,11 +1763,11 @@ export const HarthmereGatheringMenuPanel: React.FunctionComponent<{}> = () => {
     .sort(([a], [b]) => a.localeCompare(b));
 
   return (
-    <div className="mb-2 max-h-[70vh] w-[33rem] overflow-hidden rounded-lg border border-white/20 bg-black/85 text-white shadow-xl">
+    <div className="rounded-lg bg-black/85 mb-2 max-h-[70vh] w-[33rem] overflow-hidden border border-white/20 text-white shadow-xl">
       <div className="border-b border-white/10 p-3">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <div className="text-base font-semibold text-lime-200">
+            <div className="text-base text-lime-200 font-semibold">
               Harthmere Gathering
             </div>
             <div className="text-xs text-white/70">
@@ -1684,7 +1777,7 @@ export const HarthmereGatheringMenuPanel: React.FunctionComponent<{}> = () => {
             </div>
           </div>
           <button
-            className="rounded bg-lime-300 px-2 py-1 text-xs font-semibold text-black hover:bg-lime-200"
+            className="rounded bg-lime-300 hover:bg-lime-200 px-2 py-1 text-xs font-semibold text-black"
             onClick={() => grantHarthmereStarterGatheringTools()}
           >
             Starter Tools
@@ -1704,7 +1797,7 @@ export const HarthmereGatheringMenuPanel: React.FunctionComponent<{}> = () => {
               >
                 {nextTab}
               </button>
-            ),
+            )
           )}
         </div>
       </div>
@@ -1751,7 +1844,7 @@ export const HarthmereGatheringMenuPanel: React.FunctionComponent<{}> = () => {
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div>
-                        <div className="font-semibold text-lime-100">
+                        <div className="text-lime-100 font-semibold">
                           {node.name}
                         </div>
                         <div className="text-white/60">
@@ -1772,12 +1865,12 @@ export const HarthmereGatheringMenuPanel: React.FunctionComponent<{}> = () => {
                     </div>
                     <div className="mt-1 text-white/70">{node.notes}</div>
                     {node.legalWarning && (
-                      <div className="mt-1 rounded border border-yellow-300/30 bg-yellow-500/10 p-1 text-yellow-100">
+                      <div className="rounded border-yellow-300/30 bg-yellow-500/10 text-yellow-100 mt-1 border p-1">
                         {node.legalWarning}
                       </div>
                     )}
                     {node.danger && (
-                      <div className="mt-1 rounded border border-red-300/30 bg-red-500/10 p-1 text-red-100">
+                      <div className="rounded border-red-300/30 bg-red-500/10 text-red-100 mt-1 border p-1">
                         Danger: {node.danger}
                       </div>
                     )}
@@ -1791,7 +1884,7 @@ export const HarthmereGatheringMenuPanel: React.FunctionComponent<{}> = () => {
                       </button>
                       {illegal && (
                         <button
-                          className="rounded bg-red-500/30 px-2 py-1 text-[10px] hover:bg-red-500/50"
+                          className="rounded bg-red-500/30 hover:bg-red-500/50 px-2 py-1 text-[10px]"
                           onClick={() =>
                             performHarthmereGather(node.id, {
                               ignoreCooldown: node.shareMode === "personal",
@@ -1803,12 +1896,12 @@ export const HarthmereGatheringMenuPanel: React.FunctionComponent<{}> = () => {
                         </button>
                       )}
                       {!hasTool && (
-                        <span className="text-[10px] text-red-200">
+                        <span className="text-red-200 text-[10px]">
                           Missing {node.requiredTool?.replaceAll("_", " ")}
                         </span>
                       )}
                       {!canSkill && (
-                        <span className="text-[10px] text-red-200">
+                        <span className="text-red-200 text-[10px]">
                           Skill too low
                         </span>
                       )}
@@ -1830,16 +1923,16 @@ export const HarthmereGatheringMenuPanel: React.FunctionComponent<{}> = () => {
                   key={profession}
                   className="rounded border border-white/10 bg-white/5 p-2"
                 >
-                  <div className="font-semibold text-lime-100">
+                  <div className="text-lime-100 font-semibold">
                     {professionLabel(profession)}
                   </div>
                   <div>Level {data.level}</div>
                   <div>
                     XP {data.xp}/{needed}
                   </div>
-                  <div className="mt-1 h-1.5 overflow-hidden rounded bg-white/10">
+                  <div className="h-1.5 rounded mt-1 overflow-hidden bg-white/10">
                     <div
-                      className="h-full bg-lime-300"
+                      className="bg-lime-300 h-full"
                       style={{
                         width: `${Math.min(100, (data.xp / needed) * 100)}%`,
                       }}
@@ -1863,11 +1956,17 @@ export const HarthmereGatheringMenuPanel: React.FunctionComponent<{}> = () => {
                 materialRows.map(([itemId, quantity]) => (
                   <div
                     key={itemId}
-                    className="flex items-center gap-2 rounded border border-white/10 bg-white/5 p-2"
+                    className="rounded flex items-center gap-2 border border-white/10 bg-white/5 p-2"
                   >
-                    <span className="shrink-0 text-base" aria-hidden="true">{harthmereGatheringResourceIcon(itemId)}</span>
-                    <span className="min-w-0 flex-1 truncate capitalize">{itemId.replaceAll("_", " ")}</span>
-                    <span className="shrink-0 font-semibold text-lime-100">x{quantity}</span>
+                    <span className="text-base shrink-0" aria-hidden="true">
+                      {harthmereGatheringResourceIcon(itemId)}
+                    </span>
+                    <span className="min-w-0 flex-1 truncate capitalize">
+                      {itemId.replaceAll("_", " ")}
+                    </span>
+                    <span className="text-lime-100 shrink-0 font-semibold">
+                      x{quantity}
+                    </span>
                   </div>
                 ))
               ) : (

@@ -42,7 +42,6 @@ import { HarthmereCookingStationPanel } from "@/client/components/harthmere_cook
 import { HarthmereGatheringNodeWorldInteraction } from "@/client/components/challenges/HarthmereGatheringNodeWorldInteraction";
 import { HarthmereLootDropWorldInteraction } from "@/client/components/challenges/HarthmereLootDropWorldInteraction";
 import {
-  HARTHMERE_INVENTORY_EVENT,
   HarthmereInventoryMenuPanel,
   HarthmereVendorTradePanel,
   cycleHarthmereWeapon,
@@ -50,6 +49,10 @@ import {
   ensureHarthmereStarterSwordGranted,
   useHarthmereInventoryState,
 } from "@/client/components/challenges/LocalDevHarthmereInventorySystem";
+import {
+  HARTHMERE_INVENTORY_EVENT,
+  HARTHMERE_JOBS_BOARD_OPEN_EVENT,
+} from "@/client/components/challenges/harthmereEvents";
 import { HarthmereLevelingMenuPanel } from "@/client/components/challenges/LocalDevHarthmereLevelingSystem";
 import { HarthmereMissionJournalPanel } from "@/client/components/challenges/LocalDevHarthmereMissionSystem";
 import {
@@ -106,9 +109,12 @@ import { HarthmereJobsBoardLiveContainer } from "@/client/components/harthmere_j
 import {
   HARTHMERE_JOBS_BOARD_PHYSICAL_BOARDS,
   nearestHarthmereJobsBoardPhysicalPrompt,
-  normalizeHarthmereJobsBoardPoint,
   type HarthmereJobsBoardWorldContext,
 } from "@/client/components/harthmere_jobs_board";
+import {
+  harthmereJobsBoardCameraPosition,
+  harthmereJobsBoardPlayerPosition,
+} from "@/client/components/harthmere_jobs_board/harthmereJobsBoardPosition";
 import {
   closeHarthmereJobsBoardPointerLock,
   openHarthmereJobsBoardPointerLock,
@@ -1481,6 +1487,7 @@ type HarthmereLiveEntityHealthHudSnapshot = {
   maxHp: number;
   isAlive: boolean;
   isAttackable: boolean;
+  position?: { x: number; y: number; z: number };
   lastAttackedAtMs?: number;
   showUntilMs: number;
 };
@@ -1544,11 +1551,61 @@ function useHarthmereLiveEntityHealthHudSnapshots(intervalMs = 120) {
   return snapshots;
 }
 
+function harthmereHealthBarScreenProjection(
+  position: { x: number; y?: number; z: number } | undefined,
+  camera:
+    | { three?: any; pos?: () => number[]; view?: () => number[] }
+    | undefined
+):
+  | {
+      x: number;
+      y: number;
+      visible: boolean;
+      depth: number;
+    }
+  | undefined {
+  if (typeof window === "undefined" || !position || !camera?.three) {
+    return undefined;
+  }
+  const target = new Vector3(position.x, (position.y ?? 70) + 3.0, position.z);
+  const cameraPos = camera.pos?.();
+  const cameraView = camera.view?.();
+  if (cameraPos && cameraView) {
+    const dx = target.x - Number(cameraPos[0]);
+    const dy = target.y - Number(cameraPos[1]);
+    const dz = target.z - Number(cameraPos[2]);
+    const facing =
+      dx * Number(cameraView[0]) +
+      dy * Number(cameraView[1]) +
+      dz * Number(cameraView[2]);
+    if (Number.isFinite(facing) && facing < 0) return undefined;
+  }
+  target.project(camera.three);
+  const x = ((target.x + 1) / 2) * window.innerWidth;
+  const y = ((1 - target.y) / 2) * window.innerHeight;
+  return {
+    x,
+    y,
+    visible:
+      target.x >= -1 &&
+      target.x <= 1 &&
+      target.y >= -1 &&
+      target.y <= 1 &&
+      target.z >= -1 &&
+      target.z <= 1 &&
+      Number.isFinite(x) &&
+      Number.isFinite(y),
+    depth: target.z,
+  };
+}
+
 function HarthmereEnemyHealthBarsHUD() {
+  const { reactResources } = useClientContext();
   const combat = useHarthmereCombatState();
   const multiplayer = useHarthmereMultiplayerCombatState();
   const actorHud = useHarthmereCombatActorHudSnapshots(100);
   const liveEntityHealth = useHarthmereLiveEntityHealthHudSnapshots(100);
+  const camera = reactResources.use("/scene/camera") as any;
   const selectedOffset =
     multiplayer.currentTargetOffset ?? combat.selectedNpcOffset;
   const selectedActor =
@@ -1611,7 +1668,9 @@ function HarthmereEnemyHealthBarsHUD() {
   const liveRows = Object.entries(liveEntityHealth)
     .map(([entityId, health]) => {
       const actor = actorsByLiveTargetId.get(entityId);
-      const screen = actor?.screen;
+      const screen =
+        actor?.screen ??
+        harthmereHealthBarScreenProjection(health.position, camera);
       const alive = health.isAlive && health.hp > 0;
       const damaged = health.hp < health.maxHp;
       const recentlyDamaged =
@@ -1931,9 +1990,6 @@ function NavSlot({
 // free of jobs-board-specific props and lets external code — like an "Open
 // Jobs Board" prompt at the physical Grove board — open the panel without
 // holding a React ref.
-export const HARTHMERE_JOBS_BOARD_OPEN_EVENT =
-  "biomes:harthmere-jobs-board-open";
-
 export function openHarthmereJobsBoardPanel() {
   if (typeof window === "undefined") return;
   try {
@@ -2489,22 +2545,6 @@ function HarthmereJobsBoardWorldPrompt({ onOpen }: { onOpen: () => void }) {
         </button>
       </div>
     </>
-  );
-}
-
-function harthmereJobsBoardPlayerPosition(localPlayer: any, camera: any) {
-  return (
-    normalizeHarthmereJobsBoardPoint(localPlayer?.player?.position) ??
-    normalizeHarthmereJobsBoardPoint(localPlayer?.position) ??
-    harthmereJobsBoardCameraPosition(camera)
-  );
-}
-
-function harthmereJobsBoardCameraPosition(camera: any) {
-  return (
-    normalizeHarthmereJobsBoardPoint(camera?.pos?.()) ??
-    normalizeHarthmereJobsBoardPoint(camera?.three?.position?.toArray?.()) ??
-    normalizeHarthmereJobsBoardPoint(camera?.three?.position)
   );
 }
 

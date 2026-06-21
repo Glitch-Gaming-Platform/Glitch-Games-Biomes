@@ -1,7 +1,10 @@
 /// <reference types="mocha" />
 import assert from "assert";
 
-import { questDetailToolShopMarkerCandidates } from "../questDetailToolSource";
+import {
+  questDetailItemSourceMarkerCandidates,
+  questDetailToolShopMarkerCandidates,
+} from "../questDetailToolSource";
 
 describe("questDetailToolShopMarkerCandidates", () => {
   it("prefers the per-todo tool-source landmark, then the vendor marker", () => {
@@ -50,6 +53,36 @@ describe("questDetailToolShopMarkerCandidates", () => {
       questDetailToolShopMarkerCandidates({
         questId: "snapshot_quest_road_ahead",
         toolSource: undefined,
+      }),
+      []
+    );
+  });
+});
+
+describe("questDetailItemSourceMarkerCandidates", () => {
+  it("prefers the per-todo item-source landmark, then the source marker", () => {
+    const candidates = questDetailItemSourceMarkerCandidates({
+      questId: "jobs_board:repair_todo_1",
+      itemSource: {
+        itemId: "softwood_log",
+        itemName: "Softwood Log",
+        sourceName: "Orchard Softwood Branches",
+        markerId: "harthmere_orchard_softwood",
+        hint: "Gather it at the orchard.",
+        missingCount: 2,
+      },
+    });
+    assert.deepEqual(candidates, [
+      "jobs_board_item_source:repair_todo_1",
+      "harthmere_orchard_softwood",
+    ]);
+  });
+
+  it("returns nothing to locate for a non-jobs-board quest with no item source", () => {
+    assert.deepEqual(
+      questDetailItemSourceMarkerCandidates({
+        questId: "snapshot_quest_road_ahead",
+        itemSource: undefined,
       }),
       []
     );

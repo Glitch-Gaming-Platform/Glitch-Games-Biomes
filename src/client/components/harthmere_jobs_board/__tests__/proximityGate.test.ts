@@ -17,6 +17,10 @@ import {
   normalizeHarthmereJobsBoardPoint,
   type HarthmereJobsBoardSnapshot,
 } from "../jobsBoardLiveAdapter";
+import {
+  harthmereJobsBoardCameraPosition,
+  harthmereJobsBoardPlayerPosition,
+} from "../harthmereJobsBoardPosition";
 
 const FIXTURE: HarthmereJobsBoardSnapshot = {
   version: "test",
@@ -115,22 +119,36 @@ describe("harthmere_jobs_board proximity gate (current)", () => {
       y: 70,
       z: -132,
     });
-    assert.deepEqual(
-      normalizeHarthmereJobsBoardPoint({ v: [501, 70, -132] }),
-      { x: 501, y: 70, z: -132 }
-    );
+    assert.deepEqual(normalizeHarthmereJobsBoardPoint({ v: [501, 70, -132] }), {
+      x: 501,
+      y: 70,
+      z: -132,
+    });
     assert.deepEqual(
       normalizeHarthmereJobsBoardPoint({ x: "501", y: "70", z: "-132" }),
       { x: 501, y: 70, z: -132 }
     );
   });
 
+  it("uses the shared player/camera position model for board-like world interactions", () => {
+    assert.deepEqual(
+      harthmereJobsBoardPlayerPosition(
+        { player: { centerPos: () => [502, 70, -132] } },
+        undefined
+      ),
+      { x: 502, y: 70, z: -132 }
+    );
+    assert.deepEqual(
+      harthmereJobsBoardCameraPosition({
+        three: { position: { toArray: () => [503, 71, -133] } },
+      }),
+      { x: 503, y: 71, z: -133 }
+    );
+  });
+
   it("does not show the physical prompt from across the fountain", () => {
     const prompt = nearestHarthmereJobsBoardPhysicalPrompt({
-      x:
-        501.99486179104775 +
-        HARTHMERE_JOBS_BOARD_INTERACTION_RADIUS +
-        0.25,
+      x: 501.99486179104775 + HARTHMERE_JOBS_BOARD_INTERACTION_RADIUS + 0.25,
       y: 70,
       z: -132.00350672753194,
     });

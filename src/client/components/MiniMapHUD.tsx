@@ -2,15 +2,40 @@ import { useClientContext } from "@/client/components/contexts/ClientContextReac
 import { defaultHarthmereLiveFetch } from "@/client/components/harthmere_live_fetch";
 import { MiniMap, MiniMapContext } from "@/client/components/map/MiniMap";
 import { worldToMinimapClippedCanvasCoordinates } from "@/client/components/map/helpers";
-import { BIOMES_UI_ACTIVE_MINIMAP_PIN_STYLE_ID, BIOMES_UI_ACTIVE_MINIMAP_PIN_ROOT_CLASS, BIOMES_UI_ACTIVE_MINIMAP_PIN_Z_INDEX, biomesUIActiveMiniMapPinClassName, biomesUIActiveMiniMapPinCss, biomesUIActiveMiniMapPinHasFinitePosition, biomesUIActiveMiniMapPinLabel } from "@/client/components/map/markers/biomes_ui_active_minimap_pin";
+import {
+  BIOMES_UI_ACTIVE_MINIMAP_PIN_STYLE_ID,
+  BIOMES_UI_ACTIVE_MINIMAP_PIN_ROOT_CLASS,
+  BIOMES_UI_ACTIVE_MINIMAP_PIN_Z_INDEX,
+  biomesUIActiveMiniMapPinClassName,
+  biomesUIActiveMiniMapPinCss,
+  biomesUIActiveMiniMapPinHasFinitePosition,
+  biomesUIActiveMiniMapPinLabel,
+} from "@/client/components/map/markers/biomes_ui_active_minimap_pin";
 import { Tooltipped } from "@/client/components/system/Tooltipped";
 import { useAnimation } from "@/client/util/animation";
 import { useCurrentLandName } from "@/client/util/location_helpers";
 import { readSnapshotGroveQuestState } from "@/client/components/challenges/LocalDevSnapshotGroveBibleRuntime";
-import { BIOMES_UI_ACTIVE_MAP_PIN_EVENT, BIOMES_UI_ACTIVE_MAP_PIN_NAV_AID_ID, type BiomesUIActiveMapPin, biomesUIActiveMapPinNavigationAidSpecForTest, readActiveBiomesUIMapPin } from "@/client/components/biomes_ui/adapters/mapPinnedDestination";
-import { SNAPSHOT_GROVE_QUESTS, snapshotGroveLandmarkById } from "@/shared/harthmere/snapshot_grove_content";
-import { HARTHMERE_BUSINESS_MINIMAP_PIN_Z_INDEX, harthmereBusinessMiniMapPinsForPlayerForTest, type HarthmereBusinessMiniMapPin } from "@/client/components/map/markers/harthmere_business_minimap_pins";
-import { HARTHMERE_PROPERTY_BUILDING_STATE_EVENT, harthmerePropertyMiniMapPinsForBuildingStateForTest, type HarthmerePropertyMapBuildingState } from "@/client/components/biomes_ui/adapters/propertyMapMarkers";
+import {
+  BIOMES_UI_ACTIVE_MAP_PIN_EVENT,
+  BIOMES_UI_ACTIVE_MAP_PIN_NAV_AID_ID,
+  type BiomesUIActiveMapPin,
+  biomesUIActiveMapPinNavigationAidSpecForTest,
+  readActiveBiomesUIMapPin,
+} from "@/client/components/biomes_ui/adapters/mapPinnedDestination";
+import {
+  SNAPSHOT_GROVE_QUESTS,
+  snapshotGroveLandmarkById,
+} from "@/shared/harthmere/snapshot_grove_content";
+import {
+  HARTHMERE_BUSINESS_MINIMAP_PIN_Z_INDEX,
+  harthmereBusinessMiniMapPinsForPlayerForTest,
+  type HarthmereBusinessMiniMapPin,
+} from "@/client/components/map/markers/harthmere_business_minimap_pins";
+import {
+  HARTHMERE_PROPERTY_BUILDING_STATE_EVENT,
+  harthmerePropertyMiniMapPinsForBuildingStateForTest,
+  type HarthmerePropertyMapBuildingState,
+} from "@/client/components/biomes_ui/adapters/propertyMapMarkers";
 import { harthmereBusinessOutpostRuntimeOffsetForTest } from "@/client/game/renderers/local_dev/harthmere_business_outpost_buildings";
 import {
   harthmereObjectiveMiniMapPinsFromLandmarks,
@@ -21,10 +46,10 @@ import {
   jobsBoardToolSourceLandmarksForBiomesUI,
 } from "@/client/components/biomes_ui/adapters/jobsBoardQuestMapAdapter";
 import {
-  HARTHMERE_INVENTORY_EVENT,
   harthmereJobToolOwnedState,
   type HarthmereJobToolOwnedState,
 } from "@/client/components/challenges/LocalDevHarthmereInventorySystem";
+import { HARTHMERE_INVENTORY_EVENT } from "@/client/components/challenges/harthmereEvents";
 import { liveEntityHelperAcceptedQuestLandmarksForBiomesUI } from "@/client/components/biomes_ui/adapters/liveEntityHelperQuestMapAdapter";
 import { liveEntityHelperQuestRecordReadyToTurnIn } from "@/client/components/challenges/LocalDevLiveEntityHelperQuests";
 import {
@@ -49,7 +74,9 @@ export const MINI_MAP_ICON_HEIGHT = "h-3";
 
 const OnlinePlayers: React.FunctionComponent<{}> = ({}) => {
   const { reactResources } = useClientContext();
-  const onlinePlayers = reactResources.use("/ecs/c/synthetic_stats", WorldMetadataId)?.online_players ?? 1;
+  const onlinePlayers =
+    reactResources.use("/ecs/c/synthetic_stats", WorldMetadataId)
+      ?.online_players ?? 1;
   return (
     <Tooltipped tooltip="Online Players">
       <div
@@ -58,7 +85,8 @@ const OnlinePlayers: React.FunctionComponent<{}> = ({}) => {
         }}
         className="absolute bottom-3 right-1 flex cursor-pointer items-center gap-0.2 text-sm font-semibold text-silver"
       >
-        <img src={onlinePlayerIcon.src} className="h-[2.5vmin] w-[2.5vmin]" /> {onlinePlayers ?? 0}
+        <img src={onlinePlayerIcon.src} className="h-[2.5vmin] w-[2.5vmin]" />{" "}
+        {onlinePlayers ?? 0}
       </div>
     </Tooltipped>
   );
@@ -67,13 +95,29 @@ const OnlinePlayers: React.FunctionComponent<{}> = ({}) => {
 const LocationName: React.FunctionComponent<{}> = ({}) => {
   const landName = useCurrentLandName();
 
-  return <div className={`w-full max-w-full overflow-hidden text-ellipsis whitespace-nowrap text-center text-marge font-semibold`}>{landName ?? "The Muck"}</div>;
+  return (
+    <div
+      className={`w-full max-w-full overflow-hidden text-ellipsis whitespace-nowrap text-center text-marge font-semibold`}
+    >
+      {landName ?? "The Muck"}
+    </div>
+  );
 };
 
-function isSnapshotGroveMapItemMarker(markerId: string, objective: string | undefined) {
+function isSnapshotGroveMapItemMarker(
+  markerId: string,
+  objective: string | undefined
+) {
   const marker = snapshotGroveLandmarkById(markerId);
-  const text = `${markerId} ${marker?.label ?? ""} ${objective ?? ""}`.toLowerCase();
-  return marker?.kind === "resource" || /food|ration|item|sample|root|berry|berries|stick|stone|bolt|key|crate|satchel|basket|bin|bandage|salve|medicine|workbench|drop/.test(text);
+  const text = `${markerId} ${marker?.label ?? ""} ${
+    objective ?? ""
+  }`.toLowerCase();
+  return (
+    marker?.kind === "resource" ||
+    /food|ration|item|sample|root|berry|berries|stick|stone|bolt|key|crate|satchel|basket|bin|bandage|salve|medicine|workbench|drop/.test(
+      text
+    )
+  );
 }
 
 function useSnapshotGroveMiniMapPins() {
@@ -82,20 +126,31 @@ function useSnapshotGroveMiniMapPins() {
     const refresh = () => setState(readSnapshotGroveQuestState());
     const interval = window.setInterval(refresh, 500);
     window.addEventListener("storage", refresh);
-    window.addEventListener("biomes:local-dev-snapshot-grove-quest-state", refresh);
+    window.addEventListener(
+      "biomes:local-dev-snapshot-grove-quest-state",
+      refresh
+    );
     return () => {
       window.clearInterval(interval);
       window.removeEventListener("storage", refresh);
-      window.removeEventListener("biomes:local-dev-snapshot-grove-quest-state", refresh);
+      window.removeEventListener(
+        "biomes:local-dev-snapshot-grove-quest-state",
+        refresh
+      );
     };
   }, []);
 
   return useMemo(() => {
-    const quest = SNAPSHOT_GROVE_QUESTS.find((entry) => entry.id === state.activeQuestId);
+    const quest = SNAPSHOT_GROVE_QUESTS.find(
+      (entry) => entry.id === state.activeQuestId
+    );
     if (!quest || state.completedQuestIds.includes(quest.id)) {
       return [];
     }
-    const activeIndex = Math.max(0, Math.min(state.activeObjectiveIndex, quest.objectives.length - 1));
+    const activeIndex = Math.max(
+      0,
+      Math.min(state.activeObjectiveIndex, quest.objectives.length - 1)
+    );
     return quest.markerIds
       .map((markerId, stepIndex) => {
         const marker = snapshotGroveLandmarkById(markerId);
@@ -132,7 +187,11 @@ function useSnapshotGroveMiniMapPins() {
       position: Vec3;
       objective?: string;
     }>;
-  }, [state.activeObjectiveIndex, state.activeQuestId, state.completedQuestIds]);
+  }, [
+    state.activeObjectiveIndex,
+    state.activeQuestId,
+    state.completedQuestIds,
+  ]);
 }
 
 const SnapshotGroveMiniMapPin: React.FunctionComponent<{
@@ -151,7 +210,14 @@ const SnapshotGroveMiniMapPin: React.FunctionComponent<{
     const camera = reactResources.get("/scene/camera");
     const orientation = -yaw(camera.view());
     const maxDist = map.clientWidth / 2;
-    const [x, y, isClipped] = worldToMinimapClippedCanvasCoordinates(maxDist, pin.position, player, zoomRef.current, map.offsetWidth ?? 0, map.offsetHeight ?? 0);
+    const [x, y, isClipped] = worldToMinimapClippedCanvasCoordinates(
+      maxDist,
+      pin.position,
+      player,
+      zoomRef.current,
+      map.offsetWidth ?? 0,
+      map.offsetHeight ?? 0
+    );
     ref.current.style.transform = `translate(-50%, -50%) translate(${x}px, ${y}px) rotate(${orientation}rad)`;
     setClipped(isClipped);
   });
@@ -161,8 +227,25 @@ const SnapshotGroveMiniMapPin: React.FunctionComponent<{
   }
 
   return (
-    <div ref={ref} className="pointer-events-none absolute left-0 top-0 flex items-center justify-center" data-snapshot-grove-minimap-item={pin.isItem ? "true" : "false"} data-snapshot-grove-minimap-active={pin.isActive ? "true" : "false"} title={`${pin.questTitle}: ${pin.objective ?? pin.label}`} style={{ zIndex: pin.isActive ? 6 : 5, willChange: "transform" }}>
-      <div className={pin.isActive ? "bg-lime-300 flex h-4 w-4 items-center justify-center rounded-full border border-white text-[9px] font-black text-black shadow-[0_0_12px_rgba(190,242,100,0.95)] [animation:snapshotGroveMiniMapPulseV111_0.95s_ease-in-out_infinite]" : pin.isItem ? "h-3.5 w-3.5 bg-amber-300 flex items-center justify-center rounded-full border border-white/80 text-[8px] font-black text-black shadow-[0_0_8px_rgba(252,211,77,0.75)]" : "bg-violet-300 flex h-3 w-3 items-center justify-center rounded-full border border-white/70 text-[8px] font-black text-black"}>{pin.isActive ? "!" : pin.isItem ? "I" : pin.stepIndex + 1}</div>
+    <div
+      ref={ref}
+      className="pointer-events-none absolute left-0 top-0 flex items-center justify-center"
+      data-snapshot-grove-minimap-item={pin.isItem ? "true" : "false"}
+      data-snapshot-grove-minimap-active={pin.isActive ? "true" : "false"}
+      title={`${pin.questTitle}: ${pin.objective ?? pin.label}`}
+      style={{ zIndex: pin.isActive ? 6 : 5, willChange: "transform" }}
+    >
+      <div
+        className={
+          pin.isActive
+            ? "bg-lime-300 flex h-4 w-4 items-center justify-center rounded-full border border-white text-[9px] font-black text-black shadow-[0_0_12px_rgba(190,242,100,0.95)] [animation:snapshotGroveMiniMapPulseV111_0.95s_ease-in-out_infinite]"
+            : pin.isItem
+            ? "h-3.5 w-3.5 bg-amber-300 flex items-center justify-center rounded-full border border-white/80 text-[8px] font-black text-black shadow-[0_0_8px_rgba(252,211,77,0.75)]"
+            : "bg-violet-300 flex h-3 w-3 items-center justify-center rounded-full border border-white/70 text-[8px] font-black text-black"
+        }
+      >
+        {pin.isActive ? "!" : pin.isItem ? "I" : pin.stepIndex + 1}
+      </div>
     </div>
   );
 };
@@ -205,8 +288,13 @@ function useHarthmereBusinessMiniMapPins() {
   // Business outpost markers are stored in production/world coordinates. The
   // offset helper only returns a non-zero value for legacy local captures.
   const offset = harthmereBusinessOutpostRuntimeOffsetForTest();
-  const position: Vec3 | undefined = rawPosition ? [rawPosition[0] - offset.x, rawPosition[1], rawPosition[2] - offset.z] : undefined;
-  return useMemo(() => harthmereBusinessMiniMapPinsForPlayerForTest(position), [position?.[0], position?.[1], position?.[2]]);
+  const position: Vec3 | undefined = rawPosition
+    ? [rawPosition[0] - offset.x, rawPosition[1], rawPosition[2] - offset.z]
+    : undefined;
+  return useMemo(
+    () => harthmereBusinessMiniMapPinsForPlayerForTest(position),
+    [position?.[0], position?.[1], position?.[2]]
+  );
 }
 
 const HarthmereBusinessMiniMapPinMarker: React.FunctionComponent<{
@@ -225,7 +313,14 @@ const HarthmereBusinessMiniMapPinMarker: React.FunctionComponent<{
     const camera = reactResources.get("/scene/camera");
     const orientation = -yaw(camera.view());
     const maxDist = map.clientWidth / 2;
-    const [x, y, isClipped] = worldToMinimapClippedCanvasCoordinates(maxDist, pin.position, player, zoomRef.current, map.offsetWidth ?? 0, map.offsetHeight ?? 0);
+    const [x, y, isClipped] = worldToMinimapClippedCanvasCoordinates(
+      maxDist,
+      pin.position,
+      player,
+      zoomRef.current,
+      map.offsetWidth ?? 0,
+      map.offsetHeight ?? 0
+    );
     ref.current.style.transform = `translate(-50%, -50%) translate(${x}px, ${y}px) rotate(${orientation}rad)`;
     setClipped(isClipped);
   });
@@ -274,7 +369,9 @@ const HarthmereBusinessMiniMapMarkers: React.FunctionComponent<{}> = () => {
   );
 };
 
-async function fetchHarthmereBuildingStateForMiniMap(): Promise<HarthmerePropertyMapBuildingState | undefined> {
+async function fetchHarthmereBuildingStateForMiniMap(): Promise<
+  HarthmerePropertyMapBuildingState | undefined
+> {
   const response = await defaultHarthmereLiveFetch(
     "/api/harthmere/live_mode_building_state",
     {
@@ -288,7 +385,9 @@ async function fetchHarthmereBuildingStateForMiniMap(): Promise<HarthmerePropert
 }
 
 function useHarthmerePropertyMiniMapPins() {
-  const [buildingState, setBuildingState] = useState<HarthmerePropertyMapBuildingState | undefined>(undefined);
+  const [buildingState, setBuildingState] = useState<
+    HarthmerePropertyMapBuildingState | undefined
+  >(undefined);
   useEffect(() => {
     let cancelled = false;
     const refreshFromServer = async () => {
@@ -313,18 +412,29 @@ function useHarthmerePropertyMiniMapPins() {
     };
     void refreshFromServer();
     window.addEventListener("storage", refreshFromEvent);
-    window.addEventListener(HARTHMERE_PROPERTY_BUILDING_STATE_EVENT, refreshFromEvent);
+    window.addEventListener(
+      HARTHMERE_PROPERTY_BUILDING_STATE_EVENT,
+      refreshFromEvent
+    );
     return () => {
       cancelled = true;
       window.removeEventListener("storage", refreshFromEvent);
-      window.removeEventListener(HARTHMERE_PROPERTY_BUILDING_STATE_EVENT, refreshFromEvent);
+      window.removeEventListener(
+        HARTHMERE_PROPERTY_BUILDING_STATE_EVENT,
+        refreshFromEvent
+      );
     };
   }, []);
-  return useMemo(() => harthmerePropertyMiniMapPinsForBuildingStateForTest(buildingState), [buildingState]);
+  return useMemo(
+    () => harthmerePropertyMiniMapPinsForBuildingStateForTest(buildingState),
+    [buildingState]
+  );
 }
 
 const HarthmerePropertyMiniMapPinMarker: React.FunctionComponent<{
-  pin: ReturnType<typeof harthmerePropertyMiniMapPinsForBuildingStateForTest>[number];
+  pin: ReturnType<
+    typeof harthmerePropertyMiniMapPinsForBuildingStateForTest
+  >[number];
 }> = ({ pin }) => {
   const { map, zoomRef } = useContext(MiniMapContext);
   const { reactResources } = useClientContext();
@@ -339,7 +449,14 @@ const HarthmerePropertyMiniMapPinMarker: React.FunctionComponent<{
     const camera = reactResources.get("/scene/camera");
     const orientation = -yaw(camera.view());
     const maxDist = map.clientWidth / 2;
-    const [x, y, isClipped] = worldToMinimapClippedCanvasCoordinates(maxDist, pin.position, player, zoomRef.current, map.offsetWidth ?? 0, map.offsetHeight ?? 0);
+    const [x, y, isClipped] = worldToMinimapClippedCanvasCoordinates(
+      maxDist,
+      pin.position,
+      player,
+      zoomRef.current,
+      map.offsetWidth ?? 0,
+      map.offsetHeight ?? 0
+    );
     ref.current.style.transform = `translate(-50%, -50%) translate(${x}px, ${y}px) rotate(${orientation}rad)`;
     setClipped(isClipped);
   });
@@ -350,9 +467,23 @@ const HarthmerePropertyMiniMapPinMarker: React.FunctionComponent<{
 
   const terraformed = pin.terrainState === "terraformed";
   return (
-    <div ref={ref} className="pointer-events-none absolute left-0 top-0 flex items-center justify-center" data-harthmere-property-minimap-pin={pin.markerId} data-harthmere-property-minimap-pin-state={pin.terrainState} title={`${pin.label} ${terraformed ? "terraformed property" : "muck property"}`} aria-label={`${pin.label} ${terraformed ? "terraformed property" : "muck property"}`} style={{ zIndex: 7, willChange: "transform" }}>
+    <div
+      ref={ref}
+      className="pointer-events-none absolute left-0 top-0 flex items-center justify-center"
+      data-harthmere-property-minimap-pin={pin.markerId}
+      data-harthmere-property-minimap-pin-state={pin.terrainState}
+      title={`${pin.label} ${
+        terraformed ? "terraformed property" : "muck property"
+      }`}
+      aria-label={`${pin.label} ${
+        terraformed ? "terraformed property" : "muck property"
+      }`}
+      style={{ zIndex: 7, willChange: "transform" }}
+    >
       <div
-        className={`h-3.5 w-3.5 border-white/85 text-slate-950 flex items-center justify-center rounded-[3px] border text-[8px] font-black shadow-[0_0_8px_rgba(251,191,36,0.8)] ${terraformed ? "bg-emerald-300" : "bg-amber-300"}`}
+        className={`h-3.5 w-3.5 border-white/85 text-slate-950 flex items-center justify-center rounded-[3px] border text-[8px] font-black shadow-[0_0_8px_rgba(251,191,36,0.8)] ${
+          terraformed ? "bg-emerald-300" : "bg-amber-300"
+        }`}
         style={{
           opacity: clipped ? 0.82 : 1,
           transform: clipped ? "scale(0.86)" : undefined,
@@ -379,7 +510,9 @@ const HarthmerePropertyMiniMapMarkers: React.FunctionComponent<{}> = () => {
 };
 
 function useBiomesUIActiveMiniMapPin() {
-  const [pin, setPin] = useState<BiomesUIActiveMapPin | undefined>(() => readActiveBiomesUIMapPin());
+  const [pin, setPin] = useState<BiomesUIActiveMapPin | undefined>(() =>
+    readActiveBiomesUIMapPin()
+  );
   useEffect(() => {
     const refresh = () => setPin(readActiveBiomesUIMapPin());
     window.addEventListener("storage", refresh);
@@ -410,19 +543,35 @@ const BiomesUIActiveMiniMapPin: React.FunctionComponent<{}> = () => {
   }, []);
 
   useAnimation(() => {
-    if (!pin || !map || !ref.current || !biomesUIActiveMiniMapPinHasFinitePosition(pin.worldPosition)) {
+    if (
+      !pin ||
+      !map ||
+      !ref.current ||
+      !biomesUIActiveMiniMapPinHasFinitePosition(pin.worldPosition)
+    ) {
       return;
     }
     const player = reactResources.get("/scene/local_player");
     const camera = reactResources.get("/scene/camera");
     const orientation = -yaw(camera.view());
     const maxDist = map.clientWidth / 2;
-    const [x, y, isClipped] = worldToMinimapClippedCanvasCoordinates(maxDist, pin.worldPosition, player, zoomRef.current, map.offsetWidth ?? 0, map.offsetHeight ?? 0);
+    const [x, y, isClipped] = worldToMinimapClippedCanvasCoordinates(
+      maxDist,
+      pin.worldPosition,
+      player,
+      zoomRef.current,
+      map.offsetWidth ?? 0,
+      map.offsetHeight ?? 0
+    );
     ref.current.style.transform = `translate(-50%, -50%) translate(${x}px, ${y}px) rotate(${orientation}rad)`;
     setClipped(isClipped);
   });
 
-  if (!pin || !map || !biomesUIActiveMiniMapPinHasFinitePosition(pin.worldPosition)) {
+  if (
+    !pin ||
+    !map ||
+    !biomesUIActiveMiniMapPinHasFinitePosition(pin.worldPosition)
+  ) {
     return null;
   }
   const label = biomesUIActiveMiniMapPinLabel(pin.label);
@@ -440,7 +589,10 @@ const BiomesUIActiveMiniMapPin: React.FunctionComponent<{}> = () => {
         willChange: "transform",
       }}
     >
-      <div className={biomesUIActiveMiniMapPinClassName(clipped)} aria-hidden="true">
+      <div
+        className={biomesUIActiveMiniMapPinClassName(clipped)}
+        aria-hidden="true"
+      >
         <span className={`${BIOMES_UI_ACTIVE_MINIMAP_PIN_ROOT_CLASS}__halo`} />
         <span className={`${BIOMES_UI_ACTIVE_MINIMAP_PIN_ROOT_CLASS}__tail`} />
         <span className={`${BIOMES_UI_ACTIVE_MINIMAP_PIN_ROOT_CLASS}__core`}>
@@ -454,7 +606,10 @@ const BiomesUIActiveMiniMapPin: React.FunctionComponent<{}> = () => {
 const BiomesUIActiveMapPinNavigationAid: React.FunctionComponent<{}> = () => {
   const pin = useBiomesUIActiveMiniMapPin();
   const { mapManager } = useClientContext();
-  const positionKey = pin && Array.isArray(pin.worldPosition) ? pin.worldPosition.map((value) => String(value)).join("|") : "";
+  const positionKey =
+    pin && Array.isArray(pin.worldPosition)
+      ? pin.worldPosition.map((value) => String(value)).join("|")
+      : "";
 
   useEffect(() => {
     const spec = biomesUIActiveMapPinNavigationAidSpecForTest(pin);
@@ -477,8 +632,8 @@ const BiomesUIActiveMapPinNavigationAid: React.FunctionComponent<{}> = () => {
 function useHarthmereObjectiveMiniMapPins(): HarthmereObjectiveMiniMapPin[] {
   const [jobsRaw, setJobsRaw] = useState<unknown>(undefined);
   const [helperState, setHelperState] = useState<unknown>(undefined);
-  const [toolOwned, setToolOwned] = useState<HarthmereJobToolOwnedState>(
-    () => harthmereJobToolOwnedState()
+  const [toolOwned, setToolOwned] = useState<HarthmereJobToolOwnedState>(() =>
+    harthmereJobToolOwnedState()
   );
   useEffect(() => {
     let cancelled = false;
@@ -607,7 +762,9 @@ const HarthmereObjectiveMiniMapMarkers: React.FunctionComponent<{}> = () => {
 
 export const MiniMapHUD: React.FunctionComponent<{}> = ({}) => {
   return (
-    <div className={`relative flex ${MINI_MAP_WIDTH} flex-col items-center gap-0.6 text-white text-shadow-bordered`}>
+    <div
+      className={`relative flex ${MINI_MAP_WIDTH} flex-col items-center gap-0.6 text-white text-shadow-bordered`}
+    >
       <BiomesUIActiveMapPinNavigationAid />
       <MiniMap>
         <SnapshotGroveMiniMapQuestMarkers />

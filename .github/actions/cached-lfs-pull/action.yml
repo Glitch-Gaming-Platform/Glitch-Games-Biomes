@@ -20,12 +20,17 @@ runs:
       run: git lfs ls-files -l | cut -d' ' -f1 | sort > .lfs-assets-id
       shell: bash
 
+    - name: Capture LFS cache key
+      id: lfs-cache-key
+      run: echo "key=lfs-${{ hashFiles('.lfs-assets-id') }}" >> "$GITHUB_OUTPUT"
+      shell: bash
+
     - name: Restore LFS cache
-      uses: actions/cache@v5
+      uses: actions/cache/restore@v5
       id: lfs-cache
       with:
         path: .git/lfs
-        key: lfs-${{ hashFiles('.lfs-assets-id') }}
+        key: ${{ steps.lfs-cache-key.outputs.key }}
 
     - name: Remove cache key file
       run: rm .lfs-assets-id
@@ -52,3 +57,11 @@ runs:
             echo "Retrying 'git lfs pull'..."
         done
       shell: bash
+
+    - name: Save LFS cache
+      if: steps.lfs-cache.outputs.cache-hit != 'true'
+      continue-on-error: true
+      uses: actions/cache/save@v5
+      with:
+        path: .git/lfs
+        key: ${{ steps.lfs-cache-key.outputs.key }}

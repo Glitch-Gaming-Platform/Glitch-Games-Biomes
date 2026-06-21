@@ -234,6 +234,14 @@ describe("harthmere visible player drowning damage", () => {
     assert.equal(after.combatState, "alert");
   });
 
+  it("marks the player dead when drowning drains HP to zero", () => {
+    applyHarthmereDrowningDamageFromSystem(10_000);
+
+    const after = readHarthmereCombatState().player;
+    assert.equal(after.hp, 0);
+    assert.equal(after.combatState, "dead");
+  });
+
   it("ignores nonpositive drowning damage", () => {
     const before = readHarthmereCombatState().player;
 

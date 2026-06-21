@@ -10,7 +10,10 @@ import {
   mainQuestFromTrackableQuestsForTest,
   readBiomesUIMainQuestSelection,
 } from "./adapters/mainQuestSelection";
-import { questDetailToolShopMarkerCandidates } from "./tabs/questDetailToolSource";
+import {
+  questDetailItemSourceMarkerCandidates,
+  questDetailToolShopMarkerCandidates,
+} from "./tabs/questDetailToolSource";
 import type { MapTrackableQuest } from "./tabs/MapQuestsTab";
 
 interface CurrentQuestObjectiveMapAdapter {
@@ -35,6 +38,16 @@ function questToolSourceMatchesActivePin(
   );
 }
 
+function questItemSourceMatchesActivePin(
+  quest: MapTrackableQuest,
+  pin: BiomesUIActiveMapPin | undefined
+): boolean {
+  return Boolean(
+    pin?.markerId &&
+      questDetailItemSourceMarkerCandidates(quest).includes(pin.markerId)
+  );
+}
+
 function questIsDisplayableOnHUD(quest: MapTrackableQuest): boolean {
   return quest.status !== "completed" && quest.status !== "failed";
 }
@@ -48,6 +61,10 @@ function questObjectiveForHUD(
     const toolHint = cleanObjectiveText(quest.toolSource?.hint);
     if (toolHint) return toolHint;
   }
+  if (questItemSourceMatchesActivePin(quest, pin)) {
+    const itemHint = cleanObjectiveText(quest.itemSource?.hint);
+    if (itemHint) return itemHint;
+  }
   return (
     cleanObjectiveText(quest.objective) ??
     quest.objectives?.map(cleanObjectiveText).find(Boolean)
@@ -60,7 +77,10 @@ function questMatchesActivePin(
 ): boolean {
   if (!pin?.markerId) return false;
   if (quest.firstMarkerId === pin.markerId) return true;
-  return questDetailToolShopMarkerCandidates(quest).includes(pin.markerId);
+  return (
+    questDetailToolShopMarkerCandidates(quest).includes(pin.markerId) ||
+    questDetailItemSourceMarkerCandidates(quest).includes(pin.markerId)
+  );
 }
 
 export function currentQuestObjectiveForHUDForTest(input: {
@@ -113,15 +133,12 @@ export const CurrentQuestObjectiveHUD: React.FunctionComponent<{
   const [mainQuestSelection, setMainQuestSelection] = React.useState<
     BiomesUIMainQuestSelection | undefined
   >(
-    () =>
-      adapter?.getMainQuestSelection?.() ?? readBiomesUIMainQuestSelection()
+    () => adapter?.getMainQuestSelection?.() ?? readBiomesUIMainQuestSelection()
   );
   const [revision, setRevision] = React.useState(0);
 
   React.useEffect(() => {
-    setActiveMapPin(
-      adapter?.getActiveMapPin?.() ?? readActiveBiomesUIMapPin()
-    );
+    setActiveMapPin(adapter?.getActiveMapPin?.() ?? readActiveBiomesUIMapPin());
     setMainQuestSelection(
       adapter?.getMainQuestSelection?.() ?? readBiomesUIMainQuestSelection()
     );
@@ -148,8 +165,7 @@ export const CurrentQuestObjectiveHUD: React.FunctionComponent<{
     if (typeof window === "undefined") return;
     const onMainQuest = (event: Event) => {
       setMainQuestSelection(
-        (event as CustomEvent<BiomesUIMainQuestSelection | undefined>)
-          .detail ??
+        (event as CustomEvent<BiomesUIMainQuestSelection | undefined>).detail ??
           adapter?.getMainQuestSelection?.() ??
           readBiomesUIMainQuestSelection()
       );

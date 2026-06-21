@@ -27,6 +27,23 @@ jobs:
       - name: pip install
         uses: ./.github/actions/cached-pip-install
       - name: Restore eslint cache.
+        id: eslint-cache
         uses: ./.github/actions/cached-eslint
       - run: ./b lint ts
+      - name: Check refreshed eslint cache
+        id: refreshed-eslint-cache
+        run: |
+          set -euo pipefail
+          if [ -d .next/cache/eslint ]; then
+            echo "cache_present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "cache_present=false" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Save eslint cache
+        if: steps.refreshed-eslint-cache.outputs.cache_present == 'true' && steps.eslint-cache.outputs.cache-hit != 'true'
+        continue-on-error: true
+        uses: actions/cache/save@v5
+        with:
+          path: ./.next/cache/eslint
+          key: ${{ runner.os }}-eslintcache-${{ hashFiles('./yarn.lock') }}
       - run: ./b test

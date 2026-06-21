@@ -503,6 +503,7 @@ export function harthmereLiveModeMutationSnapshotKeys(input: {
       break;
     case "request_inventory_mutation":
     case "request_loot_claim":
+    case "request_loot_roll":
       snapshots.add("inventoryLootState");
       snapshots.add("playerStatusState");
       break;

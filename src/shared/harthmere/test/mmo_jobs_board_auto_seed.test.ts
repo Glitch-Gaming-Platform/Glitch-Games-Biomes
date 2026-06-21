@@ -23,6 +23,7 @@ import {
   HARTHMERE_JOBS_BOARD_MAX_REWARD_GOLD,
   HARTHMERE_JOBS_BOARD_MONSTER_HUNT_REWARD_FLOOR,
   defaultHarthmereJobsBoardState,
+  harthmereAutoSeedTemplateRequirementsObtainable,
   isHarthmereExoticMatterMiningTemplateId,
   reduceHarthmereJobsBoardMutation,
   type HarthmereJobsBoardMutationContext,
@@ -50,7 +51,9 @@ import { isKnownHarthmereJobsBoardExecutableItemId } from "../jobs_board_busines
 
 const NOW = 1_800_000_000_000;
 
-function seedContext(overrides: Partial<HarthmereJobsBoardMutationContext> = {}): HarthmereJobsBoardMutationContext {
+function seedContext(
+  overrides: Partial<HarthmereJobsBoardMutationContext> = {}
+): HarthmereJobsBoardMutationContext {
   return {
     actorGold: 0,
     actorInventoryItems: {},
@@ -62,7 +65,7 @@ function seedContext(overrides: Partial<HarthmereJobsBoardMutationContext> = {})
 function seed(
   state: HarthmereJobsBoardState,
   nowMs = NOW,
-  ctx: Partial<HarthmereJobsBoardMutationContext> = {},
+  ctx: Partial<HarthmereJobsBoardMutationContext> = {}
 ) {
   return seedBoard(state, HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID, nowMs, ctx);
 }
@@ -71,7 +74,7 @@ function seedBoard(
   state: HarthmereJobsBoardState,
   boardId: string,
   nowMs = NOW,
-  ctx: Partial<HarthmereJobsBoardMutationContext> = {},
+  ctx: Partial<HarthmereJobsBoardMutationContext> = {}
 ) {
   return reduceHarthmereJobsBoardMutation(
     state,
@@ -82,7 +85,7 @@ function seedBoard(
       operation: "economy_auto_seed_jobs",
       boardId,
     } as any,
-    seedContext(ctx),
+    seedContext(ctx)
   );
 }
 
@@ -97,7 +100,7 @@ describe("mmo_jobs_board_authority — economy auto-seed (current)", () => {
     assert.ok(auto.length > 0, "auto-seeder produced no jobs");
     assert.ok(
       auto.length <= HARTHMERE_JOBS_BOARD_AUTO_SEED_MAX_PER_TICK,
-      `auto-seeder produced ${auto.length} > MAX_PER_TICK`,
+      `auto-seeder produced ${auto.length} > MAX_PER_TICK`
     );
     for (const job of auto) {
       assert.equal(job.status, "open");
@@ -115,8 +118,12 @@ describe("mmo_jobs_board_authority — economy auto-seed (current)", () => {
     const idsA = Object.keys(a.jobsBoard.postings).sort();
     const idsB = Object.keys(b.jobsBoard.postings).sort();
     assert.deepEqual(idsA, idsB);
-    const titlesA = Object.values(a.jobsBoard.postings).map((j) => j.title).sort();
-    const titlesB = Object.values(b.jobsBoard.postings).map((j) => j.title).sort();
+    const titlesA = Object.values(a.jobsBoard.postings)
+      .map((j) => j.title)
+      .sort();
+    const titlesB = Object.values(b.jobsBoard.postings)
+      .map((j) => j.title)
+      .sort();
     assert.deepEqual(titlesA, titlesB);
   });
 
@@ -126,10 +133,12 @@ describe("mmo_jobs_board_authority — economy auto-seed (current)", () => {
     for (let i = 0; i < 20; i++) {
       state = seed(state, NOW + i * 1000).jobsBoard;
     }
-    const open = autoPostings(state).filter((job) => job.status === "open").length;
+    const open = autoPostings(state).filter(
+      (job) => job.status === "open"
+    ).length;
     assert.ok(
       open <= HARTHMERE_JOBS_BOARD_AUTO_SEED_TARGET_OPEN,
-      `auto-seeder overshot target: ${open}`,
+      `auto-seeder overshot target: ${open}`
     );
     // After saturation, one more tick should be a no-op for new postings.
     const before = Object.keys(state.postings).length;
@@ -169,11 +178,13 @@ describe("mmo_jobs_board_authority — economy auto-seed (current)", () => {
 
     assert.equal(
       result.jobsBoard.postings.harthmere_auto_1.title,
-      "Persisted errand",
+      "Persisted errand"
     );
     assert.ok(
-      Object.keys(result.jobsBoard.postings).some((id) => id !== "harthmere_auto_1"),
-      "auto-seed should allocate a fresh id instead of replacing saved state",
+      Object.keys(result.jobsBoard.postings).some(
+        (id) => id !== "harthmere_auto_1"
+      ),
+      "auto-seed should allocate a fresh id instead of replacing saved state"
     );
   });
 
@@ -187,7 +198,7 @@ describe("mmo_jobs_board_authority — economy auto-seed (current)", () => {
         operation: "economy_auto_seed_jobs",
         boardId: "no_such_board",
       } as any,
-      seedContext(),
+      seedContext()
     );
     assert.ok(result.warnings.some((w) => w.includes("unknown_board")));
     assert.equal(Object.keys(result.jobsBoard.postings).length, 0);
@@ -234,19 +245,30 @@ describe("mmo_jobs_board_authority — economy auto-seed (current)", () => {
     })();
     const initialBalance = economy.businesses.grove_kettle_inn.balanceGold;
     const result = seed(defaultHarthmereJobsBoardState(NOW), NOW, { economy });
-    const businessJob = Object.values(result.jobsBoard.postings).find((j) => j.issuerKind === "business");
+    const businessJob = Object.values(result.jobsBoard.postings).find(
+      (j) => j.issuerKind === "business"
+    );
     if (businessJob) {
       assert.ok(
-        result.economy!.businesses.grove_kettle_inn.balanceGold < initialBalance,
-        "business balance not debited for auto-posted job",
+        result.economy!.businesses.grove_kettle_inn.balanceGold <
+          initialBalance,
+        "business balance not debited for auto-posted job"
       );
       assert.equal(businessJob.issuerId, "grove_kettle_inn");
     }
     // With zero balance, no business postings should appear.
     economy.businesses.grove_kettle_inn.balanceGold = 0;
-    const noFundsResult = seed(defaultHarthmereJobsBoardState(NOW), NOW, { economy });
-    const businessJobs = Object.values(noFundsResult.jobsBoard.postings).filter((j) => j.issuerKind === "business");
-    assert.equal(businessJobs.length, 0, "business job posted despite empty balance");
+    const noFundsResult = seed(defaultHarthmereJobsBoardState(NOW), NOW, {
+      economy,
+    });
+    const businessJobs = Object.values(noFundsResult.jobsBoard.postings).filter(
+      (j) => j.issuerKind === "business"
+    );
+    assert.equal(
+      businessJobs.length,
+      0,
+      "business job posted despite empty balance"
+    );
   });
 
   it("auto-seeds jobs for real open production businesses and skips closed, underfunded, or already-covered issuers", () => {
@@ -299,25 +321,37 @@ describe("mmo_jobs_board_authority — economy auto-seed (current)", () => {
 
     const first = seed(defaultHarthmereJobsBoardState(NOW), NOW, { economy });
     const businessJobs = Object.values(first.jobsBoard.postings).filter(
-      (job) => job.issuerKind === "business" && job.issuerId === "business_general",
+      (job) =>
+        job.issuerKind === "business" && job.issuerId === "business_general"
     );
     assert.equal(businessJobs.length, 1);
     assert.equal(businessJobs[0].templateId, "general_trader_stock_rations");
     assert.ok(first.economy!.businesses.business_general.balanceGold < 500);
     assert.equal(
-      Object.values(first.jobsBoard.postings).some((job) => job.issuerId === "business_closed"),
-      false,
+      Object.values(first.jobsBoard.postings).some(
+        (job) => job.issuerId === "business_closed"
+      ),
+      false
     );
     assert.equal(
-      Object.values(first.jobsBoard.postings).some((job) => job.issuerId === "business_broke"),
-      false,
+      Object.values(first.jobsBoard.postings).some(
+        (job) => job.issuerId === "business_broke"
+      ),
+      false
     );
 
-    const second = seed(first.jobsBoard, NOW + 1_000, { economy: first.economy });
+    const second = seed(first.jobsBoard, NOW + 1_000, {
+      economy: first.economy,
+    });
     const repeated = Object.values(second.jobsBoard.postings).filter(
-      (job) => job.issuerKind === "business" && job.issuerId === "business_general",
+      (job) =>
+        job.issuerKind === "business" && job.issuerId === "business_general"
     );
-    assert.equal(repeated.length, 1, "auto-seed should not duplicate an active business template job");
+    assert.equal(
+      repeated.length,
+      1,
+      "auto-seed should not duplicate an active business template job"
+    );
   });
 });
 
@@ -354,18 +388,35 @@ describe("mmo_jobs_board_authority — monster hunting (current)", () => {
     for (let i = 0; i < 30; i++) {
       state = seed(state, NOW + i * 1000).jobsBoard;
     }
-    const hunts = Object.values(state.postings).filter((job) => job.kind === "hunt");
-    assert.ok(hunts.length > 0, "no monster hunt postings appeared across 30 ticks");
+    const hunts = Object.values(state.postings).filter(
+      (job) => job.kind === "hunt"
+    );
+    assert.ok(
+      hunts.length > 0,
+      "no monster hunt postings appeared across 30 ticks"
+    );
     for (const hunt of hunts) {
-      assert.ok(["mucker", "hex"].includes(String(hunt.monsterId)), `unexpected monsterId: ${hunt.monsterId}`);
+      assert.ok(
+        ["mucker", "hex"].includes(String(hunt.monsterId)),
+        `unexpected monsterId: ${hunt.monsterId}`
+      );
       assert.equal(hunt.partyRecommended, true);
-      assert.ok((hunt.partyMinSize ?? 0) >= 3, "party min size should be 3+ for monster hunts");
-      assert.ok(["strong", "elite", "boss"].includes(String(hunt.monsterTier)), `monster tier should be strong+, got ${hunt.monsterTier}`);
+      assert.ok(
+        (hunt.partyMinSize ?? 0) >= 3,
+        "party min size should be 3+ for monster hunts"
+      );
+      assert.ok(
+        ["strong", "elite", "boss"].includes(String(hunt.monsterTier)),
+        `monster tier should be strong+, got ${hunt.monsterTier}`
+      );
       assert.ok(
         hunt.rewardGold >= HARTHMERE_JOBS_BOARD_MONSTER_HUNT_REWARD_FLOOR,
-        `monster hunt reward ${hunt.rewardGold} below floor`,
+        `monster hunt reward ${hunt.rewardGold} below floor`
       );
-      assert.ok(Array.isArray(hunt.lootHint) && hunt.lootHint.length > 0, "monster hunt should advertise loot hint");
+      assert.ok(
+        Array.isArray(hunt.lootHint) && hunt.lootHint.length > 0,
+        "monster hunt should advertise loot hint"
+      );
     }
   });
 
@@ -393,6 +444,79 @@ describe("mmo_jobs_board_authority — monster hunting (current)", () => {
     );
   });
 
+  it("keeps Grove board variety templates obtainable instead of filtering them out", () => {
+    const groveTemplates = HARTHMERE_JOBS_BOARD_AUTO_SEED_TEMPLATES.filter(
+      (template) =>
+        ((template as any).boardScope ?? "any") !== "harthmere" &&
+        harthmereAutoSeedTemplateRequirementsObtainable(template.requirements)
+    );
+    const groveKinds = new Set(groveTemplates.map((template) => template.kind));
+
+    for (const kind of [
+      "gather",
+      "delivery",
+      "repair",
+      "cleanup",
+      "hunt",
+      "escort",
+      "craft",
+    ]) {
+      assert.ok(
+        groveKinds.has(kind as any),
+        `Grove board should auto-seed ${kind} jobs`
+      );
+    }
+    const byId = new Map(
+      groveTemplates.map((template) => [template.templateId, template])
+    );
+    assert.equal(
+      byId.get("npc_delivery_apples")?.requirements[0]?.itemId,
+      "sealed_package"
+    );
+    assert.equal(
+      byId.get("business_craft_torch")?.requirements[0]?.itemId,
+      "wood_plank"
+    );
+    assert.equal(
+      byId.get("town_cleanup_muck_patch")?.requirements[0]?.itemId,
+      undefined
+    );
+    assert.equal(
+      byId.get("town_cleanup_muck_patch")?.requirements[0]?.requiredToolAction,
+      "cleanup"
+    );
+  });
+
+  it("fills the Grove board with varied job kinds before repeating templates", () => {
+    let state = defaultHarthmereJobsBoardState(NOW);
+    for (let i = 0; i < 10; i += 1) {
+      state = seed(state, NOW + i * 1_000).jobsBoard;
+    }
+    const openKinds = new Set(
+      Object.values(state.postings)
+        .filter(
+          (job) =>
+            job.boardId === HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID &&
+            job.status === "open"
+        )
+        .map((job) => job.kind)
+    );
+    for (const kind of [
+      "gather",
+      "delivery",
+      "repair",
+      "cleanup",
+      "hunt",
+      "escort",
+      "craft",
+    ]) {
+      assert.ok(
+        openKinds.has(kind as any),
+        `open Grove jobs should include ${kind}`
+      );
+    }
+  });
+
   it("auto-posted jobs accept and complete through the existing pipeline (rewards reach the seeker)", () => {
     const seeded = seed(defaultHarthmereJobsBoardState(NOW), NOW);
     const job = Object.values(seeded.jobsBoard.postings)[0];
@@ -412,14 +536,14 @@ describe("mmo_jobs_board_authority — monster hunting (current)", () => {
         actorGold: 0,
         actorInventoryItems: {},
         nearbyBoardId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID,
-      },
+      }
     );
     assert.equal(accept.jobsBoard.postings[job.jobId].status, "active");
 
     // Build the actor inventory to satisfy whatever the seeded job needs.
     const actorInventoryItems: Record<string, number> = {};
     for (const req of job.requirements) {
-      if (req.itemId) actorInventoryItems[req.itemId] = (req.count ?? 1);
+      if (req.itemId) actorInventoryItems[req.itemId] = req.count ?? 1;
     }
 
     const questDone = reduceHarthmereJobsBoardMutation(
@@ -431,16 +555,25 @@ describe("mmo_jobs_board_authority — monster hunting (current)", () => {
         operation: "complete_job_quest",
         boardId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID,
         jobId: job.jobId,
-        completedTargetId: job.targetId ?? job.requirements.find((req) => req.targetId)?.targetId,
+        completedTargetId:
+          job.targetId ??
+          job.requirements.find((req) => req.targetId)?.targetId,
+        usedToolAction: job.requirements.find((req) => req.requiredToolAction)
+          ?.requiredToolAction,
       } as any,
       {
         actorGold: 0,
         actorInventoryItems,
         nearbyBoardId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID,
-      },
+      }
     );
     assert.equal(questDone.jobsBoard.postings[job.jobId].status, "active");
-    assert.equal(Object.values(questDone.jobsBoard.todos).find((todo) => todo.jobId === job.jobId)?.status, "completed");
+    assert.equal(
+      Object.values(questDone.jobsBoard.todos).find(
+        (todo) => todo.jobId === job.jobId
+      )?.status,
+      "completed"
+    );
 
     const complete = reduceHarthmereJobsBoardMutation(
       questDone.jobsBoard,
@@ -456,7 +589,7 @@ describe("mmo_jobs_board_authority — monster hunting (current)", () => {
         actorGold: 0,
         actorInventoryItems: {},
         nearbyBoardId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID,
-      },
+      }
     );
     assert.equal(complete.jobsBoard.postings[job.jobId].status, "completed");
     assert.equal(complete.inventoryGoldDelta, job.rewardGold);
@@ -466,8 +599,7 @@ describe("mmo_jobs_board_authority — monster hunting (current)", () => {
 describe("mmo_jobs_board_authority — Exotic Matter mining jobs", () => {
   it("registers high-paying Harthmere mining templates for every Exotic Matter material", () => {
     const templates = HARTHMERE_JOBS_BOARD_AUTO_SEED_TEMPLATES.filter(
-      (template) =>
-        isHarthmereExoticMatterMiningTemplateId(template.templateId)
+      (template) => isHarthmereExoticMatterMiningTemplateId(template.templateId)
     );
     assert.equal(templates.length, 6);
 
@@ -478,7 +610,10 @@ describe("mmo_jobs_board_authority — Exotic Matter mining jobs", () => {
       assert.equal(template.kind, "gather");
       assert.equal(template.requiresFieldWork, true);
       assert.ok(template.rewardGold.min >= 3200, template.templateId);
-      assert.equal(template.rewardGold.max, HARTHMERE_JOBS_BOARD_MAX_REWARD_GOLD);
+      assert.equal(
+        template.rewardGold.max,
+        HARTHMERE_JOBS_BOARD_MAX_REWARD_GOLD
+      );
       assert.ok(template.mapMarkerId, template.templateId);
       const marker = harthmereJobsBoardQuestMarkerPositionForId(
         template.mapMarkerId
@@ -490,7 +625,10 @@ describe("mmo_jobs_board_authority — Exotic Matter mining jobs", () => {
         `${template.templateId} should not target the light/no-job cave`
       );
       const deposit = harthmereExoticMatterDepositById(template.mapMarkerId);
-      assert.ok(deposit, `${template.templateId} should point at a real deposit`);
+      assert.ok(
+        deposit,
+        `${template.templateId} should point at a real deposit`
+      );
       assert.equal(deposit!.jobEligible, true);
       if (template.templateId.startsWith("deep_exotic_matter_mine_")) {
         assert.equal(deposit!.caveId, "deep_spindle_massive_cave");
@@ -514,14 +652,11 @@ describe("mmo_jobs_board_authority — Exotic Matter mining jobs", () => {
       [...itemIds].sort(),
       [...HARTHMERE_EXOTIC_MATTER_MATERIAL_ITEM_IDS].sort()
     );
-    assert.deepEqual(
-      [...deepTemplateIds].sort(),
-      [
-        "deep_exotic_matter_mine_antiboron",
-        "deep_exotic_matter_mine_antihelium",
-        "deep_exotic_matter_mine_antihydrogen",
-      ]
-    );
+    assert.deepEqual([...deepTemplateIds].sort(), [
+      "deep_exotic_matter_mine_antiboron",
+      "deep_exotic_matter_mine_antihelium",
+      "deep_exotic_matter_mine_antihydrogen",
+    ]);
   });
 
   it("primes the Harthmere board with a random Exotic Matter mining job when none are open", () => {
@@ -534,7 +669,10 @@ describe("mmo_jobs_board_authority — Exotic Matter mining jobs", () => {
       isHarthmereExoticMatterMiningTemplateId(job.templateId)
     );
 
-    assert.ok(exoticJob, "expected random Harthmere seeding to surface an Exotic Matter mining job");
+    assert.ok(
+      exoticJob,
+      "expected random Harthmere seeding to surface an Exotic Matter mining job"
+    );
     assert.equal(exoticJob!.boardId, HARTHMERE_JOBS_BOARD_HARTHMERE_BOARD_ID);
     assert.ok(exoticJob!.rewardGold >= 3200);
     assert.ok(exoticJob!.requiresFieldWork);
@@ -547,8 +685,7 @@ describe("mmo_jobs_board_authority — Exotic Matter mining jobs", () => {
 
   it("can randomly surface every Exotic Matter mining template on the Harthmere board", () => {
     const expected = HARTHMERE_JOBS_BOARD_AUTO_SEED_TEMPLATES.filter(
-      (template) =>
-        isHarthmereExoticMatterMiningTemplateId(template.templateId)
+      (template) => isHarthmereExoticMatterMiningTemplateId(template.templateId)
     )
       .map((template) => template.templateId)
       .sort();

@@ -115,11 +115,17 @@ The workflow restores Yarn tarballs, `node_modules`, production data snapshot
 assets, Next.js compiler cache, server Webpack compiler cache, and Buildx
 layers. Dependency caches are saved immediately after `yarn install`, so a later
 build or Azure deployment failure does not throw away a successful install. The
-compiler, asset, and image caches are also configured to persist on failed
-deploy attempts when their cache directories were populated. The first run can
-still be slow because it has to populate those caches; later runs should reuse
-dependency, compiler, asset, and image layers when the lockfile, build
-configuration, Dockerfile layers, and copied assets have not changed.
+compiler, asset, and image caches use explicit restore/save steps instead of the
+deprecated `save-always` cache mode, and save only when their cache directories
+were populated. The first run can still be slow because it has to populate those
+caches; later runs should reuse dependency, compiler, asset, and image layers
+when the lockfile, build configuration, Dockerfile layers, and copied assets have
+not changed.
+
+The shared CI cache actions follow the same pattern: LFS saves after a clean
+`git lfs pull`, pip saves after the virtualenv install, Bazel saves after the
+dependency fetch, and eslint restores before lint but saves in the calling
+workflow after lint has populated `.next/cache/eslint`.
 
 The validated production image was:
 

@@ -1,10 +1,10 @@
 import type { TalkDialogStepAction } from "@/client/components/challenges/TalkDialogModalStep";
 import { useClientContext } from "@/client/components/contexts/ClientContextReactContext";
 import {
-  HARTHMERE_INVENTORY_EVENT,
   grantHarthmereItem,
   grantHarthmereTutorialInventoryItem,
 } from "@/client/components/challenges/LocalDevHarthmereInventorySystem";
+import { HARTHMERE_INVENTORY_EVENT } from "@/client/components/challenges/harthmereEvents";
 import {
   HARTHMERE_WORLD_OBJECT_INTERACTION_EVENT,
   type HarthmereWorldObjectInteractionEventDetail,
@@ -253,8 +253,7 @@ export function readSnapshotGroveQuestState(): SnapshotGroveQuestState {
   try {
     return normalizeSnapshotGroveQuestState(
       JSON.parse(
-        window.localStorage.getItem(SNAPSHOT_GROVE_QUEST_STATE_KEY) ||
-          "null"
+        window.localStorage.getItem(SNAPSHOT_GROVE_QUEST_STATE_KEY) || "null"
       ) || undefined
     );
   } catch {
@@ -312,9 +311,7 @@ function questById(id: string | undefined) {
 // Ranger Jane) declare an `unlockedBy` predicate in the shared content. The
 // runtime checks it here so locked quests never show up in an NPC's offer
 // list and the journal can render them in a separate "Soon" group.
-function countCompletedFountainLessons(
-  state: SnapshotGroveQuestState
-): number {
+function countCompletedFountainLessons(state: SnapshotGroveQuestState): number {
   return state.completedQuestIds.filter((id) =>
     SNAPSHOT_GROVE_FOUNTAIN_TUTORIAL_QUEST_ID_SET.has(id)
   ).length;
@@ -346,9 +343,7 @@ export function isSnapshotGroveQuestUnlocked(
   }
 }
 
-function snapshotGroveQuestCategoryRank(
-  quest: SnapshotGroveQuest
-): number {
+function snapshotGroveQuestCategoryRank(quest: SnapshotGroveQuest): number {
   // Lower number = earlier in the offer list.
   if (SNAPSHOT_GROVE_FOUNTAIN_TUTORIAL_QUEST_ID_SET.has(quest.id)) {
     return 0;
@@ -362,10 +357,7 @@ function snapshotGroveQuestCategoryRank(
   return 3;
 }
 
-function availableQuestsForNpc(
-  npcId: string,
-  state: SnapshotGroveQuestState
-) {
+function availableQuestsForNpc(npcId: string, state: SnapshotGroveQuestState) {
   return SNAPSHOT_GROVE_QUESTS.filter(
     (quest) =>
       quest.giverNpcId === npcId &&
@@ -374,8 +366,7 @@ function availableQuestsForNpc(
       isSnapshotGroveQuestUnlocked(quest, state)
   ).sort(
     (a, b) =>
-      snapshotGroveQuestCategoryRank(a) -
-      snapshotGroveQuestCategoryRank(b)
+      snapshotGroveQuestCategoryRank(a) - snapshotGroveQuestCategoryRank(b)
   );
 }
 
@@ -386,10 +377,7 @@ function firstAvailableQuestForNpc(
   return availableQuestsForNpc(npcId, state)[0];
 }
 
-function activeQuestForNpc(
-  npcId: string,
-  state: SnapshotGroveQuestState
-) {
+function activeQuestForNpc(npcId: string, state: SnapshotGroveQuestState) {
   const active = questById(state.activeQuestId);
   if (active?.giverNpcId === npcId) {
     return active;
@@ -526,9 +514,7 @@ function syncSnapshotGroveQuestMarkers(
   pinAllSnapshotGroveQuestMarkers(mapManager, quest, activeObjectiveIndex);
 }
 
-function grantSnapshotGroveAcceptedTutorialItems(
-  quest: SnapshotGroveQuest
-) {
+function grantSnapshotGroveAcceptedTutorialItems(quest: SnapshotGroveQuest) {
   const grants = snapshotGroveTutorialInventoryGrantsForQuest(quest);
   for (const grant of grants) {
     grantHarthmereTutorialInventoryItem(
@@ -902,10 +888,7 @@ function snapshotGrovePracticeItemForObjective(
   quest: SnapshotGroveQuest,
   objectiveIndex: number
 ): SnapshotGrovePracticeItem | undefined {
-  const text = snapshotGroveObjectiveText(
-    quest,
-    objectiveIndex
-  ).toLowerCase();
+  const text = snapshotGroveObjectiveText(quest, objectiveIndex).toLowerCase();
   if (
     /clean root|mucked root|root sample|muck sample|sealed muck|mudroot/.test(
       text
@@ -1451,10 +1434,7 @@ function groveHudHintForTrigger(trigger: string | undefined) {
   }
 }
 
-function groveQuestStepCopy(
-  quest: SnapshotGroveQuest,
-  objectiveIndex: number
-) {
+function groveQuestStepCopy(quest: SnapshotGroveQuest, objectiveIndex: number) {
   const clamped = Math.max(
     0,
     Math.min(quest.objectives.length - 1, objectiveIndex)
@@ -1559,8 +1539,7 @@ function needsSnapshotGroveContextualPracticeButton(
   trigger: string | undefined
 ) {
   return Boolean(
-    trigger &&
-      SNAPSHOT_GROVE_CONTEXTUAL_PRACTICE_TRIGGERS.has(trigger as any)
+    trigger && SNAPSHOT_GROVE_CONTEXTUAL_PRACTICE_TRIGGERS.has(trigger as any)
   );
 }
 
@@ -1865,9 +1844,7 @@ export const SnapshotGroveBibleRuntimeController: React.FunctionComponent<{}> =
         if (!quest || current.completedQuestIds.includes(quest.id)) {
           return;
         }
-        if (
-          doesEventAdvanceQuest(event, quest, current.activeObjectiveIndex)
-        ) {
+        if (doesEventAdvanceQuest(event, quest, current.activeObjectiveIndex)) {
           advanceSnapshotGroveQuest(
             quest,
             mapManager,
@@ -1894,9 +1871,7 @@ export const SnapshotGroveBibleRuntimeController: React.FunctionComponent<{}> =
           return;
         }
         const event = { kind: "inventory_change" } as GardenHoseEvent;
-        if (
-          doesEventAdvanceQuest(event, quest, current.activeObjectiveIndex)
-        ) {
+        if (doesEventAdvanceQuest(event, quest, current.activeObjectiveIndex)) {
           advanceSnapshotGroveQuest(
             quest,
             mapManager,
@@ -1982,9 +1957,7 @@ export const SnapshotGroveBibleRuntimeController: React.FunctionComponent<{}> =
           kind: "harthmere_local_dev_item_use",
           ...detail,
         } as unknown as GardenHoseEvent;
-        if (
-          doesEventAdvanceQuest(event, quest, current.activeObjectiveIndex)
-        ) {
+        if (doesEventAdvanceQuest(event, quest, current.activeObjectiveIndex)) {
           advanceSnapshotGroveQuest(
             quest,
             mapManager,
@@ -1995,10 +1968,7 @@ export const SnapshotGroveBibleRuntimeController: React.FunctionComponent<{}> =
       };
       window.addEventListener(HARTHMERE_LOCAL_DEV_ITEM_USE_EVENT, handler);
       return () =>
-        window.removeEventListener(
-          HARTHMERE_LOCAL_DEV_ITEM_USE_EVENT,
-          handler
-        );
+        window.removeEventListener(HARTHMERE_LOCAL_DEV_ITEM_USE_EVENT, handler);
     }, [mapManager, resources]);
 
     useEffect(() => {
@@ -2006,17 +1976,11 @@ export const SnapshotGroveBibleRuntimeController: React.FunctionComponent<{}> =
       if (!quest || state.completedQuestIds.includes(quest.id)) {
         return;
       }
-      const trigger = currentTriggerForQuest(
-        quest,
-        state.activeObjectiveIndex
-      );
+      const trigger = currentTriggerForQuest(quest, state.activeObjectiveIndex);
       if (trigger !== "near_location") {
         return;
       }
-      const marker = currentMarkerForQuest(
-        quest,
-        state.activeObjectiveIndex
-      );
+      const marker = currentMarkerForQuest(quest, state.activeObjectiveIndex);
       if (!marker) {
         return;
       }
@@ -2061,10 +2025,7 @@ export const SnapshotGroveBibleRuntimeController: React.FunctionComponent<{}> =
         broadcastSnapshotGroveTutorHudLabels([]);
         return;
       }
-      const trigger = currentTriggerForQuest(
-        quest,
-        state.activeObjectiveIndex
-      );
+      const trigger = currentTriggerForQuest(quest, state.activeObjectiveIndex);
       const objective = quest.objectives[state.activeObjectiveIndex];
       const chips = groveHudHighlightsForTrigger(trigger, objective);
       const labels = snapshotGroveTutorNavLabelsForHighlights(chips);
@@ -2170,11 +2131,10 @@ export const SnapshotGroveMapHUD: React.FunctionComponent<{}> = () => {
     state.acceptedQuestIds.includes(quest.id) &&
     needsSnapshotGroveContextualPracticeButton(currentTrigger);
   const practiceIsInRange = !marker || distance === undefined || distance <= 10;
-  const giver = SNAPSHOT_GROVE_NPCS.find(
-    (npc) => npc.id === quest.giverNpcId
+  const giver = SNAPSHOT_GROVE_NPCS.find((npc) => npc.id === quest.giverNpcId);
+  const isFountainLesson = SNAPSHOT_GROVE_FOUNTAIN_TUTORIAL_QUEST_ID_SET.has(
+    quest.id
   );
-  const isFountainLesson =
-    SNAPSHOT_GROVE_FOUNTAIN_TUTORIAL_QUEST_ID_SET.has(quest.id);
   return (
     <div className="rounded-2xl border-lime-100/25 w-full max-w-sm border bg-black/70 p-3 text-white shadow-2xl backdrop-blur-md sm:max-w-md">
       <div className="flex items-start justify-between gap-2">
@@ -2464,10 +2424,7 @@ export const SnapshotGroveJournalPanel: React.FunctionComponent<{}> = () => {
             }
           </div>
           <div className="mt-1 text-[11px] text-white/60">
-            {
-              groveQuestStepCopy(activeQuest, state.activeObjectiveIndex)
-                .target
-            }
+            {groveQuestStepCopy(activeQuest, state.activeObjectiveIndex).target}
           </div>
           <div className="mt-1 text-[11px] text-white/60">
             Reward: {activeQuest.reward}
@@ -2537,9 +2494,7 @@ const SNAPSHOT_GROVE_TUTOR_CHAT_OPEN_EVENT =
 export function openSnapshotGroveTutorChatPanel() {
   if (typeof window === "undefined") return;
   try {
-    window.dispatchEvent(
-      new CustomEvent(SNAPSHOT_GROVE_TUTOR_CHAT_OPEN_EVENT)
-    );
+    window.dispatchEvent(new CustomEvent(SNAPSHOT_GROVE_TUTOR_CHAT_OPEN_EVENT));
   } catch {
     // No-op in non-browser test contexts.
   }
@@ -2583,206 +2538,194 @@ const SNAPSHOT_GROVE_TUTOR_CHAT_CHANNELS: Array<{
   },
 ];
 
-export const SnapshotGroveTutorChatPanel: React.FunctionComponent<{}> =
-  () => {
-    const { chatIo, gardenHose, mailman, reactResources, resources } =
-      useClientContext();
-    const state = useSnapshotGroveQuestState();
-    const [open, setOpen] = useState(false);
-    const [channel, setChannel] =
-      useState<SnapshotGroveTutorChatChannel>("say");
-    const [draft, setDraft] = useState("");
+export const SnapshotGroveTutorChatPanel: React.FunctionComponent<{}> = () => {
+  const { chatIo, gardenHose, mailman, reactResources, resources } =
+    useClientContext();
+  const state = useSnapshotGroveQuestState();
+  const [open, setOpen] = useState(false);
+  const [channel, setChannel] = useState<SnapshotGroveTutorChatChannel>("say");
+  const [draft, setDraft] = useState("");
 
-    useEffect(() => {
-      if (typeof window === "undefined") return;
-      const openHandler = () => {
-        setOpen(true);
-      };
-      window.addEventListener(
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const openHandler = () => {
+      setOpen(true);
+    };
+    window.addEventListener(SNAPSHOT_GROVE_TUTOR_CHAT_OPEN_EVENT, openHandler);
+    return () =>
+      window.removeEventListener(
         SNAPSHOT_GROVE_TUTOR_CHAT_OPEN_EVENT,
         openHandler
       );
-      return () =>
-        window.removeEventListener(
-          SNAPSHOT_GROVE_TUTOR_CHAT_OPEN_EVENT,
-          openHandler
-        );
-    }, []);
+  }, []);
 
-    // When the panel opens, fire an open_tab GardenHose event so the chat
-    // lesson's "Open the chat panel from the HUD" step can advance. Using
-    // gardenHose.publish keeps this on the same event bus the runtime's quest
-    // matcher already listens to.
-    useEffect(() => {
-      if (!open) return;
-      try {
-        (gardenHose as any).publish({ kind: "open_tab", tab: "chat" });
-      } catch {
-        // Best-effort: the panel still works if publish is unavailable.
+  // When the panel opens, fire an open_tab GardenHose event so the chat
+  // lesson's "Open the chat panel from the HUD" step can advance. Using
+  // gardenHose.publish keeps this on the same event bus the runtime's quest
+  // matcher already listens to.
+  useEffect(() => {
+    if (!open) return;
+    try {
+      (gardenHose as any).publish({ kind: "open_tab", tab: "chat" });
+    } catch {
+      // Best-effort: the panel still works if publish is unavailable.
+    }
+  }, [open, gardenHose]);
+
+  useEffect(() => {
+    if (!open) return;
+    if (typeof window === "undefined") return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setOpen(false);
       }
-    }, [open, gardenHose]);
-
-    useEffect(() => {
-      if (!open) return;
-      if (typeof window === "undefined") return;
-      const onKey = (e: KeyboardEvent) => {
-        if (e.key === "Escape") {
-          setOpen(false);
-        }
-      };
-      window.addEventListener("keydown", onKey);
-      return () => window.removeEventListener("keydown", onKey);
-    }, [open]);
-
-    if (!open) return null;
-
-    const activeChannel = SNAPSHOT_GROVE_TUTOR_CHAT_CHANNELS.find(
-      (c) => c.id === channel
-    )!;
-
-    const onSend = () => {
-      const content = draft.trim();
-      if (!content) return;
-
-      const localPlayer = reactResources.get("/scene/local_player");
-      const position = localPlayer?.player.position;
-      if (channel === "party") {
-        const teamId = localPlayer
-          ? resources.get("/ecs/c/player_current_team", localPlayer.id)?.team_id
-          : undefined;
-        if (teamId) {
-          void chatIo.sendMessage("chat", { kind: "text", content }, teamId);
-        } else {
-          mailman.showChatError("You are not in a party yet.");
-        }
-      } else {
-        const volume =
-          channel === "trade" ? "yell" : channel === "say" ? "chat" : "whisper";
-        const liveContent =
-          channel === "trade" ? `[Trade] ${content}` : content;
-        void chatIo.sendMessage(
-          volume,
-          { kind: "text", content: liveContent },
-          undefined,
-          position
-        );
-      }
-
-      const quest = questById(state.activeQuestId);
-      if (quest && !state.completedQuestIds.includes(quest.id)) {
-        const trigger = currentTriggerForQuest(
-          quest,
-          state.activeObjectiveIndex
-        );
-        const marker = currentMarkerForQuest(
-          quest,
-          state.activeObjectiveIndex
-        );
-        try {
-          (gardenHose as any).publish({
-            kind: "snapshot_grove_practice_action",
-            questId: quest.id,
-            objectiveIndex: state.activeObjectiveIndex,
-            trigger,
-            markerId: marker?.id,
-            practiceAction: `chat_${channel}`,
-          });
-        } catch {
-          // Best-effort.
-        }
-      }
-      setDraft("");
     };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open]);
 
-    return (
-      <div
-        className="rounded-2xl border-amber-200/30 bg-stone-950/95 pointer-events-auto fixed inset-x-2 bottom-[12rem] z-40 mx-auto max-w-md border p-3 text-white shadow-[0_8px_32px_rgba(0,0,0,0.6)] backdrop-blur-md sm:bottom-[12.5rem] md:max-w-lg"
-        role="dialog"
-        aria-label="Tutorial chat panel"
-        data-snapshot-grove-tutor-chat-panel="open"
-      >
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <div className="text-amber-200/80 text-xs font-bold uppercase tracking-wide">
-              Fountain chat
-            </div>
-            <div className="text-sm font-semibold text-white">
-              Pick the right ear before you speak.
-            </div>
-          </div>
-          <button
-            className="border-white/15 rounded-full border bg-white/10 px-3 py-1 text-xs hover:bg-white/20"
-            onClick={() => setOpen(false)}
-          >
-            Close
-          </button>
-        </div>
-        <div
-          className="mt-2 flex gap-1 overflow-x-auto"
-          role="tablist"
-          aria-label="Chat channel"
-          onKeyDown={(e) => {
-            if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
-            const idx = SNAPSHOT_GROVE_TUTOR_CHAT_CHANNELS.findIndex(
-              (c) => c.id === channel
-            );
-            const delta = e.key === "ArrowRight" ? 1 : -1;
-            const next =
-              (idx + delta + SNAPSHOT_GROVE_TUTOR_CHAT_CHANNELS.length) %
-              SNAPSHOT_GROVE_TUTOR_CHAT_CHANNELS.length;
-            setChannel(SNAPSHOT_GROVE_TUTOR_CHAT_CHANNELS[next].id);
-            e.preventDefault();
-          }}
-        >
-          {SNAPSHOT_GROVE_TUTOR_CHAT_CHANNELS.map((c) => {
-            const active = c.id === channel;
-            return (
-              <button
-                key={c.id}
-                role="tab"
-                aria-selected={active}
-                tabIndex={active ? 0 : -1}
-                className={
-                  active
-                    ? "rounded-lg border-amber-300/80 bg-amber-300/15 text-amber-100 shrink-0 border px-3 py-1 text-xs font-semibold"
-                    : "rounded-lg shrink-0 border border-white/10 bg-white/5 px-3 py-1 text-xs text-white/70 hover:bg-white/10"
-                }
-                onClick={() => setChannel(c.id)}
-              >
-                {c.label}
-              </button>
-            );
-          })}
-        </div>
-        <div className="rounded-xl bg-black/35 mt-2 p-2 text-[12px] leading-snug text-white/80">
-          {activeChannel.blurb}
-        </div>
-        <div className="mt-2 flex gap-2">
-          <input
-            className="rounded-lg border-white/15 bg-black/55 focus:border-amber-200/80 min-w-0 flex-1 border px-3 py-2 text-sm text-white placeholder:text-white/40 focus:outline-none"
-            placeholder={activeChannel.placeholder}
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                onSend();
-              }
-            }}
-            aria-label={`Compose ${activeChannel.label} message`}
-          />
-          <button
-            className="rounded-lg border-amber-300/80 bg-amber-300/20 text-amber-100 hover:bg-amber-300/30 border px-3 py-2 text-sm font-semibold disabled:opacity-50"
-            onClick={onSend}
-            disabled={!draft.trim()}
-          >
-            Send
-          </button>
-        </div>
-        <div className="text-white/45 mt-2 text-[10px] uppercase tracking-wide">
-          Live channel · Say and Whisper show as world speech near you, Party
-          goes to your team, and Trade yells with a trade prefix.
-        </div>
-      </div>
-    );
+  if (!open) return null;
+
+  const activeChannel = SNAPSHOT_GROVE_TUTOR_CHAT_CHANNELS.find(
+    (c) => c.id === channel
+  )!;
+
+  const onSend = () => {
+    const content = draft.trim();
+    if (!content) return;
+
+    const localPlayer = reactResources.get("/scene/local_player");
+    const position = localPlayer?.player.position;
+    if (channel === "party") {
+      const teamId = localPlayer
+        ? resources.get("/ecs/c/player_current_team", localPlayer.id)?.team_id
+        : undefined;
+      if (teamId) {
+        void chatIo.sendMessage("chat", { kind: "text", content }, teamId);
+      } else {
+        mailman.showChatError("You are not in a party yet.");
+      }
+    } else {
+      const volume =
+        channel === "trade" ? "yell" : channel === "say" ? "chat" : "whisper";
+      const liveContent = channel === "trade" ? `[Trade] ${content}` : content;
+      void chatIo.sendMessage(
+        volume,
+        { kind: "text", content: liveContent },
+        undefined,
+        position
+      );
+    }
+
+    const quest = questById(state.activeQuestId);
+    if (quest && !state.completedQuestIds.includes(quest.id)) {
+      const trigger = currentTriggerForQuest(quest, state.activeObjectiveIndex);
+      const marker = currentMarkerForQuest(quest, state.activeObjectiveIndex);
+      try {
+        (gardenHose as any).publish({
+          kind: "snapshot_grove_practice_action",
+          questId: quest.id,
+          objectiveIndex: state.activeObjectiveIndex,
+          trigger,
+          markerId: marker?.id,
+          practiceAction: `chat_${channel}`,
+        });
+      } catch {
+        // Best-effort.
+      }
+    }
+    setDraft("");
   };
+
+  return (
+    <div
+      className="rounded-2xl border-amber-200/30 bg-stone-950/95 pointer-events-auto fixed inset-x-2 bottom-[12rem] z-40 mx-auto max-w-md border p-3 text-white shadow-[0_8px_32px_rgba(0,0,0,0.6)] backdrop-blur-md sm:bottom-[12.5rem] md:max-w-lg"
+      role="dialog"
+      aria-label="Tutorial chat panel"
+      data-snapshot-grove-tutor-chat-panel="open"
+    >
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <div className="text-amber-200/80 text-xs font-bold uppercase tracking-wide">
+            Fountain chat
+          </div>
+          <div className="text-sm font-semibold text-white">
+            Pick the right ear before you speak.
+          </div>
+        </div>
+        <button
+          className="border-white/15 rounded-full border bg-white/10 px-3 py-1 text-xs hover:bg-white/20"
+          onClick={() => setOpen(false)}
+        >
+          Close
+        </button>
+      </div>
+      <div
+        className="mt-2 flex gap-1 overflow-x-auto"
+        role="tablist"
+        aria-label="Chat channel"
+        onKeyDown={(e) => {
+          if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+          const idx = SNAPSHOT_GROVE_TUTOR_CHAT_CHANNELS.findIndex(
+            (c) => c.id === channel
+          );
+          const delta = e.key === "ArrowRight" ? 1 : -1;
+          const next =
+            (idx + delta + SNAPSHOT_GROVE_TUTOR_CHAT_CHANNELS.length) %
+            SNAPSHOT_GROVE_TUTOR_CHAT_CHANNELS.length;
+          setChannel(SNAPSHOT_GROVE_TUTOR_CHAT_CHANNELS[next].id);
+          e.preventDefault();
+        }}
+      >
+        {SNAPSHOT_GROVE_TUTOR_CHAT_CHANNELS.map((c) => {
+          const active = c.id === channel;
+          return (
+            <button
+              key={c.id}
+              role="tab"
+              aria-selected={active}
+              tabIndex={active ? 0 : -1}
+              className={
+                active
+                  ? "rounded-lg border-amber-300/80 bg-amber-300/15 text-amber-100 shrink-0 border px-3 py-1 text-xs font-semibold"
+                  : "rounded-lg shrink-0 border border-white/10 bg-white/5 px-3 py-1 text-xs text-white/70 hover:bg-white/10"
+              }
+              onClick={() => setChannel(c.id)}
+            >
+              {c.label}
+            </button>
+          );
+        })}
+      </div>
+      <div className="rounded-xl bg-black/35 mt-2 p-2 text-[12px] leading-snug text-white/80">
+        {activeChannel.blurb}
+      </div>
+      <div className="mt-2 flex gap-2">
+        <input
+          className="rounded-lg border-white/15 bg-black/55 focus:border-amber-200/80 min-w-0 flex-1 border px-3 py-2 text-sm text-white placeholder:text-white/40 focus:outline-none"
+          placeholder={activeChannel.placeholder}
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
+              onSend();
+            }
+          }}
+          aria-label={`Compose ${activeChannel.label} message`}
+        />
+        <button
+          className="rounded-lg border-amber-300/80 bg-amber-300/20 text-amber-100 hover:bg-amber-300/30 border px-3 py-2 text-sm font-semibold disabled:opacity-50"
+          onClick={onSend}
+          disabled={!draft.trim()}
+        >
+          Send
+        </button>
+      </div>
+      <div className="text-white/45 mt-2 text-[10px] uppercase tracking-wide">
+        Live channel · Say and Whisper show as world speech near you, Party goes
+        to your team, and Trade yells with a trade prefix.
+      </div>
+    </div>
+  );
+};

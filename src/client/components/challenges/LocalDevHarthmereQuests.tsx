@@ -59,6 +59,7 @@ import {
   isHarthmereRepeatableQuestAvailable,
   recordHarthmereQuestEconomyCompletion,
 } from "@/client/components/challenges/LocalDevHarthmereQuestEconomySystem";
+import { HARTHMERE_JOBS_BOARD_OPEN_EVENT } from "@/client/components/challenges/harthmereEvents";
 import type { BiomesId } from "@/shared/ids";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
@@ -75,7 +76,6 @@ export const HARTHMERE_READ_JOBS_BOARD_TITLE = "Read the Jobs Board";
 export const HARTHMERE_JOBS_BOARD_TARGET_OFFSET = 140_041;
 export const HARTHMERE_JOBS_BOARD_MARKER_ID = "harthmere_market_posting_board";
 export const HARTHMERE_JOBS_BOARD_READ_EVENT = "harthmere.jobs_board.read";
-const HARTHMERE_JOBS_BOARD_OPEN_EVENT = "biomes:harthmere-jobs-board-open";
 
 // HARTHMERE_QUEST_ITEM_FLOW:
 // Quest steps can optionally grant an item when the step completes (e.g.,

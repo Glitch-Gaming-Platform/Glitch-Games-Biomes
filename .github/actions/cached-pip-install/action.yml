@@ -22,7 +22,7 @@ runs:
       shell: bash
 
     - name: Restore pip install cache
-      uses: actions/cache@v5
+      uses: actions/cache/restore@v5
       id: pip-cache
       with:
         path: ./.venv
@@ -45,3 +45,11 @@ runs:
     - run: pip install ./voxeloo --install-option="--no-native" --install-option="--no-cache" -v
       if: steps.pip-cache.outputs.cache-hit != 'true'
       shell: bash
+
+    - name: Save pip install cache
+      if: steps.pip-cache.outputs.cache-hit != 'true'
+      continue-on-error: true
+      uses: actions/cache/save@v5
+      with:
+        path: ./.venv
+        key: ${{ runner.os }}-pip-${{ hashFiles('.venv/pyvenv.cfg') }}-${{ hashFiles('./requirements.txt', './voxeloo/**') }}

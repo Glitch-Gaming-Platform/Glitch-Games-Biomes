@@ -69,6 +69,7 @@ import {
   performHarthmereMaterialStorageRemoveForBiomesUI,
   readHarthmereInventoryState,
 } from "@/client/components/challenges/LocalDevHarthmereInventorySystem";
+import { HARTHMERE_LIVE_INVENTORY_SYNC_EVENT } from "@/client/components/challenges/harthmereEvents";
 
 describe("Harthmere inventory BiomesUI presentation and actions", () => {
   beforeEach(() => {
@@ -217,6 +218,42 @@ describe("Harthmere inventory BiomesUI presentation and actions", () => {
     assert.ok(
       event.detail.warnings.some(
         (warning: { id?: string }) => warning.id === "iron_ore"
+      )
+    );
+  });
+
+  it("mirrors local collection grants to live inventory snapshots for BiomesUI", async () => {
+    const fetchCalls: Array<{ input: unknown; init?: RequestInit }> = [];
+    (globalThis as any).window.fetch = async (
+      input: unknown,
+      init?: RequestInit
+    ) => {
+      fetchCalls.push({ input, init });
+      return {
+        ok: true,
+        json: async () => ({
+          inventoryLootState: {
+            actor: { gold: 75, items: {}, instanceIds: [] },
+            materialStorage: { items: { iron_ore: 2 } },
+          },
+          playerStatusState: { combat: { hp: 100, deathState: "alive" } },
+        }),
+      };
+    };
+
+    grantHarthmereItem("iron_ore", 2, "mined block test");
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    assert.equal(fetchCalls.length, 1);
+    const body = JSON.parse(String(fetchCalls[0].init?.body ?? "{}"));
+    assert.equal(body.actionKind, "request_loot_roll");
+    assert.equal(body.payload.itemId, "iron_ore");
+    assert.equal(body.payload.count, 2);
+    assert.ok(body.includeSnapshots.includes("inventoryLootState"));
+    assert.ok(body.includeSnapshots.includes("buildingState"));
+    assert.ok(
+      dispatchedEvents.some(
+        (event) => event.type === HARTHMERE_LIVE_INVENTORY_SYNC_EVENT
       )
     );
   });

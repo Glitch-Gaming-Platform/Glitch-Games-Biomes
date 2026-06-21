@@ -2809,7 +2809,7 @@ export function createBuildingSystemMaterializationPlan(input: {
         reason: "building_blueprint_materialized",
       },
       safeZone:
-        input.plot.safeAfterPurchase
+        input.includeSafeGround && input.plot.safeAfterPurchase
           ? {
               plotId: input.plot.plotId,
               actorId: input.actorId,
@@ -2869,7 +2869,7 @@ export function createBuildingSystemMaterializationPlan(input: {
       reason: "building_blueprint_materialized",
     },
     safeZone:
-      input.plot.safeAfterPurchase
+      input.includeSafeGround && input.plot.safeAfterPurchase
         ? {
             plotId: input.plot.plotId,
             actorId: input.actorId,
