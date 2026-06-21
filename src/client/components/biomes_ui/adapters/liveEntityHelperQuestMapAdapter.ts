@@ -156,8 +156,7 @@ function activeRecords(raw: unknown) {
 
 function areaLabelForKind(kind: LiveEntityHelperQuestKind) {
   return (
-    liveEntityHelperQuestTargetMarkerForKind(kind)?.areaLabel ??
-    "Remote Biomes"
+    liveEntityHelperQuestTargetMarkerForKind(kind)?.areaLabel ?? "Remote Biomes"
   );
 }
 
@@ -174,9 +173,7 @@ export function liveEntityHelperAcceptedQuestLandmarksForBiomesUI(
     // record.readyToTurnIn flag is used. The BiomesUI adapter passes a live
     // resolver so the marker flips home the moment the item is collected /
     // monster defeated, without waiting for a stored-flag write.
-    isReadyToTurnIn?: (
-      record: BiomesUILiveEntityHelperQuestRecord
-    ) => boolean;
+    isReadyToTurnIn?: (record: BiomesUILiveEntityHelperQuestRecord) => boolean;
   }
 ): BiomesUILiveEntityHelperQuestLandmark[] {
   const seenMarkerIds = new Set<string>();
@@ -200,7 +197,7 @@ export function liveEntityHelperAcceptedQuestLandmarksForBiomesUI(
         id: marker.id,
         label: resolved.label,
         position: resolveHarthmereProductionMarkerPosition({
-          markerId: resolved.id,
+          markerId: undefined,
           fallback: resolved.position,
         }),
         kind: resolved.kind,
@@ -277,9 +274,7 @@ export function activeLiveEntityHelperMissionStepsForBiomesUI(raw: unknown) {
   });
 }
 
-export function firstActiveLiveEntityHelperQuestTitleForBiomesUI(
-  raw: unknown
-) {
+export function firstActiveLiveEntityHelperQuestTitleForBiomesUI(raw: unknown) {
   const record = activeRecords(raw)[0];
   return record
     ? LIVE_ENTITY_HELPER_QUEST_DEFINITIONS[record.kind].title

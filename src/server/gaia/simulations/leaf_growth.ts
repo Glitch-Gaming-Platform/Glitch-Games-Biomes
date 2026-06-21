@@ -59,7 +59,7 @@ export class LeafGrowthSimulation extends Simulation {
     if (terrainWasModified(change)) {
       const entity = this.replica.table.get(change.entity.id);
       if (Entity.has(entity, "box")) {
-        return shardAndNeighborsOfDirs(entity.box, [0, 1, 0]);
+        return shardAndNeighborsOfDirs(entity.box.v0, [0, 1, 0]);
       }
     }
     return [];
@@ -107,7 +107,7 @@ export class LeafGrowthSimulation extends Simulation {
   ): Promise<UpdateResult | undefined> {
     const cache = new TensorCache(this.voxeloo, this.replica);
     try {
-      const shardId = voxelShard(...shard.box);
+      const shardId = voxelShard(...shard.box.v0);
       const seed = cache.getSeed(shardId);
       if (!seed) {
         return;
@@ -139,7 +139,7 @@ export class LeafGrowthSimulation extends Simulation {
       const mutator = new TerrainMutator(this.voxeloo, shard);
       for (const [pos, exists, supported] of this.visitLeaves(
         cache,
-        shard.box,
+        shard.box.v0,
         leaves
       )) {
         const timer = chunk.get(pos);

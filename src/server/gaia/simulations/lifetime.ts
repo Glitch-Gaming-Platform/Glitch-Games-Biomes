@@ -37,7 +37,7 @@ export class LifetimeSimulation extends Simulation {
     if (change.kind !== "delete" && change.entity.shard_diff) {
       const entity = this.replica.table.get(change.entity.id);
       if (Entity.has(entity, "box")) {
-        return [voxelShard(...entity.box)];
+        return [voxelShard(...entity.box.v0)];
       }
     }
     return [];

@@ -93,7 +93,7 @@ function determineBounds(changes: Map<BiomesId, Change>) {
     ) {
       continue;
     }
-    const changeAABB = [change.entity.box, change.entity.box] as AABB;
+    const changeAABB = [change.entity.box.v0, change.entity.box.v1] as AABB;
     if (aabb === undefined) {
       aabb = changeAABB;
     } else {
@@ -125,7 +125,9 @@ export class SyncBootstrap implements Bootstrap {
     signal?: AbortSignal
   ): Promise<[changes: Change[], deliveries: Delivery[]]> {
     if (disableGcloudSyncBootstrapForGlitchRuntime()) {
-      log.warn("Skipping SyncBootstrap prod/gcloud load for Glitch/no-cloud runtime.");
+      log.warn(
+        "Skipping SyncBootstrap prod/gcloud load for Glitch/no-cloud runtime."
+      );
       return [[], []];
     }
 

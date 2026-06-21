@@ -306,7 +306,7 @@ describe("BiomesUI jobs board tool-source guidance", () => {
 
 function missingItemRepairJobSnapshot() {
   const snapshot = repairJobSnapshot();
-  snapshot.inventoryItems = { softwood_log: 1 } as any;
+  (snapshot as any).inventoryItems = { softwood_log: 1 };
   snapshot.myAcceptedJobs = [
     {
       ...snapshot.myAcceptedJobs[0],
@@ -354,7 +354,7 @@ describe("BiomesUI jobs board item-source guidance", () => {
 
   it("does not show an item-source pin once inventory satisfies the requirement", () => {
     const snapshot = missingItemRepairJobSnapshot();
-    snapshot.inventoryItems = { softwood_log: 3 } as any;
+    (snapshot as any).inventoryItems = { softwood_log: 3 };
     assert.equal(jobsBoardItemSourceLandmarksForBiomesUI(snapshot).length, 0);
     const [quest] = jobsBoardTrackableQuestsForBiomesUI(snapshot, 1000);
     assert.equal(quest.itemSource, undefined);

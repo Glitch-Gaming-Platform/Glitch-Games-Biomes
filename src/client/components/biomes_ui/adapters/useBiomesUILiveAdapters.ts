@@ -87,7 +87,10 @@ import {
   type StepTrigger,
 } from "../tutorial/tutorialMissionMap";
 import { abilityVisibleInBiomesLibraryForTest } from "./abilityLibraryVisibility";
-import { mergeInventoryAndHotbarForBiomesBackpackForTest } from "./inventoryAdapterHelpers";
+import {
+  mergeInventoryAndHotbarForBiomesBackpackForTest,
+  mergeMirroredBiomesBackpackUiItemsForTest,
+} from "./inventoryAdapterHelpers";
 import { shouldHydrateBiomesUILiveStateForTab } from "./liveStateHydrationPolicy";
 import { readableMapMarkerLabelForTest } from "./mapMarkerLabels";
 import {
@@ -2930,29 +2933,32 @@ export function useBiomesUILiveAdapters({
       localBackpackItemsByItemId.set(item.itemId, list);
     }
     const consumedLocalBackpackInstanceIds = new Set<string>();
-    const ecsBackpackUiItems = backpackItems.map((slot: any, index: number) => {
-      const itemId = rawItemIdFromSlot(slot);
-      const localMatch =
-        itemId && getHarthmereItemDisplay(itemId)
-          ? (localBackpackItemsByItemId.get(itemId) ?? []).find(
-              (item) => !consumedLocalBackpackInstanceIds.has(item.instanceId)
-            )
-          : undefined;
-      if (localMatch) {
-        consumedLocalBackpackInstanceIds.add(localMatch.instanceId);
-        return localHarthmereBackpackItemToUiItem(localMatch, index);
+    const ecsBackpackUiItems = backpackItems.flatMap(
+      (slot: any, index: number) => {
+        const itemId = rawItemIdFromSlot(slot);
+        const localMatch =
+          itemId && getHarthmereItemDisplay(itemId)
+            ? (localBackpackItemsByItemId.get(itemId) ?? []).find(
+                (item) => !consumedLocalBackpackInstanceIds.has(item.instanceId)
+              )
+            : undefined;
+        if (localMatch) {
+          consumedLocalBackpackInstanceIds.add(localMatch.instanceId);
+          return [localHarthmereBackpackItemToUiItem(localMatch, index)];
+        }
+        const item = slotToInventoryUiItem(
+          slot,
+          `bag_${index + 1}`,
+          { kind: "item", idx: index },
+          "backpack"
+        );
+        return item ? [item] : [];
       }
-      return slotToInventoryUiItem(
-        slot,
-        `bag_${index + 1}`,
-        { kind: "item", idx: index },
-        "backpack"
-      );
-    });
-    const baseBackpackUiItems =
-      liveBackpackStackItems.length || liveBackpackInstanceItems.length
-        ? [...liveBackpackStackItems, ...liveBackpackInstanceItems]
-        : ecsBackpackUiItems;
+    );
+    const baseBackpackUiItems = mergeMirroredBiomesBackpackUiItemsForTest(
+      [...liveBackpackStackItems, ...liveBackpackInstanceItems],
+      ecsBackpackUiItems
+    );
     const localDevBackpackItems = localHarthmereInventoryState.backpack.items
       .filter((item) => !consumedLocalBackpackInstanceIds.has(item.instanceId))
       .map((item, index) =>

@@ -72,10 +72,7 @@ function collectLiveNpcAudit(
       ? ([...entity.position.v] as Vec3)
       : undefined;
     const label = entityLabel(entity);
-    const inGrove = snapshotPointInBounds(
-      position,
-      SNAPSHOT_GROVE_LIVE_BOUNDS
-    );
+    const inGrove = snapshotPointInBounds(position, SNAPSHOT_GROVE_LIVE_BOUNDS);
     const inHarthmere = snapshotAreaForPosition(position) === "harthmere";
     const clearance = snapshotLiveNpcFootClearance(position);
     const candidate = snapshotIsLiveFloatingGroveNpcCandidate({
@@ -100,17 +97,17 @@ function collectLiveNpcAudit(
       action: !position
         ? "missing_position"
         : candidate
-          ? "visual_grounded"
-          : pass
-            ? "ok"
-            : "needs_server_remap",
+        ? "visual_grounded"
+        : pass
+        ? "ok"
+        : "needs_server_remap",
       reason: !position
         ? "NPC has no position component."
         : candidate
-          ? "Original snapshot/Grove NPC is above the playable floor; renderer current grounds it visually and reports the ID for server remap."
-          : pass
-            ? "Foot clearance is acceptable for the current area or outside the Grove audit bounds."
-            : "NPC is in the Grove and too far from the expected floor. Needs server-side position remap/delete.",
+        ? "Original snapshot/Grove NPC is above the playable floor; renderer current grounds it visually and reports the ID for server remap."
+        : pass
+        ? "Foot clearance is acceptable for the current area or outside the Grove audit bounds."
+        : "NPC is in the Grove and too far from the expected floor. Needs server-side position remap/delete.",
     });
   }
   return records;
@@ -450,9 +447,9 @@ function collectNpcGroundSamples(
       : undefined;
     const label = entityLabel(entity);
     const area = snapshotAreaForPosition(position);
-    const distance =
+    const distanceToPlayer =
       position && playerPos ? distance(position, playerPos) : undefined;
-    if (distance !== undefined && distance > radius) continue;
+    if (distanceToPlayer !== undefined && distanceToPlayer > radius) continue;
     if (!position) {
       out.push({
         id: entity.id as BiomesId,
@@ -478,15 +475,16 @@ function collectNpcGroundSamples(
       expectedFeetY === undefined || footDelta === undefined
         ? "terrain_unloaded"
         : footDelta < tolerance.buried
-          ? "buried"
-          : footDelta > tolerance.floating
-            ? "floating"
-            : undefined;
+        ? "buried"
+        : footDelta > tolerance.floating
+        ? "floating"
+        : undefined;
     out.push({
       id: entity.id as BiomesId,
       label,
       position: roundVec3(position),
-      distance: distance === undefined ? undefined : round(distance),
+      distance:
+        distanceToPlayer === undefined ? undefined : round(distanceToPlayer),
       area,
       groundBlockY: column.groundBlockY,
       expectedFeetY,
@@ -561,11 +559,11 @@ function collectMuckerHexerTileClearance(
   const actors = renderedMuckerHexerActors();
   const out: HarthmereMuckerHexerTileClearanceSample[] = [];
   for (const actor of actors) {
-    const distance =
+    const distanceToPlayer =
       actor.position && playerPos
         ? distance(actor.position, playerPos)
         : undefined;
-    if (distance !== undefined && distance > radius) continue;
+    if (distanceToPlayer !== undefined && distanceToPlayer > radius) continue;
     const column = actor.position
       ? sampleTerrainColumn(
           ctx,
@@ -848,14 +846,14 @@ function collectMissionTargetCandidates(
       ? ([...entity.position.v] as Vec3)
       : undefined;
     if (!position) continue;
-    const distance = distance(position, targetPos);
-    if (distance > radius) continue;
+    const distanceToTarget = distance(position, targetPos);
+    if (distanceToTarget > radius) continue;
     const label = entityLabel(entity);
     candidates.push({
       id: entity.id as BiomesId,
       label,
       position: roundVec3(position),
-      distance: round(distance),
+      distance: round(distanceToTarget),
       labelMatch: missionTargetLabelMatch(label, targetLabel),
     });
   }
@@ -885,14 +883,7 @@ function auditMissionQuest(
     ? (getHarthmereQuestTargetWorldPos(target) as Vec3)
     : undefined;
   const targetTerrain = targetPos
-    ? sampleTerrainColumn(
-        ctx,
-        targetPos[0],
-        targetPos[2],
-        targetPos[1],
-        24,
-        80
-      )
+    ? sampleTerrainColumn(ctx, targetPos[0], targetPos[2], targetPos[1], 24, 80)
     : undefined;
   const targetFootDelta =
     targetPos && targetTerrain?.feetY !== undefined
@@ -903,7 +894,7 @@ function auditMissionQuest(
     targetPos,
     target?.label
   );
-  const distance =
+  const distanceToTarget =
     playerPos && targetPos ? distance(playerPos, targetPos) : undefined;
   const titleNeedle = normalizeMissionText(quest.title);
   const objectiveNeedle = normalizeMissionText(step?.objective);
@@ -921,8 +912,8 @@ function auditMissionQuest(
       status === "available"
         ? bodyText.includes(acceptNeedle)
         : status === "ready"
-          ? bodyText.includes(completeNeedle)
-          : true,
+        ? bodyText.includes(completeNeedle)
+        : true,
   };
   const issues: string[] = [];
   if (status === "invalid")
@@ -937,7 +928,9 @@ function auditMissionQuest(
     issues.push("mission target terrain is not loaded");
   if (targetFootDelta !== undefined && Math.abs(targetFootDelta) > 16) {
     issues.push(
-      `mission target Y looks wrong; target delta is ${round(targetFootDelta)} blocks`
+      `mission target Y looks wrong; target delta is ${round(
+        targetFootDelta
+      )} blocks`
     );
   }
   if ((status === "active" || status === "ready") && !textChecks.titleVisible) {
@@ -957,7 +950,11 @@ function auditMissionQuest(
       "mission target label/person/item is not visible or loaded near the marker"
     );
   }
-  if (distance !== undefined && distance <= 8 && !textChecks.actionVisible) {
+  if (
+    distanceToTarget !== undefined &&
+    distanceToTarget <= 8 &&
+    !textChecks.actionVisible
+  ) {
     issues.push(
       "player is near mission target but expected Accept/Complete action text is not visible"
     );
@@ -973,7 +970,8 @@ function auditMissionQuest(
     targetLabel: target?.label,
     targetDistrict: target?.district,
     targetPos: roundVec3(targetPos),
-    distance: distance === undefined ? undefined : round(distance),
+    distance:
+      distanceToTarget === undefined ? undefined : round(distanceToTarget),
     targetTerrain,
     targetFootDelta:
       targetFootDelta === undefined ? undefined : round(targetFootDelta),
@@ -1078,9 +1076,7 @@ export const SnapshotLiveDiagnosticsRuntimeController: React.FunctionComponent<{
       };
     }, []);
 
-    const captureMissionAudit = (
-      position?: Vec3
-    ): HarthmereMissionAudit => {
+    const captureMissionAudit = (position?: Vec3): HarthmereMissionAudit => {
       const state = readHarthmereQuestState();
       missionTraceRef.current = appendMissionTraceEvents(
         state,
@@ -1206,7 +1202,9 @@ export const SnapshotLiveDiagnosticsRuntimeController: React.FunctionComponent<{
       const warnings: string[] = [];
       if (playerFootDelta !== undefined && Math.abs(playerFootDelta) > 2.5) {
         warnings.push(
-          `player foot delta ${round(playerFootDelta)} from terrain feet ${center?.feetY}`
+          `player foot delta ${round(playerFootDelta)} from terrain feet ${
+            center?.feetY
+          }`
         );
       }
       if (offGroundTown.length) {
@@ -1224,7 +1222,9 @@ export const SnapshotLiveDiagnosticsRuntimeController: React.FunctionComponent<{
       }
       if (maxFrameMs > 80) {
         warnings.push(
-          `slow frame ${round(maxFrameMs)}ms near ${roundVec3(position)?.join(",") ?? "unknown"}`
+          `slow frame ${round(maxFrameMs)}ms near ${
+            roundVec3(position)?.join(",") ?? "unknown"
+          }`
         );
       }
       if (terrainStreaming.missingTerrainShards > 0) {
@@ -1266,9 +1266,7 @@ export const SnapshotLiveDiagnosticsRuntimeController: React.FunctionComponent<{
             (probe) => probe.feetY === undefined
           ).length,
           playerFootDelta:
-            playerFootDelta === undefined
-              ? undefined
-              : round(playerFootDelta),
+            playerFootDelta === undefined ? undefined : round(playerFootDelta),
         },
         npcs: {
           nearbyCount: npcSamples.length,
@@ -1306,18 +1304,15 @@ export const SnapshotLiveDiagnosticsRuntimeController: React.FunctionComponent<{
       // the survey itself from being a perf cliff. 60 samples at 5 sec/sample
       // is 5 minutes of recent capture, which is plenty for download analysis.
       if (
-        autoSurveySamplesRef.current.length >
-        HARTHMERE_SURVEY_RAW_SAMPLE_CAP
+        autoSurveySamplesRef.current.length > HARTHMERE_SURVEY_RAW_SAMPLE_CAP
       ) {
         autoSurveySamplesRef.current.splice(
           0,
-          autoSurveySamplesRef.current.length -
-            HARTHMERE_SURVEY_RAW_SAMPLE_CAP
+          autoSurveySamplesRef.current.length - HARTHMERE_SURVEY_RAW_SAMPLE_CAP
         );
       }
       if (warnings.length && autoSurveyRunningRef.current) {
-        const lastWarn =
-          (window as any).__harthmereAutoSurveyLastWarnAt ?? 0;
+        const lastWarn = (window as any).__harthmereAutoSurveyLastWarnAt ?? 0;
         if (Date.now() - lastWarn > 15000) {
           (window as any).__harthmereAutoSurveyLastWarnAt = Date.now();
           // BIOMES_AUTO_SURVEY_CONSOLE_QUIET
@@ -1423,9 +1418,7 @@ export const SnapshotLiveDiagnosticsRuntimeController: React.FunctionComponent<{
         marks: marksRef.current,
         areas: areaReports,
         slowResources: resources,
-        floatingAudit: snapshotLiveNpcAuditSummary(
-          collectLiveNpcAudit(ctx)
-        ),
+        floatingAudit: snapshotLiveNpcAuditSummary(collectLiveNpcAudit(ctx)),
         navigation:
           performance.getEntriesByType("navigation")[0]?.toJSON?.() ??
           undefined,
@@ -1662,24 +1655,17 @@ export const SnapshotLiveDiagnosticsRuntimeController: React.FunctionComponent<{
           collectMuckerHexerTileClearance(ctx, localPlayerPosition(ctx)),
         muckerHexerGroundSummary: () =>
           muckerHexerTileClearanceSummary(
-            collectMuckerHexerTileClearance(
-              ctx,
-              localPlayerPosition(ctx)
-            )
+            collectMuckerHexerTileClearance(ctx, localPlayerPosition(ctx))
           ),
         remainingPortAudit: snapshotRemainingPortAudit,
         performanceTools: SNAPSHOT_PERFORMANCE_DEBUG_TOOLS,
         performanceReport: report,
         autoSurvey: autoSurveyReport,
-        missionAudit: () =>
-          captureMissionAudit(localPlayerPosition(ctx)),
+        missionAudit: () => captureMissionAudit(localPlayerPosition(ctx)),
         downloadMissionAudit: (
           filename = `harthmere-mission-audit-${Date.now()}.json`
         ) =>
-          downloadJson(
-            filename,
-            captureMissionAudit(localPlayerPosition(ctx))
-          ),
+          downloadJson(filename, captureMissionAudit(localPlayerPosition(ctx))),
         downloadFloatingAudit: (
           filename = `snapshot-floating-npc-audit-${Date.now()}.json`
         ) => downloadJson(filename, collectLiveNpcAudit(ctx)),
@@ -1688,10 +1674,7 @@ export const SnapshotLiveDiagnosticsRuntimeController: React.FunctionComponent<{
         ) =>
           downloadJson(
             filename,
-            collectMuckerHexerTileClearance(
-              ctx,
-              localPlayerPosition(ctx)
-            )
+            collectMuckerHexerTileClearance(ctx, localPlayerPosition(ctx))
           ),
       };
       win.__harthmereAutoSurvey = {
@@ -1706,10 +1689,7 @@ export const SnapshotLiveDiagnosticsRuntimeController: React.FunctionComponent<{
         downloadMissionAudit: (
           filename = `harthmere-mission-audit-${Date.now()}.json`
         ) =>
-          downloadJson(
-            filename,
-            captureMissionAudit(localPlayerPosition(ctx))
-          ),
+          downloadJson(filename, captureMissionAudit(localPlayerPosition(ctx))),
         download: (filename = `harthmere-auto-survey-${Date.now()}.json`) =>
           downloadJson(filename, autoSurveyReport()),
         explain: () => ({
@@ -1756,10 +1736,7 @@ export const SnapshotLiveGroundingAuditPanel: React.FunctionComponent<{}> =
       return () => window.clearInterval(interval);
     }, [ctx]);
 
-    const summary = useMemo(
-      () => snapshotLiveNpcAuditSummary(audit),
-      [audit]
-    );
+    const summary = useMemo(() => snapshotLiveNpcAuditSummary(audit), [audit]);
     const flagged = audit.filter(
       (entry) =>
         entry.action === "visual_grounded" ||
@@ -1767,9 +1744,9 @@ export const SnapshotLiveGroundingAuditPanel: React.FunctionComponent<{}> =
     );
 
     return (
-      <div className="rounded border border-red-200/20 bg-red-950/30 p-2 text-white">
+      <div className="rounded border-red-200/20 bg-red-950/30 border p-2 text-white">
         <div className="text-sm font-semibold">Live NPC Foot Audit</div>
-        <div className="text-[10px] uppercase tracking-wide text-red-100/80">
+        <div className="text-red-100/80 text-[10px] uppercase tracking-wide">
           {SNAPSHOT_LIVE_NPC_GROUNDING_VERSION}
         </div>
         <div className="mt-1 text-xs text-white/75">
@@ -1777,17 +1754,19 @@ export const SnapshotLiveGroundingAuditPanel: React.FunctionComponent<{}> =
           {summary.visualGrounded} · server remap {summary.needsServerRemap}
         </div>
         <div className="mt-1 text-[11px] text-white/60">
-          Tolerance ≤ {SNAPSHOT_LIVE_NPC_MAX_FOOT_CLEARANCE}m for
-          Grove-authored NPCs. Floating snapshot originals are grounded visually
-          and reported by ID.
+          Tolerance ≤ {SNAPSHOT_LIVE_NPC_MAX_FOOT_CLEARANCE}m for Grove-authored
+          NPCs. Floating snapshot originals are grounded visually and reported
+          by ID.
         </div>
         {!!flagged.length && (
-          <div className="mt-1 text-[11px] text-red-100">
+          <div className="text-red-100 mt-1 text-[11px]">
             {flagged
               .slice(0, 4)
               .map(
                 (entry) =>
-                  `${entry.label}: y=${entry.position?.[1]?.toFixed?.(2) ?? "?"}`
+                  `${entry.label}: y=${
+                    entry.position?.[1]?.toFixed?.(2) ?? "?"
+                  }`
               )
               .join(" · ")}
           </div>
@@ -1810,9 +1789,9 @@ export const SnapshotPerformanceWalkerPanel: React.FunctionComponent<{}> =
     }, []);
     const latest = report?.areas?.[0];
     return (
-      <div className="rounded border border-lime-200/20 bg-lime-950/30 p-2 text-white">
+      <div className="rounded border-lime-200/20 bg-lime-950/30 border p-2 text-white">
         <div className="text-sm font-semibold">Walk Performance Profiler</div>
-        <div className="text-[10px] uppercase tracking-wide text-lime-100/80">
+        <div className="text-lime-100/80 text-[10px] uppercase tracking-wide">
           {SNAPSHOT_WALK_PERFORMANCE_PROFILER_VERSION}
         </div>
         <div className="mt-1 text-xs text-white/75">
@@ -1836,11 +1815,11 @@ export const SnapshotRemainingPortAuditPanel: React.FunctionComponent<{}> =
   () => {
     const audit = snapshotRemainingPortAudit();
     return (
-      <div className="rounded border border-zinc-200/20 bg-zinc-950/30 p-2 text-white">
+      <div className="rounded border-zinc-200/20 bg-zinc-950/30 border p-2 text-white">
         <div className="text-sm font-semibold">
           Remaining Snapshot Port Audit
         </div>
-        <div className="text-[10px] uppercase tracking-wide text-zinc-100/80">
+        <div className="text-zinc-100/80 text-[10px] uppercase tracking-wide">
           {SNAPSHOT_REMAINING_PORT_AUDIT_VERSION}
         </div>
         <div className="mt-1 text-xs text-white/75">

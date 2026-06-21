@@ -17,7 +17,7 @@ import { add, containsAABB, floor, scale, sub } from "@/shared/math/linear";
 import type { AABB, ReadonlyVec3, Vec3 } from "@/shared/math/types";
 import { Tensor, TensorUpdate } from "@/shared/wasm/tensors";
 import type { VoxelooModule } from "@/shared/wasm/types";
-import type { GaiaTerrainMap } from "@/shared/wasm/types/gaia";
+import type { GaiaTerrainMapV2 } from "@/shared/wasm/types/gaia";
 import { compact } from "lodash";
 
 const RECEPTIVE_FIELD: ReadonlyVec3 = [16, 16, 16];
@@ -29,7 +29,7 @@ export class IrradianceSimulation extends Simulation {
   constructor(
     private readonly voxeloo: VoxelooModule,
     private readonly replica: GaiaReplica,
-    private readonly map: GaiaTerrainMap
+    private readonly map: GaiaTerrainMapV2
   ) {
     super("irradiance");
     this.sources = new Map(
@@ -65,7 +65,7 @@ export class IrradianceSimulation extends Simulation {
     ) {
       const entity = this.replica.table.get(change.entity.id);
       if (Entity.has(entity, "box")) {
-        return shardAndNeighbors(entity.box);
+        return shardAndNeighbors(entity.box.v0);
       } else {
         return [];
       }
@@ -95,8 +95,8 @@ export class IrradianceSimulation extends Simulation {
   async update(shard: TerrainShard) {
     // Define an AABB over the causal domain for this shard.
     const domain: AABB = [
-      sub(shard.box, RECEPTIVE_FIELD),
-      add(shard.box, RECEPTIVE_FIELD),
+      sub(shard.box.v0, RECEPTIVE_FIELD),
+      add(shard.box.v1, RECEPTIVE_FIELD),
     ];
 
     // Fetch all nearby entities with irradiance.
@@ -124,7 +124,7 @@ export class IrradianceSimulation extends Simulation {
 
       // Generate the output irradiance tensor.
       const map = scope.use(
-        this.voxeloo.updateIrradiance(this.map, shard.box, sourcesTensor.cpp)
+        this.voxeloo.updateIrradiance(this.map, shard.box.v0, sourcesTensor.cpp)
       );
       return {
         changes: compact([

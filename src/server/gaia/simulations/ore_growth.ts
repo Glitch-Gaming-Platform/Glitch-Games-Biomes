@@ -41,7 +41,7 @@ export class OreGrowthSimulation extends Simulation {
     if (terrainWasModified(change)) {
       const entity = this.replica.table.get(change.entity.id);
       if (Entity.has(entity, "box")) {
-        return [shardEncode(...voxelToShardPos(...entity.box))];
+        return [shardEncode(...voxelToShardPos(...entity.box.v0))];
       }
     }
     return [];
@@ -116,7 +116,7 @@ export class OreGrowthSimulation extends Simulation {
   ): Promise<UpdateResult | undefined> {
     const cache = new TensorCache(this.voxeloo, this.replica);
     try {
-      const seed = cache.getSeed(voxelShard(...shard.box));
+      const seed = cache.getSeed(voxelShard(...shard.box.v0));
       if (!seed) {
         return;
       }
@@ -134,7 +134,7 @@ export class OreGrowthSimulation extends Simulation {
       const helper = terrainHelperFromTensorCache(this.voxeloo, cache);
       for (const [pos, id] of iterBlock(this.voxeloo, seed)) {
         if (oresTable.has(id as TerrainID)) {
-          if (this.shouldGrow(helper, add(shard.box, pos))) {
+          if (this.shouldGrow(helper, add(shard.box.v0, pos))) {
             const timer = chunk.get(pos);
             if (timer) {
               if (this.clock.ready(timer)) {

@@ -93,7 +93,7 @@ function genBlueprintData(
   }
 
   const groupBox = groupTensorBox(rotatedTensor);
-  const aabb: AABB = [groupBox, groupBox];
+  const aabb: AABB = [groupBox.v0, groupBox.v1];
   const size = sizeAABB(aabb);
   const shift: Vec3 = floor(sub(position.v, scale(0.5, size)));
   shift[1] = position.v[1];
@@ -201,7 +201,7 @@ async function genBlueprintMesh(
         }
 
         // Check to see if this voxel is done
-        const worldPos = add(position, groupData.box);
+        const worldPos = add(position, groupData.box.v0);
         const [terrainId, isomorphism] = getTerrainIdAndIsomorphismAtPosition(
           deps,
           worldPos
@@ -358,7 +358,7 @@ async function genBlueprintDestructionMesh(
   ret.add(blockMesh);
   ret.add(glassMesh);
   ret.add(floraMesh);
-  ret.position.set(...groupData.box);
+  ret.position.set(...groupData.box.v0);
 
   return makeDisposable<GroupMesh>(
     {

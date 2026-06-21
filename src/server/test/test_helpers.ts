@@ -302,10 +302,9 @@ export function createSolidTerrainShard(
     return saveBlock(voxeloo, seedBlock);
   });
   const id = generateTestId();
-  world.writeableTable.apply([
+  world.applyChanges([
     {
       kind: "create",
-      tick: world.table.tick,
       entity: {
         id,
         box: Box.create({ v0, v1 }),
@@ -321,10 +320,9 @@ export function createSolidTerrainShard(
 export function createEmptyTerrainShard(world: InMemoryWorld, v0: Vec3f) {
   const id = generateTestId();
   const v1 = add(v0, [Shard.SHARD_DIM, Shard.SHARD_DIM, Shard.SHARD_DIM]);
-  world.writeableTable.apply([
+  world.applyChanges([
     {
       kind: "create",
-      tick: world.table.tick,
       entity: {
         id,
         box: Box.create({ v0, v1 }),
@@ -343,10 +341,9 @@ export function createRestorationField(
   size: ReadonlyVec3,
   delay: number
 ) {
-  world.writeableTable.apply([
+  world.applyChanges([
     {
       kind: "create",
-      tick: world.table.tick,
       entity: {
         id: generateTestId(),
         position: Position.create({ v: [...position] }),

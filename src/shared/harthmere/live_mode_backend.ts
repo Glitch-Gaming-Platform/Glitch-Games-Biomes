@@ -4,6 +4,8 @@ import type {
   HarthmereLiveModeAuthorityEnvelope,
 } from "./live_mode_readiness";
 import { fallDamageForBlocks } from "@/shared/game/fall_damage";
+import { anItem } from "@/shared/game/item";
+import { safeParseBiomesId } from "@/shared/ids";
 import {
   reduceHarthmereInventoryMutation,
   applyHarthmereInventoryMutationResult,
@@ -350,8 +352,7 @@ export function ensureHarthmereBusinessOutpostEconomyRecords(
     );
     const ownerId = outpost?.ownerNpcId ?? `${record.outpostId}:npc_owner`;
     const townId = outpost?.townId ?? HARTHMERE_ECONOMY_DEFAULT_TOWN_ID;
-    const regionId =
-      outpost?.regionId ?? HARTHMERE_ECONOMY_DEFAULT_REGION_ID;
+    const regionId = outpost?.regionId ?? HARTHMERE_ECONOMY_DEFAULT_REGION_ID;
     const businessId = harthmereBusinessOutpostBusinessId(record.outpostId);
     const existing = economy.businesses[businessId];
     if (existing) {
@@ -371,8 +372,7 @@ export function ensureHarthmereBusinessOutpostEconomyRecords(
       }
       continue;
     }
-    const businessType =
-      HARTHMERE_ECONOMY_BUSINESS_TYPES[record.businessType];
+    const businessType = HARTHMERE_ECONOMY_BUSINESS_TYPES[record.businessType];
     economy.businesses[businessId] = {
       businessId,
       ownerKind: "npc",
@@ -385,9 +385,7 @@ export function ensureHarthmereBusinessOutpostEconomyRecords(
       propertyId: record.plot.plotId,
       townId,
       regionId,
-      inventory: harthmereBusinessOutpostStarterInventory(
-        record.businessType
-      ),
+      inventory: harthmereBusinessOutpostStarterInventory(record.businessType),
       storageMaxSlots: Math.max(24, businessType.baseStorageSlots),
       employees: [],
       activeContracts: [],
@@ -504,10 +502,7 @@ function boostedMuckHexAttackDamage(input: {
   const level = Math.max(1, Math.trunc(Number(input.combatLevel ?? 1)));
   const base =
     input.entityKind === "hex" ? (level >= 4 ? 24 : 18) : level >= 3 ? 16 : 14;
-  return Math.max(
-    1,
-    Math.trunc(base * HARTHMERE_MUCK_HEX_STRENGTH_MULTIPLIER)
-  );
+  return Math.max(1, Math.trunc(base * HARTHMERE_MUCK_HEX_STRENGTH_MULTIPLIER));
 }
 
 function liveEntityLiftedPosition(
@@ -530,9 +525,7 @@ function liveEntityDefeatRestingPosition(
   );
 }
 
-function liveEntityLootDropPosition(
-  target: HarthmereLiveCombatEntitySnapshot
-) {
+function liveEntityLootDropPosition(target: HarthmereLiveCombatEntitySnapshot) {
   return liveEntityLiftedPosition(
     target.position,
     HARTHMERE_LIVE_ENTITY_LOOT_DROP_POSITION_LIFT
@@ -545,8 +538,8 @@ export function createHarthmereServerMuckCombatEntitySnapshots(
   // Use the SAME grounded/redistributed positions as the seeded ECS entities so
   // the combat AI never tracks a hostile somewhere a player won't see one (and
   // never inside the Grove safe zone).
-  const monsterEntries =
-    harthmereGroundedMuckMonsterSeedsInTerritory().flatMap((seed) => {
+  const monsterEntries = harthmereGroundedMuckMonsterSeedsInTerritory().flatMap(
+    (seed) => {
       const territory = muckMonsterAreaForPosition(seed.position, 1.5);
       if (!territory) {
         return [];
@@ -594,7 +587,8 @@ export function createHarthmereServerMuckCombatEntitySnapshots(
           } satisfies HarthmereLiveCombatEntitySnapshot,
         ],
       ];
-    });
+    }
+  );
 
   // Wildlife (cows, sheep, rabbits): passive but attackable. Not hostile (no
   // unprovoked aggression — see the idle-patrol gate below), but
@@ -606,8 +600,8 @@ export function createHarthmereServerMuckCombatEntitySnapshots(
     tier === "large" ? 1 : tier === "medium" ? 0.7 : 0.45;
   const livestockMovementSpeed = (tier: string | undefined) =>
     tier === "small" ? 3.2 : tier === "medium" ? 2.5 : 2;
-  const livestockEntries =
-    harthmereGroundedLivestockSeedsInTerritory().flatMap((seed) => {
+  const livestockEntries = harthmereGroundedLivestockSeedsInTerritory().flatMap(
+    (seed) => {
       if (!muckMonsterAreaForPosition(seed.position, 1.5)) {
         return [];
       }
@@ -652,7 +646,8 @@ export function createHarthmereServerMuckCombatEntitySnapshots(
           } satisfies HarthmereLiveCombatEntitySnapshot,
         ],
       ];
-    });
+    }
+  );
 
   return Object.fromEntries([...monsterEntries, ...livestockEntries]);
 }
@@ -675,10 +670,7 @@ export function harthmereReviveDefeatedSeededCombatEntities(
     if (entity.isAlive || !entity.defeatedAtMs) {
       continue;
     }
-    if (
-      nowMs - entity.defeatedAtMs <
-      HARTHMERE_SERVER_MUCK_COMBAT_RESPAWN_MS
-    ) {
+    if (nowMs - entity.defeatedAtMs < HARTHMERE_SERVER_MUCK_COMBAT_RESPAWN_MS) {
       continue;
     }
     entity.hp = entity.maxHp;
@@ -1000,10 +992,7 @@ export interface HarthmereLiveModeBackendState {
     activeProjects: Record<string, BuildingSystemProjectRecord>;
     /** In-world plot/deed/map/NPC marker records created by server-approved building actions. */
     inWorldMarkers: Record<string, BuildingSystemInWorldMarker>;
-    materializationPlans: Record<
-      string,
-      BuildingSystemAnyMaterializationPlan
-    >;
+    materializationPlans: Record<string, BuildingSystemAnyMaterializationPlan>;
     storageContainers: Record<string, BuildingSystemStorageContainerRecord>;
     doorLocks: Record<string, BuildingSystemDoorLockRecord>;
     // Tracks which revision of the business-outpost voxel plans has been
@@ -1237,10 +1226,7 @@ export interface HarthmereLiveModeSharedLawState {
   crimeLog: Array<{ id: string; kind: string; atMs: number; zoneId: string }>;
   crimeRecords: HarthmereLiveModeCrimeRecord[];
   guardResponses: HarthmereLiveModeGuardResponseRecord[];
-  restrictedTrespass: Record<
-    string,
-    HarthmereLiveModeRestrictedTrespassRecord
-  >;
+  restrictedTrespass: Record<string, HarthmereLiveModeRestrictedTrespassRecord>;
   detentionUntilMs: Record<string, number>;
 }
 
@@ -1362,9 +1348,7 @@ function normalizeHarthmereQuestInviteState(
         Math.trunc(Number(invite.createdAtMs ?? nowMs) || nowMs)
       ),
       firstMarkerId: cleanQuestInviteId(invite.firstMarkerId),
-      markerWorldPosition: normalizeQuestInviteVec3(
-        invite.markerWorldPosition
-      ),
+      markerWorldPosition: normalizeQuestInviteVec3(invite.markerWorldPosition),
     };
   }
 
@@ -1403,9 +1387,7 @@ function normalizeHarthmereQuestInviteState(
         Math.trunc(Number(quest.updatedAtMs ?? nowMs) || nowMs)
       ),
       firstMarkerId: cleanQuestInviteId(quest.firstMarkerId),
-      markerWorldPosition: normalizeQuestInviteVec3(
-        quest.markerWorldPosition
-      ),
+      markerWorldPosition: normalizeQuestInviteVec3(quest.markerWorldPosition),
     };
   }
   return { invites, sharedQuests };
@@ -1422,8 +1404,7 @@ function isHarthmereLiveModePublicLawFlag(flagId: string) {
 function publicLawFlags(flags: Record<string, boolean>) {
   return Object.fromEntries(
     Object.entries(flags).filter(
-      ([flagId, enabled]) =>
-        enabled && isHarthmereLiveModePublicLawFlag(flagId)
+      ([flagId, enabled]) => enabled && isHarthmereLiveModePublicLawFlag(flagId)
     )
   );
 }
@@ -1663,8 +1644,7 @@ function restoreCombatResources(
 }
 
 let liveModeCombatCatalogueRegistered = false;
-const HARTHMERE_LIVE_ENTITY_NPC_ATTACK_ABILITY_ID =
-  "live_entity_npc_attack";
+const HARTHMERE_LIVE_ENTITY_NPC_ATTACK_ABILITY_ID = "live_entity_npc_attack";
 
 function ensureHarthmereLiveModeCombatCatalogue() {
   if (liveModeCombatCatalogueRegistered) {
@@ -1988,9 +1968,7 @@ function bankRecordHasCapacity(
   itemId: string,
   maxSlots: number
 ) {
-  return (
-    (record[itemId] ?? 0) > 0 || countOccupiedBankSlots(record) < maxSlots
-  );
+  return (record[itemId] ?? 0) > 0 || countOccupiedBankSlots(record) < maxSlots;
 }
 
 function applyBankRecordDelta(
@@ -2548,9 +2526,7 @@ export function applyHarthmereBankLoanConsequences(
     loan.defaultedAtMs = loan.defaultedAtMs ?? nowMs;
     loan.defaultPenaltyGold = Math.max(
       loan.defaultPenaltyGold ?? 0,
-      Math.ceil(
-        loan.principalRemaining * HARTHMERE_LOAN_DEFAULT_PENALTY_RATE
-      )
+      Math.ceil(loan.principalRemaining * HARTHMERE_LOAN_DEFAULT_PENALTY_RATE)
     );
     loan.penaltyPaid = loan.penaltyPaid ?? 0;
     if (!loan.creditPenaltyApplied) {
@@ -2611,12 +2587,60 @@ function humanizeHarthmereItemId(itemId: string) {
     .replace(/\b\w/g, (m) => m.toUpperCase());
 }
 
+function dynamicBiomesBikkieLiveModeItemDefinition(
+  itemId: string
+): HarthmereItemDefinition | undefined {
+  // Cloud Save can receive real Biomes biscuit ids from mining, harvesting, or
+  // loot. Register them lazily so persistence accepts exact `b:<id>` stacks.
+  const biomesId = safeParseBiomesId(itemId);
+  if (!biomesId) return undefined;
+  const canonicalItemId = `b:${biomesId}`;
+  const existing = getHarthmereItemDefinition(canonicalItemId);
+  if (existing) return existing;
+  const item = anItem(biomesId);
+  const stackable = Number(item?.stackable ?? (item?.isBlock ? 99n : 1n));
+  const isBlock = item?.isBlock === true;
+  const def: HarthmereItemDefinition = {
+    itemId: canonicalItemId,
+    displayName:
+      typeof item?.displayName === "string" &&
+      item.displayName.trim().length > 0
+        ? item.displayName
+        : isBlock
+        ? `Biomes Block ${biomesId}`
+        : `Biomes Item ${biomesId}`,
+    description: isBlock
+      ? "A mined Biomes voxel block saved from the world."
+      : "A Biomes item saved from the world.",
+    maxStackSize:
+      Number.isFinite(stackable) && stackable > 1
+        ? Math.max(2, Math.trunc(stackable))
+        : 1,
+    baseValue: 0,
+    binding: "none",
+    isQuestItem: false,
+    isCurrency: false,
+    isConsumable: false,
+    isCraftingMaterial: isBlock,
+    isSpellTome: false,
+    levelRequirement: 1,
+    classRestriction: [],
+    stats: {},
+    tradeable: true,
+    category: isBlock ? "materials" : "item",
+  };
+  registerHarthmereItemDefinition(def);
+  return def;
+}
+
 function ensureLiveModeItemDefinition(
   itemId: string,
   snapshot: Pick<HarthmereInventorySnapshot, "items" | "bank">
 ): HarthmereItemDefinition | undefined {
   const existing = getHarthmereItemDefinition(itemId);
   if (existing) return existing;
+  const biomesBikkie = dynamicBiomesBikkieLiveModeItemDefinition(itemId);
+  if (biomesBikkie) return biomesBikkie;
   const knownCount =
     (snapshot.items[itemId] ?? 0) + (snapshot.bank[itemId] ?? 0);
   if (knownCount <= 0) return undefined;
@@ -2687,9 +2711,7 @@ function activeLoanBalance(loan: HarthmereBankingLoan, nowMs: number) {
   const boundedRegularEndMs = Math.min(nowMs, loan.dueAtMs);
   const regularInterestDays = Math.max(
     0,
-    Math.ceil(
-      (boundedRegularEndMs - loan.openedAtMs) / HARTHMERE_LOAN_DAY_MS
-    )
+    Math.ceil((boundedRegularEndMs - loan.openedAtMs) / HARTHMERE_LOAN_DAY_MS)
   );
   const lateDays = Math.max(
     0,
@@ -2772,10 +2794,7 @@ export function createHarthmereLiveModeBankingClientSnapshot(
     loans: activeLoans,
     transactionLogs: state.banking.transactionLogs.slice(-50),
     nextUpgradeCosts: {
-      personal: bankUpgradeCost(
-        "personal",
-        state.banking.personalBankMaxSlots
-      ),
+      personal: bankUpgradeCost("personal", state.banking.personalBankMaxSlots),
       account: bankUpgradeCost("account", state.banking.accountBankMaxSlots),
       materials: bankUpgradeCost(
         "materials",
@@ -3553,9 +3572,7 @@ function liveModePositionObjectToTuple(
 // plot id. This is what finally makes "owning + securing a property protects
 // it from muck" real -- previously building.safeZones was written but never read.
 function isPositionInsideOwnedSafeZone(
-  safeZones:
-    | HarthmereLiveModeBackendState["building"]["safeZones"]
-    | undefined,
+  safeZones: HarthmereLiveModeBackendState["building"]["safeZones"] | undefined,
   position: { x: number; z: number } | undefined
 ): boolean {
   if (!safeZones || !position) return false;
@@ -4135,8 +4152,7 @@ function distanceSq3(
   return dx * dx + dy * dy + dz * dz;
 }
 
-const HARTHMERE_EXOTIC_MATTER_DEPOSIT_CLAIM_PREFIX =
-  "exotic_matter_deposit:";
+const HARTHMERE_EXOTIC_MATTER_DEPOSIT_CLAIM_PREFIX = "exotic_matter_deposit:";
 const HARTHMERE_EXOTIC_MATTER_MINE_INTERACTION_RADIUS = 4;
 
 function exoticMatterDepositClaimKey(depositId: string) {
@@ -4845,8 +4861,7 @@ export function harthmereLiveModeSharedStateKey(kind: string, id: string) {
 function defaultHarthmereBusinessOutpostBuildingState(nowMs: number) {
   const placedStructures: HarthmereLiveModeBackendState["building"]["placedStructures"] =
     {};
-  const safeZones: HarthmereLiveModeBackendState["building"]["safeZones"] =
-    {};
+  const safeZones: HarthmereLiveModeBackendState["building"]["safeZones"] = {};
   const inWorldMarkers: HarthmereLiveModeBackendState["building"]["inWorldMarkers"] =
     {};
   const materializationPlans: HarthmereLiveModeBackendState["building"]["materializationPlans"] =
@@ -5041,10 +5056,7 @@ export function defaultHarthmereLiveModeBackendState(
       partyRaidCredits: {},
     },
   };
-  ensureHarthmereBusinessOutpostEconomyRecords(
-    state.economy.production,
-    nowMs
-  );
+  ensureHarthmereBusinessOutpostEconomyRecords(state.economy.production, nowMs);
   ensurePlayerOwnedBusinessOwnerNpcMarkers(state, nowMs);
   syncLiveEntityRobotProtectionToBuilding(state, nowMs);
   return state;
@@ -5094,10 +5106,7 @@ export function parseHarthmereLiveModeBackendState(
       placeableWorld: normalizeHarthmerePlaceableWorldState(
         (parsed as any).placeableWorld
       ),
-      guild: normalizeHarthmereLiveModeGuildState(
-        (parsed as any).guild,
-        nowMs
-      ),
+      guild: normalizeHarthmereLiveModeGuildState((parsed as any).guild, nowMs),
       banking: normalizeBankingState((parsed as any).banking),
       law: {
         ...defaults.law,
@@ -5430,10 +5439,7 @@ export function createHarthmereLiveModeSharedWorldState(
     exoticMatterDepositClaims: normalizeExoticMatterDepositClaims(
       state.combat.lootClaims
     ),
-    questInvites: normalizeHarthmereQuestInviteState(
-      state.questInvites,
-      nowMs
-    ),
+    questInvites: normalizeHarthmereQuestInviteState(state.questInvites, nowMs),
     auctionListings: { ...state.economy.auctionListings },
     auctionSellerPayouts: normalizeAuctionSellerPayouts(
       state.economy.auctionSellerPayouts
@@ -5499,10 +5505,7 @@ export function parseHarthmereLiveModeSharedWorldState(
         restrictedTrespass: { ...(law.restrictedTrespass ?? {}) },
         detentionUntilMs: { ...(law.detentionUntilMs ?? {}) },
       },
-      guild: normalizeHarthmereLiveModeGuildState(
-        (parsed as any).guild,
-        nowMs
-      ),
+      guild: normalizeHarthmereLiveModeGuildState((parsed as any).guild, nowMs),
       exoticMatterDepositClaims: normalizeExoticMatterDepositClaims(
         (parsed as any).exoticMatterDepositClaims
       ),
@@ -5529,10 +5532,7 @@ export function mergeHarthmereLiveModeSharedWorldStateIntoBackend(
   state.economy.production = normalizeHarthmereProductionEconomyState(
     shared.economyProduction
   );
-  ensureHarthmereBusinessOutpostEconomyRecords(
-    state.economy.production,
-    nowMs
-  );
+  ensureHarthmereBusinessOutpostEconomyRecords(state.economy.production, nowMs);
   state.jobsBoard = normalizeHarthmereJobsBoardState(shared.jobsBoard, nowMs);
   state.questInvites = normalizeHarthmereQuestInviteState(
     shared.questInvites,
@@ -5651,10 +5651,7 @@ export function mergeHarthmereLiveModeSharedWorldStateIntoBackend(
     },
   };
   const previousMemberGuildId = state.guild.memberGuildId;
-  const sharedGuild = normalizeHarthmereLiveModeGuildState(
-    shared.guild,
-    nowMs
-  );
+  const sharedGuild = normalizeHarthmereLiveModeGuildState(shared.guild, nowMs);
   const derivedMemberGuildId =
     previousMemberGuildId ??
     Object.values(sharedGuild.guilds).find(
@@ -5675,10 +5672,7 @@ export function mergeHarthmereLiveModeSharedWorldStateIntoBackend(
 export function createHarthmereLiveModeGuildClientSnapshotFromBackend(
   state: HarthmereLiveModeBackendState
 ) {
-  return createHarthmereLiveModeGuildClientSnapshot(
-    state.guild,
-    state.actorId
-  );
+  return createHarthmereLiveModeGuildClientSnapshot(state.guild, state.actorId);
 }
 
 export function createHarthmereInventoryLootClientSnapshotFromBackend(
@@ -6254,9 +6248,7 @@ export function reduceHarthmereLiveModeBackendState(
   state: HarthmereLiveModeBackendState;
   summary: HarthmereLiveModeBackendMutationSummary;
 } {
-  const next: HarthmereLiveModeBackendState = JSON.parse(
-    JSON.stringify(state)
-  );
+  const next: HarthmereLiveModeBackendState = JSON.parse(JSON.stringify(state));
   next.updatedAtMs = nowMs;
   const touchedModels = new Set<string>();
   const sharedStateKeys = new Set<string>();
@@ -6265,10 +6257,7 @@ export function reduceHarthmereLiveModeBackendState(
     [];
   const playerStateKey = harthmereLiveModePlayerStateKey(envelope.actorId);
 
-  const loanConsequenceResult = applyHarthmereBankLoanConsequences(
-    next,
-    nowMs
-  );
+  const loanConsequenceResult = applyHarthmereBankLoanConsequences(next, nowMs);
   if (loanConsequenceResult.changed) {
     warnings.push(
       ...loanConsequenceResult.defaultedLoanIds.map(
@@ -6435,10 +6424,8 @@ export function reduceHarthmereLiveModeBackendState(
       ) <= visibleTargetReach
         ? { ...visibleTargetPosition, y: actorPosition.y }
         : actorPosition &&
-          liveEntityCombatHorizontalDistance(
-            actorPosition,
-            target.position
-          ) <= HARTHMERE_VOXEL_INTERACTION_ATTACK_REACH_UNITS
+          liveEntityCombatHorizontalDistance(actorPosition, target.position) <=
+            HARTHMERE_VOXEL_INTERACTION_ATTACK_REACH_UNITS
         ? { ...target.position, y: actorPosition.y }
         : target.position;
     return {
@@ -6747,10 +6734,8 @@ export function reduceHarthmereLiveModeBackendState(
       ? Math.max(0, Number(npcSnapshot.attackRange))
       : ability.rangeUnits;
     if (
-      liveEntityCombatHorizontalDistance(
-        npcSnapshot.position,
-        playerPosition
-      ) > range
+      liveEntityCombatHorizontalDistance(npcSnapshot.position, playerPosition) >
+      range
     ) {
       return {
         attackBlockedReason: "target_out_of_range",
@@ -6974,8 +6959,7 @@ export function reduceHarthmereLiveModeBackendState(
       sharedStateKeys,
     });
     if (!record) return;
-    const before =
-      next.law.standing[factionId] ?? defaultReputationStanding();
+    const before = next.law.standing[factionId] ?? defaultReputationStanding();
     const after = applyReputationStandingDelta(
       before,
       {
@@ -7116,13 +7100,15 @@ export function reduceHarthmereLiveModeBackendState(
       existing.equipment = { ...next.inventory.equipment };
       return;
     }
-    next.inventoryLoot.actors[next.actorId] =
-      createHarthmereInventoryLootActor(next.actorId, {
+    next.inventoryLoot.actors[next.actorId] = createHarthmereInventoryLootActor(
+      next.actorId,
+      {
         gold: next.inventory.gold,
         items: { ...next.inventory.items },
         bank: { ...next.inventory.bank },
         equipment: { ...next.inventory.equipment },
-      });
+      }
+    );
   }
 
   function inventoryLootDefinitionFromLiveItem(
@@ -7182,6 +7168,8 @@ export function reduceHarthmereLiveModeBackendState(
   ): HarthmereItemDefinition | undefined {
     const existing = getHarthmereItemDefinition(itemId);
     if (existing) return existing;
+    const biomesBikkie = dynamicBiomesBikkieLiveModeItemDefinition(itemId);
+    if (biomesBikkie) return biomesBikkie;
     const isSeed = !!HARTHMERE_SEED_DEFINITIONS[itemId];
     const isFood = !!HARTHMERE_FOOD_DEFINITIONS[itemId];
     const helperQuestItemCopy = liveEntityHelperQuestItemCopyForId(itemId);
@@ -7230,9 +7218,7 @@ export function reduceHarthmereLiveModeBackendState(
     return { itemDefinitions, lootTables: {} };
   }
 
-  function liveLootDropBackpackStacksForCarry(
-    stacks: Record<string, number>
-  ) {
+  function liveLootDropBackpackStacksForCarry(stacks: Record<string, number>) {
     const backpackStacks: Record<string, number> = {};
     for (const [itemId, count] of Object.entries(stacks)) {
       const safeCount = Math.max(0, Math.trunc(Number(count) || 0));
@@ -7363,15 +7349,11 @@ export function reduceHarthmereLiveModeBackendState(
     return true;
   }
 
-  function escortCompanionEntityId(
-    companion: HarthmereEscortCompanion
-  ) {
+  function escortCompanionEntityId(companion: HarthmereEscortCompanion) {
     return String(companion.entityId);
   }
 
-  function activeEscortCompanionCanRender(
-    companion: HarthmereEscortCompanion
-  ) {
+  function activeEscortCompanionCanRender(companion: HarthmereEscortCompanion) {
     return companion.status === "following" || companion.status === "arrived";
   }
 
@@ -7615,8 +7597,7 @@ export function reduceHarthmereLiveModeBackendState(
     const home = input.target.homePosition ?? current;
     const radius = Math.max(0.4, Math.min(8, input.target.patrolRadius ?? 2.5));
     const phase =
-      liveEntityHashFloat(input.entityId) * Math.PI * 2 +
-      (nowMs / 1000) * 0.18;
+      liveEntityHashFloat(input.entityId) * Math.PI * 2 + (nowMs / 1000) * 0.18;
     return {
       x: home.x + Math.cos(phase) * radius,
       y: home.y,
@@ -7824,8 +7805,7 @@ export function reduceHarthmereLiveModeBackendState(
   }
 
   function liveMedicalAuthorityState() {
-    const doctorBusinesses: Record<string, HarthmereDoctorServiceSnapshot> =
-      {};
+    const doctorBusinesses: Record<string, HarthmereDoctorServiceSnapshot> = {};
     for (const [businessId, business] of Object.entries(
       next.economy.businesses
     )) {
@@ -7925,9 +7905,7 @@ export function reduceHarthmereLiveModeBackendState(
           plan.requestId
         )
       );
-      sharedStateKeys.add(
-        harthmereLiveModeSharedStateKey("plot", plan.plotId)
-      );
+      sharedStateKeys.add(harthmereLiveModeSharedStateKey("plot", plan.plotId));
     }
   }
 
@@ -8627,6 +8605,9 @@ export function reduceHarthmereLiveModeBackendState(
         break;
       }
       const snapshot = buildInventorySnapshot();
+      if (invReq.itemId) {
+        ensureLiveModeItemDefinition(invReq.itemId, snapshot);
+      }
       const rewardSource =
         envelope.actionKind === "request_inventory_mutation"
           ? "inventory"
@@ -9106,8 +9087,7 @@ export function reduceHarthmereLiveModeBackendState(
     // -----------------------------------------------------------------------
     case "request_pay_fine": {
       const factionId =
-        payloadString(envelope, "factionId") ??
-        HARTHMERE_CIVIL_LAW_FACTION_ID;
+        payloadString(envelope, "factionId") ?? HARTHMERE_CIVIL_LAW_FACTION_ID;
       const owed = Math.max(0, Math.trunc(next.law.fines[factionId] ?? 0));
       if (owed <= 0) {
         warnings.push("pay_fine_rejected:no_outstanding_fine");
@@ -9138,8 +9118,7 @@ export function reduceHarthmereLiveModeBackendState(
     // -----------------------------------------------------------------------
     case "request_clear_bounty": {
       const factionId =
-        payloadString(envelope, "factionId") ??
-        HARTHMERE_CIVIL_LAW_FACTION_ID;
+        payloadString(envelope, "factionId") ?? HARTHMERE_CIVIL_LAW_FACTION_ID;
       const records = next.law.crimeRecords ?? [];
       const outstanding = records.filter(
         (r) =>
@@ -9283,14 +9262,12 @@ export function reduceHarthmereLiveModeBackendState(
         }
         next.inventory.gold -= cost;
         if (vaultKind === "account")
-          next.banking.accountBankMaxSlots +=
-            HARTHMERE_BANK_SLOT_UPGRADE_SIZE;
+          next.banking.accountBankMaxSlots += HARTHMERE_BANK_SLOT_UPGRADE_SIZE;
         else if (vaultKind === "materials")
           next.banking.materialStorageMaxSlots +=
             HARTHMERE_BANK_SLOT_UPGRADE_SIZE;
         else
-          next.banking.personalBankMaxSlots +=
-            HARTHMERE_BANK_SLOT_UPGRADE_SIZE;
+          next.banking.personalBankMaxSlots += HARTHMERE_BANK_SLOT_UPGRADE_SIZE;
         appendBankingLog(next, {
           kind: "bank_slot_upgrade",
           vault: vaultKind,
@@ -9339,11 +9316,7 @@ export function reduceHarthmereLiveModeBackendState(
             break;
           }
           applyBankRecordDelta(next.inventory.items, itemId, -transferCount);
-          applyBankRecordDelta(
-            next.banking.accountBank,
-            itemId,
-            transferCount
-          );
+          applyBankRecordDelta(next.banking.accountBank, itemId, transferCount);
         } else {
           if ((next.banking.accountBank[itemId] ?? 0) < transferCount) {
             warnings.push("bank_rejected:insufficient_account_bank_item_count");
@@ -9351,11 +9324,7 @@ export function reduceHarthmereLiveModeBackendState(
             break;
           }
           if (
-            wouldExceedCarryWeight(
-              next.inventory.items,
-              itemId,
-              transferCount
-            )
+            wouldExceedCarryWeight(next.inventory.items, itemId, transferCount)
           ) {
             pushCarryWeightRejection(
               warnings,
@@ -9435,11 +9404,7 @@ export function reduceHarthmereLiveModeBackendState(
             break;
           }
           if (
-            wouldExceedCarryWeight(
-              next.inventory.items,
-              itemId,
-              transferCount
-            )
+            wouldExceedCarryWeight(next.inventory.items, itemId, transferCount)
           ) {
             pushCarryWeightRejection(
               warnings,
@@ -9626,9 +9591,7 @@ export function reduceHarthmereLiveModeBackendState(
       if (operation === "claim_attachment") {
         if (mail.status === "claimed") {
           warnings.push("mail_claim_rejected:already_claimed");
-          sharedStateKeys.add(
-            harthmereLiveModeSharedStateKey("mail", mailId)
-          );
+          sharedStateKeys.add(harthmereLiveModeSharedStateKey("mail", mailId));
           touchedModels.add("mail_rejection");
           break;
         }
@@ -9644,9 +9607,7 @@ export function reduceHarthmereLiveModeBackendState(
             >);
         if (!claimEntries.some(([, entryCount]) => entryCount > 0)) {
           warnings.push("mail_claim_rejected:attachment_not_found");
-          sharedStateKeys.add(
-            harthmereLiveModeSharedStateKey("mail", mailId)
-          );
+          sharedStateKeys.add(harthmereLiveModeSharedStateKey("mail", mailId));
           touchedModels.add("mail_rejection");
           break;
         }
@@ -9667,9 +9628,7 @@ export function reduceHarthmereLiveModeBackendState(
           HARTHMERE_CARRY_WEIGHT_LIMIT
         ) {
           pushCarryWeightRejection(warnings, touchedModels, "mail_claim");
-          sharedStateKeys.add(
-            harthmereLiveModeSharedStateKey("mail", mailId)
-          );
+          sharedStateKeys.add(harthmereLiveModeSharedStateKey("mail", mailId));
           break;
         }
         for (const [attachmentItemId, attachmentCount] of claimEntries) {
@@ -9785,9 +9744,7 @@ export function reduceHarthmereLiveModeBackendState(
           canLinkGuildHallProperty: ({ guildId, actorId, propertyId }) => {
             const property = next.property.owned[propertyId];
             if (!property || property.guildId !== guildId) return false;
-            const blueprint = buildingSystemBlueprintById(
-              property.blueprintId
-            );
+            const blueprint = buildingSystemBlueprintById(property.blueprintId);
             if (property.use !== "guild" && blueprint?.use !== "guild")
               return false;
             return buildingSystemCanActorAccessProperty({
@@ -9812,9 +9769,7 @@ export function reduceHarthmereLiveModeBackendState(
       for (const warning of result.warnings) warnings.push(warning);
       for (const model of result.touchedModels) touchedModels.add(model);
       for (const guildId of result.sharedGuildIds) {
-        sharedStateKeys.add(
-          harthmereLiveModeSharedStateKey("guild", guildId)
-        );
+        sharedStateKeys.add(harthmereLiveModeSharedStateKey("guild", guildId));
       }
       if (result.inventoryGoldDelta !== 0) {
         next.economy.ledger.push({
@@ -9951,14 +9906,13 @@ export function reduceHarthmereLiveModeBackendState(
           next.quests.active[questId] = { stepId: todo.jobId, progress: 0 };
           if (todo.mapMarkerId) {
             const board = next.jobsBoard.boards[todo.boardId];
-            const marker =
-              harthmereJobsBoardQuestMarkerRuntimePositionForTodo({
-                mapMarkerId: todo.mapMarkerId,
-                targetId: todo.targetId,
-                fallbackPosition: board
-                  ? [board.location.x, board.location.y + 1, board.location.z]
-                  : [501.99486179104775, 71, -132.00350672753194],
-              });
+            const marker = harthmereJobsBoardQuestMarkerRuntimePositionForTodo({
+              mapMarkerId: todo.mapMarkerId,
+              targetId: todo.targetId,
+              fallbackPosition: board
+                ? [board.location.x, board.location.y + 1, board.location.z]
+                : [501.99486179104775, 71, -132.00350672753194],
+            });
             next.building.inWorldMarkers[`jobs_board_marker:${todo.todoId}`] = {
               markerId: `jobs_board_marker:${todo.todoId}`,
               plotId: marker.markerId,
@@ -10274,10 +10228,7 @@ export function reduceHarthmereLiveModeBackendState(
       // Trainer unlock / skill book: server validates access before granting
       const classChoice = payloadString(envelope, "classId");
       if (classChoice) {
-        const result = applyHarthmereClassChoice(
-          next.classMagic,
-          classChoice
-        );
+        const result = applyHarthmereClassChoice(next.classMagic, classChoice);
         if (!result.ok) {
           warnings.push(result.warning ?? "class_rejected:unknown_class");
           touchedModels.add("class_choice_rejection");
@@ -10667,11 +10618,7 @@ export function reduceHarthmereLiveModeBackendState(
             for (const [itemId, delta] of Object.entries(
               result.inventoryItemDeltas
             )) {
-              applyBankRecordDelta(
-                next.inventory.items,
-                itemId,
-                Number(delta)
-              );
+              applyBankRecordDelta(next.inventory.items, itemId, Number(delta));
             }
             for (const warning of result.warnings) warnings.push(warning);
             for (const model of result.touchedModels) touchedModels.add(model);
@@ -10834,8 +10781,7 @@ export function reduceHarthmereLiveModeBackendState(
         subAction === "talk_to_steward" ||
         subAction === "complete_mira_intro"
       ) {
-        next.quests.completed[BUILDING_SYSTEM_MIRA_INTRO_QUEST.questId] =
-          nowMs;
+        next.quests.completed[BUILDING_SYSTEM_MIRA_INTRO_QUEST.questId] = nowMs;
         delete next.quests.active[BUILDING_SYSTEM_MIRA_INTRO_QUEST.questId];
         next.building.inWorldMarkers["mira_grove_land_steward_board_marker"] = {
           markerId: "mira_grove_land_steward_board_marker",
@@ -11038,14 +10984,15 @@ export function reduceHarthmereLiveModeBackendState(
           activatedAtMs: nowMs,
           area: plot.area,
         };
-        const terraformPlan =
-          createBuildingSystemSafeGroundMaterializationPlan({
+        const terraformPlan = createBuildingSystemSafeGroundMaterializationPlan(
+          {
             requestId: `${envelope.requestId}:terraform`,
             actorId: envelope.actorId,
             plot,
             activatedAtMs: nowMs,
             reason: "plot_terraform_safe_ground",
-          });
+          }
+        );
         for (const marker of terraformPlan.inWorldMarkers ?? []) {
           next.building.inWorldMarkers[marker.markerId] = marker;
         }
@@ -11072,10 +11019,7 @@ export function reduceHarthmereLiveModeBackendState(
       const blueprint =
         buildingSystemBlueprintById(blueprintId) ??
         blueprintFromItem ??
-        buildingSystemBlueprintByStructureType(
-          structureTypeId,
-          plot?.plotType
-        );
+        buildingSystemBlueprintByStructureType(structureTypeId, plot?.plotType);
       const propertyId =
         payloadString(envelope, "propertyId") ??
         (plot ? buildingPropertyIdForPlot(plot.plotId) : envelope.requestId);
@@ -12418,8 +12362,7 @@ export function reduceHarthmereLiveModeBackendState(
         const businessType = payloadString(envelope, "businessType") as
           | BuildingSystemBusinessType
           | undefined;
-        const businessDefinition =
-          buildingSystemBusinessTypeById(businessType);
+        const businessDefinition = buildingSystemBusinessTypeById(businessType);
         if (!businessDefinition || !businessType) {
           warnings.push("business_rejected:unknown_business_type");
           touchedModels.add("business_rejection");
@@ -12889,11 +12832,7 @@ export function reduceHarthmereLiveModeBackendState(
           for (const [itemId, delta] of Object.entries(
             job.reservedMaterialStorageDeltas
           )) {
-            applyBankRecordDelta(
-              next.banking.materialStorage,
-              itemId,
-              -delta
-            );
+            applyBankRecordDelta(next.banking.materialStorage, itemId, -delta);
           }
           next.inventory.gold = Math.max(
             0,
@@ -13140,9 +13079,7 @@ export function reduceHarthmereLiveModeBackendState(
             actorId: envelope.actorId,
             recipeId,
             count: craftCount,
-            stationId: normalizeHarthmereCraftingStationId(
-              craftReq.stationId
-            ),
+            stationId: normalizeHarthmereCraftingStationId(craftReq.stationId),
             stationType: craftReq.stationType,
             toolItemIds: craftReq.toolItemIds ?? [],
             optionalReagentItemIds: craftReq.optionalReagentItemIds ?? [],
@@ -13164,9 +13101,7 @@ export function reduceHarthmereLiveModeBackendState(
             actorId: envelope.actorId,
             recipeId,
             count: craftCount,
-            stationId: normalizeHarthmereCraftingStationId(
-              craftReq.stationId
-            ),
+            stationId: normalizeHarthmereCraftingStationId(craftReq.stationId),
             stationType: craftReq.stationType,
             toolItemIds: craftReq.toolItemIds ?? [],
             optionalReagentItemIds: craftReq.optionalReagentItemIds ?? [],
@@ -13630,7 +13565,7 @@ export function reduceHarthmereLiveModeBackendState(
         atMs: nowMs,
         respawnAvailableAtMs:
           nowMs +
-            Math.max(0, payloadNumber(envelope, "respawnDelayMs") ?? 5_000),
+          Math.max(0, payloadNumber(envelope, "respawnDelayMs") ?? 5_000),
       };
       touchedModels.add("combat_state");
       touchedModels.add("player_status");
@@ -13804,12 +13739,9 @@ export function reduceHarthmereLiveModeBackendState(
         // They still retaliate when attacked via the recent-attacker path above.
         npcSnapshot?.isHostile !== false
       ) {
-        const npcPosition = liveModePositionObjectToTuple(
-          npcSnapshot.position
-        );
+        const npcPosition = liveModePositionObjectToTuple(npcSnapshot.position);
         const actorWorldPosition = actorWorldPositionFromAuthority(envelope);
-        const actorPosition =
-          liveModePositionObjectToTuple(actorWorldPosition);
+        const actorPosition = liveModePositionObjectToTuple(actorWorldPosition);
         const safeZone =
           isLiveEntityRobotProtectedPosition(next, npcPosition) ||
           isLiveEntityRobotProtectedPosition(next, actorPosition) ||
@@ -13942,10 +13874,7 @@ export function reduceHarthmereLiveModeBackendState(
             npcSnapshot.position = { ...npcSnapshot.escortDestination };
             npcSnapshot.animationState = "idle";
             npcSnapshot.animationMoving = false;
-            syncJobsBoardEscortCompanionFromSnapshot(
-              npcSnapshot,
-              "arrived"
-            );
+            syncJobsBoardEscortCompanionFromSnapshot(npcSnapshot, "arrived");
             completeArrivedEscortQuest(npcSnapshot);
           } else {
             syncJobsBoardEscortCompanionFromSnapshot(npcSnapshot);

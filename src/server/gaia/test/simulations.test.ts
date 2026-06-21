@@ -5,14 +5,14 @@ import { SHARD_DIM } from "@/shared/game/shard";
 import { distManhattan, equals } from "@/shared/math/linear";
 import { Tensor, TensorUpdate } from "@/shared/wasm/tensors";
 import type { VoxelooModule } from "@/shared/wasm/types";
-import type { GaiaTerrainMap } from "@/shared/wasm/types/gaia";
+import type { GaiaTerrainMapV2 } from "@/shared/wasm/types/gaia";
 import { strictEqual } from "assert";
 
 export function tensorToMap(
   voxeloo: VoxelooModule,
   tensor: Tensor<"U32">
-): GaiaTerrainMap {
-  return using(new voxeloo.GaiaTerrainMapBuilder(), (builder) => {
+): GaiaTerrainMapV2 {
+  return using(new voxeloo.GaiaTerrainMapBuilderV2(), (builder) => {
     // Initialize the map.
     for (let z = 0; z < tensor.shape[2]; z += SHARD_DIM) {
       for (let y = 0; y < tensor.shape[1]; y += SHARD_DIM) {
@@ -23,7 +23,7 @@ export function tensorToMap(
       }
     }
 
-    const map = new voxeloo.GaiaTerrainMap();
+    const map = new voxeloo.GaiaTerrainMapV2();
     builder.build(map);
     return map;
   });

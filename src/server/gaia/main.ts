@@ -38,7 +38,7 @@ async function registerTerrainMap<C extends GaiaServerContext>(
     loader.get("voxeloo"),
     loader.get("cleanup"),
   ]);
-  const terrainMap = new voxeloo.GaiaTerrainMap();
+  const terrainMap = new voxeloo.GaiaTerrainMapV2();
   cleanup.add(() => terrainMap.delete());
   return terrainMap;
 }

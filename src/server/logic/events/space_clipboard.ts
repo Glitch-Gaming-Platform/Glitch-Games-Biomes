@@ -541,7 +541,7 @@ function internalPasteOrClone(
         (rotatedTensor, rotatedOccupancy, rotatedPlacer) => {
           // Assign occupancy.
           for (const [tensorPos, occupancyId] of rotatedOccupancy) {
-            const worldPos = add(tensorPos, newBox);
+            const worldPos = add(tensorPos, newBox.v0);
             const bp = blockPos(...worldPos);
             const shardId = voxelShard(...worldPos);
             const terrain = allTerrain.find((t) => t.shardId === shardId);

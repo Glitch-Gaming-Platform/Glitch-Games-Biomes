@@ -1,7 +1,7 @@
 import { fullPath, type Asset } from "@/shared/drive/types";
 import { compactMap } from "@/shared/util/collections";
 import { ok } from "assert";
-import type { drive } from "googleapis";
+import type { drive_v3 } from "googleapis";
 import { google } from "googleapis";
 import type { Readable } from "stream";
 
@@ -41,7 +41,7 @@ export class AssetDrive {
   private sorted: Asset[] = [];
 
   private constructor(
-    private readonly service: drive.Drive,
+    private readonly service: drive_v3.Drive,
     private token: string
   ) {}
 
@@ -80,7 +80,7 @@ export class AssetDrive {
     return `${this.constructPath(this.parents.get(to))}/${folder}`;
   }
 
-  private handleFiles(files: drive.Schema$File[]) {
+  private handleFiles(files: drive_v3.Schema$File[]) {
     if (!files.length) {
       return;
     }

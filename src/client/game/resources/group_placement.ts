@@ -108,7 +108,7 @@ export class GroupPlacementPreview {
     );
 
     const newBox = roundAABB(
-      this.transformAABB([box, box], round(this.position))
+      this.transformAABB([box.v0, box.v1], round(this.position))
     );
 
     return {
@@ -148,7 +148,7 @@ export class GroupPlacementPreview {
       return playerAABB(this.position);
     }
     const box = groupTensorBox(this.groupPlacementTensor.tensor);
-    return this.transformAABB([box, box]);
+    return this.transformAABB([box.v0, box.v1]);
   }
 
   active(): boolean {

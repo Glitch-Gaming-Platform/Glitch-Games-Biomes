@@ -298,6 +298,14 @@ describe("Harthmere inventory BiomesUI presentation and actions", () => {
   });
 
   it("turns native terrain block breaks into BiomesUI material storage and live loot rolls", async () => {
+    const dirtBlockItemId = `b:${BikkieIds.dirt}`;
+    assert.equal(
+      harthmereInventoryItemForNativeTerrainBlockForTest({
+        blockItemId: dirtBlockItemId,
+        blockName: "Dirt",
+      }),
+      dirtBlockItemId
+    );
     assert.equal(
       harthmereInventoryItemForNativeTerrainBlockForTest({
         blockName: "Road Muckwad",
@@ -322,7 +330,7 @@ describe("Harthmere inventory BiomesUI presentation and actions", () => {
         json: async () => ({
           inventoryLootState: {
             actor: { gold: 75, items: {}, instanceIds: [] },
-            materialStorage: { items: { rough_stone: 1 } },
+            materialStorage: { items: { [dirtBlockItemId]: 1 } },
           },
         }),
       };
@@ -330,22 +338,25 @@ describe("Harthmere inventory BiomesUI presentation and actions", () => {
 
     const grant = grantHarthmereNativeTerrainBlockDropForTest(
       {
-        terrainId: 1001,
-        blockName: "Road Muckwad",
+        blockItemId: dirtBlockItemId,
+        blockName: "Dirt",
         position: [12.2, 53, -18.8],
       },
       { dedupeMs: 0 }
     );
     await new Promise((resolve) => setTimeout(resolve, 0));
 
-    assert.equal(grant.itemId, "rough_stone");
+    assert.equal(grant.itemId, dirtBlockItemId);
     assert.equal(grant.added, 1);
-    assert.equal(readHarthmereInventoryState().materialStorage.rough_stone, 1);
+    assert.equal(
+      readHarthmereInventoryState().materialStorage[dirtBlockItemId],
+      1
+    );
     assert.equal(fetchCalls.length, 1);
     assert.match(String(fetchCalls[0].input), /install_id=test-install/);
     const body = JSON.parse(String(fetchCalls[0].init?.body ?? "{}"));
     assert.equal(body.actionKind, "request_loot_roll");
-    assert.equal(body.payload.itemId, "rough_stone");
+    assert.equal(body.payload.itemId, dirtBlockItemId);
     assert.equal(body.payload.count, 1);
     assert.ok(body.includeSnapshots.includes("playerStatusState"));
   });

@@ -39,10 +39,10 @@ export function getTerrainColumns(
 
   for (const entity of table.scan(TerrainShardSelector.query.all())) {
     const xzShard: Vec2 = [
-      entity.box[0] / SHARD_DIM,
-      entity.box[2] / SHARD_DIM,
+      entity.box.v0[0] / SHARD_DIM,
+      entity.box.v0[2] / SHARD_DIM,
     ];
-    const yShard = entity.box[1] / SHARD_DIM;
+    const yShard = entity.box.v0[1] / SHARD_DIM;
 
     if (!filter(xzShard)) {
       // This isn't our terrain column to manage, so don't add it to the list.

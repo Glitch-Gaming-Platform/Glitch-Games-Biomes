@@ -73,21 +73,21 @@ export class MuckSimulation extends Simulation {
       const entity = this.replica.table.get(change.entity.id);
       if (Entity.has(entity, "box")) {
         // If a shard has been modified, invalidate it and its neighbors.
-        return shardAndNeighbors(entity.box);
+        return shardAndNeighbors(entity.box.v0);
       }
     }
     return [];
   }
 
   async update(shard: TerrainShard) {
-    const shardId = voxelShard(...shard.box);
+    const shardId = voxelShard(...shard.box.v0);
 
     // Fetch all nearby muck-clearing entities.
     const unmucks = Array.from(
       this.replica.table.scan(
         UnmuckSourceSelector.query.spatial.inSphere(
           {
-            center: centerAABB([shard.box, shard.box]),
+            center: centerAABB([shard.box.v0, shard.box.v1]),
             radius: MAX_UNMUCKER_DISTANCE,
           },
           {
@@ -109,7 +109,7 @@ export class MuckSimulation extends Simulation {
       Tensor.make(this.voxeloo, SHARD_SHAPE, "U8"),
       (tensor) => {
         tensor.load(shard.shard_muck?.buffer);
-        return makeWorldMap(this.voxeloo, tensor, shard.box);
+        return makeWorldMap(this.voxeloo, tensor, shard.box.v0);
       }
     );
     try {

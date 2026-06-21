@@ -244,7 +244,7 @@ export class FarmingChangeBatcher {
     for (const { terrain, version } of this.terrainMutators.values()) {
       terrain.commit();
       const delta = terrain.finish();
-      const shardId = voxelShard(...terrain.box);
+      const shardId = voxelShard(...terrain.box.v0);
       shardToEntity.set(shardId, terrain.entity.id);
       try {
         if (delta) {

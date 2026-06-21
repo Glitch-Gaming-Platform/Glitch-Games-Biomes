@@ -155,20 +155,22 @@ function offsetLocalDevStarterTownSpawn(
   ];
 }
 
-
-function configuredGlitchPlayerStartPosition(): ReadonlyOrientedPoint | undefined {
+function configuredGlitchPlayerStartPosition():
+  | ReadonlyOrientedPoint
+  | undefined {
   const raw = process.env.BIOMES_PLAYER_START_POSITION;
   if (!raw) {
     return undefined;
   }
-  const parts = raw
-    .split(",")
-    .map((part) => Number.parseFloat(part.trim()));
+  const parts = raw.split(",").map((part) => Number.parseFloat(part.trim()));
   if (parts.length !== 3 || parts.some((part) => !Number.isFinite(part))) {
     log.warn("Ignoring invalid BIOMES_PLAYER_START_POSITION", { raw });
     return undefined;
   }
-  return [[parts[0], parts[1], parts[2]], [0.02, 3.15]];
+  return [
+    [parts[0], parts[1], parts[2]],
+    [0.02, 3.15],
+  ];
 }
 
 let warnedInvalidHarthmereStartMode = false;
@@ -183,8 +185,7 @@ function shouldUseLocalDevStarterTownSpawn() {
     process.env.GLITCH_RUNTIME === "1" ||
     process.env.GLITCH_LOCAL_ASSETS === "1" ||
     !!process.env.GLITCH_TITLE_ID;
-  const wantsHarthmereStart =
-    process.env.BIOMES_START_IN_HARTHMERE === "1";
+  const wantsHarthmereStart = process.env.BIOMES_START_IN_HARTHMERE === "1";
   if (!allowLocalTownSpawnRuntime || !wantsHarthmereStart) {
     return false;
   }
@@ -586,8 +587,8 @@ export function ensurePlayerHasReasonablePosition(
   }
 
   const bounds: ReadonlyAABB = [
-    world.worldMetadata()!.aabb,
-    world.worldMetadata()!.aabb,
+    world.worldMetadata()!.aabb.v0,
+    world.worldMetadata()!.aabb.v1,
   ];
   if (
     shouldTreatWorldBoundsAsSparseGlitchRuntime() &&

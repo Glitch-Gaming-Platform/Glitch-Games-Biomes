@@ -143,7 +143,7 @@ export function groupTensorBox(tensor: GroupTensor): Box {
 
 export function groupTensorLayers(tensor: GroupTensor) {
   const box = groupTensorBox(tensor);
-  return box[1] - box[1];
+  return box.v1[1] - box.v0[1];
 }
 
 export function groupTensorEntryAt(
@@ -151,10 +151,10 @@ export function groupTensorEntryAt(
   box: ReadonlyBox,
   worldPos: ReadonlyVec3
 ): Exclude<GroupEntry, EmptyGroupEntry> | undefined {
-  if (!containsAABB([box, box], worldPos)) {
+  if (!containsAABB([box.v0, box.v1], worldPos)) {
     return;
   }
-  const entry = tensor.get(sub(worldPos, box));
+  const entry = tensor.get(sub(worldPos, box.v0));
   return isEmptyGroupEntry(entry) ? undefined : entry;
 }
 
@@ -353,9 +353,9 @@ export function aabbToBox(aabb: ReadonlyAABB): ReadonlyBox {
 }
 
 export function boxToAabb(box: ReadonlyBox): ReadonlyAABB {
-  return [box, box];
+  return [box.v0, box.v1];
 }
 
 export function roundBox(box: ReadonlyBox): Box {
-  return { v0: round(box), v1: round(box) };
+  return { v0: round(box.v0), v1: round(box.v1) };
 }

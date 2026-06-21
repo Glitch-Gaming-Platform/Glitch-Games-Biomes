@@ -265,7 +265,9 @@ export function entityPositionOrBoxCenter<V extends ReadonlyVec3f | undefined>(
   }
 
   if (entity.box) {
-    return centerAABB([entity.box, entity.box]);
+    // ECS Box components store their bounds as v0/v1; use the actual volume
+    // center instead of treating the component object as a point.
+    return centerAABB([entity.box.v0, entity.box.v1]);
   } else if (entity.position) {
     return entity.position.v;
   }

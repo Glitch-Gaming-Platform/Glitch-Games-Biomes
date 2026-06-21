@@ -11,6 +11,8 @@ import {
 } from "@/shared/ecs/gen/selectors";
 import { keyFromComponent } from "@/shared/ecs/key_index";
 import type { Table } from "@/shared/ecs/table";
+import { TerrainShardByShardIdSelector } from "@/shared/game/ecs_indexed_resources";
+import { shardsForAABB } from "@/shared/game/shard";
 import { getMuckerWardIndexConfig } from "@/shared/npc/environment";
 import type { RegistryLoader } from "@/shared/registry";
 
@@ -33,6 +35,9 @@ function getIndexConfig() {
       )
     ),
     ...TerrainShardSelector.createIndexFor.spatial(),
+    ...TerrainShardByShardIdSelector.createIndexFor.key(
+      keyFromComponent("box", (c) => shardsForAABB(c.v0, c.v1))
+    ),
     ...getMuckerWardIndexConfig(),
   };
 }

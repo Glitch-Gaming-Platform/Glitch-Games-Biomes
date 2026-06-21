@@ -196,7 +196,7 @@ export function npcTickLogic(
 
   if (
     !containsAABB(
-      [env.worldMetadata.aabb, env.worldMetadata.aabb],
+      [env.worldMetadata.aabb.v0, env.worldMetadata.aabb.v1],
       npc.position
     )
   ) {

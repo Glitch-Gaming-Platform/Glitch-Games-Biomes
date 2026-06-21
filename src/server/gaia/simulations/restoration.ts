@@ -43,7 +43,7 @@ export class RestorationSimulation extends Simulation {
       return [];
     }
 
-    return [voxelShard(...entity.box)];
+    return [voxelShard(...entity.box.v0)];
   }
 
   async update(
@@ -55,7 +55,7 @@ export class RestorationSimulation extends Simulation {
       return;
     }
 
-    const shardId = voxelShard(...shard.box);
+    const shardId = voxelShard(...shard.box.v0);
     if (this.throttle.throttleOrUse(shardId)) {
       return requeueAfter(this.throttle.waitTime(shardId));
     }

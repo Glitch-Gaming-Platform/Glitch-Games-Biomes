@@ -1,7 +1,4 @@
-import {
-  Simulation,
-  type UpdateResult,
-} from "@/server/gaia/simulations/api";
+import { Simulation, type UpdateResult } from "@/server/gaia/simulations/api";
 import {
   makeChunkIndex,
   shardAndNeighborsOfDirs,
@@ -43,7 +40,7 @@ export class FloraGrowthSimulation extends Simulation {
     if (terrainWasModified(change)) {
       const entity = this.replica.table.get(change.entity.id);
       if (Entity.has(entity, "box")) {
-        return shardAndNeighborsOfDirs(entity.box, [0, 1, 0]);
+        return shardAndNeighborsOfDirs(entity.box.v0, [0, 1, 0]);
       }
     }
     return [];
@@ -68,7 +65,7 @@ export class FloraGrowthSimulation extends Simulation {
   ): Promise<UpdateResult | undefined> {
     const cache = new TensorCache(this.voxeloo, this.replica);
     try {
-      const seed = cache.getSeed(voxelShard(...shard.box));
+      const seed = cache.getSeed(voxelShard(...shard.box.v0));
       if (!seed) {
         return;
       }
@@ -82,7 +79,7 @@ export class FloraGrowthSimulation extends Simulation {
       const helper = terrainHelperFromTensorCache(this.voxeloo, cache);
       for (const [pos, id] of iterBlock(this.voxeloo, seed)) {
         if (growingFlora.has(id as TerrainID)) {
-          if (this.shouldGrow(helper, add(shard.box, pos))) {
+          if (this.shouldGrow(helper, add(shard.box.v0, pos))) {
             const timer = chunk.get(pos);
             if (timer) {
               if (this.clock.ready(timer)) {

@@ -130,7 +130,7 @@ export function playerIntersectingWithTerrain(
 
 export function getBounds(resources: TypedResources<EcsResourcePaths>) {
   const worldMetadata = resources.get("/ecs/metadata");
-  return [worldMetadata.aabb, worldMetadata.aabb] as const;
+  return [worldMetadata.aabb.v0, worldMetadata.aabb.v1] as const;
 }
 
 export function gremlinOutsideBounds(

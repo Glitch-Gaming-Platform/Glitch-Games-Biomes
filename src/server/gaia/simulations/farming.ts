@@ -112,7 +112,7 @@ export class FarmingSimulation extends Simulation {
 
   async update(shard: TerrainShard) {
     // Find all farming entities in this shard
-    const shardId = voxelShard(...shard.box);
+    const shardId = voxelShard(...shard.box.v0);
 
     // For all plants, determine if we need to do fast or slow updates
     const fastUpdates: BiomesId[] = [];

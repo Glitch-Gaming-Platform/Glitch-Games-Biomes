@@ -45,6 +45,8 @@ import {
 import { HARTHMERE_LOCAL_DEV_ITEM_USE_EVENT } from "@/shared/harthmere/snapshot_grove_trigger_contract";
 import { safeGetTerrainName } from "@/shared/asset_defs/terrain";
 import { terrainIdToBlock } from "@/shared/bikkie/terrain";
+import { anItem } from "@/shared/game/item";
+import { safeParseBiomesId } from "@/shared/ids";
 import {
   HARTHMERE_INVENTORY_EVENT,
   HARTHMERE_LIVE_INVENTORY_SYNC_EVENT,
@@ -64,6 +66,7 @@ export const HARTHMERE_NATIVE_TERRAIN_BLOCK_DESTROYED_EVENT =
 
 export interface HarthmereNativeTerrainBlockDestroyedDetail {
   terrainId?: number;
+  blockItemId?: string;
   terrainName?: string;
   blockName?: string;
   position?: unknown;
@@ -2354,8 +2357,45 @@ function instanceId(itemId: string) {
   return `hm-${itemId}-${Date.now()}-${Math.floor(Math.random() * 1_000_000)}`;
 }
 
+function dynamicBiomesItemDefinition(
+  itemId: string
+): HarthmereItemDefinition | undefined {
+  const biomesId = safeParseBiomesId(itemId);
+  if (!biomesId) {
+    return undefined;
+  }
+  const canonicalItemId = `b:${biomesId}`;
+  const item = anItem(biomesId);
+  const stackable = Number(item?.stackable ?? (item?.isBlock ? 99n : 1n));
+  const isStackable = Number.isFinite(stackable) && stackable > 1;
+  const name =
+    typeof item?.displayName === "string" && item.displayName.trim().length > 0
+      ? item.displayName
+      : item?.isBlock
+      ? `Biomes Block ${biomesId}`
+      : `Biomes Item ${biomesId}`;
+  return {
+    id: canonicalItemId,
+    name,
+    category: item?.isBlock ? "crafting_material" : "trade_good",
+    subtype: item?.isBlock ? "biomes_voxel_block" : "biomes_item",
+    quality: "common",
+    icon: "◼",
+    stackable: isStackable,
+    maxStack: isStackable ? Math.max(2, Math.trunc(stackable)) : 1,
+    bindType: "unbound",
+    baseValue: 0,
+    description: item?.isBlock
+      ? "A mined Biomes voxel block saved from the world."
+      : "A Biomes item saved from the world.",
+  };
+}
+
+// Biomes block/item ids are data-driven, so they cannot all live in the static
+// Harthmere item table. Generate a display definition on demand and keep the
+// canonical `b:<id>` key that Cloud Save and BiomesUI both understand.
 function itemDef(itemId: string) {
-  return ITEM_DEFINITIONS[itemId];
+  return ITEM_DEFINITIONS[itemId] ?? dynamicBiomesItemDefinition(itemId);
 }
 
 // HARTHMERE_OBJECT_CONTAINER_UI:
@@ -2383,7 +2423,7 @@ export interface HarthmereItemDisplay {
 export function getHarthmereItemDisplay(
   itemId: string
 ): HarthmereItemDisplay | undefined {
-  const def = ITEM_DEFINITIONS[itemId];
+  const def = itemDef(itemId);
   if (!def) {
     return undefined;
   }
@@ -2991,10 +3031,32 @@ function knownHarthmereMaterialOrFallback(
   return itemDef(itemId) ? itemId : fallback;
 }
 
+function nativeTerrainBlockItemIdFromDetail(
+  detail: HarthmereNativeTerrainBlockDestroyedDetail
+) {
+  // Prefer the exact biscuit id emitted by the mining path. Terrain names are
+  // only a legacy fallback for debug payloads that predate the id bridge.
+  const explicitId = safeParseBiomesId(detail.blockItemId);
+  if (explicitId) {
+    return `b:${explicitId}`;
+  }
+  if (detail.terrainId) {
+    try {
+      const block = terrainIdToBlock(detail.terrainId);
+      if (block?.id) {
+        return `b:${block.id}`;
+      }
+    } catch {
+      // The text fallback below still handles ad-hoc/debug terrain details.
+    }
+  }
+  return undefined;
+}
+
 function terrainBlockNameParts(
   detail: HarthmereNativeTerrainBlockDestroyedDetail
 ) {
-  const parts = [detail.blockName, detail.terrainName];
+  const parts = [detail.blockItemId, detail.blockName, detail.terrainName];
   if (detail.terrainId) {
     parts.push(safeGetTerrainName(detail.terrainId));
     try {
@@ -3026,6 +3088,10 @@ function terrainBlockNameParts(
 export function harthmereInventoryItemForNativeTerrainBlockForTest(
   detail: HarthmereNativeTerrainBlockDestroyedDetail
 ) {
+  const blockItemId = nativeTerrainBlockItemIdFromDetail(detail);
+  if (blockItemId) {
+    return blockItemId;
+  }
   const text = terrainBlockNameParts(detail);
   if (/coal|charcoal/.test(text)) {
     return knownHarthmereMaterialOrFallback("coal");

@@ -45,6 +45,7 @@ import type { ShapeName } from "@/shared/asset_defs/shapes";
 import { getIsomorphism } from "@/shared/asset_defs/shapes";
 import type { TerrainName } from "@/shared/asset_defs/terrain";
 import { getTerrainID } from "@/shared/asset_defs/terrain";
+import { terrainIdToBlock } from "@/shared/bikkie/terrain";
 import { EAGER_EXPIRATION_MS } from "@/shared/constants";
 import { using } from "@/shared/deletable";
 import type { ReadonlyEntity } from "@/shared/ecs/gen/entities";
@@ -237,10 +238,16 @@ function emitHarthmereNativeTerrainBlockDestroyed(input: {
     return;
   }
 
+  const block = terrainIdToBlock(input.terrainId);
+  // Preserve the real Biomes block biscuit id. The Harthmere inventory bridge
+  // uses this as the Cloud Save key so mined voxels remain exact, stackable
+  // items instead of collapsing into generic stone/wood fallbacks.
   const detail = {
     version: "harthmere-native-terrain-block-inventory-bridge",
     source: "client.game.interact.helpers.changeShape",
     terrainId: input.terrainId,
+    blockItemId: block?.id ? `b:${block.id}` : undefined,
+    blockName: block?.displayName,
     position: [...input.position],
     toolRef: input.toolRef,
     at: Date.now(),
@@ -778,6 +785,8 @@ export function setVoxel(
     )
   );
   if (currentTerrainId && terrainId === 0 && !isFloraId(currentTerrainId)) {
+    // The normal Biomes EditEvent still drives server drops; this event keeps
+    // the Harthmere/Cloud Save mirror in sync for local live-mode UI.
     emitHarthmereNativeTerrainBlockDestroyed({
       terrainId: currentTerrainId,
       position: pos,

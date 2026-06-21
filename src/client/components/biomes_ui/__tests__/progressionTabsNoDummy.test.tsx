@@ -14,7 +14,10 @@ import {
   dailyTodoTasksFromCareSnapshotForTest,
 } from "../adapters/dailyTodoAdapter";
 import { harthmereDailyTaskXpReward } from "@/shared/harthmere/mmo_care_loops";
-import { mergeInventoryAndHotbarForBiomesBackpackForTest } from "../adapters/inventoryAdapterHelpers";
+import {
+  mergeInventoryAndHotbarForBiomesBackpackForTest,
+  mergeMirroredBiomesBackpackUiItemsForTest,
+} from "../adapters/inventoryAdapterHelpers";
 import { readableMapMarkerLabelForTest } from "../adapters/mapMarkerLabels";
 import {
   ClassesTab,
@@ -130,10 +133,7 @@ describe("Biomes UI progression tabs", () => {
       shouldHydrateBiomesUILiveStateForTab("banking", "banking"),
       true
     );
-    assert.equal(
-      shouldHydrateBiomesUILiveStateForTab("guild", "guilds"),
-      true
-    );
+    assert.equal(shouldHydrateBiomesUILiveStateForTab("guild", "guilds"), true);
     assert.equal(
       shouldHydrateBiomesUILiveStateForTab("building", "land"),
       true
@@ -150,18 +150,12 @@ describe("Biomes UI progression tabs", () => {
       shouldHydrateBiomesUILiveStateForTab("progression", "abilities"),
       true
     );
-    assert.equal(
-      shouldHydrateBiomesUILiveStateForTab("daily", "daily"),
-      true
-    );
+    assert.equal(shouldHydrateBiomesUILiveStateForTab("daily", "daily"), true);
     assert.equal(
       shouldHydrateBiomesUILiveStateForTab("farmingFood", null),
       true
     );
-    assert.equal(
-      shouldHydrateBiomesUILiveStateForTab("jobsBoard", null),
-      true
-    );
+    assert.equal(shouldHydrateBiomesUILiveStateForTab("jobsBoard", null), true);
     assert.equal(shouldHydrateBiomesUILiveStateForTab("quest", null), true);
   });
 
@@ -672,6 +666,37 @@ describe("Biomes UI progression tabs", () => {
     );
     assert.equal(merged.length, 1);
     assert.equal(merged[0].count, 5n);
+  });
+
+  it("keeps ECS block pickups visible when live inventory also has items", () => {
+    const merged = mergeMirroredBiomesBackpackUiItemsForTest(
+      [
+        {
+          id: "iron_longsword",
+          label: "Iron Longsword",
+          icon: "◼",
+          count: 1,
+          ref: { kind: "item", idx: 0 },
+          source: "backpack",
+        },
+      ],
+      [
+        {
+          id: "b:7539420629350042",
+          label: "Mined Dirt",
+          icon: "◼",
+          count: 1,
+          ref: { kind: "item", idx: 1 },
+          source: "backpack",
+        },
+      ]
+    );
+
+    assert.equal(merged.length, 2);
+    assert.equal(
+      merged.some((item) => item.id === "b:7539420629350042"),
+      true
+    );
   });
 
   it("renders live hotbar items in InventoryTab instead of empty quick slots", () => {

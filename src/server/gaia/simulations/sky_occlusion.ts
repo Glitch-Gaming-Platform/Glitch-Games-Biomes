@@ -12,7 +12,7 @@ import {
   voxelShard,
 } from "@/shared/game/shard";
 import type { VoxelooModule } from "@/shared/wasm/types";
-import type { GaiaTerrainMap } from "@/shared/wasm/types/gaia";
+import type { GaiaTerrainMapV2 } from "@/shared/wasm/types/gaia";
 import { compact } from "lodash";
 
 function columnAlign(x: number, y: number, z: number) {
@@ -35,7 +35,7 @@ export class SkyOcclusionSimulation extends Simulation {
   constructor(
     private readonly voxeloo: VoxelooModule,
     private readonly replica: GaiaReplica,
-    private readonly map: GaiaTerrainMap
+    private readonly map: GaiaTerrainMapV2
   ) {
     super("sky_occlusion");
   }
@@ -67,12 +67,12 @@ export class SkyOcclusionSimulation extends Simulation {
       return [];
     }
 
-    const shardId = voxelShard(...entity.box);
+    const shardId = voxelShard(...entity.box.v0);
     return shardDependencies(shardId);
   }
 
   async update(shard: TerrainShard) {
-    const column = columnAlign(...shard.box);
+    const column = columnAlign(...shard.box.v0);
     const terrainMap = this.voxeloo.updateOcclusion(this.map, column);
     try {
       return {

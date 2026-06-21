@@ -13,7 +13,7 @@ describe("Road Ahead NUX state machines", () => {
     );
     assert.ok(placeBlocksNux);
 
-    const result = placeBlocksNux.states.place_blocks_place.advance(
+    const result = (placeBlocksNux.states as any).place_blocks_place.advance(
       {
         userId: 1 as any,
         resources: {
@@ -33,7 +33,7 @@ describe("Road Ahead NUX state machines", () => {
     );
     assert.ok(runAndJumpNux);
 
-    const result = runAndJumpNux.states.run_and_jump_run.advance(
+    const result = (runAndJumpNux.states as any).run_and_jump_run.advance(
       {
         userId: 1 as any,
         resources: {
@@ -57,7 +57,7 @@ describe("Road Ahead NUX state machines", () => {
     );
     assert.ok(selfieNux);
 
-    const result = selfieNux.states.selfie_camera_equip.advance(
+    const result = (selfieNux.states as any).selfie_camera_equip.advance(
       {
         userId: 1 as any,
         resources: {

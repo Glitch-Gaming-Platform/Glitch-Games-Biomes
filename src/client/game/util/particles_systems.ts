@@ -349,7 +349,7 @@ export async function blueprintParticleMaterials(
 ): Promise<ParticleSystemMaterials> {
   const groupData = deps.get("/groups/blueprint/data", entityId);
   ok(groupData, "Group Data missing");
-  const aabb: AABB = [[0, 0, 0], sub(groupData.box, groupData.box)];
+  const aabb: AABB = [[0, 0, 0], sub(groupData.box.v1, groupData.box.v0)];
   return ParticleSystemMaterials.createTextureMaterialsFromURL(
     {
       spawnType: {

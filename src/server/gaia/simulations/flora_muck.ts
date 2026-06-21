@@ -63,7 +63,7 @@ export class FloraMuckSimulation extends Simulation {
     ) {
       const entity = this.replica.table.get(change.entity.id);
       if (Entity.has(entity, "box")) {
-        return [voxelShard(...entity.box)];
+        return [voxelShard(...entity.box.v0)];
       }
     }
     return [];
@@ -104,7 +104,7 @@ export class FloraMuckSimulation extends Simulation {
       const sampler = new PositionSampler(Array.from(this.cleanFlora));
 
       // Get the set of muck-swapable flora for this chunk.
-      const swapables = this.getSwapables(cache, voxelShard(...shard.box));
+      const swapables = this.getSwapables(cache, voxelShard(...shard.box.v0));
 
       // Identify flora to swap based on muck level.
       const mutator = new TerrainMutator(this.voxeloo, shard);

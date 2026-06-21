@@ -126,7 +126,7 @@ export class GroupTensorTerrainIterator
 
   *[Symbol.iterator]() {
     for (const { tensorPos, tensorEntry } of scanGroupTensor(this.tensor)) {
-      const worldPos = add(tensorPos, this.box);
+      const worldPos = add(tensorPos, this.box.v0);
       const bp = blockPos(...worldPos);
       const shardId = voxelShard(...worldPos);
       const terrain = this.allTerrain.find((t) => t.shardId === shardId);

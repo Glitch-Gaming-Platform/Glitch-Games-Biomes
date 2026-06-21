@@ -16,8 +16,8 @@ import type { RegistryLoader } from "@/shared/registry";
 import { asyncYieldForEach } from "@/shared/util/async";
 import type { VoxelooModule } from "@/shared/wasm/types";
 import type {
-  GaiaTerrainMapBuilder,
-  GaiaTerrainMap,
+  GaiaTerrainMapBuilderV2,
+  GaiaTerrainMapV2,
 } from "@/shared/wasm/types/gaia";
 import { ok } from "assert";
 
@@ -27,7 +27,7 @@ export class TerrainSync {
   constructor(
     private readonly voxeloo: VoxelooModule,
     private readonly replica: GaiaReplica,
-    private readonly map: GaiaTerrainMap
+    private readonly map: GaiaTerrainMapV2
   ) {}
 
   private handleChange(change: Change) {
@@ -42,22 +42,22 @@ export class TerrainSync {
 
     using(new ReadonlyTerrain(this.voxeloo, shard), (terrain) => {
       if (change.entity.shard_diff && terrain.unsafeDiff) {
-        this.map.updateDiff(shard.box, terrain.unsafeDiff);
+        this.map.updateDiff(shard.box.v0, terrain.unsafeDiff);
       }
       if (change.entity.shard_water && terrain.unsafeWater) {
-        this.map.updateWater(shard.box, terrain.unsafeWater.cpp);
+        this.map.updateWater(shard.box.v0, terrain.unsafeWater.cpp);
       }
       if (change.entity.shard_irradiance && terrain.unsafeIrradiance) {
-        this.map.updateIrradiance(shard.box, terrain.unsafeIrradiance.cpp);
+        this.map.updateIrradiance(shard.box.v0, terrain.unsafeIrradiance.cpp);
       }
       if (change.entity.shard_sky_occlusion && terrain.unsafeSkyOcclusion) {
-        this.map.updateOcclusion(shard.box, terrain.unsafeSkyOcclusion.cpp);
+        this.map.updateOcclusion(shard.box.v0, terrain.unsafeSkyOcclusion.cpp);
       }
       if (change.entity.shard_dye && terrain.unsafeDye) {
-        this.map.updateDye(shard.box, terrain.unsafeDye.cpp);
+        this.map.updateDye(shard.box.v0, terrain.unsafeDye.cpp);
       }
       if (change.entity.shard_growth && terrain.unsafeGrowth) {
-        this.map.updateGrowth(shard.box, terrain.unsafeGrowth.cpp);
+        this.map.updateGrowth(shard.box.v0, terrain.unsafeGrowth.cpp);
       }
     });
   }
@@ -68,7 +68,7 @@ export class TerrainSync {
     }
   }
 
-  private async buildTerrainMap(builder: GaiaTerrainMapBuilder) {
+  private async buildTerrainMap(builder: GaiaTerrainMapBuilderV2) {
     const shardIds: BiomesId[] = [
       ...this.replica.table.scanIds(TerrainShardSelector.query.all()),
     ];
@@ -83,29 +83,29 @@ export class TerrainSync {
           ok(entity.box);
           ok(terrain.unsafeSeed, "Terrain shard is missing seed");
           seedsPopulated += 1;
-          builder.assignSeed(entity.box, terrain.unsafeSeed);
+          builder.assignSeed(entity.box.v0, terrain.unsafeSeed);
           ok(terrain.unsafeDiff, "Terrain shard is missing diff");
-          builder.assignDiff(entity.box, terrain.unsafeDiff);
+          builder.assignDiff(entity.box.v0, terrain.unsafeDiff);
           if (terrain.unsafeWater) {
-            builder.assignWater(entity.box, terrain.unsafeWater.cpp);
+            builder.assignWater(entity.box.v0, terrain.unsafeWater.cpp);
           }
           if (terrain.unsafeIrradiance) {
             builder.assignIrradiance(
-              entity.box,
+              entity.box.v0,
               terrain.unsafeIrradiance.cpp
             );
           }
           if (terrain.unsafeSkyOcclusion) {
             builder.assignOcclusion(
-              entity.box,
+              entity.box.v0,
               terrain.unsafeSkyOcclusion.cpp
             );
           }
           if (terrain.unsafeDye) {
-            builder.assignDye(entity.box, terrain.unsafeDye.cpp);
+            builder.assignDye(entity.box.v0, terrain.unsafeDye.cpp);
           }
           if (terrain.unsafeGrowth) {
-            builder.assignGrowth(entity.box, terrain.unsafeGrowth.cpp);
+            builder.assignGrowth(entity.box.v0, terrain.unsafeGrowth.cpp);
           }
         });
       } catch (error) {
@@ -148,7 +148,7 @@ export class TerrainSync {
     });
 
     // Initialize the map.
-    await usingAsync(new this.voxeloo.GaiaTerrainMapBuilder(), (builder) =>
+    await usingAsync(new this.voxeloo.GaiaTerrainMapBuilderV2(), (builder) =>
       this.buildTerrainMap(builder)
     );
 

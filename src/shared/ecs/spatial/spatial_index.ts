@@ -33,7 +33,7 @@ export class SpatialIndex extends BaseSpatialIndex {
     }
 
     if (entity.box && (!change || change.entity.box)) {
-      this.updateVolume(entity.id, [entity.box, entity.box]);
+      this.updateVolume(entity.id, [entity.box.v0, entity.box.v1]);
     } else if (entity.position && (!change || changeMayAffectSize(change))) {
       const aabb = getAabbForEntity(entity, { extentsType: "collidable" });
       if (aabb) {

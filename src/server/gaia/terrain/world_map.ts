@@ -7,7 +7,7 @@ import type { VoxelooModule } from "@/shared/wasm/types";
 import type { WorldMap } from "@/shared/wasm/types/gaia";
 
 export function* worldMapShards<T extends DataType>(map: WorldMap<T>) {
-  const shards = shardsForAABB(map.aabb, map.aabb);
+  const shards = shardsForAABB(map.aabb.v0, map.aabb.v1);
   const scope = new DeletableScope();
   try {
     for (const shardId of shards) {

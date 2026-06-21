@@ -128,7 +128,7 @@ export const GroupEditorScreen: React.FunctionComponent<{}> = ({}) => {
         if (src.pos) {
           setGroupCenter(
             new THREE.Vector3(
-              ...scale(0.5, sub(groupData.box, groupData.box))
+              ...scale(0.5, sub(groupData.box.v1, groupData.box.v0))
             )
           );
           setGroupMesh(await reactResources.get("/groups/src/mesh"));
@@ -147,7 +147,7 @@ export const GroupEditorScreen: React.FunctionComponent<{}> = ({}) => {
     }
     const tensor = groupData.tensor;
     const box = groupData.box;
-    const shift = box;
+    const shift = box.v0;
     const camera = objectPreviewRef.current.camera;
     const passRenderer = objectPreviewRef.current.passRenderer!;
     const maxDistance = 100;

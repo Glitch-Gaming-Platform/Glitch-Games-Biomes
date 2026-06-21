@@ -7,13 +7,13 @@ import { Entity } from "@/shared/ecs/gen/entities";
 import type { ShardId } from "@/shared/game/shard";
 import { shardNeighbours, voxelShard } from "@/shared/game/shard";
 import type { VoxelooModule } from "@/shared/wasm/types";
-import type { GaiaTerrainMap } from "@/shared/wasm/types/gaia";
+import type { GaiaTerrainMapV2 } from "@/shared/wasm/types/gaia";
 
 export class WaterSimulation extends Simulation {
   constructor(
     private readonly voxeloo: VoxelooModule,
     private readonly replica: GaiaReplica,
-    private readonly map: GaiaTerrainMap
+    private readonly map: GaiaTerrainMapV2
   ) {
     super("water");
   }
@@ -36,7 +36,7 @@ export class WaterSimulation extends Simulation {
     }
 
     // If terrain is modified, only the current shard needs invalidation.
-    const shardId = voxelShard(...entity?.box);
+    const shardId = voxelShard(...entity?.box.v0);
     if (change.entity.shard_water) {
       return [shardId, ...shardNeighbours(shardId)];
     } else {
@@ -45,7 +45,7 @@ export class WaterSimulation extends Simulation {
   }
 
   async update(shard: TerrainShard, version: number) {
-    const map = this.voxeloo.updateWater(this.map, shard.box);
+    const map = this.voxeloo.updateWater(this.map, shard.box.v0);
     try {
       return {
         changes: [

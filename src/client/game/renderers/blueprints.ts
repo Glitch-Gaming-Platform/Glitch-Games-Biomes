@@ -33,7 +33,7 @@ export class BlueprintsRenderer implements Renderer {
         const clock = this.resources.get("/clock");
         mesh.particleSystem.tickToTime(clock.time, [0, 1, 0]);
       }
-      mesh.three.position.set(...mesh.box);
+      mesh.three.position.set(...mesh.box.v0);
       addToScenes(scenes, mesh.three);
     }
   }

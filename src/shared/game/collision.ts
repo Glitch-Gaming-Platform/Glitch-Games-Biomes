@@ -18,7 +18,6 @@ export type CollisionCallback = (
   entity?: ReadonlyEntity
 ) => boolean | void;
 
-
 // SNAPSHOT_COLLISION_MISSING_AABB_COMPAT:
 // Snapshot/Glitch merged worlds can contain legacy entities that still carry a
 // collideable component but no longer have enough shape metadata for the newer
@@ -94,7 +93,9 @@ export class CollisionHelper {
         continue;
       }
       if (isCollidable(entity)) {
-        const entityAabb = getAabbForEntity(entity, { extentsType: "collidable" });
+        const entityAabb = getAabbForEntity(entity, {
+          extentsType: "collidable",
+        });
         if (!entityAabb) {
           warnMissingCollisionAabb(entity);
           continue;
@@ -120,15 +121,33 @@ export class CollisionHelper {
     // Solid half-space walls fix this: each breached axis emits a giant
     // box that fills the entire outside region for that axis, regardless
     // of how far past the edge the entity is.
-    const v0 = worldMetadata.aabb;
-    const v1 = worldMetadata.aabb;
+    const v0 = worldMetadata.aabb.v0;
+    const v1 = worldMetadata.aabb.v1;
     const FAR = 1_000_000; // engineering "infinity" — larger than any world
-    const wallNegX: AABB = [[-FAR, -FAR, -FAR], [v0[0], FAR, FAR]];
-    const wallPosX: AABB = [[v1[0], -FAR, -FAR], [FAR, FAR, FAR]];
-    const wallNegY: AABB = [[-FAR, -FAR, -FAR], [FAR, v0[1], FAR]];
-    const wallPosY: AABB = [[-FAR, v1[1], -FAR], [FAR, FAR, FAR]];
-    const wallNegZ: AABB = [[-FAR, -FAR, -FAR], [FAR, FAR, v0[2]]];
-    const wallPosZ: AABB = [[-FAR, -FAR, v1[2]], [FAR, FAR, FAR]];
+    const wallNegX: AABB = [
+      [-FAR, -FAR, -FAR],
+      [v0[0], FAR, FAR],
+    ];
+    const wallPosX: AABB = [
+      [v1[0], -FAR, -FAR],
+      [FAR, FAR, FAR],
+    ];
+    const wallNegY: AABB = [
+      [-FAR, -FAR, -FAR],
+      [FAR, v0[1], FAR],
+    ];
+    const wallPosY: AABB = [
+      [-FAR, v1[1], -FAR],
+      [FAR, FAR, FAR],
+    ];
+    const wallNegZ: AABB = [
+      [-FAR, -FAR, -FAR],
+      [FAR, FAR, v0[2]],
+    ];
+    const wallPosZ: AABB = [
+      [-FAR, -FAR, v1[2]],
+      [FAR, FAR, FAR],
+    ];
     if (aabb[0][0] < v0[0]) fn(wallNegX);
     if (aabb[1][0] > v1[0]) fn(wallPosX);
     if (aabb[0][1] < v0[1]) fn(wallNegY);

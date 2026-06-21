@@ -34,7 +34,7 @@ export class FloraDecaySimulation extends Simulation {
     if (terrainWasModified(change)) {
       const entity = this.replica.table.get(change.entity.id);
       if (Entity.has(entity, "box")) {
-        return shardAndNeighborsOfDirs(entity.box, [0, 1, 0]);
+        return shardAndNeighborsOfDirs(entity.box.v0, [0, 1, 0]);
       }
     }
     return [];
@@ -58,7 +58,7 @@ export class FloraDecaySimulation extends Simulation {
   ): Promise<UpdateResult | undefined> {
     const cache = new TensorCache(this.voxeloo, this.replica);
     try {
-      const terrain = cache.getTerrain(voxelShard(...shard.box));
+      const terrain = cache.getTerrain(voxelShard(...shard.box.v0));
       if (!terrain) {
         return;
       }
@@ -71,7 +71,7 @@ export class FloraDecaySimulation extends Simulation {
       const helper = terrainHelperFromTensorCache(this.voxeloo, cache);
       for (const [pos, val] of terrain) {
         if (decayingFlora.has(val)) {
-          if (this.shouldDecay(helper, add(shard.box, pos))) {
+          if (this.shouldDecay(helper, add(shard.box.v0, pos))) {
             if (!mutator.seed.get(...pos)) {
               mutator.diff.del(...pos);
             } else {

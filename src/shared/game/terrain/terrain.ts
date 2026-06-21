@@ -110,7 +110,7 @@ export class ReadonlyTerrain extends (TerrainBufferProxy as unknown as {
 
   get shardId() {
     if (this.#shardId === undefined) {
-      this.#shardId = voxelShard(...centerAABB([this.box, this.box]));
+      this.#shardId = voxelShard(...centerAABB([this.box.v0, this.box.v1]));
     }
     return this.#shardId;
   }
