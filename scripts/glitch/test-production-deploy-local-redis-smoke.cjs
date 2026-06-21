@@ -155,8 +155,13 @@ ok(
   "script prepares production assets before generated TypeScript deps and guardrails"
 );
 ok(
-  deployWorkflow.includes("npm install -g yarn@1 @bazel/bazelisk"),
-  "production workflow installs Bazelisk before deploy script generation checks"
+  deployWorkflow.includes("uses: ./.github/actions/cached-yarn-install") &&
+    deployWorkflow.includes("timeout-minutes: 25") &&
+    deployWorkflow.includes(
+      "token: ${{ secrets.BIOMES_DEPENDENCY_GITHUB_TOKEN }}"
+    ) &&
+    deployWorkflow.includes("npm install -g @bazel/bazelisk"),
+  "production workflow uses the shared cached Yarn install and installs Bazelisk"
 );
 ok(
   deployWorkflow.includes("Restore production asset cache") &&
@@ -171,13 +176,21 @@ ok(
   "production workflow caches Next and server Webpack compiler outputs"
 );
 ok(
-  deployWorkflow.includes("./.github/actions/configure-github-git-deps"),
-  "production workflow configures GitHub package URL rewrites before Yarn"
+  deployWorkflow.includes("uses: ./.github/actions/cached-yarn-install"),
+  "production workflow uses the shared Yarn install action with GitHub package URL rewrites"
 );
 ok(
   cachedYarnAction.includes("./.github/actions/configure-github-git-deps") &&
     cachedYarnAction.includes("token: ${{ inputs.token }}"),
   "shared Yarn install action configures GitHub package URL rewrites"
+);
+ok(
+  cachedYarnAction.includes("actions/cache/restore@v5") &&
+    cachedYarnAction.includes("actions/cache/save@v5") &&
+    cachedYarnAction.includes("continue-on-error: true") &&
+    cachedYarnAction.includes("Save node_modules cache") &&
+    cachedYarnAction.includes("Save Yarn tarball cache"),
+  "shared Yarn install action saves dependency caches immediately after install"
 );
 ok(
   gitDepsAction.includes("git+ssh://git@github.com/") &&
@@ -299,6 +312,14 @@ ok(
   script.includes("DOCKER_BUILD_CACHE_FROM") &&
     script.includes("DOCKER_BUILD_CACHE_TO"),
   "Docker build can consume and refresh an external Buildx layer cache"
+);
+ok(
+  deployWorkflow.includes("actions/cache/restore@v5") &&
+    deployWorkflow.includes("actions/cache/save@v5") &&
+    deployWorkflow.includes("Save Docker layer cache") &&
+    deployWorkflow.includes("continue-on-error: true") &&
+    deployWorkflow.includes("promote-buildx-cache.outputs.cache_present"),
+  "production workflow saves refreshed Buildx cache after the build step"
 );
 ok(
   script.includes("reset_build_outputs_preserving_caches") &&

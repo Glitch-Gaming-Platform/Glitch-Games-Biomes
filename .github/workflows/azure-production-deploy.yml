@@ -54,30 +54,14 @@ jobs:
         with:
           lfs: true
 
-      - name: Set up Node
-        uses: actions/setup-node@v6
-        with:
-          node-version-file: .nvmrc
-
-      - name: Install build CLIs
-        run: npm install -g yarn@1 @bazel/bazelisk
-
-      - name: Configure GitHub Git dependencies
-        uses: ./.github/actions/configure-github-git-deps
+      - name: Install dependencies
+        uses: ./.github/actions/cached-yarn-install
+        timeout-minutes: 25
         with:
           token: ${{ secrets.BIOMES_DEPENDENCY_GITHUB_TOKEN }}
 
-      - name: Restore node_modules cache
-        id: node-modules-cache
-        uses: actions/cache@v5
-        with:
-          path: node_modules
-          key: ${{ runner.os }}-node20-node-modules-${{ hashFiles('yarn.lock') }}-production-deploy-cache
-          restore-keys: |
-            ${{ runner.os }}-node20-node-modules-
-
-      - name: Install dependencies
-        run: yarn install --production=false --frozen-lockfile --non-interactive
+      - name: Install Bazelisk
+        run: npm install -g @bazel/bazelisk
 
       - name: Restore production asset cache
         uses: actions/cache@v5
@@ -86,6 +70,7 @@ jobs:
             public/buckets
             snapshot_backup.json
           key: ${{ runner.os }}-production-data-snapshot-${{ hashFiles('scripts/b/data_snapshot.py') }}
+          save-always: true
 
       - name: Restore production compiler cache
         uses: actions/cache@v5
@@ -96,13 +81,16 @@ jobs:
           key: ${{ runner.os }}-production-compiler-${{ hashFiles('yarn.lock', 'next.config.js', 'server.webpack.config.cjs', 'tsconfig.next.json', 'tsconfig.server.json') }}
           restore-keys: |
             ${{ runner.os }}-production-compiler-
+          save-always: true
 
       - name: Restore Docker layer cache
-        uses: actions/cache@v5
+        id: docker-buildx-cache
+        uses: actions/cache/restore@v5
         with:
           path: /tmp/.buildx-cache
-          key: ${{ runner.os }}-buildx-${{ github.sha }}
+          key: ${{ runner.os }}-buildx-${{ hashFiles('Dockerfile.biomes', 'Dockerfile', 'scripts/glitch/deploy-production-local-redis-smoke.sh', 'yarn.lock') }}-${{ github.sha }}
           restore-keys: |
+            ${{ runner.os }}-buildx-${{ hashFiles('Dockerfile.biomes', 'Dockerfile', 'scripts/glitch/deploy-production-local-redis-smoke.sh', 'yarn.lock') }}-
             ${{ runner.os }}-buildx-
 
       - name: Set up Docker Buildx
@@ -147,6 +135,7 @@ jobs:
           scripts/glitch/deploy-production-local-redis-smoke.sh --push --tag "$TAG"
 
       - name: Promote refreshed Docker layer cache
+        id: promote-buildx-cache
         if: always()
         run: |
           set -euo pipefail
@@ -154,3 +143,16 @@ jobs:
             rm -rf /tmp/.buildx-cache
             mv /tmp/.buildx-cache-new /tmp/.buildx-cache
           fi
+          if [ -d /tmp/.buildx-cache ]; then
+            echo "cache_present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "cache_present=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Save Docker layer cache
+        if: always() && steps.promote-buildx-cache.outputs.cache_present == 'true' && steps.docker-buildx-cache.outputs.cache-hit != 'true'
+        continue-on-error: true
+        uses: actions/cache/save@v5
+        with:
+          path: /tmp/.buildx-cache
+          key: ${{ runner.os }}-buildx-${{ hashFiles('Dockerfile.biomes', 'Dockerfile', 'scripts/glitch/deploy-production-local-redis-smoke.sh', 'yarn.lock') }}-${{ github.sha }}

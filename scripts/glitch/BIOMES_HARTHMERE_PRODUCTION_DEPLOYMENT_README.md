@@ -111,10 +111,14 @@ GLITCH_TITLE_TOKEN=secretref:glitch-title-token
 The title token lives only as the Azure Container App secret
 `glitch-title-token`; it is not stored in GitHub or source control.
 
-The workflow restores `node_modules`, production data snapshot assets, Next.js
-compiler cache, server Webpack compiler cache, and Buildx layers. The first run
-can still be slow because it has to populate those caches; later runs should
-reuse dependency, compiler, asset, and image layers when the lockfile, build
+The workflow restores Yarn tarballs, `node_modules`, production data snapshot
+assets, Next.js compiler cache, server Webpack compiler cache, and Buildx
+layers. Dependency caches are saved immediately after `yarn install`, so a later
+build or Azure deployment failure does not throw away a successful install. The
+compiler, asset, and image caches are also configured to persist on failed
+deploy attempts when their cache directories were populated. The first run can
+still be slow because it has to populate those caches; later runs should reuse
+dependency, compiler, asset, and image layers when the lockfile, build
 configuration, Dockerfile layers, and copied assets have not changed.
 
 The validated production image was:

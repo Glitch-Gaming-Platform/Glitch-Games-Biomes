@@ -25,37 +25,60 @@ runs:
       with:
         node-version-file: .nvmrc
 
-    - run: npm install -g yarn
+    - run: npm install -g yarn@1
       shell: bash
 
-    # The documentation here (https://github.com/actions/cache/blob/main/examples.md#node---npm)
-    # suggests *against* caching the node_modules directory, since it may change
-    # across node versions. However caching `$(yarn cache dir)` instead does
-    # not yield any significant speed improvements, so we just ensure that
-    # the node version here is part of the key.
-    - run: node --version > .current_node_version
+    - name: Capture dependency cache metadata
+      id: dependency-cache
       shell: bash
+      run: |
+        set -euo pipefail
+        {
+          echo "node_version=$(node --version)"
+          echo "yarn_cache_dir=$(yarn cache dir)"
+        } >> "$GITHUB_OUTPUT"
 
+    - name: Restore Yarn tarball cache
+      uses: actions/cache/restore@v5
+      id: yarn-cache
+      with:
+        path: ${{ steps.dependency-cache.outputs.yarn_cache_dir }}
+        key: ${{ runner.os }}-${{ steps.dependency-cache.outputs.node_version }}-yarn-cache-${{ hashFiles('./yarn.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-${{ steps.dependency-cache.outputs.node_version }}-yarn-cache-
+
+    # node_modules is intentionally cached for this repo because a cold install
+    # is much slower than verifying a restored tree. The exact Node version is
+    # in the key so native packages are not reused across Node upgrades.
     - name: Restore node_modules cache
-      uses: actions/cache@v5
+      uses: actions/cache/restore@v5
       id: node_modules-cache
       with:
         path: ./node_modules
-        key: ${{ runner.os }}-${{ hashFiles('.current_node_version') }}-node_modules-${{ hashFiles('./yarn.lock') }}
-        # Start from an older cache if we don't have an exact match.
+        key: ${{ runner.os }}-${{ steps.dependency-cache.outputs.node_version }}-node-modules-${{ hashFiles('./yarn.lock') }}
         restore-keys: |
-          ${{ runner.os }}-${{ hashFiles('.current_node_version') }}-
+          ${{ runner.os }}-${{ steps.dependency-cache.outputs.node_version }}-node-modules-
 
-    # Clean up the node version key so it doesn't polute the repo.
-    - run: rm .current_node_version
+    - name: Install dependencies
+      run: yarn install --production=false --frozen-lockfile --non-interactive
       shell: bash
 
-    - run: yarn install --production=false --frozen-lockfile --non-interactive
-      shell: bash
-
-    # Ensure we have read access on all files, because at the end of the
-    # workflow the caching step above will try to tar all the files up and
-    # complain if it doesn't have read access to all of them (by default some
-    # bin files end up with execute-only access).
+    # Ensure we have read access on all files before explicit cache saves.
     - run: chmod u+r -R node_modules
       shell: bash
+
+    - name: Save Yarn tarball cache
+      if: steps.yarn-cache.outputs.cache-hit != 'true'
+      continue-on-error: true
+      uses: actions/cache/save@v5
+      with:
+        path: ${{ steps.dependency-cache.outputs.yarn_cache_dir }}
+        key: ${{ runner.os }}-${{ steps.dependency-cache.outputs.node_version }}-yarn-cache-${{ hashFiles('./yarn.lock') }}
+
+    - name: Save node_modules cache
+      if: steps.node_modules-cache.outputs.cache-hit != 'true'
+      continue-on-error: true
+      uses: actions/cache/save@v5
+      with:
+        path: ./node_modules
+        key: ${{ runner.os }}-${{ steps.dependency-cache.outputs.node_version }}-node-modules-${{ hashFiles('./yarn.lock') }}
