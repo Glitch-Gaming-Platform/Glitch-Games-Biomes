@@ -33,19 +33,7 @@ runs:
       shell: bash
       run: |
         set -euo pipefail
-        {
-          echo "node_version=$(node --version)"
-          echo "yarn_cache_dir=$(yarn cache dir)"
-        } >> "$GITHUB_OUTPUT"
-
-    - name: Restore Yarn tarball cache
-      uses: actions/cache/restore@v5
-      id: yarn-cache
-      with:
-        path: ${{ steps.dependency-cache.outputs.yarn_cache_dir }}
-        key: ${{ runner.os }}-${{ steps.dependency-cache.outputs.node_version }}-yarn-cache-${{ hashFiles('./yarn.lock') }}
-        restore-keys: |
-          ${{ runner.os }}-${{ steps.dependency-cache.outputs.node_version }}-yarn-cache-
+        echo "node_version=$(node --version)" >> "$GITHUB_OUTPUT"
 
     # node_modules is intentionally cached for this repo because a cold install
     # is much slower than verifying a restored tree. The exact Node version is
@@ -59,21 +47,66 @@ runs:
         restore-keys: |
           ${{ runner.os }}-${{ steps.dependency-cache.outputs.node_version }}-node-modules-
 
+    - name: Validate restored node_modules cache
+      id: node_modules-validation
+      if: steps.node_modules-cache.outputs.cache-hit == 'true'
+      shell: bash
+      run: |
+        set -euo pipefail
+        if node <<'NODE'
+        const fs = require("fs");
+        const path = require("path");
+
+        const root = process.cwd();
+        const integrityPath = path.join(root, "node_modules/.yarn-integrity");
+        if (!fs.existsSync(integrityPath)) {
+          throw new Error("node_modules/.yarn-integrity is missing");
+        }
+        const integrity = JSON.parse(fs.readFileSync(integrityPath, "utf8"));
+        if (!String(integrity.systemParams || "").startsWith("linux-")) {
+          throw new Error(`node_modules cache was built for ${integrity.systemParams}`);
+        }
+
+        const pkg = JSON.parse(fs.readFileSync(path.join(root, "package.json"), "utf8"));
+        const dependencyNames = Object.keys({
+          ...(pkg.dependencies || {}),
+          ...(pkg.devDependencies || {}),
+        });
+        const missing = dependencyNames.filter((name) => {
+          return !fs.existsSync(
+            path.join(root, "node_modules", ...name.split("/"), "package.json")
+          );
+        });
+        if (missing.length > 0) {
+          throw new Error(`node_modules cache is missing: ${missing.join(", ")}`);
+        }
+
+        for (const bin of ["next", "tsc", "webpack"]) {
+          const binPath = path.join(root, "node_modules/.bin", bin);
+          if (!fs.existsSync(binPath)) {
+            throw new Error(`node_modules cache is missing ${binPath}`);
+          }
+        }
+        NODE
+        then
+          echo "valid=true" >> "$GITHUB_OUTPUT"
+        else
+          echo "valid=false" >> "$GITHUB_OUTPUT"
+        fi
+
     - name: Install dependencies
+      if: steps.node_modules-validation.outputs.valid != 'true'
       run: yarn install --production=false --frozen-lockfile --non-interactive
       shell: bash
 
     # Ensure we have read access on all files before explicit cache saves.
-    - run: chmod u+r -R node_modules
+    - name: Normalize node_modules cache permissions
+      run: |
+        set -euo pipefail
+        if [ -d node_modules ]; then
+          chmod u+r -R node_modules
+        fi
       shell: bash
-
-    - name: Save Yarn tarball cache
-      if: steps.yarn-cache.outputs.cache-hit != 'true'
-      continue-on-error: true
-      uses: actions/cache/save@v5
-      with:
-        path: ${{ steps.dependency-cache.outputs.yarn_cache_dir }}
-        key: ${{ runner.os }}-${{ steps.dependency-cache.outputs.node_version }}-yarn-cache-${{ hashFiles('./yarn.lock') }}
 
     - name: Save node_modules cache
       if: steps.node_modules-cache.outputs.cache-hit != 'true'

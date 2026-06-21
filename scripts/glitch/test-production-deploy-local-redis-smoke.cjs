@@ -180,7 +180,7 @@ ok(
 );
 ok(
   deployWorkflow.includes("uses: ./.github/actions/cached-yarn-install") &&
-    deployWorkflow.includes("timeout-minutes: 25") &&
+    deployWorkflow.includes("timeout-minutes: 45") &&
     deployWorkflow.includes(
       "token: ${{ secrets.BIOMES_DEPENDENCY_GITHUB_TOKEN }}"
     ) &&
@@ -227,8 +227,12 @@ ok(
     cachedYarnAction.includes("actions/cache/save@v5") &&
     cachedYarnAction.includes("continue-on-error: true") &&
     cachedYarnAction.includes("Save node_modules cache") &&
-    cachedYarnAction.includes("Save Yarn tarball cache"),
-  "shared Yarn install action saves dependency caches immediately after install"
+    cachedYarnAction.includes("Validate restored node_modules cache") &&
+    cachedYarnAction.includes(
+      "steps.node_modules-validation.outputs.valid != 'true'"
+    ) &&
+    !cachedYarnAction.includes("yarn-cache"),
+  "shared Yarn install action skips install on validated node_modules cache hits"
 );
 ok(
   cachedLfsAction.includes("actions/cache/restore@v5") &&

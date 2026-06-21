@@ -56,7 +56,7 @@ jobs:
 
       - name: Install dependencies
         uses: ./.github/actions/cached-yarn-install
-        timeout-minutes: 25
+        timeout-minutes: 45
         with:
           token: ${{ secrets.BIOMES_DEPENDENCY_GITHUB_TOKEN }}
 

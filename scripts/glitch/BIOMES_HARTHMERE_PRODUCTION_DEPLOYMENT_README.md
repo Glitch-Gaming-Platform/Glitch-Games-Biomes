@@ -111,16 +111,21 @@ GLITCH_TITLE_TOKEN=secretref:glitch-title-token
 The title token lives only as the Azure Container App secret
 `glitch-title-token`; it is not stored in GitHub or source control.
 
-The workflow restores Yarn tarballs, `node_modules`, production data snapshot
-assets, Next.js compiler cache, server Webpack compiler cache, and Buildx
-layers. Dependency caches are saved immediately after `yarn install`, so a later
-build or Azure deployment failure does not throw away a successful install. The
-compiler, asset, and image caches use explicit restore/save steps instead of the
-deprecated `save-always` cache mode, and save only when their cache directories
-were populated. The first run can still be slow because it has to populate those
-caches; later runs should reuse dependency, compiler, asset, and image layers
-when the lockfile, build configuration, Dockerfile layers, and copied assets have
-not changed.
+The workflow restores `node_modules`, production data snapshot assets, Next.js
+compiler cache, server Webpack compiler cache, and Buildx layers. On exact
+`node_modules` cache hits, the workflow verifies the restored Linux dependency
+tree and skips `yarn install` entirely. This avoids spending paid runner time on
+Yarn's fetch/link/build phases when the lockfile and Node version have not
+changed. The Yarn tarball cache is intentionally not used here because it is very
+large in this repository and competes with the more valuable Docker, compiler,
+asset, and `node_modules` caches. Dependency caches are saved immediately after a
+needed `yarn install`, so a later build or Azure deployment failure does not
+throw away a successful install. The compiler, asset, and image caches use
+explicit restore/save steps instead of the deprecated `save-always` cache mode,
+and save only when their cache directories were populated. The first run can
+still be slow because it has to populate those caches; later runs should reuse
+dependency, compiler, asset, and image layers when the lockfile, build
+configuration, Dockerfile layers, and copied assets have not changed.
 
 The shared CI cache actions follow the same pattern: LFS saves after a clean
 `git lfs pull`, pip saves after the virtualenv install, Bazel saves after the
