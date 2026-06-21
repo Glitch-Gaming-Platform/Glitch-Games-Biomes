@@ -38,13 +38,33 @@ function isUuidLike(value) {
 }
 
 const bridgePath = "src/client/game/glitch/harthmere_glitch_bridge.ts";
+const harthmereEventsPath =
+  "src/client/components/challenges/harthmereEvents.ts";
 const proxyPath = "src/pages/api/glitch/harthmere.ts";
 const wakePath = "src/client/components/WakeUpScreen.tsx";
 const deployPath = "scripts/glitch/deploy-production-local-redis-smoke.sh";
 const bridge = exists(bridgePath) ? read(bridgePath) : "";
+const harthmereEvents = exists(harthmereEventsPath)
+  ? read(harthmereEventsPath)
+  : "";
 const proxy = exists(proxyPath) ? read(proxyPath) : "";
 const wake = exists(wakePath) ? read(wakePath) : "";
 const deploy = exists(deployPath) ? read(deployPath) : "";
+
+const canonicalEventContracts = new Map([
+  ["biomes:harthmere-inventory-changed", "HARTHMERE_INVENTORY_EVENT"],
+]);
+
+function includesEventContract(source, eventName) {
+  if (source.includes(eventName)) return true;
+  const contractName = canonicalEventContracts.get(eventName);
+  return Boolean(
+    contractName &&
+      source.includes(contractName) &&
+      harthmereEvents.includes(`export const ${contractName}`) &&
+      harthmereEvents.includes(`"${eventName}"`)
+  );
+}
 
 const requiredExactKeys = [
   [
@@ -544,10 +564,16 @@ const restoreManifest = sectionBetween(
   "HARTHMERE_GLITCH_RESTORE_EVENTS",
   "] as const;"
 );
+check(
+  "bridge imports canonical Harthmere event contracts for Cloud Save refresh",
+  bridge.includes("HARTHMERE_INVENTORY_EVENT") &&
+    harthmereEvents.includes("export const HARTHMERE_INVENTORY_EVENT") &&
+    harthmereEvents.includes('"biomes:harthmere-inventory-changed"')
+);
 for (const eventName of requiredRestoreEvents) {
   check(
     `restore event manifest includes ${eventName}`,
-    restoreManifest.includes(eventName)
+    includesEventContract(restoreManifest, eventName)
   );
 }
 check(
@@ -628,12 +654,19 @@ check(
   "bridge debounces state-change cloud saves after inventory/gathering updates",
   includesAll(bridge, [
     "HARTHMERE_GLITCH_STATE_CHANGE_SAVE_EVENTS",
-    "biomes:harthmere-inventory-changed",
     "biomes:harthmere-gathering-changed",
     "stateChangeSaveHandler",
     "STATE_CHANGE_AUTOSAVE_DELAY_MS",
     'this.saveNow("state_changed")',
-  ])
+  ]) &&
+    includesEventContract(
+      sectionBetween(
+        bridge,
+        "HARTHMERE_GLITCH_STATE_CHANGE_SAVE_EVENTS",
+        "] as const;"
+      ),
+      "biomes:harthmere-inventory-changed"
+    )
 );
 check(
   "bridge attempts a cloud save on pagehide reload/navigation",
