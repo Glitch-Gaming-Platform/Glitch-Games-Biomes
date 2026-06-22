@@ -1,5 +1,6 @@
 import { connectToRedis } from "@/server/shared/redis/connection";
 import { biomesApiHandler } from "@/server/web/util/api_middleware";
+import { disableHarthmereLiveModeHttpCaching } from "@/server/harthmere/live_mode_http_cache";
 import {
   createHarthmereLiveModeBuildingClientSnapshot,
   harthmereLiveModePlayerStateKey,
@@ -35,7 +36,8 @@ export default biomesApiHandler(
     method: "GET",
     response: zHarthmereLiveModeBuildingStateResponse,
   },
-  async ({ auth, unsafeRequest }) => {
+  async ({ auth, unsafeRequest, unsafeResponse }) => {
+    disableHarthmereLiveModeHttpCaching(unsafeResponse);
     const redis = await liveModeBuildingStateRedis();
     const actorId = await resolveHarthmereLiveModeActorId(
       redis,

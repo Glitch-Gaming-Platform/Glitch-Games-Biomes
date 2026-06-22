@@ -3,6 +3,7 @@ import {
   harthmereDeathMovementShouldLockForTest,
   harthmereDeathScreenShouldRenderForTest,
   harthmereShouldClearLiveAliveDeathLockForTest,
+  harthmereLivePlayerDeathSyncActionForTest,
   harthmereLivePlayerDeathSyncSummaryForTest,
   type HarthmereDeathState,
 } from "@/client/components/challenges/LocalDevHarthmereDeathSystem";
@@ -199,6 +200,119 @@ describe("Harthmere live death sync", () => {
       }),
       true
     );
+  });
+
+  it("routes every authoritative live HP-zero source into the shared death screen path", () => {
+    const cases = [
+      {
+        label: "falling",
+        lastDeath: { cause: "fall_damage" },
+        expectedCause: "fall_damage",
+        expectedAbility: "Fall Damage",
+        expectedDamageType: "survival",
+      },
+      {
+        label: "drowning",
+        lastDeath: { cause: "drowning" },
+        expectedCause: "drowning",
+        expectedAbility: "Drowning",
+        expectedDamageType: "survival",
+      },
+      {
+        label: "stamina loss",
+        lastDeath: { cause: "stamina_depleted" },
+        expectedCause: "Stamina reached zero",
+        expectedAbility: "Stamina Depletion",
+        expectedDamageType: "survival",
+      },
+      {
+        label: "attacks",
+        lastDeath: { cause: "mucker_attack" },
+        expectedCause: "Live player status is dead",
+        expectedAbility: "Live Entity Attack",
+        expectedDamageType: "combat",
+      },
+    ];
+
+    for (const entry of cases) {
+      const action = harthmereLivePlayerDeathSyncActionForTest({
+        status: {
+          combat: {
+            hp: 0,
+            maxHp: 100,
+            deathState: "dead",
+            lastDeath: {
+              deathId: `${entry.label}-death`,
+              zoneId: "the_grove",
+              atMs: 1_800_000,
+              respawnAvailableAtMs: 1_805_000,
+              ...entry.lastDeath,
+            },
+          },
+        },
+        currentDeathState: "alive",
+        localHp: 100,
+        localMaxHp: 100,
+        localCombatState: "idle",
+      });
+
+      assert.equal(action.kind, "down", entry.label);
+      if (action.kind !== "down") continue;
+      assert.equal(action.cause, entry.expectedCause, entry.label);
+      assert.equal(action.abilityName, entry.expectedAbility, entry.label);
+      assert.equal(action.damageType, entry.expectedDamageType, entry.label);
+
+      const effective = effectiveHarthmereDeathStateForRespawn({
+        death: aliveDeathState(),
+        combatHp: 100,
+        combatMaxHp: 100,
+        combatState: "idle",
+        liveHp: 0,
+        liveDeathState: "dead",
+        nowMs: 1_800_000,
+      });
+
+      assert.equal(
+        harthmereDeathScreenShouldRenderForTest({
+          death: aliveDeathState(),
+          effectiveDeath: effective,
+        }),
+        true,
+        entry.label
+      );
+      assert.equal(
+        harthmereDeathMovementShouldLockForTest({
+          deathState: "dead",
+          hp: 0,
+          combatState: "dead",
+        }),
+        true,
+        entry.label
+      );
+      assert.equal(
+        harthmereRespawnDisabledReason(effective, "the_grove"),
+        undefined,
+        entry.label
+      );
+    }
+  });
+
+  it("does not re-enter the death transition when the player is already locked", () => {
+    const action = harthmereLivePlayerDeathSyncActionForTest({
+      status: {
+        combat: {
+          hp: 0,
+          maxHp: 100,
+          deathState: "dead",
+        },
+      },
+      currentDeathState: "downed",
+      localHp: 100,
+      localMaxHp: 100,
+      localCombatState: "idle",
+    });
+
+    assert.deepEqual(action, { kind: "pose", state: "downed" });
   });
 
   it("builds a Cloud Save death transition mutation when local combat downs the player", () => {

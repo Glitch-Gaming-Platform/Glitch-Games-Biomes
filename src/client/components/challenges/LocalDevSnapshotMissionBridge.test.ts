@@ -280,6 +280,64 @@ describe("LocalDevSnapshotMissionBridge Road Ahead UI projection", () => {
     }
   });
 
+  it("completes the Road Ahead clothing step from the original inventory_change trigger when local clothes are equipped", () => {
+    const inventoryState = readHarthmereInventoryState();
+    try {
+      writeSnapshotMissionState({
+        accepted: true,
+        active: { snapshot_road_ahead_full_chain: 4 },
+        currentStepIndex: 4,
+        completedStepIds: [
+          "meet_jackie_in_grove",
+          "road_ahead_meet_up_with_billy",
+          "road_ahead_collect_muckwad",
+          "road_ahead_place_blocks",
+        ],
+        completed: [],
+        pinned: ["snapshot_road_ahead_full_chain"],
+        rewards: [],
+      });
+      writeHarthmereInventoryState({
+        ...inventoryState,
+        equipment: {
+          ...inventoryState.equipment,
+          chest: {
+            instanceId: "test_baker_apron",
+            itemId: "baker_apron",
+            location: "equipment",
+            equipmentSlot: "chest",
+            quantity: 1,
+            bound: false,
+            stolen: false,
+            locked: false,
+            enchantments: [],
+            acquiredAt: 1,
+          },
+          legs: {
+            instanceId: "test_field_trousers",
+            itemId: "field_trousers",
+            location: "equipment",
+            equipmentSlot: "legs",
+            quantity: 1,
+            bound: false,
+            stolen: false,
+            locked: false,
+            enchantments: [],
+            acquiredAt: 1,
+          },
+        },
+      });
+
+      const result = handleSnapshotRoadAheadEventForTest({
+        kind: "inventory_change",
+      });
+      assert.equal(result.state.currentStepIndex, 5);
+      assert.ok(result.state.completedStepIds.includes("road_ahead_wear"));
+    } finally {
+      writeHarthmereInventoryState(inventoryState);
+    }
+  });
+
   it("counts the local Harthmere muck rake for the Road Ahead Muck Buster step", () => {
     const state = readHarthmereInventoryState();
     try {

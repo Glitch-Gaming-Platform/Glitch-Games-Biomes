@@ -2,6 +2,7 @@ import { connectToRedis } from "@/server/shared/redis/connection";
 import { biomesApiHandler } from "@/server/web/util/api_middleware";
 import { readHarthmereRedisStrings } from "@/server/harthmere/live_mode_state_read_helpers";
 import { resolveHarthmereLiveModeActorId } from "@/server/harthmere/live_mode_actor_resolution";
+import { disableHarthmereLiveModeHttpCaching } from "@/server/harthmere/live_mode_http_cache";
 import {
   createHarthmereInventoryLootClientSnapshotFromBackend,
   harthmereLiveModePlayerStateKey,
@@ -61,7 +62,8 @@ export default biomesApiHandler(
     method: "GET",
     response: zHarthmereLiveModeInventoryLootStateResponse,
   },
-  async ({ auth, unsafeRequest }) => {
+  async ({ auth, unsafeRequest, unsafeResponse }) => {
+    disableHarthmereLiveModeHttpCaching(unsafeResponse);
     const redis = await liveModeInventoryLootStateRedis();
     const actorId = await resolveHarthmereLiveModeActorId(
       redis,

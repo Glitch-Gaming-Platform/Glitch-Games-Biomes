@@ -43,10 +43,14 @@ import {
   createHarthmereBiomesEcsInventory,
 } from "@/shared/harthmere/harthmere_biomes_ecs_bridge";
 import { HARTHMERE_LOCAL_DEV_ITEM_USE_EVENT } from "@/shared/harthmere/snapshot_grove_trigger_contract";
+import { resolveAssetUrlUntyped } from "@/galois/interface/asset_paths";
 import { safeGetTerrainName } from "@/shared/asset_defs/terrain";
 import { terrainIdToBlock } from "@/shared/bikkie/terrain";
+import type { AnyBinaryAttribute } from "@/shared/bikkie/schema/binary";
+import { staticUrlForAttribute } from "@/shared/bikkie/schema/binary";
 import { anItem } from "@/shared/game/item";
 import { safeParseBiomesId } from "@/shared/ids";
+import { resolveBinaryAttribute } from "@/shared/util/dye_helpers";
 import {
   HARTHMERE_INVENTORY_EVENT,
   HARTHMERE_LIVE_INVENTORY_SYNC_EVENT,
@@ -2357,6 +2361,43 @@ function instanceId(itemId: string) {
   return `hm-${itemId}-${Date.now()}-${Math.floor(Math.random() * 1_000_000)}`;
 }
 
+function fallbackInventoryGlyph(itemId: string, fallback = "IT") {
+  const letters = itemId.match(/[A-Za-z0-9]/g)?.join("") ?? "";
+  return (letters.slice(0, 2).toUpperCase() || fallback).padEnd(2, " ");
+}
+
+function dynamicBiomesItemIcon(
+  item: ReturnType<typeof anItem>,
+  itemId: string
+): string {
+  if (!item) {
+    return fallbackInventoryGlyph(itemId);
+  }
+  try {
+    if (item.icon) {
+      return staticUrlForAttribute(
+        resolveBinaryAttribute(item.icon as AnyBinaryAttribute, item)
+      );
+    }
+    if (item.galoisIcon) {
+      const url = resolveAssetUrlUntyped(`icons/${item.galoisIcon}`);
+      if (url) return url;
+    }
+    if (item.galoisPath) {
+      const url = resolveAssetUrlUntyped(`icons/${item.galoisPath}`);
+      if (url) return url;
+    }
+    if (item.groupId) {
+      return `/api/environment_group/${item.groupId}/thumbnail`;
+    }
+  } catch {
+    return fallbackInventoryGlyph(itemId);
+  }
+  return fallbackInventoryGlyph(
+    typeof item.displayName === "string" ? item.displayName : itemId
+  );
+}
+
 function dynamicBiomesItemDefinition(
   itemId: string
 ): HarthmereItemDefinition | undefined {
@@ -2380,7 +2421,7 @@ function dynamicBiomesItemDefinition(
     category: item?.isBlock ? "crafting_material" : "trade_good",
     subtype: item?.isBlock ? "biomes_voxel_block" : "biomes_item",
     quality: "common",
-    icon: "◼",
+    icon: dynamicBiomesItemIcon(item, canonicalItemId),
     stackable: isStackable,
     maxStack: isStackable ? Math.max(2, Math.trunc(stackable)) : 1,
     bindType: "unbound",

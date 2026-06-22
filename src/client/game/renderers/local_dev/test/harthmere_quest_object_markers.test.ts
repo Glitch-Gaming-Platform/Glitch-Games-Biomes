@@ -33,7 +33,11 @@ import {
   HARTHMERE_JOBS_BOARD_ELITE_MUCKER_BOUNTY_MARKER_ID,
   HARTHMERE_JOBS_BOARD_HEX_WRAITH_BOUNTY_MARKER_ID,
 } from "@/shared/harthmere/jobs_board_muck_bounty_targets";
-import { harthmereJobsBoardQuestMarkerPositions } from "@/shared/harthmere/jobs_board_quest_marker_positions";
+import {
+  harthmereJobsBoardQuestMarkerPositions,
+  harthmereJobsBoardQuestMarkerRuntimePosition,
+  harthmereJobsBoardQuestMarkerRuntimePositionForId,
+} from "@/shared/harthmere/jobs_board_quest_marker_positions";
 import {
   SNAPSHOT_GROVE_LANDMARKS,
   SNAPSHOT_GROVE_QUESTS,
@@ -155,13 +159,22 @@ describe("Harthmere quest object procedural markers current", () => {
       const marker = HARTHMERE_QUEST_OBJECT_MARKERS.find(
         (candidate) => candidate.id === landmark.id
       );
+      const resolved =
+        harthmereJobsBoardQuestMarkerRuntimePositionForId(landmark.id);
+      const expectedPosition =
+        resolved?.position ??
+        ([
+          landmark.position[0],
+          landmark.position[1] - 1,
+          landmark.position[2],
+        ] as [number, number, number]);
       assert.ok(marker, `missing procedural marker for ${landmark.id}`);
       assert.equal(marker?.label, landmark.label);
-      assert.equal(marker?.position[0], landmark.position[0]);
-      assert.equal(marker?.position[2], landmark.position[2]);
+      assert.equal(marker?.position[0], expectedPosition[0]);
+      assert.equal(marker?.position[2], expectedPosition[2]);
       assert.equal(
         marker?.position[1],
-        landmark.position[1] - 1,
+        expectedPosition[1],
         `${landmark.id} should render at feet/ground height, not at the hovering map-pin Y`
       );
     }
@@ -194,8 +207,9 @@ describe("Harthmere quest object procedural markers current", () => {
         (candidate) => candidate.markerId === id
       );
       assert.ok(resolved, `${id} should resolve through the marker registry`);
-      assert.equal(marker?.position[0], resolved!.position[0]);
-      assert.equal(marker?.position[2], resolved!.position[2]);
+      const runtime = harthmereJobsBoardQuestMarkerRuntimePosition(resolved!);
+      assert.equal(marker?.position[0], runtime.position[0]);
+      assert.equal(marker?.position[2], runtime.position[2]);
     }
   });
 

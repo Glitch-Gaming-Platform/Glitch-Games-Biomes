@@ -1076,7 +1076,7 @@ function renderInventoryIcon(item: InventoryUiItem): React.ReactNode {
   }
   return (
     <span aria-hidden data-inventory-icon-kind="glyph" style={{ fontSize: 22 }}>
-      {item.icon || "◼"}
+      {item.icon || "IT"}
     </span>
   );
 }

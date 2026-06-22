@@ -1,4 +1,6 @@
 import { connectToRedis } from "@/server/shared/redis/connection";
+import { resolveHarthmereLiveModeActorId } from "@/server/harthmere/live_mode_actor_resolution";
+import { disableHarthmereLiveModeHttpCaching } from "@/server/harthmere/live_mode_http_cache";
 import { biomesApiHandler } from "@/server/web/util/api_middleware";
 import {
   createHarthmereLiveModeGuildClientSnapshotFromBackend,
@@ -55,13 +57,22 @@ export async function readHarthmereLiveModeGuildStateForActor(input: {
 
 export default biomesApiHandler(
   {
-    auth: "required",
+    auth: "optional",
     method: "GET",
     response: zHarthmereLiveModeGuildStateResponse,
   },
-  async ({ auth: { userId } }) => {
-    const actorId = String(userId);
+  async ({ auth, unsafeRequest, unsafeResponse }) => {
+    disableHarthmereLiveModeHttpCaching(unsafeResponse);
     const redis = await liveModeGuildStateRedis();
+    const actorId = await resolveHarthmereLiveModeActorId(
+      redis,
+      { auth, unsafeRequest },
+      "anonymous:guild-state-reader",
+      {
+        allowIdentityWrites: false,
+        allowStateAdoptionPlan: false,
+      }
+    );
     const nowMs = Date.now();
     return {
       ok: true,

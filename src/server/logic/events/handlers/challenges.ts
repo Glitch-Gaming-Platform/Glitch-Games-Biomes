@@ -15,9 +15,16 @@ export const acceptChallengeEventHandler = makeEventHandler(
       npc: q.id(event.npc_id),
     }),
     apply: ({ player, npc }, event, context) => {
+      const challenges = player.challenges();
+      if (
+        challenges?.in_progress.has(event.challenge_id) ||
+        challenges?.complete.has(event.challenge_id)
+      ) {
+        return;
+      }
       // TODO: currently we are not enforcing that the player is talking to the correct
       //       type of NPC id here
-      if (!player.challenges()?.available.has(event.challenge_id)) {
+      if (!challenges?.available.has(event.challenge_id)) {
         throw new RollbackError("Requested challenge was not available");
       }
 

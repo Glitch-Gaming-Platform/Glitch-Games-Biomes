@@ -9,6 +9,7 @@ import {
   HARTHMERE_WORLD_OBJECT_INTERACTION_EVENT,
   type HarthmereWorldObjectInteractionEventDetail,
 } from "@/client/components/challenges/harthmereObjectInteractions";
+import { defaultHarthmereLiveFetch } from "@/client/components/harthmere_live_fetch";
 import { addToast } from "@/client/components/toast/helpers";
 import type { GardenHoseEvent } from "@/client/events/api";
 import { JACKIE_ID } from "@/client/util/nux/state_machines";
@@ -43,6 +44,9 @@ export const SNAPSHOT_GROVE_QUEST_STATE_KEY =
 
 export const SNAPSHOT_GROVE_QUEST_STATE_EVENT =
   "biomes:local-dev-snapshot-grove-quest-state";
+
+export const SNAPSHOT_GROVE_LIVE_QUEST_STATE_SYNC_EVENT =
+  "biomes:snapshot-grove-live-quest-state-sync";
 
 const SNAPSHOT_GROVE_LIKEABILITY_KEY =
   "biomes.localDev.snapshotGroveLikeability";
@@ -271,6 +275,79 @@ function writeSnapshotGroveQuestState(state: SnapshotGroveQuestState) {
     JSON.stringify(next)
   );
   window.dispatchEvent(new CustomEvent(SNAPSHOT_GROVE_QUEST_STATE_EVENT));
+}
+
+async function submitSnapshotGroveQuestStateToCloudSave(
+  quest: SnapshotGroveQuest,
+  state: SnapshotGroveQuestState,
+  reason: string
+) {
+  if (!isBrowser()) {
+    return;
+  }
+  const completed = state.completedQuestIds.includes(quest.id);
+  const objectiveIndex = completed
+    ? Math.max(0, quest.objectives.length - 1)
+    : Math.max(
+        0,
+        Math.min(
+          quest.objectives.length - 1,
+          state.activeQuestId === quest.id ? state.activeObjectiveIndex : 0
+        )
+      );
+  const requestId = `snapshot_grove_quest_${quest.id}_${
+    completed ? "complete" : "progress"
+  }_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+  const response = await defaultHarthmereLiveFetch("/api/harthmere/live_mode", {
+    method: "POST",
+    credentials: "same-origin",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      requestId,
+      idempotencyKey: requestId,
+      actionKind: "request_quest_state_update",
+      subsystem: "quest",
+      actorEntityVersion: 1,
+      zoneId: "the_grove",
+      payload: {
+        questId: quest.id,
+        source: "snapshot_grove",
+        title: quest.title,
+        completed,
+        stepId: `${quest.id}:${objectiveIndex}:${
+          quest.triggers[objectiveIndex] ?? "step"
+        }`,
+        progress: completed ? quest.objectives.length : objectiveIndex + 1,
+        reason,
+      },
+      clientClaims: {},
+    }),
+  });
+  const body = await response.json().catch(() => undefined);
+  if (!response.ok || body?.ok === false) {
+    throw new Error(`snapshot_grove_quest_sync_failed:${quest.id}`);
+  }
+  if (body?.questState) {
+    window.dispatchEvent(
+      new CustomEvent(SNAPSHOT_GROVE_LIVE_QUEST_STATE_SYNC_EVENT, {
+        detail: { questState: body.questState },
+      })
+    );
+  }
+}
+
+function syncSnapshotGroveQuestStateToCloudSave(
+  quest: SnapshotGroveQuest,
+  state: SnapshotGroveQuestState,
+  reason: string
+) {
+  void submitSnapshotGroveQuestStateToCloudSave(quest, state, reason).catch(
+    (error) => {
+      // Local quest progression remains responsive while the next quest action
+      // retries the live Cloud Save projection.
+      console.warn(error);
+    }
+  );
 }
 
 function readSnapshotGroveLikeability(): Record<string, number> {
@@ -578,6 +655,7 @@ function acceptSnapshotGroveQuest(
     grantSnapshotGroveAcceptedTutorialItems(quest);
   }
   writeSnapshotGroveQuestState(next);
+  syncSnapshotGroveQuestStateToCloudSave(quest, next, "accepted");
   syncSnapshotGroveQuestMarkers(mapManager, quest, initialObjectiveIndex);
   addSnapshotGroveObjectiveToast(resources, quest, initialObjectiveIndex);
 }
@@ -618,6 +696,7 @@ function advanceSnapshotGroveQuest(
       : state.rewards,
   };
   writeSnapshotGroveQuestState(next);
+  syncSnapshotGroveQuestStateToCloudSave(quest, next, reason);
   if (completedQuest) {
     clearAllSnapshotGroveQuestMarkers(mapManager);
     recordSnapshotGroveLikeability(quest.giverNpcId, 1);
@@ -651,7 +730,11 @@ function snapshotGroveNpcIdFromTalkEvent(event: GardenHoseEvent) {
   if ((event as any).kind !== "talk_npc") {
     return undefined;
   }
-  const npcId = (event as any).npcId as BiomesId | undefined;
+  const rawNpcId = (event as any).npcId;
+  if (typeof rawNpcId === "string" && rawNpcId.trim()) {
+    return rawNpcId;
+  }
+  const npcId = rawNpcId as BiomesId | undefined;
   if (npcId === JACKIE_ID) {
     return "jackie";
   }

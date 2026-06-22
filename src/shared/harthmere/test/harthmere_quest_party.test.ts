@@ -20,10 +20,10 @@ import {
   completeHarthmereQuestParty,
   createHarthmereQuestRuntimeContext,
   failHarthmereQuestParty,
+  getHarthmereQuestResolvedWaypoint,
   type HarthmereQuestPartyMember,
   type HarthmereQuestRuntimeContext,
 } from "@/shared/harthmere/quest_runtime";
-import { shiftHarthmereAuthoredPositionToWorld } from "@/shared/harthmere/coordinate_transform";
 
 export const HARTHMERE_QUEST_PARTY_TEST_VERSION =
   "harthmere-quest-party-test" as const;
@@ -73,9 +73,7 @@ if (
     }
 
     function authoredPos(obj: any): [number, number, number] {
-      return shiftHarthmereAuthoredPositionToWorld(
-        obj?.location?.waypoint ?? [0, 0, 0],
-      ) as [number, number, number];
+      return getHarthmereQuestResolvedWaypoint(quest.id, obj) ?? [0, 0, 0];
     }
 
     (it as any)("party-advance progresses every member together", () => {

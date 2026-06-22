@@ -16,6 +16,7 @@ import {
   snapshotGroveLandmarkById,
   snapshotGroveNpcEntityId,
 } from "@/shared/harthmere/snapshot_grove_content";
+import { snapshotGroveObjectiveCompletionFixture } from "@/shared/harthmere/snapshot_grove_trigger_contract";
 
 function questById(id: string) {
   const quest = SNAPSHOT_GROVE_QUESTS.find((entry) => entry.id === id);
@@ -27,6 +28,30 @@ function npcEntityId(id: string) {
   const npc = SNAPSHOT_GROVE_NPCS.find((entry) => entry.id === id);
   assert.ok(npc, `Expected Snapshot Grove NPC ${id} to exist`);
   return snapshotGroveNpcEntityId(npc);
+}
+
+function talkEventNpcId(id: string) {
+  const npc = SNAPSHOT_GROVE_NPCS.find((entry) => entry.id === id);
+  return npc ? snapshotGroveNpcEntityId(npc) : id;
+}
+
+function questStepCompletionEvent(quest: any, objectiveIndex: number) {
+  const fixture = snapshotGroveObjectiveCompletionFixture(
+    quest,
+    objectiveIndex
+  );
+  if (!fixture) {
+    return undefined;
+  }
+  if (fixture.kind !== "talk_npc") {
+    return fixture;
+  }
+  const marker = snapshotGroveLandmarkById(quest.markerIds[objectiveIndex]);
+  const npcId = marker?.npcId ?? quest.giverNpcId;
+  return {
+    ...fixture,
+    npcId: talkEventNpcId(npcId),
+  };
 }
 
 const localStorageValues = new Map<string, string>();
@@ -106,6 +131,39 @@ function snapshotGrovePhysicalPickupCases() {
 }
 
 describe("Snapshot Grove quest runtime validation current", () => {
+  it("audits every Snapshot Grove quest from accept through every objective fixture", () => {
+    const failures: string[] = [];
+
+    for (const quest of SNAPSHOT_GROVE_QUESTS) {
+      for (
+        let objectiveIndex = 0;
+        objectiveIndex < quest.objectives.length;
+        objectiveIndex += 1
+      ) {
+        const event = questStepCompletionEvent(quest, objectiveIndex);
+        if (!event) {
+          failures.push(`${quest.id}[${objectiveIndex}]: missing fixture`);
+          continue;
+        }
+        if (
+          !doesSnapshotGroveEventAdvanceQuestForTest(
+            event as any,
+            quest,
+            objectiveIndex
+          )
+        ) {
+          failures.push(
+            `${quest.id}[${objectiveIndex}]: fixture did not advance ${
+              quest.triggers[objectiveIndex]
+            }`
+          );
+        }
+      }
+    }
+
+    assert.deepEqual(failures, []);
+  });
+
   it("accepts a tagged world event for the current objective", () => {
     const quest = questById("color_that_still_points_home");
     const event = {

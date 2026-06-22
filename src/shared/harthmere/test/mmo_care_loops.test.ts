@@ -1,6 +1,7 @@
 import assert from "assert";
 import {
   HARTHMERE_CARE_LOOP_DAY_MS,
+  HARTHMERE_CARE_DAILY_ACTIVITIES,
   HARTHMERE_DAILY_TASK_MIN_GOLD,
   HARTHMERE_DAILY_STREAK_BONUS_GOLD,
   HARTHMERE_DAILY_STREAK_BONUS_CAP_DAYS,
@@ -159,6 +160,84 @@ describe("mmo_care_loops", () => {
     assert.ok(
       duplicate.warnings.includes("care_rejected:daily_already_claimed")
     );
+  });
+
+  it("runs every Today task through action completion, claim, reward, and duplicate guards", () => {
+    const day = Math.floor(NOW / HARTHMERE_CARE_LOOP_DAY_MS);
+    const dailyTasks = [
+      "check_in",
+      "jobs_board",
+      "eat_meal",
+      "main_quest",
+      "talk_neighbor",
+      "forage_walk",
+      "garden_care",
+      "home_care",
+    ];
+
+    for (const targetId of dailyTasks) {
+      let state = defaultHarthmereCareLoopState(ACTOR, NOW);
+      const reward = HARTHMERE_CARE_DAILY_ACTIVITIES[targetId] ?? {};
+      const key = `${day}:${targetId}`;
+
+      if (targetId !== "check_in") {
+        const prematureClaim = mutate(state, "daily_check_in", { targetId });
+        assert.ok(
+          prematureClaim.warnings.includes("care_rejected:daily_task_not_done"),
+          `${targetId} must not be claimable before the triggering action`
+        );
+
+        const completed = mutate(state, "daily_task_completed", { targetId });
+        assert.deepEqual(completed.warnings, [], targetId);
+        assert.ok(completed.care.daily.completed[key], targetId);
+        state = completed.care;
+
+        const duplicateCompletion = mutate(state, "daily_task_completed", {
+          targetId,
+        });
+        assert.ok(
+          duplicateCompletion.warnings.includes(
+            "care_rejected:daily_task_already_done"
+          ),
+          `${targetId} duplicate completion should be idempotent-safe`
+        );
+      }
+
+      const claimed = mutate(state, "daily_check_in", { targetId });
+      assert.deepEqual(claimed.warnings, [], targetId);
+      assert.ok(claimed.care.daily.completed[key], targetId);
+      assert.ok(claimed.care.daily.claimed[key], targetId);
+      assert.equal(claimed.goldDelta, HARTHMERE_DAILY_TASK_MIN_GOLD, targetId);
+      assert.equal(
+        claimed.xpDelta,
+        harthmereDailyTaskXpReward({ actorLevel: 1 }),
+        targetId
+      );
+      assert.deepEqual(
+        claimed.itemDeltas,
+        reward.rewardItems ?? {},
+        `${targetId} reward items`
+      );
+
+      const inventoryAfterClaim = applyHarthmereCareLoopInventoryDeltas(
+        {},
+        claimed.itemDeltas
+      );
+      for (const [itemId, count] of Object.entries(reward.rewardItems ?? {})) {
+        assert.equal(inventoryAfterClaim[itemId], count, `${targetId}:${itemId}`);
+      }
+
+      const duplicateClaim = mutate(claimed.care, "daily_check_in", {
+        targetId,
+      });
+      assert.ok(
+        duplicateClaim.warnings.includes("care_rejected:daily_already_claimed"),
+        `${targetId} duplicate claim should not pay twice`
+      );
+      assert.equal(duplicateClaim.goldDelta, 0, targetId);
+      assert.equal(duplicateClaim.xpDelta, 0, targetId);
+      assert.deepEqual(duplicateClaim.itemDeltas, {}, targetId);
+    }
   });
 
   it("scales visible daily task XP so all tasks total half a level", () => {

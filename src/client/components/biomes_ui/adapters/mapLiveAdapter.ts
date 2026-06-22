@@ -110,6 +110,35 @@ function liveModeCompletedQuestIds(liveQuestState: any) {
     : [];
 }
 
+function liveModeActiveQuestObjectiveIndex(
+  liveQuestState: any,
+  questId: string
+) {
+  const record =
+    liveQuestState?.active && typeof liveQuestState.active === "object"
+      ? liveQuestState.active[questId]
+      : undefined;
+  if (!record || typeof record !== "object") {
+    return undefined;
+  }
+  if (typeof record.objectiveIndex === "number") {
+    return Math.max(0, Math.floor(record.objectiveIndex));
+  }
+  if (typeof record.stepId === "string") {
+    const escapedQuestId = questId.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const match = record.stepId.match(
+      new RegExp(`^${escapedQuestId}:(\\d+)(?::|$)`)
+    );
+    if (match) {
+      return Math.max(0, Number(match[1]));
+    }
+  }
+  if (typeof record.progress === "number") {
+    return Math.max(0, Math.floor(record.progress) - 1);
+  }
+  return undefined;
+}
+
 function humanizeQuestKindLabel(value: unknown) {
   const text = typeof value === "string" && value.trim() ? value : "Quest";
   return text
@@ -353,7 +382,14 @@ export function buildBiomesUIMapAdapter(
       const activeMarkerIds: string[] = Array.isArray(activeQuest?.markerIds)
         ? activeQuest.markerIds
         : [];
-      const activeObjectiveIndex = Number(state?.activeObjectiveIndex ?? 0);
+      const liveObjectiveIndex = activeQuest?.id
+        ? liveModeActiveQuestObjectiveIndex(liveQuestState, activeQuest.id)
+        : undefined;
+      const localObjectiveIndex = Number(state?.activeObjectiveIndex ?? 0);
+      const activeObjectiveIndex =
+        state?.activeQuestId === activeQuest?.id
+          ? localObjectiveIndex
+          : liveObjectiveIndex ?? localObjectiveIndex;
       const activeObjectiveMarker =
         activeMarkerIds[
           Math.max(
@@ -541,7 +577,15 @@ export function buildBiomesUIMapAdapter(
               liveActive.has(quest.id)
             ? ("active" as const)
             : ("available" as const);
-          const rawObjectiveIndex = Number(state?.activeObjectiveIndex ?? 0);
+          const liveObjectiveIndex = liveModeActiveQuestObjectiveIndex(
+            liveQuestState,
+            String(quest.id)
+          );
+          const localObjectiveIndex = Number(state?.activeObjectiveIndex ?? 0);
+          const rawObjectiveIndex =
+            state?.activeQuestId === quest.id
+              ? localObjectiveIndex
+              : liveObjectiveIndex ?? localObjectiveIndex;
           const objectiveIndex =
             status === "active" && quest.id === activeQuestId
               ? Math.max(

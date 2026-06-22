@@ -1112,11 +1112,30 @@ function shouldEventCompleteStep(
   }
 }
 
+function shouldEventCompleteStepWithInventoryState(
+  step: SnapshotMissionStep,
+  event: GardenHoseEvent,
+  wearing: { items: { get(id: BiomesId): unknown } }
+) {
+  if (shouldEventCompleteStep(step, event)) {
+    return true;
+  }
+  return (
+    step.trigger === "wearing" &&
+    event.kind === "inventory_change" &&
+    hasRequiredClothing(wearing)
+  );
+}
+
 export function handleSnapshotRoadAheadEventForTest(event: GardenHoseEvent) {
   const published: GardenHoseEvent[] = [];
   const current = readSnapshotMissionState();
   const { step, completed } = getMissionStep(current);
-  if (current.accepted && !completed && shouldEventCompleteStep(step, event)) {
+  if (
+    current.accepted &&
+    !completed &&
+    shouldEventCompleteStepWithInventoryState(step, event, Wearing.create())
+  ) {
     advanceSnapshotRoadAhead(
       { publish: (publishedEvent) => published.push(publishedEvent) },
       event.kind
@@ -1193,13 +1212,13 @@ export const SnapshotMissionRuntimeController: React.FunctionComponent<{}> =
         if (!current.accepted || completed) {
           return;
         }
-        if (shouldEventCompleteStep(step, event)) {
+        if (shouldEventCompleteStepWithInventoryState(step, event, wearing)) {
           advanceSnapshotRoadAhead(gardenHose, event.kind, resources);
         }
       };
       gardenHose.on("anyEvent", handler);
       return () => gardenHose.off("anyEvent", handler);
-    }, [gardenHose]);
+    }, [gardenHose, resources, wearing]);
 
     useEffect(() => {
       const { step, completed } = getMissionStep(state);

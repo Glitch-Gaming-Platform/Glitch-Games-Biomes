@@ -44,11 +44,11 @@ import {
   failHarthmereQuest,
   getHarthmereQuestMapHint,
   retryHarthmereQuest,
+  getHarthmereQuestResolvedWaypoint,
   validateHarthmereQuestObjectiveEvent,
   type HarthmereQuestRuntimeContext,
   type HarthmereQuestRuntimeEvent,
 } from "@/shared/harthmere/quest_runtime";
-import { shiftHarthmereAuthoredPositionToWorld } from "@/shared/harthmere/coordinate_transform";
 
 export const HARTHMERE_QUEST_PER_STATE_TEST_VERSION =
   "harthmere-quest-per-state-test" as const;
@@ -93,11 +93,9 @@ function makeEvent(
   context: HarthmereQuestRuntimeContext,
   overrides: Partial<HarthmereQuestRuntimeEvent> = {},
 ): HarthmereQuestRuntimeEvent {
-  const waypoint = objective?.location?.waypoint
-    ? (shiftHarthmereAuthoredPositionToWorld(
-        objective.location.waypoint,
-      ) as [number, number, number])
-    : ([0, 0, 0] as [number, number, number]);
+  const waypoint =
+    getHarthmereQuestResolvedWaypoint(quest.id, objective) ??
+    ([0, 0, 0] as [number, number, number]);
   return {
     eventId: `${quest.id}:${objective?.id ?? "n/a"}:${type}:${context.tick}`,
     questId: quest.id,

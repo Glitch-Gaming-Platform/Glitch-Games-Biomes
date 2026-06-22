@@ -10,6 +10,7 @@ import { BiomesUI } from "../BiomesUI";
 import { TAB_DESCRIPTORS, TAB_ORDER } from "../BiomesUITypes";
 import { abilityVisibleInBiomesLibraryForTest } from "../adapters/abilityLibraryVisibility";
 import {
+  DAILY_TODO_RULES,
   dailyTodoProgressForTest,
   dailyTodoTasksFromCareSnapshotForTest,
 } from "../adapters/dailyTodoAdapter";
@@ -68,9 +69,14 @@ import {
   biomesUIPlayerStatusGameplayActiveForTest,
   biomesUIVitalsCombatResourceDisplayForTest,
   biomesUIVitalsDisplayFromLiveStatusForTest,
+  fetchBiomesUIPlayerStatus,
   formatBiomesResourceLabelForVitalsForTest,
 } from "../adapters/playerStatusAdapter";
 import { shouldHydrateBiomesUILiveStateForTab } from "../adapters/liveStateHydrationPolicy";
+import {
+  fetchBuildingSystemState,
+  submitBuildingSystemLiveModeAction,
+} from "../adapters/useBiomesUILiveAdapters";
 import {
   biomesUIActiveMapPinNavigationAidKindForTest,
   biomesUIActiveMapPinNavigationAidSpecForTest,
@@ -213,6 +219,42 @@ describe("Biomes UI progression tabs", () => {
       claimed.push(task.activityId);
     }
     assert.deepEqual(claimed, ["jobs_board"]);
+  });
+
+  it("makes every completed daily task claimable in the Today tab until its reward is claimed", () => {
+    const completedToday = Object.fromEntries(
+      DAILY_TODO_RULES.map((rule, index) => [rule.activityId, 1_000 + index])
+    );
+    const tasks = dailyTodoTasksFromCareSnapshotForTest({ completedToday });
+
+    assert.deepEqual(
+      tasks.map((task) => ({
+        activityId: task.activityId,
+        completed: task.completed,
+        claimed: task.claimed,
+        claimable: task.claimable,
+        actionLabel: task.actionLabel,
+      })),
+      DAILY_TODO_RULES.map((rule) => ({
+        activityId: rule.activityId,
+        completed: true,
+        claimed: false,
+        claimable: true,
+        actionLabel: "Claim reward",
+      }))
+    );
+  });
+
+  it("shows every claimed daily task as done and no longer needing another action", () => {
+    const claimedToday = Object.fromEntries(
+      DAILY_TODO_RULES.map((rule, index) => [rule.activityId, 2_000 + index])
+    );
+    const tasks = dailyTodoTasksFromCareSnapshotForTest({ claimedToday });
+
+    assert.ok(tasks.every((task) => task.completed));
+    assert.ok(tasks.every((task) => task.claimed));
+    assert.ok(tasks.every((task) => task.claimable));
+    assert.ok(tasks.every((task) => task.actionLabel === "Done today"));
   });
 
   it("keeps daily task rewards locked until the task is done", () => {
@@ -456,6 +498,24 @@ describe("Biomes UI progression tabs", () => {
       biomesUIPlayerStatusEndpoint("?installId=install with spaces"),
       "/api/harthmere/live_mode_player_status_state?install_id=install%20with%20spaces"
     );
+  });
+
+  it("bypasses HTTP cache for player status reads so HP-zero death states cannot be hidden by 304s", async () => {
+    let capturedInit: RequestInit | undefined;
+    const status = await fetchBiomesUIPlayerStatus((async (_input, init) => {
+      capturedInit = init;
+      return new Response(
+        JSON.stringify({
+          ok: true,
+          playerStatusState: { combat: { hp: 0, maxHp: 100, deathState: "dead" } },
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      );
+    }) as typeof fetch);
+
+    assert.equal(capturedInit?.cache, "no-store");
+    assert.equal(status?.combat?.hp, 0);
+    assert.equal(status?.combat?.deathState, "dead");
   });
 
   it("treats visible Harthmere gameplay as active even when pointer lock is released", () => {
@@ -1184,6 +1244,47 @@ describe("Biomes UI progression tabs", () => {
     assert.ok(html.includes("Terraform Land"));
     assert.equal(visibleText.includes("_"), false, visibleText);
     assertNoDeveloperCopy(html);
+  });
+
+  it("reads Building System state through the dedicated no-store state route", async () => {
+    const previousFetch = globalThis.fetch;
+    let capturedInput: RequestInfo | URL | undefined;
+    let capturedInit: RequestInit | undefined;
+    globalThis.fetch = (async (input, init) => {
+      capturedInput = input;
+      capturedInit = init;
+      return new Response(
+        JSON.stringify({
+          ok: true,
+          buildingState: {
+            actorId: "player",
+            gold: 75,
+            ownedPlotIds: ["grove_muckstead_cottage_lot"],
+          },
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      );
+    }) as typeof fetch;
+
+    try {
+      const state = await fetchBuildingSystemState();
+      assert.equal(
+        String(capturedInput),
+        "/api/harthmere/live_mode_building_state"
+      );
+      assert.equal(capturedInit?.method, "GET");
+      assert.equal(capturedInit?.cache, "no-store");
+      assert.deepEqual(state?.ownedPlotIds, ["grove_muckstead_cottage_lot"]);
+      const submitted = await submitBuildingSystemLiveModeAction("read_state", {});
+      assert.equal(
+        String(capturedInput),
+        "/api/harthmere/live_mode_building_state"
+      );
+      assert.equal(capturedInit?.method, "GET");
+      assert.equal(submitted?.buildingState?.gold, 75);
+    } finally {
+      globalThis.fetch = previousFetch;
+    }
   });
 
   it("formats raw ids and backend messages before showing them to players", () => {

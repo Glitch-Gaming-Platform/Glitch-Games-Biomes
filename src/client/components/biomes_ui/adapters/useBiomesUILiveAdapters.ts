@@ -37,6 +37,10 @@ import {
   snapshotRoadAheadTrackableQuestsForBiomesUI,
 } from "@/client/components/challenges/LocalDevSnapshotMissionBridge";
 import {
+  SNAPSHOT_GROVE_LIVE_QUEST_STATE_SYNC_EVENT,
+  SNAPSHOT_GROVE_QUEST_STATE_EVENT,
+} from "@/client/components/challenges/LocalDevSnapshotGroveBibleRuntime";
+import {
   BUILDING_SYSTEM_BLUEPRINTS,
   BUILDING_SYSTEM_GROVE_STEWARD_NPC,
   BUILDING_SYSTEM_PLOTS,
@@ -293,7 +297,7 @@ function slotToUiItem(slot: any, fallback: string): HotbarSlotItem | null {
   const item = slot.item;
   const itemId = rawItemIdFromSlot(slot) ?? fallback;
   const harthmereDisplay = getHarthmereItemDisplay(itemId);
-  let icon = harthmereDisplay?.icon ?? "◼";
+  let icon = harthmereDisplay?.icon ?? biomesInventoryItemIcon(itemId);
   if (!harthmereDisplay) {
     try {
       icon = iconUrl(item) ?? biomesInventoryItemIcon(itemId) ?? icon;
@@ -898,10 +902,20 @@ function publishLiveModeCombatMotionFromBody(body: any) {
   }
 }
 
-async function submitBuildingSystemLiveModeAction(
+export async function submitBuildingSystemLiveModeAction(
   action: string,
   payload: Record<string, unknown>
 ): Promise<any> {
+  if (action === "read_state") {
+    const response = await defaultHarthmereLiveFetch(
+      "/api/harthmere/live_mode_building_state",
+      {
+        method: "GET",
+        credentials: "same-origin",
+      }
+    );
+    return response.json();
+  }
   const requestId = `biomes_ui_building_${action}_${Date.now()}_${Math.random()
     .toString(36)
     .slice(2)}`;
@@ -937,10 +951,18 @@ function dispatchHarthmereBuildingStateUpdate(
   );
 }
 
-async function fetchBuildingSystemState(): Promise<
+export async function fetchBuildingSystemState(): Promise<
   HarthmerePropertyMapBuildingState | undefined
 > {
-  const body = await submitBuildingSystemLiveModeAction("read_state", {});
+  const response = await defaultHarthmereLiveFetch(
+    "/api/harthmere/live_mode_building_state",
+    {
+      method: "GET",
+      credentials: "same-origin",
+    }
+  );
+  if (!response.ok) return undefined;
+  const body = await response.json();
   return body?.buildingState;
 }
 
@@ -1115,11 +1137,7 @@ function instanceRecordToInventoryUiItems(
       {
         id: instanceId,
         label: display?.name ?? humanizeRealItemId(itemId, itemId),
-        icon:
-          display?.icon ??
-          (biomesInventoryItemIcon(itemId) === "◼"
-            ? "◈"
-            : biomesInventoryItemIcon(itemId)),
+        icon: display?.icon ?? biomesInventoryItemIcon(itemId),
         count,
         quality: "common" as InventoryUiItem["quality"],
         category: display
@@ -1465,7 +1483,8 @@ async function submitMedicalLiveModeAction(
 
 async function submitEquipmentLiveModeAction(
   itemId: string | undefined,
-  slot: string
+  slot: string,
+  clientClaims: Record<string, unknown> = {}
 ): Promise<any> {
   const requestId = `biomes_ui_equipment_${slot}_${Date.now()}_${Math.random()
     .toString(36)
@@ -1482,7 +1501,7 @@ async function submitEquipmentLiveModeAction(
       actorEntityVersion: 1,
       zoneId: "the_grove",
       payload: { itemId, slot },
-      clientClaims: {},
+      clientClaims,
       includeSnapshots: ["inventoryLootState"],
     }),
   });
@@ -2141,19 +2160,13 @@ export function useBiomesUILiveAdapters({
     if (typeof window === "undefined") return;
     const bump = () => setSnapshotRevision((value) => value + 1);
     window.addEventListener("storage", bump);
-    window.addEventListener(
-      "biomes:local-dev-snapshot-grove-quest-state",
-      bump
-    );
+    window.addEventListener(SNAPSHOT_GROVE_QUEST_STATE_EVENT, bump);
     window.addEventListener("biomes:snapshot-grove-tutor-hud-highlights", bump);
     window.addEventListener(SNAPSHOT_MISSION_STATE_EVENT, bump);
     window.addEventListener(LIVE_ENTITY_HELPER_QUEST_EVENT, bump);
     return () => {
       window.removeEventListener("storage", bump);
-      window.removeEventListener(
-        "biomes:local-dev-snapshot-grove-quest-state",
-        bump
-      );
+      window.removeEventListener(SNAPSHOT_GROVE_QUEST_STATE_EVENT, bump);
       window.removeEventListener(
         "biomes:snapshot-grove-tutor-hud-highlights",
         bump
@@ -2235,6 +2248,17 @@ export function useBiomesUILiveAdapters({
       } else if (action !== "read_state") {
         void refreshBuildingState();
       }
+      if (body?.inventoryLootState) {
+        setInventoryLootState(body.inventoryLootState);
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(
+            new CustomEvent("biomes:live-mode-wallet-updated", {
+              detail: { gold: body.inventoryLootState?.actor?.gold },
+            })
+          );
+        }
+      }
+      dispatchLiveModePlayerStatusFromBody(body);
       return body;
     },
     [refreshBuildingState]
@@ -2504,11 +2528,20 @@ export function useBiomesUILiveAdapters({
       }
     };
     window.addEventListener(HARTHMERE_QUEST_INVITES_UPDATED_EVENT, handler);
-    return () =>
+    window.addEventListener(
+      SNAPSHOT_GROVE_LIVE_QUEST_STATE_SYNC_EVENT,
+      handler
+    );
+    return () => {
       window.removeEventListener(
         HARTHMERE_QUEST_INVITES_UPDATED_EVENT,
         handler
       );
+      window.removeEventListener(
+        SNAPSHOT_GROVE_LIVE_QUEST_STATE_SYNC_EVENT,
+        handler
+      );
+    };
   }, [refreshQuestState]);
 
   React.useEffect(() => {
@@ -2785,6 +2818,13 @@ export function useBiomesUILiveAdapters({
               localBackpackItem.itemId
             );
           } else {
+            try {
+              gardenHose.publish({
+                kind: "block_inventory_throw",
+                source: "biomes-ui-local-dev-hotbar-use",
+                itemId: localItemId,
+              } as any);
+            } catch {}
             dispatchBiomesUITutorialItemUse(
               {
                 itemId: localItemId,
@@ -2860,6 +2900,7 @@ export function useBiomesUILiveAdapters({
   }, [
     applyLiveModeInventoryResponse,
     clientContext,
+    gardenHose,
     inventory?.hotbar,
     harthmereInventoryRevision,
     reactResources,
@@ -3464,6 +3505,22 @@ export function useBiomesUILiveAdapters({
             localHarthmereItem.itemId
           );
           recordSnapshotRoadAheadEquippedGearSlotForBiomesUI(key);
+          try {
+            gardenHose.publish({
+              kind: "inventory_change",
+              source: "biomes-ui-local-dev-item-equip",
+              itemId: localHarthmereItem.itemId,
+              slot: key,
+            } as any);
+          } catch {}
+          fireAndForget(
+            submitEquipmentLiveModeAction(localHarthmereItem.itemId, key, {
+              source: "biomes_ui_local_harthmere_item_equip",
+              instanceId: localHarthmereItem.instanceId,
+            })
+              .then(applyLiveModeInventoryResponse)
+              .catch(() => refreshInventoryLootState())
+          );
           dispatchBiomesUITutorialItemUse(
             {
               itemId: localHarthmereItem.itemId,
@@ -3684,10 +3741,7 @@ export function useBiomesUILiveAdapters({
       .map((item: InventoryUiItem) => ({
         id: item.id,
         name: item.label,
-        icon:
-          typeof item.icon === "string" && /^https?:\/\//.test(item.icon)
-            ? "◼"
-            : item.icon,
+        icon: item.icon,
         quantity: item.count ?? 1,
         category: item.category,
         estimatedGoldValue: Math.max(
@@ -4153,6 +4207,7 @@ export function useBiomesUILiveAdapters({
     farmingFoodState,
     guildHydrated,
     guildState,
+    gardenHose,
     harthmereInventoryRevision,
     inventoryLootHydrated,
     inventoryLootState,

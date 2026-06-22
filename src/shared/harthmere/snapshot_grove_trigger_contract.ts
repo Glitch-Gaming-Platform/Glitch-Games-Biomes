@@ -276,6 +276,8 @@ export function snapshotGroveObjectiveCompletionFixture(
       return { ...base, kind: "inventory_change" };
     case "choice":
       return { ...base, kind: "snapshot_grove_practice_action" };
+    case "open_jobs_board":
+      return { ...base, kind: "open_jobs_board" };
     case "item_grant":
       return { ...base, kind: "inventory_change" };
     case "item_update":

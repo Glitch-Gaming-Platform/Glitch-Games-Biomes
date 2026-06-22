@@ -26,6 +26,7 @@ import {
 import {
   harthmereJobsBoardQuestMarkerPositions,
   harthmereJobsBoardQuestMarkerRuntimePosition,
+  harthmereJobsBoardQuestMarkerRuntimePositionForId,
 } from "@/shared/harthmere/jobs_board_quest_marker_positions";
 import { readSnapshotGroveQuestState } from "@/client/components/challenges/LocalDevSnapshotGroveBibleRuntime";
 import { readActiveBiomesUIMapPin } from "@/client/components/biomes_ui/adapters/mapPinnedDestination";
@@ -158,6 +159,24 @@ const resolvedJobsBoardQuestMarkers = () => {
     }));
 };
 
+function harthmereQuestObjectLandmarkRuntimePosition(
+  landmark: SnapshotGroveLandmark
+): [number, number, number] {
+  const resolved = harthmereJobsBoardQuestMarkerRuntimePositionForId(
+    landmark.id
+  );
+  if (resolved) {
+    return [...resolved.position] as [number, number, number];
+  }
+  return [
+    landmark.position[0],
+    // Landmark pins hover above the target. Procedural props sit at the
+    // player's feet/ground height so they do not float over the plaza.
+    landmark.position[1] - 1,
+    landmark.position[2],
+  ];
+}
+
 export const HARTHMERE_QUEST_OBJECT_MARKERS: readonly HarthmereQuestObjectMarker[] =
   [
     ...SNAPSHOT_GROVE_LANDMARKS.filter(
@@ -166,13 +185,7 @@ export const HARTHMERE_QUEST_OBJECT_MARKERS: readonly HarthmereQuestObjectMarker
       id: landmark.id,
       label: landmark.label,
       kind: landmark.kind,
-      position: [
-        landmark.position[0],
-        // Landmark pins hover above the target. Procedural props sit at the
-        // player's feet/ground height so they do not float over the plaza.
-        landmark.position[1] - 1,
-        landmark.position[2],
-      ] as [number, number, number],
+      position: harthmereQuestObjectLandmarkRuntimePosition(landmark),
     })),
     ...LIVE_ENTITY_HELPER_QUEST_TARGET_MARKERS.map(
       (marker: LiveEntityHelperQuestTargetMarker) => ({

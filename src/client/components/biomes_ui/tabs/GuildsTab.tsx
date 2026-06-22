@@ -22,6 +22,7 @@ import type {
   BiomesUIGuildHallCandidate,
   BiomesUIGuildsAdapter,
 } from "../adapters/guildsLiveAdapter";
+import { biomesInventoryItemIcon } from "../adapters/inventoryItemPresentation";
 import * as React from "react";
 import { Highlightable } from "../highlight/HighlightOverlay";
 import { biomesPlayerTitle } from "../playerFacingText";
@@ -421,7 +422,7 @@ export const GuildsTab: React.FunctionComponent<{ adapter?: GuildsAdapter }> = (
             <div style={{ display: "grid", gap: 6, marginTop: 10 }}>
               {bankRows.length === 0 ? <p style={mutedTextStyle}>The guild bank is empty.</p> : bankRows.map(([itemId, count]) => (
                 <div key={itemId} style={bankRowStyle}>
-                  <span>◼</span>
+                  <span>{biomesInventoryItemIcon(itemId)}</span>
                   <span><strong>{itemId}</strong></span>
                   <span>x{count}</span>
                   <button type="button" className="biomes-ui-tab" disabled={!hasPermission(adapter, "withdraw_bank") || !bankCountValue} onClick={() => void runAction("Withdrew guild bank item", () => adapter?.withdrawGuildBank?.(itemId, bankCountValue ?? 1))}>Withdraw</button>

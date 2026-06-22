@@ -7,6 +7,11 @@ import {
 import { harthmereResolveBikkieVisual } from "@/shared/harthmere/bikkie_visual_resolver";
 import type { HarthmereBikkieItemMetadata } from "@/shared/harthmere/mmo_bikkie_farming_food_catalog";
 import { resolveAssetUrlUntyped } from "@/galois/interface/asset_paths";
+import type { AnyBinaryAttribute } from "@/shared/bikkie/schema/binary";
+import { staticUrlForAttribute } from "@/shared/bikkie/schema/binary";
+import { anItem } from "@/shared/game/item";
+import { safeParseBiomesId } from "@/shared/ids";
+import { resolveBinaryAttribute } from "@/shared/util/dye_helpers";
 
 export function humanizeBiomesInventoryItemId(
   itemId: string,
@@ -87,6 +92,38 @@ function bikkieInventoryMetadataForItem(itemId: string) {
   );
 }
 
+function biomesBikkieItemIcon(itemId: string): string | undefined {
+  const biomesId = safeParseBiomesId(itemId);
+  if (!biomesId) return undefined;
+  const item = anItem(biomesId);
+  if (!item) return undefined;
+  try {
+    if (item.icon) {
+      return staticUrlForAttribute(
+        resolveBinaryAttribute(item.icon as AnyBinaryAttribute, item)
+      );
+    }
+    if (item.galoisIcon) {
+      return resolveAssetUrlUntyped(`icons/${item.galoisIcon}`);
+    }
+    if (item.galoisPath) {
+      return resolveAssetUrlUntyped(`icons/${item.galoisPath}`);
+    }
+    if (item.groupId) {
+      return `/api/environment_group/${item.groupId}/thumbnail`;
+    }
+  } catch {
+    return undefined;
+  }
+  return undefined;
+}
+
+function fallbackInventoryGlyph(itemId: string) {
+  const readable = humanizeBiomesInventoryItemId(itemId, itemId);
+  const letters = readable.match(/[A-Za-z0-9]/g)?.join("") ?? "";
+  return (letters.slice(0, 2).toUpperCase() || "IT").padEnd(2, " ");
+}
+
 export function biomesInventoryItemVisual(itemId: string) {
   const metadata = bikkieInventoryMetadataForItem(itemId);
   if (!metadata) return undefined;
@@ -101,6 +138,8 @@ export function biomesInventoryItemVisual(itemId: string) {
 }
 
 export function biomesInventoryItemIcon(itemId: string): string {
+  const bikkieIcon = biomesBikkieItemIcon(itemId);
+  if (bikkieIcon) return bikkieIcon;
   const visual = biomesInventoryItemVisual(itemId);
   const imageUrl = visual?.iconAssetPath
     ? resolveAssetUrlUntyped(visual.iconAssetPath)
@@ -114,7 +153,7 @@ export function biomesInventoryItemIcon(itemId: string): string {
   if (seed?.displayName.toLowerCase().includes("carrot")) return "CS";
   if (seed) return "SE";
   const food = HARTHMERE_FOOD_DEFINITIONS[itemId];
-  if (!food) return "◼";
+  if (!food) return fallbackInventoryGlyph(itemId);
   const foodName = food.displayName.toLowerCase();
   if (food.source === "animal" || food.source === "hunt") return "ME";
   if (food.source === "fish") return "FI";
@@ -133,5 +172,5 @@ export function biomesInventoryItemIcon(itemId: string): string {
   if (foodName.includes("carrot")) return "CA";
   if (foodName.includes("apple")) return "AP";
   if (foodName.includes("banana")) return "BA";
-  return "◼";
+  return fallbackInventoryGlyph(itemId);
 }

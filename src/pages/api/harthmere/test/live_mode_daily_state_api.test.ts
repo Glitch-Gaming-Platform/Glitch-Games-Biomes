@@ -1,11 +1,13 @@
 import assert from "assert";
 import {
   readHarthmereLiveModeDailyStateForActor,
+  resolveHarthmereLiveModeDailyStateActorId,
 } from "../live_mode_daily_state";
 import {
   defaultHarthmereLiveModeBackendState,
   harthmereLiveModePlayerStateKey,
 } from "@/shared/harthmere/live_mode_backend";
+import { harthmereLiveModeInstallGameUserLinkKey } from "@/shared/harthmere/live_mode_actor_identity";
 
 const ACTOR = "player_api_daily_001";
 const NOW_MS = 1_700_200_000_000;
@@ -54,5 +56,29 @@ describe("live_mode_daily_state API route integration", () => {
     assert.deepEqual(snapshot.claimedToday, {});
     assert.deepEqual(snapshot.completedToday, {});
     assert.ok(snapshot.projects.grove_food_satchel);
+  });
+
+  it("resolves the same install-scoped Cloud Save actor as other live-state readers", async () => {
+    const installId = "25f687dd-9ebe-4c31-8810-719ddfafe66b";
+    const gameActorId = "glitch:43af071c-9922-4e02-ba46-32ee2b7479a6";
+    const redis = {
+      primary: {
+        get: async (key: string) =>
+          key === harthmereLiveModeInstallGameUserLinkKey(installId)
+            ? gameActorId
+            : null,
+      },
+    };
+
+    const actorId = await resolveHarthmereLiveModeDailyStateActorId({
+      redis,
+      auth: { userId: "7061875752626857" },
+      unsafeRequest: {
+        query: { install_id: installId },
+        headers: { "x-glitch-install-id": installId },
+      },
+    });
+
+    assert.equal(actorId, gameActorId);
   });
 });

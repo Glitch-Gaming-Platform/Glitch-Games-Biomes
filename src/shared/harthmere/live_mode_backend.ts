@@ -2030,6 +2030,93 @@ function routeLiveModeRewardOutsideBackpack(
   return false;
 }
 
+function isHarthmereNativeHarvestTreeSeed(
+  seed: (typeof HARTHMERE_SEED_DEFINITIONS)[string] | undefined,
+  envelope?: HarthmereLiveModeAuthorityEnvelope
+) {
+  const farmingKind =
+    envelope && (payloadString(envelope, "farmingKind") ?? payloadString(envelope, "plantKind"));
+  if (farmingKind === "tree") {
+    return true;
+  }
+  const text = [
+    seed?.displayName,
+    seed?.cropDisplayName,
+    seed?.cropItemId,
+    seed?.metadata?.category,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+  return /\btree\b|\b(oak|birch|rubber|sakura)\b/.test(text);
+}
+
+function nativePlantHarvestSeedDefinition(
+  envelope: HarthmereLiveModeAuthorityEnvelope
+) {
+  const seedItemId =
+    payloadStringOrNumber(envelope, "seedItemId") ??
+    payloadStringOrNumber(envelope, "seedId");
+  if (seedItemId && HARTHMERE_SEED_DEFINITIONS[seedItemId]) {
+    return HARTHMERE_SEED_DEFINITIONS[seedItemId];
+  }
+
+  const cropItemId = payloadStringOrNumber(envelope, "cropItemId");
+  const yieldItemId = payloadStringOrNumber(envelope, "yieldItemId");
+  const plantLabel = payloadString(envelope, "plantLabel")?.toLowerCase();
+  return Object.values(HARTHMERE_SEED_DEFINITIONS).find((seed) => {
+    if (cropItemId && seed.cropItemId === cropItemId) return true;
+    if (yieldItemId && seed.yieldItemId === yieldItemId) return true;
+    if (
+      plantLabel &&
+      [seed.displayName, seed.cropDisplayName, seed.cropItemId]
+        .filter(Boolean)
+        .some((value) => plantLabel.includes(String(value).toLowerCase()))
+    ) {
+      return true;
+    }
+    return false;
+  });
+}
+
+const HARTHMERE_LOCAL_EQUIPMENT_MIRROR_ITEM_IDS = new Set([
+  "training_dagger",
+  "iron_longsword",
+  "woodsman_axe",
+  "two_handed_sword",
+  "wooden_shield",
+  "patched_cloak",
+  "baker_apron",
+  "field_trousers",
+  "repair_mallet",
+  "muck_rake",
+]);
+
+function shouldMirrorLocalHarthmereEquipmentClaim(
+  envelope: HarthmereLiveModeAuthorityEnvelope,
+  itemId: string | undefined,
+  snapshot: HarthmereInventorySnapshot
+) {
+  if (!itemId || (snapshot.items[itemId] ?? 0) > 0) {
+    return false;
+  }
+  if (
+    envelope.clientClaims?.source !== "biomes_ui_local_harthmere_item_equip"
+  ) {
+    return false;
+  }
+  const def = getHarthmereItemDefinition(itemId);
+  return Boolean(
+    HARTHMERE_LOCAL_EQUIPMENT_MIRROR_ITEM_IDS.has(itemId) &&
+      def &&
+      !def.isCurrency &&
+      !def.isQuestItem &&
+      !def.isCraftingMaterial &&
+      !def.isConsumable &&
+      !def.isSpellTome
+  );
+}
+
 function sendLiveModeRewardToOverflow(
   state: HarthmereLiveModeBackendState,
   itemId: string | undefined,
@@ -2863,6 +2950,7 @@ export function createHarthmereLiveModePlayerStatusClientSnapshot(
     characterLevel.xp
   );
   const standing = liveModePrimaryStanding(state);
+  const lastDeath = latestHarthmereLiveModeDeathRecord(state);
   return {
     version: "harthmere-live-mode-player-status",
     actorId: state.actorId,
@@ -2881,6 +2969,15 @@ export function createHarthmereLiveModePlayerStatusClientSnapshot(
       hp: combatHp,
       maxHp: Math.max(1, Math.trunc(Number(state.combat.maxHp ?? 1))),
       deathState,
+      lastDeath: lastDeath
+        ? {
+            deathId: lastDeath.deathId,
+            cause: lastDeath.cause,
+            zoneId: lastDeath.zoneId,
+            atMs: lastDeath.atMs,
+            respawnAvailableAtMs: lastDeath.respawnAvailableAtMs,
+          }
+        : undefined,
       primaryResource,
       primaryResourceLabel: liveModeResourceLabel(primaryResource),
       resource: Math.max(
@@ -8200,7 +8297,18 @@ export function reduceHarthmereLiveModeBackendState(
     case "request_equipment_change": {
       const slot = payloadString(envelope, "slot") ?? "main_hand";
       const itemId = payloadString(envelope, "itemId");
-      const snapshot = buildInventorySnapshot();
+      let snapshot = buildInventorySnapshot();
+      if (itemId) {
+        ensureLiveModeItemDefinition(itemId, snapshot);
+      }
+      if (
+        shouldMirrorLocalHarthmereEquipmentClaim(envelope, itemId, snapshot)
+      ) {
+        recordDelta(next.inventory.items, itemId!, 1);
+        snapshot = buildInventorySnapshot();
+        warnings.push(`equipment_mirrored_local_item:${itemId}`);
+        touchedModels.add("inventory_items");
+      }
       const invReq: HarthmereInventoryMutationRequest = {
         requestId: envelope.requestId,
         actorId: envelope.actorId,
@@ -10811,8 +10919,58 @@ export function reduceHarthmereLiveModeBackendState(
           break;
         }
         if (next.building.ownedPlots.includes(plot.plotId)) {
-          warnings.push("plot_claim_rejected:plot_already_owned_by_actor");
-          touchedModels.add("building_rejection");
+          // Idempotent success: clients can lose the original response when the
+          // browser queues/aborts a request, so a retry for an already-owned plot
+          // must return the current land state instead of blocking progression.
+          warnings.push("plot_claim_idempotent:already_owned_by_actor");
+          if (!next.building.safeZones[plot.plotId]) {
+            if (plot.startsMucked) {
+              next.building.safeZones[plot.plotId] = {
+                safeFromMuck: false,
+                activatedAtMs: nowMs,
+                area: plot.area,
+              };
+              const repairPlan = createBuildingSystemMuckClaimMaterializationPlan({
+                requestId: `${envelope.requestId}:muck_deed_repair`,
+                actorId: envelope.actorId,
+                plot,
+                activatedAtMs: nowMs,
+              });
+              for (const marker of repairPlan.inWorldMarkers ?? []) {
+                next.building.inWorldMarkers[marker.markerId] = marker;
+              }
+              next.building.materializationPlans[repairPlan.requestId] =
+                repairPlan;
+              buildingMaterializationPlans.push(repairPlan);
+              touchedModels.add("plot_boundary_markers");
+              touchedModels.add("terrain_materialization");
+            } else if (plot.safeAfterPurchase) {
+              next.building.safeZones[plot.plotId] = {
+                safeFromMuck: true,
+                activatedAtMs: nowMs,
+                area: plot.area,
+              };
+              const repairPlan = createBuildingSystemSafeGroundMaterializationPlan(
+                {
+                  requestId: `${envelope.requestId}:safe_deed_repair`,
+                  actorId: envelope.actorId,
+                  plot,
+                  activatedAtMs: nowMs,
+                  reason: "plot_claim_safe_ground",
+                }
+              );
+              for (const marker of repairPlan.inWorldMarkers ?? []) {
+                next.building.inWorldMarkers[marker.markerId] = marker;
+              }
+              next.building.materializationPlans[repairPlan.requestId] =
+                repairPlan;
+              buildingMaterializationPlans.push(repairPlan);
+              touchedModels.add("muck_safe_zone");
+              touchedModels.add("plot_boundary_markers");
+              touchedModels.add("terrain_materialization");
+            }
+          }
+          touchedModels.add("owned_plots");
           break;
         }
         if (
@@ -10880,6 +11038,33 @@ export function reduceHarthmereLiveModeBackendState(
           touchedModels.add("plot_boundary_markers");
           touchedModels.add("deed_marker");
           touchedModels.add("map_marker");
+          touchedModels.add("terrain_materialization");
+        } else if (plot.safeAfterPurchase) {
+          next.building.safeZones[plot.plotId] = {
+            safeFromMuck: true,
+            activatedAtMs: nowMs,
+            area: plot.area,
+          };
+          const safeClaimPlan = createBuildingSystemSafeGroundMaterializationPlan(
+            {
+              requestId: `${envelope.requestId}:safe_deed`,
+              actorId: envelope.actorId,
+              plot,
+              activatedAtMs: nowMs,
+              reason: "plot_claim_safe_ground",
+            }
+          );
+          for (const marker of safeClaimPlan.inWorldMarkers ?? []) {
+            next.building.inWorldMarkers[marker.markerId] = marker;
+          }
+          next.building.materializationPlans[safeClaimPlan.requestId] =
+            safeClaimPlan;
+          buildingMaterializationPlans.push(safeClaimPlan);
+          touchedModels.add("safe_deed");
+          touchedModels.add("plot_boundary_markers");
+          touchedModels.add("deed_marker");
+          touchedModels.add("map_marker");
+          touchedModels.add("muck_safe_zone");
           touchedModels.add("terrain_materialization");
         }
         next.economy.ledger.push({
@@ -11105,17 +11290,13 @@ export function reduceHarthmereLiveModeBackendState(
           buildingProjectIdForPlot(plot.plotId);
         const existingProject = next.building.activeProjects[projectId];
         if (existingProject && existingProject.status !== "cancelled") {
-          warnings.push(
-            "building_project_rejected:project_already_exists_for_plot"
-          );
-          touchedModels.add("building_rejection");
+          warnings.push("building_project_idempotent:project_already_exists");
+          touchedModels.add("building_project");
           break;
         }
         if (next.property.owned[propertyId]) {
-          warnings.push(
-            "building_project_rejected:property_already_completed_for_plot"
-          );
-          touchedModels.add("building_rejection");
+          warnings.push("building_project_idempotent:property_already_completed");
+          touchedModels.add("property_building");
           break;
         }
         const origin = {
@@ -11266,8 +11447,8 @@ export function reduceHarthmereLiveModeBackendState(
           break;
         }
         if (project.completedStages.includes(requestedStage)) {
-          warnings.push("building_stage_rejected:duplicate_stage_contribution");
-          touchedModels.add("building_rejection");
+          warnings.push("building_stage_idempotent:stage_already_completed");
+          touchedModels.add("construction_stage_state");
           break;
         }
         if (requestedStage !== project.currentStage) {
@@ -12387,8 +12568,8 @@ export function reduceHarthmereLiveModeBackendState(
         const businessId =
           property.businessId ?? `business_${property.propertyId}`;
         if (next.economy.businesses[businessId]) {
-          warnings.push("business_rejected:already_started");
-          touchedModels.add("business_rejection");
+          warnings.push("business_idempotent:already_started");
+          touchedModels.add("business_started");
           break;
         }
         next.inventory.gold -= businessDefinition.startingCostGold;
@@ -13175,7 +13356,63 @@ export function reduceHarthmereLiveModeBackendState(
           | ReturnType<typeof collectHarthmereLivestockProduct>
           | undefined;
 
-        if (operation === "mine_exotic_matter_deposit") {
+        if (operation === "native_plant_harvest") {
+          const plantId =
+            payloadStringOrNumber(envelope, "plantId") ??
+            envelope.targetId ??
+            "";
+          if (!plantId) {
+            warnings.push("farming_rejected:missing_plant");
+            touchedModels.add("farming_rejection");
+            break;
+          }
+          if (payloadString(envelope, "plantStatus") !== "fully_grown") {
+            warnings.push("farming_rejected:plant_not_ready");
+            touchedModels.add("farming_rejection");
+            break;
+          }
+          const seed = nativePlantHarvestSeedDefinition(envelope);
+          if (!seed) {
+            warnings.push("farming_rejected:unknown_seed");
+            touchedModels.add("farming_rejection");
+            break;
+          }
+          if (isHarthmereNativeHarvestTreeSeed(seed, envelope)) {
+            warnings.push("farming_rejected:tree_harvest_not_supported");
+            touchedModels.add("farming_rejection");
+            break;
+          }
+          const claimKey = `native_plant_harvest:${plantId}`;
+          if (next.combat.lootClaims[claimKey]) {
+            warnings.push("farming_rejected:plant_already_harvested");
+            touchedModels.add("farming_rejection");
+            break;
+          }
+          const yieldCount = Math.max(1, Math.trunc(seed.yieldCount || 1));
+          ensureLiveModeItemDefinition(seed.yieldItemId, buildInventorySnapshot());
+          if (
+            wouldExceedCarryWeight(
+              next.inventory.items,
+              seed.yieldItemId,
+              yieldCount
+            )
+          ) {
+            pushCarryWeightRejection(warnings, touchedModels, "farming");
+            break;
+          }
+          recordDelta(next.inventory.items, seed.yieldItemId, yieldCount);
+          next.combat.lootClaims[claimKey] = nowMs;
+          next.farming.harvests[plantId] = nowMs;
+          upsertSkill(next.classMagic.skills, "farming", 30);
+          touchedModels.add("inventory_items");
+          touchedModels.add("farming");
+          touchedModels.add("loot_claims");
+          touchedModels.add("skill_xp");
+          sharedStateKeys.add(
+            harthmereLiveModeSharedStateKey("native_plant_harvest", plantId)
+          );
+          break;
+        } else if (operation === "mine_exotic_matter_deposit") {
           const depositId =
             payloadString(envelope, "depositId") ?? envelope.targetId ?? "";
           const deposit = harthmereExoticMatterDepositById(depositId);

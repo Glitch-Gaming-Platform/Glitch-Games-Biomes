@@ -232,6 +232,78 @@ describe("harthmere live fetch coalescing", () => {
     );
   });
 
+  it("bypasses browser HTTP cache for live-state GETs while keeping request coalescing", () => {
+    const prepared = prepareHarthmereLiveFetchRequest(
+      "/api/harthmere/live_mode_daily_state",
+      { method: "GET" }
+    );
+
+    assert.equal(prepared.init.cache, "no-store");
+    assert.deepStrictEqual(
+      planHarthmereLiveFetchCache({
+        method: prepared.init.method,
+        hasCustomSignal: Boolean(prepared.init.signal),
+        url: String(prepared.input),
+      }),
+      { cacheable: true, key: "GET /api/harthmere/live_mode_daily_state" }
+    );
+  });
+
+  it("strips conditional validators and overrides caller cache mode on live-state GETs", () => {
+    const prepared = prepareHarthmereLiveFetchRequest(
+      "/api/harthmere/live_mode_inventory_loot_state",
+      {
+        method: "GET",
+        cache: "force-cache",
+        headers: {
+          "If-None-Match": '"stale-etag"',
+          "If-Modified-Since": "Mon, 01 Jan 2024 00:00:00 GMT",
+          "If-Range": '"stale-range"',
+        },
+      }
+    );
+    const headers = new Headers(prepared.init.headers);
+
+    assert.equal(prepared.init.cache, "no-store");
+    assert.equal(headers.has("If-None-Match"), false);
+    assert.equal(headers.has("If-Modified-Since"), false);
+    assert.equal(headers.has("If-Range"), false);
+    assert.equal(headers.get("Cache-Control"), "no-cache");
+    assert.equal(headers.get("Pragma"), "no-cache");
+  });
+
+  it("clears coalesced live-state reads when a live mutation is sent", async () => {
+    let calls = 0;
+    const fetchImpl = (async () => {
+      calls += 1;
+      return fakeResponse(`server-${calls}`);
+    }) as unknown as typeof fetch;
+    let clock = 1_000;
+    const opts = { nowMs: () => clock, ttlMs: 5_000 };
+    const readUrl = "/api/harthmere/live_mode_inventory_loot_state";
+
+    await coalescedHarthmereLiveFetch(fetchImpl, readUrl, {}, opts);
+    clock = 1_100;
+    await coalescedHarthmereLiveFetch(fetchImpl, readUrl, {}, opts);
+    assert.equal(calls, 1, "pre-mutation reads should still coalesce");
+
+    await coalescedHarthmereLiveFetch(
+      fetchImpl,
+      "/api/harthmere/live_mode",
+      { method: "POST" },
+      opts
+    );
+    assert.equal(calls, 2, "the mutation itself must reach the backend");
+
+    clock = 1_200;
+    await coalescedHarthmereLiveFetch(fetchImpl, readUrl, {}, opts);
+    assert.equal(
+      calls,
+      3,
+      "post-mutation reads must not reuse a stale pre-mutation snapshot"
+    );
+  });
+
   it("evicts an error response so the next call retries immediately", async () => {
     let calls = 0;
     const fetchImpl = (async () => {
@@ -343,4 +415,5 @@ describe("harthmere live fetch coalescing", () => {
     assert.equal(isHarthmereLiveFetchAbortError(abort), true);
     assert.equal(isHarthmereLiveFetchAbortError(new Error("network")), false);
   });
+
 });

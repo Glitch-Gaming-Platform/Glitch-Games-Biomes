@@ -644,6 +644,30 @@ const HARTHMERE_VENDOR_ITEM_DEFINITIONS: Record<
     stats: { defense: 8, armor: 14 },
     description: "A reinforced wooden shield used during guard-yard drills.",
   },
+  baker_apron: {
+    displayName: "Dawn Loaf Apron",
+    category: "cosmetic",
+    maxStackSize: 1,
+    baseValue: 12,
+    binding: "on_pickup",
+    levelRequirement: 1,
+    durabilityMax: 30,
+    stats: { defense: 1 },
+    description:
+      "A flour-dusted apron given to helpers who can carry apples cleanly.",
+  },
+  field_trousers: {
+    displayName: "Grove Field Trousers",
+    category: "cosmetic",
+    maxStackSize: 1,
+    baseValue: 12,
+    binding: "on_pickup",
+    levelRequirement: 1,
+    durabilityMax: 30,
+    stats: { defense: 1 },
+    description:
+      "Sturdy work trousers for the road, saved as starter travel gear.",
+  },
   rusty_pickaxe: {
     displayName: "Rusty Pickaxe",
     category: "tool",

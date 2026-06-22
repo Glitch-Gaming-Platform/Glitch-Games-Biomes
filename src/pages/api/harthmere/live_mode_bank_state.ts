@@ -1,4 +1,6 @@
 import { connectToRedis } from "@/server/shared/redis/connection";
+import { resolveHarthmereLiveModeActorId } from "@/server/harthmere/live_mode_actor_resolution";
+import { disableHarthmereLiveModeHttpCaching } from "@/server/harthmere/live_mode_http_cache";
 import { biomesApiHandler } from "@/server/web/util/api_middleware";
 import {
   applyHarthmereBankLoanConsequences,
@@ -51,13 +53,22 @@ export async function readHarthmereLiveModeBankStateForActor(input: {
 
 export default biomesApiHandler(
   {
-    auth: "required",
+    auth: "optional",
     method: "GET",
     response: zHarthmereLiveModeBankStateResponse,
   },
-  async ({ auth: { userId } }) => {
-    const actorId = String(userId);
+  async ({ auth, unsafeRequest, unsafeResponse }) => {
+    disableHarthmereLiveModeHttpCaching(unsafeResponse);
     const redis = await liveModeBankStateRedis();
+    const actorId = await resolveHarthmereLiveModeActorId(
+      redis,
+      { auth, unsafeRequest },
+      "anonymous:bank-state-reader",
+      {
+        allowIdentityWrites: false,
+        allowStateAdoptionPlan: false,
+      }
+    );
     return {
       ok: true,
       bankingState: await readHarthmereLiveModeBankStateForActor({

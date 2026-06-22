@@ -21,6 +21,13 @@ export interface BiomesUIPlayerStatusSnapshot {
     hp?: number;
     maxHp?: number;
     deathState?: string;
+    lastDeath?: {
+      deathId?: string;
+      cause?: string;
+      zoneId?: string;
+      atMs?: number;
+      respawnAvailableAtMs?: number;
+    };
     primaryResource?: string;
     primaryResourceLabel?: string;
     resource?: number;
@@ -240,6 +247,7 @@ export async function fetchBiomesUIPlayerStatus(
     {
       method: "GET",
       credentials: "same-origin",
+      cache: "no-store",
     }
   );
   if (!response.ok) return undefined;

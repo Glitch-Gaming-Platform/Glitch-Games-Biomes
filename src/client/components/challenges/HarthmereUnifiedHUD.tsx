@@ -48,12 +48,16 @@ import {
   cycleHarthmereWeapon,
   ensureHarthmereSpellSlotted,
   ensureHarthmereStarterSwordGranted,
+  readHarthmereInventoryState,
   useHarthmereInventoryState,
 } from "@/client/components/challenges/LocalDevHarthmereInventorySystem";
 import {
   HARTHMERE_INVENTORY_EVENT,
   HARTHMERE_JOBS_BOARD_OPEN_EVENT,
 } from "@/client/components/challenges/harthmereEvents";
+import { harthmereLocalEquipmentBikkieWearables } from "@/shared/harthmere/harthmere_bikkie_wearables";
+import { Wearing } from "@/shared/ecs/gen/components";
+import { anItem } from "@/shared/game/item";
 import { HarthmereLevelingMenuPanel } from "@/client/components/challenges/LocalDevHarthmereLevelingSystem";
 import { HarthmereMissionJournalPanel } from "@/client/components/challenges/LocalDevHarthmereMissionSystem";
 import {
@@ -726,12 +730,34 @@ function useHarthmerePlayerSwordVisualBridge() {
 
 function useHarthmereLocalPlayerWearableMeshBridge() {
   const { resources, userId } = useClientContext();
+  const localWearableSlotsRef = React.useRef<Set<number>>(new Set());
 
   useEffect(() => {
     if (typeof window === "undefined") {
       return;
     }
     const refresh = () => {
+      try {
+        const mapped = harthmereLocalEquipmentBikkieWearables(
+          readHarthmereInventoryState().equipment
+        );
+        const previousSlots = localWearableSlotsRef.current;
+        if (mapped.length > 0 || previousSlots.size > 0) {
+          const wearing =
+            resources.peek("/ecs/c/wearing", userId) ?? Wearing.create();
+          const items = new Map(wearing.items ?? []);
+          for (const slot of previousSlots) {
+            items.delete(slot as any);
+          }
+          for (const wearable of mapped) {
+            items.set(wearable.slot, anItem(wearable.itemId));
+          }
+          localWearableSlotsRef.current = new Set(
+            mapped.map((wearable) => Number(wearable.slot))
+          );
+          resources.set("/ecs/c/wearing", userId, { items } as Wearing);
+        }
+      } catch {}
       resources.invalidate("/scene/player/mesh", userId);
     };
     window.addEventListener(HARTHMERE_INVENTORY_EVENT, refresh);
@@ -1473,6 +1499,10 @@ type HarthmereCombatActorHudSnapshot = {
   behavior?: string;
   socialRole?: string;
   attackable?: boolean;
+  health?: {
+    hp?: number;
+    maxHp?: number;
+  };
   screen?: {
     x: number;
     y: number;
@@ -1600,6 +1630,144 @@ function harthmereHealthBarScreenProjection(
   };
 }
 
+type HarthmereEnemyHealthBarRow = {
+  key: string;
+  label: string;
+  hp: number;
+  maxHp: number;
+  selected: boolean;
+  screen: {
+    x: number;
+    y: number;
+    visible: boolean;
+    depth: number;
+  };
+  depth: number;
+};
+
+function harthmereFiniteHealthValue(value: unknown): number | undefined {
+  const health = Number(value);
+  if (!Number.isFinite(health)) {
+    return undefined;
+  }
+  return Math.max(0, Math.round(health));
+}
+
+function harthmereCombatActorShouldShowHealth(
+  actor: HarthmereCombatActorHudSnapshot
+) {
+  const label = (actor.label ?? "").toLowerCase();
+  const behavior = (actor.behavior ?? "").toLowerCase();
+  const socialRole = (actor.socialRole ?? "").toLowerCase();
+  return (
+    actor.attackable !== false ||
+    behavior === "hostile" ||
+    behavior === "training_dummy" ||
+    socialRole === "hostile" ||
+    socialRole === "wildlife" ||
+    /muck|muckling|mucker|muckernot|hex|hexer|animal|wolf|bear|boar|deer|snake|rat|fox|cat|dog|hound|horse|cow|goat|sheep|frog|crow|raven|chicken|bunny|rabbit|pig|monster|creature|wyrm/.test(
+      label
+    )
+  );
+}
+
+function harthmereHealthBarScreenIsVisible(
+  screen:
+    | {
+        x: number;
+        y: number;
+        visible: boolean;
+        depth: number;
+      }
+    | undefined,
+  viewportWidth: number,
+  viewportHeight: number
+) {
+  return (
+    Boolean(screen?.visible) &&
+    (screen?.x ?? -1) >= -48 &&
+    (screen?.x ?? 0) <= viewportWidth + 48 &&
+    (screen?.y ?? -1) >= -48 &&
+    (screen?.y ?? 0) <= viewportHeight + 48
+  );
+}
+
+function harthmereCombatActorHealthBarScreen(
+  actor: HarthmereCombatActorHudSnapshot,
+  camera:
+    | { three?: any; pos?: () => number[]; view?: () => number[] }
+    | undefined
+) {
+  if (actor.screen) {
+    return actor.screen;
+  }
+  const world = actor.world;
+  if (!world) {
+    return undefined;
+  }
+  return harthmereHealthBarScreenProjection(
+    { x: world[0], y: world[1], z: world[2] },
+    camera
+  );
+}
+
+export function harthmereAttackableActorHealthBarRows(input: {
+  actorHud: Record<string, HarthmereCombatActorHudSnapshot>;
+  camera?: { three?: any; pos?: () => number[]; view?: () => number[] };
+  viewportWidth: number;
+  viewportHeight: number;
+  excludedActorKeys?: Iterable<string>;
+  excludedLiveTargetIds?: Iterable<string>;
+}): HarthmereEnemyHealthBarRow[] {
+  const excludedActorKeys = new Set(input.excludedActorKeys ?? []);
+  const excludedLiveTargetIds = new Set(input.excludedLiveTargetIds ?? []);
+  const rows: HarthmereEnemyHealthBarRow[] = [];
+  for (const [actorKey, actor] of Object.entries(input.actorHud)) {
+    const liveTargetId = actor.liveModeTargetId ?? actor.targetId;
+    if (
+      excludedActorKeys.has(actorKey) ||
+      (liveTargetId !== undefined && excludedLiveTargetIds.has(liveTargetId))
+    ) {
+      continue;
+    }
+
+    const hp = harthmereFiniteHealthValue(actor.health?.hp);
+    const maxHp =
+      harthmereFiniteHealthValue(actor.health?.maxHp) ?? (hp ?? 0);
+    if (
+      hp === undefined ||
+      hp <= 0 ||
+      maxHp <= 0 ||
+      !harthmereCombatActorShouldShowHealth(actor)
+    ) {
+      continue;
+    }
+
+    const screen = harthmereCombatActorHealthBarScreen(actor, input.camera);
+    if (
+      !screen ||
+      !harthmereHealthBarScreenIsVisible(
+        screen,
+        input.viewportWidth,
+        input.viewportHeight
+      )
+    ) {
+      continue;
+    }
+
+    rows.push({
+      key: `actor-${actorKey}`,
+      label: actor.label ?? liveTargetId ?? actorKey,
+      hp,
+      maxHp,
+      selected: false,
+      screen,
+      depth: screen.depth ?? 1,
+    });
+  }
+  return rows;
+}
+
 function HarthmereEnemyHealthBarsHUD() {
   const { reactResources } = useClientContext();
   const combat = useHarthmereCombatState();
@@ -1687,6 +1855,7 @@ function HarthmereEnemyHealthBarsHUD() {
       return {
         offset: Number.NaN,
         key: `live-${entityId}`,
+        entityId,
         label: actor?.label ?? entityId.replace(/^.*:/, ""),
         hp: health.hp,
         maxHp: health.maxHp,
@@ -1701,6 +1870,16 @@ function HarthmereEnemyHealthBarsHUD() {
       };
     })
     .filter((row) => row.show);
+  const coveredActorKeys = new Set(localRows.map((row) => String(row.offset)));
+  const coveredLiveTargetIds = new Set(liveRows.map((row) => row.entityId));
+  const actorRows = harthmereAttackableActorHealthBarRows({
+    actorHud,
+    camera,
+    viewportWidth,
+    viewportHeight,
+    excludedActorKeys: coveredActorKeys,
+    excludedLiveTargetIds: coveredLiveTargetIds,
+  });
   const rows = [
     ...localRows.map((row) => ({
       key: `${row.offset}-${row.npc.name}`,
@@ -1715,6 +1894,7 @@ function HarthmereEnemyHealthBarsHUD() {
       ...row,
       depth: row.screen?.depth ?? 1,
     })),
+    ...actorRows,
   ]
     .sort((a, b) => {
       if (a.selected) return -1;

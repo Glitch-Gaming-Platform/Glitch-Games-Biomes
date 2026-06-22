@@ -1,7 +1,10 @@
 /// <reference types="mocha" />
 
 import assert from "assert";
-import { humanizeBiomesInventoryItemId } from "@/client/components/biomes_ui/adapters/inventoryItemPresentation";
+import {
+  biomesInventoryItemIcon,
+  humanizeBiomesInventoryItemId,
+} from "@/client/components/biomes_ui/adapters/inventoryItemPresentation";
 import { BikkieIds } from "@/shared/bikkie/ids";
 import {
   harthmereBikkieWearableSlotsFromAssignment,
@@ -299,6 +302,14 @@ describe("Harthmere inventory BiomesUI presentation and actions", () => {
 
   it("turns native terrain block breaks into BiomesUI material storage and live loot rolls", async () => {
     const dirtBlockItemId = `b:${BikkieIds.dirt}`;
+    const dirtDisplay = getHarthmereItemDisplay(dirtBlockItemId);
+    assert.equal(dirtDisplay?.name, "Dirt");
+    assert.notEqual(dirtDisplay?.icon, "◼");
+    assert.notEqual(biomesInventoryItemIcon(dirtBlockItemId), "◼");
+    assert.match(
+      dirtDisplay?.icon ?? "",
+      /^(?:\/|https?:\/\/|data:image\/|blob:)/
+    );
     assert.equal(
       harthmereInventoryItemForNativeTerrainBlockForTest({
         blockItemId: dirtBlockItemId,
@@ -359,5 +370,10 @@ describe("Harthmere inventory BiomesUI presentation and actions", () => {
     assert.equal(body.payload.itemId, dirtBlockItemId);
     assert.equal(body.payload.count, 1);
     assert.ok(body.includeSnapshots.includes("playerStatusState"));
+  });
+
+  it("uses readable glyph fallbacks instead of square placeholders for unknown inventory items", () => {
+    assert.equal(biomesInventoryItemIcon("unknown_widget"), "UN");
+    assert.notEqual(biomesInventoryItemIcon("unknown_widget"), "◼");
   });
 });

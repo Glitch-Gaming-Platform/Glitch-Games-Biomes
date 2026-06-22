@@ -56,6 +56,7 @@ import type { Vec3 } from "@/shared/math/types";
 import { loadBlockWrapper, saveBlockWrapper } from "@/shared/wasm/biomes";
 import { z } from "zod";
 import { readHarthmerePlayerAndSharedStateStrings } from "@/server/harthmere/live_mode_state_read_helpers";
+import { disableHarthmereLiveModeHttpCaching } from "@/server/harthmere/live_mode_http_cache";
 import {
   resolveHarthmereLiveModeActorContext,
   type HarthmereLiveModeActorStateAdoption,
@@ -2087,7 +2088,9 @@ export default biomesApiHandler(
     auth,
     body,
     unsafeRequest,
+    unsafeResponse,
   }) => {
+    disableHarthmereLiveModeHttpCaching(unsafeResponse);
     const actorIdentity = liveModeActorIdentityFromRequest({
       auth,
       unsafeRequest,

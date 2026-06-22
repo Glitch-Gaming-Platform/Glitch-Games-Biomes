@@ -2,6 +2,7 @@ import { useClientContext } from "@/client/components/contexts/ClientContextReac
 import { ProgressBar } from "@/client/components/HealthBarHUD";
 import type { InspectShortcuts } from "@/client/components/overlays/inspected/CursorInspectionOverlayComponent";
 import { CursorInspectionComponent } from "@/client/components/overlays/inspected/CursorInspectionOverlayComponent";
+import { submitHarthmereNativePlantHarvestToLiveMode } from "@/client/components/overlays/inspected/nativePlantHarvestLiveModeBridge";
 import { plantInspectionCanHarvest } from "@/client/components/overlays/inspected/plantInspectionShortcuts";
 import type { PlantInspectOverlay } from "@/client/game/resources/overlays";
 import { getBiscuit } from "@/shared/bikkie/active";
@@ -101,6 +102,18 @@ export const PlantInspectionOverlayComponent: React.FunctionComponent<{
     shortcuts.push({
       title: "Harvest",
       onKeyDown: () => {
+        if (plant?.seed) {
+          fireAndForget(
+            submitHarthmereNativePlantHarvestToLiveMode({
+              plantId: overlay.entityId,
+              seedItemId: plant.seed,
+              plantStatus: plant.status,
+              farmingKind: plantBiscuit?.farming?.kind,
+              plantLabel: name,
+              position: overlay.pos,
+            })
+          );
+        }
         fireAndForget(
           events.publish(
             new HarvestPlantEvent({

@@ -97,23 +97,36 @@ export function prepareHarthmereLiveFetchRequest(
   if (!isHarthmereLiveApiPath(url.pathname)) {
     return { input, init };
   }
-  const installId = resolveHarthmereLiveInstallId(url);
-  if (!installId) {
-    return { input, init };
+  let nextInit = init;
+  const method = String(nextInit.method ?? "GET").toUpperCase();
+  if (method === "GET") {
+    // Live state reads are already coalesced in-memory above. Browser/HTTP
+    // caching can replay stale 304 snapshots after a mutation, so always
+    // read these Cloud Save projections from the backend source.
+    nextInit = { ...nextInit, cache: "no-store" };
   }
-
-  if (!url.searchParams.has("install_id")) {
+  const nextHeaders = new Headers(
+    nextInit.headers ?? (isRequestInput(input) ? input.headers : undefined)
+  );
+  if (method === "GET") {
+    nextHeaders.delete("If-None-Match");
+    nextHeaders.delete("If-Modified-Since");
+    nextHeaders.delete("If-Range");
+    if (!nextHeaders.has("Cache-Control")) {
+      nextHeaders.set("Cache-Control", "no-cache");
+    }
+    if (!nextHeaders.has("Pragma")) {
+      nextHeaders.set("Pragma", "no-cache");
+    }
+  }
+  const installId = resolveHarthmereLiveInstallId(url);
+  if (installId && !url.searchParams.has("install_id")) {
     url.searchParams.set("install_id", installId);
   }
-
-  const nextHeaders = new Headers(
-    init.headers ??
-      (isRequestInput(input) ? input.headers : undefined)
-  );
-  if (!nextHeaders.has(HARTHMERE_LIVE_INSTALL_HEADER)) {
+  if (installId && !nextHeaders.has(HARTHMERE_LIVE_INSTALL_HEADER)) {
     nextHeaders.set(HARTHMERE_LIVE_INSTALL_HEADER, installId);
   }
-  const nextInit = { ...init, headers: nextHeaders };
+  nextInit = { ...nextInit, headers: nextHeaders };
 
   if (isRequestInput(input)) {
     return {
@@ -229,6 +242,10 @@ export function resetHarthmereLiveFetchCache() {
   harthmereLiveFetchCache().clear();
 }
 
+export function invalidateHarthmereLiveFetchCache() {
+  harthmereLiveFetchCache().clear();
+}
+
 export function coalescedHarthmereLiveFetch(
   fetchImpl: typeof fetch,
   input: RequestInfo | URL,
@@ -244,6 +261,19 @@ export function coalescedHarthmereLiveFetch(
       : input instanceof URL
       ? input.toString()
       : (input as Request).url;
+  let preparedUrl: URL | undefined;
+  try {
+    preparedUrl = new URL(url, urlBaseForHarthmereLiveFetch());
+  } catch {
+    preparedUrl = undefined;
+  }
+  if (
+    preparedUrl &&
+    isHarthmereLiveApiPath(preparedUrl.pathname) &&
+    String(init.method ?? "GET").toUpperCase() !== "GET"
+  ) {
+    invalidateHarthmereLiveFetchCache();
+  }
   const plan = planHarthmereLiveFetchCache({
     method: init.method,
     hasCustomSignal: Boolean(init.signal),

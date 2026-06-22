@@ -72,7 +72,7 @@ function renderBankingIcon(icon: string | undefined, size = 20) {
     "aria-hidden": true,
     "data-banking-icon-kind": "glyph",
     style: { fontSize: size },
-  }, icon || "◼");
+  }, icon || "IT");
 }
 
 export const BankingTab: React.FunctionComponent<{ adapter?: BankingAdapter }> = ({ adapter }) => {

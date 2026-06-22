@@ -1,6 +1,8 @@
 import { connectToRedis } from "@/server/shared/redis/connection";
 import { biomesApiHandler } from "@/server/web/util/api_middleware";
 import { readHarthmereRedisStrings } from "@/server/harthmere/live_mode_state_read_helpers";
+import { resolveHarthmereLiveModeActorId } from "@/server/harthmere/live_mode_actor_resolution";
+import { disableHarthmereLiveModeHttpCaching } from "@/server/harthmere/live_mode_http_cache";
 import {
   createHarthmereCareLoopClientSnapshotFromBackend,
   harthmereLiveModePlayerStateKey,
@@ -35,6 +37,29 @@ function liveModeDailyStateRedis() {
     connectToRedis("firehose"));
 }
 
+export async function resolveHarthmereLiveModeDailyStateActorId(input: {
+  redis: {
+    primary: {
+      get: (key: string) => Promise<string | null>;
+    };
+  };
+  auth?: { userId?: unknown };
+  unsafeRequest: {
+    query?: Record<string, unknown>;
+    headers?: Record<string, unknown>;
+  };
+}) {
+  return resolveHarthmereLiveModeActorId(
+    input.redis,
+    { auth: input.auth, unsafeRequest: input.unsafeRequest },
+    "anonymous:daily-state-reader",
+    {
+      allowIdentityWrites: false,
+      allowStateAdoptionPlan: false,
+    }
+  );
+}
+
 export async function readHarthmereLiveModeDailyStateForActor(input: {
   redis: {
     primary: {
@@ -59,13 +84,18 @@ export async function readHarthmereLiveModeDailyStateForActor(input: {
 
 export default biomesApiHandler(
   {
-    auth: "required",
+    auth: "optional",
     method: "GET",
     response: zHarthmereLiveModeDailyStateResponse,
   },
-  async ({ auth: { userId } }) => {
-    const actorId = String(userId);
+  async ({ auth, unsafeRequest, unsafeResponse }) => {
+    disableHarthmereLiveModeHttpCaching(unsafeResponse);
     const redis = await liveModeDailyStateRedis();
+    const actorId = await resolveHarthmereLiveModeDailyStateActorId({
+      redis,
+      auth,
+      unsafeRequest,
+    });
     const nowMs = Date.now();
     return {
       ok: true,

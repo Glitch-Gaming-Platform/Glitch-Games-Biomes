@@ -3,6 +3,7 @@ import assert from "assert";
 import { resolveSharedQuestMarkerPosition } from "@/client/components/biomes_ui/adapters/questInviteAdapter";
 import {
   harthmereJobsBoardQuestMarkerPositions,
+  harthmereJobsBoardQuestMarkerRuntimePosition,
 } from "@/shared/harthmere/jobs_board_quest_marker_positions";
 
 // HARTHMERE shared-quest landmark fallback
@@ -26,10 +27,11 @@ describe("resolveSharedQuestMarkerPosition", () => {
     const resolved = resolveSharedQuestMarkerPosition({
       firstMarkerId: known.markerId,
     });
+    const runtime = harthmereJobsBoardQuestMarkerRuntimePosition(known);
     assert.deepStrictEqual(resolved, [
-      known.position[0],
-      known.position[1],
-      known.position[2],
+      runtime.position[0],
+      runtime.position[1],
+      runtime.position[2],
     ]);
   });
 

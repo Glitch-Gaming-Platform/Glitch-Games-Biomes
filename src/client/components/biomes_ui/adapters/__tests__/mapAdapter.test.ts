@@ -69,6 +69,14 @@ const FIXTURE_LANDMARKS = [
     visibleOnWorldMap: true,
   },
   {
+    id: "mosslawn_warning_moss",
+    label: "Warning Moss Patch",
+    position: [548, 70, -188],
+    kind: "resource",
+    area: "mosslawn",
+    visibleOnWorldMap: true,
+  },
+  {
     id: "muckwad_patch",
     label: "Muckwad Patch",
     position: [512, 70, -152],
@@ -141,6 +149,17 @@ const FIXTURE_QUESTS = [
     objectives: ["Talk to Merl"],
     reward: "30 XP",
     area: "The Grove",
+  },
+  {
+    id: "moss_that_went_quiet",
+    title: "The Moss That Went Quiet",
+    markerIds: ["mosslawn_warning_moss", "mosslawn_warning_moss"],
+    objectives: [
+      "Inspect three moss patches and note which has gone silent.",
+      "Gather a warning moss sample without disturbing nearby animals.",
+    ],
+    reward: "45 XP",
+    area: "Mosslawn",
   },
 ];
 
@@ -696,6 +715,40 @@ describe("biomes_ui map adapter (V141)", () => {
       .getMarkers()
       .find((marker) => marker.label.includes("Merl"));
     assert.equal(merl?.active, true);
+  });
+
+  it("projects accepted Warning Moss Patch quests from Cloud Save into BiomesUI quests", () => {
+    installFixture({
+      activeObjectiveIndex: 0,
+      completedQuestIds: [],
+      acceptedQuestIds: [],
+    });
+
+    const adapter = buildBiomesUIMapAdapterForTest(1, undefined, undefined, {
+      version: "harthmere-live-mode-quest-state",
+      actorId: "player_warning_moss",
+      active: {
+        moss_that_went_quiet: {
+          stepId: "moss_that_went_quiet:1:collect",
+          progress: 2,
+        },
+      },
+      completed: {},
+      updatedAtMs: Date.now(),
+    });
+    const quest = adapter
+      .getTrackableQuests()
+      .find((entry) => entry.questId === "moss_that_went_quiet");
+    assert.equal(quest?.status, "active");
+    assert.equal(quest?.title, "The Moss That Went Quiet");
+    assert.equal(quest?.objective, quest?.objectives[1]);
+    assert.equal(quest?.firstMarkerId, "mosslawn_warning_moss");
+
+    const marker = adapter
+      .getMarkers()
+      .find((entry) => entry.id === "mosslawn_warning_moss");
+    assert.equal(marker?.active, true);
+    assert.equal(marker?.kind, "objective");
   });
 
   it("still returns business outpost markers when the snapshot api is missing", () => {

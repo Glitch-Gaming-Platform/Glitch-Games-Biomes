@@ -24,6 +24,8 @@ import {
   parseHarthmereLiveModeSharedWorldState,
   repairHarthmereStatusReadStaminaDeath,
   tickHarthmereLiveModeStaminaForGameplay,
+  createHarthmereLiveModeBuildingClientSnapshot,
+  type HarthmereLiveEntityKind,
   type HarthmereLiveModeBackendState,
 } from "../live_mode_backend";
 import {
@@ -92,12 +94,23 @@ import {
   liveEntityRobotDefaultRobotIdForArea,
 } from "@/shared/harthmere/live_entity_robot_energy_protection";
 import {
+  BUILDING_SYSTEM_CONSTRUCTION_STAGES,
+  buildingSystemBlueprintById,
+  buildingSystemBusinessTypeById,
   buildingSystemHomeConsoleMarkerId,
+  buildingSystemMaterialRequirementLines,
   buildingSystemPlotById,
 } from "@/shared/harthmere/building_system";
 import { createHarthmereLiveEntityCombatSnapshotsFromEcsRecords } from "@/shared/harthmere/live_entity_ecs_bridge";
 import { HARTHMERE_VOXEL_INTERACTION_ATTACK_REACH_UNITS } from "@/shared/harthmere/combat_reach";
 import { HARTHMERE_RECIPE_BOOKS } from "../harthmere_recipe_books";
+import {
+  HARTHMERE_CARE_LOOP_DAY_MS,
+  HARTHMERE_CARE_DAILY_ACTIVITIES,
+  HARTHMERE_DAILY_TASK_MIN_GOLD,
+  harthmereDailyTaskXpReward,
+} from "../mmo_care_loops";
+import { HARTHMERE_SEED_DEFINITIONS } from "../mmo_farming_food_stamina";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -1295,6 +1308,14 @@ describe("reduceHarthmereLiveModeBackendState — death lifecycle", function () 
       state.combat.deathRecords.fatal_fall_damage.cause,
       "fall_damage"
     );
+    assert.strictEqual(
+      createHarthmereLiveModePlayerStatusClientSnapshot(state).combat.lastDeath
+        ?.cause,
+      "fall_damage"
+    );
+    const respawned = applyOne(state, "request_respawn").state;
+    assert.strictEqual(respawned.combat.deathState, "alive");
+    assert.strictEqual(respawned.combat.hp, respawned.combat.maxHp);
   });
 
   it("request_environment_damage applies drowning damage to live player status", function () {
@@ -1340,6 +1361,14 @@ describe("reduceHarthmereLiveModeBackendState — death lifecycle", function () 
       state.combat.deathRecords.fatal_drowning_damage.cause,
       "drowning"
     );
+    assert.strictEqual(
+      createHarthmereLiveModePlayerStatusClientSnapshot(state).combat.lastDeath
+        ?.cause,
+      "drowning"
+    );
+    const respawned = applyOne(state, "request_respawn").state;
+    assert.strictEqual(respawned.combat.deathState, "alive");
+    assert.strictEqual(respawned.combat.hp, respawned.combat.maxHp);
   });
 
   it("repairs zero-HP alive snapshots so status and respawn treat the player as dead", function () {
@@ -1414,6 +1443,14 @@ describe("reduceHarthmereLiveModeBackendState — death lifecycle", function () 
         (record) => record.cause === "stamina_depleted"
       )
     );
+    assert.strictEqual(
+      createHarthmereLiveModePlayerStatusClientSnapshot(s).combat.lastDeath
+        ?.cause,
+      "stamina_depleted"
+    );
+    const respawned = applyOne(s, "request_respawn").state;
+    assert.strictEqual(respawned.combat.deathState, "alive");
+    assert.strictEqual(respawned.combat.hp, respawned.combat.maxHp);
   });
 
   it("repairs stale status-read stamina deaths without reviving newer real deaths", function () {
@@ -1959,6 +1996,14 @@ describe("reduceHarthmereLiveModeBackendState — combat target authority", func
       createHarthmereLiveModePlayerStatusClientSnapshot(s).combat.hp,
       0
     );
+    assert.match(
+      createHarthmereLiveModePlayerStatusClientSnapshot(s).combat.lastDeath
+        ?.cause ?? "",
+      new RegExp(npcId)
+    );
+    const respawned = applyOne(s, "request_respawn").state;
+    assert.equal(respawned.combat.deathState, "alive");
+    assert.equal(respawned.combat.hp, respawned.combat.maxHp);
 
     const repeated = applyOne(
       s,
@@ -3782,7 +3827,7 @@ describe("reduceHarthmereLiveModeBackendState — combat target authority", func
         { health_potion: 1 },
         "loot_weight_hit"
       );
-      state.inventory.items = { iron_sword: 5 };
+      state.inventory.items = { health_potion: 25 };
       const rejected = applyOne(
         state,
         "request_loot_claim",
@@ -3798,7 +3843,8 @@ describe("reduceHarthmereLiveModeBackendState — combat target authority", func
       assert.ok(
         rejected.summary.warnings.includes(
           "loot_rejected:carry_weight_limit_exceeded"
-        )
+        ),
+        JSON.stringify(rejected.summary.warnings)
       );
       assert.equal(
         rejected.state.inventoryLoot.lootDrops[dropId].status,
@@ -3829,6 +3875,144 @@ describe("reduceHarthmereLiveModeBackendState — combat target authority", func
     assert.equal(claimed.banking.materialStorage.iron_ore, 3);
     assert.equal(claimed.inventory.items.iron_ore ?? 0, 0);
     assert.equal(claimed.inventoryLoot.lootDrops[dropId].status, "claimed");
+  });
+
+  it("runs attack, death, floating drop, F-claim, and inventory routing for every living entity type", function () {
+    const cases: Array<{
+      label: string;
+      entityKind: HarthmereLiveEntityKind;
+      species?: string;
+      lootDrops?: Record<string, number>;
+      expectedItemId: string;
+      expectedCount?: number;
+      expectedRoute: "inventory" | "material_storage";
+    }> = [
+      {
+        label: "mucker",
+        entityKind: "mux",
+        species: "gravewood pale muckling",
+        lootDrops: { health_potion: 1 },
+        expectedItemId: "health_potion",
+        expectedRoute: "inventory",
+      },
+      {
+        label: "hex",
+        entityKind: "hex",
+        species: "hexer",
+        lootDrops: { health_potion: 1 },
+        expectedItemId: "health_potion",
+        expectedRoute: "inventory",
+      },
+      {
+        label: "monster",
+        entityKind: "monster",
+        species: "muck scarred beast",
+        lootDrops: { health_potion: 1 },
+        expectedItemId: "health_potion",
+        expectedRoute: "inventory",
+      },
+      {
+        label: "animal",
+        entityKind: "animal",
+        species: "rabbit",
+        expectedItemId: "raw_meat",
+        expectedCount: 2,
+        expectedRoute: "material_storage",
+      },
+      {
+        label: "npc",
+        entityKind: "npc",
+        species: "bandit",
+        lootDrops: { health_potion: 1 },
+        expectedItemId: "health_potion",
+        expectedRoute: "inventory",
+      },
+    ];
+
+    for (const entry of cases) {
+      let state = freshState();
+      const targetId = `live_${entry.label}_loot_progression`;
+      state.classMagic.knownAbilities = ["basic_attack"];
+      state.classMagic.loadout = { slot_0: "basic_attack" };
+      state.combat.entitySnapshots[targetId] = {
+        hp: 1,
+        maxHp: 40,
+        position: { x: 1, y: 0, z: 0 },
+        isHostile: true,
+        isAlive: true,
+        isAttackable: true,
+        entityKind: entry.entityKind,
+        species: entry.species,
+        level: 1,
+        lootDrops: entry.lootDrops,
+      };
+
+      ({ state } = applyOne(
+        state,
+        "request_attack",
+        { abilityId: "basic_attack" },
+        {
+          targetId,
+          requestId: `kill_${entry.label}_loot_progression`,
+          idempotencyKey: `kill_${entry.label}_loot_progression_key`,
+        }
+      ));
+
+      const target = state.combat.entitySnapshots[targetId];
+      const dropId = target.lootDropId!;
+      const drop = state.inventoryLoot.lootDrops[dropId];
+      assert.equal(target.isAlive, false, entry.label);
+      assert.equal(target.animationState, "death", entry.label);
+      assert.ok(dropId, entry.label);
+      assert.equal(drop.status, "available", entry.label);
+      const expectedCount = entry.expectedCount ?? 1;
+      assert.equal(
+        drop.itemStacks[entry.expectedItemId],
+        expectedCount,
+        entry.label
+      );
+      assert.ok(drop.position, entry.label);
+      assert.ok(
+        drop.position.y > target.position.y,
+        `${entry.label} loot should float above the defeated body`
+      );
+
+      const claimed = applyOne(
+        state,
+        "request_loot_claim",
+        {
+          dropId,
+          pickupToken: drop.pickupToken,
+        },
+        {
+          requestId: `claim_${entry.label}_loot_progression`,
+          idempotencyKey: `claim_${entry.label}_loot_progression_key`,
+        }
+      ).state;
+      assert.equal(
+        claimed.inventoryLoot.lootDrops[dropId].status,
+        "claimed",
+        entry.label
+      );
+      if (entry.expectedRoute === "material_storage") {
+        assert.equal(
+          claimed.banking.materialStorage[entry.expectedItemId],
+          expectedCount,
+          entry.label
+        );
+        assert.equal(
+          claimed.inventory.items[entry.expectedItemId] ?? 0,
+          0,
+          entry.label
+        );
+      } else {
+        assert.equal(
+          claimed.inventory.items[entry.expectedItemId],
+          expectedCount,
+          entry.label
+        );
+      }
+    }
   });
 });
 
@@ -4313,6 +4497,51 @@ describe("reduceHarthmereLiveModeBackendState — loot and inventory mutation", 
     );
   });
 
+  it("persists Road Ahead starter clothing as Cloud Save inventory and equipment", function () {
+    let s = freshState();
+    let result = applyOne(s, "request_loot_roll", {
+      itemId: "baker_apron",
+      count: 1,
+      source: "Road Ahead Clothing Crate",
+    });
+    s = result.state;
+    assert.equal(s.inventory.items.baker_apron, 1);
+    assert.equal(s.banking.materialStorage.baker_apron ?? 0, 0);
+    assert.ok(result.summary.touchedModels.includes("inventory_items"));
+
+    result = applyOne(s, "request_equipment_change", {
+      itemId: "baker_apron",
+      slot: "chest",
+    });
+    s = result.state;
+    assert.equal(s.inventory.items.baker_apron ?? 0, 0);
+    assert.equal(s.inventory.equipment.chest, "baker_apron");
+    assert.ok(result.summary.touchedModels.includes("equipment_slots"));
+  });
+
+  it("mirrors trusted local Harthmere equipment before equipping when Cloud Save is missing the item", function () {
+    const { state, summary } = applyOne(
+      freshState(),
+      "request_equipment_change",
+      { itemId: "field_trousers", slot: "legs" },
+      {
+        clientClaims: {
+          source: "biomes_ui_local_harthmere_item_equip",
+          instanceId: "local-field-trousers",
+        },
+      }
+    );
+
+    assert.equal(state.inventory.items.field_trousers ?? 0, 0);
+    assert.equal(state.inventory.equipment.legs, "field_trousers");
+    assert.ok(
+      summary.warnings.includes(
+        "equipment_mirrored_local_item:field_trousers"
+      )
+    );
+    assert.ok(summary.touchedModels.includes("equipment_slots"));
+  });
+
   it("rejects public request_inventory_mutation admin grants", function () {
     const s = freshState();
     const { state, summary } = applyOne(s, "request_inventory_mutation", {
@@ -4727,6 +4956,42 @@ describe("reduceHarthmereLiveModeBackendState — quest state", function () {
     assert.ok(state.quests.active["quest_goblin_slayer"] === undefined);
   });
 
+  it("persists Snapshot Grove quest accepts and completion to the Cloud Save quest snapshot", function () {
+    const s = freshState();
+    const accepted = applyOne(s, "request_quest_state_update", {
+      questId: "moss_that_went_quiet",
+      source: "snapshot_grove",
+      stepId: "moss_that_went_quiet:1:collect",
+      progress: 2,
+      completed: false,
+    });
+    assert.deepEqual(accepted.summary.warnings, []);
+    assert.deepEqual(accepted.state.quests.active["moss_that_went_quiet"], {
+      stepId: "moss_that_went_quiet:1:collect",
+      progress: 2,
+    });
+
+    const completed = applyOne(
+      accepted.state,
+      "request_quest_state_update",
+      {
+        questId: "moss_that_went_quiet",
+        source: "snapshot_grove",
+        stepId: "moss_that_went_quiet:3:talk_npc",
+        progress: 4,
+        completed: true,
+      }
+    );
+    assert.deepEqual(completed.summary.warnings, []);
+    assert.ok(
+      completed.state.quests.completed["moss_that_went_quiet"] !== undefined
+    );
+    assert.equal(
+      completed.state.quests.active["moss_that_went_quiet"],
+      undefined
+    );
+  });
+
   it("no-ops when questId is absent from payload", function () {
     const s = freshState();
     const before = JSON.stringify(s.quests);
@@ -5136,7 +5401,129 @@ describe("reduceHarthmereLiveModeBackendState — quest state", function () {
 });
 
 // ===========================================================================
-// 16. request_guild_mutation
+// 16. request_care_loop_action — daily task progression
+// ===========================================================================
+
+describe("reduceHarthmereLiveModeBackendState — daily task progression", function () {
+  const dailyTasks = [
+    "check_in",
+    "jobs_board",
+    "eat_meal",
+    "main_quest",
+    "talk_neighbor",
+    "forage_walk",
+    "garden_care",
+    "home_care",
+  ];
+
+  for (const targetId of dailyTasks) {
+    it(`completes, claims, rewards, and duplicate-protects ${targetId}`, function () {
+      let state = freshState();
+      const day = Math.floor(NOW_MS / HARTHMERE_CARE_LOOP_DAY_MS);
+      const key = `${day}:${targetId}`;
+      const reward = HARTHMERE_CARE_DAILY_ACTIVITIES[targetId] ?? {};
+
+      if (targetId !== "check_in") {
+        const prematureClaim = applyOne(
+          state,
+          "request_care_loop_action",
+          {
+            operation: "daily_check_in",
+            targetId,
+          },
+          { subsystem: "care" }
+        );
+        assert.ok(
+          prematureClaim.summary.warnings.includes(
+            "care_rejected:daily_task_not_done"
+          )
+        );
+        assert.equal(prematureClaim.state.inventory.gold, state.inventory.gold);
+
+        const completed = applyOne(
+          state,
+          "request_care_loop_action",
+          {
+            operation: "daily_task_completed",
+            targetId,
+          },
+          { subsystem: "care" }
+        );
+        assert.deepEqual(completed.summary.warnings, []);
+        assert.ok(completed.state.careLoops.daily.completed[key]);
+        state = completed.state;
+
+        const duplicateCompletion = applyOne(
+          state,
+          "request_care_loop_action",
+          {
+            operation: "daily_task_completed",
+            targetId,
+          },
+          { subsystem: "care" }
+        );
+        assert.ok(
+          duplicateCompletion.summary.warnings.includes(
+            "care_rejected:daily_task_already_done"
+          )
+        );
+      }
+
+      const goldBeforeClaim = state.inventory.gold;
+      const careXpBeforeClaim = state.classMagic.skills.care?.xp ?? 0;
+      const claimed = applyOne(
+        state,
+        "request_care_loop_action",
+        {
+          operation: "daily_check_in",
+          targetId,
+        },
+        { subsystem: "care" }
+      );
+
+      assert.deepEqual(claimed.summary.warnings, []);
+      assert.ok(claimed.state.careLoops.daily.completed[key]);
+      assert.ok(claimed.state.careLoops.daily.claimed[key]);
+      assert.equal(
+        claimed.state.inventory.gold,
+        goldBeforeClaim + HARTHMERE_DAILY_TASK_MIN_GOLD
+      );
+      assert.equal(
+        claimed.state.classMagic.skills.care.xp,
+        careXpBeforeClaim + harthmereDailyTaskXpReward({ actorLevel: 1 })
+      );
+      for (const [itemId, count] of Object.entries(reward.rewardItems ?? {})) {
+        assert.equal(claimed.state.inventory.items[itemId], count);
+      }
+
+      const duplicateClaim = applyOne(
+        claimed.state,
+        "request_care_loop_action",
+        {
+          operation: "daily_check_in",
+          targetId,
+        },
+        { subsystem: "care" }
+      );
+      assert.ok(
+        duplicateClaim.summary.warnings.includes(
+          "care_rejected:daily_already_claimed"
+        )
+      );
+      assert.equal(
+        duplicateClaim.state.inventory.gold,
+        claimed.state.inventory.gold
+      );
+      assert.equal(
+        duplicateClaim.state.classMagic.skills.care.xp,
+        claimed.state.classMagic.skills.care.xp
+      );
+    });
+  }
+});
+
+// ===========================================================================
+// 17. request_guild_mutation
 // ===========================================================================
 
 describe("reduceHarthmereLiveModeBackendState — guild mutation", function () {
@@ -5679,6 +6066,138 @@ describe("reduceHarthmereLiveModeBackendState — farming", function () {
       "harvested"
     );
     assert.equal(harvested.state.farming.harvests.farm_plot_002, readyAt);
+  });
+
+  it("bridges native Biomes F-harvests into Cloud Save inventory for every harvestable seed", function () {
+    this.timeout(60_000);
+    const harvestableSeeds = Object.values(HARTHMERE_SEED_DEFINITIONS).filter(
+      (seed) =>
+        !/\btree\b|\b(oak|birch|rubber|sakura)\b/i.test(
+          [
+            seed.displayName,
+            seed.cropDisplayName,
+            seed.cropItemId,
+            seed.metadata?.category,
+          ]
+            .filter(Boolean)
+            .join(" ")
+        )
+    );
+    assert.ok(
+      harvestableSeeds.length > 20,
+      "expected the full Bikkie crop catalog to be exercised"
+    );
+
+    for (const seed of harvestableSeeds) {
+      const plantId = `native_plant_${seed.seedItemId}`;
+      const result = applyOne(freshState(), "request_farming_action", {
+        operation: "native_plant_harvest",
+        plantId,
+        seedItemId: seed.seedItemId,
+        plantStatus: "fully_grown",
+        farmingKind: "plant",
+      });
+      assert.deepEqual(
+        result.summary.warnings.filter((warning) =>
+          warning.startsWith("farming_rejected:")
+        ),
+        [],
+        seed.displayName
+      );
+      assert.equal(
+        result.state.inventory.items[seed.yieldItemId],
+        seed.yieldCount,
+        seed.displayName
+      );
+      assert.equal(result.state.farming.harvests[plantId], NOW_MS);
+      assert.equal(
+        result.state.combat.lootClaims[`native_plant_harvest:${plantId}`],
+        NOW_MS
+      );
+      assert.ok(result.summary.touchedModels.includes("inventory_items"));
+      assert.ok(result.summary.touchedModels.includes("loot_claims"));
+    }
+  });
+
+  it("rejects duplicate, immature, unknown, and tree native plant harvests without mutating inventory", function () {
+    const raspberrySeed = HARTHMERE_SEED_DEFINITIONS[String(BikkieIds.raspberrySeed)];
+    assert.ok(raspberrySeed);
+    const first = applyOne(freshState(), "request_farming_action", {
+      operation: "native_plant_harvest",
+      plantId: "native_raspberry_001",
+      seedItemId: raspberrySeed.seedItemId,
+      plantStatus: "fully_grown",
+      farmingKind: "plant",
+    });
+    assert.equal(
+      first.state.inventory.items[raspberrySeed.yieldItemId],
+      raspberrySeed.yieldCount
+    );
+
+    const duplicate = applyOne(first.state, "request_farming_action", {
+      operation: "native_plant_harvest",
+      plantId: "native_raspberry_001",
+      seedItemId: raspberrySeed.seedItemId,
+      plantStatus: "fully_grown",
+      farmingKind: "plant",
+    });
+    assert.ok(
+      duplicate.summary.warnings.includes(
+        "farming_rejected:plant_already_harvested"
+      )
+    );
+    assert.equal(
+      duplicate.state.inventory.items[raspberrySeed.yieldItemId],
+      raspberrySeed.yieldCount
+    );
+
+    const immature = applyOne(freshState(), "request_farming_action", {
+      operation: "native_plant_harvest",
+      plantId: "native_raspberry_immature",
+      seedItemId: raspberrySeed.seedItemId,
+      plantStatus: "growing",
+      farmingKind: "plant",
+    });
+    assert.ok(
+      immature.summary.warnings.includes("farming_rejected:plant_not_ready")
+    );
+    assert.equal(immature.state.inventory.items[raspberrySeed.yieldItemId] ?? 0, 0);
+
+    const unknown = applyOne(freshState(), "request_farming_action", {
+      operation: "native_plant_harvest",
+      plantId: "native_unknown_001",
+      seedItemId: "missing_seed",
+      plantStatus: "fully_grown",
+      farmingKind: "plant",
+    });
+    assert.ok(unknown.summary.warnings.includes("farming_rejected:unknown_seed"));
+
+    const treeSeed = Object.values(HARTHMERE_SEED_DEFINITIONS).find((seed) =>
+      /\btree\b|\b(oak|birch|rubber|sakura)\b/i.test(
+        [
+          seed.displayName,
+          seed.cropDisplayName,
+          seed.cropItemId,
+          seed.metadata?.category,
+        ]
+          .filter(Boolean)
+          .join(" ")
+      )
+    );
+    assert.ok(treeSeed);
+    const tree = applyOne(freshState(), "request_farming_action", {
+      operation: "native_plant_harvest",
+      plantId: "native_tree_001",
+      seedItemId: treeSeed.seedItemId,
+      plantStatus: "fully_grown",
+      farmingKind: "tree",
+    });
+    assert.ok(
+      tree.summary.warnings.includes(
+        "farming_rejected:tree_harvest_not_supported"
+      )
+    );
+    assert.equal(tree.state.inventory.items[treeSeed.yieldItemId] ?? 0, 0);
   });
 
   it("mines Exotic Matter deposits once and replenishes them on the server clock", function () {
@@ -6249,6 +6768,113 @@ describe("reduceHarthmereLiveModeBackendState — farming", function () {
 // ===========================================================================
 
 describe("reduceHarthmereLiveModeBackendState — building mutation", function () {
+  function grantAllConstructionMaterials(
+    state: HarthmereLiveModeBackendState,
+    blueprintId: string
+  ) {
+    const blueprint = buildingSystemBlueprintById(blueprintId);
+    assert.ok(blueprint, `missing blueprint ${blueprintId}`);
+    for (const stage of BUILDING_SYSTEM_CONSTRUCTION_STAGES) {
+      for (const line of buildingSystemMaterialRequirementLines({
+        blueprint,
+        stage,
+      })) {
+        state.inventory.items[line.itemId] =
+          (state.inventory.items[line.itemId] ?? 0) + line.required;
+      }
+    }
+  }
+
+  function completeConstructionProject(input: {
+    state: HarthmereLiveModeBackendState;
+    plotId: string;
+    blueprintId: string;
+    testDuplicateFirstStage?: boolean;
+  }) {
+    let state = input.state;
+    let started = applyOne(
+      state,
+      "request_property_building_mutation",
+      {
+        buildingAction: "start_construction",
+        plotId: input.plotId,
+        blueprintId: input.blueprintId,
+      },
+      { subsystem: "building", zoneId: "the_grove" }
+    );
+    assert.deepEqual(
+      started.summary.warnings.filter((warning) =>
+        warning.includes("rejected")
+      ),
+      []
+    );
+    state = started.state;
+
+    const duplicateStart = applyOne(
+      state,
+      "request_property_building_mutation",
+      {
+        buildingAction: "start_construction",
+        plotId: input.plotId,
+        blueprintId: input.blueprintId,
+      },
+      { subsystem: "building", zoneId: "the_grove" }
+    );
+    assert.ok(
+      duplicateStart.summary.warnings.includes(
+        "building_project_idempotent:project_already_exists"
+      )
+    );
+    assert.equal(duplicateStart.state.inventory.gold, state.inventory.gold);
+
+    let testedDuplicateStage = false;
+    for (const stage of BUILDING_SYSTEM_CONSTRUCTION_STAGES) {
+      const contributed = applyOne(
+        state,
+        "request_property_building_mutation",
+        {
+          buildingAction: "contribute_stage",
+          plotId: input.plotId,
+          blueprintId: input.blueprintId,
+          stage,
+          contributeAll: true,
+        },
+        { subsystem: "building", zoneId: "the_grove" }
+      );
+      assert.deepEqual(
+        contributed.summary.warnings.filter((warning) =>
+          warning.includes("rejected")
+        ),
+        [],
+        `${input.plotId}:${stage}`
+      );
+      state = contributed.state;
+
+      if (input.testDuplicateFirstStage && !testedDuplicateStage) {
+        const duplicateStage = applyOne(
+          state,
+          "request_property_building_mutation",
+          {
+            buildingAction: "contribute_stage",
+            plotId: input.plotId,
+            blueprintId: input.blueprintId,
+            stage,
+            contributeAll: true,
+          },
+          { subsystem: "building", zoneId: "the_grove" }
+        );
+        assert.ok(
+          duplicateStage.summary.warnings.includes(
+            "building_stage_idempotent:stage_already_completed"
+          )
+        );
+        state = duplicateStage.state;
+        testedDuplicateStage = true;
+      }
+    }
+    return state;
+  }
+
   it("rejects placement when the actor has not claimed the real Grove plot", function () {
     const s = freshState();
     s.inventory.gold = 1_000;
@@ -6290,6 +6916,7 @@ describe("reduceHarthmereLiveModeBackendState — building mutation", function (
     );
 
     assert.ok(state.building.ownedPlots.includes(plot.plotId));
+    assert.equal(state.inventory.gold, 1_000 - plot.claimPriceGold);
     assert.equal(state.building.safeZones[plot.plotId].safeFromMuck, false);
     const plan = summary.buildingMaterializationPlans?.find(
       (entry: any) => entry.reason === "plot_claim_muck_deed"
@@ -6306,6 +6933,275 @@ describe("reduceHarthmereLiveModeBackendState — building mutation", function (
       state.building.inWorldMarkers[`${plot.plotId}:map`].label,
       /muck deed/i
     );
+  });
+
+  it("runs the full home flow from land purchase through reload-safe completed cottage", function () {
+    let state = freshState();
+    state.inventory.gold = 500;
+    const plotId = "grove_muckstead_cottage_lot";
+    const blueprintId = "grove_voxel_cottage_tier_1";
+    grantAllConstructionMaterials(state, blueprintId);
+
+    const claimed = applyOne(
+      state,
+      "request_property_building_mutation",
+      {
+        buildingAction: "claim_plot",
+        plotId,
+      },
+      { subsystem: "building", zoneId: "the_grove" }
+    );
+    state = claimed.state;
+    assert.equal(state.inventory.gold, 475);
+    assert.ok(state.building.ownedPlots.includes(plotId));
+    assert.equal(state.building.safeZones[plotId].safeFromMuck, true);
+    assert.ok(
+      claimed.summary.buildingMaterializationPlans?.some(
+        (plan: any) => plan.reason === "plot_claim_safe_ground"
+      )
+    );
+    const claimReloadSnapshot = createHarthmereLiveModeBuildingClientSnapshot(
+      parseHarthmereLiveModeBackendState(JSON.stringify(state), ACTOR, NOW_MS)
+    );
+    assert.ok(claimReloadSnapshot.ownedPlotIds.includes(plotId));
+    assert.equal(claimReloadSnapshot.safeZones[plotId].safeFromMuck, true);
+    assert.equal(claimReloadSnapshot.gold, 475);
+
+    const duplicateClaim = applyOne(
+      state,
+      "request_property_building_mutation",
+      {
+        buildingAction: "claim_plot",
+        plotId,
+      },
+      { subsystem: "building", zoneId: "the_grove" }
+    );
+    assert.ok(
+      duplicateClaim.summary.warnings.includes(
+        "plot_claim_idempotent:already_owned_by_actor"
+      )
+    );
+    assert.equal(duplicateClaim.state.inventory.gold, state.inventory.gold);
+
+    state = completeConstructionProject({
+      state,
+      plotId,
+      blueprintId,
+      testDuplicateFirstStage: true,
+    });
+
+    const propertyId = "property_grove_muckstead_cottage_lot";
+    assert.ok(state.property.owned[propertyId]);
+    assert.equal(state.property.owned[propertyId].use, "home");
+    assert.equal(state.property.buildingProgress[propertyId], 100);
+    assert.ok(state.building.placedStructures[`project_${plotId}`]);
+    assert.ok(state.building.storageContainers[`storage_${propertyId}`]);
+    assert.ok(state.building.doorLocks[`door_${propertyId}`]);
+    assert.ok(
+      state.building.inWorldMarkers[buildingSystemHomeConsoleMarkerId(propertyId)]
+    );
+
+    const reloaded = parseHarthmereLiveModeBackendState(
+      JSON.stringify(state),
+      ACTOR,
+      NOW_MS
+    );
+    const snapshot = createHarthmereLiveModeBuildingClientSnapshot(reloaded);
+    assert.ok(snapshot.ownedPlotIds.includes(plotId));
+    assert.ok(snapshot.completedProperties[propertyId]);
+    assert.equal(snapshot.gold, state.inventory.gold);
+    assert.equal(snapshot.safeZones[plotId].safeFromMuck, true);
+  });
+
+  it("runs the full business flow from commercial plot to revenue collection", function () {
+    let state = freshState();
+    state.inventory.gold = 1_000;
+    const plotId = "grove_crossroads_shop_lot";
+    const blueprintId = "grove_voxel_shop_tier_1";
+    grantAllConstructionMaterials(state, blueprintId);
+
+    ({ state } = applyOne(
+      state,
+      "request_property_building_mutation",
+      {
+        buildingAction: "claim_plot",
+        plotId,
+      },
+      { subsystem: "building", zoneId: "the_grove" }
+    ));
+    assert.equal(state.inventory.gold, 955);
+    assert.equal(state.building.safeZones[plotId].safeFromMuck, false);
+
+    state = completeConstructionProject({
+      state,
+      plotId,
+      blueprintId,
+    });
+    const propertyId = "property_grove_crossroads_shop_lot";
+    const property = state.property.owned[propertyId];
+    assert.ok(property);
+    assert.equal(property.use, "business");
+
+    const startup = buildingSystemBusinessTypeById("general_trader");
+    assert.ok(startup);
+    const goldBeforeStartup = state.inventory.gold;
+    ({ state } = applyOne(
+      state,
+      "request_property_building_mutation",
+      {
+        buildingAction: "start_business",
+        plotId,
+        propertyId,
+        businessType: "general_trader",
+      },
+      { subsystem: "building", zoneId: "the_grove" }
+    ));
+    assert.equal(
+      state.inventory.gold,
+      goldBeforeStartup - startup.startingCostGold
+    );
+    const businessId = state.property.owned[propertyId].businessId!;
+    assert.ok(state.economy.businesses[businessId]);
+    assert.ok(state.building.inWorldMarkers[`${businessId}:marker`]);
+
+    const duplicateBusiness = applyOne(
+      state,
+      "request_property_building_mutation",
+      {
+        buildingAction: "start_business",
+        plotId,
+        propertyId,
+        businessType: "general_trader",
+      },
+      { subsystem: "building", zoneId: "the_grove" }
+    );
+    assert.ok(
+      duplicateBusiness.summary.warnings.includes(
+        "business_idempotent:already_started"
+      )
+    );
+    assert.equal(duplicateBusiness.state.inventory.gold, state.inventory.gold);
+
+    ({ state } = applyOne(
+      state,
+      "request_property_building_mutation",
+      {
+        buildingAction: "run_business_cycle",
+        plotId,
+        propertyId,
+        businessId,
+        cycles: 2,
+      },
+      { subsystem: "building", zoneId: "the_grove" }
+    ));
+    const revenue = state.economy.businesses[businessId].revenueBalanceGold;
+    assert.ok(revenue > 0);
+    const goldBeforeCollect = state.inventory.gold;
+    ({ state } = applyOne(
+      state,
+      "request_property_building_mutation",
+      {
+        buildingAction: "collect_business_revenue",
+        plotId,
+        propertyId,
+        businessId,
+      },
+      { subsystem: "building", zoneId: "the_grove" }
+    ));
+    assert.equal(state.inventory.gold, goldBeforeCollect + revenue);
+    assert.equal(state.economy.businesses[businessId].revenueBalanceGold, 0);
+
+    const snapshot = createHarthmereLiveModeBuildingClientSnapshot(
+      parseHarthmereLiveModeBackendState(JSON.stringify(state), ACTOR, NOW_MS)
+    );
+    assert.ok(snapshot.ownedPlotIds.includes(plotId));
+    assert.ok(snapshot.completedProperties[propertyId]);
+    assert.ok(snapshot.businesses[businessId]);
+  });
+
+  it("rejects unaffordable land, construction, and business steps without partial mutation", function () {
+    let state = freshState();
+    state.inventory.gold = 10;
+    const homePlotId = "grove_muckstead_cottage_lot";
+    const homeBlueprintId = "grove_voxel_cottage_tier_1";
+
+    let result = applyOne(
+      state,
+      "request_property_building_mutation",
+      {
+        buildingAction: "claim_plot",
+        plotId: homePlotId,
+      },
+      { subsystem: "building", zoneId: "the_grove" }
+    );
+    assert.ok(
+      result.summary.warnings.includes(
+        "plot_claim_rejected:insufficient_gold_for_plot_claim"
+      )
+    );
+    assert.equal(result.state.inventory.gold, 10);
+    assert.equal(result.state.building.ownedPlots.includes(homePlotId), false);
+
+    state = freshState();
+    state.inventory.gold = 0;
+    state.building.ownedPlots.push(homePlotId);
+    result = applyOne(
+      state,
+      "request_property_building_mutation",
+      {
+        buildingAction: "start_construction",
+        plotId: homePlotId,
+        blueprintId: homeBlueprintId,
+      },
+      { subsystem: "building", zoneId: "the_grove" }
+    );
+    assert.ok(
+      result.summary.warnings.includes(
+        "building_project_rejected:insufficient_gold_for_blueprint"
+      )
+    );
+    assert.equal(Object.keys(result.state.building.activeProjects).length, 0);
+    assert.equal(result.state.inventory.gold, 0);
+
+    state = freshState();
+    state.inventory.gold = 500;
+    const businessPlotId = "grove_crossroads_shop_lot";
+    const businessBlueprintId = "grove_voxel_shop_tier_1";
+    grantAllConstructionMaterials(state, businessBlueprintId);
+    ({ state } = applyOne(
+      state,
+      "request_property_building_mutation",
+      {
+        buildingAction: "claim_plot",
+        plotId: businessPlotId,
+      },
+      { subsystem: "building", zoneId: "the_grove" }
+    ));
+    state = completeConstructionProject({
+      state,
+      plotId: businessPlotId,
+      blueprintId: businessBlueprintId,
+    });
+    state.inventory.gold = 1;
+    const propertyId = "property_grove_crossroads_shop_lot";
+    result = applyOne(
+      state,
+      "request_property_building_mutation",
+      {
+        buildingAction: "start_business",
+        plotId: businessPlotId,
+        propertyId,
+        businessType: "general_trader",
+      },
+      { subsystem: "building", zoneId: "the_grove" }
+    );
+    assert.ok(
+      result.summary.warnings.includes(
+        "business_rejected:insufficient_startup_gold"
+      )
+    );
+    assert.deepEqual(Object.keys(result.state.economy.businesses), []);
+    assert.equal(result.state.inventory.gold, 1);
   });
 
   it("rejects terraforming a deeded plot until an owned home or business exists on it", function () {

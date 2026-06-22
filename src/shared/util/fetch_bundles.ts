@@ -96,5 +96,7 @@ export async function fetchPostBundles(postIds: BiomesId[]) {
 }
 
 export async function fetchGroupBundle(groupId: BiomesId) {
-  return jsonFetch<GroupDetailBundle>(`/api/bundles/group/${groupId}/detail`);
+  return jsonFetch<GroupDetailBundle | null>(
+    `/api/bundles/group/${groupId}/detail`
+  );
 }

@@ -16,6 +16,7 @@ import {
 import { z } from "zod";
 import { readHarthmerePlayerAndSharedStateStrings } from "@/server/harthmere/live_mode_state_read_helpers";
 import { resolveHarthmereLiveModeActorId } from "@/server/harthmere/live_mode_actor_resolution";
+import { disableHarthmereLiveModeHttpCaching } from "@/server/harthmere/live_mode_http_cache";
 
 const zJsonRecord = z.record(z.unknown());
 
@@ -99,7 +100,8 @@ export default biomesApiHandler(
     method: "GET",
     response: zHarthmereLiveModeJobsBoardStateResponse,
   },
-  async ({ auth, unsafeRequest }) => {
+  async ({ auth, unsafeRequest, unsafeResponse }) => {
+    disableHarthmereLiveModeHttpCaching(unsafeResponse);
     const redis = await liveModeJobsBoardStateRedis();
     const actorId = await resolveHarthmereLiveModeActorId(
       redis,
