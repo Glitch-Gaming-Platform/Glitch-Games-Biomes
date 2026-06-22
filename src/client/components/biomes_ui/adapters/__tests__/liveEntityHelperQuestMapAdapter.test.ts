@@ -4,6 +4,7 @@ import assert from "assert";
 import {
   activeLiveEntityHelperMissionStepsForBiomesUI,
   liveEntityHelperAcceptedQuestLandmarksForBiomesUI,
+  liveEntityHelperQuestStateFromLiveQuestStateForBiomesUI,
   liveEntityHelperTrackableQuestsForBiomesUI,
 } from "../liveEntityHelperQuestMapAdapter";
 import {
@@ -171,6 +172,52 @@ describe("BiomesUI live-entity helper quest map adapter", () => {
     assert.deepEqual(landmarks[0].position, [496, 70, -126]);
     assert.equal(landmarks[0].label, "Return to Jackie");
     assert.ok(landmarks[0].description.includes("return to Jackie"));
+  });
+
+  it("projects server-backed helper quest state into missions, quests, and map markers", () => {
+    const questId = "live-helper:8810000000019752:hard_boss";
+    const state = liveEntityHelperQuestStateFromLiveQuestStateForBiomesUI({
+      version: "harthmere-live-mode-quest-state",
+      actorId: "player_old_coop",
+      active: {
+        [questId]: {
+          stepId: "live_helper_muck_scarred_helix",
+          progress: 0,
+          source: "live_entity_helper",
+          title: "Defeat the Muck-Scarred Helix",
+          questKind: "hard_boss",
+          entityId: "8810000000019752",
+          giverName: "Old Coop",
+          giverPosition: [380, 71, -202],
+        },
+      },
+      completed: {},
+      updatedAtMs: NOW_MS,
+    });
+
+    assert.equal(state.active[questId]?.giverName, "Old Coop");
+
+    const quests = liveEntityHelperTrackableQuestsForBiomesUI(state);
+    assert.equal(quests.length, 1);
+    assert.equal(quests[0].questId, questId);
+    assert.equal(quests[0].status, "active");
+    assert.equal(quests[0].title, "Muck Breach Boss");
+    assert.equal(quests[0].area, "Old Coop - West Muck Breach");
+
+    const steps = activeLiveEntityHelperMissionStepsForBiomesUI(state);
+    assert.equal(steps.length, 1);
+    assert.equal(steps[0].id, questId);
+    assert.ok(steps[0].objective.includes("Old Coop"));
+    assert.ok(steps[0].objective.includes("Muck-Scarred Helix"));
+
+    const landmarks =
+      liveEntityHelperAcceptedQuestLandmarksForBiomesUI(state);
+    assert.equal(landmarks.length, 1);
+    assert.equal(
+      landmarks[0].id,
+      liveEntityHelperQuestTargetMarkerForKind("hard_boss")!.id
+    );
+    assert.equal(landmarks[0].active, true);
   });
 
   it("uses the injected isReadyToTurnIn resolver over the stored flag (live objective check)", () => {

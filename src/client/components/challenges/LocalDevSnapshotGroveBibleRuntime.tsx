@@ -9,6 +9,10 @@ import {
   HARTHMERE_WORLD_OBJECT_INTERACTION_EVENT,
   type HarthmereWorldObjectInteractionEventDetail,
 } from "@/client/components/challenges/harthmereObjectInteractions";
+import {
+  activeBiomesUIMapPinFromMarkerForTest,
+  requestBiomesUILocateOnMap,
+} from "@/client/components/biomes_ui/adapters/mapPinnedDestination";
 import { defaultHarthmereLiveFetch } from "@/client/components/harthmere_live_fetch";
 import { addToast } from "@/client/components/toast/helpers";
 import type { GardenHoseEvent } from "@/client/events/api";
@@ -25,6 +29,7 @@ import {
   snapshotGroveLandmarkById,
   snapshotGroveNpcEntityId,
   snapshotGroveNpcIdFromEntityId,
+  type SnapshotGroveLandmark,
   type SnapshotGroveNpc,
   type SnapshotGroveQuest,
 } from "@/shared/harthmere/snapshot_grove_content";
@@ -505,6 +510,24 @@ function pinSnapshotGroveLandmark(
     },
     navAidId
   );
+}
+
+export function requestSnapshotGroveLandmarkOnMapForBiomesUI(
+  marker: SnapshotGroveLandmark
+) {
+  // Snapshot Grove dialogue already creates a world-space nav aid; this
+  // additionally opens BiomesUI's Map tab and centers on the same destination.
+  const pin = activeBiomesUIMapPinFromMarkerForTest({
+    id: marker.id,
+    label: marker.label,
+    kind: marker.kind,
+    worldPosition: marker.position,
+    description: `${marker.area} - ${marker.kind}`,
+  });
+  if (pin) {
+    requestBiomesUILocateOnMap(pin);
+  }
+  return pin;
 }
 
 // SNAPSHOT_GROVE_QUEST_MARKER_VISIBILITY:
@@ -1872,12 +1895,14 @@ export function useSnapshotGroveNpcDialog(
         name: `Show ${marker.label} on the map`,
         type: "normal",
         tooltip: marker.label,
-        onPerformed: () =>
+        onPerformed: () => {
           pinSnapshotGroveLandmark(
             mapManager,
             marker.position,
             snapshotGroveStepNavAidId(objectiveIndex)
-          ),
+          );
+          requestSnapshotGroveLandmarkOnMapForBiomesUI(marker);
+        },
       });
     }
 

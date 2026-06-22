@@ -1,6 +1,7 @@
 /// <reference types="mocha" />
 import assert from "assert";
 import { biomesUIActiveMapPinNavigationAidKindForTest } from "@/client/components/biomes_ui/adapters/mapPinnedDestination";
+import { biomesUIActiveMiniMapPinDistanceLabelForTest } from "@/client/components/map/markers/biomes_ui_active_minimap_pin";
 import {
   isQuestNavigationAidKind,
   navigationAidShowsOnCircle,
@@ -55,5 +56,22 @@ describe("active map pin navigation aid", () => {
   it("still respects the close-range minimum distance for position targets", () => {
     const aid = navAid("map_pin");
     assert.strictEqual(navigationAidShowsOnCircle(aid, false, 5), false);
+  });
+
+  it("formats active minimap destination distance from the player's XZ position", () => {
+    assert.equal(
+      biomesUIActiveMiniMapPinDistanceLabelForTest(
+        [103, 70, 104],
+        [100, 70, 100]
+      ),
+      "5m"
+    );
+    assert.equal(
+      biomesUIActiveMiniMapPinDistanceLabelForTest(
+        [Number.NaN, 70, 104],
+        [100, 70, 100]
+      ),
+      undefined
+    );
   });
 });

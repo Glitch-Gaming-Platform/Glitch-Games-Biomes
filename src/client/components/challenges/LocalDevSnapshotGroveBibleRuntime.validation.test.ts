@@ -3,10 +3,15 @@ import assert from "assert";
 import {
   doesSnapshotGroveEventAdvanceQuestForTest,
   grantSnapshotGroveWorldObjectPickupItemForTest,
+  requestSnapshotGroveLandmarkOnMapForBiomesUI,
   snapshotGrovePracticeItemForObjectiveForTest,
   snapshotGroveQuestEventFromWorldObjectInteractionForTest,
   validateSnapshotGroveQuestEventContext,
 } from "@/client/components/challenges/LocalDevSnapshotGroveBibleRuntime";
+import {
+  BIOMES_UI_ACTIVE_MAP_PIN_STORAGE_KEY,
+  BIOMES_UI_LOCATE_ON_MAP_EVENT,
+} from "@/client/components/biomes_ui/adapters/mapPinnedDestination";
 import { CURSOR_INSPECTION_SHORTCUT_KEYS_FOR_TEST } from "@/client/components/overlays/inspected/inspectionShortcutKeys";
 import { harthmereInventoryCountByItemId } from "@/client/components/challenges/LocalDevHarthmereInventorySystem";
 import { selectNearestHarthmereWorldObjectInspectable } from "@/shared/harthmere/harthmere_world_object_inspectable";
@@ -72,11 +77,23 @@ const localStorageMock = {
 function installBrowserStorageShim() {
   const previousWindow = (globalThis as any).window;
   const previousLocalStorage = (globalThis as any).localStorage;
+  const previousCustomEvent = (globalThis as any).CustomEvent;
+  if (typeof previousCustomEvent === "undefined") {
+    (globalThis as any).CustomEvent = class CustomEvent<T = unknown> extends Event {
+      detail: T;
+
+      constructor(type: string, init?: CustomEventInit<T>) {
+        super(type, init);
+        this.detail = init?.detail as T;
+      }
+    };
+  }
   (globalThis as any).window = {
     localStorage: localStorageMock,
     dispatchEvent: () => true,
     addEventListener: () => {},
     removeEventListener: () => {},
+    CustomEvent: (globalThis as any).CustomEvent,
   };
   (globalThis as any).localStorage = localStorageMock;
   return () => {
@@ -89,6 +106,11 @@ function installBrowserStorageShim() {
       delete (globalThis as any).localStorage;
     } else {
       (globalThis as any).localStorage = previousLocalStorage;
+    }
+    if (previousCustomEvent === undefined) {
+      delete (globalThis as any).CustomEvent;
+    } else {
+      (globalThis as any).CustomEvent = previousCustomEvent;
     }
   };
 }
@@ -131,6 +153,37 @@ function snapshotGrovePhysicalPickupCases() {
 }
 
 describe("Snapshot Grove quest runtime validation current", () => {
+  it("opens and centers BiomesUI map when a dialogue marker is shown on the map", () => {
+    const restore = installBrowserStorageShim();
+    try {
+      const dispatched: Array<{ type: string; detail?: any }> = [];
+      (globalThis as any).window.dispatchEvent = (event: Event) => {
+        dispatched.push(event as any);
+        return true;
+      };
+      const marker = snapshotGroveLandmarkById("npc_old_coop");
+      assert.ok(marker, "Old Coop should have a Snapshot Grove map marker");
+
+      const pin = requestSnapshotGroveLandmarkOnMapForBiomesUI(marker);
+
+      assert.equal(pin?.markerId, "npc_old_coop");
+      const stored = JSON.parse(
+        localStorageValues.get(BIOMES_UI_ACTIVE_MAP_PIN_STORAGE_KEY) ?? "{}"
+      );
+      assert.equal(stored.markerId, "npc_old_coop");
+      assert.ok(
+        dispatched.some(
+          (event) =>
+            event.type === BIOMES_UI_LOCATE_ON_MAP_EVENT &&
+            event.detail?.markerId === "npc_old_coop"
+        ),
+        "Show on map should ask BiomesUI to open and center the Map tab"
+      );
+    } finally {
+      restore();
+    }
+  });
+
   it("audits every Snapshot Grove quest from accept through every objective fixture", () => {
     const failures: string[] = [];
 

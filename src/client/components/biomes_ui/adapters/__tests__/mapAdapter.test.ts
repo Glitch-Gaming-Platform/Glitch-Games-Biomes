@@ -77,6 +77,22 @@ const FIXTURE_LANDMARKS = [
     visibleOnWorldMap: true,
   },
   {
+    id: "npc_old_coop",
+    label: "Old Coop",
+    position: [380, 71, -202],
+    kind: "npc",
+    area: "the_grove",
+    visibleOnWorldMap: true,
+  },
+  {
+    id: "coop_supply_box",
+    label: "Old Supply Box",
+    position: [384, 71, -198],
+    kind: "interactable",
+    area: "the_grove",
+    visibleOnWorldMap: true,
+  },
+  {
     id: "muckwad_patch",
     label: "Muckwad Patch",
     position: [512, 70, -152],
@@ -160,6 +176,18 @@ const FIXTURE_QUESTS = [
     ],
     reward: "45 XP",
     area: "Mosslawn",
+  },
+  {
+    id: "coops_key_hen",
+    title: "Coop's Key Hen",
+    markerIds: ["npc_old_coop", "npc_old_coop", "coop_supply_box"],
+    objectives: [
+      "Talk to Old Coop by the fountain.",
+      "Follow Old Coop's hen.",
+      "Check the Old Supply Box.",
+    ],
+    reward: "35 XP",
+    area: "The Grove",
   },
 ];
 
@@ -749,6 +777,132 @@ describe("biomes_ui map adapter (V141)", () => {
       .find((entry) => entry.id === "mosslawn_warning_moss");
     assert.equal(marker?.active, true);
     assert.equal(marker?.kind, "objective");
+  });
+
+  it("projects accepted Old Coop quests from Cloud Save into BiomesUI quests and map markers", () => {
+    installFixture({
+      activeObjectiveIndex: 0,
+      completedQuestIds: [],
+      acceptedQuestIds: [],
+    });
+
+    const adapter = buildBiomesUIMapAdapterForTest(1, undefined, undefined, {
+      version: "harthmere-live-mode-quest-state",
+      actorId: "player_old_coop",
+      active: {
+        coops_key_hen: {
+          stepId: "coops_key_hen:0:escort",
+          progress: 1,
+          source: "snapshot_grove",
+          title: "Coop's Key Hen",
+        },
+      },
+      completed: {},
+      updatedAtMs: Date.now(),
+    });
+
+    const quest = adapter
+      .getTrackableQuests()
+      .find((entry) => entry.questId === "coops_key_hen");
+    assert.equal(quest?.status, "active");
+    assert.equal(quest?.title, "Coop's Key Hen");
+    assert.equal(quest?.firstMarkerId, "old_coop");
+    assert.equal(adapter.getMissionTitle(), "Coop's Key Hen");
+    assert.equal(
+      adapter.getMissionSteps()[0]?.objective,
+      "Talk to Old Coop by the fountain."
+    );
+
+    const marker = adapter.getMarkers().find((entry) => entry.id === "old_coop");
+    assert.equal(marker?.active, true);
+    assert.equal(marker?.kind, "objective");
+  });
+
+  it("surfaces every active mission source in the real BiomesUI missions list", () => {
+    installFixture({
+      activeObjectiveIndex: 0,
+      completedQuestIds: [],
+      acceptedQuestIds: [],
+    });
+    const jobsBoardState = {
+      version: "harthmere-jobs-board-authority",
+      actorId: "player_all_missions",
+      boards: {},
+      defaultBoardId: "grove_board",
+      myAcceptedJobs: [
+        {
+          jobId: "job_patch_safe_fence",
+          title: "Patch the Safe-Zone Fence",
+          description: "Repair the fence near the Grove boundary.",
+          rewardGold: 25,
+          mapMarkerId: "muckwad_patch",
+        },
+      ],
+      myTodos: [
+        {
+          todoId: "todo_patch_safe_fence",
+          jobId: "job_patch_safe_fence",
+          boardId: "grove_board",
+          status: "active",
+          kind: "repair",
+          title: "Patch the Safe-Zone Fence",
+          todoText: "Repair the fence near the Grove boundary.",
+          dueAtMs: Date.now() + 60_000,
+          mapMarkerId: "muckwad_patch",
+          townId: "The Grove",
+        },
+      ],
+    };
+    const liveQuestState = {
+      version: "harthmere-live-mode-quest-state",
+      actorId: "player_all_missions",
+      active: {
+        "live-helper:8810000000019752:hard_boss": {
+          stepId: "live_helper_muck_scarred_helix",
+          progress: 0,
+          source: "live_entity_helper",
+          title: "Defeat the Muck-Scarred Helix",
+          questKind: "hard_boss",
+          entityId: "8810000000019752",
+          giverName: "Old Coop",
+          giverPosition: [380, 71, -202],
+        },
+      },
+      completed: {},
+      updatedAtMs: Date.now(),
+    };
+
+    const adapter = buildBiomesUIMapAdapterForTest(
+      1,
+      undefined,
+      jobsBoardState,
+      liveQuestState
+    );
+
+    const steps = adapter.getMissionSteps();
+    assert.ok(
+      steps.some((step) => step.id === "jobs_board:todo_patch_safe_fence"),
+      "active jobs-board todo should stay visible in Missions"
+    );
+    assert.ok(
+      steps.some(
+        (step) => step.id === "live-helper:8810000000019752:hard_boss"
+      ),
+      "server-backed Old Coop helper quest should stay visible in Missions"
+    );
+
+    const quests = adapter.getTrackableQuests();
+    assert.equal(
+      quests.find(
+        (quest) => quest.questId === "live-helper:8810000000019752:hard_boss"
+      )?.status,
+      "active"
+    );
+    const helperMarker = adapter
+      .getMarkers()
+      .find((marker) => marker.id === "live_helper_muck_scarred_helix");
+    assert.equal(helperMarker?.kind, "objective");
+    assert.equal(helperMarker?.active, true);
   });
 
   it("still returns business outpost markers when the snapshot api is missing", () => {

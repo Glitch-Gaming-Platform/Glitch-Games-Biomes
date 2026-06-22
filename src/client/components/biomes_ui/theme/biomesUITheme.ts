@@ -1838,6 +1838,179 @@ button.biomes-ui-card:disabled {
   text-transform: uppercase;
 }
 
+.biomes-building-blueprint-visual {
+  display: grid;
+  grid-template-columns: minmax(92px, 1fr) minmax(54px, 0.42fr);
+  gap: 8px;
+  align-items: end;
+  margin-top: 10px;
+  min-width: 0;
+}
+
+.biomes-building-blueprint-visual[data-compact="true"] {
+  grid-template-columns: minmax(76px, 1fr) minmax(42px, 0.32fr);
+  gap: 6px;
+}
+
+.biomes-building-blueprint-visual__plan {
+  display: grid;
+  gap: 2px;
+  aspect-ratio: 1 / 0.82;
+  min-height: 72px;
+  padding: 6px;
+  border: 1px solid rgba(74, 222, 255, 0.18);
+  background:
+    linear-gradient(90deg, rgba(74, 222, 255, 0.08) 1px, transparent 1px),
+    linear-gradient(rgba(74, 222, 255, 0.08) 1px, transparent 1px),
+    rgba(6, 11, 25, 0.82);
+  background-size: 12px 12px;
+}
+
+.biomes-building-blueprint-visual__cell {
+  min-width: 0;
+  min-height: 0;
+  border: 1px solid rgba(232, 244, 255, 0.08);
+  background: rgba(93, 255, 173, 0.12);
+}
+
+.biomes-building-blueprint-visual__cell[data-kind="wall"] {
+  background: rgba(131, 149, 166, 0.72);
+  border-color: rgba(232, 244, 255, 0.2);
+}
+
+.biomes-building-blueprint-visual__cell[data-kind="door"] {
+  background: rgba(255, 184, 68, 0.92);
+  box-shadow: 0 0 10px rgba(255, 184, 68, 0.35);
+}
+
+.biomes-building-blueprint-visual__cell[data-kind="utility"] {
+  background: rgba(255, 84, 196, 0.72);
+  box-shadow: 0 0 10px rgba(255, 84, 196, 0.26);
+}
+
+.biomes-building-blueprint-visual__layers {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  min-height: 72px;
+  padding: 7px 8px;
+  border: 1px solid rgba(232, 244, 255, 0.12);
+  background: rgba(8, 14, 32, 0.78);
+  overflow: hidden;
+}
+
+.biomes-building-blueprint-visual__layer {
+  flex: 1 1 0;
+  min-width: 4px;
+  border: 1px solid rgba(232, 244, 255, 0.12);
+  background: rgba(40, 54, 74, 0.7);
+  transition: height 180ms ease, background 180ms ease, box-shadow 180ms ease;
+}
+
+.biomes-building-blueprint-visual__layer[data-lit="true"] {
+  background: rgba(93, 255, 173, 0.52);
+  border-color: rgba(93, 255, 173, 0.5);
+}
+
+.biomes-building-blueprint-visual__layer[data-active="true"] {
+  background: rgba(255, 184, 68, 0.8);
+  border-color: rgba(255, 224, 132, 0.72);
+  animation: biomes-building-stage-pulse 1.15s ease-in-out infinite;
+}
+
+.biomes-building-blueprint-visual__spark {
+  position: absolute;
+  left: 48%;
+  bottom: 14px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #fff3a4;
+  box-shadow:
+    0 0 0 5px rgba(255, 184, 68, 0.16),
+    0 0 16px rgba(255, 184, 68, 0.68);
+  animation: biomes-building-spark-rise 1.4s ease-in-out infinite;
+}
+
+.biomes-building-blueprint-visual__progress,
+.biomes-building-progressbar {
+  grid-column: 1 / -1;
+  height: 5px;
+  border: 1px solid rgba(232, 244, 255, 0.12);
+  background: rgba(0, 0, 0, 0.34);
+  overflow: hidden;
+}
+
+.biomes-building-blueprint-visual__progress span,
+.biomes-building-progressbar span {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, #5dffad, #ffb844);
+  box-shadow: 0 0 12px rgba(93, 255, 173, 0.28);
+}
+
+.biomes-building-construction-dashboard {
+  display: grid;
+  grid-template-columns: minmax(180px, 0.62fr) minmax(220px, 1fr);
+  gap: 10px;
+  align-items: stretch;
+  margin-bottom: 10px;
+}
+
+.biomes-building-construction-readout {
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid var(--biomes-edge-cyan-soft);
+  background: rgba(8, 14, 32, 0.72);
+}
+
+.biomes-building-progressbar {
+  margin-top: 8px;
+}
+
+.biomes-building-material-list {
+  display: grid;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.biomes-building-material-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  padding: 7px 8px;
+  border: 1px solid rgba(232, 244, 255, 0.1);
+  background: rgba(12, 20, 38, 0.74);
+  color: var(--biomes-fg-muted);
+  font-size: 10px;
+}
+
+.biomes-building-material-row span {
+  overflow-wrap: anywhere;
+}
+
+.biomes-building-material-row strong {
+  color: var(--biomes-fg);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.biomes-building-material-row[data-missing="true"] {
+  border-color: rgba(255, 184, 68, 0.38);
+  background: rgba(255, 184, 68, 0.08);
+}
+
+.biomes-building-material-row[data-missing="true"] strong {
+  color: var(--biomes-warn-amber);
+}
+
+.biomes-building-material-row[data-ready="true"] {
+  border-color: rgba(93, 255, 173, 0.28);
+}
+
 .biomes-building-panel-header {
   margin-bottom: 10px;
 }
@@ -1862,6 +2035,7 @@ button.biomes-ui-card:disabled {
 .biomes-building-stage[data-active="true"] {
   border-color: var(--biomes-warn-amber);
   box-shadow: 0 0 12px rgba(255, 184, 68, 0.18);
+  animation: biomes-building-stage-pulse 1.15s ease-in-out infinite;
 }
 
 .biomes-building-stage[data-complete="true"] {
@@ -1955,6 +2129,31 @@ button.biomes-ui-card:disabled {
   overflow-wrap: anywhere;
 }
 
+@keyframes biomes-building-stage-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 10px rgba(255, 184, 68, 0.16);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(255, 184, 68, 0.42);
+  }
+}
+
+@keyframes biomes-building-spark-rise {
+  0% {
+    opacity: 0.35;
+    transform: translateY(10px) scale(0.78);
+  }
+  45% {
+    opacity: 1;
+    transform: translateY(-4px) scale(1);
+  }
+  100% {
+    opacity: 0.1;
+    transform: translateY(-24px) scale(0.65);
+  }
+}
+
 @media (max-width: 860px) {
   .biomes-building-hero,
   .biomes-building-layout {
@@ -1972,6 +2171,10 @@ button.biomes-ui-card:disabled {
   .biomes-building-property-grid,
   .biomes-building-stage-list {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .biomes-building-construction-dashboard {
+    grid-template-columns: 1fr;
   }
 }
 

@@ -349,9 +349,8 @@ export const harvestPlantEventHandler = makeEventHandler("harvestPlantEvent", {
   mergeKey: (event) => event.id,
   involves: (event) => ({
     plant: q.id(event.plant_id).with("farming_plant_component", "position"),
-    acl: aclChecker({ kind: "point", point: event.position }, event.id),
   }),
-  apply({ plant, acl }, event) {
+  apply({ plant }, event) {
     const position = plant.position()?.v;
     if (!position || !equals(position, event.position)) {
       return;
@@ -363,12 +362,11 @@ export const harvestPlantEventHandler = makeEventHandler("harvestPlantEvent", {
     if (isTreeSeed(plantComponent.seed)) {
       return;
     }
-    if (
-      plantComponent.planter !== event.id &&
-      !acl.can("destroy", { entity: plant })
-    ) {
-      return;
-    }
+    // Harvest is not demolition: once a non-tree crop is fully grown and the
+    // client shows the Harvest shortcut, any player may collect it. ACL destroy
+    // checks still apply to planting, terrain edits, admin destruction, and tree
+    // handling above, but blocking a ripe food crop here left the F prompt
+    // visible while the action silently failed for non-planters.
 
     plantComponent.player_actions.push({
       kind: "harvest",

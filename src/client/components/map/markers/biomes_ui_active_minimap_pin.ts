@@ -8,7 +8,9 @@ export const BIOMES_UI_ACTIVE_MINIMAP_PIN_EDGE_CLASS =
 export const BIOMES_UI_ACTIVE_MINIMAP_PIN_Z_INDEX = 8;
 
 export function biomesUIActiveMiniMapPinLabel(label: string): string {
-  const normalized = String(label ?? "").replace(/\s+/g, " ").trim();
+  const normalized = String(label ?? "")
+    .replace(/\s+/g, " ")
+    .trim();
   if (!normalized) {
     return "Marked destination";
   }
@@ -26,6 +28,21 @@ export function biomesUIActiveMiniMapPinHasFinitePosition(
   return [position[0], position[1], position[2]].every(
     (value) => typeof value === "number" && Number.isFinite(value)
   );
+}
+
+export function biomesUIActiveMiniMapPinDistanceLabelForTest(
+  markerPosition: unknown,
+  playerPosition: unknown
+): string | undefined {
+  if (
+    !biomesUIActiveMiniMapPinHasFinitePosition(markerPosition) ||
+    !biomesUIActiveMiniMapPinHasFinitePosition(playerPosition)
+  ) {
+    return undefined;
+  }
+  const dx = markerPosition[0] - playerPosition[0];
+  const dz = markerPosition[2] - playerPosition[2];
+  return `${Math.max(0, Math.round(Math.hypot(dx, dz)))}m`;
 }
 
 export function biomesUIActiveMiniMapPinClassName(
@@ -109,6 +126,24 @@ export function biomesUIActiveMiniMapPinCss(): string {
 
 .${BIOMES_UI_ACTIVE_MINIMAP_PIN_EDGE_CLASS} .${BIOMES_UI_ACTIVE_MINIMAP_PIN_ROOT_CLASS}__tail {
   background: linear-gradient(180deg, rgba(246, 200, 95, 0.95), rgba(246, 200, 95, 0));
+}
+
+.${BIOMES_UI_ACTIVE_MINIMAP_PIN_ROOT_CLASS}__distance {
+  background: rgba(4, 12, 24, 0.84);
+  border: 1px solid rgba(255, 255, 255, 0.74);
+  border-radius: 0.24rem;
+  color: #f7fbff;
+  font-size: 0.5rem;
+  font-weight: 800;
+  left: 50%;
+  line-height: 1;
+  min-width: 1.35rem;
+  padding: 0.12rem 0.18rem;
+  position: absolute;
+  text-align: center;
+  top: -0.52rem;
+  transform: translate(-50%, -50%);
+  white-space: nowrap;
 }
 `;
 }

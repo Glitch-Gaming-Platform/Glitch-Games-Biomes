@@ -1,10 +1,17 @@
 import assert from "assert";
-import { LOCAL_DEV_HUMAN_NPC_TYPE_ID, maybeIdToNpcType } from "@/shared/npc/bikkie";
+import {
+  LOCAL_DEV_HUMAN_NPC_TYPE_ID,
+  maybeIdToNpcType,
+} from "@/shared/npc/bikkie";
 import {
   harthmereFallbackNpcDialogText,
   harthmereFallbackNpcOptions,
   isHarthmerePlaceholderNpcDialog,
 } from "../npc_dialog_fallback";
+import {
+  SNAPSHOT_GROVE_NPCS,
+  snapshotGroveNpcEntityId,
+} from "../snapshot_grove_content";
 import {
   makeHarthmereNpcAppearanceConfig,
   HARTHMERE_APPEARANCE_BUILDER_FIELDS,
@@ -65,15 +72,25 @@ describe("Harthmere NPC visuals and talk affordances", () => {
     assert.equal(npcType?.isPlayerLikeAppearance, true);
     assert.equal(typeof npcType?.npcDefaultDialog, "string");
     assert.ok((npcType?.npcDefaultDialog ?? "").length > 40);
-    assert.equal((npcType?.npcDefaultDialog ?? "").includes("Welcome to the local dev starter town"), false);
+    assert.equal(
+      (npcType?.npcDefaultDialog ?? "").includes(
+        "Welcome to the local dev starter town"
+      ),
+      false
+    );
   });
 
   it("upgrades placeholder NPC chatter into useful first-person relationship choices", () => {
-    assert.equal(isHarthmerePlaceholderNpcDialog("I'm a little busy right now..."), true);
+    assert.equal(
+      isHarthmerePlaceholderNpcDialog("I'm a little busy right now..."),
+      true
+    );
     assert.equal(isHarthmerePlaceholderNpcDialog("What's up"), true);
     assert.equal(
-      isHarthmerePlaceholderNpcDialog("The Grove is watching the job board and the fountain today."),
-      false,
+      isHarthmerePlaceholderNpcDialog(
+        "The Grove is watching the job board and the fountain today."
+      ),
+      false
     );
 
     const text = harthmereFallbackNpcDialogText({
@@ -92,13 +109,16 @@ describe("Harthmere NPC visuals and talk affordances", () => {
     assert.ok(/Grove|Biomes economy law|Harthmere/.test(text));
     assert.equal(options.length, 3);
     assert.ok(options.every((option) => option.followUpText.length > 60));
-    assert.equal(options.some((option) => option.name === "Offer a hand"), false);
+    assert.equal(
+      options.some((option) => option.name === "Offer a hand"),
+      false
+    );
     assert.ok(options.some((option) => option.likeability > 0));
     assert.ok(options.some((option) => option.likeability < 0));
     assert.ok(options.some((option) => option.type === "destructive"));
     assert.notDeepEqual(
       options.map((option) => option.name),
-      guardOptions.map((option) => option.name),
+      guardOptions.map((option) => option.name)
     );
   });
 
@@ -107,11 +127,15 @@ describe("Harthmere NPC visuals and talk affordances", () => {
       harthmereFallbackNpcDialogText({
         name,
         description: "Grove local near the Jobs Board",
-      }),
+      })
     );
 
     assert.ok(new Set(lines).size > 1);
-    assert.ok(lines.every((line) => !line.includes("works under the Biomes economy law")));
+    assert.ok(
+      lines.every(
+        (line) => !line.includes("works under the Biomes economy law")
+      )
+    );
   });
 
   it("gives every lore NPC three distinct first-person responses matched to their own name", () => {
@@ -120,28 +144,34 @@ describe("Harthmere NPC visuals and talk affordances", () => {
       // All motivation fields must now be written in first person (starting with "I")
       assert.ok(
         /^I\b/.test(lore.motivation),
-        `${lore.displayName} motivation must start with "I", got: "${lore.motivation.slice(0, 60)}"`,
+        `${
+          lore.displayName
+        } motivation must start with "I", got: "${lore.motivation.slice(
+          0,
+          60
+        )}"`
       );
       // No motivation should still use the NPC's own name in place of "I"
-      const first = lore.displayName.split(/[\s,]/).find(Boolean) ?? lore.displayName;
+      const first =
+        lore.displayName.split(/[\s,]/).find(Boolean) ?? lore.displayName;
       assert.equal(
         lore.motivation.startsWith(first),
         false,
-        `${lore.displayName} motivation must not start with the NPC's own name (3rd person)`,
+        `${lore.displayName} motivation must not start with the NPC's own name (3rd person)`
       );
       // The three extraLines must all be distinct
       const extraSet = new Set(lore.extraLines);
       assert.equal(
         extraSet.size,
         lore.extraLines.length,
-        `${lore.displayName} extraLines must all be distinct`,
+        `${lore.displayName} extraLines must all be distinct`
       );
       // No extraLine should duplicate the opening line
       for (const extra of lore.extraLines) {
         assert.notEqual(
           extra,
           lore.line,
-          `${lore.displayName} extraLine must not duplicate the opening line`,
+          `${lore.displayName} extraLine must not duplicate the opening line`
         );
       }
     }
@@ -159,6 +189,11 @@ describe("Harthmere NPC visuals and talk affordances", () => {
   });
 
   it("keeps Gus the Baker on his seeded baker appearance instead of the generic purple fallback", () => {
+    const gus = SNAPSHOT_GROVE_NPCS.find((npc) => npc.id === "gus_the_baker");
+    assert.ok(gus, "Gus the Baker should be seeded into the Grove cast");
+    assert.equal(gus!.seedServerNpc, true);
+    assert.equal(snapshotGroveNpcEntityId(gus!), 8810000000019320);
+
     const appearance = makeHarthmereNpcAppearanceConfig({
       id: 8_810_000_001_104,
       name: "Gus the Baker",
@@ -174,7 +209,10 @@ describe("Harthmere NPC visuals and talk affordances", () => {
     assert.notEqual(appearance.face.skinTone, "violet");
     assert.notEqual(appearance.body.outfitColor, "royal");
 
-    const marked = withHarthmereAppearanceMarker("Gus bakes for the Grove.", appearance);
+    const marked = withHarthmereAppearanceMarker(
+      "Gus bakes for the Grove.",
+      appearance
+    );
     const parsed = parseHarthmereAppearanceMarker(marked);
     assert.equal(parsed?.body.outfitColor, "ember");
     assert.equal(parsed?.clothing.torso?.id, "work_apron");

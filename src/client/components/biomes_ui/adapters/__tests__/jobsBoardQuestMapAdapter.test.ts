@@ -335,7 +335,7 @@ describe("BiomesUI jobs board item-source guidance", () => {
       BIOMES_UI_JOBS_BOARD_ITEM_SOURCE_MARKER_SOURCE
     );
     assert.equal(landmarks[0].mapMarkerId, "harthmere_orchard_softwood");
-    assert.deepEqual(landmarks[0].position, [468, 53, -118]);
+    assert.deepEqual(landmarks[0].position, [468, 70, -118]);
     assert.ok(/Gather 2 Softwood Logs/i.test(landmarks[0].description));
 
     const [quest] = jobsBoardTrackableQuestsForBiomesUI(snapshot, 1000, {
@@ -358,6 +358,74 @@ describe("BiomesUI jobs board item-source guidance", () => {
     assert.equal(jobsBoardItemSourceLandmarksForBiomesUI(snapshot).length, 0);
     const [quest] = jobsBoardTrackableQuestsForBiomesUI(snapshot, 1000);
     assert.equal(quest.itemSource, undefined);
+  });
+});
+
+function gatherRoadRationsSnapshot(
+  inventoryItems: Record<string, number> = {}
+) {
+  const snapshot = acceptedJobsBoardSnapshot();
+  (snapshot as any).inventoryItems = inventoryItems;
+  snapshot.myAcceptedJobs = [
+    {
+      ...snapshot.myAcceptedJobs[0],
+      jobId: "job_road_rations",
+      templateId: "town_gather_road_rations",
+      title: "Stock the Road Rations Crate",
+      description:
+        "Grove travellers leave hungry. Gather 6 wild berries for the road rations crate at the fountain.",
+      kind: "gather",
+      requirements: [
+        {
+          itemId: "wild_berries",
+          count: 6,
+          mapMarkerId: "grove_garden_edge_berries",
+        },
+      ],
+      mapMarkerId: "grove_garden_edge_berries",
+      targetId: undefined,
+    },
+  ] as any;
+  snapshot.myTodos = [
+    {
+      ...snapshot.myTodos[0],
+      todoId: "road_rations_todo",
+      jobId: "job_road_rations",
+      title: "Stock the Road Rations Crate",
+      todoText:
+        "Go to the marked location and complete: Stock the Road Rations Crate",
+      kind: "gather",
+      mapMarkerId: "grove_garden_edge_berries",
+      targetId: undefined,
+      status: "active",
+    },
+  ] as any;
+  return snapshot;
+}
+
+describe("BiomesUI jobs board gather progression", () => {
+  it("guides to the item source while missing items, then back to the Grove board once inventory satisfies the job", () => {
+    const missing = gatherRoadRationsSnapshot({ wild_berries: 2 });
+    const [fieldMarker] = jobsBoardAcceptedJobLandmarksForBiomesUI(missing);
+    assert.equal(fieldMarker.mapMarkerId, "grove_garden_edge_berries");
+    assert.deepEqual(fieldMarker.position, [486, 70, -120]);
+    assert.ok(/Gather 2\/6 wild_berries/i.test(fieldMarker.description));
+
+    const ready = gatherRoadRationsSnapshot({ wild_berries: 6 });
+    const [turnInMarker] = jobsBoardAcceptedJobLandmarksForBiomesUI(ready);
+    const boardMarker = harthmereJobsBoardQuestMarkerRuntimePositionForId(
+      "harthmere_market_posting_board"
+    );
+    assert.equal(turnInMarker.mapMarkerId, "harthmere_market_posting_board");
+    assert.ok(boardMarker, "Grove jobs board marker must resolve");
+    assert.deepEqual(turnInMarker.position, boardMarker!.position);
+    assert.ok(/Return to the jobs board/i.test(turnInMarker.description));
+
+    const [quest] = jobsBoardTrackableQuestsForBiomesUI(ready, NOW_MS);
+    assert.equal(quest.firstMarkerId, "jobs_board_marker:road_rations_todo");
+    assert.ok(quest.objective);
+    assert.ok(/Return to the jobs board/i.test(quest.objective));
+    assert.equal(jobsBoardItemSourceLandmarksForBiomesUI(ready).length, 0);
   });
 });
 

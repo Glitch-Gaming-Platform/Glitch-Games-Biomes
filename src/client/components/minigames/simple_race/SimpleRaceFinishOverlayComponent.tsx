@@ -8,7 +8,6 @@ import type { InspectShortcuts } from "@/client/components/overlays/inspected/Cu
 import { CursorInspectionComponent } from "@/client/components/overlays/inspected/CursorInspectionOverlayComponent";
 import { useError } from "@/client/components/system/MaybeError";
 import { simpleRaceNotReadyReason } from "@/server/shared/minigames/simple_race/util";
-import { useEffect } from "react";
 
 export const SimpleRaceFinishOverlayComponent: React.FunctionComponent<{
   bundle: MinigamePlaceableBundle;
@@ -19,12 +18,6 @@ export const SimpleRaceFinishOverlayComponent: React.FunctionComponent<{
   const notReadyReason =
     !bundle.minigameComponent.ready &&
     simpleRaceNotReadyReason(bundle.minigameComponent);
-
-  useEffect(() => {
-    if (notReadyReason) {
-      setError(notReadyReason);
-    }
-  }, [notReadyReason]);
 
   const shortcuts: InspectShortcuts = [];
 
@@ -54,7 +47,7 @@ export const SimpleRaceFinishOverlayComponent: React.FunctionComponent<{
     <CursorInspectionComponent
       title={title}
       overlay={bundle.overlay}
-      error={error}
+      error={error ?? notReadyReason}
       shortcuts={shortcuts}
     />
   );

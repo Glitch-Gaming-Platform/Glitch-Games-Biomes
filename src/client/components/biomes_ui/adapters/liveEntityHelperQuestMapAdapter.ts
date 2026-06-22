@@ -147,6 +147,137 @@ export function normalizeLiveEntityHelperQuestStateForBiomesUI(
   };
 }
 
+function liveEntityHelperQuestPartsFromQuestId(questId: string) {
+  const match = questId.match(
+    /^live-helper:([^:]+):(exotic_matter|food_water|hard_boss)$/
+  );
+  if (!match || !isLiveEntityHelperQuestKind(match[2])) return undefined;
+  return { entityId: match[1], kind: match[2] };
+}
+
+function normalizeLiveEntityHelperQuestRecordFromLiveQuestState(
+  questId: string,
+  value: unknown,
+  fallbackAt?: number
+): BiomesUILiveEntityHelperQuestRecord | undefined {
+  const parts = liveEntityHelperQuestPartsFromQuestId(questId);
+  if (!parts) return undefined;
+  const record = value && typeof value === "object" ? (value as any) : {};
+  const kind = isLiveEntityHelperQuestKind(record.questKind)
+    ? record.questKind
+    : parts.kind;
+  const gp = record.giverPosition;
+  const giverPosition =
+    Array.isArray(gp) &&
+    gp.length >= 3 &&
+    Number.isFinite(gp[0]) &&
+    Number.isFinite(gp[1]) &&
+    Number.isFinite(gp[2])
+      ? ([Number(gp[0]), Number(gp[1]), Number(gp[2])] as [
+          number,
+          number,
+          number
+        ])
+      : undefined;
+  const progress = Number(record.progress);
+  const stepId = typeof record.stepId === "string" ? record.stepId : "";
+  const readyToTurnIn =
+    record.readyToTurnIn === true ||
+    (kind === "hard_boss" &&
+      (stepId.includes("boss_defeated") ||
+        (Number.isFinite(progress) && progress >= 1)));
+  const at = Number(record.at ?? record.acceptedAtMs ?? fallbackAt);
+  return {
+    questId,
+    kind,
+    entityId:
+      typeof record.entityId === "string" && record.entityId.trim()
+        ? record.entityId.trim()
+        : parts.entityId,
+    giverName:
+      typeof record.giverName === "string" && record.giverName.trim()
+        ? record.giverName.trim()
+        : typeof record.entityLabel === "string" && record.entityLabel.trim()
+        ? record.entityLabel.trim()
+        : "Helper",
+    ...(Number.isFinite(at) && at > 0 ? { at } : {}),
+    ...(giverPosition ? { giverPosition } : {}),
+    ...(readyToTurnIn ? { readyToTurnIn: true } : {}),
+  };
+}
+
+export function liveEntityHelperQuestStateFromLiveQuestStateForBiomesUI(
+  liveQuestState: unknown
+): BiomesUILiveEntityHelperQuestState {
+  const raw =
+    liveQuestState && typeof liveQuestState === "object"
+      ? (liveQuestState as any)
+      : {};
+  const updatedAtMs =
+    Number.isFinite(Number(raw.updatedAtMs)) && Number(raw.updatedAtMs) > 0
+      ? Number(raw.updatedAtMs)
+      : undefined;
+  const active =
+    raw.active && typeof raw.active === "object" && !Array.isArray(raw.active)
+      ? raw.active
+      : {};
+  const completed =
+    raw.completed &&
+    typeof raw.completed === "object" &&
+    !Array.isArray(raw.completed)
+      ? raw.completed
+      : {};
+  return {
+    active: Object.fromEntries(
+      Object.entries(active)
+        .map(([questId, value]) => [
+          questId,
+          normalizeLiveEntityHelperQuestRecordFromLiveQuestState(
+            questId,
+            value,
+            updatedAtMs
+          ),
+        ])
+        .filter(
+          (entry): entry is [string, BiomesUILiveEntityHelperQuestRecord] =>
+            Boolean(entry[1])
+        )
+    ),
+    completed: Object.fromEntries(
+      Object.entries(completed)
+        .map(([questId, value]) => [
+          questId,
+          normalizeLiveEntityHelperQuestRecordFromLiveQuestState(
+            questId,
+            {},
+            Number(value) || updatedAtMs
+          ),
+        ])
+        .filter(
+          (entry): entry is [string, BiomesUILiveEntityHelperQuestRecord] =>
+            Boolean(entry[1])
+        )
+    ),
+  };
+}
+
+export function mergeLiveEntityHelperQuestStatesForBiomesUI(
+  localRaw: unknown,
+  liveQuestState: unknown
+): BiomesUILiveEntityHelperQuestState {
+  const local =
+    normalizeLiveEntityHelperQuestStateForBiomesUI(localRaw) ?? {
+      active: {},
+      completed: {},
+    };
+  const live =
+    liveEntityHelperQuestStateFromLiveQuestStateForBiomesUI(liveQuestState);
+  return {
+    active: { ...live.active, ...local.active },
+    completed: { ...live.completed, ...local.completed },
+  };
+}
+
 function activeRecords(raw: unknown) {
   const state = normalizeLiveEntityHelperQuestStateForBiomesUI(raw);
   return Object.values(state?.active ?? {}).sort(

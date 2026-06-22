@@ -7,10 +7,19 @@ import {
   tickHarthmereStaminaForGameplay,
   type HarthmereFoodStaminaState,
 } from "@/shared/harthmere/mmo_farming_food_stamina";
-import { downHarthmerePlayerFromSystem } from "@/client/components/challenges/LocalDevHarthmereCombat";
+import {
+  downHarthmerePlayerFromSystem,
+  healHarthmerePlayer,
+  readHarthmereCombatState,
+} from "@/client/components/challenges/LocalDevHarthmereCombat";
 import { HARTHMERE_LOCAL_DEV_STATE_KEYS } from "@/client/components/challenges/LocalDevHarthmereEconomyHardening";
 import { harthmereUserScopedStorageKey } from "@/client/components/challenges/LocalDevHarthmereUserScope";
 import { HARTHMERE_INVENTORY_EVENT } from "@/client/components/challenges/harthmereEvents";
+import { isHarthmerePlacedCookStationItem } from "@/client/components/overlays/inspected/placeables/craftingStationCookRouting";
+import { useClientContext } from "@/client/components/contexts/ClientContextReactContext";
+import { anItem } from "@/shared/game/item";
+import { PlaceableSelector } from "@/shared/ecs/gen/selectors";
+import { HARTHMERE_CRAFTING_TABLE_PROMPT_RADIUS } from "@/shared/harthmere/harthmere_crafting_table_proximity";
 import React, { useEffect, useState } from "react";
 
 export const HARTHMERE_FOOD_STAMINA_STATE_KEY =
@@ -19,6 +28,9 @@ export const HARTHMERE_FOOD_STAMINA_EVENT =
   "biomes:harthmere-food-stamina-changed";
 export const HARTHMERE_WAKE_UP_ACTIVE_DATASET_KEY =
   "harthmereWakeUpActive" as const;
+export const HARTHMERE_STAMINA_GAMEPLAY_TICK_MS = 5_000;
+export const HARTHMERE_CAMPFIRE_WARMTH_TICK_MS = 5_000;
+export const HARTHMERE_CAMPFIRE_WARMTH_HEAL_AMOUNT = 1;
 const HARTHMERE_LOCAL_INVENTORY_STATE_KEY_FOR_STAMINA =
   HARTHMERE_LOCAL_DEV_STATE_KEYS.inventory;
 
@@ -215,6 +227,32 @@ export function restoreHarthmereFoodStaminaToFullForRespawn(
   return result;
 }
 
+export function harthmereCampfireWarmthHealDecisionForTest(input: {
+  nearWarmth: boolean;
+  gameplayActive: boolean;
+  hp: number;
+  maxHp: number;
+  combatState?: string;
+}) {
+  const hp = Math.max(0, Number(input.hp) || 0);
+  const maxHp = Math.max(1, Number(input.maxHp) || 1);
+  const combatState = String(input.combatState ?? "idle").toLowerCase();
+  const aliveAndDamaged =
+    hp > 0 &&
+    hp < maxHp &&
+    !["dead", "downed", "respawning"].includes(combatState);
+  const shouldHeal =
+    input.gameplayActive === true &&
+    input.nearWarmth === true &&
+    aliveAndDamaged;
+  return {
+    shouldHeal,
+    amount: shouldHeal
+      ? Math.min(HARTHMERE_CAMPFIRE_WARMTH_HEAL_AMOUNT, maxHp - hp)
+      : 0,
+  };
+}
+
 export function useHarthmereFoodStaminaState() {
   const [state, setState] = useState(() => readHarthmereFoodStaminaState());
   useEffect(() => {
@@ -281,7 +319,7 @@ export const HarthmereFoodStaminaRuntimeController: React.FunctionComponent<{}> 
           });
         }
       };
-      const id = window.setInterval(tick, 15_000);
+      const id = window.setInterval(tick, HARTHMERE_STAMINA_GAMEPLAY_TICK_MS);
       window.addEventListener(HARTHMERE_INVENTORY_EVENT, tick);
       window.addEventListener("storage", tick);
       tick();
@@ -291,5 +329,58 @@ export const HarthmereFoodStaminaRuntimeController: React.FunctionComponent<{}> 
         window.removeEventListener("storage", tick);
       };
     }, []);
+    return null;
+  };
+
+export const HarthmereCampfireWarmthRuntimeController: React.FunctionComponent<{}> =
+  () => {
+    const { resources, table } = useClientContext();
+
+    useEffect(() => {
+      if (!isBrowser()) {
+        return;
+      }
+      const isGameplayActive = () =>
+        document.visibilityState === "visible" &&
+        !isHarthmereWakeUpScreenActive();
+      const isNearPlacedWarmth = () => {
+        try {
+          const localPlayer = resources.get("/scene/local_player");
+          for (const entity of table.scan(
+            PlaceableSelector.query.spatial.inSphere({
+              center: localPlayer.player.position,
+              radius: HARTHMERE_CRAFTING_TABLE_PROMPT_RADIUS + 0.5,
+            })
+          )) {
+            const itemId = entity.placeable_component?.item_id;
+            if (
+              itemId !== undefined &&
+              isHarthmerePlacedCookStationItem(anItem(itemId))
+            ) {
+              return true;
+            }
+          }
+        } catch {
+          // ECS resources can be briefly unavailable during zone transitions.
+        }
+        return false;
+      };
+      const tick = () => {
+        const combat = readHarthmereCombatState();
+        const decision = harthmereCampfireWarmthHealDecisionForTest({
+          nearWarmth: isNearPlacedWarmth(),
+          gameplayActive: isGameplayActive(),
+          hp: combat.player.hp,
+          maxHp: combat.player.maxHp,
+          combatState: combat.player.combatState,
+        });
+        if (decision.shouldHeal && decision.amount > 0) {
+          healHarthmerePlayer(decision.amount, "Campfire warmth");
+        }
+      };
+      const id = window.setInterval(tick, HARTHMERE_CAMPFIRE_WARMTH_TICK_MS);
+      return () => window.clearInterval(id);
+    }, [resources, table]);
+
     return null;
   };

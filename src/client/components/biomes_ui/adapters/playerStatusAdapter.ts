@@ -108,9 +108,15 @@ function shouldPreferFallbackCombatVitals(
     ["dead", "downed", "respawning"].includes(
       normalizeCombatState(fallback.combatState)
     );
+  const fallbackIsProtectedRespawn =
+    fallback.hp > 0 &&
+    normalizeCombatState(fallback.combatState) === "protected_after_respawn";
+  const liveLooksStaleDead =
+    liveHp <= 0 || ["dead", "downed"].includes(liveCombatState);
   const liveContradictsLocalDownState = fallbackIsDown && liveHp > fallback.hp;
   return (
     (liveLooksDefaultAlive && fallbackDamagedOrDown) ||
+    (fallbackIsProtectedRespawn && liveLooksStaleDead) ||
     liveContradictsLocalDownState
   );
 }
@@ -207,7 +213,10 @@ export function biomesUIPlayerStatusEndpoint(
   options?: { gameplayActive?: boolean }
 ): string {
   const rawSearch =
-    search ?? (typeof window !== "undefined" ? window.location.search : "");
+    search ??
+    (typeof window !== "undefined" && window.location
+      ? window.location.search
+      : "");
   const params = new URLSearchParams(rawSearch);
   const installId = params.get("install_id") ?? params.get("installId");
   const output: string[] = [];

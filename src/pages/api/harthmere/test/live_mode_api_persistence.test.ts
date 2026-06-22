@@ -510,6 +510,84 @@ describe("live_mode API Redis persistence", () => {
       assert.equal(replay.playerStatusState, undefined);
     }));
 
+  it("returns helper read snapshots without rewriting actor or shared state", async () => {
+    const redisPrimary = new FakeRedisPrimary();
+    (globalThis as any).__harthmereLiveModeRedis = {
+      primary: redisPrimary,
+    };
+
+    const env: HarthmereLiveModeAuthorityEnvelope = {
+      ...envelope(),
+      requestId: "live-api-persist-helper-read",
+      idempotencyKey: "live-api-persist-helper-read",
+      actionKind: "request_quest_state_update",
+      subsystem: "quest",
+      source: "client_request",
+      targetId: "live_entity_helper_state",
+      payload: { operation: "live_entity_helper_read_state" },
+    };
+    const mutationPlan = buildHarthmereLiveModePersistenceMutationPlan(env);
+    const response = {
+      ok: true,
+      version: "HARTHMERE_LIVE_MODE_SERVER_ROUTE" as const,
+      actorId: ACTOR,
+      duplicate: false,
+      replayed: false,
+      persisted: true,
+      validation: {
+        ok: true,
+        errors: [],
+        warnings: [],
+        rejectedClientClaims: [],
+      },
+      mutationPlan,
+      events: [],
+      uiEvents: [],
+    };
+
+    const persisted = await persistHarthmereLiveModeResponse(env, response, {
+      logicApi: { publish: async () => {} } as any,
+      userId: 1 as any,
+    });
+
+    const playerKey = harthmereLiveModePlayerStateKey(ACTOR);
+    const sharedWorldKey = harthmereLiveModeSharedWorldStateKey();
+    assert.deepEqual(
+      persisted.backendMutation?.touchedModels?.sort(),
+      ["building_state", "inventory_items", "quest_state"]
+    );
+    assert.ok(persisted.questState, "read response should include questState");
+    assert.ok(
+      persisted.inventoryLootState,
+      "read response should include inventory snapshot"
+    );
+    assert.ok(
+      persisted.buildingState,
+      "read response should include building snapshot"
+    );
+    assert.equal(
+      redisPrimary.txOps.some((op) => op[0] === "set" && op[1] === playerKey),
+      false
+    );
+    assert.equal(
+      redisPrimary.txOps.some(
+        (op) => op[0] === "set" && op[1] === sharedWorldKey
+      ),
+      false
+    );
+    assert.equal(redisPrimary.store.get(playerKey), undefined);
+    assert.equal(redisPrimary.store.get(sharedWorldKey), undefined);
+    assert.ok(
+      redisPrimary.txOps.some(
+        (op) =>
+          op[0] === "set" &&
+          op[1] ===
+            "harthmere:live_mode:current:idempotency:player_live_api_persist_001:live-api-persist-helper-read"
+      ),
+      "read response should still write idempotency inside the transaction"
+    );
+  });
+
   it("adopts duplicate install actor state inside the live-mode transaction", async () => {
     const redisPrimary = new FakeRedisPrimary();
     (globalThis as any).__harthmereLiveModeRedis = {

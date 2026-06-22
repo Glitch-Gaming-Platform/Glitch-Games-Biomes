@@ -10,8 +10,18 @@ import {
 import {
   createHarthmereDeathTransitionLiveModeRequestForTest,
   createHarthmereLocalCombatAttackLiveModeRequestForTest,
+  harthmereRespawnHpForTest,
 } from "@/client/components/challenges/LocalDevHarthmereCombat";
+import {
+  HARTHMERE_CAMPFIRE_WARMTH_TICK_MS,
+  HARTHMERE_STAMINA_GAMEPLAY_TICK_MS,
+  harthmereCampfireWarmthHealDecisionForTest,
+} from "@/client/components/challenges/LocalDevHarthmereFoodStaminaSystem";
 import { harthmereRespawnDisabledReason } from "@/client/components/challenges/harthmereCombatDeathInterfaceRules";
+import {
+  defaultHarthmereFoodStaminaState,
+  tickHarthmereStaminaForGameplay,
+} from "@/shared/harthmere/mmo_farming_food_stamina";
 import assert from "assert";
 
 describe("Harthmere live death sync", () => {
@@ -123,6 +133,87 @@ describe("Harthmere live death sync", () => {
     assert.equal(
       harthmereRespawnDisabledReason(effective, "the_grove"),
       undefined
+    );
+  });
+
+  it("keeps the full zero-health death to Grove respawn progression coherent", () => {
+    const death = aliveDeathState();
+    const effective = effectiveHarthmereDeathStateForRespawn({
+      death,
+      combatHp: 0,
+      combatMaxHp: 100,
+      combatState: "idle",
+      liveHp: 0,
+      liveDeathState: "alive",
+      nowMs: 1_800_000,
+    });
+
+    assert.equal(
+      harthmereDeathScreenShouldRenderForTest({
+        death,
+        effectiveDeath: effective,
+      }),
+      true
+    );
+    assert.equal(
+      harthmereRespawnDisabledReason(effective, "the_grove"),
+      undefined
+    );
+    assert.equal(harthmereRespawnHpForTest(100, "the_grove"), 100);
+
+    const protectedAfterRespawn = aliveDeathState({
+      state: "protected_after_respawn",
+      protectionUntil: 1_820_000,
+    });
+    assert.strictEqual(
+      effectiveHarthmereDeathStateForRespawn({
+        death: protectedAfterRespawn,
+        combatHp: 100,
+        combatMaxHp: 100,
+        combatState: "protected_after_respawn",
+        liveHp: 0,
+        liveDeathState: "dead",
+        nowMs: 1_805_000,
+      }),
+      protectedAfterRespawn
+    );
+
+    let hp = 97;
+    for (
+      let elapsedMs = HARTHMERE_CAMPFIRE_WARMTH_TICK_MS;
+      elapsedMs <= HARTHMERE_CAMPFIRE_WARMTH_TICK_MS * 3;
+      elapsedMs += HARTHMERE_CAMPFIRE_WARMTH_TICK_MS
+    ) {
+      const decision = harthmereCampfireWarmthHealDecisionForTest({
+        nearWarmth: true,
+        gameplayActive: true,
+        hp,
+        maxHp: 100,
+        combatState: "idle",
+      });
+      assert.equal(decision.amount, 1, `warmth tick ${elapsedMs}ms`);
+      hp += decision.amount;
+    }
+    assert.equal(hp, 100);
+    assert.equal(
+      harthmereCampfireWarmthHealDecisionForTest({
+        nearWarmth: true,
+        gameplayActive: true,
+        hp,
+        maxHp: 100,
+        combatState: "idle",
+      }).amount,
+      0
+    );
+
+    const stamina = defaultHarthmereFoodStaminaState("local-player", 1_900_000);
+    const drained = tickHarthmereStaminaForGameplay(stamina, {
+      nowMs: 1_900_000 + HARTHMERE_STAMINA_GAMEPLAY_TICK_MS,
+      gameplayActive: true,
+    });
+    assert.ok(
+      drained.state.stamina < stamina.stamina,
+      `expected stamina to degrade from ${stamina.stamina} to below full`
     );
   });
 

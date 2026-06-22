@@ -34,6 +34,7 @@ import {
   firstActiveLiveEntityHelperQuestTitleForBiomesUI,
   liveEntityHelperAcceptedQuestLandmarksForBiomesUI,
   liveEntityHelperTrackableQuestsForBiomesUI,
+  mergeLiveEntityHelperQuestStatesForBiomesUI,
 } from "./liveEntityHelperQuestMapAdapter";
 import {
   BIOMES_UI_SHARED_QUEST_MARKER_SOURCE,
@@ -306,7 +307,10 @@ export function buildBiomesUIMapAdapter(
   };
   const MapLandmarks = () => {
     const api = readSnapshotGroveApi();
-    const liveEntityHelperState = readLiveEntityHelperQuestState();
+    const liveEntityHelperState = mergeLiveEntityHelperQuestStatesForBiomesUI(
+      readLiveEntityHelperQuestState(),
+      liveQuestState
+    );
     const toolOwned = harthmereJobToolOwnedState();
     return appendHarthmereBusinessOutpostMapLandmarks([
       ...(Array.isArray(api?.landmarks) ? api.landmarks : []),
@@ -488,7 +492,10 @@ export function buildBiomesUIMapAdapter(
         state,
         liveQuestState
       );
-      const liveEntityHelperState = readLiveEntityHelperQuestState();
+      const liveEntityHelperState = mergeLiveEntityHelperQuestStatesForBiomesUI(
+        readLiveEntityHelperQuestState(),
+        liveQuestState
+      );
       return String(
         activeQuest?.title ??
           firstActiveJobsBoardQuestTitleForBiomesUI(jobsBoardState) ??
@@ -512,39 +519,52 @@ export function buildBiomesUIMapAdapter(
         state,
         liveQuestState
       );
-      const objectiveIndex = Number(state?.activeObjectiveIndex ?? 0);
       const objectives = Array.isArray(activeQuest?.objectives)
         ? activeQuest.objectives
         : [];
-      if (!activeQuest) {
-        const jobsBoardSteps =
-          activeJobsBoardMissionStepsForBiomesUI(jobsBoardState);
-        const roadAheadSteps = snapshotRoadAheadMissionStepsForBiomesUI(
+      const liveObjectiveIndex = activeQuest?.id
+        ? liveModeActiveQuestObjectiveIndex(liveQuestState, activeQuest.id)
+        : undefined;
+      const localObjectiveIndex = Number(state?.activeObjectiveIndex ?? 0);
+      const activeObjectiveIndex =
+        state?.activeQuestId === activeQuest?.id
+          ? localObjectiveIndex
+          : liveObjectiveIndex ?? localObjectiveIndex;
+      const authoredSteps = activeQuest
+        ? objectives.map((objective: string, index: number) => {
+            return {
+              id: `${activeQuest?.id ?? "quest"}:${index}`,
+              title:
+                index < activeObjectiveIndex
+                  ? `Completed step ${index + 1}`
+                  : index === activeObjectiveIndex
+                  ? `Current step ${index + 1}`
+                  : `Upcoming step ${index + 1}`,
+              objective,
+              done: index < activeObjectiveIndex,
+            };
+          })
+        : [];
+      const liveEntityHelperState = mergeLiveEntityHelperQuestStatesForBiomesUI(
+        readLiveEntityHelperQuestState(),
+        liveQuestState
+      );
+      const allSteps = [
+        ...authoredSteps,
+        ...activeJobsBoardMissionStepsForBiomesUI(jobsBoardState),
+        ...snapshotRoadAheadMissionStepsForBiomesUI(
           readSnapshotMissionState(),
           roadAheadChallengeStepHints
-        );
-        return jobsBoardSteps.length
-          ? jobsBoardSteps
-          : roadAheadSteps.length
-          ? roadAheadSteps
-          : [
-              ...activeLiveEntityHelperMissionStepsForBiomesUI(
-                readLiveEntityHelperQuestState()
-              ),
-              ...activeSharedQuestMissionStepsForBiomesUI(liveQuestState),
-            ];
+        ),
+        ...activeLiveEntityHelperMissionStepsForBiomesUI(
+          liveEntityHelperState
+        ),
+        ...activeSharedQuestMissionStepsForBiomesUI(liveQuestState),
+      ];
+      if (!activeQuest) {
+        return allSteps;
       }
-      return objectives.map((objective: string, index: number) => ({
-        id: `${activeQuest?.id ?? "quest"}:${index}`,
-        title:
-          index < objectiveIndex
-            ? `Completed step ${index + 1}`
-            : index === objectiveIndex
-            ? `Current step ${index + 1}`
-            : `Upcoming step ${index + 1}`,
-        objective,
-        done: index < objectiveIndex,
-      }));
+      return allSteps;
     },
     getTrackableQuests: () => {
       const api = readSnapshotGroveApi();
@@ -634,7 +654,10 @@ export function buildBiomesUIMapAdapter(
           roadAheadChallengeStepHints
         ),
         ...liveEntityHelperTrackableQuestsForBiomesUI(
-          readLiveEntityHelperQuestState()
+          mergeLiveEntityHelperQuestStatesForBiomesUI(
+            readLiveEntityHelperQuestState(),
+            liveQuestState
+          )
         ),
         ...sharedQuestTrackableQuestsForBiomesUI(liveQuestState),
         ...authoredQuests,

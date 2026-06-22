@@ -6506,6 +6506,46 @@ export function resetHarthmereCombatNpc(offset: number) {
   });
 }
 
+const HARTHMERE_RESPAWN_RULES: Record<
+  string,
+  { label: string; hpPercent: number; sicknessSeconds: number }
+> = {
+  the_grove: {
+    label: "The Grove",
+    hpPercent: 1,
+    sicknessSeconds: 75,
+  },
+  temple_green: {
+    label: "Temple Green Shrine",
+    hpPercent: 1,
+    sicknessSeconds: 90,
+  },
+  north_gate: {
+    label: "North Gate Checkpoint",
+    hpPercent: 1,
+    sicknessSeconds: 120,
+  },
+  player_house: {
+    label: "Player House",
+    hpPercent: 1,
+    sicknessSeconds: 60,
+  },
+};
+
+function harthmereRespawnRule(respawnId: string) {
+  return (
+    HARTHMERE_RESPAWN_RULES[respawnId] ?? HARTHMERE_RESPAWN_RULES.temple_green
+  );
+}
+
+export function harthmereRespawnHpForTest(
+  maxHp: number,
+  respawnId = "temple_green"
+) {
+  const rule = harthmereRespawnRule(respawnId);
+  return Math.max(1, Math.round(Math.max(1, maxHp) * rule.hpPercent));
+}
+
 export function healHarthmerePlayer(amount: number, source = "Healing") {
   const state = readHarthmereCombatState();
   if (
@@ -6647,33 +6687,8 @@ export function endHarthmereRespawnProtection(
 
 export function respawnHarthmerePlayer(respawnId = "temple_green") {
   const state = readHarthmereCombatState();
-  const respawnRules: Record<
-    string,
-    { label: string; hpPercent: number; sicknessSeconds: number }
-  > = {
-    the_grove: {
-      label: "The Grove",
-      hpPercent: 0.65,
-      sicknessSeconds: 75,
-    },
-    temple_green: {
-      label: "Temple Green Shrine",
-      hpPercent: 0.55,
-      sicknessSeconds: 90,
-    },
-    north_gate: {
-      label: "North Gate Checkpoint",
-      hpPercent: 0.45,
-      sicknessSeconds: 120,
-    },
-    player_house: {
-      label: "Player House",
-      hpPercent: 0.7,
-      sicknessSeconds: 60,
-    },
-  };
-  const rule = respawnRules[respawnId] ?? respawnRules.temple_green;
-  const hpAfter = Math.max(1, Math.round(state.player.maxHp * rule.hpPercent));
+  const rule = harthmereRespawnRule(respawnId);
+  const hpAfter = harthmereRespawnHpForTest(state.player.maxHp, respawnId);
   const resetNpcs = Object.fromEntries(
     Object.entries(state.npcs).map(([offset, npc]) => [
       offset,
@@ -6699,7 +6714,7 @@ export function respawnHarthmerePlayer(respawnId = "temple_green") {
       finalDamage: 0,
       targetHpBefore: state.player.hp,
       targetHpAfter: hpAfter,
-      detail: `You respawned at ${rule.label} with temporary protection and recovery sickness.`,
+      detail: `You respawned at ${rule.label} with full health, temporary protection, and recovery sickness.`,
     }),
     player: {
       ...state.player,

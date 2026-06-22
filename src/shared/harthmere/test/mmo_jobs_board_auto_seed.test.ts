@@ -594,6 +594,87 @@ describe("mmo_jobs_board_authority — monster hunting (current)", () => {
     assert.equal(complete.jobsBoard.postings[job.jobId].status, "completed");
     assert.equal(complete.inventoryGoldDelta, job.rewardGold);
   });
+
+  it("completes the Road Rations gather job only after the seeker has the required berries, then pays out at the Grove board", () => {
+    const seeded = seed(defaultHarthmereJobsBoardState(NOW), NOW);
+    const job = Object.values(seeded.jobsBoard.postings).find(
+      (candidate) => candidate.templateId === "town_gather_road_rations"
+    );
+    assert.ok(job, "Road Rations gather job should be auto-posted");
+    assert.equal(job!.mapMarkerId, "grove_garden_edge_berries");
+
+    const accept = reduceHarthmereJobsBoardMutation(
+      seeded.jobsBoard,
+      {
+        requestId: "accept-road-rations",
+        actorId: "seeker",
+        nowMs: NOW + 1_000,
+        operation: "accept_job",
+        boardId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID,
+        jobId: job!.jobId,
+      } as any,
+      seedContext()
+    );
+    const todo = Object.values(accept.jobsBoard.todos).find(
+      (entry) => entry.jobId === job!.jobId
+    );
+    assert.equal(todo?.mapMarkerId, "grove_garden_edge_berries");
+
+    const missing = reduceHarthmereJobsBoardMutation(
+      accept.jobsBoard,
+      {
+        requestId: "missing-road-rations",
+        actorId: "seeker",
+        nowMs: NOW + 2_000,
+        operation: "complete_job_quest",
+        boardId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID,
+        jobId: job!.jobId,
+        questTodoId: todo?.todoId,
+      } as any,
+      seedContext({ actorInventoryItems: { wild_berries: 5 } })
+    );
+    assert.ok(
+      missing.warnings.includes(
+        "jobs_board_rejected:missing_completion_item:wild_berries"
+      )
+    );
+
+    const questDone = reduceHarthmereJobsBoardMutation(
+      accept.jobsBoard,
+      {
+        requestId: "complete-road-rations-quest",
+        actorId: "seeker",
+        nowMs: NOW + 3_000,
+        operation: "complete_job_quest",
+        boardId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID,
+        jobId: job!.jobId,
+        questTodoId: todo?.todoId,
+      } as any,
+      seedContext({ actorInventoryItems: { wild_berries: 6 } })
+    );
+    assert.deepEqual(questDone.inventoryItemDeltas, { wild_berries: -6 });
+    assert.equal(
+      Object.values(questDone.jobsBoard.todos).find(
+        (entry) => entry.jobId === job!.jobId
+      )?.status,
+      "completed"
+    );
+
+    const paid = reduceHarthmereJobsBoardMutation(
+      questDone.jobsBoard,
+      {
+        requestId: "pay-road-rations",
+        actorId: "seeker",
+        nowMs: NOW + 4_000,
+        operation: "complete_job",
+        boardId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID,
+        jobId: job!.jobId,
+      } as any,
+      seedContext()
+    );
+    assert.equal(paid.jobsBoard.postings[job!.jobId].status, "completed");
+    assert.equal(paid.inventoryGoldDelta, job!.rewardGold);
+  });
 });
 
 describe("mmo_jobs_board_authority — Exotic Matter mining jobs", () => {

@@ -159,8 +159,9 @@ describe("Harthmere quest object procedural markers current", () => {
       const marker = HARTHMERE_QUEST_OBJECT_MARKERS.find(
         (candidate) => candidate.id === landmark.id
       );
-      const resolved =
-        harthmereJobsBoardQuestMarkerRuntimePositionForId(landmark.id);
+      const resolved = harthmereJobsBoardQuestMarkerRuntimePositionForId(
+        landmark.id
+      );
       const expectedPosition =
         resolved?.position ??
         ([
@@ -182,6 +183,8 @@ describe("Harthmere quest object procedural markers current", () => {
 
   it("renders Jobs Board target markers, including monster-hunt destinations, from the shared resolver", () => {
     for (const id of [
+      "harthmere_orchard_softwood",
+      "harthmere_north_iron_vein",
       "muckwad_patch",
       HARTHMERE_JOBS_BOARD_ELITE_MUCKER_BOUNTY_MARKER_ID,
       HARTHMERE_JOBS_BOARD_HEX_WRAITH_BOUNTY_MARKER_ID,
@@ -210,7 +213,24 @@ describe("Harthmere quest object procedural markers current", () => {
       const runtime = harthmereJobsBoardQuestMarkerRuntimePosition(resolved!);
       assert.equal(marker?.position[0], runtime.position[0]);
       assert.equal(marker?.position[2], runtime.position[2]);
+      assert.equal(
+        marker?.position[1],
+        runtime.position[1],
+        `${id} should use the shared visible quest marker height`
+      );
     }
+  });
+
+  it("keeps item-source markers used by board quests above the live Grove floor", () => {
+    const orchard = harthmereJobsBoardQuestMarkerRuntimePositionForId(
+      "harthmere_orchard_softwood"
+    );
+    assert.ok(orchard, "Orchard softwood source marker should resolve");
+    assert.deepEqual(orchard!.position, [468, 70, -118]);
+    assert.ok(
+      orchard!.position[1] > 60,
+      "Orchard source pin should not use the buried authored y=53 fallback"
+    );
   });
 
   it("adds active-only live-entity helper quest targets at the authored coordinates", () => {
@@ -465,8 +485,8 @@ describe("Harthmere quest object procedural markers current", () => {
     const root = findRendererRoot(scenes);
     assert.ok(root, "quest object root must attach to the scene");
 
-    const containerMarkers = HARTHMERE_QUEST_OBJECT_MARKERS.filter(
-      (marker) => isHarthmereContainerObjectLabel({ label: marker.label })
+    const containerMarkers = HARTHMERE_QUEST_OBJECT_MARKERS.filter((marker) =>
+      isHarthmereContainerObjectLabel({ label: marker.label })
     );
     assert.ok(
       containerMarkers.length >= 10,
@@ -623,15 +643,11 @@ describe("Harthmere quest object procedural markers current", () => {
     assert.equal(activeBeacon!.visible, true);
     assert.equal(inactiveBeacon!.visible, false);
     assert.ok(
-      meshColors(activeBeacon!).includes(
-        HARTHMERE_ACTIVE_QUEST_MARKER_BLUE
-      ),
+      meshColors(activeBeacon!).includes(HARTHMERE_ACTIVE_QUEST_MARKER_BLUE),
       "active marker should draw the blue pole"
     );
     assert.ok(
-      meshColors(activeBeacon!).includes(
-        HARTHMERE_ACTIVE_QUEST_MARKER_CAP
-      ),
+      meshColors(activeBeacon!).includes(HARTHMERE_ACTIVE_QUEST_MARKER_CAP),
       "active marker should draw the white cap"
     );
 
@@ -662,9 +678,7 @@ describe("Harthmere quest object procedural markers current", () => {
       "boss encounter must not visibly spawn before a helper boss quest is active"
     );
 
-    renderer.syncActiveQuestMarkerId(
-      LIVE_ENTITY_HELPER_MUCK_BOSS_MARKER_ID
-    );
+    renderer.syncActiveQuestMarkerId(LIVE_ENTITY_HELPER_MUCK_BOSS_MARKER_ID);
     assert.equal(bossGroup!.visible, true);
     assert.equal(findActiveBeacon(bossGroup!)?.visible, true);
 

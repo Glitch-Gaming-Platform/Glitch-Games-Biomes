@@ -62,6 +62,17 @@ export function displayBiomesVitalsBarValueForTest(value: unknown): number {
   return rawValue > 0 ? Math.max(1, Math.ceil(rawValue)) : 0;
 }
 
+export function formatBiomesVitalsBarValueForTest(
+  value: unknown,
+  options: { showTenths?: boolean } = {}
+): string {
+  const rawValue = Math.max(0, Number(value) || 0);
+  if (options.showTenths && rawValue > 0 && !Number.isInteger(rawValue)) {
+    return rawValue.toFixed(1);
+  }
+  return String(displayBiomesVitalsBarValueForTest(rawValue));
+}
+
 function VitalsBar({
   label,
   value,
@@ -77,7 +88,9 @@ function VitalsBar({
 }) {
   const highlight = useBlinkTarget<HTMLDivElement>(uiId);
   const rawValue = Math.max(0, Number(value) || 0);
-  const safeValue = displayBiomesVitalsBarValueForTest(rawValue);
+  const displayValue = formatBiomesVitalsBarValueForTest(rawValue, {
+    showTenths: tone === "stamina",
+  });
   const safeMax = Math.max(1, Math.round(Number(max) || 1));
   const width = percent(rawValue, safeMax);
 
@@ -94,12 +107,12 @@ function VitalsBar({
       <div className="biomes-ui-vitals-bar__meta">
         <span>{label}</span>
         <span className="biomes-ui-vitals-bar__value">
-          {safeValue}/{safeMax}
+          {displayValue}/{safeMax}
         </span>
       </div>
       <div
         className="biomes-ui-vitals-bar__track"
-        aria-label={`${label} ${safeValue} of ${safeMax}`}
+        aria-label={`${label} ${displayValue} of ${safeMax}`}
       >
         <span
           className={`biomes-ui-vitals-bar__fill biomes-ui-vitals-bar__fill--${tone}`}
@@ -237,7 +250,7 @@ export const BiomesUIVitalsPanel: React.FunctionComponent<{}> = () => {
   // snapping back to a stale backend snapshot.
   const manaValue = Math.max(0, Math.round(multiplayer.mana));
   const manaMax = Math.max(1, Math.round(multiplayer.maxMana));
-  const staminaValue = Math.max(0, Math.round(stamina.stamina));
+  const staminaValue = Math.max(0, Number(stamina.stamina) || 0);
   const staminaMax = Math.max(1, Math.round(stamina.maxStamina));
   const regional = display.standing ?? reputation.regions.harthmere;
   // Level / XP come from the LOCAL leveling system (the source of truth where

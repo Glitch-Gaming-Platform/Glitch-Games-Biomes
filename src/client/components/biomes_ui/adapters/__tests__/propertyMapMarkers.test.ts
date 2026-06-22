@@ -72,7 +72,20 @@ describe("Harthmere property map markers current", () => {
     assert.ok(landmarks[0].description.includes("Terraformed property land"));
   });
 
-  it("does not show unowned or non-muck-designation plots as property markers", () => {
+  it("shows owned safe starter land as a property marker after purchase", () => {
+    const landmarks = harthmerePropertyMapLandmarksFromBuildingState({
+      ownedPlotIds: ["grove_muckstead_cottage_lot"],
+      safeZones: {},
+      inWorldMarkers: {},
+    });
+
+    assert.equal(landmarks.length, 1);
+    assert.equal(landmarks[0].id, "property:grove_muckstead_cottage_lot");
+    assert.equal(landmarks[0].terrainState, "terraformed");
+    assert.ok(landmarks[0].description.includes("Terraformed property land"));
+  });
+
+  it("does not show unowned plots as property markers", () => {
     assert.deepEqual(
       harthmerePropertyMapLandmarksFromBuildingState({
         ownedPlotIds: [],

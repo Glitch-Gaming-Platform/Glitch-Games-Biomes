@@ -1536,6 +1536,25 @@ describe("reduceHarthmereLiveModeBackendState — death lifecycle", function () 
     assert.strictEqual(state.combat.deadFromStaminaAtMs, undefined);
   });
 
+  it("request_respawn repairs zero-HP alive persistence before restoring full health", function () {
+    const s = freshState();
+    s.combat.hp = 0;
+    s.combat.deathState = "alive";
+    s.combat.maxHp = 100;
+
+    const { state, summary } = applyOne(s, "request_respawn");
+
+    assert.strictEqual(state.combat.hp, 100);
+    assert.strictEqual(state.combat.deathState, "alive");
+    assert.ok(!summary.warnings.includes("respawn_rejected:not_dead"));
+    assert.ok(summary.touchedModels.includes("death_state"));
+    assert.ok(
+      !Object.values(state.combat.deathRecords).some(
+        (record) => record.cause === "zero_hp_respawn_repair"
+      )
+    );
+  });
+
   it("death → revive → death cycle is stable", function () {
     let s = freshState();
     ({ state: s } = applyOne(s, "request_death_transition"));
@@ -6785,6 +6804,23 @@ describe("reduceHarthmereLiveModeBackendState — building mutation", function (
     }
   }
 
+  function grantAllConstructionMaterialsToStorage(
+    state: HarthmereLiveModeBackendState,
+    blueprintId: string
+  ) {
+    const blueprint = buildingSystemBlueprintById(blueprintId);
+    assert.ok(blueprint, `missing blueprint ${blueprintId}`);
+    for (const stage of BUILDING_SYSTEM_CONSTRUCTION_STAGES) {
+      for (const line of buildingSystemMaterialRequirementLines({
+        blueprint,
+        stage,
+      })) {
+        state.banking.materialStorage[line.material] =
+          (state.banking.materialStorage[line.material] ?? 0) + line.required;
+      }
+    }
+  }
+
   function completeConstructionProject(input: {
     state: HarthmereLiveModeBackendState;
     plotId: string;
@@ -6874,6 +6910,30 @@ describe("reduceHarthmereLiveModeBackendState — building mutation", function (
     }
     return state;
   }
+
+  it("runs the full property build progression using material storage", function () {
+    const s = freshState();
+    s.inventory.gold = 1_000;
+    const plotId = "grove_muckstead_cottage_lot";
+    const blueprintId = "grove_voxel_cottage_tier_1";
+    s.building.ownedPlots = [plotId];
+    grantAllConstructionMaterialsToStorage(s, blueprintId);
+
+    const built = completeConstructionProject({
+      state: s,
+      plotId,
+      blueprintId,
+      testDuplicateFirstStage: true,
+    });
+
+    const propertyId = `property_${plotId}`;
+    assert.equal(built.property.buildingProgress[propertyId], 100);
+    assert.equal(built.property.owned[propertyId].blueprintId, blueprintId);
+    assert.equal(built.building.activeProjects[`project_${plotId}`].status, "completed");
+    for (const count of Object.values(built.banking.materialStorage)) {
+      assert.equal(count, 0);
+    }
+  });
 
   it("rejects placement when the actor has not claimed the real Grove plot", function () {
     const s = freshState();

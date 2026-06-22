@@ -279,6 +279,7 @@ import {
   type BuildingSystemBusinessType,
   type BuildingSystemDoorLockRecord,
   type BuildingSystemInWorldMarker,
+  type BuildingSystemMaterialRequirementLine,
   type BuildingSystemStorageContainerRecord,
   type BuildingSystemPermissionKey,
   type BuildingSystemPermissionSubject,
@@ -1038,7 +1039,19 @@ export interface HarthmereLiveModeBackendState {
   };
   collections: HarthmereProgressionCollectionsState;
   quests: {
-    active: Record<string, { stepId?: string; progress: number }>;
+    active: Record<
+      string,
+      {
+        stepId?: string;
+        progress: number;
+        source?: string;
+        title?: string;
+        questKind?: string;
+        entityId?: string;
+        giverName?: string;
+        giverPosition?: [number, number, number];
+      }
+    >;
     completed: Record<string, number>;
   };
   questInvites: HarthmereLiveModeQuestInviteState;
@@ -4581,6 +4594,80 @@ function allBuildingMaterialsComplete(
   return Object.entries(required ?? {}).every(
     ([material, count]) => (contributed[material] ?? 0) >= count
   );
+}
+
+// Building materials can arrive from the ECS inventory by Bikkie item id, or
+// from Harthmere material storage by local material symbol. Count both so the
+// full build flow matches what the player sees in inventory and storage UI.
+function buildingMaterialLookupKeys(line: BuildingSystemMaterialRequirementLine) {
+  return [line.itemId, line.material, line.bikkieName].filter(Boolean);
+}
+
+function countBuildingMaterialRecordKeys(
+  record: Record<string, number>,
+  line: BuildingSystemMaterialRequirementLine
+) {
+  let count = 0;
+  for (const key of new Set(buildingMaterialLookupKeys(line))) {
+    count += Math.max(0, Math.trunc(Number(record[key] ?? 0) || 0));
+  }
+  return count;
+}
+
+function countAvailableBuildingMaterial(input: {
+  inventoryItems: Record<string, number>;
+  materialStorage: Record<string, number>;
+  line: BuildingSystemMaterialRequirementLine;
+}) {
+  return (
+    countBuildingMaterialRecordKeys(input.inventoryItems, input.line) +
+    countBuildingMaterialRecordKeys(input.materialStorage, input.line)
+  );
+}
+
+function consumeBuildingMaterialRecordKeys(
+  record: Record<string, number>,
+  line: BuildingSystemMaterialRequirementLine,
+  requested: number
+) {
+  let remaining = Math.max(0, Math.trunc(requested));
+  let consumed = 0;
+  for (const key of new Set(buildingMaterialLookupKeys(line))) {
+    if (remaining <= 0) break;
+    const available = Math.max(0, Math.trunc(Number(record[key] ?? 0) || 0));
+    if (available <= 0) continue;
+    const take = Math.min(available, remaining);
+    recordDelta(record, key, -take);
+    remaining -= take;
+    consumed += take;
+  }
+  return { consumed, remaining };
+}
+
+function consumeAvailableBuildingMaterial(input: {
+  inventoryItems: Record<string, number>;
+  materialStorage: Record<string, number>;
+  line: BuildingSystemMaterialRequirementLine;
+  requested: number;
+}) {
+  const fromInventory = consumeBuildingMaterialRecordKeys(
+    input.inventoryItems,
+    input.line,
+    input.requested
+  );
+  const fromStorage =
+    fromInventory.remaining > 0
+      ? consumeBuildingMaterialRecordKeys(
+          input.materialStorage,
+          input.line,
+          fromInventory.remaining
+        )
+      : { consumed: 0, remaining: 0 };
+  return {
+    inventoryConsumed: fromInventory.consumed,
+    materialStorageConsumed: fromStorage.consumed,
+    remaining: fromStorage.remaining,
+  };
 }
 
 function normalizePermissionSubject(
@@ -10569,11 +10656,26 @@ export function reduceHarthmereLiveModeBackendState(
             touchedModels.add("quest_state_rejection");
             break;
           }
+          const context = liveEntityHelperQuestContextFromEnvelope(envelope);
           next.quests.active[quest.questId] = {
             stepId:
               liveEntityHelperQuestTargetMarkerForKind(quest.kind)?.id ??
               LIVE_ENTITY_HELPER_ACCEPTED_STEP_ID,
             progress: 0,
+            source: "live_entity_helper",
+            title: quest.title,
+            questKind: quest.kind,
+            entityId: quest.entityId,
+            giverName: quest.giverName,
+            ...(context?.position
+              ? {
+                  giverPosition: [...context.position] as [
+                    number,
+                    number,
+                    number
+                  ],
+                }
+              : {}),
           };
           upsertLiveEntityHelperQuestMarker(next, quest, nowMs);
           touchedModels.add("quest_state");
@@ -10765,6 +10867,8 @@ export function reduceHarthmereLiveModeBackendState(
           next.quests.active[questId] = {
             stepId: payloadString(envelope, "stepId"),
             progress: Math.max(0, payloadNumber(envelope, "progress") ?? 1),
+            source: payloadString(envelope, "source"),
+            title: payloadString(envelope, "title"),
           };
         }
         touchedModels.add("quest_state");
@@ -11481,11 +11585,19 @@ export function reduceHarthmereLiveModeBackendState(
           touchedModels.add("building_rejection");
           break;
         }
-        for (const [itemId, delta] of Object.entries(
-          materialRequest.itemDeltas
-        )) {
+        for (const [itemId, delta] of Object.entries(materialRequest.itemDeltas)) {
           const needed = Math.abs(delta);
-          if ((next.inventory.items[itemId] ?? 0) < needed) {
+          const line = materialRequest.lines.find(
+            (candidate) => candidate.itemId === itemId
+          );
+          const available = line
+            ? countAvailableBuildingMaterial({
+                inventoryItems: next.inventory.items,
+                materialStorage: next.banking.materialStorage,
+                line,
+              })
+            : next.inventory.items[itemId] ?? 0;
+          if (available < needed) {
             warnings.push(
               `building_stage_rejected:insufficient_material:${itemId}`
             );
@@ -11497,10 +11609,34 @@ export function reduceHarthmereLiveModeBackendState(
           break;
         }
 
-        for (const [itemId, delta] of Object.entries(
-          materialRequest.itemDeltas
-        )) {
-          recordDelta(next.inventory.items, itemId, delta);
+        let consumedMaterialStorage = false;
+        for (const [itemId, delta] of Object.entries(materialRequest.itemDeltas)) {
+          const needed = Math.abs(delta);
+          const line = materialRequest.lines.find(
+            (candidate) => candidate.itemId === itemId
+          );
+          if (!line) {
+            recordDelta(next.inventory.items, itemId, delta);
+            continue;
+          }
+          const consumed = consumeAvailableBuildingMaterial({
+            inventoryItems: next.inventory.items,
+            materialStorage: next.banking.materialStorage,
+            line,
+            requested: needed,
+          });
+          if (consumed.remaining > 0) {
+            warnings.push(
+              `building_stage_rejected:insufficient_material:${itemId}`
+            );
+            touchedModels.add("building_rejection");
+            break;
+          }
+          consumedMaterialStorage =
+            consumedMaterialStorage || consumed.materialStorageConsumed > 0;
+        }
+        if (touchedModels.has("building_rejection")) {
+          break;
         }
         const nextMaterials = { ...currentProgress.materials };
         for (const [material, count] of Object.entries(
@@ -11637,6 +11773,9 @@ export function reduceHarthmereLiveModeBackendState(
           harthmereLiveModeSharedStateKey("plot", plot.plotId)
         );
         touchedModels.add("inventory_items");
+        if (consumedMaterialStorage) {
+          touchedModels.add("material_storage");
+        }
         touchedModels.add("building_project");
         touchedModels.add("construction_stage_state");
         break;
@@ -13891,6 +14030,19 @@ export function reduceHarthmereLiveModeBackendState(
       touchedModels.add("combat_resources");
       break;
     case "request_respawn":
+      if (
+        repairLiveModeZeroHpDeathState(next, {
+          nowMs,
+          deathId: `${envelope.requestId}:zero_hp_respawn_repair`,
+          zoneId: envelope.zoneId,
+          cause: "zero_hp_respawn_repair",
+          createDeathRecord: false,
+        })
+      ) {
+        touchedModels.add("combat_state");
+        touchedModels.add("player_status");
+        touchedModels.add("death_state");
+      }
       if (next.combat.deathState !== "dead") {
         warnings.push("respawn_rejected:not_dead");
         touchedModels.add("respawn_rejection");

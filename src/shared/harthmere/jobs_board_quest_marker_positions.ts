@@ -36,6 +36,7 @@ export const HARTHMERE_JOBS_BOARD_QUEST_MARKER_POSITIONS_VERSION =
 export type HarthmereJobsBoardQuestMarkerSource =
   | "snapshot_landmark"
   | "live_entity_helper"
+  | "job_item_source"
   | "business_outpost"
   | "business_outpost_jobs_board"
   | "business_owner"
@@ -73,6 +74,25 @@ function markerFromLiveEntityHelper(
   };
 }
 
+const HARTHMERE_JOBS_BOARD_ITEM_SOURCE_MARKERS: readonly HarthmereJobsBoardQuestMarkerPosition[] =
+  [
+    {
+      markerId: "harthmere_orchard_softwood",
+      label: "Orchard Softwood Branches",
+      // The authored gathering node predates the live Grove terrain lift and was
+      // at y=53. Keep the shared quest/map source on the visible courtyard
+      // surface so every item-source pin and active beacon points above ground.
+      position: [468, 70, -118],
+      source: "job_item_source",
+    },
+    {
+      markerId: "harthmere_north_iron_vein",
+      label: "North Road Iron Vein",
+      position: [503, 53, -270],
+      source: "job_item_source",
+    },
+  ];
+
 function businessOutpostJobsBoardMarkerId(outpost: HarthmereBusinessOutpost) {
   return `${outpost.outpostId}_job_board`;
 }
@@ -83,11 +103,7 @@ function markerFromBusinessOutpost(
   return {
     markerId: harthmereBusinessOutpostMapMarkerId(outpost.outpostId),
     label: outpost.displayName,
-    position: [
-      outpost.position.x,
-      outpost.position.y + 1,
-      outpost.position.z,
-    ],
+    position: [outpost.position.x, outpost.position.y + 1, outpost.position.z],
     source: "business_outpost",
   };
 }
@@ -174,9 +190,8 @@ function markerFromMuckBountyTarget(
 export function harthmereJobsBoardQuestMarkerPositions(): readonly HarthmereJobsBoardQuestMarkerPosition[] {
   return [
     ...SNAPSHOT_GROVE_LANDMARKS.map(markerFromSnapshotLandmark),
-    ...LIVE_ENTITY_HELPER_QUEST_TARGET_MARKERS.map(
-      markerFromLiveEntityHelper
-    ),
+    ...LIVE_ENTITY_HELPER_QUEST_TARGET_MARKERS.map(markerFromLiveEntityHelper),
+    ...HARTHMERE_JOBS_BOARD_ITEM_SOURCE_MARKERS,
     ...HARTHMERE_BUSINESS_OUTPOSTS.flatMap((outpost) => [
       markerFromBusinessOutpost(outpost),
       markerFromBusinessOutpostJobsBoard(outpost),
@@ -184,18 +199,13 @@ export function harthmereJobsBoardQuestMarkerPositions(): readonly HarthmereJobs
     ...HARTHMERE_BUSINESS_OWNER_NPC_SEEDS.map(markerFromBusinessOwner),
     ...HARTHMERE_JOBS_BOARD_BUSINESS_TEMPLATES.map(
       markerFromBusinessTemplate
-    ).filter(
-      (
-        marker
-      ): marker is HarthmereJobsBoardQuestMarkerPosition =>
-        Boolean(marker)
+    ).filter((marker): marker is HarthmereJobsBoardQuestMarkerPosition =>
+      Boolean(marker)
     ),
     ...harthmereExoticMatterDepositQuestMarkers().map(
       markerFromExoticMatterDeposit
     ),
-    ...HARTHMERE_JOBS_BOARD_MUCK_BOUNTY_TARGETS.map(
-      markerFromMuckBountyTarget
-    ),
+    ...HARTHMERE_JOBS_BOARD_MUCK_BOUNTY_TARGETS.map(markerFromMuckBountyTarget),
   ];
 }
 
@@ -226,7 +236,9 @@ export function harthmereJobsBoardQuestMarkerRuntimePositionForId(
   markerId: string | undefined
 ): HarthmereJobsBoardQuestMarkerPosition | undefined {
   const marker = harthmereJobsBoardQuestMarkerPositionForId(markerId);
-  return marker ? harthmereJobsBoardQuestMarkerRuntimePosition(marker) : undefined;
+  return marker
+    ? harthmereJobsBoardQuestMarkerRuntimePosition(marker)
+    : undefined;
 }
 
 export function harthmereJobsBoardQuestMarkerPositionForTodo(input: {

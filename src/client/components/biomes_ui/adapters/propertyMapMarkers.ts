@@ -76,11 +76,12 @@ export function harthmerePropertyMapLandmarksFromBuildingState(
   }
   if (owned.size === 0) return [];
 
-  return BUILDING_SYSTEM_PLOTS.filter(
-    (plot) => plot.startsMucked && owned.has(plot.plotId)
-  ).map((plot) => {
-    const safe = buildingState?.safeZones?.[plot.plotId]?.safeFromMuck === true;
-    const terrainState = safe ? "terraformed" : "muck";
+  // Owned safe starter plots still need a property marker; otherwise buying
+  // land can make the exact plot vanish from My Properties on the map.
+  return BUILDING_SYSTEM_PLOTS.filter((plot) => owned.has(plot.plotId)).map((plot) => {
+    const safe =
+      buildingState?.safeZones?.[plot.plotId]?.safeFromMuck === true;
+    const terrainState = safe || !plot.startsMucked ? "terraformed" : "muck";
     return {
       id: `property:${plot.plotId}`,
       plotId: plot.plotId,

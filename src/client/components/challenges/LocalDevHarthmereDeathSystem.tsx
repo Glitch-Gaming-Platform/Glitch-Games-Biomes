@@ -89,26 +89,26 @@ const RESPAWN_POINTS: Record<
   the_grove: {
     label: "The Grove",
     description: "Main Grove recovery point near the starter fountain.",
-    hpPercent: 0.65,
+    hpPercent: 1,
     sicknessSeconds: 75,
   },
   temple_green: {
     label: "Temple Green Shrine",
     description:
       "Safe healer respawn inside town. Applies light recovery sickness.",
-    hpPercent: 0.55,
+    hpPercent: 1,
     sicknessSeconds: 90,
   },
   north_gate: {
     label: "North Gate Checkpoint",
     description: "Useful if you fell near the road or fought outside town.",
-    hpPercent: 0.45,
+    hpPercent: 1,
     sicknessSeconds: 120,
   },
   player_house: {
     label: "Player House",
     description: "A quiet bind-style recovery point with safer protection.",
-    hpPercent: 0.7,
+    hpPercent: 1,
     sicknessSeconds: 60,
   },
 };
@@ -222,7 +222,11 @@ async function submitHarthmereLiveModeGroveRespawn() {
     }),
   });
   const body = await response.json().catch(() => undefined);
-  if (body?.playerStatusState && typeof window !== "undefined") {
+  if (
+    body?.ok === true &&
+    body?.playerStatusState &&
+    typeof window !== "undefined"
+  ) {
     window.dispatchEvent(
       new CustomEvent(BIOMES_UI_PLAYER_STATUS_UPDATED_EVENT, {
         detail: body.playerStatusState,
@@ -595,6 +599,15 @@ export function effectiveHarthmereDeathStateForRespawn({
     .toLowerCase();
   const localHp = finiteNumberOrUndefined(combatHp);
   const remoteHp = finiteNumberOrUndefined(liveHp);
+  const localRespawnProtected =
+    death.state === "protected_after_respawn" ||
+    normalizedCombatState === "protected_after_respawn";
+  if (localRespawnProtected && localHp !== undefined && localHp > 0) {
+    // Respawn is client-immediate so the player can return to The Grove without
+    // waiting on the live-mode POST. Ignore a stale remote 0/dead snapshot until
+    // the next successful live status read catches up.
+    return death;
+  }
   const zeroHp =
     (localHp !== undefined && localHp <= 0) ||
     (remoteHp !== undefined && remoteHp <= 0);
@@ -1121,8 +1134,7 @@ export const HarthmereDeathMenuPanel: React.FunctionComponent<{}> = () => {
                 <div className="font-semibold text-white">{point.label}</div>
                 <div className="text-white/65">{point.description}</div>
                 <div className="text-white/55">
-                  Returns at {Math.round(point.hpPercent * 100)}% HP · sickness{" "}
-                  {point.sicknessSeconds}s
+                  Returns at full HP · sickness {point.sicknessSeconds}s
                 </div>
                 {respawnBlock && (
                   <div className="text-rose-100 mt-1">{respawnBlock}</div>

@@ -49,7 +49,7 @@ describe("harvestPlantEventHandler", () => {
     assert.deepEqual(EventSerde.deserialize(serialized), event);
   });
 
-  it("queues harvest for fully grown non-tree plants when ACL allows destroy", () => {
+  it("queues harvest for fully grown non-tree plants", () => {
     const { component, plant } = fakeHarvestPlant();
     harvestPlantEventHandler.apply(
       {
@@ -68,7 +68,7 @@ describe("harvestPlantEventHandler", () => {
     assert.equal(component.player_actions[0].kind, "harvest");
   });
 
-  it("lets the planter harvest their own fully grown non-tree crop in protected terrain", () => {
+  it("lets the planter harvest their own fully grown non-tree crop", () => {
     const playerId = generateTestId();
     const { component, plant } = fakeHarvestPlant({ planter: playerId });
     harvestPlantEventHandler.apply(
@@ -88,7 +88,27 @@ describe("harvestPlantEventHandler", () => {
     assert.equal(component.player_actions[0].kind, "harvest");
   });
 
-  it("rejects immature, tree, stale-position, and ACL-blocked harvests", () => {
+  it("lets anyone harvest fully grown non-tree food when the F prompt appears", () => {
+    const planterId = generateTestId();
+    const harvesterId = generateTestId();
+    const { component, plant } = fakeHarvestPlant({ planter: planterId });
+    harvestPlantEventHandler.apply(
+      {
+        plant,
+      } as any,
+      new HarvestPlantEvent({
+        id: harvesterId,
+        plant_id: plant.id,
+        position: [1, 2, 3],
+      }),
+      {} as any
+    );
+
+    assert.equal(component.player_actions.length, 1);
+    assert.equal(component.player_actions[0].kind, "harvest");
+  });
+
+  it("rejects immature, tree, and stale-position harvests", () => {
     for (const setup of [
       fakeHarvestPlant({ status: "growing" }),
       fakeHarvestPlant({ seed: BikkieIds.oakSeed }),
@@ -108,21 +128,6 @@ describe("harvestPlantEventHandler", () => {
       );
       assert.equal(setup.component.player_actions.length, 0);
     }
-
-    const blocked = fakeHarvestPlant();
-    harvestPlantEventHandler.apply(
-      {
-        plant: blocked.plant,
-        acl: { can: () => false },
-      } as any,
-      new HarvestPlantEvent({
-        id: generateTestId(),
-        plant_id: blocked.plant.id,
-        position: [1, 2, 3],
-      }),
-      {} as any
-    );
-    assert.equal(blocked.component.player_actions.length, 0);
   });
 });
 

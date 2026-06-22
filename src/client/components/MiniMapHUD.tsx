@@ -8,6 +8,7 @@ import {
   BIOMES_UI_ACTIVE_MINIMAP_PIN_Z_INDEX,
   biomesUIActiveMiniMapPinClassName,
   biomesUIActiveMiniMapPinCss,
+  biomesUIActiveMiniMapPinDistanceLabelForTest,
   biomesUIActiveMiniMapPinHasFinitePosition,
   biomesUIActiveMiniMapPinLabel,
 } from "@/client/components/map/markers/biomes_ui_active_minimap_pin";
@@ -530,7 +531,11 @@ const BiomesUIActiveMiniMapPin: React.FunctionComponent<{}> = () => {
   const { map, zoomRef } = useContext(MiniMapContext);
   const { reactResources } = useClientContext();
   const ref = useRef<HTMLDivElement>(null);
+  const distanceRef = useRef<HTMLSpanElement>(null);
   const [clipped, setClipped] = useState(false);
+  const [distanceLabel, setDistanceLabel] = useState<string | undefined>(
+    undefined
+  );
 
   useEffect(() => {
     if (typeof document === "undefined") return;
@@ -564,6 +569,15 @@ const BiomesUIActiveMiniMapPin: React.FunctionComponent<{}> = () => {
       map.offsetHeight ?? 0
     );
     ref.current.style.transform = `translate(-50%, -50%) translate(${x}px, ${y}px) rotate(${orientation}rad)`;
+    if (distanceRef.current) {
+      distanceRef.current.style.transform = `translate(-50%, -50%) rotate(${-orientation}rad)`;
+    }
+    setDistanceLabel(
+      biomesUIActiveMiniMapPinDistanceLabelForTest(
+        pin.worldPosition,
+        player?.player?.position
+      )
+    );
     setClipped(isClipped);
   });
 
@@ -575,6 +589,9 @@ const BiomesUIActiveMiniMapPin: React.FunctionComponent<{}> = () => {
     return null;
   }
   const label = biomesUIActiveMiniMapPinLabel(pin.label);
+  const title = `Marked destination: ${label}${
+    distanceLabel ? ` (${distanceLabel})` : ""
+  }`;
 
   return (
     <div
@@ -582,8 +599,8 @@ const BiomesUIActiveMiniMapPin: React.FunctionComponent<{}> = () => {
       className="pointer-events-none absolute left-0 top-0 flex items-center justify-center"
       data-biomes-ui-active-minimap-pin={pin.markerId}
       data-biomes-ui-active-minimap-pin-clipped={clipped ? "true" : "false"}
-      title={`Marked destination: ${label}`}
-      aria-label={`Marked destination: ${label}`}
+      title={title}
+      aria-label={title}
       style={{
         zIndex: BIOMES_UI_ACTIVE_MINIMAP_PIN_Z_INDEX,
         willChange: "transform",
@@ -598,6 +615,14 @@ const BiomesUIActiveMiniMapPin: React.FunctionComponent<{}> = () => {
         <span className={`${BIOMES_UI_ACTIVE_MINIMAP_PIN_ROOT_CLASS}__core`}>
           <span className={`${BIOMES_UI_ACTIVE_MINIMAP_PIN_ROOT_CLASS}__dot`} />
         </span>
+        {distanceLabel ? (
+          <span
+            ref={distanceRef}
+            className={`${BIOMES_UI_ACTIVE_MINIMAP_PIN_ROOT_CLASS}__distance`}
+          >
+            {distanceLabel}
+          </span>
+        ) : null}
       </div>
     </div>
   );

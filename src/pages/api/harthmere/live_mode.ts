@@ -1582,6 +1582,30 @@ function summarizeHarthmereLiveActorStateProgress(
   };
 }
 
+function isHarthmereLiveModeReadOnlySnapshotRequest(
+  envelope: HarthmereLiveModeAuthorityEnvelope,
+  summary: { touchedModels?: string[] }
+) {
+  if (
+    envelope.actionKind !== "request_quest_state_update" ||
+    envelope.subsystem !== "quest" ||
+    envelope.payload?.operation !== "live_entity_helper_read_state"
+  ) {
+    return false;
+  }
+  const readOnlySnapshotModels = new Set([
+    "quest_state",
+    "inventory_items",
+    "building_state",
+  ]);
+  // Helper read-state requests return multiple snapshots to hydrate UI, but
+  // they are not authoritative writes. Persisting their parsed state can race
+  // a just-accepted quest and overwrite it with an older client snapshot.
+  return (summary.touchedModels ?? []).every((model) =>
+    readOnlySnapshotModels.has(model)
+  );
+}
+
 export async function persistHarthmereLiveModeResponse(
   envelope: HarthmereLiveModeAuthorityEnvelope,
   response: LiveModeResponse,
@@ -1815,6 +1839,8 @@ export async function persistHarthmereLiveModeResponse(
       subsystem: reduced.summary.subsystem,
       touchedModels: reduced.summary.touchedModels,
     });
+    const persistActorAndSharedState =
+      !isHarthmereLiveModeReadOnlySnapshotRequest(envelope, reduced.summary);
     const includedSnapshotSet = new Set(includedSnapshots);
     const persistedResponse: LiveModeResponse = {
       ...response,
@@ -1889,13 +1915,15 @@ export async function persistHarthmereLiveModeResponse(
 
     stageStartedAt = Date.now();
     const tx = redis.primary.multi();
-    tx.set(playerStateKey, JSON.stringify(reduced.state));
-    tx.set(
-      sharedWorldStateKey,
-      JSON.stringify(
-        createHarthmereLiveModeSharedWorldState(reduced.state, now)
-      )
-    );
+    if (persistActorAndSharedState) {
+      tx.set(playerStateKey, JSON.stringify(reduced.state));
+      tx.set(
+        sharedWorldStateKey,
+        JSON.stringify(
+          createHarthmereLiveModeSharedWorldState(reduced.state, now)
+        )
+      );
+    }
     if (adoptedActorState && adoptionSourceStateKey) {
       (tx as { del?: (key: string) => unknown }).del?.(adoptionSourceStateKey);
     }

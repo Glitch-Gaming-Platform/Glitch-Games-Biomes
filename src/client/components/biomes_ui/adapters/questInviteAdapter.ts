@@ -41,7 +41,19 @@ export interface HarthmereSharedQuestForClient {
 export interface HarthmereQuestStateForClient {
   version: string;
   actorId?: string;
-  active: Record<string, { stepId?: string; progress: number }>;
+  active: Record<
+    string,
+    {
+      stepId?: string;
+      progress: number;
+      source?: string;
+      title?: string;
+      questKind?: string;
+      entityId?: string;
+      giverName?: string;
+      giverPosition?: [number, number, number];
+    }
+  >;
   completed: Record<string, number>;
   pendingReceivedInvites: HarthmereQuestInviteRecordForClient[];
   sentPendingInvites: HarthmereQuestInviteRecordForClient[];

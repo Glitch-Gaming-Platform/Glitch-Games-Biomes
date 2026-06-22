@@ -1888,31 +1888,27 @@ export function buildBiomesUIMapAdapterForTest(
       const objectives = Array.isArray(activeQuest?.objectives)
         ? activeQuest.objectives
         : [];
-      if (!activeQuest) {
-        const jobsBoardSteps =
-          activeJobsBoardMissionStepsForBiomesUI(jobsBoardState);
-        const roadAheadSteps = snapshotRoadAheadMissionStepsForBiomesUI(
-          readSnapshotMissionState()
-        );
-        return jobsBoardSteps.length
-          ? jobsBoardSteps
-          : roadAheadSteps.length
-          ? roadAheadSteps
-          : activeLiveEntityHelperMissionStepsForBiomesUI(
-              readLiveEntityHelperQuestState()
-            );
-      }
-      return objectives.map((objective: string, index: number) => ({
-        id: `${activeQuest?.id ?? "quest"}:${index}`,
-        title:
-          index < objectiveIndex
-            ? `Completed step ${index + 1}`
-            : index === objectiveIndex
-            ? `Current step ${index + 1}`
-            : `Upcoming step ${index + 1}`,
-        objective,
-        done: index < objectiveIndex,
-      }));
+      const authoredSteps = activeQuest
+        ? objectives.map((objective: string, index: number) => ({
+            id: `${activeQuest?.id ?? "quest"}:${index}`,
+            title:
+              index < objectiveIndex
+                ? `Completed step ${index + 1}`
+                : index === objectiveIndex
+                ? `Current step ${index + 1}`
+                : `Upcoming step ${index + 1}`,
+            objective,
+            done: index < objectiveIndex,
+          }))
+        : [];
+      return [
+        ...authoredSteps,
+        ...activeJobsBoardMissionStepsForBiomesUI(jobsBoardState),
+        ...snapshotRoadAheadMissionStepsForBiomesUI(readSnapshotMissionState()),
+        ...activeLiveEntityHelperMissionStepsForBiomesUI(
+          readLiveEntityHelperQuestState()
+        ),
+      ];
     },
     // BIOMES_UI_MAP_TAB_QUESTS:
     // Power the new clickable quest list on the side panel. Each entry is a
@@ -2576,6 +2572,10 @@ export function useBiomesUILiveAdapters({
         setFarmingFoodState(body.farmingFoodState);
       } else {
         await refreshFarmingFoodState();
+      }
+      if (body?.questState) {
+        setQuestState(normalizeHarthmereQuestState(body.questState));
+        setQuestStateHydrated(true);
       }
       dispatchLiveModePlayerStatusFromBody(body);
     },

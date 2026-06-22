@@ -10,6 +10,7 @@ import {
   BUILDING_SYSTEM_BLUEPRINTS,
   BUILDING_SYSTEM_BUSINESS_TYPES,
   BUILDING_SYSTEM_GROVE_STEWARD_NPC,
+  BUILDING_SYSTEM_MATERIAL_CATALOG,
   BUILDING_SYSTEM_MIRA_INTRO_QUEST,
   BUILDING_SYSTEM_PLOTS,
   BUILDING_SYSTEM_STAGE_ORDER,
@@ -20,6 +21,7 @@ import {
   type BuildingSystemBusinessRecord,
   type BuildingSystemDoorLockRecord,
   type BuildingSystemInWorldMarker,
+  type BuildingSystemMaterialRequirementLine,
   type BuildingSystemPlotDefinition,
   type BuildingSystemProjectRecord,
   type BuildingSystemPropertyRecord,
@@ -174,6 +176,7 @@ const BUILDING_ACTION_LABELS: Record<BuildingSystemAction, string> = {
 interface BuildingSystemClientState {
   gold: number;
   inventoryItems: Record<string, number>;
+  materialStorage: Record<string, number>;
   ownedPlotIds: string[];
   safeZones: Record<string, { safeFromMuck: boolean; activatedAtMs: number; area: string }>;
   activeProjects: Record<string, BuildingSystemProjectRecord>;
@@ -189,6 +192,7 @@ interface BuildingSystemClientState {
 const EMPTY_BUILDING_CLIENT_STATE: BuildingSystemClientState = {
   gold: 0,
   inventoryItems: {},
+  materialStorage: {},
   ownedPlotIds: [],
   safeZones: {},
   activeProjects: {},
@@ -208,6 +212,10 @@ function normalizeBuildingClientState(input: unknown): BuildingSystemClientState
     inventoryItems:
       typeof raw.inventoryItems === "object" && raw.inventoryItems !== null
         ? raw.inventoryItems
+        : {},
+    materialStorage:
+      typeof raw.materialStorage === "object" && raw.materialStorage !== null
+        ? raw.materialStorage
         : {},
     ownedPlotIds: Array.isArray(raw.ownedPlotIds) ? raw.ownedPlotIds : [],
     safeZones:
@@ -308,6 +316,135 @@ function formatMaterials(
     .join(" · ");
 }
 
+interface BuildingStageMaterialAvailabilityLine
+  extends BuildingSystemMaterialRequirementLine {
+  inventoryCount: number;
+  storageCount: number;
+  available: number;
+  missing: number;
+}
+
+function countRecordKeys(record: Record<string, number>, keys: string[]) {
+  let count = 0;
+  for (const key of new Set(keys.filter(Boolean))) {
+    count += Math.max(0, Math.trunc(Number(record[key] ?? 0) || 0));
+  }
+  return count;
+}
+
+function materialLookupKeys(line: BuildingSystemMaterialRequirementLine) {
+  return [line.itemId, line.material, line.bikkieName].filter(Boolean);
+}
+
+function buildingSystemMaterialAvailabilityForStage(input: {
+  blueprint: BuildingSystemBlueprintDefinition;
+  stage: BuildingSystemStage;
+  project?: BuildingSystemProjectRecord;
+  state: Pick<BuildingSystemClientState, "inventoryItems" | "materialStorage">;
+}): BuildingStageMaterialAvailabilityLine[] {
+  return buildingSystemMaterialRequirementLines({
+    blueprint: input.blueprint,
+    stage: input.stage,
+    contributed: input.project?.stageProgress[input.stage]?.materials,
+  }).map((line) => {
+    const keys = materialLookupKeys(line);
+    const inventoryCount = countRecordKeys(input.state.inventoryItems, keys);
+    const storageCount = countRecordKeys(input.state.materialStorage, keys);
+    const available = inventoryCount + storageCount;
+    return {
+      ...line,
+      inventoryCount,
+      storageCount,
+      available,
+      missing: Math.max(0, line.remaining - available),
+    };
+  });
+}
+
+function buildingSystemStageProgressPercent(input: {
+  blueprint: BuildingSystemBlueprintDefinition;
+  stage: BuildingSystemStage;
+  project?: BuildingSystemProjectRecord;
+}) {
+  if (input.stage === "completed") return 100;
+  const progress = input.project?.stageProgress[input.stage];
+  const materialLines = buildingSystemMaterialRequirementLines({
+    blueprint: input.blueprint,
+    stage: input.stage,
+    contributed: progress?.materials,
+  });
+  const totalMaterials = materialLines.reduce((sum, line) => sum + line.required, 0);
+  const contributedMaterials = materialLines.reduce(
+    (sum, line) => sum + Math.min(line.required, line.contributed),
+    0
+  );
+  const materialRatio =
+    totalMaterials > 0 ? contributedMaterials / totalMaterials : 1;
+  const laborRequired = Math.max(0, input.blueprint.laborStages[input.stage] ?? 0);
+  const laborRatio =
+    laborRequired > 0
+      ? Math.min(1, Math.max(0, (progress?.labor ?? 0) / laborRequired))
+      : 1;
+  return Math.round(((materialRatio + laborRatio) / 2) * 100);
+}
+
+function materialDefinitionForItemId(itemId: string) {
+  return Object.values(BUILDING_SYSTEM_MATERIAL_CATALOG).find((entry) =>
+    [entry.itemId, entry.material, entry.bikkieName].includes(itemId)
+  );
+}
+
+function playerFacingBuildingWarning(warning: string): string | undefined {
+  if (!warning || warning === "client_request_missing_client_sent_time") {
+    return undefined;
+  }
+  if (warning.startsWith("building_stage_rejected:insufficient_material:")) {
+    const itemId = warning.split(":").pop() ?? "";
+    const material = materialDefinitionForItemId(itemId);
+    return material
+      ? `Missing ${material.displayName}. Bring it in your backpack or material storage.`
+      : "Missing a required building material.";
+  }
+  if (warning === "building_stage_rejected:missing_material_submission") {
+    return "This stage needs materials before labor can be applied.";
+  }
+  if (warning === "building_project_idempotent:project_already_exists") {
+    return "Construction is already started. Continue the highlighted stage.";
+  }
+  if (warning === "building_project_idempotent:property_already_completed") {
+    return "This property is already built.";
+  }
+  if (warning.includes(":insufficient_gold")) {
+    return "Not enough gold for this step.";
+  }
+  if (warning.includes(":plot_not_owned")) {
+    return "Buy this plot before building here.";
+  }
+  if (warning.includes(":blueprint_not_allowed")) {
+    return "That blueprint does not fit this plot.";
+  }
+  if (warning.includes(":active_project_not_found")) {
+    return "Start construction before adding materials.";
+  }
+  if (warning.includes(":stage_out_of_order")) {
+    return "Finish the highlighted stage first.";
+  }
+  return biomesPlayerSentence(warning);
+}
+
+function playerFacingBuildingWarnings(
+  response: BuildingActionResponse | undefined
+) {
+  return [
+    ...(response?.validation?.errors ?? []),
+    ...(response?.backendMutation?.warnings ?? []),
+    ...(response?.warnings ?? []),
+    ...(response?.errors ?? []),
+  ]
+    .map((warning) => playerFacingBuildingWarning(String(warning)))
+    .filter((warning): warning is string => Boolean(warning));
+}
+
 function responseRejected(response: BuildingActionResponse | undefined): boolean {
   if (!response) return true;
   const warnings = [
@@ -317,6 +454,21 @@ function responseRejected(response: BuildingActionResponse | undefined): boolean
   ].map((warning) => String(warning).toLowerCase());
   return response.ok === false || warnings.some((warning) => warning.includes("rejected"));
 }
+
+function buildingSystemMapMarkerIdForPlot(
+  plot: BuildingSystemPlotDefinition,
+  owned: boolean
+) {
+  return owned ? `property:${plot.plotId}` : `plot_for_sale:${plot.plotId}`;
+}
+
+export const buildingSystemMaterialAvailabilityForStageForTest =
+  buildingSystemMaterialAvailabilityForStage;
+export const buildingSystemStageProgressPercentForTest =
+  buildingSystemStageProgressPercent;
+export const playerFacingBuildingWarningsForTest = playerFacingBuildingWarnings;
+export const buildingSystemMapMarkerIdForPlotForTest =
+  buildingSystemMapMarkerIdForPlot;
 
 async function submitBuildingActionThroughLiveModeRoute(
   action: BuildingSystemAction,
@@ -381,15 +533,16 @@ function useBuildingSystemBackend(
         if (response.buildingState) {
           onBuildingState(normalizeBuildingClientState(response.buildingState));
         }
-        const warnings = [
-          ...(response.validation?.errors ?? []),
-          ...(response.backendMutation?.warnings ?? []),
-          ...(response.warnings ?? []),
-          ...(response.errors ?? []),
-        ];
+        const visibleWarnings = playerFacingBuildingWarnings(response);
         const status = responseRejected(response)
-          ? `${actionLabelStart(action)} needs attention: ${biomesPlayerList(warnings, "try again in a moment")}.`
-          : `${actionLabelStart(action)} is done.`;
+          ? `${actionLabelStart(action)} needs attention: ${biomesPlayerList(visibleWarnings, "bring the listed materials and try again")}.`
+          : visibleWarnings.length > 0
+            ? biomesPlayerList(visibleWarnings)
+            : action === "preview_blueprint"
+              ? "Blueprint preview is ready."
+              : action === "read_state"
+                ? "Your land is synced."
+                : `${actionLabelStart(action)} is done.`;
         setLastResponse(status);
         return response;
       } catch (error) {
@@ -509,7 +662,8 @@ export const LandTab: React.FunctionComponent<{
   const activeProject = activeProjectForPlot(serverState, selectedPlot?.plotId);
   const propertyId = selectedPlot ? propertyIdForPlot(selectedPlot.plotId) : undefined;
   const owned = selectedPlot
-    ? serverState.ownedPlotIds.includes(selectedPlot.plotId)
+    ? serverState.ownedPlotIds.includes(selectedPlot.plotId) ||
+      Boolean(serverState.completedProperties[propertyIdForPlot(selectedPlot.plotId)])
     : false;
   const placed = selectedPlot
     ? Boolean(
@@ -522,6 +676,15 @@ export const LandTab: React.FunctionComponent<{
     : false;
   const currentStage = activeProject?.currentStage ?? (placed ? "completed" : "site_preparation");
   const completedProperty = propertyId ? serverState.completedProperties[propertyId] : undefined;
+  const currentMaterialAvailability =
+    selectedBlueprint && currentStage !== "completed"
+      ? buildingSystemMaterialAvailabilityForStage({
+          blueprint: selectedBlueprint,
+          stage: currentStage,
+          project: activeProject,
+          state: serverState,
+        })
+      : [];
 
   React.useEffect(() => {
     void submit("read_state", {});
@@ -665,15 +828,20 @@ export const LandTab: React.FunctionComponent<{
   // beam appears as they get close.
   const locatePlotOnMap = React.useCallback(
     (plot: BuildingSystemPlotDefinition) => {
+      const plotOwned =
+        serverState.ownedPlotIds.includes(plot.plotId) ||
+        Boolean(serverState.completedProperties[propertyIdForPlot(plot.plotId)]);
       requestBiomesUILocateOnMap({
-        markerId: `plot_for_sale:${plot.plotId}`,
-        label: plot.displayName,
+        markerId: buildingSystemMapMarkerIdForPlot(plot, plotOwned),
+        label: plotOwned
+          ? `Your property: ${plot.displayName}`
+          : `For sale: ${plot.displayName}`,
         kind: "property",
         worldPosition: landTabPlotCenter(plot),
         setAtMs: Date.now(),
       });
     },
-    []
+    [serverState.completedProperties, serverState.ownedPlotIds]
   );
 
   return (
@@ -730,6 +898,7 @@ export const LandTab: React.FunctionComponent<{
               placed={placed}
               terraformed={terraformed}
               stage={currentStage}
+              onLocate={() => locatePlotOnMap(selectedPlot)}
             />
           ) : (
             <div className="biomes-building-card">No Grove building plots available.</div>
@@ -779,6 +948,7 @@ export const LandTab: React.FunctionComponent<{
               placed={placed}
               stage={currentStage}
               project={activeProject}
+              materialAvailability={currentMaterialAvailability}
               onStart={startSelectedBuilding}
               onContribute={contributeStage}
               pending={pendingAction === "start_construction" || pendingAction === "contribute_stage"}
@@ -1083,6 +1253,7 @@ const BlueprintPanel: React.FunctionComponent<{
             <div className="biomes-building-muted">
               {biomesPlayerTitle(blueprint.use)} · {blueprint.footprint.width}×{blueprint.footprint.depth}×{blueprint.footprint.height}
             </div>
+            <BlueprintVisualPreview blueprint={blueprint} compact />
             <p>{blueprint.description}</p>
             <div className="biomes-building-chip-row">
               <span className="biomes-building-chip">{blueprint.storageSlots} storage</span>
@@ -1131,6 +1302,7 @@ const GhostPreviewPanel: React.FunctionComponent<{
   return (
     <div className="biomes-building-card" aria-label="Blueprint placement ghost preview">
       <CardTitle title="Ghost preview" meta={preview.valid ? "valid" : "blocked"} />
+      <BlueprintVisualPreview blueprint={blueprint} />
       <p>This preview shows where the building will stand and whether the spot is clear. You can rotate the plan before you commit.</p>
       <div className="biomes-building-chip-row">
         <span className="biomes-building-chip">Materials needed: {preview.requiredMaterials.length}</span>
@@ -1156,6 +1328,92 @@ const GhostPreviewPanel: React.FunctionComponent<{
   );
 };
 
+const BLUEPRINT_VISUAL_STAGES = STAGE_ORDER.filter(
+  (stage) => stage !== "completed"
+);
+
+const BlueprintVisualPreview: React.FunctionComponent<{
+  blueprint: BuildingSystemBlueprintDefinition;
+  stage?: BuildingSystemStage;
+  progressPercent?: number;
+  compact?: boolean;
+}> = ({ blueprint, stage, progressPercent = 0, compact = false }) => {
+  const width = Math.max(3, Math.min(10, blueprint.footprint.width));
+  const depth = Math.max(3, Math.min(8, blueprint.footprint.depth));
+  const activeStage = stage ?? "site_preparation";
+  const activeIndex =
+    activeStage === "completed"
+      ? BLUEPRINT_VISUAL_STAGES.length
+      : Math.max(0, BLUEPRINT_VISUAL_STAGES.indexOf(activeStage));
+  const doorColumn = Math.floor(width / 2);
+  return (
+    <div
+      className="biomes-building-blueprint-visual"
+      data-blueprint-visual="production"
+      data-compact={compact ? "true" : undefined}
+      data-building-current-stage={activeStage}
+    >
+      <div
+        className="biomes-building-blueprint-visual__plan"
+        style={{ gridTemplateColumns: `repeat(${width}, minmax(0, 1fr))` }}
+        aria-label={`${blueprint.displayName} blueprint plan`}
+      >
+        {Array.from({ length: width * depth }).map((_, index) => {
+          const row = Math.floor(index / width);
+          const col = index % width;
+          const edge =
+            row === 0 || row === depth - 1 || col === 0 || col === width - 1;
+          const door = row === depth - 1 && col === doorColumn;
+          const utility = row === 1 && col === width - 2;
+          const kind = door
+            ? "door"
+            : utility
+              ? "utility"
+              : edge
+                ? "wall"
+                : "floor";
+          return (
+            <span
+              key={`${row}:${col}`}
+              className="biomes-building-blueprint-visual__cell"
+              data-kind={kind}
+            />
+          );
+        })}
+      </div>
+      <div className="biomes-building-blueprint-visual__layers" aria-hidden="true">
+        {BLUEPRINT_VISUAL_STAGES.map((entry, index) => (
+          <span
+            key={entry}
+            className="biomes-building-blueprint-visual__layer"
+            data-stage={entry}
+            data-lit={
+              activeStage === "completed" || index < activeIndex
+                ? "true"
+                : undefined
+            }
+            data-active={entry === activeStage ? "true" : undefined}
+            style={{ height: `${8 + index * 3}px` }}
+          />
+        ))}
+        {activeStage !== "completed" ? (
+          <span
+            className="biomes-building-blueprint-visual__spark"
+            data-building-animate-stage="true"
+          />
+        ) : null}
+      </div>
+      {stage ? (
+        <div className="biomes-building-blueprint-visual__progress">
+          <span
+            style={{ width: `${Math.max(0, Math.min(100, progressPercent))}%` }}
+          />
+        </div>
+      ) : null}
+    </div>
+  );
+};
+
 const ConstructionPanel: React.FunctionComponent<{
   plot: BuildingSystemPlotDefinition;
   blueprint: BuildingSystemBlueprintDefinition;
@@ -1163,12 +1421,31 @@ const ConstructionPanel: React.FunctionComponent<{
   placed: boolean;
   stage: BuildingSystemStage;
   project?: BuildingSystemProjectRecord;
+  materialAvailability: BuildingStageMaterialAvailabilityLine[];
   onStart: () => void;
   onContribute: () => void;
   pending: boolean;
-}> = ({ plot, blueprint, owned, placed, stage, project, onStart, onContribute, pending }) => {
-  const activeIndex = STAGE_ORDER.indexOf(stage);
+}> = ({
+  plot,
+  blueprint,
+  owned,
+  placed,
+  stage,
+  project,
+  materialAvailability,
+  onStart,
+  onContribute,
+  pending,
+}) => {
+  const activeIndex =
+    stage === "completed" ? STAGE_ORDER.length : STAGE_ORDER.indexOf(stage);
   const projectStarted = Boolean(project && project.status === "active");
+  const missingMaterials = materialAvailability.filter((line) => line.missing > 0);
+  const progressPercent = buildingSystemStageProgressPercent({
+    blueprint,
+    stage,
+    project,
+  });
   return (
     <section aria-label="Construction stages">
       <PanelHeader
@@ -1176,6 +1453,23 @@ const ConstructionPanel: React.FunctionComponent<{
         title="Build in staged voxel-safe steps"
         copy="Build one step at a time: foundation, floor, walls, roof, and finishing touches."
       />
+      <div className="biomes-building-construction-dashboard">
+        <BlueprintVisualPreview
+          blueprint={blueprint}
+          stage={stage}
+          progressPercent={progressPercent}
+        />
+        <div className="biomes-building-construction-readout">
+          <CardTitle
+            title={`Now building: ${stageLabel(stage)}`}
+            meta={`${progressPercent}%`}
+          />
+          <div className="biomes-building-progressbar" aria-hidden="true">
+            <span style={{ width: `${progressPercent}%` }} />
+          </div>
+          <MaterialAvailabilityList lines={materialAvailability} />
+        </div>
+      </div>
       <div className="biomes-building-stage-list">
         {STAGE_ORDER.map((entry, index) => {
           const complete = Boolean(project?.completedStages.includes(entry)) ||
@@ -1202,8 +1496,18 @@ const ConstructionPanel: React.FunctionComponent<{
           type="button"
           className="biomes-ui-tab"
           onClick={projectStarted ? onContribute : onStart}
-          disabled={!owned || pending || stage === "completed"}
-          aria-disabled={!owned || pending || stage === "completed"}
+          disabled={
+            !owned ||
+            pending ||
+            stage === "completed" ||
+            (projectStarted && missingMaterials.length > 0)
+          }
+          aria-disabled={
+            !owned ||
+            pending ||
+            stage === "completed" ||
+            (projectStarted && missingMaterials.length > 0)
+          }
         >
           {!owned
             ? `Buy ${plot.displayName} first`
@@ -1211,6 +1515,13 @@ const ConstructionPanel: React.FunctionComponent<{
               ? "Submitting…"
               : stage === "completed"
                 ? "Construction complete"
+                : projectStarted && missingMaterials.length > 0
+                  ? `Missing ${biomesPlayerList(
+                      missingMaterials.map(
+                        (line) => `${line.displayName} ×${line.missing}`
+                      ),
+                      "materials"
+                    )}`
                 : projectStarted
                   ? `Contribute ${stageLabel(stage)}`
                   : "Start voxel construction"}
@@ -1219,6 +1530,38 @@ const ConstructionPanel: React.FunctionComponent<{
     </section>
   );
 };
+
+const MaterialAvailabilityList: React.FunctionComponent<{
+  lines: BuildingStageMaterialAvailabilityLine[];
+}> = ({ lines }) => (
+  <div
+    className="biomes-building-material-list"
+    data-building-material-list="production"
+  >
+    {lines.length === 0 ? (
+      <div className="biomes-building-material-row" data-ready="true">
+        <span>No materials needed</span>
+        <strong>Ready</strong>
+      </div>
+    ) : (
+      lines.map((line) => (
+        <div
+          key={line.material}
+          className="biomes-building-material-row"
+          data-missing={line.missing > 0 ? "true" : undefined}
+          data-ready={line.missing === 0 ? "true" : undefined}
+        >
+          <span>{line.displayName}</span>
+          <strong>
+            {line.missing > 0
+              ? `Missing ${line.missing}`
+              : `${line.available}/${line.remaining} ready`}
+          </strong>
+        </div>
+      ))
+    )}
+  </div>
+);
 
 const PropertyPanel: React.FunctionComponent<{
   plot: BuildingSystemPlotDefinition;
@@ -1434,10 +1777,12 @@ const SelectedPlotSummary: React.FunctionComponent<{
   placed: boolean;
   terraformed: boolean;
   stage: BuildingSystemStage;
-}> = ({ plot, blueprint, owned, placed, terraformed, stage }) => (
+  onLocate: () => void;
+}> = ({ plot, blueprint, owned, placed, terraformed, stage, onLocate }) => (
   <div className="biomes-building-card biomes-building-summary">
     <div className="biomes-building-eyebrow">Selected</div>
     <h3 className="biomes-building-card-title">{plot.displayName}</h3>
+    <BlueprintVisualPreview blueprint={blueprint} stage={stage} compact />
     <dl>
       <MetricTerm label="Area" value={biomesPlayerTitle(plot.area)} />
       <MetricTerm label="District" value={plot.district} />
@@ -1448,6 +1793,11 @@ const SelectedPlotSummary: React.FunctionComponent<{
       <MetricTerm label="World" value={placed ? "Placed in the Grove" : "Ready to place"} />
       <MetricTerm label="Stage" value={stageLabel(stage)} />
     </dl>
+    <div className="biomes-building-actions">
+      <button type="button" className="biomes-ui-tab" onClick={onLocate}>
+        {owned ? "Show property on map" : "Show plot on map"}
+      </button>
+    </div>
   </div>
 );
 

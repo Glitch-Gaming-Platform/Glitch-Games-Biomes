@@ -32,7 +32,12 @@ import {
 import { BankingTab } from "../tabs/BankingTab";
 import { InventoryTab } from "../tabs/InventoryTab";
 import { DailyTodoTab } from "../tabs/DailyTodoTab";
-import { LandTab } from "../tabs/LandTab";
+import {
+  LandTab,
+  buildingSystemMapMarkerIdForPlotForTest,
+  buildingSystemMaterialAvailabilityForStageForTest,
+  playerFacingBuildingWarningsForTest,
+} from "../tabs/LandTab";
 import { LootTab } from "../tabs/LootTab";
 import { biomesPlayerSentence, biomesPlayerTitle } from "../playerFacingText";
 import {
@@ -53,6 +58,7 @@ import { DEFAULT_TAB_SHORTCUTS } from "../shortcuts/BiomesShortcuts";
 import { UI_IDS } from "../uniqueIds";
 import {
   displayBiomesVitalsBarValueForTest,
+  formatBiomesVitalsBarValueForTest,
   formatBiomesGoldForVitalsForTest,
   formatBiomesLevelForVitalsForTest,
 } from "../BiomesUIVitalsPanel";
@@ -294,6 +300,10 @@ describe("Biomes UI progression tabs", () => {
     assert.equal(displayBiomesVitalsBarValueForTest(17.2), 18);
     assert.equal(displayBiomesVitalsBarValueForTest(0), 0);
     assert.equal(displayBiomesVitalsBarValueForTest(-5), 0);
+    assert.equal(
+      formatBiomesVitalsBarValueForTest(99.93, { showTenths: true }),
+      "99.9"
+    );
   });
 
   it("maps live player status into the vitals HUD display", () => {
@@ -429,6 +439,36 @@ describe("Biomes UI progression tabs", () => {
     assert.equal(display.maxHp, 100);
     assert.equal(display.combatState, "dead");
     assert.equal(display.resourceValue, 0);
+  });
+
+  it("does not let stale live death status hide a local full-health respawn", () => {
+    const display = biomesUIVitalsDisplayFromLiveStatusForTest(
+      {
+        className: "Warrior",
+        level: 1,
+        combat: {
+          hp: 0,
+          maxHp: 100,
+          deathState: "dead",
+          primaryResource: "mana",
+          resource: 0,
+          maxResource: 100,
+        },
+      },
+      {
+        hp: 100,
+        maxHp: 100,
+        combatState: "protected_after_respawn",
+        resourceLabel: "Mana",
+        resourceValue: 122,
+        resourceMax: 122,
+      }
+    );
+
+    assert.equal(display.hp, 100);
+    assert.equal(display.maxHp, 100);
+    assert.equal(display.combatState, "protected_after_respawn");
+    assert.equal(display.resourceValue, 122);
   });
 
   it("does not let stale live death metadata keep the HUD at full health", () => {
@@ -1243,6 +1283,95 @@ describe("Biomes UI progression tabs", () => {
     assert.ok(html.includes("Muck deed"));
     assert.ok(html.includes("Terraform Land"));
     assert.equal(visibleText.includes("_"), false, visibleText);
+    assertNoDeveloperCopy(html);
+  });
+
+  it("shows the full in-progress building path with map id, blueprint visual, animation, and material blockers", () => {
+    const nowMs = 1_800_000_000_000;
+    const plot = buildingSystemPlotById("grove_muckstead_cottage_lot")!;
+    const blueprint = buildingSystemBlueprintById(
+      "grove_voxel_cottage_tier_1"
+    )!;
+    const project = {
+      projectId: `project_${plot.plotId}`,
+      actorId: "player",
+      plotId: plot.plotId,
+      blueprintId: blueprint.blueprintId,
+      origin: { x: 249, y: 55, z: -197 },
+      rotationDegrees: 0,
+      currentStage: "site_preparation",
+      completedStages: [],
+      stageProgress: {},
+      startedAtMs: nowMs,
+      updatedAtMs: nowMs,
+      status: "active",
+      materializedStageRequestIds: [],
+      storageUnlocked: false,
+    };
+    const state = {
+      gold: 412,
+      inventoryItems: {},
+      materialStorage: { cloth_scrap: 2 },
+      ownedPlotIds: [plot.plotId],
+      safeZones: {
+        [plot.plotId]: {
+          safeFromMuck: true,
+          activatedAtMs: nowMs,
+          area: plot.area,
+        },
+      },
+      activeProjects: {
+        [project.projectId]: project,
+      },
+      completedProperties: {},
+      placedStructureIds: [],
+      buildingProgress: {
+        [plot.plotId]: 0,
+      },
+      inWorldMarkers: {},
+      storageContainers: {},
+      doorLocks: {},
+      businesses: {},
+    };
+
+    const materialLines = buildingSystemMaterialAvailabilityForStageForTest({
+      blueprint,
+      stage: "site_preparation",
+      project: project as any,
+      state,
+    });
+    assert.equal(materialLines[0].displayName, "Rough Stone");
+    assert.equal(materialLines[0].missing, 4);
+    assert.equal(buildingSystemMapMarkerIdForPlotForTest(plot, true), `property:${plot.plotId}`);
+    assert.deepEqual(
+      playerFacingBuildingWarningsForTest({
+        ok: true,
+        backendMutation: {
+          warnings: [
+            "client_request_missing_client_sent_time",
+            "building_stage_rejected:insufficient_material:1534621126189850",
+          ],
+        },
+      }),
+      ["Missing Rough Stone. Bring it in your backpack or material storage."]
+    );
+
+    const html = renderToStaticMarkup(
+      <LandTab
+        initialStep="construction"
+        adapter={{
+          getBuildingState: () => state,
+          getOwnedPlotIds: () => [plot.plotId],
+        }}
+      />
+    );
+
+    assert.ok(html.includes('data-blueprint-visual="production"'));
+    assert.ok(html.includes('data-building-current-stage="site_preparation"'));
+    assert.ok(html.includes('data-building-animate-stage="true"'));
+    assert.ok(html.includes('data-building-material-list="production"'));
+    assert.ok(html.includes("Missing Rough Stone"));
+    assert.ok(html.includes("Show property on map"));
     assertNoDeveloperCopy(html);
   });
 

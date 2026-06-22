@@ -28,6 +28,7 @@ import {
   useHarthmereDeathState,
 } from "@/client/components/challenges/LocalDevHarthmereDeathSystem";
 import {
+  HarthmereCampfireWarmthRuntimeController,
   HarthmereFoodStaminaRuntimeController,
   useHarthmereFoodStaminaState,
 } from "@/client/components/challenges/LocalDevHarthmereFoodStaminaSystem";
@@ -1144,8 +1145,12 @@ function CompactStatusCluster() {
     (combatResource.resourceValue / Math.max(1, combatResource.resourceMax)) *
     100;
   const staminaValue = Math.max(0, stamina.stamina);
-  const staminaMax = Math.max(1, stamina.maxStamina);
+  const staminaMax = Math.max(1, Math.round(stamina.maxStamina));
   const staminaPct = (staminaValue / Math.max(1, staminaMax)) * 100;
+  const staminaDisplay =
+    staminaValue > 0 && !Number.isInteger(staminaValue)
+      ? staminaValue.toFixed(1)
+      : String(staminaValue > 0 ? Math.ceil(staminaValue) : 0);
 
   return (
     <div
@@ -1194,7 +1199,7 @@ function CompactStatusCluster() {
       </div>
       <div
         className="mt-1.5 gap-1.5 flex items-center"
-        aria-label={`Stamina ${Math.ceil(staminaValue)} of ${staminaMax}`}
+        aria-label={`Stamina ${staminaDisplay} of ${staminaMax}`}
       >
         <span className="text-emerald-100/90 w-[3.4rem] text-[8px] font-black uppercase tracking-[0.14em]">
           Stamina
@@ -1206,7 +1211,7 @@ function CompactStatusCluster() {
           />
         </div>
         <span className="text-amber-50/90 text-[10px] font-semibold tabular-nums">
-          {Math.ceil(staminaValue)}/{staminaMax}
+          {staminaDisplay}/{staminaMax}
         </span>
       </div>
       <div className="mt-2 grid grid-cols-3 gap-1">
@@ -3009,6 +3014,7 @@ export const HarthmereUnifiedHUD: React.FunctionComponent<{
       <SnapshotLiveDiagnosticsRuntimeController />
       <HarthmereDeathRuntimeController />
       <HarthmereFoodStaminaRuntimeController />
+      <HarthmereCampfireWarmthRuntimeController />
       <HarthmereNativeTerrainBlockInventoryBridge />
       <SnapshotProductionPortFacts />
       <SnapshotCombatRuntimeController />

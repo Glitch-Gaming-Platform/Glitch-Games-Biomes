@@ -7,6 +7,10 @@ import {
 import {
   carriedHarthmereLocalInventoryFromStorageValuesForStamina,
   carriedHarthmereLocalInventoryForStamina,
+  HARTHMERE_CAMPFIRE_WARMTH_HEAL_AMOUNT,
+  HARTHMERE_CAMPFIRE_WARMTH_TICK_MS,
+  HARTHMERE_STAMINA_GAMEPLAY_TICK_MS,
+  harthmereCampfireWarmthHealDecisionForTest,
   normalizeFoodStaminaStateForTest,
 } from "./LocalDevHarthmereFoodStaminaSystem";
 
@@ -109,6 +113,66 @@ describe("LocalDevHarthmereFoodStaminaSystem", () => {
     assert.ok(
       overweightTick.state.stamina < baselineTick.state.stamina,
       `expected overweight stamina ${overweightTick.state.stamina} below baseline ${baselineTick.state.stamina}`
+    );
+  });
+
+  it("drains survival stamina on the visible five-second gameplay cadence", () => {
+    assert.equal(HARTHMERE_STAMINA_GAMEPLAY_TICK_MS, 5_000);
+
+    const baseline = defaultHarthmereFoodStaminaState("local-player", NOW_MS);
+    const tick = tickHarthmereStaminaForGameplay(baseline, {
+      nowMs: NOW_MS + HARTHMERE_STAMINA_GAMEPLAY_TICK_MS,
+      gameplayActive: true,
+    });
+
+    assert.ok(
+      tick.state.stamina < baseline.stamina,
+      `expected five-second tick to drain stamina from ${baseline.stamina}, got ${tick.state.stamina}`
+    );
+  });
+
+  it("heals one HP per campfire warmth tick only while alive, damaged, and near fire", () => {
+    assert.equal(HARTHMERE_CAMPFIRE_WARMTH_TICK_MS, 5_000);
+
+    const heal = harthmereCampfireWarmthHealDecisionForTest({
+      nearWarmth: true,
+      gameplayActive: true,
+      hp: 73,
+      maxHp: 100,
+      combatState: "idle",
+    });
+    assert.equal(heal.shouldHeal, true);
+    assert.equal(heal.amount, HARTHMERE_CAMPFIRE_WARMTH_HEAL_AMOUNT);
+
+    assert.equal(
+      harthmereCampfireWarmthHealDecisionForTest({
+        nearWarmth: true,
+        gameplayActive: true,
+        hp: 0,
+        maxHp: 100,
+        combatState: "dead",
+      }).amount,
+      0
+    );
+    assert.equal(
+      harthmereCampfireWarmthHealDecisionForTest({
+        nearWarmth: false,
+        gameplayActive: true,
+        hp: 73,
+        maxHp: 100,
+        combatState: "idle",
+      }).amount,
+      0
+    );
+    assert.equal(
+      harthmereCampfireWarmthHealDecisionForTest({
+        nearWarmth: true,
+        gameplayActive: true,
+        hp: 100,
+        maxHp: 100,
+        combatState: "idle",
+      }).amount,
+      0
     );
   });
 
