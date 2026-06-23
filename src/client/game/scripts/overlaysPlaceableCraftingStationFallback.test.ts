@@ -42,4 +42,19 @@ describe("Harthmere placeable crafting-station F fallback", () => {
       /getNearbyHarthmereObjectInspectableOverlay\(\)\s*\?\?\s*this\.getNearbyHarthmerePlaceableCraftingStationOverlay\(\)\s*\?\?\s*this\.getNearbyNpcTalkInspectableOverlay\(\)/;
     assert.match(source, priority);
   });
+
+  it("does not surface F prompts for quest containers hidden until their active marker is visible", () => {
+    assert.match(source, /harthmereVisibleStaticWorldObjectInspectCandidates/);
+    assert.match(source, /harthmereWorldObjectCandidateIsVisibleForInteraction/);
+    assert.match(source, /activeHarthmereStaticWorldObjectMarkerId/);
+    assert.match(source, /readActiveBiomesUIMapPin/);
+    assert.match(
+      source,
+      /harthmereWorldObjectOverlayForEntity[\s\S]{0,900}harthmereLiveWorldObjectCandidateIsVisibleForInteraction/
+    );
+    assert.match(
+      source,
+      /harthmereLiveWorldObjectInspectCandidates[\s\S]{0,2200}!this\.harthmereLiveWorldObjectCandidateIsVisibleForInteraction/
+    );
+  });
 });

@@ -52,6 +52,15 @@ export interface HarthmereWorldObjectInspectable {
   score: number;
 }
 
+export interface HarthmereWorldObjectVisibilityInput {
+  candidate: HarthmereWorldObjectCandidate;
+  activeMarkerId?: string;
+  activePinMarkerId?: string;
+  activePinPosition?: HarthmereWorldObjectVec3;
+  alwaysVisible?: boolean;
+  activePinMatchRadius?: number;
+}
+
 export interface SelectHarthmereWorldObjectInspectableInput {
   playerPosition: HarthmereWorldObjectVec3;
   facingView: HarthmereWorldObjectVec3;
@@ -59,6 +68,40 @@ export interface SelectHarthmereWorldObjectInspectableInput {
   radius?: number;
   closeRadius?: number;
   minViewDot?: number;
+}
+
+export const HARTHMERE_WORLD_OBJECT_ACTIVE_PIN_MARKER_PREFIX =
+  "jobs_board_marker:" as const;
+export const HARTHMERE_WORLD_OBJECT_ACTIVE_PIN_MATCH_RADIUS = 1.75;
+
+export function harthmereWorldObjectCandidateIsVisibleForInteraction(
+  input: HarthmereWorldObjectVisibilityInput
+): boolean {
+  if (input.alwaysVisible) {
+    return true;
+  }
+  const id = input.candidate.id;
+  if (input.activeMarkerId && input.activeMarkerId === id) {
+    return true;
+  }
+  const pinId = input.activePinMarkerId;
+  if (
+    pinId &&
+    (pinId === id ||
+      pinId === `${HARTHMERE_WORLD_OBJECT_ACTIVE_PIN_MARKER_PREFIX}${id}`)
+  ) {
+    return true;
+  }
+  const pinPosition = input.activePinPosition;
+  if (pinPosition) {
+    const dx = pinPosition[0] - input.candidate.position[0];
+    const dz = pinPosition[2] - input.candidate.position[2];
+    const horizontalDistance = Math.hypot(dx, dz);
+    const radius =
+      input.activePinMatchRadius ?? HARTHMERE_WORLD_OBJECT_ACTIVE_PIN_MATCH_RADIUS;
+    return Number.isFinite(horizontalDistance) && horizontalDistance <= radius;
+  }
+  return false;
 }
 
 // Returns true when the label/description names a non-living, interactable world

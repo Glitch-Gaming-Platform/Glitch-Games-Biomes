@@ -4,7 +4,10 @@ import type { AuthManager } from "@/client/game/context_managers/auth_manager";
 import type { MapManager } from "@/client/game/context_managers/map_manager";
 import type { ClientTable } from "@/client/game/game";
 import { plantExperimentalAt } from "@/client/game/helpers/farming";
-import { BIOMES_UI_ACTIVE_MAP_PIN_NAV_AID_ID } from "@/client/components/biomes_ui/adapters/mapPinnedDestination";
+import {
+  BIOMES_UI_ACTIVE_MAP_PIN_NAV_AID_ID,
+  readActiveBiomesUIMapPin,
+} from "@/client/components/biomes_ui/adapters/mapPinnedDestination";
 import {
   accurateNavigationAidPosition,
   navigationAidShowsPrecisionOverlay,
@@ -70,7 +73,14 @@ import {
   type SnapshotGroveLandmark,
 } from "@/shared/harthmere/snapshot_grove_content";
 import { GROVE_ECONOMY_STARTER_LANDMARKS } from "@/shared/harthmere/grove_economy_starter";
+import { readSnapshotGroveQuestState } from "@/client/components/challenges/LocalDevSnapshotGroveBibleRuntime";
 import {
+  activeHarthmereQuestMarkerId,
+  isVisibleHarthmereWorldObjectMarker,
+} from "@/client/game/renderers/local_dev/harthmere_quest_object_markers";
+import { isHarthmereContainerObjectLabel } from "@/shared/harthmere/object_interaction_semantics";
+import {
+  harthmereWorldObjectCandidateIsVisibleForInteraction,
   isHarthmereInspectableWorldObject,
   selectNearestHarthmereWorldObjectInspectable,
   type HarthmereWorldObjectCandidate,
@@ -267,6 +277,24 @@ function harthmereWorldObjectInspectCandidates(): HarthmereWorldObjectCandidate[
   }
   harthmereWorldObjectCandidateCache = candidates;
   return candidates;
+}
+
+function activeHarthmereStaticWorldObjectMarkerId(): string | undefined {
+  return activeHarthmereQuestMarkerId(readSnapshotGroveQuestState());
+}
+
+function harthmereVisibleStaticWorldObjectInspectCandidates(): HarthmereWorldObjectCandidate[] {
+  const activeMarkerId = activeHarthmereStaticWorldObjectMarkerId();
+  const activePin = readActiveBiomesUIMapPin();
+  return harthmereWorldObjectInspectCandidates().filter((candidate) =>
+    harthmereWorldObjectCandidateIsVisibleForInteraction({
+      candidate,
+      activeMarkerId,
+      activePinMarkerId: activePin?.markerId,
+      activePinPosition: activePin?.worldPosition,
+      alwaysVisible: isVisibleHarthmereWorldObjectMarker(candidate.id),
+    })
+  );
 }
 
 const HARTHMERE_ECS_NPC_COMBAT_REGISTRY =
@@ -1378,15 +1406,50 @@ export class OverlayScript implements Script {
     }
     const label = entity.label?.text ?? "";
     const pos = entity.position?.v;
+    const candidate: HarthmereWorldObjectCandidate = {
+      id: `ecs:${entity.id}`,
+      label,
+      position: pos ? [pos[0], pos[1], pos[2]] : [0, 0, 0],
+      entityDescription: entity.entity_description?.text,
+    };
+    if (
+      !this.harthmereLiveWorldObjectCandidateIsVisibleForInteraction(
+        entity,
+        candidate
+      )
+    ) {
+      return undefined;
+    }
     return {
       kind: "harthmere_object",
       key: `inspect:harthmere_object:entity:${entity.id}`,
       entityId: entity.id,
-      objectId: `ecs:${entity.id}`,
+      objectId: candidate.id,
       label,
-      entityDescription: entity.entity_description?.text,
-      pos: pos ? [pos[0], pos[1], pos[2]] : [0, 0, 0],
+      entityDescription: candidate.entityDescription,
+      pos: candidate.position,
     };
+  }
+
+  private harthmereLiveWorldObjectCandidateIsVisibleForInteraction(
+    entity: ReadonlyEntity,
+    candidate: HarthmereWorldObjectCandidate
+  ): boolean {
+    const isAuthoredQuestContainer =
+      entity.quest_giver &&
+      isHarthmereContainerObjectLabel({
+        label: candidate.label,
+        entityDescription: candidate.entityDescription,
+      });
+    if (!isAuthoredQuestContainer) {
+      return true;
+    }
+    const activePin = readActiveBiomesUIMapPin();
+    return harthmereWorldObjectCandidateIsVisibleForInteraction({
+      candidate,
+      activePinMarkerId: activePin?.markerId,
+      activePinPosition: activePin?.worldPosition,
+    });
   }
 
   // Scans the live ECS table near the player for labeled world objects (seeded
@@ -1432,13 +1495,22 @@ export class OverlayScript implements Script {
       }
       seen.add(entity.id);
       const id = `ecs:${entity.id}`;
-      entityIdByCandidateId.set(id, entity.id);
-      candidates.push({
+      const candidate: HarthmereWorldObjectCandidate = {
         id,
         label: entity.label?.text ?? "",
         position: [pos[0], pos[1], pos[2]],
         entityDescription: entity.entity_description?.text,
-      });
+      };
+      if (
+        !this.harthmereLiveWorldObjectCandidateIsVisibleForInteraction(
+          entity,
+          candidate
+        )
+      ) {
+        return;
+      }
+      entityIdByCandidateId.set(id, entity.id);
+      candidates.push(candidate);
     };
     for (const entity of this.table.scan(
       PlaceableSelector.query.spatial.inSphere({ center, radius })
@@ -1563,7 +1635,7 @@ export class OverlayScript implements Script {
         number
       ],
       candidates: [
-        ...harthmereWorldObjectInspectCandidates(),
+        ...harthmereVisibleStaticWorldObjectInspectCandidates(),
         ...liveCandidates,
       ],
     });

@@ -1,4 +1,5 @@
 import {
+  harthmereWorldObjectCandidateIsVisibleForInteraction,
   harthmereWorldObjectCandidateScore,
   isHarthmereInspectableWorldObject,
   selectNearestHarthmereWorldObjectInspectable,
@@ -128,5 +129,47 @@ describe("harthmere world object inspectable selection", () => {
       candidates: [{ id: "npc", label: "Jackie", position: [2, 0, 0] }],
     });
     assert.strictEqual(selected, undefined);
+  });
+
+  it("only treats hidden quest containers as visible when their marker or active pin targets them", () => {
+    const crate: HarthmereWorldObjectCandidate = {
+      id: "grove_tool_crate",
+      label: "Road Kit Crate",
+      position: [10, 53, -4],
+    };
+    assert.strictEqual(
+      harthmereWorldObjectCandidateIsVisibleForInteraction({ candidate: crate }),
+      false
+    );
+    assert.strictEqual(
+      harthmereWorldObjectCandidateIsVisibleForInteraction({
+        candidate: crate,
+        activeMarkerId: "grove_tool_crate",
+      }),
+      true
+    );
+    assert.strictEqual(
+      harthmereWorldObjectCandidateIsVisibleForInteraction({
+        candidate: crate,
+        activePinMarkerId: "jobs_board_marker:grove_tool_crate",
+      }),
+      true
+    );
+    assert.strictEqual(
+      harthmereWorldObjectCandidateIsVisibleForInteraction({
+        candidate: crate,
+        activePinMarkerId: "jobs_board_marker:some_todo",
+        activePinPosition: [10.75, 70, -4.5],
+      }),
+      true
+    );
+    assert.strictEqual(
+      harthmereWorldObjectCandidateIsVisibleForInteraction({
+        candidate: crate,
+        activePinMarkerId: "jobs_board_marker:some_todo",
+        activePinPosition: [25, 70, -4],
+      }),
+      false
+    );
   });
 });

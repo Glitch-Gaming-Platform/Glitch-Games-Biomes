@@ -5,11 +5,13 @@ require("tsconfig-paths/register");
 const assert = require("assert");
 const { createNewScenes } = require("../../src/client/game/renderers/scenes");
 const {
+  HARTHMERE_ACTIVE_WORLD_OBJECT_MARKER_RENDER_POLICY,
   HARTHMERE_QUEST_OBJECT_MARKERS,
   HARTHMERE_QUEST_OBJECT_MARKER_RENDER_POLICY,
   HARTHMERE_VISIBLE_WORLD_OBJECT_MARKER_RENDER_POLICY,
   isVisibleHarthmereWorldObjectMarker,
   makeHarthmereQuestObjectMarkersRenderer,
+  shouldRenderHarthmereQuestObjectMarkerMesh,
 } = require("../../src/client/game/renderers/local_dev/harthmere_quest_object_markers");
 const {
   HARTHMERE_JOBS_BOARD_INTERACTION_RADIUS,
@@ -85,6 +87,27 @@ for (const audit of reportedProductionCoordinates) {
     );
     continue;
   }
+
+  if (shouldRenderHarthmereQuestObjectMarkerMesh(nearest.marker)) {
+    assert.equal(
+      markerGroup.visible,
+      false,
+      `${nearest.marker.id} should keep quest/source prop geometry hidden until its quest needs it near uploaded production coordinate ${coord.join(",")}`
+    );
+    assert.equal(
+      markerGroup.userData.harthmereQuestObjectMarkerRenderPolicy,
+      HARTHMERE_ACTIVE_WORLD_OBJECT_MARKER_RENDER_POLICY
+    );
+    assert.ok(
+      markerGroup.children.length > 1,
+      `${nearest.marker.id} should carry hidden authored quest prop geometry plus the active beacon`
+    );
+    console.log(
+      `OK ${coord.map((n) => Math.round(n * 1000) / 1000).join(",")} -> ${nearest.marker.id} hidden quest prop (${nearest.distance.toFixed(2)}m)`
+    );
+    continue;
+  }
+
   assert.equal(
     markerGroup.visible,
     false,
