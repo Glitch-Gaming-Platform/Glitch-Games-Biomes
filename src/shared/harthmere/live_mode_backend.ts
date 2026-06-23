@@ -2220,6 +2220,45 @@ function applyBankRecordDelta(
   }
 }
 
+function combinedBackpackAndMaterialStorageItems(
+  state: HarthmereLiveModeBackendState
+) {
+  const items: Record<string, number> = { ...state.inventory.items };
+  for (const [itemId, count] of Object.entries(state.banking.materialStorage)) {
+    const wholeCount = Math.trunc(Number(count) || 0);
+    if (wholeCount <= 0) continue;
+    items[itemId] = (items[itemId] ?? 0) + wholeCount;
+  }
+  return items;
+}
+
+function applyJobsBoardInventoryItemDelta(
+  state: HarthmereLiveModeBackendState,
+  itemId: string,
+  rawDelta: number,
+  touchedModels: Set<string>
+) {
+  const delta = Math.trunc(Number(rawDelta) || 0);
+  if (delta === 0) return;
+  if (delta > 0) {
+    applyBankRecordDelta(state.inventory.items, itemId, delta);
+    touchedModels.add("inventory_items");
+    return;
+  }
+
+  let remaining = -delta;
+  const fromBackpack = Math.min(state.inventory.items[itemId] ?? 0, remaining);
+  if (fromBackpack > 0) {
+    applyBankRecordDelta(state.inventory.items, itemId, -fromBackpack);
+    touchedModels.add("inventory_items");
+    remaining -= fromBackpack;
+  }
+  if (remaining > 0) {
+    applyBankRecordDelta(state.banking.materialStorage, itemId, -remaining);
+    touchedModels.add("material_storage");
+  }
+}
+
 function routeLiveModeRewardOutsideBackpack(
   state: HarthmereLiveModeBackendState,
   itemId: string | undefined,
@@ -7913,7 +7952,7 @@ export function reduceHarthmereLiveModeBackendState(
       } as any,
       {
         actorGold: next.inventory.gold,
-        actorInventoryItems: next.inventory.items,
+        actorInventoryItems: combinedBackpackAndMaterialStorageItems(next),
         actorCollectibles: next.collections.discovered,
         actorGuildId: next.guild.memberGuildId,
         actorPosition: snapshot.position,
@@ -10317,7 +10356,7 @@ export function reduceHarthmereLiveModeBackendState(
           } as any,
           {
             actorGold: next.inventory.gold,
-            actorInventoryItems: next.inventory.items,
+            actorInventoryItems: combinedBackpackAndMaterialStorageItems(next),
             actorCollectibles: next.collections.discovered,
             actorGuildId: next.guild.memberGuildId,
             actorPosition,
@@ -10342,7 +10381,7 @@ export function reduceHarthmereLiveModeBackendState(
         } as any,
         {
           actorGold: next.inventory.gold,
-          actorInventoryItems: next.inventory.items,
+          actorInventoryItems: combinedBackpackAndMaterialStorageItems(next),
           actorCollectibles: next.collections.discovered,
           actorGuildId: next.guild.memberGuildId,
           actorPosition,
@@ -10386,7 +10425,12 @@ export function reduceHarthmereLiveModeBackendState(
       for (const [itemId, delta] of Object.entries(
         result.inventoryItemDeltas
       )) {
-        applyBankRecordDelta(next.inventory.items, itemId, Number(delta));
+        applyJobsBoardInventoryItemDelta(
+          next,
+          itemId,
+          Number(delta),
+          touchedModels
+        );
       }
       for (const collectibleId of result.collectibleRewardIds ?? []) {
         if (HARTHMERE_COLLECTIBLE_DEFINITIONS[collectibleId]) {
@@ -11158,7 +11202,9 @@ export function reduceHarthmereLiveModeBackendState(
               },
               {
                 actorGold: next.inventory.gold,
-                actorInventoryItems: next.inventory.items,
+                actorInventoryItems: combinedBackpackAndMaterialStorageItems(
+                  next
+                ),
                 actorCollectibles: next.collections.discovered,
                 actorGuildId: next.guild.memberGuildId,
                 economy: next.economy.production,
@@ -11169,7 +11215,12 @@ export function reduceHarthmereLiveModeBackendState(
             for (const [itemId, delta] of Object.entries(
               result.inventoryItemDeltas
             )) {
-              applyBankRecordDelta(next.inventory.items, itemId, Number(delta));
+              applyJobsBoardInventoryItemDelta(
+                next,
+                itemId,
+                Number(delta),
+                touchedModels
+              );
             }
             for (const warning of result.warnings) warnings.push(warning);
             for (const model of result.touchedModels) touchedModels.add(model);
@@ -13113,7 +13164,9 @@ export function reduceHarthmereLiveModeBackendState(
             } as any,
             {
               actorGold: next.inventory.gold,
-              actorInventoryItems: next.inventory.items,
+              actorInventoryItems: combinedBackpackAndMaterialStorageItems(
+                next
+              ),
               actorCollectibles: next.collections.discovered,
               actorGuildId: next.guild.memberGuildId,
               economy: next.economy.production,

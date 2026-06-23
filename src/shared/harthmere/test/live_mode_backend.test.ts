@@ -8577,6 +8577,89 @@ describe("reduceHarthmereLiveModeBackendState — physical jobs board and live t
     assert.ok(marker.label.includes("Return to the jobs board"));
   });
 
+  it("jobs can complete with required materials stored outside the backpack", function () {
+    let s = freshState();
+    s.banking.materialStorage.herb_bundle = 2;
+    s.jobsBoard.postings.job_storage_material_dropoff = {
+      jobId: "job_storage_material_dropoff",
+      boardId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID,
+      issuerKind: "town",
+      issuerId: "harthmere_grove",
+      title: "Gather Herb Bundles for the Clinic",
+      description: "Bring stored herb bundles to the clinic shelf.",
+      kind: "gather",
+      requirements: [
+        {
+          itemId: "herb_bundle",
+          count: 2,
+          targetId: "clinic_supply_marker",
+          targetName: "Clinic supply shelf",
+          mapMarkerId: "clinic_supply_marker",
+        },
+      ],
+      rewardGold: 45,
+      escrowGold: 45,
+      reputationDelta: 1,
+      status: "open",
+      townId: "harthmere_grove",
+      regionId: "harthmere_grove_region",
+      createdAtMs: NOW_MS,
+      deadlineAtMs: NOW_MS + 86_400_000,
+      failurePenaltyGold: 0,
+      requiresFieldWork: true,
+      mapMarkerId: "clinic_supply_marker",
+      targetId: "clinic_supply_marker",
+      abuseFlags: [],
+      logs: [],
+    } as any;
+
+    ({ state: s } = applyOne(
+      s,
+      "request_jobs_board_mutation",
+      {
+        operation: "accept_job",
+        boardId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID,
+        jobId: "job_storage_material_dropoff",
+      },
+      {
+        subsystem: "jobs",
+        targetId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID,
+        serverActorPosition: {
+          x: 501.99486179104775,
+          y: 70,
+          z: -132.00350672753194,
+        },
+      }
+    ));
+    const todo = Object.values(s.jobsBoard.todos)[0];
+    assert.ok(todo, "accepting the delivery should create a todo");
+
+    const result = applyOne(
+      s,
+      "request_jobs_board_mutation",
+      {
+        operation: "complete_job_quest",
+        boardId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID,
+        jobId: "job_storage_material_dropoff",
+        questTodoId: todo.todoId,
+        completedTargetId: "clinic_supply_marker",
+      },
+      {
+        subsystem: "jobs",
+        targetId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID,
+      }
+    );
+
+    assert.deepEqual(result.summary.warnings, []);
+    assert.equal(
+      result.state.jobsBoard.todos[todo.todoId].status,
+      "completed"
+    );
+    assert.equal(result.state.inventory.items.herb_bundle ?? 0, 0);
+    assert.equal(result.state.banking.materialStorage.herb_bundle ?? 0, 0);
+    assert.ok(result.summary.touchedModels.includes("material_storage"));
+  });
+
   function addOpenEscortJob(state: HarthmereLiveModeBackendState) {
     state.jobsBoard.postings.job_escort_newcomer = {
       jobId: "job_escort_newcomer",
