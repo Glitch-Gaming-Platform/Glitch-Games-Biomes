@@ -65,6 +65,7 @@ export const HARTHMERE_GLITCH_REQUIRED_SAVE_KEY_PREFIXES = [
   "biomes.localDev.harthmere.playerBody.user.",
   "biomes.localDev.harthmere.playerClothing.user.",
   "biomes.localDev.harthmere.playerBody.user.",
+  "biomes.localDev.harthmere.objectContainerContents.user.",
   "biomes.localDev.harthmere.foodStaminaState.user.",
   "biomes.localDev.liveEntityRobotEnergy.user.",
   "biomes.localDev.liveEntityHelperQuests.user.",

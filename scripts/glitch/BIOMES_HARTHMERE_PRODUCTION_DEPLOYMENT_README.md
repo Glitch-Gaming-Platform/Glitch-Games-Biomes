@@ -61,10 +61,13 @@ PROD_REDIS_RECONCILE_HOST=10.0.0.12 \
 scripts/glitch/deploy-production-local-redis-smoke.sh --push
 ```
 
-The script avoids `az acr build`; production upload is `docker push` of the
-locally-built image, followed by `az containerapp update`. Before any production
-update it validates the private Redis NSG, Redis write/persistence health,
-snapshot hash, and required world seed keys.
+The script avoids `az acr build`. When `--push` is used without `--local-smoke`,
+Docker Buildx pushes the image directly to ACR so CI does not spend time loading
+the full image into the local Docker daemon and then pushing it again. When
+`--local-smoke` is enabled, the script still loads the local image first, runs
+the smoke checks, then uses `docker push`. Before any production update it
+validates the private Redis NSG, Redis write/persistence health, snapshot hash,
+and required world seed keys.
 
 ## GitHub Actions production deploy
 
@@ -111,13 +114,14 @@ GLITCH_TITLE_TOKEN=secretref:glitch-title-token
 The title token lives only as the Azure Container App secret
 `glitch-title-token`; it is not stored in GitHub or source control.
 
-The workflow restores `node_modules`, production data snapshot assets, Next.js
-compiler cache, server Webpack compiler cache, and Buildx layers. On exact
-`node_modules` cache hits, the workflow verifies the restored Linux dependency
-tree and skips `yarn install` entirely. This avoids spending paid runner time on
-Yarn's fetch/link/build phases when the lockfile and Node version have not
-changed. The Yarn tarball cache is intentionally not used here because it is very
-large in this repository and competes with the more valuable Docker, compiler,
+The workflow restores Git LFS assets through the shared LFS cache action, then
+restores `node_modules`, production data snapshot assets, Next.js compiler
+cache, server Webpack compiler cache, and Buildx layers. On exact `node_modules`
+cache hits, the workflow verifies the restored Linux dependency tree and skips
+`yarn install` entirely. This avoids spending paid runner time on Yarn's
+fetch/link/build phases when the lockfile and Node version have not changed. The
+Yarn tarball cache is intentionally not used here because it is very large in
+this repository and competes with the more valuable LFS, Docker, compiler,
 asset, and `node_modules` caches. Dependency caches are saved immediately after a
 needed `yarn install`, so a later build or Azure deployment failure does not
 throw away a successful install. The compiler, asset, and image caches use

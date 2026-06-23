@@ -249,8 +249,7 @@ export const TalkToNpcDefaultDialog: React.FunctionComponent<{
     talkingToNPCId,
     initialDefaultDialog
   );
-  const liveEntityHelperDialog =
-    useLiveEntityHelperQuestDialog(talkingToNPCId);
+  const liveEntityHelperDialog = useLiveEntityHelperQuestDialog(talkingToNPCId);
   const relevantQuestSteps = useRelevantStepsForEntity(talkingToNPCId);
   const [id, setId] = useState(0);
   const fallbackDialogText = harthmereFallbackNpcDialogText({
@@ -489,8 +488,8 @@ export const TalkToNpcDefaultDialog: React.FunctionComponent<{
   }
 
   // GROVE_FOUNTAIN_TUTORIALS:
-  // Grove bible/tutorial dialogue must win before the legacy Road Ahead bridge.
-  // Otherwise Jackie always shows only the old bridge and the fountain lessons
+  // Grove bible/tutorial dialogue must win before the Road Ahead runtime bridge.
+  // Otherwise Jackie always shows only the bridge and the fountain lessons
   // assigned to Jackie/Rosalyn/Taye/Nia are technically present but invisible.
   if (!voiceConversationActive && snapshotGroveNpcDialog) {
     return (

@@ -7,6 +7,7 @@ import path from "path";
 import {
   HARTHMERE_ACTIVE_QUEST_MARKER_BLUE,
   HARTHMERE_ACTIVE_QUEST_MARKER_CAP,
+  HARTHMERE_ACTIVE_WORLD_OBJECT_MARKER_RENDER_POLICY,
   HARTHMERE_QUEST_OBJECT_MARKER_VERSION,
   HARTHMERE_QUEST_OBJECT_MARKER_RENDER_POLICY,
   HARTHMERE_QUEST_OBJECT_MARKERS,
@@ -17,6 +18,7 @@ import {
   createHarthmereQuestObjectMarkerAnchor,
   createHarthmereQuestObjectMarkerMesh,
   isVisibleHarthmereWorldObjectMarker,
+  shouldRenderHarthmereQuestObjectMarkerMesh,
   isRenderableHarthmereQuestObjectLandmark,
   makeHarthmereQuestObjectMarkersRenderer,
 } from "@/client/game/renderers/local_dev/harthmere_quest_object_markers";
@@ -426,59 +428,81 @@ describe("Harthmere quest object procedural markers current", () => {
       assert.equal(
         child.visible,
         false,
-        `${markerId} should not render a passive primitive marker body`
+        `${markerId} should not render passively before it is active`
       );
-      assert.equal(
-        child.userData.harthmereQuestObjectMarkerRenderPolicy,
-        HARTHMERE_QUEST_OBJECT_MARKER_RENDER_POLICY
-      );
-      assert.equal(
-        child.children.length,
-        1,
-        "renderer anchors should only carry the hidden active beacon"
-      );
+      if (shouldRenderHarthmereQuestObjectMarkerMesh(markerId)) {
+        assert.equal(
+          child.userData.harthmereQuestObjectMarkerRenderPolicy,
+          HARTHMERE_ACTIVE_WORLD_OBJECT_MARKER_RENDER_POLICY
+        );
+        assert.ok(
+          child.children.length > 1,
+          "active-only container props should keep hidden geometry for the active quest step"
+        );
+      } else {
+        assert.equal(
+          child.userData.harthmereQuestObjectMarkerRenderPolicy,
+          HARTHMERE_QUEST_OBJECT_MARKER_RENDER_POLICY
+        );
+        assert.equal(
+          child.children.length,
+          1,
+          "renderer anchors should only carry the hidden active beacon"
+        );
+      }
     }
   });
 
-  it("renders Billy's real nearby interactables as visible world objects", () => {
-    const expectedLabels = new Map([
-      ["econ_grove_billy_post", "Billy's Drop Post"],
-      ["econ_grove_billy_toolbag", "Billy's Toolbag"],
-    ]);
-
+  it("keeps Billy's real post visible but hides the quest toolbag until active", () => {
     const renderer = makeHarthmereQuestObjectMarkersRenderer();
     const scenes = createNewScenes();
     renderer.draw(scenes, 0.016);
     const root = findRendererRoot(scenes);
     assert.ok(root, "quest object root must attach to the scene");
 
-    for (const [id, label] of expectedLabels) {
-      const marker = HARTHMERE_QUEST_OBJECT_MARKERS.find(
-        (candidate) => candidate.id === id
-      );
-      assert.ok(marker, `${id} should be registered as a visible prop`);
-      assert.equal(marker!.label, label);
+    const post = HARTHMERE_QUEST_OBJECT_MARKERS.find(
+      (candidate) => candidate.id === "econ_grove_billy_post"
+    );
+    assert.ok(post, "Billy's post should be registered");
+    assert.equal(post!.label, "Billy's Drop Post");
+    const postGroup = findMarkerGroup(root!, "econ_grove_billy_post");
+    assert.ok(postGroup, "Billy's post should have a renderer group");
+    assert.equal(postGroup!.visible, true);
+    assert.equal(
+      postGroup!.userData.harthmereQuestObjectMarkerAlwaysVisible,
+      true
+    );
+    assert.equal(
+      postGroup!.userData.harthmereQuestObjectMarkerRenderPolicy,
+      HARTHMERE_VISIBLE_WORLD_OBJECT_MARKER_RENDER_POLICY
+    );
 
-      const group = findMarkerGroup(root!, id);
-      assert.ok(group, `${id} should have a renderer group`);
-      assert.equal(group!.visible, true);
-      assert.equal(
-        group!.userData.harthmereQuestObjectMarkerAlwaysVisible,
-        true
-      );
-      assert.equal(
-        group!.userData.harthmereQuestObjectMarkerRenderPolicy,
-        HARTHMERE_VISIBLE_WORLD_OBJECT_MARKER_RENDER_POLICY
-      );
-      assert.ok(
-        group!.children.some((child) => child instanceof THREE.Mesh),
-        `${id} should include visible prop mesh geometry`
-      );
-      assert.equal(findActiveBeacon(group!)?.visible, false);
-    }
+    const toolbag = HARTHMERE_QUEST_OBJECT_MARKERS.find(
+      (candidate) => candidate.id === "econ_grove_billy_toolbag"
+    );
+    assert.ok(toolbag, "Billy's toolbag should be registered");
+    assert.equal(toolbag!.label, "Billy's Toolbag");
+    assert.equal(isVisibleHarthmereWorldObjectMarker(toolbag!), false);
+    assert.equal(shouldRenderHarthmereQuestObjectMarkerMesh(toolbag!), true);
+    const toolbagGroup = findMarkerGroup(root!, "econ_grove_billy_toolbag");
+    assert.ok(toolbagGroup, "Billy's toolbag should have a renderer group");
+    assert.equal(toolbagGroup!.visible, false);
+    assert.equal(
+      toolbagGroup!.userData.harthmereQuestObjectMarkerRenderPolicy,
+      HARTHMERE_ACTIVE_WORLD_OBJECT_MARKER_RENDER_POLICY
+    );
+    assert.ok(
+      toolbagGroup!.children.some((child) => child instanceof THREE.Mesh),
+      "toolbag should keep prop art ready for the active quest step"
+    );
+    assert.equal(findActiveBeacon(toolbagGroup!)?.visible, false);
+
+    renderer.syncActiveQuestMarkerId("econ_grove_billy_toolbag");
+    assert.equal(toolbagGroup!.visible, true);
+    assert.equal(findActiveBeacon(toolbagGroup!)?.visible, true);
   });
 
-  it("renders every authored container marker as a visible world object with prop geometry", () => {
+  it("keeps authored quest containers hidden until their marker is active", () => {
     const renderer = makeHarthmereQuestObjectMarkersRenderer();
     const scenes = createNewScenes();
     renderer.draw(scenes, 0.016);
@@ -496,24 +520,29 @@ describe("Harthmere quest object procedural markers current", () => {
     for (const marker of containerMarkers) {
       assert.equal(
         isVisibleHarthmereWorldObjectMarker(marker),
+        false,
+        `${marker.id} (${marker.label}) should not be marked always-visible`
+      );
+      assert.equal(
+        shouldRenderHarthmereQuestObjectMarkerMesh(marker),
         true,
-        `${marker.id} (${marker.label}) should be marked visible`
+        `${marker.id} (${marker.label}) should keep active quest prop geometry`
       );
 
       const group = findMarkerGroup(root!, marker.id);
       assert.ok(group, `${marker.id} should have a renderer group`);
       assert.equal(
         group!.visible,
-        true,
-        `${marker.id} (${marker.label}) should render visibly`
+        false,
+        `${marker.id} (${marker.label}) should be hidden until active`
       );
       assert.equal(
         group!.userData.harthmereQuestObjectMarkerAlwaysVisible,
-        true
+        undefined
       );
       assert.equal(
         group!.userData.harthmereQuestObjectMarkerRenderPolicy,
-        HARTHMERE_VISIBLE_WORLD_OBJECT_MARKER_RENDER_POLICY
+        HARTHMERE_ACTIVE_WORLD_OBJECT_MARKER_RENDER_POLICY
       );
 
       let meshCount = 0;
@@ -527,6 +556,13 @@ describe("Harthmere quest object procedural markers current", () => {
         `${marker.id} (${marker.label}) should use container prop art, got ${meshCount} meshes`
       );
     }
+
+    const activeContainer = containerMarkers[0]!;
+    const activeGroup = findMarkerGroup(root!, activeContainer.id);
+    assert.ok(activeGroup, "active container candidate should exist");
+    renderer.syncActiveQuestMarkerId(activeContainer.id);
+    assert.equal(activeGroup!.visible, true);
+    assert.equal(findActiveBeacon(activeGroup!)?.visible, true);
   });
 
   it("promotes container landmarks without quest ids into the marker renderer", () => {
@@ -548,6 +584,10 @@ describe("Harthmere quest object procedural markers current", () => {
     );
     assert.equal(
       isVisibleHarthmereWorldObjectMarker("econ_grove_supply_chest"),
+      false
+    );
+    assert.equal(
+      shouldRenderHarthmereQuestObjectMarkerMesh("econ_grove_supply_chest"),
       true
     );
   });

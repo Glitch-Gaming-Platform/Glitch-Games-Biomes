@@ -23,18 +23,13 @@ ok(overlays.includes("getOverlayEntitySizeCompat(entity)"), "basicEntityPosition
 ok(!/const npcSize = getSizeForEntity\(entity\);\s*ok\(npcSize\);/.test(overlays), "basicEntityPosition no longer hard-crashes on missing size");
 ok(overlays.includes("return [1, 2, 1];"), "overlay fallback uses conservative human overlay height");
 
-ok(npcs.includes("SNAPSHOT_PLAYERLIKE_NPC_VISIBLE_FALLBACK_VERSION"), "snapshot player-like NPC visible fallback marker exists");
-ok(npcs.includes("shouldForceVisibleSnapshotPlayerLikeNpcFallback"), "player-like NPC fallback decision helper exists");
-ok(npcs.includes("makeSnapshotPlayerLikeNpcVisibleFallbackGltf"), "player-like NPC visible fallback mesh helper exists");
-ok(npcs.includes("BIOMES_SNAPSHOT_NPC_RENDERER"), "snapshot NPC renderer escape hatch exists");
-const hasDirectVisibleFallback = npcs.includes("makeSnapshotPlayerLikeNpcVisibleFallbackGltf(deps, id, npcType)");
 const hasRichSnapshotFirstPath =
   npcs.includes("SNAPSHOT_RICH_NPC_APPEARANCE makeNpcMesh") &&
-  npcs.includes("makeSnapshotPlayerLikeAppearanceMesh(deps, id)") &&
-  npcs.includes("makeLocalDevVoxelNpcGltf(deps, id)");
+  npcs.includes("makeSnapshotPlayerLikeAppearanceMesh(deps, id)");
+ok(!npcs.includes("makeSnapshotPlayerLikeNpcVisibleFallbackGltf"), "player-like NPCs no longer use the Harthmere voxel fallback");
 ok(
-  hasDirectVisibleFallback || hasRichSnapshotFirstPath,
-  "makeNpcMesh uses visible snapshot path before unsafe legacy player-like renderer"
+  hasRichSnapshotFirstPath,
+  "makeNpcMesh uses the rich player/Grove avatar path before unsafe legacy player-like renderer"
 );
 
 if (process.exitCode) {

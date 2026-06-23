@@ -1199,6 +1199,36 @@ describe("live-mode readiness contracts", function () {
       );
     }
   });
+
+  it("routes quest state reads to the quest pipeline, never the death pipeline", function () {
+    const plan = buildHarthmereLiveModePersistenceMutationPlan(
+      makeEnvelope(
+        "request_quest_state_update",
+        { operation: "live_entity_helper_read_state" },
+        { subsystem: "quest" }
+      )
+    );
+
+    assert.ok(plan.writeModels.includes("quest_state"));
+    assert.ok(!plan.writeModels.includes("death_record"));
+    assert.ok(!plan.requiredLocks.includes("player_death_state"));
+    assert.ok(!plan.auditEventOutbox.includes("death_record_created"));
+  });
+
+  it("still routes explicit death and respawn actions to the death pipeline", function () {
+    for (const actionKind of [
+      "request_death_transition",
+      "request_respawn",
+    ] satisfies HarthmereLiveModeActionKind[]) {
+      const plan = buildHarthmereLiveModePersistenceMutationPlan(
+        makeEnvelope(actionKind, {}, { subsystem: "death" })
+      );
+
+      assert.ok(plan.writeModels.includes("death_record"));
+      assert.ok(plan.requiredLocks.includes("player_death_state"));
+      assert.ok(plan.auditEventOutbox.includes("death_record_created"));
+    }
+  });
 });
 
 // ===========================================================================
@@ -4985,10 +5015,18 @@ describe("reduceHarthmereLiveModeBackendState — quest state", function () {
       completed: false,
     });
     assert.deepEqual(accepted.summary.warnings, []);
-    assert.deepEqual(accepted.state.quests.active["moss_that_went_quiet"], {
-      stepId: "moss_that_went_quiet:1:collect",
-      progress: 2,
-    });
+    assert.equal(
+      accepted.state.quests.active["moss_that_went_quiet"]?.stepId,
+      "moss_that_went_quiet:1:collect"
+    );
+    assert.equal(
+      accepted.state.quests.active["moss_that_went_quiet"]?.progress,
+      2
+    );
+    assert.equal(
+      accepted.state.quests.active["moss_that_went_quiet"]?.source,
+      "snapshot_grove"
+    );
 
     const completed = applyOne(
       accepted.state,
@@ -5034,6 +5072,23 @@ describe("reduceHarthmereLiveModeBackendState — quest state", function () {
     const snapshot = createHarthmereLiveModeQuestClientSnapshot(result.state);
     assert.deepEqual(snapshot.active, result.state.quests.active);
     assert.deepEqual(snapshot.completed, {});
+  });
+
+  it("rejects legacy client gold deltas on quest state reads", function () {
+    const s = freshState();
+    const beforeGold = s.inventory.gold;
+    const result = applyOne(
+      s,
+      "request_quest_state_update",
+      {
+        operation: "live_entity_helper_read_state",
+        goldDelta: 9_999,
+      },
+      { subsystem: "quest" }
+    );
+
+    assert.equal(result.state.inventory.gold, beforeGold);
+    assert.equal(result.state.economy.ledger.length, 0);
   });
 
   it("server-authoritatively accepts and completes live-entity supply quests", function () {

@@ -4,7 +4,7 @@
 // Verifies — without running React or a test harness — that:
 //   1. Every file in src/client/components/biomes_ui/ exists and is non-empty.
 //   2. Every UI id referenced by tutorialMissionMap is declared in uniqueIds.ts.
-//   3. Every (target, trigger) pair from LocalDevSnapshotMissionBridge.tsx
+//   3. Every (target, trigger) pair from the canonical Road Ahead mission source
 //      has an entry in MISSION_HIGHLIGHTS.
 //   4. Every tab in TAB_ORDER has a TAB_DESCRIPTORS entry and a default
 //      shortcut binding.
@@ -21,10 +21,17 @@ const MODULE = path.join(ROOT, "src/client/components/biomes_ui");
 let ok = true;
 function check(label, cond) {
   if (cond) console.log("OK   " + label);
-  else { console.log("FAIL " + label); ok = false; }
+  else {
+    console.log("FAIL " + label);
+    ok = false;
+  }
 }
-function read(rel) { return fs.readFileSync(path.join(MODULE, rel), "utf8"); }
-function exists(rel) { return fs.existsSync(path.join(MODULE, rel)); }
+function read(rel) {
+  return fs.readFileSync(path.join(MODULE, rel), "utf8");
+}
+function exists(rel) {
+  return fs.existsSync(path.join(MODULE, rel));
+}
 
 console.log("== BiomesUI static audit ==");
 console.log("Module root: " + MODULE + "\n");
@@ -88,60 +95,135 @@ check(
   !/^\s*import\s+["'][^"']+\.css["'];?$/m.test(uiTsx)
 );
 for (const f of REQUIRED) {
-  check("file exists and non-empty: " + f, exists(f) && fs.statSync(path.join(MODULE, f)).size > 0);
+  check(
+    "file exists and non-empty: " + f,
+    exists(f) && fs.statSync(path.join(MODULE, f)).size > 0
+  );
 }
 
 // (2) UI ids declared
 const uniqueIdsSrc = read("uniqueIds.ts");
 const TAB_KEYS = [
-  "TAB_INVENTORY","TAB_ABILITIES","TAB_SKILLS","TAB_CLASSES","TAB_LAND",
-  "TAB_LOOT","TAB_GUILDS","TAB_BANKING","TAB_MAP","TAB_COLLECTIONS",
-  "TAB_INBOX","TAB_OPTIONS",
+  "TAB_INVENTORY",
+  "TAB_ABILITIES",
+  "TAB_SKILLS",
+  "TAB_CLASSES",
+  "TAB_LAND",
+  "TAB_LOOT",
+  "TAB_GUILDS",
+  "TAB_BANKING",
+  "TAB_MAP",
+  "TAB_COLLECTIONS",
+  "TAB_INBOX",
+  "TAB_OPTIONS",
 ];
-for (const k of TAB_KEYS) check("uniqueIds declares " + k, uniqueIdsSrc.includes(k + ":"));
-check("uniqueIds declares HOTBAR_SLOT factory", /HOTBAR_SLOT:\s*\(n: number\)/.test(uniqueIdsSrc));
-check("uniqueIds declares ABILITY_SLOT factory", /ABILITY_SLOT:\s*\(n: number\)/.test(uniqueIdsSrc));
-check("uniqueIds declares MAP_MARKER factory", /MAP_MARKER:\s*\(id: string\)/.test(uniqueIdsSrc));
-check("uniqueIds declares HUD open-menu and chat cue ids", uniqueIdsSrc.includes("HUD_PROMPT_OPEN_MENU") && uniqueIdsSrc.includes("HUD_CHAT_BUTTON"));
+for (const k of TAB_KEYS)
+  check("uniqueIds declares " + k, uniqueIdsSrc.includes(k + ":"));
+check(
+  "uniqueIds declares HOTBAR_SLOT factory",
+  /HOTBAR_SLOT:\s*\(n: number\)/.test(uniqueIdsSrc)
+);
+check(
+  "uniqueIds declares ABILITY_SLOT factory",
+  /ABILITY_SLOT:\s*\(n: number\)/.test(uniqueIdsSrc)
+);
+check(
+  "uniqueIds declares MAP_MARKER factory",
+  /MAP_MARKER:\s*\(id: string\)/.test(uniqueIdsSrc)
+);
+check(
+  "uniqueIds declares HUD open-menu and chat cue ids",
+  uniqueIdsSrc.includes("HUD_PROMPT_OPEN_MENU") &&
+    uniqueIdsSrc.includes("HUD_CHAT_BUTTON")
+);
 
 // (3) Live mission steps -> highlights
 const mapSrc = read("tutorial/tutorialMissionMap.ts");
 const LIVE_PAIRS = [
-  ["jackie","dialog"], ["road_marker","location"], ["muckwad_patch","destroy"],
-  ["building_spot","place_voxel"], ["wardrobe","wearing"], ["jump_run","running_jump"],
-  ["selfie_overlook","photo"], ["crafting_stop","craft_muck_buster"],
+  ["jackie", "dialog"],
+  ["road_marker", "location"],
+  ["muckwad_patch", "destroy"],
+  ["building_spot", "place_voxel"],
+  ["wardrobe", "wearing"],
+  ["jump_run", "running_jump"],
+  ["selfie_overlook", "photo"],
+  ["crafting_stop", "craft_muck_buster"],
 ];
 for (const [t, tr] of LIVE_PAIRS) {
   const pattern = new RegExp(`target:\\s*\"${t}\",\\s*trigger:\\s*\"${tr}\"`);
   check(`tutorial map covers ${t}/${tr}`, pattern.test(mapSrc));
 }
-check("tutorial map has authored Grove HUD/BiomesUI cue derivation", mapSrc.includes("cuesForAuthoredTutorialStep"));
-check("authored cue derivation targets menu prompt, vitals, and inventory actions", mapSrc.includes("HUD_PROMPT_OPEN_MENU") && mapSrc.includes("HUD_VITALS_STAMINA") && mapSrc.includes("INVENTORY_ACTION"));
+check(
+  "tutorial map has authored Grove HUD/BiomesUI cue derivation",
+  mapSrc.includes("cuesForAuthoredTutorialStep")
+);
+check(
+  "authored cue derivation targets menu prompt, vitals, and inventory actions",
+  mapSrc.includes("HUD_PROMPT_OPEN_MENU") &&
+    mapSrc.includes("HUD_VITALS_STAMINA") &&
+    mapSrc.includes("INVENTORY_ACTION")
+);
 
 const openPromptSrc = read("BiomesUIOpenPrompt.tsx");
-check("open-menu prompt is a real highlight target", openPromptSrc.includes("Highlightable") && openPromptSrc.includes("HUD_PROMPT_OPEN_MENU"));
+check(
+  "open-menu prompt is a real highlight target",
+  openPromptSrc.includes("Highlightable") &&
+    openPromptSrc.includes("HUD_PROMPT_OPEN_MENU")
+);
 
 const vitalsSrc = read("BiomesUIVitalsPanel.tsx");
-check("vitals HUD ids register with highlight registry", vitalsSrc.includes("useBlinkTarget") && vitalsSrc.includes("HUD_VITALS_STAMINA"));
+check(
+  "vitals HUD ids register with highlight registry",
+  vitalsSrc.includes("useBlinkTarget") &&
+    vitalsSrc.includes("HUD_VITALS_STAMINA")
+);
 
 const liveAdaptersSrc = read("adapters/useBiomesUILiveAdapters.ts");
-check("BiomesUI map tab publishes map/journal/quests open_tab aliases", liveAdaptersSrc.includes('map: ["map", "journal", "quests"]'));
-check("BiomesUI guild/ability tabs publish the Grove tasks open_tab alias", liveAdaptersSrc.includes('guilds: ["tasks"]') && liveAdaptersSrc.includes('abilities: ["tasks"]'));
+check(
+  "BiomesUI map tab publishes map/journal/quests open_tab aliases",
+  liveAdaptersSrc.includes('map: ["map", "journal", "quests"]')
+);
+check(
+  "BiomesUI guild/ability tabs publish the Grove tasks open_tab alias",
+  liveAdaptersSrc.includes('guilds: ["tasks"]') &&
+    liveAdaptersSrc.includes('abilities: ["tasks"]')
+);
 
 // (4) Shortcut bindings
 const shortcutsSrc = read("shortcuts/BiomesShortcuts.ts");
 const typesSrc = read("BiomesUITypes.ts");
-const TABS = ["inventory","abilities","skills","classes","land","loot","guilds","banking","map","collections","inbox","options"];
+const TABS = [
+  "inventory",
+  "abilities",
+  "skills",
+  "classes",
+  "land",
+  "loot",
+  "guilds",
+  "banking",
+  "map",
+  "collections",
+  "inbox",
+  "options",
+];
 for (const t of TABS) {
   check("TAB_DESCRIPTORS contains " + t, typesSrc.includes(`${t}: {`));
-  check("default shortcut bound for " + t, shortcutsSrc.includes(`tab: \"${t}\"`));
+  check(
+    "default shortcut bound for " + t,
+    shortcutsSrc.includes(`tab: \"${t}\"`)
+  );
 }
 
 // (5) Highlightable use in tabs
 const tabFiles = fs.readdirSync(path.join(MODULE, "tabs"));
 for (const f of tabFiles) {
-  const src = fs.readFileSync(path.join(MODULE, "tabs", f), "utf8");
-  if (/<Highlightable|Highlightable as any/.test(src) || /Highlightable/.test(src)) {
+  const tabPath = path.join(MODULE, "tabs", f);
+  if (!fs.statSync(tabPath).isFile()) continue;
+  const src = fs.readFileSync(tabPath, "utf8");
+  if (
+    /<Highlightable|Highlightable as any/.test(src) ||
+    /Highlightable/.test(src)
+  ) {
     check(`${f} imports UI_IDS`, src.includes("uniqueIds"));
   }
 }

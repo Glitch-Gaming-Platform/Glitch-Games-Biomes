@@ -3,6 +3,8 @@ const path = require('path');
 const repo = path.resolve(__dirname, '..', '..');
 const file = path.join(repo, 'src/client/game/resources/npcs.ts');
 const src = fs.readFileSync(file, 'utf8');
+const seed = fs.readFileSync(path.join(repo, 'src/server/harthmere/snapshot_grove_npc_ecs_seed.ts'), 'utf8');
+const routing = fs.readFileSync(path.join(repo, 'src/shared/harthmere/snapshot_grove_npc_mesh_routing.ts'), 'utf8');
 function ok(cond, msg) {
   if (!cond) {
     console.error(`FAIL ${msg}`);
@@ -11,14 +13,13 @@ function ok(cond, msg) {
     console.log(`OK ${msg}`);
   }
 }
-ok(src.includes('SNAPSHOT_NPC_COSMETICS_FALLBACK_VERSION'), 'NPC cosmetics fallback version marker is present');
-ok(src.includes('snapshotNpcHasUsefulCosmetics'), 'cosmetic ECS detector helper is present');
-ok(src.includes('wearingItems instanceof Map'), 'cosmetic detector treats Map-backed wearables as useful');
-ok(src.includes('shouldUseSnapshotNpcCosmeticsFallback'), 'player-like NPC fallback gate is present');
-ok(src.includes('makeSnapshotNpcCosmeticsFallbackGltf'), 'generated fallback GLTF helper is present');
-ok(src.includes('makeLocalDevVoxelNpcGltf(deps, id)'), 'fallback reuses visible Harthmere voxel NPC generator');
-ok(src.includes('!snapshotNpcHasUsefulCosmetics(deps, id)'), 'fallback only applies when appearance/wearing is missing');
-ok(src.includes('SNAPSHOT_NPC_COSMETICS_FALLBACK using generated visible cosmetics'), 'fallback emits searchable development log');
+ok(src.includes('makeSnapshotPlayerLikeAppearanceMesh(deps, id)'), 'player-like NPCs use the generated player/Grove avatar mesh path');
+ok(seed.includes('delete (base as { appearance_component?: unknown }).appearance_component'), 'no-asset Grove NPC seeder drops uniform default appearance');
+ok(seed.includes('delete (base as { wearing?: unknown }).wearing'), 'no-asset Grove NPC seeder drops uniform default wearables');
+ok(routing.includes('sil: "npcs/sil"'), 'Sil uses the original snapshot NPC asset');
+ok(routing.includes('doc: "npcs/doc"'), 'Doc uses the original snapshot NPC asset');
+ok(!src.includes('makeSnapshotNpcCosmeticsFallbackGltf'), 'player-like NPCs no longer route to the Harthmere voxel cosmetics fallback');
+ok(!src.includes('shouldUseSnapshotGroveGeneratedVoxelNpc'), 'no-asset Grove NPCs no longer bypass player-like rendering');
 ok(!src.includes('if (npcType.isPlayerLikeAppearance) {\n    const mesh = await makePlayerLikeAppearanceMesh(deps, id);'), 'old naked player-like NPC branch is not first path');
 if (process.exitCode) process.exit(process.exitCode);
-console.log('snapshot NPC cosmetics fallback current check passed');
+console.log('snapshot NPC player/Grove avatar routing current check passed');

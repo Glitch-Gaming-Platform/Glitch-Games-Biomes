@@ -207,6 +207,27 @@ function firstRequirementItemCount(
   return Math.max(0, Math.floor(Number(inventoryItems?.[req.itemId] ?? 0)));
 }
 
+function itemRequirementsSatisfied(
+  job: HarthmereJobsBoardPosting | undefined,
+  inventoryItems: Record<string, number> | undefined
+) {
+  const itemRequirements = (job?.requirements ?? []).filter(
+    (entry) => entry.itemId
+  );
+  return (
+    itemRequirements.length > 0 &&
+    itemRequirements.every((req) => {
+      const needed = Math.max(1, Math.floor(Number(req.count ?? 1)));
+      return (
+        Math.max(
+          0,
+          Math.floor(Number(inventoryItems?.[req.itemId ?? ""] ?? 0))
+        ) >= needed
+      );
+    })
+  );
+}
+
 function jobsBoardTodoMarkerPlanForBiomesUI(
   snapshot: HarthmereJobsBoardSnapshot,
   todo: HarthmereJobsBoardTodo,
@@ -226,6 +247,12 @@ function jobsBoardTodoMarkerPlanForBiomesUI(
     (job as any)?.escortCompanion?.status === "arrived"
   ) {
     progress.escortArrived = true;
+  }
+  if (
+    job?.requiresFieldWork === false &&
+    itemRequirementsSatisfied(job, snapshot.inventoryItems)
+  ) {
+    progress.inventoryRequirementsSatisfied = true;
   }
   return harthmereJobMarkerPlan({
     kind,

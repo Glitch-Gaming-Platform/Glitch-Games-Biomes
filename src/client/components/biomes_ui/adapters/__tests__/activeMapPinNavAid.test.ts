@@ -4,6 +4,7 @@ import { biomesUIActiveMapPinNavigationAidKindForTest } from "@/client/component
 import { biomesUIActiveMiniMapPinDistanceLabelForTest } from "@/client/components/map/markers/biomes_ui_active_minimap_pin";
 import {
   isQuestNavigationAidKind,
+  navigationAidDistanceLabelForTest,
   navigationAidShowsOnCircle,
   navigationAidShowsPrecisionOverlay,
   type NavigationAid,
@@ -73,5 +74,11 @@ describe("active map pin navigation aid", () => {
       ),
       undefined
     );
+  });
+
+  it("formats on-screen navigation aid distance labels in meters", () => {
+    assert.equal(navigationAidDistanceLabelForTest(4.3), "4m");
+    assert.equal(navigationAidDistanceLabelForTest(153.7), "154m");
+    assert.equal(navigationAidDistanceLabelForTest(Number.NaN), "");
   });
 });

@@ -31,8 +31,10 @@ import {
   snapshotRoadAheadChallengeStepHintsFromActiveNuxesForBiomesUI,
   snapshotRoadAheadMissionStepsForBiomesUI,
   snapshotRoadAheadTrackableQuestsForBiomesUI,
+  syncSnapshotRoadAheadChallengeStepHintsForBiomesUI,
   writeSnapshotMissionState,
 } from "@/client/components/challenges/LocalDevSnapshotMissionBridge";
+import { readRoadAheadClothingCrateReady } from "@/client/components/challenges/harthmereRoadAheadClothingGate";
 import {
   readHarthmereInventoryState,
   writeHarthmereInventoryState,
@@ -87,10 +89,9 @@ describe("LocalDevSnapshotMissionBridge Road Ahead UI projection", () => {
   });
 
   it("projects active NUX state into Road Ahead objectives without writing bridge state", () => {
-    const hints =
-      snapshotRoadAheadChallengeStepHintsFromActiveNuxesForBiomesUI([
-        { nuxId: NUXES.WEAR_STUFF, stateId: "wear_stuff_prompt_inventory" },
-      ]);
+    const hints = snapshotRoadAheadChallengeStepHintsFromActiveNuxesForBiomesUI(
+      [{ nuxId: NUXES.WEAR_STUFF, stateId: "wear_stuff_prompt_inventory" }]
+    );
     assert.deepEqual(hints, [NUX_PAIRED_STEPS.ROAD_AHEAD_WEAR]);
 
     const quest = snapshotRoadAheadTrackableQuestsForBiomesUI(
@@ -111,6 +112,34 @@ describe("LocalDevSnapshotMissionBridge Road Ahead UI projection", () => {
     assert.equal(steps[2]?.done, true);
     assert.equal(steps[3]?.title, "Current step 4");
     assert.equal(steps[3]?.done, false);
+  });
+
+  it("uses the furthest active Road Ahead hint when duplicate NUX surfaces are present", () => {
+    const quest = snapshotRoadAheadTrackableQuestsForBiomesUI(undefined, [
+      NUX_PAIRED_STEPS.ROAD_AHEAD_PLACE_BLOCKS,
+      NUX_PAIRED_STEPS.ROAD_AHEAD_WEAR,
+    ])[0];
+
+    assert.equal(quest?.firstMarkerId, "wardrobe");
+    assert.equal(
+      quest?.objective,
+      "Wear a top and bottoms from your inventory."
+    );
+  });
+
+  it("syncs active NUX Road Ahead progress into the stored mission state for crate gates", () => {
+    assert.equal(
+      syncSnapshotRoadAheadChallengeStepHintsForBiomesUI([
+        NUX_PAIRED_STEPS.ROAD_AHEAD_PLACE_BLOCKS,
+      ]),
+      true
+    );
+
+    const state = readSnapshotMissionState();
+    assert.equal(state.accepted, true);
+    assert.equal(state.currentStepIndex, 3);
+    assert.ok(state.completedStepIds.includes("road_ahead_collect_muckwad"));
+    assert.equal(readRoadAheadClothingCrateReady(), true);
   });
 
   it("keeps the current Road Ahead bridge completable from legacy native step events", () => {

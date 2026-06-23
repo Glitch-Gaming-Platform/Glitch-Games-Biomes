@@ -36,8 +36,7 @@ describe("BiomesUI live-entity helper quest map adapter", () => {
     const marker = liveEntityHelperQuestTargetMarkerForKind("food_water");
     assert.ok(marker, "fixture marker should resolve");
 
-    const landmarks =
-      liveEntityHelperAcceptedQuestLandmarksForBiomesUI(state);
+    const landmarks = liveEntityHelperAcceptedQuestLandmarksForBiomesUI(state);
     assert.equal(landmarks.length, 1);
     assert.equal(landmarks[0].id, marker!.id);
     assert.equal(landmarks[0].active, true);
@@ -59,13 +58,11 @@ describe("BiomesUI live-entity helper quest map adapter", () => {
         reward: "90 XP, 2 Minor Healing Salves, 1 Black Anvil Repair Voucher",
         kind: "food_water",
         kindLabel: "Helper Quest",
-        objective:
-          LIVE_ENTITY_HELPER_QUEST_DEFINITIONS.food_water.activeText,
+        objective: LIVE_ENTITY_HELPER_QUEST_DEFINITIONS.food_water.activeText,
         objectives: [
           LIVE_ENTITY_HELPER_QUEST_DEFINITIONS.food_water.activeText,
         ],
-        description:
-          LIVE_ENTITY_HELPER_QUEST_DEFINITIONS.food_water.offerText,
+        description: LIVE_ENTITY_HELPER_QUEST_DEFINITIONS.food_water.offerText,
       },
     ]);
 
@@ -169,9 +166,25 @@ describe("BiomesUI live-entity helper quest map adapter", () => {
     };
     const landmarks = liveEntityHelperAcceptedQuestLandmarksForBiomesUI(state);
     assert.equal(landmarks.length, 1);
+    assert.equal(
+      landmarks[0].id,
+      "live_entity_helper_return:live-helper:jackie:exotic_matter"
+    );
     assert.deepEqual(landmarks[0].position, [496, 70, -126]);
     assert.equal(landmarks[0].label, "Return to Jackie");
     assert.ok(landmarks[0].description.includes("return to Jackie"));
+
+    const [quest] = liveEntityHelperTrackableQuestsForBiomesUI(state);
+    assert.equal(quest.firstMarkerId, landmarks[0].id);
+    assert.ok(quest.objective?.includes("Return to Jackie"));
+    assert.ok(
+      quest.objective?.includes(
+        LIVE_ENTITY_HELPER_QUEST_DEFINITIONS.exotic_matter.readyText
+      )
+    );
+
+    const [step] = activeLiveEntityHelperMissionStepsForBiomesUI(state);
+    assert.ok(step.objective.includes("Return to Jackie"));
   });
 
   it("projects server-backed helper quest state into missions, quests, and map markers", () => {
@@ -210,8 +223,7 @@ describe("BiomesUI live-entity helper quest map adapter", () => {
     assert.ok(steps[0].objective.includes("Old Coop"));
     assert.ok(steps[0].objective.includes("Muck-Scarred Helix"));
 
-    const landmarks =
-      liveEntityHelperAcceptedQuestLandmarksForBiomesUI(state);
+    const landmarks = liveEntityHelperAcceptedQuestLandmarksForBiomesUI(state);
     assert.equal(landmarks.length, 1);
     assert.equal(
       landmarks[0].id,
@@ -239,16 +251,75 @@ describe("BiomesUI live-entity helper quest map adapter", () => {
     const onTarget = liveEntityHelperAcceptedQuestLandmarksForBiomesUI(state, {
       isReadyToTurnIn: () => false,
     });
-    assert.deepEqual(
-      onTarget[0].position,
-      [...LIVE_ENTITY_HELPER_QUEST_ACTIVE_TARGETS.hard_boss.position]
-    );
+    assert.deepEqual(onTarget[0].position, [
+      ...LIVE_ENTITY_HELPER_QUEST_ACTIVE_TARGETS.hard_boss.position,
+    ]);
     // Objective met -> flips to giver even though the stored flag is false.
     const home = liveEntityHelperAcceptedQuestLandmarksForBiomesUI(state, {
       isReadyToTurnIn: () => true,
     });
     assert.deepEqual(home[0].position, [10, 64, 20]);
     assert.equal(home[0].label, "Return to Jackie");
+
+    const [quest] = liveEntityHelperTrackableQuestsForBiomesUI(state, {
+      isReadyToTurnIn: () => true,
+    });
+    assert.equal(quest.firstMarkerId, home[0].id);
+    assert.ok(quest.objective?.includes("Return to Jackie"));
+
+    const [step] = activeLiveEntityHelperMissionStepsForBiomesUI(state, {
+      isReadyToTurnIn: () => true,
+    });
+    assert.ok(step.objective.includes("Return to Jackie"));
+  });
+
+  it("keeps a shared target marker while separating ready turn-in markers by quest", () => {
+    const marker = liveEntityHelperQuestTargetMarkerForKind("food_water");
+    assert.ok(marker, "fixture marker should resolve");
+    const state = {
+      active: {
+        "live-helper:ready:food_water": {
+          questId: "live-helper:ready:food_water",
+          kind: "food_water",
+          entityId: "ready",
+          giverName: "Ready Helper",
+          at: NOW_MS,
+          giverPosition: [10, 64, 20],
+          readyToTurnIn: true,
+        },
+        "live-helper:target:food_water": {
+          questId: "live-helper:target:food_water",
+          kind: "food_water",
+          entityId: "target",
+          giverName: "Target Helper",
+          at: NOW_MS - 1,
+        },
+      },
+      completed: {},
+    };
+
+    const landmarks = liveEntityHelperAcceptedQuestLandmarksForBiomesUI(state);
+    assert.equal(landmarks.length, 2);
+    assert.ok(landmarks.some((landmark) => landmark.id === marker!.id));
+    assert.ok(
+      landmarks.some(
+        (landmark) =>
+          landmark.id ===
+          "live_entity_helper_return:live-helper:ready:food_water"
+      )
+    );
+
+    const quests = liveEntityHelperTrackableQuestsForBiomesUI(state);
+    assert.equal(
+      quests.find((quest) => quest.questId === "live-helper:ready:food_water")
+        ?.firstMarkerId,
+      "live_entity_helper_return:live-helper:ready:food_water"
+    );
+    assert.equal(
+      quests.find((quest) => quest.questId === "live-helper:target:food_water")
+        ?.firstMarkerId,
+      marker!.id
+    );
   });
 
   it("deduplicates map markers when two helpers point at the same target", () => {

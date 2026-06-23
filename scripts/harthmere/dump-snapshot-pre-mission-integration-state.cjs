@@ -25,7 +25,7 @@ for (const rel of files) {
       runtimeBridge: text.includes('SNAPSHOT_RUNTIME_BRIDGE') || text.includes('GLITCH_BISCUIT_MODE'),
       extraTownOffset: text.includes('HARTHMERE_EXTRA_TOWN_OFFSET') || text.includes('harthmere-extra-town'),
       runtimeGate: text.includes('HARTHMERE_RUNTIME_GATE') || text.includes('snapshot merge runtime'),
-      npcCosmeticsFallback: text.includes('SNAPSHOT_NPC_COSMETICS_FALLBACK_VERSION'),
+      npcPlayerAvatarPath: text.includes('makeSnapshotPlayerLikeAppearanceMesh(deps, id)'),
       npcTypeCompat: text.includes('LEGACY_SNAPSHOT_NPC') || text.includes('maybeIdToNpcType'),
       collisionCompat: text.includes('missing-AABB') || text.includes('SNAPSHOT_COLLISION'),
       buffCompat: text.includes('SNAPSHOT_BUFF_TYPE_COMPAT') || text.includes('maybeBuffType'),
@@ -56,7 +56,7 @@ const report = {
   snapshotMissionTerms,
   checks,
   recommendations: [
-    'If NPCs are still beige/naked, verify SNAPSHOT_NPC_COSMETICS_FALLBACK logs appear for player-like NPCs without appearance/wearing.',
+    'If NPCs are beige/naked or using the wrong body style, verify player-like NPCs route through makeSnapshotPlayerLikeAppearanceMesh and no-asset Grove seeds drop uniform defaults.',
     'If snapshotMissionTerms has no quest/mission/objective/trigger counts, the upstream snapshot is world-state-only and mission migration should focus on Glitch/Harthmere quests rather than importing nonexistent snapshot missions.',
     'If snapshotMissionTerms shows meaningful mission data, run the next quest/mission reconciliation patch against those exact fields instead of guessing.'
   ]

@@ -54,6 +54,9 @@ export interface HarthmereJobProgress {
   // The player already satisfied the objective at accept time (e.g. already
   // carried the required gather materials). Drives the distinct shortcut message.
   satisfiedOnAccept?: boolean;
+  // Item-only jobs (craft / buy / gather elsewhere, then turn in at the board)
+  // can become ready without a separate field interaction.
+  inventoryRequirementsSatisfied?: boolean;
   // Whether the kind-required tool (repair/cleanup) is currently equipped.
   toolEquipped?: boolean;
   // Whether the player OWNS the kind-required tool (in inventory, equipped or not).
@@ -713,11 +716,13 @@ export function harthmereJobMarkerPlan(input: {
   // Generic: go to the field marker; the kind-specific objective detection lives
   // with that kind. Once met, the client passes satisfiedOnAccept/objective via
   // progress and we route to the board.
-  if (progress.satisfiedOnAccept) {
+  if (progress.satisfiedOnAccept || progress.inventoryRequirementsSatisfied) {
     return boardPhase(
       kind,
       board,
-      "Objective complete. Return to the jobs board to collect your reward."
+      progress.satisfiedOnAccept
+        ? "Objective complete. Return to the jobs board to collect your reward."
+        : "Required items are ready. Return to the jobs board to turn them in."
     );
   }
   return {

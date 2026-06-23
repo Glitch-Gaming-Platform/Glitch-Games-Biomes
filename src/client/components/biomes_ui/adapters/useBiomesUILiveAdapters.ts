@@ -32,6 +32,7 @@ import {
   recordSnapshotRoadAheadChallengeStepForBiomesUI,
   readSnapshotMissionState,
   recordSnapshotRoadAheadEquippedGearSlotForBiomesUI,
+  syncSnapshotRoadAheadChallengeStepHintsForBiomesUI,
   snapshotRoadAheadChallengeStepHintsFromActiveNuxesForBiomesUI,
   snapshotRoadAheadMissionStepsForBiomesUI,
   snapshotRoadAheadTrackableQuestsForBiomesUI,
@@ -115,6 +116,9 @@ import {
   jobsBoardItemSourceLandmarksForBiomesUI,
   jobsBoardToolSourceLandmarksForBiomesUI,
   jobsBoardTrackableQuestsForBiomesUI,
+  JOBS_BOARD_ITEM_SOURCE_MARKER_ID_PREFIX,
+  JOBS_BOARD_MARKER_ID_PREFIX,
+  JOBS_BOARD_TOOL_SOURCE_MARKER_ID_PREFIX,
   shouldClearStaleJobsBoardPin,
 } from "./jobsBoardQuestMapAdapter";
 import {
@@ -196,6 +200,15 @@ function hasActiveHarthmereGatheringNodePrompt() {
         '[data-harthmere-gathering-node-world-prompt="active"]'
       )
     )
+  );
+}
+
+function isJobsBoardActivePinMarkerId(markerId: string | undefined): boolean {
+  return Boolean(
+    markerId &&
+      (markerId.startsWith(JOBS_BOARD_MARKER_ID_PREFIX) ||
+        markerId.startsWith(JOBS_BOARD_ITEM_SOURCE_MARKER_ID_PREFIX) ||
+        markerId.startsWith(JOBS_BOARD_TOOL_SOURCE_MARKER_ID_PREFIX))
   );
 }
 
@@ -1906,7 +1919,8 @@ export function buildBiomesUIMapAdapterForTest(
         ...activeJobsBoardMissionStepsForBiomesUI(jobsBoardState),
         ...snapshotRoadAheadMissionStepsForBiomesUI(readSnapshotMissionState()),
         ...activeLiveEntityHelperMissionStepsForBiomesUI(
-          readLiveEntityHelperQuestState()
+          readLiveEntityHelperQuestState(),
+          { isReadyToTurnIn: liveEntityHelperQuestRecordReadyToTurnIn }
         ),
       ];
     },
@@ -1983,7 +1997,8 @@ export function buildBiomesUIMapAdapterForTest(
           readSnapshotMissionState()
         ),
         ...liveEntityHelperTrackableQuestsForBiomesUI(
-          readLiveEntityHelperQuestState()
+          readLiveEntityHelperQuestState(),
+          { isReadyToTurnIn: liveEntityHelperQuestRecordReadyToTurnIn }
         ),
         ...authoredQuests,
       ];
@@ -2096,6 +2111,15 @@ export function useBiomesUILiveAdapters({
     ],
     [activeNuxes, resources, snapshotRevision]
   );
+  React.useEffect(() => {
+    if (
+      syncSnapshotRoadAheadChallengeStepHintsForBiomesUI(
+        roadAheadChallengeStepHints
+      )
+    ) {
+      setSnapshotRevision((value) => value + 1);
+    }
+  }, [roadAheadChallengeStepHints]);
   const [harthmereInventoryRevision, setHarthmereInventoryRevision] =
     React.useState(0);
   // Tab-shortcut rebindings from the Options tab, persisted to localStorage and
@@ -2442,6 +2466,18 @@ export function useBiomesUILiveAdapters({
       ),
     ];
     const existing = readActiveBiomesUIMapPin();
+    const roadAheadActive = Boolean(
+      firstActiveSnapshotRoadAheadQuestTitleForBiomesUI(
+        readSnapshotMissionState(),
+        roadAheadChallengeStepHints
+      )
+    );
+    if (roadAheadActive) {
+      if (isJobsBoardActivePinMarkerId(existing?.markerId)) {
+        writeActiveBiomesUIMapPin(undefined);
+      }
+      return;
+    }
     // Drop a jobs-board pin whose job is no longer active (completed/abandoned)
     // so it stops driving the HUD aid and suppressing other quest beacons.
     if (
@@ -2471,7 +2507,7 @@ export function useBiomesUILiveAdapters({
     if (pin) {
       writeActiveBiomesUIMapPin(pin);
     }
-  }, [jobsBoardState]);
+  }, [jobsBoardState, roadAheadChallengeStepHints]);
 
   const refreshQuestState = React.useCallback(async () => {
     if (questStateRefreshInFlightRef.current) return;

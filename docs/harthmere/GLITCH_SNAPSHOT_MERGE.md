@@ -11,7 +11,7 @@ Glitch-Games-Biomes is the code/gameplay authority. The 2026-05-16 Biomes data s
 5. Player animation compatibility: snapshot clips remain default, Harthmere combat clips remain opt-in/fallback aware.
 6. Placeable, NPC type, collision, and buff compatibility firebreaks for older snapshot data.
 7. Runtime gate so Harthmere client visuals do not appear in the snapshot-only world.
-8. Snapshot NPC cosmetics fallback for player-like NPCs that have no wearing/appearance ECS data.
+8. Snapshot NPC avatar parity for player-like NPCs: authored snapshot GLBs load when present; no-asset Grove humans use the same generated player/Grove avatar mesh path as players.
 9. Pre-mission integration diagnostics. The next true gameplay patch is quest/mission reconciliation only if snapshot data actually contains mission fields to import.
 
 ## One-command regression
@@ -82,7 +82,7 @@ node scripts/harthmere/dump-snapshot-pre-mission-integration-state.cjs
 
 Search for these markers in browser/server logs:
 
-- `SNAPSHOT_NPC_COSMETICS_FALLBACK`
+- `SNAPSHOT_RICH_NPC_APPEARANCE`
 - `snapshot-placeable-galois-fallback`
 - `missing-AABB`
 - `SNAPSHOT_BUFF_TYPE_COMPAT`

@@ -43,6 +43,14 @@ export interface BiomesUILiveEntityHelperQuestLandmark {
   questKind: LiveEntityHelperQuestKind;
 }
 
+export interface BiomesUILiveEntityHelperRoutingOptions {
+  // Live override for "objective met". When omitted the stored
+  // record.readyToTurnIn flag is used. The live BiomesUI adapter passes the same
+  // resolver as turn-in; either the live check or server-backed record can mark
+  // the quest ready, so a stale client-side read cannot hide a ready turn-in.
+  isReadyToTurnIn?: (record: BiomesUILiveEntityHelperQuestRecord) => boolean;
+}
+
 function isLiveEntityHelperQuestKind(
   value: unknown
 ): value is LiveEntityHelperQuestKind {
@@ -265,11 +273,10 @@ export function mergeLiveEntityHelperQuestStatesForBiomesUI(
   localRaw: unknown,
   liveQuestState: unknown
 ): BiomesUILiveEntityHelperQuestState {
-  const local =
-    normalizeLiveEntityHelperQuestStateForBiomesUI(localRaw) ?? {
-      active: {},
-      completed: {},
-    };
+  const local = normalizeLiveEntityHelperQuestStateForBiomesUI(localRaw) ?? {
+    active: {},
+    completed: {},
+  };
   const live =
     liveEntityHelperQuestStateFromLiveQuestStateForBiomesUI(liveQuestState);
   return {
@@ -297,24 +304,60 @@ function rewardForKind(kind: LiveEntityHelperQuestKind) {
   );
 }
 
+function liveEntityHelperRecordReadyToTurnIn(
+  record: BiomesUILiveEntityHelperQuestRecord,
+  options?: BiomesUILiveEntityHelperRoutingOptions
+) {
+  return (
+    Boolean(record.readyToTurnIn) || options?.isReadyToTurnIn?.(record) === true
+  );
+}
+
+function liveEntityHelperReadyObjective(
+  record: BiomesUILiveEntityHelperQuestRecord
+) {
+  const definition = LIVE_ENTITY_HELPER_QUEST_DEFINITIONS[record.kind];
+  return `${definition.readyText} Return to ${record.giverName} to turn in.`;
+}
+
+function liveEntityHelperLandmarkIdForPhase(
+  markerId: string,
+  record: BiomesUILiveEntityHelperQuestRecord,
+  phase: "target" | "return_to_giver"
+) {
+  // Multiple helper quests can share one target marker while incomplete, but
+  // ready turn-ins must be separate pins because each can return to a different
+  // giver.
+  return phase === "return_to_giver"
+    ? `live_entity_helper_return:${record.questId}`
+    : markerId;
+}
+
+function liveEntityHelperFirstMarkerIdForRecord(
+  record: BiomesUILiveEntityHelperQuestRecord,
+  options?: BiomesUILiveEntityHelperRoutingOptions
+) {
+  const marker = liveEntityHelperQuestTargetMarkerForKind(record.kind);
+  if (!marker) return undefined;
+  const resolved = liveEntityHelperResolveQuestMarker({
+    kind: record.kind,
+    readyToTurnIn: liveEntityHelperRecordReadyToTurnIn(record, options),
+    giverPosition: record.giverPosition,
+    giverName: record.giverName,
+  });
+  return liveEntityHelperLandmarkIdForPhase(marker.id, record, resolved.phase);
+}
+
 export function liveEntityHelperAcceptedQuestLandmarksForBiomesUI(
   raw: unknown,
-  options?: {
-    // Live override for "objective met". When omitted the stored
-    // record.readyToTurnIn flag is used. The BiomesUI adapter passes a live
-    // resolver so the marker flips home the moment the item is collected /
-    // monster defeated, without waiting for a stored-flag write.
-    isReadyToTurnIn?: (record: BiomesUILiveEntityHelperQuestRecord) => boolean;
-  }
+  options?: BiomesUILiveEntityHelperRoutingOptions
 ): BiomesUILiveEntityHelperQuestLandmark[] {
-  const seenMarkerIds = new Set<string>();
+  const seenLandmarkIds = new Set<string>();
   return activeRecords(raw).flatMap((record) => {
     const marker = liveEntityHelperQuestTargetMarkerForKind(record.kind);
-    if (!marker || seenMarkerIds.has(marker.id)) return [];
-    seenMarkerIds.add(marker.id);
+    if (!marker) return [];
     const definition = LIVE_ENTITY_HELPER_QUEST_DEFINITIONS[record.kind];
-    const readyToTurnIn =
-      options?.isReadyToTurnIn?.(record) ?? Boolean(record.readyToTurnIn);
+    const readyToTurnIn = liveEntityHelperRecordReadyToTurnIn(record, options);
     // Point at the real target while the objective is open; flip to the giver
     // (return home to turn in) once it's met.
     const resolved = liveEntityHelperResolveQuestMarker({
@@ -323,9 +366,16 @@ export function liveEntityHelperAcceptedQuestLandmarksForBiomesUI(
       giverPosition: record.giverPosition,
       giverName: record.giverName,
     });
+    const landmarkId = liveEntityHelperLandmarkIdForPhase(
+      marker.id,
+      record,
+      resolved.phase
+    );
+    if (seenLandmarkIds.has(landmarkId)) return [];
+    seenLandmarkIds.add(landmarkId);
     return [
       {
-        id: marker.id,
+        id: landmarkId,
         label: resolved.label,
         position: resolveHarthmereProductionMarkerPosition({
           markerId: undefined,
@@ -348,7 +398,8 @@ export function liveEntityHelperAcceptedQuestLandmarksForBiomesUI(
 }
 
 export function liveEntityHelperTrackableQuestsForBiomesUI(
-  raw: unknown
+  raw: unknown,
+  options?: BiomesUILiveEntityHelperRoutingOptions
 ): MapTrackableQuest[] {
   const state = normalizeLiveEntityHelperQuestStateForBiomesUI(raw);
   if (!state) return [];
@@ -357,18 +408,24 @@ export function liveEntityHelperTrackableQuestsForBiomesUI(
     .sort((left, right) => (right.at ?? 0) - (left.at ?? 0))
     .map((record) => {
       const definition = LIVE_ENTITY_HELPER_QUEST_DEFINITIONS[record.kind];
-      const marker = liveEntityHelperQuestTargetMarkerForKind(record.kind);
+      const readyToTurnIn = liveEntityHelperRecordReadyToTurnIn(
+        record,
+        options
+      );
+      const objective = readyToTurnIn
+        ? liveEntityHelperReadyObjective(record)
+        : definition.activeText;
       return {
         questId: record.questId,
         title: definition.title,
         area: `${record.giverName} - ${areaLabelForKind(record.kind)}`,
         status: "active" as const,
-        firstMarkerId: marker?.id,
+        firstMarkerId: liveEntityHelperFirstMarkerIdForRecord(record, options),
         reward: rewardForKind(record.kind),
         kind: record.kind,
         kindLabel: "Helper Quest",
-        objective: definition.activeText,
-        objectives: [definition.activeText],
+        objective,
+        objectives: [objective],
         description: definition.offerText,
       };
     });
@@ -393,13 +450,19 @@ export function liveEntityHelperTrackableQuestsForBiomesUI(
   return [...active, ...completed];
 }
 
-export function activeLiveEntityHelperMissionStepsForBiomesUI(raw: unknown) {
+export function activeLiveEntityHelperMissionStepsForBiomesUI(
+  raw: unknown,
+  options?: BiomesUILiveEntityHelperRoutingOptions
+) {
   return activeRecords(raw).map((record, index) => {
     const definition = LIVE_ENTITY_HELPER_QUEST_DEFINITIONS[record.kind];
+    const objective = liveEntityHelperRecordReadyToTurnIn(record, options)
+      ? liveEntityHelperReadyObjective(record)
+      : definition.activeText;
     return {
       id: record.questId,
       title: `Helper quest ${index + 1}`,
-      objective: `${record.giverName}: ${definition.activeText}`,
+      objective: `${record.giverName}: ${objective}`,
       done: false,
     };
   });

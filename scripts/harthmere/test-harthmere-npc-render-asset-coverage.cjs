@@ -83,7 +83,7 @@ for (const animal of ["bird", "cat", "chicken", "cow", "dog_1", "duck", "fish", 
   ok(`animal NPC ${animal} has icon`, assetPathLooksRenderable(paths[`icons/npcs/${animal}`]));
 }
 
-for (const grove of ["jackie", "ranger_jane", "alexis", "luis", "taye", "buddy", "oldCoop", "mucked_robot"]) {
+for (const grove of ["jackie", "ranger_jane", "alexis", "luis", "taye", "sil", "dimmi", "doc", "buddy", "oldCoop", "mucked_robot"]) {
   ok(`snapshot Grove NPC ${grove} has model`, assetPathLooksRenderable(paths[`npcs/${grove}`]));
   ok(`snapshot Grove NPC ${grove} has icon`, assetPathLooksRenderable(paths[`icons/npcs/${grove}`]));
 }
@@ -91,7 +91,7 @@ for (const grove of ["jackie", "ranger_jane", "alexis", "luis", "taye", "buddy",
 ok("wearable animations GLB exists for player/player-like NPCs", assetPathLooksRenderable(paths["wearables/animations"]));
 ok("player-like NPC generated path uses /api/assets/player_mesh.glb", /makeSnapshotPlayerLikeAppearanceMesh[\s\S]*fetchPlayerMeshGLTF[\s\S]*mesh\.scene\.userData\.snapshotRichNpcAppearanceVersion/m.test(playerMesh));
 ok("NPC resource has generated player-like visible path", /makeSnapshotPlayerLikeAppearanceMesh\(deps, id\)/.test(npcResources));
-ok("NPC resource has visible fallback for failed generated player-like mesh", /HARTHMERE_NPC_RENDER_PARITY[\s\S]*falling back to visible voxel NPC/m.test(npcResources));
+ok("NPC resource does not replace failed player-like Grove avatars with the Harthmere voxel body", !/HARTHMERE_NPC_RENDER_PARITY[\s\S]*falling back to visible voxel NPC/m.test(npcResources));
 ok("NPC resource has visible fallback for failed galois mesh", /HARTHMERE_NPC_GALOIS_VISIBLE_FALLBACK[\s\S]*makeLocalDevVoxelNpcGltf\(deps, id\)/m.test(npcResources));
 ok("NPC renderer only increments rendered count after render state exists", /const renderState = resources\.cached\([\s\S]*?if \(!renderState\)[\s\S]*?continue;[\s\S]*?\+\+numNpcsRenderedCval\.value/m.test(renderer));
 

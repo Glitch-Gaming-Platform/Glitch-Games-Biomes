@@ -429,6 +429,69 @@ describe("BiomesUI jobs board gather progression", () => {
   });
 });
 
+function craftBoardTurnInSnapshot(inventoryItems: Record<string, number> = {}) {
+  const snapshot = acceptedJobsBoardSnapshot();
+  (snapshot as any).inventoryItems = inventoryItems;
+  snapshot.myAcceptedJobs = [
+    {
+      ...snapshot.myAcceptedJobs[0],
+      jobId: "job_board_planks",
+      templateId: "business_craft_torch",
+      title: "Plane Bench Planks for the Inn",
+      description:
+        "The inn needs sturdy bench planks before dusk. Craft or buy 3 wood planks and turn them in at the board.",
+      kind: "craft",
+      requirements: [{ itemId: "wood_plank", count: 3 }],
+      requiresFieldWork: false,
+      mapMarkerId: undefined,
+      targetId: undefined,
+    },
+  ] as any;
+  snapshot.myTodos = [
+    {
+      ...snapshot.myTodos[0],
+      todoId: "craft_planks_todo",
+      jobId: "job_board_planks",
+      title: "Plane Bench Planks for the Inn",
+      todoText: "Complete board job: Plane Bench Planks for the Inn",
+      kind: "craft",
+      mapMarkerId: undefined,
+      targetId: undefined,
+      status: "active",
+    },
+  ] as any;
+  return snapshot;
+}
+
+describe("BiomesUI jobs board item-only turn-in routing", () => {
+  it("keeps item-only craft jobs on the source while missing items, then routes back to the board", () => {
+    const missing = craftBoardTurnInSnapshot({ wood_plank: 1 });
+    const [missingQuest] = jobsBoardTrackableQuestsForBiomesUI(missing, NOW_MS);
+    assert.equal(
+      missingQuest.firstMarkerId,
+      "jobs_board_item_source:craft_planks_todo"
+    );
+    assert.ok(missingQuest.itemSource);
+    assert.equal(missingQuest.itemSource!.missingCount, 2);
+
+    const ready = craftBoardTurnInSnapshot({ wood_plank: 3 });
+    const [turnInMarker] = jobsBoardAcceptedJobLandmarksForBiomesUI(ready);
+    assert.equal(turnInMarker.mapMarkerId, "harthmere_market_posting_board");
+    assert.ok(/Return to the jobs board/i.test(turnInMarker.description));
+
+    const [readyQuest] = jobsBoardTrackableQuestsForBiomesUI(ready, NOW_MS);
+    assert.equal(
+      readyQuest.firstMarkerId,
+      "jobs_board_marker:craft_planks_todo"
+    );
+    assert.equal(readyQuest.itemSource, undefined);
+    assert.ok(/Required items are ready/i.test(readyQuest.objective ?? ""));
+
+    const [step] = activeJobsBoardMissionStepsForBiomesUI(ready, NOW_MS);
+    assert.ok(/Return to the jobs board/i.test(step.objective));
+  });
+});
+
 describe("shouldClearStaleJobsBoardPin", () => {
   it("clears a jobs-board pin whose job is no longer active", () => {
     assert.equal(

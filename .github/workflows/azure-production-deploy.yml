@@ -51,8 +51,9 @@ jobs:
     steps:
       - name: Checkout source
         uses: actions/checkout@v7
-        with:
-          lfs: true
+
+      - name: Restore Git LFS assets
+        uses: ./.github/actions/cached-lfs-pull
 
       - name: Install dependencies
         uses: ./.github/actions/cached-yarn-install

@@ -40,87 +40,14 @@ const dialogueSemantics = read(
 const objectSemantics = read(
   "src/shared/harthmere/object_interaction_semantics.ts"
 );
-const helperQuests = read(
-  "src/shared/harthmere/live_entity_helper_quests.ts"
-);
+const helperQuests = read("src/shared/harthmere/live_entity_helper_quests.ts");
 const ecsBridge = read("src/shared/harthmere/live_entity_ecs_bridge.ts");
 const helperTest = read(
   "src/client/components/challenges/TalkToNPCDefaultDialog.liveEntityHelper.test.ts"
 );
 
-const playableRoadAheadSteps = [
-  {
-    id: "meet_jackie_in_grove",
-    title: "Meet Jackie",
-    targetLabel: "Jackie",
-    trigger: "dialog",
-  },
-  {
-    id: "road_ahead_meet_up_with_billy",
-    title: "Find the Old Grove Road Post",
-    targetLabel: "Old Grove Road Post",
-    target: "road_marker",
-    trigger: "location",
-  },
-  {
-    id: "road_ahead_collect_muckwad",
-    title: "Break Muckwad",
-    targetLabel: "Muckwad Patch",
-    target: "muckwad_patch",
-    trigger: "destroy",
-  },
-  {
-    id: "road_ahead_place_blocks",
-    title: "Place a Block",
-    targetLabel: "Building Practice Spot",
-    target: "building_spot",
-    trigger: "place_voxel",
-  },
-  {
-    id: "road_ahead_wear",
-    title: "Gear Up",
-    targetLabel: "Inventory",
-    target: "wardrobe",
-    trigger: "wearing",
-  },
-  {
-    id: "road_ahead_find_bag",
-    title: "Run and Jump",
-    targetLabel: "Road Jump Stretch",
-    target: "jump_run",
-    trigger: "running_jump",
-  },
-  {
-    id: "road_ahead_selfie",
-    title: "Take a Road Photo",
-    targetLabel: "Selfie Overlook",
-    target: "selfie_overlook",
-    trigger: "photo",
-  },
-  {
-    id: "busted_wooden_axe",
-    title: "Gather Repair Wood",
-    targetLabel: "Loose Timber",
-    target: "muckwad_patch",
-    trigger: "destroy",
-  },
-  {
-    id: "busted_muck_busters",
-    title: "Craft a Muck Buster",
-    targetLabel: "Crafting Stop",
-    target: "crafting_stop",
-    trigger: "craft_muck_buster",
-  },
-  {
-    id: "return_to_jackie",
-    title: "Report Back",
-    targetLabel: "Jackie",
-    target: "jackie",
-    trigger: "dialog",
-  },
-];
-
-const canonicalRoadAheadChallengeIds = [
+const canonicalRoadAheadStepIds = [
+  "meet_jackie_in_grove",
   "road_ahead_meet_up_with_billy",
   "road_ahead_collect_muckwad",
   "road_ahead_place_blocks",
@@ -129,6 +56,7 @@ const canonicalRoadAheadChallengeIds = [
   "road_ahead_selfie",
   "busted_wooden_axe",
   "busted_muck_busters",
+  "return_to_jackie",
 ];
 
 const canonicalRewardAndItemSymbols = [
@@ -175,44 +103,29 @@ const targetObjectActions = {
 };
 
 ok(
-  bridge.includes('const SNAPSHOT_MISSION_TITLE = "Road Ahead"') &&
-    bridge.includes(
-      'const SNAPSHOT_MISSION_ID = "snapshot_road_ahead_full_chain"'
+  canonical.includes('SNAPSHOT_ROAD_AHEAD_MISSION_TITLE = "Road Ahead"') &&
+    canonical.includes(
+      'SNAPSHOT_ROAD_AHEAD_MISSION_ID = "snapshot_road_ahead_full_chain"'
     ),
-  "legacy Road Ahead bridge is still saved under the expected mission title and id"
+  "canonical Road Ahead mission is saved under the expected title and id"
 );
 ok(
   canonical.includes("SNAPSHOT_OFFICIAL_NUX_CHALLENGES"),
-  "canonical current Road Ahead chain is still present"
+  "canonical current Road Ahead NUX view is still present"
 );
 
-for (const step of playableRoadAheadSteps) {
+for (const id of canonicalRoadAheadStepIds) {
   ok(
-    countLiteralId(bridge, step.id) === 1,
-    `legacy bridge has one ${step.id} step`
+    countLiteralId(canonical, id) === 1,
+    `canonical Road Ahead source has one ${id} step`
   );
   ok(
-    bridge.includes(`title: "${step.title}"`),
-    `${step.id} keeps title ${step.title}`
+    countLiteralId(bridge, id) === 0,
+    `Road Ahead bridge does not carry a duplicate ${id} step literal`
   );
-  ok(
-    bridge.includes(`targetLabel: "${step.targetLabel}"`),
-    `${step.id} targets ${step.targetLabel}`
-  );
-  ok(
-    bridge.includes(`trigger: "${step.trigger}"`),
-    `${step.id} completes from ${step.trigger}`
-  );
-  if (step.target) {
-    ok(
-      bridge.includes(`target: "${step.target}"`),
-      `${step.id} pins ${step.target}`
-    );
-  }
 }
 
-for (const id of canonicalRoadAheadChallengeIds) {
-  ok(countLiteralId(bridge, id) === 1, `legacy bridge has one ${id} step`);
+for (const id of canonicalRoadAheadStepIds.slice(1, -1)) {
   ok(countLiteralId(canonical, id) === 1, `canonical chain has one ${id} step`);
 }
 
@@ -238,12 +151,8 @@ ok(
 ok(
   overlay.includes("isHarthmereNonLivingObjectLabel") &&
     overlay.includes("performHarthmereObjectInteraction") &&
-    objectInteractions.includes(
-      "HARTHMERE_WORLD_OBJECT_INTERACTION_EVENT"
-    ) &&
-    objectInteractions.includes(
-      "dispatchHarthmereWorldObjectInteractionEvent"
-    ),
+    objectInteractions.includes("HARTHMERE_WORLD_OBJECT_INTERACTION_EVENT") &&
+    objectInteractions.includes("dispatchHarthmereWorldObjectInteractionEvent"),
   "inspect overlay restores F-key actions for non-container world objects"
 );
 ok(

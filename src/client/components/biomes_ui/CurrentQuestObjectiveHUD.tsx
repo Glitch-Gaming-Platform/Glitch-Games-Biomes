@@ -52,6 +52,22 @@ function questIsDisplayableOnHUD(quest: MapTrackableQuest): boolean {
   return quest.status !== "completed" && quest.status !== "failed";
 }
 
+function questIsRoadAheadStoryQuest(quest: MapTrackableQuest): boolean {
+  return (
+    quest.questId === "snapshot_road_ahead_full_chain" ||
+    quest.kind === "snapshot_nux_challenge_bridge" ||
+    (quest.title.trim().toLowerCase() === "road ahead" &&
+      quest.kindLabel?.trim().toLowerCase() === "story quest")
+  );
+}
+
+function questIsJobsBoardQuest(quest: MapTrackableQuest): boolean {
+  return (
+    quest.questId.startsWith("jobs_board:") ||
+    quest.firstMarkerId?.startsWith("jobs_board_") === true
+  );
+}
+
 function questObjectiveForHUD(
   quest: MapTrackableQuest | undefined,
   pin?: BiomesUIActiveMapPin
@@ -104,6 +120,17 @@ export function currentQuestObjectiveForHUDForTest(input: {
       questIsDisplayableOnHUD(quest) &&
       questObjectiveForHUD(quest)
   );
+  const activeRoadAheadQuest = input.quests.find(
+    (quest) =>
+      quest.status === "active" &&
+      questIsRoadAheadStoryQuest(quest) &&
+      questIsDisplayableOnHUD(quest) &&
+      questObjectiveForHUD(quest)
+  );
+  const pinnedQuestForHUD =
+    activeRoadAheadQuest && pinnedQuest && questIsJobsBoardQuest(pinnedQuest)
+      ? undefined
+      : pinnedQuest;
   const currentMissionStep = input.missionSteps?.find(
     (step) => !step.done && cleanObjectiveText(step.objective)
   );
@@ -113,11 +140,12 @@ export function currentQuestObjectiveForHUDForTest(input: {
       ? cleanObjectiveText(input.mainQuestSelection?.objective)
       : undefined) ??
     questObjectiveForHUD(
-      pinnedQuest && questIsDisplayableOnHUD(pinnedQuest)
-        ? pinnedQuest
+      pinnedQuestForHUD && questIsDisplayableOnHUD(pinnedQuestForHUD)
+        ? pinnedQuestForHUD
         : undefined,
       input.activeMapPin
     ) ??
+    questObjectiveForHUD(activeRoadAheadQuest) ??
     questObjectiveForHUD(activeQuest) ??
     cleanObjectiveText(currentMissionStep?.objective)
   );

@@ -5698,20 +5698,28 @@ function makeLocalDevSnapshotGroveNpcChanges(
       forwardAxis: "minusZ",
       source: "snapshot-grove-npc-seed",
     });
+    const base = npcEntity(
+      {
+        id,
+        typeId,
+        // v75 compatibility marker: snapshotGroveGroundedPosition(npc.authoredPosition)
+        position: snapshotGroveRuntimeGroundedPosition(npc.authoredPosition),
+        orientation: npc.orientation ?? [0, 3.14],
+        velocity: [0, 0, 0],
+        displayName: npc.displayName,
+        defaultDialog: npcDialog(npc.line, ...npc.extraLines),
+      },
+      now,
+    );
+    if (typeId === LOCAL_DEV_HUMAN_NPC_TYPE_ID && !npc.snapshotAsset) {
+      // Match the live seeder: no-asset Grove humans use the player/Grove
+      // avatar mesh pipeline with deterministic per-id cosmetics, not the
+      // Harthmere voxel/mannequin fallback.
+      delete (base as { appearance_component?: unknown }).appearance_component;
+      delete (base as { wearing?: unknown }).wearing;
+    }
     const entity = {
-      ...npcEntity(
-        {
-          id,
-          typeId,
-          // v75 compatibility marker: snapshotGroveGroundedPosition(npc.authoredPosition)
-          position: snapshotGroveRuntimeGroundedPosition(npc.authoredPosition),
-          orientation: npc.orientation ?? [0, 3.14],
-          velocity: [0, 0, 0],
-          displayName: npc.displayName,
-          defaultDialog: npcDialog(npc.line, ...npc.extraLines),
-        },
-        now,
-      ),
+      ...base,
       entity_description: EntityDescription.create({
         text: withHarthmereAppearanceMarker(
           withHarthmereBodyAndFaceMarkers(

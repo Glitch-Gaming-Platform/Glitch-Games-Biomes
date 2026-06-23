@@ -3,6 +3,7 @@ import { consumeHarthmereItemByItemId } from "@/client/components/challenges/Loc
 import { completeHarthmereDailyTaskSoon } from "@/client/components/challenges/harthmereDailyTasks";
 import { dispatchHarthmereWorldObjectInteractionEvent } from "@/client/components/challenges/harthmereObjectInteractions";
 import { readRoadAheadClothingCrateReady } from "@/client/components/challenges/harthmereRoadAheadClothingGate";
+import { harthmereUserScopedStorageKey } from "@/client/components/challenges/LocalDevHarthmereUserScope";
 import type { BiomesId } from "@/shared/ids";
 
 export const HARTHMERE_OBJECT_CONTAINER_OPENED_EVENT =
@@ -19,7 +20,7 @@ export const HARTHMERE_OBJECT_CONTAINER_CHANGED_EVENT =
 export const HARTHMERE_OBJECT_CONTAINER_OPEN_EVENT =
   "biomes:harthmere-object-container-open";
 
-const HARTHMERE_OBJECT_CONTAINER_CONTENTS_KEY =
+export const HARTHMERE_OBJECT_CONTAINER_CONTENTS_KEY =
   "biomes.localDev.harthmere.objectContainerContents";
 
 const HARTHMERE_OBJECT_CONTAINER_OPEN_REQUEST_KEY =
@@ -75,6 +76,10 @@ export function normalizeHarthmereContainerKey(
   return `${entityId}:${normalizedLabel || "container"}`;
 }
 
+function objectContainerContentsStorageKey() {
+  return harthmereUserScopedStorageKey(HARTHMERE_OBJECT_CONTAINER_CONTENTS_KEY);
+}
+
 // HARTHMERE_ROAD_AHEAD_CLOTHING_GATE: the Clothing Crate is quest-gated — its
 // contents must not appear until The Road Ahead has passed the Billy/Muckwad
 // handoff. This is the same family of labels the loot table routes to the
@@ -91,8 +96,7 @@ export function isHarthmereClothingQuestCrateLabel(
 export const HARTHMERE_CLOTHING_CRATE_LOCKED_NOTE =
   "This crate is empty for now. Billy or Jackie will point you here when it's time to gear up on The Road Ahead.";
 
-const HARTHMERE_ROAD_AHEAD_CLOTHING_LOOT_VERSION =
-  "road-ahead-clothing-outfit";
+const HARTHMERE_ROAD_AHEAD_CLOTHING_LOOT_VERSION = "road-ahead-clothing-outfit";
 
 const HARTHMERE_CLOTHING_QUEST_REQUIRED_ITEM_IDS = [
   "baker_apron",
@@ -160,22 +164,39 @@ export function harthmereContainerLootForLabel(
   ];
 }
 
-function readContainerStore(): Record<
-  string,
-  HarthmereObjectContainerRecord
-> {
+function parseContainerStore(
+  raw: string | null
+): Record<string, HarthmereObjectContainerRecord> | undefined {
+  if (!raw) {
+    return undefined;
+  }
+  const parsed = JSON.parse(raw);
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+    return {};
+  }
+  return parsed as Record<string, HarthmereObjectContainerRecord>;
+}
+
+function readContainerStore(): Record<string, HarthmereObjectContainerRecord> {
   if (!isBrowser()) {
     return {};
   }
   try {
-    const raw = window.localStorage.getItem(
-      HARTHMERE_OBJECT_CONTAINER_CONTENTS_KEY
-    );
-    const parsed = raw ? JSON.parse(raw) : {};
-    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-      return {};
+    const scopedKey = objectContainerContentsStorageKey();
+    const scoped = parseContainerStore(window.localStorage.getItem(scopedKey));
+    if (scoped !== undefined) {
+      return scoped;
     }
-    return parsed as Record<string, HarthmereObjectContainerRecord>;
+    const legacy = parseContainerStore(
+      window.localStorage.getItem(HARTHMERE_OBJECT_CONTAINER_CONTENTS_KEY)
+    );
+    if (legacy !== undefined) {
+      // Migrate old unscoped browser saves once. After this, container contents
+      // are per cloud-save user so one player cannot consume another's quest box.
+      window.localStorage.setItem(scopedKey, JSON.stringify(legacy));
+      return legacy;
+    }
+    return {};
   } catch {
     return {};
   }
@@ -188,7 +209,7 @@ function writeContainerStore(
     return;
   }
   window.localStorage.setItem(
-    HARTHMERE_OBJECT_CONTAINER_CONTENTS_KEY,
+    objectContainerContentsStorageKey(),
     JSON.stringify(store)
   );
   window.dispatchEvent(new Event(HARTHMERE_OBJECT_CONTAINER_CHANGED_EVENT));
@@ -221,14 +242,6 @@ function containerItemQuantity(
     .reduce((sum, slot) => sum + Math.max(0, slot.quantity), 0);
 }
 
-function hasAnyRequiredClothingQuestItem(
-  items: HarthmereObjectContainerSlot[]
-): boolean {
-  return items.some(
-    (slot) => slot.quantity > 0 && isRequiredClothingQuestItemId(slot.itemId)
-  );
-}
-
 function missingRequiredClothingQuestLootSlots(
   label: string,
   items: HarthmereObjectContainerSlot[]
@@ -248,19 +261,17 @@ function backfillLegacySealedRoadAheadClothingCrate(
   const items = record.items ?? [];
   if (
     !record.sealed ||
-    record.questLootVersion === HARTHMERE_ROAD_AHEAD_CLOTHING_LOOT_VERSION ||
-    items.length <= 0 ||
-    hasAnyRequiredClothingQuestItem(items)
+    record.questLootVersion === HARTHMERE_ROAD_AHEAD_CLOTHING_LOOT_VERSION
   ) {
     return undefined;
   }
   const missing = missingRequiredClothingQuestLootSlots(record.label, items);
-  if (missing.length <= 0) {
+  if (missing.length <= 0 && !record.note) {
     return undefined;
   }
   return {
     ...record,
-    items: mergeContainerSlots(items, missing),
+    items: missing.length > 0 ? mergeContainerSlots(items, missing) : items,
     sealed: true,
     note: undefined,
     questLootVersion: HARTHMERE_ROAD_AHEAD_CLOTHING_LOOT_VERSION,
@@ -520,9 +531,7 @@ export function clearHarthmereContainerOpenRequest() {
   if (!isBrowser()) {
     return;
   }
-  window.localStorage.removeItem(
-    HARTHMERE_OBJECT_CONTAINER_OPEN_REQUEST_KEY
-  );
+  window.localStorage.removeItem(HARTHMERE_OBJECT_CONTAINER_OPEN_REQUEST_KEY);
 }
 
 // HARTHMERE_OBJECT_CONTAINER_UI:

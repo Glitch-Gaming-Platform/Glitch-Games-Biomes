@@ -542,6 +542,7 @@ export const SNAPSHOT_GROVE_NPCS: SnapshotGroveNpc[] = [
       "When the lesson finishes, you unlock the Harthmere bell dialogue branch later. That's the actual payoff.",
     ],
     likeabilityTags: ["songline", "bell-lore", "mosslawn"],
+    snapshotAsset: "asset_data/npcs/sil.7886deea1c6e6d571fac40f226a8c5a7.glb",
   },
   {
     id: "dimmi",
@@ -587,6 +588,7 @@ export const SNAPSHOT_GROVE_NPCS: SnapshotGroveNpc[] = [
       "Both samples drop into your bag when you collect them. Bring them back to my field table to finish the lesson.",
     ],
     likeabilityTags: ["muck", "medicine", "chapel-bridge"],
+    snapshotAsset: "asset_data/npcs/doc.7afe55b0b202ff84d700e9906754a319.glb",
   },
   {
     id: "old_coop",

@@ -557,7 +557,8 @@ export function buildBiomesUIMapAdapter(
           roadAheadChallengeStepHints
         ),
         ...activeLiveEntityHelperMissionStepsForBiomesUI(
-          liveEntityHelperState
+          liveEntityHelperState,
+          { isReadyToTurnIn: liveEntityHelperQuestRecordReadyToTurnIn }
         ),
         ...activeSharedQuestMissionStepsForBiomesUI(liveQuestState),
       ];
@@ -657,7 +658,8 @@ export function buildBiomesUIMapAdapter(
           mergeLiveEntityHelperQuestStatesForBiomesUI(
             readLiveEntityHelperQuestState(),
             liveQuestState
-          )
+          ),
+          { isReadyToTurnIn: liveEntityHelperQuestRecordReadyToTurnIn }
         ),
         ...sharedQuestTrackableQuestsForBiomesUI(liveQuestState),
         ...authoredQuests,

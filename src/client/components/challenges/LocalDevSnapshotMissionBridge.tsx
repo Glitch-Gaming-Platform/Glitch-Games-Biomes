@@ -8,12 +8,7 @@ import { useClientContext } from "@/client/components/contexts/ClientContextReac
 import { readHarthmereInventoryState } from "@/client/components/challenges/LocalDevHarthmereInventorySystem";
 import { HARTHMERE_INVENTORY_EVENT } from "@/client/components/challenges/harthmereEvents";
 import type { GardenHoseEvent } from "@/client/events/api";
-import {
-  GENESIS_CROSSROADS_LOCATION,
-  JACKIE_ID,
-  NUXES,
-  NUX_PAIRED_STEPS,
-} from "@/client/util/nux/state_machines";
+import { GENESIS_CROSSROADS_LOCATION } from "@/client/util/nux/state_machines";
 import { BikkieIds } from "@/shared/bikkie/ids";
 import { Wearing } from "@/shared/ecs/gen/components";
 import { isFloraId } from "@/shared/game/ids";
@@ -21,6 +16,13 @@ import { matchingItemRefs } from "@/shared/game/inventory";
 import type { BiomesId } from "@/shared/ids";
 import type { ReadonlyVec3, Vec3 } from "@/shared/math/types";
 import { snapshotGroveLandmarkById } from "@/shared/harthmere/snapshot_grove_content";
+import {
+  SNAPSHOT_ROAD_AHEAD_MISSION,
+  SNAPSHOT_ROAD_AHEAD_MISSION_ID,
+  SNAPSHOT_ROAD_AHEAD_MISSION_TITLE,
+  type SnapshotRoadAheadMissionDefinition,
+  type SnapshotRoadAheadMissionStep,
+} from "@/shared/harthmere/snapshot_complete_port";
 import React, { useEffect, useMemo, useState } from "react";
 
 export const SNAPSHOT_MISSION_BRIDGE_VERSION = "snapshot-road-ahead-full-chain";
@@ -49,9 +51,10 @@ const SNAPSHOT_ROAD_AHEAD_EQUIPPED_GEAR_KEY =
 const SNAPSHOT_ROAD_AHEAD_EQUIPPED_GEAR_EVENT =
   "biomes:local-dev-snapshot-road-ahead-equipped-gear";
 
-const SNAPSHOT_MISSION_TITLE = "Road Ahead";
-const SNAPSHOT_MISSION_ID = "snapshot_road_ahead_full_chain";
+const SNAPSHOT_MISSION_TITLE = SNAPSHOT_ROAD_AHEAD_MISSION_TITLE;
+const SNAPSHOT_MISSION_ID = SNAPSHOT_ROAD_AHEAD_MISSION_ID;
 const SNAPSHOT_MISSION_XP_ID = "snapshot-road-ahead";
+const JACKIE_ID = SNAPSHOT_ROAD_AHEAD_MISSION.giverEntityId;
 
 type SnapshotMissionTargetKind =
   | "jackie"
@@ -74,31 +77,8 @@ type SnapshotMissionTriggerKind =
   | "photo"
   | "craft_muck_buster";
 
-export interface SnapshotMissionStep {
-  id: string;
-  challengeStepId?: BiomesId;
-  title: string;
-  objective: string;
-  mapHint: string;
-  completion: string;
-  reward: string;
-  targetLabel: string;
-  target: SnapshotMissionTargetKind;
-  trigger: SnapshotMissionTriggerKind;
-  arrivalRadius?: number;
-  jackieLine?: string;
-}
-
-export interface SnapshotMissionDefinition {
-  id: string;
-  title: string;
-  source: "snapshot_nux_challenge_bridge";
-  giverEntityId: BiomesId;
-  district: string;
-  summary: string;
-  reward: string;
-  steps: SnapshotMissionStep[];
-}
+export type SnapshotMissionStep = SnapshotRoadAheadMissionStep;
+export type SnapshotMissionDefinition = SnapshotRoadAheadMissionDefinition;
 
 export interface SnapshotMissionState {
   accepted: boolean;
@@ -128,172 +108,8 @@ const EMPTY_SNAPSHOT_MISSION_STATE: SnapshotMissionState = {
   rewards: [],
 };
 
-export const SNAPSHOT_MISSIONS: SnapshotMissionDefinition[] = [
-  {
-    id: SNAPSHOT_MISSION_ID,
-    title: SNAPSHOT_MISSION_TITLE,
-    source: "snapshot_nux_challenge_bridge",
-    giverEntityId: JACKIE_ID,
-    district: "The Grove",
-    summary:
-      "Follow Jackie's road out of The Grove and complete the first survival lessons from the snapshot tutorial chain.",
-    reward:
-      "Road Ready milestone, starter route progress, and experience for each completed lesson.",
-    steps: [
-      {
-        id: "meet_jackie_in_grove",
-        title: "Meet Jackie",
-        objective: "Speak with Jackie in The Grove.",
-        mapHint: "Jackie is your first contact in The Grove.",
-        completion: "Jackie marks the road out of The Grove.",
-        reward: "The Road Ahead route is added to your journal.",
-        targetLabel: "Jackie",
-        target: "jackie",
-        trigger: "dialog",
-        jackieLine:
-          "You found me. Good. If you're heading out, don't wander blind. I marked the first road marker for you.",
-      },
-      {
-        id: "road_ahead_meet_up_with_billy",
-        challengeStepId:
-          NUX_PAIRED_STEPS.ROAD_AHEAD_MEET_UP_WITH_BILLY as BiomesId,
-        title: "Find the Old Grove Road Post",
-        objective:
-          "Follow Jackie's marker to the Old Grove Road Post just outside The Grove.",
-        mapHint:
-          "Open the map or follow the beam toward the visible road post outside The Grove. The marker completes when you reach the post.",
-        completion: "You reached the first road marker.",
-        reward: "Route sense gained. +35 XP.",
-        targetLabel: "Old Grove Road Post",
-        target: "road_marker",
-        trigger: "location",
-        arrivalRadius: 9,
-        jackieLine:
-          "The first marker is just outside the Grove path. Reach it first; then I'll know you can follow a trail.",
-      },
-      {
-        id: "road_ahead_collect_muckwad",
-        challengeStepId:
-          NUX_PAIRED_STEPS.ROAD_AHEAD_COLLECT_MUCKWAD as BiomesId,
-        title: "Break Muckwad",
-        objective:
-          "Break a muckwad or another soft non-flora block near the road.",
-        mapHint:
-          "Use your break action on terrain, not flowers or decorative plants.",
-        completion: "You broke through the muck blocking the path.",
-        reward: "Muck handling practice. +35 XP.",
-        targetLabel: "Muckwad Patch",
-        target: "muckwad_patch",
-        trigger: "destroy",
-        jackieLine:
-          "Roads don't stay clean. If muckwad is in your way, break it down and keep moving.",
-      },
-      {
-        id: "road_ahead_place_blocks",
-        challengeStepId: NUX_PAIRED_STEPS.ROAD_AHEAD_PLACE_BLOCKS as BiomesId,
-        title: "Place a Block",
-        objective: "Equip any block and place it on the ground.",
-        mapHint:
-          "Select a block from the hotbar, then use the place action at the marked practice spot.",
-        completion: "You placed a block and proved you can patch the road.",
-        reward: "Builder footing practice. +35 XP.",
-        targetLabel: "Building Practice Spot",
-        target: "building_spot",
-        trigger: "place_voxel",
-        jackieLine:
-          "A traveler who can place a block can cross a gap, fix a step, or make a way back home.",
-      },
-      {
-        id: "road_ahead_wear",
-        challengeStepId: NUX_PAIRED_STEPS.ROAD_AHEAD_WEAR as BiomesId,
-        title: "Gear Up",
-        objective: "Wear a top and bottoms from your inventory.",
-        mapHint:
-          "Open Inventory and equip both clothing slots. If you already have them on, this completes automatically.",
-        completion: "You are dressed for the road.",
-        reward: "Prepared traveler practice. +35 XP.",
-        targetLabel: "Inventory",
-        target: "wardrobe",
-        trigger: "wearing",
-        jackieLine:
-          "The road is easier when your kit is actually on you. Check your pack and put your gear where it belongs.",
-      },
-      {
-        id: "road_ahead_find_bag",
-        challengeStepId: NUX_PAIRED_STEPS.ROAD_AHEAD_FIND_BAG as BiomesId,
-        title: "Run and Jump",
-        objective: "Hold sprint and jump while moving.",
-        mapHint:
-          "Use this at the marked stretch of road. The lesson completes on a running jump.",
-        completion: "You cleared the road jump.",
-        reward: "Movement practice. +35 XP.",
-        targetLabel: "Road Jump Stretch",
-        target: "jump_run",
-        trigger: "running_jump",
-        jackieLine:
-          "Sometimes the road breaks under you. Learn to sprint before you need it.",
-      },
-      {
-        id: "road_ahead_selfie",
-        challengeStepId: NUX_PAIRED_STEPS.ROAD_AHEAD_SELFIE as BiomesId,
-        title: "Take a Road Photo",
-        objective: "Equip the camera, flip to selfie mode, and post a photo.",
-        mapHint:
-          "The photo lesson completes when you attempt to post from the camera flow.",
-        completion: "You documented your first road stop.",
-        reward: "Photo practice. +35 XP.",
-        targetLabel: "Selfie Overlook",
-        target: "selfie_overlook",
-        trigger: "photo",
-        jackieLine:
-          "Take a picture before the road takes your nerve. Proof helps when stories get bigger later.",
-      },
-      {
-        id: "busted_wooden_axe",
-        challengeStepId: NUX_PAIRED_STEPS.BUSTED_WOODEN_AXE as BiomesId,
-        title: "Gather Repair Wood",
-        objective:
-          "Break one more soft block or loose timber for repair material.",
-        mapHint:
-          "Gather one more piece of breakable terrain for field repairs.",
-        completion: "You gathered enough rough material for a field repair.",
-        reward: "Repair material practice. +35 XP.",
-        targetLabel: "Loose Timber",
-        target: "muckwad_patch",
-        trigger: "destroy",
-        jackieLine:
-          "Tools break. Roads break. The trick is learning how to keep moving with whatever the Grove gives you.",
-      },
-      {
-        id: "busted_muck_busters",
-        challengeStepId: NUX_PAIRED_STEPS.BUSTED_MUCK_BUSTERS as BiomesId,
-        title: "Craft a Muck Buster",
-        objective: "Open Recipes and craft or obtain a Muck Buster.",
-        mapHint:
-          "Crafting completes when your inventory contains any item that can clear muck.",
-        completion: "You have a tool that can clear the dirty road ahead.",
-        reward: "Muck Buster practice. +35 XP.",
-        targetLabel: "Crafting Stop",
-        target: "crafting_stop",
-        trigger: "craft_muck_buster",
-        jackieLine:
-          "Before you leave for real, make sure you can clear muck instead of just complaining about it.",
-      },
-      {
-        id: "return_to_jackie",
-        title: "Report Back",
-        objective: "Return to Jackie in The Grove.",
-        mapHint: "Jackie will close out the Road Ahead chain.",
-        completion: "Jackie signs off on your first road lessons.",
-        reward: "Road Ready milestone. +140 XP.",
-        targetLabel: "Jackie",
-        target: "jackie",
-        trigger: "dialog",
-        jackieLine:
-          "You made it back with the basics handled. Keep your eyes open from here on out.",
-      },
-    ],
-  },
+export const SNAPSHOT_MISSIONS: readonly SnapshotMissionDefinition[] = [
+  SNAPSHOT_ROAD_AHEAD_MISSION,
 ];
 
 const SNAPSHOT_MISSION_TARGET_OFFSETS: Record<
@@ -328,6 +144,70 @@ const SNAPSHOT_MISSION_TARGET_OFFSETS: Record<
   ],
 };
 
+const SNAPSHOT_STEP_TARGET_BY_MARKER_ID: Record<
+  string,
+  SnapshotMissionTargetKind
+> = {
+  npc_jackie: "jackie",
+  jackie: "jackie",
+  old_grove_road_post: "road_marker",
+  muckwad_patch: "muckwad_patch",
+  building_practice_spot: "building_spot",
+  lovely_locks_mirror: "wardrobe",
+  road_jump_stretch: "jump_run",
+  selfie_overlook: "selfie_overlook",
+  service_tower_platform: "crafting_stop",
+};
+
+const BIOMES_UI_MARKER_ID_BY_TARGET: Record<SnapshotMissionTargetKind, string> =
+  {
+    jackie: "jackie",
+    grove: "town",
+    road_marker: "road_marker",
+    muckwad_patch: "muckwad_patch",
+    building_spot: "building_spot",
+    wardrobe: "wardrobe",
+    jump_run: "jump_run",
+    selfie_overlook: "selfie_overlook",
+    crafting_stop: "crafting_stop",
+  };
+
+function snapshotStepTargetKind(
+  step: SnapshotMissionStep
+): SnapshotMissionTargetKind {
+  return SNAPSHOT_STEP_TARGET_BY_MARKER_ID[step.markerId] ?? "grove";
+}
+
+function snapshotStepBiomesUiMarkerId(step: SnapshotMissionStep) {
+  return BIOMES_UI_MARKER_ID_BY_TARGET[snapshotStepTargetKind(step)];
+}
+
+function snapshotStepRuntimeTrigger(
+  step: SnapshotMissionStep
+): SnapshotMissionTriggerKind {
+  switch (step.trigger) {
+    case "talk_npc":
+      return "dialog";
+    case "near_location":
+      return "location";
+    case "destroy":
+      return "destroy";
+    case "place_voxel":
+      return "place_voxel";
+    case "inventory_change":
+      return "wearing";
+    case "jump":
+      return "running_jump";
+    case "photo_post_attempt":
+    case "show_post_capture":
+      return "photo";
+    case "craft":
+      return "craft_muck_buster";
+    default:
+      return "dialog";
+  }
+}
+
 function isBrowser() {
   return (
     typeof window !== "undefined" && typeof window.localStorage !== "undefined"
@@ -347,8 +227,8 @@ function cloneState(state: SnapshotMissionState): SnapshotMissionState {
   };
 }
 
-function firstSnapshotMission() {
-  return SNAPSHOT_MISSIONS[0];
+function firstSnapshotMission(): SnapshotMissionDefinition {
+  return SNAPSHOT_ROAD_AHEAD_MISSION;
 }
 
 function normalizeSnapshotMissionState(
@@ -446,23 +326,22 @@ function snapshotRoadAheadStepIndexForChallengeStepHintIds(
   if (!ids.size) {
     return undefined;
   }
-  return firstSnapshotMission().steps.findIndex(
-    (step) => step.challengeStepId && ids.has(String(step.challengeStepId))
-  );
+  let stepIndex = -1;
+  firstSnapshotMission().steps.forEach((step, index) => {
+    if (step.challengeStepId && ids.has(String(step.challengeStepId))) {
+      stepIndex = Math.max(stepIndex, index);
+    }
+  });
+  return stepIndex;
 }
 
-const SNAPSHOT_ROAD_AHEAD_NUX_TO_STEP_ID = new Map<number, BiomesId>([
-  [
-    NUXES.INTRO_QUESTS,
-    NUX_PAIRED_STEPS.ROAD_AHEAD_MEET_UP_WITH_BILLY as BiomesId,
-  ],
-  [NUXES.BREAK_BLOCKS, NUX_PAIRED_STEPS.ROAD_AHEAD_COLLECT_MUCKWAD as BiomesId],
-  [NUXES.PLACE_BLOCKS, NUX_PAIRED_STEPS.ROAD_AHEAD_PLACE_BLOCKS as BiomesId],
-  [NUXES.WEAR_STUFF, NUX_PAIRED_STEPS.ROAD_AHEAD_WEAR as BiomesId],
-  [NUXES.RUN_AND_JUMP, NUX_PAIRED_STEPS.ROAD_AHEAD_FIND_BAG as BiomesId],
-  [NUXES.SELFIE_PHOTO, NUX_PAIRED_STEPS.ROAD_AHEAD_SELFIE as BiomesId],
-  [NUXES.HANDCRAFT_BUSTER, NUX_PAIRED_STEPS.BUSTED_MUCK_BUSTERS as BiomesId],
-]);
+const SNAPSHOT_ROAD_AHEAD_NUX_TO_STEP_ID = new Map<number, BiomesId>(
+  firstSnapshotMission().steps.flatMap((step) =>
+    step.sourceNuxId !== undefined && step.challengeStepId
+      ? ([[step.sourceNuxId, step.challengeStepId]] as [number, BiomesId][])
+      : []
+  )
+);
 
 export function snapshotRoadAheadChallengeStepHintsFromActiveNuxesForBiomesUI(
   activeNuxes: unknown
@@ -545,6 +424,10 @@ export function recordSnapshotRoadAheadChallengeStepForBiomesUI(
   }
 
   const state = readSnapshotMissionState();
+  if (isMissionCompleted(state)) {
+    fillKnownRoadAheadClothingCrates();
+    return false;
+  }
   const completedMission =
     eventKind === "complete" && stepIndex >= mission.steps.length - 1;
   const targetStepIndex = completedMission
@@ -589,6 +472,44 @@ export function recordSnapshotRoadAheadChallengeStepForBiomesUI(
   });
   fillKnownRoadAheadClothingCrates();
   return true;
+}
+
+export function syncSnapshotRoadAheadChallengeStepHintsForBiomesUI(
+  hints?: Iterable<SnapshotRoadAheadChallengeStepHint>
+) {
+  if (!isBrowser()) {
+    return false;
+  }
+  const mission = firstSnapshotMission();
+  const stepIndex = snapshotRoadAheadStepIndexForChallengeStepHintIds(hints);
+  if (stepIndex === undefined || stepIndex < 0) {
+    return false;
+  }
+  const step = mission.steps[stepIndex];
+  if (!step?.challengeStepId) {
+    return false;
+  }
+
+  const state = readSnapshotMissionState();
+  if (isMissionCompleted(state)) {
+    return false;
+  }
+  const completedThroughCurrentHint = mission.steps
+    .slice(0, stepIndex)
+    .every((candidate) => state.completedStepIds.includes(candidate.id));
+  if (
+    state.accepted &&
+    state.currentStepIndex >= stepIndex &&
+    completedThroughCurrentHint
+  ) {
+    fillKnownRoadAheadClothingCrates();
+    return false;
+  }
+
+  return recordSnapshotRoadAheadChallengeStepForBiomesUI(
+    step.challengeStepId,
+    "begin"
+  );
 }
 
 function readSnapshotMissionEvents(): SnapshotMissionEvent[] {
@@ -797,7 +718,7 @@ export function snapshotRoadAheadTrackableQuestsForBiomesUI(
         : uiState.accepted
         ? ("active" as const)
         : ("available" as const),
-      firstMarkerId: step.target,
+      firstMarkerId: snapshotStepBiomesUiMarkerId(step),
       reward: mission.reward,
       kind: mission.source,
       kindLabel: "Story Quest",
@@ -845,21 +766,21 @@ function roadAheadStepCopy(
     doNow: `Do this now: ${step.objective}`,
     where: `Go to: ${step.targetLabel}. ${step.mapHint}`,
     howItCompletes:
-      step.trigger === "dialog"
+      snapshotStepRuntimeTrigger(step) === "dialog"
         ? "This step completes from Jackie dialog."
-        : step.trigger === "location"
+        : snapshotStepRuntimeTrigger(step) === "location"
         ? "This step completes when you physically reach the marked spot."
-        : step.trigger === "destroy"
+        : snapshotStepRuntimeTrigger(step) === "destroy"
         ? "This step completes when you break a valid non-flora block near the route."
-        : step.trigger === "place_voxel"
+        : snapshotStepRuntimeTrigger(step) === "place_voxel"
         ? "This step completes when you place a real block in the marked practice area."
-        : step.trigger === "wearing"
+        : snapshotStepRuntimeTrigger(step) === "wearing"
         ? "This step completes when both top and bottoms are equipped."
-        : step.trigger === "running_jump"
+        : snapshotStepRuntimeTrigger(step) === "running_jump"
         ? "This step completes on a sprinting jump at the road stretch."
-        : step.trigger === "photo"
+        : snapshotStepRuntimeTrigger(step) === "photo"
         ? "This step completes from the camera/photo-post flow."
-        : step.trigger === "craft_muck_buster"
+        : snapshotStepRuntimeTrigger(step) === "craft_muck_buster"
         ? "Craft or obtain a Muck Buster. The lesson completes when the tool is actually in your inventory."
         : "Complete the marked in-world action to advance.",
   };
@@ -1086,7 +1007,7 @@ function shouldEventCompleteStep(
   step: SnapshotMissionStep,
   event: GardenHoseEvent
 ) {
-  switch (step.trigger) {
+  switch (snapshotStepRuntimeTrigger(step)) {
     case "dialog":
       return event.kind === "talk_npc" && event.npcId === JACKIE_ID;
     case "destroy":
@@ -1121,7 +1042,7 @@ function shouldEventCompleteStepWithInventoryState(
     return true;
   }
   return (
-    step.trigger === "wearing" &&
+    snapshotStepRuntimeTrigger(step) === "wearing" &&
     event.kind === "inventory_change" &&
     hasRequiredClothing(wearing)
   );
@@ -1222,11 +1143,18 @@ export const SnapshotMissionRuntimeController: React.FunctionComponent<{}> =
 
     useEffect(() => {
       const { step, completed } = getMissionStep(state);
-      if (!state.accepted || completed || step.trigger !== "location") {
+      if (
+        !state.accepted ||
+        completed ||
+        snapshotStepRuntimeTrigger(step) !== "location"
+      ) {
         return;
       }
       const playerPos = localPlayer.player.position as Vec3;
-      const targetPos = snapshotTargetPosition(step.target, jackiePosition);
+      const targetPos = snapshotTargetPosition(
+        snapshotStepTargetKind(step),
+        jackiePosition
+      );
       const distance = Math.hypot(
         targetPos[0] - playerPos[0],
         targetPos[2] - playerPos[2]
@@ -1244,7 +1172,11 @@ export const SnapshotMissionRuntimeController: React.FunctionComponent<{}> =
 
     useEffect(() => {
       const { step, completed } = getMissionStep(state);
-      if (!state.accepted || completed || step.trigger !== "wearing") {
+      if (
+        !state.accepted ||
+        completed ||
+        snapshotStepRuntimeTrigger(step) !== "wearing"
+      ) {
         return;
       }
       if (hasRequiredClothing(wearing)) {
@@ -1257,7 +1189,7 @@ export const SnapshotMissionRuntimeController: React.FunctionComponent<{}> =
       if (
         !state.accepted ||
         completed ||
-        step.trigger !== "craft_muck_buster"
+        snapshotStepRuntimeTrigger(step) !== "craft_muck_buster"
       ) {
         return;
       }
@@ -1278,7 +1210,10 @@ export const SnapshotMissionRuntimeController: React.FunctionComponent<{}> =
         }
         return;
       }
-      const targetPos = snapshotTargetPosition(step.target, jackiePosition);
+      const targetPos = snapshotTargetPosition(
+        snapshotStepTargetKind(step),
+        jackiePosition
+      );
       pinSnapshotMissionTarget(mapManager, targetPos);
       writeSnapshotMissionState({
         ...state,
@@ -1288,7 +1223,11 @@ export const SnapshotMissionRuntimeController: React.FunctionComponent<{}> =
 
     useEffect(() => {
       const { step, completed } = getMissionStep(state);
-      if (!state.accepted || completed || step.trigger !== "place_voxel") {
+      if (
+        !state.accepted ||
+        completed ||
+        snapshotStepRuntimeTrigger(step) !== "place_voxel"
+      ) {
         return;
       }
       const selected = selection as any;
@@ -1356,7 +1295,10 @@ export function useSnapshotMissionDialog(
     }
 
     const { mission, step, stepIndex, completed } = getMissionStep(state);
-    const targetPos = snapshotTargetPosition(step.target, jackiePosition);
+    const targetPos = snapshotTargetPosition(
+      snapshotStepTargetKind(step),
+      jackiePosition
+    );
     const pinCurrentTarget = () => {
       pinSnapshotMissionTarget(mapManager, targetPos);
       writeSnapshotMissionState({
@@ -1383,7 +1325,10 @@ export function useSnapshotMissionDialog(
               if (nextStep) {
                 pinSnapshotMissionTarget(
                   mapManager,
-                  snapshotTargetPosition(nextStep.target, jackiePosition)
+                  snapshotTargetPosition(
+                    snapshotStepTargetKind(nextStep),
+                    jackiePosition
+                  )
                 );
               }
             },
@@ -1396,7 +1341,7 @@ export function useSnapshotMissionDialog(
               pinSnapshotMissionTarget(
                 mapManager,
                 snapshotTargetPosition(
-                  nextStep?.target ?? "road_marker",
+                  nextStep ? snapshotStepTargetKind(nextStep) : "road_marker",
                   jackiePosition
                 )
               );
@@ -1482,7 +1427,10 @@ export const SnapshotMissionMapHUD: React.FunctionComponent<{}> = () => {
   const jackiePosition = useJackiePosition();
   const state = useSnapshotMissionState();
   const { mission, step, stepIndex, completed } = getMissionStep(state);
-  const targetPos = snapshotTargetPosition(step.target, jackiePosition);
+  const targetPos = snapshotTargetPosition(
+    snapshotStepTargetKind(step),
+    jackiePosition
+  );
   const playerPos = localPlayer.player.position as Vec3;
   const dx = targetPos[0] - playerPos[0];
   const dz = targetPos[2] - playerPos[2];

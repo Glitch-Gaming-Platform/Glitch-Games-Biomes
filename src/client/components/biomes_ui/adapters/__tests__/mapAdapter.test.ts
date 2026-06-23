@@ -905,6 +905,53 @@ describe("biomes_ui map adapter (V141)", () => {
     assert.equal(helperMarker?.active, true);
   });
 
+  it("routes a server-backed ready helper quest to the giver across missions, quests, and map", () => {
+    const questId = "live-helper:8810000000019752:hard_boss";
+    const liveQuestState = {
+      version: "harthmere-live-mode-quest-state",
+      actorId: "player_old_coop",
+      active: {
+        [questId]: {
+          stepId: "live_helper_muck_scarred_helix:boss_defeated",
+          progress: 1,
+          source: "live_entity_helper",
+          title: "Defeat the Muck-Scarred Helix",
+          questKind: "hard_boss",
+          entityId: "8810000000019752",
+          giverName: "Old Coop",
+          giverPosition: [380, 71, -202],
+        },
+      },
+      completed: {},
+      updatedAtMs: Date.now(),
+    };
+
+    const adapter = buildBiomesUIMapAdapterForTest(
+      1,
+      undefined,
+      undefined,
+      liveQuestState
+    );
+
+    const returnMarkerId = `live_entity_helper_return:${questId}`;
+    const quest = adapter
+      .getTrackableQuests()
+      .find((entry) => entry.questId === questId);
+    assert.equal(quest?.firstMarkerId, returnMarkerId);
+    assert.ok(quest?.objective?.includes("Return to Old Coop"));
+
+    const step = adapter
+      .getMissionSteps()
+      .find((entry) => entry.id === questId);
+    assert.ok(step?.objective.includes("Return to Old Coop"));
+
+    const marker = adapter
+      .getMarkers()
+      .find((entry) => entry.id === returnMarkerId);
+    assert.equal(marker?.active, true);
+    assert.deepEqual(marker?.worldPosition, [380, 71, -202]);
+  });
+
   it("still returns business outpost markers when the snapshot api is missing", () => {
     clearFixture();
     const adapter = buildAdapter();

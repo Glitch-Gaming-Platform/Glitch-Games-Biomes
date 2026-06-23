@@ -97,4 +97,39 @@ describe("CurrentQuestObjectiveHUD", () => {
       "Gather 2 Softwood Logs from fallen branches at the Orchard Softwood Branches."
     );
   });
+
+  it("prefers the active Road Ahead story objective over background active jobs", () => {
+    const deliveryJob: MapTrackableQuest = {
+      questId: "jobs_board:harthmere_job_todo_4",
+      title: "Courier Run",
+      area: "The Grove",
+      status: "active",
+      firstMarkerId: "jobs_board_marker:harthmere_job_todo_4",
+      objective: "Deliver the sealed package to the marked drop-off.",
+    };
+    const roadAhead: MapTrackableQuest = {
+      questId: "snapshot_road_ahead_full_chain",
+      title: "Road Ahead",
+      area: "The Grove",
+      status: "active",
+      firstMarkerId: "building_spot",
+      kind: "snapshot_nux_challenge_bridge",
+      kindLabel: "Story Quest",
+      objective: "Equip any block and place it on the ground.",
+    };
+
+    assert.equal(
+      currentQuestObjectiveForHUDForTest({
+        quests: [deliveryJob, roadAhead],
+        activeMapPin: {
+          markerId: "jobs_board_marker:harthmere_job_todo_4",
+          label: "Drop off package",
+          kind: "objective",
+          worldPosition: [520, 70, -140],
+          setAtMs: 3000,
+        },
+      }),
+      "Equip any block and place it on the ground."
+    );
+  });
 });

@@ -26,7 +26,6 @@ import {
 import type { ParticleSystemMaterials } from "@/client/game/resources/particles";
 import { ParticleSystem } from "@/client/game/resources/particles";
 import {
-  makePlayerLikeAppearanceMesh,
   makeSnapshotPlayerLikeAppearanceMesh,
   replaceWithPlayerMaterial,
   setFrustumCulling,
@@ -99,10 +98,7 @@ import {
   snapshotGroveNpcRouteMotion,
 } from "@/shared/harthmere/snapshot_grove_content";
 import {
-  SNAPSHOT_GROVE_GENERATED_VOXEL_NPC_VERSION,
   SNAPSHOT_GROVE_NPC_ASSET_KEY_VERSION,
-  SNAPSHOT_GROVE_ROBOT_LIKE_LABEL_REGEX,
-  shouldUseSnapshotGroveGeneratedVoxelNpc,
   snapshotGroveNpcAssetKeyForEntity,
 } from "@/shared/harthmere/snapshot_grove_npc_mesh_routing";
 import {
@@ -2154,61 +2150,6 @@ function makeNpcSpatialLighting(
 
 const HARTHMERE_NPC_FACE_BODY_VISUAL_REFINEMENT_VERSION =
   "harthmere-face-body-visual-refinement";
-
-const SNAPSHOT_NPC_COSMETICS_FALLBACK_VERSION =
-  "snapshot-npc-cosmetics-fallback";
-
-// SNAPSHOT_PLAYERLIKE_NPC_VISIBLE_FALLBACK_VERSION
-// The upstream 2026-05-16 snapshot rendered merchant/town NPCs through
-// makePlayerLikeAppearanceMesh(). In the Glitch/Harthmere branch, many of
-// those player-like NPCs arrive without the newer appearance/wearing schema the
-// renderer expects, which produces blank beige/gray mannequins. In snapshot
-// merge mode, prefer a deterministic visible voxel NPC body with generated face,
-// clothing, color, and role details for player-like NPCs. This keeps snapshot
-// NPCs readable until their exact upstream cosmetics are reconciled into the new
-// Glitch appearance schema.
-const SNAPSHOT_PLAYERLIKE_NPC_VISIBLE_FALLBACK_VERSION =
-  "snapshot-playerlike-npc-visible-fallback";
-
-function shouldForceVisibleSnapshotPlayerLikeNpcFallback(
-  _deps: ClientResourceDeps,
-  _id: BiomesId,
-  npcType: NpcType
-): boolean {
-  if (!npcType.isPlayerLikeAppearance) {
-    return false;
-  }
-  const mode =
-    process.env.NEXT_PUBLIC_BIOMES_SNAPSHOT_NPC_RENDERER ??
-    process.env.BIOMES_SNAPSHOT_NPC_RENDERER ??
-    "generated";
-  // Escape hatch for comparing against the original player-like renderer.
-  return mode !== "legacy" && mode !== "player-like";
-}
-
-function makeSnapshotPlayerLikeNpcVisibleFallbackGltf(
-  deps: ClientResourceDeps,
-  id: BiomesId,
-  npcType: NpcType
-): GLTF {
-  if (process.env.NODE_ENV !== "production") {
-    log.debug(
-      "SNAPSHOT_PLAYERLIKE_NPC_VISIBLE_FALLBACK using generated visible NPC cosmetics",
-      {
-        entityId: id,
-        label: deps.get("/ecs/c/label", id)?.text,
-        npcTypeId: npcType.id,
-        npcTypeName: npcType.name,
-        npcTypeDisplayName: npcType.displayName,
-        version: SNAPSHOT_PLAYERLIKE_NPC_VISIBLE_FALLBACK_VERSION,
-      }
-    );
-  }
-  const gltf = makeLocalDevVoxelNpcGltf(deps, id);
-  gltf.scene.userData.snapshotPlayerLikeNpcVisibleFallbackVersion =
-    SNAPSHOT_PLAYERLIKE_NPC_VISIBLE_FALLBACK_VERSION;
-  return gltf;
-}
 
 export function harthmereNpcGltfVisibleGeometryStatsForTest(gltf: GLTF) {
   // Delegates to the node-safe shared guard so the resolver and its unit tests
@@ -5140,72 +5081,6 @@ export async function makeNpcTypeMesh(type: BiomesId) {
   });
 }
 
-function snapshotNpcHasUsefulCosmetics(
-  deps: ClientResourceDeps,
-  id: BiomesId
-): boolean {
-  const wearing = deps.get("/ecs/c/wearing", id);
-  const appearance = deps.get("/ecs/c/appearance_component", id);
-  const wearingItems = wearing?.items as unknown;
-  const hasWearables =
-    wearingItems instanceof Map
-      ? Array.from(wearingItems.values()).some(Boolean)
-      : Array.isArray(wearingItems)
-      ? wearingItems.length > 0
-      : !!wearingItems &&
-        typeof wearingItems === "object" &&
-        Object.values(wearingItems as Record<string, unknown>).some(Boolean);
-  const appearanceValue = appearance?.appearance as unknown;
-  const hasAppearance =
-    !!appearanceValue &&
-    typeof appearanceValue === "object" &&
-    Object.values(appearanceValue as Record<string, unknown>).some(
-      (value) => value !== undefined && value !== null && value !== ""
-    );
-
-  return hasWearables || hasAppearance;
-}
-
-function shouldUseSnapshotNpcCosmeticsFallback(
-  deps: ClientResourceDeps,
-  id: BiomesId,
-  npcType: NpcType
-): boolean {
-  // SNAPSHOT_NPC_COSMETICS_FALLBACK:
-  // The 2026-05-16 snapshot includes player-like merchant/town NPCs that can
-  // arrive without wearing/appearance components when loaded through the newer
-  // Glitch client. Rendering those through makePlayerLikeAppearanceMesh() leaves
-  // beige, unclothed mannequins. Use the deterministic Harthmere voxel NPC
-  // generator only for player-like NPCs that have no useful cosmetic ECS data.
-  if (!npcType.isPlayerLikeAppearance) {
-    return false;
-  }
-  return !snapshotNpcHasUsefulCosmetics(deps, id);
-}
-
-function makeSnapshotNpcCosmeticsFallbackGltf(
-  deps: ClientResourceDeps,
-  id: BiomesId,
-  npcType: NpcType
-): GLTF {
-  if (process.env.NODE_ENV !== "production") {
-    log.debug(
-      "SNAPSHOT_NPC_COSMETICS_FALLBACK using generated visible cosmetics for player-like NPC without wearing/appearance",
-      {
-        entityId: id,
-        npcTypeId: npcType.id,
-        npcTypeName: npcType.name,
-        npcTypeDisplayName: npcType.displayName,
-        version: SNAPSHOT_NPC_COSMETICS_FALLBACK_VERSION,
-      }
-    );
-  }
-  const gltf = makeLocalDevVoxelNpcGltf(deps, id);
-  gltf.scene.userData.snapshotNpcCosmeticsFallbackVersion =
-    SNAPSHOT_NPC_COSMETICS_FALLBACK_VERSION;
-  return gltf;
-}
-
 async function makeSnapshotGroveNpcAssetMesh(
   deps: ClientResourceDeps,
   id: BiomesId
@@ -5218,7 +5093,7 @@ async function makeSnapshotGroveNpcAssetMesh(
   const url = resolveAssetUrlUntyped(assetKey);
   if (!url) {
     log.warn(
-      "SNAPSHOT_GROVE_NPC_ASSET_KEY missing asset url; falling back to generated voxel NPC",
+      "SNAPSHOT_GROVE_NPC_ASSET_KEY missing asset url; falling back to player-like NPC mesh",
       {
         entityId: id,
         label,
@@ -5238,7 +5113,7 @@ async function makeSnapshotGroveNpcAssetMesh(
     return gltf;
   } catch (error) {
     log.warn(
-      "SNAPSHOT_GROVE_NPC_ASSET_KEY failed to load snapshot Grove NPC mesh; falling back to generated voxel NPC",
+      "SNAPSHOT_GROVE_NPC_ASSET_KEY failed to load snapshot Grove NPC mesh; falling back to player-like NPC mesh",
       {
         entityId: id,
         label,
@@ -5325,33 +5200,13 @@ async function makeNpcMesh(deps: ClientResourceDeps, id: BiomesId) {
     );
   }
 
-  if (SNAPSHOT_GROVE_ROBOT_LIKE_LABEL_REGEX.test(label ?? "")) {
-    const snapshotGroveRobotAssetMesh = await makeSnapshotGroveNpcAssetMesh(
-      deps,
-      id
-    );
-    if (snapshotGroveRobotAssetMesh) {
-      return ensureVisibleNpcGltf(
-        deps,
-        id,
-        npcType,
-        snapshotGroveRobotAssetMesh,
-        "snapshot-grove-robot-asset-empty"
-      );
-    }
-  }
-
-  if (shouldUseSnapshotGroveGeneratedVoxelNpc(id, label)) {
-    const mesh = makeLocalDevVoxelNpcGltf(deps, id);
-    setFrustumCulling(mesh, false);
-    mesh.scene.userData.snapshotGroveGeneratedVoxelNpcVersion =
-      SNAPSHOT_GROVE_GENERATED_VOXEL_NPC_VERSION;
-    mesh.scene.userData.snapshotGroveGeneratedVoxelNpcReason =
-      "seeded-grove-npc-without-authored-asset-visible-before-playerlike-path";
-    return mesh;
+  const snapshotGroveAssetMesh = await makeSnapshotGroveNpcAssetMesh(deps, id);
+  if (snapshotGroveAssetMesh) {
+    return snapshotGroveAssetMesh;
   }
 
   if (npcType.isPlayerLikeAppearance) {
+    // SNAPSHOT_RICH_NPC_APPEARANCE makeNpcMesh:
     // HARTHMERE_NPC_RENDER_PARITY:
     // Player-like town/merchant NPCs must use the same generated
     // /api/assets/player_mesh.glb pipeline as real players. The prior local-dev
@@ -5367,7 +5222,7 @@ async function makeNpcMesh(deps: ClientResourceDeps, id: BiomesId) {
         visibleStats.renderableVertices < 24
       ) {
         log.warn(
-          "HARTHMERE_NPC_VISIBLE_GEOMETRY_GUARD65 using visible voxel NPC",
+          "HARTHMERE_NPC_VISIBLE_GEOMETRY_GUARD65 keeping player-like NPC mesh for snapshot visual parity",
           {
             entityId: id,
             npcTypeId: npcMetadata.type_id,
@@ -5376,33 +5231,20 @@ async function makeNpcMesh(deps: ClientResourceDeps, id: BiomesId) {
             version: HARTHMERE_NPC_VISIBLE_GEOMETRY_GUARD_VERSION,
           }
         );
-        const fallback = makeSnapshotPlayerLikeNpcVisibleFallbackGltf(
-          deps,
-          id,
-          npcType
-        );
-        setFrustumCulling(fallback, false);
-        fallback.scene.userData.harthmereNpcRenderParityFallback =
-          "player-like-generated-mesh-empty";
-        return fallback;
       }
       mesh.scene.userData.harthmereNpcRenderParityVersion =
         "harthmere-npc-render-parity";
       return mesh;
     } catch (error) {
       log.warn(
-        "HARTHMERE_NPC_RENDER_PARITY falling back to visible voxel NPC",
+        "HARTHMERE_NPC_RENDER_PARITY player-like NPC mesh failed",
         {
           entityId: id,
           npcTypeId: npcMetadata.type_id,
           error,
         }
       );
-      const mesh = makeLocalDevVoxelNpcGltf(deps, id);
-      setFrustumCulling(mesh, false);
-      mesh.scene.userData.harthmereNpcRenderParityFallback =
-        "player-like-generated-mesh-failed";
-      return mesh;
+      throw error;
     }
   }
 
@@ -5411,19 +5253,6 @@ async function makeNpcMesh(deps: ClientResourceDeps, id: BiomesId) {
     npcMetadata.type_id === LOCAL_DEV_HUMAN_NPC_TYPE_ID ||
     (localDevOffset > 0 && localDevOffset < 500)
   ) {
-    const snapshotGroveAssetMesh = await makeSnapshotGroveNpcAssetMesh(
-      deps,
-      id
-    );
-    if (snapshotGroveAssetMesh) {
-      return ensureVisibleNpcGltf(
-        deps,
-        id,
-        npcType,
-        snapshotGroveAssetMesh,
-        "snapshot-grove-asset-empty"
-      );
-    }
     return makeLocalDevVoxelNpcGltf(deps, id);
   }
 

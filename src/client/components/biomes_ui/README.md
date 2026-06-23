@@ -102,7 +102,7 @@ correct cues via `cuesForStep(target, trigger)`. For example, the
 
 The mapping lives in `tutorial/tutorialMissionMap.ts` and is verified
 end-to-end by `scripts/harthmere/check-biomes-ui-tutorial-runtime.cjs`
-against the live `SNAPSHOT_MISSIONS` definitions.
+against the canonical Road Ahead mission source.
 
 ## Keyboard navigation
 

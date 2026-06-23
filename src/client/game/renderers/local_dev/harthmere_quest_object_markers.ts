@@ -5,9 +5,10 @@
 // used to rely on a mixture of imported OBJ/GLB props and map pins, which is
 // fragile in the snapshot-built runtime because structural asset filters can
 // remove "board", "table", "fence", "crate", or "sign" placements. These
-// lightweight procedural props make every quest-linked non-NPC Grove landmark
-// visible in-world without depending on asset loading, lighting, or the
-// snapshot merge filter.
+// lightweight procedural props make every active quest-linked non-NPC Grove
+// landmark available in-world without depending on asset loading, lighting, or
+// the snapshot merge filter. Quest containers stay hidden until their quest is
+// active so another player's/source quest box does not read like public loot.
 
 import type { Renderer } from "@/client/game/renderers/renderer_controller";
 import type { Scenes } from "@/client/game/renderers/scenes";
@@ -78,9 +79,11 @@ export function harthmereResolveWorldQuestBeaconMarkerId(input: {
   return questBeacon;
 }
 export const HARTHMERE_QUEST_OBJECT_MARKER_RENDER_POLICY =
-  "active-beacon-only-no-passive-props" as const;
+  "active-marker-hidden-until-needed" as const;
 export const HARTHMERE_VISIBLE_WORLD_OBJECT_MARKER_RENDER_POLICY =
   "visible-authored-world-prop" as const;
+export const HARTHMERE_ACTIVE_WORLD_OBJECT_MARKER_RENDER_POLICY =
+  "active-quest-world-prop-hidden-until-needed" as const;
 export const HARTHMERE_ACTIVE_QUEST_MARKER_BLUE = 0x5bd7ff;
 export const HARTHMERE_ACTIVE_QUEST_MARKER_CAP = 0xffffff;
 
@@ -203,12 +206,21 @@ export function isVisibleHarthmereWorldObjectMarker(
   markerOrId: HarthmereQuestObjectMarker | string
 ): boolean {
   if (typeof markerOrId !== "string") {
+    return HARTHMERE_VISIBLE_WORLD_OBJECT_MARKER_IDS.has(markerOrId.id);
+  }
+  return HARTHMERE_VISIBLE_WORLD_OBJECT_MARKER_IDS.has(markerOrId);
+}
+
+export function shouldRenderHarthmereQuestObjectMarkerMesh(
+  markerOrId: HarthmereQuestObjectMarker | string
+): boolean {
+  if (typeof markerOrId !== "string") {
     return (
-      HARTHMERE_VISIBLE_WORLD_OBJECT_MARKER_IDS.has(markerOrId.id) ||
+      isVisibleHarthmereWorldObjectMarker(markerOrId) ||
       isHarthmereContainerObjectLabel({ label: markerOrId.label })
     );
   }
-  if (HARTHMERE_VISIBLE_WORLD_OBJECT_MARKER_IDS.has(markerOrId)) {
+  if (isVisibleHarthmereWorldObjectMarker(markerOrId)) {
     return true;
   }
   const marker = HARTHMERE_QUEST_OBJECT_MARKERS.find(
@@ -526,13 +538,19 @@ export class HarthmereQuestObjectMarkersRenderer implements Renderer {
     for (const marker of HARTHMERE_QUEST_OBJECT_MARKERS) {
       const isVisibleWorldObject =
         isVisibleHarthmereWorldObjectMarker(marker);
-      const mesh = isVisibleWorldObject
+      const shouldRenderMesh =
+        shouldRenderHarthmereQuestObjectMarkerMesh(marker);
+      const mesh = shouldRenderMesh
         ? createHarthmereQuestObjectMarkerMesh(marker)
         : createHarthmereQuestObjectMarkerAnchor(marker);
+      mesh.visible = isVisibleWorldObject;
       if (isVisibleWorldObject) {
         mesh.userData.harthmereQuestObjectMarkerAlwaysVisible = true;
         mesh.userData.harthmereQuestObjectMarkerRenderPolicy =
           HARTHMERE_VISIBLE_WORLD_OBJECT_MARKER_RENDER_POLICY;
+      } else if (shouldRenderMesh) {
+        mesh.userData.harthmereQuestObjectMarkerRenderPolicy =
+          HARTHMERE_ACTIVE_WORLD_OBJECT_MARKER_RENDER_POLICY;
       }
       const beacon = createHarthmereActiveQuestMarkerBeacon();
       mesh.add(beacon);

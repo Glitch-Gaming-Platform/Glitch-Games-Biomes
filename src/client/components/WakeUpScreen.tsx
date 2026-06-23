@@ -108,12 +108,36 @@ import { MathUtils, Spherical, Vector3 } from "three";
 
 export type WakeUpState = "initial" | "name-entry" | "character" | "waking";
 
+function isMeaningfulHarthmereProfileName(name?: string | null) {
+  const trimmed = name?.trim();
+  return Boolean(
+    trimmed && !/^guest( user)?$/i.test(trimmed) && !isInitialUsername(trimmed)
+  );
+}
+
+export function hasCompletedHarthmereWakeupProfile(
+  userId: BiomesId,
+  labelName?: string | null
+) {
+  return (
+    hasCurrentHarthmereCharacterCustomization(userId) &&
+    (isMeaningfulHarthmereProfileName(labelName) ||
+      isMeaningfulHarthmereProfileName(getHarthmereGlitchUserName()))
+  );
+}
+
 export function shouldPromptWakeupScreen(
   deps: ClientContextSubset<"resources" | "userId" | "clientConfig">
 ) {
-  return (
-    deps.clientConfig.forceCharacterSetup ||
-    deps.resources.get("/ecs/c/player_status", deps.userId)?.init === false
+  if (deps.clientConfig.forceCharacterSetup) {
+    return true;
+  }
+  if (deps.resources.get("/ecs/c/player_status", deps.userId)?.init !== false) {
+    return false;
+  }
+  return !hasCompletedHarthmereWakeupProfile(
+    deps.userId,
+    deps.resources.get("/ecs/c/label", deps.userId)?.text
   );
 }
 

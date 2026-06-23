@@ -183,7 +183,6 @@ COPY --chown=nextjs:nodejs node_modules/ node_modules/
 # ACR can strip executable bits from uploaded node_modules.
 # Restore package bin permissions before npm rebuild runs node-gyp-build/prebuild helpers.
 RUN set -eux; \
-    chown -R nextjs:nodejs /app/node_modules; \
     if [ -d node_modules/.bin ]; then find node_modules/.bin -maxdepth 1 -mindepth 1 -exec chmod 755 {} \; || true; fi; \
     find node_modules -path '*/bin/*' -type f -exec chmod 755 {} \; || true; \
     find node_modules -name '*.sh' -type f -exec chmod 755 {} \; || true; \

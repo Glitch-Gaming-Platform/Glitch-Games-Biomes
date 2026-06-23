@@ -64,6 +64,7 @@ const pushAndDeploy = script.slice(
   script.indexOf("push_and_deploy()"),
   script.indexOf('if [ "$REDIS_HEALTH_CHECK_ONLY"')
 );
+const mainFlow = script.slice(script.indexOf('if [ "$REDIS_HEALTH_CHECK_ONLY"'));
 
 let failed = false;
 function ok(condition, message) {
@@ -180,12 +181,13 @@ ok(
 );
 ok(
   deployWorkflow.includes("uses: ./.github/actions/cached-yarn-install") &&
+    deployWorkflow.includes("uses: ./.github/actions/cached-lfs-pull") &&
     deployWorkflow.includes("timeout-minutes: 45") &&
     deployWorkflow.includes(
       "token: ${{ secrets.BIOMES_DEPENDENCY_GITHUB_TOKEN }}"
     ) &&
     deployWorkflow.includes("npm install -g @bazel/bazelisk"),
-  "production workflow uses the shared cached Yarn install and installs Bazelisk"
+  "production workflow uses cached LFS, the shared cached Yarn install, and installs Bazelisk"
 );
 ok(
   deployWorkflow.includes("Restore production asset cache") &&
@@ -387,8 +389,11 @@ ok(
   "Docker build is production-platform aware"
 );
 ok(
-  script.includes("--load"),
-  "Docker build loads the tested image locally before push"
+  script.includes("should_directly_push_buildx_image") &&
+    script.includes("--push") &&
+    script.includes("--load -t") &&
+    script.includes('RUN_LOCAL_SMOKE" != "1"'),
+  "Docker build pushes directly when local smoke does not need a loaded image"
 );
 ok(
   script.includes("DOCKER_BUILD_CACHE_FROM") &&
@@ -423,8 +428,10 @@ ok(
   "Docker image no longer references removed versioned stack scripts"
 );
 ok(
-  script.includes('docker push "$IMAGE"'),
-  "production upload reuses the built local image"
+  script.includes('docker push "$IMAGE"') &&
+    script.includes('IMAGE_WAS_PUSHED" != "1"') &&
+    script.includes("Production image was already pushed by Docker Buildx"),
+  "production upload reuses a local image only when Buildx did not already push it"
 );
 ok(script.includes("PUSH_PRODUCTION=0"), "production push is opt-in");
 ok(script.includes("--push"), "script exposes an explicit push flag");
@@ -485,6 +492,19 @@ ok(
     'check_production_redis_snapshot_hash "production image push"'
   ),
   "deploy checks production Redis snapshot hash before image push"
+);
+ok(
+  script.includes("load_production_redis_aof_health") &&
+    script.includes("load_production_redis_snapshot_state") &&
+    script.includes("prod_redis_vm_run_script"),
+  "deploy batches Azure VM Redis checks to avoid many slow run-command calls"
+);
+ok(
+  mainFlow.indexOf("check_production_image_push_preflight") !== -1 &&
+    mainFlow.indexOf("build_image") !== -1 &&
+    mainFlow.indexOf("check_production_image_push_preflight") <
+    mainFlow.indexOf("build_image"),
+  "direct Buildx push performs production preflight before build-and-push"
 );
 ok(
   script.includes(

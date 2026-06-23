@@ -19,10 +19,10 @@ function findAround(text, needle, radius = 700) {
 
 const report = {
   version: "snapshot-overlay-npc-visuals",
-  npcFallbackVersionPresent: npcs.includes("SNAPSHOT_PLAYERLIKE_NPC_VISIBLE_FALLBACK_VERSION"),
+  npcPlayerAvatarPathPresent: npcs.includes("makeSnapshotPlayerLikeAppearanceMesh(deps, id)"),
   overlayCompatPresent: overlays.includes("SNAPSHOT_OVERLAY_ENTITY_SIZE_COMPAT_VERSION"),
-  npcRendererModeEnv: "BIOMES_SNAPSHOT_NPC_RENDERER or NEXT_PUBLIC_BIOMES_SNAPSHOT_NPC_RENDERER; use legacy to compare old blank player-like renderer",
-  makeNpcMeshBranch: findAround(npcs, "shouldForceVisibleSnapshotPlayerLikeNpcFallback"),
+  npcRendererModeEnv: "Player-like NPCs use the same generated player/Grove avatar mesh path as players.",
+  makeNpcMeshBranch: findAround(npcs, "makeSnapshotPlayerLikeAppearanceMesh(deps, id)"),
   overlayCompatBranch: findAround(overlays, "getOverlayEntitySizeCompat(entity)"),
 };
 

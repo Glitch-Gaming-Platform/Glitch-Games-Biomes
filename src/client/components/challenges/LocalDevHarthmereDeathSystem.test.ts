@@ -17,6 +17,7 @@ import {
   HARTHMERE_STAMINA_GAMEPLAY_TICK_MS,
   harthmereCampfireWarmthHealDecisionForTest,
 } from "@/client/components/challenges/LocalDevHarthmereFoodStaminaSystem";
+import { HARTHMERE_DEATH_SCREEN_Z_INDEX_CLASS } from "@/client/components/challenges/HarthmereDeathScreenOverlayView";
 import { harthmereRespawnDisabledReason } from "@/client/components/challenges/harthmereCombatDeathInterfaceRules";
 import {
   defaultHarthmereFoodStaminaState,
@@ -33,6 +34,10 @@ describe("Harthmere live death sync", () => {
       recent: [],
       ...state,
     } satisfies HarthmereDeathState);
+
+  it("keeps the death screen above login and cloud-restore overlays", () => {
+    assert.equal(HARTHMERE_DEATH_SCREEN_Z_INDEX_CLASS, "z-[10050]");
+  });
 
   it("treats live hp zero as dead even when the death state string is missing", () => {
     const summary = harthmereLivePlayerDeathSyncSummaryForTest({

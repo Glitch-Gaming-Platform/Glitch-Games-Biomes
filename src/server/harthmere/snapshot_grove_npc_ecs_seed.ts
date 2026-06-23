@@ -72,19 +72,28 @@ export function buildHarthmereSnapshotGroveNpcSeedChanges(input: {
       forwardAxis: "minusZ",
       source: "snapshot-grove-npc-seed",
     });
+    const base = npcEntity(
+      {
+        id,
+        typeId,
+        position: snapshotGroveGroundedPosition(npc.authoredPosition),
+        orientation: npc.orientation ?? [0, 3.14],
+        velocity: [0, 0, 0],
+        displayName: npc.displayName,
+        defaultDialog: npcDialog(npc.line, ...npc.extraLines),
+      },
+      nowSeconds
+    );
+    if (typeId === LOCAL_DEV_HUMAN_NPC_TYPE_ID && !npc.snapshotAsset) {
+      // Grove humans without an authored snapshot GLB should render through the
+      // same player/Grove avatar mesh generator as players. Drop npcEntity's
+      // uniform defaults so the per-id rich-avatar fallback chooses a distinct
+      // Bikkie-style face, hair, and outfit instead of the wrong voxel NPC body.
+      delete (base as { appearance_component?: unknown }).appearance_component;
+      delete (base as { wearing?: unknown }).wearing;
+    }
     const entity = {
-      ...npcEntity(
-        {
-          id,
-          typeId,
-          position: snapshotGroveGroundedPosition(npc.authoredPosition),
-          orientation: npc.orientation ?? [0, 3.14],
-          velocity: [0, 0, 0],
-          displayName: npc.displayName,
-          defaultDialog: npcDialog(npc.line, ...npc.extraLines),
-        },
-        nowSeconds
-      ),
+      ...base,
       entity_description: EntityDescription.create({
         text: withHarthmereAppearanceMarker(
           withHarthmereBodyAndFaceMarkers(

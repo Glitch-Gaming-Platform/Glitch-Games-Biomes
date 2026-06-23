@@ -68,7 +68,7 @@ ok("player mesh route emits content and asset-version diagnostic headers", src.p
 ok("player mesh route returns Galois asset build errors as errors, not fallback meshes", has(/Galois player mesh asset build returned an error[\s\S]{0,260}Player mesh generation failed in the local asset server/m, src.playerRoute));
 ok("player mesh route no longer redirects to generated local fallback-free path", !has(/redirect\s*\([\s\S]{0,500}harthmere_player|harthmere_player_average_earth/m, src.playerRoute));
 
-ok("NPC renderer keeps no-asset Grove carveout before player-like generated mesh path", src.npcResources.indexOf("shouldUseSnapshotGroveGeneratedVoxelNpc(id, label)") > -1 && src.npcResources.indexOf("shouldUseSnapshotGroveGeneratedVoxelNpc(id, label)") < src.npcResources.indexOf("if (npcType.isPlayerLikeAppearance)"));
+ok("NPC renderer does not divert no-asset Grove humans to the voxel fallback", !src.npcResources.includes("shouldUseSnapshotGroveGeneratedVoxelNpc"));
 ok("NPC renderer keeps player-like generated mesh path before generic local-dev fallback", src.npcResources.indexOf("if (npcType.isPlayerLikeAppearance)") > -1 && src.npcResources.indexOf("if (npcType.isPlayerLikeAppearance)") < src.npcResources.indexOf("const localDevOffset = localDevNpcOffset(id)"));
 ok("NPC player-like path uses generated snapshot player mesh", has(/npcType\.isPlayerLikeAppearance[\s\S]{0,600}makeSnapshotPlayerLikeAppearanceMesh\(deps, id\)/m, src.npcResources));
 ok("NPC non-player path still uses galoisPath assets", has(/ok\(npcType\.galoisPath[\s\S]{0,220}resolveAssetUrlUntyped\(npcType\.galoisPath\)/m, src.npcResources));

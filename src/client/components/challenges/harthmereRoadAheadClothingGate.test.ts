@@ -17,13 +17,11 @@ import {
 const STOCK_INDEX = ROAD_AHEAD_STEP_ORDER.indexOf(
   ROAD_AHEAD_CLOTHING_STOCK_STEP_ID
 );
-const WEAR_INDEX = ROAD_AHEAD_STEP_ORDER.indexOf(
-  ROAD_AHEAD_CLOTHING_STEP_ID
-);
+const WEAR_INDEX = ROAD_AHEAD_STEP_ORDER.indexOf(ROAD_AHEAD_CLOTHING_STEP_ID);
 
 describe("road ahead clothing gate", () => {
   it("step order matches the authored Road Ahead chain (drift guard)", () => {
-    // If the bridge reorders steps this must be updated in lockstep.
+    // If the canonical Road Ahead source reorders steps this gate follows it.
     assert.equal(ROAD_AHEAD_STEP_ORDER[0], "meet_jackie_in_grove");
     assert.equal(STOCK_INDEX, 3);
     assert.equal(WEAR_INDEX, 4);

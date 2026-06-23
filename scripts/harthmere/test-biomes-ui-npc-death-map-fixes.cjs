@@ -19,8 +19,9 @@ function includes(source, needle, message) {
 const mapTab = read('src/client/components/biomes_ui/tabs/MapQuestsTab.tsx');
 const liveAdapters = read('src/client/components/biomes_ui/adapters/useBiomesUILiveAdapters.ts');
 const inventoryTab = read('src/client/components/biomes_ui/tabs/InventoryTab.tsx');
-const voxelFaces = read('src/shared/harthmere/voxel_faces.ts');
 const npcs = read('src/client/game/resources/npcs.ts');
+const npcSeed = read('src/server/harthmere/snapshot_grove_npc_ecs_seed.ts');
+const npcRouting = read('src/shared/harthmere/snapshot_grove_npc_mesh_routing.ts');
 const deathSystem = read('src/client/components/challenges/LocalDevHarthmereDeathSystem.tsx');
 const combat = read('src/client/components/challenges/LocalDevHarthmereCombat.tsx');
 const hud = read('src/client/components/challenges/HarthmereUnifiedHUD.tsx');
@@ -53,24 +54,14 @@ const returnNullIndex = hud.indexOf('return null;', retiredIndex);
 const legacyTitleIndex = hud.indexOf('Biomes Systems', retiredIndex);
 assert(returnNullIndex > retiredIndex && (legacyTitleIndex < 0 || returnNullIndex < legacyTitleIndex), 'Legacy Biomes Systems component returns null before rendering the old title');
 
-// 4. Every no-asset Grove NPC now has a unique authored voxel profile.
-const requiredProfiles = [
-  ['Billy', 'snapshot_grove_billy_road_runner'],
-  ['Sil', 'snapshot_grove_sil_quiet_gatherer'],
-  ['Doc', 'snapshot_grove_doc_field_healer'],
-  ['Rosalyn', 'snapshot_grove_rosalyn_fountain_steward'],
-  ['Nia/Nonah', 'snapshot_grove_nia_guild_clerk'],
-  ['Merl Voss', 'snapshot_grove_merl_banker'],
-  ['Mira Thatch', 'snapshot_grove_mira_land_steward'],
-];
-const profileIds = new Set();
-for (const [label, profileId] of requiredProfiles) {
-  includes(voxelFaces, profileId, `${label} has a unique authored voxel appearance profile`);
-  assert(!profileIds.has(profileId), `${label} profile id is unique`);
-  profileIds.add(profileId);
-}
-includes(voxelFaces, '/nonah|nina|nia|guild clerk|charter tutor|guild charter/', 'Nia profile also covers screenshot/runtime Nonah/Nina labels');
-includes(voxelFaces, 'SNAPSHOT_GROVE_FULL_UNIQUE_NPC_APPEARANCE', 'Unique Grove NPC appearance pass is documented');
+// 4. Grove NPCs must use the original snapshot/player avatar family, not the
+// blocky Harthmere voxel body.
+includes(npcs, 'makeSnapshotGroveNpcAssetMesh(deps, id)', 'Renderer tries archived Grove NPC assets before avatar fallback');
+includes(npcs, 'makeSnapshotPlayerLikeAppearanceMesh(deps, id)', 'No-asset Grove NPCs use player/Grove avatar mesh generation');
+includes(npcSeed, 'delete (base as { appearance_component?: unknown }).appearance_component', 'No-asset Grove NPC seeds drop uniform default appearance');
+includes(npcSeed, 'delete (base as { wearing?: unknown }).wearing', 'No-asset Grove NPC seeds drop uniform default wearables');
+includes(npcRouting, 'sil: "npcs/sil"', 'Sil routes to the original snapshot NPC asset');
+includes(npcRouting, 'doc: "npcs/doc"', 'Doc routes to the original snapshot NPC asset');
 
 // 5. Moving NPCs must animate from render-motion velocity, not remain idle while their render position changes.
 includes(npcs, 'HARTHMERE_VOXEL_NPC_RENDER_MOTION_ANIMATION', 'Voxel NPC render-motion animation bridge is versioned');
@@ -78,9 +69,9 @@ includes(npcs, 'getHarthmereVoxelNpcRenderMotionAnimationVelocity', 'Voxel NPC r
 const velocityBridgeIndex = npcs.indexOf('harthmereRenderMotionAnimationVelocity');
 const velocityUseIndex = npcs.indexOf('motionOverrides?.velocity ??\n      harthmereRenderMotionAnimationVelocity', velocityBridgeIndex);
 assert(velocityUseIndex > velocityBridgeIndex, 'NPC animation velocity uses render-motion bridge before rigid-body fallback');
-includes(npcs, 'SNAPSHOT_GROVE_GENERATED_VOXEL_NPC_VERSION', 'No-asset Grove NPCs use a versioned generated voxel renderer');
-includes(npcs, 'shouldUseSnapshotGroveGeneratedVoxelNpc(id, label)', 'No-asset Grove NPC renderer gate runs before player-like mesh generation');
-includes(npcs, '/^billy\\b/.test(normalizedLabel)', 'Billy Rhodes-style live labels map back to Billy voxel visuals');
+assert(!npcs.includes('SNAPSHOT_GROVE_GENERATED_VOXEL_NPC_VERSION'), 'No-asset Grove NPCs should not use generated voxel renderer');
+assert(!npcs.includes('shouldUseSnapshotGroveGeneratedVoxelNpc(id, label)'), 'No-asset Grove NPCs should fall through to player-like mesh generation');
+includes(npcs, 'makeSnapshotPlayerLikeAppearanceMesh(deps, id)', 'No-asset Grove NPCs use player/Grove avatar mesh generation');
 
 // 6. Death screen must appear for combat/zero-HP deaths, not only fall deaths.
 includes(deathSystem, 'HARTHMERE_DEATH_RESPAWN_ALWAYS_ON_OVERLAY', 'Always-on death/respawn overlay is versioned');

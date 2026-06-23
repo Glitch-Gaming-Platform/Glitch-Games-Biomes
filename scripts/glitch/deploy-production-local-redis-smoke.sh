@@ -14,6 +14,8 @@ KEEP_LOCAL_SMOKE=0
 REDIS_HEALTH_CHECK_ONLY=0
 BOOTSTRAP_PROD_REDIS_SNAPSHOT=0
 RUN_LOCAL_SMOKE="${RUN_LOCAL_SMOKE:-0}"
+DOCKER_BUILD_DIRECT_PUSH="${DOCKER_BUILD_DIRECT_PUSH:-1}"
+IMAGE_WAS_PUSHED=0
 TAG="${TAG:-prod-$(date -u +%Y%m%d%H%M%S)}"
 
 usage() {
@@ -40,6 +42,9 @@ The local production-image HTTP smoke is opt-in because the full container can
 exceed developer-machine memory. When --local-smoke is used, the script uses
 local Redis and waits for the local web server before running smoke checks.
 It never uses az acr build, so there is no remote source upload just to compile.
+When --push is used without --local-smoke, Docker Buildx pushes the image
+directly by default to avoid loading the full image into the local Docker daemon.
+Set DOCKER_BUILD_DIRECT_PUSH=0 to restore the older load-then-docker-push path.
 EOF
 }
 
@@ -205,6 +210,33 @@ prod_redis_cli() {
   printf '%s' "$output" | extract_az_run_command_stdout
 }
 
+prod_redis_vm_run_script() {
+  local script="$1"
+
+  if [ "$PROD_REDIS_HEALTH_MODE" != "azure-vm" ]; then
+    echo "ERROR prod_redis_vm_run_script requires PROD_REDIS_HEALTH_MODE=azure-vm." >&2
+    return 2
+  fi
+
+  require_cmd az
+  require_cmd node
+
+  local output
+  if ! output="$(
+    az vm run-command invoke \
+      --resource-group "$PROD_REDIS_VM_RESOURCE_GROUP" \
+      --name "$PROD_REDIS_VM_NAME" \
+      --command-id RunShellScript \
+      --scripts "$script" \
+      -o json
+  )"; then
+    printf '%s\n' "$output" >&2
+    return 1
+  fi
+
+  printf '%s' "$output" | extract_az_run_command_stdout
+}
+
 prod_redis_config_get() {
   local key="$1"
   prod_redis_cli --raw CONFIG GET "$key" 2>/dev/null | tail -n 1 | tr -d '\r'
@@ -220,6 +252,61 @@ prod_redis_info_value() {
 production_redis_write_probe() {
   local probe_key="codex:deploy-redis-write-probe:${TAG}:$$:${RANDOM}:$(date -u +%s)"
   prod_redis_cli --raw SET "$probe_key" ok EX 60 NX 2>&1 || true
+}
+
+load_production_redis_aof_health() {
+  local probe_key="codex:deploy-redis-write-probe:${TAG}:$$:${RANDOM}:$(date -u +%s)"
+
+  if [ "$PROD_REDIS_HEALTH_MODE" != "azure-vm" ]; then
+    ping="$(prod_redis_cli --raw PING 2>&1 || true)"
+    appendonly="$(prod_redis_config_get appendonly)"
+    dir="$(prod_redis_config_get dir)"
+    dbfilename="$(prod_redis_config_get dbfilename)"
+    save="$(prod_redis_config_get save)"
+    aof_enabled="$(prod_redis_info_value persistence aof_enabled)"
+    aof_last_write_status="$(prod_redis_info_value persistence aof_last_write_status)"
+    rdb_last_bgsave_status="$(prod_redis_info_value persistence rdb_last_bgsave_status)"
+    write_probe="$(production_redis_write_probe)"
+    return
+  fi
+
+  local q_port q_probe report
+  printf -v q_port '%q' "$PROD_REDIS_PORT"
+  printf -v q_probe '%q' "$probe_key"
+  report="$(
+    prod_redis_vm_run_script "$(cat <<EOF
+set -eu
+port=$q_port
+probe_key=$q_probe
+redis_raw() { redis-cli --raw -h 127.0.0.1 -p "\$port" "\$@" 2>/dev/null || true; }
+emit() { key="\$1"; shift; printf '%s=%s\n' "\$key" "\$*"; }
+emit ping "\$(redis_raw PING)"
+emit appendonly "\$(redis_raw CONFIG GET appendonly | tail -n 1 | tr -d '\r')"
+emit dir "\$(redis_raw CONFIG GET dir | tail -n 1 | tr -d '\r')"
+emit dbfilename "\$(redis_raw CONFIG GET dbfilename | tail -n 1 | tr -d '\r')"
+emit save "\$(redis_raw CONFIG GET save | tail -n 1 | tr -d '\r')"
+info="\$(redis_raw INFO persistence)"
+emit aof_enabled "\$(printf '%s\n' "\$info" | awk -F: '\$1 == "aof_enabled" { gsub(/\r/, "", \$2); print \$2; exit }')"
+emit aof_last_write_status "\$(printf '%s\n' "\$info" | awk -F: '\$1 == "aof_last_write_status" { gsub(/\r/, "", \$2); print \$2; exit }')"
+emit rdb_last_bgsave_status "\$(printf '%s\n' "\$info" | awk -F: '\$1 == "rdb_last_bgsave_status" { gsub(/\r/, "", \$2); print \$2; exit }')"
+emit write_probe "\$(redis-cli --raw -h 127.0.0.1 -p "\$port" SET "\$probe_key" ok EX 60 NX 2>&1 || true)"
+EOF
+)"
+  )"
+
+  while IFS='=' read -r key value; do
+    case "$key" in
+      ping) ping="$value" ;;
+      appendonly) appendonly="$value" ;;
+      dir) dir="$value" ;;
+      dbfilename) dbfilename="$value" ;;
+      save) save="$value" ;;
+      aof_enabled) aof_enabled="$value" ;;
+      aof_last_write_status) aof_last_write_status="$value" ;;
+      rdb_last_bgsave_status) rdb_last_bgsave_status="$value" ;;
+      write_probe) write_probe="$value" ;;
+    esac
+  done <<< "$report"
 }
 
 check_production_redis_network_guard() {
@@ -345,6 +432,73 @@ check_production_redis_snapshot_materialized() {
   log "Production Redis snapshot materialization OK before $phase: dbsize=$dbsize required_seed_keys_present=$required_count/3."
 }
 
+check_production_redis_snapshot_materialized_values() {
+  local phase="$1"
+  local dbsize="$2"
+  local required_count="$3"
+
+  if [ "${dbsize:-0}" -lt 1000 ] || [ "${required_count:-0}" -lt 3 ]; then
+    echo "ERROR production Redis snapshot is not materially loaded before $phase:" >&2
+    echo "  dbsize=${dbsize:-unknown}" >&2
+    echo "  required_seed_keys_present=${required_count:-unknown}/3" >&2
+    echo "  required bootstrap keys: Grove NPC, robot, Muck/Hex hostile" >&2
+    return 1
+  fi
+
+  log "Production Redis snapshot materialization OK before $phase: dbsize=$dbsize required_seed_keys_present=$required_count/3."
+}
+
+load_production_redis_snapshot_state() {
+  local hash_key="$1"
+  local expected_hash="${2:-}"
+
+  if [ "$PROD_REDIS_HEALTH_MODE" != "azure-vm" ]; then
+    current_hash="$(production_redis_snapshot_hash "$hash_key")"
+    dbsize="$(prod_redis_cli --raw DBSIZE 2>/dev/null | tr -d '\r' || true)"
+    required_count="$(
+      prod_redis_cli --raw EXISTS \
+        b:8810000000019301 \
+        b:8810000000019401 \
+        b:8810000000019451 2>/dev/null | tr -d '\r' || true
+    )"
+    return
+  fi
+
+  local q_port q_hash_key q_expected_hash report
+  printf -v q_port '%q' "$PROD_REDIS_PORT"
+  printf -v q_hash_key '%q' "$hash_key"
+  printf -v q_expected_hash '%q' "$expected_hash"
+  report="$(
+    prod_redis_vm_run_script "$(cat <<EOF
+set -eu
+port=$q_port
+hash_key=$q_hash_key
+expected_hash=$q_expected_hash
+redis_raw() { redis-cli --raw -h 127.0.0.1 -p "\$port" "\$@" 2>/dev/null || true; }
+emit() { key="\$1"; shift; printf '%s=%s\n' "\$key" "\$*"; }
+hash="\$(redis_raw GET "\$hash_key" | tr -d '\r')"
+if [ -z "\$hash" ]; then
+  hash="\$(redis_raw GET biomes_data_snapshot_hash | tr -d '\r')"
+fi
+if [ -n "\$expected_hash" ] && [ "\$hash" = "\$expected_hash" ]; then
+  redis-cli --raw -h 127.0.0.1 -p "\$port" SET "\$hash_key" "\$expected_hash" >/dev/null 2>&1 || true
+fi
+emit current_hash "\$hash"
+emit dbsize "\$(redis_raw DBSIZE | tr -d '\r')"
+emit required_count "\$(redis_raw EXISTS b:8810000000019301 b:8810000000019401 b:8810000000019451 | tr -d '\r')"
+EOF
+)"
+  )"
+
+  while IFS='=' read -r key value; do
+    case "$key" in
+      current_hash) current_hash="$value" ;;
+      dbsize) dbsize="$value" ;;
+      required_count) required_count="$value" ;;
+    esac
+  done <<< "$report"
+}
+
 bootstrap_production_redis_snapshot() {
   local expected_hash="$1"
   local hash_key="$2"
@@ -423,7 +577,7 @@ force_production_redis_bgsave() {
 
 check_production_redis_snapshot_hash() {
   local phase="$1"
-  local expected_hash hash_key current_hash
+  local expected_hash hash_key current_hash dbsize required_count
 
   if [ ! -f snapshot_backup.json ]; then
     echo "ERROR snapshot_backup.json is missing; cannot verify production Redis snapshot before $phase." >&2
@@ -432,12 +586,11 @@ check_production_redis_snapshot_hash() {
 
   expected_hash="$(snapshot_backup_hash)"
   hash_key="$(production_snapshot_hash_key)"
-  current_hash="$(production_redis_snapshot_hash "$hash_key")"
+  load_production_redis_snapshot_state "$hash_key" "$expected_hash"
 
   if [ "$current_hash" = "$expected_hash" ]; then
-    prod_redis_cli SET "$hash_key" "$expected_hash" >/dev/null
     log "Production Redis snapshot hash OK before $phase: $expected_hash."
-    if check_production_redis_snapshot_materialized "$phase"; then
+    if check_production_redis_snapshot_materialized_values "$phase" "$dbsize" "$required_count"; then
       return
     fi
     if ! bootstrap_production_redis_snapshot "$expected_hash" "$hash_key"; then
@@ -445,7 +598,7 @@ check_production_redis_snapshot_hash() {
       echo "Run again with --bootstrap-prod-redis-snapshot only when you intend to flush/reload production Redis before Azure update." >&2
       exit 1
     fi
-    current_hash="$(production_redis_snapshot_hash "$hash_key")"
+    load_production_redis_snapshot_state "$hash_key" "$expected_hash"
   fi
 
   if [ "$current_hash" != "$expected_hash" ]; then
@@ -461,7 +614,7 @@ check_production_redis_snapshot_hash() {
     fi
   fi
 
-  current_hash="$(production_redis_snapshot_hash "$hash_key")"
+  load_production_redis_snapshot_state "$hash_key" "$expected_hash"
   if [ "$current_hash" != "$expected_hash" ]; then
     echo "ERROR production Redis snapshot still mismatches after bootstrap:" >&2
     echo "  expected=$expected_hash" >&2
@@ -469,7 +622,7 @@ check_production_redis_snapshot_hash() {
     exit 1
   fi
 
-  check_production_redis_snapshot_materialized "$phase"
+  check_production_redis_snapshot_materialized_values "$phase" "$dbsize" "$required_count"
   log "Production Redis snapshot bootstrap verified before $phase: $expected_hash."
 }
 
@@ -495,20 +648,11 @@ check_production_redis_aof_health() {
 
   log "Checking production Redis AOF/write health before $phase."
   local ping appendonly aof_enabled aof_last_write_status rdb_last_bgsave_status dbfilename dir save write_probe
-  ping="$(prod_redis_cli --raw PING 2>&1 || true)"
+  load_production_redis_aof_health
   if [ "$ping" != "PONG" ]; then
     echo "ERROR production Redis health check cannot PING ${PROD_REDIS_HEALTH_HOST}:${PROD_REDIS_PORT}: $ping" >&2
     exit 1
   fi
-
-  appendonly="$(prod_redis_config_get appendonly)"
-  dir="$(prod_redis_config_get dir)"
-  dbfilename="$(prod_redis_config_get dbfilename)"
-  save="$(prod_redis_config_get save)"
-  aof_enabled="$(prod_redis_info_value persistence aof_enabled)"
-  aof_last_write_status="$(prod_redis_info_value persistence aof_last_write_status)"
-  rdb_last_bgsave_status="$(prod_redis_info_value persistence rdb_last_bgsave_status)"
-  write_probe="$(production_redis_write_probe)"
 
   local needs_repair=0
   if printf '%s\n' "$write_probe" | grep -qi 'MISCONF\|AOF file\|No space left on device'; then
@@ -544,14 +688,7 @@ check_production_redis_aof_health() {
       exit 1
     fi
     repair_production_redis_aof
-    appendonly="$(prod_redis_config_get appendonly)"
-    dir="$(prod_redis_config_get dir)"
-    dbfilename="$(prod_redis_config_get dbfilename)"
-    save="$(prod_redis_config_get save)"
-    aof_enabled="$(prod_redis_info_value persistence aof_enabled)"
-    aof_last_write_status="$(prod_redis_info_value persistence aof_last_write_status)"
-    rdb_last_bgsave_status="$(prod_redis_info_value persistence rdb_last_bgsave_status)"
-    write_probe="$(production_redis_write_probe)"
+    load_production_redis_aof_health
   fi
 
   if [ "$appendonly" != "no" ] || [ "$aof_enabled" != "0" ] || [ "$dir" != "$PROD_REDIS_RDB_DIR" ] || [ "$dbfilename" != "$PROD_REDIS_RDB_FILENAME" ] || [ "$save" != "$PROD_REDIS_SAVE_SCHEDULE" ] || [ "$rdb_last_bgsave_status" != "ok" ] || [ "$write_probe" != "OK" ]; then
@@ -1230,18 +1367,32 @@ build_image() {
   fi
   local docker_args=(
     --platform "$DOCKER_PLATFORM"
-    --load
     -f Dockerfile.biomes
-    -t "$LOCAL_IMAGE"
     -t "$IMAGE"
   )
+  if should_directly_push_buildx_image; then
+    docker_args+=(--push)
+    IMAGE_WAS_PUSHED=1
+  else
+    docker_args+=(--load -t "$LOCAL_IMAGE")
+  fi
   if [ "${#cache_args[@]}" -gt 0 ]; then
     docker_args+=("${cache_args[@]}")
   fi
   docker_args+=(.)
 
-  log "Building local production image $LOCAL_IMAGE for $DOCKER_PLATFORM."
+  if should_directly_push_buildx_image; then
+    log "Building and pushing production image $IMAGE for $DOCKER_PLATFORM."
+  else
+    log "Building local production image $LOCAL_IMAGE for $DOCKER_PLATFORM."
+  fi
   docker buildx build "${docker_args[@]}"
+}
+
+should_directly_push_buildx_image() {
+  [ "$PUSH_PRODUCTION" = "1" ] &&
+    [ "$RUN_LOCAL_SMOKE" != "1" ] &&
+    [ "$DOCKER_BUILD_DIRECT_PUSH" = "1" ]
 }
 
 wait_for_http() {
@@ -1375,13 +1526,14 @@ push_and_deploy() {
 
   require_cmd az
   require_cmd curl
-  check_production_redis_network_guard
-  check_production_world_sync_runner
-  check_production_redis_aof_health "production image push"
-  check_production_redis_snapshot_hash "production image push"
-  log "Pushing built image $IMAGE."
-  az acr login --name "${ACR_NAME:-GlitchGames}"
-  docker push "$IMAGE"
+  if [ "$IMAGE_WAS_PUSHED" != "1" ]; then
+    check_production_image_push_preflight
+    log "Pushing built image $IMAGE."
+    login_to_acr
+    docker push "$IMAGE"
+  else
+    log "Production image was already pushed by Docker Buildx: $IMAGE."
+  fi
 
   check_production_redis_aof_health "Azure Container App update"
   check_production_redis_snapshot_hash "Azure Container App update"
@@ -1456,6 +1608,17 @@ push_and_deploy() {
   log "Production update verified: $IMAGE revision=$latest_revision"
 }
 
+login_to_acr() {
+  az acr login --name "${ACR_NAME:-GlitchGames}"
+}
+
+check_production_image_push_preflight() {
+  check_production_redis_network_guard
+  check_production_world_sync_runner
+  check_production_redis_aof_health "production image push"
+  check_production_redis_snapshot_hash "production image push"
+}
+
 if [ "$REDIS_HEALTH_CHECK_ONLY" = "1" ]; then
   check_production_redis_network_guard
   check_production_redis_aof_health "manual Redis health check"
@@ -1474,6 +1637,11 @@ if [ "$SKIP_BUILD" != "1" ]; then
   if [ "$STOP_BEFORE_DOCKER_BUILD" = "1" ]; then
     log "Stopping before Docker build by request. Build artifacts are current; skipped image build."
     exit 0
+  fi
+  if should_directly_push_buildx_image; then
+    require_cmd az
+    check_production_image_push_preflight
+    login_to_acr
   fi
   build_image
 else

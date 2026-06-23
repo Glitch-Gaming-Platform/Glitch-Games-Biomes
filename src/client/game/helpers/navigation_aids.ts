@@ -135,6 +135,13 @@ export function navAidDistance(
   }
 }
 
+export function navigationAidDistanceLabelForTest(distance: number): string {
+  if (!Number.isFinite(distance)) {
+    return "";
+  }
+  return `${Math.max(0, Math.round(distance))}m`;
+}
+
 export function navigationAidHasBeam(navigationAid: NavigationAid) {
   return (
     navigationAid.kind === "placed" ||

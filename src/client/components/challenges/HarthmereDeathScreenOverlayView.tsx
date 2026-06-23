@@ -2,6 +2,7 @@ import React from "react";
 
 export const HARTHMERE_DEATH_SCREEN_VERSION =
   "harthmere-death-screen-grove-respawn" as const;
+export const HARTHMERE_DEATH_SCREEN_Z_INDEX_CLASS = "z-[10050]" as const;
 
 export const HarthmereDeathScreenOverlayView: React.FunctionComponent<{
   cause: string;
@@ -18,7 +19,9 @@ export const HarthmereDeathScreenOverlayView: React.FunctionComponent<{
 }) => {
   return (
     <div
-      className="bg-black/45 pointer-events-none fixed inset-0 z-[70] flex items-center justify-center text-white"
+      // Death/respawn must win over first-login, cloud-restore, and browser
+      // overlays so a stale 0 HP save always gives the player a way back.
+      className={`bg-black/45 pointer-events-none fixed inset-0 ${HARTHMERE_DEATH_SCREEN_Z_INDEX_CLASS} flex items-center justify-center text-white`}
       data-harthmere-death-screen-version={HARTHMERE_DEATH_SCREEN_VERSION}
       style={{
         textShadow: "0 2px 5px rgba(0,0,0,0.95)",

@@ -7,9 +7,14 @@
 // time?" from the snapshot mission state, with no React/client imports so it can
 // be unit-tested directly.
 //
-// The step ids + state key MUST match LocalDevSnapshotMissionBridge.tsx. We keep
-// our own copy (rather than importing that heavy React module) and gate on the
-// stable step-id STRINGS instead of a brittle numeric index where possible.
+import {
+  SNAPSHOT_ROAD_AHEAD_MISSION,
+  SNAPSHOT_ROAD_AHEAD_MISSION_ID,
+} from "@/shared/harthmere/snapshot_complete_port";
+
+// The state key MUST match LocalDevSnapshotMissionBridge.tsx. The step order
+// comes from the shared Road Ahead mission source so the crate gate cannot drift
+// from the playable quest.
 
 export const HARTHMERE_ROAD_AHEAD_CLOTHING_GATE_VERSION =
   "harthmere-road-ahead-clothing-gate" as const;
@@ -17,19 +22,11 @@ export const HARTHMERE_ROAD_AHEAD_CLOTHING_GATE_VERSION =
 // Mirrors SNAPSHOT_MISSION_STATE_KEY / SNAPSHOT_MISSION_ID in the bridge.
 export const ROAD_AHEAD_MISSION_STATE_KEY =
   "biomes.localDev.snapshotMissionState";
-export const ROAD_AHEAD_MISSION_ID = "snapshot_road_ahead_full_chain";
+export const ROAD_AHEAD_MISSION_ID = SNAPSHOT_ROAD_AHEAD_MISSION_ID;
 
-// Authored step order (must match the bridge's `steps` array order). steps[0] is
-// the "meet Jackie" intro; the gear-up step is index 4.
-export const ROAD_AHEAD_STEP_ORDER = [
-  "meet_jackie_in_grove",
-  "road_ahead_meet_up_with_billy",
-  "road_ahead_collect_muckwad",
-  "road_ahead_place_blocks",
-  "road_ahead_wear",
-  "road_ahead_find_bag",
-  "road_ahead_selfie",
-] as const;
+export const ROAD_AHEAD_STEP_ORDER = SNAPSHOT_ROAD_AHEAD_MISSION.steps.map(
+  (step) => step.id
+);
 
 export const ROAD_AHEAD_CLOTHING_STEP_ID = "road_ahead_wear";
 export const ROAD_AHEAD_CLOTHING_STOCK_STEP_ID = "road_ahead_place_blocks";
@@ -39,8 +36,7 @@ export const ROAD_AHEAD_CLOTHING_STOCK_PRECEDING_STEP_ID =
   "road_ahead_collect_muckwad";
 // Legacy name for older imports: this is the step that used to be "preceding"
 // the Gear Up gate, and is now the step where the crate stocks.
-export const ROAD_AHEAD_PRECEDING_STEP_ID =
-  ROAD_AHEAD_CLOTHING_STOCK_STEP_ID;
+export const ROAD_AHEAD_PRECEDING_STEP_ID = ROAD_AHEAD_CLOTHING_STOCK_STEP_ID;
 
 export interface RoadAheadGateState {
   accepted?: boolean;
@@ -73,8 +69,7 @@ export function roadAheadClothingCrateReady(
   }
   const accepted =
     Boolean(state.accepted) ||
-    (state.active != null &&
-      state.active[ROAD_AHEAD_MISSION_ID] !== undefined);
+    (state.active != null && state.active[ROAD_AHEAD_MISSION_ID] !== undefined);
   if (!accepted) {
     return false;
   }

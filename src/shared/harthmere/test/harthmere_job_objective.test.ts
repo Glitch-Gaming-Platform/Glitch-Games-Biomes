@@ -385,6 +385,20 @@ describe("harthmereJobMarkerPlan — per-kind phase + marker resolution", () => 
     });
   });
 
+  describe("item-only board jobs", () => {
+    it("routes back to the board once inventory requirements are satisfied", () => {
+      const plan = harthmereJobMarkerPlan({
+        kind: "craft",
+        requirements: [{ itemId: "wood_plank", count: 3 }],
+        boardMarkerId: BOARD,
+        progress: { inventoryRequirementsSatisfied: true },
+      });
+      assert.equal(plan.phase, "return_to_board");
+      assert.equal(plan.activeMarkerId, BOARD);
+      assert.ok(/Required items are ready/i.test(plan.hint));
+    });
+  });
+
   describe("failed quests drop their markers", () => {
     it("a failed job has no active marker and a failed phase", () => {
       const plan = harthmereJobMarkerPlan({

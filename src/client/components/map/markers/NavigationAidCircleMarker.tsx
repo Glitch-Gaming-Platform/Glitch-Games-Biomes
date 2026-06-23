@@ -7,6 +7,7 @@ import type { NavigationAid } from "@/client/game/helpers/navigation_aids";
 import {
   accurateNavigationAidPosition,
   navAidDistance,
+  navigationAidDistanceLabelForTest,
   navigationAidProjectionByKind,
   navigationAidShowsOnCircle,
 } from "@/client/game/helpers/navigation_aids";
@@ -158,6 +159,7 @@ const NavigationAidCircleWithTransform: React.FunctionComponent<{
   const { map } = useContext(NavigationAidCircleContext);
   const transformedDiv = useRef<HTMLDivElement>(null);
   const overlayArrowDiv = useRef<HTMLDivElement>(null);
+  const distanceLabelDiv = useRef<HTMLDivElement>(null);
 
   useAnimation(() => {
     if (!transformedDiv.current || !overlayArrowDiv.current || !map) {
@@ -165,6 +167,7 @@ const NavigationAidCircleWithTransform: React.FunctionComponent<{
     }
 
     const camera = reactResources.get("/scene/camera");
+    const player = reactResources.get("/scene/local_player");
     const accuratePosition = accurateNavigationAidPosition(
       userId,
       reactResources,
@@ -186,6 +189,11 @@ const NavigationAidCircleWithTransform: React.FunctionComponent<{
 
     transformedDiv.current.style.transform = `translate(-50%, -50%) translate(${newX}px, ${newY}px)`;
     overlayArrowDiv.current.style.transform = `rotate(${arrowRotate}rad)`;
+    if (distanceLabelDiv.current) {
+      distanceLabelDiv.current.textContent = navigationAidDistanceLabelForTest(
+        navAidDistance(navigationAid, player.player.position, accuratePosition)
+      );
+    }
   });
 
   const challenge = getBiscuit(navigationAid.challengeId);
@@ -220,6 +228,11 @@ const NavigationAidCircleWithTransform: React.FunctionComponent<{
       <NavigationAidCircleMarkerIcon
         size="small"
         navigationAid={navigationAid}
+      />
+      <div
+        ref={distanceLabelDiv}
+        className="navigation-overlay-distance"
+        aria-hidden="true"
       />
       <NavigationAidCircleParticles navigationAid={navigationAid} />
     </div>

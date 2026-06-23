@@ -1548,6 +1548,59 @@ export const HARTHMERE_LIVE_MODE_REQUIRED_PIPELINES: HarthmereLiveModePipelineDe
     },
   ];
 
+const HARTHMERE_LIVE_MODE_ACTION_PIPELINE_IDS: Readonly<
+  Partial<Record<HarthmereLiveModeActionKind, string>>
+> = {
+  request_attack: "attack_resolution_live_pipeline",
+  request_ability_cast: "ability_cast_live_pipeline",
+  request_equipment_change: "equipment_change_live_pipeline",
+  request_xp_reward: "xp_level_skill_live_pipeline",
+  request_skill_progress: "skill_progress_live_pipeline",
+  request_loot_roll: "loot_drop_claim_live_pipeline",
+  request_loot_claim: "loot_drop_claim_live_pipeline",
+  request_death_transition: "death_revive_respawn_live_pipeline",
+  request_environment_damage: "death_revive_respawn_live_pipeline",
+  request_revive: "death_revive_respawn_live_pipeline",
+  request_respawn: "death_revive_respawn_live_pipeline",
+  request_npc_ai_tick: "npc_boss_ai_live_pipeline",
+  request_boss_tick: "npc_boss_ai_live_pipeline",
+  request_pvp_flag_change: "pvp_party_raid_live_pipeline",
+  request_pvp_reward: "pvp_party_raid_live_pipeline",
+  request_party_raid_credit: "pvp_party_raid_live_pipeline",
+  request_trainer_unlock: "trainer_book_respec_loadout_live_pipeline",
+  request_skill_book_use: "trainer_book_respec_loadout_live_pipeline",
+  request_respec: "trainer_book_respec_loadout_live_pipeline",
+  request_loadout_change: "trainer_book_respec_loadout_live_pipeline",
+  request_inventory_mutation: "inventory_vendor_auction_live_pipeline",
+  request_inventory_item_action: "inventory_vendor_auction_live_pipeline",
+  request_vendor_transaction: "inventory_vendor_auction_live_pipeline",
+  request_auction_post: "inventory_vendor_auction_live_pipeline",
+  request_auction_settle: "inventory_vendor_auction_live_pipeline",
+  request_auction_cancel: "inventory_vendor_auction_live_pipeline",
+  request_auction_recover: "inventory_vendor_auction_live_pipeline",
+  request_auction_expire: "inventory_vendor_auction_live_pipeline",
+  request_pay_fine: "economy_jobs_guild_live_pipeline",
+  request_clear_bounty: "economy_jobs_guild_live_pipeline",
+  request_bank_transaction:
+    "bank_mail_property_crafting_farming_live_pipeline",
+  request_mail_transaction:
+    "bank_mail_property_crafting_farming_live_pipeline",
+  request_guild_mutation: "economy_jobs_guild_live_pipeline",
+  request_economy_mutation: "economy_jobs_guild_live_pipeline",
+  request_jobs_board_mutation: "economy_jobs_guild_live_pipeline",
+  request_law_reputation_mutation: "law_magic_quest_building_live_pipeline",
+  request_magic_progress: "law_magic_quest_building_live_pipeline",
+  request_quest_state_update: "law_magic_quest_building_live_pipeline",
+  request_property_building_mutation:
+    "bank_mail_property_crafting_farming_live_pipeline",
+  request_home_decoration: "home_decoration_live_pipeline",
+  request_world_placement: "law_magic_quest_building_live_pipeline",
+  request_crafting: "bank_mail_property_crafting_farming_live_pipeline",
+  request_farming_action: "bank_mail_property_crafting_farming_live_pipeline",
+  request_medical_action: "bank_mail_property_crafting_farming_live_pipeline",
+  request_care_loop_action: "bank_mail_property_crafting_farming_live_pipeline",
+} as const;
+
 export const HARTHMERE_LIVE_MODE_REQUIRED_SUBSYSTEMS: HarthmereLiveModeAnySubsystem[] =
   [
     "combat",
@@ -1664,15 +1717,55 @@ export function validateHarthmereLiveModeAuthorityEnvelope(
   };
 }
 
+function harthmerePipelineById(
+  id: string | undefined
+): HarthmereLiveModePipelineDefinition | undefined {
+  if (!id) {
+    return undefined;
+  }
+  return HARTHMERE_LIVE_MODE_REQUIRED_PIPELINES.find(
+    (pipeline) => pipeline.id === id
+  );
+}
+
+function liveModePipelineEventMatchesSubsystem(
+  event: string,
+  subsystem: HarthmereLiveModeAnySubsystem
+) {
+  return event === subsystem || event.startsWith(`${subsystem}_`);
+}
+
+function liveModePipelineWriteMatchesSubsystem(
+  write: string,
+  subsystem: HarthmereLiveModeAnySubsystem
+) {
+  return (
+    write === subsystem ||
+    write === `${subsystem}_state` ||
+    write.startsWith(`${subsystem}_`)
+  );
+}
+
 export function buildHarthmereLiveModePersistenceMutationPlan(
   envelope: HarthmereLiveModeAuthorityEnvelope
 ): HarthmereLiveModePersistenceMutationPlan {
-  const pipeline = HARTHMERE_LIVE_MODE_REQUIRED_PIPELINES.find(
-    (item) =>
-      item.subsystem === envelope.subsystem ||
-      item.emitsEvents.some((event) => event.includes(envelope.subsystem)) ||
-      item.persistenceWrites.some((write) => write.includes(envelope.subsystem))
+  const explicitPipeline = harthmerePipelineById(
+    HARTHMERE_LIVE_MODE_ACTION_PIPELINE_IDS[envelope.actionKind]
   );
+  const pipeline =
+    explicitPipeline ??
+    HARTHMERE_LIVE_MODE_REQUIRED_PIPELINES.find(
+      (item) => item.subsystem === envelope.subsystem
+    ) ??
+    HARTHMERE_LIVE_MODE_REQUIRED_PIPELINES.find(
+      (item) =>
+        item.emitsEvents.some((event) =>
+          liveModePipelineEventMatchesSubsystem(event, envelope.subsystem)
+        ) ||
+        item.persistenceWrites.some((write) =>
+          liveModePipelineWriteMatchesSubsystem(write, envelope.subsystem)
+        )
+    );
   const fallbackWrite = `${envelope.subsystem}_state`;
   const transactionScope: HarthmereLiveModePersistenceMutationPlan["transactionScope"] =
     envelope.raidId
