@@ -90,14 +90,20 @@ import {
 } from "./mmo_economy_authority";
 import {
   HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID,
+  HARTHMERE_JOBS_BOARD_GROVE_MARKET_BOARD_MARKER_ID,
   createHarthmereJobsBoardClientSnapshotAtTime,
   defaultHarthmereJobsBoardState,
   normalizeHarthmereJobsBoardState,
   reduceHarthmereJobsBoardMutation,
   type HarthmereEscortCompanion,
+  type HarthmereJobsBoardPosting,
   type HarthmereJobsBoardState,
 } from "./mmo_jobs_board_authority";
 import { harthmereJobsBoardQuestMarkerRuntimePositionForTodo } from "./jobs_board_quest_marker_positions";
+import {
+  harthmereJobMarkerPlan,
+  type HarthmereJobProgress,
+} from "./harthmere_job_objective";
 import {
   HARTHMERE_EXOTIC_MATTER_DEPOSIT_REPLENISH_MS,
   defaultHarthmereExoticMatterDepositState,
@@ -1318,6 +1324,145 @@ function jobsBoardTodoIdFromActorMarker(markerId: string) {
   return undefined;
 }
 
+function harthmereJobsBoardTodoIsClaimable(
+  state: HarthmereLiveModeBackendState,
+  todo: HarthmereLiveModeBackendState["jobsBoard"]["todos"][string]
+) {
+  return (
+    todo.status === "completed" &&
+    state.jobsBoard.postings[todo.jobId]?.status === "active"
+  );
+}
+
+function harthmereJobsBoardTodoIsActiveOrClaimable(
+  state: HarthmereLiveModeBackendState,
+  todo: HarthmereLiveModeBackendState["jobsBoard"]["todos"][string]
+) {
+  return (
+    todo.status === "active" || harthmereJobsBoardTodoIsClaimable(state, todo)
+  );
+}
+
+function harthmereJobsBoardFirstRequirementCount(
+  job: HarthmereJobsBoardPosting | undefined
+) {
+  const req = job?.requirements.find(
+    (entry) => entry.itemId || entry.serviceKind || entry.targetId
+  );
+  return Math.max(1, Math.floor(Number(req?.count ?? req?.serviceUnits ?? 1)));
+}
+
+function harthmereJobsBoardCompletedTodoProgress(
+  kind: string | undefined,
+  job: HarthmereJobsBoardPosting | undefined
+): HarthmereJobProgress {
+  const completedCount = harthmereJobsBoardFirstRequirementCount(job);
+  if (kind === "delivery") return { deliveredToRecipient: true };
+  if (kind === "gather") return { gatheredCount: completedCount };
+  if (kind === "cleanup") return { cleanedCount: completedCount };
+  if (kind === "repair") return { repaired: true };
+  if (kind === "escort") return { escortArrived: true };
+  return { inventoryRequirementsSatisfied: true };
+}
+
+function harthmereJobsBoardFirstRequirementItemCount(
+  job: HarthmereJobsBoardPosting | undefined,
+  inventoryItems: Record<string, number> | undefined
+) {
+  const req = job?.requirements.find((entry) => entry.itemId);
+  if (!req?.itemId) return undefined;
+  return Math.max(0, Math.floor(Number(inventoryItems?.[req.itemId] ?? 0)));
+}
+
+function harthmereJobsBoardItemRequirementsSatisfied(
+  job: HarthmereJobsBoardPosting | undefined,
+  inventoryItems: Record<string, number> | undefined
+) {
+  const itemRequirements = (job?.requirements ?? []).filter(
+    (entry) => entry.itemId
+  );
+  return (
+    itemRequirements.length > 0 &&
+    itemRequirements.every((req) => {
+      const needed = Math.max(1, Math.floor(Number(req.count ?? 1)));
+      return (
+        Math.max(
+          0,
+          Math.floor(Number(inventoryItems?.[req.itemId ?? ""] ?? 0))
+        ) >= needed
+      );
+    })
+  );
+}
+
+function harthmereJobsBoardTodoProgress(
+  state: HarthmereLiveModeBackendState,
+  todo: HarthmereLiveModeBackendState["jobsBoard"]["todos"][string],
+  job: HarthmereJobsBoardPosting | undefined
+): HarthmereJobProgress {
+  const kind = todo.kind ?? job?.kind;
+  if (harthmereJobsBoardTodoIsClaimable(state, todo)) {
+    return harthmereJobsBoardCompletedTodoProgress(kind, job);
+  }
+  const progress: HarthmereJobProgress = {};
+  const itemCount = harthmereJobsBoardFirstRequirementItemCount(
+    job,
+    state.inventory.items
+  );
+  if (kind === "gather" && itemCount !== undefined) {
+    progress.gatheredCount = itemCount;
+  }
+  if (kind === "delivery" && itemCount !== undefined) {
+    progress.hasParcel = itemCount > 0;
+  }
+  if (kind === "escort" && job?.escortCompanion?.status === "arrived") {
+    progress.escortArrived = true;
+  }
+  if (
+    job?.requiresFieldWork === false &&
+    harthmereJobsBoardItemRequirementsSatisfied(job, state.inventory.items)
+  ) {
+    progress.inventoryRequirementsSatisfied = true;
+  }
+  return progress;
+}
+
+function harthmereJobsBoardTodoFallbackPosition(
+  state: HarthmereLiveModeBackendState,
+  todo: HarthmereLiveModeBackendState["jobsBoard"]["todos"][string]
+) {
+  const board =
+    state.jobsBoard.boards[todo.boardId] ??
+    state.jobsBoard.boards[state.jobsBoard.defaultBoardId] ??
+    state.jobsBoard.boards[HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID];
+  return board
+    ? ([board.location.x, board.location.y + 1, board.location.z] as [
+        number,
+        number,
+        number
+      ])
+    : ([501.99486179104775, 71, -132.00350672753194] as [
+        number,
+        number,
+        number
+      ]);
+}
+
+function harthmereJobsBoardTodoBoardMarkerId(
+  state: HarthmereLiveModeBackendState,
+  todo: HarthmereLiveModeBackendState["jobsBoard"]["todos"][string]
+) {
+  const board =
+    state.jobsBoard.boards[todo.boardId] ??
+    state.jobsBoard.boards[state.jobsBoard.defaultBoardId] ??
+    state.jobsBoard.boards[HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID];
+  return (
+    board?.markerId ??
+    board?.location?.landmarkId ??
+    HARTHMERE_JOBS_BOARD_GROVE_MARKET_BOARD_MARKER_ID
+  );
+}
+
 function publicSharedInWorldMarkers(
   markers: HarthmereLiveModeBackendState["building"]["inWorldMarkers"]
 ) {
@@ -1334,7 +1479,10 @@ function activeQuestEntriesForActor(state: HarthmereLiveModeBackendState) {
       if (!questId.startsWith("jobs_board:")) return true;
       const todoId = questId.slice("jobs_board:".length);
       const todo = state.jobsBoard.todos[todoId];
-      return todo?.actorId === state.actorId && todo.status === "active";
+      return (
+        todo?.actorId === state.actorId &&
+        harthmereJobsBoardTodoIsActiveOrClaimable(state, todo)
+      );
     })
   );
 }
@@ -1345,7 +1493,10 @@ function inWorldMarkersForActor(state: HarthmereLiveModeBackendState) {
       const todoId = jobsBoardTodoIdFromActorMarker(markerId);
       if (!todoId) return true;
       const todo = state.jobsBoard.todos[todoId];
-      return todo?.actorId === state.actorId && todo.status === "active";
+      return (
+        todo?.actorId === state.actorId &&
+        harthmereJobsBoardTodoIsActiveOrClaimable(state, todo)
+      );
     })
   );
 }
@@ -7776,9 +7927,46 @@ export function reduceHarthmereLiveModeBackendState(
     for (const key of result.sharedStateKeys) sharedStateKeys.add(key);
     if (!result.warnings.length) {
       const questId = `jobs_board:${todo.todoId}`;
-      delete next.quests.active[questId];
-      next.quests.completed[questId] = nowMs;
-      delete next.building.inWorldMarkers[`jobs_board_marker:${todo.todoId}`];
+      const updatedTodo = next.jobsBoard.todos[todo.todoId] ?? todo;
+      const updatedJob = next.jobsBoard.postings[job.jobId] ?? job;
+      const plan = harthmereJobMarkerPlan({
+        kind: updatedTodo.kind ?? updatedJob.kind,
+        requirements: updatedJob.requirements,
+        fieldMarkerId:
+          updatedTodo.mapMarkerId ??
+          updatedJob.mapMarkerId ??
+          updatedTodo.targetId ??
+          updatedJob.targetId,
+        boardMarkerId: harthmereJobsBoardTodoBoardMarkerId(next, updatedTodo),
+        progress: harthmereJobsBoardCompletedTodoProgress(
+          updatedTodo.kind ?? updatedJob.kind,
+          updatedJob
+        ),
+      });
+      next.quests.active[questId] = {
+        stepId: `${updatedTodo.jobId}:return_to_board`,
+        progress: 1,
+      };
+      delete next.quests.completed[questId];
+      const marker = harthmereJobsBoardQuestMarkerRuntimePositionForTodo({
+        mapMarkerId: plan.activeMarkerId ?? plan.boardMarkerId,
+        targetId: plan.activeMarkerId ?? plan.boardMarkerId,
+        fallbackPosition: harthmereJobsBoardTodoFallbackPosition(
+          next,
+          updatedTodo
+        ),
+      });
+      next.building.inWorldMarkers[`jobs_board_marker:${todo.todoId}`] = {
+        markerId: `jobs_board_marker:${todo.todoId}`,
+        plotId: marker.markerId,
+        kind: "map_marker",
+        position: marker.position,
+        label:
+          marker.label && !plan.hint.includes(marker.label)
+            ? `${updatedTodo.title}: ${plan.hint} (${marker.label})`
+            : `${updatedTodo.title}: ${plan.hint}`,
+        createdAtMs: updatedTodo.createdAtMs,
+      };
       touchedModels.add("building_state");
       touchedModels.add("quest_state");
     }
@@ -10211,31 +10399,60 @@ export function reduceHarthmereLiveModeBackendState(
       for (const todo of Object.values(next.jobsBoard.todos)) {
         if (todo.actorId !== envelope.actorId) continue;
         const questId = `jobs_board:${todo.todoId}`;
-        if (todo.status === "active") {
-          next.quests.active[questId] = { stepId: todo.jobId, progress: 0 };
-          if (todo.mapMarkerId) {
-            const board = next.jobsBoard.boards[todo.boardId];
+        const job = next.jobsBoard.postings[todo.jobId];
+        const claimable = harthmereJobsBoardTodoIsClaimable(next, todo);
+        if (todo.status === "active" || claimable) {
+          const plan = harthmereJobMarkerPlan({
+            kind: todo.kind ?? job?.kind,
+            requirements: job?.requirements,
+            fieldMarkerId:
+              todo.mapMarkerId ??
+              job?.mapMarkerId ??
+              todo.targetId ??
+              job?.targetId,
+            boardMarkerId: harthmereJobsBoardTodoBoardMarkerId(next, todo),
+            progress: harthmereJobsBoardTodoProgress(next, todo, job),
+          });
+          next.quests.active[questId] = {
+            stepId: claimable
+              ? `${todo.jobId}:return_to_board`
+              : plan.phase === "return_to_board"
+              ? `${todo.jobId}:return_to_board`
+              : todo.jobId,
+            progress: plan.objectiveMet ? 1 : 0,
+          };
+          delete next.quests.completed[questId];
+          if (plan.activeMarkerId) {
             const marker = harthmereJobsBoardQuestMarkerRuntimePositionForTodo({
-              mapMarkerId: todo.mapMarkerId,
-              targetId: todo.targetId,
-              fallbackPosition: board
-                ? [board.location.x, board.location.y + 1, board.location.z]
-                : [501.99486179104775, 71, -132.00350672753194],
+              mapMarkerId: plan.activeMarkerId,
+              targetId: plan.activeMarkerId,
+              fallbackPosition: harthmereJobsBoardTodoFallbackPosition(
+                next,
+                todo
+              ),
             });
             next.building.inWorldMarkers[`jobs_board_marker:${todo.todoId}`] = {
               markerId: `jobs_board_marker:${todo.todoId}`,
               plotId: marker.markerId,
               kind: "map_marker",
               position: marker.position,
-              label: `${todo.title}: ${marker.label}`,
+              label:
+                marker.label && !plan.hint.includes(marker.label)
+                  ? `${todo.title}: ${plan.hint} (${marker.label})`
+                  : `${todo.title}: ${plan.hint}`,
               createdAtMs: todo.createdAtMs,
             };
+          } else {
+            delete next.building.inWorldMarkers[
+              `jobs_board_marker:${todo.todoId}`
+            ];
           }
-          const job = next.jobsBoard.postings[todo.jobId];
+          touchedModels.add("building_state");
+          touchedModels.add("quest_state");
           const exoticRequirement = job?.requirements.find((requirement) =>
             isHarthmereExoticMatterMaterialItemId(requirement.itemId)
           );
-          if (exoticRequirement) {
+          if (exoticRequirement && plan.phase !== "return_to_board") {
             const targetDeposit = harthmereExoticMatterDepositById(
               exoticRequirement.mapMarkerId ?? job.mapMarkerId
             );
@@ -10270,6 +10487,16 @@ export function reduceHarthmereLiveModeBackendState(
                 label: `${todo.title}: ${marker.label}`,
                 createdAtMs: todo.createdAtMs,
               };
+            }
+          } else {
+            for (const markerId of Object.keys(next.building.inWorldMarkers)) {
+              if (
+                markerId.startsWith(
+                  `jobs_board_exotic_deposit:${todo.todoId}:`
+                )
+              ) {
+                delete next.building.inWorldMarkers[markerId];
+              }
             }
           }
         } else if (todo.status === "completed") {

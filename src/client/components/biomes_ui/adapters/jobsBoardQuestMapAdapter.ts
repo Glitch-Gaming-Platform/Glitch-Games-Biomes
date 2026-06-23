@@ -125,6 +125,20 @@ function jobsBoardTodoMarkerId(todo: HarthmereJobsBoardTodo) {
   return `${JOBS_BOARD_MARKER_ID_PREFIX}${todo.todoId}`;
 }
 
+function jobsBoardTodoIsClaimable(
+  todo: HarthmereJobsBoardTodo,
+  job: HarthmereJobsBoardPosting | undefined
+) {
+  return todo.status === "completed" && job?.status === "active";
+}
+
+function jobsBoardTodoIsActiveOrClaimable(
+  todo: HarthmereJobsBoardTodo,
+  job: HarthmereJobsBoardPosting | undefined
+) {
+  return todo.status === "active" || jobsBoardTodoIsClaimable(todo, job);
+}
+
 // HARTHMERE_STALE_JOBS_BOARD_PIN:
 // A jobs-board active map pin must be dropped once its job is no longer active
 // (completed or abandoned). Otherwise it keeps driving the HUD aid — and, with
@@ -207,6 +221,36 @@ function firstRequirementItemCount(
   return Math.max(0, Math.floor(Number(inventoryItems?.[req.itemId] ?? 0)));
 }
 
+function firstRequirementCount(job: HarthmereJobsBoardPosting | undefined) {
+  const req = job?.requirements?.find(
+    (entry) => entry.itemId || entry.serviceKind || entry.targetId
+  );
+  return Math.max(1, Math.floor(Number(req?.count ?? req?.serviceUnits ?? 1)));
+}
+
+function completedJobsBoardTodoProgress(
+  kind: string | undefined,
+  job: HarthmereJobsBoardPosting | undefined
+): HarthmereJobProgress {
+  const completedCount = firstRequirementCount(job);
+  if (kind === "delivery") {
+    return { deliveredToRecipient: true };
+  }
+  if (kind === "gather") {
+    return { gatheredCount: completedCount };
+  }
+  if (kind === "cleanup") {
+    return { cleanedCount: completedCount };
+  }
+  if (kind === "repair") {
+    return { repaired: true };
+  }
+  if (kind === "escort") {
+    return { escortArrived: true };
+  }
+  return { inventoryRequirementsSatisfied: true };
+}
+
 function itemRequirementsSatisfied(
   job: HarthmereJobsBoardPosting | undefined,
   inventoryItems: Record<string, number> | undefined
@@ -235,24 +279,28 @@ function jobsBoardTodoMarkerPlanForBiomesUI(
 ): HarthmereJobMarkerPlan {
   const kind = todo.kind ?? job?.kind;
   const progress: HarthmereJobProgress = {};
-  const itemCount = firstRequirementItemCount(job, snapshot.inventoryItems);
-  if (kind === "gather" && itemCount !== undefined) {
-    progress.gatheredCount = itemCount;
-  }
-  if (kind === "delivery" && itemCount !== undefined) {
-    progress.hasParcel = itemCount > 0;
-  }
-  if (
-    kind === "escort" &&
-    (job as any)?.escortCompanion?.status === "arrived"
-  ) {
-    progress.escortArrived = true;
-  }
-  if (
-    job?.requiresFieldWork === false &&
-    itemRequirementsSatisfied(job, snapshot.inventoryItems)
-  ) {
-    progress.inventoryRequirementsSatisfied = true;
+  if (jobsBoardTodoIsClaimable(todo, job)) {
+    Object.assign(progress, completedJobsBoardTodoProgress(kind, job));
+  } else {
+    const itemCount = firstRequirementItemCount(job, snapshot.inventoryItems);
+    if (kind === "gather" && itemCount !== undefined) {
+      progress.gatheredCount = itemCount;
+    }
+    if (kind === "delivery" && itemCount !== undefined) {
+      progress.hasParcel = itemCount > 0;
+    }
+    if (
+      kind === "escort" &&
+      (job as any)?.escortCompanion?.status === "arrived"
+    ) {
+      progress.escortArrived = true;
+    }
+    if (
+      job?.requiresFieldWork === false &&
+      itemRequirementsSatisfied(job, snapshot.inventoryItems)
+    ) {
+      progress.inventoryRequirementsSatisfied = true;
+    }
   }
   return harthmereJobMarkerPlan({
     kind,
@@ -289,13 +337,14 @@ function jobsBoardTodoObjectiveForBiomesUI(
 }
 
 function jobsBoardTodoStatusToTrackableStatus(
-  status: HarthmereJobsBoardTodo["status"]
+  todo: HarthmereJobsBoardTodo,
+  job: HarthmereJobsBoardPosting | undefined
 ): MapTrackableQuest["status"] | undefined {
-  if (status === "active") return "active";
-  if (status === "completed") return "completed";
+  if (jobsBoardTodoIsActiveOrClaimable(todo, job)) return "active";
+  if (todo.status === "completed") return "completed";
   // Surface failed jobs in the tracker so the player sees the outcome (its map
   // markers already drop, since only active todos produce landmarks).
-  if (status === "failed") return "failed";
+  if (todo.status === "failed") return "failed";
   return undefined;
 }
 
@@ -310,11 +359,14 @@ export function jobsBoardAcceptedJobLandmarksForBiomesUI(
   const seenTodoIds = new Set<string>();
 
   return snapshot.myTodos.flatMap((todo) => {
-    if (todo.status !== "active" || seenTodoIds.has(todo.todoId)) {
+    const job = jobsById.get(todo.jobId);
+    if (
+      !jobsBoardTodoIsActiveOrClaimable(todo, job) ||
+      seenTodoIds.has(todo.todoId)
+    ) {
       return [];
     }
     seenTodoIds.add(todo.todoId);
-    const job = jobsById.get(todo.jobId);
     const plan = jobsBoardTodoMarkerPlanForBiomesUI(snapshot, todo, job);
     const marker = harthmereJobsBoardQuestMarkerRuntimePositionForTodo({
       mapMarkerId: plan.activeMarkerId ?? todo.mapMarkerId ?? job?.mapMarkerId,
@@ -416,11 +468,15 @@ export function jobsBoardItemSourceLandmarksForBiomesUI(
   const seenTodoIds = new Set<string>();
 
   return snapshot.myTodos.flatMap((todo) => {
-    if (todo.status !== "active" || seenTodoIds.has(todo.todoId)) {
+    const job = jobsById.get(todo.jobId);
+    if (
+      todo.status !== "active" ||
+      jobsBoardTodoIsClaimable(todo, job) ||
+      seenTodoIds.has(todo.todoId)
+    ) {
       return [];
     }
     seenTodoIds.add(todo.todoId);
-    const job = jobsById.get(todo.jobId);
     const guidance = harthmereJobItemSourceGuidance({
       kind: todo.kind,
       requirements: job?.requirements,
@@ -472,10 +528,11 @@ export function jobsBoardTrackableQuestsForBiomesUI(
   const seenTodoIds = new Set<string>();
 
   return snapshot.myTodos.flatMap((todo) => {
-    const status = jobsBoardTodoStatusToTrackableStatus(todo.status);
+    const job = jobsById.get(todo.jobId);
+    const status = jobsBoardTodoStatusToTrackableStatus(todo, job);
     if (!status || seenTodoIds.has(todo.todoId)) return [];
     seenTodoIds.add(todo.todoId);
-    const job = jobsById.get(todo.jobId);
+    const isClaimable = jobsBoardTodoIsClaimable(todo, job);
     const rewardGold = Number(job?.rewardGold ?? 0);
     const plan =
       status === "active"
@@ -483,7 +540,7 @@ export function jobsBoardTrackableQuestsForBiomesUI(
         : undefined;
     const objective = jobsBoardTodoObjectiveForBiomesUI(todo, job, plan);
     const itemGuidance =
-      status === "active"
+      status === "active" && !isClaimable
         ? harthmereJobItemSourceGuidance({
             kind: todo.kind,
             requirements: job?.requirements,
@@ -493,7 +550,7 @@ export function jobsBoardTrackableQuestsForBiomesUI(
     // Full-detail fields for the click-to-review quest panel. The tool-source
     // callout only shows for an active job whose tool the player does NOT own.
     const guidance =
-      status === "active"
+      status === "active" && !isClaimable
         ? harthmereJobToolSourceGuidance({
             kind: todo.kind,
             toolOwned: toolOwnedForAction(
@@ -566,18 +623,23 @@ export function activeJobsBoardMissionStepsForBiomesUI(
     snapshot.myAcceptedJobs.map((job) => [job.jobId, job])
   );
   return snapshot.myTodos
-    .filter((todo) => todo.status === "active")
+    .filter((todo) =>
+      jobsBoardTodoIsActiveOrClaimable(todo, jobsById.get(todo.jobId))
+    )
     .map((todo) => {
       const job = jobsById.get(todo.jobId);
+      const isClaimable = jobsBoardTodoIsClaimable(todo, job);
       const plan = jobsBoardTodoMarkerPlanForBiomesUI(snapshot, todo, job);
       const baseObjective =
         jobsBoardTodoObjectiveForBiomesUI(todo, job, plan) ||
         `Complete accepted board job: ${todo.title || todo.jobId}`;
-      const itemGuidance = harthmereJobItemSourceGuidance({
-        kind: todo.kind,
-        requirements: job?.requirements,
-        inventoryItems: snapshot.inventoryItems,
-      });
+      const itemGuidance = isClaimable
+        ? undefined
+        : harthmereJobItemSourceGuidance({
+            kind: todo.kind,
+            requirements: job?.requirements,
+            inventoryItems: snapshot.inventoryItems,
+          });
       const objective = itemGuidance
         ? `${baseObjective} ${itemGuidance.hint}`
         : baseObjective;
@@ -600,7 +662,13 @@ export function activeJobsBoardMissionStepsForBiomesUI(
 
 export function firstActiveJobsBoardQuestTitleForBiomesUI(raw: unknown) {
   const snapshot = normalizeJobsBoardSnapshotForBiomesUI(raw);
-  return snapshot?.myTodos.find((todo) => todo.status === "active")?.title;
+  if (!snapshot) return undefined;
+  const jobsById = new Map(
+    snapshot.myAcceptedJobs.map((job) => [job.jobId, job])
+  );
+  return snapshot.myTodos.find((todo) =>
+    jobsBoardTodoIsActiveOrClaimable(todo, jobsById.get(todo.jobId))
+  )?.title;
 }
 
 export function firstActiveJobsBoardLandmarkForBiomesUI(raw: unknown) {

@@ -179,8 +179,50 @@ describe("BiomesUI jobs board quest map adapter", () => {
     assert.ok(steps[0].objective.includes("Clear the Muckwad Patch"));
   });
 
-  it("drops markers for non-active todos, but surfaces completed AND failed in the tracker", () => {
+  it("keeps a field-complete job active until the player claims the reward at the board", () => {
     const snapshot = acceptedJobsBoardSnapshot();
+    snapshot.myAcceptedJobs[0].kind = "delivery" as any;
+    snapshot.myAcceptedJobs[0].title = "Deliver Medicine";
+    snapshot.myAcceptedJobs[0].description = "Drop medicine at the lockbox.";
+    snapshot.myAcceptedJobs[0].requirements = [
+      {
+        itemId: "sealed_package",
+        count: 1,
+        mapMarkerId: "clinic_lockbox_marker",
+        targetName: "Clinic lockbox",
+      },
+    ] as any;
+    snapshot.myAcceptedJobs[0].mapMarkerId = "clinic_lockbox_marker";
+    snapshot.myTodos[0] = {
+      ...snapshot.myTodos[0],
+      title: "Deliver Medicine",
+      todoText: "Deliver Sealed Package to Clinic lockbox.",
+      status: "completed",
+      kind: "delivery",
+      mapMarkerId: "clinic_lockbox_marker",
+    } as any;
+
+    const landmarks = jobsBoardAcceptedJobLandmarksForBiomesUI(snapshot);
+    assert.equal(landmarks.length, 1);
+    assert.equal(landmarks[0].id, "jobs_board_marker:harthmere_job_todo_7");
+    assert.equal(landmarks[0].mapMarkerId, "harthmere_market_posting_board");
+    assert.ok(landmarks[0].description.includes("Return to the jobs board"));
+
+    const quests = jobsBoardTrackableQuestsForBiomesUI(snapshot, 1000);
+    assert.equal(quests.length, 1);
+    assert.equal(quests[0].status, "active");
+    assert.equal(quests[0].firstMarkerId, "jobs_board_marker:harthmere_job_todo_7");
+    assert.equal(quests[0].itemSource, undefined);
+    assert.ok(quests[0].objective.includes("Return to the jobs board"));
+
+    const steps = activeJobsBoardMissionStepsForBiomesUI(snapshot, 1000);
+    assert.equal(steps.length, 1);
+    assert.ok(steps[0].objective.includes("Return to the jobs board"));
+  });
+
+  it("drops markers for fully completed todos, but surfaces completed AND failed in the tracker", () => {
+    const snapshot = acceptedJobsBoardSnapshot();
+    snapshot.myAcceptedJobs[0].status = "completed" as any;
     snapshot.myTodos = [
       { ...snapshot.myTodos[0], todoId: "completed_todo", status: "completed" },
       { ...snapshot.myTodos[0], todoId: "failed_todo", status: "failed" },

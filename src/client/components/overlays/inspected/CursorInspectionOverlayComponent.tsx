@@ -1,6 +1,9 @@
 import { useCanTalkToNpc } from "@/client/components/challenges/TalkToNPCDefaultDialog";
 import { openHarthmereObjectContainer } from "@/client/components/challenges/harthmereObjectContainers";
-import { performHarthmereObjectInteraction } from "@/client/components/challenges/harthmereObjectInteractions";
+import {
+  completeHarthmereJobsBoardFieldObjectiveForObjectSoon,
+  performHarthmereObjectInteraction,
+} from "@/client/components/challenges/harthmereObjectInteractions";
 import { useClientContext } from "@/client/components/contexts/ClientContextReactContext";
 import { CURSOR_INSPECTION_SHORTCUT_KEYS_FOR_TEST } from "@/client/components/overlays/inspected/inspectionShortcutKeys";
 import { MaybeError } from "@/client/components/system/MaybeError";
@@ -82,6 +85,8 @@ export const CursorInspectionComponent: React.FunctionComponent<
   // was built from a live ECS world object (seeded chest/crate/...). Prefer the
   // real id so container de-dupe and interaction handlers target the instance.
   const harthmereObjectInteractionEntityId = overlay?.entityId;
+  const harthmereObjectId =
+    overlay?.kind === "harthmere_object" ? overlay.objectId : undefined;
   const isHarthmereObjectContainer =
     overlay?.kind !== "placeable" &&
     isHarthmereContainerObjectLabel({
@@ -134,6 +139,12 @@ export const CursorInspectionComponent: React.FunctionComponent<
       ret.unshift({
         title: harthmereObjectInteraction?.title ?? "Open Container",
         onKeyDown: () => {
+          completeHarthmereJobsBoardFieldObjectiveForObjectSoon({
+            objectId: harthmereObjectId,
+            label: harthmereObjectLabel,
+            interactionKind: "open_container",
+            resources,
+          });
           openHarthmereObjectContainer({
             entityId: harthmereObjectInteractionEntityId ?? INVALID_BIOMES_ID,
             label: harthmereObjectLabel,
@@ -153,6 +164,7 @@ export const CursorInspectionComponent: React.FunctionComponent<
         onKeyDown: () => {
           performHarthmereObjectInteraction({
             entityId: harthmereObjectInteractionEntityId ?? INVALID_BIOMES_ID,
+            objectId: harthmereObjectId,
             label: harthmereObjectLabel,
             interaction: harthmereObjectInteraction ?? {
               kind: "inspect",
@@ -187,6 +199,7 @@ export const CursorInspectionComponent: React.FunctionComponent<
     harthmereObjectInteraction,
     harthmereObjectActionable,
     harthmereObjectInteractionEntityId,
+    harthmereObjectId,
     harthmereObjectLabel,
     inspectText,
     isHarthmereObjectContainer,

@@ -55,9 +55,22 @@ must not block movement. Visible crates, chests, boxes, bags, and toolbags shoul
 keep their `F` prompt and open through the normal object-container panel even
 when they are quest-related.
 
+Jobs-board quests have two distinct completion moments: field objective complete
+and payout claimed. Field completion must leave the job active/claimable, route
+the HUD/BiomesUI/map marker back to the physical jobs board, and show a clear
+on-screen completion message. The quest is only fully completed after the player
+returns to the board and claims the reward. Delivery drop-offs, repairs, gathers,
+cleanups, escorts, and item-only jobs should all use this same routing rule.
+
 Recommended focused regression commands for these areas:
 
 ```bash
+npx mocha -r ts-node/register -r tsconfig-paths/register \
+  src/shared/harthmere/test/harthmere_job_objective.test.ts \
+  src/client/components/biomes_ui/adapters/__tests__/jobsBoardQuestMapAdapter.test.ts \
+  src/client/components/challenges/harthmereObjectInteractions.wantedBoard.test.ts \
+  src/shared/harthmere/test/live_mode_backend.test.ts
+
 npx mocha -r ts-node/register -r tsconfig-paths/register \
   src/client/components/challenges/harthmereInventoryBiomesUIActions.test.ts \
   src/shared/harthmere/test/harthmere_biomes_ecs_bridge.test.ts

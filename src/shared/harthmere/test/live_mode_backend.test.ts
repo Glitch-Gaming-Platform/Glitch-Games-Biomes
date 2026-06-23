@@ -8485,6 +8485,98 @@ describe("reduceHarthmereLiveModeBackendState — physical jobs board and live t
     assert.equal(state.inventory.items.sealed_package, 1);
   });
 
+  it("delivery drop-off completion keeps the job active and points back to the board", function () {
+    let s = freshState();
+    s.jobsBoard.postings.job_delivery_dropoff = {
+      jobId: "job_delivery_dropoff",
+      boardId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID,
+      issuerKind: "town",
+      issuerId: "harthmere_grove",
+      title: "Deliver Medicine to the Clinic Lockbox",
+      description: "Deliver the sealed package to the clinic lockbox.",
+      kind: "delivery",
+      requirements: [
+        {
+          itemId: "sealed_package",
+          count: 1,
+          mapMarkerId: "clinic_lockbox_marker",
+          targetName: "Clinic lockbox",
+        },
+      ],
+      rewardGold: 45,
+      escrowGold: 45,
+      reputationDelta: 1,
+      status: "open",
+      townId: "harthmere_grove",
+      regionId: "harthmere_grove_region",
+      createdAtMs: NOW_MS,
+      deadlineAtMs: NOW_MS + 86_400_000,
+      failurePenaltyGold: 0,
+      requiresFieldWork: true,
+      mapMarkerId: "clinic_lockbox_marker",
+      abuseFlags: [],
+      logs: [],
+    } as any;
+
+    ({ state: s } = applyOne(
+      s,
+      "request_jobs_board_mutation",
+      {
+        operation: "accept_job",
+        boardId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID,
+        jobId: "job_delivery_dropoff",
+      },
+      {
+        subsystem: "jobs",
+        targetId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID,
+        serverActorPosition: {
+          x: 501.99486179104775,
+          y: 70,
+          z: -132.00350672753194,
+        },
+      }
+    ));
+    const todo = Object.values(s.jobsBoard.todos)[0];
+    assert.ok(todo, "accepting the delivery should create a todo");
+
+    const result = applyOne(
+      s,
+      "request_jobs_board_mutation",
+      {
+        operation: "complete_job_quest",
+        boardId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID,
+        jobId: "job_delivery_dropoff",
+        questTodoId: todo.todoId,
+        completedTargetId: "clinic_lockbox_marker",
+        completionNote: "delivered at lockbox",
+      },
+      {
+        subsystem: "jobs",
+        targetId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID,
+        serverActorPosition: {
+          x: 751,
+          y: 53,
+          z: -562,
+        },
+      }
+    );
+    s = result.state;
+
+    assert.deepEqual(result.summary.warnings, []);
+    assert.equal(s.jobsBoard.postings.job_delivery_dropoff.status, "active");
+    assert.equal(s.jobsBoard.todos[todo.todoId].status, "completed");
+    assert.equal(s.inventory.items.sealed_package ?? 0, 0);
+    assert.deepEqual(s.quests.active[`jobs_board:${todo.todoId}`], {
+      stepId: "job_delivery_dropoff:return_to_board",
+      progress: 1,
+    });
+    assert.equal(s.quests.completed[`jobs_board:${todo.todoId}`], undefined);
+    const marker = s.building.inWorldMarkers[`jobs_board_marker:${todo.todoId}`];
+    assert.ok(marker, "drop-off completion should leave a board turn-in marker");
+    assert.equal(marker.plotId, "harthmere_market_posting_board");
+    assert.ok(marker.label.includes("Return to the jobs board"));
+  });
+
   function addOpenEscortJob(state: HarthmereLiveModeBackendState) {
     state.jobsBoard.postings.job_escort_newcomer = {
       jobId: "job_escort_newcomer",
@@ -8610,7 +8702,7 @@ describe("reduceHarthmereLiveModeBackendState — physical jobs board and live t
     );
   });
 
-  it("escort arrival completes the quest objective and removes its active marker", function () {
+  it("escort arrival completes the field objective and routes back to the board", function () {
     let s = freshState();
     addOpenEscortJob(s);
     ({ state: s } = applyOne(
@@ -8661,12 +8753,15 @@ describe("reduceHarthmereLiveModeBackendState — physical jobs board and live t
       "arrived"
     );
     assert.equal(Object.values(s.jobsBoard.todos)[0].status, "completed");
-    assert.equal(
-      s.building.inWorldMarkers[`jobs_board_marker:${todo.todoId}`],
-      undefined
-    );
-    assert.equal(s.quests.active[`jobs_board:${todo.todoId}`], undefined);
-    assert.equal(s.quests.completed[`jobs_board:${todo.todoId}`], NOW_MS);
+    assert.deepEqual(s.quests.active[`jobs_board:${todo.todoId}`], {
+      stepId: "job_escort_newcomer:return_to_board",
+      progress: 1,
+    });
+    assert.equal(s.quests.completed[`jobs_board:${todo.todoId}`], undefined);
+    const marker = s.building.inWorldMarkers[`jobs_board_marker:${todo.todoId}`];
+    assert.ok(marker, "claimable escort job should keep a return-to-board marker");
+    assert.equal(marker.plotId, "harthmere_market_posting_board");
+    assert.ok(marker.label.includes("Return to the jobs board"));
   });
 
   it("filters failed jobs-board todos out of quest and marker snapshots", function () {
@@ -9046,13 +9141,16 @@ describe("reduceHarthmereLiveModeBackendState — physical jobs board and live t
     );
 
     assert.deepEqual(completedQuest.summary.warnings, []);
-    assert.equal(
+    const turnInMarker =
       completedQuest.state.building.inWorldMarkers[
         `jobs_board_marker:${todo.todoId}`
-      ],
-      undefined,
-      "the primary accepted job marker should be removed once the quest objective is completed"
+      ];
+    assert.ok(
+      turnInMarker,
+      "the primary accepted job marker should route back to the board until payout is claimed"
     );
+    assert.equal(turnInMarker.plotId, "harthmere_town_market_posting_board");
+    assert.ok(turnInMarker.label.includes("Return to the jobs board"));
     assert.equal(
       Object.keys(completedQuest.state.building.inWorldMarkers).some(
         (markerId) =>

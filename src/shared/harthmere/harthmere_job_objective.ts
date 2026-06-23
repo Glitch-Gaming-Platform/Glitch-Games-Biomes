@@ -21,6 +21,7 @@
 
 import {
   HARTHMERE_BUSINESS_OWNER_MARKER_PREFIX,
+  harthmereDeliveryRequirement,
   harthmereDeliveryPlan,
   type HarthmereJobsBoardRequirement,
 } from "@/shared/harthmere/mmo_jobs_board_authority";
@@ -541,8 +542,19 @@ export function harthmereJobMarkerPlan(input: {
       kind,
       requirements: input.requirements,
     });
+    const deliveryRequirement = harthmereDeliveryRequirement({
+      kind,
+      requirements: input.requirements,
+    });
     const recipientMarker = plan?.recipient.markerId ?? fieldMarker;
-    const parcelName = plan?.parcelItemId ?? "the parcel";
+    const parcelName = plan?.parcelItemId
+      ? displayNameForItemId(plan.parcelItemId)
+      : "the parcel";
+    const recipientName =
+      deliveryRequirement?.targetName?.trim() ||
+      (plan?.recipient.kind === "person"
+        ? "the marked recipient"
+        : "the marked drop-off");
     if (progress.deliveredToRecipient) {
       return boardPhase(
         kind,
@@ -569,8 +581,8 @@ export function harthmereJobMarkerPlan(input: {
       objectiveMet: false,
       hint:
         plan?.recipient.kind === "person"
-          ? `Take ${parcelName} to the marked person and hand it over.`
-          : `Deliver ${parcelName} to the marked drop-off.`,
+          ? `Take ${parcelName} to ${recipientName} and talk to them to hand it over.`
+          : `Deliver ${parcelName} to ${recipientName}. Stand at the drop-off and press F to complete the delivery.`,
     };
   }
 

@@ -159,6 +159,7 @@ describe("harthmereJobMarkerPlan — per-kind phase + marker resolution", () => 
         "harthmere_owner:npc_outpost_brightcart_trader"
       );
       assert.equal(plan.objectiveMet, false);
+      assert.ok(plan.hint.includes("talk to them to hand it over"));
     });
 
     it("guides to the pickup spot first when the parcel must be collected", () => {
@@ -220,12 +221,15 @@ describe("harthmereJobMarkerPlan — per-kind phase + marker resolution", () => 
             itemId: "apple_basket",
             count: 1,
             mapMarkerId: "grove_mail_bank_satchel",
+            targetName: "Fountain food satchel",
           },
         ],
         boardMarkerId: BOARD,
         progress: { hasParcel: true },
       });
       assert.equal(plan.activeMarkerId, "grove_mail_bank_satchel");
+      assert.ok(plan.hint.includes("Fountain food satchel"));
+      assert.ok(plan.hint.includes("press F"));
     });
   });
 

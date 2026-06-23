@@ -1,6 +1,9 @@
 import assert from "assert";
 import { HARTHMERE_WANTED_BOARD_OPEN_EVENT } from "@/client/components/challenges/harthmereEvents";
-import { performHarthmereObjectInteraction } from "./harthmereObjectInteractions";
+import {
+  harthmereJobsBoardObjectMatchesFieldTarget,
+  performHarthmereObjectInteraction,
+} from "./harthmereObjectInteractions";
 
 describe("harthmere object interactions wanted board dispatch", () => {
   it("dispatches the wanted-board open event for F interactions", () => {
@@ -42,5 +45,74 @@ describe("harthmere object interactions wanted board dispatch", () => {
     assert.equal(detail?.source, "harthmere_object_interaction");
     assert.equal(detail?.label, "Farming Wanted Board");
     assert.equal(detail?.entityId, "wanted_board_entity");
+  });
+});
+
+describe("harthmere jobs board object target matching", () => {
+  it("matches visible lockbox objects to delivery drop-off jobs by id or label", () => {
+    const todo = {
+      todoId: "todo_delivery",
+      jobId: "job_delivery",
+      actorId: "actor",
+      boardId: "harthmere_grove_market_jobs_board",
+      title: "Deliver Medicine",
+      todoText: "Deliver medicine.",
+      status: "active",
+      kind: "delivery",
+      mapMarkerId: "clinic_lockbox_marker",
+      townId: "harthmere_grove",
+      regionId: "harthmere_grove_region",
+      createdAtMs: 1,
+      dueAtMs: 2,
+      questBoardTodo: true,
+    } as any;
+    const job = {
+      jobId: "job_delivery",
+      boardId: "harthmere_grove_market_jobs_board",
+      issuerKind: "town",
+      issuerId: "harthmere_grove",
+      title: "Deliver Medicine",
+      description: "Drop off medicine.",
+      kind: "delivery",
+      requirements: [
+        {
+          itemId: "sealed_package",
+          count: 1,
+          mapMarkerId: "clinic_lockbox_marker",
+          targetName: "Clinic lockbox",
+        },
+      ],
+      rewardGold: 1,
+      escrowGold: 1,
+      status: "active",
+      townId: "harthmere_grove",
+      regionId: "harthmere_grove_region",
+      createdAtMs: 1,
+      deadlineAtMs: 2,
+      acceptedByActorId: "actor",
+      requiresFieldWork: true,
+      mapMarkerId: "clinic_lockbox_marker",
+      abuseFlags: [],
+      logs: [],
+    } as any;
+
+    assert.equal(
+      harthmereJobsBoardObjectMatchesFieldTarget({
+        objectId: "clinic_lockbox_marker",
+        label: "Clinic Lockbox",
+        todo,
+        job,
+      }),
+      true
+    );
+    assert.equal(
+      harthmereJobsBoardObjectMatchesFieldTarget({
+        objectId: "unrelated_crate",
+        label: "Clothing Crate",
+        todo,
+        job,
+      }),
+      false
+    );
   });
 });

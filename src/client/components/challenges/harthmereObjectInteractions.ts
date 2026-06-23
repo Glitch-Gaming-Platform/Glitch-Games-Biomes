@@ -16,8 +16,16 @@ import {
   HARTHMERE_JOBS_BOARD_OPEN_EVENT,
   HARTHMERE_WANTED_BOARD_OPEN_EVENT,
 } from "@/client/components/challenges/harthmereEvents";
+import {
+  fetchHarthmereJobsBoardState,
+  submitHarthmereJobsBoardMutation,
+  type HarthmereJobsBoardPosting,
+  type HarthmereJobsBoardSnapshot,
+  type HarthmereJobsBoardTodo,
+} from "@/client/components/harthmere_jobs_board/jobsBoardLiveAdapter";
 import { dispatchHarthmereHudActionEvent } from "@/shared/harthmere/harthmere_hud_key_bindings";
 import type { HarthmereObjectInteraction } from "@/shared/harthmere/object_interaction_semantics";
+import { fireAndForget } from "@/shared/util/async";
 
 // HARTHMERE_REPAIR_PERFORMED_EVENT: fired when the player interacts with a
 // repair target. `repaired` is true only when a repair tool is equipped — that
@@ -37,6 +45,7 @@ export const HARTHMERE_WORLD_OBJECT_INTERACTION_EVENT =
 
 export interface HarthmereWorldObjectInteractionEventDetail {
   entityId?: unknown;
+  objectId?: string;
   label?: string | null;
   kind: HarthmereObjectInteraction["kind"];
   title: string;
@@ -61,6 +70,205 @@ const HARTHMERE_READABLE_OBJECT_TEXT = new Map<string, string>(
 
 function normalizedLabel(label?: string | null) {
   return (label ?? "").trim().replace(/\s+/g, " ").toLowerCase();
+}
+
+function normalizedTarget(value?: unknown) {
+  if (typeof value !== "string") return undefined;
+  const normalized = normalizedLabel(value);
+  return normalized || undefined;
+}
+
+function targetAliasesForObject(input: {
+  objectId?: string;
+  label?: string | null;
+}) {
+  const aliases = new Set<string>();
+  const objectId = normalizedTarget(input.objectId);
+  if (objectId) {
+    aliases.add(objectId);
+    if (objectId.startsWith("ecs:")) {
+      aliases.add(objectId.slice("ecs:".length));
+    }
+    if (objectId.startsWith("jobs_board_marker:")) {
+      aliases.add(objectId.slice("jobs_board_marker:".length));
+    }
+  }
+  const label = normalizedTarget(input.label);
+  if (label) aliases.add(label);
+  return aliases;
+}
+
+function addTargetAlias(aliases: Set<string>, value?: unknown) {
+  const normalized = normalizedTarget(value);
+  if (!normalized) return;
+  aliases.add(normalized);
+  if (normalized.startsWith("harthmere_owner:")) {
+    aliases.add(normalized.slice("harthmere_owner:".length));
+  }
+}
+
+function jobsBoardRequirementTargetAliases(
+  req: HarthmereJobsBoardPosting["requirements"][number]
+) {
+  const aliases = new Set<string>();
+  addTargetAlias(aliases, (req as any).mapMarkerId);
+  addTargetAlias(aliases, (req as any).targetId);
+  addTargetAlias(aliases, (req as any).targetName);
+  addTargetAlias(aliases, (req as any).recipientNpcId);
+  return aliases;
+}
+
+function jobsBoardPostingTargetAliases(
+  todo: HarthmereJobsBoardTodo,
+  job: HarthmereJobsBoardPosting | undefined
+) {
+  const aliases = new Set<string>();
+  addTargetAlias(aliases, todo.mapMarkerId);
+  addTargetAlias(aliases, todo.targetId);
+  for (const req of job?.requirements ?? []) {
+    for (const alias of jobsBoardRequirementTargetAliases(req)) {
+      aliases.add(alias);
+    }
+  }
+  addTargetAlias(aliases, job?.mapMarkerId);
+  addTargetAlias(aliases, job?.targetId);
+  return aliases;
+}
+
+export function harthmereJobsBoardObjectMatchesFieldTarget(input: {
+  objectId?: string;
+  label?: string | null;
+  todo: HarthmereJobsBoardTodo;
+  job?: HarthmereJobsBoardPosting;
+}) {
+  const objectAliases = targetAliasesForObject(input);
+  if (!objectAliases.size) return false;
+  const targetAliases = jobsBoardPostingTargetAliases(input.todo, input.job);
+  for (const alias of objectAliases) {
+    if (targetAliases.has(alias)) return true;
+  }
+  return false;
+}
+
+function bestCompletionTargetId(input: {
+  objectId?: string;
+  label?: string | null;
+  todo: HarthmereJobsBoardTodo;
+  job?: HarthmereJobsBoardPosting;
+}) {
+  const objectAliases = targetAliasesForObject(input);
+  for (const req of input.job?.requirements ?? []) {
+    const aliases = jobsBoardRequirementTargetAliases(req);
+    if ([...objectAliases].some((alias) => aliases.has(alias))) {
+      return (
+        (req as any).recipientNpcId ??
+        (req as any).targetId ??
+        (req as any).mapMarkerId ??
+        input.objectId ??
+        normalizedLabel(input.label)
+      );
+    }
+  }
+  return (
+    input.todo.targetId ??
+    input.todo.mapMarkerId ??
+    input.job?.targetId ??
+    input.job?.mapMarkerId ??
+    input.objectId ??
+    normalizedLabel(input.label)
+  );
+}
+
+const inFlightJobsBoardFieldCompletions = new Set<string>();
+
+async function completeHarthmereJobsBoardFieldObjectiveForObject(input: {
+  objectId?: string;
+  label?: string | null;
+  interactionKind?: HarthmereObjectInteraction["kind"] | "open_container";
+  resources: Parameters<typeof addToast>[0];
+}) {
+  if (typeof window === "undefined") return;
+  const snapshot: HarthmereJobsBoardSnapshot =
+    await fetchHarthmereJobsBoardState();
+  const jobsById = new Map(
+    snapshot.myAcceptedJobs.map((job) => [job.jobId, job])
+  );
+  const todo = snapshot.myTodos.find((candidate) => {
+    if (candidate.status !== "active") return false;
+    const job = jobsById.get(candidate.jobId);
+    return harthmereJobsBoardObjectMatchesFieldTarget({
+      objectId: input.objectId,
+      label: input.label,
+      todo: candidate,
+      job,
+    });
+  });
+  if (!todo) return;
+  const job = jobsById.get(todo.jobId);
+  const key = `${todo.todoId}:${input.objectId ?? normalizedLabel(input.label)}`;
+  if (inFlightJobsBoardFieldCompletions.has(key)) return;
+  inFlightJobsBoardFieldCompletions.add(key);
+  try {
+    if (input.interactionKind === "repair" && !isHarthmereRepairToolEquipped()) {
+      return;
+    }
+    const usedToolAction =
+      input.interactionKind === "repair" && isHarthmereRepairToolEquipped()
+        ? "repair"
+        : undefined;
+    const snapshotAfter = await submitHarthmereJobsBoardMutation(
+      "complete_job_quest",
+      {
+        jobId: todo.jobId,
+        boardId: todo.boardId,
+        questTodoId: todo.todoId,
+        completedTargetId: bestCompletionTargetId({
+          objectId: input.objectId,
+          label: input.label,
+          todo,
+          job,
+        }),
+        ...(usedToolAction ? { usedToolAction } : {}),
+      },
+      {
+        boardId: todo.boardId,
+      }
+    );
+    const updatedTodo = snapshotAfter.myTodos.find(
+      (candidate) => candidate.todoId === todo.todoId
+    );
+    if (updatedTodo?.status === "completed") {
+      addToast(input.resources, {
+        kind: "basic",
+        id: `harthmere-jobs-board-field-complete:${todo.todoId}`,
+        message: `${
+          job?.title ?? todo.title ?? "Job step"
+        } complete. Return to the jobs board to collect your reward.`,
+      });
+    }
+  } catch {
+    addToast(input.resources, {
+      kind: "basic",
+      id: `harthmere-jobs-board-field-incomplete:${todo.todoId}`,
+      message: `${
+        job?.title ?? todo.title ?? "Job step"
+      } is not ready to complete here yet. Check the objective, required items, or equipped tool.`,
+    });
+  } finally {
+    inFlightJobsBoardFieldCompletions.delete(key);
+  }
+}
+
+export function completeHarthmereJobsBoardFieldObjectiveForObjectSoon(input: {
+  objectId?: string;
+  label?: string | null;
+  interactionKind?: HarthmereObjectInteraction["kind"] | "open_container";
+  resources: Parameters<typeof addToast>[0];
+}) {
+  fireAndForget(
+    completeHarthmereJobsBoardFieldObjectiveForObject(input),
+    "Error completing Harthmere jobs board field objective"
+  );
 }
 
 export function harthmereReadableObjectTextForLabel(label?: string | null) {
@@ -128,6 +336,7 @@ export function dispatchHarthmereWorldObjectInteractionEvent(
 
 export function performHarthmereObjectInteraction(input: {
   label?: string | null;
+  objectId?: string;
   entityId: unknown;
   interaction: HarthmereObjectInteraction;
   resources: Parameters<typeof addToast>[0];
@@ -135,9 +344,16 @@ export function performHarthmereObjectInteraction(input: {
 }) {
   dispatchHarthmereWorldObjectInteractionEvent({
     entityId: input.entityId,
+    objectId: input.objectId,
     label: input.label,
     kind: input.interaction.kind,
     title: input.interaction.title,
+  });
+  completeHarthmereJobsBoardFieldObjectiveForObjectSoon({
+    objectId: input.objectId,
+    label: input.label,
+    interactionKind: input.interaction.kind,
+    resources: input.resources,
   });
   for (const activityId of dailyTasksForObjectInteraction(input)) {
     completeHarthmereDailyTaskSoon(activityId);
