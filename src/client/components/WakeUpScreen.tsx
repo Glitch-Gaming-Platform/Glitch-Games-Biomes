@@ -2,6 +2,7 @@ import { emitHarthmereGlitchBehaviorEvent } from "@/client/game/glitch/harthmere
 import {
   HARTHMERE_GLITCH_IDENTITY_CHANGED_EVENT,
   getHarthmereGlitchUserName,
+  readHarthmereGlitchIdentity,
 } from "@/client/game/glitch/harthmere_glitch_identity";
 import { WakeupMuckParticles } from "@/client/components/Particles";
 import { setCanvasEffect } from "@/client/components/canvas_effects";
@@ -887,14 +888,44 @@ function clothingCardSummary(clothing: HarthmereCharacterClothing) {
 function hasCurrentHarthmereCharacterCustomization(userId: BiomesId) {
   if (typeof window === "undefined") return false;
   try {
-    return Boolean(
-      window.localStorage.getItem(harthmerePlayerFaceStorageKey(userId)) &&
-        window.localStorage.getItem(harthmerePlayerBodyStorageKey(userId)) &&
-        window.localStorage.getItem(harthmerePlayerClothingStorageKey(userId))
+    return harthmereWakeupCustomizationOwnerKeys(userId).some((ownerKey) =>
+      Boolean(
+        window.localStorage.getItem(harthmerePlayerFaceStorageKey(ownerKey)) &&
+          window.localStorage.getItem(
+            harthmerePlayerBodyStorageKey(ownerKey)
+          ) &&
+          window.localStorage.getItem(
+            harthmerePlayerClothingStorageKey(ownerKey)
+          )
+      )
     );
   } catch {
     return false;
   }
+}
+
+function harthmereWakeupCustomizationOwnerKeys(userId: BiomesId) {
+  const owners = new Set<string>();
+  const addOwner = (value: unknown) => {
+    const raw = String(value ?? "").trim();
+    if (!raw || raw === "0" || /^guest( user)?$/i.test(raw)) return;
+    owners.add(raw);
+    if (raw.startsWith("biomes:")) {
+      const numeric = raw.slice("biomes:".length).trim();
+      if (numeric) owners.add(numeric);
+    } else if (/^\d+$/.test(raw)) {
+      owners.add(`biomes:${raw}`);
+    }
+  };
+
+  addOwner(userId);
+  const identity = readHarthmereGlitchIdentity();
+  addOwner(identity?.gameUserId);
+  addOwner(identity?.biomesUserId);
+  addOwner(
+    identity?.glitchUserId ? `glitch:${identity.glitchUserId}` : undefined
+  );
+  return [...owners];
 }
 
 function builderUrlInstallId() {
@@ -913,9 +944,7 @@ function builderStoredInstallId() {
     return (
       window.localStorage.getItem("biomes.glitch.installId") ??
       window.localStorage.getItem("biomes.localDev.harthmere.installId") ??
-      window.localStorage.getItem(
-        "biomes.localDev.harthmere.localInstallId"
-      ) ??
+      window.localStorage.getItem("biomes.localDev.harthmere.localInstallId") ??
       undefined
     );
   } catch {
@@ -1513,14 +1542,10 @@ const CharacterWakeupContent: React.FunctionComponent<{
       }
       saveHarthmerePlayerClothingConfig(userId, next, harthmereBody);
       queueHarthmereBuilderGlitchSave("builder-clothing-slot");
-      emitHarthmereGlitchBehaviorEvent(
-        "character_builder",
-        "change_clothing",
-        {
-          slot,
-          value: item?.id ?? "none",
-        }
-      );
+      emitHarthmereGlitchBehaviorEvent("character_builder", "change_clothing", {
+        slot,
+        value: item?.id ?? "none",
+      });
       if (harthmereBuilderAuditEnabled()) {
         window.dispatchEvent(
           new CustomEvent("biomes:harthmere-builder-clothing-applied", {
@@ -2071,12 +2096,17 @@ const WakeUpContent: React.FunctionComponent<{ onWakeup: () => void }> = ({
   useEffect(() => {
     const onCloudRestore = (event: Event) => {
       if (cloudRestoreAutoWakeupRef.current) return;
-      const detail = (event as CustomEvent<HarthmereCloudRestoreDetail>)
-        .detail;
+      const detail = (event as CustomEvent<HarthmereCloudRestoreDetail>).detail;
       const hasRestoredCharacter =
         detail?.hasCharacterCustomization === true ||
         hasCurrentHarthmereCharacterCustomization(userId);
-      if (!hasRestoredCharacter) return;
+      const labelName = reactResources.get("/ecs/c/label", userId)?.text ?? "";
+      if (
+        !hasRestoredCharacter ||
+        !hasCompletedHarthmereWakeupProfile(userId, labelName)
+      ) {
+        return;
+      }
 
       const glitchName = getHarthmereGlitchUserName();
       if (glitchName && !/^guest( user)?$/i.test(glitchName)) {
@@ -2101,13 +2131,14 @@ const WakeUpContent: React.FunctionComponent<{ onWakeup: () => void }> = ({
       HARTHMERE_GLITCH_CLOUD_SAVE_RESTORED_EVENT,
       onCloudRestore
     );
+    onCloudRestore(new CustomEvent(HARTHMERE_GLITCH_CLOUD_SAVE_RESTORED_EVENT));
     return () => {
       window.removeEventListener(
         HARTHMERE_GLITCH_CLOUD_SAVE_RESTORED_EVENT,
         onCloudRestore
       );
     };
-  }, [events, onWakeup, userId]);
+  }, [events, onWakeup, reactResources, userId]);
 
   const doUsernameSave = async () => {
     emitHarthmereGlitchBehaviorEvent("onboarding_name", "submit", {
@@ -2259,10 +2290,7 @@ const WakeUpContent: React.FunctionComponent<{ onWakeup: () => void }> = ({
           role="button"
           tabIndex={0}
           onClick={() => {
-            emitHarthmereGlitchBehaviorEvent(
-              "onboarding_wakeup",
-              "complete"
-            );
+            emitHarthmereGlitchBehaviorEvent("onboarding_wakeup", "complete");
             onWakeup();
           }}
           onKeyDown={(event) => {
@@ -2286,10 +2314,7 @@ const WakeUpContent: React.FunctionComponent<{ onWakeup: () => void }> = ({
             style={{ opacity: showWakeupContinue ? 1 : 0 }}
             onClick={(event) => {
               event.stopPropagation();
-              emitHarthmereGlitchBehaviorEvent(
-                "onboarding_wakeup",
-                "complete"
-              );
+              emitHarthmereGlitchBehaviorEvent("onboarding_wakeup", "complete");
               onWakeup();
             }}
           >

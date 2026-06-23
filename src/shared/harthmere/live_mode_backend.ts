@@ -517,18 +517,35 @@ function liveEntityLiftedPosition(
   };
 }
 
+function liveEntitySafeRestingBasePosition(
+  target: HarthmereLiveCombatEntitySnapshot
+) {
+  const current = target.position;
+  const home = target.homePosition;
+  const highestGroundY = Math.max(
+    Number.isFinite(Number(current?.y)) ? Number(current.y) : -Infinity,
+    Number.isFinite(Number(home?.y)) ? Number(home.y) : -Infinity,
+    0
+  );
+  return {
+    x: Number(current?.x ?? home?.x ?? 0),
+    y: highestGroundY,
+    z: Number(current?.z ?? home?.z ?? 0),
+  };
+}
+
 function liveEntityDefeatRestingPosition(
   target: HarthmereLiveCombatEntitySnapshot
 ) {
   return liveEntityLiftedPosition(
-    target.position,
+    liveEntitySafeRestingBasePosition(target),
     HARTHMERE_LIVE_ENTITY_DEFEAT_POSITION_LIFT
   );
 }
 
 function liveEntityLootDropPosition(target: HarthmereLiveCombatEntitySnapshot) {
   return liveEntityLiftedPosition(
-    target.position,
+    liveEntitySafeRestingBasePosition(target),
     HARTHMERE_LIVE_ENTITY_LOOT_DROP_POSITION_LIFT
   );
 }
@@ -6175,6 +6192,16 @@ export function tickHarthmereLiveModeStaminaForGameplay(
     allowDeathFromStamina?: boolean;
   }
 ) {
+  if (
+    (state.combat.deathState ?? "alive") !== "alive" ||
+    normalizedLiveModePlayerHp(state) <= 0
+  ) {
+    return {
+      warnings: [],
+      deathTriggered: false,
+      changed: false,
+    };
+  }
   const pools = ensureCombatResourcePools(state);
   const allowDeathFromStamina = input.allowDeathFromStamina !== false;
   const maxStamina = Math.max(1, Number(pools.maxResources.stamina ?? 100));

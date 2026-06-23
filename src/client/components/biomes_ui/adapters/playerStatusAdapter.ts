@@ -60,6 +60,11 @@ export interface BiomesUIVitalsResourceDisplayState {
   resourceMax: number;
 }
 
+export interface BiomesUIVitalsStaminaDisplayState {
+  staminaValue: number;
+  staminaMax: number;
+}
+
 function safeNumber(value: unknown, fallback = 0): number {
   const numeric = Number(value);
   return Number.isFinite(numeric) ? numeric : fallback;
@@ -93,10 +98,7 @@ function shouldPreferFallbackCombatVitals(
   if (!live.combat) return false;
   const liveHp = safeWhole(live.combat.hp, fallback.hp);
   const liveMaxHp = Math.max(1, safeWhole(live.combat.maxHp, fallback.maxHp));
-  const liveCombatState = normalizeCombatState(
-    live.combat.deathState,
-    "alive"
-  );
+  const liveCombatState = normalizeCombatState(live.combat.deathState, "alive");
   const fallbackDamagedOrDown =
     fallback.hp < fallback.maxHp ||
     fallback.hp <= 0 ||
@@ -146,10 +148,7 @@ export function biomesUIVitalsDisplayFromLiveStatusForTest(
   );
   const level = Math.max(1, safeWhole(live.level, fallback.level ?? 1));
   const className = String(live.className || "").trim();
-  const preferFallbackCombat = shouldPreferFallbackCombatVitals(
-    live,
-    fallback
-  );
+  const preferFallbackCombat = shouldPreferFallbackCombatVitals(live, fallback);
   const hp = preferFallbackCombat
     ? fallback.hp
     : safeWhole(live.combat?.hp, fallback.hp);
@@ -205,6 +204,33 @@ export function biomesUIVitalsCombatResourceDisplayForTest(
     resourceLabel: "Mana",
     resourceValue: safeWhole(mana, fallback.resourceValue),
     resourceMax: Math.max(1, safeWhole(maxMana, fallback.resourceMax)),
+  };
+}
+
+export function biomesUIVitalsStaminaDisplayForTest(
+  live: BiomesUIPlayerStatusSnapshot | undefined,
+  fallback: BiomesUIVitalsStaminaDisplayState
+): BiomesUIVitalsStaminaDisplayState {
+  const resourceStamina = safeNumber(live?.combat?.resources?.stamina, NaN);
+  const primaryStamina =
+    String(live?.combat?.primaryResource ?? "").toLowerCase() === "stamina"
+      ? safeNumber(live?.combat?.resource, NaN)
+      : NaN;
+  const liveStamina = Number.isFinite(resourceStamina)
+    ? resourceStamina
+    : primaryStamina;
+  const resourceMax = safeNumber(live?.combat?.maxResources?.stamina, NaN);
+  const primaryMax =
+    String(live?.combat?.primaryResource ?? "").toLowerCase() === "stamina"
+      ? safeNumber(live?.combat?.maxResource, NaN)
+      : NaN;
+  const liveMax = Number.isFinite(resourceMax) ? resourceMax : primaryMax;
+  if (!Number.isFinite(liveStamina) || !Number.isFinite(liveMax)) {
+    return fallback;
+  }
+  return {
+    staminaValue: Math.max(0, liveStamina),
+    staminaMax: Math.max(1, Math.round(liveMax)),
   };
 }
 
@@ -276,10 +302,7 @@ export function useBiomesUIPlayerStatusState() {
     let timer: number | undefined;
     const schedule = () => {
       if (cancelled) return;
-      timer = window.setTimeout(
-        refresh,
-        biomesUIPlayerStatusRefreshDelayMs()
-      );
+      timer = window.setTimeout(refresh, biomesUIPlayerStatusRefreshDelayMs());
     };
     const refresh = async () => {
       if (refreshInFlight) return;
@@ -295,8 +318,7 @@ export function useBiomesUIPlayerStatusState() {
       }
     };
     const onStatus = (event: Event) => {
-      const next = (event as CustomEvent<BiomesUIPlayerStatusSnapshot>)
-        .detail;
+      const next = (event as CustomEvent<BiomesUIPlayerStatusSnapshot>).detail;
       if (next && typeof next === "object") {
         setStatus(next);
       } else {

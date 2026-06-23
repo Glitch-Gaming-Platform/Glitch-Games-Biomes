@@ -1486,6 +1486,26 @@ describe("reduceHarthmereLiveModeBackendState — death lifecycle", function () 
     assert.strictEqual(respawned.combat.hp, respawned.combat.maxHp);
   });
 
+  it("does not drain stamina while the player is dead", function () {
+    const s = freshState();
+    s.combat.hp = 0;
+    s.combat.deathState = "dead";
+    s.combat.resources.stamina = 54;
+    s.combat.maxResources.stamina = 108;
+    s.combat.lastStaminaTickMs = NOW_MS - 10 * 60 * 1000;
+
+    const result = tickHarthmereLiveModeStaminaForGameplay(s, {
+      nowMs: NOW_MS,
+      gameplayActive: true,
+      allowDeathFromStamina: false,
+    });
+
+    assert.strictEqual(result.changed, false);
+    assert.strictEqual(result.deathTriggered, false);
+    assert.strictEqual(s.combat.resources.stamina, 54);
+    assert.strictEqual(s.combat.lastStaminaTickMs, NOW_MS - 10 * 60 * 1000);
+  });
+
   it("repairs stale status-read stamina deaths without reviving newer real deaths", function () {
     const staminaDeath = freshState();
     const staminaDeadAtMs = NOW_MS - 60_000;
@@ -1762,7 +1782,8 @@ describe("reduceHarthmereLiveModeBackendState — combat target authority", func
     s.combat.entitySnapshots[targetId] = {
       hp: 40,
       maxHp: 40,
-      position: { x: 1, y: 0, z: 0 },
+      position: { x: 1, y: -1, z: 0 },
+      homePosition: { x: 1, y: 53, z: 0 },
       isHostile: false,
       isAlive: true,
       isAttackable: true,
@@ -3680,7 +3701,8 @@ describe("reduceHarthmereLiveModeBackendState — combat target authority", func
     s.combat.entitySnapshots[targetId] = {
       hp: 1,
       maxHp: 30,
-      position: { x: 1, y: 0, z: 0 },
+      position: { x: 1, y: -1, z: 0 },
+      homePosition: { x: 1, y: 53, z: 0 },
       isHostile: false,
       isAlive: true,
       isAttackable: true,
@@ -3702,8 +3724,8 @@ describe("reduceHarthmereLiveModeBackendState — combat target authority", func
     const dropId = s.combat.entitySnapshots[targetId].lootDropId!;
     assert.equal(s.combat.entitySnapshots[targetId].isAlive, false);
     assert.ok(
-      s.combat.entitySnapshots[targetId].position.y >= 2,
-      "defeated entity should rest above the ground"
+      s.combat.entitySnapshots[targetId].position.y > 53,
+      "defeated entity should rest above its safe home terrain"
     );
     assert.ok(dropId);
     const drop = s.inventoryLoot.lootDrops[dropId];
@@ -3711,8 +3733,8 @@ describe("reduceHarthmereLiveModeBackendState — combat target authority", func
     assert.equal(drop.itemStacks.raw_meat, 2);
     assert.ok(drop.position);
     assert.ok(
-      drop.position.y >= 3,
-      "defeated entity loot should float above the corpse/ground"
+      drop.position.y > 53,
+      "defeated entity loot should float above its safe home terrain"
     );
 
     const claimed = applyOne(
@@ -4846,9 +4868,7 @@ describe("reduceHarthmereLiveModeBackendState — loot and inventory mutation", 
     assert.equal(state.inventory.items.field_trousers ?? 0, 0);
     assert.equal(state.inventory.equipment.legs, "field_trousers");
     assert.ok(
-      summary.warnings.includes(
-        "equipment_mirrored_local_item:field_trousers"
-      )
+      summary.warnings.includes("equipment_mirrored_local_item:field_trousers")
     );
     assert.ok(summary.touchedModels.includes("equipment_slots"));
   });
@@ -5290,17 +5310,13 @@ describe("reduceHarthmereLiveModeBackendState — quest state", function () {
       "snapshot_grove"
     );
 
-    const completed = applyOne(
-      accepted.state,
-      "request_quest_state_update",
-      {
-        questId: "moss_that_went_quiet",
-        source: "snapshot_grove",
-        stepId: "moss_that_went_quiet:3:talk_npc",
-        progress: 4,
-        completed: true,
-      }
-    );
+    const completed = applyOne(accepted.state, "request_quest_state_update", {
+      questId: "moss_that_went_quiet",
+      source: "snapshot_grove",
+      stepId: "moss_that_went_quiet:3:talk_npc",
+      progress: 4,
+      completed: true,
+    });
     assert.deepEqual(completed.summary.warnings, []);
     assert.ok(
       completed.state.quests.completed["moss_that_went_quiet"] !== undefined
@@ -6456,7 +6472,8 @@ describe("reduceHarthmereLiveModeBackendState — farming", function () {
   });
 
   it("rejects duplicate, immature, unknown, and tree native plant harvests without mutating inventory", function () {
-    const raspberrySeed = HARTHMERE_SEED_DEFINITIONS[String(BikkieIds.raspberrySeed)];
+    const raspberrySeed =
+      HARTHMERE_SEED_DEFINITIONS[String(BikkieIds.raspberrySeed)];
     assert.ok(raspberrySeed);
     const first = applyOne(freshState(), "request_farming_action", {
       operation: "native_plant_harvest",
@@ -6497,7 +6514,10 @@ describe("reduceHarthmereLiveModeBackendState — farming", function () {
     assert.ok(
       immature.summary.warnings.includes("farming_rejected:plant_not_ready")
     );
-    assert.equal(immature.state.inventory.items[raspberrySeed.yieldItemId] ?? 0, 0);
+    assert.equal(
+      immature.state.inventory.items[raspberrySeed.yieldItemId] ?? 0,
+      0
+    );
 
     const unknown = applyOne(freshState(), "request_farming_action", {
       operation: "native_plant_harvest",
@@ -6506,7 +6526,9 @@ describe("reduceHarthmereLiveModeBackendState — farming", function () {
       plantStatus: "fully_grown",
       farmingKind: "plant",
     });
-    assert.ok(unknown.summary.warnings.includes("farming_rejected:unknown_seed"));
+    assert.ok(
+      unknown.summary.warnings.includes("farming_rejected:unknown_seed")
+    );
 
     const treeSeed = Object.values(HARTHMERE_SEED_DEFINITIONS).find((seed) =>
       /\btree\b|\b(oak|birch|rubber|sakura)\b/i.test(
@@ -7246,7 +7268,10 @@ describe("reduceHarthmereLiveModeBackendState — building mutation", function (
     const propertyId = `property_${plotId}`;
     assert.equal(built.property.buildingProgress[propertyId], 100);
     assert.equal(built.property.owned[propertyId].blueprintId, blueprintId);
-    assert.equal(built.building.activeProjects[`project_${plotId}`].status, "completed");
+    assert.equal(
+      built.building.activeProjects[`project_${plotId}`].status,
+      "completed"
+    );
     for (const count of Object.values(built.banking.materialStorage)) {
       assert.equal(count, 0);
     }
@@ -7375,7 +7400,9 @@ describe("reduceHarthmereLiveModeBackendState — building mutation", function (
     assert.ok(state.building.storageContainers[`storage_${propertyId}`]);
     assert.ok(state.building.doorLocks[`door_${propertyId}`]);
     assert.ok(
-      state.building.inWorldMarkers[buildingSystemHomeConsoleMarkerId(propertyId)]
+      state.building.inWorldMarkers[
+        buildingSystemHomeConsoleMarkerId(propertyId)
+      ]
     );
 
     const reloaded = parseHarthmereLiveModeBackendState(
@@ -8675,24 +8702,22 @@ describe("reduceHarthmereLiveModeBackendState — physical jobs board and live t
       stepId: "active_job",
       progress: 0,
     };
-    s.building.inWorldMarkers["jobs_board_marker:harthmere_job_todo_failed"] =
-      {
-        markerId: "jobs_board_marker:harthmere_job_todo_failed",
-        plotId: "grove_garden_edge_berries",
-        kind: "map_marker",
-        position: [486, 70, -120],
-        label: "Failed Job: Garden Edge Berries",
-        createdAtMs: NOW_MS,
-      };
-    s.building.inWorldMarkers["jobs_board_marker:harthmere_job_todo_active"] =
-      {
-        markerId: "jobs_board_marker:harthmere_job_todo_active",
-        plotId: "grove_mail_bank_satchel",
-        kind: "map_marker",
-        position: [488, 70, -122],
-        label: "Active Job: Mail and Bank Satchel",
-        createdAtMs: NOW_MS,
-      };
+    s.building.inWorldMarkers["jobs_board_marker:harthmere_job_todo_failed"] = {
+      markerId: "jobs_board_marker:harthmere_job_todo_failed",
+      plotId: "grove_garden_edge_berries",
+      kind: "map_marker",
+      position: [486, 70, -120],
+      label: "Failed Job: Garden Edge Berries",
+      createdAtMs: NOW_MS,
+    };
+    s.building.inWorldMarkers["jobs_board_marker:harthmere_job_todo_active"] = {
+      markerId: "jobs_board_marker:harthmere_job_todo_active",
+      plotId: "grove_mail_bank_satchel",
+      kind: "map_marker",
+      position: [488, 70, -122],
+      label: "Active Job: Mail and Bank Satchel",
+      createdAtMs: NOW_MS,
+    };
 
     const questSnapshot = createHarthmereLiveModeQuestClientSnapshot(s);
     assert.equal(
@@ -8720,15 +8745,14 @@ describe("reduceHarthmereLiveModeBackendState — physical jobs board and live t
 
   it("keeps actor-specific jobs-board markers out of shared world state", function () {
     const s = freshState();
-    s.building.inWorldMarkers["jobs_board_marker:harthmere_job_todo_active"] =
-      {
-        markerId: "jobs_board_marker:harthmere_job_todo_active",
-        plotId: "grove_mail_bank_satchel",
-        kind: "map_marker",
-        position: [488, 70, -122],
-        label: "Active Job: Mail and Bank Satchel",
-        createdAtMs: NOW_MS,
-      };
+    s.building.inWorldMarkers["jobs_board_marker:harthmere_job_todo_active"] = {
+      markerId: "jobs_board_marker:harthmere_job_todo_active",
+      plotId: "grove_mail_bank_satchel",
+      kind: "map_marker",
+      position: [488, 70, -122],
+      label: "Active Job: Mail and Bank Satchel",
+      createdAtMs: NOW_MS,
+    };
     s.building.inWorldMarkers["public_marker"] = {
       markerId: "public_marker",
       plotId: "public_marker",

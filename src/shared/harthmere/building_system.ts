@@ -136,7 +136,9 @@ export interface BuildingSystemProjectRecord {
   rotationDegrees: 0 | 90 | 180 | 270;
   currentStage: BuildingSystemStage;
   completedStages: BuildingSystemStage[];
-  stageProgress: Partial<Record<BuildingSystemStage, BuildingSystemStageProgress>>;
+  stageProgress: Partial<
+    Record<BuildingSystemStage, BuildingSystemStageProgress>
+  >;
   startedAtMs: number;
   updatedAtMs: number;
   status: BuildingSystemProjectStatus;
@@ -147,7 +149,17 @@ export interface BuildingSystemProjectRecord {
 export interface BuildingSystemInWorldMarker {
   markerId: string;
   plotId: string;
-  kind: "muck_boundary" | "safe_zone" | "deed_sign" | "map_marker" | "npc_board" | "npc_map_marker" | "storage_container" | "door_lock" | "business_marker" | "home_console";
+  kind:
+    | "muck_boundary"
+    | "safe_zone"
+    | "deed_sign"
+    | "map_marker"
+    | "npc_board"
+    | "npc_map_marker"
+    | "storage_container"
+    | "door_lock"
+    | "business_marker"
+    | "home_console";
   position: [number, number, number];
   label: string;
   createdAtMs: number;
@@ -171,7 +183,8 @@ export interface BuildingSystemMaterialSourceDefinition {
   description: string;
 }
 
-export interface BuildingSystemMaterialRequirementLine extends BuildingSystemMaterialDefinition {
+export interface BuildingSystemMaterialRequirementLine
+  extends BuildingSystemMaterialDefinition {
   required: number;
   contributed: number;
   remaining: number;
@@ -257,107 +270,119 @@ export const BUILDING_SYSTEM_MATERIAL_CATALOG = {
   },
 } as const satisfies Record<string, BuildingSystemMaterialDefinition>;
 
-export type BuildingSystemMaterialSymbol = keyof typeof BUILDING_SYSTEM_MATERIAL_CATALOG;
+export type BuildingSystemMaterialSymbol =
+  keyof typeof BUILDING_SYSTEM_MATERIAL_CATALOG;
 
 export const BUILDING_SYSTEM_MATERIAL_SOURCE_CATALOG = {
   rough_stone: {
     material: "rough_stone",
-    sourceId: "harthmere_north_iron_vein",
-    sourceName: "North Road Iron Vein",
-    sourceKind: "gather",
-    position: [503, 53, -270],
-    actionLabel: "Mine rough stone",
-    description: "Public mining node by the North Gate road cut.",
+    sourceId: "black_anvil_building_counter",
+    sourceName: "Black Anvil Building Materials Counter",
+    sourceKind: "buy",
+    position: [1630, 43, -780],
+    actionLabel: "Buy rough stone",
+    description:
+      "Smith Goran Ember sells rough stone; it can also be mined at the North Road Iron Vein.",
   },
   river_clay: {
     material: "river_clay",
-    sourceId: "harthmere_river_clay",
-    sourceName: "Riverbank Clay Deposit",
-    sourceKind: "gather",
-    position: [596, 53, -186],
-    actionLabel: "Dig river clay",
-    description: "Public clay deposit on the riverbank near the docks.",
+    sourceId: "black_anvil_building_counter",
+    sourceName: "Black Anvil Building Materials Counter",
+    sourceKind: "buy",
+    position: [1630, 43, -780],
+    actionLabel: "Buy river clay",
+    description:
+      "Smith Goran Ember sells clay bags; it can also be dug at the riverbank clay deposit.",
   },
   softwood_log: {
     material: "softwood_log",
-    sourceId: "harthmere_orchard_softwood",
-    sourceName: "Orchard Softwood Branches",
-    sourceKind: "gather",
-    position: [468, 53, -118],
-    actionLabel: "Gather softwood logs",
-    description: "Town-approved fallen wood under the orchard trees.",
+    sourceId: "black_anvil_building_counter",
+    sourceName: "Black Anvil Building Materials Counter",
+    sourceKind: "buy",
+    position: [1630, 43, -780],
+    actionLabel: "Buy softwood logs",
+    description:
+      "Smith Goran Ember sells starter framing logs; they can also be gathered from orchard fallen wood.",
   },
   oak_branch: {
     material: "oak_branch",
-    sourceId: "harthmere_orchard_softwood",
-    sourceName: "Orchard Softwood Branches",
-    sourceKind: "gather",
-    position: [468, 53, -118],
-    actionLabel: "Gather oak branches",
-    description: "Town-approved fallen branches under the orchard trees.",
+    sourceId: "black_anvil_building_counter",
+    sourceName: "Black Anvil Building Materials Counter",
+    sourceKind: "buy",
+    position: [1630, 43, -780],
+    actionLabel: "Buy oak branches",
+    description:
+      "Smith Goran Ember stocks brace wood; branches can also be gathered from orchard fallen wood.",
   },
   iron_ore: {
     material: "iron_ore",
-    sourceId: "harthmere_north_iron_vein",
-    sourceName: "North Road Iron Vein",
-    sourceKind: "gather",
-    position: [503, 53, -270],
-    actionLabel: "Mine metal ore",
-    description: "Public ore vein by the North Gate road cut.",
+    sourceId: "black_anvil_building_counter",
+    sourceName: "Black Anvil Building Materials Counter",
+    sourceKind: "buy",
+    position: [1630, 43, -780],
+    actionLabel: "Buy metal ore",
+    description:
+      "Smith Goran Ember sells ore; it can also be mined at the North Road Iron Vein.",
   },
   scrap_metal: {
     material: "scrap_metal",
-    sourceId: "harthmere_mudden_scrap",
-    sourceName: "Mudden Ward Scrap Pile",
-    sourceKind: "gather",
-    position: [409, 53, -178],
-    actionLabel: "Scavenge scrap metal",
-    description: "Public scrap pile by the Mudden Ward broken cart.",
+    sourceId: "black_anvil_building_counter",
+    sourceName: "Black Anvil Building Materials Counter",
+    sourceKind: "buy",
+    position: [1630, 43, -780],
+    actionLabel: "Buy scrap metal",
+    description:
+      "Smith Goran Ember sells sorted scrap; it can also be scavenged at the Mudden Ward scrap pile.",
   },
   tree_resin: {
     material: "tree_resin",
-    sourceId: "harthmere_orchard_softwood",
-    sourceName: "Orchard Softwood Branches",
-    sourceKind: "gather",
-    position: [468, 53, -118],
-    actionLabel: "Gather tree resin",
-    description: "Rare resin from the orchard softwood route.",
+    sourceId: "black_anvil_building_counter",
+    sourceName: "Black Anvil Building Materials Counter",
+    sourceKind: "buy",
+    position: [1630, 43, -780],
+    actionLabel: "Buy tree resin",
+    description:
+      "Smith Goran Ember sells sealed resin pots; resin can also be gathered along the orchard softwood route.",
   },
   cloth_scrap: {
     material: "cloth_scrap",
-    sourceId: "harthmere_mudden_scrap",
-    sourceName: "Mudden Ward Scrap Pile",
-    sourceKind: "gather",
-    position: [409, 53, -178],
-    actionLabel: "Scavenge cloth scraps",
-    description: "Public scrap pile by the Mudden Ward broken cart.",
+    sourceId: "black_anvil_building_counter",
+    sourceName: "Black Anvil Building Materials Counter",
+    sourceKind: "buy",
+    position: [1630, 43, -780],
+    actionLabel: "Buy cloth scraps",
+    description:
+      "Smith Goran Ember sells bundled cloth scraps; they can also be scavenged at the Mudden Ward scrap pile.",
   },
   clean_water: {
     material: "clean_water",
-    sourceId: "harthmere_river_fishing_pool",
-    sourceName: "Bluewater Fishing Pool",
-    sourceKind: "gather",
-    position: [604, 53, -168],
-    actionLabel: "Collect clean water",
-    description: "Safe water access at the Bluewater docks.",
+    sourceId: "black_anvil_building_counter",
+    sourceName: "Black Anvil Building Materials Counter",
+    sourceKind: "buy",
+    position: [1630, 43, -780],
+    actionLabel: "Buy clean water",
+    description:
+      "Smith Goran Ember sells clean work buckets; water can also be collected at the Bluewater docks.",
   },
   old_coin: {
     material: "old_coin",
-    sourceId: "harthmere_mudden_scrap",
-    sourceName: "Mudden Ward Scrap Pile",
-    sourceKind: "gather",
-    position: [409, 53, -178],
-    actionLabel: "Search for old coins",
-    description: "Rare find while scavenging the Mudden Ward scrap pile.",
+    sourceId: "black_anvil_building_counter",
+    sourceName: "Black Anvil Building Materials Counter",
+    sourceKind: "buy",
+    position: [1630, 43, -780],
+    actionLabel: "Buy old coins",
+    description:
+      "Smith Goran Ember keeps a small parts drawer of old coins; they can also turn up in Mudden Ward scrap.",
   },
   mana_essence: {
     material: "mana_essence",
-    sourceId: "harthmere_old_well_essence",
-    sourceName: "Old Well Mana Residue",
-    sourceKind: "gather",
-    position: [428, 53, -160],
-    actionLabel: "Extract mana essence",
-    description: "Protected magical residue around the Old Well.",
+    sourceId: "black_anvil_building_counter",
+    sourceName: "Black Anvil Building Materials Counter",
+    sourceKind: "buy",
+    position: [1630, 43, -780],
+    actionLabel: "Buy mana essence",
+    description:
+      "Smith Goran Ember stocks sealed essence for utility setup; essence can also be extracted around the Old Well.",
   },
 } as const satisfies Record<
   BuildingSystemMaterialSymbol,
@@ -497,7 +522,11 @@ export interface BuildingSystemGuideConstructionMath {
   warnings: string[];
 }
 
-export type BuildingSystemAccessMode = "private" | "friends" | "guild" | "public";
+export type BuildingSystemAccessMode =
+  | "private"
+  | "friends"
+  | "guild"
+  | "public";
 export type BuildingSystemPermissionSubject =
   | "owner"
   | "friends_guests"
@@ -509,7 +538,10 @@ export type BuildingSystemPermissionKey =
   | "demolition"
   | "transfer_sale";
 
-export type BuildingSystemPermissionSet = Record<BuildingSystemPermissionKey, boolean>;
+export type BuildingSystemPermissionSet = Record<
+  BuildingSystemPermissionKey,
+  boolean
+>;
 
 export interface BuildingSystemPropertyPermissions {
   owner: BuildingSystemPermissionSet;
@@ -525,7 +557,12 @@ export interface BuildingSystemPropertyRecord {
   ownerId: string;
   origin?: { x: number; y: number; z: number };
   rotationDegrees?: 0 | 90 | 180 | 270;
-  status: BuildingSystemPlotUse | "owned" | "abandoned" | "demolished" | "for_sale";
+  status:
+    | BuildingSystemPlotUse
+    | "owned"
+    | "abandoned"
+    | "demolished"
+    | "for_sale";
   use: BuildingSystemPlotUse;
   value: number;
   tier: number;
@@ -556,7 +593,6 @@ export interface BuildingSystemPropertyRecord {
   createdAtMs: number;
   updatedAtMs: number;
 }
-
 
 export interface BuildingSystemStorageContainerRecord {
   containerId: string;
@@ -734,7 +770,10 @@ export interface BuildingSystemTerrainMaterializationPlan {
   requestId: string;
   actorId: string;
   plotId: string;
-  reason: "plot_claim_muck_deed" | "plot_claim_safe_ground" | "plot_terraform_safe_ground";
+  reason:
+    | "plot_claim_muck_deed"
+    | "plot_claim_safe_ground"
+    | "plot_terraform_safe_ground";
   edits: BuildingSystemVoxelEditSpec[];
   safeZone: BuildingSystemSafeZoneRecord;
   inWorldMarkers?: BuildingSystemInWorldMarker[];
@@ -767,8 +806,7 @@ export const BUILDING_SYSTEM_GROVE_STEWARD_NPC = {
   homeArea: "the_grove",
   role: "Land steward, plot registrar, and safe-construction permit clerk",
   position: [501, 53, -132] as [number, number, number],
-  line:
-    "Land is not safe because paper says so. It is safe when the muck is cleared, the boundary is marked, and the door opens onto a real path.",
+  line: "Land is not safe because paper says so. It is safe when the muck is cleared, the boundary is marked, and the door opens onto a real path.",
 } as const;
 
 export const BUILDING_SYSTEM_MIRA_INTRO_QUEST = {
@@ -778,7 +816,8 @@ export const BUILDING_SYSTEM_MIRA_INTRO_QUEST = {
   completionNpcId: BUILDING_SYSTEM_GROVE_STEWARD_NPC.id,
   completionNpcOffset: BUILDING_SYSTEM_GROVE_STEWARD_NPC.idOffset,
   stepId: "talk_to_mira",
-  objective: "Talk to Mira Thatch in the Grove to learn how to buy safe land and build with voxels.",
+  objective:
+    "Talk to Mira Thatch in the Grove to learn how to buy safe land and build with voxels.",
   mapMarkerLabel: "Talk to Mira",
 } as const;
 
@@ -1044,565 +1083,685 @@ export function isPositionInsideBuildingSystemPlotBounds(
   );
 }
 
-export const BUILDING_SYSTEM_BIKKIE_BLUEPRINTS: BuildingSystemBlueprintDefinition[] = [
-  {
-    blueprintId: "bikkie_traditional_shelter_frame",
-    displayName: "Traditional Shelter Frame",
-    source: "bikkie_blueprint",
-    blueprintItemId: String(BikkieIds.blueprintTraditionalShelterFrame),
-    bikkieId: BikkieIds.blueprintTraditionalShelterFrame,
-    bikkieName: "blueprintTraditionalShelterFrame",
-    materializationKind: "shelter_frame",
-    plotType: "residential",
-    use: "home",
-    structureTypeId: "small_house",
-    goldCost: 18,
-    storageSlots: 20,
-    service: "Home: compact traditional shelter, starter storage, private access, and safe rest.",
-    footprint: { width: 5, depth: 5, height: 4 },
-    colors: ["weathered wood", "warm thatch", "soft stone"],
-    tags: ["bikkie", "shelter", "home", "starter"],
-    materialStages: {
-      site_preparation: { rough_stone: 3 },
-      foundation: { rough_stone: 8, river_clay: 3 },
-      frame: { softwood_log: 10 },
-      walls: { softwood_log: 8, rough_stone: 4 },
-      roof: { oak_branch: 8, tree_resin: 1 },
-      interior: { cloth_scrap: 3 },
-      utility_setup: { clean_water: 1 },
+export const BUILDING_SYSTEM_BIKKIE_BLUEPRINTS: BuildingSystemBlueprintDefinition[] =
+  [
+    {
+      blueprintId: "bikkie_traditional_shelter_frame",
+      displayName: "Traditional Shelter Frame",
+      source: "bikkie_blueprint",
+      blueprintItemId: String(BikkieIds.blueprintTraditionalShelterFrame),
+      bikkieId: BikkieIds.blueprintTraditionalShelterFrame,
+      bikkieName: "blueprintTraditionalShelterFrame",
+      materializationKind: "shelter_frame",
+      plotType: "residential",
+      use: "home",
+      structureTypeId: "small_house",
+      goldCost: 18,
+      storageSlots: 20,
+      service:
+        "Home: compact traditional shelter, starter storage, private access, and safe rest.",
+      footprint: { width: 5, depth: 5, height: 4 },
+      colors: ["weathered wood", "warm thatch", "soft stone"],
+      tags: ["bikkie", "shelter", "home", "starter"],
+      materialStages: {
+        site_preparation: { rough_stone: 3 },
+        foundation: { rough_stone: 8, river_clay: 3 },
+        frame: { softwood_log: 10 },
+        walls: { softwood_log: 8, rough_stone: 4 },
+        roof: { oak_branch: 8, tree_resin: 1 },
+        interior: { cloth_scrap: 3 },
+        utility_setup: { clean_water: 1 },
+      },
+      laborStages: {
+        site_preparation: 8,
+        foundation: 16,
+        frame: 20,
+        walls: 18,
+        roof: 16,
+        interior: 10,
+        utility_setup: 8,
+      },
+      description:
+        "Bikkie shelter blueprint for a small lawful home shell. It materializes as a solid voxel shelter rather than a loose inventory trinket.",
     },
-    laborStages: { site_preparation: 8, foundation: 16, frame: 20, walls: 18, roof: 16, interior: 10, utility_setup: 8 },
-    description:
-      "Bikkie shelter blueprint for a small lawful home shell. It materializes as a solid voxel shelter rather than a loose inventory trinket.",
-  },
-  {
-    blueprintId: "bikkie_modern_shelter_frame",
-    displayName: "Modern Shelter Frame",
-    source: "bikkie_blueprint",
-    blueprintItemId: String(BikkieIds.blueprintModernShelterFrame),
-    bikkieId: BikkieIds.blueprintModernShelterFrame,
-    bikkieName: "blueprintModernShelterFrame",
-    materializationKind: "shelter_frame",
-    plotType: "residential",
-    use: "home",
-    structureTypeId: "medium_house",
-    goldCost: 34,
-    storageSlots: 32,
-    service: "Home: modern shelter shell, cleaner storage layout, guest access, and higher property value.",
-    footprint: { width: 8, depth: 8, height: 6 },
-    colors: ["pale paneling", "smoked glass", "cool gray"],
-    tags: ["bikkie", "shelter", "home", "modern"],
-    materialStages: {
-      site_preparation: { rough_stone: 5 },
-      foundation: { rough_stone: 16, river_clay: 6 },
-      frame: { softwood_log: 14, scrap_metal: 3 },
-      walls: { rough_stone: 12, softwood_log: 8 },
-      roof: { rough_stone: 8, tree_resin: 2 },
-      interior: { cloth_scrap: 4, old_coin: 1 },
-      utility_setup: { clean_water: 2, scrap_metal: 2 },
+    {
+      blueprintId: "bikkie_modern_shelter_frame",
+      displayName: "Modern Shelter Frame",
+      source: "bikkie_blueprint",
+      blueprintItemId: String(BikkieIds.blueprintModernShelterFrame),
+      bikkieId: BikkieIds.blueprintModernShelterFrame,
+      bikkieName: "blueprintModernShelterFrame",
+      materializationKind: "shelter_frame",
+      plotType: "residential",
+      use: "home",
+      structureTypeId: "medium_house",
+      goldCost: 34,
+      storageSlots: 32,
+      service:
+        "Home: modern shelter shell, cleaner storage layout, guest access, and higher property value.",
+      footprint: { width: 8, depth: 8, height: 6 },
+      colors: ["pale paneling", "smoked glass", "cool gray"],
+      tags: ["bikkie", "shelter", "home", "modern"],
+      materialStages: {
+        site_preparation: { rough_stone: 5 },
+        foundation: { rough_stone: 16, river_clay: 6 },
+        frame: { softwood_log: 14, scrap_metal: 3 },
+        walls: { rough_stone: 12, softwood_log: 8 },
+        roof: { rough_stone: 8, tree_resin: 2 },
+        interior: { cloth_scrap: 4, old_coin: 1 },
+        utility_setup: { clean_water: 2, scrap_metal: 2 },
+      },
+      laborStages: {
+        site_preparation: 12,
+        foundation: 24,
+        frame: 32,
+        walls: 28,
+        roof: 22,
+        interior: 16,
+        utility_setup: 10,
+      },
+      description:
+        "Bikkie modern shelter blueprint for a larger starter residence with a real footprint, door, floor, walls, and roof.",
     },
-    laborStages: { site_preparation: 12, foundation: 24, frame: 32, walls: 28, roof: 22, interior: 16, utility_setup: 10 },
-    description:
-      "Bikkie modern shelter blueprint for a larger starter residence with a real footprint, door, floor, walls, and roof.",
-  },
-  {
-    blueprintId: "bikkie_space_age_shelter_frame",
-    displayName: "Space Age Shelter Frame",
-    source: "bikkie_blueprint",
-    blueprintItemId: String(BikkieIds.blueprintSpaceAgeShelterFrame),
-    bikkieId: BikkieIds.blueprintSpaceAgeShelterFrame,
-    bikkieName: "blueprintSpaceAgeShelterFrame",
-    materializationKind: "shelter_frame",
-    plotType: "residential",
-    use: "home",
-    structureTypeId: "medium_house",
-    goldCost: 42,
-    storageSlots: 36,
-    service: "Home: space-age shelter, reinforced utility node, private storage, and higher maintenance value.",
-    footprint: { width: 8, depth: 8, height: 6 },
-    colors: ["white alloy", "cyan light", "dark glass"],
-    tags: ["bikkie", "shelter", "home", "tech"],
-    materialStages: {
-      site_preparation: { rough_stone: 5 },
-      foundation: { rough_stone: 14, scrap_metal: 4 },
-      frame: { scrap_metal: 10, softwood_log: 6 },
-      walls: { rough_stone: 10, scrap_metal: 6 },
-      roof: { scrap_metal: 6, mana_essence: 1 },
-      interior: { cloth_scrap: 4, old_coin: 1 },
-      utility_setup: { clean_water: 2, mana_essence: 1 },
+    {
+      blueprintId: "bikkie_space_age_shelter_frame",
+      displayName: "Space Age Shelter Frame",
+      source: "bikkie_blueprint",
+      blueprintItemId: String(BikkieIds.blueprintSpaceAgeShelterFrame),
+      bikkieId: BikkieIds.blueprintSpaceAgeShelterFrame,
+      bikkieName: "blueprintSpaceAgeShelterFrame",
+      materializationKind: "shelter_frame",
+      plotType: "residential",
+      use: "home",
+      structureTypeId: "medium_house",
+      goldCost: 42,
+      storageSlots: 36,
+      service:
+        "Home: space-age shelter, reinforced utility node, private storage, and higher maintenance value.",
+      footprint: { width: 8, depth: 8, height: 6 },
+      colors: ["white alloy", "cyan light", "dark glass"],
+      tags: ["bikkie", "shelter", "home", "tech"],
+      materialStages: {
+        site_preparation: { rough_stone: 5 },
+        foundation: { rough_stone: 14, scrap_metal: 4 },
+        frame: { scrap_metal: 10, softwood_log: 6 },
+        walls: { rough_stone: 10, scrap_metal: 6 },
+        roof: { scrap_metal: 6, mana_essence: 1 },
+        interior: { cloth_scrap: 4, old_coin: 1 },
+        utility_setup: { clean_water: 2, mana_essence: 1 },
+      },
+      laborStages: {
+        site_preparation: 12,
+        foundation: 26,
+        frame: 34,
+        walls: 30,
+        roof: 24,
+        interior: 18,
+        utility_setup: 14,
+      },
+      description:
+        "Bikkie tech shelter blueprint for a compact futuristic home. It uses metal and power materials instead of pretending to be a generic cottage.",
     },
-    laborStages: { site_preparation: 12, foundation: 26, frame: 34, walls: 30, roof: 24, interior: 18, utility_setup: 14 },
-    description:
-      "Bikkie tech shelter blueprint for a compact futuristic home. It uses metal and power materials instead of pretending to be a generic cottage.",
-  },
-  {
-    blueprintId: "bikkie_marina_shopping_stall",
-    displayName: "Stall Frame",
-    source: "bikkie_blueprint",
-    blueprintItemId: String(BikkieIds.blueprintMarinaShoppingStall),
-    bikkieId: BikkieIds.blueprintMarinaShoppingStall,
-    bikkieName: "blueprintMarinaShoppingStall",
-    materializationKind: "market_stall",
-    plotType: "commercial",
-    use: "business",
-    structureTypeId: "market_stall",
-    goldCost: 28,
-    storageSlots: 16,
-    service: "Business: open-air stall, taxable listings, customer counter, and public access.",
-    footprint: { width: 5, depth: 4, height: 3 },
-    colors: ["canvas cream", "dock wood", "brass trim"],
-    tags: ["bikkie", "market", "stall", "business"],
-    materialStages: {
-      site_preparation: { softwood_log: 3 },
-      foundation: { rough_stone: 5 },
-      frame: { softwood_log: 10 },
-      walls: { cloth_scrap: 5 },
-      roof: { cloth_scrap: 6, tree_resin: 1 },
-      interior: { old_coin: 1, scrap_metal: 2 },
-      utility_setup: { clean_water: 1 },
+    {
+      blueprintId: "bikkie_marina_shopping_stall",
+      displayName: "Stall Frame",
+      source: "bikkie_blueprint",
+      blueprintItemId: String(BikkieIds.blueprintMarinaShoppingStall),
+      bikkieId: BikkieIds.blueprintMarinaShoppingStall,
+      bikkieName: "blueprintMarinaShoppingStall",
+      materializationKind: "market_stall",
+      plotType: "commercial",
+      use: "business",
+      structureTypeId: "market_stall",
+      goldCost: 28,
+      storageSlots: 16,
+      service:
+        "Business: open-air stall, taxable listings, customer counter, and public access.",
+      footprint: { width: 5, depth: 4, height: 3 },
+      colors: ["canvas cream", "dock wood", "brass trim"],
+      tags: ["bikkie", "market", "stall", "business"],
+      materialStages: {
+        site_preparation: { softwood_log: 3 },
+        foundation: { rough_stone: 5 },
+        frame: { softwood_log: 10 },
+        walls: { cloth_scrap: 5 },
+        roof: { cloth_scrap: 6, tree_resin: 1 },
+        interior: { old_coin: 1, scrap_metal: 2 },
+        utility_setup: { clean_water: 1 },
+      },
+      laborStages: {
+        site_preparation: 8,
+        foundation: 12,
+        frame: 20,
+        walls: 12,
+        roof: 14,
+        interior: 10,
+        utility_setup: 6,
+      },
+      description:
+        "Bikkie shopping-stall blueprint for a commercial plot. It materializes as an open stall, not a closed cottage.",
     },
-    laborStages: { site_preparation: 8, foundation: 12, frame: 20, walls: 12, roof: 14, interior: 10, utility_setup: 6 },
-    description:
-      "Bikkie shopping-stall blueprint for a commercial plot. It materializes as an open stall, not a closed cottage.",
-  },
-  {
-    blueprintId: "bikkie_canopy_frame",
-    displayName: "Canopy Frame",
-    source: "bikkie_blueprint",
-    blueprintItemId: String(BikkieIds.blueprintCanopyFrame),
-    bikkieId: BikkieIds.blueprintCanopyFrame,
-    bikkieName: "blueprintCanopyFrame",
-    materializationKind: "canopy",
-    plotType: "commercial",
-    use: "public_service",
-    structureTypeId: "canopy",
-    goldCost: 18,
-    storageSlots: 6,
-    service: "Public service: shaded queue area, event stall cover, and safe gathering marker.",
-    footprint: { width: 5, depth: 4, height: 3 },
-    colors: ["canvas tan", "oak frame"],
-    tags: ["bikkie", "canopy", "public", "market"],
-    materialStages: {
-      site_preparation: { softwood_log: 2 },
-      foundation: { rough_stone: 4 },
-      frame: { softwood_log: 8 },
-      roof: { cloth_scrap: 6, tree_resin: 1 },
-      utility_setup: { clean_water: 1 },
+    {
+      blueprintId: "bikkie_canopy_frame",
+      displayName: "Canopy Frame",
+      source: "bikkie_blueprint",
+      blueprintItemId: String(BikkieIds.blueprintCanopyFrame),
+      bikkieId: BikkieIds.blueprintCanopyFrame,
+      bikkieName: "blueprintCanopyFrame",
+      materializationKind: "canopy",
+      plotType: "commercial",
+      use: "public_service",
+      structureTypeId: "canopy",
+      goldCost: 18,
+      storageSlots: 6,
+      service:
+        "Public service: shaded queue area, event stall cover, and safe gathering marker.",
+      footprint: { width: 5, depth: 4, height: 3 },
+      colors: ["canvas tan", "oak frame"],
+      tags: ["bikkie", "canopy", "public", "market"],
+      materialStages: {
+        site_preparation: { softwood_log: 2 },
+        foundation: { rough_stone: 4 },
+        frame: { softwood_log: 8 },
+        roof: { cloth_scrap: 6, tree_resin: 1 },
+        utility_setup: { clean_water: 1 },
+      },
+      laborStages: {
+        site_preparation: 6,
+        foundation: 10,
+        frame: 16,
+        roof: 12,
+        utility_setup: 5,
+      },
+      description:
+        "Bikkie canopy blueprint for shade and public service space. The generated plan uses posts and roof cover without blocking the whole footprint.",
     },
-    laborStages: { site_preparation: 6, foundation: 10, frame: 16, roof: 12, utility_setup: 5 },
-    description:
-      "Bikkie canopy blueprint for shade and public service space. The generated plan uses posts and roof cover without blocking the whole footprint.",
-  },
-  {
-    blueprintId: "bikkie_kitchen",
-    displayName: "Kitchen",
-    source: "bikkie_blueprint",
-    blueprintItemId: String(BikkieIds.blueprintKitchen),
-    bikkieId: BikkieIds.blueprintKitchen,
-    bikkieName: "blueprintKitchen",
-    materializationKind: "utility_station",
-    plotType: "commercial",
-    use: "business",
-    structureTypeId: "utility_station",
-    goldCost: 22,
-    storageSlots: 12,
-    service: "Business: cooking station, food-service prep counter, ingredient storage, and customer orders.",
-    footprint: { width: 3, depth: 3, height: 3 },
-    colors: ["warm wood", "iron range", "cream tile"],
-    tags: ["bikkie", "kitchen", "food", "business"],
-    materialStages: {
-      site_preparation: { rough_stone: 2 },
-      foundation: { rough_stone: 4, river_clay: 3 },
-      frame: { softwood_log: 4, scrap_metal: 2 },
-      interior: { clean_water: 2, cloth_scrap: 2 },
-      utility_setup: { scrap_metal: 2 },
+    {
+      blueprintId: "bikkie_kitchen",
+      displayName: "Kitchen",
+      source: "bikkie_blueprint",
+      blueprintItemId: String(BikkieIds.blueprintKitchen),
+      bikkieId: BikkieIds.blueprintKitchen,
+      bikkieName: "blueprintKitchen",
+      materializationKind: "utility_station",
+      plotType: "commercial",
+      use: "business",
+      structureTypeId: "utility_station",
+      goldCost: 22,
+      storageSlots: 12,
+      service:
+        "Business: cooking station, food-service prep counter, ingredient storage, and customer orders.",
+      footprint: { width: 3, depth: 3, height: 3 },
+      colors: ["warm wood", "iron range", "cream tile"],
+      tags: ["bikkie", "kitchen", "food", "business"],
+      materialStages: {
+        site_preparation: { rough_stone: 2 },
+        foundation: { rough_stone: 4, river_clay: 3 },
+        frame: { softwood_log: 4, scrap_metal: 2 },
+        interior: { clean_water: 2, cloth_scrap: 2 },
+        utility_setup: { scrap_metal: 2 },
+      },
+      laborStages: {
+        site_preparation: 5,
+        foundation: 10,
+        frame: 12,
+        interior: 12,
+        utility_setup: 10,
+      },
+      description:
+        "Bikkie kitchen blueprint for food businesses and cooking workflows. It becomes a compact utility station with storage instead of a whole house shell.",
     },
-    laborStages: { site_preparation: 5, foundation: 10, frame: 12, interior: 12, utility_setup: 10 },
-    description:
-      "Bikkie kitchen blueprint for food businesses and cooking workflows. It becomes a compact utility station with storage instead of a whole house shell.",
-  },
-  {
-    blueprintId: "bikkie_anglers_table",
-    displayName: "Angler's Table",
-    source: "bikkie_blueprint",
-    blueprintItemId: String(BikkieIds.blueprintAnglersTable),
-    bikkieId: BikkieIds.blueprintAnglersTable,
-    bikkieName: "blueprintAnglersTable",
-    materializationKind: "fixture",
-    plotType: "commercial",
-    use: "business",
-    structureTypeId: "fixture",
-    goldCost: 12,
-    storageSlots: 8,
-    service: "Business: fish prep table, tackle work surface, and river-contract marker.",
-    footprint: { width: 3, depth: 2, height: 2 },
-    colors: ["dock wood", "wet slate", "rope tan"],
-    tags: ["bikkie", "table", "fish", "business"],
-    materialStages: {
-      foundation: { softwood_log: 3 },
-      frame: { softwood_log: 3 },
-      interior: { clean_water: 1, cloth_scrap: 1 },
-      utility_setup: { old_coin: 1 },
+    {
+      blueprintId: "bikkie_anglers_table",
+      displayName: "Angler's Table",
+      source: "bikkie_blueprint",
+      blueprintItemId: String(BikkieIds.blueprintAnglersTable),
+      bikkieId: BikkieIds.blueprintAnglersTable,
+      bikkieName: "blueprintAnglersTable",
+      materializationKind: "fixture",
+      plotType: "commercial",
+      use: "business",
+      structureTypeId: "fixture",
+      goldCost: 12,
+      storageSlots: 8,
+      service:
+        "Business: fish prep table, tackle work surface, and river-contract marker.",
+      footprint: { width: 3, depth: 2, height: 2 },
+      colors: ["dock wood", "wet slate", "rope tan"],
+      tags: ["bikkie", "table", "fish", "business"],
+      materialStages: {
+        foundation: { softwood_log: 3 },
+        frame: { softwood_log: 3 },
+        interior: { clean_water: 1, cloth_scrap: 1 },
+        utility_setup: { old_coin: 1 },
+      },
+      laborStages: { foundation: 6, frame: 8, interior: 6, utility_setup: 4 },
+      description:
+        "Bikkie angler table blueprint for dock or market services. It uses fixture-scale voxel edits and keeps surrounding walkways open.",
     },
-    laborStages: { foundation: 6, frame: 8, interior: 6, utility_setup: 4 },
-    description:
-      "Bikkie angler table blueprint for dock or market services. It uses fixture-scale voxel edits and keeps surrounding walkways open.",
-  },
-  {
-    blueprintId: "bikkie_bench",
-    displayName: "Bench",
-    source: "bikkie_blueprint",
-    blueprintItemId: String(BikkieIds.blueprintBench),
-    bikkieId: BikkieIds.blueprintBench,
-    bikkieName: "blueprintBench",
-    materializationKind: "fixture",
-    plotType: "commercial",
-    use: "public_service",
-    structureTypeId: "fixture",
-    goldCost: 8,
-    storageSlots: 0,
-    service: "Public service: seating fixture and visitor comfort marker.",
-    footprint: { width: 3, depth: 1, height: 1 },
-    colors: ["oak wood", "iron brackets"],
-    tags: ["bikkie", "fixture", "seating"],
-    materialStages: {
-      frame: { softwood_log: 4 },
-      interior: { scrap_metal: 1 },
+    {
+      blueprintId: "bikkie_bench",
+      displayName: "Bench",
+      source: "bikkie_blueprint",
+      blueprintItemId: String(BikkieIds.blueprintBench),
+      bikkieId: BikkieIds.blueprintBench,
+      bikkieName: "blueprintBench",
+      materializationKind: "fixture",
+      plotType: "commercial",
+      use: "public_service",
+      structureTypeId: "fixture",
+      goldCost: 8,
+      storageSlots: 0,
+      service: "Public service: seating fixture and visitor comfort marker.",
+      footprint: { width: 3, depth: 1, height: 1 },
+      colors: ["oak wood", "iron brackets"],
+      tags: ["bikkie", "fixture", "seating"],
+      materialStages: {
+        frame: { softwood_log: 4 },
+        interior: { scrap_metal: 1 },
+      },
+      laborStages: { frame: 8, interior: 4 },
+      description:
+        "Bikkie bench blueprint for small service fixtures. It does not generate walls, roof, or a full property shell.",
     },
-    laborStages: { frame: 8, interior: 4 },
-    description:
-      "Bikkie bench blueprint for small service fixtures. It does not generate walls, roof, or a full property shell.",
-  },
-  {
-    blueprintId: "bikkie_table",
-    displayName: "Table",
-    source: "bikkie_blueprint",
-    blueprintItemId: String(BikkieIds.blueprintTable),
-    bikkieId: BikkieIds.blueprintTable,
-    bikkieName: "blueprintTable",
-    materializationKind: "fixture",
-    plotType: "commercial",
-    use: "public_service",
-    structureTypeId: "fixture",
-    goldCost: 10,
-    storageSlots: 2,
-    service: "Public service: table fixture for dining, crafting orders, and market paperwork.",
-    footprint: { width: 2, depth: 2, height: 1 },
-    colors: ["oak plank", "soft shadow"],
-    tags: ["bikkie", "fixture", "table"],
-    materialStages: {
-      frame: { softwood_log: 4 },
-      interior: { cloth_scrap: 1 },
+    {
+      blueprintId: "bikkie_table",
+      displayName: "Table",
+      source: "bikkie_blueprint",
+      blueprintItemId: String(BikkieIds.blueprintTable),
+      bikkieId: BikkieIds.blueprintTable,
+      bikkieName: "blueprintTable",
+      materializationKind: "fixture",
+      plotType: "commercial",
+      use: "public_service",
+      structureTypeId: "fixture",
+      goldCost: 10,
+      storageSlots: 2,
+      service:
+        "Public service: table fixture for dining, crafting orders, and market paperwork.",
+      footprint: { width: 2, depth: 2, height: 1 },
+      colors: ["oak plank", "soft shadow"],
+      tags: ["bikkie", "fixture", "table"],
+      materialStages: {
+        frame: { softwood_log: 4 },
+        interior: { cloth_scrap: 1 },
+      },
+      laborStages: { frame: 8, interior: 4 },
+      description:
+        "Bikkie table blueprint for fixture-scale construction with small storage and no building envelope.",
     },
-    laborStages: { frame: 8, interior: 4 },
-    description:
-      "Bikkie table blueprint for fixture-scale construction with small storage and no building envelope.",
-  },
-  {
-    blueprintId: "bikkie_t_table",
-    displayName: "T-Table",
-    source: "bikkie_blueprint",
-    blueprintItemId: String(BikkieIds.blueprintTTable),
-    bikkieId: BikkieIds.blueprintTTable,
-    bikkieName: "blueprintTTable",
-    materializationKind: "fixture",
-    plotType: "commercial",
-    use: "public_service",
-    structureTypeId: "fixture",
-    goldCost: 12,
-    storageSlots: 3,
-    service: "Public service: T-shaped work table for order sorting and customer seating.",
-    footprint: { width: 3, depth: 2, height: 1 },
-    colors: ["oak plank", "dark brace"],
-    tags: ["bikkie", "fixture", "table"],
-    materialStages: {
-      frame: { softwood_log: 5 },
-      interior: { scrap_metal: 1 },
+    {
+      blueprintId: "bikkie_t_table",
+      displayName: "T-Table",
+      source: "bikkie_blueprint",
+      blueprintItemId: String(BikkieIds.blueprintTTable),
+      bikkieId: BikkieIds.blueprintTTable,
+      bikkieName: "blueprintTTable",
+      materializationKind: "fixture",
+      plotType: "commercial",
+      use: "public_service",
+      structureTypeId: "fixture",
+      goldCost: 12,
+      storageSlots: 3,
+      service:
+        "Public service: T-shaped work table for order sorting and customer seating.",
+      footprint: { width: 3, depth: 2, height: 1 },
+      colors: ["oak plank", "dark brace"],
+      tags: ["bikkie", "fixture", "table"],
+      materialStages: {
+        frame: { softwood_log: 5 },
+        interior: { scrap_metal: 1 },
+      },
+      laborStages: { frame: 9, interior: 4 },
+      description:
+        "Bikkie T-table blueprint for compact fixture placement on commercial plots.",
     },
-    laborStages: { frame: 9, interior: 4 },
-    description:
-      "Bikkie T-table blueprint for compact fixture placement on commercial plots.",
-  },
-  {
-    blueprintId: "bikkie_workbench",
-    displayName: "Workbench",
-    source: "bikkie_blueprint",
-    blueprintItemId: String(BikkieIds.blueprintWorkbench),
-    bikkieId: BikkieIds.blueprintWorkbench,
-    bikkieName: "blueprintWorkbench",
-    materializationKind: "utility_station",
-    plotType: "crafting",
-    use: "workshop",
-    structureTypeId: "utility_station",
-    goldCost: 20,
-    storageSlots: 14,
-    service: "Workshop: crafting workbench, repair order surface, and material staging.",
-    footprint: { width: 3, depth: 3, height: 3 },
-    colors: ["workshop wood", "iron clamps"],
-    tags: ["bikkie", "workshop", "crafting"],
-    materialStages: {
-      site_preparation: { rough_stone: 2 },
-      foundation: { rough_stone: 4 },
-      frame: { softwood_log: 6, scrap_metal: 2 },
-      interior: { cloth_scrap: 2 },
-      utility_setup: { old_coin: 1 },
+    {
+      blueprintId: "bikkie_workbench",
+      displayName: "Workbench",
+      source: "bikkie_blueprint",
+      blueprintItemId: String(BikkieIds.blueprintWorkbench),
+      bikkieId: BikkieIds.blueprintWorkbench,
+      bikkieName: "blueprintWorkbench",
+      materializationKind: "utility_station",
+      plotType: "crafting",
+      use: "workshop",
+      structureTypeId: "utility_station",
+      goldCost: 20,
+      storageSlots: 14,
+      service:
+        "Workshop: crafting workbench, repair order surface, and material staging.",
+      footprint: { width: 3, depth: 3, height: 3 },
+      colors: ["workshop wood", "iron clamps"],
+      tags: ["bikkie", "workshop", "crafting"],
+      materialStages: {
+        site_preparation: { rough_stone: 2 },
+        foundation: { rough_stone: 4 },
+        frame: { softwood_log: 6, scrap_metal: 2 },
+        interior: { cloth_scrap: 2 },
+        utility_setup: { old_coin: 1 },
+      },
+      laborStages: {
+        site_preparation: 5,
+        foundation: 8,
+        frame: 14,
+        interior: 8,
+        utility_setup: 6,
+      },
+      description:
+        "Bikkie workbench blueprint for crafting plots. It unlocks workshop storage and service state without being treated as a house.",
     },
-    laborStages: { site_preparation: 5, foundation: 8, frame: 14, interior: 8, utility_setup: 6 },
-    description:
-      "Bikkie workbench blueprint for crafting plots. It unlocks workshop storage and service state without being treated as a house.",
-  },
-  {
-    blueprintId: "bikkie_tailoring_booth",
-    displayName: "Tailoring Booth",
-    source: "bikkie_blueprint",
-    blueprintItemId: String(BikkieIds.blueprintTailoringBooth),
-    bikkieId: BikkieIds.blueprintTailoringBooth,
-    bikkieName: "blueprintTailoringBooth",
-    materializationKind: "utility_station",
-    plotType: "crafting",
-    use: "workshop",
-    structureTypeId: "utility_station",
-    goldCost: 24,
-    storageSlots: 16,
-    service: "Workshop: tailoring station, cloth orders, dye prep, and outfit service marker.",
-    footprint: { width: 3, depth: 3, height: 3 },
-    colors: ["dyed cloth", "oak frame", "brass needle"],
-    tags: ["bikkie", "tailoring", "workshop"],
-    materialStages: {
-      site_preparation: { softwood_log: 2 },
-      foundation: { rough_stone: 3 },
-      frame: { softwood_log: 5 },
-      walls: { cloth_scrap: 6 },
-      interior: { cloth_scrap: 4, old_coin: 1 },
-      utility_setup: { clean_water: 1 },
+    {
+      blueprintId: "bikkie_tailoring_booth",
+      displayName: "Tailoring Booth",
+      source: "bikkie_blueprint",
+      blueprintItemId: String(BikkieIds.blueprintTailoringBooth),
+      bikkieId: BikkieIds.blueprintTailoringBooth,
+      bikkieName: "blueprintTailoringBooth",
+      materializationKind: "utility_station",
+      plotType: "crafting",
+      use: "workshop",
+      structureTypeId: "utility_station",
+      goldCost: 24,
+      storageSlots: 16,
+      service:
+        "Workshop: tailoring station, cloth orders, dye prep, and outfit service marker.",
+      footprint: { width: 3, depth: 3, height: 3 },
+      colors: ["dyed cloth", "oak frame", "brass needle"],
+      tags: ["bikkie", "tailoring", "workshop"],
+      materialStages: {
+        site_preparation: { softwood_log: 2 },
+        foundation: { rough_stone: 3 },
+        frame: { softwood_log: 5 },
+        walls: { cloth_scrap: 6 },
+        interior: { cloth_scrap: 4, old_coin: 1 },
+        utility_setup: { clean_water: 1 },
+      },
+      laborStages: {
+        site_preparation: 5,
+        foundation: 8,
+        frame: 12,
+        walls: 10,
+        interior: 12,
+        utility_setup: 6,
+      },
+      description:
+        "Bikkie tailoring booth blueprint for a legal crafting yard and clothing service loop.",
     },
-    laborStages: { site_preparation: 5, foundation: 8, frame: 12, walls: 10, interior: 12, utility_setup: 6 },
-    description:
-      "Bikkie tailoring booth blueprint for a legal crafting yard and clothing service loop.",
-  },
-  {
-    blueprintId: "bikkie_dye_o_matic",
-    displayName: "Dye-O-Matic",
-    source: "bikkie_blueprint",
-    blueprintItemId: String(BikkieIds.blueprintDyeOMatic),
-    bikkieId: BikkieIds.blueprintDyeOMatic,
-    bikkieName: "blueprintDyeOMatic",
-    materializationKind: "utility_station",
-    plotType: "crafting",
-    use: "workshop",
-    structureTypeId: "utility_station",
-    goldCost: 26,
-    storageSlots: 12,
-    service: "Workshop: dye station, color work orders, and water-fed cloth processing.",
-    footprint: { width: 3, depth: 3, height: 3 },
-    colors: ["bright dye", "steel drum", "water blue"],
-    tags: ["bikkie", "dye", "workshop"],
-    materialStages: {
-      foundation: { rough_stone: 4, river_clay: 2 },
-      frame: { scrap_metal: 4, softwood_log: 3 },
-      interior: { clean_water: 3, cloth_scrap: 3 },
-      utility_setup: { mana_essence: 1 },
+    {
+      blueprintId: "bikkie_dye_o_matic",
+      displayName: "Dye-O-Matic",
+      source: "bikkie_blueprint",
+      blueprintItemId: String(BikkieIds.blueprintDyeOMatic),
+      bikkieId: BikkieIds.blueprintDyeOMatic,
+      bikkieName: "blueprintDyeOMatic",
+      materializationKind: "utility_station",
+      plotType: "crafting",
+      use: "workshop",
+      structureTypeId: "utility_station",
+      goldCost: 26,
+      storageSlots: 12,
+      service:
+        "Workshop: dye station, color work orders, and water-fed cloth processing.",
+      footprint: { width: 3, depth: 3, height: 3 },
+      colors: ["bright dye", "steel drum", "water blue"],
+      tags: ["bikkie", "dye", "workshop"],
+      materialStages: {
+        foundation: { rough_stone: 4, river_clay: 2 },
+        frame: { scrap_metal: 4, softwood_log: 3 },
+        interior: { clean_water: 3, cloth_scrap: 3 },
+        utility_setup: { mana_essence: 1 },
+      },
+      laborStages: {
+        foundation: 10,
+        frame: 14,
+        interior: 14,
+        utility_setup: 8,
+      },
+      description:
+        "Bikkie dye station blueprint for compact production machinery on a crafting plot.",
     },
-    laborStages: { foundation: 10, frame: 14, interior: 14, utility_setup: 8 },
-    description:
-      "Bikkie dye station blueprint for compact production machinery on a crafting plot.",
-  },
-  {
-    blueprintId: "bikkie_thermoblaster",
-    displayName: "Thermoblaster",
-    source: "bikkie_blueprint",
-    blueprintItemId: String(BikkieIds.blueprintThermoblaster),
-    bikkieId: BikkieIds.blueprintThermoblaster,
-    bikkieName: "blueprintThermoblaster",
-    materializationKind: "utility_station",
-    plotType: "crafting",
-    use: "workshop",
-    structureTypeId: "utility_station",
-    goldCost: 34,
-    storageSlots: 10,
-    service: "Workshop: heat tool station, metal service, and high-energy repair orders.",
-    footprint: { width: 3, depth: 3, height: 3 },
-    colors: ["dark metal", "orange heat", "warning stripe"],
-    tags: ["bikkie", "machine", "workshop"],
-    materialStages: {
-      foundation: { rough_stone: 6 },
-      frame: { scrap_metal: 8 },
-      interior: { mana_essence: 1, clean_water: 1 },
-      utility_setup: { scrap_metal: 3, old_coin: 1 },
+    {
+      blueprintId: "bikkie_thermoblaster",
+      displayName: "Thermoblaster",
+      source: "bikkie_blueprint",
+      blueprintItemId: String(BikkieIds.blueprintThermoblaster),
+      bikkieId: BikkieIds.blueprintThermoblaster,
+      bikkieName: "blueprintThermoblaster",
+      materializationKind: "utility_station",
+      plotType: "crafting",
+      use: "workshop",
+      structureTypeId: "utility_station",
+      goldCost: 34,
+      storageSlots: 10,
+      service:
+        "Workshop: heat tool station, metal service, and high-energy repair orders.",
+      footprint: { width: 3, depth: 3, height: 3 },
+      colors: ["dark metal", "orange heat", "warning stripe"],
+      tags: ["bikkie", "machine", "workshop"],
+      materialStages: {
+        foundation: { rough_stone: 6 },
+        frame: { scrap_metal: 8 },
+        interior: { mana_essence: 1, clean_water: 1 },
+        utility_setup: { scrap_metal: 3, old_coin: 1 },
+      },
+      laborStages: {
+        foundation: 12,
+        frame: 18,
+        interior: 12,
+        utility_setup: 10,
+      },
+      description:
+        "Bikkie thermoblaster blueprint for heat machinery. It is restricted to a crafting yard so it does not appear as home decor.",
     },
-    laborStages: { foundation: 12, frame: 18, interior: 12, utility_setup: 10 },
-    description:
-      "Bikkie thermoblaster blueprint for heat machinery. It is restricted to a crafting yard so it does not appear as home decor.",
-  },
-  {
-    blueprintId: "bikkie_thermolite",
-    displayName: "Thermolite",
-    source: "bikkie_blueprint",
-    blueprintItemId: String(BikkieIds.blueprintThermolite),
-    bikkieId: BikkieIds.blueprintThermolite,
-    bikkieName: "blueprintThermolite",
-    materializationKind: "utility_station",
-    plotType: "crafting",
-    use: "workshop",
-    structureTypeId: "utility_station",
-    goldCost: 30,
-    storageSlots: 10,
-    service: "Workshop: compact energy heater, light industrial service, and maintenance contracts.",
-    footprint: { width: 3, depth: 3, height: 3 },
-    colors: ["warm white", "amber core", "steel base"],
-    tags: ["bikkie", "machine", "workshop"],
-    materialStages: {
-      foundation: { rough_stone: 4 },
-      frame: { scrap_metal: 6, softwood_log: 2 },
-      interior: { mana_essence: 1 },
-      utility_setup: { clean_water: 1, old_coin: 1 },
+    {
+      blueprintId: "bikkie_thermolite",
+      displayName: "Thermolite",
+      source: "bikkie_blueprint",
+      blueprintItemId: String(BikkieIds.blueprintThermolite),
+      bikkieId: BikkieIds.blueprintThermolite,
+      bikkieName: "blueprintThermolite",
+      materializationKind: "utility_station",
+      plotType: "crafting",
+      use: "workshop",
+      structureTypeId: "utility_station",
+      goldCost: 30,
+      storageSlots: 10,
+      service:
+        "Workshop: compact energy heater, light industrial service, and maintenance contracts.",
+      footprint: { width: 3, depth: 3, height: 3 },
+      colors: ["warm white", "amber core", "steel base"],
+      tags: ["bikkie", "machine", "workshop"],
+      materialStages: {
+        foundation: { rough_stone: 4 },
+        frame: { scrap_metal: 6, softwood_log: 2 },
+        interior: { mana_essence: 1 },
+        utility_setup: { clean_water: 1, old_coin: 1 },
+      },
+      laborStages: {
+        foundation: 10,
+        frame: 16,
+        interior: 10,
+        utility_setup: 8,
+      },
+      description:
+        "Bikkie thermolite blueprint for a smaller workshop energy fixture.",
     },
-    laborStages: { foundation: 10, frame: 16, interior: 10, utility_setup: 8 },
-    description:
-      "Bikkie thermolite blueprint for a smaller workshop energy fixture.",
-  },
-  {
-    blueprintId: "bikkie_composter",
-    displayName: "Composter",
-    source: "bikkie_blueprint",
-    blueprintItemId: String(BikkieIds.blueprintComposter),
-    bikkieId: BikkieIds.blueprintComposter,
-    bikkieName: "blueprintComposter",
-    materializationKind: "farm_utility",
-    plotType: "farm",
-    use: "farm",
-    structureTypeId: "farm_utility",
-    goldCost: 14,
-    storageSlots: 8,
-    service: "Farm: compost station, fertilizer storage, and crop-support marker.",
-    footprint: { width: 3, depth: 3, height: 2 },
-    colors: ["garden wood", "muck green", "soil brown"],
-    tags: ["bikkie", "farm", "compost"],
-    materialStages: {
-      site_preparation: { river_clay: 3 },
-      foundation: { rough_stone: 3 },
-      frame: { softwood_log: 5 },
-      interior: { clean_water: 1 },
-      utility_setup: { tree_resin: 1 },
+    {
+      blueprintId: "bikkie_composter",
+      displayName: "Composter",
+      source: "bikkie_blueprint",
+      blueprintItemId: String(BikkieIds.blueprintComposter),
+      bikkieId: BikkieIds.blueprintComposter,
+      bikkieName: "blueprintComposter",
+      materializationKind: "farm_utility",
+      plotType: "farm",
+      use: "farm",
+      structureTypeId: "farm_utility",
+      goldCost: 14,
+      storageSlots: 8,
+      service:
+        "Farm: compost station, fertilizer storage, and crop-support marker.",
+      footprint: { width: 3, depth: 3, height: 2 },
+      colors: ["garden wood", "muck green", "soil brown"],
+      tags: ["bikkie", "farm", "compost"],
+      materialStages: {
+        site_preparation: { river_clay: 3 },
+        foundation: { rough_stone: 3 },
+        frame: { softwood_log: 5 },
+        interior: { clean_water: 1 },
+        utility_setup: { tree_resin: 1 },
+      },
+      laborStages: {
+        site_preparation: 5,
+        foundation: 7,
+        frame: 10,
+        interior: 5,
+        utility_setup: 4,
+      },
+      description:
+        "Bikkie composter blueprint for farm plots. It supports food production and uses farm-scale materialization.",
     },
-    laborStages: { site_preparation: 5, foundation: 7, frame: 10, interior: 5, utility_setup: 4 },
-    description:
-      "Bikkie composter blueprint for farm plots. It supports food production and uses farm-scale materialization.",
-  },
-  {
-    blueprintId: "bikkie_seed_mill",
-    displayName: "Seed Mill",
-    source: "bikkie_blueprint",
-    blueprintItemId: String(BikkieIds.blueprintSeedMill),
-    bikkieId: BikkieIds.blueprintSeedMill,
-    bikkieName: "blueprintSeedMill",
-    materializationKind: "farm_utility",
-    plotType: "farm",
-    use: "farm",
-    structureTypeId: "farm_utility",
-    goldCost: 18,
-    storageSlots: 12,
-    service: "Farm: seed processing, crop-order staging, and farming contract support.",
-    footprint: { width: 3, depth: 3, height: 3 },
-    colors: ["seed tan", "oak wheel", "green trim"],
-    tags: ["bikkie", "farm", "seed"],
-    materialStages: {
-      site_preparation: { river_clay: 2 },
-      foundation: { rough_stone: 4 },
-      frame: { softwood_log: 6, scrap_metal: 1 },
-      interior: { cloth_scrap: 2 },
-      utility_setup: { clean_water: 1, old_coin: 1 },
+    {
+      blueprintId: "bikkie_seed_mill",
+      displayName: "Seed Mill",
+      source: "bikkie_blueprint",
+      blueprintItemId: String(BikkieIds.blueprintSeedMill),
+      bikkieId: BikkieIds.blueprintSeedMill,
+      bikkieName: "blueprintSeedMill",
+      materializationKind: "farm_utility",
+      plotType: "farm",
+      use: "farm",
+      structureTypeId: "farm_utility",
+      goldCost: 18,
+      storageSlots: 12,
+      service:
+        "Farm: seed processing, crop-order staging, and farming contract support.",
+      footprint: { width: 3, depth: 3, height: 3 },
+      colors: ["seed tan", "oak wheel", "green trim"],
+      tags: ["bikkie", "farm", "seed"],
+      materialStages: {
+        site_preparation: { river_clay: 2 },
+        foundation: { rough_stone: 4 },
+        frame: { softwood_log: 6, scrap_metal: 1 },
+        interior: { cloth_scrap: 2 },
+        utility_setup: { clean_water: 1, old_coin: 1 },
+      },
+      laborStages: {
+        site_preparation: 5,
+        foundation: 8,
+        frame: 12,
+        interior: 8,
+        utility_setup: 5,
+      },
+      description:
+        "Bikkie seed mill blueprint for farm and food loops. It is buildable only on farm-support land.",
     },
-    laborStages: { site_preparation: 5, foundation: 8, frame: 12, interior: 8, utility_setup: 5 },
-    description:
-      "Bikkie seed mill blueprint for farm and food loops. It is buildable only on farm-support land.",
-  },
-  {
-    blueprintId: "bikkie_fence",
-    displayName: "Fence",
-    source: "bikkie_blueprint",
-    blueprintItemId: String(BikkieIds.blueprintFence),
-    bikkieId: BikkieIds.blueprintFence,
-    bikkieName: "blueprintFence",
-    materializationKind: "fence_line",
-    plotType: "farm",
-    use: "public_service",
-    structureTypeId: "fence",
-    goldCost: 6,
-    storageSlots: 0,
-    service: "Public service: boundary fence segment, animal lane hint, and plot safety marker.",
-    footprint: { width: 1, depth: 5, height: 2 },
-    colors: ["plain wood", "rope lash"],
-    tags: ["bikkie", "fence", "boundary"],
-    materialStages: {
-      frame: { softwood_log: 4 },
-      utility_setup: { tree_resin: 1 },
+    {
+      blueprintId: "bikkie_fence",
+      displayName: "Fence",
+      source: "bikkie_blueprint",
+      blueprintItemId: String(BikkieIds.blueprintFence),
+      bikkieId: BikkieIds.blueprintFence,
+      bikkieName: "blueprintFence",
+      materializationKind: "fence_line",
+      plotType: "farm",
+      use: "public_service",
+      structureTypeId: "fence",
+      goldCost: 6,
+      storageSlots: 0,
+      service:
+        "Public service: boundary fence segment, animal lane hint, and plot safety marker.",
+      footprint: { width: 1, depth: 5, height: 2 },
+      colors: ["plain wood", "rope lash"],
+      tags: ["bikkie", "fence", "boundary"],
+      materialStages: {
+        frame: { softwood_log: 4 },
+        utility_setup: { tree_resin: 1 },
+      },
+      laborStages: { frame: 8, utility_setup: 3 },
+      description:
+        "Bikkie fence blueprint for boundary-scale construction. It creates a fence line rather than a building shell.",
     },
-    laborStages: { frame: 8, utility_setup: 3 },
-    description:
-      "Bikkie fence blueprint for boundary-scale construction. It creates a fence line rather than a building shell.",
-  },
-  {
-    blueprintId: "bikkie_comms_tower",
-    displayName: "Comms Tower",
-    source: "bikkie_blueprint",
-    blueprintItemId: String(BikkieIds.blueprintCommsTower),
-    bikkieId: BikkieIds.blueprintCommsTower,
-    bikkieName: "blueprintCommsTower",
-    materializationKind: "signal_tower",
-    plotType: "public",
-    use: "public_service",
-    structureTypeId: "signal_tower",
-    goldCost: 55,
-    storageSlots: 8,
-    service: "Public service: communications relay, map marker, and route signal support.",
-    footprint: { width: 5, depth: 5, height: 10 },
-    colors: ["dark metal", "blue signal", "copper wire"],
-    tags: ["bikkie", "tower", "public"],
-    materialStages: {
-      site_preparation: { rough_stone: 4 },
-      foundation: { rough_stone: 10, scrap_metal: 4 },
-      frame: { scrap_metal: 12, softwood_log: 4 },
-      walls: { scrap_metal: 4 },
-      roof: { scrap_metal: 4, mana_essence: 1 },
-      interior: { old_coin: 1 },
-      utility_setup: { mana_essence: 1 },
+    {
+      blueprintId: "bikkie_comms_tower",
+      displayName: "Comms Tower",
+      source: "bikkie_blueprint",
+      blueprintItemId: String(BikkieIds.blueprintCommsTower),
+      bikkieId: BikkieIds.blueprintCommsTower,
+      bikkieName: "blueprintCommsTower",
+      materializationKind: "signal_tower",
+      plotType: "public",
+      use: "public_service",
+      structureTypeId: "signal_tower",
+      goldCost: 55,
+      storageSlots: 8,
+      service:
+        "Public service: communications relay, map marker, and route signal support.",
+      footprint: { width: 5, depth: 5, height: 10 },
+      colors: ["dark metal", "blue signal", "copper wire"],
+      tags: ["bikkie", "tower", "public"],
+      materialStages: {
+        site_preparation: { rough_stone: 4 },
+        foundation: { rough_stone: 10, scrap_metal: 4 },
+        frame: { scrap_metal: 12, softwood_log: 4 },
+        walls: { scrap_metal: 4 },
+        roof: { scrap_metal: 4, mana_essence: 1 },
+        interior: { old_coin: 1 },
+        utility_setup: { mana_essence: 1 },
+      },
+      laborStages: {
+        site_preparation: 10,
+        foundation: 20,
+        frame: 34,
+        walls: 14,
+        roof: 14,
+        interior: 8,
+        utility_setup: 14,
+      },
+      description:
+        "Bikkie comms tower blueprint for public-service plots. It validates road access and height before materializing a tower.",
     },
-    laborStages: { site_preparation: 10, foundation: 20, frame: 34, walls: 14, roof: 14, interior: 8, utility_setup: 14 },
-    description:
-      "Bikkie comms tower blueprint for public-service plots. It validates road access and height before materializing a tower.",
-  },
-  {
-    blueprintId: "bikkie_network_tower",
-    displayName: "Network Tower",
-    source: "bikkie_blueprint",
-    blueprintItemId: String(BikkieIds.blueprintNetworkTower),
-    bikkieId: BikkieIds.blueprintNetworkTower,
-    bikkieName: "blueprintNetworkTower",
-    materializationKind: "signal_tower",
-    plotType: "public",
-    use: "public_service",
-    structureTypeId: "signal_tower",
-    goldCost: 65,
-    storageSlots: 10,
-    service: "Public service: network relay, navigation upgrade anchor, and town signal infrastructure.",
-    footprint: { width: 5, depth: 5, height: 10 },
-    colors: ["silver frame", "cyan signal", "black cable"],
-    tags: ["bikkie", "tower", "network", "public"],
-    materialStages: {
-      site_preparation: { rough_stone: 5 },
-      foundation: { rough_stone: 12, scrap_metal: 5 },
-      frame: { scrap_metal: 14, softwood_log: 4 },
-      walls: { scrap_metal: 5 },
-      roof: { scrap_metal: 5, mana_essence: 1 },
-      interior: { old_coin: 2 },
-      utility_setup: { mana_essence: 2 },
+    {
+      blueprintId: "bikkie_network_tower",
+      displayName: "Network Tower",
+      source: "bikkie_blueprint",
+      blueprintItemId: String(BikkieIds.blueprintNetworkTower),
+      bikkieId: BikkieIds.blueprintNetworkTower,
+      bikkieName: "blueprintNetworkTower",
+      materializationKind: "signal_tower",
+      plotType: "public",
+      use: "public_service",
+      structureTypeId: "signal_tower",
+      goldCost: 65,
+      storageSlots: 10,
+      service:
+        "Public service: network relay, navigation upgrade anchor, and town signal infrastructure.",
+      footprint: { width: 5, depth: 5, height: 10 },
+      colors: ["silver frame", "cyan signal", "black cable"],
+      tags: ["bikkie", "tower", "network", "public"],
+      materialStages: {
+        site_preparation: { rough_stone: 5 },
+        foundation: { rough_stone: 12, scrap_metal: 5 },
+        frame: { scrap_metal: 14, softwood_log: 4 },
+        walls: { scrap_metal: 5 },
+        roof: { scrap_metal: 5, mana_essence: 1 },
+        interior: { old_coin: 2 },
+        utility_setup: { mana_essence: 2 },
+      },
+      laborStages: {
+        site_preparation: 12,
+        foundation: 24,
+        frame: 38,
+        walls: 16,
+        roof: 16,
+        interior: 10,
+        utility_setup: 16,
+      },
+      description:
+        "Bikkie network tower blueprint for public infrastructure and navigation upgrades.",
     },
-    laborStages: { site_preparation: 12, foundation: 24, frame: 38, walls: 16, roof: 16, interior: 10, utility_setup: 16 },
-    description:
-      "Bikkie network tower blueprint for public infrastructure and navigation upgrades.",
-  },
-];
+  ];
 
 export const BUILDING_SYSTEM_BLUEPRINTS: BuildingSystemBlueprintDefinition[] = [
   {
@@ -1615,7 +1774,8 @@ export const BUILDING_SYSTEM_BLUEPRINTS: BuildingSystemBlueprintDefinition[] = [
     structureTypeId: "small_house",
     goldCost: 20,
     storageSlots: 24,
-    service: "Home: safe rest, private storage, guest access, and respawn-friendly shelter.",
+    service:
+      "Home: safe rest, private storage, guest access, and respawn-friendly shelter.",
     footprint: { width: 5, depth: 5, height: 4 },
     materialStages: {
       site_preparation: { rough_stone: 4 },
@@ -1648,7 +1808,8 @@ export const BUILDING_SYSTEM_BLUEPRINTS: BuildingSystemBlueprintDefinition[] = [
     structureTypeId: "shop",
     goldCost: 35,
     storageSlots: 18,
-    service: "Business: shop counter, listings, customer access, and taxable sales ledger.",
+    service:
+      "Business: shop counter, listings, customer access, and taxable sales ledger.",
     footprint: { width: 6, depth: 6, height: 4 },
     materialStages: {
       site_preparation: { rough_stone: 4 },
@@ -1681,7 +1842,8 @@ export const BUILDING_SYSTEM_BLUEPRINTS: BuildingSystemBlueprintDefinition[] = [
     structureTypeId: "guild_hall",
     goldCost: 80,
     storageSlots: 96,
-    service: "Guild: shared permissions, guild bank, charter board, project staging, and public meeting hall.",
+    service:
+      "Guild: shared permissions, guild bank, charter board, project staging, and public meeting hall.",
     footprint: { width: 14, depth: 14, height: 8 },
     materialStages: {
       site_preparation: { rough_stone: 12 },
@@ -1901,7 +2063,8 @@ export function toHarthmerePlotDefinition(
   active = true,
   currentCoveredAreaVoxels = 0
 ): HarthmerePlotDefinition {
-  const area = Math.max(1, plot.bounds.xMax - plot.bounds.xMin) *
+  const area =
+    Math.max(1, plot.bounds.xMax - plot.bounds.xMin) *
     Math.max(1, plot.bounds.zMax - plot.bounds.zMin);
   return {
     plotId: plot.plotId,
@@ -1921,9 +2084,13 @@ export function buildingSystemDefaultOrigin(
   blueprint: BuildingSystemBlueprintDefinition
 ) {
   return {
-    x: Math.floor((plot.bounds.xMin + plot.bounds.xMax - blueprint.footprint.width) / 2),
+    x: Math.floor(
+      (plot.bounds.xMin + plot.bounds.xMax - blueprint.footprint.width) / 2
+    ),
     y: plot.groundY + 1,
-    z: Math.floor((plot.bounds.zMin + plot.bounds.zMax - blueprint.footprint.depth) / 2),
+    z: Math.floor(
+      (plot.bounds.zMin + plot.bounds.zMax - blueprint.footprint.depth) / 2
+    ),
   };
 }
 
@@ -1950,7 +2117,11 @@ export function shiftBuildingSystemMaterializationPlanY<
   }
   const shiftPosition = (
     position: [number, number, number]
-  ): [number, number, number] => [position[0], position[1] + shiftY, position[2]];
+  ): [number, number, number] => [
+    position[0],
+    position[1] + shiftY,
+    position[2],
+  ];
   const next: any = {
     ...plan,
     edits: plan.edits.map((edit) => ({
@@ -1979,11 +2150,7 @@ export function shiftBuildingSystemMaterializationPlanY<
 // unchanged plan.
 export function groundedBuildingSystemMaterializationPlan<
   T extends BuildingSystemAnyMaterializationPlan
->(
-  plan: T,
-  isSolid: HarthmereSolidSampler,
-  options?: { maxScan?: number }
-): T {
+>(plan: T, isSolid: HarthmereSolidSampler, options?: { maxScan?: number }): T {
   if (!plan.edits.length) {
     return plan;
   }
@@ -2004,7 +2171,10 @@ export function groundedBuildingSystemMaterializationPlan<
   const referenceY = hasOrigin
     ? (plan as BuildingSystemMaterializationPlan).origin.y
     : minEditY;
-  const scan = Math.max(1, Math.floor(options?.maxScan ?? BUILDING_GROUND_SHIFT_SCAN));
+  const scan = Math.max(
+    1,
+    Math.floor(options?.maxScan ?? BUILDING_GROUND_SHIFT_SCAN)
+  );
   const groundedFeetY = findHarthmereGroundFeetY(isSolid, columnX, columnZ, {
     hintY: Math.round(referenceY),
     maxScanDown: scan,
@@ -2017,10 +2187,7 @@ export function groundedBuildingSystemMaterializationPlan<
   // A building's floor block sits one below the standable feet level (you stand
   // ON the floor); a marker block rests AT the surface feet level.
   const targetReferenceY = hasOrigin ? groundedFeetY - 1 : groundedFeetY;
-  const shiftY = Math.max(
-    -scan,
-    Math.min(scan, targetReferenceY - referenceY)
-  );
+  const shiftY = Math.max(-scan, Math.min(scan, targetReferenceY - referenceY));
   return shiftBuildingSystemMaterializationPlanY(plan, shiftY);
 }
 
@@ -2038,7 +2205,8 @@ export function createBuildingSystemGuideConstructionMath(input: {
   origin?: { x: number; y: number; z: number };
   rotationDegrees?: 0 | 90 | 180 | 270;
 }): BuildingSystemGuideConstructionMath {
-  const origin = input.origin ?? buildingSystemDefaultOrigin(input.plot, input.blueprint);
+  const origin =
+    input.origin ?? buildingSystemDefaultOrigin(input.plot, input.blueprint);
   const fp = input.blueprint.footprint;
   const x0 = origin.x;
   const y0 = origin.y;
@@ -2049,8 +2217,14 @@ export function createBuildingSystemGuideConstructionMath(input: {
   const roofY = wallTopY;
   const doorX = Math.floor((x0 + x1) / 2);
   const stairPosition: [number, number, number] = [doorX, y0, z0 - 1];
-  const plotWidth = Math.max(1, input.plot.bounds.xMax - input.plot.bounds.xMin);
-  const plotDepth = Math.max(1, input.plot.bounds.zMax - input.plot.bounds.zMin);
+  const plotWidth = Math.max(
+    1,
+    input.plot.bounds.xMax - input.plot.bounds.xMin
+  );
+  const plotDepth = Math.max(
+    1,
+    input.plot.bounds.zMax - input.plot.bounds.zMin
+  );
   const plotAreaVoxels = plotWidth * plotDepth;
   const coveredAreaVoxels = Math.max(1, fp.width) * Math.max(1, fp.depth);
   const footprintInsidePlot =
@@ -2101,7 +2275,8 @@ export function createBuildingSystemGuideConstructionMath(input: {
     z1 - 2
   );
   const warnings: string[] = [];
-  if (!footprintInsidePlot) warnings.push("guide_warning:footprint_outside_plot");
+  if (!footprintInsidePlot)
+    warnings.push("guide_warning:footprint_outside_plot");
   if (coveredAreaFraction > input.plot.maxCoveredAreaFraction) {
     warnings.push("guide_warning:coverage_exceeds_plot_limit");
   }
@@ -2165,7 +2340,11 @@ export function createBuildingSystemGuideConstructionMath(input: {
       queueNode: [doorX, y0 + 1, z0 + Math.min(3, Math.max(1, fp.depth - 2))],
       serviceCounter: [doorX, y0 + 1, serviceCounterZ],
       exitNode: [
-        clampBuildingSystemGuideCoordinate(Math.min(x1 - 3, doorX + 2), x0 + 1, x1 - 2),
+        clampBuildingSystemGuideCoordinate(
+          Math.min(x1 - 3, doorX + 2),
+          x0 + 1,
+          x1 - 2
+        ),
         y0 + 1,
         clampBuildingSystemGuideCoordinate(z0 + 1, z0 + 1, z1 - 2),
       ],
@@ -2232,10 +2411,15 @@ export function createBuildingSystemPlacementContext(input: {
   questTriggerAreas?: HarthmereBuildingPlacementContext["questTriggerAreas"];
   currentCoveredAreaVoxels?: number;
 }): HarthmereBuildingPlacementContext {
-  const origin = input.origin ?? buildingSystemDefaultOrigin(input.plot, input.blueprint);
+  const origin =
+    input.origin ?? buildingSystemDefaultOrigin(input.plot, input.blueprint);
   const cols: HarthmereBuildingPlacementContext["terrainColumns"] = [];
   for (let x = origin.x; x < origin.x + input.blueprint.footprint.width; x++) {
-    for (let z = origin.z; z < origin.z + input.blueprint.footprint.depth; z++) {
+    for (
+      let z = origin.z;
+      z < origin.z + input.blueprint.footprint.depth;
+      z++
+    ) {
       cols.push({
         x,
         z,
@@ -2254,7 +2438,8 @@ export function createBuildingSystemPlacementContext(input: {
     nearbyStructures: input.nearbyStructures ?? [],
     npcRouteWaypoints: input.npcRouteWaypoints ?? [],
     questTriggerAreas: input.questTriggerAreas ?? [],
-    hasRoadAccess: !input.plot.requiresRoadAccess || typeof roadDistance === "number",
+    hasRoadAccess:
+      !input.plot.requiresRoadAccess || typeof roadDistance === "number",
     minRoadDistanceVoxels: roadDistance ?? 0,
     plot: toHarthmerePlotDefinition(
       input.plot,
@@ -2327,21 +2512,23 @@ export function buildingSystemRemainingMaterialItemDeltas(input: {
   const materialDeltas: Record<string, number> = {};
   const symbolicContributions: Record<string, number> = {};
   for (const line of lines) {
-    let requested = input.contributeAll || !input.requestedMaterials
-      ? line.remaining
-      : Math.max(
-          0,
-          Math.trunc(
-            Number(
-              input.requestedMaterials[line.material] ??
-                input.requestedMaterials[line.itemId] ??
-                0
+    let requested =
+      input.contributeAll || !input.requestedMaterials
+        ? line.remaining
+        : Math.max(
+            0,
+            Math.trunc(
+              Number(
+                input.requestedMaterials[line.material] ??
+                  input.requestedMaterials[line.itemId] ??
+                  0
+              )
             )
-          )
-        );
+          );
     requested = Math.min(line.remaining, requested);
     if (requested > 0) {
-      materialDeltas[line.itemId] = (materialDeltas[line.itemId] ?? 0) - requested;
+      materialDeltas[line.itemId] =
+        (materialDeltas[line.itemId] ?? 0) - requested;
       symbolicContributions[line.material] =
         (symbolicContributions[line.material] ?? 0) + requested;
     }
@@ -2362,12 +2549,32 @@ function createBuildingSystemPlotMarkers(input: {
   const { xMin, xMax, zMin, zMax } = input.plot.bounds;
   const markerEvery = 3;
   for (let x = xMin; x < xMax; x += markerEvery) {
-    edits.push({ kind: "editEvent", position: [x, y, zMin], value: BUILDING_BLOCKS.boundaryMarker, label: "boundary_marker" });
-    edits.push({ kind: "editEvent", position: [x, y, zMax - 1], value: BUILDING_BLOCKS.boundaryMarker, label: "boundary_marker" });
+    edits.push({
+      kind: "editEvent",
+      position: [x, y, zMin],
+      value: BUILDING_BLOCKS.boundaryMarker,
+      label: "boundary_marker",
+    });
+    edits.push({
+      kind: "editEvent",
+      position: [x, y, zMax - 1],
+      value: BUILDING_BLOCKS.boundaryMarker,
+      label: "boundary_marker",
+    });
   }
   for (let z = zMin; z < zMax; z += markerEvery) {
-    edits.push({ kind: "editEvent", position: [xMin, y, z], value: BUILDING_BLOCKS.boundaryMarker, label: "boundary_marker" });
-    edits.push({ kind: "editEvent", position: [xMax - 1, y, z], value: BUILDING_BLOCKS.boundaryMarker, label: "boundary_marker" });
+    edits.push({
+      kind: "editEvent",
+      position: [xMin, y, z],
+      value: BUILDING_BLOCKS.boundaryMarker,
+      label: "boundary_marker",
+    });
+    edits.push({
+      kind: "editEvent",
+      position: [xMax - 1, y, z],
+      value: BUILDING_BLOCKS.boundaryMarker,
+      label: "boundary_marker",
+    });
   }
   const center: [number, number, number] = [
     Math.floor((xMin + xMax) / 2),
@@ -2377,8 +2584,18 @@ function createBuildingSystemPlotMarkers(input: {
   const deed: [number, number, number] = [xMin + 1, y, zMin + 1];
   const map: [number, number, number] = [center[0], y + 1, center[2]];
   const terraformed = input.terrainState === "terraformed";
-  edits.push({ kind: "editEvent", position: deed, value: BUILDING_BLOCKS.deedMarker, label: "deed_marker" });
-  edits.push({ kind: "editEvent", position: map, value: BUILDING_BLOCKS.mapMarker, label: "map_marker" });
+  edits.push({
+    kind: "editEvent",
+    position: deed,
+    value: BUILDING_BLOCKS.deedMarker,
+    label: "deed_marker",
+  });
+  edits.push({
+    kind: "editEvent",
+    position: map,
+    value: BUILDING_BLOCKS.mapMarker,
+    label: "map_marker",
+  });
   markers.push(
     {
       markerId: `${input.plot.plotId}:boundary`,
@@ -2431,20 +2648,52 @@ function pushBuildingWalls(input: {
   z1: number;
   wallTop: number;
 }) {
-  const doorX = Math.floor((input.x0 + input.x1) / 2);
+  const doorColumns = buildingSystemDoorOpeningColumns(input.x0, input.x1);
   for (let y = input.y0 + 1; y < input.wallTop; y++) {
     for (let x = input.x0; x < input.x1; x++) {
-      const isDoor = x === doorX && (y === input.y0 + 1 || y === input.y0 + 2);
+      const isDoor =
+        doorColumns.includes(x) && (y === input.y0 + 1 || y === input.y0 + 2);
       if (!isDoor) {
-        input.edits.push({ kind: "editEvent", position: [x, y, input.z0], value: BUILDING_BLOCKS.wall, label: "wall" });
+        input.edits.push({
+          kind: "editEvent",
+          position: [x, y, input.z0],
+          value: BUILDING_BLOCKS.wall,
+          label: "wall",
+        });
       }
-      input.edits.push({ kind: "editEvent", position: [x, y, input.z1 - 1], value: BUILDING_BLOCKS.wall, label: "wall" });
+      input.edits.push({
+        kind: "editEvent",
+        position: [x, y, input.z1 - 1],
+        value: BUILDING_BLOCKS.wall,
+        label: "wall",
+      });
     }
     for (let z = input.z0 + 1; z < input.z1 - 1; z++) {
-      input.edits.push({ kind: "editEvent", position: [input.x0, y, z], value: BUILDING_BLOCKS.wall, label: "wall" });
-      input.edits.push({ kind: "editEvent", position: [input.x1 - 1, y, z], value: BUILDING_BLOCKS.wall, label: "wall" });
+      input.edits.push({
+        kind: "editEvent",
+        position: [input.x0, y, z],
+        value: BUILDING_BLOCKS.wall,
+        label: "wall",
+      });
+      input.edits.push({
+        kind: "editEvent",
+        position: [input.x1 - 1, y, z],
+        value: BUILDING_BLOCKS.wall,
+        label: "wall",
+      });
     }
   }
+}
+
+function buildingSystemDoorOpeningColumns(x0: number, x1: number) {
+  const width = Math.max(1, x1 - x0);
+  const center = Math.floor((x0 + x1) / 2);
+  if (width < 4) {
+    return [center];
+  }
+  const left = width >= 6 ? center - 1 : center;
+  const right = Math.min(x1 - 2, left + 1);
+  return [...new Set([left, right])];
 }
 
 function buildingSystemGeometryBounds(
@@ -2551,7 +2800,9 @@ function pushBuildingSystemUtilityBlueprintEdits(input: {
       input.edits,
       [input.x0, input.y0, input.z0],
       [input.x1, input.y0 + 1, input.z1],
-      kind === "farm_utility" ? BUILDING_BLOCKS.safeGround : BUILDING_BLOCKS.floor,
+      kind === "farm_utility"
+        ? BUILDING_BLOCKS.safeGround
+        : BUILDING_BLOCKS.floor,
       "floor"
     );
   }
@@ -2566,7 +2817,9 @@ function pushBuildingSystemUtilityBlueprintEdits(input: {
     for (const [px, pz] of posts) {
       const frameY0 = kind === "fixture" ? input.y0 : input.y0 + 1;
       const frameY1 =
-        kind === "fixture" ? input.y0 + Math.max(1, input.blueprint.footprint.height) : postTop;
+        kind === "fixture"
+          ? input.y0 + Math.max(1, input.blueprint.footprint.height)
+          : postTop;
       pushVoxelBox(
         input.edits,
         [px, frameY0, pz],
@@ -2587,12 +2840,18 @@ function pushBuildingSystemUtilityBlueprintEdits(input: {
   }
 
   if (include("walls")) {
-    if (kind === "market_stall" || kind === "utility_station" || kind === "farm_utility") {
+    if (
+      kind === "market_stall" ||
+      kind === "utility_station" ||
+      kind === "farm_utility"
+    ) {
       pushVoxelBox(
         input.edits,
         [input.x0, input.y0 + 1, input.z1 - 1],
         [input.x1, input.y0 + 2, input.z1],
-        kind === "market_stall" ? BUILDING_BLOCKS.interior : BUILDING_BLOCKS.wall,
+        kind === "market_stall"
+          ? BUILDING_BLOCKS.interior
+          : BUILDING_BLOCKS.wall,
         kind === "market_stall" ? "interior" : "wall"
       );
     }
@@ -2610,8 +2869,16 @@ function pushBuildingSystemUtilityBlueprintEdits(input: {
     } else if (kind === "signal_tower") {
       pushVoxelBox(
         input.edits,
-        [Math.max(input.x0, cx - 1), input.y0 + input.blueprint.footprint.height - 1, Math.max(input.z0, cz - 1)],
-        [Math.min(input.x1, cx + 2), input.y0 + input.blueprint.footprint.height, Math.min(input.z1, cz + 2)],
+        [
+          Math.max(input.x0, cx - 1),
+          input.y0 + input.blueprint.footprint.height - 1,
+          Math.max(input.z0, cz - 1),
+        ],
+        [
+          Math.min(input.x1, cx + 2),
+          input.y0 + input.blueprint.footprint.height,
+          Math.min(input.z1, cz + 2),
+        ],
         BUILDING_BLOCKS.roof,
         "roof"
       );
@@ -2623,8 +2890,8 @@ function pushBuildingSystemUtilityBlueprintEdits(input: {
       kind === "farm_utility"
         ? BUILDING_BLOCKS.storageContainer
         : kind === "signal_tower"
-          ? BUILDING_BLOCKS.businessMarker
-          : BUILDING_BLOCKS.interior;
+        ? BUILDING_BLOCKS.businessMarker
+        : BUILDING_BLOCKS.interior;
     input.edits.push({
       kind: "editEvent",
       position: [cx, kind === "fixture" ? input.y0 : input.y0 + 1, cz],
@@ -2732,7 +2999,13 @@ function buildingSystemHomeConsolePosition(input: {
 }): [number, number, number] {
   return [
     input.origin.x +
-      Math.max(0, Math.min(input.blueprint.footprint.width - 1, input.blueprint.footprint.width - 2)),
+      Math.max(
+        0,
+        Math.min(
+          input.blueprint.footprint.width - 1,
+          input.blueprint.footprint.width - 2
+        )
+      ),
     input.origin.y + 1,
     input.origin.z +
       Math.max(0, Math.min(input.blueprint.footprint.depth - 1, 1)),
@@ -2794,7 +3067,13 @@ function createBuildingSystemPhysicalAccessMarkers(input: {
         input.origin.x + Math.floor(input.blueprint.footprint.width / 2),
         input.origin.y + 1,
         input.origin.z +
-          Math.max(1, Math.min(input.blueprint.footprint.depth - 1, input.blueprint.footprint.depth - 2)),
+          Math.max(
+            1,
+            Math.min(
+              input.blueprint.footprint.depth - 1,
+              input.blueprint.footprint.depth - 2
+            )
+          ),
       ],
       label: `${input.blueprint.displayName} Counter`,
       createdAtMs: input.activatedAtMs,
@@ -2873,11 +3152,8 @@ export function createBuildingSystemMaterializationPlan(input: {
   includeSafeGround?: boolean;
   activatedAtMs: number;
 }): BuildingSystemMaterializationPlan {
-  const { origin, x0, z0, y0, x1, z1, wallTop, roofY, guideConstruction } = buildingSystemGeometryBounds(
-    input.plot,
-    input.blueprint,
-    input.origin
-  );
+  const { origin, x0, z0, y0, x1, z1, wallTop, roofY, guideConstruction } =
+    buildingSystemGeometryBounds(input.plot, input.blueprint, input.origin);
   const edits: BuildingSystemVoxelEditSpec[] = [];
   const inWorldMarkers = createBuildingSystemPhysicalAccessMarkers({
     propertyId: input.propertyId,
@@ -2949,14 +3225,32 @@ export function createBuildingSystemMaterializationPlan(input: {
   }
 
   // Foundation and walkable floor.
-  pushVoxelBox(edits, [x0, y0 - 1, z0], [x1, y0, z1], BUILDING_BLOCKS.foundation, "foundation");
-  pushVoxelBox(edits, [x0, y0, z0], [x1, y0 + 1, z1], BUILDING_BLOCKS.floor, "floor");
+  pushVoxelBox(
+    edits,
+    [x0, y0 - 1, z0],
+    [x1, y0, z1],
+    BUILDING_BLOCKS.foundation,
+    "foundation"
+  );
+  pushVoxelBox(
+    edits,
+    [x0, y0, z0],
+    [x1, y0 + 1, z1],
+    BUILDING_BLOCKS.floor,
+    "floor"
+  );
 
   // Solid walls. Leave a two-block door opening centered on the south face.
   pushBuildingWalls({ edits, x0, x1, y0, z0, z1, wallTop });
 
   // Solid roof players can stand on.
-  pushVoxelBox(edits, [x0, roofY, z0], [x1, roofY + 1, z1], BUILDING_BLOCKS.roof, "roof");
+  pushVoxelBox(
+    edits,
+    [x0, roofY, z0],
+    [x1, roofY + 1, z1],
+    BUILDING_BLOCKS.roof,
+    "roof"
+  );
 
   // Front stair/step into the door if within claimed plot.
   const doorX = Math.floor((x0 + x1) / 2);
@@ -2966,7 +3260,12 @@ export function createBuildingSystemMaterializationPlan(input: {
     doorX >= input.plot.bounds.xMin &&
     doorX < input.plot.bounds.xMax
   ) {
-    edits.push({ kind: "editEvent", position: [doorX, y0, stairZ], value: BUILDING_BLOCKS.stair, label: "stair" });
+    edits.push({
+      kind: "editEvent",
+      position: [doorX, y0, stairZ],
+      value: BUILDING_BLOCKS.stair,
+      label: "stair",
+    });
   }
   pushBuildingSystemPhysicalAccessEdits({
     edits,
@@ -3020,11 +3319,8 @@ export function createBuildingSystemStageMaterializationPlan(input: {
   rotationDegrees?: 0 | 90 | 180 | 270;
   activatedAtMs: number;
 }): BuildingSystemMaterializationPlan {
-  const { origin, x0, z0, y0, x1, z1, wallTop, roofY, guideConstruction } = buildingSystemGeometryBounds(
-    input.plot,
-    input.blueprint,
-    input.origin
-  );
+  const { origin, x0, z0, y0, x1, z1, wallTop, roofY, guideConstruction } =
+    buildingSystemGeometryBounds(input.plot, input.blueprint, input.origin);
   const edits: BuildingSystemVoxelEditSpec[] = [];
   const stage = input.stage;
   const doorX = Math.floor((x0 + x1) / 2);
@@ -3046,7 +3342,9 @@ export function createBuildingSystemStageMaterializationPlan(input: {
         plot: input.plot,
         activatedAtMs: input.activatedAtMs,
       });
-      edits.push(...markerPlan.edits.filter((edit) => edit.label === "boundary_marker"));
+      edits.push(
+        ...markerPlan.edits.filter((edit) => edit.label === "boundary_marker")
+      );
     } else {
       pushBuildingSystemUtilityBlueprintEdits({
         edits,
@@ -3087,17 +3385,16 @@ export function createBuildingSystemStageMaterializationPlan(input: {
         box: { v0: [x0, y0 - 1, z0], v1: [x1, roofY + 1, z1] },
         reason: "building_blueprint_materialized",
       },
-      safeZone:
-        input.plot.safeAfterPurchase
-          ? {
-              plotId: input.plot.plotId,
-              actorId: input.actorId,
-              area: input.plot.area,
-              bounds: input.plot.bounds,
-              safeFromMuck: true,
-              activatedAtMs: input.activatedAtMs,
-            }
-          : undefined,
+      safeZone: input.plot.safeAfterPurchase
+        ? {
+            plotId: input.plot.plotId,
+            actorId: input.actorId,
+            area: input.plot.area,
+            bounds: input.plot.bounds,
+            safeFromMuck: true,
+            activatedAtMs: input.activatedAtMs,
+          }
+        : undefined,
       inWorldMarkers,
       partialMaterialization: stage !== "utility_setup",
       unlocksStorage: stage === "utility_setup",
@@ -3112,32 +3409,83 @@ export function createBuildingSystemStageMaterializationPlan(input: {
       plot: input.plot,
       activatedAtMs: input.activatedAtMs,
     });
-    edits.push(...markerPlan.edits.filter((edit) => edit.label === "boundary_marker"));
+    edits.push(
+      ...markerPlan.edits.filter((edit) => edit.label === "boundary_marker")
+    );
   } else if (stage === "foundation") {
     // Foundation and walkable floor appear only after the foundation stage.
-    pushVoxelBox(edits, [x0, y0 - 1, z0], [x1, y0, z1], BUILDING_BLOCKS.foundation, "foundation");
-    pushVoxelBox(edits, [x0, y0, z0], [x1, y0 + 1, z1], BUILDING_BLOCKS.floor, "floor");
+    pushVoxelBox(
+      edits,
+      [x0, y0 - 1, z0],
+      [x1, y0, z1],
+      BUILDING_BLOCKS.foundation,
+      "foundation"
+    );
+    pushVoxelBox(
+      edits,
+      [x0, y0, z0],
+      [x1, y0 + 1, z1],
+      BUILDING_BLOCKS.floor,
+      "floor"
+    );
   } else if (stage === "frame") {
     // Corners and a simple header prove the frame exists before full walls.
-    for (const [px, pz] of [[x0, z0], [x1 - 1, z0], [x0, z1 - 1], [x1 - 1, z1 - 1]] as Array<[number, number]>) {
-      pushVoxelBox(edits, [px, y0 + 1, pz], [px + 1, wallTop, pz + 1], BUILDING_BLOCKS.frame, "frame");
+    for (const [px, pz] of [
+      [x0, z0],
+      [x1 - 1, z0],
+      [x0, z1 - 1],
+      [x1 - 1, z1 - 1],
+    ] as Array<[number, number]>) {
+      pushVoxelBox(
+        edits,
+        [px, y0 + 1, pz],
+        [px + 1, wallTop, pz + 1],
+        BUILDING_BLOCKS.frame,
+        "frame"
+      );
     }
-    edits.push({ kind: "editEvent", position: [doorX, y0 + 3, z0], value: BUILDING_BLOCKS.frame, label: "frame" });
+    edits.push({
+      kind: "editEvent",
+      position: [doorX, y0 + 3, z0],
+      value: BUILDING_BLOCKS.frame,
+      label: "frame",
+    });
   } else if (stage === "walls") {
     // Walls appear only after the walls stage.
     pushBuildingWalls({ edits, x0, x1, y0, z0, z1, wallTop });
   } else if (stage === "roof") {
     // A solid standable roof appears only after the roof stage.
-    pushVoxelBox(edits, [x0, roofY, z0], [x1, roofY + 1, z1], BUILDING_BLOCKS.roof, "roof");
+    pushVoxelBox(
+      edits,
+      [x0, roofY, z0],
+      [x1, roofY + 1, z1],
+      BUILDING_BLOCKS.roof,
+      "roof"
+    );
   } else if (stage === "interior") {
     // Interior/stairs are visible, but storage/services unlock only when completed.
     const stairZ = z0 - 1;
     if (stairZ >= input.plot.bounds.zMin) {
-      edits.push({ kind: "editEvent", position: [doorX, y0, stairZ], value: BUILDING_BLOCKS.stair, label: "stair" });
+      edits.push({
+        kind: "editEvent",
+        position: [doorX, y0, stairZ],
+        value: BUILDING_BLOCKS.stair,
+        label: "stair",
+      });
     }
-    edits.push({ kind: "editEvent", position: [x0 + 1, y0 + 1, z0 + 1], value: BUILDING_BLOCKS.interior, label: "interior" });
+    edits.push({
+      kind: "editEvent",
+      position: [x0 + 1, y0 + 1, z0 + 1],
+      value: BUILDING_BLOCKS.interior,
+      label: "interior",
+    });
   } else if (stage === "utility_setup") {
-    edits.push({ kind: "editEvent", position: [x0 + 1, y0 + 1, z0], value: BUILDING_BLOCKS.deedMarker, label: "deed_marker" });
+    edits.push({
+      kind: "editEvent",
+      position: [x0 + 1, y0 + 1, z0],
+      value: BUILDING_BLOCKS.deedMarker,
+      label: "deed_marker",
+    });
     pushBuildingSystemPhysicalAccessEdits({
       edits,
       blueprint: input.blueprint,
@@ -3164,17 +3512,16 @@ export function createBuildingSystemStageMaterializationPlan(input: {
       box: { v0: [x0, y0 - 1, z0], v1: [x1, roofY + 1, z1] },
       reason: "building_blueprint_materialized",
     },
-    safeZone:
-      input.plot.safeAfterPurchase
-        ? {
-            plotId: input.plot.plotId,
-            actorId: input.actorId,
-            area: input.plot.area,
-            bounds: input.plot.bounds,
-            safeFromMuck: true,
-            activatedAtMs: input.activatedAtMs,
-          }
-        : undefined,
+    safeZone: input.plot.safeAfterPurchase
+      ? {
+          plotId: input.plot.plotId,
+          actorId: input.actorId,
+          area: input.plot.area,
+          bounds: input.plot.bounds,
+          safeFromMuck: true,
+          activatedAtMs: input.activatedAtMs,
+        }
+      : undefined,
     inWorldMarkers,
     partialMaterialization: stage !== "utility_setup",
     unlocksStorage: stage === "utility_setup",
@@ -3183,7 +3530,9 @@ export function createBuildingSystemStageMaterializationPlan(input: {
   };
 }
 
-export function countBuildingSystemVoxelLabels(plan: BuildingSystemAnyMaterializationPlan) {
+export function countBuildingSystemVoxelLabels(
+  plan: BuildingSystemAnyMaterializationPlan
+) {
   return plan.edits.reduce<Record<string, number>>((acc, edit) => {
     acc[edit.label] = (acc[edit.label] ?? 0) + 1;
     return acc;
@@ -3261,27 +3610,41 @@ export function createBuildingSystemPropertyRecord(input: {
   const guildTaxRate =
     input.blueprint.use === "guild" ? Math.max(input.plot.taxRate, 0.05) : 0;
   const accessMode =
-    input.blueprint.use === "business" ? "public" : input.blueprint.use === "guild" ? "guild" : "private";
+    input.blueprint.use === "business"
+      ? "public"
+      : input.blueprint.use === "guild"
+      ? "guild"
+      : "private";
   return {
     propertyId: input.propertyId,
     plotId: input.plot.plotId,
     blueprintId: input.blueprint.blueprintId,
     ownerId: input.ownerId,
-    origin: input.origin ?? buildingSystemDefaultOrigin(input.plot, input.blueprint),
+    origin:
+      input.origin ?? buildingSystemDefaultOrigin(input.plot, input.blueprint),
     rotationDegrees: input.rotationDegrees ?? 0,
     status: input.blueprint.use,
     use: input.blueprint.use,
-    value: Math.max(input.blueprint.goldCost, input.value ?? input.blueprint.goldCost),
+    value: Math.max(
+      input.blueprint.goldCost,
+      input.value ?? input.blueprint.goldCost
+    ),
     tier: 1,
     accessMode,
-    permissions: createBuildingSystemPermissionsForUse(input.blueprint.use, accessMode),
+    permissions: createBuildingSystemPermissionsForUse(
+      input.blueprint.use,
+      accessMode
+    ),
     guestActorIds: [],
     guildId: input.guildId,
     storageSlots: input.blueprint.storageSlots,
     storageItemCount: 0,
     storageContainerId: `storage_${input.propertyId}`,
     doorLockId: `door_${input.propertyId}`,
-    businessId: input.blueprint.use === "business" ? `business_${input.propertyId}` : undefined,
+    businessId:
+      input.blueprint.use === "business"
+        ? `business_${input.propertyId}`
+        : undefined,
     visualDamageApplied: false,
     upgradedVoxelTier: 1,
     condition: 100,
@@ -3305,7 +3668,10 @@ export function normalizeBuildingSystemPropertyRecord(input: {
   ownerId: string;
   nowMs: number;
 }): BuildingSystemPropertyRecord {
-  const raw = typeof input.raw === "object" && input.raw !== null ? (input.raw as any) : {};
+  const raw =
+    typeof input.raw === "object" && input.raw !== null
+      ? (input.raw as any)
+      : {};
   const plot = buildingSystemPlotById(raw.plotId);
   const blueprint = buildingSystemBlueprintById(raw.blueprintId);
   if (plot && blueprint) {
@@ -3322,19 +3688,41 @@ export function normalizeBuildingSystemPropertyRecord(input: {
       ...raw,
       permissions: createBuildingSystemPermissionsForUse(
         blueprint.use,
-        raw.accessMode ?? (blueprint.use === "business" ? "public" : blueprint.use === "guild" ? "guild" : "private"),
+        raw.accessMode ??
+          (blueprint.use === "business"
+            ? "public"
+            : blueprint.use === "guild"
+            ? "guild"
+            : "private"),
         raw.permissions
       ),
-      storageContainerId: typeof raw.storageContainerId === "string" ? raw.storageContainerId : `storage_${input.propertyId}`,
-      doorLockId: typeof raw.doorLockId === "string" ? raw.doorLockId : `door_${input.propertyId}`,
-      businessId: typeof raw.businessId === "string" ? raw.businessId : blueprint.use === "business" ? `business_${input.propertyId}` : undefined,
+      storageContainerId:
+        typeof raw.storageContainerId === "string"
+          ? raw.storageContainerId
+          : `storage_${input.propertyId}`,
+      doorLockId:
+        typeof raw.doorLockId === "string"
+          ? raw.doorLockId
+          : `door_${input.propertyId}`,
+      businessId:
+        typeof raw.businessId === "string"
+          ? raw.businessId
+          : blueprint.use === "business"
+          ? `business_${input.propertyId}`
+          : undefined,
       visualDamageApplied: Boolean(raw.visualDamageApplied),
-      upgradedVoxelTier: Math.max(1, Number(raw.upgradedVoxelTier ?? raw.tier ?? 1)),
+      upgradedVoxelTier: Math.max(
+        1,
+        Number(raw.upgradedVoxelTier ?? raw.tier ?? 1)
+      ),
     };
     // `...raw` can overwrite the clamped defaults with hostile/corrupt persisted values
     // (negative value, condition > 100, negative tax balance). Re-clamp the numeric
     // fields that feed repair/refund/tax math, mirroring the fallback branch below.
-    merged.condition = Math.max(0, Math.min(100, Number(merged.condition ?? 100)));
+    merged.condition = Math.max(
+      0,
+      Math.min(100, Number(merged.condition ?? 100))
+    );
     merged.value = Math.max(0, Number(merged.value ?? 0));
     merged.tier = Math.max(1, Number(merged.tier ?? 1));
     merged.repairDebtGold = Math.max(0, Number(merged.repairDebtGold ?? 0));
@@ -3344,7 +3732,8 @@ export function normalizeBuildingSystemPropertyRecord(input: {
     merged.taxBalanceGold = Math.max(0, Number(merged.taxBalanceGold ?? 0));
     merged.storageSlots = Math.max(0, Number(merged.storageSlots ?? 0));
     merged.storageItemCount = Math.max(0, Number(merged.storageItemCount ?? 0));
-    if (typeof merged.salePriceGold === "number") merged.salePriceGold = Math.max(0, merged.salePriceGold);
+    if (typeof merged.salePriceGold === "number")
+      merged.salePriceGold = Math.max(0, merged.salePriceGold);
     return merged;
   }
   // Backward compatibility for the older {status, value} record shape.
@@ -3367,11 +3756,17 @@ export function normalizeBuildingSystemPropertyRecord(input: {
     guildId: typeof raw.guildId === "string" ? raw.guildId : undefined,
     storageSlots: Math.max(0, Number(raw.storageSlots ?? 0)),
     storageItemCount: Math.max(0, Number(raw.storageItemCount ?? 0)),
-    storageContainerId: typeof raw.storageContainerId === "string" ? raw.storageContainerId : undefined,
+    storageContainerId:
+      typeof raw.storageContainerId === "string"
+        ? raw.storageContainerId
+        : undefined,
     doorLockId: typeof raw.doorLockId === "string" ? raw.doorLockId : undefined,
     businessId: typeof raw.businessId === "string" ? raw.businessId : undefined,
     visualDamageApplied: Boolean(raw.visualDamageApplied),
-    upgradedVoxelTier: Math.max(1, Number(raw.upgradedVoxelTier ?? raw.tier ?? 1)),
+    upgradedVoxelTier: Math.max(
+      1,
+      Number(raw.upgradedVoxelTier ?? raw.tier ?? 1)
+    ),
     condition: Math.max(0, Math.min(100, Number(raw.condition ?? 100))),
     repairDebtGold: Math.max(0, Number(raw.repairDebtGold ?? 0)),
     lastRepairDecayAtMs: Number(raw.lastRepairDecayAtMs ?? input.nowMs),
@@ -3380,18 +3775,26 @@ export function normalizeBuildingSystemPropertyRecord(input: {
     guildTaxRate: Math.max(0, Number(raw.guildTaxRate ?? 0)),
     taxBalanceGold: Math.max(0, Number(raw.taxBalanceGold ?? 0)),
     lastTaxAssessedAtMs: Number(raw.lastTaxAssessedAtMs ?? input.nowMs),
-    unpaidTaxSinceMs: typeof raw.unpaidTaxSinceMs === "number" ? raw.unpaidTaxSinceMs : undefined,
+    unpaidTaxSinceMs:
+      typeof raw.unpaidTaxSinceMs === "number"
+        ? raw.unpaidTaxSinceMs
+        : undefined,
     abandoned: Boolean(raw.abandoned),
-    abandonedAtMs: typeof raw.abandonedAtMs === "number" ? raw.abandonedAtMs : undefined,
+    abandonedAtMs:
+      typeof raw.abandonedAtMs === "number" ? raw.abandonedAtMs : undefined,
     listedForSale: Boolean(raw.listedForSale),
-    salePriceGold: typeof raw.salePriceGold === "number" ? raw.salePriceGold : undefined,
+    salePriceGold:
+      typeof raw.salePriceGold === "number" ? raw.salePriceGold : undefined,
     createdAtMs: Number(raw.createdAtMs ?? input.nowMs),
     updatedAtMs: Number(raw.updatedAtMs ?? input.nowMs),
   };
 }
 
 export function buildingSystemPropertyTaxRate(
-  property: Pick<BuildingSystemPropertyRecord, "use" | "taxRate" | "businessTaxRate" | "guildTaxRate">
+  property: Pick<
+    BuildingSystemPropertyRecord,
+    "use" | "taxRate" | "businessTaxRate" | "guildTaxRate"
+  >
 ) {
   if (property.use === "business") {
     return Math.max(property.taxRate, property.businessTaxRate);
@@ -3408,32 +3811,62 @@ export function applyBuildingSystemPropertyLifecycle(input: {
 }): BuildingSystemPropertyLifecycleResult {
   const property: BuildingSystemPropertyRecord = { ...input.property };
   const warnings: string[] = [];
-  const elapsedTaxPeriods = Math.max(0, Math.floor((input.nowMs - property.lastTaxAssessedAtMs) / BUILDING_SYSTEM_TAX_PERIOD_MS));
-  const taxDeltaGold = elapsedTaxPeriods > 0
-    ? Math.max(1, Math.floor(property.value * buildingSystemPropertyTaxRate(property) * elapsedTaxPeriods))
-    : 0;
+  const elapsedTaxPeriods = Math.max(
+    0,
+    Math.floor(
+      (input.nowMs - property.lastTaxAssessedAtMs) /
+        BUILDING_SYSTEM_TAX_PERIOD_MS
+    )
+  );
+  const taxDeltaGold =
+    elapsedTaxPeriods > 0
+      ? Math.max(
+          1,
+          Math.floor(
+            property.value *
+              buildingSystemPropertyTaxRate(property) *
+              elapsedTaxPeriods
+          )
+        )
+      : 0;
   if (taxDeltaGold > 0) {
     const firstUnpaidDueAtMs =
       property.lastTaxAssessedAtMs + BUILDING_SYSTEM_TAX_PERIOD_MS;
     property.taxBalanceGold += taxDeltaGold;
-    property.lastTaxAssessedAtMs += elapsedTaxPeriods * BUILDING_SYSTEM_TAX_PERIOD_MS;
+    property.lastTaxAssessedAtMs +=
+      elapsedTaxPeriods * BUILDING_SYSTEM_TAX_PERIOD_MS;
     if (!property.unpaidTaxSinceMs) {
       property.unpaidTaxSinceMs = firstUnpaidDueAtMs;
     }
   }
 
-  const elapsedRepairDays = Math.max(0, Math.floor((input.nowMs - property.lastRepairDecayAtMs) / BUILDING_SYSTEM_TAX_PERIOD_MS));
-  const repairDecayDelta = elapsedRepairDays > 0
-    ? Math.min(property.condition, elapsedRepairDays * BUILDING_SYSTEM_REPAIR_DECAY_PER_DAY)
-    : 0;
+  const elapsedRepairDays = Math.max(
+    0,
+    Math.floor(
+      (input.nowMs - property.lastRepairDecayAtMs) /
+        BUILDING_SYSTEM_TAX_PERIOD_MS
+    )
+  );
+  const repairDecayDelta =
+    elapsedRepairDays > 0
+      ? Math.min(
+          property.condition,
+          elapsedRepairDays * BUILDING_SYSTEM_REPAIR_DECAY_PER_DAY
+        )
+      : 0;
   if (repairDecayDelta > 0) {
     property.condition = Math.max(0, property.condition - repairDecayDelta);
     property.repairDebtGold += repairDecayDelta;
-    property.lastRepairDecayAtMs += elapsedRepairDays * BUILDING_SYSTEM_TAX_PERIOD_MS;
+    property.lastRepairDecayAtMs +=
+      elapsedRepairDays * BUILDING_SYSTEM_TAX_PERIOD_MS;
   }
 
-  if (property.taxBalanceGold > 0 && property.unpaidTaxSinceMs &&
-      input.nowMs - property.unpaidTaxSinceMs >= BUILDING_SYSTEM_ABANDON_AFTER_UNPAID_TAX_MS) {
+  if (
+    property.taxBalanceGold > 0 &&
+    property.unpaidTaxSinceMs &&
+    input.nowMs - property.unpaidTaxSinceMs >=
+      BUILDING_SYSTEM_ABANDON_AFTER_UNPAID_TAX_MS
+  ) {
     property.abandoned = true;
     property.abandonedAtMs = property.abandonedAtMs ?? input.nowMs;
     property.status = "abandoned";
@@ -3450,7 +3883,8 @@ export function buildingSystemCanActorAccessProperty(input: {
   guildId?: string;
 }) {
   const { property, actorId, permission, guildId } = input;
-  if (actorId === property.ownerId) return property.permissions.owner[permission];
+  if (actorId === property.ownerId)
+    return property.permissions.owner[permission];
   if (property.guestActorIds.includes(actorId)) {
     return property.permissions.friends_guests[permission];
   }
@@ -3463,49 +3897,450 @@ export function buildingSystemCanActorAccessProperty(input: {
   return false;
 }
 
-export function buildingSystemUpgradeCostGold(property: BuildingSystemPropertyRecord) {
+export function buildingSystemUpgradeCostGold(
+  property: BuildingSystemPropertyRecord
+) {
   return Math.max(25, Math.floor(property.value * 0.75 * property.tier));
 }
 
-export function buildingSystemRepairCostGold(property: BuildingSystemPropertyRecord) {
-  return Math.max(0, Math.ceil((100 - property.condition) * Math.max(1, property.tier)));
+export function buildingSystemRepairCostGold(
+  property: BuildingSystemPropertyRecord
+) {
+  return Math.max(
+    0,
+    Math.ceil((100 - property.condition) * Math.max(1, property.tier))
+  );
 }
 
-export function buildingSystemDemolitionRefundGold(property: BuildingSystemPropertyRecord) {
+export function buildingSystemDemolitionRefundGold(
+  property: BuildingSystemPropertyRecord
+) {
   if (property.abandoned || property.condition <= 25) {
-    return Math.floor(property.value * BUILDING_SYSTEM_MIN_DEMOLITION_REFUND_RATE);
+    return Math.floor(
+      property.value * BUILDING_SYSTEM_MIN_DEMOLITION_REFUND_RATE
+    );
   }
-  return Math.floor(property.value * BUILDING_SYSTEM_STANDARD_DEMOLITION_REFUND_RATE);
+  return Math.floor(
+    property.value * BUILDING_SYSTEM_STANDARD_DEMOLITION_REFUND_RATE
+  );
 }
 
-
-export const BUILDING_SYSTEM_BUSINESS_TYPES: readonly BuildingSystemBusinessTypeDefinition[] = [
-  { businessType: "exotic_matter_refinery", displayName: "Exotic Matter Refinery", category: "Industrial / Infrastructure", startingCostGold: 1200, materialNeed: "heavy", mainProductOrService: "Stabilized Exotic Matter, portal fuel, Biome anchor cores", recurringDemand: ["raw material restock", "machine maintenance", "town fuel orders"], connectedBusinesses: ["portal_transit_company", "teleport_owner", "biome_maintenance_repair"], baseRevenuePerCycleGold: 180, upkeepPerCycleGold: 55, licenseLevelRequired: 4, serviceRadius: 32 },
-  { businessType: "biome_maintenance_repair", displayName: "Biome Maintenance & Repair Company", category: "Technical Service", startingCostGold: 700, materialNeed: "medium", mainProductOrService: "Inspections, emergency repairs, climate tuning", recurringDemand: ["property decay", "weather failure", "maintenance subscriptions"], connectedBusinesses: ["exotic_matter_refinery", "custom_home_property_development", "repair_maintenance_person"], baseRevenuePerCycleGold: 105, upkeepPerCycleGold: 28, licenseLevelRequired: 2, serviceRadius: 18 },
-  { businessType: "biome_design_studio", displayName: "Biome Design Studio", category: "Creative / Property Service", startingCostGold: 500, materialNeed: "medium", mainProductOrService: "Decoration packs, terrain templates, custom sky/weather themes", recurringDemand: ["seasonal trends", "festival commissions", "property value upgrades"], connectedBusinesses: ["custom_home_property_development", "hospitality_inn_hotel_shelter", "food_service_restaurant"], baseRevenuePerCycleGold: 75, upkeepPerCycleGold: 18, licenseLevelRequired: 1, serviceRadius: 14 },
-  { businessType: "security_defense_contractor", displayName: "Security & Defense Contractor", category: "Protection / Combat Service", startingCostGold: 600, materialNeed: "medium", mainProductOrService: "Guard duty, monster removal, bounty hunting", recurringDemand: ["threat migration", "guard contracts", "gear replacement"], connectedBusinesses: ["weapons_tools", "portal_transit_company", "biome_farming_rare_foods"], baseRevenuePerCycleGold: 95, upkeepPerCycleGold: 30, licenseLevelRequired: 2, serviceRadius: 20 },
-  { businessType: "portal_transit_company", displayName: "Portal Transit Company", category: "Infrastructure / Transportation", startingCostGold: 5000, materialNeed: "heavy", mainProductOrService: "Public travel, cargo routes, private gates", recurringDemand: ["portal fuel", "route stabilization", "cargo contracts"], connectedBusinesses: ["exotic_matter_refinery", "courier", "security_defense_contractor"], baseRevenuePerCycleGold: 540, upkeepPerCycleGold: 160, licenseLevelRequired: 5, serviceRadius: 64 },
-  { businessType: "biome_farming_rare_foods", displayName: "Biome Farming & Rare Foods", category: "Agriculture / Food Supply", startingCostGold: 300, materialNeed: "heavy", mainProductOrService: "Crops, rare fruits, herbs", recurringDemand: ["crop cycles", "restaurant orders", "medicine ingredients"], connectedBusinesses: ["food_service_restaurant", "medical_doctor", "general_trader"], baseRevenuePerCycleGold: 48, upkeepPerCycleGold: 12, licenseLevelRequired: 1, serviceRadius: 12 },
-  { businessType: "weapons_tools", displayName: "Weapons & Tools", category: "Crafting / Equipment", startingCostGold: 500, materialNeed: "heavy", mainProductOrService: "Swords, bows, spears, tools", recurringDemand: ["tool durability", "weapon upgrades", "bulk guard orders"], connectedBusinesses: ["security_defense_contractor", "hunter_wild_meat", "custom_home_property_development"], baseRevenuePerCycleGold: 80, upkeepPerCycleGold: 24, licenseLevelRequired: 2, serviceRadius: 14 },
-  { businessType: "magic_goods", displayName: "Magic Goods", category: "Exotic / Consumable Crafting", startingCostGold: 800, materialNeed: "rare", mainProductOrService: "Charms, potions, protective wards", recurringDemand: ["expiring unstable goods", "disaster demand", "rare component requests"], connectedBusinesses: ["exotic_matter_refinery", "medical_doctor", "exploration_guide"], baseRevenuePerCycleGold: 120, upkeepPerCycleGold: 38, licenseLevelRequired: 3, serviceRadius: 16 },
-  { businessType: "exploration_guide", displayName: "Exploration Guide", category: "Knowledge / Travel Service", startingCostGold: 400, materialNeed: "light", mainProductOrService: "Guided expeditions, ruin tours, rare resource routes", recurringDemand: ["shifting maps", "client expeditions", "dangerous routes"], connectedBusinesses: ["courier", "security_defense_contractor", "magic_goods"], baseRevenuePerCycleGold: 62, upkeepPerCycleGold: 16, licenseLevelRequired: 1, serviceRadius: 26 },
-  { businessType: "custom_home_property_development", displayName: "Custom Home & Property Development", category: "Construction / Real Estate", startingCostGold: 1000, materialNeed: "heavy", mainProductOrService: "Houses, shops, apartments, guild halls", recurringDemand: ["staged construction", "tenants", "repairs and taxes"], connectedBusinesses: ["biome_design_studio", "biome_maintenance_repair", "waste_sanitation_cleanup"], baseRevenuePerCycleGold: 150, upkeepPerCycleGold: 45, licenseLevelRequired: 3, serviceRadius: 18 },
-  { businessType: "general_trader", displayName: "General Trader", category: "Retail / Brokerage", startingCostGold: 300, materialNeed: "medium", mainProductOrService: "Basic tools, food, seeds", recurringDemand: ["regional price changes", "stock turnover", "customer requests"], connectedBusinesses: ["courier", "biome_farming_rare_foods", "weapons_tools"], baseRevenuePerCycleGold: 55, upkeepPerCycleGold: 14, licenseLevelRequired: 1, serviceRadius: 12 },
-  { businessType: "hunter_wild_meat", displayName: "Hunter for Wild Meat", category: "Food / Wildlife Control", startingCostGold: 300, materialNeed: "medium", mainProductOrService: "Wild meat, rare cuts, hides", recurringDemand: ["animal migration", "meat spoilage", "restaurant supply"], connectedBusinesses: ["food_service_restaurant", "general_trader", "weapons_tools"], baseRevenuePerCycleGold: 58, upkeepPerCycleGold: 18, licenseLevelRequired: 1, serviceRadius: 18 },
-  { businessType: "medical_doctor", displayName: "Medical / Doctor", category: "Healthcare / Public Service", startingCostGold: 500, materialNeed: "medium", mainProductOrService: "Injury treatment, disease treatment, surgery", recurringDemand: ["patients", "medicine stock", "outbreaks"], connectedBusinesses: ["biome_farming_rare_foods", "magic_goods", "courier"], baseRevenuePerCycleGold: 82, upkeepPerCycleGold: 26, licenseLevelRequired: 2, serviceRadius: 14 },
-  { businessType: "teleport_owner", displayName: "Teleport Owner", category: "Local Transportation / Access Control", startingCostGold: 2500, materialNeed: "heavy", mainProductOrService: "Pay-per-use teleport, private access, emergency return", recurringDemand: ["fuel", "link maintenance", "access tokens"], connectedBusinesses: ["exotic_matter_refinery", "portal_transit_company", "courier"], baseRevenuePerCycleGold: 280, upkeepPerCycleGold: 88, licenseLevelRequired: 4, serviceRadius: 32 },
-  { businessType: "waste_sanitation_cleanup", displayName: "Waste, Sanitation & Contamination Cleanup", category: "Public Health / Hazard Service", startingCostGold: 400, materialNeed: "medium", mainProductOrService: "Trash pickup, recycling, composting, contamination cleanup", recurringDemand: ["waste accumulation", "dirty business penalties", "hazard cleanup"], connectedBusinesses: ["food_service_restaurant", "medical_doctor", "custom_home_property_development"], baseRevenuePerCycleGold: 66, upkeepPerCycleGold: 20, licenseLevelRequired: 1, serviceRadius: 14 },
-  { businessType: "repair_maintenance_person", displayName: "Repair People / Maintenance Person", category: "Everyday Repair / Facilities", startingCostGold: 250, materialNeed: "light", mainProductOrService: "Item repair, tool repair, furniture repair", recurringDemand: ["object decay", "urgent repairs", "service contracts"], connectedBusinesses: ["weapons_tools", "biome_maintenance_repair", "hospitality_inn_hotel_shelter"], baseRevenuePerCycleGold: 45, upkeepPerCycleGold: 10, licenseLevelRequired: 1, serviceRadius: 10 },
-  { businessType: "food_service_restaurant", displayName: "Food Service / Restaurant / Cook", category: "Food / Hospitality / Buffs", startingCostGold: 250, materialNeed: "heavy", mainProductOrService: "Meals, worker buff food, healing soups", recurringDemand: ["ingredient spoilage", "daily customers", "festival rushes"], connectedBusinesses: ["biome_farming_rare_foods", "hunter_wild_meat", "waste_sanitation_cleanup"], baseRevenuePerCycleGold: 52, upkeepPerCycleGold: 18, licenseLevelRequired: 1, serviceRadius: 10 },
-  { businessType: "courier", displayName: "Courier", category: "Logistics / Trust Service", startingCostGold: 150, materialNeed: "light", mainProductOrService: "Mail, package, medicine, and food delivery", recurringDemand: ["delivery board refresh", "timed jobs", "business supply runs"], connectedBusinesses: ["general_trader", "medical_doctor", "portal_transit_company"], baseRevenuePerCycleGold: 35, upkeepPerCycleGold: 8, licenseLevelRequired: 1, serviceRadius: 22 },
-  { businessType: "hospitality_inn_hotel_shelter", displayName: "Hospitality / Inn / Hotel / Shelter", category: "Housing / Tourism / Emergency Relief", startingCostGold: 700, materialNeed: "heavy", mainProductOrService: "Room rentals, shelter beds, meals", recurringDemand: ["occupancy", "cleaning", "guest food and safety"], connectedBusinesses: ["food_service_restaurant", "waste_sanitation_cleanup", "security_defense_contractor"], baseRevenuePerCycleGold: 100, upkeepPerCycleGold: 34, licenseLevelRequired: 2, serviceRadius: 12 },
-] as const;
+export const BUILDING_SYSTEM_BUSINESS_TYPES: readonly BuildingSystemBusinessTypeDefinition[] =
+  [
+    {
+      businessType: "exotic_matter_refinery",
+      displayName: "Exotic Matter Refinery",
+      category: "Industrial / Infrastructure",
+      startingCostGold: 1200,
+      materialNeed: "heavy",
+      mainProductOrService:
+        "Stabilized Exotic Matter, portal fuel, Biome anchor cores",
+      recurringDemand: [
+        "raw material restock",
+        "machine maintenance",
+        "town fuel orders",
+      ],
+      connectedBusinesses: [
+        "portal_transit_company",
+        "teleport_owner",
+        "biome_maintenance_repair",
+      ],
+      baseRevenuePerCycleGold: 180,
+      upkeepPerCycleGold: 55,
+      licenseLevelRequired: 4,
+      serviceRadius: 32,
+    },
+    {
+      businessType: "biome_maintenance_repair",
+      displayName: "Biome Maintenance & Repair Company",
+      category: "Technical Service",
+      startingCostGold: 700,
+      materialNeed: "medium",
+      mainProductOrService: "Inspections, emergency repairs, climate tuning",
+      recurringDemand: [
+        "property decay",
+        "weather failure",
+        "maintenance subscriptions",
+      ],
+      connectedBusinesses: [
+        "exotic_matter_refinery",
+        "custom_home_property_development",
+        "repair_maintenance_person",
+      ],
+      baseRevenuePerCycleGold: 105,
+      upkeepPerCycleGold: 28,
+      licenseLevelRequired: 2,
+      serviceRadius: 18,
+    },
+    {
+      businessType: "biome_design_studio",
+      displayName: "Biome Design Studio",
+      category: "Creative / Property Service",
+      startingCostGold: 500,
+      materialNeed: "medium",
+      mainProductOrService:
+        "Decoration packs, terrain templates, custom sky/weather themes",
+      recurringDemand: [
+        "seasonal trends",
+        "festival commissions",
+        "property value upgrades",
+      ],
+      connectedBusinesses: [
+        "custom_home_property_development",
+        "hospitality_inn_hotel_shelter",
+        "food_service_restaurant",
+      ],
+      baseRevenuePerCycleGold: 75,
+      upkeepPerCycleGold: 18,
+      licenseLevelRequired: 1,
+      serviceRadius: 14,
+    },
+    {
+      businessType: "security_defense_contractor",
+      displayName: "Security & Defense Contractor",
+      category: "Protection / Combat Service",
+      startingCostGold: 600,
+      materialNeed: "medium",
+      mainProductOrService: "Guard duty, monster removal, bounty hunting",
+      recurringDemand: [
+        "threat migration",
+        "guard contracts",
+        "gear replacement",
+      ],
+      connectedBusinesses: [
+        "weapons_tools",
+        "portal_transit_company",
+        "biome_farming_rare_foods",
+      ],
+      baseRevenuePerCycleGold: 95,
+      upkeepPerCycleGold: 30,
+      licenseLevelRequired: 2,
+      serviceRadius: 20,
+    },
+    {
+      businessType: "portal_transit_company",
+      displayName: "Portal Transit Company",
+      category: "Infrastructure / Transportation",
+      startingCostGold: 5000,
+      materialNeed: "heavy",
+      mainProductOrService: "Public travel, cargo routes, private gates",
+      recurringDemand: [
+        "portal fuel",
+        "route stabilization",
+        "cargo contracts",
+      ],
+      connectedBusinesses: [
+        "exotic_matter_refinery",
+        "courier",
+        "security_defense_contractor",
+      ],
+      baseRevenuePerCycleGold: 540,
+      upkeepPerCycleGold: 160,
+      licenseLevelRequired: 5,
+      serviceRadius: 64,
+    },
+    {
+      businessType: "biome_farming_rare_foods",
+      displayName: "Biome Farming & Rare Foods",
+      category: "Agriculture / Food Supply",
+      startingCostGold: 300,
+      materialNeed: "heavy",
+      mainProductOrService: "Crops, rare fruits, herbs",
+      recurringDemand: [
+        "crop cycles",
+        "restaurant orders",
+        "medicine ingredients",
+      ],
+      connectedBusinesses: [
+        "food_service_restaurant",
+        "medical_doctor",
+        "general_trader",
+      ],
+      baseRevenuePerCycleGold: 48,
+      upkeepPerCycleGold: 12,
+      licenseLevelRequired: 1,
+      serviceRadius: 12,
+    },
+    {
+      businessType: "weapons_tools",
+      displayName: "Weapons & Tools",
+      category: "Crafting / Equipment",
+      startingCostGold: 500,
+      materialNeed: "heavy",
+      mainProductOrService: "Swords, bows, spears, tools",
+      recurringDemand: [
+        "tool durability",
+        "weapon upgrades",
+        "bulk guard orders",
+      ],
+      connectedBusinesses: [
+        "security_defense_contractor",
+        "hunter_wild_meat",
+        "custom_home_property_development",
+      ],
+      baseRevenuePerCycleGold: 80,
+      upkeepPerCycleGold: 24,
+      licenseLevelRequired: 2,
+      serviceRadius: 14,
+    },
+    {
+      businessType: "magic_goods",
+      displayName: "Magic Goods",
+      category: "Exotic / Consumable Crafting",
+      startingCostGold: 800,
+      materialNeed: "rare",
+      mainProductOrService: "Charms, potions, protective wards",
+      recurringDemand: [
+        "expiring unstable goods",
+        "disaster demand",
+        "rare component requests",
+      ],
+      connectedBusinesses: [
+        "exotic_matter_refinery",
+        "medical_doctor",
+        "exploration_guide",
+      ],
+      baseRevenuePerCycleGold: 120,
+      upkeepPerCycleGold: 38,
+      licenseLevelRequired: 3,
+      serviceRadius: 16,
+    },
+    {
+      businessType: "exploration_guide",
+      displayName: "Exploration Guide",
+      category: "Knowledge / Travel Service",
+      startingCostGold: 400,
+      materialNeed: "light",
+      mainProductOrService:
+        "Guided expeditions, ruin tours, rare resource routes",
+      recurringDemand: [
+        "shifting maps",
+        "client expeditions",
+        "dangerous routes",
+      ],
+      connectedBusinesses: [
+        "courier",
+        "security_defense_contractor",
+        "magic_goods",
+      ],
+      baseRevenuePerCycleGold: 62,
+      upkeepPerCycleGold: 16,
+      licenseLevelRequired: 1,
+      serviceRadius: 26,
+    },
+    {
+      businessType: "custom_home_property_development",
+      displayName: "Custom Home & Property Development",
+      category: "Construction / Real Estate",
+      startingCostGold: 1000,
+      materialNeed: "heavy",
+      mainProductOrService: "Houses, shops, apartments, guild halls",
+      recurringDemand: ["staged construction", "tenants", "repairs and taxes"],
+      connectedBusinesses: [
+        "biome_design_studio",
+        "biome_maintenance_repair",
+        "waste_sanitation_cleanup",
+      ],
+      baseRevenuePerCycleGold: 150,
+      upkeepPerCycleGold: 45,
+      licenseLevelRequired: 3,
+      serviceRadius: 18,
+    },
+    {
+      businessType: "general_trader",
+      displayName: "General Trader",
+      category: "Retail / Brokerage",
+      startingCostGold: 300,
+      materialNeed: "medium",
+      mainProductOrService: "Basic tools, food, seeds",
+      recurringDemand: [
+        "regional price changes",
+        "stock turnover",
+        "customer requests",
+      ],
+      connectedBusinesses: [
+        "courier",
+        "biome_farming_rare_foods",
+        "weapons_tools",
+      ],
+      baseRevenuePerCycleGold: 55,
+      upkeepPerCycleGold: 14,
+      licenseLevelRequired: 1,
+      serviceRadius: 12,
+    },
+    {
+      businessType: "hunter_wild_meat",
+      displayName: "Hunter for Wild Meat",
+      category: "Food / Wildlife Control",
+      startingCostGold: 300,
+      materialNeed: "medium",
+      mainProductOrService: "Wild meat, rare cuts, hides",
+      recurringDemand: [
+        "animal migration",
+        "meat spoilage",
+        "restaurant supply",
+      ],
+      connectedBusinesses: [
+        "food_service_restaurant",
+        "general_trader",
+        "weapons_tools",
+      ],
+      baseRevenuePerCycleGold: 58,
+      upkeepPerCycleGold: 18,
+      licenseLevelRequired: 1,
+      serviceRadius: 18,
+    },
+    {
+      businessType: "medical_doctor",
+      displayName: "Medical / Doctor",
+      category: "Healthcare / Public Service",
+      startingCostGold: 500,
+      materialNeed: "medium",
+      mainProductOrService: "Injury treatment, disease treatment, surgery",
+      recurringDemand: ["patients", "medicine stock", "outbreaks"],
+      connectedBusinesses: [
+        "biome_farming_rare_foods",
+        "magic_goods",
+        "courier",
+      ],
+      baseRevenuePerCycleGold: 82,
+      upkeepPerCycleGold: 26,
+      licenseLevelRequired: 2,
+      serviceRadius: 14,
+    },
+    {
+      businessType: "teleport_owner",
+      displayName: "Teleport Owner",
+      category: "Local Transportation / Access Control",
+      startingCostGold: 2500,
+      materialNeed: "heavy",
+      mainProductOrService:
+        "Pay-per-use teleport, private access, emergency return",
+      recurringDemand: ["fuel", "link maintenance", "access tokens"],
+      connectedBusinesses: [
+        "exotic_matter_refinery",
+        "portal_transit_company",
+        "courier",
+      ],
+      baseRevenuePerCycleGold: 280,
+      upkeepPerCycleGold: 88,
+      licenseLevelRequired: 4,
+      serviceRadius: 32,
+    },
+    {
+      businessType: "waste_sanitation_cleanup",
+      displayName: "Waste, Sanitation & Contamination Cleanup",
+      category: "Public Health / Hazard Service",
+      startingCostGold: 400,
+      materialNeed: "medium",
+      mainProductOrService:
+        "Trash pickup, recycling, composting, contamination cleanup",
+      recurringDemand: [
+        "waste accumulation",
+        "dirty business penalties",
+        "hazard cleanup",
+      ],
+      connectedBusinesses: [
+        "food_service_restaurant",
+        "medical_doctor",
+        "custom_home_property_development",
+      ],
+      baseRevenuePerCycleGold: 66,
+      upkeepPerCycleGold: 20,
+      licenseLevelRequired: 1,
+      serviceRadius: 14,
+    },
+    {
+      businessType: "repair_maintenance_person",
+      displayName: "Repair People / Maintenance Person",
+      category: "Everyday Repair / Facilities",
+      startingCostGold: 250,
+      materialNeed: "light",
+      mainProductOrService: "Item repair, tool repair, furniture repair",
+      recurringDemand: ["object decay", "urgent repairs", "service contracts"],
+      connectedBusinesses: [
+        "weapons_tools",
+        "biome_maintenance_repair",
+        "hospitality_inn_hotel_shelter",
+      ],
+      baseRevenuePerCycleGold: 45,
+      upkeepPerCycleGold: 10,
+      licenseLevelRequired: 1,
+      serviceRadius: 10,
+    },
+    {
+      businessType: "food_service_restaurant",
+      displayName: "Food Service / Restaurant / Cook",
+      category: "Food / Hospitality / Buffs",
+      startingCostGold: 250,
+      materialNeed: "heavy",
+      mainProductOrService: "Meals, worker buff food, healing soups",
+      recurringDemand: [
+        "ingredient spoilage",
+        "daily customers",
+        "festival rushes",
+      ],
+      connectedBusinesses: [
+        "biome_farming_rare_foods",
+        "hunter_wild_meat",
+        "waste_sanitation_cleanup",
+      ],
+      baseRevenuePerCycleGold: 52,
+      upkeepPerCycleGold: 18,
+      licenseLevelRequired: 1,
+      serviceRadius: 10,
+    },
+    {
+      businessType: "courier",
+      displayName: "Courier",
+      category: "Logistics / Trust Service",
+      startingCostGold: 150,
+      materialNeed: "light",
+      mainProductOrService: "Mail, package, medicine, and food delivery",
+      recurringDemand: [
+        "delivery board refresh",
+        "timed jobs",
+        "business supply runs",
+      ],
+      connectedBusinesses: [
+        "general_trader",
+        "medical_doctor",
+        "portal_transit_company",
+      ],
+      baseRevenuePerCycleGold: 35,
+      upkeepPerCycleGold: 8,
+      licenseLevelRequired: 1,
+      serviceRadius: 22,
+    },
+    {
+      businessType: "hospitality_inn_hotel_shelter",
+      displayName: "Hospitality / Inn / Hotel / Shelter",
+      category: "Housing / Tourism / Emergency Relief",
+      startingCostGold: 700,
+      materialNeed: "heavy",
+      mainProductOrService: "Room rentals, shelter beds, meals",
+      recurringDemand: ["occupancy", "cleaning", "guest food and safety"],
+      connectedBusinesses: [
+        "food_service_restaurant",
+        "waste_sanitation_cleanup",
+        "security_defense_contractor",
+      ],
+      baseRevenuePerCycleGold: 100,
+      upkeepPerCycleGold: 34,
+      licenseLevelRequired: 2,
+      serviceRadius: 12,
+    },
+  ] as const;
 
 export function buildingSystemBusinessTypeById(type: string | undefined) {
-  return BUILDING_SYSTEM_BUSINESS_TYPES.find((entry) => entry.businessType === type);
+  return BUILDING_SYSTEM_BUSINESS_TYPES.find(
+    (entry) => entry.businessType === type
+  );
 }
 
-export function createBuildingSystemMiraMapMarker(nowMs: number): BuildingSystemInWorldMarker {
+export function createBuildingSystemMiraMapMarker(
+  nowMs: number
+): BuildingSystemInWorldMarker {
   return {
     markerId: "mira_grove_land_steward_map_marker",
     plotId: "the_grove",
@@ -3526,7 +4361,9 @@ export function createBuildingSystemStorageContainer(input: {
   const origin =
     input.origin ?? buildingSystemDefaultOrigin(input.plot, input.blueprint);
   return {
-    containerId: input.property.storageContainerId ?? `storage_${input.property.propertyId}`,
+    containerId:
+      input.property.storageContainerId ??
+      `storage_${input.property.propertyId}`,
     propertyId: input.property.propertyId,
     plotId: input.plot.plotId,
     ownerId: input.property.ownerId,
@@ -3555,7 +4392,11 @@ export function createBuildingSystemDoorLock(input: {
     propertyId: input.property.propertyId,
     plotId: input.plot.plotId,
     ownerId: input.property.ownerId,
-    position: [origin.x + Math.floor(input.blueprint.footprint.width / 2), origin.y + 1, origin.z],
+    position: [
+      origin.x + Math.floor(input.blueprint.footprint.width / 2),
+      origin.y + 1,
+      origin.z,
+    ],
     accessMode: input.property.accessMode,
     locked: input.property.accessMode !== "public",
     guildId: input.property.guildId,
@@ -3613,17 +4454,20 @@ export function buildingSystemCanOpenDoorLock(input: {
   if (!input.lock.locked || input.property.accessMode === "public") {
     return true;
   }
-  return buildingSystemCanActorAccessProperty({
-    property: input.property,
-    actorId: input.actorId,
-    guildId: input.guildId,
-    permission: "storage_access",
-  }) || buildingSystemCanActorAccessProperty({
-    property: input.property,
-    actorId: input.actorId,
-    guildId: input.guildId,
-    permission: "build_edit",
-  });
+  return (
+    buildingSystemCanActorAccessProperty({
+      property: input.property,
+      actorId: input.actorId,
+      guildId: input.guildId,
+      permission: "storage_access",
+    }) ||
+    buildingSystemCanActorAccessProperty({
+      property: input.property,
+      actorId: input.actorId,
+      guildId: input.guildId,
+      permission: "build_edit",
+    })
+  );
 }
 
 function replaceVoxelEdits(
@@ -3654,11 +4498,17 @@ export function createBuildingSystemDemolitionMaterializationPlan(input: {
     actorId: input.actorId,
     plot: input.plot,
     activatedAtMs: input.activatedAtMs,
-  }).edits.filter((edit) => edit.label === "deed_marker" || edit.label === "map_marker");
+  }).edits.filter(
+    (edit) => edit.label === "deed_marker" || edit.label === "map_marker"
+  );
   return {
     ...full,
     requestId: input.requestId,
-    edits: replaceVoxelEdits([...full.edits, ...markerDeletes], BUILDING_BLOCKS.air, "demolition_cleanup"),
+    edits: replaceVoxelEdits(
+      [...full.edits, ...markerDeletes],
+      BUILDING_BLOCKS.air,
+      "demolition_cleanup"
+    ),
     inWorldMarkers: [],
     partialMaterialization: false,
     unlocksStorage: false,
@@ -3673,11 +4523,27 @@ export function createBuildingSystemRepairDamageMaterializationPlan(input: {
   blueprint: BuildingSystemBlueprintDefinition;
   activatedAtMs: number;
 }): BuildingSystemMaterializationPlan {
-  const { origin, x0, z0, y0, x1, z1, roofY, guideConstruction } = buildingSystemGeometryBounds(input.plot, input.blueprint);
+  const { origin, x0, z0, y0, x1, z1, roofY, guideConstruction } =
+    buildingSystemGeometryBounds(input.plot, input.blueprint);
   const edits: BuildingSystemVoxelEditSpec[] = [];
-  edits.push({ kind: "editEvent", position: [x0, y0 + 1, z0], value: BUILDING_BLOCKS.air, label: "repair_damage" });
-  edits.push({ kind: "editEvent", position: [x1 - 1, y0 + 1, z1 - 1], value: BUILDING_BLOCKS.air, label: "repair_damage" });
-  edits.push({ kind: "editEvent", position: [x0 + 1, roofY, z0 + 1], value: BUILDING_BLOCKS.air, label: "repair_damage" });
+  edits.push({
+    kind: "editEvent",
+    position: [x0, y0 + 1, z0],
+    value: BUILDING_BLOCKS.air,
+    label: "repair_damage",
+  });
+  edits.push({
+    kind: "editEvent",
+    position: [x1 - 1, y0 + 1, z1 - 1],
+    value: BUILDING_BLOCKS.air,
+    label: "repair_damage",
+  });
+  edits.push({
+    kind: "editEvent",
+    position: [x0 + 1, roofY, z0 + 1],
+    value: BUILDING_BLOCKS.air,
+    label: "repair_damage",
+  });
   return {
     version: BUILDING_SYSTEM_VERSION,
     requestId: input.requestId,
@@ -3689,7 +4555,12 @@ export function createBuildingSystemRepairDamageMaterializationPlan(input: {
     origin,
     rotationDegrees: 0,
     edits,
-    placeGroup: { kind: "placeGroupEvent", name: `${input.property.propertyId} visible damage`, box: { v0: [x0, y0 - 1, z0], v1: [x1, roofY + 1, z1] }, reason: "building_blueprint_materialized" },
+    placeGroup: {
+      kind: "placeGroupEvent",
+      name: `${input.property.propertyId} visible damage`,
+      box: { v0: [x0, y0 - 1, z0], v1: [x1, roofY + 1, z1] },
+      reason: "building_blueprint_materialized",
+    },
     partialMaterialization: true,
     guideConstruction,
     materializesSolidVoxelBuilding: true,
@@ -3704,8 +4575,23 @@ export function createBuildingSystemRepairRestoreMaterializationPlan(input: {
   blueprint: BuildingSystemBlueprintDefinition;
   activatedAtMs: number;
 }): BuildingSystemMaterializationPlan {
-  const full = createBuildingSystemMaterializationPlan({ requestId: input.requestId, actorId: input.actorId, plot: input.plot, blueprint: input.blueprint, propertyId: input.property.propertyId, activatedAtMs: input.activatedAtMs });
-  return { ...full, edits: full.edits.filter((edit) => edit.label === "wall" || edit.label === "roof").slice(0, 12).map((edit) => ({ ...edit, label: "repair_restore" as const })), inWorldMarkers: [], partialMaterialization: true };
+  const full = createBuildingSystemMaterializationPlan({
+    requestId: input.requestId,
+    actorId: input.actorId,
+    plot: input.plot,
+    blueprint: input.blueprint,
+    propertyId: input.property.propertyId,
+    activatedAtMs: input.activatedAtMs,
+  });
+  return {
+    ...full,
+    edits: full.edits
+      .filter((edit) => edit.label === "wall" || edit.label === "roof")
+      .slice(0, 12)
+      .map((edit) => ({ ...edit, label: "repair_restore" as const })),
+    inWorldMarkers: [],
+    partialMaterialization: true,
+  };
 }
 
 export function createBuildingSystemUpgradeMaterializationPlan(input: {
@@ -3716,12 +4602,31 @@ export function createBuildingSystemUpgradeMaterializationPlan(input: {
   blueprint: BuildingSystemBlueprintDefinition;
   activatedAtMs: number;
 }): BuildingSystemMaterializationPlan {
-  const { origin, x0, z0, y0, x1, z1, roofY, guideConstruction } = buildingSystemGeometryBounds(input.plot, input.blueprint);
+  const { origin, x0, z0, y0, x1, z1, roofY, guideConstruction } =
+    buildingSystemGeometryBounds(input.plot, input.blueprint);
   const edits: BuildingSystemVoxelEditSpec[] = [];
   const secondFloorY = roofY + 1;
-  pushVoxelBox(edits, [x0, secondFloorY, z0], [x1, secondFloorY + 1, z1], BUILDING_BLOCKS.upgradeWall, "upgrade_addition");
-  pushVoxelBox(edits, [x0, secondFloorY + 1, z0], [x1, secondFloorY + 3, z0 + 1], BUILDING_BLOCKS.wall, "upgrade_addition");
-  pushVoxelBox(edits, [x0, secondFloorY + 3, z0], [x1, secondFloorY + 4, z1], BUILDING_BLOCKS.roof, "upgrade_addition");
+  pushVoxelBox(
+    edits,
+    [x0, secondFloorY, z0],
+    [x1, secondFloorY + 1, z1],
+    BUILDING_BLOCKS.upgradeWall,
+    "upgrade_addition"
+  );
+  pushVoxelBox(
+    edits,
+    [x0, secondFloorY + 1, z0],
+    [x1, secondFloorY + 3, z0 + 1],
+    BUILDING_BLOCKS.wall,
+    "upgrade_addition"
+  );
+  pushVoxelBox(
+    edits,
+    [x0, secondFloorY + 3, z0],
+    [x1, secondFloorY + 4, z1],
+    BUILDING_BLOCKS.roof,
+    "upgrade_addition"
+  );
   return {
     version: BUILDING_SYSTEM_VERSION,
     requestId: input.requestId,
@@ -3733,7 +4638,12 @@ export function createBuildingSystemUpgradeMaterializationPlan(input: {
     origin,
     rotationDegrees: 0,
     edits,
-    placeGroup: { kind: "placeGroupEvent", name: `${input.property.propertyId} tier upgrade`, box: { v0: [x0, y0 - 1, z0], v1: [x1, secondFloorY + 4, z1] }, reason: "building_blueprint_materialized" },
+    placeGroup: {
+      kind: "placeGroupEvent",
+      name: `${input.property.propertyId} tier upgrade`,
+      box: { v0: [x0, y0 - 1, z0], v1: [x1, secondFloorY + 4, z1] },
+      reason: "building_blueprint_materialized",
+    },
     partialMaterialization: true,
     guideConstruction,
     materializesSolidVoxelBuilding: true,
@@ -3747,7 +4657,8 @@ export function createBuildingSystemPlacementPreview(input: {
   rotationDegrees?: 0 | 90 | 180 | 270;
   owned: boolean;
 }): BuildingSystemPlacementPreview {
-  const { origin, x0, y0, z0, x1, z1, guideConstruction } = buildingSystemGeometryBounds(input.plot, input.blueprint, input.origin);
+  const { origin, x0, y0, z0, x1, z1, guideConstruction } =
+    buildingSystemGeometryBounds(input.plot, input.blueprint, input.origin);
   const ghostFootprint: Array<[number, number, number]> = [];
   for (let x = x0; x < x1; x++) {
     ghostFootprint.push([x, y0, z0], [x, y0, z1 - 1]);
@@ -3757,16 +4668,26 @@ export function createBuildingSystemPlacementPreview(input: {
   }
   const warnings: string[] = [];
   if (!input.owned) warnings.push("preview_warning:plot_not_owned");
-  if (x0 < input.plot.bounds.xMin || x1 > input.plot.bounds.xMax || z0 < input.plot.bounds.zMin || z1 > input.plot.bounds.zMax) {
+  if (
+    x0 < input.plot.bounds.xMin ||
+    x1 > input.plot.bounds.xMax ||
+    z0 < input.plot.bounds.zMin ||
+    z1 > input.plot.bounds.zMax
+  ) {
     warnings.push("preview_warning:footprint_outside_plot");
   }
-  if (guideConstruction.coveredAreaFraction > input.plot.maxCoveredAreaFraction) {
+  if (
+    guideConstruction.coveredAreaFraction > input.plot.maxCoveredAreaFraction
+  ) {
     warnings.push("preview_warning:coverage_exceeds_plot_limit");
   }
   if (!guideConstruction.groundedToPlot) {
     warnings.push("preview_warning:floor_not_one_voxel_above_ground");
   }
-  if (guideConstruction.usesSolidVoxelShell && !guideConstruction.stairInsidePlot) {
+  if (
+    guideConstruction.usesSolidVoxelShell &&
+    !guideConstruction.stairInsidePlot
+  ) {
     warnings.push("preview_warning:doorsill_stair_outside_plot");
   }
   return {
@@ -3778,7 +4699,10 @@ export function createBuildingSystemPlacementPreview(input: {
     ghostFootprint,
     guideConstruction,
     requiredMaterials: BUILDING_SYSTEM_CONSTRUCTION_STAGES.flatMap((stage) =>
-      buildingSystemMaterialRequirementLines({ blueprint: input.blueprint, stage })
+      buildingSystemMaterialRequirementLines({
+        blueprint: input.blueprint,
+        stage,
+      })
     ),
     valid: warnings.length === 0,
     warnings,
@@ -3796,12 +4720,14 @@ function buildingSystemEditPositionKey(edit: BuildingSystemVoxelEditSpec) {
   return edit.position.join(",");
 }
 
-export function validateBuildingSystemGuideConstructionReadiness(input: {
-  plots?: readonly BuildingSystemPlotDefinition[];
-  blueprints?: readonly BuildingSystemBlueprintDefinition[];
-  actorId?: string;
-  nowMs?: number;
-} = {}): BuildingSystemGuideConstructionReadinessResult {
+export function validateBuildingSystemGuideConstructionReadiness(
+  input: {
+    plots?: readonly BuildingSystemPlotDefinition[];
+    blueprints?: readonly BuildingSystemBlueprintDefinition[];
+    actorId?: string;
+    nowMs?: number;
+  } = {}
+): BuildingSystemGuideConstructionReadinessResult {
   const plots = input.plots ?? BUILDING_SYSTEM_PLOTS;
   const blueprints = input.blueprints ?? BUILDING_SYSTEM_BLUEPRINTS;
   const errors: string[] = [];
@@ -3809,15 +4735,22 @@ export function validateBuildingSystemGuideConstructionReadiness(input: {
   let checkedBlueprints = 0;
   for (const plot of plots) {
     for (const blueprintId of plot.allowedBlueprintIds) {
-      const blueprint = blueprints.find((candidate) => candidate.blueprintId === blueprintId);
+      const blueprint = blueprints.find(
+        (candidate) => candidate.blueprintId === blueprintId
+      );
       if (!blueprint) {
         errors.push(`${plot.plotId}:${blueprintId}:missing_blueprint`);
         continue;
       }
       checkedBlueprints += 1;
-      const guide = createBuildingSystemGuideConstructionMath({ plot, blueprint });
+      const guide = createBuildingSystemGuideConstructionMath({
+        plot,
+        blueprint,
+      });
       warnings.push(
-        ...guide.warnings.map((warning) => `${plot.plotId}:${blueprint.blueprintId}:${warning}`)
+        ...guide.warnings.map(
+          (warning) => `${plot.plotId}:${blueprint.blueprintId}:${warning}`
+        )
       );
       const preview = createBuildingSystemPlacementPreview({
         plot,
@@ -3825,10 +4758,17 @@ export function validateBuildingSystemGuideConstructionReadiness(input: {
         owned: true,
       });
       if (JSON.stringify(preview.origin) !== JSON.stringify(guide.origin)) {
-        errors.push(`${plot.plotId}:${blueprint.blueprintId}:preview_origin_drift`);
+        errors.push(
+          `${plot.plotId}:${blueprint.blueprintId}:preview_origin_drift`
+        );
       }
-      if (preview.guideConstruction.version !== BUILDING_SYSTEM_GUIDE_CONSTRUCTION_RULES_VERSION) {
-        errors.push(`${plot.plotId}:${blueprint.blueprintId}:preview_missing_guide_math`);
+      if (
+        preview.guideConstruction.version !==
+        BUILDING_SYSTEM_GUIDE_CONSTRUCTION_RULES_VERSION
+      ) {
+        errors.push(
+          `${plot.plotId}:${blueprint.blueprintId}:preview_missing_guide_math`
+        );
       }
       const plan = createBuildingSystemMaterializationPlan({
         requestId: `guide_readiness_${plot.plotId}_${blueprint.blueprintId}`,
@@ -3838,20 +4778,41 @@ export function validateBuildingSystemGuideConstructionReadiness(input: {
         blueprint,
         activatedAtMs: input.nowMs ?? 0,
       });
-      if (plan.guideConstruction.version !== BUILDING_SYSTEM_GUIDE_CONSTRUCTION_RULES_VERSION) {
-        errors.push(`${plot.plotId}:${blueprint.blueprintId}:plan_missing_guide_math`);
+      if (
+        plan.guideConstruction.version !==
+        BUILDING_SYSTEM_GUIDE_CONSTRUCTION_RULES_VERSION
+      ) {
+        errors.push(
+          `${plot.plotId}:${blueprint.blueprintId}:plan_missing_guide_math`
+        );
       }
       if (JSON.stringify(plan.origin) !== JSON.stringify(guide.origin)) {
-        errors.push(`${plot.plotId}:${blueprint.blueprintId}:plan_origin_drift`);
+        errors.push(
+          `${plot.plotId}:${blueprint.blueprintId}:plan_origin_drift`
+        );
       }
-      if (plan.placeGroup.box.v0[0] !== guide.x0 || plan.placeGroup.box.v0[1] !== guide.foundationY || plan.placeGroup.box.v0[2] !== guide.z0) {
-        errors.push(`${plot.plotId}:${blueprint.blueprintId}:place_group_min_drift`);
+      if (
+        plan.placeGroup.box.v0[0] !== guide.x0 ||
+        plan.placeGroup.box.v0[1] !== guide.foundationY ||
+        plan.placeGroup.box.v0[2] !== guide.z0
+      ) {
+        errors.push(
+          `${plot.plotId}:${blueprint.blueprintId}:place_group_min_drift`
+        );
       }
       if (buildingSystemUsesSolidShell(blueprint)) {
         const labels = countBuildingSystemVoxelLabels(plan);
-        for (const label of ["foundation", "floor", "wall", "roof", "stair"] as const) {
+        for (const label of [
+          "foundation",
+          "floor",
+          "wall",
+          "roof",
+          "stair",
+        ] as const) {
           if ((labels[label] ?? 0) <= 0) {
-            errors.push(`${plot.plotId}:${blueprint.blueprintId}:missing_${label}_edits`);
+            errors.push(
+              `${plot.plotId}:${blueprint.blueprintId}:missing_${label}_edits`
+            );
           }
         }
         const hasDoorWall = plan.edits.some(
@@ -3859,10 +4820,13 @@ export function validateBuildingSystemGuideConstructionReadiness(input: {
             edit.label === "wall" &&
             edit.position[0] === guide.doorX &&
             edit.position[2] === guide.z0 &&
-            (edit.position[1] === guide.doorYMin || edit.position[1] === guide.doorYMax)
+            (edit.position[1] === guide.doorYMin ||
+              edit.position[1] === guide.doorYMax)
         );
         if (hasDoorWall) {
-          errors.push(`${plot.plotId}:${blueprint.blueprintId}:doorway_void_blocked`);
+          errors.push(
+            `${plot.plotId}:${blueprint.blueprintId}:doorway_void_blocked`
+          );
         }
         const hasGuideStair = plan.edits.some(
           (edit) =>
@@ -3872,7 +4836,9 @@ export function validateBuildingSystemGuideConstructionReadiness(input: {
             edit.position[2] === guide.stairPosition[2]
         );
         if (!hasGuideStair) {
-          errors.push(`${plot.plotId}:${blueprint.blueprintId}:doorsill_stair_missing`);
+          errors.push(
+            `${plot.plotId}:${blueprint.blueprintId}:doorsill_stair_missing`
+          );
         }
       }
       const demolition = createBuildingSystemDemolitionMaterializationPlan({
@@ -3889,10 +4855,16 @@ export function validateBuildingSystemGuideConstructionReadiness(input: {
         blueprint,
         activatedAtMs: input.nowMs ?? 0,
       });
-      const demolitionPositions = new Set(demolition.edits.map(buildingSystemEditPositionKey));
+      const demolitionPositions = new Set(
+        demolition.edits.map(buildingSystemEditPositionKey)
+      );
       for (const edit of plan.edits) {
         if (!demolitionPositions.has(buildingSystemEditPositionKey(edit))) {
-          errors.push(`${plot.plotId}:${blueprint.blueprintId}:demolition_misses_${buildingSystemEditPositionKey(edit)}`);
+          errors.push(
+            `${plot.plotId}:${
+              blueprint.blueprintId
+            }:demolition_misses_${buildingSystemEditPositionKey(edit)}`
+          );
           break;
         }
       }
@@ -3947,9 +4919,20 @@ export function runBuildingSystemBusinessRevenueCycle(input: {
   const def = buildingSystemBusinessTypeById(input.business.type);
   const business = { ...input.business };
   const cycles = Math.max(1, Math.trunc(input.cycles ?? 1));
-  const satisfactionMultiplier = Math.max(0.35, Math.min(1.75, business.customerSatisfaction / 50));
-  const reputationMultiplier = Math.max(0.5, Math.min(2, 1 + business.reputation / 100));
-  const gross = Math.floor((def?.baseRevenuePerCycleGold ?? 25) * cycles * satisfactionMultiplier * reputationMultiplier);
+  const satisfactionMultiplier = Math.max(
+    0.35,
+    Math.min(1.75, business.customerSatisfaction / 50)
+  );
+  const reputationMultiplier = Math.max(
+    0.5,
+    Math.min(2, 1 + business.reputation / 100)
+  );
+  const gross = Math.floor(
+    (def?.baseRevenuePerCycleGold ?? 25) *
+      cycles *
+      satisfactionMultiplier *
+      reputationMultiplier
+  );
   const upkeep = Math.floor(business.upkeepCost * cycles);
   const net = Math.max(0, gross - upkeep);
   const tax = Math.floor(net * 0.08);

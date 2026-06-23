@@ -134,6 +134,7 @@ import { MiniMapHUD } from "@/client/components/MiniMapHUD";
 import {
   biomesUIVitalsCombatResourceDisplayForTest,
   biomesUIVitalsDisplayFromLiveStatusForTest,
+  biomesUIVitalsStaminaDisplayForTest,
   useBiomesUIPlayerStatusState,
 } from "@/client/components/biomes_ui/adapters/playerStatusAdapter";
 import { useBiomesHUDVisibilitySnapshot } from "@/client/components/biomes_ui/hudVisibilitySettings";
@@ -1144,8 +1145,12 @@ function CompactStatusCluster() {
   const manaPct =
     (combatResource.resourceValue / Math.max(1, combatResource.resourceMax)) *
     100;
-  const staminaValue = Math.max(0, stamina.stamina);
-  const staminaMax = Math.max(1, Math.round(stamina.maxStamina));
+  const staminaFromStatus = biomesUIVitalsStaminaDisplayForTest(liveStatus, {
+    staminaValue: Math.max(0, stamina.stamina),
+    staminaMax: Math.max(1, Math.round(stamina.maxStamina)),
+  });
+  const staminaValue = staminaFromStatus.staminaValue;
+  const staminaMax = staminaFromStatus.staminaMax;
   const staminaPct = (staminaValue / Math.max(1, staminaMax)) * 100;
   const staminaDisplay =
     staminaValue > 0 && !Number.isInteger(staminaValue)
@@ -1737,8 +1742,7 @@ export function harthmereAttackableActorHealthBarRows(input: {
     }
 
     const hp = harthmereFiniteHealthValue(actor.health?.hp);
-    const maxHp =
-      harthmereFiniteHealthValue(actor.health?.maxHp) ?? (hp ?? 0);
+    const maxHp = harthmereFiniteHealthValue(actor.health?.maxHp) ?? hp ?? 0;
     if (
       hp === undefined ||
       hp <= 0 ||

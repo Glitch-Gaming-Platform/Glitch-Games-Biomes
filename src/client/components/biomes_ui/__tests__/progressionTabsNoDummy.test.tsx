@@ -77,6 +77,7 @@ import {
   biomesUIPlayerStatusGameplayActiveForTest,
   biomesUIVitalsCombatResourceDisplayForTest,
   biomesUIVitalsDisplayFromLiveStatusForTest,
+  biomesUIVitalsStaminaDisplayForTest,
   fetchBiomesUIPlayerStatus,
   formatBiomesResourceLabelForVitalsForTest,
 } from "../adapters/playerStatusAdapter";
@@ -384,6 +385,29 @@ describe("Biomes UI progression tabs", () => {
     assert.equal(resource.resourceMax, 120);
   });
 
+  it("uses live server stamina for the survival stamina bar", () => {
+    const stamina = biomesUIVitalsStaminaDisplayForTest(
+      {
+        className: "Warrior",
+        level: 1,
+        combat: {
+          hp: 100,
+          maxHp: 100,
+          deathState: "alive",
+          primaryResource: "stamina",
+          resource: 92,
+          maxResource: 108,
+          resources: { stamina: 73.4 },
+          maxResources: { stamina: 108 },
+        },
+      },
+      { staminaValue: 100, staminaMax: 100 }
+    );
+
+    assert.equal(stamina.staminaValue, 73.4);
+    assert.equal(stamina.staminaMax, 108);
+  });
+
   it("does not let a stale full-health live snapshot override local death vitals", () => {
     const display = biomesUIVitalsDisplayFromLiveStatusForTest(
       {
@@ -550,7 +574,9 @@ describe("Biomes UI progression tabs", () => {
       return new Response(
         JSON.stringify({
           ok: true,
-          playerStatusState: { combat: { hp: 0, maxHp: 100, deathState: "dead" } },
+          playerStatusState: {
+            combat: { hp: 0, maxHp: 100, deathState: "dead" },
+          },
         }),
         { status: 200, headers: { "Content-Type": "application/json" } }
       );
@@ -1345,7 +1371,10 @@ describe("Biomes UI progression tabs", () => {
     });
     assert.equal(materialLines[0].displayName, "Rough Stone");
     assert.equal(materialLines[0].missing, 4);
-    assert.equal(buildingSystemMapMarkerIdForPlotForTest(plot, true), `property:${plot.plotId}`);
+    assert.equal(
+      buildingSystemMapMarkerIdForPlotForTest(plot, true),
+      `property:${plot.plotId}`
+    );
     assert.deepEqual(
       playerFacingBuildingWarningsForTest({
         ok: true,
@@ -1366,10 +1395,16 @@ describe("Biomes UI progression tabs", () => {
       roughStoneSource,
       nowMs
     );
-    assert.equal(roughStonePin.markerId, "building_material_source:rough_stone:harthmere_north_iron_vein");
-    assert.equal(roughStonePin.label, "Mine rough stone: North Road Iron Vein");
-    assert.equal(roughStonePin.kind, "resource");
-    assert.deepEqual(roughStonePin.worldPosition, [503, 53, -270]);
+    assert.equal(
+      roughStonePin.markerId,
+      "building_material_source:rough_stone:black_anvil_building_counter"
+    );
+    assert.equal(
+      roughStonePin.label,
+      "Buy rough stone: Black Anvil Building Materials Counter"
+    );
+    assert.equal(roughStonePin.kind, "store");
+    assert.deepEqual(roughStonePin.worldPosition, [1630, 43, -780]);
 
     const html = renderToStaticMarkup(
       <LandTab
@@ -1387,7 +1422,11 @@ describe("Biomes UI progression tabs", () => {
     assert.ok(html.includes('data-building-material-list="production"'));
     assert.ok(html.includes("Missing Rough Stone"));
     assert.ok(html.includes("Find"));
-    assert.ok(html.includes("Find Rough Stone at North Road Iron Vein"));
+    assert.ok(
+      html.includes(
+        "Find Rough Stone at Black Anvil Building Materials Counter"
+      )
+    );
     assert.ok(html.includes("Show property on map"));
     assertNoDeveloperCopy(html);
   });
@@ -1421,7 +1460,10 @@ describe("Biomes UI progression tabs", () => {
       assert.equal(capturedInit?.method, "GET");
       assert.equal(capturedInit?.cache, "no-store");
       assert.deepEqual(state?.ownedPlotIds, ["grove_muckstead_cottage_lot"]);
-      const submitted = await submitBuildingSystemLiveModeAction("read_state", {});
+      const submitted = await submitBuildingSystemLiveModeAction(
+        "read_state",
+        {}
+      );
       assert.equal(
         String(capturedInput),
         "/api/harthmere/live_mode_building_state"
@@ -1776,24 +1818,25 @@ describe("Biomes UI progression tabs", () => {
     );
     const marker = mapMarkerForActivePinForTest(
       {
-        markerId: "building_material_source:rough_stone:harthmere_north_iron_vein",
-        label: "Mine rough stone: North Road Iron Vein",
-        kind: "resource",
-        worldPosition: [503, 53, -270],
+        markerId:
+          "building_material_source:rough_stone:black_anvil_building_counter",
+        label: "Buy rough stone: Black Anvil Building Materials Counter",
+        kind: "store",
+        worldPosition: [1630, 43, -780],
         description: "Rough Stone source.",
         setAtMs: 1234,
       },
-      { minX: 360, maxX: 600, minZ: -270, maxZ: -100 }
+      { minX: 1500, maxX: 1740, minZ: -850, maxZ: -680 }
     );
     assert.equal(
       marker?.id,
-      "building_material_source:rough_stone:harthmere_north_iron_vein"
+      "building_material_source:rough_stone:black_anvil_building_counter"
     );
-    assert.equal(marker?.kind, "resource");
+    assert.equal(marker?.kind, "store");
     assert.equal(marker?.active, true);
-    assert.deepEqual(marker?.worldPosition, [503, 53, -270]);
-    assert.equal(marker?.x, 143 / 240);
-    assert.equal(marker?.y, 0);
+    assert.deepEqual(marker?.worldPosition, [1630, 43, -780]);
+    assert.equal(marker?.x, 130 / 240);
+    assert.equal(marker?.y, 70 / 170);
   });
 
   it("maps active BiomesUI destinations onto differently colored navigation marker families", () => {

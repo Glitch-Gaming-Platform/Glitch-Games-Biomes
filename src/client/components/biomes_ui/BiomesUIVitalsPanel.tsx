@@ -14,6 +14,7 @@ import { BIOMES_GAME_NAME } from "@/shared/biomes/display_names";
 import React from "react";
 import {
   biomesUIVitalsDisplayFromLiveStatusForTest,
+  biomesUIVitalsStaminaDisplayForTest,
   useBiomesUIPlayerStatusState,
 } from "./adapters/playerStatusAdapter";
 import type { HighlightStyle } from "./highlight/HighlightRegistry";
@@ -241,17 +242,17 @@ export const BiomesUIVitalsPanel: React.FunctionComponent<{}> = () => {
   const healthHp = Math.max(0, Math.round(display.hp));
   const healthMaxHp = Math.max(1, Math.round(display.maxHp));
   const healthCombatState = display.combatState;
-  // Mana & Stamina, like Health, read their LOCAL real-time systems as the
-  // source of truth — the multiplayer-combat mana pool and the food-stamina
-  // system — NOT the 5-15s-polled backend status. Both of those local systems
-  // tick/consume during gameplay (casting drains mana; sprinting/hunger drains
-  // stamina; eating restores it) and handle their own death/respawn, so binding
-  // to them keeps all three vitals real-time and mutually consistent instead of
-  // snapping back to a stale backend snapshot.
+  // Mana stays local because casting is client-immediate. Stamina is owned by
+  // the live status cache in production, so the HUD shows the same server value
+  // that death/respawn and persistence use, with local stamina as a fallback.
   const manaValue = Math.max(0, Math.round(multiplayer.mana));
   const manaMax = Math.max(1, Math.round(multiplayer.maxMana));
-  const staminaValue = Math.max(0, Number(stamina.stamina) || 0);
-  const staminaMax = Math.max(1, Math.round(stamina.maxStamina));
+  const staminaDisplay = biomesUIVitalsStaminaDisplayForTest(liveStatus, {
+    staminaValue: Math.max(0, Number(stamina.stamina) || 0),
+    staminaMax: Math.max(1, Math.round(stamina.maxStamina)),
+  });
+  const staminaValue = staminaDisplay.staminaValue;
+  const staminaMax = staminaDisplay.staminaMax;
   const regional = display.standing ?? reputation.regions.harthmere;
   // Level / XP come from the LOCAL leveling system (the source of truth where
   // quests, gathering, building, and combat actually award XP via

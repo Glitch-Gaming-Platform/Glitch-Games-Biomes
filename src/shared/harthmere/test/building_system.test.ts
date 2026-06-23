@@ -64,16 +64,24 @@ describe("building_system — property access and lifecycle oversights", () => {
     assert.equal(BUILDING_SYSTEM_BIKKIE_BLUEPRINTS.length, 20);
     assert.equal(
       new Set(
-        BUILDING_SYSTEM_BIKKIE_BLUEPRINTS.map((blueprint) => blueprint.blueprintItemId)
+        BUILDING_SYSTEM_BIKKIE_BLUEPRINTS.map(
+          (blueprint) => blueprint.blueprintItemId
+        )
       ).size,
       expectedBikkieBlueprintIds.length
     );
     for (const itemId of expectedBikkieBlueprintIds) {
       const blueprint = buildingSystemBlueprintByItemId(itemId);
-      assert.ok(blueprint, `missing building-system blueprint for item ${itemId}`);
+      assert.ok(
+        blueprint,
+        `missing building-system blueprint for item ${itemId}`
+      );
       assert.equal(blueprint.source, "bikkie_blueprint");
       assert.equal(blueprint.blueprintItemId, itemId);
-      assert.ok(blueprint.colors?.length, `${blueprint.blueprintId} should carry color metadata`);
+      assert.ok(
+        blueprint.colors?.length,
+        `${blueprint.blueprintId} should carry color metadata`
+      );
       assert.ok(blueprint.description.length > 24);
     }
   });
@@ -81,7 +89,7 @@ describe("building_system — property access and lifecycle oversights", () => {
   it("clamps hostile/corrupt persisted property fields on normalization (no negative gold math)", () => {
     const blueprint = BUILDING_SYSTEM_BIKKIE_BLUEPRINTS[0];
     const plot = BUILDING_SYSTEM_PLOTS.find((candidate) =>
-      candidate.allowedBlueprintIds.includes(blueprint.blueprintId),
+      candidate.allowedBlueprintIds.includes(blueprint.blueprintId)
     )!;
     const property = normalizeBuildingSystemPropertyRecord({
       propertyId: "property_corrupt",
@@ -99,15 +107,30 @@ describe("building_system — property access and lifecycle oversights", () => {
         taxRate: -1,
       },
     });
-    assert.ok(property.condition >= 0 && property.condition <= 100, `condition ${property.condition}`);
+    assert.ok(
+      property.condition >= 0 && property.condition <= 100,
+      `condition ${property.condition}`
+    );
     assert.ok(property.value >= 0, `value ${property.value}`);
-    assert.ok(property.taxBalanceGold >= 0, `taxBalanceGold ${property.taxBalanceGold}`);
-    assert.ok(property.repairDebtGold >= 0, `repairDebtGold ${property.repairDebtGold}`);
+    assert.ok(
+      property.taxBalanceGold >= 0,
+      `taxBalanceGold ${property.taxBalanceGold}`
+    );
+    assert.ok(
+      property.repairDebtGold >= 0,
+      `repairDebtGold ${property.repairDebtGold}`
+    );
     assert.ok(property.tier >= 1, `tier ${property.tier}`);
     assert.ok(property.taxRate >= 0, `taxRate ${property.taxRate}`);
     // Downstream gold math must never go negative off corrupt input.
-    assert.ok(buildingSystemRepairCostGold(property) >= 0, "repair cost must be non-negative");
-    assert.ok(buildingSystemDemolitionRefundGold(property) >= 0, "demolition refund must be non-negative");
+    assert.ok(
+      buildingSystemRepairCostGold(property) >= 0,
+      "repair cost must be non-negative"
+    );
+    assert.ok(
+      buildingSystemDemolitionRefundGold(property) >= 0,
+      "demolition refund must be non-negative"
+    );
   });
 
   it("keeps every Bikkie blueprint zoned to a plot where authority placement validates", () => {
@@ -189,13 +212,18 @@ describe("building_system — property access and lifecycle oversights", () => {
       nowMs: NOW_MS,
     });
     assert.deepStrictEqual(readiness.errors, []);
-    assert.ok(readiness.checkedBlueprints >= BUILDING_SYSTEM_BIKKIE_BLUEPRINTS.length);
+    assert.ok(
+      readiness.checkedBlueprints >= BUILDING_SYSTEM_BIKKIE_BLUEPRINTS.length
+    );
 
     const plot = buildingSystemPlotById("grove_crossroads_shop_lot");
     const blueprint = buildingSystemBlueprintById("grove_voxel_shop_tier_1");
     assert.ok(plot);
     assert.ok(blueprint);
-    const guide = createBuildingSystemGuideConstructionMath({ plot, blueprint });
+    const guide = createBuildingSystemGuideConstructionMath({
+      plot,
+      blueprint,
+    });
     const preview = createBuildingSystemPlacementPreview({
       plot,
       blueprint,
@@ -220,7 +248,9 @@ describe("building_system — property access and lifecycle oversights", () => {
     assert.ok((labels.roof ?? 0) > 0);
     assert.ok((labels.stair ?? 0) > 0);
     assert.ok(
-      plan.edits.every((edit) => edit.value === 0 || isTerrainID(Number(edit.value))),
+      plan.edits.every(
+        (edit) => edit.value === 0 || isTerrainID(Number(edit.value))
+      ),
       "player home/business materialization edits must be terrain block ids"
     );
     assert.ok(
@@ -235,6 +265,17 @@ describe("building_system — property access and lifecycle oversights", () => {
         (edit) =>
           edit.label === "wall" &&
           edit.position[0] === guide.doorX &&
+          edit.position[2] === guide.z0 &&
+          (edit.position[1] === guide.doorYMin ||
+            edit.position[1] === guide.doorYMax)
+      ),
+      false
+    );
+    assert.equal(
+      plan.edits.some(
+        (edit) =>
+          edit.label === "wall" &&
+          edit.position[0] === guide.doorX - 1 &&
           edit.position[2] === guide.z0 &&
           (edit.position[1] === guide.doorYMin ||
             edit.position[1] === guide.doorYMax)
@@ -271,15 +312,27 @@ describe("building_system — property access and lifecycle oversights", () => {
 
     assert.strictEqual(property.accessMode, "public");
     assert.strictEqual(
-      buildingSystemCanOpenDoorLock({ property, lock: door, actorId: "customer" }),
+      buildingSystemCanOpenDoorLock({
+        property,
+        lock: door,
+        actorId: "customer",
+      }),
       true
     );
     assert.strictEqual(
-      buildingSystemCanUseStorageContainer({ property, container: storage, actorId: "customer" }),
+      buildingSystemCanUseStorageContainer({
+        property,
+        container: storage,
+        actorId: "customer",
+      }),
       false
     );
     assert.strictEqual(
-      buildingSystemCanUseStorageContainer({ property, container: storage, actorId: "shop_owner" }),
+      buildingSystemCanUseStorageContainer({
+        property,
+        container: storage,
+        actorId: "shop_owner",
+      }),
       true
     );
   });
@@ -333,10 +386,11 @@ describe("building_system — property access and lifecycle oversights", () => {
       nowMs: NOW_MS,
     });
 
-    assert.deepStrictEqual(
-      markers.map((marker) => marker.kind).sort(),
-      ["door_lock", "home_console", "storage_container"]
-    );
+    assert.deepStrictEqual(markers.map((marker) => marker.kind).sort(), [
+      "door_lock",
+      "home_console",
+      "storage_container",
+    ]);
     const labels = countBuildingSystemVoxelLabels(plan);
     assert.ok((labels.storage_container ?? 0) >= 1);
     assert.ok((labels.door_lock ?? 0) >= 1);
@@ -354,7 +408,9 @@ describe("building_system — property access and lifecycle oversights", () => {
       consoleMarker.position
     );
     assert.ok(
-      markers.every((marker) => marker.label && !/[a-z]+_[a-z]+/.test(marker.label)),
+      markers.every(
+        (marker) => marker.label && !/[a-z]+_[a-z]+/.test(marker.label)
+      ),
       JSON.stringify(markers)
     );
     assert.ok(
@@ -386,12 +442,17 @@ describe("building_system — property access and lifecycle oversights", () => {
     assert.ok(markers.some((marker) => marker.kind === "storage_container"));
     assert.ok(markers.some((marker) => marker.kind === "door_lock"));
     assert.ok(markers.some((marker) => marker.kind === "business_marker"));
-    assert.equal(markers.some((marker) => marker.kind === "home_console"), false);
+    assert.equal(
+      markers.some((marker) => marker.kind === "home_console"),
+      false
+    );
     assert.ok((labels.storage_container ?? 0) >= 1);
     assert.ok((labels.door_lock ?? 0) >= 1);
     assert.ok((labels.business_marker ?? 0) >= 1);
     assert.ok(
-      markers.every((marker) => marker.label && !/[a-z]+_[a-z]+/.test(marker.label)),
+      markers.every(
+        (marker) => marker.label && !/[a-z]+_[a-z]+/.test(marker.label)
+      ),
       JSON.stringify(markers)
     );
   });
@@ -455,21 +516,24 @@ describe("building_system — property access and lifecycle oversights", () => {
     });
 
     assert.ok(result.taxDeltaGold > 0);
-    assert.strictEqual(result.property.unpaidTaxSinceMs, NOW_MS + BUILDING_SYSTEM_TAX_PERIOD_MS);
+    assert.strictEqual(
+      result.property.unpaidTaxSinceMs,
+      NOW_MS + BUILDING_SYSTEM_TAX_PERIOD_MS
+    );
     assert.strictEqual(result.property.abandoned, true);
     assert.strictEqual(result.property.status, "abandoned");
-    assert.ok(result.warnings.includes("property_marked_abandoned:unpaid_taxes"));
+    assert.ok(
+      result.warnings.includes("property_marked_abandoned:unpaid_taxes")
+    );
   });
 });
 
 describe("building_system - terrain grounding (rest on real surface)", () => {
   // A flat synthetic surface: solid at/below `groundTopY`, air above. The shared
   // scan finds feet at groundTopY + 1 (stand on top of the solid block).
-  const flatSurfaceSolid = (groundTopY: number) => (
-    _x: number,
-    y: number,
-    _z: number
-  ) => y <= groundTopY;
+  const flatSurfaceSolid =
+    (groundTopY: number) => (_x: number, y: number, _z: number) =>
+      y <= groundTopY;
 
   function buildShopPlan() {
     const plot = buildingSystemPlotById("grove_crossroads_shop_lot");
@@ -499,12 +563,18 @@ describe("building_system - terrain grounding (rest on real surface)", () => {
     assert.strictEqual(grounded.origin.y, plan.origin.y - 3);
     // Every edit + marker shifted by the same -3, footprint XZ untouched.
     for (let i = 0; i < plan.edits.length; i += 1) {
-      assert.strictEqual(grounded.edits[i].position[0], plan.edits[i].position[0]);
+      assert.strictEqual(
+        grounded.edits[i].position[0],
+        plan.edits[i].position[0]
+      );
       assert.strictEqual(
         grounded.edits[i].position[1],
         plan.edits[i].position[1] - 3
       );
-      assert.strictEqual(grounded.edits[i].position[2], plan.edits[i].position[2]);
+      assert.strictEqual(
+        grounded.edits[i].position[2],
+        plan.edits[i].position[2]
+      );
     }
     for (let i = 0; i < (plan.inWorldMarkers?.length ?? 0); i += 1) {
       assert.strictEqual(

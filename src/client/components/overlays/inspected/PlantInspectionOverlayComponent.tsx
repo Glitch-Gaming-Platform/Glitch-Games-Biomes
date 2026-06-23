@@ -16,12 +16,13 @@ import { fireAndForget } from "@/shared/util/async";
 import { plantTimeString } from "@/shared/util/helpers";
 import { useAnimationFrame } from "framer-motion";
 import { compact } from "lodash";
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 export const PlantInspectionOverlayComponent: React.FunctionComponent<{
   overlay: PlantInspectOverlay;
 }> = ({ overlay }) => {
   const { reactResources, authManager, userId, events } = useClientContext();
+  const harvestInFlightRef = useRef<Set<string>>(new Set());
   const plant = reactResources.use(
     "/ecs/c/farming_plant_component",
     overlay.entityId
@@ -102,26 +103,43 @@ export const PlantInspectionOverlayComponent: React.FunctionComponent<{
     shortcuts.push({
       title: "Harvest",
       onKeyDown: () => {
-        if (plant?.seed) {
-          fireAndForget(
-            submitHarthmereNativePlantHarvestToLiveMode({
-              plantId: overlay.entityId,
-              seedItemId: plant.seed,
-              plantStatus: plant.status,
-              farmingKind: plantBiscuit?.farming?.kind,
-              plantLabel: name,
-              position: overlay.pos,
-            })
-          );
-        }
+        const plantId = String(overlay.entityId);
+        if (harvestInFlightRef.current.has(plantId)) return;
+        harvestInFlightRef.current.add(plantId);
         fireAndForget(
-          events.publish(
-            new HarvestPlantEvent({
-              id: userId,
-              plant_id: overlay.entityId,
-              position: overlay.pos,
-            })
-          )
+          (async () => {
+            try {
+              if (plant?.seed) {
+                await submitHarthmereNativePlantHarvestToLiveMode({
+                  plantId: overlay.entityId,
+                  seedItemId: plant.seed,
+                  plantStatus: plant.status,
+                  farmingKind: plantBiscuit?.farming?.kind,
+                  plantLabel: name,
+                  position: overlay.pos,
+                });
+              }
+            } finally {
+              // Live inventory and ECS terrain are separate authorities. Always
+              // publish the terrain harvest once per visible prompt so a claimed
+              // crop turns back into reusable dirt instead of staying harvestable.
+              await events.publish(
+                new HarvestPlantEvent({
+                  id: userId,
+                  plant_id: overlay.entityId,
+                  position: overlay.pos,
+                })
+              );
+              const clearInFlight = () => {
+                harvestInFlightRef.current.delete(plantId);
+              };
+              if (typeof window !== "undefined") {
+                window.setTimeout(clearInFlight, 750);
+              } else {
+                clearInFlight();
+              }
+            }
+          })()
         );
       },
     });
