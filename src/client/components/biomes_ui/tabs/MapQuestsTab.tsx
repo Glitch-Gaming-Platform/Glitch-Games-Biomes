@@ -69,6 +69,8 @@ export interface MapMarker {
   worldPosition?: [number, number, number];
 }
 
+type MapBounds = { minX: number; maxX: number; minZ: number; maxZ: number };
+
 type MapTerrainKind =
   | "water"
   | "muck"
@@ -147,9 +149,7 @@ interface MapAdapter {
   getPlayerMarker?: () => MapMarker | undefined;
   getMissionTitle?: () => string;
   getMissionSteps?: () => MissionStep[];
-  getMapBounds?: () =>
-    | { minX: number; maxX: number; minZ: number; maxZ: number }
-    | undefined;
+  getMapBounds?: () => MapBounds | undefined;
   getTrackableQuests?: () => MapTrackableQuest[];
   getActiveMapPin?: () => BiomesUIActiveMapPin | undefined;
   setActiveMapPin?: (marker: MapMarker) => void;
@@ -213,6 +213,13 @@ const KIND_COLOR: Record<MapMarkerKind, string> = {
   player: "#ffffff",
 };
 
+const DEFAULT_HARTHMERE_MAP_BOUNDS: MapBounds = {
+  minX: 360,
+  maxX: 600,
+  minZ: -270,
+  maxZ: -100,
+};
+
 function clamp01(value: number): number {
   if (!Number.isFinite(value)) return 0.5;
   return Math.max(0, Math.min(1, value));
@@ -226,6 +233,69 @@ function markerPosition(
   const x = ((clamp01(marker.x) - 0.5) * zoom + 0.5 + pan.x) * 100;
   const y = ((clamp01(marker.y) - 0.5) * zoom + 0.5 + pan.y) * 100;
   return { left: `${x}%`, top: `${y}%` };
+}
+
+function normalizedWorldXZForMap(
+  worldX: number,
+  worldZ: number,
+  bounds: MapBounds
+) {
+  return {
+    x: clamp01((worldX - bounds.minX) / Math.max(1, bounds.maxX - bounds.minX)),
+    y: clamp01((worldZ - bounds.minZ) / Math.max(1, bounds.maxZ - bounds.minZ)),
+  };
+}
+
+function mapMarkerKindFromPinKind(kind: string): MapMarkerKind {
+  const normalized = kind.trim().toLowerCase();
+  if (
+    normalized === "objective" ||
+    normalized === "vendor" ||
+    normalized === "store" ||
+    normalized === "business" ||
+    normalized === "bank" ||
+    normalized === "quest" ||
+    normalized === "rift" ||
+    normalized === "resource" ||
+    normalized === "property" ||
+    normalized === "danger" ||
+    normalized === "safe_zone" ||
+    normalized === "route" ||
+    normalized === "town" ||
+    normalized === "player"
+  ) {
+    return normalized;
+  }
+  return "objective";
+}
+
+export function mapMarkerForActivePinForTest(
+  pin: BiomesUIActiveMapPin | undefined,
+  bounds: MapBounds | undefined = DEFAULT_HARTHMERE_MAP_BOUNDS
+): MapMarker | undefined {
+  if (!pin || !bounds) return undefined;
+  const [worldX, worldY, worldZ] = pin.worldPosition ?? [];
+  if (
+    !Number.isFinite(worldX) ||
+    !Number.isFinite(worldY) ||
+    !Number.isFinite(worldZ)
+  ) {
+    return undefined;
+  }
+  const markerId = String(pin.markerId ?? "").trim();
+  const label = String(pin.label ?? "").trim();
+  if (!markerId || !label) return undefined;
+  const projected = normalizedWorldXZForMap(worldX, worldZ, bounds);
+  return {
+    id: markerId,
+    label,
+    x: projected.x,
+    y: projected.y,
+    kind: mapMarkerKindFromPinKind(String(pin.kind ?? "objective")),
+    active: true,
+    description: pin.description,
+    worldPosition: [worldX, worldY, worldZ],
+  };
 }
 
 export function centeredPanForMapMarkerForTest(
@@ -741,7 +811,7 @@ export const MapQuestsTab: React.FunctionComponent<{
   });
   const [activeMapPin, setActiveMapPin] = React.useState<
     BiomesUIActiveMapPin | undefined
-  >(() => adapter?.getActiveMapPin?.());
+  >(() => adapter?.getActiveMapPin?.() ?? readActiveBiomesUIMapPin());
   const [mainQuestSelection, setMainQuestSelection] = React.useState<
     BiomesUIMainQuestSelection | undefined
   >(
@@ -769,17 +839,34 @@ export const MapQuestsTab: React.FunctionComponent<{
 
   React.useEffect(() => ensureMapTabStyles(), []);
 
+  const bounds = adapter?.getMapBounds?.();
   const markers = React.useMemo(() => adapter?.getMarkers?.() ?? [], [adapter]);
   const playerMarker = adapter?.getPlayerMarker?.();
+  const activeMapPinMarker = React.useMemo(
+    () => mapMarkerForActivePinForTest(activeMapPin, bounds),
+    [
+      activeMapPin?.markerId,
+      activeMapPin?.label,
+      activeMapPin?.kind,
+      activeMapPin?.description,
+      activeMapPin?.worldPosition?.join(","),
+      bounds?.minX,
+      bounds?.maxX,
+      bounds?.minZ,
+      bounds?.maxZ,
+    ]
+  );
   const allMarkers = React.useMemo(() => {
     const byId = new Map<string, MapMarker>();
     for (const marker of markers) byId.set(marker.id, marker);
+    if (activeMapPinMarker && !byId.has(activeMapPinMarker.id)) {
+      byId.set(activeMapPinMarker.id, activeMapPinMarker);
+    }
     if (playerMarker) byId.set(playerMarker.id, playerMarker);
     return Array.from(byId.values());
-  }, [markers, playerMarker]);
+  }, [markers, activeMapPinMarker, playerMarker]);
   const title = adapter?.getMissionTitle?.() ?? "No active mission";
   const steps = adapter?.getMissionSteps?.() ?? [];
-  const bounds = adapter?.getMapBounds?.();
   const trackableQuests = adapter?.getTrackableQuests?.() ?? [];
   const mainQuest = React.useMemo(
     () =>
@@ -813,7 +900,7 @@ export const MapQuestsTab: React.FunctionComponent<{
     [allMarkers, enabledLayers]
   );
   React.useEffect(() => {
-    setActiveMapPin(adapter?.getActiveMapPin?.());
+    setActiveMapPin(adapter?.getActiveMapPin?.() ?? readActiveBiomesUIMapPin());
   }, [
     adapter,
     markers.length,
@@ -1135,6 +1222,13 @@ export const MapQuestsTab: React.FunctionComponent<{
       (entry) => entry.id === pendingLocateMarkerId
     );
     if (!marker) return;
+    setEnabledLayers((prev) => {
+      const next = new Set(prev);
+      for (const tab of mapPanelTabForMarkerForTest(marker)) {
+        next.add(tab);
+      }
+      return next;
+    });
     centerOnMarker(marker);
     setFocusedMarkerId(marker.id);
     setPendingLocateMarkerId(undefined);

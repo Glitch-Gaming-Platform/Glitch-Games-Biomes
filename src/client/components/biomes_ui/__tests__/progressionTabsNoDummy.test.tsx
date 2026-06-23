@@ -36,6 +36,7 @@ import {
   LandTab,
   buildingSystemMapMarkerIdForPlotForTest,
   buildingSystemMaterialAvailabilityForStageForTest,
+  buildingSystemMaterialSourcePinForTest,
   playerFacingBuildingWarningsForTest,
 } from "../tabs/LandTab";
 import { LootTab } from "../tabs/LootTab";
@@ -48,6 +49,7 @@ import {
   filterMapMissionStepsForTest,
   filterMapTrackableQuestsForTest,
   geographyTerrainFeaturesForMapMarkersForTest,
+  mapMarkerForActivePinForTest,
   mapMarkerVisualStateForTest,
   mapPanelTabForMarkerForTest,
   nextMapZoomForWheelForTest,
@@ -89,6 +91,7 @@ import {
 } from "../adapters/mapPinnedDestination";
 import {
   buildingSystemBlueprintById,
+  buildingSystemMaterialSourceForSymbol,
   buildingSystemPlotById,
   createBuildingSystemDoorLock,
   createBuildingSystemHomeConsoleMarker,
@@ -1355,6 +1358,18 @@ describe("Biomes UI progression tabs", () => {
       }),
       ["Missing Rough Stone. Bring it in your backpack or material storage."]
     );
+    const roughStoneSource = buildingSystemMaterialSourceForSymbol(
+      materialLines[0].material
+    )!;
+    const roughStonePin = buildingSystemMaterialSourcePinForTest(
+      materialLines[0],
+      roughStoneSource,
+      nowMs
+    );
+    assert.equal(roughStonePin.markerId, "building_material_source:rough_stone:harthmere_north_iron_vein");
+    assert.equal(roughStonePin.label, "Mine rough stone: North Road Iron Vein");
+    assert.equal(roughStonePin.kind, "resource");
+    assert.deepEqual(roughStonePin.worldPosition, [503, 53, -270]);
 
     const html = renderToStaticMarkup(
       <LandTab
@@ -1371,6 +1386,8 @@ describe("Biomes UI progression tabs", () => {
     assert.ok(html.includes('data-building-animate-stage="true"'));
     assert.ok(html.includes('data-building-material-list="production"'));
     assert.ok(html.includes("Missing Rough Stone"));
+    assert.ok(html.includes("Find"));
+    assert.ok(html.includes("Find Rough Stone at North Road Iron Vein"));
     assert.ok(html.includes("Show property on map"));
     assertNoDeveloperCopy(html);
   });
@@ -1757,6 +1774,26 @@ describe("Biomes UI progression tabs", () => {
       biomesUIActiveMapPinNavigationAidSpecForTest(undefined),
       undefined
     );
+    const marker = mapMarkerForActivePinForTest(
+      {
+        markerId: "building_material_source:rough_stone:harthmere_north_iron_vein",
+        label: "Mine rough stone: North Road Iron Vein",
+        kind: "resource",
+        worldPosition: [503, 53, -270],
+        description: "Rough Stone source.",
+        setAtMs: 1234,
+      },
+      { minX: 360, maxX: 600, minZ: -270, maxZ: -100 }
+    );
+    assert.equal(
+      marker?.id,
+      "building_material_source:rough_stone:harthmere_north_iron_vein"
+    );
+    assert.equal(marker?.kind, "resource");
+    assert.equal(marker?.active, true);
+    assert.deepEqual(marker?.worldPosition, [503, 53, -270]);
+    assert.equal(marker?.x, 143 / 240);
+    assert.equal(marker?.y, 0);
   });
 
   it("maps active BiomesUI destinations onto differently colored navigation marker families", () => {

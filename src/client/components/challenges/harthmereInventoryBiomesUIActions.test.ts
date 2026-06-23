@@ -16,6 +16,8 @@ import {
 import {
   HARTHMERE_BIOMES_ECS_INVENTORY_UPDATED_EVENT,
   HARTHMERE_GOLD_ECS_CURRENCY_ID,
+  harthmereItemIdToBiomesEcsItemAndCount,
+  harthmereItemIdToBiomesId,
 } from "@/shared/harthmere/harthmere_biomes_ecs_bridge";
 
 const memoryStore = new Map<string, string>();
@@ -71,6 +73,7 @@ import {
   performHarthmereBackpackItemUseForBiomesUI,
   performHarthmereEquipmentItemUnequipForBiomesUI,
   performHarthmereHotbarAssignForBiomesUI,
+  performHarthmereHotbarClearForBiomesUI,
   performHarthmereMaterialStorageRemoveForBiomesUI,
   readHarthmereInventoryState,
 } from "@/client/components/challenges/LocalDevHarthmereInventorySystem";
@@ -178,6 +181,24 @@ describe("Harthmere inventory BiomesUI presentation and actions", () => {
     );
   });
 
+  it("maps Harthmere hotbar items to real ECS items for held-item rendering", () => {
+    assert.equal(harthmereItemIdToBiomesId("woodsman_axe"), BikkieIds.axe);
+    assert.equal(
+      harthmereItemIdToBiomesId("baker_apron"),
+      BikkieIds.grassyTop
+    );
+    assert.equal(
+      harthmereItemIdToBiomesId("rough_stone"),
+      BikkieIds.cobblestone
+    );
+    assert.equal(
+      harthmereItemIdToBiomesId(`b:${BikkieIds.pickaxe}`),
+      BikkieIds.pickaxe
+    );
+    const held = harthmereItemIdToBiomesEcsItemAndCount("muck_rake", 1);
+    assert.equal(held?.item.id, BikkieIds.muckBuster);
+  });
+
   it("uses local consumables instead of only selecting them", () => {
     const scroll = readHarthmereInventoryState().backpack.items.find(
       (item) => item.itemId === "field_revival_scroll"
@@ -215,6 +236,28 @@ describe("Harthmere inventory BiomesUI presentation and actions", () => {
     assert.equal(state.materialStorage.iron_ore, 1);
   });
 
+  it("allows live-mode item shortcuts to bind and clear without local backpack ownership", () => {
+    assert.equal(
+      performHarthmereHotbarAssignForBiomesUI("wild_berries", 0),
+      false
+    );
+    assert.equal(
+      performHarthmereHotbarAssignForBiomesUI("wild_berries", 0, true),
+      true
+    );
+
+    let state = readHarthmereInventoryState();
+    assert.equal(state.hotbar.slot_1, "wild_berries");
+    assert.equal(
+      state.backpack.items.some((item) => item.itemId === "wild_berries"),
+      false
+    );
+
+    assert.equal(performHarthmereHotbarClearForBiomesUI(0), true);
+    state = readHarthmereInventoryState();
+    assert.equal(state.hotbar.slot_1, undefined);
+  });
+
   it("publishes the canonical Biomes ECS inventory projection on writes", () => {
     grantHarthmereItem("iron_ore", 2, "ecs projection test");
     const event = dispatchedEvents.find(
@@ -228,9 +271,17 @@ describe("Harthmere inventory BiomesUI presentation and actions", () => {
       )?.count,
       75n
     );
-    assert.ok(
+    assert.equal(
       event.detail.warnings.some(
         (warning: { id?: string }) => warning.id === "iron_ore"
+      ),
+      false
+    );
+    assert.ok(
+      event.detail.component.items.some(
+        (itemAndCount: { item?: { id?: unknown }; count?: unknown }) =>
+          itemAndCount.item?.id === BikkieIds.goldOre &&
+          itemAndCount.count === 2n
       )
     );
   });

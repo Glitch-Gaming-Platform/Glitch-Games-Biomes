@@ -48,6 +48,22 @@ function resolveRepoAliasForEsbuild(importPath: string) {
   return basePath;
 }
 
+function nodeBuiltinStubForJobsBoardBrowser(pathName: string) {
+  if (pathName === "perf_hooks") {
+    return "export const performance = globalThis.performance;";
+  }
+  if (pathName === "async_hooks") {
+    return "export class AsyncLocalStorage { getStore() { return undefined; } run(_store, cb, ...args) { return cb(...args); } enterWith() {} disable() {} }";
+  }
+  if (pathName === "process") {
+    return "export const env = {}; export const argv = []; export const platform = 'test'; export default { env, argv, platform };";
+  }
+  if (pathName === "os") {
+    return "export function platform() { return 'test'; } export function release() { return ''; } export default { platform, release };";
+  }
+  return "export default {}; export function randomBytes() { return new Uint8Array(); } export function randomUUID() { return 'jobs-board-test-uuid'; }";
+}
+
 function job(jobId: string, title: string, rewardGold: number) {
   return {
     jobId,
@@ -262,6 +278,9 @@ describe("HarthmereJobsBoardPanel keyboard support", () => {
       nodePaths: [path.join(process.cwd(), "node_modules")],
       platform: "browser",
       format: "iife",
+      banner: {
+        js: "var process = { env: {}, argv: [], platform: 'test' }; var global = globalThis;",
+      },
       jsx: "transform",
       jsxFactory: "React.createElement",
       jsxFragment: "React.Fragment",
@@ -278,6 +297,14 @@ describe("HarthmereJobsBoardPanel keyboard support", () => {
             path: "stub-harthmere-live-fetch",
             namespace: "jobs-board-test",
           }));
+          pluginBuild.onResolve({ filter: /@\/galois\/interface\/asset_paths$/ }, () => ({
+            path: "stub-galois-asset-paths",
+            namespace: "jobs-board-test",
+          }));
+          pluginBuild.onResolve({ filter: /^(async_hooks|perf_hooks|crypto|process|os)$/ }, (args) => ({
+            path: args.path,
+            namespace: "jobs-board-node-stub",
+          }));
           pluginBuild.onResolve({ filter: /^@\// }, (args) => ({
             path: resolveRepoAliasForEsbuild(args.path),
           }));
@@ -287,7 +314,11 @@ describe("HarthmereJobsBoardPanel keyboard support", () => {
           }));
           pluginBuild.onLoad({ filter: /.*/, namespace: "jobs-board-test" }, () => ({
             contents:
-              "export const HARTHMERE_BUSINESS_OUTPOSTS = []; export function harthmereBusinessOutpostJobsBoardPosition() { return { x: 0, y: 0, z: 0 }; } export async function fetchHarthmereLiveWithTimeout() { return undefined; } export function completeHarthmereJobsBoardReadQuest() { return { changed: false, reason: 'test' }; }",
+              "export const HARTHMERE_BUSINESS_OUTPOSTS = []; export function harthmereBusinessOutpostJobsBoardPosition() { return { x: 0, y: 0, z: 0 }; } export async function fetchHarthmereLiveWithTimeout() { return undefined; } export function completeHarthmereJobsBoardReadQuest() { return { changed: false, reason: 'test' }; } export function resolveAssetUrlUntyped(path) { return String(path); }",
+            loader: "js",
+          }));
+          pluginBuild.onLoad({ filter: /.*/, namespace: "jobs-board-node-stub" }, (args) => ({
+            contents: nodeBuiltinStubForJobsBoardBrowser(args.path),
             loader: "js",
           }));
         },
@@ -477,6 +508,9 @@ describe("HarthmereJobsBoardPanel keyboard support", () => {
       nodePaths: [path.join(process.cwd(), "node_modules")],
       platform: "browser",
       format: "iife",
+      banner: {
+        js: "var process = { env: {}, argv: [], platform: 'test' }; var global = globalThis;",
+      },
       jsx: "transform",
       jsxFactory: "React.createElement",
       jsxFragment: "React.Fragment",
@@ -492,6 +526,14 @@ describe("HarthmereJobsBoardPanel keyboard support", () => {
           pluginBuild.onResolve({ filter: /harthmere_live_fetch$/ }, () => ({
             path: "stub-harthmere-live-fetch",
             namespace: "jobs-board-container-test",
+          }));
+          pluginBuild.onResolve({ filter: /@\/galois\/interface\/asset_paths$/ }, () => ({
+            path: "stub-galois-asset-paths",
+            namespace: "jobs-board-container-test",
+          }));
+          pluginBuild.onResolve({ filter: /^(async_hooks|perf_hooks|crypto|process|os)$/ }, (args) => ({
+            path: args.path,
+            namespace: "jobs-board-node-stub",
           }));
           pluginBuild.onResolve({ filter: /^@\// }, (args) => ({
             path: resolveRepoAliasForEsbuild(args.path),
@@ -535,6 +577,14 @@ describe("HarthmereJobsBoardPanel keyboard support", () => {
           }));
           pluginBuild.onLoad({ filter: /^stub-harthmere-live-fetch$/, namespace: "jobs-board-container-test" }, () => ({
             contents: "export async function fetchHarthmereLiveWithTimeout() { return undefined; }",
+            loader: "js",
+          }));
+          pluginBuild.onLoad({ filter: /^stub-galois-asset-paths$/, namespace: "jobs-board-container-test" }, () => ({
+            contents: "export function resolveAssetUrlUntyped(path) { return String(path); }",
+            loader: "js",
+          }));
+          pluginBuild.onLoad({ filter: /.*/, namespace: "jobs-board-node-stub" }, (args) => ({
+            contents: nodeBuiltinStubForJobsBoardBrowser(args.path),
             loader: "js",
           }));
         },

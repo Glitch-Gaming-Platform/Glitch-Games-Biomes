@@ -22,9 +22,12 @@ import {
   createHarthmereLiveModeQuestClientSnapshot,
   mergeHarthmereLiveModeSharedWorldStateIntoBackend,
   parseHarthmereLiveModeSharedWorldState,
+  createHarthmereServerMuckCombatEntitySnapshots,
   repairHarthmereStatusReadStaminaDeath,
   tickHarthmereLiveModeStaminaForGameplay,
   createHarthmereLiveModeBuildingClientSnapshot,
+  HARTHMERE_SERVER_MUCK_COMBAT_RESPAWN_MS,
+  harthmereReviveDefeatedSeededCombatEntities,
   type HarthmereLiveEntityKind,
   type HarthmereLiveModeBackendState,
 } from "../live_mode_backend";
@@ -1566,6 +1569,36 @@ describe("reduceHarthmereLiveModeBackendState — death lifecycle", function () 
     assert.strictEqual(state.combat.deadFromStaminaAtMs, undefined);
   });
 
+  it("request_respawn resets stamina tick time so active polling drains gradually", function () {
+    const s = freshState();
+    s.combat.hp = 0;
+    s.combat.deathState = "dead";
+    s.combat.maxHp = 100;
+    s.combat.resources.stamina = 0;
+    s.combat.maxResources.stamina = 108;
+    s.combat.lastStaminaTickMs = NOW_MS - 60 * 60 * 1000;
+    s.combat.deadFromStaminaAtMs = NOW_MS - 1000;
+
+    const { state } = applyOne(s, "request_respawn");
+
+    assert.strictEqual(state.combat.hp, 100);
+    assert.strictEqual(state.combat.deathState, "alive");
+    assert.strictEqual(state.combat.resources.stamina, 108);
+    assert.strictEqual(state.combat.lastStaminaTickMs, NOW_MS);
+
+    tickHarthmereLiveModeStaminaForGameplay(state, {
+      nowMs: NOW_MS + 5_000,
+      gameplayActive: true,
+      allowDeathFromStamina: false,
+    });
+
+    assert.ok(
+      state.combat.resources.stamina > 107,
+      `stamina should drain gradually after respawn, got ${state.combat.resources.stamina}`
+    );
+    assert.strictEqual(state.combat.deathState, "alive");
+  });
+
   it("request_respawn repairs zero-HP alive persistence before restoring full health", function () {
     const s = freshState();
     s.combat.hp = 0;
@@ -1719,6 +1752,86 @@ describe("reduceHarthmereLiveModeBackendState — combat target authority", func
     );
     assert.ok(state.combat.entitySnapshots[targetId].hp < 100);
     assert.equal(state.combat.entitySnapshots[targetId].lastAttackerId, ACTOR);
+  });
+
+  it("lets legacy empty loadouts still use known starter attacks", function () {
+    const targetId = "server-muck-combat:legacy-loadout-rabbit";
+    const s = freshState();
+    s.classMagic.knownAbilities = [];
+    s.classMagic.loadout = {};
+    s.combat.entitySnapshots[targetId] = {
+      hp: 40,
+      maxHp: 40,
+      position: { x: 1, y: 0, z: 0 },
+      isHostile: false,
+      isAlive: true,
+      isAttackable: true,
+      entityKind: "animal",
+      species: "rabbit",
+      level: 1,
+    };
+
+    const { state, summary } = applyOne(
+      s,
+      "request_attack",
+      { abilityId: "basic_strike" },
+      {
+        targetId,
+        requestId: "legacy_empty_loadout_starter_attack",
+        idempotencyKey: "legacy_empty_loadout_starter_attack_key",
+        serverActorPosition: { x: 0, y: 0, z: 0 },
+      }
+    );
+
+    assert.ok(
+      !summary.warnings.includes(
+        "combat_rejected:ability_not_equipped_in_loadout"
+      ),
+      summary.warnings.join(", ")
+    );
+    assert.ok(state.combat.entitySnapshots[targetId].hp < 40);
+  });
+
+  it("scales starter attack damage from the actor's character level", function () {
+    function damageAtLevel(level: number) {
+      const targetId = `server-muck-combat:level-${level}-damage-target`;
+      const s = freshState();
+      s.classMagic.skills.character_level = { xp: 0, level };
+      s.combat.entitySnapshots[targetId] = {
+        hp: 500,
+        maxHp: 500,
+        position: { x: 1, y: 0, z: 0 },
+        isHostile: false,
+        isAlive: true,
+        isAttackable: true,
+        entityKind: "animal",
+        species: "cow",
+        level: 1,
+      };
+      const { state, summary } = applyOne(
+        s,
+        "request_attack",
+        { abilityId: "basic_strike" },
+        {
+          targetId,
+          requestId: "level_scaled_basic_strike",
+          idempotencyKey: `level_scaled_basic_strike_${level}`,
+          serverActorPosition: { x: 0, y: 0, z: 0 },
+        }
+      );
+      assert.ok(
+        !summary.warnings.some((warning) =>
+          warning.startsWith("combat_rejected:")
+        ),
+        summary.warnings.join(", ")
+      );
+      return state.combat.entitySnapshots[targetId].lastDamageTaken ?? 0;
+    }
+
+    const levelOneDamage = damageAtLevel(1);
+    const levelTenDamage = damageAtLevel(10);
+    assert.ok(levelOneDamage > 0);
+    assert.ok(levelTenDamage > levelOneDamage);
   });
 
   it("rejects production melee against a live mucker just beyond voxel interaction reach", function () {
@@ -3619,6 +3732,154 @@ describe("reduceHarthmereLiveModeBackendState — combat target authority", func
     assert.equal(claimed.inventory.items.raw_meat ?? 0, 0);
   });
 
+  it("runs harvest, animal chase, meat loot claim, level damage, and one-hour respawn end to end", function () {
+    let s = freshState();
+    s.classMagic.loadout = {};
+
+    ({ state: s } = applyOne(
+      s,
+      "request_farming_action",
+      {
+        operation: "forage_food",
+        spawnId: "progression_berries_001",
+        itemId: "wild_berries",
+      },
+      {
+        subsystem: "farming",
+        requestId: "progression_harvest_berries",
+        idempotencyKey: "progression_harvest_berries_key",
+      }
+    ));
+    assert.equal(s.inventory.items.wild_berries, 1);
+
+    s.combat.entitySnapshots = {
+      ...s.combat.entitySnapshots,
+      ...createHarthmereServerMuckCombatEntitySnapshots(NOW_MS),
+    };
+    const cowId = Object.entries(s.combat.entitySnapshots).find(
+      ([entityId, snapshot]) =>
+        entityId.startsWith("server-muck-combat:") &&
+        snapshot.entityKind === "animal" &&
+        snapshot.species === "cow"
+    )?.[0];
+    assert.ok(cowId, "expected a seeded production cow");
+    const cowSnapshot = s.combat.entitySnapshots[cowId];
+    assert.equal(cowSnapshot.retaliatesWhenAttacked, true);
+    assert.ok(
+      Number(cowSnapshot.lootDrops?.raw_meat ?? 0) > 1,
+      "production cows should carry raw meat loot"
+    );
+    const cowPosition = cowSnapshot.position;
+
+    ({ state: s } = applyOne(
+      s,
+      "request_attack",
+      { abilityId: "basic_strike" },
+      {
+        targetId: cowId,
+        requestId: "progression_cow_attack",
+        idempotencyKey: "progression_cow_attack_key",
+        serverActorPosition: { ...cowPosition },
+      }
+    ));
+    const cowDamage = s.combat.entitySnapshots[cowId].lastDamageTaken ?? 0;
+    assert.ok(cowDamage > 0 && cowDamage < 80);
+    assert.equal(s.combat.entitySnapshots[cowId].lastAttackerId, ACTOR);
+
+    ({ state: s } = applyOne(
+      s,
+      "request_npc_ai_tick",
+      {
+        npcId: cowId,
+        lineOfSight: true,
+        thinkIntervalMs: 2_000,
+      },
+      {
+        subsystem: "npc_ai",
+        targetId: cowId,
+        requestId: "progression_cow_chase",
+        idempotencyKey: "progression_cow_chase_key",
+        serverActorPosition: {
+          x: cowPosition.x + 8,
+          y: cowPosition.y,
+          z: cowPosition.z,
+        },
+      }
+    ));
+    const cowAi = s.combat.npcAiTicks[cowId];
+    assert.equal(cowAi.decision, "retaliate_to_recent_attacker");
+    assert.equal(cowAi.movementMode, "combat_chase");
+    assert.equal(cowAi.attackBlockedReason, "target_out_of_range");
+    assert.ok((cowAi.positionTo?.x ?? 0) > (cowAi.positionFrom?.x ?? 0));
+
+    const rabbitId = Object.entries(s.combat.entitySnapshots).find(
+      ([entityId, snapshot]) =>
+        entityId.startsWith("server-muck-combat:") &&
+        snapshot.entityKind === "animal" &&
+        snapshot.species === "rabbit"
+    )?.[0];
+    assert.ok(rabbitId, "expected a seeded production rabbit");
+    const rabbitSnapshot = s.combat.entitySnapshots[rabbitId];
+    assert.equal(rabbitSnapshot.retaliatesWhenAttacked, true);
+    assert.ok(
+      Number(rabbitSnapshot.lootDrops?.raw_meat ?? 0) >= 1,
+      "production rabbits should carry raw meat loot"
+    );
+    rabbitSnapshot.hp = 1;
+    const rabbitPositionBeforeKill = { ...rabbitSnapshot.position };
+    ({ state: s } = reduceHarthmereLiveModeBackendState(
+      s,
+      makeEnvelope(
+        "request_attack",
+        { abilityId: "basic_strike" },
+        {
+          targetId: rabbitId,
+          requestId: "progression_rabbit_kill",
+          idempotencyKey: "progression_rabbit_kill_key",
+          serverActorPosition: { ...rabbitPositionBeforeKill },
+        }
+      ),
+      NOW_MS + 2_000
+    ));
+    assert.equal(s.combat.entitySnapshots[rabbitId].isAlive, false);
+    const dropId = s.combat.entitySnapshots[rabbitId].lootDropId;
+    assert.ok(dropId);
+    const drop = s.inventoryLoot.lootDrops[dropId];
+    assert.equal(drop.itemStacks.raw_meat, 1);
+
+    ({ state: s } = applyOne(
+      s,
+      "request_loot_claim",
+      {
+        dropId,
+        pickupToken: drop.pickupToken,
+      },
+      {
+        requestId: "progression_claim_raw_meat",
+        idempotencyKey: "progression_claim_raw_meat_key",
+      }
+    ));
+    assert.equal(s.inventoryLoot.lootDrops[dropId].status, "claimed");
+    assert.equal(s.banking.materialStorage.raw_meat, 1);
+
+    assert.equal(HARTHMERE_SERVER_MUCK_COMBAT_RESPAWN_MS, 60 * 60 * 1000);
+    const defeatedAtMs = s.combat.entitySnapshots[rabbitId].defeatedAtMs!;
+    harthmereReviveDefeatedSeededCombatEntities(
+      s.combat.entitySnapshots,
+      defeatedAtMs + HARTHMERE_SERVER_MUCK_COMBAT_RESPAWN_MS - 1
+    );
+    assert.equal(s.combat.entitySnapshots[rabbitId].isAlive, false);
+    harthmereReviveDefeatedSeededCombatEntities(
+      s.combat.entitySnapshots,
+      defeatedAtMs + HARTHMERE_SERVER_MUCK_COMBAT_RESPAWN_MS
+    );
+    assert.equal(s.combat.entitySnapshots[rabbitId].isAlive, true);
+    assert.equal(s.combat.entitySnapshots[rabbitId].hp, 22);
+    assert.deepEqual(s.combat.entitySnapshots[rabbitId].position, {
+      ...rabbitPositionBeforeKill,
+    });
+  });
+
   it("defaults named livestock species to raw meat even when bridged without animal kind", function () {
     const s = freshState();
     const targetId = "live-cow-species-meat-drop";
@@ -4197,6 +4458,7 @@ describe("reduceHarthmereLiveModeBackendState — loadout arrays", function () {
     const s = freshState();
     s.classMagic.classId = "mage";
     s.classMagic.knownAbilities = ["power_strike"];
+    s.classMagic.loadout = {};
     const { state, summary } = applyOne(s, "request_loadout_change", {
       slot: "0",
       abilityId: "power_strike",
@@ -7903,7 +8165,7 @@ describe("reduceHarthmereLiveModeBackendState — legacy goldDelta path", functi
   it("non-authority action with goldDelta updates inventory.gold and ledger", function () {
     const s = freshState();
     s.inventory.gold = 100;
-    const { state } = applyOne(s, "request_npc_ai_tick" as any, {
+    const { state } = applyOne(s, "legacy_gold_delta_action" as any, {
       goldDelta: 50,
     });
     assert.strictEqual(state.inventory.gold, 150);
@@ -7913,7 +8175,7 @@ describe("reduceHarthmereLiveModeBackendState — legacy goldDelta path", functi
   it("non-authority action with negative goldDelta cannot go below 0", function () {
     const s = freshState();
     s.inventory.gold = 10;
-    const { state } = applyOne(s, "request_npc_ai_tick" as any, {
+    const { state } = applyOne(s, "legacy_gold_delta_action" as any, {
       goldDelta: -9999,
     });
     assert.strictEqual(state.inventory.gold, 0);
@@ -8378,6 +8640,141 @@ describe("reduceHarthmereLiveModeBackendState — physical jobs board and live t
     );
     assert.equal(s.quests.active[`jobs_board:${todo.todoId}`], undefined);
     assert.equal(s.quests.completed[`jobs_board:${todo.todoId}`], NOW_MS);
+  });
+
+  it("filters failed jobs-board todos out of quest and marker snapshots", function () {
+    const s = freshState();
+    s.jobsBoard.todos.harthmere_job_todo_failed = {
+      todoId: "harthmere_job_todo_failed",
+      jobId: "failed_job",
+      actorId: ACTOR,
+      boardId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID,
+      title: "Failed Job",
+      todoText: "This stale job should not keep a marker.",
+      status: "failed",
+      kind: "gather",
+      mapMarkerId: "grove_garden_edge_berries",
+      townId: "harthmere_grove",
+      regionId: "harthmere_grove_region",
+      createdAtMs: NOW_MS,
+      dueAtMs: NOW_MS + 1000,
+      questBoardTodo: true,
+    };
+    s.jobsBoard.todos.harthmere_job_todo_active = {
+      ...s.jobsBoard.todos.harthmere_job_todo_failed,
+      todoId: "harthmere_job_todo_active",
+      jobId: "active_job",
+      title: "Active Job",
+      status: "active",
+    };
+    s.quests.active["jobs_board:harthmere_job_todo_failed"] = {
+      stepId: "failed_job",
+      progress: 0,
+    };
+    s.quests.active["jobs_board:harthmere_job_todo_active"] = {
+      stepId: "active_job",
+      progress: 0,
+    };
+    s.building.inWorldMarkers["jobs_board_marker:harthmere_job_todo_failed"] =
+      {
+        markerId: "jobs_board_marker:harthmere_job_todo_failed",
+        plotId: "grove_garden_edge_berries",
+        kind: "map_marker",
+        position: [486, 70, -120],
+        label: "Failed Job: Garden Edge Berries",
+        createdAtMs: NOW_MS,
+      };
+    s.building.inWorldMarkers["jobs_board_marker:harthmere_job_todo_active"] =
+      {
+        markerId: "jobs_board_marker:harthmere_job_todo_active",
+        plotId: "grove_mail_bank_satchel",
+        kind: "map_marker",
+        position: [488, 70, -122],
+        label: "Active Job: Mail and Bank Satchel",
+        createdAtMs: NOW_MS,
+      };
+
+    const questSnapshot = createHarthmereLiveModeQuestClientSnapshot(s);
+    assert.equal(
+      questSnapshot.active["jobs_board:harthmere_job_todo_failed"],
+      undefined
+    );
+    assert.deepEqual(
+      questSnapshot.active["jobs_board:harthmere_job_todo_active"],
+      { stepId: "active_job", progress: 0 }
+    );
+
+    const buildingSnapshot = createHarthmereLiveModeBuildingClientSnapshot(s);
+    assert.equal(
+      buildingSnapshot.inWorldMarkers[
+        "jobs_board_marker:harthmere_job_todo_failed"
+      ],
+      undefined
+    );
+    assert.ok(
+      buildingSnapshot.inWorldMarkers[
+        "jobs_board_marker:harthmere_job_todo_active"
+      ]
+    );
+  });
+
+  it("keeps actor-specific jobs-board markers out of shared world state", function () {
+    const s = freshState();
+    s.building.inWorldMarkers["jobs_board_marker:harthmere_job_todo_active"] =
+      {
+        markerId: "jobs_board_marker:harthmere_job_todo_active",
+        plotId: "grove_mail_bank_satchel",
+        kind: "map_marker",
+        position: [488, 70, -122],
+        label: "Active Job: Mail and Bank Satchel",
+        createdAtMs: NOW_MS,
+      };
+    s.building.inWorldMarkers["public_marker"] = {
+      markerId: "public_marker",
+      plotId: "public_marker",
+      kind: "map_marker",
+      position: [500, 70, -130],
+      label: "Public Marker",
+      createdAtMs: NOW_MS,
+    };
+
+    const shared = createHarthmereLiveModeSharedWorldState(s, NOW_MS);
+    assert.equal(
+      shared.building.inWorldMarkers[
+        "jobs_board_marker:harthmere_job_todo_active"
+      ],
+      undefined
+    );
+    assert.ok(shared.building.inWorldMarkers.public_marker);
+
+    const parsed = parseHarthmereLiveModeSharedWorldState(
+      JSON.stringify({
+        ...shared,
+        building: {
+          ...shared.building,
+          inWorldMarkers: {
+            ...shared.building.inWorldMarkers,
+            "jobs_board_marker:harthmere_job_todo_stale": {
+              markerId: "jobs_board_marker:harthmere_job_todo_stale",
+              plotId: "grove_garden_edge_berries",
+              kind: "map_marker",
+              position: [486, 70, -120],
+              label: "Stale Shared Job Marker",
+              createdAtMs: NOW_MS,
+            },
+          },
+        },
+      }),
+      NOW_MS
+    );
+    const next = freshState();
+    mergeHarthmereLiveModeSharedWorldStateIntoBackend(next, parsed, NOW_MS);
+    assert.equal(
+      next.building.inWorldMarkers[
+        "jobs_board_marker:harthmere_job_todo_stale"
+      ],
+      undefined
+    );
   });
 
   it("places accepted jobs board quest markers at their resolved world target instead of a placeholder", function () {

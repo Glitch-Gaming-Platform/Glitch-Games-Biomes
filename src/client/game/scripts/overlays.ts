@@ -78,7 +78,6 @@ import {
   activeHarthmereQuestMarkerId,
   isVisibleHarthmereWorldObjectMarker,
 } from "@/client/game/renderers/local_dev/harthmere_quest_object_markers";
-import { isHarthmereContainerObjectLabel } from "@/shared/harthmere/object_interaction_semantics";
 import {
   harthmereWorldObjectCandidateIsVisibleForInteraction,
   isHarthmereInspectableWorldObject,
@@ -1412,14 +1411,6 @@ export class OverlayScript implements Script {
       position: pos ? [pos[0], pos[1], pos[2]] : [0, 0, 0],
       entityDescription: entity.entity_description?.text,
     };
-    if (
-      !this.harthmereLiveWorldObjectCandidateIsVisibleForInteraction(
-        entity,
-        candidate
-      )
-    ) {
-      return undefined;
-    }
     return {
       kind: "harthmere_object",
       key: `inspect:harthmere_object:entity:${entity.id}`,
@@ -1429,27 +1420,6 @@ export class OverlayScript implements Script {
       entityDescription: candidate.entityDescription,
       pos: candidate.position,
     };
-  }
-
-  private harthmereLiveWorldObjectCandidateIsVisibleForInteraction(
-    entity: ReadonlyEntity,
-    candidate: HarthmereWorldObjectCandidate
-  ): boolean {
-    const isAuthoredQuestContainer =
-      entity.quest_giver &&
-      isHarthmereContainerObjectLabel({
-        label: candidate.label,
-        entityDescription: candidate.entityDescription,
-      });
-    if (!isAuthoredQuestContainer) {
-      return true;
-    }
-    const activePin = readActiveBiomesUIMapPin();
-    return harthmereWorldObjectCandidateIsVisibleForInteraction({
-      candidate,
-      activePinMarkerId: activePin?.markerId,
-      activePinPosition: activePin?.worldPosition,
-    });
   }
 
   // Scans the live ECS table near the player for labeled world objects (seeded
@@ -1501,14 +1471,10 @@ export class OverlayScript implements Script {
         position: [pos[0], pos[1], pos[2]],
         entityDescription: entity.entity_description?.text,
       };
-      if (
-        !this.harthmereLiveWorldObjectCandidateIsVisibleForInteraction(
-          entity,
-          candidate
-        )
-      ) {
-        return;
-      }
+      // Static, renderer-authored quest/source markers are still filtered by
+      // harthmereVisibleStaticWorldObjectInspectCandidates above. A live ECS
+      // crate/chest that is already rendered in the world is visible gameplay
+      // state, so it must keep its prompt regardless of quest pin state.
       entityIdByCandidateId.set(id, entity.id);
       candidates.push(candidate);
     };

@@ -294,7 +294,7 @@ describe("live_mode API Redis persistence", () => {
     );
   });
 
-  it("derives install-only combat actor position only for attack requests", () => {
+  it("derives install-only combat actor position for attacks and NPC AI ticks", () => {
     assert.deepEqual(
       combatActorPositionFromInstallLiveModeBody({
         requestId: "combat-pos",
@@ -308,6 +308,38 @@ describe("live_mode API Redis persistence", () => {
         clientClaims: { runtimePosition: [496, 53, -126] },
       } as any),
       { x: 496, y: 53, z: -126 }
+    );
+    assert.deepEqual(
+      combatActorPositionFromInstallLiveModeBody({
+        requestId: "npc-ai-pos",
+        idempotencyKey: "npc-ai-pos",
+        targetId: "server-muck-combat:old-wood-mucker-8:1308",
+        actionKind: "request_npc_ai_tick",
+        subsystem: "combat",
+        actorEntityVersion: 1,
+        zoneId: "harthmere_wilderness",
+        payload: {
+          npcId: "server-muck-combat:old-wood-mucker-8:1308",
+        },
+        clientClaims: { runtimePosition: [501, 53, -130] },
+      } as any),
+      { x: 501, y: 53, z: -130 }
+    );
+    assert.deepEqual(
+      combatActorPositionFromInstallLiveModeBody({
+        requestId: "npc-ai-pos-npc-subsystem",
+        idempotencyKey: "npc-ai-pos-npc-subsystem",
+        targetId: "server-muck-combat:old-wood-mucker-8:1308",
+        actionKind: "request_npc_ai_tick",
+        subsystem: "npc_ai",
+        actorEntityVersion: 1,
+        zoneId: "harthmere_wilderness",
+        payload: {
+          npcId: "server-muck-combat:old-wood-mucker-8:1308",
+        },
+        clientClaims: { actorPosition: { x: 502, y: 54, z: -131 } },
+      } as any),
+      { x: 502, y: 54, z: -131 }
     );
     assert.equal(
       combatActorPositionFromInstallLiveModeBody({

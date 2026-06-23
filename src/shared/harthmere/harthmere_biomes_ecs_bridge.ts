@@ -5,7 +5,8 @@ import type {
   Health as BiomesEcsHealth,
   Inventory as BiomesEcsInventory,
 } from "@/shared/ecs/gen/components";
-import type { ItemContainer } from "@/shared/ecs/gen/types";
+import type { ItemAndCount, ItemContainer } from "@/shared/ecs/gen/types";
+import { anItem } from "@/shared/game/item";
 import { countOf } from "@/shared/game/items";
 import type { BiomesId } from "@/shared/ids";
 import { safeParseBiomesId } from "@/shared/ids";
@@ -81,8 +82,70 @@ export interface HarthmereInventoryEcsInput {
   maxItemSlots?: number;
 }
 
-function harthmereItemIdToBiomesId(itemId: string): BiomesId | undefined {
-  return safeParseBiomesId(itemId.replace(/^b:/, ""));
+const HARTHMERE_VISUAL_ECS_ITEM_IDS: Record<string, BiomesId> = {
+  baker_apron: BikkieIds.grassyTop,
+  field_trousers: BikkieIds.bellBottoms,
+  patched_cloak: BikkieIds.poncho,
+  woodsman_axe: BikkieIds.axe,
+  rusty_pickaxe: BikkieIds.pickaxe,
+  muck_rake: BikkieIds.muckBuster,
+  repair_mallet: BikkieIds.axe,
+  training_dagger: BikkieIds.muckBuster,
+  iron_longsword: BikkieIds.muckBuster,
+  two_handed_sword: BikkieIds.muckBuster,
+  wooden_shield: BikkieIds.woodenFencer,
+  rough_stone: BikkieIds.cobblestone,
+  river_clay: BikkieIds.clay,
+  softwood_log: BikkieIds.log,
+  oak_branch: BikkieIds.oakLog,
+  tree_resin: BikkieIds.oakLeaf,
+  cloth_scrap: BikkieIds.tatteredTop,
+  clean_water: BikkieIds.bucket,
+  old_coin: BikkieIds.goldNugget,
+  iron_ore: BikkieIds.goldOre,
+  scrap_metal: BikkieIds.silverNugget,
+  mana_essence: BikkieIds.powerCell,
+  wild_berries: BikkieIds.fruit,
+  raw_meat: BikkieIds.muckerMeat,
+};
+
+export function harthmereItemIdToBiomesId(
+  itemId: string | number | undefined
+): BiomesId | undefined {
+  if (itemId === undefined || itemId === null) {
+    return undefined;
+  }
+  const key = String(itemId);
+  return HARTHMERE_VISUAL_ECS_ITEM_IDS[key] ?? safeParseBiomesId(key.replace(/^b:/, ""));
+}
+
+export function harthmereItemIdToBiomesEcsItem(
+  itemId: string | number | undefined
+) {
+  const biomesId = harthmereItemIdToBiomesId(itemId);
+  if (!biomesId) {
+    return undefined;
+  }
+  try {
+    return anItem(biomesId);
+  } catch {
+    return undefined;
+  }
+}
+
+export function harthmereItemIdToBiomesEcsItemAndCount(
+  itemId: string | number | undefined,
+  count = 1
+): ItemAndCount | undefined {
+  const biomesId = harthmereItemIdToBiomesId(itemId);
+  if (!biomesId) {
+    return undefined;
+  }
+  try {
+    return countOf(biomesId, BigInt(Math.max(1, nonNegativeWhole(count, 1))));
+  } catch {
+    return undefined;
+  }
 }
 
 function pushItemIntoContainer(

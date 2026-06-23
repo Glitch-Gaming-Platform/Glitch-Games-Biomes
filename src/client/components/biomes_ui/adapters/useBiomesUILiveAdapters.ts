@@ -62,7 +62,13 @@ import {
   InventorySwapEvent,
 } from "@/shared/ecs/gen/events";
 import type { OwnedItemReference } from "@/shared/ecs/gen/types";
+import { Inventory, Wearing } from "@/shared/ecs/gen/components";
 import { fireAndForget } from "@/shared/util/async";
+import {
+  harthmereItemIdToBiomesEcsItem,
+  harthmereItemIdToBiomesEcsItemAndCount,
+} from "@/shared/harthmere/harthmere_biomes_ecs_bridge";
+import { harthmereLocalEquipmentBikkieWearables } from "@/shared/harthmere/harthmere_bikkie_wearables";
 import {
   createBiomesUIGuildsAdapter,
   fetchBiomesUIGuildState,
@@ -516,7 +522,7 @@ function localHarthmereHotbarItemToUiItem(
     canEquip: display.canEquip,
     canMove: true,
     canSplit: false,
-    canDrop: false,
+    canDrop: true,
     canDestroy: false,
     protectedReason: "Hotbar slots are shortcuts to your carried items.",
   };
@@ -1192,13 +1198,13 @@ function instanceRecordToInventoryUiItems(
         ref: { kind: "item", idx: indexOffset + index } as InventoryUiRef,
         source: "backpack" as const,
         storageLocation: "backpack" as const,
-        canUse: false,
+        canUse: isLiveUsableBackpackItem(itemId),
         canEquip: Boolean(equipSlot),
-        canMove: false,
+        canMove: true,
         canSplit: false,
         canDrop: false,
         canDestroy: false,
-        protectedReason: equipSlot
+        protectedReason: equipSlot || isLiveUsableBackpackItem(itemId)
           ? undefined
           : "This item uses protected inventory handling.",
       },
@@ -2175,6 +2181,8 @@ export function useBiomesUILiveAdapters({
   const [questStateHydrated, setQuestStateHydrated] = React.useState(false);
   const shouldReturnPointerLockRef = React.useRef(false);
   const questStateRefreshInFlightRef = React.useRef(false);
+  const liveEquipmentWearableSlotsRef = React.useRef<Set<number>>(new Set());
+  const localHotbarVisualSlotsRef = React.useRef<Set<number>>(new Set());
 
   React.useEffect(() => {
     if (typeof window === "undefined") return;
@@ -2206,6 +2214,72 @@ export function useBiomesUILiveAdapters({
       window.removeEventListener(HARTHMERE_INVENTORY_EVENT, bump);
     };
   }, []);
+
+  React.useEffect(() => {
+    const equipment = inventoryLootState?.actor?.equipment;
+    const mapped = harthmereLocalEquipmentBikkieWearables(
+      equipment && typeof equipment === "object" ? equipment : undefined
+    );
+    const previousSlots = liveEquipmentWearableSlotsRef.current;
+    if (mapped.length === 0 && previousSlots.size === 0) {
+      return;
+    }
+    const current = resources.peek("/ecs/c/wearing", userId) ?? Wearing.create();
+    const items = new Map(current.items ?? []);
+    for (const slot of previousSlots) {
+      items.delete(slot as any);
+    }
+    const nextSlots = new Set<number>();
+    for (const wearable of mapped) {
+      const item = harthmereItemIdToBiomesEcsItem(wearable.itemId);
+      if (!item) {
+        continue;
+      }
+      items.set(wearable.slot, item);
+      nextSlots.add(Number(wearable.slot));
+    }
+    liveEquipmentWearableSlotsRef.current = nextSlots;
+    resources.set("/ecs/c/wearing", userId, { items } as Wearing);
+    resources.invalidate("/scene/player/mesh", userId);
+  }, [inventoryLootState?.actor?.equipment, resources, userId]);
+
+  React.useEffect(() => {
+    void harthmereInventoryRevision;
+    const localHotbar = readHarthmereInventoryState().hotbar;
+    const previousSlots = localHotbarVisualSlotsRef.current;
+    const slotEntries = Array.from({ length: 9 }, (_unused, index) => {
+      const itemId = localHotbar[`slot_${index + 1}`];
+      const itemAndCount = itemId
+        ? harthmereItemIdToBiomesEcsItemAndCount(itemId, 1)
+        : undefined;
+      return { index, itemAndCount };
+    }).filter((entry) => entry.itemAndCount);
+    if (slotEntries.length === 0 && previousSlots.size === 0) {
+      return;
+    }
+
+    const current =
+      resources.peek("/ecs/c/inventory", userId) ??
+      Inventory.clone(inventory);
+    const hotbarSlots = [...(current.hotbar ?? [])];
+    while (hotbarSlots.length < 9) {
+      hotbarSlots.push(undefined as any);
+    }
+    for (const index of previousSlots) {
+      hotbarSlots[index] = undefined as any;
+    }
+    const nextSlots = new Set<number>();
+    for (const { index, itemAndCount } of slotEntries) {
+      hotbarSlots[index] = itemAndCount;
+      nextSlots.add(index);
+    }
+    localHotbarVisualSlotsRef.current = nextSlots;
+    resources.set("/ecs/c/inventory", userId, {
+      ...current,
+      hotbar: hotbarSlots,
+    } as Inventory);
+    resources.invalidate("/hotbar/selection");
+  }, [harthmereInventoryRevision, inventory, resources, userId]);
 
   const refreshBankingState = React.useCallback(async () => {
     try {
@@ -2853,6 +2927,55 @@ export function useBiomesUILiveAdapters({
               localBackpackItem.instanceId,
               localBackpackItem.itemId
             );
+          } else if (HARTHMERE_FOOD_DEFINITIONS[localItemId]) {
+            fireAndForget(
+              submitFarmingFoodLiveModeAction("eat_food", {
+                itemId: localItemId,
+              })
+                .then(async (body) => {
+                  await applyLiveModeInventoryResponse(body);
+                  dispatchBiomesUITutorialItemUse(
+                    {
+                      id: localItemId,
+                      label: humanizeRealItemId(localItemId, localItemId),
+                      category: inferInventoryCategory({ id: localItemId }),
+                      useEffect: "stamina",
+                    },
+                    "biomes-ui-live-hotbar-food-use"
+                  );
+                })
+                .catch(() => refreshInventoryLootState())
+            );
+          } else if (localItemId === "raw_meat") {
+            fireAndForget(
+              submitFarmingFoodLiveModeAction("cook_food", {
+                recipeId: "grilled_meat",
+                rawItemId: "raw_meat",
+                stationKind: "campfire",
+                count: 1,
+              })
+                .then(applyLiveModeInventoryResponse)
+                .catch(() => refreshInventoryLootState())
+            );
+          } else if (HARTHMERE_MEDICAL_ITEM_DEFINITIONS[localItemId]) {
+            fireAndForget(
+              submitMedicalLiveModeAction("use_medical_item", {
+                itemId: localItemId,
+              })
+                .then(async (body) => {
+                  await applyLiveModeInventoryResponse(body);
+                  dispatchBiomesUITutorialItemUse(
+                    {
+                      id: localItemId,
+                      label: humanizeRealItemId(localItemId, localItemId),
+                      category: inferInventoryCategory({ id: localItemId }),
+                      useEffect: "heal",
+                    },
+                    "biomes-ui-live-hotbar-medical-use"
+                  );
+                })
+                .catch(() => refreshInventoryLootState())
+            );
           } else {
             try {
               gardenHose.publish({
@@ -2991,7 +3114,12 @@ export function useBiomesUILiveAdapters({
     const backendActor = inventoryLootState?.actor;
     const liveBackpackStackItems = stackRecordToInventoryUiItems(
       backendActor?.items,
-      "backpack"
+      "backpack",
+      "item",
+      {
+        canMove: true,
+        protectedReason: undefined,
+      }
     );
     const liveBackpackInstanceItems = instanceRecordToInventoryUiItems(
       backendActor?.instanceIds,
@@ -3650,6 +3778,17 @@ export function useBiomesUILiveAdapters({
             );
             return;
           }
+          const liveItemId = liveItemIdForRef(src);
+          if (
+            liveItemId &&
+            performHarthmereHotbarAssignForBiomesUI(
+              liveItemId,
+              hotbarIndex,
+              true
+            )
+          ) {
+            return;
+          }
         }
         publishSwap(src, dst);
       },
@@ -3692,6 +3831,14 @@ export function useBiomesUILiveAdapters({
         } catch {}
       },
       dropItem: (ref: InventoryUiRef, count?: number) => {
+        if (
+          ref.kind === "hotbar" &&
+          typeof ref.key === "string" &&
+          ref.key.startsWith("harthmere_hotbar:")
+        ) {
+          performHarthmereHotbarClearForBiomesUI(Number(ref.idx ?? -1));
+          return;
+        }
         const materialItemId = materialItemIdForRef(ref);
         if (materialItemId) {
           const requested = Math.max(1, Math.trunc(Number(count ?? 1) || 1));

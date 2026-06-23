@@ -8,17 +8,16 @@ describe("Harthmere hidden container movement collision", () => {
     "utf8"
   );
 
-  it("lets players move through hidden quest containers until the active pin reveals them", () => {
-    assert.match(
+  it("does not blanket-disable collision for visible live quest containers", () => {
+    assert.doesNotMatch(
       source,
       /isInactiveHarthmereAuthoredContainerCollisionEntity/
     );
-    assert.match(source, /isHarthmereContainerObjectLabel/);
-    assert.match(source, /readActiveBiomesUIMapPin/);
-    assert.match(source, /harthmereWorldObjectCandidateIsVisibleForInteraction/);
+    assert.doesNotMatch(source, /isHarthmereContainerObjectLabel/);
+    assert.doesNotMatch(source, /readActiveBiomesUIMapPin/);
     assert.match(
       source,
-      /entity\?\.id === this\.userId \|\|\s*isInactiveHarthmereAuthoredContainerCollisionEntity\(entity\) \|\|\s*ruleset\.playerCollisionFilter/
+      /entity\?\.id === this\.userId \|\|\s*ruleset\.playerCollisionFilter/
     );
   });
 });

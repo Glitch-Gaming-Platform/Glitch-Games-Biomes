@@ -3,7 +3,6 @@ import {
   finishWarpEffect,
 } from "@/client/components/canvas_effects";
 import { showStaleSession } from "@/client/components/contexts/StaleSessionContext";
-import { readActiveBiomesUIMapPin } from "@/client/components/biomes_ui/adapters/mapPinnedDestination";
 import type { GardenHose, GardenHoseEvent } from "@/client/events/api";
 import type { ChatIo } from "@/client/game/chat/io";
 import type { MailMan } from "@/client/game/chat/mailman";
@@ -49,8 +48,6 @@ import {
   type FallTrackerState,
 } from "@/shared/game/fall_damage";
 import { anItem } from "@/shared/game/item";
-import { isHarthmereContainerObjectLabel } from "@/shared/harthmere/object_interaction_semantics";
-import { harthmereWorldObjectCandidateIsVisibleForInteraction } from "@/shared/harthmere/harthmere_world_object_inspectable";
 import { getPlayerBuffs } from "@/shared/game/players";
 import { friendlyShardId, shardsForAABB } from "@/shared/game/shard";
 import { blockIsEmpty } from "@/shared/game/terrain_helper";
@@ -113,37 +110,6 @@ type MoveState = {
   velocity: ReadonlyVec3;
   orientation: ReadonlyVec2;
 };
-
-// Hidden quest/source containers are not physical gameplay objects yet: they
-// must not trap the player before the matching quest pin makes them visible.
-function isInactiveHarthmereAuthoredContainerCollisionEntity(
-  entity: Parameters<CollisionCallback>[1]
-): boolean {
-  if (!entity?.quest_giver || !entity.position?.v) {
-    return false;
-  }
-  const label = entity.label?.text ?? "";
-  if (
-    !isHarthmereContainerObjectLabel({
-      label,
-      entityDescription: entity.entity_description?.text,
-    })
-  ) {
-    return false;
-  }
-  const activePin = readActiveBiomesUIMapPin();
-  const [x, y, z] = entity.position.v;
-  return !harthmereWorldObjectCandidateIsVisibleForInteraction({
-    candidate: {
-      id: `ecs:${entity.id}`,
-      label,
-      position: [x, y, z],
-      entityDescription: entity.entity_description?.text,
-    },
-    activePinMarkerId: activePin?.markerId,
-    activePinPosition: activePin?.worldPosition,
-  });
-}
 
 const HARTHMERE_LOCAL_DEV_EDGE_SAFE_BOUNDS = {
   minX: -224,
@@ -1749,7 +1715,6 @@ export class PlayerScript implements Script {
     const collisionFilter: CollisionCallback = (aabb, entity) => {
       if (
         entity?.id === this.userId ||
-        isInactiveHarthmereAuthoredContainerCollisionEntity(entity) ||
         ruleset.playerCollisionFilter(aabb, entity)
       ) {
         return true;

@@ -38,20 +38,31 @@ describe("Harthmere Biomes ECS bridge", () => {
     assert.deepEqual(projected.warnings, []);
   });
 
-  it("does not invent ECS items for Harthmere-only string item ids", () => {
+  it("projects Harthmere visual item ids while warning on unknown strings", () => {
     const projected = createHarthmereBiomesEcsInventory({
       gold: 0,
       items: {
         iron_longsword: 1,
+        harthmere_only: 1,
         [String(BikkieIds.lumber)]: 4,
       },
     });
 
-    assert.equal(projected.component.items.length, 1);
-    assert.equal(projected.component.items[0]?.item.id, BikkieIds.lumber);
-    assert.equal(projected.component.items[0]?.count, 4n);
+    assert.equal(projected.component.items.length, 2);
+    assert.ok(
+      projected.component.items.some(
+        (itemAndCount) => itemAndCount?.item.id === BikkieIds.muckBuster
+      )
+    );
+    assert.ok(
+      projected.component.items.some(
+        (itemAndCount) =>
+          itemAndCount?.item.id === BikkieIds.lumber &&
+          itemAndCount?.count === 4n
+      )
+    );
     assert.equal(projected.warnings.length, 1);
-    assert.equal(projected.warnings[0].id, "iron_longsword");
+    assert.equal(projected.warnings[0].id, "harthmere_only");
   });
 
   it("projects quest state only through known Biomes challenge ids", () => {

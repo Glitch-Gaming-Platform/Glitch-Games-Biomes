@@ -4,11 +4,24 @@ const path = require("path");
 function readQuestModule(root) {
   const questPath = path.join(root, "src/shared/harthmere/quest_compendium.ts");
   const src = fs.readFileSync(questPath, "utf8");
-  const catalogMatch = src.match(/HARTHMERE_QUEST_CATALOG_JSON = `([\s\S]*?)`;/);
-  const policyMatch = src.match(/HARTHMERE_QUEST_COVERAGE_POLICY_JSON = `([\s\S]*?)`;/);
-  if (!catalogMatch) throw new Error("Could not find quest catalog JSON export");
-  if (!policyMatch) throw new Error("Could not find quest policy JSON export");
-  return { src, quests: JSON.parse(catalogMatch[1]), policy: JSON.parse(policyMatch[1]) };
+
+  // Import the generated TypeScript module instead of scraping template literals.
+  // Some quest dialogue includes escaped quotes, and regex extraction parses a
+  // different string than the TypeScript runtime ships to the game.
+  require("ts-node/register/transpile-only");
+  require("tsconfig-paths/register");
+  const questModule = require(questPath);
+  if (!Array.isArray(questModule.HARTHMERE_QUEST_CATALOG)) {
+    throw new Error("Could not load quest catalog export");
+  }
+  if (!questModule.HARTHMERE_QUEST_COVERAGE_POLICY) {
+    throw new Error("Could not load quest policy export");
+  }
+  return {
+    src,
+    quests: questModule.HARTHMERE_QUEST_CATALOG,
+    policy: questModule.HARTHMERE_QUEST_COVERAGE_POLICY,
+  };
 }
 
 function readNpcIds(root) {

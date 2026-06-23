@@ -161,6 +161,16 @@ export interface BuildingSystemMaterialDefinition {
   bikkieName: string;
 }
 
+export interface BuildingSystemMaterialSourceDefinition {
+  material: BuildingSystemMaterialSymbol;
+  sourceId: string;
+  sourceName: string;
+  sourceKind: "gather" | "buy";
+  position: [number, number, number];
+  actionLabel: string;
+  description: string;
+}
+
 export interface BuildingSystemMaterialRequirementLine extends BuildingSystemMaterialDefinition {
   required: number;
   contributed: number;
@@ -248,6 +258,119 @@ export const BUILDING_SYSTEM_MATERIAL_CATALOG = {
 } as const satisfies Record<string, BuildingSystemMaterialDefinition>;
 
 export type BuildingSystemMaterialSymbol = keyof typeof BUILDING_SYSTEM_MATERIAL_CATALOG;
+
+export const BUILDING_SYSTEM_MATERIAL_SOURCE_CATALOG = {
+  rough_stone: {
+    material: "rough_stone",
+    sourceId: "harthmere_north_iron_vein",
+    sourceName: "North Road Iron Vein",
+    sourceKind: "gather",
+    position: [503, 53, -270],
+    actionLabel: "Mine rough stone",
+    description: "Public mining node by the North Gate road cut.",
+  },
+  river_clay: {
+    material: "river_clay",
+    sourceId: "harthmere_river_clay",
+    sourceName: "Riverbank Clay Deposit",
+    sourceKind: "gather",
+    position: [596, 53, -186],
+    actionLabel: "Dig river clay",
+    description: "Public clay deposit on the riverbank near the docks.",
+  },
+  softwood_log: {
+    material: "softwood_log",
+    sourceId: "harthmere_orchard_softwood",
+    sourceName: "Orchard Softwood Branches",
+    sourceKind: "gather",
+    position: [468, 53, -118],
+    actionLabel: "Gather softwood logs",
+    description: "Town-approved fallen wood under the orchard trees.",
+  },
+  oak_branch: {
+    material: "oak_branch",
+    sourceId: "harthmere_orchard_softwood",
+    sourceName: "Orchard Softwood Branches",
+    sourceKind: "gather",
+    position: [468, 53, -118],
+    actionLabel: "Gather oak branches",
+    description: "Town-approved fallen branches under the orchard trees.",
+  },
+  iron_ore: {
+    material: "iron_ore",
+    sourceId: "harthmere_north_iron_vein",
+    sourceName: "North Road Iron Vein",
+    sourceKind: "gather",
+    position: [503, 53, -270],
+    actionLabel: "Mine metal ore",
+    description: "Public ore vein by the North Gate road cut.",
+  },
+  scrap_metal: {
+    material: "scrap_metal",
+    sourceId: "harthmere_mudden_scrap",
+    sourceName: "Mudden Ward Scrap Pile",
+    sourceKind: "gather",
+    position: [409, 53, -178],
+    actionLabel: "Scavenge scrap metal",
+    description: "Public scrap pile by the Mudden Ward broken cart.",
+  },
+  tree_resin: {
+    material: "tree_resin",
+    sourceId: "harthmere_orchard_softwood",
+    sourceName: "Orchard Softwood Branches",
+    sourceKind: "gather",
+    position: [468, 53, -118],
+    actionLabel: "Gather tree resin",
+    description: "Rare resin from the orchard softwood route.",
+  },
+  cloth_scrap: {
+    material: "cloth_scrap",
+    sourceId: "harthmere_mudden_scrap",
+    sourceName: "Mudden Ward Scrap Pile",
+    sourceKind: "gather",
+    position: [409, 53, -178],
+    actionLabel: "Scavenge cloth scraps",
+    description: "Public scrap pile by the Mudden Ward broken cart.",
+  },
+  clean_water: {
+    material: "clean_water",
+    sourceId: "harthmere_river_fishing_pool",
+    sourceName: "Bluewater Fishing Pool",
+    sourceKind: "gather",
+    position: [604, 53, -168],
+    actionLabel: "Collect clean water",
+    description: "Safe water access at the Bluewater docks.",
+  },
+  old_coin: {
+    material: "old_coin",
+    sourceId: "harthmere_mudden_scrap",
+    sourceName: "Mudden Ward Scrap Pile",
+    sourceKind: "gather",
+    position: [409, 53, -178],
+    actionLabel: "Search for old coins",
+    description: "Rare find while scavenging the Mudden Ward scrap pile.",
+  },
+  mana_essence: {
+    material: "mana_essence",
+    sourceId: "harthmere_old_well_essence",
+    sourceName: "Old Well Mana Residue",
+    sourceKind: "gather",
+    position: [428, 53, -160],
+    actionLabel: "Extract mana essence",
+    description: "Protected magical residue around the Old Well.",
+  },
+} as const satisfies Record<
+  BuildingSystemMaterialSymbol,
+  BuildingSystemMaterialSourceDefinition
+>;
+
+export function buildingSystemMaterialSourceForSymbol(
+  material: string
+): BuildingSystemMaterialSourceDefinition | undefined {
+  return BUILDING_SYSTEM_MATERIAL_SOURCE_CATALOG[
+    material as BuildingSystemMaterialSymbol
+  ];
+}
 
 export interface BuildingSystemPlotDefinition {
   plotId: string;

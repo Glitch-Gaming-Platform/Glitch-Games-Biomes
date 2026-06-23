@@ -43,18 +43,19 @@ describe("Harthmere placeable crafting-station F fallback", () => {
     assert.match(source, priority);
   });
 
-  it("does not surface F prompts for quest containers hidden until their active marker is visible", () => {
+  it("keeps hidden static quest containers gated without suppressing visible live crates", () => {
     assert.match(source, /harthmereVisibleStaticWorldObjectInspectCandidates/);
     assert.match(source, /harthmereWorldObjectCandidateIsVisibleForInteraction/);
     assert.match(source, /activeHarthmereStaticWorldObjectMarkerId/);
     assert.match(source, /readActiveBiomesUIMapPin/);
     assert.match(
       source,
-      /harthmereWorldObjectOverlayForEntity[\s\S]{0,900}harthmereLiveWorldObjectCandidateIsVisibleForInteraction/
+      /live ECS[\s\S]{0,200}already rendered[\s\S]{0,200}must keep its prompt/
     );
-    assert.match(
+    assert.doesNotMatch(
       source,
-      /harthmereLiveWorldObjectInspectCandidates[\s\S]{0,2200}!this\.harthmereLiveWorldObjectCandidateIsVisibleForInteraction/
+      /harthmereLiveWorldObjectCandidateIsVisibleForInteraction/
     );
+    assert.doesNotMatch(source, /isAuthoredQuestContainer/);
   });
 });

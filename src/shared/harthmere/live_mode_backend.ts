@@ -658,7 +658,7 @@ export function createHarthmereServerMuckCombatEntitySnapshots(
 // delay elapses we restore the entity to full health at its home. This is
 // deterministic from `defeatedAtMs` + `nowMs`, so it works whether or not the
 // caller persists the revived state.
-export const HARTHMERE_SERVER_MUCK_COMBAT_RESPAWN_MS = 5 * 60 * 1000;
+export const HARTHMERE_SERVER_MUCK_COMBAT_RESPAWN_MS = 60 * 60 * 1000;
 
 export function harthmereReviveDefeatedSeededCombatEntities(
   entitySnapshots: HarthmereLiveModeBackendState["combat"]["entitySnapshots"],
@@ -1277,11 +1277,60 @@ function normalizeHarthmereLiveModeSharedBuildingState(
   return {
     placedStructures: { ...(value.placedStructures ?? {}) },
     safeZones: { ...(value.safeZones ?? {}) },
-    inWorldMarkers: { ...(value.inWorldMarkers ?? {}) },
+    inWorldMarkers: publicSharedInWorldMarkers(value.inWorldMarkers ?? {}),
     materializationPlans: { ...(value.materializationPlans ?? {}) },
     storageContainers: { ...(value.storageContainers ?? {}) },
     doorLocks: { ...(value.doorLocks ?? {}) },
   };
+}
+
+function isHarthmereActorJobMarkerId(markerId: string) {
+  return (
+    markerId.startsWith("jobs_board_marker:") ||
+    markerId.startsWith("jobs_board_exotic_deposit:")
+  );
+}
+
+function jobsBoardTodoIdFromActorMarker(markerId: string) {
+  if (markerId.startsWith("jobs_board_marker:")) {
+    return markerId.slice("jobs_board_marker:".length);
+  }
+  if (markerId.startsWith("jobs_board_exotic_deposit:")) {
+    return markerId.slice("jobs_board_exotic_deposit:".length).split(":")[0];
+  }
+  return undefined;
+}
+
+function publicSharedInWorldMarkers(
+  markers: HarthmereLiveModeBackendState["building"]["inWorldMarkers"]
+) {
+  return Object.fromEntries(
+    Object.entries(markers).filter(
+      ([markerId]) => !isHarthmereActorJobMarkerId(markerId)
+    )
+  );
+}
+
+function activeQuestEntriesForActor(state: HarthmereLiveModeBackendState) {
+  return Object.fromEntries(
+    Object.entries(state.quests.active).filter(([questId]) => {
+      if (!questId.startsWith("jobs_board:")) return true;
+      const todoId = questId.slice("jobs_board:".length);
+      const todo = state.jobsBoard.todos[todoId];
+      return todo?.actorId === state.actorId && todo.status === "active";
+    })
+  );
+}
+
+function inWorldMarkersForActor(state: HarthmereLiveModeBackendState) {
+  return Object.fromEntries(
+    Object.entries(state.building.inWorldMarkers).filter(([markerId]) => {
+      const todoId = jobsBoardTodoIdFromActorMarker(markerId);
+      if (!todoId) return true;
+      const todo = state.jobsBoard.todos[todoId];
+      return todo?.actorId === state.actorId && todo.status === "active";
+    })
+  );
 }
 
 function cleanQuestInviteText(value: unknown, fallback: string) {
@@ -1647,12 +1696,18 @@ function ensureCombatResourcePools(state: HarthmereLiveModeBackendState) {
 
 function restoreCombatResources(
   state: HarthmereLiveModeBackendState,
-  ratio: number
+  ratio: number,
+  nowMs?: number
 ) {
   const pools = ensureCombatResourcePools(state);
   for (const kind of HARTHMERE_LIVE_MODE_RESOURCE_KINDS) {
     const max = pools.maxResources[kind] ?? liveModeResourceMax(kind, 1);
     pools.resources[kind] = Math.max(0, Math.min(max, Math.round(max * ratio)));
+  }
+  if (Number.isFinite(nowMs)) {
+    // Restoring stamina starts a fresh active-play drain window. Without this,
+    // a respawn can immediately re-drain from the stale pre-death tick time.
+    state.combat.lastStaminaTickMs = nowMs;
   }
 }
 
@@ -5185,7 +5240,7 @@ export function defaultHarthmereLiveModeBackendState(
       knownRecipes: normalizeKnownRecipesWithStarterSet(),
       skills: {},
       magicSchools: {},
-      loadout: {},
+      loadout: { slot_0: "basic_strike" },
       faith: {},
       respecCount: 0,
     },
@@ -5347,6 +5402,11 @@ export function parseHarthmereLiveModeBackendState(
       classMagic: {
         ...defaults.classMagic,
         ...(parsed.classMagic ?? {}),
+        // Empty/legacy Cloud Save loadouts should not make starter combat inert.
+        loadout: {
+          ...defaults.classMagic.loadout,
+          ...((parsed.classMagic as any)?.loadout ?? {}),
+        },
         knownRecipes: normalizeKnownRecipesWithStarterSet(
           (parsed.classMagic as any)?.knownRecipes
         ),
@@ -6216,7 +6276,7 @@ export function repairHarthmereStatusReadStaminaDeath(
   state.combat.deathState = "alive";
   state.combat.deadFromStaminaAtMs = undefined;
   state.combat.lastStaminaTickMs = input.nowMs;
-  restoreCombatResources(state, input.restoreRatio ?? 1);
+  restoreCombatResources(state, input.restoreRatio ?? 1, input.nowMs);
 
   return { changed: true };
 }
@@ -6382,7 +6442,7 @@ export function createHarthmereLiveModeBuildingClientSnapshot(
     buildingProgress: state.property.buildingProgress,
     homeDecoration: state.homeDecoration,
     placeableWorld: state.placeableWorld,
-    inWorldMarkers: state.building.inWorldMarkers,
+    inWorldMarkers: inWorldMarkersForActor(state),
     storageContainers: state.building.storageContainers,
     doorLocks: state.building.doorLocks,
     businesses: state.economy.businesses,
@@ -6415,7 +6475,7 @@ export function createHarthmereLiveModeQuestClientSnapshot(
   return {
     version: "harthmere-live-mode-quest-state",
     actorId: state.actorId,
-    active: JSON.parse(JSON.stringify(state.quests.active)),
+    active: JSON.parse(JSON.stringify(activeQuestEntriesForActor(state))),
     completed: { ...state.quests.completed },
     pendingReceivedInvites,
     sentPendingInvites,
@@ -6526,6 +6586,16 @@ export function reduceHarthmereLiveModeBackendState(
     );
     const pools = ensureCombatResourcePools(next);
     const cooldowns = splitCombatCooldowns(next.combat.cooldowns);
+    const knownAbilities = Array.from(knownHarthmereAbilityIds(next.classMagic));
+    const loadoutAbilities = Object.values(next.classMagic.loadout).filter(
+      Boolean
+    ) as string[];
+    const equippedAbilities =
+      loadoutAbilities.length > 0
+        ? loadoutAbilities
+        : abilityId && knownAbilities.includes(abilityId)
+        ? [abilityId]
+        : [];
     return {
       actorId: next.actorId,
       classId: next.classMagic.classId ?? "warrior",
@@ -6538,10 +6608,8 @@ export function reduceHarthmereLiveModeBackendState(
       resourceKind,
       cooldowns: cooldowns.individual,
       sharedCooldowns: cooldowns.shared,
-      knownAbilities: Array.from(knownHarthmereAbilityIds(next.classMagic)),
-      equippedAbilities: Object.values(next.classMagic.loadout).filter(
-        Boolean
-      ) as string[],
+      knownAbilities,
+      equippedAbilities,
       activeTalentNodes: [...(next.talents?.nodes ?? [])],
       mainHandWeaponType: "sword",
       offHandWeaponType: "none",
@@ -14041,7 +14109,7 @@ export function reduceHarthmereLiveModeBackendState(
       next.combat.deathState = "alive";
       next.combat.hp = Math.max(1, Math.floor(next.combat.maxHp * 0.25));
       next.combat.deadFromStaminaAtMs = undefined;
-      restoreCombatResources(next, 0.25);
+      restoreCombatResources(next, 0.25, nowMs);
       next.combat.respawnProtectionUntilMs =
         nowMs +
         Math.max(1_000, payloadNumber(envelope, "protectionMs") ?? 10_000);
@@ -14070,7 +14138,7 @@ export function reduceHarthmereLiveModeBackendState(
       next.combat.deathState = "alive";
       next.combat.hp = next.combat.maxHp;
       next.combat.deadFromStaminaAtMs = undefined;
-      restoreCombatResources(next, 1);
+      restoreCombatResources(next, 1, nowMs);
       next.combat.respawnProtectionUntilMs =
         nowMs +
         Math.max(1_000, payloadNumber(envelope, "protectionMs") ?? 10_000);

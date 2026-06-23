@@ -77,7 +77,7 @@ describe("harthmereLiveCreatureRenderFamily", () => {
 });
 
 describe("harthmere live creature respawn timing", () => {
-  it("delay stays within the 30-60 minute window", () => {
+  it("uses the one-hour animal respawn delay", () => {
     assert.equal(
       harthmereLiveCreatureRespawnDelayMs(() => 0),
       HARTHMERE_LIVE_CREATURE_RESPAWN_MIN_MS
@@ -86,10 +86,9 @@ describe("harthmere live creature respawn timing", () => {
       harthmereLiveCreatureRespawnDelayMs(() => 1),
       HARTHMERE_LIVE_CREATURE_RESPAWN_MAX_MS
     );
-    const mid = harthmereLiveCreatureRespawnDelayMs(() => 0.5);
-    assert.ok(
-      mid > HARTHMERE_LIVE_CREATURE_RESPAWN_MIN_MS &&
-        mid < HARTHMERE_LIVE_CREATURE_RESPAWN_MAX_MS
+    assert.equal(
+      harthmereLiveCreatureRespawnDelayMs(() => 0.5),
+      60 * 60 * 1000
     );
   });
 

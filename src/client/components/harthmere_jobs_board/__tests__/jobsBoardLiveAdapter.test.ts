@@ -215,7 +215,10 @@ describe("Harthmere universal jobs board live adapter", () => {
       };
     }) as any;
     const state = await fetchHarthmereJobsBoardState(fetchImpl);
-    assert.equal(calls[0].url, "/api/harthmere/live_mode_jobs_board_state");
+    assert.equal(
+      calls[0].url,
+      "/api/harthmere/live_mode_jobs_board_state?install_id=test-install"
+    );
     assert.equal(calls[0].init.method, "GET");
     assert.equal(calls[0].init.credentials, "same-origin");
     assert.equal(
@@ -304,7 +307,10 @@ describe("Harthmere universal jobs board live adapter", () => {
       { jobId: "job_1" },
       { fetchImpl, requestId: "fixed_request" }
     );
-    assert.equal(calls[0].url, "/api/harthmere/live_mode");
+    assert.equal(
+      calls[0].url,
+      "/api/harthmere/live_mode?install_id=test-install"
+    );
     const envelope = JSON.parse(calls[0].init.body);
     assert.equal(envelope.actionKind, "request_jobs_board_mutation");
     assert.equal(envelope.subsystem, "jobs");
@@ -459,7 +465,10 @@ describe("Harthmere universal jobs board live adapter", () => {
       fetchImpl,
       requestId: "read_jobs_board",
     });
-    assert.equal(calls[0].url, "/api/harthmere/live_mode");
+    assert.equal(
+      calls[0].url,
+      "/api/harthmere/live_mode?install_id=test-install"
+    );
     const envelope = JSON.parse(calls[0].init.body);
     assert.equal(envelope.actionKind, "request_care_loop_action");
     assert.equal(envelope.subsystem, "care");

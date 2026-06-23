@@ -545,11 +545,71 @@ function liveModeIdempotencyKey(actorId: string, idempotencyKey: string) {
   return `harthmere:live_mode:current:idempotency:${actorId}:${idempotencyKey}`;
 }
 
+function slimBuildingMaterializationPlanForClient(
+  plan: BuildingSystemAnyMaterializationPlan
+) {
+  const raw = plan as any;
+  return {
+    version: raw.version,
+    requestId: raw.requestId,
+    actorId: raw.actorId,
+    plotId: raw.plotId,
+    propertyId: raw.propertyId,
+    blueprintId: raw.blueprintId,
+    structureTypeId: raw.structureTypeId,
+    use: raw.use,
+    projectId: raw.projectId,
+    stage: raw.stage,
+    reason: raw.reason,
+    operation: raw.operation,
+    decorationId: raw.decorationId,
+    materializesSolidVoxelBuilding: raw.materializesSolidVoxelBuilding,
+    editCount: Array.isArray(raw.edits) ? raw.edits.length : 0,
+    inWorldMarkerCount: Array.isArray(raw.inWorldMarkers)
+      ? raw.inWorldMarkers.length
+      : 0,
+    hasSafeZone: Boolean(raw.safeZone),
+    hasPlaceGroup: Boolean(raw.placeGroup),
+  };
+}
+
+function slimLiveModeBackendMutationForClient(
+  backendMutation: LiveModeResponse["backendMutation"]
+): LiveModeResponse["backendMutation"] {
+  if (!backendMutation?.buildingMaterializationPlans?.length) {
+    return backendMutation;
+  }
+  return {
+    ...backendMutation,
+    // The authoritative edit list can be hundreds of thousands of voxels after
+    // business outpost repair. Clients only need the ids/counts; terrain writes
+    // already happened server-side before this response is returned.
+    buildingMaterializationPlans:
+      backendMutation.buildingMaterializationPlans.map(
+        slimBuildingMaterializationPlanForClient
+      ) as any,
+  };
+}
+
+function slimLiveModeResponseForClient(
+  response: LiveModeResponse
+): LiveModeResponse {
+  return {
+    ...response,
+    backendMutation: slimLiveModeBackendMutationForClient(
+      response.backendMutation
+    ),
+  };
+}
+
 function slimHarthmereLiveModeIdempotencyResponse(
   response: LiveModeResponse
 ): LiveModeResponse {
   const slim: LiveModeResponse = {
     ...response,
+    backendMutation: slimLiveModeBackendMutationForClient(
+      response.backendMutation
+    ),
     snapshotMode: "changed",
     includedSnapshots: [],
     invalidatedSnapshots: [...HARTHMERE_LIVE_MODE_MUTATION_SNAPSHOT_KEYS],
@@ -826,11 +886,16 @@ export function combatActorPositionFromInstallLiveModeBody(
 ) {
   if (
     body.actionKind !== "request_attack" &&
-    body.actionKind !== "request_ability_cast"
+    body.actionKind !== "request_ability_cast" &&
+    body.actionKind !== "request_npc_ai_tick"
   ) {
     return undefined;
   }
-  if (body.subsystem !== "combat" && body.subsystem !== "ability") {
+  if (
+    body.subsystem !== "combat" &&
+    body.subsystem !== "ability" &&
+    body.subsystem !== "npc_ai"
+  ) {
     return undefined;
   }
   const claims = body.clientClaims ?? {};
@@ -2089,7 +2154,7 @@ export async function persistHarthmereLiveModeResponse(
       });
     }
     void flushHarthmereLiveModePostCommitOutbox(persistedResponse);
-    return persistedResponse;
+    return slimLiveModeResponseForClient(persistedResponse);
   }
 
   log.warn("HARTHMERE_LIVE_MODE_PERSIST_CONFLICTED", {

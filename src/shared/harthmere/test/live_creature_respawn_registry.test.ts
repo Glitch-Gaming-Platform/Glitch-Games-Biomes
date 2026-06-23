@@ -29,12 +29,14 @@ describe("HarthmereLiveCreatureRespawnRegistry", () => {
 
   it("reports the suppressed id set and prunes elapsed ones", () => {
     const reg = new HarthmereLiveCreatureRespawnRegistry<number>();
-    reg.recordKill(1, 0, () => 0); // respawn at +30min
+    reg.recordKill(1, 0, () => 0); // respawn at +60min
     reg.recordKill(2, 0, () => 1); // respawn at +60min
     const at40min = 40 * 60 * 1000;
-    assert.deepEqual(reg.suppressedIds(at40min), [2]);
+    assert.deepEqual(reg.suppressedIds(at40min), [1, 2]);
     reg.pruneElapsed(at40min);
-    assert.equal(reg.size, 1);
+    assert.equal(reg.size, 2);
+    reg.pruneElapsed(HARTHMERE_LIVE_CREATURE_RESPAWN_MIN_MS);
+    assert.equal(reg.size, 0);
   });
 
   it("can force-clear a creature back to life", () => {

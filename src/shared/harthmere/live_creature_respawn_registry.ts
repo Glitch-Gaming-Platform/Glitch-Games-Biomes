@@ -4,7 +4,7 @@
 // is currently absent from the world. Without a respawn gate, a killed mucker
 // would pop straight back on the next reconcile tick. This registry records the
 // time of each kill and reports which creature ids are still "cooling down" so
-// the seeder can leave them dead until their 30-60 minute respawn window passes.
+// the seeder can leave them dead until their one-hour respawn window passes.
 //
 // Pure/stateful but DOM- and IO-free, so it is fully unit-testable. The actual
 // wiring is: the combat death path calls recordKill(id); the seed builder asks
@@ -20,7 +20,7 @@ export class HarthmereLiveCreatureRespawnRegistry<TId = number> {
 
   /**
    * Record that a creature was killed at `nowMs`; it becomes eligible to respawn
-   * 30-60 minutes later. `rng` is injectable for deterministic tests.
+   * one hour later. `rng` is injectable for deterministic tests.
    */
   recordKill(id: TId, nowMs: number, rng?: () => number): number {
     const respawnAtMs = harthmereLiveCreatureRespawnAt({

@@ -14,6 +14,7 @@ import {
   BUILDING_SYSTEM_MIRA_INTRO_QUEST,
   BUILDING_SYSTEM_PLOTS,
   BUILDING_SYSTEM_STAGE_ORDER,
+  buildingSystemMaterialSourceForSymbol,
   buildingSystemHomeConsoleMarkerId,
   buildingSystemMaterialRequirementLines,
   createBuildingSystemPlacementPreview,
@@ -22,6 +23,7 @@ import {
   type BuildingSystemDoorLockRecord,
   type BuildingSystemInWorldMarker,
   type BuildingSystemMaterialRequirementLine,
+  type BuildingSystemMaterialSourceDefinition,
   type BuildingSystemPlotDefinition,
   type BuildingSystemProjectRecord,
   type BuildingSystemPropertyRecord,
@@ -462,6 +464,21 @@ function buildingSystemMapMarkerIdForPlot(
   return owned ? `property:${plot.plotId}` : `plot_for_sale:${plot.plotId}`;
 }
 
+function buildingSystemMaterialSourcePin(
+  line: Pick<BuildingStageMaterialAvailabilityLine, "material" | "displayName">,
+  source: BuildingSystemMaterialSourceDefinition,
+  nowMs = Date.now()
+) {
+  return {
+    markerId: `building_material_source:${line.material}:${source.sourceId}`,
+    label: `${source.actionLabel}: ${source.sourceName}`,
+    kind: source.sourceKind === "buy" ? "store" : "resource",
+    worldPosition: source.position,
+    description: `${line.displayName} source. ${source.description}`,
+    setAtMs: nowMs,
+  };
+}
+
 export const buildingSystemMaterialAvailabilityForStageForTest =
   buildingSystemMaterialAvailabilityForStage;
 export const buildingSystemStageProgressPercentForTest =
@@ -469,6 +486,8 @@ export const buildingSystemStageProgressPercentForTest =
 export const playerFacingBuildingWarningsForTest = playerFacingBuildingWarnings;
 export const buildingSystemMapMarkerIdForPlotForTest =
   buildingSystemMapMarkerIdForPlot;
+export const buildingSystemMaterialSourcePinForTest =
+  buildingSystemMaterialSourcePin;
 
 async function submitBuildingActionThroughLiveModeRoute(
   action: BuildingSystemAction,
@@ -843,6 +862,14 @@ export const LandTab: React.FunctionComponent<{
     },
     [serverState.completedProperties, serverState.ownedPlotIds]
   );
+  const locateMaterialSourceOnMap = React.useCallback(
+    (line: BuildingStageMaterialAvailabilityLine) => {
+      const source = buildingSystemMaterialSourceForSymbol(line.material);
+      if (!source) return;
+      requestBiomesUILocateOnMap(buildingSystemMaterialSourcePin(line, source));
+    },
+    []
+  );
 
   return (
     <div className="biomes-building-system" data-testid="building-system-land-tab">
@@ -951,6 +978,7 @@ export const LandTab: React.FunctionComponent<{
               materialAvailability={currentMaterialAvailability}
               onStart={startSelectedBuilding}
               onContribute={contributeStage}
+              onFindMaterial={locateMaterialSourceOnMap}
               pending={pendingAction === "start_construction" || pendingAction === "contribute_stage"}
             />
           )}
@@ -1424,6 +1452,7 @@ const ConstructionPanel: React.FunctionComponent<{
   materialAvailability: BuildingStageMaterialAvailabilityLine[];
   onStart: () => void;
   onContribute: () => void;
+  onFindMaterial: (line: BuildingStageMaterialAvailabilityLine) => void;
   pending: boolean;
 }> = ({
   plot,
@@ -1435,6 +1464,7 @@ const ConstructionPanel: React.FunctionComponent<{
   materialAvailability,
   onStart,
   onContribute,
+  onFindMaterial,
   pending,
 }) => {
   const activeIndex =
@@ -1467,7 +1497,10 @@ const ConstructionPanel: React.FunctionComponent<{
           <div className="biomes-building-progressbar" aria-hidden="true">
             <span style={{ width: `${progressPercent}%` }} />
           </div>
-          <MaterialAvailabilityList lines={materialAvailability} />
+          <MaterialAvailabilityList
+            lines={materialAvailability}
+            onFindMaterial={onFindMaterial}
+          />
         </div>
       </div>
       <div className="biomes-building-stage-list">
@@ -1533,7 +1566,8 @@ const ConstructionPanel: React.FunctionComponent<{
 
 const MaterialAvailabilityList: React.FunctionComponent<{
   lines: BuildingStageMaterialAvailabilityLine[];
-}> = ({ lines }) => (
+  onFindMaterial?: (line: BuildingStageMaterialAvailabilityLine) => void;
+}> = ({ lines, onFindMaterial }) => (
   <div
     className="biomes-building-material-list"
     data-building-material-list="production"
@@ -1544,21 +1578,34 @@ const MaterialAvailabilityList: React.FunctionComponent<{
         <strong>Ready</strong>
       </div>
     ) : (
-      lines.map((line) => (
-        <div
-          key={line.material}
-          className="biomes-building-material-row"
-          data-missing={line.missing > 0 ? "true" : undefined}
-          data-ready={line.missing === 0 ? "true" : undefined}
-        >
-          <span>{line.displayName}</span>
-          <strong>
-            {line.missing > 0
-              ? `Missing ${line.missing}`
-              : `${line.available}/${line.remaining} ready`}
-          </strong>
-        </div>
-      ))
+      lines.map((line) => {
+        const source = buildingSystemMaterialSourceForSymbol(line.material);
+        return (
+          <div
+            key={line.material}
+            className="biomes-building-material-row"
+            data-missing={line.missing > 0 ? "true" : undefined}
+            data-ready={line.missing === 0 ? "true" : undefined}
+          >
+            <span>{line.displayName}</span>
+            <strong>
+              {line.missing > 0
+                ? `Missing ${line.missing}`
+                : `${line.available}/${line.remaining} ready`}
+            </strong>
+            {line.missing > 0 && source && onFindMaterial ? (
+              <button
+                type="button"
+                className="biomes-building-material-find"
+                onClick={() => onFindMaterial(line)}
+                aria-label={`Find ${line.displayName} at ${source.sourceName}`}
+              >
+                Find
+              </button>
+            ) : null}
+          </div>
+        );
+      })
     )}
   </div>
 );

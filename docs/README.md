@@ -26,6 +26,22 @@ That guide documents the generated production terrain placement map, the
 read-only Azure/Redis regeneration command, cave/hollow spawn records, and the
 resolver APIs runtime code should use.
 
+### Harthmere Live Construction, Equipment, Hotbar, And Containers
+
+For production/live-mode verification notes covering throwaway home/business
+construction, equipment-to-avatar projection, hotbar held-item projection, and
+visible versus hidden container behavior, read:
+
+```text
+docs/harthmere/README.md
+src/client/components/biomes_ui/README.md
+```
+
+Production construction tests can write real terrain/property/business state into
+the shared live world. Use throwaway actors, record what was written, and do not
+use local Docker builds for quick verification unless the task explicitly calls
+for a deployment or container smoke.
+
 ### Harthmere Azure Voice And Speech
 
 For Azure-only NPC voice casting, speech-to-text, text-to-speech, quota checks,

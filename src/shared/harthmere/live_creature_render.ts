@@ -76,13 +76,13 @@ export function harthmereLiveCreatureRenderFamily(
   return "live_entity";
 }
 
-// Respawn window: a killed creature comes back somewhere between 30 and 60
-// minutes later. Tunable in one place.
-export const HARTHMERE_LIVE_CREATURE_RESPAWN_MIN_MS = 30 * 60 * 1000;
+// Respawn window: killed animals/creatures come back after one hour. Keep the
+// min/max shape for callers that already consume a bounded delay helper.
+export const HARTHMERE_LIVE_CREATURE_RESPAWN_MIN_MS = 60 * 60 * 1000;
 export const HARTHMERE_LIVE_CREATURE_RESPAWN_MAX_MS = 60 * 60 * 1000;
 
 /**
- * Random respawn delay in [30min, 60min]. `rng` defaults to Math.random but is
+ * Respawn delay in [60min, 60min]. `rng` defaults to Math.random but is
  * injectable so the scheduler is deterministic under test.
  */
 export function harthmereLiveCreatureRespawnDelayMs(

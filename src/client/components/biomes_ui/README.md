@@ -48,6 +48,25 @@ visual replacement that delegates `onSelect`/`onUse`/`onDrop` to whatever
 hotbar machinery is wired up by the host (i.e. the existing
 `/hotbar/index` resource + `InventoryChangeSelectionEvent`).
 
+Harthmere live-mode items have an extra visual bridge. The live backend stores
+gameplay ids such as `baker_apron`, `field_trousers`, `woodsman_axe`, and
+`rough_stone`; those ids are not always native Biomes ECS item ids. The BiomesUI
+live adapter maps known Harthmere ids to Bikkie ids through
+`harthmere_biomes_ecs_bridge.ts` before writing visual state:
+
+- live equipment from `inventoryLootState.actor.equipment` is projected into
+  `/ecs/c/wearing`, then `/scene/player/mesh` is invalidated so clothing appears
+  on the body,
+- Harthmere hotbar shortcuts are projected into `/ecs/c/inventory.hotbar`, then
+  `/hotbar/selection` is invalidated so selected tools/items can appear in hand,
+- unknown Harthmere ids stay in the authoritative Harthmere inventory surface
+  and produce ECS projection warnings instead of inventing fake render items.
+
+When adding new Harthmere equipment, tools, materials, or quest items that should
+be visible on the avatar or in hand, add the visual mapping and a regression in
+`harthmereInventoryBiomesUIActions.test.ts` or
+`harthmere_biomes_ecs_bridge.test.ts`.
+
 ## Architecture
 
 ```
@@ -191,6 +210,13 @@ standalone browser harness for click/drag/wheel interactions lives in
 `MapQuestsTab.browser.test.ts` and is intentionally pending until the
 repo browser bundler can mount this React tab reliably under `ts-mocha`.
 
+All active quests, subquests, missions, jobs-board jobs, and helper quests should
+surface through the Map & Quests missions list. "Show on map" is universal: each
+click should center or pin the current best location for that objective. Gather
+and delivery quests should route intelligently: point to the item/source marker
+while the player is missing requirements, then switch to the correct turn-in
+location once the required items are present.
+
 Harthmere map markers must use the generated production terrain placement map
 when a quest, jobs-board marker, business marker, or helper landmark has a
 world position. The map tab should receive the same resolved
@@ -219,6 +245,18 @@ correct in-world access point. Those separate panels still need to follow
 the BiomesUI interaction standards: pointer unlock while open, mouse
 visible while open, keyboard traversal, mobile responsive layout,
 player-facing labels, and no raw ids.
+
+Land/building UI should make missing materials actionable. When a build stage is
+blocked by a required material, provide a route to the material source or a vendor
+that sells it, and keep the property marker visible on the map for the selected
+home or business. A full construction regression covers plot claim, blueprint
+selection, every staged build contribution, completed property access, business
+placement, business start, a business cycle, and revenue collection.
+
+Visible world containers remain interactive BiomesUI-adjacent inventory surfaces.
+The overlay/container tests expect visible crates, chests, boxes, bags, and
+toolbags to show the `F` prompt and open the object-container panel. Hidden or
+inactive quest containers must not show `F` and must not block the player.
 
 When a business outpost is rebuilt, update the map source and tests from
 the backend business outpost record rather than moving a marker by hand.

@@ -18,6 +18,21 @@ function getWasmMemoryMb() {
 
 let loadedVoxeloo: VoxelooModule | undefined;
 
+async function readFirstExistingWasmFile(paths: string[]) {
+  let lastError: unknown;
+  for (const wasmFile of paths) {
+    try {
+      return await readFile(wasmFile);
+    } catch (error: any) {
+      if (error?.code !== "ENOENT") {
+        throw error;
+      }
+      lastError = error;
+    }
+  }
+  throw lastError;
+}
+
 export async function loadVoxeloo(): Promise<VoxelooModule> {
   if (loadedVoxeloo) {
     return loadedVoxeloo;
@@ -26,9 +41,25 @@ export async function loadVoxeloo(): Promise<VoxelooModule> {
     __dirname,
     "../../gen/shared/cpp_ext/voxeloo-simd/wasm.wasm"
   );
+  const packagedWasmFile = path.resolve(
+    process.cwd(),
+    "src/gen/shared/cpp_ext/voxeloo-simd/wasm.wasm"
+  );
+  const distWasmFile = path.resolve(
+    process.cwd(),
+    "dist/gen/shared/cpp_ext/voxeloo-simd/wasm.wasm"
+  );
 
   const module = await wasmLoader({
-    wasmBinary: await readFile(wasmFile),
+    // Next's server bundle can execute from .next/server, making the original
+    // relative path resolve to /app/.next/gen. The packaged Glitch image keeps
+    // the generated wasm under /app/src/gen, while the standalone server build
+    // keeps it under /app/dist/gen.
+    wasmBinary: await readFirstExistingWasmFile([
+      wasmFile,
+      packagedWasmFile,
+      distWasmFile,
+    ]),
     wasmMemory: makeWasmMemory(getWasmMemoryMb()),
     printErr: (error: string) => {
       log.error(`ERROR[Voxeloo]: "${error}"`, { error });
