@@ -407,6 +407,12 @@ export interface HarthmereJobsBoardMutationRequest {
 export interface HarthmereJobsBoardMutationContext {
   actorGold: number;
   actorInventoryItems: Record<string, number>;
+  // Completion items can live outside the backpack when the live server routes
+  // bulky building/material rewards into material storage. The jobs reducer
+  // still validates item turn-ins here, so it needs both sources.
+  actorMaterialStorageItems?:
+    | Record<string, number>
+    | { items?: Record<string, number> };
   actorCollectibles?: Record<string, number>;
   actorGuildId?: string;
   actorTownIds?: string[];
@@ -1389,6 +1395,13 @@ function actorHasCompletionRequirements(
   context: HarthmereJobsBoardMutationContext,
   result: MutableJobsResult
 ) {
+  const rawMaterialStorage = context.actorMaterialStorageItems ?? {};
+  const materialStorageItems =
+    "items" in rawMaterialStorage &&
+    rawMaterialStorage.items &&
+    typeof rawMaterialStorage.items === "object"
+      ? rawMaterialStorage.items
+      : (rawMaterialStorage as Record<string, number>);
   for (const req of job.requirements) {
     if (!req.itemId) continue;
     const needed = positiveInt(req.count, 1);
@@ -1402,6 +1415,7 @@ function actorHasCompletionRequirements(
     }
     if (
       (context.actorInventoryItems[req.itemId] ?? 0) +
+        (materialStorageItems[req.itemId] ?? 0) +
         (result.itemDeltas[req.itemId] ?? 0) <
       needed
     ) {

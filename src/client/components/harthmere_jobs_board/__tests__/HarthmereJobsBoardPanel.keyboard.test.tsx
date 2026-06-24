@@ -64,6 +64,86 @@ function nodeBuiltinStubForJobsBoardBrowser(pathName: string) {
   return "export default {}; export function randomBytes() { return new Uint8Array(); } export function randomUUID() { return 'jobs-board-test-uuid'; }";
 }
 
+function jobsBoardBusinessCustomerSimulatorStub() {
+  return `
+    export const HARTHMERE_BUSINESS_OUTPOSTS = [];
+    export function harthmereBusinessOutpostJobsBoardPosition() { return { x: 0, y: 0, z: 0 }; }
+    export function harthmereBusinessScaledJobPay() { return 75; }
+  `;
+}
+
+function jobsBoardBusinessTemplatesStub() {
+  return `
+    const repairTemplate = {
+      templateId: "repair_person_fixture_fix",
+      businessType: "repair_maintenance_person",
+      label: "Fixture repair",
+      title: "Repair the Broken Market Fixture",
+      description: "Use repair parts at the marked fixture and verify it is usable again.",
+      kind: "repair",
+      requirements: [{
+        itemId: "repair_part",
+        count: 1,
+        targetId: "market_fixture",
+        targetName: "Market fixture",
+        mapMarkerId: "market_fixture_marker",
+      }],
+      targetId: "market_fixture",
+      mapMarkerId: "market_fixture_marker",
+      defaultRewardGold: 75,
+      defaultDeadlineDays: 3,
+      requiresFieldWork: true,
+    };
+    export const HARTHMERE_JOBS_BOARD_BUSINESS_TEMPLATES = [repairTemplate];
+    export const HARTHMERE_JOBS_BOARD_EXECUTABLE_ITEM_IDS = new Set(["repair_part"]);
+    export function harthmereJobsBoardBusinessTemplatesForType(typeId) {
+      return HARTHMERE_JOBS_BOARD_BUSINESS_TEMPLATES.filter((template) => !typeId || template.businessType === typeId);
+    }
+    export function harthmereJobsBoardBusinessTemplateById(templateId) {
+      return HARTHMERE_JOBS_BOARD_BUSINESS_TEMPLATES.find((template) => template.templateId === templateId);
+    }
+    export function isKnownHarthmereJobsBoardExecutableItemId(itemId) {
+      return HARTHMERE_JOBS_BOARD_EXECUTABLE_ITEM_IDS.has(itemId);
+    }
+  `;
+}
+
+function jobsBoardMmoAuthorityStub() {
+  return `
+    export function formatHarthmereJobTimeRemaining(deadlineAtMs, nowMs) {
+      if (deadlineAtMs === undefined) return "";
+      const remaining = Number(deadlineAtMs) - Number(nowMs ?? Date.now());
+      if (!Number.isFinite(remaining) || remaining <= 0) return "Expired";
+      const minutes = Math.max(1, Math.floor(remaining / 60000));
+      const hours = Math.floor(minutes / 60);
+      return hours > 0 ? hours + "h " + (minutes % 60) + "m left" : minutes + "m left";
+    }
+  `;
+}
+
+function harthmereLiveFetchStub() {
+  return `
+    export async function fetchHarthmereLiveWithTimeout(fetchImpl, input, init) { return fetchImpl(input, init); }
+    export async function defaultHarthmereLiveFetch(input, init) { return fetch(input, init); }
+    export function prepareHarthmereLiveFetchRequest(input, init = {}) { return { input, init }; }
+  `;
+}
+
+function localDevHarthmereInventorySystemStub() {
+  return `
+    export function grantHarthmereJobReward() {}
+    export function harthmereInventoryCanAcceptItems() { return true; }
+    export function isHarthmereRepairToolEquipped() { return false; }
+  `;
+}
+
+function galoisAssetPathsStub() {
+  return `
+    export function assetPaths() { return []; }
+    export function resolveAssetUrlUntyped(path) { return String(path); }
+  `;
+}
+
 function job(jobId: string, title: string, rewardGold: number) {
   return {
     jobId,
@@ -73,7 +153,14 @@ function job(jobId: string, title: string, rewardGold: number) {
     title,
     description: `${title} description`,
     kind: "repair" as const,
-    requirements: [{ serviceKind: "repair", serviceUnits: 1, targetId: `${jobId}_target`, mapMarkerId: `${jobId}_marker` }],
+    requirements: [
+      {
+        serviceKind: "repair",
+        serviceUnits: 1,
+        targetId: `${jobId}_target`,
+        mapMarkerId: `${jobId}_marker`,
+      },
+    ],
     rewardGold,
     escrowGold: rewardGold,
     status: "open" as const,
@@ -131,7 +218,20 @@ function sampleSnapshot(): HarthmereJobsBoardSnapshot {
           district: "The Grove",
           landmarkId: "harthmere_market_posting_board",
         },
-        acceptedKinds: ["gather", "delivery", "repair", "cleanup", "hunt", "escort", "craft", "medical", "exploration", "construction", "security", "service"],
+        acceptedKinds: [
+          "gather",
+          "delivery",
+          "repair",
+          "cleanup",
+          "hunt",
+          "escort",
+          "craft",
+          "medical",
+          "exploration",
+          "construction",
+          "security",
+          "service",
+        ],
         requiresPhysicalInteraction: true,
       },
     },
@@ -145,55 +245,111 @@ function sampleSnapshot(): HarthmereJobsBoardSnapshot {
     activeJobs: [active],
     myAcceptedJobs: [active, completed],
     myPostedJobs: [postedOpen, postedAccepted],
-    myTodos: [{
-      todoId: "todo_active",
-      jobId: "job_active",
-      actorId: "player_a",
-      boardId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID,
-      title: active.title,
-      todoText: "Repair the marked fence section.",
-      status: "completed",
-      kind: "repair",
-      mapMarkerId: "job_active_marker",
-      targetId: "job_active_target",
-      townId: "harthmere_grove",
-      regionId: "harthmere_grove_region",
-      createdAtMs: NOW,
-      dueAtMs: NOW + 86_400_000,
-      questBoardTodo: true,
-    }],
+    myTodos: [
+      {
+        todoId: "todo_active",
+        jobId: "job_active",
+        actorId: "player_a",
+        boardId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID,
+        title: active.title,
+        todoText: "Repair the marked fence section.",
+        status: "completed",
+        kind: "repair",
+        mapMarkerId: "job_active_marker",
+        targetId: "job_active_target",
+        townId: "harthmere_grove",
+        regionId: "harthmere_grove_region",
+        createdAtMs: NOW,
+        dueAtMs: NOW + 86_400_000,
+        questBoardTodo: true,
+      },
+    ],
     walletGold: 500,
     inventoryItems: { road_ration: 3, repair_part: 2 },
     discoveredCollectibles: { "economy:repair_maintenance_person": NOW },
-    myBusinesses: [{
-      businessId: "business_repair",
-      typeId: "repair_maintenance_person",
-      name: "Pump Fixers",
-      balanceGold: 400,
-      inventory: {
-        road_ration: { itemId: "road_ration", count: 3 },
+    myBusinesses: [
+      {
+        businessId: "business_repair",
+        typeId: "repair_maintenance_person",
+        name: "Pump Fixers",
+        balanceGold: 400,
+        inventory: {
+          road_ration: { itemId: "road_ration", count: 3 },
+        },
       },
-    }],
+    ],
     cooldown: { abuseScore: 0 },
-    safety: { minRewardGold: 5, maxRewardGold: 5000, maxActivePostingsPerIssuer: 12, maxActiveAcceptedPerSeeker: 6, requiresPhysicalBoardInteraction: true },
+    safety: {
+      minRewardGold: 5,
+      maxRewardGold: 5000,
+      maxActivePostingsPerIssuer: 12,
+      maxActiveAcceptedPerSeeker: 6,
+      requiresPhysicalBoardInteraction: true,
+    },
   });
 }
 
 describe("HarthmereJobsBoardPanel keyboard support", () => {
   it("covers keyboard base cases and edge cases for grid and tab navigation", () => {
     const baseAndEdgeCases = [
-      { key: "ArrowRight", currentIndex: 0, itemCount: 5, columns: 3, expected: 1 },
-      { key: "ArrowLeft", currentIndex: 0, itemCount: 5, columns: 3, expected: 0 },
-      { key: "ArrowDown", currentIndex: 1, itemCount: 5, columns: 3, expected: 4 },
-      { key: "ArrowDown", currentIndex: 4, itemCount: 5, columns: 3, expected: 4 },
-      { key: "ArrowUp", currentIndex: 1, itemCount: 5, columns: 3, expected: 0 },
+      {
+        key: "ArrowRight",
+        currentIndex: 0,
+        itemCount: 5,
+        columns: 3,
+        expected: 1,
+      },
+      {
+        key: "ArrowLeft",
+        currentIndex: 0,
+        itemCount: 5,
+        columns: 3,
+        expected: 0,
+      },
+      {
+        key: "ArrowDown",
+        currentIndex: 1,
+        itemCount: 5,
+        columns: 3,
+        expected: 4,
+      },
+      {
+        key: "ArrowDown",
+        currentIndex: 4,
+        itemCount: 5,
+        columns: 3,
+        expected: 4,
+      },
+      {
+        key: "ArrowUp",
+        currentIndex: 1,
+        itemCount: 5,
+        columns: 3,
+        expected: 0,
+      },
       { key: "Home", currentIndex: 3, itemCount: 5, columns: 3, expected: 0 },
       { key: "End", currentIndex: 1, itemCount: 5, columns: 3, expected: 4 },
-      { key: "ArrowRight", currentIndex: -10, itemCount: 5, columns: 0, expected: 1 },
-      { key: "ArrowRight", currentIndex: 0, itemCount: 0, columns: 3, expected: -1 },
+      {
+        key: "ArrowRight",
+        currentIndex: -10,
+        itemCount: 5,
+        columns: 0,
+        expected: 1,
+      },
+      {
+        key: "ArrowRight",
+        currentIndex: 0,
+        itemCount: 0,
+        columns: 3,
+        expected: -1,
+      },
     ];
     for (const testCase of baseAndEdgeCases) {
-      assert.equal(nextHarthmereJobsBoardGridIndexForKey(testCase), testCase.expected, JSON.stringify(testCase));
+      assert.equal(
+        nextHarthmereJobsBoardGridIndexForKey(testCase),
+        testCase.expected,
+        JSON.stringify(testCase)
+      );
     }
 
     assert.equal(harthmereJobsBoardColumnCountForWidth(500), 1);
@@ -201,11 +357,23 @@ describe("HarthmereJobsBoardPanel keyboard support", () => {
     assert.equal(harthmereJobsBoardColumnCountForWidth(1024), 3);
     assert.equal(harthmereJobsBoardColumnCountForWidth(Number.NaN), 1);
 
-    assert.equal(nextHarthmereJobsBoardTabForKey("available", "ArrowLeft"), "safety");
-    assert.equal(nextHarthmereJobsBoardTabForKey("available", "ArrowRight"), "accepted");
+    assert.equal(
+      nextHarthmereJobsBoardTabForKey("available", "ArrowLeft"),
+      "safety"
+    );
+    assert.equal(
+      nextHarthmereJobsBoardTabForKey("available", "ArrowRight"),
+      "accepted"
+    );
     assert.equal(nextHarthmereJobsBoardTabForKey("posted", "PageDown"), "post");
-    assert.equal(nextHarthmereJobsBoardTabForKey("posted", "PageUp"), "accepted");
-    assert.equal(nextHarthmereJobsBoardTabForKey("posted", "Home"), "available");
+    assert.equal(
+      nextHarthmereJobsBoardTabForKey("posted", "PageUp"),
+      "accepted"
+    );
+    assert.equal(
+      nextHarthmereJobsBoardTabForKey("posted", "Home"),
+      "available"
+    );
     assert.equal(nextHarthmereJobsBoardTabForKey("posted", "End"), "safety");
   });
 
@@ -217,26 +385,35 @@ describe("HarthmereJobsBoardPanel keyboard support", () => {
         onCompleteJob={() => {}}
         onCancelJob={() => {}}
         onPostJob={() => {}}
-      />,
+      />
     );
     assert.ok(html.includes(">Jobs Board<"));
     assert.equal(html.includes("Harthmere Grove Jobs Board"), false);
     assert.ok(html.includes('data-harthmere-jobs-board-interface="true"'));
     assert.ok(html.includes('data-pointer-lock-policy="unlock-while-open"'));
     assert.ok(html.includes('data-mouse-policy="show-while-open"'));
-    assert.ok(html.includes('data-keyboard-navigation="roving-grid-tab-trap-enter"'));
-    assert.ok(html.includes("aria-label=\"Accept Bounty: Elite Mucker at the Muck Edge\""));
+    assert.ok(
+      html.includes('data-keyboard-navigation="roving-grid-tab-trap-enter"')
+    );
+    assert.ok(
+      html.includes('aria-label="Accept Bounty: Elite Mucker at the Muck Edge"')
+    );
   });
 
   it("supports arrow traversal, accept, turn-in, cancel, post, empty-tab, and close flows in a browser", async function () {
     this.timeout(45_000);
 
-    const tempDir = await mkdtemp(path.join(tmpdir(), "biomes-jobs-board-keyboard-"));
+    const tempDir = await mkdtemp(
+      path.join(tmpdir(), "biomes-jobs-board-keyboard-")
+    );
     const entryPath = path.join(tempDir, "entry.tsx");
     const bundlePath = path.join(tempDir, "bundle.js");
     const tsconfigPath = path.join(tempDir, "tsconfig.json");
     const componentPath = path
-      .join(process.cwd(), "src/client/components/harthmere_jobs_board/HarthmereJobsBoardPanel.tsx")
+      .join(
+        process.cwd(),
+        "src/client/components/harthmere_jobs_board/HarthmereJobsBoardPanel.tsx"
+      )
       .replace(/\\/g, "/");
     const snapshotJson = JSON.stringify(sampleSnapshot());
 
@@ -259,7 +436,7 @@ describe("HarthmereJobsBoardPanel keyboard support", () => {
             onClose={() => window.__jobsBoardEvents.push("close")}
           />
         );
-      `,
+      `
     );
     await writeFile(
       tsconfigPath,
@@ -267,7 +444,7 @@ describe("HarthmereJobsBoardPanel keyboard support", () => {
         compilerOptions: {
           jsx: "react",
         },
-      }),
+      })
     );
 
     await build({
@@ -286,50 +463,141 @@ describe("HarthmereJobsBoardPanel keyboard support", () => {
       jsxFragment: "React.Fragment",
       loader: { ".tsx": "tsx", ".ts": "ts" },
       tsconfig: tsconfigPath,
-      plugins: [{
-        name: "stub-local-dev-quests",
-        setup(pluginBuild) {
-          pluginBuild.onResolve({ filter: /business_customer_simulator$/ }, () => ({
-            path: "stub-business-customer-simulator",
-            namespace: "jobs-board-test",
-          }));
-          pluginBuild.onResolve({ filter: /harthmere_live_fetch$/ }, () => ({
-            path: "stub-harthmere-live-fetch",
-            namespace: "jobs-board-test",
-          }));
-          pluginBuild.onResolve({ filter: /@\/galois\/interface\/asset_paths$/ }, () => ({
-            path: "stub-galois-asset-paths",
-            namespace: "jobs-board-test",
-          }));
-          pluginBuild.onResolve({ filter: /^(async_hooks|perf_hooks|crypto|process|os)$/ }, (args) => ({
-            path: args.path,
-            namespace: "jobs-board-node-stub",
-          }));
-          pluginBuild.onResolve({ filter: /^@\// }, (args) => ({
-            path: resolveRepoAliasForEsbuild(args.path),
-          }));
-          pluginBuild.onResolve({ filter: /LocalDevHarthmereQuests$/ }, () => ({
-            path: "stub-local-dev-quests",
-            namespace: "jobs-board-test",
-          }));
-          pluginBuild.onLoad({ filter: /.*/, namespace: "jobs-board-test" }, () => ({
-            contents:
-              "export const HARTHMERE_BUSINESS_OUTPOSTS = []; export function harthmereBusinessOutpostJobsBoardPosition() { return { x: 0, y: 0, z: 0 }; } export async function fetchHarthmereLiveWithTimeout() { return undefined; } export function completeHarthmereJobsBoardReadQuest() { return { changed: false, reason: 'test' }; } export function resolveAssetUrlUntyped(path) { return String(path); }",
-            loader: "js",
-          }));
-          pluginBuild.onLoad({ filter: /.*/, namespace: "jobs-board-node-stub" }, (args) => ({
-            contents: nodeBuiltinStubForJobsBoardBrowser(args.path),
-            loader: "js",
-          }));
+      plugins: [
+        {
+          name: "stub-local-dev-quests",
+          setup(pluginBuild) {
+            pluginBuild.onResolve(
+              { filter: /business_customer_simulator$/ },
+              () => ({
+                path: "stub-business-customer-simulator",
+                namespace: "jobs-board-test",
+              })
+            );
+            pluginBuild.onResolve(
+              { filter: /jobs_board_business_templates$/ },
+              () => ({
+                path: "stub-jobs-board-business-templates",
+                namespace: "jobs-board-test",
+              })
+            );
+            pluginBuild.onResolve(
+              { filter: /mmo_jobs_board_authority$/ },
+              () => ({
+                path: "stub-mmo-jobs-board-authority",
+                namespace: "jobs-board-test",
+              })
+            );
+            pluginBuild.onResolve({ filter: /harthmere_live_fetch$/ }, () => ({
+              path: "stub-harthmere-live-fetch",
+              namespace: "jobs-board-test",
+            }));
+            pluginBuild.onResolve(
+              { filter: /@\/galois\/interface\/asset_paths$/ },
+              () => ({
+                path: "stub-galois-asset-paths",
+                namespace: "jobs-board-test",
+              })
+            );
+            pluginBuild.onResolve(
+              { filter: /^(async_hooks|perf_hooks|crypto|process|os)$/ },
+              (args) => ({
+                path: args.path,
+                namespace: "jobs-board-node-stub",
+              })
+            );
+            pluginBuild.onResolve({ filter: /^@\// }, (args) => ({
+              path: resolveRepoAliasForEsbuild(args.path),
+            }));
+            pluginBuild.onResolve(
+              { filter: /LocalDevHarthmereQuests$/ },
+              () => ({
+                path: "stub-local-dev-quests",
+                namespace: "jobs-board-test",
+              })
+            );
+            pluginBuild.onLoad(
+              {
+                filter: /^stub-local-dev-quests$/,
+                namespace: "jobs-board-test",
+              },
+              () => ({
+                contents:
+                  "export function completeHarthmereJobsBoardReadQuest() { return { changed: false, reason: 'test' }; }",
+                loader: "js",
+              })
+            );
+            pluginBuild.onLoad(
+              {
+                filter: /^stub-business-customer-simulator$/,
+                namespace: "jobs-board-test",
+              },
+              () => ({
+                contents: jobsBoardBusinessCustomerSimulatorStub(),
+                loader: "js",
+              })
+            );
+            pluginBuild.onLoad(
+              {
+                filter: /^stub-jobs-board-business-templates$/,
+                namespace: "jobs-board-test",
+              },
+              () => ({
+                contents: jobsBoardBusinessTemplatesStub(),
+                loader: "js",
+              })
+            );
+            pluginBuild.onLoad(
+              {
+                filter: /^stub-mmo-jobs-board-authority$/,
+                namespace: "jobs-board-test",
+              },
+              () => ({
+                contents: jobsBoardMmoAuthorityStub(),
+                loader: "js",
+              })
+            );
+            pluginBuild.onLoad(
+              {
+                filter: /^stub-harthmere-live-fetch$/,
+                namespace: "jobs-board-test",
+              },
+              () => ({
+                contents: harthmereLiveFetchStub(),
+                loader: "js",
+              })
+            );
+            pluginBuild.onLoad(
+              {
+                filter: /^stub-galois-asset-paths$/,
+                namespace: "jobs-board-test",
+              },
+              () => ({
+                contents: galoisAssetPathsStub(),
+                loader: "js",
+              })
+            );
+            pluginBuild.onLoad(
+              { filter: /.*/, namespace: "jobs-board-node-stub" },
+              (args) => ({
+                contents: nodeBuiltinStubForJobsBoardBrowser(args.path),
+                loader: "js",
+              })
+            );
+          },
         },
-      }],
+      ],
     });
 
     const browser = await chromium.launch({ headless: true });
     try {
-      const page = await browser.newPage({ viewport: { width: 1200, height: 800 } });
+      const page = await browser.newPage({
+        viewport: { width: 1200, height: 800 },
+      });
       const browserErrors: string[] = [];
-      page.on("pageerror", (error) => browserErrors.push(error.stack ?? error.message));
+      page.on("pageerror", (error) =>
+        browserErrors.push(error.stack ?? error.message)
+      );
       page.on("console", (message) => {
         if (message.type() === "error") browserErrors.push(message.text());
       });
@@ -346,68 +614,161 @@ describe("HarthmereJobsBoardPanel keyboard support", () => {
       `);
       await page.addScriptTag({ content: await readFile(bundlePath, "utf8") });
       try {
-        await page.waitForSelector("[data-testid='harthmere-jobs-board-panel']");
+        await page.waitForSelector(
+          "[data-testid='harthmere-jobs-board-panel']"
+        );
       } catch (error) {
-        assert.fail(`Jobs board panel did not mount. Browser errors:\n${browserErrors.join("\n") || String(error)}`);
+        assert.fail(
+          `Jobs board panel did not mount. Browser errors:\n${
+            browserErrors.join("\n") || String(error)
+          }`
+        );
       }
-      assert.equal(await page.locator("h2").first().textContent(), "Jobs Board");
-      assert.equal((await page.textContent("body"))?.includes("Harthmere Grove Jobs Board"), false);
       assert.equal(
-        await page.locator("[data-testid='harthmere-jobs-board-panel']").getAttribute("data-pointer-lock-policy"),
-        "unlock-while-open",
+        await page.locator("h2").first().textContent(),
+        "Jobs Board"
       );
       assert.equal(
-        await page.locator("[data-testid='harthmere-jobs-board-panel']").getAttribute("data-keyboard-navigation"),
-        "roving-grid-tab-trap-enter",
+        (await page.textContent("body"))?.includes(
+          "Harthmere Grove Jobs Board"
+        ),
+        false
+      );
+      assert.equal(
+        await page
+          .locator("[data-testid='harthmere-jobs-board-panel']")
+          .getAttribute("data-pointer-lock-policy"),
+        "unlock-while-open"
+      );
+      assert.equal(
+        await page
+          .locator("[data-testid='harthmere-jobs-board-panel']")
+          .getAttribute("data-keyboard-navigation"),
+        "roving-grid-tab-trap-enter"
       );
 
-      await page.waitForFunction(() => document.activeElement?.getAttribute("data-job-action-id") === "job_1");
+      await page.waitForFunction(
+        () =>
+          document.activeElement?.getAttribute("data-job-action-id") === "job_1"
+      );
       await page.getByLabel("Close jobs board").focus();
       await page.keyboard.press("Shift+Tab");
-      await page.waitForFunction(() => document.activeElement?.getAttribute("data-job-action-id") === "job_5");
+      await page.waitForFunction(
+        () =>
+          document.activeElement?.getAttribute("data-job-action-id") === "job_5"
+      );
       await page.keyboard.press("Tab");
-      await page.waitForFunction(() => document.activeElement?.getAttribute("aria-label") === "Close jobs board");
+      await page.waitForFunction(
+        () =>
+          document.activeElement?.getAttribute("aria-label") ===
+          "Close jobs board"
+      );
       await page.locator("[data-job-action-id='job_1']").focus();
       await page.keyboard.press("ArrowRight");
-      assert.equal(await page.evaluate(() => document.activeElement?.getAttribute("data-job-action-id")), "job_2");
+      assert.equal(
+        await page.evaluate(() =>
+          document.activeElement?.getAttribute("data-job-action-id")
+        ),
+        "job_2"
+      );
       await page.keyboard.press("ArrowDown");
-      assert.equal(await page.evaluate(() => document.activeElement?.getAttribute("data-job-action-id")), "job_5");
+      assert.equal(
+        await page.evaluate(() =>
+          document.activeElement?.getAttribute("data-job-action-id")
+        ),
+        "job_5"
+      );
       await page.keyboard.press("ArrowDown");
-      assert.equal(await page.evaluate(() => document.activeElement?.getAttribute("data-job-action-id")), "job_5");
+      assert.equal(
+        await page.evaluate(() =>
+          document.activeElement?.getAttribute("data-job-action-id")
+        ),
+        "job_5"
+      );
       await page.keyboard.press("Home");
-      assert.equal(await page.evaluate(() => document.activeElement?.getAttribute("data-job-action-id")), "job_1");
+      assert.equal(
+        await page.evaluate(() =>
+          document.activeElement?.getAttribute("data-job-action-id")
+        ),
+        "job_1"
+      );
       await page.keyboard.press("End");
-      assert.equal(await page.evaluate(() => document.activeElement?.getAttribute("data-job-action-id")), "job_5");
+      assert.equal(
+        await page.evaluate(() =>
+          document.activeElement?.getAttribute("data-job-action-id")
+        ),
+        "job_5"
+      );
       await page.keyboard.press("ArrowLeft");
-      assert.equal(await page.evaluate(() => document.activeElement?.getAttribute("data-job-action-id")), "job_4");
+      assert.equal(
+        await page.evaluate(() =>
+          document.activeElement?.getAttribute("data-job-action-id")
+        ),
+        "job_4"
+      );
       await page.keyboard.press("Enter");
       await page.keyboard.press("Home");
       await page.keyboard.press("Space");
 
       await page.keyboard.press("PageDown");
-      assert.equal(await page.getByRole("tab", { name: /My Jobs/ }).getAttribute("aria-selected"), "true");
-      await page.waitForFunction(() => document.activeElement?.getAttribute("data-job-action-id") === "job_active");
+      assert.equal(
+        await page
+          .getByRole("tab", { name: /My Jobs/ })
+          .getAttribute("aria-selected"),
+        "true"
+      );
+      await page.waitForFunction(
+        () =>
+          document.activeElement?.getAttribute("data-job-action-id") ===
+          "job_active"
+      );
       await page.keyboard.press("Enter");
       await page.keyboard.press("ArrowRight");
-      assert.equal(await page.evaluate(() => document.activeElement?.getAttribute("data-job-action-id")), "job_active");
+      assert.equal(
+        await page.evaluate(() =>
+          document.activeElement?.getAttribute("data-job-action-id")
+        ),
+        "job_active"
+      );
 
       await page.keyboard.press("PageDown");
-      await page.waitForFunction(() => document.activeElement?.getAttribute("data-job-action-id") === "job_posted_open");
+      await page.waitForFunction(
+        () =>
+          document.activeElement?.getAttribute("data-job-action-id") ===
+          "job_posted_open"
+      );
       await page.keyboard.press("Space");
 
       await page.keyboard.press("PageDown");
-      await page.waitForFunction(() => document.activeElement?.getAttribute("data-job-action-id")?.startsWith("template:"));
+      await page.waitForFunction(() =>
+        document.activeElement
+          ?.getAttribute("data-job-action-id")
+          ?.startsWith("template:")
+      );
       await page.keyboard.press("End");
-      await page.waitForFunction(() => document.activeElement?.getAttribute("data-job-action-id") === "create-posting");
+      await page.waitForFunction(
+        () =>
+          document.activeElement?.getAttribute("data-job-action-id") ===
+          "create-posting"
+      );
       await page.getByRole("button", { name: "Add item reward" }).click();
-      await page.getByRole("button", { name: "Add collectible reward" }).click();
+      await page
+        .getByRole("button", { name: "Add collectible reward" })
+        .click();
       await page.getByRole("button", { name: "Create job posting" }).focus();
       await page.keyboard.press("Enter");
 
       await page.keyboard.press("PageDown");
-      assert.equal(await page.getByRole("tab", { name: "Safety" }).getAttribute("aria-selected"), "true");
+      assert.equal(
+        await page
+          .getByRole("tab", { name: "Safety" })
+          .getAttribute("aria-selected"),
+        "true"
+      );
       await page.keyboard.press("ArrowDown");
-      await page.waitForFunction(() => document.activeElement?.getAttribute("aria-selected") === "true");
+      await page.waitForFunction(
+        () => document.activeElement?.getAttribute("aria-selected") === "true"
+      );
 
       await page.keyboard.press("Escape");
 
@@ -423,11 +784,13 @@ describe("HarthmereJobsBoardPanel keyboard support", () => {
       const postedPayload = JSON.parse(events[4].slice("post:".length));
       assert.equal(postedPayload.businessId, "business_repair");
       assert.equal(postedPayload.templateId, "repair_person_fixture_fix");
-      assert.deepEqual(postedPayload.rewardItems, [{ itemId: "road_ration", count: 1 }]);
-      assert.deepEqual(postedPayload.rewardCollectibleIds, ["economy:repair_maintenance_person"]);
-      assert.deepEqual(events.slice(5), [
-        "close",
+      assert.deepEqual(postedPayload.rewardItems, [
+        { itemId: "road_ration", count: 1 },
       ]);
+      assert.deepEqual(postedPayload.rewardCollectibleIds, [
+        "economy:repair_maintenance_person",
+      ]);
+      assert.deepEqual(events.slice(5), ["close"]);
       assert.deepEqual(browserErrors, []);
     } finally {
       await browser.close();
@@ -456,12 +819,17 @@ describe("HarthmereJobsBoardPanel keyboard support", () => {
       },
     };
 
-    const tempDir = await mkdtemp(path.join(tmpdir(), "biomes-jobs-board-container-"));
+    const tempDir = await mkdtemp(
+      path.join(tmpdir(), "biomes-jobs-board-container-")
+    );
     const entryPath = path.join(tempDir, "entry.tsx");
     const bundlePath = path.join(tempDir, "bundle.js");
     const tsconfigPath = path.join(tempDir, "tsconfig.json");
     const componentPath = path
-      .join(process.cwd(), "src/client/components/harthmere_jobs_board/HarthmereJobsBoardLiveContainer.tsx")
+      .join(
+        process.cwd(),
+        "src/client/components/harthmere_jobs_board/HarthmereJobsBoardLiveContainer.tsx"
+      )
       .replace(/\\/g, "/");
     const snapshotJson = JSON.stringify(snapshot);
 
@@ -489,7 +857,7 @@ describe("HarthmereJobsBoardPanel keyboard support", () => {
             onClose={() => window.__jobsBoardEvents.push("close")}
           />
         );
-      `,
+      `
     );
     await writeFile(
       tsconfigPath,
@@ -497,7 +865,7 @@ describe("HarthmereJobsBoardPanel keyboard support", () => {
         compilerOptions: {
           jsx: "react",
         },
-      }),
+      })
     );
 
     await build({
@@ -516,38 +884,77 @@ describe("HarthmereJobsBoardPanel keyboard support", () => {
       jsxFragment: "React.Fragment",
       loader: { ".tsx": "tsx", ".ts": "ts" },
       tsconfig: tsconfigPath,
-      plugins: [{
-        name: "stub-live-jobs-board-container-deps",
-        setup(pluginBuild) {
-          pluginBuild.onResolve({ filter: /business_customer_simulator$/ }, () => ({
-            path: "stub-business-customer-simulator",
-            namespace: "jobs-board-container-test",
-          }));
-          pluginBuild.onResolve({ filter: /harthmere_live_fetch$/ }, () => ({
-            path: "stub-harthmere-live-fetch",
-            namespace: "jobs-board-container-test",
-          }));
-          pluginBuild.onResolve({ filter: /@\/galois\/interface\/asset_paths$/ }, () => ({
-            path: "stub-galois-asset-paths",
-            namespace: "jobs-board-container-test",
-          }));
-          pluginBuild.onResolve({ filter: /^(async_hooks|perf_hooks|crypto|process|os)$/ }, (args) => ({
-            path: args.path,
-            namespace: "jobs-board-node-stub",
-          }));
-          pluginBuild.onResolve({ filter: /^@\// }, (args) => ({
-            path: resolveRepoAliasForEsbuild(args.path),
-          }));
-          pluginBuild.onResolve({ filter: /useHarthmereJobsBoard$/ }, () => ({
-            path: "stub-use-harthmere-jobs-board",
-            namespace: "jobs-board-container-test",
-          }));
-          pluginBuild.onResolve({ filter: /LocalDevHarthmereQuests$/ }, () => ({
-            path: "stub-local-dev-quests",
-            namespace: "jobs-board-container-test",
-          }));
-          pluginBuild.onLoad({ filter: /^stub-use-harthmere-jobs-board$/, namespace: "jobs-board-container-test" }, () => ({
-            contents: `
+      plugins: [
+        {
+          name: "stub-live-jobs-board-container-deps",
+          setup(pluginBuild) {
+            pluginBuild.onResolve(
+              { filter: /business_customer_simulator$/ },
+              () => ({
+                path: "stub-business-customer-simulator",
+                namespace: "jobs-board-container-test",
+              })
+            );
+            pluginBuild.onResolve(
+              { filter: /jobs_board_business_templates$/ },
+              () => ({
+                path: "stub-jobs-board-business-templates",
+                namespace: "jobs-board-container-test",
+              })
+            );
+            pluginBuild.onResolve(
+              { filter: /mmo_jobs_board_authority$/ },
+              () => ({
+                path: "stub-mmo-jobs-board-authority",
+                namespace: "jobs-board-container-test",
+              })
+            );
+            pluginBuild.onResolve({ filter: /harthmere_live_fetch$/ }, () => ({
+              path: "stub-harthmere-live-fetch",
+              namespace: "jobs-board-container-test",
+            }));
+            pluginBuild.onResolve(
+              { filter: /LocalDevHarthmereInventorySystem$/ },
+              () => ({
+                path: "stub-local-dev-harthmere-inventory-system",
+                namespace: "jobs-board-container-test",
+              })
+            );
+            pluginBuild.onResolve(
+              { filter: /@\/galois\/interface\/asset_paths$/ },
+              () => ({
+                path: "stub-galois-asset-paths",
+                namespace: "jobs-board-container-test",
+              })
+            );
+            pluginBuild.onResolve(
+              { filter: /^(async_hooks|perf_hooks|crypto|process|os)$/ },
+              (args) => ({
+                path: args.path,
+                namespace: "jobs-board-node-stub",
+              })
+            );
+            pluginBuild.onResolve({ filter: /^@\// }, (args) => ({
+              path: resolveRepoAliasForEsbuild(args.path),
+            }));
+            pluginBuild.onResolve({ filter: /useHarthmereJobsBoard$/ }, () => ({
+              path: "stub-use-harthmere-jobs-board",
+              namespace: "jobs-board-container-test",
+            }));
+            pluginBuild.onResolve(
+              { filter: /LocalDevHarthmereQuests$/ },
+              () => ({
+                path: "stub-local-dev-quests",
+                namespace: "jobs-board-container-test",
+              })
+            );
+            pluginBuild.onLoad(
+              {
+                filter: /^stub-use-harthmere-jobs-board$/,
+                namespace: "jobs-board-container-test",
+              },
+              () => ({
+                contents: `
               import * as React from "react";
               const snapshot = ${snapshotJson};
               export function useHarthmereJobsBoard() {
@@ -564,38 +971,102 @@ describe("HarthmereJobsBoardPanel keyboard support", () => {
                   : { state: undefined, loading: true, error: undefined, refresh: async () => {} };
               }
             `,
-            loader: "js",
-            resolveDir: process.cwd(),
-          }));
-          pluginBuild.onLoad({ filter: /^stub-local-dev-quests$/, namespace: "jobs-board-container-test" }, () => ({
-            contents: "export function completeHarthmereJobsBoardReadQuest() { return { changed: false, reason: 'test' }; }",
-            loader: "js",
-          }));
-          pluginBuild.onLoad({ filter: /^stub-business-customer-simulator$/, namespace: "jobs-board-container-test" }, () => ({
-            contents: "export const HARTHMERE_BUSINESS_OUTPOSTS = []; export function harthmereBusinessOutpostJobsBoardPosition() { return { x: 0, y: 0, z: 0 }; }",
-            loader: "js",
-          }));
-          pluginBuild.onLoad({ filter: /^stub-harthmere-live-fetch$/, namespace: "jobs-board-container-test" }, () => ({
-            contents: "export async function fetchHarthmereLiveWithTimeout() { return undefined; }",
-            loader: "js",
-          }));
-          pluginBuild.onLoad({ filter: /^stub-galois-asset-paths$/, namespace: "jobs-board-container-test" }, () => ({
-            contents: "export function resolveAssetUrlUntyped(path) { return String(path); }",
-            loader: "js",
-          }));
-          pluginBuild.onLoad({ filter: /.*/, namespace: "jobs-board-node-stub" }, (args) => ({
-            contents: nodeBuiltinStubForJobsBoardBrowser(args.path),
-            loader: "js",
-          }));
+                loader: "js",
+                resolveDir: process.cwd(),
+              })
+            );
+            pluginBuild.onLoad(
+              {
+                filter: /^stub-local-dev-quests$/,
+                namespace: "jobs-board-container-test",
+              },
+              () => ({
+                contents:
+                  "export function completeHarthmereJobsBoardReadQuest() { return { changed: false, reason: 'test' }; }",
+                loader: "js",
+              })
+            );
+            pluginBuild.onLoad(
+              {
+                filter: /^stub-business-customer-simulator$/,
+                namespace: "jobs-board-container-test",
+              },
+              () => ({
+                contents: jobsBoardBusinessCustomerSimulatorStub(),
+                loader: "js",
+              })
+            );
+            pluginBuild.onLoad(
+              {
+                filter: /^stub-jobs-board-business-templates$/,
+                namespace: "jobs-board-container-test",
+              },
+              () => ({
+                contents: jobsBoardBusinessTemplatesStub(),
+                loader: "js",
+              })
+            );
+            pluginBuild.onLoad(
+              {
+                filter: /^stub-mmo-jobs-board-authority$/,
+                namespace: "jobs-board-container-test",
+              },
+              () => ({
+                contents: jobsBoardMmoAuthorityStub(),
+                loader: "js",
+              })
+            );
+            pluginBuild.onLoad(
+              {
+                filter: /^stub-harthmere-live-fetch$/,
+                namespace: "jobs-board-container-test",
+              },
+              () => ({
+                contents: harthmereLiveFetchStub(),
+                loader: "js",
+              })
+            );
+            pluginBuild.onLoad(
+              {
+                filter: /^stub-local-dev-harthmere-inventory-system$/,
+                namespace: "jobs-board-container-test",
+              },
+              () => ({
+                contents: localDevHarthmereInventorySystemStub(),
+                loader: "js",
+              })
+            );
+            pluginBuild.onLoad(
+              {
+                filter: /^stub-galois-asset-paths$/,
+                namespace: "jobs-board-container-test",
+              },
+              () => ({
+                contents: galoisAssetPathsStub(),
+                loader: "js",
+              })
+            );
+            pluginBuild.onLoad(
+              { filter: /.*/, namespace: "jobs-board-node-stub" },
+              (args) => ({
+                contents: nodeBuiltinStubForJobsBoardBrowser(args.path),
+                loader: "js",
+              })
+            );
+          },
         },
-      }],
+      ],
     });
 
     const browser = await chromium.launch({ headless: true });
     try {
-      const page = await browser.newPage({ viewport: { width: 1200, height: 800 } });
+      const page = await browser.newPage({
+        viewport: { width: 1200, height: 800 },
+      });
       const browserErrors: string[] = [];
-      page.on("pageerror", (error) => browserErrors.push(error.stack ?? error.message));
+      page.on("pageerror", (error) =>
+        browserErrors.push(error.stack ?? error.message)
+      );
       page.on("console", (message) => {
         if (message.type() === "error") browserErrors.push(message.text());
       });
@@ -617,12 +1088,24 @@ describe("HarthmereJobsBoardPanel keyboard support", () => {
       assert.ok(events.includes("loading-render"));
       assert.ok(events.includes("ready-render"));
       assert.deepEqual(
-        browserErrors.filter((error) => /Rendered more hooks|hooks than during the previous render/i.test(error)),
-        [],
+        browserErrors.filter((error) =>
+          /Rendered more hooks|hooks than during the previous render/i.test(
+            error
+          )
+        ),
+        []
       );
 
-      assert.equal(await page.locator("[data-testid='harthmere-jobs-board-selector']").count(), 0);
-      assert.equal(await page.locator("h2").textContent(), "Harthmere Jobs Board");
+      assert.equal(
+        await page
+          .locator("[data-testid='harthmere-jobs-board-selector']")
+          .count(),
+        0
+      );
+      assert.equal(
+        await page.locator("h2").textContent(),
+        "Harthmere Jobs Board"
+      );
       assert.deepEqual(browserErrors, []);
     } finally {
       await browser.close();

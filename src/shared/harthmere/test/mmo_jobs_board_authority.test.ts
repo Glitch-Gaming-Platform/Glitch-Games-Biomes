@@ -235,6 +235,40 @@ describe("mmo_jobs_board_authority — posting, accepting, quest todos, and comp
     );
   });
 
+  it("accepts completion items from material storage when the backpack is empty", () => {
+    const posted = mutate(
+      defaultHarthmereJobsBoardState(NOW),
+      "create_job_posting",
+      postPayload()
+    );
+    const jobId = Object.keys(posted.jobsBoard.postings)[0];
+    const accepted = mutate(
+      posted.jobsBoard,
+      "accept_job",
+      { jobId },
+      {},
+      "seeker"
+    );
+
+    const questDone = mutate(
+      accepted.jobsBoard,
+      "complete_job_quest",
+      { jobId },
+      {
+        actorInventoryItems: {},
+        actorMaterialStorageItems: { repair_part: 2 },
+      },
+      "seeker"
+    );
+
+    assert.deepEqual(questDone.warnings, []);
+    assert.deepEqual(questDone.inventoryItemDeltas, { repair_part: -2 });
+    assert.equal(
+      Object.values(questDone.jobsBoard.todos)[0].status,
+      "completed"
+    );
+  });
+
   it("rejects self-acceptance, double-acceptance, missing turn-in items, and late jobs", () => {
     const posted = mutate(
       defaultHarthmereJobsBoardState(NOW),

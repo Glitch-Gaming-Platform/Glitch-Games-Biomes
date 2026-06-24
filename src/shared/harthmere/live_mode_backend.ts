@@ -2224,7 +2224,16 @@ function combinedBackpackAndMaterialStorageItems(
   state: HarthmereLiveModeBackendState
 ) {
   const items: Record<string, number> = { ...state.inventory.items };
-  for (const [itemId, count] of Object.entries(state.banking.materialStorage)) {
+  const rawMaterialStorage = state.banking.materialStorage as
+    | Record<string, number>
+    | { items?: Record<string, number> };
+  const materialStorageItems =
+    "items" in rawMaterialStorage &&
+    rawMaterialStorage.items &&
+    typeof rawMaterialStorage.items === "object"
+      ? rawMaterialStorage.items
+      : (rawMaterialStorage as Record<string, number>);
+  for (const [itemId, count] of Object.entries(materialStorageItems)) {
     const wholeCount = Math.trunc(Number(count) || 0);
     if (wholeCount <= 0) continue;
     items[itemId] = (items[itemId] ?? 0) + wholeCount;
@@ -2254,7 +2263,16 @@ function applyJobsBoardInventoryItemDelta(
     remaining -= fromBackpack;
   }
   if (remaining > 0) {
-    applyBankRecordDelta(state.banking.materialStorage, itemId, -remaining);
+    const rawMaterialStorage = state.banking.materialStorage as
+      | Record<string, number>
+      | { items?: Record<string, number> };
+    const materialStorageItems =
+      "items" in rawMaterialStorage &&
+      rawMaterialStorage.items &&
+      typeof rawMaterialStorage.items === "object"
+        ? rawMaterialStorage.items
+        : (rawMaterialStorage as Record<string, number>);
+    applyBankRecordDelta(materialStorageItems, itemId, -remaining);
     touchedModels.add("material_storage");
   }
 }
@@ -2310,7 +2328,9 @@ function isHarthmereNativeHarvestTreeSeed(
   envelope?: HarthmereLiveModeAuthorityEnvelope
 ) {
   const farmingKind =
-    envelope && (payloadString(envelope, "farmingKind") ?? payloadString(envelope, "plantKind"));
+    envelope &&
+    (payloadString(envelope, "farmingKind") ??
+      payloadString(envelope, "plantKind"));
   if (farmingKind === "tree") {
     return true;
   }
@@ -4861,7 +4881,9 @@ function allBuildingMaterialsComplete(
 // Building materials can arrive from the ECS inventory by Bikkie item id, or
 // from Harthmere material storage by local material symbol. Count both so the
 // full build flow matches what the player sees in inventory and storage UI.
-function buildingMaterialLookupKeys(line: BuildingSystemMaterialRequirementLine) {
+function buildingMaterialLookupKeys(
+  line: BuildingSystemMaterialRequirementLine
+) {
   return [line.itemId, line.material, line.bikkieName].filter(Boolean);
 }
 
@@ -6803,7 +6825,9 @@ export function reduceHarthmereLiveModeBackendState(
     );
     const pools = ensureCombatResourcePools(next);
     const cooldowns = splitCombatCooldowns(next.combat.cooldowns);
-    const knownAbilities = Array.from(knownHarthmereAbilityIds(next.classMagic));
+    const knownAbilities = Array.from(
+      knownHarthmereAbilityIds(next.classMagic)
+    );
     const loadoutAbilities = Object.values(next.classMagic.loadout).filter(
       Boolean
     ) as string[];
@@ -7953,6 +7977,7 @@ export function reduceHarthmereLiveModeBackendState(
       {
         actorGold: next.inventory.gold,
         actorInventoryItems: combinedBackpackAndMaterialStorageItems(next),
+        actorMaterialStorageItems: next.banking.materialStorage,
         actorCollectibles: next.collections.discovered,
         actorGuildId: next.guild.memberGuildId,
         actorPosition: snapshot.position,
@@ -10357,6 +10382,7 @@ export function reduceHarthmereLiveModeBackendState(
           {
             actorGold: next.inventory.gold,
             actorInventoryItems: combinedBackpackAndMaterialStorageItems(next),
+            actorMaterialStorageItems: next.banking.materialStorage,
             actorCollectibles: next.collections.discovered,
             actorGuildId: next.guild.memberGuildId,
             actorPosition,
@@ -10382,6 +10408,7 @@ export function reduceHarthmereLiveModeBackendState(
         {
           actorGold: next.inventory.gold,
           actorInventoryItems: combinedBackpackAndMaterialStorageItems(next),
+          actorMaterialStorageItems: next.banking.materialStorage,
           actorCollectibles: next.collections.discovered,
           actorGuildId: next.guild.memberGuildId,
           actorPosition,
@@ -10535,9 +10562,7 @@ export function reduceHarthmereLiveModeBackendState(
           } else {
             for (const markerId of Object.keys(next.building.inWorldMarkers)) {
               if (
-                markerId.startsWith(
-                  `jobs_board_exotic_deposit:${todo.todoId}:`
-                )
+                markerId.startsWith(`jobs_board_exotic_deposit:${todo.todoId}:`)
               ) {
                 delete next.building.inWorldMarkers[markerId];
               }
@@ -11202,9 +11227,9 @@ export function reduceHarthmereLiveModeBackendState(
               },
               {
                 actorGold: next.inventory.gold,
-                actorInventoryItems: combinedBackpackAndMaterialStorageItems(
-                  next
-                ),
+                actorInventoryItems:
+                  combinedBackpackAndMaterialStorageItems(next),
+                actorMaterialStorageItems: next.banking.materialStorage,
                 actorCollectibles: next.collections.discovered,
                 actorGuildId: next.guild.memberGuildId,
                 economy: next.economy.production,
@@ -11426,12 +11451,13 @@ export function reduceHarthmereLiveModeBackendState(
                 activatedAtMs: nowMs,
                 area: plot.area,
               };
-              const repairPlan = createBuildingSystemMuckClaimMaterializationPlan({
-                requestId: `${envelope.requestId}:muck_deed_repair`,
-                actorId: envelope.actorId,
-                plot,
-                activatedAtMs: nowMs,
-              });
+              const repairPlan =
+                createBuildingSystemMuckClaimMaterializationPlan({
+                  requestId: `${envelope.requestId}:muck_deed_repair`,
+                  actorId: envelope.actorId,
+                  plot,
+                  activatedAtMs: nowMs,
+                });
               for (const marker of repairPlan.inWorldMarkers ?? []) {
                 next.building.inWorldMarkers[marker.markerId] = marker;
               }
@@ -11446,15 +11472,14 @@ export function reduceHarthmereLiveModeBackendState(
                 activatedAtMs: nowMs,
                 area: plot.area,
               };
-              const repairPlan = createBuildingSystemSafeGroundMaterializationPlan(
-                {
+              const repairPlan =
+                createBuildingSystemSafeGroundMaterializationPlan({
                   requestId: `${envelope.requestId}:safe_deed_repair`,
                   actorId: envelope.actorId,
                   plot,
                   activatedAtMs: nowMs,
                   reason: "plot_claim_safe_ground",
-                }
-              );
+                });
               for (const marker of repairPlan.inWorldMarkers ?? []) {
                 next.building.inWorldMarkers[marker.markerId] = marker;
               }
@@ -11541,15 +11566,14 @@ export function reduceHarthmereLiveModeBackendState(
             activatedAtMs: nowMs,
             area: plot.area,
           };
-          const safeClaimPlan = createBuildingSystemSafeGroundMaterializationPlan(
-            {
+          const safeClaimPlan =
+            createBuildingSystemSafeGroundMaterializationPlan({
               requestId: `${envelope.requestId}:safe_deed`,
               actorId: envelope.actorId,
               plot,
               activatedAtMs: nowMs,
               reason: "plot_claim_safe_ground",
-            }
-          );
+            });
           for (const marker of safeClaimPlan.inWorldMarkers ?? []) {
             next.building.inWorldMarkers[marker.markerId] = marker;
           }
@@ -11791,7 +11815,9 @@ export function reduceHarthmereLiveModeBackendState(
           break;
         }
         if (next.property.owned[propertyId]) {
-          warnings.push("building_project_idempotent:property_already_completed");
+          warnings.push(
+            "building_project_idempotent:property_already_completed"
+          );
           touchedModels.add("property_building");
           break;
         }
@@ -11977,7 +12003,9 @@ export function reduceHarthmereLiveModeBackendState(
           touchedModels.add("building_rejection");
           break;
         }
-        for (const [itemId, delta] of Object.entries(materialRequest.itemDeltas)) {
+        for (const [itemId, delta] of Object.entries(
+          materialRequest.itemDeltas
+        )) {
           const needed = Math.abs(delta);
           const line = materialRequest.lines.find(
             (candidate) => candidate.itemId === itemId
@@ -12002,7 +12030,9 @@ export function reduceHarthmereLiveModeBackendState(
         }
 
         let consumedMaterialStorage = false;
-        for (const [itemId, delta] of Object.entries(materialRequest.itemDeltas)) {
+        for (const [itemId, delta] of Object.entries(
+          materialRequest.itemDeltas
+        )) {
           const needed = Math.abs(delta);
           const line = materialRequest.lines.find(
             (candidate) => candidate.itemId === itemId
@@ -13164,9 +13194,9 @@ export function reduceHarthmereLiveModeBackendState(
             } as any,
             {
               actorGold: next.inventory.gold,
-              actorInventoryItems: combinedBackpackAndMaterialStorageItems(
-                next
-              ),
+              actorInventoryItems:
+                combinedBackpackAndMaterialStorageItems(next),
+              actorMaterialStorageItems: next.banking.materialStorage,
               actorCollectibles: next.collections.discovered,
               actorGuildId: next.guild.memberGuildId,
               economy: next.economy.production,
@@ -13922,7 +13952,10 @@ export function reduceHarthmereLiveModeBackendState(
             break;
           }
           const yieldCount = Math.max(1, Math.trunc(seed.yieldCount || 1));
-          ensureLiveModeItemDefinition(seed.yieldItemId, buildInventorySnapshot());
+          ensureLiveModeItemDefinition(
+            seed.yieldItemId,
+            buildInventorySnapshot()
+          );
           if (
             wouldExceedCarryWeight(
               next.inventory.items,

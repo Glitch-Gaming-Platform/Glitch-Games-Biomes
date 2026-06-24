@@ -584,10 +584,11 @@ describe("live_mode API Redis persistence", () => {
 
     const playerKey = harthmereLiveModePlayerStateKey(ACTOR);
     const sharedWorldKey = harthmereLiveModeSharedWorldStateKey();
-    assert.deepEqual(
-      persisted.backendMutation?.touchedModels?.sort(),
-      ["building_state", "inventory_items", "quest_state"]
-    );
+    assert.deepEqual(persisted.backendMutation?.touchedModels?.sort(), [
+      "building_state",
+      "inventory_items",
+      "quest_state",
+    ]);
     assert.ok(persisted.questState, "read response should include questState");
     assert.ok(
       persisted.inventoryLootState,
@@ -975,16 +976,16 @@ describe("live_mode API Redis persistence", () => {
     );
     assert.equal(persisted.snapshotMode, "changed");
     assert.deepEqual(persisted.includedSnapshots?.sort(), [
+      "buildingState",
       "inventoryLootState",
       "jobsBoardState",
       "playerStatusState",
       "questState",
     ]);
     assert.equal(persisted.economyState, undefined);
-    assert.equal(
-      persisted.buildingState,
-      undefined,
-      "jobs-board accepts should not return the unrelated building snapshot"
+    assert.ok(
+      (persisted.buildingState as any)?.inWorldMarkers,
+      "accepted jobs should return the building-backed map marker snapshot"
     );
     const jobsBoardState = persisted.jobsBoardState as any;
     assert.ok(

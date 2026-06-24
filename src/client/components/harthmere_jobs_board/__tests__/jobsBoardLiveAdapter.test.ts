@@ -33,6 +33,37 @@ import {
 
 const NOW = 1_800_000_000_000;
 
+async function withGlitchInstallLocation<T>(
+  callback: () => Promise<T> | T
+): Promise<T> {
+  const globalAny = global as any;
+  const oldWindow = globalAny.window;
+  const oldCustomEvent = globalAny.CustomEvent;
+  globalAny.CustomEvent ??= class {
+    type: string;
+    detail: any;
+    constructor(type: string, init?: { detail?: any }) {
+      this.type = type;
+      this.detail = init?.detail;
+    }
+  };
+  globalAny.window = {
+    ...(oldWindow ?? {}),
+    location: {
+      ...(oldWindow?.location ?? {}),
+      href: "https://www.glitch.fun/games/test/play?install_id=test-install",
+      search: "?install_id=test-install",
+    },
+    dispatchEvent: oldWindow?.dispatchEvent ?? (() => true),
+  };
+  try {
+    return await callback();
+  } finally {
+    globalAny.window = oldWindow;
+    globalAny.CustomEvent = oldCustomEvent;
+  }
+}
+
 function sampleSnapshot(): HarthmereJobsBoardSnapshot {
   return normalizeHarthmereJobsBoardSnapshot({
     version: "harthmere-jobs-board-authority",
@@ -214,7 +245,9 @@ describe("Harthmere universal jobs board live adapter", () => {
         json: async () => ({ ok: true, jobsBoardState: sampleSnapshot() }),
       };
     }) as any;
-    const state = await fetchHarthmereJobsBoardState(fetchImpl);
+    const state = await withGlitchInstallLocation(() =>
+      fetchHarthmereJobsBoardState(fetchImpl)
+    );
     assert.equal(
       calls[0].url,
       "/api/harthmere/live_mode_jobs_board_state?install_id=test-install"
@@ -302,10 +335,12 @@ describe("Harthmere universal jobs board live adapter", () => {
         }),
       };
     }) as any;
-    await submitHarthmereJobsBoardMutation(
-      "accept_job",
-      { jobId: "job_1" },
-      { fetchImpl, requestId: "fixed_request" }
+    await withGlitchInstallLocation(() =>
+      submitHarthmereJobsBoardMutation(
+        "accept_job",
+        { jobId: "job_1" },
+        { fetchImpl, requestId: "fixed_request" }
+      )
     );
     assert.equal(
       calls[0].url,
@@ -461,10 +496,12 @@ describe("Harthmere universal jobs board live adapter", () => {
         }),
       };
     }) as any;
-    await submitHarthmereDailyTaskCompleted("jobs_board", {
-      fetchImpl,
-      requestId: "read_jobs_board",
-    });
+    await withGlitchInstallLocation(() =>
+      submitHarthmereDailyTaskCompleted("jobs_board", {
+        fetchImpl,
+        requestId: "read_jobs_board",
+      })
+    );
     assert.equal(
       calls[0].url,
       "/api/harthmere/live_mode?install_id=test-install"
