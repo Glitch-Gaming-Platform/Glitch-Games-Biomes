@@ -1192,3 +1192,90 @@ The client terrain grounder still exists as a final visual safety layer:
 Do not patch invisible, underground, or floating content with magic Y constants.
 Regenerate or inspect the production placement map instead, then wire every
 player-facing surface to the same resolved position.
+
+## 23. Mutable production hotfix layer
+
+The mutable hotfix layer is the fast production repair lane for issues that
+must be fixed and verified before the next image build. It is intentionally
+runtime-first: a hotfix can be applied through
+`/api/admin/mutable_hotfix`, persisted in Redis, and then automatically
+re-applied on process restart without rebuilding the Docker image.
+
+Enable it only on the revision that is being used for live repair:
+
+```bash
+GLITCH_MUTABLE_HOTFIX_ENABLED=1
+GLITCH_MUTABLE_HOTFIX_TOKEN=<shared-secret>
+```
+
+For emergency throwaway sessions, `GLITCH_MUTABLE_HOTFIX_OPEN=1` bypasses the
+token check. Prefer the token path even when moving quickly.
+
+Hotfix manifests are JSON:
+
+```json
+{
+  "version": "hotfix-v12",
+  "description": "Patch live mode health handling",
+  "operations": [
+    {
+      "type": "replace",
+      "path": ".next/server/chunks/5005.js",
+      "search": "old code",
+      "replace": "new code",
+      "expectCount": 1
+    },
+    {
+      "type": "exec",
+      "command": "node scripts/harthmere/live-smoke.cjs",
+      "timeoutMs": 30000
+    }
+  ]
+}
+```
+
+Supported operations:
+
+- `writeFile`: write text or `contentBase64` to any file path.
+- `replace`: literal or regex replacement with `expectCount`/`minCount`.
+- `deleteFile`: remove a file or directory.
+- `mkdir`: create directories.
+- `exec`: run a shell command in the container.
+- `eval`: run server-side JavaScript in the current process.
+- `clearRequireCache`: evict CommonJS modules by `path` or substring `match`.
+
+Apply and persist a hotfix:
+
+```bash
+curl -sS "$BASE_URL/api/admin/mutable_hotfix" \
+  -H "Content-Type: application/json" \
+  -H "X-Glitch-Mutable-Hotfix-Token: $GLITCH_MUTABLE_HOTFIX_TOKEN" \
+  -d '{"action":"apply_and_persist","manifest":{...}}'
+```
+
+Check status:
+
+```bash
+curl -sS "$BASE_URL/api/admin/mutable_hotfix" \
+  -H "X-Glitch-Mutable-Hotfix-Token: $GLITCH_MUTABLE_HOTFIX_TOKEN"
+```
+
+Reload the persisted Redis hotfix into the current process:
+
+```bash
+curl -sS "$BASE_URL/api/admin/mutable_hotfix" \
+  -H "Content-Type: application/json" \
+  -H "X-Glitch-Mutable-Hotfix-Token: $GLITCH_MUTABLE_HOTFIX_TOKEN" \
+  -d '{"action":"reload","force":true}'
+```
+
+The startup scripts run `scripts/glitch/apply-mutable-hotfix.ts` before
+launching web/stack processes, which is what makes the patch survive container
+restarts. For an already-running process, call the API with `action:"reload"`
+or `action:"apply_and_persist"`; for multiple replicas, invoke the endpoint on
+each live replica or restart the revision so every process replays the same
+Redis-persisted manifest.
+
+After the live fix is verified, always back-port the same change into source,
+add or update tests, and remove the Redis hotfix once a normal deployment
+contains the fix.

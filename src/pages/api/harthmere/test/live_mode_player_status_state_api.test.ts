@@ -131,15 +131,13 @@ describe("live_mode_player_status_state API route integration", () => {
     });
     const persisted = JSON.parse(stored);
 
+    const stamina = snapshot.combat.resources.stamina ?? Number.NaN;
+    assert.ok(Number.isFinite(stamina));
     assert.ok(
-      snapshot.combat.resources.stamina < 108 &&
-        snapshot.combat.resources.stamina > 107,
-      `expected a gradual stamina drain from 108, got ${snapshot.combat.resources.stamina}`
+      stamina < 108 && stamina > 107,
+      `expected a gradual stamina drain from 108, got ${stamina}`
     );
-    assert.equal(
-      persisted.combat.resources.stamina,
-      snapshot.combat.resources.stamina
-    );
+    assert.equal(persisted.combat.resources.stamina, stamina);
     assert.equal(persisted.combat.lastStaminaTickMs, NOW_MS);
     assert.equal(snapshot.backendAuthority.staminaPersisted, true);
   });
@@ -246,15 +244,13 @@ describe("live_mode_player_status_state API route integration", () => {
     });
     const persisted = JSON.parse(stored);
 
+    const stamina = snapshot.combat.resources.stamina ?? Number.NaN;
+    assert.ok(Number.isFinite(stamina));
     assert.ok(
-      snapshot.combat.resources.stamina < 200 &&
-        snapshot.combat.resources.stamina > 199,
-      `expected custom stamina pool to drain gradually, got ${snapshot.combat.resources.stamina}`
+      stamina < 200 && stamina > 199,
+      `expected custom stamina pool to drain gradually, got ${stamina}`
     );
-    assert.equal(
-      persisted.combat.resources.stamina,
-      snapshot.combat.resources.stamina
-    );
+    assert.equal(persisted.combat.resources.stamina, stamina);
     assert.equal(snapshot.combat.maxResources.stamina, 200);
     assert.equal(snapshot.combat.deathState, "alive");
   });

@@ -42,6 +42,7 @@ describe("building material source routing", () => {
         itemId: "rough_stone",
         vendorId: "black_anvil_smithy",
         count: 1,
+        nowMs: 1_800_000_000_000,
       },
       {
         snapshot: {

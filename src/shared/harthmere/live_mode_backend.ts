@@ -527,7 +527,7 @@ function liveEntitySafeRestingBasePosition(
   target: HarthmereLiveCombatEntitySnapshot
 ) {
   const current = target.position;
-  const home = target.homePosition;
+  const home = target.homePosition ?? current;
   const highestGroundY = Math.max(
     Number.isFinite(Number(current?.y)) ? Number(current.y) : -Infinity,
     Number.isFinite(Number(home?.y)) ? Number(home.y) : -Infinity,
@@ -1433,7 +1433,7 @@ function harthmereJobsBoardTodoFallbackPosition(
 ) {
   const board =
     state.jobsBoard.boards[todo.boardId] ??
-    state.jobsBoard.boards[state.jobsBoard.defaultBoardId] ??
+    state.jobsBoard.boards[(state.jobsBoard as any).defaultBoardId] ??
     state.jobsBoard.boards[HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID];
   return board
     ? ([board.location.x, board.location.y + 1, board.location.z] as [
@@ -1454,7 +1454,7 @@ function harthmereJobsBoardTodoBoardMarkerId(
 ) {
   const board =
     state.jobsBoard.boards[todo.boardId] ??
-    state.jobsBoard.boards[state.jobsBoard.defaultBoardId] ??
+    state.jobsBoard.boards[(state.jobsBoard as any).defaultBoardId] ??
     state.jobsBoard.boards[HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID];
   return (
     board?.markerId ??

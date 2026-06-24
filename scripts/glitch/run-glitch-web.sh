@@ -31,6 +31,17 @@ export GLITCH_DISABLE_GCP="${GLITCH_DISABLE_GCP:-1}"
 export GLITCH_SKIP_GOOGLE_SECRETS="${GLITCH_SKIP_GOOGLE_SECRETS:-1}"
 export GLITCH_DISABLE_DISCORD="${GLITCH_DISABLE_DISCORD:-1}"
 
+apply_mutable_hotfix() {
+  if [ "${GLITCH_MUTABLE_HOTFIX_ENABLED:-0}" != "1" ] && [ "${GLITCH_MUTABLE_HOTFIX_OPEN:-0}" != "1" ]; then
+    return 0
+  fi
+
+  echo "Applying Glitch mutable hotfix before web startup."
+  node -r ts-node/register -r tsconfig-paths/register scripts/glitch/apply-mutable-hotfix.ts
+}
+
+apply_mutable_hotfix
+
 start_next() {
   if [ -x node_modules/.bin/next ]; then
     node_modules/.bin/next start -H "$HOST" -p "$PORT"

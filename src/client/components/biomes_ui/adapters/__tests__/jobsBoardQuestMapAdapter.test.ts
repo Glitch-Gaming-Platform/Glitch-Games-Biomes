@@ -192,7 +192,7 @@ describe("BiomesUI jobs board quest map adapter", () => {
         targetName: "Clinic lockbox",
       },
     ] as any;
-    snapshot.myAcceptedJobs[0].mapMarkerId = "clinic_lockbox_marker";
+    (snapshot.myAcceptedJobs[0] as any).mapMarkerId = "clinic_lockbox_marker";
     snapshot.myTodos[0] = {
       ...snapshot.myTodos[0],
       title: "Deliver Medicine",
@@ -210,10 +210,12 @@ describe("BiomesUI jobs board quest map adapter", () => {
 
     const quests = jobsBoardTrackableQuestsForBiomesUI(snapshot, 1000);
     assert.equal(quests.length, 1);
-    assert.equal(quests[0].status, "active");
-    assert.equal(quests[0].firstMarkerId, "jobs_board_marker:harthmere_job_todo_7");
-    assert.equal(quests[0].itemSource, undefined);
-    assert.ok(quests[0].objective.includes("Return to the jobs board"));
+    const quest = quests[0];
+    assert.ok(quest);
+    assert.equal(quest.status, "active");
+    assert.equal(quest.firstMarkerId, "jobs_board_marker:harthmere_job_todo_7");
+    assert.equal(quest.itemSource, undefined);
+    assert.ok((quest.objective ?? "").includes("Return to the jobs board"));
 
     const steps = activeJobsBoardMissionStepsForBiomesUI(snapshot, 1000);
     assert.equal(steps.length, 1);

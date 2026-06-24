@@ -443,6 +443,17 @@ ensure_snapshot_redis_populated() {
 
 ensure_snapshot_redis_populated
 
+apply_mutable_hotfix() {
+  if [ "${GLITCH_MUTABLE_HOTFIX_ENABLED:-0}" != "1" ] && [ "${GLITCH_MUTABLE_HOTFIX_OPEN:-0}" != "1" ]; then
+    return 0
+  fi
+
+  log "Applying Glitch mutable hotfix before stack startup."
+  node -r ts-node/register -r tsconfig-paths/register "$APP_ROOT/scripts/glitch/apply-mutable-hotfix.ts"
+}
+
+apply_mutable_hotfix
+
 log "Redis preflight host=${REDIS_HOST:-unset} port=${REDIS_PORT:-unset} mode=$GLITCH_REDIS_MODE notifier=$DISTRIBUTED_NOTIFIER_KIND"
 log "Glitch local game stack"
 log "  web: $WEB_BASE_PORT -> container app target 3000"
