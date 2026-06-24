@@ -409,6 +409,19 @@ ok(
   "production workflow saves refreshed Buildx cache after the build step"
 );
 ok(
+  deployWorkflow.includes("Free runner disk before checkout and build") &&
+    deployWorkflow.includes("Prune Docker after image push") &&
+    deployWorkflow.includes("MAX_DOCKER_LAYER_CACHE_MB") &&
+    deployWorkflow.includes(
+      "DOCKER_BUILD_CACHE_TO: type=local,dest=/tmp/.buildx-cache-new,mode=min"
+    ) &&
+    deployWorkflow.includes("${{ runner.os }}-buildx-min-") &&
+    !deployWorkflow.includes("${{ runner.os }}-buildx-${{") &&
+    deployWorkflow.includes("cache_size_mb") &&
+    deployWorkflow.includes("above ${MAX_DOCKER_LAYER_CACHE_MB}MB"),
+  "production workflow keeps GitHub runner disk usage bounded during Docker deploys"
+);
+ok(
   script.includes("reset_build_outputs_preserving_caches") &&
     !script.includes("rm -rf .next/cache node_modules/.cache/webpack"),
   "source artifact build keeps restored compiler caches while clearing generated outputs"

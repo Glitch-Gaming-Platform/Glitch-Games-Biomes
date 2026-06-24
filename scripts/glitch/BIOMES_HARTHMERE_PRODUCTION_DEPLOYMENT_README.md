@@ -131,6 +131,14 @@ still be slow because it has to populate those caches; later runs should reuse
 dependency, compiler, asset, and image layers when the lockfile, build
 configuration, Dockerfile layers, and copied assets have not changed.
 
+The GitHub-hosted runner disk is finite, so the production workflow frees large
+preinstalled SDK folders before checkout, exports only a minimal Buildx cache,
+uses a `buildx-min` cache namespace so old max-size caches are not restored,
+prunes Docker after the image push, and refuses to save a Docker layer cache
+larger than `MAX_DOCKER_LAYER_CACHE_MB`. This prevents failures such as
+`No space left on device` while the runner is writing its diagnostic logs or
+archiving caches.
+
 The shared CI cache actions follow the same pattern: LFS saves after a clean
 `git lfs pull`, pip saves after the virtualenv install, Bazel saves after the
 dependency fetch, and eslint restores before lint but saves in the calling
@@ -982,6 +990,24 @@ If Docker cannot prune because BuildKit metadata is corrupted, use Docker Deskto
 ```text
 Troubleshoot -> Clean / Purge data
 ```
+
+### Problem: GitHub Actions production deploy fails with `No space left on device`
+
+Cause:
+
+The hosted runner filled its local disk while building Docker layers or saving a
+large Buildx cache. The final symptom can appear in the Actions runner itself,
+for example while writing `_diag/Worker_*.log`.
+
+Fix:
+
+Keep `.github/workflows/azure-production-deploy.yml` on the bounded-cache path:
+
+- `Free runner disk before checkout and build` removes unused hosted-runner SDKs.
+- `DOCKER_BUILD_CACHE_TO` uses `mode=min`, not `mode=max`.
+- Docker cache keys use the `buildx-min` namespace so old max-size caches are not restored.
+- `Prune Docker after image push` clears duplicate builder/image storage before cache saves.
+- `MAX_DOCKER_LAYER_CACHE_MB` caps the saved Buildx cache; oversized caches are deleted instead of archived.
 
 ---
 

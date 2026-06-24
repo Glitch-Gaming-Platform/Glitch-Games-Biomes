@@ -36,7 +36,8 @@ env:
   GLITCH_TITLE_ID: 42de534c-600f-4228-af9e-b69faef94cce
   GLITCH_API_BASE_URL: https://api.glitch.fun/api
   DOCKER_BUILD_CACHE_FROM: type=local,src=/tmp/.buildx-cache
-  DOCKER_BUILD_CACHE_TO: type=local,dest=/tmp/.buildx-cache-new,mode=max
+  DOCKER_BUILD_CACHE_TO: type=local,dest=/tmp/.buildx-cache-new,mode=min
+  MAX_DOCKER_LAYER_CACHE_MB: "4096"
   HARTHMERE_SKIP_WORLD_SYNC_RECONCILIATION: "1"
   ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: "true"
 
@@ -49,6 +50,34 @@ jobs:
     environment: production
 
     steps:
+      - name: Free runner disk before checkout and build
+        run: |
+          set -euo pipefail
+          echo "::group::Disk before cleanup"
+          df -h
+          sudo du -sh \
+            /usr/local/lib/android \
+            /usr/share/dotnet \
+            /usr/share/swift \
+            /usr/local/share/boost \
+            /opt/ghc \
+            /opt/hostedtoolcache/CodeQL 2>/dev/null || true
+          echo "::endgroup::"
+
+          sudo rm -rf \
+            /usr/local/lib/android \
+            /usr/share/dotnet \
+            /usr/share/swift \
+            /usr/local/share/boost \
+            /opt/ghc \
+            /opt/hostedtoolcache/CodeQL
+          docker system prune -af --volumes || true
+          rm -rf /tmp/.buildx-cache-new
+
+          echo "::group::Disk after cleanup"
+          df -h
+          echo "::endgroup::"
+
       - name: Checkout source
         uses: actions/checkout@v7
 
@@ -89,10 +118,10 @@ jobs:
         uses: actions/cache/restore@v5
         with:
           path: /tmp/.buildx-cache
-          key: ${{ runner.os }}-buildx-${{ hashFiles('Dockerfile.biomes', 'Dockerfile', 'scripts/glitch/deploy-production-local-redis-smoke.sh', 'yarn.lock') }}-${{ github.sha }}
+          key: ${{ runner.os }}-buildx-min-${{ hashFiles('Dockerfile.biomes', 'Dockerfile', 'scripts/glitch/deploy-production-local-redis-smoke.sh', 'yarn.lock') }}-${{ github.sha }}
           restore-keys: |
-            ${{ runner.os }}-buildx-${{ hashFiles('Dockerfile.biomes', 'Dockerfile', 'scripts/glitch/deploy-production-local-redis-smoke.sh', 'yarn.lock') }}-
-            ${{ runner.os }}-buildx-
+            ${{ runner.os }}-buildx-min-${{ hashFiles('Dockerfile.biomes', 'Dockerfile', 'scripts/glitch/deploy-production-local-redis-smoke.sh', 'yarn.lock') }}-
+            ${{ runner.os }}-buildx-min-
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -135,6 +164,15 @@ jobs:
           fi
           scripts/glitch/deploy-production-local-redis-smoke.sh --push --tag "$TAG"
 
+      - name: Prune Docker after image push
+        if: always()
+        run: |
+          set -euo pipefail
+          docker buildx prune -af || true
+          docker builder prune -af || true
+          docker system prune -af --volumes || true
+          df -h
+
       - name: Promote refreshed Docker layer cache
         id: promote-buildx-cache
         if: always()
@@ -145,10 +183,20 @@ jobs:
             mv /tmp/.buildx-cache-new /tmp/.buildx-cache
           fi
           if [ -d /tmp/.buildx-cache ]; then
-            echo "cache_present=true" >> "$GITHUB_OUTPUT"
+            cache_size_mb="$(du -sm /tmp/.buildx-cache | awk '{print $1}')"
+            echo "cache_size_mb=$cache_size_mb" >> "$GITHUB_OUTPUT"
+            if [ "$cache_size_mb" -gt "$MAX_DOCKER_LAYER_CACHE_MB" ]; then
+              echo "::warning::Docker layer cache is ${cache_size_mb}MB, above ${MAX_DOCKER_LAYER_CACHE_MB}MB; deleting it to keep the runner disk healthy."
+              rm -rf /tmp/.buildx-cache
+              echo "cache_present=false" >> "$GITHUB_OUTPUT"
+            else
+              echo "cache_present=true" >> "$GITHUB_OUTPUT"
+            fi
           else
+            echo "cache_size_mb=0" >> "$GITHUB_OUTPUT"
             echo "cache_present=false" >> "$GITHUB_OUTPUT"
           fi
+          df -h
 
       - name: Check refreshed production asset cache
         id: refreshed-production-asset-cache
@@ -198,4 +246,4 @@ jobs:
         uses: actions/cache/save@v5
         with:
           path: /tmp/.buildx-cache
-          key: ${{ runner.os }}-buildx-${{ hashFiles('Dockerfile.biomes', 'Dockerfile', 'scripts/glitch/deploy-production-local-redis-smoke.sh', 'yarn.lock') }}-${{ github.sha }}
+          key: ${{ runner.os }}-buildx-min-${{ hashFiles('Dockerfile.biomes', 'Dockerfile', 'scripts/glitch/deploy-production-local-redis-smoke.sh', 'yarn.lock') }}-${{ github.sha }}
