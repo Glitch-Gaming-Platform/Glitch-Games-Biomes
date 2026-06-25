@@ -148,7 +148,7 @@ describe("live_mode_player_status_state API route integration", () => {
     backend.combat.maxResources.stamina = 108;
     backend.combat.lastStaminaTickMs = NOW_MS - 10_000;
     backend.updatedAtMs = NOW_MS - 10_000;
-    backend.banking.materialStorage = { iron_ore: 1_400 };
+    backend.banking.materialStorage = { iron_ore: 20 };
     let stored = JSON.stringify(backend);
     const redis = {
       primary: {
@@ -255,7 +255,7 @@ describe("live_mode_player_status_state API route integration", () => {
     assert.equal(snapshot.combat.deathState, "alive");
   });
 
-  it("does not mark live player status dead when active status polling drains stamina to zero", async () => {
+  it("marks live player status dead when active status polling drains stamina to zero", async () => {
     const backend = defaultHarthmereLiveModeBackendState(ACTOR, NOW_MS);
     backend.combat.hp = 80;
     backend.combat.resources.stamina = 0.1;
@@ -280,17 +280,55 @@ describe("live_mode_player_status_state API route integration", () => {
     });
     const persisted = JSON.parse(stored);
 
-    assert.equal(snapshot.combat.hp, 80);
-    assert.equal(snapshot.combat.deathState, "alive");
+    assert.equal(snapshot.combat.hp, 0);
+    assert.equal(snapshot.combat.deathState, "dead");
     assert.equal(snapshot.combat.resources.stamina, 0);
-    assert.equal(persisted.combat.hp, 80);
-    assert.equal(persisted.combat.deathState, "alive");
+    assert.equal(persisted.combat.hp, 0);
+    assert.equal(persisted.combat.deathState, "dead");
     assert.equal(persisted.combat.resources.stamina, 0);
-    assert.equal(persisted.combat.deadFromStaminaAtMs, undefined);
-    assert.equal(Object.keys(persisted.combat.deathRecords).length, 0);
+    assert.equal(persisted.combat.deadFromStaminaAtMs, NOW_MS);
+    assert.ok(
+      Object.values(persisted.combat.deathRecords).some(
+        (record: any) => record.cause === "stamina_depleted"
+      )
+    );
   });
 
-  it("repairs stale stamina deaths created by older status polling", async () => {
+  it("marks displayed-zero fractional stamina as dead on status polling", async () => {
+    const backend = defaultHarthmereLiveModeBackendState(ACTOR, NOW_MS);
+    backend.combat.hp = 80;
+    backend.combat.resources.stamina = 0.1;
+    backend.combat.maxResources.stamina = 100;
+    backend.combat.lastStaminaTickMs = NOW_MS;
+    backend.updatedAtMs = NOW_MS;
+    let stored = JSON.stringify(backend);
+    const redis = {
+      primary: {
+        get: async () => stored,
+        set: async (_key: string, value: string) => {
+          stored = value;
+        },
+      },
+    };
+
+    const snapshot = await readHarthmereLiveModePlayerStatusStateForActor({
+      redis,
+      actorId: ACTOR,
+      nowMs: NOW_MS,
+      gameplayActive: true,
+    });
+    const persisted = JSON.parse(stored);
+
+    assert.equal(snapshot.combat.hp, 0);
+    assert.equal(snapshot.combat.deathState, "dead");
+    assert.equal(snapshot.combat.resources.stamina, 0);
+    assert.equal(persisted.combat.hp, 0);
+    assert.equal(persisted.combat.deathState, "dead");
+    assert.equal(persisted.combat.resources.stamina, 0);
+    assert.equal(persisted.combat.deadFromStaminaAtMs, NOW_MS);
+  });
+
+  it("preserves stamina deaths created by status polling", async () => {
     const backend = defaultHarthmereLiveModeBackendState(ACTOR, NOW_MS);
     const deadAtMs = NOW_MS - 60_000;
     backend.combat.hp = 0;
@@ -325,19 +363,13 @@ describe("live_mode_player_status_state API route integration", () => {
     });
     const persisted = JSON.parse(stored);
 
-    assert.equal(snapshot.combat.hp, 100);
-    assert.equal(snapshot.combat.deathState, "alive");
-    assert.equal(
-      snapshot.combat.resources.stamina,
-      snapshot.combat.maxResources.stamina
-    );
-    assert.equal(persisted.combat.hp, 100);
-    assert.equal(persisted.combat.deathState, "alive");
-    assert.equal(
-      persisted.combat.resources.stamina,
-      persisted.combat.maxResources.stamina
-    );
-    assert.equal(persisted.combat.deadFromStaminaAtMs, undefined);
+    assert.equal(snapshot.combat.hp, 0);
+    assert.equal(snapshot.combat.deathState, "dead");
+    assert.equal(snapshot.combat.resources.stamina, 0);
+    assert.equal(persisted.combat.hp, 0);
+    assert.equal(persisted.combat.deathState, "dead");
+    assert.equal(persisted.combat.resources.stamina, 0);
+    assert.equal(persisted.combat.deadFromStaminaAtMs, deadAtMs);
   });
 
   it("persists zero-health alive snapshots as real deaths for the respawn overlay", async () => {

@@ -14,6 +14,7 @@ import type {
   FarmingFoodInterfaceAction,
   FarmingFoodInterfaceModel,
 } from "../adapters/farmingFoodInterfaceAdapter";
+import { biomesUIStaminaWarningLevelForTest } from "../staminaWarning";
 
 export type InventoryContainerKey =
   | "backpack"
@@ -37,6 +38,7 @@ export interface InventoryUiItem {
   quality?: "common" | "uncommon" | "rare" | "epic" | "legendary" | "quest";
   category?: string;
   description?: string;
+  weight?: { unit: number; total: number };
   durability?: { current: number; max: number };
   equipSlot?: string;
   ref?: InventoryUiRef;
@@ -809,6 +811,16 @@ export const InventoryTab: React.FunctionComponent<{
             {selectedItem.description ? (
               <p style={mutedTextStyle}>{selectedItem.description}</p>
             ) : null}
+            {selectedItem.weight ? (
+              <p style={mutedTextStyle}>
+                Weight {formatInventoryWeight(selectedItem.weight.total)}
+                {selectedItem.count && selectedItem.count > 1
+                  ? ` total · ${formatInventoryWeight(
+                      selectedItem.weight.unit
+                    )} each`
+                  : ""}
+              </p>
+            ) : null}
             {selectedItem.storageLocation &&
             selectedItem.storageLocation !== selectedItem.source ? (
               <p style={mutedTextStyle}>
@@ -1052,9 +1064,16 @@ function isInventoryImageIcon(icon: string | undefined) {
 }
 
 function inventoryTooltipLabel(item: InventoryUiItem) {
-  return item.count && item.count > 1
-    ? `${item.label} x${item.count}`
-    : item.label;
+  const stackLabel =
+    item.count && item.count > 1 ? `${item.label} x${item.count}` : item.label;
+  return item.weight
+    ? `${stackLabel} · ${formatInventoryWeight(item.weight.total)}`
+    : stackLabel;
+}
+
+function formatInventoryWeight(weight: number) {
+  const safeWeight = Math.max(0, Number(weight) || 0);
+  return `${safeWeight.toFixed(safeWeight > 0 && safeWeight < 1 ? 2 : 1)} lb`;
 }
 
 function renderInventoryIcon(item: InventoryUiItem): React.ReactNode {
@@ -1207,6 +1226,11 @@ const FarmingFoodSection: React.FunctionComponent<{
     0,
     Math.min(100, (model.stamina / Math.max(1, model.maxStamina)) * 100)
   );
+  const staminaWarning = biomesUIStaminaWarningLevelForTest(
+    model.stamina,
+    model.maxStamina
+  );
+  const staminaWarns = staminaWarning !== "none";
   const visibleActions = model.actions.filter(
     (action) =>
       action.id !== "forage_food" ||
@@ -1220,13 +1244,24 @@ const FarmingFoodSection: React.FunctionComponent<{
       <h3 style={{ ...titleStyle, marginBottom: 8 }}>Food & Farm</h3>
       <div
         aria-label={`Stamina ${model.stamina} of ${model.maxStamina}`}
+        data-stamina-warning={staminaWarns ? staminaWarning : undefined}
         style={{
           height: 8,
           overflow: "hidden",
           borderRadius: 4,
-          border: "1px solid var(--biomes-edge-cyan-soft)",
-          background: "rgba(0,0,0,0.35)",
+          border: staminaWarns
+            ? "1px solid rgba(255, 82, 82, 0.78)"
+            : "1px solid var(--biomes-edge-cyan-soft)",
+          background: staminaWarns ? "rgba(70, 0, 0, 0.46)" : "rgba(0,0,0,0.35)",
           marginBottom: 8,
+          boxShadow: staminaWarns
+            ? "0 0 14px rgba(255, 54, 54, 0.62)"
+            : undefined,
+          animation: staminaWarns
+            ? `biomes-ui-stamina-warning-pulse ${
+                staminaWarning === "critical" ? "0.58s" : "1.05s"
+              } ease-in-out infinite`
+            : undefined,
         }}
       >
         <span
@@ -1234,7 +1269,9 @@ const FarmingFoodSection: React.FunctionComponent<{
             display: "block",
             height: "100%",
             width: `${staminaPct}%`,
-            background: "linear-gradient(90deg, #1f9d72, #d9e76c)",
+            background: staminaWarns
+              ? "linear-gradient(90deg, #ff2e4f, #ff744a, #ffc14d)"
+              : "linear-gradient(90deg, #1f9d72, #d9e76c)",
           }}
         />
       </div>

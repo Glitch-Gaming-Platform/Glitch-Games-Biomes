@@ -165,7 +165,10 @@ import {
   HARTHMERE_FOOD_DEFINITIONS,
   HARTHMERE_SEED_DEFINITIONS,
 } from "@/shared/harthmere/mmo_farming_food_stamina";
+import { harthmereItemUnitWeight } from "@/shared/harthmere/mmo_carry_weight";
 import { HARTHMERE_MEDICAL_ITEM_DEFINITIONS } from "@/shared/harthmere/mmo_medical_health";
+import { anItem } from "@/shared/game/item";
+import { safeParseBiomesId } from "@/shared/ids";
 import { HARTHMERE_LOCAL_DEV_ITEM_USE_EVENT } from "@/shared/harthmere/snapshot_grove_trigger_contract";
 import {
   buildFarmingFoodInterfaceModelForTest,
@@ -476,6 +479,7 @@ function localHarthmereBackpackItemToUiItem(
     quality: item.bound ? "quest" : "common",
     category,
     description: display?.description ?? "Prepared for the active tutorial.",
+    weight: inventoryUiItemWeight(itemId, item.quantity ?? 1, category),
     ref: {
       kind: "item",
       idx: index,
@@ -510,6 +514,12 @@ function localHarthmereHotbarItemToUiItem(
     quality: "common",
     category: harthmereDisplayCategoryForBiomesUI(display.category, equipSlot),
     description: display.description,
+    weight: inventoryUiItemWeight(
+      itemId,
+      1,
+      harthmereDisplayCategoryForBiomesUI(display.category, equipSlot),
+      display.name
+    ),
     equipSlot,
     ref: {
       kind: "hotbar",
@@ -543,6 +553,12 @@ function localHarthmereEquipmentItemToUiItem(
     quality: item.bound ? "quest" : "common",
     category: harthmereDisplayCategoryForBiomesUI(display?.category, equipSlot),
     description: display?.description ?? "Equipped from your Harthmere pack.",
+    weight: inventoryUiItemWeight(
+      itemId,
+      1,
+      harthmereDisplayCategoryForBiomesUI(display?.category, equipSlot),
+      display?.name
+    ),
     equipSlot,
     ref: {
       kind: "wearable",
@@ -562,8 +578,15 @@ function localHarthmereEquipmentItemToUiItem(
 function isLocalHarthmereConsumableUseItem(itemId: string) {
   return (
     getHarthmereItemDisplay(itemId)?.canUse === true ||
-    !!HARTHMERE_FOOD_DEFINITIONS[itemId] ||
+    isHarthmereFoodItemPlayerEdible(itemId) ||
     !!HARTHMERE_MEDICAL_ITEM_DEFINITIONS[itemId]
+  );
+}
+
+function isHarthmereFoodItemPlayerEdible(itemId: string) {
+  const food = HARTHMERE_FOOD_DEFINITIONS[itemId];
+  return Boolean(
+    food && food.edible !== false && Number(food.staminaRestore) > 0
   );
 }
 
@@ -635,16 +658,33 @@ function itemDurability(
   return { current, max };
 }
 
+function inventoryUiItemWeight(
+  itemId: string,
+  count = 1,
+  category?: string,
+  label?: string
+): InventoryUiItem["weight"] {
+  const unit = harthmereItemUnitWeight(itemId, {
+    category,
+    displayName: label,
+  });
+  return {
+    unit,
+    total: unit * Math.max(1, Math.trunc(Number(count) || 1)),
+  };
+}
+
 function itemWeight(slot: any): number {
   const item = slot?.item ?? slot;
   const explicit = Number(item?.weight ?? item?.carryWeight ?? item?.mass);
   if (Number.isFinite(explicit) && explicit >= 0) return explicit;
-  const category = inferInventoryCategory(item);
-  if (category === "materials" || category.includes("material")) return 2;
-  if (category === "tools" || category === "gear") return 5;
-  if (category === "consumables") return 1;
-  if (category === "quest") return 0.5;
-  return 1;
+  return harthmereItemUnitWeight(
+    String(item?.id ?? item?.itemId ?? item?.name ?? ""),
+    {
+      category: inferInventoryCategory(item),
+      displayName: item?.displayName ?? item?.name ?? item?.label,
+    }
+  );
 }
 
 function isCurrencySlot(entry: any): boolean {
@@ -692,6 +732,7 @@ function slotToInventoryUiItem(
     quality: base.quality as InventoryUiItem["quality"],
     category,
     description: display?.description ?? itemDescription(item),
+    weight: inventoryUiItemWeight(base.id, base.count ?? 1, category, base.label),
     durability: itemDurability(item),
     equipSlot,
     ref,
@@ -1052,10 +1093,42 @@ async function fetchFarmingFoodState(): Promise<any | undefined> {
 
 function isLiveUsableBackpackItem(itemId: string) {
   return (
-    !!HARTHMERE_FOOD_DEFINITIONS[itemId] ||
-    !!HARTHMERE_MEDICAL_ITEM_DEFINITIONS[itemId] ||
-    itemId === "raw_meat"
+    isHarthmereFoodItemPlayerEdible(itemId) ||
+    !!HARTHMERE_MEDICAL_ITEM_DEFINITIONS[itemId]
   );
+}
+
+function isLiveVoxelBlockItemId(itemId: string) {
+  const biomesId = safeParseBiomesId(itemId);
+  if (biomesId && anItem(biomesId)?.isBlock === true) return true;
+  const display = getHarthmereItemDisplay(itemId);
+  return /muckwad|voxel|block/i.test(
+    `${itemId} ${display?.name ?? ""} ${display?.category ?? ""}`
+  );
+}
+
+function assignLiveVoxelBlocksToEmptyHotbar(inventoryLootState: any) {
+  const items = inventoryLootState?.actor?.items;
+  if (!items || typeof items !== "object") return;
+  const inventoryState = readHarthmereInventoryState();
+  const assigned = new Set(
+    Object.values(inventoryState.hotbar)
+      .filter(Boolean)
+      .map(String)
+  );
+  const emptySlots = Array.from({ length: 9 }, (_unused, index) => index).filter(
+    (index) => !inventoryState.hotbar[`slot_${index + 1}`]
+  );
+  if (emptySlots.length === 0) return;
+  for (const [itemId, count] of Object.entries(items)) {
+    if (Number(count) <= 0 || assigned.has(itemId)) continue;
+    if (!isLiveVoxelBlockItemId(itemId)) continue;
+    const slot = emptySlots.shift();
+    if (slot === undefined) return;
+    if (performHarthmereHotbarAssignForBiomesUI(itemId, slot, true)) {
+      assigned.add(itemId);
+    }
+  }
 }
 
 function stackRecordToInventoryUiItems(
@@ -1093,6 +1166,12 @@ function stackRecordToInventoryUiItems(
           options.description ??
           display?.description ??
           "Stored in your backpack.",
+        weight: inventoryUiItemWeight(
+          itemId,
+          Number(count) || 0,
+          category,
+          display?.name
+        ),
         equipSlot,
         ref: (refKind === "wearable" || refKind === "material"
           ? { kind: refKind, key: itemId }
@@ -1165,6 +1244,17 @@ function instanceRecordToInventoryUiItems(
               id: itemId,
               category: instance.category,
             }),
+        weight: inventoryUiItemWeight(
+          itemId,
+          count,
+          display
+            ? harthmereDisplayCategoryForBiomesUI(display.category, equipSlot)
+            : inferInventoryCategory({
+                id: itemId,
+                category: instance.category,
+              }),
+          display?.name
+        ),
         equipSlot,
         description: display?.description
           ? display.description
@@ -2674,6 +2764,7 @@ export function useBiomesUILiveAdapters({
   const applyLiveModeInventoryResponse = React.useCallback(
     async (body: any) => {
       if (body?.inventoryLootState) {
+        assignLiveVoxelBlocksToEmptyHotbar(body.inventoryLootState);
         setInventoryLootState(body.inventoryLootState);
       } else {
         await refreshInventoryLootState();
@@ -2927,7 +3018,7 @@ export function useBiomesUILiveAdapters({
               localBackpackItem.instanceId,
               localBackpackItem.itemId
             );
-          } else if (HARTHMERE_FOOD_DEFINITIONS[localItemId]) {
+          } else if (isHarthmereFoodItemPlayerEdible(localItemId)) {
             fireAndForget(
               submitFarmingFoodLiveModeAction("eat_food", {
                 itemId: localItemId,
@@ -3013,7 +3104,7 @@ export function useBiomesUILiveAdapters({
           );
           return;
         }
-        if (HARTHMERE_FOOD_DEFINITIONS[itemId]) {
+        if (isHarthmereFoodItemPlayerEdible(itemId)) {
           fireAndForget(
             submitFarmingFoodLiveModeAction("eat_food", { itemId })
               .then(applyLiveModeInventoryResponse)
@@ -3322,6 +3413,11 @@ export function useBiomesUILiveAdapters({
               count: Number(entry?.count ?? 1),
               quality: "common",
               category: inferInventoryCategory({ id: itemId }),
+              weight: inventoryUiItemWeight(
+                itemId,
+                Number(entry?.count ?? 1),
+                inferInventoryCategory({ id: itemId })
+              ),
               description: entry?.reason
                 ? humanizeRealItemId(String(entry.reason), String(entry.reason))
                 : "Waiting for backpack space.",
@@ -3338,10 +3434,7 @@ export function useBiomesUILiveAdapters({
           });
         const uiItems = allBackpackUiItems;
         const itemWeightForUiItem = (item: InventoryUiItem | null) =>
-          item
-            ? itemWeight({ item: { id: item.id, category: item.category } }) *
-              Math.max(1, item.count ?? 1)
-            : 0;
+          item ? item.weight?.total ?? 0 : 0;
         const currentWeight =
           uiItems.reduce(
             (sum: number, item: InventoryUiItem | null) =>
@@ -3562,7 +3655,7 @@ export function useBiomesUILiveAdapters({
           return;
         }
         const liveItem = liveItemForRef(ref);
-        if (liveItem?.id && HARTHMERE_FOOD_DEFINITIONS[liveItem.id]) {
+        if (liveItem?.id && isHarthmereFoodItemPlayerEdible(liveItem.id)) {
           fireAndForget(
             submitFarmingFoodLiveModeAction("eat_food", { itemId: liveItem.id })
               .then(async (body) => {

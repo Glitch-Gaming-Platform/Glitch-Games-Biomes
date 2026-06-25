@@ -98,6 +98,38 @@ describe("mmo_farming_food_stamina", () => {
     assert.equal(harthmereFarmingFoodItemDisplayName("1708273808636291"), "Sweet Corn");
   });
 
+  it("only allows player-edible food to restore stamina", () => {
+    assert.equal(HARTHMERE_FOOD_DEFINITIONS["4647276549161506"].edible, false);
+    assert.equal(HARTHMERE_FOOD_DEFINITIONS["7539420629350042"].edible, false);
+    assert.equal(HARTHMERE_FOOD_DEFINITIONS["4732724694489497"].edible, true);
+    assert.equal(HARTHMERE_FOOD_DEFINITIONS["1534621126189376"].edible, true);
+
+    const state = defaultHarthmereFoodStaminaState("food_edibility", NOW);
+    state.stamina = 50;
+    state.inventory["4647276549161506"] = 1;
+    state.inventory["7539420629350042"] = 1;
+    state.inventory["4732724694489497"] = 1;
+
+    const wheat = eatHarthmereFood(state, {
+      itemId: "4647276549161506",
+      nowMs: NOW,
+    });
+    assert.ok(wheat.warnings.includes("food_rejected:not_edible"));
+
+    const rawMeat = eatHarthmereFood(state, {
+      itemId: "7539420629350042",
+      nowMs: NOW,
+    });
+    assert.ok(rawMeat.warnings.includes("food_rejected:not_edible"));
+
+    const berries = eatHarthmereFood(state, {
+      itemId: "4732724694489497",
+      nowMs: NOW,
+    });
+    assert.equal(berries.state.stamina, 55);
+    assert.equal(berries.state.inventory["4732724694489497"], 0);
+  });
+
   it("plants and harvests a Bikkie crop using Bikkie item ids", () => {
     let state = defaultHarthmereFoodStaminaState("player_farm_1", NOW);
     state.inventory["4851938639186947"] = 1;

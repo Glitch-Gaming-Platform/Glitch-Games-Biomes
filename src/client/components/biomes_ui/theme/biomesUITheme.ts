@@ -1510,6 +1510,49 @@ button.biomes-ui-card:disabled {
   box-shadow: 0 0 14px rgba(92, 240, 139, 0.42);
 }
 
+.biomes-ui-vitals-bar[data-stamina-warning="low"] .biomes-ui-vitals-bar__meta,
+.biomes-ui-vitals-bar[data-stamina-warning="critical"] .biomes-ui-vitals-bar__meta {
+  color: rgba(255, 216, 190, 0.95);
+}
+
+.biomes-ui-vitals-bar[data-stamina-warning="low"] .biomes-ui-vitals-bar__value,
+.biomes-ui-vitals-bar[data-stamina-warning="critical"] .biomes-ui-vitals-bar__value {
+  color: rgba(255, 235, 224, 0.98);
+}
+
+.biomes-ui-vitals-bar[data-stamina-warning="low"] .biomes-ui-vitals-bar__track,
+.biomes-ui-vitals-bar[data-stamina-warning="critical"] .biomes-ui-vitals-bar__track {
+  border-color: rgba(255, 82, 82, 0.72);
+  background: rgba(70, 0, 0, 0.46);
+  animation: biomes-ui-stamina-warning-pulse 1.05s ease-in-out infinite;
+}
+
+.biomes-ui-vitals-bar[data-stamina-warning="critical"] .biomes-ui-vitals-bar__track {
+  animation-duration: 0.58s;
+}
+
+.biomes-ui-vitals-bar[data-stamina-warning="low"] .biomes-ui-vitals-bar__fill--stamina,
+.biomes-ui-vitals-bar[data-stamina-warning="critical"] .biomes-ui-vitals-bar__fill--stamina {
+  background: linear-gradient(90deg, #ff2e4f, #ff744a, #ffc14d);
+  box-shadow: 0 0 18px rgba(255, 54, 54, 0.78);
+}
+
+@keyframes biomes-ui-stamina-warning-pulse {
+  0%,
+  100% {
+    box-shadow:
+      inset 0 0 8px rgba(0, 0, 0, 0.65),
+      0 0 8px rgba(255, 54, 54, 0.26);
+    filter: brightness(1);
+  }
+  50% {
+    box-shadow:
+      inset 0 0 10px rgba(0, 0, 0, 0.72),
+      0 0 18px rgba(255, 54, 54, 0.72);
+    filter: brightness(1.22);
+  }
+}
+
 .biomes-ui-vitals-panel__standing {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

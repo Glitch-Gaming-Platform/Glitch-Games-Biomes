@@ -103,4 +103,24 @@ describe("mmo_carry_weight encumbrance", () => {
       1
     );
   });
+
+  it("uses universal lightweight fallbacks for seeds, food, clothes, and blocks", () => {
+    assert.equal(harthmereItemUnitWeight("wheat"), 0.15);
+    assert.equal(
+      harthmereItemUnitWeight("4647276549161506", {
+        displayName: "Wheat",
+        category: "Grain",
+      }),
+      0.15
+    );
+    assert.equal(
+      harthmereItemUnitWeight("4732724694489497", {
+        displayName: "Raspberry",
+        category: "Fruit",
+      }),
+      0.1
+    );
+    assert.equal(harthmereItemUnitWeight("baker_apron"), 1);
+    assert.equal(harthmereItemUnitWeight("b:12345", { category: "block" }), 1);
+  });
 });

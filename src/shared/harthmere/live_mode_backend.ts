@@ -2288,6 +2288,11 @@ function routeLiveModeRewardOutsideBackpack(
   if (!itemId || count <= 0) return false;
   const def = getHarthmereItemDefinition(itemId);
   const category = itemCategoryFromDefinition(def, itemId);
+  const isVoxelBlock =
+    def?.objectMetadata?.physicalForm === "block" ||
+    (safeParseBiomesId(itemId) != null &&
+      anItem(safeParseBiomesId(itemId)!)?.isBlock === true) ||
+    /muckwad|voxel|block/i.test(`${itemId} ${def?.displayName ?? ""}`);
   if (category === "currency") {
     state.inventory.gold = Math.max(0, state.inventory.gold + count);
     state.economy.ledger.push({
@@ -2302,6 +2307,7 @@ function routeLiveModeRewardOutsideBackpack(
   }
   if (
     category === "materials" &&
+    !isVoxelBlock &&
     bankRecordHasCapacity(
       state.banking.materialStorage,
       itemId,
@@ -3010,6 +3016,18 @@ function dynamicBiomesBikkieLiveModeItemDefinition(
     stats: {},
     tradeable: true,
     category: isBlock ? "materials" : "item",
+    weight: isBlock ? 1 : undefined,
+    objectMetadata: isBlock
+      ? {
+          objectKind: "material",
+          physicalForm: "block",
+          sizeVoxels: { width: 1, depth: 1, height: 1 },
+          sizeLabel: "voxel block",
+          source: ["mining", "world"],
+          handling: ["backpack", "hotbar"],
+          visualDescription: "A mined Biomes voxel block.",
+        }
+      : undefined,
   };
   registerHarthmereItemDefinition(def);
   return def;
@@ -6450,11 +6468,17 @@ export function tickHarthmereLiveModeStaminaForGameplay(
 
   pools.resources.stamina = nextStamina;
   state.combat.lastStaminaTickMs = result.state.lastStaminaTickMs;
-  state.combat.deadFromStaminaAtMs = allowDeathFromStamina
+  const depletedForDeath =
+    nextStamina < 1 && !Number.isFinite(Number(previousStoredDeadAt));
+  const shouldTriggerStaminaDeath =
+    allowDeathFromStamina && (result.deathTriggered || depletedForDeath);
+  state.combat.deadFromStaminaAtMs = shouldTriggerStaminaDeath
+    ? input.nowMs
+    : allowDeathFromStamina
     ? result.state.deadFromStaminaAtMs
     : previousStoredDeadAt;
 
-  if (result.deathTriggered && allowDeathFromStamina) {
+  if (shouldTriggerStaminaDeath) {
     state.combat.hp = 0;
     state.combat.deathState = "dead";
     const deathId = `stamina_depleted_${Math.trunc(input.nowMs)}`;
@@ -6469,12 +6493,12 @@ export function tickHarthmereLiveModeStaminaForGameplay(
 
   return {
     warnings: result.warnings,
-    deathTriggered: result.deathTriggered && allowDeathFromStamina,
+    deathTriggered: shouldTriggerStaminaDeath,
     changed:
       Math.abs(nextStamina - previousStamina) > 0.0001 ||
       state.combat.lastStaminaTickMs !== previousStoredLastTick ||
       state.combat.deadFromStaminaAtMs !== previousStoredDeadAt ||
-      (result.deathTriggered && allowDeathFromStamina),
+      shouldTriggerStaminaDeath,
   };
 }
 
@@ -6495,29 +6519,9 @@ export function repairHarthmereStatusReadStaminaDeath(
   state: HarthmereLiveModeBackendState,
   input: { nowMs: number; restoreRatio?: number }
 ) {
-  const deadFromStaminaAtMs = Number(state.combat.deadFromStaminaAtMs);
-  if (
-    !Number.isFinite(deadFromStaminaAtMs) ||
-    liveModePlayerDeathStateForHp(state) !== "dead" ||
-    normalizedLiveModePlayerHp(state) > 0
-  ) {
-    return { changed: false };
-  }
-
-  const latestDeathRecord = latestHarthmereLiveModeDeathRecord(state);
-  if (latestDeathRecord && latestDeathRecord.cause !== "stamina_depleted") {
-    return { changed: false };
-  }
-
-  const maxHp = Math.max(1, Math.trunc(Number(state.combat.maxHp ?? 100)));
-  state.combat.maxHp = maxHp;
-  state.combat.hp = maxHp;
-  state.combat.deathState = "alive";
-  state.combat.deadFromStaminaAtMs = undefined;
-  state.combat.lastStaminaTickMs = input.nowMs;
-  restoreCombatResources(state, input.restoreRatio ?? 1, input.nowMs);
-
-  return { changed: true };
+  void state;
+  void input;
+  return { changed: false };
 }
 
 export function createHarthmereProductionEconomyClientSnapshotFromBackend(
@@ -8282,7 +8286,9 @@ export function reduceHarthmereLiveModeBackendState(
       ...defaultHarthmereFoodStaminaState(next.actorId, nowMs),
       stamina: pools.resources.stamina ?? 0,
       maxStamina: pools.maxResources.stamina ?? 100,
-      lastStaminaTickMs: nowMs,
+      lastStaminaTickMs: Number.isFinite(next.combat.lastStaminaTickMs)
+        ? Number(next.combat.lastStaminaTickMs)
+        : nowMs,
       deadFromStaminaAtMs: Number.isFinite(next.combat.deadFromStaminaAtMs)
         ? next.combat.deadFromStaminaAtMs
         : undefined,

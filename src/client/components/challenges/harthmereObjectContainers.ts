@@ -2,7 +2,6 @@ import { grantHarthmereItem } from "@/client/components/challenges/LocalDevHarth
 import { consumeHarthmereItemByItemId } from "@/client/components/challenges/LocalDevHarthmereInventorySystem";
 import { completeHarthmereDailyTaskSoon } from "@/client/components/challenges/harthmereDailyTasks";
 import { dispatchHarthmereWorldObjectInteractionEvent } from "@/client/components/challenges/harthmereObjectInteractions";
-import { readRoadAheadClothingCrateReady } from "@/client/components/challenges/harthmereRoadAheadClothingGate";
 import { harthmereUserScopedStorageKey } from "@/client/components/challenges/LocalDevHarthmereUserScope";
 import type { BiomesId } from "@/shared/ids";
 
@@ -222,6 +221,18 @@ export interface HarthmereContainerSeedOptions {
   questClothingReady?: boolean;
 }
 
+function roadAheadClothingCrateReadyForContainer(
+  options?: HarthmereContainerSeedOptions
+) {
+  // The crate is a progression-critical recovery point. Tests can still force
+  // the pre-handoff locked state, but live players should never be stranded by a
+  // missing or stale local mission mirror.
+  if (options?.questClothingReady !== undefined) {
+    return options.questClothingReady;
+  }
+  return true;
+}
+
 function lootSlotsForLabel(label: string): HarthmereObjectContainerSlot[] {
   return harthmereContainerLootForLabel(label).map((loot) => ({
     itemId: loot.itemId,
@@ -314,8 +325,7 @@ export function getOrSeedHarthmereContainer(
   }
 
   // Quest-gated clothing crate.
-  const ready =
-    options?.questClothingReady ?? readRoadAheadClothingCrateReady();
+  const ready = roadAheadClothingCrateReadyForContainer(options);
   if (existing?.sealed) {
     if (ready) {
       const repaired = backfillLegacySealedRoadAheadClothingCrate(existing);
@@ -389,8 +399,7 @@ export function readHarthmereContainer(
 export function fillKnownRoadAheadClothingCrates(
   options?: HarthmereContainerSeedOptions
 ): HarthmereObjectContainerRecord[] {
-  const ready =
-    options?.questClothingReady ?? readRoadAheadClothingCrateReady();
+  const ready = roadAheadClothingCrateReadyForContainer(options);
   if (!ready) {
     return [];
   }

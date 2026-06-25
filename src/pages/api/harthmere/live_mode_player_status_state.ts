@@ -7,7 +7,6 @@ import {
   createHarthmereLiveModePlayerStatusClientSnapshot,
   harthmereLiveModePlayerStateKey,
   parseHarthmereLiveModeBackendState,
-  repairHarthmereStatusReadStaminaDeath,
   tickHarthmereLiveModeStaminaForGameplay,
   type HarthmereLiveModeBackendState,
 } from "@/shared/harthmere/live_mode_backend";
@@ -17,7 +16,6 @@ const zJsonRecord = z.record(z.unknown());
 const DEFAULT_PLAYER_STATUS_STAMINA_WRITE_THROTTLE_MS = 5_000;
 const DEFAULT_PLAYER_STATUS_STAMINA_MEANINGFUL_DELTA = 1;
 const STALE_ACTIVE_STAMINA_BACKFILL_MS = 30_000;
-const STALE_ZERO_STAMINA_REPAIR_MS = 5 * 60_000;
 
 export const zHarthmereLiveModePlayerStatusStateResponse = z.object({
   ok: z.boolean(),
@@ -112,9 +110,7 @@ export async function readHarthmereLiveModePlayerStatusStateForActor(input: {
     ? Number(state.combat.deadFromStaminaAtMs)
     : undefined;
   const previousUpdatedAtMs = state.updatedAtMs;
-  const statusReadRepair = repairHarthmereStatusReadStaminaDeath(state, {
-    nowMs: input.nowMs,
-  });
+  const statusReadRepair = { changed: false };
   const zeroHpDeathRepair = repairZeroHpAliveDeathForStatusRead(state, {
     nowMs: input.nowMs,
   });
@@ -130,7 +126,7 @@ export async function readHarthmereLiveModePlayerStatusStateForActor(input: {
   const staminaTick = tickHarthmereLiveModeStaminaForGameplay(state, {
     nowMs: input.nowMs,
     gameplayActive: input.gameplayActive === true,
-    allowDeathFromStamina: false,
+    allowDeathFromStamina: true,
   });
   const nextStamina = Number(state.combat.resources?.stamina ?? 0);
   const shouldPersist =
@@ -232,24 +228,28 @@ function repairStalePlayableZeroStaminaForStatusRead(
   );
   const stamina = Number(state.combat.resources?.stamina ?? maxStamina);
   const hp = Number(state.combat.hp ?? 0);
-  const lastTick = Number(state.combat.lastStaminaTickMs);
-  const updatedAtMs = Number(state.updatedAtMs);
-  const staleForMs = Math.max(
-    Number.isFinite(lastTick) ? input.nowMs - lastTick : Infinity,
-    Number.isFinite(updatedAtMs) ? input.nowMs - updatedAtMs : Infinity
-  );
   if (
     hp > 0 &&
     (state.combat.deathState ?? "alive") === "alive" &&
-    stamina <= 0 &&
-    !Number.isFinite(Number(state.combat.deadFromStaminaAtMs)) &&
-    staleForMs >= STALE_ZERO_STAMINA_REPAIR_MS
+    stamina < 1 &&
+    !Number.isFinite(Number(state.combat.deadFromStaminaAtMs))
   ) {
     state.combat.resources ??= {};
     state.combat.maxResources ??= {};
     state.combat.maxResources.stamina = maxStamina;
-    state.combat.resources.stamina = maxStamina;
+    state.combat.resources.stamina = 0;
+    state.combat.hp = 0;
+    state.combat.deathState = "dead";
+    state.combat.deadFromStaminaAtMs = input.nowMs;
     state.combat.lastStaminaTickMs = input.nowMs;
+    const deathId = `stamina_depleted_${Math.trunc(input.nowMs)}`;
+    state.combat.deathRecords[deathId] ??= {
+      deathId,
+      cause: "stamina_depleted",
+      zoneId: "harthmere",
+      atMs: input.nowMs,
+      respawnAvailableAtMs: input.nowMs + 5_000,
+    };
     return { changed: true };
   }
   return { changed: false };

@@ -199,51 +199,156 @@ function bagFromRows(rows: readonly (readonly [string, number])[]) {
   return bag;
 }
 
-const HARTHMERE_LOCAL_FOOD_DEFINITIONS: Record<string, HarthmereFoodDefinition> = {
-  road_ration: { itemId: "road_ration", displayName: "Road Ration", staminaRestore: 24, source: "vendor" },
-  apple_tart: { itemId: "apple_tart", displayName: "Warm Apple Tart", staminaRestore: 18, source: "cooked" },
-  fresh_carrot: { itemId: "fresh_carrot", displayName: "Fresh Carrot", staminaRestore: 12, source: "crop" },
-  loaf_bread: { itemId: "loaf_bread", displayName: "Loaf Bread", staminaRestore: 20, source: "crop" },
-  grilled_meat: { itemId: "grilled_meat", displayName: "Grilled Meat", staminaRestore: 32, source: "cooked" },
-  worker_meal: { itemId: "worker_meal", displayName: "Worker Meal", staminaRestore: 16, source: "cooked" },
-  hearty_stew: { itemId: "hearty_stew", displayName: "Hearty Stew", staminaRestore: 38, source: "cooked" },
-  berry_tart: { itemId: "berry_tart", displayName: "Wild Berry Tart", staminaRestore: 28, source: "cooked" },
-  river_trout: { itemId: "river_trout", displayName: "River Trout", staminaRestore: 22, source: "hunt" },
-  wild_berries: { itemId: "wild_berries", displayName: "Wild Berries", staminaRestore: 10, source: "crop" },
-  fresh_milk: { itemId: "fresh_milk", displayName: "Fresh Milk", staminaRestore: 14, source: "livestock" },
+const HARTHMERE_LOCAL_FOOD_DEFINITIONS: Record<
+  string,
+  HarthmereFoodDefinition
+> = {
+  road_ration: {
+    itemId: "road_ration",
+    displayName: "Road Ration",
+    staminaRestore: 24,
+    source: "vendor",
+    edible: true,
+  },
+  apple_tart: {
+    itemId: "apple_tart",
+    displayName: "Warm Apple Tart",
+    staminaRestore: 18,
+    source: "cooked",
+    edible: true,
+  },
+  fresh_carrot: {
+    itemId: "fresh_carrot",
+    displayName: "Fresh Carrot",
+    staminaRestore: 12,
+    source: "crop",
+    edible: true,
+  },
+  loaf_bread: {
+    itemId: "loaf_bread",
+    displayName: "Loaf Bread",
+    staminaRestore: 20,
+    source: "cooked",
+    edible: true,
+  },
+  grilled_meat: {
+    itemId: "grilled_meat",
+    displayName: "Grilled Meat",
+    staminaRestore: 32,
+    source: "cooked",
+    edible: true,
+  },
+  worker_meal: {
+    itemId: "worker_meal",
+    displayName: "Worker Meal",
+    staminaRestore: 16,
+    source: "cooked",
+    edible: true,
+  },
+  hearty_stew: {
+    itemId: "hearty_stew",
+    displayName: "Hearty Stew",
+    staminaRestore: 38,
+    source: "cooked",
+    edible: true,
+  },
+  berry_tart: {
+    itemId: "berry_tart",
+    displayName: "Wild Berry Tart",
+    staminaRestore: 28,
+    source: "cooked",
+    edible: true,
+  },
+  river_trout: {
+    itemId: "river_trout",
+    displayName: "River Trout",
+    staminaRestore: 22,
+    source: "fish",
+    edible: false,
+  },
+  wild_berries: {
+    itemId: "wild_berries",
+    displayName: "Wild Berries",
+    staminaRestore: 10,
+    source: "foraged",
+    edible: true,
+  },
+  fresh_milk: {
+    itemId: "fresh_milk",
+    displayName: "Fresh Milk",
+    staminaRestore: 14,
+    source: "drink",
+    edible: true,
+  },
 };
+
+function isHarthmereFoodRowPlayerEdible(input: {
+  displayName: string;
+  staminaRestore: number;
+  source: string;
+  catalogEdible: boolean;
+  category: string;
+  action: string;
+}) {
+  if (!input.catalogEdible || input.staminaRestore <= 0) return false;
+  const source = input.source.toLowerCase();
+  const category = input.category.toLowerCase();
+  const action = input.action.toLowerCase();
+  const text = `${input.displayName} ${category} ${action}`.toLowerCase();
+  if (/raw|uncooked/.test(text)) return false;
+  if (/wheat|grain/.test(text) && source !== "cooked") return false;
+  if (source === "cooked" || source === "drink") return true;
+  if (action === "drink") return true;
+  if (source === "fish" && !/baked|cooked|roasted|sashimi|sandwich/.test(text))
+    return false;
+  if (action === "eat") return true;
+  if (/fruit|berry|vegetable|mushroom/.test(category)) return true;
+  if (source === "foraged" && /mushroom|berry|carrot|turnip|radish/.test(text))
+    return true;
+  return false;
+}
 
 const HARTHMERE_BIKKIE_FOOD_DEFINITIONS: Record<string, HarthmereFoodDefinition> =
   Object.fromEntries(
     HARTHMERE_BIKKIE_FOOD_ROWS
-      .filter(([, , , , edible]) => edible)
       .map(([
         itemId,
         displayName,
         staminaRestore,
         source,
-        ,
+        edible,
         category,
         action,
         galoisPath,
         visualAsset,
-      ]) => [
-        itemId,
-        {
-          itemId,
+      ]) => {
+        const playerEdible = isHarthmereFoodRowPlayerEdible({
           displayName,
           staminaRestore,
-          source: source as HarthmereFoodSource,
-          metadata: optionalBikkieMetadata(
+          source,
+          catalogEdible: edible,
+          category,
+          action,
+        });
+        return [
+          itemId,
+          {
             itemId,
             displayName,
-            category,
-            action,
-            galoisPath,
-            visualAsset,
-          ),
-        },
-      ]),
+            staminaRestore,
+            source: source as HarthmereFoodSource,
+            edible: playerEdible,
+            metadata: optionalBikkieMetadata(
+              itemId,
+              displayName,
+              category,
+              action,
+              galoisPath,
+              visualAsset,
+            ),
+          },
+        ];
+      }),
   );
 
 export const HARTHMERE_FOOD_DEFINITIONS: Record<string, HarthmereFoodDefinition> = {

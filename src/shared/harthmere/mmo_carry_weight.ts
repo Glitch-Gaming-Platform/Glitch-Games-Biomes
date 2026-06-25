@@ -22,12 +22,25 @@ export function isLikelyBankingMaterialItemId(itemId: string) {
 
 export function itemCategoryFromDefinition(
   def: HarthmereItemDefinition | undefined,
-  itemId: string
+  itemId: string,
+  hint?: { category?: string; displayName?: string }
 ) {
-  const text = `${itemId} ${def?.displayName ?? ""}`.toLowerCase();
+  const hintedCategory = String(hint?.category ?? "").toLowerCase();
+  const text = `${itemId} ${def?.displayName ?? ""} ${
+    hint?.displayName ?? ""
+  } ${hintedCategory}`.toLowerCase();
   if (def?.isCurrency) return "currency";
   if (def?.isQuestItem || def?.binding === "quest") return "quest";
+  if (hintedCategory.includes("currency")) return "currency";
+  if (hintedCategory.includes("quest")) return "quest";
+  if (/seed|spore|fruit|vegetable|food|drink|ration|meal|berry/.test(text))
+    return "consumables";
   if (def?.isCraftingMaterial || isLikelyBankingMaterialItemId(itemId))
+    return "materials";
+  if (
+    hintedCategory.includes("material") ||
+    hintedCategory.includes("crafting")
+  )
     return "materials";
   if (def?.isConsumable || /potion|food|ration|drink|meal|medicine/.test(text))
     return "consumables";
@@ -40,7 +53,44 @@ export function itemCategoryFromDefinition(
   return "item";
 }
 
-export function harthmereItemUnitWeight(itemId: string) {
+function fallbackHarthmereItemUnitWeight(
+  itemId: string,
+  def: HarthmereItemDefinition | undefined,
+  hint?: { category?: string; displayName?: string }
+) {
+  const category = itemCategoryFromDefinition(def, itemId, hint);
+  const text = `${itemId} ${def?.displayName ?? ""} ${
+    hint?.displayName ?? ""
+  } ${hint?.category ?? ""}`.toLowerCase();
+  if (category === "currency") return 0;
+  if (category === "quest") return 0.1;
+  if (/seed|spore/.test(text)) return 0.05;
+  if (/berry|raspberry|strawberry|grape|banana|tomato/.test(text)) return 0.1;
+  if (/carrot|corn|onion|turnip|radish|cabbage|potato|pumpkin/.test(text))
+    return 0.25;
+  if (/wheat|grain|flour|coffee bean/.test(text)) return 0.15;
+  if (/milk|smoothie|tea|coffee|cola|drink/.test(text)) return 0.75;
+  if (/ration|bread|tart|soup|stew|burger|sandwich|popcorn|meal/.test(text))
+    return 0.5;
+  if (/raw .*meat|meat|fish|sashimi|patty/.test(text)) return 0.75;
+  if (/cloth|fiber|hide|hemp|cotton|flax|ramie/.test(text)) return 0.25;
+  if (/key|coin|old coin|token/.test(text)) return 0.05;
+  if (/shirt|apron|trouser|pants|boots|hat|helmet|glove/.test(text))
+    return 1;
+  if (/block|voxel|muckwad|stone|clay|sand|wood|log/.test(text)) return 1;
+  if (/ore|ingot|coal|crystal|shard|matter/.test(text)) return 1.5;
+  if (/sword|axe|pickaxe|hammer|bow|staff|wand|shield|armor|tool/.test(text))
+    return 5;
+  if (category === "materials") return 0.5;
+  if (category === "tools") return 5;
+  if (category === "consumables") return 0.5;
+  return 1;
+}
+
+export function harthmereItemUnitWeight(
+  itemId: string,
+  hint?: { category?: string; displayName?: string }
+) {
   const def = getHarthmereItemDefinition(itemId);
   const explicit = Number(
     (def as any)?.weight ??
@@ -53,13 +103,7 @@ export function harthmereItemUnitWeight(itemId: string) {
   if (Number.isFinite(explicit) && explicit >= 0) {
     return explicit;
   }
-  const category = itemCategoryFromDefinition(def, itemId);
-  if (category === "currency") return 0;
-  if (category === "quest") return 0.5;
-  if (category === "materials") return 2;
-  if (category === "tools") return 5;
-  if (category === "consumables") return 1;
-  return 1;
+  return fallbackHarthmereItemUnitWeight(itemId, def, hint);
 }
 
 export function harthmereInventoryCarryWeight(items: Record<string, number>) {

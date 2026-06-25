@@ -136,6 +136,8 @@ export interface HarthmereItemDefinition {
   tradeable: boolean;
   /** Optional category used by crafting/economy affordances. */
   category?: string;
+  /** Per-unit carry weight in pounds. Omitted items use the shared fallback table. */
+  weight?: number;
   /** Durable item support for repair/upgrade/enchant workflows. */
   durabilityMax?: number;
   repairable?: boolean;

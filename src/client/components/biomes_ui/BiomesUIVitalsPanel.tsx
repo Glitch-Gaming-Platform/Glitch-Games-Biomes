@@ -17,6 +17,7 @@ import {
   biomesUIVitalsStaminaDisplayForTest,
   useBiomesUIPlayerStatusState,
 } from "./adapters/playerStatusAdapter";
+import { biomesUIStaminaWarningLevelForTest } from "./staminaWarning";
 import type { HighlightStyle } from "./highlight/HighlightRegistry";
 import { useBlinkTarget } from "./highlight/useBlinkTarget";
 import { UI_IDS } from "./uniqueIds";
@@ -94,6 +95,10 @@ function VitalsBar({
   });
   const safeMax = Math.max(1, Math.round(Number(max) || 1));
   const width = percent(rawValue, safeMax);
+  const staminaWarning =
+    tone === "stamina"
+      ? biomesUIStaminaWarningLevelForTest(rawValue, safeMax)
+      : "none";
 
   return (
     <div
@@ -104,6 +109,9 @@ function VitalsBar({
       )}`.trim()}
       data-ui-id={uiId}
       data-ui-blinking={highlight.blinking ? "true" : undefined}
+      data-stamina-warning={
+        staminaWarning !== "none" ? staminaWarning : undefined
+      }
     >
       <div className="biomes-ui-vitals-bar__meta">
         <span>{label}</span>

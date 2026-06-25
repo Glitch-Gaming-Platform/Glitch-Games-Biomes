@@ -1506,7 +1506,7 @@ describe("reduceHarthmereLiveModeBackendState — death lifecycle", function () 
     assert.strictEqual(s.combat.lastStaminaTickMs, NOW_MS - 10 * 60 * 1000);
   });
 
-  it("repairs stale status-read stamina deaths without reviving newer real deaths", function () {
+  it("preserves status-read stamina deaths until the player respawns", function () {
     const staminaDeath = freshState();
     const staminaDeadAtMs = NOW_MS - 60_000;
     staminaDeath.combat.hp = 0;
@@ -1527,15 +1527,12 @@ describe("reduceHarthmereLiveModeBackendState — death lifecycle", function () 
       repairHarthmereStatusReadStaminaDeath(staminaDeath, {
         nowMs: NOW_MS,
       }).changed,
-      true
+      false
     );
-    assert.strictEqual(staminaDeath.combat.hp, 100);
-    assert.strictEqual(staminaDeath.combat.deathState, "alive");
-    assert.strictEqual(
-      staminaDeath.combat.resources.stamina,
-      staminaDeath.combat.maxResources.stamina
-    );
-    assert.strictEqual(staminaDeath.combat.deadFromStaminaAtMs, undefined);
+    assert.strictEqual(staminaDeath.combat.hp, 0);
+    assert.strictEqual(staminaDeath.combat.deathState, "dead");
+    assert.strictEqual(staminaDeath.combat.resources.stamina, 0);
+    assert.strictEqual(staminaDeath.combat.deadFromStaminaAtMs, staminaDeadAtMs);
 
     const fallDeath = freshState();
     fallDeath.combat.hp = 0;
@@ -4810,7 +4807,7 @@ describe("reduceHarthmereLiveModeBackendState — loot and inventory mutation", 
     assert.ok(Object.keys(state.combat.lootClaims).length >= 1);
   });
 
-  it("request_loot_roll from native block mining routes materials into Cloud Save storage", function () {
+  it("request_loot_roll from native block mining routes voxel blocks into inventory", function () {
     const s = freshState();
     const dirtBlockItemId = `b:${BikkieIds.dirt}`;
     const { state, summary } = applyOne(s, "request_loot_roll", {
@@ -4819,15 +4816,11 @@ describe("reduceHarthmereLiveModeBackendState — loot and inventory mutation", 
       source: "Mined Dirt",
     });
 
-    assert.equal(state.banking.materialStorage[dirtBlockItemId], 1);
-    assert.equal(state.inventory.items[dirtBlockItemId] ?? 0, 0);
+    assert.equal(state.banking.materialStorage[dirtBlockItemId] ?? 0, 0);
+    assert.equal(state.inventory.items[dirtBlockItemId], 1);
     assert.ok(Object.keys(state.combat.lootClaims).length >= 1);
-    assert.ok(summary.touchedModels.includes("material_storage"));
-    assert.ok(
-      summary.warnings.includes(
-        `loot_sent_to_material_storage:${dirtBlockItemId}`
-      )
-    );
+    assert.ok(summary.touchedModels.includes("inventory_items"));
+    assert.ok(!summary.touchedModels.includes("material_storage"));
   });
 
   it("persists Road Ahead starter clothing as Cloud Save inventory and equipment", function () {

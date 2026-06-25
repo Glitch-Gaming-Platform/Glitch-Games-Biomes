@@ -137,6 +137,7 @@ import {
   biomesUIVitalsStaminaDisplayForTest,
   useBiomesUIPlayerStatusState,
 } from "@/client/components/biomes_ui/adapters/playerStatusAdapter";
+import { biomesUIStaminaWarningLevelForTest } from "@/client/components/biomes_ui/staminaWarning";
 import { useBiomesHUDVisibilitySnapshot } from "@/client/components/biomes_ui/hudVisibilitySettings";
 import { useClientContext } from "@/client/components/contexts/ClientContextReactContext";
 import { usePointerLockManager } from "@/client/components/contexts/PointerLockContext";
@@ -1156,6 +1157,11 @@ function CompactStatusCluster() {
     staminaValue > 0 && !Number.isInteger(staminaValue)
       ? staminaValue.toFixed(1)
       : String(staminaValue > 0 ? Math.ceil(staminaValue) : 0);
+  const staminaWarning = biomesUIStaminaWarningLevelForTest(
+    staminaValue,
+    staminaMax
+  );
+  const staminaWarns = staminaWarning !== "none";
 
   return (
     <div
@@ -1203,19 +1209,42 @@ function CompactStatusCluster() {
         </span>
       </div>
       <div
-        className="mt-1.5 gap-1.5 flex items-center"
+        className={`mt-1.5 gap-1.5 flex items-center ${
+          staminaWarns ? "animate-pulse" : ""
+        }`.trim()}
         aria-label={`Stamina ${staminaDisplay} of ${staminaMax}`}
+        data-stamina-warning={
+          staminaWarns ? staminaWarning : undefined
+        }
       >
-        <span className="text-emerald-100/90 w-[3.4rem] text-[8px] font-black uppercase tracking-[0.14em]">
+        <span
+          className={`w-[3.4rem] text-[8px] font-black uppercase tracking-[0.14em] ${
+            staminaWarns ? "text-red-100" : "text-emerald-100/90"
+          }`.trim()}
+        >
           Stamina
         </span>
-        <div className="border-amber-200/15 relative h-[10px] flex-1 overflow-hidden rounded-full border bg-black/50">
+        <div
+          className={`relative h-[10px] flex-1 overflow-hidden rounded-full border ${
+            staminaWarns
+              ? "border-red-300/80 bg-red-950/70 shadow-[0_0_14px_rgba(255,44,44,0.6)]"
+              : "border-amber-200/15 bg-black/50"
+          }`.trim()}
+        >
           <span
-            className="from-emerald-500 via-lime-300 to-amber-200 absolute inset-y-0 left-0 bg-gradient-to-r"
+            className={`absolute inset-y-0 left-0 bg-gradient-to-r ${
+              staminaWarns
+                ? "from-red-500 via-orange-400 to-yellow-300 shadow-[0_0_16px_rgba(255,44,44,0.75)]"
+                : "from-emerald-500 via-lime-300 to-amber-200"
+            }`.trim()}
             style={{ width: `${Math.max(0, Math.min(100, staminaPct))}%` }}
           />
         </div>
-        <span className="text-amber-50/90 text-[10px] font-semibold tabular-nums">
+        <span
+          className={`text-[10px] font-semibold tabular-nums ${
+            staminaWarns ? "text-red-50" : "text-amber-50/90"
+          }`.trim()}
+        >
           {staminaDisplay}/{staminaMax}
         </span>
       </div>
