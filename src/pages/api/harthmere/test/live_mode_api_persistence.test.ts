@@ -369,6 +369,25 @@ describe("live_mode API Redis persistence", () => {
     );
   });
 
+  it("derives install-only home console position from runtime claims", () => {
+    assert.deepEqual(
+      combatActorPositionFromInstallLiveModeBody({
+        requestId: "home-console-pos",
+        idempotencyKey: "home-console-pos",
+        actionKind: "request_home_decoration",
+        subsystem: "home_decoration",
+        actorEntityVersion: 1,
+        zoneId: "harthmere_grove",
+        payload: {
+          operation: "place_decoration",
+          propertyId: "property_grove_muckstead_cottage_lot",
+        },
+        clientClaims: { runtimePosition: [252, 56, -196] },
+      } as any),
+      { x: 252, y: 56, z: -196 }
+    );
+  });
+
   it("reads the server-side actor position for jobs board proximity without trusting client claims", async () => {
     const position = await readServerActorPositionForLiveMode(
       {

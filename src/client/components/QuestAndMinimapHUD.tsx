@@ -28,6 +28,7 @@ export const QuestsAndMiniMapHUD: React.FunctionComponent<{}> = ({}) => {
 
   return (
     <>
+      <HarthmereUnifiedHUD hideLegacyVisuals />
       {hudVisibility.miniMap && (
         <div className="absolute right-0.8 top-0.8 flex flex-col items-end gap-2">
           <RulesetToggleable name="minimap">

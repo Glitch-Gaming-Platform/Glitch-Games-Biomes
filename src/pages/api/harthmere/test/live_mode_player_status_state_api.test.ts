@@ -7,6 +7,7 @@ import {
   defaultHarthmereLiveModeBackendState,
   harthmereLiveModePlayerStateKey,
 } from "@/shared/harthmere/live_mode_backend";
+import { HARTHMERE_STAMINA_DRAIN_PER_MINUTE } from "@/shared/harthmere/mmo_farming_food_stamina";
 
 const ACTOR = "player_api_status_001";
 const NOW_MS = 1_700_200_000_000;
@@ -168,9 +169,11 @@ describe("live_mode_player_status_state API route integration", () => {
     const persisted = JSON.parse(stored);
 
     assert.ok(snapshot.combat.resources.stamina !== undefined);
+    const unencumberedStamina =
+      108 - (10_000 / 60_000) * HARTHMERE_STAMINA_DRAIN_PER_MINUTE;
     assert.ok(
-      snapshot.combat.resources.stamina < 107,
-      `expected encumbrance drain below base stamina, got ${snapshot.combat.resources.stamina}`
+      snapshot.combat.resources.stamina < unencumberedStamina,
+      `expected encumbrance drain below unencumbered stamina ${unencumberedStamina}, got ${snapshot.combat.resources.stamina}`
     );
     assert.equal(
       persisted.combat.resources.stamina,

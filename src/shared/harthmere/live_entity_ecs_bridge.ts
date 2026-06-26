@@ -59,12 +59,25 @@ function textForRecord(entityId: string, record: Record<string, unknown>) {
 
 const ROBOT_LIKE_LABEL_REGEX =
   /\b(robots?|bots?|sentinels?|sententials?|sentientals?|constructs?|automatons?|drones?|androids?)\b/i;
+const ANIMAL_LIKE_LABEL_REGEX =
+  /\b(animal|livestock|wolf|bear|boar|deer|snake|rat|fox|horse|cow|goat|sheep|pig|chicken|rabbit)\b/i;
 
 function inferLiveEntityKindFromEcsRecord(
   entityId: string,
   record: Record<string, unknown>
 ): HarthmereLiveEntityKind {
   const text = textForRecord(entityId, record);
+  if (
+    (record.npc_metadata ||
+      record.health ||
+      record.protectedSpecies === true ||
+      record.protected_species === true ||
+      record.isLivestock === true ||
+      typeof record.species === "string") &&
+    ANIMAL_LIKE_LABEL_REGEX.test(text)
+  ) {
+    return "animal";
+  }
   if (isHarthmereNonLivingObjectLabel({ label: text })) return "object";
   if (record.robot_component || ROBOT_LIKE_LABEL_REGEX.test(text)) {
     return "robot";
@@ -73,11 +86,7 @@ function inferLiveEntityKindFromEcsRecord(
   if (/mux|muck|muckling|mucker/.test(text)) return "mux";
   if (/hex|hexer/.test(text)) return "hex";
   if (/undead|zombie|corpse|drowned|grave|dead/.test(text)) return "undead";
-  if (
-    /\b(animal|livestock|wolf|bear|boar|deer|snake|rat|fox|horse|cow|goat|sheep|pig|chicken)\b/.test(
-      text
-    )
-  ) {
+  if (ANIMAL_LIKE_LABEL_REGEX.test(text)) {
     return "animal";
   }
   if (/construct|golem|training dummy/.test(text)) return "construct";
@@ -175,9 +184,7 @@ export function createHarthmereLiveEntityCombatSnapshotFromEcsRecord(
   const maxHp = Math.max(
     1,
     Math.trunc(
-      number(health.maxHp) ??
-        number(health.max_hp) ??
-        defaultHpForKind(kind)
+      number(health.maxHp) ?? number(health.max_hp) ?? defaultHpForKind(kind)
     )
   );
   const hp = Math.max(

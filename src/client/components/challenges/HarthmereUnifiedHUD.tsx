@@ -1213,9 +1213,7 @@ function CompactStatusCluster() {
           staminaWarns ? "animate-pulse" : ""
         }`.trim()}
         aria-label={`Stamina ${staminaDisplay} of ${staminaMax}`}
-        data-stamina-warning={
-          staminaWarns ? staminaWarning : undefined
-        }
+        data-stamina-warning={staminaWarns ? staminaWarning : undefined}
       >
         <span
           className={`w-[3.4rem] text-[8px] font-black uppercase tracking-[0.14em] ${
@@ -1933,13 +1931,11 @@ function HarthmereEnemyHealthBarsHUD() {
       depth: row.screen?.depth ?? 1,
     })),
     ...actorRows,
-  ]
-    .sort((a, b) => {
-      if (a.selected) return -1;
-      if (b.selected) return 1;
-      return a.depth - b.depth;
-    })
-    .slice(0, 24);
+  ].sort((a, b) => {
+    if (a.selected) return -1;
+    if (b.selected) return 1;
+    return a.depth - b.depth;
+  });
 
   if (!rows.length) {
     return null;

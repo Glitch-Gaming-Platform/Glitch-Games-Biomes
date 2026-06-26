@@ -103,10 +103,10 @@ describe("RedisLeaderboard compatibility", () => {
         "leaderboard:ecs:fished:maxLength:alltime",
         16,
         "-inf",
+        "WITHSCORES",
         "LIMIT",
         0,
         2,
-        "WITHSCORES",
       ],
       ["zrevrank", "leaderboard:ecs:fished:maxLength:alltime", "b:106"],
     ]);
@@ -135,10 +135,10 @@ describe("RedisLeaderboard compatibility", () => {
         "leaderboard:ecs:fished:maxLength:alltime",
         14,
         "+inf",
+        "WITHSCORES",
         "LIMIT",
         0,
         1,
-        "WITHSCORES",
       ],
       ["zrank", "leaderboard:ecs:fished:maxLength:alltime", "b:104"],
     ]);

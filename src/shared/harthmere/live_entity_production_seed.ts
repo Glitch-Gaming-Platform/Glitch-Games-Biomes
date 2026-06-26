@@ -29,6 +29,7 @@ import {
 
 export const HARTHMERE_LIVE_ENTITY_PRODUCTION_SEED_VERSION =
   "harthmere-live-entity-production-seed" as const;
+export const HARTHMERE_LIVE_ENTITY_MUCK_HEX_STRENGTH_MULTIPLIER = 5;
 
 export type HarthmereLiveEntityProductionSeedKind =
   | "robot_sentinel"
@@ -115,6 +116,36 @@ function combatDefaultsForMonster(displayName: string): {
     combatLevel: /old wood|west breach/.test(text) ? 3 : 2,
     combatHp: /old wood|west breach/.test(text) ? 140 : 110,
   };
+}
+
+export function harthmereCombatHpForLiveEntitySeed(
+  seed: HarthmereLiveEntityProductionSeed
+): number {
+  const defaultHp = seed.kind === "ambient_muck_monster" ? 110 : 40;
+  const baseHp = Math.max(1, Math.trunc(seed.combatHp ?? defaultHp));
+  if (seed.kind === "ambient_muck_monster") {
+    return Math.max(
+      1,
+      Math.trunc(baseHp * HARTHMERE_LIVE_ENTITY_MUCK_HEX_STRENGTH_MULTIPLIER)
+    );
+  }
+  return baseHp;
+}
+
+export function harthmereCombatAttackDamageForLiveEntitySeed(
+  seed: HarthmereLiveEntityProductionSeed
+): number | undefined {
+  if (seed.kind !== "ambient_muck_monster") {
+    return seed.attackDamage;
+  }
+  const entityKind = seed.combatKind ?? "mux";
+  const level = Math.max(1, Math.trunc(Number(seed.combatLevel ?? 1)));
+  const base =
+    entityKind === "hex" ? (level >= 4 ? 24 : 18) : level >= 3 ? 16 : 14;
+  return Math.max(
+    1,
+    Math.trunc(base * HARTHMERE_LIVE_ENTITY_MUCK_HEX_STRENGTH_MULTIPLIER)
+  );
 }
 
 // HARTHMERE_LIVE_ENTITY_SIZE: the muck/wildlife NPCs reuse one damageable
@@ -414,51 +445,49 @@ function livestockPositionInMuckArea(
 }
 
 export const HARTHMERE_LIVE_ENTITY_LIVESTOCK_SEEDS: HarthmereLiveEntityProductionSeed[] =
-  HARTHMERE_LIVE_ENTITY_LIVESTOCK_AREAS.flatMap(
-    (livestockArea, areaIndex) => {
-      const area = HARTHMERE_MUCK_CONTAINMENT_AREAS.find(
-        (candidate) => candidate.id === livestockArea.areaId
-      );
-      if (!area) {
-        return [];
-      }
-      let indexInArea = 0;
-      return HARTHMERE_LIVE_ENTITY_LIVESTOCK_SPECIES.flatMap((config) =>
-        Array.from({ length: config.perArea }, () => {
-          const localIndex = indexInArea++;
-          const idOffset =
-            HARTHMERE_LIVE_ENTITY_LIVESTOCK_FIRST_OFFSET +
-            areaIndex * HARTHMERE_LIVE_ENTITY_LIVESTOCK_PER_AREA +
-            localIndex;
-          return {
-            seedId: `ambient-livestock-${config.species}-${livestockArea.areaId}-${idOffset}`,
-            kind: "ambient_livestock" as const,
-            entityId: entityIdFromOffset(idOffset),
-            idOffset,
-            displayName: `${config.displayName} ${
-              idOffset - HARTHMERE_LIVE_ENTITY_LIVESTOCK_FIRST_OFFSET + 1
-            }`,
-            areaId: livestockArea.areaId,
-            areaLabel: livestockArea.areaLabel,
-            position: livestockPositionInMuckArea(area, localIndex),
-            orientation: [0, 0] as Vec2,
-            dialog: config.dialog,
-            description: `A ${config.displayName.toLowerCase()} grazes the muck near ${
-              livestockArea.areaLabel
-            }. It ignores travelers until struck, then defends itself.`,
-            combatKind: "mux" as const,
-            combatLevel: 1,
-            combatHp: config.combatHp,
-            species: config.species,
-            sizeTier: config.sizeTier,
-            meatUnits: config.meatUnits,
-            attackDamage: config.attackDamage,
-            killXp: config.killXp,
-          } satisfies HarthmereLiveEntityProductionSeed;
-        })
-      );
+  HARTHMERE_LIVE_ENTITY_LIVESTOCK_AREAS.flatMap((livestockArea, areaIndex) => {
+    const area = HARTHMERE_MUCK_CONTAINMENT_AREAS.find(
+      (candidate) => candidate.id === livestockArea.areaId
+    );
+    if (!area) {
+      return [];
     }
-  );
+    let indexInArea = 0;
+    return HARTHMERE_LIVE_ENTITY_LIVESTOCK_SPECIES.flatMap((config) =>
+      Array.from({ length: config.perArea }, () => {
+        const localIndex = indexInArea++;
+        const idOffset =
+          HARTHMERE_LIVE_ENTITY_LIVESTOCK_FIRST_OFFSET +
+          areaIndex * HARTHMERE_LIVE_ENTITY_LIVESTOCK_PER_AREA +
+          localIndex;
+        return {
+          seedId: `ambient-livestock-${config.species}-${livestockArea.areaId}-${idOffset}`,
+          kind: "ambient_livestock" as const,
+          entityId: entityIdFromOffset(idOffset),
+          idOffset,
+          displayName: `${config.displayName} ${
+            idOffset - HARTHMERE_LIVE_ENTITY_LIVESTOCK_FIRST_OFFSET + 1
+          }`,
+          areaId: livestockArea.areaId,
+          areaLabel: livestockArea.areaLabel,
+          position: livestockPositionInMuckArea(area, localIndex),
+          orientation: [0, 0] as Vec2,
+          dialog: config.dialog,
+          description: `A ${config.displayName.toLowerCase()} grazes the muck near ${
+            livestockArea.areaLabel
+          }. It ignores travelers until struck, then defends itself.`,
+          combatKind: "mux" as const,
+          combatLevel: 1,
+          combatHp: config.combatHp,
+          species: config.species,
+          sizeTier: config.sizeTier,
+          meatUnits: config.meatUnits,
+          attackDamage: config.attackDamage,
+          killXp: config.killXp,
+        } satisfies HarthmereLiveEntityProductionSeed;
+      })
+    );
+  });
 
 // HARTHMERE_MUCK_FLOOR_FEET_Y: local-dev fallback used while regenerating
 // the production terrain placement map. Runtime callers use the generated
@@ -643,9 +672,7 @@ export function harthmereGroundedMuckMonsterSeedsInTerritory(
 // delete the stragglers (e.g. the 15 road_muckwad muckers inside the Grove).
 export function harthmereExcludedMuckMonsterSeedIds(): BiomesId[] {
   const kept = new Set(
-    harthmereGroundedMuckMonsterSeedsInTerritory().map(
-      (seed) => seed.entityId
-    )
+    harthmereGroundedMuckMonsterSeedsInTerritory().map((seed) => seed.entityId)
   );
   return HARTHMERE_LIVE_ENTITY_MUCK_MONSTER_SEEDS.filter(
     (seed) => !kept.has(seed.entityId)
@@ -658,9 +685,7 @@ export function harthmereExcludedMuckMonsterSeedIds(): BiomesId[] {
 // excluded (e.g. Grove) muckers are not treated as required and can be removed.
 export function harthmereActiveLiveEntityProductionSeedIds(): BiomesId[] {
   return [
-    ...HARTHMERE_LIVE_ENTITY_ROBOT_SENTINEL_SEEDS.map(
-      (seed) => seed.entityId
-    ),
+    ...HARTHMERE_LIVE_ENTITY_ROBOT_SENTINEL_SEEDS.map((seed) => seed.entityId),
     ...harthmereGroundedMuckMonsterSeedsInTerritory().map(
       (seed) => seed.entityId
     ),
@@ -725,9 +750,7 @@ export function validateHarthmereLiveEntityProductionSeeds() {
         errors.push(`${seed.seedId}:unknown_area`);
         continue;
       }
-      if (
-        !isPositionInsideLiveEntityHelperBounds(seed.position, area.bounds)
-      ) {
+      if (!isPositionInsideLiveEntityHelperBounds(seed.position, area.bounds)) {
         errors.push(`${seed.seedId}:outside_area_bounds`);
       }
       if (!seed.robotId || !isLiveEntityRobotProtectionAnchorGrounded(area)) {

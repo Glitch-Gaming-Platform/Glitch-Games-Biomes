@@ -1,5 +1,6 @@
 import {
   applyConfiguredGlitchMutableHotfix,
+  closeGlitchMutableHotfixRedis,
   getGlitchMutableHotfixStatus,
   glitchMutableHotfixEnabled,
 } from "@/server/glitch/mutable_hotfix";
@@ -25,7 +26,17 @@ async function main() {
   );
 }
 
-main().catch((error) => {
-  console.error("GLITCH_MUTABLE_HOTFIX startup apply failed", error);
-  process.exit(72);
-});
+async function closeStartupResources() {
+  try {
+    await closeGlitchMutableHotfixRedis();
+  } catch (error) {
+    console.warn("GLITCH_MUTABLE_HOTFIX Redis close failed", error);
+  }
+}
+
+main()
+  .finally(closeStartupResources)
+  .catch((error) => {
+    console.error("GLITCH_MUTABLE_HOTFIX startup apply failed", error);
+    process.exit(72);
+  });

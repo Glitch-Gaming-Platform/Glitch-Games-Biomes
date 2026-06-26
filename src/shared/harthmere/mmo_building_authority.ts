@@ -162,7 +162,11 @@ export interface HarthmereBuildingPlacementContext {
     isProtectedInfrastructure: boolean;
   }>;
   /** NPC patrol waypoints within the build zone */
-  npcRouteWaypoints: Array<{ x: number; z: number; clearanceRadiusVoxels: number }>;
+  npcRouteWaypoints: Array<{
+    x: number;
+    z: number;
+    clearanceRadiusVoxels: number;
+  }>;
   /** Quest trigger areas within the build zone */
   questTriggerAreas: Array<{
     minX: number;
@@ -211,7 +215,10 @@ export interface HarthmereBuildingPlacementResult {
 // Structure catalogue registry
 // ---------------------------------------------------------------------------
 
-const _structureRegistry = new Map<HarthmereStructureType, HarthmereStructureDefinition>();
+const _structureRegistry = new Map<
+  HarthmereStructureType,
+  HarthmereStructureDefinition
+>();
 
 export function registerHarthmereStructureDefinition(
   def: HarthmereStructureDefinition
@@ -350,8 +357,7 @@ function pointInPolygon(
     const xj = polygon[j].x;
     const zj = polygon[j].z;
     const intersect =
-      zi > pz !== zj > pz &&
-      px < ((xj - xi) * (pz - zi)) / (zj - zi) + xi;
+      zi > pz !== zj > pz && px < ((xj - xi) * (pz - zi)) / (zj - zi) + xi;
     if (intersect) inside = !inside;
   }
   return inside;
@@ -426,7 +432,9 @@ export function validateHarthmereBuildingPlacement(
     }
     // Terrain type
     if (UNBUILDABLE_TERRAIN.has(col.terrainType)) {
-      terrainViolations.push(`terrain_not_buildable:${col.terrainType}@${col.x},${col.z}`);
+      terrainViolations.push(
+        `terrain_not_buildable:${col.terrainType}@${col.x},${col.z}`
+      );
     } else if (!def.allowedTerrainTypes.includes(col.terrainType)) {
       terrainViolations.push(`terrain_type_not_allowed:${col.terrainType}`);
     }
@@ -439,13 +447,21 @@ export function validateHarthmereBuildingPlacement(
   if (terrainViolations.length > 0) {
     fail(errors, ...terrainViolations.slice(0, 5));
     if (terrainViolations.length > 5) {
-      fail(errors, `terrain_violations_truncated:${terrainViolations.length - 5}_more`);
+      fail(
+        errors,
+        `terrain_violations_truncated:${terrainViolations.length - 5}_more`
+      );
     }
   }
 
   // Slope
   if (maxSlopeFound > def.maxSlopeDegrees) {
-    fail(errors, `slope_too_steep:${maxSlopeFound.toFixed(1)}_degrees_max_${def.maxSlopeDegrees}`);
+    fail(
+      errors,
+      `slope_too_steep:${maxSlopeFound.toFixed(1)}_degrees_max_${
+        def.maxSlopeDegrees
+      }`
+    );
   }
 
   // Foundation
@@ -521,7 +537,10 @@ export function validateHarthmereBuildingPlacement(
 
     // Plot minimum size
     if (plot.totalAreaVoxels < def.minPlotAreaVoxels) {
-      fail(errors, `plot_too_small:${plot.totalAreaVoxels}_min_${def.minPlotAreaVoxels}`);
+      fail(
+        errors,
+        `plot_too_small:${plot.totalAreaVoxels}_min_${def.minPlotAreaVoxels}`
+      );
     }
 
     // Plot active
@@ -572,7 +591,16 @@ export function validateHarthmereBuildingPlacement(
   // --- Quest trigger area clearance ---
   for (const quest of ctx.questTriggerAreas) {
     if (
-      aabbsOverlap(minX, maxX, minZ, maxZ, quest.minX, quest.maxX, quest.minZ, quest.maxZ)
+      aabbsOverlap(
+        minX,
+        maxX,
+        minZ,
+        maxZ,
+        quest.minX,
+        quest.maxX,
+        quest.minZ,
+        quest.maxZ
+      )
     ) {
       fail(errors, "overlaps_quest_trigger_area");
     }
@@ -663,10 +691,7 @@ export function validateHarthmereBuildingDemolition(
   const errors: string[] = [];
   const warnings: string[] = [];
 
-  if (
-    ctx.structureOwnerId !== req.actorId &&
-    ctx.plotOwnerId !== req.actorId
-  ) {
+  if (ctx.structureOwnerId !== req.actorId && ctx.plotOwnerId !== req.actorId) {
     fail(errors, "not_structure_or_plot_owner");
   }
 
@@ -690,7 +715,11 @@ export function validateHarthmereBuildingDemolition(
     auditTags:
       errors.length === 0
         ? ["building_demolition_approved", req.structureId]
-        : ["building_demolition_rejected", req.structureId, `errors:${errors.length}`],
+        : [
+            "building_demolition_rejected",
+            req.structureId,
+            `errors:${errors.length}`,
+          ],
   };
 }
 
@@ -736,7 +765,11 @@ export function validateHarthmerePlotClaim(
   if (ctx.actorGold < ctx.claimPriceGold) {
     fail(errors, "insufficient_gold_for_plot_claim");
   }
-  if (ctx.actorOwnedPlotCount >= ctx.maxPlotsPerActor) {
+  if (
+    Number.isFinite(ctx.maxPlotsPerActor) &&
+    ctx.maxPlotsPerActor >= 0 &&
+    ctx.actorOwnedPlotCount >= ctx.maxPlotsPerActor
+  ) {
     fail(errors, "plot_ownership_limit_reached");
   }
 

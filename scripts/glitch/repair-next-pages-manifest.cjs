@@ -10,7 +10,7 @@ const manifestPath = path.join(root, ".next", "server", "pages-manifest.json");
 
 const requiredRoutes = [
   "/",
-  "/at/[...slug]",
+  "/at/[[...slug]]",
   "/api/assets/player_mesh.glb",
   "/api/glitch/harthmere",
   "/api/glitch/runtime_environment",

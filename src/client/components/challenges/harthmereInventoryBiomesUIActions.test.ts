@@ -1,6 +1,8 @@
 /// <reference types="mocha" />
 
 import assert from "assert";
+import fs from "fs";
+import path from "path";
 import {
   biomesInventoryItemIcon,
   humanizeBiomesInventoryItemId,
@@ -21,6 +23,7 @@ import {
 } from "@/shared/harthmere/harthmere_biomes_ecs_bridge";
 
 const memoryStore = new Map<string, string>();
+const ROOT = process.cwd();
 const dispatchedEvents: any[] = [];
 const localStorageShim = {
   getItem: (key: string) =>
@@ -125,6 +128,23 @@ describe("Harthmere inventory BiomesUI presentation and actions", () => {
     );
   });
 
+  it("presents edible food as consumables with an Eat action in BiomesUI adapters", () => {
+    const source = fs.readFileSync(
+      path.join(
+        ROOT,
+        "src/client/components/biomes_ui/adapters/useBiomesUILiveAdapters.ts"
+      ),
+      "utf8"
+    );
+
+    assert.match(
+      source,
+      /const edibleFood = isHarthmereFoodItemPlayerEdible\(itemId\);/
+    );
+    assert.match(source, /edibleFood\s*\?\s*"consumables"/);
+    assert.match(source, /useActionLabel:\s*edibleFood \? "Eat" : undefined/);
+  });
+
   it("equips and unequips local clothing through the BiomesUI action bridge", () => {
     grantHarthmereItem("baker_apron", 1, "test clothing");
     const apron = readHarthmereInventoryState().backpack.items.find(
@@ -183,10 +203,7 @@ describe("Harthmere inventory BiomesUI presentation and actions", () => {
 
   it("maps Harthmere hotbar items to real ECS items for held-item rendering", () => {
     assert.equal(harthmereItemIdToBiomesId("woodsman_axe"), BikkieIds.axe);
-    assert.equal(
-      harthmereItemIdToBiomesId("baker_apron"),
-      BikkieIds.grassyTop
-    );
+    assert.equal(harthmereItemIdToBiomesId("baker_apron"), BikkieIds.grassyTop);
     assert.equal(
       harthmereItemIdToBiomesId("rough_stone"),
       BikkieIds.cobblestone
@@ -420,6 +437,7 @@ describe("Harthmere inventory BiomesUI presentation and actions", () => {
     assert.equal(body.actionKind, "request_loot_roll");
     assert.equal(body.payload.itemId, dirtBlockItemId);
     assert.equal(body.payload.count, 1);
+    assert.deepEqual(body.payload.itemDeltas, { [dirtBlockItemId]: 1 });
     assert.ok(body.includeSnapshots.includes("playerStatusState"));
   });
 

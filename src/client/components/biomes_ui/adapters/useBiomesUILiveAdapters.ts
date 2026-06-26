@@ -467,10 +467,10 @@ function localHarthmereBackpackItemToUiItem(
   const display = getHarthmereItemDisplay(itemId);
   const equipSlot =
     display?.slot ?? inferEquipSlot({ id: itemId, name: itemId });
-  const category = harthmereDisplayCategoryForBiomesUI(
-    display?.category,
-    equipSlot
-  );
+  const edibleFood = isHarthmereFoodItemPlayerEdible(itemId);
+  const category = edibleFood
+    ? "consumables"
+    : harthmereDisplayCategoryForBiomesUI(display?.category, equipSlot);
   return {
     id: itemId,
     label: display?.name ?? humanizeRealItemId(itemId, itemId),
@@ -487,7 +487,8 @@ function localHarthmereBackpackItemToUiItem(
     },
     source: "backpack",
     storageLocation: "backpack",
-    canUse: display?.canUse ?? true,
+    canUse: edibleFood ? true : display?.canUse ?? true,
+    useActionLabel: edibleFood ? "Eat" : undefined,
     equipSlot,
     canEquip: display?.canEquip ?? Boolean(equipSlot),
     canSplit: false,
@@ -506,20 +507,19 @@ function localHarthmereHotbarItemToUiItem(
   if (!display) return null;
   const equipSlot =
     display.slot ?? inferEquipSlot({ id: itemId, name: itemId });
+  const edibleFood = isHarthmereFoodItemPlayerEdible(itemId);
+  const category = edibleFood
+    ? "consumables"
+    : harthmereDisplayCategoryForBiomesUI(display.category, equipSlot);
   return {
     id: itemId,
     label: display.name,
     icon: display.icon ?? biomesInventoryItemIcon(itemId),
     count: 1,
     quality: "common",
-    category: harthmereDisplayCategoryForBiomesUI(display.category, equipSlot),
+    category,
     description: display.description,
-    weight: inventoryUiItemWeight(
-      itemId,
-      1,
-      harthmereDisplayCategoryForBiomesUI(display.category, equipSlot),
-      display.name
-    ),
+    weight: inventoryUiItemWeight(itemId, 1, category, display.name),
     equipSlot,
     ref: {
       kind: "hotbar",
@@ -528,7 +528,8 @@ function localHarthmereHotbarItemToUiItem(
     },
     source: "hotbar",
     storageLocation: "hotbar",
-    canUse: display.canUse,
+    canUse: edibleFood ? true : display.canUse,
+    useActionLabel: edibleFood ? "Eat" : undefined,
     canEquip: display.canEquip,
     canMove: true,
     canSplit: false,
@@ -721,7 +722,10 @@ function slotToInventoryUiItem(
   const item = slot.item;
   const display = getHarthmereItemDisplay(base.id);
   const equipSlot = display?.slot ?? inferEquipSlot(item);
-  const category = display
+  const edibleFood = isHarthmereFoodItemPlayerEdible(base.id);
+  const category = edibleFood
+    ? "consumables"
+    : display
     ? harthmereDisplayCategoryForBiomesUI(display.category, equipSlot)
     : inferInventoryCategory(item);
   return {
@@ -732,13 +736,19 @@ function slotToInventoryUiItem(
     quality: base.quality as InventoryUiItem["quality"],
     category,
     description: display?.description ?? itemDescription(item),
-    weight: inventoryUiItemWeight(base.id, base.count ?? 1, category, base.label),
+    weight: inventoryUiItemWeight(
+      base.id,
+      base.count ?? 1,
+      category,
+      base.label
+    ),
     durability: itemDurability(item),
     equipSlot,
     ref,
     source,
     storageLocation: source,
-    canUse: display?.canUse ?? true,
+    canUse: edibleFood ? true : display?.canUse ?? true,
+    useActionLabel: edibleFood ? "Eat" : undefined,
     canEquip: display?.canEquip ?? true,
     canMove: true,
     canSplit: true,
@@ -1112,13 +1122,12 @@ function assignLiveVoxelBlocksToEmptyHotbar(inventoryLootState: any) {
   if (!items || typeof items !== "object") return;
   const inventoryState = readHarthmereInventoryState();
   const assigned = new Set(
-    Object.values(inventoryState.hotbar)
-      .filter(Boolean)
-      .map(String)
+    Object.values(inventoryState.hotbar).filter(Boolean).map(String)
   );
-  const emptySlots = Array.from({ length: 9 }, (_unused, index) => index).filter(
-    (index) => !inventoryState.hotbar[`slot_${index + 1}`]
-  );
+  const emptySlots = Array.from(
+    { length: 9 },
+    (_unused, index) => index
+  ).filter((index) => !inventoryState.hotbar[`slot_${index + 1}`]);
   if (emptySlots.length === 0) return;
   for (const [itemId, count] of Object.entries(items)) {
     if (Number(count) <= 0 || assigned.has(itemId)) continue;
@@ -1152,7 +1161,10 @@ function stackRecordToInventoryUiItems(
       const display = getHarthmereItemDisplay(itemId);
       const equipSlot =
         display?.slot ?? inferEquipSlot({ id: itemId, name: itemId });
-      const category = display
+      const edibleFood = isHarthmereFoodItemPlayerEdible(itemId);
+      const category = edibleFood
+        ? "consumables"
+        : display
         ? harthmereDisplayCategoryForBiomesUI(display.category, equipSlot)
         : inferInventoryCategory({ id: itemId });
       return {
@@ -1179,7 +1191,11 @@ function stackRecordToInventoryUiItems(
         source,
         storageLocation: source,
         canUse:
-          options.canUse ?? display?.canUse ?? isLiveUsableBackpackItem(itemId),
+          options.canUse ??
+          (edibleFood
+            ? true
+            : display?.canUse ?? isLiveUsableBackpackItem(itemId)),
+        useActionLabel: edibleFood ? "Eat" : undefined,
         canEquip: options.canEquip ?? display?.canEquip ?? Boolean(equipSlot),
         canMove: options.canMove ?? false,
         canSplit: options.canSplit ?? false,
@@ -1231,6 +1247,15 @@ function instanceRecordToInventoryUiItems(
         category: instance.category,
         equipmentSlot: instance.equipmentSlot,
       });
+    const edibleFood = isHarthmereFoodItemPlayerEdible(itemId);
+    const category = edibleFood
+      ? "consumables"
+      : display
+      ? harthmereDisplayCategoryForBiomesUI(display.category, equipSlot)
+      : inferInventoryCategory({
+          id: itemId,
+          category: instance.category,
+        });
     return [
       {
         id: instanceId,
@@ -1238,23 +1263,8 @@ function instanceRecordToInventoryUiItems(
         icon: display?.icon ?? biomesInventoryItemIcon(itemId),
         count,
         quality: "common" as InventoryUiItem["quality"],
-        category: display
-          ? harthmereDisplayCategoryForBiomesUI(display.category, equipSlot)
-          : inferInventoryCategory({
-              id: itemId,
-              category: instance.category,
-            }),
-        weight: inventoryUiItemWeight(
-          itemId,
-          count,
-          display
-            ? harthmereDisplayCategoryForBiomesUI(display.category, equipSlot)
-            : inferInventoryCategory({
-                id: itemId,
-                category: instance.category,
-              }),
-          display?.name
-        ),
+        category,
+        weight: inventoryUiItemWeight(itemId, count, category, display?.name),
         equipSlot,
         description: display?.description
           ? display.description
@@ -1288,15 +1298,17 @@ function instanceRecordToInventoryUiItems(
         ref: { kind: "item", idx: indexOffset + index } as InventoryUiRef,
         source: "backpack" as const,
         storageLocation: "backpack" as const,
-        canUse: isLiveUsableBackpackItem(itemId),
+        canUse: edibleFood ? true : isLiveUsableBackpackItem(itemId),
+        useActionLabel: edibleFood ? "Eat" : undefined,
         canEquip: Boolean(equipSlot),
         canMove: true,
         canSplit: false,
         canDrop: false,
         canDestroy: false,
-        protectedReason: equipSlot || isLiveUsableBackpackItem(itemId)
-          ? undefined
-          : "This item uses protected inventory handling.",
+        protectedReason:
+          equipSlot || isLiveUsableBackpackItem(itemId)
+            ? undefined
+            : "This item uses protected inventory handling.",
       },
     ];
   });
@@ -2314,7 +2326,8 @@ export function useBiomesUILiveAdapters({
     if (mapped.length === 0 && previousSlots.size === 0) {
       return;
     }
-    const current = resources.peek("/ecs/c/wearing", userId) ?? Wearing.create();
+    const current =
+      resources.peek("/ecs/c/wearing", userId) ?? Wearing.create();
     const items = new Map(current.items ?? []);
     for (const slot of previousSlots) {
       items.delete(slot as any);
@@ -2349,8 +2362,7 @@ export function useBiomesUILiveAdapters({
     }
 
     const current =
-      resources.peek("/ecs/c/inventory", userId) ??
-      Inventory.clone(inventory);
+      resources.peek("/ecs/c/inventory", userId) ?? Inventory.clone(inventory);
     const hotbarSlots = [...(current.hotbar ?? [])];
     while (hotbarSlots.length < 9) {
       hotbarSlots.push(undefined as any);

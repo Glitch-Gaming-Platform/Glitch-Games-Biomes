@@ -13,6 +13,7 @@ import { resolveItemAttributeId } from "@/shared/game/item";
 import { createBag } from "@/shared/game/items";
 import { itemBagToString } from "@/shared/game/items_serde";
 import { sellPrice } from "@/shared/game/sales";
+import { isHarthmereLiveModeManagedCombatEntity } from "@/shared/harthmere/visible_combat_target";
 import { idToNpcType } from "@/shared/npc/bikkie";
 import { modifyNpcHealth } from "@/shared/npc/modify_health";
 import { any } from "@/shared/util/helpers";
@@ -22,12 +23,27 @@ const updateNpcHealthEventHandler = makeEventHandler("updateNpcHealthEvent", {
   involves: (event) => ({
     npc: q
       .id(event.id)
-      .with("health", "npc_metadata", "position", "rigid_body", "size", "npc_state"),
+      .with(
+        "health",
+        "npc_metadata",
+        "position",
+        "rigid_body",
+        "size",
+        "npc_state"
+      ),
     dropIds: newIds(MAX_DROPS_FOR_SPEC),
   }),
   apply: ({ npc }, event, context) => {
     if (npc.health().hp <= 0) {
       // Health updates have no effect on dead NPCs.
+      return;
+    }
+
+    if (
+      event.damageSource?.kind === "attack" &&
+      isHarthmereLiveModeManagedCombatEntity(event.id)
+    ) {
+      // Harthmere live creatures are damaged by the live-mode combat reducer.
       return;
     }
 
@@ -106,7 +122,14 @@ const setNPCPositionEventHandler = makeEventHandler("setNPCPositionEvent", {
   involves: (event) => ({
     npc: q
       .id(event.entity_id)
-      .with("health", "npc_metadata", "position", "rigid_body", "size", "npc_state"),
+      .with(
+        "health",
+        "npc_metadata",
+        "position",
+        "rigid_body",
+        "size",
+        "npc_state"
+      ),
   }),
   apply: ({ npc }, event, _context) => {
     if (event.position) {

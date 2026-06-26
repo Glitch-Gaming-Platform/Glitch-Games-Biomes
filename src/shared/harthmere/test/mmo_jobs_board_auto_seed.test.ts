@@ -420,6 +420,206 @@ describe("mmo_jobs_board_authority — monster hunting (current)", () => {
     }
   });
 
+  it("randomizes Mucker and Hex hunt coordinates across generated postings", () => {
+    const byTemplate = new Map<string, Set<string>>();
+    for (let i = 0; i < 300; i += 1) {
+      for (const boardId of [
+        HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID,
+        HARTHMERE_JOBS_BOARD_HARTHMERE_BOARD_ID,
+      ]) {
+        const result = seedBoard(
+          defaultHarthmereJobsBoardState(NOW),
+          boardId,
+          NOW + i * 17_321
+        );
+        for (const job of autoPostings(result.jobsBoard)) {
+          if (job.monsterId !== "mucker" && job.monsterId !== "hex") continue;
+          const target = harthmereJobsBoardMuckBountyTargetForId(
+            job.mapMarkerId
+          );
+          assert.ok(target, `${job.templateId} should use a bounty marker`);
+          assert.equal(target!.monsterId, job.monsterId);
+          assert.ok(
+            muckMonsterAreaForPosition(target!.position, 1.5),
+            `${job.templateId} target must stay in muck territory`
+          );
+          const set = byTemplate.get(job.templateId ?? "") ?? new Set<string>();
+          set.add(target!.position.map((value) => value.toFixed(2)).join(","));
+          byTemplate.set(job.templateId ?? "", set);
+        }
+      }
+    }
+
+    for (const templateId of [
+      "hunt_mucker_elite",
+      "hunt_hex_boss",
+      "hunt_mucker_alpha",
+    ]) {
+      assert.ok(
+        (byTemplate.get(templateId)?.size ?? 0) > 1,
+        `${templateId} should rotate between multiple live coordinates`
+      );
+    }
+  });
+
+  it("adds random pickup and drop-off markers to generated item-delivery jobs", () => {
+    const pickupsByTemplate = new Map<string, Set<string>>();
+    const dropoffsByTemplate = new Map<string, Set<string>>();
+    const seen = new Set<string>();
+    for (let i = 0; i < 300; i += 1) {
+      for (const boardId of [
+        HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID,
+        HARTHMERE_JOBS_BOARD_HARTHMERE_BOARD_ID,
+      ]) {
+        const result = seedBoard(
+          defaultHarthmereJobsBoardState(NOW),
+          boardId,
+          NOW + i * 19_003
+        );
+        for (const job of autoPostings(result.jobsBoard)) {
+          if (job.kind !== "delivery") continue;
+          const req = job.requirements.find((requirement) =>
+            Boolean(requirement.itemId)
+          );
+          if (!req) continue;
+          seen.add(job.templateId ?? "");
+          assert.ok(
+            req.pickupMarkerId,
+            `${job.templateId} should require a pickup marker`
+          );
+          assert.ok(
+            harthmereJobsBoardQuestMarkerPositionForId(req.pickupMarkerId),
+            `${job.templateId} pickup marker should resolve`
+          );
+          assert.ok(
+            req.mapMarkerId,
+            `${job.templateId} should require a drop-off marker`
+          );
+          assert.ok(
+            harthmereJobsBoardQuestMarkerPositionForId(req.mapMarkerId),
+            `${job.templateId} drop-off marker should resolve`
+          );
+          assert.notEqual(
+            req.pickupMarkerId,
+            req.mapMarkerId,
+            `${job.templateId} pickup and drop-off markers should differ`
+          );
+          const pickups =
+            pickupsByTemplate.get(job.templateId ?? "") ?? new Set<string>();
+          pickups.add(req.pickupMarkerId!);
+          pickupsByTemplate.set(job.templateId ?? "", pickups);
+          const dropoffs =
+            dropoffsByTemplate.get(job.templateId ?? "") ?? new Set<string>();
+          dropoffs.add(req.mapMarkerId!);
+          dropoffsByTemplate.set(job.templateId ?? "", dropoffs);
+        }
+      }
+    }
+
+    for (const templateId of [
+      "npc_delivery_apples",
+      "harthmere_town_market_delivery",
+      "harthmere_npc_courier_bridge",
+    ]) {
+      assert.ok(seen.has(templateId), `${templateId} should appear in samples`);
+      assert.ok(
+        (pickupsByTemplate.get(templateId)?.size ?? 0) > 1,
+        `${templateId} should rotate pickup locations`
+      );
+      assert.ok(
+        (dropoffsByTemplate.get(templateId)?.size ?? 0) > 1,
+        `${templateId} should rotate drop-off locations`
+      );
+    }
+  });
+
+  it("lets a pickup delivery collect the parcel before drop-off completion", () => {
+    let seeded = seed(defaultHarthmereJobsBoardState(NOW), NOW);
+    let job = Object.values(seeded.jobsBoard.postings).find(
+      (candidate) =>
+        candidate.kind === "delivery" &&
+        candidate.requirements.some((req) => req.pickupMarkerId)
+    );
+    for (let i = 1; !job && i < 40; i += 1) {
+      seeded = seed(defaultHarthmereJobsBoardState(NOW), NOW + i * 10_000);
+      job = Object.values(seeded.jobsBoard.postings).find(
+        (candidate) =>
+          candidate.kind === "delivery" &&
+          candidate.requirements.some((req) => req.pickupMarkerId)
+      );
+    }
+    assert.ok(job, "expected a generated pickup delivery");
+    const req = job!.requirements.find((entry) => entry.itemId)!;
+
+    const accept = reduceHarthmereJobsBoardMutation(
+      seeded.jobsBoard,
+      {
+        requestId: "accept-pickup-delivery",
+        actorId: "seeker",
+        nowMs: NOW + 1_000,
+        operation: "accept_job",
+        boardId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID,
+        jobId: job!.jobId,
+      } as any,
+      seedContext()
+    );
+    assert.deepEqual(
+      accept.inventoryItemDeltas,
+      {},
+      "pickup deliveries must not grant the parcel on accept"
+    );
+    const todo = Object.values(accept.jobsBoard.todos).find(
+      (entry) => entry.jobId === job!.jobId
+    );
+    assert.ok(todo);
+
+    const pickedUp = reduceHarthmereJobsBoardMutation(
+      accept.jobsBoard,
+      {
+        requestId: "pickup-delivery-parcel",
+        actorId: "seeker",
+        nowMs: NOW + 2_000,
+        operation: "pickup_delivery_parcel",
+        boardId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID,
+        jobId: job!.jobId,
+        questTodoId: todo!.todoId,
+        completedTargetId: req.pickupMarkerId,
+      } as any,
+      seedContext()
+    );
+    assert.deepEqual(pickedUp.warnings, []);
+    assert.deepEqual(pickedUp.inventoryItemDeltas, {
+      [req.itemId!]: req.count ?? 1,
+    });
+    assert.equal(
+      Object.values(pickedUp.jobsBoard.todos).find(
+        (entry) => entry.jobId === job!.jobId
+      )?.status,
+      "active"
+    );
+
+    const delivered = reduceHarthmereJobsBoardMutation(
+      pickedUp.jobsBoard,
+      {
+        requestId: "deliver-picked-up-parcel",
+        actorId: "seeker",
+        nowMs: NOW + 3_000,
+        operation: "complete_job_quest",
+        boardId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID,
+        jobId: job!.jobId,
+        questTodoId: todo!.todoId,
+        completedTargetId: req.recipientNpcId
+          ? `harthmere_owner:${req.recipientNpcId}`
+          : req.mapMarkerId,
+      } as any,
+      seedContext({ actorInventoryItems: { [req.itemId!]: req.count ?? 1 } })
+    );
+    assert.deepEqual(delivered.warnings, []);
+    assert.deepEqual(delivered.inventoryItemDeltas, {
+      [req.itemId!]: -(req.count ?? 1),
+    });
+  });
+
   it("resolves every Grove auto-seeded field-work marker to a world coordinate", () => {
     let state = defaultHarthmereJobsBoardState(NOW);
     for (let i = 0; i < 30; i += 1) {

@@ -33,8 +33,11 @@ describe("Harthmere mucker hit (updateNpcHealthEvent)", () => {
     logic = new TestLogicApi(voxeloo);
   });
 
-  function spawnMucker(position: [number, number, number]): BiomesId {
-    const id = generateTestId();
+  function spawnMucker(
+    position: [number, number, number],
+    entityId?: BiomesId
+  ): BiomesId {
+    const id = entityId ?? generateTestId();
     logic.world.writeableTable.apply([
       {
         kind: "create",
@@ -59,9 +62,11 @@ describe("Harthmere mucker hit (updateNpcHealthEvent)", () => {
   }
 
   it("applies attack damage to a live mucker", async () => {
-    const attacker = (await addGameUser(logic.world, generateTestId(), {
-      position: [0, 0, 0],
-    })).id;
+    const attacker = (
+      await addGameUser(logic.world, generateTestId(), {
+        position: [0, 0, 0],
+      })
+    ).id;
     const muckerId = spawnMucker([2, 0, 0]);
 
     await logic.publish(
@@ -79,10 +84,38 @@ describe("Harthmere mucker hit (updateNpcHealthEvent)", () => {
     assert.equal(mucker?.health?.hp, 91);
   });
 
+  it("ignores vanilla attack damage for Harthmere live-mode managed seeds", async () => {
+    const attacker = (
+      await addGameUser(logic.world, generateTestId(), {
+        position: [0, 0, 0],
+      })
+    ).id;
+    const managedMuckerId = spawnMucker(
+      [2, 0, 0],
+      8810000000019451 as BiomesId
+    );
+
+    await logic.publish(
+      new GameEvent(
+        attacker,
+        new UpdateNpcHealthEvent({
+          id: managedMuckerId,
+          hp: -90,
+          damageSource: { kind: "attack", attacker, dir: [1, 0, 0] },
+        })
+      )
+    );
+
+    const [, mucker] = logic.world.table.getWithVersion(managedMuckerId);
+    assert.equal(mucker?.health?.hp, 100);
+  });
+
   it("lands the same hit when the target is detected far out (no server reach gate)", async () => {
-    const attacker = (await addGameUser(logic.world, generateTestId(), {
-      position: [0, 0, 0],
-    })).id;
+    const attacker = (
+      await addGameUser(logic.world, generateTestId(), {
+        position: [0, 0, 0],
+      })
+    ).id;
     // ~8 units away -- inside voxel-break reach (8.78), far outside the old 3.5
     // melee cone. The server still applies it.
     const muckerId = spawnMucker([8, 0, 0]);
@@ -103,9 +136,11 @@ describe("Harthmere mucker hit (updateNpcHealthEvent)", () => {
   });
 
   it("does not drive health below the kill threshold prematurely (sanity)", async () => {
-    const attacker = (await addGameUser(logic.world, generateTestId(), {
-      position: [0, 0, 0],
-    })).id;
+    const attacker = (
+      await addGameUser(logic.world, generateTestId(), {
+        position: [0, 0, 0],
+      })
+    ).id;
     const muckerId = spawnMucker([2, 0, 0]);
 
     await logic.publish(

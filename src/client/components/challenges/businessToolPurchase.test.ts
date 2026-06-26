@@ -7,7 +7,8 @@ import assert from "assert";
 // land in their inventory. We shim window.localStorage so the store persists.
 const memoryStore = new Map<string, string>();
 const localStorageShim = {
-  getItem: (key: string) => (memoryStore.has(key) ? memoryStore.get(key)! : null),
+  getItem: (key: string) =>
+    memoryStore.has(key) ? memoryStore.get(key)! : null,
   setItem: (key: string, value: string) => {
     memoryStore.set(key, String(value));
   },
@@ -16,13 +17,18 @@ const localStorageShim = {
   },
   clear: () => memoryStore.clear(),
 };
-(globalThis as any).window = {
-  localStorage: localStorageShim,
-  dispatchEvent: () => true,
-  addEventListener: () => {},
-  removeEventListener: () => {},
-};
-(globalThis as any).localStorage = localStorageShim;
+
+function installBrowserShim() {
+  (globalThis as any).window = {
+    localStorage: localStorageShim,
+    dispatchEvent: () => true,
+    addEventListener: () => {},
+    removeEventListener: () => {},
+  };
+  (globalThis as any).localStorage = localStorageShim;
+}
+
+installBrowserShim();
 if (typeof (globalThis as any).Event === "undefined") {
   (globalThis as any).Event = class {
     type: string;
@@ -56,6 +62,7 @@ function ownsRepairMallet(): boolean {
 
 describe("purchaseHarthmereBusinessTool — money out, tool in (real store)", () => {
   beforeEach(() => {
+    installBrowserShim();
     memoryStore.clear();
   });
 
@@ -96,7 +103,10 @@ describe("purchaseHarthmereBusinessTool — money out, tool in (real store)", ()
 
   it("refuses a second purchase once the player already owns the tool (gold kept)", () => {
     setGold(100);
-    assert.equal(purchaseHarthmereBusinessTool("repair_maintenance_person").ok, true);
+    assert.equal(
+      purchaseHarthmereBusinessTool("repair_maintenance_person").ok,
+      true
+    );
     assert.equal(readHarthmereInventoryState().wallet.gold, 70);
 
     const second = purchaseHarthmereBusinessTool("repair_maintenance_person");

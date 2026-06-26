@@ -5,6 +5,7 @@ src/shared/ziki.ts linguist-generated=true
 scratch/alpha_terrain.json linguist-generated=true
 * text=auto eol=lf
 # Git LFS file extension settings.
+.harthmere-live-*.json filter=lfs diff=lfs merge=lfs -text
 *.bin filter=lfs diff=lfs merge=lfs -text
 *.glb filter=lfs diff=lfs merge=lfs -text
 *.gltf filter=lfs diff=lfs merge=lfs -text

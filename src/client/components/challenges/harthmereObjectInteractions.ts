@@ -111,6 +111,7 @@ function jobsBoardRequirementTargetAliases(
   req: HarthmereJobsBoardPosting["requirements"][number]
 ) {
   const aliases = new Set<string>();
+  addTargetAlias(aliases, (req as any).pickupMarkerId);
   addTargetAlias(aliases, (req as any).mapMarkerId);
   addTargetAlias(aliases, (req as any).targetId);
   addTargetAlias(aliases, (req as any).targetName);
@@ -160,6 +161,12 @@ function bestCompletionTargetId(input: {
   for (const req of input.job?.requirements ?? []) {
     const aliases = jobsBoardRequirementTargetAliases(req);
     if ([...objectAliases].some((alias) => aliases.has(alias))) {
+      if (
+        (req as any).pickupMarkerId &&
+        objectAliases.has(normalizedTarget((req as any).pickupMarkerId) ?? "")
+      ) {
+        return (req as any).pickupMarkerId;
+      }
       return (
         (req as any).recipientNpcId ??
         (req as any).targetId ??
@@ -176,6 +183,21 @@ function bestCompletionTargetId(input: {
     input.job?.mapMarkerId ??
     input.objectId ??
     normalizedLabel(input.label)
+  );
+}
+
+function isDeliveryPickupTarget(input: {
+  completedTargetId?: string;
+  job?: HarthmereJobsBoardPosting;
+}) {
+  if (input.job?.kind !== "delivery" || !input.completedTargetId) {
+    return false;
+  }
+  const completed = normalizedTarget(input.completedTargetId);
+  return (input.job.requirements ?? []).some(
+    (req) =>
+      Boolean((req as any).pickupMarkerId) &&
+      normalizedTarget((req as any).pickupMarkerId) === completed
   );
 }
 
@@ -216,18 +238,22 @@ async function completeHarthmereJobsBoardFieldObjectiveForObject(input: {
       input.interactionKind === "repair" && isHarthmereRepairToolEquipped()
         ? "repair"
         : undefined;
+    const completedTargetId = bestCompletionTargetId({
+      objectId: input.objectId,
+      label: input.label,
+      todo,
+      job,
+    });
+    const operation = isDeliveryPickupTarget({ completedTargetId, job })
+      ? "pickup_delivery_parcel"
+      : "complete_job_quest";
     const snapshotAfter = await submitHarthmereJobsBoardMutation(
-      "complete_job_quest",
+      operation,
       {
         jobId: todo.jobId,
         boardId: todo.boardId,
         questTodoId: todo.todoId,
-        completedTargetId: bestCompletionTargetId({
-          objectId: input.objectId,
-          label: input.label,
-          todo,
-          job,
-        }),
+        completedTargetId,
         ...(usedToolAction ? { usedToolAction } : {}),
       },
       {
@@ -237,6 +263,16 @@ async function completeHarthmereJobsBoardFieldObjectiveForObject(input: {
     const updatedTodo = snapshotAfter.myTodos.find(
       (candidate) => candidate.todoId === todo.todoId
     );
+    if (operation === "pickup_delivery_parcel") {
+      addToast(input.resources, {
+        kind: "basic",
+        id: `harthmere-jobs-board-delivery-pickup:${todo.todoId}`,
+        message: `${
+          job?.title ?? todo.title ?? "Delivery"
+        } picked up. Take it to the marked recipient.`,
+      });
+      return;
+    }
     if (updatedTodo?.status === "completed") {
       addToast(input.resources, {
         kind: "basic",

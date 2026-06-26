@@ -887,14 +887,16 @@ export function combatActorPositionFromInstallLiveModeBody(
   if (
     body.actionKind !== "request_attack" &&
     body.actionKind !== "request_ability_cast" &&
-    body.actionKind !== "request_npc_ai_tick"
+    body.actionKind !== "request_npc_ai_tick" &&
+    body.actionKind !== "request_home_decoration"
   ) {
     return undefined;
   }
   if (
     body.subsystem !== "combat" &&
     body.subsystem !== "ability" &&
-    body.subsystem !== "npc_ai"
+    body.subsystem !== "npc_ai" &&
+    body.subsystem !== "home_decoration"
   ) {
     return undefined;
   }

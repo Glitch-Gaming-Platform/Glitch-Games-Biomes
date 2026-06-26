@@ -45,6 +45,7 @@ export interface HarthmereVendorProfile {
   vendorId: string;
   vendorName: string;
   name: string;
+  businessOutpostId?: string;
   vendorType: string;
   region: "harthmere";
   stocks: HarthmereVendorStockLine[];
@@ -60,6 +61,24 @@ export interface HarthmereVendorProfile {
   lawfulService: boolean;
   intentionalNonShop?: boolean;
 }
+
+export const HARTHMERE_BUILDING_MATERIAL_BUSINESS_VENDOR_ID =
+  "weapons_tools" as const;
+
+const HARTHMERE_BUILDING_MATERIAL_BUSINESS_STOCKS: HarthmereVendorStockLine[] =
+  [
+    { itemId: "rough_stone", quantity: -1, price: 2 },
+    { itemId: "river_clay", quantity: -1, price: 3 },
+    { itemId: "softwood_log", quantity: -1, price: 3 },
+    { itemId: "oak_branch", quantity: -1, price: 2 },
+    { itemId: "iron_ore", quantity: -1, price: 6 },
+    { itemId: "scrap_metal", quantity: -1, price: 5 },
+    { itemId: "tree_resin", quantity: -1, price: 8 },
+    { itemId: "cloth_scrap", quantity: -1, price: 4 },
+    { itemId: "clean_water", quantity: -1, price: 3 },
+    { itemId: "old_coin", quantity: -1, price: 18 },
+    { itemId: "mana_essence", quantity: -1, price: 24 },
+  ];
 
 interface HarthmereVendorItemDefinitionSeed {
   displayName: string;
@@ -277,6 +296,7 @@ export const HARTHMERE_VENDOR_CATALOG: Record<number, HarthmereVendorProfile> =
       vendorId: "black_anvil_smithy",
       vendorName: "Black Anvil Smithy",
       name: "Black Anvil Smithy",
+      businessOutpostId: "outpost_tools_cinderlane",
       vendorType: "blacksmith",
       region: "harthmere",
       stocks: [
@@ -1110,5 +1130,15 @@ export function ensureHarthmereProductionVendorCatalog() {
         createHarthmereProductionVendorEntry(profile, stock)
       );
     }
+  }
+
+  for (const stock of HARTHMERE_BUILDING_MATERIAL_BUSINESS_STOCKS) {
+    registerHarthmereVendorEntry({
+      vendorId: HARTHMERE_BUILDING_MATERIAL_BUSINESS_VENDOR_ID,
+      itemId: stock.itemId,
+      buyPrice: unitBuyPrice(stock),
+      sellPrice: 0,
+      stock: stock.quantity,
+    });
   }
 }

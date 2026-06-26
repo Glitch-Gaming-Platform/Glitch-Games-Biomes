@@ -87,6 +87,7 @@ import type { ShardId } from "@/shared/game/shard";
 import { blockPos, voxelShard } from "@/shared/game/shard";
 import { getCameraDirection, setPosition } from "@/shared/game/spatial";
 import { blockIsEmpty } from "@/shared/game/terrain_helper";
+import { isHarthmereLiveModeManagedCombatEntity } from "@/shared/harthmere/visible_combat_target";
 import type { BiomesId } from "@/shared/ids";
 import {
   aabbIterator,
@@ -325,7 +326,7 @@ export function handleAttackInteraction(
           })
         )
       );
-    } else {
+    } else if (!isHarthmereLiveModeManagedCombatEntity(entity.id)) {
       // Send an attack event to the server.
       fireAndForget(
         deps.events.publish(

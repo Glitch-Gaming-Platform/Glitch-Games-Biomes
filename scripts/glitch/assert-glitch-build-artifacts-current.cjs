@@ -190,7 +190,7 @@ if (nextFiles.length) {
   expectNextPagesManifestRoute("/api/harthmere/live_mode");
   expectNextPagesManifestRoute("/api/harthmere/live_mode_jobs_board_state");
   expectNextPagesManifestRoute("/api/harthmere/live_mode_player_status_state");
-  expectNextPagesManifestRoute("/at/[...slug]");
+  expectNextPagesManifestRoute("/at/[[...slug]]");
   for (const s of bad.slice(0, 4)) expectNotContainsText("built Next artifacts", nextText, s);
 } else {
   ok("built Next artifacts not present yet; source policy validated before build");

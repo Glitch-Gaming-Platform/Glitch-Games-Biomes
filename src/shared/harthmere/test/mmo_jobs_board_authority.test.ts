@@ -6,6 +6,7 @@ import {
   HARTHMERE_ESCORT_ACCEPT_WINDOW_MIN_MS,
   HARTHMERE_JOBS_BOARD_ACCEPT_WINDOW_MAX_MS,
   HARTHMERE_JOBS_BOARD_ACCEPT_WINDOW_MIN_MS,
+  HARTHMERE_JOBS_BOARD_ACCEPT_COOLDOWN_MS,
   HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID,
   HARTHMERE_JOBS_BOARD_INTERACTION_RADIUS,
   defaultHarthmereJobsBoardState,
@@ -1044,6 +1045,115 @@ describe("mmo_jobs_board_authority — accept timer + failure (HARTHMERE_JOB_ACC
         ?.dueAtMs,
       job.deadlineAtMs
     );
+  });
+
+  it("reactivates a stale failed todo when the same actor re-accepts a released job", () => {
+    const posted = mutate(
+      defaultHarthmereJobsBoardState(NOW),
+      "create_job_posting",
+      postPayload(),
+      {},
+      "poster"
+    );
+    const jobId = Object.keys(posted.jobsBoard.postings)[0];
+    const accepted = mutate(
+      posted.jobsBoard,
+      "accept_job",
+      { jobId },
+      {},
+      "seeker"
+    );
+    const firstTodo = Object.values(accepted.jobsBoard.todos).find(
+      (todo) => todo.jobId === jobId && todo.actorId === "seeker"
+    );
+    assert.ok(firstTodo);
+
+    const failed = mutate(
+      accepted.jobsBoard,
+      "fail_job_quest",
+      { jobId, questTodoId: firstTodo!.todoId },
+      {},
+      "seeker"
+    );
+    assert.equal(failed.jobsBoard.postings[jobId].status, "open");
+    assert.equal(failed.jobsBoard.todos[firstTodo!.todoId].status, "failed");
+
+    const reaccepted = mutate(
+      failed.jobsBoard,
+      "accept_job",
+      { jobId, nowMs: NOW + HARTHMERE_JOBS_BOARD_ACCEPT_COOLDOWN_MS * 2 },
+      {},
+      "seeker"
+    );
+    assert.equal(
+      reaccepted.warnings.length,
+      0,
+      JSON.stringify(reaccepted.warnings)
+    );
+    assert.equal(reaccepted.jobsBoard.postings[jobId].status, "active");
+    assert.equal(
+      reaccepted.jobsBoard.todos[firstTodo!.todoId].status,
+      "active"
+    );
+
+    const questDone = mutate(
+      reaccepted.jobsBoard,
+      "complete_job_quest",
+      {
+        jobId,
+        questTodoId: firstTodo!.todoId,
+        completedTargetId: "pump_1",
+      },
+      { actorInventoryItems: { repair_part: 2 } },
+      "seeker"
+    );
+    assert.equal(questDone.warnings.length, 0);
+    assert.equal(
+      questDone.jobsBoard.todos[firstTodo!.todoId].status,
+      "completed"
+    );
+  });
+
+  it("revives a stale inactive todo when the accepted job is still active", () => {
+    const posted = mutate(
+      defaultHarthmereJobsBoardState(NOW),
+      "create_job_posting",
+      postPayload(),
+      {},
+      "poster"
+    );
+    const jobId = Object.keys(posted.jobsBoard.postings)[0];
+    const accepted = mutate(
+      posted.jobsBoard,
+      "accept_job",
+      { jobId },
+      {},
+      "seeker"
+    );
+    const todo = Object.values(accepted.jobsBoard.todos).find(
+      (candidate) => candidate.jobId === jobId && candidate.actorId === "seeker"
+    );
+    assert.ok(todo);
+    accepted.jobsBoard.todos[todo!.todoId].status = "cancelled";
+
+    const questDone = mutate(
+      accepted.jobsBoard,
+      "complete_job_quest",
+      {
+        jobId,
+        questTodoId: todo!.todoId,
+        completedTargetId: "pump_1",
+      },
+      { actorInventoryItems: { repair_part: 2 } },
+      "seeker"
+    );
+
+    assert.equal(
+      questDone.warnings.length,
+      0,
+      JSON.stringify(questDone.warnings)
+    );
+    assert.equal(questDone.jobsBoard.todos[todo!.todoId].status, "completed");
   });
 
   it("does not complete an escort quest until the companion has arrived", () => {

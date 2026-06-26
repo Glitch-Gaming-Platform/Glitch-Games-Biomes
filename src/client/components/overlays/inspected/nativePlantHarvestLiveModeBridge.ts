@@ -54,11 +54,15 @@ export async function submitHarthmereNativePlantHarvestToLiveMode(input: {
   const body = await response.json().catch(() => undefined);
   if (typeof window !== "undefined" && body) {
     window.dispatchEvent(new Event(HARTHMERE_INVENTORY_EVENT));
-    window.dispatchEvent(
-      new CustomEvent(HARTHMERE_LIVE_INVENTORY_SYNC_EVENT, {
-        detail: { body },
-      })
-    );
+    const syncEvent =
+      typeof CustomEvent === "function"
+        ? new CustomEvent(HARTHMERE_LIVE_INVENTORY_SYNC_EVENT, {
+            detail: { body },
+          })
+        : Object.assign(new Event(HARTHMERE_LIVE_INVENTORY_SYNC_EVENT), {
+            detail: { body },
+          });
+    window.dispatchEvent(syncEvent as CustomEvent<{ body: unknown }>);
   }
   return body;
 }

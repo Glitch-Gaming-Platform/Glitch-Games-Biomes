@@ -23,6 +23,7 @@ import {
   mergeHarthmereLiveModeSharedWorldStateIntoBackend,
   parseHarthmereLiveModeSharedWorldState,
   createHarthmereServerMuckCombatEntitySnapshots,
+  harthmereNormalizeSeededCombatEntitySnapshots,
   repairHarthmereStatusReadStaminaDeath,
   tickHarthmereLiveModeStaminaForGameplay,
   createHarthmereLiveModeBuildingClientSnapshot,
@@ -98,6 +99,7 @@ import {
 } from "@/shared/harthmere/live_entity_robot_energy_protection";
 import {
   BUILDING_SYSTEM_CONSTRUCTION_STAGES,
+  BUILDING_SYSTEM_PLOTS,
   buildingSystemBlueprintById,
   buildingSystemBusinessTypeById,
   buildingSystemHomeConsoleMarkerId,
@@ -1532,7 +1534,10 @@ describe("reduceHarthmereLiveModeBackendState — death lifecycle", function () 
     assert.strictEqual(staminaDeath.combat.hp, 0);
     assert.strictEqual(staminaDeath.combat.deathState, "dead");
     assert.strictEqual(staminaDeath.combat.resources.stamina, 0);
-    assert.strictEqual(staminaDeath.combat.deadFromStaminaAtMs, staminaDeadAtMs);
+    assert.strictEqual(
+      staminaDeath.combat.deadFromStaminaAtMs,
+      staminaDeadAtMs
+    );
 
     const fallDeath = freshState();
     fallDeath.combat.hp = 0;
@@ -3899,6 +3904,71 @@ describe("reduceHarthmereLiveModeBackendState — combat target authority", func
     });
   });
 
+  it("normalizes old seeded creature health and clears stale loot claims on respawn", function () {
+    const seedSnapshots =
+      createHarthmereServerMuckCombatEntitySnapshots(NOW_MS);
+    const [muckerId, muckerCanonical] = Object.entries(seedSnapshots).find(
+      ([entityId, snapshot]) =>
+        entityId.startsWith("server-muck-combat:") &&
+        (snapshot.entityKind === "mux" || snapshot.entityKind === "hex")
+    )!;
+    const s = freshState();
+    s.combat.entitySnapshots[muckerId] = {
+      ...muckerCanonical,
+      hp: 20,
+      maxHp: 110,
+    };
+
+    harthmereNormalizeSeededCombatEntitySnapshots(
+      s.combat.entitySnapshots,
+      NOW_MS
+    );
+
+    assert.equal(
+      s.combat.entitySnapshots[muckerId].maxHp,
+      muckerCanonical.maxHp
+    );
+    assert.ok(
+      s.combat.entitySnapshots[muckerId].hp > 20,
+      "normalization should preserve the health ratio when max HP is raised"
+    );
+
+    const [rabbitId, rabbitCanonical] = Object.entries(seedSnapshots).find(
+      ([entityId, snapshot]) =>
+        entityId.startsWith("server-muck-combat:") &&
+        snapshot.entityKind === "animal" &&
+        snapshot.species === "rabbit"
+    )!;
+    const defeatedAtMs = NOW_MS - HARTHMERE_SERVER_MUCK_COMBAT_RESPAWN_MS;
+    const dropId = "stale-live-rabbit-drop";
+    const persisted = freshState();
+    persisted.combat.entitySnapshots[rabbitId] = {
+      ...rabbitCanonical,
+      hp: 0,
+      isAlive: false,
+      isAttackable: false,
+      defeatedAtMs,
+      lootDropId: dropId,
+    };
+    persisted.combat.lootClaims[rabbitId] = defeatedAtMs;
+    persisted.combat.lootClaims[dropId] = defeatedAtMs;
+
+    const parsed = parseHarthmereLiveModeBackendState(
+      JSON.stringify(persisted),
+      ACTOR,
+      NOW_MS
+    );
+
+    assert.equal(parsed.combat.entitySnapshots[rabbitId].isAlive, true);
+    assert.equal(
+      parsed.combat.entitySnapshots[rabbitId].hp,
+      parsed.combat.entitySnapshots[rabbitId].maxHp
+    );
+    assert.equal(parsed.combat.entitySnapshots[rabbitId].lootDropId, undefined);
+    assert.equal(parsed.combat.lootClaims[rabbitId], undefined);
+    assert.equal(parsed.combat.lootClaims[dropId], undefined);
+  });
+
   it("defaults named livestock species to raw meat even when bridged without animal kind", function () {
     const s = freshState();
     const targetId = "live-cow-species-meat-drop";
@@ -4672,10 +4742,12 @@ describe("reduceHarthmereLiveModeBackendState — vendor transaction", function 
       itemId: "iron_ore",
       count: 5,
     });
-    // iron_ore costs 10 gold each; buying 5 = 50 gold
+    // iron_ore costs 10 gold each; bought building materials route into
+    // material storage so they do not immediately overfill the backpack.
     assert.ok(state.inventory.gold <= 200 - 50 + 1); // allow slight rounding
-    assert.ok((state.inventory.items.iron_ore ?? 0) >= 5);
+    assert.ok((state.banking.materialStorage.iron_ore ?? 0) >= 5);
     assert.ok(summary.touchedModels.includes("inventory_items"));
+    assert.ok(summary.touchedModels.includes("material_storage"));
     assert.ok(summary.touchedModels.includes("wallet"));
   });
 
@@ -4823,6 +4895,41 @@ describe("reduceHarthmereLiveModeBackendState — loot and inventory mutation", 
     assert.ok(!summary.touchedModels.includes("material_storage"));
   });
 
+  it("routes non-standard building material rewards into material storage", function () {
+    const s = freshState();
+    const { state, summary } = applyOne(s, "request_loot_roll", {
+      itemId: "old_coin",
+      count: 1,
+      source: "Building Materials Counter",
+    });
+
+    assert.equal(state.banking.materialStorage.old_coin, 1);
+    assert.equal(state.inventory.items.old_coin ?? 0, 0);
+    assert.ok(
+      summary.warnings.includes("loot_sent_to_material_storage:old_coin")
+    );
+    assert.ok(summary.touchedModels.includes("material_storage"));
+  });
+
+  it("routes bought building materials into material storage before carry weight", function () {
+    const s = freshState();
+    s.inventory.gold = 100;
+    const { state, summary } = applyOne(s, "request_vendor_transaction", {
+      vendorId: "blacksmith_vendor",
+      transactionKind: "buy",
+      itemId: "iron_ore",
+      count: 2,
+    });
+
+    assert.equal(state.inventory.gold, 80);
+    assert.equal(state.banking.materialStorage.iron_ore, 2);
+    assert.equal(state.inventory.items.iron_ore ?? 0, 0);
+    assert.ok(
+      summary.warnings.includes("vendor_sent_to_material_storage:iron_ore")
+    );
+    assert.ok(summary.touchedModels.includes("material_storage"));
+  });
+
   it("persists Road Ahead starter clothing as Cloud Save inventory and equipment", function () {
     let s = freshState();
     let result = applyOne(s, "request_loot_roll", {
@@ -4890,6 +4997,19 @@ describe("reduceHarthmereLiveModeBackendState — loot and inventory mutation", 
       { source: "admin_tool", subsystem: "inventory" }
     );
     assert.strictEqual(state.inventory.items.health_potion, 2);
+  });
+
+  it("request_loot_roll can grant jobs-board executable materials into storage", function () {
+    const s = freshState();
+    const { state, summary } = applyOne(s, "request_loot_roll", {
+      itemId: "herb_bundle",
+      count: 2,
+    });
+    assert.deepEqual(summary.warnings, [
+      "loot_sent_to_material_storage:herb_bundle",
+    ]);
+    assert.strictEqual(state.inventory.items.herb_bundle ?? 0, 0);
+    assert.strictEqual(state.banking.materialStorage.herb_bundle, 2);
   });
 
   it("request_inventory_item_action drops material storage through authority", function () {
@@ -5471,7 +5591,7 @@ describe("reduceHarthmereLiveModeBackendState — quest state", function () {
     );
     assert.ok(
       rejected.summary.warnings.includes(
-        "live_entity_helper_rejected:boss_not_spawned"
+        "live_entity_helper_rejected:active_quest_required"
       )
     );
 
@@ -5551,6 +5671,51 @@ describe("reduceHarthmereLiveModeBackendState — quest state", function () {
       ],
       undefined
     );
+  });
+
+  it("lets an already-active hard boss helper record explicit defeat evidence if its marker is missing", function () {
+    const s = freshState();
+    const payload = liveHelperPayloadForKind("hard_boss");
+    const quest = getLiveEntityHelperQuestForEntity({
+      entityId: String(payload.entityId),
+      label: String(payload.entityLabel),
+      position: [
+        Number(payload.entityX),
+        Number(payload.entityY),
+        Number(payload.entityZ),
+      ],
+      hasRobotComponent: true,
+      isRobotLike: true,
+    });
+    assert.ok(quest, "expected a hard boss helper quest");
+    let result = applyOne(
+      s,
+      "request_quest_state_update",
+      {
+        ...payload,
+        operation: "live_entity_helper_accept",
+      },
+      { subsystem: "quest" }
+    );
+    assert.deepEqual(result.summary.warnings, []);
+    delete result.state.building.inWorldMarkers[
+      LIVE_ENTITY_HELPER_MUCK_BOSS_MARKER_ID
+    ];
+
+    result = applyOne(
+      result.state,
+      "request_quest_state_update",
+      {
+        ...payload,
+        operation: "live_entity_helper_record_boss_defeat",
+        bossDefeated: true,
+        bossKillCredit: 1,
+      },
+      { subsystem: "quest" }
+    );
+
+    assert.deepEqual(result.summary.warnings, []);
+    assert.equal(result.state.quests.active[quest!.questId].progress, 1);
   });
 
   it("depletes robot energy into Muck and recharges the protected area with Stabilized Exotic Matter", function () {
@@ -7330,6 +7495,102 @@ describe("reduceHarthmereLiveModeBackendState — building mutation", function (
     );
   });
 
+  it("lets one actor claim all authored plots without a global building cap", function () {
+    let state = freshState();
+    state.inventory.gold = 10_000;
+
+    for (const plot of BUILDING_SYSTEM_PLOTS) {
+      const result = applyOne(
+        state,
+        "request_property_building_mutation",
+        {
+          buildingAction: "claim_plot",
+          plotId: plot.plotId,
+        },
+        { subsystem: "building", zoneId: "the_grove" }
+      );
+      assert.deepEqual(
+        result.summary.warnings.filter((warning) =>
+          warning.includes("rejected")
+        ),
+        [],
+        plot.plotId
+      );
+      state = result.state;
+    }
+
+    for (const plot of BUILDING_SYSTEM_PLOTS) {
+      assert.ok(state.building.ownedPlots.includes(plot.plotId), plot.plotId);
+    }
+  });
+
+  it("claims and builds multiple unbounded muck-area plots when the footprints do not overlap", function () {
+    this.timeout(30_000);
+    let state = freshState();
+    state.inventory.gold = 20_000;
+    state.building.ownedPlots = BUILDING_SYSTEM_PLOTS.map(
+      (plot) => plot.plotId
+    );
+    const blueprintId = "grove_voxel_cottage_tier_1";
+    grantAllConstructionMaterialsToStorage(state, blueprintId);
+    grantAllConstructionMaterialsToStorage(state, blueprintId);
+
+    for (const [plotId, originX] of [
+      ["muck_claim_watchtower_test_a", 318],
+      ["muck_claim_watchtower_test_b", 340],
+    ] as const) {
+      const claimed = applyOne(
+        state,
+        "request_property_building_mutation",
+        {
+          buildingAction: "claim_plot",
+          plotId,
+          blueprintId,
+          muckAreaId: "watchtower_muck_clearing",
+          originX,
+          originY: 55,
+          originZ: -392,
+        },
+        { subsystem: "building", zoneId: "the_grove" }
+      );
+      assert.deepEqual(
+        claimed.summary.warnings.filter((warning) =>
+          warning.includes("rejected")
+        ),
+        [],
+        plotId
+      );
+      state = claimed.state;
+      assert.ok(state.building.customPlots[plotId]);
+      state = completeConstructionProject({
+        state,
+        plotId,
+        blueprintId,
+      });
+      assert.ok(state.property.owned[`property_${plotId}`]);
+    }
+
+    const overlap = applyOne(
+      state,
+      "request_property_building_mutation",
+      {
+        buildingAction: "claim_plot",
+        plotId: "muck_claim_watchtower_overlap",
+        blueprintId,
+        muckAreaId: "watchtower_muck_clearing",
+        originX: 319,
+        originY: 55,
+        originZ: -392,
+      },
+      { subsystem: "building", zoneId: "the_grove" }
+    );
+    assert.ok(
+      overlap.summary.warnings.some((warning) =>
+        warning.includes("plot_claim_rejected:area_already_claimed")
+      )
+    );
+  });
+
   it("runs the full home flow from land purchase through reload-safe completed cottage", function () {
     let state = freshState();
     state.inventory.gold = 500;
@@ -8009,6 +8270,107 @@ describe("reduceHarthmereLiveModeBackendState — building mutation", function (
     );
   });
 
+  it("cleans up player-hosted production businesses when a business property is demolished", function () {
+    let s = freshState();
+    s.inventory.gold = 10_000;
+    s.building.ownedPlots.push("grove_crossroads_shop_lot");
+
+    ({ state: s } = applyOne(s, "request_property_building_mutation", {
+      buildingAction: "place",
+      plotId: "grove_crossroads_shop_lot",
+      blueprintId: "grove_voxel_shop_tier_1",
+      propertyId: "property_grove_crossroads_shop_lot",
+    }));
+
+    ({ state: s } = applyOne(s, "request_property_building_mutation", {
+      buildingAction: "start_business",
+      propertyId: "property_grove_crossroads_shop_lot",
+      businessType: "general_trader",
+    }));
+
+    const businessId = "business_property_grove_crossroads_shop_lot";
+    assert.ok(s.economy.businesses[businessId]);
+    assert.ok(s.economy.production.businesses[businessId]);
+
+    const demolished = applyOne(s, "request_property_building_mutation", {
+      buildingAction: "demolish_property",
+      plotId: "grove_crossroads_shop_lot",
+      propertyId: "property_grove_crossroads_shop_lot",
+      refund: false,
+    });
+    s = demolished.state;
+
+    assert.equal(s.economy.businesses[businessId], undefined);
+    assert.equal(s.economy.production.businesses[businessId], undefined);
+    assert.ok(
+      demolished.summary.touchedModels.includes(
+        "economy_production_business_removed"
+      )
+    );
+
+    s.inventory.gold = 10_000;
+    s.building.ownedPlots.push("grove_crossroads_shop_lot");
+    ({ state: s } = applyOne(s, "request_property_building_mutation", {
+      buildingAction: "place",
+      plotId: "grove_crossroads_shop_lot",
+      blueprintId: "grove_voxel_shop_tier_1",
+      propertyId: "property_grove_crossroads_shop_lot",
+    }));
+    s.economy.production.businesses[businessId] = {
+      businessId,
+      ownerKind: "player",
+      ownerId: "install:old-stale-property-test",
+      typeId: "courier",
+      name: "Stale courier bridge",
+      status: "open",
+      licenseClass: "logistics",
+      licenseLevel: 1,
+      propertyId: "property_grove_crossroads_shop_lot",
+      townId: "harthmere_grove",
+      regionId: "harthmere_grove_region",
+      inventory: {},
+      storageMaxSlots: 24,
+      employees: [],
+      activeContracts: [],
+      completedContracts: 0,
+      reputation: 0,
+      customerSatisfaction: 50,
+      sanitationRating: 65,
+      safetyRating: 65,
+      serviceRadius: 22,
+      priceModifiers: {},
+      balanceGold: 0,
+      debtGold: 0,
+      upkeepGoldPerDay: 6,
+      rentGoldPerDay: 0,
+      wageGoldPerDay: 0,
+      salesTaxRate: 0.08,
+      lastTickAtMs: NOW_MS,
+      createdAtMs: NOW_MS,
+      updatedAtMs: NOW_MS,
+      flags: {
+        propertyHosted: true,
+        productionBridge: true,
+      },
+    };
+
+    const restarted = applyOne(s, "request_property_building_mutation", {
+      buildingAction: "start_business",
+      propertyId: "property_grove_crossroads_shop_lot",
+      businessType: "weapons_tools",
+    });
+    assert.ok(
+      !restarted.summary.warnings.some((warning) =>
+        warning.includes("business_id_conflict")
+      )
+    );
+    assert.equal(
+      restarted.state.economy.production.businesses[businessId]?.typeId,
+      "weapons_tools",
+      JSON.stringify(restarted.summary.warnings)
+    );
+  });
+
   it("rejects business licenses while an active bounty is outstanding", function () {
     let s = freshState();
     s.inventory.gold = 10_000;
@@ -8564,8 +8926,12 @@ describe("reduceHarthmereLiveModeBackendState — physical jobs board and live t
       progress: 1,
     });
     assert.equal(s.quests.completed[`jobs_board:${todo.todoId}`], undefined);
-    const marker = s.building.inWorldMarkers[`jobs_board_marker:${todo.todoId}`];
-    assert.ok(marker, "drop-off completion should leave a board turn-in marker");
+    const marker =
+      s.building.inWorldMarkers[`jobs_board_marker:${todo.todoId}`];
+    assert.ok(
+      marker,
+      "drop-off completion should leave a board turn-in marker"
+    );
     assert.equal(marker.plotId, "harthmere_market_posting_board");
     assert.ok(marker.label.includes("Return to the jobs board"));
   });
@@ -8644,13 +9010,82 @@ describe("reduceHarthmereLiveModeBackendState — physical jobs board and live t
     );
 
     assert.deepEqual(result.summary.warnings, []);
-    assert.equal(
-      result.state.jobsBoard.todos[todo.todoId].status,
-      "completed"
-    );
+    assert.equal(result.state.jobsBoard.todos[todo.todoId].status, "completed");
     assert.equal(result.state.inventory.items.herb_bundle ?? 0, 0);
     assert.equal(result.state.banking.materialStorage.herb_bundle ?? 0, 0);
     assert.ok(result.summary.touchedModels.includes("material_storage"));
+  });
+
+  it("jobs-board quest completion forwards used tool action evidence", function () {
+    let s = freshState();
+    s.banking.materialStorage.softwood_log = 3;
+    s.jobsBoard.postings.job_repair_tool_action = {
+      jobId: "job_repair_tool_action",
+      boardId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID,
+      issuerKind: "town",
+      issuerId: "harthmere_grove",
+      title: "Patch the Safe-Zone Fence",
+      description: "Use repair work to patch the fence.",
+      kind: "repair",
+      requirements: [
+        {
+          itemId: "softwood_log",
+          count: 3,
+          mapMarkerId: "grove_repair_fence",
+          requiredToolAction: "repair",
+        },
+      ],
+      rewardGold: 45,
+      escrowGold: 45,
+      reputationDelta: 1,
+      status: "open",
+      townId: "harthmere_grove",
+      regionId: "harthmere_grove_region",
+      createdAtMs: NOW_MS,
+      deadlineAtMs: NOW_MS + 86_400_000,
+      failurePenaltyGold: 0,
+      requiresFieldWork: true,
+      mapMarkerId: "grove_repair_fence",
+      abuseFlags: [],
+      logs: [],
+    } as any;
+
+    ({ state: s } = applyOne(
+      s,
+      "request_jobs_board_mutation",
+      {
+        operation: "accept_job",
+        boardId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID,
+        jobId: "job_repair_tool_action",
+      },
+      {
+        subsystem: "jobs",
+        targetId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID,
+        serverActorPosition: {
+          x: 501.99486179104775,
+          y: 70,
+          z: -132.00350672753194,
+        },
+      }
+    ));
+    const todo = Object.values(s.jobsBoard.todos)[0];
+    assert.ok(todo, "accepting the repair job should create a todo");
+
+    const result = applyOne(
+      s,
+      "request_quest_state_update",
+      {
+        questId: `jobs_board:${todo.todoId}`,
+        completed: true,
+        usedToolAction: "repair",
+        completionItemDeltas: { softwood_log: -3 },
+      },
+      { subsystem: "quest" }
+    );
+
+    assert.deepEqual(result.summary.warnings, []);
+    assert.equal(result.state.jobsBoard.todos[todo.todoId].status, "completed");
+    assert.equal(result.state.banking.materialStorage.softwood_log ?? 0, 0);
   });
 
   function addOpenEscortJob(state: HarthmereLiveModeBackendState) {
@@ -8834,8 +9269,12 @@ describe("reduceHarthmereLiveModeBackendState — physical jobs board and live t
       progress: 1,
     });
     assert.equal(s.quests.completed[`jobs_board:${todo.todoId}`], undefined);
-    const marker = s.building.inWorldMarkers[`jobs_board_marker:${todo.todoId}`];
-    assert.ok(marker, "claimable escort job should keep a return-to-board marker");
+    const marker =
+      s.building.inWorldMarkers[`jobs_board_marker:${todo.todoId}`];
+    assert.ok(
+      marker,
+      "claimable escort job should keep a return-to-board marker"
+    );
     assert.equal(marker.plotId, "harthmere_market_posting_board");
     assert.ok(marker.label.includes("Return to the jobs board"));
   });
@@ -9721,7 +10160,7 @@ describe("reduceHarthmereLiveModeBackendState — banking current carry weight e
     const vendor = applyOne(s, "request_vendor_transaction", {
       vendorId: "blacksmith_vendor",
       transactionKind: "buy",
-      itemId: "iron_ore",
+      itemId: "health_potion",
       count: 1,
     });
     assert.ok(

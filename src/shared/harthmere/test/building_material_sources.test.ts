@@ -3,7 +3,12 @@ import {
   BUILDING_SYSTEM_MATERIAL_CATALOG,
   buildingSystemMaterialSourceForSymbol,
 } from "../building_system";
-import { ensureHarthmereProductionVendorCatalog } from "../harthmere_vendor_catalog";
+import { HARTHMERE_BUSINESS_OUTPOSTS } from "../business_customer_simulator";
+import {
+  HARTHMERE_BUILDING_MATERIAL_BUSINESS_VENDOR_ID,
+  HARTHMERE_VENDOR_CATALOG,
+  ensureHarthmereProductionVendorCatalog,
+} from "../harthmere_vendor_catalog";
 import {
   getHarthmereItemDefinition,
   getHarthmereVendorEntry,
@@ -11,24 +16,51 @@ import {
 } from "../mmo_inventory_authority";
 
 describe("building material source routing", () => {
+  const materialOutpostId = "outpost_tools_cinderlane";
+  const materialVendorId = HARTHMERE_BUILDING_MATERIAL_BUSINESS_VENDOR_ID;
+
   before(() => {
     ensureHarthmereProductionVendorCatalog();
   });
 
-  it("makes every staged construction material findable and buyable", () => {
+  it("makes every staged construction material findable at a 19-business outpost and buyable", () => {
+    const materialOutpost = HARTHMERE_BUSINESS_OUTPOSTS.find(
+      (outpost) => outpost.outpostId === materialOutpostId
+    );
+    assert.equal(HARTHMERE_BUSINESS_OUTPOSTS.length, 19);
+    assert.ok(
+      materialOutpost,
+      "material source outpost must be one of the 19 businesses"
+    );
+    assert.equal(materialOutpost?.displayName, "Cinderlane Tool Forge");
+    assert.equal(materialOutpost?.businessType, materialVendorId);
+    const materialVendor = Object.values(HARTHMERE_VENDOR_CATALOG).find(
+      (profile) => profile.businessOutpostId === materialOutpostId
+    );
+    assert.ok(materialVendor);
+
     for (const material of Object.keys(BUILDING_SYSTEM_MATERIAL_CATALOG)) {
       const source = buildingSystemMaterialSourceForSymbol(material);
       assert.ok(source, `missing source for ${material}`);
       assert.equal(source?.sourceKind, "buy", material);
-      assert.equal(source?.sourceId, "black_anvil_building_counter", material);
-      assert.deepEqual(source?.position, [1630, 43, -780], material);
+      assert.equal(
+        source?.sourceId,
+        `${materialOutpostId}:business-counter`,
+        material
+      );
+      assert.equal(
+        source?.sourceName,
+        "Cinderlane Tool Forge counter",
+        material
+      );
+      assert.deepEqual(source?.position, [1630, 43, -775], material);
       assert.ok(
         getHarthmereItemDefinition(material),
         `missing item definition for ${material}`
       );
       assert.ok(
-        getHarthmereVendorEntry("black_anvil_smithy", material),
-        `Black Anvil does not sell ${material}`
+        getHarthmereVendorEntry(materialVendorId, material),
+        `Cinderlane Tool Forge business storefront does not sell ${material}`
       );
     }
   });
@@ -40,7 +72,7 @@ describe("building material source routing", () => {
         actorId: "builder",
         kind: "buy_from_vendor",
         itemId: "rough_stone",
-        vendorId: "black_anvil_smithy",
+        vendorId: materialVendorId,
         count: 1,
         nowMs: 1_800_000_000_000,
       },

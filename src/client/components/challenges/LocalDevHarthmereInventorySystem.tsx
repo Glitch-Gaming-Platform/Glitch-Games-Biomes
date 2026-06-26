@@ -2311,6 +2311,9 @@ export function submitHarthmereInventoryGrantToLiveModeForTest(
     return undefined;
   }
   const count = Math.max(1, Math.floor(Number(quantity) || 0));
+  const directVoxelItemDeltas = /^b:\d+$/.test(itemId)
+    ? { [itemId]: count }
+    : undefined;
   const requestId = `harthmere_local_inventory_grant_${Date.now()}_${Math.random()
     .toString(36)
     .slice(2)}`;
@@ -2330,6 +2333,9 @@ export function submitHarthmereInventoryGrantToLiveModeForTest(
         payload: {
           itemId,
           count,
+          ...(directVoxelItemDeltas
+            ? { itemDeltas: directVoxelItemDeltas }
+            : {}),
           source: reason,
         },
         includeSnapshots: [

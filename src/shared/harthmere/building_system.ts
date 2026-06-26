@@ -273,117 +273,88 @@ export const BUILDING_SYSTEM_MATERIAL_CATALOG = {
 export type BuildingSystemMaterialSymbol =
   keyof typeof BUILDING_SYSTEM_MATERIAL_CATALOG;
 
+const CINDERLANE_BUILDING_MATERIAL_SOURCE_ID =
+  "outpost_tools_cinderlane:business-counter" as const;
+const CINDERLANE_BUILDING_MATERIAL_SOURCE_NAME =
+  "Cinderlane Tool Forge counter" as const;
+const CINDERLANE_BUILDING_MATERIAL_SOURCE_POSITION = [1630, 43, -775] as [
+  number,
+  number,
+  number
+];
+
+function cinderlaneBuildingMaterialSource(
+  material: BuildingSystemMaterialSymbol,
+  actionLabel: string,
+  description: string
+): BuildingSystemMaterialSourceDefinition {
+  return {
+    material,
+    sourceId: CINDERLANE_BUILDING_MATERIAL_SOURCE_ID,
+    sourceName: CINDERLANE_BUILDING_MATERIAL_SOURCE_NAME,
+    sourceKind: "buy",
+    position: CINDERLANE_BUILDING_MATERIAL_SOURCE_POSITION,
+    actionLabel,
+    description,
+  };
+}
+
 export const BUILDING_SYSTEM_MATERIAL_SOURCE_CATALOG = {
-  rough_stone: {
-    material: "rough_stone",
-    sourceId: "black_anvil_building_counter",
-    sourceName: "Black Anvil Building Materials Counter",
-    sourceKind: "buy",
-    position: [1630, 43, -780],
-    actionLabel: "Buy rough stone",
-    description:
-      "Smith Goran Ember sells rough stone; it can also be mined at the North Road Iron Vein.",
-  },
-  river_clay: {
-    material: "river_clay",
-    sourceId: "black_anvil_building_counter",
-    sourceName: "Black Anvil Building Materials Counter",
-    sourceKind: "buy",
-    position: [1630, 43, -780],
-    actionLabel: "Buy river clay",
-    description:
-      "Smith Goran Ember sells clay bags; it can also be dug at the riverbank clay deposit.",
-  },
-  softwood_log: {
-    material: "softwood_log",
-    sourceId: "black_anvil_building_counter",
-    sourceName: "Black Anvil Building Materials Counter",
-    sourceKind: "buy",
-    position: [1630, 43, -780],
-    actionLabel: "Buy softwood logs",
-    description:
-      "Smith Goran Ember sells starter framing logs; they can also be gathered from orchard fallen wood.",
-  },
-  oak_branch: {
-    material: "oak_branch",
-    sourceId: "black_anvil_building_counter",
-    sourceName: "Black Anvil Building Materials Counter",
-    sourceKind: "buy",
-    position: [1630, 43, -780],
-    actionLabel: "Buy oak branches",
-    description:
-      "Smith Goran Ember stocks brace wood; branches can also be gathered from orchard fallen wood.",
-  },
-  iron_ore: {
-    material: "iron_ore",
-    sourceId: "black_anvil_building_counter",
-    sourceName: "Black Anvil Building Materials Counter",
-    sourceKind: "buy",
-    position: [1630, 43, -780],
-    actionLabel: "Buy metal ore",
-    description:
-      "Smith Goran Ember sells ore; it can also be mined at the North Road Iron Vein.",
-  },
-  scrap_metal: {
-    material: "scrap_metal",
-    sourceId: "black_anvil_building_counter",
-    sourceName: "Black Anvil Building Materials Counter",
-    sourceKind: "buy",
-    position: [1630, 43, -780],
-    actionLabel: "Buy scrap metal",
-    description:
-      "Smith Goran Ember sells sorted scrap; it can also be scavenged at the Mudden Ward scrap pile.",
-  },
-  tree_resin: {
-    material: "tree_resin",
-    sourceId: "black_anvil_building_counter",
-    sourceName: "Black Anvil Building Materials Counter",
-    sourceKind: "buy",
-    position: [1630, 43, -780],
-    actionLabel: "Buy tree resin",
-    description:
-      "Smith Goran Ember sells sealed resin pots; resin can also be gathered along the orchard softwood route.",
-  },
-  cloth_scrap: {
-    material: "cloth_scrap",
-    sourceId: "black_anvil_building_counter",
-    sourceName: "Black Anvil Building Materials Counter",
-    sourceKind: "buy",
-    position: [1630, 43, -780],
-    actionLabel: "Buy cloth scraps",
-    description:
-      "Smith Goran Ember sells bundled cloth scraps; they can also be scavenged at the Mudden Ward scrap pile.",
-  },
-  clean_water: {
-    material: "clean_water",
-    sourceId: "black_anvil_building_counter",
-    sourceName: "Black Anvil Building Materials Counter",
-    sourceKind: "buy",
-    position: [1630, 43, -780],
-    actionLabel: "Buy clean water",
-    description:
-      "Smith Goran Ember sells clean work buckets; water can also be collected at the Bluewater docks.",
-  },
-  old_coin: {
-    material: "old_coin",
-    sourceId: "black_anvil_building_counter",
-    sourceName: "Black Anvil Building Materials Counter",
-    sourceKind: "buy",
-    position: [1630, 43, -780],
-    actionLabel: "Buy old coins",
-    description:
-      "Smith Goran Ember keeps a small parts drawer of old coins; they can also turn up in Mudden Ward scrap.",
-  },
-  mana_essence: {
-    material: "mana_essence",
-    sourceId: "black_anvil_building_counter",
-    sourceName: "Black Anvil Building Materials Counter",
-    sourceKind: "buy",
-    position: [1630, 43, -780],
-    actionLabel: "Buy mana essence",
-    description:
-      "Smith Goran Ember stocks sealed essence for utility setup; essence can also be extracted around the Old Well.",
-  },
+  rough_stone: cinderlaneBuildingMaterialSource(
+    "rough_stone",
+    "Buy rough stone",
+    "The Cinderlane Tool Forge counter sells rough stone; it can also be mined at the North Road Iron Vein."
+  ),
+  river_clay: cinderlaneBuildingMaterialSource(
+    "river_clay",
+    "Buy river clay",
+    "The Cinderlane Tool Forge counter sells clay bags; river clay can also be dug at the riverbank clay deposit."
+  ),
+  softwood_log: cinderlaneBuildingMaterialSource(
+    "softwood_log",
+    "Buy softwood logs",
+    "The Cinderlane Tool Forge counter sells starter framing logs; they can also be gathered from orchard fallen wood."
+  ),
+  oak_branch: cinderlaneBuildingMaterialSource(
+    "oak_branch",
+    "Buy oak branches",
+    "The Cinderlane Tool Forge counter stocks brace wood; branches can also be gathered from orchard fallen wood."
+  ),
+  iron_ore: cinderlaneBuildingMaterialSource(
+    "iron_ore",
+    "Buy metal ore",
+    "The Cinderlane Tool Forge counter sells ore; it can also be mined at the North Road Iron Vein."
+  ),
+  scrap_metal: cinderlaneBuildingMaterialSource(
+    "scrap_metal",
+    "Buy scrap metal",
+    "The Cinderlane Tool Forge counter sells sorted scrap; it can also be scavenged at the Mudden Ward scrap pile."
+  ),
+  tree_resin: cinderlaneBuildingMaterialSource(
+    "tree_resin",
+    "Buy tree resin",
+    "The Cinderlane Tool Forge counter sells sealed resin pots; resin can also be gathered along the orchard softwood route."
+  ),
+  cloth_scrap: cinderlaneBuildingMaterialSource(
+    "cloth_scrap",
+    "Buy cloth scraps",
+    "The Cinderlane Tool Forge counter sells bundled cloth scraps; they can also be scavenged at the Mudden Ward scrap pile."
+  ),
+  clean_water: cinderlaneBuildingMaterialSource(
+    "clean_water",
+    "Buy clean water",
+    "The Cinderlane Tool Forge counter sells clean work buckets; water can also be collected at the Bluewater docks."
+  ),
+  old_coin: cinderlaneBuildingMaterialSource(
+    "old_coin",
+    "Buy old coins",
+    "The Cinderlane Tool Forge counter keeps a small parts drawer of old coins; they can also turn up in Mudden Ward scrap."
+  ),
+  mana_essence: cinderlaneBuildingMaterialSource(
+    "mana_essence",
+    "Buy mana essence",
+    "The Cinderlane Tool Forge counter stocks sealed essence for utility setup; essence can also be extracted around the Old Well."
+  ),
 } as const satisfies Record<
   BuildingSystemMaterialSymbol,
   BuildingSystemMaterialSourceDefinition
@@ -1056,6 +1027,254 @@ export const BUILDING_SYSTEM_PLOTS: BuildingSystemPlotDefinition[] = [
 const BUILDING_SYSTEM_PLOTS_BY_ID = new Map(
   BUILDING_SYSTEM_PLOTS.map((plot) => [plot.plotId, plot] as const)
 );
+
+const BUILDING_SYSTEM_DYNAMIC_MUCK_PLOT_MARGIN_VOXELS = 3;
+
+export interface BuildingSystemMuckBuildArea {
+  id: string;
+  label: string;
+  authoredCenter: readonly [number, number, number];
+  radius: number;
+  mapLabel: string;
+  description: string;
+}
+
+export const BUILDING_SYSTEM_DYNAMIC_MUCK_BUILD_AREAS: readonly BuildingSystemMuckBuildArea[] =
+  [
+    {
+      id: "road_muckwad_patch",
+      label: "Road Muckwad Patch",
+      authoredCenter: [512, 54, -152],
+      radius: 10,
+      mapLabel: "Muckwad Patch",
+      description:
+        "Starter muck patch used by Road Ahead and Muck Buster training.",
+    },
+    {
+      id: "watchtower_muck_patch",
+      label: "Watchtower Muck Patch",
+      authoredCenter: [332, 54, -390],
+      radius: 16,
+      mapLabel: "Muck Clearing",
+      description: "First Wilds muck zone attached to real hostile NPCs.",
+    },
+    {
+      id: "watchtower_muck_clearing",
+      label: "Watchtower Muck Clearing",
+      authoredCenter: [332, 54, -390],
+      radius: 34,
+      mapLabel: "Muck Clearing",
+      description:
+        "Low-risk first combat pocket for Road Ahead follow-up lessons.",
+    },
+    {
+      id: "old_wood_muck_patch",
+      label: "Old Wood Muck Patch",
+      authoredCenter: [640, 54, -455],
+      radius: 22,
+      mapLabel: "Old Wood Muck",
+      description:
+        "Reusable mid-tier muck field for combat and gathering loops.",
+    },
+    {
+      id: "old_wood_mucker_copse",
+      label: "Old Wood Mucker Copse",
+      authoredCenter: [640, 54, -455],
+      radius: 48,
+      mapLabel: "Old Wood Muckers",
+      description: "Hostile muckers, larger aggro range, stronger loot table.",
+    },
+    {
+      id: "gravewood_pale_muck",
+      label: "Gravewood Pale Muck",
+      authoredCenter: [640, 54, 120],
+      radius: 42,
+      mapLabel: "Gravewood Muck",
+      description: "Southern danger zone for later combat and gathering loops.",
+    },
+    {
+      id: "west_muck_breach",
+      label: "West Muck Breach",
+      authoredCenter: [236, 54, -506],
+      radius: 46,
+      mapLabel: "West Muck Breach",
+      description:
+        "Wide frontier muck breach used by late-road jobs and combat.",
+    },
+  ];
+
+function isBuildingSystemPointInMuckArea(
+  point: { x: number; y: number; z: number },
+  area: BuildingSystemMuckBuildArea
+) {
+  const dx = point.x - area.authoredCenter[0];
+  const dz = point.z - area.authoredCenter[2];
+  return Math.hypot(dx, dz) <= area.radius;
+}
+
+function buildingSystemBoundsCorners(
+  bounds: BuildingSystemPlotDefinition["bounds"]
+) {
+  return [
+    { x: bounds.xMin, z: bounds.zMin },
+    { x: bounds.xMax, z: bounds.zMin },
+    { x: bounds.xMax, z: bounds.zMax },
+    { x: bounds.xMin, z: bounds.zMax },
+  ];
+}
+
+export function buildingSystemPlotBoundsOverlap(
+  left: BuildingSystemPlotDefinition["bounds"],
+  right: BuildingSystemPlotDefinition["bounds"],
+  margin = 0
+) {
+  return (
+    left.xMin < right.xMax + margin &&
+    left.xMax > right.xMin - margin &&
+    left.zMin < right.zMax + margin &&
+    left.zMax > right.zMin - margin
+  );
+}
+
+export function buildingSystemMuckBuildAreaForBounds(
+  bounds: BuildingSystemPlotDefinition["bounds"],
+  groundY: number,
+  areaId?: string
+) {
+  const candidates = areaId
+    ? BUILDING_SYSTEM_DYNAMIC_MUCK_BUILD_AREAS.filter(
+        (area) => area.id === areaId
+      )
+    : BUILDING_SYSTEM_DYNAMIC_MUCK_BUILD_AREAS;
+  return candidates.find((area) =>
+    buildingSystemBoundsCorners(bounds).every((corner) =>
+      isBuildingSystemPointInMuckArea(
+        { x: corner.x, y: groundY, z: corner.z },
+        area
+      )
+    )
+  );
+}
+
+function buildingSystemDynamicPlotSlug(value: string) {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .slice(0, 96);
+}
+
+export function buildingSystemDynamicMuckPlotId(input: {
+  areaId: string;
+  blueprintId: string;
+  origin: { x: number; z: number };
+}) {
+  return buildingSystemDynamicPlotSlug(
+    `muck_claim_${input.areaId}_${input.blueprintId}_${Math.floor(
+      input.origin.x
+    )}_${Math.floor(input.origin.z)}`
+  );
+}
+
+export function createBuildingSystemMuckAreaPlotDefinition(input: {
+  plotId?: string;
+  blueprint: BuildingSystemBlueprintDefinition | undefined;
+  origin?: { x: number; y?: number; z: number };
+  areaId?: string;
+}):
+  | {
+      ok: true;
+      plot: BuildingSystemPlotDefinition;
+      area: BuildingSystemMuckBuildArea;
+    }
+  | {
+      ok: false;
+      errors: string[];
+    } {
+  if (!input.blueprint) {
+    return { ok: false, errors: ["missing_blueprint"] };
+  }
+  const explicitArea = input.areaId
+    ? BUILDING_SYSTEM_DYNAMIC_MUCK_BUILD_AREAS.find(
+        (area) => area.id === input.areaId
+      )
+    : undefined;
+  if (input.areaId && !explicitArea) {
+    return { ok: false, errors: ["muck_area_not_found"] };
+  }
+  const origin = input.origin
+    ? {
+        x: Math.floor(input.origin.x),
+        y: Math.floor(
+          Number(input.origin.y ?? explicitArea?.authoredCenter[1] ?? 54) + 1
+        ),
+        z: Math.floor(input.origin.z),
+      }
+    : explicitArea
+    ? {
+        x: Math.floor(
+          explicitArea.authoredCenter[0] - input.blueprint.footprint.width / 2
+        ),
+        y: Math.floor(explicitArea.authoredCenter[1] + 1),
+        z: Math.floor(
+          explicitArea.authoredCenter[2] - input.blueprint.footprint.depth / 2
+        ),
+      }
+    : undefined;
+  if (!origin) {
+    return { ok: false, errors: ["missing_origin_or_muck_area"] };
+  }
+  const margin = BUILDING_SYSTEM_DYNAMIC_MUCK_PLOT_MARGIN_VOXELS;
+  const bounds = {
+    xMin: origin.x - margin,
+    xMax: origin.x + input.blueprint.footprint.width + margin,
+    zMin: origin.z - margin,
+    zMax: origin.z + input.blueprint.footprint.depth + margin,
+  };
+  const groundY = origin.y - 1;
+  const area = buildingSystemMuckBuildAreaForBounds(
+    bounds,
+    groundY,
+    input.areaId
+  );
+  if (!area) {
+    return { ok: false, errors: ["outside_muck_build_area"] };
+  }
+  const plotId =
+    input.plotId && input.plotId.trim()
+      ? input.plotId.trim()
+      : buildingSystemDynamicMuckPlotId({
+          areaId: area.id,
+          blueprintId: input.blueprint.blueprintId,
+          origin,
+        });
+  return {
+    ok: true,
+    area,
+    plot: {
+      plotId,
+      displayName: `${area.label} ${input.blueprint.displayName} Claim`,
+      area: "harthmere",
+      district: area.label,
+      plotType: input.blueprint.plotType,
+      allowedUses: [input.blueprint.use],
+      allowedBlueprintIds: [input.blueprint.blueprintId],
+      claimPriceGold: 0,
+      taxRate: input.blueprint.use === "business" ? 0.06 : 0.02,
+      bounds,
+      groundY,
+      startsMucked: true,
+      safeAfterPurchase: false,
+      maxStructureHeight: Math.max(8, input.blueprint.footprint.height + 4),
+      maxCoveredAreaFraction: 0.8,
+      requiresRoadAccess: false,
+      roadAccessDistanceVoxels: 0,
+      terrainType: "dirt",
+      description:
+        "A server-generated muck-area claim. It is created only when the requested footprint sits fully inside authored muck land and does not overlap an existing claim or building.",
+    },
+  };
+}
 
 // Look up an authored plot's world-space bounds by plot id. Used to turn the
 // per-plot safe-zone records (which only store a string area label, not

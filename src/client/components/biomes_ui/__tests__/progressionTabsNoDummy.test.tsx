@@ -890,6 +890,7 @@ describe("Biomes UI progression tabs", () => {
                 ref: { kind: "item", idx: 0 },
                 source: "backpack",
                 canUse: true,
+                useActionLabel: "Eat",
               },
             ],
             maxSlots: 8,
@@ -906,6 +907,7 @@ describe("Biomes UI progression tabs", () => {
     );
     assert.ok(html.includes('aria-label="Road Ration x2"'));
     assert.ok(tagForDataAction(html, "use").length > 0);
+    assert.ok(html.includes(">Eat<"));
     assertNoDeveloperCopy(html);
   });
 
@@ -1397,14 +1399,14 @@ describe("Biomes UI progression tabs", () => {
     );
     assert.equal(
       roughStonePin.markerId,
-      "building_material_source:rough_stone:black_anvil_building_counter"
+      "building_material_source:rough_stone:outpost_tools_cinderlane:business-counter"
     );
     assert.equal(
       roughStonePin.label,
-      "Buy rough stone: Black Anvil Building Materials Counter"
+      "Buy rough stone: Cinderlane Tool Forge counter"
     );
     assert.equal(roughStonePin.kind, "store");
-    assert.deepEqual(roughStonePin.worldPosition, [1630, 43, -780]);
+    assert.deepEqual(roughStonePin.worldPosition, [1630, 43, -775]);
 
     const html = renderToStaticMarkup(
       <LandTab
@@ -1423,9 +1425,7 @@ describe("Biomes UI progression tabs", () => {
     assert.ok(html.includes("Missing Rough Stone"));
     assert.ok(html.includes("Find"));
     assert.ok(
-      html.includes(
-        "Find Rough Stone at Black Anvil Building Materials Counter"
-      )
+      html.includes("Find Rough Stone at Cinderlane Tool Forge counter")
     );
     assert.ok(html.includes("Show property on map"));
     assertNoDeveloperCopy(html);
@@ -1819,10 +1819,10 @@ describe("Biomes UI progression tabs", () => {
     const marker = mapMarkerForActivePinForTest(
       {
         markerId:
-          "building_material_source:rough_stone:black_anvil_building_counter",
-        label: "Buy rough stone: Black Anvil Building Materials Counter",
+          "building_material_source:rough_stone:outpost_tools_cinderlane:business-counter",
+        label: "Buy rough stone: Cinderlane Tool Forge counter",
         kind: "store",
-        worldPosition: [1630, 43, -780],
+        worldPosition: [1630, 43, -775],
         description: "Rough Stone source.",
         setAtMs: 1234,
       },
@@ -1830,13 +1830,13 @@ describe("Biomes UI progression tabs", () => {
     );
     assert.equal(
       marker?.id,
-      "building_material_source:rough_stone:black_anvil_building_counter"
+      "building_material_source:rough_stone:outpost_tools_cinderlane:business-counter"
     );
     assert.equal(marker?.kind, "store");
     assert.equal(marker?.active, true);
-    assert.deepEqual(marker?.worldPosition, [1630, 43, -780]);
+    assert.deepEqual(marker?.worldPosition, [1630, 43, -775]);
     assert.equal(marker?.x, 130 / 240);
-    assert.equal(marker?.y, 70 / 170);
+    assert.equal(marker?.y, 75 / 170);
   });
 
   it("maps active BiomesUI destinations onto differently colored navigation marker families", () => {

@@ -7,10 +7,7 @@ import {
 export const HARTHMERE_VISIBLE_COMBAT_TARGET_VERSION =
   "harthmere-visible-combat-target" as const;
 
-export type HarthmereVisibleCombatTargetFamily =
-  | "mucker"
-  | "hex"
-  | "animal";
+export type HarthmereVisibleCombatTargetFamily = "mucker" | "hex" | "animal";
 
 export type HarthmereVisibleCombatActor = {
   offset?: number;
@@ -140,9 +137,11 @@ export function harthmereVisibleCombatTargetForActor(
   if (!Number.isFinite(actorX) || !Number.isFinite(actorZ)) {
     return undefined;
   }
-  const actorSpecies = normalizedSpecies(actor.species) ?? animalSpeciesFromText(
-    `${actor.asset ?? ""} ${actor.label ?? ""}`.toLowerCase()
-  );
+  const actorSpecies =
+    normalizedSpecies(actor.species) ??
+    animalSpeciesFromText(
+      `${actor.asset ?? ""} ${actor.label ?? ""}`.toLowerCase()
+    );
   const actorLabel = normalizedLabel(actor.label);
 
   let best: HarthmereVisibleCombatTargetMatch | undefined;
@@ -187,4 +186,20 @@ export function harthmereLiveModeCombatTargetIdForVisibleActor(
   actor: HarthmereVisibleCombatActor
 ): string | undefined {
   return harthmereVisibleCombatTargetForActor(actor)?.targetId;
+}
+
+export function harthmereLiveModeCombatTargetIdForEcsEntity(
+  entityId: number | string | undefined
+): string | undefined {
+  const numeric = Number(entityId);
+  if (!Number.isFinite(numeric)) {
+    return undefined;
+  }
+  return directSeedTargetsByNumber.get(numeric)?.targetId;
+}
+
+export function isHarthmereLiveModeManagedCombatEntity(
+  entityId: number | string | undefined
+): boolean {
+  return harthmereLiveModeCombatTargetIdForEcsEntity(entityId) !== undefined;
 }

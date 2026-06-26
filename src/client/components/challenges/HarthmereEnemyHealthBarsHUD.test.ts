@@ -113,4 +113,31 @@ describe("Harthmere enemy health bars from visible actor snapshots", () => {
 
     assert.equal(rows.length, 0);
   });
+
+  it("keeps every visible attackable actor eligible for a health bar", () => {
+    const actorHud = Object.fromEntries(
+      Array.from({ length: 32 }, (_, index) => [
+        `mucker-${index}`,
+        {
+          label: `Roads Head Mucker ${index}`,
+          behavior: "hostile",
+          attackable: true,
+          health: { hp: 50 + index, maxHp: 100 },
+          screen: {
+            ...visibleScreen,
+            x: 100 + index * 4,
+            depth: 0.1 + index / 100,
+          },
+        },
+      ])
+    );
+
+    const rows = harthmereAttackableActorHealthBarRows({
+      actorHud,
+      viewportWidth: 1280,
+      viewportHeight: 720,
+    });
+
+    assert.equal(rows.length, 32);
+  });
 });

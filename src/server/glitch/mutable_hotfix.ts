@@ -410,6 +410,15 @@ async function mutableHotfixRedis() {
     await connectToRedis("firehose"));
 }
 
+export async function closeGlitchMutableHotfixRedis(
+  reason = "Mutable hotfix command complete"
+) {
+  const redis = globalForMutableHotfix.__glitchMutableHotfixRedis;
+  if (!redis) return;
+  globalForMutableHotfix.__glitchMutableHotfixRedis = undefined;
+  await redis.quit(reason);
+}
+
 export async function readGlitchMutableHotfixManifestFromRedis(
   redisKey = process.env.GLITCH_MUTABLE_HOTFIX_REDIS_KEY ??
     GLITCH_MUTABLE_HOTFIX_REDIS_KEY

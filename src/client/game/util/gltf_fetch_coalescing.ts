@@ -2,10 +2,11 @@ const playerMeshGltfFetchInflight = new Map<string, Promise<ArrayBuffer>>();
 
 export function shouldCoalescePlayerMeshGltfFetch(url: string) {
   try {
-    const parsed =
-      typeof window === "undefined"
-        ? new URL(url, "https://biomes.local")
-        : new URL(url, window.location.href);
+    const base =
+      typeof window !== "undefined" && typeof window.location?.href === "string"
+        ? window.location.href
+        : "https://biomes.local";
+    const parsed = new URL(url, base);
     return parsed.pathname === "/api/assets/player_mesh.glb";
   } catch {
     return url.startsWith("/api/assets/player_mesh.glb");

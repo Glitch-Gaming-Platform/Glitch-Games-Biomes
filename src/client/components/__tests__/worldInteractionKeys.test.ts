@@ -14,13 +14,12 @@ const WORLD_INTERACTION_FILES = [
 ] as const;
 
 function keyHandlerBlocksDefaultPreventedNearInteractKey(source: string) {
-  const blocks = source.match(
-    /const handler = \(event: KeyboardEvent\) => \{[\s\S]*?window\.addEventListener\("keydown", handler, true\);/g
-  ) ?? [];
+  const blocks =
+    source.match(
+      /const handler = \(event: KeyboardEvent\) => \{[\s\S]*?window\.addEventListener\("keydown", handler, true\);/g
+    ) ?? [];
   return blocks.some(
-    (block) =>
-      /KeyF|KeyE/.test(block) &&
-      /event\.defaultPrevented/.test(block)
+    (block) => /KeyF|KeyE/.test(block) && /event\.defaultPrevented/.test(block)
   );
 }
 
@@ -46,5 +45,14 @@ describe("world interaction F/E keys", () => {
         `${relative} must keep text-entry safety`
       );
     }
+  });
+
+  it("mounts hidden Harthmere runtime controllers in production HUD", () => {
+    const source = fs.readFileSync(
+      path.join(ROOT, "src/client/components/QuestAndMinimapHUD.tsx"),
+      "utf8"
+    );
+    assert.match(source, /process\.env\.NODE_ENV !== "production"/);
+    assert.match(source, /<HarthmereUnifiedHUD hideLegacyVisuals \/>/);
   });
 });

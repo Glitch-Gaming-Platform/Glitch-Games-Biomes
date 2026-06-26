@@ -26,11 +26,7 @@ export const MMO_INVENTORY_AUTHORITY_VERSION = "mmo-inventory-authority";
 // Item catalogue entry (loaded server-side, never sent by client as truth)
 // ---------------------------------------------------------------------------
 
-export type HarthmereItemBinding =
-  | "none"
-  | "on_pickup"
-  | "on_equip"
-  | "quest";
+export type HarthmereItemBinding = "none" | "on_pickup" | "on_equip" | "quest";
 export type HarthmereItemRarity =
   | "common"
   | "uncommon"
@@ -414,10 +410,18 @@ export interface HarthmereInventoryMutationResult {
 
 const _itemCatalogueRegistry = new Map<string, HarthmereItemDefinition>();
 
-export function registerHarthmereItemDefinition(
-  def: HarthmereItemDefinition
-) {
-  _itemCatalogueRegistry.set(def.itemId, def);
+export function registerHarthmereItemDefinition(def: HarthmereItemDefinition) {
+  const existing = _itemCatalogueRegistry.get(def.itemId);
+  _itemCatalogueRegistry.set(
+    def.itemId,
+    existing
+      ? {
+          ...existing,
+          ...def,
+          stats: { ...(existing.stats ?? {}), ...(def.stats ?? {}) },
+        }
+      : def
+  );
 }
 
 export function getHarthmereItemDefinition(
@@ -589,11 +593,7 @@ export type HarthmereRepairToolGate =
 export function harthmereRepairToolGate(
   snapshot: Pick<HarthmereInventorySnapshot, "equipment">
 ): HarthmereRepairToolGate {
-  const best = harthmereEquippedToolPower(
-    snapshot,
-    "repair",
-    "repairPower"
-  );
+  const best = harthmereEquippedToolPower(snapshot, "repair", "repairPower");
   if (!best.itemId || best.power <= 0) {
     return {
       ok: false,
@@ -623,11 +623,7 @@ export type HarthmereCleanupToolGate =
 export function harthmereCleanupToolGate(
   snapshot: Pick<HarthmereInventorySnapshot, "equipment">
 ): HarthmereCleanupToolGate {
-  const best = harthmereEquippedToolPower(
-    snapshot,
-    "cleanup",
-    "cleanupPower"
-  );
+  const best = harthmereEquippedToolPower(snapshot, "cleanup", "cleanupPower");
   if (!best.itemId || best.power <= 0) {
     return {
       ok: false,
@@ -989,9 +985,7 @@ function craftingSeedFromRequest(req: HarthmereInventoryMutationRequest) {
   return Math.abs(hash);
 }
 
-function craftingQualityTier(
-  quality: number
-): HarthmereCraftingQualityTier {
+function craftingQualityTier(quality: number): HarthmereCraftingQualityTier {
   if (quality >= 90) return "masterwork";
   if (quality >= 75) return "excellent";
   if (quality >= 55) return "fine";
@@ -1026,8 +1020,7 @@ function selectedCraftingTools(
     ...new Set([
       ...Object.keys(snapshot.items ?? {}).filter(
         (itemId) =>
-          (snapshot.items[itemId] ?? 0) > 0 &&
-          getHarthmereCraftingTool(itemId)
+          (snapshot.items[itemId] ?? 0) > 0 && getHarthmereCraftingTool(itemId)
       ),
       ...Object.values(snapshot.equipment ?? {}).filter((itemId) =>
         Boolean(getHarthmereCraftingTool(itemId))

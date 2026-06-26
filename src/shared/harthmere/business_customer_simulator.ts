@@ -10357,6 +10357,16 @@ function addHarthmereOutpostGuideVoxels(input: {
       "frame"
     );
   }
+  for (const x of [doorX - 1, doorX + 1]) {
+    for (const y of [y0 + 1, y0 + 2]) {
+      pushHarthmereOutpostVoxelEdit(
+        materializationPlan,
+        [x, y, z0],
+        palette.wall,
+        "wall"
+      );
+    }
+  }
   for (const x of [doorX - 1, doorX, doorX + 1]) {
     pushHarthmereOutpostVoxelEdit(
       materializationPlan,

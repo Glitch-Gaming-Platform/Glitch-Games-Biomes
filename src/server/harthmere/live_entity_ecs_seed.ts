@@ -3,6 +3,7 @@ import { BikkieIds } from "@/shared/bikkie/ids";
 import type { Change, ProposedChange } from "@/shared/ecs/change";
 import {
   EntityDescription,
+  Health,
   RobotComponent,
   Size,
   Voice,
@@ -12,6 +13,7 @@ import { LOCAL_DEV_HUMAN_NPC_TYPE_ID, isNpcTypeId } from "@/shared/npc/bikkie";
 import {
   HARTHMERE_LIVE_ENTITY_ROBOT_SENTINEL_SEEDS,
   harthmereActiveLiveEntityProductionSeedIds,
+  harthmereCombatHpForLiveEntitySeed,
   harthmereGroundedLivestockSeedsInTerritory,
   harthmereGroundedMuckMonsterSeedsInTerritory,
   harthmereLiveEntitySizeForSeed,
@@ -135,8 +137,10 @@ export function buildHarthmereLiveEntityProductionSeedChanges(input: {
     // is what raises the "F: Talk" prompt, so strip it — you attack them, you
     // don't talk to them.
     delete (base as { default_dialog?: unknown }).default_dialog;
+    const combatHp = harthmereCombatHpForLiveEntitySeed(seed);
     const entity = {
       ...base,
+      health: Health.create({ hp: combatHp, maxHp: combatHp }),
       size: Size.create({ v: harthmereLiveEntitySizeForSeed(seed) }),
       entity_description: EntityDescription.create({
         text: seed.description,
@@ -175,8 +179,10 @@ export function buildHarthmereLiveEntityProductionSeedChanges(input: {
     );
     // Wildlife are huntable, not conversational — no "F: Talk" prompt.
     delete (base as { default_dialog?: unknown }).default_dialog;
+    const combatHp = harthmereCombatHpForLiveEntitySeed(seed);
     const entity = {
       ...base,
+      health: Health.create({ hp: combatHp, maxHp: combatHp }),
       size: Size.create({ v: harthmereLiveEntitySizeForSeed(seed) }),
       entity_description: EntityDescription.create({
         text: seed.description,

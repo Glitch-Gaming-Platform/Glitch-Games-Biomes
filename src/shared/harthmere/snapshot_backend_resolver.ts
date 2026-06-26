@@ -18,9 +18,7 @@
 //     GLITCH_SNAPSHOT_GROVE_TERRAIN_MODE so future snapshot rebakes can
 //     change the canonical ground height without re-editing every callsite.
 
-import {
-  SNAPSHOT_GROVE_LIVE_WORLD_GROUND_Y,
-} from "@/shared/harthmere/snapshot_grove_content";
+import { SNAPSHOT_GROVE_LIVE_WORLD_GROUND_Y } from "@/shared/harthmere/snapshot_grove_content";
 
 export const SNAPSHOT_BACKEND_RESOLVER_VERSION =
   "snapshot-backend-resolver" as const;
@@ -82,8 +80,10 @@ export function resolveSnapshotBackendEnvironment(env: {
   const configuredMode = normalizeBackendMode(env.GLITCH_SNAPSHOT_BACKEND_MODE);
   const configuredUrl = env.GLITCH_SNAPSHOT_PROGRESS_BACKEND_URL?.trim();
   const mode: SnapshotBackendMode =
-    configuredMode ?? (configuredUrl ? "remote" : isProduction ? "disabled" : "local");
-  const source: "env" | "default" = configuredMode || configuredUrl ? "env" : "default";
+    configuredMode ??
+    (configuredUrl ? "remote" : isProduction ? "disabled" : "local");
+  const source: "env" | "default" =
+    configuredMode || configuredUrl ? "env" : "default";
 
   const defaultProgressPath = "/api/glitch/snapshot_progress";
   const defaultHealthPath = "/api/glitch/runtime_environment";
@@ -111,7 +111,7 @@ export function resolveSnapshotBackendEnvironment(env: {
 }
 
 export function snapshotBackendAllowsRemoteProgress(
-  environment: SnapshotBackendEnvironment,
+  environment: SnapshotBackendEnvironment
 ) {
   return (
     environment.mode === "remote" ||
@@ -121,7 +121,7 @@ export function snapshotBackendAllowsRemoteProgress(
 }
 
 export function snapshotBackendUsesLocalProgress(
-  environment: SnapshotBackendEnvironment,
+  environment: SnapshotBackendEnvironment
 ) {
   return environment.mode === "local";
 }
@@ -139,13 +139,13 @@ export function snapshotBackendUsesLocalProgress(
 // keep working without a remote backend.
 // ---------------------------------------------------------------------------
 export function resolveSnapshotProgressEndpoint(
-  environment: SnapshotBackendEnvironment,
+  environment: SnapshotBackendEnvironment
 ): string {
   return environment.progressEndpoint;
 }
 
 export function resolveSnapshotHealthEndpoint(
-  environment: SnapshotBackendEnvironment,
+  environment: SnapshotBackendEnvironment
 ): string {
   return environment.healthEndpoint;
 }
@@ -161,13 +161,15 @@ export function resolveSnapshotHealthEndpoint(
 // the resolver rather than reading raw constants — that way a future
 // snapshot rebake only has to flip one env var.
 // ---------------------------------------------------------------------------
-function normalizeGroveTerrainMode(value: unknown): SnapshotGroveTerrainMode | undefined {
+function normalizeGroveTerrainMode(
+  value: unknown
+): SnapshotGroveTerrainMode | undefined {
   if (typeof value !== "string") return undefined;
   const mode = value.trim().toLowerCase();
-  if (mode === "authored" || mode === "authored" || mode === "current") {
+  if (mode === "authored") {
     return "authored";
   }
-  if (mode === "live" || mode === "live" || mode === "current") {
+  if (mode === "live" || mode === "current") {
     return "live";
   }
   return undefined;
@@ -179,7 +181,9 @@ export function resolveSnapshotGroveTerrainMode(env: {
   // Default to live because that is what production snapshot terrain
   // actually loads. Set GLITCH_SNAPSHOT_GROVE_TERRAIN_MODE=authored
   // only when comparing against the bible's authored coordinates.
-  return normalizeGroveTerrainMode(env.GLITCH_SNAPSHOT_GROVE_TERRAIN_MODE) ?? "live";
+  return (
+    normalizeGroveTerrainMode(env.GLITCH_SNAPSHOT_GROVE_TERRAIN_MODE) ?? "live"
+  );
 }
 
 export interface SnapshotGroveGroundYResolution {
@@ -193,7 +197,8 @@ export function resolveSnapshotGroveGroundY(env: {
   GLITCH_SNAPSHOT_GROVE_TERRAIN_MODE?: string;
 }): SnapshotGroveGroundYResolution {
   const mode = resolveSnapshotGroveTerrainMode(env);
-  const worldGroundY = mode === "live" ? SNAPSHOT_GROVE_LIVE_WORLD_GROUND_Y : 52;
+  const worldGroundY =
+    mode === "live" ? SNAPSHOT_GROVE_LIVE_WORLD_GROUND_Y : 52;
   return {
     mode,
     worldGroundY,

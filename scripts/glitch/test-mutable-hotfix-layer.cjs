@@ -9,6 +9,7 @@ require("tsconfig-paths/register");
 
 const {
   applyGlitchMutableHotfixManifest,
+  closeGlitchMutableHotfixRedis,
   getGlitchMutableHotfixStatus,
 } = require("../../src/server/glitch/mutable_hotfix");
 
@@ -65,6 +66,18 @@ async function main() {
   const status = getGlitchMutableHotfixStatus();
   assert.equal(status.enabled, true);
   assert.equal(status.lastAppliedVersion, "test-v1");
+  assert.equal(typeof closeGlitchMutableHotfixRedis, "function");
+
+  const startupCli = fs.readFileSync(
+    path.join(__dirname, "apply-mutable-hotfix.ts"),
+    "utf8"
+  );
+  assert(
+    startupCli.includes("closeGlitchMutableHotfixRedis") &&
+      startupCli.includes(".finally(closeStartupResources)") &&
+      startupCli.includes("GLITCH_MUTABLE_HOTFIX Redis close failed"),
+    "startup mutable hotfix command closes Redis so stack startup can continue"
+  );
 
   fs.rmSync(root, { recursive: true, force: true });
   console.log("mutable hotfix layer test passed");

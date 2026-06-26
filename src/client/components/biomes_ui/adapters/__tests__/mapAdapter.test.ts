@@ -35,6 +35,25 @@ globalAny.window.localStorage ??= {
   clear: () => localStorageValues.clear(),
 };
 
+function ensureFixtureWindow() {
+  if (typeof globalAny.window === "undefined") {
+    globalAny.window = globalAny;
+  }
+  globalAny.window.addEventListener ??= () => {};
+  globalAny.window.removeEventListener ??= () => {};
+  globalAny.window.dispatchEvent ??= () => true;
+  globalAny.window.localStorage ??= {
+    getItem: (key: string) => localStorageValues.get(key) ?? null,
+    setItem: (key: string, value: string) => {
+      localStorageValues.set(key, String(value));
+    },
+    removeItem: (key: string) => {
+      localStorageValues.delete(key);
+    },
+    clear: () => localStorageValues.clear(),
+  };
+}
+
 const FIXTURE_LANDMARKS = [
   {
     id: "the_grove",
@@ -198,6 +217,7 @@ function installFixture(
     completedQuestIds: [],
   }
 ) {
+  ensureFixtureWindow();
   globalAny.window.__snapshotGrove = {
     version: "test",
     quests: FIXTURE_QUESTS,
@@ -207,6 +227,7 @@ function installFixture(
 }
 
 function clearFixture() {
+  ensureFixtureWindow();
   globalAny.window.__snapshotGrove = undefined;
   globalAny.window.localStorage.clear();
 }
@@ -497,9 +518,7 @@ describe("biomes_ui map adapter (V141)", () => {
     );
     const marker = adapter
       .getMarkers()
-      .find(
-        (entry: any) => entry.id === "property:grove_crossroads_shop_lot"
-      );
+      .find((entry: any) => entry.id === "property:grove_crossroads_shop_lot");
     assert.ok(marker, "owned muck deed should appear on the BiomesUI map");
     assert.equal(marker.kind, "property");
     assert.deepEqual(marker.worldPosition, [512, 72, -150]);
@@ -813,7 +832,9 @@ describe("biomes_ui map adapter (V141)", () => {
       "Talk to Old Coop by the fountain."
     );
 
-    const marker = adapter.getMarkers().find((entry) => entry.id === "old_coop");
+    const marker = adapter
+      .getMarkers()
+      .find((entry) => entry.id === "old_coop");
     assert.equal(marker?.active, true);
     assert.equal(marker?.kind, "objective");
   });

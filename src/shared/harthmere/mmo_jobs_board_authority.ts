@@ -24,6 +24,7 @@ import {
   HARTHMERE_BUSINESS_OUTPOSTS,
   harthmereBusinessScaledJobPay,
   harthmereBusinessOutpostJobsBoardPosition,
+  harthmereBusinessOutpostMapMarkerId,
   type HarthmereBusinessOutpost,
 } from "./business_customer_simulator";
 import { HARTHMERE_EXOTIC_MATTER_COMPONENTS } from "./exotic_matter_caves";
@@ -34,6 +35,7 @@ import {
   HARTHMERE_JOBS_BOARD_ELITE_MUCKER_BOUNTY_TARGET_ID,
   HARTHMERE_JOBS_BOARD_HEX_WRAITH_BOUNTY_MARKER_ID,
   HARTHMERE_JOBS_BOARD_HEX_WRAITH_BOUNTY_TARGET_ID,
+  randomHarthmereJobsBoardMuckBountyTarget,
 } from "./jobs_board_muck_bounty_targets";
 import { harthmereJobsBoardQuestMarkerRuntimePositionForId } from "./jobs_board_quest_marker_positions";
 import type { BiomesId } from "@/shared/ids";
@@ -1265,7 +1267,27 @@ function createTodoForJob(
   const existing = Object.values(result.next.todos).find(
     (todo) => todo.jobId === job.jobId && todo.actorId === request.actorId
   );
-  if (existing) return;
+  if (existing) {
+    if (existing.status !== "active") {
+      existing.status = "active";
+      existing.boardId = job.boardId;
+      existing.title = job.title;
+      existing.todoText = job.requiresFieldWork
+        ? `Go to the marked location and complete: ${job.title}`
+        : `Complete board job: ${job.title}`;
+      existing.kind = job.kind;
+      existing.mapMarkerId = job.mapMarkerId ?? job.targetId;
+      existing.targetId = job.targetId;
+      existing.townId = job.townId;
+      existing.regionId = job.regionId;
+      existing.createdAtMs = request.nowMs;
+      existing.dueAtMs = job.deadlineAtMs;
+      existing.questBoardTodo = true;
+      result.touched.add("jobs_board_quest_todo");
+      result.shared.add(sharedTodoKey(existing.todoId));
+    }
+    return;
+  }
   const todoId = `harthmere_job_todo_${result.next.nextTodoNumber++}`;
   result.next.todos[todoId] = {
     todoId,
@@ -1442,6 +1464,76 @@ function todoForJobAndActor(
   );
 }
 
+function pickupDeliveryParcel(
+  result: MutableJobsResult,
+  request: HarthmereJobsBoardMutationRequest,
+  context: HarthmereJobsBoardMutationContext
+) {
+  const job = request.jobId ? result.next.postings[request.jobId] : undefined;
+  if (!job) return reject(result, "jobs_board_rejected:job_not_found");
+  if (job.kind !== "delivery") {
+    return reject(result, "jobs_board_rejected:not_delivery_job");
+  }
+  if (job.status !== "active") {
+    return reject(result, "jobs_board_rejected:job_not_active");
+  }
+  if (job.acceptedByActorId !== request.actorId) {
+    return reject(result, "jobs_board_rejected:job_not_accepted_by_actor");
+  }
+  const todo = todoForJobAndActor(
+    result.next,
+    job.jobId,
+    request.actorId,
+    request.questTodoId
+  );
+  if (!todo) return reject(result, "jobs_board_rejected:quest_todo_required");
+  if (todo.status !== "active") {
+    return reject(result, `jobs_board_rejected:quest_not_active:${todo.status}`);
+  }
+  if (job.deadlineAtMs <= request.nowMs) {
+    job.status = "expired";
+    todo.status = "expired";
+    return reject(result, "jobs_board_rejected:job_expired");
+  }
+  const plan = harthmereDeliveryPlan(job);
+  if (!plan?.pickupMarkerId || !plan.parcelItemId) {
+    return reject(result, "jobs_board_rejected:delivery_pickup_not_required");
+  }
+  if (
+    request.completedTargetId !== plan.pickupMarkerId &&
+    request.completedTargetId !== undefined
+  ) {
+    return reject(
+      result,
+      `jobs_board_rejected:wrong_delivery_pickup:${plan.pickupMarkerId}`
+    );
+  }
+  const currentCount = Math.max(
+    0,
+    Math.floor(Number(context.actorInventoryItems[plan.parcelItemId] ?? 0))
+  );
+  const grantCount = Math.max(0, plan.parcelCount - currentCount);
+  if (grantCount > 0) {
+    recordItemDelta(result.itemDeltas, plan.parcelItemId, grantCount);
+  }
+  job.logs.push(
+    `delivery_parcel_picked_up:${plan.parcelItemId}:${grantCount}:${plan.pickupMarkerId}:${request.nowMs}`
+  );
+  pushAudit(result, request, {
+    id: request.requestId,
+    kind: "job_delivery_parcel_picked_up",
+    jobId: job.jobId,
+    boardId: job.boardId,
+    issuerKind: job.issuerKind,
+    issuerId: job.issuerId,
+    reason: plan.pickupMarkerId,
+  });
+  result.touched.add("jobs_board_delivery_parcel");
+  result.touched.add("jobs_board_quest_todo");
+  result.shared.add(sharedTodoKey(todo.todoId));
+  result.shared.add(sharedJobKey(job.jobId));
+}
+
 function completeJobQuest(
   result: MutableJobsResult,
   request: HarthmereJobsBoardMutationRequest,
@@ -1462,11 +1554,30 @@ function completeJobQuest(
   if (!todo) return reject(result, "jobs_board_rejected:quest_todo_required");
   if (todo.status === "completed")
     return reject(result, "jobs_board_rejected:quest_already_completed");
-  if (todo.status !== "active")
-    return reject(
-      result,
-      `jobs_board_rejected:quest_not_active:${todo.status}`
-    );
+  if (todo.status !== "active") {
+    if (["cancelled", "failed", "expired"].includes(todo.status)) {
+      todo.status = "active";
+      todo.boardId = job.boardId;
+      todo.title = job.title;
+      todo.todoText = job.requiresFieldWork
+        ? `Go to the marked location and complete: ${job.title}`
+        : `Complete board job: ${job.title}`;
+      todo.kind = job.kind;
+      todo.mapMarkerId = job.mapMarkerId ?? job.targetId;
+      todo.targetId = job.targetId;
+      todo.townId = job.townId;
+      todo.regionId = job.regionId;
+      todo.dueAtMs = job.deadlineAtMs;
+      todo.questBoardTodo = true;
+      result.touched.add("jobs_board_quest_todo");
+      result.shared.add(sharedTodoKey(todo.todoId));
+    } else {
+      return reject(
+        result,
+        `jobs_board_rejected:quest_not_active:${todo.status}`
+      );
+    }
+  }
   if (job.deadlineAtMs <= request.nowMs) {
     job.status = "expired";
     todo.status = "expired";
@@ -2634,6 +2745,266 @@ function autoSeedRng(seed: number) {
   };
 }
 
+function autoSeedRotationBucket(nowMs: number) {
+  const value = Number(nowMs);
+  if (!Number.isFinite(value)) return 0;
+  return Math.max(
+    0,
+    Math.floor(value / HARTHMERE_JOBS_BOARD_AUTO_SEED_DEADLINE_MS)
+  );
+}
+
+function autoSeedStringSeed(value: string) {
+  let seed = 0;
+  for (let i = 0; i < value.length; i += 1) {
+    seed = (seed * 31 + value.charCodeAt(i)) | 0;
+  }
+  return seed >>> 0;
+}
+
+function rotateAutoSeedEntries<T>(
+  entries: readonly T[],
+  input: {
+    boardId: string;
+    nowMs: number;
+    salt: string;
+  }
+) {
+  if (entries.length <= 1) return [...entries];
+  const nowSeed = Math.floor(Math.max(0, Number(input.nowMs) || 0) / 1000);
+  const offset =
+    (autoSeedRotationBucket(input.nowMs) +
+      autoSeedStringSeed(`${input.boardId}:${input.salt}:${nowSeed}`)) %
+    entries.length;
+  return entries
+    .map((entry, index) => ({
+      entry,
+      order: (index - offset + entries.length) % entries.length,
+    }))
+    .sort((a, b) => a.order - b.order)
+    .map(({ entry }) => entry);
+}
+
+function isRepeatablePlacementAutoSeedTemplate(template: AutoSeedTemplate) {
+  return template.kind === "delivery" || Boolean(template.monsterId);
+}
+
+const HARTHMERE_GROVE_DELIVERY_PICKUP_MARKERS: readonly string[] = [
+  "old_grove_road_post",
+  "coop_supply_box",
+  "grove_tool_crate",
+  "grove_resource_basket",
+  "econ_kit_mailbag",
+  "econ_grove_supply_chest",
+  "harthmere_orchard_softwood",
+  "doc_field_table",
+] as const;
+
+const HARTHMERE_GROVE_DELIVERY_DROPOFF_MARKERS: readonly string[] = [
+  "grove_mail_bank_satchel",
+  "old_grove_road_post",
+  "econ_grove_supply_chest",
+  "doc_field_table",
+] as const;
+
+const HARTHMERE_TOWN_DELIVERY_DROPOFF_MARKERS: readonly string[] = [
+  "harthmere_bridge_center",
+  "harthmere_market_office",
+  "harthmere_chapel_stone",
+  "harthmere_connector",
+] as const;
+
+interface RepeatableDeliveryDropoffCandidate {
+  markerId: string;
+  targetId?: string;
+  targetName?: string;
+  recipientNpcId?: string;
+}
+
+function repeatableDeliveryPickupMarkersForBoard(boardId: string) {
+  const outpostMarkers = HARTHMERE_BUSINESS_OUTPOSTS.map((outpost) =>
+    harthmereBusinessOutpostMapMarkerId(outpost.outpostId)
+  );
+  if (boardId === HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID) {
+    return [...HARTHMERE_GROVE_DELIVERY_PICKUP_MARKERS, ...outpostMarkers];
+  }
+  return [
+    "harthmere_bridge_center",
+    "harthmere_market_office",
+    "harthmere_chapel_stone",
+    "harthmere_connector",
+    ...outpostMarkers,
+    ...HARTHMERE_GROVE_DELIVERY_PICKUP_MARKERS,
+  ];
+}
+
+function repeatableDeliveryDropoffCandidatesForBoard(input: {
+  boardId: string;
+  personOnly?: boolean;
+}): RepeatableDeliveryDropoffCandidate[] {
+  const ownerDrops = HARTHMERE_BUSINESS_OUTPOSTS.map((outpost) => ({
+    markerId: `${HARTHMERE_BUSINESS_OWNER_MARKER_PREFIX}${outpost.ownerNpcId}`,
+    recipientNpcId: outpost.ownerNpcId,
+    targetName: outpost.displayName,
+  }));
+  if (input.personOnly) {
+    return ownerDrops;
+  }
+
+  const placeMarkers =
+    input.boardId === HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID
+      ? HARTHMERE_GROVE_DELIVERY_DROPOFF_MARKERS
+      : [
+          ...HARTHMERE_TOWN_DELIVERY_DROPOFF_MARKERS,
+          ...HARTHMERE_GROVE_DELIVERY_DROPOFF_MARKERS,
+        ];
+  return placeMarkers.map((markerId) => ({
+    markerId,
+    targetId: markerId,
+  }));
+}
+
+function randomRepeatableDeliveryPickupMarker(input: {
+  boardId: string;
+  rng: () => number;
+  avoidMarkerIds?: readonly (string | undefined)[];
+}) {
+  const avoid = new Set(
+    (input.avoidMarkerIds ?? []).filter((id): id is string => Boolean(id))
+  );
+  const candidates = repeatableDeliveryPickupMarkersForBoard(
+    input.boardId
+  ).filter((markerId) => !avoid.has(markerId));
+  if (!candidates.length) {
+    return undefined;
+  }
+  return candidates[
+    Math.min(
+      candidates.length - 1,
+      Math.floor(input.rng() * candidates.length)
+    )
+  ];
+}
+
+function randomRepeatableDeliveryDropoff(input: {
+  boardId: string;
+  rng: () => number;
+  personOnly?: boolean;
+  avoidMarkerIds?: readonly (string | undefined)[];
+}) {
+  const avoid = new Set(
+    (input.avoidMarkerIds ?? []).filter((id): id is string => Boolean(id))
+  );
+  const candidates = repeatableDeliveryDropoffCandidatesForBoard({
+    boardId: input.boardId,
+    personOnly: input.personOnly,
+  }).filter((candidate) => !avoid.has(candidate.markerId));
+  if (!candidates.length) {
+    return undefined;
+  }
+  return candidates[
+    Math.min(
+      candidates.length - 1,
+      Math.floor(input.rng() * candidates.length)
+    )
+  ];
+}
+
+function randomizedAutoSeedRequirements(input: {
+  template: Pick<
+    AutoSeedTemplate,
+    | "kind"
+    | "requirements"
+    | "monsterId"
+    | "monsterTier"
+    | "mapMarkerId"
+    | "targetId"
+  >;
+  boardId: string;
+  rng: () => number;
+}) {
+  const requirements = input.template.requirements.map((req) => ({ ...req }));
+  let mapMarkerId = input.template.mapMarkerId;
+  let targetId = input.template.targetId;
+  const logs: string[] = [];
+
+  if (input.template.monsterId) {
+    const target = randomHarthmereJobsBoardMuckBountyTarget({
+      monsterId: input.template.monsterId,
+      monsterTier: input.template.monsterTier,
+      rng: input.rng,
+    });
+    if (target) {
+      mapMarkerId = target.markerId;
+      targetId = target.targetId;
+      for (const req of requirements) {
+        if (req.targetId || req.mapMarkerId) {
+          req.targetId = target.targetId;
+          req.targetName = target.targetName;
+          req.mapMarkerId = target.markerId;
+        }
+      }
+      logs.push(`muck_bounty_target:${target.seedId}:${target.areaId}`);
+    }
+  }
+
+  if (input.template.kind === "delivery") {
+    const firstDeliveryReq = requirements.find((req) => req.itemId);
+    if (firstDeliveryReq) {
+      const dropoff = randomRepeatableDeliveryDropoff({
+        boardId: input.boardId,
+        rng: input.rng,
+        personOnly: Boolean(firstDeliveryReq.recipientNpcId),
+      });
+      if (dropoff) {
+        firstDeliveryReq.mapMarkerId = dropoff.markerId;
+        firstDeliveryReq.targetId = dropoff.targetId;
+        firstDeliveryReq.targetName = dropoff.targetName;
+        firstDeliveryReq.recipientNpcId = dropoff.recipientNpcId;
+        mapMarkerId = dropoff.markerId;
+        targetId = dropoff.targetId;
+        logs.push(`delivery_dropoff:${dropoff.markerId}`);
+      }
+      const pickupMarkerId = randomRepeatableDeliveryPickupMarker({
+        boardId: input.boardId,
+        rng: input.rng,
+        avoidMarkerIds: [
+          firstDeliveryReq.mapMarkerId,
+          firstDeliveryReq.targetId,
+          firstDeliveryReq.recipientNpcId
+            ? `${HARTHMERE_BUSINESS_OWNER_MARKER_PREFIX}${firstDeliveryReq.recipientNpcId}`
+            : undefined,
+          mapMarkerId,
+          targetId,
+        ],
+      });
+      if (pickupMarkerId) {
+        firstDeliveryReq.pickupMarkerId = pickupMarkerId;
+        logs.push(`delivery_pickup:${pickupMarkerId}`);
+      }
+    }
+  }
+
+  return { requirements, mapMarkerId, targetId, logs };
+}
+
+function randomizedBusinessTemplateRequirements(input: {
+  template: (typeof HARTHMERE_JOBS_BOARD_BUSINESS_TEMPLATES)[number];
+  boardId: string;
+  rng: () => number;
+}) {
+  return randomizedAutoSeedRequirements({
+    template: {
+      kind: input.template.kind,
+      requirements: input.template.requirements,
+      mapMarkerId: input.template.mapMarkerId,
+      targetId: input.template.targetId,
+    },
+    boardId: input.boardId,
+    rng: input.rng,
+  });
+}
+
 function countOpenAutoPostings(
   state: HarthmereJobsBoardState,
   boardId: string
@@ -2803,7 +3174,7 @@ function economyAutoSeedProductionBusinessJobs(
   board: HarthmereJobsBoardRecord
 ) {
   let produced = 0;
-  const businesses = Object.values(result.economy?.businesses ?? {})
+  const businessCandidates = Object.values(result.economy?.businesses ?? {})
     .filter(
       (business) =>
         business.status === "open" &&
@@ -2811,6 +3182,27 @@ function economyAutoSeedProductionBusinessJobs(
           business.regionId === board.regionId)
     )
     .sort((a, b) => a.businessId.localeCompare(b.businessId));
+  let businessOrderSeed = 0;
+  const businessOrderSeedKey = `${board.boardId}:business-rotation`;
+  for (let i = 0; i < businessOrderSeedKey.length; i += 1) {
+    businessOrderSeed =
+      (businessOrderSeed * 31 + businessOrderSeedKey.charCodeAt(i)) | 0;
+  }
+  const businessOrderRng = autoSeedRng((request.nowMs ^ businessOrderSeed) >>> 0);
+  const businessRotationIndex = businessCandidates.length
+    ? (autoSeedRotationBucket(request.nowMs) + (businessOrderSeed >>> 0)) %
+      businessCandidates.length
+    : 0;
+  const businesses = businessCandidates
+    .map((business, index) => ({
+      business,
+      order:
+        ((index - businessRotationIndex + businessCandidates.length) %
+          businessCandidates.length) +
+        businessOrderRng() * 0.001,
+    }))
+    .sort((a, b) => a.order - b.order)
+    .map((entry) => entry.business);
 
   for (const business of businesses) {
     if (produced >= HARTHMERE_JOBS_BOARD_BUSINESS_AUTO_SEED_MAX_PER_TICK) break;
@@ -2832,12 +3224,26 @@ function economyAutoSeedProductionBusinessJobs(
     const issuerOpen = result.next.issuerOpenJobIds[issuerKey]?.length ?? 0;
     if (issuerOpen >= HARTHMERE_JOBS_BOARD_MAX_ACTIVE_POSTINGS_PER_ISSUER)
       continue;
-    const rewardGold = Math.max(
+    const desiredRewardGold = Math.max(
       HARTHMERE_JOBS_BOARD_MIN_REWARD_GOLD,
       Math.min(HARTHMERE_JOBS_BOARD_MAX_REWARD_GOLD, template.defaultRewardGold)
     );
+    const affordableGold = Math.max(0, Math.trunc(business.balanceGold ?? 0));
+    const rewardGold = Math.min(desiredRewardGold, affordableGold);
     if (business.balanceGold < rewardGold) continue;
+    if (rewardGold < HARTHMERE_JOBS_BOARD_MIN_REWARD_GOLD) continue;
     business.balanceGold -= rewardGold;
+    let businessSeed = 0;
+    const businessSeedKey = `${board.boardId}:${business.businessId}:${template.templateId}`;
+    for (let i = 0; i < businessSeedKey.length; i += 1) {
+      businessSeed = (businessSeed * 31 + businessSeedKey.charCodeAt(i)) | 0;
+    }
+    const businessRng = autoSeedRng((request.nowMs ^ businessSeed) >>> 0);
+    const randomized = randomizedBusinessTemplateRequirements({
+      template,
+      boardId: board.boardId,
+      rng: businessRng,
+    });
     let jobId = `${HARTHMERE_JOBS_BOARD_AUTO_SEED_ISSUER_PREFIX}${result.next
       .nextJobNumber++}`;
     while (result.next.postings[jobId]) {
@@ -2853,7 +3259,7 @@ function economyAutoSeedProductionBusinessJobs(
       title: template.title,
       description: template.description,
       kind: template.kind,
-      requirements: template.requirements.map((req) => ({ ...req })),
+      requirements: randomized.requirements,
       templateId: template.templateId,
       rewardGold,
       escrowGold: rewardGold,
@@ -2866,10 +3272,13 @@ function economyAutoSeedProductionBusinessJobs(
         request.nowMs + template.defaultDeadlineDays * 24 * 60 * 60 * 1000,
       failurePenaltyGold: Math.round(rewardGold * 0.1),
       requiresFieldWork: true,
-      mapMarkerId: template.mapMarkerId,
-      targetId: template.targetId,
+      mapMarkerId: randomized.mapMarkerId,
+      targetId: randomized.targetId,
       abuseFlags: [],
-      logs: [`auto_seeded_business:${template.templateId}:${request.nowMs}`],
+      logs: [
+        `auto_seeded_business:${template.templateId}:${request.nowMs}`,
+        ...randomized.logs,
+      ],
       autoPosted: true,
       source: "economy_auto_seed",
     };
@@ -2980,6 +3389,13 @@ function economyAutoSeedJobs(
   const shouldPrimeExoticMatterMining =
     exoticMatterTemplates.length > 0 &&
     !hasOpenExoticMatterMiningJob(result.next, boardId);
+  const repeatablePlacementTemplates = templates.filter(
+    isRepeatablePlacementAutoSeedTemplate
+  );
+  const repeatablePlacementLimit = Math.min(
+    Math.max(0, slotsToFill - (shouldPrimeExoticMatterMining ? 1 : 0)),
+    repeatablePlacementTemplates.length
+  );
 
   // Pick distinct template ids per tick when possible so the board feels
   // varied. Prefer kinds/templates missing from the board before repeating, so
@@ -2992,10 +3408,27 @@ function economyAutoSeedJobs(
   let attempts = 0;
   while (produced < slotsToFill && attempts < slotsToFill * 6) {
     attempts += 1;
-    const baseTemplatePool =
-      shouldPrimeExoticMatterMining && produced === 0
-        ? exoticMatterTemplates
-        : templates;
+    const missingRepeatablePlacementPool = repeatablePlacementTemplates.filter(
+      (template) =>
+        !usedTemplateIds.has(template.templateId) &&
+        (!openTemplateIds.has(template.templateId) ||
+          openTemplateIds.size >= templates.length)
+    );
+    const shouldPrimeExotic =
+      shouldPrimeExoticMatterMining && produced === 0;
+    const shouldPrimeRepeatablePlacement =
+      !shouldPrimeExotic &&
+      produced < repeatablePlacementLimit &&
+      missingRepeatablePlacementPool.length > 0;
+    const baseTemplatePool = shouldPrimeExotic
+      ? exoticMatterTemplates
+      : shouldPrimeRepeatablePlacement
+      ? rotateAutoSeedEntries(missingRepeatablePlacementPool, {
+          boardId,
+          nowMs: request.nowMs,
+          salt: "repeatable-placement",
+        })
+      : templates;
     const distinctTemplatePool = baseTemplatePool.filter(
       (template) =>
         !usedTemplateIds.has(template.templateId) &&
@@ -3007,12 +3440,18 @@ function economyAutoSeedJobs(
         !openKinds.has(template.kind) && !usedKinds.has(template.kind)
     );
     const templatePool =
-      diverseKindPool.length > 0
+      shouldPrimeRepeatablePlacement
+        ? distinctTemplatePool.length > 0
+          ? distinctTemplatePool
+          : baseTemplatePool
+        : diverseKindPool.length > 0
         ? diverseKindPool
         : distinctTemplatePool.length > 0
         ? distinctTemplatePool
         : baseTemplatePool;
-    const template = templatePool[Math.floor(rng() * templatePool.length)];
+    const template = shouldPrimeRepeatablePlacement
+      ? templatePool[0]
+      : templatePool[Math.floor(rng() * templatePool.length)];
     if (!template) break;
     if (
       usedTemplateIds.has(template.templateId) &&
@@ -3056,6 +3495,11 @@ function economyAutoSeedJobs(
       jobId = `${HARTHMERE_JOBS_BOARD_AUTO_SEED_ISSUER_PREFIX}${result.next
         .nextJobNumber++}`;
     }
+    const randomized = randomizedAutoSeedRequirements({
+      template,
+      boardId,
+      rng,
+    });
     const flags: string[] = [];
     if (hasSuspiciousText(`${template.title} ${template.description}`)) {
       flags.push("suspicious_text");
@@ -3068,7 +3512,7 @@ function economyAutoSeedJobs(
       title: template.title,
       description: template.description,
       kind: template.kind,
-      requirements: template.requirements.map((req) => ({ ...req })),
+      requirements: randomized.requirements,
       templateId: template.templateId,
       rewardGold,
       escrowGold: rewardGold,
@@ -3080,10 +3524,13 @@ function economyAutoSeedJobs(
       deadlineAtMs: request.nowMs + HARTHMERE_JOBS_BOARD_AUTO_SEED_DEADLINE_MS,
       failurePenaltyGold: Math.round(rewardGold * 0.1),
       requiresFieldWork: template.requiresFieldWork,
-      mapMarkerId: template.mapMarkerId,
-      targetId: template.targetId,
+      mapMarkerId: randomized.mapMarkerId,
+      targetId: randomized.targetId,
       abuseFlags: flags,
-      logs: [`auto_seeded:${template.templateId}:${request.nowMs}`],
+      logs: [
+        `auto_seeded:${template.templateId}:${request.nowMs}`,
+        ...randomized.logs,
+      ],
       autoPosted: true,
       source: "economy_auto_seed",
       partyRecommended: template.partyRecommended,
@@ -3156,6 +3603,9 @@ export function reduceHarthmereJobsBoardMutation(
       break;
     case "complete_job_quest":
       completeJobQuest(result, request, context);
+      break;
+    case "pickup_delivery_parcel":
+      pickupDeliveryParcel(result, request, context);
       break;
     case "cancel_job":
       cancelJobPosting(result, request, context);

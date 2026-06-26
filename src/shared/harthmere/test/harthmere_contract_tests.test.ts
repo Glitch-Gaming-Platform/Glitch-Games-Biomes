@@ -76,7 +76,7 @@ describe("Grove NPC positions (snapshot_grove_content)", () => {
         npc.authoredPosition[1],
         SNAPSHOT_GROVE_NPC_FEET_Y,
         `${npc.displayName} (${npc.id}) is off-ground at y=${npc.authoredPosition[1]} (expected ${SNAPSHOT_GROVE_NPC_FEET_Y}). ` +
-          `Authoring this above ground bakes a floating NPC into the snapshot.`,
+          `Authoring this above ground bakes a floating NPC into the snapshot.`
       );
     }
   });
@@ -85,15 +85,17 @@ describe("Grove NPC positions (snapshot_grove_content)", () => {
     for (const npc of SNAPSHOT_GROVE_NPCS) {
       const inGrove = snapshotPointInBounds(
         npc.authoredPosition,
-        SNAPSHOT_GROVE_LIVE_BOUNDS,
+        SNAPSHOT_GROVE_LIVE_BOUNDS
       );
       const inHarthmere = snapshotPointInBounds(
         npc.authoredPosition,
-        SNAPSHOT_HARTHMERE_LIVE_BOUNDS,
+        SNAPSHOT_HARTHMERE_LIVE_BOUNDS
       );
       assert.ok(
         inGrove || inHarthmere,
-        `${npc.displayName} (${npc.id}) at ${JSON.stringify(npc.authoredPosition)} is in neither Grove nor Harthmere bounds`,
+        `${npc.displayName} (${npc.id}) at ${JSON.stringify(
+          npc.authoredPosition
+        )} is in neither Grove nor Harthmere bounds`
       );
     }
   });
@@ -105,7 +107,7 @@ describe("Grove NPC positions (snapshot_grove_content)", () => {
       const prior = seen.get(key);
       assert.ok(
         !prior,
-        `${npc.displayName} and ${prior} share authored XZ ${key} — players see them spawned on top of each other`,
+        `${npc.displayName} and ${prior} share authored XZ ${key} — players see them spawned on top of each other`
       );
       seen.set(key, npc.displayName);
     }
@@ -116,7 +118,7 @@ describe("Grove NPC positions (snapshot_grove_content)", () => {
       const marker = snapshotGroveMarkerPosition(npc.authoredPosition);
       assert.ok(
         marker[1] > SNAPSHOT_GROVE_WORLD_GROUND_Y,
-        `Marker for ${npc.displayName} at y=${marker[1]} is at or below ground ${SNAPSHOT_GROVE_WORLD_GROUND_Y}`,
+        `Marker for ${npc.displayName} at y=${marker[1]} is at or below ground ${SNAPSHOT_GROVE_WORLD_GROUND_Y}`
       );
     }
   });
@@ -128,7 +130,7 @@ describe("Grove NPC positions (snapshot_grove_content)", () => {
       if (landmark.area === "harthmere") continue;
       assert.ok(
         npcIds.has(landmark.npcId),
-        `Landmark ${landmark.id} references missing Grove NPC '${landmark.npcId}'`,
+        `Landmark ${landmark.id} references missing Grove NPC '${landmark.npcId}'`
       );
     }
   });
@@ -137,15 +139,13 @@ describe("Grove NPC positions (snapshot_grove_content)", () => {
 describe("Snapshot current live NPC grounding", () => {
   const groveCenter: [number, number, number] = [
     Math.round(
-      (SNAPSHOT_GROVE_LIVE_BOUNDS.min[0] +
-        SNAPSHOT_GROVE_LIVE_BOUNDS.max[0]) /
-        2,
+      (SNAPSHOT_GROVE_LIVE_BOUNDS.min[0] + SNAPSHOT_GROVE_LIVE_BOUNDS.max[0]) /
+        2
     ),
     SNAPSHOT_GROVE_NPC_FEET_Y,
     Math.round(
-      (SNAPSHOT_GROVE_LIVE_BOUNDS.min[2] +
-        SNAPSHOT_GROVE_LIVE_BOUNDS.max[2]) /
-        2,
+      (SNAPSHOT_GROVE_LIVE_BOUNDS.min[2] + SNAPSHOT_GROVE_LIVE_BOUNDS.max[2]) /
+        2
     ),
   ];
 
@@ -162,7 +162,7 @@ describe("Snapshot current live NPC grounding", () => {
       grounded[1],
       SNAPSHOT_GROVE_LIVE_NPC_FEET_Y,
       "snapshotGroundLiveNpcPosition grounds to the LIVE feet Y (current=70), " +
-      "not the authored current value — see README-SNAPSHOT-MAP-LANDSCAPE-GUIDE.md",
+        "not the authored current value — see README-SNAPSHOT-MAP-LANDSCAPE-GUIDE.md"
     );
   });
 
@@ -192,30 +192,42 @@ describe("Harthmere connected-world bounds", () => {
   it("Harthmere shares the same ground Y as the Grove (no Y-discontinuity)", () => {
     assert.strictEqual(
       SNAPSHOT_HARTHMERE_LIVE_BOUNDS.expectedFeetY,
-      SNAPSHOT_GROVE_LIVE_BOUNDS.expectedFeetY,
+      SNAPSHOT_GROVE_LIVE_BOUNDS.expectedFeetY
     );
     assert.strictEqual(
       HARTHMERE_LAYOUT_GROUND_Y,
-      SNAPSHOT_GROVE_WORLD_GROUND_Y,
+      SNAPSHOT_GROVE_WORLD_GROUND_Y
     );
   });
 
   it("current layout bounds match current live bounds (single source of truth)", () => {
-    assert.strictEqual(HARTHMERE_TOWN_LAYOUT_BOUNDS.minX, SNAPSHOT_HARTHMERE_LIVE_BOUNDS.min[0]);
-    assert.strictEqual(HARTHMERE_TOWN_LAYOUT_BOUNDS.maxX, SNAPSHOT_HARTHMERE_LIVE_BOUNDS.max[0]);
-    assert.strictEqual(HARTHMERE_TOWN_LAYOUT_BOUNDS.minZ, SNAPSHOT_HARTHMERE_LIVE_BOUNDS.min[2]);
-    assert.strictEqual(HARTHMERE_TOWN_LAYOUT_BOUNDS.maxZ, SNAPSHOT_HARTHMERE_LIVE_BOUNDS.max[2]);
+    assert.strictEqual(
+      HARTHMERE_TOWN_LAYOUT_BOUNDS.minX,
+      SNAPSHOT_HARTHMERE_LIVE_BOUNDS.min[0]
+    );
+    assert.strictEqual(
+      HARTHMERE_TOWN_LAYOUT_BOUNDS.maxX,
+      SNAPSHOT_HARTHMERE_LIVE_BOUNDS.max[0]
+    );
+    assert.strictEqual(
+      HARTHMERE_TOWN_LAYOUT_BOUNDS.minZ,
+      SNAPSHOT_HARTHMERE_LIVE_BOUNDS.min[2]
+    );
+    assert.strictEqual(
+      HARTHMERE_TOWN_LAYOUT_BOUNDS.maxZ,
+      SNAPSHOT_HARTHMERE_LIVE_BOUNDS.max[2]
+    );
   });
 
   it("Grove publishes a connector landmark that's reachable from the east edge", () => {
     const connector = SNAPSHOT_GROVE_LANDMARKS.find(
-      (landmark) => landmark.id === "harthmere_connector",
+      (landmark) => landmark.id === "harthmere_connector"
     );
     assert.ok(connector, "Grove must publish a harthmere_connector landmark");
     assert.ok(
       connector.position[0] >= SNAPSHOT_GROVE_LIVE_BOUNDS.min[0] &&
         connector.position[0] <= SNAPSHOT_GROVE_LIVE_BOUNDS.max[0] + 200,
-      `Connector at x=${connector.position[0]} is too far from the Grove east edge`,
+      `Connector at x=${connector.position[0]} is too far from the Grove east edge`
     );
   });
 });
@@ -230,7 +242,7 @@ describe("Harthmere bible district layout current", () => {
     for (const d of HARTHMERE_BIBLE_DISTRICTS) {
       assert.ok(
         d.landmarks.length > 0,
-        `district '${d.id}' has no landmarks — map will have no anchor here`,
+        `district '${d.id}' has no landmarks — map will have no anchor here`
       );
     }
   });
@@ -256,9 +268,12 @@ describe("Harthmere bible district layout current", () => {
 
   it("residential district exists for NPC housing overflow (bible §8.1)", () => {
     const residential = HARTHMERE_BIBLE_DISTRICTS.find(
-      (d) => d.id === "residential",
+      (d) => d.id === "residential"
     );
-    assert.ok(residential, "residential district must exist for ambient population");
+    assert.ok(
+      residential,
+      "residential district must exist for ambient population"
+    );
   });
 });
 
@@ -267,8 +282,12 @@ describe("Harthmere NPC residence contract current", () => {
     const result = validateHarthmereNpcResidences();
     assert.ok(
       result.ok,
-      `NPC residence contract violated:\n${result.failures.slice(0, 25).join("\n")}` +
-        (result.failures.length > 25 ? `\n... and ${result.failures.length - 25} more` : ""),
+      `NPC residence contract violated:\n${result.failures
+        .slice(0, 25)
+        .join("\n")}` +
+        (result.failures.length > 25
+          ? `\n... and ${result.failures.length - 25} more`
+          : "")
     );
   });
 
@@ -277,7 +296,7 @@ describe("Harthmere NPC residence contract current", () => {
     for (const r of HARTHMERE_BIBLE_NPC_RESIDENCES) {
       assert.ok(
         knownNpcIds.has(r.npcId),
-        `bible residence references unknown NPC '${r.npcId}'`,
+        `bible residence references unknown NPC '${r.npcId}'`
       );
     }
   });
@@ -292,7 +311,9 @@ describe("Harthmere mission chain validator current", () => {
       result.ok,
       `quest chain failures (${result.failures.length}):\n` +
         result.failures.slice(0, 25).join("\n") +
-        (result.failures.length > 25 ? `\n... and ${result.failures.length - 25} more` : ""),
+        (result.failures.length > 25
+          ? `\n... and ${result.failures.length - 25} more`
+          : "")
     );
   });
 
@@ -300,11 +321,15 @@ describe("Harthmere mission chain validator current", () => {
     const chain = buildHarthmereQuestChain();
     assert.ok(
       chain.mainChain.length >= 12,
-      `expected at least 12 main bible quests; got ${chain.mainChain.length}`,
+      `expected at least 12 main bible quests; got ${chain.mainChain.length}`
     );
     // The chain construction algorithm refuses to add edges for missing
     // prereqs and would push a warning. Surface them.
-    assert.deepStrictEqual(chain.warnings, [], `chain warnings: ${chain.warnings.join(", ")}`);
+    assert.deepStrictEqual(
+      chain.warnings,
+      [],
+      `chain warnings: ${chain.warnings.join(", ")}`
+    );
   });
 
   it("nextSuggestedHarthmereQuest picks Q1 for a fresh player", () => {
@@ -318,7 +343,7 @@ describe("Harthmere mission chain validator current", () => {
     assert.strictEqual(
       suggestion.questId,
       chain.mainChain[0],
-      "first suggestion should be the head of the main bible chain",
+      "first suggestion should be the head of the main bible chain"
     );
   });
 
@@ -345,7 +370,10 @@ describe("current resolver Grove terrain Y (patch 05)", () => {
   it("defaults to live (what production snapshot terrain actually loads)", () => {
     const resolved = resolveSnapshotGroveGroundY({});
     assert.strictEqual(resolved.mode, "live");
-    assert.strictEqual(resolved.worldGroundY, SNAPSHOT_GROVE_LIVE_WORLD_GROUND_Y);
+    assert.strictEqual(
+      resolved.worldGroundY,
+      SNAPSHOT_GROVE_LIVE_WORLD_GROUND_Y
+    );
     assert.strictEqual(resolved.npcFeetY, SNAPSHOT_GROVE_LIVE_NPC_FEET_Y);
     assert.strictEqual(resolved.markerY, SNAPSHOT_GROVE_LIVE_MARKER_Y);
   });
@@ -361,12 +389,16 @@ describe("current resolver Grove terrain Y (patch 05)", () => {
 
   it("accepts short aliases for terrain mode (current / current)", () => {
     assert.strictEqual(
-      resolveSnapshotGroveTerrainMode({ GLITCH_SNAPSHOT_GROVE_TERRAIN_MODE: "current" }),
-      "authored",
+      resolveSnapshotGroveTerrainMode({
+        GLITCH_SNAPSHOT_GROVE_TERRAIN_MODE: "authored",
+      }),
+      "authored"
     );
     assert.strictEqual(
-      resolveSnapshotGroveTerrainMode({ GLITCH_SNAPSHOT_GROVE_TERRAIN_MODE: "current" }),
-      "live",
+      resolveSnapshotGroveTerrainMode({
+        GLITCH_SNAPSHOT_GROVE_TERRAIN_MODE: "current",
+      }),
+      "live"
     );
   });
 
@@ -376,8 +408,7 @@ describe("current resolver Grove terrain Y (patch 05)", () => {
     assert.notStrictEqual(
       SNAPSHOT_GROVE_NPC_FEET_Y,
       SNAPSHOT_GROVE_LIVE_NPC_FEET_Y,
-      "Authored feet Y and live feet Y must stay distinct — see positioning README",
+      "Authored feet Y and live feet Y must stay distinct — see positioning README"
     );
   });
 });
-

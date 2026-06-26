@@ -45,6 +45,7 @@ export interface InventoryUiItem {
   source?: InventoryContainerKey;
   storageLocation?: InventoryContainerKey;
   canUse?: boolean;
+  useActionLabel?: string;
   canEquip?: boolean;
   canMove?: boolean;
   canSplit?: boolean;
@@ -252,9 +253,8 @@ export function readInventoryDragRefFromTransfer(
   dataTransfer: Pick<DataTransfer, "getData">
 ): InventoryUiRef | undefined {
   return (
-    parseInventoryDragRef(
-      dataTransfer.getData(BIOMES_INVENTORY_DRAG_MIME)
-    ) ?? parseInventoryDragRef(dataTransfer.getData("text/plain"))
+    parseInventoryDragRef(dataTransfer.getData(BIOMES_INVENTORY_DRAG_MIME)) ??
+    parseInventoryDragRef(dataTransfer.getData("text/plain"))
   );
 }
 
@@ -588,8 +588,7 @@ export const InventoryTab: React.FunctionComponent<{
           items={cells}
           renderCell={(item, { focused }, cell) => {
             const canDragItem =
-              canMoveInventoryItemToHotbar(item) &&
-              Boolean(adapter?.moveItem);
+              canMoveInventoryItemToHotbar(item) && Boolean(adapter?.moveItem);
             const slotButton = React.createElement(
               "button",
               {
@@ -853,7 +852,7 @@ export const InventoryTab: React.FunctionComponent<{
                   disabled={!selectedItem.ref || selectedItem.canUse === false}
                   data-inventory-action="use"
                 >
-                  Use / Select
+                  {selectedItem.useActionLabel ?? "Use / Select"}
                 </button>
               </Highlightable>
               <Highlightable
@@ -884,8 +883,7 @@ export const InventoryTab: React.FunctionComponent<{
                 <button
                   type="button"
                   onClick={() =>
-                    selectedItem.ref &&
-                    adapter?.unequipItem?.(selectedItem.ref)
+                    selectedItem.ref && adapter?.unequipItem?.(selectedItem.ref)
                   }
                   disabled={
                     !selectedItem.ref ||
@@ -1252,7 +1250,9 @@ const FarmingFoodSection: React.FunctionComponent<{
           border: staminaWarns
             ? "1px solid rgba(255, 82, 82, 0.78)"
             : "1px solid var(--biomes-edge-cyan-soft)",
-          background: staminaWarns ? "rgba(70, 0, 0, 0.46)" : "rgba(0,0,0,0.35)",
+          background: staminaWarns
+            ? "rgba(70, 0, 0, 0.46)"
+            : "rgba(0,0,0,0.35)",
           marginBottom: 8,
           boxShadow: staminaWarns
             ? "0 0 14px rgba(255, 54, 54, 0.62)"

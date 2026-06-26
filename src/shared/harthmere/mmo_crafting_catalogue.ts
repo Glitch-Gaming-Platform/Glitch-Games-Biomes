@@ -465,9 +465,7 @@ function parseStationSize(size?: string) {
   return { width, depth, height };
 }
 
-function stationItemDefinition(
-  station: HarthmereCraftingStationDefinition
-) {
+function stationItemDefinition(station: HarthmereCraftingStationDefinition) {
   return item(station.stationId, station.displayName, {
     maxStackSize: 20,
     baseValue: 65,
@@ -498,36 +496,32 @@ function stationItemDefinition(
   });
 }
 
-const STATION_ITEMS: HarthmereItemDefinition[] =
-  CRAFTABLE_STATION_ITEM_IDS.map((stationId) =>
+const STATION_ITEMS: HarthmereItemDefinition[] = CRAFTABLE_STATION_ITEM_IDS.map(
+  (stationId) =>
     stationItemDefinition(
       STATIONS.find((station) => station.stationId === stationId) ?? {
         stationId,
         displayName: "Crafting Station",
       }
     )
-  );
+);
 
 const HOME_DECORATION_ITEMS: HarthmereItemDefinition[] = [
-  item(
-    HARTHMERE_HOME_DECORATION_ITEM_IDS.storageCabinet,
-    "Storage Cabinet",
-    {
-      maxStackSize: 20,
-      baseValue: 45,
-      isCraftingMaterial: false,
-      category: "home decoration",
-      objectMetadata: {
-        objectKind: "furniture",
-        physicalForm: "storage",
-        sizeVoxels: { width: 1, depth: 1, height: 2 },
-        sizeLabel: "1x1x2",
-        visualDescription: "wood cabinet with reinforced hinges",
-        craftingRoles: ["home storage"],
-        businessUse: ["back room storage"],
-      },
-    }
-  ),
+  item(HARTHMERE_HOME_DECORATION_ITEM_IDS.storageCabinet, "Storage Cabinet", {
+    maxStackSize: 20,
+    baseValue: 45,
+    isCraftingMaterial: false,
+    category: "home decoration",
+    objectMetadata: {
+      objectKind: "furniture",
+      physicalForm: "storage",
+      sizeVoxels: { width: 1, depth: 1, height: 2 },
+      sizeLabel: "1x1x2",
+      visualDescription: "wood cabinet with reinforced hinges",
+      craftingRoles: ["home storage"],
+      businessUse: ["back room storage"],
+    },
+  }),
   item(HARTHMERE_HOME_DECORATION_ITEM_IDS.hearthLamp, "Hearth Lamp", {
     maxStackSize: 20,
     baseValue: 35,
@@ -672,7 +666,10 @@ const ITEMS: HarthmereItemDefinition[] = [
     stats: { rangedAttack: 8, weight: 3 },
     salvageOutputs: [{ itemId: "wood_plank", count: 1 }],
   }),
-  item("road_repair_kit", "Road Repair Kit", { baseValue: 35, isCraftingMaterial: false }),
+  item("road_repair_kit", "Road Repair Kit", {
+    baseValue: 35,
+    isCraftingMaterial: false,
+  }),
   item("rough_hide", "Rough Hide", { baseValue: 4 }),
   item("boiled_leather", "Boiled Leather", { baseValue: 10 }),
   item("leather_armor", "Leather Armor", {
@@ -727,9 +724,15 @@ const ITEMS: HarthmereItemDefinition[] = [
     repairable: true,
     stats: { attack: 14, warding: 4, weight: 5 },
   }),
-  item("repair_part", "Repair Part", { baseValue: 10, isCraftingMaterial: true }),
+  item("repair_part", "Repair Part", {
+    baseValue: 10,
+    isCraftingMaterial: true,
+  }),
   item("upgrade_crystal", "Upgrade Crystal", { baseValue: 45 }),
-  item("bell_metal_fragment", "Bell Metal Fragment", { baseValue: 20, isCraftingMaterial: true }),
+  item("bell_metal_fragment", "Bell Metal Fragment", {
+    baseValue: 20,
+    isCraftingMaterial: true,
+  }),
   item("meteoric_trace", "Meteoric Trace", { baseValue: 25 }),
   item("tin_ingot", "Tin Ingot", { baseValue: 8 }),
   item("bell_bronze_ingot", "Bell-Bronze Ingot", { baseValue: 80 }),
@@ -788,46 +791,42 @@ const ITEMS: HarthmereItemDefinition[] = [
       }),
     }
   ),
-  item(
-    HARTHMERE_EXOTIC_MATTER_ITEM_IDS.positronCapsule,
-    "Positron Capsule",
-    {
-      baseValue: 85,
-      category: "particle_component",
-      materialTier: 4,
-      maxStackSize: 250,
-      objectMetadata: exoticItemMetadata({
-        objectKind: "component",
-        physicalForm: "particle_capsule",
-        colors: ["rose white", "black glass", "warning amber"],
-        visualDescription:
-          "A compact containment capsule with a pale rose-white core and a narrow amber safety seal.",
-        materialComposition: [
-          "positrons",
-          "micro containment glass",
-          "field latch",
-        ],
-        craftingRoles: [
-          "antihydrogen_block",
-          "antihelium_block",
-          "antiboron_block",
-        ],
-        source: [
-          "deep earth mining",
-          "particle collider salvage",
-          "licensed exotic matter stores",
-        ],
-        businessUse: ["exotic_matter_refinery", "magic_goods"],
-        handling: [
-          "pair only inside containment fields",
-          "keep away from loose electron-rich matter",
-        ],
-        hazardClass: "antimatter_component",
-        containmentRating: 75,
-        bikkieGraphicHints: ["powerCell", "thermoblaster"],
-      }),
-    }
-  ),
+  item(HARTHMERE_EXOTIC_MATTER_ITEM_IDS.positronCapsule, "Positron Capsule", {
+    baseValue: 85,
+    category: "particle_component",
+    materialTier: 4,
+    maxStackSize: 250,
+    objectMetadata: exoticItemMetadata({
+      objectKind: "component",
+      physicalForm: "particle_capsule",
+      colors: ["rose white", "black glass", "warning amber"],
+      visualDescription:
+        "A compact containment capsule with a pale rose-white core and a narrow amber safety seal.",
+      materialComposition: [
+        "positrons",
+        "micro containment glass",
+        "field latch",
+      ],
+      craftingRoles: [
+        "antihydrogen_block",
+        "antihelium_block",
+        "antiboron_block",
+      ],
+      source: [
+        "deep earth mining",
+        "particle collider salvage",
+        "licensed exotic matter stores",
+      ],
+      businessUse: ["exotic_matter_refinery", "magic_goods"],
+      handling: [
+        "pair only inside containment fields",
+        "keep away from loose electron-rich matter",
+      ],
+      hazardClass: "antimatter_component",
+      containmentRating: 75,
+      bikkieGraphicHints: ["powerCell", "thermoblaster"],
+    }),
+  }),
   item(
     HARTHMERE_EXOTIC_MATTER_ITEM_IDS.antineutronCapsule,
     "Antineutron Capsule",
@@ -895,41 +894,37 @@ const ITEMS: HarthmereItemDefinition[] = [
       }),
     }
   ),
-  item(
-    HARTHMERE_EXOTIC_MATTER_ITEM_IDS.antiheliumBlock,
-    "Antihelium Block",
-    {
-      baseValue: 760,
-      category: "block",
-      materialTier: 5,
-      qualityFloor: 48,
-      stats: { containmentRating: 86 },
-      objectMetadata: exoticBlockMetadata({
-        colors: ["cyan", "electric purple", "transparent black"],
-        visualDescription:
-          "A dense one-voxel block with cyan nuclei motes orbiting in slow paired loops.",
-        materialComposition: [
-          "antiprotons",
-          "antineutrons",
-          "positrons",
-          "containment lattice",
-        ],
-        craftingRoles: ["raw_exotic_matter"],
-        source: [
-          "crafted from antimatter particle capsules",
-          "rare collider-grade salvage",
-        ],
-        businessUse: ["exotic_matter_refinery"],
-        handling: [
-          "requires hazardous material license level 2",
-          "never stack near damaged filters",
-        ],
-        hazardClass: "contained_antimatter_block",
-        containmentRating: 86,
-        bikkieGraphicHints: ["procedural_voxel_block", "thermoblaster"],
-      }),
-    }
-  ),
+  item(HARTHMERE_EXOTIC_MATTER_ITEM_IDS.antiheliumBlock, "Antihelium Block", {
+    baseValue: 760,
+    category: "block",
+    materialTier: 5,
+    qualityFloor: 48,
+    stats: { containmentRating: 86 },
+    objectMetadata: exoticBlockMetadata({
+      colors: ["cyan", "electric purple", "transparent black"],
+      visualDescription:
+        "A dense one-voxel block with cyan nuclei motes orbiting in slow paired loops.",
+      materialComposition: [
+        "antiprotons",
+        "antineutrons",
+        "positrons",
+        "containment lattice",
+      ],
+      craftingRoles: ["raw_exotic_matter"],
+      source: [
+        "crafted from antimatter particle capsules",
+        "rare collider-grade salvage",
+      ],
+      businessUse: ["exotic_matter_refinery"],
+      handling: [
+        "requires hazardous material license level 2",
+        "never stack near damaged filters",
+      ],
+      hazardClass: "contained_antimatter_block",
+      containmentRating: 86,
+      bikkieGraphicHints: ["procedural_voxel_block", "thermoblaster"],
+    }),
+  }),
   item(HARTHMERE_EXOTIC_MATTER_ITEM_IDS.antiboronBlock, "Antiboron Block", {
     baseValue: 1220,
     category: "block",
@@ -2634,37 +2629,33 @@ export function ensureHarthmereProductionCraftingCatalogue() {
     if (!getHarthmereCraftingTool(tool.itemId)) {
       registerHarthmereCraftingTool(tool);
     }
-    if (!getHarthmereItemDefinition(tool.itemId)) {
-      registerHarthmereItemDefinition(
-        item(tool.itemId, tool.displayName, {
-          maxStackSize: 1,
-          // Greater-impact tools cost more: price scales with tier and the
-          // tool's damage/repair power (HARTHMERE_TOOL_POWER).
-          baseValue: harthmereToolBaseValueForTier(
-            tool.tier,
-            tool.damage ?? tool.repairPower ?? tool.cleanupPower ?? 0
-          ),
-          isCraftingMaterial: false,
-          category: "tool",
-          durabilityMax: tool.durabilityMax,
-          stats: {
-            toolTier: tool.tier ?? 1,
-            ...(tool.damage !== undefined ? { damage: tool.damage } : {}),
-            ...(tool.repairPower !== undefined
-              ? { repairPower: tool.repairPower }
-              : {}),
-            ...(tool.cleanupPower !== undefined
-              ? { cleanupPower: tool.cleanupPower }
-              : {}),
-          },
-        })
-      );
-    }
+    registerHarthmereItemDefinition(
+      item(tool.itemId, tool.displayName, {
+        maxStackSize: 1,
+        // Greater-impact tools cost more: price scales with tier and the
+        // tool's damage/repair power (HARTHMERE_TOOL_POWER).
+        baseValue: harthmereToolBaseValueForTier(
+          tool.tier,
+          tool.damage ?? tool.repairPower ?? tool.cleanupPower ?? 0
+        ),
+        isCraftingMaterial: false,
+        category: "tool",
+        durabilityMax: tool.durabilityMax,
+        stats: {
+          toolTier: tool.tier ?? 1,
+          ...(tool.damage !== undefined ? { damage: tool.damage } : {}),
+          ...(tool.repairPower !== undefined
+            ? { repairPower: tool.repairPower }
+            : {}),
+          ...(tool.cleanupPower !== undefined
+            ? { cleanupPower: tool.cleanupPower }
+            : {}),
+        },
+      })
+    );
   }
   for (const def of ITEMS) {
-    if (!getHarthmereItemDefinition(def.itemId)) {
-      registerHarthmereItemDefinition(def);
-    }
+    registerHarthmereItemDefinition(def);
   }
   for (const recipe of RECIPES) {
     if (!getHarthmereCraftingRecipe(recipe.recipeId)) {
