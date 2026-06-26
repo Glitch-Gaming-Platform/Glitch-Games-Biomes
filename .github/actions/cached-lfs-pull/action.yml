@@ -9,6 +9,20 @@ name: "Cached LFS checkout"
 
 description: "Git checkout with LFS files from cache"
 
+inputs:
+  include:
+    description: "Optional git-lfs include pathspecs to pull, comma-separated."
+    required: false
+    default: ""
+  exclude:
+    description: "Optional git-lfs exclude pathspecs to pull, comma-separated."
+    required: false
+    default: ""
+  cache-prefix:
+    description: "Cache key prefix."
+    required: false
+    default: "lfs"
+
 branding:
   icon: "download"
   color: "green"
@@ -17,12 +31,21 @@ runs:
   using: "composite"
   steps:
     - name: Create LFS file list
-      run: git lfs ls-files -l | cut -d' ' -f1 | sort > .lfs-assets-id
+      run: |
+        set -euo pipefail
+        args=(-l)
+        if [ -n "${{ inputs.include }}" ]; then
+          args+=(--include="${{ inputs.include }}")
+        fi
+        if [ -n "${{ inputs.exclude }}" ]; then
+          args+=(--exclude="${{ inputs.exclude }}")
+        fi
+        git lfs ls-files "${args[@]}" | cut -d' ' -f1 | sort > .lfs-assets-id
       shell: bash
 
     - name: Capture LFS cache key
       id: lfs-cache-key
-      run: echo "key=lfs-${{ hashFiles('.lfs-assets-id') }}" >> "$GITHUB_OUTPUT"
+      run: echo "key=${{ inputs.cache-prefix }}-${{ hashFiles('.lfs-assets-id') }}" >> "$GITHUB_OUTPUT"
       shell: bash
 
     - name: Restore LFS cache
@@ -31,6 +54,9 @@ runs:
       with:
         path: .git/lfs
         key: ${{ steps.lfs-cache-key.outputs.key }}
+        restore-keys: |
+          ${{ inputs.cache-prefix }}-
+          lfs-
 
     - name: Remove cache key file
       run: rm .lfs-assets-id
@@ -41,20 +67,67 @@ runs:
     # a few times in case this happens.
     - name: Git LFS Pull
       run: |
-        echo "Running 'git lfs pull'."
+        set -euo pipefail
+
+        lfs_args=()
+        ls_args=(-l)
+        if [ -n "${{ inputs.include }}" ]; then
+          lfs_args+=(--include="${{ inputs.include }}")
+          ls_args+=(--include="${{ inputs.include }}")
+        fi
+        if [ -n "${{ inputs.exclude }}" ]; then
+          lfs_args+=(--exclude="${{ inputs.exclude }}")
+          ls_args+=(--exclude="${{ inputs.exclude }}")
+        fi
+
+        missing_lfs_count() {
+          git lfs ls-files "${ls_args[@]}" | awk '$2 != "*" { missing += 1 } END { print missing + 0 }'
+        }
+
+        status_count() {
+          git status --porcelain 2>/dev/null | wc -l | tr -d '[:space:]'
+        }
+
+        git reset --hard
+        git lfs checkout
+
+        if [ "$(missing_lfs_count)" = "0" ] && [ "$(status_count)" = "0" ]; then
+          echo "Git LFS assets restored from cache; skipping 'git lfs pull'."
+          exit 0
+        fi
+
+        if [ -n "${{ inputs.include }}" ] || [ -n "${{ inputs.exclude }}" ]; then
+          echo "Running 'git lfs pull' for filtered assets."
+        else
+          echo "Running 'git lfs pull'."
+        fi
         TRY_COUNT=0
         while : ; do
-            git reset --hard
-            git lfs pull
+          git reset --hard
+          if ! git lfs pull "${lfs_args[@]}"; then
             TRY_COUNT=$((TRY_COUNT+1))
             if [[ TRY_COUNT -ge 3 ]]; then
-                exit 1
+              exit 1
             fi
-            bash -c "! [ $(git status --porcelain 2>/dev/null | wc -l) == '0' ]" || break
-            echo "Expected 'git status' to show no modified files, instead:"
-            git status
             echo
             echo "Retrying 'git lfs pull'..."
+            continue
+          fi
+          git lfs checkout
+          TRY_COUNT=$((TRY_COUNT+1))
+          if [ "$(missing_lfs_count)" = "0" ] && [ "$(status_count)" = "0" ]; then
+            break
+          fi
+          if [[ TRY_COUNT -ge 3 ]]; then
+            echo "Expected selected Git LFS assets to be present and 'git status' to show no modified files, instead:"
+            git lfs ls-files "${ls_args[@]}" | awk '$2 != "*" { print }' | head -50
+            git status
+            exit 1
+          fi
+          echo "Expected 'git status' to show no modified files and selected LFS assets to be present, instead:"
+          git status
+          echo
+          echo "Retrying 'git lfs pull'..."
         done
       shell: bash
 

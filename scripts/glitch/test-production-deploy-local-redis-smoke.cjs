@@ -190,6 +190,17 @@ ok(
   "production workflow uses cached LFS, the shared cached Yarn install, and installs Bazelisk"
 );
 ok(
+  deployWorkflow.includes("Restore production Git LFS assets") &&
+    deployWorkflow.includes("cache-prefix: production-lfs") &&
+    deployWorkflow.includes(
+      "include: public/assets/**,public/models/**,public/hud/**,public/splash/**,public/textures/**,public/pwa/**,public/quests/**,src/galois/**,voxeloo/**"
+    ) &&
+    cachedLfsAction.includes("restore-keys:") &&
+    cachedLfsAction.includes("git lfs checkout") &&
+    cachedLfsAction.includes("skipping 'git lfs pull'"),
+  "production workflow restores filtered LFS assets from cache before contacting GitHub LFS"
+);
+ok(
   deployWorkflow.includes("Restore production asset cache") &&
     deployWorkflow.includes("actions/cache/restore@v5") &&
     deployWorkflow.includes("Save production asset cache") &&
