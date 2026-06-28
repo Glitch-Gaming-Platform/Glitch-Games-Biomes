@@ -227,11 +227,16 @@ async function completeHarthmereJobsBoardFieldObjectiveForObject(input: {
   });
   if (!todo) return;
   const job = jobsById.get(todo.jobId);
-  const key = `${todo.todoId}:${input.objectId ?? normalizedLabel(input.label)}`;
+  const key = `${todo.todoId}:${
+    input.objectId ?? normalizedLabel(input.label)
+  }`;
   if (inFlightJobsBoardFieldCompletions.has(key)) return;
   inFlightJobsBoardFieldCompletions.add(key);
   try {
-    if (input.interactionKind === "repair" && !isHarthmereRepairToolEquipped()) {
+    if (
+      input.interactionKind === "repair" &&
+      !isHarthmereRepairToolEquipped()
+    ) {
       return;
     }
     const usedToolAction =
@@ -409,6 +414,8 @@ export function performHarthmereObjectInteraction(input: {
           detail: {
             source: "harthmere_object_interaction",
             entityId: input.entityId,
+            objectId: input.objectId,
+            interactionTargetId: input.objectId,
             label: input.label,
           },
         })

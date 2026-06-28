@@ -374,6 +374,50 @@ export interface HarthmereJobsBoardWorldContext {
   playerPosition?: { x: number; y: number; z: number };
 }
 
+function normalizeJobsBoardPointForOpenContext(
+  value: unknown
+): { x: number; y: number; z: number } | undefined {
+  if (!value || typeof value !== "object") return undefined;
+  const record = value as Record<string, unknown>;
+  const x = Number(record.x);
+  const y = Number(record.y ?? 0);
+  const z = Number(record.z);
+  if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(z)) {
+    return undefined;
+  }
+  return { x, y, z };
+}
+
+export function harthmereJobsBoardOpenContextFromInput(
+  input: unknown
+): HarthmereJobsBoardWorldContext | undefined {
+  const detail =
+    input && typeof input === "object" && "detail" in input
+      ? (input as { detail?: unknown }).detail
+      : input;
+  if (!detail || typeof detail !== "object") return undefined;
+  const record = detail as Record<string, unknown>;
+  const nearbyBoardId =
+    record.nearbyBoardId ?? record.boardId ?? record.interactionTargetId;
+  const interactionTargetId =
+    record.interactionTargetId ?? record.objectId ?? nearbyBoardId;
+  const playerPosition = normalizeJobsBoardPointForOpenContext(
+    record.playerPosition
+  );
+  if (!nearbyBoardId && !interactionTargetId && !playerPosition) {
+    return undefined;
+  }
+  return {
+    nearbyBoardId:
+      nearbyBoardId === undefined ? undefined : String(nearbyBoardId),
+    interactionTargetId:
+      interactionTargetId === undefined
+        ? undefined
+        : String(interactionTargetId),
+    playerPosition,
+  };
+}
+
 export const HARTHMERE_JOBS_BOARD_JOB_KIND_LABELS: Record<
   HarthmereJobsBoardJobKind,
   string
@@ -488,6 +532,14 @@ export function isHarthmereJobsBoardAvailable(
   return !!boardId && !!snapshot.boards[boardId];
 }
 
+function normalizeJobsBoardInteractionTargetId(value?: string) {
+  const trimmed = value?.trim();
+  if (!trimmed) return undefined;
+  return trimmed.startsWith("jobs_board_marker:")
+    ? trimmed.slice("jobs_board_marker:".length)
+    : trimmed;
+}
+
 // HARTHMERE_JOBS_BOARD_PROXIMITY_GATE:
 // Return the boardId the player is physically near, or undefined if none.
 // "Near" means: explicit `nearbyBoardId` set, OR `playerPosition` within the
@@ -499,11 +551,27 @@ export function nearestPhysicalHarthmereJobsBoardId(
   world: HarthmereJobsBoardWorldContext
 ): string | undefined {
   if (!snapshot) return undefined;
-  if (world.nearbyBoardId && snapshot.boards[world.nearbyBoardId]) {
-    return world.nearbyBoardId;
+  const nearbyBoardId = normalizeJobsBoardInteractionTargetId(
+    world.nearbyBoardId
+  );
+  if (nearbyBoardId && snapshot.boards[nearbyBoardId]) {
+    return nearbyBoardId;
   }
-  if (world.interactionTargetId && snapshot.boards[world.interactionTargetId]) {
-    return world.interactionTargetId;
+  const interactionTargetId = normalizeJobsBoardInteractionTargetId(
+    world.interactionTargetId
+  );
+  if (interactionTargetId && snapshot.boards[interactionTargetId]) {
+    return interactionTargetId;
+  }
+  if (interactionTargetId) {
+    for (const board of Object.values(snapshot.boards)) {
+      if (
+        board.markerId === interactionTargetId ||
+        board.location.landmarkId === interactionTargetId
+      ) {
+        return board.boardId;
+      }
+    }
   }
   const player = world.playerPosition;
   if (!player) return undefined;

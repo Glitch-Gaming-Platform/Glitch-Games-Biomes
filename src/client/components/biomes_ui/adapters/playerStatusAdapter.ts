@@ -99,27 +99,34 @@ function shouldPreferFallbackCombatVitals(
   const liveHp = safeWhole(live.combat.hp, fallback.hp);
   const liveMaxHp = Math.max(1, safeWhole(live.combat.maxHp, fallback.maxHp));
   const liveCombatState = normalizeCombatState(live.combat.deathState, "alive");
+  const fallbackHp = safeWhole(fallback.hp, liveHp);
+  const fallbackMaxHp = Math.max(1, safeWhole(fallback.maxHp, liveMaxHp));
+  const fallbackCombatState = normalizeCombatState(fallback.combatState);
   const fallbackDamagedOrDown =
-    fallback.hp < fallback.maxHp ||
-    fallback.hp <= 0 ||
-    isUrgentFallbackCombatState(fallback.combatState);
+    fallbackHp < fallbackMaxHp ||
+    fallbackHp <= 0 ||
+    isUrgentFallbackCombatState(fallbackCombatState);
   const liveLooksDefaultAlive =
     liveHp >= liveMaxHp && ["alive", "idle", "ready"].includes(liveCombatState);
   const fallbackIsDown =
-    fallback.hp <= 0 ||
-    ["dead", "downed", "respawning"].includes(
-      normalizeCombatState(fallback.combatState)
-    );
+    fallbackHp <= 0 ||
+    ["dead", "downed", "respawning"].includes(fallbackCombatState);
   const fallbackIsProtectedRespawn =
-    fallback.hp > 0 &&
-    normalizeCombatState(fallback.combatState) === "protected_after_respawn";
+    fallbackHp > 0 && fallbackCombatState === "protected_after_respawn";
   const liveLooksStaleDead =
     liveHp <= 0 || ["dead", "downed"].includes(liveCombatState);
-  const liveContradictsLocalDownState = fallbackIsDown && liveHp > fallback.hp;
+  const liveContradictsLocalDownState = fallbackIsDown && liveHp > fallbackHp;
+  const liveLooksStaleAboveLocalDamage =
+    ["alive", "idle", "ready", "in_combat"].includes(liveCombatState) &&
+    !fallbackIsDown &&
+    fallbackHp > 0 &&
+    fallbackHp < fallbackMaxHp &&
+    fallbackHp < liveHp;
   return (
     (liveLooksDefaultAlive && fallbackDamagedOrDown) ||
     (fallbackIsProtectedRespawn && liveLooksStaleDead) ||
-    liveContradictsLocalDownState
+    liveContradictsLocalDownState ||
+    liveLooksStaleAboveLocalDamage
   );
 }
 

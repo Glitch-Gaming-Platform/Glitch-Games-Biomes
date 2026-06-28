@@ -1,11 +1,59 @@
 import assert from "assert";
-import { HARTHMERE_WANTED_BOARD_OPEN_EVENT } from "@/client/components/challenges/harthmereEvents";
+import {
+  HARTHMERE_JOBS_BOARD_OPEN_EVENT,
+  HARTHMERE_WANTED_BOARD_OPEN_EVENT,
+} from "@/client/components/challenges/harthmereEvents";
 import {
   harthmereJobsBoardObjectMatchesFieldTarget,
   performHarthmereObjectInteraction,
 } from "./harthmereObjectInteractions";
 
 describe("harthmere object interactions wanted board dispatch", () => {
+  it("dispatches marker context for jobs-board open interactions", () => {
+    const originalWindow = (globalThis as any).window;
+    const originalFetch = (globalThis as any).fetch;
+    const windowTarget = new EventTarget() as EventTarget & {
+      CustomEvent?: typeof CustomEvent;
+    };
+    (globalThis as any).window = windowTarget;
+    (globalThis as any).fetch = async () => ({
+      ok: true,
+      json: async () => ({ ok: true }),
+    });
+    let detail: any;
+    windowTarget.addEventListener(HARTHMERE_JOBS_BOARD_OPEN_EVENT, (event) => {
+      detail = (event as CustomEvent).detail;
+    });
+
+    try {
+      performHarthmereObjectInteraction({
+        label: "Harthmere Market Posting Board",
+        objectId: "jobs_board_marker:harthmere_market_posting_board",
+        entityId: "jobs_board_entity",
+        interaction: {
+          kind: "open_jobs_board",
+          title: "Open Jobs Board",
+          toastVerb: "Opened",
+        },
+        resources: {} as any,
+        gardenHose: { publish: () => {} },
+      });
+    } finally {
+      (globalThis as any).window = originalWindow;
+      (globalThis as any).fetch = originalFetch;
+    }
+
+    assert.equal(detail?.source, "harthmere_object_interaction");
+    assert.equal(
+      detail?.objectId,
+      "jobs_board_marker:harthmere_market_posting_board"
+    );
+    assert.equal(
+      detail?.interactionTargetId,
+      "jobs_board_marker:harthmere_market_posting_board"
+    );
+  });
+
   it("dispatches the wanted-board open event for F interactions", () => {
     const originalWindow = (globalThis as any).window;
     const originalFetch = (globalThis as any).fetch;

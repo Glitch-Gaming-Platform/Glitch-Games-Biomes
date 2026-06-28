@@ -11,7 +11,10 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { chromium } from "playwright";
 import { HarthmereBusinessInteractionPrompt } from "../HarthmereBusinessInteractionPrompt";
 import { HarthmereBusinessInterfacePanel } from "../HarthmereBusinessInterfacePanel";
-import { HarthmereBusinessLiveContainer } from "../HarthmereBusinessLiveContainer";
+import {
+  HarthmereBusinessLiveContainer,
+  mergeHarthmereBusinessWorldContext,
+} from "../HarthmereBusinessLiveContainer";
 import { harthmereBusinessDynamicWorldBoards } from "../HarthmereBusinessWorldInteraction";
 import {
   beginPointerLockUnlockWhileOpen,
@@ -1260,6 +1263,49 @@ describe("Harthmere in-world business interface current screens", () => {
     const prompt = getHarthmereBusinessInteractionPrompt(state, context);
     assert.equal(prompt.visible, true);
     assert.match(prompt.label, /Press F to open .* Business Board/);
+  });
+
+  it("enriches sparse HUD business context with nearby outpost marker proof", () => {
+    const state = sampleSnapshot();
+    const outpost =
+      HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS.outpost_restaurant_redpot;
+    const outpostMetadata = HARTHMERE_BUSINESS_OUTPOSTS.find(
+      (entry) => entry.outpostId === outpost.outpostId
+    )!;
+    const businessId = harthmereBusinessOutpostBusinessId(outpost.outpostId);
+    state.businesses[businessId] = {
+      ...business(businessId, outpost.businessType, outpostMetadata.ownerNpcId),
+      ownerKind: "npc",
+      ownerId: outpostMetadata.ownerNpcId,
+      name: outpost.displayName,
+    };
+    state.businessSystems.outpostBuildings = {
+      ...state.businessSystems.outpostBuildings,
+      [outpost.outpostId]: outpost,
+    };
+    const inferred = nearestHarthmereBusinessDashboardWorldContext(
+      state,
+      outpost.dashboardAccessPoint.position,
+      6
+    );
+    const context = mergeHarthmereBusinessWorldContext(
+      {
+        insideBusiness: true,
+        nearbyBusinessId: businessId,
+        interactionKeyLabel: "F",
+      },
+      inferred
+    );
+
+    assert.equal(context.nearbyBusinessId, businessId);
+    assert.equal(
+      context.businessInteractionMarkerId,
+      outpost.dashboardAccessPoint.markerId
+    );
+    assert.deepEqual(
+      harthmereBusinessWorldContextPayload(context).businessInteractionPosition,
+      outpost.dashboardAccessPoint.position
+    );
   });
 
   it("keeps business prompts and branch panels working with slim client outpost payloads", () => {

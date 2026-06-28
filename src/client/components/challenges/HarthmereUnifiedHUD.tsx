@@ -114,6 +114,7 @@ import { nearestHarthmereBusinessBoardPhysicalPrompt } from "@/client/game/rende
 import { HarthmereJobsBoardLiveContainer } from "@/client/components/harthmere_jobs_board";
 import {
   HARTHMERE_JOBS_BOARD_PHYSICAL_BOARDS,
+  harthmereJobsBoardOpenContextFromInput,
   nearestHarthmereJobsBoardPhysicalPrompt,
   type HarthmereJobsBoardWorldContext,
 } from "@/client/components/harthmere_jobs_board";
@@ -2330,27 +2331,38 @@ function FloatingPanel({
 // a physical jobs board shows a wayfinding prompt instead of the jobs list.
 function HarthmereJobsBoardLiveContainerWithPlayerProximity({
   onClose,
+  worldContext: explicitWorldContext,
 }: {
   onClose: () => void;
+  worldContext?: HarthmereJobsBoardWorldContext;
 }) {
   const { reactResources } = useClientContext();
   const localPlayer = reactResources.use("/scene/local_player") as any;
   const camera = reactResources.use("/scene/camera") as any;
   const playerPosition = harthmereJobsBoardPlayerPosition(localPlayer, camera);
-  const worldContext: HarthmereJobsBoardWorldContext | undefined = (() => {
-    if (playerPosition) {
-      return {
-        playerPosition: {
-          x: playerPosition.x,
-          y: playerPosition.y ?? 0,
-          z: playerPosition.z,
-        },
-      };
-    }
-    return undefined;
-  })();
+  const playerWorldContext: HarthmereJobsBoardWorldContext | undefined =
+    playerPosition
+      ? {
+          playerPosition: {
+            x: playerPosition.x,
+            y: playerPosition.y ?? 0,
+            z: playerPosition.z,
+          },
+        }
+      : undefined;
+  const worldContext: HarthmereJobsBoardWorldContext | undefined =
+    explicitWorldContext || playerWorldContext
+      ? {
+          ...playerWorldContext,
+          ...explicitWorldContext,
+          playerPosition:
+            explicitWorldContext?.playerPosition ??
+            playerWorldContext?.playerPosition,
+        }
+      : undefined;
   return (
     <HarthmereJobsBoardLiveContainer
+      boardId={worldContext?.nearbyBoardId}
       worldContext={worldContext}
       onClose={onClose}
     />
@@ -2617,7 +2629,11 @@ function HarthmereBusinessBoardWorldPrompt({
   );
 }
 
-function HarthmereJobsBoardWorldPrompt({ onOpen }: { onOpen: () => void }) {
+function HarthmereJobsBoardWorldPrompt({
+  onOpen,
+}: {
+  onOpen: (context?: HarthmereJobsBoardWorldContext) => void;
+}) {
   const { reactResources } = useClientContext();
   const localPlayer = reactResources.use("/scene/local_player") as any;
   const camera = reactResources.use("/scene/camera") as any;
@@ -2626,6 +2642,19 @@ function HarthmereJobsBoardWorldPrompt({ onOpen }: { onOpen: () => void }) {
   const prompt = nearestHarthmereJobsBoardPhysicalPrompt(playerPosition);
   const projectedPrompt = prompt
     ? harthmereJobsBoardPromptScreenProjection(prompt.position, camera)
+    : undefined;
+  const openContext: HarthmereJobsBoardWorldContext | undefined = prompt
+    ? {
+        nearbyBoardId: prompt.boardId,
+        interactionTargetId: prompt.boardId,
+        playerPosition: playerPosition
+          ? {
+              x: playerPosition.x,
+              y: playerPosition.y ?? 0,
+              z: playerPosition.z,
+            }
+          : undefined,
+      }
     : undefined;
 
   useEffect(() => {
@@ -2649,12 +2678,12 @@ function HarthmereJobsBoardWorldPrompt({ onOpen }: { onOpen: () => void }) {
         event.preventDefault();
         event.stopPropagation();
         event.stopImmediatePropagation();
-        onOpen();
+        onOpen(openContext);
       }
     };
     window.addEventListener("keydown", handler, true);
     return () => window.removeEventListener("keydown", handler, true);
-  }, [onOpen, prompt]);
+  }, [onOpen, openContext, prompt]);
 
   useEffect(() => {
     if (!prompt || typeof window === "undefined") return;
@@ -2674,11 +2703,11 @@ function HarthmereJobsBoardWorldPrompt({ onOpen }: { onOpen: () => void }) {
       event.preventDefault();
       event.stopPropagation();
       event.stopImmediatePropagation();
-      onOpen();
+      onOpen(openContext);
     };
     window.addEventListener("click", handler, true);
     return () => window.removeEventListener("click", handler, true);
-  }, [onOpen, prompt]);
+  }, [onOpen, openContext, prompt]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -2688,9 +2717,13 @@ function HarthmereJobsBoardWorldPrompt({ onOpen }: { onOpen: () => void }) {
       cameraPosition,
       prompt,
       boards: HARTHMERE_JOBS_BOARD_PHYSICAL_BOARDS,
-      open: onOpen,
+      open: () => onOpen(openContext),
       dispatchOpen() {
-        window.dispatchEvent(new Event(HARTHMERE_JOBS_BOARD_OPEN_EVENT));
+        window.dispatchEvent(
+          new CustomEvent(HARTHMERE_JOBS_BOARD_OPEN_EVENT, {
+            detail: openContext,
+          })
+        );
       },
     };
     (window as any).__harthmereJobsBoardDebug = debug;
@@ -2699,14 +2732,14 @@ function HarthmereJobsBoardWorldPrompt({ onOpen }: { onOpen: () => void }) {
         delete (window as any).__harthmereJobsBoardDebug;
       }
     };
-  }, [cameraPosition, onOpen, playerPosition, prompt]);
+  }, [cameraPosition, onOpen, openContext, playerPosition, prompt]);
 
   if (!prompt) return null;
   const openFromPromptClick = (event: React.MouseEvent<HTMLButtonElement>) => {
     event.preventDefault();
     event.stopPropagation();
     event.nativeEvent.stopImmediatePropagation?.();
-    onOpen();
+    onOpen(openContext);
   };
   return (
     <>
@@ -2908,25 +2941,33 @@ export const HarthmereUnifiedHUD: React.FunctionComponent<{
   // jobs board, and the panel is a self-contained live modal. Keeping it out
   // of `panel` avoids touching the reducer contract / tests.
   const [jobsBoardOpen, setJobsBoardOpen] = useState(false);
+  const [jobsBoardWorldContext, setJobsBoardWorldContext] = useState<
+    HarthmereJobsBoardWorldContext | undefined
+  >();
   const [homeConsoleOpen, setHomeConsoleOpen] = useState(false);
   const [businessInterfaceOpen, setBusinessInterfaceOpen] = useState(false);
-  const openJobsBoard = React.useCallback(() => {
-    openHarthmereJobsBoardPointerLock(
-      pointerLockManager,
-      jobsBoardReturnPointerLockRef
-    );
-    try {
-      if (reactResources.get("/game_modal")?.kind !== "empty") {
-        reactResources.set("/game_modal", {
-          kind: "empty",
-          returnPointerLock: false,
-        });
-      }
-    } catch {}
-    setJobsBoardOpen(true);
-  }, [pointerLockManager, reactResources]);
+  const openJobsBoard = React.useCallback(
+    (input?: unknown) => {
+      setJobsBoardWorldContext(harthmereJobsBoardOpenContextFromInput(input));
+      openHarthmereJobsBoardPointerLock(
+        pointerLockManager,
+        jobsBoardReturnPointerLockRef
+      );
+      try {
+        if (reactResources.get("/game_modal")?.kind !== "empty") {
+          reactResources.set("/game_modal", {
+            kind: "empty",
+            returnPointerLock: false,
+          });
+        }
+      } catch {}
+      setJobsBoardOpen(true);
+    },
+    [pointerLockManager, reactResources]
+  );
   const closeJobsBoard = React.useCallback(() => {
     setJobsBoardOpen(false);
+    setJobsBoardWorldContext(undefined);
     closeHarthmereJobsBoardPointerLock(
       pointerLockManager,
       jobsBoardReturnPointerLockRef
@@ -3073,6 +3114,7 @@ export const HarthmereUnifiedHUD: React.FunctionComponent<{
         />
         {jobsBoardOpen && (
           <HarthmereJobsBoardLiveContainerWithPlayerProximity
+            worldContext={jobsBoardWorldContext}
             onClose={closeJobsBoard}
           />
         )}
@@ -3179,6 +3221,7 @@ export const HarthmereUnifiedHUD: React.FunctionComponent<{
           player opens it. */}
       {jobsBoardOpen && (
         <HarthmereJobsBoardLiveContainerWithPlayerProximity
+          worldContext={jobsBoardWorldContext}
           onClose={closeJobsBoard}
         />
       )}

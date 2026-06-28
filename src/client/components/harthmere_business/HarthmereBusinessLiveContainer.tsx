@@ -57,6 +57,37 @@ function isTypingInBusinessInput(target: EventTarget | null) {
   );
 }
 
+export function mergeHarthmereBusinessWorldContext(
+  explicitContext: HarthmereBusinessWorldContext | undefined,
+  inferredContext: HarthmereBusinessWorldContext | undefined
+): HarthmereBusinessWorldContext {
+  const explicit = explicitContext ?? {};
+  const inferred = inferredContext ?? {};
+  const explicitBusinessId = explicit.nearbyBusinessId;
+  const inferredBusinessId = inferred.nearbyBusinessId;
+  const canUseInferred =
+    Boolean(inferredBusinessId) &&
+    (!explicitBusinessId || explicitBusinessId === inferredBusinessId);
+  const base = explicitBusinessId ? explicit : canUseInferred ? inferred : {};
+  if (!base.nearbyBusinessId) return base;
+  const supplement = canUseInferred ? inferred : {};
+  return {
+    ...supplement,
+    ...base,
+    nearbyBusinessId: base.nearbyBusinessId,
+    interactionKeyLabel:
+      base.interactionKeyLabel ?? supplement.interactionKeyLabel ?? "F",
+    insideBusiness: base.insideBusiness ?? supplement.insideBusiness,
+    outpostId: base.outpostId ?? supplement.outpostId,
+    businessInteractionMarkerId:
+      base.businessInteractionMarkerId ??
+      supplement.businessInteractionMarkerId,
+    businessInteractionPosition:
+      base.businessInteractionPosition ??
+      supplement.businessInteractionPosition,
+  };
+}
+
 export function HarthmereBusinessLiveContainer({
   open = false,
   onOpen,
@@ -103,9 +134,12 @@ export function HarthmereBusinessLiveContainer({
   }, [initialState, refresh]);
 
   const context = React.useMemo(() => {
-    const next =
-      worldContext ??
-      nearestHarthmereBusinessDashboardWorldContext(state, playerPosition, 9);
+    const inferred = nearestHarthmereBusinessDashboardWorldContext(
+      state,
+      playerPosition,
+      9
+    );
+    const next = mergeHarthmereBusinessWorldContext(worldContext, inferred);
     return next.nearbyBusinessId
       ? {
           ...next,

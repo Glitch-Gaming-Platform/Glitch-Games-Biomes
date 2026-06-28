@@ -11,6 +11,7 @@ import {
   performHarthmereBackpackItemUseForBiomesUI,
   performHarthmereEquipmentItemUnequipForBiomesUI,
   readHarthmereInventoryState,
+  submitHarthmereInventoryGrantToLiveModeForTest,
   type HarthmereItemInstance,
 } from "@/client/components/challenges/LocalDevHarthmereInventorySystem";
 import {
@@ -2795,6 +2796,46 @@ export function useBiomesUILiveAdapters({
     [refreshFarmingFoodState, refreshInventoryLootState]
   );
 
+  const useLocalHarthmereFoodItem = React.useCallback(
+    (instanceId: string, itemId: string, source: string) => {
+      performHarthmereBackpackItemUseForBiomesUI(instanceId, itemId);
+      fireAndForget(
+        (async () => {
+          const liveCount = Math.max(
+            0,
+            Math.trunc(Number(inventoryLootState?.actor?.items?.[itemId] ?? 0))
+          );
+          if (liveCount <= 0) {
+            await submitHarthmereInventoryGrantToLiveModeForTest(
+              itemId,
+              1,
+              "Local backpack food synced for eating"
+            );
+          }
+          const body = await submitFarmingFoodLiveModeAction("eat_food", {
+            itemId,
+          });
+          await applyLiveModeInventoryResponse(body);
+          dispatchBiomesUITutorialItemUse(
+            {
+              id: itemId,
+              label: humanizeRealItemId(itemId, itemId),
+              category: inferInventoryCategory({ id: itemId }),
+              useEffect: "stamina",
+              instanceId,
+            },
+            source
+          );
+        })().catch(() => refreshInventoryLootState())
+      );
+    },
+    [
+      applyLiveModeInventoryResponse,
+      inventoryLootState?.actor?.items,
+      refreshInventoryLootState,
+    ]
+  );
+
   React.useEffect(() => {
     if (typeof window === "undefined") return;
     const handler = (event: Event) => {
@@ -3026,10 +3067,18 @@ export function useBiomesUILiveAdapters({
                 isLocalHarthmereConsumableUseItem(localItemId)
             );
           if (localBackpackItem) {
-            performHarthmereBackpackItemUseForBiomesUI(
-              localBackpackItem.instanceId,
-              localBackpackItem.itemId
-            );
+            if (isHarthmereFoodItemPlayerEdible(localBackpackItem.itemId)) {
+              useLocalHarthmereFoodItem(
+                localBackpackItem.instanceId,
+                localBackpackItem.itemId,
+                "biomes-ui-live-hotbar-local-food-use"
+              );
+            } else {
+              performHarthmereBackpackItemUseForBiomesUI(
+                localBackpackItem.instanceId,
+                localBackpackItem.itemId
+              );
+            }
           } else if (isHarthmereFoodItemPlayerEdible(localItemId)) {
             fireAndForget(
               submitFarmingFoodLiveModeAction("eat_food", {
@@ -3110,10 +3159,18 @@ export function useBiomesUILiveAdapters({
               isLocalHarthmereConsumableUseItem(itemId)
           );
         if (localBackpackItem) {
-          performHarthmereBackpackItemUseForBiomesUI(
-            localBackpackItem.instanceId,
-            localBackpackItem.itemId
-          );
+          if (isHarthmereFoodItemPlayerEdible(localBackpackItem.itemId)) {
+            useLocalHarthmereFoodItem(
+              localBackpackItem.instanceId,
+              localBackpackItem.itemId,
+              "biomes-ui-live-hotbar-selected-local-food-use"
+            );
+          } else {
+            performHarthmereBackpackItemUseForBiomesUI(
+              localBackpackItem.instanceId,
+              localBackpackItem.itemId
+            );
+          }
           return;
         }
         if (isHarthmereFoodItemPlayerEdible(itemId)) {
@@ -3169,6 +3226,7 @@ export function useBiomesUILiveAdapters({
     refreshInventoryLootState,
     selectHotbarIndex,
     selectedIndex,
+    useLocalHarthmereFoodItem,
   ]);
 
   const adapters = React.useMemo<BiomesUIAdapters>(() => {
@@ -3648,7 +3706,13 @@ export function useBiomesUILiveAdapters({
         const localHarthmereItem = localHarthmereItemForRef(ref);
         if (localHarthmereItem) {
           const itemId = localHarthmereItem.itemId;
-          if (isLocalHarthmereConsumableUseItem(itemId)) {
+          if (isHarthmereFoodItemPlayerEdible(itemId)) {
+            useLocalHarthmereFoodItem(
+              localHarthmereItem.instanceId,
+              itemId,
+              "biomes-ui-live-inventory-local-food-use"
+            );
+          } else if (isLocalHarthmereConsumableUseItem(itemId)) {
             performHarthmereBackpackItemUseForBiomesUI(
               localHarthmereItem.instanceId,
               itemId
@@ -4521,6 +4585,7 @@ export function useBiomesUILiveAdapters({
     submitBuildingSystemLiveModeActionAndStore,
     tabShortcuts,
     setTabShortcut,
+    useLocalHarthmereFoodItem,
     userId,
     wearing?.items,
   ]);

@@ -25,6 +25,7 @@ import {
   getHarthmerePostedJobsPanel,
   isHarthmereJobsBoardAvailable,
   nearestHarthmereJobsBoardPhysicalPrompt,
+  nearestPhysicalHarthmereJobsBoardId,
   normalizeHarthmereJobsBoardSnapshot,
   submitHarthmereDailyTaskCompleted,
   submitHarthmereJobsBoardMutation,
@@ -537,6 +538,18 @@ describe("Harthmere universal jobs board live adapter", () => {
         nearbyBoardId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID,
       }),
       true
+    );
+    assert.equal(
+      nearestPhysicalHarthmereJobsBoardId(snapshot, {
+        interactionTargetId: "jobs_board_marker:harthmere_market_posting_board",
+      }),
+      HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID
+    );
+    assert.equal(
+      nearestPhysicalHarthmereJobsBoardId(snapshot, {
+        interactionTargetId: "harthmere_market_posting_board",
+      }),
+      HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID
     );
     const prompt = getHarthmereJobsBoardPrompt(snapshot, {
       playerPosition: { x: 501.99486179104775, y: 70, z: -132.00350672753194 },

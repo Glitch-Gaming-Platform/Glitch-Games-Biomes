@@ -508,11 +508,7 @@ export const HarthmereBusinessInterfacePanel: React.FunctionComponent<
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
   }, [activeTab, available, onClose, tabs.join("|")]);
-  useHarthmereBusinessLongTaskObserver(
-    available,
-    activeBusinessId,
-    activeTab
-  );
+  useHarthmereBusinessLongTaskObserver(available, activeBusinessId, activeTab);
   const onActivePaneRender = React.useCallback(
     (
       _id: string,
@@ -1212,10 +1208,7 @@ const CustomerMiniGamePane: React.FunctionComponent<{
               data-business-backend-action="true"
               disabled={backendPending}
               onClick={startShift}
-              style={backendActionStyle(
-                startShiftButtonStyle,
-                backendPending
-              )}
+              style={backendActionStyle(startShiftButtonStyle, backendPending)}
             >
               Start New Shift
             </button>
@@ -1228,10 +1221,7 @@ const CustomerMiniGamePane: React.FunctionComponent<{
               data-business-backend-action="true"
               disabled={backendPending}
               onClick={startShift}
-              style={backendActionStyle(
-                startShiftButtonStyle,
-                backendPending
-              )}
+              style={backendActionStyle(startShiftButtonStyle, backendPending)}
             >
               Start Shift
             </button>
@@ -1786,6 +1776,8 @@ const ShopfrontPane: React.FunctionComponent<{
         key={good.itemId}
         type="button"
         data-business-backend-action="true"
+        data-shopfront-card="bikkie-first"
+        data-shopfront-has-bikkie-visual={good.visual ? "true" : undefined}
         data-testid={`biomes-business-storefront-good-${good.itemId}`}
         aria-label={`${isRecipeBook ? "Learn" : "Buy"} ${itemLabel}${
           !isRecipeBook && parsedCount > 1 ? ` x${parsedCount}` : ""
@@ -1803,7 +1795,7 @@ const ShopfrontPane: React.FunctionComponent<{
           {good.visual ? (
             <BikkieVisualTileForVisual
               visual={good.visual}
-              size={38}
+              size={56}
               dataTestId={`biomes-business-storefront-good-icon-${good.itemId}`}
             />
           ) : null}
@@ -1947,7 +1939,7 @@ const ShopfrontPane: React.FunctionComponent<{
               {shop.toolForSale.visual ? (
                 <BikkieVisualTileForVisual
                   visual={shop.toolForSale.visual}
-                  size={38}
+                  size={64}
                   dataTestId="biomes-business-tool-for-sale-icon"
                 />
               ) : null}
@@ -1969,9 +1961,7 @@ const ShopfrontPane: React.FunctionComponent<{
               aria-label={`Buy ${shop.toolForSale.toolName}`}
               data-business-backend-action="true"
               disabled={backendPending}
-              onClick={() =>
-                purchaseHarthmereBusinessTool(shop.businessType)
-              }
+              onClick={() => purchaseHarthmereBusinessTool(shop.businessType)}
               style={backendActionStyle(
                 { ...buyActionTextStyle, width: "100%" },
                 backendPending
@@ -2143,7 +2133,7 @@ const InventoryGrid: React.FunctionComponent<{
             {item.visual ? (
               <BikkieVisualTileForVisual
                 visual={item.visual}
-                size={34}
+                size={44}
                 dataTestId={`biomes-business-shop-stock-icon-${item.itemId}`}
               />
             ) : null}
@@ -3411,9 +3401,9 @@ const shopfrontSectionStackStyle: React.CSSProperties = {
 };
 const shopfrontGoodsGridStyle: React.CSSProperties = {
   display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))",
-  gap: 8,
-  marginTop: 6,
+  gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 220px), 1fr))",
+  gap: 10,
+  marginTop: 8,
   alignItems: "stretch",
 };
 const shopfrontMerchTones: Record<
@@ -3483,9 +3473,7 @@ const shopfrontMerchTones: Record<
 function shopfrontKindLabel(kind: ShopfrontMerchKind): string {
   return shopfrontMerchTones[kind].label;
 }
-function shopfrontSectionStyle(
-  kind: ShopfrontMerchKind
-): React.CSSProperties {
+function shopfrontSectionStyle(kind: ShopfrontMerchKind): React.CSSProperties {
   const tone = shopfrontMerchTones[kind];
   return {
     margin: "8px 0",
@@ -3566,9 +3554,9 @@ function shopfrontGoodButtonStyle(
   return {
     ...shopfrontItemSurfaceStyle(kind),
     width: "100%",
-    minWidth: 170,
-    minHeight: 126,
-    padding: 10,
+    minWidth: 0,
+    minHeight: 156,
+    padding: 12,
   };
 }
 function shopfrontInventoryButtonStyle(
@@ -3576,45 +3564,49 @@ function shopfrontInventoryButtonStyle(
 ): React.CSSProperties {
   return {
     ...shopfrontItemSurfaceStyle(kind),
-    width: 150,
-    minHeight: 112,
-    padding: 8,
+    width: 178,
+    minHeight: 132,
+    padding: 10,
   };
 }
 const shopfrontToolListingStyle: React.CSSProperties = {
   ...shopfrontItemSurfaceStyle("tool"),
-  minHeight: 0,
-  marginTop: 6,
-  padding: 10,
+  minHeight: 118,
+  marginTop: 8,
+  padding: 12,
   cursor: "default",
 };
 const shopfrontItemLeadStyle: React.CSSProperties = {
   display: "flex",
-  gap: 8,
-  alignItems: "flex-start",
+  gap: 10,
+  alignItems: "center",
   minWidth: 0,
 };
 const shopfrontItemTextStyle: React.CSSProperties = {
   display: "grid",
-  gap: 6,
+  gap: 7,
   flex: "1 1 auto",
   minWidth: 0,
 };
 const shopItemHeaderStyle: React.CSSProperties = {
   display: "flex",
-  gap: 6,
+  flexDirection: "column",
+  gap: 5,
   alignItems: "flex-start",
   justifyContent: "space-between",
   minWidth: 0,
 };
 const shopItemNameStyle: React.CSSProperties = {
   minWidth: 0,
-  fontSize: 12,
+  fontSize: 13,
+  fontWeight: 900,
   lineHeight: 1.2,
   overflowWrap: "anywhere",
 };
 const shopItemMetaStyle: React.CSSProperties = {
   ...mutedTextStyle,
+  color: "rgba(223, 238, 255, 0.82)",
+  fontSize: 11,
   lineHeight: 1.35,
 };
 function shopfrontKindBadgeStyle(
@@ -3631,6 +3623,9 @@ function shopfrontKindBadgeStyle(
     fontSize: 9,
     fontWeight: 800,
     letterSpacing: 0,
+    lineHeight: 1.1,
+    maxWidth: "100%",
+    whiteSpace: "normal",
     textTransform: "uppercase",
   };
 }
