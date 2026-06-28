@@ -392,6 +392,25 @@ ok(
   "production deploy pins one ready Azure revision and deactivates stale active revisions"
 );
 ok(
+  script.includes("GLITCH_MUTABLE_HOTFIX_REDIS_KEY") &&
+    script.includes("archive_production_mutable_hotfix_manifest()") &&
+    script.includes(
+      'archive_production_mutable_hotfix_manifest "Azure Container App update"'
+    ) &&
+    pushAndDeploy.indexOf(
+      'archive_production_mutable_hotfix_manifest "Azure Container App update"'
+    ) < pushAndDeploy.indexOf("az containerapp update"),
+  "production deploy archives and clears stale mutable hotfix manifests before creating a new revision"
+);
+ok(
+  script.includes("GLITCH_CODEX_HOTPATCH_JS") &&
+    script.includes("GLITCH_MUTABLE_HOTFIX_MANIFEST_BASE64") &&
+    script.includes("GLITCH_MUTABLE_HOTFIX_MANIFEST_URL") &&
+    script.includes("GLITCH_PLAYER_MESH_FALLBACK_ON_BUILD_ERROR") &&
+    script.includes("--remove-env-vars"),
+  "production deploy strips stale startup hotpatch environment before Azure updates"
+);
+ok(
   !/run-glitch-local-game-stack-[A-Za-z0-9_.-]+[.]sh/.test(script),
   "production deploy script no longer references removed versioned stack runners"
 );

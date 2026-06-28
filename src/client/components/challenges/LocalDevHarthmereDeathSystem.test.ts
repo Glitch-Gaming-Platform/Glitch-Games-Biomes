@@ -1,5 +1,6 @@
 import {
   effectiveHarthmereDeathStateForRespawn,
+  harthmereActiveRespawnProtectionSuppressesDeathSyncForTest,
   harthmereDeathMovementShouldLockForTest,
   harthmereDeathScreenShouldRenderForTest,
   harthmereShouldClearLiveAliveDeathLockForTest,
@@ -409,6 +410,72 @@ describe("Harthmere live death sync", () => {
     });
 
     assert.deepEqual(action, { kind: "pose", state: "downed" });
+  });
+
+  it("does not turn a successful live respawn into a new local HP-zero death while protected", () => {
+    const action = harthmereLivePlayerDeathSyncActionForTest({
+      status: {
+        combat: {
+          hp: 100,
+          maxHp: 100,
+          deathState: "alive",
+        },
+      },
+      currentDeathState: "protected_after_respawn",
+      currentProtectionUntil: 1_805_000,
+      nowMs: 1_800_000,
+      localHp: 0,
+      localMaxHp: 100,
+      localCombatState: "downed",
+    });
+
+    assert.deepEqual(action, { kind: "none" });
+  });
+
+  it("does not let a stale live-dead status re-kill the player during respawn protection", () => {
+    const action = harthmereLivePlayerDeathSyncActionForTest({
+      status: {
+        combat: {
+          hp: 0,
+          maxHp: 100,
+          deathState: "dead",
+          lastDeath: {
+            deathId: "stale-before-respawn",
+            cause: "HP reached zero",
+            zoneId: "harthmere",
+            atMs: 1_700_000,
+            respawnAvailableAtMs: 1_705_000,
+          },
+        },
+      },
+      currentDeathState: "protected_after_respawn",
+      currentProtectionUntil: 1_805_000,
+      nowMs: 1_800_000,
+      localHp: 100,
+      localMaxHp: 100,
+      localCombatState: "protected_after_respawn",
+    });
+
+    assert.deepEqual(action, { kind: "none" });
+  });
+
+  it("only suppresses death sync while respawn protection is active", () => {
+    assert.equal(
+      harthmereActiveRespawnProtectionSuppressesDeathSyncForTest({
+        deathState: "protected_after_respawn",
+        protectionUntil: 1_805_000,
+        nowMs: 1_800_000,
+      }),
+      true
+    );
+    assert.equal(
+      harthmereActiveRespawnProtectionSuppressesDeathSyncForTest({
+        deathState: "protected_after_respawn",
+        protectionUntil: 1_795_000,
+        nowMs: 1_800_000,
+      }),
+      false
+    );
   });
 
   it("builds a Cloud Save death transition mutation when local combat downs the player", () => {

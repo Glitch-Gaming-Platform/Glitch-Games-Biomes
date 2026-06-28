@@ -358,6 +358,21 @@ export function harthmereDeathMovementShouldLockForTest(input: {
   return true;
 }
 
+export function harthmereActiveRespawnProtectionSuppressesDeathSyncForTest(input: {
+  deathState: HarthmereDeathStateName;
+  protectionUntil?: number;
+  nowMs?: number;
+}) {
+  if (input.deathState !== "protected_after_respawn") {
+    return false;
+  }
+  const protectionUntil = Number(input.protectionUntil);
+  return (
+    !Number.isFinite(protectionUntil) ||
+    protectionUntil > (input.nowMs ?? Date.now())
+  );
+}
+
 export function harthmereDeathScreenShouldRenderForTest(input: {
   death: HarthmereDeathState;
   effectiveDeath: HarthmereDeathState;
@@ -426,10 +441,7 @@ function liveDeathSyncDownActionForStatus(input: {
   const liveHp = finiteNumberOrUndefined(input.status?.combat?.hp);
   const maxHp = Math.max(1, Math.round(Number(input.localMaxHp) || 100));
   const remainingHp = liveHp ?? (Number(input.localHp) || 0);
-  const damage = Math.max(
-    1,
-    Math.round(maxHp - Math.max(0, remainingHp))
-  );
+  const damage = Math.max(1, Math.round(maxHp - Math.max(0, remainingHp)));
 
   if (cause === "fall_damage" || cause === "fall") {
     return {
@@ -488,6 +500,8 @@ function liveDeathSyncDownActionForStatus(input: {
 export function harthmereLivePlayerDeathSyncActionForTest(input: {
   status?: BiomesUIPlayerStatusSnapshot;
   currentDeathState: HarthmereDeathStateName;
+  currentProtectionUntil?: number;
+  nowMs?: number;
   localHp?: number;
   localMaxHp?: number;
   localCombatState?: unknown;
@@ -497,6 +511,15 @@ export function harthmereLivePlayerDeathSyncActionForTest(input: {
     hp: input.localHp,
     combatState: input.localCombatState,
   });
+  if (
+    harthmereActiveRespawnProtectionSuppressesDeathSyncForTest({
+      deathState: input.currentDeathState,
+      protectionUntil: input.currentProtectionUntil,
+      nowMs: input.nowMs,
+    })
+  ) {
+    return { kind: "none" };
+  }
 
   if (live.alive) {
     if (localCombatDead) {
@@ -788,6 +811,7 @@ export const HarthmereDeathRuntimeController: React.FunctionComponent<{}> =
         const action = harthmereLivePlayerDeathSyncActionForTest({
           status,
           currentDeathState: latest.state,
+          currentProtectionUntil: latest.protectionUntil,
           localHp: combat.player.hp,
           localMaxHp: combat.player.maxHp,
           localCombatState: combat.player.combatState,
@@ -843,7 +867,17 @@ export const HarthmereDeathRuntimeController: React.FunctionComponent<{}> =
         const combatDead =
           Number(combat.player.hp) <= 0 ||
           ["downed", "dead"].includes(String(combat.player.combatState ?? ""));
-        if (combatDead && !HARTHMERE_DEATH_LOCKED_STATES.has(latest.state)) {
+        const suppressStaleRespawnDeath =
+          harthmereActiveRespawnProtectionSuppressesDeathSyncForTest({
+            deathState: latest.state,
+            protectionUntil: latest.protectionUntil,
+            nowMs: now,
+          });
+        if (
+          combatDead &&
+          !suppressStaleRespawnDeath &&
+          !HARTHMERE_DEATH_LOCKED_STATES.has(latest.state)
+        ) {
           downHarthmerePlayerFromSystem({
             cause: "HP reached zero",
             killerName: "Combat",

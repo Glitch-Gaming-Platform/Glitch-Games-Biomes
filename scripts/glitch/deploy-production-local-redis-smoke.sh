@@ -131,6 +131,7 @@ PROD_REDIS_AOF_AUTOFIX="${PROD_REDIS_AOF_AUTOFIX:-1}"
 PROD_REDIS_RDB_DIR="${PROD_REDIS_RDB_DIR:-/var/lib/redis}"
 PROD_REDIS_RDB_FILENAME="${PROD_REDIS_RDB_FILENAME:-dump.rdb}"
 PROD_REDIS_SAVE_SCHEDULE="${PROD_REDIS_SAVE_SCHEDULE:-900 1 300 10 60 10000}"
+GLITCH_MUTABLE_HOTFIX_REDIS_KEY="${GLITCH_MUTABLE_HOTFIX_REDIS_KEY:-glitch:mutable_hotfix:current}"
 HARTHMERE_BUSINESS_OUTPOST_MATERIALIZATION_MODE="${HARTHMERE_BUSINESS_OUTPOST_MATERIALIZATION_MODE:-per-outpost}"
 HARTHMERE_BUSINESS_OUTPOST_MATERIALIZATION_SCAN_COUNT="${HARTHMERE_BUSINESS_OUTPOST_MATERIALIZATION_SCAN_COUNT:-5000}"
 HARTHMERE_BUSINESS_OUTPOST_MATERIALIZATION_APPLY_SHARD_BATCH_SIZE="${HARTHMERE_BUSINESS_OUTPOST_MATERIALIZATION_APPLY_SHARD_BATCH_SIZE:-2}"
@@ -716,6 +717,40 @@ check_production_world_sync_runner() {
     echo "Run deploy from an Azure/VNet runner or set HARTHMERE_SKIP_WORLD_SYNC_RECONCILIATION=1 for an app-only rollout." >&2
     exit 1
   fi
+}
+
+archive_production_mutable_hotfix_manifest() {
+  local phase="$1"
+  local archive_key result archived_key size
+
+  archive_key="glitch:mutable_hotfix:archived:${TAG}:$(date -u +%Y%m%dT%H%M%SZ)"
+  log "Checking production mutable hotfix manifest before $phase."
+  if ! result="$(
+    prod_redis_cli --raw EVAL \
+      'local v=redis.call("GET", KEYS[1]); if not v then return "missing" end; redis.call("SET", KEYS[2], v); redis.call("DEL", KEYS[1]); return KEYS[2] .. " " .. string.len(v)' \
+      2 \
+      "$GLITCH_MUTABLE_HOTFIX_REDIS_KEY" \
+      "$archive_key" 2>&1
+  )"; then
+    echo "ERROR failed to archive production mutable hotfix manifest before $phase:" >&2
+    printf '%s\n' "$result" >&2
+    exit 1
+  fi
+
+  result="$(printf '%s' "$result" | tr -d '\r')"
+  if [ "$result" = "missing" ]; then
+    log "No production mutable hotfix manifest present before $phase."
+    return
+  fi
+
+  archived_key="${result% *}"
+  size="${result##* }"
+  if [ "$archived_key" != "$archive_key" ] || ! printf '%s\n' "$size" | grep -Eq '^[0-9]+$'; then
+    echo "ERROR unexpected mutable hotfix archive result before $phase: $result" >&2
+    exit 1
+  fi
+
+  log "Archived and cleared production mutable hotfix manifest before $phase: $archive_key (${size} bytes)."
 }
 
 wait_for_azure_revision_ready() {
@@ -1537,14 +1572,23 @@ push_and_deploy() {
 
   check_production_redis_aof_health "Azure Container App update"
   check_production_redis_snapshot_hash "Azure Container App update"
+  archive_production_mutable_hotfix_manifest "Azure Container App update"
   log "Updating Azure Container App $AZURE_CONTAINER_APP to $IMAGE."
-  mapfile -t legacy_voxel_tree_envs < <(
+  mapfile -t existing_azure_envs < <(
     az containerapp show \
       --resource-group "$AZURE_RESOURCE_GROUP" \
       --name "$AZURE_CONTAINER_APP" \
-      --query "properties.template.containers[0].env[?starts_with(name, 'ES_LOCAL_DEV_BACKEND_VOXEL_TREES_')].name" \
+      --query "properties.template.containers[0].env[].name" \
       -o tsv
   )
+  remove_azure_envs=()
+  for env_name in "${existing_azure_envs[@]}"; do
+    case "$env_name" in
+      ES_LOCAL_DEV_BACKEND_VOXEL_TREES_*|GLITCH_CODEX_HOTPATCH|GLITCH_CODEX_HOTPATCH_JS|GLITCH_MUTABLE_HOTFIX_MANIFEST_BASE64|GLITCH_MUTABLE_HOTFIX_MANIFEST_URL|GLITCH_PLAYER_MESH_FALLBACK_ON_BUILD_ERROR|GLITCH_STATIC_PLAYER_MESH_HOTFIX)
+        remove_azure_envs+=("$env_name")
+        ;;
+    esac
+  done
   update_args=(
     --resource-group "$AZURE_RESOURCE_GROUP"
     --name "$AZURE_CONTAINER_APP"
@@ -1554,8 +1598,8 @@ push_and_deploy() {
     --min-replicas "$AZURE_MIN_REPLICAS"
     --max-replicas "$AZURE_MAX_REPLICAS"
   )
-  if [ "${#legacy_voxel_tree_envs[@]}" -gt 0 ]; then
-    update_args+=(--remove-env-vars "${legacy_voxel_tree_envs[@]}")
+  if [ "${#remove_azure_envs[@]}" -gt 0 ]; then
+    update_args+=(--remove-env-vars "${remove_azure_envs[@]}")
   fi
   update_args+=(
     --set-env-vars

@@ -1646,8 +1646,31 @@ describe("reduceHarthmereLiveModeBackendState — death lifecycle", function () 
     assert.strictEqual(s.combat.deathState, "dead");
     ({ state: s } = applyOne(s, "request_revive"));
     assert.strictEqual(s.combat.deathState, "alive");
+    s.combat.respawnProtectionUntilMs = undefined;
     ({ state: s } = applyOne(s, "request_death_transition"));
     assert.strictEqual(s.combat.deathState, "dead");
+  });
+
+  it("ignores stale death transitions while respawn protection is active", function () {
+    const s = freshState();
+    s.combat.hp = 100;
+    s.combat.deathState = "alive";
+    s.combat.respawnProtectionUntilMs = NOW_MS + 10_000;
+
+    const { state, summary } = applyOne(
+      s,
+      "request_death_transition",
+      { cause: "HP reached zero" },
+      { requestId: "stale_protected_death_transition" }
+    );
+
+    assert.strictEqual(state.combat.hp, 100);
+    assert.strictEqual(state.combat.deathState, "alive");
+    assert.ok(summary.warnings.includes("death_transition_ignored:protected"));
+    assert.equal(
+      state.combat.deathRecords.stale_protected_death_transition,
+      undefined
+    );
   });
 
   it("rejects duplicate death, revive while alive, and respawn while alive", function () {

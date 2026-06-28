@@ -14768,6 +14768,11 @@ export function reduceHarthmereLiveModeBackendState(
         touchedModels.add("death_rejection");
         break;
       }
+      if (Number(next.combat.respawnProtectionUntilMs ?? 0) > nowMs) {
+        warnings.push("death_transition_ignored:protected");
+        touchedModels.add("death_rejection");
+        break;
+      }
       next.combat.deathState = "dead";
       next.combat.hp = 0;
       next.combat.deathRecords[envelope.requestId] = {
