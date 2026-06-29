@@ -1606,10 +1606,7 @@ function summarizeHarthmereLiveActorStateProgress(
   );
   const actorId =
     typeof parsed?.actorId === "string" ? parsed.actorId : "progress-summary";
-  const defaultState = defaultHarthmereLiveModeBackendState(
-    actorId,
-    0
-  );
+  const defaultState = defaultHarthmereLiveModeBackendState(actorId, 0);
   const defaultSkillRows = defaultState.classMagic.skills;
   const defaultSkillXp = Object.values(defaultSkillRows).reduce(
     (sum: number, value: any) => sum + Math.max(0, Number(value?.xp) || 0),
@@ -1671,6 +1668,127 @@ function isHarthmereLiveModeReadOnlySnapshotRequest(
   return (summary.touchedModels ?? []).every((model) =>
     readOnlySnapshotModels.has(model)
   );
+}
+
+function cloneLiveModeStatusChannelValue<T>(value: T): T {
+  if (!value || typeof value !== "object") return value;
+  return JSON.parse(JSON.stringify(value)) as T;
+}
+
+function statusChannelJson(value: unknown) {
+  return JSON.stringify(value ?? null);
+}
+
+function healthStatusChannel(state: HarthmereLiveModeBackendState) {
+  return {
+    hp: state.combat.hp,
+    maxHp: state.combat.maxHp,
+    deathState: state.combat.deathState,
+    deathRecords: state.combat.deathRecords,
+    respawnProtectionUntilMs: state.combat.respawnProtectionUntilMs,
+  };
+}
+
+function resourceStatusChannel(state: HarthmereLiveModeBackendState) {
+  return {
+    resources: state.combat.resources,
+    maxResources: state.combat.maxResources,
+    lastStaminaTickMs: state.combat.lastStaminaTickMs,
+    deadFromStaminaAtMs: state.combat.deadFromStaminaAtMs,
+  };
+}
+
+function standingStatusChannel(state: HarthmereLiveModeBackendState) {
+  return {
+    standing: state.law.standing,
+    reputation: state.law.reputation,
+    recentReputationEvents: state.law.recentReputationEvents,
+  };
+}
+
+export function preserveFreshHarthmereLiveModeStatusChannelsForTest(input: {
+  currentState: HarthmereLiveModeBackendState;
+  reducedState: HarthmereLiveModeBackendState;
+  latestRawState: string | null | undefined;
+  actorId: string;
+  nowMs: number;
+}) {
+  if (!input.latestRawState)
+    return { changed: false, channels: [] as string[] };
+  let latestState: HarthmereLiveModeBackendState;
+  try {
+    latestState = parseHarthmereLiveModeBackendState(
+      input.latestRawState,
+      input.actorId,
+      input.nowMs
+    );
+  } catch {
+    return { changed: false, channels: [] as string[] };
+  }
+
+  const latestUpdatedAtMs = Number(latestState.updatedAtMs);
+  const currentUpdatedAtMs = Number(input.currentState.updatedAtMs);
+  if (
+    !Number.isFinite(latestUpdatedAtMs) ||
+    !Number.isFinite(currentUpdatedAtMs) ||
+    latestUpdatedAtMs <= currentUpdatedAtMs
+  ) {
+    return { changed: false, channels: [] as string[] };
+  }
+
+  const channels: string[] = [];
+  if (
+    statusChannelJson(healthStatusChannel(input.currentState)) ===
+    statusChannelJson(healthStatusChannel(input.reducedState))
+  ) {
+    input.reducedState.combat.hp = latestState.combat.hp;
+    input.reducedState.combat.maxHp = latestState.combat.maxHp;
+    input.reducedState.combat.deathState = latestState.combat.deathState;
+    input.reducedState.combat.deathRecords = cloneLiveModeStatusChannelValue(
+      latestState.combat.deathRecords ?? {}
+    );
+    input.reducedState.combat.respawnProtectionUntilMs =
+      latestState.combat.respawnProtectionUntilMs;
+    channels.push("health");
+  }
+
+  if (
+    statusChannelJson(resourceStatusChannel(input.currentState)) ===
+    statusChannelJson(resourceStatusChannel(input.reducedState))
+  ) {
+    input.reducedState.combat.resources = cloneLiveModeStatusChannelValue(
+      latestState.combat.resources ?? {}
+    );
+    input.reducedState.combat.maxResources = cloneLiveModeStatusChannelValue(
+      latestState.combat.maxResources ?? {}
+    );
+    input.reducedState.combat.lastStaminaTickMs =
+      latestState.combat.lastStaminaTickMs;
+    input.reducedState.combat.deadFromStaminaAtMs =
+      latestState.combat.deadFromStaminaAtMs;
+    channels.push("resources");
+  }
+
+  if (
+    statusChannelJson(standingStatusChannel(input.currentState)) ===
+    statusChannelJson(standingStatusChannel(input.reducedState))
+  ) {
+    input.reducedState.law.standing = cloneLiveModeStatusChannelValue(
+      latestState.law.standing ?? input.reducedState.law.standing ?? {}
+    );
+    input.reducedState.law.reputation = cloneLiveModeStatusChannelValue(
+      latestState.law.reputation ?? input.reducedState.law.reputation ?? {}
+    );
+    input.reducedState.law.recentReputationEvents =
+      cloneLiveModeStatusChannelValue(
+        latestState.law.recentReputationEvents ??
+          input.reducedState.law.recentReputationEvents ??
+          []
+      );
+    channels.push("standing");
+  }
+
+  return { changed: channels.length > 0, channels };
 }
 
 export async function persistHarthmereLiveModeResponse(
@@ -1908,6 +2026,28 @@ export async function persistHarthmereLiveModeResponse(
     });
     const persistActorAndSharedState =
       !isHarthmereLiveModeReadOnlySnapshotRequest(envelope, reduced.summary);
+    if (persistActorAndSharedState) {
+      stageStartedAt = Date.now();
+      const latestRawStateForStatusChannels = await redis.primary.get(
+        playerStateKey
+      );
+      const statusChannelPreservation =
+        preserveFreshHarthmereLiveModeStatusChannelsForTest({
+          currentState,
+          reducedState: reduced.state,
+          latestRawState: latestRawStateForStatusChannels,
+          actorId: response.actorId,
+          nowMs: now,
+        });
+      if (statusChannelPreservation.changed) {
+        reduced.summary.warnings.push(
+          `fresh_status_channels_preserved:${statusChannelPreservation.channels.join(
+            ","
+          )}`
+        );
+      }
+      mark("fresh_status_channels_ms", stageStartedAt);
+    }
     const includedSnapshotSet = new Set(includedSnapshots);
     const persistedResponse: LiveModeResponse = {
       ...response,

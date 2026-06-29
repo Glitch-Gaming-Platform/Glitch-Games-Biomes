@@ -115,7 +115,10 @@ import {
   HARTHMERE_DAILY_TASK_MIN_GOLD,
   harthmereDailyTaskXpReward,
 } from "../mmo_care_loops";
-import { HARTHMERE_SEED_DEFINITIONS } from "../mmo_farming_food_stamina";
+import {
+  HARTHMERE_FOOD_DEFINITIONS,
+  HARTHMERE_SEED_DEFINITIONS,
+} from "../mmo_farming_food_stamina";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -4916,6 +4919,59 @@ describe("reduceHarthmereLiveModeBackendState — loot and inventory mutation", 
     assert.ok(Object.keys(state.combat.lootClaims).length >= 1);
     assert.ok(summary.touchedModels.includes("inventory_items"));
     assert.ok(!summary.touchedModels.includes("material_storage"));
+  });
+
+  it("request_loot_roll accepts bare numeric Biomes item ids without b prefix", function () {
+    const s = freshState();
+    const dirtBlockItemId = String(BikkieIds.dirt);
+    const { state, summary } = applyOne(s, "request_loot_roll", {
+      itemId: dirtBlockItemId,
+      count: 1,
+      source: "Mined Dirt",
+    });
+
+    assert.equal(state.banking.materialStorage[dirtBlockItemId] ?? 0, 0);
+    assert.equal(state.inventory.items[dirtBlockItemId], 1);
+    assert.ok(!summary.warnings.includes("loot_rejected:unknown_item_id"));
+    assert.equal(
+      getHarthmereItemDefinition(dirtBlockItemId)?.itemId,
+      dirtBlockItemId
+    );
+    assert.equal(
+      getHarthmereItemDefinition(`b:${BikkieIds.dirt}`)?.itemId,
+      `b:${BikkieIds.dirt}`
+    );
+  });
+
+  it("request_loot_roll and eat_food use exact Bikkie food ids", function () {
+    let s = freshState();
+    const strawberryItemId = "2779132017025472";
+    assert.equal(
+      HARTHMERE_FOOD_DEFINITIONS[strawberryItemId]?.displayName,
+      "Strawberry"
+    );
+    s.combat.resources.stamina = 50;
+    s.combat.maxResources.stamina = 100;
+
+    const granted = applyOne(s, "request_loot_roll", {
+      itemId: strawberryItemId,
+      count: 1,
+      source: "Foraged Strawberry",
+    });
+    assert.ok(!granted.summary.warnings.includes("loot_rejected:unknown_item_id"));
+    assert.equal(granted.state.inventory.items[strawberryItemId], 1);
+    assert.equal(
+      getHarthmereItemDefinition(strawberryItemId)?.displayName,
+      "Strawberry"
+    );
+
+    const eaten = applyOne(granted.state, "request_farming_action", {
+      operation: "eat_food",
+      itemId: strawberryItemId,
+    });
+    assert.deepEqual(eaten.summary.warnings, []);
+    assert.equal(eaten.state.inventory.items[strawberryItemId] ?? 0, 0);
+    assert.equal(eaten.state.combat.resources.stamina, 60);
   });
 
   it("routes non-standard building material rewards into material storage", function () {

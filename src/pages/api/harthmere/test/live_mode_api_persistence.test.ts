@@ -8,6 +8,7 @@ import {
   liveModeActorIdentityFromRequest,
   materializeBuildingSystemMaterializationPlansToTerrain,
   persistHarthmereLiveModeResponse,
+  preserveFreshHarthmereLiveModeStatusChannelsForTest,
   publishBuildingSystemMaterializationPlansToEcs,
   readServerActorPositionForLiveMode,
 } from "../live_mode";
@@ -638,6 +639,69 @@ describe("live_mode API Redis persistence", () => {
       ),
       "read response should still write idempotency inside the transaction"
     );
+  });
+
+  it("preserves fresher status channels when a non-status mutation reduces stale state", () => {
+    const current = defaultHarthmereLiveModeBackendState(ACTOR, NOW_MS);
+    current.updatedAtMs = NOW_MS;
+    current.combat.hp = 80;
+    current.combat.resources.mana = 110;
+    current.combat.resources.stamina = 94;
+    current.combat.lastStaminaTickMs = NOW_MS - 5_000;
+    current.law.standing.harthmere = {
+      likeability: 0,
+      legal: 0,
+      notoriety: 0,
+      notorietyFloor: 0,
+    };
+
+    const reduced = parseHarthmereLiveModeBackendState(
+      JSON.stringify(current),
+      ACTOR,
+      NOW_MS
+    );
+    reduced.quests.completed.some_quest = NOW_MS + 1;
+
+    const latest = parseHarthmereLiveModeBackendState(
+      JSON.stringify(current),
+      ACTOR,
+      NOW_MS
+    );
+    latest.updatedAtMs = NOW_MS + 2_000;
+    latest.combat.hp = 70;
+    latest.combat.resources.mana = 42;
+    latest.combat.resources.stamina = 88;
+    latest.combat.lastStaminaTickMs = NOW_MS + 1_000;
+    latest.law.standing.harthmere = {
+      likeability: 18,
+      legal: -4,
+      notoriety: 9,
+      notorietyFloor: 3,
+    };
+
+    const result = preserveFreshHarthmereLiveModeStatusChannelsForTest({
+      currentState: current,
+      reducedState: reduced,
+      latestRawState: JSON.stringify(latest),
+      actorId: ACTOR,
+      nowMs: NOW_MS + 3_000,
+    });
+
+    assert.deepEqual(result.channels.sort(), [
+      "health",
+      "resources",
+      "standing",
+    ]);
+    assert.equal(reduced.combat.hp, 70);
+    assert.equal(reduced.combat.resources.mana, 42);
+    assert.equal(reduced.combat.resources.stamina, 88);
+    assert.deepEqual(reduced.law.standing.harthmere, {
+      likeability: 18,
+      legal: -4,
+      notoriety: 9,
+      notorietyFloor: 3,
+    });
+    assert.ok(reduced.quests.completed.some_quest);
   });
 
   it("adopts duplicate install actor state inside the live-mode transaction", async () => {

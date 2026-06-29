@@ -130,6 +130,33 @@ describe("mmo_farming_food_stamina", () => {
     assert.equal(berries.state.inventory["4732724694489497"], 0);
   });
 
+  it("lets positive Bikkie food metadata recover if the stored edible flag is stale", () => {
+    const strawberryItemId = "2779132017025472";
+    const strawberry = HARTHMERE_FOOD_DEFINITIONS[strawberryItemId];
+    assert.ok(strawberry);
+    assert.equal(strawberry.displayName, "Strawberry");
+    const originalEdible = strawberry.edible;
+    try {
+      strawberry.edible = false;
+      const state = defaultHarthmereFoodStaminaState(
+        "stale_bikkie_food_edible",
+        NOW
+      );
+      state.stamina = 50;
+      state.inventory[strawberryItemId] = 1;
+
+      const eaten = eatHarthmereFood(state, {
+        itemId: strawberryItemId,
+        nowMs: NOW,
+      });
+      assert.deepEqual(eaten.warnings, []);
+      assert.equal(eaten.state.stamina, 60);
+      assert.equal(eaten.state.inventory[strawberryItemId], 0);
+    } finally {
+      strawberry.edible = originalEdible;
+    }
+  });
+
   it("plants and harvests a Bikkie crop using Bikkie item ids", () => {
     let state = defaultHarthmereFoodStaminaState("player_farm_1", NOW);
     state.inventory["4851938639186947"] = 1;

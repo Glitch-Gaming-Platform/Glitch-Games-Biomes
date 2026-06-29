@@ -41,6 +41,92 @@ function firstPlayerStatusReadString(value: unknown) {
     : undefined;
 }
 
+function cloneStatusChannelValue<T>(value: T): T {
+  if (!value || typeof value !== "object") return value;
+  return JSON.parse(JSON.stringify(value)) as T;
+}
+
+export function mergeFreshHarthmerePlayerStatusReadStateForTest(input: {
+  state: HarthmereLiveModeBackendState;
+  latestRawState: string | null | undefined;
+  actorId: string;
+  nowMs: number;
+  rawUpdatedAtMs?: number;
+  allowHealthWrite?: boolean;
+}) {
+  if (!input.latestRawState) return input.state;
+  let latest: HarthmereLiveModeBackendState;
+  try {
+    latest = parseHarthmereLiveModeBackendState(
+      input.latestRawState,
+      input.actorId,
+      input.nowMs
+    );
+  } catch {
+    return input.state;
+  }
+
+  input.state.combat.resources ??= {};
+  input.state.combat.maxResources ??= {};
+  latest.combat.resources ??= {};
+  latest.combat.maxResources ??= {};
+
+  const latestUpdatedAtMs = Number(latest.updatedAtMs);
+  const rawUpdatedAtMs = Number(input.rawUpdatedAtMs);
+  const latestIsNewerThanRead =
+    Number.isFinite(latestUpdatedAtMs) &&
+    Number.isFinite(rawUpdatedAtMs) &&
+    latestUpdatedAtMs > rawUpdatedAtMs;
+  const healthWriteAllowed =
+    input.allowHealthWrite === true && !latestIsNewerThanRead;
+  const nextResources = input.state.combat.resources;
+  const latestLastTick = Number(latest.combat.lastStaminaTickMs);
+  const nextLastTick = Number(input.state.combat.lastStaminaTickMs);
+  const statusStaminaIsFresh =
+    healthWriteAllowed ||
+    !Number.isFinite(latestLastTick) ||
+    (Number.isFinite(nextLastTick) && nextLastTick >= latestLastTick);
+
+  if (!healthWriteAllowed) {
+    input.state.combat.hp = latest.combat.hp;
+    input.state.combat.maxHp = latest.combat.maxHp;
+    input.state.combat.deathState = latest.combat.deathState;
+    input.state.combat.deathRecords = cloneStatusChannelValue(
+      latest.combat.deathRecords ?? {}
+    );
+    input.state.combat.respawnProtectionUntilMs =
+      latest.combat.respawnProtectionUntilMs;
+  }
+
+  input.state.combat.resources = cloneStatusChannelValue(
+    latest.combat.resources ?? {}
+  );
+  if (statusStaminaIsFresh && Number.isFinite(Number(nextResources.stamina))) {
+    input.state.combat.resources.stamina = nextResources.stamina;
+  }
+  input.state.combat.maxResources = cloneStatusChannelValue(
+    latest.combat.maxResources ?? input.state.combat.maxResources ?? {}
+  );
+  if (!statusStaminaIsFresh) {
+    input.state.combat.lastStaminaTickMs = latest.combat.lastStaminaTickMs;
+    input.state.combat.deadFromStaminaAtMs = latest.combat.deadFromStaminaAtMs;
+  }
+
+  input.state.law.standing = cloneStatusChannelValue(
+    latest.law.standing ?? input.state.law.standing ?? {}
+  );
+  input.state.law.reputation = cloneStatusChannelValue(
+    latest.law.reputation ?? input.state.law.reputation ?? {}
+  );
+  input.state.law.recentReputationEvents = cloneStatusChannelValue(
+    latest.law.recentReputationEvents ??
+      input.state.law.recentReputationEvents ??
+      []
+  );
+
+  return input.state;
+}
+
 export function shouldPersistHarthmerePlayerStatusStaminaTick(input: {
   changed: boolean;
   deathTriggered: boolean;
@@ -151,15 +237,35 @@ export async function readHarthmereLiveModePlayerStatusStateForActor(input: {
         previousUpdatedAtMs,
         nowMs: input.nowMs,
       }));
+  let statusSnapshotState = state;
   if (shouldPersist) {
     // Status polling is the only reader with enough cadence to make stamina feel
     // alive in the HUD. Keep the write narrowly scoped to this actor key and
     // throttle it so normal polling does not contend with reducer transactions.
     state.updatedAtMs = input.nowMs;
-    await input.redis.primary.set!(stateKey, JSON.stringify(state));
+    const latestRawStateForStatusWrite =
+      typeof input.redis.primary.get === "function"
+        ? await input.redis.primary.get(stateKey)
+        : rawState;
+    statusSnapshotState = mergeFreshHarthmerePlayerStatusReadStateForTest({
+      state,
+      latestRawState: latestRawStateForStatusWrite,
+      actorId: input.actorId,
+      nowMs: input.nowMs,
+      rawUpdatedAtMs: previousUpdatedAtMs,
+      allowHealthWrite:
+        rawStateNeedsZeroHpDeathPersistence ||
+        zeroHpDeathRepair.changed ||
+        playableZeroRepair.changed ||
+        staminaTick.deathTriggered,
+    });
+    await input.redis.primary.set!(
+      stateKey,
+      JSON.stringify(statusSnapshotState)
+    );
   }
   return {
-    ...createHarthmereLiveModePlayerStatusClientSnapshot(state),
+    ...createHarthmereLiveModePlayerStatusClientSnapshot(statusSnapshotState),
     backendAuthority: {
       source: "harthmere-live-mode-redis",
       role: "backend-runtime-cache",

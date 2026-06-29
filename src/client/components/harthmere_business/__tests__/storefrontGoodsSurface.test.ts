@@ -134,6 +134,17 @@ describe("business shopfront surfaces blocks, furnishings, and recipe books", ()
     const storefrontIcons =
       html.match(/data-testid="biomes-business-storefront-good-icon-/g) ?? [];
     assert.equal(storefrontIcons.length, storefrontCards.length);
+    const perItemQuantityControls =
+      html.match(/data-testid="biomes-business-storefront-quantity-/g) ?? [];
+    assert.ok(
+      perItemQuantityControls.length >= 9,
+      "building materials and furnishings should each own their quantity control"
+    );
+    assert.equal(
+      html.includes('aria-label="Purchase quantity"'),
+      false,
+      "customer shopfront should not render a top-level purchase quantity"
+    );
     assert.ok(
       html.includes('data-testid="biomes-business-tool-for-sale-icon"')
     );
@@ -242,6 +253,16 @@ describe("business shopfront surfaces blocks, furnishings, and recipe books", ()
     );
     assert.ok(
       html.includes('data-testid="biomes-business-shop-stock-icon-medicine"')
+    );
+    assert.ok(
+      html.includes(
+        'data-testid="biomes-business-shop-stock-quantity-field_medkit"'
+      )
+    );
+    assert.ok(
+      html.includes(
+        'data-testid="biomes-business-shop-stock-quantity-medicine"'
+      )
     );
   });
 });

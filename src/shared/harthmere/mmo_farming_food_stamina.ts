@@ -295,7 +295,7 @@ function isHarthmereFoodRowPlayerEdible(input: {
   const category = input.category.toLowerCase();
   const action = input.action.toLowerCase();
   const text = `${input.displayName} ${category} ${action}`.toLowerCase();
-  if (/raw|uncooked/.test(text)) return false;
+  if (/\b(raw|uncooked)\b/.test(text)) return false;
   if (/wheat|grain/.test(text) && source !== "cooked") return false;
   if (source === "cooked" || source === "drink") return true;
   if (action === "drink") return true;
@@ -306,6 +306,30 @@ function isHarthmereFoodRowPlayerEdible(input: {
   if (source === "foraged" && /mushroom|berry|carrot|turnip|radish/.test(text))
     return true;
   return false;
+}
+
+function isHarthmereFoodDefinitionPlayerEdible(
+  food: HarthmereFoodDefinition
+) {
+  if (food.staminaRestore <= 0) return false;
+  if (food.edible !== false) return true;
+  const metadata = food.metadata;
+  const action = String(metadata?.action ?? "").toLowerCase();
+  const source = String(food.source ?? "").toLowerCase();
+  const text = `${food.displayName} ${food.source} ${
+    metadata?.category ?? ""
+  } ${action}`.toLowerCase();
+  if (/\b(raw|uncooked)\b/.test(text)) return false;
+  if (/wheat|grain/.test(text) && source !== "cooked") return false;
+  if (source === "fish" && !/baked|cooked|roasted|sashimi|sandwich/.test(text))
+    return false;
+  return (
+    action === "eat" ||
+    action === "drink" ||
+    source === "cooked" ||
+    source === "drink" ||
+    /fruit|berry|vegetable|mushroom/.test(text)
+  );
 }
 
 const HARTHMERE_BIKKIE_FOOD_DEFINITIONS: Record<string, HarthmereFoodDefinition> =
@@ -1370,7 +1394,7 @@ export function eatHarthmereFood(
   }
   const food = HARTHMERE_FOOD_DEFINITIONS[input.itemId];
   if (!food) return result(state, ["food_rejected:not_food"]);
-  if (food.edible === false || food.staminaRestore <= 0) {
+  if (!isHarthmereFoodDefinitionPlayerEdible(food)) {
     return result(state, ["food_rejected:not_edible"]);
   }
   const missing = requireItem(state, input.itemId, 1, "food_rejected:missing_food");

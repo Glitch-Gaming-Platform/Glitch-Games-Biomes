@@ -3130,11 +3130,22 @@ function dynamicBiomesBikkieLiveModeItemDefinition(
 ): HarthmereItemDefinition | undefined {
   // Cloud Save can receive real Biomes biscuit ids from mining, harvesting, or
   // loot. Register them lazily so persistence accepts exact `b:<id>` stacks.
+  const requestedItemId = String(itemId);
   const biomesId = safeParseBiomesId(itemId);
   if (!biomesId) return undefined;
   const canonicalItemId = `b:${biomesId}`;
   const existing = getHarthmereItemDefinition(canonicalItemId);
-  if (existing) return existing;
+  if (existing) {
+    if (
+      requestedItemId !== canonicalItemId &&
+      !getHarthmereItemDefinition(requestedItemId)
+    ) {
+      const alias = { ...existing, itemId: requestedItemId };
+      registerHarthmereItemDefinition(alias);
+      return alias;
+    }
+    return existing;
+  }
   const item = anItem(biomesId);
   const stackable = Number(item?.stackable ?? (item?.isBlock ? 99n : 1n));
   const isBlock = item?.isBlock === true;
@@ -3180,6 +3191,11 @@ function dynamicBiomesBikkieLiveModeItemDefinition(
       : undefined,
   };
   registerHarthmereItemDefinition(def);
+  if (requestedItemId !== canonicalItemId) {
+    const alias = { ...def, itemId: requestedItemId };
+    registerHarthmereItemDefinition(alias);
+    return alias;
+  }
   return def;
 }
 
@@ -3189,8 +3205,6 @@ function ensureLiveModeItemDefinition(
 ): HarthmereItemDefinition | undefined {
   const existing = getHarthmereItemDefinition(itemId);
   if (existing) return existing;
-  const biomesBikkie = dynamicBiomesBikkieLiveModeItemDefinition(itemId);
-  if (biomesBikkie) return biomesBikkie;
   const knownCount =
     (snapshot.items[itemId] ?? 0) + (snapshot.bank[itemId] ?? 0);
   const isSeed = !!HARTHMERE_SEED_DEFINITIONS[itemId];
@@ -3198,12 +3212,15 @@ function ensureLiveModeItemDefinition(
   const helperQuestItemCopy = liveEntityHelperQuestItemCopyForId(itemId);
   const isJobsBoardExecutable =
     isKnownHarthmereJobsBoardExecutableItemId(itemId);
+  const isKnownHarthmereCatalogItem =
+    isSeed || isFood || !!helperQuestItemCopy || isJobsBoardExecutable;
+  if (!isKnownHarthmereCatalogItem) {
+    const biomesBikkie = dynamicBiomesBikkieLiveModeItemDefinition(itemId);
+    if (biomesBikkie) return biomesBikkie;
+  }
   if (
     knownCount <= 0 &&
-    !isSeed &&
-    !isFood &&
-    !helperQuestItemCopy &&
-    !isJobsBoardExecutable
+    !isKnownHarthmereCatalogItem
   )
     return undefined;
   const isMaterial =
@@ -7955,13 +7972,18 @@ export function reduceHarthmereLiveModeBackendState(
   ): HarthmereItemDefinition | undefined {
     const existing = getHarthmereItemDefinition(itemId);
     if (existing) return existing;
-    const biomesBikkie = dynamicBiomesBikkieLiveModeItemDefinition(itemId);
-    if (biomesBikkie) return biomesBikkie;
     const isSeed = !!HARTHMERE_SEED_DEFINITIONS[itemId];
     const isFood = !!HARTHMERE_FOOD_DEFINITIONS[itemId];
     const helperQuestItemCopy = liveEntityHelperQuestItemCopyForId(itemId);
-    const isMaterial = isSeed || isLikelyBankingMaterialItemId(itemId);
-    if (!isSeed && !isFood && !helperQuestItemCopy && !isMaterial) {
+    const isJobsBoardExecutable =
+      isKnownHarthmereJobsBoardExecutableItemId(itemId);
+    const isMaterial =
+      isSeed || isJobsBoardExecutable || isLikelyBankingMaterialItemId(itemId);
+    const isKnownHarthmereCatalogItem =
+      isSeed || isFood || !!helperQuestItemCopy || isJobsBoardExecutable;
+    if (!isKnownHarthmereCatalogItem && !isMaterial) {
+      const biomesBikkie = dynamicBiomesBikkieLiveModeItemDefinition(itemId);
+      if (biomesBikkie) return biomesBikkie;
       return undefined;
     }
     const def: HarthmereItemDefinition = {

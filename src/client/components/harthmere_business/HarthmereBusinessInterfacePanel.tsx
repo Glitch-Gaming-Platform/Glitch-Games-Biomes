@@ -22,6 +22,7 @@ import type {
   HarthmereBusinessBikkieGraphic,
   HarthmereBusinessContract,
   HarthmereBusinessInterfaceAdapter,
+  HarthmereBusinessShopfront,
   HarthmereBusinessVisibleInventoryItem,
   HarthmereBusinessWorldContext,
 } from "./businessInterfaceLiveAdapter";
@@ -97,6 +98,9 @@ type ShopfrontMerchKind =
   | "interior"
   | "recipe_book"
   | "stock";
+type ShopfrontGood = NonNullable<
+  HarthmereBusinessShopfront["storefrontGoods"]
+>[number];
 
 const OWNER_TABS: OwnerTab[] = [
   "dashboard",
@@ -132,6 +136,18 @@ function displayLabel(value: string | undefined): string {
     .replace(/\s+/g, " ")
     .trim()
     .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+function parseShopfrontPurchaseCount(value: string, maxCount?: number): number {
+  const rawCount = Number(value);
+  const parsedCount = Number.isFinite(rawCount)
+    ? Math.max(1, Math.trunc(rawCount))
+    : 1;
+  if (maxCount === undefined) return parsedCount;
+  const parsedMax = Number.isFinite(maxCount)
+    ? Math.max(1, Math.trunc(maxCount))
+    : 1;
+  return Math.min(parsedMax, parsedCount);
 }
 
 function playerFacingBusinessName(
@@ -1742,11 +1758,7 @@ const ShopfrontPane: React.FunctionComponent<{
   const [count, setCount] = React.useState("1");
   const [priceItemId, setPriceItemId] = React.useState("");
   const [priceModifier, setPriceModifier] = React.useState("1");
-  const rawCount = Number(count);
-  const parsedCount = Number.isFinite(rawCount)
-    ? Math.max(1, Math.trunc(rawCount))
-    : 1;
-  const buyCountLabel = parsedCount > 1 ? `Buy x${parsedCount}` : "Buy";
+  const parsedCount = parseShopfrontPurchaseCount(count);
   const storefrontGoods = shop.storefrontGoods ?? [];
   const buildingMaterials = storefrontGoods.filter(
     (good) => good.kind === "block"
@@ -1762,66 +1774,17 @@ const ShopfrontPane: React.FunctionComponent<{
     merchKind: ShopfrontMerchKind
   ) => {
     const itemLabel = good.displayName ?? displayLabel(good.itemId);
-    const isRecipeBook = merchKind === "recipe_book";
-    const purchaseCount = isRecipeBook ? 1 : parsedCount;
-    const learned = Boolean(good.learned);
-    const disabled = backendPending || learned;
-    const actionLabel = learned
-      ? "Learned"
-      : isRecipeBook
-      ? "Learn"
-      : buyCountLabel;
     return (
-      <button
+      <ShopfrontGoodPurchaseCard
         key={good.itemId}
-        type="button"
-        data-business-backend-action="true"
-        data-shopfront-card="bikkie-first"
-        data-shopfront-has-bikkie-visual={good.visual ? "true" : undefined}
-        data-testid={`biomes-business-storefront-good-${good.itemId}`}
-        aria-label={`${isRecipeBook ? "Learn" : "Buy"} ${itemLabel}${
-          !isRecipeBook && parsedCount > 1 ? ` x${parsedCount}` : ""
-        }`}
-        disabled={disabled}
-        style={backendActionStyle(
-          shopfrontGoodButtonStyle(merchKind),
-          disabled
-        )}
-        onClick={() =>
+        good={good}
+        itemLabel={itemLabel}
+        merchKind={merchKind}
+        backendPending={backendPending}
+        onBuy={(purchaseCount) =>
           void adapter.buyStorefrontGood(businessId, good.itemId, purchaseCount)
         }
-      >
-        <div style={shopfrontItemLeadStyle}>
-          {good.visual ? (
-            <BikkieVisualTileForVisual
-              visual={good.visual}
-              size={56}
-              dataTestId={`biomes-business-storefront-good-icon-${good.itemId}`}
-            />
-          ) : null}
-          <div style={shopfrontItemTextStyle}>
-            <div style={shopItemHeaderStyle}>
-              <strong style={shopItemNameStyle}>{itemLabel}</strong>
-              <span style={shopfrontKindBadgeStyle(merchKind)}>
-                {shopfrontKindLabel(merchKind)}
-              </span>
-            </div>
-            <div style={shopItemMetaStyle}>
-              {isRecipeBook
-                ? `${good.recipeIds?.length ?? 0} recipes · ${
-                    good.priceGold
-                  } gold`
-                : `Unit price ${good.priceGold} gold`}
-            </div>
-          </div>
-        </div>
-        <span style={buyActionTextStyle}>
-          {actionLabel}
-          {!learned && !isRecipeBook && parsedCount > 1
-            ? ` · ${good.priceGold * parsedCount} gold`
-            : ""}
-        </span>
-      </button>
+      />
     );
   };
   return (
@@ -1914,19 +1877,7 @@ const ShopfrontPane: React.FunctionComponent<{
             </button>
           </div>
         </>
-      ) : (
-        <div style={formRowStyle}>
-          <label style={labelInlineStyle}>
-            Quantity
-            <input
-              aria-label="Purchase quantity"
-              style={{ ...inputStyle, width: 86 }}
-              value={count}
-              onChange={(event) => setCount(event.currentTarget.value)}
-            />
-          </label>
-        </div>
-      )}
+      ) : null}
       {mode === "customer" && shop.toolForSale ? (
         <ShopfrontMerchSection
           kind="tool"
@@ -1939,7 +1890,7 @@ const ShopfrontPane: React.FunctionComponent<{
               {shop.toolForSale.visual ? (
                 <BikkieVisualTileForVisual
                   visual={shop.toolForSale.visual}
-                  size={64}
+                  size={72}
                   dataTestId="biomes-business-tool-for-sale-icon"
                 />
               ) : null}
@@ -1963,11 +1914,11 @@ const ShopfrontPane: React.FunctionComponent<{
               disabled={backendPending}
               onClick={() => purchaseHarthmereBusinessTool(shop.businessType)}
               style={backendActionStyle(
-                { ...buyActionTextStyle, width: "100%" },
+                shopfrontPrimaryBuyButtonStyle,
                 backendPending
               )}
             >
-              Buy {shop.toolForSale.toolName}
+              Buy Tool · {shop.toolForSale.priceGold} Gold
             </button>
           </div>
         </ShopfrontMerchSection>
@@ -2029,13 +1980,12 @@ const ShopfrontPane: React.FunctionComponent<{
             emptyLabel={shop.emptyLabel}
             actionLabel="Buy"
             itemKind="stock"
-            purchaseCount={parsedCount}
-            onActivate={(item) =>
+            onActivate={(item, purchaseCount) =>
               !backendPending &&
               void adapter.purchaseShopItem(
                 businessId,
                 item.itemId,
-                parsedCount
+                purchaseCount
               )
             }
           />
@@ -2047,6 +1997,256 @@ const ShopfrontPane: React.FunctionComponent<{
         />
       )}
     </section>
+  );
+};
+
+const ShopfrontGoodPurchaseCard: React.FunctionComponent<{
+  good: ShopfrontGood;
+  itemLabel: string;
+  merchKind: ShopfrontMerchKind;
+  backendPending: boolean;
+  onBuy: (purchaseCount: number) => void;
+}> = ({ good, itemLabel, merchKind, backendPending, onBuy }) => {
+  const [countText, setCountText] = React.useState("1");
+  const isRecipeBook = merchKind === "recipe_book";
+  const purchaseCount = isRecipeBook
+    ? 1
+    : parseShopfrontPurchaseCount(countText);
+  const learned = Boolean(good.learned);
+  const disabled = backendPending || learned;
+  const totalGold = good.priceGold * purchaseCount;
+  const actionLabel = learned
+    ? "Learned"
+    : isRecipeBook
+    ? "Learn"
+    : purchaseCount > 1
+    ? `Buy x${purchaseCount}`
+    : "Buy";
+  return (
+    <article
+      data-shopfront-card="bikkie-first"
+      data-shopfront-has-bikkie-visual={good.visual ? "true" : undefined}
+      data-testid={`biomes-business-storefront-good-${good.itemId}`}
+      style={{
+        ...shopfrontGoodCardStyle(merchKind),
+        ...(learned ? shopfrontCardSettledStyle : {}),
+      }}
+    >
+      <div style={shopfrontCardBodyStyle}>
+        <div style={shopfrontItemArtStyle(merchKind)}>
+          {good.visual ? (
+            <BikkieVisualTileForVisual
+              visual={good.visual}
+              size={68}
+              dataTestId={`biomes-business-storefront-good-icon-${good.itemId}`}
+            />
+          ) : (
+            <span style={shopfrontFallbackGlyphStyle}>
+              {itemLabel.slice(0, 2).toUpperCase()}
+            </span>
+          )}
+        </div>
+        <div style={shopfrontItemTextStyle}>
+          <div style={shopItemHeaderStyle}>
+            <strong style={shopItemNameStyle}>{itemLabel}</strong>
+            <span style={shopfrontKindBadgeStyle(merchKind)}>
+              {shopfrontKindLabel(merchKind)}
+            </span>
+          </div>
+          <div style={shopfrontPriceLineStyle}>
+            <span>{isRecipeBook ? "Book price" : "Each"}</span>
+            <strong>{good.priceGold} Gold</strong>
+          </div>
+          {isRecipeBook ? (
+            <div style={shopItemMetaStyle}>
+              {good.recipeIds?.length ?? 0} recipe
+              {(good.recipeIds?.length ?? 0) === 1 ? "" : "s"}
+            </div>
+          ) : null}
+        </div>
+      </div>
+      <div style={shopfrontPurchaseRowStyle}>
+        {isRecipeBook ? (
+          <span style={shopfrontTotalStyle}>{totalGold} Gold</span>
+        ) : (
+          <ShopfrontQuantityControl
+            itemId={good.itemId}
+            itemLabel={itemLabel}
+            value={countText}
+            parsedCount={purchaseCount}
+            onValueChange={setCountText}
+          />
+        )}
+        <button
+          className="biomes-ui-tab"
+          type="button"
+          data-business-backend-action="true"
+          disabled={disabled}
+          aria-label={`${isRecipeBook ? "Learn" : "Buy"} ${itemLabel}${
+            !isRecipeBook && purchaseCount > 1 ? ` x${purchaseCount}` : ""
+          }`}
+          style={backendActionStyle(
+            {
+              ...shopfrontPrimaryBuyButtonStyle,
+              ...(disabled ? disabledButtonStyle : {}),
+            },
+            backendPending
+          )}
+          onClick={() => onBuy(purchaseCount)}
+        >
+          {actionLabel}
+          {!learned ? ` · ${totalGold} Gold` : ""}
+        </button>
+      </div>
+    </article>
+  );
+};
+
+const ShopfrontInventoryPurchaseCard: React.FunctionComponent<{
+  item: HarthmereBusinessVisibleInventoryItem;
+  actionLabel: string;
+  itemKind: ShopfrontMerchKind;
+  backendPending: boolean;
+  onBuy?: (item: HarthmereBusinessVisibleInventoryItem, count: number) => void;
+}> = ({ item, actionLabel, itemKind, backendPending, onBuy }) => {
+  const [countText, setCountText] = React.useState("1");
+  const itemLabel = item.displayName ?? displayLabel(item.itemId);
+  const maxCount = Math.max(1, Math.trunc(item.count));
+  const purchaseCount = parseShopfrontPurchaseCount(countText, maxCount);
+  const disabled = backendPending || item.count <= 0;
+  const totalGold = item.priceGold * purchaseCount;
+  return (
+    <article
+      data-shopfront-card="stock"
+      data-shopfront-has-bikkie-visual={item.visual ? "true" : undefined}
+      data-testid={`biomes-business-shop-stock-card-${item.itemId}`}
+      style={shopfrontGoodCardStyle(itemKind)}
+    >
+      <div style={shopfrontCardBodyStyle}>
+        <div style={shopfrontItemArtStyle(itemKind)}>
+          {item.visual ? (
+            <BikkieVisualTileForVisual
+              visual={item.visual}
+              size={62}
+              dataTestId={`biomes-business-shop-stock-icon-${item.itemId}`}
+            />
+          ) : (
+            <span style={shopfrontFallbackGlyphStyle}>
+              {itemLabel.slice(0, 2).toUpperCase()}
+            </span>
+          )}
+        </div>
+        <div style={shopfrontItemTextStyle}>
+          <div style={shopItemHeaderStyle}>
+            <strong style={shopItemNameStyle}>{itemLabel}</strong>
+            <span style={shopfrontKindBadgeStyle(itemKind)}>
+              {shopfrontKindLabel(itemKind)}
+            </span>
+          </div>
+          <div style={shopfrontPriceLineStyle}>
+            <span>Each</span>
+            <strong>{item.priceGold} Gold</strong>
+          </div>
+          <div style={shopItemMetaStyle}>Stock x{item.count}</div>
+        </div>
+      </div>
+      <div style={shopfrontPurchaseRowStyle}>
+        <ShopfrontQuantityControl
+          itemId={item.itemId}
+          itemLabel={itemLabel}
+          value={countText}
+          parsedCount={purchaseCount}
+          maxCount={maxCount}
+          onValueChange={setCountText}
+          testIdPrefix="biomes-business-shop-stock-quantity"
+        />
+        <button
+          className="biomes-ui-tab"
+          type="button"
+          data-business-backend-action="true"
+          disabled={disabled}
+          aria-label={`${actionLabel} ${itemLabel}${
+            purchaseCount > 1 ? ` x${purchaseCount}` : ""
+          }`}
+          style={backendActionStyle(
+            {
+              ...shopfrontPrimaryBuyButtonStyle,
+              ...(disabled ? disabledButtonStyle : {}),
+            },
+            backendPending
+          )}
+          onClick={() => onBuy?.(item, purchaseCount)}
+        >
+          {purchaseCount > 1 ? `${actionLabel} x${purchaseCount}` : actionLabel}
+          {` · ${totalGold} Gold`}
+        </button>
+      </div>
+    </article>
+  );
+};
+
+const ShopfrontQuantityControl: React.FunctionComponent<{
+  itemId: string;
+  itemLabel: string;
+  value: string;
+  parsedCount: number;
+  maxCount?: number;
+  onValueChange: (nextValue: string) => void;
+  testIdPrefix?: string;
+}> = ({
+  itemId,
+  itemLabel,
+  value,
+  parsedCount,
+  maxCount,
+  onValueChange,
+  testIdPrefix = "biomes-business-storefront-quantity",
+}) => {
+  const applyCount = (nextCount: number) => {
+    onValueChange(
+      String(parseShopfrontPurchaseCount(String(nextCount), maxCount))
+    );
+  };
+  const atMax = maxCount !== undefined && parsedCount >= maxCount;
+  return (
+    <div style={shopfrontQuantityControlStyle}>
+      <button
+        type="button"
+        aria-label={`Decrease quantity for ${itemLabel}`}
+        disabled={parsedCount <= 1}
+        style={{
+          ...shopfrontQuantityStepStyle,
+          ...(parsedCount <= 1 ? disabledButtonStyle : {}),
+        }}
+        onClick={() => applyCount(parsedCount - 1)}
+      >
+        -
+      </button>
+      <input
+        aria-label={`Quantity for ${itemLabel}`}
+        data-testid={`${testIdPrefix}-${itemId}`}
+        inputMode="numeric"
+        pattern="[0-9]*"
+        min={1}
+        max={maxCount}
+        value={value}
+        style={shopfrontQuantityInputStyle}
+        onChange={(event) => onValueChange(event.currentTarget.value)}
+        onBlur={() => applyCount(parsedCount)}
+      />
+      <button
+        type="button"
+        aria-label={`Increase quantity for ${itemLabel}`}
+        disabled={atMax}
+        style={{
+          ...shopfrontQuantityStepStyle,
+          ...(atMax ? disabledButtonStyle : {}),
+        }}
+        onClick={() => applyCount(parsedCount + 1)}
+      >
+        +
+      </button>
+    </div>
   );
 };
 
@@ -2076,26 +2276,42 @@ const InventoryGrid: React.FunctionComponent<{
   emptyLabel: string;
   actionLabel?: string;
   itemKind?: ShopfrontMerchKind;
-  purchaseCount?: number;
-  onActivate?: (item: HarthmereBusinessVisibleInventoryItem) => void;
+  onActivate?: (
+    item: HarthmereBusinessVisibleInventoryItem,
+    purchaseCount: number
+  ) => void;
 }> = ({
   inventory,
   emptyLabel,
   actionLabel,
   itemKind = "stock",
-  purchaseCount = 1,
   onActivate,
 }) => {
   const backendPending = useBusinessBackendPending();
   const inventoryRows = React.useMemo(() => chunk(inventory, 4), [inventory]);
   if (!inventory.length) return <p style={mutedTextStyle}>{emptyLabel}</p>;
+  if (actionLabel) {
+    return (
+      <div style={shopfrontGoodsGridStyle}>
+        {inventory.map((item) => (
+          <ShopfrontInventoryPurchaseCard
+            key={item.itemId}
+            item={item}
+            actionLabel={actionLabel}
+            itemKind={itemKind}
+            backendPending={backendPending}
+            onBuy={onActivate}
+          />
+        ))}
+      </div>
+    );
+  }
   return (
     <RovingGrid
       ariaLabel="Business shopfront inventory"
       items={inventoryRows}
       onActivate={(_row, _col, item) => {
-        if (actionLabel && backendPending) return;
-        onActivate?.(item);
+        onActivate?.(item, 1);
       }}
       renderCell={(item, _coords, cell) => {
         const itemLabel = item.displayName ?? displayLabel(item.itemId);
@@ -2107,28 +2323,16 @@ const InventoryGrid: React.FunctionComponent<{
             onKeyDown={cell.onKeyDown}
             onClick={cell.onClick}
             className="biomes-ui-slot"
-            data-business-backend-action={actionLabel ? "true" : undefined}
-            disabled={Boolean(actionLabel && backendPending)}
-            style={backendActionStyle(
-              {
-                width: 150,
-                minHeight: actionLabel ? 112 : 96,
-                padding: 8,
-                flexDirection: "column",
-                alignItems: "stretch",
-                gap: 6,
-                textAlign: "left",
-                ...(actionLabel ? shopfrontInventoryButtonStyle(itemKind) : {}),
-              },
-              Boolean(actionLabel && backendPending)
-            )}
-            aria-label={
-              actionLabel
-                ? `${actionLabel} ${itemLabel}${
-                    item.count > 1 ? ` x${item.count}` : ""
-                  }`
-                : itemLabel
-            }
+            style={{
+              width: 150,
+              minHeight: 96,
+              padding: 8,
+              flexDirection: "column",
+              alignItems: "stretch",
+              gap: 6,
+              textAlign: "left",
+            }}
+            aria-label={itemLabel}
           >
             {item.visual ? (
               <BikkieVisualTileForVisual
@@ -2138,24 +2342,9 @@ const InventoryGrid: React.FunctionComponent<{
               />
             ) : null}
             <strong style={{ fontSize: 12 }}>{itemLabel}</strong>
-            {actionLabel ? (
-              <span style={shopfrontKindBadgeStyle(itemKind)}>
-                {shopfrontKindLabel(itemKind)}
-              </span>
-            ) : null}
             <span style={mutedTextStyle}>
               Stock x{item.count} · Unit price {item.priceGold} gold
             </span>
-            {actionLabel && (
-              <span style={buyActionTextStyle}>
-                {purchaseCount > 1
-                  ? `${actionLabel} x${purchaseCount}`
-                  : actionLabel}
-                {purchaseCount > 1
-                  ? ` · ${item.priceGold * purchaseCount} gold`
-                  : ""}
-              </span>
-            )}
           </button>
         );
       }}
@@ -3267,15 +3456,6 @@ const labelStyle: React.CSSProperties = {
   textTransform: "uppercase",
   letterSpacing: "0.12em",
 };
-const labelInlineStyle: React.CSSProperties = {
-  display: "flex",
-  gap: 8,
-  alignItems: "center",
-  fontSize: 11,
-  color: "var(--biomes-fg-muted)",
-  textTransform: "uppercase",
-  letterSpacing: "0.12em",
-};
 const formRowStyle: React.CSSProperties = {
   display: "flex",
   gap: 8,
@@ -3387,12 +3567,6 @@ const serviceBuyCtaStyle: React.CSSProperties = {
   fontWeight: 900,
   textTransform: "uppercase",
   letterSpacing: "0.08em",
-};
-const shopActionSlotStyle: React.CSSProperties = {
-  borderColor: "rgba(97, 244, 188, 0.82)",
-  background:
-    "linear-gradient(180deg, rgba(24, 61, 58, 0.96), rgba(9, 23, 35, 0.98))",
-  boxShadow: "0 0 18px rgba(55, 219, 164, 0.28)",
 };
 const shopfrontSectionStackStyle: React.CSSProperties = {
   display: "grid",
@@ -3522,59 +3696,61 @@ function shopfrontSectionCountStyle(
     whiteSpace: "nowrap",
   };
 }
-function shopfrontItemSurfaceStyle(
-  kind: ShopfrontMerchKind
-): React.CSSProperties {
+function shopfrontGoodCardStyle(kind: ShopfrontMerchKind): React.CSSProperties {
   const tone = shopfrontMerchTones[kind];
   return {
-    ...shopActionSlotStyle,
-    display: "flex",
+    display: "grid",
+    gridTemplateRows: "minmax(0, 1fr) auto",
+    gap: 12,
+    minHeight: 176,
+    minWidth: 0,
+    padding: 12,
     boxSizing: "border-box",
     border: `1px solid ${tone.border}`,
-    borderRadius: 4,
-    background: `linear-gradient(180deg, ${tone.surfaceTop}, ${tone.surfaceBottom})`,
-    boxShadow: `inset 3px 0 0 ${tone.accent}, 0 0 18px ${tone.glow}`,
-    textAlign: "left",
-    flexDirection: "column",
-    justifyContent: "space-between",
-    alignItems: "stretch",
-    gap: 8,
+    borderRadius: 6,
     color: "var(--biomes-fg)",
-    cursor: "pointer",
-    clipPath:
-      "polygon(8px 0, calc(100% - 8px) 0, 100% 8px, 100% calc(100% - 8px), calc(100% - 8px) 100%, 8px 100%, 0 calc(100% - 8px), 0 8px)",
-    whiteSpace: "normal",
-    textTransform: "none",
-    letterSpacing: 0,
-  };
-}
-function shopfrontGoodButtonStyle(
-  kind: ShopfrontMerchKind
-): React.CSSProperties {
-  return {
-    ...shopfrontItemSurfaceStyle(kind),
-    width: "100%",
-    minWidth: 0,
-    minHeight: 156,
-    padding: 12,
-  };
-}
-function shopfrontInventoryButtonStyle(
-  kind: ShopfrontMerchKind
-): React.CSSProperties {
-  return {
-    ...shopfrontItemSurfaceStyle(kind),
-    width: 178,
-    minHeight: 132,
-    padding: 10,
+    background: `linear-gradient(180deg, ${tone.surfaceTop}, ${tone.surfaceBottom})`,
+    boxShadow:
+      `inset 0 1px 0 rgba(255, 255, 255, 0.12), ` +
+      `inset 4px 0 0 ${tone.accent}, 0 12px 24px rgba(0, 0, 0, 0.2), 0 0 18px ${tone.glow}`,
+    overflow: "hidden",
+    position: "relative",
   };
 }
 const shopfrontToolListingStyle: React.CSSProperties = {
-  ...shopfrontItemSurfaceStyle("tool"),
+  ...shopfrontGoodCardStyle("tool"),
   minHeight: 118,
   marginTop: 8,
   padding: 12,
   cursor: "default",
+};
+const shopfrontCardBodyStyle: React.CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "78px minmax(0, 1fr)",
+  gap: 12,
+  alignItems: "start",
+  minWidth: 0,
+};
+function shopfrontItemArtStyle(kind: ShopfrontMerchKind): React.CSSProperties {
+  const tone = shopfrontMerchTones[kind];
+  return {
+    width: 78,
+    height: 78,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    border: `1px solid ${tone.border}`,
+    borderRadius: 6,
+    background: `linear-gradient(180deg, rgba(255, 255, 255, 0.13), ${tone.badgeBg})`,
+    boxShadow: `inset 0 0 18px rgba(255, 255, 255, 0.08), 0 0 14px ${tone.glow}`,
+    overflow: "hidden",
+  };
+}
+const shopfrontFallbackGlyphStyle: React.CSSProperties = {
+  fontSize: 13,
+  fontWeight: 900,
+  color: "var(--biomes-fg)",
+  textTransform: "uppercase",
 };
 const shopfrontItemLeadStyle: React.CSSProperties = {
   display: "flex",
@@ -3608,6 +3784,84 @@ const shopItemMetaStyle: React.CSSProperties = {
   color: "rgba(223, 238, 255, 0.82)",
   fontSize: 11,
   lineHeight: 1.35,
+};
+const shopfrontPriceLineStyle: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  gap: 8,
+  padding: "5px 7px",
+  border: "1px solid rgba(255, 255, 255, 0.12)",
+  borderRadius: 4,
+  background: "rgba(0, 0, 0, 0.18)",
+  color: "rgba(223, 238, 255, 0.82)",
+  fontSize: 11,
+  lineHeight: 1.2,
+};
+const shopfrontPurchaseRowStyle: React.CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "minmax(104px, auto) minmax(0, 1fr)",
+  gap: 8,
+  alignItems: "stretch",
+};
+const shopfrontQuantityControlStyle: React.CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "28px 42px 28px",
+  alignItems: "stretch",
+  minHeight: 30,
+  border: "1px solid rgba(154, 199, 230, 0.35)",
+  borderRadius: 4,
+  overflow: "hidden",
+  background: "rgba(4, 12, 22, 0.62)",
+};
+const shopfrontQuantityStepStyle: React.CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  minWidth: 0,
+  padding: 0,
+  border: 0,
+  color: "var(--biomes-fg)",
+  background: "rgba(154, 199, 230, 0.14)",
+  fontSize: 15,
+  fontWeight: 900,
+};
+const shopfrontQuantityInputStyle: React.CSSProperties = {
+  minWidth: 0,
+  width: "100%",
+  padding: "0 4px",
+  border: 0,
+  borderLeft: "1px solid rgba(154, 199, 230, 0.24)",
+  borderRight: "1px solid rgba(154, 199, 230, 0.24)",
+  color: "var(--biomes-fg)",
+  background: "rgba(0, 0, 0, 0.2)",
+  fontSize: 12,
+  fontWeight: 900,
+  textAlign: "center",
+};
+const shopfrontPrimaryBuyButtonStyle: React.CSSProperties = {
+  ...buyActionTextStyle,
+  minHeight: 30,
+  width: "100%",
+  marginTop: 0,
+  whiteSpace: "normal",
+};
+const shopfrontTotalStyle: React.CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  minHeight: 30,
+  padding: "0 8px",
+  border: "1px solid rgba(255, 255, 255, 0.14)",
+  borderRadius: 4,
+  background: "rgba(0, 0, 0, 0.18)",
+  color: "rgba(223, 238, 255, 0.88)",
+  fontSize: 11,
+  fontWeight: 900,
+  textTransform: "uppercase",
+};
+const shopfrontCardSettledStyle: React.CSSProperties = {
+  opacity: 0.72,
 };
 function shopfrontKindBadgeStyle(
   kind: ShopfrontMerchKind

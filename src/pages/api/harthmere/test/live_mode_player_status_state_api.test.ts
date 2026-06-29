@@ -1,5 +1,6 @@
 import assert from "assert";
 import {
+  mergeFreshHarthmerePlayerStatusReadStateForTest,
   readHarthmereLiveModePlayerStatusStateForActor,
   shouldPersistHarthmerePlayerStatusStaminaTick,
 } from "../live_mode_player_status_state";
@@ -141,6 +142,84 @@ describe("live_mode_player_status_state API route integration", () => {
     assert.equal(persisted.combat.resources.stamina, stamina);
     assert.equal(persisted.combat.lastStaminaTickMs, NOW_MS);
     assert.equal(snapshot.backendAuthority.staminaPersisted, true);
+  });
+
+  it("does not let a stale status poll restore older health, mana, stamina, or reputation", () => {
+    const statusWrite = defaultHarthmereLiveModeBackendState(ACTOR, NOW_MS);
+    statusWrite.updatedAtMs = NOW_MS + 5_000;
+    statusWrite.combat.hp = 80;
+    statusWrite.combat.resources.mana = 110;
+    statusWrite.combat.resources.stamina = 94;
+    statusWrite.combat.maxResources.stamina = 108;
+    statusWrite.combat.lastStaminaTickMs = NOW_MS;
+    statusWrite.law.standing.harthmere = {
+      likeability: 0,
+      legal: 0,
+      notoriety: 0,
+      notorietyFloor: 0,
+    };
+
+    const latest = defaultHarthmereLiveModeBackendState(ACTOR, NOW_MS);
+    latest.updatedAtMs = NOW_MS + 6_000;
+    latest.combat.hp = 70;
+    latest.combat.resources.mana = 44;
+    latest.combat.resources.stamina = 80;
+    latest.combat.maxResources.stamina = 108;
+    latest.combat.lastStaminaTickMs = NOW_MS + 1_000;
+    latest.law.standing.harthmere = {
+      likeability: 12,
+      legal: -5,
+      notoriety: 7,
+      notorietyFloor: 2,
+    };
+
+    const merged = mergeFreshHarthmerePlayerStatusReadStateForTest({
+      state: statusWrite,
+      latestRawState: JSON.stringify(latest),
+      actorId: ACTOR,
+      nowMs: NOW_MS + 6_500,
+      rawUpdatedAtMs: NOW_MS + 5_000,
+    });
+
+    assert.equal(merged.combat.hp, 70);
+    assert.equal(merged.combat.resources.mana, 44);
+    assert.equal(merged.combat.resources.stamina, 80);
+    assert.equal(merged.combat.lastStaminaTickMs, NOW_MS + 1_000);
+    assert.deepEqual(merged.law.standing.harthmere, {
+      likeability: 12,
+      legal: -5,
+      notoriety: 7,
+      notorietyFloor: 2,
+    });
+  });
+
+  it("does not let a stale status repair kill a newer alive state", () => {
+    const statusWrite = defaultHarthmereLiveModeBackendState(ACTOR, NOW_MS);
+    statusWrite.updatedAtMs = NOW_MS;
+    statusWrite.combat.hp = 0;
+    statusWrite.combat.deathState = "dead";
+    statusWrite.combat.resources.stamina = 0;
+    statusWrite.combat.lastStaminaTickMs = NOW_MS;
+
+    const latest = defaultHarthmereLiveModeBackendState(ACTOR, NOW_MS);
+    latest.updatedAtMs = NOW_MS + 1_000;
+    latest.combat.hp = 70;
+    latest.combat.deathState = "alive";
+    latest.combat.resources.stamina = 80;
+    latest.combat.lastStaminaTickMs = NOW_MS + 1_000;
+
+    const merged = mergeFreshHarthmerePlayerStatusReadStateForTest({
+      state: statusWrite,
+      latestRawState: JSON.stringify(latest),
+      actorId: ACTOR,
+      nowMs: NOW_MS + 1_500,
+      rawUpdatedAtMs: NOW_MS,
+      allowHealthWrite: true,
+    });
+
+    assert.equal(merged.combat.hp, 70);
+    assert.equal(merged.combat.deathState, "alive");
+    assert.equal(merged.combat.resources.stamina, 80);
   });
 
   it("counts material storage weight when applying stamina encumbrance", async () => {
