@@ -115,7 +115,8 @@ DOCKER_PLATFORM="${DOCKER_PLATFORM:-linux/amd64}"
 AZURE_RESOURCE_GROUP="${AZURE_RESOURCE_GROUP:-openai-resource-group}"
 AZURE_CONTAINER_APP="${AZURE_CONTAINER_APP:-biomes-node-vnet}"
 AZURE_MIN_REPLICAS="${AZURE_MIN_REPLICAS:-1}"
-AZURE_MAX_REPLICAS="${AZURE_MAX_REPLICAS:-10}"
+AZURE_MAX_REPLICAS="${AZURE_MAX_REPLICAS:-1}"
+AZURE_ALLOW_MULTI_REPLICA_STACK="${AZURE_ALLOW_MULTI_REPLICA_STACK:-0}"
 PROD_REDIS_HOST="${PROD_REDIS_HOST:-10.0.0.12}"
 PROD_REDIS_PUBLIC_HOST="${PROD_REDIS_PUBLIC_HOST:-}"
 PROD_REDIS_HEALTH_HOST="${PROD_REDIS_HEALTH_HOST:-$PROD_REDIS_HOST}"
@@ -142,6 +143,13 @@ LOCAL_APP_CONTAINER="${LOCAL_APP_CONTAINER:-biomes-prod-smoke-app}"
 LOCAL_WEB_PORT="${LOCAL_WEB_PORT:-3017}"
 LOCAL_SYNC_PORT="${LOCAL_SYNC_PORT:-4907}"
 SMOKE_TIMEOUT_SECONDS="${SMOKE_TIMEOUT_SECONDS:-900}"
+
+if [ "$AZURE_MAX_REPLICAS" != "1" ] && [ "$AZURE_ALLOW_MULTI_REPLICA_STACK" != "1" ]; then
+  echo "ERROR AZURE_MAX_REPLICAS=$AZURE_MAX_REPLICAS is unsafe for the current all-in-one production stack." >&2
+  echo "The container owns WebSocket sessions and singleton Redis stream workers; horizontal replicas cause reconnects and duplicate workers." >&2
+  echo "Set AZURE_ALLOW_MULTI_REPLICA_STACK=1 only after those roles are split or guarded." >&2
+  exit 2
+fi
 
 log() {
   printf '\n[%s] %s\n' "$(date -u +%H:%M:%S)" "$*"

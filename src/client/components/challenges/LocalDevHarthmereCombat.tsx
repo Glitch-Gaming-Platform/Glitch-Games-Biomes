@@ -5889,6 +5889,30 @@ export function performHarthmereCombatAttack(
     return;
   }
 
+  // Safe-zone protection: NPCs, animals, and monsters cannot be damaged while the
+  // attacking player stands inside a sanctuary (Grove/town core + respawn rings).
+  // Training dummies stay hittable so players can still practice in town. This is a
+  // global gate that mirrors the existing safe-zone suppression of ambient threats
+  // and retaliation (see isHarthmereLocalCombatSafeZonePosition).
+  const attackerSafeZonePosition = readHarthmereForwardArcRuntime()?.position;
+  const targetIsPracticeTarget = ["training_dummy", "quest_anchor"].includes(
+    target.behavior
+  );
+  if (
+    !targetIsPracticeTarget &&
+    isHarthmereLocalCombatSafeZonePosition(attackerSafeZonePosition)
+  ) {
+    writeHarthmereCombatState(
+      invalidLog(
+        state,
+        target,
+        `${target.name} is protected inside the safe zone. Leave the sanctuary to fight.`,
+        "immune"
+      )
+    );
+    return;
+  }
+
   if (["dead", "downed"].includes(player.combatState) || player.hp <= 0) {
     writeHarthmereCombatState(
       invalidLog(

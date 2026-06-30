@@ -445,6 +445,19 @@ After the new revision reports ready, the script pins 100% traffic to that
 concrete revision and deactivates older active revisions so idle no-traffic
 revisions do not keep running after production is healthy.
 
+### Replica policy
+
+The current Azure Container App runs the full game stack in one container:
+web, sync WebSocket, shim, bikkie, logic, oob, sidefx, chat, and Redis stream
+workers. Because that single process tree owns live WebSocket sessions and
+singleton stream workers, production defaults to `AZURE_MIN_REPLICAS=1` and
+`AZURE_MAX_REPLICAS=1`.
+
+Do not raise `AZURE_MAX_REPLICAS` for this deployment path until the singleton
+workers are split out or guarded and session routing has been designed for
+horizontal replicas. The deploy script rejects multi-replica updates unless
+`AZURE_ALLOW_MULTI_REPLICA_STACK=1` is set explicitly.
+
 ### Why not `CMD ["dist/web.js"]`?
 
 Because `dist/web.js` only starts the web service. Production needs shim,

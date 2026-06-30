@@ -327,6 +327,30 @@ export function useBiomesUIPlayerStatusState() {
     const onStatus = (event: Event) => {
       const next = (event as CustomEvent<BiomesUIPlayerStatusSnapshot>).detail;
       if (next && typeof next === "object") {
+        // The client-side combat simulation re-broadcasts the player's HP into
+        // this same status channel on every local write (damage, regen, motion).
+        // When a live server is authoritative, that flooded the polled server
+        // snapshot and made the HUD HP flip-flop between the two sources
+        // ("health jumping up and down"). The HUD already reflects local combat
+        // HP through its combat-state fallback, so we never let the local
+        // simulation's `combat` block overwrite the server-authoritative one;
+        // we only merge its identity fields (class/level) so local-dev (which has
+        // no server poll) still shows them. This gives the HUD reconciliation a
+        // single, stable combat authority to compare against.
+        if (
+          (next as { version?: string }).version ===
+          "harthmere-local-combat-player-status"
+        ) {
+          setStatus((prev) => {
+            const merged: BiomesUIPlayerStatusSnapshot = { ...(prev ?? {}) };
+            if (next.className) merged.className = next.className;
+            if (Number.isFinite(next.level)) merged.level = next.level;
+            // Intentionally keep prev.combat (server authority), or leave it
+            // undefined in local-dev so the HUD falls back to local combat HP.
+            return merged;
+          });
+          return;
+        }
         setStatus(next);
       } else {
         void refresh();

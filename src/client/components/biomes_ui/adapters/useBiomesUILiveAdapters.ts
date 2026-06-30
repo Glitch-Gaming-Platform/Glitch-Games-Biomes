@@ -2836,6 +2836,49 @@ export function useBiomesUILiveAdapters({
     ]
   );
 
+  // Eat any edible food held in the live inventory — including world-saved items
+  // that arrive as single instances and so have no stackable count. We grant a
+  // transient stack only when the authoritative count is missing so the server
+  // can always resolve the item and restore stamina (mirrors the proven local
+  // food path). When the item is a real stack this decrements it normally.
+  const eatLiveHarthmereFoodById = React.useCallback(
+    (itemId: string, label: string, category: string, source: string) => {
+      fireAndForget(
+        (async () => {
+          const liveCount = Math.max(
+            0,
+            Math.trunc(Number(inventoryLootState?.actor?.items?.[itemId] ?? 0))
+          );
+          if (liveCount <= 0) {
+            await submitHarthmereInventoryGrantToLiveModeForTest(
+              itemId,
+              1,
+              "Live food synced for eating"
+            );
+          }
+          const body = await submitFarmingFoodLiveModeAction("eat_food", {
+            itemId,
+          });
+          await applyLiveModeInventoryResponse(body);
+          dispatchBiomesUITutorialItemUse(
+            {
+              id: itemId,
+              label,
+              category,
+              useEffect: "stamina",
+            },
+            source
+          );
+        })().catch(() => refreshInventoryLootState())
+      );
+    },
+    [
+      applyLiveModeInventoryResponse,
+      inventoryLootState?.actor?.items,
+      refreshInventoryLootState,
+    ]
+  );
+
   React.useEffect(() => {
     if (typeof window === "undefined") return;
     const handler = (event: Event) => {
@@ -3731,22 +3774,16 @@ export function useBiomesUILiveAdapters({
           return;
         }
         const liveItem = liveItemForRef(ref);
-        if (liveItem?.id && isHarthmereFoodItemPlayerEdible(liveItem.id)) {
-          fireAndForget(
-            submitFarmingFoodLiveModeAction("eat_food", { itemId: liveItem.id })
-              .then(async (body) => {
-                await applyLiveModeInventoryResponse(body);
-                dispatchBiomesUITutorialItemUse(
-                  {
-                    id: liveItem.id,
-                    label: liveItem.label,
-                    category: liveItem.category,
-                    useEffect: "stamina",
-                  },
-                  "biomes-ui-live-food-use"
-                );
-              })
-              .catch(() => refreshInventoryLootState())
+        // Resolve the food id even when the slot is a single world-saved instance
+        // (which liveItemForRef may not surface as a stack), so the Eat action
+        // works for every edible item the player can see, not just stacks.
+        const liveFoodId = liveItem?.id ?? liveItemIdForRef(ref);
+        if (liveFoodId && isHarthmereFoodItemPlayerEdible(liveFoodId)) {
+          eatLiveHarthmereFoodById(
+            liveFoodId,
+            liveItem?.label ?? humanizeRealItemId(liveFoodId, liveFoodId),
+            liveItem?.category ?? inferInventoryCategory({ id: liveFoodId }),
+            "biomes-ui-live-food-use"
           );
           return;
         }

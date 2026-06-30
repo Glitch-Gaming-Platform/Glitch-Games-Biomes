@@ -379,6 +379,12 @@ ok(
   "production app uses the Azure Container App title-token secret reference"
 );
 ok(
+  script.includes('AZURE_MAX_REPLICAS="${AZURE_MAX_REPLICAS:-1}"') &&
+    script.includes("AZURE_ALLOW_MULTI_REPLICA_STACK") &&
+    script.includes("horizontal replicas cause reconnects and duplicate workers"),
+  "production deploy defaults to one replica and guards explicit multi-replica stack updates"
+);
+ok(
   script.includes(
     "--command ./scripts/glitch/run-glitch-local-game-stack.sh"
   ) && script.includes('--args ""'),
