@@ -90,6 +90,29 @@ const Game: React.FunctionComponent<{
         setLoadProgress(undefined);
         warnAboutBadExtensions(context.mailman);
       } catch (error: any) {
+        // HARTHMERE_LOADER_INTERRUPT_NOT_FATAL: `clientLoader.stop()` rejects the
+        // in-flight `load()` with "Client loader interrupted." whenever this effect
+        // is torn down (React unmount/remount, e.g. an ancestor <RootErrorBoundary>
+        // resetting after a transient hydration error). That is an EXPECTED abort,
+        // not a real failure. Previously we always called setError(error), which
+        // re-threw below into the error boundary — turning a single transient
+        // remount into a cascade: the boundary reset remounts the game, the new
+        // loader is interrupted again, the sync stream is torn down, and every
+        // subsequent /sync/publish (harvest, eat, mine, place → inventory changes)
+        // fails with "Disconnected: finished". Swallow the benign interrupt (and any
+        // abort that arrives after we have already unmounted) so a hiccup can no
+        // longer kill the live session; only surface genuine load failures.
+        const message = String(error?.message ?? error ?? "");
+        const isBenignInterrupt =
+          !mounted.current ||
+          error?.name === "AbortError" ||
+          message.includes("Client loader interrupted");
+        if (isBenignInterrupt) {
+          log.warn("Client load interrupted (benign, likely remount)", {
+            message,
+          });
+          return;
+        }
         emitHarthmereGlitchBehaviorEvent("loading", "error", {
           message: error?.message ?? String(error),
         });

@@ -122,8 +122,18 @@ const DEFAULT_CONFIG = deepFreeze({
   // ZRPC WebSocket Server
   //
   // How often the server checks a client is present,
-  // if it fails twice it is terminated.
-  wsZrpcTtlMs: 10_000,
+  // if it fails twice it is terminated. This also drives the WebSocket server's
+  // `idleTimeout` (see websocket/server.ts: Math.max(wsZrpcTtlMs/1000, 10)).
+  //
+  // HARTHMERE_SYNC_RECONNECT_SPIRAL_FIX (2026-07-01): raised 10s -> 30s to match
+  // the relaxed client reconnect windows below. If the server kept closing idle
+  // sockets at 10s while the client's main thread was blocked applying the sync
+  // bootstrap (and therefore could not send for >10s), the server-initiated
+  // close would re-trigger the very reconnect spiral the client-side change is
+  // meant to stop. Both sides must tolerate the same ~30s worst-case stall. The
+  // other use (sync/client.ts maybeStopScanner) is only an idle scanner-GC delay,
+  // so a larger value there is harmless.
+  wsZrpcTtlMs: 30_000,
   // How often the server sends a heartbeat - independent of messages.
   wsZrpcHeartbeatIntervalMs: 150,
   // How long the client waits for a heartbeat before being unhealthy.
@@ -140,10 +150,30 @@ const DEFAULT_CONFIG = deepFreeze({
   // default is 5000/10000; we stay just under wsZrpcTtlMs to avoid racing the
   // server-side idle close.
   wsZrpcHeartbeatTtlMs: 3_000,
-  // How long the client waits until reconnecting.
-  wsZrpcHeartbeatReconnectMs: 8_000,
-  // How long the client waits on first connection until reconnecting.
-  wsZrpcHeartbeatStartupReconnectMs: 5000,
+  // How long the client waits (no server message) before it reconnects.
+  //
+  // HARTHMERE_SYNC_RECONNECT_SPIRAL_FIX (2026-07-01): 8s was still too low for
+  // the live Harthmere/Glitch client. Production console logs (biomes_303.har /
+  // www.glitch.fun-*.log) captured a reconnect DEATH-SPIRAL: on load the client
+  // spends ~3.7s in "Slow registry load" and then runs at 10-14 FPS while it
+  // applies the ~1000-change sync bootstrap, so the main thread cannot service
+  // the socket for >8s. The client's `periodicallyCheckState` therefore fires
+  // "Connection timeout", which CANCELs every in-flight /sync/publish (eat,
+  // place, mine, inventory writes → the "can't eat the strawberry" / wrong item
+  // count bugs) and then re-opens the socket, triggering ANOTHER full bootstrap
+  // that re-blocks the thread → timeout again. We measured ~450 reconnects in a
+  // single short session. The heartbeat config is advertised to every connected
+  // client (see active_client.ts -> onHeartbeat), so raising it here relaxes the
+  // window for ALL live clients on the next heartbeat, no client rebuild needed.
+  // 30s comfortably covers the heaviest observed bootstrap while a genuinely
+  // dead socket is still caught by onClose/onError immediately.
+  wsZrpcHeartbeatReconnectMs: 30_000,
+  // How long the client waits on FIRST connection before reconnecting. This is
+  // the most important value for the spiral above: the initial bootstrap is the
+  // heaviest work the client ever does, and 5s could not fit the ~3.7s registry
+  // load plus the first entity-stream apply. Give the first connection the same
+  // generous 30s window so a fresh login settles instead of thrashing.
+  wsZrpcHeartbeatStartupReconnectMs: 30_000,
   // Client backpressure
   wsZrpcClientBackpressureLimit: 1024,
   // Warning for large message
