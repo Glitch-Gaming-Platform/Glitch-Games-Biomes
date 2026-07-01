@@ -1,3 +1,4 @@
+import { harthmereLocalStorage } from "@/client/util/storage";
 import type { BiomesId } from "@/shared/ids";
 
 const HARTHMERE_ACTIVE_USER_SCOPE_KEY =
@@ -46,7 +47,7 @@ export function setHarthmereLocalDevUserScope(
   }
   const scope = normalizeScope(userId);
   window.sessionStorage?.setItem(HARTHMERE_ACTIVE_USER_SCOPE_KEY, scope);
-  window.localStorage.setItem(HARTHMERE_ACTIVE_USER_SCOPE_KEY, scope);
+  harthmereLocalStorage.setItem(HARTHMERE_ACTIVE_USER_SCOPE_KEY, scope);
   window.dispatchEvent(new CustomEvent("biomes:harthmere-reputation-changed"));
   window.dispatchEvent(new CustomEvent("biomes:harthmere-combat-changed"));
   window.dispatchEvent(new CustomEvent("biomes:harthmere-death-changed"));
@@ -62,7 +63,7 @@ export function getHarthmereLocalDevUserScope() {
   }
   return normalizeScope(
     window.sessionStorage?.getItem(HARTHMERE_ACTIVE_USER_SCOPE_KEY) ??
-      window.localStorage.getItem(HARTHMERE_ACTIVE_USER_SCOPE_KEY)
+      harthmereLocalStorage.getItem(HARTHMERE_ACTIVE_USER_SCOPE_KEY)
   );
 }
 

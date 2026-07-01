@@ -1,3 +1,4 @@
+import { harthmereLocalStorage } from "@/client/util/storage";
 // LocalDevHarthmereEconomySystem local-dev economy boundary. Do not trust client storage in production.
 import type { TalkDialogStepAction } from "@/client/components/challenges/TalkDialogModalStep";
 import {
@@ -630,7 +631,7 @@ export function readHarthmereEconomyState(): HarthmereEconomyState {
     return defaultState();
   }
   try {
-    const raw = window.localStorage.getItem(HARTHMERE_ECONOMY_STATE_KEY);
+    const raw = harthmereLocalStorage.getItem(HARTHMERE_ECONOMY_STATE_KEY);
     if (!raw) {
       return defaultState();
     }
@@ -644,7 +645,7 @@ export function writeHarthmereEconomyState(state: HarthmereEconomyState) {
   if (!isBrowser()) {
     return;
   }
-  window.localStorage.setItem(
+  harthmereLocalStorage.setItem(
     HARTHMERE_ECONOMY_STATE_KEY,
     JSON.stringify(normalizeState(state))
   );

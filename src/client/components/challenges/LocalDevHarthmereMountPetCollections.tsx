@@ -1,3 +1,4 @@
+import { harthmereLocalStorage } from "@/client/util/storage";
 
 import React, { useEffect, useMemo, useState } from "react";
 
@@ -191,7 +192,7 @@ export function readHarthmereMountPetCollectionState(): HarthmereMountPetCollect
     return emptyHarthmereMountPetCollectionState();
   }
   try {
-    return normalizeState(JSON.parse(window.localStorage.getItem(HARTHMERE_MOUNT_PET_LOCAL_STORAGE_KEYS.collection) || "null"));
+    return normalizeState(JSON.parse(harthmereLocalStorage.getItem(HARTHMERE_MOUNT_PET_LOCAL_STORAGE_KEYS.collection) || "null"));
   } catch {
     return emptyHarthmereMountPetCollectionState();
   }
@@ -201,7 +202,7 @@ export function writeHarthmereMountPetCollectionState(state: HarthmereMountPetCo
   if (!isBrowser()) {
     return;
   }
-  window.localStorage.setItem(HARTHMERE_MOUNT_PET_LOCAL_STORAGE_KEYS.collection, JSON.stringify(normalizeState(state)));
+  harthmereLocalStorage.setItem(HARTHMERE_MOUNT_PET_LOCAL_STORAGE_KEYS.collection, JSON.stringify(normalizeState(state)));
   window.dispatchEvent(new Event("biomes:harthmere-mount-pet-collection"));
 }
 

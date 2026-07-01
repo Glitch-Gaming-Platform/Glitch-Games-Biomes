@@ -1,3 +1,4 @@
+import { harthmereLocalStorage } from "@/client/util/storage";
 import {
   HARTHMERE_MISSION_EVENTS_KEY,
   QUESTS,
@@ -71,7 +72,7 @@ function readMissionEvents(): MissionEvent[] {
     return [];
   }
   try {
-    const raw = window.localStorage.getItem(HARTHMERE_MISSION_EVENTS_KEY);
+    const raw = harthmereLocalStorage.getItem(HARTHMERE_MISSION_EVENTS_KEY);
     const parsed = raw ? (JSON.parse(raw) as MissionEvent[]) : [];
     return parsed.filter((event) => event.title && event.detail).slice(0, 12);
   } catch {
@@ -87,7 +88,7 @@ function recordMissionEvent(kind: string, title: string, detail: string) {
     { at: Date.now(), kind, title, detail },
     ...readMissionEvents(),
   ].slice(0, 12);
-  window.localStorage.setItem(
+  harthmereLocalStorage.setItem(
     HARTHMERE_MISSION_EVENTS_KEY,
     JSON.stringify(next),
   );
@@ -99,7 +100,7 @@ function readTrackedMissionIds(): string[] {
     return [];
   }
   try {
-    const raw = window.localStorage.getItem(HARTHMERE_TRACKED_MISSIONS_KEY);
+    const raw = harthmereLocalStorage.getItem(HARTHMERE_TRACKED_MISSIONS_KEY);
     return raw ? (JSON.parse(raw) as string[]) : [];
   } catch {
     return [];
@@ -110,7 +111,7 @@ function writeTrackedMissionIds(ids: string[]) {
   if (!isBrowser()) {
     return;
   }
-  window.localStorage.setItem(
+  harthmereLocalStorage.setItem(
     HARTHMERE_TRACKED_MISSIONS_KEY,
     JSON.stringify([...new Set(ids)]),
   );

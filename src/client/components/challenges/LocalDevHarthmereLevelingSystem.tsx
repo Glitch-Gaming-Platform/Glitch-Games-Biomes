@@ -1,3 +1,4 @@
+import { harthmereLocalStorage } from "@/client/util/storage";
 import type { HarthmereCombatStats } from "@/client/components/challenges/LocalDevHarthmereCombat";
 import { harthmereUserScopedStorageKey } from "@/client/components/challenges/LocalDevHarthmereUserScope";
 import type { TalkDialogStepAction } from "@/client/components/challenges/TalkDialogModalStep";
@@ -284,7 +285,7 @@ export function readHarthmereLevelingState(): HarthmereLevelingState {
     return defaultLevelingState();
   }
   try {
-    const raw = window.localStorage.getItem(
+    const raw = harthmereLocalStorage.getItem(
       harthmereUserScopedStorageKey(HARTHMERE_LEVELING_STATE_KEY),
     );
     if (!raw) {
@@ -300,7 +301,7 @@ export function writeHarthmereLevelingState(state: HarthmereLevelingState) {
   if (!isBrowser()) {
     return;
   }
-  window.localStorage.setItem(
+  harthmereLocalStorage.setItem(
     harthmereUserScopedStorageKey(HARTHMERE_LEVELING_STATE_KEY),
     JSON.stringify(normalizeState(state)),
   );

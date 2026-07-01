@@ -1,3 +1,4 @@
+import { harthmereLocalStorage } from "@/client/util/storage";
 // Local-dev Harthmere economy hardening helpers.
 // This file is intentionally client/localStorage based for the local-dev town.
 // TODO(server-authoritative-economy): production MMO inventory, currency,
@@ -95,7 +96,7 @@ export function applyHarthmereLocalDevTownEconomyImpact(input: {
   assertHarthmereLocalDevEconomyNotProduction();
   if (!isBrowser()) return;
   try {
-    const raw = window.localStorage.getItem(
+    const raw = harthmereLocalStorage.getItem(
       HARTHMERE_LOCAL_DEV_STATE_KEYS.economy
     );
     if (!raw) return;
@@ -125,7 +126,7 @@ export function applyHarthmereLocalDevTownEconomyImpact(input: {
       },
       ...((economy.recent as unknown[]) ?? []),
     ].slice(0, 16);
-    window.localStorage.setItem(
+    harthmereLocalStorage.setItem(
       HARTHMERE_LOCAL_DEV_STATE_KEYS.economy,
       JSON.stringify({ ...economy, town, recent })
     );
@@ -152,7 +153,7 @@ function readRapidActionState(): RapidActionState {
     return {};
   }
   try {
-    const raw = window.localStorage.getItem(
+    const raw = harthmereLocalStorage.getItem(
       HARTHMERE_LOCAL_DEV_STATE_KEYS.rapidActions
     );
     return raw ? (JSON.parse(raw) as RapidActionState) : {};
@@ -166,7 +167,7 @@ function writeRapidActionState(state: RapidActionState) {
   if (!isBrowser()) {
     return;
   }
-  window.localStorage.setItem(
+  harthmereLocalStorage.setItem(
     HARTHMERE_LOCAL_DEV_STATE_KEYS.rapidActions,
     JSON.stringify(state)
   );
@@ -198,7 +199,7 @@ export function claimHarthmereLocalDevRapidAction(
 
 export function resetHarthmereLocalDevRapidActionGuards() {
   if (isBrowser()) {
-    window.localStorage.removeItem(HARTHMERE_LOCAL_DEV_STATE_KEYS.rapidActions);
+    harthmereLocalStorage.removeItem(HARTHMERE_LOCAL_DEV_STATE_KEYS.rapidActions);
   }
 }
 

@@ -1,3 +1,4 @@
+import { harthmereLocalStorage } from "@/client/util/storage";
 import type { TalkDialogStepAction } from "@/client/components/challenges/TalkDialogModalStep";
 import { useClientContext } from "@/client/components/contexts/ClientContextReactContext";
 import {
@@ -262,7 +263,7 @@ export function readSnapshotGroveQuestState(): SnapshotGroveQuestState {
   try {
     return normalizeSnapshotGroveQuestState(
       JSON.parse(
-        window.localStorage.getItem(SNAPSHOT_GROVE_QUEST_STATE_KEY) || "null"
+        harthmereLocalStorage.getItem(SNAPSHOT_GROVE_QUEST_STATE_KEY) || "null"
       ) || undefined
     );
   } catch {
@@ -275,7 +276,7 @@ function writeSnapshotGroveQuestState(state: SnapshotGroveQuestState) {
     return;
   }
   const next = { ...state, updatedAt: Date.now() };
-  window.localStorage.setItem(
+  harthmereLocalStorage.setItem(
     SNAPSHOT_GROVE_QUEST_STATE_KEY,
     JSON.stringify(next)
   );
@@ -361,7 +362,7 @@ function readSnapshotGroveLikeability(): Record<string, number> {
   }
   try {
     const parsed = JSON.parse(
-      window.localStorage.getItem(SNAPSHOT_GROVE_LIKEABILITY_KEY) || "{}"
+      harthmereLocalStorage.getItem(SNAPSHOT_GROVE_LIKEABILITY_KEY) || "{}"
     );
     return parsed && typeof parsed === "object" ? parsed : {};
   } catch {
@@ -378,7 +379,7 @@ function recordSnapshotGroveLikeability(npcId: string, delta: number) {
     -5,
     Math.min(10, Number(current[npcId] || 0) + delta)
   );
-  window.localStorage.setItem(
+  harthmereLocalStorage.setItem(
     SNAPSHOT_GROVE_LIKEABILITY_KEY,
     JSON.stringify(current)
   );
@@ -2158,8 +2159,8 @@ export const SnapshotGroveBibleRuntimeController: React.FunctionComponent<{}> =
         landmarks: SNAPSHOT_GROVE_LANDMARKS,
         readState: readSnapshotGroveQuestState,
         reset: () => {
-          window.localStorage.removeItem(SNAPSHOT_GROVE_QUEST_STATE_KEY);
-          window.localStorage.removeItem(SNAPSHOT_GROVE_LIKEABILITY_KEY);
+          harthmereLocalStorage.removeItem(SNAPSHOT_GROVE_QUEST_STATE_KEY);
+          harthmereLocalStorage.removeItem(SNAPSHOT_GROVE_LIKEABILITY_KEY);
           window.dispatchEvent(
             new CustomEvent(SNAPSHOT_GROVE_QUEST_STATE_EVENT)
           );

@@ -1,3 +1,4 @@
+import { harthmereLocalStorage } from "@/client/util/storage";
 import {
   HARTHMERE_NPC_THIRD_PARTY_AI_PACKAGES,
   HARTHMERE_NPC_THIRD_PARTY_AI_VERSION,
@@ -430,7 +431,7 @@ export async function chooseHarthmereNpcAiDecisionWithThirdParty(offset: number,
   };
 }
 
-export function resetHarthmereNpcAiLocalDevState(): void { if (typeof window === "undefined") return; Object.values(HARTHMERE_NPC_AI_LOCAL_STORAGE_KEYS).forEach((key) => window.localStorage.removeItem(key)); }
+export function resetHarthmereNpcAiLocalDevState(): void { if (typeof window === "undefined") return; Object.values(HARTHMERE_NPC_AI_LOCAL_STORAGE_KEYS).forEach((key) => harthmereLocalStorage.removeItem(key)); }
 export function getHarthmereNpcAiDebugSnapshot(offset: number, blackboard: HarthmereNpcAiBlackboard = {}) { return { version: HARTHMERE_NPC_AI_SYSTEM_VERSION, layers: HARTHMERE_NPC_AI_STACK.map((layer) => layer.id), coverage: validateHarthmereNpcAiCoverage(), decision: chooseHarthmereNpcAiDecision(offset, blackboard) }; }
 
 if (typeof window !== "undefined") {

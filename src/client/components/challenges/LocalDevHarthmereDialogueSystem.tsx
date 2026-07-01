@@ -1,3 +1,4 @@
+import { harthmereLocalStorage } from "@/client/util/storage";
 import type { TalkDialogStepAction } from "@/client/components/challenges/TalkDialogModalStep";
 import {
   applyHarthmereReputationChange,
@@ -214,7 +215,7 @@ export function readHarthmereDialogueMemory(): HarthmereDialogueMemoryState {
     return EMPTY_DIALOGUE_MEMORY;
   }
   try {
-    const raw = window.localStorage.getItem(HARTHMERE_DIALOGUE_MEMORY_KEY);
+    const raw = harthmereLocalStorage.getItem(HARTHMERE_DIALOGUE_MEMORY_KEY);
     if (!raw) {
       return { ...EMPTY_DIALOGUE_MEMORY, greeted: {}, choices: [] };
     }
@@ -233,7 +234,7 @@ function writeHarthmereDialogueMemory(state: HarthmereDialogueMemoryState) {
   if (!isBrowser()) {
     return;
   }
-  window.localStorage.setItem(
+  harthmereLocalStorage.setItem(
     HARTHMERE_DIALOGUE_MEMORY_KEY,
     JSON.stringify(state),
   );

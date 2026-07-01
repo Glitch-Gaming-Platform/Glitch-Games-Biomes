@@ -1,3 +1,4 @@
+import { harthmereLocalStorage } from "@/client/util/storage";
 import React, { useEffect, useMemo, useState } from "react";
 
 export const HARTHMERE_TRADE_AUCTION_SYSTEM_VERSION = 1;
@@ -209,7 +210,7 @@ export function readHarthmereTradeAuctionState(): HarthmereTradeAuctionState {
     return createHarthmereTradeAuctionState();
   }
   try {
-    const raw = window.localStorage.getItem(HARTHMERE_TRADE_AUCTION_LOCAL_STORAGE_KEY);
+    const raw = harthmereLocalStorage.getItem(HARTHMERE_TRADE_AUCTION_LOCAL_STORAGE_KEY);
     if (!raw) {
       return createHarthmereTradeAuctionState();
     }
@@ -232,7 +233,7 @@ export function writeHarthmereTradeAuctionState(state: HarthmereTradeAuctionStat
   if (!isBrowser()) {
     return;
   }
-  window.localStorage.setItem(
+  harthmereLocalStorage.setItem(
     HARTHMERE_TRADE_AUCTION_LOCAL_STORAGE_KEY,
     JSON.stringify(state),
   );

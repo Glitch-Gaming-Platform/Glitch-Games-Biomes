@@ -1,3 +1,4 @@
+import { harthmereLocalStorage } from "@/client/util/storage";
 import {
   healHarthmerePlayer,
   performHarthmereCombatAttack,
@@ -1339,7 +1340,7 @@ export function readHarthmereClassSkillState(): HarthmereClassSkillState {
     return defaultClassState();
   }
   try {
-    const raw = window.localStorage.getItem(HARTHMERE_CLASS_STATE_KEY);
+    const raw = harthmereLocalStorage.getItem(HARTHMERE_CLASS_STATE_KEY);
     if (!raw) {
       return defaultClassState();
     }
@@ -1353,7 +1354,7 @@ export function writeHarthmereClassSkillState(state: HarthmereClassSkillState) {
   if (!isBrowser()) {
     return;
   }
-  window.localStorage.setItem(
+  harthmereLocalStorage.setItem(
     HARTHMERE_CLASS_STATE_KEY,
     JSON.stringify(normalizeState(state))
   );

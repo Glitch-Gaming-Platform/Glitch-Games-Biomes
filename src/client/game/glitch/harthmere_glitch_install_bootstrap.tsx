@@ -6,6 +6,7 @@ import {
   harthmereBiomesAuthHeaders,
   rememberHarthmereBiomesAuthSession,
 } from "@/shared/util/harthmere_auth_session";
+import { wireHarthmereCloudSave } from "@/client/util/storage/wire_glitch_cloud_save";
 import { useEffect } from "react";
 
 const INSTALL_PARAM_NAMES = ["install_id", "installId"];
@@ -302,6 +303,23 @@ function writeBootstrapIdentity(json: any, installId: string) {
     userName: identity.userName,
     licenseType: identity.licenseType,
   });
+
+  // HARTHMERE_CLOUD_SAVE_WIRING: now that we've resolved a REAL (non-guest)
+  // Glitch identity, connect the portable storage layer's Cloud Save adapter so
+  // per-player state (stamina, inventory, quests, crate contents, tutorial
+  // progress) syncs cross-device. No-op for guests / missing ids. World-altering
+  // shared state (buildings/plots/homes) stays server-owned and is NOT routed
+  // through Cloud Save.
+  try {
+    wireHarthmereCloudSave({
+      titleId: identity.titleId,
+      installId,
+      isGuest: isGuestLikeIdentity(json),
+    });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.warn("HARTHMERE_CLOUD_SAVE_WIRING_FAILED", error);
+  }
 
   return identity;
 }

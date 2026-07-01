@@ -1,3 +1,4 @@
+import { harthmereLocalStorage } from "@/client/util/storage";
 import {
   routeHarthmereGatheredMaterials,
   validateHarthmereGatherAttempt,
@@ -1086,7 +1087,7 @@ export function readHarthmereGatheringState(): HarthmereGatheringState {
     return defaultState();
   }
   try {
-    const raw = window.localStorage.getItem(HARTHMERE_GATHERING_STATE_KEY);
+    const raw = harthmereLocalStorage.getItem(HARTHMERE_GATHERING_STATE_KEY);
     return raw
       ? normalizeState(JSON.parse(raw) as Partial<HarthmereGatheringState>)
       : defaultState();
@@ -1099,7 +1100,7 @@ export function writeHarthmereGatheringState(state: HarthmereGatheringState) {
   if (!isBrowser()) {
     return;
   }
-  window.localStorage.setItem(
+  harthmereLocalStorage.setItem(
     HARTHMERE_GATHERING_STATE_KEY,
     JSON.stringify(normalizeState(state))
   );

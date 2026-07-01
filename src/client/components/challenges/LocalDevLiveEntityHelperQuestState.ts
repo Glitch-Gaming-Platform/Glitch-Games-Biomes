@@ -1,3 +1,4 @@
+import { harthmereLocalStorage } from "@/client/util/storage";
 import { harthmereUserScopedStorageKey } from "@/client/components/challenges/LocalDevHarthmereUserScope";
 import {
   LIVE_ENTITY_HELPER_MUCK_BOSS_MARKER_ID,
@@ -138,7 +139,7 @@ export function readLiveEntityHelperQuestState(): LiveEntityHelperQuestState {
     return EMPTY_LIVE_ENTITY_HELPER_QUEST_STATE;
   }
   try {
-    const raw = window.localStorage.getItem(storageKey());
+    const raw = harthmereLocalStorage.getItem(storageKey());
     return normalizeLiveEntityHelperQuestState(
       raw ? (JSON.parse(raw) as Partial<LiveEntityHelperQuestState>) : {}
     );
@@ -153,7 +154,7 @@ export function writeLiveEntityHelperQuestState(
   if (!isLiveEntityHelperQuestBrowser()) {
     return;
   }
-  window.localStorage.setItem(
+  harthmereLocalStorage.setItem(
     storageKey(),
     JSON.stringify(normalizeLiveEntityHelperQuestState(state))
   );

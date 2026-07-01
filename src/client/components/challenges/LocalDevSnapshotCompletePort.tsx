@@ -1,3 +1,4 @@
+import { harthmereLocalStorage } from "@/client/util/storage";
 import { useClientContext } from "@/client/components/contexts/ClientContextReactContext";
 import type { GardenHoseEvent } from "@/client/events/api";
 import type { BiomesId } from "@/shared/ids";
@@ -36,7 +37,7 @@ export const SNAPSHOT_PHOTO_PROOFS_KEY =
   "biomes.localDev.snapshotPhotoProofs";
 export const SNAPSHOT_CLEARED_MUCK_KEY =
 
-// current static audit contract: muck clearing writes local dev state with window.localStorage.setItem(SNAPSHOT_CLEARED_MUCK_KEY, ...).
+// current static audit contract: muck clearing writes local dev state with harthmereLocalStorage.setItem(SNAPSHOT_CLEARED_MUCK_KEY, ...).
   "biomes.localDev.snapshotClearedMuck";
 
 // SNAPSHOT_PER_PLAYER_MISSION_STATE_VERSION
@@ -62,7 +63,7 @@ export function snapshotCurrentPlayerStateScope() {
     "title_id",
   ];
   for (const key of queryCandidates) {
-    const value = params.get(key) || window.localStorage.getItem(key);
+    const value = params.get(key) || harthmereLocalStorage.getItem(key);
     if (value?.trim()) {
       return `${key}:${value.trim()}`;
     }
@@ -72,10 +73,10 @@ export function snapshotCurrentPlayerStateScope() {
     return `route-at:${pathMatch[1]}`;
   }
   const stored =
-    window.localStorage.getItem("biomes.glitch.installId") ||
-    window.localStorage.getItem("biomes.glitch.gameUserId") ||
-    window.localStorage.getItem("biomes.auth.userId") ||
-    window.localStorage.getItem("biomes.auth.playerId");
+    harthmereLocalStorage.getItem("biomes.glitch.installId") ||
+    harthmereLocalStorage.getItem("biomes.glitch.gameUserId") ||
+    harthmereLocalStorage.getItem("biomes.auth.userId") ||
+    harthmereLocalStorage.getItem("biomes.auth.playerId");
   return stored?.trim() ? `stored:${stored.trim()}` : "anonymous-local";
 }
 
@@ -87,17 +88,17 @@ export function snapshotPlayerScopedStorageKey(baseKey: string) {
 }
 
 function snapshotLocalGetItem(baseKey: string) {
-  return window.localStorage.getItem(snapshotPlayerScopedStorageKey(baseKey));
+  return harthmereLocalStorage.getItem(snapshotPlayerScopedStorageKey(baseKey));
 }
 
 function snapshotLocalSetItem(baseKey: string, value: string) {
-  window.localStorage.setItem(snapshotPlayerScopedStorageKey(baseKey), value);
+  harthmereLocalStorage.setItem(snapshotPlayerScopedStorageKey(baseKey), value);
 }
 
 function snapshotLocalRemoveItem(baseKey: string) {
-  window.localStorage.removeItem(snapshotPlayerScopedStorageKey(baseKey));
+  harthmereLocalStorage.removeItem(snapshotPlayerScopedStorageKey(baseKey));
   // Also remove the old unscoped key so a new player cannot inherit legacy local-dev progress.
-  window.localStorage.removeItem(baseKey);
+  harthmereLocalStorage.removeItem(baseKey);
 }
 
 

@@ -1,3 +1,4 @@
+import { harthmereLocalStorage } from "@/client/util/storage";
 import React, { useEffect, useMemo, useState } from "react";
 import type { HarthmereTradeableItem } from "@/client/components/challenges/LocalDevHarthmereTradeAuctionSystem";
 
@@ -200,7 +201,7 @@ export function readHarthmereStorageMailRecoveryState(): HarthmereStorageMailRec
     return createHarthmereStorageMailRecoveryState();
   }
   try {
-    const raw = window.localStorage.getItem(HARTHMERE_STORAGE_MAIL_RECOVERY_STATE_KEY);
+    const raw = harthmereLocalStorage.getItem(HARTHMERE_STORAGE_MAIL_RECOVERY_STATE_KEY);
     if (!raw) {
       return createHarthmereStorageMailRecoveryState();
     }
@@ -224,7 +225,7 @@ export function writeHarthmereStorageMailRecoveryState(state: HarthmereStorageMa
   if (!isBrowser()) {
     return;
   }
-  window.localStorage.setItem(
+  harthmereLocalStorage.setItem(
     HARTHMERE_STORAGE_MAIL_RECOVERY_STATE_KEY,
     JSON.stringify(state),
   );

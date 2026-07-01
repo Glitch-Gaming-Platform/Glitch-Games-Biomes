@@ -1,3 +1,4 @@
+import { harthmereLocalStorage } from "@/client/util/storage";
 import type { TalkDialogStepAction } from "@/client/components/challenges/TalkDialogModalStep";
 import {
   readHarthmereInventoryState,
@@ -671,7 +672,7 @@ export function readHarthmereGuildState(): HarthmereGuildState {
     return defaultState();
   }
   try {
-    const raw = window.localStorage.getItem(HARTHMERE_GUILD_STATE_KEY);
+    const raw = harthmereLocalStorage.getItem(HARTHMERE_GUILD_STATE_KEY);
     if (!raw) return defaultState();
     return normalizeState(JSON.parse(raw) as Partial<HarthmereGuildState>);
   } catch {
@@ -681,7 +682,7 @@ export function readHarthmereGuildState(): HarthmereGuildState {
 
 export function writeHarthmereGuildState(state: HarthmereGuildState) {
   if (!isBrowser()) return;
-  window.localStorage.setItem(
+  harthmereLocalStorage.setItem(
     HARTHMERE_GUILD_STATE_KEY,
     JSON.stringify(normalizeState(state))
   );

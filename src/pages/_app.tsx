@@ -15,12 +15,20 @@ import "@/client/styles/social.css";
 import "@/client/styles/splash.css";
 import "@/client/styles/static.css";
 import { useInstallTrackers } from "@/client/util/ad_helpers";
+import { installHarthmereStorageHardening } from "@/client/util/harthmere_storage_hardening";
 import { reportFunnelStage } from "@/shared/funnel";
 import "leaflet/dist/leaflet.css";
 import type { AppProps } from "next/app";
 import { useRouter } from "next/router";
 import { useEffect } from "react";
 import { HarthmereGlitchInstallBootstrap } from "@/client/game/glitch/harthmere_glitch_install_bootstrap";
+
+// HARTHMERE_STORAGE_HARDENING: make localStorage/sessionStorage safe as early as
+// possible (module load, before any component renders or hydration reads storage)
+// so the ~176 storage call sites cannot throw inside the cross-origin glitch.fun
+// iframe where the browser blocks/partitions storage. No-op on the server and
+// idempotent. See harthmere_storage_hardening.ts.
+installHarthmereStorageHardening();
 
 export default function MyApp({ Component, pageProps }: AppProps) {
   const router = useRouter();

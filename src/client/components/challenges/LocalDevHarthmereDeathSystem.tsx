@@ -1,3 +1,4 @@
+import { harthmereLocalStorage } from "@/client/util/storage";
 import {
   downHarthmerePlayerFromSystem,
   endHarthmereRespawnProtection,
@@ -175,7 +176,7 @@ export function requestHarthmereGroveRespawnTeleport(): HarthmereGroveTeleportRe
   }
 
   try {
-    window.localStorage.setItem(
+    harthmereLocalStorage.setItem(
       HARTHMERE_GROVE_RESPAWN_TELEPORT_STORAGE_KEY,
       JSON.stringify(target)
     );

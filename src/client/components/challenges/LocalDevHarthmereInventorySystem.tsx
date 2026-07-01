@@ -1,3 +1,4 @@
+import { harthmereLocalStorage } from "@/client/util/storage";
 // LocalDevHarthmereInventorySystem local-dev economy boundary. Do not trust client storage in production.
 import type { TalkDialogStepAction } from "@/client/components/challenges/TalkDialogModalStep";
 import {
@@ -2809,7 +2810,7 @@ export function readHarthmereInventoryState(): HarthmereInventoryState {
     return emptyState();
   }
   try {
-    const raw = window.localStorage.getItem(HARTHMERE_INVENTORY_STATE_KEY);
+    const raw = harthmereLocalStorage.getItem(HARTHMERE_INVENTORY_STATE_KEY);
     if (!raw) {
       return emptyState();
     }
@@ -2824,7 +2825,7 @@ export function writeHarthmereInventoryState(state: HarthmereInventoryState) {
     return;
   }
   const normalized = normalizeState(state);
-  window.localStorage.setItem(
+  harthmereLocalStorage.setItem(
     HARTHMERE_INVENTORY_STATE_KEY,
     JSON.stringify(normalized)
   );
@@ -3499,7 +3500,7 @@ const HARTHMERE_JOB_REWARD_GRANTED_KEY =
 function readGrantedHarthmereJobRewards(): Set<string> {
   if (typeof window === "undefined") return new Set();
   try {
-    const raw = window.localStorage.getItem(HARTHMERE_JOB_REWARD_GRANTED_KEY);
+    const raw = harthmereLocalStorage.getItem(HARTHMERE_JOB_REWARD_GRANTED_KEY);
     const arr = raw ? (JSON.parse(raw) as string[]) : [];
     return new Set(Array.isArray(arr) ? arr : []);
   } catch {
@@ -3556,7 +3557,7 @@ export function grantHarthmereJobReward(
     )
   );
   try {
-    window.localStorage.setItem(
+    harthmereLocalStorage.setItem(
       HARTHMERE_JOB_REWARD_GRANTED_KEY,
       JSON.stringify([...applied.granted])
     );
@@ -4502,7 +4503,7 @@ function readPendingVendorTradeRequest():
     return undefined;
   }
   try {
-    const raw = window.localStorage.getItem(HARTHMERE_VENDOR_TRADE_REQUEST_KEY);
+    const raw = harthmereLocalStorage.getItem(HARTHMERE_VENDOR_TRADE_REQUEST_KEY);
     if (!raw) {
       return undefined;
     }
@@ -4523,7 +4524,7 @@ function clearPendingVendorTradeRequest() {
   if (!isBrowser()) {
     return;
   }
-  window.localStorage.removeItem(HARTHMERE_VENDOR_TRADE_REQUEST_KEY);
+  harthmereLocalStorage.removeItem(HARTHMERE_VENDOR_TRADE_REQUEST_KEY);
 }
 
 export function openHarthmereVendorTrade(
@@ -4541,7 +4542,7 @@ export function openHarthmereVendorTrade(
   );
 
   const request: HarthmereVendorTradeRequest = { offset, mode };
-  window.localStorage.setItem(
+  harthmereLocalStorage.setItem(
     HARTHMERE_VENDOR_TRADE_REQUEST_KEY,
     JSON.stringify(request)
   );
@@ -5468,7 +5469,7 @@ function readSnapshotGroveActiveInventoryItemIds() {
     return new Set<string>();
   }
   try {
-    const raw = window.localStorage.getItem(
+    const raw = harthmereLocalStorage.getItem(
       SNAPSHOT_GROVE_QUEST_STATE_KEY_FOR_INVENTORY
     );
     const parsed = raw ? JSON.parse(raw) : undefined;

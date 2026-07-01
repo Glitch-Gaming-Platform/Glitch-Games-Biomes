@@ -1,3 +1,4 @@
+import { harthmereLocalStorage } from "@/client/util/storage";
 import {
   HARTHMERE_DEFAULT_MAX_STAMINA,
   HARTHMERE_FARMING_FOOD_STAMINA_VERSION,
@@ -107,12 +108,12 @@ function readCurrentCarriedInventoryForStamina():
     return undefined;
   }
   try {
-    const scopedRaw = window.localStorage.getItem(
+    const scopedRaw = harthmereLocalStorage.getItem(
       harthmereUserScopedStorageKey(
         HARTHMERE_LOCAL_INVENTORY_STATE_KEY_FOR_STAMINA
       )
     );
-    const legacyRaw = window.localStorage.getItem(
+    const legacyRaw = harthmereLocalStorage.getItem(
       HARTHMERE_LOCAL_INVENTORY_STATE_KEY_FOR_STAMINA
     );
     return carriedHarthmereLocalInventoryFromStorageValuesForStamina(
@@ -177,30 +178,65 @@ function normalizeFoodStaminaState(
 
 export const normalizeFoodStaminaStateForTest = normalizeFoodStaminaState;
 
+// HARTHMERE_STAMINA_STORAGE_BLOCKED_FALLBACK (2026-07-01): the live game runs in
+// a cross-origin iframe on glitch.fun where the browser can block/partition
+// localStorage (see harthmereObjectContainers.ts for the same class of bug).
+// `writeHarthmereFoodStaminaState` used to call setItem UNGUARDED, so when the
+// player ate food (or the survival tick fired) the persist threw a SecurityError
+// and the stamina update was lost — "eating does not restore stamina". Keep an
+// in-memory mirror so stamina works for the whole session regardless of whether
+// persistence is available.
+let inMemoryFoodStaminaState: HarthmereFoodStaminaState | undefined;
+
 export function readHarthmereFoodStaminaState(): HarthmereFoodStaminaState {
   if (!isBrowser()) {
-    return defaultHarthmereFoodStaminaState("local-player", Date.now());
+    return (
+      inMemoryFoodStaminaState ??
+      defaultHarthmereFoodStaminaState("local-player", Date.now())
+    );
   }
   try {
-    const raw = window.localStorage.getItem(
+    const raw = harthmereLocalStorage.getItem(
       harthmereUserScopedStorageKey(HARTHMERE_FOOD_STAMINA_STATE_KEY)
     );
-    return normalizeFoodStaminaState(raw ? JSON.parse(raw) : undefined);
+    if (raw) {
+      const parsed = normalizeFoodStaminaState(JSON.parse(raw));
+      inMemoryFoodStaminaState = parsed;
+      return parsed;
+    }
+    // Nothing persisted: prefer this session's in-memory value over a fresh
+    // default so a storage-blocked iframe doesn't reset stamina every read.
+    return (
+      inMemoryFoodStaminaState ??
+      normalizeFoodStaminaState(undefined)
+    );
   } catch {
-    return defaultHarthmereFoodStaminaState("local-player", Date.now());
+    // localStorage read threw (blocked/partitioned iframe).
+    return (
+      inMemoryFoodStaminaState ??
+      defaultHarthmereFoodStaminaState("local-player", Date.now())
+    );
   }
 }
 
 export function writeHarthmereFoodStaminaState(
   state: HarthmereFoodStaminaState
 ) {
-  if (!isBrowser()) {
-    return;
+  const normalized = normalizeFoodStaminaState(state);
+  // Update the in-memory mirror first so the write always "sticks" for the
+  // session even when persistence below fails.
+  inMemoryFoodStaminaState = normalized;
+  if (isBrowser()) {
+    try {
+      harthmereLocalStorage.setItem(
+        harthmereUserScopedStorageKey(HARTHMERE_FOOD_STAMINA_STATE_KEY),
+        JSON.stringify(normalized)
+      );
+    } catch {
+      // Storage blocked/full: the in-memory mirror keeps stamina working this
+      // session. Never let a persist failure abort an eat/tick update.
+    }
   }
-  window.localStorage.setItem(
-    harthmereUserScopedStorageKey(HARTHMERE_FOOD_STAMINA_STATE_KEY),
-    JSON.stringify(normalizeFoodStaminaState(state))
-  );
   dispatchFoodStaminaEvent();
 }
 

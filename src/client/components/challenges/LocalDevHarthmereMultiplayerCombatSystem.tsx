@@ -1,3 +1,4 @@
+import { harthmereLocalStorage } from "@/client/util/storage";
 // harthmere-resource-gathering-hit-contract
 export const HARTHMERE_RESOURCE_GATHERING_HIT_CONTRACT = {
   version: "harthmere-resource-gathering-hit-contract",
@@ -227,7 +228,7 @@ function /* current audit: performHarthmereCombatAttack(targetOffset, attack) */
 debugHarthmereKeyCombat(stage: string, payload: Record<string, unknown>) {
   if (
     !isBrowser() ||
-    window.localStorage.getItem("biomes.localDev.harthmere.combatDebug") !== "1"
+    harthmereLocalStorage.getItem("biomes.localDev.harthmere.combatDebug") !== "1"
   ) {
     return;
   }
@@ -499,7 +500,7 @@ export function readHarthmereMultiplayerCombatState(): HarthmereMultiplayerComba
     return normalizeState(undefined);
   }
   try {
-    const raw = window.localStorage.getItem(
+    const raw = harthmereLocalStorage.getItem(
       harthmereUserScopedStorageKey(HARTHMERE_MULTIPLAYER_COMBAT_STATE_KEY),
     );
     if (!raw) {
@@ -519,7 +520,7 @@ function writeHarthmereMultiplayerCombatState(
   if (!isBrowser()) {
     return;
   }
-  window.localStorage.setItem(
+  harthmereLocalStorage.setItem(
     harthmereUserScopedStorageKey(HARTHMERE_MULTIPLAYER_COMBAT_STATE_KEY),
     JSON.stringify(normalizeState(state)),
   );

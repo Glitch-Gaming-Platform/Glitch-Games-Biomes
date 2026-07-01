@@ -1,3 +1,4 @@
+import { harthmereLocalStorage } from "@/client/util/storage";
 // ---------------------------------------------------------------------------
 // Vendor catalog: SINGLE SOURCE OF TRUTH re-export.
 //
@@ -196,7 +197,7 @@ export function readHarthmereVendorRuntimeState() {
     return freshVendorRuntimeState();
   }
   try {
-    const raw = window.localStorage.getItem(HARTHMERE_VENDOR_STOCK_STATE_KEY);
+    const raw = harthmereLocalStorage.getItem(HARTHMERE_VENDOR_STOCK_STATE_KEY);
     if (!raw) {
       return freshVendorRuntimeState();
     }
@@ -210,7 +211,7 @@ export function writeHarthmereVendorRuntimeState(state: HarthmereVendorRuntimeSt
   if (!vendorBrowser()) {
     return;
   }
-  window.localStorage.setItem(
+  harthmereLocalStorage.setItem(
     HARTHMERE_VENDOR_STOCK_STATE_KEY,
     JSON.stringify(normalizeVendorRuntimeState(state)),
   );

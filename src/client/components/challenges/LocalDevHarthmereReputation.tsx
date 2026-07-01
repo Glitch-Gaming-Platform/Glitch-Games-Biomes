@@ -1,3 +1,4 @@
+import { harthmereLocalStorage } from "@/client/util/storage";
 import type { TalkDialogStepAction } from "@/client/components/challenges/TalkDialogModalStep";
 import { harthmereUserScopedStorageKey } from "@/client/components/challenges/LocalDevHarthmereUserScope";
 import React, { useEffect, useMemo, useState } from "react";
@@ -307,7 +308,7 @@ export function readHarthmereReputationState(): HarthmereReputationState {
     return EMPTY_STATE;
   }
   try {
-    const raw = window.localStorage.getItem(
+    const raw = harthmereLocalStorage.getItem(
       harthmereUserScopedStorageKey(HARTHMERE_REPUTATION_STATE_KEY),
     );
     if (!raw) {
@@ -323,7 +324,7 @@ function writeHarthmereReputationState(state: HarthmereReputationState) {
   if (!isBrowser()) {
     return;
   }
-  window.localStorage.setItem(
+  harthmereLocalStorage.setItem(
     harthmereUserScopedStorageKey(HARTHMERE_REPUTATION_STATE_KEY),
     JSON.stringify(normalizeState(state)),
   );

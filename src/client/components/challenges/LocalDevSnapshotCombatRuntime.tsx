@@ -1,3 +1,4 @@
+import { harthmereLocalStorage } from "@/client/util/storage";
 import { getOwnedItems } from "@/client/components/inventory/helpers";
 import { awardHarthmereQuestXp } from "@/client/components/challenges/LocalDevHarthmereLevelingSystem";
 import { HARTHMERE_COMBAT_EFFECT_EVENT } from "@/client/components/challenges/LocalDevHarthmereCombat";
@@ -90,7 +91,7 @@ export function readSnapshotCombatState(): SnapshotCombatState {
     return { ...EMPTY_COMBAT_STATE };
   }
   try {
-    const raw = window.localStorage.getItem(SNAPSHOT_COMBAT_STATE_KEY);
+    const raw = harthmereLocalStorage.getItem(SNAPSHOT_COMBAT_STATE_KEY);
     return normalizeCombatState(raw ? JSON.parse(raw) : undefined);
   } catch {
     return { ...EMPTY_COMBAT_STATE };
@@ -102,7 +103,7 @@ function writeSnapshotCombatState(state: SnapshotCombatState) {
     return;
   }
   const next = normalizeCombatState({ ...state, updatedAt: Date.now() });
-  window.localStorage.setItem(SNAPSHOT_COMBAT_STATE_KEY, JSON.stringify(next));
+  harthmereLocalStorage.setItem(SNAPSHOT_COMBAT_STATE_KEY, JSON.stringify(next));
   window.dispatchEvent(new Event(SNAPSHOT_COMBAT_STATE_EVENT));
 }
 

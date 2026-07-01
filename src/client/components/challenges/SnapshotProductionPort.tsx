@@ -1,3 +1,4 @@
+import { harthmereLocalStorage } from "@/client/util/storage";
 import { useClientContext } from "@/client/components/contexts/ClientContextReactContext";
 import type { GardenHoseEvent } from "@/client/events/api";
 import type { Vec3 } from "@/shared/math/types";
@@ -64,7 +65,7 @@ function readJsonLocal<T>(key: string, fallback: T): T {
     return fallback;
   }
   try {
-    const raw = window.localStorage.getItem(key);
+    const raw = harthmereLocalStorage.getItem(key);
     return raw ? JSON.parse(raw) : fallback;
   } catch {
     return fallback;
@@ -75,7 +76,7 @@ function writeJsonLocal(key: string, value: unknown) {
   if (!browser()) {
     return;
   }
-  window.localStorage.setItem(key, JSON.stringify(value));
+  harthmereLocalStorage.setItem(key, JSON.stringify(value));
 }
 
 function readJsonScopedLocal<T>(key: string, fallback: T): T {
@@ -88,8 +89,8 @@ function writeJsonScopedLocal(key: string, value: unknown) {
 
 function removeJsonScopedLocal(key: string) {
   if (!browser()) return;
-  window.localStorage.removeItem(snapshotPlayerScopedStorageKey(key));
-  window.localStorage.removeItem(key);
+  harthmereLocalStorage.removeItem(snapshotPlayerScopedStorageKey(key));
+  harthmereLocalStorage.removeItem(key);
 }
 
 function queryValue(names: string[]) {
@@ -102,7 +103,7 @@ function queryValue(names: string[]) {
     if (fromQuery?.trim()) {
       return fromQuery.trim();
     }
-    const fromStorage = window.localStorage.getItem(name);
+    const fromStorage = harthmereLocalStorage.getItem(name);
     if (fromStorage?.trim()) {
       return fromStorage.trim();
     }
@@ -144,7 +145,7 @@ export function snapshotBackendMode(): SnapshotStateBackendMode {
   if (!browser()) {
     return "auto";
   }
-  const explicit = window.localStorage.getItem(
+  const explicit = harthmereLocalStorage.getItem(
     SNAPSHOT_STATE_BACKEND_RULES.localStorageModeKey,
   ) as SnapshotStateBackendMode | null;
   if (
@@ -509,7 +510,7 @@ export const SnapshotProductionPortRuntimeController: React.FunctionComponent<{}
       backendRules: SNAPSHOT_STATE_BACKEND_RULES,
       mode: snapshotBackendMode,
       setMode: (mode: SnapshotStateBackendMode) => {
-        window.localStorage.setItem(SNAPSHOT_STATE_BACKEND_RULES.localStorageModeKey, mode);
+        harthmereLocalStorage.setItem(SNAPSHOT_STATE_BACKEND_RULES.localStorageModeKey, mode);
         window.dispatchEvent(new Event(SNAPSHOT_PRODUCTION_PORT_EVENT));
       },
       identity: snapshotBackendIdentity,
@@ -526,8 +527,8 @@ export const SnapshotProductionPortRuntimeController: React.FunctionComponent<{}
       resolveRewards: snapshotResolveRewardItems,
       npcBounds: SNAPSHOT_GROVE_NPC_VISUAL_BOUNDS,
       clearLocalOnlyMirrors: () => {
-        window.localStorage.removeItem(SNAPSHOT_CLEARED_MUCK_KEY);
-        window.localStorage.removeItem(SNAPSHOT_PHOTO_PROOFS_KEY);
+        harthmereLocalStorage.removeItem(SNAPSHOT_CLEARED_MUCK_KEY);
+        harthmereLocalStorage.removeItem(SNAPSHOT_PHOTO_PROOFS_KEY);
         removeJsonScopedLocal(SNAPSHOT_PRODUCTION_PENDING_KEY);
         window.dispatchEvent(new Event(SNAPSHOT_PRODUCTION_PORT_EVENT));
       },

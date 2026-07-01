@@ -1,3 +1,4 @@
+import { harthmereLocalStorage } from "@/client/util/storage";
 import { getOwnedItems } from "@/client/components/inventory/helpers";
 import type { TalkDialogStepAction } from "@/client/components/challenges/TalkDialogModalStep";
 import { completeHarthmereDailyTaskSoon } from "@/client/components/challenges/harthmereDailyTasks";
@@ -269,7 +270,7 @@ export function readSnapshotMissionState(): SnapshotMissionState {
     return cloneState(EMPTY_SNAPSHOT_MISSION_STATE);
   }
   try {
-    const raw = window.localStorage.getItem(SNAPSHOT_MISSION_STATE_KEY);
+    const raw = harthmereLocalStorage.getItem(SNAPSHOT_MISSION_STATE_KEY);
     return normalizeSnapshotMissionState(
       raw ? (JSON.parse(raw) as Partial<SnapshotMissionState>) : undefined
     );
@@ -402,7 +403,7 @@ export function writeSnapshotMissionState(state: SnapshotMissionState) {
     ...state,
     updatedAt: Date.now(),
   });
-  window.localStorage.setItem(SNAPSHOT_MISSION_STATE_KEY, JSON.stringify(next));
+  harthmereLocalStorage.setItem(SNAPSHOT_MISSION_STATE_KEY, JSON.stringify(next));
   window.dispatchEvent(new Event(SNAPSHOT_MISSION_STATE_EVENT));
 }
 
@@ -517,7 +518,7 @@ function readSnapshotMissionEvents(): SnapshotMissionEvent[] {
     return [];
   }
   try {
-    const raw = window.localStorage.getItem(SNAPSHOT_MISSION_EVENTS_KEY);
+    const raw = harthmereLocalStorage.getItem(SNAPSHOT_MISSION_EVENTS_KEY);
     return raw ? (JSON.parse(raw) as SnapshotMissionEvent[]) : [];
   } catch {
     return [];
@@ -536,7 +537,7 @@ function recordSnapshotMissionEvent(
     { at: Date.now(), kind, title, detail },
     ...readSnapshotMissionEvents(),
   ].slice(0, 16);
-  window.localStorage.setItem(
+  harthmereLocalStorage.setItem(
     SNAPSHOT_MISSION_EVENTS_KEY,
     JSON.stringify(next)
   );
@@ -557,13 +558,13 @@ function recordSnapshotMissionReward(reward: string) {
   });
   const existing = (() => {
     try {
-      const raw = window.localStorage.getItem(SNAPSHOT_MISSION_REWARDS_KEY);
+      const raw = harthmereLocalStorage.getItem(SNAPSHOT_MISSION_REWARDS_KEY);
       return raw ? (JSON.parse(raw) as string[]) : [];
     } catch {
       return [];
     }
   })();
-  window.localStorage.setItem(
+  harthmereLocalStorage.setItem(
     SNAPSHOT_MISSION_REWARDS_KEY,
     JSON.stringify([...new Set([reward, ...existing])].slice(0, 20))
   );
@@ -573,7 +574,7 @@ function recordSnapshotMissionReward(reward: string) {
 function readSnapshotRoadAheadEquippedGearSlots() {
   if (!isBrowser()) return [];
   try {
-    const raw = window.localStorage.getItem(
+    const raw = harthmereLocalStorage.getItem(
       SNAPSHOT_ROAD_AHEAD_EQUIPPED_GEAR_KEY
     );
     const parsed = raw ? JSON.parse(raw) : undefined;
@@ -631,7 +632,7 @@ export function recordSnapshotRoadAheadEquippedGearSlotForBiomesUI(
   const next = [
     ...new Set([...readSnapshotRoadAheadEquippedGearSlots(), normalized]),
   ];
-  window.localStorage.setItem(
+  harthmereLocalStorage.setItem(
     SNAPSHOT_ROAD_AHEAD_EQUIPPED_GEAR_KEY,
     JSON.stringify(next)
   );

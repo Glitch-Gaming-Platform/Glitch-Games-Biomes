@@ -1,3 +1,4 @@
+import { harthmereLocalStorage } from "@/client/util/storage";
 export const HARTHMERE_COMBAT_DEBUG_PROBE = "harthmere-combat-debug-probe";
 export const HARTHMERE_FULL_FIGHT_SYSTEM_REVISION =
   "harthmere-full-fight-system";
@@ -686,7 +687,7 @@ type HarthmereCombatDebugStage =
 function harthmereCombatDebugEnabled() {
   return (
     isBrowser() &&
-    window.localStorage.getItem("biomes.localDev.harthmere.combatDebug") === "1"
+    harthmereLocalStorage.getItem("biomes.localDev.harthmere.combatDebug") === "1"
   );
 }
 
@@ -1233,7 +1234,7 @@ function equippedWeaponContext(): EquippedWeaponContext {
     return fallback;
   }
   try {
-    const raw = window.localStorage.getItem(HARTHMERE_INVENTORY_STATE_KEY);
+    const raw = harthmereLocalStorage.getItem(HARTHMERE_INVENTORY_STATE_KEY);
     if (!raw) {
       return fallback;
     }
@@ -1937,7 +1938,7 @@ export function readHarthmereCombatState(): HarthmereCombatState {
     return normalizeState(undefined);
   }
   try {
-    const raw = window.localStorage.getItem(
+    const raw = harthmereLocalStorage.getItem(
       harthmereUserScopedStorageKey(HARTHMERE_COMBAT_STATE_KEY)
     );
     if (!raw) {
@@ -2014,7 +2015,7 @@ function writeHarthmereCombatState(state: HarthmereCombatState) {
         }
       : undefined,
   });
-  window.localStorage.setItem(
+  harthmereLocalStorage.setItem(
     harthmereUserScopedStorageKey(HARTHMERE_COMBAT_STATE_KEY),
     JSON.stringify(normalizeState(state))
   );
@@ -2793,11 +2794,11 @@ function rememberHarthmereReputationLock(lockKey: string, cooldownMs: number) {
     `biomes.localDev.harthmere.reputationLock.${lockKey}`
   );
   const now = Date.now();
-  const last = Number(window.localStorage.getItem(storageKey) ?? "0");
+  const last = Number(harthmereLocalStorage.getItem(storageKey) ?? "0");
   if (last > 0 && now - last < cooldownMs) {
     return false;
   }
-  window.localStorage.setItem(storageKey, String(now));
+  harthmereLocalStorage.setItem(storageKey, String(now));
   return true;
 }
 
@@ -4151,7 +4152,7 @@ export function useHarthmereAmbientThreats() {
       }
 
       const cooldownKey = `biomes.localDev.harthmere.ambientThreat.${threat.offset}`;
-      const last = Number(window.localStorage.getItem(cooldownKey) ?? "0");
+      const last = Number(harthmereLocalStorage.getItem(cooldownKey) ?? "0");
       const now = Date.now();
       if (now - last < 45000) {
         return;
@@ -4160,7 +4161,7 @@ export function useHarthmereAmbientThreats() {
         return;
       }
 
-      window.localStorage.setItem(cooldownKey, String(now));
+      harthmereLocalStorage.setItem(cooldownKey, String(now));
       triggerHarthmereAmbientThreatAttack(threat.offset, threat.label);
     }, 3500);
 
@@ -7837,7 +7838,7 @@ function installHarthmereRetaliationTraceBridge() {
 
   const start = () => {
     stop();
-    window.localStorage.setItem("biomes.localDev.harthmere.combatDebug", "1");
+    harthmereLocalStorage.setItem("biomes.localDev.harthmere.combatDebug", "1");
     installHarthmereCombatDebugListeners();
     traceState.active = true;
     traceState.records = [];
@@ -8063,13 +8064,13 @@ function installHarthmereCombatDebugBridge() {
       (window as typeof window & { __harthmereCombatDebugLog?: unknown[] })
         .__harthmereCombatDebugLog ?? [],
     enable: () => {
-      window.localStorage.setItem("biomes.localDev.harthmere.combatDebug", "1");
+      harthmereLocalStorage.setItem("biomes.localDev.harthmere.combatDebug", "1");
       console.info(
         "Harthmere combat debug enabled. Use __harthmereCombatDebug.listen(), .nearestTarget(), .summaryNearest(), .diagnoseAsync(offset), .diagnoseNearestAsync() (no offset needed), .attackAndProbe(), and .log()."
       );
     },
     disable: () =>
-      window.localStorage.removeItem("biomes.localDev.harthmere.combatDebug"),
+      harthmereLocalStorage.removeItem("biomes.localDev.harthmere.combatDebug"),
   };
   debugHarthmereCombat("combat.bridge.install", {
     methods: Object.keys(win.__harthmereCombatDebug),

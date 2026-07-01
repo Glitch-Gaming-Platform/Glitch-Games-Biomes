@@ -1,3 +1,4 @@
+import { harthmereLocalStorage } from "@/client/util/storage";
 import { applyHarthmereReputationChange } from "@/client/components/challenges/LocalDevHarthmereReputation";
 import { applyHarthmereLocalDevTownEconomyImpact } from "@/client/components/challenges/LocalDevHarthmereEconomyHardening";
 
@@ -302,7 +303,7 @@ function normalizeState(
 export function readHarthmereQuestEconomyState() {
   if (!isBrowser()) return emptyState();
   try {
-    const raw = window.localStorage.getItem(HARTHMERE_QUEST_ECONOMY_STATE_KEY);
+    const raw = harthmereLocalStorage.getItem(HARTHMERE_QUEST_ECONOMY_STATE_KEY);
     return raw
       ? normalizeState(JSON.parse(raw) as Partial<HarthmereQuestEconomyState>)
       : emptyState();
@@ -315,7 +316,7 @@ export function writeHarthmereQuestEconomyState(
   state: HarthmereQuestEconomyState
 ) {
   if (!isBrowser()) return;
-  window.localStorage.setItem(
+  harthmereLocalStorage.setItem(
     HARTHMERE_QUEST_ECONOMY_STATE_KEY,
     JSON.stringify(normalizeState(state))
   );

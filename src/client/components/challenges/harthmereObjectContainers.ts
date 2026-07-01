@@ -3,6 +3,7 @@ import { consumeHarthmereItemByItemId } from "@/client/components/challenges/Loc
 import { completeHarthmereDailyTaskSoon } from "@/client/components/challenges/harthmereDailyTasks";
 import { dispatchHarthmereWorldObjectInteractionEvent } from "@/client/components/challenges/harthmereObjectInteractions";
 import { harthmereUserScopedStorageKey } from "@/client/components/challenges/LocalDevHarthmereUserScope";
+import { harthmereLocalStorage } from "@/client/util/storage";
 import type { BiomesId } from "@/shared/ids";
 
 export const HARTHMERE_OBJECT_CONTAINER_OPENED_EVENT =
@@ -176,42 +177,47 @@ function parseContainerStore(
   return parsed as Record<string, HarthmereObjectContainerRecord>;
 }
 
+// HARTHMERE_CONTAINER_STORAGE (2026-07-01): reference migration to the portable
+// storage layer (see src/client/util/storage/README.md). The container/crate
+// contents used to persist through raw `window.localStorage`, whose UNGUARDED
+// write threw a SecurityError in the cross-origin glitch.fun iframe — so opening
+// the quest-gated Clothing Crate seeded its loot, then threw while persisting,
+// leaving the player with no clothing and the "equip both clothing slots"
+// objective impossible to complete. `harthmereLocalStorage` is a drop-in with the
+// same synchronous API that NEVER throws: it serves an in-memory cache in the
+// iframe (so the crate works this session) and best-effort persists to
+// localStorage / Glitch Cloud Save when the browser allows it.
 function readContainerStore(): Record<string, HarthmereObjectContainerRecord> {
-  if (!isBrowser()) {
-    return {};
+  const scopedKey = objectContainerContentsStorageKey();
+  const scoped = parseContainerStore(harthmereLocalStorage.getItem(scopedKey));
+  if (scoped !== undefined) {
+    return scoped;
   }
-  try {
-    const scopedKey = objectContainerContentsStorageKey();
-    const scoped = parseContainerStore(window.localStorage.getItem(scopedKey));
-    if (scoped !== undefined) {
-      return scoped;
-    }
-    const legacy = parseContainerStore(
-      window.localStorage.getItem(HARTHMERE_OBJECT_CONTAINER_CONTENTS_KEY)
-    );
-    if (legacy !== undefined) {
-      // Migrate old unscoped browser saves once. After this, container contents
-      // are per cloud-save user so one player cannot consume another's quest box.
-      window.localStorage.setItem(scopedKey, JSON.stringify(legacy));
-      return legacy;
-    }
-    return {};
-  } catch {
-    return {};
+  const legacy = parseContainerStore(
+    harthmereLocalStorage.getItem(HARTHMERE_OBJECT_CONTAINER_CONTENTS_KEY)
+  );
+  if (legacy !== undefined) {
+    // Migrate old unscoped browser saves once. After this, container contents
+    // are per cloud-save user so one player cannot consume another's quest box.
+    harthmereLocalStorage.setItem(scopedKey, JSON.stringify(legacy));
+    return legacy;
   }
+  return {};
 }
 
 function writeContainerStore(
   store: Record<string, HarthmereObjectContainerRecord>
 ) {
-  if (!isBrowser()) {
-    return;
-  }
-  window.localStorage.setItem(
+  // Never throws; persists when the browser allows and always keeps the value in
+  // the in-memory cache so the crate works this session even in a blocked iframe.
+  harthmereLocalStorage.setItem(
     objectContainerContentsStorageKey(),
     JSON.stringify(store)
   );
-  window.dispatchEvent(new Event(HARTHMERE_OBJECT_CONTAINER_CHANGED_EVENT));
+  // Fire the change event regardless of persistence so the inventory/UI updates.
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event(HARTHMERE_OBJECT_CONTAINER_CHANGED_EVENT));
+  }
 }
 
 export interface HarthmereContainerSeedOptions {
@@ -520,7 +526,7 @@ export function readHarthmereContainerOpenRequest():
     return undefined;
   }
   try {
-    const raw = window.localStorage.getItem(
+    const raw = harthmereLocalStorage.getItem(
       HARTHMERE_OBJECT_CONTAINER_OPEN_REQUEST_KEY
     );
     if (!raw) {
@@ -540,7 +546,7 @@ export function clearHarthmereContainerOpenRequest() {
   if (!isBrowser()) {
     return;
   }
-  window.localStorage.removeItem(HARTHMERE_OBJECT_CONTAINER_OPEN_REQUEST_KEY);
+  harthmereLocalStorage.removeItem(HARTHMERE_OBJECT_CONTAINER_OPEN_REQUEST_KEY);
 }
 
 // HARTHMERE_OBJECT_CONTAINER_UI:
@@ -581,7 +587,7 @@ export function openHarthmereObjectContainer({
     label: displayLabel,
   };
   if (isBrowser()) {
-    window.localStorage.setItem(
+    harthmereLocalStorage.setItem(
       HARTHMERE_OBJECT_CONTAINER_OPEN_REQUEST_KEY,
       JSON.stringify(request)
     );

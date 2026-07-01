@@ -1,3 +1,4 @@
+import { harthmereLocalStorage } from "@/client/util/storage";
 import { harthmereUserScopedStorageKey } from "@/client/components/challenges/LocalDevHarthmereUserScope";
 import {
   LIVE_ENTITY_ROBOT_DEFAULT_DRAIN_PER_HOUR,
@@ -42,7 +43,7 @@ function hasStoredLiveEntityRobotEnergyState() {
   if (!isLiveEntityRobotEnergyBrowser()) {
     return false;
   }
-  return window.localStorage.getItem(storageKey()) !== null;
+  return harthmereLocalStorage.getItem(storageKey()) !== null;
 }
 
 function finiteRobotNumber(value: unknown) {
@@ -89,7 +90,7 @@ export function readLiveEntityRobotEnergyState(
     return createLiveEntityRobotEnergyState(nowMs);
   }
   try {
-    const raw = window.localStorage.getItem(storageKey());
+    const raw = harthmereLocalStorage.getItem(storageKey());
     return normalizeLiveEntityRobotEnergyState(
       raw ? JSON.parse(raw) : undefined,
       nowMs
@@ -105,7 +106,7 @@ export function writeLiveEntityRobotEnergyState(
   if (!isLiveEntityRobotEnergyBrowser()) {
     return;
   }
-  window.localStorage.setItem(
+  harthmereLocalStorage.setItem(
     storageKey(),
     JSON.stringify({
       ...state,

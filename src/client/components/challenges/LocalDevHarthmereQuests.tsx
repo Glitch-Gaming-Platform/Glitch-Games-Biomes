@@ -1,3 +1,4 @@
+import { harthmereLocalStorage } from "@/client/util/storage";
 import {
   combatActionsForHarthmereNpc,
   getHarthmereCombatNpcStatus,
@@ -727,7 +728,7 @@ export function readHarthmereQuestState(): HarthmereQuestState {
     return EMPTY_STATE;
   }
   try {
-    const raw = window.localStorage.getItem(HARTHMERE_QUEST_STATE_KEY);
+    const raw = harthmereLocalStorage.getItem(HARTHMERE_QUEST_STATE_KEY);
     if (!raw) {
       return createHarthmereStarterQuestState();
     }
@@ -744,7 +745,7 @@ export function writeHarthmereQuestState(state: HarthmereQuestState) {
     return;
   }
   const normalized = normalizeHarthmereQuestState(state);
-  window.localStorage.setItem(
+  harthmereLocalStorage.setItem(
     HARTHMERE_QUEST_STATE_KEY,
     JSON.stringify(normalized)
   );
@@ -782,7 +783,7 @@ function recordMissionEvent(kind: string, title: string, detail: string) {
     return;
   }
   try {
-    const raw = window.localStorage.getItem(HARTHMERE_MISSION_EVENTS_KEY);
+    const raw = harthmereLocalStorage.getItem(HARTHMERE_MISSION_EVENTS_KEY);
     const events = raw ? (JSON.parse(raw) as unknown[]) : [];
     const next = [
       {
@@ -793,7 +794,7 @@ function recordMissionEvent(kind: string, title: string, detail: string) {
       },
       ...events,
     ].slice(0, 12);
-    window.localStorage.setItem(
+    harthmereLocalStorage.setItem(
       HARTHMERE_MISSION_EVENTS_KEY,
       JSON.stringify(next)
     );

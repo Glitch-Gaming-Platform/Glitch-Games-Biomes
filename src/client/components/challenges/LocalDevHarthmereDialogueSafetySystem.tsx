@@ -1,3 +1,4 @@
+import { harthmereLocalStorage } from "@/client/util/storage";
 
 import React, { useEffect, useState } from "react";
 
@@ -59,7 +60,7 @@ export function emptyHarthmereDialogueSafetyState(): HarthmereDialogueSafetyStat
 export function readHarthmereDialogueSafetyState(): HarthmereDialogueSafetyState {
   if (!isBrowser()) return emptyHarthmereDialogueSafetyState();
   try {
-    const parsed = JSON.parse(window.localStorage.getItem(HARTHMERE_DIALOGUE_SAFETY_STORAGE_KEY) || "null");
+    const parsed = JSON.parse(harthmereLocalStorage.getItem(HARTHMERE_DIALOGUE_SAFETY_STORAGE_KEY) || "null");
     if (parsed?.version !== 1) return emptyHarthmereDialogueSafetyState();
     return { ...emptyHarthmereDialogueSafetyState(), ...parsed };
   } catch { return emptyHarthmereDialogueSafetyState(); }
@@ -67,7 +68,7 @@ export function readHarthmereDialogueSafetyState(): HarthmereDialogueSafetyState
 
 export function writeHarthmereDialogueSafetyState(state: HarthmereDialogueSafetyState) {
   if (!isBrowser()) return;
-  window.localStorage.setItem(HARTHMERE_DIALOGUE_SAFETY_STORAGE_KEY, JSON.stringify(state));
+  harthmereLocalStorage.setItem(HARTHMERE_DIALOGUE_SAFETY_STORAGE_KEY, JSON.stringify(state));
   window.dispatchEvent(new Event("biomes:harthmere-dialogue-safety"));
 }
 

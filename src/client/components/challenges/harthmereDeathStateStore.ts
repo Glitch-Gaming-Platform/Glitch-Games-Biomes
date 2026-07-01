@@ -1,3 +1,4 @@
+import { harthmereLocalStorage } from "@/client/util/storage";
 import { harthmereUserScopedStorageKey } from "@/client/components/challenges/LocalDevHarthmereUserScope";
 
 export const HARTHMERE_DEATH_STATE_KEY = "biomes.localDev.harthmere.deathState";
@@ -118,10 +119,10 @@ export function readHarthmereDeathState(): HarthmereDeathState {
     return defaultHarthmereDeathState();
   }
   try {
-    const scopedRaw = window.localStorage.getItem(
+    const scopedRaw = harthmereLocalStorage.getItem(
       harthmereUserScopedStorageKey(HARTHMERE_DEATH_STATE_KEY)
     );
-    const legacyRaw = window.localStorage.getItem(HARTHMERE_DEATH_STATE_KEY);
+    const legacyRaw = harthmereLocalStorage.getItem(HARTHMERE_DEATH_STATE_KEY);
     const raw = scopedRaw ?? legacyRaw;
     if (!raw) {
       return defaultHarthmereDeathState();
@@ -138,7 +139,7 @@ export function writeHarthmereDeathState(state: HarthmereDeathState) {
   if (!isBrowser()) {
     return;
   }
-  window.localStorage.setItem(
+  harthmereLocalStorage.setItem(
     harthmereUserScopedStorageKey(HARTHMERE_DEATH_STATE_KEY),
     JSON.stringify(normalizeHarthmereDeathState(state))
   );

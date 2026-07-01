@@ -1,3 +1,4 @@
+import { harthmereLocalStorage } from "@/client/util/storage";
 // HARTHMERE_ROAD_AHEAD_CLOTHING_GATE:
 // "The Road Ahead" hands the player their first outfit out of the Clothing
 // Crate once the route has moved past the Billy/Muckwad handoff and into the
@@ -96,7 +97,7 @@ export function readRoadAheadClothingCrateReady(): boolean {
     return false;
   }
   try {
-    const raw = window.localStorage.getItem(ROAD_AHEAD_MISSION_STATE_KEY);
+    const raw = harthmereLocalStorage.getItem(ROAD_AHEAD_MISSION_STATE_KEY);
     if (!raw) {
       return false;
     }

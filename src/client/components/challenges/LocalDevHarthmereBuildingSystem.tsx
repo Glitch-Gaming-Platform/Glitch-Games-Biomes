@@ -1,3 +1,4 @@
+import { harthmereLocalStorage } from "@/client/util/storage";
 import {
   advanceHarthmereUpkeepLifecycle,
   applyHarthmereBuildingDamage,
@@ -675,7 +676,7 @@ export function readHarthmereBuildingState(): HarthmereBuildingState {
     return defaultState();
   }
   try {
-    const raw = window.localStorage.getItem(HARTHMERE_BUILDING_STATE_KEY);
+    const raw = harthmereLocalStorage.getItem(HARTHMERE_BUILDING_STATE_KEY);
     return raw
       ? normalizeState(JSON.parse(raw) as Partial<HarthmereBuildingState>)
       : defaultState();
@@ -688,7 +689,7 @@ export function writeHarthmereBuildingState(state: HarthmereBuildingState) {
   if (!isBrowser()) {
     return;
   }
-  window.localStorage.setItem(
+  harthmereLocalStorage.setItem(
     HARTHMERE_BUILDING_STATE_KEY,
     JSON.stringify(normalizeState(state))
   );

@@ -1,3 +1,4 @@
+import { harthmereLocalStorage } from "@/client/util/storage";
 import {
   HARTHMERE_MISSION_EVENTS_KEY,
   QUESTS,
@@ -775,7 +776,7 @@ function readMissionEvents(): unknown[] {
   )
     return [];
   try {
-    const raw = window.localStorage.getItem(HARTHMERE_MISSION_EVENTS_KEY);
+    const raw = harthmereLocalStorage.getItem(HARTHMERE_MISSION_EVENTS_KEY);
     const parsed = raw ? JSON.parse(raw) : [];
     return Array.isArray(parsed) ? parsed.slice(0, 20) : [];
   } catch {
