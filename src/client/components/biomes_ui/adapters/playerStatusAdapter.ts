@@ -1,5 +1,6 @@
 import * as React from "react";
 import { fetchHarthmereLiveWithTimeout } from "@/client/components/harthmere_live_fetch";
+import { markHarthmereLiveSnapshotSeen } from "@/client/components/challenges/harthmereLiveAuthoritySignal";
 
 export const BIOMES_UI_PLAYER_STATUS_UPDATED_EVENT =
   "biomes:live-mode-player-status-updated";
@@ -156,21 +157,34 @@ export function biomesUIVitalsDisplayFromLiveStatusForTest(
   const level = Math.max(1, safeWhole(live.level, fallback.level ?? 1));
   const className = String(live.className || "").trim();
   const preferFallbackCombat = shouldPreferFallbackCombatVitals(live, fallback);
-  const hp = preferFallbackCombat
+  // maxHp / maxResource must be STABLE across the alive↔in-combat transition,
+  // otherwise the health bar visibly rescales when combat starts (the server's
+  // leveled max, e.g. 108, vs the local sim's base max, e.g. 100). We therefore
+  // always take the server's max when it is present — even while we take the
+  // *current* hp from the local fallback for fresh damage feedback — and clamp
+  // hp into that stable range. This makes the bar identical whether alive or in
+  // combat, and is consistent with the server being the source of truth.
+  const liveMaxHp = safeWhole(live.combat?.maxHp, 0);
+  const maxHp = Math.max(
+    1,
+    liveMaxHp > 0 ? liveMaxHp : Math.max(1, fallback.maxHp)
+  );
+  const rawHp = preferFallbackCombat
     ? fallback.hp
     : safeWhole(live.combat?.hp, fallback.hp);
-  const maxHp = preferFallbackCombat
-    ? Math.max(1, fallback.maxHp)
-    : Math.max(1, safeWhole(live.combat?.maxHp, fallback.maxHp));
+  const hp = Math.min(maxHp, Math.max(0, rawHp));
   const combatState = preferFallbackCombat
     ? fallback.combatState
     : String(live.combat?.deathState || fallback.combatState);
-  const resourceValue = preferFallbackCombat
+  const liveMaxResource = safeWhole(live.combat?.maxResource, 0);
+  const resourceMax = Math.max(
+    1,
+    liveMaxResource > 0 ? liveMaxResource : Math.max(1, fallback.resourceMax)
+  );
+  const rawResourceValue = preferFallbackCombat
     ? fallback.resourceValue
     : safeWhole(live.combat?.resource, fallback.resourceValue);
-  const resourceMax = preferFallbackCombat
-    ? Math.max(1, fallback.resourceMax)
-    : Math.max(1, safeWhole(live.combat?.maxResource, fallback.resourceMax));
+  const resourceValue = Math.min(resourceMax, Math.max(0, rawResourceValue));
   return {
     ...fallback,
     hp,
@@ -317,6 +331,12 @@ export function useBiomesUIPlayerStatusState() {
       try {
         const next = await fetchBiomesUIPlayerStatus();
         if (!cancelled) setStatus(next);
+        if (next) {
+          // A server snapshot exists → the server is the authority for runtime
+          // values. Record it so client simulations (stamina drain/death,
+          // campfire heal, ...) defer to the server and stop double-owning them.
+          markHarthmereLiveSnapshotSeen();
+        }
       } catch {
         if (!cancelled) setStatus(undefined);
       } finally {
@@ -351,6 +371,9 @@ export function useBiomesUIPlayerStatusState() {
           });
           return;
         }
+        // Server-fed status event (poll response, live-mode action response,
+        // environment damage, respawn, dialogue) → server authority is present.
+        markHarthmereLiveSnapshotSeen();
         setStatus(next);
       } else {
         void refresh();

@@ -13,6 +13,7 @@ import {
   readHarthmereCombatState,
 } from "@/client/components/challenges/LocalDevHarthmereCombat";
 import { HARTHMERE_LOCAL_DEV_STATE_KEYS } from "@/client/components/challenges/LocalDevHarthmereEconomyHardening";
+import { harthmereLiveSnapshotPresent } from "@/client/components/challenges/harthmereLiveAuthoritySignal";
 import { harthmereUserScopedStorageKey } from "@/client/components/challenges/LocalDevHarthmereUserScope";
 import { HARTHMERE_INVENTORY_EVENT } from "@/client/components/challenges/harthmereEvents";
 import { isHarthmerePlacedCookStationItem } from "@/client/components/overlays/inspected/placeables/craftingStationCookRouting";
@@ -227,12 +228,45 @@ export function restoreHarthmereFoodStaminaToFullForRespawn(
   return result;
 }
 
+// Pure decision for what the client stamina tick should do this cycle. Extracted
+// so the single-source-of-truth gating is unit-testable without React.
+//
+// - "client_simulates": no live server snapshot → the client sim is the sole
+//   stamina authority; run the normal drain/death simulation.
+// - "server_owns_keep_clock": a live snapshot is present (server owns stamina)
+//   and the local sim is still alive → don't drain or trigger death, but advance
+//   the local clock so no phantom drain backlog builds up if the player later
+//   drops to offline mode.
+// - "server_owns_frozen": server owns stamina and the local sim is already at
+//   zero/dead → do nothing at all (never trigger a second, client-side death).
+export type HarthmereClientStaminaTickPlan =
+  | "client_simulates"
+  | "server_owns_keep_clock"
+  | "server_owns_frozen";
+
+export function harthmereClientStaminaTickPlanForTest(input: {
+  liveSnapshotPresent: boolean;
+  stamina: number;
+  deadFromStaminaAtMs?: number;
+}): HarthmereClientStaminaTickPlan {
+  if (!input.liveSnapshotPresent) {
+    return "client_simulates";
+  }
+  return input.stamina > 0 && input.deadFromStaminaAtMs === undefined
+    ? "server_owns_keep_clock"
+    : "server_owns_frozen";
+}
+
 export function harthmereCampfireWarmthHealDecisionForTest(input: {
   nearWarmth: boolean;
   gameplayActive: boolean;
   hp: number;
   maxHp: number;
   combatState?: string;
+  // When a live server snapshot is present the server owns HP, so the client
+  // campfire heal must be suppressed (single source of truth). Defaults to
+  // false so offline / local-dev behaviour is unchanged.
+  liveSnapshotPresent?: boolean;
 }) {
   const hp = Math.max(0, Number(input.hp) || 0);
   const maxHp = Math.max(1, Number(input.maxHp) || 1);
@@ -244,6 +278,7 @@ export function harthmereCampfireWarmthHealDecisionForTest(input: {
   const shouldHeal =
     input.gameplayActive === true &&
     input.nearWarmth === true &&
+    input.liveSnapshotPresent !== true &&
     aliveAndDamaged;
   return {
     shouldHeal,
@@ -303,6 +338,27 @@ export const HarthmereFoodStaminaRuntimeController: React.FunctionComponent<{}> 
       };
       const tick = () => {
         const before = readHarthmereFoodStaminaState();
+        // Single source of truth: when a live server snapshot is present the
+        // server owns stamina (and its starvation death). The client must not
+        // run its own drain clock or trigger a second death here — that was the
+        // dual-source "kills you twice" bug. See harthmereClientStaminaTickPlan.
+        const plan = harthmereClientStaminaTickPlanForTest({
+          liveSnapshotPresent: harthmereLiveSnapshotPresent(),
+          stamina: before.stamina,
+          deadFromStaminaAtMs: before.deadFromStaminaAtMs,
+        });
+        if (plan !== "client_simulates") {
+          // Server owns stamina. Only keep the local clock current (while the
+          // sim is still alive) so no phantom drain backlog accrues before a
+          // possible later offline transition; never drain or trigger death.
+          if (plan === "server_owns_keep_clock") {
+            writeHarthmereFoodStaminaState({
+              ...before,
+              lastStaminaTickMs: Date.now(),
+            });
+          }
+          return;
+        }
         const carriedInventory = readCurrentCarriedInventoryForStamina();
         const result = tickHarthmereStaminaForGameplay(
           carriedInventory
@@ -367,12 +423,16 @@ export const HarthmereCampfireWarmthRuntimeController: React.FunctionComponent<{
       };
       const tick = () => {
         const combat = readHarthmereCombatState();
+        // HP is server-owned when a live snapshot is present, so the client
+        // campfire heal is suppressed inside the decision (single source of
+        // truth). Offline, the client sim remains the sole HP authority.
         const decision = harthmereCampfireWarmthHealDecisionForTest({
           nearWarmth: isNearPlacedWarmth(),
           gameplayActive: isGameplayActive(),
           hp: combat.player.hp,
           maxHp: combat.player.maxHp,
           combatState: combat.player.combatState,
+          liveSnapshotPresent: harthmereLiveSnapshotPresent(),
         });
         if (decision.shouldHeal && decision.amount > 0) {
           healHarthmerePlayer(decision.amount, "Campfire warmth");

@@ -334,8 +334,34 @@ export class WebSocketZrpcClient
     this.refreshBufferedAmount();
   }
 
+  // The periodic state check runs on a setTimeout loop. When the browser tab is
+  // backgrounded/throttled or the main thread is starved (we have seen sustained
+  // FPS of 0-6 under heavy client load), this loop stops firing for many
+  // seconds. On resume, `lastServerMessageTime.elapsed` is huge purely because
+  // the client could not *process* incoming frames — not because the socket
+  // actually died. Treating that as a "Connection timeout" reconnect is a false
+  // positive that then CANCELS every in-flight `/sync/publish` (mining, placing,
+  // eating, respawn), so those mutations silently never commit.
+  //
+  // Detect the freeze by measuring how long the loop iteration actually took: if
+  // it vastly overran the intended interval, the environment was frozen. In that
+  // case give the connection a fresh window (reset the message timer) instead of
+  // reconnecting, so a local hitch never nukes the socket and its pending
+  // mutations. A genuinely dead connection will still be caught on the next
+  // (non-frozen) cycle once the fresh window elapses.
+  private static readonly CHECK_STATE_INTERVAL_MS = 500;
+  private static readonly CHECK_STATE_FREEZE_GRACE_MS = 2_000;
   private async periodicallyCheckState(signal: AbortSignal) {
-    while (await sleep(500, signal)) {
+    let lastCheckAtMs = Date.now();
+    while (await sleep(WebSocketZrpcClient.CHECK_STATE_INTERVAL_MS, signal)) {
+      const nowMs = Date.now();
+      const loopGapMs = nowMs - lastCheckAtMs;
+      lastCheckAtMs = nowMs;
+      if (loopGapMs > WebSocketZrpcClient.CHECK_STATE_FREEZE_GRACE_MS) {
+        // The check loop itself stalled → the socket never had a fair chance to
+        // deliver/process messages. Don't count that as a network timeout.
+        this.lastServerMessageTime.reset();
+      }
       this.checkState();
     }
   }

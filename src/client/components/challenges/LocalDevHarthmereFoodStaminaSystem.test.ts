@@ -11,6 +11,7 @@ import {
   HARTHMERE_CAMPFIRE_WARMTH_TICK_MS,
   HARTHMERE_STAMINA_GAMEPLAY_TICK_MS,
   harthmereCampfireWarmthHealDecisionForTest,
+  harthmereClientStaminaTickPlanForTest,
   normalizeFoodStaminaStateForTest,
 } from "./LocalDevHarthmereFoodStaminaSystem";
 
@@ -174,6 +175,68 @@ describe("LocalDevHarthmereFoodStaminaSystem", () => {
       }).amount,
       0
     );
+  });
+
+  it("lets the client simulate stamina only when no live server snapshot is present", () => {
+    // Offline / local-dev: the client sim is the sole authority and simulates.
+    assert.equal(
+      harthmereClientStaminaTickPlanForTest({
+        liveSnapshotPresent: false,
+        stamina: 40,
+      }),
+      "client_simulates"
+    );
+    // Live + alive: server owns stamina; client only keeps its clock current so
+    // it never accrues a phantom drain backlog for a later offline transition.
+    assert.equal(
+      harthmereClientStaminaTickPlanForTest({
+        liveSnapshotPresent: true,
+        stamina: 40,
+      }),
+      "server_owns_keep_clock"
+    );
+    // Live + already zero/dead locally: do nothing (never trigger a second,
+    // client-side starvation death — the "kills you twice" dual-source bug).
+    assert.equal(
+      harthmereClientStaminaTickPlanForTest({
+        liveSnapshotPresent: true,
+        stamina: 0,
+      }),
+      "server_owns_frozen"
+    );
+    assert.equal(
+      harthmereClientStaminaTickPlanForTest({
+        liveSnapshotPresent: true,
+        stamina: 40,
+        deadFromStaminaAtMs: NOW_MS,
+      }),
+      "server_owns_frozen"
+    );
+  });
+
+  it("suppresses the client campfire heal while the server owns HP (live snapshot present)", () => {
+    const damaged = {
+      nearWarmth: true,
+      gameplayActive: true,
+      hp: 73,
+      maxHp: 100,
+      combatState: "idle",
+    };
+    // Offline: client heals (sole HP authority).
+    assert.equal(
+      harthmereCampfireWarmthHealDecisionForTest({
+        ...damaged,
+        liveSnapshotPresent: false,
+      }).shouldHeal,
+      true
+    );
+    // Live: server owns HP, so the client heal is suppressed.
+    const live = harthmereCampfireWarmthHealDecisionForTest({
+      ...damaged,
+      liveSnapshotPresent: true,
+    });
+    assert.equal(live.shouldHeal, false);
+    assert.equal(live.amount, 0);
   });
 
   it("reads the scoped inventory storage before the legacy key for stamina drain", () => {
