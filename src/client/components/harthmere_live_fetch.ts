@@ -46,13 +46,41 @@ function storedHarthmereInstallId() {
   return undefined;
 }
 
+// HARTHMERE_LIVE_INSTALL_ID_STICKY (2026-07-02): every live-mode request MUST
+// carry the install id, because the server resolves the player-state actor from
+// it. When it is missing, the WRITE path falls back to the raw biomes auth
+// userId — a DIFFERENT actor key than the install-linked user the READ endpoints
+// use — so mutations (eat / mine / place / use) persist to an actor the game
+// never displays (validated in production: eat with the install id restored
+// stamina and decremented the item; without it, nothing happened).
+//
+// The URL/location and the two storage fallbacks can all come up empty inside the
+// blocked/partitioned glitch.fun iframe (raw `window.localStorage` throws). So we
+// cache the first install id we ever see in a module variable that survives
+// storage loss, and the glitch bootstrap seeds it via `rememberHarthmereLiveInstallId`.
+let cachedHarthmereLiveInstallId: string | undefined;
+
+export function rememberHarthmereLiveInstallId(
+  installId: string | null | undefined
+): void {
+  const value = typeof installId === "string" ? installId.trim() : "";
+  if (value) {
+    cachedHarthmereLiveInstallId = value;
+  }
+}
+
 function resolveHarthmereLiveInstallId(url: URL) {
-  return (
+  const resolved =
     installIdFromSearch(url.search) ??
     installIdFromSearch(currentLocationSearch()) ??
     readHarthmereGlitchIdentity()?.installId ??
-    storedHarthmereInstallId()
-  );
+    storedHarthmereInstallId() ??
+    cachedHarthmereLiveInstallId;
+  // Remember it so a later request in a storage-blocked iframe still has it.
+  if (resolved) {
+    cachedHarthmereLiveInstallId = resolved;
+  }
+  return resolved;
 }
 
 function urlBaseForHarthmereLiveFetch() {

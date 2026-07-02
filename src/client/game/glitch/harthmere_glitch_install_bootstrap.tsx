@@ -7,6 +7,7 @@ import {
   rememberHarthmereBiomesAuthSession,
 } from "@/shared/util/harthmere_auth_session";
 import { wireHarthmereCloudSave } from "@/client/util/storage/wire_glitch_cloud_save";
+import { rememberHarthmereLiveInstallId } from "@/client/components/harthmere_live_fetch";
 import { useEffect } from "react";
 
 const INSTALL_PARAM_NAMES = ["install_id", "installId"];
@@ -334,6 +335,11 @@ export function HarthmereGlitchInstallBootstrap() {
     }
     // eslint-disable-next-line no-console
     console.info(`HARTHMERE_INSTALL_ID_FOUND installId=${installId}`);
+
+    // HARTHMERE_LIVE_INSTALL_ID_STICKY: seed the sticky install-id cache used by
+    // every live-mode fetch, so WRITES always carry the install id (and resolve to
+    // the same actor the reads use) even when storage is blocked in the iframe.
+    rememberHarthmereLiveInstallId(installId);
 
     persistInstallId(installId);
 
