@@ -1,3 +1,4 @@
+import { harthmereLiveSnapshotPresent } from "@/client/components/challenges/harthmereLiveAuthoritySignal";
 import { useClientContext } from "@/client/components/contexts/ClientContextReactContext";
 import { defaultHarthmereLiveFetch } from "@/client/components/harthmere_live_fetch";
 import {
@@ -3368,14 +3369,32 @@ export function useBiomesUILiveAdapters({
       [...liveBackpackStackItems, ...liveBackpackInstanceItems],
       ecsBackpackUiItems
     );
-    const localDevBackpackItems = localHarthmereInventoryState.backpack.items
-      .filter((item) => !consumedLocalBackpackInstanceIds.has(item.instanceId))
-      .map((item, index) =>
-        localHarthmereBackpackItemToUiItem(
-          item,
-          baseBackpackUiItems.length + index
-        )
-      );
+    // HARTHMERE_INVENTORY_SERVER_AUTHORITATIVE (2026-07-02): unify the dual-source
+    // inventory the same way HP/stamina were unified. The client-local sim (a
+    // localStorage "biomes.localDev.harthmere.inventoryState") holds a DIFFERENT
+    // inventory, in a DIFFERENT id namespace (string ids like `road_ration`), than
+    // the live server authority (numeric/`b:` bikkie ids from
+    // `live_mode_inventory_loot_state`). Previously the display APPENDED the local
+    // sim's unmatched items on top of the server items, so the hotbar/backpack
+    // showed a confusing blend of two inventories whose counts never reconciled,
+    // and mining/placing updated one while the UI showed the other. When a live
+    // server snapshot is present the server is authoritative, so we DROP the
+    // local-only appendix (verified live: server owns the real items; the local
+    // set was a leftover tutorial/local-dev inventory). Offline / local-dev mode
+    // (no live snapshot) still shows the local sim exactly as before.
+    const liveInventoryAuthoritative = harthmereLiveSnapshotPresent();
+    const localDevBackpackItems = liveInventoryAuthoritative
+      ? []
+      : localHarthmereInventoryState.backpack.items
+          .filter(
+            (item) => !consumedLocalBackpackInstanceIds.has(item.instanceId)
+          )
+          .map((item, index) =>
+            localHarthmereBackpackItemToUiItem(
+              item,
+              baseBackpackUiItems.length + index
+            )
+          );
     const allBackpackUiItems = [
       ...baseBackpackUiItems,
       ...localDevBackpackItems,
@@ -3391,11 +3410,15 @@ export function useBiomesUILiveAdapters({
           !("maxSlots" in materialStorageSnapshot)
         ? materialStorageSnapshot
         : undefined;
+    // Same server-authoritative gate as the backpack: when live, material storage
+    // is the server's alone; offline we still merge the local sim's materials.
     const combinedMaterialStorageItems =
-      mergeInventoryStackRecords(
-        materialStorageItems as Record<string, number> | undefined,
-        localHarthmereInventoryState.materialStorage
-      ) ?? {};
+      (liveInventoryAuthoritative
+        ? (materialStorageItems as Record<string, number> | undefined)
+        : mergeInventoryStackRecords(
+            materialStorageItems as Record<string, number> | undefined,
+            localHarthmereInventoryState.materialStorage
+          )) ?? {};
 
     const liveItemForRef = (ref: InventoryUiRef): InventoryUiItem | null => {
       if (ref.kind !== "item" || isLocalHarthmereItemRef(ref)) return null;
@@ -3587,7 +3610,14 @@ export function useBiomesUILiveAdapters({
         };
       },
       getHotbar: () => ({
+        // HARTHMERE_INVENTORY_SERVER_AUTHORITATIVE: same gate as the backpack.
+        // The local-dev sim hotbar assigns string-id items (`road_ration`…) that
+        // don't exist in the live server inventory, so in live mode it must not
+        // override the real engine/server-backed hotbar slots — otherwise the
+        // hotbar shows phantom items whose counts never match the inventory panel.
+        // Offline/local-dev keeps its own hotbar arrangement.
         items: Array.from({ length: 9 }, (_unused, index) =>
+          !liveInventoryAuthoritative &&
           localHarthmereInventoryState.hotbar[`slot_${index + 1}`]
             ? localHarthmereHotbarItemToUiItem(
                 String(

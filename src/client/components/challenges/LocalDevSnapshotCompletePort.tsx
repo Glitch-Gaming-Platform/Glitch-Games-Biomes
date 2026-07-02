@@ -28,6 +28,11 @@ import {
 } from "@/shared/harthmere/snapshot_grove_content";
 import React, { useEffect, useMemo, useState } from "react";
 import { SNAPSHOT_PER_PLAYER_MISSION_STATE_VERSION } from "@/shared/harthmere/snapshot_live_debug";
+import {
+  advanceSnapshotMissionProgress,
+  chooseSnapshotMissionStep,
+} from "@/shared/harthmere/snapshot_mission_advance";
+import { applySnapshotRoadAheadProgressFromPortForBiomesUI } from "@/client/components/challenges/LocalDevSnapshotMissionBridge";
 
 export const SNAPSHOT_COMPLETE_PORT_STATE_KEY =
   "biomes.localDev.snapshotCompletePortState";
@@ -308,18 +313,31 @@ export const SnapshotCompletePortRuntimeController: React.FunctionComponent<{}> 
   useEffect(() => {
     const handler = (event: GardenHoseEvent) => {
       const state = readSnapshotCompletePortState();
-      const activeMissionId = state.activeMissionId;
       const tests = snapshotMissionTestCases();
-      const activeTests = activeMissionId
-        ? tests.filter((test) => test.questId === activeMissionId)
-        : tests;
-      const active = activeTests[state.activeStepIndex] ?? activeTests[0];
-      if (!active || !triggerMatchesTestCase(active, event)) {
+      const eventMarkerId =
+        (event as any).markerId ??
+        (event as any).target ??
+        (event as any).id ??
+        undefined;
+      // HARTHMERE_SNAPSHOT_MISSION_ORDER_INDEPENDENT (2026-07-02): complete the
+      // earliest still-incomplete step (of the active mission, else any snapshot
+      // mission) whose trigger matches this event, and auto-accept that mission.
+      // The old code only advanced when the event matched the CURRENT step in
+      // strict order after acceptance, so a missed "Meet Jackie" talk or any
+      // out-of-order action left Road Ahead stuck at step 0 forever.
+      const chosen = chooseSnapshotMissionStep(
+        state,
+        tests,
+        (test) => triggerMatchesTestCase(test, event),
+        eventMarkerId !== undefined ? String(eventMarkerId) : undefined
+      );
+      if (!chosen) {
+        // Nothing advanced: still record the raw proof so evidence is not lost.
         if ((event as any).kind === "photo_post_attempt" || (event as any).kind === "show_post_capture") {
           markProof("photo", `photo_${Date.now()}`);
         }
         if ((event as any).kind === "destroy" || (event as any).kind === "clear_muck") {
-          markProof("muck", active?.markerId ?? "muckwad_patch");
+          markProof("muck", String(eventMarkerId ?? "muckwad_patch"));
         }
         if ((event as any).kind === "fishing_catch") {
           markProof("fish", String((event as any).catchId ?? `fish_${Date.now()}`));
@@ -327,32 +345,37 @@ export const SnapshotCompletePortRuntimeController: React.FunctionComponent<{}> 
         return;
       }
 
-      const nextStepIndex = state.activeStepIndex + 1;
-      const missionTests = tests.filter((test) => test.questId === active.questId);
-      const completedMission = nextStepIndex >= missionTests.length;
-      let next = appendAudioCue(
-        {
-          ...state,
-          acceptedMissionIds: unique([...state.acceptedMissionIds, active.questId]),
-          activeMissionId: completedMission ? undefined : active.questId,
-          activeStepIndex: completedMission ? 0 : nextStepIndex,
-          completedStepIds: unique([...state.completedStepIds, active.id]),
-          completedMissionIds: completedMission
-            ? unique([...state.completedMissionIds, active.questId])
-            : state.completedMissionIds,
-          grantedItemIds: unique([...state.grantedItemIds, ...active.expectedInventoryItems]),
-          grantedRewardIds: unique([...state.grantedRewardIds, ...active.expectedRewardIds]),
-        },
-        active.expectedAudioCue,
-      );
+      const { state: advancedState, completedMission, nextStepIndex } =
+        advanceSnapshotMissionProgress(state, tests, chosen);
+      let next = appendAudioCue(advancedState, chosen.expectedAudioCue);
       if (completedMission) {
-        next = grantStructuredReward(next, active.questId);
+        next = grantStructuredReward(next, chosen.questId);
       }
       writeSnapshotCompletePortState(next);
 
+      // Mirror Road Ahead progress into the BiomesUI mission-tracker store so the
+      // displayed quest advances with the player's actions (the tracker reads the
+      // bridge store, not this one). Map complete-port step ids
+      // ("road_ahead_<index>_...") back to their step index.
+      if (chosen.questId === "snapshot_road_ahead_full_chain") {
+        const completedStepIndexes = next.completedStepIds
+          .map((id) => /^road_ahead_(\d+)_/.exec(id)?.[1])
+          .filter((value): value is string => Boolean(value))
+          .map((value) => Number(value));
+        applySnapshotRoadAheadProgressFromPortForBiomesUI({
+          completedStepIndexes,
+          activeStepIndex: completedMission ? 0 : nextStepIndex,
+          missionCompleted: completedMission,
+        });
+      }
+
       if (completedMission) {
-        mapManager.removeNavigationAid?.(760_000 + active.stepIndex);
+        mapManager.removeNavigationAid?.(760_000 + chosen.stepIndex);
       } else {
+        const missionTests = tests
+          .filter((test) => test.questId === chosen.questId)
+          .slice()
+          .sort((a, b) => a.stepIndex - b.stepIndex);
         const nextCase = missionTests[nextStepIndex];
         if (nextCase) {
           pinTestCaseMarker(mapManager, nextCase);

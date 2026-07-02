@@ -279,6 +279,57 @@ export function readSnapshotMissionState(): SnapshotMissionState {
   }
 }
 
+// HARTHMERE_SNAPSHOT_MISSION_BRIDGE_SYNC (2026-07-02): the BiomesUI mission
+// tracker (journal/HUD/map) reads THIS bridge store, but gameplay trigger events
+// advance a SEPARATE store (snapshot_complete_port). That disconnect is why the
+// player could break muckwad / reach the road post yet see no quest progress.
+// The complete-port event handler now calls this to mirror the same Road Ahead
+// progress into the bridge store by STEP INDEX, so the displayed quest advances
+// and completes in step with the player's actions. Idempotent and never throws.
+export function applySnapshotRoadAheadProgressFromPortForBiomesUI(input: {
+  completedStepIndexes: readonly number[];
+  activeStepIndex: number;
+  missionCompleted: boolean;
+}): void {
+  if (!isBrowser()) {
+    return;
+  }
+  const mission = firstSnapshotMission();
+  const state = readSnapshotMissionState();
+  const completedStepIds = new Set(state.completedStepIds);
+  for (const index of input.completedStepIndexes) {
+    const step = mission.steps[index];
+    if (step) {
+      completedStepIds.add(step.id);
+    }
+  }
+  const clampedActive = Math.min(
+    Math.max(0, input.activeStepIndex),
+    Math.max(0, mission.steps.length - 1)
+  );
+  const active = { ...state.active };
+  if (input.missionCompleted) {
+    delete active[mission.id];
+  } else {
+    active[mission.id] = clampedActive;
+  }
+  writeSnapshotMissionState({
+    ...state,
+    accepted: true,
+    active,
+    currentStepIndex: input.missionCompleted
+      ? Math.max(0, mission.steps.length - 1)
+      : clampedActive,
+    completedStepIds: [...completedStepIds],
+    completed: input.missionCompleted
+      ? [...new Set([...state.completed, mission.id])]
+      : state.completed.filter((id) => id !== mission.id),
+    pinned: input.missionCompleted
+      ? state.pinned.filter((id) => id !== mission.id)
+      : [...new Set([...state.pinned, mission.id])],
+  });
+}
+
 type SnapshotRoadAheadChallengeStepHint =
   | {
       id?: unknown;
