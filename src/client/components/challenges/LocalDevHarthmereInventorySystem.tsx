@@ -68,6 +68,12 @@ const HARTHMERE_VENDOR_TRADE_REQUEST_KEY =
   "biomes.localDev.harthmere.pendingVendorTrade";
 export const HARTHMERE_NATIVE_TERRAIN_BLOCK_DESTROYED_EVENT =
   "biomes:harthmere-native-terrain-block-destroyed" as const;
+// Fired by the place-voxel path (client/game/interact/helpers.ts). Mirror of the
+// destroyed event: placing a raw voxel must debit one of the block's biscuit
+// item from the Harthmere live-mode inventory (mining credited it). Keeps the
+// displayed inventory/hotbar count in step with the canonical /sync EditEvent.
+export const HARTHMERE_NATIVE_TERRAIN_BLOCK_PLACED_EVENT =
+  "biomes:harthmere-native-terrain-block-placed" as const;
 
 export interface HarthmereNativeTerrainBlockDestroyedDetail {
   terrainId?: number;
@@ -2364,6 +2370,71 @@ export function submitHarthmereInventoryGrantToLiveModeForTest(
     .catch(() => undefined);
 }
 
+// Server-authoritative DEBIT of an item from the live-mode inventory. Mirror of
+// submitHarthmereInventoryGrantToLiveModeForTest, but removes items instead of
+// granting them. Uses `request_inventory_item_action` with operation
+// "destroy_item" — the client-authorized removal path (request_inventory_mutation
+// requires server authority and would be rejected). Routes through the same
+// prepareHarthmereLiveFetchRequest wrapper so it carries the sticky install id
+// and lands on the SAME actor the reads use.
+export function submitHarthmereInventorySpendToLiveModeForTest(
+  itemId: string,
+  quantity = 1,
+  reason = "Item spent"
+) {
+  if (
+    !isBrowser() ||
+    typeof window.fetch !== "function" ||
+    !itemId ||
+    quantity <= 0
+  ) {
+    return undefined;
+  }
+  const count = Math.max(1, Math.floor(Number(quantity) || 0));
+  const requestId = `harthmere_local_inventory_spend_${Date.now()}_${Math.random()
+    .toString(36)
+    .slice(2)}`;
+  const prepared = prepareHarthmereLiveFetchRequest("/api/harthmere/live_mode", {
+    method: "POST",
+    credentials: "same-origin",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      requestId,
+      idempotencyKey: requestId,
+      actionKind: "request_inventory_item_action",
+      subsystem: "inventory",
+      actorEntityVersion: 1,
+      zoneId: "harthmere",
+      payload: {
+        operation: "destroy_item",
+        itemId,
+        count,
+        source: reason,
+      },
+      includeSnapshots: [
+        "inventoryLootState",
+        "farmingFoodState",
+        "buildingState",
+        "playerStatusState",
+      ],
+      clientClaims: {
+        source: "local_harthmere_inventory_spend",
+        reason,
+      },
+    }),
+  });
+  return window
+    .fetch(prepared.input, prepared.init)
+    .then((response) => response.json().catch(() => undefined))
+    .then((body) => {
+      if (body) {
+        dispatchHarthmereLiveInventorySync(body);
+      }
+      return body;
+    })
+    .catch(() => undefined);
+}
+
 function instanceId(itemId: string) {
   return `hm-${itemId}-${Date.now()}-${Math.floor(Math.random() * 1_000_000)}`;
 }
@@ -3208,6 +3279,40 @@ export function grantHarthmereNativeTerrainBlockDropForTest(
   return { itemId, ...result, skipped: false as const };
 }
 
+// Dedupe placement debits the same way mining grants are deduped: a single place
+// interaction can surface more than one event during first-load/render churn.
+const recentNativeTerrainBlockSpends = new Map<string, number>();
+
+// Debit one of the placed block's biscuit item from the Harthmere inventory —
+// the -1 half of the mine(+1)/place(-1) mirror. Decrements local state
+// immediately (so the UI updates without a round-trip) and posts a server
+// authoritative debit so the persisted live-mode inventory matches.
+export function spendHarthmereNativeTerrainBlockForPlacement(
+  detail: HarthmereNativeTerrainBlockDestroyedDetail,
+  options: { nowMs?: number; dedupeMs?: number } = {}
+) {
+  const itemId = harthmereInventoryItemForNativeTerrainBlockForTest(detail);
+  const nowMs = options.nowMs ?? Date.now();
+  const dedupeMs = options.dedupeMs ?? 1_250;
+  const key = nativeTerrainBlockGrantKey(detail, itemId);
+  const lastSpendAt = recentNativeTerrainBlockSpends.get(key);
+  if (lastSpendAt !== undefined && nowMs - lastSpendAt < dedupeMs) {
+    return { itemId, consumed: 0, skipped: true as const };
+  }
+  recentNativeTerrainBlockSpends.set(key, nowMs);
+  const terrainLabel =
+    detail.blockName ??
+    detail.terrainName ??
+    (detail.terrainId ? safeGetTerrainName(detail.terrainId) : undefined) ??
+    "block";
+  const reason = `Placed ${String(terrainLabel).replaceAll("_", " ")}`;
+  const consumed = consumeHarthmereItemByItemId(itemId, 1, reason);
+  if (consumed > 0) {
+    void submitHarthmereInventorySpendToLiveModeForTest(itemId, consumed, reason);
+  }
+  return { itemId, consumed, skipped: false as const };
+}
+
 export const HarthmereNativeTerrainBlockInventoryBridge: React.FunctionComponent<{}> =
   () => {
     useEffect(() => {
@@ -3225,15 +3330,37 @@ export const HarthmereNativeTerrainBlockInventoryBridge: React.FunctionComponent
           }
         ).__harthmereNativeTerrainInventoryBridgeLastGrant = result;
       };
+      // Place path: debit the placed block so the count drops in step with the
+      // canonical /sync EditEvent (the -1 half of the mine/place mirror).
+      const onNativeTerrainBlockPlaced = (event: Event) => {
+        const result = spendHarthmereNativeTerrainBlockForPlacement(
+          ((event as CustomEvent<HarthmereNativeTerrainBlockDestroyedDetail>)
+            .detail ?? {}) as HarthmereNativeTerrainBlockDestroyedDetail
+        );
+        (
+          window as typeof window & {
+            __harthmereNativeTerrainInventoryBridgeLastSpend?: unknown;
+          }
+        ).__harthmereNativeTerrainInventoryBridgeLastSpend = result;
+      };
       window.addEventListener(
         HARTHMERE_NATIVE_TERRAIN_BLOCK_DESTROYED_EVENT,
         onNativeTerrainBlockDestroyed
       );
-      return () =>
+      window.addEventListener(
+        HARTHMERE_NATIVE_TERRAIN_BLOCK_PLACED_EVENT,
+        onNativeTerrainBlockPlaced
+      );
+      return () => {
         window.removeEventListener(
           HARTHMERE_NATIVE_TERRAIN_BLOCK_DESTROYED_EVENT,
           onNativeTerrainBlockDestroyed
         );
+        window.removeEventListener(
+          HARTHMERE_NATIVE_TERRAIN_BLOCK_PLACED_EVENT,
+          onNativeTerrainBlockPlaced
+        );
+      };
     }, []);
 
     return null;

@@ -139,6 +139,15 @@ const HARTHMERE_NATIVE_NPC_ATTACK_CONTACT_EVENT =
   "biomes:harthmere-native-npc-attack-contact";
 const HARTHMERE_NATIVE_TERRAIN_BLOCK_DESTROYED_EVENT =
   "biomes:harthmere-native-terrain-block-destroyed";
+// Symmetric mirror of the destroyed event: fired when the player PLACES a raw
+// voxel block. Mining adds +1 of the block's biscuit item to the Harthmere
+// live-mode inventory (via the destroyed event); placing must remove -1 so the
+// displayed Harthmere inventory/hotbar count matches what the canonical /sync
+// EditEvent already debited from the ECS inventory. Without this mirror, placed
+// blocks debit the ECS but never the Harthmere-displayed inventory, so counts
+// silently drift ("items used on the map don't decrement", "hotbar != inventory").
+const HARTHMERE_NATIVE_TERRAIN_BLOCK_PLACED_EVENT =
+  "biomes:harthmere-native-terrain-block-placed";
 
 function emitHarthmereNativeNpcAttackContact({
   attackedEntities,
@@ -268,6 +277,51 @@ function emitHarthmereNativeTerrainBlockDestroyed(input: {
   win.__harthmereNativeTerrainBlockDestroyedDebug = [
     detail,
     ...(win.__harthmereNativeTerrainBlockDestroyedDebug ?? []),
+  ].slice(0, 80);
+}
+
+// Mirror of emitHarthmereNativeTerrainBlockDestroyed for the PLACE path. Placing
+// a raw voxel spends one of the block's biscuit item. The canonical Biomes
+// EditEvent already debits the ECS inventory server-side; this event keeps the
+// Harthmere/Cloud Save live-mode inventory (the source the HUD/hotbar display)
+// in sync so a placed block visibly decrements the count.
+function emitHarthmereNativeTerrainBlockPlaced(input: {
+  terrainId: number;
+  position: ReadonlyVec3;
+  toolRef: OwnedItemReference | undefined;
+}) {
+  if (typeof window === "undefined" || !input.terrainId) {
+    return;
+  }
+
+  const block = terrainIdToBlock(input.terrainId);
+  // Preserve the real Biomes block biscuit id so the debit targets the exact,
+  // stackable voxel item that was granted on mining (not a generic fallback).
+  const detail = {
+    version: "harthmere-native-terrain-block-inventory-bridge",
+    source: "client.game.interact.helpers.handlePlaceVoxelInteraction",
+    terrainId: input.terrainId,
+    blockItemId: block?.id ? `b:${block.id}` : undefined,
+    blockName: block?.displayName,
+    position: [...input.position],
+    toolRef: input.toolRef,
+    at: Date.now(),
+  };
+
+  window.dispatchEvent(
+    new CustomEvent(HARTHMERE_NATIVE_TERRAIN_BLOCK_PLACED_EVENT, {
+      detail,
+    })
+  );
+
+  const win = window as typeof window & {
+    __harthmereNativeTerrainBlockPlacedDebug?: unknown[];
+    __harthmereNativeTerrainBlockPlacedLastAt?: number;
+  };
+  win.__harthmereNativeTerrainBlockPlacedLastAt = detail.at;
+  win.__harthmereNativeTerrainBlockPlacedDebug = [
+    detail,
+    ...(win.__harthmereNativeTerrainBlockPlacedDebug ?? []),
   ].slice(0, 80);
 }
 
@@ -1349,16 +1403,29 @@ export function handlePlaceVoxelInteraction(
     return false;
   }
   const boostPlacement = isBoostPlacement(deps, pos, face);
+  const placedTerrainId = getTerrainID(terrainName);
   if (
     !setVoxel(deps, {
       pos,
-      terrainId: getTerrainID(terrainName),
+      terrainId: placedTerrainId,
       toolRef,
       permitReplacement,
       boostPlacement,
     })
   ) {
     return false;
+  }
+
+  // Keep the Harthmere live-mode inventory in sync with the canonical /sync
+  // EditEvent debit so the placed block visibly decrements the displayed count.
+  // Only real terrain blocks (not floral placements) participate in the
+  // mine(+1)/place(-1) mirror, matching the destroy path's flora exclusion.
+  if (placedTerrainId && !isFloraId(placedTerrainId)) {
+    emitHarthmereNativeTerrainBlockPlaced({
+      terrainId: placedTerrainId,
+      position: pos,
+      toolRef,
+    });
   }
 
   const localPlayer = deps.resources.get("/scene/local_player");

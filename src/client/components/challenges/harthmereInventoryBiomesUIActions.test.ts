@@ -79,6 +79,7 @@ import {
   performHarthmereHotbarClearForBiomesUI,
   performHarthmereMaterialStorageRemoveForBiomesUI,
   readHarthmereInventoryState,
+  spendHarthmereNativeTerrainBlockForPlacement,
 } from "@/client/components/challenges/LocalDevHarthmereInventorySystem";
 import {
   HARTHMERE_BUSINESS_INVENTORY_LOOT_UPDATED_EVENT,
@@ -442,6 +443,82 @@ describe("Harthmere inventory BiomesUI presentation and actions", () => {
     assert.equal(body.payload.count, 1);
     assert.deepEqual(body.payload.itemDeltas, { [dirtBlockItemId]: 1 });
     assert.ok(body.includeSnapshots.includes("playerStatusState"));
+  });
+
+  const dirtCount = () =>
+    readHarthmereInventoryState().materialStorage[`b:${BikkieIds.dirt}`] ?? 0;
+
+  it("debits the placed block from inventory and posts a server-authoritative spend (mine +1 / place -1 mirror)", async () => {
+    const dirtBlockItemId = `b:${BikkieIds.dirt}`;
+    // Drain any late-resolving live-sync writes from prior tests, then measure
+    // deltas (the shared in-memory store is not fully isolated between cases).
+    const fetchCalls: Array<{ input: unknown; init?: RequestInit }> = [];
+    (globalThis as any).window.fetch = async (
+      input: unknown,
+      init?: RequestInit
+    ) => {
+      fetchCalls.push({ input, init });
+      return { ok: true, json: async () => ({}) };
+    };
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    grantHarthmereItem(dirtBlockItemId, 2, "seed for placement test");
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    const beforeSpend = dirtCount();
+    assert.ok(beforeSpend >= 2);
+    fetchCalls.length = 0; // ignore the seed grant's POST; watch only the spend
+
+    const spend = spendHarthmereNativeTerrainBlockForPlacement(
+      {
+        blockItemId: dirtBlockItemId,
+        blockName: "Dirt",
+        position: [4.4, 61, -9.1],
+      },
+      { dedupeMs: 0 }
+    );
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    assert.equal(spend.itemId, dirtBlockItemId);
+    assert.equal(spend.consumed, 1);
+    // Local inventory dropped by exactly one — the count now matches what the
+    // canonical /sync EditEvent already debited from the ECS.
+    assert.equal(dirtCount(), beforeSpend - 1);
+    // Server-authoritative debit posted, carrying the install id so it lands on
+    // the same actor the reads use, via the client-authorized destroy_item op.
+    assert.equal(fetchCalls.length, 1);
+    assert.match(String(fetchCalls[0].input), /install_id=test-install/);
+    const body = JSON.parse(String(fetchCalls[0].init?.body ?? "{}"));
+    assert.equal(body.actionKind, "request_inventory_item_action");
+    assert.equal(body.payload.operation, "destroy_item");
+    assert.equal(body.payload.itemId, dirtBlockItemId);
+    assert.equal(body.payload.count, 1);
+  });
+
+  it("dedupes duplicate placement events so a single place only debits once", async () => {
+    const dirtBlockItemId = `b:${BikkieIds.dirt}`;
+    (globalThis as any).window.fetch = async () => ({
+      ok: true,
+      json: async () => ({}),
+    });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    grantHarthmereItem(dirtBlockItemId, 3, "seed for placement dedupe test");
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    const beforeSpend = dirtCount();
+
+    const detail = {
+      blockItemId: dirtBlockItemId,
+      blockName: "Dirt",
+      position: [4, 61, -9],
+    };
+    const first = spendHarthmereNativeTerrainBlockForPlacement(detail);
+    const second = spendHarthmereNativeTerrainBlockForPlacement(detail);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    assert.equal(first.consumed, 1);
+    assert.equal(second.skipped, true);
+    // Only one debit despite two events for the same placement.
+    assert.equal(dirtCount(), beforeSpend - 1);
   });
 
   it("uses readable glyph fallbacks instead of square placeholders for unknown inventory items", () => {
