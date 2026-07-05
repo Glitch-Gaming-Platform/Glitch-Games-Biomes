@@ -204,6 +204,13 @@ export async function readHarthmereLiveModePlayerStatusStateForActor(input: {
     state,
     { nowMs: input.nowMs }
   );
+  // Auto-revive a stamina-only death once stamina has regenerated, so the player
+  // is not permanently stuck dead (and the client stops looping death_transition
+  // -> respawn). Runs before the stamina tick so the revived hp is authoritative.
+  const staminaRecoveredRevive =
+    reviveStaleStaminaDeathWhenStaminaRecoveredForStatusRead(state, {
+      nowMs: input.nowMs,
+    });
   const backfillWindowReset =
     resetOfflineStaminaBackfillWindowForActiveStatusRead(state, {
       nowMs: input.nowMs,
@@ -222,6 +229,7 @@ export async function readHarthmereLiveModePlayerStatusStateForActor(input: {
       rawStateNeedsZeroHpDeathPersistence ||
       zeroHpDeathRepair.changed ||
       playableZeroRepair.changed ||
+      staminaRecoveredRevive.changed ||
       backfillWindowReset.changed ||
       shouldPersistHarthmerePlayerStatusStaminaTick({
         changed: staminaTick.changed,
@@ -257,6 +265,7 @@ export async function readHarthmereLiveModePlayerStatusStateForActor(input: {
         rawStateNeedsZeroHpDeathPersistence ||
         zeroHpDeathRepair.changed ||
         playableZeroRepair.changed ||
+        staminaRecoveredRevive.changed ||
         staminaTick.deathTriggered,
     });
     await input.redis.primary.set!(
@@ -275,6 +284,7 @@ export async function readHarthmereLiveModePlayerStatusStateForActor(input: {
       repairedZeroHpDeath:
         rawStateNeedsZeroHpDeathPersistence || zeroHpDeathRepair.changed,
       repairedPlayableZeroStamina: playableZeroRepair.changed,
+      revivedStaminaDeathOnRecovery: staminaRecoveredRevive.changed,
       staminaPersisted: shouldPersist,
     },
   };
@@ -359,6 +369,92 @@ function repairStalePlayableZeroStaminaForStatusRead(
     return { changed: true };
   }
   return { changed: false };
+}
+
+function harthmereDeathRecordLooksStaminaCaused(
+  deathId: string,
+  record: { cause?: unknown } | undefined
+) {
+  const normalizedCause = String(record?.cause ?? "")
+    .toLowerCase()
+    .replace(/[_-]+/g, " ");
+  const normalizedDeathId = deathId.toLowerCase().replace(/[_-]+/g, " ");
+  return (
+    /\bstamina\b/.test(normalizedCause) ||
+    /\bstamina\b/.test(normalizedDeathId)
+  );
+}
+
+// Inverse of the repair above. A player who was downed/killed PURELY by stamina
+// depletion (deadFromStaminaAtMs is set) stays flagged dead (deathState="dead",
+// hp=0) even after stamina fully regenerates; nothing clears the latch, so the
+// client reads hp<=0 forever and loops death -> respawn -> death (the "randomly
+// dying while stamina is full" report; player_status showed hp:0 / deathState
+// "dead" / lastDeath "Stamina reached zero" with stamina at 107.8/108).
+//
+// When stamina has recovered to a playable level, auto-revive: restore hp,
+// mark alive, and clear the stamina-death latch (deadFromStaminaAtMs + the
+// stamina death records) so the client stops re-asserting death. This is the
+// missing half that the `repairedPlayableZeroStamina` authority flag implies.
+function reviveStaleStaminaDeathWhenStaminaRecoveredForStatusRead(
+  state: HarthmereLiveModeBackendState,
+  input: { nowMs: number }
+) {
+  const maxStamina = Math.max(
+    1,
+    Number(state.combat.maxResources?.stamina ?? 100)
+  );
+  const stamina = Number(state.combat.resources?.stamina ?? 0);
+  const hp = Number(state.combat.hp ?? 0);
+  const deathState = state.combat.deathState ?? "alive";
+  const deadFromStamina = Number.isFinite(
+    Number(state.combat.deadFromStaminaAtMs)
+  );
+  // Only touch deaths that were caused by stamina depletion. Combat / fall /
+  // drowning deaths must still require an explicit respawn.
+  if (!deadFromStamina) {
+    return { changed: false };
+  }
+  const isDeadOrDowned =
+    deathState === "dead" || deathState === "downed" || hp <= 0;
+  if (!isDeadOrDowned) {
+    return { changed: false };
+  }
+  const records = state.combat.deathRecords ?? {};
+  const deathRecordEntries = Object.entries(records);
+  const staminaDeathRecordIds = deathRecordEntries
+    .filter(([deathId, record]) =>
+      harthmereDeathRecordLooksStaminaCaused(deathId, record)
+    )
+    .map(([deathId]) => deathId);
+  // The deadFromStaminaAtMs latch is the primary signal, but stale states can
+  // carry mixed death records. When records exist, require at least one
+  // stamina-caused record so a fall/combat death is not auto-revived just
+  // because the old stamina latch was never cleared.
+  if (deathRecordEntries.length > 0 && staminaDeathRecordIds.length === 0) {
+    return { changed: false };
+  }
+  // Require a genuine recovery (>= 25% of max, matching the respawn baseline) so
+  // a player hovering at zero stamina is not revived only to instantly re-die.
+  const playableThreshold = Math.max(1, maxStamina * 0.25);
+  if (stamina < playableThreshold) {
+    return { changed: false };
+  }
+  const maxHp = Math.max(1, Number(state.combat.maxHp ?? 100));
+  state.combat.hp = maxHp;
+  state.combat.deathState = "alive";
+  state.combat.deadFromStaminaAtMs = undefined;
+  state.combat.lastStaminaTickMs = input.nowMs;
+  state.combat.respawnProtectionUntilMs = Math.max(
+    Number(state.combat.respawnProtectionUntilMs ?? 0),
+    input.nowMs + 3_000
+  );
+  // Drop the stamina-caused death records so the client's derived `lastDeath`
+  // no longer surfaces a stale "Stamina reached zero" downed state.
+  for (const deathId of staminaDeathRecordIds) {
+    delete records[deathId];
+  }
+  return { changed: true };
 }
 
 function resetOfflineStaminaBackfillWindowForActiveStatusRead(

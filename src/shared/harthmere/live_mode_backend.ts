@@ -9144,12 +9144,25 @@ export function reduceHarthmereLiveModeBackendState(
       const kind = operation as HarthmereInventoryMutationRequest["kind"];
       const snapshot = buildInventorySnapshot();
       const count = payloadPositiveWholeCount(envelope);
+      const itemActionItemId = payloadString(envelope, "itemId");
+      // Raw voxel blocks (b:<biscuitId>) are added to the inventory on mining
+      // via an on-the-fly item definition (see the loot/inventory branch, which
+      // calls ensureLiveModeItemDefinition). The drop/destroy path used by the
+      // place-voxel mirror to debit a placed block must register the same
+      // definition or the reducer rejects it as `unknown_item_id` and the count
+      // never decrements (this is why placed blocks did not drop from the HUD).
+      if (
+        itemActionItemId &&
+        (kind === "destroy_item" || kind === "drop_item")
+      ) {
+        ensureLiveModeItemDefinition(itemActionItemId, snapshot);
+      }
       const invReq: HarthmereInventoryMutationRequest = {
         requestId: envelope.requestId,
         actorId: envelope.actorId,
         kind,
         nowMs,
-        itemId: payloadString(envelope, "itemId"),
+        itemId: itemActionItemId,
         count:
           kind === "drop_item" || kind === "destroy_item" ? count ?? 1 : count,
         sourceSlot: payloadString(envelope, "sourceSlot"),

@@ -5108,6 +5108,25 @@ describe("reduceHarthmereLiveModeBackendState — loot and inventory mutation", 
     assert.ok(summary.touchedModels.includes("player_status"));
   });
 
+  it("request_inventory_item_action destroys raw voxel blocks from carried inventory", function () {
+    const s = freshState();
+    const grassBlockItemId = `b:${BikkieIds.grass}`;
+    s.inventory.items[grassBlockItemId] = 10;
+
+    const { state, summary } = applyOne(s, "request_inventory_item_action", {
+      operation: "destroy_item",
+      itemId: grassBlockItemId,
+      count: 1,
+      source: "Placed Grass",
+    });
+
+    assert.strictEqual(state.inventory.items[grassBlockItemId], 9);
+    assert.ok(
+      !summary.warnings.includes("inventory_item_rejected:unknown_item_id")
+    );
+    assert.ok(summary.touchedModels.includes("inventory_items"));
+  });
+
   it("loot claim records entry in lootClaims with nowMs", function () {
     const s = freshState();
     const env = makeEnvelope("request_loot_claim", {

@@ -376,6 +376,91 @@ describe("live_mode_player_status_state API route integration", () => {
     );
   });
 
+  it("auto-revives a stamina-only death once stamina has recovered", async () => {
+    // Player was killed purely by stamina depletion, but stamina has since
+    // regenerated to full. Without the revive repair they stay stuck dead
+    // (hp:0 / deathState:dead) and the client loops death -> respawn -> death.
+    const backend = defaultHarthmereLiveModeBackendState(ACTOR, NOW_MS);
+    backend.combat.hp = 0;
+    backend.combat.maxHp = 100;
+    backend.combat.deathState = "dead";
+    backend.combat.deadFromStaminaAtMs = NOW_MS - 60_000;
+    backend.combat.resources.stamina = 108; // recovered to full
+    backend.combat.maxResources.stamina = 108;
+    backend.combat.lastStaminaTickMs = NOW_MS;
+    backend.combat.deathRecords = {
+      stamina_depleted_1: {
+        deathId: "stamina_depleted_1",
+        cause: "stamina_depleted",
+        zoneId: "harthmere",
+        atMs: NOW_MS - 60_000,
+        respawnAvailableAtMs: NOW_MS - 55_000,
+      },
+    } as any;
+    let stored = JSON.stringify(backend);
+    const redis = {
+      primary: {
+        get: async () => stored,
+        set: async (_key: string, value: string) => {
+          stored = value;
+        },
+      },
+    };
+
+    const snapshot = await readHarthmereLiveModePlayerStatusStateForActor({
+      redis,
+      actorId: ACTOR,
+      nowMs: NOW_MS,
+      gameplayActive: true,
+    });
+    const persisted = JSON.parse(stored);
+
+    // Alive again, full hp, stamina latch cleared, stamina death record dropped.
+    assert.equal(snapshot.combat.hp, 100);
+    assert.equal(snapshot.combat.deathState, "alive");
+    assert.equal(persisted.combat.hp, 100);
+    assert.equal(persisted.combat.deathState, "alive");
+    assert.equal(persisted.combat.deadFromStaminaAtMs, undefined);
+    assert.equal(
+      Object.values(persisted.combat.deathRecords ?? {}).some(
+        (record: any) => String(record.cause).includes("stamina")
+      ),
+      false
+    );
+  });
+
+  it("does NOT auto-revive a combat death even when stamina is full", async () => {
+    // Only stamina-caused deaths auto-revive. A mucker/fall/drowning kill must
+    // still require an explicit respawn regardless of stamina.
+    const backend = defaultHarthmereLiveModeBackendState(ACTOR, NOW_MS);
+    backend.combat.hp = 0;
+    backend.combat.maxHp = 100;
+    backend.combat.deathState = "dead";
+    backend.combat.deadFromStaminaAtMs = undefined; // not a stamina death
+    backend.combat.resources.stamina = 108;
+    backend.combat.maxResources.stamina = 108;
+    backend.combat.lastStaminaTickMs = NOW_MS;
+    let stored = JSON.stringify(backend);
+    const redis = {
+      primary: {
+        get: async () => stored,
+        set: async (_key: string, value: string) => {
+          stored = value;
+        },
+      },
+    };
+
+    const snapshot = await readHarthmereLiveModePlayerStatusStateForActor({
+      redis,
+      actorId: ACTOR,
+      nowMs: NOW_MS,
+      gameplayActive: true,
+    });
+
+    assert.equal(snapshot.combat.hp, 0);
+    assert.equal(snapshot.combat.deathState, "dead");
+  });
+
   it("marks displayed-zero fractional stamina as dead on status polling", async () => {
     const backend = defaultHarthmereLiveModeBackendState(ACTOR, NOW_MS);
     backend.combat.hp = 80;
