@@ -8,13 +8,66 @@ import {
 
 // A trimmed Road Ahead chain mirroring the real triggers/order.
 const ROAD_AHEAD: SnapshotMissionStep[] = [
-  { id: "ra_0_meet_jackie", questId: "road_ahead", stepIndex: 0, trigger: "talk_npc", markerId: "npc_jackie" },
-  { id: "ra_1_road_post", questId: "road_ahead", stepIndex: 1, trigger: "near_location", markerId: "old_grove_road_post" },
-  { id: "ra_2_muckwad", questId: "road_ahead", stepIndex: 2, trigger: "destroy", markerId: "muckwad_patch", expectedInventoryItems: ["muckwad_sample"] },
-  { id: "ra_3_place", questId: "road_ahead", stepIndex: 3, trigger: "place_voxel", markerId: "building_practice_spot" },
-  { id: "ra_4_wear", questId: "road_ahead", stepIndex: 4, trigger: "inventory_change", markerId: "lovely_locks_mirror" },
-  { id: "ra_7_axe", questId: "road_ahead", stepIndex: 7, trigger: "destroy", markerId: "muckwad_patch" },
-  { id: "ra_9_return", questId: "road_ahead", stepIndex: 9, trigger: "talk_npc", markerId: "npc_jackie" },
+  {
+    id: "ra_0_meet_jackie",
+    questId: "road_ahead",
+    stepIndex: 0,
+    trigger: "talk_npc",
+    markerId: "npc_jackie",
+  },
+  {
+    id: "ra_1_road_post",
+    questId: "road_ahead",
+    stepIndex: 1,
+    trigger: "near_location",
+    markerId: "old_grove_road_post",
+  },
+  {
+    id: "ra_2_muckwad",
+    questId: "road_ahead",
+    stepIndex: 2,
+    trigger: "destroy",
+    markerId: "muckwad_patch",
+    expectedInventoryItems: ["muckwad_sample"],
+  },
+  {
+    id: "ra_3_place",
+    questId: "road_ahead",
+    stepIndex: 3,
+    trigger: "place_voxel",
+    markerId: "building_practice_spot",
+  },
+  {
+    id: "ra_4_wear",
+    questId: "road_ahead",
+    stepIndex: 4,
+    trigger: "inventory_change",
+    markerId: "lovely_locks_mirror",
+  },
+  {
+    id: "ra_7_axe",
+    questId: "road_ahead",
+    stepIndex: 7,
+    trigger: "destroy",
+    markerId: "muckwad_patch",
+  },
+  {
+    id: "ra_9_return",
+    questId: "road_ahead",
+    stepIndex: 9,
+    trigger: "talk_npc",
+    markerId: "npc_jackie",
+  },
+];
+
+const GROVE_SIDE_QUEST: SnapshotMissionStep[] = [
+  {
+    id: "cove_photo_0",
+    questId: "cove_keeps_pictures",
+    stepIndex: 0,
+    trigger: "photo_post",
+    markerId: "shutter_cove_marker",
+  },
 ];
 
 function freshProgress(): SnapshotMissionProgress {
@@ -29,7 +82,8 @@ function freshProgress(): SnapshotMissionProgress {
   };
 }
 
-const matchTrigger = (kind: string) => (t: SnapshotMissionStep) => t.trigger === kind;
+const matchTrigger = (kind: string) => (t: SnapshotMissionStep) =>
+  t.trigger === kind;
 
 describe("snapshot mission advance (order-independent)", () => {
   it("advances an OUT-OF-ORDER action even when the mission was never accepted", () => {
@@ -56,18 +110,33 @@ describe("snapshot mission advance (order-independent)", () => {
   it("does not re-complete an already-completed step; picks the next matching one", () => {
     let state = freshProgress();
     // First destroy completes muckwad step.
-    let chosen = chooseSnapshotMissionStep(state, ROAD_AHEAD, matchTrigger("destroy"), "muckwad_patch")!;
+    let chosen = chooseSnapshotMissionStep(
+      state,
+      ROAD_AHEAD,
+      matchTrigger("destroy"),
+      "muckwad_patch"
+    )!;
     state = advanceSnapshotMissionProgress(state, ROAD_AHEAD, chosen).state;
     assert.equal(chosen.id, "ra_2_muckwad");
     // Second destroy advances the LATER destroy step (busted axe), not the same one.
-    chosen = chooseSnapshotMissionStep(state, ROAD_AHEAD, matchTrigger("destroy"), "muckwad_patch")!;
+    chosen = chooseSnapshotMissionStep(
+      state,
+      ROAD_AHEAD,
+      matchTrigger("destroy"),
+      "muckwad_patch"
+    )!;
     assert.equal(chosen.id, "ra_7_axe");
   });
 
   it("prefers a marker-id match when multiple steps share a trigger", () => {
     const state = freshProgress();
     // talk_npc matches step 0 (jackie) and step 9 (return, also jackie) — earliest wins.
-    const chosen = chooseSnapshotMissionStep(state, ROAD_AHEAD, matchTrigger("talk_npc"), "npc_jackie")!;
+    const chosen = chooseSnapshotMissionStep(
+      state,
+      ROAD_AHEAD,
+      matchTrigger("talk_npc"),
+      "npc_jackie"
+    )!;
     assert.equal(chosen.id, "ra_0_meet_jackie");
   });
 
@@ -75,11 +144,18 @@ describe("snapshot mission advance (order-independent)", () => {
     // Pre-complete everything except the final return step.
     let state: SnapshotMissionProgress = {
       ...freshProgress(),
-      completedStepIds: ROAD_AHEAD.filter((s) => s.id !== "ra_9_return").map((s) => s.id),
+      completedStepIds: ROAD_AHEAD.filter((s) => s.id !== "ra_9_return").map(
+        (s) => s.id
+      ),
       acceptedMissionIds: ["road_ahead"],
       activeMissionId: "road_ahead",
     };
-    const chosen = chooseSnapshotMissionStep(state, ROAD_AHEAD, matchTrigger("talk_npc"), "npc_jackie")!;
+    const chosen = chooseSnapshotMissionStep(
+      state,
+      ROAD_AHEAD,
+      matchTrigger("talk_npc"),
+      "npc_jackie"
+    )!;
     assert.equal(chosen.id, "ra_9_return"); // step 0 already complete, so the return step
     const out = advanceSnapshotMissionProgress(state, ROAD_AHEAD, chosen);
     assert.equal(out.completedMission, true);
@@ -90,16 +166,59 @@ describe("snapshot mission advance (order-independent)", () => {
   it("returns undefined when nothing matches (no phantom advance)", () => {
     const state = freshProgress();
     assert.equal(
-      chooseSnapshotMissionStep(state, ROAD_AHEAD, matchTrigger("fishing_catch")),
+      chooseSnapshotMissionStep(
+        state,
+        ROAD_AHEAD,
+        matchTrigger("fishing_catch")
+      ),
       undefined
+    );
+  });
+
+  it("does not implicitly accept later Grove quests when the caller gates self-accept to Road Ahead", () => {
+    const state = freshProgress();
+
+    assert.equal(
+      chooseSnapshotMissionStep(
+        state,
+        [...ROAD_AHEAD, ...GROVE_SIDE_QUEST],
+        matchTrigger("photo_post"),
+        "shutter_cove_marker",
+        { canImplicitlyAcceptQuest: (questId) => questId === "road_ahead" }
+      ),
+      undefined
+    );
+
+    assert.equal(
+      chooseSnapshotMissionStep(
+        { ...state, acceptedMissionIds: ["cove_keeps_pictures"] },
+        [...ROAD_AHEAD, ...GROVE_SIDE_QUEST],
+        matchTrigger("photo_post"),
+        "shutter_cove_marker",
+        { canImplicitlyAcceptQuest: (questId) => questId === "road_ahead" }
+      )?.id,
+      "cove_photo_0"
     );
   });
 
   it("advancing through the whole chain in random order completes it", () => {
     let state = freshProgress();
-    const order = ["place_voxel", "destroy", "talk_npc", "inventory_change", "near_location", "destroy", "talk_npc"];
+    const order = [
+      "place_voxel",
+      "destroy",
+      "talk_npc",
+      "inventory_change",
+      "near_location",
+      "destroy",
+      "talk_npc",
+    ];
     for (const kind of order) {
-      const chosen = chooseSnapshotMissionStep(state, ROAD_AHEAD, matchTrigger(kind), "npc_jackie");
+      const chosen = chooseSnapshotMissionStep(
+        state,
+        ROAD_AHEAD,
+        matchTrigger(kind),
+        "npc_jackie"
+      );
       if (chosen) {
         state = advanceSnapshotMissionProgress(state, ROAD_AHEAD, chosen).state;
       }

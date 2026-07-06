@@ -4,6 +4,7 @@ import type { InspectShortcuts } from "@/client/components/overlays/inspected/Cu
 import { CursorInspectionComponent } from "@/client/components/overlays/inspected/CursorInspectionOverlayComponent";
 import { submitHarthmereNativePlantHarvestToLiveMode } from "@/client/components/overlays/inspected/nativePlantHarvestLiveModeBridge";
 import { plantInspectionCanHarvest } from "@/client/components/overlays/inspected/plantInspectionShortcuts";
+import { addToast } from "@/client/components/toast/helpers";
 import type { PlantInspectOverlay } from "@/client/game/resources/overlays";
 import { getBiscuit } from "@/shared/bikkie/active";
 import { secondsSinceEpoch } from "@/shared/ecs/config";
@@ -21,7 +22,8 @@ import { useRef, useState } from "react";
 export const PlantInspectionOverlayComponent: React.FunctionComponent<{
   overlay: PlantInspectOverlay;
 }> = ({ overlay }) => {
-  const { reactResources, authManager, userId, events } = useClientContext();
+  const { reactResources, resources, authManager, userId, events } =
+    useClientContext();
   const harvestInFlightRef = useRef<Set<string>>(new Set());
   const plant = reactResources.use(
     "/ecs/c/farming_plant_component",
@@ -106,6 +108,34 @@ export const PlantInspectionOverlayComponent: React.FunctionComponent<{
         const plantId = String(overlay.entityId);
         if (harvestInFlightRef.current.has(plantId)) return;
         harvestInFlightRef.current.add(plantId);
+        // HARTHMERE_HARVEST_INSTANT_FEEDBACK (2026-07-06): the live-mode grant
+        // can take 10-30s server-side. The player must SEE the harvest happen
+        // immediately, so:
+        // 1. Publish the ECS terrain harvest NOW — the crop turns back into a
+        //    reusable empty plot right away (this used to wait for the
+        //    live-mode response, so the plant appeared untouched for ~30s and
+        //    players re-harvested it).
+        fireAndForget(
+          events.publish(
+            new HarvestPlantEvent({
+              id: userId,
+              plant_id: overlay.entityId,
+              position: overlay.pos,
+            })
+          )
+        );
+        // 2. Acknowledge the pickup NOW. The authoritative "+N <item> added to
+        //    your backpack" toast follows when the live inventory updates.
+        try {
+          addToast(resources, {
+            kind: "basic",
+            id: `harthmere-native-harvest:${plantId}`,
+            message: `Harvested ${name ?? "plant"}.`,
+          });
+        } catch {
+          // Feedback must never block the harvest itself.
+        }
+        // 3. Grant the item through live mode in the background.
         fireAndForget(
           (async () => {
             try {
@@ -120,16 +150,6 @@ export const PlantInspectionOverlayComponent: React.FunctionComponent<{
                 });
               }
             } finally {
-              // Live inventory and ECS terrain are separate authorities. Always
-              // publish the terrain harvest once per visible prompt so a claimed
-              // crop turns back into reusable dirt instead of staying harvestable.
-              await events.publish(
-                new HarvestPlantEvent({
-                  id: userId,
-                  plant_id: overlay.entityId,
-                  position: overlay.pos,
-                })
-              );
               const clearInFlight = () => {
                 harvestInFlightRef.current.delete(plantId);
               };

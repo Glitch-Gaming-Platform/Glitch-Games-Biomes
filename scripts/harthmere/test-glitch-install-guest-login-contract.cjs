@@ -50,6 +50,10 @@ ok(
     route.includes("`install:${installId}`"),
   "install_id maps to persistent gameUserId install:<install_id>"
 );
+ok(
+  route.includes("!identity.valid && !identity.guest"),
+  "SSR install auth accepts guest trial installs while rejecting invalid installs"
+);
 
 ok(
   route.includes('"Guest"') || route.includes("'Guest'"),

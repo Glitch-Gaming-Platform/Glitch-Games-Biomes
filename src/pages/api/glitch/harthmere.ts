@@ -251,11 +251,7 @@ async function readJsonFromRedis<T>(key: string): Promise<T | undefined> {
   }
 }
 
-async function setJsonInRedis(
-  key: string,
-  value: unknown,
-  ttlSeconds: number
-) {
+async function setJsonInRedis(key: string, value: unknown, ttlSeconds: number) {
   if (!shouldUseRedisHarthmereSessionStore()) {
     return;
   }
@@ -1260,9 +1256,7 @@ function normalizeBehaviorEventsPayload(body: JsonMap, titleId: string) {
   return { events };
 }
 
-export function shouldFallbackBehaviorBulkStatus(
-  status: number | undefined
-) {
+export function shouldFallbackBehaviorBulkStatus(status: number | undefined) {
   // 401/403 mean the server-side title token or account auth is wrong. Falling
   // back from one bulk call into many single calls just multiplies load while
   // producing the same failure, which is exactly what showed up in production.
@@ -1582,7 +1576,10 @@ export async function createBiomesAuthForGlitchInstall(
 ) {
   const titleId = titleIdFromBody(body);
   const { response, identity } = await validateInstallWithGlitch(titleId, body);
-  if (!identity || !identity.valid) {
+  // Guests validate as an allowed trial install with no stable Glitch account
+  // (`valid: false`, `guest: true` after normalization). They still need a
+  // normal Biomes session so /at can mount the game immediately during SSR.
+  if (!identity || (!identity.valid && !identity.guest)) {
     const error = new Error("INVALID_GLITCH_INSTALL") as Error & {
       status?: number;
       response?: GlitchProxyResponse;
@@ -1995,10 +1992,7 @@ export default async function handler(
           .status(200)
           .json({ ok: true, skipped: true, reason: response.reason });
       }
-      if (
-        !response.ok &&
-        shouldFallbackBehaviorBulkStatus(response.status)
-      ) {
+      if (!response.ok && shouldFallbackBehaviorBulkStatus(response.status)) {
         const fallback = await recordBehaviorEventsIndividually(
           titleId,
           payload.events

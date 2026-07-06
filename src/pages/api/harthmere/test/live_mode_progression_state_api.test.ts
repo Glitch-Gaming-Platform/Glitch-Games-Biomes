@@ -1,7 +1,5 @@
 import assert from "assert";
-import {
-  readHarthmereLiveModeProgressionStateForActor,
-} from "../live_mode_progression_state";
+import { readHarthmereLiveModeProgressionStateForActor } from "../live_mode_progression_state";
 import {
   defaultHarthmereLiveModeBackendState,
   harthmereLiveModePlayerStateKey,
@@ -41,9 +39,20 @@ describe("live_mode_progression_state API route integration", () => {
     assert.equal(snapshot.actorId, ACTOR);
     assert.equal(snapshot.currentClassId, "bard");
     assert.equal(snapshot.currentSpecializationId, "maestro");
-    assert.ok(snapshot.skills.some((skill) => skill.id === "performance" && skill.level === 2));
-    assert.ok(snapshot.collections.some((entry) => entry.id === "npc:jackie" && entry.discovered));
-    assert.ok(snapshot.questState.active["read-the-jobs-board"]);
+    assert.ok(
+      snapshot.skills.some(
+        (skill) => skill.id === "performance" && skill.level === 2
+      )
+    );
+    assert.ok(
+      snapshot.collections.some(
+        (entry) => entry.id === "npc:jackie" && entry.discovered
+      )
+    );
+    assert.deepEqual(Object.keys(snapshot.questState.active).sort(), [
+      "building_system_intro_talk_to_mira",
+      "read-the-jobs-board",
+    ]);
   });
 
   it("uses one Redis MGET for actor and shared progression state when available", async () => {
@@ -74,10 +83,12 @@ describe("live_mode_progression_state API route integration", () => {
       nowMs: NOW_MS,
     });
 
-    assert.deepEqual(mgetCalls, [[
-      harthmereLiveModePlayerStateKey(ACTOR),
-      harthmereLiveModeSharedWorldStateKey(),
-    ]]);
+    assert.deepEqual(mgetCalls, [
+      [
+        harthmereLiveModePlayerStateKey(ACTOR),
+        harthmereLiveModeSharedWorldStateKey(),
+      ],
+    ]);
     assert.deepEqual(getCalls, []);
     assert.equal(snapshot.actorId, ACTOR);
     assert.equal(snapshot.currentClassId, "mage");
@@ -94,7 +105,14 @@ describe("live_mode_progression_state API route integration", () => {
     assert.equal(snapshot.actorId, ACTOR);
     assert.equal(snapshot.currentClassId, "warrior");
     assert.ok(snapshot.classes.length >= 9);
-    assert.ok(snapshot.abilities.some((ability) => ability.id === "basic_strike" && ability.known));
-    assert.ok(snapshot.questState.active["read-the-jobs-board"]);
+    assert.ok(
+      snapshot.abilities.some(
+        (ability) => ability.id === "basic_strike" && ability.known
+      )
+    );
+    assert.deepEqual(Object.keys(snapshot.questState.active).sort(), [
+      "building_system_intro_talk_to_mira",
+      "read-the-jobs-board",
+    ]);
   });
 });

@@ -144,7 +144,7 @@ export const BiomesHotbar: React.FunctionComponent<BiomesHotbarProps> = ({
                       {slot.icon}
                     </span>
                   )}
-                  {slot.count && slot.count > 1 ? (
+                  {slot.count && slot.count >= 1 ? (
                     <span
                       style={{
                         position: "absolute",

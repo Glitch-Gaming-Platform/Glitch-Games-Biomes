@@ -46,6 +46,10 @@ export interface SnapshotMissionAdvance<S> {
   nextStepIndex: number;
 }
 
+export interface SnapshotMissionChooseOptions {
+  canImplicitlyAcceptQuest?: (questId: string) => boolean;
+}
+
 function uniq<T>(values: readonly T[]): T[] {
   return [...new Set(values)];
 }
@@ -58,13 +62,29 @@ function uniq<T>(values: readonly T[]): T[] {
  * uncompleted destroy step instead of re-completing an old one.
  */
 export function chooseSnapshotMissionStep<T extends SnapshotMissionStep>(
-  progress: Pick<SnapshotMissionProgress, "activeMissionId" | "completedStepIds">,
+  progress: Pick<
+    SnapshotMissionProgress,
+    "acceptedMissionIds" | "activeMissionId" | "completedStepIds"
+  >,
   tests: readonly T[],
   matches: (test: T) => boolean,
-  eventMarkerId?: string
+  eventMarkerId?: string,
+  options: SnapshotMissionChooseOptions = {}
 ): T | undefined {
   const done = new Set(progress.completedStepIds);
-  const candidates = tests.filter((test) => !done.has(test.id) && matches(test));
+  const accepted = new Set(progress.acceptedMissionIds);
+  const canImplicitlyAcceptQuest =
+    options.canImplicitlyAcceptQuest ?? (() => true);
+  const candidates = tests.filter((test) => {
+    if (done.has(test.id) || !matches(test)) {
+      return false;
+    }
+    return (
+      test.questId === progress.activeMissionId ||
+      accepted.has(test.questId) ||
+      canImplicitlyAcceptQuest(test.questId)
+    );
+  });
   if (candidates.length === 0) {
     return undefined;
   }
@@ -95,7 +115,9 @@ export function advanceSnapshotMissionProgress<
     .filter((test) => test.questId === chosen.questId)
     .slice()
     .sort((a, b) => a.stepIndex - b.stepIndex);
-  const firstIncompleteIdx = missionTests.findIndex((test) => !done.has(test.id));
+  const firstIncompleteIdx = missionTests.findIndex(
+    (test) => !done.has(test.id)
+  );
   const completedMission = firstIncompleteIdx < 0;
   const nextStepIndex = completedMission ? 0 : firstIncompleteIdx;
   const state: S = {

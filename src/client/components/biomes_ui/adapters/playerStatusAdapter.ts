@@ -5,6 +5,55 @@ import { markHarthmereLiveSnapshotSeen } from "@/client/components/challenges/ha
 export const BIOMES_UI_PLAYER_STATUS_UPDATED_EVENT =
   "biomes:live-mode-player-status-updated";
 
+// HARTHMERE_OPTIMISTIC_STAMINA (2026-07-06): the live_mode server can take
+// 10-30s per mutation, so eating food "did nothing" for half a minute even
+// though the server restored stamina correctly. This event lets the eat path
+// apply the food's stamina restore to the HUD immediately; the authoritative
+// server snapshot that follows replaces it (the server applies the same
+// restore, so the values converge).
+export const BIOMES_UI_OPTIMISTIC_PLAYER_STATUS_EVENT =
+  "biomes:live-mode-optimistic-player-status";
+
+export interface BiomesUIOptimisticPlayerStatusDetail {
+  staminaDelta?: number;
+  itemId?: string;
+  label?: string;
+}
+
+export function applyOptimisticStaminaToStatusForTest(
+  prev: BiomesUIPlayerStatusSnapshot | undefined,
+  staminaDelta: number
+): BiomesUIPlayerStatusSnapshot | undefined {
+  if (!prev?.combat || !Number.isFinite(staminaDelta) || staminaDelta === 0) {
+    return prev;
+  }
+  const combat = { ...prev.combat };
+  const resources = { ...(combat.resources ?? {}) };
+  const maxResources = combat.maxResources ?? {};
+  const currentStamina = Number(resources.stamina);
+  if (Number.isFinite(currentStamina)) {
+    const maxStamina = Number(maxResources.stamina);
+    const next = currentStamina + staminaDelta;
+    resources.stamina = Math.max(
+      0,
+      Number.isFinite(maxStamina) ? Math.min(maxStamina, next) : next
+    );
+    combat.resources = resources;
+  }
+  if (String(combat.primaryResource ?? "").toLowerCase() === "stamina") {
+    const current = Number(combat.resource);
+    if (Number.isFinite(current)) {
+      const max = Number(combat.maxResource);
+      const next = current + staminaDelta;
+      combat.resource = Math.max(
+        0,
+        Number.isFinite(max) && max > 0 ? Math.min(max, next) : next
+      );
+    }
+  }
+  return { ...prev, combat };
+}
+
 export interface BiomesUIStandingStatus {
   likeability: number;
   legal: number;
@@ -387,14 +436,32 @@ export function useBiomesUIPlayerStatusState() {
         void refresh();
       }
     };
+    // Client-authored optimistic deltas (e.g. eating food) — applied to the
+    // last server snapshot for immediate HUD feedback; never marks the live
+    // authority signal, and the next server snapshot replaces it.
+    const onOptimistic = (event: Event) => {
+      const detail = (event as CustomEvent<BiomesUIOptimisticPlayerStatusDetail>)
+        .detail;
+      const staminaDelta = Number(detail?.staminaDelta);
+      if (!Number.isFinite(staminaDelta) || staminaDelta === 0) return;
+      setStatus((prev) => applyOptimisticStaminaToStatusForTest(prev, staminaDelta));
+    };
     void refresh();
     window.addEventListener(BIOMES_UI_PLAYER_STATUS_UPDATED_EVENT, onStatus);
+    window.addEventListener(
+      BIOMES_UI_OPTIMISTIC_PLAYER_STATUS_EVENT,
+      onOptimistic
+    );
     return () => {
       cancelled = true;
       if (timer !== undefined) window.clearTimeout(timer);
       window.removeEventListener(
         BIOMES_UI_PLAYER_STATUS_UPDATED_EVENT,
         onStatus
+      );
+      window.removeEventListener(
+        BIOMES_UI_OPTIMISTIC_PLAYER_STATUS_EVENT,
+        onOptimistic
       );
     };
   }, []);

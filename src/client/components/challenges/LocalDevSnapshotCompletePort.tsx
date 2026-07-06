@@ -13,6 +13,7 @@ import {
   SNAPSHOT_MISSION_TEST_MATRIX_VERSION,
   SNAPSHOT_MUCK_PERSISTENCE,
   SNAPSHOT_OFFICIAL_NUX_CHALLENGES,
+  SNAPSHOT_ROAD_AHEAD_MISSION_ID,
   SNAPSHOT_STRUCTURED_REWARDS,
   SNAPSHOT_CANONICAL_CHALLENGE_EXTRACTION_VERSION,
   SNAPSHOT_SERVER_COMPLETION_STATE_VERSION,
@@ -38,11 +39,9 @@ export const SNAPSHOT_COMPLETE_PORT_STATE_KEY =
   "biomes.localDev.snapshotCompletePortState";
 export const SNAPSHOT_COMPLETE_PORT_EVENT =
   "biomes:local-dev-snapshot-complete-port";
-export const SNAPSHOT_PHOTO_PROOFS_KEY =
-  "biomes.localDev.snapshotPhotoProofs";
+export const SNAPSHOT_PHOTO_PROOFS_KEY = "biomes.localDev.snapshotPhotoProofs";
 export const SNAPSHOT_CLEARED_MUCK_KEY =
-
-// current static audit contract: muck clearing writes local dev state with harthmereLocalStorage.setItem(SNAPSHOT_CLEARED_MUCK_KEY, ...).
+  // current static audit contract: muck clearing writes local dev state with harthmereLocalStorage.setItem(SNAPSHOT_CLEARED_MUCK_KEY, ...).
   "biomes.localDev.snapshotClearedMuck";
 
 // SNAPSHOT_PER_PLAYER_MISSION_STATE_VERSION
@@ -106,7 +105,6 @@ function snapshotLocalRemoveItem(baseKey: string) {
   harthmereLocalStorage.removeItem(baseKey);
 }
 
-
 interface SnapshotCompletePortState {
   version: typeof SNAPSHOT_COMPLETE_PORT_VERSION;
   acceptedMissionIds: string[];
@@ -143,33 +141,125 @@ const EMPTY_STATE: SnapshotCompletePortState = {
   clearedMuckIds: [],
 };
 
+const SNAPSHOT_COMPLETE_PORT_ALLOWED_MISSION_IDS = new Set([
+  SNAPSHOT_ROAD_AHEAD_MISSION_ID,
+]);
+
+const SNAPSHOT_COMPLETE_PORT_ROAD_AHEAD_STEP_ID_RE = /^road_ahead_\d+_/;
+
+function snapshotCompletePortCompletedRoadAheadStepIndexes(
+  completedStepIds: readonly string[]
+) {
+  return new Set(
+    completedStepIds
+      .map((stepId) => /^road_ahead_(\d+)_/.exec(stepId)?.[1])
+      .filter((index): index is string => Boolean(index))
+      .map((index) => Number(index))
+  );
+}
+
+function snapshotCompletePortAllowedRoadAheadRewardIds(
+  completedStepIds: readonly string[]
+) {
+  const completedIndexes =
+    snapshotCompletePortCompletedRoadAheadStepIndexes(completedStepIds);
+  return new Set(
+    SNAPSHOT_OFFICIAL_NUX_CHALLENGES.flatMap((challenge, index) =>
+      completedIndexes.has(index) ? [...challenge.rewardIds] : []
+    )
+  );
+}
+
+function snapshotCompletePortAllowedRoadAheadItemIds(
+  completedStepIds: readonly string[]
+) {
+  const completedIndexes =
+    snapshotCompletePortCompletedRoadAheadStepIndexes(completedStepIds);
+  return new Set(
+    SNAPSHOT_OFFICIAL_NUX_CHALLENGES.flatMap((challenge, index) =>
+      completedIndexes.has(index) ? [...challenge.itemGrantIds] : []
+    )
+  );
+}
+
 function isBrowser() {
-  return typeof window !== "undefined" && typeof window.localStorage !== "undefined";
+  return (
+    typeof window !== "undefined" && typeof window.localStorage !== "undefined"
+  );
 }
 
 function unique<T>(items: T[]): T[] {
   return [...new Set(items)];
 }
 
-function normalizeState(parsed: Partial<SnapshotCompletePortState> | undefined): SnapshotCompletePortState {
+function normalizeState(
+  parsed: Partial<SnapshotCompletePortState> | undefined
+): SnapshotCompletePortState {
+  const acceptedMissionIds = Array.isArray(parsed?.acceptedMissionIds)
+    ? parsed!.acceptedMissionIds.filter((id) =>
+        SNAPSHOT_COMPLETE_PORT_ALLOWED_MISSION_IDS.has(String(id))
+      )
+    : [];
+  const parsedActiveMissionId =
+    typeof parsed?.activeMissionId === "string" &&
+    SNAPSHOT_COMPLETE_PORT_ALLOWED_MISSION_IDS.has(parsed.activeMissionId)
+      ? parsed.activeMissionId
+      : undefined;
+  const completedMissionIds = Array.isArray(parsed?.completedMissionIds)
+    ? parsed!.completedMissionIds.filter((id) =>
+        SNAPSHOT_COMPLETE_PORT_ALLOWED_MISSION_IDS.has(String(id))
+      )
+    : [];
+  const completedStepIds = Array.isArray(parsed?.completedStepIds)
+    ? parsed!.completedStepIds.filter((id) =>
+        SNAPSHOT_COMPLETE_PORT_ROAD_AHEAD_STEP_ID_RE.test(String(id))
+      )
+    : [];
+  const activeMissionId =
+    parsedActiveMissionId ??
+    (acceptedMissionIds.includes(SNAPSHOT_ROAD_AHEAD_MISSION_ID) &&
+    !completedMissionIds.includes(SNAPSHOT_ROAD_AHEAD_MISSION_ID)
+      ? SNAPSHOT_ROAD_AHEAD_MISSION_ID
+      : undefined);
+  const allowedRewardIds =
+    snapshotCompletePortAllowedRoadAheadRewardIds(completedStepIds);
+  const allowedItemIds =
+    snapshotCompletePortAllowedRoadAheadItemIds(completedStepIds);
   return {
     ...EMPTY_STATE,
     ...parsed,
     version: SNAPSHOT_COMPLETE_PORT_VERSION,
-    acceptedMissionIds: Array.isArray(parsed?.acceptedMissionIds) ? parsed!.acceptedMissionIds : [],
-    activeMissionId: typeof parsed?.activeMissionId === "string" ? parsed.activeMissionId : undefined,
-    activeStepIndex: Number.isFinite(parsed?.activeStepIndex) ? Math.max(0, Number(parsed!.activeStepIndex)) : 0,
-    completedMissionIds: Array.isArray(parsed?.completedMissionIds) ? parsed!.completedMissionIds : [],
-    completedStepIds: Array.isArray(parsed?.completedStepIds) ? parsed!.completedStepIds : [],
-    grantedRewardIds: Array.isArray(parsed?.grantedRewardIds) ? parsed!.grantedRewardIds : [],
-    grantedItemIds: Array.isArray(parsed?.grantedItemIds) ? parsed!.grantedItemIds : [],
-    bling: Number(parsed?.bling ?? 0),
-    xp: Number(parsed?.xp ?? 0),
+    acceptedMissionIds,
+    activeMissionId,
+    activeStepIndex:
+      activeMissionId && Number.isFinite(parsed?.activeStepIndex)
+        ? Math.max(0, Number(parsed!.activeStepIndex))
+        : 0,
+    completedMissionIds,
+    completedStepIds,
+    grantedRewardIds: Array.isArray(parsed?.grantedRewardIds)
+      ? parsed!.grantedRewardIds.filter((id) =>
+          allowedRewardIds.has(String(id))
+        )
+      : [],
+    grantedItemIds: Array.isArray(parsed?.grantedItemIds)
+      ? parsed!.grantedItemIds.filter((id) => allowedItemIds.has(String(id)))
+      : [],
+    bling: 0,
+    xp: 0,
     audioLog: Array.isArray(parsed?.audioLog) ? parsed!.audioLog : [],
-    photoProofIds: Array.isArray(parsed?.photoProofIds) ? parsed!.photoProofIds : [],
-    fishingCatchIds: Array.isArray(parsed?.fishingCatchIds) ? parsed!.fishingCatchIds : [],
-    clearedMuckIds: Array.isArray(parsed?.clearedMuckIds) ? parsed!.clearedMuckIds : [],
-    lastMarkerPosition: Array.isArray(parsed?.lastMarkerPosition) ? parsed!.lastMarkerPosition : undefined,
+    photoProofIds: Array.isArray(parsed?.photoProofIds)
+      ? parsed!.photoProofIds
+      : [],
+    fishingCatchIds: Array.isArray(parsed?.fishingCatchIds)
+      ? parsed!.fishingCatchIds
+      : [],
+    clearedMuckIds: Array.isArray(parsed?.clearedMuckIds)
+      ? parsed!.clearedMuckIds
+      : [],
+    lastMarkerPosition: Array.isArray(parsed?.lastMarkerPosition)
+      ? parsed!.lastMarkerPosition
+      : undefined,
   };
 }
 
@@ -185,7 +275,9 @@ export function readSnapshotCompletePortState(): SnapshotCompletePortState {
   }
 }
 
-export function writeSnapshotCompletePortState(state: SnapshotCompletePortState) {
+export function writeSnapshotCompletePortState(
+  state: SnapshotCompletePortState
+) {
   if (!isBrowser()) {
     return;
   }
@@ -203,9 +295,11 @@ function appendAudioCue(state: SnapshotCompletePortState, cue: string) {
 
 function grantStructuredReward(
   state: SnapshotCompletePortState,
-  questId: string,
+  questId: string
 ): SnapshotCompletePortState {
-  const reward = SNAPSHOT_STRUCTURED_REWARDS.find((entry) => entry.questId === questId);
+  const reward = SNAPSHOT_STRUCTURED_REWARDS.find(
+    (entry) => entry.questId === questId
+  );
   if (!reward || state.grantedRewardIds.includes(reward.id)) {
     return state;
   }
@@ -213,11 +307,16 @@ function grantStructuredReward(
     {
       ...state,
       grantedRewardIds: unique([...state.grantedRewardIds, reward.id]),
-      grantedItemIds: unique([...state.grantedItemIds, ...reward.items, ...reward.recipes, ...reward.codex]),
+      grantedItemIds: unique([
+        ...state.grantedItemIds,
+        ...reward.items,
+        ...reward.recipes,
+        ...reward.codex,
+      ]),
       xp: state.xp + reward.xp,
       bling: state.bling + reward.bling,
     },
-    reward.audioCue,
+    reward.audioCue
   );
 }
 
@@ -229,11 +328,17 @@ function markProof(kind: "photo" | "muck" | "fish", id: string) {
   let next = { ...state };
   if (kind === "photo") {
     next.photoProofIds = unique([id, ...state.photoProofIds]);
-    snapshotLocalSetItem(SNAPSHOT_PHOTO_PROOFS_KEY, JSON.stringify(next.photoProofIds));
+    snapshotLocalSetItem(
+      SNAPSHOT_PHOTO_PROOFS_KEY,
+      JSON.stringify(next.photoProofIds)
+    );
     next = appendAudioCue(next, SNAPSHOT_AUDIO_CUES.cameraShutter);
   } else if (kind === "muck") {
     next.clearedMuckIds = unique([id, ...state.clearedMuckIds]);
-    snapshotLocalSetItem(SNAPSHOT_CLEARED_MUCK_KEY, JSON.stringify(next.clearedMuckIds));
+    snapshotLocalSetItem(
+      SNAPSHOT_CLEARED_MUCK_KEY,
+      JSON.stringify(next.clearedMuckIds)
+    );
     next = appendAudioCue(next, SNAPSHOT_AUDIO_CUES.muckClear);
   } else {
     next.fishingCatchIds = unique([id, ...state.fishingCatchIds]);
@@ -242,7 +347,10 @@ function markProof(kind: "photo" | "muck" | "fish", id: string) {
   writeSnapshotCompletePortState(next);
 }
 
-function triggerMatchesTestCase(testCase: SnapshotMissionTestCase, event: GardenHoseEvent) {
+function triggerMatchesTestCase(
+  testCase: SnapshotMissionTestCase,
+  event: GardenHoseEvent
+) {
   const kind = (event as any).kind as string | undefined;
   switch (testCase.trigger) {
     case "near_location":
@@ -256,13 +364,21 @@ function triggerMatchesTestCase(testCase: SnapshotMissionTestCase, event: Garden
     case "jump":
       return kind === "jump" && Boolean((event as any).running);
     case "photo_post_attempt":
-      return kind === "photo_post_attempt" || kind === "photo_post" || kind === "show_post_capture";
+      return (
+        kind === "photo_post_attempt" ||
+        kind === "photo_post" ||
+        kind === "show_post_capture"
+      );
     case "craft":
       return kind === "craft" || kind === "inventory_change";
     case "talk_npc":
       return kind === "talk_npc";
     case "combat":
-      return kind === "npc_killed" || kind === "npc_damage" || kind === "challenge_step_complete";
+      return (
+        kind === "npc_killed" ||
+        kind === "npc_damage" ||
+        kind === "challenge_step_complete"
+      );
     case "fishing_catch":
       return kind === "fishing_catch";
     case "clear_muck":
@@ -295,9 +411,12 @@ function pinTestCaseMarker(mapManager: any, testCase: SnapshotMissionTestCase) {
     {
       kind: "placed",
       autoremoveWhenNear: true,
-      target: { kind: "position", position: [...testCase.expectedMarkerPosition] },
+      target: {
+        kind: "position",
+        position: [...testCase.expectedMarkerPosition],
+      },
     },
-    markerId,
+    markerId
   );
   const state = readSnapshotCompletePortState();
   writeSnapshotCompletePortState({
@@ -307,168 +426,221 @@ function pinTestCaseMarker(mapManager: any, testCase: SnapshotMissionTestCase) {
   });
 }
 
-export const SnapshotCompletePortRuntimeController: React.FunctionComponent<{}> = () => {
-  const { gardenHose, mapManager, reactResources } = useClientContext();
+export const SnapshotCompletePortRuntimeController: React.FunctionComponent<{}> =
+  () => {
+    const { gardenHose, mapManager, reactResources } = useClientContext();
 
-  useEffect(() => {
-    const handler = (event: GardenHoseEvent) => {
-      const state = readSnapshotCompletePortState();
-      const tests = snapshotMissionTestCases();
-      const eventMarkerId =
-        (event as any).markerId ??
-        (event as any).target ??
-        (event as any).id ??
-        undefined;
-      // HARTHMERE_SNAPSHOT_MISSION_ORDER_INDEPENDENT (2026-07-02): complete the
-      // earliest still-incomplete step (of the active mission, else any snapshot
-      // mission) whose trigger matches this event, and auto-accept that mission.
-      // The old code only advanced when the event matched the CURRENT step in
-      // strict order after acceptance, so a missed "Meet Jackie" talk or any
-      // out-of-order action left Road Ahead stuck at step 0 forever.
-      const chosen = chooseSnapshotMissionStep(
-        state,
-        tests,
-        (test) => triggerMatchesTestCase(test, event),
-        eventMarkerId !== undefined ? String(eventMarkerId) : undefined
-      );
-      if (!chosen) {
-        // Nothing advanced: still record the raw proof so evidence is not lost.
-        if ((event as any).kind === "photo_post_attempt" || (event as any).kind === "show_post_capture") {
-          markProof("photo", `photo_${Date.now()}`);
+    useEffect(() => {
+      const handler = (event: GardenHoseEvent) => {
+        const state = readSnapshotCompletePortState();
+        const tests = snapshotMissionTestCases();
+        const eventMarkerId =
+          (event as any).markerId ??
+          (event as any).target ??
+          (event as any).id ??
+          undefined;
+        // HARTHMERE_SNAPSHOT_MISSION_ORDER_INDEPENDENT (2026-07-02): complete the
+        // earliest still-incomplete step whose trigger matches this event. Only the
+        // Road Ahead NUX chain can self-accept from an out-of-order event; later
+        // Grove quests must be explicitly active first.
+        // The old code only advanced when the event matched the CURRENT step in
+        // strict order after acceptance, so a missed "Meet Jackie" talk or any
+        // out-of-order action left Road Ahead stuck at step 0 forever.
+        const chosen = chooseSnapshotMissionStep(
+          state,
+          tests,
+          (test) => triggerMatchesTestCase(test, event),
+          eventMarkerId !== undefined ? String(eventMarkerId) : undefined,
+          {
+            canImplicitlyAcceptQuest: (questId) =>
+              questId === SNAPSHOT_ROAD_AHEAD_MISSION_ID,
+          }
+        );
+        if (!chosen) {
+          // Nothing advanced: still record the raw proof so evidence is not lost.
+          if (
+            (event as any).kind === "photo_post_attempt" ||
+            (event as any).kind === "show_post_capture"
+          ) {
+            markProof("photo", `photo_${Date.now()}`);
+          }
+          if (
+            (event as any).kind === "destroy" ||
+            (event as any).kind === "clear_muck"
+          ) {
+            markProof("muck", String(eventMarkerId ?? "muckwad_patch"));
+          }
+          if ((event as any).kind === "fishing_catch") {
+            markProof(
+              "fish",
+              String((event as any).catchId ?? `fish_${Date.now()}`)
+            );
+          }
+          return;
         }
-        if ((event as any).kind === "destroy" || (event as any).kind === "clear_muck") {
-          markProof("muck", String(eventMarkerId ?? "muckwad_patch"));
+
+        const {
+          state: advancedState,
+          completedMission,
+          nextStepIndex,
+        } = advanceSnapshotMissionProgress(state, tests, chosen);
+        let next = appendAudioCue(advancedState, chosen.expectedAudioCue);
+        if (completedMission) {
+          next = grantStructuredReward(next, chosen.questId);
         }
-        if ((event as any).kind === "fishing_catch") {
-          markProof("fish", String((event as any).catchId ?? `fish_${Date.now()}`));
+        writeSnapshotCompletePortState(next);
+
+        // Mirror Road Ahead progress into the BiomesUI mission-tracker store so the
+        // displayed quest advances with the player's actions (the tracker reads the
+        // bridge store, not this one). Map complete-port step ids
+        // ("road_ahead_<index>_...") back to their step index.
+        if (chosen.questId === "snapshot_road_ahead_full_chain") {
+          const completedStepIndexes = next.completedStepIds
+            .map((id) => /^road_ahead_(\d+)_/.exec(id)?.[1])
+            .filter((value): value is string => Boolean(value))
+            .map((value) => Number(value));
+          applySnapshotRoadAheadProgressFromPortForBiomesUI({
+            completedStepIndexes,
+            activeStepIndex: completedMission ? 0 : nextStepIndex,
+            missionCompleted: completedMission,
+          });
         }
+
+        if (completedMission) {
+          mapManager.removeNavigationAid?.(760_000 + chosen.stepIndex);
+        } else {
+          const missionTests = tests
+            .filter((test) => test.questId === chosen.questId)
+            .slice()
+            .sort((a, b) => a.stepIndex - b.stepIndex);
+          const nextCase = missionTests[nextStepIndex];
+          if (nextCase) {
+            pinTestCaseMarker(mapManager, nextCase);
+          }
+        }
+      };
+      gardenHose.on("anyEvent", handler);
+      return () => gardenHose.off("anyEvent", handler);
+    }, [gardenHose, mapManager]);
+
+    useEffect(() => {
+      if (typeof window === "undefined") {
         return;
       }
+      const win = window as typeof window & { __snapshot?: unknown };
+      win.__snapshot = {
+        version: SNAPSHOT_COMPLETE_PORT_VERSION,
+        challengeExtraction: SNAPSHOT_CANONICAL_CHALLENGE_EXTRACTION_VERSION,
+        serverStateContract: SNAPSHOT_SERVER_COMPLETION_STATE_VERSION,
+        tests: snapshotMissionTestCases(),
+        officialNuxChallenges: SNAPSHOT_OFFICIAL_NUX_CHALLENGES,
+        rewards: SNAPSHOT_STRUCTURED_REWARDS,
+        fishingWaterCamera: SNAPSHOT_FISHING_WATER_CAMERA_SYSTEMS,
+        muckPersistence: SNAPSHOT_MUCK_PERSISTENCE,
+        stateScope: snapshotCurrentPlayerStateScope,
+        scopedStorageKey: snapshotPlayerScopedStorageKey,
+        readState: readSnapshotCompletePortState,
+        reset: () => {
+          snapshotLocalRemoveItem(SNAPSHOT_COMPLETE_PORT_STATE_KEY);
+          snapshotLocalRemoveItem(SNAPSHOT_PHOTO_PROOFS_KEY);
+          snapshotLocalRemoveItem(SNAPSHOT_CLEARED_MUCK_KEY);
+          window.dispatchEvent(new Event(SNAPSHOT_COMPLETE_PORT_EVENT));
+        },
+        startMission: (questId: string) => {
+          const tests = snapshotMissionTestCases().filter(
+            (test) => test.questId === questId
+          );
+          const first = tests[0];
+          const current = readSnapshotCompletePortState();
+          writeSnapshotCompletePortState({
+            ...current,
+            acceptedMissionIds: unique([
+              ...current.acceptedMissionIds,
+              questId,
+            ]),
+            activeMissionId: questId,
+            activeStepIndex: 0,
+          });
+          if (first) {
+            pinTestCaseMarker(mapManager, first);
+          }
+        },
+        runMissionAudit: () => runSnapshotMissionAudit(),
+        runFootAudit: () => {
+          const positions: Record<string, Vec3 | undefined> = {};
+          for (const npc of SNAPSHOT_GROVE_NPCS) {
+            const id = npc.seedServerNpc
+              ? snapshotGroveNpcEntityId(npc)
+              : (8997551883502307 as BiomesId);
+            const position = reactResources.get?.(
+              "/ecs/c/position",
+              id as BiomesId
+            ) as any;
+            positions[npc.id] = position?.v
+              ? ([...position.v] as Vec3)
+              : undefined;
+          }
+          return snapshotGroveFootClearanceAudit(positions);
+        },
+        forceCompleteActiveStep: () => {
+          const state = readSnapshotCompletePortState();
+          const tests = snapshotMissionTestCases().filter(
+            (test) => test.questId === state.activeMissionId
+          );
+          const test = tests[state.activeStepIndex];
+          if (!test) return state;
+          const completedMission = state.activeStepIndex + 1 >= tests.length;
+          const next = grantStructuredReward(
+            {
+              ...state,
+              activeMissionId: completedMission
+                ? undefined
+                : state.activeMissionId,
+              activeStepIndex: completedMission ? 0 : state.activeStepIndex + 1,
+              completedStepIds: unique([...state.completedStepIds, test.id]),
+              completedMissionIds:
+                completedMission && state.activeMissionId
+                  ? unique([
+                      ...state.completedMissionIds,
+                      state.activeMissionId,
+                    ])
+                  : state.completedMissionIds,
+            },
+            test.questId
+          );
+          writeSnapshotCompletePortState(next);
+          return next;
+        },
+      };
+    }, [mapManager, reactResources]);
 
-      const { state: advancedState, completedMission, nextStepIndex } =
-        advanceSnapshotMissionProgress(state, tests, chosen);
-      let next = appendAudioCue(advancedState, chosen.expectedAudioCue);
-      if (completedMission) {
-        next = grantStructuredReward(next, chosen.questId);
-      }
-      writeSnapshotCompletePortState(next);
-
-      // Mirror Road Ahead progress into the BiomesUI mission-tracker store so the
-      // displayed quest advances with the player's actions (the tracker reads the
-      // bridge store, not this one). Map complete-port step ids
-      // ("road_ahead_<index>_...") back to their step index.
-      if (chosen.questId === "snapshot_road_ahead_full_chain") {
-        const completedStepIndexes = next.completedStepIds
-          .map((id) => /^road_ahead_(\d+)_/.exec(id)?.[1])
-          .filter((value): value is string => Boolean(value))
-          .map((value) => Number(value));
-        applySnapshotRoadAheadProgressFromPortForBiomesUI({
-          completedStepIndexes,
-          activeStepIndex: completedMission ? 0 : nextStepIndex,
-          missionCompleted: completedMission,
-        });
-      }
-
-      if (completedMission) {
-        mapManager.removeNavigationAid?.(760_000 + chosen.stepIndex);
-      } else {
-        const missionTests = tests
-          .filter((test) => test.questId === chosen.questId)
-          .slice()
-          .sort((a, b) => a.stepIndex - b.stepIndex);
-        const nextCase = missionTests[nextStepIndex];
-        if (nextCase) {
-          pinTestCaseMarker(mapManager, nextCase);
-        }
-      }
-    };
-    gardenHose.on("anyEvent", handler);
-    return () => gardenHose.off("anyEvent", handler);
-  }, [gardenHose, mapManager]);
-
-  useEffect(() => {
-    if (typeof window === "undefined") {
-      return;
-    }
-    const win = window as typeof window & { __snapshot?: unknown };
-    win.__snapshot = {
-      version: SNAPSHOT_COMPLETE_PORT_VERSION,
-      challengeExtraction: SNAPSHOT_CANONICAL_CHALLENGE_EXTRACTION_VERSION,
-      serverStateContract: SNAPSHOT_SERVER_COMPLETION_STATE_VERSION,
-      tests: snapshotMissionTestCases(),
-      officialNuxChallenges: SNAPSHOT_OFFICIAL_NUX_CHALLENGES,
-      rewards: SNAPSHOT_STRUCTURED_REWARDS,
-      fishingWaterCamera: SNAPSHOT_FISHING_WATER_CAMERA_SYSTEMS,
-      muckPersistence: SNAPSHOT_MUCK_PERSISTENCE,
-      stateScope: snapshotCurrentPlayerStateScope,
-      scopedStorageKey: snapshotPlayerScopedStorageKey,
-      readState: readSnapshotCompletePortState,
-      reset: () => {
-        snapshotLocalRemoveItem(SNAPSHOT_COMPLETE_PORT_STATE_KEY);
-        snapshotLocalRemoveItem(SNAPSHOT_PHOTO_PROOFS_KEY);
-        snapshotLocalRemoveItem(SNAPSHOT_CLEARED_MUCK_KEY);
-        window.dispatchEvent(new Event(SNAPSHOT_COMPLETE_PORT_EVENT));
-      },
-      startMission: (questId: string) => {
-        const tests = snapshotMissionTestCases().filter((test) => test.questId === questId);
-        const first = tests[0];
-        const current = readSnapshotCompletePortState();
-        writeSnapshotCompletePortState({
-          ...current,
-          acceptedMissionIds: unique([...current.acceptedMissionIds, questId]),
-          activeMissionId: questId,
-          activeStepIndex: 0,
-        });
-        if (first) {
-          pinTestCaseMarker(mapManager, first);
-        }
-      },
-      runMissionAudit: () => runSnapshotMissionAudit(),
-      runFootAudit: () => {
-        const positions: Record<string, Vec3 | undefined> = {};
-        for (const npc of SNAPSHOT_GROVE_NPCS) {
-          const id = npc.seedServerNpc ? snapshotGroveNpcEntityId(npc) : (8997551883502307 as BiomesId);
-          const position = reactResources.get?.("/ecs/c/position", id as BiomesId) as any;
-          positions[npc.id] = position?.v ? ([...position.v] as Vec3) : undefined;
-        }
-        return snapshotGroveFootClearanceAudit(positions);
-      },
-      forceCompleteActiveStep: () => {
-        const state = readSnapshotCompletePortState();
-        const tests = snapshotMissionTestCases().filter((test) => test.questId === state.activeMissionId);
-        const test = tests[state.activeStepIndex];
-        if (!test) return state;
-        const completedMission = state.activeStepIndex + 1 >= tests.length;
-        const next = grantStructuredReward({
-          ...state,
-          activeMissionId: completedMission ? undefined : state.activeMissionId,
-          activeStepIndex: completedMission ? 0 : state.activeStepIndex + 1,
-          completedStepIds: unique([...state.completedStepIds, test.id]),
-          completedMissionIds: completedMission && state.activeMissionId
-            ? unique([...state.completedMissionIds, state.activeMissionId])
-            : state.completedMissionIds,
-        }, test.questId);
-        writeSnapshotCompletePortState(next);
-        return next;
-      },
-    };
-  }, [mapManager, reactResources]);
-
-  return null;
-};
+    return null;
+  };
 
 export function runSnapshotMissionAudit() {
   const tests = snapshotMissionTestCases();
   const missingMarkers = tests.filter(
-    (test) => !SNAPSHOT_GROVE_LANDMARKS.some((landmark) => landmark.id === test.markerId),
+    (test) =>
+      !SNAPSHOT_GROVE_LANDMARKS.some(
+        (landmark) => landmark.id === test.markerId
+      )
   );
-  const missingRewards = tests.filter((test) => !test.expectedRewardIds.length && test.expectedStateAfter === "complete");
-  const noAutoRemove = tests.filter((test) => !test.expectedMarkerRemovesOnComplete);
+  const missingRewards = tests.filter(
+    (test) =>
+      !test.expectedRewardIds.length && test.expectedStateAfter === "complete"
+  );
+  const noAutoRemove = tests.filter(
+    (test) => !test.expectedMarkerRemovesOnComplete
+  );
   return {
     version: SNAPSHOT_MISSION_TEST_MATRIX_VERSION,
     totalTests: tests.length,
-    roadAheadTests: tests.filter((test) => test.questId === "snapshot_road_ahead_full_chain").length,
-    groveQuestTests: tests.filter((test) => test.questId !== "snapshot_road_ahead_full_chain").length,
+    roadAheadTests: tests.filter(
+      (test) => test.questId === "snapshot_road_ahead_full_chain"
+    ).length,
+    groveQuestTests: tests.filter(
+      (test) => test.questId !== "snapshot_road_ahead_full_chain"
+    ).length,
     missingMarkers,
     missingRewards,
     noAutoRemove,
@@ -480,23 +652,27 @@ export const SnapshotMissionAuditPanel: React.FunctionComponent<{}> = () => {
   const state = useSnapshotCompletePortState();
   const audit = useMemo(() => runSnapshotMissionAudit(), [state.updatedAt]);
   return (
-    <div className="rounded border border-sky-200/20 bg-sky-950/30 p-2 text-white">
+    <div className="rounded border-sky-200/20 bg-sky-950/30 border p-2 text-white">
       <div className="text-sm font-semibold">Snapshot Mission QA</div>
-      <div className="text-[10px] uppercase tracking-wide text-sky-100/80">
+      <div className="text-sky-100/80 text-[10px] uppercase tracking-wide">
         {SNAPSHOT_MISSION_TEST_MATRIX_VERSION}
       </div>
       <div className="mt-1 text-xs text-white/75">
-        {audit.totalTests} mission assertions · {audit.roadAheadTests} Road Ahead · {audit.groveQuestTests} Grove/Harthmere connector
+        {audit.totalTests} mission assertions · {audit.roadAheadTests} Road
+        Ahead · {audit.groveQuestTests} Grove/Harthmere connector
       </div>
       <div className="mt-1 text-[11px] text-white/60">
-        Rewards: {state.grantedRewardIds.length} · Items: {state.grantedItemIds.length} · Audio cues: {state.audioLog.length}
+        Rewards: {state.grantedRewardIds.length} · Items:{" "}
+        {state.grantedItemIds.length} · Audio cues: {state.audioLog.length}
       </div>
       <div className="mt-1 text-[11px] text-white/60">
-        Photo proofs: {state.photoProofIds.length} · Cleared muck: {state.clearedMuckIds.length} · Fish: {state.fishingCatchIds.length}
+        Photo proofs: {state.photoProofIds.length} · Cleared muck:{" "}
+        {state.clearedMuckIds.length} · Fish: {state.fishingCatchIds.length}
       </div>
       {!audit.pass && (
-        <div className="mt-1 rounded bg-red-500/20 p-1 text-[11px] text-red-100">
-          Audit failures: {audit.missingMarkers.length} missing markers, {audit.noAutoRemove.length} non-removing markers.
+        <div className="rounded bg-red-500/20 text-red-100 mt-1 p-1 text-[11px]">
+          Audit failures: {audit.missingMarkers.length} missing markers,{" "}
+          {audit.noAutoRemove.length} non-removing markers.
         </div>
       )}
     </div>
@@ -511,8 +687,13 @@ export const SnapshotGroundingAuditPanel: React.FunctionComponent<{}> = () => {
     const refresh = () => {
       const positions: Record<string, Vec3 | undefined> = {};
       for (const npc of SNAPSHOT_GROVE_NPCS) {
-        const id = npc.seedServerNpc ? snapshotGroveNpcEntityId(npc) : (8997551883502307 as BiomesId);
-        const position = reactResources.get?.("/ecs/c/position", id as BiomesId) as any;
+        const id = npc.seedServerNpc
+          ? snapshotGroveNpcEntityId(npc)
+          : (8997551883502307 as BiomesId);
+        const position = reactResources.get?.(
+          "/ecs/c/position",
+          id as BiomesId
+        ) as any;
         positions[npc.id] = position?.v ? ([...position.v] as Vec3) : undefined;
       }
       setAudit(snapshotGroveFootClearanceAudit(positions));
@@ -524,17 +705,21 @@ export const SnapshotGroundingAuditPanel: React.FunctionComponent<{}> = () => {
 
   const failing = audit.filter((entry) => !entry.pass);
   return (
-    <div className="rounded border border-amber-200/20 bg-amber-950/30 p-2 text-white">
+    <div className="rounded border-amber-200/20 bg-amber-950/30 border p-2 text-white">
       <div className="text-sm font-semibold">Grove NPC Foot Audit</div>
-      <div className="text-[10px] uppercase tracking-wide text-amber-100/80">
+      <div className="text-amber-100/80 text-[10px] uppercase tracking-wide">
         {SNAPSHOT_GROVE_FOOT_CLEARANCE_AUDIT_VERSION}
       </div>
       <div className="mt-1 text-xs text-white/75">
-        {audit.length} NPCs checked · tolerance ≤ {SNAPSHOT_GROVE_MAX_FEET_CLEARANCE}m · failures {failing.length}
+        {audit.length} NPCs checked · tolerance ≤{" "}
+        {SNAPSHOT_GROVE_MAX_FEET_CLEARANCE}m · failures {failing.length}
       </div>
       {!!failing.length && (
-        <div className="mt-1 text-[11px] text-red-100">
-          {failing.slice(0, 3).map((entry) => `${entry.displayName}: ${entry.authoredClearance}m`).join(" · ")}
+        <div className="text-red-100 mt-1 text-[11px]">
+          {failing
+            .slice(0, 3)
+            .map((entry) => `${entry.displayName}: ${entry.authoredClearance}m`)
+            .join(" · ")}
         </div>
       )}
     </div>
@@ -544,21 +729,28 @@ export const SnapshotGroundingAuditPanel: React.FunctionComponent<{}> = () => {
 export const SnapshotPortStatusPanel: React.FunctionComponent<{}> = () => {
   const state = useSnapshotCompletePortState();
   return (
-    <div className="rounded border border-violet-200/20 bg-violet-950/30 p-2 text-white">
+    <div className="rounded border-violet-200/20 bg-violet-950/30 border p-2 text-white">
       <div className="text-sm font-semibold">Snapshot Port Status</div>
-      <div className="text-[10px] uppercase tracking-wide text-violet-100/80">
+      <div className="text-violet-100/80 text-[10px] uppercase tracking-wide">
         {SNAPSHOT_COMPLETE_PORT_VERSION}
       </div>
       <div className="mt-1 text-xs text-white/75">
-        Canonical challenges: {SNAPSHOT_OFFICIAL_NUX_CHALLENGES.length} · Grove quests: {SNAPSHOT_GROVE_QUESTS.length} · Grove NPCs: {SNAPSHOT_GROVE_NPCS.length}
+        Canonical challenges: {SNAPSHOT_OFFICIAL_NUX_CHALLENGES.length} · Grove
+        quests: {SNAPSHOT_GROVE_QUESTS.length} · Grove NPCs:{" "}
+        {SNAPSHOT_GROVE_NPCS.length}
       </div>
       <div className="mt-1 text-[11px] text-white/60">
-        Active: {state.activeMissionId ?? "none"} · Complete: {state.completedMissionIds.length} · XP: {state.xp} · Bling: {state.bling}
+        Active: {state.activeMissionId ?? "none"} · Complete:{" "}
+        {state.completedMissionIds.length} · XP: {state.xp} · Bling:{" "}
+        {state.bling}
       </div>
     </div>
   );
 };
 
-export const SnapshotHarthmereBibleUpgradeMarker: React.FunctionComponent<{}> = () => (
-  <span className="hidden">{SNAPSHOT_HARTHMERE_BIBLE_NPC_UPGRADE_VERSION}</span>
-);
+export const SnapshotHarthmereBibleUpgradeMarker: React.FunctionComponent<{}> =
+  () => (
+    <span className="hidden">
+      {SNAPSHOT_HARTHMERE_BIBLE_NPC_UPGRADE_VERSION}
+    </span>
+  );

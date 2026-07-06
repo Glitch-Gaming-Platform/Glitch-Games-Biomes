@@ -541,6 +541,52 @@ function liveModeRedis() {
     connectToRedis("firehose"));
 }
 
+// HARTHMERE_LIVE_MODE_TX_CONNECTION (2026-07-06): redis WATCH state is per
+// CONNECTION. Every live-mode request used to share ONE connection, so two
+// concurrent mutations interleaved their WATCH/…/EXEC on it: the first EXEC
+// consumes the connection's ENTIRE watch set, leaving the second EXEC running
+// UNWATCHED — silent last-writer-wins. With server latency of 20-30s per
+// mutation, rapid player actions always overlap, which lost inventory
+// increments (10 harvests → count 1), resurrected already-claimed harvest
+// plants (`plant_already_harvested` never fired), and made item counts jump
+// down as stale states overwrote fresh ones. Give each persist call its own
+// dedicated connection so optimistic concurrency actually holds; conflicting
+// writers then genuinely retry via the EXEC-null loop. Falls back to the
+// shared client when duplication isn't available (unit-test mocks).
+async function acquireHarthmereLiveModeTxClient(shared: any): Promise<{
+  client: any;
+  release: () => Promise<void>;
+}> {
+  const duplicate = (shared as { duplicate?: () => any })?.duplicate;
+  if (typeof duplicate !== "function") {
+    return { client: shared, release: async () => {} };
+  }
+  try {
+    const client = duplicate.call(shared);
+    if (typeof client?.connect === "function") {
+      // Shared options use lazyConnect; ensure the socket is live before
+      // WATCH. connect() rejects if already connecting — safe to ignore.
+      await client.connect().catch(() => {});
+    }
+    return {
+      client,
+      release: async () => {
+        try {
+          if (typeof client?.quit === "function") {
+            await client.quit();
+          } else if (typeof client?.disconnect === "function") {
+            client.disconnect();
+          }
+        } catch {
+          // Releasing a dead connection is fine.
+        }
+      },
+    };
+  } catch {
+    return { client: shared, release: async () => {} };
+  }
+}
+
 function liveModeIdempotencyKey(actorId: string, idempotencyKey: string) {
   return `harthmere:live_mode:current:idempotency:${actorId}:${idempotencyKey}`;
 }
@@ -1817,13 +1863,20 @@ export async function persistHarthmereLiveModeResponse(
     stateAdoption: deps.stateAdoption,
   });
   const adoptionSourceStateKey = stateAdoption?.fromStateKey;
-  const supportsWatch = typeof (redis.primary as any).watch === "function";
+  // Dedicated per-request connection: WATCH is per-connection, so sharing one
+  // connection across concurrent requests silently disables optimistic
+  // concurrency (see acquireHarthmereLiveModeTxClient).
+  const { client: txPrimary, release: releaseTxPrimary } =
+    await acquireHarthmereLiveModeTxClient(redis.primary);
+  const supportsWatch = typeof (txPrimary as any).watch === "function";
   if (!supportsWatch) {
+    await releaseTxPrimary();
     throw new Error(
       "Harthmere live-mode Redis client must support WATCH for transactional persistence"
     );
   }
 
+  try {
   for (let attempt = 0; attempt < 5; attempt += 1) {
     const attemptTimings: Record<string, number> = {};
     const mark = (stage: string, startedAt: number) => {
@@ -1831,7 +1884,7 @@ export async function persistHarthmereLiveModeResponse(
     };
     lastAttemptTimings = attemptTimings;
     let stageStartedAt = Date.now();
-    const previous = await redis.primary.get(key);
+    const previous = await txPrimary.get(key);
     mark("idempotency_get_ms", stageStartedAt);
     if (previous) {
       return {
@@ -1850,15 +1903,15 @@ export async function persistHarthmereLiveModeResponse(
     const now = Date.now();
     if (supportsWatch) {
       stageStartedAt = Date.now();
-      await (redis.primary as any).watch(...watchKeys);
+      await (txPrimary as any).watch(...watchKeys);
       mark("watch_ms", stageStartedAt);
     }
 
     stageStartedAt = Date.now();
-    const watchedPrevious = await redis.primary.get(key);
+    const watchedPrevious = await txPrimary.get(key);
     mark("watched_idempotency_get_ms", stageStartedAt);
     if (watchedPrevious) {
-      await redisUnwatchIfSupported(redis.primary);
+      await redisUnwatchIfSupported(txPrimary);
       return {
         ...(JSON.parse(watchedPrevious) as LiveModeResponse),
         duplicate: true,
@@ -1869,12 +1922,12 @@ export async function persistHarthmereLiveModeResponse(
     stageStartedAt = Date.now();
     let { rawState, rawSharedState } =
       await readHarthmerePlayerAndSharedStateStrings(
-        redis.primary,
+        txPrimary,
         playerStateKey,
         sharedWorldStateKey
       );
     let rawAdoptionSourceState = adoptionSourceStateKey
-      ? await redis.primary.get(adoptionSourceStateKey)
+      ? await txPrimary.get(adoptionSourceStateKey)
       : undefined;
     mark("state_get_ms", stageStartedAt);
     stageStartedAt = Date.now();
@@ -1913,8 +1966,8 @@ export async function persistHarthmereLiveModeResponse(
       : undefined;
 
     if (sellerStateKey && supportsWatch) {
-      await redisUnwatchIfSupported(redis.primary);
-      await (redis.primary as any).watch(
+      await redisUnwatchIfSupported(txPrimary);
+      await (txPrimary as any).watch(
         ...uniqueHarthmereLiveModeWatchKeys([
           key,
           playerStateKey,
@@ -1923,9 +1976,9 @@ export async function persistHarthmereLiveModeResponse(
           sellerStateKey,
         ])
       );
-      const secondPrevious = await redis.primary.get(key);
+      const secondPrevious = await txPrimary.get(key);
       if (secondPrevious) {
-        await redisUnwatchIfSupported(redis.primary);
+        await redisUnwatchIfSupported(txPrimary);
         return {
           ...(JSON.parse(secondPrevious) as LiveModeResponse),
           duplicate: true,
@@ -1935,12 +1988,12 @@ export async function persistHarthmereLiveModeResponse(
       stageStartedAt = Date.now();
       ({ rawState, rawSharedState } =
         await readHarthmerePlayerAndSharedStateStrings(
-          redis.primary,
+          txPrimary,
           playerStateKey,
           sharedWorldStateKey
         ));
       rawAdoptionSourceState = adoptionSourceStateKey
-        ? await redis.primary.get(adoptionSourceStateKey)
+        ? await txPrimary.get(adoptionSourceStateKey)
         : undefined;
       mark("seller_state_get_ms", stageStartedAt);
       stageStartedAt = Date.now();
@@ -1984,7 +2037,7 @@ export async function persistHarthmereLiveModeResponse(
       | undefined;
     if (settlement && sellerStateKey) {
       stageStartedAt = Date.now();
-      const rawSellerState = await redis.primary.get(sellerStateKey);
+      const rawSellerState = await txPrimary.get(sellerStateKey);
       sellerState = parseHarthmereLiveModeBackendState(
         rawSellerState,
         settlement.sellerId,
@@ -2028,7 +2081,7 @@ export async function persistHarthmereLiveModeResponse(
       !isHarthmereLiveModeReadOnlySnapshotRequest(envelope, reduced.summary);
     if (persistActorAndSharedState) {
       stageStartedAt = Date.now();
-      const latestRawStateForStatusChannels = await redis.primary.get(
+      const latestRawStateForStatusChannels = await txPrimary.get(
         playerStateKey
       );
       const statusChannelPreservation =
@@ -2121,7 +2174,7 @@ export async function persistHarthmereLiveModeResponse(
     mark("snapshots_ms", stageStartedAt);
 
     stageStartedAt = Date.now();
-    const tx = redis.primary.multi();
+    const tx = txPrimary.multi();
     if (persistActorAndSharedState) {
       tx.set(playerStateKey, JSON.stringify(reduced.state));
       tx.set(
@@ -2230,7 +2283,7 @@ export async function persistHarthmereLiveModeResponse(
           ).slice(0, 240)}`
         );
       }
-      await redis.primary.set(
+      await txPrimary.set(
         key,
         JSON.stringify(
           slimHarthmereLiveModeIdempotencyResponse(persistedResponse)
@@ -2269,7 +2322,7 @@ export async function persistHarthmereLiveModeResponse(
           ).slice(0, 240)}`
         );
       }
-      await redis.primary.set(
+      await txPrimary.set(
         key,
         JSON.stringify(
           slimHarthmereLiveModeIdempotencyResponse(persistedResponse)
@@ -2310,6 +2363,9 @@ export async function persistHarthmereLiveModeResponse(
   throw new Error(
     "Harthmere live-mode Redis transaction conflicted too many times"
   );
+  } finally {
+    await releaseTxPrimary();
+  }
 }
 
 export default biomesApiHandler(

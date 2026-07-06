@@ -694,7 +694,9 @@ export const InventoryTab: React.FunctionComponent<{
                     React.Fragment,
                     null,
                     renderInventoryIcon(item),
-                    item.count && item.count > 1
+                    // Always show the quantity so every stack reads consistently
+                    // (users could not tell a 1-stack from an uncounted item).
+                    item.count && item.count >= 1
                       ? React.createElement(
                           "span",
                           { className: "biomes-ui-inventory__count" },
@@ -832,7 +834,7 @@ export const InventoryTab: React.FunctionComponent<{
                       <>
                         {renderInventoryIcon(item)}
                         <span style={visuallyHiddenStyle}>{item.label}</span>
-                        {item.count && item.count > 1 ? (
+                        {item.count && item.count >= 1 ? (
                           <span className="biomes-ui-inventory__count">
                             {item.count}
                           </span>
@@ -1248,7 +1250,7 @@ const MaterialStorageShelf: React.FunctionComponent<{
               onDragEnd={onDragEnd}
             >
               {renderInventoryIcon(item)}
-              {item.count && item.count > 1 ? (
+              {item.count && item.count >= 1 ? (
                 <span className="biomes-ui-inventory__count">{item.count}</span>
               ) : null}
               <span style={visuallyHiddenStyle}>{item.label}</span>

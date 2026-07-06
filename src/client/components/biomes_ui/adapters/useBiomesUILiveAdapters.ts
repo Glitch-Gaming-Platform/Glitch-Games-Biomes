@@ -1,6 +1,11 @@
 import { harthmereLiveServerAuthoritative } from "@/client/components/challenges/harthmereLiveAuthoritySignal";
 import { useClientContext } from "@/client/components/contexts/ClientContextReactContext";
 import { defaultHarthmereLiveFetch } from "@/client/components/harthmere_live_fetch";
+import { addToast } from "@/client/components/toast/helpers";
+import {
+  BIOMES_UI_OPTIMISTIC_PLAYER_STATUS_EVENT,
+  type BiomesUIOptimisticPlayerStatusDetail,
+} from "@/client/components/biomes_ui/adapters/playerStatusAdapter";
 import {
   getHarthmereItemDisplay,
   harthmereJobToolOwnedState,
@@ -503,7 +508,11 @@ function localHarthmereBackpackItemToUiItem(
 
 function localHarthmereHotbarItemToUiItem(
   itemId: string,
-  index: number
+  index: number,
+  // Real carried count for the hotbar item (live-mode server count or local
+  // backpack quantity). Hotbar slots used to hard-code `count: 1`, so stacks
+  // showed the wrong quantity on the HUD hotbar and the inventory mirror.
+  count = 1
 ): InventoryUiItem | null {
   const display = getHarthmereItemDisplay(itemId);
   if (!display) return null;
@@ -517,7 +526,7 @@ function localHarthmereHotbarItemToUiItem(
     id: itemId,
     label: display.name,
     icon: display.icon ?? biomesInventoryItemIcon(itemId),
-    count: 1,
+    count: Math.max(0, Math.trunc(Number(count) || 0)),
     quality: "common",
     category,
     description: display.description,
@@ -1119,10 +1128,74 @@ function isLiveVoxelBlockItemId(itemId: string) {
   );
 }
 
+// HARTHMERE_HOTBAR_AUTO_ASSIGN_OPT_OUT (2026-07-06): auto-assign used to run on
+// EVERY live inventory response, so the moment a player removed a block from
+// the hotbar the next response re-assigned it — "I remove the items in the
+// hotbar but they keep coming back". Removals are now remembered (persisted +
+// in-memory mirror for storage-blocked iframes) and auto-assign never re-adds
+// an item the player explicitly removed. Newly acquired items still
+// auto-assign once.
+const HARTHMERE_HOTBAR_AUTO_ASSIGN_OPT_OUT_KEY =
+  "biomes.localDev.harthmere.hotbarAutoAssignOptOut";
+let hotbarAutoAssignOptOutMirror: Set<string> | undefined;
+
+function readHarthmereHotbarAutoAssignOptOut(): Set<string> {
+  if (hotbarAutoAssignOptOutMirror) return hotbarAutoAssignOptOutMirror;
+  let stored: string[] = [];
+  try {
+    const raw = window.localStorage.getItem(
+      HARTHMERE_HOTBAR_AUTO_ASSIGN_OPT_OUT_KEY
+    );
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) stored = parsed.map(String);
+    }
+  } catch {
+    // Storage blocked/partitioned: the in-memory mirror still works this session.
+  }
+  hotbarAutoAssignOptOutMirror = new Set(stored);
+  return hotbarAutoAssignOptOutMirror;
+}
+
+export function rememberHarthmereHotbarAutoAssignOptOut(
+  itemId: string | null | undefined
+) {
+  const value = String(itemId ?? "").trim();
+  if (!value) return;
+  const optOut = readHarthmereHotbarAutoAssignOptOut();
+  optOut.add(value);
+  try {
+    window.localStorage.setItem(
+      HARTHMERE_HOTBAR_AUTO_ASSIGN_OPT_OUT_KEY,
+      JSON.stringify([...optOut])
+    );
+  } catch {
+    // In-memory mirror keeps the opt-out for this session.
+  }
+}
+
+// Exposed for tests.
+export function resetHarthmereHotbarAutoAssignOptOutForTest() {
+  hotbarAutoAssignOptOutMirror = undefined;
+}
+
+// The harthmere quick-slot ref key is `harthmere_hotbar:<slot>:<itemId>`, and
+// item ids themselves may contain colons (`b:3588…`), so take everything after
+// the second separator.
+export function harthmereHotbarItemIdFromRefKey(
+  key: string | number | null | undefined
+): string | undefined {
+  const raw = String(key ?? "");
+  if (!raw.startsWith("harthmere_hotbar:")) return undefined;
+  const itemId = raw.split(":").slice(2).join(":");
+  return itemId || undefined;
+}
+
 function assignLiveVoxelBlocksToEmptyHotbar(inventoryLootState: any) {
   const items = inventoryLootState?.actor?.items;
   if (!items || typeof items !== "object") return;
   const inventoryState = readHarthmereInventoryState();
+  const optOut = readHarthmereHotbarAutoAssignOptOut();
   const assigned = new Set(
     Object.values(inventoryState.hotbar).filter(Boolean).map(String)
   );
@@ -1133,6 +1206,8 @@ function assignLiveVoxelBlocksToEmptyHotbar(inventoryLootState: any) {
   if (emptySlots.length === 0) return;
   for (const [itemId, count] of Object.entries(items)) {
     if (Number(count) <= 0 || assigned.has(itemId)) continue;
+    // Never re-add an item the player explicitly removed from the hotbar.
+    if (optOut.has(itemId)) continue;
     if (!isLiveVoxelBlockItemId(itemId)) continue;
     const slot = emptySlots.shift();
     if (slot === undefined) return;
@@ -1539,6 +1614,27 @@ async function submitFarmingFoodLiveModeAction(
   const requestId = `biomes_ui_farming_food_${operation}_${Date.now()}_${Math.random()
     .toString(36)
     .slice(2)}`;
+  // HARTHMERE_OPTIMISTIC_STAMINA: the server can take 10-30s to respond, so
+  // apply the food's restore to the HUD immediately. The authoritative
+  // snapshot in the response (and every later poll) replaces this — the
+  // server applies the same restore, so the values converge. Single choke
+  // point: every eat path (inventory tab, hotbar use, quick action) funnels
+  // through here.
+  if (operation === "eat_food" && typeof window !== "undefined") {
+    const itemId = String(payload.itemId ?? "");
+    const food = HARTHMERE_FOOD_DEFINITIONS[itemId];
+    if (food && food.staminaRestore > 0) {
+      window.dispatchEvent(
+        new CustomEvent(BIOMES_UI_OPTIMISTIC_PLAYER_STATUS_EVENT, {
+          detail: {
+            staminaDelta: food.staminaRestore,
+            itemId,
+            label: food.displayName,
+          } satisfies BiomesUIOptimisticPlayerStatusDetail,
+        })
+      );
+    }
+  }
   const response = await defaultHarthmereLiveFetch("/api/harthmere/live_mode", {
     method: "POST",
     credentials: "same-origin",
@@ -2481,6 +2577,76 @@ export function useBiomesUILiveAdapters({
     void refreshInventoryLootState();
   }, [activeTab, refreshInventoryLootState]);
 
+  // HARTHMERE_PICKUP_TOASTS (2026-07-06): universal "you picked something up"
+  // feedback. Every authoritative inventory snapshot (mutation responses AND
+  // polls) flows through the inventoryLootState React state, so diffing
+  // consecutive snapshots here announces EVERY item gain — harvests, foraging,
+  // loot rolls, quest rewards — without wiring each action separately. The
+  // first snapshot after load never toasts (it isn't a pickup).
+  const lastPickupToastItemsRef = React.useRef<
+    Record<string, number> | undefined
+  >(undefined);
+  React.useEffect(() => {
+    const items = inventoryLootState?.actor?.items;
+    if (!items || typeof items !== "object") return;
+    const next: Record<string, number> = {};
+    for (const [itemId, count] of Object.entries(items)) {
+      next[itemId] = Math.max(0, Math.trunc(Number(count) || 0));
+    }
+    const prev = lastPickupToastItemsRef.current;
+    lastPickupToastItemsRef.current = next;
+    if (!prev) return;
+    for (const [itemId, count] of Object.entries(next)) {
+      const gained = count - (prev[itemId] ?? 0);
+      if (gained <= 0) continue;
+      const display = getHarthmereItemDisplay(itemId);
+      const label = display?.name ?? humanizeRealItemId(itemId, itemId);
+      try {
+        addToast(clientContext.resources as any, {
+          kind: "basic",
+          id: `harthmere-item-pickup:${itemId}:${Date.now()}`,
+          message: `+${gained} ${label} added to your backpack.`,
+        });
+      } catch {
+        // Toast surface unavailable (e.g. during teardown) — never let
+        // feedback break the inventory update itself.
+      }
+    }
+  }, [clientContext.resources, inventoryLootState?.actor?.items]);
+
+  // Immediate eat feedback toast paired with the optimistic stamina delta —
+  // the authoritative response can take 10-30s, so acknowledge the action now.
+  React.useEffect(() => {
+    if (typeof window === "undefined") return;
+    const handler = (event: Event) => {
+      const detail = (
+        event as CustomEvent<BiomesUIOptimisticPlayerStatusDetail>
+      ).detail;
+      const delta = Number(detail?.staminaDelta);
+      if (!Number.isFinite(delta) || delta <= 0) return;
+      const label =
+        detail?.label ??
+        (detail?.itemId
+          ? humanizeRealItemId(detail.itemId, detail.itemId)
+          : "food");
+      try {
+        addToast(clientContext.resources as any, {
+          kind: "basic",
+          id: `harthmere-eat-food:${detail?.itemId ?? "food"}:${Date.now()}`,
+          message: `You eat ${label} (+${delta} stamina).`,
+        });
+      } catch {
+        // Toast surface unavailable — the stamina bar still updates.
+      }
+    };
+    window.addEventListener(BIOMES_UI_OPTIMISTIC_PLAYER_STATUS_EVENT, handler);
+    return () =>
+      window.removeEventListener(
+        BIOMES_UI_OPTIMISTIC_PLAYER_STATUS_EVENT,
+        handler
+      );
+  }, [clientContext.resources]);
+
   const refreshProgressionState = React.useCallback(async () => {
     try {
       const nextState = await fetchProgressionState();
@@ -3082,10 +3248,28 @@ export function useBiomesUILiveAdapters({
       { length: 9 },
       (_unused, index) => localInventoryState.hotbar[`slot_${index + 1}`]
     );
+    // Real carried count for a quick-slot item: live-mode server count when
+    // present, else the local backpack quantity (hotbar slots are shortcuts,
+    // not stacks of their own — showing `1` for a stack of 7 was wrong).
+    const liveItems = inventoryLootState?.actor?.items;
+    const carriedCountForHotbarItem = (itemId: string) => {
+      const liveCount = Number(liveItems?.[itemId]);
+      if (Number.isFinite(liveCount) && liveCount > 0) {
+        return Math.trunc(liveCount);
+      }
+      const localCount = localInventoryState.backpack.items
+        .filter((item) => item.itemId === itemId)
+        .reduce((sum, item) => sum + Math.max(1, Number(item.quantity) || 1), 0);
+      return localCount > 0 ? localCount : 1;
+    };
     const slots = Array.from({ length: 9 }, (_unused, index) => {
       const localItemId = localHotbarItemIds[index];
       if (localItemId) {
-        const localItem = localHarthmereHotbarItemToUiItem(localItemId, index);
+        const localItem = localHarthmereHotbarItemToUiItem(
+          localItemId,
+          index,
+          carriedCountForHotbarItem(localItemId)
+        );
         if (localItem) {
           return localItem as unknown as HotbarSlotItem;
         }
@@ -3243,7 +3427,10 @@ export function useBiomesUILiveAdapters({
         }
       },
       onDrop: (index: number) => {
-        if (localHotbarItemIds[clampHotbarIndex(index, 9)]) {
+        const droppedLocalItemId =
+          localHotbarItemIds[clampHotbarIndex(index, 9)];
+        if (droppedLocalItemId) {
+          rememberHarthmereHotbarAutoAssignOptOut(droppedLocalItemId);
           performHarthmereHotbarClearForBiomesUI(index);
           return;
         }
@@ -3265,7 +3452,9 @@ export function useBiomesUILiveAdapters({
       // stacks are swapped into the first empty backpack slot.
       onRemove: (index: number) => {
         const idx = clampHotbarIndex(index, 9);
-        if (localHotbarItemIds[idx]) {
+        const removedLocalItemId = localHotbarItemIds[idx];
+        if (removedLocalItemId) {
+          rememberHarthmereHotbarAutoAssignOptOut(removedLocalItemId);
           performHarthmereHotbarClearForBiomesUI(idx);
           return;
         }
@@ -3303,6 +3492,7 @@ export function useBiomesUILiveAdapters({
     gardenHose,
     inventory?.hotbar,
     inventory?.items,
+    inventoryLootState?.actor?.items,
     harthmereInventoryRevision,
     reactResources,
     refreshInventoryLootState,
@@ -3650,28 +3840,49 @@ export function useBiomesUILiveAdapters({
         };
       },
       getHotbar: () => ({
-        // HARTHMERE_INVENTORY_SERVER_AUTHORITATIVE: same gate as the backpack.
-        // The local-dev sim hotbar assigns string-id items (`road_ration`…) that
-        // don't exist in the live server inventory, so in live mode it must not
-        // override the real engine/server-backed hotbar slots — otherwise the
-        // hotbar shows phantom items whose counts never match the inventory panel.
-        // Offline/local-dev keeps its own hotbar arrangement.
-        items: Array.from({ length: 9 }, (_unused, index) =>
-          !liveInventoryAuthoritative &&
-          localHarthmereInventoryState.hotbar[`slot_${index + 1}`]
-            ? localHarthmereHotbarItemToUiItem(
-                String(
-                  localHarthmereInventoryState.hotbar[`slot_${index + 1}`]
-                ),
-                index
-              )
-            : slotToInventoryUiItem(
-                hotbarItems[index],
-                `hotbar_${index + 1}`,
-                { kind: "hotbar", idx: index },
-                "hotbar"
-              )
-        ),
+        // HARTHMERE_INVENTORY_SERVER_AUTHORITATIVE: same gate as the backpack —
+        // but aligned with the HUD hotbar. The HUD renders local quick-slot
+        // assignments (auto-assigned voxel blocks etc.), so the inventory
+        // mirror must show the SAME slots or removals/counts look inconsistent
+        // between the two views. In live mode a local assignment is only shown
+        // when the live server inventory actually carries the item (guards
+        // against phantom local-dev-only items like `road_ration`), and its
+        // count is the REAL carried count, not a hard-coded 1.
+        items: Array.from({ length: 9 }, (_unused, index) => {
+          const localItemId =
+            localHarthmereInventoryState.hotbar[`slot_${index + 1}`];
+          if (localItemId) {
+            const itemId = String(localItemId);
+            const liveCount = Math.max(
+              0,
+              Math.trunc(Number(backendActor?.items?.[itemId] ?? 0))
+            );
+            const localCount = localHarthmereInventoryState.backpack.items
+              .filter((item: any) => item.itemId === itemId)
+              .reduce(
+                (sum: number, item: any) =>
+                  sum + Math.max(1, Number(item.quantity) || 1),
+                0
+              );
+            const showLocalAssignment = liveInventoryAuthoritative
+              ? liveCount > 0
+              : true;
+            if (showLocalAssignment) {
+              const localItem = localHarthmereHotbarItemToUiItem(
+                itemId,
+                index,
+                liveCount > 0 ? liveCount : Math.max(1, localCount)
+              );
+              if (localItem) return localItem;
+            }
+          }
+          return slotToInventoryUiItem(
+            hotbarItems[index],
+            `hotbar_${index + 1}`,
+            { kind: "hotbar", idx: index },
+            "hotbar"
+          );
+        }),
         selectedIndex,
       }),
       getEquipment: () => {
@@ -4035,6 +4246,9 @@ export function useBiomesUILiveAdapters({
           typeof ref.key === "string" &&
           ref.key.startsWith("harthmere_hotbar:")
         ) {
+          rememberHarthmereHotbarAutoAssignOptOut(
+            harthmereHotbarItemIdFromRefKey(ref.key)
+          );
           performHarthmereHotbarClearForBiomesUI(idx);
           return;
         }
@@ -4054,6 +4268,9 @@ export function useBiomesUILiveAdapters({
           typeof src.key === "string" &&
           src.key.startsWith("harthmere_hotbar:")
         ) {
+          rememberHarthmereHotbarAutoAssignOptOut(
+            harthmereHotbarItemIdFromRefKey(src.key)
+          );
           performHarthmereHotbarClearForBiomesUI(Number(src.idx ?? -1));
           return;
         }
