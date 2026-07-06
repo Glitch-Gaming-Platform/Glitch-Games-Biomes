@@ -330,7 +330,14 @@ export function useBiomesUIPlayerStatusState() {
       refreshInFlight = true;
       try {
         const next = await fetchBiomesUIPlayerStatus();
-        if (!cancelled) setStatus(next);
+        // HARTHMERE_HUD_STATUS_LAST_KNOWN_GOOD (2026-07-05): the live_mode
+        // server can take 10s+ per request, so individual polls time out even
+        // when the server is healthy. Clearing the status on a failed poll
+        // dropped the HUD back onto the local combat sim (different HP/stamina
+        // scale) — "HUD stats change depending on if the user is in combat".
+        // Keep the last-known-good server snapshot; the next successful poll
+        // replaces it.
+        if (!cancelled) setStatus((prev) => next ?? prev);
         if (next) {
           // A server snapshot exists → the server is the authority for runtime
           // values. Record it so client simulations (stamina drain/death,
@@ -338,7 +345,8 @@ export function useBiomesUIPlayerStatusState() {
           markHarthmereLiveSnapshotSeen();
         }
       } catch {
-        if (!cancelled) setStatus(undefined);
+        // Transient poll failure: retain the last-known-good server snapshot
+        // rather than flipping the HUD back to the local simulation.
       } finally {
         refreshInFlight = false;
         schedule();

@@ -6,6 +6,7 @@ import {
   planHarthmereLiveFetchCache,
   prepareHarthmereLiveFetchRequest,
   resetHarthmereLiveFetchCache,
+  resetHarthmereLiveInstallIdForTest,
 } from "@/client/components/harthmere_live_fetch";
 
 // HARTHMERE_LIVE_FETCH_COALESCE
@@ -54,7 +55,12 @@ function setFakeWindow(search: string, storedInstallId?: string) {
 }
 
 describe("harthmere live fetch coalescing", () => {
-  beforeEach(() => resetHarthmereLiveFetchCache());
+  beforeEach(() => {
+    resetHarthmereLiveFetchCache();
+    // The sticky install-id cache is module-global; without this reset an
+    // earlier test's install id leaks into later cache-key assertions.
+    resetHarthmereLiveInstallIdForTest();
+  });
   afterEach(() => {
     if (originalWindow === undefined) {
       delete (globalThis as any).window;
@@ -328,7 +334,9 @@ describe("harthmere live fetch coalescing", () => {
     assert.strictEqual((second as any).ok, true);
   });
 
-  it("evicts a rejected fetch so the next call retries", async () => {
+  it("retries a failed GET once, then recovers transparently", async () => {
+    // HARTHMERE_LIVE_FETCH_TIMEOUT_RETRY: reads are idempotent, so a single
+    // network failure is retried in place and the caller never sees it.
     let calls = 0;
     const fetchImpl = (async () => {
       calls += 1;
@@ -338,9 +346,25 @@ describe("harthmere live fetch coalescing", () => {
       return fakeResponse("server-ok");
     }) as unknown as typeof fetch;
     const url = "/api/harthmere/live_mode_building_state";
-    await assert.rejects(coalescedHarthmereLiveFetch(fetchImpl, url, {}));
     const ok = await coalescedHarthmereLiveFetch(fetchImpl, url, {});
     assert.strictEqual(calls, 2);
+    assert.strictEqual((ok as any)._tag, "server-ok");
+  });
+
+  it("evicts a rejected fetch (all attempts failed) so the next call retries", async () => {
+    let calls = 0;
+    const fetchImpl = (async () => {
+      calls += 1;
+      // Exhaust both GET attempts of the first fetch.
+      if (calls <= 2) {
+        throw new Error("network");
+      }
+      return fakeResponse("server-ok");
+    }) as unknown as typeof fetch;
+    const url = "/api/harthmere/live_mode_building_state";
+    await assert.rejects(coalescedHarthmereLiveFetch(fetchImpl, url, {}));
+    const ok = await coalescedHarthmereLiveFetch(fetchImpl, url, {});
+    assert.strictEqual(calls, 3);
     assert.strictEqual((ok as any)._tag, "server-ok");
   });
 
@@ -370,8 +394,11 @@ describe("harthmere live fetch coalescing", () => {
     assert.deepEqual(await response.json(), {
       error: "harthmere_live_fetch_timeout",
       timeoutMs: 1,
+      attempts: 2,
     });
-    assert.equal(calls, 1);
+    // HARTHMERE_LIVE_FETCH_TIMEOUT_RETRY: a timed-out GET is retried once
+    // before the synthesized 504 is returned.
+    assert.equal(calls, 2);
   });
 
   it("does not cache a timeout response, so the next poll can recover immediately", async () => {
@@ -381,7 +408,8 @@ describe("harthmere live fetch coalescing", () => {
       init?: RequestInit
     ) => {
       calls += 1;
-      if (calls === 1) {
+      // Exhaust both GET attempts of the first fetch with timeouts.
+      if (calls <= 2) {
         return new Promise<Response>((_resolve, reject) => {
           init?.signal?.addEventListener("abort", () => {
             reject(
@@ -399,7 +427,7 @@ describe("harthmere live fetch coalescing", () => {
     });
     assert.equal(first.ok, false);
     const second = await coalescedHarthmereLiveFetch(fetchImpl, url, {});
-    assert.equal(calls, 2);
+    assert.equal(calls, 3);
     assert.equal((second as any)._tag, "recovered");
   });
 

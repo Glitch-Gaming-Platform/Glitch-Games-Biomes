@@ -1,6 +1,7 @@
 import assert from "assert";
 import {
   HARTHMERE_LIVE_SNAPSHOT_FRESHNESS_MS,
+  harthmereLiveServerAuthoritative,
   harthmereLiveSnapshotPresent,
   lastHarthmereLiveSnapshotAtMsForTest,
   markHarthmereLiveSnapshotSeen,
@@ -53,5 +54,21 @@ describe("harthmereLiveAuthoritySignal", () => {
     markHarthmereLiveSnapshotSeen(Number.NaN);
     assert.equal(lastHarthmereLiveSnapshotAtMsForTest(), 0);
     assert.equal(harthmereLiveSnapshotPresent(Number.NaN), false);
+    assert.equal(harthmereLiveServerAuthoritative(NOW), false);
+  });
+
+  // HARTHMERE_LIVE_AUTHORITY_STICKY: once a snapshot is seen this session the
+  // server stays the authority even after the freshness window lapses (slow /
+  // timed-out polls must never wake the client sims back up — that was the
+  // production "randomly dying and reviving" starvation loop).
+  it("stays server-authoritative after the freshness window lapses (sticky)", () => {
+    markHarthmereLiveSnapshotSeen(NOW);
+    const later = NOW + HARTHMERE_LIVE_SNAPSHOT_FRESHNESS_MS + 60_000;
+    assert.equal(harthmereLiveSnapshotPresent(later), false);
+    assert.equal(harthmereLiveServerAuthoritative(later), true);
+  });
+
+  it("never reports server authority in genuine offline / local-dev mode", () => {
+    assert.equal(harthmereLiveServerAuthoritative(NOW), false);
   });
 });

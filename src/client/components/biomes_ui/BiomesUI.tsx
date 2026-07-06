@@ -49,6 +49,7 @@ export interface BiomesUIProps {
     onSelect: (i: number) => void;
     onUse?: (i: number) => void;
     onDrop?: (i: number) => void;
+    onRemove?: (i: number) => void;
   };
   badges?: Partial<Record<TabKey, number>>;
   shortcutOverrides?: TabShortcut[];
@@ -299,6 +300,20 @@ export const BiomesUI: React.FunctionComponent<BiomesUIProps> = ({
                         }
                       );
                       hotbar.onDrop?.(i);
+                    }
+                  : undefined
+              }
+              onRemove={
+                hotbar.onRemove
+                  ? (i) => {
+                      emitHarthmereGlitchBehaviorEvent(
+                        "hotbar",
+                        "remove_slot",
+                        {
+                          slot: i + 1,
+                        }
+                      );
+                      hotbar.onRemove?.(i);
                     }
                   : undefined
               }

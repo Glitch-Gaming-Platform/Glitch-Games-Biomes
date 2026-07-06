@@ -11,7 +11,15 @@ import {
 import { setAuthCookies } from "@/server/shared/auth/cookies";
 import type { ForeignAccountProfile } from "@/server/shared/auth/types";
 import type { WebServerRequest } from "@/server/web/context";
-import { getUserOrCreateIfNotExists } from "@/server/web/db/users";
+import {
+  getUserOrCreateIfNotExists,
+  saveUsername as saveUsernameToDb,
+} from "@/server/web/db/users";
+import { findUniqueByUsername } from "@/server/web/db/users_fetch";
+import {
+  isGeneratedPlaceholderUsername,
+  preferredGlitchDisplayUsername,
+} from "@/server/web/util/username";
 import { BIOMES_GAME_NAME } from "@/shared/biomes/display_names";
 import {
   harthmereLiveModeInstallGameUserLinkKey,
@@ -1317,6 +1325,15 @@ function stableBiomesUsername(identity: HarthmereValidatedIdentity) {
     return `Guest${stableGuestUsernameSuffix(identity)}`.slice(0, 20);
   }
 
+  // Prefer the real display name the Glitch API returned; only fall back to the
+  // id-derived Glitch<uid> placeholder when no usable real name exists.
+  // (Username collisions during creation are handled by
+  // getUserOrCreateIfNotExists, which falls back to `user-<id>`.)
+  const preferred = preferredGlitchDisplayUsername(identity);
+  if (preferred) {
+    return preferred;
+  }
+
   const raw =
     firstString(
       identity.glitchUserId,
@@ -1507,7 +1524,38 @@ export async function createBiomesAuthForGlitchIdentity(
     profile.username,
     undefined
   );
-  const username = user.username ?? profile.username ?? "GlitchPlayer";
+  let username = user.username ?? profile.username ?? "GlitchPlayer";
+
+  // HARTHMERE_GLITCH_DISPLAY_USERNAME: accounts created before the real-name
+  // preference (or while the Glitch API omitted `user_name`) carry an
+  // id-derived placeholder like "Glitch43af071c9979a6". Once the API returns a
+  // real name, upgrade the stored username in place — ensureLogicHasPlayer
+  // below re-syncs the ECS label on every login, so the on-screen name heals
+  // immediately. Never overwrite a name the player chose themselves.
+  const preferredUsername = preferredGlitchDisplayUsername(identity);
+  if (
+    preferredUsername &&
+    preferredUsername !== username &&
+    isGeneratedPlaceholderUsername(username)
+  ) {
+    try {
+      const otherUser = await findUniqueByUsername(
+        context.db,
+        preferredUsername
+      );
+      if (!otherUser || otherUser.id === user.id) {
+        await saveUsernameToDb(context.db, user.id, preferredUsername);
+        username = preferredUsername;
+      }
+    } catch (error) {
+      log.warn("HARTHMERE_GLITCH_USERNAME_UPGRADE_FAILED", {
+        error,
+        userId: user.id,
+        from: username,
+        to: preferredUsername,
+      });
+    }
+  }
 
   try {
     await ensureLogicHasPlayer(webReq, user.id, username);

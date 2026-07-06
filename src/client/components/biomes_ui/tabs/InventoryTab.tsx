@@ -100,6 +100,12 @@ interface InventoryAdapter {
   equipItem?: (ref: InventoryUiRef, equipSlot?: string) => void;
   unequipItem?: (ref: InventoryUiRef) => void;
   moveItem?: (src: InventoryUiRef, dst: InventoryUiRef) => void;
+  /**
+   * Remove an item from a hotbar slot (returning it to the backpack /
+   * clearing the quick-slot assignment). Wired to both the per-slot remove
+   * button and drag-and-drop from the hotbar onto the backpack grid.
+   */
+  removeFromHotbar?: (ref: InventoryUiRef) => void;
   splitStack?: (
     src: InventoryUiRef,
     dst: InventoryUiRef,
@@ -419,6 +425,48 @@ export const InventoryTab: React.FunctionComponent<{
     [adapter, draggedRef]
   );
 
+  const removeHotbarRef = React.useCallback(
+    (ref: InventoryUiRef | null | undefined) => {
+      if (!ref || ref.kind !== "hotbar") return;
+      if (adapter?.removeFromHotbar) {
+        adapter.removeFromHotbar(ref);
+        return;
+      }
+      // Fallback: move the hotbar stack into the first empty backpack slot.
+      adapter?.moveItem?.(ref, {
+        kind: "item",
+        idx: firstEmptyBackpackIndex < 0 ? 0 : firstEmptyBackpackIndex,
+      });
+    },
+    [adapter, firstEmptyBackpackIndex]
+  );
+
+  // Dragging a hotbar item anywhere onto the backpack grid removes it from
+  // the hotbar (returns it to the backpack / clears the quick-slot).
+  const handleBackpackDragOver = React.useCallback(
+    (event: React.DragEvent) => {
+      const sourceRef =
+        draggedRef ?? readInventoryDragRefFromTransfer(event.dataTransfer);
+      if (sourceRef?.kind !== "hotbar") return;
+      if (!adapter?.removeFromHotbar && !adapter?.moveItem) return;
+      event.preventDefault();
+      event.dataTransfer.dropEffect = "move";
+    },
+    [adapter, draggedRef]
+  );
+
+  const handleBackpackDrop = React.useCallback(
+    (event: React.DragEvent) => {
+      const sourceRef =
+        readInventoryDragRefFromTransfer(event.dataTransfer) ?? draggedRef;
+      setDraggedRef(null);
+      if (sourceRef?.kind !== "hotbar") return;
+      event.preventDefault();
+      removeHotbarRef(sourceRef);
+    },
+    [draggedRef, removeHotbarRef]
+  );
+
   return (
     <div className="biomes-ui-inventory" data-production-inventory="true">
       <section
@@ -583,6 +631,11 @@ export const InventoryTab: React.FunctionComponent<{
           onDragEnd={endInventoryDrag}
           canDrag={Boolean(adapter?.moveItem)}
         />
+        <div
+          data-backpack-drop-target="true"
+          onDragOver={handleBackpackDragOver}
+          onDrop={handleBackpackDrop}
+        >
         <RovingGrid
           ariaLabel="Backpack slots"
           items={cells}
@@ -676,6 +729,7 @@ export const InventoryTab: React.FunctionComponent<{
               : slotButton;
           }}
         />
+        </div>
 
         <div
           className="biomes-ui-inventory__hotbar-sync"
@@ -707,9 +761,17 @@ export const InventoryTab: React.FunctionComponent<{
                   adapter?.moveItem &&
                     resolveInventoryHotbarDrop(draggedRef, index)
                 );
+                const canRemoveHotbarItem = Boolean(
+                  item?.ref &&
+                    item.ref.kind === "hotbar" &&
+                    (adapter?.removeFromHotbar || adapter?.moveItem)
+                );
                 return (
-                  <button
+                  <div
                     key={`hotbar-sync-${index}`}
+                    style={{ position: "relative", display: "inline-flex" }}
+                  >
+                  <button
                     type="button"
                     className={`biomes-ui-slot biomes-ui-inventory__slot${
                       item ? " biomes-ui-inventory-tooltip-target" : ""
@@ -778,6 +840,42 @@ export const InventoryTab: React.FunctionComponent<{
                       </>
                     ) : null}
                   </button>
+                  {item && canRemoveHotbarItem ? (
+                    <button
+                      type="button"
+                      aria-label={`Remove ${item.label} from hotbar slot ${
+                        index + 1
+                      }`}
+                      title={`Remove ${item.label} from hotbar`}
+                      data-hotbar-remove-index={index}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        removeHotbarRef(item.ref);
+                      }}
+                      style={{
+                        position: "absolute",
+                        top: -6,
+                        right: -6,
+                        width: 16,
+                        height: 16,
+                        borderRadius: "50%",
+                        border: "1px solid var(--biomes-fg-muted, #888)",
+                        background: "var(--biomes-bg-panel, rgba(10,14,20,0.9))",
+                        color: "var(--biomes-fg-danger, #ff7777)",
+                        fontSize: 10,
+                        lineHeight: 1,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        cursor: "pointer",
+                        padding: 0,
+                        zIndex: 2,
+                      }}
+                    >
+                      ×
+                    </button>
+                  ) : null}
+                  </div>
                 );
               }
             )}

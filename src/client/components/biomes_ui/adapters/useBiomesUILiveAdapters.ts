@@ -1,4 +1,4 @@
-import { harthmereLiveSnapshotPresent } from "@/client/components/challenges/harthmereLiveAuthoritySignal";
+import { harthmereLiveServerAuthoritative } from "@/client/components/challenges/harthmereLiveAuthoritySignal";
 import { useClientContext } from "@/client/components/contexts/ClientContextReactContext";
 import { defaultHarthmereLiveFetch } from "@/client/components/harthmere_live_fetch";
 import {
@@ -3259,12 +3259,50 @@ export function useBiomesUILiveAdapters({
           }
         } catch {}
       },
+      // HARTHMERE_HOTBAR_REMOVE: × button on the HUD hotbar. Unlike onDrop
+      // (which throws the item into the world), remove RETURNS the item —
+      // harthmere quick-slots just clear their shortcut assignment, ECS hotbar
+      // stacks are swapped into the first empty backpack slot.
+      onRemove: (index: number) => {
+        const idx = clampHotbarIndex(index, 9);
+        if (localHotbarItemIds[idx]) {
+          performHarthmereHotbarClearForBiomesUI(idx);
+          return;
+        }
+        const slot = hotbarSlots[idx];
+        if (!slot?.item) {
+          return;
+        }
+        try {
+          const localPlayer = reactResources.get("/scene/local_player");
+          if (!localPlayer?.id) return;
+          const backpackItems = normalizeContainer(inventory?.items);
+          const emptyIndex = backpackItems.findIndex((s: any) => !s);
+          fireAndForget(
+            events.publish(
+              new InventorySwapEvent({
+                player_id: localPlayer.id,
+                src_id: localPlayer.id,
+                src: { kind: "hotbar", idx } as OwnedItemReference,
+                dst_id: localPlayer.id,
+                dst: {
+                  kind: "item",
+                  idx: emptyIndex < 0 ? 0 : emptyIndex,
+                } as OwnedItemReference,
+                positions: localPlayerPositionList(reactResources),
+              })
+            )
+          );
+        } catch {}
+      },
     };
   }, [
     applyLiveModeInventoryResponse,
     clientContext,
+    events,
     gardenHose,
     inventory?.hotbar,
+    inventory?.items,
     harthmereInventoryRevision,
     reactResources,
     refreshInventoryLootState,
@@ -3382,7 +3420,9 @@ export function useBiomesUILiveAdapters({
     // local-only appendix (verified live: server owns the real items; the local
     // set was a leftover tutorial/local-dev inventory). Offline / local-dev mode
     // (no live snapshot) still shows the local sim exactly as before.
-    const liveInventoryAuthoritative = harthmereLiveSnapshotPresent();
+    // Sticky: a transient poll gap must not resurrect the local-dev appendix
+    // (items flickering back into the backpack after the server consumed them).
+    const liveInventoryAuthoritative = harthmereLiveServerAuthoritative();
     const localDevBackpackItems = liveInventoryAuthoritative
       ? []
       : localHarthmereInventoryState.backpack.items
@@ -3982,7 +4022,41 @@ export function useBiomesUILiveAdapters({
           idx: emptyIndex < 0 ? 0 : emptyIndex,
         });
       },
+      // HARTHMERE_HOTBAR_REMOVE (2026-07-05): universal "take it off the
+      // hotbar" for BOTH hotbar flavors. Harthmere quick-slots are shortcut
+      // assignments (itemId → slot), so removing one just clears the mapping;
+      // ECS hotbar slots hold the actual stack, so removing one moves the
+      // stack into the first empty backpack slot. Wired to the per-slot ×
+      // button and to drag-and-drop from the hotbar onto the backpack grid.
+      removeFromHotbar: (ref: InventoryUiRef) => {
+        if (ref.kind !== "hotbar") return;
+        const idx = Number(ref.idx ?? -1);
+        if (
+          typeof ref.key === "string" &&
+          ref.key.startsWith("harthmere_hotbar:")
+        ) {
+          performHarthmereHotbarClearForBiomesUI(idx);
+          return;
+        }
+        const emptyIndex = backpackItems.findIndex((slot: any) => !slot);
+        publishSwap(ref, {
+          kind: "item",
+          idx: emptyIndex < 0 ? 0 : emptyIndex,
+        });
+      },
       moveItem: (src: InventoryUiRef, dst: InventoryUiRef) => {
+        // Dragging a harthmere quick-slot OFF the hotbar (onto the backpack)
+        // clears the shortcut assignment — publishSwap below only understands
+        // real ECS slots and would silently no-op for these refs.
+        if (
+          src.kind === "hotbar" &&
+          dst.kind !== "hotbar" &&
+          typeof src.key === "string" &&
+          src.key.startsWith("harthmere_hotbar:")
+        ) {
+          performHarthmereHotbarClearForBiomesUI(Number(src.idx ?? -1));
+          return;
+        }
         if (dst.kind === "hotbar") {
           const hotbarIndex = Number(dst.idx ?? -1);
           if (src.kind === "hotbar" && typeof src.key === "string") {

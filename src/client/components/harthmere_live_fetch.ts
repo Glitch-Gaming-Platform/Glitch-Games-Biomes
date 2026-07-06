@@ -1,7 +1,21 @@
 import { readHarthmereGlitchIdentity } from "@/client/game/glitch/harthmere_glitch_identity";
 
-export const HARTHMERE_LIVE_READ_TIMEOUT_MS = 8_000;
-export const HARTHMERE_LIVE_MUTATION_TIMEOUT_MS = 15_000;
+// HARTHMERE_LIVE_FETCH_TIMEOUT_RETRY (2026-07-05): production HAR analysis
+// showed the live_mode server route regularly takes 10s+ to respond while the
+// old timeouts were 8s (reads) / 15s (mutations). Roughly HALF of all write
+// traffic (eat_food, use_medical_item, request_respawn, request_death_transition)
+// was aborted client-side at exactly the timeout — "eating does nothing",
+// medical items silently failing, respawns hanging, etc. Every mutation carries
+// an idempotencyKey the server dedupes/replays, so timed-out requests are also
+// SAFE to retry. Timeouts are therefore raised above the observed server
+// latency and timed-out/network-failed requests are automatically retried.
+export const HARTHMERE_LIVE_READ_TIMEOUT_MS = 20_000;
+export const HARTHMERE_LIVE_MUTATION_TIMEOUT_MS = 30_000;
+// Total attempts (1 initial + retries). Mutations are idempotent server-side
+// (requestId/idempotencyKey), so retrying a timed-out POST cannot double-apply.
+export const HARTHMERE_LIVE_MUTATION_MAX_ATTEMPTS = 3;
+export const HARTHMERE_LIVE_READ_MAX_ATTEMPTS = 2;
+export const HARTHMERE_LIVE_RETRY_BACKOFF_MS = 750;
 
 const HARTHMERE_LIVE_API_PATH = "/api/harthmere/live_mode";
 const HARTHMERE_LIVE_INSTALL_HEADER = "X-Glitch-Install-Id";
@@ -67,6 +81,12 @@ export function rememberHarthmereLiveInstallId(
   if (value) {
     cachedHarthmereLiveInstallId = value;
   }
+}
+
+// The sticky install-id cache is module-global; tests must reset it so one
+// test's install id never leaks into the next (test-order dependence).
+export function resetHarthmereLiveInstallIdForTest(): void {
+  cachedHarthmereLiveInstallId = undefined;
 }
 
 function resolveHarthmereLiveInstallId(url: URL) {
@@ -169,6 +189,28 @@ export function prepareHarthmereLiveFetchRequest(
   };
 }
 
+function harthmereLiveRetrySleep(ms: number) {
+  return new Promise<void>((resolve) => setTimeout(resolve, ms));
+}
+
+// Requests constructed from a `Request` object may hold a one-shot body stream,
+// which cannot be safely re-sent. Plain string/URL inputs with (string) bodies
+// — which is what every live-mode caller in this codebase uses — are always
+// safe to retry.
+function isRetryableHarthmereLiveInput(
+  input: RequestInfo | URL,
+  requestInit: RequestInit
+) {
+  if (isRequestInput(input)) return false;
+  const body = (requestInit as { body?: unknown }).body;
+  return (
+    body === undefined ||
+    body === null ||
+    typeof body === "string" ||
+    (typeof URLSearchParams !== "undefined" && body instanceof URLSearchParams)
+  );
+}
+
 async function rawHarthmereLiveFetchWithTimeout(
   fetchImpl: typeof fetch,
   input: RequestInfo | URL,
@@ -178,28 +220,49 @@ async function rawHarthmereLiveFetchWithTimeout(
   if (requestInit.signal || typeof AbortController === "undefined") {
     return fetchImpl(input, requestInit);
   }
+  const isMutation =
+    String(requestInit.method ?? "GET").toUpperCase() === "POST";
   const timeoutMs =
     requestedTimeoutMs ??
-    (String(requestInit.method ?? "GET").toUpperCase() === "POST"
+    (isMutation
       ? HARTHMERE_LIVE_MUTATION_TIMEOUT_MS
       : HARTHMERE_LIVE_READ_TIMEOUT_MS);
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), timeoutMs);
-  try {
+  // Mutations carry a stable requestId/idempotencyKey the server dedupes on, so
+  // retrying a timed-out or network-failed attempt is safe and cannot
+  // double-apply (the server replays the original result). Reads are idempotent
+  // by definition.
+  const maxAttempts = isRetryableHarthmereLiveInput(input, requestInit)
+    ? isMutation
+      ? HARTHMERE_LIVE_MUTATION_MAX_ATTEMPTS
+      : HARTHMERE_LIVE_READ_MAX_ATTEMPTS
+    : 1;
+  let lastError: unknown;
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), timeoutMs);
     try {
       return await fetchImpl(input, {
         ...requestInit,
         signal: controller.signal,
       });
     } catch (error) {
-      if (
-        controller.signal.aborted &&
-        isHarthmereLiveFetchAbortError(error)
-      ) {
+      lastError = error;
+      const timedOut =
+        controller.signal.aborted && isHarthmereLiveFetchAbortError(error);
+      if (attempt < maxAttempts) {
+        // Timed out OR network error: back off briefly and retry with the same
+        // body (same idempotencyKey → server-side replay, never double-apply).
+        await harthmereLiveRetrySleep(
+          HARTHMERE_LIVE_RETRY_BACKOFF_MS * attempt
+        );
+        continue;
+      }
+      if (timedOut) {
         return new Response(
           JSON.stringify({
             error: "harthmere_live_fetch_timeout",
             timeoutMs,
+            attempts: attempt,
           }),
           {
             status: 504,
@@ -208,10 +271,12 @@ async function rawHarthmereLiveFetchWithTimeout(
         );
       }
       throw error;
+    } finally {
+      clearTimeout(timeout);
     }
-  } finally {
-    clearTimeout(timeout);
   }
+  // Unreachable: the loop always returns or throws. Keeps TypeScript satisfied.
+  throw lastError ?? new Error("harthmere_live_fetch_failed");
 }
 
 export function isHarthmereLiveFetchAbortError(error: unknown) {

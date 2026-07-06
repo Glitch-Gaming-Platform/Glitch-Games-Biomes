@@ -39,7 +39,10 @@ import { MaybeError, useError } from "@/client/components/system/MaybeError";
 import type { ClientContextSubset } from "@/client/game/context";
 import { makeWakeUpScreenshot } from "@/client/game/util/report";
 import { saveUsername } from "@/client/util/auth";
-import { isInitialUsername } from "@/server/web/util/username";
+import {
+  isGeneratedPlaceholderUsername,
+  isInitialUsername,
+} from "@/server/web/util/username";
 import {
   AppearanceChangeEvent,
   HairTransplantEvent,
@@ -2048,7 +2051,10 @@ const WakeUpContent: React.FunctionComponent<{ onWakeup: () => void }> = ({
   const cloudRestoreAutoWakeupRef = useRef(false);
   const [nameEntry, setNameEntry] = useState(() => {
     const name = reactResources.get("/ecs/c/label", userId)?.text ?? "";
-    if (isInitialUsername(name)) {
+    // Backend-generated placeholders (NewPlayerXXXX / GlitchXXXX / GuestXXXX)
+    // are not user choices — leave the field empty so the Glitch API name
+    // (applied below) or the player's own entry wins.
+    if (isGeneratedPlaceholderUsername(name)) {
       return "";
     }
     return name;
@@ -2066,12 +2072,15 @@ const WakeUpContent: React.FunctionComponent<{ onWakeup: () => void }> = ({
         const currentName = current.trim();
         const labelName =
           reactResources.get("/ecs/c/label", userId)?.text ?? "";
-        if (currentName && !isInitialUsername(currentName)) {
+        // A name the player actually typed/chose always wins; backend
+        // placeholders (NewPlayerXXXX / GlitchXXXX / GuestXXXX) never do —
+        // the username returned by the Glitch API replaces them on load.
+        if (currentName && !isGeneratedPlaceholderUsername(currentName)) {
           return current;
         }
         if (
           labelName &&
-          !isInitialUsername(labelName) &&
+          !isGeneratedPlaceholderUsername(labelName) &&
           labelName !== glitchName
         ) {
           return current;

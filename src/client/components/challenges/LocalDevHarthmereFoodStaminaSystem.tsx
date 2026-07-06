@@ -14,7 +14,7 @@ import {
   readHarthmereCombatState,
 } from "@/client/components/challenges/LocalDevHarthmereCombat";
 import { HARTHMERE_LOCAL_DEV_STATE_KEYS } from "@/client/components/challenges/LocalDevHarthmereEconomyHardening";
-import { harthmereLiveSnapshotPresent } from "@/client/components/challenges/harthmereLiveAuthoritySignal";
+import { harthmereLiveServerAuthoritative } from "@/client/components/challenges/harthmereLiveAuthoritySignal";
 import { harthmereUserScopedStorageKey } from "@/client/components/challenges/LocalDevHarthmereUserScope";
 import { HARTHMERE_INVENTORY_EVENT } from "@/client/components/challenges/harthmereEvents";
 import { isHarthmerePlacedCookStationItem } from "@/client/components/overlays/inspected/placeables/craftingStationCookRouting";
@@ -378,8 +378,12 @@ export const HarthmereFoodStaminaRuntimeController: React.FunctionComponent<{}> 
         // server owns stamina (and its starvation death). The client must not
         // run its own drain clock or trigger a second death here — that was the
         // dual-source "kills you twice" bug. See harthmereClientStaminaTickPlan.
+        // STICKY authority: once this session has seen a live snapshot, the
+        // server owns stamina forever this session — a slow/timed-out poll
+        // window must never wake the client starvation sim back up (that was
+        // the "randomly dying and reviving" loop in production).
         const plan = harthmereClientStaminaTickPlanForTest({
-          liveSnapshotPresent: harthmereLiveSnapshotPresent(),
+          liveSnapshotPresent: harthmereLiveServerAuthoritative(),
           stamina: before.stamina,
           deadFromStaminaAtMs: before.deadFromStaminaAtMs,
         });
@@ -468,7 +472,7 @@ export const HarthmereCampfireWarmthRuntimeController: React.FunctionComponent<{
           hp: combat.player.hp,
           maxHp: combat.player.maxHp,
           combatState: combat.player.combatState,
-          liveSnapshotPresent: harthmereLiveSnapshotPresent(),
+          liveSnapshotPresent: harthmereLiveServerAuthoritative(),
         });
         if (decision.shouldHeal && decision.amount > 0) {
           healHarthmerePlayer(decision.amount, "Campfire warmth");

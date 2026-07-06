@@ -31,6 +31,11 @@ interface BiomesHotbarProps {
   onSelect: (index: number) => void;
   onUse?: (index: number) => void;
   onDrop?: (index: number) => void;
+  /**
+   * Remove the item from the hotbar slot (return it to the backpack / clear
+   * the quick-slot assignment). Renders a small × button on occupied slots.
+   */
+  onRemove?: (index: number) => void;
   /** Whether the hotbar is currently focusable (closed when chat is open, etc) */
   enabled?: boolean;
 }
@@ -50,6 +55,7 @@ export const BiomesHotbar: React.FunctionComponent<BiomesHotbarProps> = ({
   onSelect,
   onUse,
   onDrop,
+  onRemove,
   enabled = true,
 }) => {
   const handleKey = useCallback(
@@ -104,6 +110,7 @@ export const BiomesHotbar: React.FunctionComponent<BiomesHotbarProps> = ({
         const iconIsImage = Boolean(slot?.icon && /^(\/|https?:|data:)/.test(slot.icon));
         return (
           <Highlightable key={i} uniqueId={UI_IDS.HOTBAR_SLOT(i + 1)} showCaption>
+            <div style={{ position: "relative", display: "inline-flex" }}>
             <button
               type="button"
               role="button"
@@ -156,6 +163,40 @@ export const BiomesHotbar: React.FunctionComponent<BiomesHotbarProps> = ({
               )}
               <span className="biomes-ui-slot-key">{i + 1}</span>
             </button>
+            {slot && onRemove ? (
+              <button
+                type="button"
+                aria-label={`Remove ${slot.label} from hotbar slot ${i + 1}`}
+                title={`Remove ${slot.label} from hotbar`}
+                data-hotbar-remove-index={i}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onRemove(i);
+                }}
+                style={{
+                  position: "absolute",
+                  top: -6,
+                  right: -6,
+                  width: 16,
+                  height: 16,
+                  borderRadius: "50%",
+                  border: "1px solid rgba(180, 200, 220, 0.5)",
+                  background: "rgba(10, 14, 20, 0.9)",
+                  color: "#ff7777",
+                  fontSize: 10,
+                  lineHeight: 1,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  cursor: "pointer",
+                  padding: 0,
+                  zIndex: 2,
+                }}
+              >
+                ×
+              </button>
+            ) : null}
+            </div>
           </Highlightable>
         );
       })}
