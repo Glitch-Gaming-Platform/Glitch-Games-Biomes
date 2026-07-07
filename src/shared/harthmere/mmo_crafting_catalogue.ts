@@ -440,6 +440,19 @@ const HARTHMERE_FARMING_TOOL_RECIPES: HarthmereCraftingRecipe[] = [
     [{ itemId: "iron_ingot", count: 2 }],
     "blacksmithing"
   ),
+  // HARTHMERE_MUCK_BUSTER_OBTAINABLE: the Road Ahead tutorial's "Craft a Muck
+  // Buster" step (busted_muck_busters) requires the player to actually obtain a
+  // muck-clearing tool, but no Muck Buster recipe existed and it wasn't taught to
+  // new players — a soft-lock. Register a cheap, level-1 workbench recipe (see
+  // HARTHMERE_STARTER_KNOWN_RECIPE_IDS, where it is added to the starter set) so a
+  // brand-new player can craft one from a single common rough stone gathered
+  // while breaking blocks earlier in the chain.
+  farmingToolRecipe(
+    "harthmere_tool_muck_buster_recipe",
+    HARTHMERE_CRAFTING_TOOLS.muckBuster,
+    [{ itemId: "rough_stone", count: 1 }],
+    "blacksmithing"
+  ),
 ];
 
 type ItemObjectMetadata = NonNullable<

@@ -14,7 +14,11 @@ export const MUCK_MONSTER_AGGRESSION_AI_VERSION =
   "muck-monster-aggression-ai" as const;
 export const MUCK_MONSTER_UNPROVOKED_AGGRO_RADIUS = 10.5;
 export const MUCK_MONSTER_UNPROVOKED_WARNING_RADIUS = 16;
-export const MUCK_MONSTER_UNPROVOKED_LEASH_RADIUS = 34;
+// HARTHMERE_MUCK_LEASH_REASONABLE (2026-07-07): a muck monster gives up the
+// chase past this distance from the player. 34 let a creature run a player down
+// from across the field ("hit from ~34 units"); 18 keeps encounters escapable
+// while still allowing a short, fair pursuit past the 10.5 aggro radius.
+export const MUCK_MONSTER_UNPROVOKED_LEASH_RADIUS = 18;
 
 export interface MuckMonsterAggressionInput {
   monsterId: string;
@@ -127,6 +131,29 @@ export function muckMonsterAreaForPosition(
   return undefined;
 }
 
+// HARTHMERE_TUTORIAL_MUCK_PATCH_SAFE (2026-07-07): the Road Ahead tutorial's
+// "break the muckwad" step sends brand-new, effectively unarmed players to break
+// terrain inside the starter muck patch — which also hosts a seeded Road Muckling.
+// Unprovoked muck aggression there means the muckling attacks and kills the
+// player mid-tutorial ("something was hitting me and killing me while throwing/
+// breaking the muckwad"), and blocks the Road Ahead chain. These starter patches
+// are training zones, so they must never trigger UNPROVOKED muck aggression — the
+// player can still fight (retaliation) and the combat primer, where the player
+// strikes first, is unaffected.
+const TUTORIAL_UNPROVOKED_SAFE_MUCK_ZONE_IDS = new Set(["road_muckwad_patch"]);
+
+function isInTutorialUnprovokedSafeMuckZone(
+  position: readonly number[] | undefined
+) {
+  const pos = asVec3(position);
+  if (!pos) return false;
+  return SNAPSHOT_HARTHMERE_MUCK_ZONES.some(
+    (zone) =>
+      TUTORIAL_UNPROVOKED_SAFE_MUCK_ZONE_IDS.has(zone.id) &&
+      distance2d(zone.authoredCenter, pos) <= zone.radius + 2
+  );
+}
+
 export function evaluateMuckMonsterAggression(
   input: MuckMonsterAggressionInput
 ): MuckMonsterAggressionDecision {
@@ -165,6 +192,18 @@ export function evaluateMuckMonsterAggression(
       reason: "invalid_distance",
       territoryId: territory.id,
       territoryLabel: territory.label,
+    };
+  }
+  if (
+    isInTutorialUnprovokedSafeMuckZone(playerPosition) ||
+    isInTutorialUnprovokedSafeMuckZone(monsterPosition)
+  ) {
+    return {
+      ...base,
+      reason: "tutorial_patch_blocks_unprovoked_muck_aggression",
+      territoryId: territory.id,
+      territoryLabel: territory.label,
+      distanceToPlayer,
     };
   }
   if (input.safeZone) {

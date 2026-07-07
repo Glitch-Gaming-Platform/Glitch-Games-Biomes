@@ -113,6 +113,24 @@ describe("muck_monster_aggression_ai", () => {
     assert.equal(outsideMuck.reason, "monster_outside_muck_territory");
   });
 
+  it("never starts unprovoked aggression in the Road Ahead starter muck patch", () => {
+    // A brand-new player breaking the muckwad in the tutorial patch must not be
+    // attacked unprovoked by the seeded Road Muckling — even at night — so the
+    // Road Ahead "break muckwad" step stays survivable/completable.
+    const result = evaluateMuckMonsterAggression({
+      monsterId: "road-muckling-one",
+      monsterName: "Road Muckling",
+      monsterPosition: [512, 54, -152],
+      playerPosition: [513, 54, -152],
+      nowMs: NIGHT_NOW_MS,
+    });
+    assert.equal(result.aggressive, false);
+    assert.equal(
+      result.reason,
+      "tutorial_patch_blocks_unprovoked_muck_aggression"
+    );
+  });
+
   it("uses boss AI for Helix encounters in the West Muck Breach", () => {
     const territory = muckMonsterAreaForPosition([232, 54, -506]);
     assert.equal(territory?.id, "west_muck_breach");

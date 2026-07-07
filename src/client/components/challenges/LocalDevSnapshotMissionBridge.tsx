@@ -17,6 +17,7 @@ import { matchingItemRefs } from "@/shared/game/inventory";
 import type { BiomesId } from "@/shared/ids";
 import type { ReadonlyVec3, Vec3 } from "@/shared/math/types";
 import { snapshotGroveLandmarkById } from "@/shared/harthmere/snapshot_grove_content";
+import { HARTHMERE_CRAFTING_TOOLS } from "@/shared/harthmere/mmo_crafting_catalogue";
 import {
   SNAPSHOT_ROAD_AHEAD_MISSION,
   SNAPSHOT_ROAD_AHEAD_MISSION_ID,
@@ -650,7 +651,12 @@ function isSnapshotRoadAheadLocalMuckClearingTool(itemId: string) {
   return (
     itemId === "muck_rake" ||
     itemId === "muck_buster" ||
-    itemId === "practice_muck_buster"
+    itemId === "practice_muck_buster" ||
+    // The craftable Muck Buster / Muck Rake land in the inventory under their real
+    // catalogue item ids, so recognize those too — otherwise crafting the tool
+    // (now taught to new players) would not complete the Road Ahead craft step.
+    itemId === HARTHMERE_CRAFTING_TOOLS.muckBuster ||
+    itemId === HARTHMERE_CRAFTING_TOOLS.muckRake
   );
 }
 

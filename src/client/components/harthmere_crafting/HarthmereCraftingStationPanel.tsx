@@ -240,12 +240,44 @@ export const HarthmereCraftingStationPanel: React.FunctionComponent<
       </nav>
 
       {activeTab === "recipes" && (
-        <RecipePane
-          recipes={recipes}
-          adapter={adapter}
-          busy={busy}
-          onRunAction={runAction}
-        />
+        <>
+          {/* HARTHMERE_RECIPE_UX_GUIDE: a small, always-on primer so new players
+              (e.g. reaching the Road Ahead "Craft a Muck Buster" step) know how to
+              turn a known recipe into an item. */}
+          <div
+            role="note"
+            aria-label="How to craft"
+            style={{
+              display: "flex",
+              alignItems: "flex-start",
+              gap: 8,
+              marginBottom: 12,
+              padding: "8px 10px",
+              borderRadius: 8,
+              border: "1px solid rgba(120, 180, 240, 0.35)",
+              background: "rgba(30, 48, 70, 0.55)",
+              fontSize: 12,
+              lineHeight: 1.35,
+              color: "rgba(226, 236, 248, 0.92)",
+            }}
+          >
+            <span aria-hidden="true" style={{ fontSize: 14, lineHeight: 1.2 }}>
+              💡
+            </span>
+            <span>
+              <strong>How to craft:</strong> pick a recipe below, make sure you
+              have the listed materials (they turn green when you do), then press{" "}
+              <strong>Craft</strong>. Missing an ingredient? Gather or buy it, then
+              come back — the recipe stays in your list.
+            </span>
+          </div>
+          <RecipePane
+            recipes={recipes}
+            adapter={adapter}
+            busy={busy}
+            onRunAction={runAction}
+          />
+        </>
       )}
       {activeTab === "jobs" && (
         <JobsPane

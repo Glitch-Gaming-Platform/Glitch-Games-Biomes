@@ -379,10 +379,15 @@ ok(
   "production app uses the Azure Container App title-token secret reference"
 );
 ok(
-  script.includes('AZURE_MAX_REPLICAS="${AZURE_MAX_REPLICAS:-1}"') &&
-    script.includes("AZURE_ALLOW_MULTI_REPLICA_STACK") &&
-    script.includes("horizontal replicas cause reconnects and duplicate workers"),
-  "production deploy defaults to one replica and guards explicit multi-replica stack updates"
+  script.includes('AZURE_WEB_TARGET_PORT="${AZURE_WEB_TARGET_PORT:-3000}"') &&
+    script.includes('AZURE_MIN_REPLICAS="${AZURE_MIN_REPLICAS:-2}"') &&
+    script.includes('AZURE_MAX_REPLICAS="${AZURE_MAX_REPLICAS:-3}"') &&
+    deployWorkflow.includes('AZURE_WEB_TARGET_PORT: "3000"') &&
+    deployWorkflow.includes('AZURE_MIN_REPLICAS: "2"') &&
+    deployWorkflow.includes('AZURE_MAX_REPLICAS: "3"') &&
+    script.includes("AZURE_ALLOW_SINGLE_REPLICA") &&
+    script.includes("single-replica production deploys are disabled"),
+  "production deploy preserves the HA replica posture and requires an explicit single-replica downgrade"
 );
 ok(
   script.includes(
@@ -391,11 +396,35 @@ ok(
   "production update replaces stale Azure startup command overrides with the unified stack runner"
 );
 ok(
+  script.includes("ensure_azure_ingress_target_port") &&
+    script.includes('az containerapp ingress update') &&
+    script.includes('--target-port "$AZURE_WEB_TARGET_PORT"') &&
+    script.includes("properties.configuration.ingress.targetPort"),
+  "production deploy reasserts Azure ingress on the public web port"
+);
+ok(
+  script.includes("validate_production_revision_before_traffic") &&
+    script.includes("azure_revision_fqdn") &&
+    script.includes("validate_game_html_url") &&
+    script.includes("returned metrics instead of game HTML") &&
+    pushAndDeploy.indexOf("promote_azure_revision_when_ready") <
+      pushAndDeploy.indexOf("validate_production_bucket_assets"),
+  "production deploy smoke-tests the concrete revision before post-shift validation"
+);
+ok(
+  script.includes("capture_azure_traffic_weights") &&
+    script.includes("restore_azure_traffic_weights") &&
+    script.includes("AZURE_TRAFFIC_RESTORE_ARMED=1") &&
+    script.includes("AZURE_TRAFFIC_RESTORE_ARMED=0") &&
+    script.includes("deactivate_stale_azure_revisions"),
+  "production deploy can restore previous traffic if validation fails after shifting"
+);
+ok(
   script.includes("az containerapp ingress traffic set") &&
     script.includes('--revision-weight "$revision=100"') &&
     script.includes("az containerapp revision deactivate") &&
     script.includes("properties.active==\\`true\\`"),
-  "production deploy pins one ready Azure revision and deactivates stale active revisions"
+  "production deploy pins one ready Azure revision and deactivates stale active revisions after validation"
 );
 ok(
   script.includes("GLITCH_MUTABLE_HOTFIX_REDIS_KEY") &&

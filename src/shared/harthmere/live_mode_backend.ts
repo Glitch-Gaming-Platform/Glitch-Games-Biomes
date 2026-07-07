@@ -3146,9 +3146,25 @@ function dynamicBiomesBikkieLiveModeItemDefinition(
     }
     return existing;
   }
-  const item = anItem(biomesId);
-  const stackable = Number(item?.stackable ?? (item?.isBlock ? 99n : 1n));
-  const isBlock = item?.isBlock === true;
+  // `anItem`/`prepareItem` THROWS when the biscuit id is not a valid item
+  // biscuit (e.g. a raw terrain/grass biscuit surfaced by mining). That uncaught
+  // throw used to 500 the ENTIRE live_mode request — so a mined block or a crate
+  // pickup that carried such an id was never granted/persisted ("took items from
+  // the crate and it's not in my inventory"; "Mined Grass" 500s). These ids all
+  // arrive as `b:<id>` from mining/loot, so on failure fall back to a generic
+  // stackable block definition instead of throwing.
+  let item: ReturnType<typeof anItem> | undefined;
+  try {
+    item = anItem(biomesId);
+  } catch {
+    item = undefined;
+  }
+  const resolvedAsItem = item !== undefined;
+  // When the biscuit could not be resolved as an item at all, treat the mined
+  // `b:<id>` as a block (that is where these unknown ids come from) so it still
+  // grants as a stackable material rather than being dropped.
+  const isBlock = item?.isBlock === true || !resolvedAsItem;
+  const stackable = Number(item?.stackable ?? (isBlock ? 99n : 1n));
   const def: HarthmereItemDefinition = {
     itemId: canonicalItemId,
     displayName:
@@ -4128,14 +4144,24 @@ function isLiveEntityRobotProtectedPosition(
     : false;
 }
 
+// HARTHMERE_MUCK_EXPOSURE_FORCES_AGGRESSION_SCOPE (2026-07-07): this is used
+// ONLY to decide `muckExposureForcesAggression`, which makes muck monsters attack
+// unprovoked in daylight and up to their full leash range (~34 units). It must
+// therefore mean "the ground here is ACTIVELY mucked", not merely "this land has
+// not been secured as a safe zone". `safeFromMuck` defaults to `false` for every
+// un-terraformed area, so the old `|| safeFromMuck === false` clause treated the
+// entire unsecured world as active muck — forcing distant, off-screen muck
+// monsters to aggro and kill players who saw no creature near them ("something
+// was hitting me and killing me, no Muckling nearby"). Only an area explicitly
+// flagged `status: "mucked"` should force aggression; unsecured land relies on
+// the normal proximity/day-night unprovoked-aggression rules instead.
 function isLiveEntityRobotMuckedPosition(
   state: HarthmereLiveModeBackendState,
   position: readonly number[] | undefined
 ) {
   const area = liveEntityRobotProtectionAreaForPosition(position);
   return area
-    ? state.robotProtection.areas[area.areaId]?.status === "mucked" ||
-        state.robotProtection.areas[area.areaId]?.safeFromMuck === false
+    ? state.robotProtection.areas[area.areaId]?.status === "mucked"
     : false;
 }
 
@@ -5565,6 +5591,9 @@ const HARTHMERE_STARTER_KNOWN_RECIPE_IDS = [
   "harthmere_tool_hoe_recipe",
   "harthmere_tool_watering_can_recipe",
   "harthmere_tool_bucket_recipe",
+  // Road Ahead step 9 ("Craft a Muck Buster") requires obtaining a muck-clearing
+  // tool; teach the recipe up front so the tutorial is completable by crafting.
+  "harthmere_tool_muck_buster_recipe",
   "harthmere_blacksmith_repair_iron_sword",
   "harthmere_blacksmith_salvage_iron_sword",
   "harthmere_carpentry_wood_plank",
@@ -7534,9 +7563,18 @@ export function reduceHarthmereLiveModeBackendState(
       return { attackBlockedReason: "unknown_npc_ability" };
     }
 
-    const range = Number.isFinite(npcSnapshot.attackRange)
+    // HARTHMERE_NPC_ATTACK_RANGE_HARD_CAP (2026-07-07): NPC melee attacks must
+    // land only at genuine melee distance. Whatever `attackRange` a snapshot
+    // carries (it can be stale, or accidentally seeded from an aggro/leash value),
+    // clamp it to a sane maximum so a creature can never deal damage from across
+    // the field — the "something hit and killed me from ~34 units with no monster
+    // near me" report. The largest legitimate reach (the Hex caster at 6.5) still
+    // fits comfortably under the cap.
+    const HARTHMERE_MAX_NPC_ATTACK_RANGE_UNITS = 8;
+    const rawRange = Number.isFinite(npcSnapshot.attackRange)
       ? Math.max(0, Number(npcSnapshot.attackRange))
       : ability.rangeUnits;
+    const range = Math.min(rawRange, HARTHMERE_MAX_NPC_ATTACK_RANGE_UNITS);
     if (
       liveEntityCombatHorizontalDistance(npcSnapshot.position, playerPosition) >
       range

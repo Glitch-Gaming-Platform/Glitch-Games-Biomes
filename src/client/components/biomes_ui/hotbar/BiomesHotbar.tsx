@@ -174,9 +174,13 @@ export const BiomesHotbar: React.FunctionComponent<BiomesHotbarProps> = ({
                   onRemove(i);
                 }}
                 style={{
+                  // Anchor the remove (×) button to the TOP-LEFT corner. The
+                  // stack count renders at the top-right (right:4/top:2), so a
+                  // top-right × overlapped and hid the number. Keeping × on the
+                  // opposite corner leaves the count fully visible.
                   position: "absolute",
                   top: -6,
-                  right: -6,
+                  left: -6,
                   width: 16,
                   height: 16,
                   borderRadius: "50%",

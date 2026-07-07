@@ -118,9 +118,10 @@ LOCAL_IMAGE="${LOCAL_IMAGE:-biomes-node:local-${TAG}}"
 DOCKER_PLATFORM="${DOCKER_PLATFORM:-linux/amd64}"
 AZURE_RESOURCE_GROUP="${AZURE_RESOURCE_GROUP:-openai-resource-group}"
 AZURE_CONTAINER_APP="${AZURE_CONTAINER_APP:-biomes-node-vnet}"
-AZURE_MIN_REPLICAS="${AZURE_MIN_REPLICAS:-1}"
-AZURE_MAX_REPLICAS="${AZURE_MAX_REPLICAS:-1}"
-AZURE_ALLOW_MULTI_REPLICA_STACK="${AZURE_ALLOW_MULTI_REPLICA_STACK:-0}"
+AZURE_WEB_TARGET_PORT="${AZURE_WEB_TARGET_PORT:-3000}"
+AZURE_MIN_REPLICAS="${AZURE_MIN_REPLICAS:-2}"
+AZURE_MAX_REPLICAS="${AZURE_MAX_REPLICAS:-3}"
+AZURE_ALLOW_SINGLE_REPLICA="${AZURE_ALLOW_SINGLE_REPLICA:-0}"
 PROD_REDIS_HOST="${PROD_REDIS_HOST:-10.0.0.12}"
 PROD_REDIS_PUBLIC_HOST="${PROD_REDIS_PUBLIC_HOST:-}"
 PROD_REDIS_HEALTH_HOST="${PROD_REDIS_HEALTH_HOST:-$PROD_REDIS_HOST}"
@@ -148,10 +149,16 @@ LOCAL_WEB_PORT="${LOCAL_WEB_PORT:-3017}"
 LOCAL_SYNC_PORT="${LOCAL_SYNC_PORT:-4907}"
 SMOKE_TIMEOUT_SECONDS="${SMOKE_TIMEOUT_SECONDS:-900}"
 
-if [ "$AZURE_MAX_REPLICAS" != "1" ] && [ "$AZURE_ALLOW_MULTI_REPLICA_STACK" != "1" ]; then
-  echo "ERROR AZURE_MAX_REPLICAS=$AZURE_MAX_REPLICAS is unsafe for the current all-in-one production stack." >&2
-  echo "The container owns WebSocket sessions and singleton Redis stream workers; horizontal replicas cause reconnects and duplicate workers." >&2
-  echo "Set AZURE_ALLOW_MULTI_REPLICA_STACK=1 only after those roles are split or guarded." >&2
+if { [ "$AZURE_MIN_REPLICAS" -lt 2 ] || [ "$AZURE_MAX_REPLICAS" -lt 2 ]; } &&
+   [ "$AZURE_ALLOW_SINGLE_REPLICA" != "1" ]; then
+  echo "ERROR single-replica production deploys are disabled for this title." >&2
+  echo "Azure can evict or replace the only replica, forcing users through a full cold start of the large Biomes image." >&2
+  echo "Use AZURE_MIN_REPLICAS>=2 and AZURE_MAX_REPLICAS>=2, or set AZURE_ALLOW_SINGLE_REPLICA=1 for an explicit emergency downgrade." >&2
+  exit 2
+fi
+
+if [ "$AZURE_MIN_REPLICAS" -gt "$AZURE_MAX_REPLICAS" ]; then
+  echo "ERROR AZURE_MIN_REPLICAS=$AZURE_MIN_REPLICAS is greater than AZURE_MAX_REPLICAS=$AZURE_MAX_REPLICAS." >&2
   exit 2
 fi
 
@@ -878,6 +885,76 @@ wait_for_azure_revision_ready() {
   exit 1
 }
 
+azure_revision_fqdn() {
+  local revision="$1"
+  local fqdn
+  fqdn="$(az containerapp revision show \
+    --resource-group "$AZURE_RESOURCE_GROUP" \
+    --name "$AZURE_CONTAINER_APP" \
+    --revision "$revision" \
+    --query properties.fqdn \
+    -o tsv 2>/dev/null || true)"
+  if [ -z "$fqdn" ] || [ "$fqdn" = "null" ]; then
+    fqdn="$(az containerapp show \
+      --resource-group "$AZURE_RESOURCE_GROUP" \
+      --name "$AZURE_CONTAINER_APP" \
+      --query properties.latestRevisionFqdn \
+      -o tsv 2>/dev/null || true)"
+  fi
+  printf '%s\n' "$fqdn"
+}
+
+ensure_azure_ingress_target_port() {
+  log "Ensuring Azure ingress serves the web process on target port $AZURE_WEB_TARGET_PORT."
+  az containerapp ingress update \
+    --resource-group "$AZURE_RESOURCE_GROUP" \
+    --name "$AZURE_CONTAINER_APP" \
+    --target-port "$AZURE_WEB_TARGET_PORT" \
+    --transport http \
+    --type external \
+    --output none
+
+  local actual_port
+  actual_port="$(az containerapp show \
+    --resource-group "$AZURE_RESOURCE_GROUP" \
+    --name "$AZURE_CONTAINER_APP" \
+    --query properties.configuration.ingress.targetPort \
+    -o tsv 2>/dev/null || true)"
+  if [ "$actual_port" != "$AZURE_WEB_TARGET_PORT" ]; then
+    echo "ERROR Azure ingress target port is $actual_port, expected $AZURE_WEB_TARGET_PORT." >&2
+    exit 1
+  fi
+}
+
+capture_azure_traffic_weights() {
+  az containerapp show \
+    --resource-group "$AZURE_RESOURCE_GROUP" \
+    --name "$AZURE_CONTAINER_APP" \
+    --query "properties.configuration.ingress.traffic[].{revisionName:revisionName,weight:weight}" \
+    -o tsv 2>/dev/null | awk 'NF >= 2 && $2 > 0 { print $1 "=" $2 }' || true
+}
+
+restore_azure_traffic_weights() {
+  local weights_text="$1"
+  local weights=()
+  while IFS= read -r weight; do
+    [ -n "$weight" ] || continue
+    weights+=("$weight")
+  done <<< "$weights_text"
+  if [ "${#weights[@]}" -eq 0 ]; then
+    return
+  fi
+
+  log "Restoring previous Azure traffic weights after failed post-shift validation."
+  az containerapp ingress traffic set \
+    --resource-group "$AZURE_RESOURCE_GROUP" \
+    --name "$AZURE_CONTAINER_APP" \
+    --revision-weight "${weights[@]}" >/dev/null || true
+}
+
+AZURE_TRAFFIC_RESTORE_ARMED=0
+AZURE_PREVIOUS_TRAFFIC_WEIGHTS=""
+
 force_azure_traffic_to_revision() {
   local revision="$1"
 
@@ -887,6 +964,11 @@ force_azure_traffic_to_revision() {
     --name "$AZURE_CONTAINER_APP" \
     --revision-weight "$revision=100" >/dev/null
 
+  confirm_azure_traffic_to_revision "$revision"
+}
+
+deactivate_stale_azure_revisions() {
+  local revision="$1"
   local stale
   stale="$(az containerapp revision list \
     --resource-group "$AZURE_RESOURCE_GROUP" \
@@ -937,8 +1019,10 @@ promote_azure_revision_when_ready() {
   fi
 
   wait_for_azure_revision_ready "$revision"
+  validate_production_revision_before_traffic "$revision"
+  AZURE_PREVIOUS_TRAFFIC_WEIGHTS="$(capture_azure_traffic_weights)"
   force_azure_traffic_to_revision "$revision"
-  confirm_azure_traffic_to_revision "$revision"
+  AZURE_TRAFFIC_RESTORE_ARMED=1
 }
 
 validate_bucket_asset_url() {
@@ -1003,11 +1087,7 @@ validate_bucket_asset_url() {
 validate_production_bucket_assets() {
   local revision="$1"
   local revision_fqdn revision_origin
-  revision_fqdn="$(az containerapp show \
-    --resource-group "$AZURE_RESOURCE_GROUP" \
-    --name "$AZURE_CONTAINER_APP" \
-    --query properties.latestRevisionFqdn \
-    -o tsv)"
+  revision_fqdn="$(azure_revision_fqdn "$revision")"
   revision_origin="https://${revision_fqdn}"
 
   log "Validating iframe/XHR bucket assets on production FQDN and concrete revision FQDN."
@@ -1078,14 +1158,78 @@ validate_world_sync_http_url() {
   rm -f "$tmp_body"
 }
 
+validate_game_html_url() {
+  local base="$1"
+  local label="$2"
+  local url="${base%/}/"
+  local tmp_body tmp_headers status content_type body_preview
+  tmp_body="$(mktemp)"
+  tmp_headers="$(mktemp)"
+
+  status="$(curl -L -sS \
+    -o "$tmp_body" \
+    -D "$tmp_headers" \
+    -H 'Accept: text/html,*/*' \
+    -w '%{http_code}' \
+    "$url" || true)"
+  content_type="$(awk 'BEGIN{IGNORECASE=1} /^content-type:/ {print; exit}' "$tmp_headers" | tr -d '\r')"
+  body_preview="$(head -c 240 "$tmp_body" | tr '\n' ' ' || true)"
+
+  if [ "$status" != "200" ]; then
+    echo "ERROR $label did not serve game HTML: HTTP $status $url" >&2
+    echo "Body preview: $body_preview" >&2
+    rm -f "$tmp_body" "$tmp_headers"
+    exit 1
+  fi
+
+  if ! printf '%s\n' "$content_type" | grep -qi 'text/html'; then
+    echo "ERROR $label did not serve text/html: ${content_type:-content-type=?} $url" >&2
+    echo "Body preview: $body_preview" >&2
+    rm -f "$tmp_body" "$tmp_headers"
+    exit 1
+  fi
+
+  if grep -Eq '^[[:space:]]*# HELP|^[[:space:]]*# TYPE' "$tmp_body"; then
+    echo "ERROR $label returned metrics instead of game HTML: $url" >&2
+    rm -f "$tmp_body" "$tmp_headers"
+    exit 1
+  fi
+
+  if ! grep -Eiq '<html|<!doctype html|__NEXT_DATA__' "$tmp_body"; then
+    echo "ERROR $label response does not look like game HTML: $url" >&2
+    echo "Body preview: $body_preview" >&2
+    rm -f "$tmp_body" "$tmp_headers"
+    exit 1
+  fi
+
+  echo "OK game HTML $label status=$status ${content_type:-content-type=?}"
+  rm -f "$tmp_body" "$tmp_headers"
+}
+
+validate_production_revision_before_traffic() {
+  local revision="$1"
+  local revision_fqdn revision_origin install_id
+  revision_fqdn="$(azure_revision_fqdn "$revision")"
+  if [ -z "$revision_fqdn" ] || [ "$revision_fqdn" = "null" ]; then
+    echo "ERROR Azure revision $revision does not have a revision-specific FQDN." >&2
+    exit 1
+  fi
+
+  revision_origin="https://${revision_fqdn}"
+  install_id="pretraffic-${TAG}-${revision}"
+
+  log "Smoke-testing concrete Azure revision before shifting production traffic: $revision_origin"
+  validate_game_html_url "$revision_origin" "revision $revision root"
+  validate_world_sync_http_url "$revision_origin" "/api/glitch/runtime_environment" "revision runtime environment" '"ok"[[:space:]]*:[[:space:]]*true'
+  validate_world_sync_http_url "$revision_origin" "/api/world_map/metadata" "revision world map metadata" '"fullImageWidth"[[:space:]]*:[[:space:]]*[0-9]'
+  validate_world_sync_http_url "$revision_origin" "/api/harthmere/live_mode_jobs_board_state?install_id=${install_id}" "revision jobs board shared state" '"ok"[[:space:]]*:[[:space:]]*true'
+  validate_world_sync_http_url "$revision_origin" "/api/harthmere/live_mode_player_status_state?install_id=${install_id}&gameplay_active=0" "revision player status state" '"ok"[[:space:]]*:[[:space:]]*true'
+}
+
 validate_production_world_sync_http() {
   local revision="$1"
   local revision_fqdn revision_origin install_id
-  revision_fqdn="$(az containerapp show \
-    --resource-group "$AZURE_RESOURCE_GROUP" \
-    --name "$AZURE_CONTAINER_APP" \
-    --query properties.latestRevisionFqdn \
-    -o tsv)"
+  revision_fqdn="$(azure_revision_fqdn "$revision")"
   revision_origin="https://${revision_fqdn}"
   install_id="deploy-world-sync-${TAG}-${revision}"
 
@@ -1094,7 +1238,7 @@ validate_production_world_sync_http() {
     # Liveness/reachability: the app has no "/ready" route (that path renders the
     # Next.js 404 page). Probe the root "/" — the same path the in-container
     # healthcheck uses — then the API readiness endpoints below confirm ok:true.
-    validate_world_sync_http_url "$base" "/" "root reachability"
+    validate_game_html_url "$base" "root reachability"
     validate_world_sync_http_url "$base" "/api/glitch/runtime_environment" "runtime environment" '"ok"[[:space:]]*:[[:space:]]*true'
     validate_world_sync_http_url "$base" "/api/world_map/metadata" "world map metadata" '"fullImageWidth"[[:space:]]*:[[:space:]]*[0-9]'
     validate_world_sync_http_url "$base" "/api/harthmere/live_mode_jobs_board_state?install_id=${install_id}" "jobs board shared state" '"ok"[[:space:]]*:[[:space:]]*true'
@@ -1289,6 +1433,10 @@ reconcile_production_world_sync() {
 }
 
 cleanup() {
+  local status="$?"
+  if [ "$status" -ne 0 ] && [ "${AZURE_TRAFFIC_RESTORE_ARMED:-0}" = "1" ]; then
+    restore_azure_traffic_weights "$AZURE_PREVIOUS_TRAFFIC_WEIGHTS"
+  fi
   if [ "$KEEP_LOCAL_SMOKE" = "1" ]; then
     log "Keeping local smoke containers: $LOCAL_APP_CONTAINER, $LOCAL_REDIS_CONTAINER"
     return
@@ -1766,6 +1914,7 @@ push_and_deploy() {
       AZURE_SPEECH_KEY=secretref:azure-speech-key
   )
   az containerapp update "${update_args[@]}"
+  ensure_azure_ingress_target_port
 
   local latest_revision
   latest_revision="$(az containerapp show \
@@ -1778,6 +1927,8 @@ push_and_deploy() {
   validate_production_bucket_assets "$latest_revision"
   validate_production_world_sync_http "$latest_revision"
   reconcile_production_world_sync "$latest_revision"
+  AZURE_TRAFFIC_RESTORE_ARMED=0
+  deactivate_stale_azure_revisions "$latest_revision"
 
   log "Production update verified: $IMAGE revision=$latest_revision"
 }

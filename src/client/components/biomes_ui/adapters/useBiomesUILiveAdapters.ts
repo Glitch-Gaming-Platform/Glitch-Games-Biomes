@@ -18,6 +18,9 @@ import {
   performHarthmereEquipmentItemUnequipForBiomesUI,
   readHarthmereInventoryState,
   submitHarthmereInventoryGrantToLiveModeForTest,
+  submitHarthmereInventorySpendToLiveModeForTest,
+  consumeHarthmereItemByItemId,
+  harthmereInventoryCountByItemId,
   type HarthmereItemInstance,
 } from "@/client/components/challenges/LocalDevHarthmereInventorySystem";
 import {
@@ -3366,6 +3369,31 @@ export function useBiomesUILiveAdapters({
                 .catch(() => refreshInventoryLootState())
             );
           } else {
+            // HARTHMERE_THROWABLE_CONSUME_ON_USE: using (Enter/double-click) a
+            // non-consumable, non-block hotbar item throws it — e.g. the Muckwad.
+            // The native throw decrements the ECS inventory, but the Harthmere
+            // Cloud Save inventory the HUD/hotbar displays was never debited, so
+            // thrown items (Muckwad) never decremented. Debit one here, mirroring
+            // the place-path spend. Voxel blocks are excluded: they decrement via
+            // the place path, so they must not be double-spent by a hotbar "use".
+            if (
+              !isLiveVoxelBlockItemId(localItemId) &&
+              harthmereInventoryCountByItemId(localItemId) > 0
+            ) {
+              const thrownLabel = humanizeRealItemId(localItemId, localItemId);
+              const consumed = consumeHarthmereItemByItemId(
+                localItemId,
+                1,
+                `Threw ${thrownLabel}`
+              );
+              if (consumed > 0) {
+                void submitHarthmereInventorySpendToLiveModeForTest(
+                  localItemId,
+                  consumed,
+                  `Threw ${thrownLabel}`
+                );
+              }
+            }
             try {
               gardenHose.publish({
                 kind: "block_inventory_throw",

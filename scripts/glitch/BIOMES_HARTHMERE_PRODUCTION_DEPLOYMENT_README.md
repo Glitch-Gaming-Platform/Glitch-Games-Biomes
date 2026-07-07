@@ -443,22 +443,26 @@ The deploy script replaces Azure Container App `command` overrides with
 cannot keep running an older manual startup command after the image has moved
 to the unified stack script.
 
-After the new revision reports ready, the script pins 100% traffic to that
-concrete revision and deactivates older active revisions so idle no-traffic
-revisions do not keep running after production is healthy.
+After the new revision reports ready, the script smoke-tests that revision's
+own FQDN for real game HTML and live Harthmere APIs before moving public
+traffic. Only after post-shift validation passes does it deactivate older active
+revisions, so a cold or bad revision is not made user-visible just because Azure
+created it.
 
 ### Replica policy
 
 The current Azure Container App runs the full game stack in one container:
 web, sync WebSocket, shim, bikkie, logic, oob, sidefx, chat, and Redis stream
-workers. Because that single process tree owns live WebSocket sessions and
-singleton stream workers, production defaults to `AZURE_MIN_REPLICAS=1` and
-`AZURE_MAX_REPLICAS=1`.
+workers. Production defaults to `AZURE_MIN_REPLICAS=2` and
+`AZURE_MAX_REPLICAS=3` so an Azure node eviction or image pull does not leave
+players waiting for the only replica to cold-start the large Biomes image.
 
-Do not raise `AZURE_MAX_REPLICAS` for this deployment path until the singleton
-workers are split out or guarded and session routing has been designed for
-horizontal replicas. The deploy script rejects multi-replica updates unless
-`AZURE_ALLOW_MULTI_REPLICA_STACK=1` is set explicitly.
+Do not lower production to one replica unless this is an intentional emergency
+downgrade. The deploy script rejects `AZURE_MIN_REPLICAS<2` or
+`AZURE_MAX_REPLICAS<2` unless `AZURE_ALLOW_SINGLE_REPLICA=1` is set explicitly.
+The gameplay stream workers use Redis consumer groups and the BigQuery sink
+worker remains opt-in, so the HA default matches the live recovery posture while
+keeping the destructive snapshot/bootstrap paths disabled on app replicas.
 
 ### Why not `CMD ["dist/web.js"]`?
 
@@ -1054,6 +1058,8 @@ Before deploy:
 - [ ] Local `/api/glitch/harthmere` returns `valid:true`.
 - [ ] Image is pushed to ACR.
 - [ ] Container App exposes web `3000`; sync `4900` is internal/proxied.
+- [ ] Container App scale is `minReplicas=2`, `maxReplicas>=2` for the normal production path.
+- [ ] The new revision's own FQDN serves `200 text/html` before traffic is shifted.
 - [ ] `GLITCH_TITLE_TOKEN` secret exists.
 - [ ] Runtime Redis host is the shared production Redis `10.0.0.12`.
 - [ ] Runtime env includes `GLITCH_REDIS_MODE=external`, `GLITCH_POPULATE_SNAPSHOT_REDIS=0`, `GLITCH_REQUIRE_SNAPSHOT_REDIS=1`, `BIOMES_ENABLE_HARTHMERE_EXTRA_TOWN=0`, `BIOMES_FORCE_LOCAL_DEV_TOWN=0`, `BIOMES_CREATE_LOCAL_DEV_TERRAIN=1`, `BIOMES_START_IN_HARTHMERE=0`, `GLITCH_WORLD_API_MODE=hfc-hybrid`, `GLITCH_BISCUIT_MODE=redis2`, and `GLITCH_ENABLE_SNAPSHOT_ASSET_SERVER=1`.
@@ -1090,10 +1096,12 @@ After deploy:
 Container App: biomes-node-vnet
 Resource Group: openai-resource-group
 Environment: glitch-prod-vnet-env
-Revision: biomes-node-vnet--0000110
+Revision: biomes-node-vnet--ha2
 Revision State: Running
 Health State: Healthy
 Traffic Weight: 100
+Ingress target port: 3000
+Scale: minReplicas=2, maxReplicas=3
 Image: glitchgames.azurecr.io/biomes-node:prod-20260611185041
 Web URL: https://biomes-node-vnet.thankfulfield-9814940f.eastus.azurecontainerapps.io
 Sync URL: https://biomes-node-vnet.thankfulfield-9814940f.eastus.azurecontainerapps.io
@@ -1119,7 +1127,8 @@ title_id: 42de534c-600f-4228-af9e-b69faef94cce
 
 Use the guarded script. Do not hand-run `az containerapp update` for normal
 production deploys, because that bypasses the Redis NSG, persistence, snapshot,
-traffic-pinning, and stale-revision checks.
+ingress target-port assertion, HA replica defaults, revision-specific smoke,
+traffic-pinning, rollback, and stale-revision checks.
 
 ```bash
 cd /Users/devindixon/Development/biomes-game

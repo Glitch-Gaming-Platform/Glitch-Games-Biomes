@@ -28,6 +28,7 @@ import {
   isHarthmerePlaceholderNpcDialog,
 } from "@/shared/harthmere/npc_dialog_fallback";
 import { getLiveEntityHelperQuestForEntity } from "@/shared/harthmere/live_entity_helper_quests";
+import { isPlayer } from "@/shared/game/players";
 import { snapshotLiveNpcLoreForDialog } from "@/shared/harthmere/snapshot_live_npc_bible";
 import type { TalkDialogStepAction } from "@/client/components/challenges/TalkDialogModalStep";
 import { useClientContext } from "@/client/components/contexts/ClientContextReactContext";
@@ -59,6 +60,7 @@ export function useCanTalkToNpc(
     appearanceComponent,
     npcMetadata,
     playerStatus,
+    remoteConnection,
   ] = deps.reactResources.useAll(
     ["/ecs/c/label", entityId],
     ["/ecs/c/default_dialog", entityId],
@@ -68,9 +70,19 @@ export function useCanTalkToNpc(
     ["/ecs/c/robot_component", entityId],
     ["/ecs/c/appearance_component", entityId],
     ["/ecs/c/npc_metadata", entityId],
-    ["/ecs/c/player_status", entityId]
+    ["/ecs/c/player_status", entityId],
+    ["/ecs/c/remote_connection", entityId]
   );
   const iced = deps.reactResources.use("/ecs/c/iced", entityId);
+  // HARTHMERE_NO_TALK_TO_REAL_PLAYERS: a real remote player carries a
+  // `remote_connection` component (NPCs never do). Player-like NPC appearance +
+  // player_status otherwise satisfy the helper-quest / dialogue classifiers
+  // below, so another human player would wrongly show a "Talk" prompt and open
+  // NPC/quest dialogue. Talking to real players must instead open the player
+  // view + chat, so short-circuit here and never treat a player as an NPC.
+  if (remoteConnection) {
+    return false;
+  }
   // current: parity with `canTalkToNpc` — read the biscuit so biscuit-only
   // signals (isRobot, isPlayerLikeAppearance, npcDefaultDialog, isMount)
   // feed the helper-quest classifier the same way they feed the talk
@@ -142,6 +154,11 @@ export function canTalkToNpc(
     item = undefined;
   }
   const entity = deps.resources.get("/ecs/entity", entityId);
+  // HARTHMERE_NO_TALK_TO_REAL_PLAYERS: real remote players (remote_connection)
+  // are never NPCs; talking to them opens the player view + chat, not dialogue.
+  if (isPlayer(entity)) {
+    return false;
+  }
   const npcType = entity?.npc_metadata
     ? maybeIdToNpcType(entity.npc_metadata.type_id)
     : undefined;
