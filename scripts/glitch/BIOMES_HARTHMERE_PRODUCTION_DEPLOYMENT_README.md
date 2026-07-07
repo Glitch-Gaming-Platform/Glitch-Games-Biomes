@@ -134,10 +134,12 @@ configuration, Dockerfile layers, and copied assets have not changed.
 The GitHub-hosted runner disk is finite, so the production workflow frees large
 preinstalled SDK folders before checkout, exports only a minimal Buildx cache,
 uses a `buildx-min` cache namespace so old max-size caches are not restored,
-prunes Docker after the image push, and refuses to save a Docker layer cache
-larger than `MAX_DOCKER_LAYER_CACHE_MB`. This prevents failures such as
-`No space left on device` while the runner is writing its diagnostic logs or
-archiving caches.
+checks the restored cache against a pre-build free-space budget, makes refreshed
+cache export best-effort with `ignore-error=true`, retries once without external
+Buildx cache if Docker reports `No space left on device`, prunes Docker after the
+image push, and refuses to save a Docker layer cache larger than
+`MAX_DOCKER_LAYER_CACHE_MB`. This prevents cache maintenance from failing an
+otherwise valid production image push or starving the later Azure update.
 
 The shared CI cache actions follow the same pattern: LFS saves after a clean
 `git lfs pull`, pip saves after the virtualenv install, Bazel saves after the
@@ -1017,7 +1019,9 @@ Fix:
 Keep `.github/workflows/azure-production-deploy.yml` on the bounded-cache path:
 
 - `Free runner disk before checkout and build` removes unused hosted-runner SDKs.
-- `DOCKER_BUILD_CACHE_TO` uses `mode=min`, not `mode=max`.
+- `Guard Docker layer cache disk budget` deletes/turns off restored Buildx cache when free disk is below `MIN_DOCKER_BUILD_FREE_MB` or `MIN_DOCKER_CACHE_EXPORT_FREE_MB`.
+- `DOCKER_BUILD_CACHE_TO` uses `mode=min,ignore-error=true`, not `mode=max`.
+- `scripts/glitch/deploy-production-local-redis-smoke.sh` retries once without external Buildx cache if Docker reports `No space left on device` or `ENOSPC`.
 - Docker cache keys use the `buildx-min` namespace so old max-size caches are not restored.
 - `Prune Docker after image push` clears duplicate builder/image storage before cache saves.
 - `MAX_DOCKER_LAYER_CACHE_MB` caps the saved Buildx cache; oversized caches are deleted instead of archived.

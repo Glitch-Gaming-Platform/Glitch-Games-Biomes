@@ -15,6 +15,10 @@ REDIS_HEALTH_CHECK_ONLY=0
 BOOTSTRAP_PROD_REDIS_SNAPSHOT=0
 RUN_LOCAL_SMOKE="${RUN_LOCAL_SMOKE:-0}"
 DOCKER_BUILD_DIRECT_PUSH="${DOCKER_BUILD_DIRECT_PUSH:-1}"
+DOCKER_BUILD_MIN_FREE_MB="${DOCKER_BUILD_MIN_FREE_MB:-18432}"
+DOCKER_CACHE_EXPORT_MIN_FREE_MB="${DOCKER_CACHE_EXPORT_MIN_FREE_MB:-32768}"
+DOCKER_BUILD_POST_BUILD_MIN_FREE_MB="${DOCKER_BUILD_POST_BUILD_MIN_FREE_MB:-8192}"
+DOCKER_BUILD_RETRY_WITHOUT_CACHE_ON_ENOSPC="${DOCKER_BUILD_RETRY_WITHOUT_CACHE_ON_ENOSPC:-1}"
 IMAGE_WAS_PUSHED=0
 TAG="${TAG:-prod-$(date -u +%Y%m%d%H%M%S)}"
 
@@ -160,6 +164,88 @@ require_cmd() {
     echo "ERROR required command not found: $1" >&2
     exit 1
   fi
+}
+
+available_root_disk_mb() {
+  df -Pm / | awk 'NR == 2 { print $4 }'
+}
+
+path_size_mb() {
+  local path="$1"
+  if [ -e "$path" ]; then
+    du -sm "$path" 2>/dev/null | awk '{ print $1 }'
+  else
+    printf '0\n'
+  fi
+}
+
+show_docker_build_disk_budget() {
+  echo "::group::Docker build disk budget"
+  df -h
+  du -sh /tmp/.buildx-cache /tmp/.buildx-cache-new 2>/dev/null || true
+  echo "::endgroup::"
+}
+
+prune_docker_builder_storage() {
+  docker buildx prune -af || true
+  docker builder prune -af || true
+  docker system prune -af --volumes || true
+}
+
+disable_docker_build_layer_cache() {
+  local reason="$1"
+  echo "::warning::$reason"
+  rm -rf /tmp/.buildx-cache /tmp/.buildx-cache-new
+  DOCKER_BUILD_CACHE_FROM=""
+  DOCKER_BUILD_CACHE_TO=""
+  export DOCKER_BUILD_CACHE_FROM DOCKER_BUILD_CACHE_TO
+}
+
+prepare_docker_build_disk_budget() {
+  require_cmd docker
+  rm -rf /tmp/.buildx-cache-new
+
+  log "Checking Docker build disk budget."
+  show_docker_build_disk_budget
+
+  local cache_size_mb free_mb
+  cache_size_mb="$(path_size_mb /tmp/.buildx-cache)"
+  if [ "$cache_size_mb" -gt "${MAX_DOCKER_LAYER_CACHE_MB:-4096}" ]; then
+    echo "::warning::Restored Buildx cache is ${cache_size_mb}MB, above ${MAX_DOCKER_LAYER_CACHE_MB:-4096}MB; deleting it before Docker build."
+    rm -rf /tmp/.buildx-cache
+  fi
+
+  free_mb="$(available_root_disk_mb)"
+  if [ "$free_mb" -lt "$DOCKER_BUILD_MIN_FREE_MB" ]; then
+    log "Pruning Docker storage before image build because only ${free_mb}MB is free."
+    prune_docker_builder_storage
+    free_mb="$(available_root_disk_mb)"
+  fi
+
+  if [ "$free_mb" -lt "$DOCKER_BUILD_MIN_FREE_MB" ]; then
+    disable_docker_build_layer_cache "Only ${free_mb}MB free before Docker build, below ${DOCKER_BUILD_MIN_FREE_MB}MB; retrying this run without external Buildx cache."
+    free_mb="$(available_root_disk_mb)"
+  fi
+
+  if [ -n "${DOCKER_BUILD_CACHE_TO:-}" ] && [ "$free_mb" -lt "$DOCKER_CACHE_EXPORT_MIN_FREE_MB" ]; then
+    echo "::warning::Only ${free_mb}MB free before Docker build, below ${DOCKER_CACHE_EXPORT_MIN_FREE_MB}MB cache-export budget; disabling refreshed Buildx cache export for this run."
+    rm -rf /tmp/.buildx-cache-new
+    DOCKER_BUILD_CACHE_TO=""
+    export DOCKER_BUILD_CACHE_TO
+  fi
+}
+
+cleanup_docker_build_disk_budget_after_build() {
+  local free_mb
+  free_mb="$(available_root_disk_mb)"
+  if [ "$free_mb" -ge "$DOCKER_BUILD_POST_BUILD_MIN_FREE_MB" ]; then
+    return
+  fi
+
+  echo "::warning::Only ${free_mb}MB free after Docker build, below ${DOCKER_BUILD_POST_BUILD_MIN_FREE_MB}MB; deleting refreshed Buildx cache and pruning Docker before Azure update."
+  rm -rf /tmp/.buildx-cache-new
+  prune_docker_builder_storage
+  show_docker_build_disk_budget
 }
 
 extract_az_run_command_stdout() {
@@ -1400,36 +1486,72 @@ build_artifacts() {
   node scripts/glitch/assert-glitch-build-artifacts-current.cjs .
 }
 
-build_image() {
-  local cache_args=()
-  if [ -n "${DOCKER_BUILD_CACHE_FROM:-}" ]; then
-    cache_args+=(--cache-from "$DOCKER_BUILD_CACHE_FROM")
-  fi
-  if [ -n "${DOCKER_BUILD_CACHE_TO:-}" ]; then
-    cache_args+=(--cache-to "$DOCKER_BUILD_CACHE_TO")
-  fi
-  local docker_args=(
+compose_docker_build_args() {
+  DOCKER_ARGS=(
     --platform "$DOCKER_PLATFORM"
     -f Dockerfile.biomes
     -t "$IMAGE"
   )
   if should_directly_push_buildx_image; then
-    docker_args+=(--push)
+    DOCKER_ARGS+=(--push)
     IMAGE_WAS_PUSHED=1
   else
-    docker_args+=(--load -t "$LOCAL_IMAGE")
+    DOCKER_ARGS+=(--load -t "$LOCAL_IMAGE")
   fi
-  if [ "${#cache_args[@]}" -gt 0 ]; then
-    docker_args+=("${cache_args[@]}")
+  if [ -n "${DOCKER_BUILD_CACHE_FROM:-}" ]; then
+    DOCKER_ARGS+=(--cache-from "$DOCKER_BUILD_CACHE_FROM")
   fi
-  docker_args+=(.)
+  if [ -n "${DOCKER_BUILD_CACHE_TO:-}" ]; then
+    DOCKER_ARGS+=(--cache-to "$DOCKER_BUILD_CACHE_TO")
+  fi
+  DOCKER_ARGS+=(.)
+}
 
+run_docker_buildx_build() {
+  local build_log="$1"
+  shift
+  docker buildx build "$@" 2>&1 | tee "$build_log"
+  return "${PIPESTATUS[0]}"
+}
+
+build_image() {
+  prepare_docker_build_disk_budget
+
+  local build_log status
+  build_log="$(mktemp "${TMPDIR:-/tmp}/biomes-docker-build.XXXXXX.log")"
+
+  compose_docker_build_args
   if should_directly_push_buildx_image; then
     log "Building and pushing production image $IMAGE for $DOCKER_PLATFORM."
   else
     log "Building local production image $LOCAL_IMAGE for $DOCKER_PLATFORM."
   fi
-  docker buildx build "${docker_args[@]}"
+
+  set +e
+  run_docker_buildx_build "$build_log" "${DOCKER_ARGS[@]}"
+  status="$?"
+  set -e
+
+  if [ "$status" -ne 0 ] &&
+     [ "$DOCKER_BUILD_RETRY_WITHOUT_CACHE_ON_ENOSPC" = "1" ] &&
+     { [ -n "${DOCKER_BUILD_CACHE_FROM:-}" ] || [ -n "${DOCKER_BUILD_CACHE_TO:-}" ]; } &&
+     grep -Eiq 'no space left on device|ENOSPC' "$build_log"; then
+    log "Docker build hit runner disk pressure while using Buildx cache; pruning cache and retrying once without external layer cache."
+    disable_docker_build_layer_cache "Docker Buildx reported no space left on device; external layer cache is disabled for the retry."
+    prune_docker_builder_storage
+    compose_docker_build_args
+    set +e
+    run_docker_buildx_build "$build_log" "${DOCKER_ARGS[@]}"
+    status="$?"
+    set -e
+  fi
+
+  rm -f "$build_log"
+  if [ "$status" -ne 0 ]; then
+    return "$status"
+  fi
+
+  cleanup_docker_build_disk_budget_after_build
 }
 
 should_directly_push_buildx_image() {

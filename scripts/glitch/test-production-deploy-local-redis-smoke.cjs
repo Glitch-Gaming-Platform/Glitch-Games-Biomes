@@ -433,7 +433,12 @@ ok(
 );
 ok(
   script.includes("DOCKER_BUILD_CACHE_FROM") &&
-    script.includes("DOCKER_BUILD_CACHE_TO"),
+    script.includes("DOCKER_BUILD_CACHE_TO") &&
+    script.includes("prepare_docker_build_disk_budget") &&
+    script.includes("DOCKER_BUILD_RETRY_WITHOUT_CACHE_ON_ENOSPC") &&
+    script.includes("no space left on device|ENOSPC") &&
+    script.includes("retrying once without external layer cache") &&
+    script.includes("disable_docker_build_layer_cache"),
   "Docker build can consume and refresh an external Buildx layer cache"
 );
 ok(
@@ -446,15 +451,19 @@ ok(
 );
 ok(
   deployWorkflow.includes("Free runner disk before checkout and build") &&
+    deployWorkflow.includes("Guard Docker layer cache disk budget") &&
     deployWorkflow.includes("Prune Docker after image push") &&
     deployWorkflow.includes("MAX_DOCKER_LAYER_CACHE_MB") &&
+    deployWorkflow.includes("MIN_DOCKER_BUILD_FREE_MB") &&
+    deployWorkflow.includes("MIN_DOCKER_CACHE_EXPORT_FREE_MB") &&
     deployWorkflow.includes(
-      "DOCKER_BUILD_CACHE_TO: type=local,dest=/tmp/.buildx-cache-new,mode=min"
+      "DOCKER_BUILD_CACHE_TO: type=local,dest=/tmp/.buildx-cache-new,mode=min,ignore-error=true"
     ) &&
     deployWorkflow.includes("${{ runner.os }}-buildx-min-") &&
     !deployWorkflow.includes("${{ runner.os }}-buildx-${{") &&
     deployWorkflow.includes("cache_size_mb") &&
-    deployWorkflow.includes("above ${MAX_DOCKER_LAYER_CACHE_MB}MB"),
+    deployWorkflow.includes("above ${MAX_DOCKER_LAYER_CACHE_MB}MB") &&
+    deployWorkflow.includes("DOCKER_BUILD_CACHE_TO="),
   "production workflow keeps GitHub runner disk usage bounded during Docker deploys"
 );
 ok(

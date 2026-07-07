@@ -36,8 +36,12 @@ env:
   GLITCH_TITLE_ID: 42de534c-600f-4228-af9e-b69faef94cce
   GLITCH_API_BASE_URL: https://api.glitch.fun/api
   DOCKER_BUILD_CACHE_FROM: type=local,src=/tmp/.buildx-cache
-  DOCKER_BUILD_CACHE_TO: type=local,dest=/tmp/.buildx-cache-new,mode=min
+  DOCKER_BUILD_CACHE_TO: type=local,dest=/tmp/.buildx-cache-new,mode=min,ignore-error=true
   MAX_DOCKER_LAYER_CACHE_MB: "4096"
+  MIN_DOCKER_BUILD_FREE_MB: "18432"
+  MIN_DOCKER_CACHE_EXPORT_FREE_MB: "32768"
+  DOCKER_BUILD_POST_BUILD_MIN_FREE_MB: "8192"
+  DOCKER_BUILD_RETRY_WITHOUT_CACHE_ON_ENOSPC: "1"
   HARTHMERE_SKIP_WORLD_SYNC_RECONCILIATION: "1"
   ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: "true"
 
@@ -125,6 +129,38 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-buildx-min-${{ hashFiles('Dockerfile.biomes', 'Dockerfile', 'scripts/glitch/deploy-production-local-redis-smoke.sh', 'yarn.lock') }}-
             ${{ runner.os }}-buildx-min-
+
+      - name: Guard Docker layer cache disk budget
+        run: |
+          set -euo pipefail
+          echo "::group::Docker cache disk budget"
+          df -h
+          cache_size_mb=0
+          if [ -d /tmp/.buildx-cache ]; then
+            cache_size_mb="$(du -sm /tmp/.buildx-cache | awk '{print $1}')"
+          fi
+          free_mb="$(df -Pm / | awk 'NR == 2 { print $4 }')"
+          echo "Restored Buildx cache: ${cache_size_mb}MB; root free: ${free_mb}MB."
+
+          if [ "$cache_size_mb" -gt "$MAX_DOCKER_LAYER_CACHE_MB" ]; then
+            echo "::warning::Restored Buildx cache is ${cache_size_mb}MB, above ${MAX_DOCKER_LAYER_CACHE_MB}MB; deleting it before Docker build."
+            rm -rf /tmp/.buildx-cache
+            cache_size_mb=0
+          fi
+
+          free_mb="$(df -Pm / | awk 'NR == 2 { print $4 }')"
+          if [ "$free_mb" -lt "$MIN_DOCKER_BUILD_FREE_MB" ]; then
+            echo "::warning::Only ${free_mb}MB free before Docker build, below ${MIN_DOCKER_BUILD_FREE_MB}MB; disabling restored Buildx import/export for this run."
+            rm -rf /tmp/.buildx-cache /tmp/.buildx-cache-new
+            echo "DOCKER_BUILD_CACHE_FROM=" >> "$GITHUB_ENV"
+            echo "DOCKER_BUILD_CACHE_TO=" >> "$GITHUB_ENV"
+          elif [ "$free_mb" -lt "$MIN_DOCKER_CACHE_EXPORT_FREE_MB" ]; then
+            echo "::warning::Only ${free_mb}MB free before Docker build, below ${MIN_DOCKER_CACHE_EXPORT_FREE_MB}MB cache-export budget; disabling refreshed Buildx cache export for this run."
+            rm -rf /tmp/.buildx-cache-new
+            echo "DOCKER_BUILD_CACHE_TO=" >> "$GITHUB_ENV"
+          fi
+          df -h
+          echo "::endgroup::"
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
