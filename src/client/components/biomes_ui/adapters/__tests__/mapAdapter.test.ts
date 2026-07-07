@@ -540,6 +540,36 @@ describe("biomes_ui map adapter (V141)", () => {
     assert.equal(active?.reward, "25 XP");
   });
 
+  // QUEST_JOURNAL_ONLY_STARTED regression: a brand-new player's journal must not
+  // be flooded with the entire authored Snapshot Grove catalog. The real adapter
+  // surfaces only authored quests the player has started (active) or finished
+  // (completed); not-yet-started ("available") authored quests are discovered
+  // in-world and must be excluded from the trackable list.
+  it("excludes not-yet-started (available) authored quests from the journal", () => {
+    installFixture({
+      activeQuestId: "fountain_buttons_first",
+      activeObjectiveIndex: 0,
+      completedQuestIds: ["loans_responsibly"],
+    });
+    const quests = buildBiomesUIMapAdapterForTest(1).getTrackableQuests();
+    const byId = (id: string) => quests.find((q) => q.questId === id);
+    // Started + finished quests still appear.
+    assert.equal(byId("fountain_buttons_first")?.status, "active");
+    assert.equal(byId("loans_responsibly")?.status, "completed");
+    // Purely-available authored catalog quests must NOT flood the journal.
+    assert.equal(byId("moss_that_went_quiet"), undefined);
+    assert.equal(byId("coops_key_hen"), undefined);
+    // No authored_grove_quest should surface as merely "available" (the catalog
+    // flood). Dedicated story/helper sources may still emit their own entries.
+    assert.equal(
+      quests.some(
+        (q) => q.status === "available" && q.kind === "authored_grove_quest"
+      ),
+      false,
+      "no authored catalog quest should surface as merely 'available'"
+    );
+  });
+
   it("projects an accepted Jackie quest into the real BiomesUI map adapter", () => {
     installFixture({
       acceptedQuestIds: ["fountain_buttons_first"],

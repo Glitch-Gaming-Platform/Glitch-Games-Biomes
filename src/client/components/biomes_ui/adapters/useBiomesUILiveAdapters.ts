@@ -2206,7 +2206,16 @@ export function buildBiomesUIMapAdapterForTest(
           readLiveEntityHelperQuestState(),
           { isReadyToTurnIn: liveEntityHelperQuestRecordReadyToTurnIn }
         ),
-        ...authoredQuests,
+        // QUEST_JOURNAL_ONLY_STARTED: The authored Snapshot Grove catalog holds
+        // 100+ quests. Emitting every not-yet-started one as "available" floods a
+        // brand-new player's journal with the whole catalog (the reported bug).
+        // The journal should list only quests the player has actually started
+        // (active) or finished (completed); "available" authored quests are
+        // discovered in-world via NPCs/markers, not pre-listed here. The three
+        // seeded starter quests (jobs board, housing/Mira, find Jackie) come from
+        // the dedicated jobsBoard / liveEntityHelper sources above, so they are
+        // unaffected by this filter.
+        ...authoredQuests.filter((quest) => quest.status !== "available"),
       ];
     },
     getMainQuestSelection: () => readBiomesUIMainQuestSelection(),

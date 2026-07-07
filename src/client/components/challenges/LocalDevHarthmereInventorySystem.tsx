@@ -3351,6 +3351,29 @@ export const HarthmereNativeTerrainBlockInventoryBridge: React.FunctionComponent
         HARTHMERE_NATIVE_TERRAIN_BLOCK_PLACED_EVENT,
         onNativeTerrainBlockPlaced
       );
+      // HARTHMERE_NATIVE_BLOCK_PLACEMENT_GATE: expose the Harthmere owned count
+      // for a would-be-placed terrain block so the native placement path can
+      // refuse to place blocks the player does not actually hold. Only present
+      // while this bridge is mounted (Harthmere live-mode HUD), so vanilla Biomes
+      // placement is never gated. Reads the SAME Cloud Save inventory the place
+      // debit decrements, so "can place" and "gets decremented" stay in lockstep
+      // and the player can only place what the hotbar/inventory shows they own.
+      const gateWindow = window as typeof window & {
+        __harthmereNativeBlockPlacementOwnedCount?: (
+          detail: HarthmereNativeTerrainBlockDestroyedDetail
+        ) => number;
+      };
+      gateWindow.__harthmereNativeBlockPlacementOwnedCount = (detail) => {
+        try {
+          const itemId = harthmereInventoryItemForNativeTerrainBlockForTest(
+            detail ?? ({} as HarthmereNativeTerrainBlockDestroyedDetail)
+          );
+          return harthmereInventoryCountByItemId(itemId);
+        } catch {
+          // On any lookup failure, do not block placement (fail open).
+          return Number.POSITIVE_INFINITY;
+        }
+      };
       return () => {
         window.removeEventListener(
           HARTHMERE_NATIVE_TERRAIN_BLOCK_DESTROYED_EVENT,
@@ -3360,6 +3383,7 @@ export const HarthmereNativeTerrainBlockInventoryBridge: React.FunctionComponent
           HARTHMERE_NATIVE_TERRAIN_BLOCK_PLACED_EVENT,
           onNativeTerrainBlockPlaced
         );
+        delete gateWindow.__harthmereNativeBlockPlacementOwnedCount;
       };
     }, []);
 

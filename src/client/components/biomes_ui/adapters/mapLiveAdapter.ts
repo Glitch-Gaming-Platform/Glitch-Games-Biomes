@@ -662,7 +662,12 @@ export function buildBiomesUIMapAdapter(
           { isReadyToTurnIn: liveEntityHelperQuestRecordReadyToTurnIn }
         ),
         ...sharedQuestTrackableQuestsForBiomesUI(liveQuestState),
-        ...authoredQuests,
+        // QUEST_JOURNAL_ONLY_STARTED: Only surface authored Snapshot Grove quests
+        // the player has actually started (active) or finished (completed). The
+        // full authored catalog is 100+ quests; listing every not-yet-started one
+        // as "available" floods a brand-new player's journal. Available quests are
+        // discovered in-world (NPCs/markers), not pre-listed in the journal.
+        ...authoredQuests.filter((quest) => quest.status !== "available"),
       ];
     },
     getMainQuestSelection: () => readBiomesUIMainQuestSelection(),

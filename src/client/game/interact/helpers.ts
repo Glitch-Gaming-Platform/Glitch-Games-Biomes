@@ -1404,6 +1404,36 @@ export function handlePlaceVoxelInteraction(
   }
   const boostPlacement = isBoostPlacement(deps, pos, face);
   const placedTerrainId = getTerrainID(terrainName);
+
+  // HARTHMERE_NATIVE_BLOCK_PLACEMENT_GATE: in Harthmere live mode, refuse to
+  // place a raw terrain block the player does not actually own. The gate hook is
+  // installed only while the Harthmere inventory bridge is mounted, so vanilla
+  // Biomes placement is never affected. This makes placement bounded by the
+  // Harthmere inventory count (the same count the place-debit decrements), so a
+  // block can only be placed as many times as the player holds it — fixing the
+  // "place an infinite amount without decrementing" bug. Fails open (allows the
+  // placement) if the gate is absent or errors.
+  if (placedTerrainId && !isFloraId(placedTerrainId)) {
+    const ownedCountGate = (
+      globalThis as typeof globalThis & {
+        __harthmereNativeBlockPlacementOwnedCount?: (detail: {
+          terrainId: number;
+        }) => number;
+      }
+    ).__harthmereNativeBlockPlacementOwnedCount;
+    if (typeof ownedCountGate === "function") {
+      let owned = Number.POSITIVE_INFINITY;
+      try {
+        owned = ownedCountGate({ terrainId: placedTerrainId });
+      } catch {
+        owned = Number.POSITIVE_INFINITY;
+      }
+      if (Number.isFinite(owned) && owned <= 0) {
+        return false;
+      }
+    }
+  }
+
   if (
     !setVoxel(deps, {
       pos,
