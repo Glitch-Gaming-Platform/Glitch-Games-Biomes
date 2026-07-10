@@ -14,14 +14,12 @@ export const zAuthCheckResponse = z.object({
 
 export type AuthCheckResponse = z.infer<typeof zAuthCheckResponse>;
 
-function shouldVerifyUserDocumentForAuthCheck() {
+export function shouldVerifyUserDocumentForAuthCheck(
+  env: NodeJS.ProcessEnv = process.env
+) {
   return (
-    process.env.NODE_ENV !== "production" ||
-    process.env.GLITCH_RUNTIME === "1" ||
-    process.env.GLITCH_LOCAL_ASSETS === "1" ||
-    process.env.GLITCH_DISABLE_GCP === "1" ||
-    process.env.NEXT_PUBLIC_GLITCH_RUNTIME === "1" ||
-    process.env.NEXT_PUBLIC_GLITCH_LOCAL_ASSETS === "1"
+    env.NODE_ENV !== "production" ||
+    env.GLITCH_VERIFY_AUTH_USER_DOCUMENT === "1"
   );
 }
 
@@ -32,10 +30,12 @@ export default biomesApiHandler(
   },
   async ({ context: { db }, auth, unsafeRequest, unsafeResponse }) => {
     if (auth?.userId) {
-      // Local/Glitch runtimes use in-memory or sparse storage. A stateless
-      // browser auth cookie can outlive the user document in that DB. Do not
-      // report that user as logged in, because the install bootstrap should
-      // recreate the user from install_id before the game mounts.
+      // In production the authenticated session is authoritative. Glitch can
+      // route consecutive requests to different replicas whose local/sparse
+      // document views do not agree; invalidating a valid shared session from
+      // that secondary lookup causes alternating 200/401 auth checks and SSR
+      // hydration loops. Keep document verification for development and as an
+      // explicit production diagnostic only.
       if (shouldVerifyUserDocumentForAuthCheck()) {
         const user = await findByUID(db, auth.userId);
         if (!user) {

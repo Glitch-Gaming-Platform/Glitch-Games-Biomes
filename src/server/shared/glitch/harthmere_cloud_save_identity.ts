@@ -38,6 +38,19 @@ export interface HarthmereCloudSaveIdentityInput {
   userName?: string | null;
 }
 
+export function harthmereGuestInstallBiomesUserId(input: {
+  titleId: string;
+  installId: string;
+}): number {
+  const mask52 = (1n << 52n) - 1n;
+  let hash = 1469598103934665603n;
+  for (const character of `${input.titleId}:${input.installId}`) {
+    hash ^= BigInt(character.codePointAt(0) ?? 0);
+    hash = BigInt.asUintN(64, hash * 1099511628211n);
+  }
+  return Number((1n << 52n) | (hash & mask52));
+}
+
 const GUEST_NAME_RE = /^(guest|guest user|anonymous|unknown|player|null)$/i;
 
 // Install-derived usernames (e.g. "Glitchinstall25fe66b" / "Local1a2b3c") are NOT

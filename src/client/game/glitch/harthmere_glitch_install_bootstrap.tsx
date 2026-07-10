@@ -2,6 +2,7 @@ import {
   HARTHMERE_GLITCH_IDENTITY_CHANGED_EVENT,
   writeHarthmereGlitchIdentity,
 } from "@/client/game/glitch/harthmere_glitch_identity";
+import { shouldReloadHarthmereGlitchAuth } from "@/client/game/glitch/harthmere_glitch_auth_reload";
 import {
   harthmereBiomesAuthHeaders,
   readHarthmereBiomesAuthSession,
@@ -391,6 +392,10 @@ export function HarthmereGlitchInstallBootstrap() {
 
             if (
               sessionChanged &&
+              shouldReloadHarthmereGlitchAuth({
+                isAfterReload,
+                serverGateWaiting: gateWaitingBeforeRefresh,
+              }) &&
               markAutoAuthReload(installId, "biomes_session_rotated")
             ) {
               return;
@@ -453,7 +458,14 @@ export function HarthmereGlitchInstallBootstrap() {
         // loses a race against Set-Cookie visibility, reload the gated /at page
         // once so SSR can re-read cookies. A manual hard refresh was already
         // proving that this path works; do it automatically and cap retries.
-        if (postLoginAuthed || isServerAuthGateWaiting()) {
+        const serverGateWaiting = isServerAuthGateWaiting();
+        if (
+          (postLoginAuthed || serverGateWaiting) &&
+          shouldReloadHarthmereGlitchAuth({
+            isAfterReload,
+            serverGateWaiting,
+          })
+        ) {
           const reason = postLoginAuthed
             ? isAfterReload
               ? "auth_cookies_set_after_prior_reload"
@@ -464,12 +476,17 @@ export function HarthmereGlitchInstallBootstrap() {
           }
         }
 
+        if (postLoginAuthed && isAfterReload && !serverGateWaiting) {
+          clearReloadAttempts(installId);
+          return;
+        }
+
         // eslint-disable-next-line no-console
         console.error("HARTHMERE_AUTH_COOKIE_MISSING", {
           installId,
           gameUserId: json?.game_user_id,
           isAfterReload,
-          serverGateWaiting: isServerAuthGateWaiting(),
+          serverGateWaiting,
         });
       } catch (error) {
         // eslint-disable-next-line no-console

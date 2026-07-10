@@ -2,6 +2,7 @@ import assert from "assert";
 import {
   harthmereCloudSaveForeignAuthCandidateIds,
   harthmereCloudSaveForeignAuthPrimaryId,
+  harthmereGuestInstallBiomesUserId,
   harthmereHasStableGlitchAccount,
   isStableHarthmereGlitchUserId,
   isStableHarthmereUserName,
@@ -12,6 +13,28 @@ const TITLE = "42de534c-600f-4228-af9e-b69faef94cce";
 const INSTALL = "25f687dd-9ebe-4c31-8810-719ddfafe66b";
 
 describe("harthmere cloud save identity (stable scope)", () => {
+  describe("guest install Biomes identity", () => {
+    it("is deterministic, safe, and isolated per install", () => {
+      const first = harthmereGuestInstallBiomesUserId({
+        titleId: TITLE,
+        installId: INSTALL,
+      });
+      const repeated = harthmereGuestInstallBiomesUserId({
+        titleId: TITLE,
+        installId: INSTALL,
+      });
+      const other = harthmereGuestInstallBiomesUserId({
+        titleId: TITLE,
+        installId: "218438e4-2b57-4be7-b6d4-5f49d4e8b38b",
+      });
+
+      assert.equal(first, repeated);
+      assert.notEqual(first, other);
+      assert.equal(Number.isSafeInteger(first), true);
+      assert.ok(first > 0);
+    });
+  });
+
   describe("isStableHarthmereUserName", () => {
     it("accepts real account names", () => {
       assert.equal(isStableHarthmereUserName("blackmage"), true);
@@ -91,8 +114,8 @@ describe("harthmere cloud save identity (stable scope)", () => {
     });
 
     it("returns undefined (guest) when neither id nor a stable name exist", () => {
-      // No stable Glitch account -> guest. The install id is NOT a durable key:
-      // guests must never silently accrue an install-scoped biomes user.
+      // No stable Glitch account -> no cloud-save foreign-auth identity. Guest
+      // installs still receive a deterministic internal Biomes user separately.
       assert.equal(
         harthmereCloudSaveForeignAuthPrimaryId({
           titleId: TITLE,

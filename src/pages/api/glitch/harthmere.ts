@@ -31,6 +31,7 @@ import { Timer } from "@/shared/metrics/timer";
 import {
   harthmereCloudSaveForeignAuthCandidateIds,
   harthmereCloudSaveForeignAuthPrimaryId,
+  harthmereGuestInstallBiomesUserId,
   harthmereHasStableGlitchAccount,
 } from "@/server/shared/glitch/harthmere_cloud_save_identity";
 export const config = {
@@ -1174,11 +1175,11 @@ async function latestBiomesUserIdFromGlitchSave(
   }
 }
 
-async function rememberStableGlitchLiveModeActor(
+async function rememberHarthmereLiveModeActorIdentity(
   identity: HarthmereValidatedIdentity,
   biomesUserId?: BiomesId
 ) {
-  if (!identity.installId || identity.guest || !identity.gameUserId) {
+  if (!identity.installId || !identity.gameUserId) {
     return;
   }
   await setStringInRedis(
@@ -1396,11 +1397,11 @@ export async function createBiomesAuthForGlitchIdentity(
     throw new Error("MISSING_BIOMES_WEB_CONTEXT");
   }
 
-  // Guests have no stable Glitch account, so there is nothing durable to anchor a
-  // biomes user / cloud save to. Give them an EPHEMERAL, UNLINKED biomes user so
-  // the entire game is playable, but never create a foreign-auth link (so the id
-  // is not reused or persisted) and never save. Cloud save for guests is rejected
-  // by Glitch itself (GUEST_NOT_ALLOWED) and skipped client-side.
+  // Guests have no stable Glitch account or cloud-save scope, but their install
+  // id is stable for the lifetime of the trial. Reuse a deterministic Biomes
+  // user for that install so SSR, auto-login, auth checks, and the sync socket
+  // cannot rotate through different users on every request. This does not create
+  // a Glitch foreign-auth link and cloud save remains disabled.
   if (
     identity.guest ||
     !harthmereHasStableGlitchAccount({
@@ -1413,7 +1414,14 @@ export async function createBiomesAuthForGlitchIdentity(
     const username = stableBiomesUsername(identity);
     const guestUser = await getUserOrCreateIfNotExists(
       context.db,
-      await context.idGenerator.next(),
+      parseBiomesId(
+        String(
+          harthmereGuestInstallBiomesUserId({
+            titleId: identity.titleId,
+            installId: identity.installId,
+          })
+        )
+      ),
       username,
       undefined
     );
@@ -1433,6 +1441,7 @@ export async function createBiomesAuthForGlitchIdentity(
     }
     const guestSession = await context.sessionStore.createSession(guestUser.id);
     setAuthCookies(res, guestSession, req);
+    await rememberHarthmereLiveModeActorIdentity(identity, guestUser.id);
     return {
       user: guestUser,
       session: guestSession,
@@ -1564,7 +1573,7 @@ export async function createBiomesAuthForGlitchIdentity(
 
   const session = await context.sessionStore.createSession(user.id);
   setAuthCookies(res, session, req);
-  await rememberStableGlitchLiveModeActor(identity, user.id);
+  await rememberHarthmereLiveModeActorIdentity(identity, user.id);
 
   return { user, session, profile, guest: false };
 }
