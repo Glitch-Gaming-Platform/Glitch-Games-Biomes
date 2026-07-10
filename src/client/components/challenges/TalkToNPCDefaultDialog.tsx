@@ -60,7 +60,6 @@ export function useCanTalkToNpc(
     appearanceComponent,
     npcMetadata,
     playerStatus,
-    remoteConnection,
   ] = deps.reactResources.useAll(
     ["/ecs/c/label", entityId],
     ["/ecs/c/default_dialog", entityId],
@@ -70,8 +69,11 @@ export function useCanTalkToNpc(
     ["/ecs/c/robot_component", entityId],
     ["/ecs/c/appearance_component", entityId],
     ["/ecs/c/npc_metadata", entityId],
-    ["/ecs/c/player_status", entityId],
-    ["/ecs/c/remote_connection", entityId]
+    ["/ecs/c/player_status", entityId]
+  );
+  const remoteConnection = deps.reactResources.use(
+    "/ecs/c/remote_connection",
+    entityId
   );
   const iced = deps.reactResources.use("/ecs/c/iced", entityId);
   // HARTHMERE_NO_TALK_TO_REAL_PLAYERS: a real remote player carries a

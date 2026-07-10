@@ -1,5 +1,11 @@
-import { grantHarthmereItem } from "@/client/components/challenges/LocalDevHarthmereInventorySystem";
-import { consumeHarthmereItemByItemId } from "@/client/components/challenges/LocalDevHarthmereInventorySystem";
+import {
+  consumeHarthmereItemByItemId,
+  grantHarthmereItemLocallyForTest,
+  harthmereInventoryAcceptableQuantity,
+  harthmereInventoryCountByItemId,
+  submitHarthmereInventoryGrantToLiveModeForTest,
+  submitHarthmereInventorySpendToLiveModeForTest,
+} from "@/client/components/challenges/LocalDevHarthmereInventorySystem";
 import { completeHarthmereDailyTaskSoon } from "@/client/components/challenges/harthmereDailyTasks";
 import { dispatchHarthmereWorldObjectInteractionEvent } from "@/client/components/challenges/harthmereObjectInteractions";
 import { harthmereUserScopedStorageKey } from "@/client/components/challenges/LocalDevHarthmereUserScope";
@@ -25,6 +31,8 @@ export const HARTHMERE_OBJECT_CONTAINER_CONTENTS_KEY =
 
 const HARTHMERE_OBJECT_CONTAINER_OPEN_REQUEST_KEY =
   "biomes.localDev.harthmere.objectContainerOpenRequest";
+
+const pendingContainerTransfers = new Set<string>();
 
 export interface HarthmereObjectContainerLoot {
   itemId: string;
@@ -440,7 +448,7 @@ export function fillKnownRoadAheadClothingCrates(
 }
 
 // Move `quantity` of `itemId` from the container into the player inventory.
-// grantHarthmereItem routes the item to the correct storage (backpack,
+// The local projection routes the item to the correct storage (backpack,
 // material storage, quest pouch, keyring) by category. Returns amount taken.
 export function takeFromHarthmereContainer(
   key: string,
@@ -452,26 +460,84 @@ export function takeFromHarthmereContainer(
   if (!record || quantity <= 0) {
     return 0;
   }
-  let remaining = quantity;
-  let taken = 0;
-  const items = record.items.map((slot) => ({ ...slot }));
-  for (const slot of items) {
-    if (slot.itemId !== itemId || remaining <= 0) {
-      continue;
-    }
-    const move = Math.min(slot.quantity, remaining);
-    slot.quantity -= move;
-    remaining -= move;
-    taken += move;
-  }
-  if (taken <= 0) {
+  const available = containerItemQuantity(record.items, itemId);
+  const requested = Math.min(Math.max(0, quantity), available);
+  const accepted = harthmereInventoryAcceptableQuantity(itemId, requested);
+  if (accepted <= 0) {
     return 0;
   }
-  record.items = items.filter((slot) => slot.quantity > 0);
+  const reason = `${record.label} contents`;
+  const commit = () => {
+    const currentStore = readContainerStore();
+    const currentRecord = currentStore[key];
+    if (!currentRecord) return;
+    let remaining = accepted;
+    currentRecord.items = (currentRecord.items ?? []).flatMap((slot) => {
+      if (slot.itemId !== itemId || remaining <= 0) return [slot];
+      const moved = Math.min(slot.quantity, remaining);
+      remaining -= moved;
+      const nextQuantity = slot.quantity - moved;
+      return nextQuantity > 0 ? [{ ...slot, quantity: nextQuantity }] : [];
+    });
+    const moved = accepted - remaining;
+    if (moved <= 0) return;
+    currentStore[key] = currentRecord;
+    writeContainerStore(currentStore);
+    grantHarthmereItemLocallyForTest(itemId, moved, reason);
+  };
+  const transferKey = `${key}:take:${itemId}`;
+  if (pendingContainerTransfers.has(transferKey)) {
+    return 0;
+  }
+  const mutation = submitHarthmereInventoryGrantToLiveModeForTest(
+    itemId,
+    accepted,
+    reason
+  );
+  if (!mutation) {
+    commit();
+    return accepted;
+  }
+  pendingContainerTransfers.add(transferKey);
+  void mutation
+    .then(commit)
+    .catch(() => undefined)
+    .finally(() => pendingContainerTransfers.delete(transferKey));
+  return accepted;
+}
+
+function commitHarthmereContainerPut(
+  key: string,
+  itemId: string,
+  quantity: number,
+  label: string
+) {
+  const removed = consumeHarthmereItemByItemId(
+    itemId,
+    quantity,
+    `Stored in ${label}`
+  );
+  if (removed <= 0) {
+    return;
+  }
+  const store = readContainerStore();
+  const record = store[key];
+  if (!record) {
+    grantHarthmereItemLocallyForTest(
+      itemId,
+      removed,
+      `Returned from missing ${label}`
+    );
+    return;
+  }
+  const existing = record.items.find((slot) => slot.itemId === itemId);
+  if (existing) {
+    existing.quantity += removed;
+  } else {
+    record.items = [...record.items, { itemId, quantity: removed }];
+  }
   store[key] = record;
   writeContainerStore(store);
-  grantHarthmereItem(itemId, taken, `${record.label} contents`);
-  return taken;
 }
 
 export function takeAllFromHarthmereContainer(key: string): number {
@@ -489,7 +555,7 @@ export function takeAllFromHarthmereContainer(key: string): number {
 }
 
 // Move `quantity` of `itemId` from the player inventory into the container.
-// Returns the amount actually stored (limited by what the player holds).
+// Returns the amount scheduled to store (limited by what the player holds).
 export function putIntoHarthmereContainer(
   key: string,
   itemId: string,
@@ -500,23 +566,33 @@ export function putIntoHarthmereContainer(
   if (!record || quantity <= 0) {
     return 0;
   }
-  const removed = consumeHarthmereItemByItemId(
-    itemId,
-    quantity,
-    `Stored in ${record.label}`
+  const amount = Math.min(
+    Math.max(0, quantity),
+    harthmereInventoryCountByItemId(itemId)
   );
-  if (removed <= 0) {
+  if (amount <= 0) {
     return 0;
   }
-  const existing = record.items.find((slot) => slot.itemId === itemId);
-  if (existing) {
-    existing.quantity += removed;
-  } else {
-    record.items = [...record.items, { itemId, quantity: removed }];
+  const transferKey = `${key}:put:${itemId}`;
+  if (pendingContainerTransfers.has(transferKey)) {
+    return 0;
   }
-  store[key] = record;
-  writeContainerStore(store);
-  return removed;
+  const reason = `Stored in ${record.label}`;
+  const mutation = submitHarthmereInventorySpendToLiveModeForTest(
+    itemId,
+    amount,
+    reason
+  );
+  if (!mutation) {
+    commitHarthmereContainerPut(key, itemId, amount, record.label);
+    return amount;
+  }
+  pendingContainerTransfers.add(transferKey);
+  void mutation
+    .then(() => commitHarthmereContainerPut(key, itemId, amount, record.label))
+    .catch(() => undefined)
+    .finally(() => pendingContainerTransfers.delete(transferKey));
+  return amount;
 }
 
 export function readHarthmereContainerOpenRequest():

@@ -4,6 +4,7 @@ import {
 } from "@/client/game/glitch/harthmere_glitch_identity";
 import {
   harthmereBiomesAuthHeaders,
+  readHarthmereBiomesAuthSession,
   rememberHarthmereBiomesAuthSession,
 } from "@/shared/util/harthmere_auth_session";
 import { wireHarthmereCloudSave } from "@/client/util/storage/wire_glitch_cloud_save";
@@ -246,8 +247,11 @@ async function autoLoginWithGlitchInstall(installId: string) {
   });
 
   const json = await response.json().catch(() => undefined);
+  const hasBiomesSession = Boolean(
+    json?.auto_login && json?.biomes_user_id && json?.biomes_session_id
+  );
 
-  if (!response.ok || !json?.valid) {
+  if (!response.ok || (!json?.valid && !hasBiomesSession)) {
     throw new Error(
       `Glitch install auto-login failed: ${response.status} ${JSON.stringify(
         json
@@ -259,6 +263,7 @@ async function autoLoginWithGlitchInstall(installId: string) {
 }
 
 function writeBootstrapIdentity(json: any, installId: string) {
+  const previousSession = readHarthmereBiomesAuthSession();
   const identity = normalizeIdentity(json, installId);
   rememberHarthmereBiomesAuthSession({
     userId: json?.biomes_user_id,
@@ -322,7 +327,12 @@ function writeBootstrapIdentity(json: any, installId: string) {
     console.warn("HARTHMERE_CLOUD_SAVE_WIRING_FAILED", error);
   }
 
-  return identity;
+  return {
+    identity,
+    sessionChanged:
+      Boolean(json?.biomes_user_id) &&
+      String(previousSession?.userId ?? "") !== String(json.biomes_user_id),
+  };
 }
 
 export function HarthmereGlitchInstallBootstrap() {
@@ -371,13 +381,20 @@ export function HarthmereGlitchInstallBootstrap() {
           try {
             const json = await autoLoginWithGlitchInstall(installId);
             if (cancelled) return;
-            writeBootstrapIdentity(json, installId);
+            const { sessionChanged } = writeBootstrapIdentity(json, installId);
             // eslint-disable-next-line no-console
             console.info(
               `HARTHMERE_POST_RELOAD_IDENTITY_REFRESHED gameUserId=${
                 json?.game_user_id ?? "(none)"
               }`
             );
+
+            if (
+              sessionChanged &&
+              markAutoAuthReload(installId, "biomes_session_rotated")
+            ) {
+              return;
+            }
 
             if (gateWaitingBeforeRefresh || isServerAuthGateWaiting()) {
               // /api/auth/check can be true for a signed stateless cookie even
@@ -412,9 +429,7 @@ export function HarthmereGlitchInstallBootstrap() {
         }
 
         // eslint-disable-next-line no-console
-        console.info(
-          `HARTHMERE_AUTO_LOGIN_REQUEST installId=${installId}`
-        );
+        console.info(`HARTHMERE_AUTO_LOGIN_REQUEST installId=${installId}`);
         const json = await autoLoginWithGlitchInstall(installId);
         if (cancelled) return;
         // eslint-disable-next-line no-console

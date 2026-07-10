@@ -108,9 +108,9 @@ const Game: React.FunctionComponent<{
           error?.name === "AbortError" ||
           message.includes("Client loader interrupted");
         if (isBenignInterrupt) {
-          log.warn("Client load interrupted (benign, likely remount)", {
-            message,
-          });
+          log.warn(
+            `Client load interrupted (benign, likely remount): ${message}`
+          );
           return;
         }
         emitHarthmereGlitchBehaviorEvent("loading", "error", {

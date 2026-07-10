@@ -211,6 +211,20 @@ describe("LayeredStorage", () => {
     assert.equal(await adapter.get("k"), "v"); // async adapter
   });
 
+  it("treats an available mirror as authoritative over a stale cache", () => {
+    const mirror = new FakeWebStorage();
+    const store = new LayeredStorage([new MemoryStorageAdapter()], {
+      syncMirror: mirror,
+    });
+    store.setItem("k", "cached");
+
+    mirror.setItem("k", "external-update");
+    assert.equal(store.getItem("k"), "external-update");
+
+    mirror.removeItem("k");
+    assert.equal(store.getItem("k"), null);
+  });
+
   it("keeps working when the mirror is blocked (iframe)", async () => {
     const blocked = new FakeWebStorage(true);
     const adapter = new MemoryStorageAdapter();

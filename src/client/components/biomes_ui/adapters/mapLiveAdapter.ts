@@ -6,7 +6,10 @@ import {
   snapshotRoadAheadMissionStepsForBiomesUI,
   snapshotRoadAheadTrackableQuestsForBiomesUI,
 } from "@/client/components/challenges/LocalDevSnapshotMissionBridge";
-import { BUILDING_SYSTEM_GROVE_STEWARD_NPC } from "@/shared/harthmere/building_system";
+import {
+  BUILDING_SYSTEM_GROVE_STEWARD_NPC,
+  BUILDING_SYSTEM_MIRA_INTRO_QUEST,
+} from "@/shared/harthmere/building_system";
 import {
   activeBiomesUIMapPinFromMarkerForTest,
   readActiveBiomesUIMapPin,
@@ -386,6 +389,7 @@ export function buildBiomesUIMapAdapter(
       const activeMarkerIds: string[] = Array.isArray(activeQuest?.markerIds)
         ? activeQuest.markerIds
         : [];
+      const normalizedActiveMarkerIds = activeMarkerIds.map(normalizeMarkerId);
       const liveObjectiveIndex = activeQuest?.id
         ? liveModeActiveQuestObjectiveIndex(liveQuestState, activeQuest.id)
         : undefined;
@@ -401,6 +405,9 @@ export function buildBiomesUIMapAdapter(
             Math.min(activeMarkerIds.length - 1, activeObjectiveIndex)
           )
         ];
+      const normalizedActiveObjectiveMarker = activeObjectiveMarker
+        ? normalizeMarkerId(activeObjectiveMarker)
+        : undefined;
       const visibleLandmarks = VisibleMapLandmarks(landmarks);
       const bounds = ComputeBounds(visibleLandmarks);
       const result: any[] = [];
@@ -415,8 +422,12 @@ export function buildBiomesUIMapAdapter(
         );
         const kind = LandmarkKind(landmark);
         const markerId = MarkerId(landmark);
-        const isInActiveChain = activeMarkerIds.includes(landmark.id);
-        const isCurrentObjective = activeObjectiveMarker === landmark.id;
+        const isInActiveChain =
+          activeMarkerIds.includes(landmark.id) ||
+          normalizedActiveMarkerIds.includes(markerId);
+        const isCurrentObjective =
+          activeObjectiveMarker === landmark.id ||
+          normalizedActiveObjectiveMarker === markerId;
         const isRoadAheadObjective =
           activeRoadAheadMarkerId !== undefined &&
           markerId === activeRoadAheadMarkerId;
@@ -473,12 +484,27 @@ export function buildBiomesUIMapAdapter(
         });
       }
       if (!result.some((marker) => marker.id === "mira_grove_land_steward")) {
+        const bounds = ComputeBounds(visibleLandmarks);
+        const normalized = NormalizeWorldXZ(
+          BUILDING_SYSTEM_GROVE_STEWARD_NPC.position[0],
+          BUILDING_SYSTEM_GROVE_STEWARD_NPC.position[2],
+          bounds
+        );
+        const miraQuestActive = liveModeActiveQuestIds(liveQuestState).includes(
+          BUILDING_SYSTEM_MIRA_INTRO_QUEST.questId
+        );
         result.push({
           id: "mira_grove_land_steward",
           label: BUILDING_SYSTEM_GROVE_STEWARD_NPC.displayName,
-          x: 0.66,
-          y: 0.52,
-          kind: "store" as const,
+          x: normalized.x,
+          y: normalized.y,
+          kind: miraQuestActive ? ("objective" as const) : ("store" as const),
+          active: miraQuestActive,
+          worldPosition: [...BUILDING_SYSTEM_GROVE_STEWARD_NPC.position] as [
+            number,
+            number,
+            number
+          ],
         });
       }
       return result;
@@ -667,7 +693,9 @@ export function buildBiomesUIMapAdapter(
         // full authored catalog is 100+ quests; listing every not-yet-started one
         // as "available" floods a brand-new player's journal. Available quests are
         // discovered in-world (NPCs/markers), not pre-listed in the journal.
-        ...authoredQuests.filter((quest) => quest.status !== "available"),
+        ...authoredQuests.filter(
+          (quest: { status?: string }) => quest.status !== "available"
+        ),
       ];
     },
     getMainQuestSelection: () => readBiomesUIMainQuestSelection(),

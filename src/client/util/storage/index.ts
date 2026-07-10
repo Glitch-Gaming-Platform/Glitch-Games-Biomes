@@ -36,6 +36,28 @@ function browserLocalStorage(): WebStorageLike | undefined {
   }
 }
 
+const dynamicBrowserLocalStorage: WebStorageLike = {
+  getItem(key) {
+    const storage = browserLocalStorage();
+    if (!storage) {
+      throw new Error("browser localStorage is unavailable");
+    }
+    return storage.getItem(key);
+  },
+  setItem(key, value) {
+    browserLocalStorage()?.setItem(key, value);
+  },
+  removeItem(key) {
+    browserLocalStorage()?.removeItem(key);
+  },
+  key(index) {
+    return browserLocalStorage()?.key(index) ?? null;
+  },
+  get length() {
+    return browserLocalStorage()?.length ?? 0;
+  },
+};
+
 /**
  * A Cloud Save transport whose real implementation is registered at runtime by
  * the Glitch bridge once the session is authenticated (it calls
@@ -82,7 +104,9 @@ class RegisterableBlobSaveTransport implements BlobSaveTransport {
 /** Register the concrete Glitch Cloud Save transport from the Glitch bridge. */
 export const harthmereCloudSaveTransport = new RegisterableBlobSaveTransport();
 
-const cloudSaveAdapter = new GlitchCloudSaveAdapter(harthmereCloudSaveTransport);
+const cloudSaveAdapter = new GlitchCloudSaveAdapter(
+  harthmereCloudSaveTransport
+);
 
 /**
  * The shared storage instance. Call `harthmereStorage.hydrate()` once at startup
@@ -91,7 +115,7 @@ const cloudSaveAdapter = new GlitchCloudSaveAdapter(harthmereCloudSaveTransport)
  * synchronous localStorage mirror.
  */
 export const harthmereStorage = new LayeredStorage([cloudSaveAdapter], {
-  syncMirror: browserLocalStorage(),
+  syncMirror: dynamicBrowserLocalStorage,
 });
 
 /**

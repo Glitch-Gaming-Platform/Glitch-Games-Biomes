@@ -2304,10 +2304,27 @@ function dispatchHarthmereLiveInventorySync(body: unknown) {
   );
 }
 
-export function submitHarthmereInventoryGrantToLiveModeForTest(
+async function parseHarthmereLiveMutationResponse(response: Response) {
+  const body = await response.json().catch(() => undefined);
+  if (!response.ok || body?.ok === false) {
+    const validationErrors = Array.isArray(body?.validation?.errors)
+      ? body.validation.errors.join(",")
+      : undefined;
+    throw new Error(
+      validationErrors ||
+        body?.message ||
+        body?.error ||
+        `harthmere_live_mutation_failed:${response.status}`
+    );
+  }
+  return body;
+}
+
+function submitHarthmereInventoryMutationToLiveMode(
+  operation: "grant" | "spend",
   itemId: string,
   quantity = 1,
-  reason = "Item received"
+  reason = operation === "grant" ? "Item received" : "Item spent"
 ) {
   if (
     !isBrowser() ||
@@ -2318,10 +2335,11 @@ export function submitHarthmereInventoryGrantToLiveModeForTest(
     return undefined;
   }
   const count = Math.max(1, Math.floor(Number(quantity) || 0));
-  const directVoxelItemDeltas = /^b:\d+$/.test(itemId)
-    ? { [itemId]: count }
-    : undefined;
-  const requestId = `harthmere_local_inventory_grant_${Date.now()}_${Math.random()
+  const directVoxelItemDeltas =
+    operation === "grant" && /^b:\d+$/.test(itemId)
+      ? { [itemId]: count }
+      : undefined;
+  const requestId = `harthmere_local_inventory_${operation}_${Date.now()}_${Math.random()
     .toString(36)
     .slice(2)}`;
   const prepared = prepareHarthmereLiveFetchRequest(
@@ -2333,18 +2351,29 @@ export function submitHarthmereInventoryGrantToLiveModeForTest(
       body: JSON.stringify({
         requestId,
         idempotencyKey: requestId,
-        actionKind: "request_loot_roll",
+        actionKind:
+          operation === "grant"
+            ? "request_loot_roll"
+            : "request_inventory_item_action",
         subsystem: "inventory",
         actorEntityVersion: 1,
         zoneId: "harthmere",
-        payload: {
-          itemId,
-          count,
-          ...(directVoxelItemDeltas
-            ? { itemDeltas: directVoxelItemDeltas }
-            : {}),
-          source: reason,
-        },
+        payload:
+          operation === "grant"
+            ? {
+                itemId,
+                count,
+                ...(directVoxelItemDeltas
+                  ? { itemDeltas: directVoxelItemDeltas }
+                  : {}),
+                source: reason,
+              }
+            : {
+                operation: "destroy_item",
+                itemId,
+                count,
+                source: reason,
+              },
         includeSnapshots: [
           "inventoryLootState",
           "farmingFoodState",
@@ -2352,7 +2381,7 @@ export function submitHarthmereInventoryGrantToLiveModeForTest(
           "playerStatusState",
         ],
         clientClaims: {
-          source: "local_harthmere_inventory_grant",
+          source: `local_harthmere_inventory_${operation}`,
           reason,
         },
       }),
@@ -2360,14 +2389,26 @@ export function submitHarthmereInventoryGrantToLiveModeForTest(
   );
   return window
     .fetch(prepared.input, prepared.init)
-    .then((response) => response.json().catch(() => undefined))
+    .then(parseHarthmereLiveMutationResponse)
     .then((body) => {
       if (body) {
         dispatchHarthmereLiveInventorySync(body);
       }
       return body;
-    })
-    .catch(() => undefined);
+    });
+}
+
+export function submitHarthmereInventoryGrantToLiveModeForTest(
+  itemId: string,
+  quantity = 1,
+  reason = "Item received"
+) {
+  return submitHarthmereInventoryMutationToLiveMode(
+    "grant",
+    itemId,
+    quantity,
+    reason
+  );
 }
 
 // Server-authoritative DEBIT of an item from the live-mode inventory. Mirror of
@@ -2382,57 +2423,12 @@ export function submitHarthmereInventorySpendToLiveModeForTest(
   quantity = 1,
   reason = "Item spent"
 ) {
-  if (
-    !isBrowser() ||
-    typeof window.fetch !== "function" ||
-    !itemId ||
-    quantity <= 0
-  ) {
-    return undefined;
-  }
-  const count = Math.max(1, Math.floor(Number(quantity) || 0));
-  const requestId = `harthmere_local_inventory_spend_${Date.now()}_${Math.random()
-    .toString(36)
-    .slice(2)}`;
-  const prepared = prepareHarthmereLiveFetchRequest("/api/harthmere/live_mode", {
-    method: "POST",
-    credentials: "same-origin",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      requestId,
-      idempotencyKey: requestId,
-      actionKind: "request_inventory_item_action",
-      subsystem: "inventory",
-      actorEntityVersion: 1,
-      zoneId: "harthmere",
-      payload: {
-        operation: "destroy_item",
-        itemId,
-        count,
-        source: reason,
-      },
-      includeSnapshots: [
-        "inventoryLootState",
-        "farmingFoodState",
-        "buildingState",
-        "playerStatusState",
-      ],
-      clientClaims: {
-        source: "local_harthmere_inventory_spend",
-        reason,
-      },
-    }),
-  });
-  return window
-    .fetch(prepared.input, prepared.init)
-    .then((response) => response.json().catch(() => undefined))
-    .then((body) => {
-      if (body) {
-        dispatchHarthmereLiveInventorySync(body);
-      }
-      return body;
-    })
-    .catch(() => undefined);
+  return submitHarthmereInventoryMutationToLiveMode(
+    "spend",
+    itemId,
+    quantity,
+    reason
+  );
 }
 
 function instanceId(itemId: string) {
@@ -3114,7 +3110,7 @@ export function consumeHarthmereItemByItemId(
   return consumed;
 }
 
-export function grantHarthmereItem(
+export function grantHarthmereItemLocallyForTest(
   itemId: string,
   quantity = 1,
   reason = "Item received"
@@ -3139,8 +3135,23 @@ export function grantHarthmereItem(
         )}.`
   );
   writeHarthmereInventoryState(next);
-  void submitHarthmereInventoryGrantToLiveModeForTest(itemId, added, reason);
   return { added, overflow };
+}
+
+export function grantHarthmereItem(
+  itemId: string,
+  quantity = 1,
+  reason = "Item received"
+): { added: number; overflow: number } {
+  const result = grantHarthmereItemLocallyForTest(itemId, quantity, reason);
+  if (result.added > 0) {
+    void submitHarthmereInventoryGrantToLiveModeForTest(
+      itemId,
+      result.added,
+      reason
+    )?.catch(() => undefined);
+  }
+  return result;
 }
 
 function knownHarthmereMaterialOrFallback(
@@ -3308,7 +3319,11 @@ export function spendHarthmereNativeTerrainBlockForPlacement(
   const reason = `Placed ${String(terrainLabel).replaceAll("_", " ")}`;
   const consumed = consumeHarthmereItemByItemId(itemId, 1, reason);
   if (consumed > 0) {
-    void submitHarthmereInventorySpendToLiveModeForTest(itemId, consumed, reason);
+    void submitHarthmereInventorySpendToLiveModeForTest(
+      itemId,
+      consumed,
+      reason
+    )?.catch(() => undefined);
   }
   return { itemId, consumed, skipped: false as const };
 }
@@ -3413,6 +3428,17 @@ export function harthmereInventoryCanAcceptItems(
     working = result.state;
   }
   return true;
+}
+
+export function harthmereInventoryAcceptableQuantity(
+  itemId: string,
+  quantity: number,
+  state: HarthmereInventoryState = readHarthmereInventoryState()
+): number {
+  if (quantity <= 0 || !itemDef(itemId)) {
+    return 0;
+  }
+  return addItemByStorageRules(state, itemId, quantity).added;
 }
 
 // HARTHMERE_REPAIR_TOOL_EQUIP: a repair tool only works while EQUIPPED in
@@ -4654,7 +4680,9 @@ function readPendingVendorTradeRequest():
     return undefined;
   }
   try {
-    const raw = harthmereLocalStorage.getItem(HARTHMERE_VENDOR_TRADE_REQUEST_KEY);
+    const raw = harthmereLocalStorage.getItem(
+      HARTHMERE_VENDOR_TRADE_REQUEST_KEY
+    );
     if (!raw) {
       return undefined;
     }

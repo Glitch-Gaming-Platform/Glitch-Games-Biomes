@@ -76,11 +76,20 @@ export class LayeredStorage {
   }
 
   /** Guarded synchronous read of the durable mirror (localStorage). */
-  private mirrorGet(physicalKey: StorageKey): StorageValue | null {
+  private mirrorGet(physicalKey: StorageKey): {
+    available: boolean;
+    value: StorageValue | null;
+  } {
     try {
-      return this.syncMirror?.getItem(physicalKey) ?? null;
+      if (!this.syncMirror) {
+        return { available: false, value: null };
+      }
+      return {
+        available: true,
+        value: this.syncMirror.getItem(physicalKey),
+      };
     } catch {
-      return null;
+      return { available: false, value: null };
     }
   }
   private mirrorSet(physicalKey: StorageKey, value: StorageValue): void {
@@ -153,17 +162,19 @@ export class LayeredStorage {
   // --- Synchronous API (cache-backed) -------------------------------------
 
   getItem(key: StorageKey): StorageValue | null {
-    if (this.cache.has(key)) {
-      return this.cache.get(key) as StorageValue;
-    }
-    // Cache miss (e.g. before async hydration completes): consult the synchronous
-    // durable mirror so localStorage-persisted values are available immediately,
-    // then promote the hit into the cache.
+    // The synchronous durable mirror is authoritative whenever it is available.
+    // This keeps the facade aligned with legacy code, other tabs, and bootstrap
+    // paths that may still write directly to window.localStorage.
     const mirrored = this.mirrorGet(this.physicalKey(key));
-    if (mirrored !== null) {
-      this.cache.set(key, mirrored);
+    if (mirrored.available) {
+      if (mirrored.value === null) {
+        this.cache.delete(key);
+        return null;
+      }
+      this.cache.set(key, mirrored.value);
+      return mirrored.value;
     }
-    return mirrored;
+    return this.cache.get(key) ?? null;
   }
 
   setItem(key: StorageKey, value: StorageValue): void {

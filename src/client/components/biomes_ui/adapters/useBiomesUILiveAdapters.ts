@@ -44,8 +44,6 @@ import {
   recordSnapshotRoadAheadEquippedGearSlotForBiomesUI,
   syncSnapshotRoadAheadChallengeStepHintsForBiomesUI,
   snapshotRoadAheadChallengeStepHintsFromActiveNuxesForBiomesUI,
-  snapshotRoadAheadMissionStepsForBiomesUI,
-  snapshotRoadAheadTrackableQuestsForBiomesUI,
 } from "@/client/components/challenges/LocalDevSnapshotMissionBridge";
 import {
   SNAPSHOT_GROVE_LIVE_QUEST_STATE_SYNC_EVENT,
@@ -53,7 +51,6 @@ import {
 } from "@/client/components/challenges/LocalDevSnapshotGroveBibleRuntime";
 import {
   BUILDING_SYSTEM_BLUEPRINTS,
-  BUILDING_SYSTEM_GROVE_STEWARD_NPC,
   BUILDING_SYSTEM_PLOTS,
 } from "@/shared/harthmere/building_system";
 import { usePointerLockManager } from "@/client/components/contexts/PointerLockContext";
@@ -113,54 +110,32 @@ import {
   mergeMirroredBiomesBackpackUiItemsForTest,
 } from "./inventoryAdapterHelpers";
 import { shouldHydrateBiomesUILiveStateForTab } from "./liveStateHydrationPolicy";
-import { readableMapMarkerLabelForTest } from "./mapMarkerLabels";
 import {
   activeBiomesUIMapPinFromMarkerForTest,
   readActiveBiomesUIMapPin,
   writeActiveBiomesUIMapPin,
 } from "./mapPinnedDestination";
 import {
-  readBiomesUIMainQuestSelection,
-  setBiomesUIMainQuestFromTrackableQuest,
-  writeBiomesUIMainQuestSelection,
-} from "./mainQuestSelection";
-import { appendHarthmereBusinessOutpostMapLandmarks } from "./harthmereBusinessMapMarkers";
-import {
-  activeJobsBoardMissionStepsForBiomesUI,
-  firstActiveJobsBoardQuestTitleForBiomesUI,
   jobsBoardAcceptedJobLandmarksForBiomesUI,
   jobsBoardItemSourceLandmarksForBiomesUI,
   jobsBoardToolSourceLandmarksForBiomesUI,
-  jobsBoardTrackableQuestsForBiomesUI,
   JOBS_BOARD_ITEM_SOURCE_MARKER_ID_PREFIX,
   JOBS_BOARD_MARKER_ID_PREFIX,
   JOBS_BOARD_TOOL_SOURCE_MARKER_ID_PREFIX,
   shouldClearStaleJobsBoardPin,
 } from "./jobsBoardQuestMapAdapter";
 import {
-  BIOMES_UI_LIVE_ENTITY_HELPER_MARKER_SOURCE,
-  activeLiveEntityHelperMissionStepsForBiomesUI,
-  firstActiveLiveEntityHelperQuestTitleForBiomesUI,
-  liveEntityHelperAcceptedQuestLandmarksForBiomesUI,
-  liveEntityHelperTrackableQuestsForBiomesUI,
-} from "./liveEntityHelperQuestMapAdapter";
-import {
   fetchHarthmereJobsBoardState,
   HARTHMERE_JOBS_BOARD_STATE_UPDATED_EVENT,
   normalizeHarthmereJobsBoardSnapshot,
 } from "../../harthmere_jobs_board/jobsBoardLiveAdapter";
 import {
-  BIOMES_UI_SHARED_QUEST_MARKER_SOURCE,
   createHarthmereQuestInviteAdapter,
   fetchHarthmereQuestState,
   HARTHMERE_QUEST_INVITES_UPDATED_EVENT,
   normalizeHarthmereQuestState,
 } from "./questInviteAdapter";
-import {
-  LIVE_ENTITY_HELPER_QUEST_EVENT,
-  readLiveEntityHelperQuestState,
-} from "@/client/components/challenges/LocalDevLiveEntityHelperQuestState";
-import { liveEntityHelperQuestRecordReadyToTurnIn } from "@/client/components/challenges/LocalDevLiveEntityHelperQuests";
+import { LIVE_ENTITY_HELPER_QUEST_EVENT } from "@/client/components/challenges/LocalDevLiveEntityHelperQuestState";
 import { LIVE_ENTITY_HELPER_LIVE_MODE_RESPONSE_EVENT } from "@/client/components/challenges/liveEntityHelperQuestLiveAdapter";
 import {
   dailyTodoProgressForTest,
@@ -188,7 +163,6 @@ import {
 import { buildBiomesUIMapAdapter } from "./mapLiveAdapter";
 import {
   HARTHMERE_PROPERTY_BUILDING_STATE_EVENT,
-  HARTHMERE_PROPERTY_MARKER_SOURCE,
   type HarthmerePropertyMapBuildingState,
 } from "./propertyMapMarkers";
 export const BIOMES_UI_OPEN_TAB_EVENT = "biomes-ui-open-tab";
@@ -834,41 +808,6 @@ function readSnapshotGroveApi(): any | undefined {
   return (window as any).__snapshotGrove;
 }
 
-function normalizeMarkerId(markerId: string): string {
-  const lower = markerId.toLowerCase();
-  if (
-    lower.includes("mira") ||
-    lower.includes("miranda") ||
-    lower.includes("steward")
-  )
-    return "mira_grove_land_steward";
-  if (lower.includes("jackie")) return "jackie";
-  if (lower.includes("jump") || lower.includes("stretch")) return "jump_run";
-  if (lower.includes("road")) return "road_marker";
-  if (lower.includes("muck")) return "muckwad_patch";
-  if (lower.includes("build") || lower.includes("place"))
-    return "building_spot";
-  if (
-    lower.includes("wardrobe") ||
-    lower.includes("mirror") ||
-    lower.includes("locks")
-  )
-    return "wardrobe";
-  if (
-    lower.includes("selfie") ||
-    lower.includes("overlook") ||
-    lower.includes("camera")
-  )
-    return "selfie_overlook";
-  if (
-    lower.includes("craft") ||
-    lower.includes("service_tower") ||
-    lower.includes("tower_platform")
-  )
-    return "crafting_stop";
-  return markerId.replace(/^npc_/, "").replace(/^grove_/, "");
-}
-
 function deriveTutorialTarget(
   objective: string,
   markerId: string
@@ -881,9 +820,9 @@ function deriveTutorialTarget(
   )
     return "building_spot";
   if (text.includes("jackie")) return "jackie";
+  if (text.includes("build") || text.includes("place")) return "building_spot";
   if (text.includes("road")) return "road_marker";
   if (text.includes("muck")) return "muckwad_patch";
-  if (text.includes("build") || text.includes("place")) return "building_spot";
   if (
     text.includes("wardrobe") ||
     text.includes("wear") ||
@@ -1735,6 +1674,11 @@ async function submitEquipmentLiveModeAction(
         : `equipment_failed:${slot}`
     );
   }
+  const equipment = body?.inventoryLootState?.actor?.equipment;
+  const equippedItemId = equipment?.[slot];
+  if (!equipment || (itemId ? equippedItemId !== itemId : equippedItemId)) {
+    throw new Error(`equipment_state_mismatch:${slot}`);
+  }
   return body;
 }
 
@@ -1787,451 +1731,7 @@ async function submitInventoryItemLiveModeAction(
 // Coordinates are computed from world XZ via live landmark bounds, so markers
 // stay correctly placed when the user pans/zooms in the tab. No hardcoded
 // percentages.
-export function buildBiomesUIMapAdapterForTest(
-  snapshotRevision: number,
-  playerWorldPos?: [number, number, number],
-  jobsBoardState?: unknown
-) {
-  const QuestIds = (value: unknown) =>
-    Array.isArray(value)
-      ? value.filter((item): item is string => typeof item === "string")
-      : [];
-  const HumanizeQuestKindLabel = (value: unknown) => {
-    const text = typeof value === "string" && value.trim() ? value : "Quest";
-    return text
-      .replace(/[_-]+/g, " ")
-      .replace(/\b\w/g, (letter) => letter.toUpperCase());
-  };
-  const ActiveSnapshotQuest = (quests: any[], state: any) => {
-    const completed = new Set(QuestIds(state?.completedQuestIds));
-    const activeQuestId =
-      typeof state?.activeQuestId === "string" &&
-      !completed.has(state.activeQuestId)
-        ? state.activeQuestId
-        : undefined;
-    const acceptedQuestId = QuestIds(state?.acceptedQuestIds).find(
-      (questId) => !completed.has(questId)
-    );
-    const questId = activeQuestId ?? acceptedQuestId;
-    return quests.find((quest: any) => quest?.id === questId);
-  };
-  const NormalizeWorldXZ = (
-    worldX: number,
-    worldZ: number,
-    bounds: { minX: number; maxX: number; minZ: number; maxZ: number }
-  ) => {
-    const x = (worldX - bounds.minX) / Math.max(1, bounds.maxX - bounds.minX);
-    const y = (worldZ - bounds.minZ) / Math.max(1, bounds.maxZ - bounds.minZ);
-    return { x: Math.max(0, Math.min(1, x)), y: Math.max(0, Math.min(1, y)) };
-  };
-  const ComputeBounds = (landmarks: any[]) => {
-    let minX = Number.POSITIVE_INFINITY;
-    let maxX = Number.NEGATIVE_INFINITY;
-    let minZ = Number.POSITIVE_INFINITY;
-    let maxZ = Number.NEGATIVE_INFINITY;
-    for (const landmark of landmarks) {
-      const pos = landmark?.position;
-      if (!Array.isArray(pos)) continue;
-      const wx = Number(pos[0]);
-      const wz = Number(pos[2]);
-      if (!Number.isFinite(wx) || !Number.isFinite(wz)) continue;
-      if (wx < minX) minX = wx;
-      if (wx > maxX) maxX = wx;
-      if (wz < minZ) minZ = wz;
-      if (wz > maxZ) maxZ = wz;
-    }
-    if (!Number.isFinite(minX)) {
-      // Fallback: Grove fountain neighborhood.
-      return { minX: 360, maxX: 600, minZ: -270, maxZ: -100 };
-    }
-    // Pad bounds so markers don't sit on the edge.
-    const padX = (maxX - minX) * 0.08 || 12;
-    const padZ = (maxZ - minZ) * 0.08 || 12;
-    return {
-      minX: minX - padX,
-      maxX: maxX + padX,
-      minZ: minZ - padZ,
-      maxZ: maxZ + padZ,
-    };
-  };
-  const VisibleMapLandmarks = (landmarks: any[]) =>
-    landmarks.filter(
-      (landmark) => landmark && landmark.visibleOnWorldMap !== false
-    );
-  const LandmarkKind = (
-    landmark: any
-  ):
-    | "vendor"
-    | "store"
-    | "business"
-    | "bank"
-    | "quest"
-    | "resource"
-    | "danger"
-    | "safe_zone"
-    | "route"
-    | "town"
-    | "objective" => {
-    const id = String(landmark?.id ?? "").toLowerCase();
-    const label = readableMapMarkerLabelForTest(landmark).toLowerCase();
-    const kind = String(landmark?.kind ?? "").toLowerCase();
-    const area = String(landmark?.area ?? "").toLowerCase();
-    if (kind === "objective") return "objective";
-    if (kind === "quest") return "quest";
-    if (
-      kind === "danger" ||
-      /danger|enemy|muckwad|threat/.test(id + " " + label)
-    )
-      return "danger";
-    if (
-      kind === "resource" ||
-      /resource|berry|wood|stone|ore|root/.test(id + " " + label)
-    )
-      return "resource";
-    if (/job|board|notice|kiosk/.test(id + " " + label)) return "quest";
-    if (/bank|vault|merl/.test(id + " " + label)) return "bank";
-    if (kind === "business" || /business|outpost_/.test(id)) return "business";
-    if (
-      kind === "interactable" ||
-      /shop|store|stall|merchant|kiosk|mira|office|chapel|guild|charter|workbench|table|service|building/.test(
-        id + " " + label
-      )
-    )
-      return "store";
-    if (
-      kind === "npc" ||
-      /npc_|jackie|billy|jane|luis|taye|alexis|sil|dimmi|doc|coop|buddy|rosalyn|nia|merl/.test(
-        id + " " + label
-      )
-    )
-      return "vendor";
-    if (
-      kind === "connector" ||
-      /road|route|bridge|connector|path/.test(id + " " + label + " " + area)
-    )
-      return "route";
-    if (
-      id === "the_grove" ||
-      label === "the grove" ||
-      /^hal 9000$|^goldie b$/.test(label)
-    )
-      return "town";
-    if (
-      kind === "safe_zone" ||
-      /safe|fountain|sanctuary/.test(id + " " + label)
-    )
-      return "safe_zone";
-    return "objective";
-  };
-  const MarkerId = (landmark: any) => {
-    const id = String(landmark?.id ?? "");
-    const kind = String(landmark?.kind ?? "").toLowerCase();
-    return kind === "business" ||
-      kind === "property" ||
-      landmark?.source === HARTHMERE_PROPERTY_MARKER_SOURCE ||
-      landmark?.source === BIOMES_UI_LIVE_ENTITY_HELPER_MARKER_SOURCE ||
-      landmark?.source === BIOMES_UI_SHARED_QUEST_MARKER_SOURCE
-      ? id
-      : normalizeMarkerId(id);
-  };
-  const MapLandmarks = () => {
-    const api = readSnapshotGroveApi();
-    const liveEntityHelperState = readLiveEntityHelperQuestState();
-    return appendHarthmereBusinessOutpostMapLandmarks([
-      ...(Array.isArray(api?.landmarks) ? api.landmarks : []),
-      ...jobsBoardAcceptedJobLandmarksForBiomesUI(jobsBoardState),
-      ...jobsBoardItemSourceLandmarksForBiomesUI(jobsBoardState),
-      ...jobsBoardToolSourceLandmarksForBiomesUI(
-        jobsBoardState,
-        harthmereJobToolOwnedState()
-      ),
-      ...liveEntityHelperAcceptedQuestLandmarksForBiomesUI(
-        liveEntityHelperState,
-        { isReadyToTurnIn: liveEntityHelperQuestRecordReadyToTurnIn }
-      ),
-    ]);
-  };
-  return {
-    getMapBounds: () => {
-      void snapshotRevision;
-      const landmarks = MapLandmarks();
-      return ComputeBounds(VisibleMapLandmarks(landmarks));
-    },
-    getPlayerMarker: () => {
-      void snapshotRevision;
-      if (!playerWorldPos) return undefined;
-      const landmarks = MapLandmarks();
-      const bounds = ComputeBounds(VisibleMapLandmarks(landmarks));
-      const { x, y } = NormalizeWorldXZ(
-        playerWorldPos[0],
-        playerWorldPos[2],
-        bounds
-      );
-      return {
-        id: "local_player",
-        label: "You",
-        x,
-        y,
-        kind: "player" as const,
-        worldPosition: playerWorldPos,
-        description: `World position ${Math.round(
-          playerWorldPos[0]
-        )}, ${Math.round(playerWorldPos[1])}, ${Math.round(
-          playerWorldPos[2]
-        )}.`,
-      };
-    },
-    getMarkers: () => {
-      void snapshotRevision;
-      const api = readSnapshotGroveApi();
-      const state = api?.readState?.();
-      const quests = Array.isArray(api?.quests) ? api.quests : [];
-      const landmarks = MapLandmarks();
-      const activeQuest = ActiveSnapshotQuest(quests, state);
-      const roadAheadQuest = snapshotRoadAheadTrackableQuestsForBiomesUI(
-        readSnapshotMissionState()
-      )[0];
-      const activeRoadAheadMarkerId =
-        roadAheadQuest?.status === "active"
-          ? roadAheadQuest.firstMarkerId
-          : undefined;
-      const activeMarkerIds: string[] = Array.isArray(activeQuest?.markerIds)
-        ? activeQuest.markerIds
-        : [];
-      const activeObjectiveIndex = Number(state?.activeObjectiveIndex ?? 0);
-      const activeObjectiveMarker =
-        activeMarkerIds[
-          Math.max(
-            0,
-            Math.min(activeMarkerIds.length - 1, activeObjectiveIndex)
-          )
-        ];
-      const visibleLandmarks = VisibleMapLandmarks(landmarks);
-      const bounds = ComputeBounds(visibleLandmarks);
-
-      const result: any[] = [];
-      // Always-visible landmarks: NPCs, stores, banks, jobs board, safe zones.
-      for (const landmark of visibleLandmarks) {
-        const pos = landmark?.position;
-        if (!Array.isArray(pos)) continue;
-        const { x, y } = NormalizeWorldXZ(
-          Number(pos[0]),
-          Number(pos[2]),
-          bounds
-        );
-        const kind = LandmarkKind(landmark);
-        const markerId = MarkerId(landmark);
-        const isInActiveChain = activeMarkerIds.includes(landmark.id);
-        const isCurrentObjective = activeObjectiveMarker === landmark.id;
-        const isRoadAheadObjective =
-          activeRoadAheadMarkerId !== undefined &&
-          markerId === activeRoadAheadMarkerId;
-        const isAcceptedJobMarker =
-          landmark?.active === true && kind === "objective";
-        const isLiveEntityHelperMarker =
-          landmark?.active === true &&
-          landmark?.source === BIOMES_UI_LIVE_ENTITY_HELPER_MARKER_SOURCE;
-        const isActiveQuestMarker =
-          isCurrentObjective ||
-          isRoadAheadObjective ||
-          isInActiveChain ||
-          isAcceptedJobMarker ||
-          isLiveEntityHelperMarker;
-        result.push({
-          id: markerId,
-          label: readableMapMarkerLabelForTest(landmark),
-          x,
-          y,
-          kind:
-            isCurrentObjective ||
-            isRoadAheadObjective ||
-            isAcceptedJobMarker ||
-            isLiveEntityHelperMarker
-              ? ("objective" as const)
-              : kind,
-          active: isActiveQuestMarker,
-          worldPosition: [
-            Number(pos[0]),
-            Number(pos[1] ?? 0),
-            Number(pos[2]),
-          ] as [number, number, number],
-          description: isLiveEntityHelperMarker
-            ? String(landmark.description ?? "Active helper quest target.")
-            : isAcceptedJobMarker
-            ? String(landmark.description ?? "Accepted jobs board task.")
-            : isRoadAheadObjective
-            ? "Current Road Ahead objective - head here to advance the route."
-            : isCurrentObjective
-            ? "Current objective — head here to advance the active quest."
-            : isInActiveChain
-            ? "Part of the active quest path."
-            : String(
-                landmark.description ??
-                  `${landmark.area ?? "Grove"} · ${landmark.kind ?? "landmark"}`
-              ),
-        });
-      }
-      // Always include a Mira marker even if the snapshot has not seeded her.
-      if (!result.some((marker) => marker.id === "mira_grove_land_steward")) {
-        result.push({
-          id: "mira_grove_land_steward",
-          label: BUILDING_SYSTEM_GROVE_STEWARD_NPC.displayName,
-          x: 0.66,
-          y: 0.52,
-          kind: "store" as const,
-        });
-      }
-      return result;
-    },
-    getMissionTitle: () => {
-      const api = readSnapshotGroveApi();
-      const state = api?.readState?.();
-      const quests = Array.isArray(api?.quests) ? api.quests : [];
-      const activeQuest = ActiveSnapshotQuest(quests, state);
-      const liveEntityHelperState = readLiveEntityHelperQuestState();
-      return String(
-        activeQuest?.title ??
-          firstActiveJobsBoardQuestTitleForBiomesUI(jobsBoardState) ??
-          firstActiveSnapshotRoadAheadQuestTitleForBiomesUI(
-            readSnapshotMissionState()
-          ) ??
-          firstActiveLiveEntityHelperQuestTitleForBiomesUI(
-            liveEntityHelperState
-          ) ??
-          "Current Mission"
-      );
-    },
-    getMissionSteps: () => {
-      const api = readSnapshotGroveApi();
-      const state = api?.readState?.();
-      const quests = Array.isArray(api?.quests) ? api.quests : [];
-      const activeQuest = ActiveSnapshotQuest(quests, state);
-      const objectiveIndex = Number(state?.activeObjectiveIndex ?? 0);
-      const objectives = Array.isArray(activeQuest?.objectives)
-        ? activeQuest.objectives
-        : [];
-      const authoredSteps = activeQuest
-        ? objectives.map((objective: string, index: number) => ({
-            id: `${activeQuest?.id ?? "quest"}:${index}`,
-            title:
-              index < objectiveIndex
-                ? `Completed step ${index + 1}`
-                : index === objectiveIndex
-                ? `Current step ${index + 1}`
-                : `Upcoming step ${index + 1}`,
-            objective,
-            done: index < objectiveIndex,
-          }))
-        : [];
-      return [
-        ...authoredSteps,
-        ...activeJobsBoardMissionStepsForBiomesUI(jobsBoardState),
-        ...snapshotRoadAheadMissionStepsForBiomesUI(readSnapshotMissionState()),
-        ...activeLiveEntityHelperMissionStepsForBiomesUI(
-          readLiveEntityHelperQuestState(),
-          { isReadyToTurnIn: liveEntityHelperQuestRecordReadyToTurnIn }
-        ),
-      ];
-    },
-    // BIOMES_UI_MAP_TAB_QUESTS:
-    // Power the new clickable quest list on the side panel. Each entry is a
-    // landmark or marker the player can pin/jump to without touching the
-    // world map.
-    getTrackableQuests: () => {
-      const api = readSnapshotGroveApi();
-      const state = api?.readState?.();
-      const quests = Array.isArray(api?.quests) ? api.quests : [];
-      const activeQuest = ActiveSnapshotQuest(quests, state);
-      const activeQuestId = activeQuest?.id;
-      const accepted = QuestIds(state?.acceptedQuestIds);
-      const completed = QuestIds(state?.completedQuestIds);
-      const authoredQuests = quests
-        .filter((quest: any) => quest && quest.id)
-        .map((quest: any) => {
-          const objectives = Array.isArray(quest.objectives)
-            ? quest.objectives
-                .map((objective: unknown) => String(objective ?? "").trim())
-                .filter(Boolean)
-            : [];
-          const status = completed.includes(quest.id)
-            ? ("completed" as const)
-            : quest.id === activeQuestId || accepted.includes(quest.id)
-            ? ("active" as const)
-            : ("available" as const);
-          const rawObjectiveIndex = Number(state?.activeObjectiveIndex ?? 0);
-          const objectiveIndex =
-            status === "active" && quest.id === activeQuestId
-              ? Math.max(
-                  0,
-                  Math.min(
-                    objectives.length - 1,
-                    Number.isFinite(rawObjectiveIndex) ? rawObjectiveIndex : 0
-                  )
-                )
-              : 0;
-          return {
-            questId: String(quest.id),
-            title: String(quest.title ?? quest.id),
-            area: String(quest.area ?? "The Grove"),
-            status,
-            firstMarkerId:
-              Array.isArray(quest.markerIds) && quest.markerIds.length
-                ? normalizeMarkerId(
-                    String(
-                      quest.markerIds[objectiveIndex] ?? quest.markerIds[0]
-                    )
-                  )
-                : undefined,
-            reward: String(quest.reward ?? ""),
-            kind: String(quest.category ?? "authored_grove_quest"),
-            kindLabel: HumanizeQuestKindLabel(quest.category),
-            objective: objectives[objectiveIndex] ?? objectives[0],
-            objectives,
-            description:
-              typeof quest.hook === "string" && quest.hook.trim()
-                ? quest.hook.trim()
-                : typeof quest.sampleDialogue === "string" &&
-                  quest.sampleDialogue.trim()
-                ? quest.sampleDialogue.trim()
-                : undefined,
-          };
-        });
-      return [
-        ...jobsBoardTrackableQuestsForBiomesUI(
-          jobsBoardState,
-          Date.now(),
-          harthmereJobToolOwnedState()
-        ),
-        ...snapshotRoadAheadTrackableQuestsForBiomesUI(
-          readSnapshotMissionState()
-        ),
-        ...liveEntityHelperTrackableQuestsForBiomesUI(
-          readLiveEntityHelperQuestState(),
-          { isReadyToTurnIn: liveEntityHelperQuestRecordReadyToTurnIn }
-        ),
-        // QUEST_JOURNAL_ONLY_STARTED: The authored Snapshot Grove catalog holds
-        // 100+ quests. Emitting every not-yet-started one as "available" floods a
-        // brand-new player's journal with the whole catalog (the reported bug).
-        // The journal should list only quests the player has actually started
-        // (active) or finished (completed); "available" authored quests are
-        // discovered in-world via NPCs/markers, not pre-listed here. The three
-        // seeded starter quests (jobs board, housing/Mira, find Jackie) come from
-        // the dedicated jobsBoard / liveEntityHelper sources above, so they are
-        // unaffected by this filter.
-        ...authoredQuests.filter((quest) => quest.status !== "available"),
-      ];
-    },
-    getMainQuestSelection: () => readBiomesUIMainQuestSelection(),
-    setMainQuest: (quest: any) => setBiomesUIMainQuestFromTrackableQuest(quest),
-    clearMainQuest: () => writeBiomesUIMainQuestSelection(undefined),
-    getActiveMapPin: () => readActiveBiomesUIMapPin(),
-    setActiveMapPin: (marker: any) => {
-      const pin = activeBiomesUIMapPinFromMarkerForTest(marker);
-      if (pin) writeActiveBiomesUIMapPin(pin);
-    },
-    clearActiveMapPin: () => writeActiveBiomesUIMapPin(undefined),
-  };
-}
+export const buildBiomesUIMapAdapterForTest = buildBiomesUIMapAdapter;
 
 export function dispatchBiomesUIOpenTab(tab: TabKey, source = "legacy"): void {
   if (typeof window === "undefined") return;
@@ -3271,7 +2771,10 @@ export function useBiomesUILiveAdapters({
       }
       const localCount = localInventoryState.backpack.items
         .filter((item) => item.itemId === itemId)
-        .reduce((sum, item) => sum + Math.max(1, Number(item.quantity) || 1), 0);
+        .reduce(
+          (sum, item) => sum + Math.max(1, Number(item.quantity) || 1),
+          0
+        );
       return localCount > 0 ? localCount : 1;
     };
     const slots = Array.from({ length: 9 }, (_unused, index) => {
@@ -4188,41 +3691,50 @@ export function useBiomesUILiveAdapters({
               name: localHarthmereItem.itemId,
             }) ||
             "main_hand";
-          performHarthmereBackpackItemEquipForBiomesUI(
-            localHarthmereItem.instanceId,
-            localHarthmereItem.itemId
-          );
-          recordSnapshotRoadAheadEquippedGearSlotForBiomesUI(key);
-          try {
-            gardenHose.publish({
-              kind: "inventory_change",
-              source: "biomes-ui-local-dev-item-equip",
-              itemId: localHarthmereItem.itemId,
-              slot: key,
-            } as any);
-          } catch {}
-          fireAndForget(
-            submitEquipmentLiveModeAction(localHarthmereItem.itemId, key, {
-              source: "biomes_ui_local_harthmere_item_equip",
-              instanceId: localHarthmereItem.instanceId,
-            })
-              .then(applyLiveModeInventoryResponse)
-              .catch(() => refreshInventoryLootState())
-          );
-          dispatchBiomesUITutorialItemUse(
-            {
-              itemId: localHarthmereItem.itemId,
-              itemName: humanizeRealItemId(
-                localHarthmereItem.itemId,
-                localHarthmereItem.itemId
-              ),
-              category: inferInventoryCategory({
-                id: localHarthmereItem.itemId,
-              }),
-              instanceId: localHarthmereItem.instanceId,
-            },
-            "biomes-ui-local-dev-item-equip"
-          );
+          const applyLocalEquipmentProjection = () => {
+            performHarthmereBackpackItemEquipForBiomesUI(
+              localHarthmereItem.instanceId,
+              localHarthmereItem.itemId
+            );
+            recordSnapshotRoadAheadEquippedGearSlotForBiomesUI(key);
+            try {
+              gardenHose.publish({
+                kind: "inventory_change",
+                source: "biomes-ui-local-dev-item-equip",
+                itemId: localHarthmereItem.itemId,
+                slot: key,
+              } as any);
+            } catch {}
+            dispatchBiomesUITutorialItemUse(
+              {
+                itemId: localHarthmereItem.itemId,
+                itemName: humanizeRealItemId(
+                  localHarthmereItem.itemId,
+                  localHarthmereItem.itemId
+                ),
+                category: inferInventoryCategory({
+                  id: localHarthmereItem.itemId,
+                }),
+                instanceId: localHarthmereItem.instanceId,
+              },
+              "biomes-ui-local-dev-item-equip"
+            );
+          };
+          if (liveInventoryAuthoritative) {
+            fireAndForget(
+              submitEquipmentLiveModeAction(localHarthmereItem.itemId, key, {
+                source: "biomes_ui_local_harthmere_item_equip",
+                instanceId: localHarthmereItem.instanceId,
+              })
+                .then((body) => {
+                  applyLocalEquipmentProjection();
+                  return applyLiveModeInventoryResponse(body);
+                })
+                .catch(() => refreshInventoryLootState())
+            );
+          } else {
+            applyLocalEquipmentProjection();
+          }
           return;
         }
         const liveItemId = liveItemIdForRef(ref);
@@ -4247,7 +3759,18 @@ export function useBiomesUILiveAdapters({
       unequipItem: (ref: InventoryUiRef) => {
         const localSlot = localHarthmereEquipmentSlotForRef(ref);
         if (localSlot) {
-          performHarthmereEquipmentItemUnequipForBiomesUI(localSlot);
+          if (liveInventoryAuthoritative) {
+            fireAndForget(
+              submitEquipmentLiveModeAction(undefined, localSlot)
+                .then((body) => {
+                  performHarthmereEquipmentItemUnequipForBiomesUI(localSlot);
+                  return applyLiveModeInventoryResponse(body);
+                })
+                .catch(() => refreshInventoryLootState())
+            );
+          } else {
+            performHarthmereEquipmentItemUnequipForBiomesUI(localSlot);
+          }
           return;
         }
         if (ref.kind === "wearable" && ref.key !== undefined) {

@@ -4958,7 +4958,9 @@ describe("reduceHarthmereLiveModeBackendState — loot and inventory mutation", 
       count: 1,
       source: "Foraged Strawberry",
     });
-    assert.ok(!granted.summary.warnings.includes("loot_rejected:unknown_item_id"));
+    assert.ok(
+      !granted.summary.warnings.includes("loot_rejected:unknown_item_id")
+    );
     assert.equal(granted.state.inventory.items[strawberryItemId], 1);
     assert.equal(
       getHarthmereItemDefinition(strawberryItemId)?.displayName,
@@ -6059,6 +6061,17 @@ describe("reduceHarthmereLiveModeBackendState — daily task progression", funct
         );
         assert.deepEqual(completed.summary.warnings, []);
         assert.ok(completed.state.careLoops.daily.completed[key]);
+        if (targetId === "jobs_board") {
+          assert.equal(
+            completed.state.quests.active["read-the-jobs-board"],
+            undefined
+          );
+          assert.equal(
+            completed.state.quests.completed["read-the-jobs-board"],
+            NOW_MS
+          );
+          assert.ok(completed.summary.touchedModels.includes("quest_state"));
+        }
         state = completed.state;
 
         const duplicateCompletion = applyOne(

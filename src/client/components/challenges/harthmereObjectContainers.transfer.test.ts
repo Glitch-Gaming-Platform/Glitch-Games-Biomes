@@ -39,6 +39,10 @@ const sessionStorageMock = {
 const windowMock = {
   localStorage: localStorageMock,
   sessionStorage: sessionStorageMock,
+  location: {
+    href: "https://www.glitch.fun/games/test/play?install_id=test-install",
+    search: "?install_id=test-install",
+  },
   addEventListener: () => {},
   removeEventListener: () => {},
   dispatchEvent: () => true,
@@ -131,6 +135,7 @@ describe("harthmere object container take/store interface", () => {
     (globalThis as unknown as { window: unknown }).window = windowMock;
     localStorageMock.clear();
     sessionStorageMock.clear();
+    delete (windowMock as typeof windowMock & { fetch?: unknown }).fetch;
     setHarthmereLocalDevUserScope(TEST_USER_SCOPE);
   });
 
@@ -163,6 +168,76 @@ describe("harthmere object container take/store interface", () => {
     assert.equal(taken, 1);
     assert.equal(countInContainer(key, "baker_apron"), 0);
     assert.equal(harthmereInventoryCountByItemId("baker_apron"), before + 1);
+  });
+
+  it("rolls a live transfer back when the server rejects the inventory grant", async () => {
+    const entityId = 4244 as BiomesId;
+    const { key } = getOrSeedHarthmereContainer(
+      entityId,
+      "Clothing Crate",
+      READY
+    );
+    const inventoryBefore = harthmereInventoryCountByItemId("baker_apron");
+    (windowMock as typeof windowMock & { fetch: typeof fetch }).fetch =
+      async () =>
+        ({
+          ok: false,
+          status: 409,
+          json: async () => ({ ok: false, error: "rejected" }),
+        } as Response);
+
+    assert.equal(takeFromHarthmereContainer(key, "baker_apron", 1), 1);
+    assert.equal(countInContainer(key, "baker_apron"), 1);
+    assert.equal(
+      harthmereInventoryCountByItemId("baker_apron"),
+      inventoryBefore
+    );
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    assert.equal(countInContainer(key, "baker_apron"), 1);
+    assert.equal(
+      harthmereInventoryCountByItemId("baker_apron"),
+      inventoryBefore
+    );
+  });
+
+  it("deduplicates an in-flight live Take and commits only after confirmation", async () => {
+    const entityId = 4245 as BiomesId;
+    const { key } = getOrSeedHarthmereContainer(
+      entityId,
+      "Clothing Crate",
+      READY
+    );
+    const inventoryBefore = harthmereInventoryCountByItemId("baker_apron");
+    let confirm: (() => void) | undefined;
+    (windowMock as typeof windowMock & { fetch: typeof fetch }).fetch =
+      async () => {
+        await new Promise<void>((resolve) => {
+          confirm = resolve;
+        });
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ ok: true }),
+        } as Response;
+      };
+
+    assert.equal(takeFromHarthmereContainer(key, "baker_apron", 1), 1);
+    assert.equal(takeFromHarthmereContainer(key, "baker_apron", 1), 0);
+    assert.equal(countInContainer(key, "baker_apron"), 1);
+    assert.equal(
+      harthmereInventoryCountByItemId("baker_apron"),
+      inventoryBefore
+    );
+
+    confirm?.();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    assert.equal(countInContainer(key, "baker_apron"), 0);
+    assert.equal(
+      harthmereInventoryCountByItemId("baker_apron"),
+      inventoryBefore + 1
+    );
   });
 
   it("keeps container contents isolated by cloud-save user scope", () => {

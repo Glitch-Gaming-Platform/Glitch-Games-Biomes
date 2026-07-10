@@ -955,6 +955,7 @@ function submitHarthmereLiveModeNpcAiTicks(
           }
         );
         const body = await response.json().catch(() => undefined);
+        dispatchHarthmereLiveModeResponseEventsForTest(body);
         if (body?.combatState) {
           publishHarthmereLiveEntityCombatMotionToRenderer(body.combatState);
           const tick = body.combatState.npcAiTicks?.[targetId];

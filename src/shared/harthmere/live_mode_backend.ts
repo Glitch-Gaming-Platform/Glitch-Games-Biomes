@@ -3234,11 +3234,7 @@ function ensureLiveModeItemDefinition(
     const biomesBikkie = dynamicBiomesBikkieLiveModeItemDefinition(itemId);
     if (biomesBikkie) return biomesBikkie;
   }
-  if (
-    knownCount <= 0 &&
-    !isKnownHarthmereCatalogItem
-  )
-    return undefined;
+  if (knownCount <= 0 && !isKnownHarthmereCatalogItem) return undefined;
   const isMaterial =
     isSeed || isJobsBoardExecutable || isLikelyBankingMaterialItemId(itemId);
   const def: HarthmereItemDefinition = {
@@ -14832,6 +14828,15 @@ export function reduceHarthmereLiveModeBackendState(
       careResult.touchedModels.forEach((model) => touchedModels.add(model));
       if (careResult.unlocked.length > 0) {
         touchedModels.add("care_unlocks");
+      }
+      if (
+        careResult.warnings.length === 0 &&
+        operation === "daily_task_completed" &&
+        payloadString(envelope, "targetId") === "jobs_board"
+      ) {
+        next.quests.completed[HARTHMERE_READ_JOBS_BOARD_QUEST_ID] = nowMs;
+        delete next.quests.active[HARTHMERE_READ_JOBS_BOARD_QUEST_ID];
+        touchedModels.add("quest_state");
       }
       break;
     }

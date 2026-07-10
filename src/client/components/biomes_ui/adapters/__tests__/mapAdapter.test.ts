@@ -794,6 +794,29 @@ describe("biomes_ui map adapter (V141)", () => {
     assert.equal(merl?.active, true);
   });
 
+  it("shows Mira as the active housing objective from the canonical live quest", () => {
+    installFixture({
+      acceptedQuestIds: [],
+      activeObjectiveIndex: 0,
+      completedQuestIds: [],
+    });
+
+    const marker = buildBiomesUIMapAdapterForTest(1, undefined, undefined, {
+      active: {
+        building_system_intro_talk_to_mira: {
+          objectiveIndex: 0,
+        },
+      },
+      completed: {},
+    })
+      .getMarkers()
+      .find((entry) => entry.id === "mira_grove_land_steward");
+
+    assert.equal(marker?.kind, "objective");
+    assert.equal(marker?.active, true);
+    assert.ok(Array.isArray(marker?.worldPosition));
+  });
+
   it("projects accepted Warning Moss Patch quests from Cloud Save into BiomesUI quests", () => {
     installFixture({
       activeObjectiveIndex: 0,
