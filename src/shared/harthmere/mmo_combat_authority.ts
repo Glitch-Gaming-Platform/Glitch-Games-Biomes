@@ -288,20 +288,116 @@ function distanceBetween(
   );
 }
 
+// ---------------------------------------------------------------------------
+// HARTHMERE_SERVER_LINE_OF_SIGHT (audit fix, 2026-07-13)
+//
+// Previously this was a stub that ALWAYS returned true, so server-side combat
+// (NPC AI target selection, requiresLineOfSight abilities) could see and hit
+// through walls and terrain — the "aggression from far away / through walls"
+// bug class. The fix has two layers:
+//   1. A hard distance cap: nothing on the server claims sight beyond
+//      HARTHMERE_SERVER_LOS_MAX_DISTANCE, sampler or not.
+//   2. A real voxel walk through an INJECTABLE solidity sampler. Hosts that
+//      can read terrain register one via
+//      registerHarthmereServerVoxelSolidSampler; pure contexts (unit tests,
+//      reducers without terrain access) keep the permissive-within-distance
+//      behaviour, which is still strictly tighter than the old stub.
+// ---------------------------------------------------------------------------
+
+/** True when the voxel containing (x,y,z) blocks sight. */
+export type HarthmereServerVoxelSolidSampler = (
+  x: number,
+  y: number,
+  z: number
+) => boolean;
+
+// Beyond this many blocks the server refuses to certify line of sight at all —
+// bounds both NPC aggression range and the voxel-walk cost.
+export const HARTHMERE_SERVER_LOS_MAX_DISTANCE = 48;
+
+// Eye height added to both endpoints so sight is checked head-to-head rather
+// than feet-to-feet (feet positions are what combat state stores).
+const HARTHMERE_SERVER_LOS_EYE_HEIGHT = 1.5;
+
+let harthmereServerVoxelSolidSampler:
+  | HarthmereServerVoxelSolidSampler
+  | undefined;
+
+// Called by hosts with terrain access (e.g. the live_mode API route). Safe to
+// call repeatedly — last writer wins. Pass undefined to clear (tests).
+export function registerHarthmereServerVoxelSolidSampler(
+  sampler: HarthmereServerVoxelSolidSampler | undefined
+) {
+  harthmereServerVoxelSolidSampler = sampler;
+}
+
 /**
- * Stub line-of-sight check.  In production this calls the terrain/voxel
- * raycaster.  Here we trust the server tick geometry; client claims are
- * always rejected.
+ * Voxel-walk line of sight between two points (pure; sampler injected so it
+ * is unit-testable). Samples the segment at half-block resolution — cheap,
+ * deterministic, and cannot tunnel through a full-block wall. The start and
+ * end voxels are skipped so an actor standing inside a doorway voxel does not
+ * occlude itself.
  */
-function serverCheckLineOfSight(
-  _from: { x: number; y: number; z: number },
-  _to: { x: number; y: number; z: number }
+export function harthmereVoxelWalkLineOfSight(
+  from: { x: number; y: number; z: number },
+  to: { x: number; y: number; z: number },
+  isSolid: HarthmereServerVoxelSolidSampler
 ): boolean {
-  // TODO: wire to actual voxel raycast when terrain system is available.
-  // Returning true here means LoS is not yet blocked by server geometry —
-  // the game can ship with this stub and tighten it later without changing
-  // the contract.
+  const distance = distanceBetween(from, to);
+  if (!Number.isFinite(distance)) return false;
+  if (distance > HARTHMERE_SERVER_LOS_MAX_DISTANCE) return false;
+  if (distance < 1) return true;
+  const eyeFrom = { ...from, y: from.y + HARTHMERE_SERVER_LOS_EYE_HEIGHT };
+  const eyeTo = { ...to, y: to.y + HARTHMERE_SERVER_LOS_EYE_HEIGHT };
+  const steps = Math.max(2, Math.ceil(distance * 2));
+  const startVoxel = `${Math.floor(eyeFrom.x)}|${Math.floor(eyeFrom.y)}|${Math.floor(eyeFrom.z)}`;
+  const endVoxel = `${Math.floor(eyeTo.x)}|${Math.floor(eyeTo.y)}|${Math.floor(eyeTo.z)}`;
+  for (let i = 1; i < steps; i += 1) {
+    const t = i / steps;
+    const x = Math.floor(eyeFrom.x + (eyeTo.x - eyeFrom.x) * t);
+    const y = Math.floor(eyeFrom.y + (eyeTo.y - eyeFrom.y) * t);
+    const z = Math.floor(eyeFrom.z + (eyeTo.z - eyeFrom.z) * t);
+    const voxel = `${x}|${y}|${z}`;
+    if (voxel === startVoxel || voxel === endVoxel) continue;
+    try {
+      if (isSolid(x, y, z)) return false;
+    } catch {
+      // A sampler error (e.g. shard not loaded) must fail OPEN within the
+      // distance cap — matching the pre-fix behaviour — rather than letting a
+      // transient read error make every NPC blind.
+      return true;
+    }
+  }
   return true;
+}
+
+/**
+ * Server line-of-sight check used by NPC AI targeting and
+ * requiresLineOfSight abilities. Distance-capped always; voxel-checked when a
+ * terrain sampler is registered. Client claims are never consulted here.
+ *
+ * Exported (combat fix C-2, 2026-07-14) so the live-mode NPC-attack path can
+ * decide INCOMING-damage line of sight from the same server raycast the
+ * OUTGOING (player-attack) path already uses, instead of trusting the
+ * client-supplied `lineOfSight` payload (which was spoofable and asymmetric).
+ */
+export function harthmereServerCheckLineOfSight(
+  from: { x: number; y: number; z: number },
+  to: { x: number; y: number; z: number }
+): boolean {
+  const distance = distanceBetween(from, to);
+  if (!Number.isFinite(distance)) return false;
+  if (distance > HARTHMERE_SERVER_LOS_MAX_DISTANCE) return false;
+  if (!harthmereServerVoxelSolidSampler) {
+    // No terrain access in this context: permissive within the distance cap
+    // (strictly tighter than the old always-true stub).
+    return true;
+  }
+  return harthmereVoxelWalkLineOfSight(
+    from,
+    to,
+    harthmereServerVoxelSolidSampler
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -431,7 +527,7 @@ function canStrayAttackHitTarget(
 ) {
   if (!candidate.isAlive || !candidate.isAttackable) return false;
   if (!targetWithinAbilityRange(actor, candidate, ability)) return false;
-  if (ability.requiresLineOfSight && !serverCheckLineOfSight(actor.position, candidate.position)) {
+  if (ability.requiresLineOfSight && !harthmereServerCheckLineOfSight(actor.position, candidate.position)) {
     return false;
   }
   if (candidate.isPlayer) {
@@ -583,7 +679,7 @@ function validateAbilityCast(
 
       // --- Line of sight (server raycast) ---
       if (ability.requiresLineOfSight) {
-        if (!serverCheckLineOfSight(actor.position, target.position)) {
+        if (!harthmereServerCheckLineOfSight(actor.position, target.position)) {
           combatFail(errors, "no_line_of_sight");
         }
       }

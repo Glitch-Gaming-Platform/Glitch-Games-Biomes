@@ -140,7 +140,7 @@ export const PlantInspectionOverlayComponent: React.FunctionComponent<{
           (async () => {
             try {
               if (plant?.seed) {
-                await submitHarthmereNativePlantHarvestToLiveMode({
+                const body = await submitHarthmereNativePlantHarvestToLiveMode({
                   plantId: overlay.entityId,
                   seedItemId: plant.seed,
                   plantStatus: plant.status,
@@ -148,6 +148,35 @@ export const PlantInspectionOverlayComponent: React.FunctionComponent<{
                   plantLabel: name,
                   position: overlay.pos,
                 });
+                // Audit fix (2026-07-14, F-2): the server can reject the
+                // harvest AFTER the optimistic "Harvested …" toast above
+                // (tree harvests are intentionally unsupported; a plant can
+                // already be claimed or not fully grown). Previously those
+                // rejections were silent, so the player saw "Harvested"
+                // with no item — a reported "missing items" pattern. Surface
+                // a corrective, human-readable reason instead.
+                const warnings: string[] = Array.isArray(
+                  body?.backendMutation?.warnings
+                )
+                  ? body.backendMutation.warnings.map(String)
+                  : [];
+                const rejection = warnings.find((warning) =>
+                  warning.startsWith("farming_rejected")
+                );
+                if (rejection) {
+                  const reason = rejection.includes("tree_harvest_not_supported")
+                    ? `${name ?? "This tree"} can't be harvested by hand — trees are chopped, not picked.`
+                    : rejection.includes("plant_already_harvested")
+                    ? `${name ?? "This plant"} was already harvested.`
+                    : rejection.includes("plant_not_ready")
+                    ? `${name ?? "This plant"} isn't fully grown yet.`
+                    : `Couldn't harvest ${name ?? "this plant"}.`;
+                  addToast(resources, {
+                    kind: "basic",
+                    id: `harthmere-native-harvest-rejected:${plantId}`,
+                    message: reason,
+                  });
+                }
               }
             } finally {
               const clearInFlight = () => {

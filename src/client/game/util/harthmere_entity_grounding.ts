@@ -60,6 +60,28 @@ export function groundHarthmereLiveEntityFeetY(
   );
 }
 
+// HARTHMERE_SERVER_LINE_OF_SIGHT client sampler (audit fix, 2026-07-13):
+// solid-BLOCK check for sight blocking. Unlike
+// `harthmereTerrainSupportsStanding`, water does NOT block sight, and an
+// unloaded shard reads as NON-solid (fail open — never blind combat AI while
+// terrain streams).
+export function harthmereTerrainBlocksSight(
+  deps: { get: (path: any, shard: any) => any },
+  x: number,
+  y: number,
+  z: number
+): boolean {
+  try {
+    const block: Vec3 = [x, y, z];
+    const shard = voxelShard(...block);
+    const tensor = deps.get("/terrain/tensor", shard);
+    if (tensor === undefined) return false;
+    return !blockIsEmptyInTensor(block, tensor);
+  } catch {
+    return false;
+  }
+}
+
 // True when the terrain shard covering (x,y,z) has streamed in. Used to tell
 // "no surface here" apart from "terrain not loaded yet" so callers can defer a
 // marker instead of leaving it at the unverified authored Y.
@@ -175,4 +197,170 @@ export function harthmereGroundedFeetYWithMemory(
     cache.set(key, nextCache);
   }
   return feetY;
+}
+
+// ---------------------------------------------------------------------------
+// HARTHMERE_GLOBAL_GROUNDING_DEPS (audit fix, 2026-07-13)
+//
+// Some world-placing modules (notably the runtime-assets NPC renderer,
+// `renderers/local_dev/harthmere_assets.ts`) are constructed WITHOUT client
+// resources, so they historically could not run the shared terrain probe and
+// instead froze every actor at its spawn Y — NPCs walking across a slope
+// visibly floated (downhill) or buried (uphill). Registering the resources
+// object once at renderer-build time lets ANY module run the one shared
+// tri-state probe without threading `deps` through every constructor.
+// ---------------------------------------------------------------------------
+
+let harthmereGlobalGroundingDeps:
+  | { get: (path: any, shard: any) => any }
+  | undefined;
+
+// Called once from `buildRenderers` (client boot) with the live resources
+// object. Safe to call again (e.g. after a hot reload) — last writer wins.
+export function registerHarthmereGroundingDeps(deps: {
+  get: (path: any, shard: any) => any;
+}) {
+  harthmereGlobalGroundingDeps = deps;
+}
+
+// Test-only escape hatch so unit tests can install a fake terrain sampler and
+// restore the previous one.
+export function harthmereGroundingDepsForTest() {
+  return harthmereGlobalGroundingDeps;
+}
+
+// The `harthmereGroundedFeetYWithMemory` entrypoint for modules without their
+// own `deps`. Returns undefined when no deps are registered yet (client still
+// booting) or the terrain column is unknown — callers keep their current Y.
+export function harthmereRendererGroundedFeetY(
+  cache: Map<string, number>,
+  x: number,
+  z: number,
+  hintY: number,
+  requireOpenSky: boolean
+): number | undefined {
+  if (!harthmereGlobalGroundingDeps) {
+    return undefined;
+  }
+  return harthmereGroundedFeetYWithMemory(
+    harthmereGlobalGroundingDeps,
+    cache,
+    x,
+    z,
+    hintY,
+    requireOpenSky
+  );
+}
+
+// ---------------------------------------------------------------------------
+// HARTHMERE_NPC_WANDER_REGROUNDING helpers (audit fix, 2026-07-13)
+//
+// Pure decision logic for re-grounding a MOVING renderer NPC. Kept here (not
+// in the renderer) so it is unit-testable and shared: the renderer feeds in
+// (baseY = legacy locked spawn Y, currentY = actor's current Y, probedY = what
+// the tri-state terrain probe returned for the destination column) and gets
+// back the feet Y to apply.
+// ---------------------------------------------------------------------------
+
+// Reject probe results further than this from the actor's current Y: a real
+// slope changes gradually per wander step, so a larger jump means the probe
+// found an unrelated surface (cave under a bridge, terrain under a mesh floor).
+export const HARTHMERE_NPC_REGROUND_MAX_DEVIATION = 6;
+// Max vertical movement per grounding call so re-grounding reads as walking
+// up/down the slope instead of snapping.
+export const HARTHMERE_NPC_REGROUND_MAX_STEP = 0.4;
+
+// Move `currentY` toward `targetY` by at most `maxStep`, landing exactly on
+// the target when close.
+export function harthmereStepTowardGroundedFeetY(
+  currentY: number,
+  targetY: number,
+  maxStep = HARTHMERE_NPC_REGROUND_MAX_STEP
+): number {
+  if (!Number.isFinite(currentY)) return targetY;
+  if (!Number.isFinite(targetY)) return currentY;
+  const delta = targetY - currentY;
+  if (Math.abs(delta) <= maxStep) return targetY;
+  return currentY + Math.sign(delta) * maxStep;
+}
+
+// Acceptance rule: use the probe when it is plausible for a walking actor,
+// otherwise fall back to the legacy locked base Y (never teleport).
+export function resolveHarthmereNpcRegroundedFeetY(
+  baseY: number,
+  currentY: number,
+  probedY: number | undefined
+): number {
+  const fromY = Number.isFinite(currentY) ? currentY : baseY;
+  if (
+    probedY === undefined ||
+    !Number.isFinite(probedY) ||
+    Math.abs(probedY - fromY) > HARTHMERE_NPC_REGROUND_MAX_DEVIATION
+  ) {
+    return baseY;
+  }
+  return harthmereStepTowardGroundedFeetY(fromY, probedY);
+}
+
+// ---------------------------------------------------------------------------
+// HARTHMERE_GROUNDED_COLUMN_INVALIDATION (audit fix, 2026-07-13)
+//
+// Every keep-last-surface column cache (NPCs, drops, markers, the renderer
+// wander cache) remembers "the real ground at (x,z) is Y". None of them were
+// invalidated when the player MINED or PLACED blocks, so mining the ground
+// under an NPC/drop left it floating on the remembered surface until reload.
+// Modules register their caches here; the terrain-edit path calls
+// `invalidateHarthmereGroundedColumnsNear` for the edited block.
+//
+// Cache keys follow the shared `${ix}|${iz}|${openSky}` convention from
+// `harthmereGroundedFeetYWithMemory`; caches with richer keys can register a
+// custom invalidator instead.
+// ---------------------------------------------------------------------------
+
+type HarthmereColumnInvalidator = (ix: number, iz: number) => void;
+
+const harthmereGroundedColumnCaches = new Set<Map<string, number>>();
+const harthmereGroundedColumnInvalidators =
+  new Set<HarthmereColumnInvalidator>();
+
+// Register a standard `${ix}|${iz}|${openSky}` column cache for edit
+// invalidation. Returns an unregister function (for tests / HMR).
+export function registerHarthmereGroundedColumnCache(
+  cache: Map<string, number>
+): () => void {
+  harthmereGroundedColumnCaches.add(cache);
+  return () => harthmereGroundedColumnCaches.delete(cache);
+}
+
+// Register a custom invalidator for caches with non-standard keys (e.g. the
+// NPC ground-probe cache keyed `${ix}|${iy}|${iz}|${openSky}`).
+export function registerHarthmereGroundedColumnInvalidator(
+  invalidate: HarthmereColumnInvalidator
+): () => void {
+  harthmereGroundedColumnInvalidators.add(invalidate);
+  return () => harthmereGroundedColumnInvalidators.delete(invalidate);
+}
+
+// Drop the remembered surface for every column within `radius` blocks of the
+// edited voxel so the next probe re-reads the real terrain. Radius 1 covers
+// the edited column plus neighbours whose support may have changed (an entity
+// standing on the edge of the mined block).
+export function invalidateHarthmereGroundedColumnsNear(
+  x: number,
+  z: number,
+  radius = 1
+) {
+  const cx = Math.floor(x);
+  const cz = Math.floor(z);
+  for (let ix = cx - radius; ix <= cx + radius; ix += 1) {
+    for (let iz = cz - radius; iz <= cz + radius; iz += 1) {
+      for (const cache of harthmereGroundedColumnCaches) {
+        cache.delete(`${ix}|${iz}|0`);
+        cache.delete(`${ix}|${iz}|1`);
+      }
+      for (const invalidate of harthmereGroundedColumnInvalidators) {
+        invalidate(ix, iz);
+      }
+    }
+  }
 }

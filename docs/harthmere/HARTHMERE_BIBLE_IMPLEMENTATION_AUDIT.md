@@ -1,23 +1,23 @@
-# Harthmere Bible Implementation Audit
+# Harthmere Bible Implementation Audit current
 
-Generated: 2026-05-30T20:08:23.986Z
-Repo: `/Users/devindixon/Development/biomes-game`
+Generated: 2026-07-14T18:26:22.072Z
+Repo: `/sessions/quirky-hopeful-clarke/mnt/biomes-game`
 Mode: report
 
 ## Bottom Line
 
-The audit found missing implementation records. Do not ship until these are addressed.
+The encoded implementation coverage is mostly complete: required buildings, dungeon spaces, named NPC catalog, and required quest catalog are present. Remaining issues are design/production warnings, not missing core catalog records.
 
-Warnings to review: **0**. Missing critical records: **64**.
+Warnings to review: **0**. Missing critical records: **0**.
 
 ## Source Bible Inventory
 
 | Bible | Status | Evidence / Expected Purpose |
 | --- | --- | --- |
 | Harthmere Expanded Medieval MMO Town Design Bible | FOUND | docs/harthmere/bibles/Harthmere_Medieval_MMO_Town_Design_Bible_Complete.pdf (filename) |
-| Harthmere Bellbound Dragon Story Bible | FOUND | docs/harthmere/bibles/Harthmere_Bellbound_Dragon_Story_Bible (3).md (filename) |
-| MMO Rules | FOUND | docs/harthmere/BIOMES_HUD_UI_REFERENCES.md (content), docs/harthmere/BIOMES_HUD_UI_SCREEN_REVIEW.md (content), docs/harthmere/bibles/MMO_RULES.txt (filename), .harthmere-backups/biomes-hud-ui.20260521-121944/docs/harthmere/BIOMES_HUD_UI_SCREEN_REVIEW.md (content) |
-| Harthmere Wilds Outside Town Narrative Setting | FOUND | docs/harthmere/HARTHMERE_BRIDGE_WILDS_IMPLEMENTATION_AUDIT.md (content), docs/harthmere/bibles/Harthmere_Bellbound_Dragon_Story_Bible (3).md (content), docs/harthmere/bibles/Harthmere_Wilds_Outside_Town_Narrative_Setting.pdf (filename), .harthmere-backups/fix-biomes-ui-replace-runtime-1779939850/harthmere_assets.ts (content), .harthmere-player-avatar-full-polish-backup-20260522-172620/voxel_faces.ts (content) |
+| Harthmere Bellbound Dragon Story Bible | FOUND | docs/harthmere/bibles/Harthmere_Bellbound_Dragon_Story_Bible (3).md (filename), HARTHMERE_SYSTEMS_AUDIT_2026-07-14.md (content) |
+| MMO Rules | FOUND | docs/harthmere/BIOMES_HUD_UI_REFERENCES.md (content), docs/harthmere/BIOMES_HUD_UI_SCREEN_REVIEW.md (content), docs/harthmere/bibles/MMO_RULES.txt (filename) |
+| Harthmere Wilds Outside Town Narrative Setting | FOUND | docs/harthmere/HARTHMERE_BRIDGE_WILDS_IMPLEMENTATION_AUDIT.md (content), docs/harthmere/HARTHMERE_NPC_CONVERSATION_TONE_MAP.md (content), docs/harthmere/bibles/Harthmere_Bellbound_Dragon_Story_Bible (3).md (content), docs/harthmere/bibles/Harthmere_Wilds_Outside_Town_Narrative_Setting.pdf (filename), .harthmere-live-repeatable-placement-audit-25f687dd-9ebe-4c31-8810-719ddfafe66b-live-repeatable-placement-2026-06-25T22-51-53-248Z.json (content) |
 
 ## Building Implementation
 
@@ -66,7 +66,7 @@ Required buildings in contract: **25**. Implemented: **25**. Partial/incorrect: 
 
 ### Residential and Slum Housing
 
-Residential buildings: **10**. Estimated residential room capacity from the current residential pattern: **160**.
+Residential buildings: **10**. Estimated residential room capacity from current pattern: **160**.
 Slum stacks: **4**. Slum room capacity from declared floors/rooms: **90**.
 Solid voxel/block evidence: **yes**. Stair/accessibility evidence: **yes**. Room decor manifest evidence: **yes**.
 
@@ -98,7 +98,7 @@ Collision plan evidence: **yes**. Six Bellward chambers found: **Aevith, Karag-D
 
 ## NPC Implementation
 
-Named NPC compendium count: **44**. Remaining/ambient/wildlife/etc. count: **141**. Total NPC records with implementation status: **185**.
+Named NPC compendium current count: **185**. Remaining/ambient/wildlife/etc. current count: **185**. Total NPC records with implementation status: **370**.
 Required named NPCs checked from the story bible list: **44**. Missing named NPCs: **none**.
 Route evidence: **yes**. Dialogue evidence: **yes**.
 
@@ -117,12 +117,17 @@ Route evidence: **yes**. Dialogue evidence: **yes**.
 
 ## Quest Implementation
 
-Quest catalog count: **0** / minimum **85**.
-Main Q1-Q12 missing: **Q1, Q2, Q3, Q4, Q5, Q6, Q7, Q8, Q9, Q10, Q11, Q12**. Optional main missing: **Q2.5**. Side quests SQ-001..SQ-042 missing: **SQ-001, SQ-002, SQ-003, SQ-004, SQ-005, SQ-006, SQ-007, SQ-008, SQ-009, SQ-010, SQ-011, SQ-012, SQ-013, SQ-014, SQ-015, SQ-016, SQ-017, SQ-018, SQ-019, SQ-020, SQ-021, SQ-022, SQ-023, SQ-024, SQ-025, SQ-026, SQ-027, SQ-028, SQ-029, SQ-030, SQ-031, SQ-032, SQ-033, SQ-034, SQ-035, SQ-036, SQ-037, SQ-038, SQ-039, SQ-040, SQ-041, SQ-042**. Starter quests missing: **starter_welcome_to_harthmere, starter_apples_for_dawnloaf, starter_missing_lockbox, starter_cold_iron_hot_temper, starter_fever_tea, starter_rumor_has_it, starter_loose_chickens, starter_whispering_crate, starter_the_missing_bell**.
+Quest catalog count: **85** / minimum **85**.
+Main Q1-Q12 missing: **none**. Optional main missing: **none**. Side quests SQ-001..SQ-042 missing: **none**. Starter quests missing: **none**.
 Runtime files exist: **yes**. Every quest has objectives: **yes**. Rewards: **yes**. Dialogue states: **yes**.
 
 | Quest Category | Count |
 | --- | --- |
+| main | 13 |
+| side | 39 |
+| side_hidden | 3 |
+| starter | 9 |
+| repeatable | 21 |
 
 ## Warnings / Incorrect or Unproven Areas
 
@@ -130,70 +135,7 @@ No warnings.
 
 ## Missing Critical Records
 
-- mainQuest:Q1
-- mainQuest:Q2
-- mainQuest:Q3
-- mainQuest:Q4
-- mainQuest:Q5
-- mainQuest:Q6
-- mainQuest:Q7
-- mainQuest:Q8
-- mainQuest:Q9
-- mainQuest:Q10
-- mainQuest:Q11
-- mainQuest:Q12
-- optionalMainQuest:Q2.5
-- sideQuest:SQ-001
-- sideQuest:SQ-002
-- sideQuest:SQ-003
-- sideQuest:SQ-004
-- sideQuest:SQ-005
-- sideQuest:SQ-006
-- sideQuest:SQ-007
-- sideQuest:SQ-008
-- sideQuest:SQ-009
-- sideQuest:SQ-010
-- sideQuest:SQ-011
-- sideQuest:SQ-012
-- sideQuest:SQ-013
-- sideQuest:SQ-014
-- sideQuest:SQ-015
-- sideQuest:SQ-016
-- sideQuest:SQ-017
-- sideQuest:SQ-018
-- sideQuest:SQ-019
-- sideQuest:SQ-020
-- sideQuest:SQ-021
-- sideQuest:SQ-022
-- sideQuest:SQ-023
-- sideQuest:SQ-024
-- sideQuest:SQ-025
-- sideQuest:SQ-026
-- sideQuest:SQ-027
-- sideQuest:SQ-028
-- sideQuest:SQ-029
-- sideQuest:SQ-030
-- sideQuest:SQ-031
-- sideQuest:SQ-032
-- sideQuest:SQ-033
-- sideQuest:SQ-034
-- sideQuest:SQ-035
-- sideQuest:SQ-036
-- sideQuest:SQ-037
-- sideQuest:SQ-038
-- sideQuest:SQ-039
-- sideQuest:SQ-040
-- sideQuest:SQ-041
-- sideQuest:SQ-042
-- starterQuest:starter_welcome_to_harthmere
-- starterQuest:starter_apples_for_dawnloaf
-- starterQuest:starter_missing_lockbox
-- starterQuest:starter_cold_iron_hot_temper
-- starterQuest:starter_fever_tea
-- starterQuest:starter_rumor_has_it
-- starterQuest:starter_loose_chickens
-- starterQuest:starter_whispering_crate
-- starterQuest:starter_the_missing_bell
+None.
 
 ## Recommended Next Fixes
 

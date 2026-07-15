@@ -121,9 +121,33 @@ const directSeedTargetsByNumber = (() => {
   return map;
 })();
 
+// HARTHMERE_BIBLE_QUEST_WIRING (bible-wiring fix, 2026-07-14): Thaedryn is a
+// live-mode combat entity (seeded by the Q12 backend, not a production muck
+// seed), so the seed-matching below can never map her. The rendered arena
+// actor is labeled "Thaedryn the Bellbound"; route it straight to the boss
+// snapshot id so the native crosshair attack path hits the encounter entity.
+export const HARTHMERE_THAEDRYN_VISIBLE_TARGET_ID =
+  "bible-boss:thaedryn_bellbound" as const;
+export const HARTHMERE_THAEDRYN_VISIBLE_ACTOR_OFFSET = 9120;
+
 export function harthmereVisibleCombatTargetForActor(
   actor: HarthmereVisibleCombatActor
 ): HarthmereVisibleCombatTargetMatch | undefined {
+  if (
+    /thaedryn/.test((actor.label ?? "").toLowerCase()) ||
+    Number(actor.offset) === HARTHMERE_THAEDRYN_VISIBLE_ACTOR_OFFSET
+  ) {
+    return {
+      targetId: HARTHMERE_THAEDRYN_VISIBLE_TARGET_ID,
+      entityId: HARTHMERE_THAEDRYN_VISIBLE_ACTOR_OFFSET,
+      idOffset: HARTHMERE_THAEDRYN_VISIBLE_ACTOR_OFFSET,
+      // "hex" is the closest existing visible-target family (ranged, large
+      // silhouette); the label carries the real identity.
+      family: "hex",
+      species: "dragon",
+      distance: 0,
+    };
+  }
   const offset = Number(actor.offset);
   if (Number.isFinite(offset)) {
     const direct = directSeedTargetsByNumber.get(offset);

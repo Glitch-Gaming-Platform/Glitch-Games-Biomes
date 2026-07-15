@@ -24,7 +24,16 @@ export function harthmereNpcLoreTextIsPlaceholder(text: unknown): boolean {
   return (
     value.length < 24 ||
     /^(?:that's all for now|thats all for now|i'?m busy|whats up|what's up|hello|hi|hey|okay|ok|bye|goodbye)[.!?]*$/i.test(value) ||
-    /\b(?:todo|tbd|lorem ipsum|placeholder|test placeholder|dev\/test|meta placeholder|production-ready hook|testable gameplay reason|Where the bible defined only)\b/i.test(value)
+    /\b(?:todo|tbd|lorem ipsum|placeholder|test placeholder|dev\/test|meta placeholder|production-ready hook|testable gameplay reason|Where the bible defined only)\b/i.test(value) ||
+    // (dialogue fix D-2, 2026-07-14): also treat the dev/scaffolding creature
+    // notes and the two dominant name-swapped skeletons as placeholders so a
+    // regeneration pass rewrites them instead of preserving the clones.
+    /production bark|encounter readability|spawn conditions|loot\/state reactions|silhouette, threat type|no dev\/test\/meta/i.test(
+      value
+    ) ||
+    /looking for simple answers in harthmere, you came to the wrong gate|roads, records, and rivers all remember more than people think|there is a task tied to my route and my people|my work has a place in this town/i.test(
+      value
+    )
   );
 }
 
@@ -60,27 +69,107 @@ export function buildBiomesEconomyBackstory(npc: HarthmereNpcLoreLike): string {
   return `${name} keeps a place in ${area}'s player economy as a ${role}, where food, repairs, courier work, gathering, safety, and fair trade decide whether new players can stand on their own. Their backstory follows Biomes economy law: useful work creates demand, demand creates jobs, and jobs give players a reason to return with goods instead of empty pockets.`;
 }
 
+// (dialogue fix D-1/D-3/D-4, 2026-07-14): stable per-NPC hash so each NPC draws
+// a DISTINCT combination from the pools below instead of every enriched NPC
+// getting the same fixed 5-line block (which collapsed 183/185 NPCs to a few
+// skeletons). Salted so independent fields don't all move together.
+function enrichmentHash(text: string, salt: string): number {
+  return [...`${salt}:${text}`].reduce(
+    (acc, char) => (acc * 33 + char.charCodeAt(0)) >>> 0,
+    5381
+  );
+}
+
+function enrichmentPick<T>(pool: readonly T[], text: string, salt: string): T {
+  return pool[enrichmentHash(text, salt) % pool.length];
+}
+
+function isHostileLoreNpc(npc: HarthmereNpcLoreLike): boolean {
+  // Prefer the explicit kind/role signal; fall back to strong creature tokens.
+  // Excludes location-ish words ("grave"/Gravewood, bare "muck"/The Muck) so
+  // ordinary residents in those districts are not treated as monsters.
+  if (/hostile|monster/i.test(`${npc.kind ?? ""} ${npc.role ?? ""}`)) {
+    return true;
+  }
+  return /undead|risen|wight|wraith|corpse|ghoul|skeleton|bone crawler|bell-?woken|wyrm|dragon|mucker|muckling|muckwad|hexer|treant/i.test(
+    `${npc.id} ${npc.role ?? ""} ${npc.kind ?? ""} ${npc.faction ?? ""}`
+  );
+}
+
 export function buildNaturalNpcDialogue(
   npc: HarthmereNpcLoreLike,
   loreKind: "harthmere" | "biomes_economy",
 ): Record<string, string> {
   const name = npcName(npc);
   const role = shortRole(npc);
+  const here = npc.district ?? npc.homeArea ?? "Harthmere";
+  const key = `${npc.id}:${name}:${role}`;
+
+  // Hostile creatures get wordless, in-world tells — never an "I am ..." line.
+  if (isHostileLoreNpc(npc)) {
+    const greetings = [
+      `${name} offers no greeting — only breath, a scrape of movement, and the far echo of a bell.`,
+      `Something is wrong with the air around ${name}: too still, too cold, too watchful.`,
+      `${name} notices you before you see it move. Bells, roots, and old violence hang about it.`,
+    ];
+    const tells = [
+      `Read ${name} before it reads you: silhouette, gait, and where it lingers are your only warning.`,
+      `${name} gives one heartbeat of stillness before it strikes. Do not waste it.`,
+      `Whatever ${name} was, ${here} buried it instead of solving it. Now it is your problem.`,
+    ];
+    return {
+      greeting: enrichmentPick(greetings, key, "h_greet"),
+      service: enrichmentPick(tells, key, "h_serv"),
+      rumor: `Folk trade quiet warnings about ${name} around ${here} long before anyone sees it.`,
+      questOffer: `${name} is the reason more than one ${here} task ends in danger — something to put down or drive back.`,
+      farewell: `${name} will not be reasoned with. It ends when it is put down, scattered, or driven back into the dark.`,
+    };
+  }
+
+  const openers = [
+    `I am ${name}.`,
+    `Name's ${name}.`,
+    `They call me ${name}.`,
+    `${name}, if you need it — you're new to ${here}, aren't you?`,
+  ];
+  const services = [
+    `If this is about work, say what you can carry, fix, prove, or protect; ${here} has no patience for pretty promises.`,
+    `Bring goods, tools, food, or a little time and there's a fair trade to make around ${here}.`,
+    `${role} work is how I keep my place in ${here}. Tell me what you actually need.`,
+    `Honest work first, favors second — that's how things hold together in ${here}.`,
+  ];
+  const rumors = [
+    `Prices, prayers, and patrols all feel tighter in ${here} lately; when those move at once, someone's hiding the reason.`,
+    `Quickest way to learn ${here} is to watch what people run out of first.`,
+    `${here} remembers who repairs a path and who only steps over the broken part.`,
+    `Loose stones and quiet lanterns are how a bad day announces itself in ${here}.`,
+  ];
+  const quests = [
+    `I can point you toward useful work, but do it cleanly — a careless favor in ${here} becomes tomorrow's trouble.`,
+    `There's a practical job if you want it. Nothing fancy, just work that pays and keeps ${here} alive.`,
+    `Prove you're paying attention: check the board, ask nearby, and don't ignore the quiet warnings.`,
+  ];
+  const farewells = [
+    `Go with your eyes open. ${here} remembers who helps and who only makes noise.`,
+    `Come back if your pack gets heavy. A working town likes useful hands.`,
+    `Keep your promises small and your voice steady; both travel far here.`,
+  ];
+
   if (loreKind === "harthmere") {
     return {
-      greeting: `You need something, traveler? I am ${name}. Keep your voice steady; ${role} work hears more than people think.`,
-      service: `If this is about work, say what you can carry, fix, prove, or protect. Harthmere has no patience for pretty promises today.`,
-      rumor: `Prices, prayers, and patrols all feel tighter lately. When those three change at once, someone is hiding the reason.`,
-      questOffer: `I can point you toward a useful job, but do it cleanly. Around here a careless favor becomes tomorrow's trouble.`,
-      farewell: `Go with your eyes open. The town remembers who helps and who only makes noise.`,
+      greeting: enrichmentPick(openers, key, "greet"),
+      service: enrichmentPick(services, key, "serv"),
+      rumor: enrichmentPick(rumors, key, "rumor"),
+      questOffer: enrichmentPick(quests, key, "quest"),
+      farewell: enrichmentPick(farewells, key, "fare"),
     };
   }
   return {
-    greeting: `Hey, good timing. I am ${name}; I keep the ${role} work moving around here.`,
-    service: `If you have goods, tools, food, or a little time, there is probably a fair trade to make.`,
-    rumor: `The quickest way to learn this place is to watch what people run out of first.`,
-    questOffer: `I have a practical job if you want it. Nothing fancy, just useful work that pays and keeps the route alive.`,
-    farewell: `Come back if your pack gets heavy. A working economy likes useful hands.`,
+    greeting: `${enrichmentPick(openers, key, "b_greet")} I keep the ${role} work moving around ${here}.`,
+    service: enrichmentPick(services, key, "b_serv"),
+    rumor: enrichmentPick(rumors, key, "b_rumor"),
+    questOffer: enrichmentPick(quests, key, "b_quest"),
+    farewell: enrichmentPick(farewells, key, "b_fare"),
   };
 }
 

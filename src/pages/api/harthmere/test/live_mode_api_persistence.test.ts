@@ -494,17 +494,26 @@ describe("live_mode API Redis persistence", () => {
 
       const playerKey = harthmereLiveModePlayerStateKey(ACTOR);
       const sharedWorldKey = harthmereLiveModeSharedWorldStateKey();
+      // HARTHMERE_LIVE_MODE_SCOPED_WATCH (audit fix, 2026-07-13): a
+      // player-only mutation (XP reward) must neither WATCH nor rewrite the
+      // global shared-world key — that always-on WATCH/write was the main
+      // cross-player EXEC contention source behind multi-second mutations.
       assert.deepEqual(redisPrimary.watched[0], [
         "harthmere:live_mode:current:idempotency:player_live_api_persist_001:live-api-persist-idem-1",
         playerKey,
-        sharedWorldKey,
       ]);
+      assert.ok(
+        redisPrimary.watched.every((keys) => !keys.includes(sharedWorldKey)),
+        "player-only mutation must never watch the shared world key"
+      );
       const firstSet = redisPrimary.txOps.find((op) => op[0] === "set");
       assert.equal(firstSet?.[1], playerKey);
-      assert.ok(
+      assert.equal(
         redisPrimary.txOps.some(
           (op) => op[0] === "set" && op[1] === sharedWorldKey
-        )
+        ),
+        false,
+        "player-only mutation must not rewrite the shared world blob"
       );
       assert.equal(
         redisPrimary.txOps.some((op) => op[0] === "direct_set"),
@@ -561,6 +570,92 @@ describe("live_mode API Redis persistence", () => {
       assert.deepEqual(replay.includedSnapshots, []);
       assert.equal(replay.playerStatusState, undefined);
     }));
+
+  // HARTHMERE_LIVE_MODE_SCOPED_WATCH (audit fix, 2026-07-13): a mutation that
+  // DOES change shared world state (quest invite → shared quest-invite
+  // channel) must escalate — re-WATCH including the shared world key — and
+  // then persist the shared blob, so cross-player data is still transactional.
+  it("escalates the WATCH set and persists shared state for shared-touching mutations", async () => {
+    const redisPrimary = new FakeRedisPrimary();
+    (globalThis as any).__harthmereLiveModeRedis = {
+      primary: redisPrimary,
+    };
+
+    const env: HarthmereLiveModeAuthorityEnvelope = {
+      requestId: "live-api-persist-shared-req-1",
+      idempotencyKey: "live-api-persist-shared-idem-1",
+      actorId: ACTOR,
+      targetId: "player_live_api_persist_invitee",
+      actionKind: "request_quest_state_update",
+      subsystem: "quest",
+      source: "client_request",
+      serverActorPosition: { x: 496, y: 70, z: -126 },
+      serverTargetPosition: { x: 497, y: 70, z: -126 },
+      serverReceivedAtMs: NOW_MS,
+      serverTick: 2,
+      actorEntityVersion: 1,
+      zoneId: "harthmere",
+      payload: {
+        operation: "invite_to_quest",
+        inviteeActorId: "player_live_api_persist_invitee",
+        questId: "grove_buttons",
+        questTitle: "Buttons Before the Road",
+        questArea: "The Grove",
+        objectiveText: "Talk to Jackie and find the jobs board.",
+        reward: "25 XP",
+      },
+      clientClaims: {},
+    };
+    const mutationPlan = buildHarthmereLiveModePersistenceMutationPlan(env);
+    const response = {
+      ok: true,
+      version: "HARTHMERE_LIVE_MODE_SERVER_ROUTE" as const,
+      actorId: ACTOR,
+      duplicate: false,
+      replayed: false,
+      persisted: true,
+      validation: {
+        ok: true,
+        errors: [],
+        warnings: [],
+        rejectedClientClaims: [],
+      },
+      mutationPlan,
+      events: [],
+      uiEvents: [],
+    };
+
+    await persistHarthmereLiveModeResponse(env, response, {
+      logicApi: { publish: async () => {} } as any,
+      userId: 1 as any,
+    });
+
+    const sharedWorldKey = harthmereLiveModeSharedWorldStateKey();
+    // First (optimistic) WATCH is scoped: no shared world key.
+    assert.ok(
+      !redisPrimary.watched[0]?.includes(sharedWorldKey),
+      "first watch attempt must not include the shared world key"
+    );
+    // Escalation re-WATCH must cover the shared world key before writing it.
+    assert.ok(
+      redisPrimary.watched.some((keys) => keys.includes(sharedWorldKey)),
+      "shared-touching mutation must escalate to watching the shared world key"
+    );
+    assert.ok(
+      redisPrimary.txOps.some(
+        (op) => op[0] === "set" && op[1] === sharedWorldKey
+      ),
+      "shared-touching mutation must persist the shared world blob"
+    );
+    const sharedBlob = JSON.parse(
+      redisPrimary.store.get(sharedWorldKey) ?? "{}"
+    );
+    const invites = Object.values(
+      (sharedBlob.questInvites?.invites ?? {}) as Record<string, any>
+    );
+    assert.equal(invites.length, 1);
+    assert.equal(invites[0]?.questId, "grove_buttons");
+  });
 
   it("returns helper read snapshots without rewriting actor or shared state", async () => {
     const redisPrimary = new FakeRedisPrimary();
@@ -752,10 +847,13 @@ describe("live_mode API Redis persistence", () => {
       },
     });
 
+    // HARTHMERE_LIVE_MODE_SCOPED_WATCH (audit fix, 2026-07-13): adoption is a
+    // player-state concern, so the first WATCH covers idempotency + target +
+    // adoption source — the global shared-world key is only escalated into the
+    // WATCH set when a mutation actually changes shared state.
     assert.deepEqual(redisPrimary.watched[0], [
       "harthmere:live_mode:current:idempotency:player_live_api_persist_001:live-api-persist-idem-1",
       targetKey,
-      harthmereLiveModeSharedWorldStateKey(),
       sourceKey,
     ]);
     assert.ok(

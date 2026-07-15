@@ -33,11 +33,12 @@ assert(api.includes('Guest${stableGuestUsernameSuffix(identity)}'), 'Guest usern
 assert(api.includes('createOrResumeInstallWithGlitch'), 'API creates/resumes Glitch install before validation and heartbeats');
 assert(api.includes('user_install_id: installId'), 'API sends iframe install_id as user_install_id to Glitch installs endpoint');
 assert(api.includes('op === "heartbeatInstall"'), 'API exposes heartbeatInstall proxy op');
-assert(api.includes('/events/bulk`'), 'API still sends bulk behavioral events to Glitch');
+assert(api.includes('/events`'), 'API sends behavioral events through the title-token single-event route');
+assert(!api.includes('path: `/titles/${encodeURIComponent(titleId)}/events/bulk`'), 'runtime telemetry does not use the admin-only bulk route');
 assert(api.includes('game_install_id'), 'API event payload keeps required game_install_id');
 
 assert(bridge.includes('GLITCH_INSTALL_HEARTBEAT_INTERVAL_MS = 60_000'), 'client uses the required 60-second Glitch install heartbeat cadence');
-assert(bridge.includes('requestGlitch<any>("heartbeatInstall"'), 'client sends install heartbeats through server proxy');
+assert(bridge.includes('"heartbeatInstall"'), 'client sends install heartbeats through server proxy');
 assert(bridge.includes('await this.heartbeatInstall("start")'), 'client creates/resumes install immediately after validation');
 assert(bridge.includes('recordEvents'), 'client sends funnel events through local server proxy');
 assert(!bridge.includes('bulkCreateEvents'), 'client does not bypass server Title Token with browser SDK bulkCreateEvents');

@@ -7,6 +7,9 @@ import {
   HARTHMERE_INVENTORY_EVENT,
   HARTHMERE_LIVE_INVENTORY_SYNC_EVENT,
 } from "@/client/components/challenges/harthmereEvents";
+// HARTHMERE_LOOT_DROP_WORLD_STATE (audit fix, 2026-07-13): every refresh is
+// published to the module store so the 3D marker renderer can draw the drops.
+import { publishHarthmereWorldLootDrops } from "@/client/components/challenges/harthmereLootDropWorldState";
 import type { HarthmereInventoryLootDrop } from "@/shared/harthmere/mmo_inventory_loot_authority";
 
 export const HARTHMERE_LOOT_DROP_WORLD_INTERACTION_VERSION =
@@ -175,6 +178,7 @@ export function HarthmereLootDropWorldInteraction({
   const refreshDrops = React.useCallback(async () => {
     const nextDrops = await fetchAvailableLootDrops();
     setDrops(nextDrops);
+    publishHarthmereWorldLootDrops(nextDrops);
   }, []);
 
   React.useEffect(() => {
@@ -183,7 +187,10 @@ export function HarthmereLootDropWorldInteraction({
     let cancelled = false;
     const refresh = async () => {
       const nextDrops = await fetchAvailableLootDrops();
-      if (!cancelled) setDrops(nextDrops);
+      if (!cancelled) {
+        setDrops(nextDrops);
+        publishHarthmereWorldLootDrops(nextDrops);
+      }
     };
     void refresh();
     let refreshTimer: number | undefined;

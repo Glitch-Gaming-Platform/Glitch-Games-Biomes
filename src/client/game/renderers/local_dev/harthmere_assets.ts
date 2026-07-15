@@ -5,6 +5,14 @@ import type { Renderer } from "@/client/game/renderers/renderer_controller";
 import type { Scenes } from "@/client/game/renderers/scenes";
 import { addToScenes } from "@/client/game/renderers/scenes";
 import { canLocalDevLiveEntityRobotMoveForArea } from "@/client/components/challenges/LocalDevLiveEntityRobotEnergyState";
+// HARTHMERE_NPC_WANDER_REGROUNDING (audit fix, 2026-07-13): shared tri-state
+// terrain probe + edit-invalidated column cache so wandering NPCs follow the
+// real slope instead of staying frozen at spawn Y.
+import {
+  harthmereRendererGroundedFeetY,
+  registerHarthmereGroundedColumnCache,
+  resolveHarthmereNpcRegroundedFeetY,
+} from "@/client/game/util/harthmere_entity_grounding";
 import { log } from "@/shared/logging";
 import { getHarthmereEquipmentAnimation } from "@/shared/game/medieval/harthmereEquipmentAnimationManifest.generated";
 import {
@@ -2968,13 +2976,54 @@ function sweepHarthmereNpcCollisionObstacle(
   return undefined;
 }
 
-function harthmereNpcGroundedY(instance: AnimatedInstance, requestedY: number): number {
+// HARTHMERE_NPC_WANDER_REGROUNDING (audit fix, 2026-07-13)
+// ---------------------------------------------------------------------------
+// Previously this function ALWAYS returned the spawn base Y ("keep the root
+// feet locked to the grounded spawn Y") — correct for killing root-bob float,
+// but it also froze every wandering NPC at its spawn altitude, so any actor
+// whose route crossed a slope visibly floated (walking downhill) or buried
+// (walking uphill). The fix keeps the anti-bob behaviour (the requested bob Y
+// is still ignored for the root) but re-grounds the actor per step through THE
+// shared tri-state terrain probe (same one NPCs/drops/markers use), with:
+//   * a keep-last-surface column cache (no popping while shards stream),
+//   * a ±HARTHMERE_NPC_REGROUND_MAX_DEVIATION acceptance window around the
+//     actor's current Y (never teleport onto an unrelated surface — cliff
+//     edges, mesh-only floors),
+//   * a per-step vertical speed clamp for visual continuity.
+// Falls back to the legacy "locked to base Y" behaviour whenever the probe is
+// unavailable (client booting, shard not loaded, no surface).
+// ---------------------------------------------------------------------------
+
+// Per-column keep-last-surface memory for wandering renderer NPCs. Registered
+// for terrain-edit invalidation so mining the ground under an NPC re-probes.
+const harthmereWanderGroundedFeetYByColumn = new Map<string, number>();
+registerHarthmereGroundedColumnCache(harthmereWanderGroundedFeetYByColumn);
+
+function harthmereNpcGroundedY(
+  instance: AnimatedInstance,
+  requestedY: number,
+  // Destination column; defaults to where the actor currently stands so
+  // existing callers keep working.
+  atX?: number,
+  atZ?: number
+): number {
   const baseY = Number.isFinite(instance.base[1]) ? instance.base[1] : GROUND_Y + 0.1;
   if (!Number.isFinite(requestedY)) return baseY;
-  // Root-level bobbing made some actor origins visibly float. Keep the root feet
-  // locked to the grounded spawn Y; animation/mixer/procedural limbs provide the
-  // motion, not vertical root drift.
-  return baseY;
+  const currentY = Number.isFinite(instance.object.position.y)
+    ? instance.object.position.y
+    : baseY;
+  const x = Number.isFinite(atX) ? (atX as number) : instance.object.position.x;
+  const z = Number.isFinite(atZ) ? (atZ as number) : instance.object.position.z;
+  // requireOpenSky=false: wandering townsfolk may legitimately be under a roof
+  // or awning; the acceptance window above protects against cave surfaces.
+  const probedY = harthmereRendererGroundedFeetY(
+    harthmereWanderGroundedFeetYByColumn,
+    x,
+    z,
+    currentY,
+    false
+  );
+  return resolveHarthmereNpcRegroundedFeetY(baseY, currentY, probedY);
 }
 
 // HARTHMERE_LIVING_QUARTERS_VOXEL_SOLID_AND_GRID_HASH
@@ -8934,6 +8983,16 @@ const PLACEMENTS: RuntimePlacement[] = [
   P("rock_wide", 636.4, -270.0, Math.PI / 3, 0.28, "Wyrm's Bed folded wing silhouette phase-safe floor marker left", "Old Well / Underways"),
   P("rock_wide", 643.6, -270.0, -Math.PI / 3, 0.28, "Wyrm's Bed folded wing silhouette phase-safe floor marker right", "Old Well / Underways"),
   P("obj_church_grave_wall", 640.0, -266.8, 0, 0.3, "Wyrm's Bed final threshold wall phase-safe dragon chamber marker", "Old Well / Underways"),
+  // HARTHMERE_BIBLE_QUEST_WIRING (bible-wiring fix, 2026-07-14): Thaedryn's
+  // visible, attackable presence in the Wyrm's Bed. The 2026-07-14 audit
+  // found the dragon existed only as data (NPC record + boss contract) with
+  // no rendered, hittable body. This actor sits at the canonical arena anchor
+  // (authored 640,-268 — between the wing-silhouette markers above, matching
+  // bible_quest_live_authority.HARTHMERE_THAEDRYN_ARENA_AUTHORED_ANCHOR) and
+  // publishes the live-mode boss target id through the label special-case in
+  // visible_combat_target.ts, so the native crosshair attack ray damages the
+  // Q12 encounter entity. Near-zero wander: she is chained and asleep.
+  AD("townsperson_undead", 640.0, -268.0, Math.PI, 2.6, "Thaedryn the Bellbound", "Old Well / Underways", { radius: 0.2, speed: 0.02, phase: 0 }, 9120),
 
 
   // HARTHMERE_BELLBOUND_MISSING_DETAILS_EXPANSION
@@ -12492,11 +12551,15 @@ private harthmerePlayerSword?: THREE.Group;
         const dx = nextRoutePoint ? nextRoutePoint[0] - instance.base[0] : Math.cos(angle) * instance.wander.radius * radiusJitter;
         const dz = nextRoutePoint ? nextRoutePoint[1] - instance.base[2] : Math.sin(angle) * instance.wander.radius * radiusJitter;
         const nextX = instance.base[0] + dx;
+        const nextZ = instance.base[2] + dz;
+        // HARTHMERE_NPC_WANDER_REGROUNDING: ground against the DESTINATION
+        // column so the actor climbs/descends with the slope it walks onto.
         const nextY = harthmereNpcGroundedY(
           instance,
           instance.base[1] + (instance.bob ? Math.sin(angle * 2) * instance.bob : 0),
+          nextX,
+          nextZ,
         );
-        const nextZ = instance.base[2] + dz;
         const previousX = instance.object.position.x;
         const previousZ = instance.object.position.z;
         const resolved = this.resolveHarthmereNpcWanderPosition(
@@ -12827,7 +12890,8 @@ private harthmerePlayerSword?: THREE.Group;
       ? instance.object.position.y
       : instance.base[1];
     const currentZ = instance.object.position.z;
-    const groundedNextY = harthmereNpcGroundedY(instance, nextY);
+    // HARTHMERE_NPC_WANDER_REGROUNDING: ground against the destination column.
+    const groundedNextY = harthmereNpcGroundedY(instance, nextY, nextX, nextZ);
     const directObstacle = sweepHarthmereNpcCollisionObstacle(
       currentX,
       currentZ,
@@ -12868,7 +12932,8 @@ private harthmerePlayerSword?: THREE.Group;
     }
 
     const fallback = instance.lastSafePosition ?? [currentX, currentY, currentZ];
-    const position: [number, number, number] = [fallback[0], harthmereNpcGroundedY(instance, fallback[1]), fallback[2]];
+    // HARTHMERE_NPC_WANDER_REGROUNDING: ground at the fallback column.
+    const position: [number, number, number] = [fallback[0], harthmereNpcGroundedY(instance, fallback[1], fallback[0], fallback[2]), fallback[2]];
     this.recordHarthmereNpcCollisionBlock(instance, directObstacle, "hold");
     return { position, blocked: true };
   }

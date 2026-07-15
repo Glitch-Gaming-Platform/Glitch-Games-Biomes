@@ -21,6 +21,7 @@ import {
   submitHarthmereInventorySpendToLiveModeForTest,
   consumeHarthmereItemByItemId,
   harthmereInventoryCountByItemId,
+  recordHarthmereLiveInventoryItemsSnapshot,
   type HarthmereItemInstance,
 } from "@/client/components/challenges/LocalDevHarthmereInventorySystem";
 import {
@@ -107,6 +108,7 @@ import {
 import { abilityVisibleInBiomesLibraryForTest } from "./abilityLibraryVisibility";
 import {
   mergeInventoryAndHotbarForBiomesBackpackForTest,
+  mergeHarthmereHotbarOverlaySlots,
   mergeMirroredBiomesBackpackUiItemsForTest,
 } from "./inventoryAdapterHelpers";
 import { shouldHydrateBiomesUILiveStateForTab } from "./liveStateHydrationPolicy";
@@ -790,6 +792,23 @@ function localPlayerPositionList(reactResources: any): any[] {
   } catch {
     return [];
   }
+}
+
+// HARTHMERE_WORLD_THROW_DROP (audit fix, 2026-07-13): where a thrown item
+// should land — at the player's feet (slightly ahead is handled server-side by
+// grounding; the drop renderer re-grounds visually). Returns undefined when no
+// player position is available, in which case the throw degrades to the old
+// debit-only behaviour rather than failing.
+function harthmereThrowDropPosition(
+  reactResources: any
+): { x: number; y: number; z: number } | undefined {
+  const [position] = localPlayerPositionList(reactResources);
+  if (!position) return undefined;
+  const [x, y, z] = position;
+  if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(z)) {
+    return undefined;
+  }
+  return { x, y, z };
 }
 
 function normalizeContainer(container: unknown): any[] {
@@ -1688,6 +1707,11 @@ async function submitInventoryItemLiveModeAction(
     itemId: string;
     count?: number;
     sourceSlot?: string;
+    // HARTHMERE_WORLD_THROW_DROP (audit fix, 2026-07-13): a drop_item that
+    // carries the throw position makes the server create a positioned,
+    // claimable world loot drop (rendered + F-pickup) instead of the item
+    // silently vanishing after the debit.
+    position?: { x: number; y: number; z: number };
   }
 ): Promise<any> {
   const requestId = `biomes_ui_inventory_${operation}_${Date.now()}_${Math.random()
@@ -1872,6 +1896,13 @@ export function useBiomesUILiveAdapters({
   >(undefined);
   const [inventoryLootHydrated, setInventoryLootHydrated] =
     React.useState(false);
+  // HARTHMERE_LIVE_INVENTORY_SNAPSHOT (audit fix, 2026-07-13): mirror every
+  // live inventory update into the module-level snapshot so non-React code
+  // (Road Ahead muck-buster step, quest bridges) can check server-owned items.
+  React.useEffect(() => {
+    if (!inventoryLootState) return;
+    recordHarthmereLiveInventoryItemsSnapshot({ inventoryLootState });
+  }, [inventoryLootState]);
   const [progressionState, setProgressionState] = React.useState<
     any | undefined
   >(undefined);
@@ -1973,22 +2004,15 @@ export function useBiomesUILiveAdapters({
 
     const current =
       resources.peek("/ecs/c/inventory", userId) ?? Inventory.clone(inventory);
-    const hotbarSlots = [...(current.hotbar ?? [])];
-    while (hotbarSlots.length < 9) {
-      hotbarSlots.push(undefined as any);
-    }
-    for (const index of previousSlots) {
-      hotbarSlots[index] = undefined as any;
-    }
-    const nextSlots = new Set<number>();
-    for (const { index, itemAndCount } of slotEntries) {
-      hotbarSlots[index] = itemAndCount;
-      nextSlots.add(index);
-    }
-    localHotbarVisualSlotsRef.current = nextSlots;
+    const merged = mergeHarthmereHotbarOverlaySlots(
+      current.hotbar ?? [],
+      previousSlots,
+      slotEntries
+    );
+    localHotbarVisualSlotsRef.current = merged.nextOverlaySlots;
     resources.set("/ecs/c/inventory", userId, {
       ...current,
-      hotbar: hotbarSlots,
+      hotbar: merged.slots,
     } as Inventory);
     resources.invalidate("/hotbar/selection");
   }, [harthmereInventoryRevision, inventory, resources, userId]);
@@ -3923,6 +3947,40 @@ export function useBiomesUILiveAdapters({
           typeof ref.key === "string" &&
           ref.key.startsWith("harthmere_hotbar:")
         ) {
+          // HARTHMERE_WORLD_THROW_DROP (audit fix, 2026-07-13): dropping a
+          // Harthmere quick-slot used to ONLY clear the shortcut — the player
+          // dragged an item out to throw it and nothing landed in the world.
+          // Now: consume one from the (instant-feedback) local inventory,
+          // submit a positioned drop_item so the server spawns a claimable
+          // world drop, THEN clear the shortcut as before.
+          const thrownSlotIndex = clampHotbarIndex(Number(ref.idx ?? -1), 9);
+          const thrownLocalItemId =
+            readHarthmereInventoryState().hotbar[`slot_${thrownSlotIndex + 1}`];
+          if (
+            thrownLocalItemId &&
+            harthmereInventoryCountByItemId(thrownLocalItemId) > 0
+          ) {
+            const thrownLabel = humanizeRealItemId(
+              thrownLocalItemId,
+              thrownLocalItemId
+            );
+            const consumed = consumeHarthmereItemByItemId(
+              thrownLocalItemId,
+              1,
+              `Threw ${thrownLabel}`
+            );
+            if (consumed > 0) {
+              fireAndForget(
+                submitInventoryItemLiveModeAction("drop_item", {
+                  itemId: thrownLocalItemId,
+                  count: consumed,
+                  position: harthmereThrowDropPosition(reactResources),
+                })
+                  .then(applyLiveModeInventoryResponse)
+                  .catch(() => refreshInventoryLootState())
+              );
+            }
+          }
           performHarthmereHotbarClearForBiomesUI(Number(ref.idx ?? -1));
           return;
         }
@@ -3940,6 +3998,9 @@ export function useBiomesUILiveAdapters({
                 itemId: materialItemId,
                 count: remaining,
                 sourceSlot: "material_storage",
+                // HARTHMERE_WORLD_THROW_DROP: land the drop at the player so
+                // it is visible and salvageable instead of vanishing.
+                position: harthmereThrowDropPosition(reactResources),
               })
                 .then(applyLiveModeInventoryResponse)
                 .catch(() => refreshInventoryLootState())

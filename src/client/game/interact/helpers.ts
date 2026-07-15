@@ -87,6 +87,7 @@ import type { ShardId } from "@/shared/game/shard";
 import { blockPos, voxelShard } from "@/shared/game/shard";
 import { getCameraDirection, setPosition } from "@/shared/game/spatial";
 import { blockIsEmpty } from "@/shared/game/terrain_helper";
+import { invalidateHarthmereGroundedColumnsNear } from "@/client/game/util/harthmere_entity_grounding";
 import { isHarthmereLiveModeManagedCombatEntity } from "@/shared/harthmere/visible_combat_target";
 import type { BiomesId } from "@/shared/ids";
 import {
@@ -821,6 +822,13 @@ export function setVoxel(
   }
 
   maybeApplyEager(deps, shardId, pos, undefined, terrainId);
+
+  // HARTHMERE_GROUNDED_COLUMN_INVALIDATION (audit fix, 2026-07-13): the
+  // keep-last-surface grounding caches (NPCs, drops, wander loop) remember
+  // "the real ground at (x,z) is Y". A mine/place changes that ground, so
+  // drop the remembered columns around the edit — otherwise an NPC/drop keeps
+  // standing on the OLD surface (floating over a mined hole) until reload.
+  invalidateHarthmereGroundedColumnsNear(pos[0], pos[2]);
 
   const blueprintCompleted = blueprint
     ? isBlueprintCompleted(deps.resources, blueprint.id)

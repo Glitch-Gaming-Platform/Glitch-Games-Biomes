@@ -22,10 +22,17 @@ function countMatches(text, re) { return [...text.matchAll(re)].length; }
 const catalogFile = read('src/shared/harthmere/quest_compendium.ts');
 
 // Extract the JSON catalog literal.
-const m = catalogFile.match(/HARTHMERE_QUEST_CATALOG_JSON\s*=\s*`(\[[\s\S]*?\])`;/);
+// Audit fix (2026-07-13): the catalog now contains template-literal escape
+// sequences (\\\" etc.), so parsing the RAW file text as JSON fails. Evaluate
+// the backtick literal in an empty VM context — exactly what the TS runtime
+// does — and JSON.parse the resulting string.
+const m = catalogFile.match(/HARTHMERE_QUEST_CATALOG_JSON\s*=\s*(`\[[\s\S]*?\]`);/);
 ok(!!m, 'quest catalog JSON literal is locatable');
 let catalog = [];
-try { catalog = JSON.parse(m[1]); } catch (err) {
+try {
+  const jsonText = require('vm').runInNewContext(m[1], {});
+  catalog = JSON.parse(jsonText);
+} catch (err) {
   failures += 1;
   console.error('FAIL quest catalog JSON parses:', err.message);
 }
@@ -78,11 +85,12 @@ ok(catalog.find(q => q.code === 'Q12').dialogue.offer.includes('Thaedryn'),
    'Q12 offer carries Thaedryn\'s voice');
 
 // 4. Givers resolve.
-const current = read('src/shared/harthmere/npc_compendium.ts');
+// Audit fix (2026-07-13): this block previously declared `const current` (and
+// ran the matchAll loop) TWICE — a SyntaxError that made the whole script
+// crash on load, silently removing its checks from any pipeline that ran it.
 const current = read('src/shared/harthmere/npc_compendium.ts');
 const NPC_ID_RE = /"id":\s*"([a-z0-9_]+)"/gi;
 const knownNpcIds = new Set();
-for (const m of current.matchAll(NPC_ID_RE)) knownNpcIds.add(m[1]);
 for (const m of current.matchAll(NPC_ID_RE)) knownNpcIds.add(m[1]);
 const NO_GIVER_REQUIRED = new Set([
   'Q2.5',
@@ -163,13 +171,40 @@ if (groveQuestBlock) {
      objectivesArrays.length === markerIdsArrays.length,
      `Grove quest parallel arrays present (${objectivesArrays.length} objectives, ${triggersArrays.length} triggers, ${markerIdsArrays.length} markerIds)`);
 
+  // Audit fix (2026-07-13): quests may reference shared constants
+  // (e.g. `objectives: [BUILDING_SYSTEM_MIRA_INTRO_QUEST.objective]`) —
+  // counting STRING LITERALS misread those as 0 entries and false-failed.
+  // Count top-level array entries instead (commas outside quotes/brackets).
+  const countArrayEntries = (content) => {
+    const trimmed = String(content ?? '').trim();
+    if (!trimmed) return 0;
+    let count = 1;
+    let depth = 0;
+    let inString = false;
+    for (let c = 0; c < trimmed.length; c++) {
+      const ch = trimmed[c];
+      if (inString) {
+        if (ch === '\\') c += 1;
+        else if (ch === '"') inString = false;
+        continue;
+      }
+      if (ch === '"') inString = true;
+      else if (ch === '[' || ch === '(' || ch === '{') depth += 1;
+      else if (ch === ']' || ch === ')' || ch === '}') depth -= 1;
+      else if (ch === ',' && depth === 0) count += 1;
+    }
+    // A trailing comma does not add an entry.
+    if (/,\s*$/.test(trimmed)) count -= 1;
+    return count;
+  };
+
   let mismatches = 0;
   for (let i = 0; i < objectivesArrays.length; i++) {
     const qid = questIds[i] || `index_${i}`;
     if (KNOWN_MISALIGNED_GROVE.has(qid)) continue;
-    const oCount = (objectivesArrays[i][1].match(/"[^"]+"/g) || []).length;
-    const tCount = (triggersArrays[i][1].match(/"[^"]+"/g) || []).length;
-    const mCount = (markerIdsArrays[i][1].match(/"[^"]+"/g) || []).length;
+    const oCount = countArrayEntries(objectivesArrays[i][1]);
+    const tCount = countArrayEntries(triggersArrays[i][1]);
+    const mCount = countArrayEntries(markerIdsArrays[i][1]);
     if (oCount !== tCount || oCount !== mCount) {
       mismatches += 1;
       console.error(`  Grove quest ${qid}: objectives=${oCount} triggers=${tCount} markerIds=${mCount}`);

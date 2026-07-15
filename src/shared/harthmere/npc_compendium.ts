@@ -8920,11 +8920,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Thaedryn the Bellbound carries a hidden detail tied to Old Well / Underways, Ancient Dragon, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "Thaedryn the Bellbound has hostile production barks: silence, breath, scrape, or broken words tied to bells, graves, roots, and old violence.",
-      "service": "Thaedryn the Bellbound serves encounter readability: silhouette, threat type, spawn conditions, and loot/state reactions are explicit.",
-      "rumor": "Locals describe signs of Thaedryn the Bellbound in rumors before the player meets it, so danger feels foreshadowed rather than random.",
-      "questOffer": "Thaedryn the Bellbound anchors a kill, cleanse, investigate, rescue, or public-event objective with a lore reason.",
-      "farewell": "Thaedryn the Bellbound resolves through death, dispersal, surrender-equivalent, or retreat depending on family rules."
+      "greeting": "Thaedryn the Bellbound offers no greeting — only breath, the scrape of movement, and the far echo of a bell under stone.",
+      "service": "Read Thaedryn the Bellbound before it reads you: watch its silhouette, how it moves, and where it lingers — that is your only warning.",
+      "rumor": "Folk in Harthmere trade quiet warnings about Thaedryn the Bellbound long before anyone sees it — cold air, wrong sounds, a bell that should be still.",
+      "questOffer": "Thaedryn the Bellbound is the reason more than one Harthmere task ends in danger — something to put down, cleanse, or drive back.",
+      "farewell": "Thaedryn the Bellbound will not be reasoned with. It ends when it is put down, scattered, or driven back into the dark."
     },
     "route": {
       "routeId": "thaedryn_bellbound_daily_route",
@@ -9057,11 +9057,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Vyrahel carries a hidden detail tied to Temple Green, Ancient Dragon Echo, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "Vyrahel has hostile production barks: silence, breath, scrape, or broken words tied to bells, graves, roots, and old violence.",
-      "service": "Vyrahel serves encounter readability: silhouette, threat type, spawn conditions, and loot/state reactions are explicit.",
-      "rumor": "Locals describe signs of Vyrahel in rumors before the player meets it, so danger feels foreshadowed rather than random.",
-      "questOffer": "Vyrahel anchors a kill, cleanse, investigate, rescue, or public-event objective with a lore reason.",
-      "farewell": "Vyrahel resolves through death, dispersal, surrender-equivalent, or retreat depending on family rules."
+      "greeting": "Vyrahel offers no greeting — only breath, the scrape of movement, and the far echo of a bell under stone.",
+      "service": "Read Vyrahel before it reads you: watch its silhouette, how it moves, and where it lingers — that is your only warning.",
+      "rumor": "Folk in Harthmere trade quiet warnings about Vyrahel long before anyone sees it — cold air, wrong sounds, a bell that should be still.",
+      "questOffer": "Vyrahel is the reason more than one Harthmere task ends in danger — something to put down, cleanse, or drive back.",
+      "farewell": "Vyrahel will not be reasoned with. It ends when it is put down, scattered, or driven back into the dark."
     },
     "route": {
       "routeId": "vyrahel_chapel_wyrmling_daily_route",
@@ -23513,11 +23513,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Fresh Risen carries a hidden detail tied to Gravewood, Undead, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "Fresh Risen has hostile production barks: silence, breath, scrape, or broken words tied to bells, graves, roots, and old violence.",
-      "service": "Fresh Risen serves encounter readability: silhouette, threat type, spawn conditions, and loot/state reactions are explicit.",
-      "rumor": "Locals describe signs of Fresh Risen in rumors before the player meets it, so danger feels foreshadowed rather than random.",
-      "questOffer": "Fresh Risen anchors a kill, cleanse, investigate, rescue, or public-event objective with a lore reason.",
-      "farewell": "Fresh Risen resolves through death, dispersal, surrender-equivalent, or retreat depending on family rules."
+      "greeting": "Fresh Risen offers no greeting — only breath, the scrape of movement, and the far echo of a bell under stone.",
+      "service": "Read Fresh Risen before it reads you: watch its silhouette, how it moves, and where it lingers — that is your only warning.",
+      "rumor": "Folk in Harthmere trade quiet warnings about Fresh Risen long before anyone sees it — cold air, wrong sounds, a bell that should be still.",
+      "questOffer": "Fresh Risen is the reason more than one Harthmere task ends in danger — something to put down, cleanse, or drive back.",
+      "farewell": "Fresh Risen will not be reasoned with. It ends when it is put down, scattered, or driven back into the dark."
     },
     "route": {
       "routeId": "undead_fresh_risen_daily_route",
@@ -23650,11 +23650,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Grave-Caked Walker carries a hidden detail tied to Gravewood, Undead, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "Grave-Caked Walker has hostile production barks: silence, breath, scrape, or broken words tied to bells, graves, roots, and old violence.",
-      "service": "Grave-Caked Walker serves encounter readability: silhouette, threat type, spawn conditions, and loot/state reactions are explicit.",
-      "rumor": "Locals describe signs of Grave-Caked Walker in rumors before the player meets it, so danger feels foreshadowed rather than random.",
-      "questOffer": "Grave-Caked Walker anchors a kill, cleanse, investigate, rescue, or public-event objective with a lore reason.",
-      "farewell": "Grave-Caked Walker resolves through death, dispersal, surrender-equivalent, or retreat depending on family rules."
+      "greeting": "Grave-Caked Walker offers no greeting — only breath, the scrape of movement, and the far echo of a bell under stone.",
+      "service": "Read Grave-Caked Walker before it reads you: watch its silhouette, how it moves, and where it lingers — that is your only warning.",
+      "rumor": "Folk in Harthmere trade quiet warnings about Grave-Caked Walker long before anyone sees it — cold air, wrong sounds, a bell that should be still.",
+      "questOffer": "Grave-Caked Walker is the reason more than one Harthmere task ends in danger — something to put down, cleanse, or drive back.",
+      "farewell": "Grave-Caked Walker will not be reasoned with. It ends when it is put down, scattered, or driven back into the dark."
     },
     "route": {
       "routeId": "undead_grave_caked_walker_daily_route",
@@ -23787,11 +23787,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Bell-Woken Dead carries a hidden detail tied to Gravewood, Undead, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "Bell-Woken Dead has hostile production barks: silence, breath, scrape, or broken words tied to bells, graves, roots, and old violence.",
-      "service": "Bell-Woken Dead serves encounter readability: silhouette, threat type, spawn conditions, and loot/state reactions are explicit.",
-      "rumor": "Locals describe signs of Bell-Woken Dead in rumors before the player meets it, so danger feels foreshadowed rather than random.",
-      "questOffer": "Bell-Woken Dead anchors a kill, cleanse, investigate, rescue, or public-event objective with a lore reason.",
-      "farewell": "Bell-Woken Dead resolves through death, dispersal, surrender-equivalent, or retreat depending on family rules."
+      "greeting": "Bell-Woken Dead offers no greeting — only breath, the scrape of movement, and the far echo of a bell under stone.",
+      "service": "Read Bell-Woken Dead before it reads you: watch its silhouette, how it moves, and where it lingers — that is your only warning.",
+      "rumor": "Folk in Harthmere trade quiet warnings about Bell-Woken Dead long before anyone sees it — cold air, wrong sounds, a bell that should be still.",
+      "questOffer": "Bell-Woken Dead is the reason more than one Harthmere task ends in danger — something to put down, cleanse, or drive back.",
+      "farewell": "Bell-Woken Dead will not be reasoned with. It ends when it is put down, scattered, or driven back into the dark."
     },
     "route": {
       "routeId": "undead_bell_woken_dead_daily_route",
@@ -23924,11 +23924,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Drowned Corpse carries a hidden detail tied to Gravewood, Undead, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "Drowned Corpse has hostile production barks: silence, breath, scrape, or broken words tied to bells, graves, roots, and old violence.",
-      "service": "Drowned Corpse serves encounter readability: silhouette, threat type, spawn conditions, and loot/state reactions are explicit.",
-      "rumor": "Locals describe signs of Drowned Corpse in rumors before the player meets it, so danger feels foreshadowed rather than random.",
-      "questOffer": "Drowned Corpse anchors a kill, cleanse, investigate, rescue, or public-event objective with a lore reason.",
-      "farewell": "Drowned Corpse resolves through death, dispersal, surrender-equivalent, or retreat depending on family rules."
+      "greeting": "Drowned Corpse offers no greeting — only breath, the scrape of movement, and the far echo of a bell under stone.",
+      "service": "Read Drowned Corpse before it reads you: watch its silhouette, how it moves, and where it lingers — that is your only warning.",
+      "rumor": "Folk in Harthmere trade quiet warnings about Drowned Corpse long before anyone sees it — cold air, wrong sounds, a bell that should be still.",
+      "questOffer": "Drowned Corpse is the reason more than one Harthmere task ends in danger — something to put down, cleanse, or drive back.",
+      "farewell": "Drowned Corpse will not be reasoned with. It ends when it is put down, scattered, or driven back into the dark."
     },
     "route": {
       "routeId": "undead_drowned_corpse_daily_route",
@@ -24061,11 +24061,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Bone Crawler carries a hidden detail tied to Gravewood, Undead, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "Bone Crawler has hostile production barks: silence, breath, scrape, or broken words tied to bells, graves, roots, and old violence.",
-      "service": "Bone Crawler serves encounter readability: silhouette, threat type, spawn conditions, and loot/state reactions are explicit.",
-      "rumor": "Locals describe signs of Bone Crawler in rumors before the player meets it, so danger feels foreshadowed rather than random.",
-      "questOffer": "Bone Crawler anchors a kill, cleanse, investigate, rescue, or public-event objective with a lore reason.",
-      "farewell": "Bone Crawler resolves through death, dispersal, surrender-equivalent, or retreat depending on family rules."
+      "greeting": "Bone Crawler offers no greeting — only breath, the scrape of movement, and the far echo of a bell under stone.",
+      "service": "Read Bone Crawler before it reads you: watch its silhouette, how it moves, and where it lingers — that is your only warning.",
+      "rumor": "Folk in Harthmere trade quiet warnings about Bone Crawler long before anyone sees it — cold air, wrong sounds, a bell that should be still.",
+      "questOffer": "Bone Crawler is the reason more than one Harthmere task ends in danger — something to put down, cleanse, or drive back.",
+      "farewell": "Bone Crawler will not be reasoned with. It ends when it is put down, scattered, or driven back into the dark."
     },
     "route": {
       "routeId": "undead_bone_crawler_daily_route",
@@ -24198,11 +24198,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Mourning Wraith carries a hidden detail tied to Gravewood, Undead, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "Mourning Wraith has hostile production barks: silence, breath, scrape, or broken words tied to bells, graves, roots, and old violence.",
-      "service": "Mourning Wraith serves encounter readability: silhouette, threat type, spawn conditions, and loot/state reactions are explicit.",
-      "rumor": "Locals describe signs of Mourning Wraith in rumors before the player meets it, so danger feels foreshadowed rather than random.",
-      "questOffer": "Mourning Wraith anchors a kill, cleanse, investigate, rescue, or public-event objective with a lore reason.",
-      "farewell": "Mourning Wraith resolves through death, dispersal, surrender-equivalent, or retreat depending on family rules."
+      "greeting": "Mourning Wraith offers no greeting — only breath, the scrape of movement, and the far echo of a bell under stone.",
+      "service": "Read Mourning Wraith before it reads you: watch its silhouette, how it moves, and where it lingers — that is your only warning.",
+      "rumor": "Folk in Harthmere trade quiet warnings about Mourning Wraith long before anyone sees it — cold air, wrong sounds, a bell that should be still.",
+      "questOffer": "Mourning Wraith is the reason more than one Harthmere task ends in danger — something to put down, cleanse, or drive back.",
+      "farewell": "Mourning Wraith will not be reasoned with. It ends when it is put down, scattered, or driven back into the dark."
     },
     "route": {
       "routeId": "undead_mourning_wraith_daily_route",
@@ -24335,11 +24335,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Hollow Sexton carries a hidden detail tied to Gravewood, Undead, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "Hollow Sexton has hostile production barks: silence, breath, scrape, or broken words tied to bells, graves, roots, and old violence.",
-      "service": "Hollow Sexton serves encounter readability: silhouette, threat type, spawn conditions, and loot/state reactions are explicit.",
-      "rumor": "Locals describe signs of Hollow Sexton in rumors before the player meets it, so danger feels foreshadowed rather than random.",
-      "questOffer": "Hollow Sexton anchors a kill, cleanse, investigate, rescue, or public-event objective with a lore reason.",
-      "farewell": "Hollow Sexton resolves through death, dispersal, surrender-equivalent, or retreat depending on family rules."
+      "greeting": "Hollow Sexton offers no greeting — only breath, the scrape of movement, and the far echo of a bell under stone.",
+      "service": "Read Hollow Sexton before it reads you: watch its silhouette, how it moves, and where it lingers — that is your only warning.",
+      "rumor": "Folk in Harthmere trade quiet warnings about Hollow Sexton long before anyone sees it — cold air, wrong sounds, a bell that should be still.",
+      "questOffer": "Hollow Sexton is the reason more than one Harthmere task ends in danger — something to put down, cleanse, or drive back.",
+      "farewell": "Hollow Sexton will not be reasoned with. It ends when it is put down, scattered, or driven back into the dark."
     },
     "route": {
       "routeId": "undead_hollow_sexton_daily_route",
@@ -24472,11 +24472,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Root-Bound Dead carries a hidden detail tied to Gravewood, Undead, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "Root-Bound Dead has hostile production barks: silence, breath, scrape, or broken words tied to bells, graves, roots, and old violence.",
-      "service": "Root-Bound Dead serves encounter readability: silhouette, threat type, spawn conditions, and loot/state reactions are explicit.",
-      "rumor": "Locals describe signs of Root-Bound Dead in rumors before the player meets it, so danger feels foreshadowed rather than random.",
-      "questOffer": "Root-Bound Dead anchors a kill, cleanse, investigate, rescue, or public-event objective with a lore reason.",
-      "farewell": "Root-Bound Dead resolves through death, dispersal, surrender-equivalent, or retreat depending on family rules."
+      "greeting": "Root-Bound Dead offers no greeting — only breath, the scrape of movement, and the far echo of a bell under stone.",
+      "service": "Read Root-Bound Dead before it reads you: watch its silhouette, how it moves, and where it lingers — that is your only warning.",
+      "rumor": "Folk in Harthmere trade quiet warnings about Root-Bound Dead long before anyone sees it — cold air, wrong sounds, a bell that should be still.",
+      "questOffer": "Root-Bound Dead is the reason more than one Harthmere task ends in danger — something to put down, cleanse, or drive back.",
+      "farewell": "Root-Bound Dead will not be reasoned with. It ends when it is put down, scattered, or driven back into the dark."
     },
     "route": {
       "routeId": "undead_root_bound_dead_daily_route",
@@ -24609,11 +24609,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Old Soldier Wight carries a hidden detail tied to Gravewood, Undead, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "Old Soldier Wight has hostile production barks: silence, breath, scrape, or broken words tied to bells, graves, roots, and old violence.",
-      "service": "Old Soldier Wight serves encounter readability: silhouette, threat type, spawn conditions, and loot/state reactions are explicit.",
-      "rumor": "Locals describe signs of Old Soldier Wight in rumors before the player meets it, so danger feels foreshadowed rather than random.",
-      "questOffer": "Old Soldier Wight anchors a kill, cleanse, investigate, rescue, or public-event objective with a lore reason.",
-      "farewell": "Old Soldier Wight resolves through death, dispersal, surrender-equivalent, or retreat depending on family rules."
+      "greeting": "Old Soldier Wight offers no greeting — only breath, the scrape of movement, and the far echo of a bell under stone.",
+      "service": "Read Old Soldier Wight before it reads you: watch its silhouette, how it moves, and where it lingers — that is your only warning.",
+      "rumor": "Folk in Harthmere trade quiet warnings about Old Soldier Wight long before anyone sees it — cold air, wrong sounds, a bell that should be still.",
+      "questOffer": "Old Soldier Wight is the reason more than one Harthmere task ends in danger — something to put down, cleanse, or drive back.",
+      "farewell": "Old Soldier Wight will not be reasoned with. It ends when it is put down, scattered, or driven back into the dark."
     },
     "route": {
       "routeId": "undead_old_soldier_wight_daily_route",
@@ -24746,11 +24746,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Rootling carries a hidden detail tied to Deep Old Wood, Old Wood Monsters, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "Rootling has hostile production barks: silence, breath, scrape, or broken words tied to bells, graves, roots, and old violence.",
-      "service": "Rootling serves encounter readability: silhouette, threat type, spawn conditions, and loot/state reactions are explicit.",
-      "rumor": "Locals describe signs of Rootling in rumors before the player meets it, so danger feels foreshadowed rather than random.",
-      "questOffer": "Rootling anchors a kill, cleanse, investigate, rescue, or public-event objective with a lore reason.",
-      "farewell": "Rootling resolves through death, dispersal, surrender-equivalent, or retreat depending on family rules."
+      "greeting": "Rootling offers no greeting — only breath, the scrape of movement, and the far echo of a bell under stone.",
+      "service": "Read Rootling before it reads you: watch its silhouette, how it moves, and where it lingers — that is your only warning.",
+      "rumor": "Folk in Harthmere trade quiet warnings about Rootling long before anyone sees it — cold air, wrong sounds, a bell that should be still.",
+      "questOffer": "Rootling is the reason more than one Harthmere task ends in danger — something to put down, cleanse, or drive back.",
+      "farewell": "Rootling will not be reasoned with. It ends when it is put down, scattered, or driven back into the dark."
     },
     "route": {
       "routeId": "monster_rootling_daily_route",
@@ -24883,11 +24883,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Thorn Imp carries a hidden detail tied to Deep Old Wood, Old Wood Monsters, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "Thorn Imp has hostile production barks: silence, breath, scrape, or broken words tied to bells, graves, roots, and old violence.",
-      "service": "Thorn Imp serves encounter readability: silhouette, threat type, spawn conditions, and loot/state reactions are explicit.",
-      "rumor": "Locals describe signs of Thorn Imp in rumors before the player meets it, so danger feels foreshadowed rather than random.",
-      "questOffer": "Thorn Imp anchors a kill, cleanse, investigate, rescue, or public-event objective with a lore reason.",
-      "farewell": "Thorn Imp resolves through death, dispersal, surrender-equivalent, or retreat depending on family rules."
+      "greeting": "Thorn Imp offers no greeting — only breath, the scrape of movement, and the far echo of a bell under stone.",
+      "service": "Read Thorn Imp before it reads you: watch its silhouette, how it moves, and where it lingers — that is your only warning.",
+      "rumor": "Folk in Harthmere trade quiet warnings about Thorn Imp long before anyone sees it — cold air, wrong sounds, a bell that should be still.",
+      "questOffer": "Thorn Imp is the reason more than one Harthmere task ends in danger — something to put down, cleanse, or drive back.",
+      "farewell": "Thorn Imp will not be reasoned with. It ends when it is put down, scattered, or driven back into the dark."
     },
     "route": {
       "routeId": "monster_thorn_imp_daily_route",
@@ -25020,11 +25020,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Webbed Matron carries a hidden detail tied to Deep Old Wood, Old Wood Monsters, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "Webbed Matron has hostile production barks: silence, breath, scrape, or broken words tied to bells, graves, roots, and old violence.",
-      "service": "Webbed Matron serves encounter readability: silhouette, threat type, spawn conditions, and loot/state reactions are explicit.",
-      "rumor": "Locals describe signs of Webbed Matron in rumors before the player meets it, so danger feels foreshadowed rather than random.",
-      "questOffer": "Webbed Matron anchors a kill, cleanse, investigate, rescue, or public-event objective with a lore reason.",
-      "farewell": "Webbed Matron resolves through death, dispersal, surrender-equivalent, or retreat depending on family rules."
+      "greeting": "Webbed Matron offers no greeting — only breath, the scrape of movement, and the far echo of a bell under stone.",
+      "service": "Read Webbed Matron before it reads you: watch its silhouette, how it moves, and where it lingers — that is your only warning.",
+      "rumor": "Folk in Harthmere trade quiet warnings about Webbed Matron long before anyone sees it — cold air, wrong sounds, a bell that should be still.",
+      "questOffer": "Webbed Matron is the reason more than one Harthmere task ends in danger — something to put down, cleanse, or drive back.",
+      "farewell": "Webbed Matron will not be reasoned with. It ends when it is put down, scattered, or driven back into the dark."
     },
     "route": {
       "routeId": "monster_webbed_matron_daily_route",
@@ -25157,11 +25157,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Rot-Stag carries a hidden detail tied to Deep Old Wood, Old Wood Monsters, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "Rot-Stag has hostile production barks: silence, breath, scrape, or broken words tied to bells, graves, roots, and old violence.",
-      "service": "Rot-Stag serves encounter readability: silhouette, threat type, spawn conditions, and loot/state reactions are explicit.",
-      "rumor": "Locals describe signs of Rot-Stag in rumors before the player meets it, so danger feels foreshadowed rather than random.",
-      "questOffer": "Rot-Stag anchors a kill, cleanse, investigate, rescue, or public-event objective with a lore reason.",
-      "farewell": "Rot-Stag resolves through death, dispersal, surrender-equivalent, or retreat depending on family rules."
+      "greeting": "Rot-Stag offers no greeting — only breath, the scrape of movement, and the far echo of a bell under stone.",
+      "service": "Read Rot-Stag before it reads you: watch its silhouette, how it moves, and where it lingers — that is your only warning.",
+      "rumor": "Folk in Harthmere trade quiet warnings about Rot-Stag long before anyone sees it — cold air, wrong sounds, a bell that should be still.",
+      "questOffer": "Rot-Stag is the reason more than one Harthmere task ends in danger — something to put down, cleanse, or drive back.",
+      "farewell": "Rot-Stag will not be reasoned with. It ends when it is put down, scattered, or driven back into the dark."
     },
     "route": {
       "routeId": "monster_rot_stag_daily_route",
@@ -25294,11 +25294,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Witch-Crow carries a hidden detail tied to Deep Old Wood, Old Wood Monsters, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "Witch-Crow has hostile production barks: silence, breath, scrape, or broken words tied to bells, graves, roots, and old violence.",
-      "service": "Witch-Crow serves encounter readability: silhouette, threat type, spawn conditions, and loot/state reactions are explicit.",
-      "rumor": "Locals describe signs of Witch-Crow in rumors before the player meets it, so danger feels foreshadowed rather than random.",
-      "questOffer": "Witch-Crow anchors a kill, cleanse, investigate, rescue, or public-event objective with a lore reason.",
-      "farewell": "Witch-Crow resolves through death, dispersal, surrender-equivalent, or retreat depending on family rules."
+      "greeting": "Witch-Crow offers no greeting — only breath, the scrape of movement, and the far echo of a bell under stone.",
+      "service": "Read Witch-Crow before it reads you: watch its silhouette, how it moves, and where it lingers — that is your only warning.",
+      "rumor": "Folk in Harthmere trade quiet warnings about Witch-Crow long before anyone sees it — cold air, wrong sounds, a bell that should be still.",
+      "questOffer": "Witch-Crow is the reason more than one Harthmere task ends in danger — something to put down, cleanse, or drive back.",
+      "farewell": "Witch-Crow will not be reasoned with. It ends when it is put down, scattered, or driven back into the dark."
     },
     "route": {
       "routeId": "monster_witch_crow_daily_route",
@@ -25431,11 +25431,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Hollow Treant carries a hidden detail tied to Deep Old Wood, Old Wood Monsters, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "Hollow Treant has hostile production barks: silence, breath, scrape, or broken words tied to bells, graves, roots, and old violence.",
-      "service": "Hollow Treant serves encounter readability: silhouette, threat type, spawn conditions, and loot/state reactions are explicit.",
-      "rumor": "Locals describe signs of Hollow Treant in rumors before the player meets it, so danger feels foreshadowed rather than random.",
-      "questOffer": "Hollow Treant anchors a kill, cleanse, investigate, rescue, or public-event objective with a lore reason.",
-      "farewell": "Hollow Treant resolves through death, dispersal, surrender-equivalent, or retreat depending on family rules."
+      "greeting": "Hollow Treant offers no greeting — only breath, the scrape of movement, and the far echo of a bell under stone.",
+      "service": "Read Hollow Treant before it reads you: watch its silhouette, how it moves, and where it lingers — that is your only warning.",
+      "rumor": "Folk in Harthmere trade quiet warnings about Hollow Treant long before anyone sees it — cold air, wrong sounds, a bell that should be still.",
+      "questOffer": "Hollow Treant is the reason more than one Harthmere task ends in danger — something to put down, cleanse, or drive back.",
+      "farewell": "Hollow Treant will not be reasoned with. It ends when it is put down, scattered, or driven back into the dark."
     },
     "route": {
       "routeId": "monster_hollow_treant_daily_route",
@@ -25568,11 +25568,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Mossback Bear carries a hidden detail tied to Deep Old Wood, Old Wood Monsters, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "Mossback Bear has hostile production barks: silence, breath, scrape, or broken words tied to bells, graves, roots, and old violence.",
-      "service": "Mossback Bear serves encounter readability: silhouette, threat type, spawn conditions, and loot/state reactions are explicit.",
-      "rumor": "Locals describe signs of Mossback Bear in rumors before the player meets it, so danger feels foreshadowed rather than random.",
-      "questOffer": "Mossback Bear anchors a kill, cleanse, investigate, rescue, or public-event objective with a lore reason.",
-      "farewell": "Mossback Bear resolves through death, dispersal, surrender-equivalent, or retreat depending on family rules."
+      "greeting": "Mossback Bear offers no greeting — only breath, the scrape of movement, and the far echo of a bell under stone.",
+      "service": "Read Mossback Bear before it reads you: watch its silhouette, how it moves, and where it lingers — that is your only warning.",
+      "rumor": "Folk in Harthmere trade quiet warnings about Mossback Bear long before anyone sees it — cold air, wrong sounds, a bell that should be still.",
+      "questOffer": "Mossback Bear is the reason more than one Harthmere task ends in danger — something to put down, cleanse, or drive back.",
+      "farewell": "Mossback Bear will not be reasoned with. It ends when it is put down, scattered, or driven back into the dark."
     },
     "route": {
       "routeId": "monster_mossback_bear_daily_route",
@@ -25705,11 +25705,11 @@ export const HARTHMERE_REMAINING_NPCS = [
       "Root-Crowned Dead carries a hidden detail tied to Deep Old Wood, Old Wood Monsters, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "Root-Crowned Dead has hostile production barks: silence, breath, scrape, or broken words tied to bells, graves, roots, and old violence.",
-      "service": "Root-Crowned Dead serves encounter readability: silhouette, threat type, spawn conditions, and loot/state reactions are explicit.",
-      "rumor": "Locals describe signs of Root-Crowned Dead in rumors before the player meets it, so danger feels foreshadowed rather than random.",
-      "questOffer": "Root-Crowned Dead anchors a kill, cleanse, investigate, rescue, or public-event objective with a lore reason.",
-      "farewell": "Root-Crowned Dead resolves through death, dispersal, surrender-equivalent, or retreat depending on family rules."
+      "greeting": "Root-Crowned Dead offers no greeting — only breath, the scrape of movement, and the far echo of a bell under stone.",
+      "service": "Read Root-Crowned Dead before it reads you: watch its silhouette, how it moves, and where it lingers — that is your only warning.",
+      "rumor": "Folk in Harthmere trade quiet warnings about Root-Crowned Dead long before anyone sees it — cold air, wrong sounds, a bell that should be still.",
+      "questOffer": "Root-Crowned Dead is the reason more than one Harthmere task ends in danger — something to put down, cleanse, or drive back.",
+      "farewell": "Root-Crowned Dead will not be reasoned with. It ends when it is put down, scattered, or driven back into the dark."
     },
     "route": {
       "routeId": "monster_root_crowned_dead_daily_route",

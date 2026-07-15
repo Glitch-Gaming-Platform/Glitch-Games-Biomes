@@ -1217,7 +1217,18 @@ function normalizeBehaviorEventPayload(body: JsonMap, titleId: string) {
   return {
     game_install_id: installId,
     step_key: stepKey,
+    step_label: firstString(body.step_label, body.stepLabel),
+    step_description: firstString(body.step_description, body.stepDescription),
     action_key: actionKey,
+    event_label: firstString(body.event_label, body.eventLabel),
+    event_description: firstString(
+      body.event_description,
+      body.eventDescription
+    ),
+    previous_step_key: firstString(
+      body.previous_step_key,
+      body.previousStepKey
+    ),
     event_timestamp:
       firstString(body.event_timestamp, body.eventTimestamp) ??
       new Date().toISOString(),
@@ -1243,7 +1254,21 @@ function normalizeBehaviorEventsPayload(body: JsonMap, titleId: string) {
         game_install_id:
           firstString(row.game_install_id, row.install_id) ?? installId,
         step_key: firstString(row.step_key, row.stepKey) ?? "unknown_step",
+        step_label: firstString(row.step_label, row.stepLabel),
+        step_description: firstString(
+          row.step_description,
+          row.stepDescription
+        ),
         action_key: firstString(row.action_key, row.actionKey) ?? "event",
+        event_label: firstString(row.event_label, row.eventLabel),
+        event_description: firstString(
+          row.event_description,
+          row.eventDescription
+        ),
+        previous_step_key: firstString(
+          row.previous_step_key,
+          row.previousStepKey
+        ),
         event_timestamp:
           firstString(row.event_timestamp, row.eventTimestamp) ??
           new Date().toISOString(),
@@ -1978,58 +2003,39 @@ export default async function handler(
           .json({ ok: true, skipped: true, reason: "empty_events" });
       }
       if (shouldRunGlitchHarthmereOperationAsync(op)) {
-        const queued = await enqueueGlitchApiCall({
-          path: `/titles/${encodeURIComponent(titleId)}/events/bulk`,
-          label: "recordEventsBulk",
-          method: "POST",
-          body: payload,
-          timeoutMs: glitchTelemetryTimeoutMs(),
-        });
-        return res.status(200).json({ ...queued, ok: true, async: true, op });
-      }
-      const response = await callGlitchApi(
-        `/titles/${encodeURIComponent(titleId)}/events/bulk`,
-        {
-          label: "recordEventsBulk",
-          method: "POST",
-          body: payload,
-          timeoutMs: glitchTelemetryTimeoutMs(),
-        }
-      );
-      if ((response as any).disabled) {
-        return res
-          .status(200)
-          .json({ ok: true, skipped: true, reason: response.reason });
-      }
-      if (!response.ok && shouldFallbackBehaviorBulkStatus(response.status)) {
-        const fallback = await recordBehaviorEventsIndividually(
-          titleId,
-          payload.events
+        const queued = await Promise.all(
+          payload.events.map((event) =>
+            enqueueGlitchApiCall({
+              path: `/titles/${encodeURIComponent(titleId)}/events`,
+              label: "recordEvent",
+              method: "POST",
+              body: event,
+              timeoutMs: glitchTelemetryTimeoutMs(),
+            })
+          )
         );
-        if (fallback.ok) {
-          return res.status(200).json({
-            ok: true,
-            fallback: "single_events",
-            bulk_status: response.status,
-            sent: fallback.sent,
-            failed: fallback.failed,
-          });
-        }
-        return res
-          .status(fallback.firstFailure?.status ?? response.status ?? 500)
-          .json(fallback.firstFailure?.json ?? response.json ?? response);
-      }
-      if (shouldAcceptBehaviorTelemetryFailure(response.status)) {
         return res.status(200).json({
           ok: true,
-          dropped: true,
-          reason: "telemetry_upstream_unavailable",
-          upstream_status: response.status,
+          async: true,
+          op,
+          queued: queued.filter((entry) => entry.queued).length,
+          submitted: payload.events.length,
+        });
+      }
+      const fallback = await recordBehaviorEventsIndividually(
+        titleId,
+        payload.events
+      );
+      if (fallback.ok || fallback.failed === 0) {
+        return res.status(200).json({
+          ok: true,
+          sent: fallback.sent,
+          failed: fallback.failed,
         });
       }
       return res
-        .status(response.ok ? 200 : response.status || 500)
-        .json(response.json ?? response);
+        .status(fallback.firstFailure?.status ?? 500)
+        .json(fallback.firstFailure?.json ?? fallback);
     }
 
     if (op === "playerStats") {

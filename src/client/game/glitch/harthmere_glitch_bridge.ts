@@ -11,6 +11,10 @@ import {
   HARTHMERE_GLITCH_BEHAVIOR_EVENT_NAME,
   type HarthmereGlitchBehaviorEvent,
 } from "@/client/game/glitch/harthmere_glitch_behavior_events";
+import {
+  resolveHarthmereGlitchEventText,
+  type HarthmereGlitchEventText,
+} from "@/client/game/glitch/harthmere_glitch_event_catalog";
 import { shouldApplyHarthmereCloudSave } from "@/client/game/glitch/harthmere_cloud_save_restore_policy";
 import { HARTHMERE_INVENTORY_EVENT } from "@/client/components/challenges/harthmereEvents";
 
@@ -1037,7 +1041,12 @@ function behaviorEventPayload(
   return {
     game_install_id: config.installId,
     step_key: event.step_key,
+    step_label: event.step_label,
+    step_description: event.step_description,
     action_key: event.action_key,
+    event_label: event.event_label,
+    event_description: event.event_description,
+    previous_step_key: event.previous_step_key,
     event_timestamp: event.event_timestamp,
     metadata: safeBehaviorMetadata({
       ...(event.metadata ?? {}),
@@ -1199,6 +1208,7 @@ class HarthmereGlitchBridgeController {
   // failures we back off and stop spamming until something resets us.
   private behaviorAuthFailures = 0;
   private behaviorAuthBackoffUntil = 0;
+  private previousBehaviorStepKey?: string;
 
   constructor(private readonly clientContext?: ClientContext) {
     const status = readStatus();
@@ -1985,9 +1995,7 @@ class HarthmereGlitchBridgeController {
 
   private shouldSendBehaviorEvents() {
     return (
-      isProductionGlitchRuntime(this.config) &&
-      Boolean(this.config.installId) &&
-      this.valid
+      isProductionGlitchRuntime(this.config) && Boolean(this.config.installId)
     );
   }
 
@@ -1995,7 +2003,12 @@ class HarthmereGlitchBridgeController {
     stepKey: string,
     actionKey = "event",
     metadata?: Record<string, unknown>,
-    options: { throttleKey?: string; throttleMs?: number } = {}
+    options: {
+      throttleKey?: string;
+      throttleMs?: number;
+      text?: Partial<HarthmereGlitchEventText>;
+      previousStepKey?: string;
+    } = {}
   ) {
     if (
       !this.config.launchedByGlitch ||
@@ -2016,10 +2029,23 @@ class HarthmereGlitchBridgeController {
       }
       this.behaviorThrottle.set(throttleKey, now);
     }
+    const text = resolveHarthmereGlitchEventText(
+      stepKey,
+      actionKey,
+      options.text
+    );
+    const previousStepKey =
+      options.previousStepKey ??
+      (this.previousBehaviorStepKey !== stepKey
+        ? this.previousBehaviorStepKey
+        : undefined);
+    this.previousBehaviorStepKey = stepKey;
     const event: HarthmereGlitchBehaviorEvent = {
       version: "harthmere-glitch-behavior-events",
       step_key: stepKey,
       action_key: actionKey,
+      ...text,
+      previous_step_key: previousStepKey,
       metadata: safeBehaviorMetadata(metadata),
       event_timestamp: new Date().toISOString(),
     };
@@ -2031,7 +2057,20 @@ class HarthmereGlitchBridgeController {
   }
 
   private enqueueCustomBehaviorEvent(event: HarthmereGlitchBehaviorEvent) {
-    this.enqueueBehaviorEvent(event.step_key, event.action_key, event.metadata);
+    this.enqueueBehaviorEvent(
+      event.step_key,
+      event.action_key,
+      event.metadata,
+      {
+        previousStepKey: event.previous_step_key,
+        text: {
+          step_label: event.step_label,
+          step_description: event.step_description,
+          event_label: event.event_label,
+          event_description: event.event_description,
+        },
+      }
+    );
   }
 
   private installBehaviorTelemetry() {
@@ -2044,6 +2083,7 @@ class HarthmereGlitchBridgeController {
       return;
     }
     this.behaviorInstalled = true;
+    window.__harthmereGlitchBehaviorListenerReady = true;
 
     const customHandler = (event: Event) => {
       const detail = (event as CustomEvent<HarthmereGlitchBehaviorEvent>)
@@ -2055,12 +2095,13 @@ class HarthmereGlitchBridgeController {
       HARTHMERE_GLITCH_BEHAVIOR_EVENT_NAME,
       customHandler as EventListener
     );
-    this.behaviorCleanup.push(() =>
+    this.behaviorCleanup.push(() => {
       window.removeEventListener(
         HARTHMERE_GLITCH_BEHAVIOR_EVENT_NAME,
         customHandler as EventListener
-      )
-    );
+      );
+      window.__harthmereGlitchBehaviorListenerReady = false;
+    });
 
     const backlog = window.__harthmereGlitchBehaviorBacklog ?? [];
     window.__harthmereGlitchBehaviorBacklog = [];
@@ -2103,6 +2144,86 @@ class HarthmereGlitchBridgeController {
       "progression",
       "leveling_changed"
     );
+
+    const gardenHose = this.clientContext?.gardenHose;
+    const addGardenHoseEvent = (
+      eventName: string,
+      stepKey: string,
+      actionKey: string,
+      metadata: (event: any) => Record<string, unknown> | undefined = () =>
+        undefined,
+      once = false
+    ) => {
+      if (!gardenHose) return;
+      const handler = (event: any) => {
+        this.enqueueBehaviorEvent(stepKey, actionKey, metadata(event));
+        if (once) gardenHose.off(eventName as any, handler);
+      };
+      gardenHose.on(eventName as any, handler);
+      this.behaviorCleanup.push(() =>
+        gardenHose.off(eventName as any, handler)
+      );
+    };
+
+    addGardenHoseEvent("move", "first_movement", "complete", undefined, true);
+    addGardenHoseEvent("talk_npc", "npc_dialogue", "start", (event) => ({
+      npc_id: event?.npcId,
+    }));
+    addGardenHoseEvent(
+      "challenge_unlock",
+      "quest_active",
+      "accepted",
+      (event) => ({ quest_id: event?.id })
+    );
+    addGardenHoseEvent(
+      "challenge_step_complete",
+      "quest_objective",
+      "complete",
+      (event) => ({ step_id: event?.stepId })
+    );
+    addGardenHoseEvent(
+      "challenge_complete",
+      "quest_reward",
+      "complete",
+      (event) => ({ quest_id: event?.id })
+    );
+    addGardenHoseEvent(
+      "challenge_abandon",
+      "quest_abandon",
+      "complete",
+      (event) => ({ quest_id: event?.id })
+    );
+    addGardenHoseEvent("open_shop", "vendor_open", "screen_view");
+    addGardenHoseEvent("open_station", "crafting_station", "screen_view");
+    addGardenHoseEvent("craft", "crafting_complete", "complete");
+    addGardenHoseEvent("equip", "equipment_change", "success", (event) => ({
+      hotbar_index: event?.hotbarIndex,
+    }));
+    addGardenHoseEvent(
+      "inventory_overflow_item_received",
+      "inventory_capacity",
+      "overflow"
+    );
+    addGardenHoseEvent(
+      "mail_received",
+      "mail_received",
+      "complete",
+      (event) => ({
+        initial_bootstrap: event?.initialBootstrap === true,
+        message_count: Array.isArray(event?.mail)
+          ? event.mail.length
+          : undefined,
+      })
+    );
+    addGardenHoseEvent(
+      "minigame_simple_race_finish",
+      "minigame_complete",
+      "complete",
+      (event) => ({ minigame_id: event?.minigameId })
+    );
+    addGardenHoseEvent("minigame_quit", "minigame_exit", "quit", (event) => ({
+      minigame_id: event?.minigameId,
+    }));
 
     const clickHandler = (event: MouseEvent) => {
       const info = closestTelemetryButtonLabel(event.target);

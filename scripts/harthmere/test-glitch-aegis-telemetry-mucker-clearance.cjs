@@ -48,6 +48,18 @@ const behaviorBus = read('src/client/game/glitch/harthmere_glitch_behavior_event
 assert(behaviorBus.includes('HARTHMERE_GLITCH_BEHAVIOR_EVENT_NAME'), 'Behavior event bus marker missing.');
 assert(behaviorBus.includes('__harthmereGlitchBehaviorBacklog'), 'Behavior event bus must buffer pre-bridge loading/onboarding events.');
 assert(behaviorBus.includes('dispatchEvent') && behaviorBus.includes('catch'), 'Behavior event emitter must be client-only and non-fatal.');
+assert(behaviorBus.includes('resolveHarthmereGlitchEventText'), 'Behavior events must resolve human-readable labels and descriptions.');
+
+const eventCatalog = read('src/client/game/glitch/harthmere_glitch_event_catalog.ts');
+assert(eventCatalog.includes('Game Boot'), 'Human-readable game boot label missing.');
+assert(eventCatalog.includes('Character Builder'), 'Human-readable character builder label missing.');
+assert(eventCatalog.includes('Play Session'), 'Human-readable session label missing.');
+
+const liveFetch = read('src/client/components/harthmere_live_fetch.ts');
+assert(liveFetch.includes('fetchWithLiveMutationTelemetry'), 'Live-mode actions must emit semantic outcome telemetry.');
+for (const step of ['quest_accept', 'quest_complete', 'job_accept', 'job_complete', 'loot_claim', 'cooking_start', 'farming_harvest', 'property_claim', 'player_respawn']) {
+  assert(liveFetch.includes(step), `Semantic live-action step missing: ${step}`);
+}
 
 const api = read('src/pages/api/glitch/harthmere.ts');
 assert(api.includes('op === "heartbeatInstall"'), 'API must proxy Glitch install create/resume heartbeats.');
@@ -55,10 +67,11 @@ assert(api.includes('user_install_id'), 'API install heartbeat must send user_in
 assert(api.includes('op === "recordEvent"'), 'API must support single Glitch behavioral event proxying.');
 assert(api.includes('op === "recordEvents"'), 'API must support bulk Glitch behavioral event proxying.');
 assert(api.includes('/events`') || api.includes('/events`,'), 'API must call the Glitch single-event endpoint.');
-assert(api.includes('/events/bulk`'), 'API must call the Glitch bulk event endpoint.');
-assert(api.includes('shouldFallbackBehaviorBulkStatus'), 'API must fall back when the documented bulk event endpoint rejects Title Token auth.');
 assert(api.includes('recordBehaviorEventsIndividually'), 'API must preserve behavioral telemetry by sending single events if bulk ingestion fails.');
 assert(api.includes('game_install_id'), 'API must send game_install_id as required by Glitch events.');
+for (const field of ['step_label', 'step_description', 'event_label', 'event_description', 'previous_step_key']) {
+  assert(api.includes(field), `Glitch event payload missing human-readable field: ${field}`);
+}
 assert(api.includes('missing_server_title_token'), 'API must skip safely when title token/config is not present.');
 assert(bridge.includes('error.status = response.status'), 'Bridge request errors must expose HTTP status for telemetry backoff.');
 
@@ -77,16 +90,13 @@ for (const [step, action] of [
   ['character_builder', 'complete'],
   ['onboarding_wakeup', 'complete'],
 ]) {
-  assert(
-    wake.includes(`"${step}"`) && wake.includes(`"${action}"`),
-    `Wake/onboarding telemetry missing: ${step}:${action}`
-  );
+  assert(wake.includes(`"${step}"`) && wake.includes(`"${action}"`), `Wake/onboarding telemetry missing: ${step}:${action}`);
 }
 assert(wake.includes('name_length'), 'Onboarding telemetry should send name length only, not require raw player names.');
 
 const biomesUI = read('src/client/components/biomes_ui/BiomesUI.tsx');
-assert(biomesUI.includes('\"biomes_ui\"') || biomesUI.includes('"biomes_ui"'), 'BiomesUI open/close telemetry missing.');
-assert(biomesUI.includes('\"hotbar\"') || biomesUI.includes('"hotbar"'), 'Hotbar interaction telemetry missing.');
+assert(biomesUI.includes('"biomes_ui"') || biomesUI.includes('"biomes_ui"'), 'BiomesUI open/close telemetry missing.');
+assert(biomesUI.includes('"hotbar"') || biomesUI.includes('"hotbar"'), 'Hotbar interaction telemetry missing.');
 
 const liveDebug = read('src/shared/harthmere/snapshot_live_debug.ts');
 assert(liveDebug.includes('SNAPSHOT_MUCKER_HEXER_TILE_CLEARANCE_VERSION'), 'Mucker/Hexer tile-clearance version missing.');

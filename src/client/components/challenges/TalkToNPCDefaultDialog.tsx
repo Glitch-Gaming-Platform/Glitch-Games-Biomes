@@ -14,6 +14,7 @@ import {
   useLiveEntityHelperQuestDialog,
 } from "@/client/components/challenges/LocalDevLiveEntityHelperQuests";
 import { useLocalDevHarthmereDialog } from "@/client/components/challenges/LocalDevHarthmereQuests";
+import { useHarthmereBibleQuestDialog } from "@/client/components/challenges/LocalDevHarthmereBibleQuests";
 import { useSnapshotMissionDialog } from "@/client/components/challenges/LocalDevSnapshotMissionBridge";
 import {
   snapshotGroveNpcIdForDialogLabel,
@@ -269,6 +270,10 @@ export const TalkToNpcDefaultDialog: React.FunctionComponent<{
     initialDefaultDialog
   );
   const liveEntityHelperDialog = useLiveEntityHelperQuestDialog(talkingToNPCId);
+  // HARTHMERE_BIBLE_QUEST_WIRING (bible-wiring fix, 2026-07-14): offers,
+  // objective advancement, and turn-ins for the 85-quest bible catalog —
+  // previously unreachable from any player surface (2026-07-14 audit, Q-1).
+  const bibleQuestDialog = useHarthmereBibleQuestDialog(talkingToNPCId);
   const relevantQuestSteps = useRelevantStepsForEntity(talkingToNPCId);
   const [id, setId] = useState(0);
   const fallbackDialogText = harthmereFallbackNpcDialogText({
@@ -382,18 +387,29 @@ export const TalkToNpcDefaultDialog: React.FunctionComponent<{
     setQuerying(false);
   }, [talkingToNPCId]);
   const withLiveEntityHelperDialogText = useCallback(
-    (dialogText: string) =>
-      liveEntityHelperDialog?.dialogText
-        ? `${liveEntityHelperDialog.dialogText}{break}${dialogText}`
-        : dialogText,
-    [liveEntityHelperDialog?.dialogText]
+    (dialogText: string) => {
+      // HARTHMERE_BIBLE_QUEST_WIRING (bible-wiring fix, 2026-07-14): bible
+      // quest dialogue (offer/objective/turn-in flavor) is prepended the same
+      // way helper-quest dialogue is, so both can coexist on one NPC.
+      const withBible = bibleQuestDialog?.dialogText
+        ? `${bibleQuestDialog.dialogText}{break}${dialogText}`
+        : dialogText;
+      return liveEntityHelperDialog?.dialogText
+        ? `${liveEntityHelperDialog.dialogText}{break}${withBible}`
+        : withBible;
+    },
+    [liveEntityHelperDialog?.dialogText, bibleQuestDialog?.dialogText]
   );
   const withLiveEntityHelperActions = useCallback(
     (actions: TalkDialogStepAction[]) => [
+      // Bible quest actions first: starting/advancing the main story is the
+      // highest-signal thing a giver NPC can offer (bible-wiring fix,
+      // 2026-07-14).
+      ...(bibleQuestDialog?.actions ?? []),
       ...(liveEntityHelperDialog?.actions ?? []),
       ...actions,
     ],
-    [liveEntityHelperDialog?.actions]
+    [liveEntityHelperDialog?.actions, bibleQuestDialog?.actions]
   );
 
   const respondWith = useCallback(

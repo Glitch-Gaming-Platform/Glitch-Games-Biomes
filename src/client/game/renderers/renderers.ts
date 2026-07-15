@@ -14,6 +14,7 @@ import { makeHarthmereBusinessOutpostBuildingsRenderer } from "@/client/game/ren
 import { makeHarthmereJobsBoardMarkerRenderer } from "@/client/game/renderers/local_dev/harthmere_jobs_board_marker";
 import { makeHarthmereQuestObjectMarkersRenderer } from "@/client/game/renderers/local_dev/harthmere_quest_object_markers";
 import { makeHarthmereGatheringNodeMarkersRenderer } from "@/client/game/renderers/local_dev/harthmere_gathering_node_markers";
+import { makeHarthmereLootDropMarkersRenderer } from "@/client/game/renderers/local_dev/harthmere_loot_drop_markers";
 import { makeMuckRenderer } from "@/client/game/renderers/muck";
 import { makeNpcsRenderer } from "@/client/game/renderers/npcs";
 import { makeParticlesRenderer } from "@/client/game/renderers/particles";
@@ -25,6 +26,11 @@ import type { Renderer } from "@/client/game/renderers/renderer_controller";
 import { RobotProtectionPreviewRenderer } from "@/client/game/renderers/robot_protection_preview";
 import { SkyRenderer } from "@/client/game/renderers/sky";
 import { TerrainRenderer } from "@/client/game/renderers/terrain";
+import {
+  harthmereTerrainBlocksSight,
+  registerHarthmereGroundingDeps,
+} from "@/client/game/util/harthmere_entity_grounding";
+import { registerHarthmereServerVoxelSolidSampler } from "@/shared/harthmere/mmo_combat_authority";
 import type { RegistryLoader } from "@/shared/registry";
 
 export async function buildRenderers(loader: RegistryLoader<ClientContext>) {
@@ -51,6 +57,21 @@ export async function buildRenderers(loader: RegistryLoader<ClientContext>) {
     "resourcesStats",
     "permissionsManager",
     "voxeloo"
+  );
+
+  // HARTHMERE_GLOBAL_GROUNDING_DEPS (audit fix, 2026-07-13): give
+  // resource-less renderers (harthmere_assets NPC wander loop) access to the
+  // shared terrain probe so moving NPCs re-ground on real terrain instead of
+  // staying frozen at their spawn Y (the "NPCs float downhill / bury uphill"
+  // bug).
+  registerHarthmereGroundingDeps(resources);
+
+  // HARTHMERE_SERVER_LINE_OF_SIGHT (audit fix, 2026-07-13): give the combat
+  // authority a real voxel solidity sampler so line-of-sight checks (NPC AI
+  // targeting, requiresLineOfSight abilities running in this client context)
+  // are blocked by actual terrain instead of the old always-true stub.
+  registerHarthmereServerVoxelSolidSampler((x, y, z) =>
+    harthmereTerrainBlocksSight(resources, x, y, z)
   );
 
   // Initialize all renderers.
@@ -92,6 +113,11 @@ export async function buildRenderers(loader: RegistryLoader<ClientContext>) {
     // nodes at every gathering position so harvest targets exist in the world
     // (with an F-prompt) instead of only inside the HUD menu.
     makeHarthmereGatheringNodeMarkersRenderer(resources),
+    // HARTHMERE_LOOT_DROP_MARKERS (audit fix, 2026-07-13): visible, grounded
+    // world bodies for live-mode loot drops (thrown items, combat loot) —
+    // previously drops were an invisible F-prompt radius plus a UI list row,
+    // so thrown items vanished from view and silently expired.
+    makeHarthmereLootDropMarkersRenderer(resources),
     new BoundaryRenderer(resources),
     makeBeamRenderer(mapManager, resources),
     new AudioRenderer(resources, audioManager),

@@ -293,7 +293,19 @@ if (/Yenna/.test(npc44) && /Mira Holt|mira_holt/.test(npc45)) report.designWarni
 function jsonConst(name, text) {
   const m = text.match(new RegExp("export const " + escapeRe(name) + " = `([\\s\\S]*?)`;"));
   if (!m) return undefined;
-  try { return JSON.parse(m[1]); } catch { return undefined; }
+  // Audit fix (2026-07-14): the quest catalog template literal contains
+  // escape sequences (\\\" etc.), so raw JSON.parse of the SOURCE text fails
+  // and this function silently returned undefined — making the audit report
+  // "Quests: 0 records / all main+side+starter quests missing" while every
+  // quest existed (the same parser bug check-harthmere-quest-bible-grounded
+  // fixed on 2026-07-13). Evaluate the backtick literal in an empty VM
+  // context — exactly what the TS runtime does — then JSON.parse the result.
+  try {
+    const literal = require("vm").runInNewContext("`" + m[1] + "`", {});
+    return JSON.parse(literal);
+  } catch {
+    return undefined;
+  }
 }
 const questPolicy = jsonConst("HARTHMERE_QUEST_COVERAGE_POLICY_JSON", questCatalogSrc) || {};
 const questCatalog = jsonConst("HARTHMERE_QUEST_CATALOG_JSON", questCatalogSrc) || [];

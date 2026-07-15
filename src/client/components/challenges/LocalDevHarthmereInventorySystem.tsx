@@ -2295,8 +2295,55 @@ function inventoryEvent(state?: HarthmereInventoryState) {
   }
 }
 
+// ---------------------------------------------------------------------------
+// HARTHMERE_LIVE_INVENTORY_SNAPSHOT (audit fix, 2026-07-13)
+//
+// Module-level "last known live server inventory" so NON-React code (quest
+// bridges, mission steps) can check what the player really owns. Root cause it
+// fixes: the Road Ahead "Carry a Muck Buster" step only checked ECS items and
+// the localStorage inventory — but in live-authoritative sessions the display
+// deliberately drops localStorage (HARTHMERE_INVENTORY_SERVER_AUTHORITATIVE),
+// so a tool acquired server-side could never complete the step (soft-lock).
+// Every live inventory response that flows through this module records the
+// actor's item counts here.
+// ---------------------------------------------------------------------------
+
+let lastKnownHarthmereLiveInventoryItems: Record<string, number> = {};
+
+// Record the actor item counts from a live-mode response body (mutation or
+// read). Accepts the standard `inventoryLootState.actor.items` shape and
+// ignores anything else, so it is safe to call with any response.
+export function recordHarthmereLiveInventoryItemsSnapshot(body: unknown) {
+  const items = (body as any)?.inventoryLootState?.actor?.items;
+  if (!items || typeof items !== "object" || Array.isArray(items)) return;
+  const next: Record<string, number> = {};
+  for (const [itemId, count] of Object.entries(
+    items as Record<string, unknown>
+  )) {
+    const safeCount = Math.max(0, Math.trunc(Number(count) || 0));
+    if (safeCount > 0) next[itemId] = safeCount;
+  }
+  lastKnownHarthmereLiveInventoryItems = next;
+}
+
+// How many of `itemId` the live server last reported the player owning.
+// Returns 0 before any live response has been seen this session.
+export function readHarthmereLiveInventoryItemCount(itemId: string): number {
+  return Math.max(
+    0,
+    Math.trunc(Number(lastKnownHarthmereLiveInventoryItems[itemId] ?? 0))
+  );
+}
+
+// Test-only reset so unit tests can isolate snapshots.
+export function resetHarthmereLiveInventoryItemsSnapshotForTest() {
+  lastKnownHarthmereLiveInventoryItems = {};
+}
+
 function dispatchHarthmereLiveInventorySync(body: unknown) {
   if (!isBrowser()) return;
+  // Keep the module-level live-inventory snapshot current for quest bridges.
+  recordHarthmereLiveInventoryItemsSnapshot(body);
   window.dispatchEvent(
     new CustomEvent(HARTHMERE_LIVE_INVENTORY_SYNC_EVENT, {
       detail: { body },

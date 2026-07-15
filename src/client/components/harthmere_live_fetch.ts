@@ -1,4 +1,6 @@
 import { readHarthmereGlitchIdentity } from "@/client/game/glitch/harthmere_glitch_identity";
+import { emitHarthmereGlitchBehaviorEvent } from "@/client/game/glitch/harthmere_glitch_behavior_events";
+import { humanizeHarthmereGlitchKey } from "@/client/game/glitch/harthmere_glitch_event_catalog";
 
 // HARTHMERE_LIVE_FETCH_TIMEOUT_RETRY (2026-07-05): production HAR analysis
 // showed the live_mode server route regularly takes 10s+ to respond while the
@@ -23,6 +25,320 @@ const HARTHMERE_LIVE_INSTALL_STORAGE_KEYS = [
   "biomes.glitch.installId",
   "biomes.localDev.harthmere.installId",
 ] as const;
+
+const HARTHMERE_HIGH_FREQUENCY_TELEMETRY_ACTIONS = new Set([
+  "request_attack",
+  "request_ability_cast",
+  "request_environment_damage",
+  "request_npc_ai_tick",
+  "request_boss_tick",
+]);
+
+const HARTHMERE_LIVE_ACTION_STEPS: Record<
+  string,
+  { stepKey: string; label: string; description: string }
+> = {
+  bible_quest_accept: {
+    stepKey: "quest_accept",
+    label: "Quest Accepted",
+    description: "The player accepts a story quest.",
+  },
+  bible_quest_advance: {
+    stepKey: "quest_objective",
+    label: "Quest Objective",
+    description: "The player advances a quest objective.",
+  },
+  bible_quest_complete: {
+    stepKey: "quest_complete",
+    label: "Quest Completed",
+    description: "The player completes a story quest.",
+  },
+  accept_job: {
+    stepKey: "job_accept",
+    label: "Job Accepted",
+    description: "The player accepts a board job.",
+  },
+  complete_job: {
+    stepKey: "job_complete",
+    label: "Job Completed",
+    description: "The player completes a board job.",
+  },
+  complete_job_quest: {
+    stepKey: "job_reward",
+    label: "Job Reward Claimed",
+    description: "The player claims a job reward.",
+  },
+  abandon_job: {
+    stepKey: "job_abandon",
+    label: "Job Abandoned",
+    description: "The player abandons a board job.",
+  },
+  claim_loot_drop: {
+    stepKey: "loot_claim",
+    label: "Loot Claimed",
+    description: "The player claims a loot drop.",
+  },
+  daily_check_in: {
+    stepKey: "daily_check_in",
+    label: "Daily Check-In",
+    description: "The player claims a daily activity.",
+  },
+  cook_enqueue: {
+    stepKey: "cooking_start",
+    label: "Cooking Started",
+    description: "The player starts a cooking job.",
+  },
+  cook_collect: {
+    stepKey: "cooking_complete",
+    label: "Cooking Collected",
+    description: "The player collects cooked food.",
+  },
+  plant: {
+    stepKey: "farming_plant",
+    label: "Crop Planted",
+    description: "The player plants a crop.",
+  },
+  water: {
+    stepKey: "farming_water",
+    label: "Crop Watered",
+    description: "The player waters a crop.",
+  },
+  harvest: {
+    stepKey: "farming_harvest",
+    label: "Crop Harvested",
+    description: "The player harvests a crop.",
+  },
+  eat_food: {
+    stepKey: "food_consumed",
+    label: "Food Consumed",
+    description: "The player eats food.",
+  },
+  claim_plot: {
+    stepKey: "property_claim",
+    label: "Property Claimed",
+    description: "The player claims a property plot.",
+  },
+  start_construction: {
+    stepKey: "building_start",
+    label: "Construction Started",
+    description: "The player starts construction.",
+  },
+  place_decoration: {
+    stepKey: "home_decorate",
+    label: "Decoration Placed",
+    description: "The player places a home decoration.",
+  },
+  request_loot_claim: {
+    stepKey: "loot_claim",
+    label: "Loot Claimed",
+    description: "The player claims a loot drop.",
+  },
+  request_death_transition: {
+    stepKey: "player_death",
+    label: "Player Death",
+    description: "The player enters the death state.",
+  },
+  request_revive: {
+    stepKey: "player_revive",
+    label: "Player Revived",
+    description: "The player is revived.",
+  },
+  request_respawn: {
+    stepKey: "player_respawn",
+    label: "Player Respawned",
+    description: "The player returns after death.",
+  },
+  request_equipment_change: {
+    stepKey: "equipment_change",
+    label: "Equipment Changed",
+    description: "The player changes equipped gear.",
+  },
+  request_trainer_unlock: {
+    stepKey: "progression_unlock",
+    label: "Progression Unlocked",
+    description: "The player unlocks progression.",
+  },
+};
+
+const HARTHMERE_TELEMETRY_PAYLOAD_KEYS = [
+  "questId",
+  "objectiveId",
+  "jobId",
+  "postingId",
+  "itemId",
+  "recipeId",
+  "stationId",
+  "businessId",
+  "businessTypeId",
+  "propertyId",
+  "plotId",
+  "blueprintId",
+  "targetId",
+  "slot",
+  "quantity",
+  "count",
+  "amount",
+  "price",
+] as const;
+
+function telemetryKey(value: unknown, fallback: string) {
+  const key = String(value ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9_:.-]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .slice(0, 80);
+  return key || fallback;
+}
+
+function parseLiveMutationEnvelope(init: RequestInit) {
+  if (String(init.method ?? "GET").toUpperCase() !== "POST") return undefined;
+  if (typeof init.body !== "string") return undefined;
+  try {
+    const envelope = JSON.parse(init.body) as Record<string, any>;
+    const payload =
+      envelope.payload && typeof envelope.payload === "object"
+        ? envelope.payload
+        : {};
+    const actionKind = telemetryKey(envelope.actionKind, "live_action");
+    if (HARTHMERE_HIGH_FREQUENCY_TELEMETRY_ACTIONS.has(actionKind)) {
+      return undefined;
+    }
+    const subsystem = telemetryKey(envelope.subsystem, "gameplay");
+    const operation = telemetryKey(
+      payload.operation ??
+        payload.buildingAction ??
+        payload.questOperation ??
+        actionKind,
+      actionKind
+    );
+    const known =
+      HARTHMERE_LIVE_ACTION_STEPS[operation] ??
+      HARTHMERE_LIVE_ACTION_STEPS[actionKind];
+    const operationLabel = humanizeHarthmereGlitchKey(operation);
+    const stepKey =
+      known?.stepKey ??
+      telemetryKey(`${subsystem}_${operation}`, "live_action");
+    const label = known?.label ?? operationLabel;
+    const metadata: Record<string, unknown> = {
+      action_kind: actionKind,
+      subsystem,
+      operation,
+      zone_id:
+        typeof envelope.zoneId === "string" ? envelope.zoneId : undefined,
+      target_id:
+        typeof envelope.targetId === "string" ? envelope.targetId : undefined,
+    };
+    for (const key of HARTHMERE_TELEMETRY_PAYLOAD_KEYS) {
+      const value = payload[key];
+      if (
+        typeof value === "string" ||
+        typeof value === "number" ||
+        typeof value === "boolean"
+      ) {
+        metadata[telemetryKey(key, "field")] = value;
+      }
+    }
+    return {
+      stepKey,
+      label,
+      description:
+        known?.description ??
+        `The player uses ${operationLabel.toLowerCase()}.`,
+      metadata,
+    };
+  } catch {
+    return undefined;
+  }
+}
+
+function firstLiveMutationFailure(body: any) {
+  const candidates = [
+    ...(Array.isArray(body?.validation?.errors) ? body.validation.errors : []),
+    ...(Array.isArray(body?.backendMutation?.warnings)
+      ? body.backendMutation.warnings
+      : []),
+    ...(Array.isArray(body?.warnings) ? body.warnings : []),
+  ];
+  const failure = candidates.find((value) =>
+    /(?:rejected|failed|invalid|denied|error)/i.test(String(value))
+  );
+  if (!failure) return undefined;
+  const raw = String(failure).trim();
+  return /^[a-z0-9_:-]+$/i.test(raw)
+    ? telemetryKey(raw, "action_failed")
+    : "validation_failed";
+}
+
+async function fetchWithLiveMutationTelemetry(
+  fetchImpl: typeof fetch,
+  input: RequestInfo | URL,
+  init: RequestInit & { timeoutMs?: number },
+  plan: NonNullable<ReturnType<typeof parseLiveMutationEnvelope>>
+) {
+  const startedAt = Date.now();
+  emitHarthmereGlitchBehaviorEvent(plan.stepKey, "attempt", plan.metadata, {
+    step_label: plan.label,
+    step_description: plan.description,
+    event_label: `${plan.label} Attempted`,
+    event_description: `The player attempts ${plan.label.toLowerCase()}.`,
+  });
+  try {
+    const response = await rawHarthmereLiveFetchWithTimeout(
+      fetchImpl,
+      input,
+      init
+    );
+    let body: any;
+    try {
+      body = await response.clone().json();
+    } catch {
+      body = undefined;
+    }
+    const failureReason = firstLiveMutationFailure(body);
+    const succeeded =
+      response.ok &&
+      body?.ok !== false &&
+      body?.backendMutation?.applied !== false &&
+      !failureReason;
+    emitHarthmereGlitchBehaviorEvent(
+      plan.stepKey,
+      succeeded ? "success" : "fail",
+      {
+        ...plan.metadata,
+        duration_ms: Date.now() - startedAt,
+        http_status: response.status,
+        ...(failureReason ? { reason_code: failureReason } : {}),
+      },
+      {
+        step_label: plan.label,
+        step_description: plan.description,
+        event_label: `${plan.label} ${succeeded ? "Succeeded" : "Failed"}`,
+        event_description: succeeded
+          ? `${plan.label} succeeded.`
+          : `${plan.label} failed.`,
+      }
+    );
+    return response;
+  } catch (error) {
+    emitHarthmereGlitchBehaviorEvent(
+      plan.stepKey,
+      "fail",
+      {
+        ...plan.metadata,
+        duration_ms: Date.now() - startedAt,
+        reason_code: "network_error",
+      },
+      {
+        step_label: plan.label,
+        step_description: plan.description,
+        event_label: `${plan.label} Failed`,
+        event_description: `${plan.label} failed.`,
+      }
+    );
+    throw error;
+  }
+}
 
 function isHarthmereLiveApiPath(pathname: string) {
   return (
@@ -348,6 +664,7 @@ export function coalescedHarthmereLiveFetch(
   const prepared = prepareHarthmereLiveFetchRequest(input, init);
   input = prepared.input;
   init = prepared.init;
+  const liveMutationTelemetry = parseLiveMutationEnvelope(init);
   const url =
     typeof input === "string"
       ? input
@@ -373,7 +690,14 @@ export function coalescedHarthmereLiveFetch(
     url,
   });
   if (!plan.cacheable || !plan.key) {
-    return rawHarthmereLiveFetchWithTimeout(fetchImpl, input, init);
+    return liveMutationTelemetry
+      ? fetchWithLiveMutationTelemetry(
+          fetchImpl,
+          input,
+          init,
+          liveMutationTelemetry
+        )
+      : rawHarthmereLiveFetchWithTimeout(fetchImpl, input, init);
   }
   const key = plan.key;
   const cache = harthmereLiveFetchCache();

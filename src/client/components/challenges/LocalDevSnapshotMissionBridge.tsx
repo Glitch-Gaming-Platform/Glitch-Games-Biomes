@@ -6,7 +6,10 @@ import { fillKnownRoadAheadClothingCrates } from "@/client/components/challenges
 import { awardHarthmereQuestXp } from "@/client/components/challenges/LocalDevHarthmereLevelingSystem";
 import { addToast } from "@/client/components/toast/helpers";
 import { useClientContext } from "@/client/components/contexts/ClientContextReactContext";
-import { readHarthmereInventoryState } from "@/client/components/challenges/LocalDevHarthmereInventorySystem";
+import {
+  readHarthmereInventoryState,
+  readHarthmereLiveInventoryItemCount,
+} from "@/client/components/challenges/LocalDevHarthmereInventorySystem";
 import { HARTHMERE_INVENTORY_EVENT } from "@/client/components/challenges/harthmereEvents";
 import type { GardenHoseEvent } from "@/client/events/api";
 import { GENESIS_CROSSROADS_LOCATION } from "@/client/util/nux/state_machines";
@@ -660,10 +663,22 @@ function isSnapshotRoadAheadLocalMuckClearingTool(itemId: string) {
   );
 }
 
+// Every item id that satisfies the "Carry a Muck Buster" step. Exported for
+// the live-inventory check below and for tests.
+export function snapshotRoadAheadMuckClearingToolItemIds(): string[] {
+  return [
+    "muck_rake",
+    "muck_buster",
+    "practice_muck_buster",
+    HARTHMERE_CRAFTING_TOOLS.muckBuster,
+    HARTHMERE_CRAFTING_TOOLS.muckRake,
+  ];
+}
+
 function readSnapshotRoadAheadLocalHarthmereMuckClearingTool() {
   if (!isBrowser()) return false;
   const inventory = readHarthmereInventoryState();
-  return Boolean(
+  if (
     [
       inventory.equipment.main_hand,
       inventory.equipment.off_hand,
@@ -672,6 +687,17 @@ function readSnapshotRoadAheadLocalHarthmereMuckClearingTool() {
       (item) =>
         item?.itemId && isSnapshotRoadAheadLocalMuckClearingTool(item.itemId)
     )
+  ) {
+    return true;
+  }
+  // HARTHMERE_LIVE_INVENTORY_SNAPSHOT (audit fix, 2026-07-13): in
+  // live-authoritative sessions the localStorage inventory above is
+  // deliberately dropped from display (HARTHMERE_INVENTORY_SERVER_AUTHORITATIVE)
+  // and the tool lives in the SERVER inventory instead — previously that
+  // soft-locked this step on any new device / cleared-storage session. Check
+  // the last known live server inventory as a third source.
+  return snapshotRoadAheadMuckClearingToolItemIds().some(
+    (itemId) => readHarthmereLiveInventoryItemCount(itemId) > 0
   );
 }
 

@@ -3,6 +3,11 @@
 // The network sender lives in harthmere_glitch_bridge.ts so this helper can be
 // imported safely by UI/onboarding components without pulling in the full bridge.
 
+import {
+  resolveHarthmereGlitchEventText,
+  type HarthmereGlitchEventText,
+} from "./harthmere_glitch_event_catalog";
+
 export const HARTHMERE_GLITCH_BEHAVIOR_EVENT_VERSION =
   "harthmere-glitch-behavior-events" as const;
 
@@ -14,6 +19,7 @@ export type HarthmereGlitchBehaviorMetadata = Record<string, unknown>;
 declare global {
   interface Window {
     __harthmereGlitchBehaviorBacklog?: HarthmereGlitchBehaviorEvent[];
+    __harthmereGlitchBehaviorListenerReady?: boolean;
   }
 }
 
@@ -21,9 +27,16 @@ export interface HarthmereGlitchBehaviorEvent {
   version: typeof HARTHMERE_GLITCH_BEHAVIOR_EVENT_VERSION;
   step_key: string;
   action_key: string;
+  step_label: string;
+  step_description: string;
+  event_label: string;
+  event_description: string;
+  previous_step_key?: string;
   metadata?: HarthmereGlitchBehaviorMetadata;
   event_timestamp: string;
 }
+
+let previousStepKey: string | undefined;
 
 function isBrowser() {
   return (
@@ -86,12 +99,27 @@ function cleanMetadata(
 export function makeHarthmereGlitchBehaviorEvent(
   stepKey: string,
   actionKey = "event",
-  metadata?: HarthmereGlitchBehaviorMetadata
+  metadata?: HarthmereGlitchBehaviorMetadata,
+  text?: Partial<HarthmereGlitchEventText>
 ): HarthmereGlitchBehaviorEvent {
+  const cleanStepKey = cleanKey(stepKey, "unknown_step");
+  const cleanActionKey = cleanKey(actionKey, "event");
+  const resolvedText = resolveHarthmereGlitchEventText(
+    cleanStepKey,
+    cleanActionKey,
+    text
+  );
+  const eventPreviousStepKey =
+    previousStepKey && previousStepKey !== cleanStepKey
+      ? previousStepKey
+      : undefined;
+  previousStepKey = cleanStepKey;
   return {
     version: HARTHMERE_GLITCH_BEHAVIOR_EVENT_VERSION,
-    step_key: cleanKey(stepKey, "unknown_step"),
-    action_key: cleanKey(actionKey, "event"),
+    step_key: cleanStepKey,
+    action_key: cleanActionKey,
+    ...resolvedText,
+    previous_step_key: eventPreviousStepKey,
     metadata: cleanMetadata(metadata),
     event_timestamp: new Date().toISOString(),
   };
@@ -100,21 +128,25 @@ export function makeHarthmereGlitchBehaviorEvent(
 export function emitHarthmereGlitchBehaviorEvent(
   stepKey: string,
   actionKey = "event",
-  metadata?: HarthmereGlitchBehaviorMetadata
+  metadata?: HarthmereGlitchBehaviorMetadata,
+  text?: Partial<HarthmereGlitchEventText>
 ): HarthmereGlitchBehaviorEvent | undefined {
   const event = makeHarthmereGlitchBehaviorEvent(
     stepKey,
     actionKey,
-    metadata
+    metadata,
+    text
   );
   if (!isBrowser()) {
     return event;
   }
   try {
-    window.__harthmereGlitchBehaviorBacklog = [
-      ...(window.__harthmereGlitchBehaviorBacklog ?? []),
-      event,
-    ].slice(-100);
+    if (!window.__harthmereGlitchBehaviorListenerReady) {
+      window.__harthmereGlitchBehaviorBacklog = [
+        ...(window.__harthmereGlitchBehaviorBacklog ?? []),
+        event,
+      ].slice(-100);
+    }
     window.dispatchEvent(
       new CustomEvent(HARTHMERE_GLITCH_BEHAVIOR_EVENT_NAME, {
         detail: event,

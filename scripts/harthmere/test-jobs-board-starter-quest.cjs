@@ -44,8 +44,13 @@ console.log("== Harthmere Jobs Board starter quest regression current ==");
 
 // Base cases: the starter quest exists, has a real objective, has a map target,
 // and is assigned without a manual board/NPC accept step.
-check("defines stable Read the Jobs Board quest id", includes(quests, 'HARTHMERE_READ_JOBS_BOARD_QUEST_ID =\n  "read-the-jobs-board"'));
-check("defines user-facing Read the Jobs Board title", includes(quests, 'HARTHMERE_READ_JOBS_BOARD_TITLE =\n  "Read the Jobs Board"'));
+// Audit fix (2026-07-14): these two checks matched an exact NEWLINE-WRAPPED
+// source layout ('… =\n  "read-the-jobs-board"'). A formatter later joined
+// the declarations onto one line, so the checks failed even though the
+// constants exist and are wired — the script reported false failures. Match
+// the declaration with flexible whitespace instead of a frozen wrap style.
+check("defines stable Read the Jobs Board quest id", /HARTHMERE_READ_JOBS_BOARD_QUEST_ID\s*=\s*"read-the-jobs-board"/.test(quests));
+check("defines user-facing Read the Jobs Board title", /HARTHMERE_READ_JOBS_BOARD_TITLE\s*=\s*"Read the Jobs Board"/.test(quests));
 check("defines a dedicated synthetic jobs board target offset", includes(quests, "HARTHMERE_JOBS_BOARD_TARGET_OFFSET = 140_041"));
 check("Read the Jobs Board quest is in QUESTS", includes(quests, "id: HARTHMERE_READ_JOBS_BOARD_QUEST_ID"));
 check("Read the Jobs Board quest appears before Mira so it can be one of the first assigned quests", indexBefore(quests, "id: HARTHMERE_READ_JOBS_BOARD_QUEST_ID", "id: BUILDING_SYSTEM_MIRA_INTRO_QUEST.questId"));

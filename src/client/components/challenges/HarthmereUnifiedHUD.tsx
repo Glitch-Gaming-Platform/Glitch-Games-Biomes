@@ -108,6 +108,7 @@ import {
   HarthmereQuestMapHUD,
   HarthmereQuestNavAidController,
 } from "@/client/components/challenges/LocalDevHarthmereQuests";
+import { HarthmereBibleQuestRuntimeController } from "@/client/components/challenges/LocalDevHarthmereBibleQuests";
 import { HarthmereHomeConsoleLiveContainer } from "@/client/components/harthmere_home";
 import { HarthmereBusinessLiveContainer } from "@/client/components/harthmere_business";
 import { nearestHarthmereBusinessBoardPhysicalPrompt } from "@/client/game/renderers/local_dev/harthmere_business_board_marker";
@@ -3077,6 +3078,9 @@ export const HarthmereUnifiedHUD: React.FunctionComponent<{
   const runtimeControllers = (
     <>
       <HarthmereQuestNavAidController />
+      {/* HARTHMERE_BIBLE_QUEST_WIRING (bible-wiring fix, 2026-07-14): hidden
+          world-trigger quest acceptance + the Thaedryn encounter panel. */}
+      <HarthmereBibleQuestRuntimeController />
       <SnapshotMissionRuntimeController />
       <SnapshotGroveBibleRuntimeController />
       <SnapshotCompletePortRuntimeController />

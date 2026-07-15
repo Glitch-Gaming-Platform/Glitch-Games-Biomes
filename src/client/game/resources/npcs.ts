@@ -85,7 +85,10 @@ import {
   type HarthmereVoxelFaceConfig,
 } from "@/shared/harthmere/voxel_faces";
 import type { BiomesId } from "@/shared/ids";
-import { harthmereGroundedFeetYWithMemory } from "@/client/game/util/harthmere_entity_grounding";
+import {
+  harthmereGroundedFeetYWithMemory,
+  registerHarthmereGroundedColumnCache,
+} from "@/client/game/util/harthmere_entity_grounding";
 import { isHarthmereBusinessOwnerNpcEntityId } from "@/shared/harthmere/business_owner_npc_seed";
 import { isHarthmereBusinessCustomerNpcEntityId } from "@/shared/harthmere/business_customer_npc_seed";
 import {
@@ -1201,6 +1204,12 @@ let harthmereNpcGroundProbeCache = new Map<string, number | undefined>();
 // column, so an entity that already settled on the breach floor is not popped
 // back up to the flat authored Y when its terrain shard briefly unloads.
 const harthmereNpcLastGroundedFeetYByColumn = new Map<string, number>();
+// HARTHMERE_GROUNDED_COLUMN_INVALIDATION (audit fix, 2026-07-13): register the
+// persistent column memory for terrain-edit invalidation — mining the ground
+// under an NPC must re-probe instead of keeping it on the remembered (now
+// removed) surface. The per-frame probe cache above resets each frame and
+// needs no registration.
+registerHarthmereGroundedColumnCache(harthmereNpcLastGroundedFeetYByColumn);
 
 function sampleHarthmereNpcGroundFeetY(
   resources: ClientResources,

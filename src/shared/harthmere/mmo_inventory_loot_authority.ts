@@ -897,6 +897,79 @@ function createLootDropFromEntries(
   return drop;
 }
 
+// ---------------------------------------------------------------------------
+// HARTHMERE_WORLD_THROW_DROP (audit fix, 2026-07-13)
+//
+// Creates a positioned world drop for items whose inventory debit ALREADY
+// happened elsewhere (the live-mode inventory authority handles quest-item
+// protection, material-storage sourcing, and the count decrement). Previously
+// a thrown Harthmere item was only debited — no drop entity existed anywhere,
+// so the item simply vanished ("thrown voxel item not shown" / "missing
+// items"). This wraps the one canonical drop constructor so throw-drops share
+// dropId numbering, pickup tokens, TTL, and audit records with combat loot.
+//
+// NOTE: deliberately does NOT touch actor inventories — the caller is
+// responsible for having debited the thrower exactly once.
+// ---------------------------------------------------------------------------
+
+export function createHarthmereDebitedWorldDrop(
+  state: HarthmereInventoryLootState,
+  ctx: HarthmereInventoryLootMutationContext,
+  input: {
+    requestId: string;
+    actorId: string;
+    nowMs: number;
+    itemId: string;
+    count: number;
+    position: { x: number; y: number; z: number };
+    townId?: string;
+    regionId?: string;
+  }
+): HarthmereInventoryLootDrop | undefined {
+  const def = getDef(ctx, input.itemId);
+  const count = positiveWholeCount(input.count);
+  if (!def || count === undefined) return undefined;
+  // Mirror the drop_item protection: quest-bound items never become world
+  // drops (they would be claimable by other players).
+  if (def.binding === "quest" || def.legalClass === "quest_bound") {
+    return undefined;
+  }
+  if (
+    !Number.isFinite(input.position?.x) ||
+    !Number.isFinite(input.position?.y) ||
+    !Number.isFinite(input.position?.z)
+  ) {
+    return undefined;
+  }
+  const req: HarthmereInventoryLootMutationRequest = {
+    requestId: input.requestId,
+    actorId: input.actorId,
+    nowMs: input.nowMs,
+    operation: "drop_item",
+    itemId: input.itemId,
+    count,
+    townId: input.townId,
+    regionId: input.regionId,
+    position: {
+      x: input.position.x,
+      y: input.position.y,
+      z: input.position.z,
+    },
+  };
+  const drop = createLootDropFromEntries(state, ctx, req, [
+    {
+      itemId: def.itemId,
+      minCount: count,
+      maxCount: count,
+      weight: 1,
+      count,
+    },
+  ]);
+  drop.sourceKind = "actor_drop";
+  drop.sourceId = input.actorId;
+  return drop;
+}
+
 function legalViolationsForActor(
   actor: HarthmereInventoryLootActorInventory,
   state: HarthmereInventoryLootState,

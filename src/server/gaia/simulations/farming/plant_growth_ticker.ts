@@ -22,6 +22,8 @@ import type { VoxelooModule } from "@/shared/wasm/types";
 import { ok } from "assert";
 import { compact } from "lodash";
 import { crossbreedDropTable } from "@/server/gaia/simulations/farming/crossbreeding";
+// (foraging fix F-B, 2026-07-14): reconcile the native-harvest double-grant.
+import { harthmereLiveModeFarmingGrantIsAuthoritative } from "@/shared/harthmere/harthmere_live_mode_farming_authority";
 import type { GrowthStage } from "@/server/gaia/simulations/farming/growth_specs";
 import {
   VOLUME_TENSOR_ANCHOR,
@@ -501,12 +503,31 @@ export class FarmingGrowthPlantTicker implements BaseFarmingPlantTicker {
         plantComponent.stage > this.rewardStage ||
         plantComponent.status === "fully_grown"
       ) {
-        const items = compact(plant.entity.mutableContainerInventory().items);
-        if (items.length > 0) {
-          farmLog("    Dropping items", 4, { items, dropPos });
-          plant.entitiesToCreate.push(
-            newDrop(INVALID_BIOMES_ID, dropPos, false, items)
+        // (foraging fix F-B, 2026-07-14): in the Harthmere live-mode deployment
+        // the crop's yield is granted authoritatively by the live-mode
+        // `native_plant_harvest` op (the ECS inventory is a projection of the
+        // live-mode inventory), so ALSO dropping the container yield here
+        // double-grants the harvest. Yield to live mode by suppressing the ECS
+        // yield-drop. A plain biomes deployment leaves this false, so regular
+        // farming drops are unchanged. Still consume/clear the container so no
+        // stale yield lingers on the destroyed plant.
+        if (harthmereLiveModeFarmingGrantIsAuthoritative()) {
+          farmLog(
+            "    Harthmere live-mode authoritative: suppressing ECS yield-drop (F-B)",
+            4,
+            { dropPos }
           );
+          plant.entity.clearContainerInventory();
+        } else {
+          const items = compact(
+            plant.entity.mutableContainerInventory().items
+          );
+          if (items.length > 0) {
+            farmLog("    Dropping items", 4, { items, dropPos });
+            plant.entitiesToCreate.push(
+              newDrop(INVALID_BIOMES_ID, dropPos, false, items)
+            );
+          }
         }
       } else if (this.spec.partialGrowthDropTable) {
         // Reward partial drops

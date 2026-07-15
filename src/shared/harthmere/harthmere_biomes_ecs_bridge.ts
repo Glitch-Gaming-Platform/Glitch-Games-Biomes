@@ -119,6 +119,123 @@ export function harthmereItemIdToBiomesId(
   return HARTHMERE_VISUAL_ECS_ITEM_IDS[key] ?? safeParseBiomesId(key.replace(/^b:/, ""));
 }
 
+// ---------------------------------------------------------------------------
+// HARTHMERE_BIOMES_ECS_BRIDGE_REVERSE (audit fix, 2026-07-13)
+//
+// The bridge was forward-only: a Harthmere string id could become a BiomesId,
+// but nothing could translate a BiomesId (an ECS drop, a native pickup, an
+// ECS inventory slot) BACK into the Harthmere catalogue — so cross-authority
+// flows (drop rendering, pickup mirroring, reconciliation) had no way to name
+// the item on the Harthmere side. The reverse map inverts the visual map with
+// FIRST-DECLARATION-WINS semantics: several Harthmere items intentionally
+// share a visual stand-in (axe, muckBuster), and the earliest entry in
+// HARTHMERE_VISUAL_ECS_ITEM_IDS is treated as that visual's canonical item.
+// Unmapped BiomesIds round-trip through the `b:<id>` namespace, which the
+// forward function already parses — so EVERY BiomesId now has a stable
+// Harthmere name and `harthmereItemIdToBiomesId(biomesIdToHarthmereItemId(x))
+// === x` always holds.
+// ---------------------------------------------------------------------------
+
+const BIOMES_TO_HARTHMERE_VISUAL_ITEM_IDS: ReadonlyMap<BiomesId, string> =
+  (() => {
+    const reverse = new Map<BiomesId, string>();
+    for (const [harthmereId, biomesId] of Object.entries(
+      HARTHMERE_VISUAL_ECS_ITEM_IDS
+    )) {
+      // First declaration wins: shared visual stand-ins map back to their
+      // canonical (earliest-declared) Harthmere item.
+      if (!reverse.has(biomesId)) {
+        reverse.set(biomesId, harthmereId);
+      }
+    }
+    return reverse;
+  })();
+
+// Translate a BiomesId to its Harthmere catalogue id. Falls back to the
+// `b:<id>` namespace so the result is ALWAYS usable with
+// `harthmereItemIdToBiomesId` (round-trip guaranteed).
+export function biomesIdToHarthmereItemId(
+  biomesId: BiomesId | number | undefined
+): string | undefined {
+  if (biomesId === undefined || biomesId === null) {
+    return undefined;
+  }
+  const id = safeParseBiomesId(String(biomesId));
+  if (!id) {
+    return undefined;
+  }
+  return BIOMES_TO_HARTHMERE_VISUAL_ITEM_IDS.get(id) ?? `b:${id}`;
+}
+
+// True when the Harthmere item has a curated Bikkie mapping (vs the raw
+// `b:<id>` passthrough). Lets callers distinguish "shows as a real item in
+// ECS systems" from "live-only item that ECS knows nothing about".
+export function harthmereItemIdHasCuratedBiomesMapping(
+  itemId: string | number | undefined
+): boolean {
+  if (itemId === undefined || itemId === null) return false;
+  return String(itemId) in HARTHMERE_VISUAL_ECS_ITEM_IDS;
+}
+
+// ---------------------------------------------------------------------------
+// HARTHMERE_INVENTORY_DRIFT_REPORT (audit fix, 2026-07-13)
+//
+// Cross-authority mirroring is client-driven (fire-and-forget HTTP after an
+// ECS event), so a crash between the two writes diverges the ECS and live
+// inventories with nothing to detect it. This pure comparator produces a
+// drift report for the bridged (curated-mapping) items — the only ones that
+// legitimately exist on both sides — so hosts can log/repair on login.
+// ---------------------------------------------------------------------------
+
+export interface HarthmereInventoryDriftEntry {
+  harthmereItemId: string;
+  biomesId: BiomesId;
+  liveCount: number;
+  ecsCount: number;
+  delta: number; // live - ecs
+}
+
+export function compareHarthmereLiveAndEcsInventories(
+  liveItems: Record<string, number>,
+  ecsCounts: ReadonlyMap<BiomesId, number> | Record<string, number>
+): HarthmereInventoryDriftEntry[] {
+  const ecsCountOf = (id: BiomesId): number => {
+    const raw =
+      ecsCounts instanceof Map
+        ? ecsCounts.get(id)
+        : (ecsCounts as Record<string, number>)[String(id)];
+    return Math.max(0, Math.trunc(Number(raw) || 0));
+  };
+  const drift: HarthmereInventoryDriftEntry[] = [];
+  for (const [harthmereItemId, biomesId] of Object.entries(
+    HARTHMERE_VISUAL_ECS_ITEM_IDS
+  )) {
+    // Only the canonical (reverse-mapped) item can be compared: shared visual
+    // stand-ins would otherwise double-count one ECS stack across several
+    // Harthmere items.
+    if (
+      BIOMES_TO_HARTHMERE_VISUAL_ITEM_IDS.get(biomesId) !== harthmereItemId
+    ) {
+      continue;
+    }
+    const liveCount = Math.max(
+      0,
+      Math.trunc(Number(liveItems[harthmereItemId]) || 0)
+    );
+    const ecsCount = ecsCountOf(biomesId);
+    if (liveCount !== ecsCount) {
+      drift.push({
+        harthmereItemId,
+        biomesId,
+        liveCount,
+        ecsCount,
+        delta: liveCount - ecsCount,
+      });
+    }
+  }
+  return drift;
+}
+
 export function harthmereItemIdToBiomesEcsItem(
   itemId: string | number | undefined
 ) {

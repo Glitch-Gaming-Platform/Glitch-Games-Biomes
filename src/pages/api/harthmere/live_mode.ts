@@ -1894,10 +1894,20 @@ export async function persistHarthmereLiveModeResponse(
       };
     }
 
+    // HARTHMERE_LIVE_MODE_SCOPED_WATCH (audit fix, 2026-07-13): previously
+    // EVERY mutation WATCHed (and re-wrote) the single global
+    // `sharedWorldStateKey`, so any concurrent write by ANY player aborted the
+    // EXEC and forced a full re-read/re-reduce retry — the primary source of
+    // the observed 4–29s mutation latencies under load. The first attempt now
+    // watches only the keys this mutation always touches; if the reducer turns
+    // out to have CHANGED shared world state, we escalate below (same
+    // re-watch/re-read/re-reduce pattern the auction-seller settlement already
+    // uses) and only then watch + write the shared key. Mutations that never
+    // touch shared state (eat, medical, movement mirrors, inventory ops)
+    // no longer contend on it at all.
     const watchKeys = uniqueHarthmereLiveModeWatchKeys([
       key,
       playerStateKey,
-      sharedWorldStateKey,
       adoptionSourceStateKey,
     ]);
     const now = Date.now();
@@ -1965,7 +1975,22 @@ export async function persistHarthmereLiveModeResponse(
       ? harthmereLiveModePlayerStateKey(settlement.sellerId)
       : undefined;
 
-    if (sellerStateKey && supportsWatch) {
+    // HARTHMERE_LIVE_MODE_SCOPED_WATCH: detect whether this mutation actually
+    // changed the shared world projection. Both serializations use the same
+    // `now`, so timestamps cancel and the comparison is purely structural.
+    // `reduceHarthmereLiveModeBackendState` deep-clones its input, so
+    // `currentState` still holds the pre-reduce (merged) view here.
+    const sharedWorldStateBefore = JSON.stringify(
+      createHarthmereLiveModeSharedWorldState(currentState, now)
+    );
+    let sharedWorldStateAfter = JSON.stringify(
+      createHarthmereLiveModeSharedWorldState(reduced.state, now)
+    );
+    let sharedWorldWriteNeeded =
+      sharedWorldStateAfter !== sharedWorldStateBefore ||
+      (reduced.summary.sharedStateKeys?.length ?? 0) > 0;
+
+    if ((sellerStateKey || sharedWorldWriteNeeded) && supportsWatch) {
       await redisUnwatchIfSupported(txPrimary);
       await (txPrimary as any).watch(
         ...uniqueHarthmereLiveModeWatchKeys([
@@ -2030,6 +2055,15 @@ export async function persistHarthmereLiveModeResponse(
       sellerStateKey = settlement
         ? harthmereLiveModePlayerStateKey(settlement.sellerId)
         : undefined;
+      // HARTHMERE_LIVE_MODE_SCOPED_WATCH: we escalated because the first
+      // reduce changed shared world state (or settled an auction). The shared
+      // key is now WATCHed and the state re-read, so persist the (re-reduced)
+      // shared projection unconditionally — writing an identical value under
+      // WATCH is harmless, missing a changed one is not.
+      sharedWorldStateAfter = JSON.stringify(
+        createHarthmereLiveModeSharedWorldState(reduced.state, now)
+      );
+      sharedWorldWriteNeeded = true;
     }
 
     let sellerState:
@@ -2177,12 +2211,15 @@ export async function persistHarthmereLiveModeResponse(
     const tx = txPrimary.multi();
     if (persistActorAndSharedState) {
       tx.set(playerStateKey, JSON.stringify(reduced.state));
-      tx.set(
-        sharedWorldStateKey,
-        JSON.stringify(
-          createHarthmereLiveModeSharedWorldState(reduced.state, now)
-        )
-      );
+      // HARTHMERE_LIVE_MODE_SCOPED_WATCH: only rewrite the global shared
+      // world blob when this mutation actually changed it (detected above,
+      // in which case the shared key was escalated into the WATCH set).
+      // Skipping the no-op write removes the cross-player EXEC contention
+      // that made unrelated mutations (eat/medical/inventory) retry for
+      // seconds under load.
+      if (sharedWorldWriteNeeded) {
+        tx.set(sharedWorldStateKey, sharedWorldStateAfter);
+      }
     }
     if (adoptedActorState && adoptionSourceStateKey) {
       (tx as { del?: (key: string) => unknown }).del?.(adoptionSourceStateKey);

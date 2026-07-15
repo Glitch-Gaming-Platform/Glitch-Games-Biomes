@@ -17,7 +17,10 @@ import { makeDisposable } from "@/shared/disposable";
 import type { ItemAndCount } from "@/shared/ecs/gen/types";
 import type { BiomesId } from "@/shared/ids";
 import { MAX_ID } from "@/shared/ids";
-import { harthmereGroundedFeetYWithMemory } from "@/client/game/util/harthmere_entity_grounding";
+import {
+  harthmereGroundedFeetYWithMemory,
+  registerHarthmereGroundedColumnCache,
+} from "@/client/game/util/harthmere_entity_grounding";
 import { add } from "@/shared/math/linear";
 import type { Vec3 } from "@/shared/math/types";
 import type { RegistryLoader } from "@/shared/registry";
@@ -38,6 +41,10 @@ export interface DropResource {
 // Per-column last-grounded surface memory shared across all drops, so a dropped
 // item that settled on the real surface stays put while its shard streams.
 const harthmereDropGroundedFeetYCache = new Map<string, number>();
+// HARTHMERE_GROUNDED_COLUMN_INVALIDATION (audit fix, 2026-07-13): terrain
+// edits must clear the remembered surface, or a drop keeps hovering over a
+// freshly mined hole until reload.
+registerHarthmereGroundedColumnCache(harthmereDropGroundedFeetYCache);
 
 function makeDrop({}: ClientContext, deps: ClientResourceDeps, id: BiomesId) {
   const drop = deps.get("/ecs/entity", id);

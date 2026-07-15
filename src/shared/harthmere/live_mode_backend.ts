@@ -48,6 +48,7 @@ import {
   computeHarthmereXpReward,
   getHarthmereAbility,
   getHarthmereClassDefinition,
+  harthmereServerCheckLineOfSight,
   registerHarthmereAbility,
   registerHarthmereClassDefinition,
   type HarthmereCombatActorSnapshot,
@@ -56,6 +57,10 @@ import {
   type HarthmereCombatActionRequest,
   type HarthmereResourceKind,
 } from "./mmo_combat_authority";
+import {
+  harthmereMainHandWeaponType,
+  harthmereOffHandWeaponType,
+} from "./harthmere_equipped_weapon_type";
 import {
   reduceHarthmereAuctionMutation,
   type HarthmereAuctionListing,
@@ -102,6 +107,22 @@ import {
   type HarthmereJobsBoardState,
 } from "./mmo_jobs_board_authority";
 import { isKnownHarthmereJobsBoardExecutableItemId } from "./jobs_board_business_templates";
+// HARTHMERE_BIBLE_QUEST_WIRING (bible-wiring fix, 2026-07-14): the seam that
+// makes the 85-quest bible catalog (Q1–Q12 dragon arc + side quests) playable
+// through live mode, and drives the Thaedryn encounter. See the header of
+// bible_quest_live_authority.ts for the full design rationale.
+import {
+  HARTHMERE_BIBLE_QUEST_OPERATION_PREFIX,
+  HARTHMERE_THAEDRYN_COMBAT_ENTITY_ID,
+  defaultHarthmereBibleQuestLiveSlice,
+  harthmereBibleRewardItemDefinition,
+  harthmereThaedrynCombatSnapshot,
+  harthmereThaedrynDamageEventsForAttack,
+  normalizeHarthmereBibleQuestLiveSlice,
+  reduceHarthmereBibleQuestOperation,
+  type HarthmereBibleQuestRewardInstructions,
+} from "./bible_quest_live_authority";
+import { applyThaedrynBossEvent } from "./thaedryn_boss";
 import { harthmereJobsBoardQuestMarkerRuntimePositionForTodo } from "./jobs_board_quest_marker_positions";
 import {
   harthmereJobMarkerPlan,
@@ -120,6 +141,7 @@ import { resolveHarthmereProductionMarkerPosition } from "./production_terrain_p
 import {
   HARTHMERE_COOKING_RECIPES,
   HARTHMERE_FOOD_DEFINITIONS,
+  HARTHMERE_HALF_DAY_MS,
   HARTHMERE_SEED_DEFINITIONS,
   collectHarthmereLivestockProduct,
   cookHarthmereFood,
@@ -163,6 +185,7 @@ import {
 } from "./mmo_medical_health";
 import {
   HARTHMERE_INVENTORY_LOOT_DEFAULT_DROP_TTL_MS,
+  createHarthmereDebitedWorldDrop,
   createHarthmereEmptyInventoryLootState,
   createHarthmereInventoryLootActor,
   createHarthmereInventoryLootClientSnapshot,
@@ -1173,6 +1196,13 @@ export interface HarthmereLiveModeBackendState {
       }
     >;
     completed: Record<string, number>;
+    /**
+     * HARTHMERE_BIBLE_QUEST_WIRING (bible-wiring fix, 2026-07-14): the
+     * per-player runtime for the 85-quest bible catalog (records, reward
+     * ledger, flags/titles, and the Thaedryn encounter machine). Absent in
+     * pre-fix blobs — normalizeHarthmereBibleQuestLiveSlice fills defaults.
+     */
+    bible: ReturnType<typeof defaultHarthmereBibleQuestLiveSlice>;
   };
   questInvites: HarthmereLiveModeQuestInviteState;
   property: {
@@ -1374,6 +1404,11 @@ export interface HarthmereLiveModeSharedWorldState {
   guild: HarthmereLiveModeGuildState;
   robotProtection: LiveEntityRobotEnergyState;
   exoticMatterDepositClaims: Record<string, number>;
+  // (foraging fix F-E, 2026-07-14): wild forage-bush / hunted-animal depletion
+  // claims (keyed `wild_spawn:<id>` -> claimedAtMs). Shared across all actors so
+  // the same bush/animal is not an independent per-account scratch-off; expires
+  // via the 12h respawn window on read (see wildSpawnActiveClaimAtMs).
+  wildSpawnClaims: Record<string, number>;
   questInvites: HarthmereLiveModeQuestInviteState;
   /** Shared auction marketplace so a buyer can see and settle another player's listing. */
   auctionListings: Record<string, HarthmereAuctionListing>;
@@ -1980,6 +2015,33 @@ function restoreCombatResources(
 
 let liveModeCombatCatalogueRegistered = false;
 const HARTHMERE_LIVE_ENTITY_NPC_ATTACK_ABILITY_ID = "live_entity_npc_attack";
+
+// (combat fix C-3, 2026-07-14): the SINGLE validated ceiling for how far any
+// live NPC melee attack can reach. Previously this lived as a local magic
+// constant inside the incoming-attack path, next to a second range check inside
+// the combat authority — two overlapping clamps where only the buried constant
+// stood between a stale/aggro-seeded `attackRange` and the "killed from ~34
+// units away" bug. Hoisted to module scope and exported so there is exactly one
+// number to reason about, and so snapshots can be clamped to it at seed/merge
+// time as well (defence in depth). The largest legitimate reach (the Hex caster
+// at 6.5, and the Q12 boss at 8) still fits at or under the ceiling.
+export const HARTHMERE_MAX_NPC_ATTACK_RANGE_UNITS = 8;
+
+/**
+ * The one authoritative NPC melee reach for a snapshot: the snapshot's own
+ * `attackRange` when finite, else the ability's range, always clamped to the
+ * shared ceiling. Used by the incoming-attack range gate so no future snapshot
+ * change can reopen the ranged-kill bug.
+ */
+function harthmereValidatedLiveEntityAttackReach(
+  attackRange: number | undefined,
+  abilityRangeUnits: number
+): number {
+  const raw = Number.isFinite(attackRange)
+    ? Math.max(0, Number(attackRange))
+    : abilityRangeUnits;
+  return Math.min(raw, HARTHMERE_MAX_NPC_ATTACK_RANGE_UNITS);
+}
 
 function ensureHarthmereLiveModeCombatCatalogue() {
   if (liveModeCombatCatalogueRegistered) {
@@ -3576,6 +3638,32 @@ function payloadRecord(
     : undefined;
 }
 
+// HARTHMERE_WORLD_THROW_DROP (audit fix, 2026-07-13): parse a generic
+// `{x,y,z}` (or `[x,y,z]`) world position from the payload. Used by the throw
+// path to place the resulting world loot drop.
+function payloadWorldPosition(
+  envelope: HarthmereLiveModeAuthorityEnvelope,
+  key: string
+): { x: number; y: number; z: number } | undefined {
+  const record = payloadRecord(envelope, key);
+  if (record) {
+    const x = Number(record.x);
+    const y = Number(record.y);
+    const z = Number(record.z);
+    if (Number.isFinite(x) && Number.isFinite(y) && Number.isFinite(z)) {
+      return { x, y, z };
+    }
+  }
+  const raw = envelope.payload[key];
+  if (Array.isArray(raw) && raw.length >= 3) {
+    const [x, y, z] = raw.map(Number);
+    if (Number.isFinite(x) && Number.isFinite(y) && Number.isFinite(z)) {
+      return { x, y, z };
+    }
+  }
+  return undefined;
+}
+
 function payloadBoolean(
   envelope: HarthmereLiveModeAuthorityEnvelope,
   key: string
@@ -4078,6 +4166,90 @@ function applyLiveEntityRobotRechargeReward(
   }
   touchedModels.add("skill_xp");
   touchedModels.add("inventory_items");
+}
+
+// ---------------------------------------------------------------------------
+// HARTHMERE_BIBLE_QUEST_WIRING (bible-wiring fix, 2026-07-14): apply the
+// reward INSTRUCTIONS returned by the pure bible-quest reducer. All economy
+// writes stay in this file (the backend's single choke point): xp lands on
+// character_level, "silver" is the player-facing name of the gold wallet, and
+// every granted item gets a registered definition FIRST — the audit found the
+// catalog's 72 reward item ids exist in no item catalogue, so skipping the
+// registration would create inventory rows the UI cannot name.
+// ---------------------------------------------------------------------------
+function applyHarthmereBibleQuestRewards(
+  state: HarthmereLiveModeBackendState,
+  rewards: HarthmereBibleQuestRewardInstructions,
+  warnings: string[],
+  touchedModels: Set<string>,
+  nowMs: number
+) {
+  if (rewards.xpDelta > 0) {
+    const skillProgress = upsertSkill(
+      state.classMagic.skills,
+      "character_level",
+      rewards.xpDelta
+    );
+    if (skillProgress.warning) warnings.push(skillProgress.warning);
+    touchedModels.add("skill_xp");
+  }
+  if (rewards.goldDelta > 0) {
+    state.inventory.gold = Math.max(
+      0,
+      state.inventory.gold + rewards.goldDelta
+    );
+    state.economy.ledger.push({
+      id: rewards.rewardGrantId,
+      kind: "bible_quest_reward",
+      amount: rewards.goldDelta,
+      atMs: nowMs,
+    });
+    touchedModels.add("wallet");
+    touchedModels.add("economy_ledger");
+  }
+  for (const item of rewards.items) {
+    if (!getHarthmereItemDefinition(item.itemId)) {
+      registerHarthmereItemDefinition(
+        harthmereBibleRewardItemDefinition(item.itemId)
+      );
+    }
+    recordDelta(state.inventory.items, item.itemId, item.count);
+    touchedModels.add("inventory_items");
+  }
+  if (rewards.titles.length || rewards.unlockFlags.length) {
+    // Titles/unlock flags already persisted on the bible slice by the
+    // reducer; just mark the model dirty so clients refresh.
+    touchedModels.add("quest_state");
+  }
+}
+
+/**
+ * HARTHMERE_BIBLE_QUEST_WIRING: keep the Thaedryn combat entity snapshot in
+ * lockstep with the encounter state machine. The machine is authoritative for
+ * boss HP; the snapshot exists so the native attack ray, health-bar HUD, and
+ * NPC AI loop all see a normal combat entity.
+ */
+function syncHarthmereThaedrynCombatSnapshot(
+  state: HarthmereLiveModeBackendState,
+  nowMs: number,
+  mode: "seed" | "sync" | "remove"
+) {
+  if (mode === "remove") {
+    delete state.combat.entitySnapshots[HARTHMERE_THAEDRYN_COMBAT_ENTITY_ID];
+    return;
+  }
+  const machine = state.quests.bible.thaedryn;
+  const snapshot = harthmereThaedrynCombatSnapshot(machine, nowMs);
+  const existing =
+    state.combat.entitySnapshots[HARTHMERE_THAEDRYN_COMBAT_ENTITY_ID];
+  state.combat.entitySnapshots[HARTHMERE_THAEDRYN_COMBAT_ENTITY_ID] = {
+    ...(existing ?? {}),
+    ...snapshot,
+    // Preserve attack bookkeeping the combat loop wrote onto the snapshot.
+    lastAttackerId: existing?.lastAttackerId,
+    lastAttackedAtMs: existing?.lastAttackedAtMs,
+    lastDamageTaken: existing?.lastDamageTaken,
+  } as (typeof state.combat.entitySnapshots)[string];
 }
 
 function ensureLiveEntityHelperServerItemDefinition(itemId: string) {
@@ -4804,6 +4976,105 @@ function liveExoticMatterDepositStateFromClaims(
     }
   }
   return replenishHarthmereExoticMatterDeposits({ state: deposits, nowMs });
+}
+
+// ---------------------------------------------------------------------------
+// (foraging audit fix F-A/F-E, 2026-07-14): wild forage bushes and hunted
+// animals authored a 12h respawn (`respawnAtMs` in mmo_farming_food_stamina),
+// but the backend persisted the claim as a bare timestamp keyed by the RAW
+// spawn id and read ANY non-zero value back as "depleted" — the respawn window
+// was dead code, so every bush/animal was one-and-done per player forever.
+// Mirror the exotic-matter deposit pattern instead:
+//   * claims carry an identifying prefix (`wild_spawn:`) so they can be
+//     normalized, shared, and expired without guessing at raw ids;
+//   * an expired claim (respawn window passed) is deleted on read, making the
+//     spawn harvestable again;
+//   * claims are projected into the shared world state (`wildSpawnClaims`)
+//     and merged back on every actor's sync, so depletion is WORLD-shared —
+//     the same berry bush is not independently harvestable by every player
+//     (the F-E "per-account scratch-off" problem).
+// ---------------------------------------------------------------------------
+const HARTHMERE_WILD_SPAWN_CLAIM_PREFIX = "wild_spawn:";
+export const HARTHMERE_WILD_SPAWN_RESPAWN_MS = HARTHMERE_HALF_DAY_MS;
+
+// (foraging fix F-C, 2026-07-14): gather_seed authored no depletion/cooldown, so
+// resubmitting it produced unlimited free seeds (and downstream farming XP). Gate
+// each (source, seed) pair behind a cooldown so gathering is rate-limited instead
+// of spammable. 5 minutes: long enough to defeat the exploit, short enough that
+// normal foraging is never blocked in practice.
+const HARTHMERE_GATHER_SEED_CLAIM_PREFIX = "gather_seed:";
+export const HARTHMERE_GATHER_SEED_COOLDOWN_MS = 5 * 60 * 1000;
+
+function gatherSeedCooldownKey(source: string, seedItemId: string) {
+  return `${HARTHMERE_GATHER_SEED_CLAIM_PREFIX}${source}:${seedItemId}`;
+}
+
+/**
+ * Returns the last-gathered timestamp if the (source, seed) pair is still on
+ * cooldown, otherwise deletes the expired claim and returns undefined so the
+ * seed can be gathered again.
+ */
+function gatherSeedOnCooldownAtMs(
+  state: HarthmereLiveModeBackendState,
+  source: string,
+  seedItemId: string,
+  nowMs: number
+): number | undefined {
+  const key = gatherSeedCooldownKey(source, seedItemId);
+  const lastAtMs = Number(state.combat.lootClaims[key]);
+  if (!Number.isFinite(lastAtMs) || lastAtMs <= 0) return undefined;
+  if (lastAtMs + HARTHMERE_GATHER_SEED_COOLDOWN_MS > nowMs) return lastAtMs;
+  delete state.combat.lootClaims[key];
+  return undefined;
+}
+
+function wildSpawnClaimKey(spawnId: string) {
+  return `${HARTHMERE_WILD_SPAWN_CLAIM_PREFIX}${spawnId}`;
+}
+
+function normalizeWildSpawnClaims(raw: unknown) {
+  const value =
+    raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
+  return Object.fromEntries(
+    Object.entries(value)
+      .filter(
+        ([key, claimedAtMs]) =>
+          key.startsWith(HARTHMERE_WILD_SPAWN_CLAIM_PREFIX) &&
+          Number.isFinite(Number(claimedAtMs))
+      )
+      .map(([key, claimedAtMs]) => [
+        key,
+        Math.max(0, Math.trunc(Number(claimedAtMs))),
+      ])
+  );
+}
+
+/**
+ * Returns when the spawn was claimed if the claim is still inside the respawn
+ * window, otherwise deletes the stale claim (both the new prefixed key and any
+ * legacy raw-id key written before this fix) and returns undefined so the
+ * spawn reads as available again.
+ */
+function wildSpawnActiveClaimAtMs(
+  state: HarthmereLiveModeBackendState,
+  spawnId: string,
+  nowMs: number
+): number | undefined {
+  const prefixedKey = wildSpawnClaimKey(spawnId);
+  const claimedAtMs = Number(
+    state.combat.lootClaims[prefixedKey] ?? state.combat.lootClaims[spawnId]
+  );
+  if (!Number.isFinite(claimedAtMs) || claimedAtMs <= 0) {
+    return undefined;
+  }
+  if (claimedAtMs + HARTHMERE_WILD_SPAWN_RESPAWN_MS > nowMs) {
+    return claimedAtMs;
+  }
+  // Respawn window has passed — expire the claim so the 12h respawn the pure
+  // authority functions author actually happens.
+  delete state.combat.lootClaims[prefixedKey];
+  delete state.combat.lootClaims[spawnId];
+  return undefined;
 }
 
 const HARTHMERE_BUSINESS_IN_WORLD_INTERACTION_RADIUS = 18;
@@ -5819,6 +6090,9 @@ export function defaultHarthmereLiveModeBackendState(
         },
       },
       completed: {},
+      // Bible catalog runtime starts empty; quests are accepted through NPC
+      // dialogue / world triggers (bible-wiring fix, 2026-07-14).
+      bible: defaultHarthmereBibleQuestLiveSlice(),
     },
     questInvites: {
       invites: {},
@@ -5976,7 +6250,16 @@ export function parseHarthmereLiveModeBackendState(
       collections: normalizeHarthmereProgressionCollectionsState(
         (parsed as any).collections
       ),
-      quests: { ...defaults.quests, ...(parsed.quests ?? {}) },
+      quests: {
+        ...defaults.quests,
+        ...(parsed.quests ?? {}),
+        // Re-validate the bible slice on every deserialize: pre-fix blobs have
+        // no `bible` key, and its shape is client-visible state, so it must
+        // never round-trip garbage (bible-wiring fix, 2026-07-14).
+        bible: normalizeHarthmereBibleQuestLiveSlice(
+          (parsed.quests as any)?.bible
+        ),
+      },
       questInvites: normalizeHarthmereQuestInviteState(
         (parsed as any).questInvites,
         nowMs
@@ -6254,6 +6537,9 @@ export function createHarthmereLiveModeSharedWorldState(
     exoticMatterDepositClaims: normalizeExoticMatterDepositClaims(
       state.combat.lootClaims
     ),
+    // (foraging fix F-E, 2026-07-14): project wild-spawn depletion into the
+    // shared world so every player sees the same depleted/respawned bushes.
+    wildSpawnClaims: normalizeWildSpawnClaims(state.combat.lootClaims),
     questInvites: normalizeHarthmereQuestInviteState(state.questInvites, nowMs),
     auctionListings: { ...state.economy.auctionListings },
     auctionSellerPayouts: normalizeAuctionSellerPayouts(
@@ -6323,6 +6609,10 @@ export function parseHarthmereLiveModeSharedWorldState(
       guild: normalizeHarthmereLiveModeGuildState((parsed as any).guild, nowMs),
       exoticMatterDepositClaims: normalizeExoticMatterDepositClaims(
         (parsed as any).exoticMatterDepositClaims
+      ),
+      // (foraging fix F-E, 2026-07-14): round-trip the shared wild-spawn claims.
+      wildSpawnClaims: normalizeWildSpawnClaims(
+        (parsed as any).wildSpawnClaims
       ),
       questInvites: normalizeHarthmereQuestInviteState(
         (parsed as any).questInvites,
@@ -6440,6 +6730,18 @@ export function mergeHarthmereLiveModeSharedWorldStateIntoBackend(
     state.combat.lootClaims[claimKey] = Math.max(
       state.combat.lootClaims[claimKey] ?? 0,
       minedAtMs
+    );
+  }
+  // (foraging fix F-E, 2026-07-14): merge shared wild-spawn depletion the same
+  // way — newest claim wins so a bush another player just foraged reads as
+  // depleted for everyone until its respawn window elapses.
+  const sharedWildSpawnClaims = normalizeWildSpawnClaims(
+    shared.wildSpawnClaims
+  );
+  for (const [claimKey, claimedAtMs] of Object.entries(sharedWildSpawnClaims)) {
+    state.combat.lootClaims[claimKey] = Math.max(
+      state.combat.lootClaims[claimKey] ?? 0,
+      claimedAtMs
     );
   }
   syncLiveEntityRobotProtectionToBuilding(state, nowMs);
@@ -7052,6 +7354,12 @@ export function createHarthmereLiveModeQuestClientSnapshot(
     pendingReceivedInvites,
     sentPendingInvites,
     sharedQuests,
+    // HARTHMERE_BIBLE_QUEST_WIRING (bible-wiring fix, 2026-07-14): the client
+    // dialogue/journal needs the bible runtime (per-objective progress, quest
+    // states, earned flags/titles) and the Thaedryn machine (phase/chains HUD)
+    // to render offers and the encounter. Deep-copied so response serializers
+    // can never alias live state.
+    bible: JSON.parse(JSON.stringify(state.quests.bible)),
     updatedAtMs: state.updatedAtMs,
   };
 }
@@ -7185,8 +7493,12 @@ export function reduceHarthmereLiveModeBackendState(
       knownAbilities,
       equippedAbilities,
       activeTalentNodes: [...(next.talents?.nodes ?? [])],
-      mainHandWeaponType: "sword",
-      offHandWeaponType: "none",
+      // (combat fix C-4, 2026-07-14): derive the real equipped weapon type from
+      // the player's equipment map instead of hard-coding "sword". The old stub
+      // bypassed every ability `requiredWeaponType` gate (bow/staff/mace/etc.
+      // always passed or always failed regardless of what was held).
+      mainHandWeaponType: harthmereMainHandWeaponType(next.inventory.equipment),
+      offHandWeaponType: harthmereOffHandWeaponType(next.inventory.equipment),
       deathState: next.combat.deathState ?? "alive",
       position: actorWorldPositionFromAuthority(envelope) ?? {
         x: 0,
@@ -7371,6 +7683,26 @@ export function reduceHarthmereLiveModeBackendState(
   ) {
     if (!liveEntityAiRequiresLineOfSight(npcSnapshot)) {
       return true;
+    }
+    // (combat fix C-2, 2026-07-14): decide INCOMING-damage line of sight from
+    // the SERVER voxel raycast — the same authority the player's OUTGOING
+    // attacks already use — rather than trusting the client-supplied
+    // `lineOfSight` payload. Trusting the client here was both spoofable (a
+    // client could claim lineOfSight:"false" to suppress incoming NPC damage)
+    // and asymmetric (terrain that blocked the player's hits was ignored for
+    // the NPC's hits). When both endpoints are known we raycast; if either
+    // position is unavailable we fall back to the previous client-hint
+    // behaviour so a missing snapshot can't make every NPC blind.
+    const npcPosition = npcSnapshot.position;
+    const playerPosition = actorWorldPositionFromAuthority(envelope);
+    if (
+      npcPosition &&
+      Number.isFinite(npcPosition.x) &&
+      Number.isFinite(npcPosition.y) &&
+      Number.isFinite(npcPosition.z) &&
+      playerPosition
+    ) {
+      return harthmereServerCheckLineOfSight(npcPosition, playerPosition);
     }
     return payloadString(envelope, "lineOfSight") === "false" ||
       payloadBoolean(envelope, "lineOfSight") === false
@@ -7564,13 +7896,15 @@ export function reduceHarthmereLiveModeBackendState(
     // carries (it can be stale, or accidentally seeded from an aggro/leash value),
     // clamp it to a sane maximum so a creature can never deal damage from across
     // the field — the "something hit and killed me from ~34 units with no monster
-    // near me" report. The largest legitimate reach (the Hex caster at 6.5) still
-    // fits comfortably under the cap.
-    const HARTHMERE_MAX_NPC_ATTACK_RANGE_UNITS = 8;
-    const rawRange = Number.isFinite(npcSnapshot.attackRange)
-      ? Math.max(0, Number(npcSnapshot.attackRange))
-      : ability.rangeUnits;
-    const range = Math.min(rawRange, HARTHMERE_MAX_NPC_ATTACK_RANGE_UNITS);
+    // near me" report.
+    // (combat fix C-3, 2026-07-14): the clamp now comes from the single shared
+    // helper/ceiling (harthmereValidatedLiveEntityAttackReach /
+    // HARTHMERE_MAX_NPC_ATTACK_RANGE_UNITS) instead of a local magic constant,
+    // so this gate and any other reach consumer stay consistent.
+    const range = harthmereValidatedLiveEntityAttackReach(
+      npcSnapshot.attackRange,
+      ability.rangeUnits
+    );
     if (
       liveEntityCombatHorizontalDistance(npcSnapshot.position, playerPosition) >
       range
@@ -8986,6 +9320,34 @@ export function reduceHarthmereLiveModeBackendState(
         }
       }
 
+      // ---------------------------------------------------------------
+      // HARTHMERE_BIBLE_QUEST_WIRING (bible-wiring fix, 2026-07-14):
+      // attacks on Thaedryn feed the Q12 encounter state machine. The
+      // machine is authoritative for boss HP (phases key off health
+      // percent and remaining chains), so after applying the damage
+      // events we re-sync the combat snapshot FROM the machine — the raw
+      // hp decrement above is overwritten by the canonical value. The
+      // wake path's "attacks after the third chain" counter is also fed
+      // here, which is what makes the three endings genuinely exclusive.
+      // ---------------------------------------------------------------
+      if (
+        resolvedTargetId === HARTHMERE_THAEDRYN_COMBAT_ENTITY_ID &&
+        combatResult.damage > 0 &&
+        next.quests.bible.thaedryn &&
+        !next.quests.bible.thaedryn.completed
+      ) {
+        let machine = next.quests.bible.thaedryn;
+        for (const event of harthmereThaedrynDamageEventsForAttack(
+          machine,
+          combatResult.damage
+        )) {
+          machine = applyThaedrynBossEvent(machine, event as any);
+        }
+        next.quests.bible = { ...next.quests.bible, thaedryn: machine };
+        syncHarthmereThaedrynCombatSnapshot(next, nowMs, "sync");
+        touchedModels.add("quest_state");
+      }
+
       if (combatResult.healing > 0) {
         if (!resolvedTargetId || resolvedTargetId === next.actorId) {
           next.combat.hp = Math.min(
@@ -9230,6 +9592,47 @@ export function reduceHarthmereLiveModeBackendState(
         }
         if (Object.keys(invResult.equipmentChanges ?? {}).length > 0) {
           touchedModels.add("equipment_slots");
+        }
+        // HARTHMERE_WORLD_THROW_DROP (audit fix, 2026-07-13): a drop_item with
+        // a world position is a THROW — after the debit above succeeds, create
+        // a positioned, claimable world loot drop so the item lands on the
+        // ground (rendered + F-pickup) instead of vanishing. Position comes
+        // from the throw location; the drop lives in SHARED state so every
+        // player sees and can salvage it.
+        if (kind === "drop_item" && itemActionItemId) {
+          const dropPosition = payloadWorldPosition(envelope, "position");
+          if (dropPosition) {
+            ensureInventoryLootActorSynced();
+            const throwDropDef =
+              inventoryLootDefinitionFromLiveItem(itemActionItemId);
+            const worldDrop = throwDropDef
+              ? createHarthmereDebitedWorldDrop(
+                  next.inventoryLoot,
+                  {
+                    itemDefinitions: { [itemActionItemId]: throwDropDef },
+                    lootTables: {},
+                  },
+                  {
+                    requestId: envelope.requestId,
+                    actorId: envelope.actorId,
+                    nowMs,
+                    itemId: itemActionItemId,
+                    count: invReq.count ?? 1,
+                    position: dropPosition,
+                  }
+                )
+              : undefined;
+            if (worldDrop) {
+              touchedModels.add("inventory_loot_drops");
+              sharedStateKeys.add(
+                harthmereLiveModeSharedStateKey("loot_drop", worldDrop.dropId)
+              );
+            } else {
+              // The debit still happened (identical to the old behaviour);
+              // surface why no drop appeared so the client can toast it.
+              warnings.push("drop_item_world_drop_skipped:undroppable_item");
+            }
+          }
         }
       } else {
         warnings.push(
@@ -11353,6 +11756,115 @@ export function reduceHarthmereLiveModeBackendState(
       ) {
         break;
       }
+      // -----------------------------------------------------------------
+      // HARTHMERE_BIBLE_QUEST_WIRING (bible-wiring fix, 2026-07-14)
+      //
+      // Bible catalog operations: accept / advance / complete / abandon /
+      // retry / boss_event. All quest-state math lives in the pure reducer
+      // (bible_quest_live_authority.ts, unit-tested); this branch only
+      // (1) feeds it live state, (2) writes back the returned slice, and
+      // (3) applies reward instructions + journal mirrors + the Thaedryn
+      // combat snapshot sync with this file's own helpers.
+      // -----------------------------------------------------------------
+      if (
+        liveEntityHelperOperation?.startsWith(
+          HARTHMERE_BIBLE_QUEST_OPERATION_PREFIX
+        )
+      ) {
+        const actorPosition = actorWorldPositionFromAuthority(envelope);
+        const result = reduceHarthmereBibleQuestOperation({
+          slice: next.quests.bible,
+          actorId: envelope.actorId,
+          playerLevel: next.classMagic.skills["character_level"]?.level ?? 1,
+          completedQuests: next.quests.completed,
+          nowMs,
+          operation: liveEntityHelperOperation,
+          questId: payloadString(envelope, "questId"),
+          objectiveId: payloadString(envelope, "objectiveId"),
+          actorPosition: actorPosition
+            ? [actorPosition.x, actorPosition.y, actorPosition.z]
+            : undefined,
+          choice: payloadString(envelope, "choice"),
+          combatResult: payloadString(envelope, "combatResult") as any,
+          requestId: envelope.requestId,
+          weatherClaim: payloadString(envelope, "weather"),
+          bossEventType: payloadString(envelope, "bossEventType"),
+          bossEventAmount: payloadNumber(envelope, "bossEventAmount"),
+          bossEventPath: payloadString(envelope, "bossEventPath"),
+          bossMode: payloadString(envelope, "bossMode") as any,
+        });
+        warnings.push(...result.warnings);
+        if (!result.ok) {
+          touchedModels.add("quest_state_rejection");
+          break;
+        }
+        next.quests.bible = result.slice;
+        // Journal mirror: the map/journal adapters read quests.active /
+        // quests.completed, so bible quests surface with zero adapter work.
+        if (result.activeMirror) {
+          const bibleMarkerId = `bible_quest:${result.activeMirror.questId}`;
+          if (result.activeMirror.remove) {
+            delete next.quests.active[result.activeMirror.questId];
+            delete next.building.inWorldMarkers[bibleMarkerId];
+          } else if (result.activeMirror.entry) {
+            next.quests.active[result.activeMirror.questId] =
+              result.activeMirror.entry;
+            // Map pin at the current objective's resolved position (same
+            // in-world marker channel helper quests and Mira use), so the
+            // minimap/compass guides the player to the next step.
+            if (result.activeMirror.entry.giverPosition) {
+              next.building.inWorldMarkers[bibleMarkerId] = {
+                markerId: bibleMarkerId,
+                plotId: "harthmere",
+                // "npc_map_marker" is the existing marker kind rendered as a
+                // guidance pin (the Mira/steward pattern); there is no
+                // dedicated quest kind in BuildingSystemInWorldMarker.
+                kind: "npc_map_marker",
+                position: [...result.activeMirror.entry.giverPosition] as [
+                  number,
+                  number,
+                  number
+                ],
+                label:
+                  result.activeMirror.entry.title ??
+                  result.activeMirror.questId,
+                createdAtMs: nowMs,
+              };
+            }
+          }
+          touchedModels.add("building_state");
+        }
+        if (result.completedMirrorQuestId) {
+          next.quests.completed[result.completedMirrorQuestId] = nowMs;
+        }
+        if (result.rewards) {
+          applyHarthmereBibleQuestRewards(
+            next,
+            result.rewards,
+            warnings,
+            touchedModels,
+            nowMs
+          );
+        }
+        if (result.thaedrynSnapshot) {
+          syncHarthmereThaedrynCombatSnapshot(
+            next,
+            nowMs,
+            result.thaedrynSnapshot
+          );
+          touchedModels.add("entity_snapshots");
+          sharedStateKeys.add(
+            harthmereLiveModeSharedStateKey(
+              "entity_combat",
+              HARTHMERE_THAEDRYN_COMBAT_ENTITY_ID
+            )
+          );
+        }
+        touchedModels.add("quest_state");
+        touchedModels.add("building_state");
+        break;
+      }
+
       if (liveEntityHelperOperation?.startsWith("live_entity_robot_")) {
         if (liveEntityHelperOperation === "live_entity_robot_energy_tick") {
           const robotId =
@@ -14529,11 +15041,47 @@ export function reduceHarthmereLiveModeBackendState(
           );
           break;
         } else if (operation === "gather_seed") {
+          const seedItemId = payloadString(envelope, "seedItemId") ?? "";
+          const seedSource =
+            (payloadString(envelope, "source") as any) ?? "world";
+          // (foraging fix F-C, 2026-07-14): reject a gather that is still on
+          // cooldown for this (source, seed) pair before granting anything.
+          const gatherOnCooldownAtMs = gatherSeedOnCooldownAtMs(
+            next,
+            seedSource,
+            seedItemId,
+            nowMs
+          );
+          if (gatherOnCooldownAtMs !== undefined) {
+            warnings.push("farming_rejected:gather_on_cooldown");
+            touchedModels.add("farming_rejection");
+            break;
+          }
           authorityResult = gatherHarthmereSeed(authority, {
-            seedItemId: payloadString(envelope, "seedItemId") ?? "",
-            source: (payloadString(envelope, "source") as any) ?? "world",
+            seedItemId,
+            source: seedSource,
             nowMs,
           });
+          if (authorityResult.warnings.length === 0) {
+            // (foraging fix F-D, 2026-07-14): weight-gate the gathered seed.
+            const seedYield =
+              authorityResult.inventoryDeltas[seedItemId] ?? 1;
+            if (
+              wouldExceedCarryWeight(
+                next.inventory.items,
+                seedItemId,
+                seedYield
+              )
+            ) {
+              pushCarryWeightRejection(warnings, touchedModels, "farming");
+              break;
+            }
+            // Stamp the cooldown so the next gather of this pair is rate-limited.
+            next.combat.lootClaims[
+              gatherSeedCooldownKey(seedSource, seedItemId)
+            ] = nowMs;
+            touchedModels.add("loot_claims");
+          }
         } else if (operation === "plant") {
           authorityResult = plantHarthmereCrop(authority, {
             plotId: payloadString(envelope, "plotId") ?? envelope.requestId,
@@ -14559,12 +15107,21 @@ export function reduceHarthmereLiveModeBackendState(
             touchedModels.add("farming_rejection");
             break;
           }
+          // (foraging fix F-A/F-E, 2026-07-14): read depletion through the
+          // respawn-aware helper. It returns the claim time only while the 12h
+          // respawn window is still open and EXPIRES a stale claim in place, so
+          // the `respawnAtMs` the pure authority already authors finally takes
+          // effect (the old bare `lootClaims[spawnId]` read made any past claim
+          // read as depleted forever).
+          const forageItemId =
+            payloadString(envelope, "itemId") ?? "wild_berries";
+          const forageClaimAtMs = wildSpawnActiveClaimAtMs(next, spawnId, nowMs);
           authority = liveFarmingAuthorityState({
             [spawnId]: {
               spawnId,
               kind: "food",
-              itemId: payloadString(envelope, "itemId") ?? "wild_berries",
-              depletedAtMs: next.combat.lootClaims[spawnId],
+              itemId: forageItemId,
+              depletedAtMs: forageClaimAtMs,
             },
           });
           authorityResult = forageHarthmereFoodSpawn(authority, {
@@ -14572,8 +15129,30 @@ export function reduceHarthmereLiveModeBackendState(
             nowMs,
           });
           if (authorityResult.warnings.length === 0) {
-            next.combat.lootClaims[spawnId] = nowMs;
+            // (foraging fix F-D, 2026-07-14): gate the grant on carry weight the
+            // same way native_plant_harvest / vendor / loot paths do. Reject
+            // BEFORE writing the claim so a weight-blocked forage does not also
+            // (wrongly) deplete the bush.
+            const forageYield =
+              authorityResult.inventoryDeltas[forageItemId] ?? 1;
+            if (
+              wouldExceedCarryWeight(
+                next.inventory.items,
+                forageItemId,
+                forageYield
+              )
+            ) {
+              pushCarryWeightRejection(warnings, touchedModels, "farming");
+              break;
+            }
+            // Persist under the prefixed key (and drop any legacy raw-id claim)
+            // and project into shared world state so depletion is WORLD-shared.
+            next.combat.lootClaims[wildSpawnClaimKey(spawnId)] = nowMs;
+            delete next.combat.lootClaims[spawnId];
             touchedModels.add("loot_claims");
+            sharedStateKeys.add(
+              harthmereLiveModeSharedStateKey("wild_forage_spawn", spawnId)
+            );
           }
         } else if (operation === "hunt_animal") {
           const animalId =
@@ -14586,6 +15165,9 @@ export function reduceHarthmereLiveModeBackendState(
             touchedModels.add("farming_rejection");
             break;
           }
+          // (foraging fix F-A/F-E, 2026-07-14): same respawn-aware depletion read
+          // as forage_food — hunted animals now actually respawn after 12h.
+          const huntClaimAtMs = wildSpawnActiveClaimAtMs(next, animalId, nowMs);
           authority = liveFarmingAuthorityState({
             [animalId]: {
               spawnId: animalId,
@@ -14596,7 +15178,7 @@ export function reduceHarthmereLiveModeBackendState(
               protected: animal.protectedSpecies,
               isLivestock: animal.isLivestock,
               ownerId: animal.ownerId,
-              depletedAtMs: next.combat.lootClaims[animalId],
+              depletedAtMs: huntClaimAtMs,
             },
           });
           authorityResult = huntHarthmereAnimalForFood(authority, {
@@ -14604,8 +15186,24 @@ export function reduceHarthmereLiveModeBackendState(
             nowMs,
           });
           if (authorityResult.warnings.length === 0) {
-            next.combat.lootClaims[animalId] = nowMs;
+            // (foraging fix F-D, 2026-07-14): carry-weight gate on the meat yield.
+            const huntYield = authorityResult.inventoryDeltas["raw_meat"] ?? 2;
+            if (
+              wouldExceedCarryWeight(
+                next.inventory.items,
+                "raw_meat",
+                huntYield
+              )
+            ) {
+              pushCarryWeightRejection(warnings, touchedModels, "farming");
+              break;
+            }
+            next.combat.lootClaims[wildSpawnClaimKey(animalId)] = nowMs;
+            delete next.combat.lootClaims[animalId];
             touchedModels.add("loot_claims");
+            sharedStateKeys.add(
+              harthmereLiveModeSharedStateKey("wild_hunt_spawn", animalId)
+            );
           }
         } else if (operation === "cook_food") {
           authorityResult = cookHarthmereFood(authority, {
@@ -14631,6 +15229,21 @@ export function reduceHarthmereLiveModeBackendState(
             livestockId: payloadString(envelope, "livestockId") ?? "",
             nowMs,
           });
+          // (foraging fix F-D, 2026-07-14): the collected product falls through
+          // to applyLiveFarmingAuthorityResult with no weight gate — enforce the
+          // carry cap here so livestock collection can't push the player over a
+          // limit that native_plant_harvest / vendor / loot already respect.
+          if (
+            authorityResult.warnings.length === 0 &&
+            Object.entries(authorityResult.inventoryDeltas).some(
+              ([itemId, delta]) =>
+                delta > 0 &&
+                wouldExceedCarryWeight(next.inventory.items, itemId, delta)
+            )
+          ) {
+            pushCarryWeightRejection(warnings, touchedModels, "farming");
+            break;
+          }
         } else if (operation === "cook_enqueue") {
           authorityResult = enqueueHarthmereCook(authority, {
             stationId: payloadString(envelope, "stationId") ?? "",

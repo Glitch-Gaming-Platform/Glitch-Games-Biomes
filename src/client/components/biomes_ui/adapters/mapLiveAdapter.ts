@@ -46,6 +46,8 @@ import {
   sharedQuestAcceptedLandmarksForBiomesUI,
   sharedQuestTrackableQuestsForBiomesUI,
 } from "./questInviteAdapter";
+// HARTHMERE_BIBLE_QUEST_WIRING (bible-wiring fix, 2026-07-14).
+import { bibleQuestTrackableQuestsForBiomesUI } from "@/client/components/challenges/bibleQuestLiveAdapter";
 import { readableMapMarkerLabelForTest } from "./mapMarkerLabels";
 import { harthmereMapTerrainRegionsForBounds } from "./harthmereMapTerrainRegions";
 import {
@@ -688,6 +690,12 @@ export function buildBiomesUIMapAdapter(
           { isReadyToTurnIn: liveEntityHelperQuestRecordReadyToTurnIn }
         ),
         ...sharedQuestTrackableQuestsForBiomesUI(liveQuestState),
+        // HARTHMERE_BIBLE_QUEST_WIRING (bible-wiring fix, 2026-07-14): bible
+        // catalog quests (Q1–Q12 main arc + side quests) the player has
+        // accepted, mirrored server-side into quests.active with
+        // source === "bible_catalog". Journal-only-started applies naturally:
+        // only accepted quests carry the tag.
+        ...bibleQuestTrackableQuestsForBiomesUI(liveQuestState ?? {}),
         // QUEST_JOURNAL_ONLY_STARTED: Only surface authored Snapshot Grove quests
         // the player has actually started (active) or finished (completed). The
         // full authored catalog is 100+ quests; listing every not-yet-started one
