@@ -293,7 +293,8 @@ RUN chmod +x ./b scripts/glitch/run-glitch-web.sh scripts/glitch/prepare-glitch-
 COPY --chown=nextjs:nodejs dist/ dist/
 COPY --chown=nextjs:nodejs .next/ .next/
 
-RUN node scripts/glitch/assert-glitch-build-artifacts-current.cjs .
+RUN node scripts/glitch/assert-glitch-build-artifacts-current.cjs . \
+    && node scripts/glitch/assert-production-runtime-dependencies.cjs .
 
 USER nextjs
 

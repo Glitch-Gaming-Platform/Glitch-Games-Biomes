@@ -411,6 +411,28 @@ ok(
     dockerfile.includes("'stream-json/streamers/StreamArray', 'spark-md5'"),
   "production image keeps and verifies snapshot runtime dependencies after npm prune"
 );
+const bundledRuntimeExternals = [
+  "@google-cloud/bigquery",
+  "@google-cloud/storage",
+  "chai",
+  "discord.js",
+  "node-gzip",
+  "octokit",
+  "source-map",
+  "spark-md5",
+  "stream-json",
+  "ts-command-line-args",
+];
+ok(
+  bundledRuntimeExternals.every(
+    (name) =>
+      packageJson.dependencies?.[name] && !packageJson.devDependencies?.[name]
+  ) &&
+    dockerfile.includes(
+      "node scripts/glitch/assert-production-runtime-dependencies.cjs ."
+    ),
+  "production image resolves every external required by the built server bundles after npm prune"
+);
 ok(
   serverWebpackConfig.includes('entryPoints["apply-mutable-hotfix"]') &&
     stackRunner.includes('node "$APP_ROOT/dist/apply-mutable-hotfix.js"') &&
