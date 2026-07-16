@@ -13,10 +13,12 @@ import { BikkieIds } from "@/shared/bikkie/ids";
 import {
   defaultHarthmereLiveModeBackendState,
   reduceHarthmereLiveModeBackendState,
-  type HarthmereLiveModeActionKind,
-  type HarthmereLiveModeAuthorityEnvelope,
   type HarthmereLiveModeBackendState,
 } from "../live_mode_backend";
+import type {
+  HarthmereLiveModeActionKind,
+  HarthmereLiveModeAuthorityEnvelope,
+} from "../live_mode_readiness";
 import { createHarthmereDebitedWorldDrop } from "../mmo_inventory_loot_authority";
 
 const NOW_MS = 1_700_000_000_000;

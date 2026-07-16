@@ -16,6 +16,11 @@ const dockerfile = fs.readFileSync(
   path.join(root, "Dockerfile.biomes"),
   "utf8"
 );
+const nextConfig = fs.readFileSync(path.join(root, "next.config.js"), "utf8");
+const serverWebpackConfig = fs.readFileSync(
+  path.join(root, "server.webpack.config.cjs"),
+  "utf8"
+);
 const deployWorkflow = fs.readFileSync(
   path.join(root, ".github/workflows/azure-production-deploy.yml"),
   "utf8"
@@ -64,7 +69,9 @@ const pushAndDeploy = script.slice(
   script.indexOf("push_and_deploy()"),
   script.indexOf('if [ "$REDIS_HEALTH_CHECK_ONLY"')
 );
-const mainFlow = script.slice(script.indexOf('if [ "$REDIS_HEALTH_CHECK_ONLY"'));
+const mainFlow = script.slice(
+  script.indexOf('if [ "$REDIS_HEALTH_CHECK_ONLY"')
+);
 
 let failed = false;
 function ok(condition, message) {
@@ -375,6 +382,36 @@ ok(
   "Next build and Azure runtime include the Glitch title id for client identity"
 );
 ok(
+  script.includes('BIOMES_BUILD_ID="$build_id"') &&
+    nextConfig.includes("process.env.BIOMES_BUILD_ID") &&
+    serverWebpackConfig.includes("process.env.BIOMES_BUILD_ID"),
+  "production client and server bundles receive the exact Git build id"
+);
+ok(
+  nextConfig.includes("productionBrowserSourceMaps: false") &&
+    script.includes("find .next/static -type f -name '*.map' -delete") &&
+    script.includes("rm -f public/sw.js.map") &&
+    !dockerfile.includes("public/sw.js.map"),
+  "production browser source maps are removed before image packaging"
+);
+ok(
+  dockerfile.includes("npm prune --omit=dev --ignore-scripts") &&
+    !dockerfile.includes("google-chrome-stable") &&
+    dockerfile.includes("apt-get purge -y --auto-remove"),
+  "production image excludes test browser, dev dependencies, and build toolchains"
+);
+ok(
+  serverWebpackConfig.includes('entryPoints["apply-mutable-hotfix"]') &&
+    stackRunner.includes('node "$APP_ROOT/dist/apply-mutable-hotfix.js"') &&
+    !stackRunner.includes("node -r ts-node/register"),
+  "production startup uses bundled maintenance tools without TypeScript runtime dependencies"
+);
+ok(
+  stackRunner.indexOf('node "$APP_ROOT/dist/web.js"') <
+    stackRunner.indexOf("wait_redis_stream_group 4 chat-delivery"),
+  "production web ingress binds before non-web worker readiness checks"
+);
+ok(
   script.includes("GLITCH_TITLE_TOKEN=secretref:glitch-title-token"),
   "production app uses the Azure Container App title-token secret reference"
 );
@@ -397,7 +434,7 @@ ok(
 );
 ok(
   script.includes("ensure_azure_ingress_target_port") &&
-    script.includes('az containerapp ingress update') &&
+    script.includes("az containerapp ingress update") &&
     script.includes('--target-port "$AZURE_WEB_TARGET_PORT"') &&
     script.includes("properties.configuration.ingress.targetPort"),
   "production deploy reasserts Azure ingress on the public web port"
@@ -590,7 +627,7 @@ ok(
   mainFlow.indexOf("check_production_image_push_preflight") !== -1 &&
     mainFlow.indexOf("build_image") !== -1 &&
     mainFlow.indexOf("check_production_image_push_preflight") <
-    mainFlow.indexOf("build_image"),
+      mainFlow.indexOf("build_image"),
   "direct Buildx push performs production preflight before build-and-push"
 );
 ok(

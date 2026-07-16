@@ -29,7 +29,9 @@ import {
 // Fixtures
 // ---------------------------------------------------------------------------
 
-function makeAbility(overrides: Partial<HarthmereAbilityCatalogueEntry> = {}): HarthmereAbilityCatalogueEntry {
+function makeAbility(
+  overrides: Partial<HarthmereAbilityCatalogueEntry> = {}
+): HarthmereAbilityCatalogueEntry {
   return {
     abilityId: "slash",
     displayName: "Slash",
@@ -57,7 +59,9 @@ function makeAbility(overrides: Partial<HarthmereAbilityCatalogueEntry> = {}): H
   };
 }
 
-function makeClass(overrides: Partial<HarthmereClassDefinition> = {}): HarthmereClassDefinition {
+function makeClass(
+  overrides: Partial<HarthmereClassDefinition> = {}
+): HarthmereClassDefinition {
   return {
     classId: "warrior",
     displayName: "Warrior",
@@ -72,7 +76,9 @@ function makeClass(overrides: Partial<HarthmereClassDefinition> = {}): Harthmere
   };
 }
 
-function makeActor(overrides: Partial<HarthmereCombatActorSnapshot> = {}): HarthmereCombatActorSnapshot {
+function makeActor(
+  overrides: Partial<HarthmereCombatActorSnapshot> = {}
+): HarthmereCombatActorSnapshot {
   return {
     actorId: "player_1",
     classId: "warrior",
@@ -98,7 +104,9 @@ function makeActor(overrides: Partial<HarthmereCombatActorSnapshot> = {}): Harth
   };
 }
 
-function makeTarget(overrides: Partial<HarthmereCombatTargetSnapshot> = {}): HarthmereCombatTargetSnapshot {
+function makeTarget(
+  overrides: Partial<HarthmereCombatTargetSnapshot> = {}
+): HarthmereCombatTargetSnapshot {
   return {
     targetId: "enemy_1",
     isAlive: true,
@@ -114,7 +122,9 @@ function makeTarget(overrides: Partial<HarthmereCombatTargetSnapshot> = {}): Har
   };
 }
 
-function makeZone(overrides: Partial<HarthmereZoneSnapshot> = {}): HarthmereZoneSnapshot {
+function makeZone(
+  overrides: Partial<HarthmereZoneSnapshot> = {}
+): HarthmereZoneSnapshot {
   return {
     zoneId: "town_square",
     pvpRule: "open_pvp",
@@ -125,7 +135,9 @@ function makeZone(overrides: Partial<HarthmereZoneSnapshot> = {}): HarthmereZone
   };
 }
 
-function makeCtx(overrides: Partial<HarthmereCombatActionContext> = {}): HarthmereCombatActionContext {
+function makeCtx(
+  overrides: Partial<HarthmereCombatActionContext> = {}
+): HarthmereCombatActionContext {
   return {
     actor: makeActor(),
     target: makeTarget(),
@@ -137,7 +149,9 @@ function makeCtx(overrides: Partial<HarthmereCombatActionContext> = {}): Harthme
   };
 }
 
-function makeReq(overrides: Partial<HarthmereCombatActionRequest> = {}): HarthmereCombatActionRequest {
+function makeReq(
+  overrides: Partial<HarthmereCombatActionRequest> = {}
+): HarthmereCombatActionRequest {
   return {
     requestId: "req_1",
     actorId: "player_1",
@@ -151,73 +165,91 @@ function makeReq(overrides: Partial<HarthmereCombatActionRequest> = {}): Harthme
 
 before(() => {
   registerHarthmereClassDefinition(makeClass({ classId: "warrior" }));
-  registerHarthmereClassDefinition(makeClass({
-    classId: "mage",
-    availableSpecializations: ["frost", "fire"],
-    attackPowerPerLevel: 0.5,
-    spellPowerPerLevel: 4,
-  }));
-  registerHarthmereAbility(makeAbility({ abilityId: "slash", requiredWeaponType: "sword" }));
-  registerHarthmereAbility(makeAbility({
-    abilityId: "fireball",
-    requiredWeaponType: "staff",
-    resourceCost: 25,
-    levelRequirement: 5,
-    allowedInSafeZone: false,
-    baseDamage: 40,
-    spellPowerScaling: 1.5,
-    attackPowerScaling: 0,
-    classRestriction: ["mage"],
-  }));
-  registerHarthmereAbility(makeAbility({
-    abilityId: "holy_shield",
-    targetType: "self",
-    allowedInSafeZone: true,
-    resourceCost: 5,
-    requiredWeaponType: "any",
-    allowedInPvP: true,
-  }));
-  registerHarthmereAbility(makeAbility({
-    abilityId: "charge",
-    requiredWeaponType: "sword",
-    cooldownMs: 15_000,
-    resourceCost: 5,
-  }));
-  registerHarthmereAbility(makeAbility({
-    abilityId: "guardian_wall",
-    requiredWeaponType: "any",
-    classRestriction: ["warrior"],
-    specRestriction: ["protection"],
-    resourceCost: 5,
-  }));
-  registerHarthmereAbility(makeAbility({
-    abilityId: "axe_chop",
-    requiredWeaponType: "axe",
-    classRestriction: ["warrior"],
-    resourceCost: 5,
-  }));
-  registerHarthmereAbility(makeAbility({
-    abilityId: "self_heal",
-    targetType: "self",
-    allowedInSafeZone: true,
-    requiredWeaponType: "any",
-    baseDamage: 0,
-    attackPowerScaling: 0,
-    baseHealing: 30,
-    spellPowerScaling: 0.5,
-    resourceCost: 5,
-  }));
-  registerHarthmereAbility(makeAbility({
-    abilityId: "ally_heal",
-    targetType: "single_ally",
-    allowedInSafeZone: true,
-    requiredWeaponType: "any",
-    baseDamage: 0,
-    attackPowerScaling: 0,
-    baseHealing: 30,
-    spellPowerScaling: 0.5,
-    resourceCost: 5,
-  }));
+  registerHarthmereClassDefinition(
+    makeClass({
+      classId: "mage",
+      availableSpecializations: ["frost", "fire"],
+      attackPowerPerLevel: 0.5,
+      spellPowerPerLevel: 4,
+    })
+  );
+  registerHarthmereAbility(
+    makeAbility({ abilityId: "slash", requiredWeaponType: "sword" })
+  );
+  registerHarthmereAbility(
+    makeAbility({
+      abilityId: "fireball",
+      requiredWeaponType: "staff",
+      resourceCost: 25,
+      levelRequirement: 5,
+      allowedInSafeZone: false,
+      baseDamage: 40,
+      spellPowerScaling: 1.5,
+      attackPowerScaling: 0,
+      classRestriction: ["mage"],
+    })
+  );
+  registerHarthmereAbility(
+    makeAbility({
+      abilityId: "holy_shield",
+      targetType: "self",
+      allowedInSafeZone: true,
+      resourceCost: 5,
+      requiredWeaponType: "any",
+      allowedInPvP: true,
+    })
+  );
+  registerHarthmereAbility(
+    makeAbility({
+      abilityId: "charge",
+      requiredWeaponType: "sword",
+      cooldownMs: 15_000,
+      resourceCost: 5,
+    })
+  );
+  registerHarthmereAbility(
+    makeAbility({
+      abilityId: "guardian_wall",
+      requiredWeaponType: "any",
+      classRestriction: ["warrior"],
+      specRestriction: ["protection"],
+      resourceCost: 5,
+    })
+  );
+  registerHarthmereAbility(
+    makeAbility({
+      abilityId: "axe_chop",
+      requiredWeaponType: "axe",
+      classRestriction: ["warrior"],
+      resourceCost: 5,
+    })
+  );
+  registerHarthmereAbility(
+    makeAbility({
+      abilityId: "self_heal",
+      targetType: "self",
+      allowedInSafeZone: true,
+      requiredWeaponType: "any",
+      baseDamage: 0,
+      attackPowerScaling: 0,
+      baseHealing: 30,
+      spellPowerScaling: 0.5,
+      resourceCost: 5,
+    })
+  );
+  registerHarthmereAbility(
+    makeAbility({
+      abilityId: "ally_heal",
+      targetType: "single_ally",
+      allowedInSafeZone: true,
+      requiredWeaponType: "any",
+      baseDamage: 0,
+      attackPowerScaling: 0,
+      baseHealing: 30,
+      spellPowerScaling: 0.5,
+      resourceCost: 5,
+    })
+  );
 });
 
 // ---------------------------------------------------------------------------
@@ -287,7 +319,11 @@ describe("Ability cast — base cases", () => {
       zonePvPRule: "contested",
     });
     const ctx = makeCtx({
-      zone: makeZone({ pvpRule: "contested", allowPvP: true, isSafeZone: false }),
+      zone: makeZone({
+        pvpRule: "contested",
+        allowPvP: true,
+        isSafeZone: false,
+      }),
       nearbyTargets: [protectedPlayer],
     });
     const req = makeReq({ requestId: "id_13", abilityId: "slash" });
@@ -327,43 +363,63 @@ describe("Ability cast — restrictions", () => {
     const req = makeReq({ abilityId: "slash" });
     const result = reduceHarthmereCombatAction(req, ctx);
     assert.ok(!result.ok);
-    assert.ok(result.errors?.some(e => e.includes("not_known")));
+    assert.ok(result.errors?.some((e) => e.includes("not_known")));
   });
 
   it("fails if ability not equipped", () => {
-    const actor = makeActor({ knownAbilities: ["slash"], equippedAbilities: [] });
+    const actor = makeActor({
+      knownAbilities: ["slash"],
+      equippedAbilities: [],
+    });
     const ctx = makeCtx({ actor });
     const req = makeReq({ abilityId: "slash" });
     const result = reduceHarthmereCombatAction(req, ctx);
     assert.ok(!result.ok);
-    assert.ok(result.errors?.some(e => e.includes("not_equipped")));
+    assert.ok(result.errors?.some((e) => e.includes("not_equipped")));
   });
 
   it("fails for class-restricted ability used by wrong class", () => {
-    const actor = makeActor({ classId: "warrior", knownAbilities: ["fireball"], equippedAbilities: ["fireball"], mainHandWeaponType: "staff" });
+    const actor = makeActor({
+      classId: "warrior",
+      knownAbilities: ["fireball"],
+      equippedAbilities: ["fireball"],
+      mainHandWeaponType: "staff",
+    });
     const ctx = makeCtx({ actor });
     const req = makeReq({ abilityId: "fireball" });
     const result = reduceHarthmereCombatAction(req, ctx);
     assert.ok(!result.ok);
-    assert.ok(result.errors?.some(e => e.includes("class")));
+    assert.ok(result.errors?.some((e) => e.includes("class")));
   });
 
   it("fails below level requirement", () => {
-    const actor = makeActor({ classId: "mage", level: 3, knownAbilities: ["fireball"], equippedAbilities: ["fireball"], mainHandWeaponType: "staff" });
+    const actor = makeActor({
+      classId: "mage",
+      level: 3,
+      knownAbilities: ["fireball"],
+      equippedAbilities: ["fireball"],
+      mainHandWeaponType: "staff",
+    });
     const ctx = makeCtx({ actor });
     const req = makeReq({ abilityId: "fireball" });
     const result = reduceHarthmereCombatAction(req, ctx);
     assert.ok(!result.ok);
-    assert.ok(result.errors?.some(e => e.includes("level")));
+    assert.ok(result.errors?.some((e) => e.includes("level")));
   });
 
   it("fails with wrong weapon type", () => {
-    const actor = makeActor({ mainHandWeaponType: "axe", knownAbilities: ["fireball"], equippedAbilities: ["fireball"], classId: "mage", level: 10 });
+    const actor = makeActor({
+      mainHandWeaponType: "axe",
+      knownAbilities: ["fireball"],
+      equippedAbilities: ["fireball"],
+      classId: "mage",
+      level: 10,
+    });
     const ctx = makeCtx({ actor });
     const req = makeReq({ abilityId: "fireball" });
     const result = reduceHarthmereCombatAction(req, ctx);
     assert.ok(!result.ok);
-    assert.ok(result.errors?.some(e => e.includes("weapon")));
+    assert.ok(result.errors?.some((e) => e.includes("weapon")));
   });
 
   it("fails when actor is dead", () => {
@@ -406,7 +462,10 @@ describe("Ability cast — restrictions", () => {
   });
 
   it("rejects self-targeted abilities aimed at another entity", () => {
-    const actor = makeActor({ knownAbilities: ["self_heal"], equippedAbilities: ["self_heal"] });
+    const actor = makeActor({
+      knownAbilities: ["self_heal"],
+      equippedAbilities: ["self_heal"],
+    });
     const ctx = makeCtx({ actor, target: makeTarget() });
     const req = makeReq({ abilityId: "self_heal", targetId: "enemy_1" });
     const result = reduceHarthmereCombatAction(req, ctx);
@@ -415,8 +474,15 @@ describe("Ability cast — restrictions", () => {
   });
 
   it("allows ally-targeted healing on non-hostile non-attackable targets", () => {
-    const actor = makeActor({ knownAbilities: ["ally_heal"], equippedAbilities: ["ally_heal"] });
-    const ally = makeTarget({ isHostile: false, isAttackable: false, targetId: "ally_1" });
+    const actor = makeActor({
+      knownAbilities: ["ally_heal"],
+      equippedAbilities: ["ally_heal"],
+    });
+    const ally = makeTarget({
+      isHostile: false,
+      isAttackable: false,
+      targetId: "ally_1",
+    });
     const ctx = makeCtx({ actor, target: ally });
     const req = makeReq({ abilityId: "ally_heal", targetId: "ally_1" });
     const result = reduceHarthmereCombatAction(req, ctx);
@@ -425,7 +491,10 @@ describe("Ability cast — restrictions", () => {
   });
 
   it("rejects ally-targeted healing on hostile targets", () => {
-    const actor = makeActor({ knownAbilities: ["ally_heal"], equippedAbilities: ["ally_heal"] });
+    const actor = makeActor({
+      knownAbilities: ["ally_heal"],
+      equippedAbilities: ["ally_heal"],
+    });
     const ctx = makeCtx({ actor, target: makeTarget({ isHostile: true }) });
     const req = makeReq({ abilityId: "ally_heal" });
     const result = reduceHarthmereCombatAction(req, ctx);
@@ -445,7 +514,9 @@ describe("Ability cast — resource and cooldown", () => {
     const req = makeReq({ abilityId: "slash" });
     const result = reduceHarthmereCombatAction(req, ctx);
     assert.ok(!result.ok);
-    assert.ok(result.errors?.some(e => e.includes("resource") || e.includes("mana")));
+    assert.ok(
+      result.errors?.some((e) => e.includes("resource") || e.includes("mana"))
+    );
   });
 
   it("fails when actor resource kind does not match the ability resource", () => {
@@ -464,7 +535,7 @@ describe("Ability cast — resource and cooldown", () => {
     const req = makeReq({ abilityId: "slash", nowMs: now });
     const result = reduceHarthmereCombatAction(req, ctx);
     assert.ok(!result.ok);
-    assert.ok(result.errors?.some(e => e.includes("cooldown")));
+    assert.ok(result.errors?.some((e) => e.includes("cooldown")));
   });
 
   it("succeeds when cooldown has expired", () => {
@@ -483,17 +554,28 @@ describe("Ability cast — resource and cooldown", () => {
 
 describe("Ability cast — safe zone", () => {
   it("blocks offensive ability in safe zone", () => {
-    const zone = makeZone({ isSafeZone: true, pvpRule: "safe_zone", allowPvP: false });
+    const zone = makeZone({
+      isSafeZone: true,
+      pvpRule: "safe_zone",
+      allowPvP: false,
+    });
     const ctx = makeCtx({ zone });
     const req = makeReq({ abilityId: "slash" });
     const result = reduceHarthmereCombatAction(req, ctx);
     assert.ok(!result.ok);
-    assert.ok(result.errors?.some(e => e.includes("safe_zone")));
+    assert.ok(result.errors?.some((e) => e.includes("safe_zone")));
   });
 
   it("allows safe-zone-permitted ability in safe zone", () => {
-    const zone = makeZone({ isSafeZone: true, pvpRule: "safe_zone", allowPvP: false });
-    const actor = makeActor({ equippedAbilities: ["holy_shield"], knownAbilities: ["holy_shield"] });
+    const zone = makeZone({
+      isSafeZone: true,
+      pvpRule: "safe_zone",
+      allowPvP: false,
+    });
+    const actor = makeActor({
+      equippedAbilities: ["holy_shield"],
+      knownAbilities: ["holy_shield"],
+    });
     const ctx = makeCtx({ actor, zone, target: undefined });
     const req = makeReq({ abilityId: "holy_shield", targetId: undefined });
     const result = reduceHarthmereCombatAction(req, ctx);
@@ -507,8 +589,16 @@ describe("Ability cast — safe zone", () => {
 
 describe("computeHarthmereAbilityDamage", () => {
   it("returns at least 1 damage", () => {
-    const ability = makeAbility({ baseDamage: 0, attackPowerScaling: 0, spellPowerScaling: 0 });
-    const cls = makeClass({ attackPowerPerLevel: 0, spellPowerPerLevel: 0, baseHp: 0 });
+    const ability = makeAbility({
+      baseDamage: 0,
+      attackPowerScaling: 0,
+      spellPowerScaling: 0,
+    });
+    const cls = makeClass({
+      attackPowerPerLevel: 0,
+      spellPowerPerLevel: 0,
+      baseHp: 0,
+    });
     const damage = computeHarthmereAbilityDamage(ability, cls, 1);
     assert.ok(damage >= 1);
   });
@@ -518,17 +608,46 @@ describe("computeHarthmereAbilityDamage", () => {
     const cls = makeClass({ attackPowerPerLevel: 5 });
     const dmgL1 = computeHarthmereAbilityDamage(ability, cls, 1);
     const dmgL10 = computeHarthmereAbilityDamage(ability, cls, 10);
-    assert.ok(dmgL10 > dmgL1, `level 10 (${dmgL10}) should exceed level 1 (${dmgL1})`);
+    assert.ok(
+      dmgL10 > dmgL1,
+      `level 10 (${dmgL10}) should exceed level 1 (${dmgL1})`
+    );
   });
 
   it("variance multiplier shifts output proportionally", () => {
-    const ability = makeAbility({ baseDamage: 100, attackPowerScaling: 0, spellPowerScaling: 0 });
-    const cls = makeClass({ attackPowerPerLevel: 0, spellPowerPerLevel: 0, baseHp: 0 });
+    const ability = makeAbility({
+      baseDamage: 100,
+      attackPowerScaling: 0,
+      spellPowerScaling: 0,
+    });
+    const cls = makeClass({
+      attackPowerPerLevel: 0,
+      spellPowerPerLevel: 0,
+      baseHp: 0,
+    });
     const base = computeHarthmereAbilityDamage(ability, cls, 1, 1.0);
     const high = computeHarthmereAbilityDamage(ability, cls, 1, 1.1);
-    const low  = computeHarthmereAbilityDamage(ability, cls, 1, 0.9);
+    const low = computeHarthmereAbilityDamage(ability, cls, 1, 0.9);
     assert.ok(high > base);
     assert.ok(low < base);
+  });
+
+  it("includes authoritative attack and spell power from equipped items", () => {
+    const ability = makeAbility({
+      baseDamage: 0,
+      attackPowerScaling: 1,
+      spellPowerScaling: 1,
+    });
+    const cls = makeClass({
+      baseHp: 0,
+      attackPowerPerLevel: 0,
+      spellPowerPerLevel: 0,
+    });
+    const unarmed = computeHarthmereAbilityDamage(ability, cls, 1, 1, 0, 0);
+    const equipped = computeHarthmereAbilityDamage(ability, cls, 1, 1, 12, 8);
+
+    assert.equal(unarmed, 1);
+    assert.equal(equipped, 20);
   });
 });
 
@@ -569,7 +688,9 @@ describe("Respec", () => {
     const req = makeReq({ kind: "respec" });
     const result = reduceHarthmereCombatAction(req, ctx);
     assert.ok(!result.ok);
-    assert.ok(result.errors?.some(e => e.includes("gold") || e.includes("cost")));
+    assert.ok(
+      result.errors?.some((e) => e.includes("gold") || e.includes("cost"))
+    );
   });
 
   it("escalates respec cost with each respec", () => {
@@ -594,7 +715,9 @@ describe("Respec", () => {
     const req = makeReq({ kind: "respec", nowMs: now });
     const result = reduceHarthmereCombatAction(req, ctx);
     assert.ok(!result.ok);
-    assert.ok(result.errors?.some(e => e.includes("cooldown") || e.includes("respec")));
+    assert.ok(
+      result.errors?.some((e) => e.includes("cooldown") || e.includes("respec"))
+    );
   });
 
   it("enforces respec cooldown after a recent respec", () => {
@@ -608,7 +731,9 @@ describe("Respec", () => {
     const req = makeReq({ kind: "respec", nowMs: now });
     const result = reduceHarthmereCombatAction(req, ctx);
     assert.ok(!result.ok);
-    assert.ok(result.errors?.some(e => e.includes("cooldown") || e.includes("respec")));
+    assert.ok(
+      result.errors?.some((e) => e.includes("cooldown") || e.includes("respec"))
+    );
   });
 });
 
@@ -620,7 +745,10 @@ describe("Talent purchase", () => {
   it("succeeds when prerequisites met and points available", () => {
     const actor = makeActor({ activeTalentNodes: [] });
     const ctx = makeCtx({ actor, talentPointsAvailable: 5 });
-    const req = makeReq({ kind: "talent_purchase", talentNodeId: "power_strike_1" });
+    const req = makeReq({
+      kind: "talent_purchase",
+      talentNodeId: "power_strike_1",
+    });
     const result = reduceHarthmereCombatAction(req, ctx);
     assert.ok(result.ok, result.errors?.join(", "));
     assert.ok(result.newTalentNodes.includes("power_strike_1"));
@@ -629,19 +757,25 @@ describe("Talent purchase", () => {
   it("fails when insufficient talent points", () => {
     const actor = makeActor({ activeTalentNodes: [] });
     const ctx = makeCtx({ actor, talentPointsAvailable: 0 });
-    const req = makeReq({ kind: "talent_purchase", talentNodeId: "power_strike_1" });
+    const req = makeReq({
+      kind: "talent_purchase",
+      talentNodeId: "power_strike_1",
+    });
     const result = reduceHarthmereCombatAction(req, ctx);
     assert.ok(!result.ok);
-    assert.ok(result.errors?.some(e => e.includes("talent_points")));
+    assert.ok(result.errors?.some((e) => e.includes("talent_points")));
   });
 
   it("fails buying already-purchased talent node", () => {
     const actor = makeActor({ activeTalentNodes: ["power_strike_1"] });
     const ctx = makeCtx({ actor, talentPointsAvailable: 5 });
-    const req = makeReq({ kind: "talent_purchase", talentNodeId: "power_strike_1" });
+    const req = makeReq({
+      kind: "talent_purchase",
+      talentNodeId: "power_strike_1",
+    });
     const result = reduceHarthmereCombatAction(req, ctx);
     assert.ok(!result.ok);
-    assert.ok(result.errors?.some(e => e.includes("already_purchased")));
+    assert.ok(result.errors?.some((e) => e.includes("already_purchased")));
   });
 });
 
@@ -651,9 +785,15 @@ describe("Talent purchase", () => {
 
 describe("Loadout change", () => {
   it("succeeds with known abilities", () => {
-    const actor = makeActor({ knownAbilities: ["slash", "charge", "holy_shield"], equippedAbilities: [] });
+    const actor = makeActor({
+      knownAbilities: ["slash", "charge", "holy_shield"],
+      equippedAbilities: [],
+    });
     const ctx = makeCtx({ actor });
-    const req = makeReq({ kind: "loadout_change", newLoadout: ["slash", "charge"] });
+    const req = makeReq({
+      kind: "loadout_change",
+      newLoadout: ["slash", "charge"],
+    });
     const result = reduceHarthmereCombatAction(req, ctx);
     assert.ok(result.ok, result.errors?.join(", "));
     assert.deepStrictEqual(result.newEquippedAbilities, ["slash", "charge"]);
@@ -662,24 +802,39 @@ describe("Loadout change", () => {
   it("fails if loadout includes unknown ability", () => {
     const actor = makeActor({ knownAbilities: ["slash"] });
     const ctx = makeCtx({ actor });
-    const req = makeReq({ kind: "loadout_change", newLoadout: ["slash", "fireball"] });
+    const req = makeReq({
+      kind: "loadout_change",
+      newLoadout: ["slash", "fireball"],
+    });
     const result = reduceHarthmereCombatAction(req, ctx);
     assert.ok(!result.ok);
-    assert.ok(result.errors?.some(e => e.includes("not_known")));
+    assert.ok(result.errors?.some((e) => e.includes("not_known")));
   });
 
   it("fails if loadout duplicates the same ability", () => {
-    const actor = makeActor({ knownAbilities: ["slash", "charge"], equippedAbilities: [] });
+    const actor = makeActor({
+      knownAbilities: ["slash", "charge"],
+      equippedAbilities: [],
+    });
     const ctx = makeCtx({ actor });
-    const req = makeReq({ kind: "loadout_change", newLoadout: ["slash", "slash"] });
+    const req = makeReq({
+      kind: "loadout_change",
+      newLoadout: ["slash", "slash"],
+    });
     const result = reduceHarthmereCombatAction(req, ctx);
     assert.ok(!result.ok);
     assert.ok(result.errors?.includes("duplicate_ability_in_loadout:slash"));
   });
 
   it("fails if loadout exceeds eight slots", () => {
-    const newLoadout = Array.from({ length: 9 }, (_unused, index) => `ability_${index}`);
-    const actor = makeActor({ knownAbilities: newLoadout, equippedAbilities: [] });
+    const newLoadout = Array.from(
+      { length: 9 },
+      (_unused, index) => `ability_${index}`
+    );
+    const actor = makeActor({
+      knownAbilities: newLoadout,
+      equippedAbilities: [],
+    });
     const ctx = makeCtx({ actor });
     const req = makeReq({ kind: "loadout_change", newLoadout });
     const result = reduceHarthmereCombatAction(req, ctx);
@@ -688,9 +843,15 @@ describe("Loadout change", () => {
   });
 
   it("fails if loadout includes an ability missing from the server catalogue", () => {
-    const actor = makeActor({ knownAbilities: ["ghost_ability"], equippedAbilities: [] });
+    const actor = makeActor({
+      knownAbilities: ["ghost_ability"],
+      equippedAbilities: [],
+    });
     const ctx = makeCtx({ actor });
-    const req = makeReq({ kind: "loadout_change", newLoadout: ["ghost_ability"] });
+    const req = makeReq({
+      kind: "loadout_change",
+      newLoadout: ["ghost_ability"],
+    });
     const result = reduceHarthmereCombatAction(req, ctx);
     assert.ok(!result.ok);
     assert.ok(result.errors?.includes("loadout_ability_unknown:ghost_ability"));
@@ -703,10 +864,15 @@ describe("Loadout change", () => {
       equippedAbilities: [],
     });
     const ctx = makeCtx({ actor });
-    const req = makeReq({ kind: "loadout_change", newLoadout: ["guardian_wall"] });
+    const req = makeReq({
+      kind: "loadout_change",
+      newLoadout: ["guardian_wall"],
+    });
     const result = reduceHarthmereCombatAction(req, ctx);
     assert.ok(!result.ok);
-    assert.ok(result.errors?.includes("loadout_ability_spec_mismatch:guardian_wall"));
+    assert.ok(
+      result.errors?.includes("loadout_ability_spec_mismatch:guardian_wall")
+    );
   });
 
   it("validates weapon requirements during loadout changes", () => {
@@ -719,7 +885,9 @@ describe("Loadout change", () => {
     const req = makeReq({ kind: "loadout_change", newLoadout: ["axe_chop"] });
     const result = reduceHarthmereCombatAction(req, ctx);
     assert.ok(!result.ok);
-    assert.ok(result.errors?.includes("loadout_ability_weapon_requirement:axe_chop"));
+    assert.ok(
+      result.errors?.includes("loadout_ability_weapon_requirement:axe_chop")
+    );
   });
 });
 
@@ -729,34 +897,90 @@ describe("Loadout change", () => {
 
 describe("computeHarthmereXpReward", () => {
   it("returns zero for grey content (target much lower level)", () => {
-    const { xpReward } = computeHarthmereXpReward({ actorLevel: 30, targetLevel: 5, baseXp: 100, contributionScore: 1, antiFarmMultiplier: 1, restedXpPool: 0 });
+    const { xpReward } = computeHarthmereXpReward({
+      actorLevel: 30,
+      targetLevel: 5,
+      baseXp: 100,
+      contributionScore: 1,
+      antiFarmMultiplier: 1,
+      restedXpPool: 0,
+    });
     assert.strictEqual(xpReward, 0, "grey content should give no XP");
   });
 
   it("returns full XP for even-level target", () => {
-    const { xpReward } = computeHarthmereXpReward({ actorLevel: 10, targetLevel: 10, baseXp: 100, contributionScore: 1, antiFarmMultiplier: 1, restedXpPool: 0 });
+    const { xpReward } = computeHarthmereXpReward({
+      actorLevel: 10,
+      targetLevel: 10,
+      baseXp: 100,
+      contributionScore: 1,
+      antiFarmMultiplier: 1,
+      restedXpPool: 0,
+    });
     assert.ok(xpReward > 0);
   });
 
   it("grants bonus XP for higher-level target", () => {
-    const { xpReward: even } = computeHarthmereXpReward({ actorLevel: 10, targetLevel: 10, baseXp: 100, contributionScore: 1, antiFarmMultiplier: 1, restedXpPool: 0 });
-    const { xpReward: hard } = computeHarthmereXpReward({ actorLevel: 10, targetLevel: 15, baseXp: 100, contributionScore: 1, antiFarmMultiplier: 1, restedXpPool: 0 });
+    const { xpReward: even } = computeHarthmereXpReward({
+      actorLevel: 10,
+      targetLevel: 10,
+      baseXp: 100,
+      contributionScore: 1,
+      antiFarmMultiplier: 1,
+      restedXpPool: 0,
+    });
+    const { xpReward: hard } = computeHarthmereXpReward({
+      actorLevel: 10,
+      targetLevel: 15,
+      baseXp: 100,
+      contributionScore: 1,
+      antiFarmMultiplier: 1,
+      restedXpPool: 0,
+    });
     assert.ok(hard > even, `hard (${hard}) should exceed even (${even})`);
   });
 
   it("applies rested XP bonus additively", () => {
-    const { xpReward: base } = computeHarthmereXpReward({ actorLevel: 10, targetLevel: 10, baseXp: 100, contributionScore: 1, antiFarmMultiplier: 1, restedXpPool: 0 });
-    const { xpReward: rested } = computeHarthmereXpReward({ actorLevel: 10, targetLevel: 10, baseXp: 100, contributionScore: 1, antiFarmMultiplier: 1, restedXpPool: 50 });
+    const { xpReward: base } = computeHarthmereXpReward({
+      actorLevel: 10,
+      targetLevel: 10,
+      baseXp: 100,
+      contributionScore: 1,
+      antiFarmMultiplier: 1,
+      restedXpPool: 0,
+    });
+    const { xpReward: rested } = computeHarthmereXpReward({
+      actorLevel: 10,
+      targetLevel: 10,
+      baseXp: 100,
+      contributionScore: 1,
+      antiFarmMultiplier: 1,
+      restedXpPool: 50,
+    });
     assert.ok(rested > base);
   });
 
   it("returns integer XP (no fractional values)", () => {
-    const { xpReward } = computeHarthmereXpReward({ actorLevel: 7, targetLevel: 8, baseXp: 77, contributionScore: 1, antiFarmMultiplier: 1, restedXpPool: 33 });
+    const { xpReward } = computeHarthmereXpReward({
+      actorLevel: 7,
+      targetLevel: 8,
+      baseXp: 77,
+      contributionScore: 1,
+      antiFarmMultiplier: 1,
+      restedXpPool: 33,
+    });
     assert.strictEqual(xpReward, Math.floor(xpReward), "XP must be an integer");
   });
 
   it("returns restedXpConsumed capped at xpReward", () => {
-    const { xpReward, restedXpConsumed } = computeHarthmereXpReward({ actorLevel: 10, targetLevel: 10, baseXp: 100, contributionScore: 1, antiFarmMultiplier: 1, restedXpPool: 9999 });
+    const { xpReward, restedXpConsumed } = computeHarthmereXpReward({
+      actorLevel: 10,
+      targetLevel: 10,
+      baseXp: 100,
+      contributionScore: 1,
+      antiFarmMultiplier: 1,
+      restedXpPool: 9999,
+    });
     assert.ok(restedXpConsumed <= xpReward);
   });
 });
@@ -784,7 +1008,11 @@ describe("isHarthmerePvPLegal", () => {
 
   it("returns legal=false when the target is standing in a safe zone", () => {
     const actor = makeActor({ pvpFlagged: true });
-    const target = makeTarget({ isPlayer: true, pvpFlagged: true, zonePvPRule: "safe_zone" });
+    const target = makeTarget({
+      isPlayer: true,
+      pvpFlagged: true,
+      zonePvPRule: "safe_zone",
+    });
     const zone = makeZone({ pvpRule: "open_pvp", isSafeZone: false });
     const result = isHarthmerePvPLegal(actor, target, zone);
     assert.ok(!result.legal);

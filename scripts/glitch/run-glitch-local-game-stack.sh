@@ -426,12 +426,11 @@ ensure_snapshot_redis_populated() {
 
   log "Populating Redis with installed snapshot data hash=$installed_hash previous=${bootstrapped_hash:-missing} key=$hash_key GLITCH_PROD_SNAPSHOT_REDIS_BOOTSTRAP"
   redis_cli_runtime flushall
-  if [ -f "$APP_ROOT/dist/bootstrap-redis.js" ]; then
-    SKIP_PROD_LOAD=true node "$APP_ROOT/dist/bootstrap-redis.js" "$APP_ROOT/snapshot_backup.json"
-  else
-    log "WARN dist/bootstrap-redis.js missing; falling back to ts-node Redis bootstrap." >&2
-    SKIP_PROD_LOAD=true node -r ts-node/register "$APP_ROOT/scripts/node/bootstrap_redis.ts" "$APP_ROOT/snapshot_backup.json"
+  if [ ! -f "$APP_ROOT/dist/bootstrap-redis.js" ]; then
+    log "ERROR dist/bootstrap-redis.js is missing from the production image." >&2
+    return 1
   fi
+  SKIP_PROD_LOAD=true node "$APP_ROOT/dist/bootstrap-redis.js" "$APP_ROOT/snapshot_backup.json"
   redis_cli_runtime set "$hash_key" "$installed_hash"
   redis_cli_runtime set biomes_data_snapshot_hash "$installed_hash"
   redis_cli_runtime del "$lock_key" >/dev/null || true
@@ -449,7 +448,11 @@ apply_mutable_hotfix() {
   fi
 
   log "Applying Glitch mutable hotfix before stack startup."
-  node -r ts-node/register -r tsconfig-paths/register "$APP_ROOT/scripts/glitch/apply-mutable-hotfix.ts"
+  if [ ! -f "$APP_ROOT/dist/apply-mutable-hotfix.js" ]; then
+    log "ERROR dist/apply-mutable-hotfix.js is missing from the production image." >&2
+    return 1
+  fi
+  node "$APP_ROOT/dist/apply-mutable-hotfix.js"
 }
 
 apply_mutable_hotfix
@@ -473,6 +476,17 @@ start_bg chat 127.0.0.1 3300 3304 3301 "$APP_ROOT/dist/chat.js" "${SERVICE_ARGS[
 start_bg oob 127.0.0.1 4700 4704 4701 "$APP_ROOT/dist/oob.js" "${SERVICE_ARGS[@]}"
 start_bg sidefx 127.0.0.1 4600 4604 4601 "$APP_ROOT/dist/sidefx.js" "${SERVICE_ARGS[@]}"
 start_bg sync "$GLITCH_SYNC_BIND_HOST" "$BASE_PORT" "$RPC_PORT" "$METRICS_PORT" "$APP_ROOT/dist/sync.js" "${SERVICE_ARGS[@]}"
+
+# Bind the public ingress immediately after all core processes have launched.
+# Dependency readiness checks continue below, but Azure no longer sees port
+# 3000 closed while chat and stream workers create their Redis groups.
+log "START web HOST=$GLITCH_WEB_BIND_HOST BASE_PORT=$WEB_BASE_PORT RPC_PORT=$WEB_RPC_PORT METRICS_PORT=$WEB_METRICS_PORT file=$APP_ROOT/dist/web.js assetServerMode=lazy GLITCH_PROD_LOCAL_PARITY"
+HOST="$GLITCH_WEB_BIND_HOST" BASE_PORT="$WEB_BASE_PORT" RPC_PORT="$WEB_RPC_PORT" METRICS_PORT="$WEB_METRICS_PORT" \
+  node "$APP_ROOT/dist/web.js" "${SERVICE_ARGS[@]}" --assetServerMode lazy &
+WEB_PID="$!"
+PIDS="$PIDS $WEB_PID"
+log "PID web=$WEB_PID"
+wait_tcp 127.0.0.1 "$WEB_BASE_PORT" web-http
 
 if ! wait_tcp 127.0.0.1 4704 oob-rpc; then
   echo "WARN oob-rpc not listening on 127.0.0.1:4704; continuing because oob-rpc is non-fatal for Container Apps web/sync startup" >&2
@@ -503,14 +517,6 @@ else
   log "Sink worker disabled by GLITCH_ENABLE_SINK_WORKER=$GLITCH_ENABLE_SINK_WORKER"
 fi
 
-log "START web HOST=$GLITCH_WEB_BIND_HOST BASE_PORT=$WEB_BASE_PORT RPC_PORT=$WEB_RPC_PORT METRICS_PORT=$WEB_METRICS_PORT file=$APP_ROOT/dist/web.js assetServerMode=lazy GLITCH_PROD_LOCAL_PARITY"
-HOST="$GLITCH_WEB_BIND_HOST" BASE_PORT="$WEB_BASE_PORT" RPC_PORT="$WEB_RPC_PORT" METRICS_PORT="$WEB_METRICS_PORT" \
-  node "$APP_ROOT/dist/web.js" "${SERVICE_ARGS[@]}" --assetServerMode lazy &
-WEB_PID="$!"
-PIDS="$PIDS $WEB_PID"
-log "PID web=$WEB_PID"
-
-wait_tcp 127.0.0.1 "$WEB_BASE_PORT" web-http
 log "GLITCH_PRODUCTION_STACK_PORT_FIX ready web=$WEB_BASE_PORT sync=$SYNC_PORT rpc=$RPC_PORT"
 
 # Keep PID 1 alive and fail the container if any core process exits.

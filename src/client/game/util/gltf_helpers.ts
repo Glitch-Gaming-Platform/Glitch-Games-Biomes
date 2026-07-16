@@ -13,6 +13,32 @@ export function loadGltf(url: string) {
   return loader.loadAsync(url);
 }
 
+export async function loadGltfWithRetry(
+  url: string,
+  options: {
+    attempts?: number;
+    delayMs?: number;
+    load?: (url: string) => Promise<GLTF>;
+  } = {}
+) {
+  const attempts = Math.max(1, Math.trunc(options.attempts ?? 2));
+  const load = options.load ?? loadGltf;
+  let lastError: unknown;
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    try {
+      return await load(url);
+    } catch (error) {
+      lastError = error;
+      if (attempt + 1 < attempts && (options.delayMs ?? 250) > 0) {
+        await new Promise<void>((resolve) => {
+          setTimeout(resolve, options.delayMs ?? 250);
+        });
+      }
+    }
+  }
+  throw lastError;
+}
+
 async function defaultPlayerMeshGltfArrayBufferFetch(url: string) {
   const response = await fetch(url);
   if (!response.ok) {

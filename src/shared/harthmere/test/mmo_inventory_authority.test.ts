@@ -1047,6 +1047,31 @@ describe("Quest item grant/remove", () => {
     assert.strictEqual(unequip.equipmentChanges.main_hand, undefined);
   });
 
+  it("rejects valid equipment in the wrong or unknown slot", () => {
+    const snap = makeSnapshot({ items: { iron_sword: 1 } });
+    const wrongSlot = reduceHarthmereInventoryMutation(
+      makeReq({
+        kind: "equip_item",
+        itemId: "iron_sword",
+        targetSlot: "chest",
+      }),
+      makeCtx(snap)
+    );
+    assert.ok(!wrongSlot.ok);
+    assert.ok(wrongSlot.errors?.includes("item_not_equippable_in_slot"));
+
+    const unknownSlot = reduceHarthmereInventoryMutation(
+      makeReq({
+        kind: "equip_item",
+        itemId: "iron_sword",
+        targetSlot: "weapon_slot_from_client",
+      }),
+      makeCtx(snap)
+    );
+    assert.ok(!unknownSlot.ok);
+    assert.ok(unknownSlot.errors?.includes("unknown_equipment_slot"));
+  });
+
   it("enforces equipment classRestriction when the player class is known", () => {
     registerHarthmereItemDefinition(
       makeItem({ itemId: "mage_staff", classRestriction: ["mage"], stats: {} })
@@ -1097,6 +1122,7 @@ describe("Quest item grant/remove", () => {
     registerHarthmereItemDefinition(
       makeItem({
         itemId: "wooden_shield",
+        displayName: "Wooden Shield",
         maxStackSize: 1,
         stats: { defense: 8 },
       })

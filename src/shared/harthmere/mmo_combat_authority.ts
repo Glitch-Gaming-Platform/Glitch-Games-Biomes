@@ -146,6 +146,10 @@ export interface HarthmereCombatActorSnapshot {
   /** main-hand equipped weapon type */
   mainHandWeaponType: HarthmereWeaponType;
   offHandWeaponType: HarthmereWeaponType | "none";
+  /** Server-derived bonuses from equipped item definitions. */
+  attackPowerBonus?: number;
+  spellPowerBonus?: number;
+  armorRating?: number;
   deathState: "alive" | "downed" | "dead";
   /** attacker position */
   position: { x: number; y: number; z: number };
@@ -253,7 +257,9 @@ export interface HarthmereCombatActionResult {
 const _abilityCatalogue = new Map<string, HarthmereAbilityCatalogueEntry>();
 const _classCatalogue = new Map<string, HarthmereClassDefinition>();
 
-export function registerHarthmereAbility(entry: HarthmereAbilityCatalogueEntry) {
+export function registerHarthmereAbility(
+  entry: HarthmereAbilityCatalogueEntry
+) {
   _abilityCatalogue.set(entry.abilityId, entry);
 }
 
@@ -263,7 +269,9 @@ export function getHarthmereAbility(
   return _abilityCatalogue.get(abilityId);
 }
 
-export function registerHarthmereClassDefinition(def: HarthmereClassDefinition) {
+export function registerHarthmereClassDefinition(
+  def: HarthmereClassDefinition
+) {
   _classCatalogue.set(def.classId, def);
 }
 
@@ -282,9 +290,7 @@ function distanceBetween(
   b: { x: number; y: number; z: number }
 ): number {
   return Math.sqrt(
-    Math.pow(a.x - b.x, 2) +
-      Math.pow(a.y - b.y, 2) +
-      Math.pow(a.z - b.z, 2)
+    Math.pow(a.x - b.x, 2) + Math.pow(a.y - b.y, 2) + Math.pow(a.z - b.z, 2)
   );
 }
 
@@ -350,8 +356,12 @@ export function harthmereVoxelWalkLineOfSight(
   const eyeFrom = { ...from, y: from.y + HARTHMERE_SERVER_LOS_EYE_HEIGHT };
   const eyeTo = { ...to, y: to.y + HARTHMERE_SERVER_LOS_EYE_HEIGHT };
   const steps = Math.max(2, Math.ceil(distance * 2));
-  const startVoxel = `${Math.floor(eyeFrom.x)}|${Math.floor(eyeFrom.y)}|${Math.floor(eyeFrom.z)}`;
-  const endVoxel = `${Math.floor(eyeTo.x)}|${Math.floor(eyeTo.y)}|${Math.floor(eyeTo.z)}`;
+  const startVoxel = `${Math.floor(eyeFrom.x)}|${Math.floor(
+    eyeFrom.y
+  )}|${Math.floor(eyeFrom.z)}`;
+  const endVoxel = `${Math.floor(eyeTo.x)}|${Math.floor(eyeTo.y)}|${Math.floor(
+    eyeTo.z
+  )}`;
   for (let i = 1; i < steps; i += 1) {
     const t = i / steps;
     const x = Math.floor(eyeFrom.x + (eyeTo.x - eyeFrom.x) * t);
@@ -408,12 +418,18 @@ export function computeHarthmereAbilityDamage(
   ability: HarthmereAbilityCatalogueEntry,
   actorClass: HarthmereClassDefinition,
   actorLevel: number,
-  varianceMultiplier = 1.0
+  varianceMultiplier = 1.0,
+  attackPowerBonus = 0,
+  spellPowerBonus = 0
 ): number {
   const attackPower =
-    actorClass.baseHp * 0.1 + actorClass.attackPowerPerLevel * actorLevel;
+    actorClass.baseHp * 0.1 +
+    actorClass.attackPowerPerLevel * actorLevel +
+    Math.max(0, attackPowerBonus);
   const spellPower =
-    actorClass.baseHp * 0.1 + actorClass.spellPowerPerLevel * actorLevel;
+    actorClass.baseHp * 0.1 +
+    actorClass.spellPowerPerLevel * actorLevel +
+    Math.max(0, spellPowerBonus);
   const raw =
     ability.baseDamage +
     ability.attackPowerScaling * attackPower +
@@ -429,7 +445,10 @@ export function computeHarthmereAbilityHealing(
 ): number {
   const spellPower =
     actorClass.baseHp * 0.1 + actorClass.spellPowerPerLevel * actorLevel;
-  return Math.max(0, Math.round(ability.baseHealing + ability.spellPowerScaling * spellPower));
+  return Math.max(
+    0,
+    Math.round(ability.baseHealing + ability.spellPowerScaling * spellPower)
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -527,11 +546,15 @@ function canStrayAttackHitTarget(
 ) {
   if (!candidate.isAlive || !candidate.isAttackable) return false;
   if (!targetWithinAbilityRange(actor, candidate, ability)) return false;
-  if (ability.requiresLineOfSight && !harthmereServerCheckLineOfSight(actor.position, candidate.position)) {
+  if (
+    ability.requiresLineOfSight &&
+    !harthmereServerCheckLineOfSight(actor.position, candidate.position)
+  ) {
     return false;
   }
   if (candidate.isPlayer) {
-    if (!ability.allowedInPvP || !zone.allowPvP || zone.pvpRule === "safe_zone") return false;
+    if (!ability.allowedInPvP || !zone.allowPvP || zone.pvpRule === "safe_zone")
+      return false;
     return isHarthmerePvPLegal(actor, candidate, zone).legal;
   }
   return true;
@@ -555,7 +578,8 @@ function validateAbilityCast(
   if (!abilityId) return resultFail(req, ["missing_ability_id"]);
 
   // --- Actor preconditions ---
-  if (actor.deathState !== "alive") combatFail(errors, "actor_is_dead_or_downed");
+  if (actor.deathState !== "alive")
+    combatFail(errors, "actor_is_dead_or_downed");
   if (actor.hp <= 0) combatFail(errors, "actor_hp_is_zero");
 
   // --- Ability catalogue lookup (server-authoritative) ---
@@ -634,7 +658,11 @@ function validateAbilityCast(
   }
 
   // --- Target-dependent checks ---
-  if (ability.targetType === "self" && req.targetId && req.targetId !== actor.actorId) {
+  if (
+    ability.targetType === "self" &&
+    req.targetId &&
+    req.targetId !== actor.actorId
+  ) {
     combatFail(errors, "self_ability_cannot_target_other");
   }
 
@@ -660,7 +688,8 @@ function validateAbilityCast(
       // --- PvP legality ---
       if (target.isPlayer && !targetsAlly) {
         const pvpLegality = isHarthmerePvPLegal(actor, target, zone);
-        if (!pvpLegality.legal) combatFail(errors, `pvp_illegal:${pvpLegality.reason}`);
+        if (!pvpLegality.legal)
+          combatFail(errors, `pvp_illegal:${pvpLegality.reason}`);
         if (!zone.allowPvP && !actor.pvpFlagged) {
           combatFail(errors, "pvp_not_permitted_in_zone");
         }
@@ -697,9 +726,16 @@ function validateAbilityCast(
 
   if (classDef) {
     // Deterministic variance tied to requestId hash to be replay-safe
-    const variance = 0.95 + (hashStringToFloat(req.requestId) * 0.1);
+    const variance = 0.95 + hashStringToFloat(req.requestId) * 0.1;
     if (ability.baseDamage > 0 || ability.attackPowerScaling > 0) {
-      damage = computeHarthmereAbilityDamage(ability, classDef, actor.level, variance);
+      damage = computeHarthmereAbilityDamage(
+        ability,
+        classDef,
+        actor.level,
+        variance,
+        actor.attackPowerBonus,
+        actor.spellPowerBonus
+      );
     }
     if (ability.baseHealing > 0) {
       healing = computeHarthmereAbilityHealing(ability, classDef, actor.level);
@@ -715,18 +751,26 @@ function validateAbilityCast(
     ability.targetType !== "self" &&
     ability.targetType !== "single_ally" &&
     ability.targetType !== "ground_aoe";
-  if (canMiss && hashStringToFloat(`${req.requestId}:hit`) < HARTHMERE_ATTACK_MISS_CHANCE) {
-    const strayCandidates = nearbyTargets.filter((candidate) =>
-      candidate.targetId !== target.targetId &&
-      canStrayAttackHitTarget(actor, candidate, ability, zone)
+  if (
+    canMiss &&
+    hashStringToFloat(`${req.requestId}:hit`) < HARTHMERE_ATTACK_MISS_CHANCE
+  ) {
+    const strayCandidates = nearbyTargets.filter(
+      (candidate) =>
+        candidate.targetId !== target.targetId &&
+        canStrayAttackHitTarget(actor, candidate, ability, zone)
     );
     if (
       strayCandidates.length > 0 &&
-      hashStringToFloat(`${req.requestId}:stray`) < HARTHMERE_MISSED_ATTACK_STRAY_HIT_CHANCE
+      hashStringToFloat(`${req.requestId}:stray`) <
+        HARTHMERE_MISSED_ATTACK_STRAY_HIT_CHANCE
     ) {
       resolvedTarget =
         strayCandidates[
-          Math.floor(hashStringToFloat(`${req.requestId}:stray_target`) * strayCandidates.length)
+          Math.floor(
+            hashStringToFloat(`${req.requestId}:stray_target`) *
+              strayCandidates.length
+          )
         ] ?? strayCandidates[0];
       hitResolution = "stray_hit";
       warnings.push(
@@ -742,7 +786,10 @@ function validateAbilityCast(
     }
   }
 
-  const killsTarget = resolvedTarget !== undefined && damage > 0 && resolvedTarget.hp - damage <= 0;
+  const killsTarget =
+    resolvedTarget !== undefined &&
+    damage > 0 &&
+    resolvedTarget.hp - damage <= 0;
   const isPvPKill = killsTarget && (resolvedTarget?.isPlayer ?? false);
 
   const newCooldowns: Record<string, number> = {
@@ -757,7 +804,10 @@ function validateAbilityCast(
   const actorResourceAfter = Math.max(0, actor.resource - ability.resourceCost);
 
   return resultOk(req, {
-    targetId: hitResolution === "miss" ? undefined : resolvedTarget?.targetId ?? req.targetId,
+    targetId:
+      hitResolution === "miss"
+        ? undefined
+        : resolvedTarget?.targetId ?? req.targetId,
     intendedTargetId: req.targetId,
     hitResolution,
     damage,
@@ -774,7 +824,9 @@ function validateAbilityCast(
       "ability_cast",
       abilityId,
       hitResolution,
-      ...(hitResolution === "stray_hit" && resolvedTarget ? [`stray_target:${resolvedTarget.targetId}`] : []),
+      ...(hitResolution === "stray_hit" && resolvedTarget
+        ? [`stray_target:${resolvedTarget.targetId}`]
+        : []),
       ...(damage > 0 ? [`damage:${damage}`] : []),
       ...(healing > 0 ? [`healing:${healing}`] : []),
       ...(killsTarget ? ["kill"] : []),
@@ -809,7 +861,8 @@ function validateRespec(
   const { nowMs } = req;
 
   // Cannot respec while dead/downed
-  if (actor.deathState !== "alive") combatFail(errors, "cannot_respec_while_dead_or_downed");
+  if (actor.deathState !== "alive")
+    combatFail(errors, "cannot_respec_while_dead_or_downed");
 
   // Cannot respec while any abilities are on cooldown (prevents cooldown bypass exploit)
   for (const [abilityId, expiresAt] of Object.entries(actor.cooldowns)) {
@@ -835,7 +888,11 @@ function validateRespec(
 
   return resultOk(req, {
     goldCost: -goldCost, // negative = gold deducted
-    auditTags: ["respec", `cost:${goldCost}`, `respec_count:${respecCount + 1}`],
+    auditTags: [
+      "respec",
+      `cost:${goldCost}`,
+      `respec_count:${respecCount + 1}`,
+    ],
   });
 }
 
@@ -853,8 +910,10 @@ function validateTalentPurchase(
 
   if (!talentNodeId) return resultFail(req, ["missing_talent_node_id"]);
 
-  if (actor.deathState !== "alive") combatFail(errors, "cannot_purchase_talent_while_dead");
-  if (talentPointsAvailable < 1) combatFail(errors, "no_talent_points_available");
+  if (actor.deathState !== "alive")
+    combatFail(errors, "cannot_purchase_talent_while_dead");
+  if (talentPointsAvailable < 1)
+    combatFail(errors, "no_talent_points_available");
   if (actor.activeTalentNodes.includes(talentNodeId)) {
     combatFail(errors, "talent_node_already_purchased");
   }
@@ -879,7 +938,8 @@ function validateLoadoutChange(
   const { newLoadout } = req;
 
   if (!newLoadout) return resultFail(req, ["missing_new_loadout"]);
-  if (actor.deathState !== "alive") combatFail(errors, "cannot_change_loadout_while_dead");
+  if (actor.deathState !== "alive")
+    combatFail(errors, "cannot_change_loadout_while_dead");
   if (newLoadout.length > 8) combatFail(errors, "loadout_slot_limit_exceeded");
 
   const seen = new Set<string>();
@@ -887,7 +947,10 @@ function validateLoadoutChange(
   // Cannot change loadout while any ability is on cooldown
   for (const [abilityId, expiresAt] of Object.entries(actor.cooldowns)) {
     if (req.nowMs < expiresAt) {
-      combatFail(errors, `cannot_change_loadout_with_ability_on_cooldown:${abilityId}`);
+      combatFail(
+        errors,
+        `cannot_change_loadout_with_ability_on_cooldown:${abilityId}`
+      );
     }
   }
 
@@ -922,7 +985,10 @@ function validateLoadoutChange(
       if (!actorHasRequiredWeapon(actor, ability)) {
         combatFail(errors, `loadout_ability_weapon_requirement:${abilityId}`);
       }
-      if (ability.requiredTalentNode && !actor.activeTalentNodes.includes(ability.requiredTalentNode)) {
+      if (
+        ability.requiredTalentNode &&
+        !actor.activeTalentNodes.includes(ability.requiredTalentNode)
+      ) {
         combatFail(errors, `loadout_ability_talent_not_purchased:${abilityId}`);
       }
     } else {
@@ -965,7 +1031,13 @@ export function reduceHarthmereCombatAction(
   switch (req.kind) {
     case "attack":
     case "ability_cast":
-      return validateAbilityCast(req, ctx.actor, ctx.target, ctx.zone, ctx.nearbyTargets);
+      return validateAbilityCast(
+        req,
+        ctx.actor,
+        ctx.target,
+        ctx.zone,
+        ctx.nearbyTargets
+      );
 
     case "respec":
       return validateRespec(

@@ -12,6 +12,8 @@ import {
   harthmereBibleOperationPayloadForAction,
   harthmereBibleQuestSnapshotFromResponse,
   harthmereThaedrynEncounterModel,
+  readHarthmereBibleQuestSnapshot,
+  resetHarthmereBibleQuestReadCacheForTest,
 } from "@/client/components/challenges/bibleQuestLiveAdapter";
 import {
   HARTHMERE_BIBLE_DRAGON_QUEST_ID,
@@ -37,6 +39,50 @@ function emptySnapshot() {
 }
 
 describe("bible quest client adapter", () => {
+  afterEach(() => resetHarthmereBibleQuestReadCacheForTest());
+
+  it("reads snapshots through the read-only GET route and coalesces consumers", async () => {
+    let calls = 0;
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const fetchImpl = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      calls += 1;
+      assert.equal(
+        String(input),
+        "/api/harthmere/live_mode_quest_state?install_id=install-test"
+      );
+      assert.equal(init?.method, "GET");
+      await gate;
+      return new Response(
+        JSON.stringify({ ok: true, questState: emptySnapshot() }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      );
+    }) as typeof fetch;
+
+    const first = readHarthmereBibleQuestSnapshot({
+      fetchImpl,
+      locationSearch: "?install_id=install-test",
+      nowMs: 1_000,
+    });
+    const second = readHarthmereBibleQuestSnapshot({
+      fetchImpl,
+      locationSearch: "?install_id=install-test",
+      nowMs: 1_000,
+    });
+    release();
+    assert.deepEqual(await first, await second);
+    assert.equal(calls, 1);
+
+    await readHarthmereBibleQuestSnapshot({
+      fetchImpl,
+      locationSearch: "?install_id=install-test",
+      nowMs: 10_000,
+    });
+    assert.equal(calls, 1, "fresh snapshots should be shared across hooks");
+  });
+
   it("matches rendered NPC labels to catalog givers (compendium names)", () => {
     assert.equal(
       harthmereBibleGiverIdForNpcLabel("Reeve Caldus Merrow"),
@@ -47,7 +93,10 @@ describe("bible quest client adapter", () => {
       harthmereBibleGiverIdForNpcLabel("Father Aldren Mell — Chapel of Bells"),
       "father_aldren_mell"
     );
-    assert.equal(harthmereBibleGiverIdForNpcLabel("Random Villager"), undefined);
+    assert.equal(
+      harthmereBibleGiverIdForNpcLabel("Random Villager"),
+      undefined
+    );
     assert.equal(harthmereBibleGiverIdForNpcLabel(undefined), undefined);
   });
 

@@ -8,8 +8,10 @@ import { addToast } from "@/client/components/toast/helpers";
 import { useClientContext } from "@/client/components/contexts/ClientContextReactContext";
 import {
   readHarthmereInventoryState,
+  readHarthmereLiveEquipmentSnapshot,
   readHarthmereLiveInventoryItemCount,
 } from "@/client/components/challenges/LocalDevHarthmereInventorySystem";
+import { harthmereLiveServerAuthoritative } from "@/client/components/challenges/harthmereLiveAuthoritySignal";
 import { HARTHMERE_INVENTORY_EVENT } from "@/client/components/challenges/harthmereEvents";
 import type { GardenHoseEvent } from "@/client/events/api";
 import { GENESIS_CROSSROADS_LOCATION } from "@/client/util/nux/state_machines";
@@ -458,7 +460,10 @@ export function writeSnapshotMissionState(state: SnapshotMissionState) {
     ...state,
     updatedAt: Date.now(),
   });
-  harthmereLocalStorage.setItem(SNAPSHOT_MISSION_STATE_KEY, JSON.stringify(next));
+  harthmereLocalStorage.setItem(
+    SNAPSHOT_MISSION_STATE_KEY,
+    JSON.stringify(next)
+  );
   window.dispatchEvent(new Event(SNAPSHOT_MISSION_STATE_EVENT));
 }
 
@@ -1127,7 +1132,7 @@ function shouldEventCompleteStepWithInventoryState(
   }
   return (
     snapshotStepRuntimeTrigger(step) === "wearing" &&
-    event.kind === "inventory_change" &&
+    (event.kind === "inventory_change" || event.kind === "equip") &&
     hasRequiredClothing(wearing)
   );
 }
@@ -1155,16 +1160,16 @@ export function handleSnapshotRoadAheadEventForTest(event: GardenHoseEvent) {
 function hasRequiredClothing(wearing: {
   items: { get(id: BiomesId): unknown };
 }) {
-  const bridgeSlots = new Set(readSnapshotRoadAheadEquippedGearSlots());
-  const localHarthmereSlots = new Set(
-    readSnapshotRoadAheadLocalHarthmereClothingSlots()
-  );
+  const liveEquipment = readHarthmereLiveEquipmentSnapshot().equipment;
+  const localHarthmereSlots = harthmereLiveServerAuthoritative()
+    ? new Set<string>()
+    : new Set(readSnapshotRoadAheadLocalHarthmereClothingSlots());
   return Boolean(
     (wearing.items.get(BikkieIds.top) ||
-      bridgeSlots.has("chest") ||
+      liveEquipment.chest ||
       localHarthmereSlots.has("chest")) &&
       (wearing.items.get(BikkieIds.bottoms) ||
-        bridgeSlots.has("legs") ||
+        liveEquipment.legs ||
         localHarthmereSlots.has("legs"))
   );
 }

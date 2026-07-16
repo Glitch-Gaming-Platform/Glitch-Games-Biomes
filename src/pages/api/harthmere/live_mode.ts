@@ -1696,10 +1696,17 @@ function isHarthmereLiveModeReadOnlySnapshotRequest(
   envelope: HarthmereLiveModeAuthorityEnvelope,
   summary: { touchedModels?: string[] }
 ) {
+  const operation = envelope.payload?.operation;
   if (
     envelope.actionKind !== "request_quest_state_update" ||
     envelope.subsystem !== "quest" ||
-    envelope.payload?.operation !== "live_entity_helper_read_state"
+    ![
+      "live_entity_helper_read_state",
+      // Compatibility for already-deployed clients. New clients use the
+      // dedicated GET route, but an old pure read must never enter Redis WATCH,
+      // rewrite player state, or append a mutation ledger record.
+      "bible_quest_read",
+    ].includes(String(operation ?? ""))
   ) {
     return false;
   }
@@ -1857,6 +1864,42 @@ export async function persistHarthmereLiveModeResponse(
   const redis = await liveModeRedis();
   const playerStateKey = harthmereLiveModePlayerStateKey(response.actorId);
   const sharedWorldStateKey = harthmereLiveModeSharedWorldStateKey();
+  if (
+    envelope.actionKind === "request_quest_state_update" &&
+    envelope.subsystem === "quest" &&
+    envelope.payload?.operation === "bible_quest_read"
+  ) {
+    // Compatibility path for clients deployed before bible reads moved to the
+    // dedicated GET endpoint. This is a projection read: no WATCH, reducer,
+    // ledger append, idempotency write, or actor/shared-state rewrite.
+    const now = Date.now();
+    const { rawState, rawSharedState } =
+      await readHarthmerePlayerAndSharedStateStrings(
+        redis.primary,
+        playerStateKey,
+        sharedWorldStateKey
+      );
+    const state = parseHarthmereLiveModeBackendState(
+      rawState,
+      response.actorId,
+      now
+    );
+    mergeHarthmereLiveModeSharedWorldStateIntoBackend(
+      state,
+      parseHarthmereLiveModeSharedWorldState(rawSharedState, now),
+      now
+    );
+    return {
+      ...response,
+      persisted: false,
+      snapshotMode: "changed",
+      includedSnapshots: ["questState"],
+      invalidatedSnapshots: HARTHMERE_LIVE_MODE_MUTATION_SNAPSHOT_KEYS.filter(
+        (snapshot) => snapshot !== "questState"
+      ),
+      questState: createHarthmereLiveModeQuestClientSnapshot(state),
+    };
+  }
   const stateAdoption = normalizeHarthmereLiveModeActorStateAdoption({
     actorId: response.actorId,
     playerStateKey,
@@ -1877,159 +1920,78 @@ export async function persistHarthmereLiveModeResponse(
   }
 
   try {
-  for (let attempt = 0; attempt < 5; attempt += 1) {
-    const attemptTimings: Record<string, number> = {};
-    const mark = (stage: string, startedAt: number) => {
-      attemptTimings[stage] = Date.now() - startedAt;
-    };
-    lastAttemptTimings = attemptTimings;
-    let stageStartedAt = Date.now();
-    const previous = await txPrimary.get(key);
-    mark("idempotency_get_ms", stageStartedAt);
-    if (previous) {
-      return {
-        ...(JSON.parse(previous) as LiveModeResponse),
-        duplicate: true,
-        replayed: true,
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      const attemptTimings: Record<string, number> = {};
+      const mark = (stage: string, startedAt: number) => {
+        attemptTimings[stage] = Date.now() - startedAt;
       };
-    }
-
-    // HARTHMERE_LIVE_MODE_SCOPED_WATCH (audit fix, 2026-07-13): previously
-    // EVERY mutation WATCHed (and re-wrote) the single global
-    // `sharedWorldStateKey`, so any concurrent write by ANY player aborted the
-    // EXEC and forced a full re-read/re-reduce retry — the primary source of
-    // the observed 4–29s mutation latencies under load. The first attempt now
-    // watches only the keys this mutation always touches; if the reducer turns
-    // out to have CHANGED shared world state, we escalate below (same
-    // re-watch/re-read/re-reduce pattern the auction-seller settlement already
-    // uses) and only then watch + write the shared key. Mutations that never
-    // touch shared state (eat, medical, movement mirrors, inventory ops)
-    // no longer contend on it at all.
-    const watchKeys = uniqueHarthmereLiveModeWatchKeys([
-      key,
-      playerStateKey,
-      adoptionSourceStateKey,
-    ]);
-    const now = Date.now();
-    if (supportsWatch) {
-      stageStartedAt = Date.now();
-      await (txPrimary as any).watch(...watchKeys);
-      mark("watch_ms", stageStartedAt);
-    }
-
-    stageStartedAt = Date.now();
-    const watchedPrevious = await txPrimary.get(key);
-    mark("watched_idempotency_get_ms", stageStartedAt);
-    if (watchedPrevious) {
-      await redisUnwatchIfSupported(txPrimary);
-      return {
-        ...(JSON.parse(watchedPrevious) as LiveModeResponse),
-        duplicate: true,
-        replayed: true,
-      };
-    }
-
-    stageStartedAt = Date.now();
-    let { rawState, rawSharedState } =
-      await readHarthmerePlayerAndSharedStateStrings(
-        txPrimary,
-        playerStateKey,
-        sharedWorldStateKey
-      );
-    let rawAdoptionSourceState = adoptionSourceStateKey
-      ? await txPrimary.get(adoptionSourceStateKey)
-      : undefined;
-    mark("state_get_ms", stageStartedAt);
-    stageStartedAt = Date.now();
-    let adoptedActorState =
-      stateAdoption &&
-      shouldAdoptHarthmereLiveModeActorState({
-        targetStateRaw: rawState,
-        sourceStateRaw: rawAdoptionSourceState,
-        reason: stateAdoption.reason,
-      });
-    let currentState = parseHarthmereLiveModeBackendState(
-      adoptedActorState ? rawAdoptionSourceState : rawState,
-      response.actorId,
-      now
-    );
-    mergeHarthmereLiveModeSharedWorldStateIntoBackend(
-      currentState,
-      parseHarthmereLiveModeSharedWorldState(rawSharedState, now),
-      now
-    );
-    mark("state_parse_merge_ms", stageStartedAt);
-    stageStartedAt = Date.now();
-    let reduced = reduceHarthmereLiveModeBackendState(
-      currentState,
-      envelope,
-      now
-    );
-    mark("reduce_ms", stageStartedAt);
-    let settlement = buildAuctionSellerSettlement({
-      envelope,
-      beforeState: currentState,
-      afterState: reduced.state,
-    });
-    let sellerStateKey = settlement
-      ? harthmereLiveModePlayerStateKey(settlement.sellerId)
-      : undefined;
-
-    // HARTHMERE_LIVE_MODE_SCOPED_WATCH: detect whether this mutation actually
-    // changed the shared world projection. Both serializations use the same
-    // `now`, so timestamps cancel and the comparison is purely structural.
-    // `reduceHarthmereLiveModeBackendState` deep-clones its input, so
-    // `currentState` still holds the pre-reduce (merged) view here.
-    const sharedWorldStateBefore = JSON.stringify(
-      createHarthmereLiveModeSharedWorldState(currentState, now)
-    );
-    let sharedWorldStateAfter = JSON.stringify(
-      createHarthmereLiveModeSharedWorldState(reduced.state, now)
-    );
-    let sharedWorldWriteNeeded =
-      sharedWorldStateAfter !== sharedWorldStateBefore ||
-      (reduced.summary.sharedStateKeys?.length ?? 0) > 0;
-
-    if ((sellerStateKey || sharedWorldWriteNeeded) && supportsWatch) {
-      await redisUnwatchIfSupported(txPrimary);
-      await (txPrimary as any).watch(
-        ...uniqueHarthmereLiveModeWatchKeys([
-          key,
-          playerStateKey,
-          sharedWorldStateKey,
-          adoptionSourceStateKey,
-          sellerStateKey,
-        ])
-      );
-      const secondPrevious = await txPrimary.get(key);
-      if (secondPrevious) {
-        await redisUnwatchIfSupported(txPrimary);
+      lastAttemptTimings = attemptTimings;
+      let stageStartedAt = Date.now();
+      const previous = await txPrimary.get(key);
+      mark("idempotency_get_ms", stageStartedAt);
+      if (previous) {
         return {
-          ...(JSON.parse(secondPrevious) as LiveModeResponse),
+          ...(JSON.parse(previous) as LiveModeResponse),
           duplicate: true,
           replayed: true,
         };
       }
+
+      // HARTHMERE_LIVE_MODE_SCOPED_WATCH (audit fix, 2026-07-13): previously
+      // EVERY mutation WATCHed (and re-wrote) the single global
+      // `sharedWorldStateKey`, so any concurrent write by ANY player aborted the
+      // EXEC and forced a full re-read/re-reduce retry — the primary source of
+      // the observed 4–29s mutation latencies under load. The first attempt now
+      // watches only the keys this mutation always touches; if the reducer turns
+      // out to have CHANGED shared world state, we escalate below (same
+      // re-watch/re-read/re-reduce pattern the auction-seller settlement already
+      // uses) and only then watch + write the shared key. Mutations that never
+      // touch shared state (eat, medical, movement mirrors, inventory ops)
+      // no longer contend on it at all.
+      const watchKeys = uniqueHarthmereLiveModeWatchKeys([
+        key,
+        playerStateKey,
+        adoptionSourceStateKey,
+      ]);
+      const now = Date.now();
+      if (supportsWatch) {
+        stageStartedAt = Date.now();
+        await (txPrimary as any).watch(...watchKeys);
+        mark("watch_ms", stageStartedAt);
+      }
+
       stageStartedAt = Date.now();
-      ({ rawState, rawSharedState } =
+      const watchedPrevious = await txPrimary.get(key);
+      mark("watched_idempotency_get_ms", stageStartedAt);
+      if (watchedPrevious) {
+        await redisUnwatchIfSupported(txPrimary);
+        return {
+          ...(JSON.parse(watchedPrevious) as LiveModeResponse),
+          duplicate: true,
+          replayed: true,
+        };
+      }
+
+      stageStartedAt = Date.now();
+      let { rawState, rawSharedState } =
         await readHarthmerePlayerAndSharedStateStrings(
           txPrimary,
           playerStateKey,
           sharedWorldStateKey
-        ));
-      rawAdoptionSourceState = adoptionSourceStateKey
+        );
+      let rawAdoptionSourceState = adoptionSourceStateKey
         ? await txPrimary.get(adoptionSourceStateKey)
         : undefined;
-      mark("seller_state_get_ms", stageStartedAt);
+      mark("state_get_ms", stageStartedAt);
       stageStartedAt = Date.now();
-      adoptedActorState =
+      let adoptedActorState =
         stateAdoption &&
         shouldAdoptHarthmereLiveModeActorState({
           targetStateRaw: rawState,
           sourceStateRaw: rawAdoptionSourceState,
           reason: stateAdoption.reason,
         });
-      currentState = parseHarthmereLiveModeBackendState(
+      let currentState = parseHarthmereLiveModeBackendState(
         adoptedActorState ? rawAdoptionSourceState : rawState,
         response.actorId,
         now
@@ -2039,367 +2001,450 @@ export async function persistHarthmereLiveModeResponse(
         parseHarthmereLiveModeSharedWorldState(rawSharedState, now),
         now
       );
-      mark("seller_state_parse_merge_ms", stageStartedAt);
+      mark("state_parse_merge_ms", stageStartedAt);
       stageStartedAt = Date.now();
-      reduced = reduceHarthmereLiveModeBackendState(
+      let reduced = reduceHarthmereLiveModeBackendState(
         currentState,
         envelope,
         now
       );
-      mark("seller_reduce_ms", stageStartedAt);
-      settlement = buildAuctionSellerSettlement({
+      mark("reduce_ms", stageStartedAt);
+      let settlement = buildAuctionSellerSettlement({
         envelope,
         beforeState: currentState,
         afterState: reduced.state,
       });
-      sellerStateKey = settlement
+      let sellerStateKey = settlement
         ? harthmereLiveModePlayerStateKey(settlement.sellerId)
         : undefined;
-      // HARTHMERE_LIVE_MODE_SCOPED_WATCH: we escalated because the first
-      // reduce changed shared world state (or settled an auction). The shared
-      // key is now WATCHed and the state re-read, so persist the (re-reduced)
-      // shared projection unconditionally — writing an identical value under
-      // WATCH is harmless, missing a changed one is not.
-      sharedWorldStateAfter = JSON.stringify(
+
+      // HARTHMERE_LIVE_MODE_SCOPED_WATCH: detect whether this mutation actually
+      // changed the shared world projection. Both serializations use the same
+      // `now`, so timestamps cancel and the comparison is purely structural.
+      // `reduceHarthmereLiveModeBackendState` deep-clones its input, so
+      // `currentState` still holds the pre-reduce (merged) view here.
+      const sharedWorldStateBefore = JSON.stringify(
+        createHarthmereLiveModeSharedWorldState(currentState, now)
+      );
+      let sharedWorldStateAfter = JSON.stringify(
         createHarthmereLiveModeSharedWorldState(reduced.state, now)
       );
-      sharedWorldWriteNeeded = true;
-    }
+      let sharedWorldWriteNeeded =
+        sharedWorldStateAfter !== sharedWorldStateBefore ||
+        (reduced.summary.sharedStateKeys?.length ?? 0) > 0;
 
-    let sellerState:
-      | ReturnType<typeof parseHarthmereLiveModeBackendState>
-      | undefined;
-    if (settlement && sellerStateKey) {
-      stageStartedAt = Date.now();
-      const rawSellerState = await txPrimary.get(sellerStateKey);
-      sellerState = parseHarthmereLiveModeBackendState(
-        rawSellerState,
-        settlement.sellerId,
-        now
-      );
-      applyAuctionSellerSettlement({
-        sellerState,
-        settlement,
-        requestId: envelope.requestId,
-        nowMs: now,
-      });
-      reduced.summary.warnings.push(
-        "auction_seller_account_settled_atomically"
-      );
-      mark("seller_settlement_ms", stageStartedAt);
-    }
-
-    const requestedCraftingStationId =
-      typeof envelope.payload.stationId === "string"
-        ? envelope.payload.stationId
-        : typeof envelope.payload.stationId === "number"
-        ? String(Math.trunc(envelope.payload.stationId))
-        : undefined;
-    const requestedCraftingStationType =
-      typeof envelope.payload.stationType === "string"
-        ? envelope.payload.stationType
-        : undefined;
-
-    if (adoptedActorState && stateAdoption) {
-      reduced.summary.warnings.push(
-        `actor_state_adopted:${stateAdoption.reason}:${stateAdoption.fromActorId}->${stateAdoption.toActorId}`
-      );
-    }
-
-    const includedSnapshots = harthmereLiveModeMutationSnapshotKeys({
-      actionKind: reduced.summary.actionKind,
-      subsystem: reduced.summary.subsystem,
-      touchedModels: reduced.summary.touchedModels,
-    });
-    const persistActorAndSharedState =
-      !isHarthmereLiveModeReadOnlySnapshotRequest(envelope, reduced.summary);
-    if (persistActorAndSharedState) {
-      stageStartedAt = Date.now();
-      const latestRawStateForStatusChannels = await txPrimary.get(
-        playerStateKey
-      );
-      const statusChannelPreservation =
-        preserveFreshHarthmereLiveModeStatusChannelsForTest({
-          currentState,
-          reducedState: reduced.state,
-          latestRawState: latestRawStateForStatusChannels,
-          actorId: response.actorId,
-          nowMs: now,
-        });
-      if (statusChannelPreservation.changed) {
-        reduced.summary.warnings.push(
-          `fresh_status_channels_preserved:${statusChannelPreservation.channels.join(
-            ","
-          )}`
+      if ((sellerStateKey || sharedWorldWriteNeeded) && supportsWatch) {
+        await redisUnwatchIfSupported(txPrimary);
+        await (txPrimary as any).watch(
+          ...uniqueHarthmereLiveModeWatchKeys([
+            key,
+            playerStateKey,
+            sharedWorldStateKey,
+            adoptionSourceStateKey,
+            sellerStateKey,
+          ])
         );
-      }
-      mark("fresh_status_channels_ms", stageStartedAt);
-    }
-    const includedSnapshotSet = new Set(includedSnapshots);
-    const persistedResponse: LiveModeResponse = {
-      ...response,
-      backendMutation: reduced.summary,
-      snapshotMode: useFullHarthmereLiveModeMutationSnapshots()
-        ? "full"
-        : "changed",
-      includedSnapshots,
-      invalidatedSnapshots: HARTHMERE_LIVE_MODE_MUTATION_SNAPSHOT_KEYS.filter(
-        (key) => !includedSnapshotSet.has(key)
-      ),
-    };
-
-    stageStartedAt = Date.now();
-    if (includedSnapshotSet.has("buildingState")) {
-      persistedResponse.buildingState =
-        createHarthmereLiveModeBuildingClientSnapshot(reduced.state);
-    }
-    if (includedSnapshotSet.has("bankingState")) {
-      persistedResponse.bankingState =
-        createHarthmereLiveModeBankingClientSnapshot(reduced.state);
-    }
-    if (includedSnapshotSet.has("guildState")) {
-      persistedResponse.guildState =
-        createHarthmereLiveModeGuildClientSnapshotFromBackend(reduced.state);
-    }
-    if (includedSnapshotSet.has("economyState")) {
-      persistedResponse.economyState =
-        createHarthmereProductionEconomyClientSnapshotFromBackend(
-          reduced.state
-        );
-    }
-    if (includedSnapshotSet.has("jobsBoardState")) {
-      persistedResponse.jobsBoardState =
-        createHarthmereJobsBoardClientSnapshotFromBackend(reduced.state);
-    }
-    if (includedSnapshotSet.has("dailyState")) {
-      persistedResponse.dailyState =
-        createHarthmereCareLoopClientSnapshotFromBackend(reduced.state, now);
-    }
-    if (includedSnapshotSet.has("farmingFoodState")) {
-      persistedResponse.farmingFoodState =
-        createHarthmereLiveModeFarmingFoodClientSnapshot(reduced.state);
-    }
-    if (includedSnapshotSet.has("craftingState")) {
-      persistedResponse.craftingState =
-        createHarthmereCraftingStationClientSnapshotFromBackend(
-          reduced.state,
-          requestedCraftingStationId,
-          requestedCraftingStationType,
+        const secondPrevious = await txPrimary.get(key);
+        if (secondPrevious) {
+          await redisUnwatchIfSupported(txPrimary);
+          return {
+            ...(JSON.parse(secondPrevious) as LiveModeResponse),
+            duplicate: true,
+            replayed: true,
+          };
+        }
+        stageStartedAt = Date.now();
+        ({ rawState, rawSharedState } =
+          await readHarthmerePlayerAndSharedStateStrings(
+            txPrimary,
+            playerStateKey,
+            sharedWorldStateKey
+          ));
+        rawAdoptionSourceState = adoptionSourceStateKey
+          ? await txPrimary.get(adoptionSourceStateKey)
+          : undefined;
+        mark("seller_state_get_ms", stageStartedAt);
+        stageStartedAt = Date.now();
+        adoptedActorState =
+          stateAdoption &&
+          shouldAdoptHarthmereLiveModeActorState({
+            targetStateRaw: rawState,
+            sourceStateRaw: rawAdoptionSourceState,
+            reason: stateAdoption.reason,
+          });
+        currentState = parseHarthmereLiveModeBackendState(
+          adoptedActorState ? rawAdoptionSourceState : rawState,
+          response.actorId,
           now
         );
-    }
-    if (includedSnapshotSet.has("inventoryLootState")) {
-      persistedResponse.inventoryLootState =
-        createHarthmereInventoryLootClientSnapshotFromBackend(reduced.state);
-    }
-    if (includedSnapshotSet.has("combatState")) {
-      persistedResponse.combatState =
-        createHarthmereLiveEntityCombatClientSnapshot(reduced.state);
-    }
-    if (includedSnapshotSet.has("playerStatusState")) {
-      persistedResponse.playerStatusState =
-        createHarthmereLiveModePlayerStatusClientSnapshot(reduced.state);
-    }
-    if (includedSnapshotSet.has("questState")) {
-      persistedResponse.questState = createHarthmereLiveModeQuestClientSnapshot(
-        reduced.state
-      );
-    }
-    mark("snapshots_ms", stageStartedAt);
-
-    stageStartedAt = Date.now();
-    const tx = txPrimary.multi();
-    if (persistActorAndSharedState) {
-      tx.set(playerStateKey, JSON.stringify(reduced.state));
-      // HARTHMERE_LIVE_MODE_SCOPED_WATCH: only rewrite the global shared
-      // world blob when this mutation actually changed it (detected above,
-      // in which case the shared key was escalated into the WATCH set).
-      // Skipping the no-op write removes the cross-player EXEC contention
-      // that made unrelated mutations (eat/medical/inventory) retry for
-      // seconds under load.
-      if (sharedWorldWriteNeeded) {
-        tx.set(sharedWorldStateKey, sharedWorldStateAfter);
+        mergeHarthmereLiveModeSharedWorldStateIntoBackend(
+          currentState,
+          parseHarthmereLiveModeSharedWorldState(rawSharedState, now),
+          now
+        );
+        mark("seller_state_parse_merge_ms", stageStartedAt);
+        stageStartedAt = Date.now();
+        reduced = reduceHarthmereLiveModeBackendState(
+          currentState,
+          envelope,
+          now
+        );
+        mark("seller_reduce_ms", stageStartedAt);
+        settlement = buildAuctionSellerSettlement({
+          envelope,
+          beforeState: currentState,
+          afterState: reduced.state,
+        });
+        sellerStateKey = settlement
+          ? harthmereLiveModePlayerStateKey(settlement.sellerId)
+          : undefined;
+        // HARTHMERE_LIVE_MODE_SCOPED_WATCH: we escalated because the first
+        // reduce changed shared world state (or settled an auction). The shared
+        // key is now WATCHed and the state re-read, so persist the (re-reduced)
+        // shared projection unconditionally — writing an identical value under
+        // WATCH is harmless, missing a changed one is not.
+        sharedWorldStateAfter = JSON.stringify(
+          createHarthmereLiveModeSharedWorldState(reduced.state, now)
+        );
+        sharedWorldWriteNeeded = true;
       }
-    }
-    if (adoptedActorState && adoptionSourceStateKey) {
-      (tx as { del?: (key: string) => unknown }).del?.(adoptionSourceStateKey);
-    }
-    if (sellerStateKey && sellerState) {
-      tx.set(sellerStateKey, JSON.stringify(sellerState));
-    }
-    tx.xadd(
-      harthmereLiveModeLedgerStreamKey(response.actorId),
-      "*",
-      "requestId",
-      persistedResponse.events[0]?.requestId ??
-        response.mutationPlan?.planId ??
-        key,
-      "actorId",
-      response.actorId,
-      "actionKind",
-      response.mutationPlan?.actionKind ?? "unknown",
-      "mutation",
-      JSON.stringify(reduced.summary)
-    );
-    tx.set(
-      key,
-      JSON.stringify(
-        slimHarthmereLiveModeIdempotencyResponse(persistedResponse)
-      ),
-      "EX",
-      24 * 60 * 60,
-      "NX"
-    );
-    const txResult = await tx.exec();
-    mark("tx_exec_ms", stageStartedAt);
-    if (supportsWatch && txResult === null) {
-      continue;
-    }
 
-    // Materialize server-approved building plans after the state/idempotency
-    // commit succeeds. This keeps ECS side effects downstream of durable state.
-    if (reduced.summary.buildingMaterializationPlans?.length) {
+      let sellerState:
+        | ReturnType<typeof parseHarthmereLiveModeBackendState>
+        | undefined;
+      if (settlement && sellerStateKey) {
+        stageStartedAt = Date.now();
+        const rawSellerState = await txPrimary.get(sellerStateKey);
+        sellerState = parseHarthmereLiveModeBackendState(
+          rawSellerState,
+          settlement.sellerId,
+          now
+        );
+        applyAuctionSellerSettlement({
+          sellerState,
+          settlement,
+          requestId: envelope.requestId,
+          nowMs: now,
+        });
+        reduced.summary.warnings.push(
+          "auction_seller_account_settled_atomically"
+        );
+        mark("seller_settlement_ms", stageStartedAt);
+      }
+
+      const requestedCraftingStationId =
+        typeof envelope.payload.stationId === "string"
+          ? envelope.payload.stationId
+          : typeof envelope.payload.stationId === "number"
+          ? String(Math.trunc(envelope.payload.stationId))
+          : undefined;
+      const requestedCraftingStationType =
+        typeof envelope.payload.stationType === "string"
+          ? envelope.payload.stationType
+          : undefined;
+
+      if (adoptedActorState && stateAdoption) {
+        reduced.summary.warnings.push(
+          `actor_state_adopted:${stateAdoption.reason}:${stateAdoption.fromActorId}->${stateAdoption.toActorId}`
+        );
+      }
+
+      const includedSnapshots = harthmereLiveModeMutationSnapshotKeys({
+        actionKind: reduced.summary.actionKind,
+        subsystem: reduced.summary.subsystem,
+        touchedModels: reduced.summary.touchedModels,
+      });
+      const persistActorAndSharedState =
+        !isHarthmereLiveModeReadOnlySnapshotRequest(envelope, reduced.summary);
+      if (persistActorAndSharedState) {
+        stageStartedAt = Date.now();
+        const latestRawStateForStatusChannels = await txPrimary.get(
+          playerStateKey
+        );
+        const statusChannelPreservation =
+          preserveFreshHarthmereLiveModeStatusChannelsForTest({
+            currentState,
+            reducedState: reduced.state,
+            latestRawState: latestRawStateForStatusChannels,
+            actorId: response.actorId,
+            nowMs: now,
+          });
+        if (statusChannelPreservation.changed) {
+          reduced.summary.warnings.push(
+            `fresh_status_channels_preserved:${statusChannelPreservation.channels.join(
+              ","
+            )}`
+          );
+        }
+        mark("fresh_status_channels_ms", stageStartedAt);
+      }
+      const includedSnapshotSet = new Set(includedSnapshots);
+      const persistedResponse: LiveModeResponse = {
+        ...response,
+        backendMutation: reduced.summary,
+        snapshotMode: useFullHarthmereLiveModeMutationSnapshots()
+          ? "full"
+          : "changed",
+        includedSnapshots,
+        invalidatedSnapshots: HARTHMERE_LIVE_MODE_MUTATION_SNAPSHOT_KEYS.filter(
+          (key) => !includedSnapshotSet.has(key)
+        ),
+      };
+
       stageStartedAt = Date.now();
-      const materializerUserId =
-        deps.userId ?? HARTHMERE_WORLD_MATERIALIZER_USER_ID;
-      try {
-        if (deps.userId === undefined) {
-          if (deps.worldApi) {
-            await ensureHarthmereWorldMaterializerPlayerExists(deps.worldApi);
+      if (includedSnapshotSet.has("buildingState")) {
+        persistedResponse.buildingState =
+          createHarthmereLiveModeBuildingClientSnapshot(reduced.state);
+      }
+      if (includedSnapshotSet.has("bankingState")) {
+        persistedResponse.bankingState =
+          createHarthmereLiveModeBankingClientSnapshot(reduced.state);
+      }
+      if (includedSnapshotSet.has("guildState")) {
+        persistedResponse.guildState =
+          createHarthmereLiveModeGuildClientSnapshotFromBackend(reduced.state);
+      }
+      if (includedSnapshotSet.has("economyState")) {
+        persistedResponse.economyState =
+          createHarthmereProductionEconomyClientSnapshotFromBackend(
+            reduced.state
+          );
+      }
+      if (includedSnapshotSet.has("jobsBoardState")) {
+        persistedResponse.jobsBoardState =
+          createHarthmereJobsBoardClientSnapshotFromBackend(reduced.state);
+      }
+      if (includedSnapshotSet.has("dailyState")) {
+        persistedResponse.dailyState =
+          createHarthmereCareLoopClientSnapshotFromBackend(reduced.state, now);
+      }
+      if (includedSnapshotSet.has("farmingFoodState")) {
+        persistedResponse.farmingFoodState =
+          createHarthmereLiveModeFarmingFoodClientSnapshot(reduced.state);
+      }
+      if (includedSnapshotSet.has("craftingState")) {
+        persistedResponse.craftingState =
+          createHarthmereCraftingStationClientSnapshotFromBackend(
+            reduced.state,
+            requestedCraftingStationId,
+            requestedCraftingStationType,
+            now
+          );
+      }
+      if (includedSnapshotSet.has("inventoryLootState")) {
+        persistedResponse.inventoryLootState =
+          createHarthmereInventoryLootClientSnapshotFromBackend(reduced.state);
+      }
+      if (includedSnapshotSet.has("combatState")) {
+        persistedResponse.combatState =
+          createHarthmereLiveEntityCombatClientSnapshot(reduced.state);
+      }
+      if (includedSnapshotSet.has("playerStatusState")) {
+        persistedResponse.playerStatusState =
+          createHarthmereLiveModePlayerStatusClientSnapshot(reduced.state);
+      }
+      if (includedSnapshotSet.has("questState")) {
+        persistedResponse.questState =
+          createHarthmereLiveModeQuestClientSnapshot(reduced.state);
+      }
+      mark("snapshots_ms", stageStartedAt);
+
+      stageStartedAt = Date.now();
+      const tx = txPrimary.multi();
+      if (persistActorAndSharedState) {
+        tx.set(playerStateKey, JSON.stringify(reduced.state));
+        // HARTHMERE_LIVE_MODE_SCOPED_WATCH: only rewrite the global shared
+        // world blob when this mutation actually changed it (detected above,
+        // in which case the shared key was escalated into the WATCH set).
+        // Skipping the no-op write removes the cross-player EXEC contention
+        // that made unrelated mutations (eat/medical/inventory) retry for
+        // seconds under load.
+        if (sharedWorldWriteNeeded) {
+          tx.set(sharedWorldStateKey, sharedWorldStateAfter);
+        }
+      }
+      if (adoptedActorState && adoptionSourceStateKey) {
+        (tx as { del?: (key: string) => unknown }).del?.(
+          adoptionSourceStateKey
+        );
+      }
+      if (sellerStateKey && sellerState) {
+        tx.set(sellerStateKey, JSON.stringify(sellerState));
+      }
+      tx.xadd(
+        harthmereLiveModeLedgerStreamKey(response.actorId),
+        "*",
+        "requestId",
+        persistedResponse.events[0]?.requestId ??
+          response.mutationPlan?.planId ??
+          key,
+        "actorId",
+        response.actorId,
+        "actionKind",
+        response.mutationPlan?.actionKind ?? "unknown",
+        "mutation",
+        JSON.stringify(reduced.summary)
+      );
+      tx.set(
+        key,
+        JSON.stringify(
+          slimHarthmereLiveModeIdempotencyResponse(persistedResponse)
+        ),
+        "EX",
+        24 * 60 * 60,
+        "NX"
+      );
+      const txResult = await tx.exec();
+      mark("tx_exec_ms", stageStartedAt);
+      if (supportsWatch && txResult === null) {
+        continue;
+      }
+
+      // Materialize server-approved building plans after the state/idempotency
+      // commit succeeds. This keeps ECS side effects downstream of durable state.
+      if (reduced.summary.buildingMaterializationPlans?.length) {
+        stageStartedAt = Date.now();
+        const materializerUserId =
+          deps.userId ?? HARTHMERE_WORLD_MATERIALIZER_USER_ID;
+        try {
+          if (deps.userId === undefined) {
+            if (deps.worldApi) {
+              await ensureHarthmereWorldMaterializerPlayerExists(deps.worldApi);
+              persistedResponse.backendMutation?.warnings.push(
+                "building_materializer_player_ensured"
+              );
+            } else {
+              persistedResponse.backendMutation?.warnings.push(
+                "building_materializer_player_not_ensured:no_world_api"
+              );
+            }
+          }
+          const materializationCounts =
+            deps.worldApi && deps.askApi
+              ? await materializeBuildingSystemMaterializationPlansToTerrain({
+                  askApi: deps.askApi,
+                  logicApi: deps.logicApi,
+                  userId: materializerUserId,
+                  worldApi: deps.worldApi,
+                  plans: reduced.summary.buildingMaterializationPlans,
+                })
+              : await publishBuildingSystemMaterializationPlansToEcs({
+                  askApi: deps.askApi,
+                  logicApi: deps.logicApi,
+                  userId: materializerUserId,
+                  plans: reduced.summary.buildingMaterializationPlans,
+                });
+          persistedResponse.backendMutation?.warnings.push(
+            `building_materialized:edit_events:${materializationCounts.editEventCount}:place_group_events:${materializationCounts.placeGroupEventCount}:publish_batches:${materializationCounts.publishBatchCount}`
+          );
+          if (materializationCounts.directTerrainEditCount > 0) {
             persistedResponse.backendMutation?.warnings.push(
-              "building_materializer_player_ensured"
-            );
-          } else {
-            persistedResponse.backendMutation?.warnings.push(
-              "building_materializer_player_not_ensured:no_world_api"
+              `building_materialized_direct_terrain:terrain_edits:${materializationCounts.directTerrainEditCount}:terrain_shards:${materializationCounts.directTerrainShardCount}`
             );
           }
+          if (materializationCounts.shiftedOutpostEditEventCount > 0) {
+            persistedResponse.backendMutation?.warnings.push(
+              `building_materialized_harthmere_outpost_world_shifted:edit_events:${materializationCounts.shiftedOutpostEditEventCount}`
+            );
+          }
+          if (materializationCounts.usedLegacyShardIds) {
+            persistedResponse.backendMutation?.warnings.push(
+              "building_materialized_without_terrain_entity_resolution"
+            );
+          }
+          if (deps.userId === undefined) {
+            persistedResponse.backendMutation?.warnings.push(
+              "building_materialized_with_world_materializer_user"
+            );
+          }
+        } catch (error) {
+          persistedResponse.backendMutation?.warnings.push(
+            `building_materialization_deferred:${String(
+              error instanceof Error ? error.message : error
+            ).slice(0, 240)}`
+          );
         }
-        const materializationCounts =
-          deps.worldApi && deps.askApi
-            ? await materializeBuildingSystemMaterializationPlansToTerrain({
-                askApi: deps.askApi,
-                logicApi: deps.logicApi,
-                userId: materializerUserId,
+        await txPrimary.set(
+          key,
+          JSON.stringify(
+            slimHarthmereLiveModeIdempotencyResponse(persistedResponse)
+          ),
+          "EX",
+          24 * 60 * 60
+        );
+        mark("materialization_ms", stageStartedAt);
+      }
+
+      if (
+        reduced.summary.touchedModels.some((model) =>
+          model.toLowerCase().includes("escort_companion")
+        )
+      ) {
+        stageStartedAt = Date.now();
+        try {
+          if (!deps.worldApi) {
+            persistedResponse.backendMutation?.warnings.push(
+              "escort_companion_materialization_deferred:no_world_api"
+            );
+          } else {
+            const materialized =
+              await materializeHarthmereEscortCompanionsToEcs({
                 worldApi: deps.worldApi,
-                plans: reduced.summary.buildingMaterializationPlans,
-              })
-            : await publishBuildingSystemMaterializationPlansToEcs({
-                askApi: deps.askApi,
-                logicApi: deps.logicApi,
-                userId: materializerUserId,
-                plans: reduced.summary.buildingMaterializationPlans,
+                state: reduced.state,
+                nowSeconds: Math.floor(now / 1000),
               });
-        persistedResponse.backendMutation?.warnings.push(
-          `building_materialized:edit_events:${materializationCounts.editEventCount}:place_group_events:${materializationCounts.placeGroupEventCount}:publish_batches:${materializationCounts.publishBatchCount}`
+            persistedResponse.backendMutation?.warnings.push(
+              `escort_companion_materialized:changes:${materialized.changeCount}:outcome:${materialized.outcome}`
+            );
+          }
+        } catch (error) {
+          persistedResponse.backendMutation?.warnings.push(
+            `escort_companion_materialization_deferred:${String(
+              error instanceof Error ? error.message : error
+            ).slice(0, 240)}`
+          );
+        }
+        await txPrimary.set(
+          key,
+          JSON.stringify(
+            slimHarthmereLiveModeIdempotencyResponse(persistedResponse)
+          ),
+          "EX",
+          24 * 60 * 60
         );
-        if (materializationCounts.directTerrainEditCount > 0) {
-          persistedResponse.backendMutation?.warnings.push(
-            `building_materialized_direct_terrain:terrain_edits:${materializationCounts.directTerrainEditCount}:terrain_shards:${materializationCounts.directTerrainShardCount}`
-          );
-        }
-        if (materializationCounts.shiftedOutpostEditEventCount > 0) {
-          persistedResponse.backendMutation?.warnings.push(
-            `building_materialized_harthmere_outpost_world_shifted:edit_events:${materializationCounts.shiftedOutpostEditEventCount}`
-          );
-        }
-        if (materializationCounts.usedLegacyShardIds) {
-          persistedResponse.backendMutation?.warnings.push(
-            "building_materialized_without_terrain_entity_resolution"
-          );
-        }
-        if (deps.userId === undefined) {
-          persistedResponse.backendMutation?.warnings.push(
-            "building_materialized_with_world_materializer_user"
-          );
-        }
-      } catch (error) {
-        persistedResponse.backendMutation?.warnings.push(
-          `building_materialization_deferred:${String(
-            error instanceof Error ? error.message : error
-          ).slice(0, 240)}`
-        );
+        mark("escort_companion_materialization_ms", stageStartedAt);
       }
-      await txPrimary.set(
-        key,
-        JSON.stringify(
-          slimHarthmereLiveModeIdempotencyResponse(persistedResponse)
-        ),
-        "EX",
-        24 * 60 * 60
-      );
-      mark("materialization_ms", stageStartedAt);
-    }
 
-    if (
-      reduced.summary.touchedModels.some((model) =>
-        model.toLowerCase().includes("escort_companion")
-      )
-    ) {
-      stageStartedAt = Date.now();
-      try {
-        if (!deps.worldApi) {
-          persistedResponse.backendMutation?.warnings.push(
-            "escort_companion_materialization_deferred:no_world_api"
-          );
-        } else {
-          const materialized = await materializeHarthmereEscortCompanionsToEcs({
-            worldApi: deps.worldApi,
-            state: reduced.state,
-            nowSeconds: Math.floor(now / 1000),
-          });
-          persistedResponse.backendMutation?.warnings.push(
-            `escort_companion_materialized:changes:${materialized.changeCount}:outcome:${materialized.outcome}`
-          );
-        }
-      } catch (error) {
-        persistedResponse.backendMutation?.warnings.push(
-          `escort_companion_materialization_deferred:${String(
-            error instanceof Error ? error.message : error
-          ).slice(0, 240)}`
-        );
+      const persistMs = Date.now() - persistStartedAt;
+      if (process.env.NODE_ENV === "production" && persistMs >= 1000) {
+        log.warn("HARTHMERE_LIVE_MODE_PERSIST_SLOW", {
+          requestId: envelope.requestId,
+          actorId: response.actorId,
+          actionKind: envelope.actionKind,
+          subsystem: envelope.subsystem,
+          attempt,
+          persistMs,
+          timings: attemptTimings,
+          includedSnapshots,
+          eventCount: persistedResponse.events.length,
+          uiEventCount: persistedResponse.uiEvents.length,
+        });
       }
-      await txPrimary.set(
-        key,
-        JSON.stringify(
-          slimHarthmereLiveModeIdempotencyResponse(persistedResponse)
-        ),
-        "EX",
-        24 * 60 * 60
-      );
-      mark("escort_companion_materialization_ms", stageStartedAt);
+      void flushHarthmereLiveModePostCommitOutbox(persistedResponse);
+      return slimLiveModeResponseForClient(persistedResponse);
     }
 
-    const persistMs = Date.now() - persistStartedAt;
-    if (process.env.NODE_ENV === "production" && persistMs >= 1000) {
-      log.warn("HARTHMERE_LIVE_MODE_PERSIST_SLOW", {
-        requestId: envelope.requestId,
-        actorId: response.actorId,
-        actionKind: envelope.actionKind,
-        subsystem: envelope.subsystem,
-        attempt,
-        persistMs,
-        timings: attemptTimings,
-        includedSnapshots,
-        eventCount: persistedResponse.events.length,
-        uiEventCount: persistedResponse.uiEvents.length,
-      });
-    }
-    void flushHarthmereLiveModePostCommitOutbox(persistedResponse);
-    return slimLiveModeResponseForClient(persistedResponse);
-  }
-
-  log.warn("HARTHMERE_LIVE_MODE_PERSIST_CONFLICTED", {
-    requestId: envelope.requestId,
-    actorId: response.actorId,
-    actionKind: envelope.actionKind,
-    subsystem: envelope.subsystem,
-    persistMs: Date.now() - persistStartedAt,
-    timings: lastAttemptTimings,
-  });
-  throw new Error(
-    "Harthmere live-mode Redis transaction conflicted too many times"
-  );
+    log.warn("HARTHMERE_LIVE_MODE_PERSIST_CONFLICTED", {
+      requestId: envelope.requestId,
+      actorId: response.actorId,
+      actionKind: envelope.actionKind,
+      subsystem: envelope.subsystem,
+      persistMs: Date.now() - persistStartedAt,
+      timings: lastAttemptTimings,
+    });
+    throw new Error(
+      "Harthmere live-mode Redis transaction conflicted too many times"
+    );
   } finally {
     await releaseTxPrimary();
   }

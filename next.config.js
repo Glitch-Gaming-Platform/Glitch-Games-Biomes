@@ -10,6 +10,13 @@ const withBundleAnalyzer = process.env.ANALYZE
 
 const isProd = process.env.NODE_ENV === "production";
 
+function usableBuildId(value) {
+  const normalized = String(value ?? "").trim();
+  return normalized && !["local", "unknown"].includes(normalized)
+    ? normalized
+    : undefined;
+}
+
 // Adjust this if you wish to debug the service worker locally.
 const debugServiceWorker = false;
 const withPWA =
@@ -53,7 +60,10 @@ module.exports = withBundleAnalyzer(
         {
           source: "/hud/:path*",
           headers: [
-            { key: "Cache-Control", value: "public, max-age=86400, must-revalidate" },
+            {
+              key: "Cache-Control",
+              value: "public, max-age=86400, must-revalidate",
+            },
           ],
         },
         {
@@ -61,7 +71,10 @@ module.exports = withBundleAnalyzer(
           headers: [
             // Next.js fingerprints these filenames already (hash in name),
             // so immutable is safe.
-            { key: "Cache-Control", value: "public, max-age=31536000, immutable" },
+            {
+              key: "Cache-Control",
+              value: "public, max-age=31536000, immutable",
+            },
           ],
         },
         {
@@ -70,7 +83,10 @@ module.exports = withBundleAnalyzer(
             // Even with a per-player query string, an in-memory disk cache
             // helps a lot when the same body variant is reloaded across
             // navigation.
-            { key: "Cache-Control", value: "public, max-age=3600, must-revalidate" },
+            {
+              key: "Cache-Control",
+              value: "public, max-age=3600, must-revalidate",
+            },
           ],
         },
         {
@@ -80,7 +96,10 @@ module.exports = withBundleAnalyzer(
             // fingerprinted by content and can be safely cached hard. The web
             // server still falls back to the public bucket if the packaged local
             // public/buckets copy is missing.
-            { key: "Cache-Control", value: "public, max-age=31536000, immutable" },
+            {
+              key: "Cache-Control",
+              value: "public, max-age=31536000, immutable",
+            },
           ],
         },
       ];
@@ -89,28 +108,34 @@ module.exports = withBundleAnalyzer(
     generateBuildId: async () => {
       const attemptBuildFromFile = async (...relativePath) => {
         try {
-          const buildId = (
+          return usableBuildId(
             await fs.readFile(path.join(__dirname, ...relativePath))
-          ).toString();
-          if (buildId !== "local") {
-            return buildId;
-          }
+          );
         } catch (error) {
           // Pass through
         }
       };
 
-      return (
+      const buildId =
+        usableBuildId(process.env.BIOMES_BUILD_ID) ??
+        usableBuildId(process.env.GITHUB_SHA) ??
         (await attemptBuildFromFile(".next", "BUILD_ID")) ??
         (await attemptBuildFromFile("BUILD_ID")) ??
-        (await (async () => {
-          try {
-            return await nextBuildId({ dir: __dirname });
-          } catch (error) {
-            return "unknown";
-          }
-        })())
-      );
+        usableBuildId(
+          await (async () => {
+            try {
+              return await nextBuildId({ dir: __dirname });
+            } catch (error) {
+              return undefined;
+            }
+          })()
+        );
+      if (!buildId && isProd) {
+        throw new Error(
+          "Production build requires BIOMES_BUILD_ID/GITHUB_SHA or a Git commit"
+        );
+      }
+      return buildId ?? "local";
     },
 
     webpack(config, { isServer, webpack, buildId, dev }) {
@@ -209,11 +234,11 @@ module.exports = withBundleAnalyzer(
       tsconfigPath: "tsconfig.next.json",
     },
 
-    // AFAIK, this is the only way to have nextjs generate source maps in
-    // production. In our deploy step, we remove these from the public directory
-    // and upload them to a non-public bucket instead so that we can
-    // de-obfuscate source maps later.
-    productionBrowserSourceMaps: isProd,
+    // Browser source maps must not be served from /_next/static in production.
+    // Server bundles retain private inline maps for stack traces, while the
+    // deploy guard also deletes any browser/service-worker maps emitted by
+    // plugins before image packaging.
+    productionBrowserSourceMaps: false,
   })
 );
 

@@ -67,7 +67,8 @@ function advanceAllObjectives(
       // Position: reuse the map hint the runtime itself would produce so the
       // distance check passes deterministically.
       actorPosition: undefined,
-      combatResult: objective.type === "combat" ? "encounter_cleared" : undefined,
+      combatResult:
+        objective.type === "combat" ? "encounter_cleared" : undefined,
       choice: objective.type === "choice" ? "test_choice" : undefined,
       ...extras,
     });
@@ -160,7 +161,9 @@ describe("harthmere bible quest live authority", () => {
     });
     assert.ok(!starter.ok);
     assert.ok(
-      starter.warnings.some((w) => w.includes("starter_quests_use_client_twins"))
+      starter.warnings.some((w) =>
+        w.includes("starter_quests_use_client_twins")
+      )
     );
   });
 
@@ -205,7 +208,9 @@ describe("harthmere bible quest live authority", () => {
     });
     assert.ok(!outOfOrder.ok);
     assert.ok(
-      outOfOrder.warnings.some((w) => w.includes("prior_objective_not_complete"))
+      outOfOrder.warnings.some((w) =>
+        w.includes("prior_objective_not_complete")
+      )
     );
 
     slice = advanceAllObjectives(slice, questId);
@@ -225,6 +230,38 @@ describe("harthmere bible quest live authority", () => {
     // Double-complete must be idempotent (no second grant).
     const dup = reduce(done.slice, "bible_quest_complete", { questId });
     assert.ok(!dup.ok || !dup.rewards, "reward must never grant twice");
+  });
+
+  it("creates one server proof item for a collection objective", () => {
+    const questId = "harthmere_sq_016_candles_for_the_forgotten";
+    let slice = reduce(
+      defaultHarthmereBibleQuestLiveSlice(),
+      "bible_quest_accept",
+      { questId, playerLevel: 2 }
+    ).slice;
+    const quest = getHarthmereQuestById(questId) as any;
+    const objective = quest.objectives[0];
+
+    const advanced = reduce(slice, "bible_quest_advance", {
+      questId,
+      objectiveId: objective.id,
+      playerLevel: 2,
+    });
+    assert.ok(advanced.ok, advanced.warnings.join(","));
+    assert.deepEqual(advanced.objectiveItemGrant, {
+      itemId: `quest_objective_item:${questId}:${objective.id}`,
+      count: 1,
+      displayName: "chapel candles",
+    });
+
+    slice = advanced.slice;
+    const duplicate = reduce(slice, "bible_quest_advance", {
+      questId,
+      objectiveId: objective.id,
+      playerLevel: 2,
+    });
+    assert.ok(duplicate.ok, duplicate.warnings.join(","));
+    assert.equal(duplicate.objectiveItemGrant, undefined);
   });
 
   it("abandon + retry give a fresh record (wipe recovery)", () => {
@@ -247,7 +284,10 @@ describe("harthmere bible quest live authority", () => {
       // Complete the whole main chain before Q12 by marking completedAtMs —
       // context building unions these into completedQuestIds.
       for (const quest of HARTHMERE_QUEST_CATALOG as readonly any[]) {
-        if (quest.category === "main" && quest.id !== HARTHMERE_BIBLE_DRAGON_QUEST_ID) {
+        if (
+          quest.category === "main" &&
+          quest.id !== HARTHMERE_BIBLE_DRAGON_QUEST_ID
+        ) {
           slice.completedAtMs[quest.id] = NOW - 1000;
         }
       }

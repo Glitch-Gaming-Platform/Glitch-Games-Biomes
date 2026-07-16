@@ -27,6 +27,18 @@ export const MMO_INVENTORY_AUTHORITY_VERSION = "mmo-inventory-authority";
 // ---------------------------------------------------------------------------
 
 export type HarthmereItemBinding = "none" | "on_pickup" | "on_equip" | "quest";
+export const HARTHMERE_EQUIPMENT_SLOTS = [
+  "main_hand",
+  "off_hand",
+  "head",
+  "chest",
+  "legs",
+  "feet",
+  "hands",
+  "back",
+  "neck",
+] as const;
+export type HarthmereEquipmentSlot = (typeof HARTHMERE_EQUIPMENT_SLOTS)[number];
 export type HarthmereItemRarity =
   | "common"
   | "uncommon"
@@ -129,6 +141,8 @@ export interface HarthmereItemDefinition {
   stats: Record<string, number>;
   /** Two-handed weapon: occupies the main hand and forbids an off-hand item at the same time. */
   twoHanded?: boolean;
+  /** Canonical slots this item may occupy. The server, never the client, owns this rule. */
+  equipmentSlots?: HarthmereEquipmentSlot[];
   tradeable: boolean;
   /** Optional category used by crafting/economy affordances. */
   category?: string;
@@ -422,6 +436,45 @@ export function registerHarthmereItemDefinition(def: HarthmereItemDefinition) {
         }
       : def
   );
+}
+
+function equipmentSlotFromDisplayText(
+  def: Pick<HarthmereItemDefinition, "displayName" | "itemId" | "category">
+): HarthmereEquipmentSlot | undefined {
+  const text = `${def.itemId} ${def.displayName}`.toLowerCase();
+  if (/shield|buckler/.test(text)) return "off_hand";
+  if (/helmet|helm|hat|hood|crown/.test(text)) return "head";
+  if (/trouser|pants|leggings|bottoms|skirt|greaves/.test(text)) return "legs";
+  if (/boot|shoe|sandal|feet/.test(text)) return "feet";
+  if (/glove|gauntlet|hands/.test(text)) return "hands";
+  if (/cloak|cape|mantle|backpack/.test(text)) return "back";
+  if (/necklace|amulet|gorget|neck/.test(text)) return "neck";
+  if (/camera/.test(text)) return "main_hand";
+  if (
+    /sword|dagger|blade|axe|mace|hammer|bow|crossbow|staff|wand|pickaxe|mallet|rake/.test(
+      text
+    )
+  ) {
+    return "main_hand";
+  }
+  if (/armor|armour|apron|shirt|tunic|vest|jacket|coat|chestplate/.test(text)) {
+    return "chest";
+  }
+  if (def.category === "weapon" || def.category === "tool") return "main_hand";
+  if (def.category === "armor" || def.category === "cosmetic") return "chest";
+  return undefined;
+}
+
+export function harthmereAllowedEquipmentSlots(
+  def: HarthmereItemDefinition
+): readonly HarthmereEquipmentSlot[] {
+  if (def.equipmentSlots?.length) {
+    return [...new Set(def.equipmentSlots)].filter((slot) =>
+      HARTHMERE_EQUIPMENT_SLOTS.includes(slot)
+    );
+  }
+  const inferred = equipmentSlotFromDisplayText(def);
+  return inferred ? [inferred] : [];
 }
 
 export function getHarthmereItemDefinition(
@@ -1738,6 +1791,14 @@ function validateEquipItem(
     def.isSpellTome
   ) {
     fail(errors, "item_not_equippable");
+  }
+  const allowedSlots = harthmereAllowedEquipmentSlots(def);
+  if (
+    !HARTHMERE_EQUIPMENT_SLOTS.includes(targetSlot as HarthmereEquipmentSlot)
+  ) {
+    fail(errors, "unknown_equipment_slot");
+  } else if (!allowedSlots.includes(targetSlot as HarthmereEquipmentSlot)) {
+    fail(errors, "item_not_equippable_in_slot");
   }
   if (playerLevel < def.levelRequirement)
     fail(errors, "level_requirement_not_met");

@@ -50,12 +50,15 @@ import {
   ensureHarthmereSpellSlotted,
   ensureHarthmereStarterSwordGranted,
   readHarthmereInventoryState,
+  readHarthmereLiveEquipmentSnapshot,
   useHarthmereInventoryState,
 } from "@/client/components/challenges/LocalDevHarthmereInventorySystem";
 import {
   HARTHMERE_INVENTORY_EVENT,
   HARTHMERE_JOBS_BOARD_OPEN_EVENT,
+  HARTHMERE_LIVE_EQUIPMENT_EVENT,
 } from "@/client/components/challenges/harthmereEvents";
+import { harthmereLiveServerAuthoritative } from "@/client/components/challenges/harthmereLiveAuthoritySignal";
 import { harthmereLocalEquipmentBikkieWearables } from "@/shared/harthmere/harthmere_bikkie_wearables";
 import { Wearing } from "@/shared/ecs/gen/components";
 import { anItem } from "@/shared/game/item";
@@ -703,18 +706,30 @@ function emitHarthmerePlayerSwordVisual(detail: {
 function useHarthmerePlayerSwordVisualBridge() {
   const inventory = useHarthmereInventoryState();
   const multiplayer = useHarthmereMultiplayerCombatState();
+  const [liveEquipmentRevision, setLiveEquipmentRevision] = useState(0);
+  useEffect(() => {
+    const refresh = () => setLiveEquipmentRevision((value) => value + 1);
+    window.addEventListener(HARTHMERE_LIVE_EQUIPMENT_EVENT, refresh);
+    return () =>
+      window.removeEventListener(HARTHMERE_LIVE_EQUIPMENT_EVENT, refresh);
+  }, []);
+  void liveEquipmentRevision;
+  const liveEquipment = readHarthmereLiveEquipmentSnapshot().equipment;
   // This bridge drives the procedural visible longsword. Keep it mapped to
   // the Harthmere sword id instead of raw inventory/equipment ids such as
   // training_dagger, which do not have this visual attached yet.
-  const itemId =
-    inventory.equipment.main_hand?.itemId ??
-    inventory.equipment.off_hand?.itemId ??
-    "iron_longsword";
+  const itemId = harthmereLiveServerAuthoritative()
+    ? liveEquipment.main_hand ?? liveEquipment.off_hand ?? "fists"
+    : inventory.equipment.main_hand?.itemId ??
+      inventory.equipment.off_hand?.itemId ??
+      "iron_longsword";
 
   useEffect(() => {
     // Give old local-dev saves a sword exactly once. The inventory helper is
     // idempotent, so it is safe when React remounts during development.
-    ensureHarthmereStarterSwordGranted();
+    if (!harthmereLiveServerAuthoritative()) {
+      ensureHarthmereStarterSwordGranted();
+    }
     // NOTE: repair/cleanup tools are NOT granted for free. The player must buy
     // them from the business that sells them (see harthmere_business_tool_shop);
     // a job that needs a tool the player lacks redirects them there on the map.
@@ -743,6 +758,19 @@ function useHarthmereLocalPlayerWearableMeshBridge() {
     }
     const refresh = () => {
       try {
+        if (harthmereLiveServerAuthoritative()) {
+          const previousSlots = localWearableSlotsRef.current;
+          if (previousSlots.size > 0) {
+            const wearing =
+              resources.peek("/ecs/c/wearing", userId) ?? Wearing.create();
+            const items = new Map(wearing.items ?? []);
+            for (const slot of previousSlots) items.delete(slot as any);
+            localWearableSlotsRef.current = new Set();
+            resources.set("/ecs/c/wearing", userId, { items } as Wearing);
+            resources.invalidate("/scene/player/mesh", userId);
+          }
+          return;
+        }
         const mapped = harthmereLocalEquipmentBikkieWearables(
           readHarthmereInventoryState().equipment
         );
@@ -765,10 +793,13 @@ function useHarthmereLocalPlayerWearableMeshBridge() {
       } catch {}
       resources.invalidate("/scene/player/mesh", userId);
     };
+    refresh();
     window.addEventListener(HARTHMERE_INVENTORY_EVENT, refresh);
+    window.addEventListener(HARTHMERE_LIVE_EQUIPMENT_EVENT, refresh);
     window.addEventListener("storage", refresh);
     return () => {
       window.removeEventListener(HARTHMERE_INVENTORY_EVENT, refresh);
+      window.removeEventListener(HARTHMERE_LIVE_EQUIPMENT_EVENT, refresh);
       window.removeEventListener("storage", refresh);
     };
   }, [resources, userId]);

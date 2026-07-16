@@ -75,7 +75,13 @@ export interface HarthmereQuestRuntimeEvent {
   eventId: string;
   questId: string;
   objectiveId?: string;
-  type: HarthmereQuestObjectiveEventType | "accept" | "complete" | "fail" | "abandon" | "retry";
+  type:
+    | HarthmereQuestObjectiveEventType
+    | "accept"
+    | "complete"
+    | "fail"
+    | "abandon"
+    | "retry";
   actorId: string;
   targetId?: string;
   count?: number;
@@ -131,7 +137,13 @@ export interface HarthmereQuestJournalEntry {
   state: HarthmereQuestState;
   giverName?: string;
   district: string;
-  activeObjectives: Array<{ id: string; label: string; current: number; target: number; completed: boolean }>;
+  activeObjectives: Array<{
+    id: string;
+    label: string;
+    current: number;
+    target: number;
+    completed: boolean;
+  }>;
   dialogueState: string;
   rewardPreview: any;
   mapHints: HarthmereQuestMapHint[];
@@ -155,17 +167,39 @@ export interface HarthmereQuestTelemetryEvent {
 }
 
 export const HARTHMERE_QUEST_DIALOGUE_LINKS = {
-  sergeant_bram_holt: ["starter_welcome_to_harthmere", "harthmere_sq_005_patrol_route_seven", "repeatable_watch_patrol_routes"],
-  father_aldren_mell: ["bellbound_q01_cracks_in_bridge", "bellbound_q04_sisters_letters", "repeatable_chapel_candle_vigils"],
-  sister_maelle_frenn: ["bellbound_q04_sisters_letters", "harthmere_sq_017_sister_maelles_concern"],
-  nessa_crowe: ["bellbound_q02_5_rat_girl_knows", "harthmere_sq_028_rats_with_crowns"],
+  sergeant_bram_holt: [
+    "starter_welcome_to_harthmere",
+    "harthmere_sq_005_patrol_route_seven",
+    "repeatable_watch_patrol_routes",
+  ],
+  father_aldren_mell: [
+    "bellbound_q01_cracks_in_bridge",
+    "bellbound_q04_sisters_letters",
+    "repeatable_chapel_candle_vigils",
+  ],
+  sister_maelle_frenn: [
+    "bellbound_q04_sisters_letters",
+    "harthmere_sq_017_sister_maelles_concern",
+  ],
+  nessa_crowe: [
+    "bellbound_q02_5_rat_girl_knows",
+    "harthmere_sq_028_rats_with_crowns",
+  ],
   lina_reed: ["harthmere_sq_027_linas_promise"],
-  tamsin_vale: ["harthmere_sq_036_tamsins_trial", "repeatable_wilds_resource_route"],
-  veneth_moss_woman: ["harthmere_sq_037_the_moss_womans_riddle", "bellbound_q12_thaedryn_bellbound"],
+  tamsin_vale: [
+    "harthmere_sq_036_tamsins_trial",
+    "repeatable_wilds_resource_route",
+  ],
+  veneth_moss_woman: [
+    "harthmere_sq_037_the_moss_womans_riddle",
+    "bellbound_q12_thaedryn_bellbound",
+  ],
   thaedryn_bellbound: ["bellbound_q12_thaedryn_bellbound"],
 } as const;
 
-export function createHarthmereQuestRuntimeContext(overrides: Partial<HarthmereQuestRuntimeContext> = {}): HarthmereQuestRuntimeContext {
+export function createHarthmereQuestRuntimeContext(
+  overrides: Partial<HarthmereQuestRuntimeContext> = {}
+): HarthmereQuestRuntimeContext {
   return {
     playerId: overrides.playerId ?? "local-dev-player",
     playerLevel: overrides.playerLevel ?? 12,
@@ -185,22 +219,37 @@ export function createHarthmereQuestRuntimeContext(overrides: Partial<HarthmereQ
 
 export function getHarthmereQuestRuntimeRecord(
   context: HarthmereQuestRuntimeContext,
-  questId: string,
+  questId: string
 ): HarthmereQuestRuntimeRecord | undefined {
   return context.runtimeRecords[questId];
 }
 
-export function createHarthmereQuestRuntimeRecord(quest: any, tick = 0): HarthmereQuestRuntimeRecord {
-  const objectiveProgress: Record<string, HarthmereQuestRuntimeObjectiveProgress> = {};
+export function createHarthmereQuestRuntimeRecord(
+  quest: any,
+  tick = 0
+): HarthmereQuestRuntimeRecord {
+  const objectiveProgress: Record<
+    string,
+    HarthmereQuestRuntimeObjectiveProgress
+  > = {};
   for (const objective of quest.objectives ?? []) {
-    objectiveProgress[objective.id] = { current: 0, target: objective.count ?? 1, completed: false };
+    objectiveProgress[objective.id] = {
+      current: 0,
+      target: objective.count ?? 1,
+      completed: false,
+    };
   }
-  return { questId: quest.id, state: "active", acceptedAtTick: tick, objectiveProgress };
+  return {
+    questId: quest.id,
+    state: "active",
+    acceptedAtTick: tick,
+    objectiveProgress,
+  };
 }
 
 function distanceBetween(
   a: [number, number, number] | undefined,
-  b: [number, number, number] | undefined,
+  b: [number, number, number] | undefined
 ): number | undefined {
   if (!a || !b) return undefined;
   const dx = a[0] - b[0];
@@ -239,9 +288,11 @@ export function getHarthmereQuestResolvedWaypoint(
   if (!quest || !source?.waypoint) {
     return undefined;
   }
-  const fallback = shiftHarthmereAuthoredPositionToWorld(
-    source.waypoint
-  ) as [number, number, number];
+  const fallback = shiftHarthmereAuthoredPositionToWorld(source.waypoint) as [
+    number,
+    number,
+    number
+  ];
   return resolveHarthmereQuestObjectivePlacement({
     questId,
     objectiveId: objective?.id,
@@ -279,7 +330,7 @@ export function validateHarthmereQuestObjectiveEvent(
   context: HarthmereQuestRuntimeContext,
   event: HarthmereQuestRuntimeEvent,
   quest: any,
-  objective: any,
+  objective: any
 ): { ok: boolean; reasons: string[] } {
   const reasons: string[] = [];
   if (!objective) {
@@ -295,7 +346,12 @@ export function validateHarthmereQuestObjectiveEvent(
     objective
   );
   const dist = distanceBetween(event.actorPosition, objectiveWaypoint);
-  if (event.actorPosition && objectiveWaypoint && dist !== undefined && dist > maxDistance) {
+  if (
+    event.actorPosition &&
+    objectiveWaypoint &&
+    dist !== undefined &&
+    dist > maxDistance
+  ) {
     reasons.push("player_too_far");
   }
   if (requiresLoS && event.lineOfSight === false) {
@@ -303,7 +359,10 @@ export function validateHarthmereQuestObjectiveEvent(
   }
 
   // Choice objectives must include a server-revalidated choice.
-  if (objective.type === "choice" && objective?.validation?.requiresChoiceRevalidation) {
+  if (
+    objective.type === "choice" &&
+    objective?.validation?.requiresChoiceRevalidation
+  ) {
     if (!event.revalidatedChoice) reasons.push("choice_not_revalidated");
   }
 
@@ -362,24 +421,34 @@ export function validateHarthmereQuestObjectiveEvent(
 
 export function validateHarthmereQuestRuntimeEvent(
   context: HarthmereQuestRuntimeContext,
-  event: HarthmereQuestRuntimeEvent,
+  event: HarthmereQuestRuntimeEvent
 ): { ok: boolean; reasons: string[] } {
   const reasons: string[] = [];
   const quest = getHarthmereQuestById(event.questId);
   if (!quest) reasons.push("missing_quest");
-  if (event.authority !== "server" || context.authority !== "server") reasons.push("client_cannot_advance_or_grant_quest_state");
-  if (!event.eventId || !event.eventId.includes(event.questId)) reasons.push("event_id_must_be_namespaced_to_quest");
+  if (event.authority !== "server" || context.authority !== "server")
+    reasons.push("client_cannot_advance_or_grant_quest_state");
+  if (!event.eventId || !event.eventId.includes(event.questId))
+    reasons.push("event_id_must_be_namespaced_to_quest");
   if (event.actorId !== context.playerId) reasons.push("actor_mismatch");
   if (event.tick < context.tick) reasons.push("stale_event_tick");
-  if (event.type === "complete" && context.grantedRewardIds.includes(`reward:${event.questId}`)) reasons.push("reward_already_granted");
-  if ((event.type === "collect" || event.type === "complete") && context.inventoryFreeSlots < 0) reasons.push("invalid_inventory_state");
+  if (
+    event.type === "complete" &&
+    context.grantedRewardIds.includes(`reward:${event.questId}`)
+  )
+    reasons.push("reward_already_granted");
+  if (
+    (event.type === "collect" || event.type === "complete") &&
+    context.inventoryFreeSlots < 0
+  )
+    reasons.push("invalid_inventory_state");
   return { ok: reasons.length === 0, reasons };
 }
 
 export function acceptHarthmereQuest(
   context: HarthmereQuestRuntimeContext,
   questId: string,
-  eventId = `${questId}:accept:${context.tick}`,
+  eventId = `${questId}:accept:${context.tick}`
 ): HarthmereQuestRuntimeResult {
   const quest = getHarthmereQuestById(questId);
   if (!quest) return { ok: false, questId, reasons: ["missing_quest"] };
@@ -392,23 +461,49 @@ export function acceptHarthmereQuest(
     completedQuestIds: context.completedQuestIds,
     questStates: context.questStates,
   } as any);
-  if (!validation.ok) return { ok: false, questId, state: "locked", reasons: validation.reasons };
+  if (!validation.ok)
+    return { ok: false, questId, state: "locked", reasons: validation.reasons };
   const existingRecord = context.runtimeRecords[questId];
   if (existingRecord) {
     // Idempotent: a duplicate accept of an in-flight quest must NEVER wipe progress.
-    if (existingRecord.state === "active" || existingRecord.state === "ready_to_complete") {
-      return { ok: true, questId, state: existingRecord.state, record: existingRecord, reasons: ["already_active_idempotent"] };
+    if (
+      existingRecord.state === "active" ||
+      existingRecord.state === "ready_to_complete"
+    ) {
+      return {
+        ok: true,
+        questId,
+        state: existingRecord.state,
+        record: existingRecord,
+        reasons: ["already_active_idempotent"],
+      };
     }
     // A non-repeatable quest that is already completed cannot be re-accepted.
-    if (existingRecord.state === "completed" && (quest.repeatability ?? "once") === "once") {
-      return { ok: false, questId, state: "completed", reasons: ["quest_already_completed"] };
+    if (
+      existingRecord.state === "completed" &&
+      (quest.repeatability ?? "once") === "once"
+    ) {
+      return {
+        ok: false,
+        questId,
+        state: "completed",
+        reasons: ["quest_already_completed"],
+      };
     }
     // Otherwise (repeatable completed → next cycle, or failed/abandoned → restart) fall
     // through and create a fresh record.
   }
-  const event = { eventId, questId, type: "accept" as const, actorId: context.playerId, authority: "server" as const, tick: context.tick };
+  const event = {
+    eventId,
+    questId,
+    type: "accept" as const,
+    actorId: context.playerId,
+    authority: "server" as const,
+    tick: context.tick,
+  };
   const eventValidation = validateHarthmereQuestRuntimeEvent(context, event);
-  if (!eventValidation.ok) return { ok: false, questId, reasons: eventValidation.reasons };
+  if (!eventValidation.ok)
+    return { ok: false, questId, reasons: eventValidation.reasons };
   const record = createHarthmereQuestRuntimeRecord(quest, context.tick);
   context.runtimeRecords[questId] = record;
   context.questStates[questId] = "active";
@@ -426,26 +521,71 @@ export function acceptHarthmereQuest(
 
 export function advanceHarthmereQuestObjective(
   context: HarthmereQuestRuntimeContext,
-  event: HarthmereQuestRuntimeEvent,
+  event: HarthmereQuestRuntimeEvent
 ): HarthmereQuestRuntimeResult {
   const eventValidation = validateHarthmereQuestRuntimeEvent(context, event);
-  if (!eventValidation.ok) return { ok: false, questId: event.questId, reasons: eventValidation.reasons };
+  if (!eventValidation.ok)
+    return {
+      ok: false,
+      questId: event.questId,
+      reasons: eventValidation.reasons,
+    };
   const record = context.runtimeRecords[event.questId];
   const quest = getHarthmereQuestById(event.questId);
-  if (!record || !quest || record.state !== "active") return { ok: false, questId: event.questId, reasons: ["quest_not_active"] };
+  if (!record || !quest || record.state !== "active")
+    return { ok: false, questId: event.questId, reasons: ["quest_not_active"] };
   const objectiveId = event.objectiveId;
-  if (!objectiveId || !record.objectiveProgress[objectiveId]) return { ok: false, questId: event.questId, reasons: ["missing_objective"] };
+  if (!objectiveId || !record.objectiveProgress[objectiveId])
+    return {
+      ok: false,
+      questId: event.questId,
+      reasons: ["missing_objective"],
+    };
   const progress = record.objectiveProgress[objectiveId];
-  if (progress.lastEventId === event.eventId) return { ok: true, questId: event.questId, state: record.state, record, reasons: ["duplicate_objective_event_idempotent"] };
-  const objective = (quest.objectives ?? []).find((o: any) => o.id === objectiveId);
-  const objectiveValidation = validateHarthmereQuestObjectiveEvent(context, event, quest, objective);
-  if (!objectiveValidation.ok) {
-    return { ok: false, questId: event.questId, state: record.state, record, reasons: objectiveValidation.reasons };
+  if (progress.lastEventId === event.eventId)
+    return {
+      ok: true,
+      questId: event.questId,
+      state: record.state,
+      record,
+      reasons: ["duplicate_objective_event_idempotent"],
+    };
+  if (progress.completed) {
+    return {
+      ok: true,
+      questId: event.questId,
+      state: record.state,
+      record,
+      reasons: ["objective_already_completed_idempotent"],
+    };
   }
-  progress.current = Math.min(progress.target, progress.current + Math.max(1, event.count ?? 1));
+  const objective = (quest.objectives ?? []).find(
+    (o: any) => o.id === objectiveId
+  );
+  const objectiveValidation = validateHarthmereQuestObjectiveEvent(
+    context,
+    event,
+    quest,
+    objective
+  );
+  if (!objectiveValidation.ok) {
+    return {
+      ok: false,
+      questId: event.questId,
+      state: record.state,
+      record,
+      reasons: objectiveValidation.reasons,
+    };
+  }
+  progress.current = Math.min(
+    progress.target,
+    progress.current + Math.max(1, event.count ?? 1)
+  );
   progress.completed = progress.current >= progress.target;
   progress.lastEventId = event.eventId;
-  const allComplete = Object.values(record.objectiveProgress).every((item) => item.completed);
+  const allComplete = Object.values(record.objectiveProgress).every(
+    (item) => item.completed
+  );
   if (allComplete) {
     record.state = "ready_to_complete";
     context.questStates[event.questId] = "ready_to_complete";
@@ -458,8 +598,21 @@ export function advanceHarthmereQuestObjective(
     journal: getHarthmereQuestJournalEntry(context, event.questId),
     mapHint: getHarthmereQuestMapHint(context, event.questId),
     telemetry: [
-      { kind: "objective_progressed", questId: event.questId, objectiveId, tick: context.tick },
-      ...(allComplete ? [{ kind: "quest_ready_to_complete" as const, questId: event.questId, tick: context.tick }] : []),
+      {
+        kind: "objective_progressed",
+        questId: event.questId,
+        objectiveId,
+        tick: context.tick,
+      },
+      ...(allComplete
+        ? [
+            {
+              kind: "quest_ready_to_complete" as const,
+              questId: event.questId,
+              tick: context.tick,
+            },
+          ]
+        : []),
     ],
     reasons: [],
   };
@@ -468,15 +621,30 @@ export function advanceHarthmereQuestObjective(
 export function completeHarthmereQuest(
   context: HarthmereQuestRuntimeContext,
   questId: string,
-  eventId = `${questId}:complete:${context.tick}`,
+  eventId = `${questId}:complete:${context.tick}`
 ): HarthmereQuestRuntimeResult {
-  const event = { eventId, questId, type: "complete" as const, actorId: context.playerId, authority: "server" as const, tick: context.tick };
+  const event = {
+    eventId,
+    questId,
+    type: "complete" as const,
+    actorId: context.playerId,
+    authority: "server" as const,
+    tick: context.tick,
+  };
   const eventValidation = validateHarthmereQuestRuntimeEvent(context, event);
-  if (!eventValidation.ok) return { ok: false, questId, reasons: eventValidation.reasons };
+  if (!eventValidation.ok)
+    return { ok: false, questId, reasons: eventValidation.reasons };
   const quest = getHarthmereQuestById(questId);
   const record = context.runtimeRecords[questId];
-  if (!quest || !record) return { ok: false, questId, reasons: ["missing_runtime_record"] };
-  if (record.state !== "ready_to_complete") return { ok: false, questId, state: record.state, reasons: ["objectives_not_ready"] };
+  if (!quest || !record)
+    return { ok: false, questId, reasons: ["missing_runtime_record"] };
+  if (record.state !== "ready_to_complete")
+    return {
+      ok: false,
+      questId,
+      state: record.state,
+      reasons: ["objectives_not_ready"],
+    };
   // Repeatable (daily/weekly) quests must re-grant their reward each cycle. Keying the
   // grant id on the acceptance tick gives each fresh acceptance a distinct id, while a
   // "once" quest keeps a stable id so it can never be re-granted.
@@ -484,20 +652,36 @@ export function completeHarthmereQuest(
     (quest.repeatability ?? "once") === "once"
       ? `reward:${questId}`
       : `reward:${questId}:${record.acceptedAtTick}`;
-  if (context.grantedRewardIds.includes(rewardGrantId)) return { ok: true, questId, state: "completed", record, reasons: ["reward_already_granted_idempotent"] };
+  if (context.grantedRewardIds.includes(rewardGrantId))
+    return {
+      ok: true,
+      questId,
+      state: "completed",
+      record,
+      reasons: ["reward_already_granted_idempotent"],
+    };
   record.state = "completed";
   record.completedAtTick = context.tick;
   record.rewardGrantId = rewardGrantId;
   context.questStates[questId] = "completed";
-  if (!context.completedQuestIds.includes(questId)) context.completedQuestIds.push(questId);
+  if (!context.completedQuestIds.includes(questId))
+    context.completedQuestIds.push(questId);
   context.grantedRewardIds.push(rewardGrantId);
   return {
     ok: true,
     questId,
     state: "completed",
     record,
-    rewardsGranted: { ...quest.rewards, rewardGrantId, authority: "server", idempotent: true },
-    telemetry: [{ kind: "reward_granted_once", questId, tick: context.tick }, { kind: "quest_completed", questId, tick: context.tick }],
+    rewardsGranted: {
+      ...quest.rewards,
+      rewardGrantId,
+      authority: "server",
+      idempotent: true,
+    },
+    telemetry: [
+      { kind: "reward_granted_once", questId, tick: context.tick },
+      { kind: "quest_completed", questId, tick: context.tick },
+    ],
     reasons: [],
   };
 }
@@ -505,18 +689,38 @@ export function completeHarthmereQuest(
 export function failHarthmereQuest(
   context: HarthmereQuestRuntimeContext,
   questId: string,
-  reason: string,
+  reason: string
 ): HarthmereQuestRuntimeResult {
   const record = context.runtimeRecords[questId];
-  if (!record) return { ok: false, questId, reasons: ["missing_runtime_record"] };
+  if (!record)
+    return { ok: false, questId, reasons: ["missing_runtime_record"] };
   if (record.state !== "active" && record.state !== "ready_to_complete") {
-    return { ok: false, questId, state: record.state, reasons: ["only_active_quests_can_fail"] };
+    return {
+      ok: false,
+      questId,
+      state: record.state,
+      reasons: ["only_active_quests_can_fail"],
+    };
   }
   record.state = "failed";
   record.failedAtTick = context.tick;
   record.failureReason = reason;
   context.questStates[questId] = "failed";
-  return { ok: true, questId, state: "failed", record, telemetry: [{ kind: "quest_failed", questId, tick: context.tick, details: { reason } }], reasons: [] };
+  return {
+    ok: true,
+    questId,
+    state: "failed",
+    record,
+    telemetry: [
+      {
+        kind: "quest_failed",
+        questId,
+        tick: context.tick,
+        details: { reason },
+      },
+    ],
+    reasons: [],
+  };
 }
 
 // Party-scoped progression. Per request: multiple users can do the same quest
@@ -531,7 +735,9 @@ export interface HarthmereQuestPartyMember {
 
 export function advanceHarthmereQuestObjectiveParty(
   members: HarthmereQuestPartyMember[],
-  baseEvent: Omit<HarthmereQuestRuntimeEvent, "actorId" | "eventId"> & { eventIdSuffix: string },
+  baseEvent: Omit<HarthmereQuestRuntimeEvent, "actorId" | "eventId"> & {
+    eventIdSuffix: string;
+  }
 ): Array<{ memberId: string; result: HarthmereQuestRuntimeResult }> {
   return members.map((member) => {
     const event: HarthmereQuestRuntimeEvent = {
@@ -539,14 +745,17 @@ export function advanceHarthmereQuestObjectiveParty(
       actorId: member.context.playerId,
       eventId: `${baseEvent.questId}:${baseEvent.eventIdSuffix}:${member.memberId}`,
     };
-    return { memberId: member.memberId, result: advanceHarthmereQuestObjective(member.context, event) };
+    return {
+      memberId: member.memberId,
+      result: advanceHarthmereQuestObjective(member.context, event),
+    };
   });
 }
 
 export function failHarthmereQuestParty(
   members: HarthmereQuestPartyMember[],
   questId: string,
-  reason: string,
+  reason: string
 ): Array<{ memberId: string; result: HarthmereQuestRuntimeResult }> {
   return members.map((member) => ({
     memberId: member.memberId,
@@ -557,11 +766,11 @@ export function failHarthmereQuestParty(
 export function completeHarthmereQuestParty(
   members: HarthmereQuestPartyMember[],
   questId: string,
-  baseTick: number,
+  baseTick: number
 ): Array<{ memberId: string; result: HarthmereQuestRuntimeResult }> {
   // All members must be ready_to_complete; if any is not, no rewards grant.
   const allReady = members.every(
-    (m) => m.context.runtimeRecords[questId]?.state === "ready_to_complete",
+    (m) => m.context.runtimeRecords[questId]?.state === "ready_to_complete"
   );
   if (!allReady) {
     return members.map((member) => ({
@@ -576,50 +785,81 @@ export function completeHarthmereQuestParty(
   }
   return members.map((member) => ({
     memberId: member.memberId,
-    result: completeHarthmereQuest(member.context, questId, `${questId}:complete:party:${baseTick}:${member.memberId}`),
+    result: completeHarthmereQuest(
+      member.context,
+      questId,
+      `${questId}:complete:party:${baseTick}:${member.memberId}`
+    ),
   }));
 }
 
 export function abandonHarthmereQuest(
   context: HarthmereQuestRuntimeContext,
-  questId: string,
+  questId: string
 ): HarthmereQuestRuntimeResult {
   const record = context.runtimeRecords[questId];
-  if (!record) return { ok: false, questId, reasons: ["missing_runtime_record"] };
+  if (!record)
+    return { ok: false, questId, reasons: ["missing_runtime_record"] };
   // Only in-flight quests can be abandoned. Abandoning a completed/failed quest would
   // corrupt its terminal state (and could re-lock chain prerequisites that read it).
   if (record.state !== "active" && record.state !== "ready_to_complete") {
-    return { ok: false, questId, state: record.state, reasons: ["only_active_quests_can_abandon"] };
+    return {
+      ok: false,
+      questId,
+      state: record.state,
+      reasons: ["only_active_quests_can_abandon"],
+    };
   }
   record.state = "abandoned";
   record.abandonedAtTick = context.tick;
   context.questStates[questId] = "abandoned";
-  return { ok: true, questId, state: "abandoned", record, telemetry: [{ kind: "quest_abandoned", questId, tick: context.tick }], reasons: [] };
+  return {
+    ok: true,
+    questId,
+    state: "abandoned",
+    record,
+    telemetry: [{ kind: "quest_abandoned", questId, tick: context.tick }],
+    reasons: [],
+  };
 }
 
 export function retryHarthmereQuest(
   context: HarthmereQuestRuntimeContext,
-  questId: string,
+  questId: string
 ): HarthmereQuestRuntimeResult {
   const quest = getHarthmereQuestById(questId);
   if (!quest) return { ok: false, questId, reasons: ["missing_quest"] };
   const previous = context.runtimeRecords[questId];
-  if (previous?.state !== "failed" && previous?.state !== "abandoned") return { ok: false, questId, reasons: ["retry_requires_failed_or_abandoned_state"] };
+  if (previous?.state !== "failed" && previous?.state !== "abandoned")
+    return {
+      ok: false,
+      questId,
+      reasons: ["retry_requires_failed_or_abandoned_state"],
+    };
   const record = createHarthmereQuestRuntimeRecord(quest, context.tick);
   context.runtimeRecords[questId] = record;
   context.questStates[questId] = "active";
-  return { ok: true, questId, state: "active", record, telemetry: [{ kind: "quest_retried", questId, tick: context.tick }], reasons: [] };
+  return {
+    ok: true,
+    questId,
+    state: "active",
+    record,
+    telemetry: [{ kind: "quest_retried", questId, tick: context.tick }],
+    reasons: [],
+  };
 }
 
 export function getHarthmereQuestMapHint(
   context: HarthmereQuestRuntimeContext,
-  questId: string,
+  questId: string
 ): HarthmereQuestMapHint | undefined {
   const quest = getHarthmereQuestById(questId);
   if (!quest) return undefined;
   const record = context.runtimeRecords[questId];
   const firstOpenObjective = record
-    ? quest.objectives.find((objective: any) => !record.objectiveProgress[objective.id]?.completed)
+    ? quest.objectives.find(
+        (objective: any) => !record.objectiveProgress[objective.id]?.completed
+      )
     : undefined;
   const source = firstOpenObjective?.location ?? quest.location;
   const waypoint =
@@ -627,29 +867,51 @@ export function getHarthmereQuestMapHint(
     (shiftHarthmereAuthoredPositionToWorld(source.waypoint) as [
       number,
       number,
-      number,
+      number
     ]);
   return {
     questId,
     objectiveId: firstOpenObjective?.id,
     district: source.district,
     waypoint,
-    compassLabel: firstOpenObjective?.label ?? `Speak with ${quest.giverName ?? "the world trigger"}`,
-    hintType: record?.state === "ready_to_complete" ? "turn_in" : firstOpenObjective ? "objective" : quest.hidden ? "hidden_world_trigger" : "giver",
+    compassLabel:
+      firstOpenObjective?.label ??
+      `Speak with ${quest.giverName ?? "the world trigger"}`,
+    hintType:
+      record?.state === "ready_to_complete"
+        ? "turn_in"
+        : firstOpenObjective
+        ? "objective"
+        : quest.hidden
+        ? "hidden_world_trigger"
+        : "giver",
   };
 }
 
 export function getHarthmereQuestJournalEntry(
   context: HarthmereQuestRuntimeContext,
-  questId: string,
+  questId: string
 ): HarthmereQuestJournalEntry | undefined {
   const quest = getHarthmereQuestById(questId);
   if (!quest) return undefined;
-  const state = context.questStates[questId] ?? quest.activeRules.initialState ?? "available";
+  const state =
+    context.questStates[questId] ??
+    quest.activeRules.initialState ??
+    "available";
   const record = context.runtimeRecords[questId];
   const activeObjectives = (quest.objectives ?? []).map((objective: any) => {
-    const progress = record?.objectiveProgress?.[objective.id] ?? { current: 0, target: objective.count ?? 1, completed: false };
-    return { id: objective.id, label: objective.label, current: progress.current, target: progress.target, completed: progress.completed };
+    const progress = record?.objectiveProgress?.[objective.id] ?? {
+      current: 0,
+      target: objective.count ?? 1,
+      completed: false,
+    };
+    return {
+      id: objective.id,
+      label: objective.label,
+      current: progress.current,
+      target: progress.target,
+      completed: progress.completed,
+    };
   });
   return {
     questId,
@@ -658,26 +920,54 @@ export function getHarthmereQuestJournalEntry(
     giverName: quest.giverName,
     district: quest.location.district,
     activeObjectives,
-    dialogueState: quest.dialogue?.[state === "ready_to_complete" ? "ready" : state === "completed" ? "complete" : state === "failed" ? "fail" : state === "active" ? "active" : "offer"],
+    dialogueState:
+      quest.dialogue?.[
+        state === "ready_to_complete"
+          ? "ready"
+          : state === "completed"
+          ? "complete"
+          : state === "failed"
+          ? "fail"
+          : state === "active"
+          ? "active"
+          : "offer"
+      ],
     rewardPreview: quest.rewards,
-    mapHints: [getHarthmereQuestMapHint(context, questId)].filter(Boolean) as HarthmereQuestMapHint[],
+    mapHints: [getHarthmereQuestMapHint(context, questId)].filter(
+      Boolean
+    ) as HarthmereQuestMapHint[],
   };
 }
 
-export function getHarthmereDialogueQuestOffers(npcId: keyof typeof HARTHMERE_QUEST_DIALOGUE_LINKS, context: HarthmereQuestRuntimeContext) {
+export function getHarthmereDialogueQuestOffers(
+  npcId: keyof typeof HARTHMERE_QUEST_DIALOGUE_LINKS,
+  context: HarthmereQuestRuntimeContext
+) {
   const questIds = HARTHMERE_QUEST_DIALOGUE_LINKS[npcId] ?? [];
   return questIds
     .map((questId) => getHarthmereQuestById(questId))
     .filter(Boolean)
-    .map((quest: any) => ({ questId: quest.id, title: quest.title, state: context.questStates[quest.id] ?? quest.activeRules.initialState, offer: quest.dialogue.offer }));
+    .map((quest: any) => ({
+      questId: quest.id,
+      title: quest.title,
+      state: context.questStates[quest.id] ?? quest.activeRules.initialState,
+      offer: quest.dialogue.offer,
+    }));
 }
 
 export function validateHarthmereQuestRuntimeCoverage() {
   const failures: string[] = [];
   for (const quest of HARTHMERE_QUEST_CATALOG as any[]) {
-    if (!quest.objectives?.length) failures.push(`${quest.id} has no objectives`);
-    if (!quest.rewards?.previewText) failures.push(`${quest.id} has no reward preview`);
-    if (!quest.testContract?.stateTransitions?.length) failures.push(`${quest.id} has no state transitions`);
+    if (!quest.objectives?.length)
+      failures.push(`${quest.id} has no objectives`);
+    if (!quest.rewards?.previewText)
+      failures.push(`${quest.id} has no reward preview`);
+    if (!quest.testContract?.stateTransitions?.length)
+      failures.push(`${quest.id} has no state transitions`);
   }
-  return { ok: failures.length === 0, failures, questCount: (HARTHMERE_QUEST_CATALOG as any[]).length };
+  return {
+    ok: failures.length === 0,
+    failures,
+    questCount: (HARTHMERE_QUEST_CATALOG as any[]).length,
+  };
 }

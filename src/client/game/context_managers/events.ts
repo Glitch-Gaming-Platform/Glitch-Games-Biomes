@@ -1,6 +1,6 @@
 import type { ClientContext } from "@/client/game/context";
 import type { ClientIo } from "@/client/game/context_managers/client_io";
-import type { Event } from "@/shared/ecs/gen/events";
+import type { Event, RemoveMapBeamEvent } from "@/shared/ecs/gen/events";
 import { log } from "@/shared/logging";
 import type { RegistryLoader } from "@/shared/registry";
 import { DefaultMap } from "@/shared/util/collections";
@@ -15,10 +15,19 @@ const HIGH_FREQUENCY_EVENT_KINDS = new Set<Event["kind"]>([
   "updateGroupPreviewEvent",
   "inventoryChangeSelectionEvent",
   "emoteEvent",
+  "removeMapBeamEvent",
 ]);
 
 class HFEventBuffer {
-  private readonly events = new Map<Event["kind"], Event>();
+  private readonly events = new Map<string, Event>();
+
+  private key(event: Event) {
+    if (event.kind === "removeMapBeamEvent") {
+      const removal = event as RemoveMapBeamEvent;
+      return `${event.kind}:${removal.id}:${removal.beam_client_id}`;
+    }
+    return event.kind;
+  }
 
   get size() {
     return this.events.size;
@@ -26,7 +35,7 @@ class HFEventBuffer {
 
   maybePush(event: Event) {
     if (HIGH_FREQUENCY_EVENT_KINDS.has(event.kind)) {
-      this.events.set(event.kind, event);
+      this.events.set(this.key(event), event);
       return true;
     }
     return false;

@@ -248,7 +248,9 @@ export const HARTHMERE_BIBLE_STARTER_TWIN_CLIENT_IDS: Readonly<
     .map((quest) => [
       quest.id,
       // starter_welcome_to_harthmere -> welcome-to-harthmere
-      String(quest.id).replace(/^starter_/, "").replace(/_/g, "-"),
+      String(quest.id)
+        .replace(/^starter_/, "")
+        .replace(/_/g, "-"),
     ])
 );
 
@@ -554,6 +556,12 @@ export interface HarthmereBibleQuestReduceResult {
   slice: HarthmereBibleQuestLiveSlice;
   /** Reward instructions to apply, when a completion granted them. */
   rewards?: HarthmereBibleQuestRewardInstructions;
+  /** Server-created proof item for collect/gather/recover objectives. */
+  objectiveItemGrant?: {
+    itemId: string;
+    count: number;
+    displayName: string;
+  };
   /** Journal/map data for the client response. */
   journal?: HarthmereQuestJournalEntry;
   mapHint?: HarthmereQuestMapHint;
@@ -612,6 +620,68 @@ export function harthmereBibleQuestObjectiveWaypointOverride(
   return undefined;
 }
 
+function bibleObjectiveCollectsItem(objective: any) {
+  return /^(collect|gather|recover|retrieve|obtain|take|pick up)\b/i.test(
+    String(objective?.label ?? "")
+  );
+}
+
+function bibleObjectiveItemCount(objective: any) {
+  const label = String(objective?.label ?? "").toLowerCase();
+  const numeric = label.match(/\b(\d+)\b/)?.[1];
+  if (numeric) return Math.max(1, Math.trunc(Number(numeric)));
+  const words: Record<string, number> = {
+    one: 1,
+    two: 2,
+    three: 3,
+    four: 4,
+    five: 5,
+    six: 6,
+  };
+  for (const [word, count] of Object.entries(words)) {
+    if (new RegExp(`\\b${word}\\b`).test(label)) return count;
+  }
+  return Math.max(1, Math.trunc(Number(objective?.count ?? 1) || 1));
+}
+
+function bibleObjectiveProofItem(questId: string, objective: any) {
+  const itemId = `quest_objective_item:${questId}:${objective.id}`;
+  return {
+    itemId,
+    count: bibleObjectiveItemCount(objective),
+    displayName: String(
+      objective?.targetName ?? objective?.label ?? "Quest Item"
+    )
+      .replace(/^(collect|gather|recover|retrieve|obtain|take|pick up)\s+/i, "")
+      .trim(),
+  };
+}
+
+export function harthmereBibleObjectiveItemDefinition(input: {
+  itemId: string;
+  displayName: string;
+}) {
+  return {
+    itemId: input.itemId,
+    displayName: input.displayName || "Quest Item",
+    description:
+      "Objective proof collected from the quest's marked world location.",
+    maxStackSize: 99,
+    baseValue: 0,
+    binding: "quest" as const,
+    isQuestItem: true,
+    isCurrency: false,
+    isConsumable: false,
+    isCraftingMaterial: false,
+    isSpellTome: false,
+    levelRequirement: 1,
+    classRestriction: [] as string[],
+    stats: {},
+    tradeable: false,
+    category: "quest_item",
+  };
+}
+
 export function reduceHarthmereBibleQuestOperation(
   input: HarthmereBibleQuestReduceInput
 ): HarthmereBibleQuestReduceResult {
@@ -625,9 +695,7 @@ export function reduceHarthmereBibleQuestOperation(
     nowMs: input.nowMs,
     weatherClaim: input.weatherClaim,
   });
-  const fail = (
-    ...reasons: string[]
-  ): HarthmereBibleQuestReduceResult => ({
+  const fail = (...reasons: string[]): HarthmereBibleQuestReduceResult => ({
     ok: false,
     warnings: [...warnings, ...reasons.map((r) => `bible_quest_rejected:${r}`)],
     slice: input.slice, // rejected ops leave the slice untouched
@@ -746,8 +814,13 @@ export function reduceHarthmereBibleQuestOperation(
           objective.type === "combat"
             ? input.combatResult ?? undefined
             : undefined,
-        inventoryStateChanged: undefined,
+        inventoryStateChanged: bibleObjectiveCollectsItem(objective)
+          ? true
+          : undefined,
       };
+      const wasCompleted = Boolean(
+        record.objectiveProgress[objective.id]?.completed
+      );
       const result = advanceHarthmereQuestObjective(context, event);
       if (!result.ok) return fail(...result.reasons);
       const nextObjective = harthmereBibleQuestCurrentObjective(
@@ -760,6 +833,10 @@ export function reduceHarthmereBibleQuestOperation(
         slice,
         journal: result.journal,
         mapHint: result.mapHint,
+        objectiveItemGrant:
+          !wasCompleted && bibleObjectiveCollectsItem(objective)
+            ? bibleObjectiveProofItem(input.questId, objective)
+            : undefined,
         activeMirror: {
           questId: input.questId,
           entry: {
@@ -913,9 +990,7 @@ function reduceHarthmereThaedrynBossEvent(
   context: HarthmereQuestRuntimeContext,
   warnings: string[]
 ): HarthmereBibleQuestReduceResult {
-  const fail = (
-    ...reasons: string[]
-  ): HarthmereBibleQuestReduceResult => ({
+  const fail = (...reasons: string[]): HarthmereBibleQuestReduceResult => ({
     ok: false,
     warnings: [...warnings, ...reasons.map((r) => `thaedryn_rejected:${r}`)],
     slice,
@@ -997,7 +1072,9 @@ function reduceHarthmereThaedrynBossEvent(
     });
     if (!advance.ok) {
       warnings.push(
-        `thaedryn_resolution_objective_warning:${objective.id}:${advance.reasons.join("|")}`
+        `thaedryn_resolution_objective_warning:${
+          objective.id
+        }:${advance.reasons.join("|")}`
       );
     }
   }
@@ -1220,9 +1297,7 @@ export function validateHarthmereDragonQuestReachability(): HarthmereDragonQuest
   const space = getHarthmereMainQuestSpaceById("wyrms_bed_thaedryn_arena");
   if (!space) {
     failures.push("wyrms_bed_thaedryn_arena quest space missing");
-  } else if (
-    !(space.encounters ?? []).includes("thaedryn_the_bellbound")
-  ) {
+  } else if (!(space.encounters ?? []).includes("thaedryn_the_bellbound")) {
     failures.push("arena space lost its thaedryn_the_bellbound encounter");
   }
 

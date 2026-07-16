@@ -3,6 +3,7 @@ import {
   harthmereActiveRespawnProtectionSuppressesDeathSyncForTest,
   harthmereDeathMovementShouldLockForTest,
   harthmereDeathScreenShouldRenderForTest,
+  harthmereLocalDeathFallbackAllowedForTest,
   harthmereShouldClearLiveAliveDeathLockForTest,
   harthmereLivePlayerDeathSyncActionForTest,
   harthmereLivePlayerDeathSyncSummaryForTest,
@@ -75,6 +76,55 @@ describe("Harthmere live death sync", () => {
         combatState: "dead",
       }),
       false
+    );
+  });
+
+  it("repairs local zero-hp state when the live server says the player is alive", () => {
+    assert.deepEqual(
+      harthmereLivePlayerDeathSyncActionForTest({
+        status: {
+          combat: { hp: 100, maxHp: 100, deathState: "alive" },
+        },
+        currentDeathState: "downed",
+        localHp: 0,
+        localMaxHp: 100,
+        localCombatState: "downed",
+      }),
+      {
+        kind: "recover",
+        hp: 100,
+        maxHp: 100,
+        deathState: "alive",
+        detail:
+          "Live player status is alive; repaired stale local combat and death state.",
+      }
+    );
+  });
+
+  it("does not trust stale local death state while the initial live status is loading", () => {
+    assert.equal(
+      harthmereLocalDeathFallbackAllowedForTest({
+        serverAuthoritative: false,
+        nowMs: 5_000,
+        graceUntilMs: 10_000,
+      }),
+      false
+    );
+    assert.equal(
+      harthmereLocalDeathFallbackAllowedForTest({
+        serverAuthoritative: true,
+        nowMs: 20_000,
+        graceUntilMs: 10_000,
+      }),
+      false
+    );
+    assert.equal(
+      harthmereLocalDeathFallbackAllowedForTest({
+        serverAuthoritative: false,
+        nowMs: 10_000,
+        graceUntilMs: 10_000,
+      }),
+      true
     );
   });
 

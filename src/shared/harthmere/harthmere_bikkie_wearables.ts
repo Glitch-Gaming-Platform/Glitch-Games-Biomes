@@ -14,6 +14,8 @@ const HARTHMERE_LOCAL_ITEM_BIKKIE_WEARABLES: Record<
   baker_apron: { slot: BikkieIds.top, itemId: BikkieIds.grassyTop },
   field_trousers: { slot: BikkieIds.bottoms, itemId: BikkieIds.bellBottoms },
   patched_cloak: { slot: BikkieIds.outerwear, itemId: BikkieIds.poncho },
+  travel_cloak: { slot: BikkieIds.outerwear, itemId: BikkieIds.poncho },
+  leather_armor: { slot: BikkieIds.top, itemId: BikkieIds.grassyTop },
 };
 
 export function harthmereEquipmentSlotToBikkieWearableSlot(

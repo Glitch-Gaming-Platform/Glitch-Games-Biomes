@@ -3,7 +3,10 @@ import { makeEventHandler } from "@/server/logic/events/core";
 export const removeMapBeamEventHandler = makeEventHandler(
   "removeMapBeamEvent",
   {
-    mergeKey: (event) => event.id,
+    // Suppress only duplicate removals of the same beam. Keying solely by the
+    // player incorrectly dropped different quest-beam removals that happened
+    // while another removal from that player was in flight.
+    mergeKey: (event) => `${event.id}:${event.beam_client_id}`,
     involves: (event) => ({
       player: event.id,
     }),

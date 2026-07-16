@@ -786,6 +786,7 @@ const HARTHMERE_VENDOR_ITEM_DEFINITIONS: Record<
     baseValue: 6,
     binding: "on_pickup",
     isConsumable: true,
+    stats: { useHeal: 18 },
     description: "A quiet blessing candle.",
   },
   field_revival_scroll: {
@@ -794,6 +795,7 @@ const HARTHMERE_VENDOR_ITEM_DEFINITIONS: Record<
     maxStackSize: 5,
     baseValue: 65,
     isConsumable: true,
+    stats: { reviveHealthPercent: 0.25 },
     description: "A single-use revival charm.",
   },
   peacebloom: {

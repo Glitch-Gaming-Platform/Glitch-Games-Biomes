@@ -79,7 +79,9 @@ function installBrowserStorageShim() {
   const previousLocalStorage = (globalThis as any).localStorage;
   const previousCustomEvent = (globalThis as any).CustomEvent;
   if (typeof previousCustomEvent === "undefined") {
-    (globalThis as any).CustomEvent = class CustomEvent<T = unknown> extends Event {
+    (globalThis as any).CustomEvent = class CustomEvent<T = unknown> extends (
+      Event
+    ) {
       detail: T;
 
       constructor(type: string, init?: CustomEventInit<T>) {
@@ -136,9 +138,7 @@ function snapshotGrovePhysicalPickupCases() {
       if (!isPickupTrigger) {
         return [];
       }
-      const marker = snapshotGroveLandmarkById(
-        quest.markerIds[objectiveIndex]
-      );
+      const marker = snapshotGroveLandmarkById(quest.markerIds[objectiveIndex]);
       if (
         !marker ||
         marker.kind === "npc" ||
@@ -206,9 +206,7 @@ describe("Snapshot Grove quest runtime validation current", () => {
           )
         ) {
           failures.push(
-            `${quest.id}[${objectiveIndex}]: fixture did not advance ${
-              quest.triggers[objectiveIndex]
-            }`
+            `${quest.id}[${objectiveIndex}]: fixture did not advance ${quest.triggers[objectiveIndex]}`
           );
         }
       }
@@ -331,17 +329,57 @@ describe("Snapshot Grove quest runtime validation current", () => {
     );
   });
 
-  it("keeps Road-Ready clothing objectives completable from inventory changes", () => {
+  it("requires the exact Road-Ready clothing item and slot", () => {
     const quest = questById("road_ready_not_fancy");
-    const event = { kind: "inventory_change" };
 
     assert.equal(
-      doesSnapshotGroveEventAdvanceQuestForTest(event as any, quest, 1),
+      doesSnapshotGroveEventAdvanceQuestForTest(
+        {
+          kind: "equip",
+          operation: "equip",
+          slot: "chest",
+          itemId: "baker_apron",
+          itemName: "Travel Top Apron",
+        } as any,
+        quest,
+        1
+      ),
       true
     );
     assert.equal(
-      doesSnapshotGroveEventAdvanceQuestForTest(event as any, quest, 2),
+      doesSnapshotGroveEventAdvanceQuestForTest(
+        {
+          kind: "equip",
+          operation: "equip",
+          slot: "legs",
+          itemId: "field_trousers",
+          itemName: "Travel Bottoms",
+        } as any,
+        quest,
+        2
+      ),
       true
+    );
+    assert.equal(
+      doesSnapshotGroveEventAdvanceQuestForTest(
+        { kind: "inventory_change" } as any,
+        quest,
+        1
+      ),
+      false
+    );
+    assert.equal(
+      doesSnapshotGroveEventAdvanceQuestForTest(
+        {
+          kind: "equip",
+          operation: "equip",
+          slot: "chest",
+          itemId: "iron_sword",
+        } as any,
+        quest,
+        1
+      ),
+      false
     );
   });
 

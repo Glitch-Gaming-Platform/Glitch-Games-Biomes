@@ -102,6 +102,18 @@ function liveModeUrl(search?: string) {
     : endpoint;
 }
 
+function liveModeQuestStateUrl(search?: string) {
+  const rawSearch =
+    search ??
+    (typeof window !== "undefined" ? window.location?.search ?? "" : "");
+  const params = new URLSearchParams(rawSearch);
+  const installId = params.get("install_id") ?? params.get("installId");
+  const endpoint = "/api/harthmere/live_mode_quest_state";
+  return installId
+    ? `${endpoint}?install_id=${encodeURIComponent(installId)}`
+    : endpoint;
+}
+
 function liveModeHeaders(search?: string) {
   const rawSearch =
     search ??
@@ -122,6 +134,27 @@ export interface HarthmereBibleQuestClientSnapshot {
   completed: Record<string, number>;
   bible: HarthmereBibleQuestLiveSlice;
   warnings: string[];
+}
+
+const HARTHMERE_BIBLE_QUEST_READ_CACHE_MS = 14_000;
+let cachedBibleQuestSnapshot:
+  | { snapshot: HarthmereBibleQuestClientSnapshot; readAtMs: number }
+  | undefined;
+let bibleQuestSnapshotReadInFlight:
+  | Promise<HarthmereBibleQuestClientSnapshot>
+  | undefined;
+
+function rememberBibleQuestSnapshot(
+  snapshot: HarthmereBibleQuestClientSnapshot,
+  nowMs: number = Date.now()
+) {
+  cachedBibleQuestSnapshot = { snapshot, readAtMs: nowMs };
+  return snapshot;
+}
+
+export function resetHarthmereBibleQuestReadCacheForTest() {
+  cachedBibleQuestSnapshot = undefined;
+  bibleQuestSnapshotReadInFlight = undefined;
 }
 
 export function harthmereBibleQuestSnapshotFromResponse(
@@ -201,6 +234,7 @@ export async function submitHarthmereBibleQuestOperation(
   if (rejections.length) {
     throw new HarthmereBibleQuestRejectionError(rejections);
   }
+  rememberBibleQuestSnapshot(snapshot);
   if (typeof window !== "undefined") {
     window.dispatchEvent(new CustomEvent(HARTHMERE_BIBLE_QUEST_EVENT));
   }
@@ -208,12 +242,54 @@ export async function submitHarthmereBibleQuestOperation(
 }
 
 export async function readHarthmereBibleQuestSnapshot(
-  options: { fetchImpl?: typeof fetch; locationSearch?: string } = {}
+  options: {
+    fetchImpl?: typeof fetch;
+    locationSearch?: string;
+    maxAgeMs?: number;
+    nowMs?: number;
+  } = {}
 ) {
-  return submitHarthmereBibleQuestOperation(
-    { operation: "bible_quest_read" },
-    options
-  );
+  const nowMs = options.nowMs ?? Date.now();
+  const maxAgeMs = options.maxAgeMs ?? HARTHMERE_BIBLE_QUEST_READ_CACHE_MS;
+  if (
+    cachedBibleQuestSnapshot &&
+    nowMs - cachedBibleQuestSnapshot.readAtMs < maxAgeMs
+  ) {
+    return cachedBibleQuestSnapshot.snapshot;
+  }
+  if (bibleQuestSnapshotReadInFlight) {
+    return bibleQuestSnapshotReadInFlight;
+  }
+
+  const fetchImpl = options.fetchImpl ?? fetch;
+  const request = (async () => {
+    const response = await fetchHarthmereLiveWithTimeout(
+      fetchImpl,
+      liveModeQuestStateUrl(options.locationSearch),
+      {
+        method: "GET",
+        credentials: "same-origin",
+        cache: "no-store",
+        headers: liveModeHeaders(options.locationSearch),
+      }
+    );
+    const body = await response.json();
+    if (!response.ok || body?.ok === false) {
+      throw new Error(body?.error ?? "bible_quest_read_failed");
+    }
+    return rememberBibleQuestSnapshot(
+      harthmereBibleQuestSnapshotFromResponse(body),
+      options.nowMs ?? Date.now()
+    );
+  })();
+  bibleQuestSnapshotReadInFlight = request;
+  try {
+    return await request;
+  } finally {
+    if (bibleQuestSnapshotReadInFlight === request) {
+      bibleQuestSnapshotReadInFlight = undefined;
+    }
+  }
 }
 
 // ---------------------------------------------------------------------------

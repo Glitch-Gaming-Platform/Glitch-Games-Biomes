@@ -143,17 +143,10 @@ RUN apt-get update --fix-missing && apt-get -y install \
         redis-tools \
         build-essential
 
-# Install latest chrome dev package and fonts to support major charsets (Chinese, Japanese, Arabic, Hebrew, Thai and a few others)
-# Note: this installs the necessary libs to make the bundled version of Chrome that Puppeteer
-# installs, work.
-RUN wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | gpg --dearmor -o /usr/share/keyrings/googlechrome-linux-keyring.gpg \
-    && sh -c 'echo "deb [arch=amd64 signed-by=/usr/share/keyrings/googlechrome-linux-keyring.gpg] http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google.list' \
-    && apt-get update \
-    && apt-get install -y google-chrome-stable fonts-ipafont-gothic fonts-wqy-zenhei fonts-thai-tlwg fonts-khmeros fonts-kacst fonts-freefont-ttf libxss1 \
-      --no-install-recommends \
-    && rm -rf /var/lib/apt/lists/*
-ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
-  PUPPETEER_EXECUTABLE_PATH=/usr/bin/google-chrome-stable
+# Browser smoke tests run on the deploy host before packaging. Shipping a full
+# Chrome install in the game-server image added hundreds of megabytes and
+# materially slowed Container Apps scale-out.
+ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
 
 RUN apt-get clean && apt-get purge && apt-get autoremove --purge -y
 
@@ -178,7 +171,13 @@ RUN curl -fsSL https://nodejs.org/dist/v${NODE_VERSION}/${NODE_PACKAGE}.tar.xz |
 ENV PATH ${NODE_HOME}/bin:${PATH}
 
 # First copy base files, these change slowly
+COPY --chown=nextjs:nodejs package.json package-lock.json yarn.lock ./
 COPY --chown=nextjs:nodejs node_modules/ node_modules/
+
+# .next and dist are built on the deploy host. Keep only runtime dependencies;
+# build/test tooling and caches previously accounted for multiple gigabytes.
+RUN npm prune --omit=dev --ignore-scripts --no-audit --no-fund \
+    && rm -rf node_modules/.cache /root/.npm /home/nextjs/.npm
 
 # ACR can strip executable bits from uploaded node_modules.
 # Restore package bin permissions before npm rebuild runs node-gyp-build/prebuild helpers.
@@ -250,13 +249,21 @@ PY
 
 USER root
 
+# The native Python extension is now installed in /opt/biomes-python. Remove
+# compilers, Bazel caches, and other build-only packages from the final layer.
+RUN rm -rf /home/nextjs/.cache/bazel /home/nextjs/.cache/bazelisk /home/nextjs/.cache/bazel-tmp \
+    && apt-get purge -y --auto-remove \
+      build-essential clang git gnupg openssh-server patch python3-dev wget zip \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
 COPY --chown=nextjs:nodejs snapshot_backup.json snapshot_backup.json
 COPY --chown=nextjs:nodejs .env* *.js package.json package-lock.json tsconfig*.json yarn.lock ./
 COPY --chown=nextjs:nodejs Dockerfile.biomes Dockerfile.biomes
 # Keep large public asset families in separate layers. A single COPY public/
 # layer is currently ~2.5GB, so touching one asset family forces an expensive
 # re-upload of the entire public tree to ACR.
-COPY --chown=nextjs:nodejs public/favicon.ico public/sw.js public/sw.js.map public/
+COPY --chown=nextjs:nodejs public/favicon.ico public/sw.js public/
 COPY --chown=nextjs:nodejs public/buckets/ public/buckets/
 COPY --chown=nextjs:nodejs public/assets/ public/assets/
 COPY --chown=nextjs:nodejs public/splash/ public/splash/

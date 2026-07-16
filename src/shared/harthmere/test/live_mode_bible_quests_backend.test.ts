@@ -122,10 +122,10 @@ function acceptAndFinishObjectives(
 
 describe("Harthmere live-mode bible quest wiring", () => {
   it("accepts Q1 and mirrors it into the journal-facing quests.active", () => {
-    const reduced = reduce(
-      leveledState(),
-      { operation: "bible_quest_accept", questId: Q1 }
-    );
+    const reduced = reduce(leveledState(), {
+      operation: "bible_quest_accept",
+      questId: Q1,
+    });
     assert.ok(reduced.summary.touchedModels.includes("quest_state"));
     const active = reduced.state.quests.active[Q1];
     assert.ok(active, "accepted bible quest must appear in quests.active");
@@ -137,8 +137,10 @@ describe("Harthmere live-mode bible quest wiring", () => {
 
   it("rejects advancing an objective from across the map (distance rule)", () => {
     let state = leveledState();
-    state = reduce(state, { operation: "bible_quest_accept", questId: Q1 })
-      .state;
+    state = reduce(state, {
+      operation: "bible_quest_accept",
+      questId: Q1,
+    }).state;
     const quest = getHarthmereQuestById(Q1) as any;
     const reduced = reduce(
       state,
@@ -164,11 +166,37 @@ describe("Harthmere live-mode bible quest wiring", () => {
     );
   });
 
-  it("completes Q1: grants xp + gold, registers reward item definitions", () => {
-    const ready = acceptAndFinishObjectives(
-      leveledState(),
-      Q1
+  it("grants collection proof into the canonical live inventory", () => {
+    const questId = "harthmere_sq_016_candles_for_the_forgotten";
+    let state = leveledState();
+    state.classMagic.skills["character_level"] = { xp: 0, level: 2 };
+    state = reduce(state, {
+      operation: "bible_quest_accept",
+      questId,
+    }).state;
+    const quest = getHarthmereQuestById(questId) as any;
+    const objective = quest.objectives[0];
+    const proofItemId = `quest_objective_item:${questId}:${objective.id}`;
+
+    const advanced = reduce(
+      state,
+      {
+        operation: "bible_quest_advance",
+        questId,
+        objectiveId: objective.id,
+      },
+      { serverActorPosition: positionOnObjective(questId, objective) }
     );
+    assert.equal(advanced.state.inventory.items[proofItemId], 1);
+    assert.equal(
+      advanced.state.inventoryLoot.actors[ACTOR]?.items[proofItemId],
+      1
+    );
+    assert.ok(getHarthmereItemDefinition(proofItemId)?.isQuestItem);
+  });
+
+  it("completes Q1: grants xp + gold, registers reward item definitions", () => {
+    const ready = acceptAndFinishObjectives(leveledState(), Q1);
     assert.equal(ready.quests.bible.runtime[Q1].state, "ready_to_complete");
     const goldBefore = ready.inventory.gold;
     const xpBefore = ready.classMagic.skills["character_level"]?.xp ?? 0;
@@ -231,10 +259,7 @@ describe("Harthmere live-mode bible quest wiring", () => {
       )
     );
     // ...unlocked after completing Q1 for real.
-    const ready = acceptAndFinishObjectives(
-      leveledState(),
-      Q1
-    );
+    const ready = acceptAndFinishObjectives(leveledState(), Q1);
     const done = reduce(ready, {
       operation: "bible_quest_complete",
       questId: Q1,
@@ -374,9 +399,7 @@ describe("Harthmere live-mode bible quest wiring", () => {
         questId: HARTHMERE_BIBLE_DRAGON_QUEST_ID,
       });
       assert.equal(
-        done.state.combat.entitySnapshots[
-          HARTHMERE_THAEDRYN_COMBAT_ENTITY_ID
-        ],
+        done.state.combat.entitySnapshots[HARTHMERE_THAEDRYN_COMBAT_ENTITY_ID],
         undefined,
         "encounter over: the boss snapshot must be removed"
       );

@@ -44,15 +44,19 @@ function createEntryPoints() {
     __dirname,
     "scripts/node/bootstrap_redis.ts"
   );
+  entryPoints["apply-mutable-hotfix"] = path.resolve(
+    __dirname,
+    "scripts/glitch/apply-mutable-hotfix.ts"
+  );
   return entryPoints;
 }
 
 async function attemptBuildFromFile(...relativePath) {
   try {
-    const buildId = (
-      await fs.readFile(path.join(__dirname, ...relativePath))
-    ).toString();
-    if (buildId !== "local") {
+    const buildId = (await fs.readFile(path.join(__dirname, ...relativePath)))
+      .toString()
+      .trim();
+    if (buildId && buildId !== "local" && buildId !== "unknown") {
       return buildId;
     }
   } catch (error) {
@@ -61,11 +65,19 @@ async function attemptBuildFromFile(...relativePath) {
 }
 
 async function getBuildId() {
-  return (
+  const configured = String(
+    process.env.BIOMES_BUILD_ID ?? process.env.GITHUB_SHA ?? ""
+  ).trim();
+  const buildId =
+    (configured && !["local", "unknown"].includes(configured)
+      ? configured
+      : undefined) ??
     (await attemptBuildFromFile(".next", "BUILD_ID")) ??
-    (await attemptBuildFromFile("BUILD_ID")) ??
-    "unknown"
-  );
+    (await attemptBuildFromFile("BUILD_ID"));
+  if (!buildId) {
+    throw new Error("Production server bundle requires a concrete build id");
+  }
+  return buildId;
 }
 
 async function createWebpackConfig() {

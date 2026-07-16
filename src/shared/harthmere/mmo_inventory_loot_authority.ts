@@ -109,9 +109,24 @@ export type HarthmereInventoryLootLegalClass =
   | "quest_bound"
   | "evidence";
 
-export type HarthmereInventoryLootBinding = "none" | "on_pickup" | "on_equip" | "quest" | "guild_project";
-export type HarthmereInventoryLootRarity = "common" | "uncommon" | "rare" | "epic" | "legendary";
-export type HarthmereInventoryLootOwnerKind = "actor" | "business" | "guild" | "town" | "system";
+export type HarthmereInventoryLootBinding =
+  | "none"
+  | "on_pickup"
+  | "on_equip"
+  | "quest"
+  | "guild_project";
+export type HarthmereInventoryLootRarity =
+  | "common"
+  | "uncommon"
+  | "rare"
+  | "epic"
+  | "legendary";
+export type HarthmereInventoryLootOwnerKind =
+  | "actor"
+  | "business"
+  | "guild"
+  | "town"
+  | "system";
 export type HarthmereInventoryLootLocationKind =
   | "actor_inventory"
   | "actor_bank"
@@ -185,7 +200,12 @@ export interface HarthmereInventoryLootItemInstance {
   loanedToActorId?: string;
   contaminated: boolean;
   broken: boolean;
-  audit: Array<{ atMs: number; kind: string; actorId?: string; reason?: string }>;
+  audit: Array<{
+    atMs: number;
+    kind: string;
+    actorId?: string;
+    reason?: string;
+  }>;
 }
 
 export interface HarthmereInventoryLootActorInventory {
@@ -194,6 +214,8 @@ export interface HarthmereInventoryLootActorInventory {
   items: Record<string, number>;
   bank: Record<string, number>;
   equipment: Record<string, string>;
+  /** Equipment slot -> unique item instance id for durable/non-stack gear. */
+  equipmentInstances: Record<string, string>;
   instanceIds: string[];
   escrow: Record<string, number>;
   licenses: Record<string, number>;
@@ -203,7 +225,12 @@ export interface HarthmereInventoryLootActorInventory {
   maxInventorySlots: number;
   maxBankSlots: number;
   reputation: Record<string, number>;
-  legalViolations: Array<{ id: string; atMs: number; itemId: string; code: string }>;
+  legalViolations: Array<{
+    id: string;
+    atMs: number;
+    itemId: string;
+    code: string;
+  }>;
 }
 
 export interface HarthmereInventoryLootBusinessInventory {
@@ -214,7 +241,9 @@ export interface HarthmereInventoryLootBusinessInventory {
   townId: string;
   regionId: string;
   inventory: Record<string, number>;
-  storage: Partial<Record<HarthmereInventoryLootStorageClass, Record<string, number>>>;
+  storage: Partial<
+    Record<HarthmereInventoryLootStorageClass, Record<string, number>>
+  >;
   instanceIds: string[];
   licenses: Record<string, number>;
   permits: string[];
@@ -223,10 +252,20 @@ export interface HarthmereInventoryLootBusinessInventory {
   safetyRating: number;
   reputation: number;
   balanceGold: number;
-  audit: Array<{ atMs: number; actorId: string; kind: string; itemId?: string; count?: number }>;
+  audit: Array<{
+    atMs: number;
+    actorId: string;
+    kind: string;
+    itemId?: string;
+    count?: number;
+  }>;
 }
 
-export type HarthmereInventoryLootGuildRule = "personal_loot" | "round_robin" | "guild_project" | "need_greed";
+export type HarthmereInventoryLootGuildRule =
+  | "personal_loot"
+  | "round_robin"
+  | "guild_project"
+  | "need_greed";
 
 export interface HarthmereInventoryLootGuildState {
   guildId: string;
@@ -238,8 +277,23 @@ export interface HarthmereInventoryLootGuildState {
   members: Record<string, { joinedAtMs: number; kickedAtMs?: number }>;
   roundRobinIndex: number;
   protectedClaimUntilMs: Record<string, number>;
-  loans: Record<string, { instanceId: string; actorId: string; dueAtMs: number; returnedAtMs?: number }>;
-  history: Array<{ atMs: number; kind: string; actorId?: string; itemId?: string; instanceId?: string; dropId?: string }>;
+  loans: Record<
+    string,
+    {
+      instanceId: string;
+      actorId: string;
+      dueAtMs: number;
+      returnedAtMs?: number;
+    }
+  >;
+  history: Array<{
+    atMs: number;
+    kind: string;
+    actorId?: string;
+    itemId?: string;
+    instanceId?: string;
+    dropId?: string;
+  }>;
 }
 
 export interface HarthmereInventoryLootDrop {
@@ -312,7 +366,12 @@ export interface HarthmereInventoryLootJobEscrow {
   issuerId: string;
   seekerId?: string;
   status: "open" | "active" | "delivered" | "cancelled" | "expired" | "failed";
-  requiredItems: Array<{ itemId: string; count: number; minQuality?: number; freshnessRequired?: boolean }>;
+  requiredItems: Array<{
+    itemId: string;
+    count: number;
+    minQuality?: number;
+    freshnessRequired?: boolean;
+  }>;
   escrowedStacks: Record<string, number>;
   packageInstanceIds: string[];
   rewardGold: number;
@@ -328,7 +387,10 @@ export interface HarthmereInventoryLootJobEscrow {
 export interface HarthmereInventoryLootTownDemandState {
   townId: string;
   regionId: string;
-  needs: Record<HarthmereInventoryLootNeedId, { value: number; demandWeight: number; lastUpdatedAtMs: number }>;
+  needs: Record<
+    HarthmereInventoryLootNeedId,
+    { value: number; demandWeight: number; lastUpdatedAtMs: number }
+  >;
   signals: Record<string, number>;
   lastUpdatedAtMs: number;
 }
@@ -476,6 +538,7 @@ export function createHarthmereInventoryLootActor(
     items: {},
     bank: {},
     equipment: {},
+    equipmentInstances: {},
     instanceIds: [],
     escrow: {},
     licenses: {},
@@ -531,7 +594,9 @@ export function createHarthmereInventoryLootGuild(
     maxSlots: HARTHMERE_INVENTORY_LOOT_DEFAULT_GUILD_SLOTS,
     lootRule: "personal_loot",
     projectItemTags: [],
-    members: Object.fromEntries(members.map((actorId) => [actorId, { joinedAtMs: now }])),
+    members: Object.fromEntries(
+      members.map((actorId) => [actorId, { joinedAtMs: now }])
+    ),
     roundRobinIndex: 0,
     protectedClaimUntilMs: {},
     loans: {},
@@ -540,7 +605,9 @@ export function createHarthmereInventoryLootGuild(
   };
 }
 
-export function normalizeHarthmereInventoryLootState(raw: unknown): HarthmereInventoryLootState {
+export function normalizeHarthmereInventoryLootState(
+  raw: unknown
+): HarthmereInventoryLootState {
   const base = createHarthmereEmptyInventoryLootState();
   if (!raw || typeof raw !== "object") return base;
   const r = raw as Partial<HarthmereInventoryLootState>;
@@ -548,25 +615,39 @@ export function normalizeHarthmereInventoryLootState(raw: unknown): HarthmereInv
     ...base,
     ...r,
     version: HARTHMERE_INVENTORY_LOOT_AUTHORITY_VERSION,
-    actors: { ...(r.actors ?? {}) },
+    actors: Object.fromEntries(
+      Object.entries(r.actors ?? {}).map(([actorId, actor]) => [
+        actorId,
+        createHarthmereInventoryLootActor(actorId, actor),
+      ])
+    ),
     businesses: { ...(r.businesses ?? {}) },
     guilds: { ...(r.guilds ?? {}) },
     itemInstances: { ...(r.itemInstances ?? {}) },
     lootDrops: { ...(r.lootDrops ?? {}) },
-    lootLedger: [...(r.lootLedger ?? [])].slice(-HARTHMERE_INVENTORY_LOOT_MAX_AUDIT),
+    lootLedger: [...(r.lootLedger ?? [])].slice(
+      -HARTHMERE_INVENTORY_LOOT_MAX_AUDIT
+    ),
     jobEscrows: { ...(r.jobEscrows ?? {}) },
     townDemand: { ...(r.townDemand ?? {}) },
     usedPickupTokens: { ...(r.usedPickupTokens ?? {}) },
     actorLootTags: { ...(r.actorLootTags ?? {}) },
     nextDropNumber: Math.max(1, Math.trunc(Number(r.nextDropNumber) || 1)),
-    nextInstanceNumber: Math.max(1, Math.trunc(Number(r.nextInstanceNumber) || 1)),
+    nextInstanceNumber: Math.max(
+      1,
+      Math.trunc(Number(r.nextInstanceNumber) || 1)
+    ),
     nextEscrowNumber: Math.max(1, Math.trunc(Number(r.nextEscrowNumber) || 1)),
     nextLedgerNumber: Math.max(1, Math.trunc(Number(r.nextLedgerNumber) || 1)),
   };
 }
 
-function cloneState(state: HarthmereInventoryLootState): HarthmereInventoryLootState {
-  return normalizeHarthmereInventoryLootState(JSON.parse(JSON.stringify(state)));
+function cloneState(
+  state: HarthmereInventoryLootState
+): HarthmereInventoryLootState {
+  return normalizeHarthmereInventoryLootState(
+    JSON.parse(JSON.stringify(state))
+  );
 }
 
 function result(
@@ -578,10 +659,23 @@ function result(
   touchedModels: string[] = [],
   sharedStateKeys: string[] = []
 ): HarthmereInventoryLootMutationResult {
-  return { ok, requestId: req.requestId, operation: req.operation, actorId: req.actorId, state, errors, warnings, touchedModels, sharedStateKeys };
+  return {
+    ok,
+    requestId: req.requestId,
+    operation: req.operation,
+    actorId: req.actorId,
+    state,
+    errors,
+    warnings,
+    touchedModels,
+    sharedStateKeys,
+  };
 }
 
-function getDef(ctx: HarthmereInventoryLootMutationContext, itemId: string | undefined) {
+function getDef(
+  ctx: HarthmereInventoryLootMutationContext,
+  itemId: string | undefined
+) {
   if (!itemId) return undefined;
   return ctx.itemDefinitions[itemId];
 }
@@ -593,10 +687,16 @@ function addAudit(
 ) {
   const id = `loot_ledger_${state.nextLedgerNumber++}`;
   state.lootLedger.push({ id, atMs: req.nowMs, ...entry });
-  state.lootLedger = state.lootLedger.slice(-HARTHMERE_INVENTORY_LOOT_MAX_AUDIT);
+  state.lootLedger = state.lootLedger.slice(
+    -HARTHMERE_INVENTORY_LOOT_MAX_AUDIT
+  );
 }
 
-function addCount(target: Record<string, number>, itemId: string, delta: number) {
+function addCount(
+  target: Record<string, number>,
+  itemId: string,
+  delta: number
+) {
   const next = Math.max(0, Math.trunc((target[itemId] ?? 0) + delta));
   if (next <= 0) delete target[itemId];
   else target[itemId] = next;
@@ -608,7 +708,8 @@ function slotCount(items: Record<string, number>) {
 
 function positiveWholeCount(value: number | undefined, fallback = 1) {
   const count = value ?? fallback;
-  if (!Number.isFinite(count) || count < 1 || Math.trunc(count) !== count) return undefined;
+  if (!Number.isFinite(count) || count < 1 || Math.trunc(count) !== count)
+    return undefined;
   return count;
 }
 
@@ -631,7 +732,11 @@ function wouldExceedStack(
   return (items[itemId] ?? 0) + count > def.maxStackSize;
 }
 
-function hasActorItem(actor: HarthmereInventoryLootActorInventory, itemId: string, count: number) {
+function hasActorItem(
+  actor: HarthmereInventoryLootActorInventory,
+  itemId: string,
+  count: number
+) {
   return (actor.items[itemId] ?? 0) - (actor.escrow[itemId] ?? 0) >= count;
 }
 
@@ -642,7 +747,8 @@ function actorHasLicenseOrPermit(
 ) {
   const flags = new Set([def.legalClass, ...(instance?.legalFlags ?? [])]);
   if (flags.has("contraband")) return false;
-  if (def.requiredPermit && !actor.permits.includes(def.requiredPermit)) return false;
+  if (def.requiredPermit && !actor.permits.includes(def.requiredPermit))
+    return false;
   if (def.requiredLicense) {
     const level = actor.licenses[def.requiredLicense] ?? 0;
     if (level < (def.requiredLicenseLevel ?? 1)) return false;
@@ -657,24 +763,36 @@ function businessCanStoreItem(
 ) {
   const targetStorage = storageClass ?? "business_warehouse";
   if (!def.allowedStorage.includes(targetStorage)) return false;
-  if (def.businessUses.length > 0 && !def.businessUses.includes(business.typeId)) return false;
-  if (def.requiredPermit && !business.permits.includes(def.requiredPermit)) return false;
+  if (
+    def.businessUses.length > 0 &&
+    !def.businessUses.includes(business.typeId)
+  )
+    return false;
+  if (def.requiredPermit && !business.permits.includes(def.requiredPermit))
+    return false;
   if (def.requiredLicense) {
     const level = business.licenses[def.requiredLicense] ?? 0;
     if (level < (def.requiredLicenseLevel ?? 1)) return false;
   }
-  if (def.legalClass === "contraband" && business.typeId !== "general_trader") return false;
+  if (def.legalClass === "contraband" && business.typeId !== "general_trader")
+    return false;
   return true;
 }
 
 function actorHasInventoryCapacity(
   actor: HarthmereInventoryLootActorInventory,
-  itemId: string, count: number, ctx: HarthmereInventoryLootMutationContext
+  itemId: string,
+  count: number,
+  ctx: HarthmereInventoryLootMutationContext
 ) {
   const def = getDef(ctx, itemId);
   if (def?.category === "currency") return true;
   if (wouldExceedStack(ctx, actor.items, itemId, count)) return false;
-  if ((actor.items[itemId] ?? 0) <= 0 && actorUsedSlots(actor) >= actor.maxInventorySlots) return false;
+  if (
+    (actor.items[itemId] ?? 0) <= 0 &&
+    actorUsedSlots(actor) >= actor.maxInventorySlots
+  )
+    return false;
   return true;
 }
 
@@ -692,7 +810,10 @@ function actorCanReceiveStacksAndInstances(
     if (wouldExceedStack(ctx, projected, itemId, count)) return false;
     addCount(projected, itemId, count);
   }
-  return slotCount(projected) + actor.instanceIds.length + instanceCount <= actor.maxInventorySlots;
+  return (
+    slotCount(projected) + actor.instanceIds.length + instanceCount <=
+    actor.maxInventorySlots
+  );
 }
 
 function guildCanReceiveStacksAndInstances(
@@ -709,7 +830,10 @@ function guildCanReceiveStacksAndInstances(
     if (wouldExceedStack(ctx, projected, itemId, count)) return false;
     addCount(projected, itemId, count);
   }
-  return slotCount(projected) + guild.instanceIds.length + instanceCount <= guild.maxSlots;
+  return (
+    slotCount(projected) + guild.instanceIds.length + instanceCount <=
+    guild.maxSlots
+  );
 }
 
 function businessHasInventoryCapacity(
@@ -719,13 +843,23 @@ function businessHasInventoryCapacity(
   ctx: HarthmereInventoryLootMutationContext
 ) {
   if (wouldExceedStack(ctx, business.inventory, itemId, count)) return false;
-  if ((business.inventory[itemId] ?? 0) <= 0 && slotCount(business.inventory) >= business.maxSlots) return false;
+  if (
+    (business.inventory[itemId] ?? 0) <= 0 &&
+    slotCount(business.inventory) >= business.maxSlots
+  )
+    return false;
   return true;
 }
 
-function isActiveGuildMember(guild: HarthmereInventoryLootGuildState, actorId: string, nowMs: number) {
+function isActiveGuildMember(
+  guild: HarthmereInventoryLootGuildState,
+  actorId: string,
+  nowMs: number
+) {
   const member = guild.members[actorId];
-  return !!member && (member.kickedAtMs === undefined || member.kickedAtMs > nowMs);
+  return (
+    !!member && (member.kickedAtMs === undefined || member.kickedAtMs > nowMs)
+  );
 }
 
 function createInstance(
@@ -763,13 +897,27 @@ function createInstance(
     containerId: args.containerId,
     createdAtMs: now,
     updatedAtMs: now,
-    expiresAtMs: def.perishable && def.expiresAfterMs ? now + def.expiresAfterMs : undefined,
+    expiresAtMs:
+      def.perishable && def.expiresAfterMs
+        ? now + def.expiresAfterMs
+        : undefined,
     condition: 100,
     durability: durabilityMax,
     durabilityMax,
-    quality: Math.max(def.qualityFloor ?? 1, Math.min(100, Math.trunc(args.quality ?? 50))),
-    legalFlags: [...new Set([...(args.legalFlags ?? []), ...(def.legalClass === "common" ? [] : [def.legalClass])])],
-    boundToActorId: def.binding === "on_pickup" || def.binding === "quest" ? args.ownerId : undefined,
+    quality: Math.max(
+      def.qualityFloor ?? 1,
+      Math.min(100, Math.trunc(args.quality ?? 50))
+    ),
+    legalFlags: [
+      ...new Set([
+        ...(args.legalFlags ?? []),
+        ...(def.legalClass === "common" ? [] : [def.legalClass]),
+      ]),
+    ],
+    boundToActorId:
+      def.binding === "on_pickup" || def.binding === "quest"
+        ? args.ownerId
+        : undefined,
     craftedByActorId: req.actorId,
     upgradedLevel: 0,
     enchantments: [],
@@ -779,9 +927,17 @@ function createInstance(
     deliveryId: args.deliveryId,
     guildId: args.guildId,
     loanedToActorId: undefined,
-    contaminated: def.contaminationRisk > 0 && (args.legalFlags ?? []).includes("evidence"),
+    contaminated:
+      def.contaminationRisk > 0 && (args.legalFlags ?? []).includes("evidence"),
     broken: false,
-    audit: [{ atMs: now, kind: "created", actorId: req.actorId, reason: args.sourceKind }],
+    audit: [
+      {
+        atMs: now,
+        kind: "created",
+        actorId: req.actorId,
+        reason: args.sourceKind,
+      },
+    ],
   };
   state.itemInstances[id] = instance;
   return instance;
@@ -806,7 +962,8 @@ export function rollHarthmereInventoryLootTable(
   const out: Array<HarthmereInventoryLootTableEntry & { count: number }> = [];
   const addEntry = (entry: HarthmereInventoryLootTableEntry) => {
     if (!ctx.itemDefinitions[entry.itemId]) return;
-    if (entry.firstTimeTag && actorLootTags.includes(entry.firstTimeTag)) return;
+    if (entry.firstTimeTag && actorLootTags.includes(entry.firstTimeTag))
+      return;
     const chance = entry.chance ?? 1;
     if (chance < 1 && rand() > chance) return;
     const spread = Math.max(0, entry.maxCount - entry.minCount);
@@ -816,7 +973,10 @@ export function rollHarthmereInventoryLootTable(
   for (const entry of table.guaranteedDrops) addEntry(entry);
   for (const entry of table.questDrops) addEntry(entry);
   for (let i = 0; i < table.rolls; i++) {
-    const total = table.weightedDrops.reduce((sum, e) => sum + Math.max(0, e.weight), 0);
+    const total = table.weightedDrops.reduce(
+      (sum, e) => sum + Math.max(0, e.weight),
+      0
+    );
     if (total <= 0) break;
     let pick = rand() * total;
     for (const entry of table.weightedDrops) {
@@ -848,7 +1008,13 @@ function createLootDropFromEntries(
   for (const entry of entries) {
     const def = getDef(ctx, entry.itemId);
     if (!def) continue;
-    if (entry.instance || def.uniqueInstance || def.perishable || def.durabilityMax || entry.legalFlags?.length) {
+    if (
+      entry.instance ||
+      def.uniqueInstance ||
+      def.perishable ||
+      def.durabilityMax ||
+      entry.legalFlags?.length
+    ) {
       const inst = createInstance(state, ctx, req, {
         itemId: entry.itemId,
         quantity: entry.count,
@@ -870,7 +1036,11 @@ function createLootDropFromEntries(
   const ttl = HARTHMERE_INVENTORY_LOOT_DEFAULT_DROP_TTL_MS;
   const pickupToken = `${dropId}:${req.requestId}:${req.nowMs}`;
   const firstTimeTags = [
-    ...new Set(entries.map((entry) => entry.firstTimeTag).filter((tag): tag is string => !!tag)),
+    ...new Set(
+      entries
+        .map((entry) => entry.firstTimeTag)
+        .filter((tag): tag is string => !!tag)
+    ),
   ];
   const drop: HarthmereInventoryLootDrop = {
     dropId,
@@ -893,7 +1063,13 @@ function createLootDropFromEntries(
     firstTimeTags,
   };
   state.lootDrops[dropId] = drop;
-  addAudit(state, req, { kind: "loot_drop_created", actorId: req.actorId, dropId, sourceKind: drop.sourceKind, sourceId: drop.sourceId });
+  addAudit(state, req, {
+    kind: "loot_drop_created",
+    actorId: req.actorId,
+    dropId,
+    sourceKind: drop.sourceKind,
+    sourceId: drop.sourceId,
+  });
   return drop;
 }
 
@@ -976,25 +1152,53 @@ function legalViolationsForActor(
   ctx: HarthmereInventoryLootMutationContext,
   nowMs: number
 ) {
-  const violations: Array<{ id: string; atMs: number; itemId: string; code: string }> = [];
-  const inspect = (itemId: string, instance?: HarthmereInventoryLootItemInstance) => {
+  const violations: Array<{
+    id: string;
+    atMs: number;
+    itemId: string;
+    code: string;
+  }> = [];
+  const inspect = (
+    itemId: string,
+    instance?: HarthmereInventoryLootItemInstance
+  ) => {
     const def = getDef(ctx, itemId);
     if (!def) return;
     const flags = new Set([def.legalClass, ...(instance?.legalFlags ?? [])]);
     if (flags.has("contraband")) {
-      violations.push({ id: `legal_${actor.actorId}_${violations.length + 1}`, atMs: nowMs, itemId, code: "contraband_item_carried" });
+      violations.push({
+        id: `legal_${actor.actorId}_${violations.length + 1}`,
+        atMs: nowMs,
+        itemId,
+        code: "contraband_item_carried",
+      });
     }
     if (flags.has("stolen")) {
-      violations.push({ id: `legal_${actor.actorId}_${violations.length + 1}`, atMs: nowMs, itemId, code: "stolen_goods_carried" });
+      violations.push({
+        id: `legal_${actor.actorId}_${violations.length + 1}`,
+        atMs: nowMs,
+        itemId,
+        code: "stolen_goods_carried",
+      });
     }
     if (!actorHasLicenseOrPermit(actor, def, instance)) {
-      violations.push({ id: `legal_${actor.actorId}_${violations.length + 1}`, atMs: nowMs, itemId, code: "missing_required_license_or_permit" });
+      violations.push({
+        id: `legal_${actor.actorId}_${violations.length + 1}`,
+        atMs: nowMs,
+        itemId,
+        code: "missing_required_license_or_permit",
+      });
     }
   };
   for (const itemId of Object.keys(actor.items)) inspect(itemId);
   for (const id of actor.instanceIds) {
     const inst = state.itemInstances[id];
-    if (inst && inst.ownerKind === "actor" && inst.ownerId === actor.actorId && inst.location !== "destroyed") {
+    if (
+      inst &&
+      inst.ownerKind === "actor" &&
+      inst.ownerId === actor.actorId &&
+      inst.location !== "destroyed"
+    ) {
       inspect(inst.itemId, inst);
     }
   }
@@ -1008,7 +1212,13 @@ function touchBusinessAudit(
   itemId?: string,
   count?: number
 ) {
-  business.audit.push({ atMs: req.nowMs, actorId: req.actorId, kind, itemId, count });
+  business.audit.push({
+    atMs: req.nowMs,
+    actorId: req.actorId,
+    kind,
+    itemId,
+    count,
+  });
   business.audit = business.audit.slice(-200);
 }
 
@@ -1019,7 +1229,11 @@ function updateTownDemandFromInventories(
   townId: string,
   regionId: string
 ) {
-  const supply: Record<HarthmereInventoryLootNeedId, number> = Object.fromEntries(ALL_NEEDS.map((n) => [n, 0])) as Record<HarthmereInventoryLootNeedId, number>;
+  const supply: Record<HarthmereInventoryLootNeedId, number> =
+    Object.fromEntries(ALL_NEEDS.map((n) => [n, 0])) as Record<
+      HarthmereInventoryLootNeedId,
+      number
+    >;
   for (const business of Object.values(state.businesses)) {
     if (business.townId !== townId) continue;
     for (const [itemId, count] of Object.entries(business.inventory)) {
@@ -1031,19 +1245,39 @@ function updateTownDemandFromInventories(
     if (business.safetyRating < 50) supply.safety -= 25;
   }
   const existing = state.townDemand[townId];
-  const needs: HarthmereInventoryLootTownDemandState["needs"] = existing?.needs ?? Object.fromEntries(
-    ALL_NEEDS.map((need) => [need, { value: 75, demandWeight: 1, lastUpdatedAtMs: req.nowMs }])
-  ) as HarthmereInventoryLootTownDemandState["needs"];
+  const needs: HarthmereInventoryLootTownDemandState["needs"] =
+    existing?.needs ??
+    (Object.fromEntries(
+      ALL_NEEDS.map((need) => [
+        need,
+        { value: 75, demandWeight: 1, lastUpdatedAtMs: req.nowMs },
+      ])
+    ) as HarthmereInventoryLootTownDemandState["needs"]);
   for (const need of ALL_NEEDS) {
-    const baseline = need === "food" || need === "health" || need === "sanitation" || need === "safety" ? 30 : 15;
-    const value = Math.max(0, Math.min(100, 100 - Math.max(0, supply[need]) / baseline * 100));
+    const baseline =
+      need === "food" ||
+      need === "health" ||
+      need === "sanitation" ||
+      need === "safety"
+        ? 30
+        : 15;
+    const value = Math.max(
+      0,
+      Math.min(100, 100 - (Math.max(0, supply[need]) / baseline) * 100)
+    );
     needs[need] = {
       value,
       demandWeight: Math.max(0.1, Math.min(5, value / 20)),
       lastUpdatedAtMs: req.nowMs,
     };
   }
-  state.townDemand[townId] = { townId, regionId, needs, signals: { ...supply }, lastUpdatedAtMs: req.nowMs };
+  state.townDemand[townId] = {
+    townId,
+    regionId,
+    needs,
+    signals: { ...supply },
+    lastUpdatedAtMs: req.nowMs,
+  };
 }
 
 export function reduceHarthmereInventoryLootMutation(
@@ -1058,16 +1292,27 @@ export function reduceHarthmereInventoryLootMutation(
   const shared = new Set<string>();
   const actor = state.actors[req.actorId];
 
-  const fail = (...codes: string[]) => result(false, req, stateIn, codes, warnings, [...touched], [...shared]);
+  const fail = (...codes: string[]) =>
+    result(false, req, stateIn, codes, warnings, [...touched], [...shared]);
 
   try {
     switch (req.operation) {
       case "register_actor": {
         if (!state.actors[req.actorId]) {
-          state.actors[req.actorId] = createHarthmereInventoryLootActor(req.actorId);
+          state.actors[req.actorId] = createHarthmereInventoryLootActor(
+            req.actorId
+          );
         }
         touched.add("inventory_actor");
-        return result(true, req, state, [], warnings, [...touched], [...shared]);
+        return result(
+          true,
+          req,
+          state,
+          [],
+          warnings,
+          [...touched],
+          [...shared]
+        );
       }
 
       case "register_business": {
@@ -1082,43 +1327,101 @@ export function reduceHarthmereInventoryLootMutation(
         );
         touched.add("business_inventory");
         shared.add(`business:${req.businessId}`);
-        return result(true, req, state, [], warnings, [...touched], [...shared]);
+        return result(
+          true,
+          req,
+          state,
+          [],
+          warnings,
+          [...touched],
+          [...shared]
+        );
       }
 
       case "register_guild": {
         if (!req.guildId) return fail("missing_guild_id");
-        state.guilds[req.guildId] = createHarthmereInventoryLootGuild(req.guildId, [req.actorId]);
-        state.actors[req.actorId] = state.actors[req.actorId] ?? createHarthmereInventoryLootActor(req.actorId);
+        state.guilds[req.guildId] = createHarthmereInventoryLootGuild(
+          req.guildId,
+          [req.actorId]
+        );
+        state.actors[req.actorId] =
+          state.actors[req.actorId] ??
+          createHarthmereInventoryLootActor(req.actorId);
         state.actors[req.actorId].guildId = req.guildId;
         touched.add("guild_inventory");
-        return result(true, req, state, [], warnings, [...touched], [...shared]);
+        return result(
+          true,
+          req,
+          state,
+          [],
+          warnings,
+          [...touched],
+          [...shared]
+        );
       }
 
       case "grant_stack": {
-        const a = actor ?? (state.actors[req.actorId] = createHarthmereInventoryLootActor(req.actorId));
+        const a =
+          actor ??
+          (state.actors[req.actorId] = createHarthmereInventoryLootActor(
+            req.actorId
+          ));
         const def = getDef(ctx, req.itemId);
         const count = positiveWholeCount(req.count);
         if (!def) return fail("unknown_item_id");
         if (count === undefined) return fail("invalid_count");
         if (def.category === "currency") {
           a.gold += count;
-          addAudit(state, req, { kind: "grant_currency", actorId: req.actorId, itemId: def.itemId, count });
+          addAudit(state, req, {
+            kind: "grant_currency",
+            actorId: req.actorId,
+            itemId: def.itemId,
+            count,
+          });
           touched.add("wallet");
-          return result(true, req, state, [], warnings, [...touched], [...shared]);
+          return result(
+            true,
+            req,
+            state,
+            [],
+            warnings,
+            [...touched],
+            [...shared]
+          );
         }
-        if (!actorHasInventoryCapacity(a, def.itemId, count, ctx)) return fail("inventory_full_or_stack_exceeded");
+        if (!actorHasInventoryCapacity(a, def.itemId, count, ctx))
+          return fail("inventory_full_or_stack_exceeded");
         addCount(a.items, def.itemId, count);
-        addAudit(state, req, { kind: "grant_stack", actorId: req.actorId, itemId: def.itemId, count });
+        addAudit(state, req, {
+          kind: "grant_stack",
+          actorId: req.actorId,
+          itemId: def.itemId,
+          count,
+        });
         touched.add("inventory_items");
-        return result(true, req, state, [], warnings, [...touched], [...shared]);
+        return result(
+          true,
+          req,
+          state,
+          [],
+          warnings,
+          [...touched],
+          [...shared]
+        );
       }
 
       case "create_item_instance": {
-        const a = actor ?? (state.actors[req.actorId] = createHarthmereInventoryLootActor(req.actorId));
+        const a =
+          actor ??
+          (state.actors[req.actorId] = createHarthmereInventoryLootActor(
+            req.actorId
+          ));
         const def = getDef(ctx, req.itemId);
         if (!def) return fail("unknown_item_id");
-        if (!actorHasLicenseOrPermit(a, def)) return fail("missing_required_license_or_permit");
-        if (actorUsedSlots(a) >= a.maxInventorySlots) return fail("inventory_full");
+        if (!actorHasLicenseOrPermit(a, def))
+          return fail("missing_required_license_or_permit");
+        if (actorUsedSlots(a) >= a.maxInventorySlots)
+          return fail("inventory_full");
         const inst = createInstance(state, ctx, req, {
           itemId: def.itemId,
           ownerKind: "actor",
@@ -1131,28 +1434,66 @@ export function reduceHarthmereInventoryLootMutation(
         });
         a.instanceIds.push(inst.instanceId);
         touched.add("item_instances");
-        addAudit(state, req, { kind: "item_instance_created", actorId: req.actorId, itemId: def.itemId, instanceId: inst.instanceId });
-        return result(true, req, state, [], warnings, [...touched], [...shared]);
+        addAudit(state, req, {
+          kind: "item_instance_created",
+          actorId: req.actorId,
+          itemId: def.itemId,
+          instanceId: inst.instanceId,
+        });
+        return result(
+          true,
+          req,
+          state,
+          [],
+          warnings,
+          [...touched],
+          [...shared]
+        );
       }
 
       case "create_loot_drop": {
-        let entries: Array<HarthmereInventoryLootTableEntry & { count: number }> = [];
+        let entries: Array<
+          HarthmereInventoryLootTableEntry & { count: number }
+        > = [];
         if (req.lootTableId) {
           const table = ctx.lootTables[req.lootTableId];
           if (!table) return fail("unknown_loot_table_id");
-          entries = rollHarthmereInventoryLootTable(table, ctx, req.rngSeed ?? req.nowMs, state.actorLootTags[req.actorId] ?? []);
+          entries = rollHarthmereInventoryLootTable(
+            table,
+            ctx,
+            req.rngSeed ?? req.nowMs,
+            state.actorLootTags[req.actorId] ?? []
+          );
         } else {
           const def = getDef(ctx, req.itemId);
           const count = positiveWholeCount(req.count);
           if (!def) return fail("unknown_item_id");
           if (count === undefined) return fail("invalid_count");
-          entries = [{ itemId: def.itemId, minCount: count, maxCount: count, weight: 1, count, legalFlags: req.legalFlags }];
+          entries = [
+            {
+              itemId: def.itemId,
+              minCount: count,
+              maxCount: count,
+              weight: 1,
+              count,
+              legalFlags: req.legalFlags,
+            },
+          ];
         }
-        if (entries.length === 0) return fail("loot_table_empty_or_all_entries_filtered");
+        if (entries.length === 0)
+          return fail("loot_table_empty_or_all_entries_filtered");
         const drop = createLootDropFromEntries(state, ctx, req, entries);
         touched.add("loot_drops");
         shared.add(`loot_drop:${drop.dropId}`);
-        return result(true, req, state, [], warnings, [...touched], [...shared]);
+        return result(
+          true,
+          req,
+          state,
+          [],
+          warnings,
+          [...touched],
+          [...shared]
+        );
       }
 
       case "claim_loot_drop": {
@@ -1163,25 +1504,41 @@ export function reduceHarthmereInventoryLootMutation(
         if (!drop) return fail("unknown_drop_id");
         if (drop.status !== "available") return fail("loot_drop_not_available");
         if (req.nowMs > drop.expiresAtMs) return fail("loot_drop_expired");
-        if (!req.pickupToken || req.pickupToken !== drop.pickupToken) return fail("invalid_pickup_token");
-        if (state.usedPickupTokens[req.pickupToken]) return fail("pickup_token_already_used");
-        const eligible = drop.ownerActorIds.includes(req.actorId) || (!!drop.partyId && drop.partyId === a.partyId) || (!!drop.guildId && drop.guildId === a.guildId);
+        if (!req.pickupToken || req.pickupToken !== drop.pickupToken)
+          return fail("invalid_pickup_token");
+        if (state.usedPickupTokens[req.pickupToken])
+          return fail("pickup_token_already_used");
+        const eligible =
+          drop.ownerActorIds.includes(req.actorId) ||
+          (!!drop.partyId && drop.partyId === a.partyId) ||
+          (!!drop.guildId && drop.guildId === a.guildId);
         if (!eligible) return fail("actor_not_eligible_for_loot");
         for (const [itemId, count] of Object.entries(drop.itemStacks)) {
           const def = getDef(ctx, itemId);
           if (!def) return fail(`unknown_item_id:${itemId}`);
-          if (def.category !== "currency" && !actorHasLicenseOrPermit(a, def)) return fail(`missing_required_license_or_permit:${itemId}`);
+          if (def.category !== "currency" && !actorHasLicenseOrPermit(a, def))
+            return fail(`missing_required_license_or_permit:${itemId}`);
         }
         for (const instanceId of drop.instanceIds) {
           const inst = state.itemInstances[instanceId];
           const def = inst ? getDef(ctx, inst.itemId) : undefined;
           if (!inst || !def) return fail(`unknown_instance_id:${instanceId}`);
-          if (!actorHasLicenseOrPermit(a, def, inst)) return fail(`missing_required_license_or_permit:${inst.itemId}`);
+          if (!actorHasLicenseOrPermit(a, def, inst))
+            return fail(`missing_required_license_or_permit:${inst.itemId}`);
         }
         const guild = drop.guildId ? state.guilds[drop.guildId] : undefined;
         if (guild && guild.lootRule === "guild_project") {
-          if (!isActiveGuildMember(guild, req.actorId, req.nowMs)) return fail("actor_not_active_guild_member");
-          if (!guildCanReceiveStacksAndInstances(guild, drop.itemStacks, drop.instanceIds.length, ctx)) return fail("guild_vault_full_or_stack_exceeded");
+          if (!isActiveGuildMember(guild, req.actorId, req.nowMs))
+            return fail("actor_not_active_guild_member");
+          if (
+            !guildCanReceiveStacksAndInstances(
+              guild,
+              drop.itemStacks,
+              drop.instanceIds.length,
+              ctx
+            )
+          )
+            return fail("guild_vault_full_or_stack_exceeded");
           for (const [itemId, count] of Object.entries(drop.itemStacks)) {
             const def = getDef(ctx, itemId);
             if (def?.category === "currency") a.gold += count;
@@ -1195,11 +1552,25 @@ export function reduceHarthmereInventoryLootMutation(
             inst.guildId = guild.guildId;
             guild.instanceIds.push(instanceId);
           }
-          guild.protectedClaimUntilMs[drop.dropId] = req.nowMs + HARTHMERE_INVENTORY_LOOT_GUILD_PROTECTED_CLAIM_MS;
-          guild.history.push({ atMs: req.nowMs, kind: "guild_project_loot_claimed", actorId: req.actorId, dropId: drop.dropId });
+          guild.protectedClaimUntilMs[drop.dropId] =
+            req.nowMs + HARTHMERE_INVENTORY_LOOT_GUILD_PROTECTED_CLAIM_MS;
+          guild.history.push({
+            atMs: req.nowMs,
+            kind: "guild_project_loot_claimed",
+            actorId: req.actorId,
+            dropId: drop.dropId,
+          });
           touched.add("guild_loot");
         } else {
-          if (!actorCanReceiveStacksAndInstances(a, drop.itemStacks, drop.instanceIds.length, ctx)) return fail("inventory_full_or_stack_exceeded");
+          if (
+            !actorCanReceiveStacksAndInstances(
+              a,
+              drop.itemStacks,
+              drop.instanceIds.length,
+              ctx
+            )
+          )
+            return fail("inventory_full_or_stack_exceeded");
           for (const [itemId, count] of Object.entries(drop.itemStacks)) {
             const def = getDef(ctx, itemId);
             if (def?.category === "currency") a.gold += count;
@@ -1211,7 +1582,11 @@ export function reduceHarthmereInventoryLootMutation(
             inst.ownerId = req.actorId;
             inst.location = "actor_inventory";
             inst.containerId = undefined;
-            if (inst.boundToActorId === undefined && getDef(ctx, inst.itemId)?.binding === "on_pickup") inst.boundToActorId = req.actorId;
+            if (
+              inst.boundToActorId === undefined &&
+              getDef(ctx, inst.itemId)?.binding === "on_pickup"
+            )
+              inst.boundToActorId = req.actorId;
             a.instanceIds.push(instanceId);
           }
           touched.add("inventory_items");
@@ -1227,13 +1602,37 @@ export function reduceHarthmereInventoryLootMutation(
         }
         for (const instanceId of drop.instanceIds) {
           const inst = state.itemInstances[instanceId];
-          const tableEntries = Object.values(ctx.lootTables).flatMap((t) => [...t.questDrops, ...t.guaranteedDrops, ...t.weightedDrops, ...t.rareDrops]);
-          for (const e of tableEntries) if (e.itemId === inst.itemId && e.firstTimeTag && !tags.includes(e.firstTimeTag)) tags.push(e.firstTimeTag);
+          const tableEntries = Object.values(ctx.lootTables).flatMap((t) => [
+            ...t.questDrops,
+            ...t.guaranteedDrops,
+            ...t.weightedDrops,
+            ...t.rareDrops,
+          ]);
+          for (const e of tableEntries)
+            if (
+              e.itemId === inst.itemId &&
+              e.firstTimeTag &&
+              !tags.includes(e.firstTimeTag)
+            )
+              tags.push(e.firstTimeTag);
         }
         state.actorLootTags[req.actorId] = tags;
-        addAudit(state, req, { kind: "loot_drop_claimed", actorId: req.actorId, dropId: drop.dropId, guildId: drop.guildId });
+        addAudit(state, req, {
+          kind: "loot_drop_claimed",
+          actorId: req.actorId,
+          dropId: drop.dropId,
+          guildId: drop.guildId,
+        });
         touched.add("loot_claims");
-        return result(true, req, state, [], warnings, [...touched], [...shared]);
+        return result(
+          true,
+          req,
+          state,
+          [],
+          warnings,
+          [...touched],
+          [...shared]
+        );
       }
 
       case "expire_loot_drops": {
@@ -1244,11 +1643,23 @@ export function reduceHarthmereInventoryLootMutation(
               const inst = state.itemInstances[instanceId];
               if (inst) inst.location = "destroyed";
             }
-            addAudit(state, req, { kind: "loot_drop_expired", actorId: req.actorId, dropId: drop.dropId });
+            addAudit(state, req, {
+              kind: "loot_drop_expired",
+              actorId: req.actorId,
+              dropId: drop.dropId,
+            });
           }
         }
         touched.add("loot_drops");
-        return result(true, req, state, [], warnings, [...touched], [...shared]);
+        return result(
+          true,
+          req,
+          state,
+          [],
+          warnings,
+          [...touched],
+          [...shared]
+        );
       }
 
       case "drop_item": {
@@ -1258,15 +1669,33 @@ export function reduceHarthmereInventoryLootMutation(
         const count = positiveWholeCount(req.count);
         if (!def) return fail("unknown_item_id");
         if (count === undefined) return fail("invalid_count");
-        if (def.binding === "quest" || def.legalClass === "quest_bound") return fail("cannot_drop_quest_item");
-        if (!hasActorItem(a, def.itemId, count)) return fail("insufficient_item_count");
+        if (def.binding === "quest" || def.legalClass === "quest_bound")
+          return fail("cannot_drop_quest_item");
+        if (!hasActorItem(a, def.itemId, count))
+          return fail("insufficient_item_count");
         addCount(a.items, def.itemId, -count);
-        const drop = createLootDropFromEntries(state, ctx, req, [{ itemId: def.itemId, minCount: count, maxCount: count, weight: 1, count }]);
+        const drop = createLootDropFromEntries(state, ctx, req, [
+          {
+            itemId: def.itemId,
+            minCount: count,
+            maxCount: count,
+            weight: 1,
+            count,
+          },
+        ]);
         drop.sourceKind = "actor_drop";
         drop.sourceId = req.actorId;
         touched.add("inventory_items");
         touched.add("loot_drops");
-        return result(true, req, state, [], warnings, [...touched], [...shared]);
+        return result(
+          true,
+          req,
+          state,
+          [],
+          warnings,
+          [...touched],
+          [...shared]
+        );
       }
 
       case "move_to_business_inventory": {
@@ -1279,21 +1708,38 @@ export function reduceHarthmereInventoryLootMutation(
         const count = positiveWholeCount(req.count);
         if (!def) return fail("unknown_item_id");
         if (count === undefined) return fail("invalid_count");
-        if (!hasActorItem(a, def.itemId, count)) return fail("insufficient_item_count");
-        if (!businessCanStoreItem(business, def, req.storageClass)) return fail("business_cannot_store_item");
-        if (!businessHasInventoryCapacity(business, def.itemId, count, ctx)) return fail("business_inventory_full_or_stack_exceeded");
+        if (!hasActorItem(a, def.itemId, count))
+          return fail("insufficient_item_count");
+        if (!businessCanStoreItem(business, def, req.storageClass))
+          return fail("business_cannot_store_item");
+        if (!businessHasInventoryCapacity(business, def.itemId, count, ctx))
+          return fail("business_inventory_full_or_stack_exceeded");
         addCount(a.items, def.itemId, -count);
         addCount(business.inventory, def.itemId, count);
         if (req.storageClass) {
-          business.storage[req.storageClass] = business.storage[req.storageClass] ?? {};
+          business.storage[req.storageClass] =
+            business.storage[req.storageClass] ?? {};
           addCount(business.storage[req.storageClass]!, def.itemId, count);
         }
         touchBusinessAudit(business, req, "deposit", def.itemId, count);
-        addAudit(state, req, { kind: "business_inventory_deposit", actorId: req.actorId, itemId: def.itemId, count });
+        addAudit(state, req, {
+          kind: "business_inventory_deposit",
+          actorId: req.actorId,
+          itemId: def.itemId,
+          count,
+        });
         touched.add("business_inventory");
         touched.add("inventory_items");
         shared.add(`business:${business.businessId}`);
-        return result(true, req, state, [], warnings, [...touched], [...shared]);
+        return result(
+          true,
+          req,
+          state,
+          [],
+          warnings,
+          [...touched],
+          [...shared]
+        );
       }
 
       case "move_from_business_inventory": {
@@ -1306,17 +1752,32 @@ export function reduceHarthmereInventoryLootMutation(
         const count = positiveWholeCount(req.count);
         if (!def) return fail("unknown_item_id");
         if (count === undefined) return fail("invalid_count");
-        if ((business.inventory[def.itemId] ?? 0) < count) return fail("insufficient_business_item_count");
-        if (req.storageClass && (business.storage[req.storageClass]?.[def.itemId] ?? 0) < count) return fail("insufficient_business_storage_item_count");
-        if (!actorHasInventoryCapacity(a, def.itemId, count, ctx)) return fail("inventory_full_or_stack_exceeded");
+        if ((business.inventory[def.itemId] ?? 0) < count)
+          return fail("insufficient_business_item_count");
+        if (
+          req.storageClass &&
+          (business.storage[req.storageClass]?.[def.itemId] ?? 0) < count
+        )
+          return fail("insufficient_business_storage_item_count");
+        if (!actorHasInventoryCapacity(a, def.itemId, count, ctx))
+          return fail("inventory_full_or_stack_exceeded");
         addCount(business.inventory, def.itemId, -count);
-        if (req.storageClass && business.storage[req.storageClass]) addCount(business.storage[req.storageClass]!, def.itemId, -count);
+        if (req.storageClass && business.storage[req.storageClass])
+          addCount(business.storage[req.storageClass]!, def.itemId, -count);
         addCount(a.items, def.itemId, count);
         touchBusinessAudit(business, req, "withdraw", def.itemId, count);
         touched.add("business_inventory");
         touched.add("inventory_items");
         shared.add(`business:${business.businessId}`);
-        return result(true, req, state, [], warnings, [...touched], [...shared]);
+        return result(
+          true,
+          req,
+          state,
+          [],
+          warnings,
+          [...touched],
+          [...shared]
+        );
       }
 
       case "validate_legal_inventory": {
@@ -1324,73 +1785,157 @@ export function reduceHarthmereInventoryLootMutation(
         if (!a) return fail("unknown_actor");
         const violations = legalViolationsForActor(a, state, ctx, req.nowMs);
         a.legalViolations.push(...violations);
-        if (violations.length) warnings.push(...violations.map((v) => `legal_violation:${v.code}:${v.itemId}`));
+        if (violations.length)
+          warnings.push(
+            ...violations.map((v) => `legal_violation:${v.code}:${v.itemId}`)
+          );
         touched.add("law_inventory");
-        return result(true, req, state, [], warnings, [...touched], [...shared]);
+        return result(
+          true,
+          req,
+          state,
+          [],
+          warnings,
+          [...touched],
+          [...shared]
+        );
       }
 
       case "damage_item_instance": {
-        const inst = req.instanceId ? state.itemInstances[req.instanceId] : undefined;
+        const inst = req.instanceId
+          ? state.itemInstances[req.instanceId]
+          : undefined;
         if (!inst) return fail("unknown_instance_id");
-        if (inst.ownerKind !== "actor" || inst.ownerId !== req.actorId) return fail("actor_does_not_own_instance");
+        if (inst.ownerKind !== "actor" || inst.ownerId !== req.actorId)
+          return fail("actor_does_not_own_instance");
         const amount = Math.max(1, Math.trunc(req.damageAmount ?? 1));
-        inst.durability = Math.max(0, (inst.durability ?? inst.durabilityMax ?? 100) - amount);
+        inst.durability = Math.max(
+          0,
+          (inst.durability ?? inst.durabilityMax ?? 100) - amount
+        );
         inst.condition = Math.max(0, inst.condition - amount);
         inst.updatedAtMs = req.nowMs;
         if (inst.durability <= 0 || inst.condition <= 0) inst.broken = true;
-        inst.audit.push({ atMs: req.nowMs, kind: "damaged", actorId: req.actorId, reason: String(amount) });
-        addAudit(state, req, { kind: "item_instance_damaged", actorId: req.actorId, itemId: inst.itemId, instanceId: inst.instanceId });
+        inst.audit.push({
+          atMs: req.nowMs,
+          kind: "damaged",
+          actorId: req.actorId,
+          reason: String(amount),
+        });
+        addAudit(state, req, {
+          kind: "item_instance_damaged",
+          actorId: req.actorId,
+          itemId: inst.itemId,
+          instanceId: inst.instanceId,
+        });
         touched.add("item_instances");
-        return result(true, req, state, [], warnings, [...touched], [...shared]);
+        return result(
+          true,
+          req,
+          state,
+          [],
+          warnings,
+          [...touched],
+          [...shared]
+        );
       }
 
       case "repair_item_instance": {
         const a = actor;
         if (!a) return fail("unknown_actor");
-        const inst = req.instanceId ? state.itemInstances[req.instanceId] : undefined;
+        const inst = req.instanceId
+          ? state.itemInstances[req.instanceId]
+          : undefined;
         if (!inst) return fail("unknown_instance_id");
-        if (inst.ownerKind !== "actor" || inst.ownerId !== req.actorId) return fail("actor_does_not_own_instance");
+        if (inst.ownerKind !== "actor" || inst.ownerId !== req.actorId)
+          return fail("actor_does_not_own_instance");
         const def = getDef(ctx, inst.itemId);
         if (!def) return fail("unknown_item_id");
         if (!def.repairable) return fail("item_not_repairable");
-        if ((inst.condition >= 100 && (inst.durability ?? 100) >= (inst.durabilityMax ?? 100))) return fail("item_already_fully_repaired");
-        const inputs = req.repairMaterials ?? Object.fromEntries((def.repairInputs ?? []).map((i) => [i.itemId, i.count]));
+        if (
+          inst.condition >= 100 &&
+          (inst.durability ?? 100) >= (inst.durabilityMax ?? 100)
+        )
+          return fail("item_already_fully_repaired");
+        const inputs =
+          req.repairMaterials ??
+          Object.fromEntries(
+            (def.repairInputs ?? []).map((i) => [i.itemId, i.count])
+          );
         for (const [itemId, count] of Object.entries(inputs)) {
-          if (!hasActorItem(a, itemId, count)) return fail(`insufficient_repair_material:${itemId}`);
+          if (!hasActorItem(a, itemId, count))
+            return fail(`insufficient_repair_material:${itemId}`);
         }
-        for (const [itemId, count] of Object.entries(inputs)) addCount(a.items, itemId, -count);
+        for (const [itemId, count] of Object.entries(inputs))
+          addCount(a.items, itemId, -count);
         inst.condition = 100;
         if (inst.durabilityMax) inst.durability = inst.durabilityMax;
         inst.broken = false;
         inst.updatedAtMs = req.nowMs;
-        inst.audit.push({ atMs: req.nowMs, kind: "repaired", actorId: req.actorId });
-        addAudit(state, req, { kind: "item_instance_repaired", actorId: req.actorId, itemId: inst.itemId, instanceId: inst.instanceId });
+        inst.audit.push({
+          atMs: req.nowMs,
+          kind: "repaired",
+          actorId: req.actorId,
+        });
+        addAudit(state, req, {
+          kind: "item_instance_repaired",
+          actorId: req.actorId,
+          itemId: inst.itemId,
+          instanceId: inst.instanceId,
+        });
         touched.add("item_instances");
         touched.add("inventory_items");
-        return result(true, req, state, [], warnings, [...touched], [...shared]);
+        return result(
+          true,
+          req,
+          state,
+          [],
+          warnings,
+          [...touched],
+          [...shared]
+        );
       }
 
       case "salvage_item_instance": {
         const a = actor;
         if (!a) return fail("unknown_actor");
-        const inst = req.instanceId ? state.itemInstances[req.instanceId] : undefined;
+        const inst = req.instanceId
+          ? state.itemInstances[req.instanceId]
+          : undefined;
         if (!inst) return fail("unknown_instance_id");
-        if (inst.ownerKind !== "actor" || inst.ownerId !== req.actorId) return fail("actor_does_not_own_instance");
-        if (inst.loanedToActorId) return fail("cannot_salvage_loaned_guild_item");
+        if (inst.ownerKind !== "actor" || inst.ownerId !== req.actorId)
+          return fail("actor_does_not_own_instance");
+        if (inst.loanedToActorId)
+          return fail("cannot_salvage_loaned_guild_item");
         const def = getDef(ctx, inst.itemId);
         if (!def) return fail("unknown_item_id");
         const outputs = def.salvageOutputs ?? [];
         for (const output of outputs) {
-          if (!actorHasInventoryCapacity(a, output.itemId, output.count, ctx)) return fail(`inventory_full_or_stack_exceeded:${output.itemId}`);
+          if (!actorHasInventoryCapacity(a, output.itemId, output.count, ctx))
+            return fail(`inventory_full_or_stack_exceeded:${output.itemId}`);
         }
         inst.location = "destroyed";
         inst.updatedAtMs = req.nowMs;
         a.instanceIds = a.instanceIds.filter((id) => id !== inst.instanceId);
-        for (const output of outputs) addCount(a.items, output.itemId, output.count);
-        addAudit(state, req, { kind: "item_instance_salvaged", actorId: req.actorId, itemId: inst.itemId, instanceId: inst.instanceId });
+        for (const output of outputs)
+          addCount(a.items, output.itemId, output.count);
+        addAudit(state, req, {
+          kind: "item_instance_salvaged",
+          actorId: req.actorId,
+          itemId: inst.itemId,
+          instanceId: inst.instanceId,
+        });
         touched.add("item_instances");
         touched.add("inventory_items");
-        return result(true, req, state, [], warnings, [...touched], [...shared]);
+        return result(
+          true,
+          req,
+          state,
+          [],
+          warnings,
+          [...touched],
+          [...shared]
+        );
       }
 
       case "tick_decay": {
@@ -1403,8 +1948,17 @@ export function reduceHarthmereInventoryLootMutation(
           inst.condition = 0;
           inst.broken = true;
           inst.updatedAtMs = req.nowMs;
-          inst.audit.push({ atMs: req.nowMs, kind: "expired_spoiled", actorId: req.actorId });
-          addAudit(state, req, { kind: "perishable_item_spoiled", actorId: inst.ownerKind === "actor" ? inst.ownerId : req.actorId, itemId: inst.itemId, instanceId: inst.instanceId });
+          inst.audit.push({
+            atMs: req.nowMs,
+            kind: "expired_spoiled",
+            actorId: req.actorId,
+          });
+          addAudit(state, req, {
+            kind: "perishable_item_spoiled",
+            actorId: inst.ownerKind === "actor" ? inst.ownerId : req.actorId,
+            itemId: inst.itemId,
+            instanceId: inst.instanceId,
+          });
         }
         for (const business of Object.values(state.businesses)) {
           let hazard = 0;
@@ -1414,32 +1968,51 @@ export function reduceHarthmereInventoryLootMutation(
             hazard += def.hazardLevel * count + def.contaminationRisk * count;
           }
           if (hazard > 0 && !business.permits.includes("hazardous_material")) {
-            business.sanitationRating = Math.max(0, business.sanitationRating - Math.ceil(hazard / 10));
+            business.sanitationRating = Math.max(
+              0,
+              business.sanitationRating - Math.ceil(hazard / 10)
+            );
           }
         }
         touched.add("item_decay");
-        return result(true, req, state, [], warnings, [...touched], [...shared]);
+        return result(
+          true,
+          req,
+          state,
+          [],
+          warnings,
+          [...touched],
+          [...shared]
+        );
       }
 
       case "create_job_item_escrow": {
         const a = actor;
         if (!a) return fail("unknown_actor");
         if (!req.jobId) return fail("missing_job_id");
-        if (!req.deadlineAtMs || req.deadlineAtMs <= req.nowMs) return fail("invalid_deadline");
+        if (!req.deadlineAtMs || req.deadlineAtMs <= req.nowMs)
+          return fail("invalid_deadline");
         const requiredItems = req.requiredItems ?? [];
         if (requiredItems.length === 0) return fail("missing_required_items");
         for (const requirement of requiredItems) {
           const def = getDef(ctx, requirement.itemId);
           const count = positiveWholeCount(requirement.count);
           if (!def) return fail(`unknown_item_id:${requirement.itemId}`);
-          if (count === undefined) return fail(`invalid_required_count:${requirement.itemId}`);
-          if (!hasActorItem(a, def.itemId, count)) return fail(`insufficient_item_count:${def.itemId}`);
+          if (count === undefined)
+            return fail(`invalid_required_count:${requirement.itemId}`);
+          if (!hasActorItem(a, def.itemId, count))
+            return fail(`insufficient_item_count:${def.itemId}`);
           if (requirement.freshnessRequired) {
             const fresh = a.instanceIds.some((id) => {
               const inst = state.itemInstances[id];
-              return inst?.itemId === def.itemId && !inst.broken && (!inst.expiresAtMs || inst.expiresAtMs > req.nowMs);
+              return (
+                inst?.itemId === def.itemId &&
+                !inst.broken &&
+                (!inst.expiresAtMs || inst.expiresAtMs > req.nowMs)
+              );
             });
-            if (!fresh && def.perishable) return fail(`fresh_item_required:${def.itemId}`);
+            if (!fresh && def.perishable)
+              return fail(`fresh_item_required:${def.itemId}`);
           }
         }
         const escrowId = `hm_job_escrow_${state.nextEscrowNumber++}`;
@@ -1469,16 +2042,33 @@ export function reduceHarthmereInventoryLootMutation(
           createdAtMs: req.nowMs,
         };
         state.jobEscrows[escrowId] = escrow;
-        addAudit(state, req, { kind: "job_item_escrow_created", actorId: req.actorId, jobId: req.jobId });
+        addAudit(state, req, {
+          kind: "job_item_escrow_created",
+          actorId: req.actorId,
+          jobId: req.jobId,
+        });
         touched.add("job_item_escrow");
         touched.add("inventory_items");
-        return result(true, req, state, [], warnings, [...touched], [...shared]);
+        return result(
+          true,
+          req,
+          state,
+          [],
+          warnings,
+          [...touched],
+          [...shared]
+        );
       }
 
       case "complete_job_item_escrow": {
-        const escrow = req.jobId ? Object.values(state.jobEscrows).find((e) => e.jobId === req.jobId && e.status === "active") : undefined;
+        const escrow = req.jobId
+          ? Object.values(state.jobEscrows).find(
+              (e) => e.jobId === req.jobId && e.status === "active"
+            )
+          : undefined;
         if (!escrow) return fail("unknown_active_job_escrow");
-        if (req.nowMs > escrow.deadlineAtMs) return fail("job_escrow_deadline_expired");
+        if (req.nowMs > escrow.deadlineAtMs)
+          return fail("job_escrow_deadline_expired");
         const seeker = state.actors[escrow.seekerId ?? ""];
         if (!seeker) return fail("unknown_seeker");
         if (escrow.targetOwnerKind === "business") {
@@ -1487,8 +2077,20 @@ export function reduceHarthmereInventoryLootMutation(
           for (const [itemId, count] of Object.entries(escrow.escrowedStacks)) {
             const def = getDef(ctx, itemId);
             if (!def) return fail(`unknown_item_id:${itemId}`);
-            if (!businessCanStoreItem(business, def, def.allowedStorage.includes("business_warehouse") ? "business_warehouse" : def.allowedStorage[0])) return fail(`business_cannot_store_item:${itemId}`);
-            if (!businessHasInventoryCapacity(business, itemId, count, ctx)) return fail(`business_inventory_full_or_stack_exceeded:${itemId}`);
+            if (
+              !businessCanStoreItem(
+                business,
+                def,
+                def.allowedStorage.includes("business_warehouse")
+                  ? "business_warehouse"
+                  : def.allowedStorage[0]
+              )
+            )
+              return fail(`business_cannot_store_item:${itemId}`);
+            if (!businessHasInventoryCapacity(business, itemId, count, ctx))
+              return fail(
+                `business_inventory_full_or_stack_exceeded:${itemId}`
+              );
             addCount(seeker.escrow, itemId, -count);
             addCount(business.inventory, itemId, count);
             touchBusinessAudit(business, req, "job_delivery", itemId, count);
@@ -1497,7 +2099,8 @@ export function reduceHarthmereInventoryLootMutation(
           const target = state.actors[escrow.targetOwnerId];
           if (!target) return fail("unknown_target_actor");
           for (const [itemId, count] of Object.entries(escrow.escrowedStacks)) {
-            if (!actorHasInventoryCapacity(target, itemId, count, ctx)) return fail(`target_inventory_full:${itemId}`);
+            if (!actorHasInventoryCapacity(target, itemId, count, ctx))
+              return fail(`target_inventory_full:${itemId}`);
             addCount(seeker.escrow, itemId, -count);
             addCount(target.items, itemId, count);
           }
@@ -1506,15 +2109,31 @@ export function reduceHarthmereInventoryLootMutation(
         escrow.status = "delivered";
         escrow.completedAtMs = req.nowMs;
         escrow.logs.push(`completed:${req.nowMs}`);
-        addAudit(state, req, { kind: "job_item_escrow_completed", actorId: req.actorId, jobId: escrow.jobId });
+        addAudit(state, req, {
+          kind: "job_item_escrow_completed",
+          actorId: req.actorId,
+          jobId: escrow.jobId,
+        });
         touched.add("job_item_escrow");
         touched.add("inventory_items");
         touched.add("business_inventory");
-        return result(true, req, state, [], warnings, [...touched], [...shared]);
+        return result(
+          true,
+          req,
+          state,
+          [],
+          warnings,
+          [...touched],
+          [...shared]
+        );
       }
 
       case "cancel_job_item_escrow": {
-        const escrow = req.jobId ? Object.values(state.jobEscrows).find((e) => e.jobId === req.jobId && e.status === "active") : undefined;
+        const escrow = req.jobId
+          ? Object.values(state.jobEscrows).find(
+              (e) => e.jobId === req.jobId && e.status === "active"
+            )
+          : undefined;
         if (!escrow) return fail("unknown_active_job_escrow");
         const seeker = state.actors[escrow.seekerId ?? ""];
         if (!seeker) return fail("unknown_seeker");
@@ -1522,74 +2141,139 @@ export function reduceHarthmereInventoryLootMutation(
           addCount(seeker.escrow, itemId, -count);
           addCount(seeker.items, itemId, count);
         }
-        escrow.status = req.nowMs > escrow.deadlineAtMs ? "expired" : "cancelled";
+        escrow.status =
+          req.nowMs > escrow.deadlineAtMs ? "expired" : "cancelled";
         escrow.logs.push(`${escrow.status}:${req.nowMs}`);
         touched.add("job_item_escrow");
         touched.add("inventory_items");
-        return result(true, req, state, [], warnings, [...touched], [...shared]);
+        return result(
+          true,
+          req,
+          state,
+          [],
+          warnings,
+          [...touched],
+          [...shared]
+        );
       }
 
       case "assign_guild_loot": {
         if (!req.guildId) return fail("missing_guild_id");
         const guild = state.guilds[req.guildId];
         if (!guild) return fail("unknown_guild_id");
-        if (!isActiveGuildMember(guild, req.actorId, req.nowMs)) return fail("actor_not_active_guild_member");
-        if (req.dropId && guild.protectedClaimUntilMs[req.dropId] && req.nowMs > guild.protectedClaimUntilMs[req.dropId]) {
+        if (!isActiveGuildMember(guild, req.actorId, req.nowMs))
+          return fail("actor_not_active_guild_member");
+        if (
+          req.dropId &&
+          guild.protectedClaimUntilMs[req.dropId] &&
+          req.nowMs > guild.protectedClaimUntilMs[req.dropId]
+        ) {
           return fail("guild_protected_claim_window_expired");
         }
         const targetActorId = req.targetOwnerId ?? req.actorId;
         const target = state.actors[targetActorId];
         if (!target) return fail("unknown_target_actor");
-        if (!isActiveGuildMember(guild, targetActorId, req.nowMs)) return fail("target_not_active_guild_member");
+        if (!isActiveGuildMember(guild, targetActorId, req.nowMs))
+          return fail("target_not_active_guild_member");
         const def = getDef(ctx, req.itemId);
         const count = positiveWholeCount(req.count);
         if (!def) return fail("unknown_item_id");
         if (count === undefined) return fail("invalid_count");
-        if ((guild.vault[def.itemId] ?? 0) < count) return fail("insufficient_guild_vault_item_count");
-        if (!actorHasInventoryCapacity(target, def.itemId, count, ctx)) return fail("target_inventory_full_or_stack_exceeded");
+        if ((guild.vault[def.itemId] ?? 0) < count)
+          return fail("insufficient_guild_vault_item_count");
+        if (!actorHasInventoryCapacity(target, def.itemId, count, ctx))
+          return fail("target_inventory_full_or_stack_exceeded");
         addCount(guild.vault, def.itemId, -count);
         addCount(target.items, def.itemId, count);
-        guild.history.push({ atMs: req.nowMs, kind: "guild_loot_assigned", actorId: targetActorId, itemId: def.itemId, dropId: req.dropId });
+        guild.history.push({
+          atMs: req.nowMs,
+          kind: "guild_loot_assigned",
+          actorId: targetActorId,
+          itemId: def.itemId,
+          dropId: req.dropId,
+        });
         touched.add("guild_loot");
         touched.add("inventory_items");
-        return result(true, req, state, [], warnings, [...touched], [...shared]);
+        return result(
+          true,
+          req,
+          state,
+          [],
+          warnings,
+          [...touched],
+          [...shared]
+        );
       }
 
       case "loan_guild_item": {
         if (!req.guildId) return fail("missing_guild_id");
         const guild = state.guilds[req.guildId];
         if (!guild) return fail("unknown_guild_id");
-        if (!isActiveGuildMember(guild, req.actorId, req.nowMs)) return fail("actor_not_active_guild_member");
+        if (!isActiveGuildMember(guild, req.actorId, req.nowMs))
+          return fail("actor_not_active_guild_member");
         const targetActorId = req.targetOwnerId ?? req.actorId;
         const target = state.actors[targetActorId];
         if (!target) return fail("unknown_target_actor");
-        if (!isActiveGuildMember(guild, targetActorId, req.nowMs)) return fail("target_not_active_guild_member");
-        const inst = req.instanceId ? state.itemInstances[req.instanceId] : undefined;
-        if (!inst || inst.ownerKind !== "guild" || inst.ownerId !== guild.guildId) return fail("unknown_guild_instance");
+        if (!isActiveGuildMember(guild, targetActorId, req.nowMs))
+          return fail("target_not_active_guild_member");
+        const inst = req.instanceId
+          ? state.itemInstances[req.instanceId]
+          : undefined;
+        if (
+          !inst ||
+          inst.ownerKind !== "guild" ||
+          inst.ownerId !== guild.guildId
+        )
+          return fail("unknown_guild_instance");
         if (inst.loanedToActorId) return fail("item_already_loaned");
-        if (actorUsedSlots(target) >= target.maxInventorySlots) return fail("target_inventory_full");
+        if (actorUsedSlots(target) >= target.maxInventorySlots)
+          return fail("target_inventory_full");
         inst.loanedToActorId = targetActorId;
         inst.ownerKind = "actor";
         inst.ownerId = targetActorId;
         inst.location = "actor_inventory";
-        guild.instanceIds = guild.instanceIds.filter((id) => id !== inst.instanceId);
+        guild.instanceIds = guild.instanceIds.filter(
+          (id) => id !== inst.instanceId
+        );
         target.instanceIds.push(inst.instanceId);
-        guild.loans[inst.instanceId] = { instanceId: inst.instanceId, actorId: targetActorId, dueAtMs: req.deadlineAtMs ?? req.nowMs + 7 * 24 * 60 * 60 * 1000 };
-        guild.history.push({ atMs: req.nowMs, kind: "guild_item_loaned", actorId: targetActorId, instanceId: inst.instanceId });
+        guild.loans[inst.instanceId] = {
+          instanceId: inst.instanceId,
+          actorId: targetActorId,
+          dueAtMs: req.deadlineAtMs ?? req.nowMs + 7 * 24 * 60 * 60 * 1000,
+        };
+        guild.history.push({
+          atMs: req.nowMs,
+          kind: "guild_item_loaned",
+          actorId: targetActorId,
+          instanceId: inst.instanceId,
+        });
         touched.add("guild_loans");
         touched.add("item_instances");
-        return result(true, req, state, [], warnings, [...touched], [...shared]);
+        return result(
+          true,
+          req,
+          state,
+          [],
+          warnings,
+          [...touched],
+          [...shared]
+        );
       }
 
       case "return_guild_loan": {
         if (!req.guildId) return fail("missing_guild_id");
         const guild = state.guilds[req.guildId];
         if (!guild) return fail("unknown_guild_id");
-        const inst = req.instanceId ? state.itemInstances[req.instanceId] : undefined;
-        if (!inst || inst.loanedToActorId !== req.actorId) return fail("unknown_actor_loaned_instance");
+        const inst = req.instanceId
+          ? state.itemInstances[req.instanceId]
+          : undefined;
+        if (!inst || inst.loanedToActorId !== req.actorId)
+          return fail("unknown_actor_loaned_instance");
         const loan = guild.loans[inst.instanceId];
-        if (!loan || loan.actorId !== req.actorId) return fail("unknown_guild_loan");
-        if (guildUsedSlots(guild) >= guild.maxSlots) return fail("guild_vault_full");
+        if (!loan || loan.actorId !== req.actorId)
+          return fail("unknown_guild_loan");
+        if (guildUsedSlots(guild) >= guild.maxSlots)
+          return fail("guild_vault_full");
         const a = actor;
         if (!a) return fail("unknown_actor");
         a.instanceIds = a.instanceIds.filter((id) => id !== inst.instanceId);
@@ -1598,11 +2282,25 @@ export function reduceHarthmereInventoryLootMutation(
         inst.location = "guild_vault";
         inst.loanedToActorId = undefined;
         guild.instanceIds.push(inst.instanceId);
-        if (guild.loans[inst.instanceId]) guild.loans[inst.instanceId].returnedAtMs = req.nowMs;
-        guild.history.push({ atMs: req.nowMs, kind: "guild_item_returned", actorId: req.actorId, instanceId: inst.instanceId });
+        if (guild.loans[inst.instanceId])
+          guild.loans[inst.instanceId].returnedAtMs = req.nowMs;
+        guild.history.push({
+          atMs: req.nowMs,
+          kind: "guild_item_returned",
+          actorId: req.actorId,
+          instanceId: inst.instanceId,
+        });
         touched.add("guild_loans");
         touched.add("item_instances");
-        return result(true, req, state, [], warnings, [...touched], [...shared]);
+        return result(
+          true,
+          req,
+          state,
+          [],
+          warnings,
+          [...touched],
+          [...shared]
+        );
       }
 
       case "update_town_demand": {
@@ -1611,15 +2309,33 @@ export function reduceHarthmereInventoryLootMutation(
         updateTownDemandFromInventories(state, ctx, req, townId, regionId);
         touched.add("town_demand");
         shared.add(`town:${townId}`);
-        return result(true, req, state, [], warnings, [...touched], [...shared]);
+        return result(
+          true,
+          req,
+          state,
+          [],
+          warnings,
+          [...touched],
+          [...shared]
+        );
       }
 
       default:
-        return fail(`unsupported_operation:${(req as { operation: string }).operation}`);
+        return fail(
+          `unsupported_operation:${(req as { operation: string }).operation}`
+        );
     }
   } catch (err) {
     errors.push(err instanceof Error ? err.message : String(err));
-    return result(false, req, stateIn, errors, warnings, [...touched], [...shared]);
+    return result(
+      false,
+      req,
+      stateIn,
+      errors,
+      warnings,
+      [...touched],
+      [...shared]
+    );
   }
 }
 
@@ -1629,13 +2345,19 @@ export function createHarthmereInventoryLootClientSnapshot(
 ) {
   const actor = state.actors[actorId];
   const guild = actor?.guildId ? state.guilds[actor.guildId] : undefined;
-  const availableLootDrops = Object.values(state.lootDrops).filter((drop) =>
-    drop.status === "available" &&
-    (drop.ownerActorIds.includes(actorId) || (!!actor?.partyId && drop.partyId === actor.partyId) || (!!actor?.guildId && drop.guildId === actor.guildId))
+  const availableLootDrops = Object.values(state.lootDrops).filter(
+    (drop) =>
+      drop.status === "available" &&
+      (drop.ownerActorIds.includes(actorId) ||
+        (!!actor?.partyId && drop.partyId === actor.partyId) ||
+        (!!actor?.guildId && drop.guildId === actor.guildId))
   );
-  const activeJobEscrows = Object.values(state.jobEscrows).filter((escrow) => escrow.seekerId === actorId && escrow.status === "active");
+  const activeJobEscrows = Object.values(state.jobEscrows).filter(
+    (escrow) => escrow.seekerId === actorId && escrow.status === "active"
+  );
   const visibleInstanceIds = new Set<string>([
     ...(actor?.instanceIds ?? []),
+    ...Object.values(actor?.equipmentInstances ?? {}),
     ...(guild?.instanceIds ?? []),
     ...availableLootDrops.flatMap((drop) => drop.instanceIds),
     ...activeJobEscrows.flatMap((escrow) => escrow.packageInstanceIds),
@@ -1643,12 +2365,13 @@ export function createHarthmereInventoryLootClientSnapshot(
   const itemInstances = Object.fromEntries(
     [...visibleInstanceIds]
       .map((id) => [id, state.itemInstances[id]] as const)
-      .filter(([, instance]) => !!instance),
+      .filter(([, instance]) => !!instance)
   );
   const ownedBusinessInventories = Object.fromEntries(
-    Object.entries(state.businesses).filter(([, business]) =>
-      business.ownerId === actorId || business.ownerId === actor?.guildId,
-    ),
+    Object.entries(state.businesses).filter(
+      ([, business]) =>
+        business.ownerId === actorId || business.ownerId === actor?.guildId
+    )
   );
 
   return {
@@ -1660,6 +2383,7 @@ export function createHarthmereInventoryLootClientSnapshot(
           items: actor.items,
           bank: actor.bank,
           equipment: actor.equipment,
+          equipmentInstances: actor.equipmentInstances,
           escrow: actor.escrow,
           instanceIds: actor.instanceIds,
           legalViolations: actor.legalViolations.slice(-20),
@@ -1670,9 +2394,20 @@ export function createHarthmereInventoryLootClientSnapshot(
         }
       : undefined,
     availableLootDrops,
-    recentLootLedger: state.lootLedger.filter((entry) => entry.actorId === actorId || entry.guildId === actor?.guildId).slice(-30),
+    recentLootLedger: state.lootLedger
+      .filter(
+        (entry) => entry.actorId === actorId || entry.guildId === actor?.guildId
+      )
+      .slice(-30),
     activeJobEscrows,
-    guildVault: guild ? { guildId: guild.guildId, vault: guild.vault, instanceIds: guild.instanceIds, lootRule: guild.lootRule } : undefined,
+    guildVault: guild
+      ? {
+          guildId: guild.guildId,
+          vault: guild.vault,
+          instanceIds: guild.instanceIds,
+          lootRule: guild.lootRule,
+        }
+      : undefined,
     itemInstances,
     businessInventories: ownedBusinessInventories,
     townDemand: state.townDemand,

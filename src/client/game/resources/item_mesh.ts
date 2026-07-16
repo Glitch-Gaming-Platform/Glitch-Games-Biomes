@@ -26,6 +26,7 @@ import type {
 import { makeBlockItemMaterial } from "@/gen/client/game/shaders/block_item";
 import { makeFloraItemMaterial } from "@/gen/client/game/shaders/flora_item";
 import { staticUrlForAttribute } from "@/shared/bikkie/schema/binary";
+import { BikkieIds } from "@/shared/bikkie/ids";
 import type { Disposable } from "@/shared/disposable";
 import { makeDisposable } from "@/shared/disposable";
 import type { Item } from "@/shared/game/item";
@@ -243,6 +244,45 @@ function itemMeshPath(item: Item) {
 }
 
 function makeMissingItemMesh(item: Item, reason: unknown): ItemMeshFactory {
+  if (item.id === BikkieIds.spikefish) {
+    // Spikefish is a fishing reward without authored item-mesh JSON in the
+    // production Bikkie snapshot. Give it an intentional fish silhouette
+    // instead of reporting a missing-asset warning and rendering a cardboard
+    // box every time it appears in inventory or the hotbar.
+    const body = new THREE.SphereGeometry(4, 12, 8);
+    body.scale(1.8, 0.75, 0.55);
+    const tail = new THREE.ConeGeometry(3.2, 4.5, 3);
+    tail.rotateZ(-Math.PI / 2);
+    tail.translate(-8.5, 0, 0);
+    const dorsal = new THREE.ConeGeometry(1.8, 3.5, 3);
+    dorsal.translate(0, 3.4, 0);
+    log.info("Using authored procedural Spikefish item mesh", {
+      id: item.id,
+      reason,
+    });
+    return makeDisposable(
+      () => {
+        const material = new THREE.MeshStandardMaterial({
+          color: 0x6fb6c4,
+          roughness: 0.55,
+          metalness: 0.15,
+        });
+        const group = new THREE.Group();
+        group.add(
+          new Mesh(body, material),
+          new Mesh(tail, material),
+          new Mesh(dorsal, material)
+        );
+        return makeDisposable({ three: group }, () => material.dispose());
+      },
+      () => {
+        body.dispose();
+        tail.dispose();
+        dorsal.dispose();
+      }
+    );
+  }
+
   // Local/dev snapshots can be missing arbitrary production item mesh JSON. Do
   // not chase another asset fallback here: previous fallbacks still tried to
   // fetch cardboard_box, which is also missing in the sparse local snapshot.

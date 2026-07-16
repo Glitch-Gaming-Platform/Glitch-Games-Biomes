@@ -6,6 +6,7 @@ import type {
   ClientResourcePaths,
 } from "@/client/game/resources/types";
 import type { Bundle, Key, Ret } from "@/client/resources/react";
+import { BikkieIds } from "@/shared/bikkie/ids";
 import { EmitterScope } from "@/shared/events";
 import type { BiomesId } from "@/shared/ids";
 import { log } from "@/shared/logging";
@@ -16,6 +17,10 @@ import { difference } from "lodash";
 export class ResourcesPipeToGardenHose {
   private readonly scope: EmitterScope;
   private previousChallengeStepProgress = new Map<BiomesId, number>();
+  private previousWearing = new Map<
+    string,
+    { itemId: string | number; itemName?: string; slot: string }
+  >();
 
   constructor(
     private readonly userId: BiomesId,
@@ -66,6 +71,73 @@ export class ResourcesPipeToGardenHose {
         });
       },
       "/ecs/c/inventory",
+      this.userId
+    );
+
+    // Native ECS wearing remains the renderer-facing equipment projection.
+    // Publish item- and slot-specific evidence when it changes so quests never
+    // have to infer an equip from a generic inventory mutation.
+    this.onResourceDelta(
+      (wearing) => {
+        const currentWearing = new Map<
+          string,
+          { itemId: string | number; itemName?: string; slot: string }
+        >();
+        for (const [wearableSlot, item] of wearing?.items ?? []) {
+          const wearableKey = String(wearableSlot);
+          const slot =
+            wearableSlot === BikkieIds.top
+              ? "chest"
+              : wearableSlot === BikkieIds.bottoms
+              ? "legs"
+              : wearableSlot === BikkieIds.hat
+              ? "head"
+              : wearableSlot === BikkieIds.feet
+              ? "feet"
+              : wearableSlot === BikkieIds.hands
+              ? "hands"
+              : wearableSlot === BikkieIds.outerwear
+              ? "back"
+              : wearableSlot === BikkieIds.neck
+              ? "neck"
+              : wearableKey;
+          const current = {
+            itemId: item.id,
+            itemName: item.displayName,
+            slot,
+          };
+          currentWearing.set(wearableKey, current);
+          const previous = this.previousWearing.get(wearableKey);
+          if (previous && previous.itemId !== current.itemId) {
+            this.gardenHose.publish({
+              kind: "equip",
+              ...previous,
+              operation: "unequip",
+              authority: "ecs",
+            });
+          }
+          if (!previous || previous.itemId !== current.itemId) {
+            this.gardenHose.publish({
+              kind: "equip",
+              ...current,
+              operation: "equip",
+              authority: "ecs",
+            });
+          }
+        }
+        for (const [wearableKey, previous] of this.previousWearing) {
+          if (!currentWearing.has(wearableKey)) {
+            this.gardenHose.publish({
+              kind: "equip",
+              ...previous,
+              operation: "unequip",
+              authority: "ecs",
+            });
+          }
+        }
+        this.previousWearing = currentWearing;
+      },
+      "/ecs/c/wearing",
       this.userId
     );
 

@@ -2,6 +2,7 @@ import { harthmereLocalStorage } from "@/client/util/storage";
 import {
   downHarthmerePlayerFromSystem,
   endHarthmereRespawnProtection,
+  reconcileHarthmereCombatStateFromLiveStatus,
   releaseHarthmerePlayerSpirit,
   respawnHarthmerePlayer,
   reviveHarthmerePlayer,
@@ -35,6 +36,7 @@ import {
   type BiomesUIPlayerStatusSnapshot,
   useBiomesUIPlayerStatusState,
 } from "@/client/components/biomes_ui/adapters/playerStatusAdapter";
+import { harthmereLiveServerAuthoritative } from "@/client/components/challenges/harthmereLiveAuthoritySignal";
 import { defaultHarthmereLiveFetch } from "@/client/components/harthmere_live_fetch";
 import { fireAndForget } from "@/shared/util/async";
 import React, { useEffect, useMemo, useState } from "react";
@@ -374,6 +376,14 @@ export function harthmereActiveRespawnProtectionSuppressesDeathSyncForTest(input
   );
 }
 
+export function harthmereLocalDeathFallbackAllowedForTest(input: {
+  serverAuthoritative: boolean;
+  nowMs: number;
+  graceUntilMs: number;
+}) {
+  return !input.serverAuthoritative && input.nowMs >= input.graceUntilMs;
+}
+
 export function harthmereDeathScreenShouldRenderForTest(input: {
   death: HarthmereDeathState;
   effectiveDeath: HarthmereDeathState;
@@ -406,6 +416,7 @@ export function harthmereLivePlayerDeathSyncSummaryForTest(
     );
   return {
     hp: liveHp,
+    maxHp: finiteNumberOrUndefined(status?.combat?.maxHp),
     deathState: liveDeathState,
     dead,
     alive,
@@ -415,6 +426,13 @@ export function harthmereLivePlayerDeathSyncSummaryForTest(
 export type HarthmereDeathSyncAction =
   | { kind: "none" }
   | { kind: "clear"; detail: string }
+  | {
+      kind: "recover";
+      hp: number;
+      maxHp?: number;
+      deathState: string;
+      detail: string;
+    }
   | { kind: "pose"; state: HarthmereDeathStateName }
   | {
       kind: "down";
@@ -523,19 +541,17 @@ export function harthmereLivePlayerDeathSyncActionForTest(input: {
   }
 
   if (live.alive) {
-    if (localCombatDead) {
-      if (HARTHMERE_DEATH_LOCKED_STATES.has(input.currentDeathState)) {
-        return { kind: "pose", state: input.currentDeathState };
-      }
+    if (
+      localCombatDead ||
+      HARTHMERE_DEATH_LOCKED_STATES.has(input.currentDeathState)
+    ) {
       return {
-        kind: "down",
-        cause: "HP reached zero",
-        killerName: "Combat",
-        abilityName: "HP Zero Death Check",
-        damage: Math.max(1, Math.trunc(Number(input.localMaxHp ?? 100))),
-        damageType: "combat",
+        kind: "recover",
+        hp: Math.max(1, Math.round(live.hp ?? 1)),
+        maxHp: live.maxHp,
+        deathState: live.deathState,
         detail:
-          "Your HP reached zero. Respawn at The Grove or wait for a revive.",
+          "Live player status is alive; repaired stale local combat and death state.",
       };
     }
 
@@ -805,6 +821,7 @@ export const HarthmereDeathRuntimeController: React.FunctionComponent<{}> =
     const death = useHarthmereDeathState();
     const combat = useHarthmereCombatState();
     const liveStatus = useBiomesUIPlayerStatusState();
+    const localDeathFallbackGraceUntil = React.useRef(Date.now() + 10_000);
 
     const syncLivePlayerStatusToDeath = React.useCallback(
       (status: BiomesUIPlayerStatusSnapshot | undefined) => {
@@ -827,6 +844,14 @@ export const HarthmereDeathRuntimeController: React.FunctionComponent<{}> =
             damageType: action.damageType,
             detail: action.detail,
           });
+        } else if (action.kind === "recover") {
+          reconcileHarthmereCombatStateFromLiveStatus({
+            hp: action.hp,
+            maxHp: action.maxHp,
+            deathState: action.deathState,
+          });
+          clearHarthmereDeathState(action.detail);
+          dispatchHarthmerePlayerDeathPose(false, "alive");
         } else if (action.kind === "clear") {
           clearHarthmereDeathState(action.detail);
           dispatchHarthmerePlayerDeathPose(false, "alive");
@@ -844,6 +869,12 @@ export const HarthmereDeathRuntimeController: React.FunctionComponent<{}> =
       const onLivePlayerStatus = (event: Event) => {
         const status = (event as CustomEvent<BiomesUIPlayerStatusSnapshot>)
           .detail;
+        if (
+          (status as BiomesUIPlayerStatusSnapshot & { version?: string })
+            ?.version === "harthmere-local-combat-player-status"
+        ) {
+          return;
+        }
         syncLivePlayerStatusToDeath(status);
       };
       window.addEventListener(
@@ -876,6 +907,11 @@ export const HarthmereDeathRuntimeController: React.FunctionComponent<{}> =
           });
         if (
           combatDead &&
+          harthmereLocalDeathFallbackAllowedForTest({
+            serverAuthoritative: harthmereLiveServerAuthoritative(now),
+            nowMs: now,
+            graceUntilMs: localDeathFallbackGraceUntil.current,
+          }) &&
           !suppressStaleRespawnDeath &&
           !HARTHMERE_DEATH_LOCKED_STATES.has(latest.state)
         ) {
@@ -999,11 +1035,13 @@ export const HarthmereDeathScreenOverlay: React.FunctionComponent<{}> = () => {
     liveDeathState: live.deathState,
   });
   const downedSeconds = secondsRemaining(effectiveDeath.downedUntil);
-  const active = harthmereDeathScreenShouldRenderForTest({
-    death,
-    effectiveDeath,
-    wakeUpActive: isHarthmereWakeUpScreenActive(),
-  });
+  const active =
+    !live.alive &&
+    harthmereDeathScreenShouldRenderForTest({
+      death,
+      effectiveDeath,
+      wakeUpActive: isHarthmereWakeUpScreenActive(),
+    });
 
   if (!active) {
     return <></>;

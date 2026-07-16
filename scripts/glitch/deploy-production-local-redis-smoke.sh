@@ -1604,6 +1604,8 @@ run_build_checks() {
 }
 
 build_artifacts() {
+  local build_id
+  build_id="$(git rev-parse HEAD)"
   log "Building Next client for production origin: $PROD_ORIGIN"
   reset_build_outputs_preserving_caches
   GLITCH_RUNTIME=1 \
@@ -1620,15 +1622,22 @@ build_artifacts() {
   NEXT_PUBLIC_BIOMES_SNAPSHOT_MERGE_MODE=1 \
   NEXT_PUBLIC_BIOMES_SNAPSHOT_RICH_NPC_APPEARANCE=1 \
   GLITCH_ENABLE_SNAPSHOT_ASSET_SERVER=1 \
+  BIOMES_BUILD_ID="$build_id" \
   NODE_ENV=production \
   NEXT_TELEMETRY_DISABLED=1 \
   NODE_OPTIONS="--openssl-legacy-provider" \
   ./node_modules/.bin/next build
 
   log "Building server bundles with webpack."
+  BIOMES_BUILD_ID="$build_id" \
   NODE_ENV=production \
   NODE_OPTIONS="--openssl-legacy-provider" \
   ./node_modules/.bin/webpack --config server.webpack.config.cjs --mode production
+
+  # Retain private/server maps for debugging, but never package browser maps
+  # into the public production image.
+  find .next/static -type f -name '*.map' -delete
+  rm -f public/sw.js.map
 
   node scripts/glitch/repair-next-pages-manifest.cjs .
   node scripts/glitch/assert-glitch-build-artifacts-current.cjs .

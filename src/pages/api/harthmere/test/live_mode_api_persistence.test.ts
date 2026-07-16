@@ -736,6 +736,48 @@ describe("live_mode API Redis persistence", () => {
     );
   });
 
+  it("serves legacy bible reads without entering transactional persistence", async () => {
+    const redisPrimary = new FakeRedisPrimary();
+    (globalThis as any).__harthmereLiveModeRedis = {
+      primary: redisPrimary,
+    };
+    const env: HarthmereLiveModeAuthorityEnvelope = {
+      ...envelope(),
+      requestId: "legacy-bible-read",
+      idempotencyKey: "legacy-bible-read",
+      actionKind: "request_quest_state_update",
+      subsystem: "quest",
+      source: "client_request",
+      payload: { operation: "bible_quest_read" },
+    };
+    const persisted = await persistHarthmereLiveModeResponse(
+      env,
+      {
+        ok: true,
+        version: "HARTHMERE_LIVE_MODE_SERVER_ROUTE" as const,
+        actorId: ACTOR,
+        duplicate: false,
+        replayed: false,
+        persisted: true,
+        validation: {
+          ok: true,
+          errors: [],
+          warnings: [],
+          rejectedClientClaims: [],
+        },
+        mutationPlan: buildHarthmereLiveModePersistenceMutationPlan(env),
+        events: [],
+        uiEvents: [],
+      },
+      { logicApi: { publish: async () => {} } as any, userId: 1 as any }
+    );
+
+    assert.equal(persisted.persisted, false);
+    assert.ok(persisted.questState);
+    assert.deepEqual(redisPrimary.watched, []);
+    assert.deepEqual(redisPrimary.txOps, []);
+  });
+
   it("preserves fresher status channels when a non-status mutation reduces stale state", () => {
     const current = defaultHarthmereLiveModeBackendState(ACTOR, NOW_MS);
     current.updatedAtMs = NOW_MS;

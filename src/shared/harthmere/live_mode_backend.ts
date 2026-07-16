@@ -5,6 +5,7 @@ import type {
 } from "./live_mode_readiness";
 import { fallDamageForBlocks } from "@/shared/game/fall_damage";
 import { anItem } from "@/shared/game/item";
+import { BikkieIds } from "@/shared/bikkie/ids";
 import { safeParseBiomesId } from "@/shared/ids";
 import {
   reduceHarthmereInventoryMutation,
@@ -107,6 +108,8 @@ import {
   type HarthmereJobsBoardState,
 } from "./mmo_jobs_board_authority";
 import { isKnownHarthmereJobsBoardExecutableItemId } from "./jobs_board_business_templates";
+import { SNAPSHOT_GROVE_QUESTS } from "./snapshot_grove_content";
+import { snapshotGroveTutorialInventoryGrantsForQuest } from "./snapshot_grove_trigger_contract";
 // HARTHMERE_BIBLE_QUEST_WIRING (bible-wiring fix, 2026-07-14): the seam that
 // makes the 85-quest bible catalog (Q1–Q12 dragon arc + side quests) playable
 // through live mode, and drives the Thaedryn encounter. See the header of
@@ -116,6 +119,7 @@ import {
   HARTHMERE_THAEDRYN_COMBAT_ENTITY_ID,
   defaultHarthmereBibleQuestLiveSlice,
   harthmereBibleRewardItemDefinition,
+  harthmereBibleObjectiveItemDefinition,
   harthmereThaedrynCombatSnapshot,
   harthmereThaedrynDamageEventsForAttack,
   normalizeHarthmereBibleQuestLiveSlice,
@@ -1063,6 +1067,7 @@ export interface HarthmereLiveModeBackendState {
     items: Record<string, number>;
     bank: Record<string, number>;
     equipment: Record<string, string>;
+    equipmentInstances: Record<string, string>;
     overflow: Array<{ itemId: string; count: number; reason: string }>;
     gold: number;
     /** Items held in auction escrow — cannot be traded, equipped, or double-listed */
@@ -2564,44 +2569,6 @@ function nativePlantHarvestSeedDefinition(
   });
 }
 
-const HARTHMERE_LOCAL_EQUIPMENT_MIRROR_ITEM_IDS = new Set([
-  "training_dagger",
-  "iron_longsword",
-  "woodsman_axe",
-  "two_handed_sword",
-  "wooden_shield",
-  "patched_cloak",
-  "baker_apron",
-  "field_trousers",
-  "repair_mallet",
-  "muck_rake",
-]);
-
-function shouldMirrorLocalHarthmereEquipmentClaim(
-  envelope: HarthmereLiveModeAuthorityEnvelope,
-  itemId: string | undefined,
-  snapshot: HarthmereInventorySnapshot
-) {
-  if (!itemId || (snapshot.items[itemId] ?? 0) > 0) {
-    return false;
-  }
-  if (
-    envelope.clientClaims?.source !== "biomes_ui_local_harthmere_item_equip"
-  ) {
-    return false;
-  }
-  const def = getHarthmereItemDefinition(itemId);
-  return Boolean(
-    HARTHMERE_LOCAL_EQUIPMENT_MIRROR_ITEM_IDS.has(itemId) &&
-      def &&
-      !def.isCurrency &&
-      !def.isQuestItem &&
-      !def.isCraftingMaterial &&
-      !def.isConsumable &&
-      !def.isSpellTome
-  );
-}
-
 function sendLiveModeRewardToOverflow(
   state: HarthmereLiveModeBackendState,
   itemId: string | undefined,
@@ -3222,6 +3189,7 @@ function dynamicBiomesBikkieLiveModeItemDefinition(
     item = undefined;
   }
   const resolvedAsItem = item !== undefined;
+  const isCamera = biomesId === BikkieIds.camera;
   // When the biscuit could not be resolved as an item at all, treat the mined
   // `b:<id>` as a block (that is where these unknown ids come from) so it still
   // grants as a stackable material rather than being dropped.
@@ -3229,13 +3197,14 @@ function dynamicBiomesBikkieLiveModeItemDefinition(
   const stackable = Number(item?.stackable ?? (isBlock ? 99n : 1n));
   const def: HarthmereItemDefinition = {
     itemId: canonicalItemId,
-    displayName:
-      typeof item?.displayName === "string" &&
-      item.displayName.trim().length > 0
-        ? item.displayName
-        : isBlock
-        ? `Biomes Block ${biomesId}`
-        : `Biomes Item ${biomesId}`,
+    displayName: isCamera
+      ? "Camera"
+      : typeof item?.displayName === "string" &&
+        item.displayName.trim().length > 0
+      ? item.displayName
+      : isBlock
+      ? `Biomes Block ${biomesId}`
+      : `Biomes Item ${biomesId}`,
     description: isBlock
       ? "A mined Biomes voxel block saved from the world."
       : "A Biomes item saved from the world.",
@@ -3254,7 +3223,8 @@ function dynamicBiomesBikkieLiveModeItemDefinition(
     classRestriction: [],
     stats: {},
     tradeable: true,
-    category: isBlock ? "materials" : "item",
+    category: isBlock ? "materials" : isCamera ? "tool" : "item",
+    equipmentSlots: isCamera ? ["main_hand"] : undefined,
     weight: isBlock ? 1 : undefined,
     objectMetadata: isBlock
       ? {
@@ -5983,6 +5953,7 @@ export function defaultHarthmereLiveModeBackendState(
       items: {},
       bank: {},
       equipment: {},
+      equipmentInstances: {},
       overflow: [],
       gold: 0,
       escrow: {},
@@ -6806,6 +6777,7 @@ export function createHarthmereInventoryLootClientSnapshotFromBackend(
         items: { ...state.inventory.items },
         bank: { ...state.inventory.bank },
         equipment: { ...state.inventory.equipment },
+        equipmentInstances: { ...state.inventory.equipmentInstances },
       });
   } else {
     const actor = state.inventoryLoot.actors[state.actorId];
@@ -6813,6 +6785,7 @@ export function createHarthmereInventoryLootClientSnapshotFromBackend(
     actor.items = { ...state.inventory.items };
     actor.bank = { ...state.inventory.bank };
     actor.equipment = { ...state.inventory.equipment };
+    actor.equipmentInstances = { ...state.inventory.equipmentInstances };
   }
   return {
     ...createHarthmereInventoryLootClientSnapshot(
@@ -7478,6 +7451,31 @@ export function reduceHarthmereLiveModeBackendState(
         : abilityId && knownAbilities.includes(abilityId)
         ? [abilityId]
         : [];
+    const equipmentStats = Object.values(next.inventory.equipment).reduce(
+      (totals, itemId) => {
+        const stats = getHarthmereItemDefinition(itemId)?.stats ?? {};
+        totals.attack += Math.max(
+          0,
+          Number(
+            stats.attackPoints ??
+              stats.attack ??
+              stats.rangedAttack ??
+              stats.damage ??
+              0
+          ) || 0
+        );
+        totals.spell += Math.max(
+          0,
+          Number(stats.spellPower ?? stats.magicPower ?? 0) || 0
+        );
+        totals.armor += Math.max(
+          0,
+          Number(stats.armor ?? stats.defense ?? 0) || 0
+        );
+        return totals;
+      },
+      { attack: 0, spell: 0, armor: 0 }
+    );
     return {
       actorId: next.actorId,
       classId: next.classMagic.classId ?? "warrior",
@@ -7499,6 +7497,9 @@ export function reduceHarthmereLiveModeBackendState(
       // always passed or always failed regardless of what was held).
       mainHandWeaponType: harthmereMainHandWeaponType(next.inventory.equipment),
       offHandWeaponType: harthmereOffHandWeaponType(next.inventory.equipment),
+      attackPowerBonus: equipmentStats.attack,
+      spellPowerBonus: equipmentStats.spell,
+      armorRating: equipmentStats.armor,
       deathState: next.combat.deathState ?? "alive",
       position: actorWorldPositionFromAuthority(envelope) ?? {
         x: 0,
@@ -7986,10 +7987,15 @@ export function reduceHarthmereLiveModeBackendState(
 
     // Ambient wildlife use a flat, size-scaled hit (cow > sheep > rabbit)
     // instead of the level-derived combat formula.
-    const damage = Math.max(
+    const rawDamage = Math.max(
       0,
       Math.trunc(Number(npcSnapshot.attackDamage ?? combatResult.damage ?? 0))
     );
+    const armorRating = buildActorSnapshot().armorRating ?? 0;
+    const damage =
+      rawDamage > 0
+        ? Math.max(1, Math.round((rawDamage * 100) / (100 + armorRating)))
+        : 0;
     if (damage > 0) {
       next.combat.hp = Math.max(0, playerHpBefore - damage);
       npcSnapshot.lastAiAttackAtMs = nowMs;
@@ -8270,6 +8276,7 @@ export function reduceHarthmereLiveModeBackendState(
       existing.items = { ...next.inventory.items };
       existing.bank = { ...next.inventory.bank };
       existing.equipment = { ...next.inventory.equipment };
+      existing.equipmentInstances = { ...next.inventory.equipmentInstances };
       return;
     }
     next.inventoryLoot.actors[next.actorId] = createHarthmereInventoryLootActor(
@@ -8279,6 +8286,7 @@ export function reduceHarthmereLiveModeBackendState(
         items: { ...next.inventory.items },
         bank: { ...next.inventory.bank },
         equipment: { ...next.inventory.equipment },
+        equipmentInstances: { ...next.inventory.equipmentInstances },
       }
     );
   }
@@ -8453,6 +8461,7 @@ export function reduceHarthmereLiveModeBackendState(
     next.inventory.items = { ...actor.items };
     next.inventory.bank = { ...actor.bank };
     next.inventory.equipment = { ...actor.equipment };
+    next.inventory.equipmentInstances = { ...actor.equipmentInstances };
   }
 
   function liveEntityKindForSnapshot(
@@ -9464,17 +9473,61 @@ export function reduceHarthmereLiveModeBackendState(
     case "request_equipment_change": {
       const slot = payloadString(envelope, "slot") ?? "main_hand";
       const itemId = payloadString(envelope, "itemId");
+      const instanceId = payloadString(envelope, "instanceId");
+      ensureInventoryLootActorSynced();
+      const lootActor = next.inventoryLoot.actors[next.actorId];
+      const currentInstanceId = next.inventory.equipmentInstances[slot];
+      const currentInstance = currentInstanceId
+        ? next.inventoryLoot.itemInstances[currentInstanceId]
+        : undefined;
       let snapshot = buildInventorySnapshot();
       if (itemId) {
         ensureLiveModeItemDefinition(itemId, snapshot);
       }
-      if (
-        shouldMirrorLocalHarthmereEquipmentClaim(envelope, itemId, snapshot)
-      ) {
-        recordDelta(next.inventory.items, itemId!, 1);
-        snapshot = buildInventorySnapshot();
-        warnings.push(`equipment_mirrored_local_item:${itemId}`);
-        touchedModels.add("inventory_items");
+
+      const requestedInstance = instanceId
+        ? next.inventoryLoot.itemInstances[instanceId]
+        : undefined;
+      if (instanceId) {
+        if (!itemId || !requestedInstance) {
+          warnings.push("equipment_rejected:unknown_instance_id");
+          touchedModels.add("equipment_rejection");
+          break;
+        }
+        if (
+          requestedInstance.itemId !== itemId ||
+          requestedInstance.ownerKind !== "actor" ||
+          requestedInstance.ownerId !== next.actorId ||
+          requestedInstance.location !== "actor_inventory" ||
+          !lootActor?.instanceIds.includes(instanceId)
+        ) {
+          warnings.push("equipment_rejected:instance_not_owned");
+          touchedModels.add("equipment_rejection");
+          break;
+        }
+        if (requestedInstance.broken) {
+          warnings.push("equipment_rejected:item_broken");
+          touchedModels.add("equipment_rejection");
+          break;
+        }
+        // The shared reducer validates this unique item with a temporary count.
+        // Applying its -1 delta returns the stack map to its original value.
+        snapshot = {
+          ...snapshot,
+          items: {
+            ...snapshot.items,
+            [itemId]: (snapshot.items[itemId] ?? 0) + 1,
+          },
+        };
+      }
+      // A currently equipped unique instance is not a stack. Exclude it from
+      // the reducer's swap accounting; it is returned to instanceIds on commit.
+      if (currentInstanceId && itemId) {
+        snapshot = {
+          ...snapshot,
+          equipment: { ...snapshot.equipment },
+        };
+        delete snapshot.equipment[slot];
       }
       const invReq: HarthmereInventoryMutationRequest = {
         requestId: envelope.requestId,
@@ -9497,6 +9550,53 @@ export function reduceHarthmereLiveModeBackendState(
           snapshot,
           invResult
         );
+        if (!itemId && currentInstance?.itemId) {
+          const restoredCount = Math.max(
+            0,
+            (updated.items[currentInstance.itemId] ?? 0) - 1
+          );
+          if (restoredCount > 0) {
+            updated.items[currentInstance.itemId] = restoredCount;
+          } else {
+            delete updated.items[currentInstance.itemId];
+          }
+        }
+        const projectedInstanceCount =
+          (lootActor?.instanceIds.length ?? 0) +
+          (currentInstanceId ? 1 : 0) -
+          (instanceId ? 1 : 0);
+        if (
+          Object.keys(updated.items).length + projectedInstanceCount >
+          (lootActor?.maxInventorySlots ?? 40)
+        ) {
+          warnings.push("equipment_rejected:inventory_full");
+          touchedModels.add("equipment_rejection");
+          break;
+        }
+
+        if (currentInstanceId && currentInstance && lootActor) {
+          if (!lootActor.instanceIds.includes(currentInstanceId)) {
+            lootActor.instanceIds.push(currentInstanceId);
+          }
+          currentInstance.location = "actor_inventory";
+          currentInstance.slot = undefined;
+          currentInstance.updatedAtMs = nowMs;
+        }
+        if (instanceId && requestedInstance && lootActor) {
+          lootActor.instanceIds = lootActor.instanceIds.filter(
+            (candidate) => candidate !== instanceId
+          );
+          requestedInstance.location = "actor_equipment";
+          requestedInstance.slot = slot;
+          requestedInstance.updatedAtMs = nowMs;
+          const def = getHarthmereItemDefinition(requestedInstance.itemId);
+          if (def?.binding === "on_equip") {
+            requestedInstance.boundToActorId = next.actorId;
+          }
+          next.inventory.equipmentInstances[slot] = instanceId;
+        } else {
+          delete next.inventory.equipmentInstances[slot];
+        }
         next.inventory.items = updated.items;
         next.inventory.gold = updated.gold;
         next.inventory.escrow = updated.escrow;
@@ -9504,14 +9604,16 @@ export function reduceHarthmereLiveModeBackendState(
         next.banking.materialStorage =
           updated.materialStorage ?? next.banking.materialStorage;
         next.inventory.consumableCooldowns = updated.consumableCooldowns;
-        if (updated.equipment[slot]) {
-          next.classMagic.loadout[slot] = updated.equipment[slot];
-        } else {
-          delete next.classMagic.loadout[slot];
+        if (lootActor) {
+          lootActor.items = { ...updated.items };
+          lootActor.equipment = { ...updated.equipment };
+          lootActor.equipmentInstances = {
+            ...next.inventory.equipmentInstances,
+          };
         }
         touchedModels.add("inventory_items");
         touchedModels.add("equipment_slots");
-        touchedModels.add("loadout");
+        touchedModels.add("inventory_loot_instances");
         if (Object.keys(invResult.materialStorageDeltas ?? {}).length > 0) {
           touchedModels.add("material_storage");
         }
@@ -9531,6 +9633,8 @@ export function reduceHarthmereLiveModeBackendState(
         "destroy_item",
         "equip_item",
         "unequip_item",
+        "use_item",
+        "learn_spell_from_tome",
       ]);
       if (!operation || !allowed.has(operation as any)) {
         warnings.push("inventory_item_rejected:unsupported_operation");
@@ -9547,11 +9651,38 @@ export function reduceHarthmereLiveModeBackendState(
       // place-voxel mirror to debit a placed block must register the same
       // definition or the reducer rejects it as `unknown_item_id` and the count
       // never decrements (this is why placed blocks did not drop from the HUD).
-      if (
-        itemActionItemId &&
-        (kind === "destroy_item" || kind === "drop_item")
-      ) {
+      if (itemActionItemId) {
         ensureLiveModeItemDefinition(itemActionItemId, snapshot);
+      }
+      const itemActionDefinition = itemActionItemId
+        ? getHarthmereItemDefinition(itemActionItemId)
+        : undefined;
+      const reviveHealthPercent = Math.max(
+        0,
+        Number(itemActionDefinition?.stats.reviveHealthPercent ?? 0) || 0
+      );
+      const useHeal = Math.max(
+        0,
+        Number(itemActionDefinition?.stats.useHeal ?? 0) || 0
+      );
+      if (
+        kind === "use_item" &&
+        reviveHealthPercent > 0 &&
+        (next.combat.deathState ?? "alive") === "alive" &&
+        next.combat.hp > 0
+      ) {
+        warnings.push("inventory_item_rejected:revive_item_requires_death");
+        touchedModels.add("inventory_rejection");
+        break;
+      }
+      if (
+        kind === "use_item" &&
+        useHeal > 0 &&
+        ((next.combat.deathState ?? "alive") !== "alive" || next.combat.hp <= 0)
+      ) {
+        warnings.push("inventory_item_rejected:healing_item_requires_alive");
+        touchedModels.add("inventory_rejection");
+        break;
       }
       const invReq: HarthmereInventoryMutationRequest = {
         requestId: envelope.requestId,
@@ -9560,7 +9691,12 @@ export function reduceHarthmereLiveModeBackendState(
         nowMs,
         itemId: itemActionItemId,
         count:
-          kind === "drop_item" || kind === "destroy_item" ? count ?? 1 : count,
+          kind === "drop_item" ||
+          kind === "destroy_item" ||
+          kind === "use_item" ||
+          kind === "learn_spell_from_tome"
+            ? count ?? 1
+            : count,
         sourceSlot: payloadString(envelope, "sourceSlot"),
         targetSlot:
           payloadString(envelope, "targetSlot") ??
@@ -9583,8 +9719,31 @@ export function reduceHarthmereLiveModeBackendState(
         next.inventory.escrow = updated.escrow;
         next.inventory.equipment = updated.equipment;
         next.inventory.consumableCooldowns = updated.consumableCooldowns;
+        next.classMagic.knownAbilities = updated.knownAbilities;
+        next.classMagic.knownRecipes = updated.knownRecipes;
         next.banking.materialStorage =
           updated.materialStorage ?? next.banking.materialStorage;
+        if (kind === "use_item" && reviveHealthPercent > 0) {
+          next.combat.hp = Math.max(
+            1,
+            Math.min(
+              next.combat.maxHp,
+              Math.ceil(next.combat.maxHp * reviveHealthPercent)
+            )
+          );
+          next.combat.deathState = "alive";
+          next.combat.deadFromStaminaAtMs = undefined;
+          next.combat.lastStaminaTickMs = nowMs;
+          next.combat.respawnProtectionUntilMs = nowMs + 3_000;
+          touchedModels.add("death_state");
+          touchedModels.add("respawn_protection");
+        } else if (kind === "use_item" && useHeal > 0) {
+          next.combat.hp = Math.min(
+            next.combat.maxHp,
+            next.combat.hp + useHeal * (invReq.count ?? 1)
+          );
+          touchedModels.add("health");
+        }
         touchedModels.add("inventory_items");
         touchedModels.add("player_status");
         if (Object.keys(invResult.materialStorageDeltas ?? {}).length > 0) {
@@ -9592,6 +9751,10 @@ export function reduceHarthmereLiveModeBackendState(
         }
         if (Object.keys(invResult.equipmentChanges ?? {}).length > 0) {
           touchedModels.add("equipment_slots");
+        }
+        if (invResult.newAbilityIds.length > 0) {
+          touchedModels.add("known_abilities");
+          touchedModels.add("class_magic_progression");
         }
         // HARTHMERE_WORLD_THROW_DROP (audit fix, 2026-07-13): a drop_item with
         // a world position is a THROW — after the debit above succeeds, create
@@ -11799,6 +11962,42 @@ export function reduceHarthmereLiveModeBackendState(
           break;
         }
         next.quests.bible = result.slice;
+        if (result.objectiveItemGrant) {
+          const grant = result.objectiveItemGrant;
+          if (!getHarthmereItemDefinition(grant.itemId)) {
+            registerHarthmereItemDefinition(
+              harthmereBibleObjectiveItemDefinition(grant)
+            );
+          }
+          ensureInventoryLootActorSynced();
+          const lootActor = next.inventoryLoot.actors[next.actorId];
+          const stackSlotLimit = Math.max(
+            0,
+            (lootActor?.maxInventorySlots ?? 40) -
+              (lootActor?.instanceIds.length ?? 0)
+          );
+          if (
+            bankRecordHasCapacity(
+              next.inventory.items,
+              grant.itemId,
+              stackSlotLimit
+            )
+          ) {
+            recordDelta(next.inventory.items, grant.itemId, grant.count);
+            if (lootActor) {
+              lootActor.items = { ...next.inventory.items };
+            }
+            touchedModels.add("inventory_items");
+          } else {
+            next.inventory.overflow.push({
+              itemId: grant.itemId,
+              count: grant.count,
+              reason: "quest_objective_inventory_full",
+            });
+            warnings.push(`quest_item_sent_to_overflow:${grant.itemId}`);
+            touchedModels.add("inventory_overflow");
+          }
+        }
         // Journal mirror: the map/journal adapters read quests.active /
         // quests.completed, so bible quests surface with zero adapter work.
         if (result.activeMirror) {
@@ -12200,11 +12399,85 @@ export function reduceHarthmereLiveModeBackendState(
           next.quests.completed[questId] = nowMs;
           delete next.quests.active[questId];
         } else {
+          const questSource = payloadString(envelope, "source");
+          if (questSource === "snapshot_grove") {
+            const authoredQuest = SNAPSHOT_GROVE_QUESTS.find(
+              (quest) => quest.id === questId
+            );
+            if (!authoredQuest) {
+              warnings.push("snapshot_grove_quest_rejected:unknown_quest");
+              touchedModels.add("quest_state_rejection");
+              break;
+            }
+            const firstAcceptance =
+              next.quests.active[questId] === undefined &&
+              next.quests.completed[questId] === undefined;
+            if (firstAcceptance) {
+              ensureInventoryLootActorSynced();
+              const lootActor = next.inventoryLoot.actors[next.actorId];
+              for (const grant of snapshotGroveTutorialInventoryGrantsForQuest(
+                authoredQuest
+              )) {
+                const definition = ensureLiveModeItemDefinition(
+                  grant.itemId,
+                  buildInventorySnapshot()
+                );
+                if (!definition) {
+                  warnings.push(
+                    `snapshot_grove_item_grant_skipped:unknown_item:${grant.itemId}`
+                  );
+                  continue;
+                }
+                const alreadyEquipped = Object.values(
+                  next.inventory.equipment
+                ).includes(grant.itemId);
+                const grantCount =
+                  grant.trigger === "inventory_change" &&
+                  ((next.inventory.items[grant.itemId] ?? 0) > 0 ||
+                    alreadyEquipped)
+                    ? 0
+                    : grant.quantity;
+                if (grantCount <= 0) continue;
+                const stackSlotLimit = Math.max(
+                  0,
+                  (lootActor?.maxInventorySlots ?? 40) -
+                    (lootActor?.instanceIds.length ?? 0)
+                );
+                if (
+                  !bankRecordHasCapacity(
+                    next.inventory.items,
+                    grant.itemId,
+                    stackSlotLimit
+                  )
+                ) {
+                  next.inventory.overflow.push({
+                    itemId: grant.itemId,
+                    count: grantCount,
+                    reason: "snapshot_grove_starter_inventory_full",
+                  });
+                  warnings.push(
+                    `snapshot_grove_item_sent_to_overflow:${grant.itemId}`
+                  );
+                  touchedModels.add("inventory_overflow");
+                  continue;
+                }
+                recordDelta(next.inventory.items, grant.itemId, grantCount);
+                touchedModels.add("inventory_items");
+              }
+              if (lootActor) {
+                lootActor.items = { ...next.inventory.items };
+              }
+            }
+          }
           next.quests.active[questId] = {
             stepId: payloadString(envelope, "stepId"),
             progress: Math.max(0, payloadNumber(envelope, "progress") ?? 1),
-            source: payloadString(envelope, "source"),
-            title: payloadString(envelope, "title"),
+            source: questSource,
+            title:
+              questSource === "snapshot_grove"
+                ? SNAPSHOT_GROVE_QUESTS.find((quest) => quest.id === questId)
+                    ?.title
+                : payloadString(envelope, "title"),
           };
         }
         touchedModels.add("quest_state");
@@ -15064,8 +15337,7 @@ export function reduceHarthmereLiveModeBackendState(
           });
           if (authorityResult.warnings.length === 0) {
             // (foraging fix F-D, 2026-07-14): weight-gate the gathered seed.
-            const seedYield =
-              authorityResult.inventoryDeltas[seedItemId] ?? 1;
+            const seedYield = authorityResult.inventoryDeltas[seedItemId] ?? 1;
             if (
               wouldExceedCarryWeight(
                 next.inventory.items,
@@ -15115,7 +15387,11 @@ export function reduceHarthmereLiveModeBackendState(
           // read as depleted forever).
           const forageItemId =
             payloadString(envelope, "itemId") ?? "wild_berries";
-          const forageClaimAtMs = wildSpawnActiveClaimAtMs(next, spawnId, nowMs);
+          const forageClaimAtMs = wildSpawnActiveClaimAtMs(
+            next,
+            spawnId,
+            nowMs
+          );
           authority = liveFarmingAuthorityState({
             [spawnId]: {
               spawnId,

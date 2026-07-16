@@ -54,6 +54,7 @@ import { safeParseBiomesId } from "@/shared/ids";
 import { resolveBinaryAttribute } from "@/shared/util/dye_helpers";
 import {
   HARTHMERE_INVENTORY_EVENT,
+  HARTHMERE_LIVE_EQUIPMENT_EVENT,
   HARTHMERE_LIVE_INVENTORY_SYNC_EVENT,
   HARTHMERE_VENDOR_TRADE_CLOSE_TALK_EVENT,
 } from "@/client/components/challenges/harthmereEvents";
@@ -2309,12 +2310,15 @@ function inventoryEvent(state?: HarthmereInventoryState) {
 // ---------------------------------------------------------------------------
 
 let lastKnownHarthmereLiveInventoryItems: Record<string, number> = {};
+let lastKnownHarthmereLiveEquipment: Record<string, string> = {};
+let lastKnownHarthmereLiveEquipmentInstances: Record<string, string> = {};
 
 // Record the actor item counts from a live-mode response body (mutation or
 // read). Accepts the standard `inventoryLootState.actor.items` shape and
 // ignores anything else, so it is safe to call with any response.
 export function recordHarthmereLiveInventoryItemsSnapshot(body: unknown) {
-  const items = (body as any)?.inventoryLootState?.actor?.items;
+  const actor = (body as any)?.inventoryLootState?.actor;
+  const items = actor?.items;
   if (!items || typeof items !== "object" || Array.isArray(items)) return;
   const next: Record<string, number> = {};
   for (const [itemId, count] of Object.entries(
@@ -2324,6 +2328,27 @@ export function recordHarthmereLiveInventoryItemsSnapshot(body: unknown) {
     if (safeCount > 0) next[itemId] = safeCount;
   }
   lastKnownHarthmereLiveInventoryItems = next;
+  lastKnownHarthmereLiveEquipment = Object.fromEntries(
+    Object.entries(actor?.equipment ?? {}).filter(
+      ([slot, itemId]) =>
+        typeof slot === "string" &&
+        slot.length > 0 &&
+        typeof itemId === "string" &&
+        itemId.length > 0
+    )
+  ) as Record<string, string>;
+  lastKnownHarthmereLiveEquipmentInstances = Object.fromEntries(
+    Object.entries(actor?.equipmentInstances ?? {}).filter(
+      ([slot, instanceId]) =>
+        typeof slot === "string" &&
+        slot.length > 0 &&
+        typeof instanceId === "string" &&
+        instanceId.length > 0
+    )
+  ) as Record<string, string>;
+  if (isBrowser()) {
+    window.dispatchEvent(new Event(HARTHMERE_LIVE_EQUIPMENT_EVENT));
+  }
 }
 
 // How many of `itemId` the live server last reported the player owning.
@@ -2335,9 +2360,18 @@ export function readHarthmereLiveInventoryItemCount(itemId: string): number {
   );
 }
 
+export function readHarthmereLiveEquipmentSnapshot() {
+  return {
+    equipment: { ...lastKnownHarthmereLiveEquipment },
+    equipmentInstances: { ...lastKnownHarthmereLiveEquipmentInstances },
+  };
+}
+
 // Test-only reset so unit tests can isolate snapshots.
 export function resetHarthmereLiveInventoryItemsSnapshotForTest() {
   lastKnownHarthmereLiveInventoryItems = {};
+  lastKnownHarthmereLiveEquipment = {};
+  lastKnownHarthmereLiveEquipmentInstances = {};
 }
 
 function dispatchHarthmereLiveInventorySync(body: unknown) {

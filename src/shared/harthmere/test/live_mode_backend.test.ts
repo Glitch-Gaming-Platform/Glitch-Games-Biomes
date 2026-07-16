@@ -2021,6 +2021,71 @@ describe("reduceHarthmereLiveModeBackendState — combat target authority", func
     assert.equal(status.combat.resources.mana, 77);
   });
 
+  it("reduces incoming NPC damage using authoritative equipped armor", function () {
+    registerHarthmereItemDefinition({
+      itemId: "test_plate_armor",
+      displayName: "Test Plate Armor",
+      maxStackSize: 1,
+      baseValue: 0,
+      binding: "none",
+      isQuestItem: false,
+      isCurrency: false,
+      isConsumable: false,
+      isCraftingMaterial: false,
+      isSpellTome: false,
+      levelRequirement: 1,
+      classRestriction: [],
+      stats: { armor: 100 },
+      equipmentSlots: ["chest"],
+      tradeable: false,
+      category: "armor",
+    });
+    function playerDamage(equipped: boolean) {
+      const npcId = `armor-mitigation-hex-${equipped ? "armored" : "plain"}`;
+      const s = freshState();
+      s.combat.hp = 100;
+      s.combat.maxHp = 100;
+      if (equipped) {
+        s.inventory.equipment.chest = "test_plate_armor";
+      }
+      s.combat.entitySnapshots[npcId] = {
+        hp: 120,
+        maxHp: 120,
+        position: { x: 1, y: 0, z: 0 },
+        homePosition: { x: 1, y: 0, z: 0 },
+        isHostile: true,
+        isAlive: true,
+        isAttackable: true,
+        entityKind: "hex",
+        level: 1,
+        lastAttackerId: ACTOR,
+        lastAttackedAtMs: NOW_MS,
+        resources: { mana: 20 },
+        maxResources: { mana: 20 },
+      };
+      const result = applyOne(
+        s,
+        "request_npc_ai_tick",
+        { npcId, npcAbilityId: "npc_hex_swipe_test" },
+        {
+          source: "server_scheduled_tick",
+          subsystem: "npc_ai",
+          targetId: npcId,
+          serverActorPosition: { x: 1.5, y: 0, z: 0 },
+          requestId: `armor_mitigation_${equipped}`,
+          idempotencyKey: `armor_mitigation_${equipped}_key`,
+        }
+      );
+      return result.state.combat.npcAiTicks[npcId].playerDamage ?? 0;
+    }
+
+    const plainDamage = playerDamage(false);
+    const armoredDamage = playerDamage(true);
+    assert.ok(plainDamage > 0);
+    assert.ok(armoredDamage > 0);
+    assert.ok(armoredDamage < plainDamage);
+  });
+
   it("lets every mobile live entity family damage the player through NPC AI when in range", function () {
     this.timeout(60_000);
     for (const entry of LIVE_ENTITY_INTERACTION_CASES) {
@@ -5033,7 +5098,7 @@ describe("reduceHarthmereLiveModeBackendState — loot and inventory mutation", 
     assert.ok(result.summary.touchedModels.includes("equipment_slots"));
   });
 
-  it("mirrors trusted local Harthmere equipment before equipping when Cloud Save is missing the item", function () {
+  it("rejects client-only equipment claims when Cloud Save does not own the item", function () {
     const { state, summary } = applyOne(
       freshState(),
       "request_equipment_change",
@@ -5047,11 +5112,67 @@ describe("reduceHarthmereLiveModeBackendState — loot and inventory mutation", 
     );
 
     assert.equal(state.inventory.items.field_trousers ?? 0, 0);
-    assert.equal(state.inventory.equipment.legs, "field_trousers");
+    assert.equal(state.inventory.equipment.legs, undefined);
     assert.ok(
-      summary.warnings.includes("equipment_mirrored_local_item:field_trousers")
+      summary.warnings.includes("equipment_rejected:insufficient_item_count")
     );
-    assert.ok(summary.touchedModels.includes("equipment_slots"));
+    assert.ok(summary.touchedModels.includes("equipment_rejection"));
+  });
+
+  it("equips and unequips one durable item instance through the canonical live inventory", function () {
+    let s = freshState();
+    const instanceId = "instance_iron_sword_1";
+    s.inventoryLoot.actors[ACTOR] = createHarthmereInventoryLootActor(ACTOR, {
+      instanceIds: [instanceId],
+    });
+    s.inventoryLoot.itemInstances[instanceId] = {
+      instanceId,
+      itemId: "iron_sword",
+      quantity: 1,
+      ownerKind: "actor",
+      ownerId: ACTOR,
+      location: "actor_inventory",
+      createdAtMs: NOW_MS - 1_000,
+      updatedAtMs: NOW_MS - 1_000,
+      condition: 1,
+      durability: 120,
+      durabilityMax: 120,
+      quality: 1,
+      legalFlags: [],
+      upgradedLevel: 0,
+      enchantments: [],
+      contaminated: false,
+      broken: false,
+      audit: [],
+    };
+
+    let result = applyOne(s, "request_equipment_change", {
+      itemId: "iron_sword",
+      instanceId,
+      slot: "main_hand",
+    });
+    s = result.state;
+    assert.equal(s.inventory.equipment.main_hand, "iron_sword");
+    assert.equal(s.inventory.equipmentInstances.main_hand, instanceId);
+    assert.deepEqual(s.inventoryLoot.actors[ACTOR].instanceIds, []);
+    assert.equal(
+      s.inventoryLoot.itemInstances[instanceId].location,
+      "actor_equipment"
+    );
+    assert.equal(s.inventoryLoot.itemInstances[instanceId].slot, "main_hand");
+
+    result = applyOne(s, "request_equipment_change", {
+      slot: "main_hand",
+    });
+    s = result.state;
+    assert.equal(s.inventory.equipment.main_hand, undefined);
+    assert.equal(s.inventory.equipmentInstances.main_hand, undefined);
+    assert.deepEqual(s.inventoryLoot.actors[ACTOR].instanceIds, [instanceId]);
+    assert.equal(
+      s.inventoryLoot.itemInstances[instanceId].location,
+      "actor_inventory"
+    );
+    assert.equal(s.inventoryLoot.itemInstances[instanceId].slot, undefined);
   });
 
   it("rejects public request_inventory_mutation admin grants", function () {
@@ -5127,6 +5248,69 @@ describe("reduceHarthmereLiveModeBackendState — loot and inventory mutation", 
       !summary.warnings.includes("inventory_item_rejected:unknown_item_id")
     );
     assert.ok(summary.touchedModels.includes("inventory_items"));
+  });
+
+  it("uses server-authored item effects and learns spell tomes exactly once", function () {
+    let s = freshState();
+    s.combat.hp = 40;
+    s.inventory.items = { chapel_candle: 1, scroll_of_spark: 1 };
+
+    let result = applyOne(s, "request_inventory_item_action", {
+      operation: "use_item",
+      itemId: "chapel_candle",
+    });
+    s = result.state;
+    assert.equal(s.combat.hp, 58);
+    assert.equal(s.inventory.items.chapel_candle, undefined);
+    assert.ok(result.summary.touchedModels.includes("health"));
+
+    result = applyOne(s, "request_inventory_item_action", {
+      operation: "use_item",
+      itemId: "scroll_of_spark",
+    });
+    s = result.state;
+    assert.equal(s.inventory.items.scroll_of_spark, undefined);
+    assert.ok(s.classMagic.knownAbilities.includes("spark_rank_1"));
+
+    s.inventory.items.scroll_of_spark = 1;
+    result = applyOne(s, "request_inventory_item_action", {
+      operation: "use_item",
+      itemId: "scroll_of_spark",
+    });
+    assert.equal(result.state.inventory.items.scroll_of_spark, 1);
+    assert.ok(
+      result.summary.warnings.includes(
+        "inventory_item_rejected:spell_already_known"
+      )
+    );
+  });
+
+  it("uses a revival scroll only from a real server death state", function () {
+    let s = freshState();
+    s.inventory.items.field_revival_scroll = 1;
+
+    let result = applyOne(s, "request_inventory_item_action", {
+      operation: "use_item",
+      itemId: "field_revival_scroll",
+    });
+    assert.equal(result.state.inventory.items.field_revival_scroll, 1);
+    assert.ok(
+      result.summary.warnings.includes(
+        "inventory_item_rejected:revive_item_requires_death"
+      )
+    );
+
+    s = result.state;
+    s.combat.hp = 0;
+    s.combat.deathState = "dead";
+    result = applyOne(s, "request_inventory_item_action", {
+      operation: "use_item",
+      itemId: "field_revival_scroll",
+    });
+    assert.equal(result.state.inventory.items.field_revival_scroll, undefined);
+    assert.equal(result.state.combat.deathState, "alive");
+    assert.equal(result.state.combat.hp, 25);
+    assert.ok((result.state.combat.respawnProtectionUntilMs ?? 0) > NOW_MS);
   });
 
   it("loot claim records entry in lootClaims with nowMs", function () {
@@ -5538,6 +5722,44 @@ describe("reduceHarthmereLiveModeBackendState — quest state", function () {
       completed.state.quests.active["moss_that_went_quiet"],
       undefined
     );
+  });
+
+  it("grants Snapshot Grove equipment starters into live inventory once", function () {
+    const questId = "cove_keeps_pictures";
+    const cameraItemId = `b:${BikkieIds.camera}`;
+    let result = applyOne(freshState(), "request_quest_state_update", {
+      questId,
+      source: "snapshot_grove",
+      title: "untrusted title",
+      stepId: `${questId}:0:inventory_change`,
+      progress: 1,
+    });
+    let s = result.state;
+    assert.equal(s.inventory.items[cameraItemId], 1);
+    assert.equal(s.inventoryLoot.actors[ACTOR]?.items[cameraItemId], 1);
+    assert.equal(s.quests.active[questId].title, "The Cove Keeps Pictures");
+
+    result = applyOne(s, "request_equipment_change", {
+      itemId: cameraItemId,
+      slot: "main_hand",
+    });
+    s = result.state;
+    assert.equal(
+      s.inventory.equipment.main_hand,
+      cameraItemId,
+      result.summary.warnings.join(",")
+    );
+    assert.equal(s.inventory.items[cameraItemId], undefined);
+
+    result = applyOne(s, "request_quest_state_update", {
+      questId,
+      source: "snapshot_grove",
+      stepId: `${questId}:1:open_tab`,
+      progress: 2,
+    });
+    s = result.state;
+    assert.equal(s.inventory.equipment.main_hand, cameraItemId);
+    assert.equal(s.inventory.items[cameraItemId], undefined);
   });
 
   it("no-ops when questId is absent from payload", function () {

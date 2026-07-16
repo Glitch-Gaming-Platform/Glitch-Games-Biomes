@@ -15,6 +15,7 @@ import {
   requestBiomesUILocateOnMap,
 } from "@/client/components/biomes_ui/adapters/mapPinnedDestination";
 import { defaultHarthmereLiveFetch } from "@/client/components/harthmere_live_fetch";
+import { harthmereLiveServerAuthoritative } from "@/client/components/challenges/harthmereLiveAuthoritySignal";
 import { addToast } from "@/client/components/toast/helpers";
 import type { GardenHoseEvent } from "@/client/events/api";
 import { JACKIE_ID } from "@/client/util/nux/state_machines";
@@ -37,7 +38,10 @@ import {
 import {
   HARTHMERE_LOCAL_DEV_ITEM_USE_EVENT,
   SNAPSHOT_GROVE_CONTEXTUAL_PRACTICE_TRIGGER_KIND_SET,
+  snapshotGroveCollectEventMatchesObjective,
+  snapshotGroveInventoryEventMatchesObjective,
   snapshotGroveItemUseEventMatchesObjective,
+  snapshotGrovePracticeItemFixtureForObjective,
   snapshotGroveTutorialInventoryGrantsForQuest,
 } from "@/shared/harthmere/snapshot_grove_trigger_contract";
 import React, { useEffect, useMemo, useState } from "react";
@@ -617,6 +621,9 @@ function syncSnapshotGroveQuestMarkers(
 
 function grantSnapshotGroveAcceptedTutorialItems(quest: SnapshotGroveQuest) {
   const grants = snapshotGroveTutorialInventoryGrantsForQuest(quest);
+  if (harthmereLiveServerAuthoritative()) {
+    return grants;
+  }
   for (const grant of grants) {
     grantHarthmereTutorialInventoryItem(
       grant.itemId,
@@ -942,7 +949,16 @@ function snapshotGroveEventFromWorldObjectInteraction(
       return undefined;
     case "collect":
       if (isWorldUse || kind === "open_container" || kind === "gather") {
-        return { ...base, kind: "inventory_change" } as any;
+        const collectedItem = snapshotGrovePracticeItemFixtureForObjective(
+          quest,
+          objectiveIndex
+        );
+        return {
+          ...base,
+          kind: "inventory_change",
+          itemId: collectedItem?.itemId,
+          itemName: collectedItem?.label,
+        } as any;
       }
       return undefined;
     case "craft":
@@ -995,89 +1011,7 @@ function snapshotGrovePracticeItemForObjective(
   quest: SnapshotGroveQuest,
   objectiveIndex: number
 ): SnapshotGrovePracticeItem | undefined {
-  const text = snapshotGroveObjectiveText(quest, objectiveIndex).toLowerCase();
-  if (
-    /clean root|mucked root|root sample|muck sample|sealed muck|mudroot/.test(
-      text
-    )
-  ) {
-    return {
-      itemId: "mudroot",
-      quantity: 1,
-      label: /mucked|muck|sealed/.test(text)
-        ? "Mucked Root Sample"
-        : "Clean Root Sample",
-    };
-  }
-  if (/mushrooms?|fungus|spore|cap/.test(text)) {
-    return {
-      itemId: "forest_mushroom",
-      quantity: 1,
-      label: "Forage Mushroom",
-    };
-  }
-  if (/grain|wheat|feed/.test(text)) {
-    return { itemId: "field_wheat", quantity: 1, label: "Practice Grain" };
-  }
-  if (/bright berr|berries|berry/.test(text)) {
-    return { itemId: "wild_berries", quantity: 1, label: "Bright Berries" };
-  }
-  if (/ration|food|snack|eat/.test(text)) {
-    return { itemId: "road_ration", quantity: 1, label: "Road Ration" };
-  }
-  if (/bandage|first.?aid|scratch|wound|medicine|salve/.test(text)) {
-    return {
-      itemId: "minor_healing_salve",
-      quantity: 1,
-      label: "Practice Bandage",
-    };
-  }
-  if (
-    /wood scraps?|scrap wood|practice sticks?|sticks?|branches?|wheel|ingredients?|skewers?/.test(
-      text
-    )
-  ) {
-    return {
-      itemId: "softwood_log",
-      quantity: text.includes("three") || text.includes("3") ? 3 : 1,
-      label: "Practice Wood",
-    };
-  }
-  if (
-    /stone|repair piece|block|road block|drop|dropped stack|stack back/.test(
-      text
-    )
-  ) {
-    return { itemId: "rough_stone", quantity: 1, label: "Practice Stone" };
-  }
-  if (/bolt|coil|metal|hinges?|part/.test(text)) {
-    return { itemId: "scrap_metal", quantity: 1, label: "Road Bolt" };
-  }
-  if (/key/.test(text)) {
-    return { itemId: "iron_key_blank", quantity: 1, label: "Practice Key" };
-  }
-  if (/camera|photo/.test(text)) {
-    return { itemId: "old_coin", quantity: 1, label: "Camera Practice Token" };
-  }
-  if (/rubbings?|track rubbings?/.test(text)) {
-    return {
-      itemId: "cloth_scrap",
-      quantity: text.includes("three") || text.includes("3") ? 3 : 1,
-      label: "Track Rubbings",
-    };
-  }
-  if (
-    /cloth|trade slot|practice item|pail|parcel|packet|letter|slip|sack|basket|tray|order|recipe|tuning strip|strip/.test(
-      text
-    )
-  ) {
-    return {
-      itemId: "cloth_scrap",
-      quantity: 1,
-      label: "Practice Trade Cloth",
-    };
-  }
-  return undefined;
+  return snapshotGrovePracticeItemFixtureForObjective(quest, objectiveIndex);
 }
 
 export function snapshotGrovePracticeItemForObjectiveForTest(
@@ -1412,17 +1346,16 @@ function doesEventMatchSnapshotGroveTrigger(
         kind === "start_collide_entity"
       );
     case "inventory_change":
-      return (
-        kind === "inventory_change" ||
-        kind === "equip" ||
-        kind === "local_inventory_selection_change" ||
-        kind === "selection_change"
+      return snapshotGroveInventoryEventMatchesObjective(
+        event as any,
+        quest,
+        objectiveIndex
       );
     case "collect":
-      return (
-        kind === "inventory_change" ||
-        kind === "destroy" ||
-        kind === "inventory_overflow_item_received"
+      return snapshotGroveCollectEventMatchesObjective(
+        event as any,
+        quest,
+        objectiveIndex
       );
     case "craft":
       return kind === "craft";
@@ -1442,9 +1375,7 @@ function doesEventMatchSnapshotGroveTrigger(
           objectiveIndex
         );
       }
-      return (
-        kind === "equip" || kind === "place_voxel" || kind === "take_damage"
-      );
+      return false;
     case "item_update":
       return (
         kind === "inventory_change" ||
@@ -1979,7 +1910,10 @@ export const SnapshotGroveBibleRuntimeController: React.FunctionComponent<{}> =
         if (!quest || current.completedQuestIds.includes(quest.id)) {
           return;
         }
-        const event = { kind: "inventory_change" } as GardenHoseEvent;
+        const event = {
+          kind: "inventory_change",
+          operation: "organize",
+        } as unknown as GardenHoseEvent;
         if (doesEventAdvanceQuest(event, quest, current.activeObjectiveIndex)) {
           advanceSnapshotGroveQuest(
             quest,

@@ -76,7 +76,13 @@ export type GardenHoseEvent =
     }
   | {
       kind: "equip";
-      hotbarIndex: number;
+      hotbarIndex?: number;
+      itemId?: string | number;
+      instanceId?: string;
+      itemName?: string;
+      slot?: string;
+      operation?: "equip" | "unequip";
+      authority?: "ecs" | "server" | "local_offline";
     }
   | {
       kind: "nux_complete";

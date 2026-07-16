@@ -570,9 +570,7 @@ export function createHarthmereLocalCombatAttackLiveModeRequestForTest(
     actorEntityVersion: 1,
     zoneId: "harthmere_wilderness",
     payload: {
-      abilityId: harthmereLiveModeAbilityIdForLocalCombatForTest(
-        input.ability
-      ),
+      abilityId: harthmereLiveModeAbilityIdForLocalCombatForTest(input.ability),
     },
     includeSnapshots: [
       "combatState",
@@ -582,10 +580,7 @@ export function createHarthmereLocalCombatAttackLiveModeRequestForTest(
     clientClaims: {
       source: input.source,
       localTargetOffset: input.targetOffset,
-      localFinalDamage: Math.max(
-        0,
-        Math.round(Number(input.finalDamage ?? 0))
-      ),
+      localFinalDamage: Math.max(0, Math.round(Number(input.finalDamage ?? 0))),
       localTargetDead: Boolean(input.targetDead),
     },
   };
@@ -601,8 +596,7 @@ async function submitHarthmereLocalCombatAttackToLiveMode(input: {
   if (!isBrowser() || typeof fetch !== "function") {
     return undefined;
   }
-  const request =
-    createHarthmereLocalCombatAttackLiveModeRequestForTest(input);
+  const request = createHarthmereLocalCombatAttackLiveModeRequestForTest(input);
   if (!request) {
     return undefined;
   }
@@ -687,7 +681,8 @@ type HarthmereCombatDebugStage =
 function harthmereCombatDebugEnabled() {
   return (
     isBrowser() &&
-    harthmereLocalStorage.getItem("biomes.localDev.harthmere.combatDebug") === "1"
+    harthmereLocalStorage.getItem("biomes.localDev.harthmere.combatDebug") ===
+      "1"
   );
 }
 
@@ -2021,6 +2016,48 @@ function writeHarthmereCombatState(state: HarthmereCombatState) {
   );
   combatEvent();
   dispatchHarthmereCombatVitalsToBiomesUi(normalizeState(state));
+}
+
+export function reconcileHarthmereCombatStateFromLiveStatus(input: {
+  hp: number;
+  maxHp?: number;
+  deathState?: string;
+}) {
+  if (!isBrowser()) {
+    return false;
+  }
+  const state = readHarthmereCombatState();
+  const maxHp = Math.max(
+    1,
+    Math.round(Number(input.maxHp) || Number(state.player.maxHp) || 1)
+  );
+  const hp = Math.min(maxHp, Math.max(1, Math.round(Number(input.hp) || 1)));
+  const liveState = String(input.deathState ?? "alive")
+    .trim()
+    .toLowerCase();
+  const combatState =
+    liveState === "protected_after_respawn"
+      ? "protected_after_respawn"
+      : ["dead", "downed", "respawning"].includes(state.player.combatState)
+      ? "idle"
+      : state.player.combatState;
+  if (
+    state.player.hp === hp &&
+    state.player.maxHp === maxHp &&
+    state.player.combatState === combatState
+  ) {
+    return false;
+  }
+  writeHarthmereCombatState({
+    ...state,
+    player: {
+      ...state.player,
+      hp,
+      maxHp,
+      combatState,
+    },
+  });
+  return true;
 }
 
 function emitHarthmereRetaliationVisibleFeedback(
@@ -8064,7 +8101,10 @@ function installHarthmereCombatDebugBridge() {
       (window as typeof window & { __harthmereCombatDebugLog?: unknown[] })
         .__harthmereCombatDebugLog ?? [],
     enable: () => {
-      harthmereLocalStorage.setItem("biomes.localDev.harthmere.combatDebug", "1");
+      harthmereLocalStorage.setItem(
+        "biomes.localDev.harthmere.combatDebug",
+        "1"
+      );
       console.info(
         "Harthmere combat debug enabled. Use __harthmereCombatDebug.listen(), .nearestTarget(), .summaryNearest(), .diagnoseAsync(offset), .diagnoseNearestAsync() (no offset needed), .attackAndProbe(), and .log()."
       );

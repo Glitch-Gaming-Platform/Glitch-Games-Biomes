@@ -42,7 +42,6 @@ import {
   firstActiveSnapshotRoadAheadQuestTitleForBiomesUI,
   recordSnapshotRoadAheadChallengeStepForBiomesUI,
   readSnapshotMissionState,
-  recordSnapshotRoadAheadEquippedGearSlotForBiomesUI,
   syncSnapshotRoadAheadChallengeStepHintsForBiomesUI,
   snapshotRoadAheadChallengeStepHintsFromActiveNuxesForBiomesUI,
 } from "@/client/components/challenges/LocalDevSnapshotMissionBridge";
@@ -473,7 +472,7 @@ function localHarthmereBackpackItemToUiItem(
     },
     source: "backpack",
     storageLocation: "backpack",
-    canUse: edibleFood ? true : display?.canUse ?? true,
+    canUse: edibleFood ? true : display?.canUse ?? false,
     useActionLabel: edibleFood ? "Eat" : undefined,
     equipSlot,
     canEquip: display?.canEquip ?? Boolean(equipSlot),
@@ -1076,7 +1075,8 @@ async function fetchFarmingFoodState(): Promise<any | undefined> {
 function isLiveUsableBackpackItem(itemId: string) {
   return (
     isHarthmereFoodItemPlayerEdible(itemId) ||
-    !!HARTHMERE_MEDICAL_ITEM_DEFINITIONS[itemId]
+    !!HARTHMERE_MEDICAL_ITEM_DEFINITIONS[itemId] ||
+    getHarthmereItemDisplay(itemId)?.canUse === true
   );
 }
 
@@ -1664,6 +1664,7 @@ async function submitMedicalLiveModeAction(
 async function submitEquipmentLiveModeAction(
   itemId: string | undefined,
   slot: string,
+  instanceId?: string,
   clientClaims: Record<string, unknown> = {}
 ): Promise<any> {
   const requestId = `biomes_ui_equipment_${slot}_${Date.now()}_${Math.random()
@@ -1680,7 +1681,7 @@ async function submitEquipmentLiveModeAction(
       subsystem: "equipment",
       actorEntityVersion: 1,
       zoneId: "the_grove",
-      payload: { itemId, slot },
+      payload: { itemId, slot, instanceId },
       clientClaims,
       includeSnapshots: ["inventoryLootState"],
     }),
@@ -1702,7 +1703,7 @@ async function submitEquipmentLiveModeAction(
 }
 
 async function submitInventoryItemLiveModeAction(
-  operation: "drop_item" | "destroy_item",
+  operation: "drop_item" | "destroy_item" | "use_item",
   payload: {
     itemId: string;
     count?: number;
@@ -3123,6 +3124,7 @@ export function useBiomesUILiveAdapters({
       inventoryLootState?.itemInstances,
       liveBackpackStackItems.length
     );
+    const liveInventoryAuthoritative = harthmereLiveServerAuthoritative();
     void harthmereInventoryRevision;
     const localHarthmereInventoryState = readHarthmereInventoryState();
     const localBackpackItemsByItemId = new Map<
@@ -3157,10 +3159,12 @@ export function useBiomesUILiveAdapters({
         return item ? [item] : [];
       }
     );
-    const baseBackpackUiItems = mergeMirroredBiomesBackpackUiItemsForTest(
-      [...liveBackpackStackItems, ...liveBackpackInstanceItems],
-      ecsBackpackUiItems
-    );
+    const baseBackpackUiItems = liveInventoryAuthoritative
+      ? [...liveBackpackStackItems, ...liveBackpackInstanceItems]
+      : mergeMirroredBiomesBackpackUiItemsForTest(
+          [...liveBackpackStackItems, ...liveBackpackInstanceItems],
+          ecsBackpackUiItems
+        );
     // HARTHMERE_INVENTORY_SERVER_AUTHORITATIVE (2026-07-02): unify the dual-source
     // inventory the same way HP/stamina were unified. The client-local sim (a
     // localStorage "biomes.localDev.harthmere.inventoryState") holds a DIFFERENT
@@ -3176,7 +3180,6 @@ export function useBiomesUILiveAdapters({
     // (no live snapshot) still shows the local sim exactly as before.
     // Sticky: a transient poll gap must not resurrect the local-dev appendix
     // (items flickering back into the backpack after the server consumed them).
-    const liveInventoryAuthoritative = harthmereLiveServerAuthoritative();
     const localDevBackpackItems = liveInventoryAuthoritative
       ? []
       : localHarthmereInventoryState.backpack.items
@@ -3242,6 +3245,20 @@ export function useBiomesUILiveAdapters({
         ? inventoryLootState?.itemInstances?.[instanceId]
         : undefined;
       return instance?.itemId ? String(instance.itemId) : undefined;
+    };
+    const liveInstanceIdForRef = (ref: InventoryUiRef): string | undefined => {
+      if (ref.kind !== "item" || isLocalHarthmereItemRef(ref)) {
+        return undefined;
+      }
+      const index = Number(ref.idx ?? -1);
+      if (!Number.isInteger(index) || index < liveBackpackStackItems.length) {
+        return undefined;
+      }
+      const instanceIndex = index - liveBackpackStackItems.length;
+      const instanceId = Array.isArray(backendActor?.instanceIds)
+        ? backendActor.instanceIds[instanceIndex]
+        : undefined;
+      return instanceId ? String(instanceId) : undefined;
     };
     const localHarthmereItemForRef = (
       ref: InventoryUiRef
@@ -3450,26 +3467,27 @@ export function useBiomesUILiveAdapters({
         selectedIndex,
       }),
       getEquipment: () => {
-        const localEquipment = normalizeAssignment(
-          localHarthmereInventoryState.equipment
-        ).flatMap(([key, item]: [string, any]) =>
-          item
-            ? [
-                {
-                  id: key,
-                  label: key.replace(/_/g, " "),
-                  ref: {
-                    kind: "wearable" as const,
-                    key: `${HARTHMERE_BIOMES_UI_LOCAL_EQUIPMENT_REF_PREFIX}${key}`,
-                  },
-                  item: {
-                    ...localHarthmereEquipmentItemToUiItem(item, key),
-                    canUnequip: true,
-                  },
-                },
-              ]
-            : []
-        );
+        const localEquipment = liveInventoryAuthoritative
+          ? []
+          : normalizeAssignment(localHarthmereInventoryState.equipment).flatMap(
+              ([key, item]: [string, any]) =>
+                item
+                  ? [
+                      {
+                        id: key,
+                        label: key.replace(/_/g, " "),
+                        ref: {
+                          kind: "wearable" as const,
+                          key: `${HARTHMERE_BIOMES_UI_LOCAL_EQUIPMENT_REF_PREFIX}${key}`,
+                        },
+                        item: {
+                          ...localHarthmereEquipmentItemToUiItem(item, key),
+                          canUnequip: true,
+                        },
+                      },
+                    ]
+                  : []
+            );
         const ecsEquipment = equipmentItems.map(
           ([key, item]: [string, any]) => ({
             id: key,
@@ -3512,16 +3530,23 @@ export function useBiomesUILiveAdapters({
               : item;
           })(),
         }));
-        const seen = new Set(localEquipment.map((entry) => entry.id));
-        const visibleEcsEquipment = ecsEquipment.filter((entry) => {
-          if (seen.has(entry.id)) return false;
-          seen.add(entry.id);
-          return true;
-        });
+        const authoritativeEquipment = liveInventoryAuthoritative
+          ? backendEquipment
+          : localEquipment;
+        const seen = new Set(authoritativeEquipment.map((entry) => entry.id));
+        const visibleEcsEquipment = liveInventoryAuthoritative
+          ? []
+          : ecsEquipment.filter((entry) => {
+              if (seen.has(entry.id)) return false;
+              seen.add(entry.id);
+              return true;
+            });
         return [
-          ...localEquipment,
+          ...authoritativeEquipment,
           ...visibleEcsEquipment,
-          ...backendEquipment.filter((entry) => !seen.has(entry.id)),
+          ...(!liveInventoryAuthoritative
+            ? backendEquipment.filter((entry) => !seen.has(entry.id))
+            : []),
         ];
       },
       getCurrencies: () => {
@@ -3605,16 +3630,6 @@ export function useBiomesUILiveAdapters({
               localHarthmereItem.instanceId,
               itemId
             );
-          } else {
-            dispatchBiomesUITutorialItemUse(
-              {
-                itemId,
-                itemName: humanizeRealItemId(itemId, itemId),
-                category: inferInventoryCategory({ id: itemId }),
-                instanceId: localHarthmereItem.instanceId,
-              },
-              "biomes-ui-local-dev-item-use"
-            );
           }
           return;
         }
@@ -3622,7 +3637,7 @@ export function useBiomesUILiveAdapters({
         // Resolve the food id even when the slot is a single world-saved instance
         // (which liveItemForRef may not surface as a stack), so the Eat action
         // works for every edible item the player can see, not just stacks.
-        const liveFoodId = liveItem?.id ?? liveItemIdForRef(ref);
+        const liveFoodId = liveItemIdForRef(ref) ?? liveItem?.id;
         if (liveFoodId && isHarthmereFoodItemPlayerEdible(liveFoodId)) {
           eatLiveHarthmereFoodById(
             liveFoodId,
@@ -3632,7 +3647,7 @@ export function useBiomesUILiveAdapters({
           );
           return;
         }
-        if (liveItem?.id === "raw_meat") {
+        if (liveFoodId === "raw_meat") {
           fireAndForget(
             submitFarmingFoodLiveModeAction("cook_food", {
               recipeId: "grilled_meat",
@@ -3645,21 +3660,67 @@ export function useBiomesUILiveAdapters({
           );
           return;
         }
-        if (liveItem?.id && HARTHMERE_MEDICAL_ITEM_DEFINITIONS[liveItem.id]) {
+        if (liveFoodId && HARTHMERE_MEDICAL_ITEM_DEFINITIONS[liveFoodId]) {
           fireAndForget(
             submitMedicalLiveModeAction("use_medical_item", {
-              itemId: liveItem.id,
+              itemId: liveFoodId,
             })
               .then(async (body) => {
                 await applyLiveModeInventoryResponse(body);
                 dispatchBiomesUITutorialItemUse(
                   {
-                    id: liveItem.id,
-                    label: liveItem.label,
-                    category: liveItem.category,
+                    itemId: liveFoodId,
+                    itemName:
+                      liveItem?.label ??
+                      humanizeRealItemId(liveFoodId, liveFoodId),
+                    category:
+                      liveItem?.category ??
+                      inferInventoryCategory({ id: liveFoodId }),
                     useEffect: "heal",
                   },
                   "biomes-ui-live-medical-use"
+                );
+              })
+              .catch(() => refreshInventoryLootState())
+          );
+          return;
+        }
+        if (liveFoodId && isLiveUsableBackpackItem(liveFoodId)) {
+          const countBefore = Math.max(
+            0,
+            Math.trunc(Number(backendActor?.items?.[liveFoodId] ?? 0))
+          );
+          fireAndForget(
+            submitInventoryItemLiveModeAction("use_item", {
+              itemId: liveFoodId,
+              count: 1,
+            })
+              .then(async (body) => {
+                const countAfter = Math.max(
+                  0,
+                  Math.trunc(
+                    Number(
+                      body?.inventoryLootState?.actor?.items?.[liveFoodId] ?? 0
+                    )
+                  )
+                );
+                if (countBefore <= 0 || countAfter >= countBefore) {
+                  throw new Error(`item_use_state_mismatch:${liveFoodId}`);
+                }
+                await applyLiveModeInventoryResponse(body);
+                dispatchBiomesUITutorialItemUse(
+                  {
+                    itemId: liveFoodId,
+                    itemName:
+                      liveItem?.label ??
+                      humanizeRealItemId(liveFoodId, liveFoodId),
+                    category:
+                      liveItem?.category ??
+                      inferInventoryCategory({ id: liveFoodId }),
+                    useEffect:
+                      getHarthmereItemDisplay(liveFoodId)?.useEffectType,
+                  },
+                  "biomes-ui-live-authoritative-item-use"
                 );
               })
               .catch(() => refreshInventoryLootState())
@@ -3720,42 +3781,20 @@ export function useBiomesUILiveAdapters({
               localHarthmereItem.instanceId,
               localHarthmereItem.itemId
             );
-            recordSnapshotRoadAheadEquippedGearSlotForBiomesUI(key);
             try {
               gardenHose.publish({
-                kind: "inventory_change",
+                kind: "equip",
                 source: "biomes-ui-local-dev-item-equip",
                 itemId: localHarthmereItem.itemId,
                 slot: key,
+                operation: "equip",
+                authority: "local_offline",
               } as any);
             } catch {}
-            dispatchBiomesUITutorialItemUse(
-              {
-                itemId: localHarthmereItem.itemId,
-                itemName: humanizeRealItemId(
-                  localHarthmereItem.itemId,
-                  localHarthmereItem.itemId
-                ),
-                category: inferInventoryCategory({
-                  id: localHarthmereItem.itemId,
-                }),
-                instanceId: localHarthmereItem.instanceId,
-              },
-              "biomes-ui-local-dev-item-equip"
-            );
           };
           if (liveInventoryAuthoritative) {
-            fireAndForget(
-              submitEquipmentLiveModeAction(localHarthmereItem.itemId, key, {
-                source: "biomes_ui_local_harthmere_item_equip",
-                instanceId: localHarthmereItem.instanceId,
-              })
-                .then((body) => {
-                  applyLocalEquipmentProjection();
-                  return applyLiveModeInventoryResponse(body);
-                })
-                .catch(() => refreshInventoryLootState())
-            );
+            // Local-only inventory is never mirrored into live authority.
+            refreshInventoryLootState();
           } else {
             applyLocalEquipmentProjection();
           }
@@ -3763,15 +3802,26 @@ export function useBiomesUILiveAdapters({
         }
         const liveItemId = liveItemIdForRef(ref);
         if (liveItemId) {
+          const liveInstanceId = liveInstanceIdForRef(ref);
           const key =
             equipSlot ||
             inferEquipSlot({ id: liveItemId, name: liveItemId }) ||
             "main_hand";
           fireAndForget(
-            submitEquipmentLiveModeAction(liveItemId, key)
-              .then((body) => {
-                recordSnapshotRoadAheadEquippedGearSlotForBiomesUI(key);
-                return applyLiveModeInventoryResponse(body);
+            submitEquipmentLiveModeAction(liveItemId, key, liveInstanceId)
+              .then(async (body) => {
+                await applyLiveModeInventoryResponse(body);
+                try {
+                  gardenHose.publish({
+                    kind: "equip",
+                    source: "biomes-ui-live-authoritative-item-equip",
+                    itemId: liveItemId,
+                    instanceId: liveInstanceId,
+                    slot: key,
+                    operation: "equip",
+                    authority: "server",
+                  } as any);
+                } catch {}
               })
               .catch(() => refreshInventoryLootState())
           );
@@ -3784,25 +3834,58 @@ export function useBiomesUILiveAdapters({
         const localSlot = localHarthmereEquipmentSlotForRef(ref);
         if (localSlot) {
           if (liveInventoryAuthoritative) {
+            const itemId = String(
+              (backendActor?.equipment as any)?.[localSlot] ?? ""
+            );
             fireAndForget(
               submitEquipmentLiveModeAction(undefined, localSlot)
-                .then((body) => {
-                  performHarthmereEquipmentItemUnequipForBiomesUI(localSlot);
-                  return applyLiveModeInventoryResponse(body);
+                .then(async (body) => {
+                  await applyLiveModeInventoryResponse(body);
+                  if (itemId) {
+                    gardenHose.publish({
+                      kind: "equip",
+                      itemId,
+                      slot: localSlot,
+                      operation: "unequip",
+                      authority: "server",
+                    });
+                  }
                 })
                 .catch(() => refreshInventoryLootState())
             );
           } else {
+            const item = (localHarthmereInventoryState.equipment as any)?.[
+              localSlot
+            ];
             performHarthmereEquipmentItemUnequipForBiomesUI(localSlot);
+            if (item?.itemId) {
+              gardenHose.publish({
+                kind: "equip",
+                itemId: item.itemId,
+                slot: localSlot,
+                operation: "unequip",
+                authority: "local_offline",
+              });
+            }
           }
           return;
         }
         if (ref.kind === "wearable" && ref.key !== undefined) {
           const slot = String(ref.key);
-          if (slot && (backendActor?.equipment as any)?.[slot]) {
+          const itemId = String((backendActor?.equipment as any)?.[slot] ?? "");
+          if (slot && itemId) {
             fireAndForget(
               submitEquipmentLiveModeAction(undefined, slot)
-                .then(applyLiveModeInventoryResponse)
+                .then(async (body) => {
+                  await applyLiveModeInventoryResponse(body);
+                  gardenHose.publish({
+                    kind: "equip",
+                    itemId,
+                    slot,
+                    operation: "unequip",
+                    authority: "server",
+                  });
+                })
                 .catch(() => refreshInventoryLootState())
             );
             return;

@@ -52,6 +52,7 @@ import {
   gltfDispose,
   gltfToThree,
   loadGltf,
+  loadGltfWithRetry,
 } from "@/client/game/util/gltf_helpers";
 import {
   npcOnDeathParticleMaterials,
@@ -5113,7 +5114,10 @@ async function makeSnapshotGroveNpcAssetMesh(
     return undefined;
   }
   try {
-    const gltf = await loadGltf(url);
+    // Static snapshot GLBs are packaged locally and should be reliable, but an
+    // overloaded service worker/iframe bridge can transiently reject the first
+    // fetch. Retry once before replacing an authored NPC with a fallback body.
+    const gltf = await loadGltfWithRetry(url, { attempts: 2, delayMs: 300 });
     replaceWithPlayerMaterial(gltf);
     setFrustumCulling(gltf, false);
     gltf.scene.userData.snapshotGroveNpcAssetVersion =
@@ -5245,14 +5249,11 @@ async function makeNpcMesh(deps: ClientResourceDeps, id: BiomesId) {
         "harthmere-npc-render-parity";
       return mesh;
     } catch (error) {
-      log.warn(
-        "HARTHMERE_NPC_RENDER_PARITY player-like NPC mesh failed",
-        {
-          entityId: id,
-          npcTypeId: npcMetadata.type_id,
-          error,
-        }
-      );
+      log.warn("HARTHMERE_NPC_RENDER_PARITY player-like NPC mesh failed", {
+        entityId: id,
+        npcTypeId: npcMetadata.type_id,
+        error,
+      });
       throw error;
     }
   }

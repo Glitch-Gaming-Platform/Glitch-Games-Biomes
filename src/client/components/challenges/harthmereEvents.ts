@@ -7,6 +7,8 @@ export const HARTHMERE_INVENTORY_EVENT =
   "biomes:harthmere-inventory-changed" as const;
 export const HARTHMERE_LIVE_INVENTORY_SYNC_EVENT =
   "biomes:harthmere-live-inventory-sync" as const;
+export const HARTHMERE_LIVE_EQUIPMENT_EVENT =
+  "biomes:harthmere-live-equipment-updated" as const;
 export const HARTHMERE_BUSINESS_INVENTORY_LOOT_UPDATED_EVENT =
   "biomes:harthmere-business-inventory-loot-updated" as const;
 

@@ -3,6 +3,22 @@ import { SHARD_DIM, shardCenter, shardsForAABB } from "@/shared/game/shard";
 import { containsAABB, growAABB } from "@/shared/math/linear";
 import type { AABB, ReadonlyAABB } from "@/shared/math/types";
 
+export const PLAYER_SHARD_RECOVERY_DELAY_MS = 8_000;
+
+export function shouldRequestPlayerShardRecovery(input: {
+  missingSince?: number;
+  now: number;
+  alreadyRequested: boolean;
+  delayMs?: number;
+}) {
+  return (
+    !input.alreadyRequested &&
+    input.missingSince !== undefined &&
+    input.now - input.missingSince >=
+      (input.delayMs ?? PLAYER_SHARD_RECOVERY_DELAY_MS)
+  );
+}
+
 function nearbyAabbShards(
   resources: ClientResources,
   aabb: AABB | undefined,

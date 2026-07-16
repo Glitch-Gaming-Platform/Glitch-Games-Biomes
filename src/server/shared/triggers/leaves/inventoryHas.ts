@@ -30,7 +30,7 @@ export class InventoryHasTrigger extends BaseStatelessTrigger {
   serialize(): StoredTriggerDefinition {
     return {
       ...this.spec,
-      kind: "collect",
+      kind: "inventoryHas",
       item: this.item,
       count: this.count,
     };
@@ -49,7 +49,7 @@ export class InventoryHasTrigger extends BaseStatelessTrigger {
 }
 
 export class InventoryHasTypeTrigger extends BaseStatelessTrigger {
-  public readonly kind = "inventoryHas";
+  public readonly kind = "inventoryHasType";
 
   constructor(
     spec: BaseStoredTriggerDefinition,

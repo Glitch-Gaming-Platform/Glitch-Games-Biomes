@@ -14,7 +14,10 @@ import type { Events } from "@/client/game/context_managers/events";
 import type { ClientInput } from "@/client/game/context_managers/input";
 import type { PermissionsManager } from "@/client/game/context_managers/permissions_manager";
 import type { ClientTable } from "@/client/game/game";
-import { allPlayerShardsLoaded } from "@/client/game/helpers/player_shards";
+import {
+  allPlayerShardsLoaded,
+  shouldRequestPlayerShardRecovery,
+} from "@/client/game/helpers/player_shards";
 import type { Player } from "@/client/game/resources/players";
 import type { ClientResources } from "@/client/game/resources/types";
 import type { Script } from "@/client/game/scripts/script_controller";
@@ -1603,6 +1606,9 @@ const BLOCK_DAMAGE_DEFAULT_DELAY_IN_TICKS = 1 * 60;
 // DAMAGE is now distance-based (see fall_damage + this.fallTracker), not
 // velocity-based, so the old impact-damage constants were removed.
 const FALL_SOUND_MIN_IMPACT = 10.0;
+const PLAYER_SHARD_RECOVERY_SESSION_KEY =
+  "biomes.world.missingShardRecoveryReloadedAt";
+const PLAYER_SHARD_RECOVERY_RELOAD_COOLDOWN_MS = 2 * 60 * 1000;
 
 export class PlayerScript implements Script {
   readonly name = "player";
@@ -1625,6 +1631,8 @@ export class PlayerScript implements Script {
   lastRunPhysics: number | undefined;
   lastAttemptedReportedVoid: number | undefined;
   hadReportedInVoid = false;
+  private missingPlayerShardsSince: number | undefined;
+  private requestedPlayerShardRecovery = false;
 
   // Throttles that implement delay-based health updates.
   private fallTracker: FallTrackerState = initFallTracker();
@@ -2740,6 +2748,61 @@ export class PlayerScript implements Script {
       this.makeVoidReport("Player got out of void");
     }
     this.hadReportedInVoid = false;
+    this.missingPlayerShardsSince = undefined;
+    this.requestedPlayerShardRecovery = false;
+    try {
+      window.sessionStorage.removeItem(PLAYER_SHARD_RECOVERY_SESSION_KEY);
+    } catch {
+      // Storage can be unavailable in privacy-restricted embeds. Recovery is
+      // deliberately best-effort so gameplay never crashes on storage access.
+    }
+  }
+
+  private armMissingShardRecoveryReload() {
+    try {
+      const now = Date.now();
+      const lastReloadAt = Number(
+        window.sessionStorage.getItem(PLAYER_SHARD_RECOVERY_SESSION_KEY)
+      );
+      if (
+        Number.isFinite(lastReloadAt) &&
+        lastReloadAt > 0 &&
+        now - lastReloadAt < PLAYER_SHARD_RECOVERY_RELOAD_COOLDOWN_MS
+      ) {
+        return false;
+      }
+      window.sessionStorage.setItem(
+        PLAYER_SHARD_RECOVERY_SESSION_KEY,
+        String(now)
+      );
+      return true;
+    } catch {
+      // Without a durable per-tab guard, reloading could loop forever if the
+      // shard is truly absent. Keep the player frozen and reported instead.
+      return false;
+    }
+  }
+
+  private maybeRecoverMissingPlayerShards() {
+    const now = getNowMs();
+    this.missingPlayerShardsSince ??= now;
+    if (
+      !shouldRequestPlayerShardRecovery({
+        missingSince: this.missingPlayerShardsSince,
+        now,
+        alreadyRequested: this.requestedPlayerShardRecovery,
+      })
+    ) {
+      return;
+    }
+    this.requestedPlayerShardRecovery = true;
+    if (!this.armMissingShardRecoveryReload()) {
+      return;
+    }
+    this.makeVoidReport(
+      "Player remained in missing terrain; reloading once to rebuild the world subscription"
+    );
+    this.io.emit("forceReload");
   }
 
   private maybeReportStuckInVoid() {
@@ -3068,6 +3131,7 @@ export class PlayerScript implements Script {
         this.doPhysics(dt, player, !this.motionLocked());
       } else {
         this.maybeReportStuckInVoid();
+        this.maybeRecoverMissingPlayerShards();
         this.publishMove(player);
       }
 

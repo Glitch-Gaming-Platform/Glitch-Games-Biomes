@@ -215,6 +215,8 @@ export class MapManager {
   hotHandoff(old: MapManager) {
     this.emitter = old.emitter;
     this.mapMetadata = old.mapMetadata;
+    this.sentBeamRemovalsForNavigationAidIds =
+      old.sentBeamRemovalsForNavigationAidIds;
     old.stop();
   }
 
@@ -352,8 +354,8 @@ export class MapManager {
     let position: ReadonlyVec3 = [0, 0, 0];
     switch (aid.target.kind) {
       case "npc":
-        const beamPos = getNpcBehavior(idToNpcType(aid.target.typeId)).questGiver
-          ?.beamPosition;
+        const beamPos = getNpcBehavior(idToNpcType(aid.target.typeId))
+          .questGiver?.beamPosition;
         // Fallback if server doesn't respond properly
         if (beamPos) {
           position = beamPos;
@@ -448,6 +450,34 @@ export class MapManager {
     return id;
   }
 
+  private publishNavigationAidRemoval(
+    id: number,
+    pos: ReadonlyVec2,
+    playerId: BiomesId = this.userId
+  ) {
+    const now = performance.now();
+    if (
+      !shouldPublishMapBeamRemoval(
+        this.sentBeamRemovalsForNavigationAidIds.get(id),
+        now,
+        MapManager.BEAM_REMOVAL_THROTTLE_MS
+      )
+    ) {
+      return false;
+    }
+    this.sentBeamRemovalsForNavigationAidIds.set(id, now);
+    fireAndForget(
+      this.events.publish(
+        new RemoveMapBeamEvent({
+          id: playerId,
+          beam_client_id: id,
+          beam_location: [...pos],
+        })
+      )
+    );
+    return true;
+  }
+
   removeNavigationAid(id: number) {
     const data = this.localNavigationAids.get(id);
     if (data === undefined) {
@@ -455,15 +485,7 @@ export class MapManager {
     }
 
     this.localNavigationAids.delete(id);
-    fireAndForget(
-      this.events.publish(
-        new RemoveMapBeamEvent({
-          id: this.userId,
-          beam_client_id: data.id,
-          beam_location: xzProject(data.pos),
-        })
-      )
-    );
+    this.publishNavigationAidRemoval(data.id, xzProject(data.pos));
     this.gardenHose.publish({
       kind: "beam_dismiss",
       beamType: "navigation",
@@ -524,24 +546,8 @@ export class MapManager {
     const posWithinReach = (pos: ReadonlyVec3) =>
       pos2WithinReach([pos[0], pos[2]]);
 
-    const sendRemoveBeamThrottledWithId = (id: number, pos: ReadonlyVec2) => {
-      if (
-        performance.now() -
-          (this.sentBeamRemovalsForNavigationAidIds.get(id) ?? 0) >
-        MapManager.BEAM_REMOVAL_THROTTLE_MS
-      ) {
-        this.sentBeamRemovalsForNavigationAidIds.set(id, performance.now());
-        fireAndForget(
-          this.events.publish(
-            new RemoveMapBeamEvent({
-              id: localPlayer.id,
-              beam_client_id: id,
-              beam_location: [...pos],
-            })
-          )
-        );
-      }
-    };
+    const sendRemoveBeamThrottledWithId = (id: number, pos: ReadonlyVec2) =>
+      this.publishNavigationAidRemoval(id, pos, localPlayer.id);
 
     for (const [id, beamData] of this.localNavigationAids) {
       if (!posWithinReach(beamData.pos)) {
@@ -589,6 +595,18 @@ export class MapManager {
       }
     }
   }
+}
+
+export function shouldPublishMapBeamRemoval(
+  lastSentAt: number | undefined,
+  now: number,
+  throttleMs: number = MapManager.BEAM_REMOVAL_THROTTLE_MS
+) {
+  return (
+    lastSentAt === undefined ||
+    !Number.isFinite(lastSentAt) ||
+    now - lastSentAt >= throttleMs
+  );
 }
 
 export async function loadMapManager(loader: RegistryLoader<ClientContext>) {
