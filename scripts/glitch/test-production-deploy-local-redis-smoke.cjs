@@ -412,6 +412,7 @@ ok(
   "production image keeps and verifies snapshot runtime dependencies after npm prune"
 );
 const bundledRuntimeExternals = [
+  "@ant-design/icons",
   "@google-cloud/bigquery",
   "@google-cloud/storage",
   "chai",

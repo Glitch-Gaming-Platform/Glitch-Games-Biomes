@@ -40,6 +40,7 @@
     "harthmere:test:hud": "node scripts/harthmere/check-biomes-hud-key-bindings.cjs ."
   },
   "dependencies": {
+    "@ant-design/icons": "^4.7.0",
     "@emoji-mart/data": "^1.2.1",
     "@emoji-mart/react": "^1.1.1",
     "@google-cloud/bigquery": "^5.12.0",
@@ -192,7 +193,6 @@
     "zod": "ill-inc/zod#schemav3"
   },
   "devDependencies": {
-    "@ant-design/icons": "^4.7.0",
     "@headlessui/react": "^1.7.14",
     "@next/bundle-analyzer": "^12.1.0",
     "@types/benchmark": "^2.1.2",
