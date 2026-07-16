@@ -406,8 +406,10 @@ ok(
 ok(
   packageJson.dependencies?.["stream-json"] &&
     !packageJson.devDependencies?.["stream-json"] &&
-    dockerfile.includes("require('stream-json/streamers/StreamArray')"),
-  "production image keeps and verifies the snapshot streaming runtime dependency after npm prune"
+    packageJson.dependencies?.["spark-md5"] &&
+    !packageJson.devDependencies?.["spark-md5"] &&
+    dockerfile.includes("'stream-json/streamers/StreamArray', 'spark-md5'"),
+  "production image keeps and verifies snapshot runtime dependencies after npm prune"
 );
 ok(
   serverWebpackConfig.includes('entryPoints["apply-mutable-hotfix"]') &&
