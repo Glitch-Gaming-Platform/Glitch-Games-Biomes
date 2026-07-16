@@ -122,11 +122,14 @@ includesAll(route, "route persistence wiring", [
   "harthmereLiveModeLedgerStreamKey",
   "tx.set(playerStateKey",
   "stateAdoption",
-  ".del?.(adoptionSourceStateKey)",
   "actor_state_adopted",
   "tx.xadd(",
   '"NX"',
 ]);
+check(
+  /\.del\?\.\(\s*adoptionSourceStateKey\s*\)/.test(route),
+  "route persistence wiring deletes the adopted source state in the transaction"
+);
 
 includesAll(route, "route accepts production gameplay subsystems", [
   '"inventory"',
