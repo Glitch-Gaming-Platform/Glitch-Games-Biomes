@@ -177,6 +177,7 @@ COPY --chown=nextjs:nodejs node_modules/ node_modules/
 # .next and dist are built on the deploy host. Keep only runtime dependencies;
 # build/test tooling and caches previously accounted for multiple gigabytes.
 RUN npm prune --omit=dev --ignore-scripts --no-audit --no-fund \
+    && node -e "require('stream-json/streamers/StreamArray'); console.log('OK snapshot streaming runtime dependency')" \
     && rm -rf node_modules/.cache /root/.npm /home/nextjs/.npm
 
 # ACR can strip executable bits from uploaded node_modules.

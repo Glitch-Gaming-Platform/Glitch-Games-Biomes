@@ -16,6 +16,9 @@ const dockerfile = fs.readFileSync(
   path.join(root, "Dockerfile.biomes"),
   "utf8"
 );
+const packageJson = JSON.parse(
+  fs.readFileSync(path.join(root, "package.json"), "utf8")
+);
 const nextConfig = fs.readFileSync(path.join(root, "next.config.js"), "utf8");
 const serverWebpackConfig = fs.readFileSync(
   path.join(root, "server.webpack.config.cjs"),
@@ -399,6 +402,12 @@ ok(
     !dockerfile.includes("google-chrome-stable") &&
     dockerfile.includes("apt-get purge -y --auto-remove"),
   "production image excludes test browser, dev dependencies, and build toolchains"
+);
+ok(
+  packageJson.dependencies?.["stream-json"] &&
+    !packageJson.devDependencies?.["stream-json"] &&
+    dockerfile.includes("require('stream-json/streamers/StreamArray')"),
+  "production image keeps and verifies the snapshot streaming runtime dependency after npm prune"
 );
 ok(
   serverWebpackConfig.includes('entryPoints["apply-mutable-hotfix"]') &&
