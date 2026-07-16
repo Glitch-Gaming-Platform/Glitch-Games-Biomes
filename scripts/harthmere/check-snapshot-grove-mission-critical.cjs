@@ -18,6 +18,7 @@ function failIf(cond, msg) { ok(!cond, msg); }
 
 const runtime = read("src/client/components/challenges/LocalDevSnapshotGroveBibleRuntime.tsx");
 const shared = read("src/shared/harthmere/snapshot_grove_content.ts");
+const triggerContract = read("src/shared/harthmere/snapshot_grove_trigger_contract.ts");
 const hud = read("src/client/components/challenges/HarthmereUnifiedHUD.tsx");
 const player = read("src/client/game/resources/player_mesh.ts");
 
@@ -26,11 +27,15 @@ ok(
   /import\s*\{[\s\S]*\bgrantHarthmereItem\b[\s\S]*\}\s*from\s*"@\/client\/components\/challenges\/LocalDevHarthmereInventorySystem"/.test(runtime),
   "runtime can grant practice items through the real Harthmere inventory system"
 );
-ok(/function snapshotGrovePracticeItemForObjective\(/.test(runtime), "runtime maps mission objective text to concrete practice pickup items");
+ok(
+  /function snapshotGrovePracticeItemForObjective\(/.test(runtime) &&
+    runtime.includes("snapshotGrovePracticeItemFixtureForObjective"),
+  "runtime maps mission objective text through the shared trigger contract"
+);
 ok(/function grantSnapshotGrovePracticeItem\(/.test(runtime), "runtime grants the practice pickup item when the contextual action is used");
-ok(/itemId: "mudroot"/.test(runtime), "Sticky Medicine/root-sample objectives grant/count a mudroot practice item");
-ok(/itemId: "road_ration"/.test(runtime), "Food lesson objectives grant/count a road ration item");
-ok(/itemId: "minor_healing_salve"/.test(runtime), "First-aid/medicine objectives grant/count a salve or practice bandage item");
+ok(/itemId:\s*"mudroot"/.test(triggerContract), "Sticky Medicine/root-sample objectives grant/count a mudroot practice item");
+ok(/itemId:\s*"road_ration"/.test(triggerContract), "Food lesson objectives grant/count a road ration item");
+ok(/itemId:\s*"minor_healing_salve"/.test(triggerContract), "First-aid/medicine objectives grant/count a salve or practice bandage item");
 for (const trigger of ["collect", "craft", "photo_post", "item_grant", "item_use", "item_update"]) {
   ok(new RegExp(`"${trigger}"`).test(runtime), `contextual practice action supports ${trigger} tutorial steps`);
 }
