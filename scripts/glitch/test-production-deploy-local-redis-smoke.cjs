@@ -441,9 +441,21 @@ ok(
   "production startup uses bundled maintenance tools without TypeScript runtime dependencies"
 );
 ok(
-  stackRunner.indexOf('node "$APP_ROOT/dist/web.js"') <
+  stackRunner.indexOf('"$APP_ROOT/dist/web.js"') <
     stackRunner.indexOf("wait_redis_stream_group 4 chat-delivery"),
   "production web ingress binds before non-web worker readiness checks"
+);
+ok(
+  stackRunner.includes(
+    'node --max-old-space-size="$GLITCH_WEB_MAX_OLD_SPACE_MB" "$APP_ROOT/dist/web.js"'
+  ) &&
+    stackRunner.includes(
+      'GLITCH_WEB_MAX_OLD_SPACE_MB="${GLITCH_WEB_MAX_OLD_SPACE_MB:-6144}"'
+    ) &&
+    script.includes(
+      'GLITCH_WEB_MAX_OLD_SPACE_MB="${GLITCH_WEB_MAX_OLD_SPACE_MB:-6144}"'
+    ),
+  "production web process has a bounded larger V8 heap within the 16Gi replica allocation"
 );
 ok(
   script.includes("GLITCH_TITLE_TOKEN=secretref:glitch-title-token"),

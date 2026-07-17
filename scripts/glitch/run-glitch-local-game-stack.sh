@@ -57,6 +57,7 @@ export RO_SYNC="${RO_SYNC:-1}"
 export GLITCH_REDIS_MODE="${GLITCH_REDIS_MODE:-external}"
 export GLITCH_ENABLE_STREAM_WORKERS="${GLITCH_ENABLE_STREAM_WORKERS:-1}"
 export GLITCH_ENABLE_SINK_WORKER="${GLITCH_ENABLE_SINK_WORKER:-0}"
+export GLITCH_WEB_MAX_OLD_SPACE_MB="${GLITCH_WEB_MAX_OLD_SPACE_MB:-6144}"
 
 export GLITCH_SYNC_BIND_HOST="${GLITCH_SYNC_BIND_HOST:-0.0.0.0}"
 export GLITCH_WEB_BIND_HOST="${GLITCH_WEB_BIND_HOST:-0.0.0.0}"
@@ -480,9 +481,9 @@ start_bg sync "$GLITCH_SYNC_BIND_HOST" "$BASE_PORT" "$RPC_PORT" "$METRICS_PORT" 
 # Bind the public ingress immediately after all core processes have launched.
 # Dependency readiness checks continue below, but Azure no longer sees port
 # 3000 closed while chat and stream workers create their Redis groups.
-log "START web HOST=$GLITCH_WEB_BIND_HOST BASE_PORT=$WEB_BASE_PORT RPC_PORT=$WEB_RPC_PORT METRICS_PORT=$WEB_METRICS_PORT file=$APP_ROOT/dist/web.js assetServerMode=lazy GLITCH_PROD_LOCAL_PARITY"
+log "START web HOST=$GLITCH_WEB_BIND_HOST BASE_PORT=$WEB_BASE_PORT RPC_PORT=$WEB_RPC_PORT METRICS_PORT=$WEB_METRICS_PORT heapMb=$GLITCH_WEB_MAX_OLD_SPACE_MB file=$APP_ROOT/dist/web.js assetServerMode=lazy GLITCH_PROD_LOCAL_PARITY"
 HOST="$GLITCH_WEB_BIND_HOST" BASE_PORT="$WEB_BASE_PORT" RPC_PORT="$WEB_RPC_PORT" METRICS_PORT="$WEB_METRICS_PORT" \
-  node "$APP_ROOT/dist/web.js" "${SERVICE_ARGS[@]}" --assetServerMode lazy &
+  node --max-old-space-size="$GLITCH_WEB_MAX_OLD_SPACE_MB" "$APP_ROOT/dist/web.js" "${SERVICE_ARGS[@]}" --assetServerMode lazy &
 WEB_PID="$!"
 PIDS="$PIDS $WEB_PID"
 log "PID web=$WEB_PID"
