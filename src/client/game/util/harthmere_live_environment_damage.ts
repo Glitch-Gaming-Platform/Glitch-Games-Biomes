@@ -1,5 +1,9 @@
-import { BIOMES_UI_PLAYER_STATUS_UPDATED_EVENT } from "@/client/components/biomes_ui/adapters/playerStatusAdapter";
+import {
+  BIOMES_UI_OPTIMISTIC_PLAYER_STATUS_EVENT,
+  BIOMES_UI_PLAYER_STATUS_UPDATED_EVENT,
+} from "@/client/components/biomes_ui/adapters/playerStatusAdapter";
 import { fetchHarthmereLiveWithTimeout } from "@/client/components/harthmere_live_fetch";
+import { fallDamageForBlocks } from "@/shared/game/fall_damage";
 
 export function harthmereLiveModeEnvironmentDamageUrl(search?: string) {
   const rawSearch =
@@ -38,6 +42,17 @@ function dispatchHarthmereEnvironmentDamageStatus(body: any) {
   );
 }
 
+function dispatchOptimisticHarthmereEnvironmentDamage(detail: {
+  hpDelta?: number;
+  hpPercentDelta?: number;
+  label: string;
+}) {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(
+    new CustomEvent(BIOMES_UI_OPTIMISTIC_PLAYER_STATUS_EVENT, { detail })
+  );
+}
+
 export async function submitHarthmereFallDamageLiveMode(
   fallBlocks: number,
   options: {
@@ -51,6 +66,13 @@ export async function submitHarthmereFallDamageLiveMode(
     return undefined;
   }
   const fetchImpl = options.fetchImpl ?? fetch;
+  const damagePercent = fallDamageForBlocks(blocks) / 100;
+  if (damagePercent > 0) {
+    dispatchOptimisticHarthmereEnvironmentDamage({
+      hpPercentDelta: -damagePercent,
+      label: "Fall damage",
+    });
+  }
   const requestId = `${
     options.requestIdPrefix ?? "harthmere_fall_damage"
   }_${Date.now()}_${Math.random().toString(36).slice(2)}`;
@@ -99,6 +121,10 @@ export async function submitHarthmereDrowningDamageLiveMode(
     return undefined;
   }
   const fetchImpl = options.fetchImpl ?? fetch;
+  dispatchOptimisticHarthmereEnvironmentDamage({
+    hpDelta: -amount,
+    label: "Drowning damage",
+  });
   const requestId = `${
     options.requestIdPrefix ?? "harthmere_drowning_damage"
   }_${Date.now()}_${Math.random().toString(36).slice(2)}`;

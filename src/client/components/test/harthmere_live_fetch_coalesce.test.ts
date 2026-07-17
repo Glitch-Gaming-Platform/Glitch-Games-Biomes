@@ -6,6 +6,8 @@ import {
   planHarthmereLiveFetchCache,
   prepareHarthmereLiveFetchRequest,
   resetHarthmereLiveFetchCache,
+  resetHarthmereLiveMutationLocksForTest,
+  runHarthmereLiveMutationOnce,
   resetHarthmereLiveInstallIdForTest,
 } from "@/client/components/harthmere_live_fetch";
 
@@ -48,7 +50,9 @@ function setFakeWindow(search: string, storedInstallId?: string) {
     },
     localStorage: {
       getItem(key: string) {
-        return key === "biomes.glitch.installId" ? storedInstallId ?? null : null;
+        return key === "biomes.glitch.installId"
+          ? storedInstallId ?? null
+          : null;
       },
     },
   };
@@ -57,9 +61,34 @@ function setFakeWindow(search: string, storedInstallId?: string) {
 describe("harthmere live fetch coalescing", () => {
   beforeEach(() => {
     resetHarthmereLiveFetchCache();
+    resetHarthmereLiveMutationLocksForTest();
     // The sticky install-id cache is module-global; without this reset an
     // earlier test's install id leaks into later cache-key assertions.
     resetHarthmereLiveInstallIdForTest();
+  });
+
+  it("deduplicates semantic mutations until the first request settles", async () => {
+    let calls = 0;
+    const gate = deferred<string>();
+    const operation = () => {
+      calls += 1;
+      return gate.promise;
+    };
+    const first = runHarthmereLiveMutationOnce("equipment:chest", operation);
+    const second = runHarthmereLiveMutationOnce("equipment:chest", operation);
+    assert.equal(first, second);
+    assert.equal(calls, 1);
+    gate.resolve("equipped");
+    assert.equal(await second, "equipped");
+
+    assert.equal(
+      await runHarthmereLiveMutationOnce("equipment:chest", async () => {
+        calls += 1;
+        return "unequipped";
+      }),
+      "unequipped"
+    );
+    assert.equal(calls, 2);
   });
   afterEach(() => {
     if (originalWindow === undefined) {
@@ -121,6 +150,44 @@ describe("harthmere live fetch coalescing", () => {
     assert.strictEqual((rb as any)._tag, "server-1");
     assert.strictEqual((ra as any).cloned, true);
     assert.strictEqual((rb as any).cloned, true);
+  });
+
+  it("keeps a slow pending GET coalesced after the response TTL expires", async () => {
+    let calls = 0;
+    const gate = deferred<Response>();
+    const fetchImpl = (async () => {
+      calls += 1;
+      return gate.promise;
+    }) as unknown as typeof fetch;
+
+    let clock = 1_000;
+    const nowMs = () => clock;
+    const url = "/api/harthmere/live_mode_inventory_loot_state";
+    const first = coalescedHarthmereLiveFetch(
+      fetchImpl,
+      url,
+      {},
+      {
+        nowMs,
+        ttlMs: 1_000,
+      }
+    );
+    clock = 21_000;
+    const second = coalescedHarthmereLiveFetch(
+      fetchImpl,
+      url,
+      {},
+      {
+        nowMs,
+        ttlMs: 1_000,
+      }
+    );
+
+    assert.equal(calls, 1, "pending work must not age out of coalescing");
+    gate.resolve(fakeResponse("slow-server"));
+    const [a, b] = await Promise.all([first, second]);
+    assert.equal((a as any)._tag, "slow-server");
+    assert.equal((b as any)._tag, "slow-server");
   });
 
   it("serves a second GET from the short TTL window, then refetches after it expires", async () => {
@@ -188,10 +255,7 @@ describe("harthmere live fetch coalescing", () => {
     setFakeWindow("?install_id=install with spaces");
     let capturedUrl = "";
     let capturedHeaders: Headers | undefined;
-    const fetchImpl = (async (
-      input: RequestInfo | URL,
-      init?: RequestInit
-    ) => {
+    const fetchImpl = (async (input: RequestInfo | URL, init?: RequestInit) => {
       capturedUrl =
         typeof input === "string"
           ? input
@@ -202,14 +266,10 @@ describe("harthmere live fetch coalescing", () => {
       return fakeResponse("server-install");
     }) as unknown as typeof fetch;
 
-    await coalescedHarthmereLiveFetch(
-      fetchImpl,
-      "/api/harthmere/live_mode",
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-      }
-    );
+    await coalescedHarthmereLiveFetch(fetchImpl, "/api/harthmere/live_mode", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+    });
 
     assert.equal(
       capturedUrl,
@@ -324,12 +384,7 @@ describe("harthmere live fetch coalescing", () => {
     assert.strictEqual((first as any).ok, false);
     // Still within TTL, but the failed response must NOT be cached.
     clock = 1_100;
-    const second = await coalescedHarthmereLiveFetch(
-      fetchImpl,
-      url,
-      {},
-      opts
-    );
+    const second = await coalescedHarthmereLiveFetch(fetchImpl, url, {}, opts);
     assert.strictEqual(calls, 2, "a non-ok response is not reused");
     assert.strictEqual((second as any).ok, true);
   });
@@ -443,5 +498,4 @@ describe("harthmere live fetch coalescing", () => {
     assert.equal(isHarthmereLiveFetchAbortError(abort), true);
     assert.equal(isHarthmereLiveFetchAbortError(new Error("network")), false);
   });
-
 });

@@ -634,11 +634,13 @@ export function planHarthmereLiveFetchCache(input: {
 
 interface HarthmereLiveFetchCacheEntry {
   at: number;
+  settledAt?: number;
   promise: Promise<Response>;
 }
 
 const globalForHarthmereLiveFetchCache = globalThis as typeof globalThis & {
   __harthmereLiveFetchCache?: Map<string, HarthmereLiveFetchCacheEntry>;
+  __harthmereLiveMutationLocks?: Map<string, Promise<unknown>>;
 };
 
 function harthmereLiveFetchCache() {
@@ -653,6 +655,37 @@ export function resetHarthmereLiveFetchCache() {
 
 export function invalidateHarthmereLiveFetchCache() {
   harthmereLiveFetchCache().clear();
+}
+
+function harthmereLiveMutationLocks() {
+  return (globalForHarthmereLiveFetchCache.__harthmereLiveMutationLocks ??=
+    new Map<string, Promise<unknown>>());
+}
+
+// UI surfaces can independently dispatch the same semantic mutation while the
+// first request is still pending (double-click, Enter + click, retrying React
+// handlers). Request IDs alone cannot dedupe that because every handler call
+// creates a new ID. Keep one promise per semantic action until it settles so
+// callers share the authoritative result rather than producing a mutation
+// storm.
+export function runHarthmereLiveMutationOnce<T>(
+  key: string,
+  operation: () => Promise<T>
+): Promise<T> {
+  const locks = harthmereLiveMutationLocks();
+  const existing = locks.get(key) as Promise<T> | undefined;
+  if (existing) return existing;
+  const promise = operation();
+  locks.set(key, promise);
+  const cleanup = () => {
+    if (locks.get(key) === promise) locks.delete(key);
+  };
+  void promise.then(cleanup, cleanup);
+  return promise;
+}
+
+export function resetHarthmereLiveMutationLocksForTest() {
+  harthmereLiveMutationLocks().clear();
 }
 
 export function coalescedHarthmereLiveFetch(
@@ -705,17 +738,28 @@ export function coalescedHarthmereLiveFetch(
   const ttlMs = options.ttlMs ?? HARTHMERE_LIVE_FETCH_COALESCE_TTL_MS;
   const now = nowMs();
   const existing = cache.get(key);
-  if (existing && now - existing.at < ttlMs) {
+  // A slow request must remain the single in-flight request for this URL even
+  // after the short response-reuse TTL expires. The old implementation aged a
+  // still-pending promise out after one second, so every poller started another
+  // 20-second request behind it. Production then accumulated dozens of
+  // identical inventory/status reads and amplified an ordinary slowdown into a
+  // request storm. TTL applies only after the request settles.
+  if (
+    existing &&
+    (existing.settledAt === undefined || now - existing.settledAt < ttlMs)
+  ) {
     // Clone so each caller owns an independently-readable body; the cached
     // original is never read directly.
     return existing.promise.then(cloneHarthmereLiveResponse);
   }
   const promise = rawHarthmereLiveFetchWithTimeout(fetchImpl, input, init);
-  cache.set(key, { at: now, promise });
+  const entry: HarthmereLiveFetchCacheEntry = { at: now, promise };
+  cache.set(key, entry);
   // Never let a rejection, an error response (non-2xx), or a response that
   // cannot be cloned (so it cannot be safely shared) linger in the cache.
   promise
     .then((response) => {
+      entry.settledAt = nowMs();
       const cacheable =
         response.ok && typeof (response as any).clone === "function";
       if (!cacheable && cache.get(key)?.promise === promise) {

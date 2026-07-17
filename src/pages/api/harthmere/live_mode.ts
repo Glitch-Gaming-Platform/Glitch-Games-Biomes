@@ -92,6 +92,7 @@ const HARTHMERE_LIVE_MODE_ACTION_KINDS = [
   "request_loadout_change",
   "request_inventory_mutation",
   "request_inventory_item_action",
+  "request_container_transfer",
   "request_vendor_transaction",
   "request_auction_post",
   "request_auction_settle",

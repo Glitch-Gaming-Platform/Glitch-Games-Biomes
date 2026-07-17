@@ -1,9 +1,29 @@
 /// <reference types="mocha" />
 
 import assert from "assert";
-import { biomesUIVitalsDisplayFromLiveStatusForTest } from "../playerStatusAdapter";
+import {
+  applyOptimisticPlayerStatusForTest,
+  biomesUIVitalsDisplayFromLiveStatusForTest,
+} from "../playerStatusAdapter";
 
 describe("Biomes UI player status adapter", () => {
+  it("applies immediate damage deltas while the authority response is in flight", () => {
+    const damaged = applyOptimisticPlayerStatusForTest(
+      {
+        combat: { hp: 80, maxHp: 100, deathState: "alive" },
+      },
+      { hpDelta: -5, hpPercentDelta: -0.1 }
+    );
+    assert.equal(damaged?.combat?.hp, 65);
+    assert.equal(damaged?.combat?.deathState, "alive");
+
+    const downed = applyOptimisticPlayerStatusForTest(damaged, {
+      hpDelta: -100,
+    });
+    assert.equal(downed?.combat?.hp, 0);
+    assert.equal(downed?.combat?.deathState, "downed");
+  });
+
   it("does not let stale higher live HP undo fresher local damage", () => {
     const display = biomesUIVitalsDisplayFromLiveStatusForTest(
       {

@@ -40,7 +40,7 @@ env:
   AZURE_RESOURCE_GROUP: openai-resource-group
   AZURE_CONTAINER_APP: biomes-node-vnet
   AZURE_WEB_TARGET_PORT: "3000"
-  AZURE_MIN_REPLICAS: "2"
+  AZURE_MIN_REPLICAS: "3"
   AZURE_MAX_REPLICAS: "3"
   GLITCH_TITLE_ID: 42de534c-600f-4228-af9e-b69faef94cce
   GLITCH_API_BASE_URL: https://api.glitch.fun/api

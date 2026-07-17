@@ -49,6 +49,7 @@ import {
 import {
   registerHarthmereAbility,
   registerHarthmereClassDefinition,
+  registerHarthmereServerVoxelSolidSampler,
   type HarthmereAbilityCatalogueEntry,
   type HarthmereClassDefinition,
 } from "../mmo_combat_authority";
@@ -1705,6 +1706,8 @@ describe("reduceHarthmereLiveModeBackendState — death lifecycle", function () 
 // ===========================================================================
 
 describe("reduceHarthmereLiveModeBackendState — combat target authority", function () {
+  afterEach(() => registerHarthmereServerVoxelSolidSampler(undefined));
+
   it("rejects target hp/position supplied only by the client payload", function () {
     const s = freshState();
     s.classMagic.knownAbilities = ["basic_attack"];
@@ -2204,6 +2207,7 @@ describe("reduceHarthmereLiveModeBackendState — combat target authority", func
       "target_out_of_range"
     );
 
+    registerHarthmereServerVoxelSolidSampler((x) => x === 10);
     const hidden = applyOne(
       chasing,
       "request_npc_ai_tick",
@@ -2212,7 +2216,7 @@ describe("reduceHarthmereLiveModeBackendState — combat target authority", func
         source: "server_scheduled_tick",
         subsystem: "npc_ai",
         targetId: npcId,
-        serverActorPosition: { x: 60, y: 0, z: 0 },
+        serverActorPosition: { x: 20, y: 0, z: 0 },
         requestId: "npc_ai_retaliation_no_line_of_sight",
         idempotencyKey: "npc_ai_retaliation_no_line_of_sight_key",
       }
@@ -2495,6 +2499,7 @@ describe("reduceHarthmereLiveModeBackendState — combat target authority", func
       resources: { mana: 50 },
       maxResources: { mana: 50 },
     };
+    registerHarthmereServerVoxelSolidSampler((x) => x === 2);
     const noLosResult = applyOne(
       noLos,
       "request_npc_ai_tick",
@@ -2507,7 +2512,7 @@ describe("reduceHarthmereLiveModeBackendState — combat target authority", func
         source: "server_scheduled_tick",
         subsystem: "npc_ai",
         targetId: noLosNpcId,
-        serverActorPosition: { x: 1.5, y: 0, z: 0 },
+        serverActorPosition: { x: 4, y: 0, z: 0 },
       }
     ).state;
     assert.equal(noLosResult.combat.hp, 100);
@@ -2795,7 +2800,7 @@ describe("reduceHarthmereLiveModeBackendState — combat target authority", func
       },
       {
         suffix: "no_los",
-        actorPosition: { x: 1.5, y: 0, z: 0 },
+        actorPosition: { x: 4, y: 0, z: 0 },
         expectedReason: "no_line_of_sight",
         expectedMovementMode: "town_wander",
         payload: { lineOfSight: "false" },
@@ -2820,6 +2825,9 @@ describe("reduceHarthmereLiveModeBackendState — combat target authority", func
 
     for (const entry of LIVE_ENTITY_INTERACTION_CASES) {
       for (const blocker of blockerCases) {
+        registerHarthmereServerVoxelSolidSampler(
+          blocker.suffix === "no_los" ? (x) => x === 2 : undefined
+        );
         const npcId = `live-${entry.kind}-ai-block-${blocker.suffix}`;
         const s = freshState();
         s.combat.hp = blocker.playerHp ?? 100;
@@ -5098,6 +5106,49 @@ describe("reduceHarthmereLiveModeBackendState — loot and inventory mutation", 
     assert.ok(result.summary.touchedModels.includes("equipment_slots"));
   });
 
+  it("transfers every container item in one authoritative inventory transaction", function () {
+    const { state, summary } = applyOne(
+      freshState(),
+      "request_container_transfer",
+      {
+        items: {
+          baker_apron: 1,
+          field_trousers: 1,
+          cloth_scrap: 4,
+        },
+      }
+    );
+
+    assert.deepEqual(summary.warnings, []);
+    assert.equal(state.inventory.items.baker_apron, 1);
+    assert.equal(state.inventory.items.field_trousers, 1);
+    assert.equal(
+      (state.inventory.items.cloth_scrap ?? 0) +
+        (state.banking.materialStorage.cloth_scrap ?? 0),
+      4
+    );
+    assert.ok(summary.touchedModels.includes("container_transfer"));
+  });
+
+  it("rejects a malformed container transfer without partially granting valid rows", function () {
+    const { state, summary } = applyOne(
+      freshState(),
+      "request_container_transfer",
+      {
+        items: {
+          baker_apron: 1,
+          field_trousers: 0,
+        },
+      }
+    );
+
+    assert.equal(state.inventory.items.baker_apron ?? 0, 0);
+    assert.equal(state.inventory.items.field_trousers ?? 0, 0);
+    assert.ok(
+      summary.warnings.includes("container_transfer_rejected:invalid_items")
+    );
+  });
+
   it("rejects client-only equipment claims when Cloud Save does not own the item", function () {
     const { state, summary } = applyOne(
       freshState(),
@@ -5750,6 +5801,8 @@ describe("reduceHarthmereLiveModeBackendState — quest state", function () {
       result.summary.warnings.join(",")
     );
     assert.equal(s.inventory.items[cameraItemId], undefined);
+    assert.equal(s.quests.active[questId]?.progress, 2);
+    assert.equal(s.quests.active[questId]?.stepId, `${questId}:1:open_tab`);
 
     result = applyOne(s, "request_quest_state_update", {
       questId,
@@ -5760,6 +5813,52 @@ describe("reduceHarthmereLiveModeBackendState — quest state", function () {
     s = result.state;
     assert.equal(s.inventory.equipment.main_hand, cameraItemId);
     assert.equal(s.inventory.items[cameraItemId], undefined);
+  });
+
+  it("advances Snapshot Grove collect objectives from authoritative item acquisition", function () {
+    const questId = "color_that_still_points_home";
+    const accepted = applyOne(freshState(), "request_quest_state_update", {
+      questId,
+      source: "snapshot_grove",
+      stepId: `${questId}:0:collect`,
+      progress: 1,
+    });
+
+    const collected = applyOne(accepted.state, "request_loot_roll", {
+      itemId: "wild_berries",
+      count: 1,
+      source: "Grove Garden Edge",
+    });
+
+    assert.equal(collected.state.quests.active[questId]?.progress, 2);
+    assert.equal(
+      collected.state.quests.active[questId]?.stepId,
+      `${questId}:1:destroy`
+    );
+  });
+
+  it("advances Snapshot Grove item-use objectives only after authoritative consumption", function () {
+    const questId = "fountain_food_keeps_you_moving";
+    const accepted = applyOne(freshState(), "request_quest_state_update", {
+      questId,
+      source: "snapshot_grove",
+      stepId: `${questId}:2:item_use`,
+      progress: 3,
+    });
+    accepted.state.inventory.items.road_ration = 1;
+    accepted.state.combat.resources.stamina = 40;
+
+    const used = applyOne(accepted.state, "request_farming_action", {
+      operation: "eat_food",
+      itemId: "road_ration",
+    });
+
+    assert.equal(used.state.inventory.items.road_ration ?? 0, 0);
+    assert.equal(used.state.quests.active[questId]?.progress, 4);
+    assert.equal(
+      used.state.quests.active[questId]?.stepId,
+      `${questId}:3:near_location`
+    );
   });
 
   it("no-ops when questId is absent from payload", function () {

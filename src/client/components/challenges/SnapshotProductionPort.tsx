@@ -37,12 +37,10 @@ import {
 } from "@/client/components/challenges/LocalDevSnapshotCompletePort";
 import React, { useEffect, useMemo, useState } from "react";
 
-export const SNAPSHOT_PRODUCTION_PORT_EVENT =
-  "biomes:snapshot-production-port";
+export const SNAPSHOT_PRODUCTION_PORT_EVENT = "biomes:snapshot-production-port";
 export const SNAPSHOT_PRODUCTION_PENDING_KEY =
   "biomes.snapshot.pendingMutations";
-export const SNAPSHOT_BACKEND_LAST_SYNC_KEY =
-  "biomes.snapshot.lastBackendSync";
+export const SNAPSHOT_BACKEND_LAST_SYNC_KEY = "biomes.snapshot.lastBackendSync";
 
 type SnapshotBackendSyncResult = {
   ok: boolean;
@@ -53,11 +51,15 @@ type SnapshotBackendSyncResult = {
 };
 
 function browser() {
-  return typeof window !== "undefined" && typeof window.localStorage !== "undefined";
+  return (
+    typeof window !== "undefined" && typeof window.localStorage !== "undefined"
+  );
 }
 
 function unique<T>(items: T[]): T[] {
-  return [...new Set(items.filter((item) => item !== undefined && item !== null))];
+  return [
+    ...new Set(items.filter((item) => item !== undefined && item !== null)),
+  ];
 }
 
 function readJsonLocal<T>(key: string, fallback: T): T {
@@ -146,7 +148,7 @@ export function snapshotBackendMode(): SnapshotStateBackendMode {
     return "auto";
   }
   const explicit = harthmereLocalStorage.getItem(
-    SNAPSHOT_STATE_BACKEND_RULES.localStorageModeKey,
+    SNAPSHOT_STATE_BACKEND_RULES.localStorageModeKey
   ) as SnapshotStateBackendMode | null;
   if (
     explicit === "local_dev" ||
@@ -158,7 +160,9 @@ export function snapshotBackendMode(): SnapshotStateBackendMode {
   const host = window.location.hostname;
   const identity = snapshotBackendIdentity();
   if (host === "localhost" || host === "127.0.0.1") {
-    return identity.installId ? "production_api_with_local_fallback" : "local_dev";
+    return identity.installId
+      ? "production_api_with_local_fallback"
+      : "local_dev";
   }
   return "production_api_with_local_fallback";
 }
@@ -174,7 +178,9 @@ function resolveSnapshotProgressEndpointForRuntime(): string {
   const env = (typeof process !== "undefined" && (process as any).env) || {};
   const browserEnv =
     browser() && typeof window !== "undefined"
-      ? ((window as any).__GLITCH_RUNTIME_ENV__ as Record<string, string | undefined> | undefined)
+      ? ((window as any).__GLITCH_RUNTIME_ENV__ as
+          | Record<string, string | undefined>
+          | undefined)
       : undefined;
   const resolved = resolveSnapshotBackendEnvironment({
     NODE_ENV: env.NODE_ENV ?? browserEnv?.NODE_ENV,
@@ -210,7 +216,9 @@ function queueMutation(mutation: SnapshotProgressMutation) {
   savePendingMutations([...pendingMutations(), mutation]);
 }
 
-function mutationFromEvent(event: GardenHoseEvent): SnapshotProgressMutation | undefined {
+function mutationFromEvent(
+  event: GardenHoseEvent
+): SnapshotProgressMutation | undefined {
   const anyEvent = event as any;
   const kind = anyEvent.kind as string | undefined;
   const state = readSnapshotCompletePortState();
@@ -223,16 +231,26 @@ function mutationFromEvent(event: GardenHoseEvent): SnapshotProgressMutation | u
     return {
       ...base,
       kind: "clear_muck",
-      markerId: String(anyEvent.markerId ?? state.lastMarkerId ?? "muckwad_patch"),
-      position: (Array.isArray(anyEvent.position) ? anyEvent.position : state.lastMarkerPosition) as Vec3 | undefined,
+      markerId: String(
+        anyEvent.markerId ?? state.lastMarkerId ?? "muckwad_patch"
+      ),
+      position: (Array.isArray(anyEvent.position)
+        ? anyEvent.position
+        : state.lastMarkerPosition) as Vec3 | undefined,
       audioCue: SNAPSHOT_AUDIO_CUES.muckClear,
     };
   }
-  if (kind === "photo_post_attempt" || kind === "photo_post" || kind === "show_post_capture") {
+  if (
+    kind === "photo_post_attempt" ||
+    kind === "photo_post" ||
+    kind === "show_post_capture"
+  ) {
     return {
       ...base,
       kind: "photo_proof",
-      proofId: String(anyEvent.postId ?? anyEvent.photoId ?? `photo_${Date.now()}`),
+      proofId: String(
+        anyEvent.postId ?? anyEvent.photoId ?? `photo_${Date.now()}`
+      ),
       markerId: String(state.lastMarkerId ?? "shutter_cove_marker"),
       audioCue: SNAPSHOT_AUDIO_CUES.cameraShutter,
     };
@@ -241,7 +259,9 @@ function mutationFromEvent(event: GardenHoseEvent): SnapshotProgressMutation | u
     return {
       ...base,
       kind: "fishing_catch",
-      catchId: String(anyEvent.catchId ?? anyEvent.itemId ?? `fish_${Date.now()}`),
+      catchId: String(
+        anyEvent.catchId ?? anyEvent.itemId ?? `fish_${Date.now()}`
+      ),
       markerId: String(state.lastMarkerId ?? "shutter_cove_marker"),
       audioCue: SNAPSHOT_AUDIO_CUES.fishingCatch,
     };
@@ -253,18 +273,31 @@ function mutationsFromStateDelta(state: any): SnapshotProgressMutation[] {
   const at = Date.now();
   const mutations: SnapshotProgressMutation[] = [];
   for (const completedMissionId of state.completedMissionIds ?? []) {
-    mutations.push({ kind: "complete_mission", missionId: completedMissionId, occurredAtMs: at });
+    mutations.push({
+      kind: "complete_mission",
+      missionId: completedMissionId,
+      occurredAtMs: at,
+    });
   }
   for (const completedStepId of state.completedStepIds ?? []) {
-    mutations.push({ kind: "complete_step", stepId: completedStepId, missionId: state.activeMissionId, occurredAtMs: at });
+    mutations.push({
+      kind: "complete_step",
+      stepId: completedStepId,
+      missionId: state.activeMissionId,
+      occurredAtMs: at,
+    });
   }
   for (const rewardId of state.grantedRewardIds ?? []) {
-    const reward = SNAPSHOT_STRUCTURED_REWARDS.find((entry) => entry.id === rewardId);
+    const reward = SNAPSHOT_STRUCTURED_REWARDS.find(
+      (entry) => entry.id === rewardId
+    );
     mutations.push({
       kind: "grant_reward",
       rewardId,
       missionId: reward?.questId,
-      itemSymbols: reward ? [...reward.items, ...reward.recipes, ...reward.codex] : [],
+      itemSymbols: reward
+        ? [...reward.items, ...reward.recipes, ...reward.codex]
+        : [],
       audioCue: reward?.audioCue ?? SNAPSHOT_AUDIO_CUES.reward,
       occurredAtMs: at,
     });
@@ -285,15 +318,7 @@ function compactMutations(mutations: SnapshotProgressMutation[]) {
   const seen = new Set<string>();
   const compacted: SnapshotProgressMutation[] = [];
   for (const mutation of mutations) {
-    const key = [
-      mutation.kind,
-      mutation.missionId ?? "",
-      mutation.stepId ?? "",
-      mutation.markerId ?? "",
-      mutation.rewardId ?? "",
-      mutation.proofId ?? "",
-      mutation.catchId ?? "",
-    ].join(":");
+    const key = snapshotProgressMutationKey(mutation);
     if (!seen.has(key)) {
       seen.add(key);
       compacted.push(mutation);
@@ -302,15 +327,31 @@ function compactMutations(mutations: SnapshotProgressMutation[]) {
   return compacted.slice(-100);
 }
 
-async function postSnapshotProgress(input: {
+function snapshotProgressMutationKey(mutation: SnapshotProgressMutation) {
+  return [
+    mutation.kind,
+    mutation.missionId ?? "",
+    mutation.stepId ?? "",
+    mutation.markerId ?? "",
+    mutation.rewardId ?? "",
+    mutation.proofId ?? "",
+    mutation.catchId ?? "",
+  ].join(":");
+}
+
+let snapshotProgressInFlight: Promise<SnapshotBackendSyncResult> | undefined;
+let snapshotProgressFollowupRequested = false;
+
+async function postSnapshotProgressOnce(input: {
   mutation?: SnapshotProgressMutation;
   state?: any;
   reason: string;
 }): Promise<SnapshotBackendSyncResult> {
   const mode = snapshotBackendMode();
   const state = input.state ?? readSnapshotCompletePortState();
+  const capturedPendingMutations = pendingMutations();
   const mutations = compactMutations([
-    ...pendingMutations(),
+    ...capturedPendingMutations,
     ...(input.mutation ? [input.mutation] : []),
     ...mutationsFromStateDelta(state),
   ]);
@@ -340,9 +381,18 @@ async function postSnapshotProgress(input: {
     });
     const json = await response.json().catch(() => undefined);
     if (!response.ok || json?.ok === false) {
-      throw new Error(json?.error ?? `snapshot progress backend ${response.status}`);
+      throw new Error(
+        json?.error ?? `snapshot progress backend ${response.status}`
+      );
     }
-    savePendingMutations([]);
+    const capturedKeys = new Set(
+      capturedPendingMutations.map(snapshotProgressMutationKey)
+    );
+    savePendingMutations(
+      pendingMutations().filter(
+        (mutation) => !capturedKeys.has(snapshotProgressMutationKey(mutation))
+      )
+    );
     writeJsonScopedLocal(SNAPSHOT_BACKEND_LAST_SYNC_KEY, {
       at: Date.now(),
       mode: json?.mode ?? mode,
@@ -350,20 +400,65 @@ async function postSnapshotProgress(input: {
       mutationCount: mutations.length,
     });
     window.dispatchEvent(new Event(SNAPSHOT_PRODUCTION_PORT_EVENT));
-    return { ok: true, mode: json?.mode ?? mode, durable: Boolean(json?.durable), state: json?.state };
+    return {
+      ok: true,
+      mode: json?.mode ?? mode,
+      durable: Boolean(json?.durable),
+      state: json?.state,
+    };
   } catch (error: any) {
-    savePendingMutations(mutations);
+    // A request can fail after new events were queued. Preserve both the
+    // attempted batch and those newer events; overwriting with `mutations`
+    // would silently lose progress recorded while the request was in flight.
+    savePendingMutations(
+      compactMutations([...pendingMutations(), ...mutations])
+    );
     if (mode === "production_api") {
-      return { ok: false, mode, durable: false, error: error?.message ?? String(error) };
+      return {
+        ok: false,
+        mode,
+        durable: false,
+        error: error?.message ?? String(error),
+      };
     }
-    return { ok: true, mode: "production_api_with_local_fallback", durable: false, state, error: error?.message ?? String(error) };
+    return {
+      ok: true,
+      mode: "production_api_with_local_fallback",
+      durable: false,
+      state,
+      error: error?.message ?? String(error),
+    };
   }
+}
+
+async function postSnapshotProgress(input: {
+  mutation?: SnapshotProgressMutation;
+  state?: any;
+  reason: string;
+}): Promise<SnapshotBackendSyncResult> {
+  if (snapshotProgressInFlight) {
+    snapshotProgressFollowupRequested = true;
+    return snapshotProgressInFlight;
+  }
+  snapshotProgressInFlight = postSnapshotProgressOnce(input).finally(() => {
+    snapshotProgressInFlight = undefined;
+    if (snapshotProgressFollowupRequested) {
+      snapshotProgressFollowupRequested = false;
+      void postSnapshotProgress({ reason: "coalesced_followup" });
+    }
+  });
+  return snapshotProgressInFlight;
 }
 
 async function pullSnapshotProgress(): Promise<SnapshotBackendSyncResult> {
   const mode = snapshotBackendMode();
   if (mode === "local_dev" && !snapshotBackendIdentity().installId) {
-    return { ok: true, mode, durable: false, state: readSnapshotCompletePortState() };
+    return {
+      ok: true,
+      mode,
+      durable: false,
+      state: readSnapshotCompletePortState(),
+    };
   }
   const identity = snapshotBackendIdentity();
   const params = new URLSearchParams();
@@ -372,12 +467,24 @@ async function pullSnapshotProgress(): Promise<SnapshotBackendSyncResult> {
   if (identity.gameUserId) params.set("game_user_id", identity.gameUserId);
   if (identity.sessionId) params.set("session_id", identity.sessionId);
   if (identity.titleId) params.set("title_id", identity.titleId);
-  const response = await fetch(`${resolveSnapshotProgressEndpointForRuntime()}?${params.toString()}`);
+  const response = await fetch(
+    `${resolveSnapshotProgressEndpointForRuntime()}?${params.toString()}`
+  );
   const json = await response.json().catch(() => undefined);
   if (!response.ok || json?.ok === false) {
-    return { ok: false, mode, durable: false, error: json?.error ?? `snapshot progress backend ${response.status}` };
+    return {
+      ok: false,
+      mode,
+      durable: false,
+      error: json?.error ?? `snapshot progress backend ${response.status}`,
+    };
   }
-  return { ok: true, mode: json?.mode ?? mode, durable: Boolean(json?.durable), state: json?.state };
+  return {
+    ok: true,
+    mode: json?.mode ?? mode,
+    durable: Boolean(json?.durable),
+    state: json?.state,
+  };
 }
 
 function mergeBackendStateIntoLocalSnapshot(serverState: any) {
@@ -385,19 +492,49 @@ function mergeBackendStateIntoLocalSnapshot(serverState: any) {
   const local = readSnapshotCompletePortState();
   const merged = {
     ...local,
-    acceptedMissionIds: unique([...(local.acceptedMissionIds ?? []), ...(serverState.acceptedMissionIds ?? [])]),
+    acceptedMissionIds: unique([
+      ...(local.acceptedMissionIds ?? []),
+      ...(serverState.acceptedMissionIds ?? []),
+    ]),
     activeMissionId: local.activeMissionId ?? serverState.activeMissionId,
-    activeStepIndex: Math.max(Number(local.activeStepIndex ?? 0), Number(serverState.activeStepIndex ?? 0)),
-    completedMissionIds: unique([...(local.completedMissionIds ?? []), ...(serverState.completedMissionIds ?? [])]),
-    completedStepIds: unique([...(local.completedStepIds ?? []), ...(serverState.completedStepIds ?? [])]),
-    grantedRewardIds: unique([...(local.grantedRewardIds ?? []), ...(serverState.grantedRewardIds ?? [])]),
-    grantedItemIds: unique([...(local.grantedItemIds ?? []), ...(serverState.grantedItemSymbols ?? [])]),
+    activeStepIndex: Math.max(
+      Number(local.activeStepIndex ?? 0),
+      Number(serverState.activeStepIndex ?? 0)
+    ),
+    completedMissionIds: unique([
+      ...(local.completedMissionIds ?? []),
+      ...(serverState.completedMissionIds ?? []),
+    ]),
+    completedStepIds: unique([
+      ...(local.completedStepIds ?? []),
+      ...(serverState.completedStepIds ?? []),
+    ]),
+    grantedRewardIds: unique([
+      ...(local.grantedRewardIds ?? []),
+      ...(serverState.grantedRewardIds ?? []),
+    ]),
+    grantedItemIds: unique([
+      ...(local.grantedItemIds ?? []),
+      ...(serverState.grantedItemSymbols ?? []),
+    ]),
     xp: Math.max(Number(local.xp ?? 0), Number(serverState.xp ?? 0)),
     bling: Math.max(Number(local.bling ?? 0), Number(serverState.bling ?? 0)),
-    audioLog: unique([...(local.audioLog ?? []), ...(serverState.audioCueIds ?? [])]).slice(0, 40),
-    photoProofIds: unique([...(local.photoProofIds ?? []), ...(serverState.photoProofIds ?? [])]),
-    fishingCatchIds: unique([...(local.fishingCatchIds ?? []), ...(serverState.fishingCatchIds ?? [])]),
-    clearedMuckIds: unique([...(local.clearedMuckIds ?? []), ...(serverState.clearedMuckIds ?? [])]),
+    audioLog: unique([
+      ...(local.audioLog ?? []),
+      ...(serverState.audioCueIds ?? []),
+    ]).slice(0, 40),
+    photoProofIds: unique([
+      ...(local.photoProofIds ?? []),
+      ...(serverState.photoProofIds ?? []),
+    ]),
+    fishingCatchIds: unique([
+      ...(local.fishingCatchIds ?? []),
+      ...(serverState.fishingCatchIds ?? []),
+    ]),
+    clearedMuckIds: unique([
+      ...(local.clearedMuckIds ?? []),
+      ...(serverState.clearedMuckIds ?? []),
+    ]),
   };
   writeSnapshotCompletePortState(merged as any);
 }
@@ -409,11 +546,13 @@ export function runSnapshotProductionAudit() {
     ...reward.recipes,
     ...reward.codex,
   ]);
-  const unresolvedRewardSymbols = unique(rewards).filter(
-    (symbol) => symbol.startsWith("codex_") ? false : !snapshotResolveRewardItems([symbol]).length,
+  const unresolvedRewardSymbols = unique(rewards).filter((symbol) =>
+    symbol.startsWith("codex_")
+      ? false
+      : !snapshotResolveRewardItems([symbol]).length
   );
   const missingAudioFiles = SNAPSHOT_AUDIO_FILE_BINDINGS.filter(
-    (binding) => !binding.staticPath.includes("/assets/asset_data/audio/"),
+    (binding) => !binding.staticPath.includes("/assets/asset_data/audio/")
   );
   return {
     version: SNAPSHOT_PRODUCTION_PORT_VERSION,
@@ -431,170 +570,201 @@ export function runSnapshotProductionAudit() {
     unresolvedRewardSymbols,
     missingAudioFiles,
     boundsRecords: SNAPSHOT_GROVE_NPC_VISUAL_BOUNDS.length,
-    pass: unresolvedRewardSymbols.length === 0 && missingAudioFiles.length === 0,
+    pass:
+      unresolvedRewardSymbols.length === 0 && missingAudioFiles.length === 0,
   };
 }
 
-export const SnapshotProductionPortRuntimeController: React.FunctionComponent<{}> = () => {
-  const { gardenHose } = useClientContext();
+export const SnapshotProductionPortRuntimeController: React.FunctionComponent<{}> =
+  () => {
+    const { gardenHose } = useClientContext();
 
-  useEffect(() => {
-    let disposed = false;
-    const sync = async (reason: string, mergeBackendState = true) => {
-      const result = await postSnapshotProgress({ reason });
-      if (!disposed && mergeBackendState && result.state) {
-        mergeBackendStateIntoLocalSnapshot(result.state);
+    useEffect(() => {
+      let disposed = false;
+      let stateChangeTimer: number | undefined;
+      const sync = async (reason: string, mergeBackendState = true) => {
+        const result = await postSnapshotProgress({ reason });
+        if (!disposed && mergeBackendState && result.state) {
+          mergeBackendStateIntoLocalSnapshot(result.state);
+        }
+      };
+      const timeout = window.setTimeout(() => void sync("mount"), 1200);
+      const interval = window.setInterval(() => void sync("interval"), 20_000);
+      // A current local state write already dispatched this event. Push it to the
+      // backend, but do not merge the echoed backend state immediately, because
+      // mergeBackendStateIntoLocalSnapshot writes current state again and re-fires this
+      // event. That feedback loop floods /api/glitch/snapshot_progress locally.
+      const on = () => {
+        if (stateChangeTimer !== undefined) return;
+        stateChangeTimer = window.setTimeout(() => {
+          stateChangeTimer = undefined;
+          if (!disposed) void sync("snapshot_state_changed", false);
+        }, 1_000);
+      };
+      window.addEventListener(SNAPSHOT_COMPLETE_PORT_EVENT, on);
+      return () => {
+        disposed = true;
+        window.clearTimeout(timeout);
+        if (stateChangeTimer !== undefined)
+          window.clearTimeout(stateChangeTimer);
+        window.clearInterval(interval);
+        window.removeEventListener(SNAPSHOT_COMPLETE_PORT_EVENT, on);
+      };
+    }, []);
+
+    useEffect(() => {
+      // BIOMES_SNAPSHOT_PROGRESS_DEBOUNCE
+      // Garden hose can emit many pickup/progress events per second while the
+      // imported snapshot systems are active. Calling the backend route once per
+      // event flooded the web/logic logs and amplified stale pickup retries. Queue
+      // mutations immediately, then flush them as one compacted sync.
+      let disposed = false;
+      let flushTimer: number | undefined;
+      const pendingReasons = new Set<string>();
+      const flush = () => {
+        flushTimer = undefined;
+        if (disposed) return;
+        const reason = pendingReasons.size
+          ? `garden_hose_batch_${[...pendingReasons].slice(0, 6).join("_")}`
+          : "garden_hose_batch";
+        pendingReasons.clear();
+        void postSnapshotProgress({ reason });
+      };
+      const scheduleFlush = (reason: string) => {
+        pendingReasons.add(reason);
+        if (flushTimer !== undefined) return;
+        flushTimer = window.setTimeout(flush, 1500);
+      };
+      const handler = (event: GardenHoseEvent) => {
+        const mutation = mutationFromEvent(event);
+        if (mutation) {
+          queueMutation(mutation);
+          scheduleFlush(String((event as any).kind ?? "event"));
+        }
+      };
+      gardenHose.on("anyEvent", handler);
+      return () => {
+        disposed = true;
+        if (flushTimer !== undefined) window.clearTimeout(flushTimer);
+        gardenHose.off("anyEvent", handler);
+      };
+    }, [gardenHose]);
+
+    useEffect(() => {
+      if (!browser()) {
+        return;
       }
-    };
-    const timeout = window.setTimeout(() => void sync("mount"), 1200);
-    const interval = window.setInterval(() => void sync("interval"), 20_000);
-    // A current local state write already dispatched this event. Push it to the
-    // backend, but do not merge the echoed backend state immediately, because
-    // mergeBackendStateIntoLocalSnapshot writes current state again and re-fires this
-    // event. That feedback loop floods /api/glitch/snapshot_progress locally.
-    const on = () => void sync("snapshot_state_changed", false);
-    window.addEventListener(SNAPSHOT_COMPLETE_PORT_EVENT, on);
-    return () => {
-      disposed = true;
-      window.clearTimeout(timeout);
-      window.clearInterval(interval);
-      window.removeEventListener(SNAPSHOT_COMPLETE_PORT_EVENT, on);
-    };
-  }, []);
+      const win = window as typeof window & { __snapshot?: unknown };
+      win.__snapshot = {
+        version: SNAPSHOT_PRODUCTION_PORT_VERSION,
+        backendRules: SNAPSHOT_STATE_BACKEND_RULES,
+        mode: snapshotBackendMode,
+        setMode: (mode: SnapshotStateBackendMode) => {
+          harthmereLocalStorage.setItem(
+            SNAPSHOT_STATE_BACKEND_RULES.localStorageModeKey,
+            mode
+          );
+          window.dispatchEvent(new Event(SNAPSHOT_PRODUCTION_PORT_EVENT));
+        },
+        identity: snapshotBackendIdentity,
+        sync: (reason = "debug") => postSnapshotProgress({ reason }),
+        pull: async () => {
+          const result = await pullSnapshotProgress();
+          if (result.state) mergeBackendStateIntoLocalSnapshot(result.state);
+          return result;
+        },
+        pending: pendingMutations,
+        audit: runSnapshotProductionAudit,
+        rewardBindings: SNAPSHOT_FINAL_BIKKIE_REWARD_BINDING_VERSION,
+        audioBindings: SNAPSHOT_AUDIO_FILE_BINDINGS,
+        resolveRewards: snapshotResolveRewardItems,
+        npcBounds: SNAPSHOT_GROVE_NPC_VISUAL_BOUNDS,
+        clearLocalOnlyMirrors: () => {
+          harthmereLocalStorage.removeItem(SNAPSHOT_CLEARED_MUCK_KEY);
+          harthmereLocalStorage.removeItem(SNAPSHOT_PHOTO_PROOFS_KEY);
+          removeJsonScopedLocal(SNAPSHOT_PRODUCTION_PENDING_KEY);
+          window.dispatchEvent(new Event(SNAPSHOT_PRODUCTION_PORT_EVENT));
+        },
+      };
+    }, []);
 
-  useEffect(() => {
-    // BIOMES_SNAPSHOT_PROGRESS_DEBOUNCE
-    // Garden hose can emit many pickup/progress events per second while the
-    // imported snapshot systems are active. Calling the backend route once per
-    // event flooded the web/logic logs and amplified stale pickup retries. Queue
-    // mutations immediately, then flush them as one compacted sync.
-    let disposed = false;
-    let flushTimer: number | undefined;
-    const pendingReasons = new Set<string>();
-    const flush = () => {
-      flushTimer = undefined;
-      if (disposed) return;
-      const reason = pendingReasons.size
-        ? `garden_hose_batch_${[...pendingReasons].slice(0, 6).join("_")}`
-        : "garden_hose_batch";
-      pendingReasons.clear();
-      void postSnapshotProgress({ reason });
-    };
-    const scheduleFlush = (reason: string) => {
-      pendingReasons.add(reason);
-      if (flushTimer !== undefined) return;
-      flushTimer = window.setTimeout(flush, 1500);
-    };
-    const handler = (event: GardenHoseEvent) => {
-      const mutation = mutationFromEvent(event);
-      if (mutation) {
-        queueMutation(mutation);
-        scheduleFlush(String((event as any).kind ?? "event"));
-      }
-    };
-    gardenHose.on("anyEvent", handler);
-    return () => {
-      disposed = true;
-      if (flushTimer !== undefined) window.clearTimeout(flushTimer);
-      gardenHose.off("anyEvent", handler);
-    };
-  }, [gardenHose]);
+    return null;
+  };
 
-  useEffect(() => {
-    if (!browser()) {
-      return;
-    }
-    const win = window as typeof window & { __snapshot?: unknown };
-    win.__snapshot = {
-      version: SNAPSHOT_PRODUCTION_PORT_VERSION,
-      backendRules: SNAPSHOT_STATE_BACKEND_RULES,
-      mode: snapshotBackendMode,
-      setMode: (mode: SnapshotStateBackendMode) => {
-        harthmereLocalStorage.setItem(SNAPSHOT_STATE_BACKEND_RULES.localStorageModeKey, mode);
-        window.dispatchEvent(new Event(SNAPSHOT_PRODUCTION_PORT_EVENT));
-      },
-      identity: snapshotBackendIdentity,
-      sync: (reason = "debug") => postSnapshotProgress({ reason }),
-      pull: async () => {
-        const result = await pullSnapshotProgress();
-        if (result.state) mergeBackendStateIntoLocalSnapshot(result.state);
-        return result;
-      },
-      pending: pendingMutations,
-      audit: runSnapshotProductionAudit,
-      rewardBindings: SNAPSHOT_FINAL_BIKKIE_REWARD_BINDING_VERSION,
-      audioBindings: SNAPSHOT_AUDIO_FILE_BINDINGS,
-      resolveRewards: snapshotResolveRewardItems,
-      npcBounds: SNAPSHOT_GROVE_NPC_VISUAL_BOUNDS,
-      clearLocalOnlyMirrors: () => {
-        harthmereLocalStorage.removeItem(SNAPSHOT_CLEARED_MUCK_KEY);
-        harthmereLocalStorage.removeItem(SNAPSHOT_PHOTO_PROOFS_KEY);
-        removeJsonScopedLocal(SNAPSHOT_PRODUCTION_PENDING_KEY);
-        window.dispatchEvent(new Event(SNAPSHOT_PRODUCTION_PORT_EVENT));
-      },
-    };
-  }, []);
+export const SnapshotProductionPortStatusPanel: React.FunctionComponent<{}> =
+  () => {
+    const [audit, setAudit] = useState(() => runSnapshotProductionAudit());
+    const [lastSync, setLastSync] = useState<any>(() =>
+      readJsonScopedLocal(SNAPSHOT_BACKEND_LAST_SYNC_KEY, undefined)
+    );
 
-  return null;
-};
+    useEffect(() => {
+      const refresh = () => {
+        setAudit(runSnapshotProductionAudit());
+        setLastSync(
+          readJsonScopedLocal(SNAPSHOT_BACKEND_LAST_SYNC_KEY, undefined)
+        );
+      };
+      refresh();
+      const interval = window.setInterval(refresh, 1500);
+      window.addEventListener(SNAPSHOT_PRODUCTION_PORT_EVENT, refresh);
+      window.addEventListener(SNAPSHOT_COMPLETE_PORT_EVENT, refresh);
+      return () => {
+        window.clearInterval(interval);
+        window.removeEventListener(SNAPSHOT_PRODUCTION_PORT_EVENT, refresh);
+        window.removeEventListener(SNAPSHOT_COMPLETE_PORT_EVENT, refresh);
+      };
+    }, []);
 
-export const SnapshotProductionPortStatusPanel: React.FunctionComponent<{}> = () => {
-  const [audit, setAudit] = useState(() => runSnapshotProductionAudit());
-  const [lastSync, setLastSync] = useState<any>(() => readJsonScopedLocal(SNAPSHOT_BACKEND_LAST_SYNC_KEY, undefined));
-
-  useEffect(() => {
-    const refresh = () => {
-      setAudit(runSnapshotProductionAudit());
-      setLastSync(readJsonScopedLocal(SNAPSHOT_BACKEND_LAST_SYNC_KEY, undefined));
-    };
-    refresh();
-    const interval = window.setInterval(refresh, 1500);
-    window.addEventListener(SNAPSHOT_PRODUCTION_PORT_EVENT, refresh);
-    window.addEventListener(SNAPSHOT_COMPLETE_PORT_EVENT, refresh);
-    return () => {
-      window.clearInterval(interval);
-      window.removeEventListener(SNAPSHOT_PRODUCTION_PORT_EVENT, refresh);
-      window.removeEventListener(SNAPSHOT_COMPLETE_PORT_EVENT, refresh);
-    };
-  }, []);
-
-  const modeLabel = audit.mode.replace(/_/g, " ");
-  return (
-    <div className="rounded border border-emerald-200/20 bg-emerald-950/30 p-2 text-white">
-      <div className="text-sm font-semibold">Snapshot Production Port</div>
-      <div className="text-[10px] uppercase tracking-wide text-emerald-100/80">
-        {SNAPSHOT_PRODUCTION_PORT_VERSION}
-      </div>
-      <div className="mt-1 text-xs text-white/75">
-        Mode: {modeLabel} · Pending backend writes: {audit.pendingMutations}
-      </div>
-      <div className="mt-1 text-[11px] text-white/60">
-        Completed: {audit.completedMissions} · Cleared muck: {audit.clearedMuck} · Photos: {audit.photoProofs} · Fish: {audit.fishingCatches}
-      </div>
-      <div className="mt-1 text-[11px] text-white/60">
-        Reward ids: {SNAPSHOT_FINAL_BIKKIE_REWARD_BINDING_VERSION} · Audio files: {SNAPSHOT_AUDIO_FILE_BINDINGS.length} · Bounds: {SNAPSHOT_GROVE_NPC_VISUAL_BOUNDS.length}
-      </div>
-      {lastSync && (
-        <div className="mt-1 text-[11px] text-white/55">
-          Last sync: {lastSync.durable ? "durable" : "local/fallback"} · {lastSync.mutationCount ?? 0} mutations
+    const modeLabel = audit.mode.replace(/_/g, " ");
+    return (
+      <div className="rounded border-emerald-200/20 bg-emerald-950/30 border p-2 text-white">
+        <div className="text-sm font-semibold">Snapshot Production Port</div>
+        <div className="text-emerald-100/80 text-[10px] uppercase tracking-wide">
+          {SNAPSHOT_PRODUCTION_PORT_VERSION}
         </div>
-      )}
-      {!audit.pass && (
-        <div className="mt-1 rounded bg-red-500/20 p-1 text-[11px] text-red-100">
-          Audit: {audit.unresolvedRewardSymbols.length} unresolved reward symbols, {audit.missingAudioFiles.length} missing audio bindings.
+        <div className="mt-1 text-xs text-white/75">
+          Mode: {modeLabel} · Pending backend writes: {audit.pendingMutations}
         </div>
-      )}
-    </div>
-  );
-};
+        <div className="mt-1 text-[11px] text-white/60">
+          Completed: {audit.completedMissions} · Cleared muck:{" "}
+          {audit.clearedMuck} · Photos: {audit.photoProofs} · Fish:{" "}
+          {audit.fishingCatches}
+        </div>
+        <div className="mt-1 text-[11px] text-white/60">
+          Reward ids: {SNAPSHOT_FINAL_BIKKIE_REWARD_BINDING_VERSION} · Audio
+          files: {SNAPSHOT_AUDIO_FILE_BINDINGS.length} · Bounds:{" "}
+          {SNAPSHOT_GROVE_NPC_VISUAL_BOUNDS.length}
+        </div>
+        {lastSync && (
+          <div className="text-white/55 mt-1 text-[11px]">
+            Last sync: {lastSync.durable ? "durable" : "local/fallback"} ·{" "}
+            {lastSync.mutationCount ?? 0} mutations
+          </div>
+        )}
+        {!audit.pass && (
+          <div className="rounded bg-red-500/20 text-red-100 mt-1 p-1 text-[11px]">
+            Audit: {audit.unresolvedRewardSymbols.length} unresolved reward
+            symbols, {audit.missingAudioFiles.length} missing audio bindings.
+          </div>
+        )}
+      </div>
+    );
+  };
 
 export const SnapshotProductionPortFacts: React.FunctionComponent<{}> = () => {
   const rewardCount = useMemo(
-    () => Object.keys(snapshotResolveRewardItems(["practice_muck_buster", "camera", "fish"])).length,
-    [],
+    () =>
+      Object.keys(
+        snapshotResolveRewardItems(["practice_muck_buster", "camera", "fish"])
+      ).length,
+    []
   );
   return (
-    <span className="hidden" data-snapshot-production-port={SNAPSHOT_PRODUCTION_PORT_VERSION}>
+    <span
+      className="hidden"
+      data-snapshot-production-port={SNAPSHOT_PRODUCTION_PORT_VERSION}
+    >
       {SNAPSHOT_FINAL_BIKKIE_REWARD_BINDING_VERSION}
       {SNAPSHOT_GROVE_PLAYER_BUILDER_UI_VERSION}
       {SNAPSHOT_GROVE_NPC_BOUNDS_PASS_VERSION}

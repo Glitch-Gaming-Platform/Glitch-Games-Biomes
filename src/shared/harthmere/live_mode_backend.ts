@@ -49,6 +49,7 @@ import {
   computeHarthmereXpReward,
   getHarthmereAbility,
   getHarthmereClassDefinition,
+  HARTHMERE_SERVER_LOS_MAX_DISTANCE,
   harthmereServerCheckLineOfSight,
   registerHarthmereAbility,
   registerHarthmereClassDefinition,
@@ -109,7 +110,12 @@ import {
 } from "./mmo_jobs_board_authority";
 import { isKnownHarthmereJobsBoardExecutableItemId } from "./jobs_board_business_templates";
 import { SNAPSHOT_GROVE_QUESTS } from "./snapshot_grove_content";
-import { snapshotGroveTutorialInventoryGrantsForQuest } from "./snapshot_grove_trigger_contract";
+import {
+  snapshotGroveCollectEventMatchesObjective,
+  snapshotGroveInventoryEventMatchesObjective,
+  snapshotGroveItemUseEventMatchesObjective,
+  snapshotGroveTutorialInventoryGrantsForQuest,
+} from "./snapshot_grove_trigger_contract";
 // HARTHMERE_BIBLE_QUEST_WIRING (bible-wiring fix, 2026-07-14): the seam that
 // makes the 85-quest bible catalog (Q1–Q12 dragon arc + side quests) playable
 // through live mode, and drives the Thaedryn encounter. See the header of
@@ -7780,9 +7786,6 @@ export function reduceHarthmereLiveModeBackendState(
     ) {
       return "safe_zone";
     }
-    if (!liveEntityAiLineOfSightToPlayer(input.npcSnapshot)) {
-      return "no_line_of_sight";
-    }
     const distance = liveEntityCombatHorizontalDistance(
       input.npcSnapshot.position,
       input.playerPosition
@@ -7798,6 +7801,16 @@ export function reduceHarthmereLiveModeBackendState(
       })
     ) {
       return "target_out_of_chase_range";
+    }
+    // Retaliation may continue outside the bounded server raycast distance,
+    // but never outside the chase leash. Inside the raycast distance a wall
+    // immediately clears the target. The attack path independently requires
+    // both genuine attack reach and server-authoritative line of sight.
+    if (
+      distance <= HARTHMERE_SERVER_LOS_MAX_DISTANCE &&
+      !liveEntityAiLineOfSightToPlayer(input.npcSnapshot)
+    ) {
+      return "no_line_of_sight";
     }
     return undefined;
   }
@@ -7872,15 +7885,6 @@ export function reduceHarthmereLiveModeBackendState(
         playerDeathState: next.combat.deathState ?? "alive",
       };
     }
-    if (!liveEntityAiLineOfSightToPlayer(npcSnapshot)) {
-      return {
-        attackBlockedReason: "no_line_of_sight",
-        playerHpBefore: next.combat.hp,
-        playerHpAfter: next.combat.hp,
-        playerDeathState: next.combat.deathState ?? "alive",
-      };
-    }
-
     const abilityId =
       payloadString(envelope, "npcAbilityId") ??
       HARTHMERE_LIVE_ENTITY_NPC_ATTACK_ABILITY_ID;
@@ -7912,6 +7916,14 @@ export function reduceHarthmereLiveModeBackendState(
     ) {
       return {
         attackBlockedReason: "target_out_of_range",
+        playerHpBefore: next.combat.hp,
+        playerHpAfter: next.combat.hp,
+        playerDeathState: next.combat.deathState ?? "alive",
+      };
+    }
+    if (!liveEntityAiLineOfSightToPlayer(npcSnapshot)) {
+      return {
+        attackBlockedReason: "no_line_of_sight",
         playerHpBefore: next.combat.hp,
         playerHpAfter: next.combat.hp,
         playerDeathState: next.combat.deathState ?? "alive",
@@ -9135,6 +9147,59 @@ export function reduceHarthmereLiveModeBackendState(
     }
   }
 
+  function advanceSnapshotGroveQuestsFromAuthoritativeEvent(
+    kind: "inventory" | "item_use" | "collect",
+    event: Record<string, unknown>
+  ) {
+    for (const [questId, active] of Object.entries(next.quests.active)) {
+      if (active.source !== "snapshot_grove") continue;
+      const quest = SNAPSHOT_GROVE_QUESTS.find((entry) => entry.id === questId);
+      if (!quest || quest.objectives.length === 0) continue;
+      const objectiveIndex = Math.max(
+        0,
+        Math.min(quest.objectives.length - 1, (active.progress ?? 1) - 1)
+      );
+      const trigger = quest.triggers[objectiveIndex];
+      const matches =
+        kind === "inventory"
+          ? trigger === "inventory_change" &&
+            snapshotGroveInventoryEventMatchesObjective(
+              event,
+              quest,
+              objectiveIndex
+            )
+          : kind === "item_use"
+          ? trigger === "item_use" &&
+            snapshotGroveItemUseEventMatchesObjective(
+              event,
+              quest,
+              objectiveIndex
+            )
+          : (trigger === "collect" || trigger === "item_grant") &&
+            snapshotGroveCollectEventMatchesObjective(
+              event,
+              quest,
+              objectiveIndex
+            );
+      if (!matches) continue;
+
+      const nextObjectiveIndex = objectiveIndex + 1;
+      if (nextObjectiveIndex >= quest.objectives.length) {
+        next.quests.completed[questId] = nowMs;
+        delete next.quests.active[questId];
+      } else {
+        active.progress = nextObjectiveIndex + 1;
+        active.stepId =
+          questId +
+          ":" +
+          nextObjectiveIndex +
+          ":" +
+          (quest.triggers[nextObjectiveIndex] ?? "step");
+      }
+      touchedModels.add("quest_state");
+    }
+  }
+
   // ---------------------------------------------------------------------------
   // Legacy goldDelta — kept for non-authority mutations only
   // (authority mutations compute their own gold deltas via the authority modules)
@@ -9170,6 +9235,7 @@ export function reduceHarthmereLiveModeBackendState(
     "request_crafting",
     "request_inventory_mutation",
     "request_inventory_item_action",
+    "request_container_transfer",
     "request_respec",
     "request_loadout_change",
     "request_property_building_mutation",
@@ -9611,6 +9677,18 @@ export function reduceHarthmereLiveModeBackendState(
             ...next.inventory.equipmentInstances,
           };
         }
+        if (itemId) {
+          const equippedDefinition = getHarthmereItemDefinition(itemId);
+          advanceSnapshotGroveQuestsFromAuthoritativeEvent("inventory", {
+            kind: "equip",
+            operation: "equip",
+            itemId,
+            itemName: equippedDefinition?.displayName,
+            category: equippedDefinition?.category,
+            slot,
+            equipmentSlots: Object.keys(updated.equipment),
+          });
+        }
         touchedModels.add("inventory_items");
         touchedModels.add("equipment_slots");
         touchedModels.add("inventory_loot_instances");
@@ -9796,6 +9874,25 @@ export function reduceHarthmereLiveModeBackendState(
               warnings.push("drop_item_world_drop_skipped:undroppable_item");
             }
           }
+        }
+        if (kind === "use_item" && itemActionItemId) {
+          advanceSnapshotGroveQuestsFromAuthoritativeEvent("item_use", {
+            itemId: itemActionItemId,
+            itemName: itemActionDefinition?.displayName,
+            category: itemActionDefinition?.category,
+            useEffect:
+              useHeal > 0 ? "heal" : reviveHealthPercent > 0 ? "revive" : "use",
+          });
+        } else if (kind === "equip_item" && itemActionItemId) {
+          advanceSnapshotGroveQuestsFromAuthoritativeEvent("inventory", {
+            kind: "equip",
+            operation: "equip",
+            itemId: itemActionItemId,
+            itemName: itemActionDefinition?.displayName,
+            category: itemActionDefinition?.category,
+            slot: invReq.targetSlot,
+            equipmentSlots: Object.keys(updated.equipment),
+          });
         }
       } else {
         warnings.push(
@@ -10003,6 +10100,99 @@ export function reduceHarthmereLiveModeBackendState(
     }
 
     // -----------------------------------------------------------------------
+    // CONTAINER transfer — one all-or-nothing inventory transaction
+    // -----------------------------------------------------------------------
+    case "request_container_transfer": {
+      const rawItems = payloadRecord(envelope, "items");
+      const requestedItems = Object.entries(rawItems ?? {})
+        .map(([itemId, rawCount]) => ({
+          itemId,
+          count:
+            typeof rawCount === "number" &&
+            Number.isFinite(rawCount) &&
+            rawCount >= 1 &&
+            rawCount <= 250 &&
+            Math.trunc(rawCount) === rawCount
+              ? rawCount
+              : 0,
+        }))
+        .filter((entry) => entry.itemId.length > 0 && entry.count > 0)
+        .slice(0, 20);
+      if (
+        requestedItems.length === 0 ||
+        requestedItems.length !== Object.keys(rawItems ?? {}).length
+      ) {
+        warnings.push("container_transfer_rejected:invalid_items");
+        touchedModels.add("container_transfer_rejection");
+        break;
+      }
+
+      let working = buildInventorySnapshot();
+      let rejection: string | undefined;
+      for (const item of requestedItems) {
+        const parsedBiomesItemId = safeParseBiomesId(item.itemId);
+        if (
+          !getHarthmereItemDefinition(item.itemId) &&
+          !(parsedBiomesItemId && anItem(parsedBiomesItemId))
+        ) {
+          rejection = `unknown_item_id:${item.itemId}`;
+          break;
+        }
+        ensureLiveModeItemDefinition(item.itemId, working);
+        const result = reduceHarthmereInventoryMutation(
+          {
+            requestId: `${envelope.requestId}:${item.itemId}`,
+            actorId: envelope.actorId,
+            kind: "pickup_item",
+            nowMs,
+            itemId: item.itemId,
+            count: item.count,
+          },
+          {
+            snapshot: working,
+            playerLevel: next.classMagic.skills["character_level"]?.level ?? 1,
+            playerSkills: next.classMagic.skills,
+            playerClassId: next.classMagic.classId ?? "warrior",
+            reputation: next.law.reputation,
+          }
+        );
+        if (!result.ok) {
+          rejection = result.errors.join(",") || "inventory_rejected";
+          break;
+        }
+        working = applyHarthmereInventoryMutationResult(working, result);
+      }
+      if (rejection) {
+        warnings.push(`container_transfer_rejected:${rejection}`);
+        touchedModels.add("container_transfer_rejection");
+        break;
+      }
+
+      next.inventory.items = working.items;
+      next.inventory.gold = working.gold;
+      next.inventory.escrow = working.escrow;
+      next.inventory.equipment = working.equipment;
+      next.inventory.consumableCooldowns = working.consumableCooldowns;
+      next.banking.materialStorage =
+        working.materialStorage ?? next.banking.materialStorage;
+      ensureInventoryLootActorSynced();
+      syncInventoryLootActorToLiveInventory();
+      next.combat.lootClaims[envelope.requestId] = nowMs;
+      for (const item of requestedItems) {
+        const definition = getHarthmereItemDefinition(item.itemId);
+        advanceSnapshotGroveQuestsFromAuthoritativeEvent("collect", {
+          itemId: item.itemId,
+          itemName: definition?.displayName,
+        });
+      }
+      touchedModels.add("inventory_items");
+      touchedModels.add("material_storage");
+      touchedModels.add("container_transfer");
+      touchedModels.add("loot_claims");
+      break;
+    }
+
+    // -----------------------------------------------------------------------
     // LOOT — server grants items (contribution validated by loot pipeline)
     // -----------------------------------------------------------------------
     case "request_loot_claim":
@@ -10054,6 +10244,14 @@ export function reduceHarthmereLiveModeBackendState(
         );
         syncInventoryLootActorToLiveInventory();
         next.combat.lootClaims[envelope.requestId] = nowMs;
+        for (const [itemId, count] of Object.entries(drop.itemStacks)) {
+          if (count <= 0) continue;
+          const definition = getHarthmereItemDefinition(itemId);
+          advanceSnapshotGroveQuestsFromAuthoritativeEvent("collect", {
+            itemId,
+            itemName: definition?.displayName,
+          });
+        }
         touchedModels.add("inventory_items");
         touchedModels.add("inventory_loot_drops");
         touchedModels.add("loot_claims");
@@ -10118,6 +10316,11 @@ export function reduceHarthmereLiveModeBackendState(
         )
       ) {
         next.combat.lootClaims[envelope.requestId] = nowMs;
+        const definition = getHarthmereItemDefinition(invReq.itemId);
+        advanceSnapshotGroveQuestsFromAuthoritativeEvent("collect", {
+          itemId: invReq.itemId,
+          itemName: definition?.displayName,
+        });
         touchedModels.add("loot_claims");
         break;
       }
@@ -10171,6 +10374,13 @@ export function reduceHarthmereLiveModeBackendState(
           touchedModels.add("inventory_items");
         }
         next.combat.lootClaims[envelope.requestId] = nowMs;
+        if (invReq.itemId) {
+          const definition = getHarthmereItemDefinition(invReq.itemId);
+          advanceSnapshotGroveQuestsFromAuthoritativeEvent("collect", {
+            itemId: invReq.itemId,
+            itemName: definition?.displayName,
+          });
+        }
         touchedModels.add("inventory_items");
         touchedModels.add("loot_claims");
         if (Object.keys(invResult.materialStorageDeltas ?? {}).length > 0) {
@@ -10197,6 +10407,13 @@ export function reduceHarthmereLiveModeBackendState(
           )
         ) {
           next.combat.lootClaims[envelope.requestId] = nowMs;
+          if (invReq.itemId) {
+            const definition = getHarthmereItemDefinition(invReq.itemId);
+            advanceSnapshotGroveQuestsFromAuthoritativeEvent("collect", {
+              itemId: invReq.itemId,
+              itemName: definition?.displayName,
+            });
+          }
           touchedModels.add("loot_claims");
           break;
         }
@@ -15230,6 +15447,10 @@ export function reduceHarthmereLiveModeBackendState(
             break;
           }
           recordDelta(next.inventory.items, seed.yieldItemId, yieldCount);
+          advanceSnapshotGroveQuestsFromAuthoritativeEvent("collect", {
+            itemId: seed.yieldItemId,
+            itemName: getHarthmereItemDefinition(seed.yieldItemId)?.displayName,
+          });
           next.combat.lootClaims[claimKey] = nowMs;
           next.farming.harvests[plantId] = nowMs;
           upsertSkill(next.classMagic.skills, "farming", 30);
@@ -15301,6 +15522,12 @@ export function reduceHarthmereLiveModeBackendState(
             mineResult.inventoryItemDeltas
           )) {
             recordDelta(next.inventory.items, itemId, delta);
+            if (delta > 0) {
+              advanceSnapshotGroveQuestsFromAuthoritativeEvent("collect", {
+                itemId,
+                itemName: getHarthmereItemDefinition(itemId)?.displayName,
+              });
+            }
           }
           next.combat.lootClaims[claimKey] = nowMs;
           touchedModels.add("inventory_items");
@@ -15562,6 +15789,15 @@ export function reduceHarthmereLiveModeBackendState(
         }
         if (Object.keys(authorityResult.inventoryDeltas).length > 0) {
           touchedModels.add("inventory_items");
+          for (const [itemId, delta] of Object.entries(
+            authorityResult.inventoryDeltas
+          )) {
+            if (delta <= 0) continue;
+            advanceSnapshotGroveQuestsFromAuthoritativeEvent("collect", {
+              itemId,
+              itemName: getHarthmereItemDefinition(itemId)?.displayName,
+            });
+          }
         }
         if (
           operation === "harvest" ||
@@ -15603,6 +15839,18 @@ export function reduceHarthmereLiveModeBackendState(
             (recipe?.xp ?? 10) * cookCount
           );
           touchedModels.add("skill_xp");
+        }
+        if (operation === "eat_food") {
+          const itemId = payloadString(envelope, "itemId");
+          if (itemId) {
+            const definition = getHarthmereItemDefinition(itemId);
+            advanceSnapshotGroveQuestsFromAuthoritativeEvent("item_use", {
+              itemId,
+              itemName: definition?.displayName,
+              category: definition?.category,
+              useEffect: "stamina",
+            });
+          }
         }
         if (authorityResult.cookingXpDelta) {
           // Timer-based cooking awards XP on collection (not enqueue).
@@ -15661,6 +15909,18 @@ export function reduceHarthmereLiveModeBackendState(
       }
 
       applyLiveMedicalAuthorityResult(authorityResult.state);
+      if (operation === "use_medical_item" || operation === "use_item") {
+        const itemId = payloadString(envelope, "itemId");
+        if (itemId) {
+          const definition = getHarthmereItemDefinition(itemId);
+          advanceSnapshotGroveQuestsFromAuthoritativeEvent("item_use", {
+            itemId,
+            itemName: definition?.displayName,
+            category: definition?.category,
+            useEffect: "heal",
+          });
+        }
+      }
       if (authorityResult.goldDelta !== 0) {
         next.economy.ledger.push({
           id: envelope.requestId,

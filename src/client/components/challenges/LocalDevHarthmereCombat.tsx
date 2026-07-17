@@ -3129,6 +3129,26 @@ export function triggerHarthmereAmbientThreatAttack(
     return;
   }
 
+  // An ambient region roll is only permission to wake a real nearby NPC; it is
+  // never proof that an attacker can hit the player. Requiring a fresh world
+  // position and current attack reach prevents invisible/out-of-range damage.
+  const reachCheck = harthmereNpcCanReachPlayerWithBrain(
+    state,
+    targetOffset,
+    attacker,
+    "realtime_ai"
+  );
+  if (!reachCheck.canReach) {
+    debugHarthmereCombat("combat.ai.range_skip", {
+      targetOffset,
+      attacker: attacker.name,
+      source,
+      reachCheck,
+      reason: "ambient_threat_not_in_attack_reach",
+    });
+    return;
+  }
+
   const ambientAbility = { ...NPC_BASIC_ATTACK, name: source };
   const forcedAmbientHitResult = rollHarthmereContactHitResult(
     { ...attacker, combatState: "in_combat" },
@@ -6146,7 +6166,10 @@ export function performHarthmereCombatAttack(
     ...retaliationOptions,
     contactProven,
   };
-  const retaliationReachOk = reachCheck.canReach || contactProven;
+  // Contact from the player's earlier attack cannot bypass a fresh range/LOS
+  // check for the NPC's separate counterattack. The target may have moved (or
+  // the local geometry may have been stale) between the two actions.
+  const retaliationReachOk = reachCheck.canReach;
   const canCounterattack =
     playerAttack.finalDamage > 0 &&
     canNpcRetaliate(target) &&

@@ -1,6 +1,9 @@
 import { harthmereLiveServerAuthoritative } from "@/client/components/challenges/harthmereLiveAuthoritySignal";
 import { useClientContext } from "@/client/components/contexts/ClientContextReactContext";
-import { defaultHarthmereLiveFetch } from "@/client/components/harthmere_live_fetch";
+import {
+  defaultHarthmereLiveFetch,
+  runHarthmereLiveMutationOnce,
+} from "@/client/components/harthmere_live_fetch";
 import { addToast } from "@/client/components/toast/helpers";
 import {
   BIOMES_UI_OPTIMISTIC_PLAYER_STATUS_EVENT,
@@ -18,9 +21,10 @@ import {
   performHarthmereEquipmentItemUnequipForBiomesUI,
   readHarthmereInventoryState,
   submitHarthmereInventoryGrantToLiveModeForTest,
-  submitHarthmereInventorySpendToLiveModeForTest,
   consumeHarthmereItemByItemId,
   harthmereInventoryCountByItemId,
+  harthmereItemHotbarEligible,
+  harthmereItemThrowable,
   recordHarthmereLiveInventoryItemsSnapshot,
   type HarthmereItemInstance,
 } from "@/client/components/challenges/LocalDevHarthmereInventorySystem";
@@ -476,6 +480,7 @@ function localHarthmereBackpackItemToUiItem(
     useActionLabel: edibleFood ? "Eat" : undefined,
     equipSlot,
     canEquip: display?.canEquip ?? Boolean(equipSlot),
+    hotbarEligible: isHotbarEligibleItemId(itemId),
     canSplit: false,
     canDrop: false,
     canDestroy: false,
@@ -520,6 +525,7 @@ function localHarthmereHotbarItemToUiItem(
     canUse: edibleFood ? true : display.canUse,
     useActionLabel: edibleFood ? "Eat" : undefined,
     canEquip: display.canEquip,
+    hotbarEligible: isHotbarEligibleItemId(itemId),
     canMove: true,
     canSplit: false,
     canDrop: true,
@@ -736,9 +742,10 @@ function slotToInventoryUiItem(
     ref,
     source,
     storageLocation: source,
-    canUse: edibleFood ? true : display?.canUse ?? true,
+    canUse: edibleFood ? true : display?.canUse ?? false,
     useActionLabel: edibleFood ? "Eat" : undefined,
-    canEquip: display?.canEquip ?? true,
+    canEquip: display?.canEquip ?? Boolean(equipSlot),
+    hotbarEligible: isHotbarEligibleItemId(base.id),
     canMove: true,
     canSplit: true,
     canDrop: category !== "quest",
@@ -1089,6 +1096,24 @@ function isLiveVoxelBlockItemId(itemId: string) {
   );
 }
 
+function isHotbarEligibleItemId(itemId: string) {
+  const biomesId = safeParseBiomesId(itemId);
+  if (biomesId) {
+    const item = anItem(biomesId);
+    if (item?.isBlock || item?.isTool || item?.isConsumable) return true;
+  }
+  return harthmereItemHotbarEligible(itemId);
+}
+
+function isThrowableHotbarItemId(itemId: string) {
+  if (isLiveVoxelBlockItemId(itemId)) return true;
+  if (harthmereItemThrowable(itemId)) return true;
+  const display = getHarthmereItemDisplay(itemId);
+  return /muckwad|throwable|projectile/i.test(
+    `${itemId} ${display?.name ?? ""} ${display?.category ?? ""}`
+  );
+}
+
 // HARTHMERE_HOTBAR_AUTO_ASSIGN_OPT_OUT (2026-07-06): auto-assign used to run on
 // EVERY live inventory response, so the moment a player removed a block from
 // the hotbar the next response re-assigned it — "I remove the items in the
@@ -1235,6 +1260,7 @@ function stackRecordToInventoryUiItems(
             : display?.canUse ?? isLiveUsableBackpackItem(itemId)),
         useActionLabel: edibleFood ? "Eat" : undefined,
         canEquip: options.canEquip ?? display?.canEquip ?? Boolean(equipSlot),
+        hotbarEligible: isHotbarEligibleItemId(itemId),
         canMove: options.canMove ?? false,
         canSplit: options.canSplit ?? false,
         canDrop: options.canDrop ?? false,
@@ -1339,6 +1365,7 @@ function instanceRecordToInventoryUiItems(
         canUse: edibleFood ? true : isLiveUsableBackpackItem(itemId),
         useActionLabel: edibleFood ? "Eat" : undefined,
         canEquip: Boolean(equipSlot),
+        hotbarEligible: isHotbarEligibleItemId(itemId),
         canMove: true,
         canSplit: false,
         canDrop: false,
@@ -1667,39 +1694,51 @@ async function submitEquipmentLiveModeAction(
   instanceId?: string,
   clientClaims: Record<string, unknown> = {}
 ): Promise<any> {
-  const requestId = `biomes_ui_equipment_${slot}_${Date.now()}_${Math.random()
-    .toString(36)
-    .slice(2)}`;
-  const response = await defaultHarthmereLiveFetch("/api/harthmere/live_mode", {
-    method: "POST",
-    credentials: "same-origin",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      requestId,
-      idempotencyKey: requestId,
-      actionKind: "request_equipment_change",
-      subsystem: "equipment",
-      actorEntityVersion: 1,
-      zoneId: "the_grove",
-      payload: { itemId, slot, instanceId },
-      clientClaims,
-      includeSnapshots: ["inventoryLootState"],
-    }),
-  });
-  const body = await response.json();
-  if (!response.ok || body?.ok === false) {
-    throw new Error(
-      Array.isArray(body?.validation?.errors)
-        ? body.validation.errors.join(",")
-        : `equipment_failed:${slot}`
+  const mutationKey = `equipment:${slot}:${itemId ?? "empty"}:${
+    instanceId ?? "stack"
+  }`;
+  return runHarthmereLiveMutationOnce(mutationKey, async () => {
+    const requestId = `biomes_ui_equipment_${slot}_${Date.now()}_${Math.random()
+      .toString(36)
+      .slice(2)}`;
+    const response = await defaultHarthmereLiveFetch(
+      "/api/harthmere/live_mode",
+      {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          requestId,
+          idempotencyKey: requestId,
+          actionKind: "request_equipment_change",
+          subsystem: "equipment",
+          actorEntityVersion: 1,
+          zoneId: "the_grove",
+          payload: { itemId, slot, instanceId },
+          clientClaims,
+          includeSnapshots: [
+            "inventoryLootState",
+            "questState",
+            "playerStatusState",
+          ],
+        }),
+      }
     );
-  }
-  const equipment = body?.inventoryLootState?.actor?.equipment;
-  const equippedItemId = equipment?.[slot];
-  if (!equipment || (itemId ? equippedItemId !== itemId : equippedItemId)) {
-    throw new Error(`equipment_state_mismatch:${slot}`);
-  }
-  return body;
+    const body = await response.json();
+    if (!response.ok || body?.ok === false) {
+      throw new Error(
+        Array.isArray(body?.validation?.errors)
+          ? body.validation.errors.join(",")
+          : `equipment_failed:${slot}`
+      );
+    }
+    const equipment = body?.inventoryLootState?.actor?.equipment;
+    const equippedItemId = equipment?.[slot];
+    if (!equipment || (itemId ? equippedItemId !== itemId : equippedItemId)) {
+      throw new Error(`equipment_state_mismatch:${slot}`);
+    }
+    return body;
+  });
 }
 
 async function submitInventoryItemLiveModeAction(
@@ -1715,34 +1754,46 @@ async function submitInventoryItemLiveModeAction(
     position?: { x: number; y: number; z: number };
   }
 ): Promise<any> {
-  const requestId = `biomes_ui_inventory_${operation}_${Date.now()}_${Math.random()
-    .toString(36)
-    .slice(2)}`;
-  const response = await defaultHarthmereLiveFetch("/api/harthmere/live_mode", {
-    method: "POST",
-    credentials: "same-origin",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      requestId,
-      idempotencyKey: requestId,
-      actionKind: "request_inventory_item_action",
-      subsystem: "inventory",
-      actorEntityVersion: 1,
-      zoneId: "the_grove",
-      payload: { operation, ...payload },
-      clientClaims: {},
-      includeSnapshots: ["inventoryLootState", "playerStatusState"],
-    }),
-  });
-  const body = await response.json();
-  if (!response.ok || body?.ok === false) {
-    throw new Error(
-      Array.isArray(body?.validation?.errors)
-        ? body.validation.errors.join(",")
-        : `inventory_item_failed:${operation}`
+  const mutationKey = `inventory:${operation}:${payload.itemId}:${
+    payload.sourceSlot ?? "any"
+  }`;
+  return runHarthmereLiveMutationOnce(mutationKey, async () => {
+    const requestId = `biomes_ui_inventory_${operation}_${Date.now()}_${Math.random()
+      .toString(36)
+      .slice(2)}`;
+    const response = await defaultHarthmereLiveFetch(
+      "/api/harthmere/live_mode",
+      {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          requestId,
+          idempotencyKey: requestId,
+          actionKind: "request_inventory_item_action",
+          subsystem: "inventory",
+          actorEntityVersion: 1,
+          zoneId: "the_grove",
+          payload: { operation, ...payload },
+          clientClaims: {},
+          includeSnapshots: [
+            "inventoryLootState",
+            "playerStatusState",
+            "questState",
+          ],
+        }),
+      }
     );
-  }
-  return body;
+    const body = await response.json();
+    if (!response.ok || body?.ok === false) {
+      throw new Error(
+        Array.isArray(body?.validation?.errors)
+          ? body.validation.errors.join(",")
+          : `inventory_item_failed:${operation}`
+      );
+    }
+    return body;
+  });
 }
 
 // Building System UI state is hydrated from /api/harthmere/live_mode via
@@ -2482,6 +2533,10 @@ export function useBiomesUILiveAdapters({
     async (body: any) => {
       if (body?.inventoryLootState) {
         assignLiveVoxelBlocksToEmptyHotbar(body.inventoryLootState);
+        // Quest bridges are event-driven and can run before React commits this
+        // state update. Record the authoritative equipment/items synchronously
+        // so an equip response advances the matching objective immediately.
+        recordHarthmereLiveInventoryItemsSnapshot(body);
         setInventoryLootState(body.inventoryLootState);
       } else {
         await refreshInventoryLootState();
@@ -2789,10 +2844,25 @@ export function useBiomesUILiveAdapters({
     // present, else the local backpack quantity (hotbar slots are shortcuts,
     // not stacks of their own — showing `1` for a stack of 7 was wrong).
     const liveItems = inventoryLootState?.actor?.items;
+    const liveMaterialItems =
+      inventoryLootState?.materialStorage?.items ??
+      inventoryLootState?.materialStorage ??
+      {};
+    const liveCountsForHotbarItem = (itemId: string) => {
+      const backpack = Math.max(
+        0,
+        Math.trunc(Number(liveItems?.[itemId] ?? 0))
+      );
+      const materialStorage = Math.max(
+        0,
+        Math.trunc(Number(liveMaterialItems?.[itemId] ?? 0))
+      );
+      return { backpack, materialStorage, total: backpack + materialStorage };
+    };
     const carriedCountForHotbarItem = (itemId: string) => {
-      const liveCount = Number(liveItems?.[itemId]);
-      if (Number.isFinite(liveCount) && liveCount > 0) {
-        return Math.trunc(liveCount);
+      const liveCount = liveCountsForHotbarItem(itemId).total;
+      if (liveCount > 0) {
+        return liveCount;
       }
       const localCount = localInventoryState.backpack.items
         .filter((item) => item.itemId === itemId)
@@ -2896,47 +2966,70 @@ export function useBiomesUILiveAdapters({
                 })
                 .catch(() => refreshInventoryLootState())
             );
-          } else {
-            // HARTHMERE_THROWABLE_CONSUME_ON_USE: using (Enter/double-click) a
-            // non-consumable, non-block hotbar item throws it — e.g. the Muckwad.
-            // The native throw decrements the ECS inventory, but the Harthmere
-            // Cloud Save inventory the HUD/hotbar displays was never debited, so
-            // thrown items (Muckwad) never decremented. Debit one here, mirroring
-            // the place-path spend. Voxel blocks are excluded: they decrement via
-            // the place path, so they must not be double-spent by a hotbar "use".
-            if (
-              !isLiveVoxelBlockItemId(localItemId) &&
-              harthmereInventoryCountByItemId(localItemId) > 0
-            ) {
+          } else if (isThrowableHotbarItemId(localItemId)) {
+            const slotIndex = clampHotbarIndex(index, 9);
+            const publishConfirmedThrow = () => {
+              try {
+                gardenHose.publish({
+                  kind: "block_inventory_throw",
+                  source: "biomes-ui-live-hotbar-use-confirmed",
+                  itemId: localItemId,
+                } as any);
+              } catch {}
+              dispatchBiomesUITutorialItemUse(
+                {
+                  itemId: localItemId,
+                  itemName: humanizeRealItemId(localItemId, localItemId),
+                  category: inferInventoryCategory({ id: localItemId }),
+                },
+                "biomes-ui-live-hotbar-use-confirmed"
+              );
+            };
+            const liveCounts = liveCountsForHotbarItem(localItemId);
+            if (liveCounts.total > 0) {
+              fireAndForget(
+                submitInventoryItemLiveModeAction("drop_item", {
+                  itemId: localItemId,
+                  count: 1,
+                  sourceSlot:
+                    liveCounts.backpack > 0 ? undefined : "material_storage",
+                  position: harthmereThrowDropPosition(reactResources),
+                })
+                  .then(async (body) => {
+                    await applyLiveModeInventoryResponse(body);
+                    const remaining =
+                      Math.max(
+                        0,
+                        Number(
+                          body?.inventoryLootState?.actor?.items?.[
+                            localItemId
+                          ] ?? 0
+                        )
+                      ) +
+                      Math.max(
+                        0,
+                        Number(
+                          body?.inventoryLootState?.materialStorage?.items?.[
+                            localItemId
+                          ] ?? 0
+                        )
+                      );
+                    if (remaining <= 0) {
+                      performHarthmereHotbarClearForBiomesUI(slotIndex);
+                    }
+                    publishConfirmedThrow();
+                  })
+                  .catch(() => refreshInventoryLootState())
+              );
+            } else if (!harthmereLiveServerAuthoritative()) {
               const thrownLabel = humanizeRealItemId(localItemId, localItemId);
               const consumed = consumeHarthmereItemByItemId(
                 localItemId,
                 1,
                 `Threw ${thrownLabel}`
               );
-              if (consumed > 0) {
-                void submitHarthmereInventorySpendToLiveModeForTest(
-                  localItemId,
-                  consumed,
-                  `Threw ${thrownLabel}`
-                );
-              }
+              if (consumed > 0) publishConfirmedThrow();
             }
-            try {
-              gardenHose.publish({
-                kind: "block_inventory_throw",
-                source: "biomes-ui-local-dev-hotbar-use",
-                itemId: localItemId,
-              } as any);
-            } catch {}
-            dispatchBiomesUITutorialItemUse(
-              {
-                itemId: localItemId,
-                itemName: humanizeRealItemId(localItemId, localItemId),
-                category: inferInventoryCategory({ id: localItemId }),
-              },
-              "biomes-ui-local-dev-hotbar-use"
-            );
           }
           return;
         }
@@ -2995,8 +3088,55 @@ export function useBiomesUILiveAdapters({
         const droppedLocalItemId =
           localHotbarItemIds[clampHotbarIndex(index, 9)];
         if (droppedLocalItemId) {
-          rememberHarthmereHotbarAutoAssignOptOut(droppedLocalItemId);
-          performHarthmereHotbarClearForBiomesUI(index);
+          const slotIndex = clampHotbarIndex(index, 9);
+          const liveCounts = liveCountsForHotbarItem(droppedLocalItemId);
+          if (liveCounts.total > 0) {
+            fireAndForget(
+              submitInventoryItemLiveModeAction("drop_item", {
+                itemId: droppedLocalItemId,
+                count: 1,
+                sourceSlot:
+                  liveCounts.backpack > 0 ? undefined : "material_storage",
+                position: harthmereThrowDropPosition(reactResources),
+              })
+                .then(async (body) => {
+                  await applyLiveModeInventoryResponse(body);
+                  const remaining =
+                    Math.max(
+                      0,
+                      Number(
+                        body?.inventoryLootState?.actor?.items?.[
+                          droppedLocalItemId
+                        ] ?? 0
+                      )
+                    ) +
+                    Math.max(
+                      0,
+                      Number(
+                        body?.inventoryLootState?.materialStorage?.items?.[
+                          droppedLocalItemId
+                        ] ?? 0
+                      )
+                    );
+                  if (remaining <= 0) {
+                    performHarthmereHotbarClearForBiomesUI(slotIndex);
+                  }
+                })
+                .catch(() => refreshInventoryLootState())
+            );
+          } else if (!harthmereLiveServerAuthoritative()) {
+            const consumed = consumeHarthmereItemByItemId(
+              droppedLocalItemId,
+              1,
+              `Threw ${humanizeRealItemId(
+                droppedLocalItemId,
+                droppedLocalItemId
+              )}`
+            );
+            if (consumed > 0) {
+              performHarthmereHotbarClearForBiomesUI(slotIndex);
+            }
+          }
           return;
         }
         try {
@@ -3058,6 +3198,7 @@ export function useBiomesUILiveAdapters({
     inventory?.hotbar,
     inventory?.items,
     inventoryLootState?.actor?.items,
+    inventoryLootState?.materialStorage,
     harthmereInventoryRevision,
     reactResources,
     refreshInventoryLootState,
@@ -3434,10 +3575,15 @@ export function useBiomesUILiveAdapters({
             localHarthmereInventoryState.hotbar[`slot_${index + 1}`];
           if (localItemId) {
             const itemId = String(localItemId);
-            const liveCount = Math.max(
-              0,
-              Math.trunc(Number(backendActor?.items?.[itemId] ?? 0))
-            );
+            const liveCount =
+              Math.max(
+                0,
+                Math.trunc(Number(backendActor?.items?.[itemId] ?? 0))
+              ) +
+              Math.max(
+                0,
+                Math.trunc(Number(combinedMaterialStorageItems[itemId] ?? 0))
+              );
             const localCount = localHarthmereInventoryState.backpack.items
               .filter((item: any) => item.itemId === itemId)
               .reduce(
@@ -3457,6 +3603,11 @@ export function useBiomesUILiveAdapters({
               if (localItem) return localItem;
             }
           }
+          // In live-authoritative mode an ECS/local hotbar slot is only a visual
+          // cache. Never surface it when the server inventory does not own the
+          // referenced item; doing so produced phantom zero-count hotbar items
+          // that were absent from the backpack.
+          if (liveInventoryAuthoritative) return null;
           return slotToInventoryUiItem(
             hotbarItems[index],
             `hotbar_${index + 1}`,
@@ -3956,6 +4107,7 @@ export function useBiomesUILiveAdapters({
           const localHarthmereItem = localHarthmereItemForRef(src);
           if (
             localHarthmereItem &&
+            isHotbarEligibleItemId(localHarthmereItem.itemId) &&
             performHarthmereHotbarAssignForBiomesUI(
               localHarthmereItem.itemId,
               hotbarIndex
@@ -3964,7 +4116,7 @@ export function useBiomesUILiveAdapters({
             return;
           }
           const materialItemId = materialItemIdForRef(src);
-          if (materialItemId) {
+          if (materialItemId && isHotbarEligibleItemId(materialItemId)) {
             performHarthmereHotbarAssignForBiomesUI(
               materialItemId,
               hotbarIndex,
@@ -3975,6 +4127,7 @@ export function useBiomesUILiveAdapters({
           const liveItemId = liveItemIdForRef(src);
           if (
             liveItemId &&
+            isHotbarEligibleItemId(liveItemId) &&
             performHarthmereHotbarAssignForBiomesUI(
               liveItemId,
               hotbarIndex,
@@ -3983,6 +4136,7 @@ export function useBiomesUILiveAdapters({
           ) {
             return;
           }
+          if (liveInventoryAuthoritative) return;
         }
         publishSwap(src, dst);
       },
@@ -4033,47 +4187,87 @@ export function useBiomesUILiveAdapters({
           // HARTHMERE_WORLD_THROW_DROP (audit fix, 2026-07-13): dropping a
           // Harthmere quick-slot used to ONLY clear the shortcut — the player
           // dragged an item out to throw it and nothing landed in the world.
-          // Now: consume one from the (instant-feedback) local inventory,
-          // submit a positioned drop_item so the server spawns a claimable
-          // world drop, THEN clear the shortcut as before.
+          // Now: submit one positioned authoritative drop so the server spawns
+          // a claimable world item, then reconcile the shortcut from its result.
           const thrownSlotIndex = clampHotbarIndex(Number(ref.idx ?? -1), 9);
           const thrownLocalItemId =
             readHarthmereInventoryState().hotbar[`slot_${thrownSlotIndex + 1}`];
-          if (
-            thrownLocalItemId &&
-            harthmereInventoryCountByItemId(thrownLocalItemId) > 0
-          ) {
+          if (thrownLocalItemId) {
             const thrownLabel = humanizeRealItemId(
               thrownLocalItemId,
               thrownLocalItemId
             );
-            const consumed = consumeHarthmereItemByItemId(
-              thrownLocalItemId,
-              1,
-              `Threw ${thrownLabel}`
+            const liveBackpackCount = Math.max(
+              0,
+              Math.trunc(
+                Number(
+                  inventoryLootState?.actor?.items?.[thrownLocalItemId] ?? 0
+                )
+              )
             );
-            if (consumed > 0) {
+            const liveMaterialCount = Math.max(
+              0,
+              Math.trunc(
+                Number(combinedMaterialStorageItems[thrownLocalItemId] ?? 0)
+              )
+            );
+            const liveCount = liveBackpackCount + liveMaterialCount;
+            if (liveCount > 0) {
               fireAndForget(
                 submitInventoryItemLiveModeAction("drop_item", {
                   itemId: thrownLocalItemId,
-                  count: consumed,
+                  count: 1,
+                  sourceSlot:
+                    liveBackpackCount > 0 ? undefined : "material_storage",
                   position: harthmereThrowDropPosition(reactResources),
                 })
-                  .then(applyLiveModeInventoryResponse)
+                  .then(async (body) => {
+                    await applyLiveModeInventoryResponse(body);
+                    const remaining =
+                      Math.max(
+                        0,
+                        Number(
+                          body?.inventoryLootState?.actor?.items?.[
+                            thrownLocalItemId
+                          ] ?? 0
+                        )
+                      ) +
+                      Math.max(
+                        0,
+                        Number(
+                          body?.inventoryLootState?.materialStorage?.items?.[
+                            thrownLocalItemId
+                          ] ?? 0
+                        )
+                      );
+                    if (remaining <= 0) {
+                      performHarthmereHotbarClearForBiomesUI(thrownSlotIndex);
+                    }
+                  })
                   .catch(() => refreshInventoryLootState())
               );
+            } else if (!liveInventoryAuthoritative) {
+              const consumed = consumeHarthmereItemByItemId(
+                thrownLocalItemId,
+                1,
+                `Threw ${thrownLabel}`
+              );
+              if (consumed > 0) {
+                performHarthmereHotbarClearForBiomesUI(thrownSlotIndex);
+              }
             }
           }
-          performHarthmereHotbarClearForBiomesUI(Number(ref.idx ?? -1));
           return;
         }
         const materialItemId = materialItemIdForRef(ref);
         if (materialItemId) {
           const requested = Math.max(1, Math.trunc(Number(count ?? 1) || 1));
-          const removedLocal = performHarthmereMaterialStorageRemoveForBiomesUI(
-            materialItemId,
-            requested
-          );
+          const removedLocal = liveInventoryAuthoritative
+            ? 0
+            : performHarthmereMaterialStorageRemoveForBiomesUI(
+                materialItemId,
+                requested
+              );
           const remaining = Math.max(0, requested - removedLocal);
           if (remaining > 0) {
             fireAndForget(
@@ -4106,10 +4300,12 @@ export function useBiomesUILiveAdapters({
         const materialItemId = materialItemIdForRef(ref);
         if (materialItemId) {
           const requested = Math.max(1, Math.trunc(Number(count ?? 1) || 1));
-          const removedLocal = performHarthmereMaterialStorageRemoveForBiomesUI(
-            materialItemId,
-            requested
-          );
+          const removedLocal = liveInventoryAuthoritative
+            ? 0
+            : performHarthmereMaterialStorageRemoveForBiomesUI(
+                materialItemId,
+                requested
+              );
           const remaining = Math.max(0, requested - removedLocal);
           if (remaining > 0) {
             fireAndForget(

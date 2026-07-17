@@ -481,10 +481,14 @@ ok(
 );
 ok(
   script.includes('AZURE_WEB_TARGET_PORT="${AZURE_WEB_TARGET_PORT:-3000}"') &&
-    script.includes('AZURE_MIN_REPLICAS="${AZURE_MIN_REPLICAS:-2}"') &&
+    script.includes('AZURE_MIN_REPLICAS="${AZURE_MIN_REPLICAS:-3}"') &&
     script.includes('AZURE_MAX_REPLICAS="${AZURE_MAX_REPLICAS:-3}"') &&
     deployWorkflow.includes('AZURE_WEB_TARGET_PORT: "3000"') &&
-    deployWorkflow.includes('AZURE_MIN_REPLICAS: "2"') &&
+    deployWorkflow.includes('AZURE_MIN_REPLICAS: "3"') &&
+    script.includes("DISTRIBUTED_NOTIFIER_KIND=redis") &&
+    script.includes("GLITCH_SERVER_CACHE_MODE=redis") &&
+    script.includes("PLAYER_MESH_MAX_ACTIVE_COMPUTES=1") &&
+    script.includes("PLAYER_MESH_WARMUP_MAX_ACTIVE_COMPUTES=0") &&
     deployWorkflow.includes('AZURE_MAX_REPLICAS: "3"') &&
     script.includes("AZURE_ALLOW_SINGLE_REPLICA") &&
     script.includes("single-replica production deploys are disabled"),

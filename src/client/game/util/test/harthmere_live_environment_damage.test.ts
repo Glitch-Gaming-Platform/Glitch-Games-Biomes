@@ -1,5 +1,9 @@
 import assert from "assert";
-import { BIOMES_UI_PLAYER_STATUS_UPDATED_EVENT } from "@/client/components/biomes_ui/adapters/playerStatusAdapter";
+import {
+  BIOMES_UI_OPTIMISTIC_PLAYER_STATUS_EVENT,
+  BIOMES_UI_PLAYER_STATUS_UPDATED_EVENT,
+} from "@/client/components/biomes_ui/adapters/playerStatusAdapter";
+import { resetHarthmereLiveInstallIdForTest } from "@/client/components/harthmere_live_fetch";
 import {
   harthmereLiveModeEnvironmentDamageHeaders,
   harthmereLiveModeEnvironmentDamageUrl,
@@ -8,7 +12,10 @@ import {
 } from "../harthmere_live_environment_damage";
 
 describe("Harthmere live environment damage client", () => {
+  beforeEach(() => resetHarthmereLiveInstallIdForTest());
+
   afterEach(() => {
+    resetHarthmereLiveInstallIdForTest();
     delete (globalThis as any).window;
     delete (globalThis as any).CustomEvent;
   });
@@ -77,6 +84,10 @@ describe("Harthmere live environment damage client", () => {
     });
     assert.deepEqual(dispatched, [
       {
+        type: BIOMES_UI_OPTIMISTIC_PLAYER_STATUS_EVENT,
+        detail: { hpPercentDelta: -0.4, label: "Fall damage" },
+      },
+      {
         type: BIOMES_UI_PLAYER_STATUS_UPDATED_EVENT,
         detail: { combat: { hp: 168, maxHp: 240 } },
       },
@@ -124,6 +135,10 @@ describe("Harthmere live environment damage client", () => {
       damage: 5,
     });
     assert.deepEqual(dispatched, [
+      {
+        type: BIOMES_UI_OPTIMISTIC_PLAYER_STATUS_EVENT,
+        detail: { hpDelta: -5, label: "Drowning damage" },
+      },
       {
         type: BIOMES_UI_PLAYER_STATUS_UPDATED_EVENT,
         detail: { combat: { hp: 9, maxHp: 100 } },

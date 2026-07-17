@@ -3,6 +3,7 @@ import {
   grantHarthmereItemLocallyForTest,
   harthmereInventoryAcceptableQuantity,
   harthmereInventoryCountByItemId,
+  submitHarthmereContainerTransferToLiveModeForTest,
   submitHarthmereInventoryGrantToLiveModeForTest,
   submitHarthmereInventorySpendToLiveModeForTest,
 } from "@/client/components/challenges/LocalDevHarthmereInventorySystem";
@@ -545,12 +546,50 @@ export function takeAllFromHarthmereContainer(key: string): number {
   if (!record) {
     return 0;
   }
-  let total = 0;
-  // Snapshot ids first; each take mutates the stored record.
   const slots = record.items.map((slot) => ({ ...slot }));
-  for (const slot of slots) {
-    total += takeFromHarthmereContainer(key, slot.itemId, slot.quantity);
+  const total = slots.reduce(
+    (sum, slot) => sum + Math.max(0, slot.quantity),
+    0
+  );
+  if (total <= 0) return 0;
+
+  const transferKey = `${key}:take-all`;
+  if (pendingContainerTransfers.has(transferKey)) return 0;
+  const mutation = submitHarthmereContainerTransferToLiveModeForTest(
+    key,
+    slots,
+    `${record.label} contents`
+  );
+  if (!mutation) {
+    let moved = 0;
+    for (const slot of slots) {
+      moved += takeFromHarthmereContainer(key, slot.itemId, slot.quantity);
+    }
+    return moved;
   }
+
+  pendingContainerTransfers.add(transferKey);
+  void mutation
+    .then(() => {
+      const store = readContainerStore();
+      const current = store[key];
+      if (!current) return;
+      const transferred = new Map(
+        slots.map((slot) => [slot.itemId, Math.max(0, slot.quantity)])
+      );
+      current.items = (current.items ?? []).flatMap((slot) => {
+        const requested = transferred.get(slot.itemId) ?? 0;
+        if (requested <= 0) return [slot];
+        const moved = Math.min(slot.quantity, requested);
+        transferred.set(slot.itemId, requested - moved);
+        const remaining = slot.quantity - moved;
+        return remaining > 0 ? [{ ...slot, quantity: remaining }] : [];
+      });
+      store[key] = current;
+      writeContainerStore(store);
+    })
+    .catch(() => undefined)
+    .finally(() => pendingContainerTransfers.delete(transferKey));
   return total;
 }
 

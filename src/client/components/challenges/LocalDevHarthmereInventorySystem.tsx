@@ -29,7 +29,12 @@ import {
   nonNegativeInt,
 } from "@/client/components/challenges/LocalDevHarthmereEconomyHardening";
 import { completeHarthmereDailyTaskSoon } from "@/client/components/challenges/harthmereDailyTasks";
-import { prepareHarthmereLiveFetchRequest } from "@/client/components/harthmere_live_fetch";
+import {
+  defaultHarthmereLiveFetch,
+  fetchHarthmereLiveWithTimeout,
+  prepareHarthmereLiveFetchRequest,
+  runHarthmereLiveMutationOnce,
+} from "@/client/components/harthmere_live_fetch";
 import {
   healHarthmerePlayer,
   reviveHarthmerePlayer,
@@ -188,6 +193,8 @@ interface HarthmereItemDefinition {
     | { type: "learn_spell"; spellId: string }
     | { type: "unlock_key"; keyId: string };
   questUsage?: string;
+  hotbarEligible?: boolean;
+  throwable?: boolean;
   description: string;
 }
 
@@ -790,6 +797,8 @@ const ITEM_DEFINITIONS: Record<string, HarthmereItemDefinition> = {
     maxStack: 200,
     bindType: "unbound",
     baseValue: 1,
+    hotbarEligible: true,
+    throwable: true,
     description: "Construction and repair material from mining nodes.",
   },
   rough_garnet: {
@@ -2492,6 +2501,60 @@ export function submitHarthmereInventoryGrantToLiveModeForTest(
   );
 }
 
+export function submitHarthmereContainerTransferToLiveModeForTest(
+  transferKey: string,
+  items: ReadonlyArray<{ itemId: string; quantity: number }>,
+  reason = "Container contents"
+) {
+  if (!isBrowser() || typeof window.fetch !== "function") return undefined;
+  const itemRecord: Record<string, number> = {};
+  for (const item of items) {
+    const itemId = String(item.itemId);
+    const quantity = Math.max(0, Math.trunc(Number(item.quantity) || 0));
+    if (!itemId || quantity <= 0) continue;
+    itemRecord[itemId] = (itemRecord[itemId] ?? 0) + quantity;
+  }
+  if (Object.keys(itemRecord).length === 0) return undefined;
+  return runHarthmereLiveMutationOnce(
+    `container-transfer:${transferKey}`,
+    async () => {
+      const requestId = `harthmere_container_transfer_${Date.now()}_${Math.random()
+        .toString(36)
+        .slice(2)}`;
+      const response = await fetchHarthmereLiveWithTimeout(
+        window.fetch.bind(window),
+        "/api/harthmere/live_mode",
+        {
+          method: "POST",
+          credentials: "same-origin",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            requestId,
+            idempotencyKey: requestId,
+            actionKind: "request_container_transfer",
+            subsystem: "inventory",
+            actorEntityVersion: 1,
+            zoneId: "harthmere",
+            payload: { items: itemRecord, source: reason },
+            includeSnapshots: [
+              "inventoryLootState",
+              "questState",
+              "playerStatusState",
+            ],
+            clientClaims: {
+              source: "harthmere_object_container",
+              reason,
+            },
+          }),
+        }
+      );
+      const body = await parseHarthmereLiveMutationResponse(response);
+      if (body) dispatchHarthmereLiveInventorySync(body);
+      return body;
+    }
+  );
+}
+
 // Server-authoritative DEBIT of an item from the live-mode inventory. Mirror of
 // submitHarthmereInventoryGrantToLiveModeForTest, but removes items instead of
 // granting them. Uses `request_inventory_item_action` with operation
@@ -2613,7 +2676,28 @@ export interface HarthmereItemDisplay {
   bikkieWearableItemId?: number;
   canEquip: boolean;
   canUse: boolean;
+  hotbarEligible: boolean;
   useEffectType?: string;
+}
+
+function itemDefinitionHotbarEligible(def: HarthmereItemDefinition) {
+  if (def.hotbarEligible !== undefined) return def.hotbarEligible;
+  return (
+    def.category === "consumable" ||
+    def.category === "food" ||
+    def.category === "weapon" ||
+    def.category === "tool" ||
+    def.subtype === "biomes_voxel_block"
+  );
+}
+
+export function harthmereItemHotbarEligible(itemId: string) {
+  const def = itemDef(itemId);
+  return Boolean(def && itemDefinitionHotbarEligible(def));
+}
+
+export function harthmereItemThrowable(itemId: string) {
+  return itemDef(itemId)?.throwable === true;
 }
 
 export function getHarthmereItemDisplay(
@@ -2638,6 +2722,7 @@ export function getHarthmereItemDisplay(
     bikkieWearableItemId: wearable ? Number(wearable.itemId) : undefined,
     canEquip: Boolean(def.slot),
     canUse: Boolean(def.useEffect),
+    hotbarEligible: itemDefinitionHotbarEligible(def),
     useEffectType: def.useEffect?.type,
   };
 }
@@ -2666,7 +2751,7 @@ export function performHarthmereHotbarAssignForBiomesUI(
 ) {
   const state = readHarthmereInventoryState();
   if (
-    !itemDef(itemId) ||
+    !harthmereItemHotbarEligible(itemId) ||
     (!allowKnownItem && !hasHarthmereHotbarAssignableItem(state, itemId))
   ) {
     return false;

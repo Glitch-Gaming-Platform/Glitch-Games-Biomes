@@ -236,13 +236,18 @@ describe("Harthmere inventory BiomesUI presentation and actions", () => {
     assert.equal(readHarthmereInventoryState().recent[0]?.action, "Item Used");
   });
 
-  it("assigns material storage shortcuts to the local hotbar without backpack transfer", () => {
+  it("assigns only approved material shortcuts to the local hotbar without backpack transfer", () => {
     grantHarthmereItem("iron_ore", 3, "test material");
+    grantHarthmereItem("rough_stone", 3, "test throwable block");
     assert.equal(readHarthmereInventoryState().materialStorage.iron_ore, 3);
 
-    assert.equal(performHarthmereHotbarAssignForBiomesUI("iron_ore", 2), true);
+    assert.equal(performHarthmereHotbarAssignForBiomesUI("iron_ore", 2), false);
+    assert.equal(
+      performHarthmereHotbarAssignForBiomesUI("rough_stone", 2),
+      true
+    );
     let state = readHarthmereInventoryState();
-    assert.equal(state.hotbar.slot_3, "iron_ore");
+    assert.equal(state.hotbar.slot_3, "rough_stone");
     assert.equal(state.materialStorage.iron_ore, 3);
     assert.equal(
       state.backpack.items.some((item) => item.itemId === "iron_ore"),

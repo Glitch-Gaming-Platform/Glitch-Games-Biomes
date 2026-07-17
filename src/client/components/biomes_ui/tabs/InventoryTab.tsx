@@ -48,6 +48,7 @@ export interface InventoryUiItem {
   useActionLabel?: string;
   canEquip?: boolean;
   canMove?: boolean;
+  hotbarEligible?: boolean;
   canSplit?: boolean;
   canDrop?: boolean;
   canDestroy?: boolean;
@@ -275,6 +276,7 @@ export function canMoveInventoryItemToHotbar(
 ) {
   return (
     !!item?.ref &&
+    item.hotbarEligible === true &&
     item.canMove !== false &&
     canMoveInventoryRefToHotbar(item.ref)
   );
@@ -636,101 +638,103 @@ export const InventoryTab: React.FunctionComponent<{
           onDragOver={handleBackpackDragOver}
           onDrop={handleBackpackDrop}
         >
-        <RovingGrid
-          ariaLabel="Backpack slots"
-          items={cells}
-          renderCell={(item, { focused }, cell) => {
-            const canDragItem =
-              canMoveInventoryItemToHotbar(item) && Boolean(adapter?.moveItem);
-            const slotButton = React.createElement(
-              "button",
-              {
-                ref: cell.ref,
-                tabIndex: cell.tabIndex,
-                onFocus: cell.onFocus,
-                onClick: (event: React.MouseEvent) => {
-                  cell.onClick?.();
-                  selectItem(item);
-                },
-                onKeyDown: (event: React.KeyboardEvent) => {
-                  cell.onKeyDown?.(event as any);
-                  if ((event.key === "Enter" || event.key === " ") && item) {
-                    event.preventDefault();
+          <RovingGrid
+            ariaLabel="Backpack slots"
+            items={cells}
+            renderCell={(item, { focused }, cell) => {
+              const canDragItem =
+                canMoveInventoryItemToHotbar(item) &&
+                Boolean(adapter?.moveItem);
+              const slotButton = React.createElement(
+                "button",
+                {
+                  ref: cell.ref,
+                  tabIndex: cell.tabIndex,
+                  onFocus: cell.onFocus,
+                  onClick: (event: React.MouseEvent) => {
+                    cell.onClick?.();
                     selectItem(item);
-                  }
+                  },
+                  onKeyDown: (event: React.KeyboardEvent) => {
+                    cell.onKeyDown?.(event as any);
+                    if ((event.key === "Enter" || event.key === " ") && item) {
+                      event.preventDefault();
+                      selectItem(item);
+                    }
+                  },
+                  className: `biomes-ui-slot biomes-ui-inventory__slot${
+                    item ? " biomes-ui-inventory-tooltip-target" : ""
+                  }`,
+                  "aria-label": item
+                    ? `${item.label}${item.count ? ` x${item.count}` : ""}`
+                    : "Empty slot",
+                  title: item ? inventoryTooltipLabel(item) : "Empty slot",
+                  "data-inventory-tooltip": item
+                    ? inventoryTooltipLabel(item)
+                    : undefined,
+                  "data-focused": focused ? "true" : undefined,
+                  "data-selected":
+                    selectedRef && item?.ref && refsEqual(selectedRef, item.ref)
+                      ? "true"
+                      : undefined,
+                  "data-inventory-ref": item?.ref
+                    ? serializeInventoryRef(item.ref)
+                    : undefined,
+                  "data-inventory-draggable": canDragItem ? "true" : undefined,
+                  "data-inventory-dragging":
+                    item?.ref && draggedRef && refsEqual(draggedRef, item.ref)
+                      ? "true"
+                      : undefined,
+                  draggable: canDragItem ? true : undefined,
+                  onDragStart: canDragItem
+                    ? (event: React.DragEvent) =>
+                        startInventoryDrag(event, item)
+                    : undefined,
+                  onDragEnd: canDragItem ? endInventoryDrag : undefined,
+                  style: { width: 52, height: 52 },
                 },
-                className: `biomes-ui-slot biomes-ui-inventory__slot${
-                  item ? " biomes-ui-inventory-tooltip-target" : ""
-                }`,
-                "aria-label": item
-                  ? `${item.label}${item.count ? ` x${item.count}` : ""}`
-                  : "Empty slot",
-                title: item ? inventoryTooltipLabel(item) : "Empty slot",
-                "data-inventory-tooltip": item
-                  ? inventoryTooltipLabel(item)
-                  : undefined,
-                "data-focused": focused ? "true" : undefined,
-                "data-selected":
-                  selectedRef && item?.ref && refsEqual(selectedRef, item.ref)
-                    ? "true"
-                    : undefined,
-                "data-inventory-ref": item?.ref
-                  ? serializeInventoryRef(item.ref)
-                  : undefined,
-                "data-inventory-draggable": canDragItem ? "true" : undefined,
-                "data-inventory-dragging":
-                  item?.ref && draggedRef && refsEqual(draggedRef, item.ref)
-                    ? "true"
-                    : undefined,
-                draggable: canDragItem ? true : undefined,
-                onDragStart: canDragItem
-                  ? (event: React.DragEvent) => startInventoryDrag(event, item)
-                  : undefined,
-                onDragEnd: canDragItem ? endInventoryDrag : undefined,
-                style: { width: 52, height: 52 },
-              },
-              item
-                ? React.createElement(
-                    React.Fragment,
-                    null,
-                    renderInventoryIcon(item),
-                    // Always show the quantity so every stack reads consistently
-                    // (users could not tell a 1-stack from an uncounted item).
-                    item.count && item.count >= 1
-                      ? React.createElement(
-                          "span",
-                          { className: "biomes-ui-inventory__count" },
-                          item.count
-                        )
-                      : null,
-                    item.durability
-                      ? React.createElement("span", {
-                          className: "biomes-ui-inventory__durability",
-                          style: {
-                            width: `${Math.max(
-                              4,
-                              Math.min(
-                                100,
-                                (item.durability.current /
-                                  Math.max(1, item.durability.max)) *
-                                  100
-                              )
-                            )}%`,
-                          },
-                        })
-                      : null
-                  )
-                : null
-            );
-            return item
-              ? React.createElement(Highlightable, {
-                  uniqueId: UI_IDS.INVENTORY_ITEM(item.id),
-                  showCaption: true,
-                  children: slotButton,
-                })
-              : slotButton;
-          }}
-        />
+                item
+                  ? React.createElement(
+                      React.Fragment,
+                      null,
+                      renderInventoryIcon(item),
+                      // Always show the quantity so every stack reads consistently
+                      // (users could not tell a 1-stack from an uncounted item).
+                      item.count && item.count >= 1
+                        ? React.createElement(
+                            "span",
+                            { className: "biomes-ui-inventory__count" },
+                            item.count
+                          )
+                        : null,
+                      item.durability
+                        ? React.createElement("span", {
+                            className: "biomes-ui-inventory__durability",
+                            style: {
+                              width: `${Math.max(
+                                4,
+                                Math.min(
+                                  100,
+                                  (item.durability.current /
+                                    Math.max(1, item.durability.max)) *
+                                    100
+                                )
+                              )}%`,
+                            },
+                          })
+                        : null
+                    )
+                  : null
+              );
+              return item
+                ? React.createElement(Highlightable, {
+                    uniqueId: UI_IDS.INVENTORY_ITEM(item.id),
+                    showCaption: true,
+                    children: slotButton,
+                  })
+                : slotButton;
+            }}
+          />
         </div>
 
         <div
@@ -773,110 +777,117 @@ export const InventoryTab: React.FunctionComponent<{
                     key={`hotbar-sync-${index}`}
                     style={{ position: "relative", display: "inline-flex" }}
                   >
-                  <button
-                    type="button"
-                    className={`biomes-ui-slot biomes-ui-inventory__slot${
-                      item ? " biomes-ui-inventory-tooltip-target" : ""
-                    }`}
-                    aria-label={
-                      item
-                        ? `Hotbar ${index + 1}: ${item.label}`
-                        : `Hotbar ${index + 1}: empty`
-                    }
-                    title={
-                      item
-                        ? `Hotbar ${index + 1}: ${inventoryTooltipLabel(item)}`
-                        : `Hotbar ${index + 1}: empty`
-                    }
-                    data-inventory-tooltip={
-                      item ? inventoryTooltipLabel(item) : undefined
-                    }
-                    data-hotbar-sync-slot={index + 1}
-                    data-hotbar-drop-target="true"
-                    data-hotbar-drop-index={index}
-                    data-hotbar-drop-enabled={
-                      adapter?.moveItem ? "true" : "false"
-                    }
-                    data-hotbar-drop-active={
-                      hotbarDropActive ? "true" : undefined
-                    }
-                    data-selected={selected ? "true" : undefined}
-                    data-inventory-ref={
-                      item?.ref ? serializeInventoryRef(item.ref) : undefined
-                    }
-                    data-inventory-draggable={
-                      canDragHotbarItem ? "true" : undefined
-                    }
-                    data-inventory-dragging={
-                      item?.ref && draggedRef && refsEqual(draggedRef, item.ref)
-                        ? "true"
-                        : undefined
-                    }
-                    draggable={canDragHotbarItem ? true : undefined}
-                    onClick={() => selectItem(item)}
-                    onDragStart={
-                      canDragHotbarItem
-                        ? (event) => startInventoryDrag(event, item)
-                        : undefined
-                    }
-                    onDragEnd={canDragHotbarItem ? endInventoryDrag : undefined}
-                    onDragOver={(event) => handleHotbarDragOver(event, index)}
-                    onDrop={(event) => handleHotbarDrop(event, index)}
-                    style={{
-                      width: 44,
-                      height: 44,
-                      borderColor: selected
-                        ? "var(--biomes-edge-magenta)"
-                        : undefined,
-                    }}
-                  >
-                    {item ? (
-                      <>
-                        {renderInventoryIcon(item)}
-                        <span style={visuallyHiddenStyle}>{item.label}</span>
-                        {item.count && item.count >= 1 ? (
-                          <span className="biomes-ui-inventory__count">
-                            {item.count}
-                          </span>
-                        ) : null}
-                      </>
-                    ) : null}
-                  </button>
-                  {item && canRemoveHotbarItem ? (
                     <button
                       type="button"
-                      aria-label={`Remove ${item.label} from hotbar slot ${
-                        index + 1
+                      className={`biomes-ui-slot biomes-ui-inventory__slot${
+                        item ? " biomes-ui-inventory-tooltip-target" : ""
                       }`}
-                      title={`Remove ${item.label} from hotbar`}
-                      data-hotbar-remove-index={index}
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        removeHotbarRef(item.ref);
-                      }}
+                      aria-label={
+                        item
+                          ? `Hotbar ${index + 1}: ${item.label}`
+                          : `Hotbar ${index + 1}: empty`
+                      }
+                      title={
+                        item
+                          ? `Hotbar ${index + 1}: ${inventoryTooltipLabel(
+                              item
+                            )}`
+                          : `Hotbar ${index + 1}: empty`
+                      }
+                      data-inventory-tooltip={
+                        item ? inventoryTooltipLabel(item) : undefined
+                      }
+                      data-hotbar-sync-slot={index + 1}
+                      data-hotbar-drop-target="true"
+                      data-hotbar-drop-index={index}
+                      data-hotbar-drop-enabled={
+                        adapter?.moveItem ? "true" : "false"
+                      }
+                      data-hotbar-drop-active={
+                        hotbarDropActive ? "true" : undefined
+                      }
+                      data-selected={selected ? "true" : undefined}
+                      data-inventory-ref={
+                        item?.ref ? serializeInventoryRef(item.ref) : undefined
+                      }
+                      data-inventory-draggable={
+                        canDragHotbarItem ? "true" : undefined
+                      }
+                      data-inventory-dragging={
+                        item?.ref &&
+                        draggedRef &&
+                        refsEqual(draggedRef, item.ref)
+                          ? "true"
+                          : undefined
+                      }
+                      draggable={canDragHotbarItem ? true : undefined}
+                      onClick={() => selectItem(item)}
+                      onDragStart={
+                        canDragHotbarItem
+                          ? (event) => startInventoryDrag(event, item)
+                          : undefined
+                      }
+                      onDragEnd={
+                        canDragHotbarItem ? endInventoryDrag : undefined
+                      }
+                      onDragOver={(event) => handleHotbarDragOver(event, index)}
+                      onDrop={(event) => handleHotbarDrop(event, index)}
                       style={{
-                        position: "absolute",
-                        top: -6,
-                        right: -6,
-                        width: 16,
-                        height: 16,
-                        borderRadius: "50%",
-                        border: "1px solid var(--biomes-fg-muted, #888)",
-                        background: "var(--biomes-bg-panel, rgba(10,14,20,0.9))",
-                        color: "var(--biomes-fg-danger, #ff7777)",
-                        fontSize: 10,
-                        lineHeight: 1,
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        cursor: "pointer",
-                        padding: 0,
-                        zIndex: 2,
+                        width: 44,
+                        height: 44,
+                        borderColor: selected
+                          ? "var(--biomes-edge-magenta)"
+                          : undefined,
                       }}
                     >
-                      ×
+                      {item ? (
+                        <>
+                          {renderInventoryIcon(item)}
+                          <span style={visuallyHiddenStyle}>{item.label}</span>
+                          {item.count && item.count >= 1 ? (
+                            <span className="biomes-ui-inventory__count">
+                              {item.count}
+                            </span>
+                          ) : null}
+                        </>
+                      ) : null}
                     </button>
-                  ) : null}
+                    {item && canRemoveHotbarItem ? (
+                      <button
+                        type="button"
+                        aria-label={`Remove ${item.label} from hotbar slot ${
+                          index + 1
+                        }`}
+                        title={`Remove ${item.label} from hotbar`}
+                        data-hotbar-remove-index={index}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          removeHotbarRef(item.ref);
+                        }}
+                        style={{
+                          position: "absolute",
+                          top: -6,
+                          right: -6,
+                          width: 16,
+                          height: 16,
+                          borderRadius: "50%",
+                          border: "1px solid var(--biomes-fg-muted, #888)",
+                          background:
+                            "var(--biomes-bg-panel, rgba(10,14,20,0.9))",
+                          color: "var(--biomes-fg-danger, #ff7777)",
+                          fontSize: 10,
+                          lineHeight: 1,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          cursor: "pointer",
+                          padding: 0,
+                          zIndex: 2,
+                        }}
+                      >
+                        ×
+                      </button>
+                    ) : null}
                   </div>
                 );
               }

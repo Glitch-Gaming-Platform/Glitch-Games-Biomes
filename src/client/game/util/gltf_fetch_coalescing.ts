@@ -1,4 +1,22 @@
 const playerMeshGltfFetchInflight = new Map<string, Promise<ArrayBuffer>>();
+const PLAYER_MESH_GLTF_MAX_ACTIVE_FETCHES = 4;
+let playerMeshGltfActiveFetches = 0;
+const playerMeshGltfFetchWaiters: Array<() => void> = [];
+
+async function withPlayerMeshGltfFetchSlot<T>(operation: () => Promise<T>) {
+  if (playerMeshGltfActiveFetches >= PLAYER_MESH_GLTF_MAX_ACTIVE_FETCHES) {
+    await new Promise<void>((resolve) =>
+      playerMeshGltfFetchWaiters.push(resolve)
+    );
+  }
+  playerMeshGltfActiveFetches += 1;
+  try {
+    return await operation();
+  } finally {
+    playerMeshGltfActiveFetches = Math.max(0, playerMeshGltfActiveFetches - 1);
+    playerMeshGltfFetchWaiters.shift()?.();
+  }
+}
 
 export function shouldCoalescePlayerMeshGltfFetch(url: string) {
   try {
@@ -19,7 +37,11 @@ export async function coalescedPlayerMeshGltfArrayBufferFetch(
 ) {
   let inflight = playerMeshGltfFetchInflight.get(url);
   if (!inflight) {
-    inflight = fetchArrayBuffer(url);
+    // The HAR showed 70 distinct generated NPC/player meshes starting together.
+    // Each local mesh build is CPU-heavy; allowing the browser to flood all of
+    // them at once starved terrain meshing and even the sync keepalive. Keep a
+    // small client queue while still coalescing identical semantic mesh URLs.
+    inflight = withPlayerMeshGltfFetchSlot(() => fetchArrayBuffer(url));
     playerMeshGltfFetchInflight.set(url, inflight);
     void inflight.then(
       () => {
@@ -36,4 +58,10 @@ export async function coalescedPlayerMeshGltfArrayBufferFetch(
   }
 
   return inflight;
+}
+
+export function resetPlayerMeshGltfFetchStateForTest() {
+  playerMeshGltfFetchInflight.clear();
+  playerMeshGltfActiveFetches = 0;
+  playerMeshGltfFetchWaiters.splice(0);
 }

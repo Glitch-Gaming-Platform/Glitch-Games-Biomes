@@ -16,8 +16,38 @@ export const BIOMES_UI_OPTIMISTIC_PLAYER_STATUS_EVENT =
 
 export interface BiomesUIOptimisticPlayerStatusDetail {
   staminaDelta?: number;
+  hpDelta?: number;
+  hpPercentDelta?: number;
   itemId?: string;
   label?: string;
+}
+
+export function applyOptimisticPlayerStatusForTest(
+  prev: BiomesUIPlayerStatusSnapshot | undefined,
+  detail: BiomesUIOptimisticPlayerStatusDetail
+): BiomesUIPlayerStatusSnapshot | undefined {
+  if (!prev?.combat) return prev;
+  let next = prev;
+  const hpDelta = Number(detail.hpDelta);
+  const hpPercentDelta = Number(detail.hpPercentDelta);
+  if (
+    (Number.isFinite(hpDelta) && hpDelta !== 0) ||
+    (Number.isFinite(hpPercentDelta) && hpPercentDelta !== 0)
+  ) {
+    const combat = { ...next.combat };
+    const maxHp = Math.max(1, Number(combat.maxHp) || 1);
+    const currentHp = Math.max(0, Number(combat.hp) || 0);
+    const absoluteDelta =
+      (Number.isFinite(hpDelta) ? hpDelta : 0) +
+      (Number.isFinite(hpPercentDelta) ? maxHp * hpPercentDelta : 0);
+    combat.hp = Math.max(0, Math.min(maxHp, currentHp + absoluteDelta));
+    if (combat.hp <= 0) combat.deathState = "downed";
+    next = { ...next, combat };
+  }
+  const staminaDelta = Number(detail.staminaDelta);
+  return Number.isFinite(staminaDelta) && staminaDelta !== 0
+    ? applyOptimisticStaminaToStatusForTest(next, staminaDelta)
+    : next;
 }
 
 export function applyOptimisticStaminaToStatusForTest(
@@ -440,11 +470,11 @@ export function useBiomesUIPlayerStatusState() {
     // last server snapshot for immediate HUD feedback; never marks the live
     // authority signal, and the next server snapshot replaces it.
     const onOptimistic = (event: Event) => {
-      const detail = (event as CustomEvent<BiomesUIOptimisticPlayerStatusDetail>)
-        .detail;
-      const staminaDelta = Number(detail?.staminaDelta);
-      if (!Number.isFinite(staminaDelta) || staminaDelta === 0) return;
-      setStatus((prev) => applyOptimisticStaminaToStatusForTest(prev, staminaDelta));
+      const detail = (
+        event as CustomEvent<BiomesUIOptimisticPlayerStatusDetail>
+      ).detail;
+      if (!detail || typeof detail !== "object") return;
+      setStatus((prev) => applyOptimisticPlayerStatusForTest(prev, detail));
     };
     void refresh();
     window.addEventListener(BIOMES_UI_PLAYER_STATUS_UPDATED_EVENT, onStatus);

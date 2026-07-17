@@ -68,7 +68,7 @@ describe("Biomes UI inventory hotbar drag and drop", () => {
         icon: "□",
         ref: { kind: "material", key: "rough_stone" },
       }),
-      true
+      false
     );
     assert.equal(
       canMoveInventoryItemToHotbar({
@@ -86,16 +86,14 @@ describe("Biomes UI inventory hotbar drag and drop", () => {
         label: "Muckwad",
         icon: "◼",
         ref: { kind: "item", idx: 2 },
+        hotbarEligible: true,
       }),
       true
     );
-    assert.deepEqual(
-      resolveInventoryHotbarDrop({ kind: "item", idx: 2 }, 4),
-      {
-        src: { kind: "item", idx: 2 },
-        dst: { kind: "hotbar", idx: 4 },
-      }
-    );
+    assert.deepEqual(resolveInventoryHotbarDrop({ kind: "item", idx: 2 }, 4), {
+      src: { kind: "item", idx: 2 },
+      dst: { kind: "hotbar", idx: 4 },
+    });
     assert.deepEqual(
       resolveInventoryHotbarDrop({ kind: "hotbar", idx: 2 }, 4),
       {
@@ -147,6 +145,7 @@ describe("Biomes UI inventory hotbar drag and drop", () => {
                 category: "materials",
                 ref: { kind: "item", idx: 0 },
                 source: "backpack",
+                hotbarEligible: true,
               },
             ],
             maxSlots: 1,

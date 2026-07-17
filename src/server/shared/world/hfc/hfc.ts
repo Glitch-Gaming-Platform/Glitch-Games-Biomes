@@ -212,9 +212,22 @@ export class HfcWorldApi extends WorldApi {
   protected async _getWithVersion(
     ids: BiomesId[]
   ): Promise<[number, LazyEntity | undefined][]> {
-    const results = await Promise.all(
-      ids.map((k) => this.redis.replica.hgetall(biomesIdToRedisKey(k)))
-    );
+    if (ids.length === 0) return [];
+    // One Redis round trip per bootstrap/get batch instead of one round trip per
+    // entity. This matters on the external production Redis link, where startup
+    // previously fanned a scan batch into hundreds of concurrent HGETALL calls.
+    const pipeline = this.redis.replica.pipeline();
+    for (const id of ids) {
+      pipeline.hgetall(biomesIdToRedisKey(id));
+    }
+    const replies = await pipeline.exec();
+    if (!replies || replies.length !== ids.length) {
+      throw new Error("Incomplete HFC Redis pipeline response");
+    }
+    const results = replies.map(([error, result]) => {
+      if (error) throw error;
+      return (result ?? {}) as Record<string, string>;
+    });
     return results.map((result, i) => [
       this.now,
       isEmpty(result) ? undefined : LazyEntity.forEncoded(ids[i], result),

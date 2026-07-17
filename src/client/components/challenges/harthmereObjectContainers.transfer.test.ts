@@ -315,6 +315,70 @@ describe("harthmere object container take/store interface", () => {
     assert.equal(harthmereInventoryCountByItemId("cloth_scrap"), 4);
   });
 
+  it("submits live Take All as one atomic request and commits only after confirmation", async () => {
+    const entityId = 42451 as BiomesId;
+    const { key } = getOrSeedHarthmereContainer(
+      entityId,
+      "Clothing Crate",
+      READY
+    );
+    let release: (() => void) | undefined;
+    let requestBody: any;
+    let calls = 0;
+    (windowMock as typeof windowMock & { fetch: typeof fetch }).fetch = async (
+      _input,
+      init
+    ) => {
+      calls += 1;
+      requestBody = JSON.parse(String(init?.body ?? "{}"));
+      await new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({ ok: true }),
+      } as Response;
+    };
+
+    assert.equal(takeAllFromHarthmereContainer(key), 6);
+    assert.equal(takeAllFromHarthmereContainer(key), 0);
+    assert.equal(calls, 1);
+    assert.equal(readHarthmereContainer(key)?.items.length, 3);
+    assert.equal(requestBody.actionKind, "request_container_transfer");
+    assert.deepEqual(requestBody.payload.items, {
+      baker_apron: 1,
+      field_trousers: 1,
+      cloth_scrap: 4,
+    });
+
+    release?.();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    assert.equal(readHarthmereContainer(key)?.items.length, 0);
+  });
+
+  it("leaves every live Take All item in the crate when authority rejects", async () => {
+    const entityId = 42452 as BiomesId;
+    const { key } = getOrSeedHarthmereContainer(
+      entityId,
+      "Clothing Crate",
+      READY
+    );
+    (windowMock as typeof windowMock & { fetch: typeof fetch }).fetch =
+      async () =>
+        ({
+          ok: false,
+          status: 409,
+          json: async () => ({ ok: false, error: "inventory_full" }),
+        } as Response);
+
+    assert.equal(takeAllFromHarthmereContainer(key), 6);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    assert.equal(countInContainer(key, "baker_apron"), 1);
+    assert.equal(countInContainer(key, "field_trousers"), 1);
+    assert.equal(countInContainer(key, "cloth_scrap"), 4);
+  });
+
   describe("Road Ahead clothing crate is quest-gated (right time)", () => {
     it("is EMPTY and locked before the Billy/Muckwad handoff", () => {
       const entityId = 4250 as BiomesId;

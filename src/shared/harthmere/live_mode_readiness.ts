@@ -78,6 +78,7 @@ export type HarthmereLiveModeActionKind =
   | "request_loadout_change"
   | "request_inventory_mutation"
   | "request_inventory_item_action"
+  | "request_container_transfer"
   | "request_vendor_transaction"
   | "request_auction_post"
   | "request_auction_settle"
@@ -1558,6 +1559,7 @@ const HARTHMERE_LIVE_MODE_ACTION_PIPELINE_IDS: Readonly<
   request_skill_progress: "skill_progress_live_pipeline",
   request_loot_roll: "loot_drop_claim_live_pipeline",
   request_loot_claim: "loot_drop_claim_live_pipeline",
+  request_container_transfer: "loot_drop_claim_live_pipeline",
   request_death_transition: "death_revive_respawn_live_pipeline",
   request_environment_damage: "death_revive_respawn_live_pipeline",
   request_revive: "death_revive_respawn_live_pipeline",
@@ -1581,10 +1583,8 @@ const HARTHMERE_LIVE_MODE_ACTION_PIPELINE_IDS: Readonly<
   request_auction_expire: "inventory_vendor_auction_live_pipeline",
   request_pay_fine: "economy_jobs_guild_live_pipeline",
   request_clear_bounty: "economy_jobs_guild_live_pipeline",
-  request_bank_transaction:
-    "bank_mail_property_crafting_farming_live_pipeline",
-  request_mail_transaction:
-    "bank_mail_property_crafting_farming_live_pipeline",
+  request_bank_transaction: "bank_mail_property_crafting_farming_live_pipeline",
+  request_mail_transaction: "bank_mail_property_crafting_farming_live_pipeline",
   request_guild_mutation: "economy_jobs_guild_live_pipeline",
   request_economy_mutation: "economy_jobs_guild_live_pipeline",
   request_jobs_board_mutation: "economy_jobs_guild_live_pipeline",
@@ -1938,8 +1938,7 @@ export function validateHarthmereLiveModeReadiness(input?: {
   pipelines?: HarthmereLiveModePipelineDefinition[];
   installedModules?: string[];
 }): HarthmereLiveModeReadinessReport {
-  const pipelines =
-    input?.pipelines ?? HARTHMERE_LIVE_MODE_REQUIRED_PIPELINES;
+  const pipelines = input?.pipelines ?? HARTHMERE_LIVE_MODE_REQUIRED_PIPELINES;
   const pipelineIds = new Set(
     pipelines
       .filter((pipeline) => pipeline.liveModeReady)
